@@ -1,0 +1,48 @@
+This is a list of ways to say hello in various languages.
+Its purpose is to illustrate a number of scripts.
+
+---------------------------------------------------------
+Amharic	(አማርኛ)	ሠላም
+Arabic			ﺍﻟﺴﻼﻡ ﻋﻠﻴﻜﻢ
+Czech (česky)		Dobrý den
+Danish (Dansk)		Hej, Goddag
+English			Hello
+Esperanto		Saluton
+Estonian		Tere, Tervist
+FORTRAN			PROGRAM
+Finnish (Suomi)		Hei
+French (Français)	Bonjour, Salut
+German (Deutsch Nord)	Guten Tag
+German (Deutsch Süd)	Grüß Gott
+Greek (Ελληνικά)	Γειά σας
+Hebrew			שלום
+Hindi			\mf00086\mf0008c\mf000f7\mf00082\mf000a1, \mf00086\mf0008c\mf000f7\mfb0073\mf0009a\mf0008f \mf000aa
+Italiano		Ciao, Buon giorno
+Lao(ພາສາລາວ)            ສະບາຍດີ, ຂໍໃຫ້ໂຊກດີ
+Maltese			Ciao
+Nederlands, Vlaams	Hallo, Dag
+Norwegian (Norsk)	Hei, God dag
+Polish			Dzień dobry, Hej
+Russian (Русский)	Здравствуйте!
+Slovak			Dobrý deň
+Spanish (Español)	¡Hola!
+Swedish (Svenska)	Hej, Goddag
+Thai (ภาษาไทย)		สวัสดีครับ, สวัสดีค่ะ
+
+Tibetan (\mfc00d7\mfc00fd\mfc00d2\mf1007b\mfc0210\mfc00f1\mfc00d2\mf1007b)    \mfc00d7\mfc01b0\mfc00f1\mf1007b\mfc00e5\mfc00f3\mfc00e7\mf1007b\mfc00d7\mfc00d2\mfc00fb\mf1007b\mfc00e4\mfc00fb\mfc00c3\mfc00e7\mfc007e
+Tigrigna (ትግርኛ)	ሰላማት
+Turkish (Türkçe)	Merhaba
+Vietnamese (Tiếng Việt)	Chào bạn
+
+Japanese (日本語)		こんにちは, ｺﾝﾆﾁﾊ
+Chinese (中文,普通话,汉语)	你好
+Cantonese (粵語,廣東話)		早晨, 你好
+Korean (한글)			안녕하세요, 안녕하십니까
+
+Difference among chinese characters in GB, JIS, KSC, BIG5:
+	GB   -- 元气  开发
+	JIS  -- 元気  開発
+	KSC  -- 元氣  開發
+	BIG5 -- 元氣  開發
+
+Just for a test of JISX0212: 騏驎 (the second character is of JISX0212)

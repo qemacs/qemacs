@@ -1,0 +1,170 @@
+/* standard HTML 4.0 styles. We use lower case to be also compatible
+   with XHTML. */
+
+address,
+blockquote, 
+body, dd, div, 
+dl, dt, 
+fieldset, form,
+frame, frameset,
+h1, h2, h3, h4, 
+h5, h6, iframe, 
+noframes, 
+object, ol, p, 
+ul, applet, 
+center, dir, 
+hr, menu, pre   { display: block }
+li              { display: list-item }
+head            { display: none }
+table           { display: table; border-collapse: separate; 
+                  border-spacing: 2px; text-align: left; }
+tr              { display: table-row; vertical-align: middle }
+thead           { display: table-header-group }
+tbody           { display: table-row-group }
+tfoot           { display: table-footer-group }
+col             { display: table-column }
+colgroup        { display: table-column-group }
+td, th          { display: table-cell; vertical-align: inherit }
+caption         { display: table-caption }
+th              { font-weight: bolder; text-align: center }
+caption         { text-align: center }
+body            { padding: 8px; /* line-height: 1.33em */ }
+h1              { font-size: 2em; margin: .67em 0 }
+h2              { font-size: 1.5em; margin: .83em 0 }
+h3              { font-size: 1.17em; margin: 1em 0 }
+h4, p,
+blockquote, ul,
+fieldset, form,
+ol, dl, dir,
+menu            { margin: 1.33em 0 }
+h5              { font-size: .83em; line-height: 1.17em; margin: 1.67em 0 }
+h6              { font-size: .67em; margin: 2.33em 0 }
+h1, h2, h3, h4,
+h5, h6, b,
+strong          { font-weight: bolder }
+blockquote      { margin-left: 40px; margin-right: 40px }
+i, cite, em,
+var, address    { font-style: italic }
+pre, tt, code,
+kbd, samp       { font-family: monospace }
+pre             { white-space: pre }
+big             { font-size: 1.17em }
+small, sub, sup { font-size: .83em }
+sub             { vertical-align: sub }
+sup             { vertical-align: super }
+s, strike, del  { text-decoration: line-through }
+hr              { border: #555 1px inset }
+ol, ul, dir,
+menu, dd        { margin-left: 40px }
+ol              { list-style-type: decimal }
+ol ul, ul ol,
+ul ul, ol ol    { margin-top: 0; margin-bottom: 0 }
+u, ins          { text-decoration: underline }
+center          { text-align: center }
+br:before       { content: "\A" }
+nobr            { white-space: nowrap }
+td[nowrap]      { white-space: nowrap }
+
+/* An example of style for HTML 4.0's ABBR/ACRONYM elements */
+
+/* abbr, acronym   { font-variant: small-caps; letter-spacing: 0.1em } */
+a[href]         { text-decoration: underline; color: blue }
+/* XXX: not handled
+:focus          { outline: thin dotted invert }
+*/
+
+/* Begin bidirectionality settings (do not change) */ 
+bdo[dir="ltr"] { direction: ltr; unicode-bidi: bidi-override } 
+bdo[dir="rtl"] { direction: rtl; unicode-bidi: bidi-override } 
+*[dir="ltr"] { direction: ltr; unicode-bidi: embed } 
+*[dir="rtl"] { direction: rtl; unicode-bidi: embed } 
+
+/* Elements that are block-level in HTML4 */ 
+address, blockquote, body, dd, div, dl, dt, fieldset, 
+form, frame, frameset, h1, h2, h3, h4, h5, h6, iframe, 
+noscript, noframes, object, ol, p, ul, applet, center, 
+dir, hr, menu, pre, li, table, tr, thead, tbody, tfoot, 
+col, colgroup, td, th, caption { unicode-bidi: embed } 
+/* End bidi settings */   
+
+/* additionnal special qemacs attributes */
+body {
+   color: black;
+}
+
+/* simple control appearance handling */
+input, button, img, select { display: inline-block; }
+
+input[type="hidden"] { display: none }
+
+input[type="radio"]:before { content: "(*)"; white-space: pre }
+
+input[type="checkbox"]:before { content: "[X]"; white-space: pre }
+
+input[type="button"], 
+input[type="reset"],
+input[type="submit"],
+button { color: black; background-color: gray; padding: 4px; border: 3px ridge }
+
+input[type="text"], 
+input[type="password"],
+input[type="file"],
+textarea { color: black; background-color: white; padding: 2px; border: 3px ridge; 
+   font-size: 14pt; font-family: monospace; white-space: pre; text-align: left;  }
+
+input[type="file"] { width: 20em; }
+
+textarea { display: block }
+
+select { color: black; background-color: white; padding: 2px; border: 3px ridge; 
+         font-size: 14pt; width: 6em; }
+option   { display: none }
+option[selected] { display: inline }
+optgroup { display: none }
+
+/* NOTE: this style is only used to display the ALT content. It is
+   highly dependent on qemacs CSS2 render */
+img, input[type="img"] { font-family: sans; font-size: 10pt; 
+   vertical-align: top; text-align: left; overflow: hidden;
+   text-decoration: none; }
+
+/* more precise LI handling (inside/outside) */
+ul, ol { list-style-position: outside }
+table { list-style-position: inside }
+body { list-style-position: inside }
+ul, ol { counter-reset: list-item }
+
+/*
+@media print {
+  @page         { margin: 10% }
+  h1, h2, h3,
+  h4, h5, h6    { page-break-after: avoid; page-break-inside: avoid }
+  blockquote, 
+  pre           { page-break-inside: avoid }
+  ul, ol, dl    { page-break-before: avoid }
+}
+
+@media speech {
+  h1, h2, h3, 
+  h4, h5, h6    { voice-family: paul, male; stress: 20; richness: 90 }
+  h1            { pitch: x-low; pitch-range: 90 }
+  h2            { pitch: x-low; pitch-range: 80 }
+  h3            { pitch: low; pitch-range: 70 }
+  h4            { pitch: medium; pitch-range: 60 }
+  h5            { pitch: medium; pitch-range: 50 }
+  h6            { pitch: medium; pitch-range: 40 }
+  li, dt, dd    { pitch: medium; richness: 60 }
+  dt            { stress: 80 }
+  pre, code, tt { pitch: medium; pitch-range: 0; stress: 0; richness: 80 }
+  em            { pitch: medium; pitch-range: 60; stress: 60; richness: 50 }
+  strong        { pitch: medium; pitch-range: 60; stress: 90; richness: 90 }
+  dfn           { pitch: high; pitch-range: 60; stress: 60 }
+  s, strike     { richness: 0 }
+  i             { pitch: medium; pitch-range: 60; stress: 60; richness: 50 }
+  b             { pitch: medium; pitch-range: 60; stress: 90; richness: 90 }
+  u             { richness: 0 }
+  a:link        { voice-family: harry, male }
+  a:visited     { voice-family: betty, female }
+  a:active      { voice-family: betty, female; pitch-range: 80; pitch: x-high }
+}
+*/

@@ -1,0 +1,868 @@
+\input texinfo @c -*- texinfo -*-
+
+@settitle QEmacs Documentation
+@titlepage
+@sp 7
+@center @titlefont{QEmacs Documentation}
+@sp 3
+@end titlepage
+
+
+@chapter Introduction
+QEmacs (for Quick Emacs) is a very small but powerful
+UNIX editor. It has features that even big editors lack :
+@itemize
+
+@item Full screen editor with an Emacs look and feel with all Emacs common
+  features: multi-buffer, multi-window, command mode, universal
+  argument, keyboard macros, config file with C like syntax, minibuffer
+  with completion and history.
+
+@item Can edit files of hundreds of Megabytes without being slow by using
+  a highly optimized internal representation and by mmaping the file.
+
+@item Full @emph{Unicode} support, including multi charset handling 
+  (8859-x, UTF8, SJIS, EUC-JP, ...) and bidirectional editing respecting
+  the Unicode bidi algorithm. Arabic and Indic scripts handling (in
+  progress).
+
+@item WYSIWYG @emph{HTML/XML/CSS2} mode graphical editing. Also supports lynx like
+rendering on VT100 terminals.
+
+@item WYSIWYG @emph{DocBook} mode based on XML/CSS2 renderer.
+
+@item C mode: coloring with immediate update. Emacs like auto-indent.
+
+@item Shell mode: colorized VT100 emulation so that your shell work
+  exactly as you expect. Compile mode with next/prev error. 
+
+@item Input methods for most languages, including Chinese (input methods
+  come from the Yudit editor). 
+
+@item @emph{Hexadecimal editing} mode with insertion and block commands. Unicode
+  hexa editing is also supported.
+
+@item Works on any VT100 terminals without termcap. UTF8 VT100 support
+  included with double width glyphs.
+
+@item X11 support. Support multiple proportionnal fonts at the same time
+  (as XEmacs). X Input methods supported. Xft extension supported for
+  anti aliased font display.
+
+@item 
+  Small! Full version (including HTML/XML/CSS2/DocBook rendering and all
+  charsets): 200KB big. Basic version (without bidir/unicode
+  scripts/input/X11/C/Shell/HTML/dired): 49KB.
+
+@end itemize
+
+@chapter Invocation
+
+@example
+usage: qe [-h] [-nw] [-display display] [-geometry WxH] 
+          [-fs ptsize] [filename...]
+@end example
+
+@table @samp
+
+@item -h
+show help
+
+@item -nw
+force tty terminal usage
+
+@item -display display
+set X11 display to 'display'
+
+@item -geometry WxH
+set X11 display size
+
+@item -fs ptsize
+set default font size
+
+@end table
+
+When invoked as
+@example
+usage: ffplay 
+@end example
+
+QEmacs goes to @code{dired} mode automatically so that you can browse your
+files easily (same as @kbd{C-x C-d} key).
+
+@chapter Common editing commands
+
+@section Concepts
+
+QEmacs store file content in @dfn{buffers}. Buffers can be seen as big
+arrays of bytes.
+
+An @dfn{editing mode} tells how to display the content of a buffer and
+how to interact with the user to modify its content.
+
+Multiple @dfn{Windows} can be shown on the screen at the same time. Each
+windows show the content of a buffer with an editing mode. It means that
+you can open several windows which show the same buffer in different
+modes (for example, both text and hexadecimal).
+
+Each key binding activates a @dfn{command}. You can directly execute a
+command by typing @kbd{M-x command RET}.
+
+Commands can take arguments. The key binding @kbd{C-u N} where N is an
+optional number is used to give a numeric argument to the commands which
+can handle them. If the command cannot handle a numerical argument, it
+is simply repeated @code{N} times.
+
+@section Help
+
+You can press @kbd{C-h b} to have the list of all the currently active
+bindings, including the ones of the current editing mode.
+
+@example
+C-h C-h, F1             : help-for-help
+C-h b                   : describe-bindings
+C-h c                   : describe-key-briefly
+@end example
+
+@section Simple commands
+
+@example
+default                 : self-insert-command
+C-p, up                 : previous-line
+C-n, down               : next-line
+C-b, left               : backward-char
+C-f, right              : forward-char
+M-b, C-left             : backward-word
+M-f, C-right            : forward-word
+M-v, prior              : scroll-down
+C-v, next               : scroll-up
+home, C-a               : beginning-of-line
+end, C-e                : end-of-line
+insert                  : overwrite-mode
+C-d, delete             : delete-char
+backspace               : backward-delete-char
+M-<, C-home             : beginning-of-buffer
+M->, C-end              : end-of-buffer
+C-i                     : tabulate
+C-q                     : quoted-insert
+RET                     : newline
+M-{                     : backward-paragraph
+M-}                     : forward-paragraph
+@end example
+
+@section Region handling
+
+@example
+C-k                     : kill-line
+C-space                 : set-mark-command
+C-w                     : kill-region
+M-w                     : copy-region
+C-y                     : yank
+M-y                     : yank-pop
+C-x C-x                 : exchange-point-and-mark
+@end example
+
+@section Buffer and file handling
+
+@example
+C-x C-s                 : save-buffer
+C-x C-w                 : write-file
+C-x C-c                 : suspend-emacs
+C-x C-f                 : find-file
+C-x C-v                 : find-alternate-file
+C-x b                   : switch-to-buffer
+C-x k                   : kill-buffer
+C-x i                   : insert-file
+C-x C-q                 : vc-toggle-read-only
+C-x C-b                 : list-buffers
+@end example
+
+@section Search and replace
+
+@example
+C-s                     : isearch-backward
+C-r                     : isearch-forward
+M-%                     : query-replace
+@end example
+
+@section Command handling
+
+@example
+M-x                     : execute-extended-command
+C-u                     : universal-argument
+C-g                     : abort
+C-x u, C-_              : undo
+C-x (                   : start-kbd-macro
+C-x )                   : end-kbd-macro
+C-x e                   : call-last-kbd-macro
+@end example
+
+@section Window handling
+
+@example
+C-x o                   : other-window
+C-x 0                   : delete-window
+C-x 1                   : delete-other-windows
+C-x 2                   : split-window-vertically
+C-x 3                   : split-window-horizontally
+C-x f                   : toggle-full-screen
+@end example
+
+@section International
+
+@example
+C-x RET f               : set-buffer-file-coding-system
+C-x RET b               : toggle-bidir
+C-x RET C-\             : set-input-method
+C-\                     : switch-input-method
+@end example
+
+@section Miscellaneous
+
+@example
+C-l                     : refresh
+M-g                     : goto-line
+M-q                     : fill-paragraph
+C-x RET l               : toggle-line-numbers
+C-x RET t               : truncate-lines
+C-x RET w               : word-wrap
+C-x C-e                 : compile
+C-x C-p                 : previous-error
+C-x C-n                 : next-error
+C-x C-d                 : dired
+@end example
+
+@chapter Configuration file and resources
+
+@section Resource path
+
+All resources and configuration files are looked in the following paths:
+@file{/usr/share/qe:/usr/local/share/qe:/usr/lib/qe:/usr/local/lib/qe:~/.qe}
+
+@section Configuration file
+
+QEmacs tries to load a configuration file in @file{~/.qe/config}. Each
+line of the configuration file is a QEmacs command with a C like syntax
+('-' in command name can be replaced by '_'). 
+
+Read the example file @file{config.eg} to have some examples.
+
+The following commands are useful:
+
+@table @code
+@item global_set_key(key, command)
+Set a global key binding to a command.
+
+@item set_display_size(width, height)
+(X11) Set the window size, in character cells.
+
+@item set_system_font(family, system_fonts)
+
+(X11) Maps a system font to a QEmacs font family. Multiple fonts can be
+given as fallback (@xref{fonts}).
+
+@item set_style(stylename, css_property, css_value)
+Set a colorization style (see @file{qestyle.h} and @file{config.eg} for
+common style names)
+
+@end table
+
+@section Plugins
+
+Any @file{.so} file found in the qemacs resource paths is considered as
+a @dfn{plugin}. It is a piece of code containing new features for
+qemacs. 
+
+Currently, no plugins are compiled in, but you can look at the
+@file{plugin-example/} directory to learn how to make one.
+
+Most QEmacs object files can in fact be compiled either as a plugin or
+be statically linked in qemacs. The plugin system is strongly inspirated
+from the Linux Kernel 2.4 module system.
+
+@chapter Internationalization
+
+@section Charsets
+
+QEmacs supports many common charsets including UTF8, shift JIS and EUC-JP. A
+charset can be selected for each buffer with @kbd{C-x RET f}
+(@code{set-buffer-file-coding-system}).
+
+Currently, QEmacs automatically detects the UTF8 encoding. 
+
+Note that unlike in other editors, changing the charset of a buffer
+does not modify its content: buffers always contain bytes, and the charset
+is only used when the buffer content may be converted to characters, for
+example to display it on screen.  
+
+You can use the UniHex editing mode (@kbd{M-x unihex-mode}) to see the
+Unicode values of each character in your file with the associated byte
+offset.
+
+The command @code{convert-buffer-file-coding-system} can be used to
+convert the buffer @emph{content} to another charset.
+
+@section Input methods
+
+The current input method can be changed with @kbd{C-x RET \}
+(@code{set-input-method}). You can switch between this input method and
+the default one with 'C-\'. 
+
+The input methods are currently stored in the resource file @file{kmaps}.
+They are extracted from the @emph{Yudit} editor keyboard maps.
+
+@section Bidirectional editing
+
+QEmacs fully supports the Unicode bidi algorithm. 
+
+By default, in text editing mode, qemacs is not in bidirectionnal mode (it
+may change soon). You can use 'C-x RET b' to toogle between bidi and normal
+editing modes.
+
+In HTML editing mode, bidi is always activated and all the CSS2 bidi
+properties are supported.
+
+@section Unicode scripts
+
+Currently, QEmacs fully supports Arabic shapping. Devanagari shaping is on
+the way. 
+
+The resource file @file{ligatures} contains all the standard Unicode rules
+to handle character modifiers such as accents. It means that even if your
+font does not support the Unicode character modifiers, QEmacs will do its
+best to handle them.
+
+@chapter Editing Modes
+
+@section C mode
+
+This mode is currently activated by @samp{M-x c-mode}. It is
+activated automatically when a C file is loaded.
+
+@section Hexadecimal, ascii and unihex modes
+
+
+Unlike other editors, QEmacs has powerful hexadecimal editing modes: all
+common commands are working these modes, including the block commands. 
+
+The hexadecimal mode (@kbd{M-x hex-mode}) shows both the hexa decimal
+and ascii (bytes) values. You can toggle between the hexa and ascii columns
+with 'TAB'.
+
+The ascii mode (@kbd{M-x ascii-mode}) only shows the ascii column.
+
+The unihex mode (@kbd{M-x unihex-mode}) shows both the unicode and
+glyph associated to each @emph{character} of the buffer by using the current
+buffer charset.
+
+You can change the line width in these modes with 'C-left' and 'C-right'.
+
+@section shell mode
+
+You can activate it with @kbd{M-x shell}. Unlike other editors, a very
+complete colorized VT100 emulation is done [it means you can launch
+qemacs in the qemacs shell :-)].
+
+By default, @dfn{interactive mode} is selected. It means that most keys
+you type are transmitted to the shell. This way, you can use the shell
+completion and editing functions. By pressing @kbd{C-o}, you toggle
+between interactive and editing mode. In editing mode, you can editing
+the shell buffer as any other buffer.
+
+@section Dired mode
+
+You can activate it with @kbd{C-x C-d}. You can open the selected
+directory with @kbd{RET} or @kbd{right}. @kbd{left} is used to go to the
+parent directory. The current selected is opened in the right window.
+
+@section Bufed mode
+
+You can activate it with @kbd{C-x C-b}. You can select with @kbd{RET} or
+@kbd{right} the current buffer.
+
+@section XML mode
+
+This mode is currently activated by @kbd{M-x xml-mode}. It is activated
+automatically when an XML file is loaded.
+
+Currently, only specific XML colorization is done in this
+mode. Javascript (in SCRIPT tags) is colored as in C mode. CSS Style
+sheets (in STYLE tags) are colorized with a specific color.
+
+@section Graphical HTML2/CSS mode
+
+@subsection Usage
+
+This mode is currently activated by @kbd{M-x html-mode}. It is
+activated automatically when an HTML file is loaded.
+
+@subsection Features
+
+The XML/HTML/CSS2 renderer has the following features:
+@itemize
+@item The parse errors are written in buffer '*xml-error*'.
+@item Strict XML parser or relaxed mode for HTML pages.
+@item Letter case can be ignored or strictly respected.
+@item Integrated HTML to CSS2 converter so that the renderer do not
+     depend on HTML quirks.
+@item Quite complete CSS2 support (including generated content and
+     counters).
+@item Full Bidirectionnal Unicode support.
+@item Table support with both 'fixed' and 'auto' layout algorithms.
+@item 'tty' and 'screen' CSS2 medias are supported.
+@end itemize
+
+@subsection Known limitations
+
+@itemize
+@item Cannot load external resources (e.g. style sheets) from other files.
+@item No image handling (only a rectangle with 'ALT' name is drawn).
+@item No javascript.
+@item No frames.
+@end itemize
+
+@subsection CSS property support
+
+The following properties are partially (see comments) or totally supported:
+
+@itemize
+@item display: The value 'inline-block' is a QEmacs extension.
+@item color
+
+@item background-color
+
+@item white-space: The value 'prewrap' is a QEmacs extension.
+@item direction
+
+@item float
+
+@item font-family
+
+@item font-style
+
+@item font-weight
+
+@item font-size
+
+@item text-decoration
+
+@item text-align
+
+@item width
+
+@item height
+
+@item unicode-bidi
+
+@item border-width
+
+@item border-left-width
+
+@item border-top-width
+
+@item border-right-width
+
+@item border-bottom-width
+
+@item border-color
+
+@item border-left-color
+
+@item border-top-color
+
+@item border-right-color
+
+@item border-bottom-color
+
+@item border-style
+
+@item border-left-style
+
+@item border-top-style
+
+@item border-right-style
+
+@item border-bottom-style
+
+@item border
+
+@item border-left
+
+@item border-top
+
+@item border-right
+
+@item border-bottom
+
+@item padding
+
+@item padding-left
+
+@item padding-top
+
+@item padding-right
+
+@item padding-bottom
+
+@item margin
+
+@item margin-left
+
+@item margin-top
+
+@item margin-right
+
+@item margin-bottom
+
+@item clear
+
+@item overflow
+
+@item visibility
+
+@item table-layout
+
+@item vertical-align
+
+@item border-collapse
+
+@item border-spacing
+
+@item border-spacing-horizontal
+
+@item border-spacing-vertical
+
+@item line-height
+
+@item content
+
+@item caption-side
+
+@item marker-offset
+
+@item list-style-type
+
+@item column-span: QEmacs extension
+@item row-span: QEmacs extension
+@item content-alt: QEmacs extension. Same behavior as property 'content' but used for images 
+
+@item list-style-position
+
+@item counter-reset
+
+@item counter-increment
+
+@item bidi-mode: QEmacs extension: use lower/upper case to test bidi algorithm
+@item position: @samp{fixed} is not supported. Only 'block' boxes are positionned
+@item top
+
+@item bottom
+
+@item left
+
+@item right
+
+@end itemize
+
+The following properties are completely unsupported:
+
+@itemize
+
+@item background
+
+@item background-attachment
+
+@item background-image
+
+@item background-position
+
+@item background-repeat
+
+@item clip
+
+@item cursor
+
+@item empty-cells
+
+@item font
+
+@item font-size-adjust
+
+@item font-stretch
+
+@item font-variant
+
+@item letter-spacing
+
+@item list-style
+
+@item list-style-image
+
+@item max-height
+
+@item max-width
+
+@item min-height
+
+@item min-width
+
+@item outline
+
+@item outline-color
+
+@item outline-style
+
+@item outline-width
+
+@item quotes
+
+@item text-indent
+
+@item text-shadow
+
+@item text-transform
+
+@item word-spacing
+
+@item z-index
+
+@item marks
+
+@item page
+
+@item page-break-after
+
+@item page-break-before
+
+@item page-break-inside
+
+@item size
+
+@item orphans
+
+@item widows
+
+@item azimuth
+
+@item cue
+
+@item cue-after
+
+@item cue-before
+
+@item elevation
+
+@item pause
+
+@item pause-after
+
+@item pause-before
+
+@item pitch
+
+@item pitch-range
+
+@item pitch-during
+
+@item richness
+
+@item speak
+
+@item speak-header
+
+@item speak-punctuation
+
+@item speak-rate
+
+@item stress
+
+@item voice-family
+
+@item volume
+
+@end itemize
+
+@section Graphical DocBook mode
+
+This mode simply uses a different default style sheet from the HTML/CSS2
+mode. It is activated by @samp{M-x docbook-mode}.
+
+@section Image mode
+
+When compiling qemacs with FFmpeg support (@url{http://ffmpeg.org}),
+images can be viewed. The current implementation handles PNM, PAM, PNG,
+JPEG and GIF images (animated GIF images are handled as video
+data). @kbd{C-x C-d} can be used to have an interactive file viewer.
+
+Available commands:
+
+@table @kbd
+@item t 
+(@samp{M-x image-rotate}) Rotate right image by 90 degrees.
+@item f
+(@samp{M-x toggle-full-screen}) Toggle full screen mode
+@item c
+(@samp{M-x image-convert}) Change the pixel format of the image (press tab
+to have a complete list). The data loss implied by the pixel format
+change is displayed.
+@item b
+(@samp{M-x image-set-background-color}) Set the image background
+color. The background is only visible if the image contains transparent
+pixels. The @samp{transparent} color displayed a @samp{gimp} like grid.
+@end table
+
+Status information: 
+
+@itemize
+@item The image resolution is displayed as @samp{NxM}.
+
+@item The FFmpeg pixel format is displayed.
+
+@item @samp{I} is displayed is the image is interleaved.
+
+@item @samp{T} is displayed if the image contains transparent
+pixels. @samp{A} is displayed if the image contains semi-transparent
+pixels.
+
+@end itemize
+
+@section Audio/Video mode
+
+When compiling qemacs with FFmpeg support (@url{http://ffmpeg.org}),
+video and audio files can be viewed. The X11 Xvideo extension is used
+if available for faster YUV rendering. @kbd{C-x C-d} can be used to
+have an interactive file viewer.
+
+Audio only files are also rendered. The waveform is displayed at the
+same time.
+
+No editing commands will be supported in that mode. Saving is
+currently not possible.
+
+Available commands:
+
+@table @kbd
+@item SPC
+@item p
+Pause/Resume
+@item f
+(@samp{M-x toggle-full-screen}) Toggle full screen mode
+@item v
+(@samp{M-x av-cycle-video}) Cycle through available video channels.
+@item a
+(@samp{M-x av-cycle-audio}) Cycle through available audio channels.
+@end table
+
+@node fonts
+@chapter Fonts
+
+@section VT100 display
+
+In order to display Unicode characters, you must have a recent xterm
+from XFree version greater than 4.0.1.
+
+As a short test, you can launch xterm with the following options to
+select UTF8 charset and a unicode fixed X11 font:
+@example
+xterm -u8 -fn -misc-fixed-medium-r-normal--18-120-100-100-c-90-iso10646-1
+@end example
+
+Then look at the qemacs TestPage in VT100 mode:
+@example
+qe -nw tests/TestPage.txt
+@end example
+
+If you are using latin scripts, you can use any fixed font in any
+terminal. Otherwise, if you use ideograms or other non latin scripts,
+you must configure your terminal emulator (usually xterm) to accept
+'double width' fonts. It means that some characters, such as ideograms,
+are meant to occupy two char cells instead of one. QEmacs knows that and
+does the text alyout accordingly.
+
+The font @dfn{Unifont} is currently the best font for xterm. It is
+usually included in the linux distributions. You can find it at
+@url{http://czyborra.com/unifont/}.
+
+@section X11 display
+
+QEmacs knows three basic font families:
+
+@itemize 
+@item @samp{sans} for sans serif fonts.
+@item @samp{serif} for serif fonts.
+@item @samp{fixed} for fixed or monospace fonts.
+@end itemize
+
+QEmacs maps these three families to system fonts. The default mapping
+is: @samp{helvetica} for sans, @samp{Times} for serif and @samp{fixed}
+for fixed.
+
+For each family, you can specify any number of @dfn{fallback fonts} that
+QEmacs can use if the requested glyph is not found in the current
+font. Currently, the font @samp{unifont} is used as fallback in all
+cases.
+
+You can use the command @code{set-system-font(family, fonts)} to change
+the default qemacs mapping. @code{family} is @code{sans}, @code{serif}
+or @code{fixed}, and @code{fonts} is a comma separated list of system
+fonts which are used as principal font and fallback fonts.
+
+@section Internal QEmacs fonts
+
+In the tool @samp{html2png}, QEmacs uses internal fonts which are the
+@samp{Times}, @samp{Helvetica} and @samp{Unifont} supplied in X11. They
+are highly compressed in the @dfn{FBF} font format.
+
+@chapter Html2png Tool
+
+@section Introduction
+
+Html2png is a standalone HTML/XML/CSS2 renderer based on the QEmacs
+internal renderer. It takes an HTML or XHTML file as input and produce a
+PNG image file containing the graphical rendering of the page. It is
+meant to be a test tool for the renderer. It can also be used as a
+XML/HTML validator since all parse errors are logged on the standard
+output.
+
+Unlike other HTML renderers, HTML2PNG do not have any dependency on the
+operating system or the graphical interface. It uses its own fonts
+(which are embedded in the executable), its own widgets and its own
+charset tables.
+
+By using the highly compressed FBF font format, the Times, Helvetica and
+Unifont fonts are embedded in the executable. It means that HTML2PNG can
+view documents in any languages, including Arabic, Hebrew, Japanese and
+Hangul.
+
+@section Invocation
+
+@example 
+usage: html2png [-h] [-x] [-w width] [-o outfile] [-f charset] infile
+@end example
+
+@table @samp
+@item -h
+display the help
+@item -x
+use strict XML parser (xhtml type parsing)
+@item -w width
+set the image width (default=640)
+@item -f charset
+set the default charset (default='8859-1'). Use -f ? to list supported charsets.
+@item -o outfile
+set the output filename (default='a.png')
+@end table
+
+@chapter Developper's Guide
+
+@section Plugins
+
+You can use the example in @file{plugin-example/} to develop dynamically
+linked qemacs plugins (aka modules).
+
+Plugins can add any dynamic resource qemacs supports (modes, key
+bindings, ...). A plugin can be either statically linked or
+dynamically linked. Most of qemacs features are in fact statically
+linked plugins.
+
+@bye

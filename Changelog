@@ -1,0 +1,113 @@
+version 0.3.1:
+
+- SPACE in minibuffer does completion only if a completion method is
+  defined.
+- better C-x k support (initial patch by Manuel Novoa III)
+- added set-tab-width, set-indent-width and set-indent-tabs-mode
+- probe mode for new file (patch by Manuel Novoa III)
+- force blocking mode for tty (patch by Manuel Novoa III)
+- improved image mode (full alpha channel support, full conversion,
+  use improved FFmpeg image conversion routines).
+- video mode can change audio and video chanels.
+
+version 0.3:
+
+- added Latex mode (Martin Hedenfalk)
+- added '/' in directory completion (Martin Hedenfalk)
+- fixed offset when loading buffer (Martin Hedenfalk)
+- error when loading DLL (Martin Hedenfalk)
+- added toggle full screen command (bound to C-x f or f if suitable)
+  (useful for image/video modes)
+- added toggle-mode-line.
+- various image/video mode fixes.
+- began separating the libqhtml library from the qemacs core
+
+version 0.3pre13:
+
+- added FFmpeg based image and audio/video modes.
+- added C-o, M-d, M-backspace, C-g for minibuffer exit and space for
+  completion in minibuffer (thanks to Leigh L. Klotz).
+- 'Busy' state is indicated with a 'B' in status (-B:--).
+- when installing, 'qemacs' is standard name, and 'qe' is a link.
+- added custom configure script.
+- added emacs-like quit confirmation (ask to save each file).
+- added S-TAB key.
+- fixed shell bug if multiple window (tab_size must be set to 8).
+- added [down|up]case-[word|region] commands.
+- added HebrewIsraeli keymap
+
+version 0.3pre12:
+
+- added C-x C-x.
+- XML/HTML/CSS2: many bug fixes, improved inline formatting quality.
+- improved DocBook support.
+- (re)activated full bidi handling in HTML/CSS2 mode. Added support
+  for RLO/LRO/RLE/LRO/PDF and associated CSS properties. Added
+  'bidi-mode' CSS property for bidi algorithm testing.
+- added documentation in qe-doc.html.
+- added 'set-system-font' configuration command (see config.eg) and
+  added font fallback support if unknown chars in current font.
+- new charset system. Added fully supported 'C-x RET f' to select
+  buffer charset (without modifying the actual buffer content) and
+  'convert-buffer-file-coding-system' to convert the charset of a
+  buffer to another charset (modify the buffer content).
+- added many common charsets including ISO-8859-x, shift JIS and
+  EUC-JP.
+- added double buffer for x11 display.
+- (re)activated FBF font renderer for standalone versions.
+- added test tool html2png.
+
+version 0.3pre11:
+
+- center display on cursor for isearch & replace. Repost key for
+  isearch (emacs behaviour).
+- added XML mode (colorizing of TAGs, javascript and style sheets).
+- far better XML/HTML/CSS2 support, including parametric 'content:' property.
+- added WYSIWYG DocBook mode (first use of generic CSS2 qemacs
+  renderer outside HTML mode).
+
+version 0.3pre10:
+
+- swapped C-v & M-v (Mark Burton)
+- added wheel mouse support (Laurent Charriere)
+- added paragraph functions (M-q, M-{, M-}).
+- added find-alternate-file (C-x C-v)
+- added default path in all file commands.
+- selection only changes bg & fg color.
+- first HTML selection display code.
+- fixed left key handling in column zero.
+
+version 0.3pre9:
+
+- css: faster properties handling, added 'content' property and pseudo
+  selectors, better identifier handling.
+- html: added error buffer '*xml-error*'.
+
+version 0.3pre8:
+
+- added help (Ctrl-h ...)
+- better isearch support (case/word, last search)
+- added bufed mode (C-x C-b)
+- simplified lists handling & added mouse support
+- improved completion (can use mouse & up/down to select entry)
+- windows version compiles (still no display)
+- added dynamic modules support (optionnal, since it adds many symbols)
+
+version 0.3pre7:
+
+- enabled multiple simultaneous shell (use M-x shell several times)
+- added X11 mouse handling
+- added X11 selection handling
+- added buffer flags (readonly, system, savelog)
+- added prototype dired mode (C-x C-d)
+
+version 0.3pre6:
+
+- small fixes in shell mode.
+- compile fixes in x11.c
+- reactivated HTML/CSS renderer.
+- add TinyC compile script (see qe.tcc)
+
+version 0.2 - first public release
+
+version 0.1 - initial alpha release

@@ -1,0 +1,79 @@
+--- xterm-146/fontutils.c	Mon Sep 11 11:35:21 2000
++++ xterm-146-w/fontutils.c	Tue Oct 24 01:07:37 2000
+@@ -469,8 +469,17 @@
+ static int
+ is_fixed_font(XFontStruct *fs)
+ {
+-	return (fs->min_bounds.width == fs->max_bounds.width
+-	   &&   fs->min_bounds.width == fs->min_bounds.width);
++	return (fs->min_bounds.width == fs->max_bounds.width);
++}
++
++/*
++ * Check if the font looks like a double width font (i.e. contains
++ * characters of width X and 2X
++ */
++static int
++is_double_width_font(XFontStruct *fs)
++{
++	return (2 * fs->min_bounds.width == fs->max_bounds.width);
+ }
+ 
+ #define EmptyFont(fs) ((fs)->ascent + (fs)->descent == 0 \
+@@ -518,7 +527,7 @@
+ 	if (!(nfs = XLoadQueryFont (screen->display, nfontname))) goto bad;
+ 	if (EmptyFont(nfs))
+ 		goto bad;		/* can't use a 0-sized font */
+-
++        
+ 
+ 	strcpy(normal, nfontname);
+ 	if (bfontname == 0) {
+@@ -550,7 +559,7 @@
+ 	 * fonts for 9x18 and 6x13.
+ 	 */
+ 	if_OPT_WIDE_CHARS(screen, {
+-		if (wfontname == 0) {
++		if (wfontname == 0 && !is_double_width_font(nfs)) {
+ 			fp = get_font_name_props(screen->display, nfs, normal);
+ 			if (fp != 0) {
+ 				wfontname = wide_font_name(fp);
+@@ -593,13 +602,20 @@
+ 		}
+ 	}
+ 
++
++        /*
++         * We accept that the normal font is a double width font (such
++         * as the GNU unifont, so that we do not need to use the -fw
++         * option 
++         */
++        if (is_double_width_font(nfs)) {
++            wfs = nfs;
++        } else if (!is_fixed_font(nfs)
++                   || !is_fixed_font(bfs)
++                   || nfs->max_bounds.width != bfs->max_bounds.width) {
+ 	/*
+ 	 * Normal/bold fonts should be the same width.  Also, the min/max
+-	 * values should be the same.
+-	 */
+-	if (!is_fixed_font(nfs)
+-	 || !is_fixed_font(bfs)
+-	 || nfs->max_bounds.width != bfs->max_bounds.width) {
++	 * values should be the same.  */
+ 		TRACE(("Proportional font! normal %d/%d, bold %d/%d\n",
+ 			nfs->min_bounds.width,
+ 			nfs->max_bounds.width,
+@@ -770,7 +786,11 @@
+ {
+ 	int i, j, width, height;
+ 
+-	win->f_width  = (font->max_bounds.width);
++        if (is_double_width_font(font)) {
++            win->f_width  = (font->min_bounds.width);
++        } else {
++            win->f_width  = (font->max_bounds.width);
++        }
+ 	win->f_height = (font->ascent + font->descent);
+ 	i = 2 * screen->border + sbwidth;
+ 	j = 2 * screen->border;

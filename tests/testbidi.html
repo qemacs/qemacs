@@ -1,0 +1,60 @@
+<HTML>
+<HEAD>
+<STYLE>
+/* Rules for bidi */
+  BODY            {bidi-mode: test}
+  HEBREW, HE-QUO  {direction: rtl; unicode-bidi: embed}
+  ENGLISH         {direction: ltr; unicode-bidi: embed} 
+  /* Rules for presentation */
+  HEBREW, ENGLISH, PAR  {display: block}
+  EMPH                  {font-weight: bold}
+</STYLE>
+
+</HEAD>
+<BODY>
+<H1>bidi test</H1>
+
+<H2>standard test</H2>
+
+<P>car is THE CAR in arabic</P>
+<P>CAR IS the car IN ENGLISH</P>
+<P>he said "IT IS 123, 456, OK"</P>
+<P>he said "IT IS (123, 456), OK"</P>
+<P>he said "IT IS 123,456, OK"</P>
+<P>he said "IT IS (123,456), OK"</P>
+<P>HE SAID "it is 123, 456, ok"</P>
+<P>&lt;H123&gt;shalom&lt;/H123&gt;</P>
+<P>&lt;h123&gt;SAALAM&lt;/h123&gt;</P>
+<P>HE SAID "it is a car!" AND RAN</P>
+<P>HE SAID "it is a car!x" AND RAN</P>
+<P>-2 CELSIUS IS COLD</P>
+<P>SOLVE 1*5 1-5 1/5 1+5</P>
+<P>THE RANGE IS 2.5..5</P>
+<P>IOU $10</P>
+<P>CHANGE -10%</P>
+<P>-10% CHANGE</P>
+
+<H2>image test</H2>
+
+<P>car is T<IMG WIDTH=40 HEIGHT=20 ALT="img" SRC="a.png">HE CAR in arabic</P>
+
+<H2>override test</H2>
+
+<P>car is T<IMG WIDTH=40 HEIGHT=20 ALT="img" SRC="a.png">HE CAR in
+arabic <SPAN STYLE="unicode-bidi:bidi-override; direction:
+rtl">tralala</SPAN></P>
+
+<H2>css2 spec example</H2>
+
+<HEBREW>
+     <PAR>HEBREW1 HEBREW2 english3 HEBREW4 HEBREW5</PAR>
+     <PAR>HEBREW6 <EMPH>HEBREW7</EMPH> HEBREW8</PAR>
+</HEBREW>
+<ENGLISH>
+     <PAR>english9 english10 english11 HEBREW12 HEBREW13</PAR>
+     <PAR>english14 english15 english16</PAR>
+     <PAR>english17 <HE-QUO>HEBREW18 english19 HEBREW20</HE-QUO></PAR>
+</ENGLISH>
+
+</BODY>
+</HTML>

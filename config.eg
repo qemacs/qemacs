@@ -1,0 +1,38 @@
+// Sample qemacs config file 
+//
+// copy it in ~/.qe/config
+//
+// You can call any Qemacs command with a C like syntax.
+//
+// underscores can be used in command names instead of dash.
+//
+
+// simple key definition
+// C-key : Control + key
+// M-key : Meta + key
+// Read util.c to get all the key names
+global_set_key("C-x s", "set-style");
+
+// set X11 display size
+set_display_size(80, 50);
+
+// set default input method
+//set_input_method("HebrewIsraeli");
+
+// set X11 fonts and fall backs
+set_system_font("fixed", "fixed,unifont");
+set_system_font("sans", "helvetica,unifont");
+set_system_font("serif", "times,unifont");
+
+// simple styles
+set_style("mode-line", "background-color", "white");
+set_style("comment", "font-family", "sans");
+set_style("comment", "font-size", "12");
+set_style("comment", "font-style", "italic");
+
+set_style("keyword", "font-family", "serif");
+set_style("keyword", "font-size", "18");
+
+set_style("function", "font-family", "serif");
+set_style("function", "font-size", "18");
+set_style("function", "font-weight", "bold");

@@ -1,0 +1,68 @@
+General TODO:
+------------
+- regex search/replace (use glibc 2.1 regex.c file)
+- tab cursor displayed size
+- fix kana input method
+- current path in compile set to current buffer path
+- avoid problems with popups (kill_buffer, delete_window, split_window)
+- avoid error in new file
+- faster video handling (generalize invalidate region system)
+- check file permissions.
+- faster search
+- bufed segfault
+- distribute libqhtml as a separate project
+- integrate tinySVG renderer based on the new libraster.
+- improve speed of text renderer / improve truncate mode (merge some
+  good parts with CSS renderer ?). Suppress CRC hack (not reliable).
+- set_input_method() and set_buffer_file_coding_system() in config
+  file.
+- add custom memory handling functions.
+- charset: add JIS missing encoding functions
+- display alternate cursor in non activate column in hex mode.
+- implement wheel mode in CSS display.
+- check console charset support (need to convert input?)
+- test Hebrew keymap support.
+
+C mode TODO:
+-----------
+- add TAGS support:
+  * recursive search of QTAGS file.
+  * C decl parser
+  * man like mode 
+  * global QTAGS file indexed with global includes
+- see if java/javascript/c++ is OK.
+
+HTML mode TODO:
+--------------
+
+- OPTIMIZE eb_nextc et al or always duplicate box content (big speed
+  improvement).
+
+- polish end of line offset/cursor displacement support.
+
+- handle implicit TR
+
+- add file referencing (<?xml-stylesheet type="text/css" href="xxx"?>,
+  <link>, etc...)
+
+- fix LI numbering with VALUE attribute (cannot use CSS). Verify
+  counter-reset semantics.
+
+- (z-index) floats must be displayed after all other stuff.
+
+- <NOBR> is sometimes incorrect.
+
+- more font style synthesis in html2ppm.
+
+- add xml CDATA parsing
+
+Ideas
+-----
+
+- vi mode.
+- vertical scroll bar
+- better Makefile (select modes)
+- add auto close buffer flag (for list mode)
+- improve dired (file commands, nicer display)
+- rethink mode specific commands -> add inheritance for all commands ?
+- shorter command types handling (suppress ESxxx and use one type per arg)
