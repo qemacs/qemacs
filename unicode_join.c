@@ -182,6 +182,7 @@ static int unicode_ligature(unsigned int *buf_out,
             *q++ = l1;
             i++;
         found:
+            ;
         }
     }
     return q - buf_out;
