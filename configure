@@ -308,10 +308,10 @@ if test "$lshared" = "yes" ; then
 fi
 echo "EXTRALIBS=$extralibs" >> config.mak
 echo -n "VERSION=" >>config.mak
-head $source_path/VERSION >>config.mak
+echo -n `head $source_path/VERSION` >>config.mak
 echo "" >>config.mak
 echo -n "#define QE_VERSION \"" >> $TMPH
-head $source_path/VERSION >> $TMPH
+echo -n `head $source_path/VERSION` >> $TMPH
 echo "\"" >> $TMPH
 if test "$network" = "yes" ; then
   echo "#define CONFIG_NETWORK 1" >> $TMPH
