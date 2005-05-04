@@ -78,6 +78,7 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max)
             p = s->bufptr;
             if (*p == '\0')
                 return -1;
+            /* CG: get_str(&p, s->dirpath, sizeof(s->dirpath), ":") */
             q = s->dirpath;
             while (*p != ':' && *p != '\0') {
                 if ((q - s->dirpath) < sizeof(s->dirpath) - 1)
@@ -93,9 +94,8 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max)
                 goto redo;
         } else {
             if (fnmatch(s->pattern, dirent->d_name, 0) == 0) {
-                strcpy(filename, s->dirpath);
-                strcat(filename, "/");
-                strcat(filename, dirent->d_name);
+                makepath(filename, filename_size_max,
+                         s->dirpath, dirent->d_name);
                 return 0;
             }
         }
@@ -106,6 +106,7 @@ void find_file_close(FindFileState *s)
 {
     if (s->dir) 
         closedir(s->dir);
+    free(s);
 }
 
 #ifdef WIN32
@@ -191,12 +192,14 @@ void canonize_path(char *buf, int buf_size, const char *path)
 {
     const char *p;
     /* check for URL protocol or windows drive */
+    /* CG: should not skip '/' */
     p = strchr(path, ':');
     if (p) {
         if ((p - path) == 1) {
             /* windows drive : we canonize only the following path */
             buf[0] = p[0];
             buf[1] = p[1];
+            /* CG: this will not work for non current drives */
             canonize_path1(buf + 2, buf_size - 2, p);
         } else {
             /* URL: it is already canonized */
@@ -223,16 +226,17 @@ static int is_abs_path(const char *path)
 /* canonize the path and make it absolute */
 void canonize_absolute_path(char *buf, int buf_size, const char *path1)
 {
+    char cwd[1024];
     char path[1024];
 
     if (!is_abs_path(path1)) {
         /* XXX: should call it again */
-        getcwd(path, sizeof(path));
+        /* CG: not sufficient for windows drives */
+        getcwd(cwd, sizeof(cwd));
 #ifdef WIN32
-        path_win_to_unix(path);
+        path_win_to_unix(cwd);
 #endif
-        pstrcat(path, sizeof(path), "/");
-        pstrcat(path, sizeof(path), path1);
+        makepath(path, sizeof(path), cwd, path1);
     } else {
         pstrcpy(path, sizeof(path), path1);
     }
@@ -252,16 +256,40 @@ const char *basename(const char *filename)
     }
 }
 
+/* last extension in a path, ignoring leading dots */
+const char *extension(const char *filename)
+{
+    const char *p, *ext;
+
+    ext = NULL;
+    p = filename;
+restart:
+    while (*p == '.')
+        p++;
+    ext = NULL;
+    for (; *p; p++) {
+        if (*p == '/') {
+            p++;
+            goto restart;
+        }
+        if (*p == '.')
+            ext = p;
+    }
+    return ext ? ext : p;
+}
+
 /* extract the pathname (and the trailing '/') */
-const char *pathname(char *buf, int buf_size, const char *filename)
+char *pathname(char *buf, int buf_size, const char *filename)
 {
     const char *p;
     int len;
 
     p = strrchr(filename, '/');
     if (!p) {
+        /* CG: this is bogus: path is not filename! */
         pstrcpy(buf, buf_size, filename);
     } else {
+        /* CG: pstrncpy(buf, buf_size, filename, p + 1 - filename) */
         len = p - filename + 1;
         if (len > buf_size - 1)
             len = buf_size - 1;
@@ -269,6 +297,19 @@ const char *pathname(char *buf, int buf_size, const char *filename)
         buf[len] = '\0';
     }
     return buf;
+}
+
+char *makepath(char *buf, int buf_size, const char *path, const char *filename)
+{
+    int len;
+
+    pstrcpy(buf, buf_size, path);
+    len = strlen(path);
+    if (len > 0 && path[len - 1] != '/' && len + 1 < buf_size) {
+        buf[len++] = '/';
+        buf[len] = '\0';
+    }
+    return pstrcat(buf, buf_size, filename);
 }
 
 /* copy the nth first char of a string and truncate it. */
@@ -383,9 +424,11 @@ unsigned short keycodes[] = {
     KEY_CTRL_DOWN,
     KEY_CTRL_HOME,
     KEY_CTRL_END,
-    KEY_CTRL('_'),
     KEY_CTRL(' '),
     KEY_CTRL('\\'),
+    KEY_CTRL(']'),
+    KEY_CTRL('^'),
+    KEY_CTRL('_'),
     KEY_BACKSPACE,
     KEY_INSERT,
     KEY_DELETE, 
@@ -402,12 +445,12 @@ unsigned short keycodes[] = {
 };
 
 const char *keystr[] = {
-    "left","right","up","down",
-    "C-left","C-right","C-up","C-down", 
+    "left", "right", "up", "down",
+    "C-left", "C-right", "C-up", "C-down", 
     "C-home", "C-end",
-    "C-_", "C-space", "C-\\",
-    "backspace","insert","delete","prior","next",
-    "home","end",
+    "C-space", "C-\\", "C-]", "C-^", "C-_",
+    "backspace", "insert", "delete", "prior", "next",
+    "home", "end",
     "SPC", "RET", "ESC",
     "TAB", "S-TAB",
     "default",
@@ -417,20 +460,18 @@ static int strtokey1(const char *p)
 {
     int i, n;
 
-    for(i=0;i<sizeof(keycodes)/sizeof(keycodes[0]);i++) {
+    for (i = 0; i < sizeof(keycodes)/sizeof(keycodes[0]); i++) {
         if (!strcmp(p, keystr[i]))
             return keycodes[i];
     }
-    if (p[0] == 'f' && isdigit((unsigned char)p[1])) {
+    if (p[0] == 'f' && p[1] >= '1' && p[1] <= '9') {
         p++;
         n = *p - '0';
         if (isdigit((unsigned char)p[1]))
-            n = n * 10 + *p - '0';
-        if (n == 0)
-            n = 1;
+            n = n * 10 + p[1] - '0';
         return KEY_F1 + n - 1;
     }
-    return utf8_decode(&p);;
+    return utf8_decode(&p);
 }
 
 int strtokey(const char **pp)
@@ -466,7 +507,7 @@ void keytostr(char *buf, int buf_size, int key)
     int i;
     char buf1[32];
     
-    for(i=0;i<sizeof(keycodes)/sizeof(keycodes[0]);i++) {
+    for (i = 0; i < sizeof(keycodes)/sizeof(keycodes[0]); i++) {
         if (keycodes[i] == key) {
             pstrcpy(buf, buf_size, keystr[i]);
             return;
@@ -481,6 +522,7 @@ void keytostr(char *buf, int buf_size, int key)
         snprintf(buf, buf_size, "F%d", key - KEY_F1 + 1);
     } else {
         char *q;
+        /* CG: assuming buf_size > 5 */
         q = utf8_encode(buf, key);
         *q = '\0';
     }
@@ -499,11 +541,11 @@ int to_hex(int key)
 }
 
 typedef struct ColorDef {
-    char *name;
+    const char *name;
     unsigned int color;
 } ColorDef;
 
-static const ColorDef css_colors[] = {
+static ColorDef css_colors[] = {
     /*from HTML 4.0 spec */
     { "black", QERGB(0x00, 0x00, 0x00) },
     { "green", QERGB(0x00, 0x80, 0x00) },
@@ -540,7 +582,7 @@ int css_get_color(int *color_ptr, const char *p)
 
     /* search in table */
     def = css_colors;
-    for(;;) {
+    for (;;) {
         if (def >= css_colors + (sizeof(css_colors) / sizeof(css_colors[0])))
             break;
         if (!strcasecmp(p, def->name)) {
@@ -647,10 +689,10 @@ void css_union_rect(CSSRect *a, CSSRect *b)
 
 /* the glibc folks use wrappers, but forgot to put a compatibility
    function for non GCC compilers ! */
-int stat (__const char *__path,
-          struct stat *__statbuf)
+int stat(__const char *__path,
+         struct stat *__statbuf)
 {
-    return __xstat (_STAT_VER, __path, __statbuf);
+    return __xstat(_STAT_VER, __path, __statbuf);
 }
 #endif
 

@@ -79,7 +79,9 @@ void find_file_close(FindFileState *s);
 void canonize_path(char *buf, int buf_size, const char *path);
 void canonize_absolute_path(char *buf, int buf_size, const char *path1);
 const char *basename(const char *filename);
-const char *pathname(char *buf, int buf_size, const char *filename);
+const char *extension(const char *filename);
+char *pathname(char *buf, int buf_size, const char *filename);
+char *makepath(char *buf, int buf_size, const char *path, const char *filename);
 
 int find_resource_file(char *path, int path_size, const char *pattern);
 char *pstrncpy(char *buf, int buf_size, const char *s, int len);
@@ -477,6 +479,9 @@ typedef struct EditBuffer {
     void (*close)(struct EditBuffer *);
 
     /* saved data from the last opened mode, needed to restore mode */
+    /* CG: should instead keep a pointer to last window using this
+     * buffer, even if no longer on screen
+     */
     struct ModeSavedData *saved_data; 
 
     struct EditBuffer *next; /* next editbuffer in qe_state buffer list */
