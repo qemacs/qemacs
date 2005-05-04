@@ -108,14 +108,14 @@ static int term_init(QEditScreen *s, int w, int h)
        in the current locale (ANSI/ISO C99), use a format specifer of
        %s to avoid printf() failing with EILSEQ. */
     {
-	int y, x;
-	
-	printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
-	scanf("\033[%u;%u", &y, &x);/* get cursor position */
-	printf("\033[1F" "\033[%uX", (x-1)); /* go back; erase 1 or 3 char */
-	if (x == 2) {
-	    s->charset = &charset_utf8;
-	}
+        int y, x;
+        
+        printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
+        scanf("\033[%u;%u", &y, &x);/* get cursor position */
+        printf("\033[1F" "\033[%uX", (x-1)); /* go back; erase 1 or 3 char */
+        if (x == 2) {
+            s->charset = &charset_utf8;
+        }
     }
 #endif
     
@@ -500,7 +500,7 @@ static void term_flush(QEditScreen *s)
     bgcolor = -1;
     fgcolor = -1;
             
-    for(y=0;y<s->height;y++) {
+    for (y = 0; y < s->height; y++) {
         if (ts->line_updated[y]) {
             ts->line_updated[y] = 0;
             ptr = ts->screen + y * s->width;
@@ -509,7 +509,7 @@ static void term_flush(QEditScreen *s)
             if (memcmp(ptr, optr, sizeof(TTYChar) * s->width) != 0) {
                 /* XXX: currently, we update the whole line */
                 printf("\033[%d;%dH", y + 1, 1);
-                for(x=0;x<s->width;x++) {
+                for (x = 0; x < s->width; x++) {
                     cc = ptr->ch;
                     if (cc != 0xffff) {
                         /* output attributes */
@@ -527,7 +527,8 @@ static void term_flush(QEditScreen *s)
                         } else {
                             unicode_to_charset(buf, cc, s->charset);
                         }
-                        printf("%s", buf);
+                        if (x != s->width - 1 || y != s->height - 1)
+                            printf("%s", buf);
                     }
                     /* update old screen data */
                     *optr++ = *ptr++;
