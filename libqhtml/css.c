@@ -237,7 +237,7 @@ int str_nextc(EditBuffer *b, unsigned long *offset_ptr)
     ptr = *(const unsigned char **)offset_ptr;
     ch = *ptr;
     if (ch >= 128) {
-        ch = utf8_decode((const char **)&ptr);
+        ch = utf8_decode((const char **)(void *)&ptr);
     } else {
         ptr++;
     }
