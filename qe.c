@@ -29,8 +29,10 @@ typedef struct HistoryEntry {
     char name[32];
 } HistoryEntry;
 
+#ifdef CONFIG_INIT_CALLS
 static int (*__initcall_first)(void) __init_call = NULL;
 static void (*__exitcall_first)(void) __exit_call = NULL;
+#endif
 
 static int get_line_height(QEditScreen *screen, int style_index);
 void print_at_byte(QEditScreen *screen,
@@ -173,6 +175,7 @@ static void qe_register_binding2(int key,
 {
     int nb_keys;
     unsigned int keys[3];
+
     nb_keys = 0;
     if (key >= KEY_CTRLX(0) && key <= KEY_CTRLX(0xff)) {
         keys[nb_keys++] = KEY_CTRL('x');
@@ -6165,7 +6168,7 @@ static CmdOptionDef cmd_options[] = {
     { NULL },
 };
 
-#if defined(__GNUC__) || defined(__TINYC__)
+#if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
 static inline void init_all_modules(void)
 {
     int (*initcall)(void);
@@ -6187,11 +6190,75 @@ static inline void init_all_modules(void)
     }
 }
 #else
+
 /* cannot use elf sections, so we initialize the modules manually */
+/* Should use a shell script to process objects and construct
+ * initcall array:
+ cat $(OBJS) | tr -cs 'a-z0-9_' \\n | grep -E '^module_[a-z]+_init$'
+ */
+
+extern void module_hex_init(void); /* hex.c(351) */
+extern void module_list_init(void); /* list.c(102) */
+extern void module_tty_init(void); /* tty.c(567) */
+extern void module_charset_more_init(void); /* charsetmore.c(324) */
+extern void module_unihex_init(void); /* unihex.c(184) */
+extern void module_c_init(void); /* clang.c(567) */
+extern void module_latex_init(void); /* latex-mode.c(338) */
+extern void module_xml_init(void); /* xml.c(202) */
+extern void module_bufed_init(void); /* bufed.c(197) */
+extern void module_shell_init(void); /* shell.c(922) */
+extern void module_dired_init(void); /* dired.c(369) */
+extern void module_win32_init(void); /* win32.c(504) */
+extern void module_x11_init(void); /* x11.c(1704) */
+extern void module_html_init(void); /* html.c(894) */
+extern void module_docbook_init(void); /* docbook.c(53) */
+extern void module_video_init(void); /* video.c(979) */
+extern void module_image_init(void); /* image.c(844) */
+extern void module_mpeg_init(void); /* mpeg.c(181) */
+
 static inline void init_all_modules(void)
 {
-    x11_init();
-    c_init();
+    /* modules must be initialized in link order (!)
+       OBJS=qe.o charset.o buffer.o \
+            input.o unicode_join.o display.o util.o hex.o list.o cutils.o
+       OBJS+= unix.o tty.o 
+       OBJS+= charsetmore.o charset_table.o 
+       OBJS+= unihex.o clang.o latex-mode.o xml.o bufed.o
+       OBJS+= shell.o dired.o 
+       OBJS+= win32.o
+       OBJS+= libfbf.o fbfrender.o cfb.o fbffonts.o
+       OBJS+= x11.o
+       OBJS+= html.o docbook.o
+       OBJS+= arabic.o indic.o qfribidi.o unihex.o
+       OBJS+= video.o image.o
+       OBJS+= qeend.o
+    */
+    module_hex_init(); /* hex.c(351) */
+    module_list_init(); /* list.c(102) */
+    module_tty_init(); /* tty.c(567) */
+    module_charset_more_init(); /* charsetmore.c(324) */
+    module_unihex_init(); /* unihex.c(184) */
+    module_c_init(); /* clang.c(567) */
+    module_latex_init(); /* latex-mode.c(338) */
+    module_xml_init(); /* xml.c(202) */
+    module_bufed_init(); /* bufed.c(197) */
+    module_shell_init(); /* shell.c(922) */
+    module_dired_init(); /* dired.c(369) */
+#ifdef CONFIG_WIN32
+    module_win32_init(); /* win32.c(504) */
+#endif
+#ifdef CONFIG_X11
+    module_x11_init(); /* x11.c(1704) */
+#endif
+#ifdef CONFIG_HTML
+    module_html_init(); /* html.c(894) */
+    module_docbook_init(); /* docbook.c(53) */
+#endif
+#ifdef CONFIG_FFMPEG
+    module_video_init(); /* video.c(979) */
+    module_image_init(); /* image.c(844) */
+    //module_mpeg_init(); /* mpeg.c(181) */
+#endif
 }
 #endif
 
@@ -6210,7 +6277,7 @@ void load_all_modules(void)
     while (!find_file_next(ffs, filename, sizeof(filename))) {
         h = dlopen(filename, RTLD_LAZY);
         if (!h) {
-			char *error = dlerror();
+	    char *error = dlerror();
             fprintf(stderr, "Could not open module '%s': %s\n",
 					filename, error);
             continue;

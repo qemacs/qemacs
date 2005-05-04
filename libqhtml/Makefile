@@ -25,16 +25,16 @@ $(LIB): $(OBJS)
 	$(AR) rc $@ $(OBJS)
 
 clean:
-	rm -f *~ *.o *.a csstoqe html_style.c docbook_style.c
+	rm -f *~ *.o *.a *.exe csstoqe html_style.c docbook_style.c
 
 #
 # build default style sheet file
 #
-csstoqe: csstoqe.c
+csstoqe$(EXE): csstoqe.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
-html_style.c: html.css csstoqe
+html_style.c: html.css csstoqe$(EXE)
 	./csstoqe html_style < $< > $@
 
-docbook_style.c: docbook.css csstoqe
+docbook_style.c: docbook.css csstoqe$(EXE)
 	./csstoqe docbook_style < $< > $@

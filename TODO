@@ -66,3 +66,22 @@ Ideas
 - improve dired (file commands, nicer display)
 - rethink mode specific commands -> add inheritance for all commands ?
 - shorter command types handling (suppress ESxxx and use one type per arg)
+
+Clean window deletion mess:
+---------------------------
+
+detach window from tree and keep attached to buffer if last
+detach window from tree and put in delayed free tree otherwise
+
+edit_close(s)
+do_delete_window(s)
+  bufed_select(s) if vertical split
+  dired_select(s) if vertical split
+do_less_quit(s)
+do_delete_other_windows(s) deletes other windows (!)
+do_minibuffer_exit(s) also deletes completion_popup
+insert_window_left()  deletes some left-most windows
+  do_list_buffers()
+  do_dired()
+
+- dpy_open_font should never return NULL, must have a system font.

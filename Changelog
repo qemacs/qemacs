@@ -1,3 +1,7 @@
+version 0.3.2dev:
+
+- Added support for cygwin platform.
+
 version 0.3.1:
 
 - SPACE in minibuffer does completion only if a completion method is

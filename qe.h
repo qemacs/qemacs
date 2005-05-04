@@ -572,7 +572,7 @@ extern EditBufferDataType raw_data_type;
 
 #else /* QE_MODULE */
 
-#if defined(__GNUC__) || defined(__TINYC__)
+#if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
 
 /* make sure that the keyword is not disabled by glibc (TINYC case) */
 #undef __attribute__ 
@@ -592,7 +592,7 @@ extern EditBufferDataType raw_data_type;
 #define __exit_call
 
 #define qe_module_init(fn) \
-	int module_ ## fn (void) { fn(); }
+	int module_ ## fn (void) { return fn(); }
 
 #define qe_module_exit(fn)
 

@@ -126,7 +126,7 @@ DEP_LIBS+=libqhtml/libqhtml.a
 LIBS+=-L./libqhtml -lqhtml
 OBJS+=html.o docbook.o
 ifndef CONFIG_WIN32
-TARGETS+=html2png
+TARGETS+=html2png$(EXE)
 endif
 endif
 
@@ -139,7 +139,7 @@ OBJS+= video.o image.o
 DEP_LIBS+=$(FFMPEG_LIBDIR)/libavcodec/libavcodec.a $(FFMPEG_LIBDIR)/libavformat/libavformat.a
 LIBS+=  -L$(FFMPEG_LIBDIR)/libavcodec -L$(FFMPEG_LIBDIR)/libavformat -lavformat -lavcodec -lz -lpthread
 DEFINES+= -I$(FFMPEG_SRCDIR)/libavcodec -I$(FFMPEG_SRCDIR)/libavformat
-TARGETS+=ffplay
+TARGETS+=ffplay$(EXE)
 endif
 
 # must be the last object
@@ -150,18 +150,19 @@ all: lib $(TARGETS)
 lib:
 	make -C libqhtml all
 
-qe_g: $(OBJS) $(DEP_LIBS)
+qe_g$(EXE): $(OBJS) $(DEP_LIBS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-qe$(EXE): qe_g
+qe$(EXE): qe_g$(EXE)
+	rm -f $@
 	cp $< $@
 	$(STRIP) $@
 	@ls -l $@
 
-ffplay: qe$(EXE)
+ffplay$(EXE): qe$(EXE)
 	ln -sf $< $@
 
-qe.o: qe.c qe.h qfribidi.h
+qe.o: qe.c qe.h qfribidi.h qeconfig.h
 
 charset.o: charset.c qe.h
 
@@ -182,23 +183,22 @@ html2png.o: html2png.c qe.h
 
 clean:
 	make -C libqhtml clean
-	rm -f *.o *~ TAGS gmon.out core \
-           qe qe_g qe.exe qfribidi kmaptoqe ligtoqe \
-           html2png fbftoqe fbffonts.c
+	rm -f *.o *.exe *~ TAGS gmon.out core qe.exe.stackdump \
+           qe qe_g qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c
 
 distclean: clean
 	rm -f config.h config.mak
 
-install: qe qe.1 kmaps ligatures html2png
-	install -m 755 qe $(prefix)/bin/qemacs
-	ln -sf qemacs $(prefix)/bin/qe
+install: qe$(EXE) qe.1 kmaps ligatures html2png$(EXE)
+	install -m 755 qe$(EXE) $(prefix)/bin/qemacs
+	ln -sf qemacs $(prefix)/bin/qe$(EXE)
 ifdef CONFIG_FFMPEG
 	ln -sf qemacs $(prefix)/bin/ffplay
 endif
 	mkdir -p $(prefix)/share/qe
 	install kmaps ligatures $(prefix)/share/qe
 	install qe.1 $(prefix)/man/man1
-	install -m 755 -s html2png $(prefix)/bin
+	install -m 755 -s html2png$(EXE) $(prefix)/bin
 
 TAGS: force
 	etags *.[ch]
@@ -246,24 +246,24 @@ FILE=qemacs-$(VERSION)
 tar:
 	rm -rf /tmp/$(FILE)
 	mkdir -p /tmp/$(FILE)
-	cp -P $(FILES) /tmp/$(FILE)
-	( cd /tmp ; tar zcvf ~/$(FILE).tar.gz $(FILE) )
+	cp --parents $(FILES) /tmp/$(FILE)
+	( cd /tmp ; tar zcvf $(HOME)/$(FILE).tar.gz $(FILE) )
 	rm -rf /tmp/$(FILE)
 
 #
 # Test for bidir algorithm
 #
-qfribidi: qfribidi.c
+qfribidi$(EXE): qfribidi.c
 	$(HOST_CC) $(CFLAGS) -DTEST -o $@ $<
 
 #
 # build ligature table
 #
-ligtoqe: ligtoqe.c
+ligtoqe$(EXE): ligtoqe.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
 ifdef BUILD_ALL
-ligatures: unifont.lig ligtoqe
+ligatures: unifont.lig ligtoqe$(EXE)
 	./ligtoqe unifont.lig $@
 endif
 
@@ -282,11 +282,11 @@ KMAPS=Arabic.kmap ArmenianEast.kmap ArmenianWest.kmap Chinese-CJ.kmap \
 KMAPS_DIR=$(prefix)/share/yudit/data
 KMAPS:=$(addprefix $(KMAPS_DIR)/, $(KMAPS))
 
-kmaptoqe: kmaptoqe.c
+kmaptoqe$(EXE): kmaptoqe.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
 ifdef BUILD_ALL
-kmaps: kmaptoqe $(KMAPS)
+kmaps: kmaptoqe$(EXE) $(KMAPS)
 	./kmaptoqe $@ $(KMAPS)
 endif
 
@@ -301,11 +301,11 @@ CP=8859_2.cp  cp1125.cp  cp737.cp  koi8_r.cp \
    JIS0208.TXT JIS0212.TXT
 CP:=$(addprefix cp/,$(CP))
 
-cptoqe: cptoqe.c
+cptoqe$(EXE): cptoqe.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
 ifdef BUILD_ALL
-charset_table.c: cptoqe $(CP)
+charset_table.c: cptoqe$(EXE) $(CP)
 	./cptoqe $(CP) > $@
 endif
 
@@ -318,10 +318,10 @@ times8.fbf times10.fbf times12.fbf times14.fbf times18.fbf times24.fbf\
 unifont.fbf
 FONTS:=$(addprefix fonts/,$(FONTS))
 
-fbftoqe: fbftoqe.c
+fbftoqe$(EXE): fbftoqe.c
 	$(CC) $(CFLAGS) -o $@ $<
 
-fbffonts.c: fbftoqe $(FONTS)
+fbffonts.c: fbftoqe$(EXE) $(FONTS)
 	./fbftoqe $(FONTS) > $@
 
 #
@@ -332,7 +332,7 @@ OBJS=util.o cutils.o \
      display.o unicode_join.o charset.o charsetmore.o charset_table.o \
      libfbf.o fbfrender.o cfb.o fbffonts.o
 
-html2png: html2png.o $(OBJS) libqhtml/libqhtml.a
+html2png$(EXE): html2png.o $(OBJS) libqhtml/libqhtml.a
 	$(HOST_CC) $(LDFLAGS) -o $@ html2png.o $(OBJS) \
                    -L./libqhtml -lqhtml $(HTMLTOPPM_LIBS)
 

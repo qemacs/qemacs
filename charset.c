@@ -236,7 +236,7 @@ static void decode_utf8_init(CharsetDecodeState *s)
 
 static int decode_utf8_func(CharsetDecodeState *s, const unsigned char **pp)
 {
-    return utf8_decode((const char **)pp);
+    return utf8_decode((const char **)(void *)pp);
 }
 
 unsigned char *encode_utf8(QECharset *charset, unsigned char *q, int c)

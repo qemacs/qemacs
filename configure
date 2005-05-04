@@ -42,6 +42,7 @@ esac
 gprof="no"
 network="yes"
 win32="no"
+cygwin="no"
 lshared="no"
 extralibs="-lm"
 simpleidct="yes"
@@ -56,27 +57,32 @@ png="yes"
 ffmpeg="no"
 html="yes"
 plugins="yes"
+initcalls="yes"
+exe=""
 
 # OS specific
 targetos=`uname -s`
 case $targetos in
-BeOS)
-prefix="/boot/home/config"
-# helps building libavcodec
-CFLAGS="-O2 -DPIC"
-# no need for libm, but the inet stuff
-# Check for BONE
-if (echo $BEINCLUDES|grep 'headers/be/bone' >/dev/null); then
-extralibs="-lbind -lsocket"
-else
-echo "Not sure building for net_server will succeed... good luck."
-extralibs="-lsocket"
-fi ;;
-BSD/OS)
-extralibs="-lpoll -lgnugetopt -lm"
-make="gmake"
-;;
-*) ;;
+  BeOS)
+    prefix="/boot/home/config"
+    # helps building libavcodec
+    CFLAGS="-O2 -DPIC"
+    # no need for libm, but the inet stuff
+    # Check for BONE
+    if (echo $BEINCLUDES|grep 'headers/be/bone' >/dev/null); then
+        extralibs="-lbind -lsocket"
+    else
+        echo "Not sure building for net_server will succeed... good luck."
+    extralibs="-lsocket"
+    fi ;;
+  BSD/OS)
+    extralibs="-lpoll -lgnugetopt -lm"
+    make="gmake"
+    ;;
+  CYGWIN*)
+    cygwin="yes"
+    ;;
+  *) ;;
 esac
 
 # find source path
@@ -91,8 +97,8 @@ if test -z "$source_path" -o "$source_path" = "." ; then
 fi
 
 if test -d ./ffmpeg ; then
-  ffmpeg="yes"
-  ffmpeg_srcdir="./ffmpeg"
+    ffmpeg="yes"
+    ffmpeg_srcdir="./ffmpeg"
 fi
 
 for opt do
@@ -120,6 +126,8 @@ for opt do
   --disable-network) network="no"
   ;;
   --enable-win32) win32="yes"
+  ;;
+  --enable-cygwin) cygwin="yes" ;
   ;;
   --enable-shared) lshared="yes"
   ;;
@@ -154,6 +162,20 @@ fi
 if test "$win32" = "yes" ; then
     cross_prefix="i386-mingw32msvc-"
     network="no"
+    exe=".exe"
+fi
+
+if test "$cygwin" = "yes" ; then
+    plugins="no"
+    x11="no"
+    xv="no"
+    xrender="no"
+    png="no"
+    ffmpeg="no"
+    html="no"
+    plugins="no"
+    initcalls="no"
+    exe=".exe"
 fi
 
 # endianness : guess with cpu type. Should also use prefix
@@ -176,10 +198,10 @@ EOF
 _memalign=no
 _malloc_h=no
 if $cc -o $TMPO $TMPC 2> /dev/null ; then
-_malloc_h=yes
-_memalign=yes
-# check for memalign - atmos
-cat > $TMPC << EOF
+    _malloc_h=yes
+    _memalign=yes
+    # check for memalign - atmos
+    cat > $TMPC << EOF
 #include <malloc.h>
 int main ( void ) {
 char *string = NULL;
@@ -187,7 +209,7 @@ string = memalign(64, sizeof(char));
 return 0;
 }
 EOF
-$cc -o $TMPO $TMPC 2> /dev/null || _memalign=no
+    $cc -o $TMPO $TMPC 2> /dev/null || _memalign=no
 fi
 
 if test "$ffmpeg" = "yes" ; then
@@ -233,6 +255,7 @@ echo "Standard options:"
 echo "  --help                   print this message"
 echo "  --prefix=PREFIX          install in PREFIX [$prefix]"
 echo "  --enable-win32           enable win32 cross compile"
+echo "  --enable-cygwin          compile for cygwin systems"
 echo "  --disable-x11            disable Xwindow support"
 echo "  --disable-xv             disable Xvideo extension support"
 echo "  --disable-xrender        disable Xrender extension support"
@@ -264,6 +287,7 @@ echo "Xvideo support   $xv"
 echo "libpng support   $png"
 echo "Graphical HTML   $html"
 echo "Plugins support  $plugins"
+echo "Initcall support $initcalls"
 echo "FFMPEG support   $ffmpeg"
 
 echo "Creating config.mak and config.h"
@@ -281,6 +305,8 @@ echo "AR=$ar" >> config.mak
 echo "STRIP=$strip -s -R .comment -R .note" >> config.mak
 echo "CFLAGS=$CFLAGS" >> config.mak
 echo "LDFLAGS=$LDFLAGS" >> config.mak
+echo "EXE=$exe" >> config.mak
+
 if test "$cpu" = "x86" ; then
   echo "TARGET_ARCH_X86=yes" >> config.mak
   echo "#define ARCH_X86 1" >> $TMPH
@@ -308,8 +334,8 @@ if test "$lshared" = "yes" ; then
 fi
 echo "EXTRALIBS=$extralibs" >> config.mak
 echo -n "VERSION=" >>config.mak
-echo -n `head $source_path/VERSION` >>config.mak
-echo "" >>config.mak
+echo -n `head $source_path/VERSION` >> config.mak
+echo "" >> config.mak
 echo -n "#define QE_VERSION \"" >> $TMPH
 echo -n `head $source_path/VERSION` >> $TMPH
 echo "\"" >> $TMPH
@@ -321,6 +347,11 @@ fi
 if test "$win32" = "yes" ; then
   echo "#define CONFIG_WIN32 1" >> $TMPH
   echo "CONFIG_WIN32=yes" >> config.mak
+fi
+
+if test "$cygwin" = "yes" ; then
+  echo "#define CONFIG_CYGWIN 1" >> $TMPH
+  echo "CONFIG_CYGWIN=yes" >> config.mak
 fi
 
 if test "$x11" = "yes" ; then
@@ -353,6 +384,11 @@ if test "$plugins" = "yes" ; then
   echo "CONFIG_DLL=yes" >> config.mak
 fi
 
+if test "$initcalls" = "yes" ; then
+  echo "#define CONFIG_INIT_CALLS 1" >> $TMPH
+  echo "CONFIG_INIT_CALLS=yes" >> config.mak
+fi
+
 if test "$png" = "yes" ; then
   echo "#define CONFIG_PNG_OUTPUT 1" >> $TMPH
   echo "CONFIG_PNG_OUTPUT=yes" >> config.mak
@@ -380,9 +416,9 @@ echo "SRC_PATH=$source_path" >> config.mak
 
 diff $TMPH config.h >/dev/null 2>&1
 if test $? -ne 0 ; then
-	mv -f $TMPH config.h
+    mv -f $TMPH config.h
 else
-	echo "config.h is unchanged"
+    echo "config.h is unchanged"
 fi
 
 rm -f $TMPO $TMPC $TMPE $TMPS $TMPH
