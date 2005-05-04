@@ -791,7 +791,7 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
                 q--;
                 eb_read(b, offset, q, 1);
             }
-            ch = utf8_decode((const char **)&q);
+            ch = utf8_decode((const char **)(void *)&q);
         } else {
             ch = *q;
         }

@@ -191,6 +191,8 @@ static inline void strbuf_addch(StringBuffer *b, int ch)
     }
 }
 
+#if 0
+
 /* offset compression */
 
 typedef struct OffsetBuffer {
@@ -238,6 +240,7 @@ static void offsetbuf_add(OffsetBuffer *b, unsigned int offset)
     }
     b->last_offset = offset;
 }
+#endif
 
 #define LOOKAHEAD_SIZE  16
 

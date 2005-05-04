@@ -181,8 +181,8 @@ enum CSSProperties {
     NB_PROPERTIES,
 };
 
-#define CSS_AUTO    0x80000000
-#define CSS_INHERIT 0x80000001
+#define CSS_AUTO    ((int)0x80000000)
+#define CSS_INHERIT ((int)0x80000001)
 
 typedef unsigned int CSSColor;
 
