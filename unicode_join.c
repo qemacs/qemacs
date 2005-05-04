@@ -242,7 +242,8 @@ static void bidi_reverse_buf(unsigned int *str, int len)
    the first glyph associated to a given character of the source
    buffer. */
 int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
-                      int dst_size, unsigned int *src, int src_size, int reverse)
+                      int dst_size, unsigned int *src, int src_size,
+		      int reverse)
 {
     int len, i;
     unsigned int ctog[src_size];
@@ -258,7 +259,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
             len = dst_size;
         memcpy(dst, src, len * sizeof(unsigned int));
         if (char_to_glyph_pos) {
-            for(i=0;i<len;i++)
+            for (i = 0; i < len; i++)
                 char_to_glyph_pos[i] = i;
         }
         return len;
@@ -267,7 +268,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
 
         /* init current buffer */
         len = src_size;
-        for(i=0;i<len;i++)
+        for (i = 0; i < len; i++)
             ctog[i] = i;
         memcpy(buf, src, len * sizeof(int));
         
@@ -329,6 +330,5 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
     }
     return len;
 }
-
 
 #endif /* CONFIG_UNICODE_JOIN */

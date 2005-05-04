@@ -180,7 +180,7 @@ static struct latex_function {
     int ask;
     int output_to_buffer;
     StringArray history;
-	EditState *es;
+    EditState *es;
 } latex_funcs[] = {
 {"AmSTeX", "amstex '\\nonstopmode\\input %s'", 0, 1},
 {"PDFLaTeX", "pdflatex '\\nonstopmode\\input{%s}'", 0, 1},

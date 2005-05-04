@@ -268,7 +268,7 @@ static void url_block(void)
         }
     }
     
-    /* handle terminated childs */
+    /* handle terminated children */
     for(;;) {
         if (list_empty(&pid_handlers))
             break;

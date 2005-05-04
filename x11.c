@@ -820,7 +820,8 @@ static XCharStruct *handle_fallback(QEditScreen *s, QEFont **out_font,
     fallback_count = 1;
     for(;;) {
         font1 = select_font(s, font->style | 
-                            (fallback_count << QE_FAMILY_FALLBACK_SHIFT), font->size);
+                            (fallback_count << QE_FAMILY_FALLBACK_SHIFT),
+			    font->size);
         if (!font1)
             break;
         cs = get_char_struct(font1, cc);
