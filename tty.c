@@ -77,7 +77,6 @@ static int term_init(QEditScreen *s, int w, int h)
     TTYState *ts;
     struct termios tty;
     struct sigaction sig;
-    int y, x;
 
     memcpy(&s->dpy, &tty_dpy, sizeof(QEDisplay));
 
@@ -98,20 +97,27 @@ static int term_init(QEditScreen *s, int w, int h)
     tty.c_cc[VMIN] = 1;
     tty.c_cc[VTIME] = 0;
     
-    tcsetattr (0, TCSANOW, &tty);
+    tcsetattr(0, TCSANOW, &tty);
 
+    s->charset = &charset_8859_1;
+
+#ifndef CONFIG_CYGWIN
     /* test UTF8 support by looking at the cursor position (idea from
        Ricardas Cepas <rch@pub.osf.lt>). Since uClibc actually tests
        to ensure that the format string is a valid multibyte sequence
        in the current locale (ANSI/ISO C99), use a format specifer of
        %s to avoid printf() failing with EILSEQ. */
-    printf ("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
-    scanf ("\033[%u;%u", &y, &x);/* get cursor position */
-    printf("\033[1F" "\033[%uX", (x-1)); /* go back; erase 1 or 3 char */
-    s->charset = &charset_8859_1;
-    if (x == 2) {
-        s->charset = &charset_utf8;
+    {
+	int y, x;
+	
+	printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
+	scanf("\033[%u;%u", &y, &x);/* get cursor position */
+	printf("\033[1F" "\033[%uX", (x-1)); /* go back; erase 1 or 3 char */
+	if (x == 2) {
+	    s->charset = &charset_utf8;
+	}
     }
+#endif
     
     atexit(term_exit);
 
