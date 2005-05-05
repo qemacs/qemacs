@@ -870,7 +870,7 @@ static int parse_tag(XMLState *s, const char *buf)
                 q = value;
                 while (*p != '\0' && !strchr(" \t\n\r<>", *p)) {
                     ch = parse_entity(&p);
-                    if ((q - value) < sizeof(value) - 1) 
+                    if ((q - value) < (int)sizeof(value) - 1) 
                         *q++ = ch;
                 }
                 *q = '\0';
@@ -879,7 +879,7 @@ static int parse_tag(XMLState *s, const char *buf)
                 q = value;
                 while (*p != och && *p != '\0' && *p != '<') {
                     ch = parse_entity(&p);
-                    if ((q - value) < sizeof(value) - 1) 
+                    if ((q - value) < (int)sizeof(value) - 1) 
                         *q++ = ch;
                 }
                 *q = '\0';

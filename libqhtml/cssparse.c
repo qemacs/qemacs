@@ -67,8 +67,8 @@ static int css_get_length(int *length_ptr, int *unit_ptr, const char *p)
     len = p - p1;
     if (len == 0)
         return -1;
-    if (len > sizeof(buf) - 1)
-        len = sizeof(buf) - 1;
+    if (len > (int)sizeof(buf) - 1)
+        len = (int)sizeof(buf) - 1;
     memcpy(buf, p1, len);
     buf[len] = '\0';
     f = strtod(buf, NULL);
@@ -167,7 +167,7 @@ static char *css_parse_string(const char **pp)
             } 
             /* XXX: hex digits */ 
         }
-        if ((q - buf) < sizeof(buf) - 1)
+        if ((q - buf) < (int)sizeof(buf) - 1)
             *q++ = c;
     }
     *q = '\0';
@@ -1084,7 +1084,7 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
 
         q = value;
         while (ch != '}' && ch != EOF) {
-            if ((q - value) < sizeof(value) - 1)
+            if ((q - value) < (int)sizeof(value) - 1)
                 *q++ = ch;
             ch = bgetc(b);
         }
