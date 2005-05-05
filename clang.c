@@ -71,6 +71,7 @@ void c_colorize_line(unsigned int *buf, int len,
     p = buf;
     p_start = p;
     type_decl = 0;
+    c = 0;	/* turn off stupid egcs-2.91.66 warning */
 
     /* if already in a state, go directly in the code parsing it */
     switch(state) {
@@ -161,14 +162,12 @@ void c_colorize_line(unsigned int *buf, int len,
                 (c >= 'A' && c <= 'Z') || 
                 (c == '_')) {
                 
-                l = get_c_keyword(kbuf + 1, sizeof(kbuf) - 2, &p);
-                kbuf[0] = '|';
-                kbuf[l + 1] = '|';
-                kbuf[l + 2] = '\0';
+                l = get_c_keyword(kbuf, sizeof(kbuf), &p);
                 p1 = p;
-                if (strstr(c_keywords, kbuf)) {
+                if (strfind(c_keywords, kbuf, 0)) {
                     set_color(p_start, p1 - p_start, QE_STYLE_KEYWORD);
-                } else if (strstr(c_types, kbuf)) {
+                } else
+		if (strfind(c_types, kbuf, 0)) {
                     /* c type */
                     while (*p == ' ' || *p == '\t')
                         p++;
@@ -512,15 +511,12 @@ void do_c_electric(EditState *s, int key)
 
 static int c_mode_probe(ModeProbeData *p)
 {
-    char extbuf[10];
     const char *r;
 
     /* currently, only use the file extension */
     r = extension(p->filename);
     if (*r) {
-	snprintf(extbuf, sizeof(extbuf), "|%s|", r + 1);
-	css_strtolower(extbuf, sizeof(extbuf));
-        if (strstr("|c|e|h|js|cs|jav|java|cxx|cpp|", extbuf))
+	if (strfind("|c|e|h|js|cs|jav|java|cxx|cpp|", r + 1, 1))
             return 100;
     }
     return 0;

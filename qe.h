@@ -84,6 +84,7 @@ char *pathname(char *buf, int buf_size, const char *filename);
 char *makepath(char *buf, int buf_size, const char *path, const char *filename);
 
 int find_resource_file(char *path, int path_size, const char *pattern);
+int strfind(const char *keytable, const char *str, int casefold);
 char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 void umemmove(unsigned int *dest, unsigned int *src, int len);
 void skip_spaces(const char **pp);
@@ -117,7 +118,6 @@ static inline int css_is_inter_rect(CSSRect *a, CSSRect *b)
               a->y2 <= b->y1 ||
               a->y1 >= b->y2));
 }
-
 
 static inline int css_is_space(int ch)
 {
@@ -693,7 +693,7 @@ typedef struct EditState {
     int busy; /* true if editing cannot be done if the window
                  (e.g. the parser HTML is parsing the buffer to
                  produce the display */
-    int display_invalid; /* true if the display was invalidate. Full
+    int display_invalid; /* true if the display was invalidated. Full
                             redraw should be done */
     int show_selection;  /* if true, the selection is displayed */
     /* display area info */

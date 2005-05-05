@@ -249,6 +249,7 @@ const char *basename(const char *filename)
     const char *p;
     p = strrchr(filename, '/');
     if (!p) {
+	/* should also scan for ':' */
         return filename;
     } else {
         p++;
@@ -333,6 +334,41 @@ char *pstrncpy(char *buf, int buf_size, const char *s, int len)
     return buf;
 }
 
+/* find a word in a list using '|' as separator,
+ * optionally fold case to lower case.
+ */
+int strfind(const char *keytable, const char *str, int casefold)
+{
+    char buf[128];
+    int c, len;
+    const char *p;
+
+    if (casefold) {
+	pstrcpy(buf, sizeof(buf), str);
+	str = buf;
+	css_strtolower(buf, sizeof(buf));
+    }
+    c = *str;
+    len = strlen(str);
+    /* need to special case the empty string */
+    if (len == 0)
+	return strstr(keytable, "||") != NULL;
+
+    /* initial and trailing | are optional */
+    /* they do not cause the empty string to match */
+    for (p = keytable;;) {
+	if (!memcmp(p, str, len) && (p[len] == '|' || p[len] == '\0'))
+	    return 1;
+	for (;;) {
+	    p = strchr(p + 1, c);
+	    if (!p)
+		return 0;
+	    if (p[-1] == '|')
+		break;
+	}
+    }
+}
+
 void skip_spaces(const char **pp)
 {
     const char *p;
@@ -368,6 +404,9 @@ int ustristart(const unsigned int *str, const char *val, const unsigned int **pt
     return 1;
 }
 
+/* Read a token from a string, stop a set of characters.
+ * Should skip spaces before and after token.
+ */ 
 void get_str(const char **pp, char *buf, int buf_size, const char *stop)
 {
     char *q;
@@ -378,6 +417,7 @@ void get_str(const char **pp, char *buf, int buf_size, const char *stop)
     q = buf;
     for(;;) {
         c = *p;
+	/* Should stop on spaces and eat them */
         if (c == '\0' || strchr(stop, c))
             break;
         if ((q - buf) < buf_size - 1)

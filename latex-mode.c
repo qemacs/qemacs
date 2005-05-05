@@ -129,11 +129,10 @@ static int latex_mode_probe(ModeProbeData *p)
     const char *r;
 
     /* currently, only use the file extension */
-    r = strrchr(p->filename, '.');
-    if (r) {
-        r++;
-        if (strcasecmp(r, "tex") == 0)
-            return 100;
+    r = extension(p->filename);
+    if (*r) {
+	if (strfind("|tex|", r + 1, 1))
+	    return 100;
     }
     return 0;
 }
