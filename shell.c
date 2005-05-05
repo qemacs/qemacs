@@ -498,7 +498,8 @@ static void shell_read_cb(void *opaque)
     if (len <= 0)
         return;
     
-    for(i=0;i<len;i++) tty_emulate(s, buf[i]);
+    for (i = 0; i < len; i++)
+	tty_emulate(s, buf[i]);
 
     /* now we do some refresh */
     edit_display(&qe_state);
@@ -593,10 +594,12 @@ EditBuffer *new_shell_buffer(const char *name, const char *path,
         eb_free(b);
         return NULL;
     }
+    memset(s, 0, sizeof(ShellState));
     b->priv_data = s;
     b->close = shell_close;
     eb_add_callback(b, eb_offset_callback, &s->cur_offset);
     s->b = b;
+    s->pty_fd = -1;
     s->pid = -1;
     s->is_shell = is_shell;
     tty_init(s);
