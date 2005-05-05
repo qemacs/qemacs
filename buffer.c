@@ -810,6 +810,8 @@ static void get_pos(u8 *buf, int size, int *line_ptr, int *col_ptr,
     u8 *p, *p1, *lp;
     int line, len, col, ch;
 
+    QASSERT(size >= 0);
+
     line = 0;
     p = buf;
     lp = p;
@@ -892,6 +894,8 @@ int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset)
 {
     Page *p, *p_end;
     int line, col, line1, col1;
+
+    QASSERT(offset >= 0);
 
     line = 0;
     col = 0;
@@ -1189,7 +1193,7 @@ int mmap_buffer(EditBuffer *b, const char *filename)
         return -1;
     file_size = lseek(fd, 0, SEEK_END);
     file_ptr = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
-    if (file_ptr == MAP_FAILED) {
+    if ((void*)file_ptr == MAP_FAILED) {
         close(fd);
         return -1;
     }
@@ -1286,6 +1290,29 @@ void eb_printf(EditBuffer *b, const char *fmt, ...)
     va_start(ap, fmt);
     len = vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
+    eb_insert(b, b->total_size, buf, len);
+}
+
+void error_printf(const char *fmt, ...)
+{
+    EditBuffer *b;
+    va_list ap;
+    char buf[1024];
+    int len;
+
+    va_start(ap, fmt);
+    len = vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+    b = eb_find("*errors*");
+    if (!b) {
+	b = eb_new("*errors*", BF_SYSTEM);
+	if (!b) {
+	    fprintf(stderr, "%s", buf);
+	    return;
+	}
+    }
+
     eb_insert(b, b->total_size, buf, len);
 }
 

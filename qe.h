@@ -843,6 +843,7 @@ typedef struct QEmacsState {
     int yank_current;
     char res_path[1024];
     char status_shadow[MAX_SCREEN_WIDTH];
+    char error_context[128];
     char system_fonts[NB_FONT_FAMILIES][256];
 } QEmacsState;
 
@@ -1032,6 +1033,7 @@ typedef struct CompletionEntry {
 
 void register_completion(const char *name, CompletionFunc completion_func);
 void put_status(EditState *s, const char *fmt, ...);
+void error_printf(const char *fmt, ...);
 void minibuffer_edit(const char *input, const char *prompt, 
                      StringArray *hist, CompletionFunc completion_func,
                      void (*cb)(void *opaque, char *buf), void *opaque);

@@ -53,6 +53,7 @@ static void display1(DisplayState *s);
 static void save_selection(void);
 #endif
 static CompletionFunc find_completion(const char *name);
+static int dummy_dpy_init(QEditScreen *s, int w, int h);
 
 QEmacsState qe_state;
 static ModeDef *first_mode = NULL;
@@ -3604,12 +3605,13 @@ void print_at_byte(QEditScreen *screen,
                    style.bg_color);
     font = select_font(screen, style.font_style, style.font_size);
     draw_text(screen, font, x, y + font->ascent,
-	      ubuf, len, style.fg_color);
+              ubuf, len, style.fg_color);
 }
 
 void put_status(EditState *s, const char *fmt, ...)
 {
     /* CG: s is not used and may be NULL! */
+    QEmacsState *qs = &qe_state;
     char buf[MAX_SCREEN_WIDTH];
     va_list ap;
 
@@ -3617,12 +3619,16 @@ void put_status(EditState *s, const char *fmt, ...)
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
 
-    if (strcmp(buf, qe_state.status_shadow) != 0) {
-        print_at_byte(qe_state.screen,
-                      0, qe_state.screen->height - qe_state.status_height,
-                      qe_state.screen->width, qe_state.status_height,
-                      buf, QE_STYLE_STATUS);
-        strcpy(qe_state.status_shadow, buf);
+    if (strcmp(buf, qs->status_shadow) != 0) {
+	if (qs->screen->dpy.dpy_init != dummy_dpy_init) {
+	    print_at_byte(qs->screen,
+			  0, qs->screen->height - qs->status_height,
+			  qs->screen->width, qs->status_height,
+			  buf, QE_STYLE_STATUS);
+	    strcpy(qs->status_shadow, buf);
+	} else {
+	    error_printf("%s: %s\n", qs->error_context, buf);
+	}
     }
 }
 
@@ -5923,8 +5929,6 @@ ModeDef text_mode = {
 
 ModeDef minibuffer_mode;
 
-#include "qeconfig.h"
-
 /* find a resource file */
 int find_resource_file(char *path, int path_size, const char *pattern)
 {
@@ -5965,7 +5969,7 @@ int parse_config_file(EditState *s, const char *filename)
         return -1;
     err = 0;
     line_num = 0;
-    for(;;) {
+    for (;;) {
         if (fgets(line, sizeof(line), f) == NULL)
             break;
         line_num++;
@@ -5991,8 +5995,8 @@ int parse_config_file(EditState *s, const char *filename)
         d = qe_find_cmd(cmd);
         if (!d) {
             err = -1;
-            fprintf(stderr, "%s:%d: unknown command '%s'\n", 
-                    filename, line_num, cmd);
+            error_printf("%s:%d: unknown command '%s'\n", 
+                         filename, line_num, cmd);
             continue;
         }
         skip_spaces(&p);
@@ -6019,21 +6023,21 @@ int parse_config_file(EditState *s, const char *filename)
                 break;
             if (nb_args >= MAX_CMD_ARGS) {
             badcmd:
-                fprintf(stderr, "%s:%d: badly defined command '%s'\n", 
-                        filename, line_num, cmd);
+		error_printf("%s:%d: badly defined command '%s'\n", 
+			     filename, line_num, cmd);
                 goto fail;
             }
             args_type[nb_args++] = arg_type;
         }
 
         /* fill args to avoid problems if error */
-        for(i=0;i<nb_args;i++)
+        for (i = 0; i < nb_args; i++)
             args[i] = NULL;
 
         if (*p == '(')
             p++;
         first = 1;
-        for(i=0;i<nb_args;i++) {
+        for (i = 0; i < nb_args; i++) {
             /* pseudo arguments: skip them */
             switch(args_type[i]) {
             case CMD_ARG_WINDOW:
@@ -6055,14 +6059,19 @@ int parse_config_file(EditState *s, const char *filename)
             }
             first = 0;
             
-            switch(args_type[i]) {
+            switch (args_type[i]) {
             case CMD_ARG_INT:
+		if (!isdigit(*p)) {
+                    error_printf("%s:%d: number expected\n", 
+				 filename, line_num);
+                    goto fail;
+                }
                 args[i] = (void *)strtol(p, (char**)&p, 0);
                 break;
             case CMD_ARG_STRING:
                 if (*p != '\"') {
-                    fprintf(stderr, "%s:%d: string expected\n", 
-                            filename, line_num);
+                    error_printf("%s:%d: string expected\n", 
+				 filename, line_num);
                     goto fail;
                 }
                 p++;
@@ -6097,17 +6106,22 @@ int parse_config_file(EditState *s, const char *filename)
         c = ')';
         if (*p != c) {
         expected:
-            fprintf(stderr, "%s:%d: '%c' expected\n", 
-                    filename, line_num, c);
+	    error_printf("%s:%d: '%c' expected\n", 
+			 filename, line_num, c);
             goto fail;
         }
 
-        /* now we can execute the command */
+	/* CG: Should set up a more precise and efficient error
+	 * context in qe_state
+	 */
+	snprintf(s->qe_state->error_context,
+		 sizeof(s->qe_state->error_context),
+		 "%s:%d: %s", filename, line_num, d->name);
         call_func(d->action.func, nb_args, args, args_type);
 
     fail:
         /* free the arguments */
-        for(i=0;i<nb_args;i++) {
+        for (i = 0; i < nb_args; i++) {
             if (args_type[i] == CMD_ARG_STRING) {
                 free(args[i]);
             }
@@ -6192,6 +6206,100 @@ static CmdOptionDef cmd_options[] = {
       {func_noarg: show_help}},
     { NULL },
 };
+
+/* default key bindings */
+
+#include "qeconfig.h"
+
+/* dummy display driver for initialization time */
+
+static int dummy_dpy_probe(void)
+{
+    return 1;
+}
+
+extern QEDisplay dummy_dpy;
+
+static int dummy_dpy_init(QEditScreen *s, int w, int h)
+{
+    memcpy(&s->dpy, &dummy_dpy, sizeof(QEDisplay));
+
+    s->charset = &charset_8859_1;
+    
+    return 0;
+}
+
+static void dummy_dpy_close(QEditScreen *s)
+{
+}
+
+static void dummy_dpy_cursor_at(QEditScreen *s, int x1, int y1, int w, int h)
+{
+}
+
+static int dummy_dpy_is_user_input_pending(QEditScreen *s)
+{
+    return 0;
+}
+
+static void dummy_dpy_fill_rectangle(QEditScreen *s,
+				     int x1, int y1, int w, int h,
+				     QEColor color)
+{
+}
+
+static QEFont *dummy_dpy_open_font(QEditScreen *s,
+				   int style, int size)
+{
+    return NULL;
+}
+
+static void dummy_dpy_close_font(QEditScreen *s, QEFont *font)
+{
+}
+
+static void dummy_dpy_text_metrics(QEditScreen *s, QEFont *font, 
+				   QECharMetrics *metrics,
+				   const unsigned int *str, int len)
+{
+    metrics->font_ascent = 1;
+    metrics->font_descent = 0;
+    metrics->width = len;
+}
+        
+static void dummy_dpy_draw_text(QEditScreen *s, QEFont *font, 
+				int x, int y, const unsigned int *str, int len,
+				QEColor color)
+{
+}
+
+static void dummy_dpy_set_clip(QEditScreen *s,
+			       int x, int y, int w, int h)
+{
+}
+
+static void dummy_dpy_flush(QEditScreen *s)
+{
+}
+
+QEDisplay dummy_dpy = {
+    "dummy",
+    dummy_dpy_probe,
+    dummy_dpy_init,
+    dummy_dpy_close,
+    dummy_dpy_cursor_at,
+    dummy_dpy_flush,
+    dummy_dpy_is_user_input_pending,
+    dummy_dpy_fill_rectangle,
+    dummy_dpy_open_font,
+    dummy_dpy_close_font,
+    dummy_dpy_text_metrics,
+    dummy_dpy_draw_text,
+    dummy_dpy_set_clip,
+    NULL, /* no selection handling */
+    NULL, /* no selection handling */
+};
+
 
 #if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
 static inline void init_all_modules(void)
@@ -6303,15 +6411,15 @@ void load_all_modules(void)
         h = dlopen(filename, RTLD_LAZY);
         if (!h) {
 	    char *error = dlerror();
-            fprintf(stderr, "Could not open module '%s': %s\n",
-		    filename, error);
+            error_printf("Could not open module '%s': %s\n",
+			 filename, error);
             continue;
         }
         init_func = dlsym(h, "__qe_module_init");
         if (!init_func) {
             dlclose(h);
-            fprintf(stderr, "Could not find qemacs initializer in module '%s'\n", 
-		    filename);
+            error_printf("Could not find qemacs initializer in module '%s'\n", 
+			 filename);
             continue;
         }
         
@@ -6425,7 +6533,7 @@ void qe_init(void *opaque)
                 if (!strcmp(p->name, r + 1)) {
                     if (p->flags & CMD_OPT_ARG) {
                         if (optind >= argc) {
-                            fprintf(stderr, "Argument expected -- %s\n", r);
+                            error_printf("cmdline argument expected -- %s\n", r);
                             goto next_cmd;
                         }
                         optarg = argv[optind++];
@@ -6449,7 +6557,7 @@ void qe_init(void *opaque)
             }
             p = p->u.next;
         }
-        fprintf(stderr, "Unknown option -- %s\n", r);
+        error_printf("unknown cmdline option -- %s\n", r);
     next_cmd: ;
     }
 
@@ -6462,8 +6570,12 @@ void qe_init(void *opaque)
     /* will be positionned by do_refresh() */
     s = edit_new(b, 0, 0, 0, 0, WF_MODELINE);
     
-    /* at this stage, no screen is defined. Maybe should implement a
-       dummy display driver to have a consistent state */
+    /* at this stage, no screen is defined. Initialize a
+     * dummy display driver to have a consistent state
+     * else many commands such as put_status would crash.
+     */
+    dummy_dpy.dpy_init(&global_screen, screen_width, screen_height);
+
     parse_config(s);
 
     qe_key_init();
@@ -6483,8 +6595,6 @@ void qe_init(void *opaque)
 
     qe_event_init();
 
-    put_status(s, "QEmacs %s - Press F1 for help", QE_VERSION);
-
     do_refresh(s);
 
     /* load file(s) */
@@ -6497,8 +6607,17 @@ void qe_init(void *opaque)
         do_dired(s);
     }
 
+    put_status(s, "QEmacs %s - Press F1 for help", QE_VERSION);
+
     edit_display(&qe_state);
     dpy_flush(&global_screen);
+
+    b = eb_find("*errors*");
+    if (b != NULL) {
+	show_popup(b);
+	edit_display(&qe_state);
+	dpy_flush(&global_screen);
+    }
 }
 
 
