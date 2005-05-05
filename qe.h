@@ -756,6 +756,7 @@ typedef struct ModeDef {
 
     /* low level display functions (must be NULL to use text relatedx
        functions)*/
+    void (*display_hook)(EditState *);
     void (*display)(EditState *);
 
     /* text related functions */
@@ -1021,7 +1022,8 @@ static inline int align(int a, int n)
 
 /* minibuffer & status */
 
-extern ModeDef minibuffer_mode;
+void less_mode_init(void);
+void minibuffer_init(void);
 
 typedef void (*CompletionFunc)(StringArray *cs, const char *input);
 

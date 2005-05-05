@@ -3273,7 +3273,7 @@ void edit_display(QEmacsState *qs)
     
     /* first display popups and minibuf */
     has_popups = 0;
-    for(s = qs->first_window; s != NULL; s = s->next_window) {
+    for (s = qs->first_window; s != NULL; s = s->next_window) {
         if (s->flags & WF_POPUP) {
             window_display(s);
             has_popups = 1;
@@ -3872,6 +3872,9 @@ static StringArray *minibuffer_history;
 static int minibuffer_history_index;
 static int minibuffer_history_saved_offset;
 
+ModeDef minibuffer_mode;
+
+extern CmdDef minibuffer_commands[];
 
 /* XXX: utf8 ? */
 void do_completion(EditState *s)
@@ -4160,9 +4163,22 @@ void minibuffer_edit(const char *input, const char *prompt,
     }
 }
 
+void minibuffer_init(void)
+{
+    /* minibuf mode inherits from text mode */
+    memcpy(&minibuffer_mode, &text_mode, sizeof(ModeDef));
+    minibuffer_mode.name = "minibuffer";
+    minibuffer_mode.scroll_up_down = minibuf_complete_scroll_up_down;
+    qe_register_mode(&minibuffer_mode);
+    qe_register_cmd_table(minibuffer_commands, "minibuffer");
+}
+
 /* less mode */
 
 ModeDef less_mode;
+
+extern CmdDef less_commands[];
+
 /* XXX: incorrect to save it. Should use a safer method */
 static EditState *popup_saved_active;
 
@@ -4176,6 +4192,7 @@ void do_less_quit(EditState *s)
     b = s->b;
     edit_close(s);
     eb_free(b);
+    do_refresh(qs->active_window);
 }
 
 /* show a popup on a readonly buffer */
@@ -4199,6 +4216,15 @@ void show_popup(EditBuffer *b)
     popup_saved_active = qs->active_window;
     qs->active_window = s;
     do_refresh(s);
+}
+
+void less_mode_init(void)
+{
+    /* less mode inherits from text mode */
+    memcpy(&less_mode, &text_mode, sizeof(ModeDef));
+    less_mode.name = "less";
+    qe_register_mode(&less_mode);
+    qe_register_cmd_table(less_commands, "less");
 }
 
 #ifndef CONFIG_TINY
@@ -5927,8 +5953,6 @@ ModeDef text_mode = {
     mouse_goto: text_mouse_goto,
 };
 
-ModeDef minibuffer_mode;
-
 /* find a resource file */
 int find_resource_file(char *path, int path_size, const char *pattern)
 {
@@ -6476,18 +6500,8 @@ void qe_init(void *opaque)
     register_completion("file", file_completion);
     register_completion("buffer", buffer_completion);
     
-    /* minibuf mode inherits from text mode */
-    memcpy(&minibuffer_mode, &text_mode, sizeof(ModeDef));
-    minibuffer_mode.name = "minibuffer";
-    minibuffer_mode.scroll_up_down = minibuf_complete_scroll_up_down;
-    qe_register_mode(&minibuffer_mode);
-    qe_register_cmd_table(minibuffer_commands, "minibuffer");
-    
-    /* less mode inherits from text mode */
-    memcpy(&less_mode, &text_mode, sizeof(ModeDef));
-    less_mode.name = "less";
-    qe_register_mode(&less_mode);
-    qe_register_cmd_table(less_commands, "less");
+    minibuffer_init();
+    less_mode_init();
     
     qe_register_cmd_line_options(cmd_options);
 
