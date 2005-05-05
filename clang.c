@@ -273,8 +273,8 @@ static void insert_spaces(EditState *s, int *offset_ptr, int i)
     /* insert needed spaces */
     while (i > 0) {
         size = i;
-        if (size > sizeof(buf1))
-            size = sizeof(buf1);
+        if (size > (int)sizeof(buf1))
+            size = (int)sizeof(buf1);
         memset(buf1, ' ', size);
         eb_insert(s->b, offset, buf1, size);
         i -= size;

@@ -241,7 +241,8 @@ fribidi_get_mirror_char(FriBidiChar ch)
 static void compact_list(TypeLink * list_tab)
 {
     TypeLink *p, *lp, *q;
-    int type, len;
+    int len;
+    FriBidiCharType type;
 
     p = list_tab;
     q = list_tab;

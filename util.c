@@ -81,7 +81,7 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max)
             /* CG: get_str(&p, s->dirpath, sizeof(s->dirpath), ":") */
             q = s->dirpath;
             while (*p != ':' && *p != '\0') {
-                if ((q - s->dirpath) < sizeof(s->dirpath) - 1)
+                if ((q - s->dirpath) < (int)sizeof(s->dirpath) - 1)
                     *q++ = *p;
                 p++;
             }
@@ -145,7 +145,7 @@ static void canonize_path1(char *buf, int buf_size, const char *path)
             p++;
             if (c == '/')
                 break;
-            if ((q - file) < sizeof(file) - 1)
+            if ((q - file) < (int)sizeof(file) - 1)
                 *q++ = c;
         }
         *q = '\0';
@@ -460,7 +460,7 @@ static int strtokey1(const char *p)
 {
     int i, n;
 
-    for (i = 0; i < sizeof(keycodes)/sizeof(keycodes[0]); i++) {
+    for (i = 0; i < (int)(sizeof(keycodes)/sizeof(keycodes[0])); i++) {
         if (!strcmp(p, keystr[i]))
             return keycodes[i];
     }
@@ -507,7 +507,7 @@ void keytostr(char *buf, int buf_size, int key)
     int i;
     char buf1[32];
     
-    for (i = 0; i < sizeof(keycodes)/sizeof(keycodes[0]); i++) {
+    for (i = 0; i < (int)(sizeof(keycodes)/sizeof(keycodes[0])); i++) {
         if (keycodes[i] == key) {
             pstrcpy(buf, buf_size, keystr[i]);
             return;

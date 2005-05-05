@@ -2434,11 +2434,11 @@ int display_char_bidir(DisplayState *s, int offset1, int offset2,
 void display_printhex(DisplayState *s, int offset1, int offset2, 
                       unsigned int h, int n)
 {
-    unsigned int i, v;
+    int i, v;
     EditState *e = s->edit_state;
     
     s->cur_hex_mode = 1;
-    for(i=0;i<n;i++) {
+    for (i = 0; i < n; i++) {
         v = (h >> ((n - i - 1) * 4)) & 0xf;
         if (v >= 10)
             v += 'a' - 10;
@@ -3754,9 +3754,9 @@ void edit_close(EditState *s)
 void file_completion(StringArray *cs, const char *input)
 {
     FindFileState *ffs;
-    char path[1024];
-    char file[1024];
-    char filename[1024];
+    char path[MAX_FILENAME_SIZE];
+    char file[MAX_FILENAME_SIZE];
+    char filename[MAX_FILENAME_SIZE];
     const char *p;
     int input_path_len;
     
@@ -3768,8 +3768,8 @@ void file_completion(StringArray *cs, const char *input)
     } else {
         input_path_len = p - input + 1;
         memcpy(path, input, input_path_len);
-        if (input_path_len > sizeof(path) - 1)
-            input_path_len = sizeof(path) - 1;
+        if (input_path_len > (int)sizeof(path) - 1)
+            input_path_len = (int)sizeof(path) - 1;
         path[input_path_len] = '\0';
         pstrcpy(file, sizeof(file), p + 1);
     }
@@ -4326,7 +4326,7 @@ static void kill_buffer_noconfirm(EditBuffer *b)
 static void get_default_path(EditState *s, char *buf, int buf_size)
 {
     EditBuffer *b = s->b;
-    char buf1[1024];
+    char buf1[MAX_FILENAME_SIZE];
     const char *filename;
 
     if ((b->flags & BF_SYSTEM) || b->name[0] == '*') {
@@ -4369,7 +4369,7 @@ static ModeDef *probe_mode(EditState *s, int mode, uint8_t *buf, int len)
 static void do_load1(EditState *s, const char *filename1, int kill_buffer)
 {
     char buf[1025];
-    char filename[1024];
+    char filename[MAX_FILENAME_SIZE];
     int mode, buf_size;
     ModeDef *selected_mode;
     EditBuffer *b;
@@ -4511,7 +4511,7 @@ static void save_final(EditState *s);
 
 void do_save(EditState *s, int save_as)
 {
-    char default_path[1024];
+    char default_path[MAX_FILENAME_SIZE];
 
     if (!save_as && !s->b->modified) {
         put_status(s, "(No changes need to be saved)");
@@ -4689,7 +4689,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
     unsigned char ch;
     u8 buf1[1024];
 
-    if (size == 0 || size >= sizeof(buf1))
+    if (size == 0 || size >= (int)sizeof(buf1))
         return -1;
     
     /* analyse buffer if smart case */
@@ -4823,7 +4823,7 @@ static void isearch_display(ISearchState *is)
     for(i=0;i<is->pos;i++) {
         v = is->search_string[i];
         if (!(v & FOUND_TAG)) {
-            if ((q - buf) < (sizeof(buf) - 10)) {
+            if ((q - buf) < ((int)sizeof(buf) - 10)) {
                 if (s->hex_mode) {
                     h = to_hex(v);
                     if (h >= 0) {
@@ -6055,7 +6055,7 @@ int parse_config_file(EditState *s, const char *filename)
                             break;
                         }
                     }
-                    if ((q - str) < sizeof(str) - 1)
+                    if ((q - str) < (int)sizeof(str) - 1)
                         *q++ = c;
                 }
                 *q = '\0';
@@ -6095,7 +6095,7 @@ int parse_config_file(EditState *s, const char *filename)
 void parse_config(EditState *e)
 {
     FindFileState *ffs;
-    char filename[1024];
+    char filename[MAX_FILENAME_SIZE];
 
     ffs = find_file_open(qe_state.res_path, "config");
     if (!ffs)
@@ -6267,7 +6267,7 @@ static inline void init_all_modules(void)
 void load_all_modules(void)
 {
     FindFileState *ffs;
-    char filename[1024];
+    char filename[MAX_FILENAME_SIZE];
     void *h;
     int (*init_func)(void);
     

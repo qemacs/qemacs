@@ -84,26 +84,26 @@ static int get_pty(char *tty_str)
    int fd;
    char ptydev[] = "/dev/pty??";
    char ttydev[] = "/dev/tty??";
-   int len = strlen (ttydev);
-   char *c1, *c2;
+   int len = strlen(ttydev);
+   const char *c1, *c2;
 
    for (c1 = PTYCHAR1; *c1; c1++) {
-       ptydev [len-2] = ttydev [len-2] = *c1;
+       ptydev[len-2] = ttydev[len-2] = *c1;
        for (c2 = PTYCHAR2; *c2; c2++) {
-           ptydev [len-1] = ttydev [len-1] = *c2;
-           if ((fd = open (ptydev, O_RDWR)) >= 0) {
-               if (access (ttydev, R_OK|W_OK) == 0) {
+           ptydev[len-1] = ttydev[len-1] = *c2;
+           if ((fd = open(ptydev, O_RDWR)) >= 0) {
+               if (access(ttydev, R_OK|W_OK) == 0) {
                    strcpy(tty_str, ttydev);
                    return fd;
                }
-               close (fd);
+               close(fd);
            }
        }
    }
    return -1;
 }
 
-static int run_process(const char *path, char **argv, 
+static int run_process(const char *path, const char **argv, 
                        int *fd_ptr, int *pid_ptr)
 {
     int pty_fd, pid, i, nb_fds;
@@ -158,7 +158,7 @@ static void tty_init(ShellState *s)
     s->color = s->def_color;
 }
 
-static void tty_write(ShellState *s, unsigned char *buf, int len)
+static void tty_write(ShellState *s, const unsigned char *buf, int len)
 {
     int ret;
 
@@ -428,8 +428,8 @@ static void shell_color_callback(EditBuffer *b,
     case LOGOP_WRITE:
         while (size > 0) {
             len = size;
-            if (len > sizeof(buf))
-                len = sizeof(buf);
+            if (len > (int)sizeof(buf))
+                len = (int)sizeof(buf);
             memset(buf, s->color, len);
             eb_write(s->b_color, offset, buf, len);
             size -= len;
@@ -439,8 +439,8 @@ static void shell_color_callback(EditBuffer *b,
     case LOGOP_INSERT:
         while (size > 0) {
             len = size;
-            if (len > sizeof(buf))
-                len = sizeof(buf);
+            if (len > (int)sizeof(buf))
+                len = (int)sizeof(buf);
             memset(buf, s->color, len);
             eb_insert(s->b_color, offset, buf, len);
             size -= len;
@@ -577,8 +577,8 @@ static void shell_close(EditBuffer *b)
     free(s);
 }
 
-EditBuffer *new_shell_buffer(const char *name, 
-                             const char *path, char **argv, int is_shell)
+EditBuffer *new_shell_buffer(const char *name, const char *path,
+			     const char **argv, int is_shell)
 {
     ShellState *s;
     EditBuffer *b, *b_color;
@@ -631,8 +631,8 @@ EditBuffer *new_shell_buffer(const char *name,
 static void do_shell(EditState *e)
 {
     EditBuffer *b;
-    char *argv[3];
-    char *shell_path;
+    const char *argv[3];
+    const char *shell_path;
 
     /* find shell name */
     shell_path = getenv("SHELL");
@@ -752,7 +752,7 @@ static char last_filename[1024];
 
 static void do_compile(EditState *e, const char *cmd)
 {
-    char *argv[4];
+    const char *argv[4];
     EditBuffer *b;
 
     /* if the buffer already exists, kill it */
@@ -836,7 +836,7 @@ static void do_compile_error(EditState *s, int dir)
                 goto next_line;
             if (c == ':')
                 break;
-            if ((q - filename) < sizeof(filename) - 1)
+            if ((q - filename) < (int)sizeof(filename) - 1)
                 *q++ = c;
         }
         *q = '\0';

@@ -133,7 +133,7 @@ void eb_write(EditBuffer *b, int offset, u8 *buf, int size)
 
 /* internal function for insertion : 'buf' of size 'size' at the
    beginning of the page at page_index */
-static void eb_insert1(EditBuffer *b, int page_index, u8 *buf, int size)
+static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
 {
     int len, n;
     Page *p;
@@ -178,7 +178,8 @@ static void eb_insert1(EditBuffer *b, int page_index, u8 *buf, int size)
 }
 
 /* We must have : 0 <= offset <= b->total_size */
-static void eb_insert_lowlevel(EditBuffer *b, int offset, u8 *buf, int size)
+static void eb_insert_lowlevel(EditBuffer *b, int offset,
+			       const u8 *buf, int size)
 {
     int len, len_out, page_index;
     Page *p;
@@ -328,7 +329,7 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
 
 /* Insert 'size' bytes from 'buf' into 'b' at offset 'offset'. We must
    have : 0 <= offset <= b->total_size */
-void eb_insert(EditBuffer *b, int offset, u8 *buf, int size)
+void eb_insert(EditBuffer *b, int offset, const u8 *buf, int size)
 {
     eb_addlog(b, LOGOP_INSERT, offset, size);
 

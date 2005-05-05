@@ -515,7 +515,7 @@ void eb_write(EditBuffer *b, int offset, u8 *buf, int size);
 void eb_insert_buffer(EditBuffer *dest, int dest_offset, 
                       EditBuffer *src, int src_offset, 
                       int size);
-void eb_insert(EditBuffer *b, int offset, u8 *buf, int size);
+void eb_insert(EditBuffer *b, int offset, const u8 *buf, int size);
 void eb_delete(EditBuffer *b, int offset, int size);
 void log_reset(EditBuffer *b);
 EditBuffer *eb_new(const char *name, int flags);

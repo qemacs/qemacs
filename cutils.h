@@ -34,7 +34,7 @@ int qprintf(QString *q, const char *fmt, ...);
 /* Double linked lists. Same api as the linux kernel */
 
 struct list_head {
-	struct list_head *next, *prev;
+    struct list_head *next, *prev;
 };
 
 static inline int list_empty(struct list_head *head)

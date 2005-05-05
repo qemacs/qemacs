@@ -129,7 +129,7 @@ int kmap_input(int *match_len_ptr,
                 c = (p[0] << 8) | p[1];
                 p += 2;
             }
-            if (l1 < len && c != buf[l1])
+            if (l1 < len && c != (int)buf[l1])
                 match = 0;
             l1++;
             if (d) {
@@ -210,7 +210,7 @@ void load_input_methods(void)
             m->input_match = kmap_input;
             q = buf;
             while (*p != '\0') {
-                if ((q - buf) < (sizeof(buf) - 1)) 
+                if ((q - buf) < ((int)sizeof(buf) - 1)) 
                     *q++ = *p;
                 p++;
             }
