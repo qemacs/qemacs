@@ -572,6 +572,77 @@ static ColorDef css_colors[] = {
     { "magenta", QERGB(0xff, 0x00, 0xff) },
     { "transparent", COLOR_TRANSPARENT },
 };
+#define nb_css_colors (sizeof(css_colors) / sizeof(css_colors[0]))
+
+static ColorDef *custom_colors = css_colors;
+static int nb_custom_colors;
+
+void color_completion(StringArray *cs, const char *input)
+{
+    ColorDef *def;
+    int len, count;
+
+    len = strlen(input);
+    def = custom_colors;
+    count = nb_css_colors + nb_custom_colors;
+    while (count > 0) {
+        if (!strncmp(def->name, input, len))
+            add_string(cs, def->name);
+        def++;
+        count--;
+    }
+}
+
+static ColorDef *css_lookup_color(ColorDef *def, int count,
+                                  const char *name)
+{
+    while (count > 0) {
+        if (!strcasecmp(name, def->name)) {
+            return def;
+        }
+        def++;
+        count--;
+    }
+    return NULL;
+}
+
+int css_define_color(const char *name, const char *value)
+{
+    ColorDef *def;
+    int color;
+
+    /* Check color validity */
+    if (css_get_color(&color, value))
+        return -1;
+
+    /* Make room: reallocate table in chunks of 8 entries */
+    if ((nb_custom_colors & 7) == 0) {
+        def = malloc((nb_css_colors + nb_custom_colors + 8) *
+                     sizeof(ColorDef));
+        if (!def)
+            return -1;
+        memcpy(def, custom_colors,
+               (nb_css_colors + nb_custom_colors) * sizeof(ColorDef));
+            
+        if (custom_colors != css_colors)
+            free(custom_colors);
+        custom_colors = def;
+    }
+    /* Check for redefinition */
+    def = css_lookup_color(custom_colors, nb_css_colors + nb_custom_colors,
+                           name);
+    if (def) {
+        def->color = color;
+        return 0;
+    }
+
+    def = &custom_colors[nb_css_colors + nb_custom_colors];
+    def->name = strdup(name);
+    def->color = color;
+    nb_custom_colors++;
+
+    return 0;
+}
 
 /* XXX: make HTML parsing optional ? */
 int css_get_color(int *color_ptr, const char *p)
@@ -581,15 +652,10 @@ int css_get_color(int *color_ptr, const char *p)
     unsigned char rgba[4];
 
     /* search in table */
-    def = css_colors;
-    for (;;) {
-        if (def >= css_colors + (sizeof(css_colors) / sizeof(css_colors[0])))
-            break;
-        if (!strcasecmp(p, def->name)) {
-            *color_ptr = def->color;
-            return 0;
-        }
-        def++;
+    def = css_lookup_color(custom_colors, nb_css_colors + nb_custom_colors, p);
+    if (def) {
+        *color_ptr = def->color;
+        return 0;
     }
     
     rgba[3] = 0xff;

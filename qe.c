@@ -1785,6 +1785,12 @@ void style_completion(StringArray *cs, const char *input)
     }
 }
 
+void do_define_color(EditState *e, const char *name, const char *value)
+{
+    if (css_define_color(name, value))
+	put_status(e, "Invalid color '%s'", value);
+}
+
 /* Note: we use the same syntax as CSS styles to ease merging */
 void do_set_style(EditState *e, const char *stylestr, 
                   const char *propstr, const char *value)
@@ -1801,16 +1807,21 @@ void do_set_style(EditState *e, const char *stylestr,
     prop_index = css_get_enum(propstr, 
                               "color,background-color,font-family,font-style,font-weight,font-size,text-decoration");
     if (prop_index < 0) {
-        put_status(e, "Unknown property");
+        put_status(e, "Unknown property '%s'", propstr);
         return;
     }
     switch(prop_index) {
     case 0:
-        css_get_color(&style->fg_color, value);
+	if (css_get_color(&style->fg_color, value))
+	    goto bad_color;
         break;
     case 1:
-        css_get_color(&style->bg_color, value);
+        if (css_get_color(&style->bg_color, value))
+	    goto bad_color;
         break;
+    bad_color:	    
+	put_status(e, "Unknown color '%s'", value);
+	return;
     case 2:
         v = css_get_font_family(value);
         style->font_style = (style->font_style & ~QE_FAMILY_MASK) | v;
@@ -2120,7 +2131,8 @@ static void flush_line(DisplayState *s,
                     int markbuf[1];
                 
                     font = select_font(screen, 
-                             default_style.font_style, default_style.font_size);
+				       default_style.font_style,
+				       default_style.font_size);
                     markbuf[0] = '\\';
                     draw_text(screen, font, 
                               e->xleft + s->width, y + font->ascent,
@@ -2235,12 +2247,12 @@ static void flush_fragment(DisplayState *s)
 
     /* compute new offsets */
     j = s->line_index;
-    for(i=0;i<nb_glyphs;i++) {
+    for (i = 0; i < nb_glyphs; i++) {
         s->line_offsets[j][0] = -1;
         s->line_offsets[j][1] = -1;
         j++;
     }
-    for(i=0;i<s->fragment_index;i++) {
+    for (i = 0; i < s->fragment_index; i++) {
         int offset1, offset2;
         j = s->line_index + char_to_glyph_pos[i];
         offset1 = s->fragment_offsets[i][0];
@@ -3081,7 +3093,7 @@ static void parse_args(ExecCmdState *es)
     unsigned char arg_type;
     int ret, rep_count, no_arg;
 
-    for(;;) {
+    for (;;) {
         ret = parse_arg(&es->ptype, &arg_type, 
                         prompt, sizeof(prompt),
                         completion_name, sizeof(completion_name),
@@ -3094,7 +3106,7 @@ static void parse_args(ExecCmdState *es)
             goto fail;
         es->args_type[es->nb_args] = arg_type;
         no_arg = 0;
-        switch(arg_type) {
+        switch (arg_type) {
         case CMD_ARG_INTVAL:
         case CMD_ARG_STRINGVAL:
             es->args[es->nb_args] = (void *)d->val;
@@ -3479,7 +3491,7 @@ static void qe_key_process(int key)
     }
 
     /* see if one command is found */
-    for(kd = first_key; kd != NULL; kd = kd->next) {
+    for (kd = first_key; kd != NULL; kd = kd->next) {
         if (kd->nb_keys >= c->nb_keys) {
             if (!memcmp(kd->keys, c->keys, 
                         c->nb_keys * sizeof(unsigned int)) && 
@@ -3505,7 +3517,7 @@ static void qe_key_process(int key)
                         goto next;
                     }
                 }
-                for(kd = first_key; kd != NULL; kd = kd->next) {
+                for (kd = first_key; kd != NULL; kd = kd->next) {
                     if (kd->nb_keys == 1 &&
                         kd->keys[0] == KEY_DEFAULT &&
                         (kd->mode == NULL || kd->mode == s->mode)) {
@@ -3591,12 +3603,13 @@ void print_at_byte(QEditScreen *screen,
     fill_rectangle(screen, x, y, width, height, 
                    style.bg_color);
     font = select_font(screen, style.font_style, style.font_size);
-    draw_text(screen, font, x, y + font->ascent, 
-              ubuf, len, style.fg_color);
+    draw_text(screen, font, x, y + font->ascent,
+	      ubuf, len, style.fg_color);
 }
 
 void put_status(EditState *s, const char *fmt, ...)
 {
+    /* CG: s is not used and may be NULL! */
     char buf[MAX_SCREEN_WIDTH];
     va_list ap;
 
@@ -3631,6 +3644,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
         if (!e) {
             /* if no more window uses the buffer, then save the data
                in the buffer */
+	    /* CG: Should free previous such data ? */
             b1->saved_data = s->mode->mode_save_data(s);
         }
         /* now we can close the mode */
@@ -3643,7 +3657,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
     if (b) {
         /* try to restore saved data from another window or from the
            buffer saved data */
-        for(e = qs->first_window; e != NULL; e = e->next_window) {
+        for (e = qs->first_window; e != NULL; e = e->next_window) {
             if (e != s && e->b == b)
                 break;
         }
@@ -3784,7 +3798,7 @@ void file_completion(StringArray *cs, const char *input)
          * In that case add a slash to speed up typing long paths
          */
         stat(file, &sb);
-        if(S_ISDIR(sb.st_mode))
+        if (S_ISDIR(sb.st_mode))
             strcat(file, "/");
         add_string(cs, file);
     }
@@ -4042,6 +4056,7 @@ void do_minibuffer_exit(EditState *s, int abort)
     }
 
     /* remove completion popup if present */
+    /* CG: assuming completion_popup_window != s */
     if (completion_popup_window) {
         EditBuffer *b = completion_popup_window->b;
         edit_close(completion_popup_window);
@@ -4139,6 +4154,8 @@ void minibuffer_edit(const char *input, const char *prompt,
     }
 }
 
+/* less mode */
+
 ModeDef less_mode;
 /* XXX: incorrect to save it. Should use a safer method */
 static EditState *popup_saved_active;
@@ -4186,7 +4203,7 @@ EditState *insert_window_left(EditBuffer *b, int width, int flags)
     QEmacsState *qs = &qe_state;
     EditState *e, *e_next, *e_new;
 
-    for(e = qs->first_window; e != NULL; e = e_next) {
+    for (e = qs->first_window; e != NULL; e = e_next) {
         e_next = e->next_window;
         if (e->minibuf) 
             continue;
@@ -4329,6 +4346,7 @@ static void get_default_path(EditState *s, char *buf, int buf_size)
     char buf1[MAX_FILENAME_SIZE];
     const char *filename;
 
+    /* CG: should have more specific code for dired/shell buffer... */
     if ((b->flags & BF_SYSTEM) || b->name[0] == '*') {
         canonize_absolute_path(buf1, sizeof(buf1), "a");
         filename = buf1;
@@ -4378,6 +4396,7 @@ static void do_load1(EditState *s, const char *filename1, int kill_buffer)
     struct stat st;
 
     if (kill_buffer) {
+	/* CG: should have a direct primitive */
         do_kill_buffer(s, s->b->name);
     }
 
@@ -5160,6 +5179,7 @@ void edit_invalidate(EditState *s)
 
 void do_refresh(EditState *s1)
 {
+    /* CG: s1 may be NULL */
     QEmacsState *qs = &qe_state;
     EditState *e;
     int new_status_height, new_mode_line_height, content_height;
@@ -5235,7 +5255,7 @@ void do_refresh(EditState *s1)
             rect.x2 = qs->width;
             rect.y2 = qs->height;
             set_clip_rectangle(qs->screen, &rect);
-            color = qe_styles[QE_STYLE_MODE_LINE].bg_color;
+            color = qe_styles[QE_STYLE_WINDOW_BORDER].bg_color;
             if (e->flags & WF_POPUP) {
                 fill_rectangle(qs->screen, 
                                e->x1, e->y1, 
@@ -5297,7 +5317,7 @@ void do_delete_window(EditState *s, int force)
         y1 = s->y1;
         y2 = s->y2;
 
-        for(e = qs->first_window; e != NULL; e = e->next_window) {
+        for (e = qs->first_window; e != NULL; e = e->next_window) {
             if (e->minibuf || e == s) 
                 continue;
             ex1 = e->x1;
@@ -5646,6 +5666,7 @@ static void save_selection(void)
 }
 
 /* XXX: need a more general scheme for other modes such as HTML/image */
+/* CG: remove this */
 void wheel_scroll_up_down(EditState *s, int dir)
 {
     int line_height;
@@ -5922,6 +5943,10 @@ int find_resource_file(char *path, int path_size, const char *pattern)
 
 /******************************************************/
 /* config file parsing */
+
+/* CG: error messages should go to the *error* buffer.
+ * displayed as a popup upon start.
+ */
 
 int parse_config_file(EditState *s, const char *filename)
 {
@@ -6279,14 +6304,14 @@ void load_all_modules(void)
         if (!h) {
 	    char *error = dlerror();
             fprintf(stderr, "Could not open module '%s': %s\n",
-					filename, error);
+		    filename, error);
             continue;
         }
         init_func = dlsym(h, "__qe_module_init");
         if (!init_func) {
             dlclose(h);
             fprintf(stderr, "Could not find qemacs initializer in module '%s'\n", 
-                    filename);
+		    filename);
             continue;
         }
         
@@ -6383,7 +6408,7 @@ void qe_init(void *opaque)
 
     /* handle options */
     optind = 1;
-    for(;;) {
+    for (;;) {
         const char *r, *optarg;
         CmdOptionDef *p;
 
@@ -6463,7 +6488,7 @@ void qe_init(void *opaque)
     do_refresh(s);
 
     /* load file(s) */
-    for(i=optind;i<argc;i++) {
+    for (i = optind; i < argc; i++) {
         do_load(s, argv[i]);
     }
     

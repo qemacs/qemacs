@@ -7,6 +7,9 @@
     STYLE_DEF(QE_STYLE_MODE_LINE, "mode-line",
               QERGB(0x00, 0x00, 0x00), QERGB(0xe0, 0xe0, 0xe0),
               0, 0)
+    STYLE_DEF(QE_STYLE_WINDOW_BORDER, "window-border",
+              QERGB(0x00, 0x00, 0x00), QERGB(0xe0, 0xe0, 0xe0),
+              0, 0)
     STYLE_DEF(QE_STYLE_MINIBUF, "minibuf",
               QERGB(0xff, 0xff, 0x00), COLOR_TRANSPARENT,
               0, 0)

@@ -99,6 +99,7 @@ CmdDef basic_commands[] = {
           "switch-input-method", do_switch_input_method)
 
     /* styles & display */
+    CMD( KEY_NONE, KEY_NONE, "define-color\0s{Color name: }[color]|color|s{Color value: }", do_define_color)
     CMD( KEY_NONE, KEY_NONE, "set-style\0s{Style: }[style]|style|s{CSS Property Name: }s{CSS Property Value: }", do_set_style)
     CMD( KEY_NONE, KEY_NONE, "set-display-size\0i{Width: }i{Height: }", do_set_display_size)
     CMD( KEY_NONE, KEY_NONE, "set-system-font\0ss", do_set_system_font)

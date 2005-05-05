@@ -93,6 +93,7 @@ void css_strtolower(char *buf, int buf_size);
 void get_str(const char **pp, char *buf, int buf_size, const char *stop);
 int strtokey(const char **pp);
 void keytostr(char *buf, int buf_size, int key);
+int css_define_color(const char *name, const char *value);
 int css_get_color(int *color_ptr, const char *p);
 int css_get_font_family(const char *str);
 void css_union_rect(CSSRect *a, CSSRect *b);
@@ -1037,6 +1038,7 @@ void minibuffer_edit(const char *input, const char *prompt,
 void command_completion(StringArray *cs, const char *input);
 void file_completion(StringArray *cs, const char *input);
 void buffer_completion(StringArray *cs, const char *input);
+void color_completion(StringArray *cs, const char *input);
 
 #ifdef WIN32
 static inline int is_user_input_pending(void)
@@ -1143,5 +1145,7 @@ int gxml_mode_init(EditState *s,
 /* image.c */
 void fill_border(EditState *s, int x, int y, int w, int h, int color);
 int qe_bitmap_format_to_pix_fmt(int format);
+
+#define QASSERT(e)	do { if (!(e)) fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #e); } while (0)
 
 #endif
