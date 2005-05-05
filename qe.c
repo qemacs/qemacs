@@ -908,9 +908,13 @@ void text_scroll_up_down(EditState *s, int dir)
     int h, line_height;
     /* try to round to a line height */
     line_height = get_line_height(s->screen, s->default_style);
-    h = (s->height / line_height) - 1;
-    if (h < 1)
-        h = 1;
+    h = 1;
+    if (abs(dir) == 2) {
+	dir /= 2;
+	h = (s->height / line_height) - 1;
+	if (h < 1)
+	    h = 1;
+    }
     h = h * line_height;
     
     perform_scroll_up_down(s, dir * h);

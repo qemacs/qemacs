@@ -142,6 +142,7 @@ QEDisplay *probe_display(void)
 /* simple font cache */
 
 #define FONT_CACHE_SIZE 32
+static QEFont dummy_font;
 static QEFont *font_cache[FONT_CACHE_SIZE];
 static int font_cache_timestamp = 0;
 
@@ -172,8 +173,12 @@ QEFont *select_font(QEditScreen *s, int style, int size)
     if (font_cache[min_index])
         close_font(s, font_cache[min_index]);
     fc = open_font(s, style, size);
-    if (!fc)
-        return NULL;
+    if (!fc) {
+	/* select_font never returns NULL */ 
+        fc = &dummy_font;
+	fc->system_font = 1;
+    }
+
     fc->style = style;
     fc->size = size;
     fc->timestamp = font_cache_timestamp;

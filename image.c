@@ -19,6 +19,8 @@
 #include "qe.h"
 #include "avformat.h"
 
+#define SCROLL_MHEIGHT     10
+
 typedef struct ImageBuffer {
     int pix_fmt;
     int width;
@@ -553,8 +555,12 @@ static void image_scroll_up_down(EditState *s, int dir)
 {
     int d;
 
-    /* move 50% */
-    d = s->height / 2;
+    h = SCROLL_MHEIGHT;
+    if (abs(dir) == 2) {
+	/* move 50% */
+	d = s->height / 2;
+	dir /= 2;
+    }
     if (d < 1)
         d = 1;
     update_pos(s, 0, -dir * d);

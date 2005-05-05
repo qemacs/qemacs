@@ -145,7 +145,8 @@ static inline QEFont *open_font(QEditScreen *s,
 
 static inline void close_font(QEditScreen *s, QEFont *font)
 {
-    s->dpy.dpy_close_font(s, font);
+    if (!font->system_font)
+	s->dpy.dpy_close_font(s, font);
 }
 
 static inline void text_metrics(QEditScreen *s, QEFont *font, 

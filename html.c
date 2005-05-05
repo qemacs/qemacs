@@ -392,7 +392,11 @@ static void html_scroll_up_down(EditState *s, int dir)
     if (!hs->up_to_date)
         return;
 
-    h = s->height - SCROLL_MHEIGHT;
+    h = SCROLL_MHEIGHT;
+    if (abs(dir) == 2) {
+	h = s->height - SCROLL_MHEIGHT;
+	dir /= 2;
+    }
     if (h < SCROLL_MHEIGHT)
         h = s->height;
     h = -dir * h;
