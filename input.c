@@ -189,7 +189,7 @@ void load_input_methods(void)
         return;
     file_size = lseek(fd, 0, SEEK_END);
     file_ptr = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
-    if (file_ptr == MAP_FAILED) {
+    if ((void*)file_ptr == (void*)MAP_FAILED) {
     fail:
         close(fd);
         return;
