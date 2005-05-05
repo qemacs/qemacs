@@ -57,6 +57,7 @@ typedef struct ShellState {
     EditBuffer *b;
     EditBuffer *b_color; /* color buffer, one byte per char */
     int is_shell; /* only used to display final message */
+    struct QEmacsState *qe_state;
 } ShellState;
 
 static int shell_get_colorized_line(EditState *e, unsigned int *buf, int buf_size,
@@ -232,7 +233,7 @@ void tty_csi_m(ShellState *s, int c)
 /* Well, almost a hack to update cursor */
 static void tty_update_cursor(ShellState *s)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     EditState *e;
 
     if (s->cur_offset == -1)
@@ -491,6 +492,7 @@ static int shell_get_colorized_line(EditState *e, unsigned int *buf, int buf_siz
 static void shell_read_cb(void *opaque)
 {
     ShellState *s = opaque;
+    QEmacsState *qs = s->qe_state;
     unsigned char buf[1024];
     int len, i;
 
@@ -502,15 +504,15 @@ static void shell_read_cb(void *opaque)
 	tty_emulate(s, buf[i]);
 
     /* now we do some refresh */
-    edit_display(&qe_state);
-    dpy_flush(qe_state.screen);
+    edit_display(qs);
+    dpy_flush(qs->screen);
 }
 
 void shell_pid_cb(void *opaque, int status)
 {
     ShellState *s = opaque;
     EditBuffer *b = s->b;
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     EditState *e;
     char buf[1024];
 
@@ -549,8 +551,8 @@ void shell_pid_cb(void *opaque, int status)
         if (e->b == b)
             e->interactive = 0;
     }
-    edit_display(&qe_state);
-    dpy_flush(qe_state.screen);
+    edit_display(qs);
+    dpy_flush(qs->screen);
 }
 
 static void shell_close(EditBuffer *b)
@@ -602,6 +604,7 @@ EditBuffer *new_shell_buffer(const char *name, const char *path,
     s->pty_fd = -1;
     s->pid = -1;
     s->is_shell = is_shell;
+    s->qe_state = &qe_state;
     tty_init(s);
 
     /* add color buffer */
@@ -784,7 +787,7 @@ static void do_compile(EditState *e, const char *cmd)
 
 static void do_compile_error(EditState *s, int dir)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     EditState *e;
     EditBuffer *b;
     int offset, offset1, found_offset;

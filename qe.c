@@ -1419,7 +1419,7 @@ static void do_set_mode_file(EditState *s, ModeDef *m,
         /* try to remove the raw or mode specific data if it is no
            longer used. */
         data_count = 0;
-        for(e = qe_state.first_window; e != NULL; e = e->next_window) {
+        for(e = s->qe_state->first_window; e != NULL; e = e->next_window) {
             if (e != s && e->b == b) {
                 if (e->mode->data_type != &raw_data_type)
                     data_count++;
@@ -1877,15 +1877,17 @@ void do_set_display_size(EditState *s, int w, int h)
    window and the status line */
 void do_toggle_full_screen(EditState *s)
 {
+    QEmacsState *qs = s->qe_state;
     QEditScreen *screen = s->screen;
-    qe_state.is_full_screen = !qe_state.is_full_screen;
+
+    qs->is_full_screen = !qs->is_full_screen;
     if (screen->dpy.dpy_full_screen)
-        screen->dpy.dpy_full_screen(screen, qe_state.is_full_screen);
-    if (qe_state.is_full_screen)
+        screen->dpy.dpy_full_screen(screen, qs->is_full_screen);
+    if (qs->is_full_screen)
         s->flags &= ~WF_MODELINE;
     else
         s->flags |= WF_MODELINE;
-    qe_state.hide_status = qe_state.is_full_screen;
+    qs->hide_status = qs->is_full_screen;
 }
 
 void do_toggle_mode_line(EditState *s)
@@ -1904,7 +1906,8 @@ void do_set_system_font(EditState *s, const char *qe_font_name,
         put_status(s, "Invalid qemacs font");
         return;
     }
-    pstrcpy(qe_state.system_fonts[font_type], sizeof(qe_state.system_fonts[0]),
+    pstrcpy(s->qe_state->system_fonts[font_type],
+	    sizeof(s->qe_state->system_fonts[0]),
             system_fonts);
 }
 
@@ -3087,6 +3090,7 @@ void exec_command(EditState *s, CmdDef *d, int argval)
 static void parse_args(ExecCmdState *es)
 {
     EditState *s = es->s;
+    QEmacsState *qs = s->qe_state;
     CmdDef *d = es->d;
     char prompt[256];
     char completion_name[64];
@@ -3179,7 +3183,7 @@ static void parse_args(ExecCmdState *es)
         call_func(d->action.func, es->nb_args, es->args, es->args_type);
     } while (--rep_count > 0);
 
-    qe_state.last_cmd_func = d->action.func;
+    qs->last_cmd_func = d->action.func;
  fail:
     free_cmd(es);
 }
@@ -3634,7 +3638,7 @@ void put_status(EditState *s, const char *fmt, ...)
 
 void switch_to_buffer(EditState *s, EditBuffer *b)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     EditBuffer *b1;
     EditState *e;
     ModeSavedData *saved_data, **psaved_data;
@@ -3690,7 +3694,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
 static void compute_client_area(EditState *s)
 {
     int x1, y1, x2, y2;
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
 
     x1 = s->x1;
     y1 = s->y1;
@@ -3748,7 +3752,7 @@ EditState *edit_new(EditBuffer *b,
    in the buffer all the window state so that it can be recovered. */
 void edit_close(EditState *s)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     EditState **ps;
 
     switch_to_buffer(s, NULL);
@@ -3879,7 +3883,7 @@ extern CmdDef minibuffer_commands[];
 /* XXX: utf8 ? */
 void do_completion(EditState *s)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     char input[1024];
     int len, count, i, match_len, c;
     StringArray cs;
@@ -4009,7 +4013,7 @@ static StringArray *get_history(const char *name)
 
 void do_history(EditState *s, int dir)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     StringArray *hist = minibuffer_history;
     int index;
     char *str;
@@ -4044,7 +4048,7 @@ void do_history(EditState *s, int dir)
 
 void do_minibuffer_exit(EditState *s, int abort)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     EditBuffer *b = s->b;
     StringArray *hist = minibuffer_history;
     static void (*cb)(void *opaque, char *buf);
@@ -4092,7 +4096,7 @@ void do_minibuffer_exit(EditState *s, int abort)
     qs->active_window = minibuffer_saved_active;
 
     /* force status update */
-    strcpy(qe_state.status_shadow, " ");
+    strcpy(qs->status_shadow, " ");
     put_status(NULL, "");
 
     /* call the callback */
@@ -4185,7 +4189,7 @@ static EditState *popup_saved_active;
 /* less like mode */
 void do_less_quit(EditState *s)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     EditBuffer *b;
 
     qs->active_window = popup_saved_active;
@@ -4255,7 +4259,7 @@ EditState *insert_window_left(EditBuffer *b, int width, int flags)
 /* return a window on the right of window 's' */
 EditState *find_window_right(EditState *s)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     EditState *e;
 
     for(e = qs->first_window; e != NULL; e = e->next_window) {
@@ -4530,7 +4534,7 @@ static void load_completion_cb(void *opaque, int err)
     }
     if (!s->b->probed)
         probe_mode(s, mode);
-    edit_display(&qe_state);
+    edit_display(s->qe_state);
     dpy_flush(&global_screen);
 }
 #endif
@@ -5227,9 +5231,9 @@ void do_refresh(EditState *s1)
     
     width = qs->screen->width;
     height = qs->screen->height;
-    new_status_height = get_line_height(qe_state.screen, 
+    new_status_height = get_line_height(qs->screen, 
                                         QE_STYLE_STATUS);
-    new_mode_line_height = get_line_height(qe_state.screen, 
+    new_mode_line_height = get_line_height(qs->screen, 
                                            QE_STYLE_MODE_LINE);
     content_height = height;
     if (!qs->hide_status) 
@@ -5578,7 +5582,7 @@ int __is_user_input_pending(void)
 
 void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     int w, h;
 
     /* XXX: currently, fixed height */
@@ -5593,7 +5597,7 @@ void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr)
 /* resize a window on bottom right edge */
 void window_resize(EditState *s, int target_w, int target_h)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     EditState *e;
     int delta_y, delta_x, min_w, min_h, new_h, new_w;
 
@@ -6157,10 +6161,11 @@ int parse_config_file(EditState *s, const char *filename)
 
 void parse_config(EditState *e)
 {
+    QEmacsState *qs = e->qe_state;
     FindFileState *ffs;
     char filename[MAX_FILENAME_SIZE];
 
-    ffs = find_file_open(qe_state.res_path, "config");
+    ffs = find_file_open(qs->res_path, "config");
     if (!ffs)
         return;
     for(;;) {
@@ -6421,14 +6426,14 @@ static inline void init_all_modules(void)
 
 #ifdef CONFIG_DLL
 
-void load_all_modules(void)
+void load_all_modules(QEmacsState *qs)
 {
     FindFileState *ffs;
     char filename[MAX_FILENAME_SIZE];
     void *h;
     int (*init_func)(void);
     
-    ffs = find_file_open(qe_state.res_path, "*.so");
+    ffs = find_file_open(qs->res_path, "*.so");
     if (!ffs)
         return;
     while (!find_file_next(ffs, filename, sizeof(filename))) {
@@ -6463,6 +6468,7 @@ typedef struct QEArgs {
 /* init function */
 void qe_init(void *opaque)
 {
+    QEmacsState *qs = &qe_state;
     QEArgs *args = opaque;
     int argc = args->argc;
     char **argv = args->argv;
@@ -6473,17 +6479,17 @@ void qe_init(void *opaque)
     char *home_path;
 
     /* compute resources path */
-    strcpy(qe_state.res_path, 
+    strcpy(qs->res_path, 
            CONFIG_QE_PREFIX "/share/qe:" CONFIG_QE_PREFIX "/lib/qe:"
            "/usr/share/qe:/usr/lib/qe");
     home_path = getenv("HOME");
     if (home_path) {
-        pstrcat(qe_state.res_path, sizeof(qe_state.res_path), ":");
-        pstrcat(qe_state.res_path, sizeof(qe_state.res_path), home_path);
-        pstrcat(qe_state.res_path, sizeof(qe_state.res_path), "/.qe");
+        pstrcat(qs->res_path, sizeof(qs->res_path), ":");
+        pstrcat(qs->res_path, sizeof(qs->res_path), home_path);
+        pstrcat(qs->res_path, sizeof(qs->res_path), "/.qe");
     }
-    qe_state.macro_key_index = -1; /* no macro executing */
-    qe_state.ungot_key = -1; /* no unget key */
+    qs->macro_key_index = -1; /* no macro executing */
+    qs->ungot_key = -1; /* no unget key */
     
     eb_init();
     charset_init();
@@ -6510,7 +6516,7 @@ void qe_init(void *opaque)
 
 #ifdef CONFIG_DLL
     /* load all dynamic modules */
-    load_all_modules();
+    load_all_modules(qs);
 #endif
 
     /* see if invoked as player */
@@ -6576,7 +6582,7 @@ void qe_init(void *opaque)
     }
 
     /* init of the editor state */
-    qe_state.screen = &global_screen;
+    qs->screen = &global_screen;
 
     /* create first buffer */
     b = eb_new("*scratch*", BF_SAVELOG);
@@ -6623,13 +6629,13 @@ void qe_init(void *opaque)
 
     put_status(s, "QEmacs %s - Press F1 for help", QE_VERSION);
 
-    edit_display(&qe_state);
+    edit_display(qs);
     dpy_flush(&global_screen);
 
     b = eb_find("*errors*");
     if (b != NULL) {
 	show_popup(b);
-	edit_display(&qe_state);
+	edit_display(qs);
 	dpy_flush(&global_screen);
     }
 }

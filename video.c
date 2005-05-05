@@ -791,6 +791,7 @@ static void video_pause(EditState *s)
 static int video_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     VideoState *is = s->mode_data;
+    QEmacsState *qs = s->qe_state;
     int err, video_playing;
     EditState *e;
 
@@ -808,7 +809,7 @@ static int video_mode_init(EditState *s, ModeSavedData *saved_data)
     /* if there is already a window with this video playing, then we
        stop this new instance (C-x 2 case) */
     video_playing = 0;
-    for(e = qe_state.first_window; e != NULL; e = e->next_window) {
+    for(e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->mode == s->mode && e != s && e->b == s->b) {
             VideoState *is1 = e->mode_data;
             if (!is1->paused)
