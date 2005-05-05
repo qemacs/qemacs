@@ -512,15 +512,15 @@ void do_c_electric(EditState *s, int key)
 
 static int c_mode_probe(ModeProbeData *p)
 {
+    char extbuf[10];
     const char *r;
 
     /* currently, only use the file extension */
-    r = strrchr(p->filename, '.');
-    if (r) {
-        r++;
-        if (!strcasecmp(r, "c") ||
-            !strcasecmp(r, "h") ||
-            !strcasecmp(r, "cpp"))
+    r = extension(p->filename);
+    if (*r) {
+	snprintf(extbuf, sizeof(extbuf), "|%s|", r + 1);
+	css_strtolower(extbuf, sizeof(extbuf));
+        if (strstr("|c|e|h|js|cs|jav|java|cxx|cpp|", extbuf))
             return 100;
     }
     return 0;
