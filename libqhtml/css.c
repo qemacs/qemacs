@@ -4263,7 +4263,7 @@ int css_get_offset_pos(CSSContext *s, CSSBox *box, int xc, int dir)
         return -1;
 
     /* compute offset */
-    for(i=0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         if (posc == char_to_glyph_pos[i]) {
             return offsets[i];
         }
