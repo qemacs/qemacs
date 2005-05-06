@@ -436,6 +436,7 @@ typedef struct EditBufferCallbackList {
 #define BF_PREVIEW   0x0008  /* used in dired mode to mark previewed files */
 #define BF_LOADING   0x0010  /* buffer is being loaded */
 #define BF_SAVING    0x0020  /* buffer is being saved */
+#define BF_DIRED     0x0100  /* buffer is interactive dired */
 
 typedef struct EditBuffer {
     Page *page_table;

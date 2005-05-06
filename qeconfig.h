@@ -113,11 +113,13 @@ CmdDef basic_commands[] = {
     CMD( KEY_NONE, KEY_NONE, "set-system-font\0ss", do_set_system_font)
     CMD0( KEY_CTRLX('f'), KEY_NONE, "toggle-full-screen", do_toggle_full_screen)
     CMD0( KEY_NONE, KEY_NONE, "toggle-mode-line", do_toggle_mode_line)
+    CMD( KEY_NONE, KEY_NONE, "parse-config-file\0s{Configuration file: }[file]|file|", parse_config)
     
     /* non standard mappings */
     CMD0( KEY_CTRLXRET('l'), KEY_NONE, "toggle-line-numbers", do_line_numbers)
     CMD0( KEY_CTRLXRET('t'), KEY_NONE, "truncate-lines", do_line_truncate )
     CMD0( KEY_CTRLXRET('w'), KEY_NONE, "word-wrap", do_word_wrap)
+    CMD1( KEY_NONE, KEY_NONE, "set-backspace-is-control-h", do_set_backspace_is_control_h, 1)
     
     /* tab & indent */
     CMD( KEY_NONE, KEY_NONE, "set-tab-width\0i{Tab width: }", do_set_tab_width)

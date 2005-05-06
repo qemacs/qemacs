@@ -194,6 +194,37 @@ static void qe_register_binding2(int key,
     qe_register_binding1(keys, nb_keys, d, m);
 }
 
+static int backspace_is_control_h;
+
+void do_set_backspace_is_control_h(EditState *s, int set)
+{
+    KeyDef *p;
+    int i;
+
+    if (backspace_is_control_h == set)
+	return;
+    
+    backspace_is_control_h = set;
+
+    for (p = first_key; p; p = p->next) {
+	for (i = 0; i < p->nb_keys; i++) {
+	    switch (p->keys[i]) {
+	    case KEY_CTRL('h'):
+		p->keys[i] = set ? KEY_META('h') : 127;
+		break;
+	    case 127:
+		if (set)
+		    p->keys[i] = KEY_CTRL('h');
+		break;
+	    case KEY_META('h'):
+		if (!set)
+		    p->keys[i] = KEY_CTRL('h');
+		break;
+	    }
+	}
+    }
+}
+
 /* if mode is non NULL, the defined keys are only active in this mode */
 void qe_register_cmd_table(CmdDef *cmds, const char *mode)
 {
@@ -1254,6 +1285,7 @@ void do_return(EditState *s)
 void do_break(EditState *s)
 {
     /* well, currently nothing needs to be aborted in global context */
+    /* CG: Should remove popups, sidepanes, helppanes... */
 }
 
 /* block functions */
@@ -3279,6 +3311,11 @@ void edit_display(QEmacsState *qs)
     EditState *s;
     int has_popups;
     
+    for (s = qs->first_window; s != NULL; s = s->next_window) {
+	if (s->mode->display_hook)
+	    s->mode->display_hook(s);
+    }
+
     /* first display popups and minibuf */
     has_popups = 0;
     for (s = qs->first_window; s != NULL; s = s->next_window) {
@@ -4387,6 +4424,11 @@ static void get_default_path(EditState *s, char *buf, int buf_size)
     const char *filename;
 
     /* CG: should have more specific code for dired/shell buffer... */
+    if (b->flags & BF_DIRED) {
+	makepath(buf, buf_size, b->filename, "");
+	return;
+    }
+
     if ((b->flags & BF_SYSTEM) || b->name[0] == '*') {
         canonize_absolute_path(buf1, sizeof(buf1), "a");
         filename = buf1;
@@ -5345,11 +5387,14 @@ void do_delete_window(EditState *s, int force)
 
     count = 0;
     for(e = qs->first_window; e != NULL; e = e->next_window) {
-        if (!e->minibuf)
+        if (!e->minibuf && !(e->flags & WF_POPUP))
             count++;
     }
     /* cannot close minibuf or if single window */
-    if ((!s->minibuf && count > 1) || force) {
+    if ((s->minibuf || count <= 1) && !force)
+	return;
+
+    if (!(s->flags & WF_POPUP)) {
         /* try to merge the window with one adjacent window. If none
            found, just leave a hole */
         x1 = s->x1;
@@ -5383,10 +5428,12 @@ void do_delete_window(EditState *s, int force)
                 break;
             }
         }
-        compute_client_area(e);        
-        edit_close(s);
-        do_refresh(qs->first_window);
+	if (e)
+	    compute_client_area(e);
     }
+    edit_close(s);
+    if (qs->first_window)
+	do_refresh(qs->first_window);
 }
 
 
@@ -6163,21 +6210,28 @@ int parse_config_file(EditState *s, const char *filename)
     return 0;
 }
 
-void parse_config(EditState *e)
+void parse_config(EditState *e, const char *file)
 {
     QEmacsState *qs = e->qe_state;
     FindFileState *ffs;
     char filename[MAX_FILENAME_SIZE];
 
+    if (file && *file) {
+	parse_config_file(e, filename);
+	return;
+    }
+
     ffs = find_file_open(qs->res_path, "config");
     if (!ffs)
         return;
-    for(;;) {
+    for (;;) {
         if (find_file_next(ffs, filename, sizeof(filename)) != 0)
             break;
         parse_config_file(e, filename);
     }
     find_file_close(ffs);
+    if (file)
+	do_refresh(e);
 }
 
 /******************************************************/
@@ -6340,8 +6394,8 @@ static inline void init_all_modules(void)
     int (*initcall)(void);
     void **ptr;
     
-    ptr = (void **)&__initcall_first;
-    for(;;) {
+    ptr = (void **)(void *)&__initcall_first;
+    for (;;) {
         /* NOTE: if bound checking is on, a '\0' is inserted between
            each initialized 'void *' */
 #if defined(__BOUNDS_CHECKING_ON)
@@ -6526,12 +6580,8 @@ void qe_init(void *opaque)
     /* see if invoked as player */
     {
         const char *p;
-        p = argv[0];
-        p = strrchr(p, '/');
-        if (!p)
-            p = argv[0];
-        else
-            p++;
+
+        p = basename(argv[0]);
         if (!strcmp(p, "ffplay"))
             is_player = 1;
         else
@@ -6600,7 +6650,7 @@ void qe_init(void *opaque)
      */
     dummy_dpy.dpy_init(&global_screen, screen_width, screen_height);
 
-    parse_config(s);
+    parse_config(s, NULL);
 
     qe_key_init();
 
