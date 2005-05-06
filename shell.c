@@ -794,13 +794,17 @@ static void do_compile_error(EditState *s, int dir)
     char filename[1024], *q;
     int line_num, c;
 
-    b = eb_find("*compilation*");
-    if (!b) {
-        b = eb_find("*shell*");
-        if (!b) {
-            put_status(s, "No compilation buffer");
-            return;
-        }
+    /* CG: should have a buffer flag for error source.
+     * first check if current buffer is an error source.
+     * if not, then scan for appropriate error source
+     * in buffer least recently used order
+     */
+
+    if ((b = eb_find("*compilation*")) == NULL
+    &&  (b = eb_find("*shell*")) == NULL
+    &&  (b = eb_find("*errors*")) == NULL) {
+	put_status(s, "No compilation buffer");
+	return;
     }
     /* find next/prev error */
     offset = error_offset;
