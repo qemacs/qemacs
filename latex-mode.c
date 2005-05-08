@@ -25,14 +25,14 @@
 
 /* CG: move to header file! */
 EditBuffer *new_shell_buffer(const char *name, const char *path,
-			     const char **argv, int is_shell);
+                             const char **argv, int is_shell);
 static ModeDef latex_mode;
 
 /* TODO: add state handling to allow colorization of elements longer
  * than one line (eg, multi-line functions and strings)
  */
 static void latex_colorize_line(unsigned int *buf, int len, 
-				int *colorize_state_ptr, int state_only)
+                                int *colorize_state_ptr, int state_only)
 {
     int c, state;
     unsigned int *p, *p_start;
@@ -44,14 +44,14 @@ static void latex_colorize_line(unsigned int *buf, int len,
     for (;;) {
         p_start = p;
         c = *p;
-        switch(c) {
+        switch (c) {
         case '\n':
             goto the_end;
         case '`':
             p++;
             /* a ``string'' */
             if (*p == '`') {
-		while (1) {
+                while (1) {
                     p++;
                     if (*p == '\n' || (*p == '\'' && *(p+1) == '\''))
                         break;
@@ -66,7 +66,7 @@ static void latex_colorize_line(unsigned int *buf, int len,
             /* \function[keyword]{variable} */
             if (*p == '\'' || *p == '\"' || *p == '~' || *p == '%' || *p == '\\') {
                 p++;
-	    } else {
+            } else {
                 while (*p != '{' && *p != '[' && *p != '\n' && *p != ' ' && *p != '\\')
                     p++;
             }
@@ -74,7 +74,7 @@ static void latex_colorize_line(unsigned int *buf, int len,
             while (*p == ' ' || *p == '\t') {
                 /* skip space */
                 p++;
-	    }
+            }
             while (*p == '{' || *p == '[') {
                 if (*p++ == '[') {
                     /* handle [keyword] */
@@ -90,12 +90,12 @@ static void latex_colorize_line(unsigned int *buf, int len,
                     p_start = p;
                     while (*p != '\n') {
                         if (*p == '{') {
-			    braces++;
-			} else
-			if (*p == '}') {
-			    if (braces-- == 0)
-				break;
-			}
+                            braces++;
+                        } else
+                        if (*p == '}') {
+                            if (braces-- == 0)
+                                break;
+                        }
                         p++;
                     }
                     set_color(p_start, p - p_start, QE_STYLE_VARIABLE);
@@ -105,7 +105,7 @@ static void latex_colorize_line(unsigned int *buf, int len,
                 while (*p == ' ' || *p == '\t') {
                     /* skip space */
                     p++;
-		}
+                }
             }
             break;
         case '%':
@@ -131,8 +131,8 @@ static int latex_mode_probe(ModeProbeData *p)
     /* currently, only use the file extension */
     r = extension(p->filename);
     if (*r) {
-	if (strfind("|tex|", r + 1, 1))
-	    return 100;
+        if (strfind("|tex|", r + 1, 1))
+            return 100;
     }
     return 0;
 }
@@ -162,7 +162,7 @@ static void do_tex_insert_quote(EditState *s)
         eb_insert(s->b, s->offset, "\"", 1);
         s->offset++;
     } else if (p >= 2 && (buf[p-1] == '`' || buf[p-1] == '\'') &&
-	       buf[p-1] == buf[p-2])
+               buf[p-1] == buf[p-2])
     {
         eb_delete(s->b, s->offset - 2, 2);
         eb_insert(s->b, s->offset, "\"", 1);
@@ -219,8 +219,8 @@ static void latex_cmd_run(void *opaque, char *cmd)
     int len;
 
     if (cmd == 0) {
-	put_status(func->es, "aborted");
-	return;
+        put_status(func->es, "aborted");
+        return;
     }
 
     argv[0] = "/bin/sh";
@@ -234,7 +234,7 @@ static void latex_cmd_run(void *opaque, char *cmd)
      */
     p = strrchr(func->es->b->filename, '/');
     if (p == func->es->b->filename)
-	p++;
+        p++;
     len = p - func->es->b->filename + 1;
     wd = (char *)malloc(len);
     pstrcpy(wd, len, func->es->b->filename);
@@ -242,28 +242,28 @@ static void latex_cmd_run(void *opaque, char *cmd)
     free(wd);
 
     if (func->output_to_buffer) {
-	/* if the buffer already exists, kill it */
-	EditBuffer *b = eb_find("*LaTeX output*");
-	if (b) {
-	    /* XXX: e should not become invalid */
-	    b->modified = 0;
-	    do_kill_buffer(func->es, "*LaTeX output*");
-	}
+        /* if the buffer already exists, kill it */
+        EditBuffer *b = eb_find("*LaTeX output*");
+        if (b) {
+            /* XXX: e should not become invalid */
+            b->modified = 0;
+            do_kill_buffer(func->es, "*LaTeX output*");
+        }
 
-	/* create new buffer */
-	b = new_shell_buffer("*LaTeX output*", "/bin/sh", argv, 0);
-	if (b) {
-	    /* XXX: try to split window if necessary */
-	    switch_to_buffer(func->es, b);
-	}
+        /* create new buffer */
+        b = new_shell_buffer("*LaTeX output*", "/bin/sh", argv, 0);
+        if (b) {
+            /* XXX: try to split window if necessary */
+            switch_to_buffer(func->es, b);
+        }
     } else {
-	int pid = fork();
-	if (pid == 0) {
-	    /* child process */
-	    setsid();
-	    execv("/bin/sh", (char *const*)argv);
-	    exit(1);
-	}
+        int pid = fork();
+        if (pid == 0) {
+            /* child process */
+            setsid();
+            execv("/bin/sh", (char *const*)argv);
+            exit(1);
+        }
     }
     chdir(cwd);
 }
@@ -281,45 +281,45 @@ static void do_latex(EditState *e, const char *cmd)
     /* CG: should use extension(), also should ignore leading dots */
     f = strrchr(e->b->filename, '/');
     if (f)
-	f++;
+        f++;
     else
-	f = e->b->filename;
+        f = e->b->filename;
     p = strrchr(f, '.');
     if (p) {
-	int len = p - e->b->filename;
-	bname = (char *)malloc(len + 1);
+        int len = p - e->b->filename;
+        bname = (char *)malloc(len + 1);
         pstrncpy(bname, len + 1, e->b->filename, len);
     } else {
-	bname = strdup(e->b->filename);
+        bname = strdup(e->b->filename);
     }
 
     if (!cmd || cmd[0] == '\0')
-	strcpy(buf, "LaTeX");
+        strcpy(buf, "LaTeX");
     else
-	strcpy(buf, cmd);
+        strcpy(buf, cmd);
 
     /* check what command to run */
     for (i = 0; latex_funcs[i].name; i++) {
-	if (strcasecmp(buf, latex_funcs[i].name) == 0) {
-	    /* pass the EditState through to latex_cmd_run() */
-	    latex_funcs[i].es = e;
-	    /* construct the command line to run */
-	    snprintf(buf, sizeof(buf), latex_funcs[i].fmt, bname, bname);
-	    if (latex_funcs[i].ask) {
-		char prompt[128];
-		snprintf(prompt, sizeof(prompt), "%s command: ",
-			 latex_funcs[i].name);
-		minibuffer_edit(buf, prompt, &latex_funcs[i].history,
-				NULL /* completion */, 
-				latex_cmd_run, (void *)&latex_funcs[i]);
-	    } else {
-		latex_cmd_run((void *)&latex_funcs[i], buf);
-	    }
-	    break;
-	}
+        if (strcasecmp(buf, latex_funcs[i].name) == 0) {
+            /* pass the EditState through to latex_cmd_run() */
+            latex_funcs[i].es = e;
+            /* construct the command line to run */
+            snprintf(buf, sizeof(buf), latex_funcs[i].fmt, bname, bname);
+            if (latex_funcs[i].ask) {
+                char prompt[128];
+                snprintf(prompt, sizeof(prompt), "%s command: ",
+                         latex_funcs[i].name);
+                minibuffer_edit(buf, prompt, &latex_funcs[i].history,
+                                NULL /* completion */, 
+                                latex_cmd_run, (void *)&latex_funcs[i]);
+            } else {
+                latex_cmd_run((void *)&latex_funcs[i], buf);
+            }
+            break;
+        }
     }
     if (latex_funcs[i].name == 0)
-	put_status(e, "%s: No match", buf);
+        put_status(e, "%s: No match", buf);
     free(bname);
 }
 
