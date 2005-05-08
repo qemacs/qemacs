@@ -126,7 +126,7 @@ static int get_be32(UniFontData *uf)
     return val;
 }
 
-static void get_str(UniFontData *uf, char *buf, int buf_size)
+static void fbf_get_str(UniFontData *uf, char *buf, int buf_size)
 {
     int i, len, c;
     char *q;
@@ -175,7 +175,7 @@ int fbf_load_font(UniFontData *uf)
     uf->family_type = uf->fbf_getc(uf->infile);
     uf->fbf_getc(uf->infile);
 
-    get_str(uf, uf->family_name, sizeof(uf->family_name));
+    fbf_get_str(uf, uf->family_name, sizeof(uf->family_name));
 
     uf->nb_glyphs = h.nb_glyphs;
     uf->compressed_segment_size = h.compressed_segment_size;
