@@ -31,6 +31,7 @@ C mode TODO:
   * man like mode 
   * global QTAGS file indexed with global includes
 - see if java/javascript/c++ is OK.
+- autocomplete
 
 HTML mode TODO:
 --------------
@@ -66,6 +67,46 @@ Ideas
 - improve dired (file commands, nicer display)
 - rethink mode specific commands -> add inheritance for all commands ?
 - shorter command types handling (suppress ESxxx and use one type per arg)
+- dpy_open_font should never return NULL, must have a system font.
+- other coloring modes
+- variables ?
+- scripting
+- expression evaluator
+- dos/mac translation modes
+- minor modes with key override such as "preview" mode
+- redefine KEY_Fx to make them sequential
+- use failsafe memory allocator and longjmp recover.
+- scroll up/down with argument should scroll by screen row.
+- simplify C-z A-z accordingly
+- fix control-h mess
+- fix bof/eof shell mode
+- merge hex-mode and ascii mode
+- write-region -> add filename and offsets to save_buffer stuff
+- detect full screen mode in shell buffer and grab all keys until exit
+- fix makefile for html dependencies
+- fix configure for missing support: x11 xv png ...
+- add configure --disable-graphics
+- timers for esc key disambiguation
+- move ungot_key to key_context
+- abbreviate lines in file completion list popup
+- use trick for entering spaces in filename prompts without completion
+- enlarge-window-interactively
+- enlarge-window-horizontally
+- enlarge-window
+- count-lines
+- show-point
+- show modified status and mode in bufed
+- *messages* system buffer
+- doctor command should create and show *trace* buffer, remove eb_new kludge
+- invoking key as intrinsic argument
+- fix column computation based on display properties:
+  (variable pitch, tabs, ^x and \uxxxx stuff -- emacs behaviour) ?
+- check X11 connection at probe time
+- allow quoting of special keys : let do_char insert xterm/vt100 key sequence
+  to allow typing special keys into shell process
+- fix scroll up/down to move point if already at end
+- fix terminal size inside shell window ?
+- cmdline arg to force lines and columns to test shell.
 
 Clean window deletion mess:
 ---------------------------
@@ -83,5 +124,3 @@ do_minibuffer_exit(s) also deletes completion_popup
 insert_window_left()  deletes some left-most windows
   do_list_buffers()
   do_dired()
-
-- dpy_open_font should never return NULL, must have a system font.
