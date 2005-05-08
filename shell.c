@@ -251,7 +251,7 @@ static void tty_emulate(ShellState *s, int c)
     int i, offset, offset1, offset2, n;
     unsigned char buf1[10];
     
-    switch(s->state) {
+    switch (s->state) {
     case TTY_STATE_NORM:
         switch(c) {
         case 8:
@@ -900,7 +900,8 @@ static CmdDef shell_commands[] = {
 
 /* compilation commands */
 static CmdDef compile_commands[] = {
-    CMD( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE, "compile\0s{Compile command: }", do_compile)
+    CMD_( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE, "compile", do_compile,
+	  "s{Compile command: }|compile|")
     CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE, "previous-error", 
           do_compile_error, -1)
     CMD1( KEY_CTRLX(KEY_CTRL('n')), KEY_NONE, "next-error", 

@@ -197,10 +197,15 @@ static void qe_register_binding2(int key,
 
 static int backspace_is_control_h;
 
-void do_set_backspace_is_control_h(EditState *s, int set)
+void do_toggle_control_h(EditState *s, int set)
 {
     KeyDef *p;
     int i;
+
+    if (set)
+	set = (set > 0);
+    else
+	set = !backspace_is_control_h;
 
     if (backspace_is_control_h == set)
 	return;

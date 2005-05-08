@@ -887,14 +887,12 @@ typedef struct CmdDef {
 } CmdDef;
 
 /* new command macros */
-#define CMD(key, key_alt, name, func) { key, key_alt, name, { (void *)func } },
-#define CMDV(key, key_alt, name, func, val) { key, key_alt, name, { (void *)func }, val },
+#define CMD_(key, key_alt, name, func, args) { key, key_alt, name "\0" args, { (void *)func } },
+#define CMDV(key, key_alt, name, func, val, args) { key, key_alt, name "\0" args, { (void *)func }, (void *)val },
 
 /* old macros for compatibility */
 #define CMD0(key, key_alt, name, func) { key, key_alt, name "\0", { (void *)func } },
 #define CMD1(key, key_alt, name, func, val) { key, key_alt, name "\0v", { (void *)func }, (void*)(val) },
-#define CMDi(key, key_alt, name, func) { key, key_alt, name "\0i", { (void *)func } },
-#define CMDss(key, key_alt, name, func) { key, key_alt, name "\0ss", { (void *)func } },
 #define CMD_DEF_END { 0, 0, NULL, }
 
 void qe_register_mode(ModeDef *m);

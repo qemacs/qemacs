@@ -123,8 +123,8 @@ void do_toggle_hex(EditState *s)
 static CmdDef hex_commands[] = {
     CMD1( KEY_NONE, KEY_NONE, "decrease-width", do_incr_width, -1)
     CMD1( KEY_NONE, KEY_NONE, "increase-width", do_incr_width, 1)
-    CMD( KEY_NONE, KEY_NONE, "set-width\0i{Width: }", do_set_width)
-    CMD( KEY_NONE, KEY_NONE, "goto-byte\0i{Goto byte: }", do_goto_byte)
+    CMD_( KEY_NONE, KEY_NONE, "set-width", do_set_width, "i{Width: }")
+    CMD_( KEY_NONE, KEY_NONE, "goto-byte", do_goto_byte, "i{Goto byte: }")
     CMD0( KEY_NONE, KEY_NONE, "toggle-hex", do_toggle_hex)
     CMD_DEF_END,
 };

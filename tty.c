@@ -77,6 +77,7 @@ static int term_init(QEditScreen *s, int w, int h)
     TTYState *ts;
     struct termios tty;
     struct sigaction sig;
+    char *term;
 
     memcpy(&s->dpy, &tty_dpy, sizeof(QEDisplay));
 
@@ -135,6 +136,19 @@ static int term_init(QEditScreen *s, int w, int h)
     set_read_handler(0, tty_read_handler, s);
 
     tty_resize(0);
+
+    /* Test TERM env var:
+     * linux and xterm -> kbs=\177
+     * ansi cygwin vt100 -> kbs=^H
+     */
+    term = getenv("TERM");
+    if (term) {
+        if (strstart(term, "ansi", NULL) ||
+            strstart(term, "cygwin", NULL) ||
+            strstart(term, "vt", NULL)) {
+            do_toggle_control_h(NULL, 1);
+        }
+    }
     return 0;
 }
 
