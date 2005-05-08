@@ -840,7 +840,7 @@ static void do_compile_error(EditState *s, int dir)
         found_offset = offset;
         /* extract filename */
         q = filename;
-        for(;;) {
+        for (;;) {
             c = eb_nextc(b, offset, &offset);
             if (c == '\n' || c == '\t' || c == ' ')
                 goto next_line;
@@ -852,7 +852,7 @@ static void do_compile_error(EditState *s, int dir)
         *q = '\0';
         /* extract line number */
         line_num = 0;
-        for(;;) {
+        for (;;) {
             c = eb_nextc(b, offset, &offset);
             if (c == ':')
                 break;
@@ -873,11 +873,13 @@ static void do_compile_error(EditState *s, int dir)
     }
     error_offset = found_offset;
     /* update offsets */
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->b == b) {
             e->offset = error_offset;
         }
     }
+
+    /* CG: Should remove popups, sidepanes, helppanes... */
 
     /* go to the error */
     do_load(s, filename);
