@@ -825,7 +825,7 @@ static int parse_tag(XMLState *s, const char *buf)
     }
 
     /* parse the tag name */
-    get_str(&p, tag, sizeof(tag), " \t\n\r/");
+    get_str(&p, tag, sizeof(tag), "/");
     if (tag[0] == '\0') {
         /* special closing tag */
         if (eot) {
@@ -854,10 +854,9 @@ static int parse_tag(XMLState *s, const char *buf)
         skip_spaces(&p);
         if (*p == '\0' || *p == '/')
             break;
-        get_str(&p, attr_name, sizeof(attr_name), " \t\n\r=/");
+        get_str(&p, attr_name, sizeof(attr_name), "=/");
         if (s->ignore_case)
             css_strtolower(attr_name, sizeof(attr_name));
-        skip_spaces(&p);
         if (*p == '=') {
             int och, ch;
             p++;

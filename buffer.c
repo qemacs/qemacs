@@ -1293,29 +1293,6 @@ void eb_printf(EditBuffer *b, const char *fmt, ...)
     eb_insert(b, b->total_size, buf, len);
 }
 
-void error_printf(const char *fmt, ...)
-{
-    EditBuffer *b;
-    va_list ap;
-    char buf[1024];
-    int len;
-
-    va_start(ap, fmt);
-    len = vsnprintf(buf, sizeof(buf), fmt, ap);
-    va_end(ap);
-
-    b = eb_find("*errors*");
-    if (!b) {
-	b = eb_new("*errors*", BF_SYSTEM);
-	if (!b) {
-	    fprintf(stderr, "%s", buf);
-	    return;
-	}
-    }
-
-    eb_insert(b, b->total_size, buf, len);
-}
-
 /* pad current line with spaces so that it reaches column n */
 void eb_line_pad(EditBuffer *b, int n)
 {

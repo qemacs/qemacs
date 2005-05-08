@@ -228,9 +228,18 @@ void canonize_absolute_path(char *buf, int buf_size, const char *path1)
 {
     char cwd[1024];
     char path[1024];
+    char *homedir;
 
     if (!is_abs_path(path1)) {
         /* XXX: should call it again */
+        if (*path1 == '~' && (path1[1] == '\0' || path1[1] == '/')) {
+            homedir = getenv("HOME");
+            if (homedir) {
+                pstrcpy(path, sizeof(path), homedir);
+                pstrcat(path, sizeof(path), path1 + 1);
+                goto next;
+            }
+        }
         /* CG: not sufficient for windows drives */
         getcwd(cwd, sizeof(cwd));
 #ifdef WIN32
@@ -240,6 +249,7 @@ void canonize_absolute_path(char *buf, int buf_size, const char *path1)
     } else {
         pstrcpy(path, sizeof(path), path1);
     }
+next:
     canonize_path(buf, buf_size, path);
 }
 
@@ -405,7 +415,7 @@ int ustristart(const unsigned int *str, const char *val, const unsigned int **pt
 }
 
 /* Read a token from a string, stop a set of characters.
- * Should skip spaces before and after token.
+ * Skip spaces before and after token.
  */ 
 void get_str(const char **pp, char *buf, int buf_size, const char *stop)
 {
@@ -413,12 +423,13 @@ void get_str(const char **pp, char *buf, int buf_size, const char *stop)
     const char *p;
     int c;
 
+    skip_spaces(pp);
     p = *pp;
     q = buf;
-    for(;;) {
+    for (;;) {
         c = *p;
-	/* Should stop on spaces and eat them */
-        if (c == '\0' || strchr(stop, c))
+        /* Should stop on spaces and eat them */
+        if (c == '\0' || css_is_space(c) || strchr(stop, c))
             break;
         if ((q - buf) < buf_size - 1)
             *q++ = c;
@@ -426,6 +437,7 @@ void get_str(const char **pp, char *buf, int buf_size, const char *stop)
     }
     *q = '\0';
     *pp = p;
+    skip_spaces(pp);
 }
 
 int css_get_enum(const char *str, const char *enum_str)

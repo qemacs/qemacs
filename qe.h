@@ -815,6 +815,12 @@ extern QEStyleDef qe_styles[QE_STYLE_NB];
     
 #define NB_YANK_BUFFERS 10
 
+typedef struct QErrorContext {
+    const char *function;
+    const char *filename;
+    int lineno;
+} QErrorContext;
+
 typedef struct QEmacsState {
     QEditScreen *screen;
     struct EditState *first_window;
@@ -845,7 +851,7 @@ typedef struct QEmacsState {
     int yank_current;
     char res_path[1024];
     char status_shadow[MAX_SCREEN_WIDTH];
-    char error_context[128];
+    QErrorContext ec;
     char system_fonts[NB_FONT_FAMILIES][256];
 } QEmacsState;
 
@@ -1036,7 +1042,6 @@ typedef struct CompletionEntry {
 
 void register_completion(const char *name, CompletionFunc completion_func);
 void put_status(EditState *s, const char *fmt, ...);
-void error_printf(const char *fmt, ...);
 void minibuffer_edit(const char *input, const char *prompt, 
                      StringArray *hist, CompletionFunc completion_func,
                      void (*cb)(void *opaque, char *buf), void *opaque);
@@ -1065,6 +1070,10 @@ static inline int is_user_input_pending(void)
 }
 #endif
 
+/* config file support */
+void parse_config(EditState *e, const char *file);
+void do_load_qerc(EditState *e, const char *file);
+
 /* popup / low level window handling */
 void show_popup(EditBuffer *b);
 EditState *insert_window_left(EditBuffer *b, int width, int flags);
@@ -1075,6 +1084,7 @@ void edit_close(EditState *s);
 EditState *edit_new(EditBuffer *b,
                     int x1, int y1, int width, int height, int flags);
 void do_refresh(EditState *s);
+void do_other_window(EditState *s);
 void do_delete_window(EditState *s, int force);
 void edit_display(QEmacsState *qs);
 void edit_invalidate(EditState *s);

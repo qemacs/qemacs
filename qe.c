@@ -90,7 +90,7 @@ void qe_register_mode(ModeDef *m)
     
     /* add a new command to switch to that mode */
     if (!(m->mode_flags & MODEF_NOCMD)) {
-        char buf[64], *args, *name;
+        char buf[64], *name;
         int size;
 
         table = malloc(sizeof(CmdDef) * 2);
@@ -102,9 +102,9 @@ void qe_register_mode(ModeDef *m)
         pstrcpy(buf, sizeof(buf) - 10, m->name);
         css_strtolower(buf, sizeof(buf));
         pstrcat(buf, sizeof(buf) - 10, "-mode");
-        args = buf + strlen(buf) + 1;
-        strcpy(args, "S"); /* constant string parameter */
-        size = strlen(args) + strlen(buf) + 2;
+	size = strlen(buf) + 1;
+	buf[size++] = 'S'; /* constant string parameter */
+	buf[size++] = '\0';
         name = malloc(size);
         memcpy(name, buf, size);
         table->name = name;
@@ -250,10 +250,17 @@ void qe_register_cmd_table(CmdDef *cmds, const char *mode)
     /* add default bindings */
     d = cmds;
     while (d->name != NULL) {
-        if (d->key != KEY_NONE)
-            qe_register_binding2(d->key, d, m);
-        if (d->alt_key != KEY_NONE)
-            qe_register_binding2(d->alt_key, d, m);
+	if (d->key == KEY_CTRL('x')) {
+	    unsigned int keys[2];
+	    keys[0] = d->key;
+	    keys[1] = d->alt_key;
+	    qe_register_binding1(keys, 2, d, m);
+	} else {
+	    if (d->key != KEY_NONE)
+		qe_register_binding2(d->key, d, m);
+	    if (d->alt_key != KEY_NONE)
+		qe_register_binding2(d->alt_key, d, m);
+	}
         d++;
     }
 }
@@ -1678,7 +1685,7 @@ void basic_mode_line(EditState *s, char *buf, int buf_size, int c1)
     if (s->b->flags & BF_LOADING)
         state = 'L';
     else if (s->b->flags & BF_SAVING)
-            state = 'S';
+	state = 'S';
     else if (s->busy)
         state = 'B';
     else
@@ -3075,7 +3082,7 @@ static int parse_arg(const char **pp, unsigned char *argtype,
     case 's':
         *argtype = CMD_ARG_STRING;
         break;
-    case 'S':
+    case 'S':	/* used in define_kbd_macro, and mode selection */
         *argtype = CMD_ARG_STRINGVAL;
         break;
     default:
@@ -3216,6 +3223,8 @@ static void parse_args(ExecCmdState *es)
 #ifndef CONFIG_TINY
         save_selection();
 #endif
+	/* CG: Should save and restore context */
+	qs->ec.function = d->name;
         call_func(d->action.func, es->nb_args, es->args, es->args_type);
     } while (--rep_count > 0);
 
@@ -3259,7 +3268,7 @@ static void arg_edit_cb(void *opaque, char *str)
     case CMD_ARG_INT:
         val = strtol(str, &p, 0);
         if (*p != '\0') {
-            put_status(NULL, "Invalid Number");
+            put_status(NULL, "Invalid number");
             goto fail;
         }
         es->args[index] = (void *)val;
@@ -3311,6 +3320,7 @@ void edit_display(QEmacsState *qs)
     EditState *s;
     int has_popups;
     
+    /* first call hooks for mode specific fixups */
     for (s = qs->first_window; s != NULL; s = s->next_window) {
 	if (s->mode->display_hook)
 	    s->mode->display_hook(s);
@@ -3399,9 +3409,9 @@ static void do_call_macro_bh(void *opaque)
 
     /* XXX: what to do if asynchronous commands ? Command completion
        should be wait */
-    for(qs->macro_key_index = 0; 
-        qs->macro_key_index < qs->nb_macro_keys;
-        qs->macro_key_index++) {
+    for (qs->macro_key_index = 0; 
+	 qs->macro_key_index < qs->nb_macro_keys;
+	 qs->macro_key_index++) {
         key = qs->macro_keys[qs->macro_key_index];
         qe_key_process(key);
     }
@@ -3619,7 +3629,7 @@ static void qe_key_process(int key)
             c->buf[len-1] = ' ';
         strcat(c->buf, buf1);
         strcat(c->buf, "-");
-        put_status(s, c->buf);
+        put_status(s, "%s", c->buf);
         dpy_flush(&global_screen);
     }
 }
@@ -3664,15 +3674,37 @@ void put_status(EditState *s, const char *fmt, ...)
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
 
-    if (strcmp(buf, qs->status_shadow) != 0) {
-	if (qs->screen->dpy.dpy_init != dummy_dpy_init) {
+    if (qs->screen->dpy.dpy_init != dummy_dpy_init) {
+	if (strcmp(buf, qs->status_shadow) != 0) {
 	    print_at_byte(qs->screen,
 			  0, qs->screen->height - qs->status_height,
 			  qs->screen->width, qs->status_height,
 			  buf, QE_STYLE_STATUS);
 	    strcpy(qs->status_shadow, buf);
+	}
+    } else {
+	char header[128];
+	int len;
+	EditBuffer *eb;
+
+	header[len = 0] = '\0';
+	if (qs->ec.filename) {
+	    snprintf(header, sizeof(header), "%s:%d: ",
+		     qs->ec.filename, qs->ec.lineno);
+	    len = strlen(header);
+	}
+	if (qs->ec.function) {
+	    snprintf(header + len, sizeof(header) - len, "%s: ",
+		     qs->ec.function);
+	    len = strlen(header);
+	}
+	eb = eb_find("*errors*");
+	if (!eb)
+	    eb = eb_new("*errors*", BF_SYSTEM);
+	if (eb) {
+	    eb_printf(eb, "%s%s\n", header, buf);
 	} else {
-	    error_printf("%s: %s\n", qs->error_context, buf);
+	    fprintf(stderr, "%s%s\n", header, buf);
 	}
     }
 }
@@ -3760,7 +3792,7 @@ static void compute_client_area(EditState *s)
 
 /* Create a new edit window, add it in the window list and sets it
  * active if none are active. The coordinates include the window
- * borders.  
+ * borders.
  */
 EditState *edit_new(EditBuffer *b,
                     int x1, int y1, int width, int height, int flags)
@@ -4179,8 +4211,8 @@ void minibuffer_edit(const char *input, const char *prompt,
 
     b = eb_new("*minibuf*", BF_SYSTEM);
 
-    s = edit_new (b, 0, qs->screen->height - qs->status_height,
-                  qs->screen->width, qs->status_height, 0);
+    s = edit_new(b, 0, qs->screen->height - qs->status_height,
+                 qs->screen->width, qs->status_height, 0);
     do_set_mode(s, &minibuffer_mode, NULL);
     s->prompt = strdup(prompt);
     s->minibuf = 1;
@@ -4303,7 +4335,7 @@ EditState *find_window_right(EditState *s)
     QEmacsState *qs = s->qe_state;
     EditState *e;
 
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->minibuf) 
             continue;
         if (e->x1 == s->x2)
@@ -4543,6 +4575,7 @@ static void do_load1(EditState *s, const char *filename1, int kill_buffer)
 
     /* now we can set the mode */
     do_set_mode_file(s, selected_mode, NULL, f);
+    do_load_qerc(s, s->b->filename);
 
     if (f) {
         fclose(f);
@@ -4921,7 +4954,7 @@ static void isearch_display(ISearchState *is)
     q = buf;
     search_offset = is->start_offset;
     hex_nibble = 0;
-    for(i=0;i<is->pos;i++) {
+    for (i = 0; i < is->pos; i++) {
         v = is->search_string[i];
         if (!(v & FOUND_TAG)) {
             if ((q - buf) < ((int)sizeof(buf) - 10)) {
@@ -4997,7 +5030,7 @@ static void isearch_key(void *opaque, int ch)
     EditState *s = is->s;
     int i, j;
 
-    switch(ch) {
+    switch (ch) {
     case KEY_BACKSPACE:
         if (is->pos > 0)
             is->pos--;
@@ -6031,38 +6064,78 @@ int find_resource_file(char *path, int path_size, const char *pattern)
  * displayed as a popup upon start.
  */
 
+int expect_token(const char **pp, int tok)
+{
+    skip_spaces(pp);
+    if (**pp == tok) {
+	++*pp;
+	skip_spaces(pp);
+	return 1;
+    } else {
+	put_status(NULL, "'%c' expected", tok);
+	return 0;
+    }
+}
+
 int parse_config_file(EditState *s, const char *filename)
 {
+    QEmacsState *qs = s->qe_state;
+    QErrorContext ec = qs->ec;
     FILE *f;
     char line[1024], str[1024];
-    char cmd[128], *q, *str1;
+    char cmd[128], *q, *strp;
     const char *p, *r;
     int err, line_num;
     CmdDef *d;
-    int nb_args, c, i, first;
+    int nb_args, c, sep, i, skip;
     void *args[MAX_CMD_ARGS];
     unsigned char args_type[MAX_CMD_ARGS];
 
     f = fopen(filename, "r");
     if (!f)
         return -1;
+    skip = 0;
     err = 0;
     line_num = 0;
     for (;;) {
         if (fgets(line, sizeof(line), f) == NULL)
             break;
         line_num++;
+	qs->ec.filename = filename;
+	qs->ec.function = NULL;
+	qs->ec.lineno = line_num;
+
         p = line;
         skip_spaces(&p);
-        if (p[0] == '\0')
-            continue;
+        if (p[0] == '}') {
+	    /* simplistic 1 level if block skip feature */
+            p++;
+	    skip_spaces(&p);
+	    skip = 0;
+	}
+	if (skip)
+	    continue;
+
         /* skip comments */
+	while (p[0] == '/' && p[1] == '*') {
+	    for (p += 2; *p; p++) {
+		if (*p == '*' && p[1] == '/') {
+		    p += 2;
+		    break;
+		}
+	    }
+	    skip_spaces(&p);
+	}
         if (p[0] == '/' && p[1] == '/')
             continue;
-        if (p[0] == '#')
+        if (p[0] == '\0')
             continue;
 
         get_str(&p, cmd, sizeof(cmd), "(");
+	if (*cmd == '\0') {
+	    put_status(s, "Syntax error");
+            continue;
+	}
         /* transform '_' to '-' */
         q = cmd;
         while (*q) {
@@ -6070,28 +6143,30 @@ int parse_config_file(EditState *s, const char *filename)
                 *q = '-';
             q++;
         }
+	/* simplistic 1 level if block skip feature */
+	if (!strcmp(cmd, "if")) {
+	    if (!expect_token(&p, '('))
+		goto fail;
+	    skip = !strtol(p, (char**)&p, 0);
+	    if (!expect_token(&p, ')') || !expect_token(&p, '{'))
+		goto fail;
+	    continue;
+	}
         /* search for command */
         d = qe_find_cmd(cmd);
         if (!d) {
             err = -1;
-            error_printf("%s:%d: unknown command '%s'\n", 
-                         filename, line_num, cmd);
+            put_status(s, "Unknown command '%s'", cmd);
             continue;
         }
-        skip_spaces(&p);
-
         nb_args = 0;
-        c = '(';
-        if (*p != c)
-            goto expected;
-        p++;
 
         /* first argument is always the window */
         args_type[nb_args++] = CMD_ARG_WINDOW;
 
         /* construct argument type list */
         r = d->name + strlen(d->name) + 1;
-        for(;;) {
+        for (;;) {
             unsigned char arg_type;
             int ret;
 
@@ -6102,8 +6177,7 @@ int parse_config_file(EditState *s, const char *filename)
                 break;
             if (nb_args >= MAX_CMD_ARGS) {
             badcmd:
-		error_printf("%s:%d: badly defined command '%s'\n", 
-			     filename, line_num, cmd);
+                put_status(s, "Badly defined command '%s'", cmd);
                 goto fail;
             }
             args_type[nb_args++] = arg_type;
@@ -6113,9 +6187,12 @@ int parse_config_file(EditState *s, const char *filename)
         for (i = 0; i < nb_args; i++)
             args[i] = NULL;
 
-        if (*p == '(')
-            p++;
-        first = 1;
+	if (!expect_token(&p, '('))
+	    goto fail;
+
+	sep = '\0';
+	strp = str;
+
         for (i = 0; i < nb_args; i++) {
             /* pseudo arguments: skip them */
             switch(args_type[i]) {
@@ -6129,32 +6206,31 @@ int parse_config_file(EditState *s, const char *filename)
             }
             
             skip_spaces(&p);
-            if (!first) {
-                c = ',';
-                if (*p != c) 
-                    goto expected;
-                p++;
-                skip_spaces(&p);
-            }
-            first = 0;
-            
+	    if (sep) {
+		if (!expect_token(&p, sep))
+		    goto fail;
+	    }
+	    sep = ',';
+
             switch (args_type[i]) {
             case CMD_ARG_INT:
 		if (!isdigit(*p)) {
-                    error_printf("%s:%d: number expected\n", 
-				 filename, line_num);
+		    put_status(s, "Number expected for arg %d", i);
                     goto fail;
                 }
                 args[i] = (void *)strtol(p, (char**)&p, 0);
                 break;
             case CMD_ARG_STRING:
                 if (*p != '\"') {
-                    error_printf("%s:%d: string expected\n", 
-				 filename, line_num);
+		    put_status(s, "String expected for arg %d", i);
                     goto fail;
                 }
                 p++;
-                q = str;
+		/* Sloppy parser: all strings will fit in buffer
+		 * because it is the same size as line buffer.
+		 * All config commands must fit on a single line.
+		 */
+                q = strp;
                 while (*p != '\"' && *p != '\0') {
                     c = *p++;
                     if (c == '\\') {
@@ -6168,45 +6244,37 @@ int parse_config_file(EditState *s, const char *filename)
                             break;
                         }
                     }
-                    if ((q - str) < (int)sizeof(str) - 1)
-                        *q++ = c;
+		    *q++ = c;
                 }
                 *q = '\0';
-                if (*p == '\"')
-                    p++;
-                str1 = strdup(str);
-                if (!str1)
-                    goto fail;
-                args[i] = (void *)str1;
+		c = '"';
+		if (*p != c) {
+		    put_status(s, "Unterminated string");
+		    goto fail;
+		}
+		p++;
+                args[i] = (void *)strp;
+		strp = q + 1;
                 break;
             }
         }
         skip_spaces(&p);
         c = ')';
         if (*p != c) {
-        expected:
-	    error_printf("%s:%d: '%c' expected\n", 
-			 filename, line_num, c);
+            put_status(s, "Too many arguments for %s", d->name);
             goto fail;
         }
 
-	/* CG: Should set up a more precise and efficient error
-	 * context in qe_state
-	 */
-	snprintf(s->qe_state->error_context,
-		 sizeof(s->qe_state->error_context),
-		 "%s:%d: %s", filename, line_num, d->name);
+	qs->ec.function = d->name;
         call_func(d->action.func, nb_args, args, args_type);
+	continue;
 
     fail:
-        /* free the arguments */
-        for (i = 0; i < nb_args; i++) {
-            if (args_type[i] == CMD_ARG_STRING) {
-                free(args[i]);
-            }
-        }
+	;
     }
     fclose(f);
+    qs->ec = ec;
+
     return 0;
 }
 
@@ -6232,6 +6300,24 @@ void parse_config(EditState *e, const char *file)
     find_file_close(ffs);
     if (file)
 	do_refresh(e);
+}
+
+/* Load .qerc files in all parent directories of filename */
+/* CG: should keep a cache of failed attempts */
+void do_load_qerc(EditState *e, const char *filename)
+{
+    char buf[MAX_FILENAME_SIZE];
+    char *p = buf;
+
+    for (;;) {
+	pstrcpy(buf, sizeof(buf), filename);
+	p = strchr(p, '/');
+	if (!p)
+	    break;
+	p += 1;
+	pstrcpy(p, buf + sizeof(buf) - p, ".qerc");
+	parse_config_file(e, buf);
+    }
 }
 
 /******************************************************/
@@ -6486,6 +6572,7 @@ static inline void init_all_modules(void)
 
 void load_all_modules(QEmacsState *qs)
 {
+    QErrorContext ec = qs->ec;
     FindFileState *ffs;
     char filename[MAX_FILENAME_SIZE];
     void *h;
@@ -6494,19 +6581,23 @@ void load_all_modules(QEmacsState *qs)
     ffs = find_file_open(qs->res_path, "*.so");
     if (!ffs)
         return;
+
+    qs->ec.function = "load-all-modules";
+
     while (!find_file_next(ffs, filename, sizeof(filename))) {
         h = dlopen(filename, RTLD_LAZY);
         if (!h) {
 	    char *error = dlerror();
-            error_printf("Could not open module '%s': %s\n",
-			 filename, error);
+	    put_status(NULL, "Could not open module '%s': %s",
+		       filename, error);
             continue;
         }
         init_func = dlsym(h, "__qe_module_init");
         if (!init_func) {
             dlclose(h);
-            error_printf("Could not find qemacs initializer in module '%s'\n", 
-			 filename);
+	    put_status(NULL,
+		       "Could not find qemacs initializer in module '%s'", 
+		       filename);
             continue;
         }
         
@@ -6514,6 +6605,7 @@ void load_all_modules(QEmacsState *qs)
         init_func();
     }
     find_file_close(ffs);
+    qs->ec = ec;
 }
 
 #endif
@@ -6548,6 +6640,7 @@ void qe_init(void *opaque)
     }
     qs->macro_key_index = -1; /* no macro executing */
     qs->ungot_key = -1; /* no unget key */
+    qs->ec.function = "qe-init";
     
     eb_init();
     charset_init();
@@ -6588,6 +6681,21 @@ void qe_init(void *opaque)
             is_player = 0;
     }
 
+    /* init of the editor state */
+    qs->screen = &global_screen;
+
+    /* create first buffer */
+    b = eb_new("*scratch*", BF_SAVELOG);
+
+    /* will be positionned by do_refresh() */
+    s = edit_new(b, 0, 0, 0, 0, WF_MODELINE);
+    
+    /* at this stage, no screen is defined. Initialize a
+     * dummy display driver to have a consistent state
+     * else many commands such as put_status would crash.
+     */
+    dummy_dpy.dpy_init(&global_screen, screen_width, screen_height);
+
     /* handle options */
     optind = 1;
     for (;;) {
@@ -6607,7 +6715,8 @@ void qe_init(void *opaque)
                 if (!strcmp(p->name, r + 1)) {
                     if (p->flags & CMD_OPT_ARG) {
                         if (optind >= argc) {
-                            error_printf("cmdline argument expected -- %s\n", r);
+                            put_status(NULL,
+				       "cmdline argument expected -- %s", r);
                             goto next_cmd;
                         }
                         optarg = argv[optind++];
@@ -6631,24 +6740,9 @@ void qe_init(void *opaque)
             }
             p = p->u.next;
         }
-        error_printf("unknown cmdline option -- %s\n", r);
+	put_status(NULL, "unknown cmdline option -- %s", r);
     next_cmd: ;
     }
-
-    /* init of the editor state */
-    qs->screen = &global_screen;
-
-    /* create first buffer */
-    b = eb_new("*scratch*", BF_SAVELOG);
-
-    /* will be positionned by do_refresh() */
-    s = edit_new(b, 0, 0, 0, 0, WF_MODELINE);
-    
-    /* at this stage, no screen is defined. Initialize a
-     * dummy display driver to have a consistent state
-     * else many commands such as put_status would crash.
-     */
-    dummy_dpy.dpy_init(&global_screen, screen_width, screen_height);
 
     parse_config(s, NULL);
 

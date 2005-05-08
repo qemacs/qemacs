@@ -240,14 +240,10 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
     first_prop = NULL;
     last_prop = &first_prop;
     p = props_str;
-    for(;;) {
-        skip_spaces(&p);
+    for (;;) {
+        get_str(&p, property, sizeof(property), ":");
         if (*p == '\0') 
             break;
-        get_str(&p, property, sizeof(property), " :");
-        if (*p == '\0') 
-            break;
-        skip_spaces(&p);
         if (*p == ':')
             p++;
         skip_spaces(&p);
@@ -257,7 +253,8 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
             if (def >= css_properties + NB_PROPERTIES) {
                 css_error1(b, "unsupported property '%s'", property);
                 /* property not found skip it: find next ';' */
-                get_str(&p, buf, sizeof(buf), ";");
+		while (*p && *p != ';')
+		    p++;
                 goto next;
             }
             if (!strcmp(def->name, property))
@@ -299,7 +296,6 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
             if (type & CSS_TYPE_ATTR) {
                 /* attr(x) support */
                 if (strstart(p, "attr(", &p)) {
-                    skip_spaces(&p);
                     get_str(&p, buf, sizeof(buf), ");");
                     if (buf[0] != '\0') {
                         if (*p != ')')
@@ -317,12 +313,10 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
             if (type & CSS_TYPE_COUNTER) {
                 /* counter(x[,type]) support */
                 if (strstart(p, "counter(", &p)) {
-                    skip_spaces(&p);
                     get_str(&p, buf, sizeof(buf), ",);");
                     args[nb_args].u.counter.type = CSS_LIST_STYLE_TYPE_DECIMAL;
                     if (*p == ',') {
                         p++;
-                        skip_spaces(&p);
                         get_str(&p, buf2, sizeof(buf2), ");");
                         val = css_get_enum(buf2, list_style_enum);
                         if (val >= 0)
@@ -336,7 +330,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
                     goto got_val;
                 }
             }
-            get_str(&p, buf, sizeof(buf), " ;");
+            get_str(&p, buf, sizeof(buf), ";");
 
             unit = CSS_UNIT_NONE;
             if (type & CSS_TYPE_AUTO) {
