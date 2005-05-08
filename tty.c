@@ -215,6 +215,11 @@ static void tty_read_handler(void *opaque)
     if (read(0, ts->buf + ts->utf8_index, 1) != 1)
         return;
 
+    if (trace_buffer) {
+        eb_write(trace_buffer, trace_buffer->total_size,
+                 ts->buf + ts->utf8_index, 1);
+    }
+
     /* charset handling */
     if (s->charset == &charset_utf8) {
         if (ts->utf8_state == 0) {
@@ -230,7 +235,7 @@ static void tty_read_handler(void *opaque)
         ch = ts->buf[0];
     }
         
-    switch(ts->input_state) {
+    switch (ts->input_state) {
     case IS_NORM:
         if (ch == '\033')
             ts->input_state = IS_ESC;

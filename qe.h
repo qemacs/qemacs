@@ -511,6 +511,8 @@ typedef struct LogBuffer {
     int size;
 } LogBuffer;
 
+extern EditBuffer *trace_buffer;
+
 void eb_init(void);
 int eb_read(EditBuffer *b, int offset, u8 *buf, int size);
 void eb_write(EditBuffer *b, int offset, u8 *buf, int size);

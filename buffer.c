@@ -453,6 +453,10 @@ EditBuffer *eb_new(const char *name, int flags)
     
     /* add mark move callback */
     eb_add_callback(b, eb_offset_callback, &b->mark);
+
+    if (!strcmp(name, "*trace*"))
+	trace_buffer = b;
+
     return b;
 }
 

@@ -64,6 +64,7 @@ static HistoryEntry *first_history = NULL;
 static QEditScreen global_screen;
 static int screen_width = 0;
 static int screen_height = 0;
+EditBuffer *trace_buffer;
 
 /* mode handling */
 
