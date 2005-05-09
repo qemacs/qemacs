@@ -54,6 +54,7 @@ typedef struct ShellState {
     int esc_params[MAX_ESC_PARAMS];
     int nb_esc_params;
     int state;
+    int shifted;
     EditBuffer *b;
     EditBuffer *b_color; /* color buffer, one byte per char */
     int is_shell; /* only used to display final message */
@@ -233,6 +234,7 @@ void tty_csi_m(ShellState *s, int c)
 /* Well, almost a hack to update cursor */
 static void tty_update_cursor(ShellState *s)
 {
+#if 0
     QEmacsState *qs = s->qe_state;
     EditState *e;
 
@@ -244,6 +246,17 @@ static void tty_update_cursor(ShellState *s)
             e->offset = s->cur_offset;
         }
     }
+#endif
+}
+
+/* CG: much cleaner way! */
+/* would need a kill hook as well ? */
+static void shell_display_hook(EditState *e)
+{
+    ShellState *s = e->b->priv_data;
+
+    if (e->interactive)
+	e->offset = s->cur_offset;
 }
 
 static void tty_emulate(ShellState *s, int c)
@@ -288,6 +301,14 @@ static void tty_emulate(ShellState *s, int c)
                 s->cur_offset = offset1;
             }
             break;
+	case 14:
+	    eb_set_charset(s->b, &charset_8859_1);
+	    s->shifted = 1;
+	    break;
+	case 15:
+	    eb_set_charset(s->b, &charset_cp1125);
+	    s->shifted = 0;
+	    break;
         case 27:
             s->state = TTY_STATE_ESC;
             break;
@@ -317,7 +338,7 @@ static void tty_emulate(ShellState *s, int c)
         break;
     case TTY_STATE_ESC:
         if (c == '[') {
-            for(i=0;i<MAX_ESC_PARAMS;i++)
+            for (i = 0; i < MAX_ESC_PARAMS; i++)
                 s->esc_params[i] = 0;
             s->nb_esc_params = 0;
             s->state = TTY_STATE_CSI;
@@ -663,12 +684,19 @@ void shell_move_left_right(EditState *e, int dir)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-        if (dir > 0)
-            tty_write(s, "\033[C", -1);
-        else
-            tty_write(s, "\033[D", -1);
+	tty_write(s, dir > 0 ? "\033[C" : "\033[D", -1);
     } else {
         text_move_left_right_visual(e, dir);
+    }
+}
+
+void shell_move_word_left_right(EditState *e, int dir)
+{
+    if (e->interactive) {
+        ShellState *s = e->b->priv_data;
+	tty_write(s, dir > 0 ? "\033f" : "\033b", -1);
+    } else {
+        text_move_word_left_right(e, dir);
     }
 }
 
@@ -676,23 +704,26 @@ void shell_move_up_down(EditState *e, int dir)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-
-        if (dir > 0)
-            tty_write(s, "\033[B", -1);
-        else
-            tty_write(s, "\033[A", -1);
+	tty_write(s, dir > 0 ? "\033[B" : "\033[A", -1);
     } else {
         text_move_up_down(e, dir);
     }
+}
+
+void shell_scroll_up_down(EditState *e, int dir)
+{
+    ShellState *s = e->b->priv_data;
+
+    e->interactive = 0;
+    text_scroll_up_down(e, dir);
+    e->interactive = (e->offset == s->cur_offset);
 }
 
 void shell_move_bol(EditState *e)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-        unsigned char ch;
-        ch = 1;
-        tty_write(s, &ch, 1);
+	tty_write(s, "\001", -1); /* Control-A */
     } else {
         text_move_bol(e);
     }
@@ -702,9 +733,7 @@ void shell_move_eol(EditState *e)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-        unsigned char ch;
-        ch = 5;
-        tty_write(s, &ch, 1);
+	tty_write(s, "\005", -1); /* Control-E */
     } else {
         text_move_eol(e);
     }
@@ -746,10 +775,12 @@ void shell_write_char(EditState *e, int c)
 void do_shell_toggle_input(EditState *e)
 {
     e->interactive = !e->interactive;
+#if 0
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
         tty_update_cursor(s);
     }
+#endif
 }
 
 static int error_offset = -1;
@@ -916,8 +947,11 @@ static int shell_init(void)
     shell_mode.name = "shell";
     shell_mode.mode_probe = NULL;
     shell_mode.mode_init = shell_mode_init;
+    shell_mode.display_hook = shell_display_hook;
     shell_mode.move_left_right =  shell_move_left_right;
+    shell_mode.move_word_left_right =  shell_move_word_left_right;
     shell_mode.move_up_down =  shell_move_up_down;
+    shell_mode.scroll_up_down =  shell_scroll_up_down;
     shell_mode.move_bol = shell_move_bol;
     shell_mode.move_eol = shell_move_eol;
     shell_mode.write_char =  shell_write_char;

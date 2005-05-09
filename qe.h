@@ -92,7 +92,9 @@ int ustristart(const unsigned int *str, const char *val, const unsigned int **pt
 void css_strtolower(char *buf, int buf_size);
 
 void get_str(const char **pp, char *buf, int buf_size, const char *stop);
+int compose_keys(int *keys, int *nb_keys);
 int strtokey(const char **pp);
+int strtokeys(const char *keystr, unsigned int *keys, int max_keys);
 void keytostr(char *buf, int buf_size, int key);
 int css_define_color(const char *name, const char *value);
 int css_get_color(int *color_ptr, const char *p);
@@ -209,8 +211,32 @@ typedef struct QECharset {
     struct QECharset *next;
 } QECharset;
 
-extern QECharset charset_utf8, charset_8859_1; /* predefined charsets */
 extern QECharset *first_charset;
+extern QECharset charset_utf8, charset_8859_1; /* predefined charsets */
+extern QECharset charset_8859_2;
+extern QECharset charset_cp1125;
+extern QECharset charset_cp737;
+extern QECharset charset_koi8_r;
+extern QECharset charset_8859_4;
+extern QECharset charset_cp1250;
+extern QECharset charset_cp850;
+extern QECharset charset_koi8_u;
+extern QECharset charset_viscii;
+extern QECharset charset_8859_13;
+extern QECharset charset_8859_5;
+extern QECharset charset_cp1251;
+extern QECharset charset_cp852;
+extern QECharset charset_mac_lat2;
+extern QECharset charset_8859_15;
+extern QECharset charset_8859_7;
+extern QECharset charset_cp1257;
+extern QECharset charset_cp866;
+extern QECharset charset_macroman;
+extern QECharset charset_8859_16;
+extern QECharset charset_8859_9;
+extern QECharset charset_cp437;
+extern QECharset charset_kamen;
+extern QECharset charset_tcvn5712;
 
 typedef struct CharsetDecodeState {
     /* 256 ushort table for hyper fast decoding */
@@ -286,50 +312,63 @@ enum QEEventType {
     QE_SELECTION_CLEAR_EVENT, /* request selection clear (X11 type selection) */
 };
 
-#define KEY_META(c) ((c) | 0xe000)
-#define KEY_ESC1(c) ((c) | 0xe100)
-#define KEY_CTRLX(c) ((c) | 0xe200)
+#define KEY_CTRL(c)     ((c) & 0x001f)
+#define KEY_META(c)     ((c) | 0xe000)
+#define KEY_ESC1(c)     ((c) | 0xe100)
+#define KEY_CTRLX(c)    ((c) | 0xe200)
 #define KEY_CTRLXRET(c) ((c) | 0xe300)
-#define KEY_CTRLH(c) ((c) | 0xe500)
-#define KEY_CTRL(c) ((c) & 0x1f)
-#define KEY_UP    KEY_ESC1('A')
-#define KEY_DOWN  KEY_ESC1('B')
-#define KEY_RIGHT KEY_ESC1('C')
-#define KEY_LEFT  KEY_ESC1('D')
-#define KEY_CTRL_UP    KEY_ESC1('a')
-#define KEY_CTRL_DOWN  KEY_ESC1('b')
-#define KEY_CTRL_RIGHT KEY_ESC1('c')
-#define KEY_CTRL_LEFT  KEY_ESC1('d')
-#define KEY_CTRL_HOME  0xe402
-#define KEY_CTRL_END   0xe403
-#define KEY_TAB        KEY_CTRL('i')
-#define KEY_SHIFT_TAB  0xe404
-#define KEY_F1         KEY_ESC1(11)
-#define KEY_F2         KEY_ESC1(12)
-#define KEY_F3         KEY_ESC1(13)
-#define KEY_F4         KEY_ESC1(14)
-#define KEY_F5         KEY_ESC1(15)
-#define KEY_F6         KEY_ESC1(16)
-#define KEY_F7         KEY_ESC1(17)
-#define KEY_F8         KEY_ESC1(18)
-#define KEY_F9         KEY_ESC1(19)
-#define KEY_F10        KEY_ESC1(20)
-#define KEY_F11        KEY_ESC1(21)
-#define KEY_F12        KEY_ESC1(22)
-#define KEY_BACKSPACE 127
-#define KEY_INSERT     KEY_ESC1(2)
-#define KEY_DELETE     KEY_ESC1(3)
-#define KEY_PAGEUP     KEY_ESC1(5)
-#define KEY_PAGEDOWN   KEY_ESC1(6)
-#define KEY_HOME       KEY_ESC1(7)
-#define KEY_END        KEY_ESC1(8)
-#define KEY_REFRESH    KEY_CTRL('l')
-#define KEY_RET        0x000d
-#define KEY_ESC        0x001b
-#define KEY_SPC        0x0020
-#define KEY_NONE       0xffff
-#define KEY_DEFAULT    0xe401 /* to handle all non special keys */
-#define KEY_SPECIAL(c) (((c) >= 0xe000 && (c) < 0xf000) || ((c) >= 0 && (c) < 32))
+#define KEY_CTRLH(c)    ((c) | 0xe500)
+#define KEY_SPECIAL(c)  (((c) >= 0xe000 && (c) < 0xf000) || ((c) >= 0 && (c) < 32))
+
+#define KEY_NONE        0xffff
+#define KEY_TAB         KEY_CTRL('i')
+#define KEY_RET         KEY_CTRL('m')
+#define KEY_REFRESH     KEY_CTRL('l')
+#define KEY_ESC         KEY_CTRL('[')
+#define KEY_SPC         0x0020
+#define KEY_DEL         127		// kbs
+#define KEY_BS          KEY_CTRL('h')	// kbs
+
+#define KEY_DEFAULT     0xe401 /* to handle all non special keys */
+#define KEY_UP          KEY_ESC1('A')	// kcuu1
+#define KEY_DOWN        KEY_ESC1('B')	// kcud1
+#define KEY_RIGHT       KEY_ESC1('C')	// kcuf1
+#define KEY_LEFT        KEY_ESC1('D')	// kcub1
+#define KEY_CTRL_UP     KEY_ESC1('a')
+#define KEY_CTRL_DOWN   KEY_ESC1('b')
+#define KEY_CTRL_RIGHT  KEY_ESC1('c')
+#define KEY_CTRL_LEFT   KEY_ESC1('d')
+#define KEY_CTRL_END    KEY_ESC1('f')
+#define KEY_CTRL_HOME   KEY_ESC1('h')
+#define KEY_CTRL_PAGEUP KEY_ESC1('i')
+#define KEY_CTRL_PAGEDOWN KEY_ESC1('j')
+#define KEY_SHIFT_TAB   KEY_ESC1('Z')	// kcbt
+#define KEY_HOME        KEY_ESC1(1)	// khome
+#define KEY_INSERT      KEY_ESC1(2)	// kich1
+#define KEY_DELETE      KEY_ESC1(3)	// kdch1
+#define KEY_END         KEY_ESC1(4)	// kend
+#define KEY_PAGEUP      KEY_ESC1(5)	// kpp
+#define KEY_PAGEDOWN    KEY_ESC1(6)	// knp
+#define KEY_F1          KEY_ESC1(11)
+#define KEY_F2          KEY_ESC1(12)
+#define KEY_F3          KEY_ESC1(13)
+#define KEY_F4          KEY_ESC1(14)
+#define KEY_F5          KEY_ESC1(15)
+#define KEY_F6          KEY_ESC1(17)
+#define KEY_F7          KEY_ESC1(18)
+#define KEY_F8          KEY_ESC1(19)
+#define KEY_F9          KEY_ESC1(20)
+#define KEY_F10         KEY_ESC1(21)
+#define KEY_F11         KEY_ESC1(23)
+#define KEY_F12         KEY_ESC1(24)
+#define KEY_F13         KEY_ESC1(25)
+#define KEY_F14         KEY_ESC1(26)
+#define KEY_F15         KEY_ESC1(28)
+#define KEY_F16         KEY_ESC1(29)
+#define KEY_F17         KEY_ESC1(31)
+#define KEY_F18         KEY_ESC1(32)
+#define KEY_F19         KEY_ESC1(33)
+#define KEY_F20         KEY_ESC1(34)
 
 typedef struct QEKeyEvent {
     enum QEEventType type;
@@ -698,6 +737,7 @@ typedef struct EditState {
                  produce the display */
     int display_invalid; /* true if the display was invalidated. Full
                             redraw should be done */
+    int borders_invalid; /* true if window borders should be redrawn */
     int show_selection;  /* if true, the selection is displayed */
     /* display area info */
     int width, height;
@@ -838,8 +878,10 @@ typedef struct QEmacsState {
     int separator_width;
     /* full screen state */
     int hide_status; /* true if status should be hidden */
+    int complete_refresh;
     int is_full_screen;
     /* commands */
+    int flag_split_window_change_focus;
     void *last_cmd_func; /* last executed command function call */
     /* keyboard macros */
     int defining_macro;
@@ -1082,6 +1124,8 @@ void do_find_window(EditState *s, int key);
 
 /* window handling */
 void edit_close(EditState *s);
+void edit_detach(EditState *s);
+void edit_append(EditState *s, EditState *e);
 EditState *edit_new(EditBuffer *b,
                     int x1, int y1, int width, int height, int flags);
 void do_refresh(EditState *s);
@@ -1106,6 +1150,7 @@ void do_char(EditState *s, int key);
 void do_switch_to_buffer(EditState *s, const char *bufname);;
 void do_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data);
 void text_move_left_right_visual(EditState *s, int dir);
+void text_move_word_left_right(EditState *s, int dir);
 void text_move_up_down(EditState *s, int dir);
 void text_scroll_up_down(EditState *s, int dir);
 void text_write_char(EditState *s, int key);

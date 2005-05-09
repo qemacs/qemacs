@@ -102,6 +102,7 @@ typedef struct QEDisplay {
                          int x, int y, int w, int h);
     void (*dpy_selection_activate)(QEditScreen *s);
     void (*dpy_selection_request)(QEditScreen *s);
+    void (*dpy_invalidate)(void);
     /* bitmap support */
     int (*dpy_bmp_alloc)(QEditScreen *s, QEBitmap *b);
     void (*dpy_bmp_free)(QEditScreen *s, QEBitmap *b);

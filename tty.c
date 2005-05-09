@@ -41,6 +41,7 @@ enum InputState {
     IS_NORM,
     IS_ESC,
     IS_CSI,
+    IS_CSI2,
     IS_ESC2,
 };
 
@@ -103,6 +104,7 @@ static int term_init(QEditScreen *s, int w, int h)
     s->charset = &charset_8859_1;
 
 #ifndef CONFIG_CYGWIN
+    /* CG: Should also have a command line switch */
     /* test UTF8 support by looking at the cursor position (idea from
        Ricardas Cepas <rch@pub.osf.lt>). Since uClibc actually tests
        to ensure that the format string is a valid multibyte sequence
@@ -197,6 +199,11 @@ static void tty_resize(int sig)
     s->clip_y2 = s->height;
 }
 
+static void term_invalidate(void)
+{
+    tty_resize(0);
+}
+
 static void term_cursor_at(QEditScreen *s, int x1, int y1, int w, int h)
 {
     TTYState *ts = s->private;
@@ -219,6 +226,44 @@ static int term_is_user_input_pending(QEditScreen *s)
         return 0;
 }
 
+static int const csi_lookup[] = {
+    KEY_NONE,   /* 0 */
+    KEY_HOME,   /* 1 */
+    KEY_INSERT, /* 2 */
+    KEY_DELETE, /* 3 */
+    KEY_END,    /* 4 */
+    KEY_PAGEUP, /* 5 */
+    KEY_PAGEDOWN, /* 6 */
+    KEY_NONE,   /* 7 */
+    KEY_NONE,   /* 8 */
+    KEY_NONE,   /* 9 */
+    KEY_NONE,   /* 10 */
+    KEY_F1,     /* 11 */
+    KEY_F2,     /* 12 */
+    KEY_F3,     /* 13 */
+    KEY_F4,     /* 14 */
+    KEY_F5,     /* 15 */
+    KEY_NONE,   /* 16 */
+    KEY_F6,     /* 17 */
+    KEY_F7,     /* 18 */
+    KEY_F8,     /* 19 */
+    KEY_F9,     /* 20 */
+    KEY_F10,    /* 21 */
+    KEY_NONE,   /* 22 */
+    KEY_F11,    /* 23 */
+    KEY_F12,    /* 24 */
+    KEY_F13,    /* 25 */
+    KEY_F14,    /* 26 */
+    KEY_NONE,   /* 27 */
+    KEY_F15,    /* 28 */
+    KEY_F16,    /* 29 */
+    KEY_NONE,   /* 30 */
+    KEY_F17,    /* 31 */
+    KEY_F18,    /* 32 */
+    KEY_F19,    /* 33 */
+    KEY_F20,    /* 34 */
+};
+
 static void tty_read_handler(void *opaque)
 {
     QEditScreen *s = opaque;
@@ -232,6 +277,13 @@ static void tty_read_handler(void *opaque)
     if (trace_buffer) {
         eb_write(trace_buffer, trace_buffer->total_size,
                  ts->buf + ts->utf8_index, 1);
+#if 0
+        ch = ts->buf[ts->utf8_index];
+        if (ch < 32 || ch == 127)
+            fprintf(stderr, "got %d '^%c'\n", ch, ('@' + ch) & 127);
+        else
+            fprintf(stderr, "got %d '%c'\n", ch, ch);
+#endif
     }
 
     /* charset handling */
@@ -257,6 +309,10 @@ static void tty_read_handler(void *opaque)
             goto the_end;
         break;
     case IS_ESC:
+        if (ch == '\033') {
+            /* cygwin A-right transmit ESC ESC[C ... */
+            goto the_end;
+        }
         if (ch == '[') {
             ts->input_state = IS_CSI;
             ts->input_param = 0;
@@ -269,42 +325,81 @@ static void tty_read_handler(void *opaque)
         }
         break;
     case IS_CSI:
-        if (!isdigit(ch)) {
-            ts->input_state = IS_NORM;
-            switch(ch) {
-            case '~':
-                ch = KEY_ESC1(ts->input_param);
-                goto the_end;
-            case 'H':
-                ch = KEY_HOME;
-                goto the_end;
-            case 'F':
-                ch = KEY_END;
-                goto the_end;
-            case 'Z':
-                ch = KEY_SHIFT_TAB;
-                goto the_end;
-            default:
-                /* xterm CTRL-arrows */
-                if (ts->input_param == 5 && ch >= 'A' && ch <= 'D')
-                    ch += 'a' - 'A';
-                ch = KEY_ESC1(ch);
+        if (isdigit(ch)) {
+            ts->input_param = ts->input_param * 10 + ch - '0';
+            break;
+        }
+        ts->input_state = IS_NORM;
+        switch(ch) {
+        case '[':
+            ts->input_state = IS_CSI2;
+            break;
+        case '~':
+            if (ts->input_param < sizeof(csi_lookup)/sizeof(csi_lookup[0])) {
+                ch = csi_lookup[ts->input_param];
                 goto the_end;
             }
-        } else {
-            ts->input_param = ts->input_param * 10 + ch - '0';
+            break;
+            /* All these for ansi|cygwin */
+        case 'A': ch = KEY_UP; goto the_end;    // kcuu1
+        case 'B': ch = KEY_DOWN; goto the_end;  // kcud1
+        case 'C': ch = KEY_RIGHT; goto the_end; // kcuf1
+        case 'D': ch = KEY_LEFT; goto the_end;  // kcub1
+        case 'F': ch = KEY_END; goto the_end;   // kend
+        //case 'G': ch = KEY_CENTER; goto the_end;    // kb2
+        case 'H': ch = KEY_HOME; goto the_end;  // khome
+        case 'L': ch = KEY_INSERT; goto the_end;        // kich1
+        //case 'M': ch = KEY_MOUSE; goto the_end;     // kmous
+        case 'Z': ch = KEY_SHIFT_TAB; goto the_end;     // kcbt
+        default:
+#if 0           /* xterm CTRL-arrows */
+            if (ts->input_param == 5) {
+                switch (ch) {
+                case 'A': ch = KEY_CTRL_UP; goto the_end;
+                case 'B': ch = KEY_CTRL_DOWN; goto the_end;
+                case 'C': ch = KEY_CTRL_RIGHT; goto the_end;
+                case 'D': ch = KEY_CTRL_LEFT; goto the_end;
+                }
+            }
+#endif
+            break;
         }
         break;
-    case IS_ESC2:
-        /* xterm fn */
+    case IS_CSI2:
+        /* cygwin/linux terminal */
         ts->input_state = IS_NORM;
-        if (ch >= 'P' && ch <= 'S') {
-            ch = KEY_F1 + ch - 'P';
-        the_end:
-            ev->key_event.type = QE_KEY_EVENT;
-            ev->key_event.key = ch;
-            qe_handle_event(ev);
+        switch(ch) {
+        case 'A': ch = KEY_F1; goto the_end;
+        case 'B': ch = KEY_F2; goto the_end;
+        case 'C': ch = KEY_F3; goto the_end;
+        case 'D': ch = KEY_F4; goto the_end;
+        case 'E': ch = KEY_F5; goto the_end;
         }
+        break;
+    case IS_ESC2:       // "\EO"
+        /* xterm/vt100 fn */
+        ts->input_state = IS_NORM;
+        switch(ch) {
+        case 'A': ch = KEY_UP; goto the_end;
+        case 'B': ch = KEY_DOWN; goto the_end;
+        case 'C': ch = KEY_RIGHT; goto the_end;
+        case 'D': ch = KEY_LEFT; goto the_end;
+        case 'P': ch = KEY_F1; goto the_end;
+        case 'Q': ch = KEY_F2; goto the_end;
+        case 'R': ch = KEY_F3; goto the_end;
+        case 'S': ch = KEY_F4; goto the_end;
+        case 't': ch = KEY_F5; goto the_end;
+        case 'u': ch = KEY_F6; goto the_end;
+        case 'v': ch = KEY_F7; goto the_end;
+        case 'l': ch = KEY_F8; goto the_end;
+        case 'w': ch = KEY_F9; goto the_end;
+        case 'x': ch = KEY_F10; goto the_end;
+        }
+        break;
+    the_end:
+        ev->key_event.type = QE_KEY_EVENT;
+        ev->key_event.key = ch;
+        qe_handle_event(ev);
         break;
     }
 }
@@ -577,6 +672,7 @@ static QEDisplay tty_dpy = {
     term_set_clip,
     NULL, /* no selection handling */
     NULL, /* no selection handling */
+    term_invalidate,
 };
 
 static int tty_init(void)

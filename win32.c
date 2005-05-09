@@ -268,7 +268,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             switch(scan) {
             case 0x00E:
                 ignore_wchar_msg = 1;
-                push_key(KEY_BACKSPACE);
+                push_key(KEY_DEL);
                 break;
             case 0x039: /* space */
                 ignore_wchar_msg = 1;

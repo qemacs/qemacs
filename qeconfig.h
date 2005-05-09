@@ -16,10 +16,10 @@ CmdDef basic_commands[] = {
     CMD1( KEY_CTRL('z'), KEY_NONE, "scroll-up-one", do_scroll_up_down, 1 )
     CMD0( KEY_HOME, KEY_CTRL('a'), "beginning-of-line", do_bol)
     CMD0( KEY_END, KEY_CTRL('e'), "end-of-line", do_eol)
-    CMD0( KEY_ESC1(2), KEY_NONE, "overwrite-mode", do_insert)
+    CMD0( KEY_INSERT, KEY_NONE, "overwrite-mode", do_insert)
     CMD0( KEY_CTRL('d'), KEY_DELETE, "delete-char", do_delete_char)
     CMD0( 127, KEY_NONE, "backward-delete-char", do_backspace)
-    CMD1( KEY_META(KEY_BACKSPACE) , KEY_NONE, 
+    CMD1( KEY_META(KEY_DEL) , KEY_META(KEY_BS), 
           "backward-delete-word", do_delete_word, -1)
     CMD1( KEY_META('d') , KEY_NONE, "delete-word", do_delete_word, 1)
     CMD1( KEY_CTRL('k'), KEY_NONE, "kill-line", do_kill_region, 2 )
@@ -59,7 +59,7 @@ CmdDef basic_commands[] = {
 	  "s{Query replace: }|search|s{With: }|replace|")
     CMD0( KEY_CTRLX('u'), KEY_CTRL('_'), "undo", do_undo)
     CMD0( KEY_RET, KEY_NONE, "newline", do_return)
-    CMD0( KEY_CTRL('l'), KEY_NONE, "refresh", do_refresh)
+    CMD0( KEY_CTRL('l'), KEY_NONE, "refresh", do_refresh_complete)
     CMD_( KEY_META('g'), KEY_NONE, "goto-line", do_goto_line, "i{Goto line: }")
     CMD_( KEY_NONE, KEY_NONE, "goto-char", do_goto_char, "i{Goto char: }")
     CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE, "vc-toggle-read-only", 
@@ -80,8 +80,10 @@ CmdDef basic_commands[] = {
     CMD0( KEY_CTRLX('('), KEY_NONE, "start-kbd-macro", do_start_macro)
     CMD0( KEY_CTRLX(')'), KEY_NONE, "end-kbd-macro", do_end_macro)
     CMD0( KEY_CTRLX('e'), KEY_NONE, "call-last-kbd-macro", do_call_macro)
+    CMD_( KEY_NONE, KEY_NONE, "define-kbd-macro", do_define_kbd_macro,
+	  "s{Macro name: }[command]s{Macro keys: }s{Bind to key: }[key]")
     CMD_( KEY_NONE, KEY_NONE, "global-set-key", do_global_set_key,
-	  "s{Set key globally: }s{command: }[command]|command|")
+	  "s{Set key globally: }[key]s{command: }[command]|command|")
 
     /* window handling */
     CMD0( KEY_CTRLX('o'), KEY_NONE, "other-window", do_other_window)
@@ -106,7 +108,7 @@ CmdDef basic_commands[] = {
     /* help */
     CMD0( KEY_CTRLH(KEY_CTRL('h')), KEY_F1, "help-for-help", do_help_for_help)
     CMD0( KEY_CTRLH('b'), KEY_NONE, "describe-bindings", do_describe_bindings)
-    CMD0( KEY_CTRLH('c'), KEY_NONE, "describe-key-briefly", 
+    CMD0( KEY_CTRLH('c'), KEY_CTRLH('k'), "describe-key-briefly", 
           do_describe_key_briefly)
 
     /* international */

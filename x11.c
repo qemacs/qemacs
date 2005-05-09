@@ -1285,7 +1285,7 @@ static void x11_handle_event(void *opaque)
             } else if (meta) {
                 switch(keysym) {
                 case XK_BackSpace:
-                    key = KEY_META(KEY_BACKSPACE);
+                    key = KEY_META(KEY_DEL);
                     goto got_key;
                 default:
                     if (keysym >= ' ' && keysym <= '~') {
@@ -1323,7 +1323,7 @@ static void x11_handle_event(void *opaque)
                     key = KEY_LEFT;
                     goto got_key;
                 case XK_BackSpace:
-                    key = KEY_BACKSPACE;
+                    key = KEY_DEL;
                     goto got_key;
                 case XK_Insert:
                     key = KEY_INSERT;
@@ -1676,6 +1676,7 @@ static QEDisplay x11_dpy = {
     term_set_clip,
     term_selection_activate,
     term_selection_request,
+    NULL,
     x11_bmp_alloc,
     x11_bmp_free,
     x11_bmp_draw,

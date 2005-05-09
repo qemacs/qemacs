@@ -466,64 +466,95 @@ int css_get_enum(const char *str, const char *enum_str)
 }
 
 unsigned short keycodes[] = {
-    KEY_LEFT,
-    KEY_RIGHT,
-    KEY_UP,
-    KEY_DOWN,
-    KEY_CTRL_LEFT,
-    KEY_CTRL_RIGHT,
-    KEY_CTRL_UP,
-    KEY_CTRL_DOWN,
-    KEY_CTRL_HOME,
-    KEY_CTRL_END,
-    KEY_CTRL(' '),
-    KEY_CTRL('\\'),
-    KEY_CTRL(']'),
-    KEY_CTRL('^'),
-    KEY_CTRL('_'),
-    KEY_BACKSPACE,
-    KEY_INSERT,
-    KEY_DELETE, 
-    KEY_PAGEUP,
-    KEY_PAGEDOWN,
-    KEY_HOME,
-    KEY_END,
-    ' ',
-    KEY_RET,
-    KEY_ESC,
-    KEY_TAB,
-    KEY_SHIFT_TAB,
-    KEY_DEFAULT,
+    KEY_SPC, KEY_DEL, KEY_RET, KEY_ESC, KEY_TAB, KEY_SHIFT_TAB,
+    KEY_CTRL(' '), KEY_DEL, KEY_CTRL('\\'),
+    KEY_CTRL(']'), KEY_CTRL('^'), KEY_CTRL('_'),
+    KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN,
+    KEY_HOME, KEY_END, KEY_PAGEUP, KEY_PAGEDOWN,
+    KEY_CTRL_LEFT, KEY_CTRL_RIGHT, KEY_CTRL_UP, KEY_CTRL_DOWN,
+    KEY_CTRL_HOME, KEY_CTRL_END, KEY_CTRL_PAGEUP, KEY_CTRL_PAGEDOWN,
+    KEY_PAGEUP, KEY_PAGEDOWN, KEY_CTRL_PAGEUP, KEY_CTRL_PAGEDOWN,
+    KEY_INSERT, KEY_DELETE, KEY_DEFAULT,
+    KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5,
+    KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10,
+    KEY_F11, KEY_F12, KEY_F13, KEY_F14, KEY_F15,
+    KEY_F16, KEY_F17, KEY_F18, KEY_F19, KEY_F20,
 };
 
 const char *keystr[] = {
+    "SPC", "DEL", "RET", "ESC", "TAB", "S-TAB",
+    "C-SPC", "C-?", "C-\\", "C-]", "C-^", "C-_",
     "left", "right", "up", "down",
-    "C-left", "C-right", "C-up", "C-down", 
-    "C-home", "C-end",
-    "C-space", "C-\\", "C-]", "C-^", "C-_",
-    "backspace", "insert", "delete", "prior", "next",
-    "home", "end",
-    "SPC", "RET", "ESC",
-    "TAB", "S-TAB",
-    "default",
+    "home", "end", "prior", "next",
+    "C-left", "C-right", "C-up", "C-down",
+    "C-home", "C-end", "C-prior", "C-next",
+    "pageup", "pagedown", "C-pageup", "C-pagedown", 
+    "insert", "delete", "default",
+    "f1", "f2", "f3", "f4", "f5",
+    "f6", "f7", "f8", "f9", "f10",
+    "f11", "f12", "f13", "f14", "f15",
+    "f16", "f17", "f18", "f19", "f20",
 };
 
-static int strtokey1(const char *p)
+int compose_keys(int *keys, int *nb_keys)
 {
-    int i, n;
+    int *keyp;
 
-    for (i = 0; i < (int)(sizeof(keycodes)/sizeof(keycodes[0])); i++) {
-        if (!strcmp(p, keystr[i]))
-            return keycodes[i];
+    if (*nb_keys < 2)
+        return 0;
+
+    /* compose KEY_ESC as META prefix */
+    keyp = keys + *nb_keys - 2;
+    if (keyp[0] == KEY_ESC) {
+        if (keyp[1] <= 0xff) {
+            keyp[0] = KEY_META(keyp[1]);
+            --*nb_keys;
+            return 1;
+        }
     }
+    return 0;
+}
+
+/* CG: this code is still quite inelegant */
+static int strtokey1(const char **pp)
+{
+    const char *p, *p1, *q;
+    int i, key;
+
+    /* should return KEY_NONE at end and KEY_UNKNOWN if unrecognized */
+    p = *pp;
+
+    /* scan for separator */
+    for (p1 = p; *p1 && *p1 != ' '; p1++)
+        continue;
+
+    for (i = 0; i < sizeof(keycodes)/sizeof(keycodes[0]); i++) {
+        if (strstart(p, keystr[i], &q) && q == p1) {
+            key = keycodes[i];
+            *pp = p1;
+            return key;
+        }
+    }
+#if 0
     if (p[0] == 'f' && p[1] >= '1' && p[1] <= '9') {
-        p++;
-        n = *p - '0';
-        if (isdigit((unsigned char)p[1]))
-            n = n * 10 + p[1] - '0';
-        return KEY_F1 + n - 1;
+        i = p[1] - '0';
+        p += 2;
+        if (p1 == isdigit((unsigned char)*p))
+            i = i * 10 + *p++ - '0';
+        key = KEY_F1 + i - 1;
+        *pp = p1;
+        return key;
     }
-    return utf8_decode(&p);
+#endif
+    if (p[0] == 'C' && p[1] == '-' && p1 == p + 3) {
+        /* control */
+        key = KEY_CTRL(p[2]);
+    } else {
+        key = utf8_decode(&p);
+    }
+    *pp = p1;
+
+    return key;
 }
 
 int strtokey(const char **pp)
@@ -531,27 +562,40 @@ int strtokey(const char **pp)
     const char *p;
     int key;
 
-    /* XXX: handle all cases */
     p = *pp;
-    if (p[0] == 'C' && p[1] == '-') {
-        /* control */
+    if (p[0] == 'M' && p[1] == '-') {
         p += 2;
-        key = strtokey1(p);
-        if (key >= 'a' && key <= 'z')
-            key = KEY_CTRL(key);
-    } else if (p[0] == 'M' && p[1] == '-') { 
-        p += 2;
-        key = strtokey1(p);
-        if ((key >= 'a' && key <= 'z') ||
-            key == KEY_BACKSPACE)
-            key = KEY_META(key);
+        key = KEY_META(strtokey1(&p));
+    } else
+    if (p[0] == 'C' && p[1] == '-' && p[0] == 'M' && p[1] == '-') {
+        p += 4;
+        key = KEY_META(KEY_CTRL(strtokey1(&p)));
     } else {
-        key = strtokey1(p);
+        key = strtokey1(&p);
     }
-    while (*p != ' ' && *p != '\0')
-        p++;
     *pp = p;
     return key;
+}
+
+int strtokeys(const char *keystr, unsigned int *keys, int max_keys)
+{
+    int key, nb_keys;
+    const char *p;
+
+    p = keystr;
+    nb_keys = 0;
+
+    for (;;) {
+        skip_spaces(&p);
+        if (*p == '\0')
+            break;
+        key = strtokey(&p);
+        keys[nb_keys++] = key;
+        compose_keys(keys, &nb_keys);
+        if (nb_keys >= max_keys)
+            break;
+    }
+    return nb_keys;
 }
 
 void keytostr(char *buf, int buf_size, int key)
@@ -565,18 +609,21 @@ void keytostr(char *buf, int buf_size, int key)
             return;
         }
     }
-    if (key >= KEY_META(' ') && key <= KEY_META(127)) {
+    if (key >= KEY_META(0) && key <= KEY_META(0xff)) {
         keytostr(buf1, sizeof(buf1), key & 0xff);
         snprintf(buf, buf_size, "M-%s", buf1);
-    } else if (key >= 1 && key <= 31) {
+    } else if (key >= KEY_CTRL('a') && key <= KEY_CTRL('z')) {
         snprintf(buf, buf_size, "C-%c", key + 'a' - 1);
-    } else if (key >= KEY_F1 && key <= KEY_F12) {
-        snprintf(buf, buf_size, "F%d", key - KEY_F1 + 1);
+    } else if (key >= KEY_F1 && key <= KEY_F20) {
+        snprintf(buf, buf_size, "f%d", key - KEY_F1 + 1);
+    } else if (key > 32 && key < 127 && buf_size >= 2) {
+        buf[0] = key;
+        buf[1] = '\0';
     } else {
         char *q;
-        /* CG: assuming buf_size > 5 */
-        q = utf8_encode(buf, key);
+        q = utf8_encode(buf1, key);
         *q = '\0';
+        pstrcpy(buf, buf_size, buf1);
     }
 }
 

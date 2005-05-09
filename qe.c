@@ -329,22 +329,14 @@ void command_completion(StringArray *cs, const char *input)
 
 void do_global_set_key(EditState *s, const char *keystr, const char *cmd_name)
 {
-    int key, nb_keys;
+    int nb_keys;
     unsigned int keys[MAX_KEYS];
-    const char *p;
     CmdDef *d;
 
-    p = keystr;
-    nb_keys = 0;
-    for(;;) {
-        skip_spaces(&p);
-        if (*p == '\0')
-            break;
-        key = strtokey(&p);
-        keys[nb_keys++] = key;
-        if (nb_keys >= MAX_KEYS)
-            break;
-    }
+    nb_keys = strtokeys(keystr, keys, MAX_KEYS);
+    if (!nb_keys)
+	return;
+
     d = qe_find_cmd(cmd_name);
     if (!d)
         return;
@@ -1681,6 +1673,7 @@ void do_insert_file(EditState *s, const char *filename);
 void do_save(EditState *s, int save_as);
 void do_isearch(EditState *s, int dir);
 void do_refresh(EditState *s);
+void do_refresh_complete(EditState *s);
 
 /* compute string for the first part of the mode line (flags,
    filename, modename) */
@@ -1764,6 +1757,45 @@ void display_mode_line(EditState *s)
                           buf, QE_STYLE_MODE_LINE);
             strcpy(s->modeline_shadow, buf);
         }
+    }
+}
+
+void display_window_borders(EditState *e)
+{
+    QEmacsState *qs = e->qe_state;
+
+    if (e->borders_invalid) {
+	if (e->flags & (WF_POPUP | WF_RSEPARATOR)) {
+	    CSSRect rect;
+	    QEColor color;
+
+	    rect.x1 = 0;
+	    rect.y1 = 0;
+	    rect.x2 = qs->width;
+	    rect.y2 = qs->height;
+	    set_clip_rectangle(qs->screen, &rect);
+	    color = qe_styles[QE_STYLE_WINDOW_BORDER].bg_color;
+	    if (e->flags & WF_POPUP) {
+		fill_rectangle(qs->screen, 
+			       e->x1, e->y1, 
+			       qs->border_width, e->y2 - e->y1, color);
+		fill_rectangle(qs->screen, 
+			       e->x2 - qs->border_width, e->y1, 
+			       qs->border_width, e->y2 - e->y1, color);
+		fill_rectangle(qs->screen, 
+			       e->x1, e->y1, 
+			       e->x2 - e->x1, qs->border_width, color);
+		fill_rectangle(qs->screen, 
+			       e->x1, e->y2 - qs->border_width, 
+			       e->x2 - e->x1, qs->border_width, color);
+	    }
+	    if (e->flags & WF_RSEPARATOR) {
+		fill_rectangle(qs->screen, 
+			       e->x2 - qs->separator_width, e->y1, 
+			       qs->separator_width, e->y2 - e->y1, color);
+	    }
+	}
+	e->borders_invalid = 0;
     }
 }
 
@@ -3320,6 +3352,7 @@ void window_display(EditState *s)
     s->mode->display(s);
 
     display_mode_line(s);
+    display_window_borders(s);
 }
 
 /* display all windows */
@@ -3335,23 +3368,34 @@ void edit_display(QEmacsState *qs)
 	    s->mode->display_hook(s);
     }
 
-    /* first display popups and minibuf */
+    /* count popups */
+    /* CG: maybe a separate list for popups? */
     has_popups = 0;
     for (s = qs->first_window; s != NULL; s = s->next_window) {
         if (s->flags & WF_POPUP) {
-            window_display(s);
             has_popups = 1;
-        } else if (s->minibuf) {
-            window_display(s);
         }
     }
 
-    if (!has_popups) {
-        for(s = qs->first_window; s != NULL; s = s->next_window) {
-            if (!s->minibuf)
-                window_display(s);
-        }
+    /* refresh normal windows and minibuf with popup kludge */
+    for (s = qs->first_window; s != NULL; s = s->next_window) {
+	if (!(s->flags & WF_POPUP) &&
+	    (s->minibuf || !has_popups || qs->complete_refresh)) {
+	    window_display(s);
+	}
     }
+    /* refresh popups if any */
+    if (has_popups) {
+	for (s = qs->first_window; s != NULL; s = s->next_window) {
+	    if (s->flags & WF_POPUP) {
+		if (qs->complete_refresh)
+		    /* refresh frame */;
+		window_display(s);
+	    }
+	}
+    }
+
+    qs->complete_refresh = 0;
 }
 
 void do_universal_argument(EditState *s)
@@ -3442,6 +3486,46 @@ void do_call_macro(EditState *s)
     }
 }
 
+void do_execute_macro_keys(EditState *s, const char *keys)
+{
+    int key;
+    const char *p;
+
+    p = keys;
+    for (;;) {
+        skip_spaces(&p);
+        if (*p == '\0')
+            break;
+        key = strtokey(&p);
+        qe_key_process(key);
+    }
+}
+
+void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
+			 const char *keystr)
+{
+    CmdDef *def;
+    int size;
+    char *macro_name, *p;
+
+    size = strlen(name) + 1;
+    macro_name = malloc(size + 2);
+    memcpy(macro_name, name, size);
+    p = macro_name + size;
+    *p++ = 'S';
+    *p++ = '\0';
+
+    def = malloc(2 * sizeof(CmdDef));
+    memset(def, 0, sizeof(CmdDef) * 2);
+    def->key = def->alt_key = KEY_NONE;
+    def->name = macro_name;
+    def->action.func = do_execute_macro_keys;
+    def->val = strdup(keystr);
+
+    qe_register_cmd_table(def, NULL);
+    do_global_set_key(s, keystr, name);
+}
+
 #define MACRO_KEY_INCR 64
 
 static void macro_add_key(int key)
@@ -3518,7 +3602,7 @@ static void qe_key_process(int key)
     EditState *s;
     KeyDef *kd;
     CmdDef *d;
-    char buf1[32];
+    char buf1[128];
     int len;
 
     if (qs->defining_macro) {
@@ -3544,14 +3628,14 @@ static void qe_key_process(int key)
 
     /* special case for escape : we transform it as meta so
        that unix users are happy ! */
+    /* CG: should allow for other key compositions, such as
+     *     diacritics, and compositions of more than 2 keys
+     */
     if (key == KEY_ESC) {
         c->is_escape = 1;
         goto next;
     } else if (c->is_escape) {
-        if (c->nb_keys >= 2) {
-            c->nb_keys--;
-            c->keys[c->nb_keys - 1] = KEY_META(key);
-        }
+	compose_keys(c->keys, &c->nb_keys);
         c->is_escape = 0;
     }
 
@@ -3595,8 +3679,15 @@ static void qe_key_process(int key)
                 }
             }
         }
-        qe_key_init();
+	if (!c->describe_key)
+	    /* CG: should beep */;
+
+	put_status(s, "No command on %s", 
+		   keys_to_str(buf1, sizeof(buf1), c->keys, c->nb_keys));
         c->describe_key = 0;
+        qe_key_init();
+	dpy_flush(&global_screen);
+	return;
     } else if (c->nb_keys == kd->nb_keys) {
     exec_cmd:
         d = kd->cmd;
@@ -3615,7 +3706,6 @@ static void qe_key_process(int key)
                 }
             }
             if (c->describe_key) {
-                char buf1[128];
                 put_status(s, "%s runs the command %s", 
                            keys_to_str(buf1, sizeof(buf1), c->keys, c->nb_keys),
                            d->name);
@@ -3632,6 +3722,7 @@ static void qe_key_process(int key)
  next:
     /* display key pressed */
     if (!s->minibuf) {
+	/* Should print argument if any in a more readable way */
         keytostr(buf1, sizeof(buf1), key);
         len = strlen(c->buf);
         if (len >= 1)
@@ -3806,6 +3897,7 @@ static void compute_client_area(EditState *s)
 EditState *edit_new(EditBuffer *b,
                     int x1, int y1, int width, int height, int flags)
 {
+    /* b may be NULL ??? */
     EditState *s;
     QEmacsState *qs = &qe_state;
     
@@ -3827,6 +3919,30 @@ EditState *edit_new(EditBuffer *b,
         qs->active_window = s;
     switch_to_buffer(s, b);
     return s;
+}
+
+/* detach the window from the window tree. */
+void edit_detach(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+    EditState **ep;
+
+    for (ep = &qs->first_window; *ep; ep = &(*ep)->next_window) {
+	if (*ep == s) {
+	    *ep = s->next_window;
+	    s->next_window = NULL;
+	    break;
+	}
+    }
+    if (qs->active_window == s)
+	qs->active_window = qs->first_window;
+}
+
+/* attach the window to the window list. */
+void edit_attach(EditState *s, EditState **ep)
+{
+    s->next_window = *ep;
+    *ep = s;
 }
 
 /* close the edit window. If it is active, find another active
@@ -4222,6 +4338,7 @@ void minibuffer_edit(const char *input, const char *prompt,
 
     s = edit_new(b, 0, qs->screen->height - qs->status_height,
                  qs->screen->width, qs->status_height, 0);
+    /* Should insert at end of window list */
     do_set_mode(s, &minibuffer_mode, NULL);
     s->prompt = strdup(prompt);
     s->minibuf = 1;
@@ -4274,6 +4391,7 @@ void do_less_quit(EditState *s)
     QEmacsState *qs = s->qe_state;
     EditBuffer *b;
 
+    /* CG: should verify that popup_saved_active still exists */
     qs->active_window = popup_saved_active;
     b = s->b;
     edit_close(s);
@@ -5065,7 +5183,8 @@ static void isearch_key(void *opaque, int ch)
     int i, j;
 
     switch (ch) {
-    case KEY_BACKSPACE:
+    case KEY_DEL:
+    case KEY_BS:	/* Should test actual binding of KEY_BS */
         if (is->pos > 0)
             is->pos--;
         break;
@@ -5306,6 +5425,7 @@ static void do_query_replace(EditState *s,
 
 void do_doctor(EditState *s)
 {
+    /* Should show keys? */
     put_status(s, "Hello, how are you ?");
 }
 
@@ -5333,6 +5453,11 @@ void do_refresh(EditState *s1)
     EditState *e;
     int new_status_height, new_mode_line_height, content_height;
     int width, height;
+
+    if (qs->complete_refresh) {
+	if (qs->screen->dpy.dpy_invalidate)
+	    qs->screen->dpy.dpy_invalidate();
+    }
 
     /* recompute various dimensions */
     if (qs->screen->media & CSS_MEDIA_TTY) {
@@ -5396,39 +5521,19 @@ void do_refresh(EditState *s1)
     /* invalidate all the edit windows and draw borders */
     for(e = qs->first_window; e != NULL; e = e->next_window) {
         edit_invalidate(e);
-        if (e->flags & (WF_POPUP | WF_RSEPARATOR)) {
-            CSSRect rect;
-            QEColor color;
-            rect.x1 = 0;
-            rect.y1 = 0;
-            rect.x2 = qs->width;
-            rect.y2 = qs->height;
-            set_clip_rectangle(qs->screen, &rect);
-            color = qe_styles[QE_STYLE_WINDOW_BORDER].bg_color;
-            if (e->flags & WF_POPUP) {
-                fill_rectangle(qs->screen, 
-                               e->x1, e->y1, 
-                               qs->border_width, e->y2 - e->y1, color);
-                fill_rectangle(qs->screen, 
-                               e->x2 - qs->border_width, e->y1, 
-                               qs->border_width, e->y2 - e->y1, color);
-                fill_rectangle(qs->screen, 
-                               e->x1, e->y1, 
-                               e->x2 - e->x1, qs->border_width, color);
-                fill_rectangle(qs->screen, 
-                               e->x1, e->y2 - qs->border_width, 
-                               e->x2 - e->x1, qs->border_width, color);
-            }
-            if (e->flags & WF_RSEPARATOR) {
-                fill_rectangle(qs->screen, 
-                               e->x2 - qs->separator_width, e->y1, 
-                               qs->separator_width, e->y2 - e->y1, color);
-            }
-        }
+	e->borders_invalid = 1;
     }
     /* invalidate status line */
     qs->status_shadow[0] = '\0';
     put_status(NULL, " ");
+}
+
+void do_refresh_complete(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+
+    qs->complete_refresh = 1;
+    do_refresh(s);
 }
 
 void do_other_window(EditState *s)
@@ -5510,6 +5615,8 @@ void do_delete_window(EditState *s, int force)
 	if (e)
 	    compute_client_area(e);
     }
+    if (qs->active_window == s)
+	qs->active_window = e ? e : qs->first_window;
     edit_close(s);
     if (qs->first_window)
 	do_refresh(qs->first_window);
@@ -5539,6 +5646,7 @@ void do_delete_other_windows(EditState *s)
 /* XXX: add minimum size test and refuse to split if reached */
 void do_split_window(EditState *s, int horiz)
 {
+    QEmacsState *qs = s->qe_state;
     EditState *e;
     int x, y;
 
@@ -5564,6 +5672,13 @@ void do_split_window(EditState *s, int horiz)
 	    return;
         s->y2 = y;
     }
+    /* insert in the window list after current window */
+    edit_detach(e);
+    edit_attach(e, &s->next_window);
+
+    if (qs->flag_split_window_change_focus)
+	qs->active_window = e;
+
     compute_client_area(s);
     do_refresh(s);
 }
@@ -5638,7 +5753,7 @@ void do_describe_bindings(EditState *s)
     b->flags |= BF_READONLY;
     if (show) {
         show_popup(b);
-        eb_free(b);
+        //eb_free(b);
     }
 }
 
