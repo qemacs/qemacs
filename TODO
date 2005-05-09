@@ -38,23 +38,15 @@ HTML mode TODO:
 
 - OPTIMIZE eb_nextc et al or always duplicate box content (big speed
   improvement).
-
 - polish end of line offset/cursor displacement support.
-
 - handle implicit TR
-
 - add file referencing (<?xml-stylesheet type="text/css" href="xxx"?>,
   <link>, etc...)
-
 - fix LI numbering with VALUE attribute (cannot use CSS). Verify
   counter-reset semantics.
-
 - (z-index) floats must be displayed after all other stuff.
-
 - <NOBR> is sometimes incorrect.
-
 - more font style synthesis in html2ppm.
-
 - add xml CDATA parsing
 
 Ideas
@@ -67,6 +59,8 @@ Ideas
 - improve dired (file commands, nicer display)
 - rethink mode specific commands -> add inheritance for all commands ?
 - shorter command types handling (suppress ESxxx and use one type per arg)
+- add command help in declarations
+- make command declaration macros standalone
 - dpy_open_font should never return NULL, must have a system font.
 - other coloring modes
 - variables ?
@@ -74,16 +68,16 @@ Ideas
 - expression evaluator
 - dos/mac translation modes
 - minor modes with key override such as "preview" mode
-- redefine KEY_Fx to make them sequential
+NOPE	- redefine KEY_Fx to make them sequential
 - use failsafe memory allocator and longjmp recover.
 - scroll up/down with argument should scroll by screen row.
 - simplify C-z A-z accordingly
-- fix control-h mess
+DONE	- fix control-h mess
 - fix bof/eof shell mode
 - merge hex-mode and ascii mode
 - write-region -> add filename and offsets to save_buffer stuff
-- detect full screen mode in shell buffer and grab all keys until exit
-- fix makefile for html dependencies
+DONE	- detect full screen mode in shell buffer and grab all keys until exit
+DONE	- fix makefile for html dependencies
 - fix configure for missing support: x11 xv png ...
 - add configure --disable-graphics
 - timers for esc key disambiguation
@@ -102,8 +96,8 @@ DONE	- show-point
 - fix column computation based on display properties:
   (variable pitch, tabs, ^x and \uxxxx stuff -- emacs behaviour) ?
 - check X11 connection at probe time
-- allow quoting of special keys : let do_char insert xterm/vt100 key sequence
-  to allow typing special keys into shell process
+DONE	- allow quoting of special keys : let do_char insert xterm/vt100 
+	  key sequence to allow typing special keys into shell process
 - fix scroll up/down to move point if already at end
 - fix terminal size inside shell window ?
 - cmdline arg to force lines and columns to test shell.
