@@ -6707,6 +6707,7 @@ void qe_init(void *opaque)
     register_completion("style", style_completion);
     register_completion("file", file_completion);
     register_completion("buffer", buffer_completion);
+    register_completion("color", color_completion);
     
     minibuffer_init();
     less_mode_init();

@@ -86,11 +86,15 @@ CmdDef basic_commands[] = {
     /* window handling */
     CMD0( KEY_CTRLX('o'), KEY_NONE, "other-window", do_other_window)
     CMD0( KEY_CTRLX('n'), KEY_NONE, "next-window", do_other_window)
-    CMD0( KEY_CTRLX('p'), KEY_NONE, "next-window", do_other_window)
-    CMD0( KEY_CTRL('x'), KEY_UP, "next-window", do_other_window)
-    CMD0( KEY_CTRL('x'), KEY_DOWN, "next-window", do_other_window)
-    CMD0( KEY_CTRL('x'), KEY_LEFT, "next-window", do_other_window)
-    CMD0( KEY_CTRL('x'), KEY_RIGHT, "next-window", do_other_window)
+    CMD0( KEY_CTRLX('p'), KEY_NONE, "previous-window", do_previous_window)
+    CMD1( KEY_CTRL('x'), KEY_UP, "find-window-up", do_find_window,
+	  KEY_UP)
+    CMD1( KEY_CTRL('x'), KEY_DOWN, "find-window-down", do_find_window,
+	  KEY_DOWN)
+    CMD1( KEY_CTRL('x'), KEY_LEFT, "find-window-left", do_find_window,
+	  KEY_LEFT)
+    CMD1( KEY_CTRL('x'), KEY_RIGHT, "find-window-right", do_find_window,
+	  KEY_RIGHT)
     CMD1( KEY_CTRLX('0'), KEY_NONE, "delete-window", do_delete_window, 0)
     CMD0( KEY_CTRLX('1'), KEY_NONE, "delete-other-windows",
 	  do_delete_other_windows)
@@ -121,7 +125,7 @@ CmdDef basic_commands[] = {
 
     /* styles & display */
     CMD_( KEY_NONE, KEY_NONE, "define-color", do_define_color,
-	  "s{Color name: }[color]|color|s{Color value: }")
+	  "s{Color name: }[color]|color|s{Color value: }[color]|color|")
     CMD_( KEY_NONE, KEY_NONE, "set-style", do_set_style,
 	  "s{Style: }[style]|style|s{CSS Property Name: }"
 	  "s{CSS Property Value: }")
