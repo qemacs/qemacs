@@ -1077,7 +1077,8 @@ void do_load_qerc(EditState *e, const char *file);
 /* popup / low level window handling */
 void show_popup(EditBuffer *b);
 EditState *insert_window_left(EditBuffer *b, int width, int flags);
-EditState *find_window_right(EditState *s);
+EditState *find_window(EditState *s, int key);
+void do_find_window(EditState *s, int key);
 
 /* window handling */
 void edit_close(EditState *s);
@@ -1126,6 +1127,7 @@ EditBuffer *new_yank_buffer(void);
 void basic_mode_line(EditState *s, char *buf, int buf_size, int c1);
 void text_mode_line(EditState *s, char *buf, int buf_size);
 void do_toggle_full_screen(EditState *s);
+void do_toggle_control_h(EditState *s, int set);
 
 /* hex.c */
 void hex_write_char(EditState *s, int key);

@@ -92,7 +92,7 @@ static void bufed_select(EditState *s, int temp)
     b = eb_find(item->str);
     if (!b)
         return;
-    e = find_window_right(s);
+    e = find_window(s, KEY_RIGHT);
     if (temp) {
 	if (e) {
 	    bs->last_index = index;
@@ -173,7 +173,7 @@ static void do_list_buffers(EditState *s)
     e = insert_window_left(b, width, WF_MODELINE);
     do_set_mode(e, &bufed_mode, NULL);
 
-    e1 = find_window_right(e);
+    e1 = find_window(e, KEY_RIGHT);
     if (e1)
 	b0 = e1->b;
 

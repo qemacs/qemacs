@@ -352,6 +352,7 @@ void do_global_set_key(EditState *s, const char *keystr, const char *cmd_name)
 }
 
 /* basic editing functions */
+/* CG: should indirect these through mode ! */
 void do_bof(EditState *s)
 {
     s->offset = 0;
@@ -1266,6 +1267,7 @@ static void quote_grab_key(void *opaque, int key)
 void do_quote(EditState *s)
 {
     qe_grab_keys(quote_grab_key, NULL);
+    put_status(s, "Quote: ");
 }
 
 void do_insert(EditState *s)
@@ -1305,6 +1307,7 @@ void do_break(EditState *s)
 void do_set_mark(EditState *s)
 {
     s->b->mark = s->offset;
+    put_status(s, "Mark set");
 }
 
 EditBuffer *new_yank_buffer(void)
@@ -4335,19 +4338,44 @@ EditState *insert_window_left(EditBuffer *b, int width, int flags)
     return e_new;
 }
 
-/* return a window on the right of window 's' */
-EditState *find_window_right(EditState *s)
+/* return a window on the side of window 's' */
+EditState *find_window(EditState *s, int key)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e;
 
+    /* CG: Should compute cursor position to disambiguate
+     * non regular window layouts
+     */
     for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->minibuf) 
             continue;
-        if (e->x1 == s->x2)
-            return e;
+	if (e->y1 < s->y2 && e->y2 > s->y1) {
+	    /* horizontal overlap */
+	    if (key == KEY_RIGHT && e->x1 == s->x2)
+		return e;
+	    if (key == KEY_LEFT && e->x2 == s->x1)
+		return e;
+	}
+	if (e->x1 < s->x2 && e->x2 > s->x1) {
+	    /* vertical overlap */
+	    if (key == KEY_UP && e->y2 == s->y1)
+		return e;
+	    if (key == KEY_DOWN && e->y1 == s->y2)
+		return e;
+	}
     }
     return NULL;
+}
+
+void do_find_window(EditState *s, int key)
+{
+    QEmacsState *qs = s->qe_state;
+    EditState *e;
+
+    e = find_window(s, key);
+    if (e)
+	qs->active_window = e;
 }
 #endif
 
@@ -5414,6 +5442,18 @@ void do_other_window(EditState *s)
     qs->active_window = e;
 }
 
+void do_previous_window(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+    EditState *e;
+
+    for(e = qs->first_window; e->next_window != NULL; e = e->next_window) {
+	if (e->next_window == s)
+	    break;
+    }
+    qs->active_window = e;
+}
+
 /* Delete a window and try to resize other window so that it get
    covered. If force is not true, do not accept to kill window if it
    is the only window or if it is the minibuffer window. */
@@ -5503,20 +5543,25 @@ void do_split_window(EditState *s, int horiz)
     int x, y;
 
     /* cannot split minibuf */
-    if (s->minibuf)
+    if (s->minibuf || (s->flags & WF_POPUP))
         return;
             
     if (horiz) {
         x = (s->x2 + s->x1) / 2;
         e = edit_new(s->b, x, s->y1,
                      s->x2 - x, s->y2 - s->y1, WF_MODELINE);
+	if (!e)
+	    return;
         s->x2 = x;
         s->flags |= WF_RSEPARATOR;
+	s->wrap = e->wrap = WRAP_TRUNCATE;
     } else {
         y = (s->y2 + s->y1) / 2;
         e = edit_new(s->b, s->x1, y,
                      s->x2 - s->x1, s->y2 - y, 
                      WF_MODELINE | (s->flags & WF_RSEPARATOR));
+	if (!e)
+	    return;
         s->y2 = y;
     }
     compute_client_area(s);

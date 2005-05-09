@@ -347,7 +347,7 @@ static void dired_select(EditState *s)
     if (S_ISDIR(st.st_mode)) {
         build_dired_list(s, filename);
     } else if (S_ISREG(st.st_mode)) {
-        e = find_window_right(s);
+        e = find_window(s, KEY_RIGHT);
         if (e) {
             /* delete dired window */
             do_delete_window(s, 1);
@@ -364,7 +364,7 @@ static void dired_view_file(EditState *s, const char *filename)
     EditBuffer *b;
     EditState *e, *e1;
 
-    e = find_window_right(s);
+    e = find_window(s, KEY_RIGHT);
     if (!e)
         return;
     /* close previous temporary buffers, if any */
@@ -515,7 +515,7 @@ void do_dired(EditState *s)
     do_set_mode(e, &dired_mode, NULL);
     hs = e->mode_data;
 
-    e1 = find_window_right(e);
+    e1 = find_window(e, KEY_RIGHT);
     if (e1)
 	b0 = e1->b;
 
