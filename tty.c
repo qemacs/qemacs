@@ -639,7 +639,12 @@ static void term_flush(QEditScreen *s)
                             buf[0] = '.';
                             buf[1] = '\0';
                         } else {
-                            unicode_to_charset(buf, cc, s->charset);
+                            /* need a kludge for linedrawing chars */
+                            if (cc == 0x2500 || cc == 'x') {
+                                strcpy(buf, "\016x\017");
+                            } else {
+                                unicode_to_charset(buf, cc, s->charset);
+                            }
                         }
                         if (x != s->width - 1 || y != s->height - 1)
                             printf("%s", buf);
