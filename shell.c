@@ -302,11 +302,11 @@ static void tty_emulate(ShellState *s, int c)
             }
             break;
 	case 14:
-	    eb_set_charset(s->b, &charset_8859_1);
+	    //eb_set_charset(s->b, &charset_8859_1);
 	    s->shifted = 1;
 	    break;
 	case 15:
-	    eb_set_charset(s->b, &charset_cp1125);
+	    //eb_set_charset(s->b, &charset_cp1125);
 	    s->shifted = 0;
 	    break;
         case 27:
@@ -315,6 +315,9 @@ static void tty_emulate(ShellState *s, int c)
         default:
             if (c >= 32 || c == 9) {
                 int c1, cur_len, len;
+		/* CG: horrible kludge for alternate charset support */
+		if (s->shifted && c >= 96 && c < 128)
+		    c += 32;
                 /* write char (should factorize with do_char() code */
                 len = unicode_to_charset(buf1, c, s->b->charset);
                 c1 = eb_nextc(s->b, s->cur_offset, &offset);

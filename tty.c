@@ -635,9 +635,16 @@ static void term_flush(QEditScreen *s)
                                    30 + fgcolor, 40 + bgcolor);
                         }
                         /* do not display escape codes or invalid codes */
-                        if (cc < 32 || (cc >= 128 && cc < 128 + 32)) {
+                        if (cc < 32) {
                             buf[0] = '.';
                             buf[1] = '\0';
+                        } else
+                        if (cc >= 128 && cc < 128 + 32) {
+                            /* Kludge for linedrawing chars */
+                            buf[0] = '\016';
+                            buf[1] = cc - 32;
+                            buf[2] = '\017';
+                            buf[3] = '\0';
                         } else {
                             unicode_to_charset(buf, cc, s->charset);
                         }
