@@ -53,10 +53,16 @@ CmdDef basic_commands[] = {
 	  "s{Insert file: }[file]|file|")
     CMD0( KEY_CTRL('g'), KEY_NONE, "abort", do_break)
     CMD0( KEY_NONE, KEY_NONE, "doctor", do_doctor)
+    CMDV( KEY_NONE, KEY_NONE, "search-forward", do_search_string, 1,
+	  "s{Search forward: }|search|v")
+    CMDV( KEY_NONE, KEY_NONE, "search-backward", do_search_string, -1,
+	  "s{Search backward: }|search|v")
     CMD1( KEY_CTRL('s'), KEY_NONE, "isearch-forward", do_isearch, 1 )
     CMD1( KEY_CTRL('r'), KEY_NONE, "isearch-backward", do_isearch, -1 )
     CMD_( KEY_META('%'), KEY_NONE, "query-replace", do_query_replace,
 	  "s{Query replace: }|search|s{With: }|replace|")
+    CMD_( KEY_META('r'), KEY_NONE, "replace-string", do_replace_string,
+	  "s{Replace String: }|search|s{With: }|replace|")
     CMD0( KEY_CTRLX('u'), KEY_CTRL('_'), "undo", do_undo)
     CMD0( KEY_RET, KEY_NONE, "newline", do_return)
     CMD0( KEY_CTRL('l'), KEY_NONE, "refresh", do_refresh_complete)
@@ -144,12 +150,21 @@ CmdDef basic_commands[] = {
 	  "s{Configuration file: }[file]|file|")
     CMD_( KEY_NONE, KEY_NONE, "load-qerc", do_load_qerc,
 	  "s{path: }[file]|file|")
+    CMD_( KEY_NONE, KEY_NONE, "set-visited-file-name",
+	  do_set_visited_file_name,
+	  "s{Set visited file name: }[file]|file|s{Rename file? }")
     
     /* non standard mappings */
     CMD0( KEY_CTRLXRET('l'), KEY_NONE, "toggle-line-numbers", do_line_numbers)
     CMD0( KEY_CTRLXRET('t'), KEY_NONE, "truncate-lines", do_line_truncate )
     CMD0( KEY_CTRLXRET('w'), KEY_NONE, "word-wrap", do_word_wrap)
     CMD1( KEY_NONE, KEY_NONE, "toggle-control-h", do_toggle_control_h, 0)
+    CMD_( KEY_NONE, KEY_NONE, "set-emulation", do_set_emulation,
+	  "s{Emulation mode: }")
+    CMD_( KEY_NONE, KEY_NONE, "cd", do_cd,
+	  "s{Change default directory: }[file]|file|")
+    CMD_( KEY_NONE, KEY_NONE, "set-mode", do_cmd_set_mode,
+	  "s{Set mode: }[mode]")
     
     /* tab & indent */
     CMD_( KEY_NONE, KEY_NONE, "set-tab-width", do_set_tab_width,

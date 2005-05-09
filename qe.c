@@ -231,6 +231,30 @@ void do_toggle_control_h(EditState *s, int set)
     }
 }
 
+void do_set_emulation(EditState *s, const char *name)
+{
+    QEmacsState *qs = s->qe_state;
+
+    if (!strcmp(name, "epsilon")) {
+	qs->flag_split_window_change_focus = 1;
+    } else
+    if (!strcmp(name, "emacs") || !strcmp(name, "xemacs")) {
+	qs->flag_split_window_change_focus = 0;
+    } else
+    if (!strcmp(name, "vi") || strcmp(name, "vim")) {
+	put_status(s, "emulation '%s' not available yet", name);
+    } else {
+	put_status(s, "unknown emulation '%s'", name);
+    }
+}
+
+void do_cd(EditState *s, const char *name)
+{
+    chdir(name);
+    /* CG: Should issue diagnostics upon failure */
+    /* CG: Should display current directory after chdir */
+}
+
 /* if mode is non NULL, the defined keys are only active in this mode */
 void qe_register_cmd_table(CmdDef *cmds, const char *mode)
 {
@@ -4792,6 +4816,19 @@ void do_insert_file(EditState *s, const char *filename)
     fclose(f);
 }
 
+void do_set_visited_file_name(EditState *s, const char *filename,
+			      const char *renamefile)
+{
+    char path[MAX_FILENAME_SIZE];
+
+    canonize_absolute_path(path, sizeof(path), filename);
+    if (*renamefile == 'y' && s->b->filename) {
+	if (rename(s->b->filename, path))
+	    put_status(s, "Cannot rename file to %s", path);
+    }
+    set_filename(s->b, path);
+}
+
 static void save_edit_cb(void *opaque, char *filename);
 static void save_final(EditState *s);
 
@@ -4800,6 +4837,7 @@ void do_save(EditState *s, int save_as)
     char default_path[MAX_FILENAME_SIZE];
 
     if (!save_as && !s->b->modified) {
+	/* CG: This behaviour bugs me! */
         put_status(s, "(No changes need to be saved)");
         return;
     }
@@ -5396,8 +5434,9 @@ static void query_replace_key(void *opaque, int ch)
     query_replace_display(is);
 }
     
-static void do_query_replace(EditState *s, 
-                             const char *search_str, const char *replace_str)
+static void query_replace(EditState *s, 
+			  const char *search_str,
+			  const char *replace_str, int all)
 {
     QueryReplaceState *is;
     
@@ -5416,11 +5455,43 @@ static void do_query_replace(EditState *s,
     is->replace_bytes_len = to_bytes(s, is->replace_bytes, sizeof(is->replace_bytes), 
                                      replace_str);
     is->nb_reps = 0;
-    is->replace_all = 0;
+    is->replace_all = all;
     is->found_offset = s->offset;
 
     qe_grab_keys(query_replace_key, is);
     query_replace_display(is);
+}
+
+static void do_query_replace(EditState *s, 
+			     const char *search_str,
+			     const char *replace_str)
+{
+    query_replace(s, search_str, replace_str, 0);
+}
+
+static void do_replace_string(EditState *s, 
+			      const char *search_str,
+			      const char *replace_str)
+{
+    query_replace(s, search_str, replace_str, 1);
+}
+
+static void do_search_string(EditState *s, const char *search_str, int dir)
+{
+    u8 search_bytes[SEARCH_LENGTH];
+    int search_bytes_len;
+    int found_offset;
+    
+    search_bytes_len = to_bytes(s, search_bytes, sizeof(search_bytes),
+				search_str);
+
+    found_offset = eb_search(s->b, s->offset, dir,
+			     search_bytes, search_bytes_len, 
+			     0, NULL, NULL);
+    if (found_offset >= 0) {
+	s->offset = found_offset;
+	center_cursor(s);
+    }
 }
 
 void do_doctor(EditState *s)
@@ -6837,6 +6908,7 @@ void qe_init(void *opaque)
     load_all_modules(qs);
 #endif
 
+#if 0
     /* see if invoked as player */
     {
         const char *p;
@@ -6847,6 +6919,10 @@ void qe_init(void *opaque)
         else
             is_player = 0;
     }
+#else
+    /* Start in dired mode when invoked with no arguments */
+    is_player = 1;
+#endif
 
     /* init of the editor state */
     qs->screen = &global_screen;
