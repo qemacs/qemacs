@@ -173,7 +173,8 @@ int detect_binary(const unsigned char *buf, int size)
     for (i = 0; i < size; i++) {
         c = buf[i];
 	if (c < 32 && 
-            (c != '\r' && c != '\n' && c != '\t' && c != '\e' && c!= '\b'))
+            (c != '\r' && c != '\n' && c != '\t' &&
+	     c != '\e' && c != '\b' && c != '\f'))
 	    return 1;
     }
     return 0;
