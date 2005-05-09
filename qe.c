@@ -103,9 +103,9 @@ void qe_register_mode(ModeDef *m)
         pstrcpy(buf, sizeof(buf) - 10, m->name);
         css_strtolower(buf, sizeof(buf));
         pstrcat(buf, sizeof(buf) - 10, "-mode");
-	size = strlen(buf) + 1;
-	buf[size++] = 'S'; /* constant string parameter */
-	buf[size++] = '\0';
+        size = strlen(buf) + 1;
+        buf[size++] = 'S'; /* constant string parameter */
+        buf[size++] = '\0';
         name = malloc(size);
         memcpy(name, buf, size);
         table->name = name;
@@ -203,31 +203,31 @@ void do_toggle_control_h(EditState *s, int set)
     int i;
 
     if (set)
-	set = (set > 0);
+        set = (set > 0);
     else
-	set = !backspace_is_control_h;
+        set = !backspace_is_control_h;
 
     if (backspace_is_control_h == set)
-	return;
+        return;
     
     backspace_is_control_h = set;
 
     for (p = first_key; p; p = p->next) {
-	for (i = 0; i < p->nb_keys; i++) {
-	    switch (p->keys[i]) {
-	    case KEY_CTRL('h'):
-		p->keys[i] = set ? KEY_META('h') : 127;
-		break;
-	    case 127:
-		if (set)
-		    p->keys[i] = KEY_CTRL('h');
-		break;
-	    case KEY_META('h'):
-		if (!set)
-		    p->keys[i] = KEY_CTRL('h');
-		break;
-	    }
-	}
+        for (i = 0; i < p->nb_keys; i++) {
+            switch (p->keys[i]) {
+            case KEY_CTRL('h'):
+                p->keys[i] = set ? KEY_META('h') : 127;
+                break;
+            case 127:
+                if (set)
+                    p->keys[i] = KEY_CTRL('h');
+                break;
+            case KEY_META('h'):
+                if (!set)
+                    p->keys[i] = KEY_CTRL('h');
+                break;
+            }
+        }
     }
 }
 
@@ -236,15 +236,15 @@ void do_set_emulation(EditState *s, const char *name)
     QEmacsState *qs = s->qe_state;
 
     if (!strcmp(name, "epsilon")) {
-	qs->flag_split_window_change_focus = 1;
+        qs->flag_split_window_change_focus = 1;
     } else
     if (!strcmp(name, "emacs") || !strcmp(name, "xemacs")) {
-	qs->flag_split_window_change_focus = 0;
+        qs->flag_split_window_change_focus = 0;
     } else
     if (!strcmp(name, "vi") || strcmp(name, "vim")) {
-	put_status(s, "emulation '%s' not available yet", name);
+        put_status(s, "emulation '%s' not available yet", name);
     } else {
-	put_status(s, "unknown emulation '%s'", name);
+        put_status(s, "unknown emulation '%s'", name);
     }
 }
 
@@ -280,17 +280,17 @@ void qe_register_cmd_table(CmdDef *cmds, const char *mode)
     /* add default bindings */
     d = cmds;
     while (d->name != NULL) {
-	if (d->key == KEY_CTRL('x')) {
-	    unsigned int keys[2];
-	    keys[0] = d->key;
-	    keys[1] = d->alt_key;
-	    qe_register_binding1(keys, 2, d, m);
-	} else {
-	    if (d->key != KEY_NONE)
-		qe_register_binding2(d->key, d, m);
-	    if (d->alt_key != KEY_NONE)
-		qe_register_binding2(d->alt_key, d, m);
-	}
+        if (d->key == KEY_CTRL('x')) {
+            unsigned int keys[2];
+            keys[0] = d->key;
+            keys[1] = d->alt_key;
+            qe_register_binding1(keys, 2, d, m);
+        } else {
+            if (d->key != KEY_NONE)
+                qe_register_binding2(d->key, d, m);
+            if (d->alt_key != KEY_NONE)
+                qe_register_binding2(d->alt_key, d, m);
+        }
         d++;
     }
 }
@@ -359,7 +359,7 @@ void do_global_set_key(EditState *s, const char *keystr, const char *cmd_name)
 
     nb_keys = strtokeys(keystr, keys, MAX_KEYS);
     if (!nb_keys)
-	return;
+        return;
 
     d = qe_find_cmd(cmd_name);
     if (!d)
@@ -971,10 +971,10 @@ void text_scroll_up_down(EditState *s, int dir)
     line_height = get_line_height(s->screen, s->default_style);
     h = 1;
     if (abs(dir) == 2) {
-	dir /= 2;
-	h = (s->height / line_height) - 1;
-	if (h < 1)
-	    h = 1;
+        dir /= 2;
+        h = (s->height / line_height) - 1;
+        if (h < 1)
+            h = 1;
     }
     h = h * line_height;
     
@@ -1637,12 +1637,12 @@ void do_toggle_bidir(EditState *s)
     s->bidir = !s->bidir;
 }
 
-void do_line_numbers(EditState *s)
+void do_toggle_line_numbers(EditState *s)
 {
     s->line_numbers = !s->line_numbers;
 }
 
-void do_line_truncate(EditState *s)
+void do_toggle_truncate_lines(EditState *s)
 {
     if (s->wrap == WRAP_TRUNCATE)
         s->wrap = WRAP_LINE;
@@ -1711,7 +1711,7 @@ void basic_mode_line(EditState *s, char *buf, int buf_size, int c1)
     if (s->b->flags & BF_LOADING)
         state = 'L';
     else if (s->b->flags & BF_SAVING)
-	state = 'S';
+        state = 'S';
     else if (s->busy)
         state = 'B';
     else
@@ -1789,37 +1789,37 @@ void display_window_borders(EditState *e)
     QEmacsState *qs = e->qe_state;
 
     if (e->borders_invalid) {
-	if (e->flags & (WF_POPUP | WF_RSEPARATOR)) {
-	    CSSRect rect;
-	    QEColor color;
+        if (e->flags & (WF_POPUP | WF_RSEPARATOR)) {
+            CSSRect rect;
+            QEColor color;
 
-	    rect.x1 = 0;
-	    rect.y1 = 0;
-	    rect.x2 = qs->width;
-	    rect.y2 = qs->height;
-	    set_clip_rectangle(qs->screen, &rect);
-	    color = qe_styles[QE_STYLE_WINDOW_BORDER].bg_color;
-	    if (e->flags & WF_POPUP) {
-		fill_rectangle(qs->screen, 
-			       e->x1, e->y1, 
-			       qs->border_width, e->y2 - e->y1, color);
-		fill_rectangle(qs->screen, 
-			       e->x2 - qs->border_width, e->y1, 
-			       qs->border_width, e->y2 - e->y1, color);
-		fill_rectangle(qs->screen, 
-			       e->x1, e->y1, 
-			       e->x2 - e->x1, qs->border_width, color);
-		fill_rectangle(qs->screen, 
-			       e->x1, e->y2 - qs->border_width, 
-			       e->x2 - e->x1, qs->border_width, color);
-	    }
-	    if (e->flags & WF_RSEPARATOR) {
-		fill_rectangle(qs->screen, 
-			       e->x2 - qs->separator_width, e->y1, 
-			       qs->separator_width, e->y2 - e->y1, color);
-	    }
-	}
-	e->borders_invalid = 0;
+            rect.x1 = 0;
+            rect.y1 = 0;
+            rect.x2 = qs->width;
+            rect.y2 = qs->height;
+            set_clip_rectangle(qs->screen, &rect);
+            color = qe_styles[QE_STYLE_WINDOW_BORDER].bg_color;
+            if (e->flags & WF_POPUP) {
+                fill_rectangle(qs->screen, 
+                               e->x1, e->y1, 
+                               qs->border_width, e->y2 - e->y1, color);
+                fill_rectangle(qs->screen, 
+                               e->x2 - qs->border_width, e->y1, 
+                               qs->border_width, e->y2 - e->y1, color);
+                fill_rectangle(qs->screen, 
+                               e->x1, e->y1, 
+                               e->x2 - e->x1, qs->border_width, color);
+                fill_rectangle(qs->screen, 
+                               e->x1, e->y2 - qs->border_width, 
+                               e->x2 - e->x1, qs->border_width, color);
+            }
+            if (e->flags & WF_RSEPARATOR) {
+                fill_rectangle(qs->screen, 
+                               e->x2 - qs->separator_width, e->y1, 
+                               qs->separator_width, e->y2 - e->y1, color);
+            }
+        }
+        e->borders_invalid = 0;
     }
 }
 
@@ -1897,7 +1897,7 @@ void style_completion(StringArray *cs, const char *input)
 void do_define_color(EditState *e, const char *name, const char *value)
 {
     if (css_define_color(name, value))
-	put_status(e, "Invalid color '%s'", value);
+        put_status(e, "Invalid color '%s'", value);
 }
 
 /* Note: we use the same syntax as CSS styles to ease merging */
@@ -1921,16 +1921,16 @@ void do_set_style(EditState *e, const char *stylestr,
     }
     switch(prop_index) {
     case 0:
-	if (css_get_color(&style->fg_color, value))
-	    goto bad_color;
+        if (css_get_color(&style->fg_color, value))
+            goto bad_color;
         break;
     case 1:
         if (css_get_color(&style->bg_color, value))
-	    goto bad_color;
+            goto bad_color;
         break;
-    bad_color:	    
-	put_status(e, "Unknown color '%s'", value);
-	return;
+    bad_color:      
+        put_status(e, "Unknown color '%s'", value);
+        return;
     case 2:
         v = css_get_font_family(value);
         style->font_style = (style->font_style & ~QE_FAMILY_MASK) | v;
@@ -2015,7 +2015,7 @@ void do_set_system_font(EditState *s, const char *qe_font_name,
         return;
     }
     pstrcpy(s->qe_state->system_fonts[font_type],
-	    sizeof(s->qe_state->system_fonts[0]),
+            sizeof(s->qe_state->system_fonts[0]),
             system_fonts);
 }
 
@@ -2070,9 +2070,9 @@ void reverse_fragments(TextFragment *str, int len)
     int i, len2 = len / 2;
     
     for (i = 0; i < len2; i++) {
-	TextFragment tmp = str[i];
-	str[i] = str[len - 1 - i];
-	str[len - 1 - i] = tmp;
+        TextFragment tmp = str[i];
+        str[i] = str[len - 1 - i];
+        str[len - 1 - i] = tmp;
     }
 }
 
@@ -2243,8 +2243,8 @@ static void flush_line(DisplayState *s,
                     int markbuf[1];
                 
                     font = select_font(screen, 
-				       default_style.font_style,
-				       default_style.font_size);
+                                       default_style.font_style,
+                                       default_style.font_size);
                     markbuf[0] = '\\';
                     draw_text(screen, font, 
                               e->xleft + s->width, y + font->ascent,
@@ -2892,6 +2892,7 @@ int text_display(EditState *s, DisplayState *ds, int offset)
                 bd++;
             embedding_level = bd[0].level;
             /* XXX: use embedding level for all cases ? */
+            /* CG: should query screen or window about display methods */
             if (c < ' ' && c != '\t') {
                 display_printf(ds, offset0, offset, "^%c", '@' + c);
             } else if (c >= 0x10000) {
@@ -3147,7 +3148,7 @@ static int parse_arg(const char **pp, unsigned char *argtype,
     case 's':
         *argtype = CMD_ARG_STRING;
         break;
-    case 'S':	/* used in define_kbd_macro, and mode selection */
+    case 'S':   /* used in define_kbd_macro, and mode selection */
         *argtype = CMD_ARG_STRINGVAL;
         break;
     default:
@@ -3229,6 +3230,7 @@ static void parse_args(ExecCmdState *es)
                 es->args[es->nb_args] = (void *)es->argval;
                 es->argval = NO_ARG;
             } else {
+                /* CG: Should add syntax for default value if no prompt */
                 es->args[es->nb_args] = (void *)NO_ARG;
                 no_arg = 1;
             }
@@ -3288,9 +3290,10 @@ static void parse_args(ExecCmdState *es)
 #ifndef CONFIG_TINY
         save_selection();
 #endif
-	/* CG: Should save and restore context */
-	qs->ec.function = d->name;
+        /* CG: Should save and restore ec context */
+        qs->ec.function = d->name;
         call_func(d->action.func, es->nb_args, es->args, es->args_type);
+        /* CG: Should test for abort condition */
     } while (--rep_count > 0);
 
     qs->last_cmd_func = d->action.func;
@@ -3388,8 +3391,8 @@ void edit_display(QEmacsState *qs)
     
     /* first call hooks for mode specific fixups */
     for (s = qs->first_window; s != NULL; s = s->next_window) {
-	if (s->mode->display_hook)
-	    s->mode->display_hook(s);
+        if (s->mode->display_hook)
+            s->mode->display_hook(s);
     }
 
     /* count popups */
@@ -3403,20 +3406,20 @@ void edit_display(QEmacsState *qs)
 
     /* refresh normal windows and minibuf with popup kludge */
     for (s = qs->first_window; s != NULL; s = s->next_window) {
-	if (!(s->flags & WF_POPUP) &&
-	    (s->minibuf || !has_popups || qs->complete_refresh)) {
-	    window_display(s);
-	}
+        if (!(s->flags & WF_POPUP) &&
+            (s->minibuf || !has_popups || qs->complete_refresh)) {
+            window_display(s);
+        }
     }
     /* refresh popups if any */
     if (has_popups) {
-	for (s = qs->first_window; s != NULL; s = s->next_window) {
-	    if (s->flags & WF_POPUP) {
-		if (qs->complete_refresh)
-		    /* refresh frame */;
-		window_display(s);
-	    }
-	}
+        for (s = qs->first_window; s != NULL; s = s->next_window) {
+            if (s->flags & WF_POPUP) {
+                if (qs->complete_refresh)
+                    /* refresh frame */;
+                window_display(s);
+            }
+        }
     }
 
     qs->complete_refresh = 0;
@@ -3487,8 +3490,8 @@ static void do_call_macro_bh(void *opaque)
     /* XXX: what to do if asynchronous commands ? Command completion
        should be wait */
     for (qs->macro_key_index = 0; 
-	 qs->macro_key_index < qs->nb_macro_keys;
-	 qs->macro_key_index++) {
+         qs->macro_key_index < qs->nb_macro_keys;
+         qs->macro_key_index++) {
         key = qs->macro_keys[qs->macro_key_index];
         qe_key_process(key);
     }
@@ -3526,7 +3529,7 @@ void do_execute_macro_keys(EditState *s, const char *keys)
 }
 
 void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
-			 const char *keystr)
+                         const char *key_bind)
 {
     CmdDef *def;
     int size;
@@ -3544,10 +3547,10 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
     def->key = def->alt_key = KEY_NONE;
     def->name = macro_name;
     def->action.func = do_execute_macro_keys;
-    def->val = strdup(keystr);
+    def->val = strdup(keys);
 
     qe_register_cmd_table(def, NULL);
-    do_global_set_key(s, keystr, name);
+    do_global_set_key(s, key_bind, name);
 }
 
 #define MACRO_KEY_INCR 64
@@ -3659,7 +3662,7 @@ static void qe_key_process(int key)
         c->is_escape = 1;
         goto next;
     } else if (c->is_escape) {
-	compose_keys(c->keys, &c->nb_keys);
+        compose_keys(c->keys, &c->nb_keys);
         c->is_escape = 0;
     }
 
@@ -3703,15 +3706,15 @@ static void qe_key_process(int key)
                 }
             }
         }
-	if (!c->describe_key)
-	    /* CG: should beep */;
+        if (!c->describe_key)
+            /* CG: should beep */;
 
-	put_status(s, "No command on %s", 
-		   keys_to_str(buf1, sizeof(buf1), c->keys, c->nb_keys));
+        put_status(s, "No command on %s", 
+                   keys_to_str(buf1, sizeof(buf1), c->keys, c->nb_keys));
         c->describe_key = 0;
         qe_key_init();
-	dpy_flush(&global_screen);
-	return;
+        dpy_flush(&global_screen);
+        return;
     } else if (c->nb_keys == kd->nb_keys) {
     exec_cmd:
         d = kd->cmd;
@@ -3746,7 +3749,7 @@ static void qe_key_process(int key)
  next:
     /* display key pressed */
     if (!s->minibuf) {
-	/* Should print argument if any in a more readable way */
+        /* Should print argument if any in a more readable way */
         keytostr(buf1, sizeof(buf1), key);
         len = strlen(c->buf);
         if (len >= 1)
@@ -3799,37 +3802,37 @@ void put_status(EditState *s, const char *fmt, ...)
     va_end(ap);
 
     if (qs->screen->dpy.dpy_init != dummy_dpy_init) {
-	if (strcmp(buf, qs->status_shadow) != 0) {
-	    print_at_byte(qs->screen,
-			  0, qs->screen->height - qs->status_height,
-			  qs->screen->width, qs->status_height,
-			  buf, QE_STYLE_STATUS);
-	    strcpy(qs->status_shadow, buf);
-	}
+        if (strcmp(buf, qs->status_shadow) != 0) {
+            print_at_byte(qs->screen,
+                          0, qs->screen->height - qs->status_height,
+                          qs->screen->width, qs->status_height,
+                          buf, QE_STYLE_STATUS);
+            strcpy(qs->status_shadow, buf);
+        }
     } else {
-	char header[128];
-	int len;
-	EditBuffer *eb;
+        char header[128];
+        int len;
+        EditBuffer *eb;
 
-	header[len = 0] = '\0';
-	if (qs->ec.filename) {
-	    snprintf(header, sizeof(header), "%s:%d: ",
-		     qs->ec.filename, qs->ec.lineno);
-	    len = strlen(header);
-	}
-	if (qs->ec.function) {
-	    snprintf(header + len, sizeof(header) - len, "%s: ",
-		     qs->ec.function);
-	    len = strlen(header);
-	}
-	eb = eb_find("*errors*");
-	if (!eb)
-	    eb = eb_new("*errors*", BF_SYSTEM);
-	if (eb) {
-	    eb_printf(eb, "%s%s\n", header, buf);
-	} else {
-	    fprintf(stderr, "%s%s\n", header, buf);
-	}
+        header[len = 0] = '\0';
+        if (qs->ec.filename) {
+            snprintf(header, sizeof(header), "%s:%d: ",
+                     qs->ec.filename, qs->ec.lineno);
+            len = strlen(header);
+        }
+        if (qs->ec.function) {
+            snprintf(header + len, sizeof(header) - len, "%s: ",
+                     qs->ec.function);
+            len = strlen(header);
+        }
+        eb = eb_find("*errors*");
+        if (!eb)
+            eb = eb_new("*errors*", BF_SYSTEM);
+        if (eb) {
+            eb_printf(eb, "%s%s\n", header, buf);
+        } else {
+            fprintf(stderr, "%s%s\n", header, buf);
+        }
     }
 }
 
@@ -3851,7 +3854,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
         if (!e) {
             /* if no more window uses the buffer, then save the data
                in the buffer */
-	    /* CG: Should free previous such data ? */
+            /* CG: Should free previous such data ? */
             b1->saved_data = s->mode->mode_save_data(s);
         }
         /* now we can close the mode */
@@ -3945,6 +3948,19 @@ EditState *edit_new(EditBuffer *b,
     return s;
 }
 
+/* find a window with a given buffer if any. */
+EditState *edit_find(EditBuffer *b)
+{
+    QEmacsState *qs = &qe_state;
+    EditState *e;
+    
+    for(e = qs->first_window; e != NULL; e = e->next_window) {
+        if (e->b == b)
+            break;
+    }
+    return e;
+}
+
 /* detach the window from the window tree. */
 void edit_detach(EditState *s)
 {
@@ -3952,14 +3968,14 @@ void edit_detach(EditState *s)
     EditState **ep;
 
     for (ep = &qs->first_window; *ep; ep = &(*ep)->next_window) {
-	if (*ep == s) {
-	    *ep = s->next_window;
-	    s->next_window = NULL;
-	    break;
-	}
+        if (*ep == s) {
+            *ep = s->next_window;
+            s->next_window = NULL;
+            break;
+        }
     }
     if (qs->active_window == s)
-	qs->active_window = qs->first_window;
+        qs->active_window = qs->first_window;
 }
 
 /* attach the window to the window list. */
@@ -4492,20 +4508,20 @@ EditState *find_window(EditState *s, int key)
     for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->minibuf) 
             continue;
-	if (e->y1 < s->y2 && e->y2 > s->y1) {
-	    /* horizontal overlap */
-	    if (key == KEY_RIGHT && e->x1 == s->x2)
-		return e;
-	    if (key == KEY_LEFT && e->x2 == s->x1)
-		return e;
-	}
-	if (e->x1 < s->x2 && e->x2 > s->x1) {
-	    /* vertical overlap */
-	    if (key == KEY_UP && e->y2 == s->y1)
-		return e;
-	    if (key == KEY_DOWN && e->y1 == s->y2)
-		return e;
-	}
+        if (e->y1 < s->y2 && e->y2 > s->y1) {
+            /* horizontal overlap */
+            if (key == KEY_RIGHT && e->x1 == s->x2)
+                return e;
+            if (key == KEY_LEFT && e->x2 == s->x1)
+                return e;
+        }
+        if (e->x1 < s->x2 && e->x2 > s->x1) {
+            /* vertical overlap */
+            if (key == KEY_UP && e->y2 == s->y1)
+                return e;
+            if (key == KEY_DOWN && e->y1 == s->y2)
+                return e;
+        }
     }
     return NULL;
 }
@@ -4517,7 +4533,7 @@ void do_find_window(EditState *s, int key)
 
     e = find_window(s, key);
     if (e)
-	qs->active_window = e;
+        qs->active_window = e;
 }
 #endif
 
@@ -4633,8 +4649,8 @@ static void get_default_path(EditState *s, char *buf, int buf_size)
 
     /* CG: should have more specific code for dired/shell buffer... */
     if (b->flags & BF_DIRED) {
-	makepath(buf, buf_size, b->filename, "");
-	return;
+        makepath(buf, buf_size, b->filename, "");
+        return;
     }
 
     if ((b->flags & BF_SYSTEM) || b->name[0] == '*') {
@@ -4686,7 +4702,8 @@ static void do_load1(EditState *s, const char *filename1, int kill_buffer)
     struct stat st;
 
     if (kill_buffer) {
-	/* CG: should have a direct primitive */
+        /* CG: this behaviour is not correct */
+        /* CG: should have a direct primitive */
         do_kill_buffer(s, s->b->name);
     }
 
@@ -4714,13 +4731,13 @@ static void do_load1(EditState *s, const char *filename1, int kill_buffer)
        buffer data type */
     if (stat(filename, &st) < 0) {
         put_status(s, "(New file)");
-	/* Try to determine the desired mode based on the filename.
-	 * This avoids having to set c-mode for each new .c or .h file. */
-	buf[0] = '\0';
-	selected_mode = probe_mode(s, S_IFREG, buf, 0);
+        /* Try to determine the desired mode based on the filename.
+         * This avoids having to set c-mode for each new .c or .h file. */
+        buf[0] = '\0';
+        selected_mode = probe_mode(s, S_IFREG, buf, 0);
         /* XXX: avoid loading file */
-	if (selected_mode)
-	    do_set_mode(s, selected_mode, NULL);
+        if (selected_mode)
+            do_set_mode(s, selected_mode, NULL);
         return;
     } else {
         mode = st.st_mode;
@@ -4817,14 +4834,14 @@ void do_insert_file(EditState *s, const char *filename)
 }
 
 void do_set_visited_file_name(EditState *s, const char *filename,
-			      const char *renamefile)
+                              const char *renamefile)
 {
     char path[MAX_FILENAME_SIZE];
 
     canonize_absolute_path(path, sizeof(path), filename);
     if (*renamefile == 'y' && s->b->filename) {
-	if (rename(s->b->filename, path))
-	    put_status(s, "Cannot rename file to %s", path);
+        if (rename(s->b->filename, path))
+            put_status(s, "Cannot rename file to %s", path);
     }
     set_filename(s->b, path);
 }
@@ -4837,7 +4854,7 @@ void do_save(EditState *s, int save_as)
     char default_path[MAX_FILENAME_SIZE];
 
     if (!save_as && !s->b->modified) {
-	/* CG: This behaviour bugs me! */
+        /* CG: This behaviour bugs me! */
         put_status(s, "(No changes need to be saved)");
         return;
     }
@@ -5222,7 +5239,7 @@ static void isearch_key(void *opaque, int ch)
 
     switch (ch) {
     case KEY_DEL:
-    case KEY_BS:	/* Should test actual binding of KEY_BS */
+    case KEY_BS:        /* Should test actual binding of KEY_BS */
         if (is->pos > 0)
             is->pos--;
         break;
@@ -5435,8 +5452,8 @@ static void query_replace_key(void *opaque, int ch)
 }
     
 static void query_replace(EditState *s, 
-			  const char *search_str,
-			  const char *replace_str, int all)
+                          const char *search_str,
+                          const char *replace_str, int all)
 {
     QueryReplaceState *is;
     
@@ -5463,15 +5480,15 @@ static void query_replace(EditState *s,
 }
 
 static void do_query_replace(EditState *s, 
-			     const char *search_str,
-			     const char *replace_str)
+                             const char *search_str,
+                             const char *replace_str)
 {
     query_replace(s, search_str, replace_str, 0);
 }
 
 static void do_replace_string(EditState *s, 
-			      const char *search_str,
-			      const char *replace_str)
+                              const char *search_str,
+                              const char *replace_str)
 {
     query_replace(s, search_str, replace_str, 1);
 }
@@ -5483,14 +5500,14 @@ static void do_search_string(EditState *s, const char *search_str, int dir)
     int found_offset;
     
     search_bytes_len = to_bytes(s, search_bytes, sizeof(search_bytes),
-				search_str);
+                                search_str);
 
     found_offset = eb_search(s->b, s->offset, dir,
-			     search_bytes, search_bytes_len, 
-			     0, NULL, NULL);
+                             search_bytes, search_bytes_len, 
+                             0, NULL, NULL);
     if (found_offset >= 0) {
-	s->offset = found_offset;
-	center_cursor(s);
+        s->offset = found_offset;
+        center_cursor(s);
     }
 }
 
@@ -5526,8 +5543,8 @@ void do_refresh(EditState *s1)
     int width, height;
 
     if (qs->complete_refresh) {
-	if (qs->screen->dpy.dpy_invalidate)
-	    qs->screen->dpy.dpy_invalidate();
+        if (qs->screen->dpy.dpy_invalidate)
+            qs->screen->dpy.dpy_invalidate();
     }
 
     /* recompute various dimensions */
@@ -5592,7 +5609,7 @@ void do_refresh(EditState *s1)
     /* invalidate all the edit windows and draw borders */
     for(e = qs->first_window; e != NULL; e = e->next_window) {
         edit_invalidate(e);
-	e->borders_invalid = 1;
+        e->borders_invalid = 1;
     }
     /* invalidate status line */
     qs->status_shadow[0] = '\0';
@@ -5624,8 +5641,8 @@ void do_previous_window(EditState *s)
     EditState *e;
 
     for(e = qs->first_window; e->next_window != NULL; e = e->next_window) {
-	if (e->next_window == s)
-	    break;
+        if (e->next_window == s)
+            break;
     }
     qs->active_window = e;
 }
@@ -5647,7 +5664,7 @@ void do_delete_window(EditState *s, int force)
     }
     /* cannot close minibuf or if single window */
     if ((s->minibuf || count <= 1) && !force)
-	return;
+        return;
 
     if (!(s->flags & WF_POPUP)) {
         /* try to merge the window with one adjacent window. If none
@@ -5683,14 +5700,14 @@ void do_delete_window(EditState *s, int force)
                 break;
             }
         }
-	if (e)
-	    compute_client_area(e);
+        if (e)
+            compute_client_area(e);
     }
     if (qs->active_window == s)
-	qs->active_window = e ? e : qs->first_window;
+        qs->active_window = e ? e : qs->first_window;
     edit_close(s);
     if (qs->first_window)
-	do_refresh(qs->first_window);
+        do_refresh(qs->first_window);
 }
 
 
@@ -5729,18 +5746,18 @@ void do_split_window(EditState *s, int horiz)
         x = (s->x2 + s->x1) / 2;
         e = edit_new(s->b, x, s->y1,
                      s->x2 - x, s->y2 - s->y1, WF_MODELINE);
-	if (!e)
-	    return;
+        if (!e)
+            return;
         s->x2 = x;
         s->flags |= WF_RSEPARATOR;
-	s->wrap = e->wrap = WRAP_TRUNCATE;
+        s->wrap = e->wrap = WRAP_TRUNCATE;
     } else {
         y = (s->y2 + s->y1) / 2;
         e = edit_new(s->b, s->x1, y,
                      s->x2 - s->x1, s->y2 - y, 
                      WF_MODELINE | (s->flags & WF_RSEPARATOR));
-	if (!e)
-	    return;
+        if (!e)
+            return;
         s->y2 = y;
     }
     /* insert in the window list after current window */
@@ -5748,7 +5765,7 @@ void do_split_window(EditState *s, int horiz)
     edit_attach(e, &s->next_window);
 
     if (qs->flag_split_window_change_focus)
-	qs->active_window = e;
+        qs->active_window = e;
 
     compute_client_area(s);
     do_refresh(s);
@@ -6305,12 +6322,12 @@ int expect_token(const char **pp, int tok)
 {
     skip_spaces(pp);
     if (**pp == tok) {
-	++*pp;
-	skip_spaces(pp);
-	return 1;
+        ++*pp;
+        skip_spaces(pp);
+        return 1;
     } else {
-	put_status(NULL, "'%c' expected", tok);
-	return 0;
+        put_status(NULL, "'%c' expected", tok);
+        return 0;
     }
 }
 
@@ -6338,41 +6355,41 @@ int parse_config_file(EditState *s, const char *filename)
         if (fgets(line, sizeof(line), f) == NULL)
             break;
         line_num++;
-	qs->ec.filename = filename;
-	qs->ec.function = NULL;
-	qs->ec.lineno = line_num;
+        qs->ec.filename = filename;
+        qs->ec.function = NULL;
+        qs->ec.lineno = line_num;
 
         p = line;
         skip_spaces(&p);
         if (p[0] == '}') {
-	    /* simplistic 1 level if block skip feature */
+            /* simplistic 1 level if block skip feature */
             p++;
-	    skip_spaces(&p);
-	    skip = 0;
-	}
-	if (skip)
-	    continue;
+            skip_spaces(&p);
+            skip = 0;
+        }
+        if (skip)
+            continue;
 
         /* skip comments */
-	while (p[0] == '/' && p[1] == '*') {
-	    for (p += 2; *p; p++) {
-		if (*p == '*' && p[1] == '/') {
-		    p += 2;
-		    break;
-		}
-	    }
-	    skip_spaces(&p);
-	}
+        while (p[0] == '/' && p[1] == '*') {
+            for (p += 2; *p; p++) {
+                if (*p == '*' && p[1] == '/') {
+                    p += 2;
+                    break;
+                }
+            }
+            skip_spaces(&p);
+        }
         if (p[0] == '/' && p[1] == '/')
             continue;
         if (p[0] == '\0')
             continue;
 
         get_str(&p, cmd, sizeof(cmd), "(");
-	if (*cmd == '\0') {
-	    put_status(s, "Syntax error");
+        if (*cmd == '\0') {
+            put_status(s, "Syntax error");
             continue;
-	}
+        }
         /* transform '_' to '-' */
         q = cmd;
         while (*q) {
@@ -6380,15 +6397,15 @@ int parse_config_file(EditState *s, const char *filename)
                 *q = '-';
             q++;
         }
-	/* simplistic 1 level if block skip feature */
-	if (!strcmp(cmd, "if")) {
-	    if (!expect_token(&p, '('))
-		goto fail;
-	    skip = !strtol(p, (char**)&p, 0);
-	    if (!expect_token(&p, ')') || !expect_token(&p, '{'))
-		goto fail;
-	    continue;
-	}
+        /* simplistic 1 level if block skip feature */
+        if (!strcmp(cmd, "if")) {
+            if (!expect_token(&p, '('))
+                goto fail;
+            skip = !strtol(p, (char**)&p, 0);
+            if (!expect_token(&p, ')') || !expect_token(&p, '{'))
+                goto fail;
+            continue;
+        }
         /* search for command */
         d = qe_find_cmd(cmd);
         if (!d) {
@@ -6424,11 +6441,11 @@ int parse_config_file(EditState *s, const char *filename)
         for (i = 0; i < nb_args; i++)
             args[i] = NULL;
 
-	if (!expect_token(&p, '('))
-	    goto fail;
+        if (!expect_token(&p, '('))
+            goto fail;
 
-	sep = '\0';
-	strp = str;
+        sep = '\0';
+        strp = str;
 
         for (i = 0; i < nb_args; i++) {
             /* pseudo arguments: skip them */
@@ -6443,30 +6460,30 @@ int parse_config_file(EditState *s, const char *filename)
             }
             
             skip_spaces(&p);
-	    if (sep) {
-		if (!expect_token(&p, sep))
-		    goto fail;
-	    }
-	    sep = ',';
+            if (sep) {
+                if (!expect_token(&p, sep))
+                    goto fail;
+            }
+            sep = ',';
 
             switch (args_type[i]) {
             case CMD_ARG_INT:
-		if (!isdigit(*p)) {
-		    put_status(s, "Number expected for arg %d", i);
+                if (!isdigit(*p)) {
+                    put_status(s, "Number expected for arg %d", i);
                     goto fail;
                 }
                 args[i] = (void *)strtol(p, (char**)&p, 0);
                 break;
             case CMD_ARG_STRING:
                 if (*p != '\"') {
-		    put_status(s, "String expected for arg %d", i);
+                    put_status(s, "String expected for arg %d", i);
                     goto fail;
                 }
                 p++;
-		/* Sloppy parser: all strings will fit in buffer
-		 * because it is the same size as line buffer.
-		 * All config commands must fit on a single line.
-		 */
+                /* Sloppy parser: all strings will fit in buffer
+                 * because it is the same size as line buffer.
+                 * All config commands must fit on a single line.
+                 */
                 q = strp;
                 while (*p != '\"' && *p != '\0') {
                     c = *p++;
@@ -6481,17 +6498,17 @@ int parse_config_file(EditState *s, const char *filename)
                             break;
                         }
                     }
-		    *q++ = c;
+                    *q++ = c;
                 }
                 *q = '\0';
-		c = '"';
-		if (*p != c) {
-		    put_status(s, "Unterminated string");
-		    goto fail;
-		}
-		p++;
+                c = '"';
+                if (*p != c) {
+                    put_status(s, "Unterminated string");
+                    goto fail;
+                }
+                p++;
                 args[i] = (void *)strp;
-		strp = q + 1;
+                strp = q + 1;
                 break;
             }
         }
@@ -6502,12 +6519,12 @@ int parse_config_file(EditState *s, const char *filename)
             goto fail;
         }
 
-	qs->ec.function = d->name;
+        qs->ec.function = d->name;
         call_func(d->action.func, nb_args, args, args_type);
-	continue;
+        continue;
 
     fail:
-	;
+        ;
     }
     fclose(f);
     qs->ec = ec;
@@ -6522,8 +6539,8 @@ void parse_config(EditState *e, const char *file)
     char filename[MAX_FILENAME_SIZE];
 
     if (file && *file) {
-	parse_config_file(e, filename);
-	return;
+        parse_config_file(e, filename);
+        return;
     }
 
     ffs = find_file_open(qs->res_path, "config");
@@ -6536,7 +6553,7 @@ void parse_config(EditState *e, const char *file)
     }
     find_file_close(ffs);
     if (file)
-	do_refresh(e);
+        do_refresh(e);
 }
 
 /* Load .qerc files in all parent directories of filename */
@@ -6547,13 +6564,13 @@ void do_load_qerc(EditState *e, const char *filename)
     char *p = buf;
 
     for (;;) {
-	pstrcpy(buf, sizeof(buf), filename);
-	p = strchr(p, '/');
-	if (!p)
-	    break;
-	p += 1;
-	pstrcpy(p, buf + sizeof(buf) - p, ".qerc");
-	parse_config_file(e, buf);
+        pstrcpy(buf, sizeof(buf), filename);
+        p = strchr(p, '/');
+        if (!p)
+            break;
+        p += 1;
+        pstrcpy(p, buf + sizeof(buf) - p, ".qerc");
+        parse_config_file(e, buf);
     }
 }
 
@@ -6653,13 +6670,13 @@ static int dummy_dpy_is_user_input_pending(QEditScreen *s)
 }
 
 static void dummy_dpy_fill_rectangle(QEditScreen *s,
-				     int x1, int y1, int w, int h,
-				     QEColor color)
+                                     int x1, int y1, int w, int h,
+                                     QEColor color)
 {
 }
 
 static QEFont *dummy_dpy_open_font(QEditScreen *s,
-				   int style, int size)
+                                   int style, int size)
 {
     return NULL;
 }
@@ -6669,8 +6686,8 @@ static void dummy_dpy_close_font(QEditScreen *s, QEFont *font)
 }
 
 static void dummy_dpy_text_metrics(QEditScreen *s, QEFont *font, 
-				   QECharMetrics *metrics,
-				   const unsigned int *str, int len)
+                                   QECharMetrics *metrics,
+                                   const unsigned int *str, int len)
 {
     metrics->font_ascent = 1;
     metrics->font_descent = 0;
@@ -6678,13 +6695,13 @@ static void dummy_dpy_text_metrics(QEditScreen *s, QEFont *font,
 }
         
 static void dummy_dpy_draw_text(QEditScreen *s, QEFont *font, 
-				int x, int y, const unsigned int *str, int len,
-				QEColor color)
+                                int x, int y, const unsigned int *str, int len,
+                                QEColor color)
 {
 }
 
 static void dummy_dpy_set_clip(QEditScreen *s,
-			       int x, int y, int w, int h)
+                               int x, int y, int w, int h)
 {
 }
 
@@ -6824,17 +6841,17 @@ void load_all_modules(QEmacsState *qs)
     while (!find_file_next(ffs, filename, sizeof(filename))) {
         h = dlopen(filename, RTLD_LAZY);
         if (!h) {
-	    char *error = dlerror();
-	    put_status(NULL, "Could not open module '%s': %s",
-		       filename, error);
+            char *error = dlerror();
+            put_status(NULL, "Could not open module '%s': %s",
+                       filename, error);
             continue;
         }
         init_func = dlsym(h, "__qe_module_init");
         if (!init_func) {
             dlclose(h);
-	    put_status(NULL,
-		       "Could not find qemacs initializer in module '%s'", 
-		       filename);
+            put_status(NULL,
+                       "Could not find qemacs initializer in module '%s'", 
+                       filename);
             continue;
         }
         
@@ -6959,7 +6976,7 @@ void qe_init(void *opaque)
                     if (p->flags & CMD_OPT_ARG) {
                         if (optind >= argc) {
                             put_status(NULL,
-				       "cmdline argument expected -- %s", r);
+                                       "cmdline argument expected -- %s", r);
                             goto next_cmd;
                         }
                         optarg = argv[optind++];
@@ -6983,7 +7000,7 @@ void qe_init(void *opaque)
             }
             p = p->u.next;
         }
-	put_status(NULL, "unknown cmdline option -- %s", r);
+        put_status(NULL, "unknown cmdline option -- %s", r);
     next_cmd: ;
     }
 
@@ -7025,9 +7042,9 @@ void qe_init(void *opaque)
 
     b = eb_find("*errors*");
     if (b != NULL) {
-	show_popup(b);
-	edit_display(qs);
-	dpy_flush(&global_screen);
+        show_popup(b);
+        edit_display(qs);
+        dpy_flush(&global_screen);
     }
 }
 

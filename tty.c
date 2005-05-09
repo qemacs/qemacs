@@ -108,7 +108,7 @@ static int term_init(QEditScreen *s, int w, int h)
     /* test UTF8 support by looking at the cursor position (idea from
        Ricardas Cepas <rch@pub.osf.lt>). Since uClibc actually tests
        to ensure that the format string is a valid multibyte sequence
-       in the current locale (ANSI/ISO C99), use a format specifer of
+       in the current locale (ANSI/ISO C99), use a format specifier of
        %s to avoid printf() failing with EILSEQ. */
     {
         int y, x;
@@ -639,12 +639,7 @@ static void term_flush(QEditScreen *s)
                             buf[0] = '.';
                             buf[1] = '\0';
                         } else {
-                            /* need a kludge for linedrawing chars */
-                            if (cc == 0x2500 || cc == 'x') {
-                                strcpy(buf, "\016x\017");
-                            } else {
-                                unicode_to_charset(buf, cc, s->charset);
-                            }
+                            unicode_to_charset(buf, cc, s->charset);
                         }
                         if (x != s->width - 1 || y != s->height - 1)
                             printf("%s", buf);

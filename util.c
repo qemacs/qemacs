@@ -259,7 +259,7 @@ const char *basename(const char *filename)
     const char *p;
     p = strrchr(filename, '/');
     if (!p) {
-	/* should also scan for ':' */
+        /* should also scan for ':' */
         return filename;
     } else {
         p++;
@@ -354,28 +354,28 @@ int strfind(const char *keytable, const char *str, int casefold)
     const char *p;
 
     if (casefold) {
-	pstrcpy(buf, sizeof(buf), str);
-	str = buf;
-	css_strtolower(buf, sizeof(buf));
+        pstrcpy(buf, sizeof(buf), str);
+        str = buf;
+        css_strtolower(buf, sizeof(buf));
     }
     c = *str;
     len = strlen(str);
     /* need to special case the empty string */
     if (len == 0)
-	return strstr(keytable, "||") != NULL;
+        return strstr(keytable, "||") != NULL;
 
     /* initial and trailing | are optional */
     /* they do not cause the empty string to match */
     for (p = keytable;;) {
-	if (!memcmp(p, str, len) && (p[len] == '|' || p[len] == '\0'))
-	    return 1;
-	for (;;) {
-	    p = strchr(p + 1, c);
-	    if (!p)
-		return 0;
-	    if (p[-1] == '|')
-		break;
-	}
+        if (!memcmp(p, str, len) && (p[len] == '|' || p[len] == '\0'))
+            return 1;
+        for (;;) {
+            p = strchr(p + 1, c);
+            if (!p)
+                return 0;
+            if (p[-1] == '|')
+                break;
+        }
     }
 }
 
@@ -397,7 +397,8 @@ static inline int utoupper(int c)
     return c;
 }
 
-int ustristart(const unsigned int *str, const char *val, const unsigned int **ptr)
+int ustristart(const unsigned int *str, const char *val,
+               const unsigned int **ptr)
 {
     const unsigned int *p;
     const char *q;

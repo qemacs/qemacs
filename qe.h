@@ -1124,10 +1124,11 @@ void do_find_window(EditState *s, int key);
 
 /* window handling */
 void edit_close(EditState *s);
-void edit_detach(EditState *s);
-void edit_append(EditState *s, EditState *e);
 EditState *edit_new(EditBuffer *b,
                     int x1, int y1, int width, int height, int flags);
+void edit_detach(EditState *s);
+void edit_append(EditState *s, EditState *e);
+EditState *edit_find(EditBuffer *b);
 void do_refresh(EditState *s);
 void do_other_window(EditState *s);
 void do_delete_window(EditState *s, int force);
