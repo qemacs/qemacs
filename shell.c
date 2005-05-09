@@ -42,6 +42,7 @@ static ModeDef shell_mode;
 enum TTYState {
     TTY_STATE_NORM,
     TTY_STATE_ESC,
+    TTY_STATE_ESC2,
     TTY_STATE_CSI,
 };
 
@@ -54,6 +55,7 @@ typedef struct ShellState {
     int esc_params[MAX_ESC_PARAMS];
     int nb_esc_params;
     int state;
+    int esc1;
     int shifted;
     EditBuffer *b;
     EditBuffer *b_color; /* color buffer, one byte per char */
@@ -302,11 +304,9 @@ static void tty_emulate(ShellState *s, int c)
             }
             break;
 	case 14:
-	    //eb_set_charset(s->b, &charset_8859_1);
 	    s->shifted = 1;
 	    break;
 	case 15:
-	    //eb_set_charset(s->b, &charset_cp1125);
 	    s->shifted = 0;
 	    break;
         case 27:
@@ -315,6 +315,7 @@ static void tty_emulate(ShellState *s, int c)
         default:
             if (c >= 32 || c == 9) {
                 int c1, cur_len, len;
+		/* CG: assuming ISO-8859-1 characters */
 		/* CG: horrible kludge for alternate charset support */
 		if (s->shifted && c >= 96 && c < 128)
 		    c += 32;
@@ -346,9 +347,56 @@ static void tty_emulate(ShellState *s, int c)
             s->nb_esc_params = 0;
             s->state = TTY_STATE_CSI;
         } else {
-            s->state = TTY_STATE_NORM;
+	    /* CG: should deal with other sequences:
+	     * ansi: hts=\EH, s0ds=\E(B, s1ds=\E)B, s2ds=\E*B, s3ds=\E+B,
+	     * linux: hts=\EH, rc=\E8, ri=\EM, rs1=\Ec\E]R, sc=\E7,
+	     * vt100: enacs=\E(B\E)0, hts=\EH, rc=\E8, ri=\EM$<5>,
+	     *        rmkx=\E[?1l\E>,
+	     *        rs2=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h, sc=\E7, 
+	     *        smkx=\E[?1h\E=,
+	     * xterm: enacs=\E(B\E)0, hts=\EH, is2=\E[!p\E[?3;4l\E[4l\E>,
+	     *        rc=\E8, ri=\EM, rmkx=\E[?1l\E>, rs1=\Ec,
+	     *        rs2=\E[!p\E[?3;4l\E[4l\E>, sc=\E7, smkx=\E[?1h\E=,
+	     */
+	    switch (c) {
+	    case '(':
+	    case ')':
+	    case '*':
+	    case '+':
+	    case ']':
+		s->esc1 = c;
+		s->state = TTY_STATE_ESC2;
+		break;
+	    case 'H':	// hts
+	    case '7':	// sc
+	    case '8':	// rc
+	    case 'M':	// ri
+	    case 'c':	// rs1
+	    case '>':	// rmkx, is2, rs2
+	    case '=':	// smkx
+		// XXX: do these
+	    default:
+		s->state = TTY_STATE_NORM;
+		break;
+	    }
         }
         break;
+    case TTY_STATE_ESC2:
+	s->state = TTY_STATE_NORM;
+#define ESC2(c1,c2)  (((c1)<<8)|((unsigned char)c2))
+	switch (ESC2(s->esc1, c)) {
+	case ESC2('(','B'):
+	case ESC2(')','B'):
+	case ESC2('(','0'):
+	case ESC2(')','0'):
+	case ESC2('*','B'):
+	case ESC2('+','B'):
+	case ESC2(']','R'):
+	    /* XXX: ??? */
+	    break;
+	}
+#undef ESC2
+	break;
     case TTY_STATE_CSI:
         if (c >= '0' && c <= '9') {
             if (s->nb_esc_params < MAX_ESC_PARAMS) {

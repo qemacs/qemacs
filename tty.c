@@ -121,6 +121,7 @@ static int term_init(QEditScreen *s, int w, int h)
         }
     }
 #endif
+    printf("\033)0\033(B\017"); /* select character sets in block 0 and 1 */
     
     atexit(term_exit);
 
