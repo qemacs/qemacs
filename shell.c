@@ -58,6 +58,7 @@ typedef struct ShellState {
     int state;
     int esc1;
     int shifted;
+    int grab_keys;
     EditBuffer *b;
     EditBuffer *b_color; /* color buffer, one byte per char */
     int is_shell; /* only used to display final message */
@@ -430,16 +431,107 @@ static void shell_display_hook(EditState *e)
         e->offset = s->cur_offset;
 }
 
+void shell_key(void *opaque, int key)
+{
+    ShellState *s = opaque;
+    char buf[10];
+    const char *p;
+    int len;
+
+    if (key == KEY_CTRL('o')) {
+        qe_ungrab_keys();
+        unget_key(key);
+        return;
+    }
+    p = buf;
+    len = -1;
+    switch (key) {
+    case KEY_UP:        p = s->kcuu1; break;
+    case KEY_DOWN:      p = s->kcud1; break;
+    case KEY_RIGHT:     p = s->kcuf1; break;
+    case KEY_LEFT:      p = s->kcub1; break;
+    //case KEY_CTRL_UP:
+    //case KEY_CTRL_DOWN:
+    //case KEY_CTRL_RIGHT:
+    //case KEY_CTRL_LEFT:
+    //case KEY_CTRL_END:
+    //case KEY_CTRL_HOME:
+    //case KEY_CTRL_PAGEUP:
+    //case KEY_CTRL_PAGEDOWN:
+    case KEY_SHIFT_TAB: p = s->kcbt; break;
+    case KEY_HOME:      p = s->khome; break;
+    case KEY_INSERT:    p = s->kich1; break;
+    case KEY_DELETE:    p = s->kdch1; break;
+    case KEY_END:       p = s->kend; break;
+    case KEY_PAGEUP:    p = s->kpp; break;
+    case KEY_PAGEDOWN:  p = s->knp; break;
+    case KEY_F1:        p = s->kf1; break;
+    case KEY_F2:        p = s->kf2; break;
+    case KEY_F3:        p = s->kf3; break;
+    case KEY_F4:        p = s->kf4; break;
+    case KEY_F5:        p = s->kf5; break;
+    case KEY_F6:        p = s->kf6; break;
+    case KEY_F7:        p = s->kf7; break;
+    case KEY_F8:        p = s->kf8; break;
+    case KEY_F9:        p = s->kf9; break;
+    case KEY_F10:       p = s->kf10; break;
+    case KEY_F11:       p = s->kf11; break;
+    case KEY_F12:       p = s->kf12; break;
+    case KEY_F13:       p = s->kf13; break;
+    case KEY_F14:       p = s->kf14; break;
+    case KEY_F15:       p = s->kf15; break;
+    case KEY_F16:       p = s->kf16; break;
+    case KEY_F17:       p = s->kf17; break;
+    case KEY_F18:       p = s->kf18; break;
+    case KEY_F19:       p = s->kf19; break;
+    case KEY_F20:       p = s->kf20; break;
+    default:
+        if (key < 256) {
+            buf[0] = key;
+            len = 1;
+        } else
+        if (key >= KEY_META(0) && key <= KEY_META(255)) {
+            buf[0] = '\033';
+            buf[1] = key;
+            len = 2;
+        } else {
+            p = NULL;
+        }
+    } 
+    if (p)
+        tty_write(s, p, len);
+}
+
 static void tty_emulate(ShellState *s, int c)
 {
     int i, offset, offset1, offset2, n;
     unsigned char buf1[10];
     
 #define ESC2(c1,c2)  (((c1)<<8)|((unsigned char)c2))
+    /* some bytes are state independent */
+    switch (c) {
+    case 0x18:
+    case 0x1A:
+        s->state = TTY_STATE_NORM;
+        return;
+    case 0x1B:
+        s->state = TTY_STATE_ESC;
+        return;
+#if 0
+    case 0x9B:
+        goto csi_entry;
+#endif
+    }
+
     switch (s->state) {
     case TTY_STATE_NORM:
-        switch(c) {
-        case 8:
+        switch (c) {
+            /* BEL            Bell (Ctrl-G) */
+            /* FF             Form Feed or New Page (NP) (Ctrl-L) same as LF */
+            /* TAB            Horizontal Tab (HT) (Ctrl-I) */
+            /* VT             Vertical Tab (Ctrl-K) same as LF */
+
+        case 8:         /* ^H  BS = backspace */
             {
                 int c1;
                 c1 = eb_prevc(s->b, s->cur_offset, &offset);
@@ -447,10 +539,11 @@ static void tty_emulate(ShellState *s, int c)
                     s->cur_offset = offset;
             }
             break;
-        case 10:
+        case 10:        /* ^J  NL = line feed */
             /* go to next line */
+            /* CG: should check if column should be kept */
             offset = s->cur_offset;
-            for(;;) {
+            for (;;) {
                 if (offset == s->b->total_size) {
                     /* add a new line */
                     buf1[0] = '\n';
@@ -464,23 +557,20 @@ static void tty_emulate(ShellState *s, int c)
             }
             s->cur_offset = offset;
             break;
-        case 13:
+        case 13:        /* ^M  CR = carriage return */
             /* move to bol */
-            for(;;) {
+            for (;;) {
                 c = eb_prevc(s->b, s->cur_offset, &offset1);
                 if (c == '\n')
                     break;
                 s->cur_offset = offset1;
             }
             break;
-        case 14:
+        case 14:        /* ^N  SO = shift out */
             s->shifted = 1;
             break;
-        case 15:
+        case 15:        /* ^O  SI = shift in */
             s->shifted = 0;
-            break;
-        case 27:
-            s->state = TTY_STATE_ESC;
             break;
         default:
             if (c >= 32 || c == 9) {
@@ -589,7 +679,16 @@ static void tty_emulate(ShellState *s, int c)
                 /* 1047, 1048 -> cup mode:
                  * should grab all keys while active!
                  */
+                if (s->esc_params[0] == 1047) {
+                    s->grab_keys = 1;
+                    qe_grab_keys(shell_key, s);
+                }
+                break;
             case ESC2('?','l'): /* reset terminal mode */
+                if (s->esc_params[0] == 1047) {
+                    qe_ungrab_keys();
+                    s->grab_keys = 0;
+                }
                 break;
             case 'A':
                 /* move relative up */
@@ -601,11 +700,11 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case 'C':
                 /* move relative forward */
-                tty_gotoxy(s, -(s->esc_params[0] + 1 - s->has_params[0]), 0, 1);
+                tty_gotoxy(s, (s->esc_params[0] + 1 - s->has_params[0]), 0, 1);
                 break;
             case 'D':
                 /* move relative backward */
-                tty_gotoxy(s, (s->esc_params[0] + 1 - s->has_params[0]), 0, 1);
+                tty_gotoxy(s, -(s->esc_params[0] + 1 - s->has_params[0]), 0, 1);
                 break;
             case 'H':
                 /* goto xy */
@@ -722,7 +821,8 @@ static void shell_color_callback(EditBuffer *b,
     }
 }
 
-static int shell_get_colorized_line(EditState *e, unsigned int *buf, int buf_size,
+static int shell_get_colorized_line(EditState *e,
+                                    unsigned int *buf, int buf_size,
                                     int offset, int line_num)
 {
     EditBuffer *b = e->b;
@@ -817,7 +917,9 @@ void shell_pid_cb(void *opaque, int status)
     }
 
     /* remove shell input mode */
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    s->grab_keys = 0;
+    qe_ungrab_keys();
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->b == b)
             e->interactive = 0;
     }
@@ -1042,6 +1144,11 @@ void shell_write_char(EditState *e, int c)
 void do_shell_toggle_input(EditState *e)
 {
     e->interactive = !e->interactive;
+    if (e->interactive) {
+        ShellState *s = e->b->priv_data;
+        if (s->grab_keys)
+            qe_grab_keys(shell_key, s);
+    }
 #if 0
     if (e->interactive) {
         ShellState *s = e->b->priv_data;

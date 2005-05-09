@@ -101,7 +101,7 @@ static int term_init(QEditScreen *s, int w, int h)
     
     tcsetattr(0, TCSANOW, &tty);
 
-    s->charset = &charset_8859_1;
+    s->charset = &charset_vt100;
 
 #ifndef CONFIG_CYGWIN
     /* CG: Should also have a command line switch */
@@ -124,7 +124,9 @@ static int term_init(QEditScreen *s, int w, int h)
         }
     }
 #endif
-    printf("\033)0\033(B\017"); /* select character sets in block 0 and 1 */
+    printf("\033[?1048h\033[?1047h"     /* enable cup */
+           "\033)0\033(B"        /* select character sets in block 0 and 1 */
+           "\017");             /* shift out */
     
     atexit(term_exit);
 
@@ -162,7 +164,9 @@ static void term_close(QEditScreen *s)
 {
     fcntl(0, F_SETFL, 0);
     /* go to the last line */
-    printf("\033[%d;%dH\033[m\033[K", s->height, 1);
+    printf("\033[%d;%dH\033[m\033[K"
+           "\033[?1047l\033[?1048l",    /* disable cup */
+           s->height, 1);
     fflush(stdout);
 }
 
@@ -171,7 +175,7 @@ static void term_exit(void)
     QEditScreen *s = tty_screen;
     TTYState *ts = s->private;
 
-    tcsetattr (0, TCSANOW, &ts->oldtty);
+    tcsetattr(0, TCSANOW, &ts->oldtty);
 }
 
 static void tty_resize(int sig)
@@ -271,6 +275,7 @@ static int const csi_lookup[] = {
 static void tty_read_handler(void *opaque)
 {
     QEditScreen *s = opaque;
+    QEmacsState *qs = &qe_state;
     TTYState *ts = s->private;
     int ch;
     QEEvent ev1, *ev = &ev1;
@@ -278,7 +283,9 @@ static void tty_read_handler(void *opaque)
     if (read(0, ts->buf + ts->utf8_index, 1) != 1)
         return;
 
-    if (trace_buffer) {
+    if (trace_buffer &&
+        qs->active_window &&
+        qs->active_window->b != trace_buffer) {
         eb_write(trace_buffer, trace_buffer->total_size,
                  ts->buf + ts->utf8_index, 1);
 #if 0

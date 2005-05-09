@@ -310,7 +310,8 @@ char *pathname(char *buf, int buf_size, const char *filename)
     return buf;
 }
 
-char *makepath(char *buf, int buf_size, const char *path, const char *filename)
+char *makepath(char *buf, int buf_size, const char *path,
+               const char *filename)
 {
     int len;
 
@@ -323,16 +324,27 @@ char *makepath(char *buf, int buf_size, const char *path, const char *filename)
     return pstrcat(buf, buf_size, filename);
 }
 
-/* copy the nth first char of a string and truncate it. */
+void splitpath(char *dirname, int dirname_size,
+               char *filename, int filename_size, const char *pathname)
+{
+    const char *base;
+
+    base = basename(pathname);
+    pstrncpy(dirname, dirname_size, pathname, base - pathname);
+    pstrcpy(filename, filename_size, base);
+}
+
+/* copy the n first char of a string and truncate it. */
 char *pstrncpy(char *buf, int buf_size, const char *s, int len)
 {
-    char *q, *q_end;
+    char *q;
     int c;
 
     if (buf_size > 0) {
         q = buf;
-        q_end = buf + buf_size - 1;
-        while (q < q_end && len > 0) {
+        if (len >= buf_size)
+            len = buf_size - 1;
+        while (len > 0) {
             c = *s++;
             if (c == '\0')
                 break;

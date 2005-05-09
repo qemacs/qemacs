@@ -82,6 +82,8 @@ const char *basename(const char *filename);
 const char *extension(const char *filename);
 char *pathname(char *buf, int buf_size, const char *filename);
 char *makepath(char *buf, int buf_size, const char *path, const char *filename);
+void splitpath(char *dirname, int dirname_size,
+	       char *filename, int filename_size, const char *pathname);
 
 int find_resource_file(char *path, int path_size, const char *pattern);
 int strfind(const char *keytable, const char *str, int casefold);
@@ -174,6 +176,7 @@ void free_strings(StringArray *cs);
 
 typedef struct CmdOptionDef {
     const char *name;
+    const char *shortname;
     const char *argname;
     int flags;
     const char *help;
@@ -322,15 +325,15 @@ enum QEEventType {
 #define KEY_SPECIAL(c)  (((c) >= 0xe000 && (c) < 0xf000) || ((c) >= 0 && (c) < 32))
 
 #define KEY_NONE        0xffff
+#define KEY_DEFAULT     0xe401 /* to handle all non special keys */
+
 #define KEY_TAB         KEY_CTRL('i')
 #define KEY_RET         KEY_CTRL('m')
-#define KEY_REFRESH     KEY_CTRL('l')
 #define KEY_ESC         KEY_CTRL('[')
 #define KEY_SPC         0x0020
 #define KEY_DEL         127		// kbs
 #define KEY_BS          KEY_CTRL('h')	// kbs
 
-#define KEY_DEFAULT     0xe401 /* to handle all non special keys */
 #define KEY_UP          KEY_ESC1('A')	// kcuu1
 #define KEY_DOWN        KEY_ESC1('B')	// kcud1
 #define KEY_RIGHT       KEY_ESC1('C')	// kcuf1
@@ -1165,6 +1168,7 @@ void do_kill_buffer(EditState *s, const char *bufname1);
 void text_move_bol(EditState *s);
 void text_move_eol(EditState *s);
 void do_load(EditState *s, const char *filename);
+void do_load_from_path(EditState *s, const char *filename);
 void do_goto_line(EditState *s, int line);
 void switch_to_buffer(EditState *s, EditBuffer *b);
 void do_up_down(EditState *s, int dir);

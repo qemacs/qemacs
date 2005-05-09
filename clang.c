@@ -164,13 +164,13 @@ void c_colorize_line(unsigned int *buf, int len,
                 
                 l = get_c_keyword(kbuf, sizeof(kbuf), &p);
                 p1 = p;
+		while (*p == ' ' || *p == '\t')
+		    p++;
                 if (strfind(c_keywords, kbuf, 0)) {
                     set_color(p_start, p1 - p_start, QE_STYLE_KEYWORD);
                 } else
 		if (strfind(c_types, kbuf, 0)) {
                     /* c type */
-                    while (*p == ' ' || *p == '\t')
-                        p++;
                     /* if not cast, assume type declaration */
                     if (*p != ')') {
                         type_decl = 1;
@@ -182,8 +182,6 @@ void c_colorize_line(unsigned int *buf, int len,
                         type_decl = 1;
 
                     if (type_decl) {
-                        while (*p == ' ' || *p == '\t')
-                            p++;
                         if (*p == '(') {
                             /* function definition case */
                             set_color(p_start, p1 - p_start, QE_STYLE_FUNCTION);
@@ -534,12 +532,13 @@ int c_mode_init(EditState *s, ModeSavedData *saved_data)
 
 /* specific C commands */
 static CmdDef c_commands[] = {
-    CMD0( KEY_CTRL('i'), KEY_NONE, "c-indent-command", do_c_indent)
-    CMD0( KEY_NONE, KEY_NONE, "c-indent-region", do_c_indent_region)
-    CMD1( ';', KEY_NONE, "c-electric-semi&comma", do_c_electric, ';')
-    CMD1( ':', KEY_NONE, "c-electric-colon", do_c_electric, ':')
-    CMD1( '{', KEY_NONE, "c-electric-obrace", do_c_electric, '{')
-    CMD1( '}', KEY_NONE, "c-electric-cbrace", do_c_electric, '}')
+    CMD_( KEY_CTRL('i'), KEY_NONE, "c-indent-command", do_c_indent, "*")
+    CMD_( KEY_NONE, KEY_NONE, "c-indent-region", do_c_indent_region, "*")
+    /* CG: should use 'k' intrinsic argument */
+    CMDV( ';', KEY_NONE, "c-electric-semi&comma", do_c_electric, ';', "*v")
+    CMDV( ':', KEY_NONE, "c-electric-colon", do_c_electric, ':', "*v")
+    CMDV( '{', KEY_NONE, "c-electric-obrace", do_c_electric, '{', "*v")
+    CMDV( '}', KEY_NONE, "c-electric-cbrace", do_c_electric, '}', "*v")
     CMD_DEF_END,
 };
 

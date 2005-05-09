@@ -65,6 +65,8 @@ static QEditScreen global_screen;
 static int screen_width = 0;
 static int screen_height = 0;
 EditBuffer *trace_buffer;
+int no_init_file;
+const char *user_option;
 
 /* mode handling */
 
@@ -1263,14 +1265,17 @@ void text_write_char(EditState *s, int key)
 }
 
 /* XXX: may be better to move it into qe_key_process() */
-static void quote_grab_key(void *opaque, int key)
+static void quote_key(void *opaque, int key)
 {
+    /* CG: should pass s as opaque */
     QEmacsState *qs = &qe_state;
     EditState *s;
 
     s = qs->active_window;
     if (!s)
         return;
+
+    /* CG: why not insert special keys as well? */
     if (!KEY_SPECIAL(key) ||
         (key >= 0 && key <= 31)) {
         do_char(s, key);
@@ -1282,7 +1287,7 @@ static void quote_grab_key(void *opaque, int key)
 
 void do_quote(EditState *s)
 {
-    qe_grab_keys(quote_grab_key, NULL);
+    qe_grab_keys(quote_key, NULL);
     put_status(s, "Quote: ");
 }
 
@@ -1324,6 +1329,12 @@ void do_set_mark(EditState *s)
 {
     s->b->mark = s->offset;
     put_status(s, "Mark set");
+}
+
+void do_mark_whole_buffer(EditState *s)
+{
+    s->b->mark = 0;
+    s->offset = s->b->total_size;
 }
 
 EditBuffer *new_yank_buffer(void)
@@ -1670,6 +1681,48 @@ void do_goto_char(EditState *s, int pos)
     if (pos < 0)
         return;
     s->offset = eb_goto_char(s->b, pos);
+}
+
+void do_count_lines(EditState *s)
+{
+    int total_lines, line_num, mark_line, col_num;
+
+    eb_get_pos(s->b, &total_lines, &col_num, s->b->total_size);
+    eb_get_pos(s->b, &mark_line, &col_num, s->b->mark);
+    eb_get_pos(s->b, &line_num, &col_num, s->offset);
+    
+    put_status(s, "%d lines, point on line %d, %d lines in block",
+               total_lines, line_num + 1, abs(line_num - mark_line));
+}
+
+void do_what_cursor_position(EditState *s)
+{
+    char buf[128];
+    int line_num, col_num;
+    int c, pos, offset1;
+
+    buf[0] = '\0';
+    if (s->offset < s->b->total_size) {
+        c = eb_nextc(s->b, s->offset, &offset1);
+        pos = snprintf(buf, sizeof(buf), "char: ");
+        if (c < 32 || c == 127) {
+            pos += snprintf(buf + pos, sizeof(buf) - pos, "^%c ",
+                            (c + '@') & 127);
+        } else
+        if (c < 127 || c >= 160) {
+            buf[pos++] = '\'';
+            pos = utf8_encode(buf + pos, c) - buf;
+            buf[pos++] = '\'';
+            buf[pos++] = ' ';
+        }
+        pos += snprintf(buf + pos, sizeof(buf) - pos, "(%#3o %d 0x%2x)  ",
+                        c, c, c);
+        /* CG: should display buffer bytes if non ascii */
+    }    
+    eb_get_pos(s->b, &line_num, &col_num, s->offset);
+    put_status(s, "%spoint=%d column=%d mark=%d size=%d region=%d",
+               buf, s->offset, col_num, s->b->mark, s->b->total_size,
+               abs(s->offset - s->b->mark));
 }
 
 void do_set_tab_width(EditState *s, int tab_width)
@@ -3175,6 +3228,16 @@ static void free_cmd(ExecCmdState *es);
 void exec_command(EditState *s, CmdDef *d, int argval)
 {
     ExecCmdState *es;
+    const char *argdesc;
+
+    argdesc = d->name + strlen(d->name) + 1;
+    if (*argdesc == '*') {
+        argdesc++;
+        if (s->b->flags & BF_READONLY) {
+            put_status(s, "Buffer is read only");
+            return;
+        }
+    }
     
     es = malloc(sizeof(ExecCmdState));
     if (!es)
@@ -3189,7 +3252,7 @@ void exec_command(EditState *s, CmdDef *d, int argval)
     es->args[es->nb_args] = (void *)s;
     es->args_type[es->nb_args] = CMD_ARG_WINDOW;
     es->nb_args++;
-    es->ptype = d->name + strlen(d->name) + 1;
+    es->ptype = argdesc;
 
     parse_args(es);
 }
@@ -3293,6 +3356,7 @@ static void parse_args(ExecCmdState *es)
         qs->ec.function = d->name;
         call_func(d->action.func, es->nb_args, es->args, es->args_type);
         /* CG: Should test for abort condition */
+        /* CG: Should follow qs->active_window ? */
     } while (--rep_count > 0);
 
     qs->last_cmd_func = d->action.func;
@@ -3635,16 +3699,23 @@ static void qe_key_process(int key)
         macro_add_key(key);
     }
     
+again:
     if (c->grab_key_cb) {
         c->grab_key_cb(c->grab_key_opaque, key);
-        return;
+        /* allow key_grabber to quit and unget last key */
+        if (c->grab_key_cb || qs->ungot_key == -1)
+            return;
+        key = qs->ungot_key;
+        qs->ungot_key = -1;
     }
 
+    /* safety check */
     if (c->nb_keys >= MAX_KEYS) {
         qe_key_init();
         c->describe_key = 0;
         return;
     }
+
     c->keys[c->nb_keys++] = key;
     s = qs->active_window;
     if (!s->minibuf) {
@@ -3700,6 +3771,8 @@ static void qe_key_process(int key)
                     }
                 }
                 if (kd) {
+                    /* horrible kludge to pass key as intrinsic argument */
+                    /* CG: should have an argument type for key */
                     kd->cmd->val = (void *)key;
                     goto exec_cmd;
                 }
@@ -3742,6 +3815,12 @@ static void qe_key_process(int key)
             qe_key_init();
             edit_display(qs);
             dpy_flush(&global_screen);
+            /* CG: should move ungot key handling to generic event dispatch */
+            if (qs->ungot_key != -1) {
+                key = qs->ungot_key;
+                qs->ungot_key = -1;
+                goto again;
+            }
             return;
         }
     }
@@ -4020,19 +4099,17 @@ void file_completion(StringArray *cs, const char *input)
     char path[MAX_FILENAME_SIZE];
     char file[MAX_FILENAME_SIZE];
     char filename[MAX_FILENAME_SIZE];
-    char *base;
+    const char *base, *ext;
     int len;
     
-    pstrcpy(path, sizeof(path), input);
-    base = path + (basename(path) - path);
-    pstrcpy(file, sizeof(file), base);
+    splitpath(path, sizeof(path), file, sizeof(file), input);
     pstrcat(file, sizeof(file), "*");
-    *base = '\0';
+
     ffs = find_file_open(*path ? path : ".", file);
     while (find_file_next(ffs, filename, sizeof(filename)) == 0) {
         struct stat sb;
 
-        base = filename + (basename(filename) - filename);
+        base = basename(filename);
         /* ignore . and .. to force direct match if
          * single entry in directory */
         if (!strcmp(base, ".") || !strcmp(base, ".."))
@@ -4042,18 +4119,16 @@ void file_completion(StringArray *cs, const char *input)
         if (!len || base[len - 1] == '~')
             continue;
         /* ignore known output file extensions */
-        if (strfind(file_completion_ignore_extensions,
-                    extension(filename), 1)) {
+        ext = extension(base);
+        if (*ext && strfind(file_completion_ignore_extensions, ext + 1, 1))
             continue;
-        }
-        makepath(file, sizeof(file), path, base);
+
         /* stat the file to find out if it's a directory.
          * In that case add a slash to speed up typing long paths
          */
-        stat(file, &sb);
-        if (S_ISDIR(sb.st_mode))
-            pstrcat(path, sizeof(path), "/");
-        add_string(cs, file);
+        if (!stat(filename, &sb) && S_ISDIR(sb.st_mode))
+            pstrcat(filename, sizeof(filename), "/");
+        add_string(cs, filename);
     }
 
     find_file_close(ffs);
@@ -4581,6 +4656,11 @@ void do_toggle_read_only(EditState *s)
     s->b->flags ^= BF_READONLY;
 }
 
+void do_not_modified(EditState *s)
+{
+    s->b->modified = 0;
+}
+
 static void kill_buffer_confirm_cb(void *opaque, char *reply);
 static void kill_buffer_noconfirm(EditBuffer *b);
 
@@ -4695,7 +4775,8 @@ static ModeDef *probe_mode(EditState *s, int mode, uint8_t *buf, int len)
     return selected_mode;
 }
 
-static void do_load1(EditState *s, const char *filename1, int kill_buffer)
+static void do_load1(EditState *s, const char *filename1,
+                     int kill_buffer, int load_resource)
 {
     char buf[1025];
     char filename[MAX_FILENAME_SIZE];
@@ -4706,14 +4787,19 @@ static void do_load1(EditState *s, const char *filename1, int kill_buffer)
     FILE *f;
     struct stat st;
 
+    if (load_resource) {
+        if (find_resource_file(filename, sizeof(filename), filename1))
+            return;
+    } else {
+        /* compute full name */
+        canonize_absolute_path(filename, sizeof(filename), filename1);
+    }
+
     if (kill_buffer) {
         /* CG: this behaviour is not correct */
         /* CG: should have a direct primitive */
         do_kill_buffer(s, s->b->name);
     }
-
-    /* compute full name */
-    canonize_absolute_path(filename, sizeof(filename), filename1);
 
     /* see if file is already edited */
     b = eb_find_file(filename);
@@ -4818,12 +4904,17 @@ static void load_completion_cb(void *opaque, int err)
 
 void do_load(EditState *s, const char *filename)
 {
-    do_load1(s, filename, 0);
+    do_load1(s, filename, 0, 0);
 }
 
 void do_find_alternate_file(EditState *s, const char *filename)
 {
-    do_load1(s, filename, 1);
+    do_load1(s, filename, 1, 0);
+}
+
+void do_load_file_from_path(EditState *s, const char *filename)
+{
+    do_load1(s, filename, 0, 1);
 }
 
 void do_insert_file(EditState *s, const char *filename)
@@ -6414,6 +6505,7 @@ int parse_config_file(EditState *s, const char *filename)
         /* search for command */
         d = qe_find_cmd(cmd);
         if (!d) {
+            /* CG: should handle variables */
             err = -1;
             put_status(s, "Unknown command '%s'", cmd);
             continue;
@@ -6425,6 +6517,14 @@ int parse_config_file(EditState *s, const char *filename)
 
         /* construct argument type list */
         r = d->name + strlen(d->name) + 1;
+        if (*r == '*') {
+            r++;
+            if (s->b->flags & BF_READONLY) {
+                put_status(s, "Buffer is read only");
+                continue;
+            }
+        }
+
         for (;;) {
             unsigned char arg_type;
             int ret;
@@ -6526,6 +6626,8 @@ int parse_config_file(EditState *s, const char *filename)
 
         qs->ec.function = d->name;
         call_func(d->action.func, nb_args, args, args_type);
+        if (qs->active_window)
+            s = qs->active_window;
         continue;
 
     fail:
@@ -6551,9 +6653,7 @@ void parse_config(EditState *e, const char *file)
     ffs = find_file_open(qs->res_path, "config");
     if (!ffs)
         return;
-    for (;;) {
-        if (find_file_next(ffs, filename, sizeof(filename)) != 0)
-            break;
+    while (find_file_next(ffs, filename, sizeof(filename)) == 0) {
         parse_config_file(e, filename);
     }
     find_file_close(ffs);
@@ -6586,6 +6686,8 @@ static CmdOptionDef *first_cmd_options;
 void qe_register_cmd_line_options(CmdOptionDef *table)
 {
     CmdOptionDef **pp, *p;
+
+    /* link command line options table at end of list */
     pp = &first_cmd_options;
     while (*pp != NULL) {
         p = *pp;
@@ -6598,44 +6700,146 @@ void qe_register_cmd_line_options(CmdOptionDef *table)
 
 /******************************************************/
 
-static void show_help(void)
+static void show_version(void)
 {
-    CmdOptionDef *p;
-    printf("QEmacs version " QE_VERSION ", Copyright (c) 2000-2003 Fabrice Bellard\n");
-
-    /* generate usage */
-    printf("usage: qe");
-    p = first_cmd_options;
-    while (p != NULL) {
-        while (p->name != NULL) {
-            printf(" [-%s", p->name);
-            if (p->flags & CMD_OPT_ARG)
-                printf(" %s", p->argname);
-            printf("]");
-            p++;
-        }
-        p = p->u.next;
-    }
-    printf(" [filename...]\n\n");
-
-    /* generate help */
-    p = first_cmd_options;
-    while (p != NULL) {
-        while (p->name != NULL) {
-            printf("-%s", p->name);
-            if (p->flags & CMD_OPT_ARG)
-                printf(" %s", p->argname);
-            printf(": %s\n", p->help);
-            p++;
-        }
-        p = p->u.next;
-    }
+    printf("QEmacs version " QE_VERSION "\n"
+           "Copyright (c) 2000-2003 Fabrice Bellard\n"
+           "QEmacs comes with ABSOLUTELY NO WARRANTY.\n"
+           "You may redistribute copies of QEmacs\n"
+           "under the terms of the GNU Lesser General Public License.\n");
     exit(1);
 }
 
+static void show_usage(void)
+{
+    CmdOptionDef *p;
+    int pos;
+
+    printf("Usage: qe [OPTIONS] [filename ...]\n"
+           "\n"
+           "Options:\n"
+           "\n");
+
+    /* print all registered command line options */
+    p = first_cmd_options;
+    while (p != NULL) {
+        while (p->name != NULL) {
+            pos = printf("--%s", p->name);
+            if (p->shortname)
+                pos += printf(", -%s", p->shortname);
+            if (p->flags & CMD_OPT_ARG)
+                pos += printf(" %s", p->argname);
+            if (pos < 24)
+                printf("%*s", pos - 24, "");
+            printf("%s\n", p->help);
+            p++;
+        }
+        p = p->u.next;
+    }
+    printf("\n"
+           "Report bugs to bug@qemacs.org.  First, please see the Bugs\n"
+           "section of the QEmacs manual or the file BUGS.\n");
+    exit(1);
+}
+
+int parse_command_line(int argc, char **argv)
+{
+    int optind;
+
+    optind = 1;
+    for (;;) {
+        const char *r, *r1, *r2, *optarg;
+        CmdOptionDef *p;
+
+        if (optind >= argc)
+            break;
+        r = argv[optind];
+        /* stop before first non option */
+        if (r[0] != '-') 
+            break;
+        optind++;
+
+        r2 = r1 = r + 1;
+        if (r2[0] == '-') {
+            r2++;
+            /* stop after `--' marker */
+            if (r2[0] == '\0')
+                break;
+        }
+
+        p = first_cmd_options;
+        while (p != NULL) {
+            while (p->name != NULL) {
+                if (!strcmp(p->name, r2) ||
+                    (p->shortname && !strcmp(p->shortname, r1))) {
+                    if (p->flags & CMD_OPT_ARG) {
+                        if (optind >= argc) {
+                            put_status(NULL,
+                                       "cmdline argument expected -- %s", r);
+                            goto next_cmd;
+                        }
+                        optarg = argv[optind++];
+                    } else {
+                        optarg = NULL;
+                    }
+                    if (p->flags & CMD_OPT_BOOL) {
+                        *p->u.int_ptr = 1;
+                    } else if (p->flags & CMD_OPT_STRING) {
+                        *p->u.string_ptr = optarg;
+                    } else if (p->flags & CMD_OPT_INT) {
+                        *p->u.int_ptr = strtol(optarg, NULL, 0);
+                    } else if (p->flags & CMD_OPT_ARG) {
+                        p->u.func_arg(optarg);
+                    } else {
+                        p->u.func_noarg();
+                    }
+                    goto next_cmd;
+                }
+                p++;
+            }
+            p = p->u.next;
+        }
+        put_status(NULL, "unknown cmdline option '%s'", r);
+    next_cmd: ;
+    }
+    return optind;
+}
+
+void set_user_option(const char *user)
+{
+    QEmacsState *qs = &qe_state;
+    char path[1024];
+    const char *home_path;
+
+    user_option = user;
+    /* compute resources path */
+    pstrcpy(qs->res_path, sizeof(qs->res_path),
+           CONFIG_QE_PREFIX "/share/qe:" CONFIG_QE_PREFIX "/lib/qe:"
+           "/usr/share/qe:/usr/lib/qe");
+    if (user) {
+        /* use ~USER/.qe instead of ~/.qe */
+        /* CG: should get user homedir */
+        snprintf(path, sizeof(path), "/home/%s", user);
+        home_path = path;
+    } else {
+        home_path = getenv("HOME");
+    }
+    if (home_path) {
+        pstrcat(qs->res_path, sizeof(qs->res_path), ":");
+        pstrcat(qs->res_path, sizeof(qs->res_path), home_path);
+        pstrcat(qs->res_path, sizeof(qs->res_path), "/.qe");
+    }
+}
+
 static CmdOptionDef cmd_options[] = {
-    { "h", NULL, 0, "show help", 
-      {func_noarg: show_help}},
+    { "help", "h", NULL, 0, "display this help message and exit", 
+      {func_noarg: show_usage}},
+    { "no-init-file", "q", NULL, CMD_OPT_BOOL, "do not load config files", 
+      {int_ptr: &no_init_file}},
+    { "user", "u", "USER", CMD_OPT_ARG, "load ~USER/.qe/config instead of your own", 
+      {func_arg: set_user_option}},
+    { "version", "V", NULL, 0, "display version information and exit", 
+      {func_noarg: show_version}},
     { NULL },
 };
 
@@ -6801,6 +7005,7 @@ static inline void init_all_modules(void)
     module_hex_init(); /* hex.c(351) */
     module_list_init(); /* list.c(102) */
     module_tty_init(); /* tty.c(567) */
+#ifndef CONFIG_TINY
     module_charset_more_init(); /* charsetmore.c(324) */
     module_unihex_init(); /* unihex.c(184) */
     module_c_init(); /* clang.c(567) */
@@ -6809,15 +7014,18 @@ static inline void init_all_modules(void)
     module_bufed_init(); /* bufed.c(197) */
     module_shell_init(); /* shell.c(922) */
     module_dired_init(); /* dired.c(369) */
+#endif
 #ifdef CONFIG_WIN32
     module_win32_init(); /* win32.c(504) */
 #endif
 #ifdef CONFIG_X11
     module_x11_init(); /* x11.c(1704) */
 #endif
+#ifndef CONFIG_TINY
 #ifdef CONFIG_HTML
     module_html_init(); /* html.c(894) */
     module_docbook_init(); /* docbook.c(53) */
+#endif
 #endif
 #ifdef CONFIG_FFMPEG
     module_video_init(); /* video.c(979) */
@@ -6885,22 +7093,14 @@ void qe_init(void *opaque)
     EditBuffer *b;
     QEDisplay *dpy;
     int i, optind, is_player;
-    char *home_path;
 
-    /* compute resources path */
-    strcpy(qs->res_path, 
-           CONFIG_QE_PREFIX "/share/qe:" CONFIG_QE_PREFIX "/lib/qe:"
-           "/usr/share/qe:/usr/lib/qe");
-    home_path = getenv("HOME");
-    if (home_path) {
-        pstrcat(qs->res_path, sizeof(qs->res_path), ":");
-        pstrcat(qs->res_path, sizeof(qs->res_path), home_path);
-        pstrcat(qs->res_path, sizeof(qs->res_path), "/.qe");
-    }
+    qs->ec.function = "qe-init";
     qs->macro_key_index = -1; /* no macro executing */
     qs->ungot_key = -1; /* no unget key */
-    qs->ec.function = "qe-init";
     
+    /* setup resource path */
+    set_user_option(NULL);
+
     eb_init();
     charset_init();
     init_input_methods();
@@ -6909,6 +7109,7 @@ void qe_init(void *opaque)
     /* init basic modules */
     qe_register_mode(&text_mode);
     qe_register_cmd_table(basic_commands, NULL);
+    qe_register_cmd_line_options(cmd_options);
 
     register_completion("command", command_completion);
     register_completion("charset", charset_completion);
@@ -6919,8 +7120,6 @@ void qe_init(void *opaque)
     
     minibuffer_init();
     less_mode_init();
-    
-    qe_register_cmd_line_options(cmd_options);
 
     /* init all external modules in link order */
     init_all_modules();
@@ -6962,54 +7161,11 @@ void qe_init(void *opaque)
     dummy_dpy.dpy_init(&global_screen, screen_width, screen_height);
 
     /* handle options */
-    optind = 1;
-    for (;;) {
-        const char *r, *optarg;
-        CmdOptionDef *p;
+    optind = parse_command_line(argc, argv);
 
-        if (optind >= argc)
-            break;
-        r = argv[optind];
-        if (r[0] != '-') 
-            break;
-        optind++;
-
-        p = first_cmd_options;
-        while (p != NULL) {
-            while (p->name != NULL) {
-                if (!strcmp(p->name, r + 1)) {
-                    if (p->flags & CMD_OPT_ARG) {
-                        if (optind >= argc) {
-                            put_status(NULL,
-                                       "cmdline argument expected -- %s", r);
-                            goto next_cmd;
-                        }
-                        optarg = argv[optind++];
-                    } else {
-                        optarg = NULL;
-                    }
-                    if (p->flags & CMD_OPT_BOOL) {
-                        *p->u.int_ptr = 1;
-                    } else if (p->flags & CMD_OPT_STRING) {
-                        *p->u.string_ptr = optarg;
-                    } else if (p->flags & CMD_OPT_INT) {
-                        *p->u.int_ptr = atoi(optarg);
-                    } else if (p->flags & CMD_OPT_ARG) {
-                        p->u.func_arg(optarg);
-                    } else {
-                        p->u.func_noarg();
-                    }
-                    goto next_cmd;
-                }
-                p++;
-            }
-            p = p->u.next;
-        }
-        put_status(NULL, "unknown cmdline option -- %s", r);
-    next_cmd: ;
-    }
-
-    parse_config(s, NULL);
+    /* load config file unless command line option given */
+    if (!no_init_file)
+        parse_config(s, NULL);
 
     qe_key_init();
 
@@ -7033,12 +7189,15 @@ void qe_init(void *opaque)
     /* load file(s) */
     for (i = optind; i < argc; i++) {
         do_load(s, argv[i]);
+        /* CG: handle +linenumber */
     }
     
+#ifndef CONFIG_TINY
     if (is_player && optind >= argc) {
         /* if player, go to directory mode by default if no file selected */
         do_dired(s);
     }
+#endif
 
     put_status(s, "QEmacs %s - Press F1 for help", QE_VERSION);
 

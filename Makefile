@@ -79,6 +79,7 @@ LDFLAGS+=-Wl,-E
 endif
 LIBS+=-lm
 
+TARGETLIBS:=
 TARGETS+=qe$(EXE) qe-doc.html
 
 OBJS=qe.o charset.o buffer.o \
@@ -126,7 +127,8 @@ DEP_LIBS+=libqhtml/libqhtml.a
 LIBS+=-L./libqhtml -lqhtml
 OBJS+=html.o docbook.o
 ifndef CONFIG_WIN32
-TARGETS+=html2png$(EXE)
+TARGETLIBS+= libqhtml
+TARGETS+= html2png$(EXE)
 endif
 endif
 
@@ -139,15 +141,15 @@ OBJS+= video.o image.o
 DEP_LIBS+=$(FFMPEG_LIBDIR)/libavcodec/libavcodec.a $(FFMPEG_LIBDIR)/libavformat/libavformat.a
 LIBS+=  -L$(FFMPEG_LIBDIR)/libavcodec -L$(FFMPEG_LIBDIR)/libavformat -lavformat -lavcodec -lz -lpthread
 DEFINES+= -I$(FFMPEG_SRCDIR)/libavcodec -I$(FFMPEG_SRCDIR)/libavformat
-TARGETS+=ffplay$(EXE)
+TARGETS+= ffplay$(EXE)
 endif
 
 # must be the last object
 OBJS+= qeend.o
 
-all: lib $(TARGETS)
+all: $(TARGETLIBS) $(TARGETS)
 
-lib:
+libqhtml: force
 	make -C libqhtml all
 
 qe_g$(EXE): $(OBJS) $(DEP_LIBS)
@@ -189,7 +191,7 @@ clean:
 distclean: clean
 	rm -f config.h config.mak
 
-install: qe$(EXE) qe.1 kmaps ligatures html2png$(EXE)
+install: $(TARGETS) qe.1 kmaps ligatures
 	install -m 755 qe$(EXE) $(prefix)/bin/qemacs
 	ln -sf qemacs $(prefix)/bin/qe$(EXE)
 ifdef CONFIG_FFMPEG
@@ -198,7 +200,9 @@ endif
 	mkdir -p $(prefix)/share/qe
 	install kmaps ligatures $(prefix)/share/qe
 	install qe.1 $(prefix)/man/man1
+ifdef CONFIG_HTML
 	install -m 755 -s html2png$(EXE) $(prefix)/bin
+endif
 
 TAGS: force
 	etags *.[ch]

@@ -93,8 +93,8 @@ Ideas
 - enlarge-window-interactively
 - enlarge-window-horizontally
 - enlarge-window
-- count-lines
-- show-point
+DONE	- count-lines
+DONE	- show-point
 - show modified status and mode in bufed
 - *messages* system buffer
 - doctor command should create and show *trace* buffer, remove eb_new kludge
@@ -107,6 +107,7 @@ Ideas
 - fix scroll up/down to move point if already at end
 - fix terminal size inside shell window ?
 - cmdline arg to force lines and columns to test shell.
+- dired left window delete sometimes doesn't fix layout.
 
 Clean window deletion mess:
 ---------------------------

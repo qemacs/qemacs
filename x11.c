@@ -1686,13 +1686,13 @@ static QEDisplay x11_dpy = {
 };
 
 static CmdOptionDef cmd_options[] = {
-    { "nw", NULL, CMD_OPT_BOOL, "force tty terminal usage", 
+    { "no-windows", "nw", NULL, CMD_OPT_BOOL, "force tty terminal usage", 
       {int_ptr: &force_tty} },
-    { "display", "display", CMD_OPT_STRING | CMD_OPT_ARG, "set X11 display", 
+    { "display", "d", "display", CMD_OPT_STRING | CMD_OPT_ARG, "set X11 display", 
       {string_ptr: &display_str} },
-    { "geometry", "WxH", CMD_OPT_STRING | CMD_OPT_ARG, "set X11 display size", 
+    { "geometry", "g", "WxH", CMD_OPT_STRING | CMD_OPT_ARG, "set X11 display size", 
       {string_ptr: &geometry_str} },
-    { "fs", "ptsize", CMD_OPT_INT | CMD_OPT_ARG, "set default font size", 
+    { "font-size", "fs", "ptsize", CMD_OPT_INT | CMD_OPT_ARG, "set default font size", 
       {int_ptr: &font_ptsize} },
     { NULL },
 };

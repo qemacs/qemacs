@@ -2,8 +2,8 @@
  * default qemacs configuration 
  */
 CmdDef basic_commands[] = {
-    CMD1( KEY_DEFAULT, KEY_NONE, "self-insert-command", do_char, ' ')
-    CMD0( KEY_CTRL('o'), KEY_NONE, "open-line", do_open_line)
+    CMDV( KEY_DEFAULT, KEY_NONE, "self-insert-command", do_char, ' ', "*v")
+    CMD_( KEY_CTRL('o'), KEY_NONE, "open-line", do_open_line, "*")
     CMD1( KEY_CTRL('p'), KEY_UP, "previous-line", do_up_down, -1 )
     CMD1( KEY_CTRL('n'), KEY_DOWN, "next-line", do_up_down, 1 )
     CMD1( KEY_CTRL('b'), KEY_LEFT, "backward-char", do_left_right, -1 )
@@ -17,6 +17,8 @@ CmdDef basic_commands[] = {
     CMD0( KEY_HOME, KEY_CTRL('a'), "beginning-of-line", do_bol)
     CMD0( KEY_END, KEY_CTRL('e'), "end-of-line", do_eol)
     CMD0( KEY_INSERT, KEY_NONE, "overwrite-mode", do_insert)
+    /* deletion commands are allowed in read only buffers,
+     * they will merely copy the data to the kill ring */
     CMD0( KEY_CTRL('d'), KEY_DELETE, "delete-char", do_delete_char)
     CMD0( 127, KEY_NONE, "backward-delete-char", do_backspace)
     CMD1( KEY_META(KEY_DEL) , KEY_META(KEY_BS), 
@@ -33,10 +35,11 @@ CmdDef basic_commands[] = {
           "s{Command: }[command]|command|i")
     CMD0( KEY_CTRL('u'), KEY_NONE, "universal-argument",
           do_universal_argument)
-    CMD0( KEY_CTRL('y'), KEY_NONE, "yank", do_yank)
-    CMD0( KEY_META('y'), KEY_NONE, "yank-pop", do_yank_pop)
+    CMD_( KEY_CTRL('y'), KEY_NONE, "yank", do_yank, "*")
+    CMD_( KEY_META('y'), KEY_NONE, "yank-pop", do_yank_pop, "*")
+    /* do_tab will not change read only buffer */
     CMD0( KEY_CTRL('i'), KEY_NONE, "tabulate", do_tab)
-    CMD0( KEY_CTRL('q'), KEY_NONE, "quoted-insert", do_quote)
+    CMD_( KEY_CTRL('q'), KEY_NONE, "quoted-insert", do_quote, "*")
     CMD1( KEY_CTRLX(KEY_CTRL('s')), KEY_NONE, "save-buffer", do_save, 0 )
     CMD1( KEY_CTRLX(KEY_CTRL('w')), KEY_NONE, "write-file", do_save, 1 )
     CMD0( KEY_CTRLX(KEY_CTRL('c')), KEY_NONE, "suspend-emacs", do_quit )
@@ -50,8 +53,8 @@ CmdDef basic_commands[] = {
     CMD_( KEY_CTRLX('k'), KEY_NONE, "kill-buffer", do_kill_buffer,
           "s{Kill buffer: }[buffer]|buffer|")
     CMD_( KEY_CTRLX('i'), KEY_NONE, "insert-file", do_insert_file,
-          "s{Insert file: }[file]|file|")
-    CMD0( KEY_CTRL('g'), KEY_NONE, "abort", do_break)
+          "*s{Insert file: }[file]|file|")
+    CMD0( KEY_CTRL('g'), KEY_CTRLX(KEY_CTRL('g')), "abort", do_break)
     CMD0( KEY_NONE, KEY_NONE, "doctor", do_doctor)
     CMDV( KEY_NONE, KEY_NONE, "search-forward", do_search_string, 1,
           "s{Search forward: }|search|v")
@@ -60,33 +63,34 @@ CmdDef basic_commands[] = {
     CMD1( KEY_CTRL('s'), KEY_NONE, "isearch-forward", do_isearch, 1 )
     CMD1( KEY_CTRL('r'), KEY_NONE, "isearch-backward", do_isearch, -1 )
     CMD_( KEY_META('%'), KEY_NONE, "query-replace", do_query_replace,
-          "s{Query replace: }|search|s{With: }|replace|")
+          "*s{Query replace: }|search|s{With: }|replace|")
     CMD_( KEY_META('r'), KEY_NONE, "replace-string", do_replace_string,
-          "s{Replace String: }|search|s{With: }|replace|")
+          "*s{Replace String: }|search|s{With: }|replace|")
     CMD0( KEY_CTRLX('u'), KEY_CTRL('_'), "undo", do_undo)
-    CMD0( KEY_RET, KEY_NONE, "newline", do_return)
+    CMD_( KEY_RET, KEY_NONE, "newline", do_return, "*")
     CMD0( KEY_CTRL('l'), KEY_NONE, "refresh", do_refresh_complete)
     /* CG: should take a string if no numeric argument given */
     CMD_( KEY_META('g'), KEY_NONE, "goto-line", do_goto_line, "i{Goto line: }")
     CMD_( KEY_NONE, KEY_NONE, "goto-char", do_goto_char, "i{Goto char: }")
     CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE, "vc-toggle-read-only", 
           do_toggle_read_only)
-    CMD0( KEY_META('q'), KEY_NONE, "fill-paragraph", do_fill_paragraph)
+    CMD0( KEY_META('~'), KEY_NONE, "not-modified", do_not_modified)
+    CMD_( KEY_META('q'), KEY_NONE, "fill-paragraph", do_fill_paragraph, "*")
     CMD0( KEY_META('{'), KEY_NONE, "backward-paragraph", do_backward_paragraph)
     CMD0( KEY_META('}'), KEY_NONE, "forward-paragraph", do_forward_paragraph)
     CMD0( KEY_CTRLX(KEY_CTRL('x')), KEY_NONE, "exchange-point-and-mark",
           do_exchange_point_and_mark)
-    CMD1( KEY_META('l'), KEY_NONE, "downcase-word", do_changecase_word, 0)
-    CMD1( KEY_META('u'), KEY_NONE, "upcase-word", do_changecase_word, 1)
-    CMD1( KEY_CTRLX(KEY_CTRL('l')), KEY_NONE, "downcase-region", 
-          do_changecase_region, 0)
-    CMD1( KEY_CTRLX(KEY_CTRL('u')), KEY_NONE, "upcase-region", 
-          do_changecase_region, 1)
+    CMDV( KEY_META('l'), KEY_NONE, "downcase-word", do_changecase_word, 0, "*v")
+    CMDV( KEY_META('u'), KEY_NONE, "upcase-word", do_changecase_word, 1, "*v")
+    CMDV( KEY_CTRLX(KEY_CTRL('l')), KEY_NONE, "downcase-region", 
+          do_changecase_region, 0, "*v")
+    CMDV( KEY_CTRLX(KEY_CTRL('u')), KEY_NONE, "upcase-region", 
+          do_changecase_region, 1, "*v")
 
     /* keyboard macros */
     CMD0( KEY_CTRLX('('), KEY_NONE, "start-kbd-macro", do_start_macro)
     CMD0( KEY_CTRLX(')'), KEY_NONE, "end-kbd-macro", do_end_macro)
-    CMD0( KEY_CTRLX('e'), KEY_NONE, "call-last-kbd-macro", do_call_macro)
+    CMD0( KEY_CTRLX('e'), KEY_CTRL('\\'), "call-last-kbd-macro", do_call_macro)
     CMD_( KEY_NONE, KEY_NONE, "define-kbd-macro", do_define_kbd_macro,
           "s{Macro name: }[command]s{Macro keys: }s{Bind to key: }[key]")
     CMD_( KEY_NONE, KEY_NONE, "global-set-key", do_global_set_key,
@@ -96,6 +100,7 @@ CmdDef basic_commands[] = {
     CMD0( KEY_CTRLX('o'), KEY_NONE, "other-window", do_other_window)
     CMD0( KEY_CTRLX('n'), KEY_NONE, "next-window", do_other_window)
     CMD0( KEY_CTRLX('p'), KEY_NONE, "previous-window", do_previous_window)
+#ifndef CONFIG_TINY
     CMD1( KEY_CTRL('x'), KEY_UP, "find-window-up", do_find_window,
           KEY_UP)
     CMD1( KEY_CTRL('x'), KEY_DOWN, "find-window-down", do_find_window,
@@ -104,6 +109,7 @@ CmdDef basic_commands[] = {
           KEY_LEFT)
     CMD1( KEY_CTRL('x'), KEY_RIGHT, "find-window-right", do_find_window,
           KEY_RIGHT)
+#endif
     CMD1( KEY_CTRLX('0'), KEY_NONE, "delete-window", do_delete_window, 0)
     CMD0( KEY_CTRLX('1'), KEY_NONE, "delete-other-windows",
           do_delete_other_windows)
@@ -124,12 +130,12 @@ CmdDef basic_commands[] = {
           "s{Charset: }[charset]")
     CMD_( KEY_NONE, KEY_NONE, "convert-buffer-file-coding-system",
           do_convert_buffer_file_coding_system,
-          "s{Charset: }[charset]")
+          "*s{Charset: }[charset]")
     CMD0( KEY_CTRLXRET('b'), KEY_NONE, "toggle-bidir", do_toggle_bidir)
     CMD_( KEY_CTRLXRET(KEY_CTRL('\\')), KEY_NONE, "set-input-method",
           do_set_input_method,
           "s{Input method: }[input]")
-    CMD0( KEY_CTRL('\\'), KEY_NONE, 
+    CMD0( KEY_CTRLX(KEY_CTRL('\\')), KEY_NONE, 
           "switch-input-method", do_switch_input_method)
 
     /* styles & display */
@@ -147,6 +153,8 @@ CmdDef basic_commands[] = {
     CMD0( KEY_NONE, KEY_NONE, "toggle-mode-line", do_toggle_mode_line)
 
     /* other stuff */
+    CMD_( KEY_NONE, KEY_NONE, "load-file-from-path", do_load_file_from_path,
+          "s{Load file from path: }|file|")
     CMD_( KEY_NONE, KEY_NONE, "parse-config-file", parse_config,
           "s{Configuration file: }[file]|file|")
     CMD_( KEY_NONE, KEY_NONE, "load-qerc", do_load_qerc,
@@ -168,6 +176,10 @@ CmdDef basic_commands[] = {
           "s{Change default directory: }[file]|file|")
     CMD_( KEY_NONE, KEY_NONE, "set-mode", do_cmd_set_mode,
           "s{Set mode: }[mode]")
+    CMD0( KEY_CTRLX('h'), KEY_NONE, "mark-whole-buffer", do_mark_whole_buffer)
+    CMD0( KEY_CTRLX('l'), KEY_NONE, "count-lines", do_count_lines)
+    CMD0( KEY_CTRLX('='), KEY_NONE, "what-cursor-position",
+          do_what_cursor_position)
     
     /* tab & indent */
     CMD_( KEY_NONE, KEY_NONE, "set-tab-width", do_set_tab_width,
