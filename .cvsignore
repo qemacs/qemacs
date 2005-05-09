@@ -4,3 +4,6 @@ config.h
 *.exe
 qe
 qe_g
+fbftoqe
+fbffonts.c
+html2png
