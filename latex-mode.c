@@ -270,37 +270,21 @@ static void latex_cmd_run(void *opaque, char *cmd)
 
 static void do_latex(EditState *e, const char *cmd)
 {
+    char bname[MAX_FILENAME_SIZE];
     char buf[1024];
-    int i;
-    char *p, *f;
-    char *bname;
+    int i, len;
 
-    /* strip extension from filename, find the last dot after the last
-     * slash (ie, the last dot in the filename)
-     */
-    /* CG: should use extension(), also should ignore leading dots */
-    f = strrchr(e->b->filename, '/');
-    if (f)
-        f++;
-    else
-        f = e->b->filename;
-    p = strrchr(f, '.');
-    if (p) {
-        int len = p - e->b->filename;
-        bname = (char *)malloc(len + 1);
-        pstrncpy(bname, len + 1, e->b->filename, len);
-    } else {
-        bname = strdup(e->b->filename);
-    }
+    /* strip extension from filename */
+    pstrcpy(bname, sizeof(bname), e->b->filename);
+    len = extension(bname) - bname;
+    bname[len] = '\0';
 
     if (!cmd || cmd[0] == '\0')
-        strcpy(buf, "LaTeX");
-    else
-        strcpy(buf, cmd);
+        cmd = "LaTeX";
 
     /* check what command to run */
     for (i = 0; latex_funcs[i].name; i++) {
-        if (strcasecmp(buf, latex_funcs[i].name) == 0) {
+        if (strcasecmp(cmd, latex_funcs[i].name) == 0) {
             /* pass the EditState through to latex_cmd_run() */
             latex_funcs[i].es = e;
             /* construct the command line to run */
@@ -315,12 +299,10 @@ static void do_latex(EditState *e, const char *cmd)
             } else {
                 latex_cmd_run((void *)&latex_funcs[i], buf);
             }
-            break;
+            return;
         }
     }
-    if (latex_funcs[i].name == 0)
-        put_status(e, "%s: No match", buf);
-    free(bname);
+    put_status(e, "%s: No match", buf);
 }
 
 /* specific LaTeX commands */
