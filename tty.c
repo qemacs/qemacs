@@ -113,7 +113,10 @@ static int term_init(QEditScreen *s, int w, int h)
     {
         int y, x;
         
-        printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
+        /*               ^X  ^Z    ^M   \170101  */
+        //printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
+        /* Just print utf-8 encoding for eacute and check cursor position */
+        printf("%s", "\030\032" "\r\xC3\xA9" "\033[6n\033D");
         scanf("\033[%u;%u", &y, &x);/* get cursor position */
         printf("\033[1F" "\033[%uX", (x-1)); /* go back; erase 1 or 3 char */
         if (x == 2) {

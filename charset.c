@@ -65,6 +65,7 @@ void charset_init(void)
         table_utf8[i] = ESCAPE_CHAR;
 
     qe_register_charset(&charset_8859_1);
+    qe_register_charset(&charset_vt100);
     qe_register_charset(&charset_utf8);
     qe_register_charset(&charset_7bit);
 }
@@ -105,6 +106,33 @@ QECharset charset_8859_1 = {
     decode_8859_1_init,
     NULL,
     encode_8859_1,
+};
+
+/********************************************************/
+/* vt100 */
+
+static void decode_vt100_init(CharsetDecodeState *s)
+{
+    s->table = table_idem;
+}
+
+static unsigned char *encode_vt100(QECharset *charset, 
+				   unsigned char *p, int c)
+{
+    if (c <= 0xff) {
+        *p++ = c;
+        return p;
+    } else {
+        return NULL;
+    }
+}
+
+QECharset charset_vt100 = {
+    "vt100",
+    NULL,
+    decode_vt100_init,
+    NULL,
+    encode_vt100,
 };
 
 /********************************************************/

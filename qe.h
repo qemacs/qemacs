@@ -213,6 +213,7 @@ typedef struct QECharset {
 
 extern QECharset *first_charset;
 extern QECharset charset_utf8, charset_8859_1; /* predefined charsets */
+extern QECharset charset_vt100; /* used for the tty output */
 extern QECharset charset_8859_2;
 extern QECharset charset_cp1125;
 extern QECharset charset_cp737;

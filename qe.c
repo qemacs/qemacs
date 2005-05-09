@@ -4011,42 +4011,48 @@ void edit_close(EditState *s)
     free(s);
 }
 
-/* XXX: buffer overflows */
+const char *file_completion_ignore_extensions =
+    "|bak|bin|dll|exe|o|obj|";
+
 void file_completion(StringArray *cs, const char *input)
 {
     FindFileState *ffs;
     char path[MAX_FILENAME_SIZE];
     char file[MAX_FILENAME_SIZE];
     char filename[MAX_FILENAME_SIZE];
-    const char *p;
-    int input_path_len;
+    char *base;
+    int len;
     
-    p = strrchr(input, '/'); 
-    if (!p) {
-        input_path_len = 0;
-        pstrcpy(file, sizeof(file), input);
-        strcpy(path, ".");
-    } else {
-        input_path_len = p - input + 1;
-        memcpy(path, input, input_path_len);
-        if (input_path_len > (int)sizeof(path) - 1)
-            input_path_len = (int)sizeof(path) - 1;
-        path[input_path_len] = '\0';
-        pstrcpy(file, sizeof(file), p + 1);
-    }
-    strcat(file, "*");
-    ffs = find_file_open(path, file);
+    pstrcpy(path, sizeof(path), input);
+    base = path + (basename(path) - path);
+    pstrcpy(file, sizeof(file), base);
+    pstrcat(file, sizeof(file), "*");
+    *base = '\0';
+    ffs = find_file_open(*path ? path : ".", file);
     while (find_file_next(ffs, filename, sizeof(filename)) == 0) {
         struct stat sb;
-        p = basename(filename);
-        memcpy(file, input, input_path_len);
-        strcpy(file + input_path_len, p);
+
+        base = filename + (basename(filename) - filename);
+        /* ignore . and .. to force direct match if
+         * single entry in directory */
+        if (!strcmp(base, ".") || !strcmp(base, ".."))
+            continue;
+        /* ignore known backup files */
+        len = strlen(base);
+        if (!len || base[len - 1] == '~')
+            continue;
+        /* ignore known output file extensions */
+        if (strfind(file_completion_ignore_extensions,
+                    extension(filename), 1)) {
+            continue;
+        }
+        makepath(file, sizeof(file), path, base);
         /* stat the file to find out if it's a directory.
          * In that case add a slash to speed up typing long paths
          */
         stat(file, &sb);
         if (S_ISDIR(sb.st_mode))
-            strcat(file, "/");
+            pstrcat(path, sizeof(path), "/");
         add_string(cs, file);
     }
 

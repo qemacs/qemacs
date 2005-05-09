@@ -53,6 +53,7 @@ typedef struct ShellState {
     int color, def_color;
     int cur_offset; /* current offset at position x, y */
     int esc_params[MAX_ESC_PARAMS];
+    int has_params[MAX_ESC_PARAMS];
     int nb_esc_params;
     int state;
     int esc1;
@@ -61,9 +62,19 @@ typedef struct ShellState {
     EditBuffer *b_color; /* color buffer, one byte per char */
     int is_shell; /* only used to display final message */
     struct QEmacsState *qe_state;
+    const char *ka1, *ka3, *kb2, *kc1, *kc3, *kcbt, *kspd;
+    const char *kbeg, *kbs, *kent, *kdch1, *kich1;
+    const char *kcub1, *kcud1, *kcuf1, *kcuu1;
+    const char *kf1, *kf2, *kf3, *kf4, *kf5;
+    const char *kf6, *kf7, *kf8, *kf9, *kf10;
+    const char *kf11, *kf12, *kf13, *kf14, *kf15;
+    const char *kf16, *kf17, *kf18, *kf19, *kf20;
+    const char *khome, *kend, *kmous, *knp, *kpp;
+
 } ShellState;
 
-static int shell_get_colorized_line(EditState *e, unsigned int *buf, int buf_size,
+static int shell_get_colorized_line(EditState *e,
+                                    unsigned int *buf, int buf_size,
                                     int offset, int line_num);
 
 /* move to mode */
@@ -156,10 +167,152 @@ static int run_process(const char *path, const char **argv,
 
 static void tty_init(ShellState *s)
 {
+    char *term;
+
     s->state = TTY_STATE_NORM;
     s->cur_offset = 0;
     s->def_color = TTY_GET_COLOR(7, 0);
     s->color = s->def_color;
+
+    term = getenv("TERM");
+    /* vt100 terminfo definitions */
+    s->kbs = "\010";
+    s->ka1 = "\033Oq";
+    s->ka3 = "\033Os";
+    s->kb2 = "\033Or";
+    s->kc1 = "\033Op";
+    s->kc3 = "\033On";
+    s->kcub1 = "\033OD";
+    s->kcud1 = "\033OB";
+    s->kcuf1 = "\033OC";
+    s->kcuu1 = "\033OA";
+    s->kent = "\033OM";
+    s->kf1 = "\033OP";
+    s->kf2 = "\033OQ";
+    s->kf3 = "\033OR";
+    s->kf4 = "\033OS";
+    s->kf5 = "\033Ot";
+    s->kf6 = "\033Ou";
+    s->kf7 = "\033Ov";
+    s->kf8 = "\033Ol";
+    s->kf9 = "\033Ow";
+    s->kf10 = "\033Ox";
+
+    /* ansi terminfo definitions */
+    if (strstart(term, "ansi", NULL)) {
+        s->kbs = "\010";
+        s->kcbt = "\033[Z";
+        s->kcub1 = "\033[D";
+        s->kcud1 = "\033[B";
+        s->kcuf1 = "\033[C";
+        s->kcuu1 = "\033[A";
+        s->khome = "\033[H";
+        s->kich1 = "\033[L";
+    }
+    if (strstart(term, "vt220", NULL)) {
+        s->kcub1 = "\033[D";
+        s->kcud1 = "\033[B";
+        s->kcuf1 = "\033[C";
+        s->kcuu1 = "\033[A";
+        s->kdch1 = "\033[3~";
+        s->kend = "\033[4~";
+        s->khome = "\033[1~";
+        s->kich1 = "\033[2~";
+        s->knp = "\033[6~";
+        s->kpp = "\033[5~";
+        s->kf1 = "\033OP";
+        s->kf2 = "\033OQ";
+        s->kf3 = "\033OR";
+        s->kf4 = "\033OS";
+        s->kf5 = "\033[17~";
+        s->kf6 = "\033[18~";
+        s->kf7 = "\033[19~";
+        s->kf8 = "\033[20~";
+        s->kf9 = "\033[21~";
+        s->kf10 = "\033[29~";
+    }
+    if (strstart(term, "cygwin", NULL)) {
+        s->kbs = "\10";
+        goto linux_cygwin;
+    }
+    if (strstart(term, "linux", NULL)) {
+        s->kbs = "\177";
+        s->kb2 = "\033[G";
+        s->kcbt = "\033[Z";
+        s->kspd = "\032";       // ^Z
+    linux_cygwin:
+        s->kcub1 = "\033[D";
+        s->kcud1 = "\033[B";
+        s->kcuf1 = "\033[C";
+        s->kcuu1 = "\033[A";
+        s->kdch1 = "\033[3~";
+        s->kend = "\033[4~";
+        s->khome = "\033[1~";
+        s->kich1 = "\033[2~";
+        s->knp = "\033[6~";
+        s->kpp = "\033[5~";
+        s->kf1 = "\033[[A";
+        s->kf2 = "\033[[B";
+        s->kf3 = "\033[[C";
+        s->kf4 = "\033[[D";
+        s->kf5 = "\033[[E";
+        s->kf6 = "\033[17~";
+        s->kf7 = "\033[18~";
+        s->kf8 = "\033[19~";
+        s->kf9 = "\033[20~";
+        s->kf10 = "\033[21~";
+        s->kf11 = "\033[23~";
+        s->kf12 = "\033[24~";
+        s->kf13 = "\033[25~";
+        s->kf14 = "\033[26~";
+        s->kf15 = "\033[28~";
+        s->kf16 = "\033[29~";
+        s->kf17 = "\033[31~";
+        s->kf18 = "\033[32~";
+        s->kf19 = "\033[33~";
+        s->kf20 = "\033[34~";
+    }
+    if (strstart(term, "xterm", NULL)) {
+        s->ka1 = "\033Ow";
+        s->ka3 = "\033Ou";
+        s->kb2 = "\033Oy";
+        s->kbeg = "\033OE";
+        s->kbs = "\03377";
+        s->kc1 = "\033Oq";
+        s->kc3 = "\033Os";
+        s->kcub1 = "\033OD";
+        s->kcud1 = "\033OB";
+        s->kcuf1 = "\033OC";
+        s->kcuu1 = "\033OA";
+        s->kdch1 = "\033[3~";
+        s->kend = "\033[4~";
+        s->kent = "\033OM";
+        s->khome = "\033[1~";
+        s->kich1 = "\033[2~";
+        s->kmous = "\033[M";
+        s->knp = "\033[6~";
+        s->kpp = "\033[5~";
+        s->kf1 = "\033OP";
+        s->kf2 = "\033OQ";
+        s->kf3 = "\033OR";
+        s->kf4 = "\033OS";
+        s->kf5 = "\033[15~";
+        s->kf6 = "\033[17~";
+        s->kf7 = "\033[18~";
+        s->kf8 = "\033[19~";
+        s->kf9 = "\033[20~";
+        s->kf10 = "\033[21~";
+        s->kf11 = "\033[23~";
+        s->kf12 = "\033[24~";
+        s->kf13 = "\033[25~";
+        s->kf14 = "\033[26~";
+        s->kf15 = "\033[28~";
+        s->kf16 = "\033[29~";
+        s->kf17 = "\033[31~";
+        s->kf18 = "\033[32~";
+        s->kf19 = "\033[33~";
+        s->kf20 = "\033[34~";
+    }
 }
 
 static void tty_write(ShellState *s, const unsigned char *buf, int len)
@@ -182,9 +335,9 @@ static void tty_write(ShellState *s, const unsigned char *buf, int len)
 /* compute offset the char at 'x' and 'y'. Can insert spaces or lines
    if needed */
 /* XXX: optimize !!!!! */
-static void tty_gotoxy(ShellState *s, int x, int y)
+static void tty_gotoxy(ShellState *s, int x, int y, int relative)
 {
-    int total_lines, line_num, col_num, offset, offset1, c;
+    int total_lines, cur_line, line_num, col_num, offset, offset1, c;
     unsigned char buf1[10];
 
     /* compute offset */
@@ -192,6 +345,22 @@ static void tty_gotoxy(ShellState *s, int x, int y)
     line_num = total_lines - TTY_YSIZE;
     if (line_num < 0)
         line_num = 0;
+
+    if (relative) {
+        eb_get_pos(s->b, &cur_line, &col_num, s->cur_offset);
+        cur_line -= line_num;
+        if (cur_line < 0)
+            cur_line = 0;
+        x += col_num;
+        y += line_num;
+    }
+    if (y < 0)
+        y = 0;
+    else if (y >= TTY_YSIZE)
+        y = TTY_YSIZE - 1;
+    if (x < 0)
+        x = 0;
+
     line_num += y;
     /* add lines if necessary */
     while (line_num >= total_lines) {
@@ -266,6 +435,7 @@ static void tty_emulate(ShellState *s, int c)
     int i, offset, offset1, offset2, n;
     unsigned char buf1[10];
     
+#define ESC2(c1,c2)  (((c1)<<8)|((unsigned char)c2))
     switch (s->state) {
     case TTY_STATE_NORM:
         switch(c) {
@@ -342,9 +512,12 @@ static void tty_emulate(ShellState *s, int c)
         break;
     case TTY_STATE_ESC:
         if (c == '[') {
-            for (i = 0; i < MAX_ESC_PARAMS; i++)
+            for (i = 0; i < MAX_ESC_PARAMS; i++) {
                 s->esc_params[i] = 0;
+                s->has_params[i] = 0;
+            }
             s->nb_esc_params = 0;
+            s->esc1 = 0;
             s->state = TTY_STATE_CSI;
         } else {
             /* CG: should deal with other sequences:
@@ -383,7 +556,6 @@ static void tty_emulate(ShellState *s, int c)
         break;
     case TTY_STATE_ESC2:
         s->state = TTY_STATE_NORM;
-#define ESC2(c1,c2)  (((c1)<<8)|((unsigned char)c2))
         switch (ESC2(s->esc1, c)) {
         case ESC2('(','B'):
         case ESC2(')','B'):
@@ -395,37 +567,59 @@ static void tty_emulate(ShellState *s, int c)
             /* XXX: ??? */
             break;
         }
-#undef ESC2
         break;
     case TTY_STATE_CSI:
+        if (c == '?') {
+            s->esc1 = c;
+            break;
+        }
         if (c >= '0' && c <= '9') {
             if (s->nb_esc_params < MAX_ESC_PARAMS) {
                 s->esc_params[s->nb_esc_params] = 
                     s->esc_params[s->nb_esc_params] * 10 + c - '0';
+                s->has_params[s->nb_esc_params] = 1;
             }
         } else {
             s->nb_esc_params++;
             if (c == ';')
                 break;
             s->state = TTY_STATE_NORM;
-            switch(c) {
+            switch (ESC2(s->esc1,c)) {
+            case ESC2('?','h'): /* set terminal mode */
+                /* 1047, 1048 -> cup mode:
+                 * should grab all keys while active!
+                 */
+            case ESC2('?','l'): /* reset terminal mode */
+                break;
+            case 'A':
+                /* move relative up */
+                tty_gotoxy(s, 0, -(s->esc_params[0] + 1 - s->has_params[0]), 1);
+                break;
+            case 'B':
+                /* move relative down */
+                tty_gotoxy(s, 0, (s->esc_params[0] + 1 - s->has_params[0]), 1);
+                break;
+            case 'C':
+                /* move relative forward */
+                tty_gotoxy(s, -(s->esc_params[0] + 1 - s->has_params[0]), 0, 1);
+                break;
+            case 'D':
+                /* move relative backward */
+                tty_gotoxy(s, (s->esc_params[0] + 1 - s->has_params[0]), 0, 1);
+                break;
             case 'H':
                 /* goto xy */
-                {
-                    int x, y;
-                    y = s->esc_params[0] - 1;
-                    x = s->esc_params[1] - 1;
-                    if (y < 0)
-                        y = 0;
-                    else if (y >= TTY_YSIZE)
-                        y = TTY_YSIZE - 1;
-                    if (x < 0)
-                        x = 0;
-                    tty_gotoxy(s, x, y);
-                }
+                tty_gotoxy(s, s->esc_params[1] - s->has_params[1],
+                           s->esc_params[0] - s->has_params[0], 0);
                 break;
-            case 'K':
-                /* clear to eol */
+            case 'J':   /* clear to end of screen */
+            case 'L':   /* insert lines */
+            case 'M':   /* delete lines */
+            case 'S':   /* scroll forward P lines */
+            case 'T':   /* scroll back P lines */
+            case 'X':   /* erase P characters */
+                break;
+            case 'K':   /* clear eol (parm=1 -> bol) */
                 offset1 = s->cur_offset;
                 for(;;) {
                     c = eb_nextc(s->b, offset1, &offset2);
@@ -470,7 +664,7 @@ static void tty_emulate(ShellState *s, int c)
             case 'n':
                 if (s->esc_params[0] == 6) {
                     /* XXX: send cursor position, just to be able to
-                       launch qemacs in qemacs ! */
+                       launch qemacs in qemacs (in 8859-1) ! */
                     char buf2[20];
                     snprintf(buf2, sizeof(buf2), "\033[%d;%dR", 1, 1);
                     tty_write(s, buf2, -1);
@@ -482,6 +676,7 @@ static void tty_emulate(ShellState *s, int c)
         }
         break;
     }
+#undef ESC2
     tty_update_cursor(s);
 }
 
@@ -572,6 +767,9 @@ static void shell_read_cb(void *opaque)
     if (len <= 0)
         return;
     
+    if (trace_buffer)
+        eb_write(trace_buffer, trace_buffer->total_size, buf, len);
+
     for (i = 0; i < len; i++)
         tty_emulate(s, buf[i]);
 
@@ -662,6 +860,7 @@ EditBuffer *new_shell_buffer(const char *name, const char *path,
     if (!b)
         return NULL;
     set_buffer_name(b, name); /* ensure that the name is unique */
+    eb_set_charset(b, &charset_vt100);
 
     s = malloc(sizeof(ShellState));
     if (!s) {
@@ -705,11 +904,29 @@ EditBuffer *new_shell_buffer(const char *name, const char *path,
     return b;
 }
 
-static void do_shell(EditState *e)
+static void do_shell(EditState *s, int force)
 {
+    QEmacsState *qs = s->qe_state;
+    EditState *e;
     EditBuffer *b;
     const char *argv[3];
     const char *shell_path;
+
+    /* CG: Should prompt for buffer name if arg:
+     * find a syntax for optional string argument w/ prompt
+     */
+    /* find shell buffer if any */
+    if (!force || force == NO_ARG) {
+        b = eb_find("*shell*");
+        if (b) {
+            e = edit_find(b);
+            if (e)
+                qs->active_window = e;
+            else
+                switch_to_buffer(s, b);
+            return;
+        }
+    }
 
     /* find shell name */
     shell_path = getenv("SHELL");
@@ -723,10 +940,10 @@ static void do_shell(EditState *e)
     if (!b)
         return;
     
-    switch_to_buffer(e, b);
-    do_set_mode(e, &shell_mode, NULL);
+    switch_to_buffer(s, b);
+    do_set_mode(s, &shell_mode, NULL);
 
-    put_status(e, "Press C-o to toggle between shell/edit mode");
+    put_status(s, "Press C-o to toggle between shell/edit mode");
     shell_launched = 1;
 }
 
@@ -734,7 +951,7 @@ void shell_move_left_right(EditState *e, int dir)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-        tty_write(s, dir > 0 ? "\033[C" : "\033[D", -1);
+        tty_write(s, dir > 0 ? s->kcuf1 : s->kcub1, -1);
     } else {
         text_move_left_right_visual(e, dir);
     }
@@ -754,7 +971,7 @@ void shell_move_up_down(EditState *e, int dir)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-        tty_write(s, dir > 0 ? "\033[B" : "\033[A", -1);
+        tty_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
     } else {
         text_move_up_down(e, dir);
     }
@@ -969,9 +1186,9 @@ static void do_compile_error(EditState *s, int dir)
 
 /* specific shell commands */
 static CmdDef shell_commands[] = {
-    CMD0( KEY_NONE, KEY_NONE, "shell", do_shell)
     CMD0( KEY_CTRL('o'), KEY_NONE, "shell-toggle-input", do_shell_toggle_input)
     CMD1( '\r', KEY_NONE, "shell-return", shell_write_char, '\r')
+    /* CG: should send s->kbs */
     CMD1( 127, KEY_NONE, "shell-backward-delete-char", shell_write_char, 127)
     CMD1( KEY_CTRL('d'), KEY_DELETE, "shell-delete-char", shell_write_char, 4)
     CMD1( KEY_CTRL('i'), KEY_NONE, "shell-tabulate", shell_write_char, 9)
@@ -981,6 +1198,7 @@ static CmdDef shell_commands[] = {
 
 /* compilation commands */
 static CmdDef compile_commands[] = {
+    CMD_( KEY_CTRLXRET('\r'), KEY_NONE, "shell", do_shell, "i")
     CMD_( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE, "compile", do_compile,
           "s{Compile command: }|compile|")
     CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE, "previous-error", 
