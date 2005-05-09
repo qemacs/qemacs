@@ -79,8 +79,8 @@ static int shell_mode_init(EditState *s, ModeSavedData *saved_data)
     return 0;
 }
 
-#define	PTYCHAR1 "pqrstuvwxyz"
-#define	PTYCHAR2 "0123456789abcdef"
+#define PTYCHAR1 "pqrstuvwxyz"
+#define PTYCHAR2 "0123456789abcdef"
 
 /* allocate one pty/tty pair */
 static int get_pty(char *tty_str)
@@ -258,7 +258,7 @@ static void shell_display_hook(EditState *e)
     ShellState *s = e->b->priv_data;
 
     if (e->interactive)
-	e->offset = s->cur_offset;
+        e->offset = s->cur_offset;
 }
 
 static void tty_emulate(ShellState *s, int c)
@@ -303,22 +303,22 @@ static void tty_emulate(ShellState *s, int c)
                 s->cur_offset = offset1;
             }
             break;
-	case 14:
-	    s->shifted = 1;
-	    break;
-	case 15:
-	    s->shifted = 0;
-	    break;
+        case 14:
+            s->shifted = 1;
+            break;
+        case 15:
+            s->shifted = 0;
+            break;
         case 27:
             s->state = TTY_STATE_ESC;
             break;
         default:
             if (c >= 32 || c == 9) {
                 int c1, cur_len, len;
-		/* CG: assuming ISO-8859-1 characters */
-		/* CG: horrible kludge for alternate charset support */
-		if (s->shifted && c >= 96 && c < 128)
-		    c += 32;
+                /* CG: assuming ISO-8859-1 characters */
+                /* CG: horrible kludge for alternate charset support */
+                if (s->shifted && c >= 96 && c < 128)
+                    c += 32;
                 /* write char (should factorize with do_char() code */
                 len = unicode_to_charset(buf1, c, s->b->charset);
                 c1 = eb_nextc(s->b, s->cur_offset, &offset);
@@ -347,56 +347,56 @@ static void tty_emulate(ShellState *s, int c)
             s->nb_esc_params = 0;
             s->state = TTY_STATE_CSI;
         } else {
-	    /* CG: should deal with other sequences:
-	     * ansi: hts=\EH, s0ds=\E(B, s1ds=\E)B, s2ds=\E*B, s3ds=\E+B,
-	     * linux: hts=\EH, rc=\E8, ri=\EM, rs1=\Ec\E]R, sc=\E7,
-	     * vt100: enacs=\E(B\E)0, hts=\EH, rc=\E8, ri=\EM$<5>,
-	     *        rmkx=\E[?1l\E>,
-	     *        rs2=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h, sc=\E7, 
-	     *        smkx=\E[?1h\E=,
-	     * xterm: enacs=\E(B\E)0, hts=\EH, is2=\E[!p\E[?3;4l\E[4l\E>,
-	     *        rc=\E8, ri=\EM, rmkx=\E[?1l\E>, rs1=\Ec,
-	     *        rs2=\E[!p\E[?3;4l\E[4l\E>, sc=\E7, smkx=\E[?1h\E=,
-	     */
-	    switch (c) {
-	    case '(':
-	    case ')':
-	    case '*':
-	    case '+':
-	    case ']':
-		s->esc1 = c;
-		s->state = TTY_STATE_ESC2;
-		break;
-	    case 'H':	// hts
-	    case '7':	// sc
-	    case '8':	// rc
-	    case 'M':	// ri
-	    case 'c':	// rs1
-	    case '>':	// rmkx, is2, rs2
-	    case '=':	// smkx
-		// XXX: do these
-	    default:
-		s->state = TTY_STATE_NORM;
-		break;
-	    }
+            /* CG: should deal with other sequences:
+             * ansi: hts=\EH, s0ds=\E(B, s1ds=\E)B, s2ds=\E*B, s3ds=\E+B,
+             * linux: hts=\EH, rc=\E8, ri=\EM, rs1=\Ec\E]R, sc=\E7,
+             * vt100: enacs=\E(B\E)0, hts=\EH, rc=\E8, ri=\EM$<5>,
+             *        rmkx=\E[?1l\E>,
+             *        rs2=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h, sc=\E7, 
+             *        smkx=\E[?1h\E=,
+             * xterm: enacs=\E(B\E)0, hts=\EH, is2=\E[!p\E[?3;4l\E[4l\E>,
+             *        rc=\E8, ri=\EM, rmkx=\E[?1l\E>, rs1=\Ec,
+             *        rs2=\E[!p\E[?3;4l\E[4l\E>, sc=\E7, smkx=\E[?1h\E=,
+             */
+            switch (c) {
+            case '(':
+            case ')':
+            case '*':
+            case '+':
+            case ']':
+                s->esc1 = c;
+                s->state = TTY_STATE_ESC2;
+                break;
+            case 'H':   // hts
+            case '7':   // sc
+            case '8':   // rc
+            case 'M':   // ri
+            case 'c':   // rs1
+            case '>':   // rmkx, is2, rs2
+            case '=':   // smkx
+                // XXX: do these
+            default:
+                s->state = TTY_STATE_NORM;
+                break;
+            }
         }
         break;
     case TTY_STATE_ESC2:
-	s->state = TTY_STATE_NORM;
+        s->state = TTY_STATE_NORM;
 #define ESC2(c1,c2)  (((c1)<<8)|((unsigned char)c2))
-	switch (ESC2(s->esc1, c)) {
-	case ESC2('(','B'):
-	case ESC2(')','B'):
-	case ESC2('(','0'):
-	case ESC2(')','0'):
-	case ESC2('*','B'):
-	case ESC2('+','B'):
-	case ESC2(']','R'):
-	    /* XXX: ??? */
-	    break;
-	}
+        switch (ESC2(s->esc1, c)) {
+        case ESC2('(','B'):
+        case ESC2(')','B'):
+        case ESC2('(','0'):
+        case ESC2(')','0'):
+        case ESC2('*','B'):
+        case ESC2('+','B'):
+        case ESC2(']','R'):
+            /* XXX: ??? */
+            break;
+        }
 #undef ESC2
-	break;
+        break;
     case TTY_STATE_CSI:
         if (c >= '0' && c <= '9') {
             if (s->nb_esc_params < MAX_ESC_PARAMS) {
@@ -573,7 +573,7 @@ static void shell_read_cb(void *opaque)
         return;
     
     for (i = 0; i < len; i++)
-	tty_emulate(s, buf[i]);
+        tty_emulate(s, buf[i]);
 
     /* now we do some refresh */
     edit_display(qs);
@@ -653,7 +653,7 @@ static void shell_close(EditBuffer *b)
 }
 
 EditBuffer *new_shell_buffer(const char *name, const char *path,
-			     const char **argv, int is_shell)
+                             const char **argv, int is_shell)
 {
     ShellState *s;
     EditBuffer *b, *b_color;
@@ -705,7 +705,6 @@ EditBuffer *new_shell_buffer(const char *name, const char *path,
     return b;
 }
 
-
 static void do_shell(EditState *e)
 {
     EditBuffer *b;
@@ -735,7 +734,7 @@ void shell_move_left_right(EditState *e, int dir)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-	tty_write(s, dir > 0 ? "\033[C" : "\033[D", -1);
+        tty_write(s, dir > 0 ? "\033[C" : "\033[D", -1);
     } else {
         text_move_left_right_visual(e, dir);
     }
@@ -745,7 +744,7 @@ void shell_move_word_left_right(EditState *e, int dir)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-	tty_write(s, dir > 0 ? "\033f" : "\033b", -1);
+        tty_write(s, dir > 0 ? "\033f" : "\033b", -1);
     } else {
         text_move_word_left_right(e, dir);
     }
@@ -755,7 +754,7 @@ void shell_move_up_down(EditState *e, int dir)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-	tty_write(s, dir > 0 ? "\033[B" : "\033[A", -1);
+        tty_write(s, dir > 0 ? "\033[B" : "\033[A", -1);
     } else {
         text_move_up_down(e, dir);
     }
@@ -774,7 +773,7 @@ void shell_move_bol(EditState *e)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-	tty_write(s, "\001", -1); /* Control-A */
+        tty_write(s, "\001", -1); /* Control-A */
     } else {
         text_move_bol(e);
     }
@@ -784,7 +783,7 @@ void shell_move_eol(EditState *e)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-	tty_write(s, "\005", -1); /* Control-E */
+        tty_write(s, "\005", -1); /* Control-E */
     } else {
         text_move_eol(e);
     }
@@ -885,8 +884,8 @@ static void do_compile_error(EditState *s, int dir)
     if ((b = eb_find("*compilation*")) == NULL
     &&  (b = eb_find("*shell*")) == NULL
     &&  (b = eb_find("*errors*")) == NULL) {
-	put_status(s, "No compilation buffer");
-	return;
+        put_status(s, "No compilation buffer");
+        return;
     }
     /* find next/prev error */
     offset = error_offset;
@@ -983,7 +982,7 @@ static CmdDef shell_commands[] = {
 /* compilation commands */
 static CmdDef compile_commands[] = {
     CMD_( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE, "compile", do_compile,
-	  "s{Compile command: }|compile|")
+          "s{Compile command: }|compile|")
     CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE, "previous-error", 
           do_compile_error, -1)
     CMD1( KEY_CTRLX(KEY_CTRL('n')), KEY_NONE, "next-error", 
