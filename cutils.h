@@ -7,6 +7,7 @@ int strstart(const char *str, const char *val, const char **ptr);
 int stristart(const char *str, const char *val, const char **ptr);
 void pstrcpy(char *buf, int buf_size, const char *str);
 char *pstrcat(char *buf, int buf_size, const char *s);
+char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 
 /* simple dynamic strings wrappers. The strings are always terminated
    by zero except if they are empty. */
@@ -76,7 +77,7 @@ static inline void __list_del(struct list_head *prev, struct list_head *next)
 
 #define list_for_each_safe(elem, elem1, head) \
    for (elem = (void *)(head)->next, elem1 = elem->next; elem != (void *)(head); \
-		elem = elem1, elem1 = elem->next)
+                elem = elem1, elem1 = elem->next)
 
 #define list_for_each_prev(elem, head) \
    for (elem = (void *)(head)->prev; elem != (void *)(head); elem = elem->prev)

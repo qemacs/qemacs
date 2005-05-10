@@ -80,14 +80,12 @@ void canonize_path(char *buf, int buf_size, const char *path);
 void canonize_absolute_path(char *buf, int buf_size, const char *path1);
 const char *basename(const char *filename);
 const char *extension(const char *filename);
-char *pathname(char *buf, int buf_size, const char *filename);
 char *makepath(char *buf, int buf_size, const char *path, const char *filename);
 void splitpath(char *dirname, int dirname_size,
-	       char *filename, int filename_size, const char *pathname);
+               char *filename, int filename_size, const char *pathname);
 
 int find_resource_file(char *path, int path_size, const char *pattern);
 int strfind(const char *keytable, const char *str, int casefold);
-char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 void umemmove(unsigned int *dest, unsigned int *src, int len);
 void skip_spaces(const char **pp);
 int ustristart(const unsigned int *str, const char *val, const unsigned int **ptr);
@@ -331,13 +329,13 @@ enum QEEventType {
 #define KEY_RET         KEY_CTRL('m')
 #define KEY_ESC         KEY_CTRL('[')
 #define KEY_SPC         0x0020
-#define KEY_DEL         127		// kbs
-#define KEY_BS          KEY_CTRL('h')	// kbs
+#define KEY_DEL         127             // kbs
+#define KEY_BS          KEY_CTRL('h')   // kbs
 
-#define KEY_UP          KEY_ESC1('A')	// kcuu1
-#define KEY_DOWN        KEY_ESC1('B')	// kcud1
-#define KEY_RIGHT       KEY_ESC1('C')	// kcuf1
-#define KEY_LEFT        KEY_ESC1('D')	// kcub1
+#define KEY_UP          KEY_ESC1('A')   // kcuu1
+#define KEY_DOWN        KEY_ESC1('B')   // kcud1
+#define KEY_RIGHT       KEY_ESC1('C')   // kcuf1
+#define KEY_LEFT        KEY_ESC1('D')   // kcub1
 #define KEY_CTRL_UP     KEY_ESC1('a')
 #define KEY_CTRL_DOWN   KEY_ESC1('b')
 #define KEY_CTRL_RIGHT  KEY_ESC1('c')
@@ -346,13 +344,13 @@ enum QEEventType {
 #define KEY_CTRL_HOME   KEY_ESC1('h')
 #define KEY_CTRL_PAGEUP KEY_ESC1('i')
 #define KEY_CTRL_PAGEDOWN KEY_ESC1('j')
-#define KEY_SHIFT_TAB   KEY_ESC1('Z')	// kcbt
-#define KEY_HOME        KEY_ESC1(1)	// khome
-#define KEY_INSERT      KEY_ESC1(2)	// kich1
-#define KEY_DELETE      KEY_ESC1(3)	// kdch1
-#define KEY_END         KEY_ESC1(4)	// kend
-#define KEY_PAGEUP      KEY_ESC1(5)	// kpp
-#define KEY_PAGEDOWN    KEY_ESC1(6)	// knp
+#define KEY_SHIFT_TAB   KEY_ESC1('Z')   // kcbt
+#define KEY_HOME        KEY_ESC1(1)     // khome
+#define KEY_INSERT      KEY_ESC1(2)     // kich1
+#define KEY_DELETE      KEY_ESC1(3)     // kdch1
+#define KEY_END         KEY_ESC1(4)     // kend
+#define KEY_PAGEUP      KEY_ESC1(5)     // kpp
+#define KEY_PAGEDOWN    KEY_ESC1(6)     // knp
 #define KEY_F1          KEY_ESC1(11)
 #define KEY_F2          KEY_ESC1(12)
 #define KEY_F3          KEY_ESC1(13)
@@ -617,10 +615,10 @@ extern EditBufferDataType raw_data_type;
 /* dynamic module case */
 
 #define qe_module_init(fn) \
-	int __qe_module_init(void) { return fn(); }
+        int __qe_module_init(void) { return fn(); }
 
 #define qe_module_exit(fn) \
-	void __qe_module_exit(void) { fn(); }
+        void __qe_module_exit(void) { fn(); }
 
 #else /* QE_MODULE */
 
@@ -630,21 +628,21 @@ extern EditBufferDataType raw_data_type;
 #undef __attribute__ 
 
 /* same method as the linux kernel... */
-#define __init_call	__attribute__ ((unused,__section__ (".initcall.init")))
-#define __exit_call	__attribute__ ((unused,__section__ (".exitcall.exit")))
+#define __init_call     __attribute__ ((unused,__section__ (".initcall.init")))
+#define __exit_call     __attribute__ ((unused,__section__ (".exitcall.exit")))
 
 #define qe_module_init(fn) \
-	static int (*__initcall_##fn)(void) __init_call = fn
+        static int (*__initcall_##fn)(void) __init_call = fn
 
 #define qe_module_exit(fn) \
-	static void (*__exitcall_##fn)(void) __exit_call = fn
+        static void (*__exitcall_##fn)(void) __exit_call = fn
 #else
 
 #define __init_call
 #define __exit_call
 
 #define qe_module_init(fn) \
-	int module_ ## fn (void) { return fn(); }
+        int module_ ## fn (void) { return fn(); }
 
 #define qe_module_exit(fn)
 
@@ -1214,6 +1212,6 @@ int gxml_mode_init(EditState *s,
 void fill_border(EditState *s, int x, int y, int w, int h, int color);
 int qe_bitmap_format_to_pix_fmt(int format);
 
-#define QASSERT(e)	do { if (!(e)) fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #e); } while (0)
+#define QASSERT(e)      do { if (!(e)) fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #e); } while (0)
 
 #endif

@@ -36,9 +36,9 @@ int fnmatch(const char *pattern, const char *string, int flags)
 #endif
 
 struct FindFileState {
-    char path[1024];
-    char dirpath[1024]; /* current dir path */
-    char pattern[1024]; /* search pattern */
+    char path[MAX_FILENAME_SIZE];
+    char dirpath[MAX_FILENAME_SIZE]; /* current dir path */
+    char pattern[MAX_FILENAME_SIZE]; /* search pattern */
     const char *bufptr;
     DIR *dir;
 };
@@ -67,7 +67,7 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max)
     if (s->dir == NULL)
         goto redo;
 
-    for(;;) {
+    for (;;) {
         dirent = readdir(s->dir);
         if (dirent == NULL) {
         redo:
@@ -130,15 +130,15 @@ static void canonize_path1(char *buf, int buf_size, const char *path)
     const char *p;
     char *q, *q1;
     int c, abs_path;
-    char file[1024];
+    char file[MAX_FILENAME_SIZE];
 
     p = path;
     abs_path = (p[0] == '/');
     buf[0] = '\0';
-    for(;;) {
+    for (;;) {
         /* extract file */
         q = file;
-        for(;;) {
+        for (;;) {
             c = *p;
             if (c == '\0')
                 break;
@@ -226,8 +226,8 @@ static int is_abs_path(const char *path)
 /* canonize the path and make it absolute */
 void canonize_absolute_path(char *buf, int buf_size, const char *path1)
 {
-    char cwd[1024];
-    char path[1024];
+    char cwd[MAX_FILENAME_SIZE];
+    char path[MAX_FILENAME_SIZE];
     char *homedir;
 
     if (!is_abs_path(path1)) {
@@ -289,27 +289,6 @@ restart:
     return ext ? ext : p;
 }
 
-/* extract the pathname (and the trailing '/') */
-char *pathname(char *buf, int buf_size, const char *filename)
-{
-    const char *p;
-    int len;
-
-    p = strrchr(filename, '/');
-    if (!p) {
-        /* CG: this is bogus: path is not filename! */
-        pstrcpy(buf, buf_size, filename);
-    } else {
-        /* CG: pstrncpy(buf, buf_size, filename, p + 1 - filename) */
-        len = p - filename + 1;
-        if (len > buf_size - 1)
-            len = buf_size - 1;
-        memcpy(buf, filename, len);
-        buf[len] = '\0';
-    }
-    return buf;
-}
-
 char *makepath(char *buf, int buf_size, const char *path,
                const char *filename)
 {
@@ -330,30 +309,10 @@ void splitpath(char *dirname, int dirname_size,
     const char *base;
 
     base = basename(pathname);
-    pstrncpy(dirname, dirname_size, pathname, base - pathname);
-    pstrcpy(filename, filename_size, base);
-}
-
-/* copy the n first char of a string and truncate it. */
-char *pstrncpy(char *buf, int buf_size, const char *s, int len)
-{
-    char *q;
-    int c;
-
-    if (buf_size > 0) {
-        q = buf;
-        if (len >= buf_size)
-            len = buf_size - 1;
-        while (len > 0) {
-            c = *s++;
-            if (c == '\0')
-                break;
-            *q++ = c;
-            len--;
-        }
-        *q = '\0';
-    }
-    return buf;
+    if (dirname)
+        pstrncpy(dirname, dirname_size, pathname, base - pathname);
+    if (filename)
+        pstrcpy(filename, filename_size, base);
 }
 
 /* find a word in a list using '|' as separator,
@@ -461,7 +420,7 @@ int css_get_enum(const char *str, const char *enum_str)
     s = enum_str;
     val = 0;
     len = strlen(str);
-    for(;;) {
+    for (;;) {
         s1 = strchr(s, ',');
         if (!s1) {
             if (!strcmp(s, str))
@@ -778,15 +737,15 @@ int css_get_color(int *color_ptr, const char *p)
         p++;
     parse_num:
         len = strlen(p);
-        switch(len) {
+        switch (len) {
         case 3:
-            for(i=0;i<3;i++) {
+            for (i = 0; i < 3; i++) {
                 v = to_hex(*p++);
                 rgba[i] = v | (v << 4);
             }
             break;
         case 6:
-            for(i=0;i<3;i++) {
+            for (i = 0; i < 3; i++) {
                 v = to_hex(*p++) << 4;
                 v |= to_hex(*p++);
                 rgba[i] = v;
@@ -803,7 +762,7 @@ int css_get_color(int *color_ptr, const char *p)
         /* extension for alpha */
         n = 4;
     parse_rgba:
-        for(i=0;i<n;i++) {
+        for (i = 0; i < n; i++) {
             /* XXX: floats ? */
             skip_spaces(&p);
             v = strtol(p, (char **)&p, 0);
@@ -927,7 +886,7 @@ void free_strings(StringArray *cs)
 {
     int i;
 
-    for(i=0;i<cs->nb_items;i++)
+    for (i = 0; i < cs->nb_items; i++)
         free(cs->items[i]);
     free(cs->items);
     memset(cs, 0, sizeof(StringArray));
@@ -938,7 +897,7 @@ void set_color(unsigned int *buf, int len, int style)
     int i;
 
     style <<= STYLE_SHIFT;
-    for(i=0;i<len;i++)
+    for (i = 0; i < len; i++)
         buf[i] |= style;
 }
 
