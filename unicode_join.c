@@ -47,7 +47,7 @@ static unsigned short *read_array_be16(FILE *f, int n)
     tab = malloc(n * sizeof(unsigned short));
     if (!tab) 
         return NULL;
-    for(i=0;i<n;i++) {
+    for (i = 0; i < n; i++) {
         tab[i] = uni_get_be16(f);
     }
     return tab;
@@ -56,13 +56,14 @@ static unsigned short *read_array_be16(FILE *f, int n)
 void load_ligatures(void)
 {
     FILE *f;
+    char filename[MAX_FILENAME_SIZE];
     unsigned char buf[1024];
     int long_count;
 
-    if (find_resource_file(buf, sizeof(buf), "ligatures") < 0)
+    if (find_resource_file(filename, sizeof(filename), "ligatures") < 0)
         return;
 
-    f = fopen(buf, "r");
+    f = fopen(filename, "r");
     if (!f)
         return;
     if (fread(buf, 1, 4, f) != 4 ||
@@ -128,7 +129,7 @@ static int unicode_ligature(unsigned int *buf_out,
     memcpy(buf, buf_out, len * sizeof(int));
 
     q = buf_out;
-    for(i=0;i<len;) {
+    for (i = 0; i < len;) {
         l1 = buf[i];
         /* eliminate invisible chars */
         if (l1 >= 0x202a && l1 <= 0x202e) {
@@ -155,19 +156,19 @@ static int unicode_ligature(unsigned int *buf_out,
         } else {
             /* generic case : use ligature_long[] table */
             lig = ligature_long;
-            for(;;) {
+            for (;;) {
                 len1 = *lig++;
                 if (len1 == 0)
                     break;
                 len2 = *lig++;
                 if (i + len1 <= len) {
-                    for(j=0;j<len1;j++) {
+                    for (j = 0; j < len1; j++) {
                         if (buf[i+j] != lig[j])
                             goto notfound;
                     }
-                    for(j=0;j<len1;j++)
+                    for (j = 0; j < len1; j++)
                         pos_L_to_V[i + j] = q - buf_out;
-                    for(j=0;j<len2;j++) {
+                    for (j = 0; j < len2; j++) {
                         *q++ = lig[len1 + j];
                     }
                     i += len1;
@@ -198,7 +199,7 @@ static int unicode_classify(unsigned int *buf, int len)
     int i, mask, c;
 
     mask = 0;
-    for(i=0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         c = buf[i];
         if (c <= 0x7f) /* latin1 fast handling */
             continue;
@@ -216,7 +217,7 @@ static int unicode_classify(unsigned int *buf, int len)
 static void compose_char_to_glyph(unsigned int *ctog, int len, unsigned *ctog1)
 {
     int i;
-    for(i=0;i<len;i++)
+    for (i = 0; i < len; i++)
         ctog[i] = ctog1[ctog[i]];
 }
 
@@ -225,9 +226,9 @@ static void bidi_reverse_buf(unsigned int *str, int len)
     int i, len2 = len / 2;
     
     for (i = 0; i < len2; i++) {
-	unsigned int tmp = str[i];
-	str[i] = fribidi_get_mirror_char(str[len - 1 - i]);
-	str[len - 1 - i] = fribidi_get_mirror_char(tmp);
+        unsigned int tmp = str[i];
+        str[i] = fribidi_get_mirror_char(str[len - 1 - i]);
+        str[len - 1 - i] = fribidi_get_mirror_char(tmp);
     }
     /* do not forget central char ! */
     if (len & 1) {
@@ -243,7 +244,7 @@ static void bidi_reverse_buf(unsigned int *str, int len)
    buffer. */
 int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
                       int dst_size, unsigned int *src, int src_size,
-		      int reverse)
+                      int reverse)
 {
     int len, i;
     unsigned int ctog[src_size];
@@ -290,7 +291,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
 
         if (reverse) {
             bidi_reverse_buf(buf, len);
-            for(i=0;i<src_size;i++) {
+            for (i = 0; i < src_size; i++) {
                 ctog[i] = len - 1 - ctog[i];
             }
         }
@@ -325,7 +326,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
         len = dst_size;
     memcpy(dst, src, len * sizeof(unsigned int));
     if (char_to_glyph_pos) {
-        for(i=0;i<len;i++)
+        for (i = 0; i < len; i++)
             char_to_glyph_pos[i] = i;
     }
     return len;
