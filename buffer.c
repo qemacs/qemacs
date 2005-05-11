@@ -59,14 +59,15 @@ static Page *find_page(EditBuffer *b, int *offset_ptr)
 /* prepare a page to be written */
 static void update_page(Page *p)
 {
-    u8 * buf;
+    u8 *buf;
+
     /* if the page is read only, copy it */
     if (p->flags & PG_READ_ONLY) {
         buf = malloc(p->size);
         /* XXX: should return an error */
         if (!buf)
             return;
-        memcpy(buf, p->data,p->size);
+        memcpy(buf, p->data, p->size);
         p->data = buf;
         p->flags &= ~PG_READ_ONLY;
     }
@@ -87,7 +88,7 @@ static int eb_rw(EditBuffer *b, int offset, u8 *buf, int size1, int do_write)
 
     size = size1;
     if (do_write)
-	eb_addlog(b, LOGOP_WRITE, offset, size);	
+        eb_addlog(b, LOGOP_WRITE, offset, size);        
     
     p = find_page(b, &offset);
     while (size > 0) {
@@ -146,8 +147,7 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
         if (len > 0) {
             update_page(p);
             p->data = realloc(p->data, p->size + len);
-            memmove(p->data + len, 
-                    p->data, p->size);
+            memmove(p->data + len, p->data, p->size);
             memcpy(p->data, buf + size - len, len);
             size -= len;
             p->size += len;
@@ -160,7 +160,7 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
         b->nb_pages += n;
         b->page_table = realloc(b->page_table, b->nb_pages * sizeof(Page));
         p = b->page_table + page_index;
-        memmove(p + n, p, 
+        memmove(p + n, p,
                 sizeof(Page) * (b->nb_pages - n - page_index));
         while (size > 0) {
             len = size;
@@ -179,7 +179,7 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
 
 /* We must have : 0 <= offset <= b->total_size */
 static void eb_insert_lowlevel(EditBuffer *b, int offset,
-			       const u8 *buf, int size)
+                               const u8 *buf, int size)
 {
     int len, len_out, page_index;
     Page *p;
@@ -293,7 +293,8 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
     if (n > 0) {
         /* add the pages */
         dest->nb_pages += n;
-        dest->page_table = realloc(dest->page_table, dest->nb_pages * sizeof(Page));
+        dest->page_table = realloc(dest->page_table,
+                                   dest->nb_pages * sizeof(Page));
         q = dest->page_table + page_index;
         memmove(q + n, q, 
                 sizeof(Page) * (dest->nb_pages - n - page_index));
@@ -456,7 +457,7 @@ EditBuffer *eb_new(const char *name, int flags)
     eb_add_callback(b, eb_offset_callback, &b->mark);
 
     if (!strcmp(name, "*trace*"))
-	trace_buffer = b;
+        trace_buffer = b;
 
     return b;
 }
@@ -472,7 +473,7 @@ void eb_free(EditBuffer *b)
         b->close(b);
 
     /* free each callback */
-    for(l = b->first_callback; l != NULL;) {
+    for (l = b->first_callback; l != NULL;) {
         l1 = l->next;
         free(l);
         l = l1;
@@ -552,7 +553,7 @@ void eb_free_callback(EditBuffer *b, EditBufferCallback cb,
 {
     EditBufferCallbackList **pl, *l;
     
-    for(pl = &b->first_callback; (*pl) != NULL; pl = &(*pl)->next) {
+    for (pl = &b->first_callback; (*pl) != NULL; pl = &(*pl)->next) {
         l = *pl;
         if (l->callback == cb && l->opaque == opaque) {
             *pl = l->next;
@@ -571,7 +572,7 @@ void eb_offset_callback(EditBuffer *b,
 {
     int *offset_ptr = opaque;
 
-    switch(op) {
+    switch (op) {
     case LOGOP_INSERT:
         if (*offset_ptr > offset)
             *offset_ptr += size;
@@ -601,7 +602,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
     EditBufferCallbackList *l;
 
     /* call each callback */
-    for(l = b->first_callback; l != NULL; l = l->next) {
+    for (l = b->first_callback; l != NULL; l = l->next) {
         l->callback(b, l->opaque, op, offset, size);
     }
 
@@ -641,7 +642,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
     b->log_new_index += sizeof(LogBuffer);
 
     /* data */
-    switch(op) {
+    switch (op) {
     case LOGOP_DELETE:
     case LOGOP_WRITE:
         eb_insert_buffer(b->log_buffer, b->log_new_index, b, offset, size);
@@ -695,7 +696,7 @@ void do_undo(EditState *s)
     eb_read(b->log_buffer, log_index, (unsigned char *)&lb, sizeof(LogBuffer));
     log_index += sizeof(LogBuffer);
 
-    switch(lb.op) {
+    switch (lb.op) {
     case LOGOP_WRITE:
         /* we must disable the log because we want to record a single
            write (we should have the single operation: eb_write_buffer) */
@@ -821,7 +822,7 @@ static void get_pos(u8 *buf, int size, int *line_ptr, int *col_ptr,
     p = buf;
     lp = p;
     p1 = p + size;
-    for(;;) {
+    for (;;) {
         p = memchr(p, '\n', p1 - p);
         if (!p)
             break;
@@ -906,7 +907,7 @@ int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset)
     col = 0;
     p = b->page_table;
     p_end = p + b->nb_pages;
-    for(;;) {
+    for (;;) {
         if (p >= p_end)
             goto the_end;
         if (offset < p->size)
@@ -923,8 +924,7 @@ int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset)
         offset -= p->size;
         p++;
     }
-    get_pos(p->data, offset, &line1, &col1, 
-            &b->charset_state);
+    get_pos(p->data, offset, &line1, &col1, &b->charset_state);
     line += line1;
     if (line1)
         col = 0;
@@ -967,7 +967,7 @@ static int goto_char(u8 *buf, int pos, QECharset *charset)
 
     nb_chars = 0;
     buf_ptr = buf;
-    for(;;) {
+    for (;;) {
         c = *buf_ptr;
         if (c < 0x80 || c >= 0xc0) {
             if (nb_chars >= pos)
@@ -1028,7 +1028,7 @@ int eb_get_char_offset(EditBuffer *b, int offset)
         p = b->page_table;
         p_end = p + b->nb_pages;
         pos = 0;
-        for(;;) {
+        for (;;) {
             if (p >= p_end)
                 goto the_end;
             if (offset < p->size)
@@ -1165,7 +1165,7 @@ int raw_load_buffer1(EditBuffer *b, FILE *f, int offset)
     int len;
     unsigned char buf[IOBUF_SIZE];
 
-    for(;;) {
+    for (;;) {
         len = fread(buf, 1, IOBUF_SIZE, f);
         if (len < 0)
             return -1;
@@ -1304,7 +1304,7 @@ void eb_line_pad(EditBuffer *b, int n)
     int offset, i;
     i = 0;
     offset = b->total_size;
-    for(;;) {
+    for (;;) {
         if (eb_prevc(b, offset, &offset) == '\n')
             break;
         i++;
@@ -1340,7 +1340,7 @@ int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
     /* record line */
     buf_ptr = buf;
     buf_end = buf + buf_size;
-    for(;;) {
+    for (;;) {
         c = eb_nextc(b, offset, &offset);
         if (c == '\n')
             break;
@@ -1365,7 +1365,7 @@ int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
     /* record line */
     buf_ptr = buf;
     buf_end = buf + buf_size - 1;
-    for(;;) {
+    for (;;) {
         c = eb_nextc(b, offset, &offset);
         if (c == '\n')
             break;
@@ -1381,7 +1381,7 @@ int eb_goto_bol(EditBuffer *b, int offset)
 {
     int c, offset1;
 
-    for(;;) {
+    for (;;) {
         c = eb_prevc(b, offset, &offset1);
         if (c == '\n')
             break;
@@ -1394,7 +1394,7 @@ int eb_is_empty_line(EditBuffer *b, int offset)
 {
     int c;
 
-    for(;;) {
+    for (;;) {
         c = eb_nextc(b, offset, &offset);
         if (c == '\n')
             return 1;
@@ -1407,7 +1407,7 @@ int eb_is_empty_line(EditBuffer *b, int offset)
 int eb_next_line(EditBuffer *b, int offset)
 {
     int c;
-    for(;;) {
+    for (;;) {
         c = eb_nextc(b, offset, &offset);
         if (c == '\n')
             break;
