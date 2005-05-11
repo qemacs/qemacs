@@ -203,10 +203,10 @@ if $cc -o $TMPO $TMPC 2> /dev/null ; then
     # check for memalign - atmos
     cat > $TMPC << EOF
 #include <malloc.h>
-int main ( void ) {
-char *string = NULL;
-string = memalign(64, sizeof(char));
-return 0;
+int main (void) {
+  char *string = NULL;
+  string = memalign(64, sizeof(char));
+  return 0;
 }
 EOF
     $cc -o $TMPO $TMPC 2> /dev/null || _memalign=no
@@ -421,4 +421,4 @@ else
     echo "config.h is unchanged"
 fi
 
-rm -f $TMPO $TMPC $TMPE $TMPS $TMPH
+rm -f $TMPC $TMPO $TMPS $TMPH $TMPE
