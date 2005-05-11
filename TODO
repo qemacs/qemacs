@@ -22,9 +22,15 @@ General TODO:
 - implement wheel mode in CSS display.
 - check console charset support (need to convert input?)
 - test Hebrew keymap support.
+- kill buffer handling: append next kill
+- delete word should be a kill operation
+- indent-with-tabs
+DONE	- increase MAX_SCREEN_WIDTH and MAX_SCREEN_HEIGHT beyond 256
+- fix crash bug on fragments longer than MAX_SCREEN_WIDTH.
 
 C mode TODO:
 -----------
+
 - add TAGS support:
   * recursive search of QTAGS file.
   * C decl parser
@@ -32,6 +38,8 @@ C mode TODO:
   * global QTAGS file indexed with global includes
 - see if java/javascript/c++ is OK.
 - autocomplete
+- forward-level backward-level: skipping balanced parentheses
+- automatic indentation detection
 
 HTML mode TODO:
 --------------
@@ -58,7 +66,7 @@ Ideas
 - add auto close buffer flag (for list mode)
 - improve dired (file commands, nicer display)
 - rethink mode specific commands -> add inheritance for all commands ?
-- shorter command types handling (suppress ESxxx and use one type per arg)
+DONE	- shorter command types handling (suppress ESxxx and use one type per arg)
 - add command help in declarations
 - make command declaration macros standalone
 - dpy_open_font should never return NULL, must have a system font.
