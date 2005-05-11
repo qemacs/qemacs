@@ -60,7 +60,7 @@ static XIC xic; /* X11 input context */
 static Pixmap dbuffer;
 static int shm_use;
 #ifdef CONFIG_XFT
-static XftDraw		*renderDraw;
+static XftDraw          *renderDraw;
 #endif
 #ifdef CONFIG_XV
 static unsigned int xv_nb_formats, xv_nb_adaptors, xv_port, xv_format, xv_open_count;
@@ -99,7 +99,7 @@ static int font_ptsize = 0;
 static void update_reset(void)
 {
     int i;
-    for(i=0;i<UPDATE_MAX_REGIONS;i++)
+    for (i = 0; i < UPDATE_MAX_REGIONS; i++)
         css_set_rect(update_rects + i, 0, 0, 0, 0);
     update_nb = 0;
 }
@@ -139,7 +139,7 @@ static void update_rect(int x1, int y1, int x2, int y2)
     dmin = MAXINT;
     r2 = update_rects;
     r1 = NULL;
-    for(i=0;i<update_nb;i++) {
+    for (i = 0; i < update_nb; i++) {
         d = rect_dist(r2, &r);
         if (d < dmin) {
             dmin = d;
@@ -267,8 +267,8 @@ static int term_init(QEditScreen *s, int w, int h)
     /* Tell other applications about this window */
 
     XSetStandardProperties(display, window,
-			   "qemacs", "qemacs",
-			   None, NULL, 0, &hint);
+                           "qemacs", "qemacs",
+                           None, NULL, 0, &hint);
 
     /* Map window. */
 
@@ -276,10 +276,10 @@ static int term_init(QEditScreen *s, int w, int h)
 
     /* Wait for map. */
     while (1) {
-	XEvent xev;
-	XNextEvent(display, &xev);
-	if (xev.type == MapNotify && xev.xmap.event == window)
-	    break;
+        XEvent xev;
+        XNextEvent(display, &xev);
+        if (xev.type == MapNotify && xev.xmap.event == window)
+            break;
     }
     event_mask = KeyPressMask | ButtonPressMask | ButtonReleaseMask | 
         ButtonMotionMask | ExposureMask | StructureNotifyMask;
@@ -340,7 +340,7 @@ static int term_init(QEditScreen *s, int w, int h)
             shm_use = 1;
     }
     /* compute bitmap format */
-    switch(visual_depth) {
+    switch (visual_depth) {
     case 15:
         s->bitmap_format = QEBITMAP_FORMAT_RGB555;
         break;
@@ -394,7 +394,7 @@ static void xv_init(QEditScreen *s)
  found:
     
     xv_fo = XvListImageFormats(display, xv_port, &xv_nb_formats);
-    for(i = 0; i < xv_nb_formats; i++) {
+    for (i = 0; i < xv_nb_formats; i++) {
         XvImageFormatValues *fo = &xv_fo[i];
 #if 0
         printf("Xvideo image format: 0x%x (%c%c%c%c) %s\n", 
@@ -448,7 +448,7 @@ static unsigned long get_x11_color(QEColor color)
     r = (color >> 16) & 0xff;
     g = (color >> 8) & 0xff;
     b = (color) & 0xff;
-    switch(visual_depth) {
+    switch (visual_depth) {
     case 15:
         return ((((r) >> 3) << 10) | (((g) >> 3) << 5) | ((b) >> 3));
     case 16:
@@ -525,7 +525,7 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
         return NULL;
 
 
-    switch(style & QE_FAMILY_MASK) {
+    switch (style & QE_FAMILY_MASK) {
     default:
     case QE_FAMILY_FIXED:
         family = font_family_str;
@@ -664,7 +664,7 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
     /* take the nth font number in family list */
     font_fallback = (style & QE_FAMILY_FALLBACK_MASK) >> QE_FAMILY_FALLBACK_SHIFT;
     p = family_list;
-    for(i=0;i<font_fallback;i++) {
+    for (i = 0; i < font_fallback; i++) {
         p = strchr(p, ',');
         if (!p) {
             /* no font found */
@@ -679,7 +679,7 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
     else
         pstrncpy(family, sizeof(family), p, p1 - p);
 #if 0
-    for(i=0;i<2;i++) {
+    for (i = 0; i < 2; i++) {
         char buf1[32];
         if (i == 0)
             snprintf(buf1, sizeof(buf1), "%d", size * 10);
@@ -707,7 +707,7 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
     /* iterate thru each font and select closer one */
     found = 0;
     dist_min = MAXINT;
-    for(i=0;i<count;i++) {
+    for (i = 0; i < count; i++) {
         dist = 0;
         p = list[i] + 1;
         get_entry(NULL, 0, &p);
@@ -772,6 +772,9 @@ static XCharStruct *get_char_struct(QEFont *font, int cc)
     int b1, b2;
     XCharStruct *cs;
 
+    if (!xfont)
+        return NULL;
+
     if (xfont->min_byte1 == 0 && xfont->max_byte1 == 0) {
         if (cc > xfont->max_char_or_byte2)
             return NULL;
@@ -817,11 +820,10 @@ static XCharStruct *handle_fallback(QEditScreen *s, QEFont **out_font,
 
 
     /* fallback case */
-    fallback_count = 1;
-    for(;;) {
+    for (fallback_count = 1; fallback_count < 5; fallback_count++) {
         font1 = select_font(s, font->style | 
                             (fallback_count << QE_FAMILY_FALLBACK_SHIFT),
-			    font->size);
+                            font->size);
         if (!font1)
             break;
         cs = get_char_struct(font1, cc);
@@ -829,7 +831,6 @@ static XCharStruct *handle_fallback(QEditScreen *s, QEFont **out_font,
             *out_font = font1;
             return cs;
         }
-        fallback_count++;
     }
     
     /* really no glyph : use default char in current font */
@@ -851,7 +852,7 @@ static void term_text_metrics(QEditScreen *s, QEFont *font,
     metrics->font_ascent = font->ascent;
     metrics->font_descent = font->descent;
     x = 0;
-    for(i=0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         cc = str[i];
         cs = get_char_struct(font, cc);
         if (cs) {
@@ -974,7 +975,7 @@ static void term_flush(QEditScreen *s)
     int i, w, h;
 
     r = update_rects;
-    for(i=0;i<update_nb;i++) {
+    for (i = 0; i < update_nb; i++) {
         if (r->x1 < 0)
             r->x1 = 0;
         if (r->x2 > s->width)
@@ -1012,7 +1013,7 @@ static void x11_full_screen(QEditScreen *s, int full_screen)
     if (full_screen) {
         if ((attr.width != screen_width || attr.height != screen_height)) {
             /* store current window position and size */
-	    XTranslateCoordinates(display, window, attr.root, 0, 0,
+            XTranslateCoordinates(display, window, attr.root, 0, 0,
                                   &last_window_x, &last_window_y, &win);
             last_window_width = attr.width;
             last_window_height = attr.height;
@@ -1074,7 +1075,7 @@ static void term_selection_request(QEditScreen *s)
     b = new_yank_buffer();
     
     nread = 0;
-    for(;;) {
+    for (;;) {
         if ((XGetWindowProperty (display, w, prop,
                                  nread/4, 4096, True,
                                  AnyPropertyType, &actual_type, &actual_fmt,
@@ -1112,20 +1113,20 @@ static void selection_send(XSelectionRequestEvent *rq)
     ev.xselection.display   = rq->display;
     ev.xselection.requestor = rq->requestor;
     ev.xselection.selection = rq->selection;
-    ev.xselection.target	   = rq->target;
+    ev.xselection.target           = rq->target;
     ev.xselection.time      = rq->time;
 
     if (rq->target == xa_targets) {
-	unsigned int target_list[2];
+        unsigned int target_list[2];
 
         /* indicate which are supported types */
- 	target_list[0] = xa_targets;
- 	target_list[1] = XA_STRING;
+        target_list[0] = xa_targets;
+        target_list[1] = XA_STRING;
 
- 	XChangeProperty (display, rq->requestor, rq->property,
- 			 xa_targets, 8*sizeof(target_list[0]), PropModeReplace,
- 			 (char *)target_list,
-			 sizeof(target_list)/sizeof(target_list[0]));
+        XChangeProperty (display, rq->requestor, rq->property,
+                         xa_targets, 8*sizeof(target_list[0]), PropModeReplace,
+                         (char *)target_list,
+                         sizeof(target_list)/sizeof(target_list[0]));
     } else if (rq->target == XA_STRING) {
         /* get qemacs yank buffer */
        
@@ -1169,11 +1170,11 @@ static void x11_handle_event(void *opaque)
     int shift, ctrl, meta, len, key;
     QEEvent ev1, *ev = &ev1;
 
-    for(;;) {
+    for (;;) {
         if (!XPending(display))
             return;
         XNextEvent(display, &xev);
-        switch(xev.type) {
+        switch (xev.type) {
         case ConfigureNotify:
             {
                 int w, h;
@@ -1198,7 +1199,7 @@ static void x11_handle_event(void *opaque)
                     ev->button_event.type = QE_BUTTON_RELEASE_EVENT;
                 ev->button_event.x = xe->x;
                 ev->button_event.y = xe->y;
-                switch(xe->button) {
+                switch (xe->button) {
                 case Button1:
                     ev->button_event.button = QE_BUTTON_LEFT;
                     break;
@@ -1262,7 +1263,7 @@ static void x11_handle_event(void *opaque)
             meta = (xev.xkey.state & Mod1Mask);
 
             if (ctrl) {
-                switch(keysym) {
+                switch (keysym) {
                 case XK_Right:
                     key = KEY_CTRL_RIGHT;
                     goto got_key;
@@ -1283,7 +1284,7 @@ static void x11_handle_event(void *opaque)
                     break;
                 }
             } else if (meta) {
-                switch(keysym) {
+                switch (keysym) {
                 case XK_BackSpace:
                     key = KEY_META(KEY_DEL);
                     goto got_key;
@@ -1295,7 +1296,7 @@ static void x11_handle_event(void *opaque)
                     break;
                 }
             } else {
-                switch(keysym) {
+                switch (keysym) {
                 case XK_F1:
                 case XK_F2:
                 case XK_F3:
@@ -1426,7 +1427,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
         b->format = s->bitmap_format;
     }
 
-    switch(xb->type) {
+    switch (xb->type) {
     default:
     case BMP_PIXMAP:
         xb->u.pixmap = XCreatePixmap(display, window, 
@@ -1514,7 +1515,7 @@ static void x11_bmp_free(QEditScreen *s, QEBitmap *b)
 {
     X11Bitmap *xb = b->priv_data;
 
-    switch(xb->type) {
+    switch (xb->type) {
     case BMP_PIXMAP:
         XFreePixmap(display, xb->u.pixmap);
         break;
@@ -1555,7 +1556,7 @@ static void x11_bmp_draw(QEditScreen *s, QEBitmap *b,
     /* XXX: handle clipping ? */
     update_rect(dst_x, dst_y, dst_x + dst_w, dst_y + dst_h);
 
-    switch(xb->type) {
+    switch (xb->type) {
     case BMP_PIXMAP:
         XCopyArea(display, xb->u.pixmap, dbuffer, gc, 
                   0, 0, b->width, b->height, dst_x, dst_y);
@@ -1595,7 +1596,7 @@ static void x11_bmp_lock(QEditScreen *s, QEBitmap *b, QEPicture *pict,
     pict->width = w1;
     pict->height = h1;
     pict->format = b->format;
-    switch(xb->type) {
+    switch (xb->type) {
     case BMP_PIXMAP:
         {
             XImage *ximage;
@@ -1623,7 +1624,7 @@ static void x11_bmp_lock(QEditScreen *s, QEBitmap *b, QEPicture *pict,
         {
             XvImage *xvimage = xb->u.xvimage;
             int i, xx, yy, j;
-            for(i=0;i<3;i++) {
+            for (i = 0; i < 3; i++) {
                 xx = x1;
                 yy = y1;
                 j = i;
@@ -1646,7 +1647,7 @@ static void x11_bmp_unlock(QEditScreen *s, QEBitmap *b)
 {
     X11Bitmap *xb = b->priv_data;
     int ret;
-    switch(xb->type) {
+    switch (xb->type) {
     case BMP_PIXMAP:
         ret = XPutImage(display, xb->u.pixmap, gc_pixmap, xb->ximage_lock, 
                   0, 0, xb->x_lock, xb->y_lock, 
