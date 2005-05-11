@@ -144,7 +144,7 @@ static int run_process(const char *path, const char **argv,
     if (pid == 0) {
         /* child process */
         nb_fds = getdtablesize();
-        for(i=0;i<nb_fds;i++)
+        for (i = 0; i < nb_fds; i++)
             close(i);
         /* open pseudo tty for standard i/o */
         open(tty_name, O_RDWR);
@@ -370,11 +370,11 @@ static void tty_gotoxy(ShellState *s, int x, int y, int relative)
         total_lines++;
     }
     offset = eb_goto_pos(s->b, line_num, 0);
-    for(;x > 0; x--) {
+    for (; x > 0; x--) {
         c = eb_nextc(s->b, offset, &offset1);
         if (c == '\n') {
             buf1[0] = ' ';
-            for(;x > 0; x--) {
+            for (; x > 0; x--) {
                 eb_insert(s->b, offset, buf1, 1);
             }
             break;
@@ -388,7 +388,7 @@ static void tty_gotoxy(ShellState *s, int x, int y, int relative)
 void tty_csi_m(ShellState *s, int c)
 {
     /* we handle only a few possible modes */
-    switch(c) {
+    switch (c) {
     case 0:
         s->color = s->def_color;
         break;
@@ -413,7 +413,7 @@ static void tty_update_cursor(ShellState *s)
     if (s->cur_offset == -1)
         return;
 
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (s->b == e->b && e->interactive) {
             e->offset = s->cur_offset;
         }
@@ -720,7 +720,7 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case 'K':   /* clear eol (parm=1 -> bol) */
                 offset1 = s->cur_offset;
-                for(;;) {
+                for (;;) {
                     c = eb_nextc(s->b, offset1, &offset2);
                     if (c == '\n')
                         break;
@@ -734,7 +734,7 @@ static void tty_emulate(ShellState *s, int c)
                 if (n <= 0)
                     n = 1;
                 offset1 = s->cur_offset;
-                for(;n > 0;n--) {
+                for (; n > 0; n--) {
                     c = eb_nextc(s->b, offset1, &offset2);
                     if (c == '\n')
                         break;
@@ -748,7 +748,7 @@ static void tty_emulate(ShellState *s, int c)
                 if (n <= 0)
                     n = 1;
                 buf1[0] = ' ';
-                for(;n > 0;n--) {
+                for (; n > 0; n--) {
                     eb_insert(s->b, s->cur_offset, buf1, 1);
                 }
                 break;
@@ -757,7 +757,7 @@ static void tty_emulate(ShellState *s, int c)
                 n = s->nb_esc_params;
                 if (n == 0)
                     n = 1;
-                for(i=0;i<n;i++)
+                for (i = 0; i < n; i++)
                     tty_csi_m(s, s->esc_params[i]);
                 break;
             case 'n':
@@ -791,7 +791,7 @@ static void shell_color_callback(EditBuffer *b,
     unsigned char buf[32];
     int len;
 
-    switch(op) {
+    switch (op) {
     case LOGOP_WRITE:
         while (size > 0) {
             len = size;
@@ -835,7 +835,7 @@ static int shell_get_colorized_line(EditState *e,
     /* record line */
     buf_ptr = buf;
     buf_end = buf + buf_size;
-    for(;;) {
+    for (;;) {
         eb_read(b_color, offset, buf1, 1);
         color = buf1[0];
         c = eb_nextc(b, offset, &offset1);
@@ -1118,7 +1118,7 @@ void shell_write_char(EditState *e, int c)
         ch = c;
         tty_write(s, &ch, 1);
     } else {
-        switch(c) {
+        switch (c) {
         case 4:
             do_delete_char(e);
             break;
@@ -1157,9 +1157,10 @@ void do_shell_toggle_input(EditState *e)
 #endif
 }
 
+/* CG: these variables should move to mode structure */
 static int error_offset = -1;
 static int last_line_num = -1;
-static char last_filename[1024];
+static char last_filename[MAX_FILENAME_SIZE];
 
 static void do_compile(EditState *e, const char *cmd)
 {
@@ -1196,7 +1197,7 @@ static void do_compile_error(EditState *s, int dir)
     EditState *e;
     EditBuffer *b;
     int offset, offset1, found_offset;
-    char filename[1024], *q;
+    char filename[MAX_FILENAME_SIZE], *q;
     int line_num, c;
 
     /* CG: should have a buffer flag for error source.
@@ -1217,13 +1218,13 @@ static void do_compile_error(EditState *s, int dir)
         offset = 0;
         goto find_error;
     }
-    for(;;) {
+    for (;;) {
         if (dir > 0) {
             if (offset >= b->total_size) {
                 put_status(s, "No more errors");
                 return;
             }
-            for(;;) {
+            for (;;) {
                 c = eb_nextc(b, offset, &offset);
                 if (c == '\n')
                     break;
@@ -1234,7 +1235,7 @@ static void do_compile_error(EditState *s, int dir)
                 return;
             }
             eb_prevc(b, offset, &offset);
-            for(;;) {
+            for (;;) {
                 c = eb_prevc(b, offset, &offset1);
                 if (c == '\n')
                     break;
