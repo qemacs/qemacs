@@ -313,7 +313,7 @@ void qe_register_binding(int key, const char *cmd_name, const char *mode_names)
         qe_register_binding2(key, d, NULL);
     } else {
         p = mode_names;
-        for(;;) {
+        for (;;) {
             r = strchr(p, '|');
             /* XXX: overflows */
             if (!r) {
@@ -403,7 +403,7 @@ void text_move_bol(EditState *s)
 {
     int c, offset1;
 
-    for(;;) {
+    for (;;) {
         if (s->offset <= 0)
             break;
         c = eb_prevc(s->b, s->offset, &offset1);
@@ -417,7 +417,7 @@ void text_move_eol(EditState *s)
 {
     int c, offset1;
 
-    for(;;) {
+    for (;;) {
         c = eb_nextc(s->b, s->offset, &offset1);
         if (c == '\n')
             break;
@@ -438,7 +438,7 @@ static void word_right(EditState *s, int w)
 {
     int c, offset1;
 
-    for(;;) {
+    for (;;) {
         if (s->offset >= s->b->total_size)
             break;
         c = eb_nextc(s->b, s->offset, &offset1);
@@ -452,7 +452,7 @@ static void word_left(EditState *s, int w)
 {
     int c, offset1;
 
-    for(;;) {
+    for (;;) {
         if (s->offset == 0)
             break;
         c = eb_prevc(s->b, s->offset, &offset1);
@@ -482,7 +482,7 @@ int eb_next_paragraph(EditBuffer *b, int offset)
     offset = eb_goto_bol(b, offset);
     /* find end of paragraph */
     text_found = 0;
-    for(;;) {
+    for (;;) {
         if (offset >= b->total_size)
             break;
         if (eb_is_empty_line(b, offset)) {
@@ -498,7 +498,7 @@ int eb_next_paragraph(EditBuffer *b, int offset)
 
 int eb_start_paragraph(EditBuffer *b, int offset)
 {
-    for(;;) {
+    for (;;) {
         offset = eb_goto_bol(b, offset);
         if (offset <= 0)
             break;
@@ -518,7 +518,7 @@ void do_backward_paragraph(EditState *s)
 
     offset = s->offset;
     /* skip empty lines */
-    for(;;) {
+    for (;;) {
         if (offset <= 0)
             break;
         offset = eb_goto_bol(s->b, offset);
@@ -607,7 +607,7 @@ void do_fill_paragraph(EditState *s)
                 if (offset < par_end) {
                     /* indent */
                     buf[0] = ' ';
-                    for(n = indent_size; n > 0; n--)
+                    for (n = indent_size; n > 0; n--)
                         eb_insert(s->b, chunk_start, buf, 1);
                     chunk_start += indent_size;
 
@@ -664,7 +664,7 @@ void do_changecase_word(EditState *s, int up)
     int c;
     
     word_right(s, 1);
-    for(;;) {
+    for (;;) {
         if (s->offset >= s->b->total_size)
             break;
         c = eb_nextc(s->b, s->offset, NULL);
@@ -684,7 +684,7 @@ void do_changecase_region(EditState *s, int up)
         offset = s->b->mark;
     else
         offset = s->offset;
-    for(;;) {
+    for (;;) {
         if (s->offset > s->b->mark) {
             if (offset >= s->offset)
                 break;
@@ -780,6 +780,7 @@ void get_cursor_pos(EditState *s, CursorContext *m)
     display_init(ds, s, DISP_CURSOR);
     ds->cursor_opaque = m;
     ds->cursor_func = cursor_func;
+    memset(m, 0, sizeof(*m));
     m->offsetc = s->offset;
     m->xc = m->yc = NO_CURSOR;
     display1(ds);
@@ -1050,7 +1051,7 @@ void text_move_left_right_visual(EditState *s, int dir)
     yc = cm.linec;
 
     nextline = 0;
-    for(;;) {
+    for (;;) {
         /* find cursor offset */
         m->yd = yc;
         if (!nextline) {
@@ -1215,7 +1216,7 @@ void text_write_char(EditState *s, int key)
 
         s->compose_buf[s->compose_len++] = key;
         m = s->input_method;
-        for(;;) {
+        for (;;) {
             if (!m) {
                 s->compose_len = 0;
                 break;
@@ -1236,7 +1237,7 @@ void text_write_char(EditState *s, int key)
                 offset = s->compose_start_offset;
                 offset1 = s->offset; /* save offset so that we are not disturb
                                         when it moves in eb_delete() */
-                for(i=0;i<match_len;i++)
+                for (i = 0; i < match_len; i++)
                     eb_nextc(s->b, offset, &offset);
                 eb_delete(s->b, s->compose_start_offset, 
                           offset - s->compose_start_offset);
@@ -1498,7 +1499,7 @@ static void do_set_mode_file(EditState *s, ModeDef *m,
         /* try to remove the raw or mode specific data if it is no
            longer used. */
         data_count = 0;
-        for(e = s->qe_state->first_window; e != NULL; e = e->next_window) {
+        for (e = s->qe_state->first_window; e != NULL; e = e->next_window) {
             if (e != s && e->b == b) {
                 if (e->mode->data_type != &raw_data_type)
                     data_count++;
@@ -1584,7 +1585,7 @@ void charset_completion(StringArray *cs, const char *charset_str)
     int len;
 
     len = strlen(charset_str);
-    for(p = first_charset; p != NULL; p = p->next) {
+    for (p = first_charset; p != NULL; p = p->next) {
         if (!strncmp(p->name, charset_str, len))
             add_string(cs, p->name);
     }
@@ -1629,7 +1630,7 @@ void do_convert_buffer_file_coding_system(EditState *s,
 
     /* well, not very fast, but simple */
     b = s->b;
-    for(offset = 0; offset < b->total_size;) {
+    for (offset = 0; offset < b->total_size;) {
         c = eb_nextc(b, offset, &offset);
         len = unicode_to_charset(buf, c, charset);
         eb_write(b1, b1->total_size, buf, len);
@@ -1926,7 +1927,7 @@ QEStyleDef *find_style(const char *name)
     int i;
     QEStyleDef *style;
 
-    for(i=0;i<QE_STYLE_NB;i++) {
+    for (i = 0; i < QE_STYLE_NB; i++) {
         style = &qe_styles[i];
         if (!strcmp(style->name, name))
             return style;
@@ -1940,7 +1941,7 @@ void style_completion(StringArray *cs, const char *input)
     int len, i;
 
     len = strlen(input);
-    for(i=0;i<QE_STYLE_NB;i++) {
+    for (i = 0; i < QE_STYLE_NB; i++) {
         style = &qe_styles[i];
         if (!strncmp(style->name, input, len))
             add_string(cs, style->name);
@@ -1972,7 +1973,7 @@ void do_set_style(EditState *e, const char *stylestr,
         put_status(e, "Unknown property '%s'", propstr);
         return;
     }
-    switch(prop_index) {
+    switch (prop_index) {
     case 0:
         if (css_get_color(&style->fg_color, value))
             goto bad_color;
@@ -2161,7 +2162,7 @@ static void flush_line(DisplayState *s,
     /* compute baseline and lineheight */
     baseline = 0;
     max_descent = 0;
-    for(i=0;i<nb_fragments;i++) {
+    for (i = 0; i < nb_fragments; i++) {
         if (fragments[i].ascent > baseline)
             baseline = fragments[i].ascent;
         if (fragments[i].descent > max_descent)
@@ -2180,7 +2181,7 @@ static void flush_line(DisplayState *s,
         while (pos < nb_fragments) {
             if (fragments[pos].embedding_level >= level) {
                 /* find all chars >= level */
-                for(p = pos + 1; p < nb_fragments && fragments[p].embedding_level >= level; p++);
+                for (p = pos + 1; p < nb_fragments && fragments[p].embedding_level >= level; p++);
                 reverse_fragments(fragments + pos, p - pos);
                 pos = p + 1;
             } else {
@@ -2248,7 +2249,7 @@ static void flush_line(DisplayState *s,
                                default_style.bg_color);
             }
             x += x_start;
-            for(i=0;i<nb_fragments;i++) {
+            for (i = 0; i < nb_fragments; i++) {
                 frag = &fragments[i];
                 get_style(e, &style, frag->style);
                 fill_rectangle(screen, x, y, frag->width, line_height, 
@@ -2278,7 +2279,7 @@ static void flush_line(DisplayState *s,
                 }
             }
             x += x_start;
-            for(i=0;i<nb_fragments;i++) {
+            for (i = 0; i < nb_fragments; i++) {
                 frag = &fragments[i];
                 get_style(e, &style, frag->style);
                 font = select_font(screen, 
@@ -2319,13 +2320,13 @@ static void flush_line(DisplayState *s,
             s->eod = 1;
         }
 
-        for(i=0;i<nb_fragments;i++) {
+        for (i = 0; i < nb_fragments; i++) {
             int w, k, j, offset1, offset2;
 
             frag = &fragments[i];
 
             j = frag->line_index;
-            for(k=0;k<frag->len;k++) {
+            for (k = 0; k < frag->len; k++) {
                 int hex_mode;
                 offset1 = s->line_offsets[j][0];
                 offset2 = s->line_offsets[j][1];
@@ -2402,9 +2403,10 @@ static void flush_fragment(DisplayState *s)
 
     /* convert fragment to glyphs (currently font independent, but may
        change) */
-    dst_max_size = MAX_SCREEN_WIDTH - s->line_index;
-    if (dst_max_size <= 0)
-        goto the_end;
+    //dst_max_size = MAX_SCREEN_WIDTH - s->line_index;
+    //if (dst_max_size <= 0)
+    //    goto the_end;
+    dst_max_size = MAX_WORD_SIZE; // assumming s->fragment_index MAX_WORD_SIZE
     nb_glyphs = unicode_to_glyphs(s->line_chars + s->line_index, 
                                   char_to_glyph_pos, dst_max_size,
                                   s->fragment_chars, s->fragment_index, 
@@ -2453,7 +2455,7 @@ static void flush_fragment(DisplayState *s)
     } else {
         /* XXX: use text metrics for full fragment */
         w = 0;
-        for(i=0;i<nb_glyphs;i++) {
+        for (i = 0; i < nb_glyphs; i++) {
             QECharMetrics metrics;
             text_metrics(screen, font, &metrics, &s->line_chars[j], 1);
             if (metrics.font_ascent > ascent)
@@ -2480,7 +2482,7 @@ static void flush_fragment(DisplayState *s)
     s->line_index += nb_glyphs;
     s->x += frag->width;
 
-    switch(s->wrap) {
+    switch (s->wrap) {
     case WRAP_TRUNCATE:
         break;
     case WRAP_LINE:
@@ -2539,7 +2541,7 @@ static void flush_fragment(DisplayState *s)
                     (s->nb_fragments - s->word_index) * sizeof(TextFragment));
             s->nb_fragments -= s->word_index;
             s->x = 0;
-            for(i=0;i<s->nb_fragments;i++) {
+            for (i = 0; i < s->nb_fragments; i++) {
                 s->fragments[i].line_index -= index;
                 s->x += s->fragments[i].width;
             }
@@ -2666,13 +2668,13 @@ static void display1(DisplayState *s)
 
     s->eod = 0;
     offset = e->offset_top;
-    for(;;) {
+    for (;;) {
         offset = e->mode->text_display(e, s, offset);
         /* EOF reached ? */
         if (offset < 0)
             break;
         
-        switch(s->do_disp) {
+        switch (s->do_disp) {
         case DISP_CURSOR:
             if (s->eod)
                 return;
@@ -2719,7 +2721,7 @@ static int bidir_compute_attributes(TypeLink *list_tab, int max_size,
 
     ltype = FRIBIDI_TYPE_SOT;
 
-    for(;;) {
+    for (;;) {
         offset1 = offset;
         c = eb_nextc(b, offset, &offset);
         if (c == '\n')
@@ -2793,7 +2795,7 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
         offset = eb_goto_pos(s->b, s->colorize_nb_valid_lines - 1, 0);
         colorize_state = s->colorize_states[s->colorize_nb_valid_lines - 1];
 
-        for(l = s->colorize_nb_valid_lines; l <= line_num; l++) {
+        for (l = s->colorize_nb_valid_lines; l <= line_num; l++) {
             len = eb_get_line(s->b, buf, buf_size - 1, &offset);
             buf[len] = '\n';
 
@@ -2927,7 +2929,7 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     
     bd = embeds + 1;
     char_index = 0;
-    for(;;) {
+    for (;;) {
         offset0 = offset;
         if (offset >= s->b->total_size) {
             display_eol(ds, offset0, offset0 + 1);
@@ -2990,10 +2992,11 @@ void generic_text_display(EditState *s)
     display_init(ds, s, DISP_CURSOR_SCREEN);
     ds->cursor_opaque = m;
     ds->cursor_func = cursor_func;
+    memset(m, 0, sizeof(*m));
     m->offsetc = s->offset;
     m->xc = m->yc = NO_CURSOR;
     offset = s->offset_top;
-    for(;;) {
+    for (;;) {
         if (ds->y <= 0) {
             s->offset_top = offset;
             s->y_disp = ds->y;
@@ -3116,10 +3119,27 @@ enum CmdArgType {
 #define MAX_CMD_ARGS 5
 
 /* XXX: potentially non portable on weird architectures */
+/* Minimum assumptions are:
+   - sizeof(int) == sizeof(void*) == sizeof(char*)
+   - arguments are passed the same way for all above types
+   - arguments are passed the same way for prototyped and
+     unprototyped functions
+   These assumptions could be lifted by constructing an
+   argument list signature in parse_args() and switch here
+   to the correct prototype invocation.
+   So far 144 qemacs commands have these signatures:
+   - void (*)(EditState *); (68)
+   - void (*)(EditState *, int); (35)
+   - void (*)(EditState *, int, int); (2)
+   - void (*)(EditState *, const char *); (19)
+   - void (*)(EditState *, const char *, int); (2)
+   - void (*)(EditState *, const char *, const char *); (6)
+   - void (*)(EditState *, const char *, const char *, const char *); (2)
+*/
 void call_func(void *func, int nb_args, void **args, 
                unsigned char *args_type)
 {
-    switch(nb_args) {
+    switch (nb_args) {
     case 0:
         ((void (*)())func)();
         break;
@@ -3190,7 +3210,7 @@ static int parse_arg(const char **pp, unsigned char *argtype,
     get_param(&p, prompt, prompt_size, '{', '}');
     get_param(&p, completion, completion_size, '[', ']');
     get_param(&p, history, history_size, '|', '|');
-    switch(type) {
+    switch (type) {
     case 'v':
         *argtype = CMD_ARG_INTVAL;
         break;
@@ -3355,6 +3375,7 @@ static void parse_args(ExecCmdState *es)
         /* CG: Should save and restore ec context */
         qs->ec.function = d->name;
         call_func(d->action.func, es->nb_args, es->args, es->args_type);
+        /* CG: This doesn't work if the function needs input */
         /* CG: Should test for abort condition */
         /* CG: Should follow qs->active_window ? */
     } while (--rep_count > 0);
@@ -3369,8 +3390,8 @@ static void free_cmd(ExecCmdState *es)
     int i;
     
     /* free allocated parameters */
-    for(i = 0;i < es->nb_args; i++) {
-        switch(es->args_type[i]) {
+    for (i = 0;i < es->nb_args; i++) {
+        switch (es->args_type[i]) {
         case CMD_ARG_STRING:
             free(es->args[i]);
             break;
@@ -3395,7 +3416,7 @@ static void arg_edit_cb(void *opaque, char *str)
         return;
     }
     index = es->nb_args - 1;
-    switch(es->args_type[index]) {
+    switch (es->args_type[index]) {
     case CMD_ARG_INT:
         val = strtol(str, &p, 0);
         if (*p != '\0') {
@@ -3500,7 +3521,7 @@ static const char *keys_to_str(char *buf, int buf_size,
     int i;
 
     buf[0] = '\0';
-    for(i=0;i<nb_keys;i++) {
+    for (i = 0; i < nb_keys; i++) {
         keytostr(buf1, sizeof(buf1), keys[i]);
         if (i != 0)
             pstrcat(buf, buf_size, " ");
@@ -3925,7 +3946,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
     b1 = s->b;
     if (b1) {
         /* save old buffer data if no other window uses the buffer */
-        for(e = qs->first_window; e != NULL; e = e->next_window) {
+        for (e = qs->first_window; e != NULL; e = e->next_window) {
             if (e != s && e->b == b1)
                 break;
         }
@@ -4032,7 +4053,7 @@ EditState *edit_find(EditBuffer *b)
     QEmacsState *qs = &qe_state;
     EditState *e;
     
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->b == b)
             break;
     }
@@ -4141,7 +4162,7 @@ void buffer_completion(StringArray *cs, const char *input)
     int len;
 
     len = strlen(input);
-    for(b = qs->first_buffer; b != NULL; b = b->next) {
+    for (b = qs->first_buffer; b != NULL; b = b->next) {
         if (!(b->flags & BF_SYSTEM) && !strncmp(b->name, input, len))
             add_string(cs, b->name);
     }
@@ -4169,7 +4190,7 @@ static CompletionFunc find_completion(const char *name)
     CompletionEntry *p;
 
     if (name[0] != '\0') {
-        for(p = first_completion; p != NULL; p = p->next)
+        for (p = first_completion; p != NULL; p = p->next)
             if (!strcmp(name, p->name))
                 return p->completion_func;
     }
@@ -4220,7 +4241,7 @@ void do_completion(EditState *s)
     outputs = cs.items;
 #if 0
     printf("count=%d\n", count);
-    for(i=0;i<count;i++)
+    for (i = 0; i < count; i++)
         printf("out[%d]=%s\n", i, outputs[i]->str);
 #endif
     /* no completion ? */
@@ -4228,11 +4249,11 @@ void do_completion(EditState *s)
         goto the_end;
     /* compute the longest match len */
     match_len = len;
-    for(;;) {
+    for (;;) {
         c = outputs[0]->str[match_len];
         if (c == '\0')
             break;
-        for(i=1;i<count;i++)
+        for (i = 1; i < count; i++)
             if (outputs[i]->str[match_len] != c)
                 goto no_match;
         match_len++;
@@ -4266,7 +4287,7 @@ void do_completion(EditState *s)
             /* modify the list with the current matches */
             qsort(outputs, count, sizeof(StringItem *), completion_sort_func);
             eb_delete(b, 0, b->total_size);
-            for(i=0;i<count;i++) {
+            for (i = 0; i < count; i++) {
                 eb_printf(b, " %s", outputs[i]->str);
                 if (i != count - 1)
                     eb_printf(b, "\n");
@@ -4314,7 +4335,7 @@ static StringArray *get_history(const char *name)
 
     if (name[0] == '\0')
         return NULL;
-    for(p = first_history; p != NULL; p = p->next) {
+    for (p = first_history; p != NULL; p = p->next) {
         if (!strcmp(p->name, name))
             return &p->history;
     }
@@ -4624,9 +4645,9 @@ static EditBuffer *predict_switch_to_buffer(EditState *s)
     EditState *e;
     EditBuffer *b;
 
-    for(b = qs->first_buffer; b != NULL; b = b->next) {
+    for (b = qs->first_buffer; b != NULL; b = b->next) {
         if (!(b->flags & BF_SYSTEM)) {
-            for(e = qs->first_window; e != NULL; e = e->next_window) {
+            for (e = qs->first_window; e != NULL; e = e->next_window) {
                 if (e->b == b)
                     break;
             }
@@ -4704,7 +4725,7 @@ static void kill_buffer_noconfirm(EditBuffer *b)
     EditBuffer *b1;
     
     /* find a new buffer to switch to */
-    for(b1 = qs->first_buffer; b1 != NULL; b1 = b1->next) {
+    for (b1 = qs->first_buffer; b1 != NULL; b1 = b1->next) {
         if (b1 != b && !(b1->flags & BF_SYSTEM))
             break;
     }
@@ -4713,7 +4734,7 @@ static void kill_buffer_noconfirm(EditBuffer *b)
     
     /* if the buffer remains because we cannot delete the main
        window, then switch to the scratch buffer */
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->b == b) {
             switch_to_buffer(e, b1);
         }
@@ -4738,12 +4759,14 @@ static void get_default_path(EditState *s, char *buf, int buf_size)
         return;
     }
 
-    if ((b->flags & BF_SYSTEM) || b->name[0] == '*') {
-        canonize_absolute_path(buf1, sizeof(buf1), "a");
-        filename = buf1;
+    if ((b->flags & BF_SYSTEM)
+    ||  b->name[0] == '*'
+    ||  b->filename[0] == '\0') {
+        filename = "a";
     } else {
         filename = s->b->filename;
     }
+    canonize_absolute_path(buf1, sizeof(buf1), filename);
     splitpath(buf, buf_size, NULL, 0, filename);
 }
 
@@ -5026,7 +5049,7 @@ static void quit_examine_buffers(QuitState *is)
     while (is->b != NULL) {
         b = is->b;
         if (!(b->flags & BF_SYSTEM) && b->filename[0] != '\0' && b->modified) {
-            switch(is->state) {
+            switch (is->state) {
             case QS_ASK:
                 /* XXX: display cursor */
                 put_status(NULL, "Save file %s? (y, n, !, ., q) ", 
@@ -5063,7 +5086,7 @@ static void quit_key(void *opaque, int ch)
     QuitState *is = opaque;
     EditBuffer *b;
 
-    switch(ch) {
+    switch (ch) {
     case 'y':
     case ' ':
         /* save buffer */
@@ -5133,7 +5156,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
     if (flags & SEARCH_FLAG_SMARTCASE) {
         upper_count = 0;
         lower_count = 0;
-        for(i=0;i<size;i++) {
+        for (i = 0; i < size; i++) {
             c = buf[i];
             lower_count += islower(c);
             upper_count += isupper(c);
@@ -5143,7 +5166,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
     }
 
     /* copy buffer */
-    for(i=0;i<size;i++) {
+    for (i = 0; i < size; i++) {
         c = buf[i];
         if (flags & SEARCH_FLAG_IGNORECASE) 
             buf1[i] = toupper(c);
@@ -5158,7 +5181,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
         offset--;
     }
         
-    for(;;) {
+    for (;;) {
         offset += dir;
         if (offset < 0)
             return -1;
@@ -5183,7 +5206,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
 
     word_start_found:
         i = 0;
-        for(;;) {
+        for (;;) {
             eb_read(b, offset + i, &ch, 1);
             if (flags & SEARCH_FLAG_IGNORECASE) 
                 ch = toupper(ch);
@@ -5310,7 +5333,7 @@ static void isearch_display(ISearchState *is)
     if (is->dir < 0)
         usprintf(&uq, " backward");
     usprintf(&uq, ": ");
-    for(i=0;i<is->pos;i++) {
+    for (i = 0; i < is->pos; i++) {
         v = is->search_string[i];
         if (!(v & FOUND_TAG)) {
             uq = utf8_encode(uq, v);
@@ -5346,7 +5369,7 @@ static void isearch_key(void *opaque, int ch)
         /* save current searched string */
         if (is->pos > 0) {
             j = 0;
-            for(i=0;i<is->pos;i++) {
+            for (i = 0; i < is->pos; i++) {
                 if (!(is->search_string[i] & FOUND_TAG))
                     last_search_string[j++] = is->search_string[i];
             }
@@ -5439,7 +5462,7 @@ static int to_bytes(EditState *s1, u8 *dst, int dst_size, const char *str)
         s = str;
         h = 0;
         hex_nibble = 0;
-        for(;;) {
+        for (;;) {
             c = *s++;
             if (c == '\0')
                 break;
@@ -5529,7 +5552,7 @@ static void query_replace_key(void *opaque, int ch)
 {
     QueryReplaceState *is = opaque;
 
-    switch(ch) {
+    switch (ch) {
     case 'y':
     case ' ':
         query_replace_replace(is);
@@ -5636,7 +5659,7 @@ void do_refresh(EditState *s1)
     QEmacsState *qs = &qe_state;
     EditState *e;
     int new_status_height, new_mode_line_height, content_height;
-    int width, height;
+    int width, height, resized;
 
     if (qs->complete_refresh) {
         if (qs->screen->dpy.dpy_invalidate)
@@ -5661,15 +5684,18 @@ void do_refresh(EditState *s1)
     if (!qs->hide_status) 
         content_height -= new_status_height;
 
+    resized = 0;
+
     /* see if resize is necessary */
     if (qs->width != width ||
         qs->height != height ||
         qs->status_height != new_status_height ||
         qs->mode_line_height != new_mode_line_height ||
         qs->content_height != content_height) {
-        
+
         /* do the resize */
-        for(e = qs->first_window; e != NULL; e = e->next_window) {
+        resized = 1;
+        for (e = qs->first_window; e != NULL; e = e->next_window) {
             if (e->minibuf) {
                 /* first resize minibuffer if present */
                 e->x1 = 0;
@@ -5699,17 +5725,22 @@ void do_refresh(EditState *s1)
         qs->content_height = content_height;
     }
     /* compute client area */
-    for(e = qs->first_window; e != NULL; e = e->next_window)
+    for (e = qs->first_window; e != NULL; e = e->next_window)
         compute_client_area(e);
 
     /* invalidate all the edit windows and draw borders */
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         edit_invalidate(e);
         e->borders_invalid = 1;
     }
     /* invalidate status line */
     qs->status_shadow[0] = '\0';
-    put_status(NULL, " ");
+
+    if (resized) {
+        put_status(NULL, "Screen is now %d by %d", width, height);
+    } else {
+        put_status(NULL, " ");
+    }
 }
 
 void do_refresh_complete(EditState *s)
@@ -5736,7 +5767,7 @@ void do_previous_window(EditState *s)
     QEmacsState *qs = s->qe_state;
     EditState *e;
 
-    for(e = qs->first_window; e->next_window != NULL; e = e->next_window) {
+    for (e = qs->first_window; e->next_window != NULL; e = e->next_window) {
         if (e->next_window == s)
             break;
     }
@@ -5754,7 +5785,7 @@ void do_delete_window(EditState *s, int force)
     int ex1, ey1, ex2, ey2;
 
     count = 0;
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (!e->minibuf && !(e->flags & WF_POPUP))
             count++;
     }
@@ -5812,7 +5843,7 @@ void do_delete_other_windows(EditState *s)
     QEmacsState *qs = s->qe_state;
     EditState *e, *e1;
     
-    for(e = qs->first_window; e != NULL; e = e1) {
+    for (e = qs->first_window; e != NULL; e = e1) {
         e1 = e->next_window;
         if (!e->minibuf && e != s)
             edit_close(e);
@@ -5883,7 +5914,7 @@ static void print_bindings(EditBuffer *b, const char *title,
         while (d->name != NULL) {
             /* find each key mapping pointing to this command */
             found = 0;
-            for(k = first_key; k != NULL; k = k->next) {
+            for (k = first_key; k != NULL; k = k->next) {
                 if (k->cmd == d && k->mode == mode) {
                     if (!gfound)
                         eb_printf(b, "%s:\n\n", title);
@@ -6048,7 +6079,7 @@ void window_resize(EditState *s, int target_w, int target_h)
         (s->y2 >= qs->screen->height - qs->status_height && delta_y != 0))
         return;
 
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->minibuf || e == s)
             continue;
         window_get_min_size(e, &min_w, &min_h);
@@ -6073,7 +6104,7 @@ void window_resize(EditState *s, int target_w, int target_h)
     }
 
     /* now everything is OK, we can resize all windows */
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->minibuf || e == s)
             continue;
         if (e->y1 == s->y2)
@@ -6107,7 +6138,7 @@ int check_motion_target(EditState *s)
     QEmacsState *qs = &qe_state;
     EditState *e;
     /* first verify that window is always valid */
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e == motion_target)
             break;
     }
@@ -6122,7 +6153,7 @@ static void save_selection(void)
     int selection_showed;
 
     selection_showed = 0;
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         selection_showed |= e->show_selection;
         e->show_selection = 0;
     }
@@ -6157,14 +6188,14 @@ void mouse_event(QEEvent *ev)
     mouse_x = ev->button_event.x;
     mouse_y = ev->button_event.y;
 
-    switch(ev->type) {
+    switch (ev->type) {
     case QE_BUTTON_RELEASE_EVENT:
         save_selection();
         motion_type = MOTION_NONE;
         break;
 
     case QE_BUTTON_PRESS_EVENT:
-        for(e = qs->first_window; e != NULL; e = e->next_window) {
+        for (e = qs->first_window; e != NULL; e = e->next_window) {
             /* test if mouse is inside the text area */
             if (mouse_x >= e->xleft && mouse_x < e->xleft + e->width &&
                 mouse_y >= e->ytop && mouse_y < e->ytop + e->height) {
@@ -6172,7 +6203,7 @@ void mouse_event(QEEvent *ev)
                     save_selection();
                     e->mode->mouse_goto(e, mouse_x - e->xleft,
                                         mouse_y - e->ytop);
-                    switch(ev->button_event.button) {
+                    switch (ev->button_event.button) {
                     case QE_BUTTON_LEFT:
                         motion_type = MOTION_TEXT;
                         motion_x = 0; /* indicate first move */
@@ -6217,7 +6248,7 @@ void mouse_event(QEEvent *ev)
         }
         break;
     case QE_MOTION_EVENT:
-        switch(motion_type) {
+        switch (motion_type) {
         case MOTION_NONE:
         default:
             break;
@@ -6300,7 +6331,7 @@ void qe_handle_event(QEEvent *ev)
 {
     QEmacsState *qs = &qe_state;
 
-    switch(ev->type) {
+    switch (ev->type) {
     case QE_KEY_EVENT:
         qe_key_process(ev->key_event.key);
         break;
@@ -6554,7 +6585,7 @@ int parse_config_file(EditState *s, const char *filename)
 
         for (i = 0; i < nb_args; i++) {
             /* pseudo arguments: skip them */
-            switch(args_type[i]) {
+            switch (args_type[i]) {
             case CMD_ARG_WINDOW:
                 args[i] = (void *)s;
                 continue;
@@ -6566,6 +6597,8 @@ int parse_config_file(EditState *s, const char *filename)
             
             skip_spaces(&p);
             if (sep) {
+                /* Should test for arg list too short. */
+                /* Could supply default arguments. */
                 if (!expect_token(&p, sep))
                     goto fail;
             }
@@ -6594,7 +6627,7 @@ int parse_config_file(EditState *s, const char *filename)
                     c = *p++;
                     if (c == '\\') {
                         c = *p++;
-                        switch(c) {
+                        switch (c) {
                         case 'n':
                             c = '\n';
                             break;
@@ -6808,14 +6841,14 @@ int parse_command_line(int argc, char **argv)
 void set_user_option(const char *user)
 {
     QEmacsState *qs = &qe_state;
-    char path[1024];
+    char path[MAX_FILENAME_SIZE];
     const char *home_path;
 
     user_option = user;
     /* compute resources path */
     pstrcpy(qs->res_path, sizeof(qs->res_path),
-           CONFIG_QE_PREFIX "/share/qe:" CONFIG_QE_PREFIX "/lib/qe:"
-           "/usr/share/qe:/usr/lib/qe");
+            CONFIG_QE_PREFIX "/share/qe:" CONFIG_QE_PREFIX "/lib/qe:"
+            "/usr/share/qe:/usr/lib/qe");
     if (user) {
         /* use ~USER/.qe instead of ~/.qe */
         /* CG: should get user homedir */
