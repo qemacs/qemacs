@@ -101,6 +101,10 @@ if test -d ./ffmpeg ; then
     ffmpeg_srcdir="./ffmpeg"
 fi
 
+if test ! -f /usr/include/png.h ; then
+    png="no"
+fi
+
 for opt do
   case "$opt" in
   --prefix=*) prefix=`echo $opt | cut -d '=' -f 2`
