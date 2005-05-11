@@ -1,7 +1,7 @@
 #ifndef QE_DISPLAY_H
 #define QE_DISPLAY_H
 
-#define MAX_SCREEN_WIDTH 256  /* in chars */
+#define MAX_SCREEN_WIDTH 1024  /* in chars */
 #define MAX_SCREEN_LINES 256  /* in text lines */
 
 typedef unsigned int QEColor;
@@ -147,7 +147,7 @@ static inline QEFont *open_font(QEditScreen *s,
 static inline void close_font(QEditScreen *s, QEFont *font)
 {
     if (!font->system_font)
-	s->dpy.dpy_close_font(s, font);
+        s->dpy.dpy_close_font(s, font);
 }
 
 static inline void text_metrics(QEditScreen *s, QEFont *font, 
@@ -169,12 +169,12 @@ static inline int glyph_width(QEditScreen *s, QEFont *font, int ch)
 
 static inline void dpy_flush(QEditScreen *s)
 {
-     s->dpy.dpy_flush(s);
+    s->dpy.dpy_flush(s);
 }
 
 static inline void dpy_close(QEditScreen *s)
 {
-     s->dpy.dpy_close(s);
+    s->dpy.dpy_close(s);
 }
 
 void fill_rectangle(QEditScreen *s,
