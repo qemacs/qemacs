@@ -59,7 +59,7 @@ int find_entity(const char *str)
     }
 
     e = html_entities;
-    for(;;) {
+    for (;;) {
         name = e->name;
         if (!name)
             break;
@@ -74,7 +74,7 @@ const char *find_entity_str(int code)
 {
     const XMLEntity *e;
     e = html_entities;
-    for(;;) {
+    for (;;) {
         if (!e->name)
             break;
         if (e->val == code)
@@ -96,7 +96,7 @@ static int parse_entity(const char **pp)
     if (ch == '&') {
         p1 = p;
         q = name;
-        for(;;) {
+        for (;;) {
             ch1 = *p;
             if (ch1 == '\0')
                 break;
@@ -264,7 +264,7 @@ struct XMLState {
     int pretaglen;
     char pretag[32]; /* current tag in XML_STATE_PRETAG */
     StringBuffer str;
-    char filename[1024];
+    char filename[MAX_FILENAME_SIZE];
     CharsetDecodeState charset_state;
 };
 
@@ -395,7 +395,7 @@ void html_table_borders(CSSBox *box, int border, int padding)
     }
 
     if (box->content_type == CSS_CONTENT_TYPE_CHILDS) {
-        for(box1 = box->u.child.first; box1 != NULL; box1 = box1->next) {
+        for (box1 = box->u.child.first; box1 != NULL; box1 = box1->next) {
             html_table_borders(box1, border, padding);
         }
     }
@@ -415,7 +415,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
 
     first_prop = NULL;
     last_prop = &first_prop;
-    switch(box->tag) {
+    switch (box->tag) {
     case CSS_ID_img:
     parse_img:
         box->content_type = CSS_CONTENT_TYPE_IMAGE;
@@ -711,7 +711,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
     }
     value = css_attr_strlower(box, CSS_ID_align);
     if (value) {
-        switch(box->tag) {
+        switch (box->tag) {
         case CSS_ID_caption:
             /* use caption-side property for captions */
             val = css_get_enum(value, "top,bottom,left,right");
@@ -850,7 +850,7 @@ static int parse_tag(XMLState *s, const char *buf)
     /* parse attributes */
     first_attr = NULL;
     pattr = &first_attr;
-    for(;;) {
+    for (;;) {
         skip_spaces(&p);
         if (*p == '\0' || *p == '/')
             break;
@@ -903,7 +903,7 @@ static int parse_tag(XMLState *s, const char *buf)
         CSSBox *box1;
         const HTMLClosedTags *ct;
         ct = html_closed_tags;
-        for(;;) {
+        for (;;) {
             if (!ct->tag)
                 break;
             if (css_tag == ct->tag) {
@@ -1062,7 +1062,7 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
     offset_end = offset_start + buf_len;
     offset0 = 0; /* not used */
     text_offset_start = 0; /* not used */
-    for(;;) {
+    for (;;) {
         if (buf) {
             if (buf >= buf_end)
                 break;
@@ -1081,12 +1081,12 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
             s->line_num++;
         }
 
-        switch(s->state) {
+        switch (s->state) {
         case XML_STATE_TAG:
             if (ch == '>') {
                 strbuf_addch(&s->str, '\0');
                 ret = parse_tag(s, s->str.buf);
-                switch(ret) {
+                switch (ret) {
                 default:
                 case XML_STATE_TEXT:
                 xml_text:

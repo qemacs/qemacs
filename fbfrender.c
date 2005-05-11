@@ -152,8 +152,8 @@ GlyphCache *fbf_decode_glyph1(QEFont *font, int code)
         
         bitmap = fbf_glyph_entry->bitmap;
         pitch = (src_width + 7) >> 3;
-        for(y=0;y<src_height;y++) {
-            for(x=0;x<src_width;x++) {
+        for (y = 0; y < src_height; y++) {
+            for (x = 0; x < src_width; x++) {
                 bit = (bitmap[pitch * y + (x >> 3)] >> 
                            (7 - (x & 7))) & 1;
                 glyph_cache->data[src_width * y + x] = -bit;
@@ -248,7 +248,7 @@ QEFont *fbf_open_font(QEditScreen *s, int style, int size)
         
         /* first match style */
         nb_fonts = 0;
-        for(uf = first_font; uf != NULL; uf = uf->next_font) {
+        for (uf = first_font; uf != NULL; uf = uf->next_font) {
             if (uf->family_type == style) {
                 fonts[nb_fonts++] = uf;
             }
@@ -259,7 +259,7 @@ QEFont *fbf_open_font(QEditScreen *s, int style, int size)
             /* select closest size */
             uf_found = NULL;
             dmin = MAXINT;
-            for(i = 0;i < nb_fonts;i++) {
+            for (i = 0;i < nb_fonts;i++) {
                 uf = fonts[i];
                 d = abs(uf->pt_size - size);
                 if (d < dmin) {
@@ -354,7 +354,7 @@ static int fbf_load_font_file(const char *filename)
 int fbf_render_init(const char *font_path)
 {
     FindFileState *ffs;
-    char filename[1024];
+    char filename[MAX_FILENAME_SIZE];
 
     glyph_cache_init();
     first_font = NULL;
@@ -363,7 +363,7 @@ int fbf_render_init(const char *font_path)
     if (!ffs)
         return -1;
 
-    for(;;) {
+    for (;;) {
         if (find_file_next(ffs, filename, sizeof(filename)))
             break;
         if (fbf_load_font_file(filename) < 0) {
@@ -377,7 +377,7 @@ void fbf_render_cleanup(void)
 {
     UniFontData *uf, *uf1;
 
-    for(uf = first_font; uf != NULL; uf = uf1) {
+    for (uf = first_font; uf != NULL; uf = uf1) {
         uf1 = uf->next_font;
         /* close font data structures */
         fbf_free_font(uf);
@@ -479,7 +479,7 @@ int fbf_render_init(const char *font_path)
 
     glyph_cache_init();
     first_font = NULL;
-    for(pp = fbf_fonts; *pp != NULL; pp += 2) {
+    for (pp = fbf_fonts; *pp != NULL; pp += 2) {
         fbf_load_font_memory(pp[0], (int)pp[1]);
     }
     if (!fallback_font)
@@ -491,7 +491,7 @@ void fbf_render_cleanup(void)
 {
     UniFontData *uf, *uf1;
 
-    for(uf = first_font; uf != NULL; uf = uf1) {
+    for (uf = first_font; uf != NULL; uf = uf1) {
         uf1 = uf->next_font;
         /* close font data structures */
         fbf_free_font(uf);

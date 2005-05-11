@@ -39,7 +39,7 @@ static int unicode_input(int *match_len_ptr,
     c = 0;
     if (len > 5)
         len = 5;
-    for(i=1;i<len;i++) {
+    for (i = 1; i < len; i++) {
         h = to_hex(buf[i]);
         if (h == -1)
             return INPUTMETHOD_NOMATCH;
@@ -89,7 +89,7 @@ int kmap_input(int *match_len_ptr,
     prefix_len = 0;
     if (nb_prefixes > 0) {
         p1 = p;
-        for(i=0;i<nb_prefixes;i++) {
+        for (i = 0; i < nb_prefixes; i++) {
             if (buf[0] == p1[0])
                 goto prefix_match;
             p1 += 4;
@@ -105,10 +105,10 @@ int kmap_input(int *match_len_ptr,
     match_char = 0;
     match_count = 0;
     last_outputc = 0;
-    for(;;) {
+    for (;;) {
         match = 1;
         l1 = prefix_len; /* length of input pattern */
-        for(;;) {
+        for (;;) {
             c = *p++;
             d = c & 0x80;
             c = c & 0x7f;
@@ -173,7 +173,7 @@ static int input_method_fd;
 
 void load_input_methods(void)
 {
-    char buf[1024], *q;
+    char buf[MAX_FILENAME_SIZE], *q;
     long file_size;
     int fd, offset;
     const unsigned char *file_ptr, *p;
@@ -184,7 +184,7 @@ void load_input_methods(void)
     if (find_resource_file(buf, sizeof(buf), "kmaps") < 0)
         return;
 
-    fd = open (buf, O_RDONLY);
+    fd = open(buf, O_RDONLY);
     if (fd < 0)
         return;
     file_size = lseek(fd, 0, SEEK_END);
@@ -199,9 +199,9 @@ void load_input_methods(void)
         goto fail;
     
     p = file_ptr + 4;
-    for(;;) {
+    for (;;) {
         offset = (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];
-        p+= 4;
+        p += 4;
         if (offset == 0)
             break;
         m = malloc(sizeof(InputMethod));
@@ -210,13 +210,13 @@ void load_input_methods(void)
             m->input_match = kmap_input;
             q = buf;
             while (*p != '\0') {
-                if ((q - buf) < ((int)sizeof(buf) - 1)) 
+                if (q < buf + sizeof(buf) - 1)
                     *q++ = *p;
                 p++;
             }
             *q = '\0';
             p++;
-            m->name =strdup(buf);
+            m->name = strdup(buf);
             register_input_method(m);
         }
     }
@@ -239,7 +239,7 @@ void input_completion(StringArray *cs, const char *input)
     int len;
 
     len = strlen(input);
-    for(m = input_methods; m != NULL; m = m->next) {
+    for (m = input_methods; m != NULL; m = m->next) {
         if (!strncmp(m->name, input, len))
             add_string(cs, m->name);
     }
@@ -250,7 +250,7 @@ void do_set_input_method(EditState *s, const char *input_str)
     InputMethod *m;
 
     m = input_methods;
-    for(;;) {
+    for (;;) {
         if (!m) {
             put_status(s, "'%s' not found", input_str);
             return;

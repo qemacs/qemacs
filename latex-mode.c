@@ -213,7 +213,8 @@ static void latex_completion(StringArray *cs, const char *input)
 static void latex_cmd_run(void *opaque, char *cmd)
 {
     struct latex_function *func = (struct latex_function *)opaque;
-    char cwd[1024];
+    char cwd[MAX_FILENAME_SIZE];
+    char dir[MAX_FILENAME_SIZE];
     const char *argv[4];
     char *wd, *p;
     int len;
@@ -236,10 +237,8 @@ static void latex_cmd_run(void *opaque, char *cmd)
     if (p == func->es->b->filename)
         p++;
     len = p - func->es->b->filename + 1;
-    wd = (char *)malloc(len);
-    pstrcpy(wd, len, func->es->b->filename);
-    chdir(wd);
-    free(wd);
+    pstrcpy(dir, sizeof(dir), func->es->b->filename);
+    chdir(dir);
 
     if (func->output_to_buffer) {
         /* if the buffer already exists, kill it */
