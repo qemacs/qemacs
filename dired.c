@@ -34,7 +34,7 @@ typedef struct DiredState {
     StringArray items;
     int sort_mode; /* DIRED_SORT_GROUP | DIRED_SORT_NAME */
     int last_index;
-    char path[1024]; /* current path */
+    char path[MAX_FILENAME_SIZE]; /* current path */
 } DiredState;
 
 /* opaque structure for sorting DiredState.items StringArray */
@@ -83,31 +83,31 @@ static int dired_sort_func(const void *p1, const void *p2)
     int is_dir1, is_dir2;
 
     if (mode & DIRED_SORT_GROUP) {
-	is_dir1 = !!S_ISDIR(dip1->mode);
-	is_dir2 = !!S_ISDIR(dip2->mode);
-	if (is_dir1 != is_dir2)
-	    return is_dir2 - is_dir1;
+        is_dir1 = !!S_ISDIR(dip1->mode);
+        is_dir2 = !!S_ISDIR(dip2->mode);
+        if (is_dir1 != is_dir2)
+            return is_dir2 - is_dir1;
     }
     for (;;) {
-	if (mode & DIRED_SORT_DATE) {
-	    if (dip1->mtime != dip2->mtime) {
-		res = (dip1->mtime < dip2->mtime) ? -1 : 1;
-		break;
-	    }
-	}
-	if (mode & DIRED_SORT_SIZE) {
-	    if (dip1->size != dip2->size) {
-		res = (dip1->size < dip2->size) ? -1 : 1;
-		break;
-	    }
-	}
-	if (mode & DIRED_SORT_EXTENSION) {
-	    res = strcmp(extension(dip1->name), extension(dip2->name));
-	    if (res)
-		break;
-	}
-	res = strcmp(dip1->name, dip2->name);
-	break;
+        if (mode & DIRED_SORT_DATE) {
+            if (dip1->mtime != dip2->mtime) {
+                res = (dip1->mtime < dip2->mtime) ? -1 : 1;
+                break;
+            }
+        }
+        if (mode & DIRED_SORT_SIZE) {
+            if (dip1->size != dip2->size) {
+                res = (dip1->size < dip2->size) ? -1 : 1;
+                break;
+            }
+        }
+        if (mode & DIRED_SORT_EXTENSION) {
+            res = strcmp(extension(dip1->name), extension(dip2->name));
+            if (res)
+                break;
+        }
+        res = strcmp(dip1->name, dip2->name);
+        break;
     }
     return (mode & DIRED_SORT_DESCENDING) ? -res : res;
 }
@@ -124,7 +124,7 @@ static void do_dired_sort(EditState *s)
     index = dired_get_index(s);
     cur_item = NULL;
     if (index >= 0 && index < hs->items.nb_items)
-	cur_item = hs->items.items[index];
+        cur_item = hs->items.items[index];
 
     qsort(hs->items.items, hs->items.nb_items, 
           sizeof(StringItem *), dired_sort_func);
@@ -135,13 +135,13 @@ static void do_dired_sort(EditState *s)
     eb_delete(b, 0, b->total_size);
     s->offset = 0;
     if (DIRED_HEADER)
-	eb_printf(b, "  %s:\n", hs->path);
+        eb_printf(b, "  %s:\n", hs->path);
     for (i = 0; i < hs->items.nb_items; i++) {
-	item = hs->items.items[i];
-	dip = item->opaque;
-	dip->offset = b->total_size;
-	if (item == cur_item)
-	    s->offset = b->total_size;
+        item = hs->items.items[i];
+        dip = item->opaque;
+        dip->offset = b->total_size;
+        if (item == cur_item)
+            s->offset = b->total_size;
         eb_printf(b, "%c %s\n", dip->mark, item->str);
     }
     b->modified = 0;
@@ -175,39 +175,39 @@ static void dired_sort(EditState *s, const char *sort_order)
     const char *p;
     
     for (p = sort_order; *p; p++) {
-	switch (tolower(*p)) {
-	case 'n':	/* name */
-	    hs->sort_mode &= ~DIRED_SORT_MASK;
-	    hs->sort_mode |= DIRED_SORT_NAME;
-	    break;
-	case 'e':	/* extension */
-	    hs->sort_mode &= ~DIRED_SORT_MASK;
-	    hs->sort_mode |= DIRED_SORT_EXTENSION;
-	    break;
-	case 's':	/* size */
-	    hs->sort_mode &= ~DIRED_SORT_MASK;
-	    hs->sort_mode |= DIRED_SORT_SIZE;
-	    break;
-	case 'd':	/* direct */
-	    hs->sort_mode &= ~DIRED_SORT_MASK;
-	    hs->sort_mode |= DIRED_SORT_DATE;
-	    break;
-	case 'u':	/* ungroup */
-	    hs->sort_mode &= ~DIRED_SORT_GROUP;
-	    break;
-	case 'g':	/* group */
-	    hs->sort_mode |= DIRED_SORT_GROUP;
-	    break;
-	case '+':	/* ascending */
-	    hs->sort_mode &= ~DIRED_SORT_DESCENDING;
-	    break;
-	case '-':	/* descending */
-	    hs->sort_mode |= DIRED_SORT_DESCENDING;
-	    break;
-	case 'r':	/* reverse */
-	    hs->sort_mode ^= DIRED_SORT_DESCENDING;
-	    break;
-	}
+        switch (tolower(*p)) {
+        case 'n':       /* name */
+            hs->sort_mode &= ~DIRED_SORT_MASK;
+            hs->sort_mode |= DIRED_SORT_NAME;
+            break;
+        case 'e':       /* extension */
+            hs->sort_mode &= ~DIRED_SORT_MASK;
+            hs->sort_mode |= DIRED_SORT_EXTENSION;
+            break;
+        case 's':       /* size */
+            hs->sort_mode &= ~DIRED_SORT_MASK;
+            hs->sort_mode |= DIRED_SORT_SIZE;
+            break;
+        case 'd':       /* direct */
+            hs->sort_mode &= ~DIRED_SORT_MASK;
+            hs->sort_mode |= DIRED_SORT_DATE;
+            break;
+        case 'u':       /* ungroup */
+            hs->sort_mode &= ~DIRED_SORT_GROUP;
+            break;
+        case 'g':       /* group */
+            hs->sort_mode |= DIRED_SORT_GROUP;
+            break;
+        case '+':       /* ascending */
+            hs->sort_mode &= ~DIRED_SORT_DESCENDING;
+            break;
+        case '-':       /* descending */
+            hs->sort_mode |= DIRED_SORT_DESCENDING;
+            break;
+        case 'r':       /* reverse */
+            hs->sort_mode ^= DIRED_SORT_DESCENDING;
+            break;
+        }
     }
     do_dired_sort(s);
 }
@@ -218,7 +218,7 @@ void build_dired_list(EditState *s, const char *path)
 {
     DiredState *hs = s->mode_data;
     FindFileState *ffs;
-    char filename[1024];
+    char filename[MAX_FILENAME_SIZE];
     char line[1024], buf[1024];
     const char *p;
     struct stat st;
@@ -239,7 +239,7 @@ void build_dired_list(EditState *s, const char *path)
             continue;
         p = basename(filename);
 
-#if 1	/* CG: bad idea, but causes spurious bugs */
+#if 1   /* CG: bad idea, but causes spurious bugs */
         /* exclude redundant '.' and '..' */
         if (!strcmp(p, ".") || !strcmp(p, ".."))
             continue;
@@ -292,24 +292,24 @@ void build_dired_list(EditState *s, const char *path)
         
         item = add_string(&hs->items, line);
         if (item) {
-	    DiredItem *dip;
+            DiredItem *dip;
 
-	    dip = malloc(sizeof(DiredItem) + strlen(p));
-	    dip->state = hs;
-	    dip->mode = st.st_mode;
-	    dip->size = st.st_size;
-	    dip->mtime = st.st_mtime;
-	    dip->mark = ' ';
-	    strcpy(dip->name, p);
+            dip = malloc(sizeof(DiredItem) + strlen(p));
+            dip->state = hs;
+            dip->mode = st.st_mode;
+            dip->size = st.st_size;
+            dip->mtime = st.st_mtime;
+            dip->mark = ' ';
+            strcpy(dip->name, p);
             item->opaque = dip;
-	}
+        }
     }
     find_file_close(ffs);
     do_dired_sort(s);
 }
 
 static char *get_dired_filename(EditState *s, 
-				char *buf, int buf_size, int index)
+                                char *buf, int buf_size, int index)
 {
     DiredState *hs = s->mode_data;
     const StringItem *item;
@@ -333,12 +333,12 @@ static char *get_dired_filename(EditState *s,
 static void dired_select(EditState *s)
 {
     struct stat st;
-    char filename[1024];
+    char filename[MAX_FILENAME_SIZE];
     EditState *e;
 
     if (!get_dired_filename(s, filename, sizeof(filename), 
-			    dired_get_index(s))) {
-	return;
+                            dired_get_index(s))) {
+        return;
     }
 
     /* now we can act */
@@ -392,7 +392,7 @@ static void dired_view_file(EditState *s, const char *filename)
             e->b = b;
         }
         /* mark buffer as preview, so that it will get recycled if needed */
-	/* CG: this is wrong if buffer existed already */
+        /* CG: this is wrong if buffer existed already */
         b->flags |= BF_PREVIEW;
     }
 }
@@ -406,7 +406,7 @@ static void dired_execute(EditState *s)
 static void dired_parent(EditState *s)
 {
     DiredState *hs = s->mode_data;
-    char filename[1024];
+    char filename[MAX_FILENAME_SIZE];
     
     makepath(filename, sizeof(filename), hs->path, "..");
 
@@ -425,12 +425,12 @@ static void dired_refresh(EditState *s)
 static void dired_display_hook(EditState *s)
 {
     DiredState *ds = s->mode_data;
-    char filename[1024];
+    char filename[MAX_FILENAME_SIZE];
     int index;
 
     /* Prevent point from going beyond list */
     if (s->offset && s->offset == s->b->total_size)
-	do_up_down(s, -1);
+        do_up_down(s, -1);
 
     /* open file so that user can see it before it is selected */
     /* XXX: find a better solution (callback) */
@@ -440,10 +440,10 @@ static void dired_display_hook(EditState *s)
     /* Should not rely on last_index! */
     if (index != ds->last_index) {
         ds->last_index = index;
-	if (get_dired_filename(s, filename, sizeof(filename), 
-			       dired_get_index(s))) {
-	    dired_view_file(s, filename);
-	}
+        if (get_dired_filename(s, filename, sizeof(filename), 
+                               dired_get_index(s))) {
+            dired_view_file(s, filename);
+        }
     }
 }
 
@@ -487,7 +487,7 @@ void do_dired(EditState *s)
     EditBuffer *b, *b0;
     EditState *e, *e1;
     int width, index, i;
-    char filename[1024], *p;
+    char filename[MAX_FILENAME_SIZE], *p;
 
     /* Should take directory argument with optional switches,
      * find dired window if exists,
@@ -517,16 +517,16 @@ void do_dired(EditState *s)
 
     e1 = find_window(e, KEY_RIGHT);
     if (e1)
-	b0 = e1->b;
+        b0 = e1->b;
 
     index = 0;
     /* CG: target file should be an argument to this command */
     for (i = 0; i < hs->items.nb_items; i++) {
-	if (get_dired_filename(e, filename, sizeof(filename), i)
-	&&  !strcmp(filename, b0->filename)) {
-	    index = i;
-	    break;
-	}
+        if (get_dired_filename(e, filename, sizeof(filename), i)
+        &&  !strcmp(filename, b0->filename)) {
+            index = i;
+            break;
+        }
     }
     e->offset = eb_goto_pos(e->b, index + DIRED_HEADER, 0);
 
