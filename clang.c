@@ -71,10 +71,10 @@ void c_colorize_line(unsigned int *buf, int len,
     p = buf;
     p_start = p;
     type_decl = 0;
-    c = 0;	/* turn off stupid egcs-2.91.66 warning */
+    c = 0;      /* turn off stupid egcs-2.91.66 warning */
 
     /* if already in a state, go directly in the code parsing it */
-    switch(state) {
+    switch (state) {
     case C_COMMENT:
         goto parse_comment;
     case C_STRING:
@@ -86,10 +86,10 @@ void c_colorize_line(unsigned int *buf, int len,
         break;
     }
 
-    for(;;) {
+    for (;;) {
         p_start = p;
         c = *p;
-        switch(c) {
+        switch (c) {
         case '\n':
             goto the_end;
         case '/':
@@ -164,12 +164,12 @@ void c_colorize_line(unsigned int *buf, int len,
                 
                 l = get_c_keyword(kbuf, sizeof(kbuf), &p);
                 p1 = p;
-		while (*p == ' ' || *p == '\t')
-		    p++;
+                while (*p == ' ' || *p == '\t')
+                    p++;
                 if (strfind(c_keywords, kbuf, 0)) {
                     set_color(p_start, p1 - p_start, QE_STYLE_KEYWORD);
                 } else
-		if (strfind(c_types, kbuf, 0)) {
+                if (strfind(c_types, kbuf, 0)) {
                     /* c type */
                     /* if not cast, assume type declaration */
                     if (*p != ')') {
@@ -216,7 +216,7 @@ static int find_indent1(EditState *s, unsigned int *buf)
 
     p = buf;
     pos = 0;
-    for(;;) {
+    for (;;) {
         c = *p++ & CHAR_MASK;
         if (c == '\t')
             pos += s->tab_size - (pos % s->tab_size);
@@ -233,7 +233,7 @@ static int find_pos(EditState *s, unsigned int *buf, int size)
     int pos, c, i;
 
     pos = 0;
-    for(i=0;i<size;i++) {
+    for (i = 0; i < size; i++) {
         c = buf[i] & CHAR_MASK;
         if (c == '\t')
             pos += s->tab_size - (pos % s->tab_size);
@@ -301,7 +301,7 @@ static void do_c_indent(EditState *s)
     eoi_found = 0;
     stack_ptr = 0;
     state = INDENT_NORM;
-    for(;;) {
+    for (;;) {
         if (offsetl == 0)
             break;
         line_num--;
@@ -333,7 +333,7 @@ static void do_c_indent(EditState *s)
                     goto check_instr;
                 }
             } else {
-                switch(c) {
+                switch (c) {
                 case '}':
                     if (stack_ptr >= MAX_STACK_SIZE)
                         return;
@@ -430,15 +430,15 @@ static void do_c_indent(EditState *s)
     len = get_colorized_line(s, buf, MAX_BUF_SIZE - 1, offset, line_num1);
 
     if (stack_ptr == 0) {
-	if (!pos && lpos >= 0) {
-	    /* start of instruction already found */
-	    pos = lpos;
-	    if (!eoi_found)
-		pos += s->indent_size;
-	}
+        if (!pos && lpos >= 0) {
+            /* start of instruction already found */
+            pos = lpos;
+            if (!eoi_found)
+                pos += s->indent_size;
+        }
     }
 
-    for(i=0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         c = buf[i]; 
         style = c >> STYLE_SHIFT;
         /* if preprocess, no indent */
@@ -463,7 +463,7 @@ static void do_c_indent(EditState *s)
 
     /* suppress leading spaces */
     offset1 = offset;
-    for(;;) {
+    for (;;) {
         c = eb_nextc(s->b, offset1, &offset2);
         if (c != ' ' && c != '\t')
             break;
@@ -495,8 +495,8 @@ void do_c_indent_region(EditState *s)
         p2 = tmp;
     }
 
-    for(;p1<=p2;p1++) {
-        s->offset = eb_goto_pos(s->b, p1, 0);
+    for (;p1 <= p2; p1++) {
+         s->offset = eb_goto_pos(s->b, p1, 0);
         do_c_indent(s);
     }
 }
@@ -514,7 +514,7 @@ static int c_mode_probe(ModeProbeData *p)
     /* currently, only use the file extension */
     r = extension(p->filename);
     if (*r) {
-	if (strfind("|c|e|h|js|cs|jav|java|cxx|cpp|", r + 1, 1))
+        if (strfind("|c|e|h|js|cs|jav|java|cxx|cpp|", r + 1, 1))
             return 100;
     }
     return 0;
@@ -523,6 +523,7 @@ static int c_mode_probe(ModeProbeData *p)
 int c_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     int ret;
+
     ret = text_mode_init(s, saved_data);
     if (ret)
         return ret;

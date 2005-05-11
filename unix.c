@@ -198,7 +198,7 @@ static inline int check_timers(int max_delay)
     cur_time = get_clock_ms();
     timeout = cur_time + max_delay;
     pt = &first_timer;
-    for(;;) {
+    for (;;) {
         ti = *pt;
         if (ti == NULL)
             break;
@@ -255,7 +255,7 @@ static void url_block(void)
     /* call each handler */
     if (ret > 0) {
         uh = url_handlers;
-        for(i = 0;i <= url_fdmax; i++) {
+        for (i = 0;i <= url_fdmax; i++) {
             if (FD_ISSET(i, &rfds)) {
                 uh->read_cb(uh->read_opaque);
                 call_bottom_halves();
@@ -269,7 +269,7 @@ static void url_block(void)
     }
     
     /* handle terminated children */
-    for(;;) {
+    for (;;) {
         if (list_empty(&pid_handlers))
             break;
         pid = waitpid(-1, &status, WNOHANG);
@@ -289,7 +289,7 @@ void url_main_loop(void (*init)(void *opaque), void *opaque)
 {
     url_block_reset();
     init(opaque);
-    for(;;) {
+    for (;;) {
         if (url_exit_request)
             break;
         url_block();

@@ -14,7 +14,7 @@ int main(int argc, char **argv)
     got_space = 0;
     last_c = 0;
     in_string = 0;
-    for(;;) {
+    for (;;) {
         c = getchar();
     redo:
         if (c == EOF)
@@ -31,7 +31,7 @@ int main(int argc, char **argv)
                     putchar('/');
                     goto redo;
                 }
-                for(;;) {
+                for (;;) {
                     c = getchar();
                     if (c == EOF)
                         goto the_end;

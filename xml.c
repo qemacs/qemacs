@@ -41,7 +41,7 @@ void xml_colorize_line(unsigned int *buf, int len,
     /* if already in a state, go directly in the code parsing it */
     if (state & XML_SCRIPT)
         goto parse_script;
-    switch(state) {
+    switch (state) {
     case XML_COMMENT:
         goto parse_comment;
     case XML_TAG:
@@ -53,7 +53,7 @@ void xml_colorize_line(unsigned int *buf, int len,
         break;
     }
 
-    for(;;) {
+    for (;;) {
         p_start = p;
         c = *p;
         if (c == '\n') {
@@ -102,7 +102,7 @@ void xml_colorize_line(unsigned int *buf, int len,
                     /* javascript coloring */
                     p_start = p;
                 parse_script:
-                    for(;;) {
+                    for (;;) {
                         if (*p == '\n') {
                             state &= ~XML_SCRIPT;
                             c_colorize_line(p_start, p - p_start, &state, state_only);
@@ -129,7 +129,7 @@ void xml_colorize_line(unsigned int *buf, int len,
                     /* stylesheet coloring */
                     p_start = p;
                 parse_style:
-                    for(;;) {
+                    for (;;) {
                         if (*p == '\n') {
                             set_color(p_start, p - p_start, QE_STYLE_CSS);
                             break;

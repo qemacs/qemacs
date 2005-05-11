@@ -196,6 +196,7 @@ static const unsigned short transparent[] = {
 static int is_transparent(int ch)
 {
     int i;
+
     for (i = 0; i < (int)(sizeof(transparent)/sizeof(transparent[0])); i++) {
         if (transparent[i] == ch)
             return 1;
@@ -206,6 +207,7 @@ static int is_transparent(int ch)
 static const ArabicChar *find_char(int ch)
 {
     const ArabicChar *c;
+
     c = arabic_table;
     while (c->ch != 0 && c->ch != ch)
         c++;
@@ -219,7 +221,7 @@ int arab_join(unsigned int *line, unsigned int *ctog, int len)
     const ArabicChar *aa, *bb, *cc;
 
     a = 0;
-    for(i=0;i<len;) {
+    for (i = 0; i < len;) {
         j = i;
         b = line[i++];
         /* find the next non transparent char */

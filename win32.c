@@ -64,7 +64,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst,
 
    p = command_line;
    count = 0;
-   for(;;) {
+   for (;;) {
        skip_spaces((const char **)&p);
        if (*p == '\0')
            break;
@@ -79,7 +79,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst,
    
    argc = 0;
    p = command_line;
-   for(;;) {
+   for (;;) {
        skip_spaces((const char **)&p);
        if (*p == '\0')
            break;
@@ -95,7 +95,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst,
 #if 0
    {
        int i;
-       for(i=0;i<argc;i++) {
+       for (i = 0; i < argc; i++) {
            printf("%d: '%s'\n", i, argv[i]);
        }
    }
@@ -265,7 +265,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             ignore_wchar_msg = 0;
             
             scan = (unsigned int) ((lParam >> 16) & 0x1FF);
-            switch(scan) {
+            switch (scan) {
             case 0x00E:
                 ignore_wchar_msg = 1;
                 push_key(KEY_DEL);
@@ -277,37 +277,37 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 else
                     push_key(KEY_CTRL('@'));
                 break;
-            case 0x147: 		       /* home */
+            case 0x147:                        /* home */
                 push_key(KEY_HOME);
                 break;
-            case 0x148:		       /* UP */
+            case 0x148:                /* UP */
                 push_key(KEY_UP);
                 break;
-            case 0x149:		       /* PGUP */
+            case 0x149:                /* PGUP */
                 push_key(KEY_PAGEUP);
                 break;
-            case 0x14B:		       /* LEFT */
+            case 0x14B:                /* LEFT */
                 push_key(KEY_LEFT);
                 break;
-            case 0x14D:		       /* RIGHT */
+            case 0x14D:                /* RIGHT */
                 push_key(KEY_RIGHT);
                 break;
-            case 0x14F:		       /* END */
+            case 0x14F:                /* END */
                 push_key(KEY_END);
                 break;
-            case 0x150:		       /* DOWN */
+            case 0x150:                /* DOWN */
                 push_key(KEY_DOWN);
                 break;
-            case 0x151:		       /* PGDN */
+            case 0x151:                /* PGDN */
                 push_key(KEY_PAGEDOWN);
                 break;
-            case 0x153:		       /* DEL */
+            case 0x153:                /* DEL */
                 push_key(KEY_DELETE);
                 break;
-            case 0x152:		       /* INSERT */
+            case 0x152:                /* INSERT */
                 push_key(KEY_INSERT);
                 break;
-            case 0x3b:		       /* F1 */
+            case 0x3b:                 /* F1 */
             case 0x3c:
             case 0x3d:
             case 0x3e:
@@ -318,7 +318,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             case 0x43:
             case 0x44:
             case 0x57:
-            case 0x58:		       /* F12 */
+            case 0x58:                 /* F12 */
                 key = scan - 0x3b;
                 if (key > 9)
                     key -= 0x12;
@@ -344,7 +344,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return DefWindowProc(hWnd, msg, wParam, lParam);
 
     case WM_SIZE:
-	if (wParam != SIZE_MINIMIZED) {
+        if (wParam != SIZE_MINIMIZED) {
             QEmacsState *qs = &qe_state;
             QEEvent ev;
 
@@ -353,7 +353,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             ev.expose_event.type = QE_EXPOSE_EVENT;
             push_event(&ev);
         }
-	break;
+        break;
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
@@ -367,14 +367,14 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             EndPaint(win_ctx.w, &ps);
             win_ctx.hdc = saved_hdc;
         }
-	break;
+        break;
 
     case WM_SETFOCUS:
     case WM_KILLFOCUS:
         break;
 
     default:
-	return DefWindowProc(hWnd, msg, wParam, lParam);
+        return DefWindowProc(hWnd, msg, wParam, lParam);
     }
     return 0;
 }
@@ -384,7 +384,7 @@ static int get_unicode_key(QEditScreen *s, QEPollData *pd, QEEvent *ev)
     MSG msg;
     QEEventQ *e;
 
-    for(;;) {
+    for (;;) {
         /* check if events queued */
         if (first_event != NULL) {
             e = first_event;
@@ -451,7 +451,7 @@ static void win_text_metrics(QEditScreen *s, QEFont *font,
     metrics->font_ascent = font->ascent;
     metrics->font_descent = font->descent;
     x = 0;
-    for(i=0;i<len;i++)
+    for (i = 0; i < len; i++)
         x += font_xsize;
     metrics->width = x;
 }
@@ -464,7 +464,7 @@ static void win_draw_text(QEditScreen *s, QEFont *font,
     WORD buf[len];
     COLORREF col;
 
-    for(i=0;i<len;i++)
+    for (i = 0; i < len; i++)
         buf[i] = str[i];
     col = RGB((color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
     SetTextColor(win_ctx.hdc, col);

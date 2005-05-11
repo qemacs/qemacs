@@ -56,7 +56,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
     display_printf(ds, -1, -1, "%08x ", offset);
 
     len = 0;
-    for(j=0;j<s->disp_width;j++) {
+    for (j = 0; j < s->disp_width; j++) {
         if (offset < s->b->total_size) {
             b = eb_nextc(s->b, offset, &offset1);
             pos[len] = offset;
@@ -67,7 +67,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
     }
     pos[len] = offset;
 
-    for(j=0;j<s->disp_width;j++) {
+    for (j = 0; j < s->disp_width; j++) {
         display_char(ds, -1, -1, ' ');
         if (j < len) {
             display_printhex(ds, pos[j], pos[j+1], buf[j], 4);
@@ -85,7 +85,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
     display_char(ds, -1, -1, ' ');
     display_char(ds, -1, -1, ' ');
 
-    for(j=0;j<s->disp_width;j++) {
+    for (j = 0; j < s->disp_width; j++) {
         if (j < len) {
             b = buf[j];
             if (b < ' ' || b == 127)

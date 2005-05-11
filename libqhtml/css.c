@@ -209,7 +209,7 @@ int eb_nextc1(EditBuffer *b, unsigned long *offset_ptr)
         /* read entity */
         offset1 = *offset_ptr;
         q = name;
-        for(;;) {
+        for (;;) {
             ch1 = eb_nextc(b, *offset_ptr, (int *)offset_ptr);
             if (ch1 == '\n' || ch1 == ';')
                 break;
@@ -247,7 +247,7 @@ int str_nextc(EditBuffer *b, unsigned long *offset_ptr)
 
 static NextCharFunc get_nextc(CSSBox *box)
 {
-    switch(box->content_type) {
+    switch (box->content_type) {
     case CSS_CONTENT_TYPE_STRING:
         return str_nextc;
     case CSS_CONTENT_TYPE_BUFFER:
@@ -339,7 +339,7 @@ static void css_init_idents(void)
     if (table_ident_nb != 0)
         return;
     
-    for(p = css_idents; *p != '\1'; p = r + 1) {
+    for (p = css_idents; *p != '\1'; p = r + 1) {
         r = p;
         while (*r)
             r++;
@@ -356,7 +356,7 @@ static void css_init_idents(void)
 static void set_counter(CSSContext *s, CSSIdent counter_id, int value)
 {
     CSSCounterValue *p;
-    for(p = s->counter_stack_ptr; p != s->counter_stack_base; p = p->prev) {
+    for (p = s->counter_stack_ptr; p != s->counter_stack_base; p = p->prev) {
         if (p->counter_id == counter_id) {
             p->value = value;
         }
@@ -384,7 +384,7 @@ static void pop_counters(CSSContext *s, CSSCounterValue *p2)
 {
     CSSCounterValue *p, *p1;
 
-    for(p = s->counter_stack_ptr; p != s->counter_stack_base; p = p1) {
+    for (p = s->counter_stack_ptr; p != s->counter_stack_base; p = p1) {
         p1 = p->prev;
         free(p);
         p = p1;
@@ -396,7 +396,7 @@ static void pop_counters(CSSContext *s, CSSCounterValue *p2)
 static void incr_counter(CSSContext *s, CSSIdent counter_id, int incr)
 {
     CSSCounterValue *p;
-    for(p = s->counter_stack_ptr; p != NULL; p = p->prev) {
+    for (p = s->counter_stack_ptr; p != NULL; p = p->prev) {
         if (p->counter_id == counter_id) {
             p->value += incr;
             return;
@@ -409,7 +409,7 @@ static void incr_counter(CSSContext *s, CSSIdent counter_id, int incr)
 static int get_counter(CSSContext *s, CSSIdent counter_id)
 {
     CSSCounterValue *p;
-    for(p = s->counter_stack_ptr; p != NULL; p = p->prev) {
+    for (p = s->counter_stack_ptr; p != NULL; p = p->prev) {
         if (p->counter_id == counter_id) {
             return p->value;
         }
@@ -436,7 +436,7 @@ static void css_eval_property(CSSContext *s,
     ptr = (int *)((char *)state + def->struct_offset);
     if (p->value.u.val == CSS_INHERIT) {
         /* XXX: invalid if pointer */
-        switch(def->storage) {
+        switch (def->storage) {
         default:
         case CSS_STORAGE_INT:
             *ptr = *(int *)((char *)state_parent + def->struct_offset);
@@ -449,7 +449,7 @@ static void css_eval_property(CSSContext *s,
         if (def->storage == CSS_STORAGE_PTR) {
             *(void **)ptr = p;
         } else {
-            switch(p->value.type) {
+            switch (p->value.type) {
             case CSS_VALUE_COLOR:
             case CSS_UNIT_NONE:
             case CSS_VALUE_INTEGER:
@@ -499,7 +499,7 @@ static inline int attribute_match(CSSStyleSheetAttributeEntry *e,
     op = e->op;
     do {
         if (attr == a->attr) {
-            switch(op) {
+            switch (op) {
             case CSS_ATTR_OP_SET:
                 return 1;
             case CSS_ATTR_OP_EQUAL:
@@ -537,7 +537,7 @@ static int selector_match(CSSSimpleSelector *ss,
             return 0;
     }
 
-    switch(ss->tree_op) {
+    switch (ss->tree_op) {
     case CSS_TREE_OP_DESCENDANT:
         box1 = box->parent;
         while (box1 != NULL) {
@@ -632,13 +632,13 @@ static char *eval_content(CSSContext *s, CSSProperty *p, CSSBox *box)
 
     buf[0] = '\0';
     value = &p->value;
-    for(i=0;i<p->nb_values;i++) {
-        switch(value->type) {
+    for (i = 0; i < p->nb_values; i++) {
+        switch (value->type) {
         case CSS_VALUE_STRING:
             pstrcat(buf, sizeof(buf), value->u.str);
             break;
         case CSS_VALUE_ATTR:
-            for(attr = box->attrs; attr != NULL; attr = attr->next) {
+            for (attr = box->attrs; attr != NULL; attr = attr->next) {
                 if (attr->attr == value->u.attr_id) {
                     pstrcat(buf, sizeof(buf), attr->value);
                     break;
@@ -665,7 +665,7 @@ static void eval_counter_update(CSSContext *s, CSSProperty *p)
     CSSPropertyValue *value = &p->value;
     int counter_id, n, i;
     
-    for(i=0;i<p->nb_values;) {
+    for (i = 0; i < p->nb_values;) {
         if (value->type != CSS_VALUE_IDENT)
             break;
         counter_id = value->u.attr_id;
@@ -756,7 +756,7 @@ static int css_eval(CSSContext *s,
     }
 
     /* border colors are set to color by default */
-    for(i=0;i<4;i++) {
+    for (i = 0; i < 4; i++) {
         if (state->border_colors[i] == COLOR_TRANSPARENT)
             state->border_colors[i] = state->color;
     }
@@ -798,7 +798,7 @@ static inline unsigned int hash_bytes(unsigned int h,
     const unsigned char *p_end;
 
     p_end = p + len;
-    for(; p < p_end; p++) {
+    for (; p < p_end; p++) {
         h = ((h << 8) + p[0]) % PROPS_HASH_SIZE;
     }
     return h;
@@ -826,7 +826,7 @@ static CSSState *allocate_props(CSSContext *s, CSSState *props)
 {
     CSSState **pp, *p;
     pp = &s->hash_props[hash_props(props)];
-    for(;;) {
+    for (;;) {
         p = *pp;
         if (!p)
             break;
@@ -921,7 +921,7 @@ static void css_counter_str(char *text, int text_size,
                             int index, int list_style_type, int adjust)
 {
     /* insert marker text */
-    switch(list_style_type) {
+    switch (list_style_type) {
     case CSS_LIST_STYLE_TYPE_DISC:
         strcpy(text, "o");
         break;
@@ -1043,7 +1043,7 @@ static int css_compute_block(CSSContext *s, CSSBox *box,
 
         counter_stack = push_counters(s);
 
-        for(box1 = box->u.child.first; box1 != NULL; box1 = box_next) {
+        for (box1 = box->u.child.first; box1 != NULL; box1 = box_next) {
             /* need to take next here because of :after inserted boxes */
             box_next = box1->next;
             if (css_compute_block(s, box1, props) < 0)
@@ -1320,7 +1320,7 @@ static int bidir_compute_attributes(CSSContext *ctx, TypeLink *list_tab, int max
     s->ltype = FRIBIDI_TYPE_SOT;
     s->pos = 0;
 
-    for(box = first_box; box != NULL; box = box->next_inline) {
+    for (box = first_box; box != NULL; box = box->next_inline) {
         bidir_compute_attributes_box(s, box);
     }
 
@@ -1395,7 +1395,7 @@ static void css_bidir_split(CSSContext *s, CSSBox *first_box, TypeLink *l)
     bidir_split.ctx = s;
     bidir_split.l = l + 1;
     bidir_split.pos = 0;
-    for(box = first_box; box != NULL; box = box->next_inline) {
+    for (box = first_box; box != NULL; box = box->next_inline) {
         css_bidir_split_box(&bidir_split, box);
     }
 }
@@ -1435,7 +1435,7 @@ static void bidir_end_inline(BidirComputeState *s)
             TypeLink *p;
             p = embeds;
             printf("bidi_start:\n");
-            for(;;) {
+            for (;;) {
                 printf("type=%d pos=%d len=%d level=%d\n", p->type, p->pos, p->len, p->level);
                 if (p->type == FRIBIDI_TYPE_EOT)
                     break;
@@ -1466,7 +1466,7 @@ static int css_layout_bidir_box(BidirComputeState *s, CSSBox *box)
             css_layout_bidir_block(s->ctx, box);
     } else {
         /* now do the layout, according to the display type */
-        switch(props->display) {
+        switch (props->display) {
         case CSS_DISPLAY_INLINE:
         case CSS_DISPLAY_INLINE_TABLE:
         case CSS_DISPLAY_INLINE_BLOCK:
@@ -1482,7 +1482,7 @@ static int css_layout_bidir_box(BidirComputeState *s, CSSBox *box)
                 props->display != CSS_DISPLAY_INLINE_BLOCK &&
                 box->content_type == CSS_CONTENT_TYPE_CHILDS) {
                 /* recurse inside in same formatting context */
-                for(box1 = box->u.child.first; box1 != NULL; box1 = box1->next) {
+                for (box1 = box->u.child.first; box1 != NULL; box1 = box1->next) {
                     ret = css_layout_bidir_box(s, box1);
                     if (ret)
                         return ret;
@@ -1520,7 +1520,7 @@ static int css_layout_bidir_block(CSSContext *ctx, CSSBox *box)
     
     s->inline_layout = 0;
     s->ctx = ctx;
-    for(box1 = box->u.child.first; box1 != NULL; box1 = box1->next) {
+    for (box1 = box->u.child.first; box1 != NULL; box1 = box1->next) {
         ret = css_layout_bidir_box(s, box1);
         if (ret)
             return ret;
@@ -1542,9 +1542,9 @@ static void reverse_boxes(InlineBox *str, int len)
     int i, len2 = len / 2;
     
     for (i = 0; i < len2; i++) {
-	InlineBox tmp = str[i];
-	str[i] = str[len - 1 - i];
-	str[len - 1 - i] = tmp;
+        InlineBox tmp = str[i];
+        str[i] = str[len - 1 - i];
+        str[len - 1 - i] = tmp;
     }
 }
 
@@ -1557,7 +1557,7 @@ static void embed_boxes(InlineBox *line, int len, int level_max)
         while (pos < len) {
             if (line[pos].box->embedding_level >= level) {
                 /* find all chars >= level */
-                for(p = pos + 1; p < len && line[p].box->embedding_level >= level; p++);
+                for (p = pos + 1; p < len && line[p].box->embedding_level >= level; p++);
                 reverse_boxes(line + pos, p - pos);
                 pos = p + 1;
             } else {
@@ -1661,11 +1661,11 @@ static int css_layout_float(InlineLayout *s, FloatBlock *b)
     /* we go down until we find no floats or enough space to put the
        new float */
     y = s->y0 + s->y;
-    for(;;) {
+    for (;;) {
         x1 = s->x0;
         x2 = s->x0 + s->total_width;
         y_next = MAXINT;
-        for(b1 = s->layout_state->first_float; b1 != NULL; b1 = b1->next) {
+        for (b1 = s->layout_state->first_float; b1 != NULL; b1 = b1->next) {
             if (b1->float_type != -1) {
                 /* if intersection in y, then update x1 and x2 */
                 y2 = b1->y + b1->height;
@@ -1711,7 +1711,7 @@ static int css_layout_floats(InlineLayout *s)
     FloatBlock *b;
     int ret;
     
-    for(b = s->layout_state->first_float; b != NULL; b = b->next) {
+    for (b = s->layout_state->first_float; b != NULL; b = b->next) {
         if (b->float_type == -1) {
             ret = css_layout_float(s, b);
             if (ret)
@@ -1821,7 +1821,7 @@ static void css_flush_line(InlineLayout *s,
     baseline = 0;
     descent = 0;
     level_max = 0;
-    for(i=0;i<nb_boxes;i++) {
+    for (i = 0; i < nb_boxes; i++) {
         box = line_boxes[i].box;
         props = box->props;
         line_width += box->width;
@@ -1869,7 +1869,7 @@ static void css_flush_line(InlineLayout *s,
         box_table1 = line_boxes;
 
     /* now do the real layout ! */
-    switch(line_props->text_align) {
+    switch (line_props->text_align) {
     case CSS_TEXT_ALIGN_LEFT:
     default:
         x = 0;
@@ -1886,7 +1886,7 @@ static void css_flush_line(InlineLayout *s,
     x += s->xstart;
 
     y = s->y;
-    for(i=0;i<nb_boxes;i++) {
+    for (i = 0; i < nb_boxes; i++) {
         ib = &box_table1[i];
         /* get next box in visual order */
         box = ib->box;
@@ -1900,7 +1900,7 @@ static void css_flush_line(InlineLayout *s,
         }
         x += left_pad;
         box->x = x;
-        switch(box->props->vertical_align) {
+        switch (box->props->vertical_align) {
         case CSS_VERTICAL_ALIGN_TOP:
             box->y = y;
             break;
@@ -1988,7 +1988,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
     {
         int i;
         printf("flush_word: '");
-        for(i=0;i<s->word_index;i++)
+        for (i = 0; i < s->word_index; i++)
             printf("%c", s->word_buf[i]);
         printf("' x=%d w=%d avail=%d white_space=%d word_index=%d\n", 
                s->x, w, s->avail_width, props->white_space, s->word_index);
@@ -2028,7 +2028,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
             /* try to put as much chars as possible on the
                line (maybe none) */
             /* XXX: use dichotomy */
-            for(;;) {
+            for (;;) {
                 s->word_index--;
                 text_metrics(s->ctx->screen, font, &metrics, 
                              s->word_buf, s->word_index);
@@ -2067,7 +2067,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
         /* push in the stack all remaining boxes for the next line */
         if (s->box_stack_index < BOX_STACK_SIZE)
             s->box_stack[s->box_stack_index++] = box_bow;
-        for(i=s->index_bow + 1;i<s->line_pos;i++) {
+        for (i = s->index_bow + 1; i < s->line_pos; i++) {
             if (s->box_stack_index < BOX_STACK_SIZE)
                 s->box_stack[s->box_stack_index++] = s->line_boxes[i].box;
         }
@@ -2118,7 +2118,7 @@ static int css_layout_inline_box(InlineLayout *s,
         descent = parent_font->descent;
 
         /* align vertically with respect to the parent */
-        switch(props->vertical_align) {
+        switch (props->vertical_align) {
         case CSS_VERTICAL_ALIGN_SUPER:
             baseline -= (ascent * SUPER_PERCENT) / 100;
             break;
@@ -2251,7 +2251,7 @@ static int css_layout_inline_box(InlineLayout *s,
             s->line_pos++;
         }
 
-        for(;;) {
+        for (;;) {
             /* end of block reached ? */
             if (offset >= box->u.buffer.end) {
                 css_flush_fragment(s, box, props, font);
@@ -2341,7 +2341,7 @@ static int css_layout_inline_box(InlineLayout *s,
         
         /* layout boxes at the end of the line if needed */
         /* XXX: use another function */
-        for(i=box_stack_base; i < s->box_stack_index; i++) {
+        for (i = box_stack_base; i < s->box_stack_index; i++) {
             css_layout_inline_box(s, s->box_stack[i], baseline);
         }
         /* remove all boxes from the stack */
@@ -2456,14 +2456,13 @@ static void layout_table_row_fixed(TableLayout *s, CSSBox *row)
     if (s->row != 0)
         return;
 
-    for(cell = row->u.child.first; cell != NULL; 
-        cell = cell->next) {
+    for (cell = row->u.child.first; cell != NULL; cell = cell->next) {
         cell_props = cell->props;
         if (cell_props->display == CSS_DISPLAY_TABLE_CELL) {
             colspan = cell_props->column_span;
             if (colspan < 1)
                 colspan = 1;
-            for(i=0;i<colspan;i++) 
+            for (i = 0; i < colspan; i++) 
                 allocate_column(s);
             
             /* if a width is specified, we use it */
@@ -2473,7 +2472,7 @@ static void layout_table_row_fixed(TableLayout *s, CSSBox *row)
                 w = cell_props->width / colspan;
                 if (w < 1)
                     w = 1;
-                for(i=0;i<colspan;i++) {
+                for (i = 0; i < colspan; i++) {
                     s->cols[s->nb_cols - colspan + i].width_fixed = 1;
                     s->cols[s->nb_cols - colspan + i].width = 
                         max(w, s->cols[s->nb_cols - colspan + i].width);
@@ -2492,7 +2491,7 @@ static int layout_table_fixed(TableLayout *s, CSSBox *parent_box)
     box = parent_box->u.child.first;
     while (box != NULL) {
         props = box->props;
-        switch(props->display) {
+        switch (props->display) {
         case CSS_DISPLAY_TABLE_ROW:
             layout_table_row_fixed(s, box);
             s->row++;
@@ -2545,7 +2544,7 @@ static int layout_table_fixed1(TableLayout *tl, CSSBox *table_box)
     available_width -= tl->border_h * (tl->nb_cols + 1);
     available_width1 = available_width;
     nb_auto_cols = 0;
-    for(i=0;i<tl->nb_cols;i++) {
+    for (i = 0; i < tl->nb_cols; i++) {
         if (tl->cols[i].width_fixed)
             available_width -= tl->cols[i].width;
         else
@@ -2559,7 +2558,7 @@ static int layout_table_fixed1(TableLayout *tl, CSSBox *table_box)
     }
 
     tot_width = 0;
-    for(i=0;i<tl->nb_cols;i++) {
+    for (i = 0; i < tl->nb_cols; i++) {
         if (!tl->cols[i].width_fixed)
             tl->cols[i].width = cell_width;
         tot_width += tl->cols[i].width;
@@ -2595,7 +2594,7 @@ static int layout_table_row_auto(TableLayout *s, CSSBox *row)
 
     col = 0;
     cell1 = row->u.child.first;
-    for(;;) {
+    for (;;) {
         /* XXX: factorize with rendering step */
         if (col < s->nb_cols)
             c = &s->cols[col];
@@ -2621,7 +2620,7 @@ static int layout_table_row_auto(TableLayout *s, CSSBox *row)
         } else {
             /* increase number of column if needed */
             col1 = col + colspan;
-            for(i=s->nb_cols;i<col1;i++) 
+            for (i = s->nb_cols; i < col1; i++) 
                 allocate_column(s);
             
             /* compute min & max size for the cell */
@@ -2666,7 +2665,7 @@ static int layout_table_row_auto(TableLayout *s, CSSBox *row)
                    larger enough for the cell */
                 min_w1 = 0;
                 max_w1 = 0;
-                for(i=0;i<colspan;i++) {
+                for (i = 0; i < colspan; i++) {
                     c->width_fixed = fixed;
                     min_w1 += c->min_width;
                     max_w1 += c->max_width;
@@ -2677,7 +2676,7 @@ static int layout_table_row_auto(TableLayout *s, CSSBox *row)
                     d = delta / colspan;
                     r = delta % colspan;
                     c = &s->cols[col];
-                    for(i=0;i<colspan;i++) {
+                    for (i = 0; i < colspan; i++) {
                         c->min_width += d;
                         if (i < r)
                             c->min_width++;
@@ -2689,7 +2688,7 @@ static int layout_table_row_auto(TableLayout *s, CSSBox *row)
                     d = delta / colspan;
                     r = delta % colspan;
                     c = &s->cols[col];
-                    for(i=0;i<colspan;i++) {
+                    for (i = 0; i < colspan; i++) {
                         c->max_width += d;
                         if (i < r)
                             c->max_width++;
@@ -2712,7 +2711,7 @@ static int layout_table_auto(TableLayout *s, CSSBox *parent_box)
     box = parent_box->u.child.first;
     while (box != NULL) {
         props = box->props;
-        switch(props->display) {
+        switch (props->display) {
         case CSS_DISPLAY_TABLE_ROW:
             if (layout_table_row_auto(s, box) < 0)
                 return -1;
@@ -2756,7 +2755,7 @@ static int layout_table_auto1(TableLayout *s, CSSBox *table_box)
     /* compute the minimum and maximum table width */
     min_tw = s->border_h * (s->nb_cols + 1);
     max_tw = min_tw;
-    for(i = 0, c = s->cols; i < s->nb_cols; i++, c++) {
+    for (i = 0, c = s->cols; i < s->nb_cols; i++, c++) {
         min_tw += c->min_width;
         max_tw += c->max_width;
     }
@@ -2789,11 +2788,11 @@ static int layout_table_auto1(TableLayout *s, CSSBox *table_box)
 
     /* compute the cell widths from the computed table width */
     if (tw < max_tw) {
-        for(i = 0, c = s->cols; i < s->nb_cols; i++, c++)
+        for (i = 0, c = s->cols; i < s->nb_cols; i++, c++)
             c->width = c->min_width;
         delta = tw - min_tw;
     } else {
-        for(i = 0, c = s->cols; i < s->nb_cols; i++, c++)
+        for (i = 0, c = s->cols; i < s->nb_cols; i++, c++)
             c->width = c->max_width;
         delta = tw - max_tw;
     }
@@ -2802,7 +2801,7 @@ static int layout_table_auto1(TableLayout *s, CSSBox *table_box)
            fast */
         d = delta / s->nb_cols;
         r = delta % s->nb_cols;
-        for(i = 0, c = s->cols; i < s->nb_cols; i++, c++) {
+        for (i = 0, c = s->cols; i < s->nb_cols; i++, c++) {
             c->width += d;
             if (i < r)
                 c->width++;
@@ -2810,7 +2809,7 @@ static int layout_table_auto1(TableLayout *s, CSSBox *table_box)
     }
 
     /* init again row span left, in case the row spans were incorrect */
-    for(i = 0, c = s->cols; i < s->nb_cols; i++, c++)
+    for (i = 0, c = s->cols; i < s->nb_cols; i++, c++)
         c->row_span_left = 0;
     
     s->table_width = tw;
@@ -2844,7 +2843,7 @@ static int render_table_row(TableLayout *s,
     baseline = 0;
     cell1 = row->u.child.first;
     col = 0; 
-    for(;;) {
+    for (;;) {
         ColStruct *c = &s->cols[col];
         
         /* compute which cell we examine */ 
@@ -2871,7 +2870,7 @@ static int render_table_row(TableLayout *s,
         if (c->row_span_left != 0) {
             c->row_span_left--;
             /* modify x to skip column */
-            for(i=0;i<colspan;i++)
+            for (i = 0; i < colspan; i++)
                 x += s->border_h + s->cols[col + i].width;
         } else {
             c->cell = cell;
@@ -2886,7 +2885,7 @@ static int render_table_row(TableLayout *s,
                 
             /* set the cell width */
             w = s->cols[col].width;
-            for(i=1;i<colspan;i++)
+            for (i = 1; i < colspan; i++)
                 w += s->border_h + s->cols[col + i].width;
             
             cell->width = w - props->padding.x1 - props->padding.x2 -
@@ -2918,7 +2917,7 @@ static int render_table_row(TableLayout *s,
     /* now compute vertical position of cells if baseline and 
        compute row_height */
     row_height = 0;
-    for(col = 0; col < nb_cols;) {
+    for (col = 0; col < nb_cols;) {
         ColStruct *c = &s->cols[col];
         cell = c->cell;
         colspan = cell->props->column_span;
@@ -2945,7 +2944,7 @@ static int render_table_row(TableLayout *s,
     }
 
     /* we know row_height: definitive vertical positionning */
-    for(col = 0; col < nb_cols;) {
+    for (col = 0; col < nb_cols;) {
         ColStruct *c = &s->cols[col];
         int delta, cell_height;
 
@@ -2953,7 +2952,7 @@ static int render_table_row(TableLayout *s,
         cell_height = c->prev_row_height + row_height;
         if (c->row_span_left == 0) {
             h = c->height;
-            switch(c->vertical_align) {
+            switch (c->vertical_align) {
             case CSS_VERTICAL_ALIGN_BOTTOM:
                 delta = cell_height - c->height;
                 cell->padding_top = delta;
@@ -2995,7 +2994,7 @@ static int layout_table_render(TableLayout *s, CSSBox *parent_box)
     box = parent_box->u.child.first;
     while (box != NULL) {
         props = box->props;
-        switch(props->display) {
+        switch (props->display) {
         case CSS_DISPLAY_TABLE_ROW:
             if (render_table_row(s, box))
                 return -1;
@@ -3105,7 +3104,7 @@ static int css_layout_table(CSSContext *s, LayoutOutput *table_layout,
             caption_box->props->border.y2 + caption_box->props->padding.y2;
         /* put the caption in the table margin */
         /* XXX: potentially incorrect: table margins */
-        switch(caption_box->props->caption_side) {
+        switch (caption_box->props->caption_side) {
         case CSS_CAPTION_SIDE_TOP:
             caption_box->x = (table_box->width - caption_box->width) / 2;
             caption_box->y = -h;
@@ -3173,7 +3172,7 @@ static int css_layout_block_iterate(InlineLayout *il, CSSBox *box, int baseline)
     CSSBox *box1, *box2;
     int ret;
 
-    for(box1 = box->u.child.first; box1 != NULL; box1 = box2) {
+    for (box1 = box->u.child.first; box1 != NULL; box1 = box2) {
         box2 = box1->next; /* need to do that first because boxes may be split */
         ret = css_layout_block_recurse1(il, box1, baseline);
         if (ret)
@@ -3228,7 +3227,7 @@ static int css_layout_block_recurse1(InlineLayout *il, CSSBox *box,
         }
     } else {
         /* now do the layout, according to the display type */
-        switch(props->display) {
+        switch (props->display) {
         case CSS_DISPLAY_LIST_ITEM:
         case CSS_DISPLAY_BLOCK:
         case CSS_DISPLAY_TABLE:
@@ -3503,7 +3502,7 @@ static int css_layout_box_min_max(InlineLayout *il, CSSBox *box)
             il->max_width = max(il->max_width, max_w1);
         }
     } else {
-        switch(props->display) {
+        switch (props->display) {
         case CSS_DISPLAY_LIST_ITEM:
         case CSS_DISPLAY_BLOCK:
         case CSS_DISPLAY_TABLE:
@@ -3537,7 +3536,7 @@ static int css_layout_box_min_max(InlineLayout *il, CSSBox *box)
                 props->display != CSS_DISPLAY_INLINE_BLOCK &&
                 box->content_type == CSS_CONTENT_TYPE_CHILDS) {
                 CSSBox *box1, *box2;
-                for(box1 = box->u.child.first; box1 != NULL; box1 = box2) {
+                for (box1 = box->u.child.first; box1 != NULL; box1 = box2) {
                     box2 = box1->next; /* need to do that first because boxes may be split */
                     ret = css_layout_box_min_max(il, box1);
                     if (ret)
@@ -3585,7 +3584,7 @@ static int css_layout_block_min_max(CSSContext *s,
         if (block_box->props->width != CSS_AUTO)
             il->min_width = il->max_width = block_box->props->width;
     } else {
-        for(;box != NULL; box = box1) {
+        for (; box != NULL; box = box1) {
             box1 = box->next;
             ret = css_layout_box_min_max(il, box);
             if (ret)
@@ -3726,7 +3725,7 @@ static void draw_borders(QEditScreen *scr,
     int dir, i, t1, t2, u1, v1, u2, v2, u1incr, u2incr, style, w, v;
     unsigned int color, color1, color2;
 
-    for(dir=0;dir<4;dir++) {
+    for (dir = 0; dir < 4; dir++) {
         style = props->border_styles[dir];
         if (style == CSS_BORDER_STYLE_NONE ||
             style == CSS_BORDER_STYLE_HIDDEN)
@@ -3758,7 +3757,7 @@ static void draw_borders(QEditScreen *scr,
         w = ((int *)&props->border)[dir];
         if (w <= 0)
             continue;
-        switch(dir) {
+        switch (dir) {
         case 2:
         case 0:
             u1 = y1;
@@ -3778,10 +3777,10 @@ static void draw_borders(QEditScreen *scr,
         u1 = u1 << BFRAC;
         u2 = u2 << BFRAC;
 
-        for(i=0;i<w;i++) {
+        for (i = 0; i < w; i++) {
             u1 += u1incr;
             u2 += u2incr;
-            switch(style) {
+            switch (style) {
             case CSS_BORDER_STYLE_DASHED: /* not handled */
             case CSS_BORDER_STYLE_DOTTED: /* not handled */
             case CSS_BORDER_STYLE_SOLID:
@@ -3815,7 +3814,7 @@ static void draw_borders(QEditScreen *scr,
             }
             t1 = u1 >> BFRAC;
             t2 = u2 >> BFRAC;
-            switch(dir) {
+            switch (dir) {
             case 0:
                 fill_rectangle(scr, x1 - i - 1, t1, 1, t2 - t1, color);
                 break;
@@ -3878,7 +3877,7 @@ static void box_display_text(CSSContext *s, CSSBox *box, int x0, int y0)
             /* slower and more complicated code for selection handling */
             offsets[len1] = box->u.buffer.end;
             x = x0;
-            for(i=0;i<len;i++) {
+            for (i = 0; i < len; i++) {
                 p = char_to_glyph_pos[i];
                 offset0 = offsets[p];
                 w = glyph_width(scr, font, glyphs[i]);
@@ -3892,7 +3891,7 @@ static void box_display_text(CSSContext *s, CSSBox *box, int x0, int y0)
             }
 
             x = x0;
-            for(i=0;i<len;i++) {
+            for (i = 0; i < len; i++) {
                 p = char_to_glyph_pos[i];
                 offset0 = offsets[p];
                 if (offset0 >= s->selection_start &&
@@ -3930,7 +3929,7 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
             img_props.border.y1 = 1;
             img_props.border.x2 = 1;
             img_props.border.y2 = 1;
-            for(i=0;i<4;i++) {
+            for (i = 0; i < 4; i++) {
                 img_props.border_colors[i] = QERGB(0, 0, 0);
                         img_props.border_styles[i] = CSS_BORDER_STYLE_INSET;
             }
@@ -4017,7 +4016,7 @@ static void css_display_block(CSSContext *s,
     }
 
     /* now display the content ! */
-    switch(box->content_type) {
+    switch (box->content_type) {
     case CSS_CONTENT_TYPE_IMAGE:
         box_display_image(s, box, x0, y0);
         break;
@@ -4127,7 +4126,7 @@ static int css_get_cursor_func(void *opaque,
     len = box_get_text(s->ctx, line_buf, MAX_LINE_SIZE, offsets, box);
     offsets[len] = box->u.buffer.end;
     
-    for(i=0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         if (s->offset >= offsets[i] && s->offset < offsets[i + 1]) {
             posc = i;
             goto found1;
@@ -4143,7 +4142,7 @@ static int css_get_cursor_func(void *opaque,
     font = css_select_font(scr, props);
     
     x = 0;
-    for(i=0;i<posc;i++) {
+    for (i = 0; i < posc; i++) {
         w = glyph_width(scr, font, glyphs[i]);
         x += w;
     }
@@ -4229,7 +4228,7 @@ int css_get_offset_pos(CSSContext *s, CSSBox *box, int xc, int dir)
     dmin = MAXINT;
     x = 0;
     posc = -1;
-    for(i=0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         if (dir == 0 ||
             (dir > 0 && x > xc) ||
             (dir < 0 && x < xc)) {
@@ -4280,7 +4279,7 @@ void css_dump_box(CSSBox *box, int level)
     CSSBox *b;
     const char *tag;
 
-    for(i=0;i<level;i++) 
+    for (i = 0; i < level; i++) 
         printf(" ");
     if (box->tag == CSS_ID_NIL) {
         tag = "anon";
@@ -4290,7 +4289,7 @@ void css_dump_box(CSSBox *box, int level)
     printf("<%s x=%d y=%d w=%d h=%d el=%d>\n", 
            tag, box->x, box->y, box->width, box->height, box->embedding_level);
 
-    switch(box->content_type) {
+    switch (box->content_type) {
     case CSS_CONTENT_TYPE_CHILDS:
         b = box->u.child.first;
         while (b != NULL) {
@@ -4299,7 +4298,7 @@ void css_dump_box(CSSBox *box, int level)
         }
         break;
     case CSS_CONTENT_TYPE_BUFFER:
-        for(i=0;i<level + 1;i++) 
+        for (i = 0; i < level + 1; i++) 
             printf(" ");
         printf("[offs=%lu %lu]\n",
                box->u.buffer.start, box->u.buffer.end);
@@ -4307,10 +4306,10 @@ void css_dump_box(CSSBox *box, int level)
     case CSS_CONTENT_TYPE_STRING:
         {
             unsigned long ptr;
-            for(i=0;i<level + 1;i++) 
+            for (i = 0; i < level + 1; i++) 
                 printf(" ");
             printf("'");
-            for(ptr=box->u.buffer.start; ptr < box->u.buffer.end; ptr++)
+            for (ptr = box->u.buffer.start; ptr < box->u.buffer.end; ptr++)
                 printf("%c", *(unsigned char *)ptr);
             printf("'\n");
         }
@@ -4319,7 +4318,7 @@ void css_dump_box(CSSBox *box, int level)
         printf("[IMAGE]\n");
         break;
     }
-    for(i=0;i<level;i++) 
+    for (i = 0; i < level; i++) 
         printf(" ");
     printf("</%s>\n", tag);
 }
@@ -4372,7 +4371,7 @@ void css_delete_box(CSSBox *box)
     CSSProperty *p1, *p;
 
     while (box != NULL) {
-        switch(box->content_type) {
+        switch (box->content_type) {
         case CSS_CONTENT_TYPE_CHILDS:
             css_delete_box(box->u.child.first);
             break;
@@ -4481,8 +4480,8 @@ void css_delete_document(CSSContext *s)
     int i;
     CSSState *props, *props_next;
 
-    for(i=0;i<PROPS_HASH_SIZE;i++) {
-        for(props = s->hash_props[i]; props != NULL; props = props_next) {
+    for (i = 0; i < PROPS_HASH_SIZE; i++) {
+        for (props = s->hash_props[i]; props != NULL; props = props_next) {
             props_next = props->hash_next;
             free_props(props);
         }

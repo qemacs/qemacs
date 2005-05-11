@@ -53,15 +53,15 @@ void charset_init(void)
         l++;
     }
 
-    for(i=0;i<256;i++)
+    for (i = 0; i < 256; i++)
         table_idem[i] = i;
 
     /* utf8 table */
-    for(i=0;i<256;i++)
+    for (i = 0; i < 256; i++)
         table_utf8[i] = INVALID_CHAR;
-    for(i=0;i<0x80;i++)
+    for (i = 0; i < 0x80; i++)
         table_utf8[i] = i;
-    for(i=0xc0;i<0xfe;i++)
+    for (i = 0xc0; i < 0xfe; i++)
         table_utf8[i] = ESCAPE_CHAR;
 
     qe_register_charset(&charset_8859_1);
@@ -73,6 +73,7 @@ void charset_init(void)
 void qe_register_charset(QECharset *charset)
 {
     QECharset **pp;
+
     pp = &first_charset;
     while (*pp != NULL) 
         pp = &(*pp)->next;
@@ -117,7 +118,7 @@ static void decode_vt100_init(CharsetDecodeState *s)
 }
 
 static unsigned char *encode_vt100(QECharset *charset, 
-				   unsigned char *p, int c)
+                                   unsigned char *p, int c)
 {
     if (c <= 0xff) {
         *p++ = c;
@@ -179,7 +180,7 @@ int utf8_decode(const char **pp)
         if (l == 1)
             goto fail; /* can only be multi byte code here */
         c = c & first_code_mask[l];
-        for(i=1;i<l;i++) {
+        for (i = 1; i < l; i++) {
             c1 = *p;
             if (c1 < 0x80 || c1 >= 0xc0)
                 goto fail;
@@ -245,7 +246,7 @@ int utf8_to_unicode(unsigned int *dest, int dest_length,
     p = str;
     uq = dest;
     uq_end = dest + dest_length - 1;
-    for(;;) {
+    for (;;) {
         if (uq >= uq_end)
             break;
         c = utf8_decode(&p);
@@ -289,12 +290,12 @@ QECharset *find_charset(const char *str)
 {
     QECharset *p;
     const char **pp;
-    for(p = first_charset; p != NULL; p = p->next) {
+    for (p = first_charset; p != NULL; p = p->next) {
         if (!strcasecmp(str, p->name))
             return p;
         pp = p->aliases;
         if (pp) {
-            for(; *pp != NULL; pp++) {
+            for (; *pp != NULL; pp++) {
                 if (!strcasecmp(str, *pp))
                     return p;
             }
@@ -337,7 +338,7 @@ QECharset *detect_charset (const unsigned char *buf, int size)
     int i, l, c, has_utf8;
 
     has_utf8 = 0;
-    for(i = 0; i < size;) {
+    for (i = 0; i < size;) {
         c = buf[i++];
         if ((c >= 0x80 && c < 0xc0) || c >= 0xfe)
             goto no_utf8;

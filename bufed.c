@@ -42,7 +42,7 @@ static void build_bufed_list(EditState *s)
 
     free_strings(&hs->items);
     for (b = qs->first_buffer; b != NULL; b = b->next) {
-	if (!(b->flags & BF_SYSTEM) || (hs->flags & BUFED_ALL_VISIBLE))
+        if (!(b->flags & BF_SYSTEM) || (hs->flags & BUFED_ALL_VISIBLE))
             add_string(&hs->items, b->name);
     }
     
@@ -51,12 +51,12 @@ static void build_bufed_list(EditState *s)
     eb_delete(b, 0, b->total_size);
     for (i = 0; i < hs->items.nb_items; i++) {
         eb_printf(b, " %-20s", hs->items.items[i]->str);
-	b1 = eb_find(hs->items.items[i]->str);
-	if (b1) {
-	    /* CG: should also display mode */
-	    eb_printf(b, " %10d  %s", b1->total_size, b1->filename);
-	}
-	eb_printf(b, "\n");
+        b1 = eb_find(hs->items.items[i]->str);
+        if (b1) {
+            /* CG: should also display mode */
+            eb_printf(b, " %10d  %s", b1->total_size, b1->filename);
+        }
+        eb_printf(b, "\n");
     }
     s->offset = eb_goto_pos(s->b, last_index, 0);
 }
@@ -86,7 +86,7 @@ static void bufed_select(EditState *s, int temp)
         return;
 
     if (temp && index == bs->last_index)
-	return;
+        return;
 
     item = bs->items.items[index];
     b = eb_find(item->str);
@@ -94,18 +94,18 @@ static void bufed_select(EditState *s, int temp)
         return;
     e = find_window(s, KEY_RIGHT);
     if (temp) {
-	if (e) {
-	    bs->last_index = index;
-	    switch_to_buffer(e, b);
-	}
-	return;
+        if (e) {
+            bs->last_index = index;
+            switch_to_buffer(e, b);
+        }
+        return;
     }
     if (e) {
-	/* delete dired window */
-	do_delete_window(s, 1);
-	switch_to_buffer(e, b);
+        /* delete dired window */
+        do_delete_window(s, 1);
+        switch_to_buffer(e, b);
     } else {
-	switch_to_buffer(s, b);
+        switch_to_buffer(s, b);
     }
 }
 
@@ -120,7 +120,7 @@ void string_selection_iterate(StringArray *cs,
     int count, i;
 
     count = 0;
-    for(i=0;i<cs->nb_items;i++) {
+    for (i = 0; i < cs->nb_items; i++) {
         item = cs->items[i];
         if (item->selected) {
             func_item(opaque, item);
@@ -175,14 +175,14 @@ static void do_list_buffers(EditState *s)
 
     e1 = find_window(e, KEY_RIGHT);
     if (e1)
-	b0 = e1->b;
+        b0 = e1->b;
 
     bs = e->mode_data;
 
     /* if active buffer is found, go directly on it */
     for (i = 0; i < bs->items.nb_items; i++) {
         if (!strcmp(bs->items.items[i]->str, b0->name)) {
-	    e->offset = eb_goto_pos(e->b, i, 0);
+            e->offset = eb_goto_pos(e->b, i, 0);
             break;
         }
     }
@@ -197,7 +197,7 @@ static void bufed_clear_modified(EditState *s)
 
     b = bufed_get_buffer(s);
     if (!b)
-	return;
+        return;
 
     b->modified = 0;
     build_bufed_list(s);
@@ -209,7 +209,7 @@ static void bufed_toggle_read_only(EditState *s)
 
     b = bufed_get_buffer(s);
     if (!b)
-	return;
+        return;
 
     b->flags ^= BF_READONLY;
     build_bufed_list(s);
@@ -220,7 +220,7 @@ static void bufed_refresh(EditState *s, int toggle)
     BufedState *bs = s->mode_data;
 
     if (toggle)
-	bs->flags ^= BUFED_ALL_VISIBLE;
+        bs->flags ^= BUFED_ALL_VISIBLE;
 
     build_bufed_list(s);
 }
@@ -229,7 +229,7 @@ static void bufed_display_hook(EditState *s)
 {
     /* Prevent point from going beyond list */
     if (s->offset && s->offset == s->b->total_size)
-	do_up_down(s, -1);
+        do_up_down(s, -1);
 
     bufed_select(s, 1);
 }

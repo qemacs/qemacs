@@ -45,7 +45,7 @@ int qe_bitmap_format_to_pix_fmt(int format)
 {
     int dst_pix_fmt;
 
-    switch(format) {
+    switch (format) {
     case QEBITMAP_FORMAT_YUV420P:
         dst_pix_fmt = PIX_FMT_YUV420P;
         break;
@@ -113,8 +113,8 @@ void draw_alpha_grid(EditState *s, int x1, int y1, int w, int h)
     int state, x, y;
     unsigned int color;
     
-    for(y = 0; y < h; y += 16) {
-        for(x = 0; x < w; x += 16) {
+    for (y = 0; y < h; y += 16) {
+        for (x = 0; x < w; x += 16) {
             state = (x ^ y) & 16;
             if (state)
                 color = QERGB(0x94, 0x94, 0x94);
@@ -301,7 +301,7 @@ static int read_image_cb(void *opaque, AVImageInfo *info)
         return AVERROR_NOMEM;
     ib->interleaved = info->interleaved;
     b->data = ib;
-    for(i=0;i<4;i++) {
+    for (i = 0; i < 4; i++) {
         info->pict.linesize[i] = ib->pict.linesize[i];
         info->pict.data[i] = ib->pict.data[i];
     }
@@ -425,9 +425,9 @@ static void update_bmp(EditState *s)
         bg_r = (is->background_color >> 16) & 0xff;
         bg_g = (is->background_color >> 8) & 0xff;
         bg_b = (is->background_color) & 0xff;
-        for(y = 0; y < is->h; y++) {
+        for (y = 0; y < is->h; y++) {
             d = d1;
-            for(x = 0; x < is->w; x++) {
+            for (x = 0; x < is->w; x++) {
                 if (is->background_color == 0) {
                     state = (x ^ y) & 16;
                     if (state) {
@@ -459,7 +459,7 @@ static void update_bmp(EditState *s)
     bmp_lock(s->screen, is->disp_bmp, &pict, 
              0, 0, is->w, is->h);
     
-    for(i=0;i<4;i++) {
+    for (i = 0; i < 4; i++) {
         avpict.data[i] = pict.data[i];
         avpict.linesize[i] = pict.linesize[i];
     }
@@ -557,9 +557,9 @@ static void image_scroll_up_down(EditState *s, int dir)
 
     h = SCROLL_MHEIGHT;
     if (abs(dir) == 2) {
-	/* move 50% */
-	d = s->height / 2;
-	dir /= 2;
+        /* move 50% */
+        d = s->height / 2;
+        dir /= 2;
     }
     if (d < 1)
         d = 1;
@@ -597,7 +597,7 @@ static int img_rotate(AVPicture *dst,
     uint8_t *d, *d1;
     const uint8_t *s, *s1;
 
-    switch(pix_fmt) {
+    switch (pix_fmt) {
     case PIX_FMT_GRAY8:
     case PIX_FMT_PAL8:
         bpp = 1;
@@ -617,14 +617,14 @@ static int img_rotate(AVPicture *dst,
     dlinesize = dst->linesize[0];
     d1 = dst->data[0] + (h - 1) * bpp;
     
-    for(y=0;y<h;y++) {
+    for (y = 0; y < h; y++) {
         s = s1;
         d = d1;
         
-        switch(pix_fmt) {
+        switch (pix_fmt) {
         case PIX_FMT_PAL8:
         case PIX_FMT_GRAY8:
-            for(x=0;x<w;x++) {
+            for (x = 0; x < w; x++) {
                 d[0] = s[0];
                 s++;
                 d += dlinesize;
@@ -632,7 +632,7 @@ static int img_rotate(AVPicture *dst,
             break;
         case PIX_FMT_RGB24:
         case PIX_FMT_BGR24:
-            for(x=0;x<w;x++) {
+            for (x = 0; x < w; x++) {
                 d[0] = s[0];
                 d[1] = s[1];
                 d[2] = s[2];
@@ -641,7 +641,7 @@ static int img_rotate(AVPicture *dst,
             }
             break;
         case PIX_FMT_RGBA32:
-            for(x=0;x<w;x++) {
+            for (x = 0; x < w; x++) {
                 ((uint32_t *)d)[0] = ((uint32_t *)s)[0];
                 s += 4;
                 d += dlinesize;
@@ -712,7 +712,7 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
     ImageBuffer *ib1;
     const char *name;
     
-    for(i = 0; i < PIX_FMT_NB; i++) {
+    for (i = 0; i < PIX_FMT_NB; i++) {
         name = avcodec_get_pix_fmt_name(i);
         if (!strcmp(pix_fmt_str, name))
             goto found;
@@ -790,7 +790,7 @@ static void pixel_format_completion(StringArray *cs, const char *str)
     const char *name;
     
     len = strlen(str);
-    for(i = 0; i < PIX_FMT_NB; i++) {
+    for (i = 0; i < PIX_FMT_NB; i++) {
         name = avcodec_get_pix_fmt_name(i);
         if (!strncmp(name, str, len))
             add_string(cs, name);
@@ -801,10 +801,10 @@ static void pixel_format_completion(StringArray *cs, const char *str)
 static CmdDef image_commands[] = {
     CMD0( 't', KEY_NONE, "image-rotate", image_rotate)
     CMD_( 'c', KEY_NONE, "image-convert", image_convert,
-	  "s{New pixel format: }[pixel_format]|pixel_format|")
+          "s{New pixel format: }[pixel_format]|pixel_format|")
     CMD_( 'b', KEY_NONE, "image-set-background-color",
-	  image_set_background_color,
-	  "s{Background color (use 'transparent' for tiling): }")
+          image_set_background_color,
+          "s{Background color (use 'transparent' for tiling): }")
 #if 0
     CMD0( 'n', KEY_NONE, "image-normal-size", image_normal_size)
     CMD1( '>', KEY_NONE, "image-double-size", image_mult_size, 100)
@@ -812,7 +812,7 @@ static CmdDef image_commands[] = {
     CMD1( '.', KEY_NONE, "image-larger-10", image_mult_size, 10)
     CMD1( ',', KEY_NONE, "image-smaller-10", image_mult_size, -10)
     CMD_( 'S', KEY_NONE, "image-set-display-size", image_set_size,
-	  "i{Displayed width: }i{Displayed height: }")
+          "i{Displayed width: }i{Displayed height: }")
 #endif
     CMD_DEF_END,
 };

@@ -33,7 +33,8 @@ static int docbook_mode_probe(ModeProbeData *p1)
 
 static int docbook_mode_init(EditState *s, ModeSavedData *saved_data)
 {
-    return gxml_mode_init(s, saved_data, XML_IGNORE_CASE | XML_DOCBOOK, docbook_style);
+    return gxml_mode_init(s, saved_data, XML_IGNORE_CASE | XML_DOCBOOK,
+                          docbook_style);
 }
 
 ModeDef docbook_mode;

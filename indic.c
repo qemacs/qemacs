@@ -65,7 +65,7 @@ int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len)
     /* Rule 1 : dead consonant rule */
     q = buf;
     len1 = len - 1;
-    for(i=0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         cc = str[i];
         if (is_consonant(cc) && i < len1 && str[i+1] == VIRAMA) {
             *q++ = cc + DEAD_CONSONANT_OFFSET;
@@ -77,7 +77,7 @@ int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len)
 
     /************ RA rules */
     /* XXX: rule 3, 4, 7 should be handled as ligatures */
-    for(i=0;i<len1;i++) {
+    for (i = 0; i < len1; i++) {
         /* Rule 2 */
         if (buf[i] == RA_DEAD && 
             (is_ind_vowel(buf[i+1]) || is_consonant(buf[i+1]))) {
@@ -111,7 +111,7 @@ int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len)
     }
 
     /* convert dead consonant to half consonants */
-    for(i=0;i<len1;i++) {
+    for (i = 0; i < len1; i++) {
         if (is_dead_consonant(buf[i]) && 
             (i == (len1 - 1) ||
              buf[i+1] == ZERO_WIDTH_JOINER || 
@@ -123,7 +123,7 @@ int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len)
 
     /* output result and update ctog */
     j = 0;
-    for(i=0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         c = buf[i];
         if (c != 0) {
             ctog[i] = j;

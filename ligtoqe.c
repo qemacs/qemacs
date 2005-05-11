@@ -93,11 +93,11 @@ int main(int argc, char **argv)
     int subst1_count, subst2_count, subst_long_count;
 
     to_utf8 = 0;
-    for(;;) {
+    for (;;) {
         c = getopt(argc, argv, "uh");
         if (c == -1)
             break;
-        switch(c) {
+        switch (c) {
         case 'h':
             help();
             break;
@@ -116,7 +116,7 @@ int main(int argc, char **argv)
         perror(lig_filename);
         return 1;
     }
-    for(;;) {
+    for (;;) {
         if (fgets(buf, sizeof(buf), f) == NULL)
             break;
         p = buf + strlen(buf) - 1;
@@ -137,7 +137,7 @@ int main(int argc, char **argv)
         l = &ligs[nb_ligs++];
 
         l->buf_in_size = 0;
-        for(;;) {
+        for (;;) {
             while (isspace(*p))
                 p++;
             if (*p == '=')
@@ -151,7 +151,7 @@ int main(int argc, char **argv)
         p++;
         
         l->buf_out_size = 0;
-        for(;;) {
+        for (;;) {
             while (isspace(*p))
                 p++;
             /* stop at the first comment */
@@ -169,12 +169,12 @@ int main(int argc, char **argv)
         /* output UTF8 encoded list */
         if (to_utf8) {
             printf("%s // ", buf);
-            for(i=0;i<l->buf_in_size;i++) {
+            for (i = 0; i < l->buf_in_size; i++) {
                 unicode_to_utf8(buf1, l->buf_in[i]);
                 printf("%s ", buf1);
             }
             printf("=");
-            for(i=0;i<l->buf_out_size;i++) {
+            for (i = 0; i < l->buf_out_size; i++) {
                 unicode_to_utf8(buf1, l->buf_out[i]);
                 printf(" %s", buf1);
             }
@@ -203,7 +203,7 @@ int main(int argc, char **argv)
 
     /* output the subst table */
     n = 0;
-    for(i=0;i<nb_ligs;i++) {
+    for (i = 0; i < nb_ligs; i++) {
         l = &ligs[i];
         if (l->buf_in_size == 1) {
             if (l->buf_out_size != 1) {
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
     l1 = 0;
     l2 = 0;
     n = 0;
-    for(i=0;i<nb_ligs;i++) {
+    for (i = 0; i < nb_ligs; i++) {
         l = &ligs[i];
         if (l->buf_in_size >= 2) {
             if (l->buf_in_size > 2 || l->buf_out_size > 1) {
@@ -249,14 +249,14 @@ int main(int argc, char **argv)
     
     /* output the long ligature table */
     n = 0;
-    for(i=0;i<nb_ligs;i++) {
+    for (i = 0; i < nb_ligs; i++) {
         l = &ligs[i];
         if (l->buf_in_size > 2 || l->buf_out_size > 1) {
             put_be16(outfile, l->buf_in_size);
             put_be16(outfile, l->buf_out_size);
-            for(j=0;j<l->buf_in_size;j++) 
+            for (j = 0; j < l->buf_in_size; j++) 
                 put_be16(outfile, l->buf_in[j]);
-            for(j=0;j<l->buf_out_size;j++) 
+            for (j = 0; j < l->buf_out_size; j++) 
                 put_be16(outfile, l->buf_out[j]);
             n += 2 + l->buf_in_size + l->buf_out_size;
         }

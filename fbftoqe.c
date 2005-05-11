@@ -20,7 +20,7 @@ void dump_font(const char *filename, const char *name)
     }
     printf("static const unsigned char font_%s[] = {\n", name);
     j = 0;
-    for(;;) {
+    for (;;) {
         c = fgetc(f);
         if (c == EOF)
             break;
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 
     printf("#include \"qe.h\"\n\n");
 
-    for(i=1;i<argc;i++) {
+    for (i = 1; i < argc; i++) {
         filename = argv[i];
         getname(name, sizeof(name), filename);
         dump_font(filename, name);
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 
     /* dump font list */
     printf("const void *fbf_fonts[] = {\n");
-    for(i=1;i<argc;i++) {
+    for (i = 1; i < argc; i++) {
         FILE *f;
         int size;
         filename = argv[i];

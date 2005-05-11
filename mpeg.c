@@ -18,14 +18,14 @@
  */
 #include "qe.h"
 
-#define SEQ_END_CODE		0x000001b7
-#define SEQ_START_CODE		0x000001b3
-#define GOP_START_CODE		0x000001b8
-#define PICTURE_START_CODE	0x00000100
-#define SLICE_MIN_START_CODE	0x00000101
-#define SLICE_MAX_START_CODE	0x000001af
-#define EXT_START_CODE		0x000001b5
-#define USER_START_CODE		0x000001b2
+#define SEQ_END_CODE            0x000001b7
+#define SEQ_START_CODE          0x000001b3
+#define GOP_START_CODE          0x000001b8
+#define PICTURE_START_CODE      0x00000100
+#define SLICE_MIN_START_CODE    0x00000101
+#define SLICE_MAX_START_CODE    0x000001af
+#define EXT_START_CODE          0x000001b5
+#define USER_START_CODE         0x000001b2
 
 #define PACK_START_CODE             0x000001ba
 #define SYSTEM_HEADER_START_CODE    0x000001bb
@@ -43,7 +43,7 @@ static int mpeg_display(EditState *s, DisplayState *ds, int offset)
 
     display_bol(ds);
     display_printf(ds, -1, -1,  "%08x:", offset);
-    for(;;) {
+    for (;;) {
         ret = eb_read(s->b, offset, buf, 4);
         if (ret == 0) {
             if (badchars)
@@ -77,7 +77,7 @@ static int mpeg_display(EditState *s, DisplayState *ds, int offset)
     offset += 4;
     display_printf(ds, offset_start, offset, " [%08x] ", startcode);
         
-    switch(startcode) {
+    switch (startcode) {
     case SEQ_END_CODE:
         display_printf(ds, -1, -1, "SEQ_END");
         break;
@@ -121,7 +121,7 @@ static int mpeg_backward_offset(EditState *s, int offset)
     unsigned int startcode;
     int ret;
 
-    for(;;) {
+    for (;;) {
         if (offset <= 0)
             break;
         ret = eb_read(s->b, offset, buf, 4);

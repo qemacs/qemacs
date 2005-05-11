@@ -121,7 +121,7 @@ static void packet_queue_end(PacketQueue *q)
 {
     AVPacketList *pkt, *pkt1;
 
-    for(pkt = q->first_pkt; pkt != NULL; pkt = pkt1) {
+    for (pkt = q->first_pkt; pkt != NULL; pkt = pkt1) {
         pkt1 = pkt->next;
         av_free_packet(&pkt->pkt);
     }
@@ -176,7 +176,7 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
 
     pthread_mutex_lock(&q->mutex);
 
-    for(;;) {
+    for (;;) {
         if (q->abort_request) {
             ret = -1;
             break;
@@ -308,7 +308,7 @@ static void video_audio_display(EditState *s)
         i = 0;
         y1 = (s->height >> 1) + s->ytop;
         h = y1;
-        for(x = 0; x < s->width; x++) {
+        for (x = 0; x < s->width; x++) {
             y = (is->sample_array[i] * h) >> 15;
             if (y < 0) {
                 y = -y;
@@ -355,7 +355,7 @@ static void alloc_picture(void *opaque)
     if (vp->bmp)
         bmp_free(s->screen, vp->bmp);
     /* XXX: use generic function */
-    switch(is->video_st->codec.pix_fmt) {
+    switch (is->video_st->codec.pix_fmt) {
     case PIX_FMT_YUV420P:
     case PIX_FMT_YUV422P:
     case PIX_FMT_YUV444P:
@@ -448,7 +448,7 @@ static int output_picture(VideoState *is, AVPicture *src_pict)
         bmp_lock(s->screen, vp->bmp, &qepict, 
                  0, 0, vp->bmp->width, vp->bmp->height);
         dst_pix_fmt = qe_bitmap_format_to_pix_fmt(vp->bmp->format);
-        for(i=0;i<4;i++) {
+        for (i = 0; i < 4; i++) {
             pict.data[i] = qepict.data[i];
             pict.linesize[i] = qepict.linesize[i];
         }
@@ -483,7 +483,7 @@ static void *video_thread(void *arg)
     AVFrame frame;
     AVPicture pict;
 
-    for(;;) {
+    for (;;) {
         while (is->paused && !is->videoq.abort_request) {
             usleep(10000);
         }
@@ -505,7 +505,7 @@ static void *video_thread(void *arg)
                 if (len1 < 0)
                     break;
                 if (got_picture) {
-                    for(i=0;i<4;i++) {
+                    for (i = 0; i < 4; i++) {
                         pict.data[i] = frame.data[i];
                         pict.linesize[i] = frame.linesize[i];
                     }
@@ -536,7 +536,7 @@ static void output_audio(VideoState *is, short *samples, int samples_size)
             len = n;
         out = is->sample_array + is->sample_array_index;
         in = samples;
-        for(i = 0; i < len; i++) {
+        for (i = 0; i < len; i++) {
             out[i] = in[0];
             in += channels;
         }
@@ -555,7 +555,7 @@ static void *audio_thread(void *arg)
     int len, len1, data_size;
     short samples[AVCODEC_MAX_AUDIO_FRAME_SIZE / 2];
 
-    for(;;) {
+    for (;;) {
         while (is->paused && !is->audioq.abort_request) {
             usleep(10000);
         }
@@ -612,7 +612,7 @@ static int stream_open(EditState *s, int stream_index)
     if (!codec ||
         avcodec_open(enc, codec) < 0)
         return -1;
-        switch(enc->codec_type) {
+        switch (enc->codec_type) {
     case CODEC_TYPE_AUDIO:
         is->audio_stream = stream_index;
         is->audio_st = ic->streams[stream_index];
@@ -641,7 +641,7 @@ static void stream_close(EditState *s, int stream_index)
     
     enc = &ic->streams[stream_index]->codec;
 
-    switch(enc->codec_type) {
+    switch (enc->codec_type) {
     case CODEC_TYPE_AUDIO:
         packet_queue_abort(&is->audioq);
         pthread_join(is->audio_tid, NULL);
@@ -670,7 +670,7 @@ static void stream_close(EditState *s, int stream_index)
     }
 
     avcodec_close(enc);
-    switch(enc->codec_type) {
+    switch (enc->codec_type) {
     case CODEC_TYPE_AUDIO:
         is->audio_st = NULL;
         is->audio_stream = -1;
@@ -707,9 +707,9 @@ static void *decode_thread(void *arg)
     if (err < 0)
         goto fail;
 
-    for(i = 0; i < ic->nb_streams; i++) {
+    for (i = 0; i < ic->nb_streams; i++) {
         AVCodecContext *enc = &ic->streams[i]->codec;
-        switch(enc->codec_type) {
+        switch (enc->codec_type) {
         case CODEC_TYPE_AUDIO:
             if (audio_index < 0)
                 audio_index = i;
@@ -739,7 +739,7 @@ static void *decode_thread(void *arg)
         goto fail;
     }
 
-    for(;;) {
+    for (;;) {
         if (is->abort_request)
             break;
         /* if the queue are full, no need to read more */
@@ -809,7 +809,7 @@ static int video_mode_init(EditState *s, ModeSavedData *saved_data)
     /* if there is already a window with this video playing, then we
        stop this new instance (C-x 2 case) */
     video_playing = 0;
-    for(e = qs->first_window; e != NULL; e = e->next_window) {
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->mode == s->mode && e != s && e->b == s->b) {
             VideoState *is1 = e->mode_data;
             if (!is1->paused)
@@ -837,7 +837,7 @@ static void video_mode_close(EditState *s)
     is->abort_request = 1;
     pthread_join(is->parse_tid, NULL);
     /* free all pictures */
-    for(i=0;i<VIDEO_PICTURE_QUEUE_SIZE; i++) {
+    for (i = 0; i < VIDEO_PICTURE_QUEUE_SIZE;  i++) {
         vp = &is->pictq[i];
         if (vp->bmp) {
             bmp_free(s->screen, vp->bmp);
@@ -922,7 +922,7 @@ static void av_cycle_stream(EditState *s, int codec_type)
     }
 
     stream_index = start_index;
-    for(;;) {
+    for (;;) {
         if (++stream_index >= ic->nb_streams)
             stream_index = 0;
         if (stream_index == start_index) {

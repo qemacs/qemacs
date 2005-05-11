@@ -153,7 +153,7 @@ QEFont *select_font(QEditScreen *s, int style, int size)
 
     min_ts = MAXINT;
     min_index = 0;
-    for(i=0;i<FONT_CACHE_SIZE;i++) {
+    for (i = 0; i < FONT_CACHE_SIZE; i++) {
         fc = font_cache[i];
         if (fc) {
             if (fc->style == style && fc->size == size) {
@@ -174,9 +174,9 @@ QEFont *select_font(QEditScreen *s, int style, int size)
         close_font(s, font_cache[min_index]);
     fc = open_font(s, style, size);
     if (!fc) {
-	/* select_font never returns NULL */ 
+        /* select_font never returns NULL */ 
         fc = &dummy_font;
-	fc->system_font = 1;
+        fc->system_font = 1;
     }
 
     fc->style = style;

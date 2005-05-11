@@ -32,10 +32,10 @@ void handle_cp(FILE *f, const char *name)
 
     getline(line, sizeof(line), f);
     printf("static const char *aliases_%s[] = { %s, NULL };\n\n", name, line);
-    for(i=0;i<256;i++)
+    for (i = 0; i < 256; i++)
         table[i] = i;
     nb = 0;
-    for(;;) {
+    for (;;) {
         if (!getline(line, sizeof(line), f))
             break;
         if (!strcasecmp(line, "# compatibility"))
@@ -59,7 +59,7 @@ void handle_cp(FILE *f, const char *name)
     
     min_code = 0x7fffffff;
     max_code = -1;
-    for(i=0;i<256;i++) {
+    for (i = 0; i < 256; i++) {
         if (table[i] != i) {
             if (i < min_code)
                 min_code = i;
@@ -73,7 +73,7 @@ void handle_cp(FILE *f, const char *name)
         printf("static const unsigned short table_%s[%d] = {\n",
                name, max_code - min_code + 1);
         j = 0;
-        for(i=min_code;i<=max_code;i++) {
+        for (i = min_code; i <= max_code; i++) {
             printf("0x%04x, ", table[i]);
             if ((j++ & 7) == 7)
                 printf("\n");
@@ -84,7 +84,7 @@ void handle_cp(FILE *f, const char *name)
     }
 
     q = name1;
-    for(p = name; *p != '\0'; p++) {
+    for (p = name; *p != '\0'; p++) {
         c = *p;
         if (c == '_')
             c = '-';
@@ -122,7 +122,7 @@ void handle_jis(FILE *f, int is_jis208)
     b1_max = 0;
     b2_max = 0;
     nb = 0;
-    for(;;) {
+    for (;;) {
         if (!getline(line, sizeof(line), f))
             break;
         if (line[0] == '\0' || line[0] == '#')
@@ -150,7 +150,7 @@ void handle_jis(FILE *f, int is_jis208)
     }
     printf("/* max row = %d. The following rows are excluded:", b1_max);
     n = 0;
-    for(i=0;i<=b1_max;i++) {
+    for (i = 0; i <= b1_max; i++) {
         if (table_b2_max[i] == 0) {
             printf(" %d", i);
         } else {
@@ -162,9 +162,9 @@ void handle_jis(FILE *f, int is_jis208)
     printf("const unsigned short table_%s[%d] = {\n",
            name, n * (b2_max + 1));
     n = 0;
-    for(i=0;i<=b1_max;i++) {
+    for (i = 0; i <= b1_max; i++) {
         if (table_b2_max[i] != 0) {
-            for(j=0;j<=b2_max;j++) {
+            for (j = 0; j <= b2_max; j++) {
                 printf("0x%04x, ", table[i * 94 + j]);
                 if ((n++ & 7) == 7)
                     printf("\n");
@@ -186,7 +186,7 @@ int main(int argc, char **argv)
 
     printf("#include \"qe.h\"\n\n");
 
-    for(i=1;i<argc;i++) {
+    for (i = 1; i < argc; i++) {
         filename = argv[i];
 
         p = strrchr(filename, '/');

@@ -53,12 +53,12 @@ void decode_8bit_init(CharsetDecodeState *s)
     int i, n;
 
     table = s->table;
-    for(i=0;i<charset->min_char;i++)
+    for (i = 0; i < charset->min_char; i++)
         *table++ = i;
     n = charset->max_char - charset->min_char + 1;
-    for(i=0;i<n;i++)
+    for (i = 0; i < n; i++)
         *table++ = charset->private_table[i];
-    for(i=charset->max_char + 1;i<256;i++)
+    for (i = charset->max_char + 1; i < 256;i++)
         *table++ = i;
 }
 
@@ -75,7 +75,7 @@ unsigned char *encode_8bit(QECharset *charset, unsigned char *q, int c)
     } else {
         n = charset->max_char - charset->min_char + 1;
         table = charset->private_table;
-        for(i=0;i<n;i++) {
+        for (i = 0; i < n; i++) {
             if (table[i] == c)
                 goto found;
         }
@@ -113,9 +113,11 @@ static int jis0212_decode(int b1, int b2)
 {
     b1 -= 0x21;
     b2 -= 0x21;
+
     if (b1 > 76)
         return 0;
-    switch(b1) {
+
+    switch (b1) {
     case 0:
     case 2:
     case 3:
@@ -149,11 +151,12 @@ static void decode_euc_jp_init(CharsetDecodeState *s)
 {
     unsigned short *table = s->table;
     int i;
-    for(i=0;i<256;i++)
+
+    for (i = 0; i < 256; i++)
         table[i] = i;
     table[0x8e] = ESCAPE_CHAR;
     table[0x8f] = ESCAPE_CHAR;
-    for(i=0xa1;i<=0xfe;i++)
+    for (i = 0xa1; i <= 0xfe; i++)
         table[i] = ESCAPE_CHAR;
 }
 
@@ -224,17 +227,17 @@ static void decode_sjis_init(CharsetDecodeState *s)
     unsigned short *table = s->table;
     int i;
 
-    for(i=0;i<256;i++)
+    for (i = 0; i < 256; i++)
         table[i] = i;
     table['\\'] = 0x00a5;
     table[0x80] = '\\';
-    for(i=0x81;i<=0x9f;i++)
+    for (i = 0x81; i <= 0x9f; i++)
         table[i] = ESCAPE_CHAR;
-    for(i=0xa1;i<=0xdf;i++)
+    for (i = 0xa1; i <= 0xdf; i++)
         table[i] = i - 0xa1 + 0xff61;
-    for(i=0xe0;i<=0xef;i++)
+    for (i = 0xe0; i <= 0xef; i++)
         table[i] = ESCAPE_CHAR;
-    for(i=0xf0;i<=0xfc;i++)
+    for (i = 0xf0; i <= 0xfc; i++)
         table[i] = ESCAPE_CHAR;
     table[0xfd] = 0xa9;
     table[0xfe] = 0x2122;

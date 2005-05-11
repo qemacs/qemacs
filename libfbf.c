@@ -65,7 +65,7 @@ static int get_bits(UniFontData *uf, int n)
     int val, i;
 
     val = 0;
-    for(i=0;i<n;i++) {
+    for (i = 0; i < n; i++) {
         val = (val << 1) | get_bit(uf);
     }
     return val;
@@ -133,7 +133,7 @@ static void fbf_get_str(UniFontData *uf, char *buf, int buf_size)
 
     len = uf->fbf_getc(uf->infile);  
     q = buf;
-    for(i=0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         c = uf->fbf_getc(uf->infile);
         if ((q - buf) < (buf_size - 1))
             *q++ = c;
@@ -192,11 +192,11 @@ int fbf_load_font(UniFontData *uf)
     if (!uf->csegs_offsets)
         goto fail;
     uf->msegs_offsets = uf->csegs_offsets + uf->nb_csegs;
-    for(i=0;i<uf->nb_csegs;i++) {
+    for (i = 0; i < uf->nb_csegs; i++) {
         uf->msegs_offsets[i] = get_be32(uf);
     }
 
-    for(i=0;i<uf->nb_csegs;i++) {
+    for (i = 0; i < uf->nb_csegs; i++) {
         uf->csegs_offsets[i] = get_be32(uf);
     }
 
@@ -232,7 +232,7 @@ void fbf_free_font(UniFontData *uf)
     GlyphSegment *gseg;
     int i;
 
-    for(i=0;i<CSEG_CACHE_SIZE;i++) {
+    for (i = 0; i < CSEG_CACHE_SIZE; i++) {
         gseg = uf->cseg_cache[i];
         if (gseg) {
             uf_free(uf, gseg->bitmap_table);
@@ -253,8 +253,8 @@ static void init_context_tables(void)
     int ctxval, val, bit, freq0, freq1, shift;
 
     /* table for context frequency update */
-    for(bit=0;bit<2;bit++) {
-        for(ctxval=0;ctxval<256;ctxval++) {
+    for (bit = 0; bit < 2; bit++) {
+        for (ctxval = 0; ctxval < 256; ctxval++) {
             freq0 = 2*(ctxval >> 4) + 1;
             freq1 = 2*(ctxval & 0xf) + 1;
             if (!bit)
@@ -273,7 +273,7 @@ static void init_context_tables(void)
     }
 
     /* table for arith coding */
-    for(ctxval=0;ctxval<256;ctxval++) {
+    for (ctxval = 0; ctxval < 256; ctxval++) {
         unsigned int sum, m, s;
 
         freq0 = 2*(ctxval >> 4) + 1;
@@ -368,43 +368,43 @@ static inline int get_ctx(int x, int y, unsigned char *p)
 
     v = 0;
 
-            v = v * 3;
-            if (y >= 4) {
-                v += p[-3 * WRAP] << 0;  // M
-            } else {
-                v += 2;
-            }
-            v = v  * 3;
-            if (x >= 4) {
-                v += (p[-3]) << 0;  // T
-            } else {
-                v += 2;
-            }
+    v = v * 3;
+    if (y >= 4) {
+        v += p[-3 * WRAP] << 0;  // M
+    } else {
+        v += 2;
+    }
+    v = v  * 3;
+    if (x >= 4) {
+        v += (p[-3]) << 0;  // T
+    } else {
+        v += 2;
+    }
 
-            /* distance of 2 */
-            v = v << 2;
-            v += p[-2 * WRAP + 2] << 0; // K
-            v += p[-2 * WRAP - 2] << 1;     // G
+    /* distance of 2 */
+    v = v << 2;
+    v += p[-2 * WRAP + 2] << 0; // K
+    v += p[-2 * WRAP - 2] << 1;     // G
 
-            v = v << 1;
-            v += p[-2] << 0;            // E
+    v = v << 1;
+    v += p[-2] << 0;            // E
 
-            v = v << 3;
-            v += p[-2 * WRAP - 1] << 0;  // H
-            v += p[-2 * WRAP] << 1;      // I
-            v += p[-2 * WRAP + 1] << 2;  // J
-            
-            v = v << 4;
-            v += p[-WRAP - 1] << 0;     // B
-            v += p[-WRAP + 1] << 1;      // D
-            v += p[-WRAP + 2] << 2;     // L
-            v += p[-WRAP - 2] << 3;     // F
+    v = v << 3;
+    v += p[-2 * WRAP - 1] << 0;  // H
+    v += p[-2 * WRAP] << 1;      // I
+    v += p[-2 * WRAP + 1] << 2;  // J
 
-            v = v << 2;
-            v += p[-1] << 0;                    // A
-            v += p[-WRAP] << 1;          // C
+    v = v << 4;
+    v += p[-WRAP - 1] << 0;     // B
+    v += p[-WRAP + 1] << 1;      // D
+    v += p[-WRAP + 2] << 2;     // L
+    v += p[-WRAP - 2] << 3;     // F
 
-            return v;
+    v = v << 2;
+    v += p[-1] << 0;                    // A
+    v += p[-WRAP] << 1;          // C
+
+    return v;
 }
 
 static void decode_glyph(UniFontData *uf, 
@@ -421,9 +421,9 @@ static void decode_glyph(UniFontData *uf,
     memset(bitmap, 1, sizeof(bitmap));
     p = bitmap + MAXDIST + WRAP * MAXDIST;
     w1 = (w + 7) >> 3;
-    for(y=0;y<h;y++) {
+    for (y = 0; y < h; y++) {
         lbuf = 0;
-        for(x=0;x<w;x++) {
+        for (x = 0; x < w; x++) {
             v = get_ctx(x, y, p);
             if (ctx_adapt[v] == 0x00 ||
                 ctx_adapt[v] == 0x10 ||
@@ -466,7 +466,7 @@ static int read_num1(UniFontData *uf, EncodeLogContext *c, int is_signed)
         return 0;
     }
     n = 1 << (l - 1);
-    for(i=l-2;i>=0;i--) {
+    for (i = l-2; i >= 0; i--) {
         ctx = 0;
         n |= decode_ctx(uf, &ctx) << i;
     }
@@ -528,7 +528,7 @@ static GlyphSegment *decode_metrics_segment(UniFontData *uf, int segment)
     arith_init(uf);
     
     memset(&metric_ctx, 0, sizeof(metric_ctx));
-    for(i=0;i<nb_glyphs;i++) {
+    for (i = 0; i < nb_glyphs; i++) {
         m = &g->metrics[i];
         decode_glyph_metric(uf, &metric_ctx, m);
     }
@@ -554,7 +554,7 @@ static int decode_glyphs_segment(UniFontData *uf, GlyphSegment *g, int segment)
     
     /* allocate bitmap */
     bitmap_size = 0;
-    for(i=0;i<nb_glyphs;i++) {
+    for (i = 0; i < nb_glyphs; i++) {
         m = &g->metrics[i];
         size = ((m->w + 7) >> 3) * m->h;
         bitmap_size += size;
@@ -573,7 +573,7 @@ static int decode_glyphs_segment(UniFontData *uf, GlyphSegment *g, int segment)
 
     arith_init(uf);
     data = g->bitmap_table;
-    for(i=0;i<nb_glyphs;i++) {
+    for (i = 0; i < nb_glyphs; i++) {
         m = &g->metrics[i];
         m->bitmap = data;
         decode_glyph(uf, ctx1, ctx, data, m->w, m->h);
@@ -598,7 +598,7 @@ int fbf_decode_glyph(UniFontData *uf,
     }
 
  redo:
-    for(i=0;i<CSEG_CACHE_SIZE;i++) {
+    for (i = 0; i < CSEG_CACHE_SIZE; i++) {
         gseg = uf->cseg_cache[i];
         if (gseg && 
             index >= gseg->first_glyph && 
@@ -613,7 +613,7 @@ int fbf_decode_glyph(UniFontData *uf,
     /* free least used segment selected segment */
     cseg_min = 0;
     use_count_min = 0x7fffffff;
-    for(i=0;i<CSEG_CACHE_SIZE;i++) {
+    for (i = 0; i < CSEG_CACHE_SIZE; i++) {
         if (uf->cseg_cache[i] == NULL) {
             cseg_min = i;
             break;
@@ -764,8 +764,8 @@ static inline void bitmap_or(unsigned char *dst, int dst_wrap,
 {
     int i, j, bit, x1;
     dst += dst_wrap * y;
-    for(i=0;i<h;i++) {
-        for(j=0;j<w;j++) {
+    for (i = 0; i < h; i++) {
+        for (j = 0; j < w; j++) {
             bit = (src[j >> 3] >> (7 - (j & 7))) & 1;
             x1 = x + j;
             dst[x1 >> 3] |= bit << (7 - (x1 & 7));
@@ -832,7 +832,7 @@ static int decode_hangul_glyph(UniFontData *uf,
 
     /* render the three glyphs & supperpose them */
     memset(glyph_entry->bitmap, 0, glyph_entry->h * wrap);
-    for(i=0;i<3;i++) {
+    for (i = 0; i < 3; i++) {
         index = fbf_unicode_to_glyph(uf, JOHAB_BASE + ind[i]);
         if (index < 0)
             continue;

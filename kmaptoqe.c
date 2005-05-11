@@ -57,82 +57,82 @@ void gen_map(void)
     int len, c, d, last, delta, k, j;
     int last_input0;
 
-        last = 0;
-        nb_starts = 0;
-        last_input0 = 0;
-        offset = 0;
-        for(k=0;k<nb_inputs;k++) {
-            unsigned char *input = inputs[k].input;
-            int first, output;
+    last = 0;
+    nb_starts = 0;
+    last_input0 = 0;
+    offset = 0;
+    for (k = 0; k < nb_inputs; k++) {
+        unsigned char *input = inputs[k].input;
+        int first, output;
 
-            if (gen_table) {
-                if (last_input0 != inputs[k].input[0]) {
-                    if (last_input0 != 0)
-                        put_byte(0);
-                    last_input0 = inputs[k].input[0];
-                    table_val[nb_starts] = last_input0;
-                    table_start[nb_starts++] = offset;
-                    last = 0;
-                }
-            }
-
-            len = inputs[k].len;
-            output = inputs[k].output;
-            delta = output - last;
-            last = output;
-
-#ifdef TEST
-            /* frequencies */
-            if (delta > 30)
-                delta = 30;
-            else if (delta < -1)
-                delta = -1;
-            freq[delta + 1]++;
-#endif
-
-            if (is_chinese_cj) {
-                assert(input[len-1] == ' ');
-                len--;
-            }
-
-            first = 0;
-            if (gen_table)
-                first = 1;
-            
-            /* c = 0 : end of table 
-               c = 1..0x1d : delta unicode
-               c = 0x1e : unicode char follows.
-               c = 0x1f : unicode mapping follows 
-               bit 7 : eof and delta == 1
-            */
-            for(j=first;j<len;j++) {
-                c = input[j];
-                d = 0;
-                if ((j == (len - 1) && delta == 1))
-                    d = 0x80;
-                if (c >= 0x20 && c <= 0x7f) {
-                    put_byte(c | d);
-                } else {
-                    put_byte(d | 0x1f);
-                    put_byte((c >> 8) & 0xff);
-                    put_byte(c & 0xff);
-                }
-            }
-            /* XXX: potential problem if first == len. We avoid it
-               by forcing an emission of a unicode char */
-            if (first == len)
-                delta = 0;
-            if (delta != 1) {
-                if (delta >= 1 && delta <= 0x1d) {
-                    put_byte(delta);
-                } else {
-                    put_byte(0x1e);
-                    put_byte((output >> 8) & 0xff);
-                    put_byte(output & 0xff);
-                }
+        if (gen_table) {
+            if (last_input0 != inputs[k].input[0]) {
+                if (last_input0 != 0)
+                    put_byte(0);
+                last_input0 = inputs[k].input[0];
+                table_val[nb_starts] = last_input0;
+                table_start[nb_starts++] = offset;
+                last = 0;
             }
         }
-        put_byte(0);
+
+        len = inputs[k].len;
+        output = inputs[k].output;
+        delta = output - last;
+        last = output;
+
+#ifdef TEST
+        /* frequencies */
+        if (delta > 30)
+            delta = 30;
+        else if (delta < -1)
+            delta = -1;
+        freq[delta + 1]++;
+#endif
+
+        if (is_chinese_cj) {
+            assert(input[len-1] == ' ');
+            len--;
+        }
+
+        first = 0;
+        if (gen_table)
+            first = 1;
+
+        /* c = 0 : end of table 
+        c = 1..0x1d : delta unicode
+        c = 0x1e : unicode char follows.
+        c = 0x1f : unicode mapping follows 
+        bit 7 : eof and delta == 1
+        */
+        for (j = first; j < len; j++) {
+            c = input[j];
+            d = 0;
+            if ((j == (len - 1) && delta == 1))
+                d = 0x80;
+            if (c >= 0x20 && c <= 0x7f) {
+                put_byte(c | d);
+            } else {
+                put_byte(d | 0x1f);
+                put_byte((c >> 8) & 0xff);
+                put_byte(c & 0xff);
+            }
+        }
+        /* XXX: potential problem if first == len. We avoid it
+        by forcing an emission of a unicode char */
+        if (first == len)
+            delta = 0;
+        if (delta != 1) {
+            if (delta >= 1 && delta <= 0x1d) {
+                put_byte(delta);
+            } else {
+                put_byte(0x1e);
+                put_byte((output >> 8) & 0xff);
+                put_byte(output & 0xff);
+            }
+        }
+    }
+    put_byte(0);
 }
 
 int main(int argc, char **argv)
@@ -160,7 +160,7 @@ int main(int argc, char **argv)
     memset(freq, 0, sizeof(freq));
 
     nb_kmaps = 0;
-    for(i=2;i<argc;i++) {
+    for (i = 2; i < argc; i++) {
         filename = argv[i];
         f = fopen(filename, "r");
         if (!f) {
@@ -191,7 +191,7 @@ int main(int argc, char **argv)
         col = 0;
         nb_inputs = 0;
         line_num = 0;
-        for(;;) {
+        for (;;) {
             if (fgets(line, sizeof(line), f) == NULL)
                 break;
             line_num++;
@@ -203,7 +203,7 @@ int main(int argc, char **argv)
                 continue;
             p++;
             q = inputs[nb_inputs].input;
-            for(;;) {
+            for (;;) {
                 while (isspace(*p))
                     p++;
                 if (*p == '=') 
@@ -236,7 +236,7 @@ int main(int argc, char **argv)
         /* write start map */
         put_byte(nb_starts | (is_chinese_cj ? 0x80 : 0));
         if (gen_table) {
-            for(k=0;k<nb_starts;k++) {
+            for (k = 0; k < nb_starts; k++) {
                 j = table_start[k];
                 put_byte(table_val[k]);
                 put_byte((j >> 16) & 0xff);
@@ -251,21 +251,21 @@ int main(int argc, char **argv)
     }
 
 #ifdef TEST
-    for(k=0;k<32;k++) {
+    for (k = 0; k < 32; k++) {
         fprintf(stderr, "freq[%d] = %d\n", k, freq[k]);
     }
 #endif
 
     /* write header */
     size = 4;
-    for(i=0;i<nb_kmaps;i++) {
+    for (i = 0; i < nb_kmaps; i++) {
         size += strlen(kmap_names[i]) + 1 + 4;
     }
     size += 4; /* last offset at zero */
 
     fwrite("kmap", 1, 4, outfile);
 
-    for(i=0;i<nb_kmaps;i++) {
+    for (i = 0; i < nb_kmaps; i++) {
         int off;
         off = kmap_offsets[i] + size;
         fputc((off >> 24) & 0xff, outfile);

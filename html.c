@@ -71,7 +71,7 @@ static int recompute_offset_func(void *opaque, CSSBox *box,
     if (len == 0)
         return 0;
     offset = data->wanted_offset;
-    for(i=0;i<len;i++) {
+    for (i = 0; i < len; i++) {
         d = abs(offset - offsets[i]);
         if (d < data->dmin) {
             data->dmin = d;
@@ -394,8 +394,8 @@ static void html_scroll_up_down(EditState *s, int dir)
 
     h = SCROLL_MHEIGHT;
     if (abs(dir) == 2) {
-	h = s->height - SCROLL_MHEIGHT;
-	dir /= 2;
+        h = s->height - SCROLL_MHEIGHT;
+        dir /= 2;
     }
     if (h < SCROLL_MHEIGHT)
         h = s->height;
@@ -834,11 +834,11 @@ static int html_mode_probe(ModeProbeData *p1)
     int c, score;
 
     score = 0;
-    for(;;) {
+    for (;;) {
         c = *p;
         if (c == '\0')
             break;
-	if (c < 32 && (c != '\r' && c != '\n' && c != '\t' && c != '\e'))
+        if (c < 32 && (c != '\r' && c != '\n' && c != '\t' && c != '\e'))
             return 0;
         if (stristart(p, "<HTML", NULL))
             score = 100;

@@ -246,7 +246,7 @@ static void compact_list(TypeLink * list_tab)
 
     p = list_tab;
     q = list_tab;
-    for(;;) {
+    for (;;) {
         lp = p;
         type = p->type;
         len = p->len;
@@ -276,42 +276,42 @@ static void compact_list(TypeLink * list_tab)
 
 /* Rules for overriding current type */
 #define TYPE_RULE1(old_this,            \
-		   new_this)             \
+                   new_this)             \
      if (this_type == TYPE_ ## old_this)      \
          RL_TYPE(pp) =       FRIBIDI_TYPE_ ## new_this; \
 
 /* Rules for current and previous type */
 #define TYPE_RULE2(old_prev, old_this,            \
-		  new_prev, new_this)             \
+                  new_prev, new_this)             \
      if (    prev_type == FRIBIDI_TYPE_ ## old_prev       \
-	  && this_type == FRIBIDI_TYPE_ ## old_this)      \
+          && this_type == FRIBIDI_TYPE_ ## old_this)      \
        {                                          \
-	   RL_TYPE(pp->prev) = FRIBIDI_TYPE_ ## new_prev; \
-	   RL_TYPE(pp) =       FRIBIDI_TYPE_ ## new_this; \
+           RL_TYPE(pp->prev) = FRIBIDI_TYPE_ ## new_prev; \
+           RL_TYPE(pp) =       FRIBIDI_TYPE_ ## new_this; \
            continue;                              \
        }
 
 /* A full rule that assigns all three types */
 #define TYPE_RULE(old_prev, old_this, old_next,   \
-		  new_prev, new_this, new_next)   \
+                  new_prev, new_this, new_next)   \
      if (    prev_type == FRIBIDI_TYPE_ ## old_prev       \
-	  && this_type == FRIBIDI_TYPE_ ## old_this       \
-	  && next_type == FRIBIDI_TYPE_ ## old_next)      \
+          && this_type == FRIBIDI_TYPE_ ## old_this       \
+          && next_type == FRIBIDI_TYPE_ ## old_next)      \
        {                                          \
-	   RL_TYPE(pp->prev) = FRIBIDI_TYPE_ ## new_prev; \
-	   RL_TYPE(pp) =       FRIBIDI_TYPE_ ## new_this; \
-	   RL_TYPE(pp->next) = FRIBIDI_TYPE_ ## new_next; \
+           RL_TYPE(pp->prev) = FRIBIDI_TYPE_ ## new_prev; \
+           RL_TYPE(pp) =       FRIBIDI_TYPE_ ## new_this; \
+           RL_TYPE(pp->next) = FRIBIDI_TYPE_ ## new_next; \
            continue;                              \
        }
 
 /* For optimization the following macro only assigns the center type */
 #define TYPE_RULE_C(old_prev, old_this, old_next,   \
-		    new_this)   \
+                    new_this)   \
      if (    prev_type == FRIBIDI_TYPE_ ## old_prev       \
-	  && this_type == FRIBIDI_TYPE_ ## old_this       \
-	  && next_type == FRIBIDI_TYPE_ ## old_next)      \
+          && this_type == FRIBIDI_TYPE_ ## old_this       \
+          && next_type == FRIBIDI_TYPE_ ## old_next)      \
        {                                          \
-	   RL_TYPE(pp) =       FRIBIDI_TYPE_ ## new_this; \
+           RL_TYPE(pp) =       FRIBIDI_TYPE_ ## new_this; \
            continue;                              \
        }
 
@@ -345,8 +345,8 @@ static void print_types_re(TypeLink * pp_tab, int level)
 {
     TypeLink *pp;
 
-    for(pp = pp_tab + 1; pp->type != FRIBIDI_TYPE_EOT; pp++) {
-	printf("%d:%c(%d)[%d] ", RL_POS(pp), type_to_char(RL_TYPE(pp)), RL_LEN(pp), level ? RL_LEVEL(pp) : 0);
+    for (pp = pp_tab + 1; pp->type != FRIBIDI_TYPE_EOT; pp++) {
+        printf("%d:%c(%d)[%d] ", RL_POS(pp), type_to_char(RL_TYPE(pp)), RL_LEN(pp), level ? RL_LEVEL(pp) : 0);
     }
     printf("\n");
 }
@@ -380,47 +380,47 @@ void fribidi_analyse_string(TypeLink * type_rl_list,
 
     /* Find the base level */
     if (*pbase_dir == FRIBIDI_TYPE_L) {
-	base_dir = FRIBIDI_TYPE_L;
-	base_level = 0;
+        base_dir = FRIBIDI_TYPE_L;
+        base_level = 0;
     } else if (*pbase_dir == FRIBIDI_TYPE_R) {
-	base_dir = FRIBIDI_TYPE_R;
-	base_level = 1;
+        base_dir = FRIBIDI_TYPE_R;
+        base_level = 1;
     }
     /* Search for first strong character and use its direction as base
        direction */
     else {
-	base_level = 0;		/* Default */
-	base_dir = FRIBIDI_TYPE_N;
-	for (pp = type_rl_list; pp->type != FRIBIDI_TYPE_EOT; pp++) {
+        base_level = 0;         /* Default */
+        base_dir = FRIBIDI_TYPE_N;
+        for (pp = type_rl_list; pp->type != FRIBIDI_TYPE_EOT; pp++) {
             int type;
             type = RL_TYPE(pp);
-	    if (type == FRIBIDI_TYPE_R ||
+            if (type == FRIBIDI_TYPE_R ||
                 type == FRIBIDI_TYPE_RLE ||
                 type == FRIBIDI_TYPE_RLO) {
-		base_level = 1;
-		base_dir = FRIBIDI_TYPE_R;
-		break;
-	    } else if (type == FRIBIDI_TYPE_L ||
+                base_level = 1;
+                base_dir = FRIBIDI_TYPE_R;
+                break;
+            } else if (type == FRIBIDI_TYPE_L ||
                        type == FRIBIDI_TYPE_LRE ||
                        type == FRIBIDI_TYPE_LRO) {
-		base_level = 0;
-		base_dir = FRIBIDI_TYPE_L;
-		break;
-	    }
-	}
+                base_level = 0;
+                base_dir = FRIBIDI_TYPE_L;
+                break;
+            }
+        }
 
-	/* If no strong base_dir was found, resort to the weak direction
-	 * that was passed on input.
-	 */
-	if (base_dir == FRIBIDI_TYPE_N) {
-	    if (*pbase_dir == FRIBIDI_TYPE_WR) {
-		base_dir = FRIBIDI_TYPE_RTL;
-		base_level = 1;
-	    } else if (*pbase_dir == FRIBIDI_TYPE_WL) {
-		base_dir = FRIBIDI_TYPE_LTR;
-		base_level = 0;
-	    }
-	}
+        /* If no strong base_dir was found, resort to the weak direction
+         * that was passed on input.
+         */
+        if (base_dir == FRIBIDI_TYPE_N) {
+            if (*pbase_dir == FRIBIDI_TYPE_WR) {
+                base_dir = FRIBIDI_TYPE_RTL;
+                base_level = 1;
+            } else if (*pbase_dir == FRIBIDI_TYPE_WL) {
+                base_dir = FRIBIDI_TYPE_LTR;
+                base_level = 0;
+            }
+        }
     }
 
     /* hack for RLE/LRE/RLO/LRO/PDF. It is not complete in case of
@@ -436,7 +436,7 @@ void fribidi_analyse_string(TypeLink * type_rl_list,
             type == FRIBIDI_TYPE_RLE || 
             type == FRIBIDI_TYPE_LRO || 
             type == FRIBIDI_TYPE_RLO) {
-            for(i=0;i<RL_LEN(pp);i++) {
+            for (i = 0; i < RL_LEN(pp); i++) {
                 if (stack_index < STACK_SIZE) {
                     /* push level & override */
                     stack_level[stack_index] = level;
@@ -460,7 +460,7 @@ void fribidi_analyse_string(TypeLink * type_rl_list,
             }
             RL_TYPE(pp) = FRIBIDI_TYPE_NULL;
         } else if (type == FRIBIDI_TYPE_PDF) {
-            for(i=0;i<RL_LEN(pp);i++) {
+            for (i = 0; i < RL_LEN(pp); i++) {
                 if (stack_index > 0) {
                     stack_index--;
                     /* pop level & override */
@@ -482,66 +482,66 @@ void fribidi_analyse_string(TypeLink * type_rl_list,
     /* 4. Resolving weak types */
     last_strong = base_dir;
     for (pp = type_rl_list + 1; pp->type != FRIBIDI_TYPE_EOT; pp++) {
-	int prev_type = RL_TYPE(pp-1);
-	int this_type = RL_TYPE(pp);
-	int next_type = RL_TYPE(pp+1);
+        int prev_type = RL_TYPE(pp-1);
+        int this_type = RL_TYPE(pp);
+        int next_type = RL_TYPE(pp+1);
 
-	/* Remember the last strong character */
-	if (prev_type == FRIBIDI_TYPE_AL
-	    || prev_type == FRIBIDI_TYPE_R
-	    || prev_type == FRIBIDI_TYPE_L)
-	    last_strong = prev_type;
+        /* Remember the last strong character */
+        if (prev_type == FRIBIDI_TYPE_AL
+            || prev_type == FRIBIDI_TYPE_R
+            || prev_type == FRIBIDI_TYPE_L)
+            last_strong = prev_type;
 
-	/* W1. NSM */
-	if (this_type == FRIBIDI_TYPE_NSM) {
-	    if (prev_type == FRIBIDI_TYPE_SOT)
-		RL_TYPE(pp) = FRIBIDI_TYPE_N;	/* Will be resolved to base dir */
-	    else
-		RL_TYPE(pp) = prev_type;
-	}
-	/* W2: European numbers */
-	if (this_type == FRIBIDI_TYPE_N
-	    && last_strong == FRIBIDI_TYPE_AL)
-	    RL_TYPE(pp) = FRIBIDI_TYPE_AN;
+        /* W1. NSM */
+        if (this_type == FRIBIDI_TYPE_NSM) {
+            if (prev_type == FRIBIDI_TYPE_SOT)
+                RL_TYPE(pp) = FRIBIDI_TYPE_N;   /* Will be resolved to base dir */
+            else
+                RL_TYPE(pp) = prev_type;
+        }
+        /* W2: European numbers */
+        if (this_type == FRIBIDI_TYPE_N
+            && last_strong == FRIBIDI_TYPE_AL)
+            RL_TYPE(pp) = FRIBIDI_TYPE_AN;
 
-	/* W3: Change ALs to R
-	   We have to do this for prev character as we would otherwise
-	   interfer with the next last_strong which is FRIBIDI_TYPE_AL.
-	 */
-	if (prev_type == FRIBIDI_TYPE_AL)
-	    RL_TYPE(pp-1) = FRIBIDI_TYPE_R;
+        /* W3: Change ALs to R
+           We have to do this for prev character as we would otherwise
+           interfer with the next last_strong which is FRIBIDI_TYPE_AL.
+         */
+        if (prev_type == FRIBIDI_TYPE_AL)
+            RL_TYPE(pp-1) = FRIBIDI_TYPE_R;
 
-	/* W4. A single european separator changes to a european number.
-	   A single common separator between two numbers of the same type
-	   changes to that type.
-	 */
-	if (RL_LEN(pp) == 1) {
-	    TYPE_RULE_C(EN, ES, EN, EN);
-	    TYPE_RULE_C(EN, CS, EN, EN);
-	    TYPE_RULE_C(AN, CS, AN, AN);
-	}
-	/* W5. A sequence of European terminators adjacent to European
-	   numbers changes to All European numbers.
-	 */
-	if (this_type == FRIBIDI_TYPE_ET) {
-	    if (next_type == FRIBIDI_TYPE_EN
-		|| prev_type == FRIBIDI_TYPE_EN) {
-		RL_TYPE(pp) = FRIBIDI_TYPE_EN;
-	    }
-	}
-	/* This type may have been overriden */
-	this_type = RL_TYPE(pp);
+        /* W4. A single european separator changes to a european number.
+           A single common separator between two numbers of the same type
+           changes to that type.
+         */
+        if (RL_LEN(pp) == 1) {
+            TYPE_RULE_C(EN, ES, EN, EN);
+            TYPE_RULE_C(EN, CS, EN, EN);
+            TYPE_RULE_C(AN, CS, AN, AN);
+        }
+        /* W5. A sequence of European terminators adjacent to European
+           numbers changes to All European numbers.
+         */
+        if (this_type == FRIBIDI_TYPE_ET) {
+            if (next_type == FRIBIDI_TYPE_EN
+                || prev_type == FRIBIDI_TYPE_EN) {
+                RL_TYPE(pp) = FRIBIDI_TYPE_EN;
+            }
+        }
+        /* This type may have been overriden */
+        this_type = RL_TYPE(pp);
 
-	/* W6. Otherwise change separators and terminators to other neutral */
-	if (this_type == FRIBIDI_TYPE_ET
-	    || this_type == FRIBIDI_TYPE_CS
-	    || this_type == FRIBIDI_TYPE_ES)
-	    RL_TYPE(pp) = FRIBIDI_TYPE_ON;
+        /* W6. Otherwise change separators and terminators to other neutral */
+        if (this_type == FRIBIDI_TYPE_ET
+            || this_type == FRIBIDI_TYPE_CS
+            || this_type == FRIBIDI_TYPE_ES)
+            RL_TYPE(pp) = FRIBIDI_TYPE_ON;
 
-	/* W7. Change european numbers to L. */
-	if (prev_type == FRIBIDI_TYPE_EN
-	    && last_strong == FRIBIDI_TYPE_L)
-	    RL_TYPE(pp-1) = FRIBIDI_TYPE_L;
+        /* W7. Change european numbers to L. */
+        if (prev_type == FRIBIDI_TYPE_EN
+            && last_strong == FRIBIDI_TYPE_L)
+            RL_TYPE(pp-1) = FRIBIDI_TYPE_L;
     }
 
     compact_list(type_rl_list);
@@ -551,42 +551,42 @@ void fribidi_analyse_string(TypeLink * type_rl_list,
     /* We can now collapse all separators and other neutral types to
        plain neutrals */
     for (pp = type_rl_list + 1; pp->type != FRIBIDI_TYPE_EOT; pp++) {
-	int this_type = RL_TYPE(pp);
+        int this_type = RL_TYPE(pp);
 
-	if (this_type == FRIBIDI_TYPE_WS
-	    || this_type == FRIBIDI_TYPE_ON
-	    || this_type == FRIBIDI_TYPE_ES
-	    || this_type == FRIBIDI_TYPE_ET
-	    || this_type == FRIBIDI_TYPE_CS
-	    || this_type == FRIBIDI_TYPE_BN)
-	    RL_TYPE(pp) = FRIBIDI_TYPE_N;
+        if (this_type == FRIBIDI_TYPE_WS
+            || this_type == FRIBIDI_TYPE_ON
+            || this_type == FRIBIDI_TYPE_ES
+            || this_type == FRIBIDI_TYPE_ET
+            || this_type == FRIBIDI_TYPE_CS
+            || this_type == FRIBIDI_TYPE_BN)
+            RL_TYPE(pp) = FRIBIDI_TYPE_N;
     }
 
     compact_list(type_rl_list);
 
     for (pp = type_rl_list + 1; pp->type != FRIBIDI_TYPE_EOT; pp++) {
-	int prev_type = RL_TYPE(pp-1);
-	int this_type = RL_TYPE(pp);
-	int next_type = RL_TYPE(pp+1);
+        int prev_type = RL_TYPE(pp-1);
+        int this_type = RL_TYPE(pp);
+        int next_type = RL_TYPE(pp+1);
 
-	if (this_type == FRIBIDI_TYPE_N) {	/* optimization! */
-	    /* "European and arabic numbers are treated
-	       as though they were R" */
+        if (this_type == FRIBIDI_TYPE_N) {      /* optimization! */
+            /* "European and arabic numbers are treated
+               as though they were R" */
 
-	    if (prev_type == FRIBIDI_TYPE_EN || prev_type == FRIBIDI_TYPE_AN)
-		prev_type = FRIBIDI_TYPE_R;
+            if (prev_type == FRIBIDI_TYPE_EN || prev_type == FRIBIDI_TYPE_AN)
+                prev_type = FRIBIDI_TYPE_R;
 
-	    if (next_type == FRIBIDI_TYPE_EN || next_type == FRIBIDI_TYPE_AN)
-		next_type = FRIBIDI_TYPE_R;
+            if (next_type == FRIBIDI_TYPE_EN || next_type == FRIBIDI_TYPE_AN)
+                next_type = FRIBIDI_TYPE_R;
 
-	    /* N1. */
-	    TYPE_RULE_C(R, N, R, R);
-	    TYPE_RULE_C(L, N, L, L);
+            /* N1. */
+            TYPE_RULE_C(R, N, R, R);
+            TYPE_RULE_C(L, N, L, L);
 
-	    /* N2. Any remaining neutrals takes the embedding direction */
-	    if (RL_TYPE(pp) == FRIBIDI_TYPE_N)
-		RL_TYPE(pp) = FRIBIDI_TYPE_E;
-	}
+            /* N2. Any remaining neutrals takes the embedding direction */
+            if (RL_TYPE(pp) == FRIBIDI_TYPE_N)
+                RL_TYPE(pp) = FRIBIDI_TYPE_E;
+        }
     }
 
     compact_list(type_rl_list);

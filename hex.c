@@ -46,7 +46,7 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
     if (len > s->disp_width)
         len = s->disp_width;
     if (s->mode == &hex_mode) {
-        for(j=0;j<s->disp_width;j++) {
+        for (j = 0; j < s->disp_width; j++) {
             display_char(ds, -1, -1, ' ');
             offset1 = offset + j;
             if (j < len) {
@@ -67,7 +67,7 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
         display_char(ds, -1, -1, ' ');
     }
     eof = 0;
-    for(j=0;j<s->disp_width;j++) {
+    for (j = 0; j < s->disp_width; j++) {
         offset1 = offset + j;
         if (j < len) {
             eb_read(s->b, offset + j, &b, 1);
@@ -172,10 +172,10 @@ int detect_binary(const unsigned char *buf, int size)
 
     for (i = 0; i < size; i++) {
         c = buf[i];
-	if (c < 32 && 
+        if (c < 32 && 
             (c != '\r' && c != '\n' && c != '\t' &&
-	     c != '\e' && c != '\b' && c != '\f'))
-	    return 1;
+             c != '\e' && c != '\b' && c != '\f'))
+            return 1;
     }
     return 0;
 }

@@ -341,7 +341,7 @@ static void tty_read_handler(void *opaque)
             break;
         }
         ts->input_state = IS_NORM;
-        switch(ch) {
+        switch (ch) {
         case '[':
             ts->input_state = IS_CSI2;
             break;
@@ -379,7 +379,7 @@ static void tty_read_handler(void *opaque)
     case IS_CSI2:
         /* cygwin/linux terminal */
         ts->input_state = IS_NORM;
-        switch(ch) {
+        switch (ch) {
         case 'A': ch = KEY_F1; goto the_end;
         case 'B': ch = KEY_F2; goto the_end;
         case 'C': ch = KEY_F3; goto the_end;
@@ -390,7 +390,7 @@ static void tty_read_handler(void *opaque)
     case IS_ESC2:       // "\EO"
         /* xterm/vt100 fn */
         ts->input_state = IS_NORM;
-        switch(ch) {
+        switch (ch) {
         case 'A': ch = KEY_UP; goto the_end;
         case 'B': ch = KEY_DOWN; goto the_end;
         case 'C': ch = KEY_RIGHT; goto the_end;
@@ -442,7 +442,7 @@ static int get_tty_color(QEColor color)
     
     dmin = MAXINT;
     cmin = 0;
-    for(i=0;i<NB_COLORS;i++) {
+    for (i = 0; i < NB_COLORS; i++) {
         d = color_dist(color, tty_colors[i]);
         if (d < dmin) {
             cmin = i;
@@ -465,9 +465,9 @@ static void term_fill_rectangle(QEditScreen *s,
 
     ptr = ts->screen + y1 * s->width + x1;
     if (color == QECOLOR_XOR) {
-        for(y=y1;y<y2;y++) {
+        for (y = y1; y < y2; y++) {
             ts->line_updated[y] = 1;
-            for(x=x1;x<x2;x++) {
+            for (x = x1; x < x2; x++) {
                 ptr->bgcolor ^= 7;
                 ptr->fgcolor ^= 7;
                 ptr++;
@@ -476,9 +476,9 @@ static void term_fill_rectangle(QEditScreen *s,
         }
     } else {
         bgcolor = get_tty_color(color);
-        for(y=y1;y<y2;y++) {
+        for (y = y1; y < y2; y++) {
             ts->line_updated[y] = 1;
-            for(x=x1;x<x2;x++) {
+            for (x = x1; x < x2; x++) {
                 ptr->bgcolor = bgcolor;
                 ptr->ch = ' ';
                 ptr->fgcolor = 7;
@@ -540,7 +540,7 @@ static void term_text_metrics(QEditScreen *s, QEFont *font,
     metrics->font_ascent = font->ascent;
     metrics->font_descent = font->descent;
     x = 0;
-    for(i=0;i<len;i++)
+    for (i = 0; i < len; i++)
         x += term_glyph_width(s, str[i]);
     metrics->width = x;
 }
@@ -578,7 +578,7 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
                 if (s->clip_x2 < n)
                     n = s->clip_x2;
                 n -= s->clip_x1;
-                for(; n > 0; n--) {
+                for (; n > 0; n--) {
                     ptr->fgcolor = fgcolor;
                     ptr->ch = ' ';
                     ptr++;

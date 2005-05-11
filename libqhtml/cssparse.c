@@ -83,7 +83,7 @@ static int css_get_length(int *length_ptr, int *unit_ptr, const char *p)
         unit++;
         if (f < 0 && unit != CSS_UNIT_PERCENT)
             return -1;
-        switch(unit) {
+        switch (unit) {
         case CSS_UNIT_PIXEL:
             num = (int)(f);
             break;
@@ -156,7 +156,7 @@ static char *css_parse_string(const char **pp)
     p = *pp;
     q = buf;
     sep = *p++;
-    for(;;) {
+    for (;;) {
         c = *p++;
         if (c == sep || c == '\0')
             break;
@@ -249,12 +249,12 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
         skip_spaces(&p);
         /* find the property */
         def = css_properties;
-        for(;;) {
+        for (;;) {
             if (def >= css_properties + NB_PROPERTIES) {
                 css_error1(b, "unsupported property '%s'", property);
                 /* property not found skip it: find next ';' */
-		while (*p && *p != ';')
-		    p++;
+                while (*p && *p != ';')
+                    p++;
                 goto next;
             }
             if (!strcmp(def->name, property))
@@ -265,7 +265,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
         type = def->type;
 
         nb_args = 0;
-        for(;;) {
+        for (;;) {
             /* get argument */
             skip_spaces(&p);
             if (*p == ';' || *p == '\0')
@@ -395,7 +395,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
             goto next;
         got_val:
             /* specific handling may be necessary. We do them here */
-            switch(property_index) {
+            switch (property_index) {
             case CSS_font_size:
                 if (unit == CSS_UNIT_NONE) {
                     if (val == 7) {
@@ -432,7 +432,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
                 args[0].type = unit;
                 args[0].u.val = val;
                 if (property_index == CSS_border) {
-                    for(i=0;i<4;i++) 
+                    for (i = 0; i < 4; i++) 
                         css_add_prop(&last_prop, property_index1 + 1 + i, 
                                      &args[0]);
                 } else {
@@ -457,7 +457,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
             CSSPropertyValue v1, v2, v3, v4;
             /* handle specifically the four args case */
             v1 = args[0];
-            switch(nb_args) {
+            switch (nb_args) {
             case 1:
                 args[1] = args[2] = args[3] = v1;
                 break;
@@ -485,12 +485,12 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
                 args[0] = v4;
                 break;
             }
-            for(i=0;i<4;i++) 
+            for (i = 0; i < 4; i++) 
                 css_add_prop(&last_prop, property_index + 1 + i, &args[i]);
         } else if (type & CSS_TYPE_TWO) {
             if (nb_args == 1)
                 args[1] = args[0];
-            for(i=0;i<2;i++) 
+            for (i = 0; i < 2; i++) 
                 css_add_prop(&last_prop, property_index + 1 + i, &args[i]);
         } else if (type & CSS_TYPE_ARGS) {
             /* unbounded number of args */
@@ -524,9 +524,9 @@ void css_dump_properties(CSSProperty *prop)
             printf("inherit");
         } else {
             value = &prop->value;
-            for(j=0;j<prop->nb_values;j++) {
+            for (j = 0; j < prop-> nb_values;j++) {
                 val = value->u.val;
-                switch(value->type) {
+                switch (value->type) {
                 case CSS_UNIT_EX:
                     printf("%0.1fex", (double)val / CSS_LENGTH_FRAC_BASE);
                     break;
@@ -550,7 +550,7 @@ void css_dump_properties(CSSProperty *prop)
                         else
                             p = def->name + strlen(def->name) + 1;
                         i = 0;
-                        for(;;) {
+                        for (;;) {
                             p1 = strchr(p, ',');
                             if (i == val) {
                                 if (!p1)
@@ -619,7 +619,7 @@ static void free_selector(CSSSimpleSelector *ss)
 {
     CSSStyleSheetAttributeEntry *attr, *attr1;
 
-    for(attr = ss->attrs; attr != NULL; attr = attr1) {
+    for (attr = ss->attrs; attr != NULL; attr = attr1) {
         attr1 = attr->next;
         free(attr);
     }
@@ -632,17 +632,17 @@ void css_free_style_sheet(CSSStyleSheet *s)
     CSSProperty *p, *p1;
     CSSSimpleSelector *ss, *ss1;
 
-    for(e = s->first_entry; e != NULL; e = e1) {
+    for (e = s->first_entry; e != NULL; e = e1) {
         e1 = e->next;
         
-        for(ss = e->sel.next; ss != NULL; ss = ss1) {
+        for (ss = e->sel.next; ss != NULL; ss = ss1) {
             ss1 = ss->next;
             free_selector(ss);
             free(ss);
         }
         free_selector(&e->sel);
 
-        for(p = e->props; p != NULL; p = p1) {
+        for (p = e->props; p != NULL; p = p1) {
             p1 = p->next;
             free(p);
         }
@@ -677,7 +677,7 @@ static int bgetc(CSSParseState *b)
                 b->ptr--;
             return '/';
         }
-        for(;;) {
+        for (;;) {
             ch = bgetc1(b);
             if (ch != '*')
                 continue;
@@ -699,7 +699,7 @@ static void read_string(CSSParseState *b, int *ch_ptr, char *ident, int ident_si
 
     quote = *ch_ptr;
     q = ident;
-    for(;;) {
+    for (;;) {
         ch = bgetc(b);
         if (ch == quote)
             break;
@@ -718,7 +718,7 @@ static void read_ident(CSSParseState *b, int *ch_ptr, char *ident, int ident_siz
 
     c = *ch_ptr;
     q = ident;
-    for(;;) {
+    for (;;) {
         if (!((c >= 'A' && c <= 'Z') ||
               (c >= 'a' && c <= 'z') ||
               (c >= '0' && c <= '9') ||
@@ -793,7 +793,7 @@ static void dup_selector(CSSSimpleSelector *dest, CSSSimpleSelector *src)
 
     first_attr = NULL;
     plast_attr = &first_attr;
-    for(attr = src->attrs; attr != NULL; attr = attr->next)
+    for (attr = src->attrs; attr != NULL; attr = attr->next)
         add_attribute(&plast_attr, attr->attr,
                       attr->op, attr->value);
     memcpy(dest, src, sizeof(CSSSimpleSelector));
@@ -806,7 +806,7 @@ static CSSProperty *dup_properties(CSSProperty *props)
     CSSProperty *p, *first_p, **plast_p;
     first_p = NULL;
     plast_p = &first_p;
-    for(p = props; p != NULL; p = p->next) {
+    for (p = props; p != NULL; p = p->next) {
         css_add_prop_values(&plast_p, p->property, p->nb_values, &p->value);
     }
     return first_p;
@@ -818,14 +818,14 @@ void css_merge_style_sheet(CSSStyleSheet *s, CSSStyleSheet *a)
     CSSStyleSheetEntry *e, *e1;
     CSSSimpleSelector *ss, *ss1, ss2, **pss;
 
-    for(e = a->first_entry; e != NULL; e = e->next) {
+    for (e = a->first_entry; e != NULL; e = e->next) {
         /* add selector */
         dup_selector(&ss2, &e->sel);
         e1 = add_style_entry(s, &ss2, e->media);
         
         /* add selector operations */
         pss = &e1->sel.next;
-        for(ss = e->sel.next; ss != NULL; ss = ss->next) {
+        for (ss = e->sel.next; ss != NULL; ss = ss->next) {
             ss1 = malloc(sizeof(CSSSimpleSelector));
             dup_selector(ss1, ss);
             *pss = ss1;
@@ -874,7 +874,7 @@ static void parse_simple_selector(CSSSimpleSelector *ss, CSSParseState *b,
         css_strtolower(tag, sizeof(tag));
 
     /* read '.class', '[xxx]', ':pseudo-class' */
-    for(;;) {
+    for (;;) {
         bskip_spaces(b, &ch);
         if (ch == '.') {
             /* read the class and add it as an attribute */
@@ -893,7 +893,7 @@ static void parse_simple_selector(CSSSimpleSelector *ss, CSSParseState *b,
             if (b->ignore_case)
                 css_strtolower(attribute, sizeof(attribute));
 
-            switch(ch) {
+            switch (ch) {
             case '~':
                 op = CSS_ATTR_OP_IN_LIST;
                 ch = bgetc(b);
@@ -966,7 +966,7 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
     
     ch = bgetc(b);
     media = CSS_MEDIA_ALL;
-    for(;;) {
+    for (;;) {
     redo:
         first_eprops = s->plast_entry;
         bskip_spaces(b, &ch);
@@ -985,11 +985,11 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
         if (ch == '@') {
             ch = bgetc(b);
             read_ident(b, &ch, tag, sizeof(tag));
-            switch(css_get_enum(tag, "media,page")) {
+            switch (css_get_enum(tag, "media,page")) {
             case 0:
                 /* @media */
                 media = 0;
-                for(;;) {
+                for (;;) {
                     bskip_spaces(b, &ch);
                     read_ident(b, &ch, tag, sizeof(tag));
                     val = css_get_enum(tag, "tty,screen,print,tv,speech,all");
@@ -1030,11 +1030,11 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
         }
                 
         /* parse a selector list */
-        for(;;) {
+        for (;;) {
             /* parse simple selectors with operations */
             last_ss = NULL;
             last_tree_op = CSS_TREE_OP_NONE;
-            for(;;) {
+            for (;;) {
                 int tree_op;
                 bskip_spaces(b, &ch);
                 parse_simple_selector(ss, b, &ch);
@@ -1094,7 +1094,7 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
            problems, but it would still not be sufficient. */
         props = css_parse_properties(b, value);
         i = 0;
-        for(e = *first_eprops; e != NULL; e = e->next) {
+        for (e = *first_eprops; e != NULL; e = e->next) {
             if (i == 0)
                 e->props = props;
             else
@@ -1122,7 +1122,7 @@ static void dump_selector(CSSSimpleSelector *ss)
 {
     CSSStyleSheetAttributeEntry *ae;
 
-    switch(ss->tree_op) {
+    switch (ss->tree_op) {
     case CSS_TREE_OP_DESCENDANT:
         dump_selector(ss->next);
         printf(" ");
@@ -1148,7 +1148,7 @@ static void dump_selector(CSSSimpleSelector *ss)
     ae = ss->attrs;
     while (ae != NULL) {
         printf("[%s", css_ident_str(ae->attr));
-        switch(ae->op) {
+        switch (ae->op) {
         case CSS_ATTR_OP_EQUAL:
             printf("=%s", ae->value);
             break;

@@ -169,8 +169,8 @@ int ppm_save(QEditScreen *s, const char *filename)
     h = s->height;
 
     fprintf(f, "P6\n%d %d\n%d\n", w, h, 255);
-    for(y=0;y<h;y++) {
-        for(x=0;x<w;x++) {
+    for (y = 0; y < h; y++) {
+        for (x = 0; x < w; x++) {
             v = data[x];
             r = (v >> 16) & 0xff;
             g = (v >> 8) & 0xff;
@@ -243,9 +243,9 @@ int png_save(QEditScreen *s, const char *filename)
 
     row_pointers[0] = row;
 
-    for(y=0;y<h;y++) {
+    for (y = 0; y < h; y++) {
         row_ptr = row;
-        for(x=0;x<w;x++) {
+        for (x = 0; x < w; x++) {
             v = data[x];
             r = (v >> 16) & 0xff;
             g = (v >> 8) & 0xff;
@@ -332,7 +332,7 @@ int draw_html(QEditScreen *scr,
 
     xml = xml_begin(s->style_sheet, flags, html_test_abort, NULL, filename, charset);
     
-    for(;;) {
+    for (;;) {
         len = css_read(f, buf, IO_BUF_SIZE);
         if (len <= 0)
             break;
@@ -415,11 +415,11 @@ int main(int argc, char **argv)
     charset = &charset_8859_1;
     strict_xml = 0;
     
-    for(;;) {
+    for (;;) {
         c = getopt(argc, argv, "h?w:o:f:x");
         if (c == -1)
             break;
-        switch(c) {
+        switch (c) {
         case 'h':
         case '?':
             help();
@@ -436,7 +436,7 @@ int main(int argc, char **argv)
                 QECharset *p;
                 fprintf(stderr, "Unknown charset '%s'\n", optarg);
                 fprintf(stderr, "Supported charsets are:");
-                for(p = first_charset; p != NULL; p = p->next)
+                for (p = first_charset; p != NULL; p = p->next)
                     fprintf(stderr, " %s", p->name);
                 fprintf(stderr, "\n");
                 exit(1);
