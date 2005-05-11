@@ -59,16 +59,16 @@ static void cfb16_fill_rectangle(QEditScreen *s,
     dest = cfb->base + y1 * cfb->wrap + x1 * 2;
     if (color == QECOLOR_XOR) {
         /* XXX: suppress this mess */
-        for(y=0;y<h;y++) {
+        for (y = 0; y < h; y++) {
             d = dest;
-            for(n = w; n != 0; n--) {
+            for (n = w; n != 0; n--) {
                 ((short *)d)[0] ^= 0xffff;
                 d += 2;
             }
             dest += cfb->wrap;
         }
     } else {
-        for(y=0;y<h;y++) {
+        for (y = 0; y < h; y++) {
             d = dest;
             n = w;
             
@@ -108,16 +108,16 @@ static void cfb32_fill_rectangle(QEditScreen *s,
     dest = cfb->base + y1 * cfb->wrap + x1 * 4;
     if (color == QECOLOR_XOR) {
         /* XXX: suppress this mess */
-        for(y=0;y<h;y++) {
+        for (y = 0; y < h; y++) {
             d = dest;
-            for(n = w; n != 0; n--) {
+            for (n = w; n != 0; n--) {
                 ((short *)d)[0] ^= 0x00ffffff;
                 d += 4;
             }
             dest += cfb->wrap;
         }
     } else {
-        for(y=0;y<h;y++) {
+        for (y = 0; y < h; y++) {
             d = dest;
             n = w;
             while (n >= 4) {
@@ -312,7 +312,7 @@ int cfb_init(QEditScreen *s,
     cfb->depth = depth;
     cfb->bpp = (depth + 7) / 8;
     
-    switch(depth) {
+    switch (depth) {
     case 15:
         cfb->get_color = cfb15_get_color;
         break;
@@ -325,7 +325,7 @@ int cfb_init(QEditScreen *s,
         break;
     }
 
-    switch(cfb->bpp) {
+    switch (cfb->bpp) {
     case 2:
         s->dpy.dpy_fill_rectangle = cfb16_fill_rectangle;
         cfb->draw_glyph = cfb16_draw_glyph;
