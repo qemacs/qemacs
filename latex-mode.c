@@ -216,7 +216,7 @@ static void latex_cmd_run(void *opaque, char *cmd)
     char cwd[MAX_FILENAME_SIZE];
     char dir[MAX_FILENAME_SIZE];
     const char *argv[4];
-    char *wd, *p;
+    char *p;
     int len;
 
     if (cmd == 0) {
