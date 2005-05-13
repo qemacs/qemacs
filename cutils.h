@@ -7,6 +7,10 @@ int strstart(const char *str, const char *val, const char **ptr);
 int stristart(const char *str, const char *val, const char **ptr);
 void pstrcpy(char *buf, int buf_size, const char *str);
 char *pstrcat(char *buf, int buf_size, const char *s);
+
+/* CG: These definitions should be moved to a different header to
+ * avoid conflict with ffmpeg's cutil module.
+ */
 char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 
 /* simple dynamic strings wrappers. The strings are always terminated

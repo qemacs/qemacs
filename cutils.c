@@ -25,6 +25,12 @@
 #include "cutils.h"
 
 #if !defined(CONFIG_NOCUTILS)
+/* these functions are defined in ffmpeg/libavformat/cutils.c and
+ * conflict with this module because of extra functions referenced
+ * in the ffmpeg module.  This module should not be linked with
+ * qemacs with ffmpeg support.
+ */
+
 /**
  * Return TRUE if val is a prefix of str. If it returns TRUE, ptr is
  * set to the next character in 'str' after the prefix.
@@ -65,7 +71,7 @@ int stristart(const char *str, const char *val, const char **ptr)
     p = str;
     q = val;
     while (*q != '\0') {
-        if (toupper(*(unsigned char *)p) != toupper(*(unsigned char *)q))
+        if (toupper(*(const unsigned char *)p) != toupper(*(const unsigned char *)q))
             return 0;
         p++;
         q++;
@@ -112,89 +118,4 @@ char *pstrcat(char *buf, int buf_size, const char *s)
     return buf;
 }
 
-/* copy the n first char of a string and truncate it. */
-char *pstrncpy(char *buf, int buf_size, const char *s, int len)
-{
-    char *q;
-    int c;
-
-    if (buf_size > 0) {
-        q = buf;
-        if (len >= buf_size)
-            len = buf_size - 1;
-        while (len > 0) {
-            c = *s++;
-            if (c == '\0')
-                break;
-            *q++ = c;
-            len--;
-        }
-        *q = '\0';
-    }
-    return buf;
-}
-
 #endif
-
-/**
- * Add a memory region to a dynamic string. In case of allocation
- * failure, the data is not added. The dynamic string is guaranted to
- * be 0 terminated, although it can be longer if it contains zeros.
- *
- * @return 0 if OK, -1 if allocation error.  
- */
-int qmemcat(QString *q, const unsigned char *data1, int len1)
-{
-    int new_len, len, alloc_size;
-    unsigned char *data;
-
-    data = q->data;
-    len = q->len;
-    new_len = len + len1;
-    /* see if we got a new power of two */
-    /* NOTE: we got this trick from the excellent 'links' browser */
-    if ((len ^ new_len) >= len) {
-        /* find immediately bigger 2^n - 1 */
-        alloc_size = new_len;
-        alloc_size |= (alloc_size >> 1);
-        alloc_size |= (alloc_size >> 2);
-        alloc_size |= (alloc_size >> 4);
-        alloc_size |= (alloc_size >> 8);
-        alloc_size |= (alloc_size >> 16);
-        /* allocate one more byte for end of string marker */
-        data = realloc(data, alloc_size + 1);
-        if (!data)
-            return -1;
-        q->data = data;
-    }
-    memcpy(data + len, data1, len1);
-    data[new_len] = '\0'; /* we force a trailing '\0' */
-    q->len = new_len;
-    return 0;
-}
-
-/*
- * add a string to a dynamic string
- */
-int qstrcat(QString *q, const char *str)
-{
-    return qmemcat(q, str, strlen(str));
-}
-
-/* XXX: we use a fixed size buffer */
-int qprintf(QString *q, const char *fmt, ...)
-{
-    char buf[4096];
-    va_list ap;
-    int len, ret;
-
-    va_start(ap, fmt);
-    len = vsnprintf(buf, sizeof(buf), fmt, ap);
-    /* avoid problems for non C99 snprintf() which can return -1 if overflow */
-    if (len < 0)
-        len = strlen(buf);
-    ret = qmemcat(q, buf, len);
-    va_end(ap);
-    return ret;
-}
-

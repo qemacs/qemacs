@@ -71,24 +71,33 @@ endif
 ifdef CONFIG_ALL_KMAPS
 DEFINES+= -DCONFIG_ALL_KMAPS
 endif
+
 ifdef CONFIG_UNICODE_JOIN
 DEFINES+= -DCONFIG_UNICODE_JOIN
 endif
+
 ifdef CONFIG_ALL_MODES
 DEFINES+= -DCONFIG_ALL_MODES
 endif
+
 ifdef CONFIG_DLL
 LIBS+=-ldl
 # export some qemacs symbols
 LDFLAGS+=-Wl,-E
 endif
+
 LIBS+=-lm
 
 TARGETLIBS:=
 TARGETS+=qe$(EXE) qe-doc.html
 
 OBJS=qe.o charset.o buffer.o \
-     input.o unicode_join.o display.o util.o hex.o list.o cutils.o
+     input.o unicode_join.o display.o util.o hex.o list.o 
+
+ifndef CONFIG_FFMPEG
+OBJS+= cutils.o
+endif
+
 ifndef CONFIG_WIN32
 OBJS+= unix.o tty.o 
 endif
