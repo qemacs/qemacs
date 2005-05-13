@@ -1,5 +1,7 @@
 General TODO:
 ------------
+- remember X11 window positions and restore layout ?
+- improve image viewer.
 - regex search/replace (use glibc 2.1 regex.c file)
 - tab cursor displayed size
 - fix kana input method
@@ -9,7 +11,6 @@ General TODO:
 - faster video handling (generalize invalidate region system)
 - check file permissions.
 - faster search
-- bufed segfault
 - distribute libqhtml as a separate project
 - integrate tinySVG renderer based on the new libraster.
 - improve speed of text renderer / improve truncate mode (merge some
@@ -22,7 +23,7 @@ General TODO:
 - implement wheel mode in CSS display.
 - check console charset support (need to convert input?)
 - test Hebrew keymap support.
-- kill buffer handling: append next kill
+- kill buffer handling: append next kill as command flag
 - delete word should be a kill operation
 - indent-with-tabs
 DONE	- increase MAX_SCREEN_WIDTH and MAX_SCREEN_HEIGHT beyond 256
@@ -38,7 +39,8 @@ C mode TODO:
   * global QTAGS file indexed with global includes
 - see if java/javascript/c++ is OK.
 - autocomplete
-- forward-level backward-level: skipping balanced parentheses
+- forward-level, backward-level: skipping balanced parentheses
+- forward-ifdef, backward-ifdef, show-ifdefs
 - automatic indentation detection
 
 HTML mode TODO:
@@ -64,9 +66,10 @@ Ideas
 - vertical scroll bar
 - better Makefile (select modes)
 - add auto close buffer flag (for list mode)
+- improve layout scheme for better scalability.
+- make dired and bufed left windows temporary popleft windows
 - improve dired (file commands, nicer display)
 - rethink mode specific commands -> add inheritance for all commands ?
-DONE	- shorter command types handling (suppress ESxxx and use one type per arg)
 - add command help in declarations
 - make command declaration macros standalone
 - dpy_open_font should never return NULL, must have a system font.
@@ -85,18 +88,16 @@ DONE	- fix control-h mess
 - merge hex-mode and ascii mode
 - write-region -> add filename and offsets to save_buffer stuff
 DONE	- detect full screen mode in shell buffer and grab all keys until exit
-DONE	- fix makefile for html dependencies
 - fix configure for missing support: x11 xv png ...
 - add configure --disable-graphics
 - timers for esc key disambiguation
 - move ungot_key to key_context
+- allow recursive main loop, and remove input callbacks
 - abbreviate lines in file completion list popup
 - use trick for entering spaces in filename prompts without completion
 - enlarge-window-interactively
 - enlarge-window-horizontally
 - enlarge-window
-DONE	- count-lines
-DONE	- show-point
 - show modified status and mode in bufed
 - *messages* system buffer
 - doctor command should create and show *trace* buffer, remove eb_new kludge

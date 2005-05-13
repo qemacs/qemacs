@@ -148,7 +148,7 @@ static void image_display(EditState *s)
     }
 }
 
-#if 0
+#if 1
 
 static int gcd(int a, int b)
 {
@@ -168,6 +168,7 @@ static int gcd(int a, int b)
 static void image_resize(EditState *s)
 {
     ImageState *is = s->mode_data;
+    ImageBuffer *ib = s->b->data;
     int d, w, h;
     
     /* simplify factors */
@@ -179,9 +180,9 @@ static void image_resize(EditState *s)
     is->yfactor_num /= d;
     is->yfactor_den /= d;
 
-    w = ((long long)is->img.width * (long long)is->xfactor_num) / 
+    w = ((long long)ib->width * (long long)is->xfactor_num) / 
         is->xfactor_den;
-    h = ((long long)is->img.height * (long long)is->yfactor_num) / 
+    h = ((long long)ib->height * (long long)is->yfactor_num) / 
         is->yfactor_den;
 
     if (w < 1)
@@ -193,6 +194,8 @@ static void image_resize(EditState *s)
     if (w == is->w &&
         h == is->h)
         return;
+
+    edit_invalidate(s);
 }
 
 
@@ -218,12 +221,14 @@ static void image_mult_size(EditState *s, int percent)
     is->xfactor_den *= 100;
     is->yfactor_num *= (100 + percent);
     is->yfactor_den *= 100;
+
     image_resize(s);
 }
 
 static void image_set_size(EditState *s, int w, int h)
 {
     ImageState *is = s->mode_data;
+    ImageBuffer *ib = s->b->data;
 
     if (w < 1 || h < 1) {
         put_status(s, "Invalid image size");
@@ -231,9 +236,9 @@ static void image_set_size(EditState *s, int w, int h)
     }
     
     is->xfactor_num = w;
-    is->xfactor_den = is->img.width;
+    is->xfactor_den = ib->width;
     is->yfactor_num = h;
-    is->yfactor_den = is->img.height;
+    is->yfactor_den = ib->height;
     
     image_resize(s);
 }
@@ -555,7 +560,7 @@ static void image_scroll_up_down(EditState *s, int dir)
 {
     int d;
 
-    h = SCROLL_MHEIGHT;
+    d = SCROLL_MHEIGHT;
     if (abs(dir) == 2) {
         /* move 50% */
         d = s->height / 2;
@@ -805,7 +810,7 @@ static CmdDef image_commands[] = {
     CMD_( 'b', KEY_NONE, "image-set-background-color",
           image_set_background_color,
           "s{Background color (use 'transparent' for tiling): }")
-#if 0
+#if 1
     CMD0( 'n', KEY_NONE, "image-normal-size", image_normal_size)
     CMD1( '>', KEY_NONE, "image-double-size", image_mult_size, 100)
     CMD1( '<', KEY_NONE, "image-halve-size", image_mult_size, -50)
