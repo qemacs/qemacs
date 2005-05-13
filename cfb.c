@@ -227,8 +227,8 @@ static void cfb32_draw_glyph(QEditScreen *s1,
 }
 
 static void cfb_draw_text(QEditScreen *s, QEFont *font,
-                           int x_start, int y, const unsigned int *str, int len,
-                           QEColor color)
+                          int x_start, int y, const unsigned int *str, int len,
+                          QEColor color)
 {
     CFBContext *cfb = s->private;
     GlyphCache *g;
