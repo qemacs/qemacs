@@ -2099,6 +2099,7 @@ void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp)
     s->eol_reached = 0;
     s->cursor_func = NULL;
     s->eod = 0;
+    release_font(e->screen, font);
 }
 
 void display_bol_bidir(DisplayState *s, DirType base, int embedding_level_max)
@@ -2276,6 +2277,7 @@ static void flush_line(DisplayState *s,
                     markbuf[0] = '/';
                     draw_text(screen, font, x, y + font->ascent, 
                               markbuf, 1, default_style.fg_color);
+                    release_font(screen, font);
                 }
             }
             x += x_start;
@@ -2288,6 +2290,7 @@ static void flush_line(DisplayState *s,
                           s->line_chars + frag->line_index,
                           frag->len, style.fg_color);
                 x += frag->width;
+                release_font(screen, font);
             }
             x1 = e->xleft + s->width + s->eol_width;
             if (x < x1) {
@@ -2303,6 +2306,7 @@ static void flush_line(DisplayState *s,
                     draw_text(screen, font, 
                               e->xleft + s->width, y + font->ascent,
                               markbuf, 1, default_style.fg_color);
+                    release_font(screen, font);
                 }
             }
         }
@@ -2467,6 +2471,7 @@ static void flush_fragment(DisplayState *s)
             j++;
         }
     }
+    release_font(screen, font);
     
     /* add the fragment */
     frag = &s->fragments[s->nb_fragments++];
@@ -3887,6 +3892,49 @@ void print_at_byte(QEditScreen *screen,
     font = select_font(screen, style.font_style, style.font_size);
     draw_text(screen, font, x, y + font->ascent,
               ubuf, len, style.fg_color);
+    release_font(screen, font);
+}
+
+static void eb_format_message(QEmacsState *qs, const char *bufname,
+                              const char *message)
+{
+    char header[128];
+    int len;
+    EditBuffer *eb;
+
+    header[len = 0] = '\0';
+    if (qs->ec.filename) {
+        snprintf(header, sizeof(header), "%s:%d: ",
+                 qs->ec.filename, qs->ec.lineno);
+        len = strlen(header);
+    }
+    if (qs->ec.function) {
+        snprintf(header + len, sizeof(header) - len, "%s: ",
+                 qs->ec.function);
+        len = strlen(header);
+    }
+    eb = eb_find(bufname);
+    if (!eb)
+        eb = eb_new(bufname, BF_SYSTEM);
+    if (eb) {
+        eb_printf(eb, "%s%s\n", header, message);
+    } else {
+        fprintf(stderr, "%s%s\n", header, message);
+    }
+}
+
+void put_error(EditState *s, const char *fmt, ...)
+{
+    /* CG: s is not used and may be NULL! */
+    QEmacsState *qs = &qe_state;
+    char buf[MAX_SCREEN_WIDTH];
+    va_list ap;
+
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+    eb_format_message(qs, "*errors*", buf);
 }
 
 void put_status(EditState *s, const char *fmt, ...)
@@ -3894,6 +3942,7 @@ void put_status(EditState *s, const char *fmt, ...)
     /* CG: s is not used and may be NULL! */
     QEmacsState *qs = &qe_state;
     char buf[MAX_SCREEN_WIDTH];
+    char *p;
     va_list ap;
 
     va_start(ap, fmt);
@@ -3907,31 +3956,13 @@ void put_status(EditState *s, const char *fmt, ...)
                           qs->screen->width, qs->status_height,
                           buf, QE_STYLE_STATUS);
             strcpy(qs->status_shadow, buf);
+            p = buf;
+            skip_spaces(&p);
+            if (*p)
+                eb_format_message(qs, "*messages*", buf);
         }
     } else {
-        char header[128];
-        int len;
-        EditBuffer *eb;
-
-        header[len = 0] = '\0';
-        if (qs->ec.filename) {
-            snprintf(header, sizeof(header), "%s:%d: ",
-                     qs->ec.filename, qs->ec.lineno);
-            len = strlen(header);
-        }
-        if (qs->ec.function) {
-            snprintf(header + len, sizeof(header) - len, "%s: ",
-                     qs->ec.function);
-            len = strlen(header);
-        }
-        eb = eb_find("*errors*");
-        if (!eb)
-            eb = eb_new("*errors*", BF_SYSTEM);
-        if (eb) {
-            eb_printf(eb, "%s%s\n", header, buf);
-        } else {
-            fprintf(stderr, "%s%s\n", header, buf);
-        }
+        eb_format_message(qs, "*errors*", buf);
     }
 }
 
@@ -5640,10 +5671,13 @@ static int get_line_height(QEditScreen *screen, int style_index)
 {
     QEFont *font;
     QEStyleDef style;
+    int height;
 
     get_style(NULL, &style, style_index);
     font = select_font(screen, style.font_style, style.font_size);
-    return font->ascent + font->descent;
+    height = font->ascent + font->descent;
+    release_font(screen, font);
+    return height;
 }
 
 void edit_invalidate(EditState *s)

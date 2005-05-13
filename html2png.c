@@ -73,6 +73,17 @@ void css_error(const char *filename, int line_num,
     fprintf(stderr, "%s:%d: %s\n", filename, line_num, msg);
 }
 
+void put_error(EditState *s, const char *fmt, ...)
+{
+    va_list ap;
+
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+    putc('\n', stderr);
+}
+
+
 /* dummy functions */
 int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
 {
@@ -285,6 +296,8 @@ void test_display(QEditScreen *screen)
     
     draw_text(screen, font, screen->width / 2, screen->height / 2, 
               buf, len, QERGB(0x00, 0x00, 0x00));
+
+    release_font(screen, font);
 }
 #endif
 

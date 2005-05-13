@@ -50,7 +50,6 @@ static inline int glyph_hash(int index, int size, int style)
     return h % HASH_SIZE;
 }
 
-
 static GlyphCache *get_cached_glyph(QEFont *font, int index)
 {
     GlyphCache *p;
@@ -186,6 +185,7 @@ GlyphCache *decode_cached_glyph(QEditScreen *s, QEFont *font, int code)
             font1 = select_font(s, font->style | (1 << QE_FAMILY_FALLBACK_SHIFT),
                                 font->size);
             g = fbf_decode_glyph1(font1, code);
+            release_font(s, font1);
             if (!g) 
                 return NULL;
             /* indicates that it is a fallback glyph so that the

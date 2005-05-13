@@ -144,6 +144,7 @@ static int ascii_mode_init(EditState *s, ModeSavedData *saved_data)
     get_style(s, &style, s->default_style);
     font = select_font(s->screen, style.font_style, style.font_size);
     num_width = glyph_width(s->screen, font, '0');
+    release_font(s->screen, font);
 
     s->disp_width = (s->screen->width / num_width) - 10;
     s->hex_mode = 0;

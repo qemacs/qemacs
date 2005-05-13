@@ -152,15 +152,14 @@ QEFont *select_font(QEditScreen *s, int style, int size)
     int i, min_ts, min_index;
 
     min_ts = MAXINT;
-    min_index = 0;
+    min_index = -1;
     for (i = 0; i < FONT_CACHE_SIZE; i++) {
         fc = font_cache[i];
         if (fc) {
             if (fc->style == style && fc->size == size) {
-                fc->timestamp = font_cache_timestamp;
-                goto the_end;
+                goto found;
             }
-            if (fc->timestamp < min_ts) {
+            if (fc->timestamp < min_ts && fc->refcount <= 0) {
                 min_ts = fc->timestamp;
                 min_index = i;
             }
@@ -170,21 +169,35 @@ QEFont *select_font(QEditScreen *s, int style, int size)
         }
     }
     /* not found : open new font */
-    if (font_cache[min_index])
+    if (min_index < 0) {
+        put_error(NULL, "Font cache full");
+        goto fail;
+    }
+    if (font_cache[min_index]) {
         close_font(s, font_cache[min_index]);
+        font_cache[min_index] = NULL;
+    }
     fc = open_font(s, style, size);
     if (!fc) {
-        /* select_font never returns NULL */ 
-        fc = &dummy_font;
-        fc->system_font = 1;
+        put_error(NULL, "open_font: cannot open style=%X size=%d",
+                  style, size);
+        goto fail;
     }
 
     fc->style = style;
     fc->size = size;
-    fc->timestamp = font_cache_timestamp;
     font_cache[min_index] = fc;
- the_end:
+ found:
+    fc->timestamp = font_cache_timestamp;
     font_cache_timestamp++;
+    fc->refcount++;
+    return fc;
+
+ fail:
+    /* select_font never returns NULL */
+    /* CG: This is bogus, dummy font is not device compatible? */
+    fc = &dummy_font;
+    fc->system_font = 1;
     return fc;
 }
 

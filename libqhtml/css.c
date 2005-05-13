@@ -1968,6 +1968,11 @@ static QEFont *css_select_font(QEditScreen *screen, CSSState *props)
     return select_font(screen, style, props->font_size);
 }
 
+static inline void css_release_font(QEditScreen *screen, QEFont *font)
+{
+    release_font(screen, font);
+}
+
 /* flush a text fragment. return non zero if the layout of the current
    box must be interrupted because a new line has been emitted */
 static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
@@ -2105,6 +2110,7 @@ static int css_layout_inline_box(InlineLayout *s,
         return -1;
 
     font = css_select_font(s->ctx->screen, props);
+    ret = 0;
 
     if (!s->compute_min_max && box->parent &&
         props->vertical_align != CSS_VERTICAL_ALIGN_BASELINE &&
@@ -2139,6 +2145,7 @@ static int css_layout_inline_box(InlineLayout *s,
             /* top and bottom are handled in the line layout */
             break;
         }
+        css_release_font(s->ctx->screen, parent_font);
     }
 
     if (props->display == CSS_DISPLAY_INLINE_TABLE ||
@@ -2177,8 +2184,10 @@ static int css_layout_inline_box(InlineLayout *s,
                 box->height = font->ascent + font->descent;
             }
 
-            if (css_layout_block(s->ctx, &layout, box))
-                return -1;
+            if (css_layout_block(s->ctx, &layout, box)) {
+                ret = -1;
+                goto done;
+            }
             
             if (s->x + w <= s->avail_width ||
                 s->x == 0) {
@@ -2210,7 +2219,7 @@ static int css_layout_inline_box(InlineLayout *s,
         while (box1 != NULL) {
             ret = css_layout_inline_box(s, box1, baseline);
             if (ret)
-                return ret;
+                goto done;
             box1 = box1->next;
         }
     } else {
@@ -2347,7 +2356,10 @@ static int css_layout_inline_box(InlineLayout *s,
         /* remove all boxes from the stack */
         s->box_stack_index = box_stack_base;
     }
-    return 0;
+done:
+    css_release_font(s->ctx->screen, font);
+
+    return ret;
 }
 
 static void css_start_inline_layout(InlineLayout *s)
@@ -3905,6 +3917,7 @@ static void box_display_text(CSSContext *s, CSSBox *box, int x0, int y0)
                 x += w;
             }
         }
+        css_release_font(scr, font);
     }
 }
 
@@ -3946,6 +3959,7 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
                           x0 + ALT_TEXT_PADDING, 
                           y0 + font->ascent + ALT_TEXT_PADDING, 
                           ubuf, len, props->color);
+                css_release_font(scr, font);
             }
         }
     }
@@ -4150,6 +4164,7 @@ static int css_get_cursor_func(void *opaque,
     
     /* cursor found : give its position */
  found:
+    css_release_font(scr, font);
     s->box = box;
     s->x0 = x0;
     s->y0 = y0;
@@ -4253,10 +4268,13 @@ int css_get_offset_pos(CSSContext *s, CSSBox *box, int xc, int dir)
             (dir < 0 && x < xc)) {
             d = abs(x - xc);
             if (d < dmin) {
+                css_release_font(s->screen, font);
                 return box->u.buffer.end;
             }
         }
     }
+    css_release_font(s->screen, font);
+
     /* no matching position found */
     if (posc < 0)
         return -1;

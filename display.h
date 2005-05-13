@@ -30,6 +30,7 @@ typedef unsigned int QEColor;
 #define QE_FAMILY_FALLBACK_MASK   0xff0000
 
 typedef struct QEFont {
+    int refcount;
     int ascent;
     int descent;
     void *private;
@@ -185,6 +186,16 @@ void push_clip_rectangle(QEditScreen *s, CSSRect *or, CSSRect *r);
 int qe_register_display(QEDisplay *dpy);
 QEDisplay *probe_display(void);
 QEFont *select_font(QEditScreen *s, int style, int size);
+
+static inline QEFont *lock_font(QEditScreen *s, QEFont *font) {
+    if (font && font->refcount)
+        font->refcount++;
+    return font;
+}
+static inline void release_font(QEditScreen *s, QEFont *font) {
+    if (font && font->refcount)
+        font->refcount--;
+}
 
 void selection_activate(QEditScreen *s);
 void selection_request(QEditScreen *s);

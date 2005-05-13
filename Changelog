@@ -1,6 +1,8 @@
 version 0.3.2dev:
 
 - Added support for cygwin platform.
+- Fixed crash bugs when deleting buffers and windows.
+- Added font locking to fix crash bugs in html/css.
 
 version 0.3.1:
 

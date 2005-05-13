@@ -549,6 +549,11 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
                              XFT_WEIGHT, XftTypeInteger, weight,
                              XFT_SLANT, XftTypeInteger, slant,
                              0);
+    if (!renderFont) {
+        /* CG: don't know if this can happen, should try fallback? */
+        free(font);
+        return NULL;
+    }
     font->ascent = renderFont->ascent;
     font->descent = renderFont->descent;
     font->private = renderFont;
@@ -560,6 +565,10 @@ static void term_close_font(QEditScreen *s, QEFont *font)
     XftFont *renderFont = font->private;
 
     XftFontClose(display, renderFont);
+    /* Clear structure to force crash if font is still used after
+     * close_font.
+     */
+    memset(font, 0, sizeof(*font));
     free(font);
 }
 
@@ -761,6 +770,10 @@ static void term_close_font(QEditScreen *s, QEFont *font)
     XFontStruct *xfont = font->private;
 
     XFreeFont(display, xfont);
+    /* Clear structure to force crash if font is still used after
+     * close_font.
+     */
+    memset(font, 0, sizeof(*font));
     free(font);
 }
 
@@ -813,7 +826,7 @@ static XCharStruct *get_char_struct(QEFont *font, int cc)
 static XCharStruct *handle_fallback(QEditScreen *s, QEFont **out_font, 
                                     QEFont *font, unsigned int cc)
 {
-    XFontStruct *xfont = font->private;
+    XFontStruct *xfont;
     XCharStruct *cs;
     int fallback_count;
     QEFont *font1;
@@ -831,12 +844,13 @@ static XCharStruct *handle_fallback(QEditScreen *s, QEFont **out_font,
             *out_font = font1;
             return cs;
         }
+        release_font(s, font1);
     }
     
     /* really no glyph : use default char in current font */
     xfont = font->private;
     cs = get_char_struct(font, xfont->default_char);
-    *out_font = font;
+    *out_font = lock_font(s, font);
     return cs;
 }
 
@@ -866,6 +880,7 @@ static void term_text_metrics(QEditScreen *s, QEFont *font,
                 metrics->font_ascent = max(metrics->font_ascent, font1->ascent);
                 metrics->font_descent = max(metrics->font_descent, font1->descent);
             }
+            release_font(s, font1);
         }
     }
     metrics->width = x;
