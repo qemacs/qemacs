@@ -627,9 +627,15 @@ extern EditBufferDataType raw_data_type;
 /* make sure that the keyword is not disabled by glibc (TINYC case) */
 #undef __attribute__ 
 
+#ifndef __attribute_used__
+#define __attribute_used__
+#endif
+
 /* same method as the linux kernel... */
-#define __init_call     __attribute__ ((unused,__section__ (".initcall.init")))
-#define __exit_call     __attribute__ ((unused,__section__ (".exitcall.exit")))
+#define __init_call     __attribute_used__ \
+                        __attribute__((unused, __section__ (".initcall.init")))
+#define __exit_call     __attribute_used__ \
+                        __attribute__((unused, __section__ (".exitcall.exit")))
 
 #define qe_module_init(fn) \
         static int (*__initcall_##fn)(void) __init_call = fn
