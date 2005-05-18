@@ -642,7 +642,7 @@ static void term_flush(QEditScreen *s)
                              (bgcolor != ptr->bgcolor))) {
                             fgcolor = ptr->fgcolor;
                             bgcolor = ptr->bgcolor;
-                            printf("\033[;%d;%dm", 
+                            printf("\033[%d;%dm", 
                                    30 + fgcolor, 40 + bgcolor);
                         }
                         /* do not display escape codes or invalid codes */
