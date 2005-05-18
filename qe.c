@@ -3942,7 +3942,7 @@ void put_status(EditState *s, const char *fmt, ...)
     /* CG: s is not used and may be NULL! */
     QEmacsState *qs = &qe_state;
     char buf[MAX_SCREEN_WIDTH];
-    char *p;
+    const char *p;
     va_list ap;
 
     va_start(ap, fmt);
