@@ -1308,6 +1308,7 @@ static CmdDef shell_commands[] = {
     CMD1( '\r', KEY_NONE, "shell-return", shell_write_char, '\r')
     /* CG: should send s->kbs */
     CMD1( 127, KEY_NONE, "shell-backward-delete-char", shell_write_char, 127)
+    CMD1( KEY_CTRL('c'), KEY_NONE, "shell-intr", shell_write_char, 3)
     CMD1( KEY_CTRL('d'), KEY_DELETE, "shell-delete-char", shell_write_char, 4)
     CMD1( KEY_CTRL('i'), KEY_NONE, "shell-tabulate", shell_write_char, 9)
     CMD1( KEY_CTRL('k'), KEY_NONE, "shell-kill-line", shell_write_char, 11)
