@@ -127,10 +127,11 @@ static int run_process(const char *path, const char **argv,
     struct winsize ws;
 
     pty_fd = get_pty(tty_name);
-    fcntl(pty_fd, F_SETFL, O_NONBLOCK);
-    if (pty_fd < 0)
+    if (pty_fd < 0) {
+        put_status(NULL, "cannot get tty");
         return -1;
-
+    }
+    fcntl(pty_fd, F_SETFL, O_NONBLOCK);
     /* set dummy screen size */
     ws.ws_col = 80;
     ws.ws_row = 25;
@@ -139,8 +140,10 @@ static int run_process(const char *path, const char **argv,
     ioctl(pty_fd, TIOCSWINSZ, &ws);
     
     pid = fork();
-    if (pid < 0)
+    if (pid < 0) {
+        put_status(NULL, "cannot fork");
         return -1;
+    }
     if (pid == 0) {
         /* child process */
         nb_fds = getdtablesize();
@@ -497,6 +500,7 @@ void shell_key(void *opaque, int key)
         } else {
             p = NULL;
         }
+        break;
     } 
     if (p)
         tty_write(s, p, len);
@@ -677,15 +681,21 @@ static void tty_emulate(ShellState *s, int c)
             switch (ESC2(s->esc1,c)) {
             case ESC2('?','h'): /* set terminal mode */
                 /* 1047, 1048 -> cup mode:
+                 * xterm 1049 private mode,
                  * should grab all keys while active!
                  */
-                if (s->esc_params[0] == 1047) {
+                if (s->esc_params[0] == 1047 ||
+                    s->esc_params[0] == 1048 ||
+                    s->esc_params[0] == 1049) {
                     s->grab_keys = 1;
                     qe_grab_keys(shell_key, s);
+                    /* Should also clear screen */
                 }
                 break;
             case ESC2('?','l'): /* reset terminal mode */
-                if (s->esc_params[0] == 1047) {
+                if (s->esc_params[0] == 1047 ||
+                    s->esc_params[0] == 1048 ||
+                    s->esc_params[0] == 1049) {
                     qe_ungrab_keys();
                     s->grab_keys = 0;
                 }
@@ -1301,6 +1311,7 @@ static CmdDef shell_commands[] = {
     CMD1( KEY_CTRL('d'), KEY_DELETE, "shell-delete-char", shell_write_char, 4)
     CMD1( KEY_CTRL('i'), KEY_NONE, "shell-tabulate", shell_write_char, 9)
     CMD1( KEY_CTRL('k'), KEY_NONE, "shell-kill-line", shell_write_char, 11)
+    CMD1( KEY_CTRL('y'), KEY_NONE, "shell-yank", shell_write_char, 25)
     CMD_DEF_END,
 };
 
