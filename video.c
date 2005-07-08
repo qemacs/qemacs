@@ -21,7 +21,7 @@
 #include <pthread.h>
 #include <math.h>
 
-extern EditBufferDataType video_data_type;
+static EditBufferDataType video_data_type;
 
 //#define DEBUG
 

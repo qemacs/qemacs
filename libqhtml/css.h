@@ -639,6 +639,6 @@ typedef struct CSSFile CSSFile;
 
 CSSFile *css_open(CSSContext *s, const char *filename);
 int css_filesize(CSSFile *f);
-int css_read(CSSFile *f, unsigned char *buf, int size);
+int css_read(CSSFile *f, char *buf, int size);
 void css_close(CSSFile *f);
 

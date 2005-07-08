@@ -162,7 +162,7 @@ int xml_mode_probe(ModeProbeData *p1)
 {
     const char *p;
 
-    p = p1->buf;
+    p = (const char *)p1->buf;
     while (css_is_space(*p))
         p++;
     if (*p != '<')

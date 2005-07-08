@@ -319,7 +319,7 @@ static void tty_init(ShellState *s)
     }
 }
 
-static void tty_write(ShellState *s, const unsigned char *buf, int len)
+static void tty_write(ShellState *s, const char *buf, int len)
 {
     int ret;
 
@@ -509,7 +509,7 @@ void shell_key(void *opaque, int key)
 static void tty_emulate(ShellState *s, int c)
 {
     int i, offset, offset1, offset2, n;
-    unsigned char buf1[10];
+    char buf1[10];
     
 #define ESC2(c1,c2)  (((c1)<<8)|((unsigned char)c2))
     /* some bytes are state independent */
@@ -1120,7 +1120,7 @@ void shell_move_eol(EditState *e)
 
 void shell_write_char(EditState *e, int c)
 {
-    unsigned char ch;
+    char ch;
 
     if (e->interactive) {
         ShellState *s = e->b->priv_data;

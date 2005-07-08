@@ -71,7 +71,7 @@ static int term_probe(void)
     return 1;
 }
 
-extern QEDisplay tty_dpy;
+static QEDisplay tty_dpy;
 
 static int term_init(QEditScreen *s, int w, int h)
 {
@@ -301,7 +301,7 @@ static void tty_read_handler(void *opaque)
     if (s->charset == &charset_utf8) {
         if (ts->utf8_state == 0) {
             const char *p;
-            p = ts->buf;
+            p = (const char *)ts->buf;
             ch = utf8_decode(&p);
         } else {
             ts->utf8_state = utf8_length[ts->buf[0]] - 1;

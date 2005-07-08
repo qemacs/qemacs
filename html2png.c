@@ -52,7 +52,7 @@ int css_filesize(CSSFile *f1)
     return size;
 }
 
-int css_read(CSSFile *f1, unsigned char *buf, int size)
+int css_read(CSSFile *f1, char *buf, int size)
 {
     FILE *f = (FILE *)f1;
 

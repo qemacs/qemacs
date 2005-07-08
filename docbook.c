@@ -26,7 +26,7 @@ static int docbook_mode_probe(ModeProbeData *p1)
     if (xml_mode_probe(p1) == 0)
         return 0;
     /* well, very crude, but it may work OK */
-    if (strstr(p1->buf, "DocBook"))
+    if (strstr((const char *)p1->buf, "DocBook"))
         return 100;
     return 0;
 }

@@ -39,7 +39,7 @@ typedef struct ImageState {
     QEColor background_color; /* transparent to display tiles */
 } ImageState;
 
-extern EditBufferDataType image_data_type;
+static EditBufferDataType image_data_type;
 
 int qe_bitmap_format_to_pix_fmt(int format)
 {

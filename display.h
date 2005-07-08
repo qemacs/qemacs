@@ -161,7 +161,7 @@ static inline void text_metrics(QEditScreen *s, QEFont *font,
 /* XXX: only needed for backward compatibility */
 static inline int glyph_width(QEditScreen *s, QEFont *font, int ch)
 {
-    int buf[1];
+    unsigned int buf[1];
     QECharMetrics metrics;
     buf[0] = ch;
     text_metrics(s, font, &metrics, buf, 1);

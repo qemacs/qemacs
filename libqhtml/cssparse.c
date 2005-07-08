@@ -237,6 +237,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
     CSSProperty **last_prop, *first_prop;
     const CSSPropertyDef *def;
 
+    val = 0;
     first_prop = NULL;
     last_prop = &first_prop;
     p = props_str;
@@ -384,8 +385,10 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
                 goto got_val;
             }
             if (type & CSS_TYPE_COLOR) {
+                QEColor color;
                 /* XXX: color parsing is not always discriminant */
-                if (!css_get_color(&val, buf)) {
+                if (!css_get_color(&color, buf)) {
+                    val = color;
                     unit = CSS_VALUE_COLOR;
                     goto got_val;
                 }

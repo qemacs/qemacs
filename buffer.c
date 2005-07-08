@@ -113,15 +113,16 @@ static int eb_rw(EditBuffer *b, int offset, u8 *buf, int size1, int do_write)
 }
 
 /* We must have: 0 <= offset < b->total_size */
-int eb_read(EditBuffer *b, int offset, u8 *buf, int size)
+int eb_read(EditBuffer *b, int offset, void *buf, int size)
 {
     return eb_rw(b, offset, buf, size, 0);
 }
 
 /* Note: eb_write can be used to insert after the end of the buffer */
-void eb_write(EditBuffer *b, int offset, u8 *buf, int size)
+void eb_write(EditBuffer *b, int offset, void *buf_arg, int size)
 {
     int len, left;
+    u8 *buf = buf_arg;
     
     len = eb_rw(b, offset, buf, size, 1);
     left = size - len;
@@ -330,7 +331,7 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
 
 /* Insert 'size' bytes from 'buf' into 'b' at offset 'offset'. We must
    have : 0 <= offset <= b->total_size */
-void eb_insert(EditBuffer *b, int offset, const u8 *buf, int size)
+void eb_insert(EditBuffer *b, int offset, const void *buf, int size)
 {
     eb_addlog(b, LOGOP_INSERT, offset, size);
 

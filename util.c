@@ -468,9 +468,9 @@ const char *keystr[] = {
     "f16", "f17", "f18", "f19", "f20",
 };
 
-int compose_keys(int *keys, int *nb_keys)
+int compose_keys(unsigned int *keys, int *nb_keys)
 {
-    int *keyp;
+    unsigned int *keyp;
 
     if (*nb_keys < 2)
         return 0;
@@ -680,7 +680,7 @@ static ColorDef *css_lookup_color(ColorDef *def, int count,
 int css_define_color(const char *name, const char *value)
 {
     ColorDef *def;
-    int color;
+    QEColor color;
 
     /* Check color validity */
     if (css_get_color(&color, value))
@@ -716,7 +716,7 @@ int css_define_color(const char *name, const char *value)
 }
 
 /* XXX: make HTML parsing optional ? */
-int css_get_color(int *color_ptr, const char *p)
+int css_get_color(QEColor *color_ptr, const char *p)
 {
     const ColorDef *def;
     int len, v, i, n;
@@ -980,7 +980,7 @@ int qmemcat(QString *q, const unsigned char *data1, int len1)
  */
 int qstrcat(QString *q, const char *str)
 {
-        return qmemcat(q, str, strlen(str));
+        return qmemcat(q, (unsigned char *)str, strlen(str));
 }
 
 /* XXX: we use a fixed size buffer */
@@ -995,7 +995,7 @@ int qprintf(QString *q, const char *fmt, ...)
     /* avoid problems for non C99 snprintf() which can return -1 if overflow */
         if (len < 0)
                 len = strlen(buf);
-        ret = qmemcat(q, buf, len);
+        ret = qmemcat(q, (unsigned char *)buf, len);
         va_end(ap);
         return ret;
 }

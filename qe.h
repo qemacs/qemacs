@@ -92,12 +92,12 @@ int ustristart(const unsigned int *str, const char *val, const unsigned int **pt
 void css_strtolower(char *buf, int buf_size);
 
 void get_str(const char **pp, char *buf, int buf_size, const char *stop);
-int compose_keys(int *keys, int *nb_keys);
+int compose_keys(unsigned int *keys, int *nb_keys);
 int strtokey(const char **pp);
 int strtokeys(const char *keystr, unsigned int *keys, int max_keys);
 void keytostr(char *buf, int buf_size, int key);
 int css_define_color(const char *name, const char *value);
-int css_get_color(int *color_ptr, const char *p);
+int css_get_color(unsigned int *color_ptr, const char *p);
 int css_get_font_family(const char *str);
 void css_union_rect(CSSRect *a, CSSRect *b);
 static inline int css_is_null_rect(CSSRect *a)
@@ -271,14 +271,14 @@ static inline int charset_decode(CharsetDecodeState *s, const char **pp)
 {
     const unsigned char *p;
     int c;
-    p = *pp;
+    p = *(const unsigned char **)pp;
     c = *p;
     c = s->table[c];
     if (c == ESCAPE_CHAR) {
         c = s->decode_func(s, (const unsigned char **)pp);
     } else {
         p++;
-        *pp = p;
+        *(const unsigned char **)pp = p;
     }
     return c;
 }
@@ -555,12 +555,12 @@ typedef struct LogBuffer {
 extern EditBuffer *trace_buffer;
 
 void eb_init(void);
-int eb_read(EditBuffer *b, int offset, u8 *buf, int size);
-void eb_write(EditBuffer *b, int offset, u8 *buf, int size);
+int eb_read(EditBuffer *b, int offset, void *buf, int size);
+void eb_write(EditBuffer *b, int offset, void *buf, int size);
 void eb_insert_buffer(EditBuffer *dest, int dest_offset, 
                       EditBuffer *src, int src_offset, 
                       int size);
-void eb_insert(EditBuffer *b, int offset, const u8 *buf, int size);
+void eb_insert(EditBuffer *b, int offset, const void *buf, int size);
 void eb_delete(EditBuffer *b, int offset, int size);
 void log_reset(EditBuffer *b);
 EditBuffer *eb_new(const char *name, int flags);
@@ -781,7 +781,7 @@ int to_hex(int key);
 struct DisplayState;
 
 typedef struct ModeProbeData {
-    unsigned char *filename;
+    char *filename;
     unsigned char *buf;
     int buf_size;
     int mode;     /* unix mode */

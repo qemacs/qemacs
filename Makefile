@@ -29,7 +29,7 @@ CONFIG_UNICODE_JOIN=y
 #
 CONFIG_ALL_KMAPS=y
 
-CFLAGS:=-Wall -g $(CFLAGS)
+CFLAGS:=-Wall -g $(CFLAGS) -funsigned-char
 ifdef TARGET_GPROF
 CFLAGS+= -p
 LDFLAGS+= -p

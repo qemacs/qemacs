@@ -2269,7 +2269,7 @@ static void flush_line(DisplayState *s,
                 /* RTL eol mark */
                 if (!last && s->base == DIR_RTL) {
                     /* XXX: optimize that ! */
-                    int markbuf[1];
+                    unsigned int markbuf[1];
                 
                     font = select_font(screen, 
                                        default_style.font_style, 
@@ -2297,7 +2297,7 @@ static void flush_line(DisplayState *s,
                 /* LTR eol mark */
                 if (!last && s->base == DIR_LTR) {
                     /* XXX: optimize that ! */
-                    int markbuf[1];
+                    unsigned int markbuf[1];
                 
                     font = select_font(screen, 
                                        default_style.font_style,
@@ -4832,7 +4832,7 @@ static ModeDef *probe_mode(EditState *s, int mode, uint8_t *buf, int len)
 static void do_load1(EditState *s, const char *filename1,
                      int kill_buffer, int load_resource)
 {
-    char buf[1025];
+    u8 buf[1025];
     char filename[MAX_FILENAME_SIZE];
     int mode, buf_size;
     ModeDef *selected_mode;
@@ -5325,7 +5325,7 @@ static void isearch_display(ISearchState *is)
                         hex_nibble ^= 1;
                     }
                 } else {
-                    q += unicode_to_charset(q, v, s->b->charset);
+                    q += unicode_to_charset((char *)q, v, s->b->charset);
                 }
             }
         } else {
@@ -5772,8 +5772,6 @@ void do_refresh(EditState *s1)
 
     if (resized) {
         put_status(NULL, "Screen is now %d by %d", width, height);
-    } else {
-        put_status(NULL, " ");
     }
 }
 

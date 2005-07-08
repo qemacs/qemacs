@@ -413,8 +413,8 @@ static void decode_glyph(UniFontData *uf,
                          unsigned char *outbuf,
                          int w, int h)
 {
-    char *p;
-    char bitmap[WRAP * (MAXHEIGHT + MAXDIST)];
+    unsigned char *p;
+    unsigned char bitmap[WRAP * (MAXHEIGHT + MAXDIST)];
     int v, v1, x, y, b, i;
     unsigned int lbuf, w1;
 
