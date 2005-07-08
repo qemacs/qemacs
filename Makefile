@@ -361,3 +361,4 @@ test:
 # documentation
 qe-doc.html: qe-doc.texi
 	texi2html -monolithic -number $<
+
