@@ -50,12 +50,12 @@ bigendian="no"
 mpegaudio_hp="yes"
 
 tiny="no"
-x11="yes"
-xv="yes"
+x11="no"
+xv="no"
 xrender="no"
-png="yes"
+png="no"
 ffmpeg="no"
-html="yes"
+html="no"
 plugins="yes"
 initcalls="yes"
 exe=""
@@ -96,13 +96,21 @@ if test -z "$source_path" -o "$source_path" = "." ; then
     source_path_used="no"
 fi
 
-if test -d ./ffmpeg ; then
+if test -d "./ffmpeg" ; then
     ffmpeg="yes"
     ffmpeg_srcdir="./ffmpeg"
 fi
 
-if test ! -f /usr/include/png.h ; then
-    png="no"
+if test -f "/usr/include/png.h" ; then
+    png="yes"
+fi
+
+if test -f "/usr/include/X11/Xlib.h" ; then
+    x11="yes"
+    html="yes"
+    if test -f "/usr/include/X11/extensions/Xv.h" ; then
+        xv="yes"
+    fi
 fi
 
 for opt do
@@ -151,6 +159,8 @@ for opt do
   ;;
   --disable-plugins) plugins="no"
   ;;
+  --disable-ffmpeg) ffmpeg="no"
+  ;;
   --with-ffmpegdir=*)  ffmpeg_srcdir=${opt#--with-ffmpegdir=} ; ffmpeg="yes"
   ;;
   --with-ffmpeglibdir=*)  ffmpeg_libdir=${opt#--with-ffmpeglibdir=}
@@ -180,6 +190,14 @@ if test "$cygwin" = "yes" ; then
     plugins="no"
     initcalls="no"
     exe=".exe"
+fi
+
+if test "$x11" = "no" ; then
+    xv="no"
+    xrender="no"
+    png="no"
+    ffmpeg="no"
+    html="no"
 fi
 
 # endianness : guess with cpu type. Should also use prefix
@@ -267,6 +285,7 @@ echo "  --enable-tiny            build a very small version"
 echo "  --disable-html           disable graphical html support"
 echo "  --disable-png            disable png support"
 echo "  --disable-plugins        disable plugins support"
+echo "  --disable-ffmpeg         disable ffmpeg support"
 echo "  --with-ffmpegdir=DIR     find ffmpeg sources and libraries in DIR"
 echo "                           for audio/video/image support"
 echo ""
