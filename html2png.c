@@ -202,81 +202,84 @@ extern void png_write_init();
 int png_save(QEditScreen *s, const char *filename)
 {
     CFBContext *cfb = s->private;
-    png_struct * volatile png_ptr = NULL;
-    png_info * volatile info_ptr = NULL;
-    png_byte *row_ptr, *row_pointers[1], *row = NULL;
-    int w, h, x, y;
-    unsigned int r, g, b, v;
-    unsigned int *data;
-    FILE * volatile f = NULL;
+    struct png_save_data {
+        FILE *f;
+        png_structp png_ptr;
+        png_infop info_ptr;
+        png_byte *row_buf;
+    } d;
 
-    row = malloc(3 * s->width);
-    if (!row)
-        goto fail;
-    png_ptr = malloc(sizeof (png_struct));
-    if (!png_ptr)
-        goto fail;
-    info_ptr = malloc(sizeof (png_info));
-    if (!info_ptr)
-        goto fail;
-    
-    f = fopen(filename, "w");
-    if (!f) 
+    d.f = fopen(filename, "wb");
+    if (!d.f)
+        return -1;
+
+    d.png_ptr = NULL;
+    d.row_buf = NULL;
+    d.info_ptr = NULL;
+
+    d.png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING,
+                                        NULL, NULL, NULL);
+    if (!d.png_ptr)
         goto fail;
 
-    if (setjmp(png_ptr->jmpbuf)) {
-        png_write_destroy(png_ptr);
+    d.info_ptr = png_create_info_struct(d.png_ptr);
+    if (!d.info_ptr)
+        goto fail;
+
+    d.row_buf = malloc(3 * s->width);
+    if (!d.row_buf)
+        goto fail;
+
+    if (!setjmp(png_jmpbuf(d.png_ptr))) {
+        int w, h, x, y;
+        unsigned int r, g, b, v;
+        unsigned int *data;
+        png_byte *row_ptr, *row_pointers[1];
+
+        png_init_io(d.png_ptr, d.f);
+
+        data = (unsigned int *)cfb->base;
+        w = s->width;
+        h = s->height;
+
+        png_set_IHDR(d.png_ptr, d.info_ptr, w, h, 8, PNG_COLOR_TYPE_RGB,
+                     PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
+                     PNG_FILTER_TYPE_DEFAULT);
+        png_write_info(d.png_ptr, d.info_ptr);
+
+        row_pointers[0] = d.row_buf;
+
+        for (y = 0; y < h; y++) {
+            row_ptr = d.row_buf;
+            for (x = 0; x < w; x++) {
+                v = data[x];
+                r = (v >> 16) & 0xff;
+                g = (v >> 8) & 0xff;
+                b = (v) & 0xff;
+                row_ptr[0] = r;
+                row_ptr[1] = g;
+                row_ptr[2] = b;
+                row_ptr += 3;
+            }
+            png_write_rows(d.png_ptr, row_pointers, 1);
+            data = (void *)((char *)data + cfb->wrap);
+        }
+        png_write_end(d.png_ptr, d.info_ptr);
+        png_destroy_write_struct(&d.png_ptr, &d.info_ptr);
+        fclose(d.f);
+        return 0;
+    } else {
     fail:
         /* free pointers before returning.  Make sure you clean up
            anything else you've done. */
-        free(png_ptr);
-        free(info_ptr);
-        free(row);
-        if (f)
-            fclose(f);
+        if (d.png_ptr) {
+            png_destroy_write_struct(&d.png_ptr,
+                                     d.info_ptr ? &d.info_ptr : NULL);
+        }
+        free(d.row_buf);
+        fclose(d.f);
         return -1;
     }
-
-    png_info_init(info_ptr);
-    png_write_init(png_ptr);
-    png_init_io(png_ptr, f);
-    
-    data = (unsigned int *)cfb->base;
-    w = s->width;
-    h = s->height;
-
-    info_ptr->width = w;
-    info_ptr->height = h;
-    info_ptr->bit_depth = 8;
-    info_ptr->color_type = PNG_COLOR_TYPE_RGB;
-
-    png_write_info(png_ptr, info_ptr);
-
-    row_pointers[0] = row;
-
-    for (y = 0; y < h; y++) {
-        row_ptr = row;
-        for (x = 0; x < w; x++) {
-            v = data[x];
-            r = (v >> 16) & 0xff;
-            g = (v >> 8) & 0xff;
-            b = (v) & 0xff;
-            row_ptr[0] = r;
-            row_ptr[1] = g;
-            row_ptr[2] = b;
-            row_ptr += 3;
-        }
-        png_write_rows(png_ptr, row_pointers, 1);
-        data = (void *)((char *)data + cfb->wrap);
-    }
-    png_write_end(png_ptr, info_ptr);
-    png_write_destroy(png_ptr);
-
-    free(png_ptr);
-    free(info_ptr);
-    free(row);
-    fclose(f);
-    return 0;
 }
 
 #endif
