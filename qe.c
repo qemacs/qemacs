@@ -268,20 +268,27 @@ void qe_register_cmd_table(CmdDef *cmds, const char *mode)
         m = find_mode(mode);
 
     /* find last command table */
-    ld = &first_cmd;
-    while (*ld != NULL) {
+    for (ld = &first_cmd;;) {
         d = *ld;
+        if (d == NULL) {
+            /* link new command table */
+            *ld = cmds;
+            break;
+        }
+        if (d == cmds) {
+            /* Command table already registered, still do the binding
+             * phase to allow multiple mode bindings.
+             */
+            break;
+        }
         while (d->name != NULL) {
             d++;
         }
         ld = &d->action.next;
     }
-    /* add new command table */
-    *ld = cmds;
 
     /* add default bindings */
-    d = cmds;
-    while (d->name != NULL) {
+    for (d = cmds; d->name != NULL; d++) {
         if (d->key == KEY_CTRL('x')) {
             unsigned int keys[2];
             keys[0] = d->key;
@@ -293,7 +300,6 @@ void qe_register_cmd_table(CmdDef *cmds, const char *mode)
             if (d->alt_key != KEY_NONE)
                 qe_register_binding2(d->alt_key, d, m);
         }
-        d++;
     }
 }
 
@@ -4413,6 +4419,18 @@ void do_history(EditState *s, int dir)
     set_minibuffer_str(s, str);
     if (index == hist->nb_items - 1) {
         s->offset = minibuffer_history_saved_offset;
+    }
+}
+
+void do_minibuffer_get_binary(EditState *s)
+{
+    unsigned long offset;
+
+    if (minibuffer_saved_active) {
+        eb_read(minibuffer_saved_active->b,
+                minibuffer_saved_active->offset,
+                &offset, sizeof(offset));
+        eb_printf(s->b, "%lu", offset);
     }
 }
 

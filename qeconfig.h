@@ -195,6 +195,8 @@ CmdDef minibuffer_commands[] = {
     CMD1( KEY_RET, KEY_NONE, "minibuffer-exit", do_minibuffer_exit, 0)
     CMD1( KEY_CTRL('g'), KEY_NONE, "minibuffer-abort", do_minibuffer_exit, 1)
     CMD0( KEY_CTRL('i'), KEY_NONE, "minibuffer-complete", do_completion)
+    /* should take numeric prefix to specify word size */
+    CMD0( KEY_META('='), KEY_NONE, "minibuffer-get-binary", do_minibuffer_get_binary)
     CMD0( ' ', KEY_NONE, "minibuffer-complete-space", do_completion_space)
     CMD1( KEY_CTRL('p'), KEY_UP, "previous-history-element", do_history, -1 )
     CMD1( KEY_CTRL('n'), KEY_DOWN, "next-history-element", do_history, 1 )
