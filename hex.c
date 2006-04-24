@@ -124,7 +124,7 @@ static CmdDef hex_commands[] = {
     CMD1( KEY_NONE, KEY_NONE, "decrease-width", do_incr_width, -1)
     CMD1( KEY_NONE, KEY_NONE, "increase-width", do_incr_width, 1)
     CMD_( KEY_NONE, KEY_NONE, "set-width", do_set_width, "i{Width: }")
-    CMD_( KEY_NONE, KEY_NONE, "goto-byte", do_goto_byte, "i{Goto byte: }")
+    CMD_( KEY_META('g'), KEY_NONE, "goto-byte", do_goto_byte, "i{Goto byte: }")
     CMD0( KEY_NONE, KEY_NONE, "toggle-hex", do_toggle_hex)
     CMD_DEF_END,
 };
@@ -339,7 +339,8 @@ static int hex_init(void)
     qe_register_mode(&hex_mode);
 
     /* commands and default keys */
-    qe_register_cmd_table(hex_commands, NULL);
+    qe_register_cmd_table(hex_commands, "hex");
+    qe_register_cmd_table(hex_commands, "ascii");
 
     /* additionnal mode specific keys */
     qe_register_binding(KEY_CTRL_LEFT, "decrease-width", "ascii|hex");
