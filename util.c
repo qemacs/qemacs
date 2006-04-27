@@ -53,6 +53,7 @@ FindFileState *find_file_open(const char *path, const char *pattern)
     pstrcpy(s->path, sizeof(s->path), path);
     pstrcpy(s->pattern, sizeof(s->pattern), pattern);
     s->bufptr = s->path;
+    s->dirpath[0] = '\0';
     s->dir = NULL;
     return s;
 }
