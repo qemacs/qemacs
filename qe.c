@@ -5789,7 +5789,8 @@ void do_refresh(EditState *s1)
     qs->status_shadow[0] = '\0';
 
     if (resized) {
-        put_status(NULL, "Screen is now %d by %d", width, height);
+        put_status(NULL, "Screen is now %d by %d (%d rows)",
+                   width, height, height / new_status_height);
     }
 }
 
