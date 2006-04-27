@@ -30,6 +30,7 @@ static inline void qstrinit(QString *q)
 static inline void qstrfree(QString *q)
 {
     free(q->data);
+    q->data = NULL;
 }
 
 int qmemcat(QString *q, const unsigned char *data1, int len1);
