@@ -1,252 +1,289 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                      "http://www.w3.org/TR/html40/loose.dtd">
 <HTML>
+<!-- Created on May, 7 2006 by texi2html 1.66 -->
+<!--
+Written by: Lionel Cons <Lionel.Cons@cern.ch> (original author)
+            Karl Berry  <karl@freefriends.org>
+            Olaf Bachmann <obachman@mathematik.uni-kl.de>
+            and many others.
+Maintained by: Many creative people <dev@texi2html.cvshome.org>
+Send bugs and suggestions to <users@texi2html.cvshome.org>
+
+-->
 <HEAD>
-<!-- Created by texi2html 1.56k from qe-doc.texi on 21 April 2003 -->
-
 <TITLE>QEmacs Documentation</TITLE>
+
+<META NAME="description" CONTENT="QEmacs Documentation">
+<META NAME="keywords" CONTENT="QEmacs Documentation">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+<META NAME="Generator" CONTENT="texi2html 1.66">
+
 </HEAD>
-<BODY>
-<H1>QEmacs Documentation</H1>
+
+<BODY LANG="en" BGCOLOR="#FFFFFF" TEXT="#000000" LINK="#0000FF" VLINK="#800080" ALINK="#FF0000">
+
+<A NAME="SEC1"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC2"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[ &lt;&lt; ]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC2"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
 <P>
-<P><HR><P>
-<H1>Table of Contents</H1>
-<UL>
-<LI><A NAME="TOC1" HREF="qe-doc.html#SEC1">1. Introduction</A>
-<LI><A NAME="TOC2" HREF="qe-doc.html#SEC2">2. Invocation</A>
-<LI><A NAME="TOC3" HREF="qe-doc.html#SEC3">3. Common editing commands</A>
-<UL>
-<LI><A NAME="TOC4" HREF="qe-doc.html#SEC4">3.1 Concepts</A>
-<LI><A NAME="TOC5" HREF="qe-doc.html#SEC5">3.2 Help</A>
-<LI><A NAME="TOC6" HREF="qe-doc.html#SEC6">3.3 Simple commands</A>
-<LI><A NAME="TOC7" HREF="qe-doc.html#SEC7">3.4 Region handling</A>
-<LI><A NAME="TOC8" HREF="qe-doc.html#SEC8">3.5 Buffer and file handling</A>
-<LI><A NAME="TOC9" HREF="qe-doc.html#SEC9">3.6 Search and replace</A>
-<LI><A NAME="TOC10" HREF="qe-doc.html#SEC10">3.7 Command handling</A>
-<LI><A NAME="TOC11" HREF="qe-doc.html#SEC11">3.8 Window handling</A>
-<LI><A NAME="TOC12" HREF="qe-doc.html#SEC12">3.9 International</A>
-<LI><A NAME="TOC13" HREF="qe-doc.html#SEC13">3.10 Miscellaneous</A>
-</UL>
-<LI><A NAME="TOC14" HREF="qe-doc.html#SEC14">4. Configuration file and resources</A>
-<UL>
-<LI><A NAME="TOC15" HREF="qe-doc.html#SEC15">4.1 Resource path</A>
-<LI><A NAME="TOC16" HREF="qe-doc.html#SEC16">4.2 Configuration file</A>
-<LI><A NAME="TOC17" HREF="qe-doc.html#SEC17">4.3 Plugins</A>
-</UL>
-<LI><A NAME="TOC18" HREF="qe-doc.html#SEC18">5. Internationalization</A>
-<UL>
-<LI><A NAME="TOC19" HREF="qe-doc.html#SEC19">5.1 Charsets</A>
-<LI><A NAME="TOC20" HREF="qe-doc.html#SEC20">5.2 Input methods</A>
-<LI><A NAME="TOC21" HREF="qe-doc.html#SEC21">5.3 Bidirectional editing</A>
-<LI><A NAME="TOC22" HREF="qe-doc.html#SEC22">5.4 Unicode scripts</A>
-</UL>
-<LI><A NAME="TOC23" HREF="qe-doc.html#SEC23">6. Editing Modes</A>
-<UL>
-<LI><A NAME="TOC24" HREF="qe-doc.html#SEC24">6.1 C mode</A>
-<LI><A NAME="TOC25" HREF="qe-doc.html#SEC25">6.2 Hexadecimal, ascii and unihex modes</A>
-<LI><A NAME="TOC26" HREF="qe-doc.html#SEC26">6.3 shell mode</A>
-<LI><A NAME="TOC27" HREF="qe-doc.html#SEC27">6.4 Dired mode</A>
-<LI><A NAME="TOC28" HREF="qe-doc.html#SEC28">6.5 Bufed mode</A>
-<LI><A NAME="TOC29" HREF="qe-doc.html#SEC29">6.6 XML mode</A>
-<LI><A NAME="TOC30" HREF="qe-doc.html#SEC30">6.7 Graphical HTML2/CSS mode</A>
-<UL>
-<LI><A NAME="TOC31" HREF="qe-doc.html#SEC31">6.7.1 Usage</A>
-<LI><A NAME="TOC32" HREF="qe-doc.html#SEC32">6.7.2 Features</A>
-<LI><A NAME="TOC33" HREF="qe-doc.html#SEC33">6.7.3 Known limitations</A>
-<LI><A NAME="TOC34" HREF="qe-doc.html#SEC34">6.7.4 CSS property support</A>
-</UL>
-<LI><A NAME="TOC35" HREF="qe-doc.html#SEC35">6.8 Graphical DocBook mode</A>
-<LI><A NAME="TOC36" HREF="qe-doc.html#SEC36">6.9 Image mode</A>
-<LI><A NAME="TOC37" HREF="qe-doc.html#SEC37">6.10 Audio/Video mode</A>
-</UL>
-<LI><A NAME="TOC38" HREF="qe-doc.html#SEC38">7. Fonts</A>
-<UL>
-<LI><A NAME="TOC39" HREF="qe-doc.html#SEC39">7.1 VT100 display</A>
-<LI><A NAME="TOC40" HREF="qe-doc.html#SEC40">7.2 X11 display</A>
-<LI><A NAME="TOC41" HREF="qe-doc.html#SEC41">7.3 Internal QEmacs fonts</A>
-</UL>
-<LI><A NAME="TOC42" HREF="qe-doc.html#SEC42">8. Html2png Tool</A>
-<UL>
-<LI><A NAME="TOC43" HREF="qe-doc.html#SEC43">8.1 Introduction</A>
-<LI><A NAME="TOC44" HREF="qe-doc.html#SEC44">8.2 Invocation</A>
-</UL>
-<LI><A NAME="TOC45" HREF="qe-doc.html#SEC45">9. Developper's Guide</A>
-<UL>
-<LI><A NAME="TOC46" HREF="qe-doc.html#SEC46">9.1 Plugins</A>
-</UL>
-</UL>
-<P><HR><P>
 
+<center>
+</center>
+</P>
 <P>
-QEmacs Documentation
 
-
-
-
-<H1><A NAME="SEC1" HREF="qe-doc.html#TOC1">1. Introduction</A></H1>
-<P>
+<H1> 1. Introduction </H1>
+<!--docid::SEC1::-->
 QEmacs (for Quick Emacs) is a very small but powerful
 UNIX editor. It has features that even big editors lack :
-
 <UL>
 
 <LI>Full screen editor with an Emacs look and feel with all Emacs common
-
   features: multi-buffer, multi-window, command mode, universal
   argument, keyboard macros, config file with C like syntax, minibuffer
   with completion and history.
+<P>
 
+</P>
 <LI>Can edit files of hundreds of Megabytes without being slow by using
-
   a highly optimized internal representation and by mmaping the file.
+<P>
 
+</P>
 <LI>Full <EM>Unicode</EM> support, including multi charset handling
-
   (8859-x, UTF8, SJIS, EUC-JP, ...) and bidirectional editing respecting
   the Unicode bidi algorithm. Arabic and Indic scripts handling (in
   progress).
+<P>
 
+</P>
 <LI>WYSIWYG <EM>HTML/XML/CSS2</EM> mode graphical editing. Also supports lynx like
-
 rendering on VT100 terminals.
+<P>
 
+</P>
 <LI>WYSIWYG <EM>DocBook</EM> mode based on XML/CSS2 renderer.
+<P>
 
+</P>
 <LI>C mode: coloring with immediate update. Emacs like auto-indent.
+<P>
 
+</P>
 <LI>Shell mode: colorized VT100 emulation so that your shell work
-
   exactly as you expect. Compile mode with next/prev error. 
+<P>
 
+</P>
 <LI>Input methods for most languages, including Chinese (input methods
-
   come from the Yudit editor). 
+<P>
 
+</P>
 <LI><EM>Hexadecimal editing</EM> mode with insertion and block commands. Unicode
-
   hexa editing is also supported.
+<P>
 
+</P>
 <LI>Works on any VT100 terminals without termcap. UTF8 VT100 support
-
   included with double width glyphs.
+<P>
 
+</P>
 <LI>X11 support. Support multiple proportionnal fonts at the same time
-
   (as XEmacs). X Input methods supported. Xft extension supported for
   anti aliased font display.
+<P>
 
+</P>
 <LI>
-
   Small! Full version (including HTML/XML/CSS2/DocBook rendering and all
   charsets): 200KB big. Basic version (without bidir/unicode
   scripts/input/X11/C/Shell/HTML/dired): 49KB.
+<P>
 
 </UL>
+<P>
 
+<HR SIZE="6">
+<A NAME="SEC2"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H1> 2. Invocation </H1>
+<!--docid::SEC2::-->
+<P>
 
-
-<H1><A NAME="SEC2" HREF="qe-doc.html#TOC2">2. Invocation</A></H1>
-
-
-<PRE>
-usage: qe [-h] [-nw] [-display display] [-geometry WxH] 
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>usage: qe [-h] [-nw] [-display display] [-geometry WxH] 
           [-fs ptsize] [filename...]
-</PRE>
+</pre></td></tr></table><P>
 
+</P>
 <DL COMPACT>
 
-<DT><SAMP>`-h'</SAMP>
-<DD>
-show help
+<DT>`<SAMP>-h</SAMP>'
+<DD>show help
+<P>
 
-<DT><SAMP>`-nw'</SAMP>
-<DD>
-force tty terminal usage
+</P>
+<DT>`<SAMP>-nw</SAMP>'
+<DD>force tty terminal usage
+<P>
 
-<DT><SAMP>`-display display'</SAMP>
-<DD>
-set X11 display to 'display'
+</P>
+<DT>`<SAMP>-display display</SAMP>'
+<DD>set X11 display to 'display'
+<P>
 
-<DT><SAMP>`-geometry WxH'</SAMP>
-<DD>
-set X11 display size
+</P>
+<DT>`<SAMP>-geometry WxH</SAMP>'
+<DD>set X11 display size
+<P>
 
-<DT><SAMP>`-fs ptsize'</SAMP>
-<DD>
-set default font size
+</P>
+<DT>`<SAMP>-fs ptsize</SAMP>'
+<DD>set default font size
+<P>
 
 </DL>
-
 <P>
+
 When invoked as
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>usage: ffplay 
+</pre></td></tr></table><P>
 
-<PRE>
-usage: ffplay 
-</PRE>
-
-<P>
 QEmacs goes to <CODE>dired</CODE> mode automatically so that you can browse your
 files easily (same as <KBD>C-x C-d</KBD> key).
-
-
-
-
-<H1><A NAME="SEC3" HREF="qe-doc.html#TOC3">3. Common editing commands</A></H1>
-
-
-
-<H2><A NAME="SEC4" HREF="qe-doc.html#TOC4">3.1 Concepts</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC3"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC2"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC4"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC2"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H1> 3. Common editing commands </H1>
+<!--docid::SEC3::-->
+<P>
+
+<HR SIZE="6">
+<A NAME="SEC4"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC5"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 3.1 Concepts </H2>
+<!--docid::SEC4::-->
+<P>
+
 QEmacs store file content in <EM>buffers</EM>. Buffers can be seen as big
 arrays of bytes.
-
-
+</P>
 <P>
+
 An <EM>editing mode</EM> tells how to display the content of a buffer and
 how to interact with the user to modify its content.
-
-
+</P>
 <P>
+
 Multiple <EM>Windows</EM> can be shown on the screen at the same time. Each
 windows show the content of a buffer with an editing mode. It means that
 you can open several windows which show the same buffer in different
 modes (for example, both text and hexadecimal).
-
-
+</P>
 <P>
+
 Each key binding activates a <EM>command</EM>. You can directly execute a
 command by typing <KBD>M-x command RET</KBD>.
-
-
+</P>
 <P>
+
 Commands can take arguments. The key binding <KBD>C-u N</KBD> where N is an
 optional number is used to give a numeric argument to the commands which
 can handle them. If the command cannot handle a numerical argument, it
 is simply repeated <CODE>N</CODE> times.
-
-
-
-
-<H2><A NAME="SEC5" HREF="qe-doc.html#TOC5">3.2 Help</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC5"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC4"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC6"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 3.2 Help </H2>
+<!--docid::SEC5::-->
+<P>
+
 You can press <KBD>C-h b</KBD> to have the list of all the currently active
 bindings, including the ones of the current editing mode.
+</P>
+<P>
 
-
-
-<PRE>
-C-h C-h, F1             : help-for-help
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>C-h C-h, F1             : help-for-help
 C-h b                   : describe-bindings
 C-h c                   : describe-key-briefly
-</PRE>
+</pre></td></tr></table><P>
 
+<HR SIZE="6">
+<A NAME="SEC6"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC5"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC7"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 3.3 Simple commands </H2>
+<!--docid::SEC6::-->
+<P>
 
-
-<H2><A NAME="SEC6" HREF="qe-doc.html#TOC6">3.3 Simple commands</A></H2>
-
-
-<PRE>
-default                 : self-insert-command
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>default                 : self-insert-command
 C-p, up                 : previous-line
 C-n, down               : next-line
 C-b, left               : backward-char
@@ -260,37 +297,59 @@ end, C-e                : end-of-line
 insert                  : overwrite-mode
 C-d, delete             : delete-char
 backspace               : backward-delete-char
-M-&#60;, C-home             : beginning-of-buffer
-M-&#62;, C-end              : end-of-buffer
+M-&lt;, C-home             : beginning-of-buffer
+M-&gt;, C-end              : end-of-buffer
 C-i                     : tabulate
 C-q                     : quoted-insert
 RET                     : newline
 M-{                     : backward-paragraph
 M-}                     : forward-paragraph
-</PRE>
+</pre></td></tr></table><P>
 
+<HR SIZE="6">
+<A NAME="SEC7"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC6"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC8"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 3.4 Region handling </H2>
+<!--docid::SEC7::-->
+<P>
 
-
-<H2><A NAME="SEC7" HREF="qe-doc.html#TOC7">3.4 Region handling</A></H2>
-
-
-<PRE>
-C-k                     : kill-line
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>C-k                     : kill-line
 C-space                 : set-mark-command
 C-w                     : kill-region
 M-w                     : copy-region
 C-y                     : yank
 M-y                     : yank-pop
 C-x C-x                 : exchange-point-and-mark
-</PRE>
+</pre></td></tr></table><P>
 
+<HR SIZE="6">
+<A NAME="SEC8"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC7"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC9"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 3.5 Buffer and file handling </H2>
+<!--docid::SEC8::-->
+<P>
 
-
-<H2><A NAME="SEC8" HREF="qe-doc.html#TOC8">3.5 Buffer and file handling</A></H2>
-
-
-<PRE>
-C-x C-s                 : save-buffer
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>C-x C-s                 : save-buffer
 C-x C-w                 : write-file
 C-x C-c                 : suspend-emacs
 C-x C-f                 : find-file
@@ -300,67 +359,122 @@ C-x k                   : kill-buffer
 C-x i                   : insert-file
 C-x C-q                 : vc-toggle-read-only
 C-x C-b                 : list-buffers
-</PRE>
+</pre></td></tr></table><P>
 
+<HR SIZE="6">
+<A NAME="SEC9"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC8"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC10"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 3.6 Search and replace </H2>
+<!--docid::SEC9::-->
+<P>
 
-
-<H2><A NAME="SEC9" HREF="qe-doc.html#TOC9">3.6 Search and replace</A></H2>
-
-
-<PRE>
-C-s                     : isearch-backward
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>C-s                     : isearch-backward
 C-r                     : isearch-forward
 M-%                     : query-replace
-</PRE>
+</pre></td></tr></table><P>
 
+<HR SIZE="6">
+<A NAME="SEC10"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC9"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC11"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 3.7 Command handling </H2>
+<!--docid::SEC10::-->
+<P>
 
-
-<H2><A NAME="SEC10" HREF="qe-doc.html#TOC10">3.7 Command handling</A></H2>
-
-
-<PRE>
-M-x                     : execute-extended-command
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>M-x                     : execute-extended-command
 C-u                     : universal-argument
 C-g                     : abort
 C-x u, C-_              : undo
 C-x (                   : start-kbd-macro
 C-x )                   : end-kbd-macro
 C-x e                   : call-last-kbd-macro
-</PRE>
+</pre></td></tr></table><P>
 
+<HR SIZE="6">
+<A NAME="SEC11"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC10"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC12"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 3.8 Window handling </H2>
+<!--docid::SEC11::-->
+<P>
 
-
-<H2><A NAME="SEC11" HREF="qe-doc.html#TOC11">3.8 Window handling</A></H2>
-
-
-<PRE>
-C-x o                   : other-window
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>C-x o                   : other-window
 C-x 0                   : delete-window
 C-x 1                   : delete-other-windows
 C-x 2                   : split-window-vertically
 C-x 3                   : split-window-horizontally
 C-x f                   : toggle-full-screen
-</PRE>
+</pre></td></tr></table><P>
 
+<HR SIZE="6">
+<A NAME="SEC12"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC11"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC13"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 3.9 International </H2>
+<!--docid::SEC12::-->
+<P>
 
-
-<H2><A NAME="SEC12" HREF="qe-doc.html#TOC12">3.9 International</A></H2>
-
-
-<PRE>
-C-x RET f               : set-buffer-file-coding-system
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>C-x RET f               : set-buffer-file-coding-system
 C-x RET b               : toggle-bidir
 C-x RET C-\             : set-input-method
 C-\                     : switch-input-method
-</PRE>
+</pre></td></tr></table><P>
 
+<HR SIZE="6">
+<A NAME="SEC13"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC12"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 3.10 Miscellaneous </H2>
+<!--docid::SEC13::-->
+<P>
 
-
-<H2><A NAME="SEC13" HREF="qe-doc.html#TOC13">3.10 Miscellaneous</A></H2>
-
-
-<PRE>
-C-l                     : refresh
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>C-l                     : refresh
 M-g                     : goto-line
 M-q                     : fill-paragraph
 C-x RET l               : toggle-line-numbers
@@ -370,872 +484,1838 @@ C-x C-e                 : compile
 C-x C-p                 : previous-error
 C-x C-n                 : next-error
 C-x C-d                 : dired
-</PRE>
+</pre></td></tr></table><P>
 
-
-
-<H1><A NAME="SEC14" HREF="qe-doc.html#TOC14">4. Configuration file and resources</A></H1>
-
-
-
-<H2><A NAME="SEC15" HREF="qe-doc.html#TOC15">4.1 Resource path</A></H2>
-
+<HR SIZE="6">
+<A NAME="SEC14"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC13"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC15"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC3"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC18"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H1> 4. Configuration file and resources </H1>
+<!--docid::SEC14::-->
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC15"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC16"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC18"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 4.1 Resource path </H2>
+<!--docid::SEC15::-->
+<P>
+
 All resources and configuration files are looked in the following paths:
-<TT>`/usr/share/qe:/usr/local/share/qe:/usr/lib/qe:/usr/local/lib/qe:~/.qe'</TT>
-
-
-
-
-<H2><A NAME="SEC16" HREF="qe-doc.html#TOC16">4.2 Configuration file</A></H2>
-
+`<TT>/usr/share/qe:/usr/local/share/qe:/usr/lib/qe:/usr/local/lib/qe:~/.qe</TT>'
+</P>
 <P>
-QEmacs tries to load a configuration file in <TT>`~/.qe/config'</TT>. Each
+
+<HR SIZE="6">
+<A NAME="SEC16"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC15"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC17"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC18"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 4.2 Configuration file </H2>
+<!--docid::SEC16::-->
+<P>
+
+QEmacs tries to load a configuration file in `<TT>~/.qe/config</TT>'. Each
 line of the configuration file is a QEmacs command with a C like syntax
 ('-' in command name can be replaced by '_'). 
-
-
+</P>
 <P>
-Read the example file <TT>`config.eg'</TT> to have some examples.
 
-
+Read the example file `<TT>config.eg</TT>' to have some examples.
+</P>
 <P>
+
 The following commands are useful:
+</P>
+<P>
 
-
+</P>
 <DL COMPACT>
-
 <DT><CODE>global_set_key(key, command)</CODE>
-<DD>
-Set a global key binding to a command.
+<DD>Set a global key binding to a command.
+<P>
 
+</P>
 <DT><CODE>set_display_size(width, height)</CODE>
-<DD>
-(X11) Set the window size, in character cells.
+<DD>(X11) Set the window size, in character cells.
+<P>
 
+</P>
 <DT><CODE>set_system_font(family, system_fonts)</CODE>
-<DD>
+<DD><P>
+
 (X11) Maps a system font to a QEmacs font family. Multiple fonts can be
 given as fallback (See section <A HREF="qe-doc.html#SEC38">7. Fonts</A>).
+</P>
+<P>
 
+</P>
 <DT><CODE>set_style(stylename, css_property, css_value)</CODE>
-<DD>
-Set a colorization style (see <TT>`qestyle.h'</TT> and <TT>`config.eg'</TT> for
+<DD>Set a colorization style (see `<TT>qestyle.h</TT>' and `<TT>config.eg</TT>' for
 common style names)
+<P>
 
 </DL>
-
-
-
-<H2><A NAME="SEC17" HREF="qe-doc.html#TOC17">4.3 Plugins</A></H2>
-
 <P>
-Any <TT>`.so'</TT> file found in the qemacs resource paths is considered as
+
+<HR SIZE="6">
+<A NAME="SEC17"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC16"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC18"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC18"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 4.3 Plugins </H2>
+<!--docid::SEC17::-->
+<P>
+
+Any `<TT>.so</TT>' file found in the qemacs resource paths is considered as
 a <EM>plugin</EM>. It is a piece of code containing new features for
 qemacs. 
-
-
+</P>
 <P>
+
 Currently, no plugins are compiled in, but you can look at the
-<TT>`plugin-example/'</TT> directory to learn how to make one.
-
-
+`<TT>plugin-example/</TT>' directory to learn how to make one.
+</P>
 <P>
+
 Most QEmacs object files can in fact be compiled either as a plugin or
 be statically linked in qemacs. The plugin system is strongly inspirated
 from the Linux Kernel 2.4 module system.
-
-
-
-
-<H1><A NAME="SEC18" HREF="qe-doc.html#TOC18">5. Internationalization</A></H1>
-
-
-
-<H2><A NAME="SEC19" HREF="qe-doc.html#TOC19">5.1 Charsets</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC18"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC17"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC19"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC14"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H1> 5. Internationalization </H1>
+<!--docid::SEC18::-->
+<P>
+
+<HR SIZE="6">
+<A NAME="SEC19"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC18"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC20"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC18"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 5.1 Charsets </H2>
+<!--docid::SEC19::-->
+<P>
+
 QEmacs supports many common charsets including UTF8, shift JIS and EUC-JP. A
 charset can be selected for each buffer with <KBD>C-x RET f</KBD>
 (<CODE>set-buffer-file-coding-system</CODE>).
-
-
+</P>
 <P>
+
 Currently, QEmacs automatically detects the UTF8 encoding. 
-
-
+</P>
 <P>
+
 Note that unlike in other editors, changing the charset of a buffer
 does not modify its content: buffers always contain bytes, and the charset
 is only used when the buffer content may be converted to characters, for
 example to display it on screen.  
-
-
+</P>
 <P>
+
 You can use the UniHex editing mode (<KBD>M-x unihex-mode</KBD>) to see the
 Unicode values of each character in your file with the associated byte
 offset.
-
-
+</P>
 <P>
+
 The command <CODE>convert-buffer-file-coding-system</CODE> can be used to
 convert the buffer <EM>content</EM> to another charset.
-
-
-
-
-<H2><A NAME="SEC20" HREF="qe-doc.html#TOC20">5.2 Input methods</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC20"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC19"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC21"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC18"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 5.2 Input methods </H2>
+<!--docid::SEC20::-->
+<P>
+
 The current input method can be changed with <KBD>C-x RET \</KBD>
 (<CODE>set-input-method</CODE>). You can switch between this input method and
 the default one with 'C-\'. 
-
-
+</P>
 <P>
-The input methods are currently stored in the resource file <TT>`kmaps'</TT>.
+
+The input methods are currently stored in the resource file `<TT>kmaps</TT>'.
 They are extracted from the <EM>Yudit</EM> editor keyboard maps.
-
-
-
-
-<H2><A NAME="SEC21" HREF="qe-doc.html#TOC21">5.3 Bidirectional editing</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC21"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC20"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC22"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC18"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 5.3 Bidirectional editing </H2>
+<!--docid::SEC21::-->
+<P>
+
 QEmacs fully supports the Unicode bidi algorithm. 
-
-
+</P>
 <P>
+
 By default, in text editing mode, qemacs is not in bidirectionnal mode (it
 may change soon). You can use 'C-x RET b' to toogle between bidi and normal
 editing modes.
-
-
+</P>
 <P>
+
 In HTML editing mode, bidi is always activated and all the CSS2 bidi
 properties are supported.
-
-
-
-
-<H2><A NAME="SEC22" HREF="qe-doc.html#TOC22">5.4 Unicode scripts</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC22"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC21"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC18"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 5.4 Unicode scripts </H2>
+<!--docid::SEC22::-->
+<P>
+
 Currently, QEmacs fully supports Arabic shapping. Devanagari shaping is on
 the way. 
-
-
+</P>
 <P>
-The resource file <TT>`ligatures'</TT> contains all the standard Unicode rules
+
+The resource file `<TT>ligatures</TT>' contains all the standard Unicode rules
 to handle character modifiers such as accents. It means that even if your
 font does not support the Unicode character modifiers, QEmacs will do its
 best to handle them.
-
-
-
-
-<H1><A NAME="SEC23" HREF="qe-doc.html#TOC23">6. Editing Modes</A></H1>
-
-
-
-<H2><A NAME="SEC24" HREF="qe-doc.html#TOC24">6.1 C mode</A></H2>
-
+</P>
 <P>
-This mode is currently activated by <SAMP>`M-x c-mode'</SAMP>. It is
+
+<HR SIZE="6">
+<A NAME="SEC23"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC22"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC24"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC18"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H1> 6. Editing Modes </H1>
+<!--docid::SEC23::-->
+<P>
+
+<HR SIZE="6">
+<A NAME="SEC24"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC25"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 6.1 C mode </H2>
+<!--docid::SEC24::-->
+<P>
+
+This mode is currently activated by `<SAMP>M-x c-mode</SAMP>'. It is
 activated automatically when a C file is loaded.
-
-
-
-
-<H2><A NAME="SEC25" HREF="qe-doc.html#TOC25">6.2 Hexadecimal, ascii and unihex modes</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC25"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC24"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC26"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 6.2 Hexadecimal, ascii and unihex modes </H2>
+<!--docid::SEC25::-->
+<P>
+
 Unlike other editors, QEmacs has powerful hexadecimal editing modes: all
 common commands are working these modes, including the block commands. 
-
-
+</P>
 <P>
+
 The hexadecimal mode (<KBD>M-x hex-mode</KBD>) shows both the hexa decimal
 and ascii (bytes) values. You can toggle between the hexa and ascii columns
 with 'TAB'.
-
-
+</P>
 <P>
+
 The ascii mode (<KBD>M-x ascii-mode</KBD>) only shows the ascii column.
-
-
+</P>
 <P>
+
 The unihex mode (<KBD>M-x unihex-mode</KBD>) shows both the unicode and
 glyph associated to each <EM>character</EM> of the buffer by using the current
 buffer charset.
-
-
+</P>
 <P>
+
 You can change the line width in these modes with 'C-left' and 'C-right'.
-
-
-
-
-<H2><A NAME="SEC26" HREF="qe-doc.html#TOC26">6.3 shell mode</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC26"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC25"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC27"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 6.3 shell mode </H2>
+<!--docid::SEC26::-->
+<P>
+
 You can activate it with <KBD>M-x shell</KBD>. Unlike other editors, a very
 complete colorized VT100 emulation is done [it means you can launch
 qemacs in the qemacs shell :-)].
-
-
+</P>
 <P>
+
 By default, <EM>interactive mode</EM> is selected. It means that most keys
 you type are transmitted to the shell. This way, you can use the shell
 completion and editing functions. By pressing <KBD>C-o</KBD>, you toggle
 between interactive and editing mode. In editing mode, you can editing
 the shell buffer as any other buffer.
-
-
-
-
-<H2><A NAME="SEC27" HREF="qe-doc.html#TOC27">6.4 Dired mode</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC27"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC26"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC28"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 6.4 Dired mode </H2>
+<!--docid::SEC27::-->
+<P>
+
 You can activate it with <KBD>C-x C-d</KBD>. You can open the selected
 directory with <KBD>RET</KBD> or <KBD>right</KBD>. <KBD>left</KBD> is used to go to the
 parent directory. The current selected is opened in the right window.
-
-
-
-
-<H2><A NAME="SEC28" HREF="qe-doc.html#TOC28">6.5 Bufed mode</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC28"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC27"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC29"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 6.5 Bufed mode </H2>
+<!--docid::SEC28::-->
+<P>
+
 You can activate it with <KBD>C-x C-b</KBD>. You can select with <KBD>RET</KBD> or
 <KBD>right</KBD> the current buffer.
-
-
-
-
-<H2><A NAME="SEC29" HREF="qe-doc.html#TOC29">6.6 XML mode</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC29"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC28"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC30"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 6.6 XML mode </H2>
+<!--docid::SEC29::-->
+<P>
+
 This mode is currently activated by <KBD>M-x xml-mode</KBD>. It is activated
 automatically when an XML file is loaded.
-
-
+</P>
 <P>
+
 Currently, only specific XML colorization is done in this
 mode. Javascript (in SCRIPT tags) is colored as in C mode. CSS Style
 sheets (in STYLE tags) are colorized with a specific color.
-
-
-
-
-<H2><A NAME="SEC30" HREF="qe-doc.html#TOC30">6.7 Graphical HTML2/CSS mode</A></H2>
-
-
-
-<H3><A NAME="SEC31" HREF="qe-doc.html#TOC31">6.7.1 Usage</A></H3>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC30"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC29"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC31"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 6.7 Graphical HTML2/CSS mode </H2>
+<!--docid::SEC30::-->
+<P>
+
+<HR SIZE="6">
+<A NAME="SEC31"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC30"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC32"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H3> 6.7.1 Usage </H3>
+<!--docid::SEC31::-->
+<P>
+
 This mode is currently activated by <KBD>M-x html-mode</KBD>. It is
 activated automatically when an HTML file is loaded.
-
-
-
-
-<H3><A NAME="SEC32" HREF="qe-doc.html#TOC32">6.7.2 Features</A></H3>
-
+</P>
 <P>
-The XML/HTML/CSS2 renderer has the following features:
 
+<HR SIZE="6">
+<A NAME="SEC32"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC31"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC33"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H3> 6.7.2 Features </H3>
+<!--docid::SEC32::-->
+<P>
+
+The XML/HTML/CSS2 renderer has the following features:
 <UL>
 <LI>The parse errors are written in buffer '*xml-error*'.
-
 <LI>Strict XML parser or relaxed mode for HTML pages.
-
 <LI>Letter case can be ignored or strictly respected.
-
 <LI>Integrated HTML to CSS2 converter so that the renderer do not
-
      depend on HTML quirks.
 <LI>Quite complete CSS2 support (including generated content and
-
      counters).
 <LI>Full Bidirectionnal Unicode support.
-
 <LI>Table support with both 'fixed' and 'auto' layout algorithms.
-
 <LI>'tty' and 'screen' CSS2 medias are supported.
-
 </UL>
+<P>
 
-
-
-<H3><A NAME="SEC33" HREF="qe-doc.html#TOC33">6.7.3 Known limitations</A></H3>
-
+<HR SIZE="6">
+<A NAME="SEC33"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC32"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC34"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H3> 6.7.3 Known limitations </H3>
+<!--docid::SEC33::-->
+<P>
 
 <UL>
 <LI>Cannot load external resources (e.g. style sheets) from other files.
-
 <LI>No image handling (only a rectangle with 'ALT' name is drawn).
-
 <LI>No javascript.
-
 <LI>No frames.
-
 </UL>
-
-
-
-<H3><A NAME="SEC34" HREF="qe-doc.html#TOC34">6.7.4 CSS property support</A></H3>
-
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC34"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC33"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC35"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H3> 6.7.4 CSS property support </H3>
+<!--docid::SEC34::-->
+<P>
+
 The following properties are partially (see comments) or totally supported:
-
-
+</P>
+<P>
 
 <UL>
 <LI>display: The value 'inline-block' is a QEmacs extension.
-
 <LI>color
+<P>
 
+</P>
 <LI>background-color
+<P>
 
+</P>
 <LI>white-space: The value 'prewrap' is a QEmacs extension.
-
 <LI>direction
+<P>
 
+</P>
 <LI>float
+<P>
 
+</P>
 <LI>font-family
+<P>
 
+</P>
 <LI>font-style
+<P>
 
+</P>
 <LI>font-weight
+<P>
 
+</P>
 <LI>font-size
+<P>
 
+</P>
 <LI>text-decoration
+<P>
 
+</P>
 <LI>text-align
+<P>
 
+</P>
 <LI>width
+<P>
 
+</P>
 <LI>height
+<P>
 
+</P>
 <LI>unicode-bidi
+<P>
 
+</P>
 <LI>border-width
+<P>
 
+</P>
 <LI>border-left-width
+<P>
 
+</P>
 <LI>border-top-width
+<P>
 
+</P>
 <LI>border-right-width
+<P>
 
+</P>
 <LI>border-bottom-width
+<P>
 
+</P>
 <LI>border-color
+<P>
 
+</P>
 <LI>border-left-color
+<P>
 
+</P>
 <LI>border-top-color
+<P>
 
+</P>
 <LI>border-right-color
+<P>
 
+</P>
 <LI>border-bottom-color
+<P>
 
+</P>
 <LI>border-style
+<P>
 
+</P>
 <LI>border-left-style
+<P>
 
+</P>
 <LI>border-top-style
+<P>
 
+</P>
 <LI>border-right-style
+<P>
 
+</P>
 <LI>border-bottom-style
+<P>
 
+</P>
 <LI>border
+<P>
 
+</P>
 <LI>border-left
+<P>
 
+</P>
 <LI>border-top
+<P>
 
+</P>
 <LI>border-right
+<P>
 
+</P>
 <LI>border-bottom
+<P>
 
+</P>
 <LI>padding
+<P>
 
+</P>
 <LI>padding-left
+<P>
 
+</P>
 <LI>padding-top
+<P>
 
+</P>
 <LI>padding-right
+<P>
 
+</P>
 <LI>padding-bottom
+<P>
 
+</P>
 <LI>margin
+<P>
 
+</P>
 <LI>margin-left
+<P>
 
+</P>
 <LI>margin-top
+<P>
 
+</P>
 <LI>margin-right
+<P>
 
+</P>
 <LI>margin-bottom
+<P>
 
+</P>
 <LI>clear
+<P>
 
+</P>
 <LI>overflow
+<P>
 
+</P>
 <LI>visibility
+<P>
 
+</P>
 <LI>table-layout
+<P>
 
+</P>
 <LI>vertical-align
+<P>
 
+</P>
 <LI>border-collapse
+<P>
 
+</P>
 <LI>border-spacing
+<P>
 
+</P>
 <LI>border-spacing-horizontal
+<P>
 
+</P>
 <LI>border-spacing-vertical
+<P>
 
+</P>
 <LI>line-height
+<P>
 
+</P>
 <LI>content
+<P>
 
+</P>
 <LI>caption-side
+<P>
 
+</P>
 <LI>marker-offset
+<P>
 
+</P>
 <LI>list-style-type
+<P>
 
+</P>
 <LI>column-span: QEmacs extension
-
 <LI>row-span: QEmacs extension
-
 <LI>content-alt: QEmacs extension. Same behavior as property 'content' but used for images
+<P>
 
+</P>
 <LI>list-style-position
+<P>
 
+</P>
 <LI>counter-reset
+<P>
 
+</P>
 <LI>counter-increment
+<P>
 
+</P>
 <LI>bidi-mode: QEmacs extension: use lower/upper case to test bidi algorithm
-
-<LI>position: <SAMP>`fixed'</SAMP> is not supported. Only 'block' boxes are positionned
-
+<LI>position: `<SAMP>fixed</SAMP>' is not supported. Only 'block' boxes are positionned
 <LI>top
+<P>
 
+</P>
 <LI>bottom
+<P>
 
+</P>
 <LI>left
+<P>
 
+</P>
 <LI>right
+<P>
 
 </UL>
-
 <P>
+
 The following properties are completely unsupported:
-
-
+</P>
+<P>
 
 <UL>
 
 <LI>background
+<P>
 
+</P>
 <LI>background-attachment
+<P>
 
+</P>
 <LI>background-image
+<P>
 
+</P>
 <LI>background-position
+<P>
 
+</P>
 <LI>background-repeat
+<P>
 
+</P>
 <LI>clip
+<P>
 
+</P>
 <LI>cursor
+<P>
 
+</P>
 <LI>empty-cells
+<P>
 
+</P>
 <LI>font
+<P>
 
+</P>
 <LI>font-size-adjust
+<P>
 
+</P>
 <LI>font-stretch
+<P>
 
+</P>
 <LI>font-variant
+<P>
 
+</P>
 <LI>letter-spacing
+<P>
 
+</P>
 <LI>list-style
+<P>
 
+</P>
 <LI>list-style-image
+<P>
 
+</P>
 <LI>max-height
+<P>
 
+</P>
 <LI>max-width
+<P>
 
+</P>
 <LI>min-height
+<P>
 
+</P>
 <LI>min-width
+<P>
 
+</P>
 <LI>outline
+<P>
 
+</P>
 <LI>outline-color
+<P>
 
+</P>
 <LI>outline-style
+<P>
 
+</P>
 <LI>outline-width
+<P>
 
+</P>
 <LI>quotes
+<P>
 
+</P>
 <LI>text-indent
+<P>
 
+</P>
 <LI>text-shadow
+<P>
 
+</P>
 <LI>text-transform
+<P>
 
+</P>
 <LI>word-spacing
+<P>
 
+</P>
 <LI>z-index
+<P>
 
+</P>
 <LI>marks
+<P>
 
+</P>
 <LI>page
+<P>
 
+</P>
 <LI>page-break-after
+<P>
 
+</P>
 <LI>page-break-before
+<P>
 
+</P>
 <LI>page-break-inside
+<P>
 
+</P>
 <LI>size
+<P>
 
+</P>
 <LI>orphans
+<P>
 
+</P>
 <LI>widows
+<P>
 
+</P>
 <LI>azimuth
+<P>
 
+</P>
 <LI>cue
+<P>
 
+</P>
 <LI>cue-after
+<P>
 
+</P>
 <LI>cue-before
+<P>
 
+</P>
 <LI>elevation
+<P>
 
+</P>
 <LI>pause
+<P>
 
+</P>
 <LI>pause-after
+<P>
 
+</P>
 <LI>pause-before
+<P>
 
+</P>
 <LI>pitch
+<P>
 
+</P>
 <LI>pitch-range
+<P>
 
+</P>
 <LI>pitch-during
+<P>
 
+</P>
 <LI>richness
+<P>
 
+</P>
 <LI>speak
+<P>
 
+</P>
 <LI>speak-header
+<P>
 
+</P>
 <LI>speak-punctuation
+<P>
 
+</P>
 <LI>speak-rate
+<P>
 
+</P>
 <LI>stress
+<P>
 
+</P>
 <LI>voice-family
+<P>
 
+</P>
 <LI>volume
+<P>
 
 </UL>
-
-
-
-<H2><A NAME="SEC35" HREF="qe-doc.html#TOC35">6.8 Graphical DocBook mode</A></H2>
-
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC35"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC34"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC36"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 6.8 Graphical DocBook mode </H2>
+<!--docid::SEC35::-->
+<P>
+
 This mode simply uses a different default style sheet from the HTML/CSS2
-mode. It is activated by <SAMP>`M-x docbook-mode'</SAMP>.
-
-
-
-
-<H2><A NAME="SEC36" HREF="qe-doc.html#TOC36">6.9 Image mode</A></H2>
-
+mode. It is activated by `<SAMP>M-x docbook-mode</SAMP>'.
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC36"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC35"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC37"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 6.9 Image mode </H2>
+<!--docid::SEC36::-->
+<P>
+
 When compiling qemacs with FFmpeg support (<A HREF="http://ffmpeg.org">http://ffmpeg.org</A>),
 images can be viewed. The current implementation handles PNM, PAM, PNG,
 JPEG and GIF images (animated GIF images are handled as video
 data). <KBD>C-x C-d</KBD> can be used to have an interactive file viewer.
-
-
+</P>
 <P>
+
 Available commands:
+</P>
+<P>
 
-
+</P>
 <DL COMPACT>
-
 <DT><KBD>t</KBD>
-<DD>
-(<SAMP>`M-x image-rotate'</SAMP>) Rotate right image by 90 degrees.
+<DD>(`<SAMP>M-x image-rotate</SAMP>') Rotate right image by 90 degrees.
 <DT><KBD>f</KBD>
-<DD>
-(<SAMP>`M-x toggle-full-screen'</SAMP>) Toggle full screen mode
+<DD>(`<SAMP>M-x toggle-full-screen</SAMP>') Toggle full screen mode
 <DT><KBD>c</KBD>
-<DD>
-(<SAMP>`M-x image-convert'</SAMP>) Change the pixel format of the image (press tab
+<DD>(`<SAMP>M-x image-convert</SAMP>') Change the pixel format of the image (press tab
 to have a complete list). The data loss implied by the pixel format
 change is displayed.
 <DT><KBD>b</KBD>
-<DD>
-(<SAMP>`M-x image-set-background-color'</SAMP>) Set the image background
+<DD>(`<SAMP>M-x image-set-background-color</SAMP>') Set the image background
 color. The background is only visible if the image contains transparent
-pixels. The <SAMP>`transparent'</SAMP> color displayed a <SAMP>`gimp'</SAMP> like grid.
+pixels. The `<SAMP>transparent</SAMP>' color displayed a `<SAMP>gimp</SAMP>' like grid.
 </DL>
-
 <P>
+
 Status information: 
-
-
+</P>
+<P>
 
 <UL>
-<LI>The image resolution is displayed as <SAMP>`NxM'</SAMP>.
+<LI>The image resolution is displayed as `<SAMP>NxM</SAMP>'.
+<P>
 
+</P>
 <LI>The FFmpeg pixel format is displayed.
+<P>
 
-<LI><SAMP>`I'</SAMP> is displayed is the image is interleaved.
+</P>
+<LI>`<SAMP>I</SAMP>' is displayed is the image is interleaved.
+<P>
 
-<LI><SAMP>`T'</SAMP> is displayed if the image contains transparent
-
-pixels. <SAMP>`A'</SAMP> is displayed if the image contains semi-transparent
+</P>
+<LI>`<SAMP>T</SAMP>' is displayed if the image contains transparent
+pixels. `<SAMP>A</SAMP>' is displayed if the image contains semi-transparent
 pixels.
+<P>
 
 </UL>
-
-
-
-<H2><A NAME="SEC37" HREF="qe-doc.html#TOC37">6.10 Audio/Video mode</A></H2>
-
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC37"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC36"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 6.10 Audio/Video mode </H2>
+<!--docid::SEC37::-->
+<P>
+
 When compiling qemacs with FFmpeg support (<A HREF="http://ffmpeg.org">http://ffmpeg.org</A>),
 video and audio files can be viewed. The X11 Xvideo extension is used
 if available for faster YUV rendering. <KBD>C-x C-d</KBD> can be used to
 have an interactive file viewer.
-
-
+</P>
 <P>
+
 Audio only files are also rendered. The waveform is displayed at the
 same time.
-
-
+</P>
 <P>
+
 No editing commands will be supported in that mode. Saving is
 currently not possible.
-
-
+</P>
 <P>
+
 Available commands:
-
-
-<DL COMPACT>
-
-<DT><KBD>SPC</KBD>
-<DD>
-<DT><KBD>p</KBD>
-<DD>
-Pause/Resume
-<DT><KBD>f</KBD>
-<DD>
-(<SAMP>`M-x toggle-full-screen'</SAMP>) Toggle full screen mode
-<DT><KBD>v</KBD>
-<DD>
-(<SAMP>`M-x av-cycle-video'</SAMP>) Cycle through available video channels.
-<DT><KBD>a</KBD>
-<DD>
-(<SAMP>`M-x av-cycle-audio'</SAMP>) Cycle through available audio channels.
-</DL>
-
-
-
-<H1><A NAME="SEC38" HREF="qe-doc.html#TOC38">7. Fonts</A></H1>
-
-
-
-<H2><A NAME="SEC39" HREF="qe-doc.html#TOC39">7.1 VT100 display</A></H2>
-
+</P>
 <P>
+
+</P>
+<DL COMPACT>
+<DT><KBD>SPC</KBD>
+<DD><DT><KBD>p</KBD>
+<DD>Pause/Resume
+<DT><KBD>f</KBD>
+<DD>(`<SAMP>M-x toggle-full-screen</SAMP>') Toggle full screen mode
+<DT><KBD>v</KBD>
+<DD>(`<SAMP>M-x av-cycle-video</SAMP>') Cycle through available video channels.
+<DT><KBD>a</KBD>
+<DD>(`<SAMP>M-x av-cycle-audio</SAMP>') Cycle through available audio channels.
+</DL>
+<P>
+
+<A NAME="fonts"></A>
+<HR SIZE="6">
+<A NAME="SEC38"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC37"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC39"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC23"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC42"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H1> 7. Fonts </H1>
+<!--docid::SEC38::-->
+<P>
+
+<HR SIZE="6">
+<A NAME="SEC39"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC40"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC42"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 7.1 VT100 display </H2>
+<!--docid::SEC39::-->
+<P>
+
 In order to display Unicode characters, you must have a recent xterm
 from XFree version greater than 4.0.1.
-
-
+</P>
 <P>
+
 As a short test, you can launch xterm with the following options to
 select UTF8 charset and a unicode fixed X11 font:
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>xterm -u8 -fn -misc-fixed-medium-r-normal--18-120-100-100-c-90-iso10646-1
+</pre></td></tr></table><P>
 
-<PRE>
-xterm -u8 -fn -misc-fixed-medium-r-normal--18-120-100-100-c-90-iso10646-1
-</PRE>
-
-<P>
 Then look at the qemacs TestPage in VT100 mode:
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>qe -nw tests/TestPage.txt
+</pre></td></tr></table><P>
 
-<PRE>
-qe -nw tests/TestPage.txt
-</PRE>
-
-<P>
 If you are using latin scripts, you can use any fixed font in any
 terminal. Otherwise, if you use ideograms or other non latin scripts,
 you must configure your terminal emulator (usually xterm) to accept
 'double width' fonts. It means that some characters, such as ideograms,
 are meant to occupy two char cells instead of one. QEmacs knows that and
 does the text alyout accordingly.
-
-
+</P>
 <P>
+
 The font <EM>Unifont</EM> is currently the best font for xterm. It is
 usually included in the linux distributions. You can find it at
 <A HREF="http://czyborra.com/unifont/">http://czyborra.com/unifont/</A>.
-
-
-
-
-<H2><A NAME="SEC40" HREF="qe-doc.html#TOC40">7.2 X11 display</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC40"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC39"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC41"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC42"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 7.2 X11 display </H2>
+<!--docid::SEC40::-->
+<P>
+
 QEmacs knows three basic font families:
-
-
+</P>
+<P>
 
 <UL>
-<LI><SAMP>`sans'</SAMP> for sans serif fonts.
-
-<LI><SAMP>`serif'</SAMP> for serif fonts.
-
-<LI><SAMP>`fixed'</SAMP> for fixed or monospace fonts.
-
+<LI>`<SAMP>sans</SAMP>' for sans serif fonts.
+<LI>`<SAMP>serif</SAMP>' for serif fonts.
+<LI>`<SAMP>fixed</SAMP>' for fixed or monospace fonts.
 </UL>
-
 <P>
+
 QEmacs maps these three families to system fonts. The default mapping
-is: <SAMP>`helvetica'</SAMP> for sans, <SAMP>`Times'</SAMP> for serif and <SAMP>`fixed'</SAMP>
+is: `<SAMP>helvetica</SAMP>' for sans, `<SAMP>Times</SAMP>' for serif and `<SAMP>fixed</SAMP>'
 for fixed.
-
-
+</P>
 <P>
+
 For each family, you can specify any number of <EM>fallback fonts</EM> that
 QEmacs can use if the requested glyph is not found in the current
-font. Currently, the font <SAMP>`unifont'</SAMP> is used as fallback in all
+font. Currently, the font `<SAMP>unifont</SAMP>' is used as fallback in all
 cases.
-
-
+</P>
 <P>
+
 You can use the command <CODE>set-system-font(family, fonts)</CODE> to change
 the default qemacs mapping. <CODE>family</CODE> is <CODE>sans</CODE>, <CODE>serif</CODE>
 or <CODE>fixed</CODE>, and <CODE>fonts</CODE> is a comma separated list of system
 fonts which are used as principal font and fallback fonts.
-
-
-
-
-<H2><A NAME="SEC41" HREF="qe-doc.html#TOC41">7.3 Internal QEmacs fonts</A></H2>
-
+</P>
 <P>
-In the tool <SAMP>`html2png'</SAMP>, QEmacs uses internal fonts which are the
-<SAMP>`Times'</SAMP>, <SAMP>`Helvetica'</SAMP> and <SAMP>`Unifont'</SAMP> supplied in X11. They
+
+<HR SIZE="6">
+<A NAME="SEC41"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC40"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC42"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC42"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 7.3 Internal QEmacs fonts </H2>
+<!--docid::SEC41::-->
+<P>
+
+In the tool `<SAMP>html2png</SAMP>', QEmacs uses internal fonts which are the
+`<SAMP>Times</SAMP>', `<SAMP>Helvetica</SAMP>' and `<SAMP>Unifont</SAMP>' supplied in X11. They
 are highly compressed in the <EM>FBF</EM> font format.
-
-
-
-
-<H1><A NAME="SEC42" HREF="qe-doc.html#TOC42">8. Html2png Tool</A></H1>
-
-
-
-<H2><A NAME="SEC43" HREF="qe-doc.html#TOC43">8.1 Introduction</A></H2>
-
+</P>
 <P>
+
+<HR SIZE="6">
+<A NAME="SEC42"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC41"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC43"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC38"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC45"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H1> 8. Html2png Tool </H1>
+<!--docid::SEC42::-->
+<P>
+
+<HR SIZE="6">
+<A NAME="SEC43"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC42"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC44"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC42"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC45"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 8.1 Introduction </H2>
+<!--docid::SEC43::-->
+<P>
+
 Html2png is a standalone HTML/XML/CSS2 renderer based on the QEmacs
 internal renderer. It takes an HTML or XHTML file as input and produce a
 PNG image file containing the graphical rendering of the page. It is
 meant to be a test tool for the renderer. It can also be used as a
 XML/HTML validator since all parse errors are logged on the standard
 output.
-
-
+</P>
 <P>
+
 Unlike other HTML renderers, HTML2PNG do not have any dependency on the
 operating system or the graphical interface. It uses its own fonts
 (which are embedded in the executable), its own widgets and its own
 charset tables.
-
-
+</P>
 <P>
+
 By using the highly compressed FBF font format, the Times, Helvetica and
 Unifont fonts are embedded in the executable. It means that HTML2PNG can
 view documents in any languages, including Arabic, Hebrew, Japanese and
 Hangul.
+</P>
+<P>
 
+<HR SIZE="6">
+<A NAME="SEC44"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC43"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC45"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC42"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC45"> &gt;&gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 8.2 Invocation </H2>
+<!--docid::SEC44::-->
+<P>
 
+<TABLE><tr><td>&nbsp;</td><td class=example><pre>usage: html2png [-h] [-x] [-w width] [-o outfile] [-f charset] infile
+</pre></td></tr></table><P>
 
-
-<H2><A NAME="SEC44" HREF="qe-doc.html#TOC44">8.2 Invocation</A></H2>
-
-
-<PRE>
-usage: html2png [-h] [-x] [-w width] [-o outfile] [-f charset] infile
-</PRE>
-
+</P>
 <DL COMPACT>
-
-<DT><SAMP>`-h'</SAMP>
-<DD>
-display the help
-<DT><SAMP>`-x'</SAMP>
-<DD>
-use strict XML parser (xhtml type parsing)
-<DT><SAMP>`-w width'</SAMP>
-<DD>
-set the image width (default=640)
-<DT><SAMP>`-f charset'</SAMP>
-<DD>
-set the default charset (default='8859-1'). Use -f ? to list supported charsets.
-<DT><SAMP>`-o outfile'</SAMP>
-<DD>
-set the output filename (default='a.png')
+<DT>`<SAMP>-h</SAMP>'
+<DD>display the help
+<DT>`<SAMP>-x</SAMP>'
+<DD>use strict XML parser (xhtml type parsing)
+<DT>`<SAMP>-w width</SAMP>'
+<DD>set the image width (default=640)
+<DT>`<SAMP>-f charset</SAMP>'
+<DD>set the default charset (default='8859-1'). Use -f ? to list supported charsets.
+<DT>`<SAMP>-o outfile</SAMP>'
+<DD>set the output filename (default='a.png')
 </DL>
-
-
-
-<H1><A NAME="SEC45" HREF="qe-doc.html#TOC45">9. Developper's Guide</A></H1>
-
-
-
-<H2><A NAME="SEC46" HREF="qe-doc.html#TOC46">9.1 Plugins</A></H2>
-
 <P>
-You can use the example in <TT>`plugin-example/'</TT> to develop dynamically
+
+<HR SIZE="6">
+<A NAME="SEC45"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC44"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC46"> &gt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC42"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[ &gt;&gt; ]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H1> 9. Developper's Guide </H1>
+<!--docid::SEC45::-->
+<P>
+
+<HR SIZE="6">
+<A NAME="SEC46"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC45"> &lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[ &gt; ]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC45"> &lt;&lt; </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1"> Up </A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[ &gt;&gt; ]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT"> &nbsp; <TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H2> 9.1 Plugins </H2>
+<!--docid::SEC46::-->
+<P>
+
+You can use the example in `<TT>plugin-example/</TT>' to develop dynamically
 linked qemacs plugins (aka modules).
-
-
+</P>
 <P>
+
 Plugins can add any dynamic resource qemacs supports (modes, key
 bindings, ...). A plugin can be either statically linked or
 dynamically linked. Most of qemacs features are in fact statically
 linked plugins.
+</P>
+<P>
 
+<HR SIZE="6">
+<A NAME="SEC_Contents"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H1>Table of Contents</H1>
+<BLOCKQUOTE>
+<A NAME="TOC1" HREF="qe-doc.html#SEC1">1. Introduction</A>
+<BR>
+<A NAME="TOC2" HREF="qe-doc.html#SEC2">2. Invocation</A>
+<BR>
+<A NAME="TOC3" HREF="qe-doc.html#SEC3">3. Common editing commands</A>
+<BR>
+<BLOCKQUOTE>
+<A NAME="TOC4" HREF="qe-doc.html#SEC4">3.1 Concepts</A>
+<BR>
+<A NAME="TOC5" HREF="qe-doc.html#SEC5">3.2 Help</A>
+<BR>
+<A NAME="TOC6" HREF="qe-doc.html#SEC6">3.3 Simple commands</A>
+<BR>
+<A NAME="TOC7" HREF="qe-doc.html#SEC7">3.4 Region handling</A>
+<BR>
+<A NAME="TOC8" HREF="qe-doc.html#SEC8">3.5 Buffer and file handling</A>
+<BR>
+<A NAME="TOC9" HREF="qe-doc.html#SEC9">3.6 Search and replace</A>
+<BR>
+<A NAME="TOC10" HREF="qe-doc.html#SEC10">3.7 Command handling</A>
+<BR>
+<A NAME="TOC11" HREF="qe-doc.html#SEC11">3.8 Window handling</A>
+<BR>
+<A NAME="TOC12" HREF="qe-doc.html#SEC12">3.9 International</A>
+<BR>
+<A NAME="TOC13" HREF="qe-doc.html#SEC13">3.10 Miscellaneous</A>
+<BR>
+</BLOCKQUOTE>
+<A NAME="TOC14" HREF="qe-doc.html#SEC14">4. Configuration file and resources</A>
+<BR>
+<BLOCKQUOTE>
+<A NAME="TOC15" HREF="qe-doc.html#SEC15">4.1 Resource path</A>
+<BR>
+<A NAME="TOC16" HREF="qe-doc.html#SEC16">4.2 Configuration file</A>
+<BR>
+<A NAME="TOC17" HREF="qe-doc.html#SEC17">4.3 Plugins</A>
+<BR>
+</BLOCKQUOTE>
+<A NAME="TOC18" HREF="qe-doc.html#SEC18">5. Internationalization</A>
+<BR>
+<BLOCKQUOTE>
+<A NAME="TOC19" HREF="qe-doc.html#SEC19">5.1 Charsets</A>
+<BR>
+<A NAME="TOC20" HREF="qe-doc.html#SEC20">5.2 Input methods</A>
+<BR>
+<A NAME="TOC21" HREF="qe-doc.html#SEC21">5.3 Bidirectional editing</A>
+<BR>
+<A NAME="TOC22" HREF="qe-doc.html#SEC22">5.4 Unicode scripts</A>
+<BR>
+</BLOCKQUOTE>
+<A NAME="TOC23" HREF="qe-doc.html#SEC23">6. Editing Modes</A>
+<BR>
+<BLOCKQUOTE>
+<A NAME="TOC24" HREF="qe-doc.html#SEC24">6.1 C mode</A>
+<BR>
+<A NAME="TOC25" HREF="qe-doc.html#SEC25">6.2 Hexadecimal, ascii and unihex modes</A>
+<BR>
+<A NAME="TOC26" HREF="qe-doc.html#SEC26">6.3 shell mode</A>
+<BR>
+<A NAME="TOC27" HREF="qe-doc.html#SEC27">6.4 Dired mode</A>
+<BR>
+<A NAME="TOC28" HREF="qe-doc.html#SEC28">6.5 Bufed mode</A>
+<BR>
+<A NAME="TOC29" HREF="qe-doc.html#SEC29">6.6 XML mode</A>
+<BR>
+<A NAME="TOC30" HREF="qe-doc.html#SEC30">6.7 Graphical HTML2/CSS mode</A>
+<BR>
+<BLOCKQUOTE>
+<A NAME="TOC31" HREF="qe-doc.html#SEC31">6.7.1 Usage</A>
+<BR>
+<A NAME="TOC32" HREF="qe-doc.html#SEC32">6.7.2 Features</A>
+<BR>
+<A NAME="TOC33" HREF="qe-doc.html#SEC33">6.7.3 Known limitations</A>
+<BR>
+<A NAME="TOC34" HREF="qe-doc.html#SEC34">6.7.4 CSS property support</A>
+<BR>
+</BLOCKQUOTE>
+<A NAME="TOC35" HREF="qe-doc.html#SEC35">6.8 Graphical DocBook mode</A>
+<BR>
+<A NAME="TOC36" HREF="qe-doc.html#SEC36">6.9 Image mode</A>
+<BR>
+<A NAME="TOC37" HREF="qe-doc.html#SEC37">6.10 Audio/Video mode</A>
+<BR>
+</BLOCKQUOTE>
+<A NAME="TOC38" HREF="qe-doc.html#SEC38">7. Fonts</A>
+<BR>
+<BLOCKQUOTE>
+<A NAME="TOC39" HREF="qe-doc.html#SEC39">7.1 VT100 display</A>
+<BR>
+<A NAME="TOC40" HREF="qe-doc.html#SEC40">7.2 X11 display</A>
+<BR>
+<A NAME="TOC41" HREF="qe-doc.html#SEC41">7.3 Internal QEmacs fonts</A>
+<BR>
+</BLOCKQUOTE>
+<A NAME="TOC42" HREF="qe-doc.html#SEC42">8. Html2png Tool</A>
+<BR>
+<BLOCKQUOTE>
+<A NAME="TOC43" HREF="qe-doc.html#SEC43">8.1 Introduction</A>
+<BR>
+<A NAME="TOC44" HREF="qe-doc.html#SEC44">8.2 Invocation</A>
+<BR>
+</BLOCKQUOTE>
+<A NAME="TOC45" HREF="qe-doc.html#SEC45">9. Developper's Guide</A>
+<BR>
+<BLOCKQUOTE>
+<A NAME="TOC46" HREF="qe-doc.html#SEC46">9.1 Plugins</A>
+<BR>
+</BLOCKQUOTE>
+</BLOCKQUOTE>
+<HR SIZE=1>
+<A NAME="SEC_OVERVIEW"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H1>Short Table of Contents</H1>
+<BLOCKQUOTE>
+<A NAME="TOC1" HREF="qe-doc.html#SEC1">1. Introduction</A>
+<BR>
+<A NAME="TOC2" HREF="qe-doc.html#SEC2">2. Invocation</A>
+<BR>
+<A NAME="TOC3" HREF="qe-doc.html#SEC3">3. Common editing commands</A>
+<BR>
+<A NAME="TOC14" HREF="qe-doc.html#SEC14">4. Configuration file and resources</A>
+<BR>
+<A NAME="TOC18" HREF="qe-doc.html#SEC18">5. Internationalization</A>
+<BR>
+<A NAME="TOC23" HREF="qe-doc.html#SEC23">6. Editing Modes</A>
+<BR>
+<A NAME="TOC38" HREF="qe-doc.html#SEC38">7. Fonts</A>
+<BR>
+<A NAME="TOC42" HREF="qe-doc.html#SEC42">8. Html2png Tool</A>
+<BR>
+<A NAME="TOC45" HREF="qe-doc.html#SEC45">9. Developper's Guide</A>
+<BR>
 
-<P><HR><P>
-This document was generated on 21 April 2003 using
-<A HREF="http://wwwinfo.cern.ch/dis/texi2html/">texi2html</A>&nbsp;1.56k.
+</BLOCKQUOTE>
+<HR SIZE=1>
+<A NAME="SEC_About"></A>
+<TABLE CELLPADDING=1 CELLSPACING=1 BORDER=0>
+<TR><TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC1">Top</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_Contents">Contents</A>]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[Index]</TD>
+<TD VALIGN="MIDDLE" ALIGN="LEFT">[<A HREF="qe-doc.html#SEC_About"> ? </A>]</TD>
+</TR></TABLE>
+<H1>About this document</H1>
+This document was generated
+by 
+using <A HREF="http://texi2html.cvshome.org"><I>texi2html</I></A>
+<P></P>
+The buttons in the navigation panels have the following meaning:
+<P></P>
+<table border = "1">
+<TR>
+<TH> Button </TH>
+<TH> Name </TH>
+<TH> Go to </TH>
+<TH> From 1.2.3 go to</TH>
+</TR>
+<TR>
+<TD ALIGN="CENTER">
+ [ &lt; ] </TD>
+<TD ALIGN="CENTER">
+Back
+</TD>
+<TD>
+previous section in reading order
+</TD>
+<TD>
+1.2.2
+</TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER">
+ [ &gt; ] </TD>
+<TD ALIGN="CENTER">
+Forward
+</TD>
+<TD>
+next section in reading order
+</TD>
+<TD>
+1.2.4
+</TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER">
+ [ &lt;&lt; ] </TD>
+<TD ALIGN="CENTER">
+FastBack
+</TD>
+<TD>
+beginning of this chapter or previous chapter
+</TD>
+<TD>
+1
+</TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER">
+ [ Up ] </TD>
+<TD ALIGN="CENTER">
+Up
+</TD>
+<TD>
+up section
+</TD>
+<TD>
+1.2
+</TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER">
+ [ &gt;&gt; ] </TD>
+<TD ALIGN="CENTER">
+FastForward
+</TD>
+<TD>
+next chapter
+</TD>
+<TD>
+2
+</TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER">
+ [Top] </TD>
+<TD ALIGN="CENTER">
+Top
+</TD>
+<TD>
+cover (top) of document
+</TD>
+<TD>
+ &nbsp; 
+</TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER">
+ [Contents] </TD>
+<TD ALIGN="CENTER">
+Contents
+</TD>
+<TD>
+table of contents
+</TD>
+<TD>
+ &nbsp; 
+</TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER">
+ [Index] </TD>
+<TD ALIGN="CENTER">
+Index
+</TD>
+<TD>
+concept index
+</TD>
+<TD>
+ &nbsp; 
+</TD>
+</TR>
+<TR>
+<TD ALIGN="CENTER">
+ [ ? ] </TD>
+<TD ALIGN="CENTER">
+About
+</TD>
+<TD>
+this page
+</TD>
+<TD>
+ &nbsp; 
+</TD>
+</TR>
+</TABLE>
+    <P>
+      where the <STRONG> Example </STRONG> assumes that the current position
+      is at <STRONG> Subsubsection One-Two-Three </STRONG> of a document of
+      the following structure:</P>
+    <UL>
+      <LI> 1. Section One
+        <UL>
+          <LI>1.1 Subsection One-One
+            <UL>
+              <LI>...</LI>
+            </UL>
+          <LI>1.2 Subsection One-Two
+            <UL>
+              <LI>1.2.1 Subsubsection One-Two-One</LI>
+              <LI>1.2.2 Subsubsection One-Two-Two</LI>
+              <LI>1.2.3 Subsubsection One-Two-Three &nbsp; &nbsp;
+                <STRONG>&lt;== Current Position </STRONG></LI>
+              <LI>1.2.4 Subsubsection One-Two-Four</LI>
+            </UL>
+          </LI>
+          <LI>1.3 Subsection One-Three
+            <UL>
+              <LI>...</LI>
+            </UL>
+          </LI>
+          <LI>1.4 Subsection One-Four</LI>
+        </UL>
+      </LI>
+    </UL>
+
+<HR SIZE=1>
+<BR>
+<FONT SIZE="-1">
+This document was generated
+by <I>Charlie Gordon</I> on <I>May, 7 2006</I>
+using <A HREF="http://texi2html.cvshome.org"><I>texi2html</I></A>
+</FONT>
+
 </BODY>
 </HTML>
