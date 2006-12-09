@@ -87,7 +87,7 @@ dir, hr, menu, pre, li, table, tr, thead, tbody, tfoot,
 col, colgroup, td, th, caption { unicode-bidi: embed } 
 /* End bidi settings */   
 
-/* additionnal special qemacs attributes */
+/* additional special qemacs attributes */
 body {
    color: black;
 }

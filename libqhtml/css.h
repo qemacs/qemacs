@@ -250,7 +250,7 @@ extern const CSSPropertyDef css_properties[NB_PROPERTIES];
 #define CSS_UNIT_PT         8
 #define CSS_UNIT_PC         9
 
-/* additionnal values */
+/* additional values */
 #define CSS_VALUE_STRING     11
 #define CSS_VALUE_COUNTER    12
 #define CSS_VALUE_ATTR       13

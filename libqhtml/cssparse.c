@@ -67,11 +67,14 @@ static int css_get_length(int *length_ptr, int *unit_ptr, const char *p)
     len = p - p1;
     if (len == 0)
         return -1;
+    /* CG: use pstrncpy */
     if (len > (int)sizeof(buf) - 1)
         len = (int)sizeof(buf) - 1;
     memcpy(buf, p1, len);
     buf[len] = '\0';
     f = strtod(buf, NULL);
+    /* CG: should use define or global for consistency with
+     * CSS_UNIT_xxx values */
     unit = css_get_enum(p, "px,%,ex,em,mm,in,cm,pt,pc");
     if (unit < 0) {
         /* only 0 is valid without unit */
@@ -89,6 +92,7 @@ static int css_get_length(int *length_ptr, int *unit_ptr, const char *p)
             break;
         case CSS_UNIT_PERCENT:
             if (f < 0) {
+		/* CG: ain't wrong ? */
                 if (f >= 100)
                     return -1;
                 f = 100 - f;
@@ -1184,4 +1188,3 @@ void css_dump_style_sheet(CSSStyleSheet *s)
     printf("</STYLE>\n");
 }
 #endif
-

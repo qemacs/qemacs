@@ -27,7 +27,9 @@ int main(int argc, char **argv)
             /* comments */
             if (c == '/') {
                 c = getchar();
+                /* CG: allow // comments ? */
                 if (c != '*') {
+                    /* CG: incorrect if n == 0, also n++ missing */
                     putchar('/');
                     goto redo;
                 }

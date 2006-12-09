@@ -211,6 +211,7 @@ int eb_nextc1(EditBuffer *b, unsigned long *offset_ptr)
         q = name;
         for (;;) {
             ch1 = eb_nextc(b, *offset_ptr, (int *)offset_ptr);
+	    /* CG: should stop on all white space */
             if (ch1 == '\n' || ch1 == ';')
                 break;
             *q++ = ch1;
@@ -449,6 +450,7 @@ static void css_eval_property(CSSContext *s,
         if (def->storage == CSS_STORAGE_PTR) {
             *(void **)ptr = p;
         } else {
+            /* CG: factorize this ? */
             switch (p->value.type) {
             case CSS_VALUE_COLOR:
             case CSS_UNIT_NONE:
