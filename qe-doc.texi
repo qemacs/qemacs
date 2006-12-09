@@ -146,8 +146,8 @@ M->, C-end              : end-of-buffer
 C-i                     : tabulate
 C-q                     : quoted-insert
 RET                     : newline
-M-{                     : backward-paragraph
-M-}                     : forward-paragraph
+M-@{                     : backward-paragraph
+M-@}                     : forward-paragraph
 @end example
 
 @section Region handling
