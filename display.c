@@ -129,6 +129,7 @@ QEDisplay *probe_display(void)
     dpy = NULL;
     probe_max = 0;
     while (p != NULL) {
+        // CG: probe = p->dpy_probe ? p->dpy_probe() : 0;
         probe = p->dpy_probe();
         if (probe >= probe_max) {
             probe_max = probe;

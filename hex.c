@@ -342,7 +342,7 @@ static int hex_init(void)
     qe_register_cmd_table(hex_commands, "hex");
     qe_register_cmd_table(hex_commands, "ascii");
 
-    /* additionnal mode specific keys */
+    /* additional mode specific keys */
     qe_register_binding(KEY_CTRL_LEFT, "decrease-width", "ascii|hex");
     qe_register_binding(KEY_CTRL_RIGHT, "increase-width", "ascii|hex");
     qe_register_binding(KEY_TAB, "toggle-hex", "hex");

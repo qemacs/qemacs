@@ -680,7 +680,7 @@ void do_undo(EditState *s)
         log_index = b->log_current - 1;
     }
     if (log_index == 0) {
-        put_status(s, "No futher undo information");
+        put_status(s, "No further undo information");
         return;
     } else {
         put_status(s, "Undo!");
@@ -1462,6 +1462,7 @@ int save_buffer(EditBuffer *b)
     chmod(filename, mode);
 #endif
     /* reset log */
+    /* CG: should not do this! */
     log_reset(b);
     b->modified = 0;
     return 0;

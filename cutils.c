@@ -56,6 +56,16 @@ int strstart(const char *str, const char *val, const char **ptr)
     return 1;
 }
 
+#if 0
+/* need this for >= 256 */
+static inline int utoupper(int c)
+{
+    if (c >= 'a' && c <= 'z')
+        c += 'A' - 'a';
+    return c;
+}
+#endif
+
 /**
  * Return TRUE if val is a prefix of str (case independent). If it
  * returns TRUE, ptr is set to the next character in 'str' after the

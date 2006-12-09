@@ -11,6 +11,7 @@
 // C-key : Control + key
 // M-key : Meta + key
 // Read util.c to get all the key names
+// CG: should be save-all-buffers?
 global_set_key("C-x s", "set-style");
 
 // set X11 display size

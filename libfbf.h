@@ -1,5 +1,5 @@
 #ifndef LIBFBF_H
-#define LIBFBF_Hx
+#define LIBFBF_H
 
 typedef struct {
     unsigned int magic;

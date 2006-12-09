@@ -850,7 +850,7 @@ static int image_init(void)
     qe_register_mode(&image_mode);
     qe_register_cmd_table(image_commands, "image");
     register_completion("pixel_format", pixel_format_completion);
-    /* additionnal mode specific keys */
+    /* additional mode specific keys */
     qe_register_binding('f', "toggle-full-screen", "image");
     return 0;
 }

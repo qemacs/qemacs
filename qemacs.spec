@@ -28,9 +28,9 @@ size and some unique features:
   optimized internal representation and by mmaping the file. 
 * Full UTF8 support, including double width chars such as ideograms, provided 
   you have an UTF8 VT100 emulator such as a recent xterm. 
-* Bidirectional editing respecting the Unicode Bidir algorithm (for Hebrew or 
+* Bidirectional editing conforming to the Unicode Bidir algorithm (for Hebrew or 
   Arabic). 
-* Can optionnaly contain input methods from the Yudit editor for most 
+* Can optionally contain input methods from the Yudit editor for most 
   languages, including Chinese CJ, Hebrew and Arabic. 
 * Hexadecimal editing mode with insertion and block commands. Can edit binary 
   files as well as text files. 
