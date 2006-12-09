@@ -657,6 +657,9 @@ static void term_flush(QEditScreen *s)
                             buf[2] = '\017';
                             buf[3] = '\0';
                         } else {
+                            // was in qemacs-0.3.1.g2.gw/tty.c:
+                            // if (cc == 0x2500 || cc == 'x')
+                            //    strcpy(buf, "\016x\017");
                             unicode_to_charset(buf, cc, s->charset);
                         }
                         if (x != s->width - 1 || y != s->height - 1)

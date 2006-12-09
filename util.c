@@ -22,7 +22,7 @@
 #ifdef WIN32
 #include <sys/timeb.h>
 
-/* XXX: not suffisant, but OK for basic operations */
+/* XXX: not sufficient, but OK for basic operations */
 int fnmatch(const char *pattern, const char *string, int flags)
 {
     if (pattern[0] == '*')
@@ -236,12 +236,14 @@ void canonize_absolute_path(char *buf, int buf_size, const char *path1)
         if (*path1 == '~' && (path1[1] == '\0' || path1[1] == '/')) {
             homedir = getenv("HOME");
             if (homedir) {
+                /* CG: should test for trailing slash */
                 pstrcpy(path, sizeof(path), homedir);
                 pstrcat(path, sizeof(path), path1 + 1);
                 goto next;
             }
         }
         /* CG: not sufficient for windows drives */
+        /* CG: should test result */
         getcwd(cwd, sizeof(cwd));
 #ifdef WIN32
         path_win_to_unix(cwd);
@@ -805,7 +807,7 @@ int css_get_font_family(const char *str)
 }
 
 /* a = a union b */
-void css_union_rect(CSSRect *a, CSSRect *b)
+void css_union_rect(CSSRect *a, const CSSRect *b)
 {
     if (css_is_null_rect(b))
         return;
@@ -920,60 +922,60 @@ void umemmove(unsigned int *dest, unsigned int *src, int len)
 /* copy the n first char of a string and truncate it. */
 char *pstrncpy(char *buf, int buf_size, const char *s, int len)
 {
-        char *q;
-        int c;
+    char *q;
+    int c;
 
-        if (buf_size > 0) {
-                q = buf;
-                if (len >= buf_size)
-                        len = buf_size - 1;
-                while (len > 0) {
-                        c = *s++;
-                        if (c == '\0')
-                                break;
-                        *q++ = c;
-                        len--;
-                }
-                *q = '\0';
+    if (buf_size > 0) {
+        q = buf;
+        if (len >= buf_size)
+            len = buf_size - 1;
+        while (len > 0) {
+            c = *s++;
+            if (c == '\0')
+                break;
+            *q++ = c;
+            len--;
         }
-        return buf;
+        *q = '\0';
+    }
+    return buf;
 }
 
 /**
  * Add a memory region to a dynamic string. In case of allocation
- * failure, the data is not added. The dynamic string is guaranted to
+ * failure, the data is not added. The dynamic string is guaranteed to
  * be 0 terminated, although it can be longer if it contains zeros.
  *
  * @return 0 if OK, -1 if allocation error.  
  */
 int qmemcat(QString *q, const unsigned char *data1, int len1)
 {
-        int new_len, len, alloc_size;
-        unsigned char *data;
+    int new_len, len, alloc_size;
+    unsigned char *data;
 
-        data = q->data;
-        len = q->len;
-        new_len = len + len1;
+    data = q->data;
+    len = q->len;
+    new_len = len + len1;
     /* see if we got a new power of two */
     /* NOTE: we got this trick from the excellent 'links' browser */
-        if ((len ^ new_len) >= len) {
+    if ((len ^ new_len) >= len) {
         /* find immediately bigger 2^n - 1 */
-                alloc_size = new_len;
-                alloc_size |= (alloc_size >> 1);
-                alloc_size |= (alloc_size >> 2);
-                alloc_size |= (alloc_size >> 4);
-                alloc_size |= (alloc_size >> 8);
-                alloc_size |= (alloc_size >> 16);
+        alloc_size = new_len;
+        alloc_size |= (alloc_size >> 1);
+        alloc_size |= (alloc_size >> 2);
+        alloc_size |= (alloc_size >> 4);
+        alloc_size |= (alloc_size >> 8);
+        alloc_size |= (alloc_size >> 16);
         /* allocate one more byte for end of string marker */
-                data = realloc(data, alloc_size + 1);
-                if (!data)
-                        return -1;
-                q->data = data;
-        }
-        memcpy(data + len, data1, len1);
-        data[new_len] = '\0'; /* we force a trailing '\0' */
-        q->len = new_len;
-        return 0;
+        data = realloc(data, alloc_size + 1);
+        if (!data)
+            return -1;
+        q->data = data;
+    }
+    memcpy(data + len, data1, len1);
+    data[new_len] = '\0'; /* we force a trailing '\0' */
+    q->len = new_len;
+    return 0;
 }
 
 /*
@@ -981,23 +983,23 @@ int qmemcat(QString *q, const unsigned char *data1, int len1)
  */
 int qstrcat(QString *q, const char *str)
 {
-        return qmemcat(q, (unsigned char *)str, strlen(str));
+    return qmemcat(q, (unsigned char *)str, strlen(str));
 }
 
 /* XXX: we use a fixed size buffer */
 int qprintf(QString *q, const char *fmt, ...)
 {
-        char buf[4096];
-        va_list ap;
-        int len, ret;
+    char buf[4096];
+    va_list ap;
+    int len, ret;
 
-        va_start(ap, fmt);
-        len = vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_start(ap, fmt);
+    len = vsnprintf(buf, sizeof(buf), fmt, ap);
     /* avoid problems for non C99 snprintf() which can return -1 if overflow */
-        if (len < 0)
-                len = strlen(buf);
-        ret = qmemcat(q, (unsigned char *)buf, len);
-        va_end(ap);
-        return ret;
+    if (len < 0)
+        len = strlen(buf);
+    ret = qmemcat(q, (unsigned char *)buf, len);
+    va_end(ap);
+    return ret;
 }
 

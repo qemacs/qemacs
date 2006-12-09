@@ -1126,7 +1126,7 @@ static int seg_dist(int x, int x1, int x2)
         return 0;
 }
 
-/* XXX: would need two pass in the general case (first search line,
+/* XXX: would need two passes in the general case (first search line,
    then colunm */
 static int mouse_goto_func(DisplayState *ds,
                            int offset1, int offset2, int line_num,
@@ -3147,6 +3147,14 @@ enum CmdArgType {
    - void (*)(EditState *, const char *, const char *); (6)
    - void (*)(EditState *, const char *, const char *, const char *); (2)
 */
+/* FIXME: fix this for 64 bit architectures where
+ * sizeof(void*) != sizeof(int)
+ * First argument is always EditState*, handling all P / I combinations
+ * requires 1 + 2 + 4 + 8 + 16 = 31 cases of which only 7 are used.
+ * long arguments would still not be supported if these cannot be
+ * passed as pointers (but long arguments are not supported anyway).
+ * should pass function signature for direct dispatch.
+ */
 void call_func(void *func, int nb_args, void **args, 
                unsigned char *args_type)
 {
@@ -4773,6 +4781,8 @@ static void kill_buffer_noconfirm(EditBuffer *b)
     EditState *e;
     EditBuffer *b1;
     
+    // FIXME: used to delete windows containing the buffer ???
+
     /* find a new buffer to switch to */
     for (b1 = qs->first_buffer; b1 != NULL; b1 = b1->next) {
         if (b1 != b && !(b1->flags & BF_SYSTEM))
@@ -4816,7 +4826,7 @@ static void get_default_path(EditState *s, char *buf, int buf_size)
         filename = s->b->filename;
     }
     canonize_absolute_path(buf1, sizeof(buf1), filename);
-    splitpath(buf, buf_size, NULL, 0, filename);
+    splitpath(buf, buf_size, NULL, 0, buf1);
 }
 
 static ModeDef *probe_mode(EditState *s, int mode, uint8_t *buf, int len)
@@ -5288,7 +5298,7 @@ void usprintf(char **pp, const char *fmt, ...)
     va_start(ap, fmt);
     len = vsprintf(q, fmt, ap);
     q += len;
-    *pp = q; ;
+    *pp = q;
     va_end(ap);
 }
 
@@ -5464,6 +5474,15 @@ static void isearch_key(void *opaque, int ch)
     default:
         if (KEY_SPECIAL(ch)) {
             /* exit search mode */
+#if 0
+            // FIXME: behaviour from qemacs-0.3pre13
+            if (is->found_offset >= 0) {
+                s->b->mark = is->found_offset;
+            } else {
+                s->b->mark = is->start_offset;
+            }
+            put_status(s, "Marked");
+#endif
             s->b->mark = is->start_offset;
             put_status(s, "Mark saved where search started");
             /* repost key */
@@ -5789,6 +5808,7 @@ void do_refresh(EditState *s1)
     qs->status_shadow[0] = '\0';
 
     if (resized) {
+        /* CG: should compute column count w/ default count */
         put_status(NULL, "Screen is now %d by %d (%d rows)",
                    width, height, height / new_status_height);
     }
@@ -5825,7 +5845,7 @@ void do_previous_window(EditState *s)
     qs->active_window = e;
 }
 
-/* Delete a window and try to resize other window so that it get
+/* Delete a window and try to resize other windows so that it gets
    covered. If force is not true, do not accept to kill window if it
    is the only window or if it is the minibuffer window. */
 void do_delete_window(EditState *s, int force)
@@ -6557,6 +6577,7 @@ int parse_config_file(EditState *s, const char *filename)
                 }
             }
             skip_spaces(&p);
+            /* CG: unfinished comments silently unsupported */
         }
         if (p[0] == '/' && p[1] == '/')
             continue;
@@ -6648,8 +6669,8 @@ int parse_config_file(EditState *s, const char *filename)
             
             skip_spaces(&p);
             if (sep) {
-                /* Should test for arg list too short. */
-                /* Could supply default arguments. */
+                /* CG: Should test for arg list too short. */
+                /* CG: Could supply default arguments. */
                 if (!expect_token(&p, sep))
                     goto fail;
             }
@@ -6657,11 +6678,12 @@ int parse_config_file(EditState *s, const char *filename)
 
             switch (args_type[i]) {
             case CMD_ARG_INT:
-                if (!isdigit(*p)) {
+                args[i] = (void *)strtol(p, (char**)&q, 0);
+                if (q == p) {
                     put_status(s, "Number expected for arg %d", i);
                     goto fail;
                 }
-                args[i] = (void *)strtol(p, (char**)&p, 0);
+                p = q;
                 break;
             case CMD_ARG_STRING:
                 if (*p != '\"') {

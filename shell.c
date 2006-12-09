@@ -128,7 +128,7 @@ static int run_process(const char *path, const char **argv,
 
     pty_fd = get_pty(tty_name);
     if (pty_fd < 0) {
-        put_status(NULL, "cannot get tty");
+        put_status(NULL, "run_process: cannot get tty");
         return -1;
     }
     fcntl(pty_fd, F_SETFL, O_NONBLOCK);
@@ -141,7 +141,7 @@ static int run_process(const char *path, const char **argv,
     
     pid = fork();
     if (pid < 0) {
-        put_status(NULL, "cannot fork");
+        put_status(NULL, "run_process: cannot fork");
         return -1;
     }
     if (pid == 0) {
@@ -571,9 +571,13 @@ static void tty_emulate(ShellState *s, int c)
             }
             break;
         case 14:        /* ^N  SO = shift out */
+            // was in qemacs-0.3.1.g2.gw
+            //eb_set_charset(s->b, &charset_8859_1);
             s->shifted = 1;
             break;
         case 15:        /* ^O  SI = shift in */
+            // was in qemacs-0.3.1.g2.gw
+            //eb_set_charset(s->b, &charset_cp1125);
             s->shifted = 0;
             break;
         default:
@@ -952,6 +956,7 @@ static void shell_close(EditBuffer *b)
             /* if still not killed, then try harder (useful for
                shells) */
             kill(s->pid, SIGKILL);
+	    /* CG: should add timeout facility and error message */
             while (waitpid(s->pid, &status, 0) != s->pid);
         }
         s->pid = -1;

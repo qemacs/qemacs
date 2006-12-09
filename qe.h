@@ -1,3 +1,23 @@
+/*
+ * QEmacs, tiny but powerful multimode editor
+ *
+ * Copyright (c) 2000,2001 Fabrice Bellard.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
 #ifndef QE_H
 #define QE_H
 
@@ -99,11 +119,10 @@ void keytostr(char *buf, int buf_size, int key);
 int css_define_color(const char *name, const char *value);
 int css_get_color(unsigned int *color_ptr, const char *p);
 int css_get_font_family(const char *str);
-void css_union_rect(CSSRect *a, CSSRect *b);
-static inline int css_is_null_rect(CSSRect *a)
+void css_union_rect(CSSRect *a, const CSSRect *b);
+static inline int css_is_null_rect(const CSSRect *a)
 {
-    return (a->x2 <= a->x1 ||
-            a->y2 <= a->y1);
+    return (a->x2 <= a->x1 || a->y2 <= a->y1);
 }
 static inline void css_set_rect(CSSRect *a, int x1, int y1, int x2, int y2)
 {
@@ -113,7 +132,7 @@ static inline void css_set_rect(CSSRect *a, int x1, int y1, int x2, int y2)
     a->y2 = y2;
 }
 /* return true if a and b intersect */
-static inline int css_is_inter_rect(CSSRect *a, CSSRect *b)
+static inline int css_is_inter_rect(const CSSRect *a, const CSSRect *b)
 {
     return (!(a->x2 <= b->x1 ||
               a->x1 >= b->x2 ||
@@ -121,6 +140,7 @@ static inline int css_is_inter_rect(CSSRect *a, CSSRect *b)
               a->y1 >= b->y2));
 }
 
+/* CG: what about \v and \f */
 static inline int css_is_space(int ch)
 {
     return (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t');
@@ -457,7 +477,7 @@ enum LogOperation {
 
 struct EditBuffer;
 
-/* each buffer modification can be catched with this callback */
+/* Each buffer modification can be caught with this callback */
 typedef void (*EditBufferCallback)(struct EditBuffer *,
                                    void *opaque,
                                    enum LogOperation op,
@@ -502,7 +522,7 @@ typedef struct EditBuffer {
     QECharset *charset;
 
     /* undo system */
-    int save_log;    /* if true, each buffer operation is loged */
+    int save_log;    /* if true, each buffer operation is logged */
     int log_new_index, log_current;
     struct EditBuffer *log_buffer;
     int nb_logs;
@@ -806,7 +826,7 @@ typedef struct ModeDef {
        again in the same state */
     ModeSavedData *(*mode_save_data)(EditState *s);
 
-    /* low level display functions (must be NULL to use text relatedx
+    /* low level display functions (must be NULL to use text related
        functions)*/
     void (*display_hook)(EditState *);
     void (*display)(EditState *);
@@ -1158,7 +1178,7 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 void set_color(unsigned int *buf, int len, int style);
 
 void do_char(EditState *s, int key);
-void do_switch_to_buffer(EditState *s, const char *bufname);;
+void do_switch_to_buffer(EditState *s, const char *bufname);
 void do_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data);
 void text_move_left_right_visual(EditState *s, int dir);
 void text_move_word_left_right(EditState *s, int dir);
