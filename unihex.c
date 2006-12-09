@@ -174,7 +174,7 @@ static int unihex_init(void)
     /* first register mode(s) */
     qe_register_mode(&unihex_mode);
 
-    /* additionnal mode specific keys */
+    /* additional mode specific keys */
     qe_register_binding(KEY_CTRL_LEFT, "decrease-width", "unihex");
     qe_register_binding(KEY_CTRL_RIGHT, "increase-width", "unihex");
     qe_register_binding(KEY_CTRL('i'), "toggle-hex", "unihex");
