@@ -82,7 +82,7 @@ static int visual_depth;
 
 static int force_tty = 0;
 static const char *display_str = "";
-static const char *geometry_str = "80x25";
+static const char *geometry_str = "80x50";
 
 const char *default_x11_fonts[NB_FONT_FAMILIES] = {
 #ifdef CONFIG_XFT
