@@ -117,8 +117,8 @@ static int term_init(QEditScreen *s, int w, int h)
         //printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
         /* Just print utf-8 encoding for eacute and check cursor position */
         printf("%s", "\030\032" "\r\xC3\xA9" "\033[6n\033D");
-        scanf("\033[%u;%u", &y, &x);/* get cursor position */
-        printf("\033[1F" "\033[%uX", (x-1)); /* go back; erase 1 or 3 char */
+        scanf("\033[%u;%u", &y, &x);  /* get cursor position */
+        printf("\r   \r");            /* go back, erase 3 chars */
         if (x == 2) {
             s->charset = &charset_utf8;
         }
@@ -183,7 +183,8 @@ static void tty_resize(int sig)
     QEditScreen *s = tty_screen;
     TTYState *ts = s->private;
     struct winsize ws;
-    int size;
+    int i, count, size;
+    TTYChar tc;
 
     s->width = 80;
     s->height = 24;
@@ -192,13 +193,18 @@ static void tty_resize(int sig)
         s->height = ws.ws_row;
     }
     
-    size = s->width * s->height * sizeof(TTYChar);
+    count = s->width * s->height;
+    size = count * sizeof(TTYChar);
     ts->old_screen = realloc(ts->old_screen, size);
     ts->screen = realloc(ts->screen, size);
     ts->line_updated = realloc(ts->line_updated, s->height);
     
-    memset(ts->old_screen, 0, size);
-    memset(ts->screen, ' ', size);
+    memset(ts->old_screen, 0xFF, size);
+    tc.ch = ' ';
+    tc.bgcolor = tc.fgcolor = 0;
+    for (i = 0; i < count; i++) {
+        ts->screen[i] = tc;
+    }
     memset(ts->line_updated, 1, s->height);
 
     s->clip_x1 = 0;
@@ -286,15 +292,7 @@ static void tty_read_handler(void *opaque)
     if (trace_buffer &&
         qs->active_window &&
         qs->active_window->b != trace_buffer) {
-        eb_write(trace_buffer, trace_buffer->total_size,
-                 ts->buf + ts->utf8_index, 1);
-#if 0
-        ch = ts->buf[ts->utf8_index];
-        if (ch < 32 || ch == 127)
-            fprintf(stderr, "got %d '^%c'\n", ch, ('@' + ch) & 127);
-        else
-            fprintf(stderr, "got %d '%c'\n", ch, ch);
-#endif
+        eb_trace_bytes(ts->buf + ts->utf8_index, 1, EB_TRACE_TTY);
     }
 
     /* charset handling */
@@ -618,23 +616,29 @@ static void term_flush(QEditScreen *s)
 {
     TTYState *ts = s->private;
     TTYChar *ptr, *optr;
-    int x, y, bgcolor, fgcolor;
+    int x, y, bgcolor, fgcolor, xe;
     char buf[10];
     unsigned int cc;
 
     bgcolor = -1;
     fgcolor = -1;
             
-    for (y = 0; y < s->height; y++) {
-        if (ts->line_updated[y]) {
-            ts->line_updated[y] = 0;
-            ptr = ts->screen + y * s->width;
-            optr = ts->old_screen + y * s->width;
+    /* Achtung: x and y in these loops are 1 based */
+    y = 1;
+    for (; y <= s->height; y++) {
+        if (ts->line_updated[y - 1]) {
+            ts->line_updated[y - 1] = 0;
+            ptr = ts->screen + (y - 1) * s->width;
+            optr = ts->old_screen + (y - 1) * s->width;
 
             if (memcmp(ptr, optr, sizeof(TTYChar) * s->width) != 0) {
                 /* XXX: currently, we update the whole line */
-                printf("\033[%d;%dH", y + 1, 1);
-                for (x = 0; x < s->width; x++) {
+                /* CG: should clip left and right untouched parts */
+                /* CG: then scan left and right blank parts */
+                x = 1;
+                xe = s->width;
+                printf("\033[%d;%dH", y, x);
+                for (; x <= xe; x++) {
                     cc = ptr->ch;
                     if (cc != 0xffff) {
                         /* output attributes */
@@ -662,7 +666,7 @@ static void term_flush(QEditScreen *s)
                             //    strcpy(buf, "\016x\017");
                             unicode_to_charset(buf, cc, s->charset);
                         }
-                        if (x != s->width - 1 || y != s->height - 1)
+                        if (x != s->width || y != s->height)
                             printf("%s", buf);
                     }
                     /* update old screen data */
