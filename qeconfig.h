@@ -172,6 +172,7 @@ CmdDef basic_commands[] = {
     CMD1( KEY_NONE, KEY_NONE, "toggle-control-h", do_toggle_control_h, 0)
     CMD_( KEY_NONE, KEY_NONE, "set-emulation", do_set_emulation,
           "s{Emulation mode: }")
+    CMD0( KEY_NONE, KEY_NONE, "set-trace", do_set_trace)
     CMD_( KEY_NONE, KEY_NONE, "cd", do_cd,
           "s{Change default directory: }[file]|file|")
     CMD_( KEY_NONE, KEY_NONE, "set-mode", do_cmd_set_mode,
