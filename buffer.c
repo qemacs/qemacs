@@ -531,6 +531,50 @@ EditBuffer *eb_find_file(const char *filename)
     return NULL;
 }
 
+/* Find the next window showing a given buffer */
+EditState *eb_find_window(EditBuffer *b, EditState *e)
+{
+    QEmacsState *qs = &qe_state;
+
+    for (e = e ? e->next_window : qs->first_window;
+         e != NULL;
+         e = e->next_window)
+    {
+            if (e->b == b)
+                return e;
+    }
+    return NULL;
+}
+
+void eb_trace_bytes(void *buf, int size, int state)
+{
+    EditBuffer *b = trace_buffer;
+    EditState *e;
+    int point;
+
+    if (b) {
+        point = b->total_size;
+        if (trace_buffer_state != state) {
+            trace_buffer_state = state;
+            eb_write(b, b->total_size,
+                     state == EB_TRACE_TTY ? "\n--|" : "|--\n", 4);
+        }
+#if 0
+        /* CG: could make traces more readable: */
+        if (ch < 32 || ch == 127)
+            fprintf(stderr, "got %d '^%c'\n", ch, ('@' + ch) & 127);
+        else
+            fprintf(stderr, "got %d '%c'\n", ch, ch);
+#endif
+        eb_write(b, b->total_size, buf, size);
+
+        /* If point is visible in window, should keep it so */
+        e = eb_find_window(b, NULL);
+        if (e && e->offset == point)
+            e->offset = b->total_size;
+    }
+}
+
 /************************************************************/
 /* callbacks */
 
@@ -1289,13 +1333,23 @@ void set_filename(EditBuffer *b, const char *filename)
 
 void eb_printf(EditBuffer *b, const char *fmt, ...)
 {
+    char buf0[1024];
+    char *buf;
+    int len, size;
     va_list ap;
-    char buf[1024];
-    int len;
 
     va_start(ap, fmt);
-    len = vsnprintf(buf, sizeof(buf), fmt, ap);
+    size = sizeof(buf0);
+    buf = buf0;
+    len = vsnprintf(buf, size, fmt, ap);
     va_end(ap);
+    if (len >= size) {
+        va_start(ap, fmt);
+        size = len + 1;
+        buf = alloca(size);
+        vsnprintf(buf, size, fmt, ap);
+        va_end(ap);
+    }
     eb_insert(b, b->total_size, buf, len);
 }
 
