@@ -169,7 +169,7 @@ static void do_list_buffers(EditState *s)
        special buffer flag to tell this */
     b = eb_new("*bufed*", BF_READONLY | BF_SYSTEM);
 
-    width = qs->width / 4;
+    width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
     do_set_mode(e, &bufed_mode, NULL);
 

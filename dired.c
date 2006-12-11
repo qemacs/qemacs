@@ -510,7 +510,7 @@ void do_dired(EditState *s)
     canonize_absolute_path(filename, sizeof(filename), filename);
     set_filename(b, filename);
     
-    width = qs->width / 4;
+    width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
     do_set_mode(e, &dired_mode, NULL);
     hs = e->mode_data;
