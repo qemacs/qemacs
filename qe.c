@@ -65,6 +65,7 @@ static QEditScreen global_screen;
 static int screen_width = 0;
 static int screen_height = 0;
 EditBuffer *trace_buffer;
+int trace_buffer_state;
 int no_init_file;
 const char *user_option;
 
@@ -117,9 +118,20 @@ void qe_register_mode(ModeDef *m)
     }
 }
 
+void mode_completion(StringArray *cs, const char *input)
+{
+    ModeDef *p;
+    
+    for (p = first_mode; p != NULL; p = p->next) {
+        if (strstart(p->name, input, NULL))
+            add_string(cs, p->name);
+    }
+}
+
 static ModeDef *find_mode(const char *mode_name)
 {
     ModeDef *p;
+
     p = first_mode;
     while (p != NULL) {
         if (!strcmp(mode_name, p->name))
@@ -250,6 +262,13 @@ void do_set_emulation(EditState *s, const char *name)
     }
 }
 
+void do_set_trace(EditState *s)
+{
+    do_split_window(s, 0);
+    do_switch_to_buffer(s, "*trace*");
+    do_previous_window(s);
+}
+
 void do_cd(EditState *s, const char *name)
 {
     chdir(name);
@@ -341,15 +360,12 @@ void qe_register_binding(int key, const char *cmd_name, const char *mode_names)
 
 void command_completion(StringArray *cs, const char *input)
 {
-    int count, len;
     CmdDef *d;
-    count = 0;
     
-    len = strlen(input);
     d = first_cmd;
     while (d != NULL) {
         while (d->name != NULL) {
-            if (!strncmp(d->name, input, len))
+            if (strstart(d->name, input, NULL))
                 add_string(cs, d->name);
             d++;
         }
@@ -1585,18 +1601,6 @@ static void do_cmd_set_mode(EditState *s, const char *name)
         do_set_mode(s, m, NULL);
 }
 
-void charset_completion(StringArray *cs, const char *charset_str)
-{
-    QECharset *p;
-    int len;
-
-    len = strlen(charset_str);
-    for (p = first_charset; p != NULL; p = p->next) {
-        if (!strncmp(p->name, charset_str, len))
-            add_string(cs, p->name);
-    }
-}
-
 QECharset *read_charset(EditState *s, const char *charset_str)
 {
     QECharset *charset;
@@ -1748,16 +1752,6 @@ void do_set_indent_tabs_mode(EditState *s, int mode)
 {
     s->indent_tabs_mode = (mode != 0);
 }
-
-void do_quit(EditState *s);
-void do_load(EditState *s, const char *filename);
-void do_switch_to_buffer(EditState *s, const char *bufname);
-void do_break(EditState *s);
-void do_insert_file(EditState *s, const char *filename);
-void do_save(EditState *s, int save_as);
-void do_isearch(EditState *s, int dir);
-void do_refresh(EditState *s);
-void do_refresh_complete(EditState *s);
 
 /* compute string for the first part of the mode line (flags,
    filename, modename) */
@@ -1944,12 +1938,11 @@ QEStyleDef *find_style(const char *name)
 void style_completion(StringArray *cs, const char *input)
 {
     QEStyleDef *style;
-    int len, i;
+    int i;
 
-    len = strlen(input);
     for (i = 0; i < QE_STYLE_NB; i++) {
         style = &qe_styles[i];
-        if (!strncmp(style->name, input, len))
+        if (strstart(style->name, input, NULL))
             add_string(cs, style->name);
     }
 }
@@ -2959,8 +2952,8 @@ int text_display(EditState *s, DisplayState *ds, int offset)
             embedding_level = bd[0].level;
             /* XXX: use embedding level for all cases ? */
             /* CG: should query screen or window about display methods */
-            if (c < ' ' && c != '\t') {
-                display_printf(ds, offset0, offset, "^%c", '@' + c);
+            if ((c < ' ' && c != '\t') || c == 127) {
+                display_printf(ds, offset0, offset, "^%c", ('@' + c) & 127);
             } else if (c >= 0x10000) {
                 /* currently, we cannot display these chars */
                 display_printf(ds, offset0, offset, "\\U%08x", c);
@@ -4204,11 +4197,9 @@ void buffer_completion(StringArray *cs, const char *input)
 {
     QEmacsState *qs = &qe_state;
     EditBuffer *b;
-    int len;
 
-    len = strlen(input);
     for (b = qs->first_buffer; b != NULL; b = b->next) {
-        if (!(b->flags & BF_SYSTEM) && !strncmp(b->name, input, len))
+        if (!(b->flags & BF_SYSTEM) && strstart(b->name, input, NULL))
             add_string(cs, b->name);
     }
 }
@@ -7219,6 +7210,7 @@ void qe_init(void *opaque)
 
     register_completion("command", command_completion);
     register_completion("charset", charset_completion);
+    register_completion("mode", mode_completion);
     register_completion("style", style_completion);
     register_completion("file", file_completion);
     register_completion("buffer", buffer_completion);
