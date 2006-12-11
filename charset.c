@@ -286,17 +286,36 @@ QECharset charset_utf8 = {
 /********************************************************/
 /* generic charset functions */
 
+void charset_completion(StringArray *cs, const char *charset_str)
+{
+    QECharset *p;
+    const char **pp;
+
+    for (p = first_charset; p != NULL; p = p->next) {
+        if (stristart(p->name, charset_str, NULL))
+            add_string(cs, p->name);
+        pp = p->aliases;
+        if (pp) {
+            for (; *pp != NULL; pp++) {
+                if (stristart(*pp, charset_str, NULL))
+                    add_string(cs, *pp);
+            }
+        }
+    }
+}
+
 QECharset *find_charset(const char *str)
 {
     QECharset *p;
     const char **pp;
+
     for (p = first_charset; p != NULL; p = p->next) {
-        if (!strcasecmp(str, p->name))
+        if (!stricmp(str, p->name))
             return p;
         pp = p->aliases;
         if (pp) {
             for (; *pp != NULL; pp++) {
-                if (!strcasecmp(str, *pp))
+                if (!stricmp(str, *pp))
                     return p;
             }
         }
@@ -333,7 +352,7 @@ void charset_decode_close(CharsetDecodeState *s)
 }
 
 /* detect the charset. Actually only UTF8 is detected */
-QECharset *detect_charset (const unsigned char *buf, int size)
+QECharset *detect_charset(const unsigned char *buf, int size)
 {
     int i, l, c, has_utf8;
 
