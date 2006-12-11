@@ -131,3 +131,9 @@ insert_window_left()  deletes some left-most windows
 
 - fix 32 bit assumptions:
   qe.c:3133: call_func(): sizeof(int) == sizeof(void*) == sizeof(char*)
+
+support for high intensity colors in terminal mode (selected as bold)
+add colorized buffers using shell buffer method
+make shell buffer a colorized UCS2 buffer
+use colorized buffer for *trace* buffer to flag tty input, shell output,
+  supported and unsupported escapes.
