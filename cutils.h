@@ -5,6 +5,7 @@
 
 int strstart(const char *str, const char *val, const char **ptr);
 int stristart(const char *str, const char *val, const char **ptr);
+int stricmp(const char *str1, const char *str2);
 void pstrcpy(char *buf, int buf_size, const char *str);
 char *pstrcat(char *buf, int buf_size, const char *s);
 

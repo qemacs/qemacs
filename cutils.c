@@ -67,9 +67,10 @@ static inline int utoupper(int c)
 #endif
 
 /**
- * Return TRUE if val is a prefix of str (case independent). If it
- * returns TRUE, ptr is set to the next character in 'str' after the
- * prefix.
+ * Return TRUE if val is a prefix of str (case independent).
+ * If it returns TRUE, ptr is set to the next character in 'str' after
+ * the prefix.
+ * Spaces, dashes and underscores are also ignored in this comparison.
  *
  * @param str input string
  * @param val prefix to test
@@ -81,14 +82,61 @@ int stristart(const char *str, const char *val, const char **ptr)
     p = str;
     q = val;
     while (*q != '\0') {
-        if (toupper(*(const unsigned char *)p) != toupper(*(const unsigned char *)q))
+        if (toupper(*(const unsigned char *)p) !=
+              toupper(*(const unsigned char *)q))
+        {
+            if (*p == '-' || *p == '_' || *p == ' ') {
+                p++;
+                continue;
+            }
+            if (*q == '-' || *q == '_' || *q == ' ') {
+                q++;
+                continue;
+            }
             return 0;
+        }
         p++;
         q++;
     }
     if (ptr)
         *ptr = p;
     return 1;
+}
+
+/**
+ * Compare strings str1 and str2 case independently.
+ * Spaces, dashes and underscores are also ignored in this comparison.
+ *
+ * @param str1 input string 1 (left operand)
+ * @param str2 input string 2 (right operand)
+ * @return -1, 0, +1 reflecting the sign of str1 <=> str2
+ */
+int stricmp(const char *str1, const char *str2)
+{
+    const char *p, *q;
+    p = str1;
+    q = str2;
+    for (;;) {
+        if (toupper(*(const unsigned char *)p) !=
+              toupper(*(const unsigned char *)q))
+        {
+            if (*p == '-' || *p == '_' || *p == ' ') {
+                p++;
+                continue;
+            }
+            if (*q == '-' || *q == '_' || *q == ' ') {
+                q++;
+                continue;
+            }
+            return (toupper(*(const unsigned char *)p) <
+                    toupper(*(const unsigned char *)q)) ? -1 : +1;
+        }
+        if (!*p)
+            break;
+        p++;
+        q++;
+    }
+    return 0;
 }
 
 /**
