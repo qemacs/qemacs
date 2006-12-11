@@ -236,11 +236,9 @@ void unload_input_methods(void)
 void input_completion(StringArray *cs, const char *input)
 {
     InputMethod *m;
-    int len;
 
-    len = strlen(input);
     for (m = input_methods; m != NULL; m = m->next) {
-        if (!strncmp(m->name, input, len))
+        if (strstart(m->name, input, NULL))
             add_string(cs, m->name);
     }
 }

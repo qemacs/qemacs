@@ -789,15 +789,14 @@ void image_mode_line(EditState *s, char *buf, int buf_size)
                  ib->interleaved ? 'I' : ' ');
 }
 
-static void pixel_format_completion(StringArray *cs, const char *str)
+static void pixel_format_completion(StringArray *cs, const char *input)
 {
-    int len, i;
+    int i;
     const char *name;
     
-    len = strlen(str);
     for (i = 0; i < PIX_FMT_NB; i++) {
         name = avcodec_get_pix_fmt_name(i);
-        if (!strncmp(name, str, len))
+        if (strstart(name, input, NULL))
             add_string(cs, name);
     }
 }
