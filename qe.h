@@ -51,6 +51,15 @@
 
 /************************/
 
+typedef unsigned char u8;
+typedef struct EditState EditState;
+typedef struct EditBuffer EditBuffer;
+typedef struct QEmacsState QEmacsState;
+
+#define MAXINT 0x7fffffff
+#define MAX_FILENAME_SIZE 1024
+#define NO_ARG MAXINT
+
 /* low level I/O events */
 void set_read_handler(int fd, void (*cb)(void *opaque), void *opaque);
 void set_write_handler(int fd, void (*cb)(void *opaque), void *opaque);
@@ -60,20 +69,12 @@ void url_exit(void);
 void register_bottom_half(void (*cb)(void *opaque), void *opaque);
 void unregister_bottom_half(void (*cb)(void *opaque), void *opaque);
 
-struct QETimer;
 typedef struct QETimer QETimer;
 QETimer *qe_add_timer(int delay, void *opaque, void (*cb)(void *opaque));
 void qe_kill_timer(QETimer *ti);
 
 /* main loop for Unix programs using liburlio */
 void url_main_loop(void (*init)(void *opaque), void *opaque);
-
-typedef unsigned char u8;
-struct EditState;
-
-#define MAXINT 0x7fffffff
-#define MAX_FILENAME_SIZE 1024
-#define NO_ARG MAXINT
 
 /* util.c */
 
@@ -283,6 +284,7 @@ extern unsigned char utf8_length[256];
 int utf8_to_unicode(unsigned int *dest, int dest_length, 
                     const char *str);
 
+void charset_completion(StringArray *cs, const char *charset_str);
 QECharset *find_charset(const char *str);
 void charset_decode_init(CharsetDecodeState *s, QECharset *charset);
 void charset_decode_close(CharsetDecodeState *s);
@@ -475,10 +477,8 @@ enum LogOperation {
     LOGOP_DELETE
 };
 
-struct EditBuffer;
-
 /* Each buffer modification can be caught with this callback */
-typedef void (*EditBufferCallback)(struct EditBuffer *,
+typedef void (*EditBufferCallback)(EditBuffer *,
                                    void *opaque,
                                    enum LogOperation op,
                                    int offset,
@@ -499,7 +499,7 @@ typedef struct EditBufferCallbackList {
 #define BF_SAVING    0x0020  /* buffer is being saved */
 #define BF_DIRED     0x0100  /* buffer is interactive dired */
 
-typedef struct EditBuffer {
+struct EditBuffer {
     Page *page_table;
     int nb_pages;
     int mark;       /* current mark (moved with text) */
@@ -524,7 +524,7 @@ typedef struct EditBuffer {
     /* undo system */
     int save_log;    /* if true, each buffer operation is logged */
     int log_new_index, log_current;
-    struct EditBuffer *log_buffer;
+    EditBuffer *log_buffer;
     int nb_logs;
 
     /* modification callbacks */
@@ -539,7 +539,7 @@ typedef struct EditBuffer {
     /* buffer polling & private data */
     void *priv_data;
     /* called when deleting the buffer */
-    void (*close)(struct EditBuffer *);
+    void (*close)(EditBuffer *);
 
     /* saved data from the last opened mode, needed to restore mode */
     /* CG: should instead keep a pointer to last window using this
@@ -547,10 +547,10 @@ typedef struct EditBuffer {
      */
     struct ModeSavedData *saved_data; 
 
-    struct EditBuffer *next; /* next editbuffer in qe_state buffer list */
+    EditBuffer *next; /* next editbuffer in qe_state buffer list */
     char name[256];     /* buffer name */
     char filename[MAX_FILENAME_SIZE]; /* file name */
-} EditBuffer;
+};
 
 struct ModeProbeData;
 
@@ -573,6 +573,10 @@ typedef struct LogBuffer {
 } LogBuffer;
 
 extern EditBuffer *trace_buffer;
+extern int trace_buffer_state;
+#define EB_TRACE_TTY    1
+#define EB_TRACE_SHELL  2
+void eb_trace_bytes(void *buf, int size, int state);
 
 void eb_init(void);
 int eb_read(EditBuffer *b, int offset, void *buf, int size);
@@ -587,6 +591,7 @@ EditBuffer *eb_new(const char *name, int flags);
 void eb_free(EditBuffer *b);
 EditBuffer *eb_find(const char *name);
 EditBuffer *eb_find_file(const char *filename);
+EditState *eb_find_window(EditBuffer *b, EditState *e);
 
 void eb_set_charset(EditBuffer *b, QECharset *charset);
 int eb_nextc(EditBuffer *b, int offset, int *next_ptr);
@@ -595,7 +600,7 @@ int eb_goto_pos(EditBuffer *b, int line1, int col1);
 int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset);
 int eb_goto_char(EditBuffer *b, int pos);
 int eb_get_char_offset(EditBuffer *b, int offset);
-void do_undo(struct EditState *s);
+void do_undo(EditState *s);
 
 int raw_load_buffer1(EditBuffer *b, FILE *f, int offset);
 int save_buffer(EditBuffer *b);
@@ -684,7 +689,7 @@ extern EditBufferDataType raw_data_type;
 /* qe.c */
 
 /* colorize & transform a line, lower level then ColorizeFunc */
-typedef int (*GetColorizedLineFunc)(struct EditState *s, 
+typedef int (*GetColorizedLineFunc)(EditState *s, 
                                     unsigned int *buf, int buf_size,
                                     int offset1, int line_num);
 
@@ -712,7 +717,7 @@ enum WrapType {
 #define DIR_LTR 0
 #define DIR_RTL 1
 
-typedef struct EditState {
+struct EditState {
     int offset;     /* offset of the cursor */
     /* text display state */
     int offset_top; 
@@ -791,8 +796,8 @@ typedef struct EditState {
     int compose_len;
     int compose_start_offset;
     unsigned int compose_buf[20];
-    struct EditState *next_window;
-} EditState;
+    EditState *next_window;
+};
 
 #define SAVED_DATA_SIZE ((int)&((EditState *)0)->end_of_saved_data)
 
@@ -892,11 +897,11 @@ typedef struct QErrorContext {
     int lineno;
 } QErrorContext;
 
-typedef struct QEmacsState {
+struct QEmacsState {
     QEditScreen *screen;
-    struct EditState *first_window;
-    struct EditState *active_window; /* window in which we edit */
-    struct EditBuffer *first_buffer;
+    EditState *first_window;
+    EditState *active_window; /* window in which we edit */
+    EditBuffer *first_buffer;
     /* global layout info : DO NOT modify these directly. do_refresh
        does it */
     int status_height;
@@ -926,7 +931,7 @@ typedef struct QEmacsState {
     char status_shadow[MAX_SCREEN_WIDTH];
     QErrorContext ec;
     char system_fonts[NB_FONT_FAMILIES][256];
-} QEmacsState;
+};
 
 extern QEmacsState qe_state;
 
@@ -1161,9 +1166,22 @@ void edit_append(EditState *s, EditState *e);
 EditState *edit_find(EditBuffer *b);
 void do_refresh(EditState *s);
 void do_other_window(EditState *s);
+void do_previous_window(EditState *s);
 void do_delete_window(EditState *s, int force);
+void do_split_window(EditState *s, int horiz);
 void edit_display(QEmacsState *qs);
 void edit_invalidate(EditState *s);
+
+/* loading files */
+void do_quit(EditState *s);
+void do_load(EditState *s, const char *filename);
+void do_switch_to_buffer(EditState *s, const char *bufname);
+void do_break(EditState *s);
+void do_insert_file(EditState *s, const char *filename);
+void do_save(EditState *s, int save_as);
+void do_isearch(EditState *s, int dir);
+void do_refresh(EditState *s);
+void do_refresh_complete(EditState *s);
 
 /* text mode */
 extern ModeDef text_mode;
