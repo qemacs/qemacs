@@ -44,6 +44,7 @@ enum TTYState {
     TTY_STATE_ESC,
     TTY_STATE_ESC2,
     TTY_STATE_CSI,
+    TTY_STATE_STRING,
 };
 
 typedef struct ShellState {
@@ -155,6 +156,9 @@ static int run_process(const char *path, const char **argv,
         dup(0);
 
         setsid();
+
+        //setenv("TERM", "linux", 1);
+        //setenv("QELEVEL", "1", 1);
 
         execv(path, (char *const*)argv);
         exit(1);
@@ -336,10 +340,12 @@ static void tty_write(ShellState *s, const char *buf, int len)
     }
 }
 
-/* compute offset the char at 'x' and 'y'. Can insert spaces or lines
-   if needed */
+/* Compute offset the of the char at column x and row y (0 based).
+ * Can insert spaces or rows if needed.
+ * x and y may each be relative to the current position.
+ */
 /* XXX: optimize !!!!! */
-static void tty_gotoxy(ShellState *s, int x, int y, int relative)
+static void tty_goto_xy(ShellState *s, int x, int y, int relative)
 {
     int total_lines, cur_line, line_num, col_num, offset, offset1, c;
     unsigned char buf1[10];
@@ -355,12 +361,15 @@ static void tty_gotoxy(ShellState *s, int x, int y, int relative)
         cur_line -= line_num;
         if (cur_line < 0)
             cur_line = 0;
-        x += col_num;
-        y += line_num;
+        if (relative & 1)
+            x += col_num;
+        if (relative & 2)
+            y += cur_line;
     }
     if (y < 0)
         y = 0;
-    else if (y >= TTY_YSIZE)
+    else
+    if (y >= TTY_YSIZE)
         y = TTY_YSIZE - 1;
     if (x < 0)
         x = 0;
@@ -379,6 +388,7 @@ static void tty_gotoxy(ShellState *s, int x, int y, int relative)
             buf1[0] = ' ';
             for (; x > 0; x--) {
                 eb_insert(s->b, offset, buf1, 1);
+                offset++;
             }
             break;
         } else {
@@ -388,17 +398,58 @@ static void tty_gotoxy(ShellState *s, int x, int y, int relative)
     s->cur_offset = offset;
 }
 
-void tty_csi_m(ShellState *s, int c)
+static int tty_put_char(ShellState *s, int c)
+{
+    char buf[1];
+    int c1, cur_len, offset;
+
+    buf[0] = c;
+    c1 = eb_nextc(s->b, s->cur_offset, &offset);
+    if (c1 == '\n') {
+        /* insert */
+        eb_insert(s->b, s->cur_offset, buf, 1);
+    } else {
+        /* check for (c1 != c) is not advisable optimisation because
+         * re-writing the same character may cause color changes.
+         */
+        cur_len = offset - s->cur_offset;
+        if (cur_len == 1) {
+            eb_write(s->b, s->cur_offset, buf, 1);
+        } else {
+            eb_delete(s->b, s->cur_offset, cur_len);
+            eb_insert(s->b, s->cur_offset, buf, 1);
+        }
+    }
+    return s->cur_offset + 1;
+}
+
+static void tty_csi_m(ShellState *s, int c, int has_param)
 {
     /* we handle only a few possible modes */
-    switch (c) {
-    case 0:
+    switch (has_param ? c : 0) {
+    case 0:     /* exit_attribute_mode */
         s->color = s->def_color;
         break;
+    case 1:     /* enter_bold_mode */
+        /* CG: should use high intensity colors */
+        break;
+    case 4:     /* enter_underline_mode */
+    case 5:     /* enter_blink_mode */
+    case 7:     /* enter_reverse_mode, enter_standout_mode */
+    case 8:     /* enter_secure_mode */
+    case 24:    /* exit_underline_mode */
+    case 27:    /* exit_standout_mode */
+    case 39:    /* orig_pair(1) */
+    case 49:    /* orig_pair(2) */
+        break;
     default:
-        if (c >= 30 && c <= 37)
+        /* 0:black 1:red 2:green 3:yellow 4:blue 5:magenta 6:cyan 7:white */
+        if (c >= 30 && c <= 37) {
+            /* set foreground color */
             s->color = TTY_GET_COLOR(c - 30, TTY_GET_BG(s->color));
-        else if (c >= 40 && c <= 47) {
+        } else
+        if (c >= 40 && c <= 47) {
+            /* set background color */
             s->color = TTY_GET_COLOR(TTY_GET_FG(s->color), c - 40);
         }
         break;
@@ -539,8 +590,11 @@ static void tty_emulate(ShellState *s, int c)
             {
                 int c1;
                 c1 = eb_prevc(s->b, s->cur_offset, &offset);
-                if (c1 != '\n')
+                if (c1 != '\n') {
                     s->cur_offset = offset;
+                    /* back_color_erase */
+                    tty_put_char(s, ' ');
+                }
             }
             break;
         case 10:        /* ^J  NL = line feed */
@@ -591,6 +645,7 @@ static void tty_emulate(ShellState *s, int c)
                 len = unicode_to_charset(buf1, c, s->b->charset);
                 c1 = eb_nextc(s->b, s->cur_offset, &offset);
                 /* XXX: handle tab case */
+                /* Should simplify with tty_put_char */
                 if (c1 == '\n') {
                     /* insert */
                     eb_insert(s->b, s->cur_offset, buf1, len);
@@ -611,7 +666,7 @@ static void tty_emulate(ShellState *s, int c)
     case TTY_STATE_ESC:
         if (c == '[') {
             for (i = 0; i < MAX_ESC_PARAMS; i++) {
-                s->esc_params[i] = 0;
+                s->esc_params[i] = 1;
                 s->has_params[i] = 0;
             }
             s->nb_esc_params = 0;
@@ -628,6 +683,7 @@ static void tty_emulate(ShellState *s, int c)
              * xterm: enacs=\E(B\E)0, hts=\EH, is2=\E[!p\E[?3;4l\E[4l\E>,
              *        rc=\E8, ri=\EM, rmkx=\E[?1l\E>, rs1=\Ec,
              *        rs2=\E[!p\E[?3;4l\E[4l\E>, sc=\E7, smkx=\E[?1h\E=,
+             *        set-window-title=\E]0;title text\007,
              */
             switch (c) {
             case '(':
@@ -638,13 +694,13 @@ static void tty_emulate(ShellState *s, int c)
                 s->esc1 = c;
                 s->state = TTY_STATE_ESC2;
                 break;
-            case 'H':   // hts
-            case '7':   // sc
-            case '8':   // rc
-            case 'M':   // ri
-            case 'c':   // rs1
-            case '>':   // rmkx, is2, rs2
-            case '=':   // smkx
+            case 'H':   // hts  (set_tab)
+            case '7':   // sc   (save_cursor)
+            case '8':   // rc   (restore_cursor)
+            case 'M':   // ri   (scroll_reverse)
+            case 'c':   // rs1  (reset_1string)
+            case '>':   // rmkx, is2, rs2  (keypad_local ???)
+            case '=':   // smkx (keypad_xmit ???)
                 // XXX: do these
             default:
                 s->state = TTY_STATE_NORM;
@@ -655,15 +711,29 @@ static void tty_emulate(ShellState *s, int c)
     case TTY_STATE_ESC2:
         s->state = TTY_STATE_NORM;
         switch (ESC2(s->esc1, c)) {
-        case ESC2('(','B'):
+        case ESC2('(','B'):     /* exit_alt_charset_mode */
+            s->shifted = 0;
+            break;
+        case ESC2('(','0'):     /* enter_alt_charset_mode */
+            s->shifted = 1;
+            break;
         case ESC2(')','B'):
-        case ESC2('(','0'):
         case ESC2(')','0'):
         case ESC2('*','B'):
         case ESC2('+','B'):
         case ESC2(']','R'):
             /* XXX: ??? */
             break;
+        case ESC2(']','0'):
+            /* xterm's set-window-title */
+            s->state = TTY_STATE_STRING;
+            break;
+        }
+        break;
+    case TTY_STATE_STRING:
+        /* ignore string parameter upto \a (^G) */
+        if (c == '\007') {
+            s->state = TTY_STATE_NORM;
         }
         break;
     case TTY_STATE_CSI:
@@ -673,10 +743,14 @@ static void tty_emulate(ShellState *s, int c)
         }
         if (c >= '0' && c <= '9') {
             if (s->nb_esc_params < MAX_ESC_PARAMS) {
+                if (!s->has_params[s->nb_esc_params]) {
+                    s->esc_params[s->nb_esc_params] = 0;
+                    s->has_params[s->nb_esc_params] = 1;
+                }
                 s->esc_params[s->nb_esc_params] = 
                     s->esc_params[s->nb_esc_params] * 10 + c - '0';
-                s->has_params[s->nb_esc_params] = 1;
             }
+            break;
         } else {
             s->nb_esc_params++;
             if (c == ';')
@@ -706,31 +780,42 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case 'A':
                 /* move relative up */
-                tty_gotoxy(s, 0, -(s->esc_params[0] + 1 - s->has_params[0]), 1);
+                tty_goto_xy(s, 0, -s->esc_params[0], 3);
                 break;
             case 'B':
                 /* move relative down */
-                tty_gotoxy(s, 0, (s->esc_params[0] + 1 - s->has_params[0]), 1);
+                tty_goto_xy(s, 0, s->esc_params[0], 3);
                 break;
             case 'C':
                 /* move relative forward */
-                tty_gotoxy(s, (s->esc_params[0] + 1 - s->has_params[0]), 0, 1);
+                tty_goto_xy(s, s->esc_params[0], 0, 3);
                 break;
             case 'D':
                 /* move relative backward */
-                tty_gotoxy(s, -(s->esc_params[0] + 1 - s->has_params[0]), 0, 1);
+                tty_goto_xy(s, -s->esc_params[0], 0, 3);
+                break;
+            case 'G':
+                /* goto column_address */
+                tty_goto_xy(s, s->esc_params[0] - 1, 0, 2);
                 break;
             case 'H':
                 /* goto xy */
-                tty_gotoxy(s, s->esc_params[1] - s->has_params[1],
-                           s->esc_params[0] - s->has_params[0], 0);
+                tty_goto_xy(s, s->esc_params[1] - 1, s->esc_params[0] - 1, 0);
+                break;
+            case 'd':
+                /* goto y */
+                tty_goto_xy(s, 0, s->esc_params[0] - 1, 1);
                 break;
             case 'J':   /* clear to end of screen */
             case 'L':   /* insert lines */
             case 'M':   /* delete lines */
-            case 'S':   /* scroll forward P lines */
-            case 'T':   /* scroll back P lines */
-            case 'X':   /* erase P characters */
+            case 'S':   /* scroll forward n lines */
+            case 'T':   /* scroll back n lines */
+                break;
+            case 'X':   /* erase n characters */
+                for (n = s->esc_params[0]; n > 0; n--) {
+                    s->cur_offset = tty_put_char(s, ' ');
+                }
                 break;
             case 'K':   /* clear eol (parm=1 -> bol) */
                 offset1 = s->cur_offset;
@@ -744,11 +829,8 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case 'P':
                 /* delete chars */
-                n = s->esc_params[0];
-                if (n <= 0)
-                    n = 1;
                 offset1 = s->cur_offset;
-                for (; n > 0; n--) {
+                for (n = s->esc_params[0]; n > 0; n--) {
                     c = eb_nextc(s->b, offset1, &offset2);
                     if (c == '\n')
                         break;
@@ -758,11 +840,8 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case '@':
                 /* insert chars */
-                n = s->esc_params[0];
-                if (n <= 0)
-                    n = 1;
                 buf1[0] = ' ';
-                for (; n > 0; n--) {
+                for (n = s->esc_params[0]; n > 0; n--) {
                     eb_insert(s->b, s->cur_offset, buf1, 1);
                 }
                 break;
@@ -771,8 +850,9 @@ static void tty_emulate(ShellState *s, int c)
                 n = s->nb_esc_params;
                 if (n == 0)
                     n = 1;
-                for (i = 0; i < n; i++)
-                    tty_csi_m(s, s->esc_params[i]);
+                for (i = 0; i < n; i++) {
+                    tty_csi_m(s, s->esc_params[i], s->has_params[i]);
+                }
                 break;
             case 'n':
                 if (s->esc_params[0] == 6) {
@@ -782,6 +862,8 @@ static void tty_emulate(ShellState *s, int c)
                     snprintf(buf2, sizeof(buf2), "\033[%d;%dR", 1, 1);
                     tty_write(s, buf2, -1);
                 }
+                break;
+            case 'r': /* change_scroll_region (2 args) */
                 break;
             default:
                 break;
@@ -882,7 +964,7 @@ static void shell_read_cb(void *opaque)
         return;
     
     if (trace_buffer)
-        eb_write(trace_buffer, trace_buffer->total_size, buf, len);
+        eb_trace_bytes(buf, len, EB_TRACE_SHELL);
 
     for (i = 0; i < len; i++)
         tty_emulate(s, buf[i]);
@@ -1341,13 +1423,13 @@ static int shell_init(void)
     shell_mode.mode_probe = NULL;
     shell_mode.mode_init = shell_mode_init;
     shell_mode.display_hook = shell_display_hook;
-    shell_mode.move_left_right =  shell_move_left_right;
-    shell_mode.move_word_left_right =  shell_move_word_left_right;
-    shell_mode.move_up_down =  shell_move_up_down;
-    shell_mode.scroll_up_down =  shell_scroll_up_down;
+    shell_mode.move_left_right = shell_move_left_right;
+    shell_mode.move_word_left_right = shell_move_word_left_right;
+    shell_mode.move_up_down = shell_move_up_down;
+    shell_mode.scroll_up_down = shell_scroll_up_down;
     shell_mode.move_bol = shell_move_bol;
     shell_mode.move_eol = shell_move_eol;
-    shell_mode.write_char =  shell_write_char;
+    shell_mode.write_char = shell_write_char;
     shell_mode.mode_flags |= MODEF_NOCMD;
 
     qe_register_mode(&shell_mode);
