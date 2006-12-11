@@ -654,13 +654,12 @@ static int nb_custom_colors;
 void color_completion(StringArray *cs, const char *input)
 {
     ColorDef *def;
-    int len, count;
+    int count;
 
-    len = strlen(input);
     def = custom_colors;
     count = nb_css_colors + nb_custom_colors;
     while (count > 0) {
-        if (!strncmp(def->name, input, len))
+        if (stristart(def->name, input, NULL))
             add_string(cs, def->name);
         def++;
         count--;
@@ -671,7 +670,7 @@ static ColorDef *css_lookup_color(ColorDef *def, int count,
                                   const char *name)
 {
     while (count > 0) {
-        if (!strcasecmp(name, def->name)) {
+        if (!stricmp(name, def->name)) {
             return def;
         }
         def++;
