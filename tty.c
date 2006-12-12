@@ -31,11 +31,12 @@
 
 #include "qe.h"
 
-typedef struct TTYChar {
-    unsigned short ch;
-    unsigned char bgcolor;
-    unsigned char fgcolor;
-} TTYChar;
+typedef unsigned int TTYChar;
+#define TTYCHAR(ch,fg,bg)       ((ch) | ((fg) << 16) | ((bg) << 24))
+#define TTYCHAR_GETCH(cc)       ((cc) & 0xFFFF)
+#define TTYCHAR_GETFG(cc)       (((cc) >> 16) & 0xFF)
+#define TTYCHAR_GETBG(cc)       (((cc) >> 24) & 0xFF)
+#define TTYCHAR_DEFAULT         TTYCHAR(' ', 0, 0)
 
 enum InputState {
     IS_NORM,
@@ -46,8 +47,8 @@ enum InputState {
 };
 
 typedef struct TTYState {
-    TTYChar *old_screen;
     TTYChar *screen;
+    int screen_size;
     unsigned char *line_updated;
     struct termios oldtty;
     int cursor_x, cursor_y;
@@ -195,16 +196,19 @@ static void tty_resize(int sig)
     
     count = s->width * s->height;
     size = count * sizeof(TTYChar);
-    ts->old_screen = realloc(ts->old_screen, size);
-    ts->screen = realloc(ts->screen, size);
+    /* screen buffer + shadow buffer + extra slot for loop guard */
+    ts->screen = realloc(ts->screen, size * 2 + 1);
     ts->line_updated = realloc(ts->line_updated, s->height);
+    ts->screen_size = count;
     
-    memset(ts->old_screen, 0xFF, size);
-    tc.ch = ' ';
-    tc.bgcolor = tc.fgcolor = 0;
+    /* Erase shadow buffer to impossible value */
+    memset(ts->screen + count, 0xFF, size);
+    /* Fill screen buffer with black spaces */
+    tc = TTYCHAR_DEFAULT;
     for (i = 0; i < count; i++) {
         ts->screen[i] = tc;
     }
+    /* All rows need refresh */
     memset(ts->line_updated, 1, s->height);
 
     s->clip_x1 = 0;
@@ -466,8 +470,7 @@ static void term_fill_rectangle(QEditScreen *s,
         for (y = y1; y < y2; y++) {
             ts->line_updated[y] = 1;
             for (x = x1; x < x2; x++) {
-                ptr->bgcolor ^= 7;
-                ptr->fgcolor ^= 7;
+                *ptr ^= TTYCHAR(0, 7, 7);
                 ptr++;
             }
             ptr += wrap;
@@ -477,9 +480,7 @@ static void term_fill_rectangle(QEditScreen *s,
         for (y = y1; y < y2; y++) {
             ts->line_updated[y] = 1;
             for (x = x1; x < x2; x++) {
-                ptr->bgcolor = bgcolor;
-                ptr->ch = ' ';
-                ptr->fgcolor = 7;
+                *ptr = TTYCHAR(' ', 7, bgcolor);
                 ptr++;
             }
             ptr += wrap;
@@ -577,8 +578,7 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
                     n = s->clip_x2;
                 n -= s->clip_x1;
                 for (; n > 0; n--) {
-                    ptr->fgcolor = fgcolor;
-                    ptr->ch = ' ';
+                    *ptr = TTYCHAR(' ', fgcolor, TTYCHAR_GETBG(*ptr));
                     ptr++;
                 }
                 break;
@@ -593,13 +593,11 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
         /* XXX: would need to put spacs for wide chars */
         if (x + w > s->clip_x2) 
             break;
-        ptr->fgcolor = fgcolor;
-        ptr->ch = cc;
+        *ptr = TTYCHAR(cc, fgcolor, TTYCHAR_GETBG(*ptr));
         ptr++;
         n = w - 1;
         while (n > 0) {
-            ptr->fgcolor = fgcolor;
-            ptr->ch = 0xffff;
+            *ptr = TTYCHAR(0xFFFFF, fgcolor, TTYCHAR_GETBG(*ptr));
             ptr++;
             n--;
         }
@@ -615,62 +613,83 @@ static void term_set_clip(QEditScreen *s,
 static void term_flush(QEditScreen *s)
 {
     TTYState *ts = s->private;
-    TTYChar *ptr, *optr;
-    int x, y, bgcolor, fgcolor, xe;
+    TTYChar *ptr, *ptr1, *ptr2, cc;
+    int y, shadow, ch, bgcolor, fgcolor;
     char buf[10];
-    unsigned int cc;
-
+    
     bgcolor = -1;
     fgcolor = -1;
             
-    /* Achtung: x and y in these loops are 1 based */
-    y = 1;
-    for (; y <= s->height; y++) {
-        if (ts->line_updated[y - 1]) {
-            ts->line_updated[y - 1] = 0;
-            ptr = ts->screen + (y - 1) * s->width;
-            optr = ts->old_screen + (y - 1) * s->width;
+    /* CG: Should optimize output by computing it in a temporary buffer
+     * and flushing it in one call to fwrite()
+     */
 
-            if (memcmp(ptr, optr, sizeof(TTYChar) * s->width) != 0) {
-                /* XXX: currently, we update the whole line */
-                /* CG: should clip left and right untouched parts */
-                /* CG: then scan left and right blank parts */
-                x = 1;
-                xe = s->width;
-                printf("\033[%d;%dH", y, x);
-                for (; x <= xe; x++) {
-                    cc = ptr->ch;
-                    if (cc != 0xffff) {
-                        /* output attributes */
-                        if (((fgcolor != ptr->fgcolor && cc != ' ') ||
-                             (bgcolor != ptr->bgcolor))) {
-                            fgcolor = ptr->fgcolor;
-                            bgcolor = ptr->bgcolor;
-                            printf("\033[%d;%dm", 
-                                   30 + fgcolor, 40 + bgcolor); 
-                        }
-                        /* do not display escape codes or invalid codes */
-                        if (cc < 32) {
-                            buf[0] = '.';
-                            buf[1] = '\0';
-                        } else
-                        if (cc >= 128 && cc < 128 + 32) {
-                            /* Kludge for linedrawing chars */
-                            buf[0] = '\016';
-                            buf[1] = cc - 32;
-                            buf[2] = '\017';
-                            buf[3] = '\0';
-                        } else {
-                            // was in qemacs-0.3.1.g2.gw/tty.c:
-                            // if (cc == 0x2500 || cc == 'x')
-                            //    strcpy(buf, "\016x\017");
-                            unicode_to_charset(buf, cc, s->charset);
-                        }
-                        if (x != s->width || y != s->height)
-                            printf("%s", buf);
+    shadow = ts->screen_size;
+    /* We cannot print anything on the bottom right screen cell,
+     * pretend it's OK: */
+    ts->screen[shadow - 1] = ts->screen[2 * shadow - 1];
+    for (y = 0; y < s->height; y++) {
+        if (ts->line_updated[y]) {
+            ts->line_updated[y] = 0;
+            ptr = ptr1 = ts->screen + y * s->width;
+            ptr2 = ptr1 + s->width;
+
+            /* make sure the loop stops */
+            cc = ptr2[shadow];
+            ptr2[shadow] = ptr2[0] + 1;
+            /* quickly loop over one row */
+            while (ptr1[0] == ptr1[shadow]) {
+                ptr1++;
+            }
+            ptr2[shadow] = cc;
+
+            /* ptr1 points to first difference on row */
+            /* scan for last difference on row: */
+            while (ptr2 > ptr1 && ptr2[-1] == ptr2[shadow - 1]) {
+                --ptr2;
+            }
+            if (ptr1 == ptr2)
+                continue;
+
+            printf("\033[%d;%dH", y + 1, ptr1 - ptr + 1);
+
+            /* CG: should scan for sequences of blanks */
+            while (ptr1 < ptr2) {
+                cc = *ptr1;
+                ptr1[shadow] = cc;
+                ptr1++;
+                ch = TTYCHAR_GETCH(cc);
+                if (ch != 0xffff) {
+                    /* output attributes */
+                    if ((fgcolor != TTYCHAR_GETFG(cc) && ch != ' ')
+                    ||  (bgcolor != TTYCHAR_GETBG(cc))) {
+                        fgcolor = TTYCHAR_GETFG(cc);
+                        bgcolor = TTYCHAR_GETBG(cc);
+                        /* CG: should deal with bold for high intensity
+                         * foreground colors
+                         */
+                        printf("\033[%d;%dm", 30 + fgcolor, 40 + bgcolor);
                     }
-                    /* update old screen data */
-                    *optr++ = *ptr++;
+                    /* do not display escape codes or invalid codes */
+                    if (ch < 32 || ch == 127) {
+                        putchar('.');
+                    } else
+                    if (ch < 127) {
+                        putchar(ch);
+                    } else
+                    if (cc < 128 + 32) {
+                        /* Kludge for linedrawing chars */
+                        putchar('\016');
+                        putchar(cc - 32);
+                        putchar('\017');
+                    } else {
+                        // was in qemacs-0.3.1.g2.gw/tty.c:
+                        // if (cc == 0x2500)
+                        //    printf("\016x\017");
+                        /* s->charset is either vt100 or utf-8 */
+                        unicode_to_charset(buf, cc, s->charset);
+                        fputs(buf, stdout);
+                    }
                 }
             }
         }
