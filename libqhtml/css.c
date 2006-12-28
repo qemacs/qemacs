@@ -198,7 +198,7 @@ const CSSPropertyDef css_properties[NB_PROPERTIES] = {
 /* XXX: use unicode */
 typedef int (*NextCharFunc)(EditBuffer *b, unsigned long *offset);
 
-int eb_nextc1(EditBuffer *b, unsigned long *offset_ptr)
+static int eb_nextc1(EditBuffer *b, unsigned long *offset_ptr)
 {
     unsigned long offset1;
     int ch, ch1;
@@ -230,11 +230,12 @@ int eb_nextc1(EditBuffer *b, unsigned long *offset_ptr)
     return ch;
 }
 
-int str_nextc(EditBuffer *b, unsigned long *offset_ptr)
+static int str_nextc(__unused__ EditBuffer *b, unsigned long *offset_ptr)
 {
     const unsigned char *ptr;
     int ch;
 
+    /* CG: Achtung! 32/64 bit portability issue */
     ptr = *(const unsigned char **)offset_ptr;
     ch = *ptr;
     if (ch >= 128) {
@@ -424,7 +425,7 @@ static void css_eval_property(CSSContext *s,
                               CSSState *state, 
                               CSSProperty *p, 
                               CSSState *state_parent,
-                              CSSBox *box)
+                              __unused__ CSSBox *box)
 {
     int *ptr, val;
     const CSSPropertyDef *def;
@@ -891,7 +892,7 @@ static void css_to_roman(char *buf, int n)
     char buf1[17], *q;
 
     if (n <= 0 || n >= 4000) {
-        sprintf(buf, "%d", n);
+        snprintf(buf, sizeof(buf), "%d", n);
         return;
     }
 
@@ -2061,7 +2062,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
         /* split the box containing the start of the word,
            if needed */
         box_bow = s->line_boxes[s->index_bow].box;
-        if (s->offset_bow > box_bow->u.buffer.start) {
+        if ((unsigned long)s->offset_bow > box_bow->u.buffer.start) {
             /* split the box containing the start of the word */
             css_box_split(box_bow, s->offset_bow);
             /* include the start of the splitted box */
@@ -3968,7 +3969,7 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
 }
 
 static void css_display_block(CSSContext *s, 
-                              CSSBox *box, CSSState *props_parent,
+                              CSSBox *box, __unused__ CSSState *props_parent,
                               CSSRect *clip_box, int dx, int dy)
 {
     CSSState *props;
@@ -4120,12 +4121,12 @@ static int css_get_cursor_func(void *opaque,
         return 0;
 
     eol = (box->content_eol != 0);
-    if (!(s->offset >= box->u.buffer.start &&
-          s->offset < (box->u.buffer.end + eol)))
+    if (!((unsigned long)s->offset >= box->u.buffer.start &&
+          (unsigned long)s->offset < (box->u.buffer.end + eol)))
             return 0;
 
     /* special case for eol */
-    if (s->offset == box->u.buffer.end) {
+    if ((unsigned long)s->offset == box->u.buffer.end) {
         /* get eol width */
         font = css_select_font(s->ctx->screen, props);
         w = glyph_width(s->ctx->screen, font, '$');
@@ -4283,7 +4284,7 @@ int css_get_offset_pos(CSSContext *s, CSSBox *box, int xc, int dir)
 
     /* compute offset */
     for (i = 0; i < len; i++) {
-        if (posc == char_to_glyph_pos[i]) {
+        if ((unsigned)posc == char_to_glyph_pos[i]) {
             return offsets[i];
         }
     }

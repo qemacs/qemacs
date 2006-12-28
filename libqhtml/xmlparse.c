@@ -159,7 +159,6 @@ static inline void strbuf_reset(StringBuffer *b)
 
 static void strbuf_addch1(StringBuffer *b, int ch)
 {
-    const char *p;
     int size1;
     unsigned char *ptr;
 
@@ -174,18 +173,15 @@ static void strbuf_addch1(StringBuffer *b, int ch)
         b->buf = ptr;
         b->allocated_size = size1;
 
-        p = utf8_encode((char*)b->buf + b->size, ch);
-        b->size = p - (char *)b->buf;
+        b->size += utf8_encode((char*)b->buf + b->size, ch);
     }
 }
 
 static inline void strbuf_addch(StringBuffer *b, int ch)
 {
-    const char *p;
     if (b->size < b->allocated_size) {
         /* fast case */
-        p = utf8_encode((char*)b->buf + b->size, ch);
-        b->size = p - (char *)b->buf;
+        b->size += utf8_encode((char*)b->buf + b->size, ch);
     } else {
         strbuf_addch1(b, ch);
     }
@@ -354,7 +350,7 @@ static int css_attr_int(CSSBox *box, CSSIdent attr_id, int def_val)
 
 
 /* simplistic HTML table border handling */
-void html_table_borders(CSSBox *box, int border, int padding)
+static void html_table_borders(CSSBox *box, int border, int padding)
 {
     CSSProperty **last_prop;
     CSSBox *box1;
@@ -494,7 +490,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
         if (value && !css_get_color(&color, value)) {
             CSSStyleSheetEntry *e;
             CSSSimpleSelector ss1, *ss = &ss1;
-            CSSProperty **last_prop;
+            CSSProperty **last_prop1;
             CSSStyleSheetAttributeEntry **plast_attr;
 
             /* specific to <a href="xxx"> tag */
@@ -506,8 +502,8 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
             e = add_style_entry(s->style_sheet, ss, CSS_MEDIA_ALL);
 
             /* add color property */
-            last_prop = &e->props;
-            css_add_prop_int(&last_prop, CSS_color, color);
+            last_prop1 = &e->props;
+            css_add_prop_int(&last_prop1, CSS_color, color);
         }
         break;
     case CSS_ID_font:
@@ -774,6 +770,9 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
 }
 
 static void xml_error(XMLState *s, const char *fmt, ...)
+        __attr_printf(2,3);
+
+static void xml_error(XMLState *s, const char *fmt, ...)
 {
     char buf[1024];
     va_list ap;
@@ -901,7 +900,6 @@ static int parse_tag(XMLState *s, const char *buf)
 
     /* close some tags (correct HTML mistakes) */
     if (s->html_syntax) {
-        CSSBox *box1;
         const HTMLClosedTags *ct;
         ct = html_closed_tags;
         for (;;) {
@@ -1167,12 +1165,12 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
                     
                     if (!xml_tagcmp(s->pretag, "style")) {
                         if (s->style_sheet) {
-                            CSSParseState b1, *b = &b1;
-                            b->ptr = (char *)s->str.buf;
-                            b->line_num = s->line_num; /* XXX: incorrect */
-                            b->filename = s->filename;
-                            b->ignore_case = s->ignore_case;
-                            css_parse_style_sheet(s->style_sheet, b);
+                            CSSParseState b1, *bp = &b1;
+                            bp->ptr = (char *)s->str.buf;
+                            bp->line_num = s->line_num; /* XXX: incorrect */
+                            bp->filename = s->filename;
+                            bp->ignore_case = s->ignore_case;
+                            css_parse_style_sheet(s->style_sheet, bp);
                         }
                     } else if (!xml_tagcmp(s->pretag, "script")) {
                         /* XXX: handle script */

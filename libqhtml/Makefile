@@ -1,10 +1,14 @@
 include ../config.mak
 
-CFLAGS:=-Wall -g $(CFLAGS)
+CFLAGS:= -Wall -g $(CFLAGS) -funsigned-char
+
+-include ../cflags.mk
+
 ifdef TARGET_GPROF
 CFLAGS+= -p
 LDFLAGS+= -p
 endif
+
 ifdef TARGET_ARCH_X86
 #CFLAGS+=-fomit-frame-pointer
 ifeq ($(GCC_MAJOR),2)
@@ -13,6 +17,7 @@ else
 CFLAGS+=-march=i386 -falign-functions=0
 endif
 endif
+
 CFLAGS+=-I..
 
 OBJS=css.o xmlparse.o cssparse.o html_style.o docbook_style.o

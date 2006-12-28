@@ -8,6 +8,11 @@ int main(int argc, char **argv)
 {
     int c, n, last_c, got_space, in_string;
 
+    if (argc < 2) {
+        fprintf(stderr, "usage: csstoqe array_name\n");
+        exit(1);
+    }
+
     printf("/* Automatically generated file - do not edit */\n");
     printf("const char %s[] =\n", argv[1]);
     n = 0;
