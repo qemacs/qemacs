@@ -47,6 +47,7 @@ static void term_close_font(QEditScreen *s, QEFont *font);
 static void xv_init(QEditScreen *s);
 static void x11_handle_event(void *opaque);
 
+//static struct X11State {
 static Display *display;
 static int xscreen;
 static Window window;
@@ -63,8 +64,8 @@ static int shm_use;
 static XftDraw          *renderDraw;
 #endif
 #ifdef CONFIG_XV
-static unsigned int xv_nb_adaptors, xv_port, xv_format, xv_open_count;
-static int xv_nb_formats;
+static unsigned int xv_nb_adaptors;
+static int xv_nb_formats, xv_port, xv_format, xv_open_count;
 static XvAdaptorInfo *xv_ai;
 static XvImageFormatValues *xv_fo;
 #endif
@@ -80,9 +81,12 @@ static CSSRect update_rects[UPDATE_MAX_REGIONS];
 static QEDisplay x11_dpy;
 static int visual_depth;
 
-static int force_tty = 0;
-static const char *display_str = "";
-static const char *geometry_str = "80x50";
+static int force_tty;
+static const char *display_str;
+static const char *geometry_str;
+
+static int font_ptsize;
+//} x11_state;
 
 const char *default_x11_fonts[NB_FONT_FAMILIES] = {
 #ifdef CONFIG_XFT
@@ -94,8 +98,6 @@ const char *default_x11_fonts[NB_FONT_FAMILIES] = {
     "helvetica,unifont",
 };
     
-static int font_ptsize = 0;
-
 #ifdef CONFIG_DOUBLE_BUFFER
 static void update_reset(void)
 {
@@ -157,7 +159,8 @@ static void update_rect(int x1, int y1, int x2, int y2)
 }
 
 #else
-static inline void update_rect(int x1, int y1, int x2, int y2)
+static inline void update_rect(__unused__ int x1, __unused__ int y1,
+                               __unused__ int x2, __unused__ int y2)
 {
 }
 #endif
@@ -194,6 +197,9 @@ static int term_init(QEditScreen *s, int w, int h)
     s->private = NULL;
     s->media = CSS_MEDIA_SCREEN;
 
+    if (!display_str)
+        display_str = "";
+
     display = XOpenDisplay(display_str);
     if (display == NULL) {
         fprintf(stderr, "Could not open X11 display - exiting.\n");
@@ -220,19 +226,25 @@ static int term_init(QEditScreen *s, int w, int h)
     font_xsize = glyph_width(s, font, 'x');
     term_close_font(s, font);
     
-    p = geometry_str;
-    xsize = strtol(p, (char **)&p, 0);
-    if (*p == 'x')
-        p++;
-    ysize = strtol(p, (char **)&p, 0);
     if (w > 0 && h > 0) {
         xsize = w;
         ysize = h;
-    }
+    } else {
+        xsize = 80;
+        ysize = 50;
 
-    if (xsize <= 0 || ysize <=0) {
-        fprintf(stderr, "Invalid geometry '%s'\n", geometry_str);
-        exit(1);
+        if (geometry_str) {
+            p = geometry_str;
+            xsize = strtol(p, (char **)&p, 0);
+            if (*p == 'x')
+                p++;
+            ysize = strtol(p, (char **)&p, 0);
+
+            if (xsize <= 0 || ysize <=0) {
+                fprintf(stderr, "Invalid geometry '%s'\n", geometry_str);
+                exit(1);
+            }
+        }
     }
 
     xsize *= font_xsize;
@@ -328,18 +340,14 @@ static int term_init(QEditScreen *s, int w, int h)
 #endif
 
     /* shm extension usable ? */
-    {
-        const char *p;
-        int is_local;
-        
-        p = XDisplayName(display_str);
-        strstart(p, "unix:", &p);
-        strstart(p, "localhost:", &p);
-        is_local = (*p == ':');
-        shm_use = 0;
-        if (is_local && XShmQueryExtension(display))
-            shm_use = 1;
-    }
+    p = XDisplayName(display_str);
+    strstart(p, "unix:", &p);
+    strstart(p, "localhost:", &p);
+    shm_use = 0;
+    /* Check if display is local and XShm available */
+    if ((*p == ':') && XShmQueryExtension(display))
+        shm_use = 1;
+
     /* compute bitmap format */
     switch (visual_depth) {
     case 15:
@@ -378,11 +386,11 @@ static void xv_init(QEditScreen *s)
                         &xv_nb_adaptors, &xv_ai) != Success)
         return;
 
-    for (i = 0; i < xv_nb_adaptors; i++) {
+    for (i = 0; i < (int)xv_nb_adaptors; i++) {
         if ((xv_ai[i].type & XvInputMask) && 
             (xv_ai[i].type & XvImageMask)) {
             for (xv_p = xv_ai[i].base_id; 
-                 xv_p < xv_ai[i].base_id + xv_ai[i].num_ports; 
+                 xv_p < (XvPortID)(xv_ai[i].base_id + xv_ai[i].num_ports); 
                  xv_p++) {
                 if (!XvGrabPort(display, xv_p, CurrentTime)) {
                     xv_port = xv_p;
@@ -422,7 +430,7 @@ static void xv_init(QEditScreen *s)
 }
 #endif
 
-static void term_close(QEditScreen *s)
+static void term_close(__unused__ QEditScreen *s)
 {
 #ifdef CONFIG_DOUBLE_BUFFER
     XFreePixmap(display, dbuffer);
@@ -468,7 +476,7 @@ static unsigned long get_x11_color(QEColor color)
     }
 }
 
-static void xor_rectangle(QEditScreen *s, 
+static void xor_rectangle(__unused__ QEditScreen *s, 
                           int x, int y, int w, int h)
 {
     int fg;
@@ -648,7 +656,7 @@ static void get_entry(char *buf, int buf_size, const char **pp)
 }
 
 
-static QEFont *term_open_font(QEditScreen *s, int style, int size)
+static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
 {
     char family[128];
     const char *family_list, *p1;
@@ -766,7 +774,7 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
     return NULL;
 }
 
-static void term_close_font(QEditScreen *s, QEFont *font)
+static void term_close_font(__unused__ QEditScreen *s, QEFont *font)
 {
     XFontStruct *xfont = font->private;
 
@@ -790,7 +798,7 @@ static XCharStruct *get_char_struct(QEFont *font, int cc)
         return NULL;
 
     if (xfont->min_byte1 == 0 && xfont->max_byte1 == 0) {
-        if (cc > xfont->max_char_or_byte2)
+        if (cc > (int)xfont->max_char_or_byte2)
             return NULL;
         cc -= xfont->min_char_or_byte2;
         if (cc < 0)
@@ -798,12 +806,12 @@ static XCharStruct *get_char_struct(QEFont *font, int cc)
     } else {
         b1 = (cc >> 8) & 0xff;
         b2 = cc & 0xff;
-        if (b1 > xfont->max_byte1)
+        if (b1 > (int)xfont->max_byte1)
             return NULL;
         b1 -= xfont->min_byte1;
         if (b1 < 0)
             return NULL;
-        if (b2 > xfont->max_char_or_byte2)
+        if (b2 > (int)xfont->max_char_or_byte2)
             return NULL;
         b2 -= xfont->min_char_or_byte2;
         if (b2 < 0)
@@ -972,7 +980,7 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
 }
 #endif
 
-static void term_set_clip(QEditScreen *s,
+static void term_set_clip(__unused__ QEditScreen *s,
                           int x, int y, int w, int h)
 {
     XRectangle rect;
@@ -984,7 +992,7 @@ static void term_set_clip(QEditScreen *s,
     XSetClipRectangles(display, gc, 0, 0, &rect, 1, YXSorted);
 }
 
-static void term_flush(QEditScreen *s)
+static void term_flush(__unused__ QEditScreen *s)
 {
 #ifdef CONFIG_DOUBLE_BUFFER
     CSSRect *r;
@@ -1020,24 +1028,24 @@ static void term_flush(QEditScreen *s)
 #endif
 }
 
-static void x11_full_screen(QEditScreen *s, int full_screen)
+static void x11_full_screen(__unused__ QEditScreen *s, int full_screen)
 {
-    XWindowAttributes attr;
+    XWindowAttributes attr1;
     Window win;
 
-    XGetWindowAttributes(display, window, &attr);
+    XGetWindowAttributes(display, window, &attr1);
     if (full_screen) {
-        if ((attr.width != screen_width || attr.height != screen_height)) {
+        if ((attr1.width != screen_width || attr1.height != screen_height)) {
             /* store current window position and size */
-            XTranslateCoordinates(display, window, attr.root, 0, 0,
+            XTranslateCoordinates(display, window, attr1.root, 0, 0,
                                   &last_window_x, &last_window_y, &win);
-            last_window_width = attr.width;
-            last_window_height = attr.height;
+            last_window_width = attr1.width;
+            last_window_height = attr1.height;
             XMoveResizeWindow(display, window, 
                               0, 0, screen_width, screen_height);
         }
     } else if (!full_screen) {
-        if (attr.width == screen_width && attr.height == screen_height) {
+        if (attr1.width == screen_width && attr1.height == screen_height) {
             XMoveResizeWindow(display, window, 
                               last_window_x, last_window_y, 
                               last_window_width, last_window_height);
@@ -1045,20 +1053,21 @@ static void x11_full_screen(QEditScreen *s, int full_screen)
     }
 }
 
-static void term_selection_activate(QEditScreen *s)
+static void term_selection_activate(__unused__ QEditScreen *s)
 {
     /* own selection from now */
     XSetSelectionOwner(display, XA_PRIMARY, window, CurrentTime);
 }
 
-static Bool test_event(Display *dpy, XEvent *ev, char *arg)
+static Bool test_event(__unused__ Display *dpy, XEvent *ev,
+                       __unused__ char *arg)
 {
     return (ev->type == SelectionNotify);
 }
 
 /* request the selection from the GUI and put it in a new yank buffer
    if needed */
-static void term_selection_request(QEditScreen *s)
+static void term_selection_request(__unused__ QEditScreen *s)
 {
     Window w;
     Atom prop;
@@ -1164,7 +1173,7 @@ static void selection_send(XSelectionRequestEvent *rq)
 }
 
 /* fast test to see if the user pressed a key or a mouse button */
-static int x11_is_user_input_pending(QEditScreen *s)
+static int x11_is_user_input_pending(__unused__ QEditScreen *s)
 {
     XEvent xev;
 
@@ -1527,7 +1536,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
     return -1;
 }
 
-static void x11_bmp_free(QEditScreen *s, QEBitmap *b)
+static void x11_bmp_free(__unused__ QEditScreen *s, QEBitmap *b)
 {
     X11Bitmap *xb = b->priv_data;
 
@@ -1563,9 +1572,10 @@ static void x11_bmp_free(QEditScreen *s, QEBitmap *b)
     free(xb);
 }
 
-static void x11_bmp_draw(QEditScreen *s, QEBitmap *b, 
+static void x11_bmp_draw(__unused__ QEditScreen *s, QEBitmap *b, 
                          int dst_x, int dst_y, int dst_w, int dst_h, 
-                         int offset_x, int offset_y, int flags)
+                         __unused__ int offset_x, __unused__ int offset_y,
+                         __unused__ int flags)
 {
     X11Bitmap *xb = b->priv_data;
 
@@ -1603,7 +1613,7 @@ static void x11_bmp_draw(QEditScreen *s, QEBitmap *b,
     }
 }
 
-static void x11_bmp_lock(QEditScreen *s, QEBitmap *b, QEPicture *pict,
+static void x11_bmp_lock(__unused__ QEditScreen *s, QEBitmap *b, QEPicture *pict,
                          int x1, int y1, int w1, int h1)
 {
     X11Bitmap *xb = b->priv_data;
@@ -1660,7 +1670,7 @@ static void x11_bmp_lock(QEditScreen *s, QEBitmap *b, QEPicture *pict,
     }
 }
 
-static void x11_bmp_unlock(QEditScreen *s, QEBitmap *b)
+static void x11_bmp_unlock(__unused__ QEditScreen *s, QEBitmap *b)
 {
     X11Bitmap *xb = b->priv_data;
     int ret;
@@ -1694,13 +1704,14 @@ static QEDisplay x11_dpy = {
     term_set_clip,
     term_selection_activate,
     term_selection_request,
-    NULL,
+    NULL, /* dpy_invalidate */
     x11_bmp_alloc,
     x11_bmp_free,
     x11_bmp_draw,
     x11_bmp_lock,
     x11_bmp_unlock,
     x11_full_screen,
+    NULL, /* next */
 };
 
 static CmdOptionDef cmd_options[] = {
@@ -1712,10 +1723,10 @@ static CmdOptionDef cmd_options[] = {
       {string_ptr: &geometry_str} },
     { "font-size", "fs", "ptsize", CMD_OPT_INT | CMD_OPT_ARG, "set default font size", 
       {int_ptr: &font_ptsize} },
-    { NULL },
+    { NULL, NULL, NULL, 0, NULL, { NULL }},
 };
 
-int x11_init(void)
+static int x11_init(void)
 {
     qe_register_cmd_line_options(cmd_options);
     return qe_register_display(&x11_dpy);

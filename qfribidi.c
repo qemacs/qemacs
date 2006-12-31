@@ -326,17 +326,17 @@ static int type_to_char(int type)
     int ch;
 
     if (type == FRIBIDI_TYPE_R)
-    ch = 'R';
+        ch = 'R';
     else if (type == FRIBIDI_TYPE_L)
-    ch = 'L';
+        ch = 'L';
     else if (type == FRIBIDI_TYPE_E)
-    ch = 'E';
+        ch = 'E';
     else if (type == FRIBIDI_TYPE_EN)
-    ch = 'n';
+        ch = 'n';
     else if (type == FRIBIDI_TYPE_N)
-    ch = 'N';
+        ch = 'N';
     else
-    ch = '?';
+        ch = '?';
     
     return ch;
 }

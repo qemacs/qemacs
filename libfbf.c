@@ -17,6 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -312,9 +313,9 @@ static void arith_init(UniFontData *uf)
     uf->alow |= uf->fbf_getc(uf->infile);
 }
 
-static inline int decode_ctx(UniFontData *uf, unsigned char *ctx)
+static inline unsigned int decode_ctx(UniFontData *uf, unsigned char *ctx)
 {
-    int ctxval, range, shift, b;
+    unsigned int ctxval, range, shift, b;
     unsigned int alow, arange;
 
     alow = uf->alow;
@@ -354,7 +355,7 @@ static inline int decode_ctx(UniFontData *uf, unsigned char *ctx)
     uf->arange = arange;
     uf->alow = alow;
 #ifdef DEBUG
-    printf("b=%d\n", b);
+    printf("b=%u\n", b);
 #endif
     return b;
 }

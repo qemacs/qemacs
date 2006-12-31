@@ -39,7 +39,6 @@ void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
                    const char *str, int style_index);
 static void do_cmd_set_mode(EditState *s, const char *name);
-void do_delete_window(EditState *s, int force);
 void do_end_macro(EditState *s);
 static void get_default_path(EditState *s, char *buf, int buf_size);
 static EditBuffer *predict_switch_to_buffer(EditState *s);
@@ -211,7 +210,7 @@ static void qe_register_binding2(int key,
 
 static int backspace_is_control_h;
 
-void do_toggle_control_h(EditState *s, int set)
+void do_toggle_control_h(__unused__ EditState *s, int set)
 {
     KeyDef *p;
     int i;
@@ -269,7 +268,7 @@ void do_set_trace(EditState *s)
     do_previous_window(s);
 }
 
-void do_cd(EditState *s, const char *name)
+void do_cd(__unused__ EditState *s, const char *name)
 {
     chdir(name);
     /* CG: Should issue diagnostics upon failure */
@@ -375,7 +374,8 @@ void command_completion(StringArray *cs, const char *input)
 
 #define MAX_KEYS 10
 
-void do_global_set_key(EditState *s, const char *keystr, const char *cmd_name)
+void do_global_set_key(__unused__ EditState *s,
+                       const char *keystr, const char *cmd_name)
 {
     int nb_keys;
     unsigned int keys[MAX_KEYS];
@@ -772,7 +772,7 @@ typedef struct {
 
 int cursor_func(DisplayState *ds,
                 int offset1, int offset2, int line_num,
-                int x, int y, int w, int h, int hex_mode)
+                int x, int y, int w, int h, __unused__ int hex_mode)
 {
     CursorContext *m = ds->cursor_opaque;
 
@@ -795,7 +795,7 @@ int cursor_func(DisplayState *ds,
     }
 }
 
-void get_cursor_pos(EditState *s, CursorContext *m)
+static void get_cursor_pos(EditState *s, CursorContext *m)
 {
     DisplayState ds1, *ds = &ds1;
     
@@ -817,8 +817,10 @@ typedef struct {
 
 /* called each time the cursor could be displayed */
 static int down_cursor_func(DisplayState *ds,
-                            int offset1, int offset2, int line_num,
-                            int x, int y, int w, int h, int hex_mode)
+                            int offset1, __unused__ int offset2, int line_num,
+                            int x, __unused__ int y,
+                            __unused__ int w, __unused__ int h,
+                            __unused__ int hex_mode)
 {
     int d;
     MoveContext *m = ds->cursor_opaque;
@@ -909,8 +911,11 @@ typedef struct {
 
 /* called each time the cursor could be displayed */
 static int scroll_cursor_func(DisplayState *ds,
-                              int offset1, int offset2, int line_num,
-                              int x, int y, int w, int h, int hex_mode)
+                              int offset1, int offset2,
+                              __unused__ int line_num,
+                              __unused__ int x, int y,
+                              __unused__ int w, int h,
+                              __unused__ int hex_mode)
 {
     ScrollContext *m = ds->cursor_opaque;
     int y1;
@@ -1035,8 +1040,11 @@ typedef struct {
 } LeftRightMoveContext;
 
 static int left_right_cursor_func(DisplayState *ds,
-                                  int offset1, int offset2, int line_num,
-                                  int x, int y, int w, int h, int hex_mode)
+                                  int offset1, __unused__ int offset2,
+                                  int line_num,
+                                  int x, __unused__ int y,
+                                  __unused__ int w, __unused__ int h,
+                                  __unused__ int hex_mode)
 {
     int d;
     LeftRightMoveContext *m = ds->cursor_opaque;
@@ -1145,7 +1153,8 @@ static int seg_dist(int x, int x1, int x2)
 /* XXX: would need two passes in the general case (first search line,
    then colunm */
 static int mouse_goto_func(DisplayState *ds,
-                           int offset1, int offset2, int line_num,
+                           int offset1, __unused__ int offset2,
+                           __unused__ int line_num,
                            int x, int y, int w, int h, int hex_mode)
 {
     MouseGotoContext *m = ds->cursor_opaque;
@@ -1226,7 +1235,7 @@ void text_write_char(EditState *s, int key)
         
     if (insert) {
         const InputMethod *m;
-        int match_len, offset, i, offset1;
+        int match_len, offset, i;
             
         /* use compose system only if insert mode */
         if (s->compose_len == 0) 
@@ -1288,7 +1297,7 @@ void text_write_char(EditState *s, int key)
 }
 
 /* XXX: may be better to move it into qe_key_process() */
-static void quote_key(void *opaque, int key)
+static void quote_key(__unused__ void *opaque, int key)
 {
     /* CG: should pass s as opaque */
     QEmacsState *qs = &qe_state;
@@ -1341,7 +1350,7 @@ void do_return(EditState *s)
     s->offset++;
 }
 
-void do_break(EditState *s)
+void do_break(__unused__ EditState *s)
 {
     /* well, currently nothing needs to be aborted in global context */
     /* CG: Should remove popups, sidepanes, helppanes... */
@@ -1375,7 +1384,7 @@ EditBuffer *new_yank_buffer(void)
     return b;
 }
 
-void do_kill_region(EditState *s, int kill)
+void do_kill_region(EditState *s, int killtype)
 {
     int len, p1, p2, tmp, offset1;
     QEmacsState *qs = s->qe_state;
@@ -1385,7 +1394,7 @@ void do_kill_region(EditState *s, int kill)
         return;
 
     p2 = s->offset;
-    if (kill == 2) {
+    if (killtype == 2) {
         /* kill line */
         if (eb_nextc(s->b, p2, &offset1) == '\n') {
             p1 = offset1;
@@ -1408,7 +1417,7 @@ void do_kill_region(EditState *s, int kill)
     len = p2 - p1;
     b = new_yank_buffer();
     eb_insert_buffer(b, 0, s->b, p1, len);
-    if (kill) {
+    if (killtype) {
         eb_delete(s->b, p1, len);
         s->offset = p1;
     }
@@ -1721,8 +1730,9 @@ void do_what_cursor_position(EditState *s)
                             (c + '@') & 127);
         } else
         if (c < 127 || c >= 160) {
+            /* CG: should protect against buffer overflow */
             buf[pos++] = '\'';
-            pos = utf8_encode(buf + pos, c) - buf;
+            pos += utf8_encode(buf + pos, c);
             buf[pos++] = '\'';
             buf[pos++] = ' ';
         }
@@ -1755,12 +1765,11 @@ void do_set_indent_tabs_mode(EditState *s, int mode)
 
 /* compute string for the first part of the mode line (flags,
    filename, modename) */
-void basic_mode_line(EditState *s, char *buf, int buf_size, int c1)
+int basic_mode_line(EditState *s, char *buf, int buf_size, int c1)
 {
-    int mod, state;
-    char *q;
+    int mod, state, pos;
 
-    q = buf;
+    pos = 0;
     mod = s->b->modified ? '*' : '-';
     if (s->b->flags & BF_LOADING)
         state = 'L';
@@ -1770,25 +1779,27 @@ void basic_mode_line(EditState *s, char *buf, int buf_size, int c1)
         state = 'B';
     else
         state = '-';
-    q += sprintf(q, "%c%c:%c%c  %-20s  (%s", 
-                     c1,
-                 state,
-                 s->b->flags & BF_READONLY ? '%' : mod,
-                 mod,
-                 s->b->name,
-                 s->mode->name);
+
+    pos += snprintf(buf + pos, buf_size - pos, "%c%c:%c%c  %-20s  (%s", 
+                    c1,
+                    state,
+                    s->b->flags & BF_READONLY ? '%' : mod,
+                    mod,
+                    s->b->name,
+                    s->mode->name);
     if (!s->insert)
-        q += sprintf(q, " Ovwrt");
+        pos += snprintf(buf + pos, buf_size - pos, " Ovwrt");
     if (s->interactive)
-        q += sprintf(q, " Interactive");
-    q += sprintf(q, ")--");
+        pos += snprintf(buf + pos, buf_size - pos, " Interactive");
+    pos += snprintf(buf + pos, buf_size - pos, ")--");
+
+    return pos;
 }
 
-void text_mode_line(EditState *s, char *buf, int buf_size)
+int text_mode_line(EditState *s, char *buf, int buf_size)
 {
     int line_num, col_num, wrap_mode;
-    int percent;
-    char *q;
+    int percent, pos;
 
     wrap_mode = '-';
     if (!s->hex_mode) {
@@ -1797,26 +1808,28 @@ void text_mode_line(EditState *s, char *buf, int buf_size)
         else if (s->wrap == WRAP_WORD)
             wrap_mode = 'W';
     }
-    basic_mode_line(s, buf, buf_size, wrap_mode);
-    q = buf + strlen(buf);
+    pos = basic_mode_line(s, buf, buf_size, wrap_mode);
 
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
-    q += sprintf(q, "L%d--C%d--%s", 
-                 line_num + 1, col_num, s->b->charset->name);
+    pos += snprintf(buf + pos, buf_size - pos, "L%d--C%d--%s", 
+                    line_num + 1, col_num, s->b->charset->name);
     if (s->bidir) {
-        q += sprintf(q, "--%s", s->cur_rtl ? "RTL" : "LTR");
+        pos += snprintf(buf + pos, buf_size - pos, "--%s",
+                        s->cur_rtl ? "RTL" : "LTR");
     }
     if (s->input_method) {
-        q += sprintf(q, "--%s", s->input_method->name);
+        pos += snprintf(buf + pos, buf_size - pos, "--%s",
+                        s->input_method->name);
     }
 #if 0
-    q += sprintf(q, "--[%d,%d]-[%d]", s->x_disp[0], s->x_disp[1], s->y_disp);
+    pos += snprintf(buf + pos, buf_size - pos, "--[%d,%d]-[%d]",
+                    s->x_disp[0], s->x_disp[1], s->y_disp);
 #endif
     percent = 0;
     if (s->b->total_size > 0)
         percent = (s->offset * 100) / s->b->total_size;
-    q += sprintf(q, "--%d%%", percent);
-    *q = '\0';
+    pos += snprintf(buf + pos, buf_size - pos, "--%d%%", percent);
+    return pos;
 }
 
 
@@ -2026,7 +2039,7 @@ void do_set_style(EditState *e, const char *stylestr,
     }
 }
 
-void do_set_display_size(EditState *s, int w, int h)
+void do_set_display_size(__unused__ EditState *s, int w, int h)
 {
     if (w != NO_ARG && h != NO_ARG) {
         screen_width = w;
@@ -2101,7 +2114,8 @@ void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp)
     release_font(e->screen, font);
 }
 
-void display_bol_bidir(DisplayState *s, DirType base, int embedding_level_max)
+static void display_bol_bidir(DisplayState *s, DirType base,
+                              int embedding_level_max)
 {
     s->base = base;
     s->x_disp = s->edit_state->x_disp[base];
@@ -2119,7 +2133,7 @@ void display_bol(DisplayState *s)
     display_bol_bidir(s, DIR_LTR, 0);
 }
 
-void reverse_fragments(TextFragment *str, int len)
+static void reverse_fragments(TextFragment *str, int len)
 {
     int i, len2 = len / 2;
     
@@ -2324,27 +2338,27 @@ static void flush_line(DisplayState *s,
         }
 
         for (i = 0; i < nb_fragments; i++) {
-            int w, k, j, offset1, offset2;
+            int w, k, j, _offset1, _offset2;
 
             frag = &fragments[i];
 
             j = frag->line_index;
             for (k = 0; k < frag->len; k++) {
                 int hex_mode;
-                offset1 = s->line_offsets[j][0];
-                offset2 = s->line_offsets[j][1];
+                _offset1 = s->line_offsets[j][0];
+                _offset2 = s->line_offsets[j][1];
                 hex_mode = s->line_hex_mode[j];
                 w = s->line_char_widths[j];
                 if (hex_mode == s->hex_mode || s->hex_mode == -1) {
                     if (s->base == DIR_RTL) {
-                        if (offset1 >= 0 && offset2 >= 0 &&
-                            s->cursor_func(s, offset1, offset2, s->line_num,
+                        if (_offset1 >= 0 && _offset2 >= 0 &&
+                            s->cursor_func(s, _offset1, _offset2, s->line_num,
                                            x + w, s->y, -w, line_height, 
                                            hex_mode))
                             s->eod = 1;
                     } else {
-                        if (offset1 >= 0 && offset2 >= 0 &&
-                            s->cursor_func(s, offset1, offset2, s->line_num,
+                        if (_offset1 >= 0 && _offset2 >= 0 &&
+                            s->cursor_func(s, _offset1, _offset2, s->line_num,
                                            x, s->y, w, line_height,
                                            hex_mode))
                             s->eod = 1;
@@ -2823,11 +2837,11 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 }
 
 /* invalidate the colorize data */
-static void colorize_callback(EditBuffer *b,
+static void colorize_callback(__unused__ EditBuffer *b,
                               void *opaque,
-                              enum LogOperation op,
+                              __unused__ enum LogOperation op,
                               int offset,
-                              int size)
+                              __unused__ int size)
 {
     EditState *e = opaque;
 
@@ -3149,26 +3163,26 @@ enum CmdArgType {
  * should pass function signature for direct dispatch.
  */
 void call_func(void *func, int nb_args, void **args, 
-               unsigned char *args_type)
+               __unused__ unsigned char *args_type)
 {
     switch (nb_args) {
     case 0:
-        ((void (*)())func)();
+        ((void (*)(void))func)();
         break;
     case 1:
-        ((void (*)())func)(args[0]);
+        ((void (*)(void *))func)(args[0]);
         break;
     case 2:
-        ((void (*)())func)(args[0], args[1]);
+        ((void (*)(void *, void *))func)(args[0], args[1]);
         break;
     case 3:
-        ((void (*)())func)(args[0], args[1], args[2]);
+        ((void (*)(void *, void *, void *))func)(args[0], args[1], args[2]);
         break;
     case 4:
-        ((void (*)())func)(args[0], args[1], args[2], args[3]);
+        ((void (*)(void *, void *, void *, void *))func)(args[0], args[1], args[2], args[3]);
         break;
     case 5:
-        ((void (*)())func)(args[0], args[1], args[2], args[3], args[4]);
+        ((void (*)(void *, void *, void *, void *, void *))func)(args[0], args[1], args[2], args[3], args[4]);
         break;
     default:
         return;
@@ -3511,8 +3525,8 @@ void edit_display(QEmacsState *qs)
     if (has_popups) {
         for (s = qs->first_window; s != NULL; s = s->next_window) {
             if (s->flags & WF_POPUP) {
-                if (qs->complete_refresh)
-                    /* refresh frame */;
+                //if (qs->complete_refresh)
+                //    /* refresh frame */;
                 window_display(s);
             }
         }
@@ -3521,7 +3535,7 @@ void edit_display(QEmacsState *qs)
     qs->complete_refresh = 0;
 }
 
-void do_universal_argument(EditState *s)
+void do_universal_argument(__unused__ EditState *s)
 {
     /* nothing is done there (see qe_key_process()) */
 }
@@ -3578,7 +3592,7 @@ void do_end_macro(EditState *s)
     put_status(s, "Keyboard macro defined");
 }
 
-static void do_call_macro_bh(void *opaque)
+static void do_call_macro_bh(__unused__ void *opaque)
 {
     QEmacsState *qs = &qe_state;
     int key;
@@ -3609,7 +3623,7 @@ void do_call_macro(EditState *s)
     }
 }
 
-void do_execute_macro_keys(EditState *s, const char *keys)
+void do_execute_macro_keys(__unused__ EditState *s, const char *keys)
 {
     int key;
     const char *p;
@@ -3752,7 +3766,7 @@ again:
     c->keys[c->nb_keys++] = key;
     s = qs->active_window;
     if (!s->minibuf) {
-        put_status(s, "");
+        put_status(s, " ");
         dpy_flush(&global_screen);
     }
 
@@ -3811,8 +3825,9 @@ again:
                 }
             }
         }
-        if (!c->describe_key)
+        if (!c->describe_key) {
             /* CG: should beep */;
+        }
 
         put_status(s, "No command on %s", 
                    keys_to_str(buf1, sizeof(buf1), c->keys, c->nb_keys));
@@ -3894,11 +3909,9 @@ void print_at_byte(QEditScreen *screen,
     set_clip_rectangle(screen, &rect);
 
     /* start rectangle */
-    fill_rectangle(screen, x, y, width, height, 
-                   style.bg_color);
+    fill_rectangle(screen, x, y, width, height, style.bg_color);
     font = select_font(screen, style.font_style, style.font_size);
-    draw_text(screen, font, x, y + font->ascent,
-              ubuf, len, style.fg_color);
+    draw_text(screen, font, x, y + font->ascent, ubuf, len, style.fg_color);
     release_font(screen, font);
 }
 
@@ -3930,7 +3943,7 @@ static void eb_format_message(QEmacsState *qs, const char *bufname,
     }
 }
 
-void put_error(EditState *s, const char *fmt, ...)
+void put_error(__unused__ EditState *s, const char *fmt, ...)
 {
     /* CG: s is not used and may be NULL! */
     QEmacsState *qs = &qe_state;
@@ -3944,7 +3957,7 @@ void put_error(EditState *s, const char *fmt, ...)
     eb_format_message(qs, "*errors*", buf);
 }
 
-void put_status(EditState *s, const char *fmt, ...)
+void put_status(__unused__ EditState *s, const char *fmt, ...)
 {
     /* CG: s is not used and may be NULL! */
     QEmacsState *qs = &qe_state;
@@ -4154,7 +4167,7 @@ const char *file_completion_ignore_extensions =
 
 void file_completion(StringArray *cs, const char *input)
 {
-    FindFileState *ffs;
+    FindFileState *ffst;
     char path[MAX_FILENAME_SIZE];
     char file[MAX_FILENAME_SIZE];
     char filename[MAX_FILENAME_SIZE];
@@ -4164,8 +4177,8 @@ void file_completion(StringArray *cs, const char *input)
     splitpath(path, sizeof(path), file, sizeof(file), input);
     pstrcat(file, sizeof(file), "*");
 
-    ffs = find_file_open(*path ? path : ".", file);
-    while (find_file_next(ffs, filename, sizeof(filename)) == 0) {
+    ffst = find_file_open(*path ? path : ".", file);
+    while (find_file_next(ffst, filename, sizeof(filename)) == 0) {
         struct stat sb;
 
         base = basename(filename);
@@ -4190,7 +4203,7 @@ void file_completion(StringArray *cs, const char *input)
         add_string(cs, filename);
     }
 
-    find_file_close(ffs);
+    find_file_close(ffst);
 }
 
 void buffer_completion(StringArray *cs, const char *input)
@@ -4348,7 +4361,7 @@ void do_completion_space(EditState *s)
 }
 
 /* scroll in completion popup */
-void minibuf_complete_scroll_up_down(EditState *s, int dir)
+void minibuf_complete_scroll_up_down(__unused__ EditState *s, int dir)
 {
     if (completion_popup_window) {
         completion_popup_window->force_highlight = 1;
@@ -4433,7 +4446,7 @@ void do_minibuffer_get_binary(EditState *s)
     }
 }
 
-void do_minibuffer_exit(EditState *s, int abort)
+void do_minibuffer_exit(EditState *s, int do_abort)
 {
     QEmacsState *qs = s->qe_state;
     EditBuffer *b = s->b;
@@ -4448,7 +4461,7 @@ void do_minibuffer_exit(EditState *s, int abort)
     if (completion_popup_window && 
         completion_popup_window->force_highlight) {
         int offset;
-        char buf[1024];
+
         offset = list_get_offset(completion_popup_window);
         eb_get_strline(completion_popup_window->b, buf, sizeof(buf), &offset);
         if (buf[0] != '\0')
@@ -4458,9 +4471,9 @@ void do_minibuffer_exit(EditState *s, int abort)
     /* remove completion popup if present */
     /* CG: assuming completion_popup_window != s */
     if (completion_popup_window) {
-        EditBuffer *b = completion_popup_window->b;
+        EditBuffer *b1 = completion_popup_window->b;
         edit_close(completion_popup_window);
-        eb_free(b);
+        eb_free(b1);
         do_refresh(s);
     }
 
@@ -4484,7 +4497,7 @@ void do_minibuffer_exit(EditState *s, int abort)
 
     /* force status update */
     strcpy(qs->status_shadow, " ");
-    put_status(NULL, "");
+    put_status(NULL, " ");
 
     /* call the callback */
     cb = minibuffer_cb;
@@ -4492,7 +4505,7 @@ void do_minibuffer_exit(EditState *s, int abort)
     minibuffer_cb = NULL;
     minibuffer_opaque = NULL;
 
-    if (abort) {
+    if (do_abort) {
         cb(opaque, NULL);
     } else {
         retstr = strdup(buf);
@@ -5175,7 +5188,7 @@ static void quit_key(void *opaque, int ch)
     quit_examine_buffers(is);
 }
 
-static void quit_confirm_cb(void *opaque, char *reply)
+static void quit_confirm_cb(__unused__ void *opaque, char *reply)
 {
     if (!reply)
         return;
@@ -5280,19 +5293,6 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
     }
 }
 
-void usprintf(char **pp, const char *fmt, ...)
-{
-    char *q = *pp;
-    int len;
-    va_list ap;
-
-    va_start(ap, fmt);
-    len = vsprintf(q, fmt, ap);
-    q += len;
-    *pp = q;
-    va_end(ap);
-}
-
 #define SEARCH_LENGTH 80
 #define FOUND_TAG 0x80000000
 
@@ -5300,7 +5300,7 @@ void usprintf(char **pp, const char *fmt, ...)
 static unsigned int last_search_string[SEARCH_LENGTH];
 static int last_search_string_len = 0;
 
-int search_abort_func(void *opaque)
+int search_abort_func(__unused__ void *opaque)
 {
     return is_user_input_pending();
 }
@@ -5319,7 +5319,8 @@ typedef struct ISearchState {
 static void isearch_display(ISearchState *is)
 {
     EditState *s = is->s;
-    char ubuf[256], *uq;
+    char ubuf[256];
+    buf_t out;
     u8 buf[2*SEARCH_LENGTH], *q; /* XXX: incorrect size */
     int i, len, hex_nibble, h;
     unsigned int v;
@@ -5366,36 +5367,36 @@ static void isearch_display(ISearchState *is)
     }
             
     /* display search string */
-    uq = ubuf;
+    buf_init(&out, ubuf, sizeof(ubuf));
     if (is->found_offset < 0 && len > 0)
-        usprintf(&uq, "Failing ");
+        buf_printf(&out, "Failing ");
     if (s->hex_mode) {
-        usprintf(&uq, "hex ");
+        buf_printf(&out, "hex ");
     } else {
         if (is->search_flags & SEARCH_FLAG_WORD)
-            usprintf(&uq, "word ");
+            buf_printf(&out, "word ");
         if (is->search_flags & SEARCH_FLAG_IGNORECASE)
-            usprintf(&uq, "case-insensitive ");
+            buf_printf(&out, "case-insensitive ");
         else if (!(is->search_flags & SEARCH_FLAG_SMARTCASE))
-            usprintf(&uq, "case-sensitive ");
+            buf_printf(&out, "case-sensitive ");
     }
-    usprintf(&uq, "I-search");
+    buf_printf(&out, "I-search");
     if (is->dir < 0)
-        usprintf(&uq, " backward");
-    usprintf(&uq, ": ");
+        buf_printf(&out, " backward");
+    buf_printf(&out, ": ");
     for (i = 0; i < is->pos; i++) {
         v = is->search_string[i];
         if (!(v & FOUND_TAG)) {
-            uq = utf8_encode(uq, v);
+            if (!buf_putc_utf8(&out, v))
+                break;
         }
     }
-    *uq = '\0';
 
-        /* display text */
+    /* display text */
     center_cursor(s);
     edit_display(s->qe_state);
 
-    put_status(NULL, ubuf);
+    put_status(NULL, "%s", out.buf);
 
     dpy_flush(s->screen);
 }
@@ -5715,7 +5716,7 @@ void edit_invalidate(EditState *s)
     s->display_invalid = 1;
 }
 
-void do_refresh(EditState *s1)
+void do_refresh(__unused__ EditState *s1)
 {
     /* CG: s1 may be NULL */
     QEmacsState *qs = &qe_state;
@@ -5963,7 +5964,7 @@ void do_split_window(EditState *s, int horiz)
 /* help */
 
 static void print_bindings(EditBuffer *b, const char *title,
-                           int type, ModeDef *mode)
+                           __unused__ int type, ModeDef *mode)
 {
     CmdDef *d;
     KeyDef *k;
@@ -5998,7 +5999,7 @@ static void print_bindings(EditBuffer *b, const char *title,
     }
 }
 
-EditBuffer *new_help_buffer(int *show_ptr)
+static EditBuffer *new_help_buffer(int *show_ptr)
 {
     EditBuffer *b;
 
@@ -6040,7 +6041,7 @@ void do_describe_key_briefly(EditState *s)
     key_ctx.describe_key = 1;
 }
 
-void do_help_for_help(EditState *s)
+void do_help_for_help(__unused__ EditState *s)
 {
     EditBuffer *b;
     int show;
@@ -6074,7 +6075,7 @@ void qe_event_init(void)
 
 int __fast_test_event_poll_flag = 0;
 
-static void poll_action(int sig)
+static void poll_action(__unused__ int sig)
 {
     __fast_test_event_poll_flag = 1;
 }
@@ -6195,7 +6196,7 @@ static int motion_type = MOTION_NONE;
 static EditState *motion_target;
 static int motion_x, motion_y;
 
-int check_motion_target(EditState *s)
+static int check_motion_target(__unused__ EditState *s)
 {
     QEmacsState *qs = &qe_state;
     EditState *e;
@@ -6316,7 +6317,7 @@ void mouse_event(QEEvent *ev)
             break;
         case MOTION_TEXT:
             {
-                EditState *e = motion_target;
+                e = motion_target;
                 if (!check_motion_target(e)) {
                     e->show_selection = 0;
                     motion_type = MOTION_NONE;
@@ -6420,7 +6421,7 @@ void qe_handle_event(QEEvent *ev)
     }
 }
 
-static int text_mode_probe(ModeProbeData *p)
+static int text_mode_probe(__unused__ ModeProbeData *p)
 {
     return 10;
 }
@@ -6487,15 +6488,15 @@ ModeDef text_mode = {
 /* find a resource file */
 int find_resource_file(char *path, int path_size, const char *pattern)
 {
-    FindFileState *ffs;
+    FindFileState *ffst;
     int ret;
 
-    ffs = find_file_open(qe_state.res_path, pattern);
-    if (!ffs)
+    ffst = find_file_open(qe_state.res_path, pattern);
+    if (!ffst)
         return -1;
-    ret = find_file_next(ffs, path, path_size);
+    ret = find_file_next(ffst, path, path_size);
 
-    find_file_close(ffs);
+    find_file_close(ffst);
 
     return ret;
 }
@@ -6507,7 +6508,7 @@ int find_resource_file(char *path, int path_size, const char *pattern)
  * displayed as a popup upon start.
  */
 
-int expect_token(const char **pp, int tok)
+static int expect_token(const char **pp, int tok)
 {
     skip_spaces(pp);
     if (**pp == tok) {
@@ -6669,7 +6670,7 @@ int parse_config_file(EditState *s, const char *filename)
 
             switch (args_type[i]) {
             case CMD_ARG_INT:
-                args[i] = (void *)strtol(p, (char**)&q, 0);
+                args[i] = (void *)(intptr_t)strtol(p, (char**)&q, 0);
                 if (q == p) {
                     put_status(s, "Number expected for arg %d", i);
                     goto fail;
@@ -6739,7 +6740,7 @@ int parse_config_file(EditState *s, const char *filename)
 void parse_config(EditState *e, const char *file)
 {
     QEmacsState *qs = e->qe_state;
-    FindFileState *ffs;
+    FindFileState *ffst;
     char filename[MAX_FILENAME_SIZE];
 
     if (file && *file) {
@@ -6747,13 +6748,13 @@ void parse_config(EditState *e, const char *file)
         return;
     }
 
-    ffs = find_file_open(qs->res_path, "config");
-    if (!ffs)
+    ffst = find_file_open(qs->res_path, "config");
+    if (!ffst)
         return;
-    while (find_file_next(ffs, filename, sizeof(filename)) == 0) {
+    while (find_file_next(ffst, filename, sizeof(filename)) == 0) {
         parse_config_file(e, filename);
     }
-    find_file_close(ffs);
+    find_file_close(ffst);
     if (file)
         do_refresh(e);
 }
@@ -6841,20 +6842,20 @@ static void show_usage(void)
 
 int parse_command_line(int argc, char **argv)
 {
-    int optind;
+    int _optind;
 
-    optind = 1;
+    _optind = 1;
     for (;;) {
-        const char *r, *r1, *r2, *optarg;
+        const char *r, *r1, *r2, *_optarg;
         CmdOptionDef *p;
 
-        if (optind >= argc)
+        if (_optind >= argc)
             break;
-        r = argv[optind];
+        r = argv[_optind];
         /* stop before first non option */
         if (r[0] != '-') 
             break;
-        optind++;
+        _optind++;
 
         r2 = r1 = r + 1;
         if (r2[0] == '-') {
@@ -6870,23 +6871,23 @@ int parse_command_line(int argc, char **argv)
                 if (!strcmp(p->name, r2) ||
                     (p->shortname && !strcmp(p->shortname, r1))) {
                     if (p->flags & CMD_OPT_ARG) {
-                        if (optind >= argc) {
+                        if (_optind >= argc) {
                             put_status(NULL,
                                        "cmdline argument expected -- %s", r);
                             goto next_cmd;
                         }
-                        optarg = argv[optind++];
+                        _optarg = argv[_optind++];
                     } else {
-                        optarg = NULL;
+                        _optarg = NULL;
                     }
                     if (p->flags & CMD_OPT_BOOL) {
                         *p->u.int_ptr = 1;
                     } else if (p->flags & CMD_OPT_STRING) {
-                        *p->u.string_ptr = optarg;
+                        *p->u.string_ptr = _optarg;
                     } else if (p->flags & CMD_OPT_INT) {
-                        *p->u.int_ptr = strtol(optarg, NULL, 0);
+                        *p->u.int_ptr = strtol(_optarg, NULL, 0);
                     } else if (p->flags & CMD_OPT_ARG) {
-                        p->u.func_arg(optarg);
+                        p->u.func_arg(_optarg);
                     } else {
                         p->u.func_noarg();
                     }
@@ -6899,7 +6900,7 @@ int parse_command_line(int argc, char **argv)
         put_status(NULL, "unknown cmdline option '%s'", r);
     next_cmd: ;
     }
-    return optind;
+    return _optind;
 }
 
 void set_user_option(const char *user)
@@ -6937,7 +6938,7 @@ static CmdOptionDef cmd_options[] = {
       {func_arg: set_user_option}},
     { "version", "V", NULL, 0, "display version information and exit", 
       {func_noarg: show_version}},
-    { NULL },
+    { NULL, NULL, NULL, 0, NULL, { NULL }},
 };
 
 /* default key bindings */
@@ -6953,7 +6954,7 @@ static int dummy_dpy_probe(void)
 
 extern QEDisplay dummy_dpy;
 
-static int dummy_dpy_init(QEditScreen *s, int w, int h)
+static int dummy_dpy_init(QEditScreen *s, __unused__ int w, __unused__ int h)
 {
     memcpy(&s->dpy, &dummy_dpy, sizeof(QEDisplay));
 
@@ -6962,56 +6963,66 @@ static int dummy_dpy_init(QEditScreen *s, int w, int h)
     return 0;
 }
 
-static void dummy_dpy_close(QEditScreen *s)
+static void dummy_dpy_close(__unused__ QEditScreen *s)
 {
 }
 
-static void dummy_dpy_cursor_at(QEditScreen *s, int x1, int y1, int w, int h)
+static void dummy_dpy_cursor_at(__unused__ QEditScreen *s,
+                                __unused__ int x1, __unused__ int y1,
+                                __unused__ int w, __unused__ int h)
 {
 }
 
-static int dummy_dpy_is_user_input_pending(QEditScreen *s)
+static int dummy_dpy_is_user_input_pending(__unused__ QEditScreen *s)
 {
     return 0;
 }
 
-static void dummy_dpy_fill_rectangle(QEditScreen *s,
-                                     int x1, int y1, int w, int h,
-                                     QEColor color)
+static void dummy_dpy_fill_rectangle(__unused__ QEditScreen *s,
+                                     __unused__ int x1, __unused__ int y1,
+                                     __unused__ int w, __unused__ int h,
+                                     __unused__ QEColor color)
 {
 }
 
-static QEFont *dummy_dpy_open_font(QEditScreen *s,
-                                   int style, int size)
+static QEFont *dummy_dpy_open_font(__unused__ QEditScreen *s,
+                                   __unused__ int style, __unused__ int size)
 {
     return NULL;
 }
 
-static void dummy_dpy_close_font(QEditScreen *s, QEFont *font)
+static void dummy_dpy_close_font(__unused__ QEditScreen *s,
+                                 __unused__ QEFont *font)
 {
 }
 
-static void dummy_dpy_text_metrics(QEditScreen *s, QEFont *font, 
+static void dummy_dpy_text_metrics(__unused__ QEditScreen *s,
+                                   __unused__ QEFont *font, 
                                    QECharMetrics *metrics,
-                                   const unsigned int *str, int len)
+                                   __unused__ const unsigned int *str,
+                                   __unused__ int len)
 {
     metrics->font_ascent = 1;
     metrics->font_descent = 0;
     metrics->width = len;
 }
         
-static void dummy_dpy_draw_text(QEditScreen *s, QEFont *font, 
-                                int x, int y, const unsigned int *str, int len,
-                                QEColor color)
+static void dummy_dpy_draw_text(__unused__ QEditScreen *s,
+                                __unused__ QEFont *font, 
+                                __unused__ int x, __unused__ int y,
+                                __unused__ const unsigned int *str,
+                                __unused__ int len,
+                                __unused__ QEColor color)
 {
 }
 
-static void dummy_dpy_set_clip(QEditScreen *s,
-                               int x, int y, int w, int h)
+static void dummy_dpy_set_clip(__unused__ QEditScreen *s,
+                               __unused__ int x, __unused__ int y,
+                               __unused__ int w, __unused__ int h)
 {
 }
 
-static void dummy_dpy_flush(QEditScreen *s)
+static void dummy_dpy_flush(__unused__ QEditScreen *s)
 {
 }
 
@@ -7029,8 +7040,17 @@ QEDisplay dummy_dpy = {
     dummy_dpy_text_metrics,
     dummy_dpy_draw_text,
     dummy_dpy_set_clip,
-    NULL, /* no selection handling */
-    NULL, /* no selection handling */
+
+    NULL, /* dpy_selection_activate */
+    NULL, /* dpy_selection_request */
+    NULL, /* dpy_invalidate */
+    NULL, /* dpy_bmp_alloc */
+    NULL, /* dpy_bmp_free */
+    NULL, /* dpy_bmp_draw */
+    NULL, /* dpy_bmp_lock */
+    NULL, /* dpy_bmp_unlock */
+    NULL, /* dpy_full_screen */
+    NULL, /* next */
 };
 
 
@@ -7134,21 +7154,21 @@ static inline void init_all_modules(void)
 
 #ifdef CONFIG_DLL
 
-void load_all_modules(QEmacsState *qs)
+static void load_all_modules(QEmacsState *qs)
 {
     QErrorContext ec = qs->ec;
-    FindFileState *ffs;
+    FindFileState *ffst;
     char filename[MAX_FILENAME_SIZE];
     void *h;
     int (*init_func)(void);
     
-    ffs = find_file_open(qs->res_path, "*.so");
-    if (!ffs)
+    ffst = find_file_open(qs->res_path, "*.so");
+    if (!ffst)
         return;
 
     qs->ec.function = "load-all-modules";
 
-    while (!find_file_next(ffs, filename, sizeof(filename))) {
+    while (!find_file_next(ffst, filename, sizeof(filename))) {
         h = dlopen(filename, RTLD_LAZY);
         if (!h) {
             char *error = dlerror();
@@ -7168,7 +7188,7 @@ void load_all_modules(QEmacsState *qs)
         /* all is OK: we can init the module now */
         init_func();
     }
-    find_file_close(ffs);
+    find_file_close(ffst);
     qs->ec = ec;
 }
 
@@ -7180,7 +7200,7 @@ typedef struct QEArgs {
 } QEArgs;
 
 /* init function */
-void qe_init(void *opaque)
+static void qe_init(void *opaque)
 {
     QEmacsState *qs = &qe_state;
     QEArgs *args = opaque;
@@ -7189,7 +7209,7 @@ void qe_init(void *opaque)
     EditState *s;
     EditBuffer *b;
     QEDisplay *dpy;
-    int i, optind, is_player;
+    int i, _optind, is_player;
 
     qs->ec.function = "qe-init";
     qs->macro_key_index = -1; /* no macro executing */
@@ -7259,7 +7279,7 @@ void qe_init(void *opaque)
     dummy_dpy.dpy_init(&global_screen, screen_width, screen_height);
 
     /* handle options */
-    optind = parse_command_line(argc, argv);
+    _optind = parse_command_line(argc, argv);
 
     /* load config file unless command line option given */
     if (!no_init_file)
@@ -7285,13 +7305,13 @@ void qe_init(void *opaque)
     do_refresh(s);
 
     /* load file(s) */
-    for (i = optind; i < argc; i++) {
+    for (i = _optind; i < argc; i++) {
         do_load(s, argv[i]);
         /* CG: handle +linenumber */
     }
     
 #ifndef CONFIG_TINY
-    if (is_player && optind >= argc) {
+    if (is_player && _optind >= argc) {
         /* if player, go to directory mode by default if no file selected */
         do_dired(s);
     }

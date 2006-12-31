@@ -16,6 +16,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+
 #include "qe.h"
 #include <dirent.h>
 
@@ -58,7 +59,6 @@ FindFileState *find_file_open(const char *path, const char *pattern)
     return s;
 }
                      
-
 int find_file_next(FindFileState *s, char *filename, int filename_size_max)
 {
     struct dirent *dirent;
@@ -440,7 +440,7 @@ int css_get_enum(const char *str, const char *enum_str)
     return -1;
 }
 
-unsigned short keycodes[] = {
+static unsigned short const keycodes[] = {
     KEY_SPC, KEY_DEL, KEY_RET, KEY_ESC, KEY_TAB, KEY_SHIFT_TAB,
     KEY_CTRL(' '), KEY_DEL, KEY_CTRL('\\'),
     KEY_CTRL(']'), KEY_CTRL('^'), KEY_CTRL('_'),
@@ -456,7 +456,7 @@ unsigned short keycodes[] = {
     KEY_F16, KEY_F17, KEY_F18, KEY_F19, KEY_F20,
 };
 
-const char *keystr[] = {
+static const char * const keystr[] = {
     "SPC", "DEL", "RET", "ESC", "TAB", "S-TAB",
     "C-SPC", "C-?", "C-\\", "C-]", "C-^", "C-_",
     "left", "right", "up", "down",
@@ -503,7 +503,7 @@ static int strtokey1(const char **pp)
     for (p1 = p; *p1 && *p1 != ' '; p1++)
         continue;
 
-    for (i = 0; i < sizeof(keycodes)/sizeof(keycodes[0]); i++) {
+    for (i = 0; i < (int)(sizeof(keycodes)/sizeof(keycodes[0])); i++) {
         if (strstart(p, keystr[i], &q) && q == p1) {
             key = keycodes[i];
             *pp = p1;
@@ -552,12 +552,12 @@ int strtokey(const char **pp)
     return key;
 }
 
-int strtokeys(const char *keystr, unsigned int *keys, int max_keys)
+int strtokeys(const char *kstr, unsigned int *keys, int max_keys)
 {
     int key, nb_keys;
     const char *p;
 
-    p = keystr;
+    p = kstr;
     nb_keys = 0;
 
     for (;;) {
@@ -577,28 +577,27 @@ void keytostr(char *buf, int buf_size, int key)
 {
     int i;
     char buf1[32];
+    buf_t out;
     
+    buf_init(&out, buf, buf_size);
+
     for (i = 0; i < (int)(sizeof(keycodes)/sizeof(keycodes[0])); i++) {
         if (keycodes[i] == key) {
-            pstrcpy(buf, buf_size, keystr[i]);
+            buf_puts(&out, keystr[i]);
             return;
         }
     }
     if (key >= KEY_META(0) && key <= KEY_META(0xff)) {
         keytostr(buf1, sizeof(buf1), key & 0xff);
-        snprintf(buf, buf_size, "M-%s", buf1);
-    } else if (key >= KEY_CTRL('a') && key <= KEY_CTRL('z')) {
-        snprintf(buf, buf_size, "C-%c", key + 'a' - 1);
-    } else if (key >= KEY_F1 && key <= KEY_F20) {
-        snprintf(buf, buf_size, "f%d", key - KEY_F1 + 1);
-    } else if (key > 32 && key < 127 && buf_size >= 2) {
-        buf[0] = key;
-        buf[1] = '\0';
+        buf_printf(&out, "M-%s", buf1);
+    } else
+    if (key >= KEY_CTRL('a') && key <= KEY_CTRL('z')) {
+        buf_printf(&out, "C-%c", key + 'a' - 1);
+    } else
+    if (key >= KEY_F1 && key <= KEY_F20) {
+        buf_printf(&out, "f%d", key - KEY_F1 + 1);
     } else {
-        char *q;
-        q = utf8_encode(buf1, key);
-        *q = '\0';
-        pstrcpy(buf, buf_size, buf1);
+        buf_putc_utf8(&out, key);
     }
 }
 
@@ -646,7 +645,7 @@ static ColorDef css_colors[] = {
     { "magenta", QERGB(0xff, 0x00, 0xff) },
     { "transparent", COLOR_TRANSPARENT },
 };
-#define nb_css_colors (sizeof(css_colors) / sizeof(css_colors[0]))
+#define nb_css_colors (int)(sizeof(css_colors) / sizeof(css_colors[0]))
 
 static ColorDef *custom_colors = css_colors;
 static int nb_custom_colors;
@@ -824,6 +823,25 @@ void css_union_rect(CSSRect *a, const CSSRect *b)
     }
 }
 
+void css_strtolower(char *buf, __unused__ int buf_size)
+{
+    int c;
+    /* XXX: handle unicode */
+    while (*buf) {
+        c = tolower(*buf);
+        *buf++ = c;
+    }
+}
+
+void set_color(unsigned int *buf, int len, int style)
+{
+    int i;
+
+    style <<= STYLE_SHIFT;
+    for (i = 0; i < len; i++)
+        buf[i] |= style;
+}
+
 #ifdef __TINYC__
 
 /* the glibc folks use wrappers, but forgot to put a compatibility
@@ -894,52 +912,6 @@ void free_strings(StringArray *cs)
     memset(cs, 0, sizeof(StringArray));
 }
 
-void set_color(unsigned int *buf, int len, int style)
-{
-    int i;
-
-    style <<= STYLE_SHIFT;
-    for (i = 0; i < len; i++)
-        buf[i] |= style;
-}
-
-void css_strtolower(char *buf, int buf_size)
-{
-    int c;
-    /* XXX: handle unicode */
-    while (*buf) {
-        c = tolower(*buf);
-        *buf++ = c;
-    }
-}
-
-void umemmove(unsigned int *dest, unsigned int *src, int len)
-{
-    memmove(dest, src, len * sizeof(unsigned int));
-}
-
-/* copy the n first char of a string and truncate it. */
-char *pstrncpy(char *buf, int buf_size, const char *s, int len)
-{
-    char *q;
-    int c;
-
-    if (buf_size > 0) {
-        q = buf;
-        if (len >= buf_size)
-            len = buf_size - 1;
-        while (len > 0) {
-            c = *s++;
-            if (c == '\0')
-                break;
-            *q++ = c;
-            len--;
-        }
-        *q = '\0';
-    }
-    return buf;
-}
-
 /**
  * Add a memory region to a dynamic string. In case of allocation
  * failure, the data is not added. The dynamic string is guaranteed to
@@ -1002,3 +974,85 @@ int qprintf(QString *q, const char *fmt, ...)
     return ret;
 }
 
+int buf_write(buf_t *bp, const void *src, int size)
+{
+    int n = buf_avail(bp);
+
+    if (n > size)
+        n = size;
+    memcpy(bp->buf + bp->len, src, n);
+    bp->pos += size;
+    bp->len += n;
+    if (bp->len < bp->size)
+        bp->buf[bp->len] = '\0';
+    return n;
+}
+
+int buf_printf(buf_t *bp, const char *fmt, ...)
+{
+    va_list ap;
+    int len;
+
+    va_start(ap, fmt);
+    len = vsnprintf(bp->buf + bp->len,
+                    (bp->pos < bp->size) ? bp->size - bp->pos : 1, fmt, ap);
+    va_end(ap);
+
+    bp->pos += len;
+    bp->len += len;
+    if (bp->len >= bp->size) {
+        bp->len = bp->size - 1;
+        if (bp->len < 0)
+            bp->len = 0;
+    }
+
+    return len;
+}
+
+int buf_putc_utf8(buf_t *bp, int c)
+{
+    if (c < 0x80) {
+        bp->pos++;
+        if (bp->pos < bp->size) {
+            bp->buf[bp->len++] = c;
+            bp->buf[bp->len] = '\0';
+            return 1;
+        } else {
+            return 0;
+        }
+    } else {
+        char buf[6];
+        int len;
+
+        len = utf8_encode(buf, c);
+
+        if (buf_avail(bp) >= len) {
+            memcpy(bp->buf + bp->len, buf, len);
+            bp->buf[bp->len] = '\0';
+            bp->pos += len;
+            bp->len += len;
+            return len;
+        }
+        bp->pos += len;
+        return 0;
+    }
+}
+
+int strsubst(char *buf, int buf_size, const char *from,
+             const char *s1, const char *s2)
+{
+    const char *p, *q;
+    buf_t out;
+
+    buf_init(&out, buf, buf_size);
+
+    p = from;
+    while ((q = strstr(p, s1)) != NULL) {
+        buf_write(&out, p, q - p);
+        buf_puts(&out, s2);
+        p = q + strlen(s1);
+    }
+    buf_puts(&out, p);
+
+    return out.pos;
+}

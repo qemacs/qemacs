@@ -297,8 +297,9 @@ static void cfb_draw_text(QEditScreen *s, QEFont *font,
 }
 
 
-static void cfb_set_clip(QEditScreen *s,
-                         int x, int y, int w, int h)
+static void cfb_set_clip(__unused__ QEditScreen *s,
+                         __unused__ int x, __unused__ int y,
+                         __unused__ int w, __unused__ int h)
 {
 }
 

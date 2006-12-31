@@ -1,14 +1,14 @@
 #ifndef QE_DISPLAY_H
 #define QE_DISPLAY_H
 
-#define MAX_SCREEN_WIDTH 1024  /* in chars */
-#define MAX_SCREEN_LINES 256  /* in text lines */
+#define MAX_SCREEN_WIDTH  1024  /* in chars */
+#define MAX_SCREEN_LINES   256  /* in text lines */
 
 typedef unsigned int QEColor;
-#define QEARGB(a,r,g,b) (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
-#define QERGB(r,g,b) QEARGB(0xff, r, g, b)
-#define COLOR_TRANSPARENT 0
-#define QECOLOR_XOR       1
+#define QEARGB(a,r,g,b)    (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
+#define QERGB(r,g,b)       QEARGB(0xff, r, g, b)
+#define COLOR_TRANSPARENT  0
+#define QECOLOR_XOR        1
 
 /* XXX: use different name prefix to avoid conflict */
 #define QE_STYLE_NORM         0x0001
@@ -18,7 +18,7 @@ typedef unsigned int QEColor;
 #define QE_STYLE_LINE_THROUGH 0x0010
 #define QE_STYLE_MASK         0x00ff
 
-#define NB_FONT_FAMILIES 3
+#define NB_FONT_FAMILIES      3
 #define QE_FAMILY_SHIFT       8
 #define QE_FAMILY_MASK        0xff00
 #define QE_FAMILY_FIXED       0x0100
@@ -78,10 +78,10 @@ typedef struct QEPicture {
     int linesize[4];
 } QEPicture;
 
-struct QEditScreen;
 typedef struct QEditScreen QEditScreen;
+typedef struct QEDisplay QEDisplay;
 
-typedef struct QEDisplay {
+struct QEDisplay {
     const char *name;
     int (*dpy_probe)(void);
     int (*dpy_init)(QEditScreen *s, int w, int h);
@@ -115,11 +115,12 @@ typedef struct QEDisplay {
     void (*dpy_bmp_unlock)(QEditScreen *s, QEBitmap *b);
     /* full screen support */
     void (*dpy_full_screen)(QEditScreen *s, int full_screen);
-    struct QEDisplay *next;
-} QEDisplay;
+    QEDisplay *next;
+};
 
 struct QEditScreen {
     struct QEDisplay dpy;
+    FILE *STDIN, *STDOUT;
     int width, height;
     QECharset *charset; /* the charset of the TTY, XXX: suppress that,
                           use a system in fonts instead */
@@ -187,12 +188,12 @@ int qe_register_display(QEDisplay *dpy);
 QEDisplay *probe_display(void);
 QEFont *select_font(QEditScreen *s, int style, int size);
 
-static inline QEFont *lock_font(QEditScreen *s, QEFont *font) {
+static inline QEFont *lock_font(__unused__ QEditScreen *s, QEFont *font) {
     if (font && font->refcount)
         font->refcount++;
     return font;
 }
-static inline void release_font(QEditScreen *s, QEFont *font) {
+static inline void release_font(__unused__ QEditScreen *s, QEFont *font) {
     if (font && font->refcount)
         font->refcount--;
 }

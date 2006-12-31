@@ -111,10 +111,10 @@ static void bufed_select(EditState *s, int temp)
 
 /* iterate 'func_item' to selected items. If no selected items, then
    use current item */
-void string_selection_iterate(StringArray *cs, 
-                              int current_index,
-                              void (*func_item)(void *, StringItem *),
-                              void *opaque)
+static void string_selection_iterate(StringArray *cs, 
+                                     int current_index,
+                                     void (*func_item)(void *, StringItem *),
+                                     void *opaque)
 {
     StringItem *item;
     int count, i;

@@ -29,11 +29,15 @@ CONFIG_UNICODE_JOIN=y
 #
 CONFIG_ALL_KMAPS=y
 
-CFLAGS:=-Wall -g $(CFLAGS) -funsigned-char
+CFLAGS:= -Wall -g $(CFLAGS) -funsigned-char
+
+-include cflags.mk
+
 ifdef TARGET_GPROF
 CFLAGS+= -p
 LDFLAGS+= -p
 endif
+
 ifdef TARGET_ARCH_X86
 #CFLAGS+=-fomit-frame-pointer
 ifeq ($(GCC_MAJOR),2)
@@ -42,6 +46,7 @@ else
 CFLAGS+=-march=i386 -falign-functions=0
 endif
 endif
+
 DEFINES=-DHAVE_QE_CONFIG_H
 
 ########################################################
@@ -336,8 +341,8 @@ times8.fbf times10.fbf times12.fbf times14.fbf times18.fbf times24.fbf\
 unifont.fbf
 FONTS:=$(addprefix fonts/,$(FONTS))
 
-fbftoqe$(EXE): fbftoqe.c
-	$(CC) $(CFLAGS) -o $@ $<
+fbftoqe$(EXE): fbftoqe.o cutils.o
+	$(CC) $(CFLAGS) -o $@ $^
 
 fbffonts.c: fbftoqe$(EXE) $(FONTS)
 	./fbftoqe $(FONTS) > $@

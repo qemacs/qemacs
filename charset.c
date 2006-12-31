@@ -88,7 +88,7 @@ static void decode_8859_1_init(CharsetDecodeState *s)
     s->table = table_idem;
 }
 
-static unsigned char *encode_8859_1(QECharset *charset, 
+static unsigned char *encode_8859_1(__unused__ QECharset *charset, 
                                     unsigned char *p, int c)
 {
     if (c <= 0xff) {
@@ -107,6 +107,7 @@ QECharset charset_8859_1 = {
     decode_8859_1_init,
     NULL,
     encode_8859_1,
+    0, 0, 0, NULL, NULL,
 };
 
 /********************************************************/
@@ -117,7 +118,7 @@ static void decode_vt100_init(CharsetDecodeState *s)
     s->table = table_idem;
 }
 
-static unsigned char *encode_vt100(QECharset *charset, 
+static unsigned char *encode_vt100(__unused__ QECharset *charset, 
                                    unsigned char *p, int c)
 {
     if (c <= 0xff) {
@@ -134,12 +135,13 @@ QECharset charset_vt100 = {
     decode_vt100_init,
     NULL,
     encode_vt100,
+    0, 0, 0, NULL, NULL,
 };
 
 /********************************************************/
 /* 7 bit */
 
-static unsigned char *encode_7bit(QECharset *charset,
+static unsigned char *encode_7bit(__unused__ QECharset *charset,
                                   unsigned char *p, int c)
 {
     if (c <= 0x7f) {
@@ -158,6 +160,7 @@ static QECharset charset_7bit = {
     decode_8859_1_init,
     NULL,
     encode_7bit,
+    0, 0, 0, NULL, NULL,
 };
 
 /********************************************************/
@@ -201,10 +204,12 @@ int utf8_decode(const char **pp)
     return INVALID_CHAR;
 }
 
-/* NOTE: the buffer must be at least 6 bytes long. Return the position
-   of the next char. */
-char *utf8_encode(char *q, int c)
+/* NOTE: the buffer must be at least 6 bytes long. Return number of
+ * bytes copied. */
+int utf8_encode(char *q0, int c)
 {
+    char *q = q0;
+
     if (c < 0x80) {
         *q++ = c;
     } else {
@@ -231,7 +236,7 @@ char *utf8_encode(char *q, int c)
         }
         *q++ = (c & 0x3f) | 0x80;
     }
-    return q;
+    return q - q0;
 }
 
 int utf8_to_unicode(unsigned int *dest, int dest_length, 
@@ -263,14 +268,16 @@ static void decode_utf8_init(CharsetDecodeState *s)
     s->table = table_utf8;
 }
 
-static int decode_utf8_func(CharsetDecodeState *s, const unsigned char **pp)
+static int decode_utf8_func(__unused__ CharsetDecodeState *s,
+                            const unsigned char **pp)
 {
     return utf8_decode((const char **)(void *)pp);
 }
 
-unsigned char *encode_utf8(QECharset *charset, unsigned char *q, int c)
+static unsigned char *encode_utf8(__unused__ QECharset *charset,
+                                  unsigned char *q, int c)
 {
-    return (unsigned char*)utf8_encode((char*)q, c);
+    return q + utf8_encode((char*)q, c);
 }
 
 static const char *aliases_utf_8[] = { "utf8", NULL };
@@ -281,6 +288,7 @@ QECharset charset_utf8 = {
     decode_utf8_init,
     decode_utf8_func,
     encode_utf8,
+    0, 0, 0, NULL, NULL,
 };
 
 /********************************************************/
@@ -390,7 +398,7 @@ int unicode_to_charset(char *buf, unsigned int c, QECharset *charset)
     q = (char *)charset->encode_func(charset, (unsigned char*)buf, c);
     if (!q) {
         q = buf;
-        *q++ ='?';
+        *q++ = '?';
     }
     *q = '\0';
     return q - buf;

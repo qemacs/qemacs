@@ -14,29 +14,7 @@ char *pstrcat(char *buf, int buf_size, const char *s);
  */
 char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 
-/* simple dynamic strings wrappers. The strings are always terminated
-   by zero except if they are empty. */
-
-typedef struct QString {
-    unsigned char *data;
-    int len; /* string length excluding trailing '\0' */
-} QString;
-
-static inline void qstrinit(QString *q)
-{
-    q->data = NULL;
-    q->len = 0;
-}
-
-static inline void qstrfree(QString *q)
-{
-    free(q->data);
-    q->data = NULL;
-}
-
-int qmemcat(QString *q, const unsigned char *data1, int len1);
-int qstrcat(QString *q, const char *str);
-int qprintf(QString *q, const char *fmt, ...);
+/* list.c */
 
 /* Double linked lists. Same api as the linux kernel */
 

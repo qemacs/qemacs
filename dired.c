@@ -50,11 +50,11 @@ typedef struct DiredItem {
 
 static void dired_view_file(EditState *s, const char *filename);
 
-extern inline int dired_get_index(EditState *s) {
+static inline int dired_get_index(EditState *s) {
     return list_get_pos(s) - DIRED_HEADER;
 }
 
-void dired_free(EditState *s)
+static void dired_free(EditState *s)
 {
     DiredState *ds = s->mode_data;
     int i;
@@ -214,10 +214,10 @@ static void dired_sort(EditState *s, const char *sort_order)
 
 #define MAX_COL_FILE_SIZE 32
 
-void build_dired_list(EditState *s, const char *path)
+static void build_dired_list(EditState *s, const char *path)
 {
     DiredState *hs = s->mode_data;
-    FindFileState *ffs;
+    FindFileState *ffst;
     char filename[MAX_FILENAME_SIZE];
     char line[1024], buf[1024];
     const char *p;
@@ -233,8 +233,8 @@ void build_dired_list(EditState *s, const char *path)
     set_filename(s->b, hs->path);
     s->b->flags |= BF_DIRED;
 
-    ffs = find_file_open(hs->path, "*");
-    while (!find_file_next(ffs, filename, sizeof(filename))) {
+    ffst = find_file_open(hs->path, "*");
+    while (!find_file_next(ffst, filename, sizeof(filename))) {
         if (lstat(filename, &st) < 0)
             continue;
         p = basename(filename);
@@ -269,16 +269,16 @@ void build_dired_list(EditState *s, const char *path)
         line[len] = '\0';
         /* add file size or file info */
         if (S_ISREG(st.st_mode)) {
-            sprintf(buf, "%9ld", (long)st.st_size);
+            snprintf(buf, sizeof(buf), "%9ld", (long)st.st_size);
         } else if (S_ISDIR(st.st_mode)) {
-            sprintf(buf, "%9s", "<dir>");
+            snprintf(buf, sizeof(buf), "%9s", "<dir>");
         } else if (S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode)) {
             int major, minor;
             major = (st.st_rdev >> 8) & 0xff;
             minor = st.st_rdev & 0xff;
-            sprintf(buf, "%c%4d%4d", 
-                    S_ISCHR(st.st_mode) ? 'c' : 'b', 
-                    major, minor);
+            snprintf(buf, sizeof(buf), "%c%4d%4d", 
+                     S_ISCHR(st.st_mode) ? 'c' : 'b', 
+                     major, minor);
         } else if (S_ISLNK(st.st_mode)) {
             pstrcat(line, sizeof(line), "-> ");
             len = readlink(filename, buf, sizeof(buf) - 1);
@@ -304,7 +304,7 @@ void build_dired_list(EditState *s, const char *path)
             item->opaque = dip;
         }
     }
-    find_file_close(ffs);
+    find_file_close(ffst);
     do_dired_sort(s);
 }
 

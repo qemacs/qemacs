@@ -110,7 +110,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
 }
 
 
-void unihex_move_bol(EditState *s)
+static void unihex_move_bol(EditState *s)
 {
     int pos;
 
@@ -119,7 +119,7 @@ void unihex_move_bol(EditState *s)
     s->offset = eb_goto_char(s->b, pos);
 }
 
-void unihex_move_eol(EditState *s)
+static void unihex_move_eol(EditState *s)
 {
     int pos;
 
@@ -130,7 +130,7 @@ void unihex_move_eol(EditState *s)
     s->offset = eb_goto_char(s->b, pos);
 }
 
-void unihex_move_left_right(EditState *s, int dir)
+static void unihex_move_left_right(EditState *s, int dir)
 {
     if (dir > 0) {
         eb_nextc(s->b, s->offset, &s->offset);
@@ -139,7 +139,7 @@ void unihex_move_left_right(EditState *s, int dir)
     }
 }
 
-void unihex_move_up_down(EditState *s, int dir)
+static void unihex_move_up_down(EditState *s, int dir)
 {
     int pos;
 

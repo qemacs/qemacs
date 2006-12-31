@@ -112,6 +112,7 @@ void push_clip_rectangle(QEditScreen *s, CSSRect *or, CSSRect *r)
 int qe_register_display(QEDisplay *dpy)
 {
     QEDisplay **p;
+
     p = &first_dpy;
     while (*p != NULL)
         p = &(*p)->next;

@@ -28,8 +28,8 @@ enum {
     XML_SCRIPT = 0x10, /* special mode for inside a script, ored with c mode */
 };
 
-void xml_colorize_line(unsigned int *buf, int len, 
-                       int *colorize_state_ptr, int state_only)
+static void xml_colorize_line(unsigned int *buf, __unused__ int len, 
+                              int *colorize_state_ptr, int state_only)
 {
     int c, state;
     unsigned int *p, *p_start, *p1;
@@ -174,7 +174,7 @@ int xml_mode_probe(ModeProbeData *p1)
     return 90; /* leave some room for more specific XML parser */
 }
 
-int xml_mode_init(EditState *s, ModeSavedData *saved_data)
+static int xml_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     int ret;
     ret = text_mode_init(s, saved_data);
@@ -186,7 +186,7 @@ int xml_mode_init(EditState *s, ModeSavedData *saved_data)
 
 static ModeDef xml_mode;
 
-int xml_init(void)
+static int xml_init(void)
 {
     /* c mode is almost like the text mode, so we copy and patch it */
     memcpy(&xml_mode, &text_mode, sizeof(ModeDef));

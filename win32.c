@@ -492,8 +492,16 @@ static QEDisplay win32_dpy = {
     win_text_metrics,
     win_draw_text,
     win_set_clip,
-    NULL, /* no selection handling */
-    NULL, /* no selection handling */
+    NULL, /* dpy_selection_activate */
+    NULL, /* dpy_selection_request */
+    NULL, /* dpy_invalidate */
+    NULL, /* dpy_bmp_alloc */
+    NULL, /* dpy_bmp_free */
+    NULL, /* dpy_bmp_draw */
+    NULL, /* dpy_bmp_lock */
+    NULL, /* dpy_bmp_unlock */
+    NULL, /* dpy_full_screen */
+    NULL, /* next */
 };
 
 int win32_init(void)

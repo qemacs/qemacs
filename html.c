@@ -55,7 +55,7 @@ typedef struct {
 #define MAX_LINE_SIZE 256
 
 static int recompute_offset_func(void *opaque, CSSBox *box,
-                                 int x0, int y0)
+                                 __unused__ int x0, __unused__ int y0)
 {
     RecomputeOffsetData *data = opaque;
     int offsets[MAX_LINE_SIZE+1];
@@ -131,7 +131,7 @@ static int get_time(void)
 
 #endif
 
-static int html_test_abort(void *opaque)
+static int html_test_abort(__unused__ void *opaque)
 {
     return is_user_input_pending();
 }
@@ -352,7 +352,7 @@ typedef struct {
     int offsetc;
 } ScrollContext;
 
-static int scroll_func(void *opaque, CSSBox *box, int x, int y)
+static int scroll_func(void *opaque, CSSBox *box, __unused__ int x, int y)
 {
     ScrollContext *m = opaque;
     int y1;
@@ -373,8 +373,8 @@ static int scroll_func(void *opaque, CSSBox *box, int x, int y)
             m->offset_found = box->u.buffer.start;
         }
     }
-    if (m->offsetc >= box->u.buffer.start && 
-        m->offsetc <= box->u.buffer.end &&
+    if ((unsigned long)m->offsetc >= box->u.buffer.start && 
+        (unsigned long)m->offsetc <= box->u.buffer.end &&
         y >= 0 && y1 <= m->height) {
         m->offset_found = m->offsetc;
         return 1;
@@ -756,11 +756,11 @@ static void html_mouse_goto(EditState *s, int x, int y)
 }
 
 /* invalidate the html data if modification done (XXX: be more precise) */
-static void html_callback(EditBuffer *b,
+static void html_callback(__unused__ EditBuffer *b,
                           void *opaque,
-                          enum LogOperation op,
-                          int offset,
-                          int size)
+                          __unused__ enum LogOperation op,
+                          __unused__ int offset,
+                          __unused__ int size)
 {
     EditState *s = opaque;
     HTMLState *hs = s->mode_data;

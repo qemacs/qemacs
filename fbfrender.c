@@ -36,7 +36,7 @@ static GlyphCache *hash_table[HASH_SIZE];
 static int cache_size = 0;
 static GlyphCache first_cache_entry;
 
-void glyph_cache_init(void)
+static void glyph_cache_init(void)
 {
     first_cache_entry.next = &first_cache_entry;
     first_cache_entry.prev = &first_cache_entry;
@@ -121,7 +121,7 @@ static GlyphCache *add_cached_glyph(QEFont *font, int index, int data_size)
     return p;
 }
 
-GlyphCache *fbf_decode_glyph1(QEFont *font, int code)
+static GlyphCache *fbf_decode_glyph1(QEFont *font, int code)
 {
     UniFontData *uf = font->private;
     int glyph_index, size, src_width, src_height;
@@ -228,7 +228,7 @@ void fbf_text_metrics(QEditScreen *s, QEFont *font,
 
 #define MAX_MATCHES 32
 
-QEFont *fbf_open_font(QEditScreen *s, int style, int size)
+QEFont *fbf_open_font(__unused__ QEditScreen *s, int style, int size)
 {
     QEFont *font;
     UniFontData *uf, *uf_found;
@@ -275,17 +275,17 @@ QEFont *fbf_open_font(QEditScreen *s, int style, int size)
     return font;
 }
 
-void fbf_close_font(QEditScreen *s, QEFont *font)
+void fbf_close_font(__unused__ QEditScreen *s, QEFont *font)
 {
     free(font);
 }
 
-void *my_malloc(void *opaque, int size)
+static void *my_malloc(__unused__ void *opaque, int size)
 {
     return malloc(size);
 }
 
-void my_free(void *opaque, void *ptr)
+static void my_free(__unused__ void *opaque, void *ptr)
 {
     free(ptr);
 }
@@ -395,14 +395,14 @@ typedef struct MemoryFile {
     int size;
 } MemoryFile;
 
-int my_fbf_seek(void *infile, long pos)
+static int my_fbf_seek(void *infile, long pos)
 {
     MemoryFile *f = infile;
     f->offset = pos;
     return pos;
 }
 
-int my_fbf_read(void *infile, unsigned char *buf, int len)
+static int my_fbf_read(void *infile, unsigned char *buf, int len)
 {
     MemoryFile *f = infile;
     int len1;
@@ -414,7 +414,7 @@ int my_fbf_read(void *infile, unsigned char *buf, int len)
     return len;
 }
 
-int my_fbf_getc(void *infile)
+static int my_fbf_getc(void *infile)
 {
     MemoryFile *f = infile;
     if (f->offset < f->size)
@@ -473,7 +473,7 @@ static int fbf_load_font_memory(const unsigned char *data,
 
 extern const void *fbf_fonts[];
 
-int fbf_render_init(const char *font_path)
+int fbf_render_init(__unused__ const char *font_path)
 {
     const void **pp;
 

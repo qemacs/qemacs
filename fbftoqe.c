@@ -5,9 +5,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "cutils.h"
 
 
-void dump_font(const char *filename, const char *name)
+static void dump_font(const char *filename, const char *name)
 {
     int c;
     FILE *f;
@@ -38,7 +39,7 @@ void dump_font(const char *filename, const char *name)
     fclose(f);
 }
 
-void getname(char *name, int name_size, const char *filename)
+static void getname(char *name, int name_size, const char *filename)
 {
     const char *p;
     char *q;
@@ -48,7 +49,7 @@ void getname(char *name, int name_size, const char *filename)
         p = filename;
     else
         p++;
-    strcpy(name, p);
+    pstrcpy(name, name_size, p);
     q = strrchr(name, '.');
     if (q)
         *q = '\0';

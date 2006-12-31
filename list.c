@@ -19,7 +19,7 @@
 #include "qe.h"
 
 static int list_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                                   int offset, int line_num)
+                                   int offset, __unused__ int line_num)
 {
     QEmacsState *qs = s->qe_state;
     int len;
@@ -72,7 +72,7 @@ void list_toggle_selection(EditState *s)
     text_move_up_down(s, 1);
 }
 
-static int list_mode_init(EditState *s, ModeSavedData *saved_data)
+static int list_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 {
     s->wrap = WRAP_TRUNCATE;
     s->interactive = 1;
@@ -80,7 +80,7 @@ static int list_mode_init(EditState *s, ModeSavedData *saved_data)
     return 0;
 }
 
-static void list_mode_close(EditState *s)
+static void list_mode_close(__unused__ EditState *s)
 {
 }
 

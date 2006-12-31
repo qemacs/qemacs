@@ -215,7 +215,7 @@ static const ArabicChar *find_char(int ch)
 }
 
 /* ctog is NOT filled because it is not needed. We put it for homogoneity */
-int arab_join(unsigned int *line, unsigned int *ctog, int len)
+int arab_join(unsigned int *line, __unused__ unsigned int *ctog, int len)
 {
     int a, b, c, i, j, res;
     const ArabicChar *aa, *bb, *cc;

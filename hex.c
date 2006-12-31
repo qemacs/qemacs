@@ -90,14 +90,14 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
         return -1;
 }
 
-void do_goto_byte(EditState *s, int offset)
+static void do_goto_byte(EditState *s, int offset)
 {
     if (offset < 0 || offset >= s->b->total_size)
         return;
     s->offset = offset;
 }
 
-void do_set_width(EditState *s, int w)
+static void do_set_width(EditState *s, int w)
 {
     if (w >= 1) {
         s->disp_width = w;
@@ -105,7 +105,7 @@ void do_set_width(EditState *s, int w)
     }
 }
 
-void do_incr_width(EditState *s, int incr)
+static void do_incr_width(EditState *s, int incr)
 {
     int w;
     w = s->disp_width + incr;
@@ -113,8 +113,7 @@ void do_incr_width(EditState *s, int incr)
         do_set_width(s, w);
 }
 
-
-void do_toggle_hex(EditState *s)
+static void do_toggle_hex(EditState *s)
 {
     s->hex_mode = !s->hex_mode;
 }
@@ -167,7 +166,7 @@ static int hex_mode_init(EditState *s, ModeSavedData *saved_data)
     return 0;
 }
 
-int detect_binary(const unsigned char *buf, int size)
+static int detect_binary(const unsigned char *buf, int size)
 {
     int i, c;
 
@@ -189,19 +188,19 @@ static int hex_mode_probe(ModeProbeData *p)
         return 0;
 }
 
-void hex_move_bol(EditState *s)
+static void hex_move_bol(EditState *s)
 {
     s->offset = align(s->offset, s->disp_width);
 }
 
-void hex_move_eol(EditState *s)
+static void hex_move_eol(EditState *s)
 {
     s->offset = align(s->offset, s->disp_width) + s->disp_width - 1;
     if (s->offset >= s->b->total_size)
         s->offset = s->b->total_size;
 }
 
-void hex_move_left_right(EditState *s, int dir)
+static void hex_move_left_right(EditState *s, int dir)
 {
     s->offset += dir;
     if (s->offset < 0)
@@ -210,7 +209,7 @@ void hex_move_left_right(EditState *s, int dir)
         s->offset = s->b->total_size;
 }
 
-void hex_move_up_down(EditState *s, int dir)
+static void hex_move_up_down(EditState *s, int dir)
 {
     s->offset += dir * s->disp_width;
     if (s->offset < 0)
@@ -279,19 +278,18 @@ void hex_write_char(EditState *s, int key)
     }
 }
 
-void hex_mode_line(EditState *s, char *buf, int buf_size)
+static int hex_mode_line(EditState *s, char *buf, int buf_size)
 {
-    char *q;
-    int percent;
+    int percent, pos;
 
-    basic_mode_line(s, buf, buf_size, '-');
-    q = buf + strlen(buf);
-    q += sprintf(q, "0x%x--0x%x", 
-                 s->offset, s->b->total_size);
+    pos = basic_mode_line(s, buf, buf_size, '-');
+    pos += snprintf(buf + pos, buf_size - pos, "0x%x--0x%x", 
+                    s->offset, s->b->total_size);
     percent = 0;
     if (s->b->total_size > 0)
         percent = (s->offset * 100) / s->b->total_size;
-    q += sprintf(q, "--%d%%", percent);
+    pos += snprintf(buf + pos, buf_size - pos, "--%d%%", percent);
+    return pos;
 }
 
 ModeDef ascii_mode = { 

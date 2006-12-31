@@ -82,7 +82,7 @@ static int shell_get_colorized_line(EditState *e,
 /* move to mode */
 static int shell_launched = 0;
 
-static int shell_mode_init(EditState *s, ModeSavedData *saved_data)
+static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 {
     s->tab_size = 8;
     s->wrap = WRAP_TRUNCATE;
@@ -329,6 +329,10 @@ static void tty_write(ShellState *s, const char *buf, int len)
 
     if (len < 0)
         len = strlen(buf);
+
+    if (trace_buffer)
+        eb_trace_bytes(buf, len, EB_TRACE_PTY);
+
     while (len > 0) {
         ret = write(s->pty_fd, buf, len);
         if (ret == -1 && (errno == EAGAIN || errno == EINTR))
@@ -352,6 +356,10 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
 
     /* compute offset */
     eb_get_pos(s->b, &total_lines, &col_num, s->b->total_size);
+    if (s->cur_offset == s->b->total_size
+    ||  eb_prevc(s->b, s->b->total_size, NULL) != '\n')
+        total_lines++;
+
     line_num = total_lines - TTY_YSIZE;
     if (line_num < 0)
         line_num = 0;
@@ -458,7 +466,7 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
 
 
 /* Well, almost a hack to update cursor */
-static void tty_update_cursor(ShellState *s)
+static void tty_update_cursor(__unused__ ShellState *s)
 {
 #if 0
     QEmacsState *qs = s->qe_state;
@@ -485,7 +493,7 @@ static void shell_display_hook(EditState *e)
         e->offset = s->cur_offset;
 }
 
-void shell_key(void *opaque, int key)
+static void shell_key(void *opaque, int key)
 {
     ShellState *s = opaque;
     char buf[10];
@@ -583,7 +591,6 @@ static void tty_emulate(ShellState *s, int c)
         switch (c) {
             /* BEL            Bell (Ctrl-G) */
             /* FF             Form Feed or New Page (NP) (Ctrl-L) same as LF */
-            /* TAB            Horizontal Tab (HT) (Ctrl-I) */
             /* VT             Vertical Tab (Ctrl-K) same as LF */
 
         case 8:         /* ^H  BS = backspace */
@@ -593,10 +600,17 @@ static void tty_emulate(ShellState *s, int c)
                 if (c1 != '\n') {
                     s->cur_offset = offset;
                     /* back_color_erase */
-                    tty_put_char(s, ' ');
+                    //tty_put_char(s, ' ');
                 }
             }
             break;
+        case 9:        /* ^I  HT = horizontal tab */
+            {
+                int col_num, cur_line;
+                eb_get_pos(s->b, &cur_line, &col_num, s->cur_offset);
+                tty_goto_xy(s, (col_num + 8) & ~7, 0, 2);
+                break;
+            }
         case 10:        /* ^J  NL = line feed */
             /* go to next line */
             /* CG: should check if column should be kept */
@@ -635,7 +649,7 @@ static void tty_emulate(ShellState *s, int c)
             s->shifted = 0;
             break;
         default:
-            if (c >= 32 || c == 9) {
+            if (c >= 32) {
                 int c1, cur_len, len;
                 /* CG: assuming ISO-8859-1 characters */
                 /* CG: horrible kludge for alternate charset support */
@@ -644,7 +658,6 @@ static void tty_emulate(ShellState *s, int c)
                 /* write char (should factorize with do_char() code */
                 len = unicode_to_charset(buf1, c, s->b->charset);
                 c1 = eb_nextc(s->b, s->cur_offset, &offset);
-                /* XXX: handle tab case */
                 /* Should simplify with tty_put_char */
                 if (c1 == '\n') {
                     /* insert */
@@ -877,7 +890,7 @@ static void tty_emulate(ShellState *s, int c)
 
 /* modify the color according to the current one (may be incorrect if
    we are editing because we should write default color) */
-static void shell_color_callback(EditBuffer *b,
+static void shell_color_callback(__unused__ EditBuffer *b,
                                  void *opaque,
                                  enum LogOperation op,
                                  int offset,
@@ -919,7 +932,7 @@ static void shell_color_callback(EditBuffer *b,
 
 static int shell_get_colorized_line(EditState *e,
                                     unsigned int *buf, int buf_size,
-                                    int offset, int line_num)
+                                    int offset, __unused__ int line_num)
 {
     EditBuffer *b = e->b;
     ShellState *s = b->priv_data;
@@ -974,7 +987,7 @@ static void shell_read_cb(void *opaque)
     dpy_flush(qs->screen);
 }
 
-void shell_pid_cb(void *opaque, int status)
+static void shell_pid_cb(void *opaque, int status)
 {
     ShellState *s = opaque;
     EditBuffer *b = s->b;
@@ -1146,7 +1159,7 @@ static void do_shell(EditState *s, int force)
     shell_launched = 1;
 }
 
-void shell_move_left_right(EditState *e, int dir)
+static void shell_move_left_right(EditState *e, int dir)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
@@ -1156,7 +1169,7 @@ void shell_move_left_right(EditState *e, int dir)
     }
 }
 
-void shell_move_word_left_right(EditState *e, int dir)
+static void shell_move_word_left_right(EditState *e, int dir)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
@@ -1166,7 +1179,7 @@ void shell_move_word_left_right(EditState *e, int dir)
     }
 }
 
-void shell_move_up_down(EditState *e, int dir)
+static void shell_move_up_down(EditState *e, int dir)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
@@ -1176,7 +1189,7 @@ void shell_move_up_down(EditState *e, int dir)
     }
 }
 
-void shell_scroll_up_down(EditState *e, int dir)
+static void shell_scroll_up_down(EditState *e, int dir)
 {
     ShellState *s = e->b->priv_data;
 
@@ -1185,7 +1198,7 @@ void shell_scroll_up_down(EditState *e, int dir)
     e->interactive = (e->offset == s->cur_offset);
 }
 
-void shell_move_bol(EditState *e)
+static void shell_move_bol(EditState *e)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
@@ -1195,7 +1208,7 @@ void shell_move_bol(EditState *e)
     }
 }
 
-void shell_move_eol(EditState *e)
+static void shell_move_eol(EditState *e)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
@@ -1205,7 +1218,7 @@ void shell_move_eol(EditState *e)
     }
 }
 
-void shell_write_char(EditState *e, int c)
+static void shell_write_char(EditState *e, int c)
 {
     char ch;
 
@@ -1238,7 +1251,7 @@ void shell_write_char(EditState *e, int c)
     }
 }
 
-void do_shell_toggle_input(EditState *e)
+static void do_shell_toggle_input(EditState *e)
 {
     e->interactive = !e->interactive;
     if (e->interactive) {

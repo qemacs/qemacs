@@ -176,4 +176,26 @@ char *pstrcat(char *buf, int buf_size, const char *s)
     return buf;
 }
 
+/* copy the n first char of a string and truncate it. */
+char *pstrncpy(char *buf, int buf_size, const char *s, int len)
+{
+    char *q;
+    int c;
+
+    if (buf_size > 0) {
+        q = buf;
+        if (len >= buf_size)
+            len = buf_size - 1;
+        while (len > 0) {
+            c = *s++;
+            if (c == '\0')
+                break;
+            *q++ = c;
+            len--;
+        }
+        *q = '\0';
+    }
+    return buf;
+}
+
 #endif

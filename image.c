@@ -766,15 +766,14 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
     update_bmp(e);
 }
 
-void image_mode_line(EditState *s, char *buf, int buf_size)
+int image_mode_line(EditState *s, char *buf, int buf_size)
 {
-    char *q;
+    int pos;
     EditBuffer *b = s->b;
     ImageBuffer *ib = b->data;
     char alpha_mode;
     
-    basic_mode_line(s, buf, buf_size, '-');
-    q = buf + strlen(buf);
+    pos = basic_mode_line(s, buf, buf_size, '-');
     if (ib->alpha_info & FF_ALPHA_SEMI_TRANSP)
         alpha_mode = 'A';
     else if (ib->alpha_info & FF_ALPHA_TRANSP)
@@ -782,11 +781,12 @@ void image_mode_line(EditState *s, char *buf, int buf_size)
     else
         alpha_mode = ' ';
 
-    q += sprintf(q, "%dx%d %s %c%c", 
-                 ib->width, ib->height, 
-                 avcodec_get_pix_fmt_name(ib->pix_fmt),
-                 alpha_mode,
-                 ib->interleaved ? 'I' : ' ');
+    pos += snprintf(buf + pos, buf_size - pos, "%dx%d %s %c%c", 
+                    ib->width, ib->height, 
+                    avcodec_get_pix_fmt_name(ib->pix_fmt),
+                    alpha_mode,
+                    ib->interleaved ? 'I' : ' ');
+    return pos;
 }
 
 static void pixel_format_completion(StringArray *cs, const char *input)

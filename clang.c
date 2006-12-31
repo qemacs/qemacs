@@ -61,7 +61,7 @@ enum {
 };
 
 void c_colorize_line(unsigned int *buf, int len, 
-                     int *colorize_state_ptr, int state_only)
+                     int *colorize_state_ptr, __unused__ int state_only)
 {
     int c, state, l, type_decl;
     unsigned int *p, *p_start, *p1;
@@ -481,7 +481,7 @@ static void do_c_indent(EditState *s)
     s->offset = offset;
 }
     
-void do_c_indent_region(EditState *s)
+static void do_c_indent_region(EditState *s)
 {
     int col_num, p1, p2, tmp;
 
@@ -501,7 +501,7 @@ void do_c_indent_region(EditState *s)
     }
 }
 
-void do_c_electric(EditState *s, int key)
+static void do_c_electric(EditState *s, int key)
 {
     do_char(s, key);
     do_c_indent(s);
@@ -520,7 +520,7 @@ static int c_mode_probe(ModeProbeData *p)
     return 0;
 }
 
-int c_mode_init(EditState *s, ModeSavedData *saved_data)
+static int c_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     int ret;
 
@@ -545,7 +545,7 @@ static CmdDef c_commands[] = {
 
 static ModeDef c_mode;
 
-int c_init(void)
+static int c_init(void)
 {
     /* c mode is almost like the text mode, so we copy and patch it */
     memcpy(&c_mode, &text_mode, sizeof(ModeDef));

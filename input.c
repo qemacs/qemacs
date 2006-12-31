@@ -23,14 +23,17 @@
 
 InputMethod *input_methods;
 
-static int default_input(int *match_len_ptr, 
-                         const u8 *data, const unsigned int *buf, int len)
+static int default_input(__unused__ int *match_len_ptr, 
+                         __unused__ const u8 *data,
+                         __unused__ const unsigned int *buf,
+                         __unused__ int len)
 {
     return INPUTMETHOD_NOMATCH;
 }
 
 static int unicode_input(int *match_len_ptr, 
-                         const u8 *data, const unsigned int *buf, int len)
+                         __unused__ const u8 *data,
+                         const unsigned int *buf, int len)
 {
     int i, h, c;
     if (buf[0] != 'x')
@@ -54,14 +57,14 @@ static int unicode_input(int *match_len_ptr,
 }
 
 static InputMethod default_input_method = { 
-    "default", default_input, NULL,
+    "default", default_input, NULL, NULL,
 };
 
 static InputMethod unicode_input_method = { 
-    "unicode", unicode_input, NULL,
+    "unicode", unicode_input, NULL, NULL,
 };
 
-void register_input_method(InputMethod *m)
+static void register_input_method(InputMethod *m)
 {
     InputMethod **p;
     p = &input_methods;
@@ -75,8 +78,8 @@ void register_input_method(InputMethod *m)
 /* XXX: use an edit buffer to access the kmap !!!! */
 
 /* parse the internal compressed input method format */
-int kmap_input(int *match_len_ptr, 
-               const u8 *data, const unsigned int *buf, int len)
+static int kmap_input(int *match_len_ptr, 
+                      const u8 *data, const unsigned int *buf, int len)
 {
     const u8 *p, *p1;
     int c, d, i, l, l1, match_len, match_char, match_count, match_real_len;
@@ -171,7 +174,7 @@ the_end:
 
 static int input_method_fd;
 
-void load_input_methods(void)
+static void load_input_methods(void)
 {
     char buf[MAX_FILENAME_SIZE], *q;
     long file_size;
@@ -224,7 +227,7 @@ void load_input_methods(void)
     input_method_fd = fd;
 }
 
-void unload_input_methods(void)
+static void unload_input_methods(void)
 {
     if (input_method_fd >= 0) {
         close(input_method_fd);
@@ -233,7 +236,7 @@ void unload_input_methods(void)
 }
 #endif
 
-void input_completion(StringArray *cs, const char *input)
+static void input_completion(StringArray *cs, const char *input)
 {
     InputMethod *m;
 

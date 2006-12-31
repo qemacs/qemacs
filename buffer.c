@@ -24,8 +24,6 @@
 static void eb_addlog(EditBuffer *b, enum LogOperation op, 
                       int offset, int size);
 
-extern EditBufferDataType raw_data_type;
-
 EditBufferDataType *first_buffer_data_type = NULL;
 
 /************************************************************/
@@ -119,12 +117,12 @@ int eb_read(EditBuffer *b, int offset, void *buf, int size)
 }
 
 /* Note: eb_write can be used to insert after the end of the buffer */
-void eb_write(EditBuffer *b, int offset, void *buf_arg, int size)
+void eb_write(EditBuffer *b, int offset, const void *buf_arg, int size)
 {
     int len, left;
-    u8 *buf = buf_arg;
+    const u8 *buf = buf_arg;
     
-    len = eb_rw(b, offset, buf, size, 1);
+    len = eb_rw(b, offset, (void *)buf, size, 1);
     left = size - len;
     if (left > 0) {
         offset += len;
@@ -422,7 +420,7 @@ void set_buffer_name(EditBuffer *b, const char *name1)
     pos = strlen(name);
     n = 2;
     while (eb_find(name) != NULL) {
-        sprintf(name + pos, "<%d>", n);
+        snprintf(name + pos, sizeof(b->name) - pos, "<%d>", n);
         n++;
     }
     pstrcpy(b->name, sizeof(b->name), name);
@@ -499,6 +497,9 @@ void eb_free(EditBuffer *b)
     }
     *pb = (*pb)->next;
 
+    if (b == trace_buffer)
+        trace_buffer = NULL;
+
     free(b);
 }
 
@@ -546,7 +547,7 @@ EditState *eb_find_window(EditBuffer *b, EditState *e)
     return NULL;
 }
 
-void eb_trace_bytes(void *buf, int size, int state)
+void eb_trace_bytes(const void *buf, int size, int state)
 {
     EditBuffer *b = trace_buffer;
     EditState *e;
@@ -555,9 +556,36 @@ void eb_trace_bytes(void *buf, int size, int state)
     if (b) {
         point = b->total_size;
         if (trace_buffer_state != state) {
+            const char *str = NULL;
+            switch (trace_buffer_state) {
+            case EB_TRACE_TTY:
+                str = "|\n";
+                break;
+            case EB_TRACE_PTY:
+                str = "|\n";
+                break;
+            case EB_TRACE_SHELL:
+                str = "|\n";
+                break;
+            }
+            if (str) {
+                eb_write(b, b->total_size, str, strlen(str));
+            }
             trace_buffer_state = state;
-            eb_write(b, b->total_size,
-                     state == EB_TRACE_TTY ? "\n--|" : "|--\n", 4);
+            switch (trace_buffer_state) {
+            case EB_TRACE_TTY:
+                str = "--|";
+                break;
+            case EB_TRACE_PTY:
+                str = ">>|";
+                break;
+            case EB_TRACE_SHELL:
+                str = "<<|";
+                break;
+            }
+            if (str) {
+                eb_write(b, b->total_size, str, strlen(str));
+            }
         }
 #if 0
         /* CG: could make traces more readable: */
@@ -609,7 +637,7 @@ void eb_free_callback(EditBuffer *b, EditBufferCallback cb,
 }
 
 /* standard callback to move offsets */
-void eb_offset_callback(EditBuffer *b,
+void eb_offset_callback(__unused__ EditBuffer *b,
                         void *opaque,
                         enum LogOperation op,
                         int offset,
@@ -682,8 +710,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
     lb.offset = offset;
     lb.size = size;
     lb.was_modified = was_modified;
-    eb_write(b->log_buffer, b->log_new_index, 
-             (unsigned char *) &lb, sizeof(LogBuffer));
+    eb_write(b->log_buffer, b->log_new_index, &lb, sizeof(LogBuffer));
     b->log_new_index += sizeof(LogBuffer);
 
     /* data */
@@ -699,8 +726,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
         break;
     }
     /* trailer */
-    eb_write(b->log_buffer, b->log_new_index, 
-             (unsigned char *)&size_trailer, sizeof(int));
+    eb_write(b->log_buffer, b->log_new_index, &size_trailer, sizeof(int));
     b->log_new_index += sizeof(int);
 
     b->nb_logs++;
@@ -1315,7 +1341,7 @@ static int raw_save_buffer(EditBuffer *b, const char *filename)
     return 0;
 }
 
-static void raw_close_buffer(EditBuffer *b)
+static void raw_close_buffer(__unused__ EditBuffer *b)
 {
     /* nothing to do */
 }
@@ -1535,6 +1561,7 @@ EditBufferDataType raw_data_type = {
     raw_load_buffer,
     raw_save_buffer,
     raw_close_buffer,
+    NULL, /* next */
 };
 
 /* init buffer handling */

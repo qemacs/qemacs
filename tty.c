@@ -32,11 +32,25 @@
 #include "qe.h"
 
 typedef unsigned int TTYChar;
-#define TTYCHAR(ch,fg,bg)       ((ch) | ((fg) << 16) | ((bg) << 24))
-#define TTYCHAR_GETCH(cc)       ((cc) & 0xFFFF)
-#define TTYCHAR_GETFG(cc)       (((cc) >> 16) & 0xFF)
-#define TTYCHAR_GETBG(cc)       (((cc) >> 24) & 0xFF)
-#define TTYCHAR_DEFAULT         TTYCHAR(' ', 0, 0)
+#define TTYCHAR(ch,fg,bg)   ((ch) | ((fg) << 16) | ((bg) << 24))
+#define TTYCHAR_GETCH(cc)   ((cc) & 0xFFFF)
+#define TTYCHAR_GETFG(cc)   (((cc) >> 16) & 0xFF)
+#define TTYCHAR_GETBG(cc)   (((cc) >> 24) & 0xFF)
+#define TTYCHAR_DEFAULT     TTYCHAR(' ', 0, 0)
+
+#if defined(__GNUC__)
+#  define PUTC(c,f)         putc_unlocked(c, f)
+#  define FWRITE(b,s,n,f)   fwrite_unlocked(b, s, n, f)
+#  define FPRINTF           fprintf
+static inline void FPUTS(const char *s, FILE *fp) {
+    FWRITE(s, 1, strlen(s), fp);
+}
+#else
+#  define PUTC(c,f)         putc(c, f)
+#  define FWRITE(b,s,n,f)   fwrite(b, s, n, f)
+#  define FPRINTF           fprintf
+#  define FPUTS             fputs
+#endif
 
 enum InputState {
     IS_NORM,
@@ -44,6 +58,15 @@ enum InputState {
     IS_CSI,
     IS_CSI2,
     IS_ESC2,
+};
+
+enum TermCode {
+    TERM_UNKNOWN = 0,
+    TERM_ANSI,
+    TERM_VT100,
+    TERM_XTERM,
+    TERM_LINUX,
+    TERM_CYGWIN,
 };
 
 typedef struct TTYState {
@@ -58,37 +81,72 @@ typedef struct TTYState {
     int utf8_state;
     int utf8_index;
     unsigned char buf[10];
+    char *term_name;
+    enum TermCode term_code;
+    int term_flags;
+#define KBS_CONTROL_H  1
 } TTYState;
 
 static void tty_resize(int sig);
-static void term_exit(void);
+static void tty_term_exit(void);
 static void tty_read_handler(void *opaque);
 
 static struct TTYState tty_state;
 static QEditScreen *tty_screen;
 
-static int term_probe(void)
+static int tty_term_probe(void)
 {
     return 1;
 }
 
 static QEDisplay tty_dpy;
 
-static int term_init(QEditScreen *s, int w, int h)
+static int tty_term_init(QEditScreen *s,
+                         __unused__ int w, __unused__ int h)
 {
     TTYState *ts;
     struct termios tty;
     struct sigaction sig;
-    char *term;
 
     memcpy(&s->dpy, &tty_dpy, sizeof(QEDisplay));
+
+    s->STDIN = stdin;
+    s->STDOUT = stdout;
 
     tty_screen = s;
     ts = &tty_state;
     s->private = ts;
     s->media = CSS_MEDIA_TTY;
 
-    tcgetattr (0, &tty);
+    /* Derive some settings from the TERM environment variable */
+    tty_state.term_code = TERM_UNKNOWN;
+    tty_state.term_flags = 0;
+    tty_state.term_name = getenv("TERM");
+    if (tty_state.term_name) {
+        /* linux and xterm -> kbs=\177
+         * ansi cygwin vt100 -> kbs=^H
+         */
+        if (strstart(tty_state.term_name, "ansi", NULL)) {
+            tty_state.term_code = TERM_ANSI;
+            tty_state.term_flags = KBS_CONTROL_H;
+        } else
+        if (strstart(tty_state.term_name, "vt100", NULL)) {
+            tty_state.term_code = TERM_VT100;
+            tty_state.term_flags = KBS_CONTROL_H;
+        } else
+        if (strstart(tty_state.term_name, "xterm", NULL)) {
+            tty_state.term_code = TERM_XTERM;
+        } else
+        if (strstart(tty_state.term_name, "linux", NULL)) {
+            tty_state.term_code = TERM_LINUX;
+        } else
+        if (strstart(tty_state.term_name, "cygwin", NULL)) {
+            tty_state.term_code = TERM_CYGWIN;
+            tty_state.term_flags = KBS_CONTROL_H;
+        }
+    }
+
+    tcgetattr(fileno(s->STDIN), &tty);
     ts->oldtty = tty;
 
     tty.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP
@@ -100,86 +158,98 @@ static int term_init(QEditScreen *s, int w, int h)
     tty.c_cc[VMIN] = 1;
     tty.c_cc[VTIME] = 0;
     
-    tcsetattr(0, TCSANOW, &tty);
+    tcsetattr(fileno(s->STDIN), TCSANOW, &tty);
 
     s->charset = &charset_vt100;
 
-#ifndef CONFIG_CYGWIN
-    /* CG: Should also have a command line switch */
     /* test UTF8 support by looking at the cursor position (idea from
        Ricardas Cepas <rch@pub.osf.lt>). Since uClibc actually tests
        to ensure that the format string is a valid multibyte sequence
        in the current locale (ANSI/ISO C99), use a format specifier of
        %s to avoid printf() failing with EILSEQ. */
-    {
-        int y, x;
+    /* CG: Should also have a command line switch */
+    if (tty_state.term_code != TERM_CYGWIN) {
+        int y, x, n;
         
         /*               ^X  ^Z    ^M   \170101  */
         //printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
         /* Just print utf-8 encoding for eacute and check cursor position */
-        printf("%s", "\030\032" "\r\xC3\xA9" "\033[6n\033D");
-        scanf("\033[%u;%u", &y, &x);  /* get cursor position */
-        printf("\r   \r");            /* go back, erase 3 chars */
-        if (x == 2) {
+        FPRINTF(s->STDOUT, "%s", "\030\032" "\r\xC3\xA9" "\033[6n\033D");
+        fflush(s->STDOUT);
+        n = fscanf(s->STDIN, "\033[%u;%u", &y, &x);  /* get cursor position */
+        FPRINTF(s->STDOUT, "\r   \r");            /* go back, erase 3 chars */
+        if (n == 2 && x == 2) {
             s->charset = &charset_utf8;
         }
     }
-#endif
+#if 0
     printf("\033[?1048h\033[?1047h"     /* enable cup */
-           "\033)0\033(B"        /* select character sets in block 0 and 1 */
+           "\033)0\033(B"       /* select character sets in block 0 and 1 */
            "\017");             /* shift out */
-    
-    atexit(term_exit);
+#else
+    FPRINTF(s->STDOUT,
+            "\033[?1049h"       /* enter_ca_mode */
+            "\033[m\033(B"      /* exit_attribute_mode */
+            "\033[4l"		/* exit_insert_mode */
+            "\033[?7h"		/* enter_am_mode */
+            "\033[39;49m"       /* orig_pair */
+            "\033[?1h\033="     /* keypad_xmit */
+           );
+#endif
+    atexit(tty_term_exit);
 
     sig.sa_handler = tty_resize;
     sigemptyset(&sig.sa_mask);
     sig.sa_flags = 0;
     sigaction(SIGWINCH, &sig, NULL);
-    fcntl(0, F_SETFL, O_NONBLOCK);
+    fcntl(fileno(s->STDIN), F_SETFL, O_NONBLOCK);
     /* If stdout is to a pty, make sure we aren't in nonblocking mode.
      * Otherwise, the printf()s in term_flush() can fail with EAGAIN,
      * causing repaint errors when running in an xterm or in a screen
      * session. */
-    fcntl(1, F_SETFL, 0);
+    fcntl(fileno(s->STDOUT), F_SETFL, 0);
 
-    set_read_handler(0, tty_read_handler, s);
+    set_read_handler(fileno(s->STDIN), tty_read_handler, s);
 
     tty_resize(0);
 
-    /* Test TERM env var:
-     * linux and xterm -> kbs=\177
-     * ansi cygwin vt100 -> kbs=^H
-     */
-    term = getenv("TERM");
-    if (term) {
-        if (strstart(term, "ansi", NULL) ||
-            strstart(term, "cygwin", NULL) ||
-            strstart(term, "vt", NULL)) {
-            do_toggle_control_h(NULL, 1);
-        }
+    if (tty_state.term_flags & KBS_CONTROL_H) {
+        do_toggle_control_h(NULL, 1);
     }
+
     return 0;
 }
 
-static void term_close(QEditScreen *s)
+static void tty_term_close(QEditScreen *s)
 {
-    fcntl(0, F_SETFL, 0);
+    fcntl(fileno(s->STDIN), F_SETFL, 0);
+#if 0
     /* go to the last line */
     printf("\033[%d;%dH\033[m\033[K"
            "\033[?1047l\033[?1048l",    /* disable cup */
            s->height, 1);
-    fflush(stdout);
+#else
+    /* go to last line and clear it */
+    FPRINTF(s->STDOUT, "\033[%d;%dH\033[m\033[K", s->height, 1);
+    FPRINTF(s->STDOUT,
+            "\033[?1049l"        /* exit_ca_mode */
+            "\r"                 /* return */
+            "\033[?1l\033>"      /* keypad_local */
+            "\r"                 /* return */
+           );
+#endif
+    fflush(s->STDOUT);
 }
 
-static void term_exit(void)
+static void tty_term_exit(void)
 {
     QEditScreen *s = tty_screen;
     TTYState *ts = s->private;
 
-    tcsetattr(0, TCSANOW, &ts->oldtty);
+    tcsetattr(fileno(s->STDIN), TCSANOW, &ts->oldtty);
 }
 
-static void tty_resize(int sig)
+static void tty_resize(__unused__ int sig)
 {
     QEditScreen *s = tty_screen;
     TTYState *ts = s->private;
@@ -189,7 +259,7 @@ static void tty_resize(int sig)
 
     s->width = 80;
     s->height = 24;
-    if (ioctl(0, TIOCGWINSZ, &ws) == 0) {
+    if (ioctl(fileno(s->STDIN), TIOCGWINSZ, &ws) == 0) {
         s->width = ws.ws_col;
         s->height = ws.ws_row;
     }
@@ -217,19 +287,20 @@ static void tty_resize(int sig)
     s->clip_y2 = s->height;
 }
 
-static void term_invalidate(void)
+static void tty_term_invalidate(void)
 {
     tty_resize(0);
 }
 
-static void term_cursor_at(QEditScreen *s, int x1, int y1, int w, int h)
+static void tty_term_cursor_at(QEditScreen *s, int x1, int y1,
+                               __unused__ int w, __unused__ int h)
 {
     TTYState *ts = s->private;
     ts->cursor_x = x1;
     ts->cursor_y = y1;
 }
 
-static int term_is_user_input_pending(QEditScreen *s)
+static int tty_term_is_user_input_pending(QEditScreen *s)
 {
     fd_set rfds;
     struct timeval tv;
@@ -237,8 +308,8 @@ static int term_is_user_input_pending(QEditScreen *s)
     tv.tv_sec = 0;
     tv.tv_usec = 0;
     FD_ZERO(&rfds);
-    FD_SET(0, &rfds);
-    if (select(1, &rfds, NULL, NULL, &tv) > 0)
+    FD_SET(fileno(s->STDIN), &rfds);
+    if (select(fileno(s->STDIN) + 1, &rfds, NULL, NULL, &tv) > 0)
         return 1;
     else
         return 0;
@@ -290,7 +361,7 @@ static void tty_read_handler(void *opaque)
     int ch;
     QEEvent ev1, *ev = &ev1;
 
-    if (read(0, ts->buf + ts->utf8_index, 1) != 1)
+    if (read(fileno(s->STDIN), ts->buf + ts->utf8_index, 1) != 1)
         return;
 
     if (trace_buffer &&
@@ -348,7 +419,7 @@ static void tty_read_handler(void *opaque)
             ts->input_state = IS_CSI2;
             break;
         case '~':
-            if (ts->input_param < sizeof(csi_lookup)/sizeof(csi_lookup[0])) {
+            if (ts->input_param < (int)(sizeof(csi_lookup)/sizeof(csi_lookup[0]))) {
                 ch = csi_lookup[ts->input_param];
                 goto the_end;
             }
@@ -454,8 +525,8 @@ static int get_tty_color(QEColor color)
     return cmin;
 }
 
-static void term_fill_rectangle(QEditScreen *s,
-                                int x1, int y1, int w, int h, QEColor color)
+static void tty_term_fill_rectangle(QEditScreen *s,
+                                    int x1, int y1, int w, int h, QEColor color)
 {
     TTYState *ts = s->private;
     int x2 = x1 + w;
@@ -489,20 +560,22 @@ static void term_fill_rectangle(QEditScreen *s,
 }
 
 /* XXX: could alloc font in wrapper */
-static QEFont *term_open_font(QEditScreen *s,
-                              int style, int size)
+static QEFont *tty_term_open_font(__unused__ QEditScreen *s,
+                                  __unused__ int style, __unused__ int size)
 {
     QEFont *font;
+
     font = malloc(sizeof(QEFont));
     if (!font)
         return NULL;
+
     font->ascent = 0;
     font->descent = 1;
     font->private = NULL;
     return font;
 }
 
-static void term_close_font(QEditScreen *s, QEFont *font)
+static void tty_term_close_font(__unused__ QEditScreen *s, QEFont *font)
 {
     free(font);
 }
@@ -513,7 +586,7 @@ static void term_close_font(QEditScreen *s, QEFont *font)
  * chars.  
  */
 
-static int term_glyph_width(QEditScreen *s, unsigned int ucs)
+static int tty_term_glyph_width(__unused__ QEditScreen *s, unsigned int ucs)
 {
   /* fast test for majority of non-wide scripts */
   if (ucs < 0x900)
@@ -531,22 +604,23 @@ static int term_glyph_width(QEditScreen *s, unsigned int ucs)
      );
 }
 
-static void term_text_metrics(QEditScreen *s, QEFont *font, 
-                              QECharMetrics *metrics,
-                              const unsigned int *str, int len)
+static void tty_term_text_metrics(QEditScreen *s, __unused__ QEFont *font, 
+                                  QECharMetrics *metrics,
+                                  const unsigned int *str, int len)
 {
     int i, x;
+
     metrics->font_ascent = font->ascent;
     metrics->font_descent = font->descent;
     x = 0;
     for (i = 0; i < len; i++)
-        x += term_glyph_width(s, str[i]);
+        x += tty_term_glyph_width(s, str[i]);
     metrics->width = x;
 }
         
-static void term_draw_text(QEditScreen *s, QEFont *font, 
-                           int x, int y, const unsigned int *str, int len,
-                           QEColor color)
+static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font, 
+                               int x, int y, const unsigned int *str, int len,
+                               QEColor color)
 {
     TTYState *ts = s->private;
     TTYChar *ptr;
@@ -568,7 +642,7 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
         while (len > 0) {
             cc = *str++;
             len--;
-            w = term_glyph_width(s, cc);
+            w = tty_term_glyph_width(s, cc);
             x += w;
             if (x >= s->clip_x1) {
                 /* now we are on the screen. need to put spaces for
@@ -589,7 +663,7 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
     }
     for (; len > 0; len--) {
         cc = *str++;
-        w = term_glyph_width(s, cc);
+        w = tty_term_glyph_width(s, cc);
         /* XXX: would need to put spacs for wide chars */
         if (x + w > s->clip_x2) 
             break;
@@ -605,20 +679,22 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
     }
 }
 
-static void term_set_clip(QEditScreen *s,
-                          int x, int y, int w, int h)
+static void tty_term_set_clip(__unused__ QEditScreen *s,
+                              __unused__ int x, __unused__ int y,
+                              __unused__ int w, __unused__ int h)
 {
 }
 
-static void term_flush(QEditScreen *s)
+static void tty_term_flush(QEditScreen *s)
 {
     TTYState *ts = s->private;
     TTYChar *ptr, *ptr1, *ptr2, cc;
-    int y, shadow, ch, bgcolor, fgcolor;
+    int y, shadow, ch, bgcolor, fgcolor, shifted, nc;
     char buf[10];
     
     bgcolor = -1;
     fgcolor = -1;
+    shifted = 0;
             
     /* CG: Should optimize output by computing it in a temporary buffer
      * and flushing it in one call to fwrite()
@@ -651,7 +727,7 @@ static void term_flush(QEditScreen *s)
             if (ptr1 == ptr2)
                 continue;
 
-            printf("\033[%d;%dH", y + 1, ptr1 - ptr + 1);
+            FPRINTF(s->STDOUT, "\033[%d;%dH", y + 1, ptr1 - ptr + 1);
 
             /* CG: should scan for sequences of blanks */
             while (ptr1 < ptr2) {
@@ -661,62 +737,93 @@ static void term_flush(QEditScreen *s)
                 ch = TTYCHAR_GETCH(cc);
                 if (ch != 0xffff) {
                     /* output attributes */
-                    if ((fgcolor != TTYCHAR_GETFG(cc) && ch != ' ')
-                    ||  (bgcolor != TTYCHAR_GETBG(cc))) {
+                    if ((fgcolor != (int)TTYCHAR_GETFG(cc) && ch != ' ')
+                    ||  (bgcolor != (int)TTYCHAR_GETBG(cc))) {
                         fgcolor = TTYCHAR_GETFG(cc);
                         bgcolor = TTYCHAR_GETBG(cc);
                         /* CG: should deal with bold for high intensity
                          * foreground colors
                          */
-                        printf("\033[%d;%dm", 30 + fgcolor, 40 + bgcolor);
+                        FPRINTF(s->STDOUT, "\033[%d;%dm",
+                                30 + fgcolor, 40 + bgcolor);
                     }
                     /* do not display escape codes or invalid codes */
                     if (ch < 32 || ch == 127) {
-                        putchar('.');
+                        if (shifted) {
+                            FPUTS("\033(B", s->STDOUT);
+                            shifted = 0;
+                        }
+                        PUTC('.', s->STDOUT);
                     } else
                     if (ch < 127) {
-                        putchar(ch);
+                        if (shifted) {
+                            FPUTS("\033(B", s->STDOUT);
+                            shifted = 0;
+                        }
+                        PUTC(ch, s->STDOUT);
                     } else
-                    if (cc < 128 + 32) {
+                    if (ch < 128 + 32) {
                         /* Kludge for linedrawing chars */
-                        putchar('\016');
-                        putchar(cc - 32);
-                        putchar('\017');
+                        if (!shifted) {
+                            FPUTS("\033(0", s->STDOUT);
+                            shifted = 1;
+                        }
+                        PUTC(ch - 32, s->STDOUT);
                     } else {
                         // was in qemacs-0.3.1.g2.gw/tty.c:
                         // if (cc == 0x2500)
                         //    printf("\016x\017");
                         /* s->charset is either vt100 or utf-8 */
-                        unicode_to_charset(buf, cc, s->charset);
-                        fputs(buf, stdout);
+                        if (shifted) {
+                            FPUTS("\033(B", s->STDOUT);
+                            shifted = 0;
+                        }
+                        nc = unicode_to_charset(buf, cc, s->charset);
+                        if (nc == 1) {
+                            PUTC(*(u8 *)buf, s->STDOUT);
+                        } else
+                        {
+                            FWRITE(buf, 1, nc, s->STDOUT);
+                        }
                     }
                 }
+            }
+            if (shifted) {
+                FPUTS("\033(B", s->STDOUT);
+                shifted = 0;
             }
         }
     }
 
-    printf("\033[%d;%dH", ts->cursor_y + 1, ts->cursor_x + 1);
-    fflush(stdout);
+    FPRINTF(s->STDOUT, "\033[%d;%dH", ts->cursor_y + 1, ts->cursor_x + 1);
+    fflush(s->STDOUT);
 }
 
 
 static QEDisplay tty_dpy = {
     "vt100",
-    term_probe,
-    term_init,
-    term_close,
-    term_cursor_at,
-    term_flush,
-    term_is_user_input_pending,
-    term_fill_rectangle,
-    term_open_font,
-    term_close_font,
-    term_text_metrics,
-    term_draw_text,
-    term_set_clip,
-    NULL, /* no selection handling */
-    NULL, /* no selection handling */
-    term_invalidate,
+    tty_term_probe,
+    tty_term_init,
+    tty_term_close,
+    tty_term_cursor_at,
+    tty_term_flush,
+    tty_term_is_user_input_pending,
+    tty_term_fill_rectangle,
+    tty_term_open_font,
+    tty_term_close_font,
+    tty_term_text_metrics,
+    tty_term_draw_text,
+    tty_term_set_clip,
+    NULL, /* dpy_selection_activate */
+    NULL, /* dpy_selection_request */
+    tty_term_invalidate,
+    NULL, /* dpy_bmp_alloc */
+    NULL, /* dpy_bmp_free */
+    NULL, /* dpy_bmp_draw */
+    NULL, /* dpy_bmp_lock */
+    NULL, /* dpy_bmp_unlock */
+    NULL, /* dpy_full_screen */
+    NULL, /* next */
 };
 
 static int tty_init(void)

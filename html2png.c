@@ -33,7 +33,7 @@
 
 /* file I/O for the qHTML library */
 
-CSSFile *css_open(CSSContext *s, const char *filename)
+CSSFile *css_open(__unused__ CSSContext *s, const char *filename)
 {
     FILE *f;
     f = fopen(filename, "rb");
@@ -73,7 +73,7 @@ void css_error(const char *filename, int line_num,
     fprintf(stderr, "%s:%d: %s\n", filename, line_num, msg);
 }
 
-void put_error(EditState *s, const char *fmt, ...)
+void put_error(__unused__ EditState *s, const char *fmt, ...)
 {
     va_list ap;
 
@@ -85,14 +85,16 @@ void put_error(EditState *s, const char *fmt, ...)
 
 
 /* dummy functions */
-int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
+int eb_nextc(__unused__ EditBuffer *b,
+             __unused__ int offset, __unused__ int *next_ptr)
 {
     return 0;
 }
 
 /* find a resource file */
 /* XXX: suppress that */
-int find_resource_file(char *path, int path_size, const char *pattern)
+int find_resource_file(__unused__ char *path, __unused__ int path_size,
+                       __unused__ const char *pattern)
 {
     return -1;
 }
@@ -107,10 +109,29 @@ static QEDisplay ppm_dpy = {
     NULL,
     ppm_init,
     ppm_close,
+    NULL, /* dpy_cursor_at */
+    NULL, /* dpy_flush */
+    NULL, /* dpy_is_user_input_pending */
+    NULL, /* dpy_fill_rectangle */
+    NULL, /* dpy_open_font */
+    NULL, /* dpy_close_font */
+    NULL, /* dpy_text_metrics */
+    NULL, /* dpy_draw_text */
+    NULL, /* dpy_set_clip */
+    NULL, /* dpy_selection_activate */
+    NULL, /* dpy_selection_request */
+    NULL, /* dpy_invalidate */
+    NULL, /* dpy_bmp_alloc */
+    NULL, /* dpy_bmp_free */
+    NULL, /* dpy_bmp_draw */
+    NULL, /* dpy_bmp_lock */
+    NULL, /* dpy_bmp_unlock */
+    NULL, /* dpy_full_screen */
+    NULL, /* next */
 };
 
 /* realloc ppm bitmap */
-int ppm_resize(QEditScreen *s, int w, int h)
+static int ppm_resize(QEditScreen *s, int w, int h)
 {
     CFBContext *cfb = s->private;
     unsigned char *data;
@@ -164,7 +185,7 @@ static void ppm_close(QEditScreen *s)
     free(cfb);
 }
 
-int ppm_save(QEditScreen *s, const char *filename)
+static int ppm_save(QEditScreen *s, const char *filename)
 {
     CFBContext *cfb = s->private;
     int w, h, x, y;
@@ -197,9 +218,8 @@ int ppm_save(QEditScreen *s, const char *filename)
 }
 
 #ifdef CONFIG_PNG_OUTPUT
-extern void png_write_init();
 
-int png_save(QEditScreen *s, const char *filename)
+static int png_save(QEditScreen *s, const char *filename)
 {
     CFBContext *cfb = s->private;
     struct png_save_data {
@@ -306,15 +326,15 @@ void test_display(QEditScreen *screen)
 
 extern const char html_style[];
 
-static int html_test_abort(void *opaque)
+static int html_test_abort(__unused__ void *opaque)
 {
     return 0;
 }
 
 #define IO_BUF_SIZE 4096
 
-int draw_html(QEditScreen *scr, 
-              const char *filename, QECharset *charset, int flags)
+static int draw_html(QEditScreen *scr, 
+                     const char *filename, QECharset *charset, int flags)
 {
     CSSContext *s = NULL;
     CSSBox *top_box = NULL;
@@ -392,7 +412,7 @@ int draw_html(QEditScreen *scr,
     return -1;
 }
 
-void help(void)
+static void help(void)
 {
     printf("html2png version %s (c) 2002 Fabrice Bellard\n"
            "\n"
@@ -411,15 +431,12 @@ void help(void)
            DEFAULT_OUTFILENAME);
 }
 
-/* XXX: use module system */
-extern int charset_more_init(void);
-
 int main(int argc, char **argv)
 {
     QEDisplay *dpy;
     QEditScreen screen1, *screen = &screen1;
     int page_width, c, strict_xml, flags;
-    char *outfilename, *infilename;
+    const char *outfilename, *infilename;
     QECharset *charset;
 
     charset_init();

@@ -23,16 +23,14 @@
 
 #define MAX_BUF_SIZE    512
 
-/* CG: move to header file! */
-EditBuffer *new_shell_buffer(const char *name, const char *path,
-                             const char **argv, int is_shell);
 static ModeDef latex_mode;
 
 /* TODO: add state handling to allow colorization of elements longer
  * than one line (eg, multi-line functions and strings)
  */
-static void latex_colorize_line(unsigned int *buf, int len, 
-                                int *colorize_state_ptr, int state_only)
+static void latex_colorize_line(unsigned int *buf, __unused__ int len, 
+                                int *colorize_state_ptr,
+                                __unused__ int state_only)
 {
     int c, state;
     unsigned int *p, *p_start;
@@ -186,17 +184,19 @@ static struct latex_function {
     StringArray history;
     EditState *es;
 } latex_funcs[] = {
-    {"AmSTeX", "amstex '\\nonstopmode\\input %s'", 0, 1},
-    {"PDFLaTeX", "pdflatex '\\nonstopmode\\input{%s}'", 0, 1},
-    {"PDFTeX", "pdftex '\\nonstopmode\\input %s'", 0, 1},
-    {"Check", "lacheck %s", 0, 1},
-    {"BibTeX", "bibtex %s", 0, 1},
-    {"LaTeX", "latex --src-specials '\\nonstopmode\\input{%s}'", 0, 1},
-    {"ThumbPDF", "thumbpdf %s", 0, 1},
-    {"View", "xdvi %s.dvi -paper a4", 1, 0},
-    {"Print", "dvips %s -Plp", 1, 0},
-    {"File", "dvips %s.dvi -o %s.ps", 1, 1},
-    {0, 0, 0, 0}
+#define INIT_TAIL  NULL_STRINGARRAY, NULL
+    { "AmSTeX", "amstex '\\nonstopmode\\input %s'", 0, 1, INIT_TAIL },
+    { "PDFLaTeX", "pdflatex '\\nonstopmode\\input{%s}'", 0, 1, INIT_TAIL },
+    { "PDFTeX", "pdftex '\\nonstopmode\\input %s'", 0, 1, INIT_TAIL },
+    { "Check", "lacheck %s", 0, 1, INIT_TAIL },
+    { "BibTeX", "bibtex %s", 0, 1, INIT_TAIL },
+    { "LaTeX", "latex --src-specials '\\nonstopmode\\input{%s}'", 0, 1, INIT_TAIL },
+    { "ThumbPDF", "thumbpdf %s", 0, 1, INIT_TAIL },
+    { "View", "xdvi %s.dvi -paper a4", 1, 0, INIT_TAIL },
+    { "Print", "dvips %s -Plp", 1, 0, INIT_TAIL },
+    { "File", "dvips %s.dvi -o %s.ps", 1, 1, INIT_TAIL },
+    { NULL, NULL, 0, 0, INIT_TAIL },
+#undef INIT_TAIL
 };
 
 static void latex_completion(StringArray *cs, const char *input)
@@ -287,7 +287,7 @@ static void do_latex(EditState *e, const char *cmd)
             /* pass the EditState through to latex_cmd_run() */
             latex_funcs[i].es = e;
             /* construct the command line to run */
-            snprintf(buf, sizeof(buf), latex_funcs[i].fmt, bname, bname);
+            strsubst(buf, sizeof(buf), latex_funcs[i].fmt, "%s", bname);
             if (latex_funcs[i].ask) {
                 char prompt[128];
                 snprintf(prompt, sizeof(prompt), "%s command: ",
