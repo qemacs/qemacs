@@ -1354,6 +1354,7 @@ void do_break(__unused__ EditState *s)
 {
     /* well, currently nothing needs to be aborted in global context */
     /* CG: Should remove popups, sidepanes, helppanes... */
+    put_status(s, "Canceled.");
 }
 
 /* block functions */
@@ -4496,8 +4497,11 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     qs->active_window = minibuffer_saved_active;
 
     /* force status update */
-    strcpy(qs->status_shadow, " ");
-    put_status(NULL, " ");
+    //strcpy(qs->status_shadow, " ");
+    if (do_abort)
+        put_status(NULL, "Canceled.");
+    else
+        put_status(NULL, "");
 
     /* call the callback */
     cb = minibuffer_cb;
@@ -4588,17 +4592,20 @@ extern CmdDef less_commands[];
 static EditState *popup_saved_active;
 
 /* less like mode */
-void do_less_quit(EditState *s)
+void do_less_exit(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
     EditBuffer *b;
 
     /* CG: should verify that popup_saved_active still exists */
-    qs->active_window = popup_saved_active;
-    b = s->b;
-    edit_close(s);
-    eb_free(b);
-    do_refresh(qs->active_window);
+    /* CG: This command crashes if not invoked from less popup mode */
+    if (popup_saved_active) {
+        qs->active_window = popup_saved_active;
+        b = s->b;
+        edit_close(s);
+        eb_free(b);
+        do_refresh(qs->active_window);
+    }
 }
 
 /* show a popup on a readonly buffer */

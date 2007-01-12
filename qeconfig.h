@@ -205,7 +205,7 @@ CmdDef minibuffer_commands[] = {
 };
 
 CmdDef less_commands[] = {
-    CMD0( 'q', KEY_CTRL('g'), "less-exit", do_less_quit)
+    CMD0( 'q', KEY_CTRL('g'), "less-exit", do_less_exit)
     CMD1( '/', KEY_NONE, "less-isearch", do_isearch, 1)
     CMD_DEF_END,
 };

@@ -461,6 +461,8 @@ static void do_c_indent(EditState *s)
     
     /* the number of needed spaces is in 'pos' */
 
+    /* CG: should not modify buffer is indentation in correct */
+
     /* suppress leading spaces */
     offset1 = offset;
     for (;;) {
@@ -472,33 +474,40 @@ static void do_c_indent(EditState *s)
     size = offset1 - offset;
     if (size > 0) {
         eb_delete(s->b, offset, size);
-        s->offset -= size;
-        if (s->offset < offset)
-            s->offset = offset;
     }
     /* insert needed spaces */
-    insert_spaces(s, &offset, pos);
-    s->offset = offset;
+    offset1 = offset;
+    insert_spaces(s, &offset1, pos);
+    if (s->offset == offset) {
+        /* move to the inddentation if point was in indent space */
+        s->offset = offset1;
+    }
 }
-    
+
 static void do_c_indent_region(EditState *s)
 {
-    int col_num, p1, p2, tmp;
+    int col_num, line1, line2, begin;
 
-    /* we do it with lines to avoid offset variations during indenting */
-    eb_get_pos(s->b, &p1, &col_num, s->offset);
-    eb_get_pos(s->b, &p2, &col_num, s->b->mark);
-
-    if (p1 > p2) {
-        tmp = p1;
-        p1 = p2;
-        p2 = tmp;
+    /* Swap point and mark so point <= mark */
+    if (s->offset > s->b->mark) {
+        int tmp = s->b->mark;
+        s->b->mark = s->offset;
+        s->offset = tmp;
     }
+    /* We do it with lines to avoid offset variations during indenting */
+    eb_get_pos(s->b, &line1, &col_num, s->offset);
+    eb_get_pos(s->b, &line2, &col_num, s->b->mark);
 
-    for (;p1 <= p2; p1++) {
-         s->offset = eb_goto_pos(s->b, p1, 0);
+    /* Remember start of first line of region to later set mark */
+    begin = eb_goto_pos(s->b, line1, 0);
+
+    for (; line1 <= line2; line1++) {
+        s->offset = eb_goto_pos(s->b, line1, 0);
         do_c_indent(s);
     }
+    /* move point to end of region, and mark to begin of first row */
+    s->offset = s->b->mark;
+    s->b->mark = begin;
 }
 
 static void do_c_electric(EditState *s, int key)
@@ -534,7 +543,8 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
 /* specific C commands */
 static CmdDef c_commands[] = {
     CMD_( KEY_CTRL('i'), KEY_NONE, "c-indent-command", do_c_indent, "*")
-    CMD_( KEY_NONE, KEY_NONE, "c-indent-region", do_c_indent_region, "*")
+    CMD_( KEY_META(KEY_CTRL('\\')), KEY_NONE, "c-indent-region",
+          do_c_indent_region, "*")
     /* CG: should use 'k' intrinsic argument */
     CMDV( ';', KEY_NONE, "c-electric-semi&comma", do_c_electric, ';', "*v")
     CMDV( ':', KEY_NONE, "c-electric-colon", do_c_electric, ':', "*v")

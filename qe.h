@@ -681,10 +681,8 @@ int mmap_buffer(EditBuffer *b, const char *filename);
 int save_buffer(EditBuffer *b);
 void set_buffer_name(EditBuffer *b, const char *name1);
 void set_filename(EditBuffer *b, const char *filename);
-int eb_add_callback(EditBuffer *b, EditBufferCallback cb,
-                    void *opaque);
-void eb_free_callback(EditBuffer *b, EditBufferCallback cb,
-                      void *opaque);
+int eb_add_callback(EditBuffer *b, EditBufferCallback cb, void *opaque);
+void eb_free_callback(EditBuffer *b, EditBufferCallback cb, void *opaque);
 void eb_offset_callback(EditBuffer *b,
                         void *opaque,
                         enum LogOperation op,
@@ -1366,7 +1364,7 @@ void minibuf_complete_scroll_up_down(EditState *s, int dir);
 void do_history(EditState *s, int dir);
 void do_minibuffer_get_binary(EditState *s);
 void do_minibuffer_exit(EditState *s, int abort);
-void do_less_quit(EditState *s);
+void do_less_exit(EditState *s);
 void do_toggle_read_only(EditState *s);
 void do_not_modified(EditState *s);
 void do_find_alternate_file(EditState *s, const char *filename);
