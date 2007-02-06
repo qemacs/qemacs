@@ -73,6 +73,7 @@ int find_entity(const char *str)
 const char *find_entity_str(int code)
 {
     const XMLEntity *e;
+
     e = html_entities;
     for (;;) {
         if (!e->name)
@@ -299,6 +300,7 @@ XMLState *xml_begin(CSSStyleSheet *style_sheet, int flags,
 static CSSAttribute *box_new_attr(CSSIdent attr_id, const char *value)
 {
     CSSAttribute *attr;
+
     attr = malloc(sizeof(CSSAttribute) + strlen(value));
     if (!attr)
         return NULL;
@@ -325,6 +327,7 @@ static const char *css_attr_strlower(CSSBox *box, CSSIdent attr_id)
 {
     static char buf[200];
     const char *value;
+
     value = css_attr_str(box, attr_id);
     if (!value)
         return NULL;
@@ -338,6 +341,7 @@ static int css_attr_int(CSSBox *box, CSSIdent attr_id, int def_val)
 {
     const char *str, *p;
     int val;
+
     str = css_attr_str(box, attr_id);
     if (!str)
         return def_val;
@@ -412,6 +416,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
 
     first_prop = NULL;
     last_prop = &first_prop;
+
     switch (box->tag) {
     case CSS_ID_img:
     parse_img:
@@ -760,6 +765,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
     value = css_attr_str(box, CSS_ID_style);
     if (value) {
         CSSParseState b1, *b = &b1;
+
         b->ptr = NULL;
         b->line_num = s->line_num; /* XXX: slightly incorrect */
         b->filename = s->filename;
@@ -776,6 +782,7 @@ static void xml_error(XMLState *s, const char *fmt, ...)
 {
     char buf[1024];
     va_list ap;
+
     va_start(ap, fmt);
     vsnprintf(buf, sizeof(buf), fmt, ap);
     css_error(s->filename, s->line_num, buf);
@@ -1038,8 +1045,9 @@ static void flush_text_buffer(XMLState *s, int offset0, int offset1)
 static int xml_tagcmp(const char *s1, const char *s2)
 {
     int d;
+
     while (*s2) {
-        d = *s2 - tolower(*s1);
+        d = *(const unsigned char *)s2 - tolower(*(const unsigned char *)s1);
         if (d)
             return d;
         s2++;
@@ -1297,4 +1305,3 @@ CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end,
     }
     return box;
 }
-

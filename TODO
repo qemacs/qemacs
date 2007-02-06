@@ -137,3 +137,5 @@ add colorized buffers using shell buffer method
 make shell buffer a colorized UCS2 buffer
 use colorized buffer for *trace* buffer to flag tty input, shell output,
   supported and unsupported escapes.
+
+.mailfilter should be in maildrop mode (a direct descendent of C mode)

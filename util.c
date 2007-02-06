@@ -826,9 +826,10 @@ void css_union_rect(CSSRect *a, const CSSRect *b)
 void css_strtolower(char *buf, __unused__ int buf_size)
 {
     int c;
+
     /* XXX: handle unicode */
     while (*buf) {
-        c = tolower(*buf);
+        c = tolower(*(const unsigned char *)buf);
         *buf++ = c;
     }
 }

@@ -6809,6 +6809,7 @@ static void show_version(void)
 {
     printf("QEmacs version " QE_VERSION "\n"
            "Copyright (c) 2000-2003 Fabrice Bellard\n"
+           "Copyright (c) 2000-2007 Charlie Gordon\n"
            "QEmacs comes with ABSOLUTELY NO WARRANTY.\n"
            "You may redistribute copies of QEmacs\n"
            "under the terms of the GNU Lesser General Public License.\n");

@@ -233,36 +233,36 @@ force:
 #
 
 FILES=Changelog COPYING README TODO qe.1 config.eg \
-Makefile qe.tcc qemacs.spec \
-hex.c charset.c qe.c qe.h tty.c \
-html.c indic.c unicode_join.c input.c qeconfig.h \
-qeend.c unihex.c arabic.c kmaptoqe.c util.c \
-bufed.c qestyles.h x11.c buffer.c ligtoqe.c \
-qfribidi.c clang.c latex-mode.c xml.c dired.c list.c qfribidi.h html2png.c \
-charsetmore.c charset_table.c cptoqe.c \
-libfbf.c fbfrender.c cfb.c fbftoqe.c libfbf.h fbfrender.h cfb.h \
-display.c display.h mpeg.c shell.c \
-docbook.c unifont.lig kmaps xterm-146-dw-patch \
-ligatures qe-doc.texi qe-doc.html \
-tests/HELLO.txt tests/TestPage.txt tests/test-hebrew \
-tests/test-capital-rtl tests/test-capital-rtl.ref \
-tests/testbidi.html \
-plugin-example/Makefile  plugin-example/my_plugin.c \
-image.c video.c win32.c configure VERSION \
-cutils.c cutils.h unix.c
+      Makefile qe.tcc qemacs.spec \
+      hex.c charset.c qe.c qe.h tty.c \
+      html.c indic.c unicode_join.c input.c qeconfig.h \
+      qeend.c unihex.c arabic.c kmaptoqe.c util.c \
+      bufed.c qestyles.h x11.c buffer.c ligtoqe.c \
+      qfribidi.c clang.c latex-mode.c xml.c dired.c list.c qfribidi.h html2png.c \
+      charsetmore.c charset_table.c cptoqe.c \
+      libfbf.c fbfrender.c cfb.c fbftoqe.c libfbf.h fbfrender.h cfb.h \
+      display.c display.h mpeg.c shell.c \
+      docbook.c unifont.lig kmaps xterm-146-dw-patch \
+      ligatures qe-doc.texi qe-doc.html \
+      tests/HELLO.txt tests/TestPage.txt tests/test-hebrew \
+      tests/test-capital-rtl tests/test-capital-rtl.ref \
+      tests/testbidi.html \
+      plugin-example/Makefile  plugin-example/my_plugin.c \
+      image.c video.c win32.c configure VERSION \
+      cutils.c cutils.h unix.c
 
 # qhtml library
 FILES+=libqhtml/Makefile libqhtml/css.c libqhtml/cssid.h \
-libqhtml/cssparse.c libqhtml/xmlparse.c libqhtml/htmlent.h \
-libqhtml/css.h libqhtml/csstoqe.c \
-libqhtml/docbook.css libqhtml/html.css 
+       libqhtml/cssparse.c libqhtml/xmlparse.c libqhtml/htmlent.h \
+       libqhtml/css.h libqhtml/csstoqe.c \
+       libqhtml/docbook.css libqhtml/html.css 
 
 # fonts
 FILES+=fonts/fixed10.fbf  fonts/fixed12.fbf  fonts/fixed13.fbf  fonts/fixed14.fbf \
-fonts/helv10.fbf   fonts/helv12.fbf   fonts/helv14.fbf   fonts/helv18.fbf \
-fonts/helv24.fbf   fonts/helv8.fbf    fonts/times10.fbf  fonts/times12.fbf \
-fonts/times14.fbf  fonts/times18.fbf  fonts/times24.fbf  fonts/times8.fbf \
-fonts/unifont.fbf
+       fonts/helv10.fbf   fonts/helv12.fbf   fonts/helv14.fbf   fonts/helv18.fbf \
+       fonts/helv24.fbf   fonts/helv8.fbf    fonts/times10.fbf  fonts/times12.fbf \
+       fonts/times14.fbf  fonts/times18.fbf  fonts/times24.fbf  fonts/times8.fbf \
+       fonts/unifont.fbf
 
 FILE=qemacs-$(VERSION)
 
@@ -336,9 +336,9 @@ endif
 # fonts (only needed for html2png)
 #
 FONTS=fixed10.fbf fixed12.fbf fixed13.fbf fixed14.fbf\
-helv8.fbf helv10.fbf helv12.fbf helv14.fbf helv18.fbf helv24.fbf\
-times8.fbf times10.fbf times12.fbf times14.fbf times18.fbf times24.fbf\
-unifont.fbf
+      helv8.fbf helv10.fbf helv12.fbf helv14.fbf helv18.fbf helv24.fbf\
+      times8.fbf times10.fbf times12.fbf times14.fbf times18.fbf times24.fbf\
+      unifont.fbf
 FONTS:=$(addprefix fonts/,$(FONTS))
 
 fbftoqe$(EXE): fbftoqe.o cutils.o
@@ -366,4 +366,3 @@ test:
 # documentation
 qe-doc.html: qe-doc.texi
 	texi2html -monolithic -number $<
-

@@ -175,7 +175,7 @@ static void dired_sort(EditState *s, const char *sort_order)
     const char *p;
     
     for (p = sort_order; *p; p++) {
-        switch (tolower(*p)) {
+        switch (tolower(*(const unsigned char *)p)) {
         case 'n':       /* name */
             hs->sort_mode &= ~DIRED_SORT_MASK;
             hs->sort_mode |= DIRED_SORT_NAME;
