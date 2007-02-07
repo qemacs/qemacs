@@ -150,7 +150,7 @@ static int tty_term_init(QEditScreen *s,
     ts->oldtty = tty;
 
     tty.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP
-                          |INLCR|IGNCR|ICRNL|IXON);
+                     |INLCR|IGNCR|ICRNL|IXON);
     tty.c_oflag |= OPOST;
     tty.c_lflag &= ~(ECHO|ECHONL|ICANON|IEXTEN|ISIG);
     tty.c_cflag &= ~(CSIZE|PARENB);
@@ -159,6 +159,22 @@ static int tty_term_init(QEditScreen *s,
     tty.c_cc[VTIME] = 0;
     
     tcsetattr(fileno(s->STDIN), TCSANOW, &tty);
+
+    /* First switch to full screen mode */
+#if 0
+    printf("\033[?1048h\033[?1047h"     /* enable cup */
+           "\033)0\033(B"       /* select character sets in block 0 and 1 */
+           "\017");             /* shift out */
+#else
+    FPRINTF(s->STDOUT,
+            "\033[?1049h"       /* enter_ca_mode */
+            "\033[m\033(B"      /* exit_attribute_mode */
+            "\033[4l"		/* exit_insert_mode */
+            "\033[?7h"		/* enter_am_mode */
+            "\033[39;49m"       /* orig_pair */
+            "\033[?1h\033="     /* keypad_xmit */
+           );
+#endif
 
     s->charset = &charset_vt100;
 
@@ -182,20 +198,6 @@ static int tty_term_init(QEditScreen *s,
             s->charset = &charset_utf8;
         }
     }
-#if 0
-    printf("\033[?1048h\033[?1047h"     /* enable cup */
-           "\033)0\033(B"       /* select character sets in block 0 and 1 */
-           "\017");             /* shift out */
-#else
-    FPRINTF(s->STDOUT,
-            "\033[?1049h"       /* enter_ca_mode */
-            "\033[m\033(B"      /* exit_attribute_mode */
-            "\033[4l"		/* exit_insert_mode */
-            "\033[?7h"		/* enter_am_mode */
-            "\033[39;49m"       /* orig_pair */
-            "\033[?1h\033="     /* keypad_xmit */
-           );
-#endif
     atexit(tty_term_exit);
 
     sig.sa_handler = tty_resize;
