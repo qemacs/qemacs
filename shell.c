@@ -872,7 +872,11 @@ static void tty_emulate(ShellState *s, int c)
                     /* XXX: send cursor position, just to be able to
                        launch qemacs in qemacs (in 8859-1) ! */
                     char buf2[20];
-                    snprintf(buf2, sizeof(buf2), "\033[%d;%dR", 1, 1);
+                    int col_num, cur_line;
+                    eb_get_pos(s->b, &cur_line, &col_num, s->cur_offset);
+                    /* XXX: actually send position of point in window */
+                    snprintf(buf2, sizeof(buf2), "\033[%d;%dR", 
+                             1, col_num + 1);
                     tty_write(s, buf2, -1);
                 }
                 break;
@@ -1228,13 +1232,15 @@ static void shell_write_char(EditState *e, int c)
         ch = c;
         tty_write(s, &ch, 1);
     } else {
+        /* Should dispatch as in fundamental mode */
         switch (c) {
         case 4:
             do_delete_char(e);
             break;
-        case 9:
-            do_tab(e);
-            break;
+        // Do not do this: it is useless and causes infinite recursion 
+        //case 9:
+        //    do_tab(e);
+        //    break;
         case 11:
             do_kill_region(e, 2);
             break;
