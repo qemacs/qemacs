@@ -1,5 +1,5 @@
 /*
-/* Convert ligature files to QEmacs binary internal format
+ * Convert ligature files to QEmacs binary internal format
  *
  * Copyright (c) 2002 Fabrice Bellard.
  * Copyright (c) 2007 Charlie Gordon.
@@ -74,8 +74,8 @@ typedef struct Ligature {
     int buf_in_size, buf_out_size;
 } Ligature;
 
-Ligature ligs[MAX_LIGS];
-int nb_ligs;
+static Ligature ligs[MAX_LIGS];
+static int nb_ligs;
 
 static int sort_func(const void *a1, const void *b1)
 {
