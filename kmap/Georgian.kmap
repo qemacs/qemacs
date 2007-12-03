@@ -1,0 +1,47 @@
+//
+// Georgian
+//
+// Based on a variation of a common Georgian transliteration.
+// 1998-11-21 Mark Leisher <mleisher@crl.nmsu.edu>
+//
+"a=0x10D0",	// ა
+"b=0x10D1",	// ბ
+"g=0x10D2",	// გ
+"d=0x10D3",	// დ
+"e=0x10D4",	// ე
+"v=0x10D5",	// ვ
+"z=0x10D6",	// ზ
+"t=0x10D7",	// თ
+"i=0x10D8",	// ი
+".k=0x10D9",	// კ
+"l=0x10DA",	// ლ
+"m=0x10DB",	// მ
+"n=0x10DC",	// ნ
+"o=0x10DD",	// ო
+".p=0x10DE",	// პ
+"\+z=0x10DF",	// ჟ
+"r=0x10E0",	// რ
+"s=0x10E1",	// ს
+".t=0x10E2",	// ტ
+"u=0x10E3",	// უ
+"p=0x10E4",	// ფ
+"k=0x10E5",	// ქ
+".g=0x10E6",	// ღ
+"q=0x10E7",	// ყ
+"\+s=0x10E8",	// შ
+"\+c=0x10E9",	// ჩ
+"c=0x10EA",	// ც
+"j=0x10EB",	// ძ
+".c=0x10EC",	// წ
+".\+c=0x10ED",	// ჭ
+"x=0x10EE",	// ხ
+"\+j=0x10EF",	// ჯ
+"h=0x10F0",	// ჰ
+"q1=0x10F4",	// ჴ
+"e0=0x10F1",	// ჱ
+"o1=0x10F5",	// ჵ
+"i1=0x10F2",	// ჲ
+"w=0x10F3",	// ჳ
+"f=0x10F6",	// ჶ
+"y=0xF0F7", 	//  Letter not in Unicode.
+"e1=0xF0F8",	//  Letter not in Unicode.

@@ -1,0 +1,43 @@
+// http://czyborra.com/yudit/Guarani.kmap 1998-09-25
+
+// Pino Zollo <pinoz@highway.com.py> writes:
+
+// Guarani is the most spoken language in Paraguay and it is written
+// since 1500 when Jesuits came to this country.  With the recent
+// scolar reform Guarani was introduced as mandatory in all classes.
+// The peculiarity of guarani' consists in its nasal vawel that are
+// the 6 following: "a e i o u y" with the cedilla ~ on top and the
+// same with tonic accent ' on top. Furthermore there are "n" and "g"
+// with ~ on top.  Asuncion, 1998-08-20. Literature:
+// http://www1.highway.com.py/~pinoz/Linux/Guarani/
+// http://merece.uthscsa.edu/gram/guarani/
+// http://czyborra.com/yudit/
+
+"A'=0x00C1", // Á = LATIN CAPITAL LETTER A WITH ACUTE
+"a'=0x00E1", // á = LATIN SMALL LETTER A WITH ACUTE
+"A~=0x00C3", // Ã = LATIN CAPITAL LETTER A WITH TILDE
+"a~=0x00E3", // ã = LATIN SMALL LETTER A WITH TILDE
+"E'=0x00C9", // É = LATIN CAPITAL LETTER E WITH ACUTE
+"e'=0x00E9", // é = LATIN SMALL LETTER E WITH ACUTE
+"E~=0x1EBC", // Ẽ = LATIN CAPITAL LETTER E WITH TILDE
+"e~=0x1EBD", // ẽ = LATIN SMALL LETTER E WITH TILDE
+"G~=G 0x0303", // G̃ = LATIN CAPITAL LETTER G + COMBINING TILDE
+"g~=g 0x0303", // g̃ = LATIN SMALL LETTER G + COMBINING TILDE
+"I'=0x00CD", // Í = LATIN CAPITAL LETTER I WITH ACUTE
+"i'=0x00ED", // í = LATIN SMALL LETTER I WITH ACUTE
+"I~=0x0128", // Ĩ = LATIN CAPITAL LETTER I WITH TILDE
+"i~=0x0129", // ĩ = LATIN SMALL LETTER I WITH TILDE
+"N~=0x00D1", // Ñ = LATIN CAPITAL LETTER N WITH TILDE
+"n~=0x00F1", // ñ = LATIN SMALL LETTER N WITH TILDE
+"O'=0x00D3", // Ó = LATIN CAPITAL LETTER O WITH ACUTE
+"o'=0x00F3", // ó = LATIN SMALL LETTER O WITH ACUTE
+"O~=0x00D5", // Õ = LATIN CAPITAL LETTER O WITH TILDE
+"o~=0x00F5", // õ = LATIN SMALL LETTER O WITH TILDE
+"U'=0x00DA", // Ú = LATIN CAPITAL LETTER U WITH ACUTE
+"u'=0x00FA", // ú = LATIN SMALL LETTER U WITH ACUTE
+"U~=0x0168", // Ũ = LATIN CAPITAL LETTER U WITH TILDE
+"u~=0x0169", // ũ = LATIN SMALL LETTER U WITH TILDE
+"Y'=0x00DD", // Ý = LATIN CAPITAL LETTER Y WITH ACUTE
+"y'=0x00FD", // ý = LATIN SMALL LETTER Y WITH ACUTE
+"Y~=0x1EF8", // Ỹ = LATIN CAPITAL LETTER Y WITH TILDE
+"y~=0x1EF9", // ỹ = LATIN SMALL LETTER Y WITH TILDE

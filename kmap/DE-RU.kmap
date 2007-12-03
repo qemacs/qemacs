@@ -1,0 +1,93 @@
+//Meine persoenliche Deutsch-Russisch Keymap.
+//Lesen Sie bitte LIESMICH.DE-RU. Alles GPL Software.
+//Thomas Wohlfarth <thomas.wohlfarth@usa.net>
+
+//
+//---------------- Grosse Buchstaben ----------------
+//
+"A=0x0410",			
+"B=0x0411",			
+"W=0x0412",
+"V=0x0412",	
+"G=0x0413",	
+"D=0x0414",			
+"E=0x0415",			// je
+"Je=0x0415",
+"JE=0x0415",
+"E\"=0x0401",			// jo
+"Jo=0x0401",					
+"JO=0x0401",
+"JH=0x0416",			//Weiches sch wie in "Journal"
+"Jh=0x0416", 			
+"S=0x0417",			//stimmhaftes s wie in "See"
+"I=0x0418",			
+"I'=0x0419",			// kurzes i - i'kratkoje
+"K=0x041A",
+"L=0x041B",
+"M=0x041C",
+"N=0x041D",
+"O=0x041E",
+"P=0x041F",
+"R=0x0420",
+"C=0x0421",			// scharfes s wie in "dass"
+"T=0x0422",
+"U=0x0423",
+"F=0x0424",
+"X=0x0425",			// ch wie in "Bach"
+"Ch=0x0425",			
+"CH=0x0425",
+"Z=0x0426",
+"Tsch=0x0427",			
+"Sch=0x0428",			
+"SCH=0x0428",	
+"Schtsch=0x0429",		
+"SCHTSCH=0x0429",
+"HZ=0x042A", 			//  Haertezeichen
+"Y=0x042B",			
+"WZ=0x042C", 			//  Weichheitszeichen
+"0xC4=0x042D",			//  kurzes e (ae)
+"JU=0x042E",			//  ju
+"Ju=0x042E",
+"JA=0x042F",			//  ja
+"Ja=0x042F",			
+
+//
+// --------------------Kleine Buchstaben-------
+//
+"a=0x0430",
+"b=0x0431",
+"w=0X0432",
+"v=0X0432",
+"g=0x0433",
+"d=0x0434",
+"e=0x0435",		// je
+"je=0x0435",
+"e\"=0x0451",
+"jo=0x0451",
+"jh=0x0436",		// weiches sch wie in "Journal"
+"s=0x0437",		// stimmhaftes s wie in "See"
+"i=0x0438",
+"i'=0x0439",
+"k=0x043A",
+"l=0x043B",
+"m=0x043C",
+"n=0x043D",
+"o=0x043E",
+"p=0x043F",
+"r=0x0440",
+"c=0x0441",		// scharfes s wie in "dass"
+"t=0x0442",
+"u=0x0443",
+"f=0x0444",
+"x=0x0445",		// ch wie in "Bach"
+"ch=0x0445",		
+"z=0x0446",
+"tsch=0x0447",
+"sch=0x0448",
+"schtsch=0x0449",
+"hz=0x044A", 		// Haertezeichen 
+"y=0x044B", 		
+"wz=0x044C", 		// Weichheitszeichen
+"0xE4=0x044D",		// kurzes e (ae)
+"ju=0x044E",
+"ja=0x044F",

@@ -1,0 +1,54 @@
+// German.kmap for the Unicode editor Yudit
+// 1998-04-17 Roman Czyborra@cs.tu-berlin.de
+
+// „German“ quotation marks:
+
+",,=0x201E", // „ = DOUBLE LOW-9 QUOTATION MARK = <Q>
+"``=0x201C", // “ = LEFT DOUBLE QUOTATION MARK = </Q>
+
+// In a lot of German books you will also find: »...«
+
+">>=0x00BB", // » = RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK = <Q>
+"<<=0x00AB", // « = LEFT-POINTING DOUBLE ANGLE QUOTATION MARK = </Q>
+
+// The Paragraphenzeichen is used to number 
+// paragrahs of the legal code (§ 1 StVO):
+
+"S$=0x00A7", // § = SECTION SIGN
+
+// Germany and Austria are trading their currencies for the Euro:
+
+"E$=0x20AC", // € = EURO SIGN
+
+// The following definitions give German umlaut vowels to typers of
+// German who are used to typing their umlauts on American
+// (ASCII-QWERTY) keyboards as with ae, oe, ue, and sz replacements.
+
+"Ae=0x00c4", // Ä = Aumlaut = LATIN CAPITAL LETTER A WITH DIAERESIS
+"Oe=0x00d6", // Ö = Oumlaut = LATIN CAPITAL LETTER O WITH DIAERESIS
+"Ue=0x00dc", // Ü = Uumlaut = LATIN CAPITAL LETTER U WITH DIAERESIS
+"ae=0x00e4", // ä = LATIN SMALL LETTER A WITH DIAERESIS
+"oe=0x00f6", // ö = LATIN SMALL LETTER O WITH DIAERESIS
+"ue=0x00fc", // ü = LATIN SMALL LETTER U WITH DIAERESIS
+"sz=0x00df", // ß = eszet = germandbls = LATIN SMALL LETTER SHARP S
+
+// WARNING: With this method you will get a lot of funny typing errors
+// for all words containing real ae, oe or ue combinations like a
+// nonsensical "Maür" instead of the correct "Mauer".  To prevent this,
+// you can try to remember to always insert a period and type "Mau.er":
+
+".e=0x0065", // e = LATIN SMALL LETTER E
+".z=0x007A", // z = LATIN SMALL LETTER Z
+
+// You're probably better off editing the umlaut input sequence to
+// something less ambiguous (ä a; a' a: a" a= "a or \"a) depending on
+// whether your keyboard already has straight umlaut keys or whatever
+// composition sequence you're used to.
+
+// German typewriters traditionally also allowed to type the following
+// two accented letters in words imported from French: We want to be
+// able to type sentences like „André kaufte zwei Karten à 10 DM.“
+
+"e'=0x00e9", // é = LATIN SMALL LETTER E WITH ACUTE
+"`a=0x00e0", // à = LATIN SMALL LETTER A WITH GRAVE
+

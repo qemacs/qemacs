@@ -1,0 +1,19 @@
+// Esperanto.kmap input method for Yudit, Gaspar Sinai's Unicode 
+// text editor for the X Window system, created with the help of
+// http://www.esperanto.net/veb/faq.txt and the output of
+// recode -lfull latin3 - inspired by Yves Bellefeuille
+
+// 1998-04-20 Roman Czyborra <czyborra@cs.tu-berlin.de>
+
+"Cx=0x0108", // Ĉ = latin capital letter c with circumflex
+"Gx=0x011C", // Ĝ = latin capital letter g with circumflex
+"Hx=0x0124", // Ĥ = latin capital letter h with circumflex
+"Jx=0x0134", // Ĵ = latin capital letter j with circumflex
+"Sx=0x015C", // Ŝ = latin capital letter s with circumflex
+"Ux=0x016C", // Ŭ = latin capital letter u with breve
+"cx=0x0109", // ĉ = latin small letter c with circumflex
+"gx=0x011D", // ĝ = latin small letter g with circumflex
+"hx=0x0125", // ĥ = latin small letter h with circumflex
+"jx=0x0135", // ĵ = latin small letter j with circumflex
+"sx=0x015D", // ŝ = latin small letter s with circumflex
+"ux=0x016D", // ŭ = latin small letter u with breve

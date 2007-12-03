@@ -1,0 +1,33 @@
+// Hebrew.kmap for Yudit
+// 1998-06-17 Roman Czyborra@cs.tu-berlin.de
+
+// These are the Hebrew letters from ISO-8859-6
+// at hopefully not too surprising ASCII keys:
+
+"a=0x05D0",	// א = HEBREW LETTER ALEF
+"b=0x05D1",	// ב = HEBREW LETTER BET
+"g=0x05D2",	// ג = HEBREW LETTER GIMEL
+"d=0x05D3",	// ד = HEBREW LETTER DALET
+"h=0x05D4",	// ה = HEBREW LETTER HE
+"v=0x05D5",	// ו = HEBREW LETTER VAV
+"z=0x05D6",	// ז = HEBREW LETTER ZAYIN
+"x=0x05D7",	// ח = HEBREW LETTER HET
+"y=0x05D8",	// ט = HEBREW LETTER TET
+"j=0x05D9",	// י = HEBREW LETTER YOD
+"k;=0x05DA",	// ך = HEBREW LETTER FINAL KAF
+"k=0x05DB",	// כ = HEBREW LETTER KAF
+"l=0x05DC",	// ל = HEBREW LETTER LAMED
+"m;=0x05DD",	// ם = HEBREW LETTER FINAL MEM
+"m=0x05DE",	// מ = HEBREW LETTER MEM
+"n;=0x05DF",	// ן = HEBREW LETTER FINAL NUN
+"n=0x05E0",	// נ = HEBREW LETTER NUN
+"s=0x05E1",	// ס = HEBREW LETTER SAMEKH
+"e=0x05E2",	// ע = HEBREW LETTER AYIN
+"p;=0x05E3",	// ף = HEBREW LETTER FINAL PE
+"p=0x05E4",	// פ = HEBREW LETTER PE
+"c;=0x05E5",	// ץ = HEBREW LETTER FINAL TSADI
+"c=0x05E6",	// צ = HEBREW LETTER TSADI
+"q=0x05E7",	// ק = HEBREW LETTER QOF
+"r=0x05E8",	// ר = HEBREW LETTER RESH
+"w=0x05E9",	// ש = HEBREW LETTER SHIN
+"t=0x05EA",	// ת = HEBREW LETTER TAV

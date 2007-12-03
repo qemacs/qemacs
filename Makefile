@@ -94,7 +94,7 @@ endif
 LIBS+=-lm
 
 TARGETLIBS:=
-TARGETS+=qe$(EXE) qe-doc.html
+TARGETS+=qe$(EXE) qe-doc.html kmaps ligatures
 
 OBJS=qe.o charset.o buffer.o \
      input.o unicode_join.o display.o util.o hex.o list.o 
@@ -210,7 +210,7 @@ clean:
 distclean: clean
 	rm -f config.h config.mak
 
-install: $(TARGETS) qe.1 kmaps ligatures
+install: $(TARGETS) qe.1
 	install -m 755 qe$(EXE) $(prefix)/bin/qemacs
 	ln -sf qemacs $(prefix)/bin/qe$(EXE)
 ifdef CONFIG_FFMPEG
@@ -302,7 +302,8 @@ KMAPS=Arabic.kmap ArmenianEast.kmap ArmenianWest.kmap Chinese-CJ.kmap \
       Russian.kmap SGML.kmap TeX.kmap Troff.kmap VNtelex.kmap \
       Vietnamese.kmap XKB_iso8859-4.kmap
 #     Hangul.kmap Hangul2.kmap Hangul3.kmap Unicode2.kmap 
-KMAPS_DIR=$(prefix)/share/yudit/data
+#KMAPS_DIR=$(prefix)/share/yudit/data
+KMAPS_DIR=kmap
 KMAPS:=$(addprefix $(KMAPS_DIR)/, $(KMAPS))
 
 kmaptoqe$(EXE): kmaptoqe.c
@@ -316,11 +317,11 @@ endif
 #
 # Code pages (only useful to add your own code pages)
 #
-CP=8859_2.cp  cp1125.cp  cp737.cp  koi8_r.cp \
-   8859_4.cp  cp1250.cp  cp850.cp  koi8_u.cp    viscii.cp\
-   8859_13.cp  8859_5.cp  cp1251.cp  cp852.cp  mac_lat2.cp\
-   8859_15.cp  8859_7.cp  cp1257.cp  cp866.cp  macroman.cp\
-   8859_16.cp  8859_9.cp  cp437.cp   kamen.cp  tcvn5712.cp \
+CP=8859_2.cp   cp1125.cp  cp737.cp   koi8_r.cp              \
+   8859_4.cp   cp1250.cp  cp850.cp   koi8_u.cp  viscii.cp   \
+   8859_13.cp  8859_5.cp  cp1251.cp  cp852.cp   mac_lat2.cp \
+   8859_15.cp  8859_7.cp  cp1257.cp  cp866.cp   macroman.cp \
+   8859_16.cp  8859_9.cp  cp437.cp   kamen.cp   tcvn5712.cp \
    JIS0208.TXT JIS0212.TXT
 CP:=$(addprefix cp/,$(CP))
 
