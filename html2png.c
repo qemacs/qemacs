@@ -1,5 +1,6 @@
 /* 
  * HTML to PPM converter using the qHTML library 
+ *
  * Copyright (c) 2002 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or
@@ -442,6 +443,7 @@ int main(int argc, char **argv)
 
     charset_init();
     charset_more_init();
+    charset_jis_init();
     css_init();
 
     page_width = DEFAULT_WIDTH; 

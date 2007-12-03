@@ -1,5 +1,6 @@
 /*
  * LaTeX mode for QEmacs.
+ *
  * Copyright (c) 2003 Martin Hedenfalk <mhe@home.se>
  * Based on c-mode by Fabrice Bellard
  * Requires the shell mode

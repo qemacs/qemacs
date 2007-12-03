@@ -1,5 +1,6 @@
 /*
  * Hexadecimal modes for QEmacs.
+ *
  * Copyright (c) 2000, 2001 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or
@@ -16,6 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+
 #include "qe.h"
 
 extern ModeDef hex_mode;
