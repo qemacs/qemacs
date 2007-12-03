@@ -109,7 +109,7 @@ endif
 
 # more charsets if needed
 ifndef CONFIG_TINY
-OBJS+=charsetmore.o charset_table.o 
+OBJS+=charsetjis.o charsetmore.o
 endif
 
 ifdef CONFIG_ALL_MODES
@@ -186,6 +186,8 @@ ffplay$(EXE): qe$(EXE)
 qe.o: qe.c qe.h qfribidi.h qeconfig.h
 
 charset.o: charset.c qe.h
+charsetjis.o: charsetjis.c qe.h charsetjis.def
+charsetmore.o: charsetmore.c qe.h
 
 buffer.o: buffer.c qe.h
 
@@ -205,7 +207,8 @@ html2png.o: html2png.c qe.h
 clean:
 	make -C libqhtml clean
 	rm -f *.o *.exe *~ TAGS gmon.out core *.exe.stackdump \
-           qe qe_g qfribidi cptoqe kmaptoqe ligtoqe html2png fbftoqe fbffonts.c
+           qe qe_g qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
+           cptoqe jistoqe
 
 distclean: clean
 	rm -f config.h config.mak
@@ -239,7 +242,7 @@ FILES=Changelog COPYING README TODO qe.1 config.eg \
       qeend.c unihex.c arabic.c kmaptoqe.c util.c \
       bufed.c qestyles.h x11.c buffer.c ligtoqe.c \
       qfribidi.c clang.c latex-mode.c xml.c dired.c list.c qfribidi.h html2png.c \
-      charsetmore.c charset_table.c cptoqe.c \
+      charsetmore.c charsetjis.c charsetjis.def cptoqe.c jistoqe.c \
       libfbf.c fbfrender.c cfb.c fbftoqe.c libfbf.h fbfrender.h cfb.h \
       display.c display.h mpeg.c shell.c \
       docbook.c unifont.lig kmaps xterm-146-dw-patch \
@@ -321,16 +324,24 @@ CP=8859_2.cp   cp1125.cp  cp737.cp   koi8_r.cp              \
    8859_4.cp   cp1250.cp  cp850.cp   koi8_u.cp  viscii.cp   \
    8859_13.cp  8859_5.cp  cp1251.cp  cp852.cp   mac_lat2.cp \
    8859_15.cp  8859_7.cp  cp1257.cp  cp866.cp   macroman.cp \
-   8859_16.cp  8859_9.cp  cp437.cp   kamen.cp   tcvn5712.cp \
-   JIS0208.TXT JIS0212.TXT
+   8859_16.cp  8859_9.cp  cp437.cp   kamen.cp   tcvn5712.cp
 CP:=$(addprefix cp/,$(CP))
+
+JIS= JIS0208.TXT JIS0212.TXT
+JIS:=$(addprefix cp/,$(JIS))
 
 cptoqe$(EXE): cptoqe.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
+jistoqe$(EXE): jistoqe.c
+	$(HOST_CC) $(CFLAGS) -o $@ $<
+
 ifdef BUILD_ALL
-charset_table.c: cptoqe$(EXE) $(CP)
+charsetmore.c: cptoqe$(EXE) $(CP)
 	./cptoqe $(CP) > $@
+
+charsetjis.def: jistoqe$(EXE) $(JIS)
+	./jistoqe $(JIS) > $@
 endif
 
 #
@@ -353,7 +364,7 @@ fbffonts.c: fbftoqe$(EXE) $(FONTS)
 #
 OBJS=util.o cutils.o \
      arabic.o indic.o qfribidi.o display.o unicode_join.o \
-     charset.o charsetmore.o charset_table.o \
+     charset.o charsetmore.o charsetjis.o \
      libfbf.o fbfrender.o cfb.o fbffonts.o
 
 html2png$(EXE): html2png.o $(OBJS) libqhtml/libqhtml.a

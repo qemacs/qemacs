@@ -24,58 +24,156 @@
 #include <string.h>
 #include <ctype.h>
 
-static char *getline(char *buf, int buf_size, FILE *f)
-{
-    char *str;
-    int len;
+static char module_init[4096];
+static char *module_init_p = module_init;
 
-    str = fgets(buf, buf_size, f);
-    if (!str)
-        return NULL;
-    len = strlen(buf);
-    if (len > 0 && buf[len - 1] == '\n') {
-        buf[len - 1] = '\0';
+#define add_init(s)  (module_init_p += snprintf(module_init_p, \
+                     module_init + sizeof(module_init) - module_init_p, \
+                     "%s", s))
+
+static char *get_basename(const char *pathname)
+{
+    const char *base = pathname;
+
+    while (*pathname) {
+        if (*pathname++ == '/')
+            base = pathname;
     }
-    return str;
+    return (char *)base;
 }
 
+static char *get_extension(const char *pathname)
+{
+    const char *p, *ext;
 
-static void handle_cp(FILE *f, const char *name)
+    for (ext = p = pathname + strlen(pathname); p > pathname; p--) {
+        if (p[-1] == '/')
+            break;
+        if (*p == '.') {
+            ext = p;
+            break;
+        }
+    }
+    return (char *)ext;
+}
+
+static char *getline(char *buf, int buf_size, FILE *f, int strip_comments)
+{
+    for (;;) {
+        char *str;
+        int len;
+
+        str = fgets(buf, buf_size, f);
+        if (!str)
+            return NULL;
+        len = strlen(buf);
+        if (len > 0 && buf[len - 1] == '\n') {
+            buf[len - 1] = '\0';
+        }
+        if (buf[0] == 26) {
+            /* handle obsolete DOS ctrl-Z marker */
+            return NULL;
+        }
+        if (strip_comments && (buf[0] == '\0' || buf[0] == '#'))
+            continue;
+
+        return str;
+    }
+}
+
+static void handle_cp(FILE **fp, const char *name, const char *filename)
 {
     char line[1024];
-    const char *p;
+    char *p, *q;
     int table[256];
-    int min_code, max_code, c1, c2, i, nb, j, c;
-    char name1[256], *q;
+    int min_code, max_code, c1, c2, i, nb, j;
+    char name1[256];
+    char includename[256];
+    int eol_char = 10;
 
-    getline(line, sizeof(line), f);
+    /* name1 is name with _ changed into - */
+    strcpy(name1, name);
+    for (p = name1; *p != '\0'; p++) {
+        if (*p == '_')
+            *p = '-';
+    }
+    
+    /* skip ISO name */
+    getline(line, sizeof(line), *fp, 1);
 
-    getline(line, sizeof(line), f);
-    printf("static const char *aliases_%s[] = { %s, NULL };\n\n", name, line);
-    for (i = 0; i < 256; i++)
+    printf("/*-- file: %s, id: %s, name: %s, ISO name: %s --*/\n\n",
+           filename, name, name1, line);
+
+    /* get alias list */
+    getline(line, sizeof(line), *fp, 1);
+
+    /* Parse alias list and remove duplicates of name */
+    printf("static const char * const aliases_%s[] = {\n"
+           "    ", name);
+
+    for (q = line;;) {
+        if ((p = strchr(q, '"')) == NULL
+        ||  (q = strchr(++p, '"')) == NULL)
+            break;
+
+        *q++ = '\0';
+        if (strcmp(name1, p)) {
+            printf("\"%s\", ", p);
+        }
+    }
+    printf("NULL\n"
+           "};\n\n");
+
+    for (i = 0; i < 256; i++) {
         table[i] = i;
+    }
+
     nb = 0;
     for (;;) {
-        if (!getline(line, sizeof(line), f))
+        if (!getline(line, sizeof(line), *fp, 0))
             break;
+        if (*line == '[')
+            break;
+        if (!memcmp(line, "include ", 8)) {
+            fclose(*fp);
+            strcpy(includename, filename);
+            strcpy(get_basename(includename), line + 8);
+            filename = includename;
+            *fp = fopen(filename, "r");
+            if (*fp == NULL) {
+                fprintf(stderr, "%s: cannot open %s\n", name, filename);
+                break;
+            }
+            continue;
+        }
         if (!strcasecmp(line, "# compatibility"))
             break;
         if (line[0] == '\0' || line[0] == '#')
             continue;
         p = line;
-        c1 = strtol(p, (char **)&p, 0);
-        if (!isspace(*p))
+        c1 = strtol(p, (char **)&p, 16);
+        if (!isspace(*p)) {
+            /* ignore ranges such as "0x20-0x7e       idem" */
             continue;
-        c2 = strtol(p, (char **)&p, 0);
+        }
+        c2 = strtol(p, (char **)&p, 16);
         if (c1 >= 256) {
-            fprintf(stderr, "%s: ERROR %d %d\n", name, c1, c2);
+            fprintf(stderr, "%s: ERROR %d %d\n", filename, c1, c2);
             continue;
         }
         table[c1] = c2;
         nb++;
     }
-    if (table[10] != 10)
-        fprintf(stderr, "%s: warning: newline is not preserved\n", name);
+    
+    if (table[10] != 10) {
+        if (table[0x25] == 0x0A) {
+            /* EBCDIC file */
+            eol_char = 0x25;
+        } else {
+            fprintf(stderr, "%s: warning: newline is not preserved\n",
+                    filename);
+        }
+    }
     
     min_code = 0x7fffffff;
     max_code = -1;
@@ -94,6 +192,8 @@ static void handle_cp(FILE *f, const char *name)
                name, max_code - min_code + 1);
         j = 0;
         for (i = min_code; i <= max_code; i++) {
+            if ((j & 7) == 0)
+                printf("    ");
             printf("0x%04x, ", table[i]);
             if ((j++ & 7) == 7)
                 printf("\n");
@@ -103,136 +203,107 @@ static void handle_cp(FILE *f, const char *name)
         printf("};\n\n");
     }
 
-    q = name1;
-    for (p = name; *p != '\0'; p++) {
-        c = *p;
-        if (c == '_')
-            c = '-';
-        *q++ = c;
-    }
-    *q = '\0';
-    
     printf("QECharset charset_%s = {\n"
-           "\"%s\",\n"
-           "aliases_%s,\n"
-           "decode_8bit_init,\n"
-           "NULL,\n"
-           "encode_8bit,\n"
-           "table_alloc: 1,\n"
-           "min_char: %d,\n"
-           "max_char: %d,\n"
-           "private_table: table_%s,\n"
+           "    \"%s\",\n"
+           "    aliases_%s,\n"
+           "    decode_8bit_init,\n"
+           "    NULL,\n"
+           "    encode_8bit,\n"
+           "    table_alloc: 1,\n"
+           "    eol_char: %d,\n"
+           "    min_char: %d,\n"
+           "    max_char: %d,\n"
+           "    private_table: table_%s,\n"
            "};\n\n",
-           name, name1, name,
+           name, name1, name, eol_char,
            min_code, max_code, name);
+
+    add_init("    qe_register_charset(&charset_");
+    add_init(name);
+    add_init(");\n");
 }
 
-/* handle jis208 or jis212 table */
-static void handle_jis(FILE *f, int is_jis208)
+static FILE *open_index(const char *filename, const char *name)
 {
-    int c1, c2, b1, b2, b1_max, b2_max, i, j, nb, n;
-    int table[94*94];
-    int table_b2_max[94];
     char line[1024];
-    const char *p;
-    const char *name = is_jis208 ? "jis208" : "jis212";
+    char indexname[256];
+    FILE *f;
+    int len = strlen(name);
 
-    memset(table, 0, sizeof(table));
-    memset(table_b2_max, 0, sizeof(table_b2_max));
-    b1_max = 0;
-    b2_max = 0;
-    nb = 0;
-    for (;;) {
-        if (!getline(line, sizeof(line), f))
-            break;
-        if (line[0] == '\0' || line[0] == '#')
-            continue;
-        p = line;
-        if (is_jis208)
-            c1 = strtol(p, (char **)&p, 0);
-        c1 = strtol(p, (char **)&p, 0);
-        c2 = strtol(p, (char **)&p, 0);
-
-        b1 = (c1 >> 8) & 0xff;
-        b2 = (c1) & 0xff;
-        
-        /* compress the code */
-        b1 = b1 - 0x21;
-        b2 = b2 - 0x21;
-        if (b1 > b1_max)
-            b1_max = b1;
-        if (b2 > b2_max)
-            b2_max = b2;
-        if (b2 > table_b2_max[b1])
-            table_b2_max[b1] = b2;
-        table[b1 * 94 + b2] = c2;
-        nb++;
-    }
-    printf("/* max row = %d. The following rows are excluded:", b1_max);
-    n = 0;
-    for (i = 0; i <= b1_max; i++) {
-        if (table_b2_max[i] == 0) {
-            printf(" %d", i);
-        } else {
-            n++;
-        }
-    }
-    printf(", density=%d%% */\n",  nb * 100 / (n * (b2_max + 1)));
-
-    printf("const unsigned short table_%s[%d] = {\n",
-           name, n * (b2_max + 1));
-    n = 0;
-    for (i = 0; i <= b1_max; i++) {
-        if (table_b2_max[i] != 0) {
-            for (j = 0; j <= b2_max; j++) {
-                printf("0x%04x, ", table[i * 94 + j]);
-                if ((n++ & 7) == 7)
-                    printf("\n");
+    strcpy(indexname, filename);
+    strcpy(get_basename(indexname), "index.cp");
+    f = fopen(indexname, "r");
+    if (f != NULL) {
+        while (getline(line, sizeof(line), f, 1)) {
+            if (*line == '[' && line[1 + len] == ']'
+            &&  !memcmp(line + 1, name, len)) {
+                return f;
             }
         }
+        fclose(f);
     }
-    if ((n & 7) != 0)
-        printf("\n");
-    printf("};\n\n");
+    return NULL;
 }
 
 int main(int argc, char **argv)
 {
     int i;
-    const char *filename, *p;
-    char *q;
+    const char *filename;
     char name[256];
     FILE *f;
 
-    printf("#include \"qe.h\"\n\n");
+    printf("/* This file was generated automatically by cptoqe */\n");
+
+    printf("\n" "/*"
+           "\n" " * More Charsets and Tables for QEmacs"
+           "\n" " *"
+           "\n" " * Copyright (c) 2002 Fabrice Bellard."
+           "\n" " * Copyright (c) 2007 Charlie Gordon."
+           "\n" " *"
+           "\n" " * This library is free software; you can redistribute it and/or"
+           "\n" " * modify it under the terms of the GNU Lesser General Public"
+           "\n" " * License as published by the Free Software Foundation; either"
+           "\n" " * version 2 of the License, or (at your option) any later version."
+           "\n" " *"
+           "\n" " * This library is distributed in the hope that it will be useful,"
+           "\n" " * but WITHOUT ANY WARRANTY; without even the implied warranty of"
+           "\n" " * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU"
+           "\n" " * Lesser General Public License for more details."
+           "\n" " *"
+           "\n" " * You should have received a copy of the GNU Lesser General Public"
+           "\n" " * License along with this library; if not, write to the Free Software"
+           "\n" " * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA"
+           "\n" " */"
+           "\n" ""
+           "\n" "#include \"qe.h\""
+           "\n" "");
+
+    add_init("int charset_more_init(void)\n{\n");
 
     for (i = 1; i < argc; i++) {
         filename = argv[i];
 
-        p = strrchr(filename, '/');
-        if (!p)
-            p = filename;
-        else
-            p++;
-        strcpy(name, p);
-        q = strrchr(name, '.');
-        if (q)
-            *q = '\0';
+        strcpy(name, get_basename(filename));
+        *get_extension(name) = '\0';
         
         f = fopen(filename, "r");
         if (!f) {
-            perror(filename);
-            exit(1);
+            f = open_index(filename, name);
+            if (!f) {
+                perror(filename);
+                exit(1);
+            }
         }
 
-        if (!strcmp(name, "JIS0208"))
-            handle_jis(f, 1);
-        else if (!strcmp(name, "JIS0212"))
-            handle_jis(f, 0);
-        else
-            handle_cp(f, name);
+        handle_cp(&f, name, filename);
 
         fclose(f);
     }
+
+    add_init("\n    return 0;\n}\n\n"
+             "qe_module_init(charset_more_init);\n");
+
+    printf("%s", module_init);
+
     return 0;
 }

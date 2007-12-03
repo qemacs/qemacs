@@ -1,5 +1,6 @@
 /*
  * Basic Charset functions for QEmacs
+ *
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or
@@ -16,6 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+
 #include "qe.h"
 
 QECharset *first_charset = NULL;
@@ -99,7 +101,9 @@ static unsigned char *encode_8859_1(__unused__ QECharset *charset,
     }
 }
 
-static const char *aliases_8859_1[] = { "ISO-8859-1", "iso-ir-100", "latin1", "l1", "819", NULL };
+static const char * const aliases_8859_1[] = {
+    "ISO-8859-1", "iso-ir-100", "latin1", "l1", "819", NULL
+};
 
 QECharset charset_8859_1 = {
     "8859-1",
@@ -107,7 +111,7 @@ QECharset charset_8859_1 = {
     decode_8859_1_init,
     NULL,
     encode_8859_1,
-    0, 0, 0, NULL, NULL,
+    0, 10, 0, 0, NULL, NULL,
 };
 
 /********************************************************/
@@ -135,7 +139,7 @@ QECharset charset_vt100 = {
     decode_vt100_init,
     NULL,
     encode_vt100,
-    0, 0, 0, NULL, NULL,
+    0, 10, 0, 0, NULL, NULL,
 };
 
 /********************************************************/
@@ -152,7 +156,9 @@ static unsigned char *encode_7bit(__unused__ QECharset *charset,
     }
 }
 
-static const char *aliases_7bit[] = { "us-ascii", "ascii", "7bit", "7-bit", "iso-ir-6", "ANSI_X3.4", "646", NULL };
+static const char * const aliases_7bit[] = {
+    "us-ascii", "ascii", "7-bit", "iso-ir-6", "ANSI_X3.4", "646", NULL
+};
 
 static QECharset charset_7bit = {
     "7bit",
@@ -160,7 +166,7 @@ static QECharset charset_7bit = {
     decode_8859_1_init,
     NULL,
     encode_7bit,
-    0, 0, 0, NULL, NULL,
+    0, 10, 0, 0, NULL, NULL,
 };
 
 /********************************************************/
@@ -280,7 +286,7 @@ static unsigned char *encode_utf8(__unused__ QECharset *charset,
     return q + utf8_encode((char*)q, c);
 }
 
-static const char *aliases_utf_8[] = { "utf8", NULL };
+static const char * const aliases_utf_8[] = { "utf8", NULL };
 
 QECharset charset_utf8 = {
     "utf-8",
@@ -288,7 +294,7 @@ QECharset charset_utf8 = {
     decode_utf8_init,
     decode_utf8_func,
     encode_utf8,
-    0, 0, 0, NULL, NULL,
+    0, 10, 0, 0, NULL, NULL,
 };
 
 /********************************************************/
@@ -297,7 +303,7 @@ QECharset charset_utf8 = {
 void charset_completion(StringArray *cs, const char *charset_str)
 {
     QECharset *p;
-    const char **pp;
+    const char * const *pp;
 
     for (p = first_charset; p != NULL; p = p->next) {
         if (stristart(p->name, charset_str, NULL))
@@ -315,7 +321,7 @@ void charset_completion(StringArray *cs, const char *charset_str)
 QECharset *find_charset(const char *str)
 {
     QECharset *p;
-    const char **pp;
+    const char * const *pp;
 
     for (p = first_charset; p != NULL; p = p->next) {
         if (!stricmp(str, p->name))
@@ -403,3 +409,48 @@ int unicode_to_charset(char *buf, unsigned int c, QECharset *charset)
     *q = '\0';
     return q - buf;
 }
+
+/********************************************************/
+/* 8 bit charsets */
+
+void decode_8bit_init(CharsetDecodeState *s)
+{
+    QECharset *charset = s->charset;
+    unsigned short *table;
+    int i, n;
+
+    table = s->table;
+    for (i = 0; i < charset->min_char; i++)
+        *table++ = i;
+    n = charset->max_char - charset->min_char + 1;
+    for (i = 0; i < n; i++)
+        *table++ = charset->private_table[i];
+    for (i = charset->max_char + 1; i < 256;i++)
+        *table++ = i;
+}
+
+/* not very fast, but not critical yet */
+unsigned char *encode_8bit(QECharset *charset, unsigned char *q, int c)
+{
+    int i, n;
+    const unsigned short *table;
+
+    if (c < charset->min_char) {
+        /* nothing to do */
+    } else if (c > charset->max_char && c <= 0xff) {
+        /* nothing to do */
+    } else {
+        n = charset->max_char - charset->min_char + 1;
+        table = charset->private_table;
+        for (i = 0; i < n; i++) {
+            if (table[i] == c)
+                goto found;
+        }
+        return NULL;
+    found:
+        c = charset->min_char + i;
+    }
+    *q++ = c;
+    return q;
+}
+

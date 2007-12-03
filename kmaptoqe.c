@@ -35,19 +35,20 @@ typedef struct InputEntry {
     int output;
 } InputEntry;
 
-InputEntry inputs[NB_MAX];
-int nb_inputs;
-char kmap_names[300][128];
-int kmap_offsets[300];
-char name[128];
-int table_start[NB_MAX], nb_starts;
-int table_val[NB_MAX];
-int is_chinese_cj, gen_table;
-int freq[32];
-FILE *outfile;
-unsigned char outbuf[100000], *outbuf_ptr;
+static InputEntry inputs[NB_MAX];
+static int nb_inputs;
+static char kmap_names[300][128];
+static int kmap_offsets[300];
+static int nb_kmaps;
+static char name[128];
+static int table_start[NB_MAX], nb_starts;
+static int table_val[NB_MAX];
+static int is_chinese_cj, gen_table;
+static int freq[32];
+static FILE *outfile;
+static unsigned char outbuf[100000], *outbuf_ptr;
 
-int sort_func(const void *a1, const void *b1)
+static int sort_func(const void *a1, const void *b1)
 {
     const InputEntry *a = a1;
     const InputEntry *b = b1;
@@ -62,16 +63,16 @@ int sort_func(const void *a1, const void *b1)
 }
 
 
-int offset, write_data;
+static int offset, write_data;
 
-void put_byte(int b)
+static void put_byte(int b)
 {
     if (write_data) 
         *outbuf_ptr++ = b;
     offset++;
 }
 
-void gen_map(void)
+static void gen_map(void)
 {
     int len, c, d, last, delta, k, j;
     int last_input0;
@@ -154,6 +155,219 @@ void gen_map(void)
     put_byte(0);
 }
 
+static int dump_kmap(const char *filename)
+{
+    FILE *f;
+    char buf[1024];
+    int i, n, c, off, pos, x;
+
+    f = fopen(filename, "rb");
+    if (!f) {
+        fprintf(stderr, "kmaptoqe: cannot open %s\n", filename);
+        return 1;
+    }
+    if (fread(buf, 4, 1, f) != 1 || memcmp(buf, "kmap", 4)) {
+        fprintf(stderr, "kmaptoqe: invalid signature %s\n", filename);
+        fclose(f);
+        return 1;
+    }
+    printf("// Dump of QEmacs kmap file %s\n"
+           "kmap {\n", filename);
+    printf("    {\n");
+    for (nb_kmaps = 0;; nb_kmaps++) {
+        off  = getc(f) << 24;
+        off |= getc(f) << 16;
+        off |= getc(f) << 8;
+        off |= getc(f) << 0;
+        if (off == 0)
+            break;
+        kmap_offsets[nb_kmaps] = off;
+        for (i = 0;; i++) {
+            c = getc(f);
+            if (c == EOF || i >= (int)sizeof(kmap_names[nb_kmaps])) {
+                fprintf(stderr, "%s: invalid map name\n", filename);
+                fclose(f);
+                return 1;
+            }
+            kmap_names[nb_kmaps][i] = c;
+            if (c == 0)
+                break;
+        }
+        printf("        0x%04x: %s\n", off, kmap_names[nb_kmaps]);
+    }
+    printf("    }\n");
+
+    pos = ftell(f);
+
+    for (n = x = 0;;) {
+
+        if (pos == kmap_offsets[n]) {
+
+            if (x > 0) {
+                printf("\n");
+                x = 0;
+            }
+            if (n > 0) {
+                printf("        }\n");
+                printf("    }\n");
+            }
+            printf("\n    { // %s\n", kmap_names[n]);
+            c = getc(f);
+            pos++;
+            nb_starts = c & 0x7F;
+            is_chinese_cj = c >> 7;
+            gen_table = !strcmp(kmap_names[n], "Chinese_CJ") ||
+                        !strcmp(kmap_names[n], "TeX") ||
+                        !strcmp(kmap_names[n], "SGML");
+
+            printf("        nb_starts=%d, is_chinese_cj=%d\n",
+                   nb_starts, is_chinese_cj);
+
+            if (gen_table) {
+                printf("        {\n");
+                for (i = 0; i < nb_starts; i++) {
+                    c = getc(f);
+                    off  = getc(f) << 16;
+                    off |= getc(f) << 8;
+                    off |= getc(f) << 0;
+                    pos += 4;
+                    table_val[i] = c;
+                    table_start[i] = off;
+                    printf("            table_val[%d]=0x%02x ('%c'), table_start[%d]=0x%04x\n",
+                           i, c, c, i, off);
+                }
+                printf("        }\n");
+            }
+            n++;
+            printf("        {\n");
+            x = 0;
+
+            if (1) {
+                int len, flag, k, s, last = 0;
+                
+                s = 0;
+                for (k = 0;; k++) {
+                    unsigned char *input;
+
+                    input = inputs[k].input;
+                    len = 0;
+
+                nextc:
+                    c = getc(f);
+                    pos++;
+                    if (c == EOF)
+                        break;
+
+                    /* c = 0 : end of table 
+                     * c = 1..0x1d : delta unicode
+                     * c = 0x1e : unicode char follows.
+                     * c = 0x1f : unicode mapping follows 
+                     * bit 7 : eof and delta == 1
+                     */
+                    if (c == 0) {
+                        if (!gen_table || ++s >= nb_starts)
+                            break;
+                        last = 0;
+                        goto nextc;
+                    }
+
+                    if (len == 0) {
+                        printf("            \"");
+                        if (gen_table) {
+                            printf("%c", table_val[s]);
+                        }
+                    }
+
+                    flag = c >> 7;
+                    c &= 0x7f;
+
+                    if (c == 0x1f) {
+                        c  = getc(f) << 8;
+                        c |= getc(f) << 0;
+                        pos += 2;
+                        input[len++] = c;
+                        if (len > 1)
+                            printf(" ");
+                        printf("0x%04X", c);
+                        if (flag) {
+                            last += 1;
+                            goto nextk;
+                        }
+                        goto nextc;
+                    }
+                    if (c == 0x1e) {
+                        last  = getc(f) << 8;
+                        last |= getc(f) << 0;
+                        pos += 2;
+                        goto nextk;
+                    }
+                    if (c < 0x1e) {
+                        last += c;
+                        goto nextk;
+                    }
+                    if (c >= 0x20) {
+                        input[len++] = c;
+                        switch (c) {
+                        case ' ':
+                        case '=':
+                        case 0x7f:
+                        case '0'...'9':
+                            if (len > 1)
+                                printf(" ");
+                            printf("0x%02X", c);
+                            break;
+                        case '\\':
+                        case '"':
+                        case '-':
+                        case '+':
+                            printf("\\%c", c);
+                            break;
+                        default:
+                            printf("%c", c);
+                            break;
+                        }
+                        if (flag) {
+                            last += 1;
+                            goto nextk;
+                        }
+                        goto nextc;
+                    }
+                nextk:
+                    if (is_chinese_cj)
+                        printf(" 0x20");
+                    printf(" = 0x%04X\",\n", last);
+                }
+            }
+            if (pos == kmap_offsets[n])
+                continue;
+        }
+
+        if ((c = getc(f)) == EOF)
+            break;
+        pos++;
+
+        if (x == 0)
+            printf("            ");
+        printf("0x%02x, ", c);
+        if (++x == 8) {
+            printf("\n");
+            x = 0;
+        }
+    }
+
+    if (x > 0)
+        printf("\n");
+
+    if (n > 0) {
+        printf("        }\n");
+        printf("    }\n");
+    }
+
+    printf("}\n");
+    fclose(f);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     char *filename;
@@ -162,14 +376,17 @@ int main(int argc, char **argv)
     char line[1024], *p;
     unsigned char *q;
     int c, size;
-    int nb_kmaps;
 
     if (argc < 3) {
         printf("usage: kmaptoqe outfile kmaps...\n"
                "Convert yudit keyboard maps to qemacs compressed format\n");
         exit(1);
     }
-    outfile = fopen(argv[1], "w");
+    if (!strcmp(argv[1], "--dump")) {
+        return dump_kmap(argv[2]);
+    }
+
+    outfile = fopen(argv[1], "wb");
     if (!outfile) {
         perror(argv[1]);
         exit(1);
@@ -191,14 +408,13 @@ int main(int argc, char **argv)
             p = filename;
         else
             p++;
-        q = name;
-        while (*p != '.' && *p != '\0') {
-            c = *p++;
-            if (c == '-')
-                c = '_';
-            *q++ = c;
+
+        strcpy(name, p);
+        for (p = name; *p != '\0' && *p != '.'; p++) {
+            if (*p == '-')
+                *p = '_';
         }
-        *q = '\0';
+        *p = '\0';
         strcpy(kmap_names[nb_kmaps], name);
         kmap_offsets[nb_kmaps] = outbuf_ptr - outbuf;
         nb_kmaps++;
@@ -236,6 +452,7 @@ int main(int argc, char **argv)
                     fprintf(stderr, "%s:%d: Invalid char %x %c\n", 
                             filename, line_num, c, c);
                 }
+                // BUG! no handling of '\\'
                 *q++ = c;
             }
             inputs[nb_inputs].len = q - inputs[nb_inputs].input;

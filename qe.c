@@ -1,5 +1,6 @@
 /*
  * QEmacs, tiny but powerful multimode editor
+ *
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or
@@ -16,6 +17,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+
 #include "qe.h"
 #include "qfribidi.h"
 #ifdef CONFIG_DLL
@@ -6495,10 +6497,11 @@ ModeDef text_mode = {
 /* find a resource file */
 int find_resource_file(char *path, int path_size, const char *pattern)
 {
+    QEmacsState *qs = &qe_state;
     FindFileState *ffst;
     int ret;
 
-    ffst = find_file_open(qe_state.res_path, pattern);
+    ffst = find_file_open(qs->res_path, pattern);
     if (!ffst)
         return -1;
     ret = find_file_next(ffst, path, path_size);
@@ -6918,10 +6921,17 @@ void set_user_option(const char *user)
     const char *home_path;
 
     user_option = user;
+
     /* compute resources path */
-    pstrcpy(qs->res_path, sizeof(qs->res_path),
-            CONFIG_QE_PREFIX "/share/qe:" CONFIG_QE_PREFIX "/lib/qe:"
-            "/usr/share/qe:/usr/lib/qe");
+    qs->res_path[0] = '\0';
+
+    /* put source directory first if qe invoked as ./qe */
+    // should use actual directory
+    if (!strcmp(qs->argv[0], "./qe")) {
+        pstrcat(qs->res_path, sizeof(qs->res_path), ".:");
+    }
+
+    /* put user directory before standard list */
     if (user) {
         /* use ~USER/.qe instead of ~/.qe */
         /* CG: should get user homedir */
@@ -6931,10 +6941,15 @@ void set_user_option(const char *user)
         home_path = getenv("HOME");
     }
     if (home_path) {
-        pstrcat(qs->res_path, sizeof(qs->res_path), ":");
         pstrcat(qs->res_path, sizeof(qs->res_path), home_path);
-        pstrcat(qs->res_path, sizeof(qs->res_path), "/.qe");
+        pstrcat(qs->res_path, sizeof(qs->res_path), "/.qe:");
     }
+
+    pstrcat(qs->res_path, sizeof(qs->res_path),
+            CONFIG_QE_PREFIX "/share/qe:"
+            CONFIG_QE_PREFIX "/lib/qe:"
+            "/usr/share/qe:"
+            "/usr/lib/qe");
 }
 
 static CmdOptionDef cmd_options[] = {
@@ -7095,6 +7110,7 @@ extern void module_hex_init(void); /* hex.c(351) */
 extern void module_list_init(void); /* list.c(102) */
 extern void module_tty_init(void); /* tty.c(567) */
 extern void module_charset_more_init(void); /* charsetmore.c(324) */
+extern void module_charset_jis_init(void); /* charsetjis.c(324) */
 extern void module_unihex_init(void); /* unihex.c(184) */
 extern void module_c_init(void); /* clang.c(567) */
 extern void module_latex_init(void); /* latex-mode.c(338) */
@@ -7132,6 +7148,7 @@ static inline void init_all_modules(void)
     module_tty_init(); /* tty.c(567) */
 #ifndef CONFIG_TINY
     module_charset_more_init(); /* charsetmore.c(324) */
+    module_charset_jis_init(); /* charsetjis.c(324) */
     module_unihex_init(); /* unihex.c(184) */
     module_c_init(); /* clang.c(567) */
     module_latex_init(); /* latex-mode.c(338) */
@@ -7223,6 +7240,9 @@ static void qe_init(void *opaque)
     qs->macro_key_index = -1; /* no macro executing */
     qs->ungot_key = -1; /* no unget key */
     
+    qs->argc = argc;
+    qs->argv = argv;
+
     /* setup resource path */
     set_user_option(NULL);
 
