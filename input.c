@@ -267,7 +267,7 @@ void do_set_input_method(EditState *s, const char *input_str)
 void do_switch_input_method(EditState *s)
 {
     if (!s->input_method)
-         s->input_method = s->selected_input_method;
+        s->input_method = s->selected_input_method;
     else
         s->input_method = NULL;
 }

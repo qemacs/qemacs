@@ -1,10 +1,30 @@
-/* convert unicode cp pages to qe source code */
+/*
+ * Convert Unicode 8-bit code page files to QEmacs format
+ *
+ * Copyright (c) 2002 Fabrice Bellard.
+ * Copyright (c) 2007 Charlie Gordon.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
 
-char *getline(char *buf, int buf_size, FILE *f)
+static char *getline(char *buf, int buf_size, FILE *f)
 {
     char *str;
     int len;
@@ -20,7 +40,7 @@ char *getline(char *buf, int buf_size, FILE *f)
 }
 
 
-void handle_cp(FILE *f, const char *name)
+static void handle_cp(FILE *f, const char *name)
 {
     char line[1024];
     const char *p;
@@ -108,7 +128,7 @@ void handle_cp(FILE *f, const char *name)
 }
 
 /* handle jis208 or jis212 table */
-void handle_jis(FILE *f, int is_jis208)
+static void handle_jis(FILE *f, int is_jis208)
 {
     int c1, c2, b1, b2, b1_max, b2_max, i, j, nb, n;
     int table[94*94];

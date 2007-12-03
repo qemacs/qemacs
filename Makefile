@@ -204,17 +204,17 @@ html2png.o: html2png.c qe.h
 
 clean:
 	make -C libqhtml clean
-	rm -f *.o *.exe *~ TAGS gmon.out core qe.exe.stackdump \
-           qe qe_g qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c
+	rm -f *.o *.exe *~ TAGS gmon.out core *.exe.stackdump \
+           qe qe_g qfribidi cptoqe kmaptoqe ligtoqe html2png fbftoqe fbffonts.c
 
 distclean: clean
 	rm -f config.h config.mak
 
 install: $(TARGETS) qe.1
-	install -m 755 qe$(EXE) $(prefix)/bin/qemacs
+	install -m 755 qe$(EXE) $(prefix)/bin/qemacs$(EXE)
 	ln -sf qemacs $(prefix)/bin/qe$(EXE)
 ifdef CONFIG_FFMPEG
-	ln -sf qemacs $(prefix)/bin/ffplay
+	ln -sf qemacs$(EXE) $(prefix)/bin/ffplay$(EXE)
 endif
 	mkdir -p $(prefix)/share/qe
 	install kmaps ligatures $(prefix)/share/qe
@@ -352,8 +352,8 @@ fbffonts.c: fbftoqe$(EXE) $(FONTS)
 # html2png tool (XML/HTML/CSS2 renderer test tool)
 #
 OBJS=util.o cutils.o \
-     arabic.o indic.o qfribidi.o \
-     display.o unicode_join.o charset.o charsetmore.o charset_table.o \
+     arabic.o indic.o qfribidi.o display.o unicode_join.o \
+     charset.o charsetmore.o charset_table.o \
      libfbf.o fbfrender.o cfb.o fbffonts.o
 
 html2png$(EXE): html2png.o $(OBJS) libqhtml/libqhtml.a

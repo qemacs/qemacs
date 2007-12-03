@@ -1,4 +1,23 @@
-/* convert ligature files to qe binary internal format */
+/*
+/* Convert ligature files to QEmacs binary internal format
+ *
+ * Copyright (c) 2002 Fabrice Bellard.
+ * Copyright (c) 2007 Charlie Gordon.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -7,7 +26,7 @@
 #include <getopt.h>
 #include <assert.h>
 
-int unicode_to_utf8(char *buf, unsigned int c)
+static int unicode_to_utf8(char *buf, unsigned int c)
 {
     char *q;
 
@@ -42,7 +61,7 @@ int unicode_to_utf8(char *buf, unsigned int c)
     return q - buf;
 }
 
-void put_be16(FILE *outfile, int off)
+static void put_be16(FILE *outfile, int off)
 {
     fputc((off >> 8) & 0xff, outfile);
     fputc((off) & 0xff, outfile);
@@ -58,7 +77,7 @@ typedef struct Ligature {
 Ligature ligs[MAX_LIGS];
 int nb_ligs;
 
-int sort_func(const void *a1, const void *b1)
+static int sort_func(const void *a1, const void *b1)
 {
     const Ligature *a = a1;
     const Ligature *b = b1;
@@ -72,7 +91,7 @@ int sort_func(const void *a1, const void *b1)
     return val;
 }
 
-void help(void)
+static void help(void)
 {
     printf("usage: ligtoqe [-u] sourcefile.lig output_ligature_file\n"
            "Build a ligature resource file for qemacs\n"
