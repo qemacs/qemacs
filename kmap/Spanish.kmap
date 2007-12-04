@@ -1,0 +1,40 @@
+// Accents for ISO-8859-1 Spanish
+// Spanish kmap v1.2 2000/05/15 17:53:17
+// Written by Grzegorz Adam Hankiewicz <gradha@iname.com> and
+// Juan Rafael Fernández García <jrfern@bigfoot.com>
+// Shamelessly based on Czyborra's work (all © Roman Czyborra@cs.tu-berlin.de)
+// with minor contributions
+"A' = 0xc1", // Á = LATIN CAPITAL LETTER A WITH ACUTE
+"E' = 0xc9", // É = LATIN CAPITAL LETTER E WITH ACUTE
+"I' = 0xcd", // Í = LATIN CAPITAL LETTER I WITH ACUTE
+"O' = 0xd3", // Ó = LATIN CAPITAL LETTER O WITH ACUTE
+"U' = 0xda", // Ú = LATIN CAPITAL LETTER U WITH ACUTE
+"a' = 0xe1", // á = LATIN SMALL LETTER A WITH ACUTE
+"e' = 0xe9", // é = LATIN SMALL LETTER E WITH ACUTE
+"i' = 0xed", // í = LATIN SMALL LETTER I WITH ACUTE
+"o' = 0xf3", // ó = LATIN SMALL LETTER O WITH ACUTE
+"u' = 0xfa", // ú = LATIN SMALL LETTER U WITH ACUTE
+"U: = 0xdc", // Ü = LATIN CAPITAL LETTER U WITH DIAERESIS
+"u: = 0xfc", // ü = LATIN SMALL LETTER U WITH DIAERESIS
+"N~=0x00D1", // Ñ = LATIN CAPITAL LETTER N WITH TILDE
+"n~=0x00F1", // ñ = LATIN SMALL LETTER N WITH TILDE
+"c;=0x00E7", // ç = LATIN SMALL LETTER C WITH CEDILLA
+"C;=0x00C7", // Ç = LATIN CAPITAL LETTER C WITH CEDILLA
+
+"<<=0x00AB", // « = LEFT-POINTING DOUBLE ANGLE QUOTATION MARK = <Q>
+">>=0x00BB", // » = RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK = </Q>
+",,=0x201E", // „ = DOUBLE LOW-9 QUOTATION MARK = <Q>
+"``=0x201C", // “ = LEFT DOUBLE QUOTATION MARK = </Q>
+"C)=0x00A9", // © = COPYRIGHT SIGN
+"E-=0x20AC", // € = EURO SIGN
+"Ct=0x00A2", // ¢ = CENT SIGN
+"L-=0x00A3", // £ = POUND SIGN
+"Y-=00A5", // = YEN SIGN
+
+"-: = 0xf7", // ÷ = DIVISION SIGN
+"S$=0x00A7", // § = SECTION SIGN
+
+".!=0x00A1", // ¡ = INVERTED EXCLAMATION MARK
+".?=0x00BF", // ¿ = INVERTED QUESTION MARK
+"a_=0x00AA", // ª = FEMININE ORDINAL INDICATOR
+"o_=0x00BA", // º = MASCULINE ORDINAL INDICATOR

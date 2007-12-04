@@ -1,0 +1,56 @@
+// Danish.kmap for the Unicode editor Yudit
+// 1998-04-17 Roman Czyborra@cs.tu-berlin.de
+
+// Danish letters
+
+"AA=0x00c5", // Å = LATIN CAPITAL LETTER A WITH RING ABOVE
+"AE=0x00c6", // Æ = LATIN CAPITAL LETTER AE   
+"O/=0x00d8", // Ø = LATIN CAPITAL LETTER O WITH STROKE 
+"aa=0x00e5", // å = LATIN SMALL LETTER A WITH RING ABOVE
+"ae=0x00e6", // æ = LATIN SMALL LETTER AE   
+"o/=0x00f8", // ø = LATIN SMALL LETTER O WITH STROKE 
+
+// The international currency sign looks like a crown and is thus well
+// suited for any Skandinavian krona:
+
+"kr.=0x00A4", // ¤ = CURRENCY SIGN
+
+// http://domen.uninett.no/~hta/ietf/lang-chars.txt lists the
+// following optional Danish accents:
+
+"A'=0x00c1", // Á = LATIN CAPITAL LETTER A WITH ACUTE 
+"E'=0x00c9", // É = LATIN CAPITAL LETTER E WITH ACUTE 
+"I'=0x00cd", // Í = LATIN CAPITAL LETTER I WITH ACUTE 
+"O'=0x00d3", // Ó = LATIN CAPITAL LETTER O WITH ACUTE 
+"U'=0x00da", // Ú = LATIN CAPITAL LETTER U WITH ACUTE 
+"Y'=0x00dd", // Ý = LATIN CAPITAL LETTER Y WITH ACUTE 
+"a'=0x00e1", // á = LATIN SMALL LETTER A WITH ACUTE 
+"e'=0x00e9", // é = LATIN SMALL LETTER E WITH ACUTE 
+"i'=0x00ed", // í = LATIN SMALL LETTER I WITH ACUTE 
+"o'=0x00f3", // ó = LATIN SMALL LETTER O WITH ACUTE 
+"u'=0x00fa", // ú = LATIN SMALL LETTER U WITH ACUTE 
+"y'=0x00fd", // ý = LATIN SMALL LETTER Y WITH ACUTE 
+
+// optional Norwegian accents
+
+"A<=0x01cd", // Ǎ = LATIN CAPITAL LETTER A WITH CARON 
+"O>=0x00d4", // Ô = LATIN CAPITAL LETTER O WITH CIRCUMFLEX 
+"U:=0x00dc", // Ü = LATIN CAPITAL LETTER U WITH DIAERESIS 
+"a<=0x01ce", // ǎ = LATIN SMALL LETTER A WITH CARON 
+"o>=0x00f4", // ô = LATIN SMALL LETTER O WITH CIRCUMFLEX 
+"u:=0x00fc", // ü = LATIN SMALL LETTER U WITH DIAERESIS 
+
+// Swedish letters
+
+"A:=0x00c4", // Ä = LATIN CAPITAL LETTER A WITH DIAERESIS 
+"O:=0x00d6", // Ö = LATIN CAPITAL LETTER O WITH DIAERESIS 
+"a:=0x00e4", // ä = LATIN SMALL LETTER A WITH DIAERESIS 
+"o:=0x00f6", // ö = LATIN SMALL LETTER O WITH DIAERESIS 
+
+// Not much missing for Faeroese and Icelandic:
+
+"D-=0x00d0", // Ð = LATIN CAPITAL LETTER ETH
+"d-=0x00f0", // ð = LATIN SMALL LETTER ETH
+"T-=0x00de", // Þ = LATIN CAPITAL LETTER THORN
+"t-=0x00fe", // þ = LATIN SMALL LETTER THORN
+

@@ -1,1 +1,57 @@
-Keymap files copied from pre-1.6 Yudit sources at http://czyborra.com/yudit
+Keymap files copied from Yudit.
+
+From yudit 1.5, (sources at http://czyborra.com/yudit):
+
+  2776 Nov 30  1999 Arabic.kmap
+  1657 Nov 30  1999 ArmenianEast.kmap
+  1657 Nov 30  1999 ArmenianWest.kmap
+293475 Nov 30  1999 Chinese-CJ.kmap
+  6416 Nov 30  1999 Cyrillic.kmap
+  1883 Nov 30  1999 Czech.kmap
+  3808 Apr 17  1998 Danish.kmap
+  1781 Nov 30  1999 DE-RU.kmap
+  3808 Nov 30  1999 Dutch.kmap
+  1001 Nov 30  1999 Esperanto.kmap
+ 18688 Nov 30  1999 Ethiopic.kmap
+  2151 Nov 30  1999 French.kmap
+   981 Nov 30  1999 Georgian.kmap
+  2241 Nov 30  1999 German.kmap
+  3363 Nov 30  1999 Greek.kmap
+  9054 Nov 30  1999 GreekMono.kmap
+  2225 Nov 30  1999 Guarani.kmap
+  1952 Nov 30  1999 Hangul.kmap
+  1086 Nov 30  1999 Hangul2.kmap
+  1205 Nov 30  1999 Hangul3.kmap
+  1244 Nov 30  1999 Hebrew.kmap
+   359 Nov 30  1999 Hungarian.kmap
+  4337 Nov 30  1999 KOI8_R.kmap
+ 16247 Nov 30  1999 Kana.kmap
+   317 Nov 30  1999 Lithuanian.kmap
+ 27210 Nov 30  1999 Mnemonic.kmap
+  1156 Nov 30  1999 Polish.kmap
+  1173 Nov 30  1999 Russian.kmap
+ 12485 Nov 30  1999 SGML.kmap
+ 14470 Nov 30  1999 TeX.kmap
+ 12349 Nov 30  1999 Troff.kmap
+  1430 Nov 30  1999 Unicode2.kmap
+  8027 Nov 30  1999 VNtelex.kmap
+  8842 Nov 30  1999 Vietnamese.kmap
+  5120 Nov 30  1999 XKB_iso8859-4.kmap
+
+unused kmaps:
+  1952 Nov 30  1999 Hangul.kmap
+  1086 Nov 30  1999 Hangul2.kmap
+  1205 Nov 30  1999 Hangul3.kmap
+  1430 Nov 30  1999 Unicode2.kmap
+
+From yudit-1.6:
+renamed Danish.kmap -> DanishAlternate.kmap
+
+imported:
+  4266 Jan  9  2001 Danish.kmap
+ 24877 Jan  9  2001 GreekBible.kmap
+ 23370 Jan  9  2001 Polytonic.kmap
+  1862 May 16  2000 Spanish.kmap
+  3915 Jan  9  2001 Thai.kmap
+  7774 Jan  9  2001 VietnameseTelex.kmap
+  4339 Jan  9  2001 Welsh.kmap

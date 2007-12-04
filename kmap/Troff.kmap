@@ -1,7 +1,7 @@
 // perl -ne 's/=/ 0x3D /g; print qq["\\\\($2$3=0x$1\",\t// $4 \\u$1\n]
 // if /0x(....),\s+.(.+).,.(.+).,\s+.. (.+) ..\n/
 // ' /usr/src/plan9/libXg/latin1.c produced this
-// $Id$
+// Troff kmap v1.1 1999/11/30 11:36:00
 
 "\\(\'A=0x00c1",	// A acute Á
 "\\(^A=0x00c2",	// A circumflex Â
