@@ -178,11 +178,13 @@ the_end:
 }
 
 static int input_method_fd;
+static size_t input_method_size;
+static void *input_method_map;
 
 static void load_input_methods(void)
 {
-    char buf[MAX_FILENAME_SIZE], *q;
-    long file_size;
+    char buf[MAX_FILENAME_SIZE];
+    size_t file_size;
     int fd, offset;
     const unsigned char *file_ptr, *p;
     InputMethod *m;
@@ -198,13 +200,17 @@ static void load_input_methods(void)
     file_size = lseek(fd, 0, SEEK_END);
     file_ptr = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
     if ((void*)file_ptr == (void*)MAP_FAILED) {
+        // XXX: allocate a buffer and read the file in memory
     fail:
+        // XXX: print error message
         close(fd);
         return;
     }
     
-    if (memcmp(file_ptr, "kmap", 4) != 0)
+    if (memcmp(file_ptr, "kmap", 4) != 0) {
+        munmap((void*)file_ptr, file_size);
         goto fail;
+    }
     
     p = file_ptr + 4;
     for (;;) {
@@ -216,25 +222,22 @@ static void load_input_methods(void)
         if (m) {
             m->data = file_ptr + offset;
             m->input_match = kmap_input;
-            q = buf;
-            while (*p != '\0') {
-                if (q < buf + sizeof(buf) - 1)
-                    *q++ = *p;
-                p++;
-            }
-            *q = '\0';
-            p++;
-            m->name = strdup(buf);
+            m->name = (const char*)p;
             register_input_method(m);
         }
+        p += strlen((const char *)p);
     }
 
     input_method_fd = fd;
+    input_method_map = (void *)file_ptr;
+    input_method_size = file_size;
 }
 
 static void unload_input_methods(void)
 {
     if (input_method_fd >= 0) {
+        munmap((void*)input_method_map, input_method_size);
+        input_method_map = NULL;
         close(input_method_fd);
         input_method_fd = -1;
     }

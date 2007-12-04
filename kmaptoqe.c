@@ -25,12 +25,16 @@
 #include <string.h>
 #include <assert.h>
 
+#ifndef countof
+#define countof(a)  ((int)(sizeof(a) / sizeof((a)[0])))
+#endif
+
 //#define TEST
 
 #define NB_MAX 15000
 
 typedef struct InputEntry {
-    unsigned char input[10];
+    unsigned char input[20];
     int len;
     int output;
 } InputEntry;
@@ -54,7 +58,7 @@ static int sort_func(const void *a1, const void *b1)
     const InputEntry *b = b1;
     int val;
 
-    if (is_chinese_cj) {
+    if (gen_table) {
         val = a->input[0] - b->input[0];
         if (val != 0)
             return val;
@@ -155,6 +159,51 @@ static void gen_map(void)
     put_byte(0);
 }
 
+static void putcp(int c, int *sp)
+{
+    switch (c) {
+    case '=':
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+        goto x2;
+    case '\\':
+    case '"':
+    case '-':
+    case '+':
+        printf("\\%c", c);
+        *sp = 0;
+        break;
+    default:
+        if (c >= 256) {
+            if (!*sp)
+                printf(" ");
+            printf("0x%04X ", c);
+            *sp = 1;
+            break;
+        } else
+        if (c <= 0x20 || c >= 0x7F) {
+        x2:
+            if (!*sp)
+                printf(" ");
+            printf("0x%02X ", c);
+            *sp = 1;
+            break;
+        } else {
+            printf("%c", c);
+            *sp = 0;
+            break;
+        }
+    }
+}
+
 static int dump_kmap(const char *filename)
 {
     FILE *f;
@@ -184,7 +233,7 @@ static int dump_kmap(const char *filename)
         kmap_offsets[nb_kmaps] = off;
         for (i = 0;; i++) {
             c = getc(f);
-            if (c == EOF || i >= (int)sizeof(kmap_names[nb_kmaps])) {
+            if (c == EOF || i >= countof(kmap_names[nb_kmaps])) {
                 fprintf(stderr, "%s: invalid map name\n", filename);
                 fclose(f);
                 return 1;
@@ -216,9 +265,7 @@ static int dump_kmap(const char *filename)
             pos++;
             nb_starts = c & 0x7F;
             is_chinese_cj = c >> 7;
-            gen_table = !strcmp(kmap_names[n], "Chinese_CJ") ||
-                        !strcmp(kmap_names[n], "TeX") ||
-                        !strcmp(kmap_names[n], "SGML");
+            gen_table = (nb_starts > 0);
 
             printf("        nb_starts=%d, is_chinese_cj=%d\n",
                    nb_starts, is_chinese_cj);
@@ -243,7 +290,7 @@ static int dump_kmap(const char *filename)
             x = 0;
 
             if (1) {
-                int len, flag, k, s, last = 0;
+                int len, flag, k, s, last = 0, sp;
                 
                 s = 0;
                 for (k = 0;; k++) {
@@ -251,6 +298,7 @@ static int dump_kmap(const char *filename)
 
                     input = inputs[k].input;
                     len = 0;
+                    sp = 1;
 
                 nextc:
                     c = getc(f);
@@ -274,7 +322,7 @@ static int dump_kmap(const char *filename)
                     if (len == 0) {
                         printf("            \"");
                         if (gen_table) {
-                            printf("%c", table_val[s]);
+                            putcp(table_val[s], &sp);
                         }
                     }
 
@@ -286,9 +334,7 @@ static int dump_kmap(const char *filename)
                         c |= getc(f) << 0;
                         pos += 2;
                         input[len++] = c;
-                        if (len > 1)
-                            printf(" ");
-                        printf("0x%04X", c);
+                        putcp(c, &sp);
                         if (flag) {
                             last += 1;
                             goto nextk;
@@ -307,25 +353,7 @@ static int dump_kmap(const char *filename)
                     }
                     if (c >= 0x20) {
                         input[len++] = c;
-                        switch (c) {
-                        case ' ':
-                        case '=':
-                        case 0x7f:
-                        case '0'...'9':
-                            if (len > 1)
-                                printf(" ");
-                            printf("0x%02X", c);
-                            break;
-                        case '\\':
-                        case '"':
-                        case '-':
-                        case '+':
-                            printf("\\%c", c);
-                            break;
-                        default:
-                            printf("%c", c);
-                            break;
-                        }
+                        putcp(c, &sp);
                         if (flag) {
                             last += 1;
                             goto nextk;
@@ -333,9 +361,12 @@ static int dump_kmap(const char *filename)
                         goto nextc;
                     }
                 nextk:
-                    if (is_chinese_cj)
-                        printf(" 0x20");
-                    printf(" = 0x%04X\",\n", last);
+                    if (is_chinese_cj) {
+                        putcp(' ', &sp);
+                    }
+                    if (!sp)
+                        printf(" ");
+                    printf("= 0x%04X\",\n", last);
                 }
             }
             if (pos == kmap_offsets[n])
@@ -368,10 +399,50 @@ static int dump_kmap(const char *filename)
     return 0;
 }
 
+static inline void skipspaces(char **pp) {
+    while (isspace((unsigned char)**pp))
+        ++*pp;
+}
+
+static int getcp(char *p, char **pp)
+{
+    if (*p == '\0') {
+        return -1;
+    } else
+    if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
+        return strtoul(p, pp, 0);
+    } else
+    if (*p == '\\') {
+        p++;
+        if (*p == 't') {
+            *pp = p + 1;
+            return '\t';
+        } else
+        if (p[0] >= '0' && p[0] <= '3'
+        &&  p[1] >= '0' && p[1] <= '7'
+        &&  p[2] >= '0' && p[2] <= '7') {
+            *pp = p + 3;
+            return ((p[0] - '0') << 6) | ((p[1] - '0') << 3) |
+                    ((p[2] - '0') << 0);
+        } else {
+            *pp = p + 1;
+            return *p;
+        }
+    } else
+    if ((*p & 0xe0) == 0xc0 && (p[1] & 0xc0) == 0x80) {
+        /* UTF-8 character */
+        *pp = p + 2;
+        return ((*p - 0xc0) << 6) | ((p[1] - 0x80) << 0);
+    } else {
+        *pp = p + 1;
+        return *p;
+    }
+}
+
 int main(int argc, char **argv)
 {
     char *filename;
-    int i, j, k, col, line_num;
+    int i, j, k, col, line_num, len;
     FILE *f;
     char line[1024], *p;
     unsigned char *q;
@@ -421,7 +492,9 @@ int main(int argc, char **argv)
         /* special compression for CJ */
         is_chinese_cj = !strcmp(name, "Chinese_CJ");
         gen_table = !strcmp(name, "Chinese_CJ") ||
-            !strcmp(name, "TeX") || !strcmp(name, "SGML");
+                    !strcmp(name, "TeX") ||
+                    !strcmp(name, "Troff") ||
+                    !strcmp(name, "SGML");
 
         col = 0;
         nb_inputs = 0;
@@ -431,34 +504,44 @@ int main(int argc, char **argv)
                 break;
             line_num++;
             p = line;
-            if (*p == '/')
+            skipspaces(&p);
+            if (*p == '\0' || *p == '/' || *p == '#')
                 continue;
-            while (*p != '\0' && *p != '\"') p++;
             if (*p != '\"')
-                continue;
+                goto invalid;
             p++;
+            len = 0;
             q = inputs[nb_inputs].input;
             for (;;) {
-                while (isspace(*p))
-                    p++;
-                if (*p == '=') 
+                skipspaces(&p);
+                if (*p == '=' && p[1] != '=')
                     break;
-                if (p[0] == '0' && p[1] == 'x') {
-                    c = strtoul(p, &p, 0);
-                } else {
-                    c = *p++;
-                }
+                c = getcp(p, &p);
+                if (c < 0)
+                    goto invalid;
                 if (c >= 256) {
-                    fprintf(stderr, "%s:%d: Invalid char %x %c\n", 
-                            filename, line_num, c, c);
+                    fprintf(stderr, "%s:%d: Invalid char 0x%x\n",
+                            filename, line_num, c);
+                    goto skip;
                 }
-                // BUG! no handling of '\\'
-                *q++ = c;
+                if (len >= countof(inputs[nb_inputs].input))
+                    goto invalid;
+                q[len++] = c;
             }
-            inputs[nb_inputs].len = q - inputs[nb_inputs].input;
+            inputs[nb_inputs].len = len;
             p++;
-            inputs[nb_inputs].output = strtoul(p, NULL, 0);
+            skipspaces(&p);
+            c = getcp(p, &p);
+            skipspaces(&p);
+            if (c < 0 || *p != '"')
+                goto invalid;
+            inputs[nb_inputs].output = c;
             nb_inputs++;
+            continue;
+        invalid:
+            fprintf(stderr, "%s:%d: Invalid mapping: %s\n", 
+                    filename, line_num, line);
+        skip:;
         }
 
         qsort(inputs, nb_inputs, sizeof(InputEntry), sort_func);

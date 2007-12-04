@@ -289,7 +289,7 @@ ligtoqe$(EXE): ligtoqe.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
 ifdef BUILD_ALL
-ligatures: unifont.lig ligtoqe$(EXE)
+ligatures: ligtoqe$(EXE) unifont.lig
 	./ligtoqe unifont.lig $@
 endif
 
@@ -299,11 +299,14 @@ endif
 KMAPS=Arabic.kmap ArmenianEast.kmap ArmenianWest.kmap Chinese-CJ.kmap \
       Cyrillic.kmap Czech.kmap DE-RU.kmap Danish.kmap Dutch.kmap \
       Esperanto.kmap Ethiopic.kmap French.kmap Georgian.kmap German.kmap \
-      Greek.kmap GreekMono.kmap Guarani.kmap Hebrew.kmap HebrewIsraeli.kmap \
+      Greek.kmap GreekMono.kmap Guarani.kmap Hebrew.kmap \
       Hungarian.kmap \
-      KOI8_R.kmap Kana.kmap Lithuanian.kmap Mnemonic.kmap Polish.kmap \
+      KOI8_R.kmap Lithuanian.kmap Mnemonic.kmap Polish.kmap \
       Russian.kmap SGML.kmap TeX.kmap Troff.kmap VNtelex.kmap \
-      Vietnamese.kmap XKB_iso8859-4.kmap
+      Vietnamese.kmap XKB_iso8859-4.kmap \
+      DanishAlternate.kmap GreekBible.kmap Polytonic.kmap Spanish.kmap \
+      Thai.kmap VietnameseTelex.kmap Welsh.kmap
+#     HebrewIsraeli.kmap Kana.kmap 
 #     Hangul.kmap Hangul2.kmap Hangul3.kmap Unicode2.kmap 
 #KMAPS_DIR=$(prefix)/share/yudit/data
 KMAPS_DIR=kmap
@@ -313,7 +316,7 @@ kmaptoqe$(EXE): kmaptoqe.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
 ifdef BUILD_ALL
-kmaps: kmaptoqe$(EXE) $(KMAPS)
+kmaps: kmaptoqe$(EXE) $(KMAPS) Makefile
 	./kmaptoqe $@ $(KMAPS)
 endif
 
@@ -337,10 +340,10 @@ jistoqe$(EXE): jistoqe.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
 ifdef BUILD_ALL
-charsetmore.c: cptoqe$(EXE) $(CP)
+charsetmore.c: cptoqe$(EXE) $(CP) Makefile
 	./cptoqe $(CP) > $@
 
-charsetjis.def: jistoqe$(EXE) $(JIS)
+charsetjis.def: jistoqe$(EXE) $(JIS) Makefile
 	./jistoqe $(JIS) > $@
 endif
 

@@ -29,7 +29,7 @@
 "E-=0x20AC", // € = EURO SIGN
 "Ct=0x00A2", // ¢ = CENT SIGN
 "L-=0x00A3", // £ = POUND SIGN
-"Y-=00A5", // = YEN SIGN
+"Y-=0x00A5", // = YEN SIGN
 
 "-: = 0xf7", // ÷ = DIVISION SIGN
 "S$=0x00A7", // § = SECTION SIGN
