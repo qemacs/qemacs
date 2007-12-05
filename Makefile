@@ -323,11 +323,13 @@ endif
 #
 # Code pages (only useful to add your own code pages)
 #
-CP=8859_2.cp   cp1125.cp  cp737.cp   koi8_r.cp              \
-   8859_4.cp   cp1250.cp  cp850.cp   koi8_u.cp  viscii.cp   \
-   8859_13.cp  8859_5.cp  cp1251.cp  cp852.cp   mac_lat2.cp \
-   8859_15.cp  8859_7.cp  cp1257.cp  cp866.cp   macroman.cp \
-   8859_16.cp  8859_9.cp  cp437.cp   kamen.cp   tcvn5712.cp
+CP=  8859_2.cp   8859_4.cp   8859_5.cp   8859_7.cp   8859_9.cp  \
+     8859_13.cp  8859_15.cp  8859_16.cp                         \
+     cp437.cp    cp737.cp    cp850.cp    cp852.cp    cp866.cp   \
+     cp1125.cp   cp1250.cp   cp1251.cp   cp1257.cp              \
+     mac_lat2.cp macroman.cp                                    \
+     kamen.cp    koi8_r.cp   koi8_u.cp   tcvn5712.cp viscii.cp  \
+
 CP:=$(addprefix cp/,$(CP))
 
 JIS= JIS0208.TXT JIS0212.TXT
