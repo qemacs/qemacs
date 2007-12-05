@@ -1254,6 +1254,7 @@ void text_write_char(EditState *s, int key)
                 s->compose_len = 0;
                 break;
             }
+            // XXX: handle multiple translation
             ret = m->input_match(&match_len, m->data, s->compose_buf, 
                                  s->compose_len);
             if (ret == INPUTMETHOD_NOMATCH) {
@@ -1261,7 +1262,8 @@ void text_write_char(EditState *s, int key)
                     
                 s->compose_len = 0;
                 break;
-            } else if (ret == INPUTMETHOD_MORECHARS) {
+            } else
+            if (ret == INPUTMETHOD_MORECHARS) {
                 /* more chars expected: do nothing and insert current key */
                 break;
             } else {

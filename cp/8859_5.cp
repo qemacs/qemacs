@@ -1,5 +1,5 @@
-ISO 8859-5
-"ISO-8895-5", "8859-5" 
+ISO 8859-5 (Cyrillic)
+"ISO-8859-5", "8859-5" 
 #
 #	Name:             ISO 8859-5:1999 to Unicode
 #	Unicode version:  3.0

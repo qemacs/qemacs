@@ -1,5 +1,5 @@
-ISO 8859-2
-"ISO-8859-2", "8859-2", "iso-ir-101", "latin2", "l2"
+ISO 8859-2 (Central European)
+"ISO-8859-2", "8859-2", "iso-ir-101", "latin2", "l2","iso-latin2", "iso8859-2"
 0x20	0x0020	#SPACE
 0x21	0x0021	#EXCLAMATION MARK
 0x22	0x0022	#QUOTATION MARK

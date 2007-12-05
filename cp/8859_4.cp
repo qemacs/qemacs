@@ -1,5 +1,5 @@
-ISO 8859-4
-"ISO-8859-4", "8859-4", "iso-ir-110", "latin4", "l4"
+ISO 8859-4 (Scandinavia, Baltic)
+"ISO-8859-4", "8859-4", "iso-ir-110", "latin4", "l4","iso-latin4"
 
 0x20-0x7e       idem
 #

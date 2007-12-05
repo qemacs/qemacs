@@ -1,5 +1,5 @@
-Window$ 1251
-"windows-1251", "1251"
+Window$ 1251 (Cyrillic)
+"windows-1251", "1251", "cp1251"
 
 0x20	0x0020	# SPACE
 0x21	0x0021	# EXCLAMATION MARK

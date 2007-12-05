@@ -1,4 +1,4 @@
-CP 437
+CP 437 (US)
 "cp437", "437"
 #
 #    Name:     cp437_DOSLatinUS to Unicode table

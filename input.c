@@ -123,16 +123,19 @@ static int kmap_input(int *match_len_ptr,
             if (c == 0) {
                 /* end of table */
                 goto the_end;
-            } else if (c >= 1 && c <= 0x1d) {
+            } else
+            if (c <= 0x1d) {
                 /* delta */
                 last_outputc += c;
                 break;
-            } else if (c == 0x1e) {
+            } else
+            if (c == 0x1e) {
                 /* explicit output */
                 last_outputc = (p[0] << 8) | p[1];
                 p += 2;
                 break;
-            } else if (c == 0x1f) {
+            } else
+            if (c == 0x1f) {
                 /* unicode value */
                 c = (p[0] << 8) | p[1];
                 p += 2;

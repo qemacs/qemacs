@@ -1,4 +1,4 @@
-CP 737
+CP 737 (Greek)
 "cp737", "737"
 #
 #    Name:     cp737_DOSGreek to Unicode table

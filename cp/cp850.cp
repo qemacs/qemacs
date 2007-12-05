@@ -1,4 +1,4 @@
-CP 850
+CP 850 (Western European)
 "cp850", "850"
 #
 #    Name:     cp850_DOSLatin1 to Unicode table

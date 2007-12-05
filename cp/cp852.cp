@@ -1,4 +1,4 @@
-CP 852
+CP 852 (Central European)
 "cp852", "852"
 #
 #    Name:     cp852_DOSLatin2 to Unicode table

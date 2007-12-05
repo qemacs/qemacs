@@ -22,10 +22,10 @@
  */
 
 #include "qe.h"
-/*-- file: cp/8859_2.cp, id: 8859_2, name: 8859-2, ISO name: ISO 8859-2 --*/
+/*-- file: cp/8859_2.cp, id: 8859_2, name: 8859-2, ISO name: ISO 8859-2 (Central European) --*/
 
 static const char * const aliases_8859_2[] = {
-    "ISO-8859-2", "iso-ir-101", "latin2", "l2", NULL
+    "ISO-8859-2", "iso-ir-101", "latin2", "l2", "iso-latin2", "iso8859-2", NULL
 };
 
 static const unsigned short table_8859_2[95] = {
@@ -94,7 +94,7 @@ QECharset charset_cp1125 = {
     private_table: table_cp1125,
 };
 
-/*-- file: cp/cp737.cp, id: cp737, name: cp737, ISO name: CP 737 --*/
+/*-- file: cp/cp737.cp, id: cp737, name: cp737, ISO name: CP 737 (Greek) --*/
 
 static const char * const aliases_cp737[] = {
     "737", NULL
@@ -170,10 +170,10 @@ QECharset charset_koi8_r = {
     private_table: table_koi8_r,
 };
 
-/*-- file: cp/8859_4.cp, id: 8859_4, name: 8859-4, ISO name: ISO 8859-4 --*/
+/*-- file: cp/8859_4.cp, id: 8859_4, name: 8859-4, ISO name: ISO 8859-4 (Scandinavia, Baltic) --*/
 
 static const char * const aliases_8859_4[] = {
-    "ISO-8859-4", "iso-ir-110", "latin4", "l4", NULL
+    "ISO-8859-4", "iso-ir-110", "latin4", "l4", "iso-latin4", NULL
 };
 
 static const unsigned short table_8859_4[95] = {
@@ -204,7 +204,7 @@ QECharset charset_8859_4 = {
     private_table: table_8859_4,
 };
 
-/*-- file: cp/cp1250.cp, id: cp1250, name: cp1250, ISO name: Window$ 1250 --*/
+/*-- file: cp/cp1250.cp, id: cp1250, name: cp1250, ISO name: Window$ 1250 (Central European) --*/
 
 static const char * const aliases_cp1250[] = {
     "windows-1250", "1250", NULL
@@ -242,7 +242,7 @@ QECharset charset_cp1250 = {
     private_table: table_cp1250,
 };
 
-/*-- file: cp/cp850.cp, id: cp850, name: cp850, ISO name: CP 850 --*/
+/*-- file: cp/cp850.cp, id: cp850, name: cp850, ISO name: CP 850 (Western European) --*/
 
 static const char * const aliases_cp850[] = {
     "850", NULL
@@ -372,10 +372,10 @@ QECharset charset_viscii = {
     private_table: table_viscii,
 };
 
-/*-- file: cp/8859_13.cp, id: 8859_13, name: 8859-13, ISO name: ISO 8859-13 --*/
+/*-- file: cp/8859_13.cp, id: 8859_13, name: 8859-13, ISO name: ISO 8859-13 (Baltic) --*/
 
 static const char * const aliases_8859_13[] = {
-    "ISO-8859-13", "iso-ir-179", "latin7", "l7", NULL
+    "ISO-8859-13", "iso-ir-179", "latin7", "l7", "iso-latin7", NULL
 };
 
 static const unsigned short table_8859_13[95] = {
@@ -406,10 +406,10 @@ QECharset charset_8859_13 = {
     private_table: table_8859_13,
 };
 
-/*-- file: cp/8859_5.cp, id: 8859_5, name: 8859-5, ISO name: ISO 8859-5 --*/
+/*-- file: cp/8859_5.cp, id: 8859_5, name: 8859-5, ISO name: ISO 8859-5 (Cyrillic) --*/
 
 static const char * const aliases_8859_5[] = {
-    "ISO-8895-5", NULL
+    "ISO-8859-5", NULL
 };
 
 static const unsigned short table_8859_5[95] = {
@@ -440,7 +440,7 @@ QECharset charset_8859_5 = {
     private_table: table_8859_5,
 };
 
-/*-- file: cp/cp1251.cp, id: cp1251, name: cp1251, ISO name: Window$ 1251 --*/
+/*-- file: cp/cp1251.cp, id: cp1251, name: cp1251, ISO name: Window$ 1251 (Cyrillic) --*/
 
 static const char * const aliases_cp1251[] = {
     "windows-1251", "1251", NULL
@@ -478,7 +478,7 @@ QECharset charset_cp1251 = {
     private_table: table_cp1251,
 };
 
-/*-- file: cp/cp852.cp, id: cp852, name: cp852, ISO name: CP 852 --*/
+/*-- file: cp/cp852.cp, id: cp852, name: cp852, ISO name: CP 852 (Central European) --*/
 
 static const char * const aliases_cp852[] = {
     "852", NULL
@@ -554,7 +554,7 @@ QECharset charset_mac_lat2 = {
     private_table: table_mac_lat2,
 };
 
-/*-- file: cp/8859_15.cp, id: 8859_15, name: 8859-15, ISO name: ISO 8859-15 --*/
+/*-- file: cp/8859_15.cp, id: 8859_15, name: 8859-15, ISO name: ISO 8859-15 (Western European) --*/
 
 static const char * const aliases_8859_15[] = {
     "ISO-8859-15", "latin9", "l9", "latin0", "l0", NULL
@@ -563,7 +563,7 @@ static const char * const aliases_8859_15[] = {
 static const unsigned short table_8859_15[27] = {
     0x20ac, 0x00a5, 0x0160, 0x00a7, 0x0161, 0x00a9, 0x00aa, 0x00ab, 
     0x00ac, 0x00ad, 0x00ae, 0x00af, 0x00b0, 0x00b1, 0x00b2, 0x00b3, 
-    0x017d, 0x00b5, 0x00b6, 0x00b7, 0x00b8, 0x00b9, 0x00ba, 0x00bb, 
+    0x017d, 0x00b5, 0x00b6, 0x00b7, 0x017e, 0x00b9, 0x00ba, 0x00bb, 
     0x0152, 0x0153, 0x0178, 
 };
 
@@ -580,7 +580,7 @@ QECharset charset_8859_15 = {
     private_table: table_8859_15,
 };
 
-/*-- file: cp/8859_7.cp, id: 8859_7, name: 8859-7, ISO name: ISO 8859-7 --*/
+/*-- file: cp/8859_7.cp, id: 8859_7, name: 8859-7, ISO name: ISO 8859-7 (Greek) --*/
 
 static const char * const aliases_8859_7[] = {
     "ISO-8859-7", "iso-ir-126", "elot-928", NULL
@@ -614,7 +614,7 @@ QECharset charset_8859_7 = {
     private_table: table_8859_7,
 };
 
-/*-- file: cp/cp1257.cp, id: cp1257, name: cp1257, ISO name: Window$ 1257 --*/
+/*-- file: cp/cp1257.cp, id: cp1257, name: cp1257, ISO name: Window$ 1257 (Baltic) --*/
 
 static const char * const aliases_cp1257[] = {
     "windows-1257", "1257", NULL
@@ -652,7 +652,7 @@ QECharset charset_cp1257 = {
     private_table: table_cp1257,
 };
 
-/*-- file: cp/cp866.cp, id: cp866, name: cp866, ISO name: CP 866 --*/
+/*-- file: cp/cp866.cp, id: cp866, name: cp866, ISO name: CP 866 (Cyrillic) --*/
 
 static const char * const aliases_cp866[] = {
     "866", NULL
@@ -728,15 +728,15 @@ QECharset charset_macroman = {
     private_table: table_macroman,
 };
 
-/*-- file: cp/8859_16.cp, id: 8859_16, name: 8859-16, ISO name: ISO 8859-16 --*/
+/*-- file: cp/8859_16.cp, id: 8859_16, name: 8859-16, ISO name: ISO 8859-16 (Romainian) --*/
 
 static const char * const aliases_8859_16[] = {
     "ISO-8859-16", "latin10", "l10", NULL
 };
 
 static const unsigned short table_8859_16[94] = {
-    0x0104, 0x0105, 0x0141, 0x20ac, 0x00ab, 0x0160, 0x00a7, 0x0161, 
-    0x00a9, 0x0218, 0x201e, 0x0179, 0x00ad, 0x017a, 0x017b, 0x00b0, 
+    0x0104, 0x0105, 0x0141, 0x20ac, 0x201e, 0x0160, 0x00a7, 0x0161, 
+    0x00a9, 0x0218, 0x00ab, 0x0179, 0x00ad, 0x017a, 0x017b, 0x00b0, 
     0x00b1, 0x010c, 0x0142, 0x017d, 0x201d, 0x00b6, 0x00b7, 0x017e, 
     0x010d, 0x0219, 0x00bb, 0x0152, 0x0153, 0x0178, 0x017c, 0x00c0, 
     0x00c1, 0x00c2, 0x0102, 0x00c4, 0x0106, 0x00c6, 0x00c7, 0x00c8, 
@@ -762,10 +762,10 @@ QECharset charset_8859_16 = {
     private_table: table_8859_16,
 };
 
-/*-- file: cp/8859_9.cp, id: 8859_9, name: 8859-9, ISO name: ISO 8859-9 --*/
+/*-- file: cp/8859_9.cp, id: 8859_9, name: 8859-9, ISO name: ISO 8859-9 (Turkish) --*/
 
 static const char * const aliases_8859_9[] = {
-    "ISO-8895-9", NULL
+    "ISO-8859-9", NULL
 };
 
 static const unsigned short table_8859_9[47] = {
@@ -790,7 +790,7 @@ QECharset charset_8859_9 = {
     private_table: table_8859_9,
 };
 
-/*-- file: cp/cp437.cp, id: cp437, name: cp437, ISO name: CP 437 --*/
+/*-- file: cp/cp437.cp, id: cp437, name: cp437, ISO name: CP 437 (US) --*/
 
 static const char * const aliases_cp437[] = {
     "437", NULL
@@ -882,7 +882,7 @@ QECharset charset_kamen = {
     private_table: table_kamen,
 };
 
-/*-- file: cp/tcvn5712.cp, id: tcvn5712, name: tcvn5712, ISO name: TCVN-5712 --*/
+/*-- file: cp/tcvn5712.cp, id: tcvn5712, name: tcvn5712, ISO name: TCVN-5712 (Vietnamese) --*/
 
 static const char * const aliases_tcvn5712[] = {
     "TCVN-5712", "TCVN", "TCVN-0", "TCVN-1", NULL

@@ -1,4 +1,4 @@
-CP 866
+CP 866 (Cyrillic)
 "cp866", "866"
 #
 #    Name:     cp866_DOSCyrillicRussian to Unicode table

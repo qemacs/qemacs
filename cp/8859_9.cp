@@ -1,5 +1,5 @@
-ISO 8859-9
-"ISO-8895-9", "8859-9" 
+ISO 8859-9 (Turkish)
+"ISO-8859-9", "8859-9" 
 #
 #	Name:             ISO/IEC 8859-9:1999 to Unicode
 #	Unicode version:  3.0
