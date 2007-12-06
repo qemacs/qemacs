@@ -20,9 +20,7 @@
 
 #include "qe.h"
 
-QECharset *first_charset = NULL;
-
-static QECharset charset_7bit;
+QECharset *first_charset;
 
 /* specific tables */
 static unsigned short table_idem[256];
@@ -30,57 +28,13 @@ static unsigned short table_utf8[256];
 
 unsigned char utf8_length[256];
 
-static const unsigned int min_code[7] = {
+static const unsigned int utf8_min_code[7] = {
     0, 0, 0x80, 0x800, 0x10000, 0x00200000, 0x04000000,
 };
 
-static const unsigned char first_code_mask[7] = {
+static const unsigned char utf8_first_code_mask[7] = {
     0, 0, 0x1f, 0xf, 0x7, 0x3, 0x1,
 };
-
-void charset_init(void)
-{
-    int l, i, n;
-
-    memset(utf8_length, 1, 256);
-
-    i = 0xc0;
-    l = 2;
-    while (l <= 6) {
-        n = first_code_mask[l] + 1;
-        while (n > 0) {
-            utf8_length[i++] = l;
-            n--;
-        }
-        l++;
-    }
-
-    for (i = 0; i < 256; i++)
-        table_idem[i] = i;
-
-    /* utf8 table */
-    for (i = 0; i < 256; i++)
-        table_utf8[i] = INVALID_CHAR;
-    for (i = 0; i < 0x80; i++)
-        table_utf8[i] = i;
-    for (i = 0xc0; i < 0xfe; i++)
-        table_utf8[i] = ESCAPE_CHAR;
-
-    qe_register_charset(&charset_8859_1);
-    qe_register_charset(&charset_vt100);
-    qe_register_charset(&charset_utf8);
-    qe_register_charset(&charset_7bit);
-}
-
-void qe_register_charset(QECharset *charset)
-{
-    QECharset **pp;
-
-    pp = &first_charset;
-    while (*pp != NULL) 
-        pp = &(*pp)->next;
-    *pp = charset;
-}
 
 /********************************************************/
 /* 8859-1 */
@@ -101,13 +55,9 @@ static unsigned char *encode_8859_1(__unused__ QECharset *charset,
     }
 }
 
-static const char * const aliases_8859_1[] = {
-    "ISO-8859-1", "iso-ir-100", "latin1", "l1", "819", NULL
-};
-
 QECharset charset_8859_1 = {
     "8859-1",
-    aliases_8859_1,
+    "ISO-8859-1|iso-ir-100|latin1|l1|819",
     decode_8859_1_init,
     NULL,
     encode_8859_1,
@@ -156,13 +106,9 @@ static unsigned char *encode_7bit(__unused__ QECharset *charset,
     }
 }
 
-static const char * const aliases_7bit[] = {
-    "us-ascii", "ascii", "7-bit", "iso-ir-6", "ANSI_X3.4", "646", NULL
-};
-
 static QECharset charset_7bit = {
     "7bit",
-    aliases_7bit,
+    "us-ascii|ascii|7-bit|iso-ir-6|ANSI_X3.4|646",
     decode_8859_1_init,
     NULL,
     encode_7bit,
@@ -188,7 +134,7 @@ int utf8_decode(const char **pp)
         l = utf8_length[c];
         if (l == 1)
             goto fail; /* can only be multi byte code here */
-        c = c & first_code_mask[l];
+        c = c & utf8_first_code_mask[l];
         for (i = 1; i < l; i++) {
             c1 = *p;
             if (c1 < 0x80 || c1 >= 0xc0)
@@ -196,7 +142,7 @@ int utf8_decode(const char **pp)
             p++;
             c = (c << 6) | (c1 & 0x3f);
         }
-        if (c < min_code[l])
+        if (c < utf8_min_code[l])
             goto fail;
         /* exclude surrogate pairs and special codes */
         if ((c >= 0xd800 && c <= 0xdfff) ||
@@ -286,11 +232,9 @@ static unsigned char *encode_utf8(__unused__ QECharset *charset,
     return q + utf8_encode((char*)q, c);
 }
 
-static const char * const aliases_utf_8[] = { "utf8", NULL };
-
 QECharset charset_utf8 = {
     "utf-8",
-    aliases_utf_8,
+    "utf8",
     decode_utf8_init,
     decode_utf8_func,
     encode_utf8,
@@ -300,38 +244,51 @@ QECharset charset_utf8 = {
 /********************************************************/
 /* generic charset functions */
 
-void charset_completion(StringArray *cs, const char *charset_str)
+void qe_register_charset(QECharset *charset)
 {
-    QECharset *p;
-    const char * const *pp;
+    QECharset **pp;
 
-    for (p = first_charset; p != NULL; p = p->next) {
-        if (stristart(p->name, charset_str, NULL))
-            add_string(cs, p->name);
-        pp = p->aliases;
-        if (pp) {
-            for (; *pp != NULL; pp++) {
-                if (stristart(*pp, charset_str, NULL))
-                    add_string(cs, *pp);
+    pp = &first_charset;
+    while (*pp != NULL) {
+        if (*pp == charset)
+            return;
+        pp = &(*pp)->next;
+    }
+    *pp = charset;
+}
+
+void charset_completion(StringArray *cs, const char *input)
+{
+    QECharset *charset;
+    char name[32];
+    const char *p, *q;
+
+    for (charset = first_charset; charset != NULL; charset = charset->next) {
+        if (stristart(charset->name, input, NULL))
+            add_string(cs, charset->name);
+        for (q = p = charset->aliases;; q++) {
+            if (*q == '\0' || *q == '|') {
+                if (q > p) {
+                    pstrncpy(name, sizeof(name), p, q - p);
+                    if (stristart(name, input, NULL))
+                        add_string(cs, name);
+                }
+                if (*q == '\0')
+                    break;
+                p = ++q;
             }
         }
     }
 }
 
-QECharset *find_charset(const char *str)
+QECharset *find_charset(const char *name)
 {
-    QECharset *p;
-    const char * const *pp;
+    QECharset *charset;
 
-    for (p = first_charset; p != NULL; p = p->next) {
-        if (!stricmp(str, p->name))
-            return p;
-        pp = p->aliases;
-        if (pp) {
-            for (; *pp != NULL; pp++) {
-                if (!stricmp(str, *pp))
-                    return p;
-            }
+    for (charset = first_charset; charset != NULL; charset = charset->next) {
+        if (!stricmp(charset->name, name)
+        ||  strfind(charset->aliases, name, 1)) {
+            return charset;
         }
     }
     return NULL;
@@ -454,3 +411,38 @@ unsigned char *encode_8bit(QECharset *charset, unsigned char *q, int c)
     return q;
 }
 
+/********************************************************/
+
+void charset_init(void)
+{
+    int l, i, n;
+
+    memset(utf8_length, 1, 256);
+
+    i = 0xc0;
+    l = 2;
+    while (l <= 6) {
+        n = utf8_first_code_mask[l] + 1;
+        while (n > 0) {
+            utf8_length[i++] = l;
+            n--;
+        }
+        l++;
+    }
+
+    for (i = 0; i < 256; i++)
+        table_idem[i] = i;
+
+    /* utf8 table */
+    for (i = 0; i < 256; i++)
+        table_utf8[i] = INVALID_CHAR;
+    for (i = 0; i < 0x80; i++)
+        table_utf8[i] = i;
+    for (i = 0xc0; i < 0xfe; i++)
+        table_utf8[i] = ESCAPE_CHAR;
+
+    qe_register_charset(&charset_8859_1);
+    qe_register_charset(&charset_vt100);
+    qe_register_charset(&charset_utf8);
+    qe_register_charset(&charset_7bit);
+}

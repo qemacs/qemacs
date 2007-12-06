@@ -202,13 +202,23 @@ static struct latex_function {
 
 static void latex_completion(StringArray *cs, const char *input)
 {
-    int i, len;
+    struct latex_function *func;
 
-    len = strlen(input);
-    for (i = 0; latex_funcs[i].name; i++) {
-        if (strncasecmp(input, latex_funcs[i].name, len) == 0)
-            add_string(cs, latex_funcs[i].name);
+    for (func = latex_funcs; func->name; func++) {
+        if (stristart(func->name, input, NULL))
+            add_string(cs, func->name);
     }
+}
+
+static struct latex_function *find_latex_func(const char *name)
+{
+    struct latex_function *func;
+
+    for (func = latex_funcs; func->name; func++) {
+        if (!stricmp(func->name, name))
+            return func;
+    }
+    return NULL;
 }
 
 static void latex_cmd_run(void *opaque, char *cmd)
@@ -272,7 +282,8 @@ static void do_latex(EditState *e, const char *cmd)
 {
     char bname[MAX_FILENAME_SIZE];
     char buf[1024];
-    int i, len;
+    int len;
+    struct latex_function *func;
 
     /* strip extension from filename */
     pstrcpy(bname, sizeof(bname), e->b->filename);
@@ -283,26 +294,24 @@ static void do_latex(EditState *e, const char *cmd)
         cmd = "LaTeX";
 
     /* check what command to run */
-    for (i = 0; latex_funcs[i].name; i++) {
-        if (strcasecmp(cmd, latex_funcs[i].name) == 0) {
-            /* pass the EditState through to latex_cmd_run() */
-            latex_funcs[i].es = e;
-            /* construct the command line to run */
-            strsubst(buf, sizeof(buf), latex_funcs[i].fmt, "%s", bname);
-            if (latex_funcs[i].ask) {
-                char prompt[128];
-                snprintf(prompt, sizeof(prompt), "%s command: ",
-                         latex_funcs[i].name);
-                minibuffer_edit(buf, prompt, &latex_funcs[i].history,
-                                NULL /* completion */, 
-                                latex_cmd_run, (void *)&latex_funcs[i]);
-            } else {
-                latex_cmd_run((void *)&latex_funcs[i], buf);
-            }
-            return;
+    func = find_latex_func(cmd);
+    if (func) {
+        /* pass the EditState through to latex_cmd_run() */
+        func->es = e;
+        /* construct the command line to run */
+        strsubst(buf, sizeof(buf), func->fmt, "%s", bname);
+        if (func->ask) {
+            char prompt[128];
+            snprintf(prompt, sizeof(prompt), "%s command: ", func->name);
+            minibuffer_edit(buf, prompt, &func->history,
+                            NULL /* completion */, 
+                            latex_cmd_run, func);
+        } else {
+            latex_cmd_run(func, buf);
         }
+    } else {
+        put_status(e, "%s: No match", buf);
     }
-    put_status(e, "%s: No match", buf);
 }
 
 /* specific LaTeX commands */

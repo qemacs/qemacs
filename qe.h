@@ -291,7 +291,7 @@ struct CharsetDecodeState;
 
 typedef struct QECharset {
     const char *name;
-    const char * const *aliases;
+    const char *aliases;
     void (*decode_init)(struct CharsetDecodeState *);
     int (*decode_func)(struct CharsetDecodeState *,
                        const unsigned char **);

@@ -121,23 +121,21 @@ void qe_register_mode(ModeDef *m)
 
 void mode_completion(StringArray *cs, const char *input)
 {
-    ModeDef *p;
+    ModeDef *m;
     
-    for (p = first_mode; p != NULL; p = p->next) {
-        if (strstart(p->name, input, NULL))
-            add_string(cs, p->name);
+    for (m = first_mode; m != NULL; m = m->next) {
+        if (strstart(m->name, input, NULL))
+            add_string(cs, m->name);
     }
 }
 
-static ModeDef *find_mode(const char *mode_name)
+static ModeDef *find_mode(const char *name)
 {
-    ModeDef *p;
+    ModeDef *m;
 
-    p = first_mode;
-    while (p != NULL) {
-        if (!strcmp(mode_name, p->name))
-            return p;
-        p = p->next;
+    for (m = first_mode; m != NULL; m = m->next) {
+        if (!strcmp(m->name, name))
+            return m;
     }
     return NULL;
 }
@@ -1940,6 +1938,18 @@ void get_style(EditState *e, QEStyleDef *style, int style_index)
         apply_style(style, style_index);
 }
 
+void style_completion(StringArray *cs, const char *input)
+{
+    int i;
+    QEStyleDef *style;
+
+    for (i = 0; i < QE_STYLE_NB; i++) {
+        style = &qe_styles[i];
+        if (strstart(style->name, input, NULL))
+            add_string(cs, style->name);
+    }
+}
+
 QEStyleDef *find_style(const char *name)
 {
     int i;
@@ -1951,18 +1961,6 @@ QEStyleDef *find_style(const char *name)
             return style;
     }
     return NULL;
-}
-
-void style_completion(StringArray *cs, const char *input)
-{
-    QEStyleDef *style;
-    int i;
-
-    for (i = 0; i < QE_STYLE_NB; i++) {
-        style = &qe_styles[i];
-        if (strstart(style->name, input, NULL))
-            add_string(cs, style->name);
-    }
 }
 
 void do_define_color(EditState *e, const char *name, const char *value)
@@ -4235,7 +4233,8 @@ void register_completion(const char *name, CompletionFunc completion_func)
     p->next = NULL;
 
     lp = &first_completion;
-    while (*lp != NULL) lp = &(*lp)->next;
+    while (*lp != NULL)
+        lp = &(*lp)->next;
     *lp = p;
 }
 
@@ -4245,7 +4244,7 @@ static CompletionFunc find_completion(const char *name)
 
     if (name[0] != '\0') {
         for (p = first_completion; p != NULL; p = p->next)
-            if (!strcmp(name, p->name))
+            if (!strcmp(p->name, name))
                 return p->completion_func;
     }
     return NULL;

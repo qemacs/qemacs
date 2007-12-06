@@ -93,7 +93,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
     char *p, *q;
     int table[256];
     int min_code, max_code, c1, c2, i, nb, j;
-    char name1[256];
+    char name_id[256];
     char iso_name[256];
     char alias_list[256];
     char includename[256];
@@ -102,11 +102,11 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
     FILE *f = f0;
     const char *filename = fname;
 
-    /* name1 is name with _ changed into - */
-    strcpy(name1, name);
-    for (p = name1; *p != '\0'; p++) {
-        if (*p == '_')
-            *p = '-';
+    /* name_id is name with - changed into _ */
+    strcpy(name_id, name);
+    for (p = name_id; *p != '\0'; p++) {
+        if (*p == '-')
+            *p = '_';
     }
     
     strcpy(iso_name, name);
@@ -202,31 +202,19 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
                 max_code = i;
         }
     }
-    //    fprintf(stderr, "%s: %3d %02x %02x\n", name, nb, min_code, max_code);
     
-    printf("/*-- file: %s, id: %s, name: %s, ISO name: %s --*/\n\n",
-           filename, name, name1, iso_name);
-
-    /* Parse alias list and remove duplicates of name */
-    printf("static const char * const aliases_%s[] = {\n"
-           "    ", name);
-
-    for (q = alias_list;;) {
-        if ((p = strchr(q, '"')) == NULL
-        ||  (q = strchr(++p, '"')) == NULL)
-            break;
-
-        *q++ = '\0';
-        if (strcmp(name1, p)) {
-            printf("\"%s\", ", p);
-        }
-    }
-    printf("NULL\n"
-           "};\n\n");
+    printf("\n"
+           "/*----------------------------------------------------------------\n"
+           " * filename: %s\n"
+           " * iso_name: %s\n"
+           " *     name: %s\n"
+           " *       id: %s\n"
+           " */\n\n",
+           filename, iso_name, name, name_id);
 
     if (max_code != -1) {
         printf("static const unsigned short table_%s[%d] = {\n",
-               name, max_code - min_code + 1);
+               name_id, max_code - min_code + 1);
         j = 0;
         for (i = min_code; i <= max_code; i++) {
             if ((j & 7) == 0)
@@ -241,9 +229,26 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
     }
 
     printf("QECharset charset_%s = {\n"
-           "    \"%s\",\n"
-           "    aliases_%s,\n"
-           "    decode_8bit_init,\n"
+           "    \"%s\",\n",
+           name_id, name);
+
+    printf("    \"");
+    {
+        const char *sep = "";
+        for (q = alias_list;;) {
+            if ((p = strchr(q, '"')) == NULL
+            ||  (q = strchr(++p, '"')) == NULL)
+                break;
+            *q++ = '\0';
+            if (strcmp(name, p)) {
+                printf("%s%s", sep, p);
+                sep = "|";
+            }
+        }
+    }
+    printf("\",\n");
+
+    printf("    decode_8bit_init,\n"
            "    NULL,\n"
            "    encode_8bit,\n"
            "    table_alloc: 1,\n"
@@ -252,11 +257,10 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
            "    max_char: %d,\n"
            "    private_table: table_%s,\n"
            "};\n\n",
-           name, name1, name, eol_char,
-           min_code, max_code, name);
+           eol_char, min_code, max_code, name_id);
 
     add_init("    qe_register_charset(&charset_");
-    add_init(name);
+    add_init(name_id);
     add_init(");\n");
 }
 
@@ -346,8 +350,8 @@ int main(int argc, char **argv)
         strcpy(name, get_basename(filename));
         *get_extension(name) = '\0';
         for (p = name; *p; p++) {
-            if (*p == '-')
-                *p = '_';
+            if (*p == '_')
+                *p = '-';
             else
                 *p = tolower((unsigned char)*p);
         }

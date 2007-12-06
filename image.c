@@ -721,7 +721,7 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
     
     for (i = 0; i < PIX_FMT_NB; i++) {
         name = avcodec_get_pix_fmt_name(i);
-        if (!strcmp(pix_fmt_str, name))
+        if (!strcmp(name, pix_fmt_str))
             goto found;
     }
     put_status(e, "Unknown pixel format");

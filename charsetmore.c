@@ -22,11 +22,13 @@
  */
 
 #include "qe.h"
-/*-- file: cp/8859-2.TXT, id: 8859_2, name: 8859-2, ISO name: ISO 8859-2 (Central European) --*/
 
-static const char * const aliases_8859_2[] = {
-    "ISO-8859-2", "iso-ir-101", "latin2", "l2", "iso-latin2", "iso8859-2", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/8859-2.TXT
+ * iso_name: ISO 8859-2 (Central European)
+ *     name: 8859-2
+ *       id: 8859_2
+ */
 
 static const unsigned short table_8859_2[95] = {
     0x0104, 0x02d8, 0x0141, 0x00a4, 0x013d, 0x015a, 0x00a7, 0x00a8, 
@@ -45,7 +47,7 @@ static const unsigned short table_8859_2[95] = {
 
 QECharset charset_8859_2 = {
     "8859-2",
-    aliases_8859_2,
+    "ISO-8859-2|iso-ir-101|latin2|l2|iso-latin2|iso8859-2",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -56,11 +58,49 @@ QECharset charset_8859_2 = {
     private_table: table_8859_2,
 };
 
-/*-- file: cp/8859-4.TXT, id: 8859_4, name: 8859-4, ISO name: ISO 8859-4 (Scandinavia, Baltic) --*/
 
-static const char * const aliases_8859_4[] = {
-    "ISO-8859-4", "iso-ir-110", "latin4", "l4", "iso-latin4", NULL
+/*----------------------------------------------------------------
+ * filename: cp/8859-3.TXT
+ * iso_name: ISO 8859-3 (Esperanto, Maltese)
+ *     name: 8859-3
+ *       id: 8859_3
+ */
+
+static const unsigned short table_8859_3[95] = {
+    0x0126, 0x02d8, 0x00a3, 0x00a4, 0x00a5, 0x0124, 0x00a7, 0x00a8, 
+    0x0130, 0x015e, 0x011e, 0x0134, 0x00ad, 0x00ae, 0x017b, 0x00b0, 
+    0x0127, 0x00b2, 0x00b3, 0x00b4, 0x00b5, 0x0125, 0x00b7, 0x00b8, 
+    0x0131, 0x015f, 0x011f, 0x0135, 0x00bd, 0x00be, 0x017c, 0x00c0, 
+    0x00c1, 0x00c2, 0x00c3, 0x00c4, 0x010a, 0x0108, 0x00c7, 0x00c8, 
+    0x00c9, 0x00ca, 0x00cb, 0x00cc, 0x00cd, 0x00ce, 0x00cf, 0x00d0, 
+    0x00d1, 0x00d2, 0x00d3, 0x00d4, 0x0120, 0x00d6, 0x00d7, 0x011c, 
+    0x00d9, 0x00da, 0x00db, 0x00dc, 0x016c, 0x015c, 0x00df, 0x00e0, 
+    0x00e1, 0x00e2, 0x00e3, 0x00e4, 0x010b, 0x0109, 0x00e7, 0x00e8, 
+    0x00e9, 0x00ea, 0x00eb, 0x00ec, 0x00ed, 0x00ee, 0x00ef, 0x00f0, 
+    0x00f1, 0x00f2, 0x00f3, 0x00f4, 0x0121, 0x00f6, 0x00f7, 0x011d, 
+    0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x016d, 0x015d, 0x02d9, 
 };
+
+QECharset charset_8859_3 = {
+    "8859-3",
+    "ISO-8859-3",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 10,
+    min_char: 161,
+    max_char: 255,
+    private_table: table_8859_3,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/8859-4.TXT
+ * iso_name: ISO 8859-4 (Scandinavia, Baltic)
+ *     name: 8859-4
+ *       id: 8859_4
+ */
 
 static const unsigned short table_8859_4[95] = {
     0x0104, 0x0138, 0x0156, 0x00a4, 0x0128, 0x013b, 0x00a7, 0x00a8, 
@@ -79,7 +119,7 @@ static const unsigned short table_8859_4[95] = {
 
 QECharset charset_8859_4 = {
     "8859-4",
-    aliases_8859_4,
+    "ISO-8859-4|iso-ir-110|latin4|l4|iso-latin4",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -90,11 +130,13 @@ QECharset charset_8859_4 = {
     private_table: table_8859_4,
 };
 
-/*-- file: cp/8859-5.TXT, id: 8859_5, name: 8859-5, ISO name: ISO 8859-5 (Cyrillic) --*/
 
-static const char * const aliases_8859_5[] = {
-    "ISO-8859-5", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/8859-5.TXT
+ * iso_name: ISO 8859-5 (Cyrillic)
+ *     name: 8859-5
+ *       id: 8859_5
+ */
 
 static const unsigned short table_8859_5[95] = {
     0x0401, 0x0402, 0x0403, 0x0404, 0x0405, 0x0406, 0x0407, 0x0408, 
@@ -113,7 +155,7 @@ static const unsigned short table_8859_5[95] = {
 
 QECharset charset_8859_5 = {
     "8859-5",
-    aliases_8859_5,
+    "ISO-8859-5",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -124,11 +166,46 @@ QECharset charset_8859_5 = {
     private_table: table_8859_5,
 };
 
-/*-- file: cp/8859-7.TXT, id: 8859_7, name: 8859-7, ISO name: ISO 8859-7 (Greek) --*/
 
-static const char * const aliases_8859_7[] = {
-    "ISO-8859-7", "iso-ir-126", "elot-928", NULL
+/*----------------------------------------------------------------
+ * filename: cp/8859-6.TXT
+ * iso_name: ISO 8859-6 (Arabic)
+ *     name: 8859-6
+ *       id: 8859_6
+ */
+
+static const unsigned short table_8859_6[71] = {
+    0x060c, 0x00ad, 0x00ae, 0x00af, 0x00b0, 0x00b1, 0x00b2, 0x00b3, 
+    0x00b4, 0x00b5, 0x00b6, 0x00b7, 0x00b8, 0x00b9, 0x00ba, 0x061b, 
+    0x00bc, 0x00bd, 0x00be, 0x061f, 0x00c0, 0x0621, 0x0622, 0x0623, 
+    0x0624, 0x0625, 0x0626, 0x0627, 0x0628, 0x0629, 0x062a, 0x062b, 
+    0x062c, 0x062d, 0x062e, 0x062f, 0x0630, 0x0631, 0x0632, 0x0633, 
+    0x0634, 0x0635, 0x0636, 0x0637, 0x0638, 0x0639, 0x063a, 0x00db, 
+    0x00dc, 0x00dd, 0x00de, 0x00df, 0x0640, 0x0641, 0x0642, 0x0643, 
+    0x0644, 0x0645, 0x0646, 0x0647, 0x0648, 0x0649, 0x064a, 0x064b, 
+    0x064c, 0x064d, 0x064e, 0x064f, 0x0650, 0x0651, 0x0652, 
 };
+
+QECharset charset_8859_6 = {
+    "8859-6",
+    "ISO-8859-6",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 10,
+    min_char: 172,
+    max_char: 242,
+    private_table: table_8859_6,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/8859-7.TXT
+ * iso_name: ISO 8859-7 (Greek)
+ *     name: 8859-7
+ *       id: 8859_7
+ */
 
 static const unsigned short table_8859_7[94] = {
     0x2018, 0x2019, 0x00a3, 0x20ac, 0x20af, 0x00a6, 0x00a7, 0x00a8, 
@@ -147,7 +224,7 @@ static const unsigned short table_8859_7[94] = {
 
 QECharset charset_8859_7 = {
     "8859-7",
-    aliases_8859_7,
+    "ISO-8859-7|iso-ir-126|elot-928",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -158,11 +235,48 @@ QECharset charset_8859_7 = {
     private_table: table_8859_7,
 };
 
-/*-- file: cp/8859-9.TXT, id: 8859_9, name: 8859-9, ISO name: ISO 8859-9 (Turkish) --*/
 
-static const char * const aliases_8859_9[] = {
-    "ISO-8859-9", NULL
+/*----------------------------------------------------------------
+ * filename: cp/8859-8.TXT
+ * iso_name: ISO 8859-8 (Hebrew)
+ *     name: 8859-8
+ *       id: 8859_8
+ */
+
+static const unsigned short table_8859_8[85] = {
+    0x00d7, 0x00ab, 0x00ac, 0x00ad, 0x00ae, 0x00af, 0x00b0, 0x00b1, 
+    0x00b2, 0x00b3, 0x00b4, 0x00b5, 0x00b6, 0x00b7, 0x00b8, 0x00b9, 
+    0x00f7, 0x00bb, 0x00bc, 0x00bd, 0x00be, 0x00bf, 0x00c0, 0x00c1, 
+    0x00c2, 0x00c3, 0x00c4, 0x00c5, 0x00c6, 0x00c7, 0x00c8, 0x00c9, 
+    0x00ca, 0x00cb, 0x00cc, 0x00cd, 0x00ce, 0x00cf, 0x00d0, 0x00d1, 
+    0x00d2, 0x00d3, 0x00d4, 0x00d5, 0x00d6, 0x00d7, 0x00d8, 0x00d9, 
+    0x00da, 0x00db, 0x00dc, 0x00dd, 0x00de, 0x2017, 0x05d0, 0x05d1, 
+    0x05d2, 0x05d3, 0x05d4, 0x05d5, 0x05d6, 0x05d7, 0x05d8, 0x05d9, 
+    0x05da, 0x05db, 0x05dc, 0x05dd, 0x05de, 0x05df, 0x05e0, 0x05e1, 
+    0x05e2, 0x05e3, 0x05e4, 0x05e5, 0x05e6, 0x05e7, 0x05e8, 0x05e9, 
+    0x05ea, 0x00fb, 0x00fc, 0x200e, 0x200f, 
 };
+
+QECharset charset_8859_8 = {
+    "8859-8",
+    "ISO-8859-8",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 10,
+    min_char: 170,
+    max_char: 254,
+    private_table: table_8859_8,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/8859-9.TXT
+ * iso_name: ISO 8859-9 (Turkish)
+ *     name: 8859-9
+ *       id: 8859_9
+ */
 
 static const unsigned short table_8859_9[47] = {
     0x011e, 0x00d1, 0x00d2, 0x00d3, 0x00d4, 0x00d5, 0x00d6, 0x00d7, 
@@ -175,7 +289,7 @@ static const unsigned short table_8859_9[47] = {
 
 QECharset charset_8859_9 = {
     "8859-9",
-    aliases_8859_9,
+    "ISO-8859-9",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -186,11 +300,85 @@ QECharset charset_8859_9 = {
     private_table: table_8859_9,
 };
 
-/*-- file: cp/8859-13.TXT, id: 8859_13, name: 8859-13, ISO name: ISO 8859-13 (Baltic) --*/
 
-static const char * const aliases_8859_13[] = {
-    "ISO-8859-13", "iso-ir-179", "latin7", "l7", "iso-latin7", NULL
+/*----------------------------------------------------------------
+ * filename: cp/8859-10.TXT
+ * iso_name: ISO 8859-10 (Lappish, Nordic, Eskimo)
+ *     name: 8859-10
+ *       id: 8859_10
+ */
+
+static const unsigned short table_8859_10[95] = {
+    0x0104, 0x0112, 0x0122, 0x012a, 0x0128, 0x0136, 0x00a7, 0x013b, 
+    0x0110, 0x0160, 0x0166, 0x017d, 0x00ad, 0x016a, 0x014a, 0x00b0, 
+    0x0105, 0x0113, 0x0123, 0x012b, 0x0129, 0x0137, 0x00b7, 0x013c, 
+    0x0111, 0x0161, 0x0167, 0x017e, 0x2015, 0x016b, 0x014b, 0x0100, 
+    0x00c1, 0x00c2, 0x00c3, 0x00c4, 0x00c5, 0x00c6, 0x012e, 0x010c, 
+    0x00c9, 0x0118, 0x00cb, 0x0116, 0x00cd, 0x00ce, 0x00cf, 0x00d0, 
+    0x0145, 0x014c, 0x00d3, 0x00d4, 0x00d5, 0x00d6, 0x0168, 0x00d8, 
+    0x0172, 0x00da, 0x00db, 0x00dc, 0x00dd, 0x00de, 0x00df, 0x0101, 
+    0x00e1, 0x00e2, 0x00e3, 0x00e4, 0x00e5, 0x00e6, 0x012f, 0x010d, 
+    0x00e9, 0x0119, 0x00eb, 0x0117, 0x00ed, 0x00ee, 0x00ef, 0x00f0, 
+    0x0146, 0x014d, 0x00f3, 0x00f4, 0x00f5, 0x00f6, 0x0169, 0x00f8, 
+    0x0173, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x00fe, 0x0138, 
 };
+
+QECharset charset_8859_10 = {
+    "8859-10",
+    "ISO-8859-10",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 10,
+    min_char: 161,
+    max_char: 255,
+    private_table: table_8859_10,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/8859-11.TXT
+ * iso_name: ISO 8859-11
+ *     name: 8859-11
+ *       id: 8859_11
+ */
+
+static const unsigned short table_8859_11[91] = {
+    0x0e01, 0x0e02, 0x0e03, 0x0e04, 0x0e05, 0x0e06, 0x0e07, 0x0e08, 
+    0x0e09, 0x0e0a, 0x0e0b, 0x0e0c, 0x0e0d, 0x0e0e, 0x0e0f, 0x0e10, 
+    0x0e11, 0x0e12, 0x0e13, 0x0e14, 0x0e15, 0x0e16, 0x0e17, 0x0e18, 
+    0x0e19, 0x0e1a, 0x0e1b, 0x0e1c, 0x0e1d, 0x0e1e, 0x0e1f, 0x0e20, 
+    0x0e21, 0x0e22, 0x0e23, 0x0e24, 0x0e25, 0x0e26, 0x0e27, 0x0e28, 
+    0x0e29, 0x0e2a, 0x0e2b, 0x0e2c, 0x0e2d, 0x0e2e, 0x0e2f, 0x0e30, 
+    0x0e31, 0x0e32, 0x0e33, 0x0e34, 0x0e35, 0x0e36, 0x0e37, 0x0e38, 
+    0x0e39, 0x0e3a, 0x00db, 0x00dc, 0x00dd, 0x00de, 0x0e3f, 0x0e40, 
+    0x0e41, 0x0e42, 0x0e43, 0x0e44, 0x0e45, 0x0e46, 0x0e47, 0x0e48, 
+    0x0e49, 0x0e4a, 0x0e4b, 0x0e4c, 0x0e4d, 0x0e4e, 0x0e4f, 0x0e50, 
+    0x0e51, 0x0e52, 0x0e53, 0x0e54, 0x0e55, 0x0e56, 0x0e57, 0x0e58, 
+    0x0e59, 0x0e5a, 0x0e5b, 
+};
+
+QECharset charset_8859_11 = {
+    "8859-11",
+    "ISO-8859-11",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 10,
+    min_char: 161,
+    max_char: 251,
+    private_table: table_8859_11,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/8859-13.TXT
+ * iso_name: ISO 8859-13 (Baltic)
+ *     name: 8859-13
+ *       id: 8859_13
+ */
 
 static const unsigned short table_8859_13[95] = {
     0x201d, 0x00a2, 0x00a3, 0x00a4, 0x201e, 0x00a6, 0x00a7, 0x00d8, 
@@ -209,7 +397,7 @@ static const unsigned short table_8859_13[95] = {
 
 QECharset charset_8859_13 = {
     "8859-13",
-    aliases_8859_13,
+    "ISO-8859-13|iso-ir-179|latin7|l7|iso-latin7",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -220,11 +408,49 @@ QECharset charset_8859_13 = {
     private_table: table_8859_13,
 };
 
-/*-- file: cp/8859-15.TXT, id: 8859_15, name: 8859-15, ISO name: ISO 8859-15 (Western European) --*/
 
-static const char * const aliases_8859_15[] = {
-    "ISO-8859-15", "latin9", "l9", "latin0", "l0", NULL
+/*----------------------------------------------------------------
+ * filename: cp/8859-14.TXT
+ * iso_name: ISO 8859-14 (Celtic)
+ *     name: 8859-14
+ *       id: 8859_14
+ */
+
+static const unsigned short table_8859_14[94] = {
+    0x1e02, 0x1e03, 0x00a3, 0x010a, 0x010b, 0x1e0a, 0x00a7, 0x1e80, 
+    0x00a9, 0x1e82, 0x1e0b, 0x1ef2, 0x00ad, 0x00ae, 0x0178, 0x1e1e, 
+    0x1e1f, 0x0120, 0x0121, 0x1e40, 0x1e41, 0x00b6, 0x1e56, 0x1e81, 
+    0x1e57, 0x1e83, 0x1e60, 0x1ef3, 0x1e84, 0x1e85, 0x1e61, 0x00c0, 
+    0x00c1, 0x00c2, 0x00c3, 0x00c4, 0x00c5, 0x00c6, 0x00c7, 0x00c8, 
+    0x00c9, 0x00ca, 0x00cb, 0x00cc, 0x00cd, 0x00ce, 0x00cf, 0x0174, 
+    0x00d1, 0x00d2, 0x00d3, 0x00d4, 0x00d5, 0x00d6, 0x1e6a, 0x00d8, 
+    0x00d9, 0x00da, 0x00db, 0x00dc, 0x00dd, 0x0176, 0x00df, 0x00e0, 
+    0x00e1, 0x00e2, 0x00e3, 0x00e4, 0x00e5, 0x00e6, 0x00e7, 0x00e8, 
+    0x00e9, 0x00ea, 0x00eb, 0x00ec, 0x00ed, 0x00ee, 0x00ef, 0x0175, 
+    0x00f1, 0x00f2, 0x00f3, 0x00f4, 0x00f5, 0x00f6, 0x1e6b, 0x00f8, 
+    0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x0177, 
 };
+
+QECharset charset_8859_14 = {
+    "8859-14",
+    "ISO-8859-14",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 10,
+    min_char: 161,
+    max_char: 254,
+    private_table: table_8859_14,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/8859-15.TXT
+ * iso_name: ISO 8859-15 (Western European)
+ *     name: 8859-15
+ *       id: 8859_15
+ */
 
 static const unsigned short table_8859_15[27] = {
     0x20ac, 0x00a5, 0x0160, 0x00a7, 0x0161, 0x00a9, 0x00aa, 0x00ab, 
@@ -235,7 +461,7 @@ static const unsigned short table_8859_15[27] = {
 
 QECharset charset_8859_15 = {
     "8859-15",
-    aliases_8859_15,
+    "ISO-8859-15|latin9|l9|latin0|l0",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -246,11 +472,13 @@ QECharset charset_8859_15 = {
     private_table: table_8859_15,
 };
 
-/*-- file: cp/8859-16.TXT, id: 8859_16, name: 8859-16, ISO name: ISO 8859-16 (Romainian) --*/
 
-static const char * const aliases_8859_16[] = {
-    "ISO-8859-16", "latin10", "l10", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/8859-16.TXT
+ * iso_name: ISO 8859-16 (Romainian)
+ *     name: 8859-16
+ *       id: 8859_16
+ */
 
 static const unsigned short table_8859_16[94] = {
     0x0104, 0x0105, 0x0141, 0x20ac, 0x201e, 0x0160, 0x00a7, 0x0161, 
@@ -269,7 +497,7 @@ static const unsigned short table_8859_16[94] = {
 
 QECharset charset_8859_16 = {
     "8859-16",
-    aliases_8859_16,
+    "ISO-8859-16|latin10|l10",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -280,11 +508,13 @@ QECharset charset_8859_16 = {
     private_table: table_8859_16,
 };
 
-/*-- file: cp/CP437.TXT, id: cp437, name: cp437, ISO name: CP 437 (US) --*/
 
-static const char * const aliases_cp437[] = {
-    "437", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/CP437.TXT
+ * iso_name: CP 437 (US)
+ *     name: cp437
+ *       id: cp437
+ */
 
 static const unsigned short table_cp437[128] = {
     0x00c7, 0x00fc, 0x00e9, 0x00e2, 0x00e4, 0x00e0, 0x00e5, 0x00e7, 
@@ -307,7 +537,7 @@ static const unsigned short table_cp437[128] = {
 
 QECharset charset_cp437 = {
     "cp437",
-    aliases_cp437,
+    "437",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -318,11 +548,13 @@ QECharset charset_cp437 = {
     private_table: table_cp437,
 };
 
-/*-- file: cp/CP737.TXT, id: cp737, name: cp737, ISO name: CP 737 (Greek) --*/
 
-static const char * const aliases_cp737[] = {
-    "737", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/CP737.TXT
+ * iso_name: CP 737 (Greek)
+ *     name: cp737
+ *       id: cp737
+ */
 
 static const unsigned short table_cp737[128] = {
     0x0391, 0x0392, 0x0393, 0x0394, 0x0395, 0x0396, 0x0397, 0x0398, 
@@ -345,7 +577,7 @@ static const unsigned short table_cp737[128] = {
 
 QECharset charset_cp737 = {
     "cp737",
-    aliases_cp737,
+    "737",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -356,11 +588,13 @@ QECharset charset_cp737 = {
     private_table: table_cp737,
 };
 
-/*-- file: cp/CP850.TXT, id: cp850, name: cp850, ISO name: CP 850 (Western European) --*/
 
-static const char * const aliases_cp850[] = {
-    "850", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/CP850.TXT
+ * iso_name: CP 850 (Western European)
+ *     name: cp850
+ *       id: cp850
+ */
 
 static const unsigned short table_cp850[128] = {
     0x00c7, 0x00fc, 0x00e9, 0x00e2, 0x00e4, 0x00e0, 0x00e5, 0x00e7, 
@@ -383,7 +617,7 @@ static const unsigned short table_cp850[128] = {
 
 QECharset charset_cp850 = {
     "cp850",
-    aliases_cp850,
+    "850",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -394,11 +628,13 @@ QECharset charset_cp850 = {
     private_table: table_cp850,
 };
 
-/*-- file: cp/CP852.TXT, id: cp852, name: cp852, ISO name: CP 852 (Central European) --*/
 
-static const char * const aliases_cp852[] = {
-    "852", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/CP852.TXT
+ * iso_name: CP 852 (Central European)
+ *     name: cp852
+ *       id: cp852
+ */
 
 static const unsigned short table_cp852[128] = {
     0x00c7, 0x00fc, 0x00e9, 0x00e2, 0x00e4, 0x016f, 0x0107, 0x00e7, 
@@ -421,7 +657,7 @@ static const unsigned short table_cp852[128] = {
 
 QECharset charset_cp852 = {
     "cp852",
-    aliases_cp852,
+    "852",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -432,11 +668,13 @@ QECharset charset_cp852 = {
     private_table: table_cp852,
 };
 
-/*-- file: cp/CP866.TXT, id: cp866, name: cp866, ISO name: CP 866 (Cyrillic) --*/
 
-static const char * const aliases_cp866[] = {
-    "866", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/CP866.TXT
+ * iso_name: CP 866 (Cyrillic)
+ *     name: cp866
+ *       id: cp866
+ */
 
 static const unsigned short table_cp866[128] = {
     0x0410, 0x0411, 0x0412, 0x0413, 0x0414, 0x0415, 0x0416, 0x0417, 
@@ -459,7 +697,7 @@ static const unsigned short table_cp866[128] = {
 
 QECharset charset_cp866 = {
     "cp866",
-    aliases_cp866,
+    "866",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -470,11 +708,13 @@ QECharset charset_cp866 = {
     private_table: table_cp866,
 };
 
-/*-- file: cp/CP1125.TXT, id: cp1125, name: cp1125, ISO name: CP 1125 (Ukrainian) --*/
 
-static const char * const aliases_cp1125[] = {
-    "x-cp866-u", "ruscii", "1125", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/CP1125.TXT
+ * iso_name: CP 1125 (Ukrainian)
+ *     name: cp1125
+ *       id: cp1125
+ */
 
 static const unsigned short table_cp1125[128] = {
     0x0410, 0x0411, 0x0412, 0x0413, 0x0414, 0x0415, 0x0416, 0x0417, 
@@ -497,7 +737,7 @@ static const unsigned short table_cp1125[128] = {
 
 QECharset charset_cp1125 = {
     "cp1125",
-    aliases_cp1125,
+    "x-cp866-u|ruscii|1125",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -508,11 +748,13 @@ QECharset charset_cp1125 = {
     private_table: table_cp1125,
 };
 
-/*-- file: cp/CP1250.TXT, id: cp1250, name: cp1250, ISO name: Window$ 1250 (Central European) --*/
 
-static const char * const aliases_cp1250[] = {
-    "windows-1250", "1250", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/CP1250.TXT
+ * iso_name: Window$ 1250 (Central European)
+ *     name: cp1250
+ *       id: cp1250
+ */
 
 static const unsigned short table_cp1250[128] = {
     0x20ac, 0x0000, 0x201a, 0x0000, 0x201e, 0x2026, 0x2020, 0x2021, 
@@ -535,7 +777,7 @@ static const unsigned short table_cp1250[128] = {
 
 QECharset charset_cp1250 = {
     "cp1250",
-    aliases_cp1250,
+    "windows-1250|1250",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -546,11 +788,13 @@ QECharset charset_cp1250 = {
     private_table: table_cp1250,
 };
 
-/*-- file: cp/CP1251.TXT, id: cp1251, name: cp1251, ISO name: Window$ 1251 (Cyrillic) --*/
 
-static const char * const aliases_cp1251[] = {
-    "windows-1251", "1251", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/CP1251.TXT
+ * iso_name: Window$ 1251 (Cyrillic)
+ *     name: cp1251
+ *       id: cp1251
+ */
 
 static const unsigned short table_cp1251[128] = {
     0x0402, 0x0403, 0x201a, 0x0453, 0x201e, 0x2026, 0x2020, 0x2021, 
@@ -573,7 +817,7 @@ static const unsigned short table_cp1251[128] = {
 
 QECharset charset_cp1251 = {
     "cp1251",
-    aliases_cp1251,
+    "windows-1251|1251",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -584,11 +828,81 @@ QECharset charset_cp1251 = {
     private_table: table_cp1251,
 };
 
-/*-- file: cp/CP1257.TXT, id: cp1257, name: cp1257, ISO name: Window$ 1257 (Baltic) --*/
 
-static const char * const aliases_cp1257[] = {
-    "windows-1257", "1257", NULL
+/*----------------------------------------------------------------
+ * filename: cp/CP1252.TXT
+ * iso_name: Window$ 1252 (Western European)
+ *     name: cp1252
+ *       id: cp1252
+ */
+
+static const unsigned short table_cp1252[32] = {
+    0x20ac, 0x0000, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 
+    0x02c6, 0x2030, 0x0160, 0x2039, 0x0152, 0x0000, 0x017d, 0x0000, 
+    0x0000, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014, 
+    0x02dc, 0x2122, 0x0161, 0x203a, 0x0153, 0x0000, 0x017e, 0x0178, 
 };
+
+QECharset charset_cp1252 = {
+    "cp1252",
+    "windows-1252|1252",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 10,
+    min_char: 128,
+    max_char: 159,
+    private_table: table_cp1252,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/CP1256.TXT
+ * iso_name: Window$ 1256 (Arabic)
+ *     name: cp1256
+ *       id: cp1256
+ */
+
+static const unsigned short table_cp1256[128] = {
+    0x20ac, 0x067e, 0x201a, 0x0192, 0x201e, 0x2026, 0x2020, 0x2021, 
+    0x02c6, 0x2030, 0x0679, 0x2039, 0x0152, 0x0686, 0x0698, 0x0688, 
+    0x06af, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014, 
+    0x06a9, 0x2122, 0x0691, 0x203a, 0x0153, 0x200c, 0x200d, 0x06ba, 
+    0x00a0, 0x060c, 0x00a2, 0x00a3, 0x00a4, 0x00a5, 0x00a6, 0x00a7, 
+    0x00a8, 0x00a9, 0x06be, 0x00ab, 0x00ac, 0x00ad, 0x00ae, 0x00af, 
+    0x00b0, 0x00b1, 0x00b2, 0x00b3, 0x00b4, 0x00b5, 0x00b6, 0x00b7, 
+    0x00b8, 0x00b9, 0x061b, 0x00bb, 0x00bc, 0x00bd, 0x00be, 0x061f, 
+    0x06c1, 0x0621, 0x0622, 0x0623, 0x0624, 0x0625, 0x0626, 0x0627, 
+    0x0628, 0x0629, 0x062a, 0x062b, 0x062c, 0x062d, 0x062e, 0x062f, 
+    0x0630, 0x0631, 0x0632, 0x0633, 0x0634, 0x0635, 0x0636, 0x00d7, 
+    0x0637, 0x0638, 0x0639, 0x063a, 0x0640, 0x0641, 0x0642, 0x0643, 
+    0x00e0, 0x0644, 0x00e2, 0x0645, 0x0646, 0x0647, 0x0648, 0x00e7, 
+    0x00e8, 0x00e9, 0x00ea, 0x00eb, 0x0649, 0x064a, 0x00ee, 0x00ef, 
+    0x064b, 0x064c, 0x064d, 0x064e, 0x00f4, 0x064f, 0x0650, 0x00f7, 
+    0x0651, 0x00f9, 0x0652, 0x00fb, 0x00fc, 0x200e, 0x200f, 0x06d2, 
+};
+
+QECharset charset_cp1256 = {
+    "cp1256",
+    "windows-1256|1256",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 10,
+    min_char: 128,
+    max_char: 255,
+    private_table: table_cp1256,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/CP1257.TXT
+ * iso_name: Window$ 1257 (Baltic)
+ *     name: cp1257
+ *       id: cp1257
+ */
 
 static const unsigned short table_cp1257[128] = {
     0x20ac, 0x0000, 0x201a, 0x0000, 0x201e, 0x2026, 0x2020, 0x2021, 
@@ -611,7 +925,7 @@ static const unsigned short table_cp1257[128] = {
 
 QECharset charset_cp1257 = {
     "cp1257",
-    aliases_cp1257,
+    "windows-1257|1257",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -622,11 +936,13 @@ QECharset charset_cp1257 = {
     private_table: table_cp1257,
 };
 
-/*-- file: cp/MAC-LATIN2.TXT, id: mac_latin2, name: mac-latin2, ISO name: Mac latin 2 --*/
 
-static const char * const aliases_mac_latin2[] = {
-    "x-mac-ce", "mac-ce", "macce", "10029", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/MAC-LATIN2.TXT
+ * iso_name: Mac latin 2
+ *     name: mac-latin2
+ *       id: mac_latin2
+ */
 
 static const unsigned short table_mac_latin2[128] = {
     0x00c4, 0x0100, 0x0101, 0x00c9, 0x0104, 0x00d6, 0x00dc, 0x00e1, 
@@ -649,7 +965,7 @@ static const unsigned short table_mac_latin2[128] = {
 
 QECharset charset_mac_latin2 = {
     "mac-latin2",
-    aliases_mac_latin2,
+    "x-mac-ce|mac-ce|macce|10029",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -660,11 +976,13 @@ QECharset charset_mac_latin2 = {
     private_table: table_mac_latin2,
 };
 
-/*-- file: cp/MAC-ROMAN.TXT, id: mac_roman, name: mac-roman, ISO name: MacRoman 2000 --*/
 
-static const char * const aliases_mac_roman[] = {
-    "x-mac", "mac", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/MAC-ROMAN.TXT
+ * iso_name: MacRoman 2000
+ *     name: mac-roman
+ *       id: mac_roman
+ */
 
 static const unsigned short table_mac_roman[128] = {
     0x00c4, 0x00c5, 0x00c7, 0x00c9, 0x00d1, 0x00d6, 0x00dc, 0x00e1, 
@@ -687,7 +1005,7 @@ static const unsigned short table_mac_roman[128] = {
 
 QECharset charset_mac_roman = {
     "mac-roman",
-    aliases_mac_roman,
+    "x-mac|mac",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -698,11 +1016,13 @@ QECharset charset_mac_roman = {
     private_table: table_mac_roman,
 };
 
-/*-- file: cp/kamen.cp, id: kamen, name: kamen, ISO name: Kamenicky Brothers --*/
 
-static const char * const aliases_kamen[] = {
-    "x-kam-cs", "kam", "867", "869", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/kamen.cp
+ * iso_name: Kamenicky Brothers
+ *     name: kamen
+ *       id: kamen
+ */
 
 static const unsigned short table_kamen[255] = {
     0x263a, 0x263b, 0x2665, 0x2666, 0x2663, 0x2660, 0x2022, 0x25d8, 
@@ -741,7 +1061,7 @@ static const unsigned short table_kamen[255] = {
 
 QECharset charset_kamen = {
     "kamen",
-    aliases_kamen,
+    "x-kam-cs|kam|867|869",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -752,11 +1072,13 @@ QECharset charset_kamen = {
     private_table: table_kamen,
 };
 
-/*-- file: cp/KOI8-R.TXT, id: koi8_r, name: koi8-r, ISO name: KOI8-R --*/
 
-static const char * const aliases_koi8_r[] = {
-    NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/KOI8-R.TXT
+ * iso_name: KOI8-R
+ *     name: koi8-r
+ *       id: koi8_r
+ */
 
 static const unsigned short table_koi8_r[128] = {
     0x2500, 0x2502, 0x250c, 0x2510, 0x2514, 0x2518, 0x251c, 0x2524, 
@@ -779,7 +1101,7 @@ static const unsigned short table_koi8_r[128] = {
 
 QECharset charset_koi8_r = {
     "koi8-r",
-    aliases_koi8_r,
+    "",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -790,11 +1112,13 @@ QECharset charset_koi8_r = {
     private_table: table_koi8_r,
 };
 
-/*-- file: cp/koi8_u.cp, id: koi8_u, name: koi8-u, ISO name: KOI8-U --*/
 
-static const char * const aliases_koi8_u[] = {
-    NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/koi8_u.cp
+ * iso_name: KOI8-U
+ *     name: koi8-u
+ *       id: koi8_u
+ */
 
 static const unsigned short table_koi8_u[128] = {
     0x2500, 0x2502, 0x250c, 0x2510, 0x2514, 0x2518, 0x251c, 0x2524, 
@@ -817,7 +1141,7 @@ static const unsigned short table_koi8_u[128] = {
 
 QECharset charset_koi8_u = {
     "koi8-u",
-    aliases_koi8_u,
+    "",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -828,11 +1152,13 @@ QECharset charset_koi8_u = {
     private_table: table_koi8_u,
 };
 
-/*-- file: cp/tcvn5712.cp, id: tcvn5712, name: tcvn5712, ISO name: TCVN-5712 (Vietnamese) --*/
 
-static const char * const aliases_tcvn5712[] = {
-    "TCVN-5712", "TCVN", "TCVN-0", "TCVN-1", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/tcvn5712.cp
+ * iso_name: TCVN-5712 (Vietnamese)
+ *     name: tcvn5712
+ *       id: tcvn5712
+ */
 
 static const unsigned short table_tcvn5712[255] = {
     0x00da, 0x1ee4, 0x0003, 0x1eea, 0x1eec, 0x1eee, 0x0007, 0x0008, 
@@ -871,7 +1197,7 @@ static const unsigned short table_tcvn5712[255] = {
 
 QECharset charset_tcvn5712 = {
     "tcvn5712",
-    aliases_tcvn5712,
+    "TCVN-5712|TCVN|TCVN-0|TCVN-1",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -882,11 +1208,13 @@ QECharset charset_tcvn5712 = {
     private_table: table_tcvn5712,
 };
 
-/*-- file: cp/VISCII.TXT, id: viscii, name: viscii, ISO name: VISCII --*/
 
-static const char * const aliases_viscii[] = {
-    "VISCII", "VISCII-1", "VISCII 1.1", "VISCII-1.1", "VISCII1.1-1", NULL
-};
+/*----------------------------------------------------------------
+ * filename: cp/VISCII.TXT
+ * iso_name: VISCII
+ *     name: viscii
+ *       id: viscii
+ */
 
 static const unsigned short table_viscii[254] = {
     0x1eb2, 0x0003, 0x0004, 0x1eb4, 0x1eaa, 0x0007, 0x0008, 0x0009, 
@@ -925,7 +1253,7 @@ static const unsigned short table_viscii[254] = {
 
 QECharset charset_viscii = {
     "viscii",
-    aliases_viscii,
+    "VISCII|VISCII-1|VISCII 1.1|VISCII-1.1|VISCII1.1-1",
     decode_8bit_init,
     NULL,
     encode_8bit,
@@ -936,14 +1264,300 @@ QECharset charset_viscii = {
     private_table: table_viscii,
 };
 
+
+/*----------------------------------------------------------------
+ * filename: cp/CP037.TXT
+ * iso_name: CP 037
+ *     name: cp037
+ *       id: cp037
+ */
+
+static const unsigned short table_cp037[252] = {
+    0x009c, 0x0009, 0x0086, 0x007f, 0x0097, 0x008d, 0x008e, 0x000b, 
+    0x000c, 0x000d, 0x000e, 0x000f, 0x0010, 0x0011, 0x0012, 0x0013, 
+    0x009d, 0x0085, 0x0008, 0x0087, 0x0018, 0x0019, 0x0092, 0x008f, 
+    0x001c, 0x001d, 0x001e, 0x001f, 0x0080, 0x0081, 0x0082, 0x0083, 
+    0x0084, 0x000a, 0x0017, 0x001b, 0x0088, 0x0089, 0x008a, 0x008b, 
+    0x008c, 0x0005, 0x0006, 0x0007, 0x0090, 0x0091, 0x0016, 0x0093, 
+    0x0094, 0x0095, 0x0096, 0x0004, 0x0098, 0x0099, 0x009a, 0x009b, 
+    0x0014, 0x0015, 0x009e, 0x001a, 0x0020, 0x00a0, 0x00e2, 0x00e4, 
+    0x00e0, 0x00e1, 0x00e3, 0x00e5, 0x00e7, 0x00f1, 0x00a2, 0x002e, 
+    0x003c, 0x0028, 0x002b, 0x007c, 0x0026, 0x00e9, 0x00ea, 0x00eb, 
+    0x00e8, 0x00ed, 0x00ee, 0x00ef, 0x00ec, 0x00df, 0x0021, 0x0024, 
+    0x002a, 0x0029, 0x003b, 0x00ac, 0x002d, 0x002f, 0x00c2, 0x00c4, 
+    0x00c0, 0x00c1, 0x00c3, 0x00c5, 0x00c7, 0x00d1, 0x00a6, 0x002c, 
+    0x0025, 0x005f, 0x003e, 0x003f, 0x00f8, 0x00c9, 0x00ca, 0x00cb, 
+    0x00c8, 0x00cd, 0x00ce, 0x00cf, 0x00cc, 0x0060, 0x003a, 0x0023, 
+    0x0040, 0x0027, 0x003d, 0x0022, 0x00d8, 0x0061, 0x0062, 0x0063, 
+    0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x00ab, 0x00bb, 
+    0x00f0, 0x00fd, 0x00fe, 0x00b1, 0x00b0, 0x006a, 0x006b, 0x006c, 
+    0x006d, 0x006e, 0x006f, 0x0070, 0x0071, 0x0072, 0x00aa, 0x00ba, 
+    0x00e6, 0x00b8, 0x00c6, 0x00a4, 0x00b5, 0x007e, 0x0073, 0x0074, 
+    0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007a, 0x00a1, 0x00bf, 
+    0x00d0, 0x00dd, 0x00de, 0x00ae, 0x005e, 0x00a3, 0x00a5, 0x00b7, 
+    0x00a9, 0x00a7, 0x00b6, 0x00bc, 0x00bd, 0x00be, 0x005b, 0x005d, 
+    0x00af, 0x00a8, 0x00b4, 0x00d7, 0x007b, 0x0041, 0x0042, 0x0043, 
+    0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x00ad, 0x00f4, 
+    0x00f6, 0x00f2, 0x00f3, 0x00f5, 0x007d, 0x004a, 0x004b, 0x004c, 
+    0x004d, 0x004e, 0x004f, 0x0050, 0x0051, 0x0052, 0x00b9, 0x00fb, 
+    0x00fc, 0x00f9, 0x00fa, 0x00ff, 0x005c, 0x00f7, 0x0053, 0x0054, 
+    0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005a, 0x00b2, 0x00d4, 
+    0x00d6, 0x00d2, 0x00d3, 0x00d5, 0x0030, 0x0031, 0x0032, 0x0033, 
+    0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x00b3, 0x00db, 
+    0x00dc, 0x00d9, 0x00da, 0x009f, 
+};
+
+QECharset charset_cp037 = {
+    "cp037",
+    "037|ebcdic-037",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 37,
+    min_char: 4,
+    max_char: 255,
+    private_table: table_cp037,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/CP424.TXT
+ * iso_name: CP 424
+ *     name: cp424
+ *       id: cp424
+ */
+
+static const unsigned short table_cp424[252] = {
+    0x009c, 0x0009, 0x0086, 0x007f, 0x0097, 0x008d, 0x008e, 0x000b, 
+    0x000c, 0x000d, 0x000e, 0x000f, 0x0010, 0x0011, 0x0012, 0x0013, 
+    0x009d, 0x0085, 0x0008, 0x0087, 0x0018, 0x0019, 0x0092, 0x008f, 
+    0x001c, 0x001d, 0x001e, 0x001f, 0x0080, 0x0081, 0x0082, 0x0083, 
+    0x0084, 0x000a, 0x0017, 0x001b, 0x0088, 0x0089, 0x008a, 0x008b, 
+    0x008c, 0x0005, 0x0006, 0x0007, 0x0090, 0x0091, 0x0016, 0x0093, 
+    0x0094, 0x0095, 0x0096, 0x0004, 0x0098, 0x0099, 0x009a, 0x009b, 
+    0x0014, 0x0015, 0x009e, 0x001a, 0x0020, 0x05d0, 0x05d1, 0x05d2, 
+    0x05d3, 0x05d4, 0x05d5, 0x05d6, 0x05d7, 0x05d8, 0x00a2, 0x002e, 
+    0x003c, 0x0028, 0x002b, 0x007c, 0x0026, 0x05d9, 0x05da, 0x05db, 
+    0x05dc, 0x05dd, 0x05de, 0x05df, 0x05e0, 0x05e1, 0x0021, 0x0024, 
+    0x002a, 0x0029, 0x003b, 0x00ac, 0x002d, 0x002f, 0x05e2, 0x05e3, 
+    0x05e4, 0x05e5, 0x05e6, 0x05e7, 0x05e8, 0x05e9, 0x00a6, 0x002c, 
+    0x0025, 0x005f, 0x003e, 0x003f, 0x0000, 0x05ea, 0x0000, 0x0000, 
+    0x00a0, 0x0000, 0x0000, 0x0000, 0x2017, 0x0060, 0x003a, 0x0023, 
+    0x0040, 0x0027, 0x003d, 0x0022, 0x0000, 0x0061, 0x0062, 0x0063, 
+    0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x00ab, 0x00bb, 
+    0x0000, 0x0000, 0x0000, 0x00b1, 0x00b0, 0x006a, 0x006b, 0x006c, 
+    0x006d, 0x006e, 0x006f, 0x0070, 0x0071, 0x0072, 0x0000, 0x0000, 
+    0x0000, 0x00b8, 0x0000, 0x00a4, 0x00b5, 0x007e, 0x0073, 0x0074, 
+    0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007a, 0x0000, 0x0000, 
+    0x0000, 0x0000, 0x0000, 0x00ae, 0x005e, 0x00a3, 0x00a5, 0x00b7, 
+    0x00a9, 0x00a7, 0x00b6, 0x00bc, 0x00bd, 0x00be, 0x005b, 0x005d, 
+    0x00af, 0x00a8, 0x00b4, 0x00d7, 0x007b, 0x0041, 0x0042, 0x0043, 
+    0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x00ad, 0x0000, 
+    0x0000, 0x0000, 0x0000, 0x0000, 0x007d, 0x004a, 0x004b, 0x004c, 
+    0x004d, 0x004e, 0x004f, 0x0050, 0x0051, 0x0052, 0x00b9, 0x0000, 
+    0x0000, 0x0000, 0x0000, 0x0000, 0x005c, 0x00f7, 0x0053, 0x0054, 
+    0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005a, 0x00b2, 0x0000, 
+    0x0000, 0x0000, 0x0000, 0x0000, 0x0030, 0x0031, 0x0032, 0x0033, 
+    0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x00b3, 0x0000, 
+    0x0000, 0x0000, 0x0000, 0x009f, 
+};
+
+QECharset charset_cp424 = {
+    "cp424",
+    "424|ebcdic-424",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 37,
+    min_char: 4,
+    max_char: 255,
+    private_table: table_cp424,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/CP500.TXT
+ * iso_name: CP 500
+ *     name: cp500
+ *       id: cp500
+ */
+
+static const unsigned short table_cp500[252] = {
+    0x009c, 0x0009, 0x0086, 0x007f, 0x0097, 0x008d, 0x008e, 0x000b, 
+    0x000c, 0x000d, 0x000e, 0x000f, 0x0010, 0x0011, 0x0012, 0x0013, 
+    0x009d, 0x0085, 0x0008, 0x0087, 0x0018, 0x0019, 0x0092, 0x008f, 
+    0x001c, 0x001d, 0x001e, 0x001f, 0x0080, 0x0081, 0x0082, 0x0083, 
+    0x0084, 0x000a, 0x0017, 0x001b, 0x0088, 0x0089, 0x008a, 0x008b, 
+    0x008c, 0x0005, 0x0006, 0x0007, 0x0090, 0x0091, 0x0016, 0x0093, 
+    0x0094, 0x0095, 0x0096, 0x0004, 0x0098, 0x0099, 0x009a, 0x009b, 
+    0x0014, 0x0015, 0x009e, 0x001a, 0x0020, 0x00a0, 0x00e2, 0x00e4, 
+    0x00e0, 0x00e1, 0x00e3, 0x00e5, 0x00e7, 0x00f1, 0x005b, 0x002e, 
+    0x003c, 0x0028, 0x002b, 0x0021, 0x0026, 0x00e9, 0x00ea, 0x00eb, 
+    0x00e8, 0x00ed, 0x00ee, 0x00ef, 0x00ec, 0x00df, 0x005d, 0x0024, 
+    0x002a, 0x0029, 0x003b, 0x005e, 0x002d, 0x002f, 0x00c2, 0x00c4, 
+    0x00c0, 0x00c1, 0x00c3, 0x00c5, 0x00c7, 0x00d1, 0x00a6, 0x002c, 
+    0x0025, 0x005f, 0x003e, 0x003f, 0x00f8, 0x00c9, 0x00ca, 0x00cb, 
+    0x00c8, 0x00cd, 0x00ce, 0x00cf, 0x00cc, 0x0060, 0x003a, 0x0023, 
+    0x0040, 0x0027, 0x003d, 0x0022, 0x00d8, 0x0061, 0x0062, 0x0063, 
+    0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x00ab, 0x00bb, 
+    0x00f0, 0x00fd, 0x00fe, 0x00b1, 0x00b0, 0x006a, 0x006b, 0x006c, 
+    0x006d, 0x006e, 0x006f, 0x0070, 0x0071, 0x0072, 0x00aa, 0x00ba, 
+    0x00e6, 0x00b8, 0x00c6, 0x00a4, 0x00b5, 0x007e, 0x0073, 0x0074, 
+    0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007a, 0x00a1, 0x00bf, 
+    0x00d0, 0x00dd, 0x00de, 0x00ae, 0x00a2, 0x00a3, 0x00a5, 0x00b7, 
+    0x00a9, 0x00a7, 0x00b6, 0x00bc, 0x00bd, 0x00be, 0x00ac, 0x007c, 
+    0x00af, 0x00a8, 0x00b4, 0x00d7, 0x007b, 0x0041, 0x0042, 0x0043, 
+    0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x00ad, 0x00f4, 
+    0x00f6, 0x00f2, 0x00f3, 0x00f5, 0x007d, 0x004a, 0x004b, 0x004c, 
+    0x004d, 0x004e, 0x004f, 0x0050, 0x0051, 0x0052, 0x00b9, 0x00fb, 
+    0x00fc, 0x00f9, 0x00fa, 0x00ff, 0x005c, 0x00f7, 0x0053, 0x0054, 
+    0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005a, 0x00b2, 0x00d4, 
+    0x00d6, 0x00d2, 0x00d3, 0x00d5, 0x0030, 0x0031, 0x0032, 0x0033, 
+    0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x00b3, 0x00db, 
+    0x00dc, 0x00d9, 0x00da, 0x009f, 
+};
+
+QECharset charset_cp500 = {
+    "cp500",
+    "500|ebcdic-500",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 37,
+    min_char: 4,
+    max_char: 255,
+    private_table: table_cp500,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/CP875.TXT
+ * iso_name: CP 875
+ *     name: cp875
+ *       id: cp875
+ */
+
+static const unsigned short table_cp875[252] = {
+    0x009c, 0x0009, 0x0086, 0x007f, 0x0097, 0x008d, 0x008e, 0x000b, 
+    0x000c, 0x000d, 0x000e, 0x000f, 0x0010, 0x0011, 0x0012, 0x0013, 
+    0x009d, 0x0085, 0x0008, 0x0087, 0x0018, 0x0019, 0x0092, 0x008f, 
+    0x001c, 0x001d, 0x001e, 0x001f, 0x0080, 0x0081, 0x0082, 0x0083, 
+    0x0084, 0x000a, 0x0017, 0x001b, 0x0088, 0x0089, 0x008a, 0x008b, 
+    0x008c, 0x0005, 0x0006, 0x0007, 0x0090, 0x0091, 0x0016, 0x0093, 
+    0x0094, 0x0095, 0x0096, 0x0004, 0x0098, 0x0099, 0x009a, 0x009b, 
+    0x0014, 0x0015, 0x009e, 0x001a, 0x0020, 0x0391, 0x0392, 0x0393, 
+    0x0394, 0x0395, 0x0396, 0x0397, 0x0398, 0x0399, 0x005b, 0x002e, 
+    0x003c, 0x0028, 0x002b, 0x0021, 0x0026, 0x039a, 0x039b, 0x039c, 
+    0x039d, 0x039e, 0x039f, 0x03a0, 0x03a1, 0x03a3, 0x005d, 0x0024, 
+    0x002a, 0x0029, 0x003b, 0x005e, 0x002d, 0x002f, 0x03a4, 0x03a5, 
+    0x03a6, 0x03a7, 0x03a8, 0x03a9, 0x03aa, 0x03ab, 0x007c, 0x002c, 
+    0x0025, 0x005f, 0x003e, 0x003f, 0x00a8, 0x0386, 0x0388, 0x0389, 
+    0x00a0, 0x038a, 0x038c, 0x038e, 0x038f, 0x0060, 0x003a, 0x0023, 
+    0x0040, 0x0027, 0x003d, 0x0022, 0x0385, 0x0061, 0x0062, 0x0063, 
+    0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x03b1, 0x03b2, 
+    0x03b3, 0x03b4, 0x03b5, 0x03b6, 0x00b0, 0x006a, 0x006b, 0x006c, 
+    0x006d, 0x006e, 0x006f, 0x0070, 0x0071, 0x0072, 0x03b7, 0x03b8, 
+    0x03b9, 0x03ba, 0x03bb, 0x03bc, 0x00b4, 0x007e, 0x0073, 0x0074, 
+    0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007a, 0x03bd, 0x03be, 
+    0x03bf, 0x03c0, 0x03c1, 0x03c3, 0x00a3, 0x03ac, 0x03ad, 0x03ae, 
+    0x03ca, 0x03af, 0x03cc, 0x03cd, 0x03cb, 0x03ce, 0x03c2, 0x03c4, 
+    0x03c5, 0x03c6, 0x03c7, 0x03c8, 0x007b, 0x0041, 0x0042, 0x0043, 
+    0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x00ad, 0x03c9, 
+    0x0390, 0x03b0, 0x2018, 0x2015, 0x007d, 0x004a, 0x004b, 0x004c, 
+    0x004d, 0x004e, 0x004f, 0x0050, 0x0051, 0x0052, 0x00b1, 0x00bd, 
+    0x001a, 0x0387, 0x2019, 0x00a6, 0x005c, 0x001a, 0x0053, 0x0054, 
+    0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005a, 0x00b2, 0x00a7, 
+    0x001a, 0x001a, 0x00ab, 0x00ac, 0x0030, 0x0031, 0x0032, 0x0033, 
+    0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x00b3, 0x00a9, 
+    0x001a, 0x001a, 0x00bb, 0x009f, 
+};
+
+QECharset charset_cp875 = {
+    "cp875",
+    "875|ebcdic-875",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 37,
+    min_char: 4,
+    max_char: 255,
+    private_table: table_cp875,
+};
+
+
+/*----------------------------------------------------------------
+ * filename: cp/CP1026.TXT
+ * iso_name: CP 1026
+ *     name: cp1026
+ *       id: cp1026
+ */
+
+static const unsigned short table_cp1026[252] = {
+    0x009c, 0x0009, 0x0086, 0x007f, 0x0097, 0x008d, 0x008e, 0x000b, 
+    0x000c, 0x000d, 0x000e, 0x000f, 0x0010, 0x0011, 0x0012, 0x0013, 
+    0x009d, 0x0085, 0x0008, 0x0087, 0x0018, 0x0019, 0x0092, 0x008f, 
+    0x001c, 0x001d, 0x001e, 0x001f, 0x0080, 0x0081, 0x0082, 0x0083, 
+    0x0084, 0x000a, 0x0017, 0x001b, 0x0088, 0x0089, 0x008a, 0x008b, 
+    0x008c, 0x0005, 0x0006, 0x0007, 0x0090, 0x0091, 0x0016, 0x0093, 
+    0x0094, 0x0095, 0x0096, 0x0004, 0x0098, 0x0099, 0x009a, 0x009b, 
+    0x0014, 0x0015, 0x009e, 0x001a, 0x0020, 0x00a0, 0x00e2, 0x00e4, 
+    0x00e0, 0x00e1, 0x00e3, 0x00e5, 0x007b, 0x00f1, 0x00c7, 0x002e, 
+    0x003c, 0x0028, 0x002b, 0x0021, 0x0026, 0x00e9, 0x00ea, 0x00eb, 
+    0x00e8, 0x00ed, 0x00ee, 0x00ef, 0x00ec, 0x00df, 0x011e, 0x0130, 
+    0x002a, 0x0029, 0x003b, 0x005e, 0x002d, 0x002f, 0x00c2, 0x00c4, 
+    0x00c0, 0x00c1, 0x00c3, 0x00c5, 0x005b, 0x00d1, 0x015f, 0x002c, 
+    0x0025, 0x005f, 0x003e, 0x003f, 0x00f8, 0x00c9, 0x00ca, 0x00cb, 
+    0x00c8, 0x00cd, 0x00ce, 0x00cf, 0x00cc, 0x0131, 0x003a, 0x00d6, 
+    0x015e, 0x0027, 0x003d, 0x00dc, 0x00d8, 0x0061, 0x0062, 0x0063, 
+    0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x00ab, 0x00bb, 
+    0x007d, 0x0060, 0x00a6, 0x00b1, 0x00b0, 0x006a, 0x006b, 0x006c, 
+    0x006d, 0x006e, 0x006f, 0x0070, 0x0071, 0x0072, 0x00aa, 0x00ba, 
+    0x00e6, 0x00b8, 0x00c6, 0x00a4, 0x00b5, 0x00f6, 0x0073, 0x0074, 
+    0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007a, 0x00a1, 0x00bf, 
+    0x005d, 0x0024, 0x0040, 0x00ae, 0x00a2, 0x00a3, 0x00a5, 0x00b7, 
+    0x00a9, 0x00a7, 0x00b6, 0x00bc, 0x00bd, 0x00be, 0x00ac, 0x007c, 
+    0x00af, 0x00a8, 0x00b4, 0x00d7, 0x00e7, 0x0041, 0x0042, 0x0043, 
+    0x0044, 0x0045, 0x0046, 0x0047, 0x0048, 0x0049, 0x00ad, 0x00f4, 
+    0x007e, 0x00f2, 0x00f3, 0x00f5, 0x011f, 0x004a, 0x004b, 0x004c, 
+    0x004d, 0x004e, 0x004f, 0x0050, 0x0051, 0x0052, 0x00b9, 0x00fb, 
+    0x005c, 0x00f9, 0x00fa, 0x00ff, 0x00fc, 0x00f7, 0x0053, 0x0054, 
+    0x0055, 0x0056, 0x0057, 0x0058, 0x0059, 0x005a, 0x00b2, 0x00d4, 
+    0x0023, 0x00d2, 0x00d3, 0x00d5, 0x0030, 0x0031, 0x0032, 0x0033, 
+    0x0034, 0x0035, 0x0036, 0x0037, 0x0038, 0x0039, 0x00b3, 0x00db, 
+    0x0022, 0x00d9, 0x00da, 0x009f, 
+};
+
+QECharset charset_cp1026 = {
+    "cp1026",
+    "1026|ebcdic-1026",
+    decode_8bit_init,
+    NULL,
+    encode_8bit,
+    table_alloc: 1,
+    eol_char: 37,
+    min_char: 4,
+    max_char: 255,
+    private_table: table_cp1026,
+};
+
 int charset_more_init(void)
 {
     qe_register_charset(&charset_8859_2);
+    qe_register_charset(&charset_8859_3);
     qe_register_charset(&charset_8859_4);
     qe_register_charset(&charset_8859_5);
+    qe_register_charset(&charset_8859_6);
     qe_register_charset(&charset_8859_7);
+    qe_register_charset(&charset_8859_8);
     qe_register_charset(&charset_8859_9);
+    qe_register_charset(&charset_8859_10);
+    qe_register_charset(&charset_8859_11);
     qe_register_charset(&charset_8859_13);
+    qe_register_charset(&charset_8859_14);
     qe_register_charset(&charset_8859_15);
     qe_register_charset(&charset_8859_16);
     qe_register_charset(&charset_cp437);
@@ -954,6 +1568,8 @@ int charset_more_init(void)
     qe_register_charset(&charset_cp1125);
     qe_register_charset(&charset_cp1250);
     qe_register_charset(&charset_cp1251);
+    qe_register_charset(&charset_cp1252);
+    qe_register_charset(&charset_cp1256);
     qe_register_charset(&charset_cp1257);
     qe_register_charset(&charset_mac_latin2);
     qe_register_charset(&charset_mac_roman);
@@ -962,6 +1578,11 @@ int charset_more_init(void)
     qe_register_charset(&charset_koi8_u);
     qe_register_charset(&charset_tcvn5712);
     qe_register_charset(&charset_viscii);
+    qe_register_charset(&charset_cp037);
+    qe_register_charset(&charset_cp424);
+    qe_register_charset(&charset_cp500);
+    qe_register_charset(&charset_cp875);
+    qe_register_charset(&charset_cp1026);
 
     return 0;
 }

@@ -1,3 +1,22 @@
+# QEmacs, tiny but powerful multimode editor
+#
+# Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
+# Copyright (c) 2002-2007 Charlie Gordon.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 include config.mak
 
 # from configure
@@ -323,12 +342,14 @@ endif
 #
 # Code pages (only useful to add your own code pages)
 #
-CP=  8859-2.TXT   8859-4.TXT   8859-5.TXT   8859-7.TXT   8859-9.TXT  \
-     8859-13.TXT  8859-15.TXT  8859-16.TXT                           \
+CP=  8859-2.TXT   8859-3.TXT   8859-4.TXT   8859-5.TXT   8859-6.TXT  \
+     8859-7.TXT   8859-8.TXT   8859-9.TXT   8859-10.TXT  8859-11.TXT \
+     8859-13.TXT  8859-14.TXT  8859-15.TXT  8859-16.TXT              \
      CP437.TXT    CP737.TXT    CP850.TXT    CP852.TXT    CP866.TXT   \
-     CP1125.TXT   CP1250.TXT   CP1251.TXT   CP1257.TXT               \
-     MAC-LATIN2.TXT MAC-ROMAN.TXT                                    \
-     kamen.cp     KOI8-R.TXT   koi8_u.cp    tcvn5712.cp  VISCII.TXT
+     CP1125.TXT   CP1250.TXT   CP1251.TXT   CP1252.TXT   CP1256.TXT  \
+     CP1257.TXT   MAC-LATIN2.TXT MAC-ROMAN.TXT                       \
+     kamen.cp     KOI8-R.TXT   koi8_u.cp    tcvn5712.cp  VISCII.TXT  \
+     CP037.TXT    CP424.TXT    CP500.TXT    CP875.TXT    CP1026.TXT
 
 CP:=$(addprefix cp/,$(CP))
 

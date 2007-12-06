@@ -257,22 +257,27 @@ static void input_completion(StringArray *cs, const char *input)
     }
 }
 
-void do_set_input_method(EditState *s, const char *input_str)
+static InputMethod *find_input_method(const char *name)
 {
     InputMethod *m;
 
-    m = input_methods;
-    for (;;) {
-        if (!m) {
-            put_status(s, "'%s' not found", input_str);
-            return;
-        }
-        if (!strcmp(input_str, m->name))
-            break;
-        m = m->next;
+    for (m = input_methods; m != NULL; m = m->next) {
+        if (!strcmp(m->name, name))
+            return m;
     }
-    s->input_method = m;
-    s->selected_input_method = m;
+    return NULL;
+}
+
+void do_set_input_method(EditState *s, const char *name)
+{
+    InputMethod *m = find_input_method(name);
+
+    if (m) {
+        s->input_method = m;
+        s->selected_input_method = m;
+    } else {
+        put_status(s, "'%s' not found", name);
+    }
 }
 
 void do_switch_input_method(EditState *s)
