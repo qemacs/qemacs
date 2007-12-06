@@ -143,8 +143,8 @@ int main(int argc, char **argv)
             *p = '\0';
         p = buf;
 
-        while (isspace(*p))
-          p++;
+        while (isspace((unsigned char)*p))
+            p++;
 
         if (*p == '#' || *p == '\0') {
             if (to_utf8) {
@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 
         l->buf_in_size = 0;
         for (;;) {
-            while (isspace(*p))
+            while (isspace((unsigned char)*p))
                 p++;
             if (*p == '=')
                 break;
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
         
         l->buf_out_size = 0;
         for (;;) {
-            while (isspace(*p))
+            while (isspace((unsigned char)*p))
                 p++;
             /* stop at the first comment */
             if (*p == '\0' || *p == '/')

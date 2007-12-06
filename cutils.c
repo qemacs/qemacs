@@ -84,9 +84,7 @@ int stristart(const char *str, const char *val, const char **ptr)
     p = str;
     q = val;
     while (*q != '\0') {
-        if (toupper(*(const unsigned char *)p) !=
-              toupper(*(const unsigned char *)q))
-        {
+        if (toupper((unsigned char)*p) != toupper((unsigned char)*q)) {
             if (*p == '-' || *p == '_' || *p == ' ') {
                 p++;
                 continue;
@@ -119,9 +117,7 @@ int stricmp(const char *str1, const char *str2)
     p = str1;
     q = str2;
     for (;;) {
-        if (toupper(*(const unsigned char *)p) !=
-              toupper(*(const unsigned char *)q))
-        {
+        if (toupper((unsigned char)*p) != toupper((unsigned char)*q)) {
             if (*p == '-' || *p == '_' || *p == ' ') {
                 p++;
                 continue;
@@ -130,8 +126,8 @@ int stricmp(const char *str1, const char *str2)
                 q++;
                 continue;
             }
-            return (toupper(*(const unsigned char *)p) <
-                    toupper(*(const unsigned char *)q)) ? -1 : +1;
+            return (toupper((unsigned char)*p) <
+                    toupper((unsigned char)*q)) ? -1 : +1;
         }
         if (!*p)
             break;

@@ -171,7 +171,7 @@ int xml_mode_probe(ModeProbeData *p1)
         return 0;
     p++;
     if (*p != '!' && *p != '?' && *p != '/' && 
-        !isalpha(*p))
+        !isalpha((unsigned char)*p))
         return 0;
     return 90; /* leave some room for more specific XML parser */
 }

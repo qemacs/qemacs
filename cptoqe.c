@@ -143,7 +143,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
             continue;
         }
 
-        if (p[0] != '0' || tolower(p[1]) != 'x') {
+        if (p[0] != '0' || tolower((unsigned char)p[1]) != 'x') {
             if (!has_iso_name) {
                 strcpy(iso_name, p);
                 has_iso_name = 1;
@@ -157,14 +157,14 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
             if (!strcmp(iso_name, p) || !strcmp(alias_list, p))
                 continue;
 
-            if (!isdigit(*p)) {
+            if (!isdigit((unsigned char)*p)) {
                 fprintf(stderr, "%s: ignoring line: %s\n", filename, p);
                 continue;
             }
         }
 
         c1 = strtol(p, (char **)&p, 16);
-        if (!isspace(*p)) {
+        if (!isspace((unsigned char)*p)) {
             /* ignore ranges such as "0x20-0x7e       idem" */
             continue;
         }
