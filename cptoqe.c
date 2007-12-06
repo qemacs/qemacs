@@ -57,39 +57,50 @@ static char *get_extension(const char *pathname)
     return (char *)ext;
 }
 
+static inline char *skipspaces(char *p) {
+    while (isspace((unsigned char)*p))
+        p++;
+    return p;
+}
+
 static char *getline(char *buf, int buf_size, FILE *f, int strip_comments)
 {
     for (;;) {
-        char *str;
+        char *p;
         int len;
 
-        str = fgets(buf, buf_size, f);
-        if (!str)
+        if (!fgets(buf, buf_size, f))
             return NULL;
         len = strlen(buf);
         if (len > 0 && buf[len - 1] == '\n') {
             buf[len - 1] = '\0';
         }
-        if (buf[0] == 26) {
+        p = skipspaces(buf);
+        if (*p == 26) {
             /* handle obsolete DOS ctrl-Z marker */
             return NULL;
         }
-        if (strip_comments && (buf[0] == '\0' || buf[0] == '#'))
+        if (strip_comments && (*p == '\0' || *p == '#'))
             continue;
 
-        return str;
+        return p;
     }
 }
 
-static void handle_cp(FILE **fp, const char *name, const char *filename)
+static void handle_cp(FILE *f0, const char *name, const char *fname)
 {
     char line[1024];
     char *p, *q;
     int table[256];
     int min_code, max_code, c1, c2, i, nb, j;
     char name1[256];
+    char iso_name[256];
+    char alias_list[256];
     char includename[256];
+    int has_iso_name, has_alias_list;
     int eol_char = 10;
+    FILE *f = f0;
+    const char *filename = fname;
 
     /* name1 is name with _ changed into - */
     strcpy(name1, name);
@@ -98,31 +109,9 @@ static void handle_cp(FILE **fp, const char *name, const char *filename)
             *p = '-';
     }
     
-    /* skip ISO name */
-    getline(line, sizeof(line), *fp, 1);
-
-    printf("/*-- file: %s, id: %s, name: %s, ISO name: %s --*/\n\n",
-           filename, name, name1, line);
-
-    /* get alias list */
-    getline(line, sizeof(line), *fp, 1);
-
-    /* Parse alias list and remove duplicates of name */
-    printf("static const char * const aliases_%s[] = {\n"
-           "    ", name);
-
-    for (q = line;;) {
-        if ((p = strchr(q, '"')) == NULL
-        ||  (q = strchr(++p, '"')) == NULL)
-            break;
-
-        *q++ = '\0';
-        if (strcmp(name1, p)) {
-            printf("\"%s\", ", p);
-        }
-    }
-    printf("NULL\n"
-           "};\n\n");
+    strcpy(iso_name, name);
+    strcpy(alias_list, "");
+    has_iso_name = has_alias_list = 0;
 
     for (i = 0; i < 256; i++) {
         table[i] = i;
@@ -130,31 +119,59 @@ static void handle_cp(FILE **fp, const char *name, const char *filename)
 
     nb = 0;
     for (;;) {
-        if (!getline(line, sizeof(line), *fp, 0))
-            break;
-        if (*line == '[')
-            break;
-        if (!memcmp(line, "include ", 8)) {
-            fclose(*fp);
-            strcpy(includename, filename);
-            strcpy(get_basename(includename), line + 8);
-            filename = includename;
-            *fp = fopen(filename, "r");
-            if (*fp == NULL) {
-                fprintf(stderr, "%s: cannot open %s\n", name, filename);
+        if (!(p = getline(line, sizeof(line), f, 0))
+        ||  *p == '['
+        ||  !strcasecmp(p, "# compatibility")) {
+            if (f == f0)
                 break;
-            }
+            fclose(f);
+            f = f0;
+            filename = fname;
             continue;
         }
-        if (!strcasecmp(line, "# compatibility"))
-            break;
-        if (line[0] == '\0' || line[0] == '#')
+        if (*p == '\0' || p[0] == '#')
             continue;
-        p = line;
+        if (!memcmp(p, "include ", 8)) {
+            strcpy(includename, filename);
+            strcpy(get_basename(includename), skipspaces(p + 8));
+            f = fopen(includename, "r");
+            if (f == NULL) {
+                fprintf(stderr, "%s: cannot open %s\n", name, includename);
+                f = f0;
+            }
+            filename = includename;
+            continue;
+        }
+
+        if (p[0] != '0' || tolower(p[1]) != 'x') {
+            if (!has_iso_name) {
+                strcpy(iso_name, p);
+                has_iso_name = 1;
+                continue;
+            }
+            if (!has_alias_list) {
+                strcpy(alias_list, p);
+                has_alias_list = 1;
+                continue;
+            }
+            if (!strcmp(iso_name, p) || !strcmp(alias_list, p))
+                continue;
+
+            if (!isdigit(*p)) {
+                fprintf(stderr, "%s: ignoring line: %s\n", filename, p);
+                continue;
+            }
+        }
+
         c1 = strtol(p, (char **)&p, 16);
         if (!isspace(*p)) {
             /* ignore ranges such as "0x20-0x7e       idem" */
             continue;
+        }
+        p = skipspaces(p);
+        if (*p == '\0' || *p == '#') {
+            /* unknown */
+            /* continue; */
         }
         c2 = strtol(p, (char **)&p, 16);
         if (c1 >= 256) {
@@ -187,6 +204,26 @@ static void handle_cp(FILE **fp, const char *name, const char *filename)
     }
     //    fprintf(stderr, "%s: %3d %02x %02x\n", name, nb, min_code, max_code);
     
+    printf("/*-- file: %s, id: %s, name: %s, ISO name: %s --*/\n\n",
+           filename, name, name1, iso_name);
+
+    /* Parse alias list and remove duplicates of name */
+    printf("static const char * const aliases_%s[] = {\n"
+           "    ", name);
+
+    for (q = alias_list;;) {
+        if ((p = strchr(q, '"')) == NULL
+        ||  (q = strchr(++p, '"')) == NULL)
+            break;
+
+        *q++ = '\0';
+        if (strcmp(name1, p)) {
+            printf("\"%s\", ", p);
+        }
+    }
+    printf("NULL\n"
+           "};\n\n");
+
     if (max_code != -1) {
         printf("static const unsigned short table_%s[%d] = {\n",
                name, max_code - min_code + 1);
@@ -223,20 +260,33 @@ static void handle_cp(FILE **fp, const char *name, const char *filename)
     add_init(");\n");
 }
 
-static FILE *open_index(const char *filename, const char *name)
+static int namecmp(const char *p1, const char *p2, size_t len)
+{
+    while (len--) {
+        int c = (unsigned char)*p1++;
+        int d = (unsigned char)*p2++;
+        if (c == d)
+            continue;
+        if ((c == '-' || c == '_') && (d == '-' || d == '_'))
+            continue;
+        if (tolower(c) == tolower(d))
+            continue;
+        return c - d;
+    }
+    return 0;
+}
+
+static FILE *open_index(const char *indexname, const char *name)
 {
     char line[1024];
-    char indexname[256];
     FILE *f;
     int len = strlen(name);
 
-    strcpy(indexname, filename);
-    strcpy(get_basename(indexname), "index.cp");
     f = fopen(indexname, "r");
     if (f != NULL) {
         while (getline(line, sizeof(line), f, 1)) {
             if (*line == '[' && line[1 + len] == ']'
-            &&  !memcmp(line + 1, name, len)) {
+            &&  !namecmp(line + 1, name, len)) {
                 return f;
             }
         }
@@ -249,7 +299,8 @@ int main(int argc, char **argv)
 {
     int i;
     const char *filename;
-    char name[256];
+    const char *indexname = NULL;
+    char name[256], *p;
     FILE *f;
 
     printf("/* This file was generated automatically by cptoqe */\n");
@@ -283,19 +334,34 @@ int main(int argc, char **argv)
     for (i = 1; i < argc; i++) {
         filename = argv[i];
 
+        if (!strcmp(filename, "-i")) {
+            if (++i >= argc) {
+                fprintf(stderr, "cptoqe: missing index name after -i\n");
+                exit(2);
+            }
+            indexname = argv[i];
+            continue;
+        }
+
         strcpy(name, get_basename(filename));
         *get_extension(name) = '\0';
+        for (p = name; *p; p++) {
+            if (*p == '-')
+                *p = '_';
+            else
+                *p = tolower((unsigned char)*p);
+        }
         
-        f = fopen(filename, "r");
+        f = open_index(indexname, name);
         if (!f) {
-            f = open_index(filename, name);
+            f = fopen(filename, "r");
             if (!f) {
                 perror(filename);
                 exit(1);
             }
         }
 
-        handle_cp(&f, name, filename);
+        handle_cp(f, name, filename);
 
         fclose(f);
     }

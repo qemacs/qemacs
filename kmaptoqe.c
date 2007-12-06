@@ -399,9 +399,10 @@ static int dump_kmap(const char *filename)
     return 0;
 }
 
-static inline void skipspaces(char **pp) {
-    while (isspace((unsigned char)**pp))
-        ++*pp;
+static inline char *skipspaces(char *p) {
+    while (isspace((unsigned char)*p))
+        p++;
+    return p;
 }
 
 static int getcp(char *p, char **pp)
@@ -503,8 +504,7 @@ int main(int argc, char **argv)
             if (fgets(line, sizeof(line), f) == NULL)
                 break;
             line_num++;
-            p = line;
-            skipspaces(&p);
+            p = skipspaces(line);
             if (*p == '\0' || *p == '/' || *p == '#')
                 continue;
             if (*p != '\"')
@@ -513,7 +513,7 @@ int main(int argc, char **argv)
             len = 0;
             q = inputs[nb_inputs].input;
             for (;;) {
-                skipspaces(&p);
+                p = skipspaces(p);
                 if (*p == '=' && p[1] != '=')
                     break;
                 c = getcp(p, &p);
@@ -529,10 +529,9 @@ int main(int argc, char **argv)
                 q[len++] = c;
             }
             inputs[nb_inputs].len = len;
-            p++;
-            skipspaces(&p);
+            p = skipspaces(p + 1);
             c = getcp(p, &p);
-            skipspaces(&p);
+            p = skipspaces(p);
             if (c < 0 || *p != '"')
                 goto invalid;
             inputs[nb_inputs].output = c;

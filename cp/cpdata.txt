@@ -1,0 +1,333 @@
+[7bit]
+7-bit ASCII
+"us-ascii", "ascii", "7bit", "7-bit", "iso-ir-6", "ANSI-X3.4", "646", "it-ascii"
+# Dummy table for 7-bit terminals
+
+[8859-1]
+ISO 8859-1 (Western European)
+"ISO-8859-1", "8859-1", "iso-ir-100", "latin1", "l1", "819", "iso-latin1"
+include 8859-1.TXT
+
+[8859-2]
+ISO 8859-2 (Central European)
+"ISO-8859-2", "8859-2", "iso-ir-101", "latin2", "l2","iso-latin2", "iso8859-2"
+include 8859-2.TXT
+
+[8859-3]
+ISO 8859-3 (Esperanto, Maltese)
+"ISO-8859-3", "8859-3"
+include 8859-3.TXT
+
+[8859-4]
+ISO 8859-4 (Scandinavia, Baltic)
+"ISO-8859-4", "8859-4", "iso-ir-110", "latin4", "l4","iso-latin4"
+include 8859-4.TXT
+
+[8859-5]
+ISO 8859-5 (Cyrillic)
+"ISO-8859-5", "8859-5" 
+include 8859-5.TXT
+
+[8859-6]
+ISO 8859-6 (Arabic)
+"ISO-8859-6", "8859-6"
+include 8859-6.TXT
+
+[8859-7]
+ISO 8859-7 (Greek)
+"ISO-8859-7", "8859-7", "iso-ir-126", "elot-928"
+include 8859-7.TXT
+
+[8859-8]
+ISO 8859-8 (Hebrew)
+"ISO-8859-8", "8859-8"
+include 8859-8.TXT
+
+[8859-9]
+ISO 8859-9 (Turkish)
+"ISO-8859-9", "8859-9" 
+include 8859-9.TXT
+
+[8859-10]
+ISO 8859-10 (Lappish, Nordic, Eskimo)
+"ISO-8859-10", "8859-10"
+include 8859-10.TXT
+
+[8859-11]
+ISO 8859-11
+"ISO-8859-11", "8859-11"
+include 8859-11.TXT
+
+[8859-13]
+ISO 8859-13 (Baltic)
+"ISO-8859-13", "8859-13", "iso-ir-179", "latin7", "l7","iso-latin7"
+include 8859-13.TXT
+
+[8859-14]
+ISO 8859-14 (Celtic)
+"ISO-8859-14", "8859-14"
+include 8859-14.TXT
+
+[8859-15]
+ISO 8859-15 (Western European)
+"ISO-8859-15", "8859-15", "latin9", "l9", "latin0", "l0"
+include 8859-15.TXT
+
+[8859-16]
+ISO 8859-16 (Romainian)
+"ISO-8859-16", "8859-16", "latin10", "l10"
+include 8859-16.TXT
+
+[cp037]
+CP 037
+"cp037", "037", "ebcdic-037"
+include CP037.TXT
+
+[cp424]
+CP 424
+"cp424", "424", "ebcdic-424"
+include CP424.TXT
+
+[cp500]
+CP 500
+"cp500", "500", "ebcdic-500"
+include CP500.TXT
+
+[cp875]
+CP 875
+"cp875", "875", "ebcdic-875"
+include CP875.TXT
+
+[cp1026]
+CP 1026
+"cp1026", "1026", "ebcdic-1026"
+include CP1026.TXT
+
+[cp437]
+CP 437 (US)
+"cp437", "437"
+include CP437.TXT
+
+[cp737]
+CP 737 (Greek)
+"cp737", "737"
+include CP737.TXT
+
+[cp775]
+CP 775
+"cp775", "775"
+include CP775.TXT
+
+[cp850]
+CP 850 (Western European)
+"cp850", "850"
+include CP850.TXT
+
+[cp852]
+CP 852 (Central European)
+"cp852", "852"
+include CP852.TXT
+
+[cp855]
+CP 855
+"cp855", "855"
+include CP855.TXT
+
+[cp856]
+CP 856
+"cp856", "856"
+include CP856.TXT
+
+[cp857]
+CP 857
+"cp857", "857"
+include CP857.TXT
+
+[cp860]
+CP 860
+"cp860", "860"
+include CP860.TXT
+
+[cp861]
+CP 861
+"cp861", "861"
+include CP861.TXT
+
+[cp862]
+CP 862
+"cp862", "862"
+include CP862.TXT
+
+[cp863]
+CP 863
+"cp863", "863"
+include CP863.TXT
+
+[cp864]
+CP 864
+"cp864", "864"
+include CP864.TXT
+
+[cp865]
+CP 865
+"cp865", "865"
+include CP865.TXT
+
+[cp866]
+CP 866 (Cyrillic)
+"cp866", "866"
+include CP866.TXT
+
+[cp869]
+CP 869
+"cp869", "869"
+include CP869.TXT
+
+[cp874]
+Window$ 874
+"windows-874", "874", "cp874"
+include CP874.TXT
+
+[cp1006]
+Window$ 1006
+"windows-1006", "1006"
+include CP1006.TXT
+
+[cp1125]
+CP 1125 (Ukrainian)
+"x-cp866-u", "ruscii", "1125"
+include CP1125.TXT
+
+[cp1250]
+Window$ 1250 (Central European)
+"windows-1250", "1250"
+include CP1250.TXT
+
+[cp1251]
+Window$ 1251 (Cyrillic)
+"windows-1251", "1251"
+include CP1251.TXT
+
+[cp1252]
+Window$ 1252 (Western European)
+"windows-1252", "1252"
+include CP1252.TXT
+
+[cp1253]
+Window$ 1253
+"windows-1253", "1253"
+include CP1253.TXT
+
+[cp1254]
+Window$ 1254
+"windows-1254", "1254"
+include CP1254.TXT
+
+[cp1255]
+Window$ 1255
+"windows-1255", "1255"
+include CP1255.TXT
+
+[cp1256]
+Window$ 1256 (Arabic)
+"windows-1256", "1256"
+include CP1256.TXT
+
+[cp1257]
+Window$ 1257 (Baltic)
+"windows-1257", "1257"
+include CP1257.TXT
+
+[cp1258]
+Window$ 1258
+"windows-1258", "1258"
+include CP1258.TXT
+
+[mac-roman]
+MacRoman 2000
+"x-mac", "mac", "mac-roman"
+include MAC-ROMAN.TXT
+# Some differences in encoding are listed below
+#0xBD	0x2126	#OHM SIGN
+0xBD	0x03A9	#GREEK CAPITAL LETTER OMEGA
+#0xC6	0x2206	#INCREMENT
+0xC6	0x0394	#GREEK CAPITAL LETTER DELTA
+#0xDB	0x00A4	#CURRENCY SIGN
+0xDB	0x20AC	#SYMBOLE EURO
+#0xF0		#UNDEFINED
+0xF0	0xF8FF	#Mac Logo (in Private Use Area)
+
+[mac-latin2]
+Mac latin 2
+"x-mac-ce", "mac-ce", "macce", "mac-latin2", "10029"
+include MAC-LATIN2.TXT
+
+[mac-greek]
+Mac Greek
+"x-mac-gr", "mac-gr", "macgr", "mac-greek", "10006"
+include MAC-GREEK.TXT
+
+[mac-cyrillic]
+Mac Cyrillic
+"x-mac-cy", "mac-cy", "maccy", "mac-cyrillic", "10007"
+include MAC-CYRILLIC.TXT
+
+[mac-icelandic]
+Mac Icelandic
+"x-mac-icelandic", "mac-icelandic", "10079"
+include MAC-ICELANDIC.TXT
+
+[mac-turkish]
+Mac Turkish
+"x-mac-tr", "mac-tr", "mactr", "mac-turkish", "10081"
+include MAC-TURKISH.TXT
+
+[gsm0338]
+GSM 03.38
+"gsm"
+include GSM0338.TXT
+
+[koi8-r]
+KOI8-R
+"koi8-r"
+include KOI8-R.TXT
+#0x95 0x2022 # BULLET (yudit-1.6)
+0x95 0x2219 # BULLET OPERATOR (unicode 3.0)
+
+[koi8-ru]
+KOI8-RU
+"koi8-ru"
+include koi8_ru.cp
+
+[koi8-u]
+KOI8-U
+"koi8-u"
+include koi8_u.cp
+
+[tcvn5712]
+TCVN-5712 (Vietnamese)
+"TCVN-5712", "TCVN", "TCVN-0", "TCVN-1"
+include tcvn5712.cp
+
+[tcvn]
+#0xCE 0x1EB5 # LATIN SMALL LETTER E WITH HOOK ABOVE (error in yudit-1.6)
+#0xCE 0x1EBB # LATIN SMALL LETTER E WITH HOOK ABOVE (links-0.99)
+
+[utf-8]
+Unicode UTF-8
+"utf-8", "utf8"
+include utf_8.cp
+
+[viscii]
+VISCII
+"VISCII", "VISCII-1", "VISCII 1.1", "VISCII-1.1", "VISCII1.1-1"
+include VISCII.TXT
+
+# compatibility
+0xD0 0x00D0 # letter ETH
+0xF0 0x00F0
+
+[kamen]
+Kamenicky Brothers
+"x-kam-cs", "kam", "867", "869"
+include kamen.cp

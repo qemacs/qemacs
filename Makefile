@@ -323,12 +323,12 @@ endif
 #
 # Code pages (only useful to add your own code pages)
 #
-CP=  8859_2.cp   8859_4.cp   8859_5.cp   8859_7.cp   8859_9.cp  \
-     8859_13.cp  8859_15.cp  8859_16.cp                         \
-     cp437.cp    cp737.cp    cp850.cp    cp852.cp    cp866.cp   \
-     cp1125.cp   cp1250.cp   cp1251.cp   cp1257.cp              \
-     mac_lat2.cp macroman.cp                                    \
-     kamen.cp    koi8_r.cp   koi8_u.cp   tcvn5712.cp viscii.cp  \
+CP=  8859-2.TXT   8859-4.TXT   8859-5.TXT   8859-7.TXT   8859-9.TXT  \
+     8859-13.TXT  8859-15.TXT  8859-16.TXT                           \
+     CP437.TXT    CP737.TXT    CP850.TXT    CP852.TXT    CP866.TXT   \
+     CP1125.TXT   CP1250.TXT   CP1251.TXT   CP1257.TXT               \
+     MAC-LATIN2.TXT MAC-ROMAN.TXT                                    \
+     kamen.cp     KOI8-R.TXT   koi8_u.cp    tcvn5712.cp  VISCII.TXT
 
 CP:=$(addprefix cp/,$(CP))
 
@@ -342,10 +342,10 @@ jistoqe$(EXE): jistoqe.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
 ifdef BUILD_ALL
-charsetmore.c: cptoqe$(EXE) $(CP) Makefile
-	./cptoqe $(CP) > $@
+charsetmore.c: cp/cpdata.txt $(CP) cptoqe$(EXE) Makefile
+	./cptoqe -i cp/cpdata.txt $(CP) > $@
 
-charsetjis.def: jistoqe$(EXE) $(JIS) Makefile
+charsetjis.def: $(JIS) jistoqe$(EXE) Makefile
 	./jistoqe $(JIS) > $@
 endif
 
