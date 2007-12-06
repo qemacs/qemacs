@@ -44,8 +44,6 @@ typedef struct HTMLState {
     int parse_flags;   /* can contain XML_HTML and XML_IGNORE_CASE */
 } HTMLState;
 
-extern const char html_style[];
-
 /* recompute cursor offset so that it is visible (find closest box) */
 typedef struct {
     CSSContext *ctx;
@@ -875,18 +873,18 @@ static CmdDef html_commands[] = {
 
 ModeDef html_mode = {
     "html", 
-    instance_size: sizeof(HTMLState),
-    mode_probe: html_mode_probe,
-    mode_init: html_mode_init,
-    mode_close: html_mode_close,
-    display: html_display,
-    move_left_right: html_move_left_right_visual,
-    move_up_down: html_move_up_down,
-    move_bol: html_move_bol,
-    move_eol: html_move_eol,
-    scroll_up_down: html_scroll_up_down,
-    write_char: text_write_char,
-    mouse_goto: html_mouse_goto,
+    .instance_size = sizeof(HTMLState),
+    .mode_probe = html_mode_probe,
+    .mode_init = html_mode_init,
+    .mode_close = html_mode_close,
+    .display = html_display,
+    .move_left_right = html_move_left_right_visual,
+    .move_up_down = html_move_up_down,
+    .move_bol = html_move_bol,
+    .move_eol = html_move_eol,
+    .scroll_up_down = html_scroll_up_down,
+    .write_char = text_write_char,
+    .mouse_goto = html_mouse_goto,
 };
 
 static int html_init(void)

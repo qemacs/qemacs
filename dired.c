@@ -177,7 +177,7 @@ static void dired_sort(EditState *s, const char *sort_order)
     const char *p;
     
     for (p = sort_order; *p; p++) {
-        switch (tolower(*(const unsigned char *)p)) {
+        switch (tolower((unsigned char)*p)) {
         case 'n':       /* name */
             hs->sort_mode &= ~DIRED_SORT_MASK;
             hs->sort_mode |= DIRED_SORT_NAME;
@@ -478,7 +478,7 @@ static int dired_mode_probe(ModeProbeData *p)
         return 0;
 }
 
-ModeDef dired_mode;
+static ModeDef dired_mode;
 
 /* open dired window on the left. The directory of the current file is
    used */

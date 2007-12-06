@@ -472,8 +472,6 @@ static int fbf_load_font_memory(const unsigned char *data,
     return 0;
 }
 
-extern const void *fbf_fonts[];
-
 int fbf_render_init(__unused__ const char *font_path)
 {
     const void **pp;

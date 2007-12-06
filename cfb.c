@@ -113,7 +113,7 @@ static void cfb32_fill_rectangle(QEditScreen *s,
         for (y = 0; y < h; y++) {
             d = dest;
             for (n = w; n != 0; n--) {
-                ((short *)d)[0] ^= 0x00ffffff;
+                ((int *)d)[0] ^= 0x00ffffff;
                 d += 4;
             }
             dest += cfb->wrap;

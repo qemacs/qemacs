@@ -84,8 +84,10 @@ int main(int argc, char **argv)
     int font_size[FONT_MAX];
     int i;
 
-    printf("/* This file was generated automatically by fbftoqe */\n\n");
-    printf("#include \"qe.h\"\n\n");
+    printf("/* This file was generated automatically by fbftoqe */\n\n"
+           "#include \"qe.h\"\n"
+           "#include \"fbfrender.h\"\n"
+           "\n");
 
     for (i = 1; i < argc; i++) {
         filename = argv[i];

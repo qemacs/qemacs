@@ -20,7 +20,7 @@
 
 #include "qe.h"
 
-QEDisplay *first_dpy = NULL;
+static QEDisplay *first_dpy;
 
 void fill_rectangle(QEditScreen *s,
                     int x1, int y1, int w, int h, QEColor color)

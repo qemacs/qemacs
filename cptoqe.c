@@ -228,7 +228,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
         printf("};\n\n");
     }
 
-    printf("QECharset charset_%s = {\n"
+    printf("static QECharset charset_%s = {\n"
            "    \"%s\",\n",
            name_id, name);
 
@@ -251,11 +251,11 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
     printf("    decode_8bit_init,\n"
            "    NULL,\n"
            "    encode_8bit,\n"
-           "    table_alloc: 1,\n"
-           "    eol_char: %d,\n"
-           "    min_char: %d,\n"
-           "    max_char: %d,\n"
-           "    private_table: table_%s,\n"
+           "    .table_alloc = 1,\n"
+           "    .eol_char = %d,\n"
+           "    .min_char = %d,\n"
+           "    .max_char = %d,\n"
+           "    .private_table = table_%s,\n"
            "};\n\n",
            eol_char, min_code, max_code, name_id);
 

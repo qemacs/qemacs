@@ -2,6 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
+ * Copyright (c) 2000-2007 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -65,10 +66,11 @@ static HistoryEntry *first_history = NULL;
 static QEditScreen global_screen;
 static int screen_width = 0;
 static int screen_height = 0;
+static int no_init_file;
+static const char *user_option;
+
 EditBuffer *trace_buffer;
 int trace_buffer_state;
-int no_init_file;
-const char *user_option;
 
 /* mode handling */
 
@@ -3699,7 +3701,7 @@ typedef struct QEKeyContext {
     char buf[128];
 } QEKeyContext;
 
-QEKeyContext key_ctx;
+static QEKeyContext key_ctx;
 
 /*
  * All typed keys are sent to the callback. Previous grab is aborted
@@ -4165,7 +4167,7 @@ void edit_close(EditState *s)
     free(s);
 }
 
-const char *file_completion_ignore_extensions =
+static const char *file_completion_ignore_extensions =
     "|bak|bin|dll|exe|o|obj|";
 
 void file_completion(StringArray *cs, const char *input)
@@ -4268,9 +4270,7 @@ static StringArray *minibuffer_history;
 static int minibuffer_history_index;
 static int minibuffer_history_saved_offset;
 
-ModeDef minibuffer_mode;
-
-extern CmdDef minibuffer_commands[];
+static ModeDef minibuffer_mode;
 
 /* XXX: utf8 ? */
 void do_completion(EditState *s)
@@ -4587,9 +4587,7 @@ void minibuffer_init(void)
 
 /* less mode */
 
-ModeDef less_mode;
-
-extern CmdDef less_commands[];
+static ModeDef less_mode;
 
 /* XXX: incorrect to save it. Should use a safer method */
 static EditState *popup_saved_active;
@@ -4858,7 +4856,7 @@ static ModeDef *probe_mode(EditState *s, int mode, uint8_t *buf, int len)
     probe_data.filename = b->filename;
     probe_data.mode = mode;
 
-    while (m != 0) {
+    while (m != NULL) {
         if (m->mode_probe) {
             percent = m->mode_probe(&probe_data);
             if (percent > best_probe_percent) {
@@ -6477,22 +6475,22 @@ void text_mode_close(EditState *s)
 
 ModeDef text_mode = {
     "text", 
-    instance_size: 0,
-    mode_probe: text_mode_probe,
-    mode_init: text_mode_init,
-    mode_close: text_mode_close,
+    .instance_size = 0,
+    .mode_probe = text_mode_probe,
+    .mode_init = text_mode_init,
+    .mode_close = text_mode_close,
 
-    text_display: text_display,
-    text_backward_offset: text_backward_offset, 
+    .text_display = text_display,
+    .text_backward_offset = text_backward_offset, 
 
-    move_up_down: text_move_up_down,
-    move_left_right: text_move_left_right_visual,
-    move_bol: text_move_bol,
-    move_eol: text_move_eol,
-    move_word_left_right: text_move_word_left_right,
-    scroll_up_down: text_scroll_up_down,
-    write_char: text_write_char,
-    mouse_goto: text_mouse_goto,
+    .move_up_down = text_move_up_down,
+    .move_left_right = text_move_left_right_visual,
+    .move_bol = text_move_bol,
+    .move_eol = text_move_eol,
+    .move_word_left_right = text_move_word_left_right,
+    .scroll_up_down = text_scroll_up_down,
+    .write_char = text_write_char,
+    .mouse_goto = text_mouse_goto,
 };
 
 /* find a resource file */
@@ -6955,13 +6953,13 @@ void set_user_option(const char *user)
 
 static CmdOptionDef cmd_options[] = {
     { "help", "h", NULL, 0, "display this help message and exit", 
-      {func_noarg: show_usage}},
+      { .func_noarg = show_usage }},
     { "no-init-file", "q", NULL, CMD_OPT_BOOL, "do not load config files", 
-      {int_ptr: &no_init_file}},
+      { .int_ptr = &no_init_file }},
     { "user", "u", "USER", CMD_OPT_ARG, "load ~USER/.qe/config instead of your own", 
-      {func_arg: set_user_option}},
+      { .func_arg = set_user_option }},
     { "version", "V", NULL, 0, "display version information and exit", 
-      {func_noarg: show_version}},
+      { .func_noarg = show_version }},
     { NULL, NULL, NULL, 0, NULL, { NULL }},
 };
 

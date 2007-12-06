@@ -45,17 +45,17 @@ static const unsigned short table_8859_2[95] = {
     0x016f, 0x00fa, 0x0171, 0x00fc, 0x00fd, 0x0163, 0x02d9, 
 };
 
-QECharset charset_8859_2 = {
+static QECharset charset_8859_2 = {
     "8859-2",
     "ISO-8859-2|iso-ir-101|latin2|l2|iso-latin2|iso8859-2",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 161,
-    max_char: 255,
-    private_table: table_8859_2,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 161,
+    .max_char = 255,
+    .private_table = table_8859_2,
 };
 
 
@@ -81,17 +81,17 @@ static const unsigned short table_8859_3[95] = {
     0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x016d, 0x015d, 0x02d9, 
 };
 
-QECharset charset_8859_3 = {
+static QECharset charset_8859_3 = {
     "8859-3",
     "ISO-8859-3",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 161,
-    max_char: 255,
-    private_table: table_8859_3,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 161,
+    .max_char = 255,
+    .private_table = table_8859_3,
 };
 
 
@@ -117,17 +117,17 @@ static const unsigned short table_8859_4[95] = {
     0x0173, 0x00fa, 0x00fb, 0x00fc, 0x0169, 0x016b, 0x02d9, 
 };
 
-QECharset charset_8859_4 = {
+static QECharset charset_8859_4 = {
     "8859-4",
     "ISO-8859-4|iso-ir-110|latin4|l4|iso-latin4",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 161,
-    max_char: 255,
-    private_table: table_8859_4,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 161,
+    .max_char = 255,
+    .private_table = table_8859_4,
 };
 
 
@@ -153,17 +153,17 @@ static const unsigned short table_8859_5[95] = {
     0x0459, 0x045a, 0x045b, 0x045c, 0x00a7, 0x045e, 0x045f, 
 };
 
-QECharset charset_8859_5 = {
+static QECharset charset_8859_5 = {
     "8859-5",
     "ISO-8859-5",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 161,
-    max_char: 255,
-    private_table: table_8859_5,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 161,
+    .max_char = 255,
+    .private_table = table_8859_5,
 };
 
 
@@ -186,17 +186,17 @@ static const unsigned short table_8859_6[71] = {
     0x064c, 0x064d, 0x064e, 0x064f, 0x0650, 0x0651, 0x0652, 
 };
 
-QECharset charset_8859_6 = {
+static QECharset charset_8859_6 = {
     "8859-6",
     "ISO-8859-6",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 172,
-    max_char: 242,
-    private_table: table_8859_6,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 172,
+    .max_char = 242,
+    .private_table = table_8859_6,
 };
 
 
@@ -222,17 +222,17 @@ static const unsigned short table_8859_7[94] = {
     0x03c9, 0x03ca, 0x03cb, 0x03cc, 0x03cd, 0x03ce, 
 };
 
-QECharset charset_8859_7 = {
+static QECharset charset_8859_7 = {
     "8859-7",
     "ISO-8859-7|iso-ir-126|elot-928",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 161,
-    max_char: 254,
-    private_table: table_8859_7,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 161,
+    .max_char = 254,
+    .private_table = table_8859_7,
 };
 
 
@@ -257,17 +257,17 @@ static const unsigned short table_8859_8[85] = {
     0x05ea, 0x00fb, 0x00fc, 0x200e, 0x200f, 
 };
 
-QECharset charset_8859_8 = {
+static QECharset charset_8859_8 = {
     "8859-8",
     "ISO-8859-8",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 170,
-    max_char: 254,
-    private_table: table_8859_8,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 170,
+    .max_char = 254,
+    .private_table = table_8859_8,
 };
 
 
@@ -287,17 +287,17 @@ static const unsigned short table_8859_9[47] = {
     0x00f8, 0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x0131, 0x015f, 
 };
 
-QECharset charset_8859_9 = {
+static QECharset charset_8859_9 = {
     "8859-9",
     "ISO-8859-9",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 208,
-    max_char: 254,
-    private_table: table_8859_9,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 208,
+    .max_char = 254,
+    .private_table = table_8859_9,
 };
 
 
@@ -323,17 +323,17 @@ static const unsigned short table_8859_10[95] = {
     0x0173, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x00fe, 0x0138, 
 };
 
-QECharset charset_8859_10 = {
+static QECharset charset_8859_10 = {
     "8859-10",
     "ISO-8859-10",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 161,
-    max_char: 255,
-    private_table: table_8859_10,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 161,
+    .max_char = 255,
+    .private_table = table_8859_10,
 };
 
 
@@ -359,17 +359,17 @@ static const unsigned short table_8859_11[91] = {
     0x0e59, 0x0e5a, 0x0e5b, 
 };
 
-QECharset charset_8859_11 = {
+static QECharset charset_8859_11 = {
     "8859-11",
     "ISO-8859-11",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 161,
-    max_char: 251,
-    private_table: table_8859_11,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 161,
+    .max_char = 251,
+    .private_table = table_8859_11,
 };
 
 
@@ -395,17 +395,17 @@ static const unsigned short table_8859_13[95] = {
     0x0142, 0x015b, 0x016b, 0x00fc, 0x017c, 0x017e, 0x2019, 
 };
 
-QECharset charset_8859_13 = {
+static QECharset charset_8859_13 = {
     "8859-13",
     "ISO-8859-13|iso-ir-179|latin7|l7|iso-latin7",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 161,
-    max_char: 255,
-    private_table: table_8859_13,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 161,
+    .max_char = 255,
+    .private_table = table_8859_13,
 };
 
 
@@ -431,17 +431,17 @@ static const unsigned short table_8859_14[94] = {
     0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x00fd, 0x0177, 
 };
 
-QECharset charset_8859_14 = {
+static QECharset charset_8859_14 = {
     "8859-14",
     "ISO-8859-14",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 161,
-    max_char: 254,
-    private_table: table_8859_14,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 161,
+    .max_char = 254,
+    .private_table = table_8859_14,
 };
 
 
@@ -459,17 +459,17 @@ static const unsigned short table_8859_15[27] = {
     0x0152, 0x0153, 0x0178, 
 };
 
-QECharset charset_8859_15 = {
+static QECharset charset_8859_15 = {
     "8859-15",
     "ISO-8859-15|latin9|l9|latin0|l0",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 164,
-    max_char: 190,
-    private_table: table_8859_15,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 164,
+    .max_char = 190,
+    .private_table = table_8859_15,
 };
 
 
@@ -495,17 +495,17 @@ static const unsigned short table_8859_16[94] = {
     0x00f9, 0x00fa, 0x00fb, 0x00fc, 0x0119, 0x021b, 
 };
 
-QECharset charset_8859_16 = {
+static QECharset charset_8859_16 = {
     "8859-16",
     "ISO-8859-16|latin10|l10",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 161,
-    max_char: 254,
-    private_table: table_8859_16,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 161,
+    .max_char = 254,
+    .private_table = table_8859_16,
 };
 
 
@@ -535,17 +535,17 @@ static const unsigned short table_cp437[128] = {
     0x00b0, 0x2219, 0x00b7, 0x221a, 0x207f, 0x00b2, 0x25a0, 0x00a0, 
 };
 
-QECharset charset_cp437 = {
+static QECharset charset_cp437 = {
     "cp437",
     "437",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_cp437,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_cp437,
 };
 
 
@@ -575,17 +575,17 @@ static const unsigned short table_cp737[128] = {
     0x00b0, 0x2219, 0x00b7, 0x221a, 0x207f, 0x00b2, 0x25a0, 0x00a0, 
 };
 
-QECharset charset_cp737 = {
+static QECharset charset_cp737 = {
     "cp737",
     "737",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_cp737,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_cp737,
 };
 
 
@@ -615,17 +615,17 @@ static const unsigned short table_cp850[128] = {
     0x00b0, 0x00a8, 0x00b7, 0x00b9, 0x00b3, 0x00b2, 0x25a0, 0x00a0, 
 };
 
-QECharset charset_cp850 = {
+static QECharset charset_cp850 = {
     "cp850",
     "850",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_cp850,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_cp850,
 };
 
 
@@ -655,17 +655,17 @@ static const unsigned short table_cp852[128] = {
     0x00b0, 0x00a8, 0x02d9, 0x0171, 0x0158, 0x0159, 0x25a0, 0x00a0, 
 };
 
-QECharset charset_cp852 = {
+static QECharset charset_cp852 = {
     "cp852",
     "852",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_cp852,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_cp852,
 };
 
 
@@ -695,17 +695,17 @@ static const unsigned short table_cp866[128] = {
     0x00b0, 0x2219, 0x00b7, 0x221a, 0x2116, 0x00a4, 0x25a0, 0x00a0, 
 };
 
-QECharset charset_cp866 = {
+static QECharset charset_cp866 = {
     "cp866",
     "866",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_cp866,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_cp866,
 };
 
 
@@ -735,17 +735,17 @@ static const unsigned short table_cp1125[128] = {
     0x0407, 0x0457, 0x00b7, 0x221a, 0x2116, 0x00a4, 0x25a0, 0x00a0, 
 };
 
-QECharset charset_cp1125 = {
+static QECharset charset_cp1125 = {
     "cp1125",
     "x-cp866-u|ruscii|1125",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_cp1125,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_cp1125,
 };
 
 
@@ -775,17 +775,17 @@ static const unsigned short table_cp1250[128] = {
     0x0159, 0x016f, 0x00fa, 0x0171, 0x00fc, 0x00fd, 0x0163, 0x02d9, 
 };
 
-QECharset charset_cp1250 = {
+static QECharset charset_cp1250 = {
     "cp1250",
     "windows-1250|1250",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_cp1250,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_cp1250,
 };
 
 
@@ -815,17 +815,17 @@ static const unsigned short table_cp1251[128] = {
     0x0448, 0x0449, 0x044a, 0x044b, 0x044c, 0x044d, 0x044e, 0x044f, 
 };
 
-QECharset charset_cp1251 = {
+static QECharset charset_cp1251 = {
     "cp1251",
     "windows-1251|1251",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_cp1251,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_cp1251,
 };
 
 
@@ -843,17 +843,17 @@ static const unsigned short table_cp1252[32] = {
     0x02dc, 0x2122, 0x0161, 0x203a, 0x0153, 0x0000, 0x017e, 0x0178, 
 };
 
-QECharset charset_cp1252 = {
+static QECharset charset_cp1252 = {
     "cp1252",
     "windows-1252|1252",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 159,
-    private_table: table_cp1252,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 159,
+    .private_table = table_cp1252,
 };
 
 
@@ -883,17 +883,17 @@ static const unsigned short table_cp1256[128] = {
     0x0651, 0x00f9, 0x0652, 0x00fb, 0x00fc, 0x200e, 0x200f, 0x06d2, 
 };
 
-QECharset charset_cp1256 = {
+static QECharset charset_cp1256 = {
     "cp1256",
     "windows-1256|1256",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_cp1256,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_cp1256,
 };
 
 
@@ -923,17 +923,17 @@ static const unsigned short table_cp1257[128] = {
     0x0173, 0x0142, 0x015b, 0x016b, 0x00fc, 0x017c, 0x017e, 0x02d9, 
 };
 
-QECharset charset_cp1257 = {
+static QECharset charset_cp1257 = {
     "cp1257",
     "windows-1257|1257",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_cp1257,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_cp1257,
 };
 
 
@@ -963,17 +963,17 @@ static const unsigned short table_mac_latin2[128] = {
     0x00dd, 0x00fd, 0x0137, 0x017b, 0x0141, 0x017c, 0x0122, 0x02c7, 
 };
 
-QECharset charset_mac_latin2 = {
+static QECharset charset_mac_latin2 = {
     "mac-latin2",
     "x-mac-ce|mac-ce|macce|10029",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_mac_latin2,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_mac_latin2,
 };
 
 
@@ -1003,17 +1003,17 @@ static const unsigned short table_mac_roman[128] = {
     0x00af, 0x02d8, 0x02d9, 0x02da, 0x00b8, 0x02dd, 0x02db, 0x02c7, 
 };
 
-QECharset charset_mac_roman = {
+static QECharset charset_mac_roman = {
     "mac-roman",
     "x-mac|mac",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_mac_roman,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_mac_roman,
 };
 
 
@@ -1059,17 +1059,17 @@ static const unsigned short table_kamen[255] = {
     0x2219, 0x00b7, 0x221a, 0x207f, 0x00b2, 0x25a0, 0x00a0, 
 };
 
-QECharset charset_kamen = {
+static QECharset charset_kamen = {
     "kamen",
     "x-kam-cs|kam|867|869",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 1,
-    max_char: 255,
-    private_table: table_kamen,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 1,
+    .max_char = 255,
+    .private_table = table_kamen,
 };
 
 
@@ -1099,17 +1099,17 @@ static const unsigned short table_koi8_r[128] = {
     0x042c, 0x042b, 0x0417, 0x0428, 0x042d, 0x0429, 0x0427, 0x042a, 
 };
 
-QECharset charset_koi8_r = {
+static QECharset charset_koi8_r = {
     "koi8-r",
     "",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_koi8_r,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_koi8_r,
 };
 
 
@@ -1139,17 +1139,17 @@ static const unsigned short table_koi8_u[128] = {
     0x042c, 0x042b, 0x0417, 0x0428, 0x042d, 0x0429, 0x0427, 0x042a, 
 };
 
-QECharset charset_koi8_u = {
+static QECharset charset_koi8_u = {
     "koi8-u",
     "",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 128,
-    max_char: 255,
-    private_table: table_koi8_u,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 128,
+    .max_char = 255,
+    .private_table = table_koi8_u,
 };
 
 
@@ -1195,17 +1195,17 @@ static const unsigned short table_tcvn5712[255] = {
     0x1ef1, 0x1ef3, 0x1ef7, 0x1ef9, 0x00fd, 0x1ef5, 0x1ed0, 
 };
 
-QECharset charset_tcvn5712 = {
+static QECharset charset_tcvn5712 = {
     "tcvn5712",
     "TCVN-5712|TCVN|TCVN-0|TCVN-1",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 1,
-    max_char: 255,
-    private_table: table_tcvn5712,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 1,
+    .max_char = 255,
+    .private_table = table_tcvn5712,
 };
 
 
@@ -1251,17 +1251,17 @@ static const unsigned short table_viscii[254] = {
     0x00fa, 0x0169, 0x1ee7, 0x00fd, 0x1ee3, 0x1eee, 
 };
 
-QECharset charset_viscii = {
+static QECharset charset_viscii = {
     "viscii",
     "VISCII|VISCII-1|VISCII 1.1|VISCII-1.1|VISCII1.1-1",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 10,
-    min_char: 2,
-    max_char: 255,
-    private_table: table_viscii,
+    .table_alloc = 1,
+    .eol_char = 10,
+    .min_char = 2,
+    .max_char = 255,
+    .private_table = table_viscii,
 };
 
 
@@ -1307,17 +1307,17 @@ static const unsigned short table_cp037[252] = {
     0x00dc, 0x00d9, 0x00da, 0x009f, 
 };
 
-QECharset charset_cp037 = {
+static QECharset charset_cp037 = {
     "cp037",
     "037|ebcdic-037",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 37,
-    min_char: 4,
-    max_char: 255,
-    private_table: table_cp037,
+    .table_alloc = 1,
+    .eol_char = 37,
+    .min_char = 4,
+    .max_char = 255,
+    .private_table = table_cp037,
 };
 
 
@@ -1363,17 +1363,17 @@ static const unsigned short table_cp424[252] = {
     0x0000, 0x0000, 0x0000, 0x009f, 
 };
 
-QECharset charset_cp424 = {
+static QECharset charset_cp424 = {
     "cp424",
     "424|ebcdic-424",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 37,
-    min_char: 4,
-    max_char: 255,
-    private_table: table_cp424,
+    .table_alloc = 1,
+    .eol_char = 37,
+    .min_char = 4,
+    .max_char = 255,
+    .private_table = table_cp424,
 };
 
 
@@ -1419,17 +1419,17 @@ static const unsigned short table_cp500[252] = {
     0x00dc, 0x00d9, 0x00da, 0x009f, 
 };
 
-QECharset charset_cp500 = {
+static QECharset charset_cp500 = {
     "cp500",
     "500|ebcdic-500",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 37,
-    min_char: 4,
-    max_char: 255,
-    private_table: table_cp500,
+    .table_alloc = 1,
+    .eol_char = 37,
+    .min_char = 4,
+    .max_char = 255,
+    .private_table = table_cp500,
 };
 
 
@@ -1475,17 +1475,17 @@ static const unsigned short table_cp875[252] = {
     0x001a, 0x001a, 0x00bb, 0x009f, 
 };
 
-QECharset charset_cp875 = {
+static QECharset charset_cp875 = {
     "cp875",
     "875|ebcdic-875",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 37,
-    min_char: 4,
-    max_char: 255,
-    private_table: table_cp875,
+    .table_alloc = 1,
+    .eol_char = 37,
+    .min_char = 4,
+    .max_char = 255,
+    .private_table = table_cp875,
 };
 
 
@@ -1531,17 +1531,17 @@ static const unsigned short table_cp1026[252] = {
     0x0022, 0x00d9, 0x00da, 0x009f, 
 };
 
-QECharset charset_cp1026 = {
+static QECharset charset_cp1026 = {
     "cp1026",
     "1026|ebcdic-1026",
     decode_8bit_init,
     NULL,
     encode_8bit,
-    table_alloc: 1,
-    eol_char: 37,
-    min_char: 4,
-    max_char: 255,
-    private_table: table_cp1026,
+    .table_alloc = 1,
+    .eol_char = 37,
+    .min_char = 4,
+    .max_char = 255,
+    .private_table = table_cp1026,
 };
 
 int charset_more_init(void)

@@ -624,6 +624,7 @@ CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end,
                          CSSAbortFunc *abort_func, void *abort_opaque);
 int find_entity(const char *str);
 const char *find_entity_str(int code);
+
 #endif
 
 /* The following functions must be provided by the user */
@@ -641,4 +642,7 @@ CSSFile *css_open(CSSContext *s, const char *filename);
 int css_filesize(CSSFile *f);
 int css_read(CSSFile *f, char *buf, int size);
 void css_close(CSSFile *f);
+
+extern const char docbook_style[];
+extern const char html_style[];
 

@@ -271,7 +271,7 @@ static CSSIdentEntry *hash_ident[CSS_IDENT_HASH_SIZE];
 static CSSIdentEntry **table_ident;
 static int table_ident_nb, table_ident_allocated;
 
-const char css_idents[] = 
+static char const css_idents[] = 
 "\0"
 "*\0"
 #define CSSID(id) #id "\0"

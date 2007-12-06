@@ -830,7 +830,7 @@ void css_strtolower(char *buf, __unused__ int buf_size)
 
     /* XXX: handle unicode */
     while (*buf) {
-        c = tolower(*(const unsigned char *)buf);
+        c = tolower((unsigned char)*buf);
         *buf++ = c;
     }
 }

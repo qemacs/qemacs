@@ -127,7 +127,7 @@ static int unicode_ligature(unsigned int *buf_out,
     const unsigned short *lig;
     unsigned int buf[len];
     
-    memcpy(buf, buf_out, len * sizeof(int));
+    memcpy(buf, buf_out, len * sizeof(unsigned int));
 
     q = buf_out;
     for (i = 0; i < len;) {

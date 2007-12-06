@@ -55,3 +55,6 @@ imported:
   3915 Jan  9  2001 Thai.kmap
   7774 Jan  9  2001 VietnameseTelex.kmap
   4339 Jan  9  2001 Welsh.kmap
+
+version 2.8.1 of yudit uses a compiled format.
+kmap files have moved to yudit-2.8.1/mytool/kmap

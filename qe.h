@@ -56,6 +56,14 @@
 #define __unused__
 #endif
 
+#ifdef __SPARSE__
+#define __bitwise__             __attribute__((bitwise))
+#define force_cast(type, expr)  ((__attribute__((force)) type)(expr))
+#else
+#define __bitwise__
+#define force_cast(type, expr)  ((type)(expr))
+#endif
+
 /************************/
 
 #include "cutils.h"
@@ -1011,13 +1019,13 @@ typedef struct CmdDef {
 } CmdDef;
 
 /* new command macros */
-#define CMD_(key, key_alt, name, func, args) { key, key_alt, name "\0" args, { (void *)(func) }, 0 },
+#define CMD_(key, key_alt, name, func, args) { key, key_alt, name "\0" args, { (void *)(func) }, NULL },
 #define CMDV(key, key_alt, name, func, val, args) { key, key_alt, name "\0" args, { (void *)(func) }, (void *)(val) },
 
 /* old macros for compatibility */
 #define CMD0(key, key_alt, name, func) { key, key_alt, name "\0", { (void *)(func) }, NULL },
 #define CMD1(key, key_alt, name, func, val) { key, key_alt, name "\0v", { (void *)(func) }, (void*)(val) },
-#define CMD_DEF_END { 0, 0, NULL, { NULL }, 0 }
+#define CMD_DEF_END { 0, 0, NULL, { NULL }, NULL }
 
 void qe_register_mode(ModeDef *m);
 void mode_completion(StringArray *cs, const char *input);
@@ -1156,6 +1164,9 @@ static inline int align(int a, int n)
 
 void less_mode_init(void);
 void minibuffer_init(void);
+
+extern CmdDef minibuffer_commands[];
+extern CmdDef less_commands[];
 
 typedef void (*CompletionFunc)(StringArray *cs, const char *input);
 

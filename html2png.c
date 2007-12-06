@@ -326,8 +326,6 @@ void test_display(QEditScreen *screen)
 }
 #endif
 
-extern const char html_style[];
-
 static int html_test_abort(__unused__ void *opaque)
 {
     return 0;
@@ -354,9 +352,8 @@ static int draw_html(QEditScreen *scr,
     /* prepare default style sheet */
     s->style_sheet = css_new_style_sheet();
 
-    css_parse_style_sheet_str(s->style_sheet, html_style, 
-                              flags);
-    
+    css_parse_style_sheet_str(s->style_sheet, html_style, flags);
+
     /* default colors */
     s->selection_bgcolor = QERGB(0x00, 0x00, 0xff);
     s->selection_fgcolor = QERGB(0x00, 0x00, 0x00);

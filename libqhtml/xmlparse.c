@@ -40,7 +40,7 @@ typedef struct {
 
 #define ENTITY(name, value) { #name, value },
 
-const XMLEntity html_entities[] = {
+static XMLEntity const html_entities[] = {
 #include "htmlent.h"
     { NULL, 0 },
 };

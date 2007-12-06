@@ -41,7 +41,7 @@ static inline void *uf_malloc(UniFontData *uf, int size)
 
 static inline void uf_free(UniFontData *uf, void *ptr)
 {
-    return uf->fbf_free(uf->mem_opaque, ptr);
+    uf->fbf_free(uf->mem_opaque, ptr);
 }
 
 /* totally unoptimised get bit functions */

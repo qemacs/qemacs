@@ -30,7 +30,7 @@ typedef struct BufedState {
     int last_index;
 } BufedState;
 
-ModeDef bufed_mode;
+static ModeDef bufed_mode;
 
 static void build_bufed_list(EditState *s)
 {

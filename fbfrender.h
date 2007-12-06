@@ -18,6 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifndef FBFRENDER_H
+#define FBFRENDER_H
+
 /* glyph cache */
 typedef struct GlyphCache {
     struct GlyphCache *hash_next;
@@ -44,3 +47,7 @@ void fbf_close_font(QEditScreen *s, QEFont *font);
 
 int fbf_render_init(const char *font_path);
 void fbf_render_cleanup(void);
+
+extern const void *fbf_fonts[];
+
+#endif

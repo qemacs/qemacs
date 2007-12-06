@@ -26,7 +26,7 @@
 static void eb_addlog(EditBuffer *b, enum LogOperation op, 
                       int offset, int size);
 
-EditBufferDataType *first_buffer_data_type = NULL;
+static EditBufferDataType *first_buffer_data_type;
 
 /************************************************************/
 /* basic access to the edit buffer */

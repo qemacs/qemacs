@@ -20,7 +20,7 @@
 
 #include "qe.h"
 
-extern ModeDef hex_mode;
+static ModeDef hex_mode;
 
 static int to_disp(int c)
 {
@@ -294,42 +294,42 @@ static int hex_mode_line(EditState *s, char *buf, int buf_size)
     return pos;
 }
 
-ModeDef ascii_mode = { 
+static ModeDef ascii_mode = { 
     "ascii", 
-    instance_size: 0,
-    mode_probe: NULL,
-    mode_init: ascii_mode_init, 
-    mode_close: text_mode_close,
-    text_display: hex_display, 
-    text_backward_offset: hex_backward_offset,
+    .instance_size = 0,
+    .mode_probe = NULL,
+    .mode_init = ascii_mode_init, 
+    .mode_close = text_mode_close,
+    .text_display = hex_display, 
+    .text_backward_offset = hex_backward_offset,
     
-    move_up_down: hex_move_up_down,
-    move_left_right: hex_move_left_right,
-    move_bol: hex_move_bol,
-    move_eol: hex_move_eol,
-    scroll_up_down: text_scroll_up_down,
-    write_char: text_write_char,
-    mouse_goto: text_mouse_goto,
-    mode_line: hex_mode_line,
+    .move_up_down = hex_move_up_down,
+    .move_left_right = hex_move_left_right,
+    .move_bol = hex_move_bol,
+    .move_eol = hex_move_eol,
+    .scroll_up_down = text_scroll_up_down,
+    .write_char = text_write_char,
+    .mouse_goto = text_mouse_goto,
+    .mode_line = hex_mode_line,
 };
 
-ModeDef hex_mode = {
+static ModeDef hex_mode = {
     "hex", 
-    instance_size: 0,
-    mode_probe: hex_mode_probe,
-    mode_init: hex_mode_init, 
-    mode_close: text_mode_close,
-    text_display: hex_display, 
-    text_backward_offset: hex_backward_offset,
-
-    move_up_down: hex_move_up_down,
-    move_left_right: hex_move_left_right,
-    move_bol: hex_move_bol,
-    move_eol: hex_move_eol,
-    scroll_up_down: text_scroll_up_down,
-    write_char: hex_write_char,
-    mouse_goto: text_mouse_goto,
-    mode_line: hex_mode_line,
+    .instance_size = 0,
+    .mode_probe = hex_mode_probe,
+    .mode_init = hex_mode_init, 
+    .mode_close = text_mode_close,
+    .text_display = hex_display, 
+    .text_backward_offset = hex_backward_offset,
+    
+    .move_up_down = hex_move_up_down,
+    .move_left_right = hex_move_left_right,
+    .move_bol = hex_move_bol,
+    .move_eol = hex_move_eol,
+    .scroll_up_down = text_scroll_up_down,
+    .write_char = hex_write_char,
+    .mouse_goto = text_mouse_goto,
+    .mode_line = hex_mode_line,
 };
 
 static int hex_init(void)

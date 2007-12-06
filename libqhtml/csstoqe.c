@@ -13,7 +13,11 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    printf("/* Automatically generated file - do not edit */\n");
+    printf("/* Automatically generated file - do not edit */\n"
+           "\n"
+           "#include \"qe.h\"\n"
+           "#include \"css.h\"\n"
+           "\n");
     printf("const char %s[] =\n", argv[1]);
     n = 0;
     got_space = 0;

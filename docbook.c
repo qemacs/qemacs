@@ -21,8 +21,6 @@
 #include "qe.h"
 #include "css.h"
 
-extern const char docbook_style[];
-
 static int docbook_mode_probe(ModeProbeData *p1)
 {
     if (xml_mode_probe(p1) == 0)
@@ -39,7 +37,7 @@ static int docbook_mode_init(EditState *s, ModeSavedData *saved_data)
                           docbook_style);
 }
 
-ModeDef docbook_mode;
+static ModeDef docbook_mode;
 
 static int docbook_init(void)
 {

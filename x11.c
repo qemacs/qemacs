@@ -90,7 +90,7 @@ static const char *geometry_str;
 static int font_ptsize;
 //} x11_state;
 
-const char *default_x11_fonts[NB_FONT_FAMILIES] = {
+static const char *default_x11_fonts[NB_FONT_FAMILIES] = {
 #ifdef CONFIG_XFT
     "mono",
 #else
@@ -1718,13 +1718,13 @@ static QEDisplay x11_dpy = {
 
 static CmdOptionDef cmd_options[] = {
     { "no-windows", "nw", NULL, CMD_OPT_BOOL, "force tty terminal usage", 
-      {int_ptr: &force_tty} },
+      { .int_ptr = &force_tty }},
     { "display", "d", "display", CMD_OPT_STRING | CMD_OPT_ARG, "set X11 display", 
-      {string_ptr: &display_str} },
+      { .string_ptr = &display_str }},
     { "geometry", "g", "WxH", CMD_OPT_STRING | CMD_OPT_ARG, "set X11 display size", 
-      {string_ptr: &geometry_str} },
+      { .string_ptr = &geometry_str }},
     { "font-size", "fs", "ptsize", CMD_OPT_INT | CMD_OPT_ARG, "set default font size", 
-      {int_ptr: &font_ptsize} },
+      { .int_ptr = &font_ptsize }},
     { NULL, NULL, NULL, 0, NULL, { NULL }},
 };
 
