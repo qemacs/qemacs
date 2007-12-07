@@ -228,7 +228,7 @@ static void load_input_methods(void)
             m->name = (const char*)p;
             register_input_method(m);
         }
-        p += strlen((const char *)p);
+        p += strlen((const char *)p) + 1;
     }
 
     input_method_fd = fd;
