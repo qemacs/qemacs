@@ -4,6 +4,11 @@
 // Gaspar Sinai's Unicode text editor Yudit
 
 // 1998-04-18 Roman Czyborra@cs.tu-berlin.de
+// 2001-10-Jernej Kovacic <jkovacic@email.si>
+// The SGML keymap contains only small southern Slavic characters. I have added
+// their capital "counterparts" which cover Slovene, Croatian and Serbian (in
+// Latin transcription) languages. The 5 new characters are added at the end of
+// the original file.
 
 "&excl;=0x0021",
 "&num;=0x0023",
@@ -693,5 +698,18 @@
 "&lozf;=0x2726",
 "&loz;=0x2727",
 "&sextile;=0x2736",
+// some southern Slavic (for Slovene, Croatian and Serbian in Latin transliteration) capital letters
+"&Ccaron;=0x010C",  // LATIN CAPITAL LETTER C WITH CARON
+"&Scaron;=0x0160",  // LATIN CAPITAL LETTER S WITH CARON
+"&Zcaron;=0x017D",  // LATIN CAPITAL LETTER Z WITH CARON
+"&Cacute;=0x0106",  // LATIN CAPITAL LETTER C WITH ACUTE
+"&Dstrok;=0x0110",  // LATIN CAPITAL LETTER D WITH STROKE
+// Capital letters with diaeresis (umlaut), Euro
+"&Auml;=0x00C4",    // LATIN CAPITAL LETTER A WITH DIAERESIS
+"&Euml;=0x00CB",    // LATIN CAPITAL LETTER E WITH DIAERESIS
+"&Iuml;=0x00CF",    // LATIN CAPITAL LETTER I WITH DIAERESIS
+"&Ouml;=0x00D6",    // LATIN CAPITAL LETTER O WITH DIAERESIS
+"&Uuml;=0x00DC",    // LATIN CAPITAL LETTER U WITH DIAERESIS
 
-
+"&euro;=0x20AC",    // EURO SIGN
+"&#8364;=0x20AC",   // EURO SIGN

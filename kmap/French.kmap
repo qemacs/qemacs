@@ -1,6 +1,9 @@
 // French.kmap for the Unicode text editor Yudit
 // 1998-06-10 roman@czyborra.com - improvements welcome
+// 2004-07-05 Modified by Yves Codet <ycodet@club-internet.fr>
 
+"~=0x00A0", //   = NO-BREAK SPACE
+"'=0x2019", // ’ = RIGHT SINGLE QUOTATION MARK (APOSTROPHE)
 "<<=0x00AB", // « = LEFT-POINTING DOUBLE ANGLE QUOTATION MARK
 ">>=0x00BB", // » = RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK
 "e'=0x00E9", // é = LATIN SMALL LETTER E WITH ACUTE

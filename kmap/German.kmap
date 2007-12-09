@@ -1,5 +1,13 @@
 // German.kmap for the Unicode editor Yudit
 // 1998-04-17 Roman Czyborra@cs.tu-berlin.de
+// Changes: 
+//    202-04-02 Gaspar Sinai <gsinai@yudit.org>:
+//    o added die Auslassungspunkte ellipsis dots omission marks …
+//    o added der Gedankenstrich long dash –
+
+"...=0x2026", // … die Auslassungspunkte
+"--=0x2013", // – der Gedankenstrich
+"'' = 0x201D", // “ RIGHT DOUBLE QUOTATION MARK
 
 // „German“ quotation marks:
 

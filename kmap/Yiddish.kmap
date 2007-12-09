@@ -1,0 +1,147 @@
+// Yiddish.kmap for Yudit
+// 2001-01-30 Raphael Finkel raphael@cs.uky.edu
+
+// These are the Yiddish letters, according to the UYIP mapping convention
+// I have excluded the keystrokes using the <ctr> key.
+// I have added a few ligatures for YIVO input.
+
+"a=0x05D0 0x05b7",	// HEBREW LETTER ALEF, HEBREW POINT PATAH
+"ay=0x05F2 0x05B7",	// HEBREW LIGATURE YIDDISH DOUBLE YOD, HEBREW POINT PATAH
+"A=0x05D0",	// HEBREW LETTER ALEF
+"#=0x05D0" , // HEBREW LETTER ALEF
+"B=0x05D1 0x05BF",	// HEBREW LETTER BET, HEBREW POINT RAFE
+"b=0x05D1",	// HEBREW LETTER BET
+"c=0x05E6",	// HEBREW LETTER TSADI
+"ts=0x05E6",	// HEBREW LETTER TSADI
+"tsh=0x05D8 0x05E9",	// HEBREW LETTER TET, SHIN
+
+"ts,=0x05E5 ," , // final form
+"ts.=0x05E5 ." , // final form
+"ts?=0x05E5 ?" , // final form
+"ts:=0x05E5 :" , // final form
+"ts!=0x05E5 !" , // final form
+"ts;=0x05E5 ;" , // final form
+"ts-=0x05E5 -" , // final form
+"ts)=0x05E5 )" , // final form
+"ts 0x0020= 0x05E5 0x0020" , // final form
+
+"C=0x05E5",	// HEBREW LETTER FINAL TSADI
+
+"c,=0x05E5 ," , // final form
+"c.=0x05E5 ." , // final form
+"c?=0x05E5 ?" , // final form
+"c:=0x05E5 :" , // final form
+"c!=0x05E5 !" , // final form
+"c;=0x05E5 ;" , // final form
+"c-=0x05E5 -" , // final form
+"c)=0x05E5 )" , // final form
+"c 0x0020= 0x05E5 0x0020" , // final form
+
+"d=0x05D3",	// HEBREW LETTER DALET
+"dj=0x05D3 0x05D6 0x05E9", // DALET, ZAYIN, SHIN
+"e=0x05E2",	// HEBREW LETTER AYIN
+"E=0x05F2",	// HEBREW LIGATURE YIDDISH DOUBLE YOD
+"ey=0x05F2",	// HEBREW LIGATURE YIDDISH DOUBLE YOD
+"eyi=0x05F2 0x05D9 0x05B4",	// DOUBLE YOD, YOD, HIRIQ
+"f=0x05E4 0x05BF",	// HEBREW LETTER PE, HEBREW POINT RAFE
+"F=0x05E3",	// HEBREW LETTER FINAL PE
+
+"f,=0x05E3 ," , // final form
+"f.=0x05E3 ." , // final form
+"f?=0x05E3 ?" , // final form
+"f:=0x05E3 :" , // final form
+"f!=0x05E3 !" , // final form
+"f;=0x05E3 ;" , // final form
+"f-=0x05E3 -" , // final form
+"f)=0x05E3 )" , // final form
+"f 0x0020= 0x05E3 0x0020" , // final form
+
+"g=0x05D2",	// HEBREW LETTER GIMEL
+"h=0x05D4",	// HEBREW LETTER HE
+"H=0x05D7",	// HEBREW LETTER HET
+"i=0x05D9", // HEBREW LETTER YOD
+"ii=0x05D9 0x05D9 0x05B4", // YOD, YOD, HIRIQ
+"iy=0x05D9 0x05B4 0x05D9", // YOD, HIRIQ, YOD
+"I=0x05D9 0x05B4", // HEBREW LETTER YOD, HEBREW POINT HIRIQ
+"j=0x05F2",	// HEBREW LIGATURE YIDDISH DOUBLE YOD
+"J=0x05F2 0x05B7",	// HEBREW LIGATURE YIDDISH DOUBLE YOD, HEBREW POINT PATAH
+"k=0x05E7",	// HEBREW LETTER QOF
+"kh=0x05DB" , // HEBREW LETTER KAF
+
+"kh,=0x05DA ," , // final form
+"kh.=0x05DA ." , // final form
+"kh?=0x05DA ?" , // final form
+"kh:=0x05DA :" , // final form
+"kh!=0x05DA !" , // final form
+"kh;=0x05DA ;" , // final form
+"kh-=0x05DA -" , // final form
+"kh)=0x05DA )" , // final form
+"kh 0x0020= 0x05DA 0x0020" , // final form
+
+"K=0x05DB 0x05BC",	// HEBREW LETTER KAF, HEBREW POINT DAGESH OR MAPIQ
+"l=0x05DC",	// HEBREW LETTER LAMED
+"m=0x05DE",	// HEBREW LETTER MEM
+"M=0x05DD",	// HEBREW LETTER FINAL MEM
+
+"m,=0x05DD ," , // final form
+"m.=0x05DD ." , // final form
+"m?=0x05DD ?" , // final form
+"m:=0x05DD :" , // final form
+"m!=0x05DD !" , // final form
+"m;=0x05DD ;" , // final form
+"m-=0x05DD -" , // final form
+"m)=0x05DD )" , // final form
+"m 0x0020= 0x05DD 0x0020" , // final form
+
+"n=0x05E0",	// HEBREW LETTER NUN
+"N=0x05DF",	// HEBREW LETTER FINAL NUN
+
+"n,=0x05DF ," , // final form
+"n.=0x05DF ." , // final form
+"n?=0x05DF ?" , // final form
+"n:=0x05DF :" , // final form
+"n!=0x05DF !" , // final form
+"n;=0x05DF ;" , // final form
+"n-=0x05DF -" , // final form
+"n)=0x05DF )" , // final form
+"n 0x0020= 0x05DF 0x0020" , // final form
+
+"o=0x05D0 0x05B8", // HEBREW LETTER ALEF, HEBREW POINT QAMATS
+"oy=0x05F1", // HEBREW LIGATURE YIDDISH VAV YOD
+"O=0x05F1", // HEBREW LIGATURE YIDDISH VAV YOD
+"p=0x05E4 0x05BC",	// HEBREW LETTER PE, HEBREW POINT DAGESH OR MAPIQ
+"q=0x05F2 0x05B7",	// HEBREW LIGATURE YIDDISH DOUBLE YOD, HEBREW POINT PATAH
+"r=0x05E8",	// HEBREW LETTER RESH
+"s=0x05E1",	// HEBREW LETTER SAMEKH
+"S=0x05EA",	// HEBREW LETTER TAV
+"t=0x05D8",	// HEBREW LETTER TET
+"T=0x05EA 0x05BC",	// HEBREW LETTER TAV, HEBREW POINT DAGESH OR MAPIQ
+"u=0x05D5", // HEBREW LETTER VAV
+"ui=0x05D5 0x05D9 0x05B4", // HEBREW LETTER VAV, YOD, POINT HIRIQ
+"uv=0x05D5 0x05BC 0x05F0", // VAV, DAGESH, DOUBLE VAV
+"uu=0x05D5 0x05BC 0x05D5", // VAV, DAGESH, VAV
+"U=0x05D5 0x05BC", // HEBREW LETTER VAV, HEBREW POINT DAGESH OR MAPIQ
+"v=0x05F0",	// HEBREW LIGATURE YIDDISH DOUBLE VAV
+"vu=0x05F0 0x05D5 0x05BC", // DOUBLE VAV, VAV, DAGESH
+"V=0x05D1 0x05BF",	// HEBREW LETTER BET, HEBREW POINT RAFE
+"w=0x05E9",	// HEBREW LETTER SHIN
+"sh=0x05E9",	// HEBREW LETTER SHIN
+"W=0x05E9 0x05C2",	// HEBREW LETTER SHIN, HEBREW POINT SIN DOT
+"x=0x05DB",	// HEBREW LETTER KAF
+"X=0x05DA",	// HEBREW LETTER FINAL KAF
+
+"x,=0x05DA ," , // final form
+"x.=0x05DA ." , // final form
+"x?=0x05DA ?" , // final form
+"x:=0x05DA :" , // final form
+"x!=0x05DA !" , // final form
+"x;=0x05DA ;" , // final form
+"x-=0x05DA -" , // final form
+"x)=0x05DA )" , // final form
+"x 0x0020= 0x05DA 0x0020" , // final form
+
+"y=0x05D9",	// HEBREW LETTER YOD
+"yi=0x05D9 0x05D9 0x05B4", // YOD, YOD, HIRIQ
+"Y=0x05F2 0x05B7",	// HEBREW LIGATURE YIDDISH DOUBLE YOD, HEBREW POINT PATAH 
+"z=0x05D6",	// HEBREW LETTER ZAYIN
+"zh=0x05D5 0x05E9", // ZAYIN, SHIN

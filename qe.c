@@ -1237,7 +1237,7 @@ void text_write_char(EditState *s, int key)
         
     if (insert) {
         const InputMethod *m;
-        int match_len, offset, i;
+        int match_buf[20], match_len, offset, i;
             
         /* use compose system only if insert mode */
         if (s->compose_len == 0) 
@@ -1254,12 +1254,11 @@ void text_write_char(EditState *s, int key)
                 s->compose_len = 0;
                 break;
             }
-            // XXX: handle multiple translation
-            ret = m->input_match(&match_len, m->data, s->compose_buf, 
+            ret = m->input_match(match_buf, countof(match_buf),
+                                 &match_len, m->data, s->compose_buf, 
                                  s->compose_len);
             if (ret == INPUTMETHOD_NOMATCH) {
                 /* no match : reset compose state */
-                    
                 s->compose_len = 0;
                 break;
             } else
@@ -1268,7 +1267,6 @@ void text_write_char(EditState *s, int key)
                 break;
             } else {
                 /* match : delete matched chars */
-                key = ret;
                 offset = s->compose_start_offset;
                 offset1 = s->offset; /* save offset so that we are not disturb
                                         when it moves in eb_delete() */
@@ -1276,14 +1274,18 @@ void text_write_char(EditState *s, int key)
                     eb_nextc(s->b, offset, &offset);
                 eb_delete(s->b, s->compose_start_offset, 
                           offset - s->compose_start_offset);
+                s->offset = offset1 - (offset - s->compose_start_offset);
                 s->compose_len -= match_len;
                 umemmove(s->compose_buf, s->compose_buf + match_len,
                          s->compose_len);
                 /* then insert match */
-                len = unicode_to_charset(buf, key, s->b->charset);
-                eb_insert(s->b, s->compose_start_offset, buf, len);
-                s->offset = offset1 + len - (offset - s->compose_start_offset);
-                s->compose_start_offset += len;
+                for (i = 0; i < ret; i++) {
+                    key = match_buf[i];
+                    len = unicode_to_charset(buf, key, s->b->charset);
+                    eb_insert(s->b, s->compose_start_offset, buf, len);
+                    s->offset += len;
+                    s->compose_start_offset += len;
+                }
                 /* if some compose chars are left, we iterate */
                 if (s->compose_len == 0)
                     break;
@@ -6926,7 +6928,7 @@ void set_user_option(const char *user)
 
     /* put source directory first if qe invoked as ./qe */
     // should use actual directory
-    if (!strcmp(qs->argv[0], "./qe")) {
+    if (stristart(qs->argv[0], "./qe", NULL)) {
         pstrcat(qs->res_path, sizeof(qs->res_path), ".:");
     }
 

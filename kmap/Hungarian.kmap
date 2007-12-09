@@ -4,6 +4,10 @@
 "A' = 0xc1",
 "A: = 0xc4",
 "E' = 0xc9",
+"E$ = 0x20AC",
+"e$ = 0x20AC",
+"Y$ =0xFFE5",
+"y$ =0x00A5",
 "I' = 0xcd",
 "O' = 0xd3",
 "O\" = 0x0150",
@@ -23,4 +27,9 @@
 "u' = 0xfa",
 "u\" = 0x0171",
 "u: = 0xfc",
-
+":) = 0x263A",
+"'' = 0x201D", // ” RIGHT DOUBLE QUOTATION MARK
+",,=0x201E", // „ DOUBLE LOW-9 QUOTATION MARK 
+"``=0x201C", // “ LEFT DOUBLE QUOTATION MARK
+"...=0x2026", // … 
+"--=0x2013", // – 

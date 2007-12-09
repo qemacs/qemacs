@@ -74,7 +74,7 @@ ISO 8859-15 (Western European)
 include 8859-15.TXT
 
 [8859-16]
-ISO 8859-16 (Romainian)
+ISO 8859-16 (Romanian)
 "ISO-8859-16", "8859-16", "latin10", "l10"
 include 8859-16.TXT
 

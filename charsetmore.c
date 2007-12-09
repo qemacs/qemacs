@@ -475,7 +475,7 @@ static QECharset charset_8859_15 = {
 
 /*----------------------------------------------------------------
  * filename: cp/8859-16.TXT
- * iso_name: ISO 8859-16 (Romainian)
+ * iso_name: ISO 8859-16 (Romanian)
  *     name: 8859-16
  *       id: 8859_16
  */

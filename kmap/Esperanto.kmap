@@ -5,12 +5,21 @@
 
 // 1998-04-20 Roman Czyborra <czyborra@cs.tu-berlin.de>
 
+// 2001-11-13: Modified by Bertil Wennergren <bertilow@gmx.net>
+// to work with all-caps typing
+
 "Cx=0x0108", // Ĉ = latin capital letter c with circumflex
+"CX=0x0108", // Ĉ = latin capital letter c with circumflex
 "Gx=0x011C", // Ĝ = latin capital letter g with circumflex
+"GX=0x011C", // Ĝ = latin capital letter g with circumflex
 "Hx=0x0124", // Ĥ = latin capital letter h with circumflex
+"HX=0x0124", // Ĥ = latin capital letter h with circumflex
 "Jx=0x0134", // Ĵ = latin capital letter j with circumflex
+"JX=0x0134", // Ĵ = latin capital letter j with circumflex
 "Sx=0x015C", // Ŝ = latin capital letter s with circumflex
+"SX=0x015C", // Ŝ = latin capital letter s with circumflex
 "Ux=0x016C", // Ŭ = latin capital letter u with breve
+"UX=0x016C", // Ŭ = latin capital letter u with breve
 "cx=0x0109", // ĉ = latin small letter c with circumflex
 "gx=0x011D", // ĝ = latin small letter g with circumflex
 "hx=0x0125", // ĥ = latin small letter h with circumflex

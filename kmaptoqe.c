@@ -36,7 +36,8 @@
 typedef struct InputEntry {
     unsigned char input[20];
     int len;
-    int output;
+    unsigned short output[20];
+    int olen;
 } InputEntry;
 
 static InputEntry inputs[NB_MAX];
@@ -63,7 +64,7 @@ static int sort_func(const void *a1, const void *b1)
         if (val != 0)
             return val;
     }
-    return a->output - b->output;
+    return a->output[0] - b->output[0];
 }
 
 
@@ -78,30 +79,31 @@ static void put_byte(int b)
 
 static void gen_map(void)
 {
-    int len, c, d, last, delta, k, j;
+    int len, c, d, last, delta, i, k, j;
     int last_input0;
+    InputEntry *ip;
 
     last = 0;
     nb_starts = 0;
     last_input0 = 0;
     offset = 0;
-    for (k = 0; k < nb_inputs; k++) {
-        unsigned char *input = inputs[k].input;
+    for (k = 0, ip = inputs; k < nb_inputs; k++, ip++) {
+        unsigned char *input = ip->input;
         int first, output;
 
         if (gen_table) {
-            if (last_input0 != inputs[k].input[0]) {
+            if (last_input0 != ip->input[0]) {
                 if (last_input0 != 0)
                     put_byte(0);
-                last_input0 = inputs[k].input[0];
+                last_input0 = ip->input[0];
                 table_val[nb_starts] = last_input0;
                 table_start[nb_starts++] = offset;
                 last = 0;
             }
         }
 
-        len = inputs[k].len;
-        output = inputs[k].output;
+        len = ip->len;
+        output = ip->output[0];
         delta = output - last;
         last = output;
 
@@ -123,16 +125,22 @@ static void gen_map(void)
         if (gen_table)
             first = 1;
 
-        /* c = 0 : end of table 
-        c = 1..0x1d : delta unicode
-        c = 0x1e : unicode char follows.
-        c = 0x1f : unicode mapping follows 
-        bit 7 : eof and delta == 1
-        */
+        /* c = 0x00        end of table 
+         * c = 0x01..0x1d  delta unicode
+         * c = 0x1e        unicode output mapping follows 
+         * c = 0x1f        unicode input char follows.
+         * c = 0x20..0x7f  input character
+         * c = 0x80        unused
+         * c = 0x81        unused
+         * c = 0x82..0x9d  extra unicode outputs follow
+         * c = 0x9e        first unicode output mapping follows
+         * c = 0x9f        last unicode input char follows and delta==1.
+         * c = 0xa0..0xff  last input character and delta==1
+         */
         for (j = first; j < len; j++) {
             c = input[j];
             d = 0;
-            if ((j == (len - 1) && delta == 1))
+            if (j == (len - 1) && delta == 1 && ip->olen == 1)
                 d = 0x80;
             if (c >= 0x20 && c <= 0x7f) {
                 put_byte(c | d);
@@ -142,17 +150,30 @@ static void gen_map(void)
                 put_byte(c & 0xff);
             }
         }
-        /* XXX: potential problem if first == len. We avoid it
-        by forcing an emission of a unicode char */
-        if (first == len)
-            delta = 0;
-        if (delta != 1) {
-            if (delta >= 1 && delta <= 0x1d) {
-                put_byte(delta);
-            } else {
-                put_byte(0x1e);
+        if (ip->olen > 1) {
+            if (delta != 0) {
+                put_byte(0x80 | 0x1e);
                 put_byte((output >> 8) & 0xff);
                 put_byte(output & 0xff);
+            }
+            put_byte(0x80 | ip->olen);
+            for (i = 1; i < ip->olen; i++) {
+                put_byte((ip->output[i] >> 8) & 0xff);
+                put_byte(ip->output[i] & 0xff);
+            }
+        } else {
+            /* XXX: potential problem if first == len. We avoid it
+            by forcing an emission of a unicode char */
+            if (first == len)
+                delta = 0;
+            if (delta != 1) {
+                if (delta >= 1 && delta <= 0x1d) {
+                    put_byte(delta);
+                } else {
+                    put_byte(0x1e);
+                    put_byte((output >> 8) & 0xff);
+                    put_byte(output & 0xff);
+                }
             }
         }
     }
@@ -290,13 +311,14 @@ static int dump_kmap(const char *filename)
             x = 0;
 
             if (1) {
-                int len, flag, k, s, last = 0, sp;
+                int len, olen, flag, k, s, last = 0, sp;
                 
                 s = 0;
                 for (k = 0;; k++) {
                     unsigned char *input;
 
                     input = inputs[k].input;
+                    olen = 1;
                     len = 0;
                     sp = 1;
 
@@ -306,11 +328,17 @@ static int dump_kmap(const char *filename)
                     if (c == EOF)
                         break;
 
-                    /* c = 0 : end of table 
-                     * c = 1..0x1d : delta unicode
-                     * c = 0x1e : unicode char follows.
-                     * c = 0x1f : unicode mapping follows 
-                     * bit 7 : eof and delta == 1
+                    /* c = 0x00        end of table 
+                     * c = 0x01..0x1d  delta unicode
+                     * c = 0x1e        unicode output mapping follows 
+                     * c = 0x1f        unicode input char follows.
+                     * c = 0x20..0x7f  input character
+                     * c = 0x80        unused
+                     * c = 0x81        unused
+                     * c = 0x82..0x9d  extra unicode outputs follow
+                     * c = 0x9e        first unicode output mapping follows
+                     * c = 0x9f        last unicode input char follows and delta==1.
+                     * c = 0xa0..0xff  last input character and delta==1
                      */
                     if (c == 0) {
                         if (!gen_table || ++s >= nb_starts)
@@ -329,6 +357,23 @@ static int dump_kmap(const char *filename)
                     flag = c >> 7;
                     c &= 0x7f;
 
+                    if (c < 0x1e) {
+                        if (flag) {
+                            olen = c;
+                        } else {
+                            last += c;
+                        }
+                        goto nextk;
+                    }
+                    if (c == 0x1e) {
+                        last  = getc(f) << 8;
+                        last |= getc(f) << 0;
+                        pos += 2;
+                        if (flag)
+                            goto nextc;
+                        else
+                            goto nextk;
+                    }
                     if (c == 0x1f) {
                         c  = getc(f) << 8;
                         c |= getc(f) << 0;
@@ -340,16 +385,6 @@ static int dump_kmap(const char *filename)
                             goto nextk;
                         }
                         goto nextc;
-                    }
-                    if (c == 0x1e) {
-                        last  = getc(f) << 8;
-                        last |= getc(f) << 0;
-                        pos += 2;
-                        goto nextk;
-                    }
-                    if (c < 0x1e) {
-                        last += c;
-                        goto nextk;
                     }
                     if (c >= 0x20) {
                         input[len++] = c;
@@ -366,7 +401,15 @@ static int dump_kmap(const char *filename)
                     }
                     if (!sp)
                         printf(" ");
-                    printf("= 0x%04X\",\n", last);
+                    printf("= 0x%04X", last);
+                    /* multiple unicode chars */
+                    for (i = 1; i < olen; i++) {
+                        c  = getc(f) << 8;
+                        c |= getc(f) << 0;
+                        pos += 2;
+                        printf(" 0x%04X", c);
+                    }
+                    printf("\",\n");
                 }
             }
             if (pos == kmap_offsets[n])
@@ -448,6 +491,7 @@ int main(int argc, char **argv)
     char line[1024], *p;
     unsigned char *q;
     int c, size;
+    InputEntry *ip;
 
     if (argc < 3) {
         printf("usage: kmaptoqe outfile kmaps...\n"
@@ -499,6 +543,7 @@ int main(int argc, char **argv)
 
         col = 0;
         nb_inputs = 0;
+        ip = inputs;
         line_num = 0;
         for (;;) {
             if (fgets(line, sizeof(line), f) == NULL)
@@ -511,7 +556,7 @@ int main(int argc, char **argv)
                 goto invalid;
             p++;
             len = 0;
-            q = inputs[nb_inputs].input;
+            q = ip->input;
             for (;;) {
                 p = skipspaces(p);
                 if (*p == '=' && p[1] != '=')
@@ -524,17 +569,24 @@ int main(int argc, char **argv)
                             filename, line_num, c);
                     goto skip;
                 }
-                if (len >= countof(inputs[nb_inputs].input))
+                if (len >= countof(ip->input))
                     goto invalid;
                 q[len++] = c;
             }
-            inputs[nb_inputs].len = len;
+            ip->len = len;
             p = skipspaces(p + 1);
-            c = getcp(p, &p);
-            p = skipspaces(p);
-            if (c < 0 || *p != '"')
-                goto invalid;
-            inputs[nb_inputs].output = c;
+            for (ip->olen = 0;;) {
+                c = getcp(p, &p);
+                if (c < 0)
+                    goto invalid;
+                if (ip->olen >= countof(ip->output))
+                    goto invalid;
+                ip->output[ip->olen++] = c;
+                p = skipspaces(p);
+                if (*p == '"')
+                    break;
+            }
+            ip++;
             nb_inputs++;
             continue;
         invalid:

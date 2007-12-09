@@ -50,7 +50,7 @@
 "end vowel",
 
 "begin consonant3",
- "=0x0000",
+// "=0x0000",
  "r=0x0001",
  "R=0x0002",
  "rt=0x0003",

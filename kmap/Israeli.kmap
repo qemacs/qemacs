@@ -1,0 +1,52 @@
+// Hebrew.kmap for Yudit
+// 1998-06-17 Roman Czyborra@cs.tu-berlin.de
+
+// Changed from the il_phonetic map to the standard israeli map by 
+// Tzafrir Cohen <tzafrir@linux.org.il>
+
+"t=0x05D0",	// א = HEBREW LETTER ALEF
+"c=0x05D1",	// ב = HEBREW LETTER BET
+"d=0x05D2",	// ג = HEBREW LETTER GIMEL
+"s=0x05D3",	// ד = HEBREW LETTER DALET
+"v=0x05D4",	// ה = HEBREW LETTER HE
+"u=0x05D5",	// ו = HEBREW LETTER VAV
+"z=0x05D6",	// ז = HEBREW LETTER ZAYIN
+"j=0x05D7",	// ח = HEBREW LETTER HET
+"y=0x05D8",	// ט = HEBREW LETTER TET
+"h=0x05D9",	// י = HEBREW LETTER YOD
+"l=0x05DA",	// ך = HEBREW LETTER FINAL KAF
+"f=0x05DB",	// כ = HEBREW LETTER KAF
+"k=0x05DC",	// ל = HEBREW LETTER LAMED
+"o=0x05DD",	// ם = HEBREW LETTER FINAL MEM
+"n=0x05DE",	// מ = HEBREW LETTER MEM
+"i=0x05DF",	// ן = HEBREW LETTER FINAL NUN
+"b=0x05E0",	// נ = HEBREW LETTER NUN
+"x=0x05E1",	// ס = HEBREW LETTER SAMEKH
+"g=0x05E2",	// ע = HEBREW LETTER AYIN
+";=0x05E3",	// ף = HEBREW LETTER FINAL PE
+"p=0x05E4",	// פ = HEBREW LETTER PE
+".=0x05E5",	// ץ = HEBREW LETTER FINAL TSADI
+"m=0x05E6",	// צ = HEBREW LETTER TSADI
+"e=0x05E7",	// ק = HEBREW LETTER QOF
+"r=0x05E8",	// ר = HEBREW LETTER RESH
+"a=0x05E9",	// ש = HEBREW LETTER SHIN
+",=0x05EA",	// ת = HEBREW LETTER TAV
+
+// Some other mappings that change, besides the letters themselves:
+"q=0x002F",	// slash (/)
+"w=0x0027",	// apostrophy (')
+"`=0x003B",	// smicolon (;)
+"'=0x002C",	// comma (,)
+"/=0x002E",	// dot (.)
+
+// There is said to be support for bidirectionality. If so: swapping 
+// between left and right parathensis might prove useful. Just in case
+// Those should not mean "left-{brace|bracket|etc.}" and "right-"
+// but "open-" and "close-"
+// it does, I add the mapping remmed-out:
+//"[=0x005D",	// "]"
+//"]=0x005B",	// "["
+//"{=0x007D",	// "}"
+//"}=0x007B",	// "{"
+//"(=0x0029",	// ")"
+//")=0x0028",	// "("

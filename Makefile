@@ -318,14 +318,15 @@ endif
 KMAPS=Arabic.kmap ArmenianEast.kmap ArmenianWest.kmap Chinese-CJ.kmap \
       Cyrillic.kmap Czech.kmap DE-RU.kmap Danish.kmap Dutch.kmap \
       Esperanto.kmap Ethiopic.kmap French.kmap Georgian.kmap German.kmap \
-      Greek.kmap GreekMono.kmap Guarani.kmap Hebrew.kmap \
+      Greek.kmap GreekMono.kmap Guarani.kmap HebrewP.kmap \
       Hungarian.kmap \
       KOI8_R.kmap Lithuanian.kmap Mnemonic.kmap Polish.kmap \
       Russian.kmap SGML.kmap TeX.kmap Troff.kmap VNtelex.kmap \
       Vietnamese.kmap XKB_iso8859-4.kmap \
       DanishAlternate.kmap GreekBible.kmap Polytonic.kmap Spanish.kmap \
-      Thai.kmap VietnameseTelex.kmap Welsh.kmap
-#     HebrewIsraeli.kmap Kana.kmap 
+      Thai.kmap VietnameseTelex.kmap Welsh.kmap \
+      Hebrew.kmap HebrewIsraeli.kmap HebrewP.kmap Israeli.kmap Yiddish.kmap \
+      Kana.kmap 
 #     Hangul.kmap Hangul2.kmap Hangul3.kmap Unicode2.kmap 
 #KMAPS_DIR=$(prefix)/share/yudit/data
 KMAPS_DIR=kmap

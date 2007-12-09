@@ -178,6 +178,11 @@ void c_colorize_line(unsigned int *buf, int len,
                         type_decl = 1;
                     }
                     set_color(p_start, p1 - p_start, QE_STYLE_TYPE);
+                } else
+                if (*p == '(') {
+                    /* function call */
+                    /* XXX: different styles for call and definition */
+                    set_color(p_start, p1 - p_start, QE_STYLE_FUNCTION);
                 } else {
                     /* assume typedef if starting at first column */
                     if (p_start == buf)
@@ -209,7 +214,7 @@ void c_colorize_line(unsigned int *buf, int len,
 #define MAX_BUF_SIZE    512
 #define MAX_STACK_SIZE  64
 
-/* gives the position of the first non while space character in
+/* gives the position of the first non white space character in
    buf. TABs are counted correctly */
 static int find_indent1(EditState *s, unsigned int *buf)
 {

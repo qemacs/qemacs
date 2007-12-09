@@ -1,4 +1,11 @@
 // http://czyborra.com/yudit/TeX.kmap 1998-09-24 czyborra@dds.nl
+// 12 June 2001
+// Jernej Kovacic <jkovacic@email.si> added ex-Yugoslav characters
+// "\\'{c}=0x0107",
+// "\\'{C}=0x0106",
+// "\\dj=0x0111",
+// "\\DJ=0x0110",
+// "\\Dj=0x0110",
 
 "!`=0x00a1",
 "?`=0x00bf",
@@ -785,3 +792,8 @@
 "_8=0x2088",
 "_9=0x2089",
 "_ 0x3D =0x208c",
+"\\'{c}=0x0107",
+"\\'{C}=0x0106",
+"\\dj=0x0111",
+"\\DJ=0x0110",
+"\\Dj=0x0110",

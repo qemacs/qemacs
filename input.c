@@ -25,7 +25,9 @@
 
 InputMethod *input_methods;
 
-static int default_input(__unused__ int *match_len_ptr, 
+static int default_input(__unused__ int *match_buf,
+                         __unused__ int match_buf_size,
+                         __unused__ int *match_len_ptr, 
                          __unused__ const u8 *data,
                          __unused__ const unsigned int *buf,
                          __unused__ int len)
@@ -33,7 +35,9 @@ static int default_input(__unused__ int *match_len_ptr,
     return INPUTMETHOD_NOMATCH;
 }
 
-static int unicode_input(int *match_len_ptr, 
+static int unicode_input(int *match_buf,
+                         int match_buf_size,
+                         int *match_len_ptr, 
                          __unused__ const u8 *data,
                          const unsigned int *buf, int len)
 {
@@ -52,7 +56,8 @@ static int unicode_input(int *match_len_ptr,
     }
     if (len == 5) {
         *match_len_ptr = len;
-        return c;
+        match_buf[0] = c;
+        return 1;
     } else {
         return INPUTMETHOD_MORECHARS;
     }
@@ -83,12 +88,14 @@ static void register_input_method(InputMethod *m)
 /* XXX: use an edit buffer to access the kmap !!!! */
 
 /* parse the internal compressed input method format */
-static int kmap_input(int *match_len_ptr, 
-                      const u8 *data, const unsigned int *buf, int len)
+static int kmap_input(int *match_buf, int match_buf_size,
+                      int *match_len_ptr, const u8 *data,
+                      const unsigned int *buf, int len)
 {
-    const u8 *p, *p1;
-    int c, d, i, l, l1, match_len, match_char, match_count, match_real_len;
-    int nb_prefixes, last_outputc, match, prefix_len, trailing_space;
+    const u8 *p, *p1, *match_extra;
+    int c, flag, i, l, l1, match_len, match_char, match_count, match_real_len;
+    int match_olen;
+    int nb_prefixes, last_outputc, match, prefix_len, trailing_space, olen;
 
     p = data;
     nb_prefixes = p[0] & 0x7f;
@@ -113,27 +120,50 @@ static int kmap_input(int *match_len_ptr,
     match_char = 0;
     match_count = 0;
     last_outputc = 0;
+    match_olen = 0;
+    match_extra = NULL;
     for (;;) {
         match = 1;
+        olen = 1;
         l1 = prefix_len; /* length of input pattern */
         for (;;) {
+            /* c = 0x00        end of table 
+             * c = 0x01..0x1d  delta unicode
+             * c = 0x1e        unicode output mapping follows 
+             * c = 0x1f        unicode input char follows.
+             * c = 0x20..0x7f  input character
+             * c = 0x80        unused
+             * c = 0x81        unused
+             * c = 0x82..0x9d  extra unicode outputs follow
+             * c = 0x9e        first unicode output mapping follows
+             * c = 0x9f        last unicode input char follows and delta==1.
+             * c = 0xa0..0xff  last input character and delta==1
+             */
             c = *p++;
-            d = c & 0x80;
-            c = c & 0x7f;
+            flag = c & 0x80;
+            c &= 0x7f;
             if (c == 0) {
-                /* end of table */
+                /* end of table / unused */
                 goto the_end;
             } else
-            if (c <= 0x1d) {
-                /* delta */
-                last_outputc += c;
+            if (c < 0x1e) {
+                if (flag) {
+                    /* extra output glyphs */
+                    olen = c;
+                } else {
+                    /* delta */
+                    last_outputc += c;
+                }
                 break;
             } else
             if (c == 0x1e) {
                 /* explicit output */
                 last_outputc = (p[0] << 8) | p[1];
                 p += 2;
-                break;
+                if (flag)
+                    continue;
+                else
+                    break;
             } else
             if (c == 0x1f) {
                 /* unicode value */
@@ -143,7 +173,7 @@ static int kmap_input(int *match_len_ptr,
             if (l1 < len && c != (int)buf[l1])
                 match = 0;
             l1++;
-            if (d) {
+            if (flag) {
                 /* delta = 1 */
                 last_outputc++;
                 break;
@@ -161,22 +191,34 @@ static int kmap_input(int *match_len_ptr,
                 l = len;
             if (l == match_len) {
                 match_count++;
-            } else if (l > match_len) {
+            } else
+            if (l > match_len) {
                 match_len = l;
                 match_real_len = l1;
                 match_char = last_outputc;
                 match_count = 1;
+                match_olen = olen;
+                match_extra = p;
             }
         }
+        p += (olen - 1) << 1;
     }
-the_end:
+  the_end:
     if (match_len == 0) {
         return INPUTMETHOD_NOMATCH;
-    } else if (match_count > 1 || match_real_len > len) {
+    } else
+    if (match_count > 1 || match_real_len > len) {
         return INPUTMETHOD_MORECHARS;
     } else {
         *match_len_ptr = match_len;
-        return match_char;
+        if (match_buf_size > 0) {
+            match_buf[0] = match_char;
+            p = match_extra;
+            for (i = 1; i < match_olen && i < match_buf_size; i++, p += 2) {
+                match_buf[i] = (p[0] << 8) + p[1];
+            }
+        }
+        return match_olen;
     }
 }
 

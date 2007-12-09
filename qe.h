@@ -64,6 +64,10 @@
 #define force_cast(type, expr)  ((type)(expr))
 #endif
 
+#ifndef countof
+#define countof(a)  ((int)(sizeof(a) / sizeof((a)[0])))
+#endif
+
 /************************/
 
 #include "cutils.h"
@@ -1134,13 +1138,16 @@ static inline int display_char(DisplayState *s, int offset1, int offset2,
 typedef struct InputMethod {
     const char *name;
     /* input match returns: 
-       ch >= 0 if a character ch of len '*match_len_ptr' in buf was found, 
        INPUTMETHOD_NOMATCH if no match was found 
        INPUTMETHOD_MORECHARS if more chars need to be typed to find
-       a suitable completion 
+         a suitable completion 
+       n > 0: number of code points in replacement found for a sequence
+       of keystrokes in buf.  number of keystrokes in match was stored
+       in '*match_len_ptr'.
      */
-    int (*input_match)(int *match_len_ptr, 
-                       const u8 *data, const unsigned int *buf, int len);
+    int (*input_match)(int *match_buf, int match_buf_size,
+                       int *match_len_ptr, const u8 *data,
+                       const unsigned int *buf, int len);
     const u8 *data;
     struct InputMethod *next;
 } InputMethod;
