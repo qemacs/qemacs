@@ -1154,13 +1154,13 @@ static QECharset charset_koi8_u = {
 
 
 /*----------------------------------------------------------------
- * filename: cp/tcvn5712.cp
+ * filename: cp/TCVN.TXT
  * iso_name: TCVN-5712 (Vietnamese)
- *     name: tcvn5712
- *       id: tcvn5712
+ *     name: tcvn
+ *       id: tcvn
  */
 
-static const unsigned short table_tcvn5712[255] = {
+static const unsigned short table_tcvn[255] = {
     0x00da, 0x1ee4, 0x0003, 0x1eea, 0x1eec, 0x1eee, 0x0007, 0x0008, 
     0x0009, 0x000a, 0x000b, 0x000c, 0x000d, 0x000e, 0x000f, 0x0010, 
     0x1ee8, 0x1ef0, 0x1ef2, 0x1ef6, 0x1ef8, 0x00dd, 0x1ef4, 0x0018, 
@@ -1195,8 +1195,8 @@ static const unsigned short table_tcvn5712[255] = {
     0x1ef1, 0x1ef3, 0x1ef7, 0x1ef9, 0x00fd, 0x1ef5, 0x1ed0, 
 };
 
-static QECharset charset_tcvn5712 = {
-    "tcvn5712",
+static QECharset charset_tcvn = {
+    "tcvn",
     "TCVN-5712|TCVN|TCVN-0|TCVN-1",
     decode_8bit_init,
     NULL,
@@ -1205,7 +1205,7 @@ static QECharset charset_tcvn5712 = {
     .eol_char = 10,
     .min_char = 1,
     .max_char = 255,
-    .private_table = table_tcvn5712,
+    .private_table = table_tcvn,
 };
 
 
@@ -1576,7 +1576,7 @@ int charset_more_init(void)
     qe_register_charset(&charset_kamen);
     qe_register_charset(&charset_koi8_r);
     qe_register_charset(&charset_koi8_u);
-    qe_register_charset(&charset_tcvn5712);
+    qe_register_charset(&charset_tcvn);
     qe_register_charset(&charset_viscii);
     qe_register_charset(&charset_cp037);
     qe_register_charset(&charset_cp424);
