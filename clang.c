@@ -21,12 +21,14 @@
 #include "qe.h"
 
 static const char c_keywords[] = 
-"|auto|break|case|const|continue|do|else|enum|extern|for|goto|"
-"if|register|return|static|struct|switch|typedef|union|volatile|while|";
+    "|auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
+    "if|inline|register|restrict|return|sizeof|static|struct|switch|"
+    "typedef|union|volatile|while|";
 
 /* NOTE: 'var' is added for javascript */
 static const char c_types[] = 
-"|char|double|float|int|long|unsigned|short|signed|void|var|";
+    "|char|double|float|int|long|unsigned|short|signed|void|var|"
+    "_Bool|_Complex|_Imaginary";
 
 static int get_c_keyword(char *buf, int buf_size, unsigned int **pp)
 {
@@ -171,7 +173,8 @@ void c_colorize_line(unsigned int *buf, int len,
                 if (strfind(c_keywords, kbuf, 0)) {
                     set_color(p_start, p1 - p_start, QE_STYLE_KEYWORD);
                 } else
-                if (strfind(c_types, kbuf, 0)) {
+                if (strfind(c_types, kbuf, 0)
+                ||  (l > 2 && kbuf[l - 2] == '_' && kbuf[l - 1] == 't')) {
                     /* c type */
                     /* if not cast, assume type declaration */
                     if (*p != ')') {
