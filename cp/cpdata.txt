@@ -314,11 +314,11 @@ TCVN-5712 (Vietnamese)
 "TCVN-5712", "TCVN", "TCVN-0", "TCVN-1"
 include TCVN.TXT
 #0xCE 0x1EB5 # LATIN SMALL LETTER E WITH HOOK ABOVE (error in yudit-1.6)
-0xCE 0x1EBB # LATIN SMALL LETTER E WITH HOOK ABOVE (links-0.99)
+#0xCE 0x1EBB # LATIN SMALL LETTER E WITH HOOK ABOVE (links-0.99)
 
 # compatibility
-0xA7 0x00D0 # letter ETH
-0xAE 0x00F0
+#0xA7 0x00D0 # letter ETH
+#0xAE 0x00F0
 
 [utf-8]
 Unicode UTF-8

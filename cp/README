@@ -145,3 +145,6 @@ cp1125.cp from lynx or glibc data
 glibc-2.3.5/localedata/charmaps/CP1125
 glibc-2.3.5/iconvdata/cp1125.c
 
+From yudit-2.8.1 sources: 
+
+  11911 Aug 26  2002 TCVN.TXT     (from yudit-2.8.1/mytool/uni/tcvn.txt)
