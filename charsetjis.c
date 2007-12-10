@@ -133,7 +133,7 @@ static unsigned char *encode_euc_jp(__unused__ QECharset *s,
 {
     if (c <= 0x7f) {
         *q++ = c;
-    } else if (c >= 0xff61 && c <= 0xFF9F) {
+    } else if (c >= 0xff61 && c <= 0xff9f) {
         *q++ = 0x8e;
         *q++ = c - 0xff61 + 0xa1;
     } else {

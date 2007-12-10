@@ -279,7 +279,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 else
                     push_key(KEY_CTRL('@'));
                 break;
-            case 0x147:                        /* home */
+            case 0x147:                /* HOME */
                 push_key(KEY_HOME);
                 break;
             case 0x148:                /* UP */
@@ -310,27 +310,44 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 push_key(KEY_INSERT);
                 break;
             case 0x3b:                 /* F1 */
-            case 0x3c:
-            case 0x3d:
-            case 0x3e:
-            case 0x3f:
-            case 0x40:
-            case 0x41:
-            case 0x42:
-            case 0x43:
-            case 0x44:
-            case 0x57:
-            case 0x58:                 /* F12 */
-                key = scan - 0x3b;
-                if (key > 9)
-                    key -= 0x12;
-                key += KEY_F1;
-                /* we leave Alt-F4 to close the window */
-                if (alt && key == KEY_F4)
-                    return DefWindowProc(hWnd, msg, wParam, lParam);
-                push_key(key);
+                push_key(KEY_F1);
                 break;
-                  
+            case 0x3c:                 /* F2 */
+                push_key(KEY_F2);
+                break;
+            case 0x3d:                 /* F3 */
+                push_key(KEY_F3);
+                break;
+            case 0x3e:                 /* F4 */
+                /* we leave Alt-F4 to close the window */
+                if (alt)
+                    return DefWindowProc(hWnd, msg, wParam, lParam);
+                push_key(KEY_F4);
+                break;
+            case 0x3f:                 /* F5 */
+                push_key(KEY_F5);
+                break;
+            case 0x40:                 /* F6 */
+                push_key(KEY_F6);
+                break;
+            case 0x41:                 /* F7 */
+                push_key(KEY_F7);
+                break;
+            case 0x42:                 /* F8 */
+                push_key(KEY_F8);
+                break;
+            case 0x43:                 /* F9 */
+                push_key(KEY_F9);
+                break;
+            case 0x44:                 /* F10 */
+                push_key(KEY_F10);
+                break;
+            case 0x57:                 /* F11 */
+                push_key(KEY_F11);
+                break;
+            case 0x58:                 /* F12 */
+                push_key(KEY_F12);
+                break;
             default: 
                 return DefWindowProc(hWnd, msg, wParam, lParam);
             }

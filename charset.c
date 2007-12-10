@@ -174,13 +174,13 @@ int utf8_encode(char *q0, int c)
                 if (c < 0x00200000) {
                     *q++ = (c >> 18) | 0xf0;
                 } else {
-                        if (c < 0x04000000) {
-                            *q++ = (c >> 24) | 0xf8;
-                        } else {
-                            *q++ = (c >> 30) | 0xfc;
-                            *q++ = ((c >> 24) & 0x3f) | 0x80;
-                        }
-                        *q++ = ((c >> 18) & 0x3f) | 0x80;
+                    if (c < 0x04000000) {
+                        *q++ = (c >> 24) | 0xf8;
+                    } else {
+                        *q++ = (c >> 30) | 0xfc;
+                        *q++ = ((c >> 24) & 0x3f) | 0x80;
+                    }
+                    *q++ = ((c >> 18) & 0x3f) | 0x80;
                 }
                 *q++ = ((c >> 12) & 0x3f) | 0x80;
             }
@@ -382,7 +382,7 @@ void decode_8bit_init(CharsetDecodeState *s)
     n = charset->max_char - charset->min_char + 1;
     for (i = 0; i < n; i++)
         *table++ = charset->private_table[i];
-    for (i = charset->max_char + 1; i < 256;i++)
+    for (i = charset->max_char + 1; i < 256; i++)
         *table++ = i;
 }
 
@@ -394,7 +394,8 @@ unsigned char *encode_8bit(QECharset *charset, unsigned char *q, int c)
 
     if (c < charset->min_char) {
         /* nothing to do */
-    } else if (c > charset->max_char && c <= 0xff) {
+    } else
+    if (c > charset->max_char && c <= 0xff) {
         /* nothing to do */
     } else {
         n = charset->max_char - charset->min_char + 1;

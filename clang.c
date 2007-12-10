@@ -59,6 +59,7 @@ static int get_c_keyword(char *buf, int buf_size, unsigned int **pp)
 /* colorization states */
 enum {
     C_COMMENT = 1,
+    C_COMMENT1,
     C_STRING,
     C_STRING_Q,
     C_PREPROCESS,
@@ -81,6 +82,8 @@ void c_colorize_line(unsigned int *buf, int len,
     switch (state) {
     case C_COMMENT:
         goto parse_comment;
+    case C_COMMENT1:
+        goto parse_comment1;
     case C_STRING:
     case C_STRING_Q:
         goto parse_string;
@@ -113,23 +116,39 @@ void c_colorize_line(unsigned int *buf, int len,
                     }
                 }
                 set_color(p_start, p - p_start, QE_STYLE_COMMENT);
-            } else if (*p == '/') {
+            } else
+            if (*p == '/') {
                 /* line comment */
-                while (*p != '\n') 
-                    p++;
+            parse_comment1:
+                state = C_COMMENT1;
+                p = buf + len;
                 set_color(p_start, p - p_start, QE_STYLE_COMMENT);
+                if (p > buf && (p[-1] & CHAR_MASK) != '\\') 
+                    state = 0;
             }
             break;
         case '#':
             /* preprocessor */
         parse_preprocessor:
+            state = C_PREPROCESS;
+            /* incorrect if preprocessing line contains a comment */
             p = buf + len;
             set_color(p_start, p - p_start, QE_STYLE_PREPROCESS);
-            if (p > buf && (p[-1] & CHAR_MASK) == '\\') 
-                state = C_PREPROCESS;
-            else
+            if (p > buf && (p[-1] & CHAR_MASK) != '\\') 
                 state = 0;
             goto the_end;
+        case 'L':
+            if (p[1] == '\'') {
+                p++;
+                state = C_STRING_Q;
+                goto string;
+            }
+            if (p[1] == '\"') {
+                p++;
+                state = C_STRING;
+                goto string;
+            }
+            goto normal;
         case '\'':
             state = C_STRING_Q;
             goto string;
@@ -139,6 +158,7 @@ void c_colorize_line(unsigned int *buf, int len,
         string:
             p++;
         parse_string:
+            /* XXX: separate styles for string and char const? */
             while (*p != '\n') {
                 if (*p == '\\') {
                     p++;
@@ -162,10 +182,12 @@ void c_colorize_line(unsigned int *buf, int len,
             type_decl = 0;
             break;
         default:
+        normal:
             if ((c >= 'a' && c <= 'z') ||
                 (c >= 'A' && c <= 'Z') || 
                 (c == '_')) {
                 
+                /* XXX: should handle inplace and support :: */
                 l = get_c_keyword(kbuf, sizeof(kbuf), &p);
                 p1 = p;
                 while (*p == ' ' || *p == '\t')
@@ -192,11 +214,7 @@ void c_colorize_line(unsigned int *buf, int len,
                         type_decl = 1;
 
                     if (type_decl) {
-                        if (*p == '(') {
-                            /* function definition case */
-                            set_color(p_start, p1 - p_start, QE_STYLE_FUNCTION);
-                            type_decl = 1;
-                        } else if (p_start == buf) {
+                        if (p_start == buf) {
                             /* assume type if first column */
                             set_color(p_start, p1 - p_start, QE_STYLE_TYPE);
                         } else {

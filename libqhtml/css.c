@@ -3956,7 +3956,7 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
             /* display the optional alt text */
             if (box->u.image.content_alt) {
                 font = css_select_font(scr, props);
-                len = utf8_to_unicode(ubuf, sizeof(ubuf) / sizeof(ubuf[0]), 
+                len = utf8_to_unicode(ubuf, countof(ubuf),
                                       box->u.image.content_alt);
                 /* XXX: unicode, etc... */
                 draw_text(scr, font,

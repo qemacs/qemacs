@@ -423,7 +423,7 @@ static void tty_read_handler(void *opaque)
             ts->input_state = IS_CSI2;
             break;
         case '~':
-            if (ts->input_param < (int)(sizeof(csi_lookup)/sizeof(csi_lookup[0]))) {
+            if (ts->input_param < countof(csi_lookup)) {
                 ch = csi_lookup[ts->input_param];
                 goto the_end;
             }

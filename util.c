@@ -504,7 +504,7 @@ static int strtokey1(const char **pp)
     for (p1 = p; *p1 && *p1 != ' '; p1++)
         continue;
 
-    for (i = 0; i < (int)(sizeof(keycodes)/sizeof(keycodes[0])); i++) {
+    for (i = 0; i < countof(keycodes); i++) {
         if (strstart(p, keystr[i], &q) && q == p1) {
             key = keycodes[i];
             *pp = p1;
@@ -512,6 +512,7 @@ static int strtokey1(const char **pp)
         }
     }
 #if 0
+    /* Cannot do this because KEY_F1..KEY_F20 are not consecutive */
     if (p[0] == 'f' && p[1] >= '1' && p[1] <= '9') {
         i = p[1] - '0';
         p += 2;
@@ -582,7 +583,7 @@ void keytostr(char *buf, int buf_size, int key)
     
     buf_init(&out, buf, buf_size);
 
-    for (i = 0; i < (int)(sizeof(keycodes)/sizeof(keycodes[0])); i++) {
+    for (i = 0; i < countof(keycodes); i++) {
         if (keycodes[i] == key) {
             buf_puts(&out, keystr[i]);
             return;
@@ -595,9 +596,13 @@ void keytostr(char *buf, int buf_size, int key)
     if (key >= KEY_CTRL('a') && key <= KEY_CTRL('z')) {
         buf_printf(&out, "C-%c", key + 'a' - 1);
     } else
+#if 0
+    /* Cannot do this because KEY_F1..KEY_F20 are not consecutive */
     if (key >= KEY_F1 && key <= KEY_F20) {
         buf_printf(&out, "f%d", key - KEY_F1 + 1);
-    } else {
+    } else
+#endif
+    {
         buf_putc_utf8(&out, key);
     }
 }
@@ -646,7 +651,7 @@ static ColorDef css_colors[] = {
     { "magenta", QERGB(0xff, 0x00, 0xff) },
     { "transparent", COLOR_TRANSPARENT },
 };
-#define nb_css_colors (int)(sizeof(css_colors) / sizeof(css_colors[0]))
+#define nb_css_colors  countof(css_colors)
 
 static ColorDef *custom_colors = css_colors;
 static int nb_custom_colors;

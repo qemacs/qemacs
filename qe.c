@@ -3905,7 +3905,7 @@ void print_at_byte(QEditScreen *screen,
     QEFont *font;
     CSSRect rect;
 
-    len = utf8_to_unicode(ubuf, sizeof(ubuf) / sizeof(ubuf[0]), str);
+    len = utf8_to_unicode(ubuf, countof(ubuf), str);
     get_style(NULL, &style, style_index);
 
     /* clip rectangle */

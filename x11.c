@@ -1153,7 +1153,7 @@ static void selection_send(XSelectionRequestEvent *rq)
         XChangeProperty(display, rq->requestor, rq->property,
                         xa_targets, 8*sizeof(target_list[0]), PropModeReplace,
                         (unsigned char *)target_list,
-                        sizeof(target_list)/sizeof(target_list[0]));
+                        countof(target_list));
     } else if (rq->target == XA_STRING) {
         /* get qemacs yank buffer */
        
@@ -1324,56 +1324,37 @@ static void x11_handle_event(void *opaque)
                 }
             } else {
                 switch (keysym) {
-                case XK_F1:
-                case XK_F2:
-                case XK_F3:
-                case XK_F4:
-                case XK_F5:
-                case XK_F6:
-                case XK_F7:
-                case XK_F8:
-                case XK_F9:
-                case XK_F10:
-                case XK_F11:
-                case XK_F12:
-                    key = KEY_F1 + keysym - XK_F1;
-                    goto got_key;
-                case XK_Up:
-                    key = KEY_UP;
-                    goto got_key;
-                case XK_Down:
-                    key = KEY_DOWN;
-                    goto got_key;
-                case XK_Right:
-                    key = KEY_RIGHT;
-                    goto got_key;
-                case XK_Left:
-                    key = KEY_LEFT;
-                    goto got_key;
-                case XK_BackSpace:
-                    key = KEY_DEL;
-                    goto got_key;
-                case XK_Insert:
-                    key = KEY_INSERT;
-                    goto got_key;
-                case XK_Delete:
-                    key = KEY_DELETE;
-                    goto got_key;
-                case XK_Home:
-                    key = KEY_HOME;
-                    goto got_key;
-                case XK_End:
-                    key = KEY_END;
-                    goto got_key;
-                case XK_Prior:
-                    key = KEY_PAGEUP;
-                    goto got_key;
-                case XK_Next:
-                    key = KEY_PAGEDOWN;
-                    goto got_key;
-                case XK_ISO_Left_Tab:
-                    key = KEY_SHIFT_TAB;
-                    goto got_key;
+                case XK_F1:     key = KEY_F1;     goto got_key;
+                case XK_F2:     key = KEY_F2;     goto got_key;
+                case XK_F3:     key = KEY_F3;     goto got_key;
+                case XK_F4:     key = KEY_F4;     goto got_key;
+                case XK_F5:     key = KEY_F5;     goto got_key;
+                case XK_F6:     key = KEY_F6;     goto got_key;
+                case XK_F7:     key = KEY_F7;     goto got_key;
+                case XK_F8:     key = KEY_F8;     goto got_key;
+                case XK_F9:     key = KEY_F9;     goto got_key;
+                case XK_F10:    key = KEY_F10;    goto got_key;
+                case XK_F11:    key = KEY_F11;    goto got_key;
+                case XK_F13:    key = KEY_F13;    goto got_key;
+                case XK_F14:    key = KEY_F14;    goto got_key;
+                case XK_F15:    key = KEY_F15;    goto got_key;
+                case XK_F16:    key = KEY_F16;    goto got_key;
+                case XK_F17:    key = KEY_F17;    goto got_key;
+                case XK_F18:    key = KEY_F18;    goto got_key;
+                case XK_F19:    key = KEY_F19;    goto got_key;
+                case XK_F20:    key = KEY_F20;    goto got_key;
+                case XK_Up:     key = KEY_UP;     goto got_key;
+                case XK_Down:   key = KEY_DOWN;   goto got_key;
+                case XK_Right:  key = KEY_RIGHT;  goto got_key;
+                case XK_Left:   key = KEY_LEFT;   goto got_key;
+                case XK_BackSpace: key = KEY_DEL; goto got_key;
+                case XK_Insert: key = KEY_INSERT; goto got_key;
+                case XK_Delete: key = KEY_DELETE; goto got_key;
+                case XK_Home:   key = KEY_HOME;   goto got_key;
+                case XK_End:    key = KEY_END;    goto got_key;
+                case XK_Prior:  key = KEY_PAGEUP; goto got_key;
+                case XK_Next:   key = KEY_PAGEDOWN; goto got_key;
+                case XK_ISO_Left_Tab: key = KEY_SHIFT_TAB; goto got_key;
                 default:
                     if (len > 0) {
 #ifdef X_HAVE_UTF8_STRING

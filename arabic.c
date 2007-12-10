@@ -198,7 +198,7 @@ static int is_transparent(int ch)
 {
     int i;
 
-    for (i = 0; i < (int)(sizeof(transparent)/sizeof(transparent[0])); i++) {
+    for (i = 0; i < countof(transparent); i++) {
         if (transparent[i] == ch)
             return 1;
     }

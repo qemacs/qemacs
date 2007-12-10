@@ -522,33 +522,33 @@ static void shell_key(void *opaque, int key)
     //case KEY_CTRL_HOME:
     //case KEY_CTRL_PAGEUP:
     //case KEY_CTRL_PAGEDOWN:
-    case KEY_SHIFT_TAB: p = s->kcbt; break;
+    case KEY_SHIFT_TAB: p = s->kcbt;  break;
     case KEY_HOME:      p = s->khome; break;
     case KEY_INSERT:    p = s->kich1; break;
     case KEY_DELETE:    p = s->kdch1; break;
-    case KEY_END:       p = s->kend; break;
-    case KEY_PAGEUP:    p = s->kpp; break;
-    case KEY_PAGEDOWN:  p = s->knp; break;
-    case KEY_F1:        p = s->kf1; break;
-    case KEY_F2:        p = s->kf2; break;
-    case KEY_F3:        p = s->kf3; break;
-    case KEY_F4:        p = s->kf4; break;
-    case KEY_F5:        p = s->kf5; break;
-    case KEY_F6:        p = s->kf6; break;
-    case KEY_F7:        p = s->kf7; break;
-    case KEY_F8:        p = s->kf8; break;
-    case KEY_F9:        p = s->kf9; break;
-    case KEY_F10:       p = s->kf10; break;
-    case KEY_F11:       p = s->kf11; break;
-    case KEY_F12:       p = s->kf12; break;
-    case KEY_F13:       p = s->kf13; break;
-    case KEY_F14:       p = s->kf14; break;
-    case KEY_F15:       p = s->kf15; break;
-    case KEY_F16:       p = s->kf16; break;
-    case KEY_F17:       p = s->kf17; break;
-    case KEY_F18:       p = s->kf18; break;
-    case KEY_F19:       p = s->kf19; break;
-    case KEY_F20:       p = s->kf20; break;
+    case KEY_END:       p = s->kend;  break;
+    case KEY_PAGEUP:    p = s->kpp;   break;
+    case KEY_PAGEDOWN:  p = s->knp;   break;
+    case KEY_F1:        p = s->kf1;   break;
+    case KEY_F2:        p = s->kf2;   break;
+    case KEY_F3:        p = s->kf3;   break;
+    case KEY_F4:        p = s->kf4;   break;
+    case KEY_F5:        p = s->kf5;   break;
+    case KEY_F6:        p = s->kf6;   break;
+    case KEY_F7:        p = s->kf7;   break;
+    case KEY_F8:        p = s->kf8;   break;
+    case KEY_F9:        p = s->kf9;   break;
+    case KEY_F10:       p = s->kf10;  break;
+    case KEY_F11:       p = s->kf11;  break;
+    case KEY_F12:       p = s->kf12;  break;
+    case KEY_F13:       p = s->kf13;  break;
+    case KEY_F14:       p = s->kf14;  break;
+    case KEY_F15:       p = s->kf15;  break;
+    case KEY_F16:       p = s->kf16;  break;
+    case KEY_F17:       p = s->kf17;  break;
+    case KEY_F18:       p = s->kf18;  break;
+    case KEY_F19:       p = s->kf19;  break;
+    case KEY_F20:       p = s->kf20;  break;
     default:
         if (key < 256) {
             buf[0] = key;
