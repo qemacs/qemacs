@@ -323,8 +323,8 @@ static int term_init(QEditScreen *s, int w, int h)
 
     gc = XCreateGC(display, window, 0, NULL);
 #ifdef CONFIG_XFT
-    renderDraw = XftDrawCreate (display, window, attr.visual, 
-                                DefaultColormap (display, xscreen));
+    renderDraw = XftDrawCreate(display, window, attr.visual, 
+                               DefaultColormap(display, xscreen));
 #endif
     /* double buffer handling */
     gc_pixmap = XCreateGC(display, window, 0, NULL);
@@ -518,10 +518,7 @@ static void term_fill_rectangle(QEditScreen *s,
     col.color.blue = b << 8;
     col.color.alpha = a << 8;
     col.pixel = get_x11_color(color);
-    XftDrawRect (renderDraw, 
-                 &col,
-                 x1, y1, 
-                 w, h);
+    XftDrawRect(renderDraw, &col, x1, y1, w, h);
 }
 
 static QEFont *term_open_font(QEditScreen *s, int style, int size)
@@ -588,7 +585,7 @@ static int term_glyph_width(QEditScreen *s, QEFont *font, unsigned int cc)
     XftFont *renderFont = font->private;
     XGlyphInfo gi;
 
-    XftTextExtents32 (display, renderFont, &cc, 1, &gi);
+    XftTextExtents32(display, renderFont, &cc, 1, &gi);
     return gi.xOff;
 }
 
@@ -940,8 +937,7 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
             xfont = last_font->private;
             l = q - x11_str;
             XSetFont(display, gc, xfont->fid);
-            XDrawString16(display, dbuffer, gc,
-                          x_start, y, x11_str, l);
+            XDrawString16(display, dbuffer, gc, x_start, y, x11_str, l);
             update_rect(x_start, y - last_font->ascent, x, y + last_font->descent);
             x_start = x;
             q = x11_str;
@@ -957,8 +953,7 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
         xfont = last_font->private;
         l = q - x11_str;
         XSetFont(display, gc, xfont->fid);
-        XDrawString16(display, dbuffer, gc,
-                      x_start, y, x11_str, l);
+        XDrawString16(display, dbuffer, gc, x_start, y, x11_str, l);
         update_rect(x_start, y - last_font->ascent, x, y + last_font->descent);
     }
     /* underline synthesis */
@@ -970,13 +965,11 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
         w = x - x1;
         if (font->style & QE_STYLE_UNDERLINE) {
             dy = (font->descent + 1) / 3;
-            XFillRectangle(display, dbuffer, gc, 
-                           x1, y + dy, w, h);
+            XFillRectangle(display, dbuffer, gc, x1, y + dy, w, h);
         }
         if (font->style & QE_STYLE_LINE_THROUGH) {
             dy = -(font->ascent / 2 - 1);
-            XFillRectangle(display, dbuffer, gc, 
-                           x1, y + dy, w, h);
+            XFillRectangle(display, dbuffer, gc, x1, y + dy, w, h);
         }
     }
 }
@@ -1081,15 +1074,15 @@ static void term_selection_request(__unused__ QEditScreen *s)
     EditBuffer *b;
     XEvent xev;
 
-    w = XGetSelectionOwner (display, XA_PRIMARY);
+    w = XGetSelectionOwner(display, XA_PRIMARY);
     if (w == None || w == window)
         return; /* qemacs can use its own selection */
 
     /* use X11 selection (Will be pasted when receiving
        SelectionNotify event) */
-    prop = XInternAtom (display, "VT_SELECTION", False);
-    XConvertSelection (display, XA_PRIMARY, XA_STRING,
-                       prop, window, CurrentTime);
+    prop = XInternAtom(display, "VT_SELECTION", False);
+    XConvertSelection(display, XA_PRIMARY, XA_STRING,
+                      prop, window, CurrentTime);
 
     /* XXX: add timeout too if the target application is not well
        educated */
@@ -1103,20 +1096,20 @@ static void term_selection_request(__unused__ QEditScreen *s)
     
     nread = 0;
     for (;;) {
-        if ((XGetWindowProperty (display, w, prop,
-                                 nread/4, 4096, True,
-                                 AnyPropertyType, &actual_type, &actual_fmt,
-                                 &nitems, &bytes_after,
-                                 &data) != Success) ||
+        if ((XGetWindowProperty(display, w, prop,
+                                nread/4, 4096, True,
+                                AnyPropertyType, &actual_type, &actual_fmt,
+                                &nitems, &bytes_after,
+                                &data) != Success) ||
             (actual_type != XA_STRING)) {
-            XFree (data);
+            XFree(data);
             break;
         }
         
        eb_write(b, nread, data, nitems);
        
        nread += nitems;
-       XFree (data);
+       XFree(data);
        
        if (bytes_after == 0)
            break;
@@ -1133,7 +1126,7 @@ static void selection_send(XSelectionRequestEvent *rq)
     EditBuffer *b;
 
     if (xa_targets == None)
-        xa_targets = XInternAtom (display, "TARGETS", False);
+        xa_targets = XInternAtom(display, "TARGETS", False);
    
     ev.xselection.type      = SelectionNotify;
     ev.xselection.property  = None;
@@ -1165,13 +1158,13 @@ static void selection_send(XSelectionRequestEvent *rq)
             return;
         eb_read(b, 0, buf, b->total_size);
        
-        XChangeProperty (display, rq->requestor, rq->property,
-                         XA_STRING, 8, PropModeReplace,
-                         buf, b->total_size);
+        XChangeProperty(display, rq->requestor, rq->property,
+                        XA_STRING, 8, PropModeReplace,
+                        buf, b->total_size);
         free(buf);
     }
     ev.xselection.property = rq->property;
-    XSendEvent (display, rq->requestor, False, 0, &ev);
+    XSendEvent(display, rq->requestor, False, 0, &ev);
 }
 
 /* fast test to see if the user pressed a key or a mouse button */
@@ -1288,7 +1281,31 @@ static void x11_handle_event(void *opaque)
             shift = (xev.xkey.state & ShiftMask);
             ctrl = (xev.xkey.state & ControlMask);
             meta = (xev.xkey.state & Mod1Mask);
-
+#if 0
+            put_error(NULL, "keysym=%d %s%s%s len=%d buf[0]=%d",
+                      (int)keysym,
+                      shift ? "shft " : "",
+                      ctrl ? "ctrl " : "",
+                      meta ? "meta " : "",
+                      len, buf[0]);
+#endif
+            if (meta) {
+                switch (keysym) {
+                case XK_BackSpace:
+                    key = KEY_META(KEY_DEL);
+                    goto got_key;
+                default:
+                    if (len > 0) {
+                        key = KEY_META(buf[0] & 0xff);
+                        goto got_key;
+                    }
+                    if (keysym >= ' ' && keysym <= '~') {
+                        key = KEY_META(' ') + keysym - ' ';
+                        goto got_key;
+                    }
+                    break;
+                }
+            } else
             if (ctrl) {
                 switch (keysym) {
                 case XK_Right:
@@ -1306,18 +1323,6 @@ static void x11_handle_event(void *opaque)
                 default:
                     if (len > 0) {
                         key = buf[0] & 0xff;
-                        goto got_key;
-                    }
-                    break;
-                }
-            } else if (meta) {
-                switch (keysym) {
-                case XK_BackSpace:
-                    key = KEY_META(KEY_DEL);
-                    goto got_key;
-                default:
-                    if (keysym >= ' ' && keysym <= '~') {
-                        key = KEY_META(' ') + keysym - ' ';
                         goto got_key;
                     }
                     break;
