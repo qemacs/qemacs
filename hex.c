@@ -92,13 +92,6 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
         return -1;
 }
 
-static void do_goto_byte(EditState *s, int offset)
-{
-    if (offset < 0 || offset >= s->b->total_size)
-        return;
-    s->offset = offset;
-}
-
 static void do_set_width(EditState *s, int w)
 {
     if (w >= 1) {
@@ -124,8 +117,8 @@ static void do_toggle_hex(EditState *s)
 static CmdDef hex_commands[] = {
     CMD1( KEY_NONE, KEY_NONE, "decrease-width", do_incr_width, -1)
     CMD1( KEY_NONE, KEY_NONE, "increase-width", do_incr_width, 1)
-    CMD_( KEY_NONE, KEY_NONE, "set-width", do_set_width, "i{Width: }")
-    CMD_( KEY_META('g'), KEY_NONE, "goto-byte", do_goto_byte, "i{Goto byte: }")
+    CMD_( KEY_NONE, KEY_NONE, "set-width", do_set_width, "ui{Width: }")
+    CMDV( KEY_META('g'), KEY_NONE, "goto-byte", do_goto, 'b', "us{Goto byte: }v")
     CMD0( KEY_NONE, KEY_NONE, "toggle-hex", do_toggle_hex)
     CMD_DEF_END,
 };

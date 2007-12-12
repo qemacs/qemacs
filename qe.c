@@ -309,7 +309,7 @@ void qe_register_cmd_table(CmdDef *cmds, const char *mode)
 
     /* add default bindings */
     for (d = cmds; d->name != NULL; d++) {
-        if (d->key == KEY_CTRL('x')) {
+        if (d->key == KEY_CTRL('x') || d->key == KEY_ESC) {
             unsigned int keys[2];
             keys[0] = d->key;
             keys[1] = d->alt_key;
@@ -566,6 +566,21 @@ void do_forward_paragraph(EditState *s)
     s->offset = eb_next_paragraph(s->b, s->offset);
 }
 
+void do_kill_paragraph(EditState *s, int dir)
+{
+    int start = s->offset;
+
+    if (s->b->flags & BF_READONLY)
+        return;
+
+    if (dir < 0)
+        do_backward_paragraph(s);
+    else
+        do_forward_paragraph(s);
+
+    do_kill(s, start, s->offset, dir);
+}
+
 #define PARAGRAPH_WIDTH 76
 
 void do_fill_paragraph(EditState *s)
@@ -720,42 +735,49 @@ void do_changecase_region(EditState *s, int up)
     }
 }
 
-void do_delete_word(EditState *s, int dir)
+void do_delete_char(EditState *s, int argval)
 {
-    int start = s->offset;
-    int end;
+    int end, i, offset1;
 
     if (s->b->flags & BF_READONLY)
         return;
 
-    if (s->mode->move_word_left_right)
-        s->mode->move_word_left_right(s, dir);
-    end = s->offset;
-    if (start < end)
-      eb_delete(s->b, start, end-start);
-    else
-      eb_delete(s->b, end, start-end);
+    if (argval == NO_ARG) {
+        eb_nextc(s->b, s->offset, &offset1);
+        eb_delete(s->b, s->offset, offset1 - s->offset);
+    } else
+    if (argval) {
+        /* save kill if universal argument given */
+        end = s->offset;
+        for (i = argval; i > 0 && end < s->b->total_size; i--) {
+            eb_nextc(s->b, end, &end);
+        }
+        for (i = argval; i < 0 && end > 0; i++) {
+            eb_prevc(s->b, end, &end);
+        }
+        do_kill(s, s->offset, end, argval);
+    }
 }
 
-void do_delete_char(EditState *s)
+void do_backspace(EditState *s, int argval)
 {
     int offset1;
 
-    eb_nextc(s->b, s->offset, &offset1);
-    eb_delete(s->b, s->offset, offset1 - s->offset);
-}
+    if (s->b->flags & BF_READONLY)
+        return;
 
-void do_backspace(EditState *s)
-{
-    int offset1;
-
-    eb_prevc(s->b, s->offset, &offset1);
-    if (offset1 < s->offset) {
-        eb_delete(s->b, offset1, s->offset - offset1);
-        s->offset = offset1;
-        /* special case for composing */
-        if (s->compose_len > 0)
-            s->compose_len--;
+    if (argval == NO_ARG) {
+        eb_prevc(s->b, s->offset, &offset1);
+        if (offset1 < s->offset) {
+            eb_delete(s->b, offset1, s->offset - offset1);
+            s->offset = offset1;
+            /* special case for composing */
+            if (s->compose_len > 0)
+                s->compose_len--;
+        }
+    } else {
+        /* save kill if universal argument given */
+        do_delete_char(s, -argval);
     }
 }
 
@@ -855,6 +877,7 @@ void do_left_right(EditState *s, int dir)
         s->mode->move_left_right(s, dir);
 }
 
+/* CG: Should move this to EditState */
 static int up_down_last_x = -1;
 
 void text_move_up_down(EditState *s, int dir)
@@ -1381,40 +1404,31 @@ EditBuffer *new_yank_buffer(void)
     QEmacsState *qs = &qe_state;
     EditBuffer *b;
 
-    if (++qs->yank_current == NB_YANK_BUFFERS)
-        qs->yank_current = 0;
-    b = qs->yank_buffers[qs->yank_current];
-    if (b)
-        eb_free(b);
+    if (qs->yank_buffers[qs->yank_current]) {
+        if (++qs->yank_current == NB_YANK_BUFFERS)
+            qs->yank_current = 0;
+        b = qs->yank_buffers[qs->yank_current];
+        if (b)
+            eb_free(b);
+    }
     b = eb_new("*yank*", BF_SYSTEM);
     qs->yank_buffers[qs->yank_current] = b;
     return b;
 }
 
-void do_kill_region(EditState *s, int killtype)
+void do_append_next_kill(EditState *s)
 {
-    int len, p1, p2, tmp, offset1;
+    /* do nothing! */
+}
+
+void do_kill(EditState *s, int p1, int p2, int dir)
+{
+    int len, tmp;
     QEmacsState *qs = s->qe_state;
     EditBuffer *b;
 
     if (s->b->flags & BF_READONLY)
         return;
-
-    p2 = s->offset;
-    if (killtype == 2) {
-        /* kill line */
-        if (eb_nextc(s->b, p2, &offset1) == '\n') {
-            p1 = offset1;
-        } else {
-            p1 = p2;
-            while (eb_nextc(s->b, p1, &offset1) != '\n') {
-                p1 = offset1;
-            }
-        }
-    } else {
-        /* kill/copy region */
-        p1 = s->b->mark;
-    }
 
     if (p1 > p2) {
         tmp = p1;
@@ -1422,13 +1436,61 @@ void do_kill_region(EditState *s, int killtype)
         p2 = tmp;
     }
     len = p2 - p1;
-    b = new_yank_buffer();
-    eb_insert_buffer(b, 0, s->b, p1, len);
-    if (killtype) {
+    b = qs->yank_buffers[qs->yank_current];
+    if (!b || !dir || qs->last_cmd_func != do_append_next_kill) {
+        /* append kill if last command was kill already */
+        b = new_yank_buffer();
+    }
+    /* insert at beginning or end depending on kill direction */
+    eb_insert_buffer(b, dir < 0 ? 0 : b->total_size, s->b, p1, len);
+    if (dir) {
         eb_delete(s->b, p1, len);
         s->offset = p1;
+        qs->this_cmd_func = do_append_next_kill;
     }
     selection_activate(qs->screen);
+}
+
+void do_kill_region(EditState *s, int killtype)
+{
+    do_kill(s, s->b->mark, s->offset, killtype);
+}
+
+void do_kill_line(EditState *s, int dir)
+{
+    int p1, p2, offset1;
+
+    if (s->b->flags & BF_READONLY)
+        return;
+
+    p1 = s->offset;
+    if (dir < 0) {
+        /* kill beginning of line */
+        do_bol(s);
+        p2 = s->offset;
+    } else {
+        /* kill line */
+        if (eb_nextc(s->b, p1, &offset1) == '\n') {
+            p2 = offset1;
+        } else {
+            p2 = offset1;
+            while (eb_nextc(s->b, p2, &offset1) != '\n') {
+                p2 = offset1;
+            }
+        }
+    }
+    do_kill(s, p1, p2, dir);
+}
+
+void do_kill_word(EditState *s, int dir)
+{
+    int start = s->offset;
+
+    if (s->b->flags & BF_READONLY)
+        return;
+
+    do_word_right(s, dir);
+    do_kill(s, start, s->offset, dir);
 }
 
 void do_yank(EditState *s)
@@ -1443,25 +1505,35 @@ void do_yank(EditState *s)
     /* if the GUI selection is used, it will be handled in the GUI code */
     selection_request(qs->screen);
 
+    s->b->mark = s->offset;
     b = qs->yank_buffers[qs->yank_current];
-    if (!b)
-        return;
-    size = b->total_size;
-    if (size > 0) {
-        eb_insert_buffer(s->b, s->offset, b, 0, size);
-        s->offset += size;
+    if (b) {
+        size = b->total_size;
+        if (size > 0) {
+            eb_insert_buffer(s->b, s->offset, b, 0, size);
+            s->offset += size;
+        }
     }
+    qs->this_cmd_func = do_yank;
 }
 
 void do_yank_pop(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
 
-    /* XXX: should verify if last command was a yank */
-    do_undo(s);
-    /* XXX: not strictly correct if the ring is not full */
-    if (--qs->yank_current < 0)
-        qs->yank_current = NB_YANK_BUFFERS - 1;
+    if (qs->last_cmd_func != do_yank) {
+        put_status(s, "Previous command was not a yank");
+        return;
+    }
+
+    eb_delete(s->b, s->b->mark, s->offset - s->b->mark);
+
+    if (--qs->yank_current < 0) {
+        /* get last yank buffer, yank ring may not be full */
+        qs->yank_current = NB_YANK_BUFFERS;
+        while (--qs->yank_current && !qs->yank_buffers[qs->yank_current])
+            continue;
+    }
     do_yank(s);
 }
 
@@ -1696,18 +1768,71 @@ void do_word_wrap(EditState *s)
         s->wrap = WRAP_WORD;
 }
 
-void do_goto_line(EditState *s, int line)
+/* do_goto: move point to a specified position.
+ * take string and default unit,
+ * string is parsed as an integer with an optional unit and suffix
+ * units: (b)yte, (c)har, (w)ord, (l)line, (%)percentage
+ * optional suffix :col or .col for column number in goto_line
+ */
+
+void do_goto(EditState *s, const char *str, int unit)
 {
-    if (line < 1)
+    const char *p;
+    int pos, line, col, rel;
+
+    rel = (*str == '+' || *str == '-');
+    pos = strtol(str, (char**)&p, 0);
+
+    if (memchr("bcwl%", *p, 5))
+        unit = *p++;
+
+    switch (unit) {
+    case 'b':
+        if (*p)
+            goto error;
+        if (rel)
+            pos += s->offset;
+        s->offset = clamp(pos, 0, s->b->total_size);
         return;
-    s->offset = eb_goto_pos(s->b, line - 1, 0);
+    case 'c':
+        if (*p)
+            goto error;
+        if (rel)
+            pos += eb_get_char_offset(s->b, s->offset);
+        s->offset = eb_goto_char(s->b, max(0, pos));
+        return;
+    case '%':
+        pos = pos * (long long)s->b->total_size / 100;
+        if (rel)
+            pos += s->offset;
+        eb_get_pos(s->b, &line, &col, max(pos, 0));
+        line += (col > 0);
+        goto getcol;
+
+    case 'l':
+        line = pos - 1;
+        if (rel || pos == 0) {
+            eb_get_pos(s->b, &line, &col, s->offset);
+            line += pos;
+        }
+    getcol:
+        col = 0;
+        if (*p == ':' || *p == '.') {
+            col = strtol(p + 1, (char**)&p, 0);
+        }
+        if (*p)
+            goto error;
+        s->offset = eb_goto_pos(s->b, max(0, line), col);
+        return;
+    }
+error:
+    put_status(s, "invalid position: %s", str);
 }
 
-void do_goto_char(EditState *s, int pos)
+void do_goto_line(EditState *s, int line)
 {
-    if (pos < 0)
-        return;
-    s->offset = eb_goto_char(s->b, pos);
+    if (line >= 1)
+        s->offset = eb_goto_pos(s->b, line - 1, 0);
 }
 
 void do_count_lines(EditState *s)
@@ -2822,6 +2947,7 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 
         for (l = s->colorize_nb_valid_lines; l <= line_num; l++) {
             len = eb_get_line(s->b, buf, buf_size - 1, &offset);
+            // XXX: should force \0 instead of \n
             buf[len] = '\n';
 
             s->colorize_func(buf, len, &colorize_state, 1);
@@ -2832,11 +2958,13 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 
     /* compute line color */
     len = eb_get_line(s->b, buf, buf_size - 1, &offset1);
+    // XXX: should force \0 instead of \n
     buf[len] = '\n';
 
     colorize_state = s->colorize_states[line_num];
     s->colorize_func(buf, len, &colorize_state, 0);
     
+    /* XXX: if state is same as previous, minimize invalid region? */
     s->colorize_states[line_num + 1] = colorize_state;
 
     s->colorize_nb_valid_lines = line_num + 2;
@@ -3133,15 +3261,16 @@ void generic_text_display(EditState *s)
 #endif
 }
 
-enum CmdArgType {
-    CMD_ARG_INT = 0,
-    CMD_ARG_INTVAL,
-    CMD_ARG_STRING,
-    CMD_ARG_STRINGVAL,
-    CMD_ARG_WINDOW,
-};
-
-#define MAX_CMD_ARGS 5
+typedef struct ExecCmdState {
+    EditState *s;
+    CmdDef *d;
+    int nb_args;
+    int argval;
+    const char *ptype;
+    CmdArg args[MAX_CMD_ARGS];
+    unsigned char args_type[MAX_CMD_ARGS];
+    char default_input[512]; /* default input if none given */
+} ExecCmdState;
 
 /* XXX: potentially non portable on weird architectures */
 /* Minimum assumptions are:
@@ -3169,27 +3298,31 @@ enum CmdArgType {
  * passed as pointers (but long arguments are not supported anyway).
  * should pass function signature for direct dispatch.
  */
-void call_func(void *func, int nb_args, void **args, 
-               __unused__ unsigned char *args_type)
+void call_func(void *func, int nb_args, CmdArg *args, 
+               unsigned char *args_type)
 {
     switch (nb_args) {
     case 0:
         ((void (*)(void))func)();
         break;
     case 1:
-        ((void (*)(void *))func)(args[0]);
+        ((void (*)(void *))func)(args[0].p);
         break;
     case 2:
-        ((void (*)(void *, void *))func)(args[0], args[1]);
+        if (args_type[1] <= CMD_ARG_INTVAL) {
+            ((void (*)(void *, int))func)(args[0].p, args[1].n);
+        } else {
+            ((void (*)(void *, void *))func)(args[0].p, args[1].p);
+        }
         break;
     case 3:
-        ((void (*)(void *, void *, void *))func)(args[0], args[1], args[2]);
+        ((void (*)(void *, void *, void *))func)(args[0].p, args[1].p, args[2].p);
         break;
     case 4:
-        ((void (*)(void *, void *, void *, void *))func)(args[0], args[1], args[2], args[3]);
+        ((void (*)(void *, void *, void *, void *))func)(args[0].p, args[1].p, args[2].p, args[3].p);
         break;
     case 5:
-        ((void (*)(void *, void *, void *, void *, void *))func)(args[0], args[1], args[2], args[3], args[4]);
+        ((void (*)(void *, void *, void *, void *, void *))func)(args[0].p, args[1].p, args[2].p, args[3].p, args[4].p);
         break;
     default:
         return;
@@ -3232,47 +3365,41 @@ static int parse_arg(const char **pp, unsigned char *argtype,
                      char *completion, int completion_size,
                      char *history, int history_size)
 {
-    int type;
+    int tc, type;
     const char *p;
 
     p = *pp;
-    type = *p;
-    if (type == '\0')
+    type = 0;
+    if (*p == 'u') {
+        p++;
+        type = CMD_ARG_USE_ARGVAL;
+    }
+    if (*p == '\0')
         return 0;
-    p++;
+    tc = *p++;
     get_param(&p, prompt, prompt_size, '{', '}');
     get_param(&p, completion, completion_size, '[', ']');
     get_param(&p, history, history_size, '|', '|');
-    switch (type) {
-    case 'v':
-        *argtype = CMD_ARG_INTVAL;
-        break;
+    switch (tc) {
     case 'i':
-        *argtype = CMD_ARG_INT;
+        type |= CMD_ARG_INT;
+        break;
+    case 'v':
+        type |= CMD_ARG_INTVAL;
         break;
     case 's':
-        *argtype = CMD_ARG_STRING;
+        type |= CMD_ARG_STRING;
         break;
     case 'S':   /* used in define_kbd_macro, and mode selection */
-        *argtype = CMD_ARG_STRINGVAL;
+        type |= CMD_ARG_STRINGVAL;
         break;
     default:
         return -1;
     }
     *pp = p;
+    *argtype = type;
     return 1;
 }
-
-typedef struct ExecCmdState {
-    EditState *s;
-    CmdDef *d;
-    int nb_args;
-    int argval;
-    const char *ptype;
-    void *args[MAX_CMD_ARGS];
-    unsigned char args_type[MAX_CMD_ARGS];
-    char default_input[512]; /* default input if none given */
-} ExecCmdState;
 
 static void arg_edit_cb(void *opaque, char *str);
 static void parse_args(ExecCmdState *es);
@@ -3302,8 +3429,8 @@ void exec_command(EditState *s, CmdDef *d, int argval)
     es->nb_args = 0;
 
     /* first argument is always the window */
-    es->args[es->nb_args] = (void *)s;
-    es->args_type[es->nb_args] = CMD_ARG_WINDOW;
+    es->args[0].p = s;
+    es->args_type[0] = CMD_ARG_WINDOW;
     es->nb_args++;
     es->ptype = argdesc;
 
@@ -3320,7 +3447,7 @@ static void parse_args(ExecCmdState *es)
     char completion_name[64];
     char history[32];
     unsigned char arg_type;
-    int ret, rep_count, no_arg;
+    int ret, rep_count, get_arg, type, use_argval;
 
     for (;;) {
         ret = parse_arg(&es->ptype, &arg_type, 
@@ -3333,31 +3460,42 @@ static void parse_args(ExecCmdState *es)
             break;
         if (es->nb_args >= MAX_CMD_ARGS)
             goto fail;
-        es->args_type[es->nb_args] = arg_type;
-        no_arg = 0;
-        switch (arg_type) {
+        use_argval = arg_type & CMD_ARG_USE_ARGVAL;
+        type = arg_type & CMD_ARG_TYPE_MASK;
+        es->args_type[es->nb_args] = type;
+        get_arg = 0;
+        switch (type) {
         case CMD_ARG_INTVAL:
+            es->args[es->nb_args].n = (int)(intptr_t)d->val;
+            break;
         case CMD_ARG_STRINGVAL:
-            es->args[es->nb_args] = (void *)d->val;
+            es->args[es->nb_args].p = d->val;
             break;
         case CMD_ARG_INT:
-            if (es->argval != NO_ARG) {
-                es->args[es->nb_args] = (void *)es->argval;
+            if (use_argval && es->argval != NO_ARG) {
+                es->args[es->nb_args].n = es->argval;
                 es->argval = NO_ARG;
             } else {
                 /* CG: Should add syntax for default value if no prompt */
-                es->args[es->nb_args] = (void *)NO_ARG;
-                no_arg = 1;
+                es->args[es->nb_args].n = NO_ARG;
+                get_arg = 1;
             }
             break;
         case CMD_ARG_STRING:
-            es->args[es->nb_args] = (void *)NULL;
-            no_arg = 1;
-            break;
+            if (use_argval && es->argval != NO_ARG) {
+                char buf[32];
+                snprintf(buf, sizeof(buf), "%d", es->argval);
+                es->args[es->nb_args].p = strdup(buf);
+                es->argval = NO_ARG;
+            } else {
+                es->args[es->nb_args].p = NULL;
+                get_arg = 1;
+                break;
+            }
         }
         es->nb_args++;
         /* if no argument specified, try to ask it to the user */
-        if (no_arg && prompt[0] != '\0') {
+        if (get_arg && prompt[0] != '\0') {
             char def_input[1024];
 
             /* XXX: currently, default input is handled non generically */
@@ -3365,7 +3503,8 @@ static void parse_args(ExecCmdState *es)
             es->default_input[0] = '\0';
             if (!strcmp(completion_name, "file")) {
                 get_default_path(s, def_input, sizeof(def_input));
-            } else if (!strcmp(completion_name, "buffer")) {
+            } else
+            if (!strcmp(completion_name, "buffer")) {
                 EditBuffer *b;
                 if (d->action.func == (void *)do_switch_to_buffer)
                     b = predict_switch_to_buffer(s);
@@ -3386,7 +3525,7 @@ static void parse_args(ExecCmdState *es)
         }
     }
 
-    /* all arguments are parsed : we can now execute the command */
+    /* all arguments are parsed: we can now execute the command */
     /* argval is handled as repetition count if not taken as argument */
     if (es->argval != NO_ARG && es->argval > 1) {
         rep_count = es->argval;
@@ -3394,6 +3533,8 @@ static void parse_args(ExecCmdState *es)
         rep_count = 1;
     }
     
+    qs->this_cmd_func = d->action.func;
+
     do {
         /* special case for hex mode */
         if (d->action.func != (void *)do_char) {
@@ -3413,7 +3554,7 @@ static void parse_args(ExecCmdState *es)
         /* CG: Should follow qs->active_window ? */
     } while (--rep_count > 0);
 
-    qs->last_cmd_func = d->action.func;
+    qs->last_cmd_func = qs->this_cmd_func;
  fail:
     free_cmd(es);
 }
@@ -3426,7 +3567,7 @@ static void free_cmd(ExecCmdState *es)
     for (i = 0;i < es->nb_args; i++) {
         switch (es->args_type[i]) {
         case CMD_ARG_STRING:
-            free(es->args[i]);
+            free(es->args[i].p);
             break;
         }
     }
@@ -3456,14 +3597,14 @@ static void arg_edit_cb(void *opaque, char *str)
             put_status(NULL, "Invalid number");
             goto fail;
         }
-        es->args[index] = (void *)val;
+        es->args[index].n = val;
         break;
     case CMD_ARG_STRING:
         if (str[0] == '\0' && es->default_input[0] != '\0') {
             free(str);
             str = strdup(es->default_input);
         }
-        es->args[index] = (void *)str; /* will be freed at the of the command */
+        es->args[index].p = str; /* will be freed at the of the command */
         break;
     }
     /* now we can parse the following arguments */
@@ -6543,7 +6684,7 @@ int parse_config_file(EditState *s, const char *filename)
     int err, line_num;
     CmdDef *d;
     int nb_args, c, sep, i, skip;
-    void *args[MAX_CMD_ARGS];
+    CmdArg args[MAX_CMD_ARGS];
     unsigned char args_type[MAX_CMD_ARGS];
 
     f = fopen(filename, "r");
@@ -6645,12 +6786,9 @@ int parse_config_file(EditState *s, const char *filename)
                 put_status(s, "Badly defined command '%s'", cmd);
                 goto fail;
             }
-            args_type[nb_args++] = arg_type;
+            args[nb_args].p = NULL;
+            args_type[nb_args++] = arg_type & CMD_ARG_TYPE_MASK;
         }
-
-        /* fill args to avoid problems if error */
-        for (i = 0; i < nb_args; i++)
-            args[i] = NULL;
 
         if (!expect_token(&p, '('))
             goto fail;
@@ -6662,11 +6800,13 @@ int parse_config_file(EditState *s, const char *filename)
             /* pseudo arguments: skip them */
             switch (args_type[i]) {
             case CMD_ARG_WINDOW:
-                args[i] = (void *)s;
+                args[i].p = s;
                 continue;
             case CMD_ARG_INTVAL:
+                args[i].n = (int)(intptr_t)d->val;
+                continue;
             case CMD_ARG_STRINGVAL:
-                args[i] = (void *)d->val;
+                args[i].p = d->val;
                 continue;
             }
             
@@ -6681,7 +6821,7 @@ int parse_config_file(EditState *s, const char *filename)
 
             switch (args_type[i]) {
             case CMD_ARG_INT:
-                args[i] = (void *)(intptr_t)strtol(p, (char**)&q, 0);
+                args[i].n = strtol(p, (char**)&q, 0);
                 if (q == p) {
                     put_status(s, "Number expected for arg %d", i);
                     goto fail;
@@ -6690,6 +6830,7 @@ int parse_config_file(EditState *s, const char *filename)
                 break;
             case CMD_ARG_STRING:
                 if (*p != '\"') {
+                    /* XXX: should convert number to string */
                     put_status(s, "String expected for arg %d", i);
                     goto fail;
                 }
@@ -6721,7 +6862,7 @@ int parse_config_file(EditState *s, const char *filename)
                     goto fail;
                 }
                 p++;
-                args[i] = (void *)strp;
+                args[i].p = strp;
                 strp = q + 1;
                 break;
             }
@@ -6733,8 +6874,10 @@ int parse_config_file(EditState *s, const char *filename)
             goto fail;
         }
 
+        qs->this_cmd_func = d->action.func;
         qs->ec.function = d->name;
         call_func(d->action.func, nb_args, args, args_type);
+        qs->last_cmd_func = qs->this_cmd_func;
         if (qs->active_window)
             s = qs->active_window;
         continue;

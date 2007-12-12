@@ -182,7 +182,6 @@ static inline int css_is_space(int ch) {
 }
 
 void css_strtolower(char *buf, int buf_size);
-void set_color(unsigned int *buf, int len, int style);
 
 int get_clock_ms(void);
 
@@ -292,6 +291,16 @@ static inline int min(int a, int b) {
         return a;
     else
         return b;
+}
+
+static inline int clamp(int a, int b, int c) {
+    if (a < b)
+        return b;
+    else
+    if (a > c)
+        return c;
+    else
+        return a;
 }
 
 /* charset.c */
@@ -974,7 +983,9 @@ struct QEmacsState {
     int is_full_screen;
     /* commands */
     int flag_split_window_change_focus;
+    /* XXX: move these to ec */
     void *last_cmd_func; /* last executed command function call */
+    void *this_cmd_func; /* current executing command */
     /* keyboard macros */
     int defining_macro;
     unsigned short *macro_keys;
@@ -1010,6 +1021,23 @@ typedef struct KeyDef {
 void unget_key(int key);
 
 /* command definitions */
+
+enum CmdArgType {
+    CMD_ARG_INT = 0,
+    CMD_ARG_INTVAL,
+    CMD_ARG_STRING,
+    CMD_ARG_STRINGVAL,
+    CMD_ARG_WINDOW,
+    CMD_ARG_TYPE_MASK = 0x7f,
+    CMD_ARG_USE_ARGVAL = 0x80,
+};
+
+#define MAX_CMD_ARGS 5
+
+typedef union CmdArg {
+    void *p;
+    int n;
+} CmdArg;
 
 typedef struct CmdDef {
     unsigned short key;       /* normal key */
@@ -1128,6 +1156,12 @@ static inline int display_char(DisplayState *s, int offset1, int offset2,
                                int ch)
 {
     return display_char_bidir(s, offset1, offset2, 0, ch);
+}
+
+static inline void set_color(unsigned int *p, unsigned int *to, int style) {
+    style <<= STYLE_SHIFT;
+    while (p < to)
+        *p++ |= style;
 }
 
 /* input.c */
@@ -1266,13 +1300,18 @@ void text_move_up_down(EditState *s, int dir);
 void text_scroll_up_down(EditState *s, int dir);
 void text_write_char(EditState *s, int key);
 void do_return(EditState *s);
-void do_backspace(EditState *s);
-void do_delete_char(EditState *s);
+void do_backspace(EditState *s, int argval);
+void do_delete_char(EditState *s, int argval);
 void do_tab(EditState *s);
-void do_kill_region(EditState *s, int kill);
+void do_append_next_kill(EditState *s);
+void do_kill(EditState *s, int p1, int p2, int dir);
+void do_kill_region(EditState *s, int killtype);
+void do_kill_line(EditState *s, int dir);
+void do_kill_word(EditState *s, int dir);
 void do_kill_buffer(EditState *s, const char *bufname1);
 void text_move_bol(EditState *s);
 void text_move_eol(EditState *s);
+void do_goto(EditState *s, const char *str, int unit);
 void do_goto_line(EditState *s, int line);
 void switch_to_buffer(EditState *s, EditBuffer *b);
 void do_up_down(EditState *s, int dir);
@@ -1302,6 +1341,7 @@ int eb_next_paragraph(EditBuffer *b, int offset);
 int eb_start_paragraph(EditBuffer *b, int offset);
 void do_backward_paragraph(EditState *s);
 void do_forward_paragraph(EditState *s);
+void do_kill_paragraph(EditState *s, int dir);
 void do_fill_paragraph(EditState *s);
 void do_changecase_word(EditState *s, int up);
 void do_changecase_region(EditState *s, int up);
@@ -1328,7 +1368,6 @@ void do_toggle_bidir(EditState *s);
 void do_toggle_line_numbers(EditState *s);
 void do_toggle_truncate_lines(EditState *s);
 void do_word_wrap(EditState *s);
-void do_goto_char(EditState *s, int pos);
 void do_count_lines(EditState *s);
 void do_what_cursor_position(EditState *s);
 void do_set_tab_width(EditState *s, int tab_width);
@@ -1344,8 +1383,7 @@ void do_set_display_size(EditState *s, int w, int h);
 void do_toggle_mode_line(EditState *s);
 void do_set_system_font(EditState *s, const char *qe_font_name, 
                         const char *system_fonts);
-void call_func(void *func, int nb_args, void **args, 
-               unsigned char *args_type);
+void call_func(void *func, int nb_args, CmdArg *args, unsigned char *args_type);
 void exec_command(EditState *s, CmdDef *d, int argval);
 void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);

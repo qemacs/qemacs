@@ -57,7 +57,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
                 }
                 if (*p == '\'' && *++p == '\'')
                     p++;
-                set_color(p_start, p - p_start, QE_STYLE_STRING);
+                set_color(p_start, p, QE_STYLE_STRING);
             }
             break;
         case '\\':
@@ -69,7 +69,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
                 while (*p != '{' && *p != '[' && *p != '\n' && *p != ' ' && *p != '\\')
                     p++;
             }
-            set_color(p_start, p - p_start, QE_STYLE_FUNCTION);
+            set_color(p_start, p, QE_STYLE_FUNCTION);
             while (*p == ' ' || *p == '\t') {
                 /* skip space */
                 p++;
@@ -80,7 +80,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
                     p_start = p;
                     while (*p != ']' && *p != '\n')
                         p++;
-                    set_color(p_start, p - p_start, QE_STYLE_KEYWORD);
+                    set_color(p_start, p, QE_STYLE_KEYWORD);
                     if (*p == ']')
                         p++;
                 } else {
@@ -97,7 +97,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
                         }
                         p++;
                     }
-                    set_color(p_start, p - p_start, QE_STYLE_VARIABLE);
+                    set_color(p_start, p, QE_STYLE_VARIABLE);
                     if (*p == '}')
                         p++;
                 }
@@ -112,7 +112,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
             /* line comment */
             while (*p != '\n') 
                 p++;
-            set_color(p_start, p - p_start, QE_STYLE_COMMENT);
+            set_color(p_start, p, QE_STYLE_COMMENT);
             break;
         default:
             p++;

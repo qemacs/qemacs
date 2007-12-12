@@ -840,15 +840,6 @@ void css_strtolower(char *buf, __unused__ int buf_size)
     }
 }
 
-void set_color(unsigned int *buf, int len, int style)
-{
-    int i;
-
-    style <<= STYLE_SHIFT;
-    for (i = 0; i < len; i++)
-        buf[i] |= style;
-}
-
 #ifdef __TINYC__
 
 /* the glibc folks use wrappers, but forgot to put a compatibility

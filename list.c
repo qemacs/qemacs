@@ -33,10 +33,10 @@ static int list_get_colorized_line(EditState *s, unsigned int *buf, int buf_size
     if (((qs->active_window == s) || s->force_highlight) &&
         s->offset >= offset && s->offset < offset1) {
         /* highlight the line if the cursor is inside */
-        set_color(buf, len, QE_STYLE_HIGHLIGHT);
+        set_color(buf, buf + len, QE_STYLE_HIGHLIGHT);
     } else if (buf[0] == '*') {
         /* selection */
-        set_color(buf, len, QE_STYLE_SELECTION);
+        set_color(buf, buf + len, QE_STYLE_SELECTION);
     }
     return len;
 }

@@ -24,6 +24,7 @@
  */
 static CmdDef basic_commands[] = {
     CMDV( KEY_DEFAULT, KEY_NONE, "self-insert-command", do_char, ' ', "*v")
+    CMD_( KEY_META('#'), KEY_NONE, "insert-char", do_char, "*i{Insert char: }")
     CMD_( KEY_CTRL('o'), KEY_NONE, "open-line", do_open_line, "*")
     CMD1( KEY_CTRL('p'), KEY_UP, "previous-line", do_up_down, -1 )
     CMD1( KEY_CTRL('n'), KEY_DOWN, "next-line", do_up_down, 1 )
@@ -40,14 +41,18 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_INSERT, KEY_NONE, "overwrite-mode", do_insert)
     /* deletion commands are allowed in read only buffers,
      * they will merely copy the data to the kill ring */
-    CMD0( KEY_CTRL('d'), KEY_DELETE, "delete-char", do_delete_char)
-    CMD0( 127, KEY_NONE, "backward-delete-char", do_backspace)
-    CMD1( KEY_META(KEY_DEL) , KEY_META(KEY_BS), 
-          "backward-delete-word", do_delete_word, -1)
-    CMD1( KEY_META('d') , KEY_NONE, "delete-word", do_delete_word, 1)
-    CMD1( KEY_CTRL('k'), KEY_NONE, "kill-line", do_kill_region, 2 )
+    CMD_( KEY_CTRL('d'), KEY_DELETE, "delete-char", do_delete_char, "*ui")
+    CMD_( 127, KEY_NONE, "backward-delete-char", do_backspace, "*ui")
+    CMD0( KEY_META(KEY_CTRL('w')) , KEY_NONE,
+	  "append-next-kill", do_append_next_kill)
+    CMDV( KEY_META(KEY_DEL) , KEY_META(KEY_BS), 
+          "backward-kill-word", do_kill_word, -1, "*v" )
+    CMDV( KEY_META('d') , KEY_NONE, "kill-word", do_kill_word, 1, "*v" )
+    CMDV( KEY_CTRL('k'), KEY_NONE, "kill-line", do_kill_line, 1, "*v" )
+    CMDV( KEY_NONE, KEY_NONE,
+	  "kill-beginning-of-line", do_kill_line, -1, "*v" )
     CMD0( KEY_CTRL('@'), KEY_NONE, "set-mark-command", do_set_mark )
-    CMD1( KEY_CTRL('w'), KEY_NONE, "kill-region", do_kill_region, 1 )
+    CMDV( KEY_CTRL('w'), KEY_NONE, "kill-region", do_kill_region, 1, "*v" )
     CMD1( KEY_META('w'), KEY_NONE, "copy-region", do_kill_region, 0 )
     CMD0( KEY_META('<'), KEY_CTRL_HOME, "beginning-of-buffer", do_bof )
     CMD0( KEY_META('>'), KEY_CTRL_END, "end-of-buffer", do_eof )
@@ -90,15 +95,16 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_CTRLX('u'), KEY_CTRL('_'), "undo", do_undo)
     CMD_( KEY_RET, KEY_NONE, "newline", do_return, "*")
     CMD0( KEY_CTRL('l'), KEY_NONE, "refresh", do_refresh_complete)
-    /* CG: should take a string if no numeric argument given */
-    CMD_( KEY_META('g'), KEY_NONE, "goto-line", do_goto_line, "i{Goto line: }")
-    CMD_( KEY_NONE, KEY_NONE, "goto-char", do_goto_char, "i{Goto char: }")
+
+    CMDV( KEY_META('g'), KEY_NONE, "goto-line", do_goto, 'l', "us{Goto line: }v")
+    CMDV( KEY_CTRLX('g'), KEY_NONE, "goto-char", do_goto, 'c',  "us{Goto char: }v")
     CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE, "vc-toggle-read-only", 
           do_toggle_read_only)
     CMD0( KEY_META('~'), KEY_NONE, "not-modified", do_not_modified)
     CMD_( KEY_META('q'), KEY_NONE, "fill-paragraph", do_fill_paragraph, "*")
     CMD0( KEY_META('{'), KEY_NONE, "backward-paragraph", do_backward_paragraph)
     CMD0( KEY_META('}'), KEY_NONE, "forward-paragraph", do_forward_paragraph)
+    CMDV( KEY_NONE, KEY_NONE, "kill-paragraph", do_kill_paragraph, 1, "*v")
     CMD0( KEY_CTRLX(KEY_CTRL('x')), KEY_NONE, "exchange-point-and-mark",
           do_exchange_point_and_mark)
     CMDV( KEY_META('l'), KEY_NONE, "downcase-word", do_changecase_word, 0, "*v")
@@ -205,11 +211,11 @@ static CmdDef basic_commands[] = {
     
     /* tab & indent */
     CMD_( KEY_NONE, KEY_NONE, "set-tab-width", do_set_tab_width,
-          "i{Tab width: }")
+          "ui{Tab width: }")
     CMD_( KEY_NONE, KEY_NONE, "set-indent-width", do_set_indent_width,
-          "i{Indent width: }")
+          "ui{Indent width: }")
     CMD_( KEY_NONE, KEY_NONE, "set-indent-tabs-mode", do_set_indent_tabs_mode,
-          "i{Indent tabs mode (0 or 1): }")
+          "ui{Indent tabs mode (0 or 1): }")
     CMD_DEF_END,
 };
 

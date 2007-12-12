@@ -76,7 +76,7 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
                         p++;
                     }
                 }
-                set_color(p_start, p - p_start, QE_STYLE_COMMENT);
+                set_color(p_start, p, QE_STYLE_COMMENT);
             } else {
                 /* we are in a tag */
                 if (ustristart(p, "SCRIPT", (const unsigned int **)&p)) {
@@ -99,7 +99,7 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
                         p++;
                     }
                 }
-                set_color(p_start, p - p_start, QE_STYLE_TAG);
+                set_color(p_start, p, QE_STYLE_TAG);
                 if (state == XML_SCRIPT) {
                     /* javascript coloring */
                     p_start = p;
@@ -119,7 +119,7 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
                             state &= ~XML_SCRIPT;
                             c_colorize_line(p_start, p - p_start, &state, state_only);
                             state |= XML_SCRIPT;
-                            set_color(p, p1 - p, QE_STYLE_TAG);
+                            set_color(p, p1, QE_STYLE_TAG);
                             p = p1;
                             state = 0;
                             break;
@@ -133,15 +133,15 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
                 parse_style:
                     for (;;) {
                         if (*p == '\n') {
-                            set_color(p_start, p - p_start, QE_STYLE_CSS);
+                            set_color(p_start, p, QE_STYLE_CSS);
                             break;
                         } else if (ustristart(p, "</STYLE", (const unsigned int **)&p1)) {
                             while (*p1 != '\n' && *p1 != '>') 
                                 p1++;
                             if (*p1 == '>')
                                 p1++;
-                            set_color(p_start, p - p_start, QE_STYLE_CSS);
-                            set_color(p, p1 - p, QE_STYLE_TAG);
+                            set_color(p_start, p, QE_STYLE_CSS);
+                            set_color(p, p1, QE_STYLE_TAG);
                             p = p1;
                             state = 0;
                             break;

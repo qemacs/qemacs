@@ -23,8 +23,8 @@ General TODO:
 - implement wheel mode in CSS display.
 - check console charset support (need to convert input?)
 - test Hebrew keymap support.
-- kill buffer handling: append next kill as command flag
-- delete word should be a kill operation
+DONE	- kill buffer handling: append next kill as command flag
+DONE	- delete word should be a kill operation
 - indent-with-tabs
 DONE	- increase MAX_SCREEN_WIDTH and MAX_SCREEN_HEIGHT beyond 256
 - fix crash bug on fragments longer than MAX_SCREEN_WIDTH.
@@ -39,7 +39,7 @@ C mode TODO:
   * global QTAGS file indexed with global includes
 - see if java/javascript/c++ is OK.
 - autocomplete
-- forward-level, backward-level: skipping balanced parentheses
+DONE	- forward-level, backward-level: skipping balanced parentheses
 - forward-ifdef, backward-ifdef, show-ifdefs
 - automatic indentation detection
 
@@ -79,7 +79,7 @@ Ideas
 - expression evaluator
 - dos/mac translation modes
 - minor modes with key override such as "preview" mode
-NOPE	- redefine KEY_Fx to make them sequential
+- redefine KEY_Fx to make them sequential
 - use failsafe memory allocator and longjmp recover.
 - scroll up/down with argument should scroll by screen row.
 - simplify C-z A-z accordingly

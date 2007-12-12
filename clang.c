@@ -115,14 +115,14 @@ void c_colorize_line(unsigned int *buf, int len,
                         p++;
                     }
                 }
-                set_color(p_start, p - p_start, QE_STYLE_COMMENT);
+                set_color(p_start, p, QE_STYLE_COMMENT);
             } else
             if (*p == '/') {
                 /* line comment */
             parse_comment1:
                 state = C_COMMENT1;
                 p = buf + len;
-                set_color(p_start, p - p_start, QE_STYLE_COMMENT);
+                set_color(p_start, p, QE_STYLE_COMMENT);
                 if (p > buf && (p[-1] & CHAR_MASK) != '\\') 
                     state = 0;
             }
@@ -133,7 +133,7 @@ void c_colorize_line(unsigned int *buf, int len,
             state = C_PREPROCESS;
             /* incorrect if preprocessing line contains a comment */
             p = buf + len;
-            set_color(p_start, p - p_start, QE_STYLE_PREPROCESS);
+            set_color(p_start, p, QE_STYLE_PREPROCESS);
             if (p > buf && (p[-1] & CHAR_MASK) != '\\') 
                 state = 0;
             goto the_end;
@@ -174,7 +174,7 @@ void c_colorize_line(unsigned int *buf, int len,
                     p++;
                 }
             }
-            set_color(p_start, p - p_start, QE_STYLE_STRING);
+            set_color(p_start, p, QE_STYLE_STRING);
             break;
         case '=':
             p++;
@@ -193,7 +193,7 @@ void c_colorize_line(unsigned int *buf, int len,
                 while (*p == ' ' || *p == '\t')
                     p++;
                 if (strfind(c_keywords, kbuf, 0)) {
-                    set_color(p_start, p1 - p_start, QE_STYLE_KEYWORD);
+                    set_color(p_start, p1, QE_STYLE_KEYWORD);
                 } else
                 if (strfind(c_types, kbuf, 0)
                 ||  (l > 2 && kbuf[l - 2] == '_' && kbuf[l - 1] == 't')) {
@@ -202,12 +202,12 @@ void c_colorize_line(unsigned int *buf, int len,
                     if (*p != ')') {
                         type_decl = 1;
                     }
-                    set_color(p_start, p1 - p_start, QE_STYLE_TYPE);
+                    set_color(p_start, p1, QE_STYLE_TYPE);
                 } else
                 if (*p == '(') {
                     /* function call */
                     /* XXX: different styles for call and definition */
-                    set_color(p_start, p1 - p_start, QE_STYLE_FUNCTION);
+                    set_color(p_start, p1, QE_STYLE_FUNCTION);
                 } else {
                     /* assume typedef if starting at first column */
                     if (p_start == buf)
@@ -216,9 +216,9 @@ void c_colorize_line(unsigned int *buf, int len,
                     if (type_decl) {
                         if (p_start == buf) {
                             /* assume type if first column */
-                            set_color(p_start, p1 - p_start, QE_STYLE_TYPE);
+                            set_color(p_start, p1, QE_STYLE_TYPE);
                         } else {
-                            set_color(p_start, p1 - p_start, QE_STYLE_VARIABLE);
+                            set_color(p_start, p1, QE_STYLE_VARIABLE);
                         }
                     }
                 }
@@ -568,11 +568,153 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     return ret;
 }
 
+/* forward / backward preprocessor */
+static void do_c_forward_preprocessor(EditState *s, int dir)
+{
+}
+
+/* forward / backward block */
+#define MAX_LEVEL 20
+
+static void do_c_forward_block(EditState *s, int dir)
+{
+    char balance[MAX_LEVEL];
+    int c, c1, offset, offset0, level;
+
+    /* XXX: should use colorization to deal with syntax */
+    level = 0;
+    offset0 = offset = s->offset;
+    if (dir < 0) {
+        for (; offset > 0;) {
+            c = eb_prevc(s->b, offset, &offset);
+            switch (c) {
+            case ')':
+                c1 = '(';
+                goto push;
+            case ']':
+                c1 = '[';
+                goto push;
+            case '}':
+                c1 = '{';
+            push:
+                if (level < MAX_LEVEL) {
+                    balance[level] = c1;
+                }
+                level++;
+                continue;
+            case '(':
+            case '[':
+            case '{':
+                if (level > 0) {
+                    --level;
+                    if (balance[level] != c) {
+                        put_status(s, "Unmatched delimiter");
+                        return;
+                    }
+                    if (level <= 0)
+                        goto the_end;
+                }
+                continue;
+            default:
+                continue;
+            }
+        }
+    } else {
+        for (;;) {
+            c = eb_nextc(s->b, offset, &offset);
+        again:
+            switch (c) {
+            case '\n':
+                if (offset >= s->b->total_size)
+                    goto the_end;
+                continue;
+            case '(':
+                c1 = ')';
+                goto push1;
+            case '[':
+                c1 = ']';
+                goto push1;
+            case '{':
+                c1 = '}';
+            push1:
+                if (level < MAX_LEVEL) {
+                    balance[level] = c1;
+                }
+                level++;
+                continue;
+            case ')':
+            case ']':
+            case '}':
+                if (level > 0) {
+                    --level;
+                    if (balance[level] != c) {
+                        put_status(s, "Unmatched delimiter");
+                        return;
+                    }
+                    if (level <= 0)
+                        goto the_end;
+                }
+                continue;
+            case '/':
+                c = eb_nextc(s->b, offset, &offset);
+                if (c == '/') {
+                    while ((c = eb_nextc(s->b, offset, &offset)) != '\n')
+                        continue;
+                } else
+                if (c == '*') {
+                    for (;;) {
+                        while ((c = eb_nextc(s->b, offset, &offset)) != '*') {
+                            if (offset >= s->b->total_size)
+                                goto the_end;
+                        }
+                        while ((c = eb_nextc(s->b, offset, &offset)) == '*')
+                            continue;
+                        if (c == '/')
+                            break;
+                    }
+                    continue;
+                } else {
+                    goto again;
+                }
+            default:
+                continue;
+            }
+        }
+    }
+the_end:
+    s->offset = offset;
+}
+
+static void do_c_kill_block(EditState *s, int dir)
+{
+    int start = s->offset;
+
+    if (s->b->flags & BF_READONLY)
+        return;
+
+    do_c_forward_block(s, dir);
+    do_kill(s, start, s->offset, dir);
+}
+
 /* specific C commands */
 static CmdDef c_commands[] = {
     CMD_( KEY_CTRL('i'), KEY_NONE, "c-indent-command", do_c_indent, "*")
     CMD_( KEY_META(KEY_CTRL('\\')), KEY_NONE, "c-indent-region",
           do_c_indent_region, "*")
+            /* should map to KEY_META + KEY_CTRL_LEFT ? */
+    CMDV( KEY_META(KEY_CTRL('b')), KEY_NONE,
+          "c-backward-block", do_c_forward_block, -1, "*v")
+            /* should map to KEY_META + KEY_CTRL_RIGHT */
+    CMDV( KEY_META(KEY_CTRL('f')), KEY_NONE,
+          "c-forward-block", do_c_forward_block, 1, "*v")
+    CMDV( KEY_META(KEY_CTRL('k')), KEY_NONE,
+          "c-kill-block", do_c_kill_block, 1, "*v")
+    CMDV( KEY_ESC, KEY_DELETE,
+          "c-backward-kill-block", do_c_kill_block, -1, "*v")
+    CMDV( KEY_META('['), KEY_NONE,
+          "c-backward-preprocessor", do_c_forward_preprocessor, -1, "*v")
+    CMDV( KEY_META(']'), KEY_NONE, 
+          "c-forward-preprocessor", do_c_forward_preprocessor, 1, "*v")
     /* CG: should use 'k' intrinsic argument */
     CMDV( ';', KEY_NONE, "c-electric-semi&comma", do_c_electric, ';', "*v")
     CMDV( ':', KEY_NONE, "c-electric-colon", do_c_electric, ':', "*v")

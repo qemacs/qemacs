@@ -1111,8 +1111,7 @@ EditBuffer *new_shell_buffer(const char *name, const char *path,
     }
 
     /* launch shell */
-    if (run_process(path, argv, 
-                    &s->pty_fd, &s->pid) < 0) {
+    if (run_process(path, argv, &s->pty_fd, &s->pid) < 0) {
         eb_free(b);
         return NULL;
     }
@@ -1237,17 +1236,17 @@ static void shell_write_char(EditState *e, int c)
         /* Should dispatch as in fundamental mode */
         switch (c) {
         case 4:
-            do_delete_char(e);
+            do_delete_char(e, NO_ARG);
             break;
         // Do not do this: it is useless and causes infinite recursion 
         //case 9:
         //    do_tab(e);
         //    break;
         case 11:
-            do_kill_region(e, 2);
+            do_kill_line(e, 1);
             break;
         case 127:
-            do_backspace(e);
+            do_backspace(e, NO_ARG);
             break;
         case '\r':
             do_return(e);
