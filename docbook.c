@@ -1,5 +1,5 @@
 /*
- * WYSIWYG Docbook ode for QEmacs.
+ * WYSIWYG Docbook mode for QEmacs.
  *
  * Copyright (c) 2002 Fabrice Bellard.
  *
