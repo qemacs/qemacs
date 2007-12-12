@@ -310,7 +310,7 @@ CSSIdent css_new_ident(const char *str)
         }
         p = p->hash_next;
     }
-    p = malloc(sizeof(CSSIdentEntry) + strlen(str));
+    p = qe_malloc_hack(CSSIdentEntry, strlen(str));
     if (!p)
         return CSS_ID_NIL;
     p->id = table_ident_nb;
@@ -321,12 +321,10 @@ CSSIdent css_new_ident(const char *str)
     /* put ident in table */
     if (table_ident_nb == table_ident_allocated) {
         n = table_ident_allocated + CSS_IDENT_INCR;
-        pp = realloc(table_ident, n * sizeof(CSSIdentEntry *));
-        if (!pp) {
-            free(p);
+        if (!qe_realloc(&table_ident, n * sizeof(CSSIdentEntry *))) {
+            qe_free(&p);
             return CSS_ID_NIL;
         }
-        table_ident = pp;
         table_ident_allocated = n;
     }
     table_ident[table_ident_nb++] = p;
@@ -364,7 +362,7 @@ static void set_counter(CSSContext *s, CSSIdent counter_id, int value)
             p->value = value;
         }
     }
-    p = malloc(sizeof(CSSCounterValue));
+    p = qe_malloc(CSSCounterValue);
     if (!p)
         return;
     p->counter_id = counter_id;
@@ -389,7 +387,7 @@ static void pop_counters(CSSContext *s, CSSCounterValue *p2)
 
     for (p = s->counter_stack_ptr; p != s->counter_stack_base; p = p1) {
         p1 = p->prev;
-        free(p);
+        qe_free(&p);
         p = p1;
     }
     s->counter_stack_ptr = s->counter_stack_base;
@@ -659,7 +657,7 @@ static char *eval_content(CSSContext *s, CSSProperty *p, CSSBox *box)
         value++;
     }
     if (buf[0] != '\0')
-        return strdup(buf);
+        return qe_strdup(buf);
     else
         return NULL;
 }
@@ -840,11 +838,10 @@ static CSSState *allocate_props(CSSContext *s, CSSState *props)
         pp = &p->hash_next;
     }
     /* add new props */
-    p = malloc(sizeof(CSSState));
+    p = qe_malloc_dup(props, sizeof(CSSState));
     if (!p)
         return NULL;
     s->nb_props++;
-    memcpy(p, props, sizeof(CSSState));
     *pp = p;
     p->hash_next = NULL;
     return p;
@@ -853,7 +850,7 @@ static CSSState *allocate_props(CSSContext *s, CSSState *props)
 /* free one CSSState */
 static void free_props(CSSState *props)
 {
-    free(props);
+    qe_free(&props);
 }
 
 static int css_compute_block(CSSContext *s, CSSBox *box, 
@@ -878,7 +875,7 @@ static CSSBox *add_before_after_box(CSSContext *s,
     css_compute_block(s, box1, pelement_props);
     
     css_set_text_string(box1, content);
-    free(content);
+    qe_free(&content);
     /* XXX: make child box */
     return box1;
 }
@@ -1150,10 +1147,9 @@ static void css_box_split(CSSBox *box1, int offset)
     }
 #endif    
 
-    box2 = malloc(sizeof(CSSBox));
+    box2 = qe_mallocz(CSSBox);
     if (!box2) 
         return;
-    memset(box2, 0, sizeof(CSSBox));
     box2->split = 1;
     box2->props = box1->props; /* same properties */
     box2->content_type = box1->content_type;
@@ -1648,7 +1644,7 @@ static int css_layout_float(InlineLayout *s, FloatBlock *b)
 #endif
     /* layout the interior */
     if (css_layout_block(s->ctx, &layout, box)) {
-        free(b);
+        qe_free(&b);
         return -1;
     }
     /* add the float in the float list */
@@ -1856,10 +1852,9 @@ static void css_flush_line(InlineLayout *s,
 
     if (level_max > 0) {
         /* needed to do bidir reordering */
-        box_table = malloc(sizeof(InlineBox) * nb_boxes);
+        box_table = qe_malloc_dup(line_boxes, sizeof(InlineBox) * nb_boxes);
         if (box_table) {
             /* record the logical order of the boxes */
-            memcpy(box_table, line_boxes, nb_boxes * sizeof(InlineBox));
             /* rearrange them to match visual order */
             embed_boxes(box_table, nb_boxes, level_max);
         }
@@ -1939,8 +1934,7 @@ static void css_flush_line(InlineLayout *s,
     y += line_height;
     s->y = y;
 
-    if (box_table)
-        free(box_table);
+    qe_free(&box_table);
     
     /* prepare for next line */
  the_end:
@@ -2445,7 +2439,7 @@ static void allocate_column(TableLayout *s)
     s->nb_cols++;
     if (s->nb_cols > s->nb_cols_allocated) {
         s->nb_cols_allocated = s->nb_cols_allocated + COL_INCR;
-        s->cols = realloc(s->cols, s->nb_cols_allocated * sizeof(ColStruct));
+        qe_realloc(&s->cols, s->nb_cols_allocated * sizeof(ColStruct));
         memset(s->cols + s->nb_cols_allocated - COL_INCR, 0, 
                COL_INCR * sizeof(ColStruct));
     }
@@ -3084,14 +3078,14 @@ static int css_layout_table(CSSContext *s, LayoutOutput *table_layout,
     tl->caption_box = NULL;
     if (layout_table_render(tl, table_box)) {
     fail:
-        free(tl->cols);
+        qe_free(&tl->cols);
         return -1;
     }
     tl->y += tl->border_v;
     /* compute total table height */
     table_box->height = max(tl->y, table_box->height);
 
-    free(tl->cols);
+    qe_free(&tl->cols);
 
     /* handle table caption */
     caption_box = tl->caption_box;
@@ -3152,7 +3146,7 @@ static int css_add_float(InlineLayout *s, CSSBox *box)
 {
     FloatBlock *b, **pb;
 
-    b = malloc(sizeof(FloatBlock));
+    b = qe_malloc(FloatBlock);
     if (!b)
         return 0;
     b->box = box;
@@ -3173,7 +3167,7 @@ static void css_free_floats(FloatBlock *b)
 
     while (b != NULL) {
         b1 = b->next;
-        free(b);
+        qe_free(&b);
         b = b1;
     }
 }
@@ -4360,10 +4354,9 @@ CSSBox *css_new_box(CSSIdent tag, CSSAttribute *attrs)
 {
     CSSBox *box;
 
-    box = malloc(sizeof(CSSBox));
+    box = qe_mallocz(CSSBox);
     if (!box)
         return NULL;
-    memset(box, 0, sizeof(CSSBox));
     box->tag = tag;
     box->attrs = attrs;
     return box;
@@ -4400,26 +4393,26 @@ void css_delete_box(CSSBox *box)
         case CSS_CONTENT_TYPE_STRING:
             /* split boxes never own their content */
             if (!box->split)
-                free((void *)box->u.buffer.start);
+                qe_free((void **)(void *)&box->u.buffer.start);
             break;
         case CSS_CONTENT_TYPE_IMAGE:
-            free(box->u.image.content_alt);
+            qe_free(&box->u.image.content_alt);
             break;
         }
         box1 = box->next;
         a = box->attrs;
         while (a != NULL) {
             a1 = a->next;
-            free(a);
+            qe_free(&a);
             a = a1;
         }
         p = box->properties;
         while (p != NULL) {
             p1 = p->next;
-            free(p);
+            qe_free(&p);
             p = p1;
         }
-        free(box);
+        qe_free(&box);
         box = box1;
     }
 }
@@ -4440,7 +4433,7 @@ void css_set_text_string(CSSBox *box, const char *string)
     char *str;
 
     box->content_type = CSS_CONTENT_TYPE_STRING;
-    str = strdup(string);
+    str = qe_strdup(string);
     len = strlen(string);
     box->u.buffer.start = (unsigned long)str;
     box->u.buffer.end = (unsigned long)str + len;
@@ -4478,10 +4471,9 @@ CSSContext *css_new_document(QEditScreen *screen,
 {
     CSSContext *s;
 
-    s = malloc(sizeof(CSSContext));
+    s = qe_mallocz(CSSContext);
     if (!s)
         return NULL;
-    memset(s, 0, sizeof(CSSContext));
     s->style_sheet = NULL;
     s->screen = screen;
     s->b = b;
@@ -4511,7 +4503,7 @@ void css_delete_document(CSSContext *s)
     if (s->style_sheet) {
         css_free_style_sheet(s->style_sheet);
     }
-    free(s);
+    qe_free(&s);
 }
 
 /* must be called before using any css functions */

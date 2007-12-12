@@ -222,7 +222,7 @@ void selection_activate(QEditScreen *s);
 void selection_request(QEditScreen *s);
 
 QEBitmap *bmp_alloc(QEditScreen *s, int width, int height, int flags);
-void bmp_free(QEditScreen *s, QEBitmap *b);
+void bmp_free(QEditScreen *s, QEBitmap **bp);
 void bmp_draw(QEditScreen *s, QEBitmap *b, 
               int dst_x, int dst_y, int dst_w, int dst_h, 
               int offset_x, int offset_y, int flags);

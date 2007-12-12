@@ -1065,7 +1065,7 @@ static void shell_close(EditBuffer *b)
     if (s->pty_fd >= 0) {
         set_read_handler(s->pty_fd, NULL, NULL);
     }
-    free(s);
+    qe_free(&s);
 }
 
 EditBuffer *new_shell_buffer(const char *name, const char *path,
@@ -1080,12 +1080,11 @@ EditBuffer *new_shell_buffer(const char *name, const char *path,
     set_buffer_name(b, name); /* ensure that the name is unique */
     eb_set_charset(b, &charset_vt100);
 
-    s = malloc(sizeof(ShellState));
+    s = qe_mallocz(ShellState);
     if (!s) {
         eb_free(b);
         return NULL;
     }
-    memset(s, 0, sizeof(ShellState));
     b->priv_data = s;
     b->close = shell_close;
     eb_add_callback(b, eb_offset_callback, &s->cur_offset);
@@ -1101,7 +1100,7 @@ EditBuffer *new_shell_buffer(const char *name, const char *path,
         b_color = eb_new("*color*", BF_SYSTEM);
         if (!b_color) {
             eb_free(b);
-            free(s);
+            qe_free(&s);
             return NULL;
         }
         /* no undo info in this color buffer */

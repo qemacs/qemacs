@@ -155,7 +155,7 @@ static inline void strbuf_init(StringBuffer *b)
 static inline void strbuf_reset(StringBuffer *b)
 {
     if (b->buf != b->buf1)
-        free(b->buf);
+        qe_free(&b->buf);
     strbuf_init(b);
 }
 
@@ -168,8 +168,7 @@ static void strbuf_addch1(StringBuffer *b, int ch)
     ptr = b->buf;
     if (b->buf == b->buf1)
         ptr = NULL;
-    ptr = realloc(ptr, size1);
-    if (ptr) {
+    if (qe_realloc(&ptr, size1)) {
         if (b->buf == b->buf1)
             memcpy(ptr, b->buf1, STRING_BUF_SIZE);
         b->buf = ptr;
@@ -211,7 +210,7 @@ static void offsetbuf_init(OffsetBuffer *b)
 
 static void offsetbuf_reset(OffsetBuffer *b)
 {
-    free(b->offsets);
+    qe_free(&b->offsets);
     offsetbuf_init(b);
 }
 
@@ -229,8 +228,7 @@ static void offsetbuf_add(OffsetBuffer *b, unsigned int offset)
             if (!n)
                 n = 1;
             n = n * 2;
-            b->offsets = realloc(b->offsets, n * sizeof(unsigned int));
-            if (!b->offsets)
+            if (!qe_realloc(&b->offsets, n * sizeof(unsigned int)))
                 return;
             b->nb_allocated_offsets = n;
         }
@@ -274,10 +272,9 @@ XMLState *xml_begin(CSSStyleSheet *style_sheet, int flags,
 {
     XMLState *s;
     
-    s = malloc(sizeof(XMLState));
+    s = qe_mallocz(XMLState);
     if (!s)
         return NULL;
-    memset(s, 0, sizeof(*s));
     s->flags = flags;
     s->is_html = flags & XML_HTML;
     s->html_syntax = flags & XML_HTML_SYNTAX;
@@ -302,7 +299,7 @@ static CSSAttribute *box_new_attr(CSSIdent attr_id, const char *value)
 {
     CSSAttribute *attr;
 
-    attr = malloc(sizeof(CSSAttribute) + strlen(value));
+    attr = qe_malloc_hack(CSSAttribute, strlen(value));
     if (!attr)
         return NULL;
     attr->attr = attr_id;
@@ -433,7 +430,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
         }
         if (value && value[0] != '\0') {
             arg.type = CSS_VALUE_STRING;
-            arg.u.str = strdup(value);
+            arg.u.str = qe_strdup(value);
             css_add_prop(&last_prop, CSS_content_alt, &arg);
         }
         
@@ -1283,7 +1280,7 @@ CSSBox *xml_end(XMLState *s)
     strbuf_reset(&s->str);
     root_box = s->root_box;
     
-    free(s);
+    qe_free(&s);
     return root_box;
 }
 

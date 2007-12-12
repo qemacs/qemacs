@@ -192,7 +192,7 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
             q->nb_packets--;
             q->size -= pkt1->pkt.size;
             *pkt = pkt1->pkt;
-            free(pkt1);
+            av_free_packet(pkt1);
             ret = 1;
             break;
         } else if (!block) {
@@ -354,8 +354,8 @@ static void alloc_picture(void *opaque)
 
     vp = &is->pictq[is->pictq_windex];
     
-    if (vp->bmp)
-        bmp_free(s->screen, vp->bmp);
+    bmp_free(s->screen, &vp->bmp);
+
     /* XXX: use generic function */
     switch (is->video_st->codec.pix_fmt) {
     case PIX_FMT_YUV420P:
@@ -382,9 +382,7 @@ static void alloc_picture(void *opaque)
         if (vp->bmp->width != is->video_st->codec.width ||
             vp->bmp->height != is->video_st->codec.height) {
             is_yuv = 0;
-            if (vp->bmp)
-                bmp_free(s->screen, vp->bmp);
-            vp->bmp = NULL;
+            bmp_free(s->screen, &vp->bmp);
             goto retry;
         }
     } else {
@@ -839,12 +837,9 @@ static void video_mode_close(EditState *s)
     is->abort_request = 1;
     pthread_join(is->parse_tid, NULL);
     /* free all pictures */
-    for (i = 0; i < VIDEO_PICTURE_QUEUE_SIZE;  i++) {
+    for (i = 0; i < VIDEO_PICTURE_QUEUE_SIZE; i++) {
         vp = &is->pictq[i];
-        if (vp->bmp) {
-            bmp_free(s->screen, vp->bmp);
-            vp->bmp = NULL;
-        }
+        bmp_free(s->screen, &vp->bmp);
     }
 
     if (is->video_timer) {

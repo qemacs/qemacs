@@ -49,7 +49,7 @@ FindFileState *find_file_open(const char *path, const char *pattern)
 {
     FindFileState *s;
 
-    s = malloc(sizeof(FindFileState));
+    s = qe_malloc(FindFileState);
     if (!s)
         return NULL;
     pstrcpy(s->path, sizeof(s->path), path);
@@ -108,7 +108,7 @@ void find_file_close(FindFileState *s)
 {
     if (s->dir) 
         closedir(s->dir);
-    free(s);
+    qe_free(&s);
 }
 
 #ifdef WIN32
@@ -695,15 +695,14 @@ int css_define_color(const char *name, const char *value)
 
     /* Make room: reallocate table in chunks of 8 entries */
     if ((nb_custom_colors & 7) == 0) {
-        def = malloc((nb_css_colors + nb_custom_colors + 8) *
-                     sizeof(ColorDef));
+        def = qe_malloc_array(ColorDef, nb_css_colors + nb_custom_colors + 8);
         if (!def)
             return -1;
         memcpy(def, custom_colors,
                (nb_css_colors + nb_custom_colors) * sizeof(ColorDef));
             
         if (custom_colors != css_colors)
-            free(custom_colors);
+            qe_free(&custom_colors);
         custom_colors = def;
     }
     /* Check for redefinition */
@@ -715,7 +714,7 @@ int css_define_color(const char *name, const char *value)
     }
 
     def = &custom_colors[nb_css_colors + nb_custom_colors];
-    def->name = strdup(name);
+    def->name = qe_strdup(name);
     def->color = color;
     nb_custom_colors++;
 
@@ -868,16 +867,17 @@ int get_clock_ms(void)
 StringItem *set_string(StringArray *cs, int index, const char *str)
 {
     StringItem *v;
+
     if (index >= cs->nb_items)
         return NULL;
 
-    v = malloc(sizeof(StringItem) + strlen(str));
+    v = qe_malloc_hack(StringItem, strlen(str));
     if (!v)
         return NULL;
     v->selected = 0;
     strcpy(v->str, str);
     if (cs->items[index])
-        free(cs->items[index]);
+        qe_free(&cs->items[index]);
     cs->items[index] = v;
     return v;
 }
@@ -885,15 +885,12 @@ StringItem *set_string(StringArray *cs, int index, const char *str)
 /* make a generic array alloc */
 StringItem *add_string(StringArray *cs, const char *str)
 {
-    StringItem **tmp;
     int n;
 
     if (cs->nb_items >= cs->nb_allocated) {
         n = cs->nb_allocated + 32;
-        tmp = realloc(cs->items, n * sizeof(StringItem *));
-        if (!tmp)
+        if (!qe_realloc(&cs->items, n * sizeof(StringItem *)))
             return NULL;
-        cs->items = tmp;
         cs->nb_allocated = n;
     }
     cs->items[cs->nb_items++] = NULL;
@@ -905,8 +902,8 @@ void free_strings(StringArray *cs)
     int i;
 
     for (i = 0; i < cs->nb_items; i++)
-        free(cs->items[i]);
-    free(cs->items);
+        qe_free(&cs->items[i]);
+    qe_free(&cs->items);
     memset(cs, 0, sizeof(StringArray));
 }
 
@@ -920,9 +917,7 @@ void free_strings(StringArray *cs)
 int qmemcat(QString *q, const unsigned char *data1, int len1)
 {
     int new_len, len, alloc_size;
-    unsigned char *data;
 
-    data = q->data;
     len = q->len;
     new_len = len + len1;
     /* see if we got a new power of two */
@@ -936,13 +931,11 @@ int qmemcat(QString *q, const unsigned char *data1, int len1)
         alloc_size |= (alloc_size >> 8);
         alloc_size |= (alloc_size >> 16);
         /* allocate one more byte for end of string marker */
-        data = realloc(data, alloc_size + 1);
-        if (!data)
+        if (!qe_realloc(&q->data, alloc_size + 1))
             return -1;
-        q->data = data;
     }
-    memcpy(data + len, data1, len1);
-    data[new_len] = '\0'; /* we force a trailing '\0' */
+    memcpy(q->data + len, data1, len1);
+    q->data[new_len] = '\0'; /* we force a trailing '\0' */
     q->len = new_len;
     return 0;
 }
@@ -1054,3 +1047,45 @@ int strsubst(char *buf, int buf_size, const char *from,
 
     return out.pos;
 }
+
+/*---------------- allocation routines ----------------*/
+
+void *qe_malloc_bytes(size_t size)
+{
+    return malloc(size);
+}
+
+void *qe_mallocz_bytes(size_t size)
+{
+    void *p = malloc(size);
+    if (p)
+        memset(p, 0, size);
+    return p;
+}
+
+void *qe_malloc_dup(const void *src, size_t size)
+{
+    void *p = malloc(size);
+    if (p)
+        memcpy(p, src, size);
+    return p;
+}
+
+char *qe_strdup(const char *str)
+{
+    size_t size = strlen(str) + 1;
+    char *p = malloc(size);
+
+    if (p)
+        memcpy(p, str, size);
+    return p;
+}
+
+void *qe_realloc(void *pp, size_t size)
+{
+    void *p = realloc(*(void **)pp, size);
+    if (p)
+        *(void **)pp = p;
+    return p;
+}
+

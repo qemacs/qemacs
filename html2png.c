@@ -136,14 +136,11 @@ static QEDisplay ppm_dpy = {
 static int ppm_resize(QEditScreen *s, int w, int h)
 {
     CFBContext *cfb = s->private;
-    unsigned char *data;
     
     /* alloc bitmap */
-    data = realloc(cfb->base, w * h * sizeof(int));
-    if (!data) {
+    if (!qe_realloc(&cfb->base, w * h * sizeof(int))) {
         return -1;
     }
-    cfb->base = data;
     cfb->wrap = w * sizeof(int);
     s->width = w;
     s->height = h;
@@ -161,7 +158,7 @@ static int ppm_init(QEditScreen *s, int w, int h)
 
     memcpy(&s->dpy, &ppm_dpy, sizeof(QEDisplay));
 
-    cfb = malloc(sizeof(CFBContext));
+    cfb = qe_malloc(CFBContext);
     if (!cfb)
         return -1;
 
@@ -173,7 +170,8 @@ static int ppm_init(QEditScreen *s, int w, int h)
 
     if (ppm_resize(s, w, h) < 0) {
     fail:
-        free(cfb);
+        qe_free(&cfb->base);
+        qe_free(&s->private);
         return -1;
     }
     return 0;
@@ -183,8 +181,8 @@ static void ppm_close(QEditScreen *s)
 {
     CFBContext *cfb = s->private;
     
-    free(cfb->base);
-    free(cfb);
+    qe_free(&cfb->base);
+    qe_free(&s->private);
 }
 
 static int ppm_save(QEditScreen *s, const char *filename)
@@ -248,7 +246,7 @@ static int png_save(QEditScreen *s, const char *filename)
     if (!d.info_ptr)
         goto fail;
 
-    d.row_buf = malloc(3 * s->width);
+    d.row_buf = qe_malloc_array(u8, 3 * s->width);
     if (!d.row_buf)
         goto fail;
 
@@ -298,7 +296,7 @@ static int png_save(QEditScreen *s, const char *filename)
             png_destroy_write_struct(&d.png_ptr,
                                      d.info_ptr ? &d.info_ptr : NULL);
         }
-        free(d.row_buf);
+        qe_free(&d.row_buf);
         fclose(d.f);
         return -1;
     }

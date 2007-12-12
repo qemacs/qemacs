@@ -74,6 +74,23 @@
 
 /************************/
 
+/* allocation wrappers and utilities */
+void *qe_malloc_bytes(size_t size);
+void *qe_mallocz_bytes(size_t size);
+void *qe_malloc_dup(const void *src, size_t size);
+char *qe_strdup(const char *str);
+void *qe_realloc(void *pp, size_t size);
+#define qe_malloc(t)            ((t *)qe_malloc_bytes(sizeof(t)))
+#define qe_mallocz(t)           ((t *)qe_mallocz_bytes(sizeof(t)))
+#define qe_malloc_array(t, n)   ((t *)qe_malloc_bytes((n) * sizeof(t)))
+#define qe_mallocz_array(t, n)  ((t *)qe_mallocz_bytes((n) * sizeof(t)))
+#define qe_malloc_hack(t, n)    ((t *)qe_malloc_bytes(sizeof(t) + (n)))
+#define qe_mallocz_hack(t, n)   ((t *)qe_mallocz_bytes(sizeof(t) + (n)))
+#define qe_free(pp)      \
+    do { void *_ = (pp); free(*(void **)_); *(void **)_ = NULL; } while (0)
+
+/************************/
+
 typedef unsigned char u8;
 typedef struct EditState EditState;
 typedef struct EditBuffer EditBuffer;
@@ -204,8 +221,7 @@ static inline void qstrinit(QString *q) {
 }
 
 static inline void qstrfree(QString *q) {
-    free(q->data);
-    q->data = NULL;
+    qe_free(&q->data);
 }
 
 int qmemcat(QString *q, const unsigned char *data1, int len1);

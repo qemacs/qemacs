@@ -52,59 +52,60 @@ WinWindow win_ctx;
 int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, 
                    LPSTR lpszCmdLine, int nCmdShow)
 {
-   char **argv;
-   int argc, count;
-   char *command_line, *p;
+    char **argv;
+    int argc, count;
+    char *command_line, *p;
 
-   command_line = malloc(strlen(lpszCmdLine) + sizeof(PROG_NAME) + 1);
-   if (!command_line)
-       return 0;
-   strcpy(command_line, PROG_NAME " ");
-   strcat(command_line, lpszCmdLine);
-   _hPrev = hPrevInst;
-   _hInstance = hInstance;
+    command_line = qe_malloc_array(char, sizeof(PROG_NAME) +
+                                   strlen(lpszCmdLine) + 1);
+    if (!command_line)
+        return 0;
+    strcpy(command_line, PROG_NAME " ");
+    strcat(command_line, lpszCmdLine);
+    _hPrev = hPrevInst;
+    _hInstance = hInstance;
 
-   /* simplistic command line parser */
-   p = command_line;
-   count = 0;
-   for (;;) {
-       skip_spaces((const char **)&p);
-       if (*p == '\0')
-           break;
-       while (*p != '\0' && !css_is_space(*p))
-           p++;
-      count++;
-   }
+    /* simplistic command line parser */
+    p = command_line;
+    count = 0;
+    for (;;) {
+        skip_spaces((const char **)&p);
+        if (*p == '\0')
+            break;
+        while (*p != '\0' && !css_is_space(*p))
+            p++;
+        count++;
+    }
 
-   argv = (char **)malloc((count + 1) * sizeof(char *));
-   if (!argv)
-       return 0;
-   
-   argc = 0;
-   p = command_line;
-   for (;;) {
-       skip_spaces((const char **)&p);
-       if (*p == '\0')
-           break;
-       argv[argc++] = p;
-       while (*p != '\0' && !css_is_space(*p))
-           p++;
-       *p = '\0';
-       p++;
-   }
+    argv = qe_malloc_array(char *, count + 1);
+    if (!argv)
+        return 0;
 
-   argv[argc] = NULL;
+    argc = 0;
+    p = command_line;
+    for (;;) {
+        skip_spaces((const char **)&p);
+        if (*p == '\0')
+            break;
+        argv[argc++] = p;
+        while (*p != '\0' && !css_is_space(*p))
+            p++;
+        *p = '\0';
+        p++;
+    }
+
+    argv[argc] = NULL;
 
 #if 0
-   {
-       int i;
-       for (i = 0; i < argc; i++) {
-           printf("%d: '%s'\n", i, argv[i]);
-       }
-   }
+    {
+        int i;
+        for (i = 0; i < argc; i++) {
+            printf("%d: '%s'\n", i, argv[i]);
+        }
+    }
 #endif
 
-   return main1(argc, argv);
+    return main1(argc, argv);
 }
 
 static int win_probe(void)
@@ -205,7 +206,7 @@ static void push_event(QEEvent *ev)
 {
     QEEventQ *e;
     
-    e = malloc(sizeof(QEEventQ));
+    e = qe_malloc(QEEventQ);
     if (!e)
         return;
     e->ev = *ev;
@@ -260,14 +261,14 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             unsigned int scan;
             int ctrl, shift, alt, key;
-            
+
             ctrl = (GetKeyState(VK_CONTROL) & 0x8000);
             shift = (GetKeyState(VK_SHIFT) & 0x8000);
             alt = (GetKeyState(VK_MENU) & 0x8000);
-            
+
             ignore_wchar_msg = 0;
-            
-            scan = (unsigned int) ((lParam >> 16) & 0x1FF);
+
+            scan = (unsigned int)((lParam >> 16) & 0x1FF);
             switch (scan) {
             case 0x00E:
                 ignore_wchar_msg = 1;
@@ -412,7 +413,7 @@ static int get_unicode_key(QEditScreen *s, QEPollData *pd, QEEvent *ev)
             first_event = e->next;
             if (!first_event)
                 last_event = NULL;
-            free(e);
+            qe_free(&e);
             break;
         }
 
@@ -428,19 +429,19 @@ static int get_unicode_key(QEditScreen *s, QEPollData *pd, QEEvent *ev)
 static void win_fill_rectangle(QEditScreen *s,
                                int x1, int y1, int w, int h, QEColor color)
 {
-   RECT rc;
-   HBRUSH hbr;
-   COLORREF col;
+    RECT rc;
+    HBRUSH hbr;
+    COLORREF col;
 
-   /* XXX: suppress XOR mode */
-   if (color == QECOLOR_XOR)
-       color = QERGB(0xff, 0xff, 0xff);
+    /* XXX: suppress XOR mode */
+    if (color == QECOLOR_XOR)
+        color = QERGB(0xff, 0xff, 0xff);
 
-   SetRect(&rc, x1, y1, x1 + w, y1 + h);
-   col = RGB((color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
-   hbr = CreateSolidBrush(col);
-   FillRect(win_ctx.hdc, &rc, hbr);
-   DeleteObject(hbr);
+    SetRect(&rc, x1, y1, x1 + w, y1 + h);
+    col = RGB((color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
+    hbr = CreateSolidBrush(col);
+    FillRect(win_ctx.hdc, &rc, hbr);
+    DeleteObject(hbr);
 }
 
 static QEFont *win_open_font(QEditScreen *s, int style, int size)
@@ -448,7 +449,7 @@ static QEFont *win_open_font(QEditScreen *s, int style, int size)
     QEFont *font;
     TEXTMETRIC tm;
 
-    font = malloc(sizeof(QEFont));
+    font = qe_malloc(QEFont);
     if (!font)
         return NULL;
     GetTextMetrics(win_ctx.hdc, &tm);
@@ -460,7 +461,7 @@ static QEFont *win_open_font(QEditScreen *s, int style, int size)
 
 static void win_close_font(QEditScreen *s, QEFont *font)
 {
-    free(font);
+    qe_free(&font);
 }
 
 static void win_text_metrics(QEditScreen *s, QEFont *font, 

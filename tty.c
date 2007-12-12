@@ -271,8 +271,8 @@ static void tty_resize(__unused__ int sig)
     count = s->width * s->height;
     size = count * sizeof(TTYChar);
     /* screen buffer + shadow buffer + extra slot for loop guard */
-    ts->screen = realloc(ts->screen, size * 2 + 1);
-    ts->line_updated = realloc(ts->line_updated, s->height);
+    qe_realloc(&ts->screen, size * 2 + 1);
+    qe_realloc(&ts->line_updated, s->height);
     ts->screen_size = count;
     
     /* Erase shadow buffer to impossible value */
@@ -569,7 +569,7 @@ static QEFont *tty_term_open_font(__unused__ QEditScreen *s,
 {
     QEFont *font;
 
-    font = malloc(sizeof(QEFont));
+    font = qe_malloc(QEFont);
     if (!font)
         return NULL;
 
@@ -581,7 +581,7 @@ static QEFont *tty_term_open_font(__unused__ QEditScreen *s,
 
 static void tty_term_close_font(__unused__ QEditScreen *s, QEFont *font)
 {
-    free(font);
+    qe_free(&font);
 }
 
 /*

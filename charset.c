@@ -300,7 +300,7 @@ void charset_decode_init(CharsetDecodeState *s, QECharset *charset)
     
     s->table = NULL; /* fail safe */
     if (charset->table_alloc) {
-        table = malloc(256 * sizeof(unsigned short));
+        table = qe_malloc_array(unsigned short, 256);
         if (!table) {
             charset = &charset_8859_1;
         } else {
@@ -317,7 +317,7 @@ void charset_decode_close(CharsetDecodeState *s)
 {
     if (s->charset->table_alloc &&
         s->charset != &charset_8859_1)
-        free(s->table);
+        qe_free(&s->table);
     /* safety */
     memset(s, 0, sizeof(CharsetDecodeState));
 }

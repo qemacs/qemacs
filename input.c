@@ -263,7 +263,7 @@ static void load_input_methods(void)
         p += 4;
         if (offset == 0)
             break;
-        m = malloc(sizeof(InputMethod));
+        m = qe_malloc(InputMethod);
         if (m) {
             m->data = file_ptr + offset;
             m->input_match = kmap_input;

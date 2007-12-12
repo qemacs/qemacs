@@ -98,10 +98,10 @@ static GlyphCache *add_cached_glyph(QEFont *font, int index, int data_size)
         while (*pp != p) pp = &(*pp)->hash_next;
         *pp = p->hash_next;
 
-        free(p);
+        qe_free(&p);
     }
 
-    p = malloc(sizeof(GlyphCache) + data_size);
+    p = qe_malloc_hack(GlyphCache, data_size);
     if (!p)
         return NULL;
 
@@ -237,7 +237,7 @@ QEFont *fbf_open_font(__unused__ QEditScreen *s, int style, int size)
     UniFontData *fonts[MAX_MATCHES];
     int nb_fonts, i;
 
-    font = malloc(sizeof(QEFont));
+    font = qe_malloc(QEFont);
     if (!font)
         return NULL;
 
@@ -278,17 +278,17 @@ QEFont *fbf_open_font(__unused__ QEditScreen *s, int style, int size)
 
 void fbf_close_font(__unused__ QEditScreen *s, QEFont *font)
 {
-    free(font);
+    qe_free(&font);
 }
 
 static void *my_malloc(__unused__ void *opaque, int size)
 {
-    return malloc(size);
+    return qe_malloc_bytes(size);
 }
 
 static void my_free(__unused__ void *opaque, void *ptr)
 {
-    free(ptr);
+    qe_free(&ptr);
 }
 
 
@@ -322,12 +322,11 @@ static int fbf_load_font_file(const char *filename)
     if (!f) 
         return -1;
 
-    uf = malloc(sizeof(UniFontData));
+    uf = qe_mallocz(UniFontData);
     if (!uf) {
         fclose(f);
         return -1;
     }
-    memset(uf, 0, sizeof(*uf));
 
     /* init memory */
     uf->mem_opaque = NULL;
@@ -341,7 +340,7 @@ static int fbf_load_font_file(const char *filename)
     uf->fbf_getc = my_fbf_getc;
 
     if (fbf_load_font(uf) < 0) {
-        free(uf);
+        qe_free(&uf);
         fclose(f);
         return -1;
     }
@@ -430,19 +429,17 @@ static int fbf_load_font_memory(const unsigned char *data,
     UniFontData *uf;
     MemoryFile *f;
 
-    f = malloc(sizeof(MemoryFile));
+    f = qe_mallocz(MemoryFile);
     if (!f)
         return -1;
     f->base = data;
     f->size = data_size;
-    f->offset = 0;
     
-    uf = malloc(sizeof(UniFontData));
+    uf = qe_mallocz(UniFontData);
     if (!uf) {
-        free(f);
+        qe_free(&f);
         return -1;
     }
-    memset(uf, 0, sizeof(*uf));
 
     /* init memory */
     uf->mem_opaque = NULL;
@@ -456,8 +453,8 @@ static int fbf_load_font_memory(const unsigned char *data,
     uf->fbf_getc = my_fbf_getc;
 
     if (fbf_load_font(uf) < 0) {
-        free(uf);
-        free(f);
+        qe_free(&uf);
+        qe_free(&f);
         return -1;
     }
 
@@ -495,8 +492,8 @@ void fbf_render_cleanup(void)
         /* close font data structures */
         fbf_free_font(uf);
         /* close font file */
-        free(uf->infile);
-        free(uf);
+        qe_free(&uf->infile);
+        qe_free(&uf);
     }
     first_font = NULL;
 }

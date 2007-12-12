@@ -528,7 +528,7 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
     XftFont *renderFont;
     QEFont *font;
 
-    font = malloc(sizeof(QEFont));
+    font = qe_malloc(QEFont);
     if (!font)
         return NULL;
 
@@ -558,7 +558,7 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
                              0);
     if (!renderFont) {
         /* CG: don't know if this can happen, should try fallback? */
-        free(font);
+        qe_free(&font);
         return NULL;
     }
     font->ascent = renderFont->ascent;
@@ -576,7 +576,7 @@ static void term_close_font(QEditScreen *s, QEFont *font)
      * close_font.
      */
     memset(font, 0, sizeof(*font));
-    free(font);
+    qe_free(&font);
 }
 
 static int term_glyph_width(QEditScreen *s, QEFont *font, unsigned int cc)
@@ -665,7 +665,7 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
     char **list;
     const char *p;
 
-    font = malloc(sizeof(QEFont));
+    font = qe_malloc(QEFont);
     if (!font)
         return NULL;
     
@@ -684,7 +684,7 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
         p = strchr(p, ',');
         if (!p) {
             /* no font found */
-            free(font);
+            qe_free(&font);
             return NULL;
         }
         p++;
@@ -768,7 +768,7 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
     return font;
  fail:
     XFreeFontNames(list);
-    free(font);
+    qe_free(&font);
     return NULL;
 }
 
@@ -781,7 +781,7 @@ static void term_close_font(__unused__ QEditScreen *s, QEFont *font)
      * close_font.
      */
     memset(font, 0, sizeof(*font));
-    free(font);
+    qe_free(&font);
 }
 
 /* get a char struct associated to a char. Return NULL if no glyph
@@ -1152,7 +1152,7 @@ static void selection_send(XSelectionRequestEvent *rq)
         b = qs->yank_buffers[qs->yank_current];
         if (!b) 
             return;
-        buf = malloc(b->total_size);
+        buf = qe_malloc_array(unsigned char, b->total_size);
         if (!buf)
             return;
         eb_read(b, 0, buf, b->total_size);
@@ -1160,7 +1160,7 @@ static void selection_send(XSelectionRequestEvent *rq)
         XChangeProperty(display, rq->requestor, rq->property,
                         XA_STRING, 8, PropModeReplace,
                         buf, b->total_size);
-        free(buf);
+        qe_free(&buf);
     }
     ev.xselection.property = rq->property;
     XSendEvent(display, rq->requestor, False, 0, &ev);
@@ -1410,7 +1410,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
 {
     X11Bitmap *xb;
 
-    xb = malloc(sizeof(X11Bitmap));
+    xb = qe_malloc(X11Bitmap);
     if (!xb)
         return -1;
     b->priv_data = xb;
@@ -1452,7 +1452,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
             XImage *ximage;
             ximage = XCreateImage(display, None, attr.depth, ZPixmap, 0, 
                                   NULL, b->width, b->height, 8, 0);
-            ximage->data = malloc(b->height * ximage->bytes_per_line);
+            ximage->data = qe_malloc_array(char, b->height * ximage->bytes_per_line);
             xb->u.ximage = ximage;
         }
         break;
@@ -1462,7 +1462,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
             XShmSegmentInfo *shm_info;
             
             /* XXX: error testing */
-            shm_info = malloc(sizeof(XShmSegmentInfo));
+            shm_info = qe_malloc(XShmSegmentInfo);
             ximage = XShmCreateImage(display, None, attr.depth, ZPixmap, NULL,
                                      shm_info, b->width, b->height);
             shm_info->shmid = shmget(IPC_PRIVATE,
@@ -1487,7 +1487,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
             XvImage *xvimage;
             xvimage = XvCreateImage(display, xv_port, xv_format, 0, 
                                     b->width, b->height);
-            xvimage->data = malloc(xvimage->data_size);
+            xvimage->data = qe_malloc_array(char, xvimage->data_size);
             xb->u.xvimage = xvimage;
         }
         break;
@@ -1496,7 +1496,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
             XvImage *xvimage;
             XShmSegmentInfo *shm_info;
 
-            shm_info = malloc(sizeof(XShmSegmentInfo));
+            shm_info = qe_malloc(XShmSegmentInfo);
             xvimage = XvShmCreateImage(display, xv_port, xv_format, 0, 
                                        b->width, b->height, shm_info);
             shm_info->shmid = shmget(IPC_PRIVATE,
@@ -1519,7 +1519,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
     }
     return 0;
  fail:
-    free(xb);
+    qe_free(&xb);
     return -1;
 }
 
@@ -1539,11 +1539,11 @@ static void x11_bmp_free(__unused__ QEditScreen *s, QEBitmap *b)
         XShmDetach(display, xb->shm_info);
         XDestroyImage(xb->u.ximage);
         shmdt(xb->shm_info->shmaddr);
-        free(xb->shm_info);
+        qe_free(&xb->shm_info);
         break;
 #ifdef CONFIG_XV
     case BMP_XVIMAGE:
-        free(xb->u.xvimage->data);
+        qe_free(&xb->u.xvimage->data);
         XFree(xb->u.xvimage);
         xv_open_count--;
         break;
@@ -1551,12 +1551,12 @@ static void x11_bmp_free(__unused__ QEditScreen *s, QEBitmap *b)
         XShmDetach(display, xb->shm_info);
         XFree(xb->u.xvimage);
         shmdt(xb->shm_info->shmaddr);
-        free(xb->shm_info);
+        qe_free(&xb->shm_info);
         xv_open_count--;
         break;
 #endif
     }
-    free(xb);
+    qe_free(&b->priv_data);
 }
 
 static void x11_bmp_draw(__unused__ QEditScreen *s, QEBitmap *b, 
@@ -1615,7 +1615,7 @@ static void x11_bmp_lock(__unused__ QEditScreen *s, QEBitmap *b, QEPicture *pict
             XImage *ximage;
             ximage = XCreateImage(display, None, attr.depth, ZPixmap, 0, 
                                   NULL, w1, h1, 8, 0);
-            ximage->data = malloc(h1 * ximage->bytes_per_line);
+            ximage->data = qe_malloc_array(char, h1 * ximage->bytes_per_line);
             pict->data[0] = (unsigned char *)ximage->data;
             pict->linesize[0] = ximage->bytes_per_line;
             xb->ximage_lock = ximage;

@@ -63,11 +63,10 @@ static void update_page(Page *p)
 
     /* if the page is read only, copy it */
     if (p->flags & PG_READ_ONLY) {
-        buf = malloc(p->size);
+        buf = qe_malloc_dup(p->data, p->size);
         /* XXX: should return an error */
         if (!buf)
             return;
-        memcpy(buf, p->data, p->size);
         p->data = buf;
         p->flags &= ~PG_READ_ONLY;
     }
@@ -147,7 +146,8 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
             len = size;
         if (len > 0) {
             update_page(p);
-            p->data = realloc(p->data, p->size + len);
+            /* CG: probably faster with qe_malloc + qe_free */
+            qe_realloc(&p->data, p->size + len);
             memmove(p->data + len, p->data, p->size);
             memcpy(p->data, buf + size - len, len);
             size -= len;
@@ -159,18 +159,16 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
     n = (size + MAX_PAGE_SIZE - 1) / MAX_PAGE_SIZE;
     if (n > 0) {
         b->nb_pages += n;
-        b->page_table = realloc(b->page_table, b->nb_pages * sizeof(Page));
+        qe_realloc(&b->page_table, b->nb_pages * sizeof(Page));
         p = b->page_table + page_index;
-        memmove(p + n, p,
-                sizeof(Page) * (b->nb_pages - n - page_index));
+        memmove(p + n, p, sizeof(Page) * (b->nb_pages - n - page_index));
         while (size > 0) {
             len = size;
             if (len > MAX_PAGE_SIZE)
                 len = MAX_PAGE_SIZE;
             p->size = len;
-            p->data = malloc(len);
+            p->data = qe_malloc_dup(buf, len);
             p->flags = 0;
-            memcpy(p->data, buf, len);
             buf += len;
             size -= len;
             p++;
@@ -211,7 +209,7 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
             p = b->page_table + page_index;
             update_page(p);
             p->size += len - len_out;
-            p->data = realloc(p->data, p->size);
+            qe_realloc(&p->data, p->size);
             memmove(p->data + offset + len, 
                     p->data + offset, p->size - (offset + len));
             memcpy(p->data + offset, buf, len);
@@ -272,7 +270,7 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
                realloced */
             q = dest->page_table + page_index - 1;
             update_page(q);
-            q->data = realloc(q->data, dest_offset);
+            qe_realloc(&q->data, dest_offset);
             q->size = dest_offset;
         }
     } else {
@@ -294,11 +292,9 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
     if (n > 0) {
         /* add the pages */
         dest->nb_pages += n;
-        dest->page_table = realloc(dest->page_table,
-                                   dest->nb_pages * sizeof(Page));
+        qe_realloc(&dest->page_table, dest->nb_pages * sizeof(Page));
         q = dest->page_table + page_index;
-        memmove(q + n, q, 
-                sizeof(Page) * (dest->nb_pages - n - page_index));
+        memmove(q + n, q, sizeof(Page) * (dest->nb_pages - n - page_index));
         p = p_start;
         while (n > 0) {
             len = p->size;
@@ -310,8 +306,7 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
             } else {
                 /* allocate a new page */
                 q->flags = 0;
-                q->data = malloc(len);
-                memcpy(q->data, p->data, len);
+                q->data = qe_malloc_dup(p->data, len);
             }
             n--;
             p++;
@@ -366,7 +361,7 @@ void eb_delete(EditBuffer *b, int offset, int size)
                 del_start = p;
             /* we cannot free if read only */
             if (!(p->flags & PG_READ_ONLY))
-                free(p->data);
+                qe_free(&p->data);
             p++;
             offset = 0;
             n++;
@@ -375,7 +370,7 @@ void eb_delete(EditBuffer *b, int offset, int size)
             memmove(p->data + offset, p->data + offset + len, 
                     p->size - offset - len);
             p->size -= len;
-            p->data = realloc(p->data, p->size);
+            qe_realloc(&p->data, p->size);
             offset += len;
             if (offset >= p->size) {
                 p++;
@@ -390,7 +385,7 @@ void eb_delete(EditBuffer *b, int offset, int size)
         b->nb_pages -= n;
         memmove(del_start, del_start + n, 
                 (b->page_table + b->nb_pages - del_start) * sizeof(Page));
-        b->page_table = realloc(b->page_table, b->nb_pages * sizeof(Page));
+        qe_realloc(&b->page_table, b->nb_pages * sizeof(Page));
     }
 
     /* the page cache is no longer valid */
@@ -433,10 +428,9 @@ EditBuffer *eb_new(const char *name, int flags)
     QEmacsState *qs = &qe_state;
     EditBuffer *b;
 
-    b = malloc(sizeof(EditBuffer));
+    b = qe_mallocz(EditBuffer);
     if (!b)
         return NULL;
-    memset(b, 0, sizeof(EditBuffer));
 
     pstrcpy(b->name, sizeof(b->name), name);
     b->flags = flags;
@@ -476,7 +470,7 @@ void eb_free(EditBuffer *b)
     /* free each callback */
     for (l = b->first_callback; l != NULL;) {
         l1 = l->next;
-        free(l);
+        qe_free(&l);
         l = l1;
     }
     b->first_callback = NULL;
@@ -502,7 +496,7 @@ void eb_free(EditBuffer *b)
     if (b == trace_buffer)
         trace_buffer = NULL;
 
-    free(b);
+    qe_free(&b);
 }
 
 EditBuffer *eb_find(const char *name)
@@ -613,7 +607,7 @@ int eb_add_callback(EditBuffer *b, EditBufferCallback cb,
 {
     EditBufferCallbackList *l;
 
-    l = malloc(sizeof(EditBufferCallbackList));
+    l = qe_malloc(EditBufferCallbackList);
     if (!l)
         return -1;
     l->callback = cb;
@@ -632,7 +626,7 @@ void eb_free_callback(EditBuffer *b, EditBufferCallback cb,
         l = *pl;
         if (l->callback == cb && l->opaque == opaque) {
             *pl = l->next;
-            free(l);
+            qe_free(&l);
             break;
        }
     }
@@ -1157,14 +1151,13 @@ int load_buffer(EditBuffer *b, const char *filename,
     /* cannot load a buffer if already I/Os or readonly */
     if (b->flags & (BF_LOADING | BF_SAVING | BF_READONLY))
         return -1;
-    s = malloc(sizeof(BufferIOState));
+    s = qe_malloc(BufferIOState);
     if (!s)
         return -1;
     b->io_state = s;
     h = url_new();
     if (!h) {
-        free(b->io_state);
-        b->io_state = NULL;
+        qe_free(&b->io_state);
         return -1;
     }
     s->handle = h;
@@ -1228,8 +1221,7 @@ static void eb_io_stop(EditBuffer *b, int err)
     }
     url_close(s->handle);
     s->completion_cb(s->opaque, err);
-    free(s);
-    b->io_state = NULL;
+    qe_free(&b->io_state);
 }
 #endif
 
@@ -1276,7 +1268,7 @@ int mmap_buffer(EditBuffer *b, const char *filename)
         return -1;
     }
     n = (file_size + MAX_PAGE_SIZE - 1) / MAX_PAGE_SIZE;
-    p = malloc(n * sizeof(Page));
+    p = qe_malloc_array(Page, n);
     if (!p) {
         close(fd);
         return -1;

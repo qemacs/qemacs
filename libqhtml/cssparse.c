@@ -181,7 +181,7 @@ static char *css_parse_string(const char **pp)
     *q = '\0';
     //    printf("string='%s'\n", buf);
     *pp = p;
-    return strdup(buf);
+    return qe_strdup(buf);
 }
 
 /* add a given number of values */
@@ -191,8 +191,8 @@ void css_add_prop_values(CSSProperty ***last_prop,
 {
     CSSProperty *prop;
 
-    prop = malloc(sizeof(CSSProperty) + 
-                  (nb_values - 1) * sizeof(CSSPropertyValue));
+    prop = qe_malloc_hack(CSSProperty,
+                          (nb_values - 1) * sizeof(CSSPropertyValue));
     if (!prop)
         return;
     prop->property = property_index;
@@ -618,10 +618,9 @@ CSSStyleSheet *css_new_style_sheet(void)
 {
     CSSStyleSheet *s;
 
-    s = malloc(sizeof(CSSStyleSheet));
+    s = qe_mallocz(CSSStyleSheet);
     if (!s)
         return NULL;
-    memset(s, 0, sizeof(*s));
     s->plast_entry = &s->first_entry;
     return s;
 }
@@ -632,7 +631,7 @@ static void free_selector(CSSSimpleSelector *ss)
 
     for (attr = ss->attrs; attr != NULL; attr = attr1) {
         attr1 = attr->next;
-        free(attr);
+        qe_free(&attr);
     }
 }
 
@@ -649,18 +648,18 @@ void css_free_style_sheet(CSSStyleSheet *s)
         for (ss = e->sel.next; ss != NULL; ss = ss1) {
             ss1 = ss->next;
             free_selector(ss);
-            free(ss);
+            qe_free(&ss);
         }
         free_selector(&e->sel);
 
         for (p = e->props; p != NULL; p = p1) {
             p1 = p->next;
-            free(p);
+            qe_free(&p);
         }
-        free(e);
+        qe_free(&e);
     }
     
-    free(s);
+    qe_free(&s);
 }
 
 static int bgetc1(CSSParseState *b)
@@ -758,7 +757,7 @@ void add_attribute(CSSStyleSheetAttributeEntry ***last_attr,
 {
     CSSStyleSheetAttributeEntry *ae;
     
-    ae = malloc(sizeof(CSSStyleSheetAttributeEntry) + strlen(value));
+    ae = qe_malloc_hack(CSSStyleSheetAttributeEntry, strlen(value));
     ae->attr = attr;
     ae->op = op;
     strcpy(ae->value, value);
@@ -776,10 +775,9 @@ CSSStyleSheetEntry *add_style_entry(CSSStyleSheet *s,
     CSSStyleSheetEntry *e, **pp;
     
     /* add the style sheet entry */
-    e = malloc(sizeof(CSSStyleSheetEntry));
+    e = qe_mallocz(CSSStyleSheetEntry);
     if (!e)
         return NULL;
-    memset(e, 0, sizeof(*e));
     e->sel = *ss;
     e->media = media;
     
@@ -837,7 +835,7 @@ void css_merge_style_sheet(CSSStyleSheet *s, CSSStyleSheet *a)
         /* add selector operations */
         pss = &e1->sel.next;
         for (ss = e->sel.next; ss != NULL; ss = ss->next) {
-            ss1 = malloc(sizeof(CSSSimpleSelector));
+            ss1 = qe_malloc(CSSSimpleSelector);
             dup_selector(ss1, ss);
             *pss = ss1;
             pss = &ss1->next;
@@ -1063,9 +1061,8 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
                 } else if (isalpha(ch)) {
                     tree_op = CSS_TREE_OP_DESCENDANT;
                 add_tree:
-                    ss1 = malloc(sizeof(CSSSimpleSelector));
+                    ss1 = qe_malloc_dup(ss, sizeof(CSSSimpleSelector));
                     if (ss1) {
-                        memcpy(ss1, ss, sizeof(CSSSimpleSelector));
                         last_ss = ss1;
                     }
                     last_tree_op = tree_op;

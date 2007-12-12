@@ -45,7 +45,7 @@ static unsigned short *read_array_be16(FILE *f, int n)
     unsigned short *tab;
     int i;
 
-    tab = malloc(n * sizeof(unsigned short));
+    tab = qe_malloc_array(unsigned short, n);
     if (!tab) 
         return NULL;
     for (i = 0; i < n; i++) {
@@ -86,12 +86,9 @@ void load_ligatures(void)
     fclose(f);
     return;
  fail:
-    free(subst1);
-    free(ligature2);
-    free(ligature_long);
-    subst1 = NULL;
-    ligature2 = NULL;
-    ligature_long = NULL;
+    qe_free(&subst1);
+    qe_free(&ligature2);
+    qe_free(&ligature_long);
     subst1_count = 0;
     ligature2_count = 0;
     fclose(f);

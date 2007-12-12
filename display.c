@@ -223,23 +223,25 @@ QEBitmap *bmp_alloc(QEditScreen *s, int width, int height, int flags)
 
     if (!s->dpy.dpy_bmp_alloc)
         return NULL;
-    b = malloc(sizeof(QEBitmap));
+    b = qe_malloc(QEBitmap);
     if (!b)
         return NULL;
     b->width = width;
     b->height = height;
     b->flags = flags;
     if (s->dpy.dpy_bmp_alloc(s, b) < 0) {
-        free(b);
+        qe_free(&b);
         return NULL;
     }
     return b;
 }
 
-void bmp_free(QEditScreen *s, QEBitmap *b)
+void bmp_free(QEditScreen *s, QEBitmap **bp)
 {
-    s->dpy.dpy_bmp_free(s, b);
-    free(b);
+    if (*bp) {
+        s->dpy.dpy_bmp_free(s, *bp);
+        qe_free(bp);
+    }
 }
 
 void bmp_draw(QEditScreen *s, QEBitmap *b, 

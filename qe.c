@@ -100,8 +100,7 @@ void qe_register_mode(ModeDef *m)
         char buf[64], *name;
         int size;
 
-        table = malloc(sizeof(CmdDef) * 2);
-        memset(table, 0, sizeof(CmdDef) * 2);
+        table = qe_mallocz_array(CmdDef, 2);
         table->key = KEY_NONE;
         table->alt_key = KEY_NONE;
 
@@ -112,11 +111,10 @@ void qe_register_mode(ModeDef *m)
         size = strlen(buf) + 1;
         buf[size++] = 'S'; /* constant string parameter */
         buf[size++] = '\0';
-        name = malloc(size);
-        memcpy(name, buf, size);
+        name = qe_malloc_dup(buf, size);
         table->name = name;
         table->action.func = (void*)do_cmd_set_mode;
-        table->val = strdup(m->name);
+        table->val = qe_strdup(m->name);
         qe_register_cmd_table(table, NULL);
     }
 }
@@ -166,7 +164,7 @@ static int qe_register_binding1(unsigned int *keys, int nb_keys,
     KeyDef **lp, *p;
 
     /* add key */
-    p = malloc(sizeof(KeyDef) + (nb_keys - 1) * sizeof(unsigned int));
+    p = qe_malloc_hack(KeyDef, (nb_keys - 1) * sizeof(unsigned int));
     if (!p)
         return -1;
     p->nb_keys = nb_keys;
@@ -1602,8 +1600,7 @@ static void do_set_mode_file(EditState *s, ModeDef *m,
                 saved_data_allocated = 1;
         }
         s->mode->mode_close(s);
-        free(s->mode_data);
-        s->mode_data = NULL;
+        qe_free(&s->mode_data);
         s->mode = NULL;
 
         /* try to remove the raw or mode specific data if it is no
@@ -1656,12 +1653,10 @@ static void do_set_mode_file(EditState *s, ModeDef *m,
                 reload_buffer(s, b, f1);
         }
         if (size > 0) {
-            s->mode_data = malloc(size);
+            s->mode_data = qe_mallocz_array(u8, size);
             /* safe fall back: use text mode */
             if (!s->mode_data)
                 m = &text_mode;
-            else
-                memset(s->mode_data, 0, size);
         }
         s->mode = m;
         
@@ -1672,7 +1667,7 @@ static void do_set_mode_file(EditState *s, ModeDef *m,
             s->offset_top = s->mode->text_backward_offset(s, s->offset_top);
     }
     if (saved_data_allocated)
-        free(saved_data);
+        qe_free(&saved_data);
 }
 
 void do_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data)
@@ -2357,8 +2352,8 @@ static void flush_line(DisplayState *s,
             /* realloc shadow */
             int n = e->shadow_nb_lines;
             e->shadow_nb_lines = n + LINE_SHADOW_INCR;
-            e->line_shadow = realloc(e->line_shadow, 
-                                     e->shadow_nb_lines * sizeof(QELineShadow));
+            qe_realloc(&e->line_shadow, 
+                       e->shadow_nb_lines * sizeof(QELineShadow));
             /* put an impossible value so that we redraw */
             memset(&e->line_shadow[n], 0xff, 
                    LINE_SHADOW_INCR * sizeof(QELineShadow));
@@ -2916,7 +2911,6 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 {
     int len, l, line, col, offset;
     int colorize_state;
-    unsigned char *ptr;
     
     /* invalidate cache if needed */
     if (s->colorize_max_valid_offset != MAXINT) {
@@ -2930,10 +2924,8 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
     /* realloc line buffer if needed */
     if ((line_num + 2) > s->colorize_nb_lines) {
         s->colorize_nb_lines = line_num + 2 + COLORIZED_LINE_PREALLOC_SIZE;
-        ptr = realloc(s->colorize_states, s->colorize_nb_lines);
-        if (!ptr)
+        if (!qe_realloc(&s->colorize_states, s->colorize_nb_lines))
             return 0;
-        s->colorize_states = ptr;
     }
 
     /* propagate state if needed */
@@ -2988,8 +2980,7 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
 {
     /* invalidate the previous states & free previous colorizer */
     eb_free_callback(s->b, colorize_callback, s);
-    free(s->colorize_states);
-    s->colorize_states = NULL;
+    qe_free(&s->colorize_states);
     s->colorize_nb_lines = 0;
     s->colorize_nb_valid_lines = 0;
     s->colorize_max_valid_offset = MAXINT;
@@ -3134,8 +3125,7 @@ void generic_text_display(EditState *s)
 
     if (s->display_invalid) {
         /* invalidate the line shadow buffer */
-        free(s->line_shadow);
-        s->line_shadow = NULL;
+        qe_free(&s->line_shadow);
         s->shadow_nb_lines = 0;
         s->display_invalid = 0;
     }
@@ -3419,7 +3409,7 @@ void exec_command(EditState *s, CmdDef *d, int argval)
         }
     }
     
-    es = malloc(sizeof(ExecCmdState));
+    es = qe_malloc(ExecCmdState);
     if (!es)
         return;
 
@@ -3485,7 +3475,7 @@ static void parse_args(ExecCmdState *es)
             if (use_argval && es->argval != NO_ARG) {
                 char buf[32];
                 snprintf(buf, sizeof(buf), "%d", es->argval);
-                es->args[es->nb_args].p = strdup(buf);
+                es->args[es->nb_args].p = qe_strdup(buf);
                 es->argval = NO_ARG;
             } else {
                 es->args[es->nb_args].p = NULL;
@@ -3567,11 +3557,11 @@ static void free_cmd(ExecCmdState *es)
     for (i = 0;i < es->nb_args; i++) {
         switch (es->args_type[i]) {
         case CMD_ARG_STRING:
-            free(es->args[i].p);
+            qe_free(&es->args[i].p);
             break;
         }
     }
-    free(es);
+    qe_free(&es);
 }
 
 /* when the argument has been typed by the user, this callback is
@@ -3585,7 +3575,7 @@ static void arg_edit_cb(void *opaque, char *str)
     if (!str) {
         /* command aborted */
     fail:
-        free(str);
+        qe_free(&str);
         free_cmd(es);
         return;
     }
@@ -3601,8 +3591,8 @@ static void arg_edit_cb(void *opaque, char *str)
         break;
     case CMD_ARG_STRING:
         if (str[0] == '\0' && es->default_input[0] != '\0') {
-            free(str);
-            str = strdup(es->default_input);
+            qe_free(&str);
+            str = qe_strdup(es->default_input);
         }
         es->args[index].p = str; /* will be freed at the of the command */
         break;
@@ -3716,8 +3706,7 @@ void do_start_macro(EditState *s)
         return;
     }
     qs->defining_macro = 1;
-    free(qs->macro_keys);
-    qs->macro_keys = NULL;
+    qe_free(&qs->macro_keys);
     qs->nb_macro_keys = 0;
     qs->macro_keys_size = 0;
     put_status(s, "Defining kbd macro...");
@@ -3794,18 +3783,17 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
     char *macro_name, *p;
 
     size = strlen(name) + 1;
-    macro_name = malloc(size + 2);
+    macro_name = qe_malloc_array(char, size + 2);
     memcpy(macro_name, name, size);
     p = macro_name + size;
     *p++ = 'S';
     *p++ = '\0';
 
-    def = malloc(2 * sizeof(CmdDef));
-    memset(def, 0, sizeof(CmdDef) * 2);
+    def = qe_mallocz_array(CmdDef, 2);
     def->key = def->alt_key = KEY_NONE;
     def->name = macro_name;
     def->action.func = do_execute_macro_keys;
-    def->val = strdup(keys);
+    def->val = qe_strdup(keys);
 
     qe_register_cmd_table(def, NULL);
     do_global_set_key(s, key_bind, name);
@@ -3816,15 +3804,12 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
 static void macro_add_key(int key)
 {
     QEmacsState *qs = &qe_state;
-    unsigned short *keys;
     int new_size;
 
     if (qs->nb_macro_keys >= qs->macro_keys_size) {
         new_size = qs->macro_keys_size + MACRO_KEY_INCR;
-        keys = realloc(qs->macro_keys, new_size * sizeof(unsigned short));
-        if (!keys)
+        if (!qe_realloc(&qs->macro_keys, new_size * sizeof(unsigned short)))
             return;
-        qs->macro_keys = keys;
         qs->macro_keys_size = new_size;
     }
     qs->macro_keys[qs->nb_macro_keys++] = key;
@@ -4226,10 +4211,9 @@ EditState *edit_new(EditBuffer *b,
     EditState *s;
     QEmacsState *qs = &qe_state;
     
-    s = malloc(sizeof(EditState));
+    s = qe_mallocz(EditState);
     if (!s)
         return NULL;
-    memset(s, 0, sizeof(EditState));
     s->qe_state = qs;
     s->screen = qs->screen;
     s->x1 = x1;
@@ -4306,8 +4290,8 @@ void edit_close(EditState *s)
     if (qs->active_window == s)
         qs->active_window = qs->first_window;
 
-    free(s->line_shadow);
-    free(s);
+    qe_free(&s->line_shadow);
+    qe_free(&s);
 }
 
 static const char *file_completion_ignore_extensions =
@@ -4370,7 +4354,7 @@ void register_completion(const char *name, CompletionFunc completion_func)
 {
     CompletionEntry **lp, *p;
 
-    p = malloc(sizeof(CompletionEntry));
+    p = qe_malloc(CompletionEntry);
     if (!p)
         return;
     p->name = name;
@@ -4536,10 +4520,9 @@ static StringArray *get_history(const char *name)
             return &p->history;
     }
     /* not found: allocate history list */
-    p = malloc(sizeof(HistoryEntry));
+    p = qe_mallocz(HistoryEntry);
     if (!p)
         return NULL;
-    memset(p, 0, sizeof(HistoryEntry));
     pstrcpy(p->name, sizeof(p->name), name);
     p->next = first_history;
     first_history = p;
@@ -4628,14 +4611,13 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     if (hist && hist->nb_items > 0) {
         /* if null string, do not insert in history */
         hist->nb_items--;
-        free(hist->items[hist->nb_items]);
-        hist->items[hist->nb_items] = NULL;
+        qe_free(&hist->items[hist->nb_items]);
         if (buf[0] != '\0')
             add_string(hist, buf);
     }
 
     /* free prompt */
-    free(s->prompt);
+    qe_free(&s->prompt);
 
     edit_close(s);
     eb_free(b);
@@ -4658,7 +4640,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     if (do_abort) {
         cb(opaque, NULL);
     } else {
-        retstr = strdup(buf);
+        retstr = qe_strdup(buf);
         cb(opaque, retstr);
     }
 }
@@ -4692,7 +4674,7 @@ void minibuffer_edit(const char *input, const char *prompt,
                  qs->screen->width, qs->status_height, 0);
     /* Should insert at end of window list */
     do_set_mode(s, &minibuffer_mode, NULL);
-    s->prompt = strdup(prompt);
+    s->prompt = qe_strdup(prompt);
     s->minibuf = 1;
     s->bidir = 0;
     s->default_style = QE_STYLE_MINIBUF;
@@ -4921,10 +4903,11 @@ void do_kill_buffer(EditState *s, const char *bufname)
 static void kill_buffer_confirm_cb(void *opaque, char *reply)
 {
     int yes_replied;
+
     if (!reply)
         return;
     yes_replied = (strcmp(reply, "yes") == 0);
-    free(reply);
+    qe_free(&reply);
     if (!yes_replied)
         return;
     kill_buffer_noconfirm(opaque);
@@ -5205,10 +5188,11 @@ void do_save(EditState *s, int save_as)
 static void save_edit_cb(void *opaque, char *filename)
 {
     EditState *s = opaque;
+
     if (!filename)
         return;
     set_filename(s->b, filename);
-    free(filename);
+    qe_free(&filename);
     save_final(s);
 }
 
@@ -5242,7 +5226,7 @@ void do_quit(EditState *s)
     QEmacsState *qs = s->qe_state;
     QuitState *is;
 
-    is = malloc(sizeof(QuitState));
+    is = qe_malloc(QuitState);
     if (!is)
         return;
     
@@ -5345,7 +5329,7 @@ static void quit_confirm_cb(__unused__ void *opaque, char *reply)
         return;
     if (reply[0] == 'y' || reply[0] == 'Y')
         url_exit();
-    free(reply);
+    qe_free(&reply);
 }
 
 
@@ -5578,7 +5562,7 @@ static void isearch_key(void *opaque, int ch)
             last_search_string_len = j;
         }
         qe_ungrab_keys();
-        free(is);
+        qe_free(&is);
         return;
     case KEY_CTRL('s'):
         is->dir = 1;
@@ -5648,7 +5632,7 @@ void do_isearch(EditState *s, int dir)
 {
     ISearchState *is;
 
-    is = malloc(sizeof(ISearchState));
+    is = qe_malloc(ISearchState);
     if (!is)
         return;
     is->s = s;
@@ -5716,7 +5700,7 @@ static void query_replace_abort(QueryReplaceState *is)
 
     qe_ungrab_keys();
     put_status(NULL, "Replaced %d occurrences", is->nb_reps);
-    free(is);
+    qe_free(&is);
     edit_display(s->qe_state);
     dpy_flush(&global_screen);
 }
@@ -5790,7 +5774,7 @@ static void query_replace(EditState *s,
     if (s->b->flags & BF_READONLY)
         return;
 
-    is = malloc(sizeof(QueryReplaceState));
+    is = qe_malloc(QueryReplaceState);
     if (!is)
         return;
     is->s = s;
@@ -6601,7 +6585,7 @@ ModeSavedData *generic_mode_save_data(EditState *s)
 {
     ModeSavedData *saved_data;
 
-    saved_data = malloc(sizeof(ModeSavedData));
+    saved_data = qe_malloc(ModeSavedData);
     if (!saved_data)
         return NULL;
     saved_data->mode = s->mode;

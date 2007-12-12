@@ -63,7 +63,7 @@ static void dired_free(EditState *s)
     
     /* free opaques */
     for (i = 0; i < ds->items.nb_items; i++) {
-        free(ds->items.items[i]->opaque);
+        qe_free(&ds->items.items[i]->opaque);
     }
 
     free_strings(&ds->items);
@@ -296,7 +296,7 @@ static void build_dired_list(EditState *s, const char *path)
         if (item) {
             DiredItem *dip;
 
-            dip = malloc(sizeof(DiredItem) + strlen(p));
+            dip = qe_malloc_hack(DiredItem, strlen(p));
             dip->state = hs;
             dip->mode = st.st_mode;
             dip->size = st.st_size;

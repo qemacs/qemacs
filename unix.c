@@ -97,12 +97,12 @@ int set_pid_handler(int pid,
         list_for_each(p, &pid_handlers) {
             if (p->pid == pid) {
                 list_del(p);
-                free(p);
+                qe_free(&p);
                 break;
             }
         }
     } else {
-        p = malloc(sizeof(PidHandler));
+        p = qe_malloc(PidHandler);
         if (!p)
             return -1;
         p->pid = pid;
@@ -121,7 +121,7 @@ void register_bottom_half(void (*cb)(void *opaque), void *opaque)
     BottomHalfEntry *bh;
 
     /* Should not fail */
-    bh = malloc(sizeof(BottomHalfEntry));
+    bh = qe_malloc(BottomHalfEntry);
     bh->cb = cb;
     bh->opaque = opaque;
     list_add(bh, &bottom_halves);
@@ -137,7 +137,7 @@ void unregister_bottom_half(void (*cb)(void *opaque), void *opaque)
     list_for_each_safe(bh, bh1, &bottom_halves) {
         if (bh->cb == cb && bh->opaque == opaque) {
             list_del(bh);
-            free(bh);
+            qe_free(&bh);
         }
     }
 }
@@ -146,7 +146,7 @@ QETimer *qe_add_timer(int delay, void *opaque, void (*cb)(void *opaque))
 {
     QETimer *ti;
 
-    ti = malloc(sizeof(QETimer));
+    ti = qe_malloc(QETimer);
     if (!ti)
         return NULL;
     ti->timeout = get_clock_ms() + delay;
@@ -164,7 +164,7 @@ void qe_kill_timer(QETimer *ti)
     while (*pt != NULL) {
         if (*pt == ti) {
             *pt = ti->next;
-            free(ti);
+            qe_free(&ti);
         } else {
             pt = &(*pt)->next;
         }
@@ -180,7 +180,7 @@ static void __call_bottom_halves(void)
         bh = (BottomHalfEntry *)bottom_halves.prev;
         list_del(bh);
         bh->cb(bh->opaque);
-        free(bh);
+        qe_free(&bh);
     }
 }
 
@@ -209,7 +209,7 @@ static inline int check_timers(int max_delay)
             *pt = ti->next;
             /* warning: a new timer can be added in the callback */
             ti->cb(ti->opaque);
-            free(ti);
+            qe_free(&ti);
             call_bottom_halves();
         } else {
             if ((ti->timeout - timeout) < 0)

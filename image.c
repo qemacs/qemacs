@@ -268,18 +268,17 @@ static ImageBuffer *image_allocate(int pix_fmt, int width, int height)
     int size;
     ImageBuffer *ib;
 
-    ib = malloc(sizeof(ImageBuffer));
+    ib = qe_mallocz(ImageBuffer);
     if (!ib)
         return NULL;
-    memset(ib, 0, sizeof(ImageBuffer));
 
     size = avpicture_get_size(pix_fmt, width, height);
     if (size < 0)
         goto fail;
-    ptr = malloc(size);
+    ptr = qe_malloc_array(u8, size);
     if (!ptr) {
     fail:
-        free(ib);
+        qe_free(&ib);
         return NULL;
     }
 
@@ -292,8 +291,8 @@ static ImageBuffer *image_allocate(int pix_fmt, int width, int height)
 
 static void image_free(ImageBuffer *ib)
 {
-    free(ib->pict.data[0]);
-    free(ib);
+    qe_free(&ib->pict.data[0]);
+    qe_free(&ib);
 }
 
 
@@ -396,7 +395,9 @@ static int image_buffer_save(EditBuffer *b, const char *filename)
 static void image_buffer_close(EditBuffer *b)
 {
     ImageBuffer *ib = b->data;
+
     image_free(ib);
+    b->data = NULL;
 }
 
 
@@ -410,10 +411,7 @@ static void update_bmp(EditState *s)
     int dst_pix_fmt;
     int i;
 
-    if (is->disp_bmp) {
-        bmp_free(s->screen, is->disp_bmp);
-        is->disp_bmp = NULL;
-    }
+    bmp_free(s->screen, &is->disp_bmp);
 
     /* combine with the appropriate background if alpha is present */
     ib1 = NULL;
@@ -577,10 +575,7 @@ static void image_mode_close(EditState *s)
 {
     ImageState *is = s->mode_data;
 
-    if (is->disp_bmp) {
-        bmp_free(s->screen, is->disp_bmp);
-        is->disp_bmp = NULL;
-    }
+    bmp_free(s->screen, &is->disp_bmp);
     eb_free_callback(s->b, image_callback, s);
 }
 
@@ -761,7 +756,7 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
         }
     }
     ib1->alpha_info = img_get_alpha_info(&ib1->pict, ib1->pix_fmt, 
-                                        ib1->width, ib1->height);
+                                         ib1->width, ib1->height);
     set_new_image(b, ib1);
     image_free(ib);
     /* suppress that and use callback */
