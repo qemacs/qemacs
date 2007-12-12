@@ -64,6 +64,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst,
    _hPrev = hPrevInst;
    _hInstance = hInstance;
 
+   /* simplistic command line parser */
    p = command_line;
    count = 0;
    for (;;) {
@@ -75,7 +76,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst,
       count++;
    }
 
-   argv = (char **)malloc( (count + 1) * sizeof(char *) );
+   argv = (char **)malloc((count + 1) * sizeof(char *));
    if (!argv)
        return 0;
    

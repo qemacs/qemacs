@@ -6600,6 +6600,7 @@ int text_mode_init(EditState *s, ModeSavedData *saved_data)
 ModeSavedData *generic_mode_save_data(EditState *s)
 {
     ModeSavedData *saved_data;
+
     saved_data = malloc(sizeof(ModeSavedData));
     if (!saved_data)
         return NULL;

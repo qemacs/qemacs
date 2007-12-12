@@ -532,7 +532,6 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
     if (!font)
         return NULL;
 
-
     switch (style & QE_FAMILY_MASK) {
     default:
     case QE_FAMILY_FIXED:
@@ -1464,11 +1463,11 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
             
             /* XXX: error testing */
             shm_info = malloc(sizeof(XShmSegmentInfo));
-            ximage=XShmCreateImage(display, None, attr.depth, ZPixmap, NULL,
-                                   shm_info, b->width, b->height);
-            shm_info->shmid=shmget(IPC_PRIVATE,
-                                   b->height * ximage->bytes_per_line,
-                                   IPC_CREAT | 0777);
+            ximage = XShmCreateImage(display, None, attr.depth, ZPixmap, NULL,
+                                     shm_info, b->width, b->height);
+            shm_info->shmid = shmget(IPC_PRIVATE,
+                                     b->height * ximage->bytes_per_line,
+                                     IPC_CREAT | 0777);
             ximage->data = shmat(shm_info->shmid, 0, 0);
             shm_info->shmaddr = ximage->data;
             shm_info->readOnly = False;

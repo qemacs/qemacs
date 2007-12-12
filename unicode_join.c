@@ -28,8 +28,8 @@ static unsigned short *subst1;
 static unsigned short *ligature2;
 static unsigned short *ligature_long;
 
-static int subst1_count = 0;
-static int ligature2_count = 0;
+static int subst1_count;
+static int ligature2_count;
 
 /* XXX: eof ? */
 static int uni_get_be16(FILE *f)
@@ -58,7 +58,7 @@ void load_ligatures(void)
 {
     FILE *f;
     char filename[MAX_FILENAME_SIZE];
-    unsigned char buf[1024];
+    unsigned char sig[4];
     int long_count;
 
     if (find_resource_file(filename, sizeof(filename), "ligatures") < 0)
@@ -67,8 +67,7 @@ void load_ligatures(void)
     f = fopen(filename, "r");
     if (!f)
         return;
-    if (fread(buf, 1, 4, f) != 4 ||
-        memcmp(buf, "liga", 4) != 0) 
+    if (fread(sig, 1, 4, f) != 4 || memcmp(sig, "liga", 4) != 0)
         goto fail;
 
     subst1_count = uni_get_be16(f);
@@ -90,6 +89,9 @@ void load_ligatures(void)
     free(subst1);
     free(ligature2);
     free(ligature_long);
+    subst1 = NULL;
+    ligature2 = NULL;
+    ligature_long = NULL;
     subst1_count = 0;
     ligature2_count = 0;
     fclose(f);
@@ -107,7 +109,8 @@ static int find_ligature(int l1, int l2)
         v2 = ligature2[3 * m + 1];
         if (v1 == l1 && v2 == l2)
             return ligature2[3 * m + 2];
-        else if (v1 > l1 || (v1 == l1 && v2 > l2)) {
+        else
+        if (v1 > l1 || (v1 == l1 && v2 > l2)) {
             b = m - 1;
         } else {
             a = m + 1;
@@ -155,7 +158,7 @@ static int unicode_ligature(unsigned int *buf_out,
             *q++ = l;
             i += 2;
         } else {
-            /* generic case : use ligature_long[] table */
+            /* generic case: use ligature_long[] table */
             lig = ligature_long;
             for (;;) {
                 len1 = *lig++;
@@ -231,7 +234,7 @@ static void bidi_reverse_buf(unsigned int *str, int len)
         str[i] = fribidi_get_mirror_char(str[len - 1 - i]);
         str[len - 1 - i] = fribidi_get_mirror_char(tmp);
     }
-    /* do not forget central char ! */
+    /* do not forget central char! */
     if (len & 1) {
         str[len2] = fribidi_get_mirror_char(str[len2]);
     }
@@ -255,7 +258,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
 
     unicode_class = unicode_classify(src, src_size);
     if (unicode_class == 0 && !reverse) {
-        /* fast case : no special treatment */
+        /* fast case: no special treatment */
         len = src_size;
         if (len > dst_size)
             len = dst_size;
