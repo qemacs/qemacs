@@ -1084,7 +1084,7 @@ char *qe_strdup(const char *str)
 void *qe_realloc(void *pp, size_t size)
 {
     void *p = realloc(*(void **)pp, size);
-    if (p)
+    if (p || !size)
         *(void **)pp = p;
     return p;
 }
