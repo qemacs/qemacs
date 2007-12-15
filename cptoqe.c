@@ -143,7 +143,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
             continue;
         }
 
-        if (p[0] != '0' || tolower((unsigned char)p[1]) != 'x') {
+        if (p[0] != '0' || (p[1] != 'x' && p[1] != 'X')) {
             if (!has_iso_name) {
                 strcpy(iso_name, p);
                 has_iso_name = 1;

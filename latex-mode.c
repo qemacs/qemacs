@@ -206,7 +206,7 @@ static void latex_completion(StringArray *cs, const char *input)
     struct latex_function *func;
 
     for (func = latex_funcs; func->name; func++) {
-        if (stristart(func->name, input, NULL))
+        if (strxstart(func->name, input, NULL))
             add_string(cs, func->name);
     }
 }
@@ -216,7 +216,7 @@ static struct latex_function *find_latex_func(const char *name)
     struct latex_function *func;
 
     for (func = latex_funcs; func->name; func++) {
-        if (!stricmp(func->name, name))
+        if (!strxcmp(func->name, name))
             return func;
     }
     return NULL;

@@ -72,7 +72,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst,
         skip_spaces((const char **)&p);
         if (*p == '\0')
             break;
-        while (*p != '\0' && !css_is_space(*p))
+        while (*p != '\0' && !css_isspace(*p))
             p++;
         count++;
     }
@@ -88,7 +88,7 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst,
         if (*p == '\0')
             break;
         argv[argc++] = p;
-        while (*p != '\0' && !css_is_space(*p))
+        while (*p != '\0' && !css_isspace(*p))
             p++;
         *p = '\0';
         p++;

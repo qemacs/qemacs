@@ -264,13 +264,13 @@ void charset_completion(StringArray *cs, const char *input)
     const char *p, *q;
 
     for (charset = first_charset; charset != NULL; charset = charset->next) {
-        if (stristart(charset->name, input, NULL))
+        if (strxstart(charset->name, input, NULL))
             add_string(cs, charset->name);
         for (q = p = charset->aliases;; q++) {
             if (*q == '\0' || *q == '|') {
                 if (q > p) {
                     pstrncpy(name, sizeof(name), p, q - p);
-                    if (stristart(name, input, NULL))
+                    if (strxstart(name, input, NULL))
                         add_string(cs, name);
                 }
                 if (*q == '\0')
@@ -286,7 +286,7 @@ QECharset *find_charset(const char *name)
     QECharset *charset;
 
     for (charset = first_charset; charset != NULL; charset = charset->next) {
-        if (!stricmp(charset->name, name)
+        if (!strxcmp(charset->name, name)
         ||  strfind(charset->aliases, name, 1)) {
             return charset;
         }

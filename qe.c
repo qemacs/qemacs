@@ -431,15 +431,6 @@ void text_move_eol(EditState *s)
     s->offset = eb_goto_eol(s->b, s->offset);
 }
 
-int isword(int c)
-{
-    /* XXX: any unicode char >= 128 is considered as word. */
-    return (c >= 'a' && c <= 'z') ||
-        (c >= 'A' && c <= 'Z') ||
-        (c >= '0' && c <= '9') ||
-        (c == '_') || (c >= 128);
-}
-
 static void word_right(EditState *s, int w)
 {
     int c, offset1;
@@ -448,7 +439,7 @@ static void word_right(EditState *s, int w)
         if (s->offset >= s->b->total_size)
             break;
         c = eb_nextc(s->b, s->offset, &offset1);
-        if (isword(c) == w)
+        if (css_isword(c) == w)
             break;
         s->offset = offset1;
     }
@@ -462,7 +453,7 @@ static void word_left(EditState *s, int w)
         if (s->offset == 0)
             break;
         c = eb_prevc(s->b, s->offset, &offset1);
-        if (isword(c) == w)
+        if (css_isword(c) == w)
             break;
         s->offset = offset1;
     }
@@ -581,7 +572,7 @@ void do_fill_paragraph(EditState *s)
     if (!eb_is_empty_line(s->b, offset)) {
         while (offset < par_end) {
             c = eb_nextc(s->b, offset, &offset);
-            if (!isspace(c))
+            if (!css_isspace(c))
                 break;
             indent_size++;
         }
@@ -598,7 +589,7 @@ void do_fill_paragraph(EditState *s)
         space_size = 0;
         while (offset < par_end) {
             c = eb_nextc(s->b, offset, &offset1);
-            if (!isspace(c))
+            if (!css_isspace(c))
                 break;
             offset = offset1;
             space_size++;
@@ -608,7 +599,7 @@ void do_fill_paragraph(EditState *s)
         word_size = 0;
         while (offset < par_end) {
             c = eb_nextc(s->b, offset, &offset1);
-            if (isspace(c))
+            if (css_isspace(c))
                 break;
             offset = offset1;
             word_size++;
@@ -659,24 +650,27 @@ void do_fill_paragraph(EditState *s)
    function). Return next offset */
 static int eb_changecase(EditBuffer *b, int offset, int up)
 {
-    int offset1, ch, len;
+    int offset1, ch, ch1, len;
     char buf[MAX_CHAR_BYTES];
 
     ch = eb_nextc(b, offset, &offset1);
-    if (ch < 128) {
-        if (up)
-            ch = toupper(ch);
-        else
-            ch = tolower(ch);
-    }
-    len = unicode_to_charset(buf, ch, b->charset);
-    if (len == (offset1 - offset)) {
-        eb_write(b, offset, buf, len);
+    if (up)
+        ch1 = css_toupper(ch);
+    else
+        ch1 = css_tolower(ch);
+
+    if (ch == ch1) {
+        return offset1;
     } else {
-        eb_delete(b, offset, offset1 - offset);
-        eb_insert(b, offset, buf, len);
+        len = unicode_to_charset(buf, ch, b->charset);
+        if (len == (offset1 - offset)) {
+            eb_write(b, offset, buf, len);
+        } else {
+            eb_delete(b, offset, offset1 - offset);
+            eb_insert(b, offset, buf, len);
+        }
+        return offset + len;
     }
-    return offset + len;
 }
 
 void do_changecase_word(EditState *s, int up)
@@ -688,7 +682,7 @@ void do_changecase_word(EditState *s, int up)
         if (s->offset >= s->b->total_size)
             break;
         c = eb_nextc(s->b, s->offset, NULL);
-        if (!isword(c))
+        if (!css_isword(c))
             break;
         s->offset = eb_changecase(s->b, s->offset, up);
     }
@@ -3914,7 +3908,7 @@ again:
         if (c->nb_keys == 1) {
             if (!KEY_SPECIAL(key)) {
                 if (c->is_universal_arg) {
-                    if (key >= '0' && key <= '9') {
+                    if (css_isdigit(key)) {
                         if (c->argval == NO_ARG)
                             c->argval = 0;
                         c->argval = c->argval * 10 + (key - '0');
@@ -5339,8 +5333,8 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
         lower_count = 0;
         for (i = 0; i < size; i++) {
             c = buf[i];
-            lower_count += islower(c);
-            upper_count += isupper(c);
+            lower_count += css_islower(c);
+            upper_count += css_isupper(c);
         }
         if (lower_count > 0 && upper_count == 0)
             flags |= SEARCH_FLAG_IGNORECASE;
@@ -5350,7 +5344,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
     for (i = 0; i < size; i++) {
         c = buf[i];
         if (flags & SEARCH_FLAG_IGNORECASE) 
-            buf1[i] = toupper(c);
+            buf1[i] = css_toupper(c);
         else
             buf1[i] = c;
     }
@@ -5379,7 +5373,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
             if (offset == 0)
                 goto word_start_found;
             eb_read(b, offset - 1, &ch, 1);
-            if (!isword(ch))
+            if (!css_isword(ch))
                 goto word_start_found;
             else
                 continue;
@@ -5390,7 +5384,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
         for (;;) {
             eb_read(b, offset + i, &ch, 1);
             if (flags & SEARCH_FLAG_IGNORECASE) 
-                ch = toupper(ch);
+                ch = css_toupper(ch);
             if (ch != buf1[i])
                     break;
             i++;
@@ -5400,7 +5394,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
                     if (offset + size >= total_size)
                         goto word_end_found;
                     eb_read(b, offset + size, &ch, 1);
-                    if (!isword(ch))
+                    if (!css_isword(ch))
                         goto word_end_found;
                     break;
                 }

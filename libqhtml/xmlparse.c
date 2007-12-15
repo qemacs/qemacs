@@ -1045,12 +1045,13 @@ static int xml_tagcmp(const char *s1, const char *s2)
     int d;
 
     while (*s2) {
-        d = (unsigned char)*s2 - tolower((unsigned char)*s1);
+        d = (unsigned char)*s2 - css_tolower((unsigned char)*s1);
         if (d)
             return d;
         s2++;
         s1++;
     }
+    /* XXX: Should only return 0 if (*s1) is separator */
     return 0;
 }
 

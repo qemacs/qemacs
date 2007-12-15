@@ -21,8 +21,8 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <ctype.h>
 #include <string.h>
+#include <ctype.h>
 #include <assert.h>
 
 #ifndef countof

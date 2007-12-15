@@ -23,7 +23,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <ctype.h>
 #include <errno.h>
 #include <signal.h>
 #include <time.h>
@@ -751,7 +750,7 @@ static void tty_emulate(ShellState *s, int c)
             s->esc1 = c;
             break;
         }
-        if (c >= '0' && c <= '9') {
+        if (css_isdigit(c)) {
             if (s->nb_esc_params < MAX_ESC_PARAMS) {
                 if (!s->has_params[s->nb_esc_params]) {
                     s->esc_params[s->nb_esc_params] = 0;
@@ -1357,7 +1356,7 @@ static void do_compile_error(EditState *s, int dir)
             c = eb_nextc(b, offset, &offset);
             if (c == ':')
                 break;
-            if (!isdigit(c))
+            if (!css_isdigit(c))
                 goto next_line;
             line_num = line_num * 10 + c - '0';
         }

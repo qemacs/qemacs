@@ -21,10 +21,16 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include <ctype.h>
 #include <string.h>
+#include <ctype.h>
 #include <getopt.h>
 #include <assert.h>
+
+static inline char *skipspaces(char *p) {
+    while (isspace((unsigned char)*p))
+        p++;
+    return p;
+}
 
 static int unicode_to_utf8(char *buf, unsigned int c)
 {
@@ -138,13 +144,11 @@ int main(int argc, char **argv)
     for (;;) {
         if (fgets(buf, sizeof(buf), f) == NULL)
             break;
-        p = buf + strlen(buf) - 1;
-        if (p >= buf && *p == '\n')
-            *p = '\0';
-        p = buf;
+        p = buf + strlen(buf);
+        if (p > buf && p[-1] == '\n')
+            *--p = '\0';
 
-        while (isspace((unsigned char)*p))
-            p++;
+        p = skipspaces(buf);
 
         if (*p == '#' || *p == '\0') {
             if (to_utf8) {
@@ -157,8 +161,7 @@ int main(int argc, char **argv)
 
         l->buf_in_size = 0;
         for (;;) {
-            while (isspace((unsigned char)*p))
-                p++;
+            p = skipspaces(p);
             if (*p == '=')
                 break;
             if (*p == '\0') {
@@ -171,8 +174,7 @@ int main(int argc, char **argv)
         
         l->buf_out_size = 0;
         for (;;) {
-            while (isspace((unsigned char)*p))
-                p++;
+            p = skipspaces(p);
             /* stop at the first comment */
             if (*p == '\0' || *p == '/')
                 break;

@@ -116,11 +116,7 @@ TARGETLIBS:=
 TARGETS+=qe$(EXE) qe-doc.html kmaps ligatures
 
 OBJS=qe.o charset.o buffer.o \
-     input.o unicode_join.o display.o util.o hex.o list.o 
-
-ifndef CONFIG_FFMPEG
-OBJS+= cutils.o
-endif
+     input.o unicode_join.o display.o util.o hex.o list.o cutils.o
 
 ifndef CONFIG_WIN32
 OBJS+= unix.o tty.o 

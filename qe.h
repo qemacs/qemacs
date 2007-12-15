@@ -27,7 +27,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <ctype.h>
 #include <signal.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -158,8 +157,52 @@ char *makepath(char *buf, int buf_size, const char *path, const char *filename);
 void splitpath(char *dirname, int dirname_size,
                char *filename, int filename_size, const char *pathname);
 
-int strfind(const char *keytable, const char *str, int casefold);
+static inline int css_isspace(int ch) {
+    /* CG: what about \v and \f */
+    return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r');
+}
+static inline int css_isblank(int ch) {
+    return (ch == ' ' || ch == '\t');
+}
+static inline int css_isdigit(int ch) {
+    return (ch >= '0' && ch <= '9');
+}
+static inline int css_isupper(int ch) {
+    return (ch >= 'A' && ch <= 'Z');
+}
+static inline int css_islower(int ch) {
+    return (ch >= 'a' && ch <= 'z');
+}
+static inline int css_isalpha(int ch) {
+    return ((ch | ('a' - 'A')) >= 'a' && (ch | ('a' - 'A')) <= 'z');
+}
+static inline int css_isxdigit(int ch) {
+    return ((ch >= '0' && ch <= '9') ||
+            ((ch | ('a' - 'A')) >= 'a' && (ch | ('a' - 'A')) <= 'f'));
+}
+static inline int css_isalnum(int ch) {
+    return ((ch >= '0' && ch <= '9') ||
+            ((ch | ('a' - 'A')) >= 'a' && (ch | ('a' - 'A')) <= 'z'));
+}
+static inline int css_isword(int c) {
+    /* XXX: any unicode char >= 128 is considered as word. */
+    return css_isalnum(c) || (c == '_') || (c >= 128);
+}
+static inline int css_toupper(int ch) {
+    return (ch >= 'a' && ch <= 'z') ? ch + 'A' - 'a' : ch;
+}
+static inline int css_tolower(int ch) {
+    return (ch >= 'A' && ch <= 'Z') ? ch + 'a' - 'A' : ch;
+}
+
+void css_strtolower(char *buf, int buf_size);
 void skip_spaces(const char **pp);
+
+int strfind(const char *keytable, const char *str, int casefold);
+#define stristart(str, val, ptr)   qe_stristart(str, val, ptr)
+int stristart(const char *str, const char *val, const char **ptr);
+int strxstart(const char *str, const char *val, const char **ptr);
+int strxcmp(const char *str1, const char *str2);
 int ustristart(const unsigned int *str, const char *val, const unsigned int **ptr);
 static inline void umemmove(unsigned int *dest, unsigned int *src, int len) {
     memmove(dest, src, len * sizeof(unsigned int));
@@ -192,13 +235,6 @@ static inline int css_is_inter_rect(const CSSRect *a, const CSSRect *b) {
               a->y2 <= b->y1 ||
               a->y1 >= b->y2));
 }
-
-/* CG: what about \v and \f */
-static inline int css_is_space(int ch) {
-    return (ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t');
-}
-
-void css_strtolower(char *buf, int buf_size);
 
 int get_clock_ms(void);
 
@@ -1359,7 +1395,6 @@ void do_eof(EditState *s);
 void do_bol(EditState *s);
 void do_eol(EditState *s);
 void do_word_right(EditState *s, int dir);
-int isword(int c);
 int eb_next_paragraph(EditBuffer *b, int offset);
 int eb_start_paragraph(EditBuffer *b, int offset);
 void do_backward_paragraph(EditState *s);

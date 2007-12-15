@@ -1522,7 +1522,7 @@ int eb_is_empty_line(EditBuffer *b, int offset)
         c = eb_nextc(b, offset, &offset);
         if (c == '\n')
             return 1;
-        if (!isspace(c))
+        if (!css_isspace(c))
             break;
     }
     return 0;

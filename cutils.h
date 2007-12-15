@@ -23,20 +23,19 @@
 
 #include <stdlib.h>
 
+/* These definitions prevent a clash with ffmpeg's cutil module. */
+
+#define strstart(str, val, ptr)    qe_strstart(str, val, ptr)
+#define pstrcpy(buf, sz, str)      qe_pstrcpy(buf, sz, str)
+#define pstrcat(buf, sz, str)      qe_pstrcat(buf, sz, str)
+#define pstrncpy(buf, sz, str, n)  qe_pstrncpy(buf, sz, str, n)
+
 int strstart(const char *str, const char *val, const char **ptr);
-int stristart(const char *str, const char *val, const char **ptr);
-int stricmp(const char *str1, const char *str2);
 void pstrcpy(char *buf, int buf_size, const char *str);
 char *pstrcat(char *buf, int buf_size, const char *s);
-
-/* CG: These definitions should be moved to a different header to
- * avoid conflict with ffmpeg's cutil module.
- */
 char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 
-/* list.c */
-
-/* Double linked lists. Same api as the linux kernel */
+/* Double linked lists. Same API as the linux kernel */
 
 struct list_head {
     struct list_head *next, *prev;

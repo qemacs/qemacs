@@ -359,17 +359,108 @@ void skip_spaces(const char **pp)
     const char *p;
 
     p = *pp;
-    while (css_is_space(*p))
+    while (css_isspace(*p))
         p++;
     *pp = p;
 }
 
-/* need this for >= 256 */
-static inline int utoupper(int c)
+/**
+ * Return TRUE if val is a prefix of str (case independent). If it
+ * returns TRUE, ptr is set to the next character in 'str' after the
+ * prefix.
+ *
+ * @param str input string
+ * @param val prefix to test
+ * @param ptr updated after the prefix in str in there is a match
+ * @return TRUE if there is a match */
+int stristart(const char *str, const char *val, const char **ptr)
 {
-    if (c >= 'a' && c <= 'z')
-        c += 'A' - 'a';
-    return c;
+    const char *p, *q;
+
+    p = str;
+    q = val;
+    while (*q != '\0') {
+        if (css_toupper((unsigned char)*p) != css_toupper((unsigned char)*q)) {
+            return 0;
+        }
+        p++;
+        q++;
+    }
+    if (ptr)
+        *ptr = p;
+    return 1;
+}
+
+/**
+ * Return TRUE if val is a prefix of str (case independent). If it
+ * returns TRUE, ptr is set to the next character in 'str' after the
+ * prefix.
+ *
+ * Spaces, dashes and underscores are also ignored in this comparison.
+ *
+ * @param str input string
+ * @param val prefix to test
+ * @param ptr updated after the prefix in str in there is a match
+ * @return TRUE if there is a match */
+int strxstart(const char *str, const char *val, const char **ptr)
+{
+    const char *p, *q;
+    p = str;
+    q = val;
+    while (*q != '\0') {
+        if (css_toupper((unsigned char)*p) != css_toupper((unsigned char)*q)) {
+            if (*p == '-' || *p == '_' || *p == ' ') {
+                p++;
+                continue;
+            }
+            if (*q == '-' || *q == '_' || *q == ' ') {
+                q++;
+                continue;
+            }
+            return 0;
+        }
+        p++;
+        q++;
+    }
+    if (ptr)
+        *ptr = p;
+    return 1;
+}
+
+/**
+ * Compare strings str1 and str2 case independently.
+ * Spaces, dashes and underscores are also ignored in this comparison.
+ *
+ * @param str1 input string 1 (left operand)
+ * @param str2 input string 2 (right operand)
+ * @return -1, 0, +1 reflecting the sign of str1 <=> str2
+ */
+int strxcmp(const char *str1, const char *str2)
+{
+    const char *p, *q;
+    int d;
+    
+    p = str1;
+    q = str2;
+    for (;;) {
+        d = css_toupper((unsigned char)*p) - css_toupper((unsigned char)*q);
+        if (d) {
+            if (*p == '-' || *p == '_' || *p == ' ') {
+                p++;
+                continue;
+            }
+            if (*q == '-' || *q == '_' || *q == ' ') {
+                q++;
+                continue;
+            }
+            return d < 0 ? -1 : +1;
+        }
+        if (!*p)
+            break;
+        p++;
+        q++;
+    }
+    return 0;
 }
 
 int ustristart(const unsigned int *str, const char *val,
@@ -380,7 +471,7 @@ int ustristart(const unsigned int *str, const char *val,
     p = str;
     q = val;
     while (*q != '\0') {
-        if (utoupper(*p) != utoupper(*q))
+        if (css_toupper(*p) != css_toupper(*q))
             return 0;
         p++;
         q++;
@@ -405,7 +496,7 @@ void get_str(const char **pp, char *buf, int buf_size, const char *stop)
     for (;;) {
         c = *p;
         /* Should stop on spaces and eat them */
-        if (c == '\0' || css_is_space(c) || strchr(stop, c))
+        if (c == '\0' || css_isspace(c) || strchr(stop, c))
             break;
         if ((q - buf) < buf_size - 1)
             *q++ = c;
@@ -516,7 +607,7 @@ static int strtokey1(const char **pp)
     if (p[0] == 'f' && p[1] >= '1' && p[1] <= '9') {
         i = p[1] - '0';
         p += 2;
-        if (p1 == isdigit((unsigned char)*p))
+        if (css_isdigit(*p))
             i = i * 10 + *p++ - '0';
         key = KEY_F1 + i - 1;
         *pp = p1;
@@ -544,7 +635,7 @@ int strtokey(const char **pp)
         p += 2;
         key = KEY_META(strtokey1(&p));
     } else
-    if (p[0] == 'C' && p[1] == '-' && p[0] == 'M' && p[1] == '-') {
+    if (p[0] == 'C' && p[1] == '-' && p[2] == 'M' && p[3] == '-') {
         p += 4;
         key = KEY_META(KEY_CTRL(strtokey1(&p)));
     } else {
@@ -609,7 +700,7 @@ void keytostr(char *buf, int buf_size, int key)
 
 int to_hex(int key)
 {
-    if (key >= '0' && key <= '9')
+    if (css_isdigit(key))
         return key - '0';
     else if (key >= 'a' && key <= 'f')
         return key - 'a' + 10;
@@ -664,7 +755,7 @@ void color_completion(StringArray *cs, const char *input)
     def = custom_colors;
     count = nb_css_colors + nb_custom_colors;
     while (count > 0) {
-        if (stristart(def->name, input, NULL))
+        if (strxstart(def->name, input, NULL))
             add_string(cs, def->name);
         def++;
         count--;
@@ -675,7 +766,7 @@ static ColorDef *css_lookup_color(ColorDef *def, int count,
                                   const char *name)
 {
     while (count > 0) {
-        if (!stricmp(def->name, name)) {
+        if (!strxcmp(def->name, name)) {
             return def;
         }
         def++;
@@ -736,7 +827,7 @@ int css_get_color(QEColor *color_ptr, const char *p)
     }
     
     rgba[3] = 0xff;
-    if (isxdigit((unsigned char)*p)) {
+    if (css_isxdigit((unsigned char)*p)) {
         goto parse_num;
     } else if (*p == '#') {
         /* handle '#' notation */
@@ -832,10 +923,9 @@ void css_strtolower(char *buf, __unused__ int buf_size)
 {
     int c;
 
-    /* XXX: handle unicode */
-    while (*buf) {
-        c = tolower((unsigned char)*buf);
-        *buf++ = c;
+    /* XXX: handle unicode / utf8 */
+    while ((c = (unsigned char)*buf) != '\0') {
+        *buf++ = css_tolower(c);
     }
 }
 
@@ -1088,4 +1178,3 @@ void *qe_realloc(void *pp, size_t size)
         *(void **)pp = p;
     return p;
 }
-

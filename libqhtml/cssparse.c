@@ -61,12 +61,12 @@ static int css_get_length(int *length_ptr, int *unit_ptr, const char *p)
     p1 = p;
     if (*p == '+' || *p == '-')
         p++;
-    while (isdigit((unsigned char)*p))
+    while (css_isdigit(*p))
         p++;
     if (*p == '.') {
         p++;
-        while (isdigit((unsigned char)*p))
-        p++;
+        while (css_isdigit(*p))
+            p++;
     }
     len = p - p1;
     if (len == 0)
@@ -677,27 +677,28 @@ static int bgetc1(CSSParseState *b)
 
 static int bgetc(CSSParseState *b)
 {
-    int ch;
- redo:
-    ch = bgetc1(b);
-    if (ch == '/') {
+    int ch, last;
+
+    for (;;) {
+        ch = bgetc1(b);
+        if (ch != '/')
+            return ch;
+
         ch = bgetc1(b);
         if (ch != '*') {
             if (ch != EOF)
                 b->ptr--;
             return '/';
         }
+        last = 0;
         for (;;) {
             ch = bgetc1(b);
-            if (ch != '*')
-                continue;
-            ch = bgetc1(b);
-            if (ch == '/')
+            if (ch == EOF)
+                return ch;
+            if (ch == '/' && last == '*')
                 break;
+            last = ch;
         }
-        goto redo;
-    } else {
-        return ch;
     }
 }
 
@@ -729,10 +730,7 @@ static void read_ident(CSSParseState *b, int *ch_ptr, char *ident, int ident_siz
     c = *ch_ptr;
     q = ident;
     for (;;) {
-        if (!((c >= 'A' && c <= 'Z') ||
-              (c >= 'a' && c <= 'z') ||
-              (c >= '0' && c <= '9') ||
-              c == '*' || c == '_' || c == '-'))
+        if (!(css_isalnum(c) || c == '*' || c == '_' || c == '-'))
             break;
         if ((q - ident) < ident_size - 1)
             *q++ = c;
@@ -747,7 +745,7 @@ static void bskip_spaces(CSSParseState *b, int *ch_ptr)
     int c;
 
     c = *ch_ptr;
-    while (css_is_space(c))
+    while (css_isspace(c))
         c = bgetc(b);
     *ch_ptr = c;
 }
@@ -1054,11 +1052,13 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
                     tree_op = CSS_TREE_OP_PRECEEDED;
                     ch = bgetc(b);
                     goto add_tree;
-                } else if (ch == '>') {
+                } else
+                if (ch == '>') {
                     tree_op = CSS_TREE_OP_CHILD;
                     ch = bgetc(b);
                     goto add_tree;
-                } else if (isalpha(ch)) {
+                } else
+                if (css_isalpha(ch)) {
                     tree_op = CSS_TREE_OP_DESCENDANT;
                 add_tree:
                     ss1 = qe_malloc_dup(ss, sizeof(CSSSimpleSelector));

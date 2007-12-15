@@ -26,7 +26,6 @@
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <ctype.h>
 #include <signal.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
@@ -413,7 +412,7 @@ static void tty_read_handler(void *opaque)
         }
         break;
     case IS_CSI:
-        if (isdigit(ch)) {
+        if (css_isdigit(ch)) {
             ts->input_param = ts->input_param * 10 + ch - '0';
             break;
         }
