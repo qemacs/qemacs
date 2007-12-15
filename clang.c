@@ -30,12 +30,12 @@ static const char c_types[] =
     "|char|double|float|int|long|unsigned|short|signed|void|var|"
     "_Bool|_Complex|_Imaginary";
 
-static int get_c_keyword(char *buf, int buf_size, unsigned int **pp)
+#if 0
+static int get_c_keyword(char *buf, int buf_size, unsigned int *p)
 {
-    unsigned int *p, c;
+    unsigned int c;
     char *q;
 
-    p = *pp;
     c = *p;
     q = buf;
     if ((c >= 'a' && c <= 'z') ||
@@ -52,24 +52,24 @@ static int get_c_keyword(char *buf, int buf_size, unsigned int **pp)
                  (c >= '0' && c <= '9'));
     }
     *q = '\0';
-    *pp = p;
     return q - buf;
 }
+#endif
 
 /* colorization states */
 enum {
-    C_COMMENT = 1,
-    C_COMMENT1,
-    C_STRING,
-    C_STRING_Q,
-    C_PREPROCESS,
+    C_COMMENT    = 1,
+    C_COMMENT1   = 2,
+    C_STRING     = 4,
+    C_STRING_Q   = 8,
+    C_PREPROCESS = 16,
 };
 
 void c_colorize_line(unsigned int *buf, int len, 
                      int *colorize_state_ptr, __unused__ int state_only)
 {
-    int c, state, l, type_decl;
-    unsigned int *p, *p_start, *p1;
+    int c, state, style, klen, type_decl;
+    unsigned int *p, *p_start, *p1, *p2;
     char kbuf[32];
 
     state = *colorize_state_ptr;
@@ -77,137 +77,172 @@ void c_colorize_line(unsigned int *buf, int len,
     p_start = p;
     type_decl = 0;
     c = 0;      /* turn off stupid egcs-2.91.66 warning */
+    style = 0;
 
-    /* if already in a state, go directly in the code parsing it */
-    switch (state) {
-    case C_COMMENT:
-        goto parse_comment;
-    case C_COMMENT1:
-        goto parse_comment1;
-    case C_STRING:
-    case C_STRING_Q:
-        goto parse_string;
-    case C_PREPROCESS:
-        goto parse_preprocessor;
-    default:
-        break;
+    if (state) {
+        /* if already in a state, go directly in the code parsing it */
+        if (state & C_PREPROCESS)
+            style = QE_STYLE_PREPROCESS;
+        if (state & C_COMMENT)
+            goto parse_comment;
+        if (state & C_COMMENT1)
+            goto parse_comment1;
+        if (state & C_STRING)
+            goto parse_string;
+        if (state & C_STRING_Q)
+            goto parse_string_q;
     }
 
     for (;;) {
         p_start = p;
-        c = *p;
+        c = *p++;
+
         switch (c) {
         case '\n':
+            p--;
             goto the_end;
         case '/':
-            p++;
+            if (*p == '/') {
+                /* line comment */
+            parse_comment1:
+                state |= C_COMMENT1;
+                p = buf + len;
+                set_color(p_start, p, QE_STYLE_COMMENT);
+                goto the_end;
+            } else
             if (*p == '*') {
                 /* normal comment */
                 p++;
-                state = C_COMMENT;
             parse_comment:
+                state |= C_COMMENT;
                 while (*p != '\n') {
                     if (p[0] == '*' && p[1] == '/') {
                         p += 2;
-                        state = 0;
+                        state &= ~C_COMMENT;
                         break;
                     } else {
                         p++;
                     }
                 }
                 set_color(p_start, p, QE_STYLE_COMMENT);
-            } else
-            if (*p == '/') {
-                /* line comment */
-            parse_comment1:
-                state = C_COMMENT1;
-                p = buf + len;
-                set_color(p_start, p, QE_STYLE_COMMENT);
-                if (p > buf && (p[-1] & CHAR_MASK) != '\\') 
-                    state = 0;
+                continue;
             }
             break;
-        case '#':
-            /* preprocessor */
-        parse_preprocessor:
+        case '#':       /* preprocessor */
             state = C_PREPROCESS;
-            /* incorrect if preprocessing line contains a comment */
-            p = buf + len;
+            style = QE_STYLE_PREPROCESS;
+            break;
+        set_preprocessor:
             set_color(p_start, p, QE_STYLE_PREPROCESS);
-            if (p > buf && (p[-1] & CHAR_MASK) != '\\') 
-                state = 0;
-            goto the_end;
-        case 'L':
-            if (p[1] == '\'') {
+            continue;
+        case 'L':       /* wide character and string literals */
+            if (*p == '\'') {
                 p++;
-                state = C_STRING_Q;
-                goto string;
+                goto parse_string_q;
             }
-            if (p[1] == '\"') {
+            if (*p == '\"') {
                 p++;
-                state = C_STRING;
-                goto string;
+                goto parse_string;
             }
             goto normal;
-        case '\'':
-            state = C_STRING_Q;
-            goto string;
-        case '\"':
-            /* strings/chars */
-            state = C_STRING;
-        string:
-            p++;
-        parse_string:
-            /* XXX: separate styles for string and char const? */
-            while (*p != '\n') {
+        case '\'':              /* character constant */
+        parse_string_q:
+            state |= C_STRING_Q;
+            for (; *p != '\n'; p++) {
                 if (*p == '\\') {
                     p++;
                     if (*p == '\n')
                         break;
+                } else
+                if (*p == '\'') {
                     p++;
-                } else if ((*p == '\'' && state == C_STRING_Q) ||
-                           (*p == '\"' && state == C_STRING)) {
-                    p++;
-                    state = 0;
+                    state &= ~C_STRING_Q;
                     break;
-                } else {
-                    p++;
                 }
             }
+            if (state & C_PREPROCESS)
+                goto set_preprocessor;
+            set_color(p_start, p, QE_STYLE_STRING_Q);
+            continue;
+        case '\"':            /* strings literal */
+        parse_string:
+            state |= C_STRING;
+            for (; *p != '\n'; p++) {
+                if (*p == '\\') {
+                    p++;
+                    if (*p == '\n')
+                        break;
+                } else
+                if (*p == '\"') {
+                    p++;
+                    state &= ~C_STRING;
+                    break;
+                }
+            }
+            if (state & C_PREPROCESS)
+                goto set_preprocessor;
             set_color(p_start, p, QE_STYLE_STRING);
-            break;
+            continue;
         case '=':
-            p++;
             /* exit type declaration */
+            /* does not handle this: int i = 1, j = 2; */
             type_decl = 0;
+            break;
+        case '<':       /* JavaScript extension */
+            if (*p == '!' && p[1] == '-' && p[2] == '-')
+                goto parse_comment1;
             break;
         default:
         normal:
+            if (state & C_PREPROCESS)
+                break;
+            if (c >= '0' && c <= '9') {
+                while (!(p & 0x7f) && (isalnum(*p) || *p == '.')) {
+                    p++;
+                }
+                set_color(p_start, p, QE_STYLE_NUMBER);
+                continue;
+            }
             if ((c >= 'a' && c <= 'z') ||
                 (c >= 'A' && c <= 'Z') || 
                 (c == '_')) {
                 
-                /* XXX: should handle inplace and support :: */
-                l = get_c_keyword(kbuf, sizeof(kbuf), &p);
-                p1 = p;
-                while (*p == ' ' || *p == '\t')
+                /* XXX: should support :: */
+                klen = 0;
+                p--;
+                do {
+                    if (klen < countof(kbuf) - 1)
+                        kbuf[klen++] = c;
                     p++;
+                    c = *p;
+                } while ((c >= 'a' && c <= 'z') ||
+                         (c >= 'A' && c <= 'Z') ||
+                         (c == '_') ||
+                         (c >= '0' && c <= '9'));
+
+                kbuf[klen] = '\0';
+                p1 = p;
+                while (*p1 == ' ' || *p1 == '\t')
+                    p1++;
+                p2 = p1;
+                while (*p2 == '*' || *p2 == ' ' || *p2 == '\t')
+                    p2++;
                 if (strfind(c_keywords, kbuf, 0)) {
-                    set_color(p_start, p1, QE_STYLE_KEYWORD);
+                    set_color(p_start, p, QE_STYLE_KEYWORD);
                 } else
                 if (strfind(c_types, kbuf, 0)
-                ||  (l > 2 && kbuf[l - 2] == '_' && kbuf[l - 1] == 't')) {
+                ||  (klen > 2 && kbuf[klen - 2] == '_' && kbuf[klen - 1] == 't')) {
                     /* c type */
                     /* if not cast, assume type declaration */
-                    if (*p != ')') {
+                    if (*p2 != ')') {
                         type_decl = 1;
                     }
-                    set_color(p_start, p1, QE_STYLE_TYPE);
+                    set_color(p_start, p, QE_STYLE_TYPE);
                 } else
                 if (*p == '(') {
                     /* function call */
                     /* XXX: different styles for call and definition */
-                    set_color(p_start, p1, QE_STYLE_FUNCTION);
+                    set_color(p_start, p, QE_STYLE_FUNCTION);
                 } else {
                     /* assume typedef if starting at first column */
                     if (p_start == buf)
@@ -216,19 +251,22 @@ void c_colorize_line(unsigned int *buf, int len,
                     if (type_decl) {
                         if (p_start == buf) {
                             /* assume type if first column */
-                            set_color(p_start, p1, QE_STYLE_TYPE);
+                            set_color(p_start, p, QE_STYLE_TYPE);
                         } else {
-                            set_color(p_start, p1, QE_STYLE_VARIABLE);
+                            set_color(p_start, p, QE_STYLE_VARIABLE);
                         }
                     }
                 }
-            } else {
-                p++;
+                continue;
             }
             break;
         }
+        set_color1(p_start, style);
     }
  the_end:
+    /* strip state if not overflowing from a comment */
+    if (!(state & C_COMMENT) && p > buf && ((p[-1] & CHAR_MASK) != '\\'))
+        state &= ~(C_COMMENT1 | C_PREPROCESS);
     *colorize_state_ptr = state;
 }
 
@@ -320,8 +358,7 @@ static void do_c_indent(EditState *s)
     /* find start of line */
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
     line_num1 = line_num;
-    offset = s->offset;
-    offset = eb_goto_bol(s->b, offset);
+    offset = eb_goto_bol(s->b, s->offset);
     /* now find previous lines and compute indent */
     pos = 0;
     lpos = -1; /* position of the last instruction start */
@@ -333,9 +370,8 @@ static void do_c_indent(EditState *s)
         if (offsetl == 0)
             break;
         line_num--;
-        eb_prevc(s->b, offsetl, &offsetl);
-        offsetl = eb_goto_bol(s->b, offsetl);
-        len = get_colorized_line(s, buf, MAX_BUF_SIZE - 1, offsetl, line_num);
+        offsetl = eb_prev_line(s->b, offsetl);
+        len = get_colorized_line(s, buf, countof(buf), offsetl, line_num);
         /* store indent position */
         pos1 = find_indent1(s, buf);
         p = buf + len;
@@ -455,7 +491,7 @@ static void do_c_indent(EditState *s)
     }
  end_parse:
     /* compute special cases which depend on the chars on the current line */
-    len = get_colorized_line(s, buf, MAX_BUF_SIZE - 1, offset, line_num1);
+    len = get_colorized_line(s, buf, countof(buf), offset, line_num1);
 
     if (stack_ptr == 0) {
         if (!pos && lpos >= 0) {
@@ -507,7 +543,7 @@ static void do_c_indent(EditState *s)
     offset1 = offset;
     insert_spaces(s, &offset1, pos);
     if (s->offset == offset) {
-        /* move to the inddentation if point was in indent space */
+        /* move to the indentation if point was in indent space */
         s->offset = offset1;
     }
 }
@@ -578,16 +614,35 @@ static void do_c_forward_preprocessor(EditState *s, int dir)
 
 static void do_c_forward_block(EditState *s, int dir)
 {
+    unsigned int buf[MAX_BUF_SIZE];
     char balance[MAX_LEVEL];
-    int c, c1, offset, offset0, level;
+    int line_num, col_num, offset, len, pos, style, c, c1, level;
 
-    /* XXX: should use colorization to deal with syntax */
+    eb_get_pos(s->b, &line_num, &col_num, s->offset);
+    offset = eb_goto_bol2(s->b, s->offset, &pos);
+    len = get_colorized_line(s, buf, countof(buf), offset, line_num);
+    style = buf[pos] >> STYLE_SHIFT;
     level = 0;
-    offset0 = offset = s->offset;
+
     if (dir < 0) {
-        for (; offset > 0;) {
-            c = eb_prevc(s->b, offset, &offset);
-            switch (c) {
+        for (;;) {
+            if (pos == 0) {
+                if (offset <= 0)
+                    break;
+                line_num--;
+                offset = eb_prev_line(s->b, offset);
+                pos = get_colorized_line(s, buf, countof(buf), offset, line_num);
+                continue;
+            }
+            c = buf[--pos];
+            if (style != c >> STYLE_SHIFT) {
+                if (style == 0)
+                    continue;
+                style = 0;
+                if ((c >> STYLE_SHIFT) != 0)
+                    continue;
+            }
+            switch (c &= CHAR_MASK) {
             case ')':
                 c1 = '(';
                 goto push;
@@ -601,7 +656,7 @@ static void do_c_forward_block(EditState *s, int dir)
                     balance[level] = c1;
                 }
                 level++;
-                continue;
+                break;
             case '(':
             case '[':
             case '{':
@@ -614,20 +669,30 @@ static void do_c_forward_block(EditState *s, int dir)
                     if (level <= 0)
                         goto the_end;
                 }
-                continue;
-            default:
-                continue;
+                break;
             }
         }
     } else {
         for (;;) {
-            c = eb_nextc(s->b, offset, &offset);
-        again:
-            switch (c) {
-            case '\n':
+            if (pos >= len) {
+                line_num++;
+                pos = 0;
+                offset = eb_next_line(s->b, offset);
                 if (offset >= s->b->total_size)
-                    goto the_end;
+                    break;
+                len = get_colorized_line(s, buf, countof(buf), offset, line_num);
                 continue;
+            }
+            c = buf[pos];
+            pos++;
+            if (style != c >> STYLE_SHIFT) {
+                if (style == 0)
+                    continue;
+                style = 0;
+                if ((c >> STYLE_SHIFT) != 0)
+                    continue;
+            }
+            switch (c &= CHAR_MASK) {
             case '(':
                 c1 = ')';
                 goto push1;
@@ -641,7 +706,7 @@ static void do_c_forward_block(EditState *s, int dir)
                     balance[level] = c1;
                 }
                 level++;
-                continue;
+                break;
             case ')':
             case ']':
             case '}':
@@ -654,34 +719,15 @@ static void do_c_forward_block(EditState *s, int dir)
                     if (level <= 0)
                         goto the_end;
                 }
-                continue;
-            case '/':
-                c = eb_nextc(s->b, offset, &offset);
-                if (c == '/') {
-                    while ((c = eb_nextc(s->b, offset, &offset)) != '\n')
-                        continue;
-                } else
-                if (c == '*') {
-                    for (;;) {
-                        while ((c = eb_nextc(s->b, offset, &offset)) != '*') {
-                            if (offset >= s->b->total_size)
-                                goto the_end;
-                        }
-                        while ((c = eb_nextc(s->b, offset, &offset)) == '*')
-                            continue;
-                        if (c == '/')
-                            break;
-                    }
-                    continue;
-                } else {
-                    goto again;
-                }
-            default:
-                continue;
+                break;
             }
         }
     }
 the_end:
+    while (pos > 0) {
+        eb_nextc(s->b, offset, &offset);
+        pos--;
+    }
     s->offset = offset;
 }
 
