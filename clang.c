@@ -326,8 +326,8 @@ static void insert_spaces(EditState *s, int *offset_ptr, int i)
     /* insert needed spaces */
     while (i > 0) {
         size = i;
-        if (size > (int)sizeof(buf1))
-            size = (int)sizeof(buf1);
+        if (size > ssizeof(buf1))
+            size = ssizeof(buf1);
         memset(buf1, ' ', size);
         eb_insert(s->b, offset, buf1, size);
         i -= size;
@@ -458,7 +458,7 @@ static void do_c_indent(EditState *s)
                                 p--;
                             p2 = p;
                             q = buf1;
-                            while (q < buf1 + sizeof(buf1) - 1 && p2 <= p1) {
+                            while (q < buf1 + countof(buf1) - 1 && p2 <= p1) {
                                 *q++ = *p2++ & CHAR_MASK;
                             }
                             *q = '\0';

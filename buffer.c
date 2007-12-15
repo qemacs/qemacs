@@ -689,7 +689,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
     /* XXX: better test to limit size */
     if (b->nb_logs >= (NB_LOGS_MAX-1)) {
         /* no free space, delete least recent entry */
-        eb_read(b->log_buffer, 0, (unsigned char *)&lb, sizeof(LogBuffer));
+        eb_read(b->log_buffer, 0, &lb, sizeof(LogBuffer));
         len = lb.size;
         if (lb.op == LOGOP_INSERT)
             len = 0;
@@ -753,14 +753,14 @@ void do_undo(EditState *s)
     }
     /* go backward */
     log_index -= sizeof(int);
-    eb_read(b->log_buffer, log_index, (unsigned char *)&size_trailer, sizeof(int));
+    eb_read(b->log_buffer, log_index, &size_trailer, sizeof(int));
     log_index -= size_trailer + sizeof(LogBuffer);
     
     /* log_current is 1 + index to have zero as default value */
     b->log_current = log_index + 1;
 
     /* play the log entry */
-    eb_read(b->log_buffer, log_index, (unsigned char *)&lb, sizeof(LogBuffer));
+    eb_read(b->log_buffer, log_index, &lb, sizeof(LogBuffer));
     log_index += sizeof(LogBuffer);
 
     switch (lb.op) {
@@ -856,7 +856,7 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
         if (b->charset == &charset_utf8) {
             while (*q >= 0x80 && *q < 0xc0) {
                 if (offset == 0 || q == buf) {
-                    /* error : take only previous char */
+                    /* error: take only previous char */
                     offset += buf - 1 - q;
                     ch = buf[sizeof(buf) - 1];
                     goto the_end;

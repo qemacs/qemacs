@@ -66,6 +66,9 @@
 #ifndef countof
 #define countof(a)  ((int)(sizeof(a) / sizeof((a)[0])))
 #endif
+#ifndef ssizeof
+#define ssizeof(a)  ((int)(sizeof(a)))
+#endif
 
 /************************/
 
