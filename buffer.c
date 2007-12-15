@@ -140,7 +140,7 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
     Page *p;
 
     if (page_index < b->nb_pages) {
-        p = b->page_table + page_index;
+        p = &b->page_table[page_index];
         len = MAX_PAGE_SIZE - p->size;
         if (len > size)
             len = size;
@@ -160,7 +160,7 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
     if (n > 0) {
         b->nb_pages += n;
         qe_realloc(&b->page_table, b->nb_pages * sizeof(Page));
-        p = b->page_table + page_index;
+        p = &b->page_table[page_index];
         memmove(p + n, p, sizeof(Page) * (b->nb_pages - n - page_index));
         while (size > 0) {
             len = size;
@@ -1390,7 +1390,7 @@ void eb_line_pad(EditBuffer *b, int n)
     }
 }
 
-int eb_get_str(EditBuffer *b, char *buf, int buf_size)
+int eb_get_contents(EditBuffer *b, char *buf, int buf_size)
 {
     int len;
 
@@ -1402,42 +1402,19 @@ int eb_get_str(EditBuffer *b, char *buf, int buf_size)
     return len;
 }
 
-/* get the line starting at offset 'offset' */
+/* get the line starting at offset 'offset' as an array of code points */
+/* offset is bumped to the beginning of the next line */ 
+/* returns the number of code points stored in buf, excluding '\0' */
+/* buf_size must be > 0 */
+/* XXX: cannot detect truncation */
 int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
                 int *offset_ptr)
 {
-    int c;
     unsigned int *buf_ptr, *buf_end;
-    int offset;
+    int c, offset;
     
     offset = *offset_ptr;
 
-    /* record line */
-    buf_ptr = buf;
-    buf_end = buf + buf_size;
-    for (;;) {
-        c = eb_nextc(b, offset, &offset);
-        if (c == '\n')
-            break;
-        if (buf_ptr < buf_end)
-            *buf_ptr++ = c;
-    }
-    *offset_ptr = offset;
-    return buf_ptr - buf;
-}
-
-/* get the line starting at offset 'offset' */
-/* XXX: incorrect for UTF8 */
-int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
-                   int *offset_ptr)
-{
-    int c;
-    char *buf_ptr, *buf_end;
-    int offset;
-    
-    offset = *offset_ptr;
-
-    /* record line */
     buf_ptr = buf;
     buf_end = buf + buf_size - 1;
     for (;;) {
@@ -1452,16 +1429,88 @@ int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
     return buf_ptr - buf;
 }
 
+/* get the line starting at offset 'offset' encoded in utf-8 */
+/* offset is bumped to the beginning of the next line */ 
+/* returns the number of bytes stored in buf, excluding '\0' */
+/* buf_size must be > 0 */
+/* XXX: cannot detect truncation */
+int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
+                   int *offset_ptr)
+{
+    char utf8_buf[6];
+    char *buf_ptr, *buf_end;
+    int c, offset, len;
+    
+    offset = *offset_ptr;
+
+    buf_ptr = buf;
+    buf_end = buf + buf_size - 1;
+    for (;;) {
+        c = eb_nextc(b, offset, &offset);
+        if (c == '\n')
+            break;
+        if (c < 0x80) {
+            if (buf_ptr < buf_end) {
+                *buf_ptr++ = c;
+                continue;
+            }
+        } else {
+            len = utf8_encode(utf8_buf, c);
+            if (buf_ptr + len <= buf_end) {
+                memcpy(buf_ptr, utf8_buf, len);
+                buf_ptr += len;
+                continue;
+            }
+        }
+        /* overflow: skip past '\n' */ 
+        offset = eb_next_line(b, offset);
+        break;
+    }
+    *buf_ptr = '\0';
+    *offset_ptr = offset;
+    return buf_ptr - buf;
+}
+
+int eb_prev_line(EditBuffer *b, int offset)
+{
+    int offset1, seen_nl;
+
+    for (seen_nl = 0;;) {
+        if (eb_prevc(b, offset, &offset1) == '\n') {
+            if (seen_nl++)
+                break;
+        }
+        offset = offset1;
+    }
+    return offset;
+}
+
+/* return offset of the beginning of the line containing offset */
 int eb_goto_bol(EditBuffer *b, int offset)
 {
-    int c, offset1;
+    int offset1;
 
     for (;;) {
-        c = eb_prevc(b, offset, &offset1);
-        if (c == '\n')
+        if (eb_prevc(b, offset, &offset1) == '\n')
             break;
         offset = offset1;
     }
+    return offset;
+}
+
+/* move to the beginning of the line containing offset */
+/* return offset of the beginning of the line containing offset */
+/* store count of characters skipped at *countp */
+int eb_goto_bol2(EditBuffer *b, int offset, int *countp)
+{
+    int count, offset1;
+
+    for (count = 0;; count++) {
+        if (eb_prevc(b, offset, &offset1) == '\n')
+            break;
+        offset = offset1;
+    }
+    *countp = count;
     return offset;
 }
 
@@ -1477,6 +1526,20 @@ int eb_is_empty_line(EditBuffer *b, int offset)
             break;
     }
     return 0;
+}
+
+/* return offset of the end of the line containing offset */
+int eb_goto_eol(EditBuffer *b, int offset)
+{
+    int c, offset1;
+
+    for (;;) {
+        c = eb_nextc(b, offset, &offset1);
+        if (c == '\n')
+            break;
+        offset = offset1;
+    }
+    return offset;
 }
 
 int eb_next_line(EditBuffer *b, int offset)
