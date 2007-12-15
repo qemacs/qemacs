@@ -20,7 +20,8 @@
 
 #include "qe.h"
 
-static int list_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+static int list_get_colorized_line(EditState *s,
+                                   unsigned int *buf, int buf_size,
                                    int offset, __unused__ int line_num)
 {
     QEmacsState *qs = s->qe_state;
@@ -34,7 +35,8 @@ static int list_get_colorized_line(EditState *s, unsigned int *buf, int buf_size
         s->offset >= offset && s->offset < offset1) {
         /* highlight the line if the cursor is inside */
         set_color(buf, buf + len, QE_STYLE_HIGHLIGHT);
-    } else if (buf[0] == '*') {
+    } else
+    if (buf[0] == '*') {
         /* selection */
         set_color(buf, buf + len, QE_STYLE_SELECTION);
     }
