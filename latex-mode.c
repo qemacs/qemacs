@@ -150,24 +150,25 @@ static void do_tex_insert_quote(EditState *s)
 {
     int offset_bol, len, offset1;
     unsigned int buf[MAX_BUF_SIZE];
-    int p;
+    int pos;
 
-    offset_bol = eb_goto_bol(s->b, s->offset);
+    offset_bol = eb_goto_bol2(s->b, s->offset, &pos);
     offset1 = offset_bol;
-    len = eb_get_line(s->b, buf, MAX_BUF_SIZE - 1, &offset1);
-    p = s->offset - offset_bol;
-
-    if (p >= 1 && buf[p-1] == '\"') {
+    len = eb_get_line(s->b, buf, countof(buf), &offset1);
+    if (pos > len)
+        return;
+    if (pos >= 1 && buf[pos-1] == '\"') {
         eb_insert(s->b, s->offset, "\"", 1);
         s->offset++;
-    } else if (p >= 2 && (buf[p-1] == '`' || buf[p-1] == '\'') &&
-               buf[p-1] == buf[p-2])
+    } else
+    if (pos >= 2 && (buf[pos-1] == '`' || buf[pos-1] == '\'') &&
+          buf[pos-1] == buf[pos-2])
     {
         eb_delete(s->b, s->offset - 2, 2);
         eb_insert(s->b, s->offset, "\"", 1);
         s->offset++;
     } else {
-        if (p == 0 || buf[p-1] == ' ') {
+        if (pos == 0 || buf[pos-1] == ' ') {
             eb_insert(s->b, s->offset, "``", 2);
             s->offset += 2;
         } else {
