@@ -1,8 +1,36 @@
-/* convert a CSS style sheet to C buffer so that it can be statically
-   linked with qemacs */
+/*
+ * convert a CSS style sheet to C buffer so that it can be statically
+ * linked with qemacs
+ *
+ * Copyright (c) 2002 Fabrice Bellard.
+ * Copyright (c) 2007 Charlie Gordon.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
+
+static int peekc(FILE *f)
+{
+    int c = getc(f);
+    if (c != EOF)
+        ungetc(c, f);
+    return c;
+}
 
 int main(int argc, char **argv)
 {
@@ -18,14 +46,13 @@ int main(int argc, char **argv)
            "#include \"qe.h\"\n"
            "#include \"css.h\"\n"
            "\n");
-    printf("const char %s[] =\n", argv[1]);
+    printf("const char %s[] = {\n", argv[1]);
     n = 0;
     got_space = 0;
     last_c = 0;
     in_string = 0;
     for (;;) {
         c = getchar();
-    redo:
         if (c == EOF)
             break;
         if (!in_string) {
@@ -34,14 +61,9 @@ int main(int argc, char **argv)
                 continue;
             }
             /* comments */
-            if (c == '/') {
-                c = getchar();
-                /* CG: allow // comments ? */
-                if (c != '*') {
-                    /* CG: incorrect if n == 0, also n++ missing */
-                    putchar('/');
-                    goto redo;
-                }
+            /* CG: allow // comments ? */
+            if (c == '/' && peekc(stdin) == '*') {
+                getchar();
                 for (;;) {
                     c = getchar();
                     if (c == EOF)
@@ -60,15 +82,21 @@ int main(int argc, char **argv)
             }
         }
         if (n == 0)
-            printf("\"");
+            printf("    \"");
         /* add separator if needed */
-        if (!in_string && got_space && isalnum(c) && isalnum(last_c))
+        if (!in_string && got_space && isalnum(c) && isalnum(last_c)) {
             putchar(' ');
-        if (c == '\"' || c == '\'' || c == '\\')
+            n++;
+        }
+        if (c == '\"' || c == '\'' || c == '\\') {
             putchar('\\');
+            n++;
+        }
         putchar(c);
-        if (c == '\"')
+        if (c == '\"') {
+            /* CG: does not work for ' ' */
             in_string ^= 1;
+        }
         last_c = c;
         got_space = 0;
         if (++n >= 64) {
@@ -79,6 +107,6 @@ int main(int argc, char **argv)
  the_end:
     if (n > 0)
         printf("\"\n");
-    printf(";\n\n");
+    printf("};\n\n");
     return 0;
 }
