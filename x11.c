@@ -528,7 +528,7 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
     XftFont *renderFont;
     QEFont *font;
 
-    font = qe_malloc(QEFont);
+    font = qe_mallocz(QEFont);
     if (!font)
         return NULL;
 
