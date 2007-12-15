@@ -359,7 +359,7 @@ void skip_spaces(const char **pp)
     const char *p;
 
     p = *pp;
-    while (css_isspace(*p))
+    while (qe_isspace(*p))
         p++;
     *pp = p;
 }
@@ -380,7 +380,7 @@ int stristart(const char *str, const char *val, const char **ptr)
     p = str;
     q = val;
     while (*q != '\0') {
-        if (css_toupper((unsigned char)*p) != css_toupper((unsigned char)*q)) {
+        if (qe_toupper((unsigned char)*p) != qe_toupper((unsigned char)*q)) {
             return 0;
         }
         p++;
@@ -408,7 +408,7 @@ int strxstart(const char *str, const char *val, const char **ptr)
     p = str;
     q = val;
     while (*q != '\0') {
-        if (css_toupper((unsigned char)*p) != css_toupper((unsigned char)*q)) {
+        if (qe_toupper((unsigned char)*p) != qe_toupper((unsigned char)*q)) {
             if (*p == '-' || *p == '_' || *p == ' ') {
                 p++;
                 continue;
@@ -443,7 +443,7 @@ int strxcmp(const char *str1, const char *str2)
     p = str1;
     q = str2;
     for (;;) {
-        d = css_toupper((unsigned char)*p) - css_toupper((unsigned char)*q);
+        d = qe_toupper((unsigned char)*p) - qe_toupper((unsigned char)*q);
         if (d) {
             if (*p == '-' || *p == '_' || *p == ' ') {
                 p++;
@@ -471,7 +471,7 @@ int ustristart(const unsigned int *str, const char *val,
     p = str;
     q = val;
     while (*q != '\0') {
-        if (css_toupper(*p) != css_toupper(*q))
+        if (qe_toupper(*p) != qe_toupper(*q))
             return 0;
         p++;
         q++;
@@ -496,7 +496,7 @@ void get_str(const char **pp, char *buf, int buf_size, const char *stop)
     for (;;) {
         c = *p;
         /* Should stop on spaces and eat them */
-        if (c == '\0' || css_isspace(c) || strchr(stop, c))
+        if (c == '\0' || qe_isspace(c) || strchr(stop, c))
             break;
         if ((q - buf) < buf_size - 1)
             *q++ = c;
@@ -607,7 +607,7 @@ static int strtokey1(const char **pp)
     if (p[0] == 'f' && p[1] >= '1' && p[1] <= '9') {
         i = p[1] - '0';
         p += 2;
-        if (css_isdigit(*p))
+        if (qe_isdigit(*p))
             i = i * 10 + *p++ - '0';
         key = KEY_F1 + i - 1;
         *pp = p1;
@@ -700,7 +700,7 @@ void keytostr(char *buf, int buf_size, int key)
 
 int to_hex(int key)
 {
-    if (css_isdigit(key))
+    if (qe_isdigit(key))
         return key - '0';
     else if (key >= 'a' && key <= 'f')
         return key - 'a' + 10;
@@ -827,7 +827,7 @@ int css_get_color(QEColor *color_ptr, const char *p)
     }
     
     rgba[3] = 0xff;
-    if (css_isxdigit((unsigned char)*p)) {
+    if (qe_isxdigit((unsigned char)*p)) {
         goto parse_num;
     } else if (*p == '#') {
         /* handle '#' notation */
@@ -925,7 +925,7 @@ void css_strtolower(char *buf, __unused__ int buf_size)
 
     /* XXX: handle unicode / utf8 */
     while ((c = (unsigned char)*buf) != '\0') {
-        *buf++ = css_tolower(c);
+        *buf++ = qe_tolower(c);
     }
 }
 

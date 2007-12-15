@@ -165,13 +165,13 @@ int xml_mode_probe(ModeProbeData *p1)
     const char *p;
 
     p = (const char *)p1->buf;
-    while (css_isspace((unsigned char)*p))
+    while (qe_isspace((unsigned char)*p))
         p++;
     if (*p != '<')
         return 0;
     p++;
     if (*p != '!' && *p != '?' && *p != '/' && 
-        !css_isalpha((unsigned char)*p))
+        !qe_isalpha((unsigned char)*p))
         return 0;
     return 90; /* leave some room for more specific XML parser */
 }

@@ -439,7 +439,7 @@ static void word_right(EditState *s, int w)
         if (s->offset >= s->b->total_size)
             break;
         c = eb_nextc(s->b, s->offset, &offset1);
-        if (css_isword(c) == w)
+        if (qe_isword(c) == w)
             break;
         s->offset = offset1;
     }
@@ -453,7 +453,7 @@ static void word_left(EditState *s, int w)
         if (s->offset == 0)
             break;
         c = eb_prevc(s->b, s->offset, &offset1);
-        if (css_isword(c) == w)
+        if (qe_isword(c) == w)
             break;
         s->offset = offset1;
     }
@@ -572,7 +572,7 @@ void do_fill_paragraph(EditState *s)
     if (!eb_is_empty_line(s->b, offset)) {
         while (offset < par_end) {
             c = eb_nextc(s->b, offset, &offset);
-            if (!css_isspace(c))
+            if (!qe_isspace(c))
                 break;
             indent_size++;
         }
@@ -589,7 +589,7 @@ void do_fill_paragraph(EditState *s)
         space_size = 0;
         while (offset < par_end) {
             c = eb_nextc(s->b, offset, &offset1);
-            if (!css_isspace(c))
+            if (!qe_isspace(c))
                 break;
             offset = offset1;
             space_size++;
@@ -599,7 +599,7 @@ void do_fill_paragraph(EditState *s)
         word_size = 0;
         while (offset < par_end) {
             c = eb_nextc(s->b, offset, &offset1);
-            if (css_isspace(c))
+            if (qe_isspace(c))
                 break;
             offset = offset1;
             word_size++;
@@ -655,9 +655,9 @@ static int eb_changecase(EditBuffer *b, int offset, int up)
 
     ch = eb_nextc(b, offset, &offset1);
     if (up)
-        ch1 = css_toupper(ch);
+        ch1 = qe_toupper(ch);
     else
-        ch1 = css_tolower(ch);
+        ch1 = qe_tolower(ch);
 
     if (ch == ch1) {
         return offset1;
@@ -682,7 +682,7 @@ void do_changecase_word(EditState *s, int up)
         if (s->offset >= s->b->total_size)
             break;
         c = eb_nextc(s->b, s->offset, NULL);
-        if (!css_isword(c))
+        if (!qe_isword(c))
             break;
         s->offset = eb_changecase(s->b, s->offset, up);
     }
@@ -3908,7 +3908,7 @@ again:
         if (c->nb_keys == 1) {
             if (!KEY_SPECIAL(key)) {
                 if (c->is_universal_arg) {
-                    if (css_isdigit(key)) {
+                    if (qe_isdigit(key)) {
                         if (c->argval == NO_ARG)
                             c->argval = 0;
                         c->argval = c->argval * 10 + (key - '0');
@@ -5333,8 +5333,8 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
         lower_count = 0;
         for (i = 0; i < size; i++) {
             c = buf[i];
-            lower_count += css_islower(c);
-            upper_count += css_isupper(c);
+            lower_count += qe_islower(c);
+            upper_count += qe_isupper(c);
         }
         if (lower_count > 0 && upper_count == 0)
             flags |= SEARCH_FLAG_IGNORECASE;
@@ -5344,7 +5344,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
     for (i = 0; i < size; i++) {
         c = buf[i];
         if (flags & SEARCH_FLAG_IGNORECASE) 
-            buf1[i] = css_toupper(c);
+            buf1[i] = qe_toupper(c);
         else
             buf1[i] = c;
     }
@@ -5373,7 +5373,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
             if (offset == 0)
                 goto word_start_found;
             eb_read(b, offset - 1, &ch, 1);
-            if (!css_isword(ch))
+            if (!qe_isword(ch))
                 goto word_start_found;
             else
                 continue;
@@ -5384,7 +5384,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
         for (;;) {
             eb_read(b, offset + i, &ch, 1);
             if (flags & SEARCH_FLAG_IGNORECASE) 
-                ch = css_toupper(ch);
+                ch = qe_toupper(ch);
             if (ch != buf1[i])
                     break;
             i++;
@@ -5394,7 +5394,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
                     if (offset + size >= total_size)
                         goto word_end_found;
                     eb_read(b, offset + size, &ch, 1);
-                    if (!css_isword(ch))
+                    if (!qe_isword(ch))
                         goto word_end_found;
                     break;
                 }

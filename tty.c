@@ -412,7 +412,7 @@ static void tty_read_handler(void *opaque)
         }
         break;
     case IS_CSI:
-        if (css_isdigit(ch)) {
+        if (qe_isdigit(ch)) {
             ts->input_param = ts->input_param * 10 + ch - '0';
             break;
         }

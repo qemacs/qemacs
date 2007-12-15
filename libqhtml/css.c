@@ -2314,7 +2314,7 @@ static int css_layout_inline_box(InlineLayout *s,
                         break;
                 }
 
-                space = css_isspace(ch);
+                space = qe_isspace(ch);
                 /* collapse spaces if needed */
                 if (space && s->last_space &&
                     (props->white_space == CSS_WHITE_SPACE_NORMAL ||
@@ -3709,7 +3709,7 @@ int box_get_text(CSSContext *s,
         c = nextc(s->b, &offset);
         if (c == CSS_CONTENT_EOL)
             continue;
-        space = css_isspace(c);
+        space = qe_isspace(c);
         if (space_collapse) {
             if (last_space && space)
                 continue;

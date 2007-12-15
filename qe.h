@@ -160,41 +160,41 @@ char *makepath(char *buf, int buf_size, const char *path, const char *filename);
 void splitpath(char *dirname, int dirname_size,
                char *filename, int filename_size, const char *pathname);
 
-static inline int css_isspace(int ch) {
+static inline int qe_isspace(int ch) {
     /* CG: what about \v and \f */
     return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r');
 }
-static inline int css_isblank(int ch) {
+static inline int qe_isblank(int ch) {
     return (ch == ' ' || ch == '\t');
 }
-static inline int css_isdigit(int ch) {
+static inline int qe_isdigit(int ch) {
     return (ch >= '0' && ch <= '9');
 }
-static inline int css_isupper(int ch) {
+static inline int qe_isupper(int ch) {
     return (ch >= 'A' && ch <= 'Z');
 }
-static inline int css_islower(int ch) {
+static inline int qe_islower(int ch) {
     return (ch >= 'a' && ch <= 'z');
 }
-static inline int css_isalpha(int ch) {
+static inline int qe_isalpha(int ch) {
     return ((ch | ('a' - 'A')) >= 'a' && (ch | ('a' - 'A')) <= 'z');
 }
-static inline int css_isxdigit(int ch) {
+static inline int qe_isxdigit(int ch) {
     return ((ch >= '0' && ch <= '9') ||
             ((ch | ('a' - 'A')) >= 'a' && (ch | ('a' - 'A')) <= 'f'));
 }
-static inline int css_isalnum(int ch) {
+static inline int qe_isalnum(int ch) {
     return ((ch >= '0' && ch <= '9') ||
             ((ch | ('a' - 'A')) >= 'a' && (ch | ('a' - 'A')) <= 'z'));
 }
-static inline int css_isword(int c) {
+static inline int qe_isword(int c) {
     /* XXX: any unicode char >= 128 is considered as word. */
-    return css_isalnum(c) || (c == '_') || (c >= 128);
+    return qe_isalnum(c) || (c == '_') || (c >= 128);
 }
-static inline int css_toupper(int ch) {
+static inline int qe_toupper(int ch) {
     return (ch >= 'a' && ch <= 'z') ? ch + 'A' - 'a' : ch;
 }
-static inline int css_tolower(int ch) {
+static inline int qe_tolower(int ch) {
     return (ch >= 'A' && ch <= 'Z') ? ch + 'a' - 'A' : ch;
 }
 

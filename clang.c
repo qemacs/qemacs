@@ -38,13 +38,13 @@ static int get_c_keyword(char *buf, int buf_size, unsigned int *p)
 
     c = *p;
     q = buf;
-    if (css_isalpha(c) || c == '_') {
+    if (qe_isalpha(c) || c == '_') {
         do {
             if ((q - buf) < buf_size - 1)
                 *q++ = c;
             p++;
             c = *p;
-        } while (css_isalnum(c) || c == '_');
+        } while (qe_isalnum(c) || c == '_');
     }
     *q = '\0';
     return q - buf;
@@ -191,14 +191,14 @@ void c_colorize_line(unsigned int *buf, int len,
         normal:
             if (state & C_PREPROCESS)
                 break;
-            if (css_isdigit(c)) {
-                while (css_isalnum(*p) || *p == '.') {
+            if (qe_isdigit(c)) {
+                while (qe_isalnum(*p) || *p == '.') {
                     p++;
                 }
                 set_color(p_start, p, QE_STYLE_NUMBER);
                 continue;
             }
-            if (css_isalpha(c) || c == '_') {
+            if (qe_isalpha(c) || c == '_') {
                 
                 /* XXX: should support :: and $ */
                 klen = 0;
@@ -208,14 +208,14 @@ void c_colorize_line(unsigned int *buf, int len,
                         kbuf[klen++] = c;
                     p++;
                     c = *p;
-                } while (css_isalnum(c) || c == '_');
+                } while (qe_isalnum(c) || c == '_');
 
                 kbuf[klen] = '\0';
                 p1 = p;
-                while (css_isblank(*p1))
+                while (qe_isblank(*p1))
                     p1++;
                 p2 = p1;
-                while (*p2 == '*' || css_isblank(*p2))
+                while (*p2 == '*' || qe_isblank(*p2))
                     p2++;
                 if (strfind(c_keywords, kbuf, 0)) {
                     set_color(p_start, p, QE_STYLE_KEYWORD);

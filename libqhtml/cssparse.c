@@ -61,11 +61,11 @@ static int css_get_length(int *length_ptr, int *unit_ptr, const char *p)
     p1 = p;
     if (*p == '+' || *p == '-')
         p++;
-    while (css_isdigit(*p))
+    while (qe_isdigit(*p))
         p++;
     if (*p == '.') {
         p++;
-        while (css_isdigit(*p))
+        while (qe_isdigit(*p))
             p++;
     }
     len = p - p1;
@@ -730,7 +730,7 @@ static void read_ident(CSSParseState *b, int *ch_ptr, char *ident, int ident_siz
     c = *ch_ptr;
     q = ident;
     for (;;) {
-        if (!(css_isalnum(c) || c == '*' || c == '_' || c == '-'))
+        if (!(qe_isalnum(c) || c == '*' || c == '_' || c == '-'))
             break;
         if ((q - ident) < ident_size - 1)
             *q++ = c;
@@ -745,7 +745,7 @@ static void bskip_spaces(CSSParseState *b, int *ch_ptr)
     int c;
 
     c = *ch_ptr;
-    while (css_isspace(c))
+    while (qe_isspace(c))
         c = bgetc(b);
     *ch_ptr = c;
 }
@@ -1058,7 +1058,7 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
                     ch = bgetc(b);
                     goto add_tree;
                 } else
-                if (css_isalpha(ch)) {
+                if (qe_isalpha(ch)) {
                     tree_op = CSS_TREE_OP_DESCENDANT;
                 add_tree:
                     ss1 = qe_malloc_dup(ss, sizeof(CSSSimpleSelector));
