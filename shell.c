@@ -633,12 +633,7 @@ static void tty_emulate(ShellState *s, int c)
             break;
         case 13:        /* ^M  CR = carriage return */
             /* move to bol */
-            for (;;) {
-                c = eb_prevc(s->b, s->cur_offset, &offset1);
-                if (c == '\n')
-                    break;
-                s->cur_offset = offset1;
-            }
+            s->cur_offset = eb_goto_bol(s->b, s->cur_offset);
             break;
         case 14:        /* ^N  SO = shift out */
             // was in qemacs-0.3.1.g2.gw
@@ -833,13 +828,7 @@ static void tty_emulate(ShellState *s, int c)
                 }
                 break;
             case 'K':   /* clear eol (parm=1 -> bol) */
-                offset1 = s->cur_offset;
-                for (;;) {
-                    c = eb_nextc(s->b, offset1, &offset2);
-                    if (c == '\n')
-                        break;
-                    offset1 = offset2;
-                }
+                offset1 = eb_goto_eol(s->b, s->cur_offset);
                 eb_delete(s->b, s->cur_offset, offset1 - s->cur_offset);
                 break;
             case 'P':
@@ -1312,7 +1301,7 @@ static void do_compile_error(EditState *s, int dir)
     QEmacsState *qs = s->qe_state;
     EditState *e;
     EditBuffer *b;
-    int offset, offset1, found_offset;
+    int offset, found_offset;
     char filename[MAX_FILENAME_SIZE], *q;
     int line_num, c;
 
@@ -1340,23 +1329,13 @@ static void do_compile_error(EditState *s, int dir)
                 put_status(s, "No more errors");
                 return;
             }
-            for (;;) {
-                c = eb_nextc(b, offset, &offset);
-                if (c == '\n')
-                    break;
-            }
+            offset = eb_next_line(b, offset);
         } else {
             if (offset <= 0) {
                 put_status(s, "No previous error");
                 return;
             }
-            eb_prevc(b, offset, &offset);
-            for (;;) {
-                c = eb_prevc(b, offset, &offset1);
-                if (c == '\n')
-                    break;
-                offset = offset1;
-            }
+            offset = eb_prev_line(b, offset);
         }
     find_error:
         found_offset = offset;
