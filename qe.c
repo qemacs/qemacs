@@ -423,28 +423,12 @@ void do_word_right(EditState *s, int dir)
 
 void text_move_bol(EditState *s)
 {
-    int c, offset1;
-
-    for (;;) {
-        if (s->offset <= 0)
-            break;
-        c = eb_prevc(s->b, s->offset, &offset1);
-        if (c == '\n')
-            break;
-        s->offset = offset1;
-    }
+    s->offset = eb_goto_bol(s->b, s->offset);
 }
 
 void text_move_eol(EditState *s)
 {
-    int c, offset1;
-
-    for (;;) {
-        c = eb_nextc(s->b, s->offset, &offset1);
-        if (c == '\n')
-            break;
-        s->offset = offset1;
-    }
+    s->offset = eb_goto_eol(s->b, s->offset);
 }
 
 int isword(int c)
@@ -553,8 +537,7 @@ void do_backward_paragraph(EditState *s)
     offset = eb_start_paragraph(s->b, offset);
 
     /* line just before */
-    eb_prevc(s->b, offset, &offset);
-    offset = eb_goto_bol(s->b, offset);
+    offset = eb_prev_line(s->b, offset);
 
     s->offset = offset;
 }
@@ -1020,6 +1003,7 @@ void perform_scroll_up_down(EditState *s, int h)
 void text_scroll_up_down(EditState *s, int dir)
 {
     int h, line_height;
+
     /* try to round to a line height */
     line_height = get_line_height(s->screen, s->default_style);
     h = 1;
@@ -1036,7 +1020,7 @@ void text_scroll_up_down(EditState *s, int dir)
 
 /* center the cursor in the window */
 /* XXX: make it generic to all modes */
-void center_cursor(EditState *s)
+void do_center_cursor(EditState *s)
 {
     CursorContext cm;
 
@@ -2938,24 +2922,23 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
         colorize_state = s->colorize_states[s->colorize_nb_valid_lines - 1];
 
         for (l = s->colorize_nb_valid_lines; l <= line_num; l++) {
-            len = eb_get_line(s->b, buf, buf_size - 1, &offset);
+            len = eb_get_line(s->b, buf, buf_size, &offset);
             // XXX: should force \0 instead of \n
             buf[len] = '\n';
 
             s->colorize_func(buf, len, &colorize_state, 1);
-            
             s->colorize_states[l] = colorize_state;
         }
     }
 
     /* compute line color */
-    len = eb_get_line(s->b, buf, buf_size - 1, &offset1);
+    len = eb_get_line(s->b, buf, buf_size, &offset1);
     // XXX: should force \0 instead of \n
     buf[len] = '\n';
 
     colorize_state = s->colorize_states[line_num];
     s->colorize_func(buf, len, &colorize_state, 0);
-    
+
     /* XXX: if state is same as previous, minimize invalid region? */
     s->colorize_states[line_num + 1] = colorize_state;
 
@@ -3065,7 +3048,7 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     /* colorize */
     if (s->get_colorized_line_func) {
         colored_nb_chars = s->get_colorized_line_func(s, colored_chars, 
-                                                      COLORED_MAX_LINE_SIZE, 
+                                                      countof(colored_chars), 
                                                       offset, line_num);
     } else {
         colored_nb_chars = 0;
@@ -4414,7 +4397,7 @@ void do_completion(EditState *s)
         return;
     }
 
-    len = eb_get_str(s->b, input, sizeof(input));
+    len = eb_get_contents(s->b, input, sizeof(input));
     memset(&cs, 0, sizeof(cs));
     completion_function(&cs, input);
     count = cs.nb_items;
@@ -4551,7 +4534,7 @@ void do_history(EditState *s, int dir)
         return;
     if (qs->last_cmd_func != do_history) {
         /* save currently edited line */
-        eb_get_str(s->b, buf, sizeof(buf));
+        eb_get_contents(s->b, buf, sizeof(buf));
         set_string(hist, hist->nb_items - 1, buf);
         minibuffer_history_saved_offset = s->offset;
     }
@@ -4607,7 +4590,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
         do_refresh(s);
     }
 
-    len = eb_get_str(s->b, buf, sizeof(buf));
+    len = eb_get_contents(s->b, buf, sizeof(buf));
     if (hist && hist->nb_items > 0) {
         /* if null string, do not insert in history */
         hist->nb_items--;
@@ -5528,7 +5511,7 @@ static void isearch_display(ISearchState *is)
     }
 
     /* display text */
-    center_cursor(s);
+    do_center_cursor(s);
     edit_display(s->qe_state);
 
     put_status(NULL, "%s", out.buf);
@@ -5735,7 +5718,7 @@ static void query_replace_display(QueryReplaceState *is)
     
     /* display text */
     s->offset = is->found_offset;
-    center_cursor(s);
+    do_center_cursor(s);
     edit_display(s->qe_state);
     
     put_status(NULL, "Query replace %s with %s: ", 
@@ -5821,7 +5804,7 @@ static void do_search_string(EditState *s, const char *search_str, int dir)
                              0, NULL, NULL);
     if (found_offset >= 0) {
         s->offset = found_offset;
-        center_cursor(s);
+        do_center_cursor(s);
     }
 }
 
@@ -6876,14 +6859,14 @@ int parse_config_file(EditState *s, const char *filename)
     return 0;
 }
 
-void parse_config(EditState *e, const char *file)
+void do_load_config_file(EditState *e, const char *file)
 {
     QEmacsState *qs = e->qe_state;
     FindFileState *ffst;
     char filename[MAX_FILENAME_SIZE];
 
     if (file && *file) {
-        parse_config_file(e, filename);
+        parse_config_file(e, file);
         return;
     }
 
@@ -7440,7 +7423,7 @@ static void qe_init(void *opaque)
 
     /* load config file unless command line option given */
     if (!no_init_file)
-        parse_config(s, NULL);
+        do_load_config_file(s, NULL);
 
     qe_key_init();
 

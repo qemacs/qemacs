@@ -705,13 +705,16 @@ void eb_offset_callback(EditBuffer *b,
                         int size);
 void eb_printf(EditBuffer *b, const char *fmt, ...) __attr_printf(2,3);
 void eb_line_pad(EditBuffer *b, int n);
-int eb_get_str(EditBuffer *b, char *buf, int buf_size);
+int eb_get_contents(EditBuffer *b, char *buf, int buf_size);
 int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
                 int *offset_ptr);
 int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
                    int *offset_ptr);
+int eb_prev_line(EditBuffer *b, int offset);
 int eb_goto_bol(EditBuffer *b, int offset);
+int eb_goto_bol2(EditBuffer *b, int offset, int *countp);
 int eb_is_empty_line(EditBuffer *b, int offset);
+int eb_goto_eol(EditBuffer *b, int offset);
 int eb_next_line(EditBuffer *b, int offset);
 
 void eb_register_data_type(EditBufferDataType *bdt);
@@ -1174,10 +1177,14 @@ static inline int display_char(DisplayState *s, int offset1, int offset2,
     return display_char_bidir(s, offset1, offset2, 0, ch);
 }
 
-static inline void set_color(unsigned int *p, unsigned int *to, int style) {
+static inline void set_color(unsigned int *p, const unsigned int *to, int style) {
     style <<= STYLE_SHIFT;
     while (p < to)
         *p++ |= style;
+}
+
+static inline void set_color1(unsigned int *p, int style) {
+    *p |= style << STYLE_SHIFT;
 }
 
 /* input.c */
@@ -1262,7 +1269,7 @@ static inline int is_user_input_pending(void) {
 #endif
 
 /* config file support */
-void parse_config(EditState *e, const char *file);
+void do_load_config_file(EditState *e, const char *file);
 void do_load_qerc(EditState *e, const char *file);
 
 /* popup / low level window handling */
@@ -1367,7 +1374,7 @@ int cursor_func(DisplayState *ds,
                 int x, int y, int w, int h, int hex_mode);
 void do_scroll_up_down(EditState *s, int dir);
 void perform_scroll_up_down(EditState *s, int h);
-void center_cursor(EditState *s);
+void do_center_cursor(EditState *s);
 void do_quote(EditState *s);
 void do_insert(EditState *s);
 void do_open_line(EditState *s);

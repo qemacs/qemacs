@@ -128,6 +128,7 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_CTRLX('n'), KEY_NONE, "next-window", do_other_window)
     CMD0( KEY_CTRLX('p'), KEY_NONE, "previous-window", do_previous_window)
 #ifndef CONFIG_TINY
+    CMD0( KEY_META(KEY_CTRL('l')), KEY_NONE, "center-cursor", do_center_cursor)
     CMD1( KEY_CTRL('x'), KEY_UP, "find-window-up", do_find_window,
           KEY_UP)
     CMD1( KEY_CTRL('x'), KEY_DOWN, "find-window-down", do_find_window,
@@ -182,7 +183,7 @@ static CmdDef basic_commands[] = {
     /* other stuff */
     CMD_( KEY_NONE, KEY_NONE, "load-file-from-path", do_load_file_from_path,
           "s{Load file from path: }|file|")
-    CMD_( KEY_NONE, KEY_NONE, "parse-config-file", parse_config,
+    CMD_( KEY_NONE, KEY_NONE, "load-config-file", do_load_config_file,
           "s{Configuration file: }[file]|file|")
     CMD_( KEY_NONE, KEY_NONE, "load-qerc", do_load_qerc,
           "s{path: }[file]|file|")
