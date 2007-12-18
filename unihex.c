@@ -32,6 +32,7 @@ static int unihex_mode_init(EditState *s, ModeSavedData *saved_data)
     s->hex_mode = 1;
     s->unihex_mode = 1;
     s->hex_nibble = 0;
+    //s->insert = 1;
     s->wrap = WRAP_TRUNCATE;
     return 0;
 }
@@ -127,6 +128,7 @@ static void unihex_move_eol(EditState *s)
 
     pos = eb_get_char_offset(s->b, s->offset);
 
+    /* CG: should include the last character! */
     pos = align(pos, s->disp_width) + s->disp_width - 1;
 
     s->offset = eb_goto_char(s->b, pos);
