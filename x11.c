@@ -85,7 +85,6 @@ static int visual_depth;
 static int force_tty;
 static const char *display_str;
 static const char *geometry_str;
-
 static int font_ptsize;
 //} x11_state;
 
@@ -626,8 +625,7 @@ static void term_fill_rectangle(QEditScreen *s,
 
     xcolor = get_x11_color(color);
     XSetForeground(display, gc, xcolor);
-    XFillRectangle(display, dbuffer, gc, 
-                   x1, y1, w, h);
+    XFillRectangle(display, dbuffer, gc, x1, y1, w, h);
 }
 
 static void get_entry(char *buf, int buf_size, const char **pp)
@@ -1203,10 +1201,10 @@ static void x11_handle_event(void *opaque)
             }
         case Expose:
         expose_event:
-        ev->expose_event.type = QE_EXPOSE_EVENT;
-        qe_handle_event(ev);
-        break;
-        
+            ev->expose_event.type = QE_EXPOSE_EVENT;
+            qe_handle_event(ev);
+            break;
+
         case ButtonPress:
         case ButtonRelease:
             {
