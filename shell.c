@@ -898,8 +898,8 @@ static void shell_color_callback(__unused__ EditBuffer *b,
     case LOGOP_WRITE:
         while (size > 0) {
             len = size;
-            if (len > (int)sizeof(buf))
-                len = (int)sizeof(buf);
+            if (len > ssizeof(buf))
+                len = ssizeof(buf);
             memset(buf, s->color, len);
             eb_write(s->b_color, offset, buf, len);
             size -= len;
@@ -909,8 +909,8 @@ static void shell_color_callback(__unused__ EditBuffer *b,
     case LOGOP_INSERT:
         while (size > 0) {
             len = size;
-            if (len > (int)sizeof(buf))
-                len = (int)sizeof(buf);
+            if (len > ssizeof(buf))
+                len = ssizeof(buf);
             memset(buf, s->color, len);
             eb_insert(s->b_color, offset, buf, len);
             size -= len;
@@ -1346,7 +1346,7 @@ static void do_compile_error(EditState *s, int dir)
                 goto next_line;
             if (c == ':')
                 break;
-            if ((q - filename) < (int)sizeof(filename) - 1)
+            if ((q - filename) < ssizeof(filename) - 1)
                 *q++ = c;
         }
         *q = '\0';
