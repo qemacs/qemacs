@@ -449,7 +449,7 @@ int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len);
 int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
                       int dst_size, unsigned int *src, int src_size, 
                       int reverse);
-void load_ligatures(void);
+int load_ligatures(void);
 
 /* qe event handling */
 

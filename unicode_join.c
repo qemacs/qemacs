@@ -54,7 +54,7 @@ static unsigned short *read_array_be16(FILE *f, int n)
     return tab;
 }
 
-void load_ligatures(void)
+int load_ligatures(void)
 {
     FILE *f;
     char filename[MAX_FILENAME_SIZE];
@@ -62,11 +62,11 @@ void load_ligatures(void)
     int long_count;
 
     if (find_resource_file(filename, sizeof(filename), "ligatures") < 0)
-        return;
+        return -1;
 
     f = fopen(filename, "r");
     if (!f)
-        return;
+        return -1;
     if (fread(sig, 1, 4, f) != 4 || memcmp(sig, "liga", 4) != 0)
         goto fail;
 
@@ -84,7 +84,7 @@ void load_ligatures(void)
     if (!ligature_long)
         goto fail;
     fclose(f);
-    return;
+    return 0;
  fail:
     qe_free(&subst1);
     qe_free(&ligature2);
@@ -92,6 +92,7 @@ void load_ligatures(void)
     subst1_count = 0;
     ligature2_count = 0;
     fclose(f);
+    return -1;
 }
 
 static int find_ligature(int l1, int l2)
@@ -313,7 +314,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
 
 /* fallback unicode functions */
 
-void load_ligatures(void)
+int load_ligatures(void)
 {
 }
 
