@@ -83,7 +83,7 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max)
             /* CG: get_str(&p, s->dirpath, sizeof(s->dirpath), ":") */
             q = s->dirpath;
             while (*p != ':' && *p != '\0') {
-                if ((q - s->dirpath) < (int)sizeof(s->dirpath) - 1)
+                if ((q - s->dirpath) < ssizeof(s->dirpath) - 1)
                     *q++ = *p;
                 p++;
             }
@@ -112,7 +112,7 @@ void find_file_close(FindFileState *s)
 }
 
 #ifdef WIN32
-/* convert '/' to '\' */
+/* convert '\' to '/' */
 static void path_win_to_unix(char *buf)
 {
     char *p;
@@ -257,13 +257,14 @@ next:
     canonize_path(buf, buf_size, path);
 }
 
-/* last filename in a path */
+/* Get the filename portion of a path */
 const char *basename(const char *filename)
 {
     const char *p;
+
     p = strrchr(filename, '/');
     if (!p) {
-        /* should also scan for ':' */
+        /* should also scan for ':' and '\\' in WIN32 */
         return filename;
     } else {
         p++;
@@ -271,14 +272,13 @@ const char *basename(const char *filename)
     }
 }
 
-/* last extension in a path, ignoring leading dots */
+/* Return the last extension in a path, ignoring leading dots */
 const char *extension(const char *filename)
 {
     const char *p, *ext;
 
-    ext = NULL;
     p = filename;
-restart:
+  restart:
     while (*p == '.')
         p++;
     ext = NULL;
@@ -291,6 +291,43 @@ restart:
             ext = p;
     }
     return ext ? ext : p;
+}
+
+/* Extract the directory portion of a path:
+ * This leaves out the trailing slash if any.  The complete path is
+ * obtained by catenating dirname + '/' + basename.
+ * if the original path doesn't contain anything dirname is just "."
+ */
+char *get_dirname(char *dest, int size, const char *file)
+{
+    char *p;
+
+    if (dest) {
+	p = dest;
+	if (file) {
+            pstrcpy(dest, size, file);
+	    p = dest + (basename(dest) - dest);
+	    if (p > dest + 1 && p[-1] != ':' && p[-2] != ':')
+		p--;
+
+	    if (p == dest)
+		*p++ = '.';
+	}
+	*p = '\0';
+    }
+    return dest;
+}
+
+int match_extension(const char *filename, const char *extlist)
+{
+    const char *r;
+    
+    r = extension(filename);
+    if (*r == '.') {
+	return strfind(extlist, r + 1, 1);
+    } else {
+	return 0;
+    }
 }
 
 char *makepath(char *buf, int buf_size, const char *path,
@@ -471,6 +508,7 @@ int ustristart(const unsigned int *str, const char *val,
     p = str;
     q = val;
     while (*q != '\0') {
+        /* XXX: should filter style information */
         if (qe_toupper(*p) != qe_toupper(*q))
             return 0;
         p++;
@@ -481,7 +519,17 @@ int ustristart(const unsigned int *str, const char *val,
     return 1;
 }
 
-/* Read a token from a string, stop a set of characters.
+int umemcmp(const unsigned int *s1, const unsigned int *s2, int count)
+{
+    for (; count > 0; count--, s1++, s2++) {
+        if (*s1 != *s2) {
+            return *s1 < *s2 ? -1 : 1;
+        }
+    }
+    return 0;
+}
+
+/* Read a token from a string, stop on a set of characters.
  * Skip spaces before and after token.
  */ 
 void get_str(const char **pp, char *buf, int buf_size, const char *stop)
@@ -495,7 +543,7 @@ void get_str(const char **pp, char *buf, int buf_size, const char *stop)
     q = buf;
     for (;;) {
         c = *p;
-        /* Should stop on spaces and eat them */
+        /* Stop on spaces and eat them */
         if (c == '\0' || qe_isspace(c) || strchr(stop, c))
             break;
         if ((q - buf) < buf_size - 1)
@@ -740,6 +788,7 @@ static ColorDef css_colors[] = {
     /* more colors */
     { "cyan",    QERGB(0x00, 0xff, 0xff) },
     { "magenta", QERGB(0xff, 0x00, 0xff) },
+    { "grey",    QERGB(0xbe, 0xbe, 0xbe) },
     { "transparent", COLOR_TRANSPARENT },
 };
 #define nb_css_colors  countof(css_colors)
@@ -950,6 +999,19 @@ int get_clock_ms(void)
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return tv.tv_sec * 1000 + (tv.tv_usec / 1000);
+#endif
+}
+
+int get_clock_usec(void)
+{
+#ifdef CONFIG_WIN32
+    struct _timeb tb;
+    _ftime(&tb);
+    return tb.time * 1000000 + tb.millitm * 1000;
+#else
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec * 1000000 + tv.tv_usec;
 #endif
 }
 
