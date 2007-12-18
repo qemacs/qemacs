@@ -71,7 +71,7 @@ void pstrcpy(char *buf, int buf_size, const char *str)
 
     for (;;) {
         c = *str++;
-        if (c == 0 || q >= buf + buf_size - 1)
+        if (c == '\0' || q >= buf + buf_size - 1)
             break;
         *q++ = c;
     }
