@@ -128,7 +128,8 @@ OBJS+=charsetjis.o charsetmore.o
 endif
 
 ifdef CONFIG_ALL_MODES
-OBJS+= unihex.o clang.o latex-mode.o xml.o bufed.o
+OBJS+= unihex.o clang.o latex-mode.o xml.o bufed.o \
+       makemode.o perl.o htmlsrc.o
 ifndef CONFIG_WIN32
 OBJS+= shell.o dired.o 
 endif
@@ -189,13 +190,15 @@ libqhtml: force
 qe_g$(EXE): $(OBJS) $(DEP_LIBS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-qe$(EXE): qe_g$(EXE)
+qe$(EXE): qe_g$(EXE) Makefile
 	rm -f $@
 	cp $< $@
 	$(STRIP) $@
 	@ls -l $@
+	echo `size qe` `wc --bytes qe` qe $(OPTIONS) \
+		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
-ffplay$(EXE): qe$(EXE)
+ffplay$(EXE): qe$(EXE) Makefile
 	ln -sf $< $@
 
 qe.o: qe.c qe.h qfribidi.h qeconfig.h
@@ -216,13 +219,13 @@ fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 
 html2png.o: html2png.c qe.h
 
-%.o : %.c
+%.o: %.c qe.h Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
 clean:
 	make -C libqhtml clean
-	rm -f *.o *.exe *~ TAGS gmon.out core *.exe.stackdump \
-           qe qe_g qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
+	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
+           qe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
            cptoqe jistoqe
 
 distclean: clean
@@ -391,7 +394,7 @@ OBJS=util.o cutils.o \
      libfbf.o fbfrender.o cfb.o fbffonts.o
 
 html2png$(EXE): html2png.o $(OBJS) libqhtml/libqhtml.a
-	$(HOST_CC) $(LDFLAGS) -o $@ html2png.o $(OBJS) \
+	$(CC) $(LDFLAGS) -o $@ html2png.o $(OBJS) \
                    -L./libqhtml -lqhtml $(HTMLTOPPM_LIBS)
 
 # autotest target

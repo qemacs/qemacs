@@ -20,18 +20,34 @@
 
 #include "qe.h"
 
-static const char c_keywords[] = 
-    "|auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
+#if 0
+static const char cc_keywords[] = 
+    "asm|catch|class|delete|friend|inline|new|operator|"
+    "private|protected|public|template|try|this|virtual|throw|";
+
+static const char java_keywords[] =
+    "abstract|boolean|byte|catch|class|extends|false|final|"
+    "finally|function|implements|import|in|instanceof|"
+    "interface|native|new|null|package|private|protected|"
+    "public|super|synchronized|this|throw|throws|transient|"
+    "true|try|var|with|";
+#endif
+
+static const char *c_mode_keywords = 
+    "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
     "if|inline|register|restrict|return|sizeof|static|struct|switch|"
     "typedef|union|volatile|while|";
 
 /* NOTE: 'var' is added for javascript */
-static const char c_types[] = 
-    "|char|double|float|int|long|unsigned|short|signed|void|var|"
-    "_Bool|_Complex|_Imaginary";
+static const char *c_mode_types = 
+    "char|double|float|int|long|unsigned|short|signed|void|var|"
+    "_Bool|_Complex|_Imaginary|";
+
+static const char *c_mode_extensions =
+    "c|h|y|e|cc|cs|cpp|cxx|hpp|hxx|jav|java|js|qe|";
 
 #if 0
-static int get_c_keyword(char *buf, int buf_size, unsigned int *p)
+static int get_c_identifier(char *buf, int buf_size, unsigned int *p)
 {
     unsigned int c;
     char *q;
@@ -51,26 +67,31 @@ static int get_c_keyword(char *buf, int buf_size, unsigned int *p)
 }
 #endif
 
-/* colorization states */
+/* c-mode colorization states */
 enum {
-    C_COMMENT    = 1,
-    C_COMMENT1   = 2,
-    C_STRING     = 4,
-    C_STRING_Q   = 8,
-    C_PREPROCESS = 16,
+    C_COMMENT    = 1,   /* multiline comment pending */
+    C_COMMENT1   = 2,   /* single line comment with \ at EOL */
+    C_STRING     = 4,   /* double quoted string spanning multiple lines */
+    C_STRING_Q   = 8,   /* single quoted string spanning multiple lines */
+    C_PREPROCESS = 16,  /* preprocessor directive with \ at EOL */
 };
 
 void c_colorize_line(unsigned int *buf, int len, 
                      int *colorize_state_ptr, __unused__ int state_only)
 {
     int c, state, style, klen, type_decl;
-    unsigned int *p, *p_start, *p1, *p2;
+    unsigned int *p, *p_start, *p_end, *p1, *p2;
     char kbuf[32];
 
     state = *colorize_state_ptr;
     p = buf;
     p_start = p;
+    p_end = p + len;
     type_decl = 0;
+
+    if (p >= p_end)
+	goto the_end;
+
     c = 0;      /* turn off stupid egcs-2.91.66 warning */
     style = 0;
 
@@ -88,7 +109,7 @@ void c_colorize_line(unsigned int *buf, int len,
             goto parse_string_q;
     }
 
-    for (;;) {
+    while (p < p_end) {
         p_start = p;
         c = *p++;
 
@@ -97,20 +118,12 @@ void c_colorize_line(unsigned int *buf, int len,
             p--;
             goto the_end;
         case '/':
-            if (*p == '/') {
-                /* line comment */
-            parse_comment1:
-                state |= C_COMMENT1;
-                p = buf + len;
-                set_color(p_start, p, QE_STYLE_COMMENT);
-                goto the_end;
-            } else
             if (*p == '*') {
                 /* normal comment */
                 p++;
             parse_comment:
                 state |= C_COMMENT;
-                while (*p != '\n') {
+                while (p < p_end) {
                     if (p[0] == '*' && p[1] == '/') {
                         p += 2;
                         state &= ~C_COMMENT;
@@ -121,6 +134,14 @@ void c_colorize_line(unsigned int *buf, int len,
                 }
                 set_color(p_start, p, QE_STYLE_COMMENT);
                 continue;
+            } else
+            if (*p == '/') {
+                /* line comment */
+            parse_comment1:
+                state |= C_COMMENT1;
+                p = p_end;
+                set_color(p_start, p, QE_STYLE_COMMENT);
+                goto the_end;
             }
             break;
         case '#':       /* preprocessor */
@@ -143,10 +164,10 @@ void c_colorize_line(unsigned int *buf, int len,
         case '\'':              /* character constant */
         parse_string_q:
             state |= C_STRING_Q;
-            for (; *p != '\n'; p++) {
+            for (; p < p_end; p++) {
                 if (*p == '\\') {
                     p++;
-                    if (*p == '\n')
+                    if (p >= p_end)
                         break;
                 } else
                 if (*p == '\'') {
@@ -162,10 +183,10 @@ void c_colorize_line(unsigned int *buf, int len,
         case '\"':            /* strings literal */
         parse_string:
             state |= C_STRING;
-            for (; *p != '\n'; p++) {
+            for (; p < p_end; p++) {
                 if (*p == '\\') {
                     p++;
-                    if (*p == '\n')
+                    if (p >= p_end)
                         break;
                 } else
                 if (*p == '\"') {
@@ -209,18 +230,19 @@ void c_colorize_line(unsigned int *buf, int len,
                     p++;
                     c = *p;
                 } while (qe_isalnum(c) || c == '_');
-
                 kbuf[klen] = '\0';
+
                 p1 = p;
                 while (qe_isblank(*p1))
                     p1++;
                 p2 = p1;
                 while (*p2 == '*' || qe_isblank(*p2))
                     p2++;
-                if (strfind(c_keywords, kbuf, 0)) {
+
+                if (strfind(c_mode_keywords, kbuf, 0)) {
                     set_color(p_start, p, QE_STYLE_KEYWORD);
                 } else
-                if (strfind(c_types, kbuf, 0)
+                if (strfind(c_mode_types, kbuf, 0)
                 ||  (klen > 2 && kbuf[klen - 2] == '_' && kbuf[klen - 1] == 't')) {
                     /* c type */
                     /* if not cast, assume type declaration */
@@ -515,7 +537,7 @@ static void do_c_indent(EditState *s)
     
     /* the number of needed spaces is in 'pos' */
 
-    /* CG: should not modify buffer is indentation in correct */
+    /* CG: should not modify buffer if indentation in correct */
 
     /* suppress leading spaces */
     offset1 = offset;
@@ -561,6 +583,7 @@ static void do_c_indent_region(EditState *s)
     }
     /* move point to end of region, and mark to begin of first row */
     s->offset = s->b->mark;
+    /* XXX: begin may have moved? */
     s->b->mark = begin;
 }
 
@@ -568,30 +591,6 @@ static void do_c_electric(EditState *s, int key)
 {
     do_char(s, key);
     do_c_indent(s);
-}
-
-static int c_mode_probe(ModeProbeData *p)
-{
-    const char *r;
-
-    /* currently, only use the file extension */
-    r = extension(p->filename);
-    if (*r) {
-        if (strfind("|c|e|h|js|cs|jav|java|cxx|cpp|", r + 1, 1))
-            return 100;
-    }
-    return 0;
-}
-
-static int c_mode_init(EditState *s, ModeSavedData *saved_data)
-{
-    int ret;
-
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
-    set_colorize_func(s, c_colorize_line);
-    return ret;
 }
 
 /* forward / backward preprocessor */
@@ -602,6 +601,7 @@ static void do_c_forward_preprocessor(EditState *s, int dir)
 /* forward / backward block */
 #define MAX_LEVEL 20
 
+/* CG: move this to generic command */
 static void do_c_forward_block(EditState *s, int dir)
 {
     unsigned int buf[MAX_BUF_SIZE];
@@ -721,6 +721,7 @@ the_end:
     s->offset = offset;
 }
 
+/* CG: move this to generic command */
 static void do_c_kill_block(EditState *s, int dir)
 {
     int start = s->offset;
@@ -732,7 +733,27 @@ static void do_c_kill_block(EditState *s, int dir)
     do_kill(s, start, s->offset, dir);
 }
 
-/* specific C commands */
+static int c_mode_probe(ModeProbeData *p)
+{
+    /* currently, only use the file extension */
+    if (match_extension(p->filename, c_mode_extensions))
+        return 80;
+
+    return 0;
+}
+
+static int c_mode_init(EditState *s, ModeSavedData *saved_data)
+{
+    int ret;
+
+    ret = text_mode_init(s, saved_data);
+    if (ret)
+        return ret;
+    set_colorize_func(s, c_colorize_line);
+    return ret;
+}
+
+/* specific C mode commands */
 static CmdDef c_commands[] = {
     CMD_( KEY_CTRL('i'), KEY_NONE, "c-indent-command", do_c_indent, "*")
     CMD_( KEY_META(KEY_CTRL('\\')), KEY_NONE, "c-indent-region",
@@ -770,7 +791,6 @@ static int c_init(void)
     c_mode.mode_init = c_mode_init;
 
     qe_register_mode(&c_mode);
-
     qe_register_cmd_table(c_commands, "C");
 
     return 0;

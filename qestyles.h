@@ -62,3 +62,20 @@
     STYLE_DEF(QE_STYLE_CSS, "css",
               QERGB(0x98, 0xf8, 0x98), COLOR_TRANSPARENT,
               0, 0)
+
+    /* HTML coloring styles */
+    STYLE_DEF(QE_STYLE_HTML_COMMENT, "html-comment",
+              QERGB(0xf8, 0x44, 0x00), QERGB(0x00, 0x00, 0x00),
+              0, 0)
+    STYLE_DEF(QE_STYLE_HTML_STRING, "html-string",
+              QERGB(0xf8, 0xa0, 0x78), QERGB(0x00, 0x00, 0x00),
+              0, 0)
+    STYLE_DEF(QE_STYLE_HTML_SCRIPT, "html-script",
+              QERGB(0x98, 0xf8, 0x98), QERGB(0x00, 0x00, 0x00),
+              0, 0)
+    STYLE_DEF(QE_STYLE_HTML_ENTITY, "html-entity",
+              QERGB(0xe8, 0xdc, 0x80), QERGB(0x00, 0x00, 0x00),
+              0, 0)
+    STYLE_DEF(QE_STYLE_HTML_TAG, "html-tag",
+              QERGB(0x80, 0xcc, 0xf0), QERGB(0x00, 0x00, 0x00),
+              0, 0)
