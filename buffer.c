@@ -79,6 +79,9 @@ static int eb_rw(EditBuffer *b, int offset, u8 *buf, int size1, int do_write)
     Page *p;
     int len, size;
 
+    if (offset < 0)
+        return 0;
+
     if ((offset + size1) > b->total_size)
         size1 = b->total_size - offset;
 
@@ -112,6 +115,7 @@ static int eb_rw(EditBuffer *b, int offset, u8 *buf, int size1, int do_write)
 }
 
 /* We must have: 0 <= offset < b->total_size */
+/* Safety: request will be clipped */
 int eb_read(EditBuffer *b, int offset, void *buf, int size)
 {
     return eb_rw(b, offset, buf, size, 0);
@@ -328,6 +332,13 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
    have : 0 <= offset <= b->total_size */
 void eb_insert(EditBuffer *b, int offset, const void *buf, int size)
 {
+    /* sanity checks */
+    if (offset > b->total_size)
+	offset = b->total_size;
+    
+    if (offset < 0 || size <= 0)
+        return;
+
     eb_addlog(b, LOGOP_INSERT, offset, size);
 
     eb_insert_lowlevel(b, offset, buf, size);
@@ -342,7 +353,10 @@ void eb_delete(EditBuffer *b, int offset, int size)
     int n, len;
     Page *del_start, *p;
 
-    if (offset >= b->total_size)
+    if (offset + size > b->total_size)
+	size = b->total_size - offset;
+
+    if (offset < 0 || size <= 0)
         return;
 
     b->total_size -= size;
@@ -427,6 +441,7 @@ EditBuffer *eb_new(const char *name, int flags)
 {
     QEmacsState *qs = &qe_state;
     EditBuffer *b;
+    EditBuffer **pb;
 
     b = qe_mallocz(EditBuffer);
     if (!b)
@@ -441,9 +456,14 @@ EditBuffer *eb_new(const char *name, int flags)
     /* XXX: suppress save_log and always use flag ? */
     b->save_log = ((flags & BF_SAVELOG) != 0);
 
-    /* add buffer in global buffer list */
-    b->next = qs->first_buffer;
-    qs->first_buffer = b;
+    /* add buffer in global buffer list (at end for system buffers) */
+    pb = &qs->first_buffer;
+    if (*b->name == '*') {
+	while (*pb)
+	    pb = &(*pb)->next;
+    }
+    b->next = *pb;
+    *pb = b;
 
     /* CG: default charset should be selectable */
     eb_set_charset(b, &charset_8859_1);
@@ -462,6 +482,9 @@ void eb_free(EditBuffer *b)
     QEmacsState *qs = &qe_state;
     EditBuffer **pb;
     EditBufferCallbackList *l, *l1;
+
+    if (b == NULL)
+	return;
 
     /* call user defined close */
     if (b->close)
@@ -633,11 +656,8 @@ void eb_free_callback(EditBuffer *b, EditBufferCallback cb,
 }
 
 /* standard callback to move offsets */
-void eb_offset_callback(__unused__ EditBuffer *b,
-                        void *opaque,
-                        enum LogOperation op,
-                        int offset,
-                        int size)
+void eb_offset_callback(__unused__ EditBuffer *b, void *opaque,
+                        enum LogOperation op, int offset, int size)
 {
     int *offset_ptr = opaque;
 
@@ -680,7 +700,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
     if (!b->save_log)
         return;
     if (!b->log_buffer) {
-        char buf[256];
+        char buf[MAX_BUFFERNAME_SIZE];
         snprintf(buf, sizeof(buf), "*log <%s>*", b->name);
         b->log_buffer = eb_new(buf, BF_SYSTEM);
         if (!b->log_buffer)
@@ -702,6 +722,8 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
     }
 
     /* header */
+    //lb.pad1 = '\n';	/* make log buffer display readable */
+    //lb.pad2 = ':';
     lb.op = op;
     lb.offset = offset;
     lb.size = size;
@@ -1351,7 +1373,7 @@ void set_filename(EditBuffer *b, const char *filename)
     set_buffer_name(b, p);
 }
 
-void eb_printf(EditBuffer *b, const char *fmt, ...)
+int eb_printf(EditBuffer *b, const char *fmt, ...)
 {
     char buf0[1024];
     char *buf;
@@ -1371,6 +1393,7 @@ void eb_printf(EditBuffer *b, const char *fmt, ...)
         va_end(ap);
     }
     eb_insert(b, b->total_size, buf, len);
+    return len;
 }
 
 /* pad current line with spaces so that it reaches column n */
