@@ -29,8 +29,12 @@ $(LIB): $(OBJS)
 	rm -f $@
 	$(AR) rc $@ $(OBJS)
 
+%.o: %.c Makefile
+	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
+
 clean:
-	rm -f *~ *.o *.a *.exe csstoqe html_style.c docbook_style.c
+	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
+          csstoqe html_style.c docbook_style.c
 
 #
 # build default style sheet file
