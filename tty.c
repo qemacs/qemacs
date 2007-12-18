@@ -591,20 +591,19 @@ static void tty_term_close_font(__unused__ QEditScreen *s, QEFont *font)
 
 static int tty_term_glyph_width(__unused__ QEditScreen *s, unsigned int ucs)
 {
-  /* fast test for majority of non-wide scripts */
-  if (ucs < 0x900)
-    return 1;
+    /* fast test for majority of non-wide scripts */
+    if (ucs < 0x900)
+        return 1;
 
-  return 1 +
-    ((ucs >= 0x1100 && ucs <= 0x115f) || /* Hangul Jamo */
-     (ucs >= 0x2e80 && ucs <= 0xa4cf && (ucs & ~0x0011) != 0x300a &&
-      ucs != 0x303f) ||                  /* CJK ... Yi */
-     (ucs >= 0xac00 && ucs <= 0xd7a3) || /* Hangul Syllables */
-     (ucs >= 0xf900 && ucs <= 0xfaff) || /* CJK Compatibility Ideographs */
-     (ucs >= 0xfe30 && ucs <= 0xfe6f) || /* CJK Compatibility Forms */
-     (ucs >= 0xff00 && ucs <= 0xff5f) || /* Fullwidth Forms */
-     (ucs >= 0xffe0 && ucs <= 0xffe6)
-     );
+    return 1 +
+        ((ucs >= 0x1100 && ucs <= 0x115f) || /* Hangul Jamo */
+         (ucs >= 0x2e80 && ucs <= 0xa4cf && (ucs & ~0x0011) != 0x300a &&
+          ucs != 0x303f) ||                  /* CJK ... Yi */
+         (ucs >= 0xac00 && ucs <= 0xd7a3) || /* Hangul Syllables */
+         (ucs >= 0xf900 && ucs <= 0xfaff) || /* CJK Compatibility Ideographs */
+         (ucs >= 0xfe30 && ucs <= 0xfe6f) || /* CJK Compatibility Forms */
+         (ucs >= 0xff00 && ucs <= 0xff5f) || /* Fullwidth Forms */
+         (ucs >= 0xffe0 && ucs <= 0xffe6));
 }
 
 static void tty_term_text_metrics(QEditScreen *s, __unused__ QEFont *font, 
