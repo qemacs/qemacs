@@ -418,6 +418,7 @@ void charset_init(void)
 {
     int l, i, n;
 
+    // could set utf8_length[128...0xc0] to 0 as invalid bytes
     memset(utf8_length, 1, 256);
 
     i = 0xc0;
