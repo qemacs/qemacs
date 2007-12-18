@@ -283,7 +283,7 @@ static inline unsigned int css_hash_ident(CSSIdent id, unsigned int hash_size)
     return (unsigned int)id % hash_size;
 }
 
-/* property handlign */
+/* property handling */
 
 typedef struct CSSPropertyValue {
     int type; /* see CSS_UNIT_xxx or CSS_VALUE_xxx */
