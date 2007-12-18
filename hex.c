@@ -24,8 +24,14 @@ static ModeDef hex_mode;
 
 static int to_disp(int c)
 {
+#if 1
+    /* Allow characters in range 160-255 to show as graphics */
+    if ((c & 127) < ' ' || c == 127)
+        c = '.';
+#else
     if (c < ' ' || c >= 127)
         c = '.';
+#endif
     return c;
 }
 
@@ -141,6 +147,11 @@ static int ascii_mode_init(EditState *s, ModeSavedData *saved_data)
     release_font(s->screen, font);
 
     s->disp_width = (s->screen->width / num_width) - 10;
+    /* align on 16 byte boundary */
+    s->disp_width &= ~15;
+    if (s->disp_width < 16)
+	s->disp_width = 16;
+    //s->insert = 1;
     s->hex_mode = 0;
     s->wrap = WRAP_TRUNCATE;
     return 0;
@@ -153,10 +164,12 @@ static int hex_mode_init(EditState *s, ModeSavedData *saved_data)
     ret = text_mode_init(s, saved_data);
     if (ret)
         return ret;
+
     s->disp_width = 16;
     s->hex_mode = 1;
     s->unihex_mode = 0;
     s->hex_nibble = 0;
+    //s->insert = 1;
     s->wrap = WRAP_TRUNCATE;
     return 0;
 }
@@ -180,7 +193,7 @@ static int hex_mode_probe(ModeProbeData *p)
     if (detect_binary(p->buf, p->buf_size))
         return 50;
     else
-        return 0;
+        return 10;
 }
 
 static void hex_move_bol(EditState *s)
