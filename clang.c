@@ -79,7 +79,7 @@ enum {
 void c_colorize_line(unsigned int *buf, int len, 
                      int *colorize_state_ptr, __unused__ int state_only)
 {
-    int c, state, style, klen, type_decl;
+    int c, state, style, style1, type_decl, klen, delim;
     unsigned int *p, *p_start, *p_end, *p1, *p2;
     char kbuf[32];
 
@@ -90,7 +90,7 @@ void c_colorize_line(unsigned int *buf, int len,
     type_decl = 0;
 
     if (p >= p_end)
-	goto the_end;
+        goto the_end;
 
     c = 0;      /* turn off stupid egcs-2.91.66 warning */
     style = 0;
@@ -148,9 +148,6 @@ void c_colorize_line(unsigned int *buf, int len,
             state = C_PREPROCESS;
             style = QE_STYLE_PREPROCESS;
             break;
-        set_preprocessor:
-            set_color(p_start, p, QE_STYLE_PREPROCESS);
-            continue;
         case 'L':       /* wide character and string literals */
             if (*p == '\'') {
                 p++;
@@ -161,43 +158,36 @@ void c_colorize_line(unsigned int *buf, int len,
                 goto parse_string;
             }
             goto normal;
-        case '\'':              /* character constant */
+        case '\'':      /* character constant */
         parse_string_q:
             state |= C_STRING_Q;
-            for (; p < p_end; p++) {
-                if (*p == '\\') {
-                    p++;
-                    if (p >= p_end)
-                        break;
-                } else
-                if (*p == '\'') {
-                    p++;
-                    state &= ~C_STRING_Q;
-                    break;
-                }
-            }
-            if (state & C_PREPROCESS)
-                goto set_preprocessor;
-            set_color(p_start, p, QE_STYLE_STRING_Q);
-            continue;
-        case '\"':            /* strings literal */
+            style1 = QE_STYLE_STRING_Q;
+            delim = '\'';
+            goto string;
+        case '\"':      /* string literal */
         parse_string:
             state |= C_STRING;
-            for (; p < p_end; p++) {
+            style1 = QE_STYLE_STRING;
+            delim = '\"';
+        string:
+            while (p < p_end) {
                 if (*p == '\\') {
                     p++;
                     if (p >= p_end)
                         break;
-                } else
-                if (*p == '\"') {
                     p++;
-                    state &= ~C_STRING;
+                } else
+                if ((int)*p == delim) {
+                    p++;
+                    state &= ~(C_STRING | C_STRING_Q);
                     break;
+                } else {
+                    p++;
                 }
             }
             if (state & C_PREPROCESS)
-                goto set_preprocessor;
-            set_color(p_start, p, QE_STYLE_STRING);
+                style1 = QE_STYLE_PREPROCESS;
+            set_color(p_start, p, style1);
             continue;
         case '=':
             /* exit type declaration */
@@ -232,6 +222,11 @@ void c_colorize_line(unsigned int *buf, int len,
                 } while (qe_isalnum(c) || c == '_');
                 kbuf[klen] = '\0';
 
+                if (strfind(c_mode_keywords, kbuf, 0)) {
+                    set_color(p_start, p, QE_STYLE_KEYWORD);
+                    continue;
+                }
+
                 p1 = p;
                 while (qe_isblank(*p1))
                     p1++;
@@ -239,9 +234,6 @@ void c_colorize_line(unsigned int *buf, int len,
                 while (*p2 == '*' || qe_isblank(*p2))
                     p2++;
 
-                if (strfind(c_mode_keywords, kbuf, 0)) {
-                    set_color(p_start, p, QE_STYLE_KEYWORD);
-                } else
                 if (strfind(c_mode_types, kbuf, 0)
                 ||  (klen > 2 && kbuf[klen - 2] == '_' && kbuf[klen - 1] == 't')) {
                     /* c type */
@@ -250,23 +242,25 @@ void c_colorize_line(unsigned int *buf, int len,
                         type_decl = 1;
                     }
                     set_color(p_start, p, QE_STYLE_TYPE);
-                } else
+                    continue;
+                }
+
                 if (*p == '(') {
                     /* function call */
                     /* XXX: different styles for call and definition */
                     set_color(p_start, p, QE_STYLE_FUNCTION);
-                } else {
-                    /* assume typedef if starting at first column */
-                    if (p_start == buf)
-                        type_decl = 1;
+                    continue;
+                }
+                /* assume typedef if starting at first column */
+                if (p_start == buf)
+                    type_decl = 1;
 
-                    if (type_decl) {
-                        if (p_start == buf) {
-                            /* assume type if first column */
-                            set_color(p_start, p, QE_STYLE_TYPE);
-                        } else {
-                            set_color(p_start, p, QE_STYLE_VARIABLE);
-                        }
+                if (type_decl) {
+                    if (p_start == buf) {
+                        /* assume type if first column */
+                        set_color(p_start, p, QE_STYLE_TYPE);
+                    } else {
+                        set_color(p_start, p, QE_STYLE_VARIABLE);
                     }
                 }
                 continue;
