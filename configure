@@ -59,6 +59,7 @@ ffmpeg="no"
 html="no"
 plugins="yes"
 initcalls="yes"
+kmaps="yes"
 exe=""
 
 # OS specific
@@ -205,6 +206,9 @@ if test "$win32" = "yes" ; then
     cross_prefix="i386-mingw32msvc-"
     network="no"
     exe=".exe"
+    x11="no"
+    plugins="no"
+    kmaps="no"
 fi
 
 if test "$cygwin" = "yes" ; then
@@ -271,6 +275,12 @@ fi
 if test "$tiny" = "yes" ; then
     x11="no"
     ffmpeg="no"
+    xv="no"
+    xrender="no"
+    png="no"
+    html="no"
+    plugins="no"
+    kmaps="no"
 fi
 
 if test -z "$CFLAGS"; then
@@ -340,6 +350,7 @@ echo "libpng support   $png"
 echo "Graphical HTML   $html"
 echo "Plugins support  $plugins"
 echo "Initcall support $initcalls"
+echo "All kmaps        $kmaps"
 echo "FFMPEG support   $ffmpeg"
 
 echo "Creating config.mak and config.h"
@@ -451,6 +462,11 @@ if test "$ffmpeg" = "yes" ; then
   echo "CONFIG_FFMPEG=yes" >> config.mak
   echo "FFMPEG_SRCDIR=$ffmpeg_srcdir" >> config.mak
   echo "FFMPEG_LIBDIR=$ffmpeg_libdir" >> config.mak
+fi
+
+if test "$kmaps" = "yes" ; then
+  echo "#define CONFIG_ALL_KMAPS 1" >> $TMPH
+  echo "CONFIG_ALL_KMAPS=yes" >> config.mak
 fi
 
 # build tree in object directory if source path is different from current one

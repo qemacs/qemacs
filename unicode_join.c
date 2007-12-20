@@ -316,6 +316,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
 
 int load_ligatures(void)
 {
+    return 0;
 }
 
 int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,

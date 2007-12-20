@@ -7287,11 +7287,9 @@ static inline void init_all_modules(void)
 #ifdef CONFIG_X11
     module_x11_init(); /* x11.c(1704) */
 #endif
-#ifndef CONFIG_TINY
 #ifdef CONFIG_HTML
     module_html_init(); /* html.c(894) */
     module_docbook_init(); /* docbook.c(53) */
-#endif
 #endif
 #ifdef CONFIG_FFMPEG
     module_video_init(); /* video.c(979) */

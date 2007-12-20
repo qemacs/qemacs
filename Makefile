@@ -72,36 +72,20 @@ DEFINES=-DHAVE_QE_CONFIG_H
 # do not modify after this
 
 ifdef CONFIG_TINY
-CONFIG_X11=
 CONFIG_ALL_MODES=
 CONFIG_UNICODE_JOIN=
-CONFIG_ALL_KMAPS=
-CONFIG_HTML=
-CONFIG_DOCBOOK=
-CONFIG_DLL=
 endif
 
-ifdef CONFIG_WIN32
-CONFIG_ALL_KMAPS=
-CONFIG_X11=
-CONFIG_DLL=
-EXE=.exe
+ifdef CONFIG_ALL_MODES
+DEFINES+= -DCONFIG_ALL_MODES
 endif
 
 ifdef CONFIG_PNG_OUTPUT
 HTMLTOPPM_LIBS+= -lpng
 endif
 
-ifdef CONFIG_ALL_KMAPS
-DEFINES+= -DCONFIG_ALL_KMAPS
-endif
-
 ifdef CONFIG_UNICODE_JOIN
 DEFINES+= -DCONFIG_UNICODE_JOIN
-endif
-
-ifdef CONFIG_ALL_MODES
-DEFINES+= -DCONFIG_ALL_MODES
 endif
 
 ifdef CONFIG_DLL
@@ -124,7 +108,7 @@ endif
 
 # more charsets if needed
 ifndef CONFIG_TINY
-OBJS+=charsetjis.o charsetmore.o
+OBJS+= charsetjis.o charsetmore.o
 endif
 
 ifdef CONFIG_ALL_MODES
@@ -201,20 +185,13 @@ qe$(EXE): qe_g$(EXE) Makefile
 ffplay$(EXE): qe$(EXE) Makefile
 	ln -sf $< $@
 
-qe.o: qe.c qe.h qfribidi.h qeconfig.h
-
-charset.o: charset.c qe.h
-charsetjis.o: charsetjis.c qe.h charsetjis.def
-charsetmore.o: charsetmore.c qe.h
-
-buffer.o: buffer.c qe.h
-tty.o: tty.c qe.h
-qfribidi.o: qfribidi.c qfribidi.h
 cfb.o: cfb.c cfb.h fbfrender.h
+charsetjis.o: charsetjis.c charsetjis.def
 fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-html2png.o: html2png.c qe.h
+qe.o: qe.c qe.h qfribidi.h qeconfig.h
+qfribidi.o: qfribidi.c qfribidi.h
 
-%.o: %.c qe.h qestyles.h Makefile
+%.o: %.c qe.h qestyles.h config.h config.mak Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
 clean:
