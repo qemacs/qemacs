@@ -1398,30 +1398,46 @@ static int raw_load_buffer(EditBuffer *b, FILE *f)
     return ret;
 }
 
-static int raw_save_buffer(EditBuffer *b, const char *filename)
+/* Write bytes between <start> and <end> to file filename,
+ * return bytes written or -1 if error
+ */
+static int raw_save_buffer(EditBuffer *b, int start, int end,
+                           const char *filename)
 {
-    int fd, len, size;
+    int fd, len, size, written;
     unsigned char buf[IOBUF_SIZE];
 
     fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0600);
     if (fd < 0)
         return -1;
 
-    size = b->total_size;
+    if (end < start) {
+        int tmp = start;
+        start = end;
+        end = tmp;
+    }
+    if (start < 0)
+        start = 0;
+    if (end > b->total_size)
+        end = b->total_size;
+    written = 0;
+    size = end - start;
     while (size > 0) {
         len = size;
         if (len > IOBUF_SIZE)
             len = IOBUF_SIZE;
-        eb_read(b, b->total_size - size, buf, len);
+        eb_read(b, start, buf, len);
         len = write(fd, buf, len);
         if (len < 0) {
             close(fd);
             return -1;
         }
+        written += len;
+        start += len;
         size -= len;
     }
     close(fd);
-    return 0;
+    return written;
 }
 
 static void raw_close_buffer(__unused__ EditBuffer *b)
@@ -1656,10 +1672,21 @@ void eb_register_data_type(EditBufferDataType *bdt)
     *lp = bdt;
 }
 
-/*
- * save buffer according to its data type
+/* Write buffer contents between <start> and <end> to file <filename>,
+ * return bytes written or -1 if error
  */
-int save_buffer(EditBuffer *b)
+int eb_write_buffer(EditBuffer *b, int start, int end, const char *filename)
+{
+    if (!b->data_type->buffer_save)
+        return -1;
+    
+    return b->data_type->buffer_save(b, start, end, filename);
+}
+
+/* Save buffer contents to buffer associated file, handle backups,
+ * return bytes written or -1 if error
+ */
+int eb_save_buffer(EditBuffer *b)
 {
     int ret, mode;
     char buf1[MAX_FILENAME_SIZE];
@@ -1678,9 +1705,10 @@ int save_buffer(EditBuffer *b)
     /* backup old file if present */
     strcpy(buf1, filename);
     strcat(buf1, "~");
+    // should check error code
     rename(filename, buf1);
 
-    ret = b->data_type->buffer_save(b, filename);
+    ret = b->data_type->buffer_save(b, 0, b->total_size, filename);
     if (ret < 0)
         return ret;
 
@@ -1690,9 +1718,9 @@ int save_buffer(EditBuffer *b)
 #endif
     /* reset log */
     /* CG: should not do this! */
-    log_reset(b);
+    //log_reset(b);
     b->modified = 0;
-    return 0;
+    return ret;
 }
 
 /* invalidate buffer raw data */

@@ -56,8 +56,7 @@ static CmdDef basic_commands[] = {
     CMD1( KEY_META('w'), KEY_NONE, "copy-region", do_kill_region, 0 )
     CMD0( KEY_META('<'), KEY_CTRL_HOME, "beginning-of-buffer", do_bof )
     CMD0( KEY_META('>'), KEY_CTRL_END, "end-of-buffer", do_eof )
-    CMD_( KEY_META('x'), KEY_NONE, "execute-extended-command",
-          do_execute_command,
+    CMD_( KEY_META('x'), KEY_NONE, "execute-command", do_execute_command,
           "s{Command: }[command]|command|i") /* u? */
     /* A-- should start negative universal argument */
     CMD0( KEY_CTRL('u'), KEY_NONE, "universal-argument",
@@ -66,10 +65,13 @@ static CmdDef basic_commands[] = {
     CMD_( KEY_META('y'), KEY_NONE, "yank-pop", do_yank_pop, "*")
     /* do_tab will not change read only buffer */
     CMD0( KEY_CTRL('i'), KEY_NONE, "tabulate", do_tab) /* u? */
-    /* do_space ? */
+    //CMD0( KEY_SPC, KEY_NONE, "space", do_space) /* u? */
     CMD_( KEY_CTRL('q'), KEY_NONE, "quoted-insert", do_quote, "*") /* u? */
-    CMD1( KEY_CTRLX(KEY_CTRL('s')), KEY_NONE, "save-buffer", do_save, 0 )
-    CMD1( KEY_CTRLX(KEY_CTRL('w')), KEY_NONE, "write-file", do_save, 1 )
+    CMD1( KEY_CTRLX(KEY_CTRL('s')), KEY_NONE, "save-buffer", do_save_buffer, 0 ) /* u? */
+    // should use regular prompt system
+    CMD1( KEY_CTRLX(KEY_CTRL('w')), KEY_NONE, "write-file", do_save_buffer, 1 ) /* u? */
+    CMD_( KEY_CTRLX('w'), KEY_NONE, "write-region", do_write_region,
+          "s{Write region to file: }[file]|file|") /* u? */
     CMD0( KEY_CTRLX(KEY_CTRL('c')), KEY_NONE, "exit-qemacs", do_quit ) /* u? */
     CMD_( KEY_CTRLX(KEY_CTRL('f')), KEY_NONE, "find-file", do_load,
           "s{Find file: }[file]|file|") /* u? */
@@ -88,8 +90,8 @@ static CmdDef basic_commands[] = {
           "s{Search forward: }|search|v")
     CMDV( KEY_NONE, KEY_NONE, "search-backward", do_search_string, -1,
           "s{Search backward: }|search|v")
-    CMD1( KEY_CTRL('s'), KEY_NONE, "isearch-forward", do_isearch, 1 ) /* u? */
     CMD1( KEY_CTRL('r'), KEY_NONE, "isearch-backward", do_isearch, -1 ) /* u? */
+    CMD1( KEY_CTRL('s'), KEY_NONE, "isearch-forward", do_isearch, 1 ) /* u? */
     CMD_( KEY_META('%'), KEY_NONE, "query-replace", do_query_replace,
           "*s{Query replace: }|search|s{With: }|replace|")
     CMD_( KEY_META('r'), KEY_NONE, "replace-string", do_replace_string,
@@ -100,9 +102,9 @@ static CmdDef basic_commands[] = {
     CMDV( KEY_META('g'), KEY_NONE, "goto-line", do_goto, 'l', "us{Goto line: }v")
     CMDV( KEY_CTRLX('g'), KEY_NONE, "goto-char", do_goto, 'c',  "us{Goto char: }v")
 
-    CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE, "vc-toggle-read-only", 
+    CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE, "toggle-read-only", 
           do_toggle_read_only)
-    CMD0( KEY_META('~'), KEY_NONE, "not-modified", do_not_modified)
+    CMD0( KEY_META('~'), KEY_NONE, "not-modified", do_not_modified) /* u */
     CMD_( KEY_META('q'), KEY_NONE, "fill-paragraph", do_fill_paragraph, "*")
     CMD0( KEY_META('{'), KEY_NONE, "backward-paragraph", do_backward_paragraph)
     CMD0( KEY_META('}'), KEY_NONE, "forward-paragraph", do_forward_paragraph)

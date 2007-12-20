@@ -1371,8 +1371,8 @@ void do_set_mark(EditState *s)
 
 void do_mark_whole_buffer(EditState *s)
 {
-    s->b->mark = 0;
-    s->offset = s->b->total_size;
+    s->b->mark = s->b->total_size;
+    s->offset = 0;
 }
 
 EditBuffer *new_yank_buffer(void)
@@ -5142,7 +5142,7 @@ void do_set_visited_file_name(EditState *s, const char *filename,
 static void save_edit_cb(void *opaque, char *filename);
 static void save_final(EditState *s);
 
-void do_save(EditState *s, int save_as)
+void do_save_buffer(EditState *s, int save_as)
 {
     char default_path[MAX_FILENAME_SIZE];
 
@@ -5175,12 +5175,25 @@ static void save_edit_cb(void *opaque, char *filename)
 
 static void save_final(EditState *s)
 {
-    int ret;
-    ret = save_buffer(s->b);
-    if (ret == 0) {
-        put_status(s, "Wrote %s", s->b->filename);
+    int res;
+
+    res = eb_save_buffer(s->b);
+    if (res >= 0) {
+	put_status(s, "Wrote %d bytes to %s", res, s->b->filename);
     } else {
         put_status(s, "Could not write %s", s->b->filename);
+    }
+}
+
+void do_write_region(EditState *s, const char *filename)
+{
+    char absname[MAX_FILENAME_SIZE];
+    int res;
+
+    canonize_absolute_path(absname, sizeof(absname), filename);
+    res = eb_write_buffer(s->b, s->b->mark, s->offset, filename);
+    if (res >= 0) {
+	put_status(s, "Wrote %d bytes to %s", res, filename);
     }
 }
 
@@ -5236,7 +5249,7 @@ static void quit_examine_buffers(QuitState *is)
                 is->modified = 1;
                 break;
             case QS_SAVE:
-                save_buffer(b);
+                eb_save_buffer(b);
                 break;
             }
         }
@@ -5284,7 +5297,7 @@ static void quit_key(void *opaque, int ch)
         is->state = QS_NOSAVE;
     do_save:
         b = is->b;
-        save_buffer(b);
+        eb_save_buffer(b);
         break;
     case KEY_CTRL('g'):
         /* abort */
@@ -5725,16 +5738,21 @@ static void query_replace_key(void *opaque, int ch)
     QueryReplaceState *is = opaque;
 
     switch (ch) {
+    case 'Y':
     case 'y':
-    case ' ':
+    case KEY_SPC:
         query_replace_replace(is);
         break;
     case '!':
         is->replace_all = 1;
         break;
+    case 'N':
     case 'n':
     case KEY_DELETE:
         break;
+    case '.':
+        query_replace_replace(is);
+        /* FALL THRU */
     default:
         query_replace_abort(is);
         return;
@@ -6149,7 +6167,7 @@ void do_describe_bindings(EditState *s)
 
 void do_describe_key_briefly(EditState *s)
 {
-    put_status(s, "Describe key briefly:");
+    put_status(s, "Describe key: ");
     key_ctx.describe_key = 1;
 }
 

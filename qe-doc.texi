@@ -45,7 +45,7 @@ rendering on VT100 terminals.
 @item Works on any VT100 terminals without termcap. UTF8 VT100 support
   included with double width glyphs.
 
-@item X11 support. Support multiple proportionnal fonts at the same time
+@item X11 support. Support multiple proportional fonts at the same time
   (as XEmacs). X Input methods supported. Xft extension supported for
   anti aliased font display.
 
@@ -173,7 +173,7 @@ C-x C-v                 : find-alternate-file
 C-x b                   : switch-to-buffer
 C-x k                   : kill-buffer
 C-x i                   : insert-file
-C-x C-q                 : vc-toggle-read-only
+C-x C-q                 : toggle-read-only
 C-x C-b                 : list-buffers
 @end example
 
@@ -188,7 +188,7 @@ M-%                     : query-replace
 @section Command handling
 
 @example
-M-x                     : execute-extended-command
+M-x                     : execute-command
 C-u                     : universal-argument
 C-g                     : abort
 C-x u, C-_              : undo
@@ -315,7 +315,7 @@ They are extracted from the @emph{Yudit} editor keyboard maps.
 
 QEmacs fully supports the Unicode bidi algorithm. 
 
-By default, in text editing mode, qemacs is not in bidirectionnal mode (it
+By default, in text editing mode, qemacs is not in bidirectional mode (it
 may change soon). You can use 'C-x RET b' to toogle between bidi and normal
 editing modes.
 
@@ -407,7 +407,7 @@ The XML/HTML/CSS2 renderer has the following features:
      depend on HTML quirks.
 @item Quite complete CSS2 support (including generated content and
      counters).
-@item Full Bidirectionnal Unicode support.
+@item Full Bidirectional Unicode support.
 @item Table support with both 'fixed' and 'auto' layout algorithms.
 @item 'tty' and 'screen' CSS2 medias are supported.
 @end itemize

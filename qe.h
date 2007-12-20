@@ -703,7 +703,7 @@ struct EditBuffer {
 typedef struct EditBufferDataType {
     const char *name; /* name of buffer data type (text, image, ...) */
     int (*buffer_load)(EditBuffer *b, FILE *f);
-    int (*buffer_save)(EditBuffer *b, const char *filename);
+    int (*buffer_save)(EditBuffer *b, int start, int end, const char *filename);
     void (*buffer_close)(EditBuffer *b);
     struct EditBufferDataType *next;
 } EditBufferDataType;
@@ -756,7 +756,8 @@ void do_undo(EditState *s);
 
 int raw_load_buffer1(EditBuffer *b, FILE *f, int offset);
 int mmap_buffer(EditBuffer *b, const char *filename);
-int save_buffer(EditBuffer *b);
+int eb_write_buffer(EditBuffer *b, int start, int end, const char *filename);
+int eb_save_buffer(EditBuffer *b);
 // should rename to eb_set_buffername and eb_set_filename
 void set_buffer_name(EditBuffer *b, const char *name1);
 void set_filename(EditBuffer *b, const char *filename);
@@ -1405,7 +1406,8 @@ void do_load_from_path(EditState *s, const char *filename);
 void do_switch_to_buffer(EditState *s, const char *bufname);
 void do_break(EditState *s);
 void do_insert_file(EditState *s, const char *filename);
-void do_save(EditState *s, int save_as);
+void do_save_buffer(EditState *s, int save_as);
+void do_write_region(EditState *s, const char *filename);
 void do_isearch(EditState *s, int dir);
 void do_refresh_complete(EditState *s);
 void do_kill_buffer(EditState *s, const char *bufname1);

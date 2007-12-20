@@ -402,5 +402,5 @@ test:
 	make -C tests test
 
 # documentation
-qe-doc.html: qe-doc.texi
-	texi2html -monolithic -number $<
+qe-doc.html: qe-doc.texi Makefile
+	LANGUAGE=en_US LC_ALL=en_US.UTF-8 texi2html -monolithic -number $<

@@ -1402,13 +1402,13 @@ static CmdDef shell_commands[] = {
 
 /* compilation commands */
 static CmdDef compile_commands[] = {
-    CMD_( KEY_CTRLXRET('\r'), KEY_NONE, "shell", do_shell, "i")
+    CMD_( KEY_CTRLXRET('\r'), KEY_NONE, "shell", do_shell, "ui")
     CMD_( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE, "compile", do_compile,
           "s{Compile command: }|compile|")
     CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE, "previous-error", 
-          do_compile_error, -1)
-    CMD1( KEY_CTRLX(KEY_CTRL('n')), KEY_NONE, "next-error", 
-          do_compile_error, 1)
+          do_compile_error, -1) /* u */
+    CMD1( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'), "next-error", 
+          do_compile_error, 1) /* u */
     CMD_DEF_END,
 };
 
