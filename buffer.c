@@ -127,6 +127,9 @@ void eb_write(EditBuffer *b, int offset, const void *buf_arg, int size)
     int len, left;
     const u8 *buf = buf_arg;
     
+    if (b->flags & BF_READONLY)
+	return;
+
     len = eb_rw(b, offset, (void *)buf, size, 1);
     left = size - len;
     if (left > 0) {
@@ -241,8 +244,13 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
     Page *p, *p_start, *q;
     int size_start, len, n, page_index;
 
+    if (dest->flags & BF_READONLY)
+	return;
+
     if (size == 0)
         return;
+
+    /* CG: should assert parameter consistency */
 
     eb_addlog(dest, LOGOP_INSERT, dest_offset, size);
 
@@ -332,6 +340,9 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
    have : 0 <= offset <= b->total_size */
 void eb_insert(EditBuffer *b, int offset, const void *buf, int size)
 {
+    if (b->flags & BF_READONLY)
+	return;
+
     /* sanity checks */
     if (offset > b->total_size)
 	offset = b->total_size;
@@ -352,6 +363,9 @@ void eb_delete(EditBuffer *b, int offset, int size)
 {
     int n, len;
     Page *del_start, *p;
+
+    if (b->flags & BF_READONLY)
+	return;
 
     if (offset + size > b->total_size)
 	size = b->total_size - offset;
@@ -477,6 +491,37 @@ EditBuffer *eb_new(const char *name, int flags)
     return b;
 }
 
+/* Return an empty scratch buffer, create one if necessary */
+EditBuffer *eb_scratch(const char *name)
+{
+    EditBuffer *b;
+
+    b = eb_find(name);
+    if (b != NULL) {
+	eb_clear(b);
+    } else {
+	b = eb_new(name, 0);
+    }
+    return b;
+}
+
+void eb_clear(EditBuffer *b)
+{
+    b->flags &= ~BF_READONLY;
+    b->save_log = 0;
+    eb_delete(b, 0, b->total_size);
+    log_reset(b);
+
+    /* close and reset file handle */
+    if (b->file_handle > 0) {
+        close(b->file_handle);
+    }
+    b->file_handle = 0;
+
+    /* TODO: clear buffer structure */
+    //memset(b, 0, offsetof(EditBuffer, remanent_area));
+}
+
 void eb_free(EditBuffer *b)
 {
     QEmacsState *qs = &qe_state;
@@ -498,14 +543,7 @@ void eb_free(EditBuffer *b)
     }
     b->first_callback = NULL;
 
-    b->save_log = 0;
-    eb_delete(b, 0, b->total_size);
-    log_reset(b);
-
-    /* suppress mmap file handle */
-    if (b->file_handle > 0) {
-        close(b->file_handle);
-    }
+    eb_clear(b);
 
     /* suppress from buffer list */
     pb = &qs->first_buffer;
@@ -920,7 +958,7 @@ static void get_pos(u8 *buf, int size, int *line_ptr, int *col_ptr,
         line++;
     }
     /* now compute number of chars (XXX: potential problem if out of
-       block, but for UTF8 it works) */
+     * block, but for UTF8 it works) */
     col = 0;
     while (lp < p1) {
         ch = s->table[*lp];
@@ -1134,6 +1172,35 @@ int eb_get_char_offset(EditBuffer *b, int offset)
     the_end: ;
     }
     return pos;
+}
+
+/* delete a range of bytes from the buffer, bounds in any order, return
+ * lower bound.
+ */
+int eb_delete_range(EditBuffer *b, int p1, int p2)
+{
+    if (p1 > p2) {
+	int tmp = p1;
+	p1 = p2;
+	p2 = tmp;
+    }
+    eb_delete(b, p1, p2 - p1);
+    return p1;
+}
+
+/* replace 'size' bytes at offset 'offset' with 'size1' bytes from 'buf' */
+void eb_replace(EditBuffer *b, int offset, int size, const u8 *buf, int size1)
+{
+    /* CG: behaviour is not exactly identical: mark, point and other
+     * callback based offsets will be updated differently.  should
+     * write portion that fits and insert or delete remainder?
+     */
+    if (size == size1) {
+	eb_write(b, offset, buf, size1);
+    } else {
+	eb_delete(b, offset, size);
+	eb_insert(b, offset, buf, size1);
+    }
 }
 
 /************************************************************/

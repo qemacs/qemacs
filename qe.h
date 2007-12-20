@@ -63,6 +63,9 @@
 #define force_cast(type, expr)  ((type)(expr))
 #endif
 
+#ifndef offsetof
+#define offsetof(s,m)  ((size_t)(&((s *)0)->m))
+#endif
 #ifndef countof
 #define countof(a)  ((int)(sizeof(a) / sizeof((a)[0])))
 #endif
@@ -209,6 +212,7 @@ void css_strtolower(char *buf, int buf_size);
 void skip_spaces(const char **pp);
 
 int strfind(const char *keytable, const char *str, int casefold);
+
 #define stristart(str, val, ptr)   qe_stristart(str, val, ptr)
 int stristart(const char *str, const char *val, const char **ptr);
 int strxstart(const char *str, const char *val, const char **ptr);
@@ -223,6 +227,9 @@ static inline unsigned int *umemcpy(unsigned int *dest,
     return memcpy(dest, src, count * sizeof(unsigned int));
 }
 int umemcmp(const unsigned int *s1, const unsigned int *s2, int count);
+
+int strsubst(char *buf, int buf_size, const char *from,
+             const char *s1, const char *s2);
 
 void get_str(const char **pp, char *buf, int buf_size, const char *stop);
 int css_get_enum(const char *str, const char *enum_str);
@@ -318,9 +325,6 @@ static inline int buf_puts(buf_t *bp, const char *str) {
 
 int buf_printf(buf_t *bp, const char *fmt, ...) __attr_printf(2,3);
 int buf_putc_utf8(buf_t *bp, int c);
-
-int strsubst(char *buf, int buf_size, const char *from,
-             const char *s1, const char *s2);
 
 /* command line option */
 #define CMD_OPT_ARG      0x0001 /* argument */
@@ -462,7 +466,7 @@ int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len);
 
 /* unicode_join.c */
 int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
-                      int dst_size, unsigned int *src, int src_size, 
+                      int dst_size, unsigned int *src, int src_size,
                       int reverse);
 int load_ligatures(void);
 
@@ -589,7 +593,7 @@ void qe_ungrab_keys(void);
 #define MAX_PAGE_SIZE 4096
 //#define MAX_PAGE_SIZE 16
 
-#define NB_LOGS_MAX	100000	/* need better way to limit undo information */
+#define NB_LOGS_MAX     100000  /* need better way to limit undo information */
 
 #define PG_READ_ONLY    0x0001 /* the page is read only */
 #define PG_VALID_POS    0x0002 /* set if the nb_lines / col fields are up to date */
@@ -672,7 +676,7 @@ struct EditBuffer {
 
     /* modification callbacks */
     EditBufferCallbackList *first_callback;
-    
+
     /* asynchronous loading/saving support */
     struct BufferIOState *io_state;
     
@@ -692,10 +696,8 @@ struct EditBuffer {
 
     EditBuffer *next; /* next editbuffer in qe_state buffer list */
     char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
-    char filename[MAX_FILENAME_SIZE]; /* file name */
+    char filename[MAX_FILENAME_SIZE];   /* file name */
 };
-
-struct ModeProbeData;
 
 /* high level buffer type handling */
 typedef struct EditBufferDataType {
@@ -709,7 +711,7 @@ typedef struct EditBufferDataType {
 /* the log buffer is used for the undo operation */
 /* header of log operation */
 typedef struct LogBuffer {
-    //u8 pad1, pad2;	/* for Log buffer readability */
+    //u8 pad1, pad2;    /* for Log buffer readability */
     u8 op;
     u8 was_modified;
     int offset;
@@ -731,9 +733,11 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
                       int size);
 void eb_insert(EditBuffer *b, int offset, const void *buf, int size);
 void eb_delete(EditBuffer *b, int offset, int size);
-//void eb_replace(EditBuffer *b, int offset, int size, const u8 *buf, int size1);
+void eb_replace(EditBuffer *b, int offset, int size, const u8 *buf, int size1);
 void log_reset(EditBuffer *b);
 EditBuffer *eb_new(const char *name, int flags);
+EditBuffer *eb_scratch(const char *name);
+void eb_clear(EditBuffer *b);
 void eb_free(EditBuffer *b);
 EditBuffer *eb_find(const char *name);
 EditBuffer *eb_find_file(const char *filename);
@@ -746,13 +750,14 @@ int eb_goto_pos(EditBuffer *b, int line1, int col1);
 int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset);
 int eb_goto_char(EditBuffer *b, int pos);
 int eb_get_char_offset(EditBuffer *b, int offset);
-//int eb_delete_range(EditBuffer *b, int p1, int p2);
+int eb_delete_range(EditBuffer *b, int p1, int p2);
 //int eb_clip_offset(EditBuffer *b, int offset);
 void do_undo(EditState *s);
 
 int raw_load_buffer1(EditBuffer *b, FILE *f, int offset);
 int mmap_buffer(EditBuffer *b, const char *filename);
 int save_buffer(EditBuffer *b);
+// should rename to eb_set_buffername and eb_set_filename
 void set_buffer_name(EditBuffer *b, const char *name1);
 void set_filename(EditBuffer *b, const char *filename);
 int eb_add_callback(EditBuffer *b, EditBufferCallback cb, void *opaque);
@@ -804,9 +809,9 @@ extern EditBufferDataType raw_data_type;
 #define __exit_call     __attribute__((unused, __section__ (".exitcall.exit")))
 #else
 #undef __attribute_used__
-#define __attribute_used__	__attribute__((__used__))
-#define __init_call	__attribute_used__ __attribute__((__section__ (".initcall.init")))
-#define __exit_call	__attribute_used__ __attribute__((__section__ (".exitcall.exit")))
+#define __attribute_used__      __attribute__((__used__))
+#define __init_call     __attribute_used__ __attribute__((__section__ (".initcall.init")))
+#define __exit_call     __attribute_used__ __attribute__((__section__ (".exitcall.exit")))
 #endif
 
 #define qe_module_init(fn) \
@@ -874,12 +879,12 @@ struct EditState {
     int hex_mode;    /* true if we are currently editing hexa */
     int unihex_mode; /* true if unihex editing (hex_mode must be true too) */
     int hex_nibble;  /* current hexa nibble */
-    int insert;
+    int insert;      /* insert/overtype mode */
     int bidir;
     int cur_rtl;     /* TRUE if the cursor on over RTL chars */
     enum WrapType wrap;
     int line_numbers;
-    int tab_size;
+    int tab_size;    /* the tab width for the window in chars */
     int indent_size;
     int indent_tabs_mode; /* if true, use tabs to indent */
     int interactive; /* true if interaction is done instead of editing
@@ -919,11 +924,13 @@ struct EditState {
                             redraw should be done */
     int borders_invalid; /* true if window borders should be redrawn */
     int show_selection;  /* if true, the selection is displayed */
+
     /* display area info */
     int width, height;
     int ytop, xleft;
     /* full window size, including borders */
     int x1, y1, x2, y2;
+
     int flags; /* display flags */
 #define WF_POPUP      0x0001 /* popup window (with borders) */
 #define WF_MODELINE   0x0002 /* mode line must be displayed */
@@ -948,7 +955,6 @@ struct EditState {
 };
 
 #define SAVED_DATA_SIZE ((int)&((EditState *)0)->end_of_saved_data)
-
 
 struct DisplayState;
 
@@ -990,6 +996,7 @@ typedef struct ModeDef {
     int (*text_backward_offset)(EditState *, int);
 
     /* common functions are defined here */
+    /* TODO: Should have single move function with move type and argument */
     void (*move_up_down)(EditState *, int);
     void (*move_left_right)(EditState *, int);
     void (*move_bol)(EditState *);
@@ -999,6 +1006,7 @@ typedef struct ModeDef {
     void (*scroll_line_up_down)(EditState *, int);
     void (*write_char)(EditState *, int);
     void (*mouse_goto)(EditState *, int x, int y);
+
     int mode_flags;
 #define MODEF_NOCMD 0x0001 /* do not register xxx-mode command automatically */
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
@@ -1061,7 +1069,7 @@ struct QEmacsState {
     EditState *first_window;
     EditState *active_window; /* window in which we edit */
     EditBuffer *first_buffer;
-    //struct EditBuffer *message_buffer;
+    //EditBuffer *message_buffer;
     /* global layout info : DO NOT modify these directly. do_refresh
        does it */
     int status_height;
@@ -1091,20 +1099,20 @@ struct QEmacsState {
     int yank_current;
     int argc;  /* command line arguments */
     char **argv;
-    char res_path[1024];	/* exported as QEPATH */
+    char res_path[1024];        /* exported as QEPATH */
     char status_shadow[MAX_SCREEN_WIDTH];
     QErrorContext ec;
     char system_fonts[NB_FONT_FAMILIES][256];
 
     ///* global variables */
-    //int it;		/* last result from expression evaluator */
-    ////int force_tty;	/* prevent graphics display (X11...) */
-    //int no_config;	/* prevent config file eval */
-    //int force_refresh;	/* force a complete screen refresh */
-    //int ignore_spaces;	/* ignore spaces when comparing windows */
+    //int it;           /* last result from expression evaluator */
+    ////int force_tty;  /* prevent graphics display (X11...) */
+    //int no_config;    /* prevent config file eval */
+    //int force_refresh;        /* force a complete screen refresh */
+    //int ignore_spaces;        /* ignore spaces when comparing windows */
     //int mark_yank_region; /* set mark at opposite end of yanked block */
-    //int hilite_region;	/* hilite the current region when selecting */
-    //int mmap_threshold;	/* minimum file size for mmap */
+    //int hilite_region;        /* hilite the current region when selecting */
+    //int mmap_threshold;       /* minimum file size for mmap */
 };
 
 extern QEmacsState qe_state;
@@ -1142,14 +1150,18 @@ typedef union CmdArg {
     int n;
 } CmdArg;
 
+// should have enum for supported signatures
+
 typedef struct CmdDef {
     unsigned short key;       /* normal key */
     unsigned short alt_key;   /* alternate key */
     const char *name;
     union {
+        // should have union members for all supported signatures
         void *func;
         struct CmdDef *next;
     } action;
+    // should be CmdArg arg;
     void *val;
 } CmdDef;
 
@@ -1165,7 +1177,7 @@ typedef struct CmdDef {
 void qe_register_mode(ModeDef *m);
 void mode_completion(StringArray *cs, const char *input);
 void qe_register_cmd_table(CmdDef *cmds, const char *mode);
-void qe_register_binding(int key, const char *cmd_name, 
+void qe_register_binding(int key, const char *cmd_name,
                          const char *mode_names);
 CmdDef *qe_find_cmd(const char *cmd_name);
 
@@ -1253,7 +1265,7 @@ void display_eol(DisplayState *s, int offset1, int offset2);
 
 void display_printf(DisplayState *ds, int offset1, int offset2,
                     const char *fmt, ...) __attr_printf(4,5);
-void display_printhex(DisplayState *s, int offset1, int offset2, 
+void display_printhex(DisplayState *s, int offset1, int offset2,
                       unsigned int h, int n);
 
 static inline int display_char(DisplayState *s, int offset1, int offset2,
@@ -1330,6 +1342,7 @@ typedef struct CompletionEntry {
 } CompletionEntry;
 
 void register_completion(const char *name, CompletionFunc completion_func);
+//void vput_status(EditState *s, const char *fmt, va_list ap);
 void put_status(EditState *s, const char *fmt, ...) __attr_printf(2,3);
 void put_error(EditState *s, const char *fmt, ...) __attr_printf(2,3);
 void minibuffer_edit(const char *input, const char *prompt, 
@@ -1375,9 +1388,11 @@ void edit_detach(EditState *s);
 void edit_append(EditState *s, EditState *e);
 EditState *edit_find(EditBuffer *b);
 void do_refresh(EditState *s);
+// should take direction argument
 void do_other_window(EditState *s);
 void do_previous_window(EditState *s);
 void do_delete_window(EditState *s, int force);
+// should take argval
 void do_split_window(EditState *s, int horiz);
 void edit_display(QEmacsState *qs);
 void edit_invalidate(EditState *s);
@@ -1407,7 +1422,10 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func);
 int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                        int offset1, int line_num);
 
+// should take argval
 void do_char(EditState *s, int key);
+// bad name!
+// void do_set_mode(EditState *s, const char *mode_name);
 void do_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data);
 void text_move_left_right_visual(EditState *s, int dir);
 void text_move_word_left_right(EditState *s, int dir);
@@ -1417,6 +1435,7 @@ void text_write_char(EditState *s, int key);
 void do_return(EditState *s);
 void do_backspace(EditState *s, int argval);
 void do_delete_char(EditState *s, int argval);
+// should take argval
 void do_tab(EditState *s);
 EditBuffer *new_yank_buffer(void);
 void do_append_next_kill(EditState *s);
@@ -1459,12 +1478,15 @@ void do_delete_word(EditState *s, int dir);
 int cursor_func(DisplayState *ds,
                 int offset1, int offset2, int line_num,
                 int x, int y, int w, int h, int hex_mode);
+// should take argval
 void do_scroll_up_down(EditState *s, int dir);
 void perform_scroll_up_down(EditState *s, int h);
 void do_center_cursor(EditState *s);
+// should take argval
 void do_quote(EditState *s);
 void do_insert(EditState *s);
 void do_open_line(EditState *s);
+// should take argval
 void do_set_mark(EditState *s);
 void do_mark_whole_buffer(EditState *s);
 void do_yank(EditState *s);
@@ -1535,6 +1557,7 @@ int parse_command_line(int argc, char **argv);
 void set_user_option(const char *user);
 
 /* hex.c */
+
 void hex_write_char(EditState *s, int key);
 
 /* list.c */
