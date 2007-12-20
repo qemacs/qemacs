@@ -23,8 +23,8 @@
  * default qemacs configuration 
  */
 static CmdDef basic_commands[] = {
-    CMDV( KEY_DEFAULT, KEY_NONE, "self-insert-command", do_char, ' ', "*v")
-    CMD_( KEY_META('#'), KEY_NONE, "insert-char", do_char, "*i{Insert char: }")
+    CMDV( KEY_DEFAULT, KEY_NONE, "self-insert-command", do_char, ' ', "*v") /* u? */
+    CMD_( KEY_META('#'), KEY_NONE, "insert-char", do_char, "*i{Insert char: }") /* u? */
     CMD_( KEY_CTRL('o'), KEY_NONE, "open-line", do_open_line, "*")
     CMD1( KEY_CTRL('p'), KEY_UP, "previous-line", do_up_down, -1 )
     CMD1( KEY_CTRL('n'), KEY_DOWN, "next-line", do_up_down, 1 )
@@ -32,15 +32,15 @@ static CmdDef basic_commands[] = {
     CMD1( KEY_CTRL('f'), KEY_RIGHT, "forward-char", do_left_right, 1 )
     CMD1( KEY_META('b'), KEY_CTRL_LEFT, "backward-word", do_word_right, -1 )
     CMD1( KEY_META('f'), KEY_CTRL_RIGHT, "forward-word", do_word_right, 1 )
-    CMD1( KEY_META('v'), KEY_PAGEUP, "scroll-down", do_scroll_up_down, -2 )
-    CMD1( KEY_CTRL('v'), KEY_PAGEDOWN, "scroll-up", do_scroll_up_down, 2 )
-    CMD1( KEY_META('z'), KEY_NONE, "scroll-down-one", do_scroll_up_down, -1 )
-    CMD1( KEY_CTRL('z'), KEY_NONE, "scroll-up-one", do_scroll_up_down, 1 )
-    CMD0( KEY_HOME, KEY_CTRL('a'), "beginning-of-line", do_bol)
-    CMD0( KEY_END, KEY_CTRL('e'), "end-of-line", do_eol)
+    CMD1( KEY_META('v'), KEY_PAGEUP, "scroll-down", do_scroll_up_down, -2 ) /* u? */
+    CMD1( KEY_CTRL('v'), KEY_PAGEDOWN, "scroll-up", do_scroll_up_down, 2 ) /* u? */
+    CMD1( KEY_META('z'), KEY_NONE, "scroll-down-one", do_scroll_up_down, -1 ) /* u? */
+    CMD1( KEY_CTRL('z'), KEY_NONE, "scroll-up-one", do_scroll_up_down, 1 ) /* u? */
+    CMD0( KEY_CTRL('a'), KEY_HOME, "beginning-of-line", do_bol)
+    CMD0( KEY_CTRL('e'), KEY_END, "end-of-line", do_eol)
     CMD0( KEY_INSERT, KEY_NONE, "overwrite-mode", do_insert)
-    /* deletion commands are allowed in read only buffers,
-     * they will merely copy the data to the kill ring */
+    /* deletion commands should be allowed in read only buffers,
+     * they should merely copy the data to the kill ring */
     CMD_( KEY_CTRL('d'), KEY_DELETE, "delete-char", do_delete_char, "*ui")
     CMD_( 127, KEY_NONE, "backward-delete-char", do_backspace, "*ui")
     CMD0( KEY_META(KEY_CTRL('w')) , KEY_NONE,
@@ -58,46 +58,48 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_META('>'), KEY_CTRL_END, "end-of-buffer", do_eof )
     CMD_( KEY_META('x'), KEY_NONE, "execute-extended-command",
           do_execute_command,
-          "s{Command: }[command]|command|i")
+          "s{Command: }[command]|command|i") /* u? */
+    /* A-- should start negative universal argument */
     CMD0( KEY_CTRL('u'), KEY_NONE, "universal-argument",
           do_universal_argument)
     CMD_( KEY_CTRL('y'), KEY_NONE, "yank", do_yank, "*")
     CMD_( KEY_META('y'), KEY_NONE, "yank-pop", do_yank_pop, "*")
     /* do_tab will not change read only buffer */
-    CMD0( KEY_CTRL('i'), KEY_NONE, "tabulate", do_tab)
-    CMD_( KEY_CTRL('q'), KEY_NONE, "quoted-insert", do_quote, "*")
+    CMD0( KEY_CTRL('i'), KEY_NONE, "tabulate", do_tab) /* u? */
+    /* do_space ? */
+    CMD_( KEY_CTRL('q'), KEY_NONE, "quoted-insert", do_quote, "*") /* u? */
     CMD1( KEY_CTRLX(KEY_CTRL('s')), KEY_NONE, "save-buffer", do_save, 0 )
     CMD1( KEY_CTRLX(KEY_CTRL('w')), KEY_NONE, "write-file", do_save, 1 )
-    CMD0( KEY_CTRLX(KEY_CTRL('c')), KEY_NONE, "suspend-emacs", do_quit )
+    CMD0( KEY_CTRLX(KEY_CTRL('c')), KEY_NONE, "exit-qemacs", do_quit ) /* u? */
     CMD_( KEY_CTRLX(KEY_CTRL('f')), KEY_NONE, "find-file", do_load,
-          "s{Find file: }[file]|file|")
+          "s{Find file: }[file]|file|") /* u? */
     CMD_( KEY_CTRLX(KEY_CTRL('v')), KEY_NONE, "find-alternate-file", 
           do_find_alternate_file,
-          "s{Find alternate file: }[file]|file|")
+          "s{Find alternate file: }[file]|file|") /* u? */
     CMD_( KEY_CTRLX('b'), KEY_NONE, "switch-to-buffer", do_switch_to_buffer,
           "s{Switch to buffer: }[buffer]|buffer|")
     CMD_( KEY_CTRLX('k'), KEY_NONE, "kill-buffer", do_kill_buffer,
           "s{Kill buffer: }[buffer]|buffer|")
     CMD_( KEY_CTRLX('i'), KEY_NONE, "insert-file", do_insert_file,
-          "*s{Insert file: }[file]|file|")
+          "*s{Insert file: }[file]|file|") /* u? */
     CMD0( KEY_CTRL('g'), KEY_CTRLX(KEY_CTRL('g')), "abort", do_break)
     CMD0( KEY_NONE, KEY_NONE, "doctor", do_doctor)
     CMDV( KEY_NONE, KEY_NONE, "search-forward", do_search_string, 1,
           "s{Search forward: }|search|v")
     CMDV( KEY_NONE, KEY_NONE, "search-backward", do_search_string, -1,
           "s{Search backward: }|search|v")
-    CMD1( KEY_CTRL('s'), KEY_NONE, "isearch-forward", do_isearch, 1 )
-    CMD1( KEY_CTRL('r'), KEY_NONE, "isearch-backward", do_isearch, -1 )
+    CMD1( KEY_CTRL('s'), KEY_NONE, "isearch-forward", do_isearch, 1 ) /* u? */
+    CMD1( KEY_CTRL('r'), KEY_NONE, "isearch-backward", do_isearch, -1 ) /* u? */
     CMD_( KEY_META('%'), KEY_NONE, "query-replace", do_query_replace,
           "*s{Query replace: }|search|s{With: }|replace|")
     CMD_( KEY_META('r'), KEY_NONE, "replace-string", do_replace_string,
-          "*s{Replace String: }|search|s{With: }|replace|")
+          "*s{Replace String: }|search|s{With: }|replace|") /* u? */
     CMD0( KEY_CTRLX('u'), KEY_CTRL('_'), "undo", do_undo)
-    CMD_( KEY_RET, KEY_NONE, "newline", do_return, "*")
+    CMD_( KEY_CTRL('j'), KEY_RET, "newline", do_return, "*")
     CMD0( KEY_CTRL('l'), KEY_NONE, "refresh", do_refresh_complete)
-
     CMDV( KEY_META('g'), KEY_NONE, "goto-line", do_goto, 'l', "us{Goto line: }v")
     CMDV( KEY_CTRLX('g'), KEY_NONE, "goto-char", do_goto, 'c',  "us{Goto char: }v")
+
     CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE, "vc-toggle-read-only", 
           do_toggle_read_only)
     CMD0( KEY_META('~'), KEY_NONE, "not-modified", do_not_modified)
@@ -120,10 +122,12 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_CTRLX('e'), KEY_CTRL('\\'), "call-last-kbd-macro", do_call_macro)
     CMD_( KEY_NONE, KEY_NONE, "define-kbd-macro", do_define_kbd_macro,
           "s{Macro name: }[command]s{Macro keys: }s{Bind to key: }[key]")
+    /* global/local?, set/unset key? */
     CMD_( KEY_NONE, KEY_NONE, "global-set-key", do_global_set_key,
           "s{Set key globally: }[key]s{command: }[command]|command|")
 
     /* window handling */
+    /* should merge these functions */
     CMD0( KEY_CTRLX('o'), KEY_NONE, "other-window", do_other_window)
     CMD0( KEY_CTRLX('n'), KEY_NONE, "next-window", do_other_window)
     CMD0( KEY_CTRLX('p'), KEY_NONE, "previous-window", do_previous_window)
@@ -142,10 +146,10 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_CTRLX('1'), KEY_NONE, "delete-other-windows",
           do_delete_other_windows)
     CMD1( KEY_CTRLX('2'), KEY_NONE, "split-window-vertically",
-          do_split_window, 0)
+          do_split_window, 0) /* u? */
     CMD1( KEY_CTRLX('3'), KEY_NONE, "split-window-horizontally",
-          do_split_window, 1)
-    
+          do_split_window, 1) /* u? */
+
     /* help */
     CMD0( KEY_CTRLH(KEY_CTRL('h')), KEY_F1, "help-for-help", do_help_for_help)
     CMD0( KEY_CTRLH('b'), KEY_NONE, "describe-bindings", do_describe_bindings)
