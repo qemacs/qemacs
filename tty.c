@@ -265,8 +265,12 @@ static void tty_resize(__unused__ int sig)
     if (ioctl(fileno(s->STDIN), TIOCGWINSZ, &ws) == 0) {
         s->width = ws.ws_col;
         s->height = ws.ws_row;
+        if (s->width > MAX_SCREEN_WIDTH)
+            s->width = MAX_SCREEN_WIDTH;
+        if (s->height < 3)
+            s->height = 3;
     }
-    
+
     count = s->width * s->height;
     size = count * sizeof(TTYChar);
     /* screen buffer + shadow buffer + extra slot for loop guard */
@@ -666,7 +670,7 @@ static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font,
     for (; len > 0; len--) {
         cc = *str++;
         w = tty_term_glyph_width(s, cc);
-        /* XXX: would need to put spacs for wide chars */
+        /* XXX: would need to put spaces for wide chars */
         if (x + w > s->clip_x2) 
             break;
         *ptr = TTYCHAR(cc, fgcolor, TTYCHAR_GETBG(*ptr));
