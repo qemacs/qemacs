@@ -208,18 +208,13 @@ charsetjis.o: charsetjis.c qe.h charsetjis.def
 charsetmore.o: charsetmore.c qe.h
 
 buffer.o: buffer.c qe.h
-
 tty.o: tty.c qe.h
-
 qfribidi.o: qfribidi.c qfribidi.h
-
 cfb.o: cfb.c cfb.h fbfrender.h
-
 fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-
 html2png.o: html2png.c qe.h
 
-%.o: %.c qe.h Makefile
+%.o: %.c qe.h qestyles.h Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
 clean:
