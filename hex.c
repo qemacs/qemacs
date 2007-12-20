@@ -151,7 +151,7 @@ static int ascii_mode_init(EditState *s, ModeSavedData *saved_data)
     s->disp_width &= ~15;
     if (s->disp_width < 16)
 	s->disp_width = 16;
-    //s->insert = 1;
+    //s->insert = 0;
     s->hex_mode = 0;
     s->wrap = WRAP_TRUNCATE;
     return 0;
@@ -169,7 +169,7 @@ static int hex_mode_init(EditState *s, ModeSavedData *saved_data)
     s->hex_mode = 1;
     s->unihex_mode = 0;
     s->hex_nibble = 0;
-    //s->insert = 1;
+    //s->insert = 0;
     s->wrap = WRAP_TRUNCATE;
     return 0;
 }
@@ -308,7 +308,7 @@ static ModeDef ascii_mode = {
     .mode_close = text_mode_close,
     .text_display = hex_display, 
     .text_backward_offset = hex_backward_offset,
-    
+
     .move_up_down = hex_move_up_down,
     .move_left_right = hex_move_left_right,
     .move_bol = hex_move_bol,
@@ -327,7 +327,7 @@ static ModeDef hex_mode = {
     .mode_close = text_mode_close,
     .text_display = hex_display, 
     .text_backward_offset = hex_backward_offset,
-    
+
     .move_up_down = hex_move_up_down,
     .move_left_right = hex_move_left_right,
     .move_bol = hex_move_bol,

@@ -126,9 +126,9 @@ void eb_write(EditBuffer *b, int offset, const void *buf_arg, int size)
 {
     int len, left;
     const u8 *buf = buf_arg;
-    
+
     if (b->flags & BF_READONLY)
-	return;
+        return;
 
     len = eb_rw(b, offset, (void *)buf, size, 1);
     left = size - len;
@@ -245,7 +245,7 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
     int size_start, len, n, page_index;
 
     if (dest->flags & BF_READONLY)
-	return;
+        return;
 
     if (size == 0)
         return;
@@ -341,11 +341,11 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
 void eb_insert(EditBuffer *b, int offset, const void *buf, int size)
 {
     if (b->flags & BF_READONLY)
-	return;
+        return;
 
     /* sanity checks */
     if (offset > b->total_size)
-	offset = b->total_size;
+        offset = b->total_size;
     
     if (offset < 0 || size <= 0)
         return;
@@ -365,10 +365,10 @@ void eb_delete(EditBuffer *b, int offset, int size)
     Page *del_start, *p;
 
     if (b->flags & BF_READONLY)
-	return;
+        return;
 
     if (offset + size > b->total_size)
-	size = b->total_size - offset;
+        size = b->total_size - offset;
 
     if (offset < 0 || size <= 0)
         return;
@@ -473,8 +473,8 @@ EditBuffer *eb_new(const char *name, int flags)
     /* add buffer in global buffer list (at end for system buffers) */
     pb = &qs->first_buffer;
     if (*b->name == '*') {
-	while (*pb)
-	    pb = &(*pb)->next;
+        while (*pb)
+            pb = &(*pb)->next;
     }
     b->next = *pb;
     *pb = b;
@@ -498,9 +498,9 @@ EditBuffer *eb_scratch(const char *name)
 
     b = eb_find(name);
     if (b != NULL) {
-	eb_clear(b);
+        eb_clear(b);
     } else {
-	b = eb_new(name, 0);
+        b = eb_new(name, 0);
     }
     return b;
 }
@@ -529,7 +529,7 @@ void eb_free(EditBuffer *b)
     EditBufferCallbackList *l, *l1;
 
     if (b == NULL)
-	return;
+        return;
 
     /* call user defined close */
     if (b->close)
@@ -663,8 +663,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
 /************************************************************/
 /* callbacks */
 
-int eb_add_callback(EditBuffer *b, EditBufferCallback cb,
-                    void *opaque)
+int eb_add_callback(EditBuffer *b, EditBufferCallback cb, void *opaque)
 {
     EditBufferCallbackList *l;
 
@@ -678,8 +677,7 @@ int eb_add_callback(EditBuffer *b, EditBufferCallback cb,
     return 0;
 }
 
-void eb_free_callback(EditBuffer *b, EditBufferCallback cb,
-                      void *opaque)
+void eb_free_callback(EditBuffer *b, EditBufferCallback cb, void *opaque)
 {
     EditBufferCallbackList **pl, *l;
     
@@ -760,7 +758,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
     }
 
     /* header */
-    //lb.pad1 = '\n';	/* make log buffer display readable */
+    //lb.pad1 = '\n';   /* make log buffer display readable */
     //lb.pad2 = ':';
     lb.op = op;
     lb.offset = offset;
@@ -880,7 +878,7 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
         ch = '\n';
     } else {
         eb_read(b, offset, buf, 1);
-        
+
         /* we use directly the charset conversion table to go faster */
         ch = b->charset_state.table[buf[0]];
         offset++;
@@ -937,7 +935,7 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
 }
 
 /* return the number of lines and column position for a buffer */
-static void get_pos(u8 *buf, int size, int *line_ptr, int *col_ptr, 
+static void get_pos(u8 *buf, int size, int *line_ptr, int *col_ptr,
                     CharsetDecodeState *s)
 {
     u8 *p, *p1, *lp;
@@ -989,7 +987,7 @@ int eb_goto_pos(EditBuffer *b, int line1, int col1)
     while (p < p_end) {
         if (!(p->flags & PG_VALID_POS)) {
             p->flags |= PG_VALID_POS;
-            get_pos(p->data, p->size, &p->nb_lines, &p->col, 
+            get_pos(p->data, p->size, &p->nb_lines, &p->col,
                     &b->charset_state);
         }
         line2 = line + p->nb_lines;
@@ -1169,6 +1167,12 @@ int eb_get_char_offset(EditBuffer *b, int offset)
             p++;
         }
         pos += get_chars(p->data, offset, b->charset);
+        /* Should adjust if offset falls in the middle of a character */
+        // {
+        //    int c = p->data[offset];
+        //    if (c >= 0x80 && c < 0xc0)
+        //        pos--;
+        //}
     the_end: ;
     }
     return pos;
@@ -1180,9 +1184,9 @@ int eb_get_char_offset(EditBuffer *b, int offset)
 int eb_delete_range(EditBuffer *b, int p1, int p2)
 {
     if (p1 > p2) {
-	int tmp = p1;
-	p1 = p2;
-	p2 = tmp;
+        int tmp = p1;
+        p1 = p2;
+        p2 = tmp;
     }
     eb_delete(b, p1, p2 - p1);
     return p1;
@@ -1196,10 +1200,10 @@ void eb_replace(EditBuffer *b, int offset, int size, const u8 *buf, int size1)
      * write portion that fits and insert or delete remainder?
      */
     if (size == size1) {
-	eb_write(b, offset, buf, size1);
+        eb_write(b, offset, buf, size1);
     } else {
-	eb_delete(b, offset, size);
-	eb_insert(b, offset, buf, size1);
+        eb_delete(b, offset, size);
+        eb_insert(b, offset, buf, size1);
     }
 }
 
