@@ -1594,8 +1594,9 @@ void fill_border(EditState *s, int x, int y, int w, int h, int color);
 int qe_bitmap_format_to_pix_fmt(int format);
 
 /* shell.c */
-EditBuffer *new_shell_buffer(const char *name, const char *path,
-                             const char **argv, int is_shell);
+EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
+                             const char *path, const char **argv,
+                             int is_shell);
 
 #define QASSERT(e)      do { if (!(e)) fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #e); } while (0)
 

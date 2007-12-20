@@ -1045,7 +1045,7 @@ static void shell_close(EditBuffer *b)
             /* if still not killed, then try harder (useful for
                shells) */
             kill(s->pid, SIGKILL);
-	    /* CG: should add timeout facility and error message */
+            /* CG: should add timeout facility and error message */
             while (waitpid(s->pid, &status, 0) != s->pid);
         }
         s->pid = -1;
@@ -1056,13 +1056,16 @@ static void shell_close(EditBuffer *b)
     qe_free(&s);
 }
 
-EditBuffer *new_shell_buffer(const char *name, const char *path,
-                             const char **argv, int is_shell)
+EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
+                             const char *path, const char **argv,
+                             int is_shell)
 {
     ShellState *s;
     EditBuffer *b, *b_color;
 
-    b = eb_new("", BF_SAVELOG);
+    b = b0;
+    if (!b)
+        b = eb_new("", BF_SAVELOG);
     if (!b)
         return NULL;
     set_buffer_name(b, name); /* ensure that the name is unique */
@@ -1070,7 +1073,8 @@ EditBuffer *new_shell_buffer(const char *name, const char *path,
 
     s = qe_mallocz(ShellState);
     if (!s) {
-        eb_free(b);
+        if (!b0)
+            eb_free(b);
         return NULL;
     }
     b->priv_data = s;
@@ -1087,7 +1091,8 @@ EditBuffer *new_shell_buffer(const char *name, const char *path,
     if (is_shell) {
         b_color = eb_new("*color*", BF_SYSTEM);
         if (!b_color) {
-            eb_free(b);
+            if (!b0)
+                eb_free(b);
             qe_free(&s);
             return NULL;
         }
@@ -1099,7 +1104,8 @@ EditBuffer *new_shell_buffer(const char *name, const char *path,
 
     /* launch shell */
     if (run_process(path, argv, &s->pty_fd, &s->pid) < 0) {
-        eb_free(b);
+        if (!b0)
+            eb_free(b);
         return NULL;
     }
 
@@ -1140,10 +1146,10 @@ static void do_shell(EditState *s, int force)
     /* create new buffer */
     argv[0] = shell_path;
     argv[1] = NULL;
-    b = new_shell_buffer("*shell*", shell_path, argv, 1);
+    b = new_shell_buffer(NULL, "*shell*", shell_path, argv, 1);
     if (!b)
         return;
-    
+
     switch_to_buffer(s, b);
     do_set_mode(s, &shell_mode, NULL);
 
@@ -1194,7 +1200,7 @@ static void shell_move_bol(EditState *e)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-        tty_write(s, "\001", -1); /* Control-A */
+        tty_write(s, "\001", 1); /* Control-A */
     } else {
         text_move_bol(e);
     }
@@ -1204,7 +1210,7 @@ static void shell_move_eol(EditState *e)
 {
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
-        tty_write(s, "\005", -1); /* Control-E */
+        tty_write(s, "\005", 1); /* Control-E */
     } else {
         text_move_eol(e);
     }
@@ -1218,6 +1224,7 @@ static void shell_write_char(EditState *e, int c)
         ShellState *s = e->b->priv_data;
 
         ch = c;
+        /* TODO: convert to tty escape sequences? */
         tty_write(s, &ch, 1);
     } else {
         /* Should dispatch as in fundamental mode */
@@ -1287,7 +1294,7 @@ static void do_compile(EditState *e, const char *cmd)
     argv[1] = "-c";
     argv[2] = (char *)cmd;
     argv[3] = NULL;
-    b = new_shell_buffer("*compilation*", "/bin/sh", argv, 0);
+    b = new_shell_buffer(NULL, "*compilation*", "/bin/sh", argv, 0);
     if (!b)
         return;
     
