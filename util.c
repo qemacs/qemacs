@@ -878,7 +878,8 @@ int css_get_color(QEColor *color_ptr, const char *p)
     rgba[3] = 0xff;
     if (qe_isxdigit((unsigned char)*p)) {
         goto parse_num;
-    } else if (*p == '#') {
+    } else
+    if (*p == '#') {
         /* handle '#' notation */
         p++;
     parse_num:
@@ -901,10 +902,12 @@ int css_get_color(QEColor *color_ptr, const char *p)
             /* error */
             return -1;
         }
-    } else if (strstart(p, "rgb(", &p)) {
+    } else
+    if (strstart(p, "rgb(", &p)) {
         n = 3;
         goto parse_rgba;
-    } else if (strstart(p, "rgba(", &p)) {
+    } else
+    if (strstart(p, "rgba(", &p)) {
         /* extension for alpha */
         n = 4;
     parse_rgba:
