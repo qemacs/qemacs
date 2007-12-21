@@ -23,49 +23,44 @@ include config.mak
 #CONFIG_NETWORK=yes
 #CONFIG_WIN32=yes
 #CONFIG_CYGWIN=yes
+#CONFIG_TINY=yes
 #CONFIG_X11=yes
 #CONFIG_XV=yes
 #CONFIG_XRENDER=yes
-#CONFIG_TINY=yes
 #CONFIG_XFT=yes
 #CONFIG_HTML=yes
 #CONFIG_DLL=yes
 #CONFIG_INIT_CALLS=yes
 #CONFIG_PNG_OUTPUT=yes
 #CONFIG_FFMPEG=yes
-
-# currently fixes
-#
+#CONFIG_ALL_KMAPS=yes
 # Define CONFIG_ALL_MODES to include all edit modes
-#
-CONFIG_ALL_MODES=y
-#
+#CONFIG_ALL_MODES=yes
 # Define CONFIG_UNICODE_JOIN to include unicode bidi/script handling
-#
-CONFIG_UNICODE_JOIN=y
-# 
-# Define CONFIG_ALL_KMAPS it to include generic key map handling
-#
-CONFIG_ALL_KMAPS=y
+#CONFIG_UNICODE_JOIN=yes
 
-CFLAGS:= -Wall -g $(CFLAGS) -funsigned-char
-# do not warn about zero-length formats.
-CFLAGS+= -Wno-format-zero-length
+ifeq ($(CC),gcc)
+  CFLAGS  := -Wall -g -O2 -funsigned-char
+  # do not warn about zero-length formats.
+  CFLAGS  += -Wno-format-zero-length
+  LDFLAGS := -g
+endif
 
+#include local compiler configuration file
 -include cflags.mk
 
 ifdef TARGET_GPROF
-CFLAGS+= -p
-LDFLAGS+= -p
+  CFLAGS  += -p
+  LDFLAGS += -p
 endif
 
 ifdef TARGET_ARCH_X86
-#CFLAGS+=-fomit-frame-pointer
-ifeq ($(GCC_MAJOR),2)
-CFLAGS+=-m386 -malign-functions=0
-else
-CFLAGS+=-march=i386 -falign-functions=0
-endif
+  #CFLAGS+=-fomit-frame-pointer
+  ifeq ($(GCC_MAJOR),2)
+    CFLAGS+=-m386 -malign-functions=0
+  else
+    CFLAGS+=-march=i386 -falign-functions=0
+  endif
 endif
 
 DEFINES=-DHAVE_QE_CONFIG_H
@@ -73,27 +68,14 @@ DEFINES=-DHAVE_QE_CONFIG_H
 ########################################################
 # do not modify after this
 
-ifdef CONFIG_TINY
-CONFIG_ALL_MODES=
-CONFIG_UNICODE_JOIN=
-endif
-
-ifdef CONFIG_ALL_MODES
-DEFINES+= -DCONFIG_ALL_MODES
-endif
-
 ifdef CONFIG_PNG_OUTPUT
-HTMLTOPPM_LIBS+= -lpng
-endif
-
-ifdef CONFIG_UNICODE_JOIN
-DEFINES+= -DCONFIG_UNICODE_JOIN
+  HTMLTOPPM_LIBS+= -lpng
 endif
 
 ifdef CONFIG_DLL
-LIBS+=-ldl
-# export some qemacs symbols
-LDFLAGS+=-Wl,-E
+  LIBS+=-ldl
+  # export some qemacs symbols
+  LDFLAGS+=-Wl,-E
 endif
 
 LIBS+=-lm
@@ -105,64 +87,64 @@ OBJS=qe.o charset.o buffer.o \
      input.o unicode_join.o display.o util.o hex.o list.o cutils.o
 
 ifndef CONFIG_WIN32
-OBJS+= unix.o tty.o 
+  OBJS+= unix.o tty.o 
 endif
 
 # more charsets if needed
 ifndef CONFIG_TINY
-OBJS+= charsetjis.o charsetmore.o
+  OBJS+= charsetjis.o charsetmore.o
 endif
 
 ifdef CONFIG_ALL_MODES
-OBJS+= unihex.o clang.o latex-mode.o xml.o bufed.o \
-       makemode.o perl.o htmlsrc.o
-ifndef CONFIG_WIN32
-OBJS+= shell.o dired.o 
-endif
+  OBJS+= unihex.o clang.o latex-mode.o xml.o bufed.o \
+         makemode.o perl.o htmlsrc.o
+  ifndef CONFIG_WIN32
+    OBJS+= shell.o dired.o 
+  endif
 endif
 
 ifdef CONFIG_WIN32
-OBJS+= win32.o
-LIBS+= -lgdi32
+  OBJS+= win32.o
+  LIBS+= -lgdi32
 endif
 
 # currently not used in qemacs
 ifdef CONFIG_CFB
-OBJS+= libfbf.o fbfrender.o cfb.o fbffonts.o
+  OBJS+= libfbf.o fbfrender.o cfb.o fbffonts.o
 endif
 
 ifdef CONFIG_X11
-OBJS+= x11.o
+  OBJS+= x11.o
 ifdef CONFIG_XRENDER
-LIBS+=-lXrender
+  LIBS+=-lXrender
 endif
 ifdef CONFIG_XV
-LIBS+=-lXv
+  LIBS+=-lXv
 endif
-LIBS+= -L/usr/X11R6/lib -lXext -lX11
+  LIBS+= -L/usr/X11R6/lib -lXext -lX11
 endif
 
 ifdef CONFIG_HTML
-CFLAGS+=-I./libqhtml
-DEP_LIBS+=libqhtml/libqhtml.a 
-LIBS+=-L./libqhtml -lqhtml
-OBJS+=html.o docbook.o
-ifndef CONFIG_WIN32
-TARGETLIBS+= libqhtml
-TARGETS+= html2png$(EXE)
-endif
+  CFLAGS+=-I./libqhtml
+  DEP_LIBS+=libqhtml/libqhtml.a 
+  LIBS+=-L./libqhtml -lqhtml
+  OBJS+=html.o docbook.o
+  ifndef CONFIG_WIN32
+    TARGETLIBS+= libqhtml
+    TARGETS+= html2png$(EXE)
+  endif
 endif
 
 ifdef CONFIG_UNICODE_JOIN
-OBJS+= arabic.o indic.o qfribidi.o unihex.o
+  OBJS+= arabic.o indic.o qfribidi.o unihex.o
 endif
 
 ifdef CONFIG_FFMPEG
-OBJS+= video.o image.o
-DEP_LIBS+=$(FFMPEG_LIBDIR)/libavcodec/libavcodec.a $(FFMPEG_LIBDIR)/libavformat/libavformat.a
-LIBS+=  -L$(FFMPEG_LIBDIR)/libavcodec -L$(FFMPEG_LIBDIR)/libavformat -lavformat -lavcodec -lz -lpthread
-DEFINES+= -I$(FFMPEG_SRCDIR)/libavcodec -I$(FFMPEG_SRCDIR)/libavformat
-TARGETS+= ffplay$(EXE)
+  OBJS+= video.o image.o
+  DEP_LIBS+=$(FFMPEG_LIBDIR)/libavcodec/libavcodec.a $(FFMPEG_LIBDIR)/libavformat/libavformat.a
+  LIBS+=  -L$(FFMPEG_LIBDIR)/libavcodec -L$(FFMPEG_LIBDIR)/libavformat -lavformat -lavcodec -lz -lpthread
+  DEFINES+= -I$(FFMPEG_SRCDIR)/libavcodec -I$(FFMPEG_SRCDIR)/libavformat
+  TARGETS+= ffplay$(EXE)
 endif
 
 # must be the last object

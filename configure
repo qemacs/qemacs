@@ -60,6 +60,8 @@ html="no"
 plugins="yes"
 initcalls="yes"
 kmaps="yes"
+modes="yes"
+bidir="yes"
 exe=""
 
 # OS specific
@@ -281,6 +283,8 @@ if test "$tiny" = "yes" ; then
     html="no"
     plugins="no"
     kmaps="no"
+    modes="no"
+    bidir="no"
 fi
 
 if test -z "$CFLAGS"; then
@@ -351,6 +355,8 @@ echo "Graphical HTML   $html"
 echo "Plugins support  $plugins"
 echo "Initcall support $initcalls"
 echo "All kmaps        $kmaps"
+echo "All modes        $modes"
+echo "Bidir support    $bidir"
 echo "FFMPEG support   $ffmpeg"
 
 echo "Creating config.mak and config.h"
@@ -467,6 +473,16 @@ fi
 if test "$kmaps" = "yes" ; then
   echo "#define CONFIG_ALL_KMAPS 1" >> $TMPH
   echo "CONFIG_ALL_KMAPS=yes" >> config.mak
+fi
+
+if test "$modes" = "yes" ; then
+  echo "#define CONFIG_ALL_MODES 1" >> $TMPH
+  echo "CONFIG_ALL_MODES=yes" >> config.mak
+fi
+
+if test "$bidir" = "yes" ; then
+  echo "#define CONFIG_UNICODE_JOIN 1" >> $TMPH
+  echo "CONFIG_UNICODE_JOIN=yes" >> config.mak
 fi
 
 # build tree in object directory if source path is different from current one
