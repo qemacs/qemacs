@@ -638,67 +638,64 @@ void do_fill_paragraph(EditState *s)
     }
 }
 
-/* upper / lower case functions (XXX: use generic unicode
-   function). Return next offset */
-static int eb_changecase(EditBuffer *b, int offset, int up)
+/* Upper / lower / capital case functions. Update offset, return isword */
+/* arg: -1=lower-case, +1=upper-case, +2=capital-case */
+/* (XXX: use generic unicode function). */
+static int eb_changecase(EditBuffer *b, int *offsetp, int arg)
 {
-    int offset1, ch, ch1, len;
+    int offset0, ch, ch1, len;
     char buf[MAX_CHAR_BYTES];
 
-    ch = eb_nextc(b, offset, &offset1);
-    if (up)
+    offset0 = *offsetp;
+    ch = eb_nextc(b, offset0, offsetp);
+    if (!qe_isword(ch))
+        return 0;
+
+    if (arg > 0)
         ch1 = qe_toupper(ch);
     else
         ch1 = qe_tolower(ch);
 
-    if (ch == ch1) {
-        return offset1;
-    } else {
-        len = unicode_to_charset(buf, ch, b->charset);
-        if (len == (offset1 - offset)) {
-            eb_write(b, offset, buf, len);
-        } else {
-            eb_delete(b, offset, offset1 - offset);
-            eb_insert(b, offset, buf, len);
-        }
-        return offset + len;
+    if (ch != ch1) {
+        len = unicode_to_charset(buf, ch1, b->charset);
+        eb_replace(b, offset0, *offsetp - offset0, buf, len);
     }
+    return 1;
 }
 
-void do_changecase_word(EditState *s, int up)
+void do_changecase_word(EditState *s, int arg)
 {
-    int c;
+    int offset;
     
     word_right(s, 1);
-    for (;;) {
-        if (s->offset >= s->b->total_size)
+    for (offset = s->offset;;) {
+        if (offset >= s->b->total_size)
             break;
-        c = eb_nextc(s->b, s->offset, NULL);
-        if (!qe_isword(c))
+        if (!eb_changecase(s->b, &offset, arg))
             break;
-        s->offset = eb_changecase(s->b, s->offset, up);
+        s->offset = offset;
+        if (arg == 2)
+            arg = -2;
     }
 }
 
-void do_changecase_region(EditState *s, int up)
+void do_changecase_region(EditState *s, int arg)
 {
     int offset;
 
     /* WARNING: during case change, the region offsets can change, so
        it is not so simple ! */
-    if (s->offset > s->b->mark) 
-        offset = s->b->mark;
-    else
-        offset = s->offset;
+    offset = min(s->offset, s->b->mark);
     for (;;) {
-        if (s->offset > s->b->mark) {
-            if (offset >= s->offset)
-                break;
+        if (offset >= max(s->offset, s->b->mark))
+              break;
+        if (eb_changecase(s->b, &offset, arg)) {
+            if (arg == 2)
+                arg = -arg;
         } else {
-            if (offset >= s->b->mark)
-                break;
+            if (arg == -2)
+                arg = -arg;
         }
-        offset = eb_changecase(s->b, offset, up);
     }
 }
 

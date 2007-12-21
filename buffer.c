@@ -1194,7 +1194,8 @@ int eb_delete_range(EditBuffer *b, int p1, int p2)
 }
 
 /* replace 'size' bytes at offset 'offset' with 'size1' bytes from 'buf' */
-void eb_replace(EditBuffer *b, int offset, int size, const u8 *buf, int size1)
+void eb_replace(EditBuffer *b, int offset, int size,
+                const void *buf, int size1)
 {
     /* CG: behaviour is not exactly identical: mark, point and other
      * callback based offsets will be updated differently.  should

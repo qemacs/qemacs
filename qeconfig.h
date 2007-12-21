@@ -118,12 +118,15 @@ static CmdDef basic_commands[] = {
     CMD_( KEY_META('q'), KEY_NONE, "fill-paragraph", do_fill_paragraph, "*")
     CMDV( KEY_NONE, KEY_NONE, "kill-paragraph", do_kill_paragraph, 1, "*v")
 
-    CMDV( KEY_META('l'), KEY_NONE, "downcase-word", do_changecase_word, 0, "*v")
+    CMDV( KEY_META('c'), KEY_NONE, "capitalize-word", do_changecase_word, 2, "*v")
+    CMDV( KEY_META('l'), KEY_NONE, "downcase-word", do_changecase_word, -1, "*v")
     CMDV( KEY_META('u'), KEY_NONE, "upcase-word", do_changecase_word, 1, "*v")
-    CMDV( KEY_CTRLX(KEY_CTRL('l')), KEY_NONE, "downcase-region", 
-          do_changecase_region, 0, "*v")
-    CMDV( KEY_CTRLX(KEY_CTRL('u')), KEY_NONE, "upcase-region", 
-          do_changecase_region, 1, "*v")
+    CMDV( KEY_META(KEY_CTRL('c')), KEY_NONE,
+          "capitalize-region", do_changecase_region, 2, "*v")
+    CMDV( KEY_CTRLX(KEY_CTRL('l')), KEY_META(KEY_CTRL('l')),
+          "downcase-region", do_changecase_region, -1, "*v")
+    CMDV( KEY_CTRLX(KEY_CTRL('u')), KEY_META(KEY_CTRL('u')),
+          "upcase-region", do_changecase_region, 1, "*v")
 
     /*---------------- Command handling ----------------*/
 
