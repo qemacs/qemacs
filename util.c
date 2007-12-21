@@ -763,7 +763,7 @@ typedef struct ColorDef {
     unsigned int color;
 } ColorDef;
 
-static ColorDef css_colors[] = {
+static ColorDef const css_colors[] = {
     /*from HTML 4.0 spec */
     { "black",   QERGB(0x00, 0x00, 0x00) },
     { "green",   QERGB(0x00, 0x80, 0x00) },
@@ -793,16 +793,20 @@ static ColorDef css_colors[] = {
 };
 #define nb_css_colors  countof(css_colors)
 
-static ColorDef *custom_colors = css_colors;
+static ColorDef *custom_colors;
 static int nb_custom_colors;
 
 void color_completion(StringArray *cs, const char *input)
 {
-    ColorDef *def;
+    ColorDef const *def;
     int count;
 
     def = custom_colors;
-    count = nb_css_colors + nb_custom_colors;
+    count = nb_custom_colors;
+    if (!count) {
+        def = css_colors;
+        count = nb_css_colors;
+    }
     while (count > 0) {
         if (strxstart(def->name, input, NULL))
             add_string(cs, def->name);
@@ -811,49 +815,51 @@ void color_completion(StringArray *cs, const char *input)
     }
 }
 
-static ColorDef *css_lookup_color(ColorDef *def, int count,
-                                  const char *name)
+static int css_lookup_color(ColorDef const *def, int count,
+                            const char *name)
 {
-    while (count > 0) {
-        if (!strxcmp(def->name, name)) {
-            return def;
-        }
-        def++;
-        count--;
+    int i;
+
+    for (i = 0; i < count; i++) {
+        if (!strxcmp(def[i].name, name))
+            return i;
     }
-    return NULL;
+    return -1;
 }
 
 int css_define_color(const char *name, const char *value)
 {
     ColorDef *def;
     QEColor color;
+    int index;
 
     /* Check color validity */
     if (css_get_color(&color, value))
         return -1;
 
-    /* Make room: reallocate table in chunks of 8 entries */
-    if ((nb_custom_colors & 7) == 0) {
-        def = qe_malloc_array(ColorDef, nb_css_colors + nb_custom_colors + 8);
-        if (!def)
+    /* First color definition: allocate custom_colors array */
+    if (!nb_custom_colors) {
+        custom_colors = qe_malloc_dup(css_colors, sizeof(css_colors));
+        if (!custom_colors)
             return -1;
-        memcpy(def, custom_colors,
-               (nb_css_colors + nb_custom_colors) * sizeof(ColorDef));
-            
-        if (custom_colors != css_colors)
-            qe_free(&custom_colors);
-        custom_colors = def;
+        nb_custom_colors = nb_css_colors;
+    }
+
+    /* Make room: reallocate table in chunks of 8 entries */
+    if (((nb_custom_colors - nb_css_colors) & 7) == 0) {
+        if (!qe_realloc(&custom_colors,
+                        (nb_custom_colors + 8) * sizeof(ColorDef))) {
+            return -1;
+        }
     }
     /* Check for redefinition */
-    def = css_lookup_color(custom_colors, nb_css_colors + nb_custom_colors,
-                           name);
-    if (def) {
-        def->color = color;
+    index = css_lookup_color(custom_colors, nb_custom_colors, name);
+    if (index >= 0) {
+        custom_colors[index].color = color;
         return 0;
     }
 
-    def = &custom_colors[nb_css_colors + nb_custom_colors];
+    def = &custom_colors[nb_custom_colors];
     def->name = qe_strdup(name);
     def->color = color;
     nb_custom_colors++;
@@ -864,14 +870,20 @@ int css_define_color(const char *name, const char *value)
 /* XXX: make HTML parsing optional ? */
 int css_get_color(QEColor *color_ptr, const char *p)
 {
-    const ColorDef *def;
-    int len, v, i, n;
+    ColorDef const *def;
+    int count, index, len, v, i, n;
     unsigned char rgba[4];
 
-    /* search in table */
-    def = css_lookup_color(custom_colors, nb_css_colors + nb_custom_colors, p);
-    if (def) {
-        *color_ptr = def->color;
+    /* search in tables */
+    def = custom_colors;
+    count = nb_custom_colors;
+    if (!count) {
+        def = css_colors;
+        count = nb_css_colors;
+    }
+    index = css_lookup_color(def, count, p);
+    if (index >= 0) {
+        *color_ptr = def[index].color;
         return 0;
     }
     
@@ -936,16 +948,19 @@ int css_get_color(QEColor *color_ptr, const char *p)
 int css_get_font_family(const char *str)
 {
     int v;
+
     if (!strcasecmp(str, "serif") ||
         !strcasecmp(str, "times"))
         v = QE_FAMILY_SERIF;
-    else if (!strcasecmp(str, "sans") ||
-             !strcasecmp(str, "arial") ||
-             !strcasecmp(str, "helvetica"))
+    else
+    if (!strcasecmp(str, "sans") ||
+        !strcasecmp(str, "arial") ||
+        !strcasecmp(str, "helvetica"))
         v = QE_FAMILY_SANS;
-    else if (!strcasecmp(str, "fixed") ||
-             !strcasecmp(str, "monospace") ||
-             !strcasecmp(str, "courier"))
+    else
+    if (!strcasecmp(str, "fixed") ||
+        !strcasecmp(str, "monospace") ||
+        !strcasecmp(str, "courier"))
         v = QE_FAMILY_FIXED;
     else
         v = 0; /* inherit */
