@@ -128,6 +128,7 @@ C-h c                   : describe-key-briefly
 
 @example
 default                 : self-insert-command
+M-#                     : insert-char
 C-p, up                 : previous-line
 C-n, down               : next-line
 C-b, left               : backward-char
@@ -136,6 +137,8 @@ M-b, C-left             : backward-word
 M-f, C-right            : forward-word
 M-v, prior              : scroll-down
 C-v, next               : scroll-up
+M-z                     : scroll-down-one
+C-z                     : scroll-up-one
 home, C-a               : beginning-of-line
 end, C-e                : end-of-line
 insert                  : overwrite-mode
@@ -146,35 +149,37 @@ M->, C-end              : end-of-buffer
 C-i                     : tabulate
 C-q                     : quoted-insert
 RET                     : newline
-M-@{                     : backward-paragraph
-M-@}                     : forward-paragraph
+C-o                     : open-line
 @end example
 
-@section Region handling
+@section Region handling, kill commands
 
 @example
-C-k                     : kill-line
 C-space                 : set-mark-command
+C-x C-x                 : exchange-point-and-mark
+C-x h                   : mark-whole-buffer
+M-C-w                   : append-next-kill
+C-k                     : kill-line
 C-w                     : kill-region
 M-w                     : copy-region
 C-y                     : yank
 M-y                     : yank-pop
-C-x C-x                 : exchange-point-and-mark
 @end example
 
 @section Buffer and file handling
 
 @example
-C-x C-s                 : save-buffer
-C-x C-w                 : write-file
-C-x C-c                 : suspend-emacs
 C-x C-f                 : find-file
 C-x C-v                 : find-alternate-file
+C-x i                   : insert-file
+C-x C-s                 : save-buffer
+C-x C-w                 : write-file
+C-x w                   : write-region
 C-x b                   : switch-to-buffer
 C-x k                   : kill-buffer
-C-x i                   : insert-file
-C-x C-q                 : toggle-read-only
 C-x C-b                 : list-buffers
+C-x C-q                 : toggle-read-only
+M-~                     : not-modified
 @end example
 
 @section Search and replace
@@ -183,6 +188,19 @@ C-x C-b                 : list-buffers
 C-s                     : isearch-backward
 C-r                     : isearch-forward
 M-%                     : query-replace
+M-r                     : replace-string
+@end example
+
+@section Paragraph / case handling
+
+@example
+M-@{                     : backward-paragraph
+M-@}                     : forward-paragraph
+M-q                     : fill-paragraph
+M-l                     : downcase-word
+M-u                     : upcase-word
+C-x C-l                 : downcase-region
+C-x C-u                 : upcase-region
 @end example
 
 @section Command handling
@@ -194,18 +212,28 @@ C-g                     : abort
 C-x u, C-_              : undo
 C-x (                   : start-kbd-macro
 C-x )                   : end-kbd-macro
-C-x e                   : call-last-kbd-macro
+C-x e, C-\              : call-last-kbd-macro
 @end example
 
 @section Window handling
 
 @example
 C-x o                   : other-window
+C-x n                   : next-window
+C-x p                   : previous-window
 C-x 0                   : delete-window
 C-x 1                   : delete-other-windows
 C-x 2                   : split-window-vertically
 C-x 3                   : split-window-horizontally
 C-x f                   : toggle-full-screen
+@end example
+
+@section Help
+
+@example
+C-h C-h, f1             : help-for-help
+C-h b                   : describe-bindings
+C-h c, C-h k            : describe-key-briefly
 @end example
 
 @section International
@@ -214,21 +242,30 @@ C-x f                   : toggle-full-screen
 C-x RET f               : set-buffer-file-coding-system
 C-x RET b               : toggle-bidir
 C-x RET C-\             : set-input-method
-C-\                     : switch-input-method
+C-x C-\                 : switch-input-method
+@end example
+
+@section Process control
+
+@example
+C-x RET RET             : shell
+C-x C-e                 : compile
+C-x C-p                 : previous-error
+C-x C-n                 : next-error
 @end example
 
 @section Miscellaneous
 
 @example
+C-x C-c                 : exit-qemacs
 C-l                     : refresh
 M-g                     : goto-line
-M-q                     : fill-paragraph
+C-x g                   : goto-char
+C-x l                   : count-lines
+C-x =                   : what-cursor-position
 C-x RET l               : toggle-line-numbers
-C-x RET t               : truncate-lines
+C-x RET t               : toggle-truncate-lines
 C-x RET w               : word-wrap
-C-x C-e                 : compile
-C-x C-p                 : previous-error
-C-x C-n                 : next-error
 C-x C-d                 : dired
 @end example
 
