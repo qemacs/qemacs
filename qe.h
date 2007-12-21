@@ -218,6 +218,7 @@ void css_strtolower(char *buf, int buf_size);
 void skip_spaces(const char **pp);
 
 int strfind(const char *keytable, const char *str, int casefold);
+const void *memstr(const void *buf, int size, const char *str);
 
 #define stristart(str, val, ptr)   qe_stristart(str, val, ptr)
 int stristart(const char *str, const char *val, const char **ptr);
@@ -961,11 +962,12 @@ struct EditState {
 struct DisplayState;
 
 typedef struct ModeProbeData {
-    char *filename;
-    unsigned char *buf;
+    const char *filename;
+    const u8 *buf;
     int buf_size;
-    //int total_size;
+    int line_len;
     int mode;     /* unix mode */
+    long total_size;
 } ModeProbeData;
 
 /* private data saved by a mode so that it can be restored when the

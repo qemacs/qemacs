@@ -4937,20 +4937,25 @@ static void get_default_path(EditState *s, char *buf, int buf_size)
     splitpath(buf, buf_size, NULL, 0, buf1);
 }
 
-static ModeDef *probe_mode(EditState *s, int mode, uint8_t *buf, int len)
+static ModeDef *probe_mode(EditState *s, int mode, const uint8_t *buf,
+                           int len, long total_size)
 {
     EditBuffer *b = s->b;
     ModeDef *m, *selected_mode;
     ModeProbeData probe_data;
     int best_probe_percent, percent;
+    const uint8_t *p;
 
     m = s->qe_state->first_mode;
     selected_mode = NULL;
     best_probe_percent = 0;
     probe_data.buf = buf;
     probe_data.buf_size = len;
+    p = memchr(buf, '\n', len);
+    probe_data.line_len = p ? p - buf : len;
     probe_data.filename = b->filename;
     probe_data.mode = mode;
+    probe_data.total_size = total_size;
 
     while (m != NULL) {
         if (m->mode_probe) {
@@ -5015,7 +5020,7 @@ static void do_load1(EditState *s, const char *filename1,
         /* Try to determine the desired mode based on the filename.
          * This avoids having to set c-mode for each new .c or .h file. */
         buf[0] = '\0';
-        selected_mode = probe_mode(s, S_IFREG, buf, 0);
+        selected_mode = probe_mode(s, S_IFREG, buf, 0, 0);
         /* XXX: avoid loading file */
         if (selected_mode)
             do_set_mode(s, selected_mode, NULL);
@@ -5023,6 +5028,7 @@ static void do_load1(EditState *s, const char *filename1,
     } else {
         mode = st.st_mode;
         buf_size = 0;
+        f = NULL;
         if (S_ISREG(mode)) {
             f = fopen(filename, "r");
             if (!f) 
@@ -5031,14 +5037,13 @@ static void do_load1(EditState *s, const char *filename1,
             if (buf_size < 0) {
             fail1:
                 fclose(f);
+                f = NULL;
                 goto fail;
             }
-        } else {
-            f = NULL;
         }
     }
     buf[buf_size] = '\0';
-    selected_mode = probe_mode(s, mode, buf, buf_size);
+    selected_mode = probe_mode(s, mode, buf, buf_size, st.st_size);
     if (!selected_mode)
         goto fail1;
     bdt = selected_mode->data_type;
@@ -5058,6 +5063,7 @@ static void do_load1(EditState *s, const char *filename1,
     /* XXX: invalid place */
     edit_invalidate(s);
     return;
+
  fail:
     put_status(s, "Could not open '%s'", filename);
 }
@@ -5388,7 +5394,8 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
     }
 }
 
-#define SEARCH_LENGTH 80
+/* should separate search string length and number of match positions */
+#define SEARCH_LENGTH  256
 #define FOUND_TAG 0x80000000
 
 /* store last searched string */

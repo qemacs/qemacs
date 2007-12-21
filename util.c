@@ -391,6 +391,29 @@ int strfind(const char *keytable, const char *str, int casefold)
     }
 }
 
+const void *memstr(const void *buf, int size, const char *str)
+{
+    int c, len;
+    const u8 *p, *buf_max;
+
+    c = *str++;
+    if (!c) {
+        /* empty string matches start of buffer */
+        return buf;
+    }
+
+    len = strlen(str);
+    if (len >= size)
+        return NULL;
+
+    buf_max = (const u8*)buf + size - len;
+    for (p = buf; p < buf_max; p++) {
+        if (*p == c && !memcmp(p + 1, str, len))
+            return p;
+    }
+    return NULL;
+}
+
 void skip_spaces(const char **pp)
 {
     const char *p;
