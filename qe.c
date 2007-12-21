@@ -2891,12 +2891,12 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
     int colorize_state;
     
     /* invalidate cache if needed */
-    if (s->colorize_max_valid_offset != MAXINT) {
+    if (s->colorize_max_valid_offset != INT_MAX) {
         eb_get_pos(s->b, &line, &col, s->colorize_max_valid_offset);
         line++;
         if (line < s->colorize_nb_valid_lines)
             s->colorize_nb_valid_lines = line;
-        s->colorize_max_valid_offset = MAXINT;
+        s->colorize_max_valid_offset = INT_MAX;
     }
 
     /* realloc line buffer if needed */
@@ -2960,7 +2960,7 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
     qe_free(&s->colorize_states);
     s->colorize_nb_lines = 0;
     s->colorize_nb_valid_lines = 0;
-    s->colorize_max_valid_offset = MAXINT;
+    s->colorize_max_valid_offset = INT_MAX;
     s->get_colorized_line_func = NULL;
     s->colorize_func = NULL;
     
@@ -5117,6 +5117,7 @@ void do_load_file_from_path(EditState *s, const char *filename)
 void do_insert_file(EditState *s, const char *filename)
 {
     FILE *f;
+
     f = fopen(filename, "r");
     if (!f) {
         put_status(s, "Could not insert file '%s'", filename);
@@ -5139,62 +5140,38 @@ void do_set_visited_file_name(EditState *s, const char *filename,
     set_filename(s->b, path);
 }
 
-static void save_edit_cb(void *opaque, char *filename);
-static void save_final(EditState *s);
-
-void do_save_buffer(EditState *s, int save_as)
+static void put_save_message(EditState *s, const char *filename, int nb)
 {
-    char default_path[MAX_FILENAME_SIZE];
+    if (nb >= 0) {
+	put_status(s, "Wrote %d bytes to %s", nb, filename);
+    } else {
+        put_status(s, "Could not write %s", filename);
+    }
+}
 
-    if (!save_as && !s->b->modified) {
+void do_save_buffer(EditState *s)
+{
+    if (!s->b->modified) {
         /* CG: This behaviour bugs me! */
         put_status(s, "(No changes need to be saved)");
         return;
     }
-
-    if (save_as || s->b->filename[0] == '\0') {
-        get_default_path(s, default_path, sizeof(default_path));
-        minibuffer_edit(default_path, 
-                        "Write file: ", get_history("file"), file_completion, 
-                        save_edit_cb, s);
-    } else {
-        save_final(s);
-    }
+    put_save_message(s, s->b->filename, eb_save_buffer(s->b));
 }
 
-static void save_edit_cb(void *opaque, char *filename)
+void do_write_file(EditState *s, const char *filename)
 {
-    EditState *s = opaque;
-
-    if (!filename)
-        return;
-    set_filename(s->b, filename);
-    qe_free(&filename);
-    save_final(s);
-}
-
-static void save_final(EditState *s)
-{
-    int res;
-
-    res = eb_save_buffer(s->b);
-    if (res >= 0) {
-	put_status(s, "Wrote %d bytes to %s", res, s->b->filename);
-    } else {
-        put_status(s, "Could not write %s", s->b->filename);
-    }
+    do_set_visited_file_name(s, filename, "n");
+    do_save_buffer(s);
 }
 
 void do_write_region(EditState *s, const char *filename)
 {
     char absname[MAX_FILENAME_SIZE];
-    int res;
 
     canonize_absolute_path(absname, sizeof(absname), filename);
-    res = eb_write_buffer(s->b, s->b->mark, s->offset, filename);
-    if (res >= 0) {
-	put_status(s, "Wrote %d bytes to %s", res, filename);
-    }
+    put_save_message(s, filename,
+                     eb_write_buffer(s->b, s->b->mark, s->offset, filename));
 }
 
 typedef struct QuitState {

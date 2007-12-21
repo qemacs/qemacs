@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <errno.h>
+#include <limits.h>
 #include <inttypes.h>
 
 #ifdef HAVE_QE_CONFIG_H
@@ -101,14 +102,19 @@ typedef struct EditState EditState;
 typedef struct EditBuffer EditBuffer;
 typedef struct QEmacsState QEmacsState;
 
-#define MAXINT 0x7fffffff
-#define NO_ARG MAXINT
+#ifndef INT_MAX
+#define INT_MAX  0x7fffffff
+#endif
+#ifndef INT_MIN
+#define INT_MIN  (-0x7fffffff-1)
+#endif
+#define NO_ARG  INT_MIN
 /* Size for a filename buffer */
-#define MAX_FILENAME_SIZE 1024
+#define MAX_FILENAME_SIZE    1024
 /* Size for a buffer name buffer */
-#define MAX_BUFFERNAME_SIZE 256
-/* Maximum length for a command name buffer */
-#define MAX_CMDNAME_SIZE  32
+#define MAX_BUFFERNAME_SIZE  256
+/* Size for a command name buffer */
+#define MAX_CMDNAME_SIZE     32
 
 /* low level I/O events */
 void set_read_handler(int fd, void (*cb)(void *opaque), void *opaque);
@@ -914,7 +920,7 @@ struct EditState {
     unsigned char *colorize_states; 
     int colorize_nb_lines;
     int colorize_nb_valid_lines;
-    /* maximum valid offset, MAXINT if not modified. Needed to invalide
+    /* maximum valid offset, INT_MAX if not modified. Needed to invalide
        'colorize_states' */
     int colorize_max_valid_offset; 
 
@@ -1406,7 +1412,8 @@ void do_load_from_path(EditState *s, const char *filename);
 void do_switch_to_buffer(EditState *s, const char *bufname);
 void do_break(EditState *s);
 void do_insert_file(EditState *s, const char *filename);
-void do_save_buffer(EditState *s, int save_as);
+void do_save_buffer(EditState *s);
+void do_write_file(EditState *s, const char *filename);
 void do_write_region(EditState *s, const char *filename);
 void do_isearch(EditState *s, int dir);
 void do_refresh_complete(EditState *s);
