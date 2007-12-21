@@ -486,7 +486,7 @@ EditBuffer *eb_new(const char *name, int flags)
     eb_add_callback(b, eb_offset_callback, &b->mark);
 
     if (!strcmp(name, "*trace*"))
-        trace_buffer = b;
+        qs->trace_buffer = b;
 
     return b;
 }
@@ -554,8 +554,8 @@ void eb_free(EditBuffer *b)
     }
     *pb = (*pb)->next;
 
-    if (b == trace_buffer)
-        trace_buffer = NULL;
+    if (b == qs->trace_buffer)
+        qs->trace_buffer = NULL;
 
     qe_free(&b);
 }
@@ -606,15 +606,16 @@ EditState *eb_find_window(EditBuffer *b, EditState *e)
 
 void eb_trace_bytes(const void *buf, int size, int state)
 {
-    EditBuffer *b = trace_buffer;
+    QEmacsState *qs = &qe_state;
+    EditBuffer *b = qs->trace_buffer;
     EditState *e;
     int point;
 
     if (b) {
         point = b->total_size;
-        if (trace_buffer_state != state) {
+        if (qs->trace_buffer_state != state) {
             const char *str = NULL;
-            switch (trace_buffer_state) {
+            switch (qs->trace_buffer_state) {
             case EB_TRACE_TTY:
                 str = "|\n";
                 break;
@@ -628,8 +629,8 @@ void eb_trace_bytes(const void *buf, int size, int state)
             if (str) {
                 eb_write(b, b->total_size, str, strlen(str));
             }
-            trace_buffer_state = state;
-            switch (trace_buffer_state) {
+            qs->trace_buffer_state = state;
+            switch (qs->trace_buffer_state) {
             case EB_TRACE_TTY:
                 str = "--|";
                 break;

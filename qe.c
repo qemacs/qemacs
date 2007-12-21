@@ -58,19 +58,12 @@ static CompletionFunc find_completion(const char *name);
 static int dummy_dpy_init(QEditScreen *s, int w, int h);
 
 QEmacsState qe_state;
-static ModeDef *first_mode = NULL;
-static KeyDef *first_key = NULL;
-static CmdDef *first_cmd = NULL;
-static CompletionEntry *first_completion = NULL;
-static HistoryEntry *first_history = NULL;
+/* should handle multiple screens, and multiple sessions */
 static QEditScreen global_screen;
 static int screen_width = 0;
 static int screen_height = 0;
 static int no_init_file;
 static const char *user_option;
-
-EditBuffer *trace_buffer;
-int trace_buffer_state;
 
 /* mode handling */
 
@@ -80,7 +73,7 @@ void qe_register_mode(ModeDef *m)
     CmdDef *table;
 
     /* record mode in mode list */
-    p = &first_mode;
+    p = &qe_state.first_mode;
     while (*p != NULL) p = &(*p)->next;
     m->next = NULL;
     *p = m;
@@ -123,7 +116,7 @@ void mode_completion(StringArray *cs, const char *input)
 {
     ModeDef *m;
     
-    for (m = first_mode; m != NULL; m = m->next) {
+    for (m = qe_state.first_mode; m != NULL; m = m->next) {
         if (strstart(m->name, input, NULL))
             add_string(cs, m->name);
     }
@@ -133,7 +126,7 @@ static ModeDef *find_mode(const char *name)
 {
     ModeDef *m;
 
-    for (m = first_mode; m != NULL; m = m->next) {
+    for (m = qe_state.first_mode; m != NULL; m = m->next) {
         if (!strcmp(m->name, name))
             return m;
     }
@@ -146,7 +139,7 @@ CmdDef *qe_find_cmd(const char *cmd_name)
 {
     CmdDef *d;
     
-    d = first_cmd;
+    d = qe_state.first_cmd;
     while (d != NULL) {
         while (d->name != NULL) {
             if (!strcmp(cmd_name, d->name))
@@ -173,13 +166,13 @@ static int qe_register_binding1(unsigned int *keys, int nb_keys,
     memcpy(p->keys, keys, nb_keys * sizeof(unsigned int));
     /* find position : mode keys should be before generic keys */
     if (m == NULL) {
-        lp = &first_key;
+        lp = &qe_state.first_key;
         while (*lp != NULL) lp = &(*lp)->next;
         *lp = p;
         p->next = NULL;
     } else {
-        p->next = first_key;
-        first_key = p;
+        p->next = qe_state.first_key;
+        qe_state.first_key = p;
     }
     return 0;
 }
@@ -208,24 +201,23 @@ static void qe_register_binding2(int key,
     qe_register_binding1(keys, nb_keys, d, m);
 }
 
-static int backspace_is_control_h;
-
-void do_toggle_control_h(__unused__ EditState *s, int set)
+void do_toggle_control_h(EditState *s, int set)
 {
+    QEmacsState *qs = s->qe_state;
     KeyDef *p;
     int i;
 
     if (set)
         set = (set > 0);
     else
-        set = !backspace_is_control_h;
+        set = !qs->backspace_is_control_h;
 
-    if (backspace_is_control_h == set)
+    if (qs->backspace_is_control_h == set)
         return;
     
-    backspace_is_control_h = set;
+    qs->backspace_is_control_h = set;
 
-    for (p = first_key; p; p = p->next) {
+    for (p = qs->first_key; p; p = p->next) {
         for (i = 0; i < p->nb_keys; i++) {
             switch (p->keys[i]) {
             case KEY_CTRL('h'):
@@ -286,7 +278,7 @@ void qe_register_cmd_table(CmdDef *cmds, const char *mode)
         m = find_mode(mode);
 
     /* find last command table */
-    for (ld = &first_cmd;;) {
+    for (ld = &qe_state.first_cmd;;) {
         d = *ld;
         if (d == NULL) {
             /* link new command table */
@@ -361,7 +353,7 @@ void command_completion(StringArray *cs, const char *input)
 {
     CmdDef *d;
     
-    d = first_cmd;
+    d = qe_state.first_cmd;
     while (d != NULL) {
         while (d->name != NULL) {
             if (strstart(d->name, input, NULL))
@@ -3894,7 +3886,7 @@ again:
     }
 
     /* see if one command is found */
-    for (kd = first_key; kd != NULL; kd = kd->next) {
+    for (kd = qs->first_key; kd != NULL; kd = kd->next) {
         if (kd->nb_keys >= c->nb_keys) {
             if (!memcmp(kd->keys, c->keys, 
                         c->nb_keys * sizeof(unsigned int)) && 
@@ -3920,7 +3912,7 @@ again:
                         goto next;
                     }
                 }
-                for (kd = first_key; kd != NULL; kd = kd->next) {
+                for (kd = qs->first_key; kd != NULL; kd = kd->next) {
                     if (kd->nb_keys == 1 &&
                         kd->keys[0] == KEY_DEFAULT &&
                         (kd->mode == NULL || kd->mode == s->mode)) {
@@ -4338,7 +4330,7 @@ void register_completion(const char *name, CompletionFunc completion_func)
     p->completion_func = completion_func;
     p->next = NULL;
 
-    lp = &first_completion;
+    lp = &qe_state.first_completion;
     while (*lp != NULL)
         lp = &(*lp)->next;
     *lp = p;
@@ -4349,7 +4341,7 @@ static CompletionFunc find_completion(const char *name)
     CompletionEntry *p;
 
     if (name[0] != '\0') {
-        for (p = first_completion; p != NULL; p = p->next)
+        for (p = qe_state.first_completion; p != NULL; p = p->next)
             if (!strcmp(p->name, name))
                 return p->completion_func;
     }
@@ -4493,7 +4485,7 @@ static StringArray *get_history(const char *name)
 
     if (name[0] == '\0')
         return NULL;
-    for (p = first_history; p != NULL; p = p->next) {
+    for (p = qe_state.first_history; p != NULL; p = p->next) {
         if (!strcmp(p->name, name))
             return &p->history;
     }
@@ -4502,8 +4494,8 @@ static StringArray *get_history(const char *name)
     if (!p)
         return NULL;
     pstrcpy(p->name, sizeof(p->name), name);
-    p->next = first_history;
-    first_history = p;
+    p->next = qe_state.first_history;
+    qe_state.first_history = p;
     return &p->history;
 }
 
@@ -4952,7 +4944,7 @@ static ModeDef *probe_mode(EditState *s, int mode, uint8_t *buf, int len)
     ModeProbeData probe_data;
     int best_probe_percent, percent;
 
-    m = first_mode;
+    m = s->qe_state->first_mode;
     selected_mode = NULL;
     best_probe_percent = 0;
     probe_data.buf = buf;
@@ -6079,13 +6071,13 @@ static void print_bindings(EditBuffer *b, const char *title,
     char buf[64];
     int found, gfound;
 
-    d = first_cmd;
+    d = qe_state.first_cmd;
     gfound = 0;
     while (d != NULL) {
         while (d->name != NULL) {
             /* find each key mapping pointing to this command */
             found = 0;
-            for (k = first_key; k != NULL; k = k->next) {
+            for (k = qe_state.first_key; k != NULL; k = k->next) {
                 if (k->cmd == d && k->mode == mode) {
                     if (!gfound)
                         eb_printf(b, "%s:\n\n", title);

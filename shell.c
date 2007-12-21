@@ -331,7 +331,7 @@ static void tty_write(ShellState *s, const char *buf, int len)
     if (len < 0)
         len = strlen(buf);
 
-    if (trace_buffer)
+    if (s->qe_state->trace_buffer)
         eb_trace_bytes(buf, len, EB_TRACE_PTY);
 
     while (len > 0) {
@@ -970,7 +970,7 @@ static void shell_read_cb(void *opaque)
     if (len <= 0)
         return;
     
-    if (trace_buffer)
+    if (qs->trace_buffer)
         eb_trace_bytes(buf, len, EB_TRACE_SHELL);
 
     for (i = 0; i < len; i++)

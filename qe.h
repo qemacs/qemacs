@@ -41,8 +41,8 @@
 /* OS specific defines */
 
 #ifdef WIN32
-#define snprintf _snprintf
-#define vsnprintf _vsnprintf
+#define snprintf   _snprintf
+#define vsnprintf  _vsnprintf
 #endif
 
 #if (defined(__GNUC__) || defined(__TINYC__))
@@ -724,11 +724,6 @@ typedef struct LogBuffer {
     int size;
 } LogBuffer;
 
-extern EditBuffer *trace_buffer;
-extern int trace_buffer_state;
-#define EB_TRACE_TTY    1
-#define EB_TRACE_SHELL  2
-#define EB_TRACE_PTY    4
 void eb_trace_bytes(const void *buf, int size, int state);
 
 void eb_init(void);
@@ -1068,15 +1063,26 @@ typedef struct QErrorContext {
 
 struct QEmacsState {
     QEditScreen *screen;
-    //struct ModeDef *first_mode;
-    //struct KeyDef *first_key;
-    //struct CmdDef *first_cmd;
+    //struct QEDisplay *first_dpy;
+    struct ModeDef *first_mode;
+    struct KeyDef *first_key;
+    struct CmdDef *first_cmd;
+    struct CompletionEntry *first_completion;
+    struct HistoryEntry *first_history;
+    //struct QECharset *first_charset;
+    //struct QETimer *first_timer;
     //struct VarDef *first_variable;
     //struct InputMethod *input_methods;
     EditState *first_window;
     EditState *active_window; /* window in which we edit */
     EditBuffer *first_buffer;
     //EditBuffer *message_buffer;
+    EditBuffer *trace_buffer;
+    int trace_buffer_state;
+#define EB_TRACE_TTY    1
+#define EB_TRACE_SHELL  2
+#define EB_TRACE_PTY    4
+
     /* global layout info : DO NOT modify these directly. do_refresh
        does it */
     int status_height;
@@ -1091,6 +1097,7 @@ struct QEmacsState {
     int is_full_screen;
     /* commands */
     int flag_split_window_change_focus;
+    int backspace_is_control_h;
     /* XXX: move these to ec */
     void *last_cmd_func; /* last executed command function call */
     void *this_cmd_func; /* current executing command */
@@ -1421,7 +1428,9 @@ void do_kill_buffer(EditState *s, const char *bufname1);
 void switch_to_buffer(EditState *s, EditBuffer *b);
 
 /* text mode */
+
 extern ModeDef text_mode;
+
 int text_mode_init(EditState *s, ModeSavedData *saved_data);
 void text_mode_close(EditState *s);
 int text_backward_offset(EditState *s, int offset);
@@ -1590,6 +1599,7 @@ void c_colorize_line(unsigned int *buf, int len,
 int xml_mode_probe(ModeProbeData *p1);
 
 /* html.c */
+
 extern ModeDef html_mode;
 
 int gxml_mode_init(EditState *s, 

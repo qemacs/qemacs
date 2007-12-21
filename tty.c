@@ -371,9 +371,9 @@ static void tty_read_handler(void *opaque)
     if (read(fileno(s->STDIN), ts->buf + ts->utf8_index, 1) != 1)
         return;
 
-    if (trace_buffer &&
+    if (qs->trace_buffer &&
         qs->active_window &&
-        qs->active_window->b != trace_buffer) {
+        qs->active_window->b != qs->trace_buffer) {
         eb_trace_bytes(ts->buf + ts->utf8_index, 1, EB_TRACE_TTY);
     }
 
