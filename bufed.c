@@ -38,7 +38,7 @@ static void build_bufed_list(EditState *s)
     EditBuffer *b, *b1;
     BufedState *hs;
     int last_index = list_get_pos(s);
-    int i;
+    int i, flags;
 
     hs = s->mode_data;
 
@@ -50,6 +50,8 @@ static void build_bufed_list(EditState *s)
     
     /* build buffer */
     b = s->b;
+    flags = b->flags;
+    b->flags &= ~BF_READONLY;
     eb_delete(b, 0, b->total_size);
     for (i = 0; i < hs->items.nb_items; i++) {
         eb_printf(b, " %-20s", hs->items.items[i]->str);
@@ -60,6 +62,7 @@ static void build_bufed_list(EditState *s)
         }
         eb_printf(b, "\n");
     }
+    b->flags = flags;
     s->offset = eb_goto_pos(s->b, last_index, 0);
 }
 

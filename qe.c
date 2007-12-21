@@ -4426,13 +4426,12 @@ void do_completion(EditState *s)
                buffer */
             if (!completion_popup_window) {
                 EditBuffer *b;
-                b = eb_new("*completion*", BF_SYSTEM | BF_READONLY);
+                b = eb_new("*completion*", BF_SYSTEM);
                 w1 = qs->screen->width;
                 h1 = qs->screen->height - qs->status_height;
                 w = (w1 * 3) / 4;
                 h = (h1 * 3) / 4;
-                e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, 
-                             WF_POPUP);
+                e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
                 /* set list mode */
                 do_set_mode(e, &list_mode, NULL);
                 do_refresh(e);
@@ -4443,12 +4442,14 @@ void do_completion(EditState *s)
             EditBuffer *b = completion_popup_window->b;
             /* modify the list with the current matches */
             qsort(outputs, count, sizeof(StringItem *), completion_sort_func);
+            b->flags &= ~BF_READONLY;
             eb_delete(b, 0, b->total_size);
             for (i = 0; i < count; i++) {
                 eb_printf(b, " %s", outputs[i]->str);
                 if (i != count - 1)
                     eb_printf(b, "\n");
             }
+            b->flags |= BF_READONLY;
             completion_popup_window->mouse_force_highlight = 1;
             completion_popup_window->force_highlight = 0;
             completion_popup_window->offset = 0;

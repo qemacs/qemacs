@@ -105,7 +105,9 @@ void css_error(const char *filename, int line_num, const char *msg)
         b = eb_new(HTML_ERROR_BUFFER, BF_READONLY);
     if (!b)
         return;
+    b->flags &= ~BF_READONLY;
     eb_printf(b, "%s:%d: %s\n", basename(filename), line_num, msg);
+    b->flags |= ~BF_READONLY;
 }
 
 
