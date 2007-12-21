@@ -49,6 +49,8 @@ CONFIG_UNICODE_JOIN=y
 CONFIG_ALL_KMAPS=y
 
 CFLAGS:= -Wall -g $(CFLAGS) -funsigned-char
+# do not warn about zero-length formats.
+CFLAGS+= -Wno-format-zero-length
 
 -include cflags.mk
 
