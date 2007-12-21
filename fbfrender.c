@@ -259,7 +259,7 @@ QEFont *fbf_open_font(__unused__ QEditScreen *s, int style, int size)
         } else {
             /* select closest size */
             uf_found = NULL;
-            dmin = MAXINT;
+            dmin = INT_MAX;
             for (i = 0;i < nb_fonts;i++) {
                 uf = fonts[i];
                 d = abs(uf->pt_size - size);

@@ -155,7 +155,7 @@ QEFont *select_font(QEditScreen *s, int style, int size)
     QEFont *fc;
     int i, min_ts, min_index;
 
-    min_ts = MAXINT;
+    min_ts = INT_MAX;
     min_index = -1;
     for (i = 0; i < FONT_CACHE_SIZE; i++) {
         fc = font_cache[i];

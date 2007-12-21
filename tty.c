@@ -520,7 +520,7 @@ static int get_tty_color(QEColor color)
 {
     int i, cmin, dmin, d;
     
-    dmin = MAXINT;
+    dmin = INT_MAX;
     cmin = 0;
     for (i = 0; i < NB_COLORS; i++) {
         d = color_dist(color, tty_colors[i]);

@@ -163,7 +163,7 @@ static ModeDef unihex_mode = {
     .mode_close = text_mode_close,
     .text_display = unihex_display, 
     .text_backward_offset = unihex_backward_offset,
-    
+
     .move_up_down = unihex_move_up_down,
     .move_left_right = unihex_move_left_right,
     .move_bol = unihex_move_bol,

@@ -139,7 +139,7 @@ static void update_rect(int x1, int y1, int x2, int y2)
         return;
 
     /* find closest rectangle */
-    dmin = MAXINT;
+    dmin = INT_MAX;
     r2 = update_rects;
     r1 = NULL;
     for (i = 0; i < update_nb; i++) {
@@ -719,7 +719,7 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
 #endif
     /* iterate thru each font and select closer one */
     found = 0;
-    dist_min = MAXINT;
+    dist_min = INT_MAX;
     for (i = 0; i < count; i++) {
         dist = 0;
         p = list[i] + 1;

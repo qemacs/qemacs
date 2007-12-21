@@ -1664,7 +1664,7 @@ static int css_layout_float(InlineLayout *s, FloatBlock *b)
     for (;;) {
         x1 = s->x0;
         x2 = s->x0 + s->total_width;
-        y_next = MAXINT;
+        y_next = INT_MAX;
         for (b1 = s->layout_state->first_float; b1 != NULL; b1 = b1->next) {
             if (b1->float_type != -1) {
                 /* if intersection in y, then update x1 and x2 */
@@ -4238,7 +4238,7 @@ int css_get_offset_pos(CSSContext *s, CSSBox *box, int xc, int dir)
 
     font = css_select_font(s->screen, props);
 
-    dmin = MAXINT;
+    dmin = INT_MAX;
     x = 0;
     posc = -1;
     for (i = 0; i < len; i++) {

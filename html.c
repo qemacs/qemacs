@@ -89,7 +89,7 @@ static void recompute_offset(EditState *s)
     data.ctx = hs->css_ctx;
     data.wanted_offset = s->offset;
     data.closest_offset = 0;
-    data.dmin = MAXINT;
+    data.dmin = INT_MAX;
     css_box_iterate(hs->css_ctx, hs->top_box,
                     &data, recompute_offset_func);
     s->offset = data.closest_offset;
@@ -467,7 +467,7 @@ static int up_down_func(void *opaque, CSSBox *box, int x, int y)
 
  ytest:
     /* if no y intersection with selected box, then see if it is closer */
-    if (m->ydmin == MAXINT ||
+    if (m->ydmin == INT_MAX ||
         y >= m->y2 || (y + box->height) <= m->y1) {
 
         d = abs(y1 - m->yd);
@@ -475,7 +475,7 @@ static int up_down_func(void *opaque, CSSBox *box, int x, int y)
             m->ydmin = d;
             m->y1 = y;
             m->y2 = y + box->height;
-            m->xdmin = MAXINT;
+            m->xdmin = INT_MAX;
         } else if (d == m->ydmin) {
             /* also do x test if on the same line */
         } else {
@@ -525,8 +525,8 @@ static void html_move_up_down1(EditState *s, int dir, int xtarget)
         m->xd = xtarget;
     }
     m->dir = dir;
-    m->xdmin = MAXINT;
-    m->ydmin = MAXINT;
+    m->xdmin = INT_MAX;
+    m->ydmin = INT_MAX;
     m->box = NULL;
     m->xdbase = 0;
     
@@ -622,13 +622,13 @@ static void html_move_left_right_visual(EditState *s, int dir)
         m->y2 = cursor_pos.y2;
         
         m->dir = dir;
-        m->xdmin = MAXINT;
+        m->xdmin = INT_MAX;
         m->box = NULL;
         
         css_box_iterate(hs->css_ctx, hs->top_box, m, left_right_func);
         if (!m->box) {
             /* no box found : go up or down */
-            html_move_up_down1(s, dir, -dir * (MAXINT / 2));
+            html_move_up_down1(s, dir, -dir * (INT_MAX / 2));
         } else {
             offset = css_get_offset_pos(hs->css_ctx, m->box,
                                         cursor_pos.x1 - m->x0, dir);
@@ -657,13 +657,13 @@ static void html_move_bol_eol(EditState *s, int dir)
         return;
 
     /* find the box closest to x */
-    xtarget = -dir * (MAXINT / 2);
+    xtarget = -dir * (INT_MAX / 2);
     m->xd = xtarget;
     m->y1 = cursor_pos.y1;
     m->y2 = cursor_pos.y2;
     
     m->dir = dir;
-    m->xdmin = MAXINT;
+    m->xdmin = INT_MAX;
     m->box = NULL;
     css_box_iterate(hs->css_ctx, hs->top_box, m, left_right_func);
     if (m->box) {
