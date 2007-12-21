@@ -38,7 +38,7 @@ static const char *perl_mode_extensions = "pl|perl";
 #define IN_FORMAT	0x04	/* format = ... */
 #define IN_INPUT	0x08
 
-/* CG: bogus if multiple regions are colorized */
+/* CG: bogus if multiple regions are colorized, should use signature */
 static unsigned int perl_eos[100];
 static int perl_eos_len;
 
@@ -120,17 +120,21 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep, int state_
     } else
     if (colstate & IN_FORMAT) {
 	i = n;
-	set_color(str + j, str + i, PERL_STRING);
 	if (n == 1 && str[0] == '.')
 	    colstate &= ~IN_FORMAT;
+	set_color(str + j, str + i, PERL_STRING);
     }
     if (colstate & IN_INPUT) {
 	//vdm_noRetrievalKey = 1;
 	i = n;
-	set_color(str + j, str + i, PERL_STRING);
-	if (n == perl_eos_len && !umemcmp(perl_eos, str, n))
-	    colstate &= ~IN_INPUT;
+	if (n == perl_eos_len && !umemcmp(perl_eos, str, n)) {
+            colstate &= ~IN_INPUT;
+            set_color(str + j, str + i, PERL_KEYWORD);
+        } else {
+            set_color(str + j, str + i, PERL_STRING);
+        }
     }
+
     while (i < n) {
 	j = i + 1;
 	c1 = str[j];
@@ -182,10 +186,11 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep, int state_
 		/* Should check for unary context */
 		s1 = i + 2;
 		c2 = str[s1];
-		if (c2 == '"' || c2 == '\'' || c2 == '`')
+		if (c2 == '"' || c2 == '\'' || c2 == '`') {
 		    s2 = perl_string(str, c2, ++s1, n);
-		else
-		    s2 = perl_var(str, s1, n);
+                } else {
+                    s2 = perl_var(str, s1, n);
+                }
 		if (s2 > s1) {
 		    umemcpy(perl_eos, str + s1, s2 - s1);
 		    perl_eos_len = s2 - s1;
@@ -287,8 +292,16 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep, int state_
 		continue;
 	    }
 	keyword:
-	    if (j - i == 6 && ustristart(str + i, "format", NULL))
-		colstate |= IN_FORMAT;
+            if (j - i == 6 && ustristart(str + i, "format", NULL)) {
+                for (s1 = 0; s1 < i; s1++) {
+                    if (!qe_isspace(str[s1]))
+                        break;
+                }
+                if (s1 == i) {
+                    /* keyword is first on line */
+                    colstate |= IN_FORMAT;
+                }
+            }
 	    set_color(str + i, str + j, PERL_KEYWORD);
 	    i = j;
 	    continue;
@@ -319,6 +332,10 @@ static int perl_mode_probe(ModeProbeData *p)
     if (match_extension(p->filename, perl_mode_extensions))
 	return 80;
     
+    if (p->buf[0] == '#' && p->buf[1] == '!' &&
+          memstr(p->buf, p->line_len, "/usr/bin/perl"))
+        return 80;
+
     return 0;
 }
 
