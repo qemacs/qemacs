@@ -203,7 +203,10 @@ static void qe_register_binding2(int key,
 
 void do_toggle_control_h(EditState *s, int set)
 {
-    QEmacsState *qs = s->qe_state;
+    /* Achtung Minen! do_toggle_control_h can be called from tty_init
+     * with a NULL EditState.
+     */
+    QEmacsState *qs = s ? s->qe_state : &qe_state;
     KeyDef *p;
     int i;
 
@@ -7224,6 +7227,9 @@ extern void module_docbook_init(void); /* docbook.c(53) */
 extern void module_video_init(void); /* video.c(979) */
 extern void module_image_init(void); /* image.c(844) */
 extern void module_mpeg_init(void); /* mpeg.c(181) */
+extern void module_htmlsrc_init(void); /* htmlsrc.c(307) */
+extern void module_makefile_init(void); /* makemode.c(191) */
+extern void module_perl_init(void); /* perl.c(374) */
 
 static inline void init_all_modules(void)
 {
@@ -7255,6 +7261,9 @@ static inline void init_all_modules(void)
     module_bufed_init(); /* bufed.c(197) */
     module_shell_init(); /* shell.c(922) */
     module_dired_init(); /* dired.c(369) */
+    module_htmlsrc_init(); /* htmlsrc.c(307) */
+    module_makefile_init(); /* makemode.c(191) */
+    module_perl_init(); /* perl.c(374) */
 #endif
 #ifdef CONFIG_WIN32
     module_win32_init(); /* win32.c(504) */

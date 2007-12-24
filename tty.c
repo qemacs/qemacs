@@ -39,18 +39,18 @@ typedef unsigned int TTYChar;
 #define TTYCHAR_GETBG(cc)   (((cc) >> 24) & 0xFF)
 #define TTYCHAR_DEFAULT     TTYCHAR(' ', 0, 0)
 
-#if defined(__GNUC__)
-#  define PUTC(c,f)         putc_unlocked(c, f)
-#  define FWRITE(b,s,n,f)   fwrite_unlocked(b, s, n, f)
-#  define FPRINTF           fprintf
-static inline void FPUTS(const char *s, FILE *fp) {
-    FWRITE(s, 1, strlen(s), fp);
+#if defined(__GNUC__) && !defined(CONFIG_CYGWIN)
+#  define TTY_PUTC(c,f)         putc_unlocked(c, f)
+#  define TTY_FWRITE(b,s,n,f)   fwrite_unlocked(b, s, n, f)
+#  define TTY_FPRINTF           fprintf
+static inline void TTY_FPUTS(const char *s, FILE *fp) {
+    TTY_FWRITE(s, 1, strlen(s), fp);
 }
 #else
-#  define PUTC(c,f)         putc(c, f)
-#  define FWRITE(b,s,n,f)   fwrite(b, s, n, f)
-#  define FPRINTF           fprintf
-#  define FPUTS             fputs
+#  define TTY_PUTC(c,f)         putc(c, f)
+#  define TTY_FWRITE(b,s,n,f)   fwrite(b, s, n, f)
+#  define TTY_FPRINTF           fprintf
+#  define TTY_FPUTS             fputs
 #endif
 
 enum InputState {
@@ -167,14 +167,14 @@ static int tty_term_init(QEditScreen *s,
            "\033)0\033(B"       /* select character sets in block 0 and 1 */
            "\017");             /* shift out */
 #else
-    FPRINTF(s->STDOUT,
-            "\033[?1049h"       /* enter_ca_mode */
-            "\033[m\033(B"      /* exit_attribute_mode */
-            "\033[4l"		/* exit_insert_mode */
-            "\033[?7h"		/* enter_am_mode */
-            "\033[39;49m"       /* orig_pair */
-            "\033[?1h\033="     /* keypad_xmit */
-           );
+    TTY_FPRINTF(s->STDOUT,
+                "\033[?1049h"       /* enter_ca_mode */
+                "\033[m\033(B"      /* exit_attribute_mode */
+                "\033[4l"		/* exit_insert_mode */
+                "\033[?7h"		/* enter_am_mode */
+                "\033[39;49m"       /* orig_pair */
+                "\033[?1h\033="     /* keypad_xmit */
+               );
 #endif
 
     s->charset = &charset_vt100;
@@ -191,10 +191,10 @@ static int tty_term_init(QEditScreen *s,
         /*               ^X  ^Z    ^M   \170101  */
         //printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
         /* Just print utf-8 encoding for eacute and check cursor position */
-        FPRINTF(s->STDOUT, "%s", "\030\032" "\r\xC3\xA9" "\033[6n\033D");
+        TTY_FPRINTF(s->STDOUT, "%s", "\030\032" "\r\xC3\xA9" "\033[6n\033D");
         fflush(s->STDOUT);
         n = fscanf(s->STDIN, "\033[%u;%u", &y, &x);  /* get cursor position */
-        FPRINTF(s->STDOUT, "\r   \r");            /* go back, erase 3 chars */
+        TTY_FPRINTF(s->STDOUT, "\r   \r");        /* go back, erase 3 chars */
         if (n == 2 && x == 2) {
             s->charset = &charset_utf8;
         }
@@ -233,13 +233,13 @@ static void tty_term_close(QEditScreen *s)
            s->height, 1);
 #else
     /* go to last line and clear it */
-    FPRINTF(s->STDOUT, "\033[%d;%dH\033[m\033[K", s->height, 1);
-    FPRINTF(s->STDOUT,
-            "\033[?1049l"        /* exit_ca_mode */
-            "\r"                 /* return */
-            "\033[?1l\033>"      /* keypad_local */
-            "\r"                 /* return */
-           );
+    TTY_FPRINTF(s->STDOUT, "\033[%d;%dH\033[m\033[K", s->height, 1);
+    TTY_FPRINTF(s->STDOUT,
+                "\033[?1049l"        /* exit_ca_mode */
+                "\r"                 /* return */
+                "\033[?1l\033>"      /* keypad_local */
+                "\r"                 /* return */
+               );
 #endif
     fflush(s->STDOUT);
 }
@@ -751,7 +751,7 @@ static void tty_term_flush(QEditScreen *s)
             if (ptr1 == ptr2)
                 continue;
 
-            FPRINTF(s->STDOUT, "\033[%d;%dH", y + 1, ptr1 - ptr + 1);
+            TTY_FPRINTF(s->STDOUT, "\033[%d;%dH", y + 1, ptr1 - ptr + 1);
 
             /* CG: should scan for sequences of blanks */
             while (ptr1 < ptr2) {
@@ -765,59 +765,61 @@ static void tty_term_flush(QEditScreen *s)
                     ||  (bgcolor != (int)TTYCHAR_GETBG(cc))) {
                         fgcolor = TTYCHAR_GETFG(cc);
                         bgcolor = TTYCHAR_GETBG(cc);
-                        FPRINTF(s->STDOUT, "\033[%d;%d;%dm",
-                                (fgcolor > 7) ? 1 : 22,
-                                30 + (fgcolor & 7), 40 + bgcolor);
+                        TTY_FPRINTF(s->STDOUT, "\033[%dm",
+                                (fgcolor > 7) ? 1 : 22);
+                        TTY_FPRINTF(s->STDOUT, "\033[%d;%dm",
+                                //(fgcolor > 7) ? 1 : 22,
+                                    30 + (fgcolor & 7), 40 + bgcolor);
                     }
                     /* do not display escape codes or invalid codes */
                     if (ch < 32 || ch == 127) {
                         if (shifted) {
-                            FPUTS("\033(B", s->STDOUT);
+                            TTY_FPUTS("\033(B", s->STDOUT);
                             shifted = 0;
                         }
-                        PUTC('.', s->STDOUT);
+                        TTY_PUTC('.', s->STDOUT);
                     } else
                     if (ch < 127) {
                         if (shifted) {
-                            FPUTS("\033(B", s->STDOUT);
+                            TTY_FPUTS("\033(B", s->STDOUT);
                             shifted = 0;
                         }
-                        PUTC(ch, s->STDOUT);
+                        TTY_PUTC(ch, s->STDOUT);
                     } else
                     if (ch < 128 + 32) {
                         /* Kludge for linedrawing chars */
                         if (!shifted) {
-                            FPUTS("\033(0", s->STDOUT);
+                            TTY_FPUTS("\033(0", s->STDOUT);
                             shifted = 1;
                         }
-                        PUTC(ch - 32, s->STDOUT);
+                        TTY_PUTC(ch - 32, s->STDOUT);
                     } else {
                         // was in qemacs-0.3.1.g2.gw/tty.c:
                         // if (cc == 0x2500)
                         //    printf("\016x\017");
                         /* s->charset is either vt100 or utf-8 */
                         if (shifted) {
-                            FPUTS("\033(B", s->STDOUT);
+                            TTY_FPUTS("\033(B", s->STDOUT);
                             shifted = 0;
                         }
                         nc = unicode_to_charset(buf, cc, s->charset);
                         if (nc == 1) {
-                            PUTC(*(u8 *)buf, s->STDOUT);
+                            TTY_PUTC(*(u8 *)buf, s->STDOUT);
                         } else
                         {
-                            FWRITE(buf, 1, nc, s->STDOUT);
+                            TTY_FWRITE(buf, 1, nc, s->STDOUT);
                         }
                     }
                 }
             }
             if (shifted) {
-                FPUTS("\033(B", s->STDOUT);
+                TTY_FPUTS("\033(B", s->STDOUT);
                 shifted = 0;
             }
         }
     }
 
-    FPRINTF(s->STDOUT, "\033[%d;%dH", ts->cursor_y + 1, ts->cursor_x + 1);
+    TTY_FPRINTF(s->STDOUT, "\033[%d;%dH", ts->cursor_y + 1, ts->cursor_x + 1);
     fflush(s->STDOUT);
 }
 

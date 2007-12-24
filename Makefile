@@ -81,7 +81,11 @@ endif
 LIBS+=-lm
 
 TARGETLIBS:=
-TARGETS+=qe$(EXE) qe-doc.html kmaps ligatures
+TARGETS+=qe$(EXE) kmaps ligatures
+
+ifndef CONFIG_CYGWIN
+TARGETS+=qe-doc.html
+endif
 
 OBJS=qe.o charset.o buffer.o \
      input.o unicode_join.o display.o util.o hex.o list.o cutils.o
@@ -163,7 +167,7 @@ qe$(EXE): qe_g$(EXE) Makefile
 	cp $< $@
 	$(STRIP) $@
 	@ls -l $@
-	echo `size qe` `wc --bytes qe` qe $(OPTIONS) \
+	echo `size $@` `wc --bytes $@` qe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 ffplay$(EXE): qe$(EXE) Makefile
