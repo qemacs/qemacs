@@ -503,9 +503,7 @@ static inline int color_dist(unsigned int c1, unsigned c2)
             abs( ((c1 >> 16) & 0xff) - ((c2 >> 16) & 0xff)));
 }
 
-#define NB_COLORS 8
-
-unsigned int tty_colors[NB_COLORS] = {
+unsigned int const tty_bg_colors[8] = {
     QERGB(0x00, 0x00, 0x00),
     QERGB(0xff, 0x00, 0x00),
     QERGB(0x00, 0xff, 0x00),
@@ -516,14 +514,34 @@ unsigned int tty_colors[NB_COLORS] = {
     QERGB(0xff, 0xff, 0xff),
 };
 
-static int get_tty_color(QEColor color)
+unsigned int const tty_fg_colors[16] = {
+    QERGB(0x00, 0x00, 0x00),
+    QERGB(0xbb, 0x00, 0x00),
+    QERGB(0x00, 0xbb, 0x00),
+    QERGB(0xbb, 0xbb, 0x00),
+    QERGB(0x00, 0x00, 0xbb),
+    QERGB(0xbb, 0x00, 0xbb),
+    QERGB(0x00, 0xbb, 0xbb),
+    QERGB(0xbb, 0xbb, 0xbb),
+
+    QERGB(0x55, 0x55, 0x55),
+    QERGB(0xff, 0x55, 0x55),
+    QERGB(0x55, 0xff, 0x55),
+    QERGB(0xff, 0xff, 0x55),
+    QERGB(0x55, 0x55, 0xff),
+    QERGB(0xff, 0x55, 0xff),
+    QERGB(0x55, 0xff, 0xff),
+    QERGB(0xff, 0xff, 0xff),
+};
+
+static int get_tty_color(QEColor color, unsigned int const *colors, int count)
 {
     int i, cmin, dmin, d;
     
     dmin = INT_MAX;
     cmin = 0;
-    for (i = 0; i < NB_COLORS; i++) {
-        d = color_dist(color, tty_colors[i]);
+    for (i = 0; i < count; i++) {
+        d = color_dist(color, colors[i]);
         if (d < dmin) {
             cmin = i;
             dmin = d;
@@ -554,7 +572,7 @@ static void tty_term_fill_rectangle(QEditScreen *s,
             ptr += wrap;
         }
     } else {
-        bgcolor = get_tty_color(color);
+        bgcolor = get_tty_color(color, tty_bg_colors, countof(tty_bg_colors));
         for (y = y1; y < y2; y++) {
             ts->line_updated[y] = 1;
             for (x = x1; x < x2; x++) {
@@ -639,7 +657,7 @@ static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font,
         return;
     
     ts->line_updated[y] = 1;
-    fgcolor = get_tty_color(color);
+    fgcolor = get_tty_color(color, tty_fg_colors, countof(tty_fg_colors));
     ptr = ts->screen + y * s->width;
 
     if (x < s->clip_x1) {
@@ -747,11 +765,9 @@ static void tty_term_flush(QEditScreen *s)
                     ||  (bgcolor != (int)TTYCHAR_GETBG(cc))) {
                         fgcolor = TTYCHAR_GETFG(cc);
                         bgcolor = TTYCHAR_GETBG(cc);
-                        /* CG: should deal with bold for high intensity
-                         * foreground colors
-                         */
-                        FPRINTF(s->STDOUT, "\033[%d;%dm",
-                                30 + fgcolor, 40 + bgcolor);
+                        FPRINTF(s->STDOUT, "\033[%d;%d;%dm",
+                                (fgcolor > 7) ? 1 : 22,
+                                30 + (fgcolor & 7), 40 + bgcolor);
                     }
                     /* do not display escape codes or invalid codes */
                     if (ch < 32 || ch == 127) {

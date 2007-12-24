@@ -440,26 +440,35 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
         s->color = s->def_color;
         break;
     case 1:     /* enter_bold_mode */
-        /* CG: should use high intensity colors */
+        s->color |= TTY_BOLD;
+        break;
+    case 22:    /* exit_bold_mode */
+        s->color &= ~TTY_BOLD;
         break;
     case 4:     /* enter_underline_mode */
     case 5:     /* enter_blink_mode */
     case 7:     /* enter_reverse_mode, enter_standout_mode */
     case 8:     /* enter_secure_mode */
     case 24:    /* exit_underline_mode */
-    case 27:    /* exit_standout_mode */
+    case 25:    /* exit_blink_mode */
+    case 27:    /* exit_reverse_mode, exit_standout_mode */
+    case 28:    /* exit_secure_mode */
+    case 38:    /* set extended foreground color ? */
     case 39:    /* orig_pair(1) */
+    case 48:    /* set extended background color ? */
     case 49:    /* orig_pair(2) */
         break;
     default:
         /* 0:black 1:red 2:green 3:yellow 4:blue 5:magenta 6:cyan 7:white */
         if (c >= 30 && c <= 37) {
             /* set foreground color */
-            s->color = TTY_GET_COLOR(c - 30, TTY_GET_BG(s->color));
+            s->color &= ~(TTY_BOLD | TTY_BG_COLOR(7));
+            s->color |= TTY_FG_COLOR(c - 30);
         } else
         if (c >= 40 && c <= 47) {
             /* set background color */
-            s->color = TTY_GET_COLOR(TTY_GET_FG(s->color), c - 40);
+            s->color &= ~(TTY_BOLD | TTY_FG_COLOR(7));
+            s->color |= TTY_BG_COLOR(c - 40);
         }
         break;
     }

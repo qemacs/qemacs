@@ -1022,12 +1022,17 @@ typedef struct ModeDef {
 } ModeDef;
 
 /* special bit to indicate tty styles (for shell mode) */
-#define QE_STYLE_TTY     0x800
-#define TTY_GET_COLOR(fg, bg) (((fg) << 3) | (bg))
-#define TTY_GET_FG(color) (((color) >> 3) & 7)
-#define TTY_GET_BG(color) ((color) & 7)
+#define QE_STYLE_TTY       0x800
+#define TTY_BOLD           (1 << 6)
+#define TTY_FG_COLOR(fg)   ((fg) << 3)
+#define TTY_BG_COLOR(bg)   (bg)
+#define TTY_GET_COLOR(fg, bg)  (((fg) << 3) | (bg))
+#define TTY_GET_XFG(color) (((color) >> 3) & 15)
+#define TTY_GET_FG(color)  (((color) >> 3) & 7)
+#define TTY_GET_BG(color)  ((color) & 7)
 
-extern unsigned int tty_colors[]; /* from tty.c */
+extern unsigned int const tty_bg_colors[]; /* from tty.c */
+extern unsigned int const tty_fg_colors[];
 
 /* special selection style (cumulative with another style) */
 #define QE_STYLE_SEL     0x400
