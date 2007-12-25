@@ -1208,12 +1208,17 @@ void text_mouse_goto(EditState *s, int x, int y)
 }
 #endif
 
-void do_char(EditState *s, int key)
+void do_char(EditState *s, int key, int argument)
 {
     if (s->b->flags & BF_READONLY)
         return;
-    if (s->mode->write_char)
-        s->mode->write_char(s, key);
+
+    for (;;) {
+        if (s->mode->write_char)
+            s->mode->write_char(s, key);
+        if (argument-- <= 1)
+            break;
+    }
 }
 
 void text_write_char(EditState *s, int key)
@@ -1293,30 +1298,40 @@ void text_write_char(EditState *s, int key)
     }
 }
 
-/* XXX: may be better to move it into qe_key_process() */
-static void quote_key(__unused__ void *opaque, int key)
-{
-    /* CG: should pass s as opaque */
-    QEmacsState *qs = &qe_state;
+struct QuoteKeyArgument {
     EditState *s;
+    int argument;
+};
 
-    s = qs->active_window;
+/* XXX: may be better to move it into qe_key_process() */
+static void quote_key(void *opaque, int key)
+{
+    struct QuoteKeyArgument *qa = opaque;
+    EditState *s = qa->s;
+
+    put_status(s, "");
+
     if (!s)
         return;
 
     /* CG: why not insert special keys as well? */
     if (!KEY_SPECIAL(key) ||
         (key >= 0 && key <= 31)) {
-        do_char(s, key);
-        edit_display(qs);
+        do_char(s, key, qa->argument);
+        edit_display(s->qe_state);
         dpy_flush(&global_screen);
     }
     qe_ungrab_keys();
 }
 
-void do_quote(EditState *s)
+void do_quote(EditState *s, int argument)
 {
-    qe_grab_keys(quote_key, NULL);
+    struct QuoteKeyArgument *qa = qe_mallocz(struct QuoteKeyArgument);
+
+    qa->s = s;
+    qa->argument = argument;
+
+    qe_grab_keys(quote_key, qa);
     put_status(s, "Quote: ");
 }
 
@@ -1325,9 +1340,9 @@ void do_insert(EditState *s)
     s->insert = !s->insert;
 }
 
-void do_tab(EditState *s)
+void do_tab(EditState *s, int argument)
 {
-    do_char(s, 9);
+    do_char(s, 9, argument);
 }
 
 void do_open_line(EditState *s)
@@ -4456,7 +4471,7 @@ void do_completion(EditState *s)
 void do_completion_space(EditState *s)
 {
     if (!completion_function) {
-        do_char(s, ' ');
+        do_char(s, ' ', 1);
     } else {
         do_completion(s);
     }

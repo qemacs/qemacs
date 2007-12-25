@@ -1243,7 +1243,7 @@ static void shell_write_char(EditState *e, int c)
             break;
         // Do not do this: it is useless and causes infinite recursion 
         //case 9:
-        //    do_tab(e);
+        //    do_tab(e, 1);
         //    break;
         case 11:
             do_kill_line(e, 1);

@@ -26,8 +26,8 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Simple commands ----------------*/
 
-    CMDV( KEY_DEFAULT, KEY_NONE, "self-insert-command", do_char, ' ', "*v") /* u? */
-    CMD_( KEY_META('#'), KEY_NONE, "insert-char", do_char, "*i{Insert char: }") /* u? */
+    CMDV( KEY_DEFAULT, KEY_NONE, "self-insert-command", do_char, ' ', "*vui")
+    CMD_( KEY_META('#'), KEY_NONE, "insert-char", do_char, "*i{Insert char: }ui")
     CMD1( KEY_CTRL('p'), KEY_UP, "previous-line", do_up_down, -1 )
     CMD1( KEY_CTRL('n'), KEY_DOWN, "next-line", do_up_down, 1 )
     CMD1( KEY_CTRL('b'), KEY_LEFT, "backward-char", do_left_right, -1 )
@@ -48,9 +48,9 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_META('<'), KEY_CTRL_HOME, "beginning-of-buffer", do_bof )
     CMD0( KEY_META('>'), KEY_CTRL_END, "end-of-buffer", do_eof )
     /* do_tab will not change read only buffer */
-    CMD0( KEY_CTRL('i'), KEY_NONE, "tabulate", do_tab) /* u? */
+    CMD_( KEY_CTRL('i'), KEY_NONE, "tabulate", do_tab, "ui")
     //CMD0( KEY_SPC, KEY_NONE, "space", do_space) /* u? */
-    CMD_( KEY_CTRL('q'), KEY_NONE, "quoted-insert", do_quote, "*") /* u? */
+    CMD_( KEY_CTRL('q'), KEY_NONE, "quoted-insert", do_quote, "*ui")
     CMD_( KEY_CTRL('j'), KEY_RET, "newline", do_return, "*")
     CMD_( KEY_CTRL('o'), KEY_NONE, "open-line", do_open_line, "*")
 

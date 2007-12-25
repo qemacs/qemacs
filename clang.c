@@ -583,7 +583,7 @@ static void do_c_indent_region(EditState *s)
 
 static void do_c_electric(EditState *s, int key)
 {
-    do_char(s, key);
+    do_char(s, key, 1);
     do_c_indent(s);
 }
 

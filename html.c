@@ -855,11 +855,11 @@ static void do_html_electric(EditState *s, int key)
     const char *str;
     str = find_entity_str(key);
     if (str) {
-        do_char(s, '&');
+        do_char(s, '&', 1);
         while (*str) {
-            do_char(s, *str++);
+            do_char(s, *str++, 1);
         }
-        do_char(s, ';');
+        do_char(s, ';', 1);
     }
 }
 

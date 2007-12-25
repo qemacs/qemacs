@@ -1449,7 +1449,7 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                        int offset1, int line_num);
 
 // should take argval
-void do_char(EditState *s, int key);
+void do_char(EditState *s, int key, int argument);
 // bad name!
 // void do_set_mode(EditState *s, const char *mode_name);
 void do_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data);
@@ -1462,7 +1462,7 @@ void do_return(EditState *s);
 void do_backspace(EditState *s, int argval);
 void do_delete_char(EditState *s, int argval);
 // should take argval
-void do_tab(EditState *s);
+void do_tab(EditState *s, int argument);
 EditBuffer *new_yank_buffer(void);
 void do_append_next_kill(EditState *s);
 void do_kill(EditState *s, int p1, int p2, int dir);
@@ -1509,7 +1509,7 @@ void do_scroll_up_down(EditState *s, int dir);
 void perform_scroll_up_down(EditState *s, int h);
 void do_center_cursor(EditState *s);
 // should take argval
-void do_quote(EditState *s);
+void do_quote(EditState *s, int argument);
 void do_insert(EditState *s);
 void do_open_line(EditState *s);
 // should take argval
