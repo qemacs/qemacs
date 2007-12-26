@@ -1709,10 +1709,12 @@ int eb_save_buffer(EditBuffer *b)
         mode = st.st_mode & 0777;
 
     /* backup old file if present */
-    strcpy(buf1, filename);
-    strcat(buf1, "~");
-    // should check error code
-    rename(filename, buf1);
+    if (strlen(filename) < MAX_FILENAME_SIZE - 1) {
+        strcpy(buf1, filename);
+        strcat(buf1, "~");
+        // should check error code
+        rename(filename, buf1);
+    }
 
     ret = b->data_type->buffer_save(b, 0, b->total_size, filename);
     if (ret < 0)
