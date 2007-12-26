@@ -162,16 +162,15 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
 
 int xml_mode_probe(ModeProbeData *p1)
 {
-    const char *p;
+    const u8 *p;
 
-    p = (const char *)p1->buf;
-    while (qe_isspace((unsigned char)*p))
+    p = p1->buf;
+    while (qe_isspace(*p))
         p++;
     if (*p != '<')
         return 0;
     p++;
-    if (*p != '!' && *p != '?' && *p != '/' && 
-        !qe_isalpha((unsigned char)*p))
+    if (*p != '!' && *p != '?' && !qe_isalpha(*p))
         return 0;
     return 90; /* leave some room for more specific XML parser */
 }
