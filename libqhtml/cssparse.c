@@ -730,7 +730,7 @@ static void read_ident(CSSParseState *b, int *ch_ptr, char *ident, int ident_siz
     c = *ch_ptr;
     q = ident;
     for (;;) {
-        if (!(qe_isalnum(c) || c == '*' || c == '_' || c == '-'))
+        if (!(qe_isalnum_(c) || c == '*' || c == '-'))
             break;
         if ((q - ident) < ident_size - 1)
             *q++ = c;
