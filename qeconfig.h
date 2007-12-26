@@ -49,7 +49,7 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_META('>'), KEY_CTRL_END, "end-of-buffer", do_eof )
     /* do_tab will not change read only buffer */
     CMD_( KEY_CTRL('i'), KEY_NONE, "tabulate", do_tab, "ui")
-    //CMD0( KEY_SPC, KEY_NONE, "space", do_space) /* u? */
+    //CMD_( KEY_SPC, KEY_NONE, "space", do_space, "*ui")
     CMD_( KEY_CTRL('q'), KEY_NONE, "quoted-insert", do_quote, "*ui")
     CMD_( KEY_CTRL('j'), KEY_RET, "newline", do_return, "*")
     CMD_( KEY_CTRL('o'), KEY_NONE, "open-line", do_open_line, "*")
@@ -93,23 +93,25 @@ static CmdDef basic_commands[] = {
           "s{Kill buffer: }[buffer]|buffer|")
     CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE, "toggle-read-only", 
           do_toggle_read_only)
-    CMD0( KEY_META('~'), KEY_NONE, "not-modified", do_not_modified) /* u */
+    CMD_( KEY_META('~'), KEY_NONE, "not-modified", do_not_modified, "ui")
     CMD_( KEY_NONE, KEY_NONE, "set-visited-file-name",
           do_set_visited_file_name,
           "s{Set visited file name: }[file]|file|s{Rename file? }")
 
     /*---------------- Search and replace ----------------*/
 
-    CMDV( KEY_NONE, KEY_NONE, "search-forward", do_search_string, 1,
+    CMDV( KEY_META('S'), KEY_NONE, "search-forward", do_search_string, 1,
           "s{Search forward: }|search|v")
-    CMDV( KEY_NONE, KEY_NONE, "search-backward", do_search_string, -1,
+    CMDV( KEY_META('R'), KEY_NONE, "search-backward", do_search_string, -1,
           "s{Search backward: }|search|v")
-    CMD1( KEY_CTRL('r'), KEY_NONE, "isearch-backward", do_isearch, -1 ) /* u? */
-    CMD1( KEY_CTRL('s'), KEY_NONE, "isearch-forward", do_isearch, 1 ) /* u? */
+    /* passing argument should switch to regex incremental search */
+    CMD1( KEY_CTRL('r'), KEY_NONE, "isearch-backward", do_isearch, -1 )
+    CMD1( KEY_CTRL('s'), KEY_NONE, "isearch-forward", do_isearch, 1 )
     CMD_( KEY_META('%'), KEY_NONE, "query-replace", do_query_replace,
           "*s{Query replace: }|search|s{With: }|replace|")
+    /* passing argument restricts replace to word matches */
     CMD_( KEY_META('r'), KEY_NONE, "replace-string", do_replace_string,
-          "*s{Replace String: }|search|s{With: }|replace|") /* u? */
+          "*s{Replace String: }|search|s{With: }|replace|ui")
 
     /*---------------- Paragraph / case handling ----------------*/
 
@@ -123,17 +125,17 @@ static CmdDef basic_commands[] = {
     CMDV( KEY_META('u'), KEY_NONE, "upcase-word", do_changecase_word, 1, "*v")
     CMDV( KEY_META(KEY_CTRL('c')), KEY_NONE,
           "capitalize-region", do_changecase_region, 2, "*v")
-    CMDV( KEY_CTRLX(KEY_CTRL('l')), KEY_META(KEY_CTRL('l')),
+    CMDV( KEY_CTRLX(KEY_CTRL('l')), KEY_NONE,
           "downcase-region", do_changecase_region, -1, "*v")
-    CMDV( KEY_CTRLX(KEY_CTRL('u')), KEY_META(KEY_CTRL('u')),
+    CMDV( KEY_CTRLX(KEY_CTRL('u')), KEY_NONE,
           "upcase-region", do_changecase_region, 1, "*v")
 
     /*---------------- Command handling ----------------*/
 
     CMD_( KEY_META('x'), KEY_NONE, "execute-command", do_execute_command,
-          "s{Command: }[command]|command|i") /* u? */
-    /* A-- should start negative universal argument */
-    CMD0( KEY_CTRL('u'), KEY_NONE, "universal-argument",
+          "s{Command: }[command]|command|ui")
+    /* M-0 thru M-9 should start universal argument */
+    CMD0( KEY_CTRL('u'), KEY_META('-'), "universal-argument",
           do_universal_argument)
     CMD0( KEY_CTRL('g'), KEY_CTRLX(KEY_CTRL('g')), "abort", do_break)
     CMD0( KEY_CTRLX('('), KEY_NONE, "start-kbd-macro", do_start_macro)
@@ -208,7 +210,8 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Miscellaneous ----------------*/
 
-    CMD0( KEY_CTRLX(KEY_CTRL('c')), KEY_NONE, "exit-qemacs", do_quit ) /* u? */
+    CMD_( KEY_CTRLX(KEY_CTRL('c')), KEY_NONE, "exit-qemacs", 
+          do_exit_qemacs, "ui")
     CMD0( KEY_CTRL('l'), KEY_NONE, "refresh", do_refresh_complete)
     CMD0( KEY_NONE, KEY_NONE, "doctor", do_doctor)
     CMD0( KEY_CTRLX('u'), KEY_CTRL('_'), "undo", do_undo)

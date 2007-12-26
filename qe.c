@@ -41,8 +41,6 @@ static int get_line_height(QEditScreen *screen, int style_index);
 void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
                    const char *str, int style_index);
-static void do_cmd_set_mode(EditState *s, const char *name);
-void do_end_macro(EditState *s);
 static void get_default_path(EditState *s, char *buf, int buf_size);
 static EditBuffer *predict_switch_to_buffer(EditState *s);
 static StringArray *get_history(const char *name);
@@ -1208,7 +1206,7 @@ void text_mouse_goto(EditState *s, int x, int y)
 }
 #endif
 
-void do_char(EditState *s, int key, int argument)
+void do_char(EditState *s, int key, int argval)
 {
     if (s->b->flags & BF_READONLY)
         return;
@@ -1216,7 +1214,7 @@ void do_char(EditState *s, int key, int argument)
     for (;;) {
         if (s->mode->write_char)
             s->mode->write_char(s, key);
-        if (argument-- <= 1)
+        if (argval-- <= 1)
             break;
     }
 }
@@ -1300,7 +1298,7 @@ void text_write_char(EditState *s, int key)
 
 struct QuoteKeyArgument {
     EditState *s;
-    int argument;
+    int argval;
 };
 
 /* XXX: may be better to move it into qe_key_process() */
@@ -1317,19 +1315,19 @@ static void quote_key(void *opaque, int key)
     /* CG: why not insert special keys as well? */
     if (!KEY_SPECIAL(key) ||
         (key >= 0 && key <= 31)) {
-        do_char(s, key, qa->argument);
+        do_char(s, key, qa->argval);
         edit_display(s->qe_state);
         dpy_flush(&global_screen);
     }
     qe_ungrab_keys();
 }
 
-void do_quote(EditState *s, int argument)
+void do_quote(EditState *s, int argval)
 {
     struct QuoteKeyArgument *qa = qe_mallocz(struct QuoteKeyArgument);
 
     qa->s = s;
-    qa->argument = argument;
+    qa->argval = argval;
 
     qe_grab_keys(quote_key, qa);
     put_status(s, "Quote: ");
@@ -1340,9 +1338,9 @@ void do_insert(EditState *s)
     s->insert = !s->insert;
 }
 
-void do_tab(EditState *s, int argument)
+void do_tab(EditState *s, int argval)
 {
-    do_char(s, 9, argument);
+    do_char(s, 9, argval);
 }
 
 void do_open_line(EditState *s)
@@ -1660,7 +1658,7 @@ void do_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data)
     do_set_mode_file(s, m, saved_data, NULL);
 }
 
-static void do_cmd_set_mode(EditState *s, const char *name)
+void do_cmd_set_mode(EditState *s, const char *name)
 {
     ModeDef *m;
 
@@ -3922,7 +3920,8 @@ again:
                         c->argval = c->argval * 10 + (key - '0');
                         c->nb_keys = 0;
                         goto next;
-                    } else if (key == '-') {
+                    } else
+                    if (key == '-') {
                         c->sign = -c->sign;
                         c->nb_keys = 0;
                         goto next;
@@ -3953,22 +3952,27 @@ again:
         qe_key_init();
         dpy_flush(&global_screen);
         return;
-    } else if (c->nb_keys == kd->nb_keys) {
+    } else
+    if (c->nb_keys == kd->nb_keys) {
     exec_cmd:
         d = kd->cmd;
         if (d->action.func == (void *)do_universal_argument && 
             !c->describe_key) {
             /* special handling for universal argument */
             c->is_universal_arg = 1;
-            c->noargval = c->noargval * 4;
+            if (key == KEY_META('-')) {
+                c->sign = -c->sign;
+                if (c->noargval == 1)
+                    c->noargval = 4;
+            } else {
+                c->noargval = c->noargval * 4;
+            }
             c->nb_keys = 0;
         } else {
             if (c->is_universal_arg) {
-                if (c->argval == NO_ARG) {
+                if (c->argval == NO_ARG)
                     c->argval = c->noargval;
-                } else {
-                    c->argval = c->argval * c->sign;
-                }
+                c->argval *= c->sign;
             }
             if (c->describe_key) {
                 put_status(s, "%s runs the command %s", 
@@ -3998,8 +4002,8 @@ again:
         len = strlen(c->buf);
         if (len >= 1)
             c->buf[len-1] = ' ';
-        strcat(c->buf, buf1);
-        strcat(c->buf, "-");
+        pstrcat(c->buf, sizeof(c->buf), buf1);
+        pstrcat(c->buf, sizeof(c->buf), "-");
         put_status(s, "%s", c->buf);
         dpy_flush(&global_screen);
     }
@@ -4857,9 +4861,9 @@ void do_toggle_read_only(EditState *s)
     s->b->flags ^= BF_READONLY;
 }
 
-void do_not_modified(EditState *s)
+void do_not_modified(EditState *s, int argval)
 {
-    s->b->modified = 0;
+    s->b->modified = (argval != NO_ARG);
 }
 
 static void kill_buffer_confirm_cb(void *opaque, char *reply);
@@ -5203,10 +5207,15 @@ static void quit_examine_buffers(QuitState *is);
 static void quit_key(void *opaque, int ch);
 static void quit_confirm_cb(void *opaque, char *reply);
 
-void do_quit(EditState *s)
+void do_exit_qemacs(EditState *s, int argval)
 {
     QEmacsState *qs = s->qe_state;
     QuitState *is;
+
+    if (argval != NO_ARG) {
+        url_exit();
+        return;
+    }
 
     is = qe_malloc(QuitState);
     if (!is)
@@ -5367,6 +5376,7 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
             return -1;
         if (offset > (total_size - size))
             return -1;
+
         /* search abort */
         if ((offset & 0xfff) == 0) {
             if (abort_func && abort_func(abort_opaque))
@@ -5375,35 +5385,26 @@ int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
 
         /* search start of word */
         if (flags & SEARCH_FLAG_WORD) {
-            if (offset == 0)
-                goto word_start_found;
-            eb_read(b, offset - 1, &ch, 1);
-            if (!qe_isword(ch))
-                goto word_start_found;
-            else
+            ch = eb_prevc(b, offset, NULL);
+            if (qe_isword(ch))
                 continue;
         }
 
-    word_start_found:
         i = 0;
         for (;;) {
             eb_read(b, offset + i, &ch, 1);
-            if (flags & SEARCH_FLAG_IGNORECASE) 
+            if (flags & SEARCH_FLAG_IGNORECASE)
                 ch = qe_toupper(ch);
             if (ch != buf1[i])
-                    break;
+                break;
             i++;
             if (i == size) {
                 /* check end of word */
                 if (flags & SEARCH_FLAG_WORD) {
-                    if (offset + size >= total_size)
-                        goto word_end_found;
-                    eb_read(b, offset + size, &ch, 1);
-                    if (!qe_isword(ch))
-                        goto word_end_found;
-                    break;
+                    ch = eb_prevc(b, offset + size, NULL);
+                    if (qe_isword(ch))
+                        break;
                 }
-            word_end_found:
                 return offset;
             }
         }
@@ -5671,6 +5672,7 @@ typedef struct QueryReplaceState {
     int nb_reps;
     int search_bytes_len, replace_bytes_len, found_offset;
     int replace_all;
+    int flags;
     char search_str[SEARCH_LENGTH];
     char replace_str[SEARCH_LENGTH];
     u8 search_bytes[SEARCH_LENGTH];
@@ -5705,7 +5707,7 @@ static void query_replace_display(QueryReplaceState *is)
  redo:
     is->found_offset = eb_search(s->b, is->found_offset, 1, 
                                  is->search_bytes, is->search_bytes_len, 
-                                 0, NULL, NULL);
+                                 is->flags, NULL, NULL);
     if (is->found_offset < 0) {
         query_replace_abort(is);
         return;
@@ -5755,14 +5757,14 @@ static void query_replace_key(void *opaque, int ch)
     
 static void query_replace(EditState *s, 
                           const char *search_str,
-                          const char *replace_str, int all)
+                          const char *replace_str, int all, int flags)
 {
     QueryReplaceState *is;
     
     if (s->b->flags & BF_READONLY)
         return;
 
-    is = qe_malloc(QueryReplaceState);
+    is = qe_mallocz(QueryReplaceState);
     if (!is)
         return;
     is->s = s;
@@ -5776,26 +5778,26 @@ static void query_replace(EditState *s,
     is->nb_reps = 0;
     is->replace_all = all;
     is->found_offset = s->offset;
+    is->flags = flags;
 
     qe_grab_keys(query_replace_key, is);
     query_replace_display(is);
 }
 
-static void do_query_replace(EditState *s, 
-                             const char *search_str,
-                             const char *replace_str)
+void do_query_replace(EditState *s, const char *search_str,
+                      const char *replace_str)
 {
-    query_replace(s, search_str, replace_str, 0);
+    query_replace(s, search_str, replace_str, 0, 0);
 }
 
-static void do_replace_string(EditState *s, 
-                              const char *search_str,
-                              const char *replace_str)
+void do_replace_string(EditState *s, const char *search_str,
+                       const char *replace_str, int argval)
 {
-    query_replace(s, search_str, replace_str, 1);
+    query_replace(s, search_str, replace_str, 1,
+                  argval == NO_ARG ? 0 : SEARCH_FLAG_WORD);
 }
 
-static void do_search_string(EditState *s, const char *search_str, int dir)
+void do_search_string(EditState *s, const char *search_str, int dir)
 {
     u8 search_bytes[SEARCH_LENGTH];
     int search_bytes_len;

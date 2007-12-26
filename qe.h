@@ -1432,7 +1432,7 @@ void edit_invalidate(EditState *s);
 void display_mode_line(EditState *s);
 
 /* loading files */
-void do_quit(EditState *s);
+void do_exit_qemacs(EditState *s, int argval);
 void do_load(EditState *s, const char *filename);
 void do_load_from_path(EditState *s, const char *filename);
 void do_switch_to_buffer(EditState *s, const char *bufname);
@@ -1442,6 +1442,11 @@ void do_save_buffer(EditState *s);
 void do_write_file(EditState *s, const char *filename);
 void do_write_region(EditState *s, const char *filename);
 void do_isearch(EditState *s, int dir);
+void do_query_replace(EditState *s, const char *search_str,
+                      const char *replace_str);
+void do_replace_string(EditState *s, const char *search_str,
+                       const char *replace_str, int argval);
+void do_search_string(EditState *s, const char *search_str, int dir);
 void do_refresh_complete(EditState *s);
 void do_kill_buffer(EditState *s, const char *bufname1);
 void switch_to_buffer(EditState *s, EditBuffer *b);
@@ -1459,11 +1464,11 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func);
 int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                        int offset1, int line_num);
 
-// should take argval
-void do_char(EditState *s, int key, int argument);
+void do_char(EditState *s, int key, int argval);
 // bad name!
 // void do_set_mode(EditState *s, const char *mode_name);
 void do_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data);
+void do_cmd_set_mode(EditState *s, const char *name);
 void text_move_left_right_visual(EditState *s, int dir);
 void text_move_word_left_right(EditState *s, int dir);
 void text_move_up_down(EditState *s, int dir);
@@ -1472,8 +1477,7 @@ void text_write_char(EditState *s, int key);
 void do_return(EditState *s);
 void do_backspace(EditState *s, int argval);
 void do_delete_char(EditState *s, int argval);
-// should take argval
-void do_tab(EditState *s, int argument);
+void do_tab(EditState *s, int argval);
 EditBuffer *new_yank_buffer(void);
 void do_append_next_kill(EditState *s);
 void do_kill(EditState *s, int p1, int p2, int dir);
@@ -1519,8 +1523,7 @@ int cursor_func(DisplayState *ds,
 void do_scroll_up_down(EditState *s, int dir);
 void perform_scroll_up_down(EditState *s, int h);
 void do_center_cursor(EditState *s);
-// should take argval
-void do_quote(EditState *s, int argument);
+void do_quote(EditState *s, int argval);
 void do_insert(EditState *s);
 void do_open_line(EditState *s);
 // should take argval
@@ -1558,6 +1561,7 @@ void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);
 void do_universal_argument(EditState *s);
 void do_start_macro(EditState *s);
+void do_end_macro(EditState *s);
 void do_call_macro(EditState *s);
 void do_execute_macro_keys(EditState *s, const char *keys);
 void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
@@ -1571,7 +1575,7 @@ void do_minibuffer_get_binary(EditState *s);
 void do_minibuffer_exit(EditState *s, int abort);
 void do_less_exit(EditState *s);
 void do_toggle_read_only(EditState *s);
-void do_not_modified(EditState *s);
+void do_not_modified(EditState *s, int argval);
 void do_find_alternate_file(EditState *s, const char *filename);
 void do_load_file_from_path(EditState *s, const char *filename);
 void do_set_visited_file_name(EditState *s, const char *filename,
