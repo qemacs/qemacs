@@ -54,13 +54,13 @@ static int get_c_identifier(char *buf, int buf_size, unsigned int *p)
 
     c = *p;
     q = buf;
-    if (qe_isalpha(c) || c == '_') {
+    if (qe_isalpha_(c)) {
         do {
             if ((q - buf) < buf_size - 1)
                 *q++ = c;
             p++;
             c = *p;
-        } while (qe_isalnum(c) || c == '_');
+        } while (qe_isalnum_(c));
     }
     *q = '\0';
     return q - buf;
@@ -209,7 +209,7 @@ void c_colorize_line(unsigned int *buf, int len,
                 set_color(p_start, p, QE_STYLE_NUMBER);
                 continue;
             }
-            if (qe_isalpha(c) || c == '_') {
+            if (qe_isalpha_(c)) {
                 
                 /* XXX: should support :: and $ */
                 klen = 0;
@@ -219,7 +219,7 @@ void c_colorize_line(unsigned int *buf, int len,
                         kbuf[klen++] = c;
                     p++;
                     c = *p;
-                } while (qe_isalnum(c) || c == '_');
+                } while (qe_isalnum_(c));
                 kbuf[klen] = '\0';
 
                 if (strfind(c_mode_keywords, kbuf, 0)) {
@@ -747,21 +747,12 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     return ret;
 }
 
-/* specific C mode commands */
+/* C mode specific commands */
 static CmdDef c_commands[] = {
     CMD_( KEY_CTRL('i'), KEY_NONE, "c-indent-command", do_c_indent, "*")
     CMD_( KEY_META(KEY_CTRL('\\')), KEY_NONE, "c-indent-region",
           do_c_indent_region, "*")
             /* should map to KEY_META + KEY_CTRL_LEFT ? */
-    CMDV( KEY_META(KEY_CTRL('b')), KEY_NONE,
-          "c-backward-block", do_c_forward_block, -1, "*v")
-            /* should map to KEY_META + KEY_CTRL_RIGHT */
-    CMDV( KEY_META(KEY_CTRL('f')), KEY_NONE,
-          "c-forward-block", do_c_forward_block, 1, "*v")
-    CMDV( KEY_META(KEY_CTRL('k')), KEY_NONE,
-          "c-kill-block", do_c_kill_block, 1, "*v")
-    CMDV( KEY_ESC, KEY_DELETE,
-          "c-backward-kill-block", do_c_kill_block, -1, "*v")
     CMDV( KEY_META('['), KEY_NONE,
           "c-backward-preprocessor", do_c_forward_preprocessor, -1, "*v")
     CMDV( KEY_META(']'), KEY_NONE, 
@@ -771,6 +762,20 @@ static CmdDef c_commands[] = {
     CMDV( ':', KEY_NONE, "c-electric-colon", do_c_electric, ':', "*v")
     CMDV( '{', KEY_NONE, "c-electric-obrace", do_c_electric, '{', "*v")
     CMDV( '}', KEY_NONE, "c-electric-cbrace", do_c_electric, '}', "*v")
+    CMD_DEF_END,
+};
+
+/* Non C mode specific commands */
+static CmdDef extra_commands[] = {
+    CMDV( KEY_META(KEY_CTRL('b')), KEY_NONE,
+          "c-backward-block", do_c_forward_block, -1, "*v")
+            /* should map to KEY_META + KEY_CTRL_RIGHT */
+    CMDV( KEY_META(KEY_CTRL('f')), KEY_NONE,
+          "c-forward-block", do_c_forward_block, 1, "*v")
+    CMDV( KEY_META(KEY_CTRL('k')), KEY_NONE,
+          "c-kill-block", do_c_kill_block, 1, "*v")
+    CMDV( KEY_ESC, KEY_DELETE,
+          "c-backward-kill-block", do_c_kill_block, -1, "*v")
     CMD_DEF_END,
 };
 
@@ -786,6 +791,7 @@ static int c_init(void)
 
     qe_register_mode(&c_mode);
     qe_register_cmd_table(c_commands, "C");
+    qe_register_cmd_table(extra_commands, NULL);
 
     return 0;
 }
