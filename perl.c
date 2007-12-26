@@ -20,7 +20,7 @@
 
 #include "qe.h"
 
-static const char *perl_mode_extensions = "pl|perl";
+static const char *perl_mode_extensions = "pl|perl|pm";
 
 /*---------------- Perl colors ----------------*/
 
@@ -44,15 +44,12 @@ static int perl_eos_len;
 
 static int perl_var(const unsigned int *str, int j, int n)
 {
-    n = n;
-
     if (qe_isdigit(str[j]))
 	return j;
     for (; j < n; j++) {
-	if (qe_isalnum(str[j]) || str[j] == '_')
+	if (qe_isalnum_(str[j]))
 	    continue;
-	if (str[j] == '\''
-	&&  (qe_isalpha(str[j + 1]) || str[j + 1] == '_'))
+	if (str[j] == '\'' && qe_isalpha_(str[j + 1]))
 	    j++;
 	else
 	    break;
@@ -60,10 +57,8 @@ static int perl_var(const unsigned int *str, int j, int n)
     return j;
 }
 
-static int perl_number(const unsigned int *str, int j, int n)
+static int perl_number(const unsigned int *str, int j, __unused__ int n)
 {
-    n = n;
-
     if (str[j] == '0') {
 	j++;
 	if (str[j] == 'x' || str[j] == 'X') {
@@ -92,7 +87,8 @@ static int perl_number(const unsigned int *str, int j, int n)
 }
 
 /* return offset of matching delimiter or end of string */
-static int perl_string(const unsigned int *str, unsigned int delim, int j, int n)
+static int perl_string(const unsigned int *str, unsigned int delim,
+                       int j, int n)
 {
     for (; j < n; j++) {
 	if (str[j] == '\\')
@@ -104,7 +100,8 @@ static int perl_string(const unsigned int *str, unsigned int delim, int j, int n
     return j;
 }
 
-static void perl_colorize_line(unsigned int *str, int n, int *statep, int state_only)
+static void perl_colorize_line(unsigned int *str, int n, int *statep,
+                               __unused__ int state_only)
 {
     int i = 0, c, c1, c2, j = i, s1, s2, delim = 0;
     int colstate = *statep;
@@ -125,7 +122,6 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep, int state_
 	set_color(str + j, str + i, PERL_STRING);
     }
     if (colstate & IN_INPUT) {
-	//vdm_noRetrievalKey = 1;
 	i = n;
 	if (n == perl_eos_len && !umemcmp(perl_eos, str, n)) {
             colstate &= ~IN_INPUT;
@@ -144,19 +140,18 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep, int state_
 		j = i + 3;
 		goto keyword;
 	    }
-	    if (c1 == '#'
-	    &&  (qe_isalpha(str[i + 2]) || str[i + 2] == '_'))
+	    if (c1 == '#' && qe_isalpha_(str[i + 2]))
 		j++;
 	    else
-	    if (!qe_isalpha(c1) && c1 != '_') {
+	    if (memchr("|%=-~^123456789&`'+_./\\,\"#$?*0[];!@", c1, 35)) {
 		/* Special variable */
 		j = i + 2;
 		goto keyword;
 	    }
 	    /* FALL THRU */
 	case '*':
-	case '@':
-	case '%':
+	case '@':       /* arrays */
+	case '%':       /* associative arrays */
 	case '&':
 	    if (j >= n)
 		break;
@@ -235,20 +230,29 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep, int state_
 		    colstate |= IN_STRING2;
 		    continue;
 		}
+                /* ` string spanning more than one line treated as
+                 * operator.
+                 */
 		break;
 	    }
 	    s1++;
 	    set_color(str + i, str + s1, PERL_STRING);
 	    i = s1;
 	    continue;
+        case '.':
+            if (qe_isdigit(c1))
+                goto number;
+            break;
+                  
 	default:
-	    if (qe_isdigit(c)) {
+            if (qe_isdigit(c)) {
+            number:
 		j = perl_number(str, i, n);
 		set_color(str + i, str + j, PERL_NUMBER);
 		i = j;
 		continue;
 	    }
-	    if (!qe_isalpha(c) && c != '_')
+	    if (!qe_isalpha_(c))
 		break;
 
 	    j = perl_var(str, i, n);
