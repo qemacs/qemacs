@@ -1453,13 +1453,11 @@ static void raw_close_buffer(__unused__ EditBuffer *b)
 
 /* Associate a buffer with a file and rename it to match the
    filename. Find a unique buffer name */
+// should rename to eb_set_filename?
 void set_filename(EditBuffer *b, const char *filename)
 {
-    const char *p;
-
     pstrcpy(b->filename, sizeof(b->filename), filename);
-    p = basename(filename);
-    set_buffer_name(b, p);
+    set_buffer_name(b, basename(filename));
 }
 
 int eb_printf(EditBuffer *b, const char *fmt, ...)

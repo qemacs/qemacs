@@ -944,7 +944,7 @@ struct EditState {
     int width, height;
     int ytop, xleft;
     /* full window size, including borders */
-    int x1, y1, x2, y2;
+    int x1, y1, x2, y2;         /* window coordinates in device units */
 
     int flags; /* display flags */
 #define WF_POPUP      0x0001 /* popup window (with borders) */

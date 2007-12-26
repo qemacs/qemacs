@@ -170,8 +170,8 @@ static int tty_term_init(QEditScreen *s,
     TTY_FPRINTF(s->STDOUT,
                 "\033[?1049h"       /* enter_ca_mode */
                 "\033[m\033(B"      /* exit_attribute_mode */
-                "\033[4l"		/* exit_insert_mode */
-                "\033[?7h"		/* enter_am_mode */
+                "\033[4l"           /* exit_insert_mode */
+                "\033[?7h"          /* enter_am_mode */
                 "\033[39;49m"       /* orig_pair */
                 "\033[?1h\033="     /* keypad_xmit */
                );
@@ -391,7 +391,7 @@ static void tty_read_handler(void *opaque)
     } else {
         ch = ts->buf[0];
     }
-        
+
     switch (ts->input_state) {
     case IS_NORM:
         if (ch == '\033')
@@ -651,9 +651,7 @@ static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font,
     int fgcolor, w, n;
     unsigned int cc;
     
-    if (y < s->clip_y1 ||
-        y >= s->clip_y2 || 
-        x >= s->clip_x2)
+    if (y < s->clip_y1 || y >= s->clip_y2 || x >= s->clip_x2)
         return;
     
     ts->line_updated[y] = 1;
@@ -689,7 +687,7 @@ static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font,
         cc = *str++;
         w = tty_term_glyph_width(s, cc);
         /* XXX: would need to put spaces for wide chars */
-        if (x + w > s->clip_x2) 
+        if (x + w > s->clip_x2)
             break;
         *ptr = TTYCHAR(cc, fgcolor, TTYCHAR_GETBG(*ptr));
         ptr++;
@@ -715,7 +713,7 @@ static void tty_term_flush(QEditScreen *s)
     TTYChar *ptr, *ptr1, *ptr2, cc;
     int y, shadow, ch, bgcolor, fgcolor, shifted, nc;
     char buf[10];
-    
+
     bgcolor = -1;
     fgcolor = -1;
     shifted = 0;
@@ -766,9 +764,8 @@ static void tty_term_flush(QEditScreen *s)
                         fgcolor = TTYCHAR_GETFG(cc);
                         bgcolor = TTYCHAR_GETBG(cc);
                         TTY_FPRINTF(s->STDOUT, "\033[%dm",
-                                (fgcolor > 7) ? 1 : 22);
+                                    (fgcolor > 7) ? 1 : 22);
                         TTY_FPRINTF(s->STDOUT, "\033[%d;%dm",
-                                //(fgcolor > 7) ? 1 : 22,
                                     30 + (fgcolor & 7), 40 + bgcolor);
                     }
                     /* do not display escape codes or invalid codes */
@@ -802,12 +799,27 @@ static void tty_term_flush(QEditScreen *s)
                             TTY_FPUTS("\033(B", s->STDOUT);
                             shifted = 0;
                         }
-                        nc = unicode_to_charset(buf, cc, s->charset);
-                        if (nc == 1) {
-                            TTY_PUTC(*(u8 *)buf, s->STDOUT);
-                        } else
+                        //if (s->charset == CHARSET_LATIN1) {
+                        //    if (cc < 256) {
+                        //        buf[0] = cc;
+                        //        buf[1] = '\0';
+                        //    } else {
+                        //        buf[0] = 0xBF; /* upside down question */
+                        //        buf[1] = '\0';
+                        //        if (tty_term_glyph_width(s, NULL, cc) == 2) {
+                        //            buf[1] = '?';
+                        //            buf[2] = '\0';
+                        //        }
+                        //    }
+                        //} else
                         {
-                            TTY_FWRITE(buf, 1, nc, s->STDOUT);
+                            nc = unicode_to_charset(buf, cc, s->charset);
+                            if (nc == 1) {
+                                TTY_PUTC(*(u8 *)buf, s->STDOUT);
+                            } else
+                            {
+                                TTY_FWRITE(buf, 1, nc, s->STDOUT);
+                            }
                         }
                     }
                 }
@@ -822,7 +834,6 @@ static void tty_term_flush(QEditScreen *s)
     TTY_FPRINTF(s->STDOUT, "\033[%d;%dH", ts->cursor_y + 1, ts->cursor_x + 1);
     fflush(s->STDOUT);
 }
-
 
 static QEDisplay tty_dpy = {
     "vt100",

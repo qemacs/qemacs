@@ -268,13 +268,16 @@ void hex_write_char(EditState *s, int key)
                 len = 1;
                 buf[0] = ch;
             }
-
+#if 1
+	    eb_replace(s->b, s->offset, cur_len, buf, len);
+#else
             if (cur_len == len) {
                 eb_write(s->b, s->offset, buf, len);
             } else {
                 eb_delete(s->b, s->offset, cur_len);
                 eb_insert(s->b, s->offset, buf, len);
             }
+#endif
         }
         if (++s->hex_nibble == hsize) {
             s->hex_nibble = 0;
