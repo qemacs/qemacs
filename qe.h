@@ -176,42 +176,53 @@ char *makepath(char *buf, int buf_size, const char *path, const char *filename);
 void splitpath(char *dirname, int dirname_size,
                char *filename, int filename_size, const char *pathname);
 
-static inline int qe_isspace(int ch) {
+static inline int qe_inrange(int c, int a, int b) {
+    return c >= a && c <= b;
+}
+static inline int qe_isspace(int c) {
     /* CG: what about \v and \f */
-    return (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r');
+    return (c == ' ' || c == '\t' || c == '\n' || c == '\r');
 }
-static inline int qe_isblank(int ch) {
-    return (ch == ' ' || ch == '\t');
+static inline int qe_isblank(int c) {
+    return (c == ' ' || c == '\t');
 }
-static inline int qe_isdigit(int ch) {
-    return (ch >= '0' && ch <= '9');
+static inline int qe_isdigit(int c) {
+    return qe_inrange(c, '0', '9');
 }
-static inline int qe_isupper(int ch) {
-    return (ch >= 'A' && ch <= 'Z');
+static inline int qe_isupper(int c) {
+    return qe_inrange(c, 'A', 'Z');
 }
-static inline int qe_islower(int ch) {
-    return (ch >= 'a' && ch <= 'z');
+static inline int qe_islower(int c) {
+    return qe_inrange(c, 'a', 'z');
 }
-static inline int qe_isalpha(int ch) {
-    return ((ch | ('a' - 'A')) >= 'a' && (ch | ('a' - 'A')) <= 'z');
+static inline int qe_isalpha(int c) {
+    return qe_inrange(c | ('a' - 'A'), 'a', 'z');
 }
-static inline int qe_isxdigit(int ch) {
-    return ((ch >= '0' && ch <= '9') ||
-            ((ch | ('a' - 'A')) >= 'a' && (ch | ('a' - 'A')) <= 'f'));
+static inline int qe_isalpha_(int c) {
+    return (qe_inrange(c | ('a' - 'A'), 'a', 'z') || c == '_');
 }
-static inline int qe_isalnum(int ch) {
-    return ((ch >= '0' && ch <= '9') ||
-            ((ch | ('a' - 'A')) >= 'a' && (ch | ('a' - 'A')) <= 'z'));
+static inline int qe_isxdigit(int c) {
+    return (qe_inrange(c, '0', '9') ||
+            qe_inrange(c | ('a' - 'A'), 'a', 'f'));
+}
+static inline int qe_isalnum(int c) {
+    return (qe_inrange(c, '0', '9') ||
+            qe_inrange(c | ('a' - 'A'), 'a', 'z'));
+}
+static inline int qe_isalnum_(int c) {
+    return (qe_inrange(c, '0', '9') ||
+            qe_inrange(c | ('a' - 'A'), 'a', 'z') ||
+            c == '_');
 }
 static inline int qe_isword(int c) {
     /* XXX: any unicode char >= 128 is considered as word. */
-    return qe_isalnum(c) || (c == '_') || (c >= 128);
+    return qe_isalnum_(c) || (c >= 128);
 }
-static inline int qe_toupper(int ch) {
-    return (ch >= 'a' && ch <= 'z') ? ch + 'A' - 'a' : ch;
+static inline int qe_toupper(int c) {
+    return (qe_inrange(c, 'a', 'z') ? c + 'A' - 'a' : c);
 }
-static inline int qe_tolower(int ch) {
-    return (ch >= 'A' && ch <= 'Z') ? ch + 'a' - 'A' : ch;
+static inline int qe_tolower(int c) {
+    return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
 }
 
 void css_strtolower(char *buf, int buf_size);
