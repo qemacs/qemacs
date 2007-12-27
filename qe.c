@@ -7183,7 +7183,7 @@ QEDisplay dummy_dpy = {
 
 
 #if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
-static inline void init_all_modules(void)
+static void init_all_modules(void)
 {
     int (*initcall)(void);
     void **ptr;
@@ -7205,84 +7205,16 @@ static inline void init_all_modules(void)
 }
 #else
 
-/* cannot use elf sections, so we initialize the modules manually */
-/* Should use a shell script to process objects and construct
- * initcall array:
- cat $(OBJS) | tr -cs 'a-z0-9_' \\n | grep -E '^module_[a-z]+_init$'
- */
+#undef qe_module_init
+#define qe_module_init(fn)  extern int module_ ## fn(void)
+#include "allmodules.txt"
+#undef qe_module_init
 
-extern void module_hex_init(void); /* hex.c(351) */
-extern void module_list_init(void); /* list.c(102) */
-extern void module_tty_init(void); /* tty.c(567) */
-extern void module_charset_more_init(void); /* charsetmore.c(324) */
-extern void module_charset_jis_init(void); /* charsetjis.c(324) */
-extern void module_unihex_init(void); /* unihex.c(184) */
-extern void module_c_init(void); /* clang.c(567) */
-extern void module_latex_init(void); /* latex-mode.c(338) */
-extern void module_xml_init(void); /* xml.c(202) */
-extern void module_bufed_init(void); /* bufed.c(197) */
-extern void module_shell_init(void); /* shell.c(922) */
-extern void module_dired_init(void); /* dired.c(369) */
-extern void module_win32_init(void); /* win32.c(504) */
-extern void module_x11_init(void); /* x11.c(1704) */
-extern void module_html_init(void); /* html.c(894) */
-extern void module_docbook_init(void); /* docbook.c(53) */
-extern void module_video_init(void); /* video.c(979) */
-extern void module_image_init(void); /* image.c(844) */
-extern void module_mpeg_init(void); /* mpeg.c(181) */
-extern void module_htmlsrc_init(void); /* htmlsrc.c(307) */
-extern void module_makefile_init(void); /* makemode.c(191) */
-extern void module_perl_init(void); /* perl.c(374) */
-
-static inline void init_all_modules(void)
+static void init_all_modules(void)
 {
-    /* modules must be initialized in link order (!)
-       OBJS=qe.o charset.o buffer.o \
-            input.o unicode_join.o display.o util.o hex.o list.o cutils.o
-       OBJS+= unix.o tty.o 
-       OBJS+= charsetmore.o charset_table.o 
-       OBJS+= unihex.o clang.o latex-mode.o xml.o bufed.o
-       OBJS+= shell.o dired.o 
-       OBJS+= win32.o
-       OBJS+= libfbf.o fbfrender.o cfb.o fbffonts.o
-       OBJS+= x11.o
-       OBJS+= html.o docbook.o
-       OBJS+= arabic.o indic.o qfribidi.o unihex.o
-       OBJS+= video.o image.o
-       OBJS+= qeend.o
-    */
-    module_hex_init(); /* hex.c(351) */
-    module_list_init(); /* list.c(102) */
-    module_tty_init(); /* tty.c(567) */
-#ifndef CONFIG_TINY
-    module_charset_more_init(); /* charsetmore.c(324) */
-    module_charset_jis_init(); /* charsetjis.c(324) */
-    module_unihex_init(); /* unihex.c(184) */
-    module_c_init(); /* clang.c(567) */
-    module_latex_init(); /* latex-mode.c(338) */
-    module_xml_init(); /* xml.c(202) */
-    module_bufed_init(); /* bufed.c(197) */
-    module_shell_init(); /* shell.c(922) */
-    module_dired_init(); /* dired.c(369) */
-    module_htmlsrc_init(); /* htmlsrc.c(307) */
-    module_makefile_init(); /* makemode.c(191) */
-    module_perl_init(); /* perl.c(374) */
-#endif
-#ifdef CONFIG_WIN32
-    module_win32_init(); /* win32.c(504) */
-#endif
-#ifdef CONFIG_X11
-    module_x11_init(); /* x11.c(1704) */
-#endif
-#ifdef CONFIG_HTML
-    module_html_init(); /* html.c(894) */
-    module_docbook_init(); /* docbook.c(53) */
-#endif
-#ifdef CONFIG_FFMPEG
-    module_video_init(); /* video.c(979) */
-    module_image_init(); /* image.c(844) */
-    //module_mpeg_init(); /* mpeg.c(181) */
-#endif
+#define qe_module_init(fn)  module_ ## fn()
+#include "allmodules.txt"
+#undef qe_module_init
 }
 #endif
 

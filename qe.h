@@ -841,6 +841,7 @@ extern EditBufferDataType raw_data_type;
 #define __exit_call
 
 #define qe_module_init(fn) \
+        extern int module_ ## fn (void); \
         int module_ ## fn (void) { return fn(); }
 
 #define qe_module_exit(fn)

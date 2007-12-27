@@ -140,7 +140,7 @@ ifdef CONFIG_HTML
 endif
 
 ifdef CONFIG_UNICODE_JOIN
-  OBJS+= arabic.o indic.o qfribidi.o unihex.o
+  OBJS+= arabic.o indic.o qfribidi.o
 endif
 
 ifdef CONFIG_FFMPEG
@@ -151,13 +151,21 @@ ifdef CONFIG_FFMPEG
   TARGETS+= ffplay$(EXE)
 endif
 
-# must be the last object
-OBJS+= qeend.o
-
 all: $(TARGETLIBS) $(TARGETS)
 
 libqhtml: force
 	make -C libqhtml all
+
+ifdef CONFIG_INIT_CALLS
+# must be the last object
+OBJS+= qeend.o
+else
+SRCS:= $(OBJS:.o=.c)
+qe.o: allmodules.txt
+allmodules.txt: $(SRCS) Makefile
+	echo '/* This file was generated automatically */\n'  > $@
+	grep -h ^qe_module_init $(SRCS)                      >> $@
+endif
 
 qe_g$(EXE): $(OBJS) $(DEP_LIBS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -186,7 +194,7 @@ clean:
 	make -C libqhtml clean
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
            qe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
-           cptoqe jistoqe
+           cptoqe jistoqe allmodules.txt
 
 distclean: clean
 	rm -f config.h config.mak
