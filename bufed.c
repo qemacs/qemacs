@@ -156,7 +156,7 @@ static void bufed_kill_buffer(EditState *s)
 }
 
 /* show a list of buffers */
-static void do_list_buffers(EditState *s)
+static void do_list_buffers(EditState *s, int argval)
 {
     QEmacsState *qs = s->qe_state;
     BufedState *bs;
@@ -178,11 +178,15 @@ static void do_list_buffers(EditState *s)
     e = insert_window_left(b, width, WF_MODELINE);
     do_set_mode(e, &bufed_mode, NULL);
 
+    bs = e->mode_data;
+    if (argval != NO_ARG) {
+        bs->flags |= BUFED_ALL_VISIBLE;
+        build_bufed_list(e);
+    }
+
     e1 = find_window(e, KEY_RIGHT);
     if (e1)
         b0 = e1->b;
-
-    bs = e->mode_data;
 
     /* if active buffer is found, go directly on it */
     for (i = 0; i < bs->items.nb_items; i++) {
@@ -276,7 +280,8 @@ static CmdDef bufed_commands[] = {
 };
 
 static CmdDef bufed_global_commands[] = {
-    CMD0( KEY_CTRLX(KEY_CTRL('b')), KEY_NONE, "list-buffers", do_list_buffers)
+    CMD_( KEY_CTRLX(KEY_CTRL('b')), KEY_NONE,
+          "list-buffers", do_list_buffers, ESi, "ui")
     CMD_DEF_END,
 };
 
