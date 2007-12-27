@@ -867,9 +867,9 @@ static void do_html_electric(EditState *s, int key)
 /* specific html commands */
 static CmdDef html_commands[] = {
     /* should use 'k' intrinsic argument */
-    CMDV( '<', KEY_NONE, "html-electric-lt", do_html_electric, '<', "*v")
-    CMDV( '>', KEY_NONE, "html-electric-gt", do_html_electric, '>', "*v")
-    CMDV( '&', KEY_NONE, "html-electric-amp", do_html_electric, '&', "*v")
+    CMDV( '<', KEY_NONE, "html-electric-lt", do_html_electric, ESi, '<', "*v")
+    CMDV( '>', KEY_NONE, "html-electric-gt", do_html_electric, ESi, '>', "*v")
+    CMDV( '&', KEY_NONE, "html-electric-amp", do_html_electric, ESi, '&', "*v")
     CMD_DEF_END,
 };
 

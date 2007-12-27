@@ -232,7 +232,7 @@ static void build_dired_list(EditState *s, const char *path)
 
     /* CG: should make absolute ? */
     canonize_path(hs->path, sizeof(hs->path), path);
-    set_filename(s->b, hs->path);
+    eb_set_filename(s->b, hs->path);
     s->b->flags |= BF_DIRED;
 
     ffst = find_file_open(hs->path, "*");
@@ -356,7 +356,7 @@ static void dired_select(EditState *s)
             /* remove preview flag */
             e->b->flags &= ~BF_PREVIEW;
         } else {
-            do_load(s, filename);
+            do_find_file(s, filename);
         }
     }
 }
@@ -385,7 +385,7 @@ static void dired_view_file(EditState *s, const char *filename)
     }
 
     if (e) {
-        do_load(e, filename);
+        do_find_file(e, filename);
         /* disable wrapping to get nicer display */
         e->wrap = WRAP_TRUNCATE;
         b = e->b;
@@ -510,7 +510,7 @@ void do_dired(EditState *s)
     if (p)
         *p = '\0';
     canonize_absolute_path(filename, sizeof(filename), filename);
-    set_filename(b, filename);
+    eb_set_filename(b, filename);
     
     width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
@@ -544,7 +544,7 @@ static CmdDef dired_commands[] = {
     CMD1( KEY_CTRL('g'), KEY_NONE, "dired-abort", do_delete_window, 0)
     CMD0( ' ', KEY_CTRL('t'), "dired-toggle_selection", list_toggle_selection)
     /* BS should go back to previous item and unmark it */
-    CMD_( 's', KEY_NONE, "dired-sort", dired_sort, "s{Sort order: }")
+    CMD_( 's', KEY_NONE, "dired-sort", dired_sort, ESs, "s{Sort order: }")
     /* s -> should also change switches */
     CMD1( 'd', KEY_NONE, "dired-delete", dired_mark, 'D')
     CMD1( 'c', KEY_NONE, "dired-copy", dired_mark, 'C')

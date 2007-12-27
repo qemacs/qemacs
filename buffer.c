@@ -434,7 +434,7 @@ void log_reset(EditBuffer *b)
 }
 
 /* rename a buffer and add characters so that the name is unique */
-void set_buffer_name(EditBuffer *b, const char *name1)
+void eb_set_buffer_name(EditBuffer *b, const char *name1)
 {
     char name[sizeof(b->name)];
     int n, pos;
@@ -461,6 +461,7 @@ EditBuffer *eb_new(const char *name, int flags)
     if (!b)
         return NULL;
 
+    // should ensure name uniqueness ?
     pstrcpy(b->name, sizeof(b->name), name);
     b->flags = flags;
 
@@ -738,6 +739,11 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
         return;
     if (!b->log_buffer) {
         char buf[MAX_BUFFERNAME_SIZE];
+        /* Name should be unique because b->name is, but b->name may
+         * later change if buffer is written to a different file.  This
+         * should not be a problem since this log buffer is never
+         * referenced by name.
+         */
         snprintf(buf, sizeof(buf), "*log <%s>*", b->name);
         b->log_buffer = eb_new(buf, BF_SYSTEM);
         if (!b->log_buffer)
@@ -759,8 +765,8 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
     }
 
     /* header */
-    //lb.pad1 = '\n';   /* make log buffer display readable */
-    //lb.pad2 = ':';
+    lb.pad1 = '\n';   /* make log buffer display readable */
+    lb.pad2 = ':';
     lb.op = op;
     lb.offset = offset;
     lb.size = size;
@@ -1453,11 +1459,10 @@ static void raw_close_buffer(__unused__ EditBuffer *b)
 
 /* Associate a buffer with a file and rename it to match the
    filename. Find a unique buffer name */
-// should rename to eb_set_filename?
-void set_filename(EditBuffer *b, const char *filename)
+void eb_set_filename(EditBuffer *b, const char *filename)
 {
     pstrcpy(b->filename, sizeof(b->filename), filename);
-    set_buffer_name(b, basename(filename));
+    eb_set_buffer_name(b, basename(filename));
 }
 
 int eb_printf(EditBuffer *b, const char *fmt, ...)

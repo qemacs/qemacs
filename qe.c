@@ -68,7 +68,7 @@ static const char *user_option;
 void qe_register_mode(ModeDef *m)
 {
     ModeDef **p;
-    CmdDef *table;
+    CmdDef *def;
 
     /* record mode in mode list */
     p = &qe_state.first_mode;
@@ -88,25 +88,24 @@ void qe_register_mode(ModeDef *m)
     
     /* add a new command to switch to that mode */
     if (!(m->mode_flags & MODEF_NOCMD)) {
-        char buf[64], *name;
+        char buf[64];
         int size;
-
-        table = qe_mallocz_array(CmdDef, 2);
-        table->key = KEY_NONE;
-        table->alt_key = KEY_NONE;
 
         /* lower case convert for C mode */
         pstrcpy(buf, sizeof(buf) - 10, m->name);
         css_strtolower(buf, sizeof(buf));
         pstrcat(buf, sizeof(buf) - 10, "-mode");
         size = strlen(buf) + 1;
-        buf[size++] = 'S'; /* constant string parameter */
-        buf[size++] = '\0';
-        name = qe_malloc_dup(buf, size);
-        table->name = name;
-        table->action.func = (void*)do_cmd_set_mode;
-        table->val = qe_strdup(m->name);
-        qe_register_cmd_table(table, NULL);
+        /* constant immediate string parameter */
+        size += snprintf(buf + size, sizeof(buf) - size,
+                         "S{%s}", m->name) + 1;
+        def = qe_mallocz_array(CmdDef, 2);
+        def->name = qe_malloc_dup(buf, size);
+        def->key = def->alt_key = KEY_NONE;
+        def->sig = CMD_ESs;
+        def->val = 0;
+        def->action.ESs = do_cmd_set_mode;
+        qe_register_cmd_table(def, NULL);
     }
 }
 
@@ -3245,60 +3244,48 @@ typedef struct ExecCmdState {
     char default_input[512]; /* default input if none given */
 } ExecCmdState;
 
-/* XXX: potentially non portable on weird architectures */
-/* Minimum assumptions are:
-   - sizeof(int) == sizeof(void*) == sizeof(char*)
-   - arguments are passed the same way for all above types
-   - arguments are passed the same way for prototyped and
-     unprototyped functions
-   These assumptions could be lifted by constructing an
-   argument list signature in parse_args() and switch here
-   to the correct prototype invocation.
+/* Signature based dispatcher.
    So far 144 qemacs commands have these signatures:
    - void (*)(EditState *); (68)
    - void (*)(EditState *, int); (35)
-   - void (*)(EditState *, int, int); (2)
    - void (*)(EditState *, const char *); (19)
+   - void (*)(EditState *, int, int); (2)
    - void (*)(EditState *, const char *, int); (2)
    - void (*)(EditState *, const char *, const char *); (6)
    - void (*)(EditState *, const char *, const char *, const char *); (2)
+   - void (*)(EditState *, const char *, const char *, int); (2)
 */
-/* FIXME: fix this for 64 bit architectures where
- * sizeof(void*) != sizeof(int)
- * First argument is always EditState*, handling all P / I combinations
- * requires 1 + 2 + 4 + 8 + 16 = 31 cases of which only 7 are used.
- * long arguments would still not be supported if these cannot be
- * passed as pointers (but long arguments are not supported anyway).
- * should pass function signature for direct dispatch.
- */
-void call_func(void *func, int nb_args, CmdArg *args, 
-               unsigned char *args_type)
+void call_func(CmdSig sig, CmdProto func, __unused__ int nb_args,
+               CmdArg *args, __unused__ unsigned char *args_type)
 {
-    switch (nb_args) {
-    case 0:
-        ((void (*)(void))func)();
+    switch (sig) {
+    case CMD_void:
+        ((void (*)(void))func.func)();
         break;
-    case 1:
-        ((void (*)(void *))func)(args[0].p);
+    case CMD_ES:     /* ES, no other arguments */
+        (*func.ES)(args[0].s);
         break;
-    case 2:
-        if (args_type[1] <= CMD_ARG_INTVAL) {
-            ((void (*)(void *, int))func)(args[0].p, args[1].n);
-        } else {
-            ((void (*)(void *, void *))func)(args[0].p, args[1].p);
-        }
+    case CMD_ESi:    /* ES + integer */
+        (*func.ESi)(args[0].s, args[1].n);
         break;
-    case 3:
-        ((void (*)(void *, void *, void *))func)(args[0].p, args[1].p, args[2].p);
+    case CMD_ESs:    /* ES + string */
+        (*func.ESs)(args[0].s, args[1].p);
         break;
-    case 4:
-        ((void (*)(void *, void *, void *, void *))func)(args[0].p, args[1].p, args[2].p, args[3].p);
+    case CMD_ESss:   /* ES + string + string */
+        (*func.ESss)(args[0].s, args[1].p, args[2].p);
         break;
-    case 5:
-        ((void (*)(void *, void *, void *, void *, void *))func)(args[0].p, args[1].p, args[2].p, args[3].p, args[4].p);
+    case CMD_ESsi:   /* ES + string + integer */
+        (*func.ESsi)(args[0].s, args[1].p, args[2].n);
         break;
-    default:
-        return;
+    case CMD_ESii:   /* ES + integer + integer */
+        (*func.ESii)(args[0].s, args[1].n, args[2].n);
+        break;
+    case CMD_ESssi:  /* ES + string + string + integer */
+        (*func.ESssi)(args[0].s, args[1].p, args[2].p, args[3].n);
+        break;
+    case CMD_ESsss:  /* ES + string + string + string */
+        (*func.ESsss)(args[0].s, args[1].p, args[2].p, args[3].p);
+        break;
     }
 }
 
@@ -3402,7 +3389,7 @@ void exec_command(EditState *s, CmdDef *d, int argval)
     es->nb_args = 0;
 
     /* first argument is always the window */
-    es->args[0].p = s;
+    es->args[0].s = s;
     es->args_type[0] = CMD_ARG_WINDOW;
     es->nb_args++;
     es->ptype = argdesc;
@@ -3439,10 +3426,10 @@ static void parse_args(ExecCmdState *es)
         get_arg = 0;
         switch (type) {
         case CMD_ARG_INTVAL:
-            es->args[es->nb_args].n = (int)(intptr_t)d->val;
+            es->args[es->nb_args].n = d->val;
             break;
         case CMD_ARG_STRINGVAL:
-            es->args[es->nb_args].p = d->val;
+            es->args[es->nb_args].p = prompt;
             break;
         case CMD_ARG_INT:
             if (use_argval && es->argval != NO_ARG) {
@@ -3479,7 +3466,7 @@ static void parse_args(ExecCmdState *es)
             } else
             if (!strcmp(completion_name, "buffer")) {
                 EditBuffer *b;
-                if (d->action.func == (void *)do_switch_to_buffer)
+                if (d->action.ESs == do_switch_to_buffer)
                     b = predict_switch_to_buffer(s);
                 else
                     b = s->b;
@@ -3510,10 +3497,10 @@ static void parse_args(ExecCmdState *es)
 
     do {
         /* special case for hex mode */
-        if (d->action.func != (void *)do_char) {
+        if (d->action.ESii != do_char) {
             s->hex_nibble = 0;
             /* special case for character composing */
-            if (d->action.func != (void *)do_backspace)
+            if (d->action.ESi != do_backspace)
                 s->compose_len = 0;
         }
 #ifndef CONFIG_TINY
@@ -3521,7 +3508,7 @@ static void parse_args(ExecCmdState *es)
 #endif
         /* CG: Should save and restore ec context */
         qs->ec.function = d->name;
-        call_func(d->action.func, es->nb_args, es->args, es->args_type);
+        call_func(d->sig, d->action, es->nb_args, es->args, es->args_type);
         /* CG: This doesn't work if the function needs input */
         /* CG: Should test for abort condition */
         /* CG: Should follow qs->active_window ? */
@@ -3763,20 +3750,18 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
 {
     CmdDef *def;
     int size;
-    char *macro_name, *p;
+    char *buf;
 
-    size = strlen(name) + 1;
-    macro_name = qe_malloc_array(char, size + 2);
-    memcpy(macro_name, name, size);
-    p = macro_name + size;
-    *p++ = 'S';
-    *p++ = '\0';
+    size = strlen(name) + 1 + 2 + strlen(keys) + 2;
+    buf = qe_malloc_array(char, size);
+    snprintf(buf, size, "%s%cS{%s}", name, 0, keys);
 
     def = qe_mallocz_array(CmdDef, 2);
     def->key = def->alt_key = KEY_NONE;
-    def->name = macro_name;
-    def->action.func = do_execute_macro_keys;
-    def->val = qe_strdup(keys);
+    def->name = buf;
+    def->sig = CMD_ESs;
+    def->val = 0;
+    def->action.ESs = do_execute_macro_keys;
 
     qe_register_cmd_table(def, NULL);
     do_global_set_key(s, key_bind, name);
@@ -3937,7 +3922,7 @@ again:
                 if (kd) {
                     /* horrible kludge to pass key as intrinsic argument */
                     /* CG: should have an argument type for key */
-                    kd->cmd->val = (void *)key;
+                    kd->cmd->val = key;
                     goto exec_cmd;
                 }
             }
@@ -3956,8 +3941,7 @@ again:
     if (c->nb_keys == kd->nb_keys) {
     exec_cmd:
         d = kd->cmd;
-        if (d->action.func == (void *)do_universal_argument && 
-            !c->describe_key) {
+        if (d->action.ES == do_universal_argument && !c->describe_key) {
             /* special handling for universal argument */
             c->is_universal_arg = 1;
             if (key == KEY_META('-')) {
@@ -5025,7 +5009,7 @@ static void do_load1(EditState *s, const char *filename1,
 
     /* create new buffer */
     b = eb_new("", BF_SAVELOG);
-    set_filename(b, filename);
+    eb_set_filename(b, filename);
 
     /* switch to the newly created buffer */
     switch_to_buffer(s, b);
@@ -5118,7 +5102,7 @@ static void load_completion_cb(void *opaque, int err)
 }
 #endif
 
-void do_load(EditState *s, const char *filename)
+void do_find_file(EditState *s, const char *filename)
 {
     do_load1(s, filename, 0, 0);
 }
@@ -5139,7 +5123,7 @@ void do_insert_file(EditState *s, const char *filename)
 
     f = fopen(filename, "r");
     if (!f) {
-        put_status(s, "Could not insert file '%s'", filename);
+        put_status(s, "Could not open file '%s'", filename);
         return;
     }
     raw_load_buffer1(s->b, f, s->offset);
@@ -5156,7 +5140,7 @@ void do_set_visited_file_name(EditState *s, const char *filename,
         if (rename(s->b->filename, path))
             put_status(s, "Cannot rename file to %s", path);
     }
-    set_filename(s->b, path);
+    eb_set_filename(s->b, path);
 }
 
 static void put_save_message(EditState *s, const char *filename, int nb)
@@ -6654,7 +6638,7 @@ int parse_config_file(EditState *s, const char *filename)
     QErrorContext ec = qs->ec;
     FILE *f;
     char line[1024], str[1024];
-    char cmd[128], *q, *strp;
+    char prompt[64], cmd[128], *q, *strp;
     const char *p, *r;
     int err, line_num;
     CmdDef *d;
@@ -6751,7 +6735,8 @@ int parse_config_file(EditState *s, const char *filename)
             unsigned char arg_type;
             int ret;
 
-            ret = parse_arg(&r, &arg_type, NULL, 0, NULL, 0, NULL, 0);
+            ret = parse_arg(&r, &arg_type, prompt, sizeof(prompt),
+                            NULL, 0, NULL, 0);
             if (ret < 0)
                 goto badcmd;
             if (ret == 0)
@@ -6775,13 +6760,14 @@ int parse_config_file(EditState *s, const char *filename)
             /* pseudo arguments: skip them */
             switch (args_type[i]) {
             case CMD_ARG_WINDOW:
-                args[i].p = s;
+                args[i].s = s;
                 continue;
             case CMD_ARG_INTVAL:
                 args[i].n = (int)(intptr_t)d->val;
                 continue;
             case CMD_ARG_STRINGVAL:
-                args[i].p = d->val;
+                /* CG: kludge for xxx-mode functions and named kbd macros */
+                args[i].p = prompt;
                 continue;
             }
             
@@ -6851,7 +6837,7 @@ int parse_config_file(EditState *s, const char *filename)
 
         qs->this_cmd_func = d->action.func;
         qs->ec.function = d->name;
-        call_func(d->action.func, nb_args, args, args_type);
+        call_func(d->sig, d->action, nb_args, args, args_type);
         qs->last_cmd_func = qs->this_cmd_func;
         if (qs->active_window)
             s = qs->active_window;
@@ -7457,7 +7443,7 @@ static void qe_init(void *opaque)
 
     /* load file(s) */
     for (i = _optind; i < argc; i++) {
-        do_load(s, argv[i]);
+        do_find_file(s, argv[i]);
         /* CG: handle +linenumber */
     }
     

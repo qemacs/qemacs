@@ -729,7 +729,7 @@ typedef struct EditBufferDataType {
 /* the log buffer is used for the undo operation */
 /* header of log operation */
 typedef struct LogBuffer {
-    //u8 pad1, pad2;    /* for Log buffer readability */
+    u8 pad1, pad2;    /* for Log buffer readability */
     u8 op;
     u8 was_modified;
     int offset;
@@ -772,9 +772,10 @@ int raw_load_buffer1(EditBuffer *b, FILE *f, int offset);
 int mmap_buffer(EditBuffer *b, const char *filename);
 int eb_write_buffer(EditBuffer *b, int start, int end, const char *filename);
 int eb_save_buffer(EditBuffer *b);
-// should rename to eb_set_buffername and eb_set_filename
-void set_buffer_name(EditBuffer *b, const char *name1);
-void set_filename(EditBuffer *b, const char *filename);
+
+void eb_set_buffer_name(EditBuffer *b, const char *name1);
+void eb_set_filename(EditBuffer *b, const char *filename);
+
 int eb_add_callback(EditBuffer *b, EditBufferCallback cb, void *opaque);
 void eb_free_callback(EditBuffer *b, EditBufferCallback cb, void *opaque);
 void eb_offset_callback(EditBuffer *b,
@@ -1138,14 +1139,14 @@ struct QEmacsState {
     char system_fonts[NB_FONT_FAMILIES][256];
 
     ///* global variables */
-    //int it;           /* last result from expression evaluator */
-    ////int force_tty;  /* prevent graphics display (X11...) */
-    //int no_config;    /* prevent config file eval */
-    //int force_refresh;        /* force a complete screen refresh */
-    //int ignore_spaces;        /* ignore spaces when comparing windows */
+    //int it;             /* last result from expression evaluator */
+    ////int force_tty;    /* prevent graphics display (X11...) */
+    //int no_config;      /* prevent config file eval */
+    //int force_refresh;  /* force a complete screen refresh */
+    //int ignore_spaces;  /* ignore spaces when comparing windows */
     //int mark_yank_region; /* set mark at opposite end of yanked block */
-    //int hilite_region;        /* hilite the current region when selecting */
-    //int mmap_threshold;       /* minimum file size for mmap */
+    //int hilite_region;  /* hilite the current region when selecting */
+    //int mmap_threshold; /* minimum file size for mmap */
 };
 
 extern QEmacsState qe_state;
@@ -1176,36 +1177,61 @@ enum CmdArgType {
     CMD_ARG_USE_ARGVAL = 0x80,
 };
 
+typedef enum CmdSig {
+    CMD_void = 0,
+    CMD_ES,     /* ES, no other arguments */
+    CMD_ESi,    /* ES + integer */
+    CMD_ESs,    /* ES + string */
+    CMD_ESii,   /* ES + integer + integer */
+    CMD_ESsi,   /* ES + string + integer */
+    CMD_ESss,   /* ES + string + string */
+    CMD_ESssi,  /* ES + string + string + integer */
+    CMD_ESsss,  /* ES + string + string + string */
+} CmdSig;
+
 #define MAX_CMD_ARGS 5
 
 typedef union CmdArg {
-    void *p;
+    EditState *s;
+    const char *p;
     int n;
 } CmdArg;
 
-// should have enum for supported signatures
+typedef union CmdProto {
+    void *func;
+    void (*ES)(EditState *);
+    void (*ESi)(EditState *, int);
+    void (*ESs)(EditState *, const char *);
+    void (*ESii)(EditState *, int, int);
+    void (*ESsi)(EditState *, const char *, int);
+    void (*ESss)(EditState *, const char *, const char *);
+    void (*ESssi)(EditState *, const char *, const char *, int);
+    void (*ESsss)(EditState *, const char *, const char *, const char *);
+    struct CmdDef *next;
+} CmdProto;
 
 typedef struct CmdDef {
     unsigned short key;       /* normal key */
     unsigned short alt_key;   /* alternate key */
     const char *name;
-    union {
-        // should have union members for all supported signatures
-        void *func;
-        struct CmdDef *next;
-    } action;
-    // should be CmdArg arg;
-    void *val;
+    CmdProto action;
+    CmdSig sig : 8;
+    int val : 24;
 } CmdDef;
 
 /* new command macros */
-#define CMD_(key, key_alt, name, func, args) { key, key_alt, name "\0" args, { (void *)(func) }, NULL },
-#define CMDV(key, key_alt, name, func, val, args) { key, key_alt, name "\0" args, { (void *)(func) }, (void *)(val) },
+#define CMD_(key, key_alt, name, func, sig, args) \
+    { key, key_alt, name "\0" args, { .sig = func }, CMD_ ## sig, 0 },
+#define CMDV(key, key_alt, name, func, sig, val, args) \
+    { key, key_alt, name "\0" args, { .sig = func }, CMD_ ## sig, val },
 
 /* old macros for compatibility */
-#define CMD0(key, key_alt, name, func) { key, key_alt, name "\0", { (void *)(func) }, NULL },
-#define CMD1(key, key_alt, name, func, val) { key, key_alt, name "\0v", { (void *)(func) }, (void*)(val) },
-#define CMD_DEF_END { 0, 0, NULL, { NULL }, NULL }
+#define CMD0(key, key_alt, name, func) \
+    { key, key_alt, name "\0", { .ES = func }, CMD_ES, 0 },
+#define CMD1(key, key_alt, name, func, val) \
+    { key, key_alt, name "\0v", { .ESi = func }, CMD_ESi, val },
+#define CMD_DEF_END \
+    { 0, 0, NULL, { NULL }, CMD_void, 0 }
 
 void qe_register_mode(ModeDef *m);
 void mode_completion(StringArray *cs, const char *input);
@@ -1433,7 +1459,7 @@ void display_mode_line(EditState *s);
 
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);
-void do_load(EditState *s, const char *filename);
+void do_find_file(EditState *s, const char *filename);
 void do_load_from_path(EditState *s, const char *filename);
 void do_switch_to_buffer(EditState *s, const char *bufname);
 void do_break(EditState *s);
@@ -1555,7 +1581,8 @@ void do_set_display_size(EditState *s, int w, int h);
 void do_toggle_mode_line(EditState *s);
 void do_set_system_font(EditState *s, const char *qe_font_name, 
                         const char *system_fonts);
-void call_func(void *func, int nb_args, CmdArg *args, unsigned char *args_type);
+void call_func(CmdSig sig, CmdProto func, int nb_args, CmdArg *args,
+               unsigned char *args_type);
 void exec_command(EditState *s, CmdDef *d, int argval);
 void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);

@@ -749,33 +749,33 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
 
 /* C mode specific commands */
 static CmdDef c_commands[] = {
-    CMD_( KEY_CTRL('i'), KEY_NONE, "c-indent-command", do_c_indent, "*")
+    CMD_( KEY_CTRL('i'), KEY_NONE, "c-indent-command", do_c_indent, ES, "*")
     CMD_( KEY_META(KEY_CTRL('\\')), KEY_NONE, "c-indent-region",
-          do_c_indent_region, "*")
+          do_c_indent_region, ES, "*")
             /* should map to KEY_META + KEY_CTRL_LEFT ? */
     CMDV( KEY_META('['), KEY_NONE,
-          "c-backward-preprocessor", do_c_forward_preprocessor, -1, "*v")
+          "c-backward-preprocessor", do_c_forward_preprocessor, ESi, -1, "*v")
     CMDV( KEY_META(']'), KEY_NONE, 
-          "c-forward-preprocessor", do_c_forward_preprocessor, 1, "*v")
+          "c-forward-preprocessor", do_c_forward_preprocessor, ESi, 1, "*v")
     /* CG: should use 'k' intrinsic argument */
-    CMDV( ';', KEY_NONE, "c-electric-semi&comma", do_c_electric, ';', "*v")
-    CMDV( ':', KEY_NONE, "c-electric-colon", do_c_electric, ':', "*v")
-    CMDV( '{', KEY_NONE, "c-electric-obrace", do_c_electric, '{', "*v")
-    CMDV( '}', KEY_NONE, "c-electric-cbrace", do_c_electric, '}', "*v")
+    CMDV( ';', KEY_NONE, "c-electric-semi&comma", do_c_electric, ESi, ';', "*v")
+    CMDV( ':', KEY_NONE, "c-electric-colon", do_c_electric, ESi, ':', "*v")
+    CMDV( '{', KEY_NONE, "c-electric-obrace", do_c_electric, ESi, '{', "*v")
+    CMDV( '}', KEY_NONE, "c-electric-cbrace", do_c_electric, ESi, '}', "*v")
     CMD_DEF_END,
 };
 
 /* Non C mode specific commands */
-static CmdDef extra_commands[] = {
+static CmdDef c_global_commands[] = {
     CMDV( KEY_META(KEY_CTRL('b')), KEY_NONE,
-          "c-backward-block", do_c_forward_block, -1, "*v")
+          "c-backward-block", do_c_forward_block, ESi, -1, "*v")
             /* should map to KEY_META + KEY_CTRL_RIGHT */
     CMDV( KEY_META(KEY_CTRL('f')), KEY_NONE,
-          "c-forward-block", do_c_forward_block, 1, "*v")
+          "c-forward-block", do_c_forward_block, ESi, 1, "*v")
     CMDV( KEY_META(KEY_CTRL('k')), KEY_NONE,
-          "c-kill-block", do_c_kill_block, 1, "*v")
+          "c-kill-block", do_c_kill_block, ESi, 1, "*v")
     CMDV( KEY_ESC, KEY_DELETE,
-          "c-backward-kill-block", do_c_kill_block, -1, "*v")
+          "c-backward-kill-block", do_c_kill_block, ESi, -1, "*v")
     CMD_DEF_END,
 };
 
@@ -791,7 +791,7 @@ static int c_init(void)
 
     qe_register_mode(&c_mode);
     qe_register_cmd_table(c_commands, "C");
-    qe_register_cmd_table(extra_commands, NULL);
+    qe_register_cmd_table(c_global_commands, NULL);
 
     return 0;
 }

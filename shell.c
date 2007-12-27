@@ -1077,7 +1077,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
         b = eb_new("", BF_SAVELOG);
     if (!b)
         return NULL;
-    set_buffer_name(b, name); /* ensure that the name is unique */
+    eb_set_buffer_name(b, name); /* ensure that the name is unique */
     eb_set_charset(b, &charset_vt100);
 
     s = qe_mallocz(ShellState);
@@ -1398,7 +1398,7 @@ static void do_compile_error(EditState *s, int dir)
     /* CG: Should remove popups, sidepanes, helppanes... */
 
     /* go to the error */
-    do_load(s, filename);
+    do_find_file(s, filename);
     do_goto_line(s, line_num);
 }
 
@@ -1418,8 +1418,8 @@ static CmdDef shell_commands[] = {
 
 /* compilation commands */
 static CmdDef compile_commands[] = {
-    CMD_( KEY_CTRLXRET('\r'), KEY_NONE, "shell", do_shell, "ui")
-    CMD_( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE, "compile", do_compile,
+    CMD_( KEY_CTRLXRET('\r'), KEY_NONE, "shell", do_shell, ESi, "ui")
+    CMD_( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE, "compile", do_compile, ESs,
           "s{Compile command: }|compile|")
     CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE, "previous-error", 
           do_compile_error, -1) /* u */
