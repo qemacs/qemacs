@@ -33,7 +33,7 @@
 
 #include <assert.h>
 
-static void css_counter_str(char *text, int text_size, 
+static void css_counter_str(char *text, int text_size,
                             int index, int list_style_type, int adjust);
 
 #define CSSDEF(str, ident, inherited, type) \
@@ -46,11 +46,11 @@ static void css_counter_str(char *text, int text_size,
 #define CSSUNDEF(str)
 
 const CSSPropertyDef css_properties[NB_PROPERTIES] = {
-    CSSDEF("display\0inline,block,table,table-row,table-row-group,table-header-group,table-footer-group,table-column,table-column-group,table-cell,table-caption,list-item,marker,inline-block,inline-table,none", 
+    CSSDEF("display\0inline,block,table,table-row,table-row-group,table-header-group,table-footer-group,table-column,table-column-group,table-cell,table-caption,list-item,marker,inline-block,inline-table,none",
            display, 0, CSS_TYPE_ENUM)
     CSSDEF("color", color, 1, CSS_TYPE_COLOR)
     CSSDEF("background-color", bgcolor, 0, CSS_TYPE_COLOR)
-    CSSDEF("white-space\0normal,pre,nowrap,prewrap", 
+    CSSDEF("white-space\0normal,pre,nowrap,prewrap",
            white_space, 1, CSS_TYPE_ENUM)
     CSSDEF("direction\0ltr,rtl", direction, 1, CSS_TYPE_ENUM)
     CSSDEF("float\0none,left,right", block_float, 0, CSS_TYPE_ENUM)
@@ -93,7 +93,7 @@ const CSSPropertyDef css_properties[NB_PROPERTIES] = {
     CSSDEF("padding-top", padding.y1, 0, CSS_TYPE_LENGTH)
     CSSDEF("padding-right", padding.x2, 0, CSS_TYPE_LENGTH)
     CSSDEF("padding-bottom", padding.y2, 0, CSS_TYPE_LENGTH)
-    
+
     CSSDEF("margin", margin, 0, CSS_TYPE_LENGTH | CSS_TYPE_FOUR)
     CSSDEF("margin-left", margin.x1, 0, CSS_TYPE_LENGTH)
     CSSDEF("margin-top", margin.y1, 0, CSS_TYPE_LENGTH)
@@ -111,7 +111,7 @@ const CSSPropertyDef css_properties[NB_PROPERTIES] = {
     /* XXX: missing types */
     CSSDEF("line-height", line_height, 1, CSS_TYPE_LENGTH | CSS_TYPE_AUTO)
     CSSDEF("position\0static,relative,absolute,fixed", position, 0, CSS_TYPE_ENUM)
-    CSSDEF1("content", content, 0, CSS_TYPE_STRING | CSS_TYPE_ATTR | 
+    CSSDEF1("content", content, 0, CSS_TYPE_STRING | CSS_TYPE_ATTR |
             CSS_TYPE_COUNTER | CSS_TYPE_ARGS, CSS_STORAGE_PTR)
     CSSDEF("caption-side\0top,bottom,left,right", caption_side, 1, CSS_TYPE_ENUM)
     CSSDEF("marker-offset", marker_offset, 0, CSS_TYPE_LENGTH | CSS_TYPE_AUTO)
@@ -158,7 +158,7 @@ const CSSPropertyDef css_properties[NB_PROPERTIES] = {
     CSSUNDEF("text-transform")
     CSSUNDEF("word-spacing")
     CSSUNDEF("z-index")
-    
+
     /* paged media */
     CSSUNDEF("marks")
     CSSUNDEF("page")
@@ -212,7 +212,7 @@ static int eb_nextc1(EditBuffer *b, unsigned long *offset_ptr)
         q = name;
         for (;;) {
             ch1 = eb_nextc(b, *offset_ptr, (int *)offset_ptr);
-	    /* CG: should stop on all white space */
+            /* CG: should stop on all white space */
             if (ch1 == '\n' || ch1 == ';')
                 break;
             *q++ = ch1;
@@ -271,7 +271,7 @@ static CSSIdentEntry *hash_ident[CSS_IDENT_HASH_SIZE];
 static CSSIdentEntry **table_ident;
 static int table_ident_nb, table_ident_allocated;
 
-static char const css_idents[] = 
+static char const css_idents[] =
 "\0"
 "*\0"
 #define CSSID(id) #id "\0"
@@ -339,7 +339,7 @@ static void css_init_idents(void)
 
     if (table_ident_nb != 0)
         return;
-    
+
     for (p = css_idents; *p != '\1'; p = r + 1) {
         r = p;
         while (*r)
@@ -421,8 +421,8 @@ static int get_counter(CSSContext *s, CSSIdent counter_id)
 static QEFont *css_select_font(QEditScreen *screen, CSSState *props);
 
 static void css_eval_property(CSSContext *s,
-                              CSSState *state, 
-                              CSSProperty *p, 
+                              CSSState *state,
+                              CSSProperty *p,
                               CSSState *state_parent,
                               __unused__ CSSBox *box)
 {
@@ -471,7 +471,7 @@ static void css_eval_property(CSSContext *s,
                 break;
             case CSS_UNIT_EX:
                 /* currently, we do not use the font metrics */
-                val = (state->font_size * CSS_EX_SCALE) >> 
+                val = (state->font_size * CSS_EX_SCALE) >>
                     CSS_LENGTH_FRAC_BITS;
                 *ptr = (p->value.u.val * val) >> CSS_LENGTH_FRAC_BITS;
                 break;
@@ -523,7 +523,7 @@ static inline int attribute_match(CSSStyleSheetAttributeEntry *e,
 /* return true if (box,pelement) matches simple selector ss (may
    recurse) */
 /* XXX: exclude anonymous boxes */
-static int selector_match(CSSSimpleSelector *ss, 
+static int selector_match(CSSSimpleSelector *ss,
                           CSSBox *box)
 {
     CSSStyleSheetAttributeEntry *ae;
@@ -531,7 +531,7 @@ static int selector_match(CSSSimpleSelector *ss,
 
     if (ss->tag != box->tag && ss->tag != CSS_ID_ALL)
         return 0;
-    
+
     /* first child test */
     if (ss->pclasses & CSS_PCLASS_FIRST_CHILD) {
         box1 = box->parent;
@@ -563,7 +563,7 @@ static int selector_match(CSSSimpleSelector *ss,
                 lbox = box1;
                 box1 = box1->next;
             }
-            if (lbox && selector_match(ss->next, lbox)) 
+            if (lbox && selector_match(ss->next, lbox))
                 goto found;
         }
         return 0;
@@ -583,7 +583,7 @@ found:
 
 #define PELEMENTS_MASK (~CSS_PCLASS_FIRST_CHILD)
 
-static int apply_properties(CSSContext *s, CSSIdent tag, 
+static int apply_properties(CSSContext *s, CSSIdent tag,
                             CSSBox *box, int pelement,
                             CSSState *state,
                             CSSState *state_parent)
@@ -591,7 +591,7 @@ static int apply_properties(CSSContext *s, CSSIdent tag,
     CSSStyleSheetEntry *e;
     CSSProperty *p;
     int pelement_found;
-    
+
     /* go thru the style sheet */
     e = s->style_sheet->tag_hash[css_hash_ident(tag, CSS_TAG_HASH_SIZE)];
     pelement_found = 0;
@@ -605,9 +605,9 @@ static int apply_properties(CSSContext *s, CSSIdent tag,
                 pelement_found |= e->sel.pclasses;
                 /* see if selector pseudo classes matches pseudo
                    element (null means none) */
-                if ((pelement == 0 && 
+                if ((pelement == 0 &&
                      (e->sel.pclasses & PELEMENTS_MASK) == 0) ||
-                    (pelement != 0 && 
+                    (pelement != 0 &&
                      (e->sel.pclasses & pelement) != 0)) {
                     /* apply properties */
                     p = e->props;
@@ -649,7 +649,7 @@ static char *eval_content(CSSContext *s, CSSProperty *p, CSSBox *box)
             break;
         case CSS_VALUE_COUNTER:
             index = get_counter(s, value->u.counter.counter_id);
-            css_counter_str(buf1, sizeof(buf1), index, 
+            css_counter_str(buf1, sizeof(buf1), index,
                             value->u.counter.type, 0);
             pstrcat(buf, sizeof(buf), buf1);
             break;
@@ -666,7 +666,7 @@ static void eval_counter_update(CSSContext *s, CSSProperty *p)
 {
     CSSPropertyValue *value = &p->value;
     int counter_id, n, i;
-    
+
     for (i = 0; i < p->nb_values;) {
         if (value->type != CSS_VALUE_IDENT)
             break;
@@ -694,14 +694,14 @@ static void eval_counter_update(CSSContext *s, CSSProperty *p)
    element found for the box are returned, so that new boxes can be
    created for before & after pseudo elements. */
 static int css_eval(CSSContext *s,
-                    CSSState *state, CSSBox *box, int pelement, 
+                    CSSState *state, CSSBox *box, int pelement,
                     CSSState *state_parent)
 {
     const CSSPropertyDef *def;
     int *ptr_parent, *ptr, type, val, i;
     CSSProperty *p;
     int pelement_found;
-    
+
     /* inherit properties or set to default value */
     def = css_properties;
     while (def < css_properties + NB_PROPERTIES) {
@@ -744,7 +744,7 @@ static int css_eval(CSSContext *s,
         css_eval_property(s, state, p, state_parent, box);
         p = p->next;
     }
-    
+
     /* first reset counters */
     if (state->counter_reset)
         eval_counter_update(s, state->counter_reset);
@@ -752,7 +752,7 @@ static int css_eval(CSSContext *s,
     if (state->counter_increment)
         eval_counter_update(s, state->counter_increment);
     /* alternate content if image (need more ideas) */
-    if (state->content_alt && 
+    if (state->content_alt &&
         box->content_type == CSS_CONTENT_TYPE_IMAGE) {
         box->u.image.content_alt = eval_content(s, state->content_alt, box);
     }
@@ -768,7 +768,7 @@ static int css_eval(CSSContext *s,
 static void set_default_props(CSSContext *s, CSSState *props)
 {
     memset(props, 0, sizeof(CSSState));
-    
+
     /* size of 12 points */
     props->font_size = (12 * s->dots_per_inch) / 72;
     props->font_family = QE_FAMILY_SERIF;
@@ -794,7 +794,7 @@ static inline int strcmp_null(const char *s1, const char *s2)
 
 /* hash a byte string */
 /* XXX: faster hash ? */
-static inline unsigned int hash_bytes(unsigned int h, 
+static inline unsigned int hash_bytes(unsigned int h,
                                       const unsigned char *p, int len)
 {
     const unsigned char *p_end;
@@ -853,10 +853,10 @@ static void free_props(CSSState *props)
     qe_free(&props);
 }
 
-static int css_compute_block(CSSContext *s, CSSBox *box, 
+static int css_compute_block(CSSContext *s, CSSBox *box,
                              CSSState *parent_props);
 
-static CSSBox *add_before_after_box(CSSContext *s, 
+static CSSBox *add_before_after_box(CSSContext *s,
                                     CSSBox *box, int pelement)
 {
     CSSState pelement_props1, *pelement_props = &pelement_props1;
@@ -864,16 +864,16 @@ static CSSBox *add_before_after_box(CSSContext *s,
     char *content;
 
     css_eval(s, pelement_props, box, pelement, box->props);
-    if (!pelement_props->content) 
+    if (!pelement_props->content)
         return NULL;
     content = eval_content(s, pelement_props->content, box);
     if (!content)
         return NULL;
     box1 = css_new_box(CSS_ID_NIL, NULL);
-    if (!box1) 
+    if (!box1)
         return NULL;
     css_compute_block(s, box1, pelement_props);
-    
+
     css_set_text_string(box1, content);
     qe_free(&content);
     /* XXX: make child box */
@@ -918,7 +918,7 @@ static void css_to_roman(char *buf, int n)
 
 /* if adjust is true, then always use zero base and increment if
    necessary */
-static void css_counter_str(char *text, int text_size, 
+static void css_counter_str(char *text, int text_size,
                             int index, int list_style_type, int adjust)
 {
     /* insert marker text */
@@ -970,7 +970,7 @@ static CSSBox *add_marker_box(CSSContext *s, CSSBox *box)
     box1 = css_new_box(CSS_ID_NIL, NULL);
     if (!box1)
         return NULL;
-    
+
     position = box->props->list_style_position;
 
     /* create marker properties */
@@ -992,7 +992,7 @@ static CSSBox *add_marker_box(CSSContext *s, CSSBox *box)
     index = get_counter(s, CSS_ID_list_item);
     incr_counter(s, CSS_ID_list_item, 1);
 
-    css_counter_str(text, sizeof(text), 
+    css_counter_str(text, sizeof(text),
                     index, marker_props->list_style_type, 1);
 
     if (position == CSS_LIST_STYLE_POSITION_INSIDE) {
@@ -1013,7 +1013,7 @@ static CSSBox *add_marker_box(CSSContext *s, CSSBox *box)
 }
 
 /* compute the CSS properties of a box */
-static int css_compute_block(CSSContext *s, CSSBox *box, 
+static int css_compute_block(CSSContext *s, CSSBox *box,
                              CSSState *parent_props)
 {
     CSSState *aprops;
@@ -1050,9 +1050,9 @@ static int css_compute_block(CSSContext *s, CSSBox *box,
             if (css_compute_block(s, box1, props) < 0)
                 return -1;
         }
-        
+
         pop_counters(s, counter_stack);
-        
+
         /* for :after and :before we create new boxes at the start or
            the end of the child list */
         /* XXX: mark them as temporary */
@@ -1067,7 +1067,7 @@ static int css_compute_block(CSSContext *s, CSSBox *box,
         }
         /* for list items, we must generate a marker/inline box, unless it
            was already generated by ':before' */
-        if (props->display == CSS_DISPLAY_LIST_ITEM && 
+        if (props->display == CSS_DISPLAY_LIST_ITEM &&
             (!box1 || box1->props->display != CSS_DISPLAY_MARKER)) {
             box1 = add_marker_box(s, box);
             /* add it as first box */
@@ -1145,10 +1145,10 @@ static void css_box_split(CSSBox *box1, int offset)
                     offset, box1->u.buffer.start, box1->u.buffer.end);
         }
     }
-#endif    
+#endif
 
     box2 = qe_mallocz(CSSBox);
-    if (!box2) 
+    if (!box2)
         return;
     box2->split = 1;
     box2->props = box1->props; /* same properties */
@@ -1188,7 +1188,7 @@ typedef struct LayoutState {
 
 static int css_layout_block(CSSContext *s, LayoutOutput *block_layout,
                             CSSBox *block_box);
-static int css_layout_block_min_max(CSSContext *s, 
+static int css_layout_block_min_max(CSSContext *s,
                                     int *min_width_ptr, int *max_width_ptr,
                                     CSSBox *block_box);
 
@@ -1262,7 +1262,7 @@ static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
         while (offset < box->u.buffer.end) {
             c = nextc(s->ctx->b, &offset);
             pos++;
-            if (bidi_mode == CSS_BIDI_MODE_TEST) 
+            if (bidi_mode == CSS_BIDI_MODE_TEST)
                 type = fribidi_get_type_test(c);
             else
                 type = fribidi_get_type(c);
@@ -1300,7 +1300,7 @@ static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
 
 /* max_size should be >= 2 */
 /* XXX: add CSS unicode-bidi property handling */
-static int bidir_compute_attributes(CSSContext *ctx, TypeLink *list_tab, int max_size, 
+static int bidir_compute_attributes(CSSContext *ctx, TypeLink *list_tab, int max_size,
                                     CSSBox *first_box)
 {
     CSSBox *box;
@@ -1313,7 +1313,7 @@ static int bidir_compute_attributes(CSSContext *ctx, TypeLink *list_tab, int max
     p->len = 0;
     p->pos = 0;
     p++;
-    
+
     s->ctx = ctx;
     s->list_end = list_tab + max_size - 1;
     s->list_ptr = p;
@@ -1356,7 +1356,7 @@ static void css_bidir_split_box(BidirSplitState *s,  CSSBox *box)
     if (props->display == CSS_DISPLAY_INLINE_TABLE ||
         props->display == CSS_DISPLAY_INLINE_BLOCK) {
         /* single position increment, as in a attribute compute */
-        if (pos >= l[1].pos) 
+        if (pos >= l[1].pos)
             l++;
         pos++;
     } else {
@@ -1424,7 +1424,7 @@ static void bidir_end_inline(BidirComputeState *s)
 
     /* mark last box */
     *s->pbox = NULL;
-    
+
     /* now we can do the bidir compute easily */
     if (bidir_compute_attributes(s->ctx, embeds, RLE_EMBEDDINGS_SIZE,
                                  s->first_inline) > 2) {
@@ -1447,7 +1447,7 @@ static void bidir_end_inline(BidirComputeState *s)
         if (embedding_max_level > 0)
             css_bidir_split(s->ctx, s->first_inline, embeds);
     }
-    
+
     /* terminate inline layout */
     s->inline_layout = 0;
 }
@@ -1470,7 +1470,7 @@ static int css_layout_bidir_box(BidirComputeState *s, CSSBox *box)
         case CSS_DISPLAY_INLINE:
         case CSS_DISPLAY_INLINE_TABLE:
         case CSS_DISPLAY_INLINE_BLOCK:
-            if (!s->inline_layout) 
+            if (!s->inline_layout)
                 bidir_start_inline(s);
             if (props->display == CSS_DISPLAY_INLINE_TABLE ||
                 props->display == CSS_DISPLAY_INLINE_BLOCK) {
@@ -1497,7 +1497,7 @@ static int css_layout_bidir_box(BidirComputeState *s, CSSBox *box)
             break;
         default:
             /* all other boxes are considered as block boxes */
-            if (s->inline_layout) 
+            if (s->inline_layout)
                 bidir_end_inline(s);
             ret = css_layout_bidir_block(s->ctx, box);
             if (ret)
@@ -1511,13 +1511,13 @@ static int css_layout_bidir_box(BidirComputeState *s, CSSBox *box)
 /* bidir compute of the inside of a block */
 static int css_layout_bidir_block(CSSContext *ctx, CSSBox *box)
 {
-    BidirComputeState bidi_state, *s = &bidi_state; 
+    BidirComputeState bidi_state, *s = &bidi_state;
     CSSBox *box1;
     int ret;
 
     if (box->content_type != CSS_CONTENT_TYPE_CHILDS)
         return 0;
-    
+
     s->inline_layout = 0;
     s->ctx = ctx;
     for (box1 = box->u.child.first; box1 != NULL; box1 = box1->next) {
@@ -1525,7 +1525,7 @@ static int css_layout_bidir_block(CSSContext *ctx, CSSBox *box)
         if (ret)
             return ret;
     }
-    if (s->inline_layout) 
+    if (s->inline_layout)
         bidir_end_inline(s);
     return 0;
 }
@@ -1540,7 +1540,7 @@ typedef struct {
 static void reverse_boxes(InlineBox *str, int len)
 {
     int i, len2 = len / 2;
-    
+
     for (i = 0; i < len2; i++) {
         InlineBox tmp = str[i];
         str[i] = str[len - 1 - i];
@@ -1590,7 +1590,7 @@ typedef struct InlineLayout {
     int first_line_baseline; /* baseline of the first line */
     CSSBox *marker_box;   /* pointer to the last marker box */
     int marker_baseline;  /* marker baseline position */
-    
+
     /* inline layout context */
     int x; /* current x */
     int last_space; /* true if last char was a space */
@@ -1605,7 +1605,7 @@ typedef struct InlineLayout {
     /* min/max width computation */
     int compute_min_max;
     int min_width, max_width;
-    
+
     InlineBox line_boxes[NB_LINE_BOXES_MAX];
     /* fragment layout = part of line */
     unsigned int word_buf[MAX_WORD_SIZE];
@@ -1639,7 +1639,7 @@ static int css_layout_float(InlineLayout *s, FloatBlock *b)
         box->height = props->height;
 
 #if 0
-    printf("layout float: %s w=%d h=%d\n", 
+    printf("layout float: %s w=%d h=%d\n",
            css_ident_str(box->tag), box->width, box->height);
 #endif
     /* layout the interior */
@@ -1702,7 +1702,7 @@ static int css_layout_float(InlineLayout *s, FloatBlock *b)
     box->y = (b->y - s->y0) + tmargin;
 
     return 0;
-}    
+}
 
 /* layout all non layouted floats. Need to work that way because
    floats cannot be positionned while composing the current line */
@@ -1710,7 +1710,7 @@ static int css_layout_floats(InlineLayout *s)
 {
     FloatBlock *b;
     int ret;
-    
+
     for (b = s->layout_state->first_float; b != NULL; b = b->next) {
         if (b->float_type == -1) {
             ret = css_layout_float(s, b);
@@ -1815,7 +1815,7 @@ static void css_flush_line(InlineLayout *s,
         goto the_end;
     }
     available_width = s->avail_width;
-    
+
     /* compute global line parameters */
     line_width = 0;
     baseline = 0;
@@ -1935,7 +1935,7 @@ static void css_flush_line(InlineLayout *s,
     s->y = y;
 
     qe_free(&box_table);
-    
+
     /* prepare for next line */
  the_end:
     s->x = 0;
@@ -1979,7 +1979,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
     int w, line_size, split, ret, i, h;
     CSSBox *box_bow;
     QECharMetrics metrics;
-    
+
     if (s->word_index == 0)
         return 0;
 
@@ -1993,7 +1993,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
         printf("flush_word: '");
         for (i = 0; i < s->word_index; i++)
             printf("%c", s->word_buf[i]);
-        printf("' x=%d w=%d avail=%d white_space=%d word_index=%d\n", 
+        printf("' x=%d w=%d avail=%d white_space=%d word_index=%d\n",
                s->x, w, s->avail_width, props->white_space, s->word_index);
     }
 #endif
@@ -2010,7 +2010,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
     } else if (props->white_space == CSS_WHITE_SPACE_PRE ||
         props->white_space == CSS_WHITE_SPACE_NOWRAP ||
         s->x + w <= s->avail_width ||
-        (props->white_space == CSS_WHITE_SPACE_NORMAL && 
+        (props->white_space == CSS_WHITE_SPACE_NORMAL &&
          s->index_bow == 0 && s->width_bow == 0)) {
         /* simple case : increment position */
         s->x += w;
@@ -2033,7 +2033,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
             /* XXX: use dichotomy */
             for (;;) {
                 s->word_index--;
-                text_metrics(s->ctx->screen, font, &metrics, 
+                text_metrics(s->ctx->screen, font, &metrics,
                              s->word_buf, s->word_index);
                 w = metrics.width;
                 if (s->x + w <= s->avail_width)
@@ -2053,7 +2053,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
                (width_bow was stored at the beginning of the word) */
             s->line_boxes[s->index_bow].box->width = s->width_bow;
         }
-        
+
         /* split the box containing the start of the word,
            if needed */
         box_bow = s->line_boxes[s->index_bow].box;
@@ -2080,7 +2080,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
            properties. The CSS2 spec is not precise enough */
         line_size = s->index_bow + split;
         css_flush_line(s, s->line_boxes, line_size, props);
-        
+
         ret = 1;
     }
     s->word_index = 0;
@@ -2094,7 +2094,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
 
 /* Layout one inline box. Return the next box to layout (may be before
    'box' in case of line cut) */
-static int css_layout_inline_box(InlineLayout *s, 
+static int css_layout_inline_box(InlineLayout *s,
                                  CSSBox *box,
                                  int baseline)
 {
@@ -2116,7 +2116,7 @@ static int css_layout_inline_box(InlineLayout *s,
         props->vertical_align != CSS_VERTICAL_ALIGN_BOTTOM) {
         int ascent, descent;
         QEFont *parent_font;
-        
+
         parent_font = css_select_font(s->ctx->screen, box->parent->props);
         ascent = parent_font->ascent;
         descent = parent_font->descent;
@@ -2167,7 +2167,7 @@ static int css_layout_inline_box(InlineLayout *s,
             w1 = props->width;
         }
 
-        w = props->margin.x1 + props->border.x1 + props->padding.x1 + 
+        w = props->margin.x1 + props->border.x1 + props->padding.x1 +
             w1 +
             props->padding.x2 + props->border.x2 + props->margin.x2;
         if (s->compute_min_max) {
@@ -2186,7 +2186,7 @@ static int css_layout_inline_box(InlineLayout *s,
                 ret = -1;
                 goto done;
             }
-            
+
             if (s->x + w <= s->avail_width ||
                 s->x == 0) {
                 s->x += w;
@@ -2198,11 +2198,11 @@ static int css_layout_inline_box(InlineLayout *s,
             /* add the box on the current line */
             {
                 InlineBox *b = &s->line_boxes[s->line_pos];
-                    
+
                 b->box = box;
                 b->baseline_delta = 0;
-                b->ascent = box->height + 
-                    props->margin.y1 + props->border.y1 + props->padding.y1 + 
+                b->ascent = box->height +
+                    props->margin.y1 + props->border.y1 + props->padding.y1 +
                     props->padding.y2 + props->border.y2 + props->margin.y2;
             }
             s->line_pos++;
@@ -2240,17 +2240,17 @@ static int css_layout_inline_box(InlineLayout *s,
         space = 0; /* not used */
         offset0 = 0; /* not used */
         s->word_index = 0;
-        
+
         if (!s->compute_min_max) {
             box->width = 0;
             box->last_space = s->last_space;
             /* compute vertical dimensions from the font parameters */
             box->height = font->ascent + font->descent;
-                
+
             /* add the box on the current line */
             {
                 InlineBox *b = &s->line_boxes[s->line_pos];
-                    
+
                 b->box = box;
                 b->baseline_delta = baseline;
                 b->ascent = font->ascent;
@@ -2271,7 +2271,7 @@ static int css_layout_inline_box(InlineLayout *s,
                 /* special case: '\n' is handled in pre mode, or
                    special '\A' character in css content
                    property. */
-                if ((ch == '\n' && 
+                if ((ch == '\n' &&
                      props->white_space == CSS_WHITE_SPACE_PRE) ||
                     ch == CSS_CONTENT_EOL) {
                     s->last_space = 1;
@@ -2289,8 +2289,8 @@ static int css_layout_inline_box(InlineLayout *s,
                     break;
                 }
                 /* special case for tabulation in pre mode */
-                if (ch == '\t' && 
-                    (props->white_space == CSS_WHITE_SPACE_PRE || 
+                if (ch == '\t' &&
+                    (props->white_space == CSS_WHITE_SPACE_PRE ||
                      props->white_space == CSS_WHITE_SPACE_PREWRAP)) {
                     int tab_width, split, w;
                     /* XXX: should not wrap there */
@@ -2321,9 +2321,9 @@ static int css_layout_inline_box(InlineLayout *s,
                      props->white_space == CSS_WHITE_SPACE_NOWRAP)) {
                     continue;
                 }
-                
+
                 if ((s->word_index >= MAX_WORD_SIZE) ||
-                    (s->word_index >= 1 && space != s->last_space)) { 
+                    (s->word_index >= 1 && space != s->last_space)) {
                     if (css_flush_fragment(s, box, props, font))
                         break;
                 }
@@ -2345,7 +2345,7 @@ static int css_layout_inline_box(InlineLayout *s,
             s->last_space = space;
         }
         /* end of the current box */
-        
+
         /* layout boxes at the end of the line if needed */
         /* XXX: use another function */
         for (i = box_stack_base; i < s->box_stack_index; i++) {
@@ -2380,7 +2380,7 @@ static void css_end_inline_layout(InlineLayout *s)
     if (s->char_pos > 0) {
         /* XXX: we do not use exactly the right
            properties. The CSS2 spec is not precise enough */
-        css_flush_line(s, s->line_boxes, s->line_pos, 
+        css_flush_line(s, s->line_boxes, s->line_pos,
                        s->line_pos > 0 ? s->line_boxes[0].box->props : NULL);
     }
     /* layout all remaining floats */
@@ -2402,7 +2402,7 @@ typedef struct ColStruct {
     int max_width;
     /* the following used only during render_table_row() */
     CSSBox *cell;
-    int baseline; 
+    int baseline;
     int height;
     int vertical_align;
     int row_span_left; /* used for row span handling. If non zero, then a
@@ -2440,7 +2440,7 @@ static void allocate_column(TableLayout *s)
     if (s->nb_cols > s->nb_cols_allocated) {
         s->nb_cols_allocated = s->nb_cols_allocated + COL_INCR;
         qe_realloc(&s->cols, s->nb_cols_allocated * sizeof(ColStruct));
-        memset(s->cols + s->nb_cols_allocated - COL_INCR, 0, 
+        memset(s->cols + s->nb_cols_allocated - COL_INCR, 0,
                COL_INCR * sizeof(ColStruct));
     }
 }
@@ -2472,9 +2472,9 @@ static void layout_table_row_fixed(TableLayout *s, CSSBox *row)
             colspan = cell_props->column_span;
             if (colspan < 1)
                 colspan = 1;
-            for (i = 0; i < colspan; i++) 
+            for (i = 0; i < colspan; i++)
                 allocate_column(s);
-            
+
             /* if a width is specified, we use it */
             if (cell_props->width != CSS_AUTO) {
                 /* XXX: margins ? */
@@ -2484,7 +2484,7 @@ static void layout_table_row_fixed(TableLayout *s, CSSBox *row)
                     w = 1;
                 for (i = 0; i < colspan; i++) {
                     s->cols[s->nb_cols - colspan + i].width_fixed = 1;
-                    s->cols[s->nb_cols - colspan + i].width = 
+                    s->cols[s->nb_cols - colspan + i].width =
                         max(w, s->cols[s->nb_cols - colspan + i].width);
                 }
             }
@@ -2521,7 +2521,7 @@ static int layout_table_fixed(TableLayout *s, CSSBox *parent_box)
                 allocate_column(s);
             if (props->width != CSS_AUTO) {
                 /* XXX: margins ? */
-                s->cols[s->column_index - 1].width = 
+                s->cols[s->column_index - 1].width =
                     max(s->cols[s->column_index - 1].width,
                         props->width);
                 s->cols[s->column_index - 1].width_fixed = 1;
@@ -2548,7 +2548,7 @@ static int layout_table_fixed1(TableLayout *tl, CSSBox *table_box)
     tl->table_width = table_box->props->width;
     if (layout_table_fixed(tl, table_box))
         return -1;
-    
+
     /* compute the column widths */
     available_width = tl->table_width;
     available_width -= tl->border_h * (tl->nb_cols + 1);
@@ -2560,7 +2560,7 @@ static int layout_table_fixed1(TableLayout *tl, CSSBox *table_box)
         else
             nb_auto_cols++;
     }
-    
+
     if (nb_auto_cols > 0) {
         cell_width = available_width / nb_auto_cols;
     } else {
@@ -2630,11 +2630,11 @@ static int layout_table_row_auto(TableLayout *s, CSSBox *row)
         } else {
             /* increase number of column if needed */
             col1 = col + colspan;
-            for (i = s->nb_cols; i < col1; i++) 
+            for (i = s->nb_cols; i < col1; i++)
                 allocate_column(s);
-            
+
             /* compute min & max size for the cell */
-            if (css_layout_block_min_max(s->ctx, 
+            if (css_layout_block_min_max(s->ctx,
                                          &min_w, &max_w, cell) < 0)
                 return -1;
             fixed = 1;
@@ -2670,7 +2670,7 @@ static int layout_table_row_auto(TableLayout *s, CSSBox *row)
                 c->width_fixed = fixed;
             } else {
                 int min_w1, max_w1, delta, d, r;
-                
+
                 /* increase min & max widths so that they are at least
                    larger enough for the cell */
                 min_w1 = 0;
@@ -2759,7 +2759,7 @@ static int layout_table_auto1(TableLayout *s, CSSBox *table_box)
     s->row = 0;
     if (layout_table_auto(s, table_box))
         return -1;
-    
+
     /* now we have min_width and max_width for each column */
 
     /* compute the minimum and maximum table width */
@@ -2821,7 +2821,7 @@ static int layout_table_auto1(TableLayout *s, CSSBox *table_box)
     /* init again row span left, in case the row spans were incorrect */
     for (i = 0, c = s->cols; i < s->nb_cols; i++, c++)
         c->row_span_left = 0;
-    
+
     s->table_width = tw;
     table_box->width = tw;
     return 0;
@@ -2838,7 +2838,7 @@ static inline int is_valign_baseline(int v)
             v != CSS_VERTICAL_ALIGN_MIDDLE);
 }
 
-static int render_table_row(TableLayout *s, 
+static int render_table_row(TableLayout *s,
                             CSSBox *row)
 {
     LayoutOutput layout;
@@ -2846,17 +2846,17 @@ static int render_table_row(TableLayout *s,
     CSSBox *cell, *cell1;
     CSSState *props;
     CSSRect border;
-    
+
     /* compute horizontal position of cells */
     x = 0;
     col = 0;
     baseline = 0;
     cell1 = row->u.child.first;
-    col = 0; 
+    col = 0;
     for (;;) {
         ColStruct *c = &s->cols[col];
-        
-        /* compute which cell we examine */ 
+
+        /* compute which cell we examine */
         if (c->row_span_left != 0) {
             cell = c->cell;
         } else {
@@ -2876,7 +2876,7 @@ static int render_table_row(TableLayout *s,
             colspan = s->nb_cols - col;
         if (colspan <= 0)
             break;
-        
+
         if (c->row_span_left != 0) {
             c->row_span_left--;
             /* modify x to skip column */
@@ -2892,18 +2892,18 @@ static int render_table_row(TableLayout *s,
                 border.y1 = div2rnd(props->border.x1, s->row);
                 border.y2 = div2rnd(props->border.x2, s->row + 1);
             }
-                
+
             /* set the cell width */
             w = s->cols[col].width;
             for (i = 1; i < colspan; i++)
                 w += s->border_h + s->cols[col + i].width;
-            
+
             cell->width = w - props->padding.x1 - props->padding.x2 -
                 border.x1 - border.x2;
             if (css_layout_block(s->ctx, &layout, cell))
                 return -1;
 
-            c->height = cell->height + border.y1 + border.y2 + 
+            c->height = cell->height + border.y1 + border.y2 +
                 props->padding.y1 + props->padding.y2;
             /* init row span counter */
             if (props->row_span > 1)
@@ -2924,7 +2924,7 @@ static int render_table_row(TableLayout *s,
     }
     nb_cols = col;
 
-    /* now compute vertical position of cells if baseline and 
+    /* now compute vertical position of cells if baseline and
        compute row_height */
     row_height = 0;
     for (col = 0; col < nb_cols;) {
@@ -3061,10 +3061,10 @@ static int css_layout_table(CSSContext *s, LayoutOutput *table_layout,
             goto fail;
     } else {
         /* fixed algorithm */
-        if (layout_table_auto1(tl, table_box)) 
+        if (layout_table_auto1(tl, table_box))
             goto fail;
     }
-    
+
     if (tl->compute_min_max) {
         table_layout->min_width = tl->min_width;
         table_layout->max_width = tl->max_width;
@@ -3104,12 +3104,12 @@ static int css_layout_table(CSSContext *s, LayoutOutput *table_layout,
             caption_box->width = 100;
         }
         if (caption_box->props->caption_side == CSS_CAPTION_SIDE_LEFT ||
-            caption_box->props->caption_side == CSS_CAPTION_SIDE_RIGHT) {   
+            caption_box->props->caption_side == CSS_CAPTION_SIDE_RIGHT) {
             caption_box->height = table_box->height;
         }
         if (css_layout_block(s, &caption_layout, caption_box))
             return -1;
-        h = caption_box->height + 
+        h = caption_box->height +
             caption_box->props->border.y1 + caption_box->props->padding.y1 +
             caption_box->props->border.y2 + caption_box->props->padding.y2;
         /* put the caption in the table margin */
@@ -3174,7 +3174,7 @@ static void css_free_floats(FloatBlock *b)
 
 static int css_layout_block_recurse(LayoutState *s, LayoutOutput *block_layout,
                                     CSSBox *block_box, int x_parent, int y_parent);
-static int css_layout_block_recurse1(InlineLayout *il, CSSBox *box, 
+static int css_layout_block_recurse1(InlineLayout *il, CSSBox *box,
                                      int baseline);
 
 static int css_layout_block_iterate(InlineLayout *il, CSSBox *box, int baseline)
@@ -3192,7 +3192,7 @@ static int css_layout_block_iterate(InlineLayout *il, CSSBox *box, int baseline)
 }
 
 /* layout one box in an inline or block context */
-static int css_layout_block_recurse1(InlineLayout *il, CSSBox *box, 
+static int css_layout_block_recurse1(InlineLayout *il, CSSBox *box,
                                      int baseline)
 {
     CSSState *props;
@@ -3201,7 +3201,7 @@ static int css_layout_block_recurse1(InlineLayout *il, CSSBox *box,
 
     if (il->ctx->abort_func(il->ctx->abort_opaque))
         return -1;
-    
+
     props = box->props;
     if (props->position == CSS_POSITION_ABSOLUTE ||
         props->position == CSS_POSITION_FIXED) {
@@ -3226,7 +3226,7 @@ static int css_layout_block_recurse1(InlineLayout *il, CSSBox *box,
 #if 0
             /* XXX: must put it in a list as float to have box height */
             else if (props->bottom != CSS_AUTO)
-                box->y = props->bottom; 
+                box->y = props->bottom;
 #endif
         }
     } else if (props->block_float != CSS_FLOAT_NONE) {
@@ -3264,14 +3264,14 @@ static int css_layout_block_recurse1(InlineLayout *il, CSSBox *box,
             if (props->margin.x1 == CSS_AUTO &&
                 props->margin.x2 == CSS_AUTO) {
                 int w;
-                w = props->border.x1 + props->padding.x1 + 
+                w = props->border.x1 + props->padding.x1 +
                     box->width +
                     props->padding.x2 + props->border.x2;
                 box->x = (il->total_width - w) / 2;
             } else if (props->direction == CSS_DIRECTION_LTR) {
                 box->x = props->margin.x1 + props->border.x1 + props->padding.x1;
             } else {
-                box->x = il->total_width - (props->margin.x2 + props->border.x2 + 
+                box->x = il->total_width - (props->margin.x2 + props->border.x2 +
                                              props->padding.x2 + box->width);
             }
             /* XXX: compute y position there, but difficult to do
@@ -3284,8 +3284,8 @@ static int css_layout_block_recurse1(InlineLayout *il, CSSBox *box,
             }
             /* XXX: y_parent does not take into account margins ! */
             if (css_layout_block_recurse(il->layout_state, &layout, box,
-                                         il->x0 + box->x, 
-                                         il->y0 + il->y + 
+                                         il->x0 + box->x,
+                                         il->y0 + il->y +
                                          props->border.y1 + props->padding.y1))
                 return -1;
 
@@ -3340,7 +3340,7 @@ static int css_layout_block_recurse1(InlineLayout *il, CSSBox *box,
                         offset = 8; /* XXX: add constant */
                 }
                 w = props->margin.x1 + props->border.x1 + props->padding.x1 +
-                    w + 
+                    w +
                     props->margin.x2 + props->border.x2 + props->padding.x2;
                 box->x -= (w + offset);
                 /* margin is also taken into account */
@@ -3397,7 +3397,7 @@ static int css_layout_block_recurse(LayoutState *s, LayoutOutput *block_layout,
 #if 0
     {
         printf("layout %s", css_ident_str(block_box->tag));
-        if (block_box->content_type == CSS_CONTENT_TYPE_BUFFER) 
+        if (block_box->content_type == CSS_CONTENT_TYPE_BUFFER)
             printf(" offset=%ld", block_box->u.buffer.start);
         printf("\n");
     }
@@ -3445,7 +3445,7 @@ static int css_layout_block_recurse(LayoutState *s, LayoutOutput *block_layout,
     il->layout_type = LAYOUT_TYPE_BLOCK;
     il->first_line_baseline = 0;
     il->line_count = 0;
-    
+
     ret = css_layout_block_iterate(il, block_box, 0);
     if (ret)
         return ret;
@@ -3456,7 +3456,7 @@ static int css_layout_block_recurse(LayoutState *s, LayoutOutput *block_layout,
 
     /* update the bottom margin of the whole block */
     block_layout->margin_top = il->margin_top;
-    block_layout->margin_bottom = max(block_layout->margin_bottom, 
+    block_layout->margin_bottom = max(block_layout->margin_bottom,
                                       il->last_ymargin);
     block_layout->baseline = il->first_line_baseline;
     /* update the block height if necessary (XXX: incorrect if not
@@ -3480,7 +3480,7 @@ static int css_layout_block(CSSContext *s, LayoutOutput *block_layout,
     layout_state.ctx = s;
     layout_state.first_float = NULL;
     ret = css_layout_block_recurse(&layout_state, block_layout, block_box, 0, 0);
- 
+
     css_free_floats(layout_state.first_float);
 
     return ret;
@@ -3519,7 +3519,7 @@ static int css_layout_box_min_max(InlineLayout *il, CSSBox *box)
             if (il->layout_type != LAYOUT_TYPE_BLOCK)
                 css_end_inline_layout(il);
 
-            if (props->width != CSS_AUTO && 
+            if (props->width != CSS_AUTO &&
                 props->display != CSS_DISPLAY_TABLE) {
                 min_w1 = props->width;
                 max_w1 = props->width;
@@ -3541,7 +3541,7 @@ static int css_layout_box_min_max(InlineLayout *il, CSSBox *box)
         case CSS_DISPLAY_INLINE_BLOCK:
             if (il->layout_type != LAYOUT_TYPE_INLINE)
                 css_start_inline_layout(il);
-            
+
             if (props->display != CSS_DISPLAY_INLINE_TABLE &&
                 props->display != CSS_DISPLAY_INLINE_BLOCK &&
                 box->content_type == CSS_CONTENT_TYPE_CHILDS) {
@@ -3564,7 +3564,7 @@ static int css_layout_box_min_max(InlineLayout *il, CSSBox *box)
 }
 
 /* compute the minimum and maximum width of the content of a block */
-static int css_layout_block_min_max(CSSContext *s, 
+static int css_layout_block_min_max(CSSContext *s,
                                     int *min_width_ptr, int *max_width_ptr,
                                     CSSBox *block_box)
 {
@@ -3619,7 +3619,7 @@ static void css_compute_bbox_block(CSSContext *s,
     CSSBox *tt;
     CSSState *props = box->props;
     int x0, y0;
-    
+
     if (props->visibility == CSS_VISIBILITY_HIDDEN) {
         css_set_rect(&box->bbox, 0, 0, 0, 0);
         return;
@@ -3633,14 +3633,14 @@ static void css_compute_bbox_block(CSSContext *s,
         box->x = x0;
         box->y = y0;
     }
-    
+
     /* update bounding box */
     css_set_rect(&box->bbox,
                  x0 - (props->padding.x1 + props->border.x1),
-                 y0 - (props->padding.y1 + box->padding_top + 
+                 y0 - (props->padding.y1 + box->padding_top +
                        props->border.y1),
                  x0 + box->width + props->padding.x2 + props->border.x2,
-                 y0 + box->height + 
+                 y0 + box->height +
                  (props->padding.y2 + box->padding_bottom + props->border.y2));
 
     /* now display the content ! */
@@ -3688,7 +3688,7 @@ int css_layout(CSSContext *s, CSSBox *box, int width,
 #define MAX_LINE_SIZE 256
 
 int box_get_text(CSSContext *s,
-                 unsigned int *line_buf, int max_size, 
+                 unsigned int *line_buf, int max_size,
                  int *offsets, CSSBox *box)
 {
     /* final box with text inside */
@@ -3751,7 +3751,7 @@ static void draw_borders(QEditScreen *scr,
             r = (color1 >> 16) & 0xff;
             g = (color1 >> 8) & 0xff;
             b = (color1) & 0xff;
-            
+
             r = min(r + 128, 255);
             g = min(g + 128, 255);
             b = min(b + 128, 255);
@@ -3855,12 +3855,12 @@ static void box_display_text(CSSContext *s, CSSBox *box, int x0, int y0)
     QEFont *font;
     CSSColor color;
 
-    if 
+    if
 #if 0
         (s->selection_end > s->selection_start &&
         box->content_type == CSS_CONTENT_TYPE_BUFFER &&
         !(box->u.buffer.end <= s->selection_start ||
-          box->u.buffer.start >= s->selection_end)) 
+          box->u.buffer.start >= s->selection_end))
 #else
             (box->content_type == CSS_CONTENT_TYPE_BUFFER)
 #endif
@@ -3872,10 +3872,10 @@ static void box_display_text(CSSContext *s, CSSBox *box, int x0, int y0)
         offsets_ptr = NULL;
         ctg_ptr = NULL;
     }
-        
+
     len1 = box_get_text(s, line_buf, MAX_LINE_SIZE, offsets_ptr, box);
-    
-    len = unicode_to_glyphs(glyphs, ctg_ptr, MAX_LINE_SIZE, line_buf, len1, 
+
+    len = unicode_to_glyphs(glyphs, ctg_ptr, MAX_LINE_SIZE, line_buf, len1,
                             box->embedding_level & 1);
     if (len > 0) {
         font = css_select_font(scr, props);
@@ -3894,7 +3894,7 @@ static void box_display_text(CSSContext *s, CSSBox *box, int x0, int y0)
                 if (offset0 >= s->selection_start &&
                     offset0 < s->selection_end) {
                     color = s->selection_bgcolor;
-                    fill_rectangle(scr, x, y0, 
+                    fill_rectangle(scr, x, y0,
                                    w, font->ascent + font->descent, color);
                 }
                 x += w;
@@ -3930,7 +3930,7 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
     QEFont *font;
     int i, len;
     unsigned int ubuf[256];
-    
+
     if (s->media != CSS_MEDIA_TTY) {
         /* draw something inside the image content box, but
            only if the image is big enough (avoid displaying
@@ -3944,8 +3944,8 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
                 img_props.border_colors[i] = QERGB(0, 0, 0);
                         img_props.border_styles[i] = CSS_BORDER_STYLE_INSET;
             }
-            draw_borders(scr, x0 + 1, y0 + 1, 
-                         x0 + box->width - 1, 
+            draw_borders(scr, x0 + 1, y0 + 1,
+                         x0 + box->width - 1,
                          y0 + box->height - 1, &img_props);
             /* display the optional alt text */
             if (box->u.image.content_alt) {
@@ -3954,8 +3954,8 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
                                       box->u.image.content_alt);
                 /* XXX: unicode, etc... */
                 draw_text(scr, font,
-                          x0 + ALT_TEXT_PADDING, 
-                          y0 + font->ascent + ALT_TEXT_PADDING, 
+                          x0 + ALT_TEXT_PADDING,
+                          y0 + font->ascent + ALT_TEXT_PADDING,
                           ubuf, len, props->color);
                 css_release_font(scr, font);
             }
@@ -3963,7 +3963,7 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
     }
 }
 
-static void css_display_block(CSSContext *s, 
+static void css_display_block(CSSContext *s,
                               CSSBox *box, __unused__ CSSState *props_parent,
                               CSSRect *clip_box, int dx, int dy)
 {
@@ -4006,8 +4006,8 @@ static void css_display_block(CSSContext *s,
         color = props->bgcolor;
         if (color == COLOR_TRANSPARENT)
             color = s->default_bgcolor;
-        fill_rectangle(scr, s->bg_rect.x1, s->bg_rect.y1, 
-                       s->bg_rect.x2 - s->bg_rect.x1, 
+        fill_rectangle(scr, s->bg_rect.x1, s->bg_rect.y1,
+                       s->bg_rect.x2 - s->bg_rect.x1,
                        s->bg_rect.y2 - s->bg_rect.y1, color);
         s->bg_drawn = 1;
     } else if (props->bgcolor != COLOR_TRANSPARENT) {
@@ -4057,12 +4057,12 @@ static void css_display_block(CSSContext *s,
         fill_rectangle(scr, x1, y1, 1, y2 - y1, color);
         fill_rectangle(scr, x2, y1, 1, y2 - y1, color);
     }
-#endif    
+#endif
 }
 
 /* dx & dy are added to each coordinates to do scrolling. 'clip_box'
    is a hint to optimize drawing */
-void css_display(CSSContext *s, CSSBox *box, 
+void css_display(CSSContext *s, CSSBox *box,
                  CSSRect *clip_box, int dx, int dy)
 {
     CSSState props1, *default_props = &props1;
@@ -4070,7 +4070,7 @@ void css_display(CSSContext *s, CSSBox *box,
 
     /* express the clip box in document coordinates because it is
        tested against the bounding boxes */
-    css_set_rect(&clip1, 
+    css_set_rect(&clip1,
                  clip_box->x1 - dx, clip_box->y1 - dy,
                  clip_box->x2 - dx, clip_box->y2 - dy);
     set_default_props(s, default_props);
@@ -4080,9 +4080,9 @@ void css_display(CSSContext *s, CSSBox *box,
 
     /* if no background rectangle drawn, then draw it now with default color */
     if (!s->bg_drawn) {
-        fill_rectangle(s->screen, s->bg_rect.x1, s->bg_rect.y1, 
-                       s->bg_rect.x2 - s->bg_rect.x1, 
-                       s->bg_rect.y2 - s->bg_rect.y1, 
+        fill_rectangle(s->screen, s->bg_rect.x1, s->bg_rect.y1,
+                       s->bg_rect.x2 - s->bg_rect.x1,
+                       s->bg_rect.y2 - s->bg_rect.y1,
                        s->default_bgcolor);
     }
 }
@@ -4097,7 +4097,7 @@ typedef struct CSSCursorState {
     int offset;
 } CSSCursorState;
 
-static int css_get_cursor_func(void *opaque, 
+static int css_get_cursor_func(void *opaque,
                                CSSBox *box, int x0, int y0)
 {
     CSSCursorState *s = opaque;
@@ -4133,11 +4133,11 @@ static int css_get_cursor_func(void *opaque,
         }
         goto found;
     }
-    
+
     /* get the text and get the cursor position */
     len = box_get_text(s->ctx, line_buf, MAX_LINE_SIZE, offsets, box);
     offsets[len] = box->u.buffer.end;
-    
+
     for (i = 0; i < len; i++) {
         if (s->offset >= offsets[i] && s->offset < offsets[i + 1]) {
             posc = i;
@@ -4147,19 +4147,19 @@ static int css_get_cursor_func(void *opaque,
     /* should never happen */
     return 0;
  found1:
-    len = unicode_to_glyphs(glyphs, char_to_glyph_pos, MAX_LINE_SIZE, 
+    len = unicode_to_glyphs(glyphs, char_to_glyph_pos, MAX_LINE_SIZE,
                             line_buf, len, box->embedding_level & 1);
     posc = char_to_glyph_pos[posc];
-    
+
     font = css_select_font(scr, props);
-    
+
     x = 0;
     for (i = 0; i < posc; i++) {
         w = glyph_width(scr, font, glyphs[i]);
         x += w;
     }
     w = glyph_width(scr, font, glyphs[i]);
-    
+
     /* cursor found : give its position */
  found:
     css_release_font(scr, font);
@@ -4174,9 +4174,9 @@ static int css_get_cursor_func(void *opaque,
     return 1;
 }
 
-int css_get_cursor_pos(CSSContext *s, CSSBox *box, 
+int css_get_cursor_pos(CSSContext *s, CSSBox *box,
                        CSSBox **box_ptr, int *x0_ptr, int *y0_ptr,
-                       CSSRect *cursor_ptr, int *dir_ptr, 
+                       CSSRect *cursor_ptr, int *dir_ptr,
                        int offset)
 {
     CSSCursorState cursor_state;
@@ -4198,7 +4198,7 @@ int css_get_cursor_pos(CSSContext *s, CSSBox *box,
     }
 }
 
-int css_box_iterate(CSSContext *s, 
+int css_box_iterate(CSSContext *s,
                     CSSBox *box,
                     void *opaque, CSSIterateFunc iterate_func)
 {
@@ -4233,7 +4233,7 @@ int css_get_offset_pos(CSSContext *s, CSSBox *box, int xc, int dir)
 
     /* get the text and get the cursor position */
     len = box_get_text(s, line_buf, MAX_LINE_SIZE, offsets, box);
-    len = unicode_to_glyphs(glyphs, char_to_glyph_pos, MAX_LINE_SIZE, 
+    len = unicode_to_glyphs(glyphs, char_to_glyph_pos, MAX_LINE_SIZE,
                             line_buf, len, box->embedding_level & 1);
 
     font = css_select_font(s->screen, props);
@@ -4295,14 +4295,14 @@ void css_dump_box(CSSBox *box, int level)
     CSSBox *b;
     const char *tag;
 
-    for (i = 0; i < level; i++) 
+    for (i = 0; i < level; i++)
         printf(" ");
     if (box->tag == CSS_ID_NIL) {
         tag = "anon";
     } else {
         tag = css_ident_str(box->tag);
     }
-    printf("<%s x=%d y=%d w=%d h=%d el=%d>\n", 
+    printf("<%s x=%d y=%d w=%d h=%d el=%d>\n",
            tag, box->x, box->y, box->width, box->height, box->embedding_level);
 
     switch (box->content_type) {
@@ -4314,7 +4314,7 @@ void css_dump_box(CSSBox *box, int level)
         }
         break;
     case CSS_CONTENT_TYPE_BUFFER:
-        for (i = 0; i < level + 1; i++) 
+        for (i = 0; i < level + 1; i++)
             printf(" ");
         printf("[offs=%lu %lu]\n",
                box->u.buffer.start, box->u.buffer.end);
@@ -4322,7 +4322,7 @@ void css_dump_box(CSSBox *box, int level)
     case CSS_CONTENT_TYPE_STRING:
         {
             unsigned long ptr;
-            for (i = 0; i < level + 1; i++) 
+            for (i = 0; i < level + 1; i++)
                 printf(" ");
             printf("'");
             for (ptr = box->u.buffer.start; ptr < box->u.buffer.end; ptr++)
@@ -4334,7 +4334,7 @@ void css_dump_box(CSSBox *box, int level)
         printf("[IMAGE]\n");
         break;
     }
-    for (i = 0; i < level; i++) 
+    for (i = 0; i < level; i++)
         printf(" ");
     printf("</%s>\n", tag);
 }
@@ -4348,7 +4348,7 @@ void css_dump(CSSBox *box)
 /* box handling API */
 
 /* create a new box.
-   WARNING: the tag and the attributes are freed when the box is deleted 
+   WARNING: the tag and the attributes are freed when the box is deleted
  */
 CSSBox *css_new_box(CSSIdent tag, CSSAttribute *attrs)
 {

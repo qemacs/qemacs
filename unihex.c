@@ -156,12 +156,12 @@ static void unihex_move_up_down(EditState *s, int dir)
 }
 
 static ModeDef unihex_mode = {
-    "unihex", 
+    "unihex",
     .instance_size = 0,
     .mode_probe = NULL,
-    .mode_init = unihex_mode_init, 
+    .mode_init = unihex_mode_init,
     .mode_close = text_mode_close,
-    .text_display = unihex_display, 
+    .text_display = unihex_display,
     .text_backward_offset = unihex_backward_offset,
 
     .move_up_down = unihex_move_up_down,

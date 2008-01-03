@@ -21,7 +21,7 @@
 #include "qe.h"
 
 #if 0
-static const char cc_keywords[] = 
+static const char cc_keywords[] =
     "asm|catch|class|delete|friend|inline|new|operator|"
     "private|protected|public|template|try|this|virtual|throw|";
 
@@ -33,13 +33,13 @@ static const char java_keywords[] =
     "true|try|var|with|";
 #endif
 
-static const char *c_mode_keywords = 
+static const char *c_mode_keywords =
     "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
     "if|inline|register|restrict|return|sizeof|static|struct|switch|"
     "typedef|union|volatile|while|";
 
 /* NOTE: 'var' is added for javascript */
-static const char *c_mode_types = 
+static const char *c_mode_types =
     "char|double|float|int|long|unsigned|short|signed|void|var|"
     "_Bool|_Complex|_Imaginary|";
 
@@ -76,7 +76,7 @@ enum {
     C_PREPROCESS = 16,  /* preprocessor directive with \ at EOL */
 };
 
-void c_colorize_line(unsigned int *buf, int len, 
+void c_colorize_line(unsigned int *buf, int len,
                      int *colorize_state_ptr, __unused__ int state_only)
 {
     int c, state, style, style1, type_decl, klen, delim;
@@ -210,7 +210,7 @@ void c_colorize_line(unsigned int *buf, int len,
                 continue;
             }
             if (qe_isalpha_(c)) {
-                
+
                 /* XXX: should support :: and $ */
                 klen = 0;
                 p--;
@@ -338,7 +338,7 @@ static void insert_spaces(EditState *s, int *offset_ptr, int i)
             i -= s->tab_size;
         }
     }
-       
+
     /* insert needed spaces */
     while (i > 0) {
         size = i;
@@ -469,7 +469,7 @@ static void do_c_indent(EditState *s)
                             unsigned int *p1, *p2;
                             /* special case for if/for/while */
                             p1 = p;
-                            while (p > buf && 
+                            while (p > buf &&
                                    (p[-1] >> STYLE_SHIFT) == QE_STYLE_KEYWORD)
                                 p--;
                             p2 = p;
@@ -479,7 +479,7 @@ static void do_c_indent(EditState *s)
                             }
                             *q = '\0';
 
-                            if (!eoi_found && 
+                            if (!eoi_found &&
                                 (!strcmp(buf1, "if") ||
                                  !strcmp(buf1, "for") ||
                                  !strcmp(buf1, "while"))) {
@@ -509,7 +509,7 @@ static void do_c_indent(EditState *s)
     }
 
     for (i = 0; i < len; i++) {
-        c = buf[i]; 
+        c = buf[i];
         style = c >> STYLE_SHIFT;
         /* if preprocess, no indent */
         if (style == QE_STYLE_PREPROCESS) {
@@ -528,7 +528,7 @@ static void do_c_indent(EditState *s)
             break;
         }
     }
-    
+
     /* the number of needed spaces is in 'pos' */
 
     /* CG: should not modify buffer if indentation in correct */
@@ -755,7 +755,7 @@ static CmdDef c_commands[] = {
             /* should map to KEY_META + KEY_CTRL_LEFT ? */
     CMDV( KEY_META('['), KEY_NONE,
           "c-backward-preprocessor", do_c_forward_preprocessor, ESi, -1, "*v")
-    CMDV( KEY_META(']'), KEY_NONE, 
+    CMDV( KEY_META(']'), KEY_NONE,
           "c-forward-preprocessor", do_c_forward_preprocessor, ESi, 1, "*v")
     /* CG: should use 'k' intrinsic argument */
     CMDV( ';', KEY_NONE, "c-electric-semi&comma", do_c_electric, ESi, ';', "*v")

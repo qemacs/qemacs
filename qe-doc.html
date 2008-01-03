@@ -1,6 +1,6 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html401/loose.dtd">
 <html>
-<!-- Created on December, 21 2007 by texi2html 1.76 -->
+<!-- Created on January, 3 2008 by texi2html 1.76 -->
 <!--
 Written by: Lionel Cons <Lionel.Cons@cern.ch> (original author)
             Karl Berry  <karl@freefriends.org>
@@ -69,7 +69,7 @@ UNIX editor. It has features that even big editors lack :
 </li><li> Can edit files of hundreds of Megabytes without being slow by using
   a highly optimized internal representation and by mmaping the file.
 
-</li><li> Full <em>Unicode</em> support, including multi charset handling 
+</li><li> Full <em>Unicode</em> support, including multi charset handling
   (8859-x, UTF8, SJIS, EUC-JP, ...) and bidirectional editing respecting
   the Unicode bidi algorithm. Arabic and Indic scripts handling (in
   progress).
@@ -82,10 +82,10 @@ rendering on VT100 terminals.
 </li><li> C mode: coloring with immediate update. Emacs like auto-indent.
 
 </li><li> Shell mode: colorized VT100 emulation so that your shell work
-  exactly as you expect. Compile mode with next/prev error. 
+  exactly as you expect. Compile mode with next/prev error.
 
 </li><li> Input methods for most languages, including Chinese (input methods
-  come from the Yudit editor). 
+  come from the Yudit editor).
 
 </li><li> <em>Hexadecimal editing</em> mode with insertion and block commands. Unicode
   hexa editing is also supported.
@@ -97,7 +97,7 @@ rendering on VT100 terminals.
   (as XEmacs). X Input methods supported. Xft extension supported for
   anti aliased font display.
 
-</li><li> 
+</li><li>
   Small! Full version (including HTML/XML/CSS2/DocBook rendering and all
   charsets): 270KB big. Basic version (without bidir/unicode
   scripts/input/X11/C/Shell/HTML/dired): 88KB.
@@ -124,7 +124,7 @@ rendering on VT100 terminals.
 </tr></table>
 <h1 class="chapter"> 2. Invocation </h1>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">usage: qe [-h] [-nw] [-display display] [-geometry WxH] 
+<table><tr><td>&nbsp;</td><td><pre class="example">usage: qe [-h] [-nw] [-display display] [-geometry WxH]
           [-fs ptsize] [filename...]
 </pre></td></tr></table>
 <dl compact="compact">
@@ -151,7 +151,7 @@ rendering on VT100 terminals.
 </dl>
 
 <p>When invoked as
-</p><table><tr><td>&nbsp;</td><td><pre class="example">usage: ffplay 
+</p><table><tr><td>&nbsp;</td><td><pre class="example">usage: ffplay
 </pre></td></tr></table>
 <p>QEmacs goes to <code>dired</code> mode automatically so that you can browse your
 files easily (same as <kbd>C-x C-d</kbd> key).
@@ -628,7 +628,7 @@ C-x C-d                 : dired
 
 <p>QEmacs tries to load a configuration file in <tt>`~/.qe/config'</tt>. Each
 line of the configuration file is a QEmacs command with a C like syntax
-('-' in command name can be replaced by '_'). 
+('-' in command name can be replaced by '_').
 </p>
 <p>Read the example file <tt>`config.eg'</tt> to have some examples.
 </p>
@@ -678,7 +678,7 @@ common style names)
 
 <p>Any <tt>`.so'</tt> file found in the qemacs resource paths is considered as
 a <em>plugin</em>. It is a piece of code containing new features for
-qemacs. 
+qemacs.
 </p>
 <p>Currently, no plugins are compiled in, but you can look at the
 <tt>`plugin-example/'</tt> directory to learn how to make one.
@@ -731,12 +731,12 @@ from the Linux Kernel 2.4 module system.
 charset can be selected for each buffer with <kbd>C-x RET f</kbd>
 (<code>set-buffer-file-coding-system</code>).
 </p>
-<p>Currently, QEmacs automatically detects the UTF8 encoding. 
+<p>Currently, QEmacs automatically detects the UTF8 encoding.
 </p>
 <p>Note that unlike in other editors, changing the charset of a buffer
 does not modify its content: buffers always contain bytes, and the charset
 is only used when the buffer content may be converted to characters, for
-example to display it on screen.  
+example to display it on screen.
 </p>
 <p>You can use the UniHex editing mode (<kbd>M-x unihex-mode</kbd>) to see the
 Unicode values of each character in your file with the associated byte
@@ -767,7 +767,7 @@ convert the buffer <em>content</em> to another charset.
 
 <p>The current input method can be changed with <kbd>C-x RET \</kbd>
 (<code>set-input-method</code>). You can switch between this input method and
-the default one with 'C-\'. 
+the default one with 'C-\'.
 </p>
 <p>The input methods are currently stored in the resource file <tt>`kmaps'</tt>.
 They are extracted from the <em>Yudit</em> editor keyboard maps.
@@ -792,7 +792,7 @@ They are extracted from the <em>Yudit</em> editor keyboard maps.
 </tr></table>
 <h2 class="section"> 5.3 Bidirectional editing </h2>
 
-<p>QEmacs fully supports the Unicode bidi algorithm. 
+<p>QEmacs fully supports the Unicode bidi algorithm.
 </p>
 <p>By default, in text editing mode, qemacs is not in bidirectional mode (it
 may change soon). You can use 'C-x RET b' to toogle between bidi and normal
@@ -822,7 +822,7 @@ properties are supported.
 <h2 class="section"> 5.4 Unicode scripts </h2>
 
 <p>Currently, QEmacs fully supports Arabic shapping. Devanagari shaping is on
-the way. 
+the way.
 </p>
 <p>The resource file <tt>`ligatures'</tt> contains all the standard Unicode rules
 to handle character modifiers such as accents. It means that even if your
@@ -894,7 +894,7 @@ activated automatically when a C file is loaded.
 
 
 <p>Unlike other editors, QEmacs has powerful hexadecimal editing modes: all
-common commands are working these modes, including the block commands. 
+common commands are working these modes, including the block commands.
 </p>
 <p>The hexadecimal mode (<kbd>M-x hex-mode</kbd>) shows both the hexa decimal
 and ascii (bytes) values. You can toggle between the hexa and ascii columns
@@ -1257,7 +1257,7 @@ activated automatically when an HTML file is loaded.
 
 </li><li> column-span: QEmacs extension
 </li><li> row-span: QEmacs extension
-</li><li> content-alt: QEmacs extension. Same behavior as property 'content' but used for images 
+</li><li> content-alt: QEmacs extension. Same behavior as property 'content' but used for images
 
 </li><li> list-style-position
 
@@ -1445,7 +1445,7 @@ data). <kbd>C-x C-d</kbd> can be used to have an interactive file viewer.
 <p>Available commands:
 </p>
 <dl compact="compact">
-<dt> <kbd>t</kbd> </dt>
+<dt> <kbd>t</kbd></dt>
 <dd><p>(<samp>`M-x image-rotate'</samp>) Rotate right image by 90 degrees.
 </p></dd>
 <dt> <kbd>f</kbd></dt>
@@ -1463,7 +1463,7 @@ pixels. The <samp>`transparent'</samp> color displayed a <samp>`gimp'</samp> lik
 </p></dd>
 </dl>
 
-<p>Status information: 
+<p>Status information:
 </p>
 <ul class="toc">
 <li> The image resolution is displayed as <samp>`NxM'</samp>.
@@ -1810,7 +1810,7 @@ linked plugins.
 </tr></table>
 <h1>About This Document</h1>
 <p>
-  This document was generated by <em>Charlie Gordon</em> on <em>December, 21 2007</em> using <a href="http://texi2html.cvshome.org/"><em>texi2html 1.76</em></a>.
+  This document was generated by <em>Charlie Gordon</em> on <em>January, 3 2008</em> using <a href="http://texi2html.cvshome.org/"><em>texi2html 1.76</em></a>.
 </p>
 <p>
   The buttons in the navigation panels have the following meaning:
@@ -1912,7 +1912,7 @@ linked plugins.
 <hr size="1">
 <p>
  <font size="-1">
-  This document was generated by <em>Charlie Gordon</em> on <em>December, 21 2007</em> using <a href="http://texi2html.cvshome.org/"><em>texi2html 1.76</em></a>.
+  This document was generated by <em>Charlie Gordon</em> on <em>January, 3 2008</em> using <a href="http://texi2html.cvshome.org/"><em>texi2html 1.76</em></a>.
  </font>
  <br>
 

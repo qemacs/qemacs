@@ -28,12 +28,12 @@ void fill_rectangle(QEditScreen *s,
     int x2, y2;
     x2 = x1 + w;
     y2 = y1 + h;
-    
+
     /* quick clip rejection */
     if (x2 <= s->clip_x1 || y2 <= s->clip_y1 ||
         x1 >= s->clip_x2 || y1 >= s->clip_y2)
         return;
-    
+
     /* region update */
     if (x2 > s->clip_x2)
         x2 = s->clip_x2;
@@ -59,7 +59,7 @@ void set_clip_rectangle(QEditScreen *s, CSSRect *r)
     y1 = r->y1;
     x2 = r->x2;
     y2 = r->y2;
-    
+
     if (x2 > s->width)
         x2 = s->width;
     if (y2 > s->height)
@@ -68,7 +68,7 @@ void set_clip_rectangle(QEditScreen *s, CSSRect *r)
         x1 = 0;
     if (y1 < 0)
         y1 = 0;
-    
+
     s->clip_x1 = x1;
     s->clip_y1 = y1;
     s->clip_x2 = x2;
@@ -92,7 +92,7 @@ void push_clip_rectangle(QEditScreen *s, CSSRect *or, CSSRect *r)
     y1 = r->y1;
     x2 = r->x2;
     y2 = r->y2;
-    
+
     if (x2 > s->clip_x2)
         x2 = s->clip_x2;
     if (y2 > s->clip_y2)
@@ -101,7 +101,7 @@ void push_clip_rectangle(QEditScreen *s, CSSRect *or, CSSRect *r)
         x1 = s->clip_x1;
     if (y1 < s->clip_y1)
         y1 = s->clip_y1;
-    
+
     /* set new rectangle */
     s->clip_x1 = x1;
     s->clip_y1 = y1;
@@ -244,11 +244,11 @@ void bmp_free(QEditScreen *s, QEBitmap **bp)
     }
 }
 
-void bmp_draw(QEditScreen *s, QEBitmap *b, 
-              int dst_x, int dst_y, int dst_w, int dst_h, 
+void bmp_draw(QEditScreen *s, QEBitmap *b,
+              int dst_x, int dst_y, int dst_w, int dst_h,
               int offset_x, int offset_y, int flags)
 {
-    s->dpy.dpy_bmp_draw(s, b, dst_x, dst_y, dst_w, dst_h, 
+    s->dpy.dpy_bmp_draw(s, b, dst_x, dst_y, dst_w, dst_h,
                         offset_x, offset_y, flags);
 }
 
@@ -276,7 +276,7 @@ typedef struct QECachedBitmap {
 
 /* dst_w or dst_h can be zero if unspecified */
 /* XXX: add scaling for printing */
-QECachedBitmap *cbmp_open(QEditScreen *s, 
+QECachedBitmap *cbmp_open(QEditScreen *s,
                           const char *url,
                           int dst_w, int dst_h)
 {
@@ -288,8 +288,8 @@ int cbmp_get_size(QECachedBitmap *bitmap, int *w_ptr, int *h_ptr)
 {
 }
 
-void cbmp_draw(QEditScreen *s, QECachedBitmap *bitmap, 
-               int dst_x, int dst_y, int dst_w, int dst_h, 
+void cbmp_draw(QEditScreen *s, QECachedBitmap *bitmap,
+               int dst_x, int dst_y, int dst_w, int dst_h,
                int offset_x, int offset_y, int flags)
 {
 }

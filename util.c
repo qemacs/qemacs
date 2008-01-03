@@ -59,13 +59,13 @@ FindFileState *find_file_open(const char *path, const char *pattern)
     s->dir = NULL;
     return s;
 }
-                     
+
 int find_file_next(FindFileState *s, char *filename, int filename_size_max)
 {
     struct dirent *dirent;
     const char *p;
     char *q;
-    
+
     if (s->dir == NULL)
         goto redo;
 
@@ -106,7 +106,7 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max)
 
 void find_file_close(FindFileState *s)
 {
-    if (s->dir) 
+    if (s->dir)
         closedir(s->dir);
     qe_free(&s);
 }
@@ -127,7 +127,7 @@ static void path_win_to_unix(char *buf)
 
 /* suppress redundant ".", ".." and "/" from paths */
 /* XXX: make it better */
-static void canonize_path1(char *buf, int buf_size, const char *path)
+static void canonicalize_path1(char *buf, int buf_size, const char *path)
 {
     const char *p;
     char *q, *q1;
@@ -190,7 +190,7 @@ static void canonize_path1(char *buf, int buf_size, const char *path)
     }
 }
 
-void canonize_path(char *buf, int buf_size, const char *path)
+void canonicalize_path(char *buf, int buf_size, const char *path)
 {
     const char *p;
     /* check for URL protocol or windows drive */
@@ -198,18 +198,18 @@ void canonize_path(char *buf, int buf_size, const char *path)
     p = strchr(path, ':');
     if (p) {
         if ((p - path) == 1) {
-            /* windows drive : we canonize only the following path */
+            /* windows drive: we canonicalize only the following path */
             buf[0] = p[0];
             buf[1] = p[1];
             /* CG: this will not work for non current drives */
-            canonize_path1(buf + 2, buf_size - 2, p);
+            canonicalize_path1(buf + 2, buf_size - 2, p);
         } else {
-            /* URL: it is already canonized */
+            /* URL: it is already canonical */
             pstrcpy(buf, buf_size, path);
         }
     } else {
         /* simple unix path */
-        canonize_path1(buf, buf_size, path);
+        canonicalize_path1(buf, buf_size, path);
     }
 }
 
@@ -217,6 +217,7 @@ void canonize_path(char *buf, int buf_size, const char *path)
 static int is_abs_path(const char *path)
 {
     const char *p;
+
     p = strchr(path, ':');
     if (p)
         p++;
@@ -225,51 +226,66 @@ static int is_abs_path(const char *path)
     return *p == '/';
 }
 
-/* canonize the path and make it absolute */
-void canonize_absolute_path(char *buf, int buf_size, const char *path1)
+/* canonicalize the path and make it absolute */
+void canonicalize_absolute_path(char *buf, int buf_size, const char *path1)
 {
     char cwd[MAX_FILENAME_SIZE];
     char path[MAX_FILENAME_SIZE];
     char *homedir;
 
     if (!is_abs_path(path1)) {
-        /* XXX: should call it again */
-        if (*path1 == '~' && (path1[1] == '\0' || path1[1] == '/')) {
-            homedir = getenv("HOME");
-            if (homedir) {
-                /* CG: should test for trailing slash */
-                pstrcpy(path, sizeof(path), homedir);
-                pstrcat(path, sizeof(path), path1 + 1);
-                goto next;
-            }
-        }
-        /* CG: not sufficient for windows drives */
-        /* CG: should test result */
-        getcwd(cwd, sizeof(cwd));
+        if (*path1 == '~') {
+            if (path1[1] == '\0' || path1[1] == '/') {
+                homedir = getenv("HOME");
+                if (homedir) {
+                    pstrcpy(path, sizeof(path), homedir);
 #ifdef WIN32
-        path_win_to_unix(cwd);
+                    path_win_to_unix(path);
 #endif
-        makepath(path, sizeof(path), cwd, path1);
-    } else {
-        pstrcpy(path, sizeof(path), path1);
+                    remove_slash(path);
+                    pstrcat(path, sizeof(path), path1 + 1);
+                    path1 = path;
+                }
+            } else {
+                /* CG: should get info from getpwnam */
+                pstrcpy(path, sizeof(path), "/home/");
+                pstrcat(path, sizeof(path), path1 + 1);
+                path1 = path;
+            }
+        } else {
+            /* CG: not sufficient for windows drives */
+            /* CG: should test result */
+            getcwd(cwd, sizeof(cwd));
+#ifdef WIN32
+            path_win_to_unix(cwd);
+#endif
+            makepath(path, sizeof(path), cwd, path1);
+            path1 = path;
+        }
     }
-next:
-    canonize_path(buf, buf_size, path);
+    canonicalize_path(buf, buf_size, path1);
 }
 
 /* Get the filename portion of a path */
 const char *basename(const char *filename)
 {
     const char *p;
+    const char *base;
 
-    p = strrchr(filename, '/');
-    if (!p) {
-        /* should also scan for ':' and '\\' in WIN32 */
-        return filename;
-    } else {
-        p++;
-        return p;
+    base = filename;
+    if (base) {
+        for (p = base; *p; p++) {
+#ifdef WIN32
+            /* Simplitic DOS filename support */
+            if (*p == '/' || *p == '\\' || *p == ':')
+                base = p + 1;
+#else
+            if (*p == '/')
+                base = p + 1;
+#endif
+        }
     }
+    return base;
 }
 
 /* Return the last extension in a path, ignoring leading dots */
@@ -277,20 +293,19 @@ const char *extension(const char *filename)
 {
     const char *p, *ext;
 
-    p = filename;
-  restart:
-    while (*p == '.')
-        p++;
+    p = basename(filename);
     ext = NULL;
-    for (; *p; p++) {
-        if (*p == '/') {
+    if (p) {
+        while (*p == '.')
             p++;
-            goto restart;
+        for (; *p; p++) {
+            if (*p == '.')
+                ext = p;
         }
-        if (*p == '.')
+        if (!ext)
             ext = p;
     }
-    return ext ? ext : p;
+    return ext;
 }
 
 /* Extract the directory portion of a path:
@@ -303,17 +318,17 @@ char *get_dirname(char *dest, int size, const char *file)
     char *p;
 
     if (dest) {
-	p = dest;
-	if (file) {
+        p = dest;
+        if (file) {
             pstrcpy(dest, size, file);
-	    p = dest + (basename(dest) - dest);
-	    if (p > dest + 1 && p[-1] != ':' && p[-2] != ':')
-		p--;
+            p = dest + (basename(dest) - dest);
+            if (p > dest + 1 && p[-1] != ':' && p[-2] != ':')
+                p--;
 
-	    if (p == dest)
-		*p++ = '.';
-	}
-	*p = '\0';
+            if (p == dest)
+                *p++ = '.';
+        }
+        *p = '\0';
     }
     return dest;
 }
@@ -321,26 +336,45 @@ char *get_dirname(char *dest, int size, const char *file)
 int match_extension(const char *filename, const char *extlist)
 {
     const char *r;
-    
+
     r = extension(filename);
     if (*r == '.') {
-	return strfind(extlist, r + 1, 1);
+        return strfind(extlist, r + 1, 1);
     } else {
-	return 0;
+        return 0;
     }
+}
+
+/* Remove trailing slash from path, except for / directory */
+int remove_slash(char *buf)
+{
+    int len;
+
+    len = strlen(buf);
+    if (len > 1 && buf[len - 1] == '/') {
+        buf[--len] = '\0';
+    }
+    return len;
+}
+
+/* Append trailing slash to path if none there already */
+int append_slash(char *buf, int buf_size)
+{
+    int len;
+
+    len = strlen(buf);
+    if (len > 0 && buf[len - 1] != '/' && len + 1 < buf_size) {
+        buf[len++] = '/';
+        buf[len] = '\0';
+    }
+    return len;
 }
 
 char *makepath(char *buf, int buf_size, const char *path,
                const char *filename)
 {
-    int len;
-
     pstrcpy(buf, buf_size, path);
-    len = strlen(path);
-    if (len > 0 && path[len - 1] != '/' && len + 1 < buf_size) {
-        buf[len++] = '/';
-        buf[len] = '\0';
-    }
+    append_slash(buf, buf_size);
     return pstrcat(buf, buf_size, filename);
 }
 
@@ -499,7 +533,7 @@ int strxcmp(const char *str1, const char *str2)
 {
     const char *p, *q;
     int d;
-    
+
     p = str1;
     q = str2;
     for (;;) {
@@ -554,7 +588,7 @@ int umemcmp(const unsigned int *s1, const unsigned int *s2, int count)
 
 /* Read a token from a string, stop on a set of characters.
  * Skip spaces before and after token.
- */ 
+ */
 void get_str(const char **pp, char *buf, int buf_size, const char *stop)
 {
     char *q;
@@ -606,7 +640,7 @@ int css_get_enum(const char *str, const char *enum_str)
 static unsigned short const keycodes[] = {
     KEY_SPC, KEY_DEL, KEY_RET, KEY_ESC, KEY_TAB, KEY_SHIFT_TAB,
     KEY_CTRL(' '), KEY_DEL, KEY_CTRL('\\'),
-    KEY_CTRL(']'), KEY_CTRL('^'), KEY_CTRL('_'),
+    KEY_CTRL(']'), KEY_CTRL('^'), KEY_CTRL('_'), KEY_CTRL('_'),
     KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN,
     KEY_HOME, KEY_END, KEY_PAGEUP, KEY_PAGEDOWN,
     KEY_CTRL_LEFT, KEY_CTRL_RIGHT, KEY_CTRL_UP, KEY_CTRL_DOWN,
@@ -620,18 +654,18 @@ static unsigned short const keycodes[] = {
 };
 
 static const char * const keystr[] = {
-    "SPC", "DEL", "RET", "ESC", "TAB", "S-TAB",
-    "C-SPC", "C-?", "C-\\", "C-]", "C-^", "C-_",
-    "left", "right", "up", "down",
-    "home", "end", "prior", "next",
-    "C-left", "C-right", "C-up", "C-down",
-    "C-home", "C-end", "C-prior", "C-next",
-    "pageup", "pagedown", "C-pageup", "C-pagedown", 
-    "insert", "delete", "default",
-    "f1", "f2", "f3", "f4", "f5",
-    "f6", "f7", "f8", "f9", "f10",
-    "f11", "f12", "f13", "f14", "f15",
-    "f16", "f17", "f18", "f19", "f20",
+    "SPC",    "DEL",      "RET",      "ESC",    "TAB", "S-TAB",
+    "C-SPC",  "C-?",      "C-\\",     "C-]",    "C-^", "C-_", "C-/",
+    "left",   "right",    "up",       "down",
+    "home",   "end",      "prior",    "next",
+    "C-left", "C-right",  "C-up",     "C-down",
+    "C-home", "C-end",    "C-prior",  "C-next",
+    "pageup", "pagedown", "C-pageup", "C-pagedown",
+    "insert", "delete",   "default",
+    "f1",     "f2",       "f3",       "f4",    "f5",
+    "f6",     "f7",       "f8",       "f9",    "f10",
+    "f11",    "f12",      "f13",      "f14",   "f15",
+    "f16",    "f17",      "f18",      "f19",   "f20",
 };
 
 int compose_keys(unsigned int *keys, int *nb_keys)
@@ -685,6 +719,8 @@ static int strtokey1(const char **pp)
         return key;
     }
 #endif
+    /* Should also support backslash escapes: \000 \x00 \u0000 */
+    /* Should also support ^x and syntax and Ctrl- prefix for control keys */
     if (p[0] == 'C' && p[1] == '-' && p1 == p + 3) {
         /* control */
         key = KEY_CTRL(p[2]);
@@ -702,11 +738,13 @@ int strtokey(const char **pp)
     int key;
 
     p = *pp;
+    /* Should also support A- and Alt- prefix for meta keys */
     if (p[0] == 'M' && p[1] == '-') {
         p += 2;
         key = KEY_META(strtokey1(&p));
     } else
     if (p[0] == 'C' && p[1] == '-' && p[2] == 'M' && p[3] == '-') {
+        /* Should pass buffer with C-xxx to strtokey1 */
         p += 4;
         key = KEY_META(KEY_CTRL(strtokey1(&p)));
     } else {
@@ -742,7 +780,7 @@ void keytostr(char *buf, int buf_size, int key)
     int i;
     char buf1[32];
     buf_t out;
-    
+
     buf_init(&out, buf, buf_size);
 
     for (i = 0; i < countof(keycodes); i++) {
@@ -807,7 +845,7 @@ static ColorDef const css_colors[] = {
     { "teal",    QERGB(0x00, 0x80, 0x80) },
     { "fuchsia", QERGB(0xff, 0x00, 0xff) },
     { "aqua",    QERGB(0x00, 0xff, 0xff) },
-    
+
     /* more colors */
     { "cyan",    QERGB(0x00, 0xff, 0xff) },
     { "magenta", QERGB(0xff, 0x00, 0xff) },
@@ -909,7 +947,7 @@ int css_get_color(QEColor *color_ptr, const char *p)
         *color_ptr = def[index].color;
         return 0;
     }
-    
+
     rgba[3] = 0xff;
     if (qe_isxdigit((unsigned char)*p)) {
         goto parse_num;
@@ -1105,7 +1143,7 @@ void free_strings(StringArray *cs)
  * failure, the data is not added. The dynamic string is guaranteed to
  * be 0 terminated, although it can be longer if it contains zeros.
  *
- * @return 0 if OK, -1 if allocation error.  
+ * @return 0 if OK, -1 if allocation error.
  */
 int qmemcat(QString *q, const unsigned char *data1, int len1)
 {

@@ -23,7 +23,7 @@
 #include <sys/mman.h>
 #endif
 
-static void eb_addlog(EditBuffer *b, enum LogOperation op, 
+static void eb_addlog(EditBuffer *b, enum LogOperation op,
                       int offset, int size);
 
 static EditBufferDataType *first_buffer_data_type;
@@ -38,7 +38,7 @@ static Page *find_page(EditBuffer *b, int *offset_ptr)
     int offset;
 
     offset = *offset_ptr;
-    if (b->cur_page && offset >= b->cur_offset && 
+    if (b->cur_page && offset >= b->cur_offset &&
         offset < b->cur_offset + b->cur_page->size) {
         /* use the cache */
         *offset_ptr -= b->cur_offset;
@@ -90,8 +90,8 @@ static int eb_rw(EditBuffer *b, int offset, u8 *buf, int size1, int do_write)
 
     size = size1;
     if (do_write)
-        eb_addlog(b, LOGOP_WRITE, offset, size);        
-    
+        eb_addlog(b, LOGOP_WRITE, offset, size);
+
     p = find_page(b, &offset);
     while (size > 0) {
         len = p->size - offset;
@@ -161,7 +161,7 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
             p->size += len;
         }
     }
-    
+
     /* now add new pages if necessary */
     n = (size + MAX_PAGE_SIZE - 1) / MAX_PAGE_SIZE;
     if (n > 0) {
@@ -207,7 +207,7 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
         len_out = p->size + len - MAX_PAGE_SIZE;
         page_index = p - b->page_table;
         if (len_out > 0)
-            eb_insert1(b, page_index + 1, 
+            eb_insert1(b, page_index + 1,
                        p->data + p->size - len_out, len_out);
         else
             len_out = 0;
@@ -217,7 +217,7 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
             update_page(p);
             p->size += len - len_out;
             qe_realloc(&p->data, p->size);
-            memmove(p->data + offset + len, 
+            memmove(p->data + offset + len,
                     p->data + offset, p->size - (offset + len));
             memcpy(p->data + offset, buf, len);
             buf += len;
@@ -237,8 +237,8 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
 /* Insert 'size bytes of 'src' buffer from position 'src_offset' into
    buffer 'dest' at offset 'dest_offset'. 'src' MUST BE DIFFERENT from
    'dest' */
-void eb_insert_buffer(EditBuffer *dest, int dest_offset, 
-                      EditBuffer *src, int src_offset, 
+void eb_insert_buffer(EditBuffer *dest, int dest_offset,
+                      EditBuffer *src, int src_offset,
                       int size)
 {
     Page *p, *p_start, *q;
@@ -276,7 +276,7 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
         page_index = q - dest->page_table;
         if (dest_offset > 0) {
             page_index++;
-            eb_insert1(dest, page_index, q->data + dest_offset, 
+            eb_insert1(dest, page_index, q->data + dest_offset,
                        q->size - dest_offset);
             /* must reload q because page_table may have been
                realloced */
@@ -291,7 +291,7 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
 
     /* update total_size */
     dest->total_size += size;
-    
+
     /* compute the number of complete pages to insert */
     p_start = p;
     size_start = size;
@@ -326,7 +326,7 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
         }
         page_index = q - dest->page_table;
     }
-    
+
     /* insert the remaning bytes */
     if (size > 0) {
         eb_insert1(dest, page_index, p->data, size);
@@ -346,7 +346,7 @@ void eb_insert(EditBuffer *b, int offset, const void *buf, int size)
     /* sanity checks */
     if (offset > b->total_size)
         offset = b->total_size;
-    
+
     if (offset < 0 || size <= 0)
         return;
 
@@ -395,7 +395,7 @@ void eb_delete(EditBuffer *b, int offset, int size)
             n++;
         } else {
             update_page(p);
-            memmove(p->data + offset, p->data + offset + len, 
+            memmove(p->data + offset, p->data + offset + len,
                     p->size - offset - len);
             p->size -= len;
             qe_realloc(&p->data, p->size);
@@ -411,7 +411,7 @@ void eb_delete(EditBuffer *b, int offset, int size)
     /* now delete the requested pages */
     if (n > 0) {
         b->nb_pages -= n;
-        memmove(del_start, del_start + n, 
+        memmove(del_start, del_start + n,
                 (b->page_table + b->nb_pages - del_start) * sizeof(Page));
         qe_realloc(&b->page_table, b->nb_pages * sizeof(Page));
     }
@@ -436,16 +436,16 @@ void log_reset(EditBuffer *b)
 /* rename a buffer and add characters so that the name is unique */
 void eb_set_buffer_name(EditBuffer *b, const char *name1)
 {
-    char name[sizeof(b->name)];
+    char name[MAX_BUFFERNAME_SIZE];
     int n, pos;
 
-    pstrcpy(name, sizeof(b->name) - 10, name1);
+    pstrcpy(name, sizeof(name) - 10, name1);
     /* set the buffer name to NULL since it will be changed */
     b->name[0] = '\0';
     pos = strlen(name);
     n = 2;
     while (eb_find(name) != NULL) {
-        snprintf(name + pos, sizeof(b->name) - pos, "<%d>", n);
+        snprintf(name + pos, sizeof(name) - pos, "<%d>", n);
         n++;
     }
     pstrcpy(b->name, sizeof(b->name), name);
@@ -482,7 +482,7 @@ EditBuffer *eb_new(const char *name, int flags)
 
     /* CG: default charset should be selectable */
     eb_set_charset(b, &charset_8859_1);
-    
+
     /* add mark move callback */
     eb_add_callback(b, eb_offset_callback, &b->mark);
 
@@ -682,7 +682,7 @@ int eb_add_callback(EditBuffer *b, EditBufferCallback cb, void *opaque)
 void eb_free_callback(EditBuffer *b, EditBufferCallback cb, void *opaque)
 {
     EditBufferCallbackList **pl, *l;
-    
+
     for (pl = &b->first_callback; (*pl) != NULL; pl = &(*pl)->next) {
         l = *pl;
         if (l->callback == cb && l->opaque == opaque) {
@@ -721,7 +721,7 @@ void eb_offset_callback(__unused__ EditBuffer *b, void *opaque,
 /************************************************************/
 /* undo buffer */
 
-static void eb_addlog(EditBuffer *b, enum LogOperation op, 
+static void eb_addlog(EditBuffer *b, enum LogOperation op,
                       int offset, int size)
 {
     int was_modified, len, size_trailer;
@@ -820,7 +820,7 @@ void do_undo(EditState *s)
     log_index -= sizeof(int);
     eb_read(b->log_buffer, log_index, &size_trailer, sizeof(int));
     log_index -= size_trailer + sizeof(LogBuffer);
-    
+
     /* log_current is 1 + index to have zero as default value */
     b->log_current = log_index + 1;
 
@@ -858,7 +858,7 @@ void do_undo(EditState *s)
     default:
         abort();
     }
-    
+
     b->modified = lb.was_modified;
 }
 
@@ -892,7 +892,7 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
         if (ch == ESCAPE_CHAR) {
             eb_read(b, offset, buf + 1, MAX_CHAR_BYTES - 1);
             p = buf;
-            ch = b->charset_state.decode_func(&b->charset_state, 
+            ch = b->charset_state.decode_func(&b->charset_state,
                                               (const u8 **)&p);
             offset += (p - buf) - 1;
         }
@@ -1027,7 +1027,7 @@ int eb_goto_pos(EditBuffer *b, int line1, int col1)
     }
     return b->total_size;
 }
-        
+
 int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset)
 {
     Page *p, *p_end;
@@ -1046,7 +1046,7 @@ int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset)
             break;
         if (!(p->flags & PG_VALID_POS)) {
             p->flags |= PG_VALID_POS;
-            get_pos(p->data, p->size, &p->nb_lines, &p->col, 
+            get_pos(p->data, p->size, &p->nb_lines, &p->col,
                     &b->charset_state);
         }
         line += p->nb_lines;
@@ -1241,14 +1241,14 @@ static void eb_io_stop(EditBuffer *b, int err);
 /* load a buffer asynchronously and launch the callback. The buffer
    stays in 'loading' state while begin loaded. It is also marked
    readonly. */
-int load_buffer(EditBuffer *b, const char *filename, 
+int load_buffer(EditBuffer *b, const char *filename,
                 int offset, int nolog,
-                void (*progress_cb)(void *opaque, int size), 
+                void (*progress_cb)(void *opaque, int size),
                 void (*completion_cb)(void *opaque, int err), void *opaque)
 {
     URLContext *h;
     BufferIOState *s;
-    
+
     /* cannot load a buffer if already I/Os or readonly */
     if (b->flags & (BF_LOADING | BF_SAVING | BF_READONLY))
         return -1;
@@ -1331,6 +1331,7 @@ int raw_load_buffer1(EditBuffer *b, FILE *f, int offset)
     int len;
     unsigned char buf[IOBUF_SIZE];
 
+    //put_status(NULL, "loading %s", filename);
     for (;;) {
         len = fread(buf, 1, IOBUF_SIZE, f);
         if (len < 0)
@@ -1340,6 +1341,7 @@ int raw_load_buffer1(EditBuffer *b, FILE *f, int offset)
         eb_insert(b, offset, buf, len);
         offset += len;
     }
+    //put_status(NULL, "");
     return 0;
 }
 
@@ -1363,6 +1365,7 @@ int mmap_buffer(EditBuffer *b, const char *filename)
     if (fd < 0)
         return -1;
     file_size = lseek(fd, 0, SEEK_END);
+    //put_status(NULL, "mapping %s", filename);
     file_ptr = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
     if ((void*)file_ptr == MAP_FAILED) {
         close(fd);
@@ -1391,6 +1394,7 @@ int mmap_buffer(EditBuffer *b, const char *filename)
         p++;
     }
     b->file_handle = fd;
+    //put_status(NULL, "");
     return 0;
 }
 
@@ -1401,8 +1405,7 @@ static int raw_load_buffer(EditBuffer *b, FILE *f)
     int ret;
     struct stat st;
 
-    if (stat(b->filename, &st) == 0 &&
-        st.st_size >= MIN_MMAP_SIZE) {
+    if (stat(b->filename, &st) == 0 && st.st_size >= MIN_MMAP_SIZE) {
         ret = mmap_buffer(b, b->filename);
     } else {
         ret = raw_load_buffer1(b, f, 0);
@@ -1419,10 +1422,11 @@ static int raw_save_buffer(EditBuffer *b, int start, int end,
     int fd, len, size, written;
     unsigned char buf[IOBUF_SIZE];
 
-    fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+    fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0)
         return -1;
 
+    //put_status(NULL, "writing %s", filename);
     if (end < start) {
         int tmp = start;
         start = end;
@@ -1449,6 +1453,7 @@ static int raw_save_buffer(EditBuffer *b, int start, int end,
         size -= len;
     }
     close(fd);
+    //put_status(NULL, "");
     return written;
 }
 
@@ -1518,7 +1523,7 @@ int eb_get_contents(EditBuffer *b, char *buf, int buf_size)
 }
 
 /* get the line starting at offset 'offset' as an array of code points */
-/* offset is bumped to the beginning of the next line */ 
+/* offset is bumped to the beginning of the next line */
 /* returns the number of code points stored in buf, excluding '\0' */
 /* buf_size must be > 0 */
 /* XXX: cannot detect truncation */
@@ -1527,7 +1532,7 @@ int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
 {
     unsigned int *buf_ptr, *buf_end;
     int c, offset;
-    
+
     offset = *offset_ptr;
 
     buf_ptr = buf;
@@ -1545,7 +1550,7 @@ int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
 }
 
 /* get the line starting at offset 'offset' encoded in utf-8 */
-/* offset is bumped to the beginning of the next line */ 
+/* offset is bumped to the beginning of the next line */
 /* returns the number of bytes stored in buf, excluding '\0' */
 /* buf_size must be > 0 */
 /* XXX: cannot detect truncation */
@@ -1555,7 +1560,7 @@ int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
     char utf8_buf[6];
     char *buf_ptr, *buf_end;
     int c, offset, len;
-    
+
     offset = *offset_ptr;
 
     buf_ptr = buf;
@@ -1577,7 +1582,7 @@ int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
                 continue;
             }
         }
-        /* overflow: skip past '\n' */ 
+        /* overflow: skip past '\n' */
         offset = eb_next_line(b, offset);
         break;
     }
@@ -1688,7 +1693,7 @@ int eb_write_buffer(EditBuffer *b, int start, int end, const char *filename)
 {
     if (!b->data_type->buffer_save)
         return -1;
-    
+
     return b->data_type->buffer_save(b, start, end, filename);
 }
 
@@ -1704,7 +1709,7 @@ int eb_save_buffer(EditBuffer *b)
 
     if (!b->data_type->buffer_save)
         return -1;
-    
+
     filename = b->filename;
     /* get old file permission */
     mode = 0644;

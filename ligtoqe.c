@@ -90,7 +90,7 @@ static int sort_func(const void *a1, const void *b1)
     int val;
 
     val = a->buf_in[0] - b->buf_in[0];
-    if (val == 0 && 
+    if (val == 0 &&
         a->buf_in_size >= 2 && b->buf_in_size >= 2) {
         val = a->buf_in[1] - b->buf_in[1];
     }
@@ -156,7 +156,7 @@ int main(int argc, char **argv)
             }
             continue;
         }
-        
+
         l = &ligs[nb_ligs++];
 
         l->buf_in_size = 0;
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
             l->buf_in[l->buf_in_size++] = strtoul(p, &p, 0);
         }
         p++;
-        
+
         l->buf_out_size = 0;
         for (;;) {
             p = skipspaces(p);
@@ -207,7 +207,7 @@ int main(int argc, char **argv)
 
     /* sort everything */
     qsort(ligs, nb_ligs, sizeof(Ligature), sort_func);
-    
+
     outfile = fopen(lig_res_filename, "w");
     if (!outfile) {
         perror(lig_res_filename);
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
         }
     }
     subst1_count = n;
-    
+
     /* output the ligature table (2 chars -> 1 char) */
     j = 0;
     l1 = 0;
@@ -265,9 +265,9 @@ int main(int argc, char **argv)
             }
         }
     }
-    
+
     subst2_count = n;
-    
+
     /* output the long ligature table */
     n = 0;
     for (i = 0; i < nb_ligs; i++) {
@@ -275,9 +275,9 @@ int main(int argc, char **argv)
         if (l->buf_in_size > 2 || l->buf_out_size > 1) {
             put_be16(outfile, l->buf_in_size);
             put_be16(outfile, l->buf_out_size);
-            for (j = 0; j < l->buf_in_size; j++) 
+            for (j = 0; j < l->buf_in_size; j++)
                 put_be16(outfile, l->buf_in[j]);
-            for (j = 0; j < l->buf_out_size; j++) 
+            for (j = 0; j < l->buf_out_size; j++)
                 put_be16(outfile, l->buf_out[j]);
             n += 2 + l->buf_in_size + l->buf_out_size;
         }

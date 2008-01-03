@@ -99,7 +99,7 @@ static void recompute_offset(EditState *s)
 void css_error(const char *filename, int line_num, const char *msg)
 {
     EditBuffer *b;
-    
+
     b = eb_find(HTML_ERROR_BUFFER);
     if (!b)
         b = eb_new(HTML_ERROR_BUFFER, BF_READONLY);
@@ -165,11 +165,11 @@ static void html_display(EditState *s)
             display_mode_line(s);
             dpy_flush(s->screen);
         }
-        
+
         /* delete previous document */
         css_delete_box(hs->top_box);
         hs->top_box = NULL;
-        
+
         if (hs->css_ctx) {
             css_delete_document(hs->css_ctx);
             hs->css_ctx = NULL;
@@ -195,8 +195,8 @@ static void html_display(EditState *s)
         hs->css_ctx->default_bgcolor = qe_styles[QE_STYLE_CSS_DEFAULT].bg_color;
 
         timer_start();
-        hs->top_box = xml_parse_buffer(s->b, 0, s->b->total_size, 
-                                       hs->css_ctx->style_sheet, 
+        hs->top_box = xml_parse_buffer(s->b, 0, s->b->total_size,
+                                       hs->css_ctx->style_sheet,
                                        hs->parse_flags,
                                        html_test_abort, NULL);
         timer_stop("xml_parse_buffer");
@@ -214,11 +214,11 @@ static void html_display(EditState *s)
         if (ret) {
             return;
         }
-            
+
         /* extract document size */
         hs->total_width = hs->top_box->bbox.x2;
         hs->total_height = hs->top_box->bbox.y2;
-        
+
         /* set invalid rectangle to the whole window */
         css_set_rect(&hs->invalid_rect, s->xleft, s->ytop,
                      s->xleft + s->width, s->ytop + s->height);
@@ -231,7 +231,7 @@ static void html_display(EditState *s)
         n = 0;
     redo:
         timer_start();
-        cursor_found = css_get_cursor_pos(hs->css_ctx, hs->top_box, 
+        cursor_found = css_get_cursor_pos(hs->css_ctx, hs->top_box,
                                           NULL, NULL, NULL,
                                           &cursor_pos, &dirc, s->offset);
         timer_stop("css_get_cursor_pos");
@@ -243,7 +243,7 @@ static void html_display(EditState *s)
                 goto redo;
             }
         }
-        
+
         if (cursor_found) {
             /* if cursor not visible, adjust offsets */
             d = cursor_pos.y1 + s->y_disp;
@@ -261,7 +261,7 @@ static void html_display(EditState *s)
                 s->x_disp[0] -= d;
         }
 
-        
+
         /* selection handling */
         if (s->show_selection) {
             sel_start = s->b->mark;
@@ -311,12 +311,12 @@ static void html_display(EditState *s)
 
             timer_start();
 
-            css_display(hs->css_ctx, hs->top_box, 
+            css_display(hs->css_ctx, hs->top_box,
                         &rect, s->xleft + s->x_disp[0], s->ytop + s->y_disp);
             timer_stop("css_display");
 
             set_clip_rectangle(s->screen, &old_clip);
-            
+
             /* no longer invalid, so set invalid_rect to null */
             css_set_rect(&hs->invalid_rect, 0, 0, 0, 0);
         }
@@ -375,7 +375,7 @@ static int scroll_func(void *opaque, CSSBox *box, __unused__ int x, int y)
             m->offset_found = box->u.buffer.start;
         }
     }
-    if ((unsigned long)m->offsetc >= box->u.buffer.start && 
+    if ((unsigned long)m->offsetc >= box->u.buffer.start &&
         (unsigned long)m->offsetc <= box->u.buffer.end &&
         y >= 0 && y1 <= m->height) {
         m->offset_found = m->offsetc;
@@ -410,7 +410,7 @@ static void html_scroll_up_down(EditState *s, int dir)
     }
 
     /* XXX: max height ? */
-    
+
     /* now update cursor position so that it is on screen */
     m->offsetc = s->offset;
     m->dir = -dir;
@@ -458,7 +458,7 @@ static int up_down_func(void *opaque, CSSBox *box, int x, int y)
 
     if (m->dir < 0) {
         y1 = y + box->height;
-        if (y1 <= m->yd) 
+        if (y1 <= m->yd)
             goto ytest;
     } else {
         y1 = y;
@@ -531,9 +531,9 @@ static void html_move_up_down1(EditState *s, int dir, int xtarget)
     m->ydmin = INT_MAX;
     m->box = NULL;
     m->xdbase = 0;
-    
+
     css_box_iterate(hs->css_ctx, hs->top_box, m, up_down_func);
-    
+
     /* if no box found, then compose the next text chunk */
     if (m->box) {
         /* the box was found : find exact cursor offset */
@@ -577,7 +577,7 @@ static int left_right_func(void *opaque, CSSBox *box, int x, int y)
     /* only examine boxes which intersect the current one on y axis */
     if (!(y + box->height <= m->y1 ||
           y >= m->y2)) {
-        if ((m->dir < 0 && (x1 = x + box->width) <= m->xd) || 
+        if ((m->dir < 0 && (x1 = x + box->width) <= m->xd) ||
             (m->dir > 0 && (x1 = x) >= m->xd)) {
             /* find the closest box in the correct direction */
             d = abs(x1 - m->xd);
@@ -604,12 +604,12 @@ static void html_move_left_right_visual(EditState *s, int dir)
         return;
 
     /* get the cursor position. If not found, do nothing */
-    if (!css_get_cursor_pos(hs->css_ctx, hs->top_box, 
-                            &box, &x0, NULL, 
+    if (!css_get_cursor_pos(hs->css_ctx, hs->top_box,
+                            &box, &x0, NULL,
                             &cursor_pos, &dirc, s->offset))
         return;
 
-    offset = css_get_offset_pos(hs->css_ctx, 
+    offset = css_get_offset_pos(hs->css_ctx,
                                 box, cursor_pos.x1 - x0, dir);
     if (offset >= 0) {
         /* match found : finished ! */
@@ -622,11 +622,11 @@ static void html_move_left_right_visual(EditState *s, int dir)
             m->xd = cursor_pos.x1;
         m->y1 = cursor_pos.y1;
         m->y2 = cursor_pos.y2;
-        
+
         m->dir = dir;
         m->xdmin = INT_MAX;
         m->box = NULL;
-        
+
         css_box_iterate(hs->css_ctx, hs->top_box, m, left_right_func);
         if (!m->box) {
             /* no box found : go up or down */
@@ -653,8 +653,8 @@ static void html_move_bol_eol(EditState *s, int dir)
         return;
 
     /* get the cursor position. If not found, do nothing */
-    if (!css_get_cursor_pos(hs->css_ctx, hs->top_box, 
-                            &box, &x0, NULL, 
+    if (!css_get_cursor_pos(hs->css_ctx, hs->top_box,
+                            &box, &x0, NULL,
                             &cursor_pos, &dirc, s->offset))
         return;
 
@@ -663,13 +663,13 @@ static void html_move_bol_eol(EditState *s, int dir)
     m->xd = xtarget;
     m->y1 = cursor_pos.y1;
     m->y2 = cursor_pos.y2;
-    
+
     m->dir = dir;
     m->xdmin = INT_MAX;
     m->box = NULL;
     css_box_iterate(hs->css_ctx, hs->top_box, m, left_right_func);
     if (m->box) {
-        
+
         offset = css_get_offset_pos(hs->css_ctx, m->box, xtarget, dir);
         if (offset >= 0) {
             s->offset = offset;
@@ -768,8 +768,8 @@ static void html_callback(__unused__ EditBuffer *b,
     HTMLState *hs = s->mode_data;
     hs->up_to_date = 0;
 }
-    
-static void load_default_style_sheet(HTMLState *hs, const char *stylesheet_str, 
+
+static void load_default_style_sheet(HTMLState *hs, const char *stylesheet_str,
                                      int flags)
 {
     CSSStyleSheet *style_sheet;
@@ -783,7 +783,7 @@ static void load_default_style_sheet(HTMLState *hs, const char *stylesheet_str,
 
 /* graphical XML/CSS mode init. is_html is TRUE to tell that specific HTML
    quirks are needed in the parser. */
-int gxml_mode_init(EditState *s, 
+int gxml_mode_init(EditState *s,
                    ModeSavedData *saved_data,
                    int flags, const char *default_stylesheet)
 {
@@ -811,8 +811,8 @@ int gxml_mode_init(EditState *s,
 
 static int html_mode_init(EditState *s, ModeSavedData *saved_data)
 {
-    return gxml_mode_init(s, saved_data, 
-                          XML_HTML | XML_HTML_SYNTAX | XML_IGNORE_CASE, 
+    return gxml_mode_init(s, saved_data,
+                          XML_HTML | XML_HTML_SYNTAX | XML_IGNORE_CASE,
                           html_style);
 }
 
@@ -874,7 +874,7 @@ static CmdDef html_commands[] = {
 };
 
 ModeDef html_mode = {
-    "html", 
+    "html",
     .instance_size = sizeof(HTMLState),
     .mode_probe = html_mode_probe,
     .mode_init = html_mode_init,

@@ -27,7 +27,7 @@ InputMethod *input_methods;
 
 static int default_input(__unused__ int *match_buf,
                          __unused__ int match_buf_size,
-                         __unused__ int *match_len_ptr, 
+                         __unused__ int *match_len_ptr,
                          __unused__ const u8 *data,
                          __unused__ const unsigned int *buf,
                          __unused__ int len)
@@ -37,7 +37,7 @@ static int default_input(__unused__ int *match_buf,
 
 static int unicode_input(int *match_buf,
                          int match_buf_size,
-                         int *match_len_ptr, 
+                         int *match_len_ptr,
                          __unused__ const u8 *data,
                          const unsigned int *buf, int len)
 {
@@ -63,11 +63,11 @@ static int unicode_input(int *match_buf,
     }
 }
 
-static InputMethod default_input_method = { 
+static InputMethod default_input_method = {
     "default", default_input, NULL, NULL,
 };
 
-static InputMethod unicode_input_method = { 
+static InputMethod unicode_input_method = {
     "unicode", unicode_input, NULL, NULL,
 };
 
@@ -127,9 +127,9 @@ static int kmap_input(int *match_buf, int match_buf_size,
         olen = 1;
         l1 = prefix_len; /* length of input pattern */
         for (;;) {
-            /* c = 0x00        end of table 
+            /* c = 0x00        end of table
              * c = 0x01..0x1d  delta unicode
-             * c = 0x1e        unicode output mapping follows 
+             * c = 0x1e        unicode output mapping follows
              * c = 0x1f        unicode input char follows.
              * c = 0x20..0x7f  input character
              * c = 0x80        unused
@@ -235,7 +235,7 @@ static void load_input_methods(void)
     InputMethod *m;
 
     input_method_fd = -1;
-    
+
     if (find_resource_file(buf, sizeof(buf), "kmaps") < 0)
         return;
 
@@ -251,12 +251,12 @@ static void load_input_methods(void)
         close(fd);
         return;
     }
-    
+
     if (memcmp(file_ptr, "kmap", 4) != 0) {
         munmap((void*)file_ptr, file_size);
         goto fail;
     }
-    
+
     p = file_ptr + 4;
     for (;;) {
         offset = (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];

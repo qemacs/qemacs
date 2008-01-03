@@ -111,7 +111,7 @@ static void handle_jis(FILE **fp, const char *name, const char *filename)
 
         b1 = (c1 >> 8) & 0xff;
         b2 = (c1) & 0xff;
-        
+
         /* compress the code */
         b1 = b1 - 0x21;
         b2 = b2 - 0x21;
@@ -142,8 +142,8 @@ static void handle_jis(FILE **fp, const char *name, const char *filename)
         if (table_b2_max[i] != 0) {
             for (j = 0; j <= b2_max; j++) {
                 if ((n & 7) == 0)
-                    printf("    ");
-                printf("0x%04x, ", table[i * 94 + j]);
+                    printf("   ");
+                printf(" 0x%04x,", table[i * 94 + j]);
                 if ((n++ & 7) == 7)
                     printf("\n");
             }
@@ -189,7 +189,7 @@ int main(int argc, char **argv)
 
         strcpy(name, get_basename(filename));
         *get_extension(name) = '\0';
-        
+
         f = fopen(filename, "r");
         if (!f) {
             perror(filename);

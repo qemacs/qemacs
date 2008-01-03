@@ -1,5 +1,5 @@
 /*
- * Indic algorithms for QEmacs.  
+ * Indic algorithms for QEmacs.
  *
  * Copyright (c) 2000 Fabrice Bellard.
  *
@@ -62,7 +62,7 @@ int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len)
 {
     int i, len1, cc, j, k, c;
     unsigned int *q, buf[len];
-    
+
     /* Rule 1 : dead consonant rule */
     q = buf;
     len1 = len - 1;
@@ -80,19 +80,19 @@ int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len)
     /* XXX: rule 3, 4, 7 should be handled as ligatures */
     for (i = 0; i < len1; i++) {
         /* Rule 2 */
-        if (buf[i] == RA_DEAD && 
+        if (buf[i] == RA_DEAD &&
             (is_ind_vowel(buf[i+1]) || is_consonant(buf[i+1]))) {
             buf[i] = buf[i+1];
             buf[i+1] = RA_SUP;
-        } else 
+        } else
         /* Rule 5 */
-        if (buf[i] == RRA && 
+        if (buf[i] == RRA &&
             buf[i+1] == VIRAMA) {
             buf[i] = RRA_HALF;
             buf[i+1] = 0;
         } else
         /* Rule 5a */
-        if (buf[i] == RA_DEAD && 
+        if (buf[i] == RA_DEAD &&
             buf[i+1] == ZERO_WIDTH_JOINER) {
             buf[i] = RRA_HALF;
             buf[i+1] = 0;
@@ -103,7 +103,7 @@ int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len)
             buf[i+1] = RA_SUB;
         } else
         /* Rule 8 */
-        if (is_dead_consonant(buf[i]) && 
+        if (is_dead_consonant(buf[i]) &&
             buf[i+1] == RA_DEAD) {
             buf[i] -= DEAD_CONSONANT_OFFSET;
             buf[i+1] = RA_SUB;
@@ -113,9 +113,9 @@ int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len)
 
     /* convert dead consonant to half consonants */
     for (i = 0; i < len1; i++) {
-        if (is_dead_consonant(buf[i]) && 
+        if (is_dead_consonant(buf[i]) &&
             (i == (len1 - 1) ||
-             buf[i+1] == ZERO_WIDTH_JOINER || 
+             buf[i+1] == ZERO_WIDTH_JOINER ||
              is_consonant(buf[i+1]) ||
              is_dead_consonant(buf[i+1]))) {
             buf[i] -= DEAD_CONSONANT_OFFSET + HALF_OFFSET;

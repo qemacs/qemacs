@@ -1,6 +1,6 @@
 /*
  * libfbf.c - FBF font decoder
- * 
+ *
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard
  *
  * This library is free software; you can redistribute it and/or
@@ -52,7 +52,7 @@ typedef struct {
 #define MAXDIST   4
 
 #define MAXWIDTH  128
-#define MAXHEIGHT 128 
+#define MAXHEIGHT 128
 #define MAXWRAP ((MAXWIDTH+7)/8)
 
 #define WRAP (MAXWIDTH + 2 * MAXDIST)
@@ -95,7 +95,7 @@ struct UniFontData {
     int nb_glyphs; /* real number of glyphs */
     int nb_glyphs_total; /* total number, including algorithmically
                             generated ones */
-    unsigned int flags; 
+    unsigned int flags;
     int compressed_segment_size;
     int max_width, max_height; /* maximum dimensions of bitmaps */
     int x_res, y_res, pt_size;
@@ -120,7 +120,7 @@ struct UniFontData {
     void *mem_opaque;
     void *(*fbf_malloc)(void *mem_opaque, int size);
     void (*fbf_free)(void *mem_opaque, void *ptr);
-    
+
     /* file input handlings */
     void *infile;
     int (*fbf_seek)(void *infile, long pos);
@@ -151,7 +151,7 @@ int fbf_load_font(UniFontData *uf);
 void fbf_free_font(UniFontData *uf);
 
 int fbf_unicode_to_glyph(UniFontData *uf, int code);
-int fbf_decode_glyph(UniFontData *uf, 
+int fbf_decode_glyph(UniFontData *uf,
                      GlyphEntry **glyph_entry_ptr,
                      int index);
 

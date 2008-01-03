@@ -29,5 +29,5 @@ typedef struct CFBContext {
                        unsigned char *glyph, int glyph_wrap);
 } CFBContext;
 
-int cfb_init(QEditScreen *s, 
+int cfb_init(QEditScreen *s,
              void *base, int wrap, int depth, const char *font_path);

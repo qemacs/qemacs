@@ -119,7 +119,7 @@ typedef struct QEmacsState QEmacsState;
 /* low level I/O events */
 void set_read_handler(int fd, void (*cb)(void *opaque), void *opaque);
 void set_write_handler(int fd, void (*cb)(void *opaque), void *opaque);
-int set_pid_handler(int pid, 
+int set_pid_handler(int pid,
                     void (*cb)(void *opaque, int status), void *opaque);
 void url_exit(void);
 void register_bottom_half(void (*cb)(void *opaque), void *opaque);
@@ -166,12 +166,14 @@ typedef struct FindFileState FindFileState;
 FindFileState *find_file_open(const char *path, const char *pattern);
 int find_file_next(FindFileState *s, char *filename, int filename_size_max);
 void find_file_close(FindFileState *s);
-void canonize_path(char *buf, int buf_size, const char *path);
-void canonize_absolute_path(char *buf, int buf_size, const char *path1);
+void canonicalize_path(char *buf, int buf_size, const char *path);
+void canonicalize_absolute_path(char *buf, int buf_size, const char *path1);
 const char *basename(const char *filename);
 const char *extension(const char *filename);
 char *get_dirname(char *dest, int size, const char *file);
 int match_extension(const char *filename, const char *extlist);
+int remove_slash(char *buf);
+int append_slash(char *buf, int buf_size);
 char *makepath(char *buf, int buf_size, const char *path, const char *filename);
 void splitpath(char *dirname, int dirname_size,
                char *filename, int filename_size, const char *pathname);
@@ -410,7 +412,7 @@ typedef struct QECharset {
                        const unsigned char **);
     /* return NULL if cannot encode. Currently no state since speed is
        not critical yet */
-    unsigned char *(*encode_func)(struct QECharset *, unsigned char *, int); 
+    unsigned char *(*encode_func)(struct QECharset *, unsigned char *, int);
     u8 table_alloc; /* true if CharsetDecodeState.table must be malloced */
     /* private data for some charsets */
     u8 eol_char; /* 0x0A for ASCII, 0x25 for EBCDIC */
@@ -425,10 +427,10 @@ extern QECharset charset_vt100; /* used for the tty output */
 
 typedef struct CharsetDecodeState {
     /* 256 ushort table for hyper fast decoding */
-    unsigned short *table; 
+    unsigned short *table;
     /* slower decode function for complicated cases */
     int (*decode_func)(struct CharsetDecodeState *,
-                       const unsigned char **); 
+                       const unsigned char **);
     QECharset *charset;
 } CharsetDecodeState;
 
@@ -445,7 +447,7 @@ int utf8_encode(char *q, int c);
 int utf8_decode(const char **pp);
 extern unsigned char utf8_length[256];
 
-int utf8_to_unicode(unsigned int *dest, int dest_length, 
+int utf8_to_unicode(unsigned int *dest, int dest_length,
                     const char *str);
 
 void charset_completion(StringArray *cs, const char *charset_str);
@@ -619,7 +621,7 @@ void qe_ungrab_keys(void);
 #define PG_VALID_COLORS 0x0008 /* color state is valid */
 
 typedef struct Page {
-    int size; /* data size */ 
+    int size; /* data size */
     u8 *data;
     int flags;
     /* the following are needed to handle line / column computation */
@@ -681,7 +683,7 @@ struct EditBuffer {
     /* buffer data type (default is raw) */
     struct EditBufferDataType *data_type;
     void *data; /* associated buffer data, used if data_type != raw_data */
-    
+
     /* charset handling */
     CharsetDecodeState charset_state;
     QECharset *charset;
@@ -697,7 +699,7 @@ struct EditBuffer {
 
     /* asynchronous loading/saving support */
     struct BufferIOState *io_state;
-    
+
     /* used during loading */
     int probed;
 
@@ -710,7 +712,7 @@ struct EditBuffer {
     /* CG: should instead keep a pointer to last window using this
      * buffer, even if no longer on screen
      */
-    struct ModeSavedData *saved_data; 
+    struct ModeSavedData *saved_data;
 
     EditBuffer *next; /* next editbuffer in qe_state buffer list */
     char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
@@ -741,8 +743,8 @@ void eb_trace_bytes(const void *buf, int size, int state);
 void eb_init(void);
 int eb_read(EditBuffer *b, int offset, void *buf, int size);
 void eb_write(EditBuffer *b, int offset, const void *buf, int size);
-void eb_insert_buffer(EditBuffer *dest, int dest_offset, 
-                      EditBuffer *src, int src_offset, 
+void eb_insert_buffer(EditBuffer *dest, int dest_offset,
+                      EditBuffer *src, int src_offset,
                       int size);
 void eb_insert(EditBuffer *b, int offset, const void *buf, int size);
 void eb_delete(EditBuffer *b, int offset, int size);
@@ -857,14 +859,14 @@ extern EditBufferDataType raw_data_type;
 /* qe.c */
 
 /* colorize & transform a line, lower level then ColorizeFunc */
-typedef int (*GetColorizedLineFunc)(EditState *s, 
+typedef int (*GetColorizedLineFunc)(EditState *s,
                                     unsigned int *buf, int buf_size,
                                     int offset1, int line_num);
 
 /* colorize a line : this function modifies buf to set the char
    styles. 'buf' is guaranted to have one more char after its len
    (it is either '\n' or '\0') */
-typedef void (*ColorizeFunc)(unsigned int *buf, int len, 
+typedef void (*ColorizeFunc)(unsigned int *buf, int len,
                              int *colorize_state_ptr, int state_only);
 
 /* contains all the information necessary to uniquely identify a line,
@@ -888,7 +890,7 @@ enum WrapType {
 struct EditState {
     int offset;     /* offset of the cursor */
     /* text display state */
-    int offset_top; 
+    int offset_top;
     int y_disp;    /* virtual position of the displayed text */
     int x_disp[2]; /* position for LTR and RTL text resp. */
     int minibuf;   /* true if single line editing */
@@ -927,12 +929,12 @@ struct EditState {
     EditBuffer *b;
 
     /* state before line n, one byte per line */
-    unsigned char *colorize_states; 
+    unsigned char *colorize_states;
     int colorize_nb_lines;
     int colorize_nb_valid_lines;
     /* maximum valid offset, INT_MAX if not modified. Needed to invalide
        'colorize_states' */
-    int colorize_max_valid_offset; 
+    int colorize_max_valid_offset;
 
     int busy; /* true if editing cannot be done if the window
                  (e.g. the parser HTML is parsing the buffer to
@@ -1064,14 +1066,14 @@ enum QEStyle {
 typedef struct QEStyleDef {
     const char *name;
     /* if any style is 0, then default edit style applies */
-    QEColor fg_color, bg_color; 
+    QEColor fg_color, bg_color;
     short font_style;
     short font_size;
 } QEStyleDef;
 
 /* CG: Should register styles as well */
 extern QEStyleDef qe_styles[QE_STYLE_NB];
-    
+
 /* QEmacs state structure */
 
 #define NB_YANK_BUFFERS 10
@@ -1246,7 +1248,7 @@ CmdDef *qe_find_cmd(const char *cmd_name);
 typedef struct TextFragment {
     unsigned short embedding_level;
     short width; /* fragment width */
-    short ascent; 
+    short ascent;
     short descent;
     short style;      /* style index */
     short line_index; /* index in line_buf */
@@ -1276,17 +1278,17 @@ typedef struct DisplayState {
     int cur_hex_mode; /* true if current char is in hex mode */
     int hex_mode; /* hex mode from edit_state, -1 if all chars wanted */
     void *cursor_opaque;
-    int (*cursor_func)(struct DisplayState *, 
+    int (*cursor_func)(struct DisplayState *,
                        int offset1, int offset2, int line_num,
                        int x, int y, int w, int h, int hex_mode);
     int eod; /* end of display requested */
     /* if base == RTL, then all x are equivalent to width - x */
-    DirType base; 
+    DirType base;
     int embedding_level_max;
     int wrap;
     int eol_reached;
     EditState *edit_state;
-    
+
     /* fragment buffers */
     TextFragment fragments[MAX_SCREEN_WIDTH];
     int nb_fragments;
@@ -1294,9 +1296,9 @@ typedef struct DisplayState {
     int word_index;      /* fragment index of the start of the current
                             word */
     /* line char (in fact glyph) buffer */
-    unsigned int line_chars[MAX_SCREEN_WIDTH]; 
+    unsigned int line_chars[MAX_SCREEN_WIDTH];
     short line_char_widths[MAX_SCREEN_WIDTH];
-    int line_offsets[MAX_SCREEN_WIDTH][2]; 
+    int line_offsets[MAX_SCREEN_WIDTH][2];
     unsigned char line_hex_mode[MAX_SCREEN_WIDTH];
     int line_index;
 
@@ -1351,13 +1353,13 @@ static inline void set_color1(unsigned int *p, int style) {
 
 typedef struct InputMethod {
     const char *name;
-    /* input match returns: 
+    /* input match returns:
        n > 0: number of code points in replacement found for a sequence
        of keystrokes in buf.  number of keystrokes in match was stored
        in '*match_len_ptr'.
-       INPUTMETHOD_NOMATCH if no match was found 
+       INPUTMETHOD_NOMATCH if no match was found
        INPUTMETHOD_MORECHARS if more chars need to be typed to find
-         a suitable completion 
+         a suitable completion
      */
     int (*input_match)(int *match_buf, int match_buf_size,
                        int *match_len_ptr, const u8 *data,
@@ -1405,7 +1407,7 @@ void register_completion(const char *name, CompletionFunc completion_func);
 //void vput_status(EditState *s, const char *fmt, va_list ap);
 void put_status(EditState *s, const char *fmt, ...) __attr_printf(2,3);
 void put_error(EditState *s, const char *fmt, ...) __attr_printf(2,3);
-void minibuffer_edit(const char *input, const char *prompt, 
+void minibuffer_edit(const char *input, const char *prompt,
                      StringArray *hist, CompletionFunc completion_func,
                      void (*cb)(void *opaque, char *buf), void *opaque);
 void command_completion(StringArray *cs, const char *input);
@@ -1561,7 +1563,7 @@ void do_yank_pop(EditState *s);
 void do_exchange_point_and_mark(EditState *s);
 QECharset *read_charset(EditState *s, const char *charset_str);
 void do_set_buffer_file_coding_system(EditState *s, const char *charset_str);
-void do_convert_buffer_file_coding_system(EditState *s, 
+void do_convert_buffer_file_coding_system(EditState *s,
     const char *charset_str);
 void do_toggle_bidir(EditState *s);
 void do_toggle_line_numbers(EditState *s);
@@ -1576,11 +1578,11 @@ void display_window_borders(EditState *e);
 QEStyleDef *find_style(const char *name);
 void style_completion(StringArray *cs, const char *input);
 void do_define_color(EditState *e, const char *name, const char *value);
-void do_set_style(EditState *e, const char *stylestr, 
+void do_set_style(EditState *e, const char *stylestr,
                   const char *propstr, const char *value);
 void do_set_display_size(EditState *s, int w, int h);
 void do_toggle_mode_line(EditState *s);
-void do_set_system_font(EditState *s, const char *qe_font_name, 
+void do_set_system_font(EditState *s, const char *qe_font_name,
                         const char *system_fonts);
 void call_func(CmdSig sig, CmdProto func, int nb_args, CmdArg *args,
                unsigned char *args_type);
@@ -1608,7 +1610,7 @@ void do_find_alternate_file(EditState *s, const char *filename);
 void do_load_file_from_path(EditState *s, const char *filename);
 void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile);
-int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size, 
+int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
               int flags, CSSAbortFunc *abort_func, void *abort_opaque);
 int search_abort_func(void *opaque);
 void do_doctor(EditState *s);
@@ -1643,7 +1645,7 @@ void get_style(EditState *e, QEStyleDef *style, int style_index);
 void do_dired(EditState *s);
 
 /* c_mode.c */
-void c_colorize_line(unsigned int *buf, int len, 
+void c_colorize_line(unsigned int *buf, int len,
                      int *colorize_state_ptr, int state_only);
 
 /* xml.c */
@@ -1653,7 +1655,7 @@ int xml_mode_probe(ModeProbeData *p1);
 
 extern ModeDef html_mode;
 
-int gxml_mode_init(EditState *s, 
+int gxml_mode_init(EditState *s,
                    ModeSavedData *saved_data,
                    int is_html, const char *default_stylesheet);
 

@@ -96,7 +96,7 @@ static int css_get_length(int *length_ptr, int *unit_ptr, const char *p)
             break;
         case CSS_UNIT_PERCENT:
             if (f < 0) {
-		/* CG: ain't wrong ? */
+                /* CG: ain't wrong ? */
                 if (f >= 100)
                     return -1;
                 f = 100 - f;
@@ -172,8 +172,8 @@ static char *css_parse_string(const char **pp)
             c = *p++;
             if (c == 'A') {
                 c = CSS_CONTENT_EOL;
-            } 
-            /* XXX: hex digits */ 
+            }
+            /* XXX: hex digits */
         }
         if ((q - buf) < (int)sizeof(buf) - 1)
             *q++ = c;
@@ -185,8 +185,8 @@ static char *css_parse_string(const char **pp)
 }
 
 /* add a given number of values */
-void css_add_prop_values(CSSProperty ***last_prop, 
-                         int property_index, 
+void css_add_prop_values(CSSProperty ***last_prop,
+                         int property_index,
                          int nb_values, CSSPropertyValue *val_ptr)
 {
     CSSProperty *prop;
@@ -199,18 +199,18 @@ void css_add_prop_values(CSSProperty ***last_prop,
     prop->next = NULL;
     prop->nb_values = nb_values;
     memcpy(&prop->value, val_ptr, nb_values * sizeof(CSSPropertyValue));
-    
+
     **last_prop = prop;
     *last_prop = &prop->next;
 }
 
-void css_add_prop(CSSProperty ***last_prop, 
+void css_add_prop(CSSProperty ***last_prop,
                   int property_index, CSSPropertyValue *val_ptr)
 {
     css_add_prop_values(last_prop, property_index, 1, val_ptr);
 }
 
-void css_add_prop_unit(CSSProperty ***last_prop, 
+void css_add_prop_unit(CSSProperty ***last_prop,
                        int property_index, int type, int val)
 {
     CSSPropertyValue value;
@@ -219,15 +219,15 @@ void css_add_prop_unit(CSSProperty ***last_prop,
     css_add_prop(last_prop, property_index, &value);
 }
 
-void css_add_prop_int(CSSProperty ***last_prop, 
+void css_add_prop_int(CSSProperty ***last_prop,
                       int property_index, int val)
 {
     css_add_prop_unit(last_prop, property_index, CSS_UNIT_NONE, val);
 }
 
-static const char border_style_enum[] = 
+static const char border_style_enum[] =
 "none,hidden,dotted,dashed,solid,double,groove,ridge,inset,outset";
-static const char list_style_enum[] = 
+static const char list_style_enum[] =
 "disc,circle,square,decimal,lower-alpha,upper-alpha,lower-roman,upper-roman,none";
 
 #define MAX_ARGS 32
@@ -251,7 +251,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
     p = props_str;
     for (;;) {
         get_str(&p, property, sizeof(property), ":");
-        if (*p == '\0') 
+        if (*p == '\0')
             break;
         if (*p == ':')
             p++;
@@ -286,7 +286,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
             if (nb_args >= 2 &&
                 !(type & (CSS_TYPE_FOUR|CSS_TYPE_ARGS)))
                 break;
-            if (nb_args >= 4 && 
+            if (nb_args >= 4 &&
                 (!type & CSS_TYPE_ARGS))
                 break;
             if (nb_args >= MAX_ARGS)
@@ -401,7 +401,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
                     goto got_val;
                 }
             }
-            css_error1(b, "unrecognized value '%s' for property '%s'", 
+            css_error1(b, "unrecognized value '%s' for property '%s'",
                        buf, def->name);
             goto next;
         got_val:
@@ -431,20 +431,20 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
             case CSS_border_right:
             case CSS_border_bottom:
                 if (unit == CSS_VALUE_COLOR) {
-                    property_index1 = property_index + 
+                    property_index1 = property_index +
                         CSS_border_color - CSS_border;
                 } else if (unit == CSS_UNIT_NONE) {
-                    property_index1 = property_index + 
+                    property_index1 = property_index +
                         CSS_border_style - CSS_border;
                 } else {
-                    property_index1 = property_index + 
+                    property_index1 = property_index +
                         CSS_border_width - CSS_border;
                 }
                 args[0].type = unit;
                 args[0].u.val = val;
                 if (property_index == CSS_border) {
-                    for (i = 0; i < 4; i++) 
-                        css_add_prop(&last_prop, property_index1 + 1 + i, 
+                    for (i = 0; i < 4; i++)
+                        css_add_prop(&last_prop, property_index1 + 1 + i,
                                      &args[0]);
                 } else {
                         css_add_prop(&last_prop, property_index1, &args[0]);
@@ -496,12 +496,12 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
                 args[0] = v4;
                 break;
             }
-            for (i = 0; i < 4; i++) 
+            for (i = 0; i < 4; i++)
                 css_add_prop(&last_prop, property_index + 1 + i, &args[i]);
         } else if (type & CSS_TYPE_TWO) {
             if (nb_args == 1)
                 args[1] = args[0];
-            for (i = 0; i < 2; i++) 
+            for (i = 0; i < 2; i++)
                 css_add_prop(&last_prop, property_index + 1 + i, &args[i]);
         } else if (type & CSS_TYPE_ARGS) {
             /* unbounded number of args */
@@ -555,7 +555,7 @@ void css_dump_properties(CSSProperty *prop)
                         const char *p, *p1;
                         int i, len;
                         char buf[100];
-                        
+
                         if (def->type & CSS_TYPE_BORDER_STYLE)
                             p = border_style_enum;
                         else
@@ -589,8 +589,8 @@ void css_dump_properties(CSSProperty *prop)
                     printf("attr(%s)", css_ident_str(value->u.attr_id));
                     break;
                 case CSS_VALUE_COUNTER:
-                    printf("counter(%s,%d)", 
-                           css_ident_str(value->u.counter.counter_id), 
+                    printf("counter(%s,%d)",
+                           css_ident_str(value->u.counter.counter_id),
                            value->u.counter.type);
                     break;
                 case CSS_VALUE_INTEGER:
@@ -644,7 +644,7 @@ void css_free_style_sheet(CSSStyleSheet *s)
 
     for (e = s->first_entry; e != NULL; e = e1) {
         e1 = e->next;
-        
+
         for (ss = e->sel.next; ss != NULL; ss = ss1) {
             ss1 = ss->next;
             free_selector(ss);
@@ -658,7 +658,7 @@ void css_free_style_sheet(CSSStyleSheet *s)
         }
         qe_free(&e);
     }
-    
+
     qe_free(&s);
 }
 
@@ -719,7 +719,7 @@ static void read_string(CSSParseState *b, int *ch_ptr, char *ident, int ident_si
     }
     *q = '\0';
     ch = bgetc(b);
-    *ch_ptr = ch;    
+    *ch_ptr = ch;
 }
 
 static void read_ident(CSSParseState *b, int *ch_ptr, char *ident, int ident_size)
@@ -754,7 +754,7 @@ void add_attribute(CSSStyleSheetAttributeEntry ***last_attr,
                    CSSIdent attr, int op, const char *value)
 {
     CSSStyleSheetAttributeEntry *ae;
-    
+
     ae = qe_malloc_hack(CSSStyleSheetAttributeEntry, strlen(value));
     ae->attr = attr;
     ae->op = op;
@@ -771,14 +771,14 @@ CSSStyleSheetEntry *add_style_entry(CSSStyleSheet *s,
                                     int media)
 {
     CSSStyleSheetEntry *e, **pp;
-    
+
     /* add the style sheet entry */
     e = qe_mallocz(CSSStyleSheetEntry);
     if (!e)
         return NULL;
     e->sel = *ss;
     e->media = media;
-    
+
     /* add in entry list */
     *s->plast_entry = e;
     s->plast_entry = &e->next;
@@ -829,7 +829,7 @@ void css_merge_style_sheet(CSSStyleSheet *s, CSSStyleSheet *a)
         /* add selector */
         dup_selector(&ss2, &e->sel);
         e1 = add_style_entry(s, &ss2, e->media);
-        
+
         /* add selector operations */
         pss = &e1->sel.next;
         for (ss = e->sel.next; ss != NULL; ss = ss->next) {
@@ -869,7 +869,7 @@ static void parse_simple_selector(CSSSimpleSelector *ss, CSSParseState *b,
     CSSStyleSheetAttributeEntry *first_attr, **last_attr;
 
     ch = *ch_ptr;
-    
+
     /* read the tag */
     first_attr = NULL;
     last_attr = &first_attr;
@@ -970,7 +970,7 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
     CSSStyleSheetEntry *e, **first_eprops;
     CSSSimpleSelector ss2, *ss = &ss2, *last_ss, *ss1;
     CSSProperty *props;
-    
+
     ch = bgetc(b);
     media = CSS_MEDIA_ALL;
     for (;;) {
@@ -1000,7 +1000,7 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
                     bskip_spaces(b, &ch);
                     read_ident(b, &ch, tag, sizeof(tag));
                     val = css_get_enum(tag, "tty,screen,print,tv,speech,all");
-                    if (val < 0 || val == 5) 
+                    if (val < 0 || val == 5)
                         media = CSS_MEDIA_ALL;
                     else
                         media |= (1 << val);
@@ -1035,7 +1035,7 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
             ch = bgetc(b);
             goto redo;
         }
-                
+
         /* parse a selector list */
         for (;;) {
             /* parse simple selectors with operations */
@@ -1091,7 +1091,7 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
             ch = bgetc(b);
         }
         *q = '\0';
-        
+
         if (ch == '}')
             ch = bgetc(b);
 

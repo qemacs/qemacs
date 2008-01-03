@@ -99,7 +99,7 @@ enum CSSProperties {
     CSS_border_top,
     CSS_border_right,
     CSS_border_bottom,
-    
+
     CSS_padding,
     CSS_padding_left,
     CSS_padding_top,
@@ -206,7 +206,7 @@ typedef struct CSSPropertyDef {
 #define CSS_TYPE_LENGTH        0x00000001
 #define CSS_TYPE_COLOR         0x00000002
 #define CSS_TYPE_ENUM          0x00000004
-#define CSS_TYPE_BORDER_STYLE  0x00000008  
+#define CSS_TYPE_BORDER_STYLE  0x00000008
 #define CSS_TYPE_FONT_FAMILY   0x00000010
 #define CSS_TYPE_BORDER_ENUM   0x00000020
 #define CSS_TYPE_STRING        0x00000040
@@ -302,7 +302,7 @@ typedef struct CSSProperty {
     unsigned short property;
     unsigned short nb_values;
     struct CSSProperty *next; /* may change: use array ? */
-    CSSPropertyValue value;   /* in fact an array, but need 
+    CSSPropertyValue value;   /* in fact an array, but need
                                  to change all the types */
 } CSSProperty;
 
@@ -355,9 +355,9 @@ struct CSSBox {
     /* next inline box in an inline formatting context. Only used
        during bidi pass, so we could put this field in another field
        to save space */
-    struct CSSBox *next_inline; 
+    struct CSSBox *next_inline;
     /* parent box */
-    struct CSSBox *parent; 
+    struct CSSBox *parent;
     union {
         struct {
             struct CSSBox *last;  /* used only when building the tree */
@@ -500,14 +500,14 @@ void css_dump_style_sheet(CSSStyleSheet *s);
 void css_merge_style_sheet(CSSStyleSheet *s, CSSStyleSheet *a);
 
 CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str);
-void css_add_prop_values(CSSProperty ***last_prop, 
-                         int property_index, 
+void css_add_prop_values(CSSProperty ***last_prop,
+                         int property_index,
                          int nb_values, CSSPropertyValue *val_ptr);
-void css_add_prop(CSSProperty ***last_prop, 
+void css_add_prop(CSSProperty ***last_prop,
                   int property_index, CSSPropertyValue *val_ptr);
-void css_add_prop_unit(CSSProperty ***last_prop, 
+void css_add_prop_unit(CSSProperty ***last_prop,
                        int property_index, int type, int val);
-void css_add_prop_int(CSSProperty ***last_prop, 
+void css_add_prop_int(CSSProperty ***last_prop,
                       int property_index, int val);
 CSSStyleSheetEntry *add_style_entry(CSSStyleSheet *s,
                                     CSSSimpleSelector *ss,
@@ -537,7 +537,7 @@ typedef struct CSSContext {
     int selection_bgcolor;
     int selection_fgcolor;
     int default_bgcolor;
-    
+
     /* edit buffer */
     EditBuffer *b;
     /* selection handling */
@@ -557,7 +557,7 @@ typedef struct CSSContext {
     CSSCounterValue *counter_stack_base;
 
     /* css attributes for the boxes are shared here */
-    CSSState *hash_props[PROPS_HASH_SIZE]; 
+    CSSState *hash_props[PROPS_HASH_SIZE];
 } CSSContext;
 
 /* document managing */
@@ -571,21 +571,21 @@ void css_delete_document(CSSContext *s);
 int css_compute(CSSContext *s, CSSBox *box);
 int css_layout(CSSContext *s, CSSBox *box, int width,
                CSSAbortFunc *abort_func, void *abort_opaque);
-void css_display(CSSContext *s, CSSBox *box, 
+void css_display(CSSContext *s, CSSBox *box,
                  CSSRect *clip_box, int dx, int dy);
 
 /* cursor/edition handling */
 int box_get_text(CSSContext *s,
-                 unsigned int *line_buf, int max_size, 
+                 unsigned int *line_buf, int max_size,
                  int *offsets, CSSBox *box);
-int css_get_cursor_pos(CSSContext *s, CSSBox *box, 
+int css_get_cursor_pos(CSSContext *s, CSSBox *box,
                        CSSBox **box_ptr, int *x0_ptr, int *y0_ptr,
-                       CSSRect *cursor_ptr, int *dir_ptr, 
+                       CSSRect *cursor_ptr, int *dir_ptr,
                        int offset);
 int css_get_offset_pos(CSSContext *s, CSSBox *box, int xc, int dir);
 
 typedef int (*CSSIterateFunc)(void *opaque, CSSBox *box, int x0, int y0);
-int css_box_iterate(CSSContext *s, CSSBox *box, void *opaque, 
+int css_box_iterate(CSSContext *s, CSSBox *box, void *opaque,
                     CSSIterateFunc iterate_func);
 
 
@@ -614,12 +614,12 @@ typedef struct XMLState XMLState;
 #define XML_HTML_SYNTAX 0x0008 /* modify xml parser to accept HTML syntax */
 
 XMLState *xml_begin(CSSStyleSheet *style_sheet, int flags,
-                    CSSAbortFunc *abort_func, void *abort_opaque, 
+                    CSSAbortFunc *abort_func, void *abort_opaque,
                     const char *filename, QECharset *charset);
 int xml_parse(XMLState *s, char *buf, int buf_len);
 CSSBox *xml_end(XMLState *s);
 
-CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end, 
+CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end,
                          CSSStyleSheet *style_sheet, int flags,
                          CSSAbortFunc *abort_func, void *abort_opaque);
 int find_entity(const char *str);

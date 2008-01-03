@@ -29,7 +29,7 @@ static ModeDef latex_mode;
 /* TODO: add state handling to allow colorization of elements longer
  * than one line (eg, multi-line functions and strings)
  */
-static void latex_colorize_line(unsigned int *buf, __unused__ int len, 
+static void latex_colorize_line(unsigned int *buf, __unused__ int len,
                                 int *colorize_state_ptr,
                                 __unused__ int state_only)
 {
@@ -110,7 +110,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
         case '%':
             p++;
             /* line comment */
-            while (*p != '\n') 
+            while (*p != '\n')
                 p++;
             set_color(p_start, p, QE_STYLE_COMMENT);
             break;
@@ -305,7 +305,7 @@ static void do_latex(EditState *e, const char *cmd)
             char prompt[128];
             snprintf(prompt, sizeof(prompt), "%s command: ", func->name);
             minibuffer_edit(buf, prompt, &func->history,
-                            NULL /* completion */, 
+                            NULL /* completion */,
                             latex_cmd_run, func);
         } else {
             latex_cmd_run(func, buf);

@@ -25,7 +25,7 @@ include 8859-4.TXT
 
 [8859-5]
 ISO 8859-5 (Cyrillic)
-"ISO-8859-5", "8859-5" 
+"ISO-8859-5", "8859-5"
 include 8859-5.TXT
 
 [8859-6]
@@ -45,7 +45,7 @@ include 8859-8.TXT
 
 [8859-9]
 ISO 8859-9 (Turkish)
-"ISO-8859-9", "8859-9" 
+"ISO-8859-9", "8859-9"
 include 8859-9.TXT
 
 [8859-10]
@@ -248,14 +248,14 @@ MacRoman 2000
 "x-mac", "mac", "mac-roman"
 include MAC-ROMAN.TXT
 # Some differences in encoding are listed below
-#0xBD	0x2126	#OHM SIGN
-0xBD	0x03A9	#GREEK CAPITAL LETTER OMEGA
-#0xC6	0x2206	#INCREMENT
-0xC6	0x0394	#GREEK CAPITAL LETTER DELTA
-#0xDB	0x00A4	#CURRENCY SIGN
-0xDB	0x20AC	#SYMBOLE EURO
-#0xF0		#UNDEFINED
-0xF0	0xF8FF	#Mac Logo (in Private Use Area)
+#0xBD   0x2126  #OHM SIGN
+0xBD    0x03A9  #GREEK CAPITAL LETTER OMEGA
+#0xC6   0x2206  #INCREMENT
+0xC6    0x0394  #GREEK CAPITAL LETTER DELTA
+#0xDB   0x00A4  #CURRENCY SIGN
+0xDB    0x20AC  #SYMBOLE EURO
+#0xF0           #UNDEFINED
+0xF0    0xF8FF  #Mac Logo (in Private Use Area)
 
 [mac-latin2]
 Mac latin 2

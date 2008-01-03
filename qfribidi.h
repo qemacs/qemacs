@@ -1,8 +1,8 @@
 /* FriBidi - Library of BiDi algorithm
  * Copyright (C) 1999 Dov Grobgeld
- * 
+ *
  * The optimizations to reduce the code size from 13 KB to 3 KB and
- * the embed/override hack handling are 
+ * the embed/override hack handling are
  * Copyright (C) 2000 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or

@@ -73,13 +73,13 @@ static void cfb16_fill_rectangle(QEditScreen *s,
         for (y = 0; y < h; y++) {
             d = dest;
             n = w;
-            
+
             if (((int)d & 3) != 0) {
                 ((short *)d)[0] = col;
                 d += 2;
                 n--;
             }
-            
+
             while (n >= 8) {
                 ((int *)d)[0] = col;
                 ((int *)d)[1] = col;
@@ -255,11 +255,11 @@ static void cfb_draw_text(QEditScreen *s, QEFont *font,
         if (x1 >= s->clip_x1 && y1 >= s->clip_y1 &&
             x2 <= s->clip_x2 && y2 <= s->clip_y2)
             goto draw;
-        
+
         if (x2 <= s->clip_x1 || y2 <= s->clip_y1 ||
             x1 >= s->clip_x2 || y1 >= s->clip_y2)
             goto nodraw;
-        
+
         if (x1 < s->clip_x1) {
             glyph_ptr += s->clip_x1 - x1;
             x1 = s->clip_x1;
@@ -273,8 +273,8 @@ static void cfb_draw_text(QEditScreen *s, QEFont *font,
         if (y2 > s->clip_y2)
             y2 = s->clip_y2;
     draw:
-        cfb->draw_glyph(s, x1, y1, 
-                        x2 - x1, y2 - y1, 
+        cfb->draw_glyph(s, x1, y1,
+                        x2 - x1, y2 - y1,
                         color, glyph_ptr, wrap);
     nodraw:
         x += g->xincr;
@@ -305,7 +305,7 @@ static void cfb_set_clip(__unused__ QEditScreen *s,
 {
 }
 
-int cfb_init(QEditScreen *s, 
+int cfb_init(QEditScreen *s,
              void *base, int wrap, int depth, const char *font_path)
 {
     CFBContext *cfb = s->private;
@@ -314,7 +314,7 @@ int cfb_init(QEditScreen *s,
     cfb->wrap = wrap;
     cfb->depth = depth;
     cfb->bpp = (depth + 7) / 8;
-    
+
     switch (depth) {
     case 15:
         cfb->get_color = cfb15_get_color;
@@ -347,6 +347,6 @@ int cfb_init(QEditScreen *s,
     s->dpy.dpy_text_metrics = fbf_text_metrics;
     s->dpy.dpy_open_font = fbf_open_font;
     s->dpy.dpy_close_font = fbf_close_font;
-    
+
     return fbf_render_init(font_path);
 }

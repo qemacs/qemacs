@@ -1,6 +1,6 @@
 /*
  * fbfrender - FBF font cache and renderer
- * 
+ *
  * Copyright (c) 2001, 2002 Fabrice Bellard
  *
  * This library is free software; you can redistribute it and/or
@@ -38,7 +38,7 @@ typedef struct GlyphCache {
     unsigned char data[0];
 } GlyphCache;
 
-void fbf_text_metrics(QEditScreen *s, QEFont *font, 
+void fbf_text_metrics(QEditScreen *s, QEFont *font,
                       QECharMetrics *metrics,
                       const unsigned int *str, int len);
 GlyphCache *decode_cached_glyph(QEditScreen *s, QEFont *font, int code);

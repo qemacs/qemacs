@@ -41,7 +41,7 @@ typedef struct QEEventQ {
     QEEvent ev;
     struct QEEventQ *next;
 } QEEventQ;
- 
+
 QEEventQ *first_event, *last_event;
 WinWindow win_ctx;
 
@@ -49,7 +49,7 @@ WinWindow win_ctx;
 
 /* the main is there. We simulate a unix command line by parsing the
    windows command line */
-int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, 
+int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst,
                    LPSTR lpszCmdLine, int nCmdShow)
 {
     char **argv;
@@ -116,7 +116,7 @@ static int win_probe(void)
 static void init_application(void)
 {
     WNDCLASS wc;
-    
+
     wc.style = 0;
     wc.lpfnWndProc = qe_wnd_proc;
     wc.cbClsExtra = 0;
@@ -127,7 +127,7 @@ static void init_application(void)
     wc.hbrBackground = NULL;
     wc.lpszMenuName = NULL;
     wc.lpszClassName = "qemacs";
-    
+
     RegisterClass(&wc);
 }
 
@@ -137,16 +137,16 @@ static int win_init(QEditScreen *s, int w, int h)
     TEXTMETRIC tm;
     HDC hdc;
     HWND desktop_hwnd;
-    
-    if (!_hPrev) 
+
+    if (!_hPrev)
         init_application();
 
     memcpy(&s->dpy, &win32_dpy, sizeof(QEDisplay));
 
     s->private = NULL;
     s->media = CSS_MEDIA_SCREEN;
-    
-    win_ctx.font = CreateFont(-12, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0, 
+
+    win_ctx.font = CreateFont(-12, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0,
                               FIXED_PITCH, "fixed");
 
     /* get font metric for window size */
@@ -171,7 +171,7 @@ static int win_init(QEditScreen *s, int w, int h)
     s->clip_x2 = s->width;
     s->clip_y2 = s->height;
 
-    win_ctx.w = CreateWindow("qemacs", "qemacs", WS_OVERLAPPEDWINDOW, 
+    win_ctx.w = CreateWindow("qemacs", "qemacs", WS_OVERLAPPEDWINDOW,
                              0, 0, xsize, ysize, NULL, NULL, _hInstance, NULL);
 
     win_ctx.hdc = GetDC(win_ctx.w);
@@ -181,7 +181,7 @@ static int win_init(QEditScreen *s, int w, int h)
 
     ShowWindow(win_ctx.w, SW_SHOW);
     UpdateWindow(win_ctx.w);
-    
+
     return 0;
 }
 
@@ -205,7 +205,7 @@ static int win_is_user_input_pending(QEditScreen *s)
 static void push_event(QEEvent *ev)
 {
     QEEventQ *e;
-    
+
     e = qe_malloc(QEEventQ);
     if (!e)
         return;
@@ -236,7 +236,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         /* NOTE: must store them here to avoid problems in main */
         win_ctx.w = hWnd;
         return 0;
-        
+
         /* key handling */
     case WM_CHAR:
         if (!ignore_wchar_msg) {
@@ -276,7 +276,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 break;
             case 0x039: /* space */
                 ignore_wchar_msg = 1;
-                if (!ctrl) 
+                if (!ctrl)
                     push_key(KEY_SPC);
                 else
                     push_key(KEY_CTRL('@'));
@@ -350,7 +350,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             case 0x58:                 /* F12 */
                 push_key(KEY_F12);
                 break;
-            default: 
+            default:
                 return DefWindowProc(hWnd, msg, wParam, lParam);
             }
         }
@@ -359,7 +359,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_KEYUP:
         ignore_wchar_msg = 0;
         break;
-          
+
     case WM_SYSKEYUP:
         ignore_wchar_msg = 0;
         return DefWindowProc(hWnd, msg, wParam, lParam);
@@ -384,7 +384,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             win_ctx.hdc = ps.hdc;
             SelectObject(win_ctx.hdc, win_ctx.font);
             do_refresh(NULL);
-            
+
             EndPaint(win_ctx.w, &ps);
             win_ctx.hdc = saved_hdc;
         }
@@ -464,7 +464,7 @@ static void win_close_font(QEditScreen *s, QEFont *font)
     qe_free(&font);
 }
 
-static void win_text_metrics(QEditScreen *s, QEFont *font, 
+static void win_text_metrics(QEditScreen *s, QEFont *font,
                              QECharMetrics *metrics,
                              const unsigned int *str, int len)
 {

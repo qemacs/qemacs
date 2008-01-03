@@ -88,7 +88,7 @@ void set_write_handler(int fd, void (*cb)(void *opaque), void *opaque)
 /* register a callback which is called when process 'pid'
    terminates. When the callback is set to NULL, it is deleted */
 /* XXX: add consistency check ? */
-int set_pid_handler(int pid, 
+int set_pid_handler(int pid,
                     void (*cb)(void *opaque, int status), void *opaque)
 {
     PidHandler *p;
@@ -114,7 +114,7 @@ int set_pid_handler(int pid,
 }
 
 /*
- * add an explicit call back to avoid recursions 
+ * add an explicit call back to avoid recursions
  */
 void register_bottom_half(void (*cb)(void *opaque), void *opaque)
 {
@@ -243,7 +243,7 @@ static void url_block(void)
 #if 0
     {
         static int count;
-        
+
         printf("%5d: delay=%d\n", count++, delay);
     }
 #endif
@@ -269,7 +269,7 @@ static void url_block(void)
             uh++;
         }
     }
-    
+
     /* handle terminated children */
     for (;;) {
         if (list_empty(&pid_handlers))

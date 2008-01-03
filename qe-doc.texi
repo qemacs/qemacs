@@ -21,7 +21,7 @@ UNIX editor. It has features that even big editors lack :
 @item Can edit files of hundreds of Megabytes without being slow by using
   a highly optimized internal representation and by mmaping the file.
 
-@item Full @emph{Unicode} support, including multi charset handling 
+@item Full @emph{Unicode} support, including multi charset handling
   (8859-x, UTF8, SJIS, EUC-JP, ...) and bidirectional editing respecting
   the Unicode bidi algorithm. Arabic and Indic scripts handling (in
   progress).
@@ -34,10 +34,10 @@ rendering on VT100 terminals.
 @item C mode: coloring with immediate update. Emacs like auto-indent.
 
 @item Shell mode: colorized VT100 emulation so that your shell work
-  exactly as you expect. Compile mode with next/prev error. 
+  exactly as you expect. Compile mode with next/prev error.
 
 @item Input methods for most languages, including Chinese (input methods
-  come from the Yudit editor). 
+  come from the Yudit editor).
 
 @item @emph{Hexadecimal editing} mode with insertion and block commands. Unicode
   hexa editing is also supported.
@@ -49,7 +49,7 @@ rendering on VT100 terminals.
   (as XEmacs). X Input methods supported. Xft extension supported for
   anti aliased font display.
 
-@item 
+@item
   Small! Full version (including HTML/XML/CSS2/DocBook rendering and all
   charsets): 270KB big. Basic version (without bidir/unicode
   scripts/input/X11/C/Shell/HTML/dired): 88KB.
@@ -59,7 +59,7 @@ rendering on VT100 terminals.
 @chapter Invocation
 
 @example
-usage: qe [-h] [-nw] [-display display] [-geometry WxH] 
+usage: qe [-h] [-nw] [-display display] [-geometry WxH]
           [-fs ptsize] [filename...]
 @end example
 
@@ -84,7 +84,7 @@ set default font size
 
 When invoked as
 @example
-usage: ffplay 
+usage: ffplay
 @end example
 
 QEmacs goes to @code{dired} mode automatically so that you can browse your
@@ -280,7 +280,7 @@ All resources and configuration files are looked in the following paths:
 
 QEmacs tries to load a configuration file in @file{~/.qe/config}. Each
 line of the configuration file is a QEmacs command with a C like syntax
-('-' in command name can be replaced by '_'). 
+('-' in command name can be replaced by '_').
 
 Read the example file @file{config.eg} to have some examples.
 
@@ -308,7 +308,7 @@ common style names)
 
 Any @file{.so} file found in the qemacs resource paths is considered as
 a @dfn{plugin}. It is a piece of code containing new features for
-qemacs. 
+qemacs.
 
 Currently, no plugins are compiled in, but you can look at the
 @file{plugin-example/} directory to learn how to make one.
@@ -325,12 +325,12 @@ QEmacs supports many common charsets including UTF8, shift JIS and EUC-JP. A
 charset can be selected for each buffer with @kbd{C-x RET f}
 (@code{set-buffer-file-coding-system}).
 
-Currently, QEmacs automatically detects the UTF8 encoding. 
+Currently, QEmacs automatically detects the UTF8 encoding.
 
 Note that unlike in other editors, changing the charset of a buffer
 does not modify its content: buffers always contain bytes, and the charset
 is only used when the buffer content may be converted to characters, for
-example to display it on screen.  
+example to display it on screen.
 
 You can use the UniHex editing mode (@kbd{M-x unihex-mode}) to see the
 Unicode values of each character in your file with the associated byte
@@ -343,14 +343,14 @@ convert the buffer @emph{content} to another charset.
 
 The current input method can be changed with @kbd{C-x RET \}
 (@code{set-input-method}). You can switch between this input method and
-the default one with 'C-\'. 
+the default one with 'C-\'.
 
 The input methods are currently stored in the resource file @file{kmaps}.
 They are extracted from the @emph{Yudit} editor keyboard maps.
 
 @section Bidirectional editing
 
-QEmacs fully supports the Unicode bidi algorithm. 
+QEmacs fully supports the Unicode bidi algorithm.
 
 By default, in text editing mode, qemacs is not in bidirectional mode (it
 may change soon). You can use 'C-x RET b' to toogle between bidi and normal
@@ -362,7 +362,7 @@ properties are supported.
 @section Unicode scripts
 
 Currently, QEmacs fully supports Arabic shapping. Devanagari shaping is on
-the way. 
+the way.
 
 The resource file @file{ligatures} contains all the standard Unicode rules
 to handle character modifiers such as accents. It means that even if your
@@ -380,7 +380,7 @@ activated automatically when a C file is loaded.
 
 
 Unlike other editors, QEmacs has powerful hexadecimal editing modes: all
-common commands are working these modes, including the block commands. 
+common commands are working these modes, including the block commands.
 
 The hexadecimal mode (@kbd{M-x hex-mode}) shows both the hexa decimal
 and ascii (bytes) values. You can toggle between the hexa and ascii columns
@@ -581,7 +581,7 @@ The following properties are partially (see comments) or totally supported:
 
 @item column-span: QEmacs extension
 @item row-span: QEmacs extension
-@item content-alt: QEmacs extension. Same behavior as property 'content' but used for images 
+@item content-alt: QEmacs extension. Same behavior as property 'content' but used for images
 
 @item list-style-position
 
@@ -734,7 +734,7 @@ data). @kbd{C-x C-d} can be used to have an interactive file viewer.
 Available commands:
 
 @table @kbd
-@item t 
+@item t
 (@samp{M-x image-rotate}) Rotate right image by 90 degrees.
 @item f
 (@samp{M-x toggle-full-screen}) Toggle full screen mode
@@ -748,7 +748,7 @@ color. The background is only visible if the image contains transparent
 pixels. The @samp{transparent} color displayed a @samp{gimp} like grid.
 @end table
 
-Status information: 
+Status information:
 
 @itemize
 @item The image resolution is displayed as @samp{NxM}.
@@ -824,7 +824,7 @@ usually included in the linux distributions. You can find it at
 
 QEmacs knows three basic font families:
 
-@itemize 
+@itemize
 @item @samp{sans} for sans serif fonts.
 @item @samp{serif} for serif fonts.
 @item @samp{fixed} for fixed or monospace fonts.
@@ -873,7 +873,7 @@ Hangul.
 
 @section Invocation
 
-@example 
+@example
 usage: html2png [-h] [-x] [-w width] [-o outfile] [-f charset] infile
 @end example
 

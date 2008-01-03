@@ -1,6 +1,6 @@
 /*
  * libfbf.c - FBF font decoder
- * 
+ *
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard
  *
  * This library is free software; you can redistribute it and/or
@@ -132,7 +132,7 @@ static void fbf_get_str(UniFontData *uf, char *buf, int buf_size)
     int i, len, c;
     char *q;
 
-    len = uf->fbf_getc(uf->infile);  
+    len = uf->fbf_getc(uf->infile);
     q = buf;
     for (i = 0; i < len; i++) {
         c = uf->fbf_getc(uf->infile);
@@ -187,7 +187,7 @@ int fbf_load_font(UniFontData *uf)
 
     /* compressed segments offsets */
 
-    uf->nb_csegs = (uf->nb_glyphs + uf->compressed_segment_size - 1) / 
+    uf->nb_csegs = (uf->nb_glyphs + uf->compressed_segment_size - 1) /
         uf->compressed_segment_size;
     uf->csegs_offsets = uf_malloc(uf, uf->nb_csegs * 2 * sizeof(int));
     if (!uf->csegs_offsets)
@@ -207,7 +207,7 @@ int fbf_load_font(UniFontData *uf)
     if (!uf->seg_table)
         goto fail;
     read_segments(uf);
-    
+
     /* decoding context */
     if (uf->fbf_read(uf->infile, uf->ctx1, sizeof(uf->ctx1)) != sizeof(uf->ctx1))
         goto fail;
@@ -262,11 +262,11 @@ static void init_context_tables(void)
                 freq0 += 2;
             else
                 freq1 += 2;
-            if (freq0 > 31 || freq1 > 31) { 
+            if (freq0 > 31 || freq1 > 31) {
                 freq0 = (freq0 + 1) >> 1;
                 freq1 = (freq1 + 1) >> 1;
             }
-            val = (((freq0 - 1) >> 1) << 4) | 
+            val = (((freq0 - 1) >> 1) << 4) |
                 ((freq1 - 1) >> 1);
             ctx_incr[bit][ctxval] = val;
             //            printf("%d %02x %02x\n", bit, ctxval, val);
@@ -332,7 +332,7 @@ static inline unsigned int decode_ctx(UniFontData *uf, unsigned char *ctx)
     if (shift & 0x40)
         range = range * 3;
     range = range >> (shift & 0x3f);
-    
+
     /* which bit is was encoded ? */
     b = (alow >= range);
     if (b) {
@@ -341,7 +341,7 @@ static inline unsigned int decode_ctx(UniFontData *uf, unsigned char *ctx)
     } else {
         arange = range;
     }
-    
+
     /* increment context */
     b = b ^ (shift >> 7);
     ctx[0] = ctx_incr[b][ctxval];
@@ -408,9 +408,9 @@ static inline int get_ctx(int x, int y, unsigned char *p)
     return v;
 }
 
-static void decode_glyph(UniFontData *uf, 
+static void decode_glyph(UniFontData *uf,
                          unsigned char *ctx1,
-                         unsigned char *ctx_adapt, 
+                         unsigned char *ctx_adapt,
                          unsigned char *outbuf,
                          int w, int h)
 {
@@ -515,11 +515,11 @@ static GlyphSegment *decode_metrics_segment(UniFontData *uf, int segment)
         glyph_end = uf->nb_glyphs;
     nb_glyphs = glyph_end - glyph_start;
 
-    g = uf_malloc(uf, sizeof(GlyphSegment) + 
+    g = uf_malloc(uf, sizeof(GlyphSegment) +
                   (nb_glyphs - 1) * sizeof(GlyphEntry));
     if (!g)
         return NULL;
-    
+
     g->first_glyph = glyph_start;
     g->nb_glyphs = nb_glyphs;
     g->bitmap_table = NULL;
@@ -527,7 +527,7 @@ static GlyphSegment *decode_metrics_segment(UniFontData *uf, int segment)
     uf->fbf_seek(uf->infile, uf->msegs_offsets[segment]);
 
     arith_init(uf);
-    
+
     memset(&metric_ctx, 0, sizeof(metric_ctx));
     for (i = 0; i < nb_glyphs; i++) {
         m = &g->metrics[i];
@@ -552,7 +552,7 @@ static int decode_glyphs_segment(UniFontData *uf, GlyphSegment *g, int segment)
     nb_glyphs = glyph_end - glyph_start;
 
     uf->fbf_seek(uf->infile, uf->csegs_offsets[segment]);
-    
+
     /* allocate bitmap */
     bitmap_size = 0;
     for (i = 0; i < nb_glyphs; i++) {
@@ -586,7 +586,7 @@ static int decode_glyphs_segment(UniFontData *uf, GlyphSegment *g, int segment)
     return 0;
 }
 
-int fbf_decode_glyph(UniFontData *uf, 
+int fbf_decode_glyph(UniFontData *uf,
                      GlyphEntry **glyph_entry_ptr,
                      int index)
 {
@@ -601,8 +601,8 @@ int fbf_decode_glyph(UniFontData *uf,
  redo:
     for (i = 0; i < CSEG_CACHE_SIZE; i++) {
         gseg = uf->cseg_cache[i];
-        if (gseg && 
-            index >= gseg->first_glyph && 
+        if (gseg &&
+            index >= gseg->first_glyph &&
             index < gseg->first_glyph + gseg->nb_glyphs) {
             gseg->use_count++;
             *glyph_entry_ptr = &gseg->metrics[index - gseg->first_glyph];
@@ -632,7 +632,7 @@ int fbf_decode_glyph(UniFontData *uf,
         uf_free(uf, gseg);
         *pgseg = NULL;
     }
-    
+
     /* create a glyph segment and decode only its metrics */
     segment = index / uf->compressed_segment_size;
     gseg = decode_metrics_segment(uf, segment);
@@ -658,7 +658,7 @@ int fbf_unicode_to_glyph(UniFontData *uf, int code)
         /* map to composite glyph area */
         return code - 0xAC00 + uf->nb_glyphs;
     }
-               
+
     start = 0;
     end = uf->nb_segs - 1;
     while (end >= start) {
@@ -812,14 +812,14 @@ static int decode_hangul_glyph(UniFontData *uf,
     glyph_entry->y = 0;
     glyph_entry->xincr = 16;
     wrap = (glyph_entry->w + 7) >> 3;
-    
+
     l = code / (21 * 28);
     m = ((code / 28) % 21) + 1;
     f = code % 28;
-    
+
     /* first glyph */
     ind[0] = lconBase[l] + ((f > 0) ? lconMap2[m] : lconMap1[m]);
-    
+
     /* second glyph */
     ind[1] = vowBase[m];
     if (vowType[m] == 1) {

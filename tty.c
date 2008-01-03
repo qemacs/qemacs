@@ -158,7 +158,7 @@ static int tty_term_init(QEditScreen *s,
     tty.c_cflag |= CS8;
     tty.c_cc[VMIN] = 1;
     tty.c_cc[VTIME] = 0;
-    
+
     tcsetattr(fileno(s->STDIN), TCSANOW, &tty);
 
     /* First switch to full screen mode */
@@ -187,7 +187,7 @@ static int tty_term_init(QEditScreen *s,
     /* CG: Should also have a command line switch */
     if (tty_state.term_code != TERM_CYGWIN) {
         int y, x, n;
-        
+
         /*               ^X  ^Z    ^M   \170101  */
         //printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
         /* Just print utf-8 encoding for eacute and check cursor position */
@@ -277,7 +277,7 @@ static void tty_resize(__unused__ int sig)
     qe_realloc(&ts->screen, size * 2 + 1);
     qe_realloc(&ts->line_updated, s->height);
     ts->screen_size = count;
-    
+
     /* Erase shadow buffer to impossible value */
     memset(ts->screen + count, 0xFF, size);
     /* Fill screen buffer with black spaces */
@@ -311,7 +311,7 @@ static int tty_term_is_user_input_pending(QEditScreen *s)
 {
     fd_set rfds;
     struct timeval tv;
-    
+
     tv.tv_sec = 0;
     tv.tv_usec = 0;
     FD_ZERO(&rfds);
@@ -537,7 +537,7 @@ unsigned int const tty_fg_colors[16] = {
 static int get_tty_color(QEColor color, unsigned int const *colors, int count)
 {
     int i, cmin, dmin, d;
-    
+
     dmin = INT_MAX;
     cmin = 0;
     for (i = 0; i < count; i++) {
@@ -608,7 +608,7 @@ static void tty_term_close_font(__unused__ QEditScreen *s, QEFont *font)
 /*
  * Modified implementation of wcwidth() from Markus Kuhn. We do not
  * handle non spacing and enclosing combining characters and control
- * chars.  
+ * chars.
  */
 
 static int tty_term_glyph_width(__unused__ QEditScreen *s, unsigned int ucs)
@@ -628,7 +628,7 @@ static int tty_term_glyph_width(__unused__ QEditScreen *s, unsigned int ucs)
          (ucs >= 0xffe0 && ucs <= 0xffe6));
 }
 
-static void tty_term_text_metrics(QEditScreen *s, __unused__ QEFont *font, 
+static void tty_term_text_metrics(QEditScreen *s, __unused__ QEFont *font,
                                   QECharMetrics *metrics,
                                   const unsigned int *str, int len)
 {
@@ -641,8 +641,8 @@ static void tty_term_text_metrics(QEditScreen *s, __unused__ QEFont *font,
         x += tty_term_glyph_width(s, str[i]);
     metrics->width = x;
 }
-        
-static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font, 
+
+static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font,
                                int x, int y, const unsigned int *str, int len,
                                QEColor color)
 {
@@ -650,10 +650,10 @@ static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font,
     TTYChar *ptr;
     int fgcolor, w, n;
     unsigned int cc;
-    
+
     if (y < s->clip_y1 || y >= s->clip_y2 || x >= s->clip_x2)
         return;
-    
+
     ts->line_updated[y] = 1;
     fgcolor = get_tty_color(color, tty_fg_colors, countof(tty_fg_colors));
     ptr = ts->screen + y * s->width;
@@ -717,7 +717,7 @@ static void tty_term_flush(QEditScreen *s)
     bgcolor = -1;
     fgcolor = -1;
     shifted = 0;
-            
+
     /* CG: Should optimize output by computing it in a temporary buffer
      * and flushing it in one call to fwrite()
      */

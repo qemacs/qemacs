@@ -4,10 +4,10 @@ About .kmap files
    Mind Tuning: The Unicode theory and Unicode-savvy text editors make
    a clear (and useful) distinction among
 
-	1.  the keyboard key(s) typed
-	2.  the Unicode character(s) entered and stored in a file or
-	    buffer, and 
-	3.  the glyph(s) (i.e. the graphic shapes) that are displayed. 
+        1.  the keyboard key(s) typed
+        2.  the Unicode character(s) entered and stored in a file or
+            buffer, and
+        3.  the glyph(s) (i.e. the graphic shapes) that are displayed.
 
    Rendering: The mapping between the Unicode characters stored in a
    file or buffer and the display of glyphs is handled by a Rendering
@@ -37,9 +37,9 @@ About .kmap files
    example, Yudit comes supplied with three different .kmap files for
    Arabic input:
 
-	Arabic.kmap
-	ArabicTranslit.kmap
-	ArabicKeyboard.kmap
+        Arabic.kmap
+        ArabicTranslit.kmap
+        ArabicKeyboard.kmap
 
    and you might not like any of them.  That's OK, because it is
    fairly simple to write your own .kmap file.
@@ -110,13 +110,13 @@ Writing a New .kmap File
    Input keystroke sequences should be chosen with care to avoid
    ambiguity and clashes; for human convenience, the input sequences
    should also be maximally mnemonic.
-   
+
    The choice of "cx" is a very suitable sequence for Esperanto entry
    of c-with-circumflex because
 
    1.  The letter x is not normally used in Esperanto orthography, and
-   2.  There is already a well-known convention for typing Esperanto 
-       that uses "cx" for c-with-circumflex when the real letter is 
+   2.  There is already a well-known convention for typing Esperanto
+       that uses "cx" for c-with-circumflex when the real letter is
        not available.
 
    However, there are other conventions for typing Esperanto, and some
@@ -268,7 +268,7 @@ More Detail on the Syntax of .kmap Files:
    literal equal sign.  The literal backslash itself is notated \\.
 
    Examples:
-	" s = 0x0633 "       ,  // one to one
+        " s = 0x0633 "       ,  // one to one
         " cx = 0x0109 "      ,  // many to one
         " \= = 0x0109 "      ,  // type a literal equal sign to input 0x0109
         " \\ ~ n = 0x00f1 "  ,  // allow LaTeX-like input of n-with-tilde;
@@ -277,9 +277,9 @@ More Detail on the Syntax of .kmap Files:
                                 // the user types literal \ then literal "
                                 //   then a to input Unicode a-with-dieresis
                                 //   (a with two dots above)
-	" \+u = 0x00FC "     ,  // user types literal + followed by u
-		                // to input 0x00FC, which is u with dieresis 
-				// (two dots above)
+        " \+u = 0x00FC "     ,  // user types literal + followed by u
+                                // to input 0x00FC, which is u with dieresis
+                                // (two dots above)
         " X = 0x0644 0x0627 ",  // one to many
         " 0x32 = 0x0662 "    ,  // type ASCII '2' get ARABIC-INDIC DIGIT 2
 
@@ -314,7 +314,7 @@ More Detail on the Syntax of .kmap Files:
    or using the ASCII value of the plus sign (0x2B)
 
         " 0x2b z = 0x10df " ,
-  
+
 
    Literal white spaces: Whitespace between between characters in a
    kmap entry are normally ignored; this allows you to space out the
@@ -341,7 +341,7 @@ More Detail on the Syntax of .kmap Files:
         "\033 KE=0x30F5",   // SMALL KE
         "\"R=0x201D",       // RIGHT DOUBLE QUOTATION MARK
         "kke=0x3063 0x3051",
-        "0x20 = 0x201D",    // INPUT LITERAL BLANK 
+        "0x20 = 0x201D",    // INPUT LITERAL BLANK
         "0x3D=0x003D",      // INPUT '=' SIGN THIS WAY
 
 
@@ -396,7 +396,7 @@ Sub-translations:
 
         Sub-translation may contain empty strings
         "=0x0021",
-        but consecutive ones cannot. 
+        but consecutive ones cannot.
 
    Matching strategy for sub-translations: When the first
    sub-translation would match the null string, one character may be
@@ -466,14 +466,14 @@ Generic .mys Source Text-Conversion Files [for the future]
    Better documentation will be required before the average user can
    understand and use .mys files.
 
-   If you need a keymap file for SMP (Supplementary Multilingual 
-   Plane) all you can use is mys format. 
+   If you need a keymap file for SMP (Supplementary Multilingual
+   Plane) all you can use is mys format.
 
    Take a look at the source mys file in Yudit source tree:
 
      yudit-2.7.8/mytool/mys/OldItalic.mys
 
-   You can compile OldItalic.mys with 
+   You can compile OldItalic.mys with
 
      mytool -convert my -write OldItalic.my -mys OldItalic.mys
 

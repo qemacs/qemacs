@@ -95,7 +95,7 @@ static int decode_euc_jp_func(__unused__ CharsetDecodeState *s,
 {
     const unsigned char *p;
     int c, c2;
-    
+
     p = *pp;
     c = *p++;
     if (c == 0x8e) {
@@ -182,7 +182,7 @@ static int decode_sjis_func(__unused__ CharsetDecodeState *s,
 {
     const unsigned char *p;
     int c, c1, c2, adjust, row, col;
-    
+
     p = *pp;
     c = *p++;
     if (c >= 0xf0) {

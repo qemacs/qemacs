@@ -44,7 +44,7 @@ static void decode_8859_1_init(CharsetDecodeState *s)
     s->table = table_idem;
 }
 
-static unsigned char *encode_8859_1(__unused__ QECharset *charset, 
+static unsigned char *encode_8859_1(__unused__ QECharset *charset,
                                     unsigned char *p, int c)
 {
     if (c <= 0xff) {
@@ -72,7 +72,7 @@ static void decode_vt100_init(CharsetDecodeState *s)
     s->table = table_idem;
 }
 
-static unsigned char *encode_vt100(__unused__ QECharset *charset, 
+static unsigned char *encode_vt100(__unused__ QECharset *charset,
                                    unsigned char *p, int c)
 {
     if (c <= 0xff) {
@@ -191,7 +191,7 @@ int utf8_encode(char *q0, int c)
     return q - q0;
 }
 
-int utf8_to_unicode(unsigned int *dest, int dest_length, 
+int utf8_to_unicode(unsigned int *dest, int dest_length,
                     const char *str)
 {
     const char *p;
@@ -297,7 +297,7 @@ QECharset *find_charset(const char *name)
 void charset_decode_init(CharsetDecodeState *s, QECharset *charset)
 {
     unsigned short *table;
-    
+
     s->table = NULL; /* fail safe */
     if (charset->table_alloc) {
         table = qe_malloc_array(unsigned short, 256);

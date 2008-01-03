@@ -60,7 +60,7 @@ static void dired_free(EditState *s)
 {
     DiredState *ds = s->mode_data;
     int i;
-    
+
     /* free opaques */
     for (i = 0; i < ds->items.nb_items; i++) {
         qe_free(&ds->items.items[i]->opaque);
@@ -128,7 +128,7 @@ static void do_dired_sort(EditState *s)
     if (index >= 0 && index < hs->items.nb_items)
         cur_item = hs->items.items[index];
 
-    qsort(hs->items.items, hs->items.nb_items, 
+    qsort(hs->items.items, hs->items.nb_items,
           sizeof(StringItem *), dired_sort_func);
 
     /* construct list buffer */
@@ -175,7 +175,7 @@ static void dired_sort(EditState *s, const char *sort_order)
 {
     DiredState *hs = s->mode_data;
     const char *p;
-    
+
     for (p = sort_order; *p; p++) {
         switch (qe_tolower((unsigned char)*p)) {
         case 'n':       /* name */
@@ -231,7 +231,7 @@ static void build_dired_list(EditState *s, const char *path)
     dired_free(s);
 
     /* CG: should make absolute ? */
-    canonize_path(hs->path, sizeof(hs->path), path);
+    canonicalize_path(hs->path, sizeof(hs->path), path);
     eb_set_filename(s->b, hs->path);
     s->b->flags |= BF_DIRED;
 
@@ -278,8 +278,8 @@ static void build_dired_list(EditState *s, const char *path)
             int major, minor;
             major = (st.st_rdev >> 8) & 0xff;
             minor = st.st_rdev & 0xff;
-            snprintf(buf, sizeof(buf), "%c%4d%4d", 
-                     S_ISCHR(st.st_mode) ? 'c' : 'b', 
+            snprintf(buf, sizeof(buf), "%c%4d%4d",
+                     S_ISCHR(st.st_mode) ? 'c' : 'b',
                      major, minor);
         } else if (S_ISLNK(st.st_mode)) {
             pstrcat(line, sizeof(line), "-> ");
@@ -291,7 +291,7 @@ static void build_dired_list(EditState *s, const char *path)
             buf[0] = '\0';
         }
         pstrcat(line, sizeof(line), buf);
-        
+
         item = add_string(&hs->items, line);
         if (item) {
             DiredItem *dip;
@@ -310,7 +310,7 @@ static void build_dired_list(EditState *s, const char *path)
     do_dired_sort(s);
 }
 
-static char *get_dired_filename(EditState *s, 
+static char *get_dired_filename(EditState *s,
                                 char *buf, int buf_size, int index)
 {
     DiredState *hs = s->mode_data;
@@ -319,15 +319,15 @@ static char *get_dired_filename(EditState *s,
 
     /* CG: assuming buf_size > 0 */
     buf[0] = '\0';
-    
+
     if (index < 0 || index >= hs->items.nb_items)
         return NULL;
-    
+
     item = hs->items.items[index];
     dip = item->opaque;
-    
+
     /* build filename */
-    /* CG: Should canonize path */
+    /* CG: Should canonicalize path */
     return makepath(buf, buf_size, hs->path, dip->name);
 }
 
@@ -338,7 +338,7 @@ static void dired_select(EditState *s)
     char filename[MAX_FILENAME_SIZE];
     EditState *e;
 
-    if (!get_dired_filename(s, filename, sizeof(filename), 
+    if (!get_dired_filename(s, filename, sizeof(filename),
                             dired_get_index(s))) {
         return;
     }
@@ -409,7 +409,7 @@ static void dired_parent(EditState *s)
 {
     DiredState *hs = s->mode_data;
     char filename[MAX_FILENAME_SIZE];
-    
+
     makepath(filename, sizeof(filename), hs->path, "..");
 
     /* CG: Should make current directory current item in parent */
@@ -419,7 +419,7 @@ static void dired_parent(EditState *s)
 static void dired_refresh(EditState *s)
 {
     DiredState *hs = s->mode_data;
-    
+
     /* CG: Should try and keep current entry */
     build_dired_list(s, hs->path);
 }
@@ -442,7 +442,7 @@ static void dired_display_hook(EditState *s)
     /* Should not rely on last_index! */
     if (index != ds->last_index) {
         ds->last_index = index;
-        if (get_dired_filename(s, filename, sizeof(filename), 
+        if (get_dired_filename(s, filename, sizeof(filename),
                                dired_get_index(s))) {
             dired_view_file(s, filename);
         }
@@ -509,9 +509,9 @@ void do_dired(EditState *s)
     p = strrchr(filename, '/');
     if (p)
         *p = '\0';
-    canonize_absolute_path(filename, sizeof(filename), filename);
+    canonicalize_absolute_path(filename, sizeof(filename), filename);
     eb_set_filename(b, filename);
-    
+
     width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
     do_set_mode(e, &dired_mode, NULL);
@@ -583,7 +583,7 @@ static int dired_init(void)
     dired_mode.mode_init = dired_mode_init;
     dired_mode.mode_close = dired_mode_close;
     dired_mode.display_hook = dired_display_hook;
-    
+
     /* first register mode */
     qe_register_mode(&dired_mode);
 

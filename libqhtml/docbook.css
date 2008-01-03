@@ -1,4 +1,4 @@
-/* 
+/*
  * Some CSS styles for DocBook V4.
  * (Not exhaustive. Has enough styles to render the LDP Author Guide.)
  *
@@ -117,7 +117,7 @@ msgsub,
 msgtext,
 note,
 orderedlist,
-otheraddr, 
+otheraddr,
 othercredit,
 othername,
 para,
@@ -160,11 +160,11 @@ screenco,
 screenshot,
 secondaryie,
 sect1,
-sect2, 
-sect3, 
-sect4, 
-sect5, 
-section, 
+sect2,
+sect3,
+sect4,
+sect5,
+section,
 seealsoie,
 seeie,
 seglistitem,
@@ -192,7 +192,7 @@ term,
 tertiaryie,
 textobject,
 tip,
-title, 
+title,
 toc,
 tocback,
 tocchap,
@@ -204,9 +204,9 @@ toclevel3,
 toclevel4,
 toclevel5,
 tocpart,
-variablelist, 
+variablelist,
 varlistentry,
-videoobject, 
+videoobject,
 warning {
     display: block;
 }
@@ -271,25 +271,25 @@ article > subtitle {
 }
 
 sect1 > title, sect2 > title, sect3 > title, sect4 > title, sect5 > title,
-section > title { 
+section > title {
     font-weight: bold;
     color: maroon;
 }
 sect1 > title,
-section > title { 
+section > title {
     font-size: 1.5em;
     margin-top: .83ex;
     margin-bottom: .83ex;
 }
 sect2 > title,
-section section > title { 
+section section > title {
     font-size: 1.17em;
     margin-top: 1ex;
     margin-bottom: 1ex;
 }
 sect3 > title, sect4 > title, sect5 > title,
 section section section > title,
-section section * section > title { 
+section section * section > title {
     font-size: 1em;
     margin-top: 1.33ex;
     margin-bottom: 1.33ex;
@@ -333,7 +333,7 @@ section section section * section > title:before {
  * Table style
  */
 
-table, 
+table,
 informaltable {
     display: block;
     margin-top: 1.33ex;
@@ -354,22 +354,22 @@ tgroup {
 colspec, spanspec {
     display: table-column;
 }
-thead, tbody, tfoot { 
+thead, tbody, tfoot {
     display: table-row-group;
     vertical-align: eval(attr(valign));
 }
-row { 
+row {
     display: table-row;
     vertical-align: eval(attr(valign));
 }
-entry { 
+entry {
     display: table-cell;
     text-align: eval(attr(align));
     vertical-align: eval(attr(valign));
     border: 1px inset gray;
     padding: 2px;
 }
-entry > *:first-child { 
+entry > *:first-child {
     margin-top: 0;
     margin-bottom: 0;
 }
@@ -383,9 +383,9 @@ entrytbl {
  * Block styles
  */
 
-para, 
+para,
 simpara,
-formalpara { 
+formalpara {
     margin-top: 1.33ex;
     margin-bottom: 1.33ex;
 }
@@ -398,12 +398,12 @@ formalpara > title {
     font-weight: bold;
 }
 
-listitem > *:first-child { 
+listitem > *:first-child {
     margin-top: 0;
     margin-bottom: 0;
 }
 
-itemizedlist { 
+itemizedlist {
     margin-left: 2ex;
     margin-top: 1.33ex;
     margin-bottom: 1.33ex;
@@ -419,18 +419,18 @@ itemizedlist > listitem itemizedlist > listitem:before {
     display: marker;
     content: square;
 }
-itemizedlist > listitem itemizedlist > listitem 
+itemizedlist > listitem itemizedlist > listitem
 itemizedlist > listitem:before {
     display: marker;
     content: icon(diamond);
 }
-itemizedlist > listitem itemizedlist > listitem itemizedlist > listitem 
+itemizedlist > listitem itemizedlist > listitem itemizedlist > listitem
 itemizedlist > listitem:before {
     display: marker;
     content: circle;
 }
 
-orderedlist { 
+orderedlist {
     margin-left: 2ex;
     margin-top: 1.33ex;
     margin-bottom: 1.33ex;
@@ -465,7 +465,7 @@ orderedlist[numeration=upperroman] > listitem:before {
     content: counter(n, upper-roman);
 }
 
-variablelist { 
+variablelist {
     margin-left: 2ex;
     margin-top: 1.33ex;
     margin-bottom: 1.33ex;
@@ -488,7 +488,7 @@ glossentry > glossterm {
 glossdef {
     margin-left: 4ex;
 }
-glossdef > *:first-child { 
+glossdef > *:first-child {
     margin-top: 0;
     margin-bottom: 0;
 }
@@ -504,26 +504,26 @@ question,
 answer {
     margin-left: 4ex;
 }
-question:before { 
+question:before {
     content: "Q:";
     display: marker;
     color: olive;
     font-weight: bold;
     font-style: normal;
 }
-answer:before { 
+answer:before {
     content: "A:";
     display: marker;
     color: olive;
     font-weight: bold;
 }
 question > *:first-child,
-answer > *:first-child { 
+answer > *:first-child {
     margin-top: 0;
     margin-bottom: 0;
-}    
+}
 
-simplelist { 
+simplelist {
     margin-left: 4ex;
 }
 member {
@@ -560,7 +560,7 @@ footnote:before {
 }
 
 programlisting,
-screen { 
+screen {
     white-space: pre;
     background-color: #E0E0E0;
     border: thin solid gray;
@@ -576,7 +576,7 @@ programlistingco {
     margin-top: 1.33ex;
     margin-bottom: 1.33ex;
 }
-programlistingco programlisting { 
+programlistingco programlisting {
     border-style: none;
 }
 areaspec:before {
@@ -593,7 +593,7 @@ co {
 callout {
     margin-left: 6ex;
 }
-callout > *:first-child { 
+callout > *:first-child {
     margin-top: 0;
     margin-bottom: 0;
 }
@@ -617,12 +617,12 @@ figure > title,
 caption {
     font-style: italic;
 }
-caption > *:first-child { 
+caption > *:first-child {
     margin-top: 0;
     margin-bottom: 0;
 }
-/* 
- *  Showing a 400x200 thumbnail is sufficient. 
+/*
+ *  Showing a 400x200 thumbnail is sufficient.
  *  If you don't like that, replace the content property by a more traditional:
  *  content: image(attr(fileref));
  */
@@ -677,12 +677,12 @@ replaceable {
     font-style: italic;
 }
 
-anchor:after { 
-    content: icon(left-target); 
+anchor:after {
+    content: icon(left-target);
     vertical-align: text-top;
     color: olive;
 }
-link, 
+link,
 ulink,
 email {
     color: navy;
@@ -747,7 +747,7 @@ quote:after {
     }
 
     * {
-	background-color: transparent;
+        background-color: transparent;
         line-height: 1.2;
     }
 

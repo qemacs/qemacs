@@ -69,7 +69,7 @@ enum {
 };
 
 /* CG: Should rely on len instead of '\n' */
-static void htmlsrc_colorize_line(unsigned int *buf, int len, 
+static void htmlsrc_colorize_line(unsigned int *buf, int len,
                                   int *colorize_state_ptr, int state_only)
 {
     int c, state, js_state, l;
@@ -258,7 +258,7 @@ static int htmlsrc_mode_probe(ModeProbeData *p)
     /* first check file extension */
     if (match_extension(p->filename, html_mode_extensions))
         return 80;
-    
+
     /* then try buffer contents */
     if (p->buf_size >= 5 &&
         (!html_tagcmp(buf, "<HTML") ||
@@ -274,7 +274,7 @@ static int htmlsrc_mode_probe(ModeProbeData *p)
 static int htmlsrc_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     int ret;
-    
+
     ret = text_mode_init(s, saved_data);
     if (ret)
         return ret;

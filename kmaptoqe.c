@@ -72,7 +72,7 @@ static int offset, write_data;
 
 static void put_byte(int b)
 {
-    if (write_data) 
+    if (write_data)
         *outbuf_ptr++ = b;
     offset++;
 }
@@ -125,9 +125,9 @@ static void gen_map(void)
         if (gen_table)
             first = 1;
 
-        /* c = 0x00        end of table 
+        /* c = 0x00        end of table
          * c = 0x01..0x1d  delta unicode
-         * c = 0x1e        unicode output mapping follows 
+         * c = 0x1e        unicode output mapping follows
          * c = 0x1f        unicode input char follows.
          * c = 0x20..0x7f  input character
          * c = 0x80        unused
@@ -312,7 +312,7 @@ static int dump_kmap(const char *filename)
 
             if (1) {
                 int len, olen, flag, k, s, last = 0, sp;
-                
+
                 s = 0;
                 for (k = 0;; k++) {
                     unsigned char *input;
@@ -328,9 +328,9 @@ static int dump_kmap(const char *filename)
                     if (c == EOF)
                         break;
 
-                    /* c = 0x00        end of table 
+                    /* c = 0x00        end of table
                      * c = 0x01..0x1d  delta unicode
-                     * c = 0x1e        unicode output mapping follows 
+                     * c = 0x1e        unicode output mapping follows
                      * c = 0x1f        unicode input char follows.
                      * c = 0x20..0x7f  input character
                      * c = 0x80        unused
@@ -590,7 +590,7 @@ int main(int argc, char **argv)
             nb_inputs++;
             continue;
         invalid:
-            fprintf(stderr, "%s:%d: Invalid mapping: %s\n", 
+            fprintf(stderr, "%s:%d: Invalid mapping: %s\n",
                     filename, line_num, line);
         skip:;
         }
@@ -648,7 +648,7 @@ int main(int argc, char **argv)
     fputc(0, outfile);
     fputc(0, outfile);
     fputc(0, outfile);
-    
+
     fwrite(outbuf, 1, outbuf_ptr - outbuf, outfile);
 
     fclose(outfile);

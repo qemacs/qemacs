@@ -150,7 +150,7 @@ static int ascii_mode_init(EditState *s, ModeSavedData *saved_data)
     /* align on 16 byte boundary */
     s->disp_width &= ~15;
     if (s->disp_width < 16)
-	s->disp_width = 16;
+        s->disp_width = 16;
     //s->insert = 0;
     s->hex_mode = 0;
     s->wrap = WRAP_TRUNCATE;
@@ -180,7 +180,7 @@ static int detect_binary(const unsigned char *buf, int size)
 
     for (i = 0; i < size; i++) {
         c = buf[i];
-        if (c < 32 && 
+        if (c < 32 &&
             (c != '\r' && c != '\n' && c != '\t' &&
              c != '\e' && c != '\b' && c != '\f'))
             return 1;
@@ -231,7 +231,7 @@ void hex_write_char(EditState *s, int key)
     unsigned int cur_ch, ch;
     int hsize, shift, cur_len, len, h;
     char buf[10];
-    
+
     if (s->hex_mode) {
         if (s->unihex_mode)
             hsize = 4;
@@ -269,7 +269,7 @@ void hex_write_char(EditState *s, int key)
                 buf[0] = ch;
             }
 #if 1
-	    eb_replace(s->b, s->offset, cur_len, buf, len);
+            eb_replace(s->b, s->offset, cur_len, buf, len);
 #else
             if (cur_len == len) {
                 eb_write(s->b, s->offset, buf, len);
@@ -294,7 +294,7 @@ static int hex_mode_line(EditState *s, char *buf, int buf_size)
     int percent, pos;
 
     pos = basic_mode_line(s, buf, buf_size, '-');
-    pos += snprintf(buf + pos, buf_size - pos, "0x%x--0x%x", 
+    pos += snprintf(buf + pos, buf_size - pos, "0x%x--0x%x",
                     s->offset, s->b->total_size);
     percent = 0;
     if (s->b->total_size > 0)
@@ -303,13 +303,13 @@ static int hex_mode_line(EditState *s, char *buf, int buf_size)
     return pos;
 }
 
-static ModeDef ascii_mode = { 
-    "ascii", 
+static ModeDef ascii_mode = {
+    "ascii",
     .instance_size = 0,
     .mode_probe = NULL,
-    .mode_init = ascii_mode_init, 
+    .mode_init = ascii_mode_init,
     .mode_close = text_mode_close,
-    .text_display = hex_display, 
+    .text_display = hex_display,
     .text_backward_offset = hex_backward_offset,
 
     .move_up_down = hex_move_up_down,
@@ -323,12 +323,12 @@ static ModeDef ascii_mode = {
 };
 
 static ModeDef hex_mode = {
-    "hex", 
+    "hex",
     .instance_size = 0,
     .mode_probe = hex_mode_probe,
-    .mode_init = hex_mode_init, 
+    .mode_init = hex_mode_init,
     .mode_close = text_mode_close,
-    .text_display = hex_display, 
+    .text_display = hex_display,
     .text_backward_offset = hex_backward_offset,
 
     .move_up_down = hex_move_up_down,
@@ -356,7 +356,7 @@ static int hex_init(void)
     qe_register_binding(KEY_CTRL_RIGHT, "increase-width", "ascii|hex");
     qe_register_binding(KEY_TAB, "toggle-hex", "hex");
     qe_register_binding(KEY_SHIFT_TAB, "toggle-hex", "hex");
-    
+
     return 0;
 }
 

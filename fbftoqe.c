@@ -43,13 +43,11 @@ static int dump_font(const char *filename, const char *name)
         if (c == EOF)
             break;
         if ((j & 7) == 0)
-            printf("    ");
+            printf("   ");
         j++;
-        printf("0x%02x,", c);
+        printf(" 0x%02x,", c);
         if ((j & 7) == 0)
             printf("\n");
-        else
-            printf(" ");
     }
     if ((j & 7) != 0)
         printf("\n");

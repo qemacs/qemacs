@@ -121,7 +121,7 @@ static int get_pty(char *tty_str)
    return -1;
 }
 
-static int run_process(const char *path, const char **argv, 
+static int run_process(const char *path, const char **argv,
                        int *fd_ptr, int *pid_ptr)
 {
     int pty_fd, pid, i, nb_fds;
@@ -140,7 +140,7 @@ static int run_process(const char *path, const char **argv,
     ws.ws_xpixel = ws.ws_col;
     ws.ws_ypixel = ws.ws_row;
     ioctl(pty_fd, TIOCSWINSZ, &ws);
-    
+
     pid = fork();
     if (pid < 0) {
         put_status(NULL, "run_process: cannot fork");
@@ -570,7 +570,7 @@ static void shell_key(void *opaque, int key)
             p = NULL;
         }
         break;
-    } 
+    }
     if (p)
         tty_write(s, p, len);
 }
@@ -579,7 +579,7 @@ static void tty_emulate(ShellState *s, int c)
 {
     int i, offset, offset1, offset2, n;
     char buf1[10];
-    
+
 #define ESC2(c1,c2)  (((c1)<<8)|((unsigned char)c2))
     /* some bytes are state independent */
     switch (c) {
@@ -696,7 +696,7 @@ static void tty_emulate(ShellState *s, int c)
              * linux: hts=\EH, rc=\E8, ri=\EM, rs1=\Ec\E]R, sc=\E7,
              * vt100: enacs=\E(B\E)0, hts=\EH, rc=\E8, ri=\EM$<5>,
              *        rmkx=\E[?1l\E>,
-             *        rs2=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h, sc=\E7, 
+             *        rs2=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h, sc=\E7,
              *        smkx=\E[?1h\E=,
              * xterm: enacs=\E(B\E)0, hts=\EH, is2=\E[!p\E[?3;4l\E[4l\E>,
              *        rc=\E8, ri=\EM, rmkx=\E[?1l\E>, rs1=\Ec,
@@ -765,7 +765,7 @@ static void tty_emulate(ShellState *s, int c)
                     s->esc_params[s->nb_esc_params] = 0;
                     s->has_params[s->nb_esc_params] = 1;
                 }
-                s->esc_params[s->nb_esc_params] = 
+                s->esc_params[s->nb_esc_params] =
                     s->esc_params[s->nb_esc_params] * 10 + c - '0';
             }
             break;
@@ -874,7 +874,7 @@ static void tty_emulate(ShellState *s, int c)
                     int col_num, cur_line;
                     eb_get_pos(s->b, &cur_line, &col_num, s->cur_offset);
                     /* XXX: actually send position of point in window */
-                    snprintf(buf2, sizeof(buf2), "\033[%d;%dR", 
+                    snprintf(buf2, sizeof(buf2), "\033[%d;%dR",
                              1, col_num + 1);
                     tty_write(s, buf2, -1);
                 }
@@ -978,7 +978,7 @@ static void shell_read_cb(void *opaque)
     len = read(s->pty_fd, buf, sizeof(buf));
     if (len <= 0)
         return;
-    
+
     if (qs->trace_buffer)
         eb_trace_bytes(buf, len, EB_TRACE_SHELL);
 
@@ -1003,7 +1003,7 @@ static void shell_pid_cb(void *opaque, int status)
     } else {
         time_t ti;
         char *time_str;
-        
+
         ti = time(NULL);
         time_str = ctime(&ti);
         if (WIFEXITED(status))
@@ -1011,10 +1011,10 @@ static void shell_pid_cb(void *opaque, int status)
         else
             status = -1;
         if (status == 0) {
-            snprintf(buf, sizeof(buf), "\nCompilation finished at %s", 
+            snprintf(buf, sizeof(buf), "\nCompilation finished at %s",
                      time_str);
         } else {
-            snprintf(buf, sizeof(buf), "\nCompilation exited abnormally with code %d at %s", 
+            snprintf(buf, sizeof(buf), "\nCompilation exited abnormally with code %d at %s",
                      status, time_str);
         }
     }
@@ -1241,7 +1241,7 @@ static void shell_write_char(EditState *e, int c)
         case 4:
             do_delete_char(e, NO_ARG);
             break;
-        // Do not do this: it is useless and causes infinite recursion 
+        // Do not do this: it is useless and causes infinite recursion
         //case 9:
         //    do_tab(e, 1);
         //    break;
@@ -1297,7 +1297,7 @@ static void do_compile(EditState *e, const char *cmd)
 
     error_offset = -1;
     last_line_num = -1;
-    
+
     /* create new buffer */
     argv[0] = "/bin/sh";
     argv[1] = "-c";
@@ -1306,7 +1306,7 @@ static void do_compile(EditState *e, const char *cmd)
     b = new_shell_buffer(NULL, "*compilation*", "/bin/sh", argv, 0);
     if (!b)
         return;
-    
+
     /* XXX: try to split window if necessary */
     switch_to_buffer(e, b);
 }
@@ -1421,9 +1421,9 @@ static CmdDef compile_commands[] = {
     CMD_( KEY_CTRLXRET('\r'), KEY_NONE, "shell", do_shell, ESi, "ui")
     CMD_( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE, "compile", do_compile, ESs,
           "s{Compile command: }|compile|")
-    CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE, "previous-error", 
+    CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE, "previous-error",
           do_compile_error, -1) /* u */
-    CMD1( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'), "next-error", 
+    CMD1( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'), "next-error",
           do_compile_error, 1) /* u */
     CMD_DEF_END,
 };
@@ -1450,7 +1450,7 @@ static int shell_init(void)
     /* commands and default keys */
     qe_register_cmd_table(shell_commands, "shell");
     qe_register_cmd_table(compile_commands, NULL);
-    
+
     return 0;
 }
 

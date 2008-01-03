@@ -52,7 +52,7 @@ static int mpeg_display(EditState *s, DisplayState *ds, int offset)
                 display_eol(ds, -1, -1);
             goto the_end;
         }
-        
+
         if (ret == 4) {
             startcode = (buf[0] << 24) | (buf[1] << 16) | (buf[2]  << 8) | buf[3];
             if ((startcode & 0xffffff00) == 0x00000100) {
@@ -78,7 +78,7 @@ static int mpeg_display(EditState *s, DisplayState *ds, int offset)
     offset_start = offset;
     offset += 4;
     display_printf(ds, offset_start, offset, " [%08x] ", startcode);
-        
+
     switch (startcode) {
     case SEQ_END_CODE:
         display_printf(ds, -1, -1, "SEQ_END");
@@ -164,7 +164,7 @@ static int mpeg_mode_probe(ModeProbeData *p)
 }
 
 static ModeDef mpeg_mode = {
-    "mpeg", 
+    "mpeg",
     mode_probe: mpeg_mode_probe,
     mode_init: mpeg_mode_init,
     mode_close: NULL,

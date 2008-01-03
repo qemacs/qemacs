@@ -92,19 +92,19 @@ void fill_border(EditState *s, int x, int y, int w, int h, int color)
     h2 = s->height - (y + h);
     if (h2 < 0)
         h2 = 0;
-    fill_rectangle(s->screen, 
-                   s->xleft, s->ytop, 
-                   w1, s->height, 
+    fill_rectangle(s->screen,
+                   s->xleft, s->ytop,
+                   w1, s->height,
                    color);
-    fill_rectangle(s->screen, 
-                   s->xleft + s->width - w2, s->ytop, 
-                   w2, s->height, 
+    fill_rectangle(s->screen,
+                   s->xleft + s->width - w2, s->ytop,
+                   w2, s->height,
                    color);
-    fill_rectangle(s->screen, 
-                   s->xleft + w1, s->ytop, 
-                   s->width - w1 - w2, h1, 
+    fill_rectangle(s->screen,
+                   s->xleft + w1, s->ytop,
+                   s->width - w1 - w2, h1,
                    color);
-    fill_rectangle(s->screen, 
+    fill_rectangle(s->screen,
                    s->xleft + w1, s->ytop + s->height - h2,
                    s->width - w1 - w2, h2,
                    color);
@@ -114,7 +114,7 @@ void draw_alpha_grid(EditState *s, int x1, int y1, int w, int h)
 {
     int state, x, y;
     unsigned int color;
-    
+
     for (y = 0; y < h; y += 16) {
         for (x = 0; x < w; x += 16) {
             state = (x ^ y) & 16;
@@ -122,7 +122,7 @@ void draw_alpha_grid(EditState *s, int x1, int y1, int w, int h)
                 color = QERGB(0x94, 0x94, 0x94);
             else
                 color = QERGB(0x64, 0x64, 0x64);
-            fill_rectangle(s->screen, 
+            fill_rectangle(s->screen,
                            x1 + x, y1 + y, 16, 16, color);
         }
     }
@@ -134,7 +134,7 @@ static void image_display(EditState *s)
 {
     ImageState *is = s->mode_data;
     int x, y;
-    
+
     if (s->display_invalid) {
         if (is->disp_bmp) {
             x = is->x + (s->width - is->w) / 2;
@@ -142,7 +142,7 @@ static void image_display(EditState *s)
 
             fill_border(s, x, y, is->w, is->h, QERGB(0x00, 0x00, 0x00));
 
-            bmp_draw(s->screen, is->disp_bmp, 
+            bmp_draw(s->screen, is->disp_bmp,
                      s->xleft + x, s->ytop + y,
                      is->w, is->h, 0, 0, 0);
         }
@@ -172,7 +172,7 @@ static void image_resize(EditState *s)
     ImageState *is = s->mode_data;
     ImageBuffer *ib = s->b->data;
     int d, w, h;
-    
+
     /* simplify factors */
     d = gcd(is->xfactor_num, is->xfactor_den);
     is->xfactor_num /= d;
@@ -182,9 +182,9 @@ static void image_resize(EditState *s)
     is->yfactor_num /= d;
     is->yfactor_den /= d;
 
-    w = ((long long)ib->width * (long long)is->xfactor_num) / 
+    w = ((long long)ib->width * (long long)is->xfactor_num) /
         is->xfactor_den;
-    h = ((long long)ib->height * (long long)is->yfactor_num) / 
+    h = ((long long)ib->height * (long long)is->yfactor_num) /
         is->yfactor_den;
 
     if (w < 1)
@@ -236,12 +236,12 @@ static void image_set_size(EditState *s, int w, int h)
         put_status(s, "Invalid image size");
         return;
     }
-    
+
     is->xfactor_num = w;
     is->xfactor_den = ib->width;
     is->yfactor_num = h;
     is->yfactor_den = ib->height;
-    
+
     image_resize(s);
 }
 #endif
@@ -250,7 +250,7 @@ static int image_mode_probe(ModeProbeData *pd)
 {
     AVProbeData avpd;
     AVImageFormat *fmt;
-    
+
     avpd.filename = pd->filename;
     avpd.buf = pd->buf;
     avpd.buf_size = pd->buf_size;
@@ -323,14 +323,14 @@ static int image_buffer_load(EditBuffer *b, FILE *f)
     ret = url_fopen(pb, b->filename, URL_RDONLY);
     if (ret < 0)
         return -1;
-    
+
     ret = av_read_image(pb, b->filename, NULL, read_image_cb, b);
     url_fclose(pb);
     if (ret) {
         return -1;
     } else {
         ImageBuffer *ib = b->data;
-        ib->alpha_info = img_get_alpha_info(&ib->pict, ib->pix_fmt, 
+        ib->alpha_info = img_get_alpha_info(&ib->pict, ib->pix_fmt,
                                             ib->width, ib->height);
         return 0;
     }
@@ -351,14 +351,14 @@ static int image_buffer_save(EditBuffer *b, const char *filename)
     int ret, dst_pix_fmt, loss;
     AVImageFormat *fmt;
     AVImageInfo info;
-    
+
     /* find image format */
     fmt = guess_image_format(filename);
     if (!fmt)
         return -1;
 
     /* find the best image format */
-    dst_pix_fmt = avcodec_find_best_pix_fmt(fmt->supported_pixel_formats, 
+    dst_pix_fmt = avcodec_find_best_pix_fmt(fmt->supported_pixel_formats,
                                             ib->pix_fmt, ib->alpha_info, &loss);
     if (dst_pix_fmt < 0)
         return -1;
@@ -385,10 +385,10 @@ static int image_buffer_save(EditBuffer *b, const char *filename)
     info.width = ib->width;
     info.height = ib->height;
     info.pict = ib->pict;
-    
+
     av_write_image(pb, fmt, &info);
     url_fclose(pb);
-    
+
     return 0;
 }
 
@@ -461,16 +461,16 @@ static void update_bmp(EditState *s)
     /* create the displayed bitmap and put the image in it */
     is->disp_bmp = bmp_alloc(s->screen, is->w, is->h, 0);
 
-    bmp_lock(s->screen, is->disp_bmp, &pict, 
+    bmp_lock(s->screen, is->disp_bmp, &pict,
              0, 0, is->w, is->h);
-    
+
     for (i = 0; i < 4; i++) {
         avpict.data[i] = pict.data[i];
         avpict.linesize[i] = pict.linesize[i];
     }
     dst_pix_fmt = qe_bitmap_format_to_pix_fmt(is->disp_bmp->format);
 #if 0
-    printf("dst=%s src=%s\n", 
+    printf("dst=%s src=%s\n",
            avcodec_get_pix_fmt_name(dst_pix_fmt),
            avcodec_get_pix_fmt_name(ib->pix_fmt));
 #endif
@@ -587,12 +587,12 @@ static void image_callback(EditBuffer *b,
                           int size)
 {
     //    EditState *s = opaque;
-    
+
     //    update_bmp(s);
 }
 
 static int img_rotate(AVPicture *dst,
-                      AVPicture *src, int pix_fmt, 
+                      AVPicture *src, int pix_fmt,
                       int w, int h)
 {
     int x, y, dlinesize, bpp;
@@ -618,11 +618,11 @@ static int img_rotate(AVPicture *dst,
     s1 = src->data[0];
     dlinesize = dst->linesize[0];
     d1 = dst->data[0] + (h - 1) * bpp;
-    
+
     for (y = 0; y < h; y++) {
         s = s1;
         d = d1;
-        
+
         switch (pix_fmt) {
         case PIX_FMT_PAL8:
         case PIX_FMT_GRAY8:
@@ -684,7 +684,7 @@ static void image_rotate(EditState *e)
     if (ret < 0) {
         /* remove temporary image */
         image_free(ib1);
-        put_status(e, "Format '%s' not supported yet in rotate", 
+        put_status(e, "Format '%s' not supported yet in rotate",
                    avcodec_get_pix_fmt_name(pix_fmt));
         return;
     }
@@ -713,7 +713,7 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
     int ret, new_pix_fmt, i, loss;
     ImageBuffer *ib1;
     const char *name;
-    
+
     for (i = 0; i < PIX_FMT_NB; i++) {
         name = avcodec_get_pix_fmt_name(i);
         if (!strcmp(name, pix_fmt_str))
@@ -726,12 +726,12 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
     ib1 = image_allocate(new_pix_fmt, ib->width, ib->height);
     if (!ib1)
         return;
-    ret = img_convert(&ib1->pict, ib1->pix_fmt, 
+    ret = img_convert(&ib1->pict, ib1->pix_fmt,
                       &ib->pict, ib->pix_fmt, ib->width, ib->height);
     if (ret < 0) {
         /* remove temporary image */
         image_free(ib1);
-        put_status(e, "Convertion from '%s' to '%s' not supported yet", 
+        put_status(e, "Convertion from '%s' to '%s' not supported yet",
                    avcodec_get_pix_fmt_name(ib->pix_fmt),
                    avcodec_get_pix_fmt_name(new_pix_fmt));
         return;
@@ -755,7 +755,7 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
             put_status(e, "Warning: data loss:%s", buf);
         }
     }
-    ib1->alpha_info = img_get_alpha_info(&ib1->pict, ib1->pix_fmt, 
+    ib1->alpha_info = img_get_alpha_info(&ib1->pict, ib1->pix_fmt,
                                          ib1->width, ib1->height);
     set_new_image(b, ib1);
     image_free(ib);
@@ -769,7 +769,7 @@ int image_mode_line(EditState *s, char *buf, int buf_size)
     EditBuffer *b = s->b;
     ImageBuffer *ib = b->data;
     char alpha_mode;
-    
+
     pos = basic_mode_line(s, buf, buf_size, '-');
     if (ib->alpha_info & FF_ALPHA_SEMI_TRANSP)
         alpha_mode = 'A';
@@ -778,8 +778,8 @@ int image_mode_line(EditState *s, char *buf, int buf_size)
     else
         alpha_mode = ' ';
 
-    pos += snprintf(buf + pos, buf_size - pos, "%dx%d %s %c%c", 
-                    ib->width, ib->height, 
+    pos += snprintf(buf + pos, buf_size - pos, "%dx%d %s %c%c",
+                    ib->width, ib->height,
                     avcodec_get_pix_fmt_name(ib->pix_fmt),
                     alpha_mode,
                     ib->interleaved ? 'I' : ' ');
@@ -790,7 +790,7 @@ static void pixel_format_completion(StringArray *cs, const char *input)
 {
     int i;
     const char *name;
-    
+
     for (i = 0; i < PIX_FMT_NB; i++) {
         name = avcodec_get_pix_fmt_name(i);
         if (strstart(name, input, NULL))
@@ -819,7 +819,7 @@ static CmdDef image_commands[] = {
 };
 
 ModeDef image_mode = {
-    "image", 
+    "image",
     instance_size: sizeof(ImageState),
     mode_probe: image_mode_probe,
     mode_init: image_mode_init,

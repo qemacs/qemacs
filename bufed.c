@@ -47,7 +47,7 @@ static void build_bufed_list(EditState *s)
         if (!(b->flags & BF_SYSTEM) || (hs->flags & BUFED_ALL_VISIBLE))
             add_string(&hs->items, b->name);
     }
-    
+
     /* build buffer */
     b = s->b;
     flags = b->flags;
@@ -116,7 +116,7 @@ static void bufed_select(EditState *s, int temp)
 
 /* iterate 'func_item' to selected items. If no selected items, then
    use current item */
-static void string_selection_iterate(StringArray *cs, 
+static void string_selection_iterate(StringArray *cs,
                                      int current_index,
                                      void (*func_item)(void *, StringItem *),
                                      void *opaque)
@@ -134,7 +134,7 @@ static void string_selection_iterate(StringArray *cs,
     }
 
     /* if no item selected, then act on selected item */
-    if (count == 0 && 
+    if (count == 0 &&
         current_index >=0 && current_index < cs->nb_items) {
         item = cs->items[current_index];
         func_item(opaque, item);
@@ -295,7 +295,7 @@ static int bufed_init(void)
     bufed_mode.mode_init = bufed_mode_init;
     bufed_mode.mode_close = bufed_mode_close;
     bufed_mode.display_hook = bufed_display_hook;
-    
+
     /* first register mode */
     qe_register_mode(&bufed_mode);
 

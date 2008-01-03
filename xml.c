@@ -23,19 +23,19 @@
 /* colorization states */
 enum {
     XML_TAG = 1,
-    XML_COMMENT, 
+    XML_COMMENT,
     XML_TAG_SCRIPT,
     XML_TAG_STYLE,
     XML_STYLE,
     XML_SCRIPT = 0x10, /* special mode for inside a script, ored with c mode */
 };
 
-static void xml_colorize_line(unsigned int *buf, __unused__ int len, 
+static void xml_colorize_line(unsigned int *buf, __unused__ int len,
                               int *colorize_state_ptr, int state_only)
 {
     int c, state;
     unsigned int *p, *p_start, *p1;
-    
+
     state = *colorize_state_ptr;
     p = buf;
     p_start = p;
@@ -111,7 +111,7 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
                             state |= XML_SCRIPT;
                             break;
                         } else if (ustristart(p, "</SCRIPT", (const unsigned int **)&p1)) {
-                            while (*p1 != '\n' && *p1 != '>') 
+                            while (*p1 != '\n' && *p1 != '>')
                                 p1++;
                             if (*p1 == '>')
                                 p1++;
@@ -136,7 +136,7 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
                             set_color(p_start, p, QE_STYLE_CSS);
                             break;
                         } else if (ustristart(p, "</STYLE", (const unsigned int **)&p1)) {
-                            while (*p1 != '\n' && *p1 != '>') 
+                            while (*p1 != '\n' && *p1 != '>')
                                 p1++;
                             if (*p1 == '>')
                                 p1++;

@@ -1,6 +1,6 @@
 /*
  * fbfrender - FBF font cache and renderer
- * 
+ *
  * Copyright (c) 2001, 2002 Fabrice Bellard
  *
  * This library is free software; you can redistribute it and/or
@@ -134,33 +134,33 @@ static GlyphCache *fbf_decode_glyph1(QEFont *font, int code)
         return NULL;
 
     /* decompress a glyph if needed */
-    if (fbf_decode_glyph(uf, 
+    if (fbf_decode_glyph(uf,
                          &fbf_glyph_entry,
                          glyph_index) < 0)
         return NULL;
     src_width = fbf_glyph_entry->w;
     src_height = fbf_glyph_entry->h;
-    
+
     size = src_width * src_height;
     glyph_cache = add_cached_glyph(font, code, size);
-    if (!glyph_cache) 
+    if (!glyph_cache)
             return NULL;
     /* convert to bitmap */
     {
         int x, y, bit, pitch;
         unsigned char *bitmap;
-        
+
         bitmap = fbf_glyph_entry->bitmap;
         pitch = (src_width + 7) >> 3;
         for (y = 0; y < src_height; y++) {
             for (x = 0; x < src_width; x++) {
-                bit = (bitmap[pitch * y + (x >> 3)] >> 
+                bit = (bitmap[pitch * y + (x >> 3)] >>
                            (7 - (x & 7))) & 1;
                 glyph_cache->data[src_width * y + x] = -bit;
                 }
         }
     }
-    
+
     glyph_cache->w = src_width;
     glyph_cache->h = src_height;
     glyph_cache->x = fbf_glyph_entry->x;
@@ -170,7 +170,7 @@ static GlyphCache *fbf_decode_glyph1(QEFont *font, int code)
 }
 
 
-/* 
+/*
  * main function : get one glyph. Return -1 if no glyph found, 0 if OK.
  */
 GlyphCache *decode_cached_glyph(QEditScreen *s, QEFont *font, int code)
@@ -187,7 +187,7 @@ GlyphCache *decode_cached_glyph(QEditScreen *s, QEFont *font, int code)
                                 font->size);
             g = fbf_decode_glyph1(font1, code);
             release_font(s, font1);
-            if (!g) 
+            if (!g)
                 return NULL;
             /* indicates that it is a fallback glyph so that the
                correct font height can be computed */
@@ -199,7 +199,7 @@ GlyphCache *decode_cached_glyph(QEditScreen *s, QEFont *font, int code)
     return g;
 }
 
-void fbf_text_metrics(QEditScreen *s, QEFont *font, 
+void fbf_text_metrics(QEditScreen *s, QEFont *font,
                       QECharMetrics *metrics,
                       const unsigned int *str, int len)
 {
@@ -217,9 +217,9 @@ void fbf_text_metrics(QEditScreen *s, QEFont *font,
             x += g->xincr;
             if (g->is_fallback) {
                 /* if alternate font used, modify metrics */
-                metrics->font_ascent = max(metrics->font_ascent, 
+                metrics->font_ascent = max(metrics->font_ascent,
                                            fallback_font->ascent);
-                metrics->font_descent = max(metrics->font_descent, 
+                metrics->font_descent = max(metrics->font_descent,
                                             fallback_font->descent);
             }
         }
@@ -246,7 +246,7 @@ QEFont *fbf_open_font(__unused__ QEditScreen *s, int style, int size)
     } else {
         /* convert to unifont family types */
         style = ((style & QE_FAMILY_MASK) >> QE_FAMILY_SHIFT) - 1;
-        
+
         /* first match style */
         nb_fonts = 0;
         for (uf = first_font; uf != NULL; uf = uf->next_font) {
@@ -319,7 +319,7 @@ static int fbf_load_font_file(const char *filename)
     printf("loading %s\n", filename);
 
     f = fopen(filename, "r");
-    if (!f) 
+    if (!f)
         return -1;
 
     uf = qe_mallocz(UniFontData);
@@ -434,7 +434,7 @@ static int fbf_load_font_memory(const unsigned char *data,
         return -1;
     f->base = data;
     f->size = data_size;
-    
+
     uf = qe_mallocz(UniFontData);
     if (!uf) {
         qe_free(&f);

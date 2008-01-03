@@ -46,7 +46,7 @@
               0, 0)
     STYLE_DEF(QE_STYLE_NUMBER, "number",
               QERGB(0xf8, 0xd8, 0xb0), COLOR_TRANSPARENT,
-	      0, 0)
+              0, 0)
     STYLE_DEF(QE_STYLE_FUNCTION, "function",
               QERGB(0x80, 0xcc, 0xf0), COLOR_TRANSPARENT,
               0, 0)

@@ -65,7 +65,7 @@ void list_toggle_selection(EditState *s)
     unsigned char ch;
 
     offset = list_get_offset(s);
-    
+
     eb_read(s->b, offset , &ch, 1);
     if (ch == ' ')
         ch = '*';

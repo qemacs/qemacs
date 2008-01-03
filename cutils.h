@@ -46,7 +46,7 @@ static inline int list_empty(struct list_head *head)
     return head->next == head;
 }
 
-static inline void __list_add(struct list_head *elem, 
+static inline void __list_add(struct list_head *elem,
                               struct list_head *prev, struct list_head *next)
 {
     next->prev = elem;

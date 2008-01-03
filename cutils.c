@@ -56,7 +56,7 @@ int strstart(const char *str, const char *val, const char **ptr)
  * 1 then it is clamped to buf_size - 1.
  * NOTE: this function does what strncpy should have done to be
  * useful. NEVER use strncpy.
- * 
+ *
  * @param buf destination buffer
  * @param buf_size size of destination buffer
  * @param str source string

@@ -22,13 +22,13 @@
 
 /*---------------- Makefile colors ----------------*/
 
-#define MAKEFILE_TEXT		QE_STYLE_DEFAULT
-#define MAKEFILE_COMMENT	QE_STYLE_COMMENT
-#define MAKEFILE_STRING		QE_STYLE_STRING
-#define MAKEFILE_PREPROCESS	QE_STYLE_PREPROCESS
+#define MAKEFILE_TEXT           QE_STYLE_DEFAULT
+#define MAKEFILE_COMMENT        QE_STYLE_COMMENT
+#define MAKEFILE_STRING         QE_STYLE_STRING
+#define MAKEFILE_PREPROCESS     QE_STYLE_PREPROCESS
 #define MAKEFILE_TARGET         QE_STYLE_FUNCTION
-#define MAKEFILE_VARIABLE	QE_STYLE_VARIABLE
-#define MAKEFILE_MACRO		QE_STYLE_TYPE
+#define MAKEFILE_VARIABLE       QE_STYLE_VARIABLE
+#define MAKEFILE_MACRO          QE_STYLE_TYPE
 
 static void makefile_colorize_line(unsigned int *str, int n, int *statep,
                                    int state_only)
@@ -53,86 +53,86 @@ static void makefile_colorize_line(unsigned int *str, int n, int *statep,
     }
 
     while (i < n) {
-	switch (str[i]) {
-	case '$':
-	    i += 1;
-	    j = i + 1;
-	    if (str[i] == '(') {
-		i += 1;
-		level = 1;
-		for (j = i; j < n; j++) {
-		    if (str[j] == '(')
-			level++;
-		    if (str[j] == ')' && --level <= 0)
-			break;
-		    if (str[j] == ' ' || str[j] == '$') {
-			/* should have function color */
-			j = i;
-			break;
-		    }
-		}
-	    }
-	    if (i < j)
-		set_color(str + i, str + j, MAKEFILE_MACRO);
-	    i = j;
-	    continue;
-	case ' ':
-	case '\t':
-	    if (i == 0)
-		j = 1;
-	    break;
-	case '+':
-	    if (!j && str[i+1] == '=')
-		goto variable;
-	case ':':
-	    if (j)
-		break;
-	    if (str[i+1] == '=')
-		goto variable;
-	    set_color(str + j, str + i, MAKEFILE_TARGET);
-	    break;
-	case '=':
-	    if (j)
-		break;
-	variable:
-	    set_color(str + j, str + i, MAKEFILE_VARIABLE);
-	    break;
-	case '#':
-	    if (i > 0 && str[i - 1] == '\\')
-		break;
-	    set_color(str + i, str + n, MAKEFILE_COMMENT);
-	    i = n;
-	    continue;
-	case '!':
-	    /*		case '.':*/
-	    if (i > 0)
-		break;
-	preprocess:
-	    /* scan for comment */
-	    for (j = i + 1; j < n; j++) {
-		if (str[j] == '#')
-		    break;
-	    }
-	    set_color(str + i, str + j, MAKEFILE_PREPROCESS);
-	    i = j;
-	    continue;
-	case '\'':
-	case '`':
-	case '"':
-	    /* parse string const */
-	    for (j = i + 1; j < n; j++) {
-		if (str[j] == str[i]) {
-		    j++;
-		    break;
-		}
-	    }
-	    set_color(str + i, str + j, MAKEFILE_STRING);
-	    i = j;
-	    continue;
-	default:
-	    break;
-	}
-	i++;
+        switch (str[i]) {
+        case '$':
+            i += 1;
+            j = i + 1;
+            if (str[i] == '(') {
+                i += 1;
+                level = 1;
+                for (j = i; j < n; j++) {
+                    if (str[j] == '(')
+                        level++;
+                    if (str[j] == ')' && --level <= 0)
+                        break;
+                    if (str[j] == ' ' || str[j] == '$') {
+                        /* should have function color */
+                        j = i;
+                        break;
+                    }
+                }
+            }
+            if (i < j)
+                set_color(str + i, str + j, MAKEFILE_MACRO);
+            i = j;
+            continue;
+        case ' ':
+        case '\t':
+            if (i == 0)
+                j = 1;
+            break;
+        case '+':
+            if (!j && str[i+1] == '=')
+                goto variable;
+        case ':':
+            if (j)
+                break;
+            if (str[i+1] == '=')
+                goto variable;
+            set_color(str + j, str + i, MAKEFILE_TARGET);
+            break;
+        case '=':
+            if (j)
+                break;
+        variable:
+            set_color(str + j, str + i, MAKEFILE_VARIABLE);
+            break;
+        case '#':
+            if (i > 0 && str[i - 1] == '\\')
+                break;
+            set_color(str + i, str + n, MAKEFILE_COMMENT);
+            i = n;
+            continue;
+        case '!':
+            /*          case '.':*/
+            if (i > 0)
+                break;
+        preprocess:
+            /* scan for comment */
+            for (j = i + 1; j < n; j++) {
+                if (str[j] == '#')
+                    break;
+            }
+            set_color(str + i, str + j, MAKEFILE_PREPROCESS);
+            i = j;
+            continue;
+        case '\'':
+        case '`':
+        case '"':
+            /* parse string const */
+            for (j = i + 1; j < n; j++) {
+                if (str[j] == str[i]) {
+                    j++;
+                    break;
+                }
+            }
+            set_color(str + i, str + j, MAKEFILE_STRING);
+            i = j;
+            continue;
+        default:
+            break;
+        }
+        i++;
     }
 }
 
@@ -151,8 +151,8 @@ static int makefile_mode_probe(ModeProbeData *p)
     /* check file name or extension */
     if (match_extension(base, "mk|mak")
     ||  stristart(base, "makefile", NULL))
-	return 70;
-    
+        return 70;
+
     return 0;
 }
 

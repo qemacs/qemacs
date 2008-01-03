@@ -2,21 +2,21 @@
    with XHTML. */
 
 address,
-blockquote, 
-body, dd, div, 
-dl, dt, 
+blockquote,
+body, dd, div,
+dl, dt,
 fieldset, form,
 frame, frameset,
-h1, h2, h3, h4, 
-h5, h6, iframe, 
-noframes, 
-object, ol, p, 
-ul, applet, 
-center, dir, 
+h1, h2, h3, h4,
+h5, h6, iframe,
+noframes,
+object, ol, p,
+ul, applet,
+center, dir,
 hr, menu, pre   { display: block }
 li              { display: list-item }
 head            { display: none }
-table           { display: table; border-collapse: separate; 
+table           { display: table; border-collapse: separate;
                   border-spacing: 2px; text-align: left; }
 tr              { display: table-row; vertical-align: middle }
 thead           { display: table-header-group }
@@ -73,19 +73,19 @@ a[href]         { text-decoration: underline; color: blue }
 :focus          { outline: thin dotted invert }
 */
 
-/* Begin bidirectionality settings (do not change) */ 
-bdo[dir="ltr"] { direction: ltr; unicode-bidi: bidi-override } 
-bdo[dir="rtl"] { direction: rtl; unicode-bidi: bidi-override } 
-*[dir="ltr"] { direction: ltr; unicode-bidi: embed } 
-*[dir="rtl"] { direction: rtl; unicode-bidi: embed } 
+/* Begin bidirectionality settings (do not change) */
+bdo[dir="ltr"] { direction: ltr; unicode-bidi: bidi-override }
+bdo[dir="rtl"] { direction: rtl; unicode-bidi: bidi-override }
+*[dir="ltr"] { direction: ltr; unicode-bidi: embed }
+*[dir="rtl"] { direction: rtl; unicode-bidi: embed }
 
-/* Elements that are block-level in HTML4 */ 
-address, blockquote, body, dd, div, dl, dt, fieldset, 
-form, frame, frameset, h1, h2, h3, h4, h5, h6, iframe, 
-noscript, noframes, object, ol, p, ul, applet, center, 
-dir, hr, menu, pre, li, table, tr, thead, tbody, tfoot, 
-col, colgroup, td, th, caption { unicode-bidi: embed } 
-/* End bidi settings */   
+/* Elements that are block-level in HTML4 */
+address, blockquote, body, dd, div, dl, dt, fieldset,
+form, frame, frameset, h1, h2, h3, h4, h5, h6, iframe,
+noscript, noframes, object, ol, p, ul, applet, center,
+dir, hr, menu, pre, li, table, tr, thead, tbody, tfoot,
+col, colgroup, td, th, caption { unicode-bidi: embed }
+/* End bidi settings */
 
 /* additional special qemacs attributes */
 body {
@@ -101,22 +101,22 @@ input[type="radio"]:before { content: "(*)"; white-space: pre }
 
 input[type="checkbox"]:before { content: "[X]"; white-space: pre }
 
-input[type="button"], 
+input[type="button"],
 input[type="reset"],
 input[type="submit"],
 button { color: black; background-color: gray; padding: 4px; border: 3px ridge }
 
-input[type="text"], 
+input[type="text"],
 input[type="password"],
 input[type="file"],
-textarea { color: black; background-color: white; padding: 2px; border: 3px ridge; 
+textarea { color: black; background-color: white; padding: 2px; border: 3px ridge;
    font-size: 14pt; font-family: monospace; white-space: pre; text-align: left;  }
 
 input[type="file"] { width: 20em; }
 
 textarea { display: block }
 
-select { color: black; background-color: white; padding: 2px; border: 3px ridge; 
+select { color: black; background-color: white; padding: 2px; border: 3px ridge;
          font-size: 14pt; width: 6em; }
 option   { display: none }
 option[selected] { display: inline }
@@ -124,7 +124,7 @@ optgroup { display: none }
 
 /* NOTE: this style is only used to display the ALT content. It is
    highly dependent on qemacs CSS2 render */
-img, input[type="img"] { font-family: sans; font-size: 10pt; 
+img, input[type="img"] { font-family: sans; font-size: 10pt;
    vertical-align: top; text-align: left; overflow: hidden;
    text-decoration: none; }
 
@@ -139,13 +139,13 @@ ul, ol { counter-reset: list-item }
   @page         { margin: 10% }
   h1, h2, h3,
   h4, h5, h6    { page-break-after: avoid; page-break-inside: avoid }
-  blockquote, 
+  blockquote,
   pre           { page-break-inside: avoid }
   ul, ol, dl    { page-break-before: avoid }
 }
 
 @media speech {
-  h1, h2, h3, 
+  h1, h2, h3,
   h4, h5, h6    { voice-family: paul, male; stress: 20; richness: 90 }
   h1            { pitch: x-low; pitch-range: 90 }
   h2            { pitch: x-low; pitch-range: 80 }

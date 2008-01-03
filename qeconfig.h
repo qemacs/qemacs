@@ -20,7 +20,7 @@
  */
 
 /*
- * default qemacs configuration 
+ * default qemacs configuration
  */
 static CmdDef basic_commands[] = {
 
@@ -63,11 +63,11 @@ static CmdDef basic_commands[] = {
           do_exchange_point_and_mark)
     CMD0( KEY_CTRLX('h'), KEY_NONE, "mark-whole-buffer", do_mark_whole_buffer)
     CMD0( KEY_META(KEY_CTRL('w')) , KEY_NONE,
-	  "append-next-kill", do_append_next_kill)
+          "append-next-kill", do_append_next_kill)
     CMDV( KEY_CTRL('k'), KEY_NONE, "kill-line", do_kill_line, ESi, 1, "*v" )
     CMDV( KEY_NONE, KEY_NONE,
-	  "kill-beginning-of-line", do_kill_line, ESi, -1, "*v" )
-    CMDV( KEY_META(KEY_DEL) , KEY_META(KEY_BS), 
+          "kill-beginning-of-line", do_kill_line, ESi, -1, "*v" )
+    CMDV( KEY_META(KEY_DEL) , KEY_META(KEY_BS),
           "backward-kill-word", do_kill_word, ESi, -1, "*v" )
     CMDV( KEY_META('d') , KEY_NONE, "kill-word", do_kill_word, ESi, 1, "*v" )
     CMDV( KEY_CTRL('w'), KEY_NONE, "kill-region", do_kill_region, ESi, 1, "*v" )
@@ -79,7 +79,7 @@ static CmdDef basic_commands[] = {
 
     CMD_( KEY_CTRLX(KEY_CTRL('f')), KEY_NONE, "find-file", do_find_file, ESs,
           "s{Find file: }[file]|file|") /* u? */
-    CMD_( KEY_CTRLX(KEY_CTRL('v')), KEY_NONE, "find-alternate-file", 
+    CMD_( KEY_CTRLX(KEY_CTRL('v')), KEY_NONE, "find-alternate-file",
           do_find_alternate_file, ESs,
           "s{Find alternate file: }[file]|file|") /* u? */
     CMD_( KEY_CTRLX('i'), KEY_NONE, "insert-file", do_insert_file, ESs,
@@ -93,7 +93,7 @@ static CmdDef basic_commands[] = {
           "s{Switch to buffer: }[buffer]|buffer|")
     CMD_( KEY_CTRLX('k'), KEY_NONE, "kill-buffer", do_kill_buffer, ESs,
           "s{Kill buffer: }[buffer]|buffer|")
-    CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE, "toggle-read-only", 
+    CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE, "toggle-read-only",
           do_toggle_read_only)
     CMD_( KEY_META('~'), KEY_NONE, "not-modified", do_not_modified, ESi, "ui")
     CMD_( KEY_NONE, KEY_NONE, "set-visited-file-name",
@@ -181,7 +181,7 @@ static CmdDef basic_commands[] = {
 
     CMD0( KEY_CTRLH(KEY_CTRL('h')), KEY_F1, "help-for-help", do_help_for_help)
     CMD0( KEY_CTRLH('b'), KEY_NONE, "describe-bindings", do_describe_bindings)
-    CMD0( KEY_CTRLH('c'), KEY_CTRLH('k'), "describe-key-briefly", 
+    CMD0( KEY_CTRLH('c'), KEY_CTRLH('k'), "describe-key-briefly",
           do_describe_key_briefly)
 
     /*---------------- International ----------------*/
@@ -196,15 +196,15 @@ static CmdDef basic_commands[] = {
     CMD_( KEY_CTRLXRET(KEY_CTRL('\\')), KEY_NONE, "set-input-method",
           do_set_input_method, ESs,
           "s{Input method: }[input]")
-    CMD0( KEY_CTRLX(KEY_CTRL('\\')), KEY_NONE, 
+    CMD0( KEY_CTRLX(KEY_CTRL('\\')), KEY_NONE,
           "switch-input-method", do_switch_input_method)
 
     /*---------------- Styles & display ----------------*/
     CMD_( KEY_NONE, KEY_NONE, "define-color", do_define_color, ESss,
           "s{Color name: }[color]|color|s{Color value: }[color]|color|")
     CMD_( KEY_NONE, KEY_NONE, "set-style", do_set_style, ESsss,
-	  "s{Style: }[style]|style|"
-	  "s{CSS Property Name: }"
+          "s{Style: }[style]|style|"
+          "s{CSS Property Name: }"
           "s{CSS Property Value: }")
     CMD_( KEY_NONE, KEY_NONE, "set-display-size", do_set_display_size, ESii,
           "i{Width: }i{Height: }")
@@ -213,7 +213,7 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Miscellaneous ----------------*/
 
-    CMD_( KEY_CTRLX(KEY_CTRL('c')), KEY_NONE, "exit-qemacs", 
+    CMD_( KEY_CTRLX(KEY_CTRL('c')), KEY_NONE, "exit-qemacs",
           do_exit_qemacs, ESi, "ui")
     CMD0( KEY_CTRL('l'), KEY_NONE, "refresh", do_refresh_complete)
     CMD0( KEY_NONE, KEY_NONE, "doctor", do_doctor)
@@ -238,7 +238,7 @@ static CmdDef basic_commands[] = {
           "s{Change default directory: }[file]|file|")
     CMD_( KEY_NONE, KEY_NONE, "set-mode", do_cmd_set_mode, ESs,
           "s{Set mode: }[mode]")
-    
+
     /* tab & indent */
     CMD_( KEY_NONE, KEY_NONE, "set-tab-width", do_set_tab_width, ESi,
           "ui{Tab width: }")
@@ -254,7 +254,7 @@ static CmdDef basic_commands[] = {
           "s{Configuration file: }[file]|file|")
     CMD_( KEY_NONE, KEY_NONE, "load-qerc", do_load_qerc, ESs,
           "s{path: }[file]|file|")
-    
+
     CMD_DEF_END,
 };
 

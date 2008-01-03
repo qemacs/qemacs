@@ -91,7 +91,7 @@ OBJS=qe.o charset.o buffer.o \
      input.o unicode_join.o display.o util.o hex.o list.o cutils.o
 
 ifndef CONFIG_WIN32
-  OBJS+= unix.o tty.o 
+  OBJS+= unix.o tty.o
 endif
 
 # more charsets if needed
@@ -103,7 +103,7 @@ ifdef CONFIG_ALL_MODES
   OBJS+= unihex.o clang.o latex-mode.o xml.o bufed.o \
          makemode.o perl.o htmlsrc.o
   ifndef CONFIG_WIN32
-    OBJS+= shell.o dired.o 
+    OBJS+= shell.o dired.o
   endif
 endif
 
@@ -130,7 +130,7 @@ endif
 
 ifdef CONFIG_HTML
   CFLAGS+=-I./libqhtml
-  DEP_LIBS+=libqhtml/libqhtml.a 
+  DEP_LIBS+=libqhtml/libqhtml.a
   LIBS+=-L./libqhtml -lqhtml
   OBJS+=html.o docbook.o
   ifndef CONFIG_WIN32
@@ -244,7 +244,7 @@ FILES=Changelog COPYING README TODO qe.1 config.eg \
 FILES+=libqhtml/Makefile libqhtml/css.c libqhtml/cssid.h \
        libqhtml/cssparse.c libqhtml/xmlparse.c libqhtml/htmlent.h \
        libqhtml/css.h libqhtml/csstoqe.c \
-       libqhtml/docbook.css libqhtml/html.css 
+       libqhtml/docbook.css libqhtml/html.css
 
 # fonts
 FILES+=fonts/fixed10.fbf  fonts/fixed12.fbf  fonts/fixed13.fbf  fonts/fixed14.fbf \
@@ -293,8 +293,8 @@ KMAPS=Arabic.kmap ArmenianEast.kmap ArmenianWest.kmap Chinese-CJ.kmap \
       DanishAlternate.kmap GreekBible.kmap Polytonic.kmap Spanish.kmap \
       Thai.kmap VietnameseTelex.kmap Welsh.kmap \
       Hebrew.kmap HebrewIsraeli.kmap HebrewP.kmap Israeli.kmap Yiddish.kmap \
-      Kana.kmap 
-#     Hangul.kmap Hangul2.kmap Hangul3.kmap Unicode2.kmap 
+      Kana.kmap
+#     Hangul.kmap Hangul2.kmap Hangul3.kmap Unicode2.kmap
 #KMAPS_DIR=$(prefix)/share/yudit/data
 KMAPS_DIR=kmap
 KMAPS:=$(addprefix $(KMAPS_DIR)/, $(KMAPS))

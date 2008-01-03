@@ -108,7 +108,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
         if (*p == '-')
             *p = '_';
     }
-    
+
     strcpy(iso_name, name);
     strcpy(alias_list, "");
     has_iso_name = has_alias_list = 0;
@@ -181,7 +181,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
         table[c1] = c2;
         nb++;
     }
-    
+
     if (table[10] != 10) {
         if (table[0x25] == 0x0A) {
             /* EBCDIC file */
@@ -191,7 +191,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
                     filename);
         }
     }
-    
+
     min_code = 0x7fffffff;
     max_code = -1;
     for (i = 0; i < 256; i++) {
@@ -202,7 +202,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
                 max_code = i;
         }
     }
-    
+
     printf("\n"
            "/*----------------------------------------------------------------\n"
            " * filename: %s\n"
@@ -218,8 +218,8 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
         j = 0;
         for (i = min_code; i <= max_code; i++) {
             if ((j & 7) == 0)
-                printf("    ");
-            printf("0x%04x, ", table[i]);
+                printf("   ");
+            printf(" 0x%04x,", table[i]);
             if ((j++ & 7) == 7)
                 printf("\n");
         }
@@ -355,7 +355,7 @@ int main(int argc, char **argv)
             else
                 *p = tolower((unsigned char)*p);
         }
-        
+
         f = open_index(indexname, name);
         if (!f) {
             f = fopen(filename, "r");

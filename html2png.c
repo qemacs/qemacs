@@ -1,5 +1,5 @@
-/* 
- * HTML to PPM converter using the qHTML library 
+/*
+ * HTML to PPM converter using the qHTML library
  *
  * Copyright (c) 2002 Fabrice Bellard.
  *
@@ -69,7 +69,7 @@ void css_close(CSSFile *f1)
 
 /* error display */
 
-void css_error(const char *filename, int line_num, 
+void css_error(const char *filename, int line_num,
                const char *msg)
 {
     fprintf(stderr, "%s:%d: %s\n", filename, line_num, msg);
@@ -136,7 +136,7 @@ static QEDisplay ppm_dpy = {
 static int ppm_resize(QEditScreen *s, int w, int h)
 {
     CFBContext *cfb = s->private;
-    
+
     /* alloc bitmap */
     if (!qe_realloc(&cfb->base, w * h * sizeof(int))) {
         return -1;
@@ -180,7 +180,7 @@ static int ppm_init(QEditScreen *s, int w, int h)
 static void ppm_close(QEditScreen *s)
 {
     CFBContext *cfb = s->private;
-    
+
     qe_free(&cfb->base);
     qe_free(&s->private);
 }
@@ -310,14 +310,14 @@ void test_display(QEditScreen *screen)
     QEFont *font;
     unsigned int buf[256];
     int len;
-    
-    fill_rectangle(screen, 0, 0, screen->width, screen->height, 
+
+    fill_rectangle(screen, 0, 0, screen->width, screen->height,
                    QERGB(0xff, 0x00, 0x00));
     len = utf8_to_unicode(buf, sizeof(buf), "Hello World !");
-    
+
     font = select_font(screen, QE_FAMILY_FIXED | QE_STYLE_NORM, 12);
-    
-    draw_text(screen, font, screen->width / 2, screen->height / 2, 
+
+    draw_text(screen, font, screen->width / 2, screen->height / 2,
               buf, len, QERGB(0x00, 0x00, 0x00));
 
     release_font(screen, font);
@@ -331,7 +331,7 @@ static int html_test_abort(__unused__ void *opaque)
 
 #define IO_BUF_SIZE 4096
 
-static int draw_html(QEditScreen *scr, 
+static int draw_html(QEditScreen *scr,
                      const char *filename, QECharset *charset, int flags)
 {
     CSSContext *s = NULL;
@@ -364,27 +364,27 @@ static int draw_html(QEditScreen *scr,
         goto fail;
 
     xml = xml_begin(s->style_sheet, flags, html_test_abort, NULL, filename, charset);
-    
+
     for (;;) {
         len = css_read(f, buf, IO_BUF_SIZE);
         if (len <= 0)
             break;
         xml_parse(xml, buf, len);
     }
-    
+
     css_close(f);
 
     top_box = xml_end(xml);
-    
+
     /* CSS computation */
     css_compute(s, top_box);
 
     /* CSS layout */
     css_layout(s, top_box, scr->width, html_test_abort, NULL);
-    
+
     /* now we know the total size, so we allocate the ppm */
     page_height = top_box->bbox.y2;
-    
+
     if (ppm_resize(scr, scr->width, page_height) < 0)
         goto fail;
 
@@ -395,7 +395,7 @@ static int draw_html(QEditScreen *scr,
     rect.y2 = scr->height;
 
     css_display(s, top_box, &rect, 0, 0);
-    
+
     css_delete_box(top_box);
     css_delete_document(s);
     return 0;
@@ -422,7 +422,7 @@ static void help(void)
            "-f charset : set the default charset (default='%s')\n"
            "             use -f ? to list supported charsets\n"
            "-o outfile : set the output filename (default='%s')\n",
-           QE_VERSION, 
+           QE_VERSION,
            DEFAULT_WIDTH,
            "8859-1",
            DEFAULT_OUTFILENAME);
@@ -441,11 +441,11 @@ int main(int argc, char **argv)
     charset_jis_init();
     css_init();
 
-    page_width = DEFAULT_WIDTH; 
+    page_width = DEFAULT_WIDTH;
     outfilename = DEFAULT_OUTFILENAME;
     charset = &charset_8859_1;
     strict_xml = 0;
-    
+
     for (;;) {
         c = getopt(argc, argv, "h?w:o:f:x");
         if (c == -1)
@@ -503,7 +503,7 @@ int main(int argc, char **argv)
         ppm_save(screen, outfilename);
     else
         png_save(screen, outfilename);
-#else    
+#else
     ppm_save(screen, outfilename);
 #endif
 

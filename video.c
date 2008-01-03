@@ -59,14 +59,14 @@ typedef struct VideoState {
     int abort_request;
     int paused;
     AVFormatContext *ic;
-    
+
     int audio_stream;
     AVStream *audio_st;
     PacketQueue audioq;
     AVFormatContext *audio_out;
     int16_t sample_array[SAMPLE_ARRAY_SIZE];
     int sample_array_index;
-    
+
     int video_stream;
     AVStream *video_st;
     PacketQueue videoq;
@@ -75,7 +75,7 @@ typedef struct VideoState {
     int pictq_size, pictq_rindex, pictq_windex;
     pthread_mutex_t pictq_mutex;
     pthread_cond_t pictq_cond;
-    
+
     QETimer *video_timer;
 } VideoState;
 
@@ -99,11 +99,11 @@ static int video_mode_probe(ModeProbeData *pd)
 {
     AVProbeData avpd;
     AVInputFormat *fmt;
-    
+
     avpd.filename = pd->filename;
     avpd.buf = pd->buf;
     avpd.buf_size = pd->buf_size;
-    
+
     fmt = av_probe_input_format(&avpd, 1);
     if (!fmt)
         return 0;
@@ -164,7 +164,7 @@ static void packet_queue_abort(PacketQueue *q)
     pthread_mutex_lock(&q->mutex);
 
     q->abort_request = 1;
-    
+
     pthread_cond_signal(&q->cond);
 
     pthread_mutex_unlock(&q->mutex);
@@ -183,7 +183,7 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
             ret = -1;
             break;
         }
-            
+
         pkt1 = q->first_pkt;
         if (pkt1) {
             q->first_pkt = pkt1->next;
@@ -220,22 +220,22 @@ static void video_refresh_timer(void *opaque)
             is->video_timer = qe_add_timer(40, s, video_refresh_timer);
         } else {
             vp = &is->pictq[is->pictq_rindex];
-            
+
             /* launch timer for next picture */
             is->video_timer = qe_add_timer(vp->delay, s, video_refresh_timer);
 
             /* invalidate window */
             edit_invalidate(s);
             is->no_background = 1; /* XXX: horrible, needs complete rewrite */
-            
+
             /* display picture */
             edit_display(qs);
             dpy_flush(qs->screen);
-            
+
             /* update queue size and signal for next picture */
             if (++is->pictq_rindex == VIDEO_PICTURE_QUEUE_SIZE)
                 is->pictq_rindex = 0;
-            
+
             pthread_mutex_lock(&is->pictq_mutex);
             is->pictq_size--;
             pthread_cond_signal(&is->pictq_cond);
@@ -247,11 +247,11 @@ static void video_refresh_timer(void *opaque)
 
         /* if only audio stream, then display the audio bars (better
            than nothing, just to test the implementation */
-        
+
         /* invalidate window */
         edit_invalidate(s);
         is->no_background = 1; /* XXX: horrible, needs complete rewrite */
-        
+
         /* display picture */
         edit_display(qs);
         dpy_flush(qs->screen);
@@ -272,7 +272,7 @@ static void video_image_display(EditState *s)
         /* XXX: use variable in the frame */
         aspect_ratio = is->video_st->codec.aspect_ratio;
         if (aspect_ratio <= 0.0)
-            aspect_ratio = (float)is->video_st->codec.width / 
+            aspect_ratio = (float)is->video_st->codec.width /
                 (float)is->video_st->codec.height;
         /* XXX: we suppose the screen has a 1.0 pixel ratio */
         height = s->height;
@@ -289,11 +289,11 @@ static void video_image_display(EditState *s)
         } else {
             is->no_background = 0;
         }
-        bmp_draw(s->screen, vp->bmp, s->xleft + x, s->ytop + y, 
+        bmp_draw(s->screen, vp->bmp, s->xleft + x, s->ytop + y,
                  width, height, 0, 0, 0);
     } else {
-        fill_rectangle(s->screen, 
-                       s->xleft, s->ytop, s->width, s->height, 
+        fill_rectangle(s->screen,
+                       s->xleft, s->ytop, s->width, s->height,
                        QERGB(0x00, 0x00, 0x00));
     }
 }
@@ -303,8 +303,8 @@ static void video_audio_display(EditState *s)
     VideoState *is = s->mode_data;
     int i, x, y1, y, h, ys;
 
-    fill_rectangle(s->screen, 
-                   s->xleft, s->ytop, s->width, s->height, 
+    fill_rectangle(s->screen,
+                   s->xleft, s->ytop, s->width, s->height,
                    QERGB(0x00, 0x00, 0x00));
     if (is->sample_array_index >= SAMPLE_ARRAY_SIZE) {
         i = 0;
@@ -318,8 +318,8 @@ static void video_audio_display(EditState *s)
             } else {
                 ys = y1;
             }
-            fill_rectangle(s->screen, 
-                           s->xleft + x, ys, 1, y, 
+            fill_rectangle(s->screen,
+                           s->xleft + x, ys, 1, y,
                            QERGB(0xff, 0xff, 0xff));
             if (++i >= SAMPLE_ARRAY_SIZE)
                 i = 0;
@@ -337,7 +337,7 @@ static void video_display(EditState *s)
     if (s->display_invalid) {
         if (is->video_st)
             video_image_display(s);
-        else if (is->audio_st) 
+        else if (is->audio_st)
             video_audio_display(s);
         s->display_invalid = 0;
     }
@@ -353,7 +353,7 @@ static void alloc_picture(void *opaque)
     int is_yuv;
 
     vp = &is->pictq[is->pictq_windex];
-    
+
     bmp_free(s->screen, &vp->bmp);
 
     /* XXX: use generic function */
@@ -373,7 +373,7 @@ static void alloc_picture(void *opaque)
 
  retry:
     if (is_yuv) {
-        vp->bmp = bmp_alloc(s->screen, 
+        vp->bmp = bmp_alloc(s->screen,
                             is->video_st->codec.width,
                             is->video_st->codec.height,
                             QEBITMAP_FLAG_VIDEO);
@@ -386,7 +386,7 @@ static void alloc_picture(void *opaque)
             goto retry;
         }
     } else {
-        vp->bmp = bmp_alloc(s->screen, 
+        vp->bmp = bmp_alloc(s->screen,
                             is->video_st->codec.width,
                             is->video_st->codec.height,
                             0);
@@ -415,14 +415,14 @@ static int output_picture(VideoState *is, AVPicture *src_pict)
         pthread_cond_wait(&is->pictq_cond, &is->pictq_mutex);
     }
     pthread_mutex_unlock(&is->pictq_mutex);
-    
+
     if (is->videoq.abort_request)
         return -1;
 
     vp = &is->pictq[is->pictq_windex];
 
     /* alloc or resize hardware picture buffer */
-    if (!vp->bmp || 
+    if (!vp->bmp ||
         vp->width != is->video_st->codec.width ||
         vp->height != is->video_st->codec.height) {
 
@@ -445,21 +445,21 @@ static int output_picture(VideoState *is, AVPicture *src_pict)
 
     if (vp->bmp) {
         /* get a pointer on the bitmap */
-        bmp_lock(s->screen, vp->bmp, &qepict, 
+        bmp_lock(s->screen, vp->bmp, &qepict,
                  0, 0, vp->bmp->width, vp->bmp->height);
         dst_pix_fmt = qe_bitmap_format_to_pix_fmt(vp->bmp->format);
         for (i = 0; i < 4; i++) {
             pict.data[i] = qepict.data[i];
             pict.linesize[i] = qepict.linesize[i];
         }
-        img_convert(&pict, dst_pix_fmt, 
-                    src_pict, is->video_st->codec.pix_fmt, 
+        img_convert(&pict, dst_pix_fmt,
+                    src_pict, is->video_st->codec.pix_fmt,
                     is->video_st->codec.width, is->video_st->codec.height);
         /* update the bitmap content */
         bmp_unlock(s->screen, vp->bmp);
 
         /* compute delay for the next frame */
-        vp->delay =  (1000 * is->video_st->codec.frame_rate_base) / 
+        vp->delay =  (1000 * is->video_st->codec.frame_rate_base) /
             is->video_st->codec.frame_rate;
         /* XXX: just fixes .asf! */
         if (vp->delay > 40)
@@ -491,7 +491,7 @@ static void *video_thread(void *arg)
             break;
         ptr = pkt->data;
         if (is->video_st->codec.codec_id == CODEC_ID_RAWVIDEO) {
-            avpicture_fill(&pict, ptr, 
+            avpicture_fill(&pict, ptr,
                            is->video_st->codec.pix_fmt,
                            is->video_st->codec.width,
                            is->video_st->codec.height);
@@ -500,7 +500,7 @@ static void *video_thread(void *arg)
         } else {
             len = pkt->size;
             while (len > 0) {
-                len1 = avcodec_decode_video(&is->video_st->codec, 
+                len1 = avcodec_decode_video(&is->video_st->codec,
                                             &frame, &got_picture, ptr, len);
                 if (len1 < 0)
                     break;
@@ -543,7 +543,7 @@ static void output_audio(VideoState *is, short *samples, int samples_size)
         is->sample_array_index += len;
     }
 
-    is->audio_out->oformat->write_packet(is->audio_out, 0, 
+    is->audio_out->oformat->write_packet(is->audio_out, 0,
                                          (uint8_t *)samples, samples_size, 0);
 }
 
@@ -564,7 +564,7 @@ static void *audio_thread(void *arg)
         ptr = pkt->data;
         len = pkt->size;
         while (len > 0) {
-            len1 = avcodec_decode_audio(&is->audio_st->codec, 
+            len1 = avcodec_decode_audio(&is->audio_st->codec,
                                         samples, &data_size, ptr, len);
             if (len1 < 0)
                 break;
@@ -591,7 +591,7 @@ static int stream_open(EditState *s, int stream_index)
     if (stream_index < 0 || stream_index >= ic->nb_streams)
         return -1;
     enc = &ic->streams[stream_index]->codec;
-    
+
 
     /* prepare audio output */
     if (enc->codec_type == CODEC_TYPE_AUDIO) {
@@ -638,7 +638,7 @@ static void stream_close(EditState *s, int stream_index)
     VideoState *is = s->mode_data;
     AVFormatContext *ic = is->ic;
     AVCodecContext *enc;
-    
+
     enc = &ic->streams[stream_index]->codec;
 
     switch (enc->codec_type) {
@@ -650,7 +650,7 @@ static void stream_close(EditState *s, int stream_index)
 
         av_write_trailer(is->audio_out);
         av_freep(&is->audio_out);
-        
+
         break;
     case CODEC_TYPE_VIDEO:
         packet_queue_abort(&is->videoq);
@@ -725,7 +725,7 @@ static void *decode_thread(void *arg)
 #ifdef DEBUG
     dump_format(ic, 0, s->b->filename, 0);
 #endif
-    
+
     /* open the streams */
     if (audio_index >= 0) {
         stream_open(s, audio_index);
@@ -748,7 +748,7 @@ static void *decode_thread(void *arg)
             struct timespec tv;
             /* wait 10 ms */
             tv.tv_sec = 0;
-            tv.tv_nsec = 10 * 1000000; 
+            tv.tv_nsec = 10 * 1000000;
             nanosleep(&tv, NULL);
             continue;
         }
@@ -820,7 +820,7 @@ static int video_mode_init(EditState *s, ModeSavedData *saved_data)
         is->paused = 1;
     }
     is->sample_array_index = SAMPLE_ARRAY_SIZE;
-    
+
     err = pthread_create(&is->parse_tid, NULL, decode_thread, s);
     if (err != 0)
         return -1;
@@ -873,7 +873,7 @@ static int video_mode_line(EditState *s, char *buf, int buf_size)
         pos += snprintf(buf + pos, buf_size - pos, "[paused]--");
     }
     if (is->ic) {
-        pos += snprintf(buf + pos, buf_size - pos, "%s", 
+        pos += snprintf(buf + pos, buf_size - pos, "%s",
                         is->ic->iformat->name);
     }
     if (is->video_st) {
@@ -882,9 +882,9 @@ static int video_mode_line(EditState *s, char *buf, int buf_size)
         codec = dec->codec;
         if (codec)
             name = codec->name;
-        pos += snprintf(buf + pos, buf_size - pos, "--%s/%s[%dx%d@%0.2ffps]", 
+        pos += snprintf(buf + pos, buf_size - pos, "--%s/%s[%dx%d@%0.2ffps]",
                         name, get_stream_id(is->ic, is->video_st, buf1, sizeof(buf1)),
-                        dec->width, dec->height, 
+                        dec->width, dec->height,
                         (float)dec->frame_rate / dec->frame_rate_base);
     }
     if (is->audio_st) {
@@ -893,7 +893,7 @@ static int video_mode_line(EditState *s, char *buf, int buf_size)
         codec = dec->codec;
         if (codec)
             name = codec->name;
-        pos += snprintf(buf + pos, buf_size - pos, "--%s/%s[%dHz:%dch]", 
+        pos += snprintf(buf + pos, buf_size - pos, "--%s/%s[%dHz:%dch]",
                         name, get_stream_id(is->ic, is->audio_st, buf1, sizeof(buf1)),
                         dec->sample_rate, dec->channels);
     }
@@ -913,7 +913,7 @@ static void av_cycle_stream(EditState *s, int codec_type)
     else
         start_index = is->audio_stream;
     if (start_index < 0) {
-        put_status(s, "No %s stream to cycle", 
+        put_status(s, "No %s stream to cycle",
                    (codec_type == CODEC_TYPE_VIDEO) ? "video" : "audio");
         return;
     }
@@ -923,7 +923,7 @@ static void av_cycle_stream(EditState *s, int codec_type)
         if (++stream_index >= ic->nb_streams)
             stream_index = 0;
         if (stream_index == start_index) {
-            put_status(s, "Only one %s stream", 
+            put_status(s, "Only one %s stream",
                        (codec_type == CODEC_TYPE_VIDEO) ? "video" : "audio");
             return;
         }
@@ -931,7 +931,7 @@ static void av_cycle_stream(EditState *s, int codec_type)
         if (st->codec.codec_type == codec_type)
             break;
     }
-    put_status(s, "Switching to %s stream %s", 
+    put_status(s, "Switching to %s stream %s",
                (codec_type == CODEC_TYPE_VIDEO) ? "video" : "audio",
                get_stream_id(ic, st, buf, sizeof(buf)));
     stream_close(s, start_index);
@@ -947,7 +947,7 @@ static CmdDef video_commands[] = {
 };
 
 ModeDef video_mode = {
-    "av", 
+    "av",
     instance_size: sizeof(VideoState),
     mode_probe: video_mode_probe,
     mode_init: video_mode_init,

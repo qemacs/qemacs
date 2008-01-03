@@ -1,8 +1,8 @@
 /* FriBidi - Library of BiDi algorithm
  * Copyright (C) 1999 Dov Grobgeld
- * 
+ *
  * The optimizations to reduce the code size from 13 KB to 3 KB and
- * the embed/override hack handling are 
+ * the embed/override hack handling are
  * Copyright (C) 2000 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or
@@ -44,10 +44,10 @@
 /* except for AB <-> BB, 3C <-> 3E, 5B <-> 5D, 7B <-> 7D which have
    their high order bit set */
 static const unsigned short mirror_table[] = {
-    0x0028, 0x803C, 0x805B, 0x807B, 0x80AB, 0x2039, 0x2045, 0x207D, 
-    0x208D, 0x2264, 0x2266, 0x2268, 0x226A, 0x226E, 0x2270, 0x2272, 
-    0x2274, 0x22A2, 0x22C9, 0x22CB, 0x22D6, 0x22D8, 0x22DC, 0x22E6, 
-    0x22F0, 0x2308, 0x230A, 0x2329, 0x3008, 0x300A, 0x300C, 0x300E, 
+    0x0028, 0x803C, 0x805B, 0x807B, 0x80AB, 0x2039, 0x2045, 0x207D,
+    0x208D, 0x2264, 0x2266, 0x2268, 0x226A, 0x226E, 0x2270, 0x2272,
+    0x2274, 0x22A2, 0x22C9, 0x22CB, 0x22D6, 0x22D8, 0x22DC, 0x22E6,
+    0x22F0, 0x2308, 0x230A, 0x2329, 0x3008, 0x300A, 0x300C, 0x300E,
     0x3010, 0x3014, 0x3016, 0x3018, 0x301A,
 };
 
@@ -102,7 +102,7 @@ static const unsigned short property_start[366] = {
 0xfe5f, 0xfe60, 0xfe62, 0xfe64, 0xfe69, 0xfe6b, 0xfe70, 0xfeff,
 0xff00, 0xff03, 0xff06, 0xff0b, 0xff0c, 0xff0d, 0xff0e, 0xff0f,
 0xff10, 0xff1a, 0xff1b, 0xff21, 0xff3b, 0xff41, 0xff5b, 0xff66,
-0xffe0, 0xffe2, 0xffe5, 0xffe8, 0xfff9, 0xfffc, 
+0xffe0, 0xffe2, 0xffe5, 0xffe8, 0xfff9, 0xfffc,
 };
 
 static const unsigned char property_val[366] = {
@@ -151,13 +151,13 @@ static const unsigned char property_val[366] = {
 0x06, 0x0f, 0x06, 0x0f, 0x06, 0x0f, 0x0c, 0x0e,
 0x0f, 0x06, 0x0f, 0x06, 0x08, 0x06, 0x08, 0x05,
 0x04, 0x08, 0x0f, 0x00, 0x0f, 0x00, 0x0f, 0x00,
-0x06, 0x0f, 0x06, 0x0f, 0x0e, 0x0f, 
+0x06, 0x0f, 0x06, 0x0f, 0x0e, 0x0f,
 };
 
 FriBidiCharType fribidi_get_type(FriBidiChar ch)
 {
     int a, b, m, ch1;
-    
+
 #if defined(TEST) || 0
     /* for testing only */
     if (ch >= 'A' && ch <= 'Z')
@@ -197,7 +197,7 @@ FriBidiChar
 fribidi_get_mirror_char(FriBidiChar ch)
 {
     int a, b, m, ch1, d, e;
-    
+
     if (ch >= 0x8000)
         return ch;
 
@@ -337,7 +337,7 @@ static int type_to_char(int type)
         ch = 'N';
     else
         ch = '?';
-    
+
     return ch;
 }
 
@@ -372,7 +372,7 @@ void fribidi_analyse_string(TypeLink * type_rl_list,
     unsigned char stack_level[STACK_SIZE];
     unsigned char stack_override[STACK_SIZE];
     int stack_index;
-    
+
 
 #ifdef DEBUG
     print_types_re(type_rl_list, 0);
@@ -432,9 +432,9 @@ void fribidi_analyse_string(TypeLink * type_rl_list,
     for (pp = type_rl_list + 1; pp->type != FRIBIDI_TYPE_EOT; pp++) {
         int type, i;
         type = RL_TYPE(pp);
-        if (type == FRIBIDI_TYPE_LRE || 
-            type == FRIBIDI_TYPE_RLE || 
-            type == FRIBIDI_TYPE_LRO || 
+        if (type == FRIBIDI_TYPE_LRE ||
+            type == FRIBIDI_TYPE_RLE ||
+            type == FRIBIDI_TYPE_LRO ||
             type == FRIBIDI_TYPE_RLO) {
             for (i = 0; i < RL_LEN(pp); i++) {
                 if (stack_index < STACK_SIZE) {
@@ -593,10 +593,10 @@ void fribidi_analyse_string(TypeLink * type_rl_list,
 
     /* 6. Resolving Implicit levels */
     max_level = base_level;
-    
+
     for (pp = type_rl_list + 1; pp->type != FRIBIDI_TYPE_EOT; pp++) {
         int this_type = RL_TYPE(pp);
-        
+
         level = RL_LEVEL(pp);
         if ((level & 1) == 0) {
             /* Even */
@@ -617,7 +617,7 @@ void fribidi_analyse_string(TypeLink * type_rl_list,
             else
                 RL_LEVEL(pp) = level;
         }
-        
+
         if (RL_LEVEL(pp) > max_level)
             max_level = RL_LEVEL(pp);
     }

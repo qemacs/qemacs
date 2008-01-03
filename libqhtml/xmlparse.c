@@ -251,7 +251,7 @@ struct XMLState {
                                    add to that */
     enum XMLParseState state;
     int line_num;
-    CSSAbortFunc *abort_func; 
+    CSSAbortFunc *abort_func;
     void *abort_opaque;
     QECharset *charset;
     int base_font; /* XXX: is it correct ? */
@@ -267,11 +267,11 @@ struct XMLState {
 /* start xml parsing */
 
 XMLState *xml_begin(CSSStyleSheet *style_sheet, int flags,
-                    CSSAbortFunc *abort_func, void *abort_opaque, 
+                    CSSAbortFunc *abort_func, void *abort_opaque,
                     const char *filename, QECharset *charset)
 {
     XMLState *s;
-    
+
     s = qe_mallocz(XMLState);
     if (!s)
         return NULL;
@@ -333,7 +333,7 @@ static const char *css_attr_strlower(CSSBox *box, CSSIdent attr_id)
     css_strtolower(buf, sizeof(buf));
     return buf;
 }
-    
+
 
 static int css_attr_int(CSSBox *box, CSSIdent attr_id, int def_val)
 {
@@ -362,26 +362,26 @@ static void html_table_borders(CSSBox *box, int border, int padding)
         while (*last_prop != NULL)
             last_prop = &(*last_prop)->next;
         if (border >= 1) {
-            css_add_prop_unit(&last_prop, CSS_border_left_width, 
+            css_add_prop_unit(&last_prop, CSS_border_left_width,
                               CSS_UNIT_PIXEL, border);
-            css_add_prop_unit(&last_prop, CSS_border_right_width, 
+            css_add_prop_unit(&last_prop, CSS_border_right_width,
                               CSS_UNIT_PIXEL, border);
             css_add_prop_unit(&last_prop, CSS_border_top_width,
                               CSS_UNIT_PIXEL, border);
-            css_add_prop_unit(&last_prop, CSS_border_bottom_width, 
+            css_add_prop_unit(&last_prop, CSS_border_bottom_width,
                               CSS_UNIT_PIXEL, border);
 
-            css_add_prop_int(&last_prop, CSS_border_left_style, 
+            css_add_prop_int(&last_prop, CSS_border_left_style,
                              CSS_BORDER_STYLE_RIDGE);
-            css_add_prop_int(&last_prop, CSS_border_right_style, 
+            css_add_prop_int(&last_prop, CSS_border_right_style,
                              CSS_BORDER_STYLE_RIDGE);
-            css_add_prop_int(&last_prop, CSS_border_top_style, 
+            css_add_prop_int(&last_prop, CSS_border_top_style,
                              CSS_BORDER_STYLE_RIDGE);
-            css_add_prop_int(&last_prop, CSS_border_bottom_style, 
+            css_add_prop_int(&last_prop, CSS_border_bottom_style,
                              CSS_BORDER_STYLE_RIDGE);
         }
         if (padding >= 1) {
-            css_add_prop_unit(&last_prop, CSS_padding_left, 
+            css_add_prop_unit(&last_prop, CSS_padding_left,
                               CSS_UNIT_PIXEL, padding);
             css_add_prop_unit(&last_prop, CSS_padding_right,
                               CSS_UNIT_PIXEL, padding);
@@ -433,7 +433,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
             arg.u.str = qe_strdup(value);
             css_add_prop(&last_prop, CSS_content_alt, &arg);
         }
-        
+
         width = css_attr_int(box, CSS_ID_width, 0);
         if (width <= 0)
             width = DEFAULT_IMG_WIDTH;
@@ -441,9 +441,9 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
         if (height <= 0)
             height = DEFAULT_IMG_HEIGHT;
 
-        css_add_prop_unit(&last_prop, CSS_width, 
+        css_add_prop_unit(&last_prop, CSS_width,
                           CSS_UNIT_PIXEL, width);
-        css_add_prop_unit(&last_prop, CSS_height, 
+        css_add_prop_unit(&last_prop, CSS_height,
                           CSS_UNIT_PIXEL, height);
 
         /* border */
@@ -477,7 +477,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
         }
         val = css_attr_int(box, CSS_ID_vspace, -1);
         if (val >= 0) {
-            css_add_prop_unit(&last_prop, CSS_margin_top, 
+            css_add_prop_unit(&last_prop, CSS_margin_top,
                               CSS_UNIT_PIXEL, val);
             css_add_prop_unit(&last_prop, CSS_margin_bottom,
                               CSS_UNIT_PIXEL, val);
@@ -501,7 +501,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
             ss->tag = CSS_ID_a;
             plast_attr = &ss->attrs;
             add_attribute(&plast_attr, CSS_ID_href, CSS_ATTR_OP_SET, "");
-                          
+
             e = add_style_entry(s->style_sheet, ss, CSS_MEDIA_ALL);
 
             /* add color property */
@@ -526,10 +526,10 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
             if (box->tag == CSS_ID_basefont)
                 s->base_font = val;
             /* XXX: incorrect for basefont */
-            css_add_prop_unit(&last_prop, CSS_font_size, 
+            css_add_prop_unit(&last_prop, CSS_font_size,
                               CSS_UNIT_IN, get_font_size(val - 1));
         }
-            
+
         /* color */
         value = css_attr_str(box, CSS_ID_color);
         if (value && !css_get_color(&color, value)) {
@@ -553,7 +553,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
         }
         border = css_attr_int(box, CSS_ID_border, -1);
         if (border >= 0) {
-            css_add_prop_unit(&last_prop, CSS_border_left_width, 
+            css_add_prop_unit(&last_prop, CSS_border_left_width,
                               CSS_UNIT_PIXEL, border);
             css_add_prop_unit(&last_prop, CSS_border_right_width,
                               CSS_UNIT_PIXEL, border);
@@ -575,7 +575,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
         }
         val = css_attr_int(box, CSS_ID_cellspacing, -1);
         if (val >= 0) {
-            css_add_prop_unit(&last_prop, CSS_border_spacing_horizontal, 
+            css_add_prop_unit(&last_prop, CSS_border_spacing_horizontal,
                               CSS_UNIT_PIXEL, val);
             css_add_prop_unit(&last_prop, CSS_border_spacing_vertical,
                               CSS_UNIT_PIXEL, val);
@@ -618,7 +618,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
             }
         }
         /* XXX: add value, but needs a css extension */
-        if (box->tag == CSS_ID_ol) 
+        if (box->tag == CSS_ID_ol)
             val = CSS_ID_start;
         else
             val = CSS_ID_value;
@@ -655,7 +655,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
                 box->attrs = attr;
             }
         }
-            
+
     parse_input:
         if (type == CSS_ID_image)
             goto parse_img;
@@ -684,20 +684,20 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
         val = css_attr_int(box, CSS_ID_cols, 10);
         if (val < 1)
             val = 1;
-        css_add_prop_unit(&last_prop, CSS_width, 
+        css_add_prop_unit(&last_prop, CSS_width,
                           CSS_UNIT_EM, val << CSS_LENGTH_FRAC_BITS);
 
         val = css_attr_int(box, CSS_ID_rows, 1);
         if (val < 1)
             val = 1;
-        css_add_prop_unit(&last_prop, CSS_height, 
+        css_add_prop_unit(&last_prop, CSS_height,
                           CSS_UNIT_EM, val << CSS_LENGTH_FRAC_BITS);
         break;
     case CSS_ID_select:
         val = css_attr_int(box, CSS_ID_size, 1);
         if (val < 1)
             val = 1;
-        css_add_prop_unit(&last_prop, CSS_height, 
+        css_add_prop_unit(&last_prop, CSS_height,
                           CSS_UNIT_EM, val << CSS_LENGTH_FRAC_BITS);
         break;
     default:
@@ -817,7 +817,7 @@ static int parse_tag(XMLState *s, const char *buf)
     CSSAttribute *first_attr, **pattr, *attr;
 
     p = buf;
-    
+
     /* ignore XML commands */
     if (p[0] == '!' || p[0] == '?')
         return XML_STATE_TEXT;
@@ -844,10 +844,10 @@ static int parse_tag(XMLState *s, const char *buf)
     if (s->ignore_case)
         css_strtolower(tag, sizeof(tag));
     css_tag = css_new_ident(tag);
-    
+
     /* XXX: should test html_syntax, but need more patches */
-    if (s->is_html && (css_tag == CSS_ID_style || 
-                       css_tag == CSS_ID_script)) 
+    if (s->is_html && (css_tag == CSS_ID_style ||
+                       css_tag == CSS_ID_script))
         goto pretag;
     if (eot)
         goto end_of_tag;
@@ -874,7 +874,7 @@ static int parse_tag(XMLState *s, const char *buf)
                 q = value;
                 while (*p != '\0' && !strchr(" \t\n\r<>", *p)) {
                     ch = parse_entity(&p);
-                    if ((q - value) < (int)sizeof(value) - 1) 
+                    if ((q - value) < (int)sizeof(value) - 1)
                         *q++ = ch;
                 }
                 *q = '\0';
@@ -883,7 +883,7 @@ static int parse_tag(XMLState *s, const char *buf)
                 q = value;
                 while (*p != och && *p != '\0' && *p != '<') {
                     ch = parse_entity(&p);
-                    if ((q - value) < (int)sizeof(value) - 1) 
+                    if ((q - value) < (int)sizeof(value) - 1)
                         *q++ = ch;
                 }
                 *q = '\0';
@@ -925,7 +925,7 @@ static int parse_tag(XMLState *s, const char *buf)
             ct++;
         }
     }
-    
+
     /* create the new box and add it */
     box = css_new_box(css_tag, NULL);
     box->attrs = first_attr;
@@ -936,8 +936,8 @@ static int parse_tag(XMLState *s, const char *buf)
         css_add_box(s->box, box);
     }
     s->box = box;
-    
-    if ((s->flags & XML_DOCBOOK) && 
+
+    if ((s->flags & XML_DOCBOOK) &&
         css_tag == CSS_ID_programlisting) {
     pretag:
         pstrcpy(s->pretag, sizeof(s->pretag), tag);
@@ -971,7 +971,7 @@ static int parse_tag(XMLState *s, const char *buf)
                 }
                 if (!box1) {
                     if (css_tag != CSS_ID_form)
-                        xml_error(s, "unmatched closing tag </%s>", 
+                        xml_error(s, "unmatched closing tag </%s>",
                                   css_ident_str(css_tag));
                 } else {
                     html_eval_tag(s, box1);
@@ -1019,7 +1019,7 @@ static void flush_text(XMLState *s, const char *buf)
 static void flush_text_buffer(XMLState *s, int offset0, int offset1)
 {
     CSSBox *box, *box1;
-    
+
     box = s->box;
     /* if no current box, discard */
     if (!box)
@@ -1164,12 +1164,12 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
                 strbuf_addch(&s->str, ch);
                 taglen = s->pretaglen + 2;
                 len = s->str.size - taglen;
-                if (len >= 0 && 
-                    s->str.buf[len] == '<' && 
+                if (len >= 0 &&
+                    s->str.buf[len] == '<' &&
                     s->str.buf[len + 1] == '/' &&
                     !xml_tagcmp((char *)s->str.buf + len + 2, s->pretag)) {
                     s->str.buf[len] = '\0';
-                    
+
                     if (!xml_tagcmp(s->pretag, "style")) {
                         if (s->style_sheet) {
                             CSSParseState b1, *bp = &b1;
@@ -1244,7 +1244,7 @@ int xml_parse(XMLState *s, char *buf, int buf_len)
             return 0;
         }
     }
-        
+
     /* now no chars are left in the lookahead buffer so we can parse at full speed */
     len1 = buf_len - (LOOKAHEAD_SIZE - 1);
     if (len1 > 0) {
@@ -1254,7 +1254,7 @@ int xml_parse(XMLState *s, char *buf, int buf_len)
         buf_len -= len;
         buf += len;
     }
-    
+
     /* put all the remaining chars in the lookahead buffer */
     memcpy(s->lookahead_buf, buf, buf_len);
     s->lookahead_size = buf_len;
@@ -1280,13 +1280,13 @@ CSSBox *xml_end(XMLState *s)
 
     strbuf_reset(&s->str);
     root_box = s->root_box;
-    
+
     qe_free(&s);
     return root_box;
 }
 
 /* XML in edit buffer parsing */
-CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end, 
+CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end,
                          CSSStyleSheet *style_sheet, int flags,
                          CSSAbortFunc *abort_func, void *abort_opaque)
 {
@@ -1295,7 +1295,7 @@ CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end,
     int ret;
 
     s = xml_begin(style_sheet, flags, abort_func, abort_opaque, b->name, NULL);
-    ret = xml_parse_internal(s, NULL, offset_end - offset_start, 
+    ret = xml_parse_internal(s, NULL, offset_end - offset_start,
                              b, offset_start);
     box = xml_end(s);
     if (ret < 0) {
