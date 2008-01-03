@@ -230,7 +230,8 @@ static inline int qe_tolower(int c) {
 void css_strtolower(char *buf, int buf_size);
 void skip_spaces(const char **pp);
 
-int strfind(const char *keytable, const char *str, int casefold);
+int strfind(const char *list, const char *s);
+int strcasefind(const char *list, const char *s);
 const void *memstr(const void *buf, int size, const char *str);
 
 #define stristart(str, val, ptr)   qe_stristart(str, val, ptr)
@@ -1159,10 +1160,10 @@ extern QEmacsState qe_state;
 /* dynamic key binding storage */
 
 typedef struct KeyDef {
-    int nb_keys;
     struct CmdDef *cmd;
-    ModeDef *mode; /* if non NULL, key is only active in this mode */
     struct KeyDef *next;
+    ModeDef *mode; /* if non NULL, key is only active in this mode */
+    int nb_keys;
     unsigned int keys[1];
 } KeyDef;
 
@@ -1368,9 +1369,7 @@ typedef struct InputMethod {
     struct InputMethod *next;
 } InputMethod;
 
-extern InputMethod *input_methods;
-
-//void register_input_method(InputMethod *m);
+void register_input_method(InputMethod *m);
 void do_set_input_method(EditState *s, const char *method);
 void do_switch_input_method(EditState *s);
 void init_input_methods(void);
@@ -1404,7 +1403,6 @@ typedef struct CompletionEntry {
 } CompletionEntry;
 
 void register_completion(const char *name, CompletionFunc completion_func);
-//void vput_status(EditState *s, const char *fmt, va_list ap);
 void put_status(EditState *s, const char *fmt, ...) __attr_printf(2,3);
 void put_error(EditState *s, const char *fmt, ...) __attr_printf(2,3);
 void minibuffer_edit(const char *input, const char *prompt,
@@ -1459,6 +1457,7 @@ void do_split_window(EditState *s, int horiz);
 void edit_display(QEmacsState *qs);
 void edit_invalidate(EditState *s);
 void display_mode_line(EditState *s);
+void edit_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data);
 
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);
@@ -1494,16 +1493,13 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                        int offset1, int line_num);
 
 void do_char(EditState *s, int key, int argval);
-// bad name!
-// void do_set_mode(EditState *s, const char *mode_name);
-void do_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data);
-void do_cmd_set_mode(EditState *s, const char *name);
+void do_set_mode(EditState *s, const char *name);
 void text_move_left_right_visual(EditState *s, int dir);
 void text_move_word_left_right(EditState *s, int dir);
 void text_move_up_down(EditState *s, int dir);
 void text_scroll_up_down(EditState *s, int dir);
 void text_write_char(EditState *s, int key);
-void do_return(EditState *s);
+void do_return(EditState *s, int move);
 void do_backspace(EditState *s, int argval);
 void do_delete_char(EditState *s, int argval);
 void do_tab(EditState *s, int argval);
@@ -1554,7 +1550,6 @@ void perform_scroll_up_down(EditState *s, int h);
 void do_center_cursor(EditState *s);
 void do_quote(EditState *s, int argval);
 void do_insert(EditState *s);
-void do_open_line(EditState *s);
 // should take argval
 void do_set_mark(EditState *s);
 void do_mark_whole_buffer(EditState *s);
@@ -1610,8 +1605,9 @@ void do_find_alternate_file(EditState *s, const char *filename);
 void do_load_file_from_path(EditState *s, const char *filename);
 void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile);
-int eb_search(EditBuffer *b, int offset, int dir, u8 *buf, int size,
-              int flags, CSSAbortFunc *abort_func, void *abort_opaque);
+int eb_search(EditBuffer *b, int offset, int dir, int flags,
+              const u8 *buf, int size,
+              CSSAbortFunc *abort_func, void *abort_opaque);
 int search_abort_func(void *opaque);
 void do_doctor(EditState *s);
 void do_delete_other_windows(EditState *s);

@@ -125,14 +125,10 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
 
 static int latex_mode_probe(ModeProbeData *p)
 {
-    const char *r;
-
     /* currently, only use the file extension */
-    r = extension(p->filename);
-    if (*r) {
-        if (strfind("|tex|", r + 1, 1))
-            return 100;
-    }
+    if (match_extension(p->filename, "tex"))
+        return 100;
+
     return 0;
 }
 

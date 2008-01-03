@@ -23,7 +23,7 @@
 #include <sys/mman.h>
 #endif
 
-InputMethod *input_methods;
+static InputMethod *input_methods;
 
 static int default_input(__unused__ int *match_buf,
                          __unused__ int match_buf_size,
@@ -71,7 +71,7 @@ static InputMethod unicode_input_method = {
     "unicode", unicode_input, NULL, NULL,
 };
 
-static void register_input_method(InputMethod *m)
+void register_input_method(InputMethod *m)
 {
     InputMethod **p;
 

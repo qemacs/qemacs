@@ -176,7 +176,7 @@ static void do_list_buffers(EditState *s, int argval)
 
     width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
-    do_set_mode(e, &bufed_mode, NULL);
+    edit_set_mode(e, &bufed_mode, NULL);
 
     bs = e->mode_data;
     if (argval != NO_ARG) {

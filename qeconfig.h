@@ -53,8 +53,8 @@ static CmdDef basic_commands[] = {
     CMD_( KEY_CTRL('i'), KEY_NONE, "tabulate", do_tab, ESi, "ui")
     //CMD_( KEY_SPC, KEY_NONE, "space", do_space, "*ui")
     CMD_( KEY_CTRL('q'), KEY_NONE, "quoted-insert", do_quote, ESi, "*ui")
-    CMD_( KEY_CTRL('j'), KEY_RET, "newline", do_return, ES, "*")
-    CMD_( KEY_CTRL('o'), KEY_NONE, "open-line", do_open_line, ES, "*")
+    CMDV( KEY_CTRL('j'), KEY_RET, "newline", do_return, ESi, 1, "*v")
+    CMDV( KEY_CTRL('o'), KEY_NONE, "open-line", do_return, ESi, 0, "*v")
 
     /*---------------- Region handling / Kill commands ----------------*/
 
@@ -236,7 +236,7 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_NONE, KEY_NONE, "set-trace", do_set_trace)
     CMD_( KEY_NONE, KEY_NONE, "cd", do_cd, ESs,
           "s{Change default directory: }[file]|file|")
-    CMD_( KEY_NONE, KEY_NONE, "set-mode", do_cmd_set_mode, ESs,
+    CMD_( KEY_NONE, KEY_NONE, "set-mode", do_set_mode, ESs,
           "s{Set mode: }[mode]")
 
     /* tab & indent */

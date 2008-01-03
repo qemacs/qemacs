@@ -287,7 +287,7 @@ QECharset *find_charset(const char *name)
 
     for (charset = first_charset; charset != NULL; charset = charset->next) {
         if (!strxcmp(charset->name, name)
-        ||  strfind(charset->aliases, name, 1)) {
+        ||  strcasefind(charset->aliases, name)) {
             return charset;
         }
     }

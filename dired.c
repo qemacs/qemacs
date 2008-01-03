@@ -514,7 +514,7 @@ void do_dired(EditState *s)
 
     width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
-    do_set_mode(e, &dired_mode, NULL);
+    edit_set_mode(e, &dired_mode, NULL);
     hs = e->mode_data;
 
     e1 = find_window(e, KEY_RIGHT);

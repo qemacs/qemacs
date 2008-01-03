@@ -1326,23 +1326,26 @@ static void eb_io_stop(EditBuffer *b, int err)
 }
 #endif
 
+/* CG: returns number of bytes read, or -1 upon read error */
 int raw_load_buffer1(EditBuffer *b, FILE *f, int offset)
 {
-    int len;
     unsigned char buf[IOBUF_SIZE];
+    int len, size;
 
     //put_status(NULL, "loading %s", filename);
+    size = 0;
     for (;;) {
         len = fread(buf, 1, IOBUF_SIZE, f);
-        if (len < 0)
+        if (len <= 0 && ferror(f))
             return -1;
         if (len == 0)
             break;
         eb_insert(b, offset, buf, len);
         offset += len;
+        size += len;
     }
     //put_status(NULL, "");
-    return 0;
+    return size;
 }
 
 #ifdef WIN32

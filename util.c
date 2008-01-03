@@ -339,7 +339,7 @@ int match_extension(const char *filename, const char *extlist)
 
     r = extension(filename);
     if (*r == '.') {
-        return strfind(extlist, r + 1, 1);
+        return strcasefind(extlist, r + 1);
     } else {
         return 0;
     }
@@ -390,20 +390,13 @@ void splitpath(char *dirname, int dirname_size,
         pstrcpy(filename, filename_size, base);
 }
 
-/* find a word in a list using '|' as separator,
- * optionally fold case to lower case.
- */
-int strfind(const char *keytable, const char *str, int casefold)
+#if 0
+/* find a word in a list using '|' as separator */
+int strfind(const char *keytable, const char *str)
 {
-    char buf[128];
     int c, len;
     const char *p;
 
-    if (casefold) {
-        pstrcpy(buf, sizeof(buf), str);
-        str = buf;
-        css_strtolower(buf, sizeof(buf));
-    }
     c = *str;
     len = strlen(str);
     /* need to special case the empty string */
@@ -423,6 +416,58 @@ int strfind(const char *keytable, const char *str, int casefold)
                 break;
         }
     }
+}
+#else
+/* Search for the string s in '|' delimited list of strings */
+int strfind(const char *list, const char *s)
+{
+    const char *p, *q;
+    int c1, c2;
+
+    q = list;
+    if (*s == '\0') {
+        /* special case the empty string: must match || in list */
+        while (*q) {
+            if (q[0] == '|' && q[1] == '|')
+                return 1;
+            q++;
+        }
+        return 0;
+    } else {
+    scan:
+        p = s;
+        for (;;) {
+            c1 = *p++;
+            c2 = *q++;
+            if (c1 == '\0') {
+                if (c2 == '\0' || c2 == '|')
+                    return 1;
+                goto skip;
+            }
+            if (c1 != c2) {
+                for (;;) {
+                    if (c2 == '|')
+                        goto scan;
+                    
+                    if (c2 == '\0')
+                        return 0;
+                skip:
+                    c2 = *q++;
+                }
+            }
+        }
+    }
+}
+#endif
+
+/* find a word in a list using '|' as separator, fold case to lower case. */
+int strcasefind(const char *list, const char *s)
+{
+    char buf[128];
+
+    pstrcpy(buf, sizeof(buf), s);
+    css_strtolower(buf, sizeof(buf));
+    return strfind(list, buf);
 }
 
 const void *memstr(const void *buf, int size, const char *str)

@@ -1160,7 +1160,7 @@ static void do_shell(EditState *s, int force)
         return;
 
     switch_to_buffer(s, b);
-    do_set_mode(s, &shell_mode, NULL);
+    edit_set_mode(s, &shell_mode, NULL);
 
     put_status(s, "Press C-o to toggle between shell/edit mode");
     shell_launched = 1;
@@ -1252,7 +1252,7 @@ static void shell_write_char(EditState *e, int c)
             do_backspace(e, NO_ARG);
             break;
         case '\r':
-            do_return(e);
+            do_return(e, 1);
             break;
         default:
             text_write_char(e, c);

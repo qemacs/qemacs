@@ -222,7 +222,7 @@ void c_colorize_line(unsigned int *buf, int len,
                 } while (qe_isalnum_(c));
                 kbuf[klen] = '\0';
 
-                if (strfind(c_mode_keywords, kbuf, 0)) {
+                if (strfind(c_mode_keywords, kbuf)) {
                     set_color(p_start, p, QE_STYLE_KEYWORD);
                     continue;
                 }
@@ -234,7 +234,7 @@ void c_colorize_line(unsigned int *buf, int len,
                 while (*p2 == '*' || qe_isblank(*p2))
                     p2++;
 
-                if (strfind(c_mode_types, kbuf, 0)
+                if (strfind(c_mode_types, kbuf)
                 ||  (klen > 2 && kbuf[klen - 2] == '_' && kbuf[klen - 1] == 't')) {
                     /* c type */
                     /* if not cast, assume type declaration */
