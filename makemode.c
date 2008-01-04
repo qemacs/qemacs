@@ -183,7 +183,7 @@ static int makefile_init(void)
     makefile_mode.mode_init = makefile_mode_init;
 
     qe_register_mode(&makefile_mode);
-    qe_register_cmd_table(makefile_commands, "Makefile");
+    qe_register_cmd_table(makefile_commands, &makefile_mode);
 
     return 0;
 }

@@ -1448,7 +1448,7 @@ static int shell_init(void)
     qe_register_mode(&shell_mode);
 
     /* commands and default keys */
-    qe_register_cmd_table(shell_commands, "shell");
+    qe_register_cmd_table(shell_commands, &shell_mode);
     qe_register_cmd_table(compile_commands, NULL);
 
     return 0;

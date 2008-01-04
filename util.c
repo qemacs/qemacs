@@ -766,6 +766,7 @@ static int strtokey1(const char **pp)
 #endif
     /* Should also support backslash escapes: \000 \x00 \u0000 */
     /* Should also support ^x and syntax and Ctrl- prefix for control keys */
+    /* Should test for p[2] in range 'a'..'z', '@'..'_', '?' */
     if (p[0] == 'C' && p[1] == '-' && p1 == p + 3) {
         /* control */
         key = KEY_CTRL(p[2]);

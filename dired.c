@@ -502,7 +502,8 @@ void do_dired(EditState *s)
      */
     b0 = s->b;
 
-    b = eb_new("*dired*", BF_READONLY | BF_SYSTEM);
+    /* Should reuse previous dired buffer for same filespec */
+    b = eb_scratch("*dired*", BF_READONLY | BF_SYSTEM);
 
     /* set the filename to the directory of the current file */
     pstrcpy(filename, sizeof(filename), s->b->filename);
@@ -587,7 +588,7 @@ static int dired_init(void)
     /* first register mode */
     qe_register_mode(&dired_mode);
 
-    qe_register_cmd_table(dired_commands, "dired");
+    qe_register_cmd_table(dired_commands, &dired_mode);
     qe_register_cmd_table(dired_global_commands, NULL);
 
     return 0;

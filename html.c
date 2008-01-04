@@ -100,9 +100,7 @@ void css_error(const char *filename, int line_num, const char *msg)
 {
     EditBuffer *b;
 
-    b = eb_find(HTML_ERROR_BUFFER);
-    if (!b)
-        b = eb_new(HTML_ERROR_BUFFER, BF_READONLY);
+    b = eb_find_new(HTML_ERROR_BUFFER, BF_READONLY);
     if (!b)
         return;
     b->flags &= ~BF_READONLY;
@@ -894,7 +892,8 @@ static int html_init(void)
     css_init();
 
     qe_register_mode(&html_mode);
-    qe_register_cmd_table(html_commands, "html");
+    qe_register_cmd_table(html_commands, &html_mode);
+
     return 0;
 }
 

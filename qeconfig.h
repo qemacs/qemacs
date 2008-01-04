@@ -98,22 +98,28 @@ static CmdDef basic_commands[] = {
     CMD_( KEY_META('~'), KEY_NONE, "not-modified", do_not_modified, ESi, "ui")
     CMD_( KEY_NONE, KEY_NONE, "set-visited-file-name",
           do_set_visited_file_name, ESss,
-          "s{Set visited file name: }[file]|file|s{Rename file? }")
+	  "s{Set visited file name: }[file]|file|"
+	  "s{Rename file? }")
 
     /*---------------- Search and replace ----------------*/
 
     CMDV( KEY_META('S'), KEY_NONE, "search-forward", do_search_string, ESsi, 1,
-          "s{Search forward: }|search|v")
+	  "s{Search forward: }|search|"
+	  "v")
     CMDV( KEY_META('R'), KEY_NONE, "search-backward", do_search_string, ESsi, -1,
-          "s{Search backward: }|search|v")
+	  "s{Search backward: }|search|"
+	  "v")
     /* passing argument should switch to regex incremental search */
     CMD1( KEY_CTRL('r'), KEY_NONE, "isearch-backward", do_isearch, -1 )
     CMD1( KEY_CTRL('s'), KEY_NONE, "isearch-forward", do_isearch, 1 )
     CMD_( KEY_META('%'), KEY_NONE, "query-replace", do_query_replace, ESss,
-          "*s{Query replace: }|search|s{With: }|replace|")
+	  "*" "s{Query replace: }|search|"
+	  "s{With: }|replace|")
     /* passing argument restricts replace to word matches */
     CMD_( KEY_META('r'), KEY_NONE, "replace-string", do_replace_string, ESssi,
-          "*s{Replace String: }|search|s{With: }|replace|ui")
+	  "*" "s{Replace String: }|search|"
+	  "s{With: }|replace|"
+	  "ui")
 
     /*---------------- Paragraph / case handling ----------------*/
 
@@ -135,7 +141,8 @@ static CmdDef basic_commands[] = {
     /*---------------- Command handling ----------------*/
 
     CMD_( KEY_META('x'), KEY_NONE, "execute-command", do_execute_command, ESsi,
-          "s{Command: }[command]|command|ui")
+	  "s{Command: }[command]|command|"
+	  "ui")
     /* M-0 thru M-9 should start universal argument */
     CMD0( KEY_CTRL('u'), KEY_META('-'), "universal-argument",
           do_universal_argument)
@@ -144,10 +151,18 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_CTRLX(')'), KEY_NONE, "end-kbd-macro", do_end_macro)
     CMD0( KEY_CTRLX('e'), KEY_CTRL('\\'), "call-last-kbd-macro", do_call_macro)
     CMD_( KEY_NONE, KEY_NONE, "define-kbd-macro", do_define_kbd_macro, ESsss,
-          "s{Macro name: }[command]s{Macro keys: }s{Bind to key: }[key]")
-    /* global/local?, set/unset key? */
-    CMD_( KEY_NONE, KEY_NONE, "global-set-key", do_global_set_key, ESss,
-          "s{Set key globally: }[key]s{command: }[command]|command|")
+	  "s{Macro name: }[command]"
+	  "s{Macro keys: }"
+	  "s{Bind to key: }[key]")
+    /* set/unset key? */
+    CMDV( KEY_NONE, KEY_NONE, "global-set-key", do_set_key, ESssi, 0,
+          "s{Set key globally: }[key]"
+	  "s{command: }[command]|command|"
+	  "v")
+    CMDV( KEY_NONE, KEY_NONE, "local-set-key", do_set_key, ESssi, 1,
+          "s{Set key locally: }[key]"
+	  "s{command: }[command]|command|"
+	  "v")
 
     /*---------------- Window handling ----------------*/
 
@@ -191,7 +206,7 @@ static CmdDef basic_commands[] = {
           "s{Charset: }[charset]")
     CMD_( KEY_NONE, KEY_NONE, "convert-buffer-file-coding-system",
           do_convert_buffer_file_coding_system, ESs,
-          "*s{Charset: }[charset]")
+          "*" "s{Charset: }[charset]")
     CMD0( KEY_CTRLXRET('b'), KEY_NONE, "toggle-bidir", do_toggle_bidir)
     CMD_( KEY_CTRLXRET(KEY_CTRL('\\')), KEY_NONE, "set-input-method",
           do_set_input_method, ESs,
@@ -201,15 +216,18 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Styles & display ----------------*/
     CMD_( KEY_NONE, KEY_NONE, "define-color", do_define_color, ESss,
-          "s{Color name: }[color]|color|s{Color value: }[color]|color|")
+	  "s{Color name: }[color]|color|"
+	  "s{Color value: }[color]|color|")
     CMD_( KEY_NONE, KEY_NONE, "set-style", do_set_style, ESsss,
           "s{Style: }[style]|style|"
           "s{CSS Property Name: }"
           "s{CSS Property Value: }")
     CMD_( KEY_NONE, KEY_NONE, "set-display-size", do_set_display_size, ESii,
-          "i{Width: }i{Height: }")
+	  "i{Width: }"
+	  "i{Height: }")
     CMD_( KEY_NONE, KEY_NONE, "set-system-font", do_set_system_font, ESss,
-          "s{Font family: }s{System fonts: }")
+	  "s{Font family: }"
+	  "s{System fonts: }")
 
     /*---------------- Miscellaneous ----------------*/
 
@@ -218,8 +236,10 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_CTRL('l'), KEY_NONE, "refresh", do_refresh_complete)
     CMD0( KEY_NONE, KEY_NONE, "doctor", do_doctor)
     CMD0( KEY_CTRLX('u'), KEY_CTRL('_'), "undo", do_undo)
-    CMDV( KEY_META('g'), KEY_NONE, "goto-line", do_goto, ESsi, 'l', "us{Goto line: }v")
-    CMDV( KEY_CTRLX('g'), KEY_NONE, "goto-char", do_goto, ESsi, 'c',  "us{Goto char: }v")
+    CMDV( KEY_META('g'), KEY_NONE, "goto-line", do_goto, ESsi, 'l',
+          "us{Goto line: }" "v")
+    CMDV( KEY_CTRLX('g'), KEY_NONE, "goto-char", do_goto, ESsi, 'c',
+          "us{Goto char: }" "v")
     CMD0( KEY_CTRLX('l'), KEY_NONE, "count-lines", do_count_lines)
     CMD0( KEY_CTRLX('='), KEY_NONE, "what-cursor-position",
           do_what_cursor_position)

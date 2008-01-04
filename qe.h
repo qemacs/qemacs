@@ -753,10 +753,11 @@ void eb_replace(EditBuffer *b, int offset, int size,
                 const void *buf, int size1);
 void log_reset(EditBuffer *b);
 EditBuffer *eb_new(const char *name, int flags);
-EditBuffer *eb_scratch(const char *name);
+EditBuffer *eb_scratch(const char *name, int flags);
 void eb_clear(EditBuffer *b);
 void eb_free(EditBuffer *b);
 EditBuffer *eb_find(const char *name);
+EditBuffer *eb_find_new(const char *name, int flags);
 EditBuffer *eb_find_file(const char *filename);
 EditState *eb_find_window(EditBuffer *b, EditState *e);
 
@@ -770,6 +771,7 @@ int eb_get_char_offset(EditBuffer *b, int offset);
 int eb_delete_range(EditBuffer *b, int p1, int p2);
 //int eb_clip_offset(EditBuffer *b, int offset);
 void do_undo(EditState *s);
+//void do_redo(EditState *s);
 
 int raw_load_buffer1(EditBuffer *b, FILE *f, int offset);
 int mmap_buffer(EditBuffer *b, const char *filename);
@@ -945,11 +947,15 @@ struct EditState {
     int borders_invalid; /* true if window borders should be redrawn */
     int show_selection;  /* if true, the selection is displayed */
 
+    //int region_style;
+    //int curline_style;
+
     /* display area info */
     int width, height;
     int ytop, xleft;
     /* full window size, including borders */
     int x1, y1, x2, y2;         /* window coordinates in device units */
+    //int xx1, yy1, xx2, yy2;     /* window coordinates in 1/1000 */
 
     int flags; /* display flags */
 #define WF_POPUP      0x0001 /* popup window (with borders) */
@@ -1032,6 +1038,8 @@ typedef struct ModeDef {
 #define MODEF_NOCMD 0x0001 /* do not register xxx-mode command automatically */
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
     int (*mode_line)(EditState *s, char *buf, int buf_size); /* return mode line */
+
+    /* mode specific key bindings */
     //struct KeyDef *first_key;
 
     struct ModeDef *next;
@@ -1239,7 +1247,7 @@ typedef struct CmdDef {
 
 void qe_register_mode(ModeDef *m);
 void mode_completion(StringArray *cs, const char *input);
-void qe_register_cmd_table(CmdDef *cmds, const char *mode);
+void qe_register_cmd_table(CmdDef *cmds, ModeDef *m);
 void qe_register_binding(int key, const char *cmd_name,
                          const char *mode_names);
 CmdDef *qe_find_cmd(const char *cmd_name);
@@ -1503,7 +1511,7 @@ void do_return(EditState *s, int move);
 void do_backspace(EditState *s, int argval);
 void do_delete_char(EditState *s, int argval);
 void do_tab(EditState *s, int argval);
-EditBuffer *new_yank_buffer(void);
+EditBuffer *new_yank_buffer(QEmacsState *qs);
 void do_append_next_kill(EditState *s);
 void do_kill(EditState *s, int p1, int p2, int dir);
 void do_kill_region(EditState *s, int killtype);
@@ -1526,7 +1534,8 @@ void do_toggle_control_h(EditState *s, int set);
 void do_set_emulation(EditState *s, const char *name);
 void do_set_trace(EditState *s);
 void do_cd(EditState *s, const char *name);
-void do_global_set_key(EditState *s, const char *keystr, const char *cmd_name);
+void do_set_key(EditState *s, const char *keystr, const char *cmd_name, int local);
+//void do_unset_key(EditState *s, const char *keystr, int local);
 void do_bof(EditState *s);
 void do_eof(EditState *s);
 void do_bol(EditState *s);

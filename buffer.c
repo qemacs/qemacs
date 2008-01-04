@@ -493,7 +493,7 @@ EditBuffer *eb_new(const char *name, int flags)
 }
 
 /* Return an empty scratch buffer, create one if necessary */
-EditBuffer *eb_scratch(const char *name)
+EditBuffer *eb_scratch(const char *name, int flags)
 {
     EditBuffer *b;
 
@@ -501,7 +501,7 @@ EditBuffer *eb_scratch(const char *name)
     if (b != NULL) {
         eb_clear(b);
     } else {
-        b = eb_new(name, 0);
+        b = eb_new(name, flags);
     }
     return b;
 }
@@ -573,6 +573,16 @@ EditBuffer *eb_find(const char *name)
         b = b->next;
     }
     return NULL;
+}
+
+EditBuffer *eb_find_new(const char *name, int flags)
+{
+    EditBuffer *b;
+
+    b = eb_find(name);
+    if (!b)
+        b = eb_new(name, flags);
+    return b;
 }
 
 EditBuffer *eb_find_file(const char *filename)

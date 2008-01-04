@@ -813,7 +813,8 @@ static CmdDef image_commands[] = {
     CMD1( '.', KEY_NONE, "image-larger-10", image_mult_size, 10)
     CMD1( ',', KEY_NONE, "image-smaller-10", image_mult_size, -10)
     CMD_( 'S', KEY_NONE, "image-set-display-size", image_set_size, ESii,
-          "i{Displayed width: }i{Displayed height: }")
+          "i{Displayed width: }"
+          "i{Displayed height: }")
 #endif
     CMD_DEF_END,
 };
@@ -844,7 +845,7 @@ static int image_init(void)
     av_register_all();
     eb_register_data_type(&image_data_type);
     qe_register_mode(&image_mode);
-    qe_register_cmd_table(image_commands, "image");
+    qe_register_cmd_table(image_commands, &image_mode);
     register_completion("pixel_format", pixel_format_completion);
     /* additional mode specific keys */
     qe_register_binding('f', "toggle-full-screen", "image");

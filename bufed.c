@@ -172,7 +172,7 @@ static void do_list_buffers(EditState *s, int argval)
 
     /* XXX: must close this buffer when destroying window: add a
        special buffer flag to tell this */
-    b = eb_new("*bufed*", BF_READONLY | BF_SYSTEM);
+    b = eb_scratch("*bufed*", BF_READONLY | BF_SYSTEM);
 
     width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
@@ -299,7 +299,7 @@ static int bufed_init(void)
     /* first register mode */
     qe_register_mode(&bufed_mode);
 
-    qe_register_cmd_table(bufed_commands, "bufed");
+    qe_register_cmd_table(bufed_commands, &bufed_mode);
     qe_register_cmd_table(bufed_global_commands, NULL);
 
     return 0;

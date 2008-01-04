@@ -158,16 +158,19 @@ static int qe_register_binding1(unsigned int *keys, int nb_keys,
 {
     QEmacsState *qs = &qe_state;
     KeyDef **lp, *p;
+    int i;
 
     /* add key */
-    p = qe_malloc_hack(KeyDef, (nb_keys - 1) * sizeof(unsigned int));
+    p = qe_malloc_hack(KeyDef, (nb_keys - 1) * sizeof(p->keys[0]));
     if (!p)
         return -1;
-    p->nb_keys = nb_keys;
     p->cmd = d;
     p->mode = m;
-    memcpy(p->keys, keys, nb_keys * sizeof(unsigned int));
-    /* find position : mode keys should be before generic keys */
+    p->nb_keys = nb_keys;
+    for (i = 0; i < nb_keys; i++) {
+        p->keys[i] = keys[i];
+    }
+    /* find position: mode keys should be before generic keys */
     if (m == NULL) {
         lp = &qs->first_key;
         while (*lp != NULL) lp = &(*lp)->next;
@@ -204,15 +207,10 @@ static void qe_register_binding2(int key, CmdDef *d, ModeDef *m)
 }
 
 /* if mode is non NULL, the defined keys are only active in this mode */
-void qe_register_cmd_table(CmdDef *cmds, const char *mode)
+void qe_register_cmd_table(CmdDef *cmds, ModeDef *m)
 {
     QEmacsState *qs = &qe_state;
     CmdDef **ld, *d;
-    ModeDef *m;
-
-    m = NULL;
-    if (mode)
-        m = find_mode(mode);
 
     /* find last command table */
     for (ld = &qs->first_cmd;;) {
@@ -268,12 +266,10 @@ void qe_register_binding(int key, const char *cmd_name, const char *mode_names)
         p = mode_names;
         for (;;) {
             r = strchr(p, '|');
-            /* XXX: overflows */
-            if (!r) {
-                strcpy(mode_name, p);
+            if (r) {
+                pstrncpy(mode_name, sizeof(mode_name), p, r - p);
             } else {
-                memcpy(mode_name, p, r - p);
-                mode_name[r - p] = '\0';
+                pstrcpy(mode_name, sizeof(mode_name), p);
             }
             m = find_mode(mode_name);
             if (m) {
@@ -304,8 +300,8 @@ void command_completion(StringArray *cs, const char *input)
 
 #define MAX_KEYS 10
 
-void do_global_set_key(EditState *s, const char *keystr,
-                       const char *cmd_name)
+void do_set_key(EditState *s, const char *keystr,
+                const char *cmd_name, int local)
 {
     int nb_keys;
     unsigned int keys[MAX_KEYS];
@@ -320,7 +316,7 @@ void do_global_set_key(EditState *s, const char *keystr,
         put_status(s, "No command %s", cmd_name);
         return;
     }
-    qe_register_binding1(keys, nb_keys, d, NULL);
+    qe_register_binding1(keys, nb_keys, d, local ? s->mode : NULL);
 }
 
 void do_toggle_control_h(EditState *s, int set)
@@ -1380,19 +1376,23 @@ void do_mark_whole_buffer(EditState *s)
     s->offset = 0;
 }
 
-EditBuffer *new_yank_buffer(void)
+EditBuffer *new_yank_buffer(QEmacsState *qs)
 {
-    QEmacsState *qs = &qe_state;
+    char bufname[32];
     EditBuffer *b;
 
     if (qs->yank_buffers[qs->yank_current]) {
         if (++qs->yank_current == NB_YANK_BUFFERS)
             qs->yank_current = 0;
         b = qs->yank_buffers[qs->yank_current];
-        if (b)
+        if (b) {
+            /* problem if buffer is displayed in window, should instead
+             * just clear the buffer */
             eb_free(b);
+        }
     }
-    b = eb_new("*yank*", BF_SYSTEM);
+    snprintf(bufname, sizeof(bufname), "*kill-%d*", qs->yank_current + 1);
+    b = eb_new(bufname, BF_SYSTEM);
     qs->yank_buffers[qs->yank_current] = b;
     return b;
 }
@@ -1420,7 +1420,7 @@ void do_kill(EditState *s, int p1, int p2, int dir)
     b = qs->yank_buffers[qs->yank_current];
     if (!b || !dir || qs->last_cmd_func != do_append_next_kill) {
         /* append kill if last command was kill already */
-        b = new_yank_buffer();
+        b = new_yank_buffer(qs);
     }
     /* insert at beginning or end depending on kill direction */
     eb_insert_buffer(b, dir < 0 ? 0 : b->total_size, s->b, p1, len);
@@ -1562,7 +1562,6 @@ static int reload_buffer(EditState *s, EditBuffer *b, FILE *f1)
         return 0;
     }
 }
-
 
 static void edit_set_mode_file(EditState *s, ModeDef *m,
                                ModeSavedData *saved_data, FILE *f1)
@@ -1945,7 +1944,6 @@ int text_mode_line(EditState *s, char *buf, int buf_size)
     pos += snprintf(buf + pos, buf_size - pos, "--%d%%", percent);
     return pos;
 }
-
 
 void display_mode_line(EditState *s)
 {
@@ -3408,6 +3406,7 @@ static void parse_args(ExecCmdState *es)
 {
     EditState *s = es->s;
     QEmacsState *qs = s->qe_state;
+    QErrorContext ec;
     CmdDef *d = es->d;
     char prompt[256];
     char completion_name[64];
@@ -3512,9 +3511,11 @@ static void parse_args(ExecCmdState *es)
 #ifndef CONFIG_TINY
         save_selection();
 #endif
-        /* CG: Should save and restore ec context */
+        /* Save and restore ec context */
+        ec = qs->ec;
         qs->ec.function = d->name;
         call_func(d->sig, d->action, es->nb_args, es->args, es->args_type);
+        qs->ec = ec;
         /* CG: This doesn't work if the function needs input */
         /* CG: Should test for abort condition */
         /* CG: Should follow qs->active_window ? */
@@ -3749,7 +3750,7 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
     def->action.ESs = do_execute_macro_keys;
 
     qe_register_cmd_table(def, NULL);
-    do_global_set_key(s, key_bind, name);
+    do_set_key(s, key_bind, name, 0);
 }
 
 #define MACRO_KEY_INCR 64
@@ -3877,11 +3878,8 @@ again:
         dpy_flush(&global_screen);
     }
 
-    /* special case for escape : we transform it as meta so
+    /* Special case for escape: we transform it as meta so
        that unix users are happy ! */
-    /* CG: should allow for other key compositions, such as
-     *     diacritics, and compositions of more than 2 keys
-     */
     if (key == KEY_ESC) {
         c->is_escape = 1;
         goto next;
@@ -3895,7 +3893,7 @@ again:
     for (kd = qs->first_key; kd != NULL; kd = kd->next) {
         if (kd->nb_keys >= c->nb_keys) {
             if (!memcmp(kd->keys, c->keys,
-                        c->nb_keys * sizeof(unsigned int)) &&
+                        c->nb_keys * sizeof(c->keys[0])) &&
                 (kd->mode == NULL || kd->mode == s->mode)) {
                 break;
             }
@@ -4046,9 +4044,7 @@ static void eb_format_message(QEmacsState *qs, const char *bufname,
                  qs->ec.function);
         len = strlen(header);
     }
-    eb = eb_find(bufname);
-    if (!eb)
-        eb = eb_new(bufname, BF_SYSTEM);
+    eb = eb_find_new(bufname, BF_SYSTEM);
     if (eb) {
         eb_printf(eb, "%s%s\n", header, message);
     } else {
@@ -4082,7 +4078,9 @@ void put_status(__unused__ EditState *s, const char *fmt, ...)
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
 
-    if (qs->screen->dpy.dpy_init != dummy_dpy_init) {
+    if (qs->screen->dpy.dpy_init == dummy_dpy_init) {
+        eb_format_message(qs, "*errors*", buf);
+    } else {
         if (strcmp(buf, qs->status_shadow) != 0) {
             print_at_byte(qs->screen,
                           0, qs->screen->height - qs->status_height,
@@ -4094,8 +4092,6 @@ void put_status(__unused__ EditState *s, const char *fmt, ...)
             if (*p)
                 eb_format_message(qs, "*messages*", buf);
         }
-    } else {
-        eb_format_message(qs, "*errors*", buf);
     }
 }
 
@@ -4691,7 +4687,7 @@ void minibuffer_init(void)
     minibuffer_mode.name = "minibuffer";
     minibuffer_mode.scroll_up_down = minibuf_complete_scroll_up_down;
     qe_register_mode(&minibuffer_mode);
-    qe_register_cmd_table(minibuffer_commands, "minibuffer");
+    qe_register_cmd_table(minibuffer_commands, &minibuffer_mode);
 }
 
 /* less mode */
@@ -4746,7 +4742,7 @@ void less_mode_init(void)
     memcpy(&less_mode, &text_mode, sizeof(ModeDef));
     less_mode.name = "less";
     qe_register_mode(&less_mode);
-    qe_register_cmd_table(less_commands, "less");
+    qe_register_cmd_table(less_commands, &less_mode);
 }
 
 #ifndef CONFIG_TINY
@@ -4842,11 +4838,7 @@ void do_switch_to_buffer(EditState *s, const char *bufname)
 {
     EditBuffer *b;
 
-    b = eb_find(bufname);
-    if (!b) {
-        /* Create a new buffer */
-        b = eb_new(bufname, BF_SAVELOG);
-    }
+    b = eb_find_new(bufname, BF_SAVELOG);
     if (b)
         switch_to_buffer(s, b);
 }
@@ -6686,7 +6678,7 @@ static int expect_token(const char **pp, int tok)
 int parse_config_file(EditState *s, const char *filename)
 {
     QEmacsState *qs = s->qe_state;
-    QErrorContext ec = qs->ec;
+    QErrorContext ec;
     FILE *f;
     char line[1024], str[1024];
     char prompt[64], cmd[128], *q, *strp;
@@ -6700,6 +6692,7 @@ int parse_config_file(EditState *s, const char *filename)
     f = fopen(filename, "r");
     if (!f)
         return -1;
+    ec = qs->ec;
     skip = 0;
     err = 0;
     line_num = 0;
@@ -7273,17 +7266,18 @@ static void init_all_modules(void)
 
 static void load_all_modules(QEmacsState *qs)
 {
-    QErrorContext ec = qs->ec;
+    QErrorContext ec;
     FindFileState *ffst;
     char filename[MAX_FILENAME_SIZE];
     void *h;
     int (*init_func)(void);
 
+    ec = qs->ec;
+    qs->ec.function = "load-all-modules";
+
     ffst = find_file_open(qs->res_path, "*.so");
     if (!ffst)
         return;
-
-    qs->ec.function = "load-all-modules";
 
     while (!find_file_next(ffst, filename, sizeof(filename))) {
         h = dlopen(filename, RTLD_LAZY);
@@ -7408,17 +7402,24 @@ static void qe_init(void *opaque)
     qe_key_init();
 
     /* select the suitable display manager */
-    dpy = probe_display();
-    if (!dpy) {
-        fprintf(stderr, "No suitable display found, exiting\n");
-        exit(1);
+    for (;;) {
+        dpy = probe_display();
+        if (!dpy) {
+            fprintf(stderr, "No suitable display found, exiting\n");
+            exit(1);
+        }
+        if (dpy->dpy_init(&global_screen, screen_width, screen_height) < 0) {
+            /* Just disable the display and try another */
+            //fprintf(stderr, "Could not initialize display '%s', exiting\n",
+            //        dpy->name);
+            dpy->dpy_probe = NULL;
+        } else {
+            break;
+        }
     }
 
-    if (dpy->dpy_init(&global_screen, screen_width, screen_height) < 0) {
-        fprintf(stderr, "Could not initialize display '%s', exiting\n",
-                dpy->name);
-        exit(1);
-    }
+    put_status(NULL, "%s display  %dx%d",
+               dpy->name, qs->screen->width, qs->screen->height);
 
     qe_event_init();
 
@@ -7448,6 +7449,7 @@ static void qe_init(void *opaque)
         edit_display(qs);
         dpy_flush(&global_screen);
     }
+    qs->ec.function = NULL;
 }
 
 

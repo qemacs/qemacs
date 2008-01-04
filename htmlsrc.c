@@ -299,7 +299,7 @@ static int htmlsrc_init(void)
     htmlsrc_mode.mode_init = htmlsrc_mode_init;
 
     qe_register_mode(&htmlsrc_mode);
-    qe_register_cmd_table(htmlsrc_commands, "html-src");
+    qe_register_cmd_table(htmlsrc_commands, &htmlsrc_mode);
 
     return 0;
 }

@@ -790,7 +790,7 @@ static int c_init(void)
     c_mode.mode_init = c_mode_init;
 
     qe_register_mode(&c_mode);
-    qe_register_cmd_table(c_commands, "C");
+    qe_register_cmd_table(c_commands, &c_mode);
     qe_register_cmd_table(c_global_commands, NULL);
 
     return 0;

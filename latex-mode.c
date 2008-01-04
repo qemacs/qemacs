@@ -329,7 +329,7 @@ static int latex_init(void)
     latex_mode.mode_init = latex_mode_init;
 
     qe_register_mode(&latex_mode);
-    qe_register_cmd_table(latex_commands, "LaTeX");
+    qe_register_cmd_table(latex_commands, &latex_mode);
     register_completion("latex", latex_completion);
 
     return 0;

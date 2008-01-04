@@ -370,7 +370,7 @@ static int perl_init(void)
     perl_mode.mode_init = perl_mode_init;
 
     qe_register_mode(&perl_mode);
-    qe_register_cmd_table(perl_commands, "Perl");
+    qe_register_cmd_table(perl_commands, &perl_mode);
 
     return 0;
 }

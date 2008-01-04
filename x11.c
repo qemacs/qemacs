@@ -1060,6 +1060,7 @@ static Bool test_event(__unused__ Display *dpy, XEvent *ev,
    if needed */
 static void term_selection_request(__unused__ QEditScreen *s)
 {
+    QEmacsState *qs = &qe_state;
     Window w;
     Atom prop;
     long nread;
@@ -1088,7 +1089,7 @@ static void term_selection_request(__unused__ QEditScreen *s)
     prop = xev.xselection.property;
 
     /* copy GUI selection a new yank buffer */
-    b = new_yank_buffer();
+    b = new_yank_buffer(qs);
 
     nread = 0;
     for (;;) {

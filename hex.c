@@ -121,8 +121,8 @@ static void do_toggle_hex(EditState *s)
 
 /* specific hex commands */
 static CmdDef hex_commands[] = {
-    CMD1( KEY_NONE, KEY_NONE, "decrease-width", do_incr_width, -1)
-    CMD1( KEY_NONE, KEY_NONE, "increase-width", do_incr_width, 1)
+    CMD1( KEY_CTRL_LEFT, KEY_NONE, "decrease-width", do_incr_width, -1)
+    CMD1( KEY_CTRL_RIGHT, KEY_NONE, "increase-width", do_incr_width, 1)
     CMD_( KEY_NONE, KEY_NONE, "set-width", do_set_width, ESi, "ui{Width: }")
     CMDV( KEY_META('g'), KEY_NONE, "goto-byte", do_goto, ESsi, 'b', "us{Goto byte: }v")
     CMD0( KEY_NONE, KEY_NONE, "toggle-hex", do_toggle_hex)
@@ -348,12 +348,10 @@ static int hex_init(void)
     qe_register_mode(&hex_mode);
 
     /* commands and default keys */
-    qe_register_cmd_table(hex_commands, "hex");
-    qe_register_cmd_table(hex_commands, "ascii");
+    qe_register_cmd_table(hex_commands, &hex_mode);
+    qe_register_cmd_table(hex_commands, &ascii_mode);
 
     /* additional mode specific keys */
-    qe_register_binding(KEY_CTRL_LEFT, "decrease-width", "ascii|hex");
-    qe_register_binding(KEY_CTRL_RIGHT, "increase-width", "ascii|hex");
     qe_register_binding(KEY_TAB, "toggle-hex", "hex");
     qe_register_binding(KEY_SHIFT_TAB, "toggle-hex", "hex");
 
