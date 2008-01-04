@@ -313,9 +313,11 @@ static void do_latex(EditState *e, const char *cmd)
 
 /* specific LaTeX commands */
 static CmdDef latex_commands[] = {
-    CMD_( '\"', KEY_NONE, "tex-insert-quote", do_tex_insert_quote, ES, "*")
+    CMD_( '\"', KEY_NONE,
+          "tex-insert-quote", do_tex_insert_quote, ES, "*")
     /* this should actually be KEY_CTRLC(KEY_CTRL('c')), ie C-c C-c */
-    CMD_( KEY_CTRL('c'), KEY_NONE, "TeX-command-master", do_latex, ESs,
+    CMD_( KEY_CTRL('c'), KEY_NONE,
+          "TeX-command-master", do_latex, ESs,
           "s{Command: (default LaTeX) }[latex]|latex|")
     CMD_DEF_END,
 };

@@ -539,25 +539,40 @@ void do_dired(EditState *s)
 
 /* specific dired commands */
 static CmdDef dired_commands[] = {
-    CMD0( KEY_RET, KEY_RIGHT, "dired-select", dired_select)
-    CMD0( KEY_TAB, KEY_NONE, "dired-tab", do_other_window)
+    CMD0( KEY_RET, KEY_RIGHT,
+          "dired-select", dired_select)
+    CMD0( KEY_TAB, KEY_NONE,
+          "dired-tab", do_other_window)
     /* dired-abort should restore previous buffer in right-window */
-    CMD1( KEY_CTRL('g'), KEY_NONE, "dired-abort", do_delete_window, 0)
-    CMD0( ' ', KEY_CTRL('t'), "dired-toggle_selection", list_toggle_selection)
+    CMD1( KEY_CTRL('g'), KEY_NONE,
+          "dired-abort", do_delete_window, 0)
+    CMD0( ' ', KEY_CTRL('t'),
+          "dired-toggle_selection", list_toggle_selection)
     /* BS should go back to previous item and unmark it */
-    CMD_( 's', KEY_NONE, "dired-sort", dired_sort, ESs, "s{Sort order: }")
+    CMD_( 's', KEY_NONE,
+          "dired-sort", dired_sort, ESs,
+          "s{Sort order: }")
     /* s -> should also change switches */
-    CMD1( 'd', KEY_NONE, "dired-delete", dired_mark, 'D')
-    CMD1( 'c', KEY_NONE, "dired-copy", dired_mark, 'C')
-    CMD1( 'm', KEY_NONE, "dired-move", dired_mark, 'M')
-    CMD1( 'u', KEY_NONE, "dired-unmark", dired_mark, ' ')
-    CMD0( 'x', KEY_NONE, "dired-execute", dired_execute)
-    CMD1( 'n', KEY_NONE, "next-line", do_up_down, 1 )
-    CMD1( 'p', KEY_NONE, "previous-line", do_up_down, -1 )
-    CMD0( 'r', KEY_NONE, "dired-refresh", dired_refresh)
+    CMD1( 'd', KEY_NONE,
+          "dired-delete", dired_mark, 'D')
+    CMD1( 'c', KEY_NONE,
+          "dired-copy", dired_mark, 'C')
+    CMD1( 'm', KEY_NONE,
+          "dired-move", dired_mark, 'M')
+    CMD1( 'u', KEY_NONE,
+          "dired-unmark", dired_mark, ' ')
+    CMD0( 'x', KEY_NONE,
+          "dired-execute", dired_execute)
+    CMD1( 'n', KEY_NONE,
+          "next-line", do_up_down, 1)
+    CMD1( 'p', KEY_NONE,
+          "previous-line", do_up_down, -1)
+    CMD0( 'r', KEY_NONE,
+          "dired-refresh", dired_refresh)
     /* g -> refresh all expanded dirs ? */
     /* l -> relist single directory or marked files ? */
-    CMD0( '^', KEY_LEFT, "dired-parent", dired_parent)
+    CMD0( '^', KEY_LEFT,
+          "dired-parent", dired_parent)
     /* need commands for splitting, unsplitting, zooming, making subdirs */
     /* h -> info */
     /* i, + -> create subdirectory */
@@ -569,7 +584,8 @@ static CmdDef dired_commands[] = {
 };
 
 static CmdDef dired_global_commands[] = {
-    CMD0( KEY_CTRLX(KEY_CTRL('d')), KEY_NONE, "dired", do_dired)
+    CMD0( KEY_CTRLX(KEY_CTRL('d')), KEY_NONE,
+          "dired", do_dired)
     CMD_DEF_END,
 };
 

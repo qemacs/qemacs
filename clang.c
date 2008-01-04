@@ -749,19 +749,24 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
 
 /* C mode specific commands */
 static CmdDef c_commands[] = {
-    CMD_( KEY_CTRL('i'), KEY_NONE, "c-indent-command", do_c_indent, ES, "*")
-    CMD_( KEY_META(KEY_CTRL('\\')), KEY_NONE, "c-indent-region",
-          do_c_indent_region, ES, "*")
+    CMD_( KEY_CTRL('i'), KEY_NONE,
+          "c-indent-command", do_c_indent, ES, "*")
+    CMD_( KEY_META(KEY_CTRL('\\')), KEY_NONE,
+          "c-indent-region", do_c_indent_region, ES, "*")
             /* should map to KEY_META + KEY_CTRL_LEFT ? */
     CMDV( KEY_META('['), KEY_NONE,
           "c-backward-preprocessor", do_c_forward_preprocessor, ESi, -1, "*v")
     CMDV( KEY_META(']'), KEY_NONE,
           "c-forward-preprocessor", do_c_forward_preprocessor, ESi, 1, "*v")
     /* CG: should use 'k' intrinsic argument */
-    CMDV( ';', KEY_NONE, "c-electric-semi&comma", do_c_electric, ESi, ';', "*v")
-    CMDV( ':', KEY_NONE, "c-electric-colon", do_c_electric, ESi, ':', "*v")
-    CMDV( '{', KEY_NONE, "c-electric-obrace", do_c_electric, ESi, '{', "*v")
-    CMDV( '}', KEY_NONE, "c-electric-cbrace", do_c_electric, ESi, '}', "*v")
+    CMDV( ';', KEY_NONE,
+          "c-electric-semi&comma", do_c_electric, ESi, ';', "*v")
+    CMDV( ':', KEY_NONE,
+          "c-electric-colon", do_c_electric, ESi, ':', "*v")
+    CMDV( '{', KEY_NONE,
+          "c-electric-obrace", do_c_electric, ESi, '{', "*v")
+    CMDV( '}', KEY_NONE,
+          "c-electric-cbrace", do_c_electric, ESi, '}', "*v")
     CMD_DEF_END,
 };
 

@@ -1404,27 +1404,37 @@ static void do_compile_error(EditState *s, int dir)
 
 /* specific shell commands */
 static CmdDef shell_commands[] = {
-    CMD0( KEY_CTRL('o'), KEY_NONE, "shell-toggle-input", do_shell_toggle_input)
-    CMD1( '\r', KEY_NONE, "shell-return", shell_write_char, '\r')
+    CMD0( KEY_CTRL('o'), KEY_NONE,
+          "shell-toggle-input", do_shell_toggle_input)
+    CMD1( '\r', KEY_NONE,
+          "shell-return", shell_write_char, '\r')
     /* CG: should send s->kbs */
-    CMD1( 127, KEY_NONE, "shell-backward-delete-char", shell_write_char, 127)
-    CMD1( KEY_CTRL('c'), KEY_NONE, "shell-intr", shell_write_char, 3)
-    CMD1( KEY_CTRL('d'), KEY_DELETE, "shell-delete-char", shell_write_char, 4)
-    CMD1( KEY_CTRL('i'), KEY_NONE, "shell-tabulate", shell_write_char, 9)
-    CMD1( KEY_CTRL('k'), KEY_NONE, "shell-kill-line", shell_write_char, 11)
-    CMD1( KEY_CTRL('y'), KEY_NONE, "shell-yank", shell_write_char, 25)
+    CMD1( 127, KEY_NONE,
+          "shell-backward-delete-char", shell_write_char, 127)
+    CMD1( KEY_CTRL('c'), KEY_NONE,
+          "shell-intr", shell_write_char, 3)
+    CMD1( KEY_CTRL('d'), KEY_DELETE,
+          "shell-delete-char", shell_write_char, 4)
+    CMD1( KEY_CTRL('i'), KEY_NONE,
+          "shell-tabulate", shell_write_char, 9)
+    CMD1( KEY_CTRL('k'), KEY_NONE,
+          "shell-kill-line", shell_write_char, 11)
+    CMD1( KEY_CTRL('y'), KEY_NONE,
+          "shell-yank", shell_write_char, 25)
     CMD_DEF_END,
 };
 
 /* compilation commands */
 static CmdDef compile_commands[] = {
-    CMD_( KEY_CTRLXRET('\r'), KEY_NONE, "shell", do_shell, ESi, "ui")
-    CMD_( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE, "compile", do_compile, ESs,
+    CMD_( KEY_CTRLXRET('\r'), KEY_NONE,
+          "shell", do_shell, ESi, "ui")
+    CMD_( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE,
+          "compile", do_compile, ESs,
           "s{Compile command: }|compile|")
-    CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE, "previous-error",
-          do_compile_error, -1) /* u */
-    CMD1( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'), "next-error",
-          do_compile_error, 1) /* u */
+    CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE,
+          "previous-error", do_compile_error, -1) /* u */
+    CMD1( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'),
+          "next-error", do_compile_error, 1) /* u */
     CMD_DEF_END,
 };
 

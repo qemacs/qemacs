@@ -940,9 +940,12 @@ static void av_cycle_stream(EditState *s, int codec_type)
 
 /* specific image commands */
 static CmdDef video_commands[] = {
-    CMD0( ' ', 'p', "av-pause", video_pause)
-    CMD1( 'v', KEY_NONE, "av-cycle-video", av_cycle_stream, CODEC_TYPE_VIDEO)
-    CMD1( 'a', KEY_NONE, "av-cycle-audio", av_cycle_stream, CODEC_TYPE_AUDIO)
+    CMD0( ' ', 'p',
+          "av-pause", video_pause)
+    CMD1( 'v', KEY_NONE,
+          "av-cycle-video", av_cycle_stream, CODEC_TYPE_VIDEO)
+    CMD1( 'a', KEY_NONE,
+          "av-cycle-audio", av_cycle_stream, CODEC_TYPE_AUDIO)
     CMD_DEF_END,
 };
 

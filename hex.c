@@ -121,11 +121,19 @@ static void do_toggle_hex(EditState *s)
 
 /* specific hex commands */
 static CmdDef hex_commands[] = {
-    CMD1( KEY_CTRL_LEFT, KEY_NONE, "decrease-width", do_incr_width, -1)
-    CMD1( KEY_CTRL_RIGHT, KEY_NONE, "increase-width", do_incr_width, 1)
-    CMD_( KEY_NONE, KEY_NONE, "set-width", do_set_width, ESi, "ui{Width: }")
-    CMDV( KEY_META('g'), KEY_NONE, "goto-byte", do_goto, ESsi, 'b', "us{Goto byte: }v")
-    CMD0( KEY_NONE, KEY_NONE, "toggle-hex", do_toggle_hex)
+    CMD1( KEY_CTRL_LEFT, KEY_NONE,
+          "decrease-width", do_incr_width, -1)
+    CMD1( KEY_CTRL_RIGHT, KEY_NONE,
+          "increase-width", do_incr_width, 1)
+    CMD_( KEY_NONE, KEY_NONE,
+          "set-width", do_set_width, ESi,
+          "ui{Width: }")
+    CMDV( KEY_META('g'), KEY_NONE,
+          "goto-byte", do_goto, ESsi, 'b',
+          "us{Goto byte: }"
+          "v")
+    CMD0( KEY_NONE, KEY_NONE,
+          "toggle-hex", do_toggle_hex)
     CMD_DEF_END,
 };
 
