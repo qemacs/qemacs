@@ -94,9 +94,8 @@ void qe_register_mode(ModeDef *m)
         int size;
 
         /* lower case convert for C mode, Perl... */
-        pstrcpy(buf, sizeof(buf) - 10, m->name);
-        css_strtolower(buf, sizeof(buf));
-        pstrcat(buf, sizeof(buf) - 10, "-mode");
+        qe_strtolower(buf, sizeof(buf) - 10, m->name);
+        pstrcat(buf, sizeof(buf), "-mode");
         size = strlen(buf) + 1;
         /* constant immediate string parameter */
         size += snprintf(buf + size, sizeof(buf) - size,
@@ -1584,6 +1583,7 @@ static void edit_set_mode_file(EditState *s, ModeDef *m,
         s->mode->mode_close(s);
         qe_free(&s->mode_data);
         s->mode = NULL;
+        set_colorize_func(s, NULL);
 
         /* try to remove the raw or mode specific data if it is no
            longer used. */
@@ -1621,7 +1621,8 @@ static void edit_set_mode_file(EditState *s, ModeDef *m,
                     m = &text_mode;
                     b->data_type = &raw_data_type;
                 }
-            } else if (b->data_type != m->data_type) {
+            } else
+            if (b->data_type != m->data_type) {
                 /* non raw data type requested, but the the buffer has
                    a different type: we cannot switch mode, so we fall
                    back to text */
@@ -6580,7 +6581,6 @@ static int text_mode_probe(__unused__ ModeProbeData *p)
 
 int text_mode_init(EditState *s, ModeSavedData *saved_data)
 {
-    set_colorize_func(s, NULL);
     eb_add_callback(s->b, eb_offset_callback, &s->offset);
     eb_add_callback(s->b, eb_offset_callback, &s->offset_top);
     if (!saved_data) {
@@ -6594,6 +6594,7 @@ int text_mode_init(EditState *s, ModeSavedData *saved_data)
         memcpy(s, saved_data->generic_data, SAVED_DATA_SIZE);
     }
     s->hex_mode = 0;
+    set_colorize_func(s, NULL);
     return 0;
 }
 

@@ -311,7 +311,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
                             goto next;
                         p++;
                         if (b->ignore_case)
-                            css_strtolower(buf, sizeof(buf));
+                            qe_strtolower(buf, sizeof(buf), buf);
                         args[nb_args].u.attr_id = css_new_ident(buf);
                         unit = CSS_VALUE_ATTR;
                         goto got_val;
@@ -878,7 +878,7 @@ static void parse_simple_selector(CSSSimpleSelector *ss, CSSParseState *b,
     pclass = 0;
     read_ident(b, &ch, tag, sizeof(tag));
     if (b->ignore_case)
-        css_strtolower(tag, sizeof(tag));
+        qe_strtolower(tag, sizeof(tag), tag);
 
     /* read '.class', '[xxx]', ':pseudo-class' */
     for (;;) {
@@ -898,7 +898,7 @@ static void parse_simple_selector(CSSSimpleSelector *ss, CSSParseState *b,
             ch = bgetc(b);
             read_ident(b, &ch, attribute, sizeof(attribute));
             if (b->ignore_case)
-                css_strtolower(attribute, sizeof(attribute));
+                qe_strtolower(attribute, sizeof(attribute), attribute);
 
             switch (ch) {
             case '~':

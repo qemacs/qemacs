@@ -329,8 +329,7 @@ static const char *css_attr_strlower(CSSBox *box, CSSIdent attr_id)
     value = css_attr_str(box, attr_id);
     if (!value)
         return NULL;
-    pstrcpy(buf, sizeof(buf), value);
-    css_strtolower(buf, sizeof(buf));
+    qe_strtolower(buf, sizeof(buf), value);
     return buf;
 }
 
@@ -842,7 +841,7 @@ static int parse_tag(XMLState *s, const char *buf)
         }
     }
     if (s->ignore_case)
-        css_strtolower(tag, sizeof(tag));
+        qe_strtolower(tag, sizeof(tag), tag);
     css_tag = css_new_ident(tag);
 
     /* XXX: should test html_syntax, but need more patches */
@@ -861,7 +860,7 @@ static int parse_tag(XMLState *s, const char *buf)
             break;
         get_str(&p, attr_name, sizeof(attr_name), "=/");
         if (s->ignore_case)
-            css_strtolower(attr_name, sizeof(attr_name));
+            qe_strtolower(attr_name, sizeof(attr_name), attr_name);
         if (*p == '=') {
             int och, ch;
             p++;

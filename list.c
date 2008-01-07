@@ -93,6 +93,7 @@ ModeDef list_mode;
 static int list_init(void)
 {
     memcpy(&list_mode, &text_mode, sizeof(ModeDef));
+    list_mode.name = "list";
     list_mode.mode_probe = NULL;
     list_mode.mode_init = list_mode_init;
     list_mode.mode_close = list_mode_close;

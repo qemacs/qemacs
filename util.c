@@ -390,6 +390,31 @@ void splitpath(char *dirname, int dirname_size,
         pstrcpy(filename, filename_size, base);
 }
 
+/* Should return int, length of converted string? */
+void qe_strtolower(char *buf, int size, const char *str)
+{
+    int c;
+
+    /* This version only handles ASCII */
+    if (size > 0) {
+        while ((c = (unsigned char)*str++) != '\0' && size > 1) {
+            *buf++ = qe_tolower(c);
+            size--;
+        }
+        *buf = '\0';
+    }
+}
+
+void skip_spaces(const char **pp)
+{
+    const char *p;
+
+    p = *pp;
+    while (qe_isspace(*p))
+        p++;
+    *pp = p;
+}
+
 #if 0
 /* find a word in a list using '|' as separator */
 int strfind(const char *keytable, const char *str)
@@ -425,6 +450,9 @@ int strfind(const char *list, const char *s)
     int c1, c2;
 
     q = list;
+    if (!q)
+        return 0;
+
     if (*s == '\0') {
         /* special case the empty string: must match || in list */
         while (*q) {
@@ -465,8 +493,7 @@ int strcasefind(const char *list, const char *s)
 {
     char buf[128];
 
-    pstrcpy(buf, sizeof(buf), s);
-    css_strtolower(buf, sizeof(buf));
+    qe_strtolower(buf, sizeof(buf), s);
     return strfind(list, buf);
 }
 
@@ -491,16 +518,6 @@ const void *memstr(const void *buf, int size, const char *str)
             return p;
     }
     return NULL;
-}
-
-void skip_spaces(const char **pp)
-{
-    const char *p;
-
-    p = *pp;
-    while (qe_isspace(*p))
-        p++;
-    *pp = p;
 }
 
 /**
@@ -657,6 +674,8 @@ void get_str(const char **pp, char *buf, int buf_size, const char *stop)
     skip_spaces(pp);
 }
 
+/* scans a comma separated list of entries, return index of match or -1 */
+/* CG: very similar to strfind */
 int css_get_enum(const char *str, const char *enum_str)
 {
     int val, len;
@@ -667,15 +686,15 @@ int css_get_enum(const char *str, const char *enum_str)
     len = strlen(str);
     for (;;) {
         s1 = strchr(s, ',');
-        if (!s1) {
+        if (s1) {
+            if (len == (s1 - s) && !memcmp(s, str, len))
+                return val;
+            s = s1 + 1;
+        } else {
             if (!strcmp(s, str))
                 return val;
             else
                 break;
-        } else {
-            if (len == (s1 - s) && !memcmp(s, str, len))
-                return val;
-            s = s1 + 1;
         }
         val++;
     }
@@ -1090,16 +1109,6 @@ void css_union_rect(CSSRect *a, const CSSRect *b)
             a->x2 = b->x2;
         if (b->y2 > a->y2)
             a->y2 = b->y2;
-    }
-}
-
-void css_strtolower(char *buf, __unused__ int buf_size)
-{
-    int c;
-
-    /* XXX: handle unicode / utf8 */
-    while ((c = (unsigned char)*buf) != '\0') {
-        *buf++ = qe_tolower(c);
     }
 }
 

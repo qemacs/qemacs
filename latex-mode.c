@@ -135,6 +135,7 @@ static int latex_mode_probe(ModeProbeData *p)
 static int latex_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     int ret;
+
     ret = text_mode_init(s, saved_data);
     if (ret)
         return ret;

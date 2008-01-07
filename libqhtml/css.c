@@ -880,40 +880,87 @@ static CSSBox *add_before_after_box(CSSContext *s,
     return box1;
 }
 
-/* NOTE: 'buf' must be large enough */
-/* XXX: find a shorter code :-) */
-static void css_to_roman(char *buf, int n)
+/* Convert a number to alpha representation.
+ * - 'dest' must be large enough for maximum conversion
+ *   namely INT32_MAX (2147483647) -> "FXSHRXW" 8 bytes 
+ *          INT64_MAX (9223372036854775807) -> "CRPXNLSKVLJFHG" 15 bytes 
+ * - n should be greater than 0
+ * - return 0 if conversion succeeds
+ * - return -1 if n not in range, dest untouched
+ */
+static int num_to_alpha(char *dest, int num, int upper)
 {
-    int n1, n10;
-    static const char roman_digits[] = "IVXLCDM";
-    const char *p;
-    char buf1[17], *q;
+    char buf[16], *p;
+    int letter = upper ? 'A' : 'a';
 
-    if (n <= 0 || n >= 4000) {
-        snprintf(buf, sizeof(buf), "%d", n);
-        return;
+    if (num <= 0)
+        return -1;
+
+    p = buf + countof(buf);
+    *--p = '\0';
+
+    num--;
+    while (num >= 26) {
+        *--p = letter + (num % 26);
+        num /= 26;
+        num -= 1;
     }
+    *--p = letter + num;
 
-    p = roman_digits;
-    q = buf1;
-    while (n != 0) {
-        n10 = n % 10;
-        n1 = n10 % 5;
+    memcpy(dest, p, buf + countof(buf) - p);
+    return 0;
+}
+
+/* Convert a number to roman numeral representation.
+ * - 'dest' must be large enough for maximum conversion
+ *   namely 3888 -> "MMMDCCCLXXXVIII" 16 bytes
+ * - n should be in range 1..3999
+ * - return 0 if conversion succeeds
+ * - return -1 if n not in range, dest untouched
+ */
+static int num_to_roman(char *dest, int n, int upper)
+{
+    char buf[16], *q;
+    const char *p;
+    char const digits[7 * 2] = "ivxlcdm" "IVXLCDM";
+
+    if (n <= 0 || n >= 4000)
+        return -1;
+
+    p = digits + (upper ? 7 : 0);
+    q = buf + countof(buf);
+    *--q = '\0';
+
+    while (n > 0) {
+#if 1
+        /* Potentially shorter code :-) */
+#define R(a,b,c,d)  (((a)<<6)|((b)<<4)|((c)<<2)|((d)<<0))
+        int n10;
+        unsigned char const pat[10] = { /* 0, 1, 5, 21, 6, 2, 9, 37, 85, 7 */
+            R(0,0,0,0), R(0,0,0,1), R(0,0,1,1), R(0,1,1,1), R(0,0,1,2),
+            R(0,0,0,2), R(0,0,2,1), R(0,2,1,1), R(2,1,1,1), R(0,0,1,3),
+        };
+        for (n10 = pat[n % 10]; n10; n10 >>= 2) {
+            *--q = p[(n10 & 3) - 1];
+        }
+#else
+        int n10 = n % 10;
+        int n1 = n10 % 5;
         if (n1 == 4) {
-            *q++ = p[1 + (n10 == 9)];
-            *q++ = p[0];
+            *--q = p[1 + (n10 == 9)];
+            *--q = p[0];
         } else {
             while (n1--)
-                *q++ = p[0];
+                *--q = p[0];
             if (n10 >= 5)
-                *q++ = p[1];
+                *--q = p[1];
         }
-        n = n / 10;
+#endif
+        n /= 10;
         p += 2;
     }
-    while (--q >= buf1)
-        *buf++ = *q;
-    *buf = '\0';
+    memcpy(dest, q, buf + countof(buf) - q);
+    return 0;
 }
 
 /* if adjust is true, then always use zero base and increment if
@@ -921,41 +968,48 @@ static void css_to_roman(char *buf, int n)
 static void css_counter_str(char *text, int text_size,
                             int index, int list_style_type, int adjust)
 {
+    char buf[16];
+    const char *p = buf;
+    int upper = 1; /* upper case */
+
     /* insert marker text */
+    index += adjust;
     switch (list_style_type) {
     case CSS_LIST_STYLE_TYPE_DISC:
-        strcpy(text, "o");
-        break;
     case CSS_LIST_STYLE_TYPE_CIRCLE:
-        strcpy(text, "o");
+        p = "o";
+        adjust = 0;
         break;
     case CSS_LIST_STYLE_TYPE_SQUARE:
-        strcpy(text, ".");
+        p = ".";
+        adjust = 0;
+        break;
+    case CSS_LIST_STYLE_TYPE_LOWER_ALPHA:
+        upper = 0;
+        /* FALL THRU */
+    case CSS_LIST_STYLE_TYPE_UPPER_ALPHA:
+        if (num_to_alpha(buf, index, upper))
+            goto decimal;
+        break;
+    case CSS_LIST_STYLE_TYPE_LOWER_ROMAN:
+        upper = 0;
+        /* FALL THRU */
+    case CSS_LIST_STYLE_TYPE_UPPER_ROMAN:
+        if (num_to_roman(buf, index, upper))
+            goto decimal;
         break;
     case CSS_LIST_STYLE_TYPE_DECIMAL:
-        snprintf(text, text_size, "%d", index + adjust);
-        goto add_dot;
-    case CSS_LIST_STYLE_TYPE_LOWER_ALPHA:
-    case CSS_LIST_STYLE_TYPE_UPPER_ALPHA:
-        if (index > 25)
-            index = 25;
-        text[0] = 'A' + index;
-        text[1] = '\0';
-        goto add_dot;
-    case CSS_LIST_STYLE_TYPE_LOWER_ROMAN:
-    case CSS_LIST_STYLE_TYPE_UPPER_ROMAN:
-        css_to_roman(text, index + adjust);
-    add_dot:
-        if (adjust)
-            pstrcat(text, text_size, ".");
+    decimal:
+        snprintf(buf, sizeof(buf), "%d", index);
         break;
     default:
-        text[0] = '\0';
+        p = "";
+        adjust = 0;
         break;
     }
-    if (list_style_type == CSS_LIST_STYLE_TYPE_LOWER_ALPHA ||
-        list_style_type == CSS_LIST_STYLE_TYPE_LOWER_ROMAN)
-        css_strtolower(text, text_size);
+    pstrcpy(text, text_size, p);
+    if (adjust)
+        pstrcat(text, text_size, ".");
 }
 
 /* add a marker or an inline box to a list item box */

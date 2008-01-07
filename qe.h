@@ -227,7 +227,7 @@ static inline int qe_tolower(int c) {
     return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
 }
 
-void css_strtolower(char *buf, int buf_size);
+void qe_strtolower(char *buf, int buf_size, const char *str);
 void skip_spaces(const char **pp);
 
 int strfind(const char *list, const char *s);
@@ -980,7 +980,8 @@ struct EditState {
     EditState *next_window;
 };
 
-#define SAVED_DATA_SIZE ((int)&((EditState *)0)->end_of_saved_data)
+/* Ugly patch for saving/restoring window data upon switching buffer */
+#define SAVED_DATA_SIZE  offsetof(EditState, end_of_saved_data)
 
 struct DisplayState;
 
