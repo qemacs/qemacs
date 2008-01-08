@@ -1,4 +1,6 @@
-/* FriBidi - Library of BiDi algorithm
+/*
+ * FriBidi - Library of BiDi algorithm
+ *
  * Copyright (C) 1999 Dov Grobgeld
  *
  * The optimizations to reduce the code size from 13 KB to 3 KB and
@@ -627,5 +629,3 @@ void fribidi_analyse_string(TypeLink * type_rl_list,
     *pmax_level = max_level;
     *pbase_dir = base_dir;
 }
-
-

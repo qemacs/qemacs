@@ -2,7 +2,7 @@
  * Convert Unicode 8-bit code page files to QEmacs format
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2007 Charlie Gordon.
+ * Copyright (c) 2007-2008 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -313,7 +313,7 @@ int main(int argc, char **argv)
            "\n" " * More Charsets and Tables for QEmacs"
            "\n" " *"
            "\n" " * Copyright (c) 2002 Fabrice Bellard."
-           "\n" " * Copyright (c) 2007 Charlie Gordon."
+           "\n" " * Copyright (c) 2002-2008 Charlie Gordon."
            "\n" " *"
            "\n" " * This library is free software; you can redistribute it and/or"
            "\n" " * modify it under the terms of the GNU Lesser General Public"

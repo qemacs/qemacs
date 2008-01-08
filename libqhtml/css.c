@@ -1,5 +1,6 @@
 /*
  * CSS core for qemacs.
+ *
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or

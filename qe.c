@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2000-2007 Charlie Gordon.
+ * Copyright (c) 2000-2008 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1096,12 +1096,12 @@ void text_move_left_right_visual(EditState *s, int dir)
             break;
         } else {
             if (dir > 0) {
-                /* no suitable position found : go to next line */
+                /* no suitable position found: go to next line */
                 /* if no char after, no need to continue */
                 if (!m->after_found)
                    break;
             } else {
-                /* no suitable position found : go to previous line */
+                /* no suitable position found: go to previous line */
                 if (yc <= 0) {
                     if (s->offset_top <= 0)
                         break;
@@ -1401,8 +1401,8 @@ void do_append_next_kill(__unused__ EditState *s)
 
 void do_kill(EditState *s, int p1, int p2, int dir)
 {
-    int len, tmp;
     QEmacsState *qs = s->qe_state;
+    int len, tmp;
     EditBuffer *b;
 
     if (s->b->flags & BF_READONLY)
@@ -2619,7 +2619,7 @@ static void flush_fragment(DisplayState *s)
     case WRAP_LINE:
         while (s->x > s->width) {
             int len1, w1, ww, n;
-            //            printf("x=%d maxw=%d len=%d\n", s->x, s->width, frag->len);
+            //printf("x=%d maxw=%d len=%d\n", s->x, s->width, frag->len);
             frag = &s->fragments[s->nb_fragments - 1];
             /* find fragment truncation to fit the line */
             len = len1 = frag->len;
@@ -2639,7 +2639,7 @@ static void flush_fragment(DisplayState *s)
             w1 -= s->x;
             frag->len = len;
             frag->width -= w1;
-            //            printf("after: x=%d w1=%d\n", s->x, w1);
+            //printf("after: x=%d w1=%d\n", s->x, w1);
             n = s->nb_fragments;
             if (len == 0)
                 n--;
@@ -3081,10 +3081,12 @@ int text_display(EditState *s, DisplayState *ds, int offset)
             /* CG: should query screen or window about display methods */
             if ((c < ' ' && c != '\t') || c == 127) {
                 display_printf(ds, offset0, offset, "^%c", ('@' + c) & 127);
-            } else if (c >= 0x10000) {
+            } else
+            if (c >= 0x10000) {
                 /* currently, we cannot display these chars */
                 display_printf(ds, offset0, offset, "\\U%08x", c);
-            } else if (c >= 256 && s->screen->charset != &charset_utf8) {
+            } else
+            if (c >= 256 && s->screen->charset != &charset_utf8) {
                 display_printf(ds, offset0, offset, "\\u%04x", c);
             } else {
                 if (char_index < colored_nb_chars)
@@ -3135,7 +3137,7 @@ static void generic_text_display(EditState *s)
         if (offset < 0 || ds->y >= s->height || m->xc != NO_CURSOR)
             break;
     }
-    //    printf("cursor: xc=%d yc=%d linec=%d\n", m->xc, m->yc, m->linec);
+    //printf("cursor: xc=%d yc=%d linec=%d\n", m->xc, m->yc, m->linec);
     if (m->xc == NO_CURSOR) {
         /* if no cursor found then we compute offset_top so that we
            have a chance to find the cursor in a small amount of time */
@@ -3999,7 +4001,7 @@ again:
     }
 }
 
-/* Print in latin 1 charset */
+/* Print a utf-8 encoded buffer as unicode */
 void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
                    const char *str, int style_index)
@@ -4199,6 +4201,7 @@ EditState *edit_new(EditBuffer *b,
     s->y2 = y1 + height;
     s->flags = flags;
     compute_client_area(s);
+    /* link window in window list */
     s->next_window = qs->first_window;
     qs->first_window = s;
     if (!qs->active_window)
@@ -4278,10 +4281,10 @@ static const char *file_completion_ignore_extensions =
 
 void file_completion(CompleteState *cp)
 {
-    FindFileState *ffst;
     char path[MAX_FILENAME_SIZE];
     char file[MAX_FILENAME_SIZE];
     char filename[MAX_FILENAME_SIZE];
+    FindFileState *ffst;
     const char *base;
     int len;
 
@@ -4373,11 +4376,6 @@ void complete_test(CompleteState *cp, const char *str)
         add_string(&cp->cs, str);
 }
 
-static void complete_end(CompleteState *cp)
-{
-    free_strings(&cp->cs);
-}
-
 static int completion_sort_func(const void *p1, const void *p2)
 {
     StringItem *item1 = *(StringItem **)p1;
@@ -4386,6 +4384,15 @@ static int completion_sort_func(const void *p1, const void *p2)
     /* Use natural sort: keep numbers in order */
     return qe_collate(item1->str, item2->str);
 }
+
+static void complete_end(CompleteState *cp)
+{
+    free_strings(&cp->cs);
+}
+
+/* mini buffer stuff */
+
+static ModeDef minibuffer_mode;
 
 static void (*minibuffer_cb)(void *opaque, char *buf);
 static void *minibuffer_opaque;
@@ -4397,8 +4404,6 @@ static CompletionFunc completion_function;
 static StringArray *minibuffer_history;
 static int minibuffer_history_index;
 static int minibuffer_history_saved_offset;
-
-static ModeDef minibuffer_mode;
 
 /* XXX: utf8 ? */
 void do_completion(EditState *s)
@@ -4506,7 +4511,7 @@ static void set_minibuffer_str(EditState *s, const char *str)
 
     eb_delete(s->b, 0, s->b->total_size);
     len = strlen(str);
-    eb_write(s->b, 0, (u8 *)str, len);
+    eb_write(s->b, 0, str, len);
     s->offset = len;
 }
 
@@ -5366,6 +5371,7 @@ static void quit_confirm_cb(__unused__ void *opaque, char *reply)
     qe_free(&reply);
 }
 
+/* Search stuff */
 
 #define SEARCH_FLAG_IGNORECASE 0x0001
 #define SEARCH_FLAG_SMARTCASE  0x0002 /* case sensitive if upper case present */
@@ -5458,7 +5464,7 @@ int eb_search(EditBuffer *b, int offset, int dir, int flags,
 
 /* should separate search string length and number of match positions */
 #define SEARCH_LENGTH  256
-#define FOUND_TAG 0x80000000
+#define FOUND_TAG      0x80000000
 
 /* store last searched string */
 static unsigned int last_search_string[SEARCH_LENGTH];
@@ -5860,6 +5866,8 @@ void do_search_string(EditState *s, const char *search_str, int dir)
         do_center_cursor(s);
     }
 }
+
+/*----------------*/
 
 void do_doctor(EditState *s)
 {
@@ -6560,7 +6568,6 @@ void unget_key(int key)
     qs->ungot_key = key;
 }
 
-
 /* handle an event sent by the GUI */
 void qe_handle_event(QEEvent *ev)
 {
@@ -6983,7 +6990,7 @@ static void show_version(void)
 {
     printf("QEmacs version " QE_VERSION "\n"
            "Copyright (c) 2000-2003 Fabrice Bellard\n"
-           "Copyright (c) 2000-2007 Charlie Gordon\n"
+           "Copyright (c) 2000-2008 Charlie Gordon\n"
            "QEmacs comes with ABSOLUTELY NO WARRANTY.\n"
            "You may redistribute copies of QEmacs\n"
            "under the terms of the GNU Lesser General Public License.\n");
@@ -7249,6 +7256,7 @@ QEDisplay dummy_dpy = {
 
 
 #if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
+
 static void init_all_modules(void)
 {
     int (*initcall)(void);
@@ -7269,6 +7277,7 @@ static void init_all_modules(void)
         (*initcall)();
     }
 }
+
 #else
 
 #undef qe_module_init

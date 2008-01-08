@@ -2,6 +2,7 @@
  * Utilities for qemacs.
  *
  * Copyright (c) 2001 Fabrice Bellard.
+ * Copyright (c) 2002-2008 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

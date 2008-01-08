@@ -44,7 +44,7 @@ static int mpeg_display(EditState *s, DisplayState *ds, int offset)
     badchars = 0;
 
     display_bol(ds);
-    display_printf(ds, -1, -1,  "%08x:", offset);
+    display_printf(ds, -1, -1, "%08x:", offset);
     for (;;) {
         ret = eb_read(s->b, offset, buf, 4);
         if (ret == 0) {
@@ -59,7 +59,7 @@ static int mpeg_display(EditState *s, DisplayState *ds, int offset)
                 if (badchars) {
                     display_eol(ds, -1, -1);
                     display_bol(ds);
-                    display_printf(ds, -1, -1,  "%08x:", offset);
+                    display_printf(ds, -1, -1, "%08x:", offset);
                 }
                 break;
             }
@@ -178,6 +178,5 @@ static int mpeg_init(void)
     qe_register_mode(&mpeg_mode);
     return 0;
 }
-
 
 qe_module_init(mpeg_init);

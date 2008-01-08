@@ -2,6 +2,7 @@
  * X11 handling for QEmacs
  *
  * Copyright (c) 2000, 2001, 2002, 2003 Fabrice Bellard.
+ * Copyright (c) 2002-2008 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

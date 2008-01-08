@@ -2,6 +2,7 @@
  * Buffer handling for QEmacs
  *
  * Copyright (c) 2000 Fabrice Bellard.
+ * Copyright (c) 2002-2008 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1358,18 +1359,12 @@ int raw_load_buffer1(EditBuffer *b, FILE *f, int offset)
     return size;
 }
 
+int mmap_buffer(EditBuffer *b, const char *filename)
+{
 #ifdef WIN32
-
-/* currently no mmap is used */
-int mmap_buffer(EditBuffer *b, const char *filename)
-{
+    /* currently no mmap is used under Windows */
     return -1;
-}
-
 #else
-
-int mmap_buffer(EditBuffer *b, const char *filename)
-{
     int fd, len, file_size, n, size;
     u8 *file_ptr, *ptr;
     Page *p;
@@ -1409,9 +1404,8 @@ int mmap_buffer(EditBuffer *b, const char *filename)
     b->file_handle = fd;
     //put_status(NULL, "");
     return 0;
-}
-
 #endif
+}
 
 static int raw_load_buffer(EditBuffer *b, FILE *f)
 {

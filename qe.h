@@ -2,6 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000,2001 Fabrice Bellard.
+ * Copyright (c) 2000-2008 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -241,6 +242,7 @@ void skip_spaces(const char **pp);
 static inline int strequal(const char *s1, const char *s2) {
     return !strcmp(s1, s2);
 }
+
 int strfind(const char *list, const char *s);
 int strcasefind(const char *list, const char *s);
 const void *memstr(const void *buf, int size, const char *str);
