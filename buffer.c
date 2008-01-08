@@ -486,7 +486,7 @@ EditBuffer *eb_new(const char *name, int flags)
     /* add mark move callback */
     eb_add_callback(b, eb_offset_callback, &b->mark);
 
-    if (!strcmp(name, "*trace*"))
+    if (strequal(name, "*trace*"))
         qs->trace_buffer = b;
 
     return b;
@@ -568,7 +568,7 @@ EditBuffer *eb_find(const char *name)
 
     b = qs->first_buffer;
     while (b != NULL) {
-        if (!strcmp(b->name, name))
+        if (strequal(b->name, name))
             return b;
         b = b->next;
     }
@@ -593,7 +593,7 @@ EditBuffer *eb_find_file(const char *filename)
     b = qs->first_buffer;
     while (b != NULL) {
         /* XXX: should also use stat to ensure this is same file */
-        if (!strcmp(b->filename, filename))
+        if (strequal(b->filename, filename))
             return b;
         b = b->next;
     }

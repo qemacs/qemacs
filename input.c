@@ -289,13 +289,12 @@ static void unload_input_methods(void)
 }
 #endif
 
-static void input_completion(StringArray *cs, const char *input)
+static void input_completion(CompleteState *cp)
 {
     InputMethod *m;
 
     for (m = input_methods; m != NULL; m = m->next) {
-        if (strstart(m->name, input, NULL))
-            add_string(cs, m->name);
+        complete_test(cp, m->name);
     }
 }
 
@@ -304,7 +303,7 @@ static InputMethod *find_input_method(const char *name)
     InputMethod *m;
 
     for (m = input_methods; m != NULL; m = m->next) {
-        if (!strcmp(m->name, name))
+        if (strequal(m->name, name))
             return m;
     }
     return NULL;

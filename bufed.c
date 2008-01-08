@@ -190,7 +190,7 @@ static void do_list_buffers(EditState *s, int argval)
 
     /* if active buffer is found, go directly on it */
     for (i = 0; i < bs->items.nb_items; i++) {
-        if (!strcmp(bs->items.items[i]->str, b0->name)) {
+        if (strequal(bs->items.items[i]->str, b0->name)) {
             e->offset = eb_goto_pos(e->b, i, 0);
             break;
         }

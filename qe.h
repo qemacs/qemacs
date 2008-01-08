@@ -148,6 +148,13 @@ typedef struct StringArray {
 } StringArray;
 #define NULL_STRINGARRAY  { 0, 0, NULL }
 
+typedef struct CompleteState {
+    StringArray cs;
+    struct EditState *s;
+    char current[MAX_FILENAME_SIZE];
+    int len;
+} CompleteState;
+
 /* media definitions */
 #define CSS_MEDIA_TTY     0x0001
 #define CSS_MEDIA_SCREEN  0x0002
@@ -227,9 +234,13 @@ static inline int qe_tolower(int c) {
     return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
 }
 
+int qe_collate(const char *s1, const char *s2);
 void qe_strtolower(char *buf, int buf_size, const char *str);
 void skip_spaces(const char **pp);
 
+static inline int strequal(const char *s1, const char *s2) {
+    return !strcmp(s1, s2);
+}
 int strfind(const char *list, const char *s);
 int strcasefind(const char *list, const char *s);
 const void *memstr(const void *buf, int size, const char *str);
@@ -259,7 +270,7 @@ int strtokey(const char **pp);
 int strtokeys(const char *keystr, unsigned int *keys, int max_keys);
 void keytostr(char *buf, int buf_size, int key);
 int to_hex(int key);
-void color_completion(StringArray *cs, const char *input);
+void color_completion(CompleteState *cp);
 int css_define_color(const char *name, const char *value);
 int css_get_color(unsigned int *color_ptr, const char *p);
 int css_get_font_family(const char *str);
@@ -451,7 +462,7 @@ extern unsigned char utf8_length[256];
 int utf8_to_unicode(unsigned int *dest, int dest_length,
                     const char *str);
 
-void charset_completion(StringArray *cs, const char *charset_str);
+void charset_completion(CompleteState *cp);
 QECharset *find_charset(const char *str);
 void charset_decode_init(CharsetDecodeState *s, QECharset *charset);
 void charset_decode_close(CharsetDecodeState *s);
@@ -718,6 +729,10 @@ struct EditBuffer {
     EditBuffer *next; /* next editbuffer in qe_state buffer list */
     char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
     char filename[MAX_FILENAME_SIZE];   /* file name */
+
+    /* Should keep a stat buffer to check for file type and
+     * asynchronous modifications
+     */
 };
 
 /* high level buffer type handling */
@@ -1247,7 +1262,7 @@ typedef struct CmdDef {
     { 0, 0, NULL, { NULL }, CMD_void, 0 }
 
 void qe_register_mode(ModeDef *m);
-void mode_completion(StringArray *cs, const char *input);
+void mode_completion(CompleteState *cp);
 void qe_register_cmd_table(CmdDef *cmds, ModeDef *m);
 void qe_register_binding(int key, const char *cmd_name,
                          const char *mode_names);
@@ -1403,7 +1418,7 @@ void minibuffer_init(void);
 extern CmdDef minibuffer_commands[];
 extern CmdDef less_commands[];
 
-typedef void (*CompletionFunc)(StringArray *cs, const char *input);
+typedef void (*CompletionFunc)(CompleteState *cp);
 
 typedef struct CompletionEntry {
     const char *name;
@@ -1411,15 +1426,17 @@ typedef struct CompletionEntry {
     struct CompletionEntry *next;
 } CompletionEntry;
 
+void complete_test(CompleteState *cp, const char *str);
+
 void register_completion(const char *name, CompletionFunc completion_func);
 void put_status(EditState *s, const char *fmt, ...) __attr_printf(2,3);
 void put_error(EditState *s, const char *fmt, ...) __attr_printf(2,3);
 void minibuffer_edit(const char *input, const char *prompt,
                      StringArray *hist, CompletionFunc completion_func,
                      void (*cb)(void *opaque, char *buf), void *opaque);
-void command_completion(StringArray *cs, const char *input);
-void file_completion(StringArray *cs, const char *input);
-void buffer_completion(StringArray *cs, const char *input);
+void command_completion(CompleteState *cp);
+void file_completion(CompleteState *cp);
+void buffer_completion(CompleteState *cp);
 
 #ifdef WIN32
 static inline int is_user_input_pending(void) {
@@ -1475,9 +1492,11 @@ void do_load_from_path(EditState *s, const char *filename);
 void do_switch_to_buffer(EditState *s, const char *bufname);
 void do_break(EditState *s);
 void do_insert_file(EditState *s, const char *filename);
+// should take argument?
 void do_save_buffer(EditState *s);
 void do_write_file(EditState *s, const char *filename);
 void do_write_region(EditState *s, const char *filename);
+// should take argument?
 void do_isearch(EditState *s, int dir);
 void do_query_replace(EditState *s, const char *search_str,
                       const char *replace_str);
@@ -1581,7 +1600,7 @@ void do_set_indent_width(EditState *s, int indent_width);
 void do_set_indent_tabs_mode(EditState *s, int mode);
 void display_window_borders(EditState *e);
 QEStyleDef *find_style(const char *name);
-void style_completion(StringArray *cs, const char *input);
+void style_completion(CompleteState *cp);
 void do_define_color(EditState *e, const char *name, const char *value);
 void do_set_style(EditState *e, const char *stylestr,
                   const char *propstr, const char *value);

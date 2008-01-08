@@ -110,14 +110,13 @@ void qe_register_mode(ModeDef *m)
     }
 }
 
-void mode_completion(StringArray *cs, const char *input)
+void mode_completion(CompleteState *cp)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = cp->s->qe_state;
     ModeDef *m;
 
     for (m = qs->first_mode; m != NULL; m = m->next) {
-        if (strstart(m->name, input, NULL))
-            add_string(cs, m->name);
+        complete_test(cp, m->name);
     }
 }
 
@@ -127,7 +126,7 @@ static ModeDef *find_mode(const char *name)
     ModeDef *m;
 
     for (m = qs->first_mode; m != NULL; m = m->next) {
-        if (!strcmp(m->name, name))
+        if (strequal(m->name, name))
             return m;
     }
     return NULL;
@@ -143,7 +142,7 @@ CmdDef *qe_find_cmd(const char *cmd_name)
     d = qs->first_cmd;
     while (d != NULL) {
         while (d->name != NULL) {
-            if (!strcmp(cmd_name, d->name))
+            if (strequal(cmd_name, d->name))
                 return d;
             d++;
         }
@@ -281,16 +280,15 @@ void qe_register_binding(int key, const char *cmd_name, const char *mode_names)
     }
 }
 
-void command_completion(StringArray *cs, const char *input)
+void command_completion(CompleteState *cp)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = cp->s->qe_state;
     CmdDef *d;
 
     d = qs->first_cmd;
     while (d != NULL) {
         while (d->name != NULL) {
-            if (strstart(d->name, input, NULL))
-                add_string(cs, d->name);
+            complete_test(cp, d->name);
             d++;
         }
         d = d->action.next;
@@ -360,13 +358,13 @@ void do_set_emulation(EditState *s, const char *name)
 {
     QEmacsState *qs = s->qe_state;
 
-    if (!strcmp(name, "epsilon")) {
+    if (strequal(name, "epsilon")) {
         qs->flag_split_window_change_focus = 1;
     } else
-    if (!strcmp(name, "emacs") || !strcmp(name, "xemacs")) {
+    if (strequal(name, "emacs") || strequal(name, "xemacs")) {
         qs->flag_split_window_change_focus = 0;
     } else
-    if (!strcmp(name, "vi") || strcmp(name, "vim")) {
+    if (strequal(name, "vi") || strequal(name, "vim")) {
         put_status(s, "emulation '%s' not available yet", name);
     } else {
         put_status(s, "unknown emulation '%s'", name);
@@ -1952,7 +1950,7 @@ void display_mode_line(EditState *s)
 
     if (s->flags & WF_MODELINE) {
         s->mode->mode_line(s, buf, sizeof(buf));
-        if (strcmp(buf, s->modeline_shadow) != 0) {
+        if (!strequal(buf, s->modeline_shadow)) {
             print_at_byte(s->screen,
                           s->xleft,
                           s->ytop + s->height,
@@ -2048,15 +2046,14 @@ void get_style(EditState *e, QEStyleDef *style, int style_index)
         apply_style(style, style_index);
 }
 
-void style_completion(StringArray *cs, const char *input)
+void style_completion(CompleteState *cp)
 {
     int i;
     QEStyleDef *style;
 
     for (i = 0; i < QE_STYLE_NB; i++) {
         style = &qe_styles[i];
-        if (strstart(style->name, input, NULL))
-            add_string(cs, style->name);
+        complete_test(cp, style->name);
     }
 }
 
@@ -2067,7 +2064,7 @@ QEStyleDef *find_style(const char *name)
 
     for (i = 0; i < QE_STYLE_NB; i++) {
         style = &qe_styles[i];
-        if (!strcmp(style->name, name))
+        if (strequal(style->name, name))
             return style;
     }
     return NULL;
@@ -2117,9 +2114,10 @@ void do_set_style(EditState *e, const char *stylestr,
     case 3:
         /* XXX: cannot handle inherit correctly */
         v = style->font_style;
-        if (!strcmp(value, "italic")) {
+        if (strequal(value, "italic")) {
             v |= QE_STYLE_ITALIC;
-        } else if (!strcmp(value, "normal")) {
+        } else
+        if (strequal(value, "normal")) {
             v &= ~QE_STYLE_ITALIC;
         }
         style->font_style = v;
@@ -2127,15 +2125,16 @@ void do_set_style(EditState *e, const char *stylestr,
     case 4:
         /* XXX: cannot handle inherit correctly */
         v = style->font_style;
-        if (!strcmp(value, "bold")) {
+        if (strequal(value, "bold")) {
             v |= QE_STYLE_BOLD;
-        } else if (!strcmp(value, "normal")) {
+        } else
+        if (strequal(value, "normal")) {
             v &= ~QE_STYLE_BOLD;
         }
         style->font_style = v;
         break;
     case 5:
-        if (!strcmp(value, "inherit")) {
+        if (strequal(value, "inherit")) {
             style->font_size = 0;
         } else {
             style->font_size = strtol(value, NULL, 0);
@@ -2143,9 +2142,10 @@ void do_set_style(EditState *e, const char *stylestr,
         break;
     case 6:
         /* XXX: cannot handle inherit correctly */
-        if (!strcmp(value, "none")) {
+        if (strequal(value, "none")) {
             style->font_style &= ~QE_STYLE_UNDERLINE;
-        } else if (!strcmp(value, "underline")) {
+        } else
+        if (strequal(value, "underline")) {
             style->font_style |= QE_STYLE_UNDERLINE;
         }
         break;
@@ -3467,10 +3467,10 @@ static void parse_args(ExecCmdState *es)
             /* XXX: currently, default input is handled non generically */
             def_input[0] = '\0';
             es->default_input[0] = '\0';
-            if (!strcmp(completion_name, "file")) {
+            if (strequal(completion_name, "file")) {
                 get_default_path(s, def_input, sizeof(def_input));
             } else
-            if (!strcmp(completion_name, "buffer")) {
+            if (strequal(completion_name, "buffer")) {
                 EditBuffer *b;
                 if (d->action.ESs == do_switch_to_buffer)
                     b = predict_switch_to_buffer(s);
@@ -4082,7 +4082,7 @@ void put_status(__unused__ EditState *s, const char *fmt, ...)
     if (qs->screen->dpy.dpy_init == dummy_dpy_init) {
         eb_format_message(qs, "*errors*", buf);
     } else {
-        if (strcmp(buf, qs->status_shadow) != 0) {
+        if (!strequal(buf, qs->status_shadow)) {
             print_at_byte(qs->screen,
                           0, qs->screen->height - qs->status_height,
                           qs->screen->width, qs->status_height,
@@ -4276,7 +4276,7 @@ void edit_close(EditState *s)
 static const char *file_completion_ignore_extensions =
     "|bak|bin|dll|exe|o|so|obj|a|gz|tgz";
 
-void file_completion(StringArray *cs, const char *input)
+void file_completion(CompleteState *cp)
 {
     FindFileState *ffst;
     char path[MAX_FILENAME_SIZE];
@@ -4285,7 +4285,7 @@ void file_completion(StringArray *cs, const char *input)
     const char *base;
     int len;
 
-    splitpath(path, sizeof(path), file, sizeof(file), input);
+    splitpath(path, sizeof(path), file, sizeof(file), cp->current);
     pstrcat(file, sizeof(file), "*");
 
     ffst = find_file_open(*path ? path : ".", file);
@@ -4295,7 +4295,7 @@ void file_completion(StringArray *cs, const char *input)
         base = basename(filename);
         /* ignore . and .. to force direct match if
          * single entry in directory */
-        if (!strcmp(base, ".") || !strcmp(base, ".."))
+        if (strequal(base, ".") || strequal(base, ".."))
             continue;
         /* ignore known backup files */
         len = strlen(base);
@@ -4310,36 +4310,38 @@ void file_completion(StringArray *cs, const char *input)
          */
         if (!stat(filename, &sb) && S_ISDIR(sb.st_mode))
             pstrcat(filename, sizeof(filename), "/");
-        add_string(cs, filename);
+        add_string(&cp->cs, filename);
     }
 
     find_file_close(ffst);
 }
 
-void buffer_completion(StringArray *cs, const char *input)
+void buffer_completion(CompleteState *cp)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = cp->s->qe_state;
     EditBuffer *b;
 
     for (b = qs->first_buffer; b != NULL; b = b->next) {
-        if (!(b->flags & BF_SYSTEM) && strstart(b->name, input, NULL))
-            add_string(cs, b->name);
+        if (!(b->flags & BF_SYSTEM))
+            complete_test(cp, b->name);
     }
 }
 
 /* register a new completion method */
 void register_completion(const char *name, CompletionFunc completion_func)
 {
+    QEmacsState *qs = &qe_state;
     CompletionEntry **lp, *p;
 
     p = qe_malloc(CompletionEntry);
     if (!p)
         return;
+
     p->name = name;
     p->completion_func = completion_func;
     p->next = NULL;
 
-    lp = &qe_state.first_completion;
+    lp = &qs->first_completion;
     while (*lp != NULL)
         lp = &(*lp)->next;
     *lp = p;
@@ -4350,18 +4352,39 @@ static CompletionFunc find_completion(const char *name)
     CompletionEntry *p;
 
     if (name[0] != '\0') {
-        for (p = qe_state.first_completion; p != NULL; p = p->next)
-            if (!strcmp(p->name, name))
+        for (p = qe_state.first_completion; p != NULL; p = p->next) {
+            if (strequal(p->name, name))
                 return p->completion_func;
+        }
     }
     return NULL;
+}
+
+static void complete_start(EditState *s, CompleteState *cp)
+{
+    memset(cp, 0, sizeof(*cp));
+    cp->s = s;
+    cp->len = eb_get_contents(s->b, cp->current, sizeof(cp->current) - 1);
+}
+
+void complete_test(CompleteState *cp, const char *str)
+{
+    if (!memcmp(str, cp->current, cp->len))
+        add_string(&cp->cs, str);
+}
+
+static void complete_end(CompleteState *cp)
+{
+    free_strings(&cp->cs);
 }
 
 static int completion_sort_func(const void *p1, const void *p2)
 {
     StringItem *item1 = *(StringItem **)p1;
     StringItem *item2 = *(StringItem **)p2;
-    return strcmp(item1->str, item2->str);
+
+    /* Use natural sort: keep numbers in order */
+    return qe_collate(item1->str, item2->str);
 }
 
 static void (*minibuffer_cb)(void *opaque, char *buf);
@@ -4381,22 +4404,19 @@ static ModeDef minibuffer_mode;
 void do_completion(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
-    char input[1024];
-    int len, count, i, match_len, c;
-    StringArray cs;
+    int count, i, match_len, c;
+    CompleteState cs;
     StringItem **outputs;
     EditState *e;
     int w, h, h1, w1;
 
-    if (!completion_function) {
+    if (!completion_function)
         return;
-    }
 
-    len = eb_get_contents(s->b, input, sizeof(input));
-    memset(&cs, 0, sizeof(cs));
-    (*completion_function)(&cs, input);
-    count = cs.nb_items;
-    outputs = cs.items;
+    complete_start(s, &cs);
+    (*completion_function)(&cs);
+    count = cs.cs.nb_items;
+    outputs = cs.cs.items;
 #if 0
     printf("count=%d\n", count);
     for (i = 0; i < count; i++)
@@ -4406,7 +4426,7 @@ void do_completion(EditState *s)
     if (count == 0)
         goto the_end;
     /* compute the longest match len */
-    match_len = len;
+    match_len = cs.len;
     for (;;) {
         /* Potential UTF-8 issue: should use utility function */
         c = outputs[0]->str[match_len];
@@ -4418,7 +4438,7 @@ void do_completion(EditState *s)
         match_len++;
     }
  no_match:
-    if (match_len > len) {
+    if (match_len > cs.len) {
         /* add the possible chars */
         eb_write(s->b, 0, outputs[0]->str, match_len);
         s->offset = match_len;
@@ -4458,7 +4478,7 @@ void do_completion(EditState *s)
         }
     }
  the_end:
-    free_strings(&cs);
+    complete_end(&cs);
 }
 
 /* space does completion only if a completion method is defined */
@@ -4483,6 +4503,7 @@ void minibuf_complete_scroll_up_down(__unused__ EditState *s, int dir)
 static void set_minibuffer_str(EditState *s, const char *str)
 {
     int len;
+
     eb_delete(s->b, 0, s->b->total_size);
     len = strlen(str);
     eb_write(s->b, 0, (u8 *)str, len);
@@ -4497,7 +4518,7 @@ static StringArray *get_history(const char *name)
     if (name[0] == '\0')
         return NULL;
     for (p = qs->first_history; p != NULL; p = p->next) {
-        if (!strcmp(p->name, name))
+        if (strequal(p->name, name))
             return &p->history;
     }
     /* not found: allocate history list */
@@ -4884,7 +4905,7 @@ static void kill_buffer_confirm_cb(void *opaque, char *reply)
 
     if (!reply)
         return;
-    yes_replied = (strcmp(reply, "yes") == 0);
+    yes_replied = strequal(reply, "yes");
     qe_free(&reply);
     if (!yes_replied)
         return;
@@ -6745,7 +6766,7 @@ int parse_config_file(EditState *s, const char *filename)
             q++;
         }
         /* simplistic 1 level if block skip feature */
-        if (!strcmp(cmd, "if")) {
+        if (strequal(cmd, "if")) {
             if (!expect_token(&p, '('))
                 goto fail;
             skip = !strtol(p, (char**)&p, 0);
@@ -7029,8 +7050,8 @@ int parse_command_line(int argc, char **argv)
         p = first_cmd_options;
         while (p != NULL) {
             while (p->name != NULL) {
-                if (!strcmp(p->name, r2) ||
-                    (p->shortname && !strcmp(p->shortname, r1))) {
+                if (strequal(p->name, r2) ||
+                    (p->shortname && strequal(p->shortname, r1))) {
                     if (p->flags & CMD_OPT_ARG) {
                         if (_optind >= argc) {
                             put_status(NULL,
@@ -7368,7 +7389,7 @@ static void qe_init(void *opaque)
         const char *p;
 
         p = basename(argv[0]);
-        if (!strcmp(p, "ffplay"))
+        if (strequal(p, "ffplay"))
             is_player = 1;
         else
             is_player = 0;

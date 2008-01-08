@@ -257,22 +257,22 @@ void qe_register_charset(QECharset *charset)
     *pp = charset;
 }
 
-void charset_completion(StringArray *cs, const char *input)
+void charset_completion(CompleteState *cp)
 {
     QECharset *charset;
     char name[32];
     const char *p, *q;
 
     for (charset = first_charset; charset != NULL; charset = charset->next) {
-        if (strxstart(charset->name, input, NULL))
-            add_string(cs, charset->name);
+        if (strxstart(charset->name, cp->current, NULL))
+            add_string(&cp->cs, charset->name);
         if (charset->aliases) {
             for (q = p = charset->aliases;; q++) {
                 if (*q == '\0' || *q == '|') {
                     if (q > p) {
                         pstrncpy(name, sizeof(name), p, q - p);
-                        if (strxstart(name, input, NULL))
-                            add_string(cs, name);
+                        if (strxstart(name, cp->current, NULL))
+                            add_string(&cp->cs, name);
                     }
                     if (*q == '\0')
                         break;

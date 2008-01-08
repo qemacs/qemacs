@@ -47,7 +47,7 @@ static const unsigned short table_8859_2[95] = {
 
 static QECharset charset_8859_2 = {
     "8859-2",
-    "ISO-8859-2|iso-ir-101|latin2|l2|iso-latin2|iso8859-2",
+    "ISO-8859-2|iso-ir-101|latin2|l2|iso-latin2",
     decode_8bit_init,
     NULL,
     encode_8bit,

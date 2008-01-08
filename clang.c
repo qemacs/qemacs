@@ -479,10 +479,7 @@ static void do_c_indent(EditState *s)
                             }
                             *q = '\0';
 
-                            if (!eoi_found &&
-                                (!strcmp(buf1, "if") ||
-                                 !strcmp(buf1, "for") ||
-                                 !strcmp(buf1, "while"))) {
+                            if (!eoi_found && strfind("if|for|while", buf1)) {
                                 pos = pos1 + s->indent_size;
                                 goto end_parse;
                             }

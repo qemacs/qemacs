@@ -716,7 +716,7 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
 
     for (i = 0; i < PIX_FMT_NB; i++) {
         name = avcodec_get_pix_fmt_name(i);
-        if (!strcmp(name, pix_fmt_str))
+        if (strequal(name, pix_fmt_str))
             goto found;
     }
     put_status(e, "Unknown pixel format");
@@ -786,15 +786,14 @@ int image_mode_line(EditState *s, char *buf, int buf_size)
     return pos;
 }
 
-static void pixel_format_completion(StringArray *cs, const char *input)
+static void pixel_format_completion(CompleteState *cp)
 {
     int i;
     const char *name;
 
     for (i = 0; i < PIX_FMT_NB; i++) {
         name = avcodec_get_pix_fmt_name(i);
-        if (strstart(name, input, NULL))
-            add_string(cs, name);
+        complete_test(cp, name);
     }
 }
 

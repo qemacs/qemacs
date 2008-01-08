@@ -1378,7 +1378,7 @@ static void do_compile_error(EditState *s, int dir)
         }
         if (line_num >= 1) {
             if (line_num != last_line_num ||
-                strcmp(filename, last_filename) != 0) {
+                !strequal(filename, last_filename)) {
                 last_line_num = line_num;
                 pstrcpy(last_filename, sizeof(last_filename), filename);
                 break;

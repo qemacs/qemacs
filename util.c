@@ -30,7 +30,7 @@ int fnmatch(const char *pattern, const char *string, int flags)
     if (pattern[0] == '*')
         return 0;
     else
-        return strcmp(pattern, string) != 0;
+        return !strequal(pattern, string);
 }
 
 #else
@@ -390,6 +390,40 @@ void splitpath(char *dirname, int dirname_size,
         pstrcpy(filename, filename_size, base);
 }
 
+/* smart compare strings, lexicographical order, but collate numbers in
+ * numeric order */
+int qe_collate(const char *s1, const char *s2)
+{
+    int last, c1, c2, res, flags;
+
+    last = '\0';
+    for (;;) {
+        c1 = (unsigned char)*s1++;
+        c2 = (unsigned char)*s2++;
+        if (c1 == c2) {
+            last = c1;
+            if (c1 == '\0')
+                return 0;
+        } else {
+            break;
+        }
+    }
+    res = (c1 < c2) ? -1 : 1;
+    for (;;) {
+        flags = qe_isdigit(c1) * 2 + qe_isdigit(c2);
+        if (flags == 3) {
+            last = c1;
+            c1 = (unsigned char)*s1++;
+            c2 = (unsigned char)*s2++;
+        } else {
+            break;
+        }
+    }
+    if (!qe_isdigit(last) || flags == 0)
+        return res;
+    return (flags == 1) ? -1 : 1;
+}
+
 /* Should return int, length of converted string? */
 void qe_strtolower(char *buf, int size, const char *str)
 {
@@ -691,7 +725,7 @@ int css_get_enum(const char *str, const char *enum_str)
                 return val;
             s = s1 + 1;
         } else {
-            if (!strcmp(s, str))
+            if (strequal(s, str))
                 return val;
             else
                 break;
@@ -922,7 +956,7 @@ static ColorDef const css_colors[] = {
 static ColorDef *custom_colors;
 static int nb_custom_colors;
 
-void color_completion(StringArray *cs, const char *input)
+void color_completion(CompleteState *cp)
 {
     ColorDef const *def;
     int count;
@@ -934,8 +968,8 @@ void color_completion(StringArray *cs, const char *input)
         count = nb_css_colors;
     }
     while (count > 0) {
-        if (strxstart(def->name, input, NULL))
-            add_string(cs, def->name);
+        if (strxstart(def->name, cp->current, NULL))
+            add_string(&cp->cs, def->name);
         def++;
         count--;
     }

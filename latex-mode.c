@@ -198,13 +198,13 @@ static struct latex_function {
 #undef INIT_TAIL
 };
 
-static void latex_completion(StringArray *cs, const char *input)
+static void latex_completion(CompleteState *cp)
 {
     struct latex_function *func;
 
     for (func = latex_funcs; func->name; func++) {
-        if (strxstart(func->name, input, NULL))
-            add_string(cs, func->name);
+        if (strxstart(func->name, cp->current, NULL))
+            add_string(&cp->cs, func->name);
     }
 }
 

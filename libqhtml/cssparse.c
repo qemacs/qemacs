@@ -266,7 +266,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
                     p++;
                 goto next;
             }
-            if (!strcmp(def->name, property))
+            if (strequal(def->name, property))
                 break;
             def++;
         }
@@ -343,13 +343,13 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
 
             unit = CSS_UNIT_NONE;
             if (type & CSS_TYPE_AUTO) {
-                if (!strcmp(buf, "auto")) {
+                if (strequal(buf, "auto")) {
                     val = CSS_AUTO;
                     goto got_val;
                 }
             }
             if (!(type & CSS_TYPE_NOINHERIT)) {
-                if (!strcmp(buf, "inherit")) {
+                if (strequal(buf, "inherit")) {
                     val = CSS_INHERIT;
                     goto got_val;
                 }

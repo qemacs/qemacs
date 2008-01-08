@@ -305,7 +305,7 @@ CSSIdent css_new_ident(const char *str)
     pp = &hash_ident[hash_str(str, CSS_IDENT_HASH_SIZE)];
     p = *pp;
     while (p != NULL) {
-        if (!strcmp(str, p->str)) {
+        if (strequal(str, p->str)) {
             return p->id;
         }
         p = p->hash_next;

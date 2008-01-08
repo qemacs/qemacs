@@ -64,7 +64,7 @@ int find_entity(const char *str)
         name = e->name;
         if (!name)
             break;
-        if (!strcmp(str, name))
+        if (strequal(str, name))
             return e->val;
         e++;
     }

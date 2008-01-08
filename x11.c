@@ -726,13 +726,13 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
         get_entry(NULL, 0, &p);
         get_entry(NULL, 0, &p); /* family */
         get_entry(buf, sizeof(buf), &p); /* weight */
-        if (!((!strcmp(buf, "bold") && (style & QE_STYLE_BOLD)) ||
-              (!strcmp(buf, "medium") && !(style & QE_STYLE_BOLD))))
+        if (!((strequal(buf, "bold") && (style & QE_STYLE_BOLD)) ||
+              (strequal(buf, "medium") && !(style & QE_STYLE_BOLD))))
             dist += 3;
         get_entry(buf, sizeof(buf), &p); /* slant */
-        if (!((!strcmp(buf, "o") && (style & QE_STYLE_ITALIC)) ||
-              (!strcmp(buf, "i") && (style & QE_STYLE_ITALIC)) ||
-              (!strcmp(buf, "r") && !(style & QE_STYLE_ITALIC))))
+        if (!((strequal(buf, "o") && (style & QE_STYLE_ITALIC)) ||
+              (strequal(buf, "i") && (style & QE_STYLE_ITALIC)) ||
+              (strequal(buf, "r") && !(style & QE_STYLE_ITALIC))))
             dist += 3;
         get_entry(NULL, 0, &p); /* swidth */
         get_entry(NULL, 0, &p); /* adstyle */
@@ -745,7 +745,7 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
         get_entry(NULL, 0, &p); /* pixsize */
         get_entry(NULL, 0, &p); /* pixsize */
         /* always favor unicode encoding */
-        if (strcmp(p, "iso10646-1") != 0)
+        if (!strequal(p, "iso10646-1"))
             dist += 3;
 
         if (dist < dist_min) {

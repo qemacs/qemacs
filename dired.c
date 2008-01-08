@@ -104,11 +104,11 @@ static int dired_sort_func(const void *p1, const void *p2)
             }
         }
         if (mode & DIRED_SORT_EXTENSION) {
-            res = strcmp(extension(dip1->name), extension(dip2->name));
+            res = qe_collate(extension(dip1->name), extension(dip2->name));
             if (res)
                 break;
         }
-        res = strcmp(dip1->name, dip2->name);
+        res = qe_collate(dip1->name, dip2->name);
         break;
     }
     return (mode & DIRED_SORT_DESCENDING) ? -res : res;
@@ -243,7 +243,7 @@ static void build_dired_list(EditState *s, const char *path)
 
 #if 1   /* CG: bad idea, but causes spurious bugs */
         /* exclude redundant '.' and '..' */
-        if (!strcmp(p, ".") || !strcmp(p, ".."))
+        if (strequal(p, ".") || strequal(p, ".."))
             continue;
 #endif
         pstrcpy(line, sizeof(line), p);
@@ -526,7 +526,7 @@ void do_dired(EditState *s)
     /* CG: target file should be an argument to this command */
     for (i = 0; i < hs->items.nb_items; i++) {
         if (get_dired_filename(e, filename, sizeof(filename), i)
-        &&  !strcmp(filename, b0->filename)) {
+        &&  strequal(filename, b0->filename)) {
             index = i;
             break;
         }
