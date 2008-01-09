@@ -1186,7 +1186,7 @@ int eb_get_char_offset(EditBuffer *b, int offset)
         }
         pos += get_chars(p->data, offset, b->charset);
         /* Should adjust if offset falls in the middle of a character */
-        // {
+        //{
         //    int c = p->data[offset];
         //    if (c >= 0x80 && c < 0xc0)
         //        pos--;

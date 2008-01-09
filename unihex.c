@@ -58,6 +58,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
     eof = 0;
     display_bol(ds);
 
+    ds->style = QE_STYLE_COMMENT;
     display_printf(ds, -1, -1, "%08x ", offset);
 
     len = 0;
@@ -71,6 +72,8 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
         }
     }
     pos[len] = offset;
+
+    ds->style = QE_STYLE_FUNCTION;
 
     for (j = 0; j < s->disp_width; j++) {
         display_char(ds, -1, -1, ' ');
@@ -87,6 +90,8 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
         if ((j & 7) == 7)
             display_char(ds, -1, -1, ' ');
     }
+    ds->style = 0;
+
     display_char(ds, -1, -1, ' ');
     display_char(ds, -1, -1, ' ');
 
@@ -106,6 +111,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
             }
         }
     }
+    ds->style = 0;
     display_eol(ds, -1, -1);
 
     if (len >= s->disp_width)

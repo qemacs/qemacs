@@ -49,7 +49,11 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
 
     display_bol(ds);
 
+    ds->style = QE_STYLE_COMMENT;
     display_printf(ds, -1, -1, "%08x ", offset);
+
+    ds->style = QE_STYLE_FUNCTION;
+
     eof = 0;
     len = s->b->total_size - offset;
     if (len > s->disp_width)
@@ -69,12 +73,14 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
                 }
                 display_printf(ds, offset1, offset1 + 1, "  ");
             }
-            if ((j & 7)== 7)
+            if ((j & 7) == 7)
                 display_char(ds, -1, -1, ' ');
         }
         display_char(ds, -1, -1, ' ');
         display_char(ds, -1, -1, ' ');
     }
+    ds->style = 0;
+
     eof = 0;
     for (j = 0; j < s->disp_width; j++) {
         offset1 = offset + j;

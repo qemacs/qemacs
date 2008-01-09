@@ -77,22 +77,8 @@ typedef struct ShellState {
 
 } ShellState;
 
-static int shell_get_colorized_line(EditState *e,
-                                    unsigned int *buf, int buf_size,
-                                    int offset, int line_num);
-
 /* move to mode */
 static int shell_launched = 0;
-
-static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
-{
-    s->tab_size = 8;
-    s->wrap = WRAP_TRUNCATE;
-    s->interactive = 1;
-    set_colorize_func(s, NULL);
-    s->get_colorized_line_func = shell_get_colorized_line;
-    return 0;
-}
 
 #define PTYCHAR1 "pqrstuvwxyz"
 #define PTYCHAR2 "0123456789abcdef"
@@ -936,18 +922,19 @@ static void shell_color_callback(__unused__ EditBuffer *b,
 
 static int shell_get_colorized_line(EditState *e,
                                     unsigned int *buf, int buf_size,
-                                    int offset, __unused__ int line_num)
+                                    int *offsetp, __unused__ int line_num)
 {
     EditBuffer *b = e->b;
     ShellState *s = b->priv_data;
     EditBuffer *b_color = s->b_color;
-    int color, offset1, c;
+    int color, offset, offset1, c;
     unsigned int *buf_ptr, *buf_end;
     unsigned char buf1[1];
 
     /* record line */
+    offset = *offsetp;
     buf_ptr = buf;
-    buf_end = buf + buf_size;
+    buf_end = buf + buf_size - 1;
     for (;;) {
         eb_read(b_color, offset, buf1, 1);
         color = buf1[0];
@@ -963,6 +950,9 @@ static int shell_get_colorized_line(EditState *e,
         }
         offset = offset1;
     }
+    *buf_ptr = '\0';
+    *offsetp = offset1;
+
     return buf_ptr - buf;
 }
 
@@ -1438,6 +1428,16 @@ static CmdDef compile_commands[] = {
           "next-error", do_compile_error, 1) /* u */
     CMD_DEF_END,
 };
+
+static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
+{
+    s->tab_size = 8;
+    s->wrap = WRAP_TRUNCATE;
+    s->interactive = 1;
+    set_colorize_func(s, NULL);
+    s->get_colorized_line_func = shell_get_colorized_line;
+    return 0;
+}
 
 static int shell_init(void)
 {

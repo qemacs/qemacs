@@ -683,7 +683,6 @@ struct EditBuffer {
     Page *page_table;
     int nb_pages;
     int mark;       /* current mark (moved with text) */
-    //int yank_mark;  /* start of last yank (emacs) */
     int total_size; /* total size of the buffer */
     int modified;
 
@@ -881,7 +880,7 @@ extern EditBufferDataType raw_data_type;
 /* colorize & transform a line, lower level then ColorizeFunc */
 typedef int (*GetColorizedLineFunc)(EditState *s,
                                     unsigned int *buf, int buf_size,
-                                    int offset1, int line_num);
+                                    int *offset1, int line_num);
 
 /* colorize a line : this function modifies buf to set the char
    styles. 'buf' is guaranted to have one more char after its len
@@ -964,8 +963,8 @@ struct EditState {
     int borders_invalid; /* true if window borders should be redrawn */
     int show_selection;  /* if true, the selection is displayed */
 
-    //int region_style;
-    //int curline_style;
+    int region_style;
+    int curline_style;
 
     /* display area info */
     int width, height;
@@ -1000,7 +999,7 @@ struct EditState {
 /* Ugly patch for saving/restoring window data upon switching buffer */
 #define SAVED_DATA_SIZE  offsetof(EditState, end_of_saved_data)
 
-struct DisplayState;
+typedef struct DisplayState DisplayState;
 
 typedef struct ModeProbeData {
     const char *filename;
@@ -1037,7 +1036,7 @@ typedef struct ModeDef {
     void (*display)(EditState *);
 
     /* text related functions */
-    int (*text_display)(EditState *, struct DisplayState *, int);
+    int (*text_display)(EditState *, DisplayState *, int);
     int (*text_backward_offset)(EditState *, int);
 
     /* common functions are defined here */
@@ -1174,8 +1173,7 @@ struct QEmacsState {
     //int no_config;      /* prevent config file eval */
     //int force_refresh;  /* force a complete screen refresh */
     //int ignore_spaces;  /* ignore spaces when comparing windows */
-    //int mark_yank_region; /* set mark at opposite end of yanked block */
-    //int hilite_region;  /* hilite the current region when selecting */
+    int hilite_region;  /* hilite the current region when selecting */
     //int mmap_threshold; /* minimum file size for mmap */
 };
 
@@ -1291,7 +1289,7 @@ typedef struct TextFragment {
 #define STYLE_MASK       (((1 << STYLE_BITS) - 1) << STYLE_SHIFT)
 #define CHAR_MASK        ((1 << STYLE_SHIFT) - 1)
 
-typedef struct DisplayState {
+struct DisplayState {
     int do_disp; /* true if real display */
     int width;   /* display window width */
     int height;  /* display window height */
@@ -1315,6 +1313,7 @@ typedef struct DisplayState {
     int wrap;
     int eol_reached;
     EditState *edit_state;
+    int style;  /* css display style */
 
     /* fragment buffers */
     TextFragment fragments[MAX_SCREEN_WIDTH];
@@ -1337,7 +1336,7 @@ typedef struct DisplayState {
     int last_space;
     int last_style;
     int last_embedding_level;
-} DisplayState;
+};
 
 enum DisplayType {
     DISP_CURSOR,
@@ -1371,6 +1370,13 @@ static inline void set_color(unsigned int *p, const unsigned int *to, int style)
 
 static inline void set_color1(unsigned int *p, int style) {
     *p |= style << STYLE_SHIFT;
+}
+
+static inline void clear_color(unsigned int *p, int count) {
+    int i;
+
+    for (i = 0; i < count; i++)
+        p[i] &= ~STYLE_MASK;
 }
 
 /* input.c */
@@ -1464,6 +1470,7 @@ void do_load_qerc(EditState *e, const char *file);
 
 /* popup / low level window handling */
 void show_popup(EditBuffer *b);
+int check_read_only(EditState *s);
 EditState *insert_window_left(EditBuffer *b, int width, int flags);
 EditState *find_window(EditState *s, int key);
 void do_find_window(EditState *s, int key);
@@ -1520,7 +1527,7 @@ int text_display(EditState *s, DisplayState *ds, int offset);
 
 void set_colorize_func(EditState *s, ColorizeFunc colorize_func);
 int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                       int offset1, int line_num);
+                       int *offsetp, int line_num);
 
 void do_char(EditState *s, int key, int argval);
 void do_set_mode(EditState *s, const char *name);

@@ -204,6 +204,28 @@ static void qe_register_binding2(int key, CmdDef *d, ModeDef *m)
     qe_register_binding1(keys, nb_keys, d, m);
 }
 
+#if 0
+/* remove a key binding from mode or globally */
+/* should take key sequence */
+int qe_unregister_binding1(int key, ModeDef *m)
+{
+    QEmacsState *qs = &qe_state;
+    KeyDef **lp, *p;
+
+    lp = (m) ? &m->first_key : &qs->first_key;
+    while (*lp) {
+        if ((*lp)->key == key) {
+            p = *lp;
+            *lp = (*lp)->next;
+            free(p);
+            break;
+        }
+        lp = &(*lp)->next;
+    }
+    return 0;
+}
+#endif
+
 /* if mode is non NULL, the defined keys are only active in this mode */
 void qe_register_cmd_table(CmdDef *cmds, ModeDef *m)
 {
@@ -315,6 +337,24 @@ void do_set_key(EditState *s, const char *keystr,
     }
     qe_register_binding1(keys, nb_keys, d, local ? s->mode : NULL);
 }
+
+#if 0
+void do_unset_key(EditState *s, const char *keystr, int local)
+{
+    int key;
+
+    if (!keystr) {
+        edit_display(s->qe_state);
+        put_status(s, "Unset key %s: ", local ? "locally" : "globally");
+        dpy_flush(s->screen);
+        key = get_key(s->screen);
+    } else {
+        key = strtokey(&keystr);
+    }
+    qe_unregister_binding1(key, local ? s->mode : NULL);
+    do_describe_key(s, NULL, key);
+}
+#endif
 
 void do_toggle_control_h(EditState *s, int set)
 {
@@ -733,6 +773,11 @@ void do_backspace(EditState *s, int argval)
         /* CG: could scroll down */
         return;
     }
+
+    /* XXX: Should delete hilighted region */
+
+    /* deactivate region hilite */
+    s->region_style = 0;
 
     if (argval == NO_ARG) {
         eb_prevc(s->b, s->offset, &offset1);
@@ -1213,6 +1258,11 @@ void do_char(EditState *s, int key, int argval)
     if (s->b->flags & BF_READONLY)
         return;
 
+    /* XXX: Should delete hilighted region */
+
+    /* deactivate region hilite */
+    s->region_style = 0;
+
     for (;;) {
         if (s->mode->write_char)
             s->mode->write_char(s, key);
@@ -1226,8 +1276,13 @@ void text_write_char(EditState *s, int key)
     int cur_ch, len, cur_len, offset1, ret, insert;
     char buf[MAX_CHAR_BYTES];
 
-    //if (s->b->flags & BF_READONLY)
-    //    return;
+    if (check_read_only(s))
+        return;
+
+    /* XXX: Should delete hilighted region */
+
+    /* deactivate region hilite */
+    s->region_style = 0;
 
     cur_ch = eb_nextc(s->b, s->offset, &offset1);
     cur_len = offset1 - s->offset;
@@ -1350,11 +1405,24 @@ void do_return(EditState *s, int move)
     s->offset += move;
 }
 
+#if 0
+void do_space(EditState *s, int key, int argval)
+{
+    if (s->b->flags & BF_READONLY) {
+        do_scroll_up_down(s, 1, argval);
+        return;
+    }
+    do_char(s, key, argval);
+}
+#endif
+
 void do_break(EditState *s)
 {
+    /* deactivate region hilite */
+    s->region_style = 0;
+
     /* well, currently nothing needs to be aborted in global context */
-    /* CG: Should remove popups, sidepanes, helppanes...
-     * deactivate region hilite */
+    /* CG: Should remove popups, sidepanes, helppanes... */
     put_status(s, "Quit");
 }
 
@@ -1363,7 +1431,11 @@ void do_set_mark(EditState *s)
 {
     /* CG: Should have local and global mark rings */
     s->b->mark = s->offset;
-    /* CG: should activate the region hilite */
+
+    /* activate region hilite */
+    if (s->qe_state->hilite_region)
+        s->region_style = QE_STYLE_REGION_HILITE;
+
     put_status(s, "Mark set");
 }
 
@@ -1404,6 +1476,9 @@ void do_kill(EditState *s, int p1, int p2, int dir)
     QEmacsState *qs = s->qe_state;
     int len, tmp;
     EditBuffer *b;
+
+    /* deactivate region hilite */
+    s->region_style = 0;
 
     if (s->b->flags & BF_READONLY)
         return;
@@ -1668,6 +1743,44 @@ void do_set_mode(EditState *s, const char *name)
 }
 
 /* CG: should have commands to cycle modes and charsets */
+#if 0
+/* cycle modes appropriate for buffer */
+void do_next_mode(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+    u8 buf[1024];
+    ModeProbeData probe_data;
+    int size;
+    ModeDef *m, *m0;
+
+    size = eb_read(s->b, 0, buf, sizeof(buf));
+    probe_data.buf = buf;
+    probe_data.buf_size = size;
+    probe_data.filename = s->b->filename;
+    probe_data.total_size = s->b->total_size;
+    /* CG: should pass EditState? QEmacsState ? */
+
+    m = m0 = s->mode;
+    for (;;) {
+        m = m->next;
+        if (!m)
+            m = qs->first_mode;
+        if (m == m0)
+            break;
+        if (!m->mode_probe
+        ||  m->mode_probe(&probe_data) > 0) {
+            edit_set_mode(s, m, 0);
+            break;
+        }
+    }
+}
+
+void do_cycle_charset(EditState *s)
+{
+    if (++s->b->charset == CHARSET_NB)
+        s->b->charset = 0;
+}
+#endif
 
 QECharset *read_charset(EditState *s, const char *charset_str)
 {
@@ -1946,14 +2059,15 @@ int text_mode_line(EditState *s, char *buf, int buf_size)
 
 void display_mode_line(EditState *s)
 {
-    char buf[512];
+    char buf[MAX_SCREEN_WIDTH];
+    int y = s->ytop + s->height;
 
     if (s->flags & WF_MODELINE) {
         s->mode->mode_line(s, buf, sizeof(buf));
         if (!strequal(buf, s->modeline_shadow)) {
             print_at_byte(s->screen,
                           s->xleft,
-                          s->ytop + s->height,
+                          y,
                           s->width,
                           s->qe_state->mode_line_height,
                           buf, QE_STYLE_MODE_LINE);
@@ -2233,6 +2347,8 @@ static void display_bol_bidir(DisplayState *s, DirType base,
     s->base = base;
     s->x_disp = s->edit_state->x_disp[base];
     s->x = s->x_disp;
+    s->style = 0;
+    s->last_style = 0;
     s->fragment_index = 0;
     s->line_index = 0;
     s->nb_fragments = 0;
@@ -2648,6 +2764,9 @@ static void flush_fragment(DisplayState *s)
             /* move the remaining fragment to next line */
             s->nb_fragments = 0;
             s->x = 0;
+            if (s->edit_state->line_numbers) {
+                /* should skip line number column if present */
+            }
             if (len1 > 0) {
                 memmove(s->fragments, frag, sizeof(TextFragment));
                 frag = s->fragments;
@@ -2691,7 +2810,7 @@ int display_char_bidir(DisplayState *s, int offset1, int offset2,
     int space, style, istab;
     EditState *e;
 
-    style = (ch >> STYLE_SHIFT);
+    style = s->style;
 
     /* special code to colorize block */
     e = s->edit_state;
@@ -2709,7 +2828,6 @@ int display_char_bidir(DisplayState *s, int offset1, int offset2,
         offset2 = -1;
     }
 
-    ch = ch & ~STYLE_MASK;
     space = (ch == ' ');
     istab = (ch == '\t');
     /* a fragment is a part of word where style/embedding_level do not
@@ -2893,7 +3011,7 @@ static int bidir_compute_attributes(TypeLink *list_tab, int max_size,
 #define COLORIZED_LINE_PREALLOC_SIZE 64
 
 int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                       int offset1, int line_num)
+                       int *offsetp, int line_num)
 {
     int len, l, line, col, offset;
     int colorize_state;
@@ -2934,7 +3052,7 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
     }
 
     /* compute line color */
-    len = eb_get_line(s->b, buf, buf_size, &offset1);
+    len = eb_get_line(s->b, buf, buf_size, offsetp);
     // XXX: should force \0 instead of \n
     buf[len] = '\n';
 
@@ -2999,7 +3117,7 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     int char_index, colored_nb_chars;
 
     line_num = 0; /* avoid warning */
-    if (s->line_numbers || s->colorize_func) {
+    if (s->line_numbers || s->get_colorized_line_func) {
         eb_get_pos(s->b, &line_num, &col_num, offset);
     }
 
@@ -3035,7 +3153,9 @@ int text_display(EditState *s, DisplayState *ds, int offset)
 
     /* line numbers */
     if (s->line_numbers) {
+        ds->style = QE_STYLE_COMMENT;
         display_printf(ds, -1, -1, "%6d  ", line_num + 1);
+        ds->style = 0;
     }
 
     /* prompt display */
@@ -3048,15 +3168,52 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     }
 
     /* colorize */
+    colored_nb_chars = 0;
+    offset0 = offset;
     if (s->get_colorized_line_func) {
         colored_nb_chars = s->get_colorized_line_func(s, colored_chars,
                                                       countof(colored_chars),
-                                                      offset, line_num);
-    } else {
-        colored_nb_chars = 0;
+                                                      &offset0, line_num);
     }
 
-    /* CG: should colorize regions: s->curline_style, s->region_style */
+#if 1
+    /* colorize regions */
+    if (s->curline_style || s->region_style) {
+        if (!s->get_colorized_line_func) {
+            offset0 = offset;
+            colored_nb_chars = eb_get_line(s->b, colored_chars,
+                countof(colored_chars), &offset0);
+        }
+        /* CG: Should combine styles instead of replacing */
+        if (s->region_style) {
+            int line, start, stop;
+
+            if (s->b->mark < s->offset) {
+                start = max(offset, s->b->mark);
+                stop = min(offset0, s->offset);
+            } else {
+                start = max(offset, s->offset);
+                stop = min(offset0, s->b->mark);
+            }
+            if (start < stop) {
+                /* Compute character positions */
+                eb_get_pos(s->b, &line, &start, start);
+                if (stop >= offset0)
+                    stop = colored_nb_chars;
+                else
+                    eb_get_pos(s->b, &line, &stop, stop);
+                clear_color(colored_chars + start, stop - start);
+                set_color(colored_chars + start, colored_chars + stop,
+                          s->region_style);
+            }
+        } else
+        if (s->curline_style && s->offset >= offset && s->offset <= offset0) {
+            clear_color(colored_chars, colored_nb_chars);
+            set_color(colored_chars, colored_chars + colored_nb_chars,
+                      s->curline_style);
+        }
+    }
+#endif
 
     bd = embeds + 1;
     char_index = 0;
@@ -3067,12 +3224,18 @@ int text_display(EditState *s, DisplayState *ds, int offset)
             offset = -1; /* signal end of text */
             break;
         } else {
+            /* Should simplify this if colored line was computed */
+            ds->style = 0;
+            if (char_index < colored_nb_chars) {
+                /* colored_chars should just be a style array */
+                c = colored_chars[char_index];
+                ds->style = c >> STYLE_SHIFT;
+            }
             c = eb_nextc(s->b, offset, &offset);
             if (c == '\n') {
                 display_eol(ds, offset0, offset);
                 break;
             }
-
             /* compute embedding from RLE embedding list */
             if (offset0 >= bd[1].pos)
                 bd++;
@@ -3089,8 +3252,6 @@ int text_display(EditState *s, DisplayState *ds, int offset)
             if (c >= 256 && s->screen->charset != &charset_utf8) {
                 display_printf(ds, offset0, offset, "\\u%04x", c);
             } else {
-                if (char_index < colored_nb_chars)
-                    c = colored_chars[char_index];
                 display_char_bidir(ds, offset0, offset, embedding_level, c);
             }
             char_index++;
@@ -3581,6 +3742,16 @@ static void arg_edit_cb(void *opaque, char *str)
     parse_args(es);
 }
 
+int check_read_only(EditState *s)
+{
+    if (s->b->flags & BF_READONLY) {
+        put_status(s, "Buffer is read-only");
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 void do_execute_command(EditState *s, const char *cmd, int argval)
 {
     CmdDef *d;
@@ -4006,7 +4177,7 @@ void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
                    const char *str, int style_index)
 {
-    unsigned int ubuf[256];
+    unsigned int ubuf[MAX_SCREEN_WIDTH];
     int len;
     QEStyleDef style;
     QEFont *font;
@@ -4097,6 +4268,20 @@ void put_status(__unused__ EditState *s, const char *fmt, ...)
         }
     }
 }
+
+#if 0
+EditState *find_file_window(const char *filename)
+{
+    QEmacsState *qs = &qe_state;
+    EditState *s;
+
+    for (s = qs->first_window; s; s = s->next_window) {
+        if (strequal(s->b->filename, filename))
+            return s;
+    }
+    return NULL;
+}
+#endif
 
 void switch_to_buffer(EditState *s, EditBuffer *b)
 {
@@ -5068,6 +5253,8 @@ static void do_load1(EditState *s, const char *filename1,
     /* First we try to read the first block to determine the data type */
     if (stat(filename, &st) < 0) {
         /* CG: should check for wildcards and do dired */
+        //if (strchr(filename, '*') || strchr(filename, '?'))
+        //    goto dired;
         put_status(s, "(New file)");
         /* Try to determine the desired mode based on the filename.
          * This avoids having to set c-mode for each new .c or .h file. */
@@ -7308,7 +7495,7 @@ static void load_all_modules(QEmacsState *qs)
 
     ffst = find_file_open(qs->res_path, "*.so");
     if (!ffst)
-        return;
+        goto done;
 
     while (!find_file_next(ffst, filename, sizeof(filename))) {
         h = dlopen(filename, RTLD_LAZY);
@@ -7331,6 +7518,8 @@ static void load_all_modules(QEmacsState *qs)
         init_func();
     }
     find_file_close(ffst);
+
+done:
     qs->ec = ec;
 }
 
@@ -7359,6 +7548,8 @@ static void qe_init(void *opaque)
 
     qs->argc = argc;
     qs->argv = argv;
+
+    qs->hilite_region = 1;
 
     /* setup resource path */
     set_user_option(NULL);

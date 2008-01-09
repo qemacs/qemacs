@@ -378,7 +378,8 @@ static void do_c_indent(EditState *s)
             break;
         line_num--;
         offsetl = eb_prev_line(s->b, offsetl);
-        len = get_colorized_line(s, buf, countof(buf), offsetl, line_num);
+        offset1 = offsetl;
+        len = get_colorized_line(s, buf, countof(buf), &offset1, line_num);
         /* store indent position */
         pos1 = find_indent1(s, buf);
         p = buf + len;
@@ -495,7 +496,8 @@ static void do_c_indent(EditState *s)
     }
  end_parse:
     /* compute special cases which depend on the chars on the current line */
-    len = get_colorized_line(s, buf, countof(buf), offset, line_num1);
+    offset1 = offset;
+    len = get_colorized_line(s, buf, countof(buf), &offset1, line_num1);
 
     if (stack_ptr == 0) {
         if (!pos && lpos >= 0) {
@@ -598,11 +600,12 @@ static void do_c_forward_block(EditState *s, int dir)
 {
     unsigned int buf[MAX_BUF_SIZE];
     char balance[MAX_LEVEL];
-    int line_num, col_num, offset, len, pos, style, c, c1, level;
+    int line_num, col_num, offset, offset1, len, pos, style, c, c1, level;
 
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
     offset = eb_goto_bol2(s->b, s->offset, &pos);
-    len = get_colorized_line(s, buf, countof(buf), offset, line_num);
+    offset1 = offset;
+    len = get_colorized_line(s, buf, countof(buf), &offset1, line_num);
     style = buf[pos] >> STYLE_SHIFT;
     level = 0;
 
@@ -613,7 +616,8 @@ static void do_c_forward_block(EditState *s, int dir)
                     break;
                 line_num--;
                 offset = eb_prev_line(s->b, offset);
-                pos = get_colorized_line(s, buf, countof(buf), offset, line_num);
+                offset1 = offset;
+                pos = get_colorized_line(s, buf, countof(buf), &offset1, line_num);
                 continue;
             }
             c = buf[--pos];
@@ -657,12 +661,16 @@ static void do_c_forward_block(EditState *s, int dir)
     } else {
         for (;;) {
             if (pos >= len) {
+                /* Should simplify with get_colorized_line updating
+                 * offset
+                 */
                 line_num++;
                 pos = 0;
                 offset = eb_next_line(s->b, offset);
                 if (offset >= s->b->total_size)
                     break;
-                len = get_colorized_line(s, buf, countof(buf), offset, line_num);
+                offset1 = offset;
+                len = get_colorized_line(s, buf, countof(buf), &offset1, line_num);
                 continue;
             }
             c = buf[pos];

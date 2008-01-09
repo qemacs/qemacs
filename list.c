@@ -22,17 +22,17 @@
 
 static int list_get_colorized_line(EditState *s,
                                    unsigned int *buf, int buf_size,
-                                   int offset, __unused__ int line_num)
+                                   int *offsetp, __unused__ int line_num)
 {
     QEmacsState *qs = s->qe_state;
-    int len;
-    int offset1;
+    int offset, len;
 
-    offset1 = offset;
-    len = eb_get_line(s->b, buf, buf_size, &offset1);
+    offset = *offsetp;
+    len = eb_get_line(s->b, buf, buf_size, offsetp);
 
     if (((qs->active_window == s) || s->force_highlight) &&
-        s->offset >= offset && s->offset < offset1) {
+          s->offset >= offset && s->offset < *offsetp)
+    {
         /* highlight the line if the cursor is inside */
         set_color(buf, buf + len, QE_STYLE_HIGHLIGHT);
     } else

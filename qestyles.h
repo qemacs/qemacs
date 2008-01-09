@@ -63,6 +63,11 @@
               QERGB(0x98, 0xf8, 0x98), COLOR_TRANSPARENT,
               0, 0)
 
+    /* popup / region styles */
+    STYLE_DEF(QE_STYLE_REGION_HILITE, "region-hilite",
+              COLOR_TRANSPARENT, QERGB(0x80, 0xf0, 0xf0),
+              0, 0)
+
     /* HTML coloring styles */
     STYLE_DEF(QE_STYLE_HTML_COMMENT, "html-comment",
               QERGB(0xf8, 0x44, 0x00), COLOR_TRANSPARENT,
