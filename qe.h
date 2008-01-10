@@ -1405,7 +1405,8 @@ void register_input_method(InputMethod *m);
 void do_set_input_method(EditState *s, const char *method);
 void do_switch_input_method(EditState *s);
 void init_input_methods(void);
-void close_input_methods(void);
+void load_input_methods(void);
+void unload_input_methods(void);
 
 /* the following will be suppressed */
 #define LINE_MAX_SIZE 256

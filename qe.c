@@ -20,7 +20,15 @@
  */
 
 #include "qe.h"
+
+#ifdef CONFIG_TINY
+#undef CONFIG_DLL
+#undef CONFIG_ALL_KMAPS
+#undef CONFIG_UNICODE_JOIN
+#endif
+
 #include "qfribidi.h"
+
 #ifdef CONFIG_DLL
 #include <dlfcn.h>
 #endif
@@ -2625,6 +2633,28 @@ static void keep_line_chars(DisplayState *s, int n)
     s->line_index = n;
 }
 
+#ifndef CONFIG_UNICODE_JOIN
+
+/* fallback unicode functions */
+
+int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
+                      int dst_size, unsigned int *src, int src_size, int reverse)
+{
+    int len, i;
+
+    len = src_size;
+    if (len > dst_size)
+        len = dst_size;
+    memcpy(dst, src, len * sizeof(unsigned int));
+    if (char_to_glyph_pos) {
+        for (i = 0; i < len; i++)
+            char_to_glyph_pos[i] = i;
+    }
+    return len;
+}
+
+#endif
+
 /* layout of a word fragment */
 static void flush_fragment(DisplayState *s)
 {
@@ -2685,8 +2715,7 @@ static void flush_fragment(DisplayState *s)
         style_index = s->edit_state->default_style;
     get_style(s->edit_state, &style, style_index);
     /* select font according to current style */
-    font = select_font(screen,
-                       style.font_style, style.font_size);
+    font = select_font(screen, style.font_style, style.font_size);
     j = s->line_index;
     ascent = font->ascent;
     descent = font->descent;
@@ -3000,6 +3029,7 @@ static int bidir_compute_attributes(TypeLink *list_tab, int max_size,
 #endif
 
 #ifndef CONFIG_TINY
+
 /************************************************************/
 /* colorization handling */
 /* NOTE: only one colorization mode can be selected at a time for a
@@ -3097,11 +3127,13 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
     }
 }
 
-#else
+#else /* CONFIG_TINY */
+
 void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
 {
 }
-#endif
+
+#endif /* CONFIG_TINY */
 
 #define RLE_EMBEDDINGS_SIZE    128
 #define COLORED_MAX_LINE_SIZE  1024
@@ -3124,24 +3156,19 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     offset1 = offset;
 
 #ifdef CONFIG_UNICODE_JOIN
-    if (s->bidir) {
-        /* compute the embedding levels and rle encode them */
-        if (bidir_compute_attributes(embeds, RLE_EMBEDDINGS_SIZE,
-                                     s->b, offset) > 2) {
-            base = FRIBIDI_TYPE_WL;
-            fribidi_analyse_string(embeds, &base, &embedding_max_level);
-            /* assure that base has only two possible values */
-            if (base != FRIBIDI_TYPE_RTL)
-                base = FRIBIDI_TYPE_LTR;
-        } else {
-            goto no_bidir;
-        }
+    /* compute the embedding levels and rle encode them */
+    if (s->bidir
+    &&  bidir_compute_attributes(embeds, RLE_EMBEDDINGS_SIZE,
+                                 s->b, offset) > 2)
+    {
+        base = FRIBIDI_TYPE_WL;
+        fribidi_analyse_string(embeds, &base, &embedding_max_level);
+        /* assure that base has only two possible values */
+        if (base != FRIBIDI_TYPE_RTL)
+            base = FRIBIDI_TYPE_LTR;
     } else
 #endif
     {
-#ifdef CONFIG_UNICODE_JOIN
-    no_bidir:
-#endif
         /* all line is at embedding level 0 */
         embedding_max_level = 0;
         embeds[1].level = 0;
@@ -6789,9 +6816,37 @@ void qe_handle_event(QEEvent *ev)
 
 /* text mode */
 
+#if 0
+int detect_binary(const u8 *buf, int size)
+{
+    int i, c;
+
+    for (i = 0; i < size; i++) {
+        c = buf[i];
+        if (c < 32 && (c != '\r' && c != '\n' && c != '\t' && c != '\e'))
+            return 1;
+    }
+    /* Treat very long sequences of identical characters as binary */
+    for (i = 0; i < size; i++) {
+        if (buf[i] != buf[0])
+            break;
+    }
+    if (i == size && size >= 2048 && buf[0] != '\n')
+        return 1;
+
+    return 0;
+}
+#endif
+
 static int text_mode_probe(__unused__ ModeProbeData *p)
 {
-    return 10;
+#if 0
+    /* text mode inappropriate for huge binary files */
+    if (detect_binary(p->buf, p->buf_size) && p->total_size > 1000000)
+        return 0;
+    else
+#endif
+        return 20;
 }
 
 int text_mode_init(EditState *s, ModeSavedData *saved_data)
@@ -7467,15 +7522,21 @@ static void init_all_modules(void)
 
 #else
 
+#ifdef CONFIG_TINY
+#define MODULE_LIST  "basemodules.txt"
+#else
+#define MODULE_LIST  "allmodules.txt"
+#endif
+
 #undef qe_module_init
 #define qe_module_init(fn)  extern int module_ ## fn(void)
-#include "allmodules.txt"
+#include MODULE_LIST
 #undef qe_module_init
 
 static void init_all_modules(void)
 {
 #define qe_module_init(fn)  module_ ## fn()
-#include "allmodules.txt"
+#include MODULE_LIST
 #undef qe_module_init
 }
 #endif
@@ -7557,7 +7618,12 @@ static void qe_init(void *opaque)
     eb_init();
     charset_init();
     init_input_methods();
+#ifdef CONFIG_ALL_KMAPS
+    load_input_methods();
+#endif
+#ifdef CONFIG_UNICODE_JOIN
     load_ligatures();
+#endif
 
     /* init basic modules */
     qe_register_mode(&text_mode);
@@ -7688,7 +7754,9 @@ int main(int argc, char **argv)
 
     url_main_loop(qe_init, &args);
 
-    close_input_methods();
+#ifdef CONFIG_ALL_KMAPS
+    unload_input_methods();
+#endif
 
     dpy_close(&global_screen);
     return 0;

@@ -21,8 +21,6 @@
 #include "qfribidi.h"
 #include "qe.h"
 
-#ifdef CONFIG_UNICODE_JOIN
-
 /* ligature tables */
 static unsigned short *subst1;
 static unsigned short *ligature2;
@@ -308,31 +306,3 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
     }
     return len;
 }
-
-#else /* CONFIG_UNICODE_JOIN */
-
-
-/* fallback unicode functions */
-
-int load_ligatures(void)
-{
-    return 0;
-}
-
-int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
-                      int dst_size, unsigned int *src, int src_size, int reverse)
-{
-    int len, i;
-
-    len = src_size;
-    if (len > dst_size)
-        len = dst_size;
-    memcpy(dst, src, len * sizeof(unsigned int));
-    if (char_to_glyph_pos) {
-        for (i = 0; i < len; i++)
-            char_to_glyph_pos[i] = i;
-    }
-    return len;
-}
-
-#endif /* CONFIG_UNICODE_JOIN */

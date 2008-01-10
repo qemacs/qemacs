@@ -275,8 +275,8 @@ if test "$ffmpeg" = "yes" ; then
 fi
 
 if test "$tiny" = "yes" ; then
-    x11="no"
     ffmpeg="no"
+    x11="no"
     xv="no"
     xrender="no"
     png="no"

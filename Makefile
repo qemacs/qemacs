@@ -44,6 +44,7 @@ ifeq ($(CC),gcc)
   # do not warn about zero-length formats.
   CFLAGS  += -Wno-format-zero-length
   LDFLAGS := -g
+  TLDFLAGS := -g
 endif
 
 #include local compiler configuration file
@@ -52,6 +53,7 @@ endif
 ifdef TARGET_GPROF
   CFLAGS  += -p
   LDFLAGS += -p
+  TLDFLAGS += -p
 endif
 
 ifdef TARGET_ARCH_X86
@@ -81,17 +83,31 @@ endif
 LIBS+=-lm
 
 TARGETLIBS:=
-TARGETS+=qe$(EXE) kmaps ligatures
+TARGETS+= qe$(EXE) tqe$(EXE) kmaps ligatures
 
 ifndef CONFIG_CYGWIN
 TARGETS+=qe-doc.html
 endif
 
-OBJS=qe.o charset.o buffer.o \
-     input.o unicode_join.o display.o util.o hex.o list.o cutils.o
+OBJS=qe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
+TOBJS=tqe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
 
-ifndef CONFIG_WIN32
+ifdef CONFIG_WIN32
+  OBJS+= win32.o
+  TOBJS+= win32.o
+  LIBS+= -lgdi32
+  TLIBS+= -lgdi32
+else
   OBJS+= unix.o tty.o
+  TOBJS+= unix.o tty.o
+endif
+
+ifdef CONFIG_ALL_KMAPS
+  OBJS+= kmap.o
+endif
+
+ifdef CONFIG_UNICODE_JOIN
+  OBJS+= unicode_join.o arabic.o indic.o qfribidi.o
 endif
 
 # more charsets if needed
@@ -107,11 +123,6 @@ ifdef CONFIG_ALL_MODES
   endif
 endif
 
-ifdef CONFIG_WIN32
-  OBJS+= win32.o
-  LIBS+= -lgdi32
-endif
-
 # currently not used in qemacs
 ifdef CONFIG_CFB
   OBJS+= libfbf.o fbfrender.o cfb.o fbffonts.o
@@ -119,12 +130,12 @@ endif
 
 ifdef CONFIG_X11
   OBJS+= x11.o
-ifdef CONFIG_XRENDER
-  LIBS+=-lXrender
-endif
-ifdef CONFIG_XV
-  LIBS+=-lXv
-endif
+  ifdef CONFIG_XRENDER
+    LIBS+=-lXrender
+  endif
+  ifdef CONFIG_XV
+    LIBS+=-lXv
+  endif
   LIBS+= -L/usr/X11R6/lib -lXext -lX11
 endif
 
@@ -137,10 +148,6 @@ ifdef CONFIG_HTML
     TARGETLIBS+= libqhtml
     TARGETS+= html2png$(EXE)
   endif
-endif
-
-ifdef CONFIG_UNICODE_JOIN
-  OBJS+= arabic.o indic.o qfribidi.o
 endif
 
 ifdef CONFIG_FFMPEG
@@ -157,14 +164,24 @@ libqhtml: force
 	make -C libqhtml all
 
 ifdef CONFIG_INIT_CALLS
-# must be the last object
-OBJS+= qeend.o
+  # must be the last object
+  OBJS+= qeend.o
+  TOBJS+= qeend.o
 else
-SRCS:= $(OBJS:.o=.c)
+  SRCS:= $(OBJS:.o=.c)
+  TSRCS:= $(TOBJS:.o=.c)
+  TSRCS:= $(TSRCS:tqe.c=qe.c)
+
 qe.o: allmodules.txt
+tqe.o: basemodules.txt
+
 allmodules.txt: $(SRCS) Makefile
 	echo '/* This file was generated automatically */\n'  > $@
 	grep -h ^qe_module_init $(SRCS)                      >> $@
+
+basemodules.txt: $(TSRCS) Makefile
+	echo '/* This file was generated automatically */\n'  > $@
+	grep -h ^qe_module_init $(TSRCS)                     >> $@
 endif
 
 qe_g$(EXE): $(OBJS) $(DEP_LIBS)
@@ -176,6 +193,20 @@ qe$(EXE): qe_g$(EXE) Makefile
 	$(STRIP) $@
 	@ls -l $@
 	echo `size $@` `wc --bytes $@` qe $(OPTIONS) \
+		| cut -d ' ' -f 7-10,13,15-40 >> STATS
+
+tqe.o: qe.c qe.h qestyles.h qeconfig.h config.h config.mak Makefile
+	$(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
+
+tqe_g$(EXE): $(TOBJS)
+	$(CC) $(TLDFLAGS) -o $@ $^ $(TLIBS)
+
+tqe$(EXE): tqe_g$(EXE) Makefile
+	rm -f $@
+	cp $< $@
+	$(STRIP) $@
+	@ls -l $@
+	echo `size $@` `wc --bytes $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 ffplay$(EXE): qe$(EXE) Makefile
@@ -194,7 +225,7 @@ clean:
 	make -C libqhtml clean
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
            qe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
-           cptoqe jistoqe allmodules.txt
+           cptoqe jistoqe allmodules.txt basemodules.txt
 
 distclean: clean
 	rm -f config.h config.mak
@@ -356,13 +387,13 @@ fbffonts.c: fbftoqe$(EXE) $(FONTS)
 #
 # html2png tool (XML/HTML/CSS2 renderer test tool)
 #
-OBJS=util.o cutils.o \
+OBJS1=util.o cutils.o \
      arabic.o indic.o qfribidi.o display.o unicode_join.o \
      charset.o charsetmore.o charsetjis.o \
      libfbf.o fbfrender.o cfb.o fbffonts.o
 
-html2png$(EXE): html2png.o $(OBJS) libqhtml/libqhtml.a
-	$(CC) $(LDFLAGS) -o $@ html2png.o $(OBJS) \
+html2png$(EXE): html2png.o $(OBJS1) libqhtml/libqhtml.a
+	$(CC) $(LDFLAGS) -o $@ html2png.o $(OBJS1) \
                    -L./libqhtml -lqhtml $(HTMLTOPPM_LIBS)
 
 # autotest target

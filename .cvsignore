@@ -4,6 +4,8 @@ config.h
 *.exe
 qe
 qe_g
+tqe
+tqe_g
 fbftoqe
 fbffonts.c
 html2png
@@ -12,3 +14,5 @@ kmaptoqe
 ligtoqe
 jistoqe
 allmodules.txt
+basemodules.txt
+STATS
