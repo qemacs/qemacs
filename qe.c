@@ -61,7 +61,6 @@ static void display1(DisplayState *s);
 static void save_selection(void);
 #endif
 static CompletionFunc find_completion(const char *name);
-static int dummy_dpy_init(QEditScreen *s, int w, int h);
 
 QEmacsState qe_state;
 /* should handle multiple screens, and multiple sessions */
@@ -166,6 +165,9 @@ static int qe_register_binding1(unsigned int *keys, int nb_keys,
     KeyDef **lp, *p;
     int i;
 
+    if (!d)
+        return -1;
+
     /* add key */
     p = qe_malloc_hack(KeyDef, (nb_keys - 1) * sizeof(p->keys[0]));
     if (!p)
@@ -190,7 +192,7 @@ static int qe_register_binding1(unsigned int *keys, int nb_keys,
 }
 
 /* convert compressed mappings to real ones */
-static void qe_register_binding2(int key, CmdDef *d, ModeDef *m)
+static int qe_register_binding2(int key, CmdDef *d, ModeDef *m)
 {
     int nb_keys;
     unsigned int keys[3];
@@ -209,7 +211,7 @@ static void qe_register_binding2(int key, CmdDef *d, ModeDef *m)
     } else {
         keys[nb_keys++] = key;
     }
-    qe_register_binding1(keys, nb_keys, d, m);
+    return qe_register_binding1(keys, nb_keys, d, m);
 }
 
 #if 0
@@ -278,36 +280,9 @@ void qe_register_cmd_table(CmdDef *cmds, ModeDef *m)
 
 /* key binding handling */
 
-void qe_register_binding(int key, const char *cmd_name, const char *mode_names)
+int qe_register_binding(int key, const char *cmd_name, ModeDef *m)
 {
-    CmdDef *d;
-    ModeDef *m;
-    const char *p, *r;
-    char mode_name[64];
-
-    d = qe_find_cmd(cmd_name);
-    if (!d)
-        return;
-    if (!mode_names || mode_names[0] == '\0') {
-        qe_register_binding2(key, d, NULL);
-    } else {
-        p = mode_names;
-        for (;;) {
-            r = strchr(p, '|');
-            if (r) {
-                pstrncpy(mode_name, sizeof(mode_name), p, r - p);
-            } else {
-                pstrcpy(mode_name, sizeof(mode_name), p);
-            }
-            m = find_mode(mode_name);
-            if (m) {
-                qe_register_binding2(key, d, m);
-            }
-            if (!r)
-                break;
-            p = r + 1;
-        }
-    }
+    return qe_register_binding2(key, qe_find_cmd(cmd_name), m);
 }
 
 void command_completion(CompleteState *cp)
@@ -2123,6 +2098,9 @@ void display_window_borders(EditState *e)
     }
 }
 
+#if 1
+/* Should move all this to display.c */
+
 /* compute style */
 static void apply_style(QEStyleDef *style, int style_index)
 {
@@ -2173,8 +2151,8 @@ void style_completion(CompleteState *cp)
     int i;
     QEStyleDef *style;
 
-    for (i = 0; i < QE_STYLE_NB; i++) {
-        style = &qe_styles[i];
+    style = qe_styles;
+    for (i = 0; i < QE_STYLE_NB; i++, style++) {
         complete_test(cp, style->name);
     }
 }
@@ -2184,18 +2162,12 @@ QEStyleDef *find_style(const char *name)
     int i;
     QEStyleDef *style;
 
-    for (i = 0; i < QE_STYLE_NB; i++) {
-        style = &qe_styles[i];
+    style = qe_styles;
+    for (i = 0; i < QE_STYLE_NB; i++, style++) {
         if (strequal(style->name, name))
             return style;
     }
     return NULL;
-}
-
-void do_define_color(EditState *e, const char *name, const char *value)
-{
-    if (css_define_color(name, value))
-        put_status(e, "Invalid color '%s'", value);
 }
 
 /* Note: we use the same syntax as CSS styles to ease merging */
@@ -2212,7 +2184,9 @@ void do_set_style(EditState *e, const char *stylestr,
     }
 
     prop_index = css_get_enum(propstr,
-                              "color,background-color,font-family,font-style,font-weight,font-size,text-decoration");
+                              "color,background-color,font-family,"
+                              "font-style,font-weight,font-size,"
+                              "text-decoration");
     if (prop_index < 0) {
         put_status(e, "Unknown property '%s'", propstr);
         return;
@@ -2273,6 +2247,13 @@ void do_set_style(EditState *e, const char *stylestr,
         break;
     }
 }
+
+void do_define_color(EditState *e, const char *name, const char *value)
+{
+    if (css_define_color(name, value))
+        put_status(e, "Invalid color '%s'", value);
+}
+#endif
 
 void do_set_display_size(__unused__ EditState *s, int w, int h)
 {
@@ -4279,7 +4260,7 @@ void put_status(__unused__ EditState *s, const char *fmt, ...)
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
 
-    if (qs->screen->dpy.dpy_init == dummy_dpy_init) {
+    if (!qs->screen->dpy.dpy_probe) {
         eb_format_message(qs, "*errors*", buf);
     } else {
         if (!strequal(buf, qs->status_shadow)) {
@@ -6119,8 +6100,7 @@ void do_refresh(__unused__ EditState *s1)
     int width, height, resized;
 
     if (qs->complete_refresh) {
-        if (qs->screen->dpy.dpy_invalidate)
-            qs->screen->dpy.dpy_invalidate();
+        dpy_invalidate(qs->screen);
     }
 
     /* recompute various dimensions */
@@ -7388,115 +7368,6 @@ static CmdOptionDef cmd_options[] = {
 
 #include "qeconfig.h"
 
-/* dummy display driver for initialization time */
-
-static int dummy_dpy_probe(void)
-{
-    return 1;
-}
-
-extern QEDisplay dummy_dpy;
-
-static int dummy_dpy_init(QEditScreen *s, __unused__ int w, __unused__ int h)
-{
-    memcpy(&s->dpy, &dummy_dpy, sizeof(QEDisplay));
-
-    s->charset = &charset_8859_1;
-
-    return 0;
-}
-
-static void dummy_dpy_close(__unused__ QEditScreen *s)
-{
-}
-
-static void dummy_dpy_cursor_at(__unused__ QEditScreen *s,
-                                __unused__ int x1, __unused__ int y1,
-                                __unused__ int w, __unused__ int h)
-{
-}
-
-static int dummy_dpy_is_user_input_pending(__unused__ QEditScreen *s)
-{
-    return 0;
-}
-
-static void dummy_dpy_fill_rectangle(__unused__ QEditScreen *s,
-                                     __unused__ int x1, __unused__ int y1,
-                                     __unused__ int w, __unused__ int h,
-                                     __unused__ QEColor color)
-{
-}
-
-static QEFont *dummy_dpy_open_font(__unused__ QEditScreen *s,
-                                   __unused__ int style, __unused__ int size)
-{
-    return NULL;
-}
-
-static void dummy_dpy_close_font(__unused__ QEditScreen *s,
-                                 __unused__ QEFont *font)
-{
-}
-
-static void dummy_dpy_text_metrics(__unused__ QEditScreen *s,
-                                   __unused__ QEFont *font,
-                                   QECharMetrics *metrics,
-                                   __unused__ const unsigned int *str,
-                                   __unused__ int len)
-{
-    metrics->font_ascent = 1;
-    metrics->font_descent = 0;
-    metrics->width = len;
-}
-
-static void dummy_dpy_draw_text(__unused__ QEditScreen *s,
-                                __unused__ QEFont *font,
-                                __unused__ int x, __unused__ int y,
-                                __unused__ const unsigned int *str,
-                                __unused__ int len,
-                                __unused__ QEColor color)
-{
-}
-
-static void dummy_dpy_set_clip(__unused__ QEditScreen *s,
-                               __unused__ int x, __unused__ int y,
-                               __unused__ int w, __unused__ int h)
-{
-}
-
-static void dummy_dpy_flush(__unused__ QEditScreen *s)
-{
-}
-
-QEDisplay dummy_dpy = {
-    "dummy",
-    dummy_dpy_probe,
-    dummy_dpy_init,
-    dummy_dpy_close,
-    dummy_dpy_cursor_at,
-    dummy_dpy_flush,
-    dummy_dpy_is_user_input_pending,
-    dummy_dpy_fill_rectangle,
-    dummy_dpy_open_font,
-    dummy_dpy_close_font,
-    dummy_dpy_text_metrics,
-    dummy_dpy_draw_text,
-    dummy_dpy_set_clip,
-
-    NULL, /* dpy_selection_activate */
-    NULL, /* dpy_selection_request */
-    NULL, /* dpy_invalidate */
-    NULL, /* dpy_bmp_alloc */
-    NULL, /* dpy_bmp_free */
-    NULL, /* dpy_bmp_draw */
-    NULL, /* dpy_bmp_lock */
-    NULL, /* dpy_bmp_unlock */
-    NULL, /* dpy_full_screen */
-    NULL, /* next */
-};
-
-
 #if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
 
 static void init_all_modules(void)
@@ -7675,10 +7546,10 @@ static void qe_init(void *opaque)
     s = edit_new(b, 0, 0, 0, 0, WF_MODELINE);
 
     /* at this stage, no screen is defined. Initialize a
-     * dummy display driver to have a consistent state
+     * null display driver to have a consistent state
      * else many commands such as put_status would crash.
      */
-    dummy_dpy.dpy_init(&global_screen, screen_width, screen_height);
+    dpy_init(&global_screen, NULL, screen_width, screen_height);
 
     /* handle options */
     _optind = parse_command_line(argc, argv);
@@ -7696,7 +7567,7 @@ static void qe_init(void *opaque)
             fprintf(stderr, "No suitable display found, exiting\n");
             exit(1);
         }
-        if (dpy->dpy_init(&global_screen, screen_width, screen_height) < 0) {
+        if (dpy_init(&global_screen, dpy, screen_width, screen_height) < 0) {
             /* Just disable the display and try another */
             //fprintf(stderr, "Could not initialize display '%s', exiting\n",
             //        dpy->name);

@@ -111,7 +111,6 @@ static QEDisplay ppm_dpy = {
     NULL,
     ppm_init,
     ppm_close,
-    NULL, /* dpy_cursor_at */
     NULL, /* dpy_flush */
     NULL, /* dpy_is_user_input_pending */
     NULL, /* dpy_fill_rectangle */
@@ -123,6 +122,7 @@ static QEDisplay ppm_dpy = {
     NULL, /* dpy_selection_activate */
     NULL, /* dpy_selection_request */
     NULL, /* dpy_invalidate */
+    NULL, /* dpy_cursor_at */
     NULL, /* dpy_bmp_alloc */
     NULL, /* dpy_bmp_free */
     NULL, /* dpy_bmp_draw */
@@ -155,8 +155,6 @@ static int ppm_resize(QEditScreen *s, int w, int h)
 static int ppm_init(QEditScreen *s, int w, int h)
 {
     CFBContext *cfb;
-
-    memcpy(&s->dpy, &ppm_dpy, sizeof(QEDisplay));
 
     cfb = qe_malloc(CFBContext);
     if (!cfb)
@@ -430,7 +428,6 @@ static void help(void)
 
 int main(int argc, char **argv)
 {
-    QEDisplay *dpy;
     QEditScreen screen1, *screen = &screen1;
     int page_width, c, strict_xml, flags;
     const char *outfilename, *infilename;
@@ -485,8 +482,7 @@ int main(int argc, char **argv)
     infilename = argv[optind];
 
     /* init display driver with dummy height */
-    dpy = &ppm_dpy;
-    if (dpy->dpy_init(screen, page_width, 1) < 0) {
+    if (dpy_init(screen, &ppm_dpy, page_width, 1) < 0) {
         fprintf(stderr, "Could not init display driver\n");
         exit(1);
     }
@@ -508,6 +504,6 @@ int main(int argc, char **argv)
 #endif
 
     /* close screen */
-    screen->dpy.dpy_close(screen);
+    dpy_close(screen);
     return 0;
 }

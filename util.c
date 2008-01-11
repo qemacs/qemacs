@@ -909,23 +909,26 @@ void keytostr(char *buf, int buf_size, int key)
 
 int to_hex(int key)
 {
+    /* Only ASCII supported */
     if (qe_isdigit(key))
         return key - '0';
-    else if (key >= 'a' && key <= 'f')
-        return key - 'a' + 10;
-    else if (key >= 'A' && key <= 'F')
-        return key - 'A' + 10;
+    else
+    if (qe_inrange(key | ('a' - 'A'), 'a', 'f'))
+        return (key & 7) + 9;
     else
         return -1;
 }
+
+#if 1
+/* Should move all this to display.c */
 
 typedef struct ColorDef {
     const char *name;
     unsigned int color;
 } ColorDef;
 
-static ColorDef const css_colors[] = {
-    /*from HTML 4.0 spec */
+static ColorDef const default_colors[] = {
+    /* From HTML 4.0 spec */
     { "black",   QERGB(0x00, 0x00, 0x00) },
     { "green",   QERGB(0x00, 0x80, 0x00) },
     { "silver",  QERGB(0xc0, 0xc0, 0xc0) },
@@ -952,22 +955,18 @@ static ColorDef const css_colors[] = {
     { "grey",    QERGB(0xbe, 0xbe, 0xbe) },
     { "transparent", COLOR_TRANSPARENT },
 };
-#define nb_css_colors  countof(css_colors)
+#define nb_default_colors  countof(default_colors)
 
-static ColorDef *custom_colors;
-static int nb_custom_colors;
+static ColorDef *qe_colors = (ColorDef *)default_colors;
+static int nb_qe_colors = nb_default_colors;
 
 void color_completion(CompleteState *cp)
 {
     ColorDef const *def;
     int count;
 
-    def = custom_colors;
-    count = nb_custom_colors;
-    if (!count) {
-        def = css_colors;
-        count = nb_css_colors;
-    }
+    def = qe_colors;
+    count = nb_qe_colors;
     while (count > 0) {
         if (strxstart(def->name, cp->current, NULL))
             add_string(&cp->cs, def->name);
@@ -998,32 +997,29 @@ int css_define_color(const char *name, const char *value)
     if (css_get_color(&color, value))
         return -1;
 
-    /* First color definition: allocate custom_colors array */
-    if (!nb_custom_colors) {
-        custom_colors = qe_malloc_dup(css_colors, sizeof(css_colors));
-        if (!custom_colors)
-            return -1;
-        nb_custom_colors = nb_css_colors;
+    /* First color definition: allocate modifiable array */
+    if (qe_colors == default_colors) {
+        qe_colors = qe_malloc_dup(default_colors, sizeof(default_colors));
     }
 
     /* Make room: reallocate table in chunks of 8 entries */
-    if (((nb_custom_colors - nb_css_colors) & 7) == 0) {
-        if (!qe_realloc(&custom_colors,
-                        (nb_custom_colors + 8) * sizeof(ColorDef))) {
+    if (((nb_qe_colors - nb_default_colors) & 7) == 0) {
+        if (!qe_realloc(&qe_colors,
+                        (nb_qe_colors + 8) * sizeof(ColorDef))) {
             return -1;
         }
     }
     /* Check for redefinition */
-    index = css_lookup_color(custom_colors, nb_custom_colors, name);
+    index = css_lookup_color(qe_colors, nb_qe_colors, name);
     if (index >= 0) {
-        custom_colors[index].color = color;
+        qe_colors[index].color = color;
         return 0;
     }
 
-    def = &custom_colors[nb_custom_colors];
+    def = &qe_colors[nb_qe_colors];
     def->name = qe_strdup(name);
     def->color = color;
-    nb_custom_colors++;
+    nb_qe_colors++;
 
     return 0;
 }
@@ -1036,12 +1032,8 @@ int css_get_color(QEColor *color_ptr, const char *p)
     unsigned char rgba[4];
 
     /* search in tables */
-    def = custom_colors;
-    count = nb_custom_colors;
-    if (!count) {
-        def = css_colors;
-        count = nb_css_colors;
-    }
+    def = qe_colors;
+    count = nb_qe_colors;
     index = css_lookup_color(def, count, p);
     if (index >= 0) {
         *color_ptr = def[index].color;
@@ -1127,6 +1119,7 @@ int css_get_font_family(const char *str)
         v = 0; /* inherit */
     return v;
 }
+#endif  /* style stuff */
 
 /* a = a union b */
 void css_union_rect(CSSRect *a, const CSSRect *b)

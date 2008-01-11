@@ -367,8 +367,8 @@ static int hex_init(void)
     qe_register_cmd_table(hex_commands, &ascii_mode);
 
     /* additional mode specific keys */
-    qe_register_binding(KEY_TAB, "toggle-hex", "hex");
-    qe_register_binding(KEY_SHIFT_TAB, "toggle-hex", "hex");
+    qe_register_binding(KEY_TAB, "toggle-hex", &hex_mode);
+    qe_register_binding(KEY_SHIFT_TAB, "toggle-hex", &hex_mode);
 
     return 0;
 }

@@ -106,7 +106,6 @@ struct QEDisplay {
     int (*dpy_probe)(void);
     int (*dpy_init)(QEditScreen *s, int w, int h);
     void (*dpy_close)(QEditScreen *s);
-    void (*dpy_cursor_at)(QEditScreen *s, int x1, int y1, int w, int h);
     void (*dpy_flush)(QEditScreen *s);
     int (*dpy_is_user_input_pending)(QEditScreen *s);
     void (*dpy_fill_rectangle)(QEditScreen *s,
@@ -121,9 +120,13 @@ struct QEDisplay {
                           QEColor color);
     void (*dpy_set_clip)(QEditScreen *s,
                          int x, int y, int w, int h);
+
+    /* These are optional, may be NULL */
     void (*dpy_selection_activate)(QEditScreen *s);
     void (*dpy_selection_request)(QEditScreen *s);
-    void (*dpy_invalidate)(void);
+    void (*dpy_invalidate)(QEditScreen *s);
+    void (*dpy_cursor_at)(QEditScreen *s, int x1, int y1, int w, int h);
+
     /* bitmap support */
     int (*dpy_bmp_alloc)(QEditScreen *s, QEBitmap *b);
     void (*dpy_bmp_free)(QEditScreen *s, QEBitmap *b);
@@ -139,7 +142,7 @@ struct QEDisplay {
 };
 
 struct QEditScreen {
-    struct QEDisplay dpy;
+    QEDisplay dpy;
     FILE *STDIN, *STDOUT;
     int width, height;
     QECharset *charset; /* the charset of the TTY, XXX: suppress that,
@@ -153,11 +156,19 @@ struct QEditScreen {
     void *private;
 };
 
-static inline void draw_text(QEditScreen *s, QEFont *font,
-                             int x, int y, const unsigned int *str, int len,
-                             QEColor color)
+int qe_register_display(QEDisplay *dpy);
+QEDisplay *probe_display(void);
+
+int dpy_init(QEditScreen *s, QEDisplay *dpy, int w, int h);
+
+static inline void dpy_close(QEditScreen *s)
 {
-    s->dpy.dpy_draw_text(s, font, x, y, str, len, color);
+    s->dpy.dpy_close(s);
+}
+
+static inline void dpy_flush(QEditScreen *s)
+{
+    s->dpy.dpy_flush(s);
 }
 
 static inline QEFont *open_font(QEditScreen *s,
@@ -179,6 +190,55 @@ static inline void text_metrics(QEditScreen *s, QEFont *font,
     s->dpy.dpy_text_metrics(s, font, metrics, str, len);
 }
 
+static inline void draw_text(QEditScreen *s, QEFont *font,
+                             int x, int y, const unsigned int *str, int len,
+                             QEColor color)
+{
+    s->dpy.dpy_draw_text(s, font, x, y, str, len, color);
+}
+
+static inline void selection_activate(QEditScreen *s)
+{
+    if (s->dpy.dpy_selection_activate)
+        s->dpy.dpy_selection_activate(s);
+}
+
+static inline void selection_request(QEditScreen *s)
+{
+    if (s->dpy.dpy_selection_request)
+        s->dpy.dpy_selection_request(s);
+}
+
+static inline void dpy_invalidate(QEditScreen *s)
+{
+    if (s->dpy.dpy_invalidate)
+        s->dpy.dpy_invalidate(s);
+}
+
+QEBitmap *bmp_alloc(QEditScreen *s, int width, int height, int flags);
+void bmp_free(QEditScreen *s, QEBitmap **bp);
+
+static inline void bmp_draw(QEditScreen *s, QEBitmap *b,
+                            int dst_x, int dst_y, int dst_w, int dst_h,
+                            int offset_x, int offset_y, int flags)
+{
+    s->dpy.dpy_bmp_draw(s, b, dst_x, dst_y, dst_w, dst_h,
+                        offset_x, offset_y, flags);
+}
+
+/* used to access the bitmap data. Return the necessary pointers to
+   modify the image in 'pict'. */
+static inline void bmp_lock(QEditScreen *s, QEBitmap *bitmap, QEPicture *pict,
+                            int x1, int y1, int w1, int h1)
+{
+    s->dpy.dpy_bmp_lock(s, bitmap, pict, x1, y1, w1, h1);
+}
+
+static inline void bmp_unlock(QEditScreen *s, QEBitmap *bitmap)
+{
+    s->dpy.dpy_bmp_unlock(s, bitmap);
+}
+
 /* XXX: only needed for backward compatibility */
 static inline int glyph_width(QEditScreen *s, QEFont *font, int ch)
 {
@@ -189,23 +249,11 @@ static inline int glyph_width(QEditScreen *s, QEFont *font, int ch)
     return metrics.width;
 }
 
-static inline void dpy_flush(QEditScreen *s)
-{
-    s->dpy.dpy_flush(s);
-}
-
-static inline void dpy_close(QEditScreen *s)
-{
-    s->dpy.dpy_close(s);
-}
-
 void fill_rectangle(QEditScreen *s,
                     int x1, int y1, int w, int h, QEColor color);
 void set_clip_rectangle(QEditScreen *s, CSSRect *r);
 void push_clip_rectangle(QEditScreen *s, CSSRect *or, CSSRect *r);
 
-int qe_register_display(QEDisplay *dpy);
-QEDisplay *probe_display(void);
 QEFont *select_font(QEditScreen *s, int style, int size);
 
 static inline QEFont *lock_font(__unused__ QEditScreen *s, QEFont *font) {
@@ -217,17 +265,5 @@ static inline void release_font(__unused__ QEditScreen *s, QEFont *font) {
     if (font && font->refcount)
         font->refcount--;
 }
-
-void selection_activate(QEditScreen *s);
-void selection_request(QEditScreen *s);
-
-QEBitmap *bmp_alloc(QEditScreen *s, int width, int height, int flags);
-void bmp_free(QEditScreen *s, QEBitmap **bp);
-void bmp_draw(QEditScreen *s, QEBitmap *b,
-              int dst_x, int dst_y, int dst_w, int dst_h,
-              int offset_x, int offset_y, int flags);
-void bmp_lock(QEditScreen *s, QEBitmap *bitmap, QEPicture *pict,
-              int x1, int y1, int w1, int h1);
-void bmp_unlock(QEditScreen *s, QEBitmap *bitmap);
 
 #endif

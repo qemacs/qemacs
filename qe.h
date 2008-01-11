@@ -1121,7 +1121,7 @@ struct QEmacsState {
     //struct QECharset *first_charset;
     //struct QETimer *first_timer;
     //struct VarDef *first_variable;
-    //struct InputMethod *input_methods;
+    struct InputMethod *input_methods;
     EditState *first_window;
     EditState *active_window; /* window in which we edit */
     EditBuffer *first_buffer;
@@ -1264,8 +1264,7 @@ typedef struct CmdDef {
 void qe_register_mode(ModeDef *m);
 void mode_completion(CompleteState *cp);
 void qe_register_cmd_table(CmdDef *cmds, ModeDef *m);
-void qe_register_binding(int key, const char *cmd_name,
-                         const char *mode_names);
+int qe_register_binding(int key, const char *cmd_name, ModeDef *m);
 CmdDef *qe_find_cmd(const char *cmd_name);
 
 /* text display system */

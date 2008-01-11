@@ -101,16 +101,12 @@ static int tty_term_probe(void)
     return 1;
 }
 
-static QEDisplay tty_dpy;
-
 static int tty_term_init(QEditScreen *s,
                          __unused__ int w, __unused__ int h)
 {
     TTYState *ts;
     struct termios tty;
     struct sigaction sig;
-
-    memcpy(&s->dpy, &tty_dpy, sizeof(QEDisplay));
 
     s->STDIN = stdin;
     s->STDOUT = stdout;
@@ -295,7 +291,7 @@ static void tty_resize(__unused__ int sig)
     s->clip_y2 = s->height;
 }
 
-static void tty_term_invalidate(void)
+static void tty_term_invalidate(QEditScreen *s)
 {
     tty_resize(0);
 }
@@ -841,7 +837,6 @@ static QEDisplay tty_dpy = {
     tty_term_probe,
     tty_term_init,
     tty_term_close,
-    tty_term_cursor_at,
     tty_term_flush,
     tty_term_is_user_input_pending,
     tty_term_fill_rectangle,
@@ -853,6 +848,7 @@ static QEDisplay tty_dpy = {
     NULL, /* dpy_selection_activate */
     NULL, /* dpy_selection_request */
     tty_term_invalidate,
+    tty_term_cursor_at,
     NULL, /* dpy_bmp_alloc */
     NULL, /* dpy_bmp_free */
     NULL, /* dpy_bmp_draw */

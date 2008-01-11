@@ -22,6 +22,101 @@
 
 static QEDisplay *first_dpy;
 
+/* dummy display driver for initialization time */
+
+static int dummy_dpy_init(QEditScreen *s, __unused__ int w, __unused__ int h)
+{
+    s->charset = &charset_8859_1;
+
+    return 0;
+}
+
+static void dummy_dpy_close(__unused__ QEditScreen *s)
+{
+}
+
+static void dummy_dpy_flush(__unused__ QEditScreen *s)
+{
+}
+
+static int dummy_dpy_is_user_input_pending(__unused__ QEditScreen *s)
+{
+    return 0;
+}
+
+static void dummy_dpy_fill_rectangle(__unused__ QEditScreen *s,
+                                     __unused__ int x1, __unused__ int y1,
+                                     __unused__ int w, __unused__ int h,
+                                     __unused__ QEColor color)
+{
+}
+
+static QEFont *dummy_dpy_open_font(__unused__ QEditScreen *s,
+                                   __unused__ int style, __unused__ int size)
+{
+    return NULL;
+}
+
+static void dummy_dpy_close_font(__unused__ QEditScreen *s,
+                                 __unused__ QEFont *font)
+{
+}
+
+static void dummy_dpy_text_metrics(__unused__ QEditScreen *s,
+                                   __unused__ QEFont *font,
+                                   QECharMetrics *metrics,
+                                   __unused__ const unsigned int *str,
+                                   __unused__ int len)
+{
+    metrics->font_ascent = 1;
+    metrics->font_descent = 0;
+    metrics->width = len;
+}
+
+static void dummy_dpy_draw_text(__unused__ QEditScreen *s,
+                                __unused__ QEFont *font,
+                                __unused__ int x, __unused__ int y,
+                                __unused__ const unsigned int *str,
+                                __unused__ int len,
+                                __unused__ QEColor color)
+{
+}
+
+static void dummy_dpy_set_clip(__unused__ QEditScreen *s,
+                               __unused__ int x, __unused__ int y,
+                               __unused__ int w, __unused__ int h)
+{
+}
+
+static QEDisplay const dummy_dpy = {
+    "dummy",
+    NULL,
+    dummy_dpy_init,
+    dummy_dpy_close,
+    dummy_dpy_flush,
+    dummy_dpy_is_user_input_pending,
+    dummy_dpy_fill_rectangle,
+    dummy_dpy_open_font,
+    dummy_dpy_close_font,
+    dummy_dpy_text_metrics,
+    dummy_dpy_draw_text,
+    dummy_dpy_set_clip,
+
+    NULL, /* dpy_selection_activate */
+    NULL, /* dpy_selection_request */
+    NULL, /* dpy_invalidate */
+    NULL, /* dpy_cursor_at */
+    NULL, /* dpy_bmp_alloc */
+    NULL, /* dpy_bmp_free */
+    NULL, /* dpy_bmp_draw */
+    NULL, /* dpy_bmp_lock */
+    NULL, /* dpy_bmp_unlock */
+    NULL, /* dpy_full_screen */
+    NULL, /* next */
+};
+
+/*----------------*/
+
 void fill_rectangle(QEditScreen *s,
                     int x1, int y1, int w, int h, QEColor color)
 {
@@ -113,12 +208,12 @@ void push_clip_rectangle(QEditScreen *s, CSSRect *or, CSSRect *r)
 
 int qe_register_display(QEDisplay *dpy)
 {
-    QEDisplay **p;
+    QEDisplay **pp;
 
-    p = &first_dpy;
-    while (*p != NULL)
-        p = &(*p)->next;
-    *p = dpy;
+    pp = &first_dpy;
+    while (*pp != NULL)
+        pp = &(*pp)->next;
+    *pp = dpy;
     dpy->next = NULL;
     return 0;
 }
@@ -132,8 +227,7 @@ QEDisplay *probe_display(void)
     dpy = NULL;
     probe_max = 0;
     while (p != NULL) {
-        // CG: probe = p->dpy_probe ? p->dpy_probe() : 0;
-        probe = p->dpy_probe();
+        probe = p->dpy_probe ? p->dpy_probe() : 0;
         if (probe >= probe_max) {
             probe_max = probe;
             dpy = p;
@@ -141,6 +235,12 @@ QEDisplay *probe_display(void)
         p = p->next;
     }
     return dpy;
+}
+
+int dpy_init(QEditScreen *s, QEDisplay *dpy, int w, int h)
+{
+    s->dpy = dpy ? *dpy : dummy_dpy;
+    return s->dpy.dpy_init(s, w, h);
 }
 
 /* simple font cache */
@@ -205,18 +305,6 @@ QEFont *select_font(QEditScreen *s, int style, int size)
     return fc;
 }
 
-void selection_activate(QEditScreen *s)
-{
-    if (s->dpy.dpy_selection_activate)
-        s->dpy.dpy_selection_activate(s);
-}
-
-void selection_request(QEditScreen *s)
-{
-    if (s->dpy.dpy_selection_request)
-        s->dpy.dpy_selection_request(s);
-}
-
 QEBitmap *bmp_alloc(QEditScreen *s, int width, int height, int flags)
 {
     QEBitmap *b;
@@ -242,27 +330,6 @@ void bmp_free(QEditScreen *s, QEBitmap **bp)
         s->dpy.dpy_bmp_free(s, *bp);
         qe_free(bp);
     }
-}
-
-void bmp_draw(QEditScreen *s, QEBitmap *b,
-              int dst_x, int dst_y, int dst_w, int dst_h,
-              int offset_x, int offset_y, int flags)
-{
-    s->dpy.dpy_bmp_draw(s, b, dst_x, dst_y, dst_w, dst_h,
-                        offset_x, offset_y, flags);
-}
-
-/* used to access the bitmap data. Return the necessary pointers to
-   modify the image in 'pict'. */
-void bmp_lock(QEditScreen *s, QEBitmap *bitmap, QEPicture *pict,
-              int x1, int y1, int w1, int h1)
-{
-    s->dpy.dpy_bmp_lock(s, bitmap, pict, x1, y1, w1, h1);
-}
-
-void bmp_unlock(QEditScreen *s, QEBitmap *bitmap)
-{
-    s->dpy.dpy_bmp_unlock(s, bitmap);
 }
 
 #if 0

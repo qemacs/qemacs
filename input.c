@@ -24,8 +24,6 @@
 #include <sys/mman.h>
 #endif
 
-static InputMethod *input_methods;
-
 static int default_input(__unused__ int *match_buf,
                          __unused__ int match_buf_size,
                          __unused__ int *match_len_ptr,
@@ -74,9 +72,10 @@ static InputMethod unicode_input_method = {
 
 void register_input_method(InputMethod *m)
 {
+    QEmacsState *qs = &qe_state;
     InputMethod **p;
 
-    p = &input_methods;
+    p = &qs->input_methods;
     while (*p != NULL) {
         p = &(*p)->next;
     }
@@ -86,18 +85,20 @@ void register_input_method(InputMethod *m)
 
 static void input_completion(CompleteState *cp)
 {
+    QEmacsState *qs = cp->s->qe_state;
     InputMethod *m;
 
-    for (m = input_methods; m != NULL; m = m->next) {
+    for (m = qs->input_methods; m != NULL; m = m->next) {
         complete_test(cp, m->name);
     }
 }
 
 static InputMethod *find_input_method(const char *name)
 {
+    QEmacsState *qs = &qe_state;
     InputMethod *m;
 
-    for (m = input_methods; m != NULL; m = m->next) {
+    for (m = qs->input_methods; m != NULL; m = m->next) {
         if (strequal(m->name, name))
             return m;
     }
@@ -118,10 +119,10 @@ void do_set_input_method(EditState *s, const char *name)
 
 void do_switch_input_method(EditState *s)
 {
-    if (!s->input_method)
-        s->input_method = s->selected_input_method;
-    else
+    if (s->input_method)
         s->input_method = NULL;
+    else
+        s->input_method = s->selected_input_method;
 }
 
 void init_input_methods(void)

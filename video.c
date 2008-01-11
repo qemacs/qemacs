@@ -973,7 +973,7 @@ int video_init(void)
     qe_register_mode(&video_mode);
     qe_register_cmd_table(video_commands, &video_mode);
     /* additional mode specific keys */
-    qe_register_binding('f', "toggle-full-screen", "av");
+    qe_register_binding('f', "toggle-full-screen", &video_mode);
     return 0;
 }
 

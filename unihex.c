@@ -187,10 +187,10 @@ static int unihex_init(void)
     qe_register_mode(&unihex_mode);
 
     /* additional mode specific keys */
-    qe_register_binding(KEY_CTRL_LEFT, "decrease-width", "unihex");
-    qe_register_binding(KEY_CTRL_RIGHT, "increase-width", "unihex");
-    qe_register_binding(KEY_TAB, "toggle-hex", "unihex");
-    qe_register_binding(KEY_SHIFT_TAB, "toggle-hex", "unihex");
+    qe_register_binding(KEY_CTRL_LEFT, "decrease-width", &unihex_mode);
+    qe_register_binding(KEY_CTRL_RIGHT, "increase-width", &unihex_mode);
+    qe_register_binding(KEY_TAB, "toggle-hex", &unihex_mode);
+    qe_register_binding(KEY_SHIFT_TAB, "toggle-hex", &unihex_mode);
     return 0;
 }
 

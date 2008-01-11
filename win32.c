@@ -25,8 +25,6 @@
 extern int main1(int argc, char **argv);
 LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-extern QEDisplay win32_dpy;
-
 static HINSTANCE _hPrev, _hInstance;
 static int font_xsize;
 
@@ -140,8 +138,6 @@ static int win_init(QEditScreen *s, int w, int h)
 
     if (!_hPrev)
         init_application();
-
-    memcpy(&s->dpy, &win32_dpy, sizeof(QEDisplay));
 
     s->private = NULL;
     s->media = CSS_MEDIA_SCREEN;
@@ -504,7 +500,6 @@ static QEDisplay win32_dpy = {
     win_probe,
     win_init,
     win_close,
-    NULL,
     win_flush,
     win_is_user_input_pending,
     win_fill_rectangle,
@@ -516,6 +511,7 @@ static QEDisplay win32_dpy = {
     NULL, /* dpy_selection_activate */
     NULL, /* dpy_selection_request */
     NULL, /* dpy_invalidate */
+    NULL, /* dpy_cursor_at */
     NULL, /* dpy_bmp_alloc */
     NULL, /* dpy_bmp_free */
     NULL, /* dpy_bmp_draw */

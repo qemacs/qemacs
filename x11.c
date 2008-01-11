@@ -80,7 +80,6 @@ static int update_nb;
 static CSSRect update_rects[UPDATE_MAX_REGIONS];
 #endif
 
-static QEDisplay x11_dpy;
 static int visual_depth;
 
 static int force_tty;
@@ -192,8 +191,6 @@ static int term_init(QEditScreen *s, int w, int h)
     QEFont *font;
     QEStyleDef default_style;
     XGCValues gc_val;
-
-    memcpy(&s->dpy, &x11_dpy, sizeof(QEDisplay));
 
     s->private = NULL;
     s->media = CSS_MEDIA_SCREEN;
@@ -1679,7 +1676,6 @@ static QEDisplay x11_dpy = {
     term_probe,
     term_init,
     term_close,
-    NULL,
     term_flush,
     x11_is_user_input_pending,
     term_fill_rectangle,
@@ -1691,6 +1687,7 @@ static QEDisplay x11_dpy = {
     term_selection_activate,
     term_selection_request,
     NULL, /* dpy_invalidate */
+    NULL, /* dpy_cursor_at */
     x11_bmp_alloc,
     x11_bmp_free,
     x11_bmp_draw,
