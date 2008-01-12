@@ -337,7 +337,7 @@ static int perl_mode_probe(ModeProbeData *p)
         return 80;
 
     if (p->buf[0] == '#' && p->buf[1] == '!' &&
-          memstr(p->buf, p->line_len, "/usr/bin/perl"))
+          memstr(p->buf, p->line_len, "bin/perl"))
         return 80;
 
     return 0;

@@ -1289,37 +1289,37 @@ typedef struct TextFragment {
 #define CHAR_MASK        ((1 << STYLE_SHIFT) - 1)
 
 struct DisplayState {
-    int do_disp; /* true if real display */
-    int width;   /* display window width */
-    int height;  /* display window height */
-    int eol_width; /* width of eol char */
+    int do_disp;        /* true if real display */
+    int width;          /* display window width */
+    int height;         /* display window height */
+    int eol_width;      /* width of eol char */
     int default_line_height;  /* line height if no chars */
-    int tab_width;            /* width of tabulation */
-    int x_disp;  /* starting x display */
-    int x; /* current x position */
-    int y; /* current y position */
-    int line_num; /* current text line number */
-    int cur_hex_mode; /* true if current char is in hex mode */
-    int hex_mode; /* hex mode from edit_state, -1 if all chars wanted */
+    int space_width;    /* width of space character */
+    int tab_width;      /* width of tabulation */
+    int x_disp;         /* starting x display */
+    int x;              /* current x position */
+    int y;              /* current y position */
+    int line_num;       /* current text line number */
+    int cur_hex_mode;   /* true if current char is in hex mode */
+    int hex_mode;       /* hex mode from edit_state, -1 if all chars wanted */
     void *cursor_opaque;
     int (*cursor_func)(struct DisplayState *,
                        int offset1, int offset2, int line_num,
                        int x, int y, int w, int h, int hex_mode);
-    int eod; /* end of display requested */
+    int eod;            /* end of display requested */
     /* if base == RTL, then all x are equivalent to width - x */
     DirType base;
     int embedding_level_max;
     int wrap;
     int eol_reached;
     EditState *edit_state;
-    int style;  /* css display style */
+    int style;          /* css display style */
 
     /* fragment buffers */
     TextFragment fragments[MAX_SCREEN_WIDTH];
     int nb_fragments;
     int last_word_space; /* true if last word was a space */
-    int word_index;      /* fragment index of the start of the current
-                            word */
+    int word_index;     /* fragment index of the start of the current word */
     /* line char (in fact glyph) buffer */
     unsigned int line_chars[MAX_SCREEN_WIDTH];
     short line_char_widths[MAX_SCREEN_WIDTH];
@@ -1632,6 +1632,7 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
 void edit_attach(EditState *s, EditState **ep);
 void do_completion(EditState *s);
 void do_completion_space(EditState *s);
+void do_electric_filename(EditState *s, int key);
 void minibuf_complete_scroll_up_down(EditState *s, int dir);
 void do_history(EditState *s, int dir);
 void do_minibuffer_get_binary(EditState *s);

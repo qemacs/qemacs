@@ -2317,7 +2317,8 @@ void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp)
                        glyph_width(e->screen, font, '\\'));
     s->eol_width = max(s->eol_width, glyph_width(e->screen, font, '$'));
     s->default_line_height = font->ascent + font->descent;
-    s->tab_width = glyph_width(e->screen, font, ' ') * e->tab_size;
+    s->space_width = glyph_width(e->screen, font, ' ');
+    s->tab_width = s->space_width * e->tab_size;
     s->width = e->width - s->eol_width;
     s->height = e->height;
     s->hex_mode = e->hex_mode;
@@ -2776,6 +2777,7 @@ static void flush_fragment(DisplayState *s)
             s->x = 0;
             if (s->edit_state->line_numbers) {
                 /* should skip line number column if present */
+                //s->x = s->space_width * 8;
             }
             if (len1 > 0) {
                 memmove(s->fragments, frag, sizeof(TextFragment));
@@ -2784,7 +2786,7 @@ static void flush_fragment(DisplayState *s)
                 frag->line_index = 0;
                 frag->len = len1;
                 s->nb_fragments = 1;
-                s->x = w1;
+                s->x += w1;
             }
             keep_line_chars(s, len1);
         }
@@ -2801,6 +2803,10 @@ static void flush_fragment(DisplayState *s)
                     (s->nb_fragments - s->word_index) * sizeof(TextFragment));
             s->nb_fragments -= s->word_index;
             s->x = 0;
+            if (s->edit_state->line_numbers) {
+                /* skip line number column if present */
+                //s->x = s->space_width * 8;
+            }
             for (i = 0; i < s->nb_fragments; i++) {
                 s->fragments[i].line_index -= index;
                 s->x += s->fragments[i].width;
@@ -4477,11 +4483,18 @@ void file_completion(CompleteState *cp)
     char path[MAX_FILENAME_SIZE];
     char file[MAX_FILENAME_SIZE];
     char filename[MAX_FILENAME_SIZE];
+    char *current;
     FindFileState *ffst;
     const char *base;
     int len;
 
-    splitpath(path, sizeof(path), file, sizeof(file), cp->current);
+    current = cp->current;
+    if (*current == '~') {
+        canonicalize_absolute_path(filename, sizeof(filename), cp->current);
+        current = filename;
+    }
+
+    splitpath(path, sizeof(path), file, sizeof(file), current);
     pstrcat(file, sizeof(file), "*");
 
     ffst = find_file_open(*path ? path : ".", file);
@@ -4679,6 +4692,18 @@ void do_completion(EditState *s)
     complete_end(&cs);
 }
 
+void do_electric_filename(EditState *s, int key)
+{
+    int c, offset;
+
+    if (completion_function == file_completion) {
+        c = eb_prevc(s->b, s->offset, &offset);
+        if (c == '/')
+            eb_delete(s->b, 0, s->offset);
+    }
+    do_char(s, key, 1);
+}
+
 /* space does completion only if a completion method is defined */
 void do_completion_space(EditState *s)
 {
@@ -4868,7 +4893,7 @@ void minibuffer_edit(const char *input, const char *prompt,
     minibuffer_cb = cb;
     minibuffer_opaque = opaque;
 
-    b = eb_new("*minibuf*", BF_SYSTEM);
+    b = eb_new("*minibuf*", BF_SYSTEM | BF_SAVELOG);
 
     s = edit_new(b, 0, qs->screen->height - qs->status_height,
                  qs->screen->width, qs->status_height, 0);

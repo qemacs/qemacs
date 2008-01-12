@@ -385,6 +385,10 @@ CmdDef minibuffer_commands[] = {
           "previous-history-element", do_history, -1)
     CMD1( KEY_CTRL('n'), KEY_DOWN,
           "next-history-element", do_history, 1)
+    CMDV( '/', KEY_NONE,
+          "electric-slash", do_electric_filename, ESi, '/', "*v")
+    CMDV( '~', KEY_NONE,
+          "electric-tilde", do_electric_filename, ESi, '~', "*v")
     CMD_DEF_END,
 };
 
