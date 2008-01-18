@@ -1,5 +1,5 @@
 /*
- * QEmacs, tiny but powerful multimode editor
+ * Module for handling variables in QEmacs
  *
  * Copyright (c) 2000-2008 Charlie Gordon.
  *
