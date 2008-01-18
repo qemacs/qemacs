@@ -29,6 +29,8 @@
 
 #include "qfribidi.h"
 
+#include "variables.h"
+
 #ifdef CONFIG_DLL
 #include <dlfcn.h>
 #endif
@@ -92,8 +94,8 @@ void qe_register_mode(ModeDef *m)
         m->mode_save_data = generic_mode_save_data;
     if (!m->data_type)
         m->data_type = &raw_data_type;
-    if (!m->mode_line)
-        m->mode_line = text_mode_line;
+    if (!m->get_mode_line)
+        m->get_mode_line = text_mode_line;
 
     /* add a new command to switch to that mode */
     if (!(m->mode_flags & MODEF_NOCMD)) {
@@ -726,7 +728,7 @@ void do_changecase_region(EditState *s, int arg)
 
 void do_delete_char(EditState *s, int argval)
 {
-    int end, i, offset1;
+    int endpos, i, offset1;
 
     if (s->b->flags & BF_READONLY)
         return;
@@ -737,14 +739,14 @@ void do_delete_char(EditState *s, int argval)
     } else
     if (argval) {
         /* save kill if universal argument given */
-        end = s->offset;
-        for (i = argval; i > 0 && end < s->b->total_size; i--) {
-            eb_nextc(s->b, end, &end);
+        endpos = s->offset;
+        for (i = argval; i > 0 && endpos < s->b->total_size; i--) {
+            eb_nextc(s->b, endpos, &endpos);
         }
-        for (i = argval; i < 0 && end > 0; i++) {
-            eb_prevc(s->b, end, &end);
+        for (i = argval; i < 0 && endpos > 0; i++) {
+            eb_prevc(s->b, endpos, &endpos);
         }
-        do_kill(s, s->offset, end, argval);
+        do_kill(s, s->offset, endpos, argval);
     }
 }
 
@@ -2046,7 +2048,7 @@ void display_mode_line(EditState *s)
     int y = s->ytop + s->height;
 
     if (s->flags & WF_MODELINE) {
-        s->mode->mode_line(s, buf, sizeof(buf));
+        s->mode->get_mode_line(s, buf, sizeof(buf));
         if (!strequal(buf, s->modeline_shadow)) {
             print_at_byte(s->screen,
                           s->xleft,
@@ -6951,6 +6953,47 @@ static int expect_token(const char **pp, int tok)
     }
 }
 
+static int qe_cfg_parse_string(EditState *s, const char **pp,
+                               char *dest, int size)
+{
+    const char *p = *pp;
+    int c, delim = *p++;
+    int res = 0;
+    int pos = 0;
+
+    for (;;) {
+        c = *p;
+        if (c == '\0') {
+            put_status(s, "Unterminated string");
+            res = -1;
+            break;
+        }
+        p++;
+        if (c == delim)
+            break;
+        if (c == '\\') {
+            c = *p++;
+            switch (c) {
+            case 'n':
+                c = '\n';
+                break;
+            case 'r':
+                c = '\r';
+                break;
+            case 't':
+                c = '\t';
+                break;
+            }
+        }
+        if (pos < size - 1)
+            dest[pos++] = c;
+    }
+    if (pos < size)
+        dest[pos] = '\0';
+    *pp = p;
+    return res;
+}
+
 int parse_config_file(EditState *s, const char *filename)
 {
     QEmacsState *qs = s->qe_state;
@@ -7028,10 +7071,33 @@ int parse_config_file(EditState *s, const char *filename)
                 goto fail;
             continue;
         }
+#ifndef CONFIG_TINY
+        {
+            /* search for variable */
+            struct VarDef *vp;
+
+            vp = qe_find_variable(cmd);
+            if (vp) {
+                if (!expect_token(&p, '='))
+                    goto fail;
+                skip_spaces(&p);
+                if (*p == '\"' || *p == '\'') {
+                    if (qe_cfg_parse_string(s, &p, str, countof(str)))
+                        goto fail;
+                    qe_set_variable(s, cmd, str, 0);
+                } else {
+                    qe_set_variable(s, cmd, NULL, strtol(p, (char**)&p, 0));
+                }
+                skip_spaces(&p);
+                if (*p != ';' && *p != '\n')
+                    put_status(s, "Syntax error '%s'", cmd);
+                continue;
+            }
+        }
+#endif
         /* search for command */
         d = qe_find_cmd(cmd);
         if (!d) {
-            /* CG: should handle variables */
             err = -1;
             put_status(s, "Unknown command '%s'", cmd);
             continue;
@@ -7055,7 +7121,7 @@ int parse_config_file(EditState *s, const char *filename)
             unsigned char arg_type;
             int ret;
 
-            ret = parse_arg(&r, &arg_type, prompt, sizeof(prompt),
+            ret = parse_arg(&r, &arg_type, prompt, countof(prompt),
                             NULL, 0, NULL, 0);
             if (ret < 0)
                 goto badcmd;
@@ -7102,49 +7168,26 @@ int parse_config_file(EditState *s, const char *filename)
 
             switch (args_type[i]) {
             case CMD_ARG_INT:
-                args[i].n = strtol(p, (char**)&q, 0);
-                if (q == p) {
+                r = p;
+                args[i].n = strtol(p, (char**)&p, 0);
+                if (p == r) {
                     put_status(s, "Number expected for arg %d", i);
                     goto fail;
                 }
-                p = q;
                 break;
             case CMD_ARG_STRING:
-                if (*p != '\"') {
+                if (*p != '\"' && *p != '\'') {
                     /* XXX: should convert number to string */
                     put_status(s, "String expected for arg %d", i);
                     goto fail;
                 }
-                p++;
-                /* Sloppy parser: all strings will fit in buffer
-                 * because it is the same size as line buffer.
-                 * All config commands must fit on a single line.
-                 */
-                q = strp;
-                while (*p != '\"' && *p != '\0') {
-                    c = *p++;
-                    if (c == '\\') {
-                        c = *p++;
-                        switch (c) {
-                        case 'n':
-                            c = '\n';
-                            break;
-                        case 'r':
-                            c = '\r';
-                            break;
-                        }
-                    }
-                    *q++ = c;
-                }
-                *q = '\0';
-                c = '"';
-                if (*p != c) {
-                    put_status(s, "Unterminated string");
+                if (qe_cfg_parse_string(s, &p, strp,
+                                        str + countof(str) - strp) < 0)
+                {
                     goto fail;
                 }
-                p++;
                 args[i].p = strp;
-                strp = q + 1;
+                strp += strlen(strp) + 1;
                 break;
             }
         }

@@ -334,7 +334,7 @@ static ModeDef ascii_mode = {
     .scroll_up_down = text_scroll_up_down,
     .write_char = text_write_char,
     .mouse_goto = text_mouse_goto,
-    .mode_line = hex_mode_line,
+    .get_mode_line = hex_mode_line,
 };
 
 static ModeDef hex_mode = {
@@ -353,7 +353,7 @@ static ModeDef hex_mode = {
     .scroll_up_down = text_scroll_up_down,
     .write_char = hex_write_char,
     .mouse_goto = text_mouse_goto,
-    .mode_line = hex_mode_line,
+    .get_mode_line = hex_mode_line,
 };
 
 static int hex_init(void)

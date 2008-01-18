@@ -1155,10 +1155,12 @@ int get_clock_ms(void)
 {
 #ifdef CONFIG_WIN32
     struct _timeb tb;
+
     _ftime(&tb);
     return tb.time * 1000 + tb.millitm;
 #else
     struct timeval tv;
+
     gettimeofday(&tv, NULL);
     return tv.tv_sec * 1000 + (tv.tv_usec / 1000);
 #endif
@@ -1168,10 +1170,12 @@ int get_clock_usec(void)
 {
 #ifdef CONFIG_WIN32
     struct _timeb tb;
+
     _ftime(&tb);
     return tb.time * 1000000 + tb.millitm * 1000;
 #else
     struct timeval tv;
+
     gettimeofday(&tv, NULL);
     return tv.tv_sec * 1000000 + tv.tv_usec;
 #endif

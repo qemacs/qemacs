@@ -24,6 +24,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
@@ -727,6 +728,9 @@ struct EditBuffer {
      */
     struct ModeSavedData *saved_data;
 
+    /* default mode stuff when buffer is detached from window */
+    int offset;         /* used in eval.c */
+
     EditBuffer *next; /* next editbuffer in qe_state buffer list */
     char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
     char filename[MAX_FILENAME_SIZE];   /* file name */
@@ -1054,7 +1058,7 @@ typedef struct ModeDef {
     int mode_flags;
 #define MODEF_NOCMD 0x0001 /* do not register xxx-mode command automatically */
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
-    int (*mode_line)(EditState *s, char *buf, int buf_size); /* return mode line */
+    int (*get_mode_line)(EditState *s, char *buf, int buf_size); /* return mode line */
 
     /* mode specific key bindings */
     //struct KeyDef *first_key;
@@ -1120,7 +1124,7 @@ struct QEmacsState {
     struct HistoryEntry *first_history;
     //struct QECharset *first_charset;
     //struct QETimer *first_timer;
-    //struct VarDef *first_variable;
+    struct VarDef *first_variable;
     struct InputMethod *input_methods;
     EditState *first_window;
     EditState *active_window; /* window in which we edit */
@@ -1168,13 +1172,13 @@ struct QEmacsState {
     char system_fonts[NB_FONT_FAMILIES][256];
 
     ///* global variables */
-    //int it;             /* last result from expression evaluator */
+    int it;             /* last result from expression evaluator */
     ////int force_tty;    /* prevent graphics display (X11...) */
     //int no_config;      /* prevent config file eval */
     //int force_refresh;  /* force a complete screen refresh */
-    //int ignore_spaces;  /* ignore spaces when comparing windows */
+    int ignore_spaces;  /* ignore spaces when comparing windows */
     int hilite_region;  /* hilite the current region when selecting */
-    //int mmap_threshold; /* minimum file size for mmap */
+    int mmap_threshold; /* minimum file size for mmap */
 };
 
 extern QEmacsState qe_state;
@@ -1207,14 +1211,14 @@ enum CmdArgType {
 
 typedef enum CmdSig {
     CMD_void = 0,
-    CMD_ES,     /* ES, no other arguments */
-    CMD_ESi,    /* ES + integer */
-    CMD_ESs,    /* ES + string */
-    CMD_ESii,   /* ES + integer + integer */
-    CMD_ESsi,   /* ES + string + integer */
-    CMD_ESss,   /* ES + string + string */
-    CMD_ESssi,  /* ES + string + string + integer */
-    CMD_ESsss,  /* ES + string + string + string */
+    CMD_ES,     /* (ES*) -> void */
+    CMD_ESi,    /* (ES*, int) -> void */
+    CMD_ESs,    /* (ES*, string) -> void */
+    CMD_ESii,   /* (ES*, int, int) -> void */
+    CMD_ESsi,   /* (ES*, string, int) -> void */
+    CMD_ESss,   /* (ES*, string, string) -> void */
+    CMD_ESssi,  /* (ES*, string, string, int) -> void */
+    CMD_ESsss,  /* (ES*, string, string, string) -> void */
 } CmdSig;
 
 #define MAX_CMD_ARGS 5
@@ -1244,7 +1248,7 @@ typedef struct CmdDef {
     const char *name;
     CmdProto action;
     CmdSig sig : 8;
-    int val : 24;
+    signed int val : 24;
 } CmdDef;
 
 /* new command macros */

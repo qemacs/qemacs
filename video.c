@@ -951,13 +951,13 @@ static CmdDef video_commands[] = {
 
 ModeDef video_mode = {
     "av",
-    instance_size: sizeof(VideoState),
-    mode_probe: video_mode_probe,
-    mode_init: video_mode_init,
-    mode_close: video_mode_close,
-    display: video_display,
-    data_type: &video_data_type,
-    mode_line: video_mode_line,
+    .instance_size = sizeof(VideoState),
+    .mode_probe = video_mode_probe,
+    .mode_init = video_mode_init,
+    .mode_close = video_mode_close,
+    .display = video_display,
+    .data_type = &video_data_type,
+    .get_mode_line = video_mode_line,
 };
 
 static EditBufferDataType video_data_type = {

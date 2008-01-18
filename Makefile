@@ -19,31 +19,11 @@
 
 include config.mak
 
-# from configure
-#CONFIG_NETWORK=yes
-#CONFIG_WIN32=yes
-#CONFIG_CYGWIN=yes
-#CONFIG_TINY=yes
-#CONFIG_X11=yes
-#CONFIG_XV=yes
-#CONFIG_XRENDER=yes
-#CONFIG_XFT=yes
-#CONFIG_HTML=yes
-#CONFIG_DLL=yes
-#CONFIG_INIT_CALLS=yes
-#CONFIG_PNG_OUTPUT=yes
-#CONFIG_FFMPEG=yes
-#CONFIG_ALL_KMAPS=yes
-# Define CONFIG_ALL_MODES to include all edit modes
-#CONFIG_ALL_MODES=yes
-# Define CONFIG_UNICODE_JOIN to include unicode bidi/script handling
-#CONFIG_UNICODE_JOIN=yes
-
 ifeq ($(CC),gcc)
-  CFLAGS  := -Wall -g -O2 -funsigned-char
+  CFLAGS   := -Wall -g -O2 -funsigned-char
   # do not warn about zero-length formats.
-  CFLAGS  += -Wno-format-zero-length
-  LDFLAGS := -g
+  CFLAGS   += -Wno-format-zero-length
+  LDFLAGS  := -g
   TLDFLAGS := -g
 endif
 
@@ -51,8 +31,8 @@ endif
 -include cflags.mk
 
 ifdef TARGET_GPROF
-  CFLAGS  += -p
-  LDFLAGS += -p
+  CFLAGS   += -p
+  LDFLAGS  += -p
   TLDFLAGS += -p
 endif
 
@@ -70,6 +50,12 @@ DEFINES=-DHAVE_QE_CONFIG_H
 ########################################################
 # do not modify after this
 
+TARGETLIBS:=
+TARGETS+= qe$(EXE) tqe$(EXE) kmaps ligatures
+
+OBJS=qe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
+TOBJS=tqe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
+
 ifdef CONFIG_PNG_OUTPUT
   HTMLTOPPM_LIBS+= -lpng
 endif
@@ -82,15 +68,9 @@ endif
 
 LIBS+=-lm
 
-TARGETLIBS:=
-TARGETS+= qe$(EXE) tqe$(EXE) kmaps ligatures
-
 ifndef CONFIG_CYGWIN
-TARGETS+=qe-doc.html
+  TARGETS+=qe-doc.html
 endif
-
-OBJS=qe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
-TOBJS=tqe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
 
 ifdef CONFIG_WIN32
   OBJS+= win32.o
@@ -117,7 +97,7 @@ endif
 
 ifdef CONFIG_ALL_MODES
   OBJS+= unihex.o clang.o latex-mode.o xml.o bufed.o \
-         makemode.o perl.o htmlsrc.o script.o
+         makemode.o perl.o htmlsrc.o script.o variables.o
   ifndef CONFIG_WIN32
     OBJS+= shell.o dired.o
   endif
@@ -152,25 +132,61 @@ endif
 
 ifdef CONFIG_FFMPEG
   OBJS+= video.o image.o
-  DEP_LIBS+=$(FFMPEG_LIBDIR)/libavcodec/libavcodec.a $(FFMPEG_LIBDIR)/libavformat/libavformat.a
-  LIBS+=  -L$(FFMPEG_LIBDIR)/libavcodec -L$(FFMPEG_LIBDIR)/libavformat -lavformat -lavcodec -lz -lpthread
+  DEP_LIBS+= $(FFMPEG_LIBDIR)/libavcodec/libavcodec.a $(FFMPEG_LIBDIR)/libavformat/libavformat.a
+  LIBS+= -L$(FFMPEG_LIBDIR)/libavcodec -L$(FFMPEG_LIBDIR)/libavformat -lavformat -lavcodec -lz -lpthread
   DEFINES+= -I$(FFMPEG_SRCDIR)/libavcodec -I$(FFMPEG_SRCDIR)/libavformat
   TARGETS+= ffplay$(EXE)
 endif
-
-all: $(TARGETLIBS) $(TARGETS)
-
-libqhtml: force
-	make -C libqhtml all
 
 ifdef CONFIG_INIT_CALLS
   # must be the last object
   OBJS+= qeend.o
   TOBJS+= qeend.o
-else
-  SRCS:= $(OBJS:.o=.c)
-  TSRCS:= $(TOBJS:.o=.c)
-  TSRCS:= $(TSRCS:tqe.c=qe.c)
+endif
+
+#
+# Dependencies
+#
+all: $(TARGETLIBS) $(TARGETS)
+
+libqhtml: force
+	make -C libqhtml all
+
+qe_g$(EXE): $(OBJS) $(DEP_LIBS)
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+qe$(EXE): qe_g$(EXE) Makefile
+	rm -f $@
+	cp $< $@
+	$(STRIP) $@
+	@ls -l $@
+	echo `size $@` `wc --bytes $@` qe $(OPTIONS) \
+		| cut -d ' ' -f 7-10,13,15-40 >> STATS
+
+#
+# Tiny version of QEmacs
+#
+tqe_g$(EXE): $(TOBJS)
+	$(CC) $(TLDFLAGS) -o $@ $^ $(TLIBS)
+
+tqe$(EXE): tqe_g$(EXE) Makefile
+	rm -f $@
+	cp $< $@
+	$(STRIP) $@
+	@ls -l $@
+	echo `size $@` `wc --bytes $@` tqe $(OPTIONS) \
+		| cut -d ' ' -f 7-10,13,15-40 >> STATS
+
+tqe.o: qe.c qe.h qestyles.h qeconfig.h config.h config.mak Makefile
+	$(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
+
+ffplay$(EXE): qe$(EXE) Makefile
+	ln -sf $< $@
+
+ifndef CONFIG_INIT_CALLS
+SRCS:= $(OBJS:.o=.c)
+TSRCS:= $(TOBJS:.o=.c)
+TSRCS:= $(TSRCS:tqe.c=qe.c)
 
 qe.o: allmodules.txt
 tqe.o: basemodules.txt
@@ -184,34 +200,6 @@ basemodules.txt: $(TSRCS) Makefile
 	grep -h ^qe_module_init $(TSRCS)                     >> $@
 endif
 
-qe_g$(EXE): $(OBJS) $(DEP_LIBS)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
-
-qe$(EXE): qe_g$(EXE) Makefile
-	rm -f $@
-	cp $< $@
-	$(STRIP) $@
-	@ls -l $@
-	echo `size $@` `wc --bytes $@` qe $(OPTIONS) \
-		| cut -d ' ' -f 7-10,13,15-40 >> STATS
-
-tqe.o: qe.c qe.h qestyles.h qeconfig.h config.h config.mak Makefile
-	$(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
-
-tqe_g$(EXE): $(TOBJS)
-	$(CC) $(TLDFLAGS) -o $@ $^ $(TLIBS)
-
-tqe$(EXE): tqe_g$(EXE) Makefile
-	rm -f $@
-	cp $< $@
-	$(STRIP) $@
-	@ls -l $@
-	echo `size $@` `wc --bytes $@` tqe $(OPTIONS) \
-		| cut -d ' ' -f 7-10,13,15-40 >> STATS
-
-ffplay$(EXE): qe$(EXE) Makefile
-	ln -sf $< $@
-
 cfb.o: cfb.c cfb.h fbfrender.h
 charsetjis.o: charsetjis.c charsetjis.def
 fbfrender.o: fbfrender.c fbfrender.h libfbf.h
@@ -220,78 +208,6 @@ qfribidi.o: qfribidi.c qfribidi.h
 
 %.o: %.c qe.h qestyles.h config.h config.mak Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
-
-clean:
-	make -C libqhtml clean
-	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
-           qe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
-           cptoqe jistoqe allmodules.txt basemodules.txt
-
-distclean: clean
-	rm -f config.h config.mak
-
-install: $(TARGETS) qe.1
-	install -m 755 qe$(EXE) $(prefix)/bin/qemacs$(EXE)
-	ln -sf qemacs $(prefix)/bin/qe$(EXE)
-ifdef CONFIG_FFMPEG
-	ln -sf qemacs$(EXE) $(prefix)/bin/ffplay$(EXE)
-endif
-	mkdir -p $(prefix)/share/qe
-	install kmaps ligatures $(prefix)/share/qe
-	install qe.1 $(prefix)/man/man1
-ifdef CONFIG_HTML
-	install -m 755 -s html2png$(EXE) $(prefix)/bin
-endif
-
-TAGS: force
-	etags *.[ch]
-
-force:
-
-#
-# tar archive for distribution
-#
-
-FILES=Changelog COPYING README TODO qe.1 config.eg \
-      Makefile qe.tcc qemacs.spec \
-      hex.c charset.c qe.c qe.h tty.c \
-      html.c indic.c unicode_join.c input.c qeconfig.h \
-      qeend.c unihex.c arabic.c kmaptoqe.c util.c \
-      bufed.c qestyles.h x11.c buffer.c ligtoqe.c \
-      qfribidi.c clang.c latex-mode.c xml.c dired.c list.c qfribidi.h html2png.c \
-      charsetmore.c charsetjis.c charsetjis.def cptoqe.c jistoqe.c \
-      libfbf.c fbfrender.c cfb.c fbftoqe.c libfbf.h fbfrender.h cfb.h \
-      display.c display.h mpeg.c shell.c \
-      docbook.c unifont.lig kmaps xterm-146-dw-patch \
-      ligatures qe-doc.texi qe-doc.html \
-      tests/HELLO.txt tests/TestPage.txt tests/test-hebrew \
-      tests/test-capital-rtl tests/test-capital-rtl.ref \
-      tests/testbidi.html \
-      plugin-example/Makefile  plugin-example/my_plugin.c \
-      image.c video.c win32.c configure VERSION \
-      cutils.c cutils.h unix.c
-
-# qhtml library
-FILES+=libqhtml/Makefile libqhtml/css.c libqhtml/cssid.h \
-       libqhtml/cssparse.c libqhtml/xmlparse.c libqhtml/htmlent.h \
-       libqhtml/css.h libqhtml/csstoqe.c \
-       libqhtml/docbook.css libqhtml/html.css
-
-# fonts
-FILES+=fonts/fixed10.fbf  fonts/fixed12.fbf  fonts/fixed13.fbf  fonts/fixed14.fbf \
-       fonts/helv10.fbf   fonts/helv12.fbf   fonts/helv14.fbf   fonts/helv18.fbf \
-       fonts/helv24.fbf   fonts/helv8.fbf    fonts/times10.fbf  fonts/times12.fbf \
-       fonts/times14.fbf  fonts/times18.fbf  fonts/times24.fbf  fonts/times8.fbf \
-       fonts/unifont.fbf
-
-FILE=qemacs-$(VERSION)
-
-tar:
-	rm -rf /tmp/$(FILE)
-	mkdir -p /tmp/$(FILE)
-	cp --parents $(FILES) /tmp/$(FILE)
-	( cd /tmp ; tar zcvf $(HOME)/$(FILE).tar.gz $(FILE) )
-	rm -rf /tmp/$(FILE)
 
 #
 # Test for bidir algorithm
@@ -372,9 +288,9 @@ endif
 #
 # fonts (only needed for html2png)
 #
-FONTS=fixed10.fbf fixed12.fbf fixed13.fbf fixed14.fbf\
-      helv8.fbf helv10.fbf helv12.fbf helv14.fbf helv18.fbf helv24.fbf\
-      times8.fbf times10.fbf times12.fbf times14.fbf times18.fbf times24.fbf\
+FONTS=fixed10.fbf fixed12.fbf fixed13.fbf fixed14.fbf \
+      helv8.fbf helv10.fbf helv12.fbf helv14.fbf helv18.fbf helv24.fbf \
+      times8.fbf times10.fbf times12.fbf times14.fbf times18.fbf times24.fbf \
       unifont.fbf
 FONTS:=$(addprefix fonts/,$(FONTS))
 
@@ -387,13 +303,13 @@ fbffonts.c: fbftoqe$(EXE) $(FONTS)
 #
 # html2png tool (XML/HTML/CSS2 renderer test tool)
 #
-OBJS1=util.o cutils.o \
-     arabic.o indic.o qfribidi.o display.o unicode_join.o \
-     charset.o charsetmore.o charsetjis.o \
-     libfbf.o fbfrender.o cfb.o fbffonts.o
+OBJS1=html2png.o util.o cutils.o \
+      arabic.o indic.o qfribidi.o display.o unicode_join.o \
+      charset.o charsetmore.o charsetjis.o \
+      libfbf.o fbfrender.o cfb.o fbffonts.o
 
-html2png$(EXE): html2png.o $(OBJS1) libqhtml/libqhtml.a
-	$(CC) $(LDFLAGS) -o $@ html2png.o $(OBJS1) \
+html2png$(EXE): $(OBJS1) libqhtml/libqhtml.a
+	$(CC) $(LDFLAGS) -o $@ $(OBJS1) \
                    -L./libqhtml -lqhtml $(HTMLTOPPM_LIBS)
 
 # autotest target
@@ -403,3 +319,73 @@ test:
 # documentation
 qe-doc.html: qe-doc.texi Makefile
 	LANGUAGE=en_US LC_ALL=en_US.UTF-8 texi2html -monolithic -number $<
+
+#
+# Maintenance targets
+#
+clean:
+	make -C libqhtml clean
+	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
+           qe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
+           cptoqe jistoqe allmodules.txt basemodules.txt
+
+distclean: clean
+	rm -f config.h config.mak
+
+install: $(TARGETS) qe.1
+	install -m 755 qe$(EXE) $(prefix)/bin/qemacs$(EXE)
+	ln -sf qemacs $(prefix)/bin/qe$(EXE)
+ifdef CONFIG_FFMPEG
+	ln -sf qemacs$(EXE) $(prefix)/bin/ffplay$(EXE)
+endif
+	mkdir -p $(prefix)/share/qe
+	install kmaps ligatures $(prefix)/share/qe
+	install qe.1 $(prefix)/man/man1
+ifdef CONFIG_HTML
+	install -m 755 -s html2png$(EXE) $(prefix)/bin
+endif
+
+TAGS: force
+	etags *.[ch]
+
+force:
+
+#
+# tar archive for distribution
+#
+FILES:=COPYING Changelog Makefile README TODO VERSION \
+       arabic.c bufed.c buffer.c cfb.c cfb.h charset.c charsetjis.c \
+       charsetjis.def charsetmore.c clang.c config.eg config.h \
+       configure cptoqe.c cutils.c cutils.h dired.c display.c \
+       display.h docbook.c extras.c fbffonts.c fbfrender.c \
+       fbfrender.h fbftoqe.c hex.c html.c html2png.c htmlsrc.c \
+       image.c indic.c input.c jistoqe.c kmap.c kmaptoqe.c \
+       latex-mode.c libfbf.c libfbf.h ligtoqe.c list.c makemode.c \
+       mpeg.c perl.c qe-doc.html qe-doc.texi qe.1 qe.c qe.h qe.tcc \
+       qeconfig.h qeend.c qemacs.spec qestyles.h qfribidi.c \
+       qfribidi.h script.c shell.c tty.c unicode_join.c unihex.c \
+       unix.c util.c variables.c variables.h video.c win32.c x11.c \
+       xml.c xterm-146-dw-patch 
+
+FILES+=plugin-example/Makefile  plugin-example/my_plugin.c
+
+FILES+=tests/HELLO.txt tests/TestPage.txt tests/test-hebrew \
+       tests/test-capital-rtl tests/test-capital-rtl.ref \
+       tests/testbidi.html \
+
+# qhtml library
+FILES+=libqhtml/Makefile libqhtml/css.c libqhtml/css.h libqhtml/cssid.h \
+       libqhtml/cssparse.c libqhtml/csstoqe.c libqhtml/docbook.css \
+       libqhtml/html.css libqhtml/htmlent.h libqhtml/xmlparse.c
+
+# keyboard maps, code pages, fonts
+FILES+=unifont.lig ligatures kmaps $(KMAPS) $(CP) $(JIS) $(FONTS)
+
+FILE=qemacs-$(VERSION)
+
+tar: $(FILES)
+	rm -rf /tmp/$(FILE)
+	mkdir -p /tmp/$(FILE)
+	cp --parents $(FILES) /tmp/$(FILE)
+	( cd /tmp ; tar zcvf $(HOME)/$(FILE).tar.gz $(FILE) )
+	rm -rf /tmp/$(FILE)

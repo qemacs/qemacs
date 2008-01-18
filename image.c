@@ -828,16 +828,16 @@ static CmdDef image_commands[] = {
 
 ModeDef image_mode = {
     "image",
-    instance_size: sizeof(ImageState),
-    mode_probe: image_mode_probe,
-    mode_init: image_mode_init,
-    mode_close: image_mode_close,
-    display: image_display,
-    move_up_down: image_move_up_down,
-    move_left_right: image_move_left_right,
-    scroll_up_down: image_scroll_up_down,
-    data_type: &image_data_type,
-    mode_line: image_mode_line,
+    .instance_size = sizeof(ImageState),
+    .mode_probe = image_mode_probe,
+    .mode_init = image_mode_init,
+    .mode_close = image_mode_close,
+    .display = image_display,
+    .move_up_down = image_move_up_down,
+    .move_left_right = image_move_left_right,
+    .scroll_up_down = image_scroll_up_down,
+    .data_type = &image_data_type,
+    .get_mode_line = image_mode_line,
 };
 
 static EditBufferDataType image_data_type = {

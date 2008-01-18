@@ -62,11 +62,11 @@ static int perl_number(const unsigned int *str, int j, __unused__ int n)
     if (str[j] == '0') {
         j++;
         if (str[j] == 'x' || str[j] == 'X') {
-            do j++; while (qe_isxdigit(str[j]));
+            do { j++; } while (qe_isxdigit(str[j]));
             return j;
         }
         if (str[j] >= '0' && str[j] <= '7') {
-            do j++; while (str[j] >= '0' && str[j] <= '7');
+            do { j++; } while (str[j] >= '0' && str[j] <= '7');
             return j;
         }
     }
@@ -74,7 +74,7 @@ static int perl_number(const unsigned int *str, int j, __unused__ int n)
         j++;
 
     if (str[j] == '.')
-        do j++; while (qe_isdigit(str[j]));
+        do { j++; } while (qe_isdigit(str[j]));
 
     if (str[j] == 'E' || str[j] == 'e') {
         j++;
