@@ -21,7 +21,7 @@
 
 #include "qe.h"
 
-static ModeDef hex_mode;
+extern ModeDef hex_mode;
 
 static int to_disp(int c)
 {

@@ -1640,7 +1640,7 @@ void do_electric_filename(EditState *s, int key);
 void minibuf_complete_scroll_up_down(EditState *s, int dir);
 void do_history(EditState *s, int dir);
 void do_minibuffer_get_binary(EditState *s);
-void do_minibuffer_exit(EditState *s, int abort);
+void do_minibuffer_exit(EditState *s, int fabort);
 void do_less_exit(EditState *s);
 void do_toggle_read_only(EditState *s);
 void do_not_modified(EditState *s, int argval);

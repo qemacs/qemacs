@@ -192,12 +192,12 @@ qe.o: allmodules.txt
 tqe.o: basemodules.txt
 
 allmodules.txt: $(SRCS) Makefile
-	echo '/* This file was generated automatically */\n'  > $@
-	grep -h ^qe_module_init $(SRCS)                      >> $@
+	echo '/* This file was generated automatically */'  > $@
+	grep -h ^qe_module_init $(SRCS)                    >> $@
 
 basemodules.txt: $(TSRCS) Makefile
-	echo '/* This file was generated automatically */\n'  > $@
-	grep -h ^qe_module_init $(TSRCS)                     >> $@
+	echo '/* This file was generated automatically */'  > $@
+	grep -h ^qe_module_init $(TSRCS)                   >> $@
 endif
 
 cfb.o: cfb.c cfb.h fbfrender.h
