@@ -167,7 +167,10 @@ static void dired_mark(EditState *s, int mark)
     dip = item->opaque;
 
     ch = dip->mark = mark;
-    eb_write(s->b, dip->offset, &ch, 1);
+    do_bol(s);
+    s->b->flags &= ~BF_READONLY;
+    eb_write(s->b, s->offset, &ch, 1);
+    s->b->flags |= BF_READONLY;
 
     text_move_up_down(s, 1);
 }
