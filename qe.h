@@ -730,6 +730,7 @@ struct EditBuffer {
 
     /* default mode stuff when buffer is detached from window */
     int offset;         /* used in eval.c */
+    int tab_size;
 
     EditBuffer *next; /* next editbuffer in qe_state buffer list */
     char name[MAX_BUFFERNAME_SIZE];     /* buffer name */

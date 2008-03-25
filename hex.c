@@ -21,7 +21,12 @@
 
 #include "qe.h"
 
+/* CG: should get rid of this forward reference */
+#if defined(__GNUC__) && (__GNUC__ >= 4)
+static ModeDef hex_mode;
+#else
 extern ModeDef hex_mode;
+#endif
 
 static int to_disp(int c)
 {

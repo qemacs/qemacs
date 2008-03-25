@@ -472,6 +472,9 @@ EditBuffer *eb_new(const char *name, int flags)
     /* XXX: suppress save_log and always use flag ? */
     b->save_log = ((flags & BF_SAVELOG) != 0);
 
+    /* initialize default mode stuff */
+    b->tab_size = 8;    /* CG: not finished */
+
     /* add buffer in global buffer list (at end for system buffers) */
     pb = &qs->first_buffer;
     if (*b->name == '*') {
@@ -486,6 +489,7 @@ EditBuffer *eb_new(const char *name, int flags)
 
     /* add mark move callback */
     eb_add_callback(b, eb_offset_callback, &b->mark);
+    eb_add_callback(b, eb_offset_callback, &b->offset);
 
     if (strequal(name, "*trace*"))
         qs->trace_buffer = b;
@@ -713,6 +717,10 @@ void eb_offset_callback(__unused__ EditBuffer *b, void *opaque,
     switch (op) {
     case LOGOP_INSERT:
         if (*offset_ptr > offset)
+            *offset_ptr += size;
+        /* special case for buffer's own point position:
+         * edge position is pushed right */
+        if (*offset_ptr == offset && offset_ptr == &b->offset)
             *offset_ptr += size;
         break;
     case LOGOP_DELETE:

@@ -46,7 +46,9 @@
 
 static QEFont *term_open_font(QEditScreen *s, int style, int size);
 static void term_close_font(QEditScreen *s, QEFont *font);
+#ifdef CONFIG_XV
 static void xv_init(QEditScreen *s);
+#endif
 static void x11_handle_event(void *opaque);
 
 //static struct X11State {
@@ -1384,8 +1386,10 @@ enum X11BitmapType {
     BMP_PIXMAP,
     BMP_XIMAGE,
     BMP_XSHMIMAGE,
+#ifdef CONFIG_XV
     BMP_XVIMAGE,
     BMP_XVSHMIMAGE,
+#endif
 };
 
 typedef struct X11Bitmap {
