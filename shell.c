@@ -86,26 +86,26 @@ static int shell_launched = 0;
 /* allocate one pty/tty pair */
 static int get_pty(char *tty_str)
 {
-   int fd;
-   char ptydev[] = "/dev/pty??";
-   char ttydev[] = "/dev/tty??";
-   int len = strlen(ttydev);
-   const char *c1, *c2;
+    int fd;
+    char ptydev[] = "/dev/pty??";
+    char ttydev[] = "/dev/tty??";
+    int len = strlen(ttydev);
+    const char *c1, *c2;
 
-   for (c1 = PTYCHAR1; *c1; c1++) {
-       ptydev[len-2] = ttydev[len-2] = *c1;
-       for (c2 = PTYCHAR2; *c2; c2++) {
-           ptydev[len-1] = ttydev[len-1] = *c2;
-           if ((fd = open(ptydev, O_RDWR)) >= 0) {
-               if (access(ttydev, R_OK|W_OK) == 0) {
-                   strcpy(tty_str, ttydev);
-                   return fd;
-               }
-               close(fd);
-           }
-       }
-   }
-   return -1;
+    for (c1 = PTYCHAR1; *c1; c1++) {
+        ptydev[len-2] = ttydev[len-2] = *c1;
+        for (c2 = PTYCHAR2; *c2; c2++) {
+            ptydev[len-1] = ttydev[len-1] = *c2;
+            if ((fd = open(ptydev, O_RDWR)) >= 0) {
+                if (access(ttydev, R_OK|W_OK) == 0) {
+                    strcpy(tty_str, ttydev);
+                    return fd;
+                }
+                close(fd);
+            }
+        }
+    }
+    return -1;
 }
 
 static int run_process(const char *path, const char **argv,
@@ -449,12 +449,12 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
         /* 0:black 1:red 2:green 3:yellow 4:blue 5:magenta 6:cyan 7:white */
         if (c >= 30 && c <= 37) {
             /* set foreground color */
-            s->color &= ~(TTY_BOLD | TTY_BG_COLOR(7));
+            s->color &= ~TTY_FG_COLOR(7);
             s->color |= TTY_FG_COLOR(c - 30);
         } else
         if (c >= 40 && c <= 47) {
             /* set background color */
-            s->color &= ~(TTY_BOLD | TTY_FG_COLOR(7));
+            s->color &= ~TTY_BG_COLOR(7);
             s->color |= TTY_BG_COLOR(c - 40);
         }
         break;
@@ -887,7 +887,7 @@ static void shell_color_callback(__unused__ EditBuffer *b,
                                  int size)
 {
     ShellState *s = opaque;
-    unsigned char buf[32];
+    unsigned char buf[256];
     int len;
 
     switch (op) {
@@ -910,6 +910,7 @@ static void shell_color_callback(__unused__ EditBuffer *b,
             memset(buf, s->color, len);
             eb_insert(s->b_color, offset, buf, len);
             size -= len;
+            offset += len;
         }
         break;
     case LOGOP_DELETE:
