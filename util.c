@@ -300,8 +300,10 @@ const char *extension(const char *filename)
         while (*p == '.')
             p++;
         for (; *p; p++) {
-            if (*p == '.')
-                ext = p;
+            if (*p == '.') {
+                if (!ext || !qe_isdigit(p[1]))
+                    ext = p;
+            }
         }
         if (!ext)
             ext = p;
@@ -340,7 +342,16 @@ int match_extension(const char *filename, const char *extlist)
 
     r = extension(filename);
     if (*r == '.') {
-        return strcasefind(extlist, r + 1);
+        char buf[32];
+        char *p;
+
+        /* Match extensions in lowercase, strip extra extensions.
+         * thus ignoring cvs version tags (as in .#cutils.c.1.13)
+         */
+        qe_strtolower(buf, sizeof(buf), r + 1);
+        if ((p = strchr(buf, '.')) != NULL)
+            *p = '\0';
+        return strfind(extlist, buf);
     } else {
         return 0;
     }
