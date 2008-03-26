@@ -1381,9 +1381,9 @@ int buf_putc_utf8(buf_t *bp, int c)
 
         if (buf_avail(bp) >= len) {
             memcpy(bp->buf + bp->len, buf, len);
-            bp->buf[bp->len] = '\0';
             bp->pos += len;
             bp->len += len;
+            bp->buf[bp->len] = '\0';
             return len;
         }
         bp->pos += len;
