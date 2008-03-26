@@ -45,7 +45,7 @@ static const char *c_mode_types =
     "_Bool|_Complex|_Imaginary|";
 
 static const char *c_mode_extensions =
-    "c|h|y|e|cc|cs|cpp|cxx|hpp|hxx|idl|jav|java|js|qe|json|pcc";
+    "c|h|y|e|cc|cs|cpp|cxx|hpp|hxx|idl|jav|java|js|qe|json|pcc|C|l|lex";
 
 #if 0
 static int get_c_identifier(char *buf, int buf_size, unsigned int *p)

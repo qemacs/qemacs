@@ -240,6 +240,9 @@ static void build_dired_list(EditState *s, const char *path)
     s->b->flags |= BF_DIRED;
 
     ffst = find_file_open(hs->path, "*");
+    /* Should scan directory/filespec before computing lines to adjust
+     * filename gutter width
+     */
     while (!find_file_next(ffst, filename, sizeof(filename))) {
         if (lstat(filename, &st) < 0)
             continue;

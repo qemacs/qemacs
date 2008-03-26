@@ -1594,9 +1594,15 @@ static int reload_buffer(EditState *s, EditBuffer *b, FILE *f1)
         return 0;
 
     if (!f1) {
+        struct stat st;
+
+        if (stat(b->filename, &st) < 0 || !S_ISREG(st.st_mode))
+            return -1;
+
         f = fopen(b->filename, "r");
-        if (!f)
+        if (!f) {
             goto fail;
+        }
     } else {
         f = f1;
     }
@@ -1607,8 +1613,9 @@ static int reload_buffer(EditState *s, EditBuffer *b, FILE *f1)
     b->save_log = saved;
     if (!f1)
         fclose(f);
+
     if (ret < 0) {
-    fail:
+      fail:
         if (!f1) {
             put_status(s, "Could not load '%s'", b->filename);
         } else {
@@ -1733,6 +1740,7 @@ void do_set_mode(EditState *s, const char *name)
 void do_next_mode(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
+    char fname[MAX_FILENAME_SIZE];
     u8 buf[1024];
     ModeProbeData probe_data;
     int size;
@@ -1741,8 +1749,10 @@ void do_next_mode(EditState *s)
     size = eb_read(s->b, 0, buf, sizeof(buf));
     probe_data.buf = buf;
     probe_data.buf_size = size;
-    probe_data.filename = s->b->filename;
+    probe_data.real_filename = s->b->filename;
     probe_data.total_size = s->b->total_size;
+    probe_data.filename = reduce_filename(fname, sizeof(fname),
+                                          basename(s->b->filename));
     /* CG: should pass EditState? QEmacsState ? */
 
     m = m0 = s->mode;
@@ -5195,6 +5205,7 @@ static ModeDef *probe_mode(EditState *s, int mode, const uint8_t *buf,
                            int len, long total_size)
 {
     QEmacsState *qs = s->qe_state;
+    char fname[MAX_FILENAME_SIZE];
     EditBuffer *b;
     ModeDef *m, *selected_mode;
     ModeProbeData probe_data;
@@ -5209,9 +5220,11 @@ static ModeDef *probe_mode(EditState *s, int mode, const uint8_t *buf,
     probe_data.buf_size = len;
     p = memchr(buf, '\n', len);
     probe_data.line_len = p ? p - buf : len;
-    probe_data.filename = b->filename;
+    probe_data.real_filename = b->filename;
     probe_data.mode = mode;
     probe_data.total_size = total_size;
+    probe_data.filename = reduce_filename(fname, sizeof(fname),
+                                          basename(b->filename));
     /* CG: should pass EditState? QEmacsState ? */
 
     m = qs->first_mode;

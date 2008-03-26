@@ -180,6 +180,7 @@ void canonicalize_absolute_path(char *buf, int buf_size, const char *path1);
 const char *basename(const char *filename);
 const char *extension(const char *filename);
 char *get_dirname(char *dest, int size, const char *file);
+char *reduce_filename(char *dest, int size, const char *filename);
 int match_extension(const char *filename, const char *extlist);
 int remove_slash(char *buf);
 int append_slash(char *buf, int buf_size);
@@ -733,6 +734,7 @@ struct EditBuffer {
     int tab_size;
 
     EditBuffer *next; /* next editbuffer in qe_state buffer list */
+
     char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
     char filename[MAX_FILENAME_SIZE];   /* file name */
 
@@ -1007,7 +1009,8 @@ struct EditState {
 typedef struct DisplayState DisplayState;
 
 typedef struct ModeProbeData {
-    const char *filename;
+    const char *real_filename;
+    const char *filename;  /* reduced filename for mode matching purposes */
     const u8 *buf;
     int buf_size;
     int line_len;

@@ -277,7 +277,7 @@ const char *basename(const char *filename)
     if (base) {
         for (p = base; *p; p++) {
 #ifdef WIN32
-            /* Simplitic DOS filename support */
+            /* Simplistic DOS filename support */
             if (*p == '/' || *p == '\\' || *p == ':')
                 base = p + 1;
 #else
@@ -300,10 +300,8 @@ const char *extension(const char *filename)
         while (*p == '.')
             p++;
         for (; *p; p++) {
-            if (*p == '.') {
-                if (!ext || !qe_isdigit(p[1]))
-                    ext = p;
-            }
+            if (*p == '.')
+                ext = p;
         }
         if (!ext)
             ext = p;
@@ -336,22 +334,57 @@ char *get_dirname(char *dest, int size, const char *file)
     return dest;
 }
 
+char *reduce_filename(char *dest, int size, const char *filename)
+{
+    const char *base = basename(filename);
+    char *dbase, *ext, *p;
+
+    /* Copy path unchanged */
+    pstrncpy(dest, size, filename, base - filename);
+
+    /* Strip cvs temp file prefix */
+    if (base[0] == '.' && base[1] == '#' && base[2] != '\0')
+        base += 2;
+    
+    pstrcat(dest, size, base);
+
+    dbase = dest + (basename(dest) - dest);
+
+    /* Strip numeric extensions (vcs version numbers) */
+    for (;;) {
+        ext = dbase + (extension(dbase) - dbase);
+        if (*ext != '.' || !qe_isdigit(ext[1]))
+            break;
+        *ext = '\0';
+    }
+    
+    if (*ext == '.') {
+        /* Convert all upper case filenames with extension to lower
+         * case */
+        for (p = dbase; *p; p++) {
+            if (qe_islower(*p))
+                break;
+        }
+        if (!*p) {
+            qe_strtolower(dbase, dest + size - dbase, dbase);
+        }
+    }
+
+    /* Strip backup file suffix */
+    p = dbase + strlen(dbase);
+    if (p > dbase + 1 && p[-1] == '~')
+        *--p = '\0';
+
+    return dest;
+}
+
 int match_extension(const char *filename, const char *extlist)
 {
     const char *r;
 
     r = extension(filename);
     if (*r == '.') {
-        char buf[32];
-        char *p;
-
-        /* Match extensions in lowercase, strip extra extensions.
-         * thus ignoring cvs version tags (as in .#cutils.c.1.13)
-         */
-        qe_strtolower(buf, sizeof(buf), r + 1);
-        if ((p = strchr(buf, '.')) != NULL)
-            *p = '\0';
-        return strfind(extlist, buf);
+        return strfind(extlist, r + 1);
     } else {
         return 0;
     }
