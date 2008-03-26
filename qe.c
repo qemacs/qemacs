@@ -1937,32 +1937,44 @@ void do_count_lines(EditState *s)
 
 void do_what_cursor_position(EditState *s)
 {
-    char buf[128];
+    char buf[256];
+    buf_t out;
+    unsigned char cc;
     int line_num, col_num;
-    int c, pos, offset1;
+    int c, offset1, off;
 
-    buf[0] = '\0';
+    buf_init(&out, buf, sizeof(buf));
     if (s->offset < s->b->total_size) {
         c = eb_nextc(s->b, s->offset, &offset1);
-        pos = snprintf(buf, sizeof(buf), "char: ");
+        buf_puts(&out, "char: ");
         if (c < 32 || c == 127) {
-            pos += snprintf(buf + pos, sizeof(buf) - pos, "^%c ",
-                            (c + '@') & 127);
+            buf_printf(&out, "^%c ", (c + '@') & 127);
         } else
         if (c < 127 || c >= 160) {
-            /* CG: should protect against buffer overflow */
-            buf[pos++] = '\'';
-            pos += utf8_encode(buf + pos, c);
-            buf[pos++] = '\'';
-            buf[pos++] = ' ';
+            buf_put_byte(&out, '\'');
+            buf_putc_utf8(&out, c);
+            buf_put_byte(&out, '\'');
+            buf_put_byte(&out, ' ');
         }
-        pos += snprintf(buf + pos, sizeof(buf) - pos, "(%#3o %d 0x%2x)  ",
-                        c, c, c);
-        /* CG: should display buffer bytes if non ascii */
+        buf_printf(&out, "\\%03o %d 0x%02x ", c, c, c);
+
+        /* Display buffer bytes if char is encoded */
+        off = s->offset;
+        eb_read(s->b, off++, &cc, 1);
+        if (cc != c || off != offset1) {
+            buf_printf(&out, "[%02X", cc);
+            while (off < offset1) {
+                eb_read(s->b, off++, &cc, 1);
+                buf_printf(&out, " %02X", cc);
+            }
+            buf_put_byte(&out, ']');
+            buf_put_byte(&out, ' ');
+        }
+        buf_put_byte(&out, ' ');
     }
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
     put_status(s, "%spoint=%d column=%d mark=%d size=%d region=%d",
-               buf, s->offset, col_num, s->b->mark, s->b->total_size,
+               out.buf, s->offset, col_num, s->b->mark, s->b->total_size,
                abs(s->offset - s->b->mark));
 }
 
