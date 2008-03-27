@@ -299,15 +299,11 @@ QECharset *find_charset(const char *name)
 
 void charset_decode_init(CharsetDecodeState *s, QECharset *charset)
 {
-    unsigned short *table;
-
     s->table = NULL; /* fail safe */
     if (charset->table_alloc) {
-        table = qe_malloc_array(unsigned short, 256);
-        if (!table) {
+        s->table = qe_malloc_array(unsigned short, 256);
+        if (!s->table) {
             charset = &charset_8859_1;
-        } else {
-            s->table = table;
         }
     }
     s->charset = charset;
@@ -318,8 +314,7 @@ void charset_decode_init(CharsetDecodeState *s, QECharset *charset)
 
 void charset_decode_close(CharsetDecodeState *s)
 {
-    if (s->charset->table_alloc &&
-        s->charset != &charset_8859_1)
+    if (s->charset->table_alloc)
         qe_free(&s->table);
     /* safety */
     memset(s, 0, sizeof(CharsetDecodeState));
