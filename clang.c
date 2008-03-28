@@ -739,6 +739,14 @@ static int c_mode_probe(ModeProbeData *p)
     if (match_extension(p->filename, c_mode_extensions))
         return 80;
 
+    /* weaker match on C comment start */
+    if (p->buf[0] == '/' && p->buf[1] == '*')
+        return 60;
+
+    /* even weaker match on C++ comment start */
+    if (p->buf[0] == '/' && p->buf[1] == '/')
+        return 50;
+
     return 0;
 }
 
