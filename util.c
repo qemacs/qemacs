@@ -126,6 +126,16 @@ static void path_win_to_unix(char *buf)
 }
 #endif
 
+int is_directory(const char *path)
+{
+    struct stat st;
+
+    if (!stat(path, &st) && S_ISDIR(st.st_mode))
+        return 1;
+    else
+        return 0;
+}
+
 /* suppress redundant ".", ".." and "/" from paths */
 /* XXX: make it better */
 static void canonicalize_path1(char *buf, int buf_size, const char *path)
