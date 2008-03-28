@@ -305,6 +305,7 @@ static int bufed_init(void)
     bufed_mode.instance_size = sizeof(BufedState);
     bufed_mode.mode_init = bufed_mode_init;
     bufed_mode.mode_close = bufed_mode_close;
+    /* CG: not a good idea, display hook has side effect on layout */
     bufed_mode.display_hook = bufed_display_hook;
 
     /* first register mode */
