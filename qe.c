@@ -1024,6 +1024,7 @@ void text_scroll_up_down(EditState *s, int dir)
     line_height = get_line_height(s->screen, s->default_style);
     h = 1;
     if (abs(dir) == 2) {
+        /* one page at a time: C-v / M-v */
         dir /= 2;
         h = (s->height / line_height) - 1;
         if (h < 1)
@@ -6689,16 +6690,19 @@ void mouse_event(QEEvent *ev)
             if (mouse_x >= e->xleft && mouse_x < e->xleft + e->width &&
                 mouse_y >= e->ytop && mouse_y < e->ytop + e->height) {
                 if (e->mode->mouse_goto) {
-                    save_selection();
-                    e->mode->mouse_goto(e, mouse_x - e->xleft,
-                                        mouse_y - e->ytop);
                     switch (ev->button_event.button) {
                     case QE_BUTTON_LEFT:
+                        save_selection();
+                        e->mode->mouse_goto(e, mouse_x - e->xleft,
+                                            mouse_y - e->ytop);
                         motion_type = MOTION_TEXT;
                         motion_x = 0; /* indicate first move */
                         motion_target = e;
                         break;
                     case QE_BUTTON_MIDDLE:
+                        save_selection();
+                        e->mode->mouse_goto(e, mouse_x - e->xleft,
+                                            mouse_y - e->ytop);
                         do_yank(e);
                         break;
                     case QE_WHEEL_UP:
