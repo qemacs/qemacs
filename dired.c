@@ -51,8 +51,6 @@ typedef struct DiredItem {
     char name[1];
 } DiredItem;
 
-static void dired_view_file(EditState *s, const char *filename);
-
 static inline int dired_get_index(EditState *s) {
     return list_get_pos(s) - DIRED_HEADER;
 }
@@ -72,7 +70,49 @@ static void dired_free(EditState *s)
     ds->last_index = -1;
 
     /* reset cursor position */
+    s->offset_top = 0;
     s->offset = 0;
+}
+
+static char *dired_get_filename(EditState *s,
+                                char *buf, int buf_size, int index)
+{
+    DiredState *hs = s->mode_data;
+    const StringItem *item;
+    const DiredItem *dip;
+
+    /* CG: assuming buf_size > 0 */
+    buf[0] = '\0';
+
+    if (index < 0)
+        index = dired_get_index(s);
+
+    if (index < 0 || index >= hs->items.nb_items)
+        return NULL;
+
+    item = hs->items.items[index];
+    dip = item->opaque;
+
+    /* build filename */
+    /* CG: Should canonicalize path */
+    return makepath(buf, buf_size, hs->path, dip->name);
+}
+
+static int dired_find_target(EditState *s, const char *target)
+{
+    DiredState *hs = s->mode_data;
+    char filename[MAX_FILENAME_SIZE];
+    int i;
+
+    if (target) {
+        for (i = 0; i < hs->items.nb_items; i++) {
+            if (dired_get_filename(s, filename, sizeof(filename), i)
+            &&  strequal(filename, target)) {
+                return i;
+            }
+        }
+    }
+    return -1;
 }
 
 /* sort alphabetically with directories first */
@@ -116,7 +156,7 @@ static int dired_sort_func(const void *p1, const void *p2)
 }
 
 /* select current item */
-static void do_dired_sort(EditState *s)
+static void dired_sort_list(EditState *s)
 {
     DiredState *hs = s->mode_data;
     StringItem *item, *cur_item;
@@ -136,6 +176,7 @@ static void do_dired_sort(EditState *s)
     b = s->b;
     b->flags &= ~BF_READONLY;
     eb_delete(b, 0, b->total_size);
+    s->offset_top = 0;
     s->offset = 0;
     if (DIRED_HEADER)
         eb_printf(b, "  %s:\n", hs->path);
@@ -143,8 +184,10 @@ static void do_dired_sort(EditState *s)
         item = hs->items.items[i];
         dip = item->opaque;
         dip->offset = b->total_size;
-        if (item == cur_item)
+        if (item == cur_item) {
+            hs->last_index = i;
             s->offset = b->total_size;
+        }
         eb_printf(b, "%c %s\n", dip->mark, item->str);
     }
     b->modified = 0;
@@ -215,12 +258,13 @@ static void dired_sort(EditState *s, const char *sort_order)
             break;
         }
     }
-    do_dired_sort(s);
+    dired_sort_list(s);
 }
 
 #define MAX_COL_FILE_SIZE 32
 
-static void build_dired_list(EditState *s, const char *path)
+static void dired_build_list(EditState *s, const char *path,
+                             const char *target)
 {
     DiredState *hs = s->mode_data;
     FindFileState *ffst;
@@ -228,7 +272,7 @@ static void build_dired_list(EditState *s, const char *path)
     char line[1024], buf[1024];
     const char *p;
     struct stat st;
-    int ct, len;
+    int ct, len, index;
     StringItem *item;
 
     /* free previous list, if any */
@@ -314,28 +358,11 @@ static void build_dired_list(EditState *s, const char *path)
         }
     }
     find_file_close(ffst);
-    do_dired_sort(s);
-}
+    
+    dired_sort_list(s);
 
-static char *get_dired_filename(EditState *s,
-                                char *buf, int buf_size, int index)
-{
-    DiredState *hs = s->mode_data;
-    const StringItem *item;
-    const DiredItem *dip;
-
-    /* CG: assuming buf_size > 0 */
-    buf[0] = '\0';
-
-    if (index < 0 || index >= hs->items.nb_items)
-        return NULL;
-
-    item = hs->items.items[index];
-    dip = item->opaque;
-
-    /* build filename */
-    /* CG: Should canonicalize path */
-    return makepath(buf, buf_size, hs->path, dip->name);
+    index = dired_find_target(s, target);
+    s->offset = eb_goto_pos(s->b, index + DIRED_HEADER, 0);
 }
 
 /* select current item */
@@ -345,17 +372,16 @@ static void dired_select(EditState *s)
     char filename[MAX_FILENAME_SIZE];
     EditState *e;
 
-    if (!get_dired_filename(s, filename, sizeof(filename),
-                            dired_get_index(s))) {
+    if (!dired_get_filename(s, filename, sizeof(filename), -1))
         return;
-    }
 
     /* now we can act */
     if (lstat(filename, &st) < 0)
         return;
     if (S_ISDIR(st.st_mode)) {
-        build_dired_list(s, filename);
-    } else if (S_ISREG(st.st_mode)) {
+        dired_build_list(s, filename, NULL);
+    } else
+    if (S_ISREG(st.st_mode)) {
         e = find_window(s, KEY_RIGHT);
         if (e) {
             /* delete dired window */
@@ -415,20 +441,22 @@ static void dired_execute(EditState *s)
 static void dired_parent(EditState *s)
 {
     DiredState *hs = s->mode_data;
+    char target[MAX_FILENAME_SIZE];
     char filename[MAX_FILENAME_SIZE];
 
+    pstrcpy(target, sizeof(target), hs->path);
     makepath(filename, sizeof(filename), hs->path, "..");
 
-    /* CG: Should make current directory current item in parent */
-    build_dired_list(s, filename);
+    dired_build_list(s, filename, target);
 }
 
 static void dired_refresh(EditState *s)
 {
     DiredState *hs = s->mode_data;
+    char target[MAX_FILENAME_SIZE];
 
-    /* CG: Should try and keep current entry */
-    build_dired_list(s, hs->path);
+    dired_get_filename(s, target, sizeof(target), -1);
+    dired_build_list(s, hs->path, target);
 }
 
 static void dired_display_hook(EditState *s)
@@ -449,8 +477,7 @@ static void dired_display_hook(EditState *s)
     /* Should not rely on last_index! */
     if (index != ds->last_index) {
         ds->last_index = index;
-        if (get_dired_filename(s, filename, sizeof(filename),
-                               dired_get_index(s))) {
+        if (dired_get_filename(s, filename, sizeof(filename), -1)) {
             dired_view_file(s, filename);
         }
     }
@@ -465,7 +492,7 @@ static int dired_mode_init(EditState *s, ModeSavedData *saved_data)
     hs = s->mode_data;
     hs->sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
 
-    build_dired_list(s, s->b->filename);
+    dired_build_list(s, s->b->filename, NULL);
 
     return 0;
 }
@@ -491,12 +518,12 @@ static ModeDef dired_mode;
    used */
 void do_dired(EditState *s)
 {
-    DiredState *hs;
     QEmacsState *qs = s->qe_state;
-    EditBuffer *b, *b0;
-    EditState *e, *e1;
-    int width, index, i;
+    EditBuffer *b;
+    EditState *e;
+    int width, index;
     char filename[MAX_FILENAME_SIZE], *p;
+    char target[MAX_FILENAME_SIZE];
 
     /* Should take directory argument with optional switches,
      * find dired window if exists,
@@ -504,40 +531,26 @@ void do_dired(EditState *s)
      * recursive listing and multi directory patterns.
      */
 
-    /* remember current buffer for target positioning, because
-     * s may be destroyed by  insert_window_left
-     */
-    b0 = s->b;
-
     /* Should reuse previous dired buffer for same filespec */
     b = eb_scratch("*dired*", BF_READONLY | BF_SYSTEM);
 
-    /* set the filename to the directory of the current file */
-    pstrcpy(filename, sizeof(filename), s->b->filename);
-    p = strrchr(filename, '/');
-    if (p)
-        *p = '\0';
-    canonicalize_absolute_path(filename, sizeof(filename), filename);
+    /* Remember target as current current buffer filename */
+    pstrcpy(target, sizeof(target), s->b->filename);
+
+    /* Set the filename to the directory of the current file */
+    canonicalize_absolute_path(filename, sizeof(filename), target);
+    if (!is_directory(filename)) {
+        p = strrchr(filename, '/');
+        if (p)
+            *p = '\0';
+    }
     eb_set_filename(b, filename);
 
     width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
     edit_set_mode(e, &dired_mode, NULL);
-    hs = e->mode_data;
 
-    e1 = find_window(e, KEY_RIGHT);
-    if (e1)
-        b0 = e1->b;
-
-    index = 0;
-    /* CG: target file should be an argument to this command */
-    for (i = 0; i < hs->items.nb_items; i++) {
-        if (get_dired_filename(e, filename, sizeof(filename), i)
-        &&  strequal(filename, b0->filename)) {
-            index = i;
-            break;
-        }
-    }
+    index = dired_find_target(e, target);
     e->offset = eb_goto_pos(e->b, index + DIRED_HEADER, 0);
 
     /* modify active window */
@@ -606,6 +619,7 @@ static int dired_init(void)
     dired_mode.mode_probe = dired_mode_probe;
     dired_mode.mode_init = dired_mode_init;
     dired_mode.mode_close = dired_mode_close;
+    /* CG: not a good idea, display hook has side effect on layout */
     dired_mode.display_hook = dired_display_hook;
 
     /* first register mode */
