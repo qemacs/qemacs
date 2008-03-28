@@ -332,8 +332,7 @@ static int term_init(QEditScreen *s, int w, int h)
 #ifdef CONFIG_DOUBLE_BUFFER
     dbuffer = XCreatePixmap(display, window, xsize, ysize, attr.depth);
     /* erase pixmap */
-    XFillRectangle(display, dbuffer, gc,
-                   0, 0, xsize, ysize);
+    XFillRectangle(display, dbuffer, gc, 0, 0, xsize, ysize);
     update_reset();
 #else
     dbuffer = window;
@@ -438,8 +437,11 @@ static void term_close(__unused__ QEditScreen *s)
     XCloseDisplay(display);
 }
 
-static void term_resize(QEditScreen *s, int w, int h)
+static int term_resize(QEditScreen *s, int w, int h)
 {
+    if (s->width == w && s->height == h)
+        return 0;
+
     s->width = w;
     s->height = h;
 #ifdef CONFIG_DOUBLE_BUFFER
@@ -447,6 +449,7 @@ static void term_resize(QEditScreen *s, int w, int h)
     XFreePixmap(display, dbuffer);
     dbuffer = XCreatePixmap(display, window, w, h, attr.depth);
 #endif
+    return 1;
 }
 
 static unsigned long get_x11_color(QEColor color)
@@ -1177,6 +1180,56 @@ static int x11_is_user_input_pending(__unused__ QEditScreen *s)
     }
 }
 
+typedef struct QExposeRegion QExposeRegion;
+struct QExposeRegion {
+    int pending;
+    /* simplistic single rectangle region */ 
+    int x0, y0, x1, y1;
+};
+
+static void qe_expose_reset(QEditScreen *s, QExposeRegion *rgn)
+{
+    rgn->pending = 0;
+    rgn->x0 = rgn->y0 = INT_MAX;
+    rgn->x1 = rgn->y1 = INT_MIN;
+}
+
+static void qe_expose_set(QEditScreen *s, QExposeRegion *rgn,
+                          int x, int y, int width, int height)
+{
+    rgn->pending = 1;
+    rgn->x0 = x;
+    rgn->y0 = y;
+    rgn->x1 = x + width;
+    rgn->y1 = y + height;
+}
+
+static void qe_expose_add(QEditScreen *s, QExposeRegion *rgn,
+                          int x, int y, int width, int height)
+{
+    rgn->pending++;
+    if (rgn->x0 > x)
+        rgn->x0 = x;
+    if (rgn->y0 > y)
+        rgn->y0 = y;
+    if (rgn->x1 < x + width)
+        rgn->x1 = x + width;
+    if (rgn->y1 > y + height)
+        rgn->y1 = y + height;
+}
+
+static void qe_expose_flush(QEditScreen *s, QExposeRegion *rgn)
+{
+    if (rgn->pending) {
+        QEEvent ev1, *ev = &ev1;
+
+        /* Ignore expose region */
+        ev->expose_event.type = QE_EXPOSE_EVENT;
+        qe_handle_event(ev);
+        qe_expose_reset(s, rgn);
+    }
+}
+
 /* called when an X event happens. dispatch events to qe_handle_event() */
 static void x11_handle_event(void *opaque)
 {
@@ -1186,34 +1239,37 @@ static void x11_handle_event(void *opaque)
     KeySym keysym;
     int shift, ctrl, meta, len, key;
     QEEvent ev1, *ev = &ev1;
+    QExposeRegion rgn1, *rgn = &rgn1;
 
-    for (;;) {
-        if (!XPending(display))
-            return;
+    qe_expose_reset(s, rgn);
+
+    while (XPending(display)) {
         XNextEvent(display, &xev);
         switch (xev.type) {
         case ConfigureNotify:
-            {
-                int w, h;
-                w = xev.xconfigure.width;
-                h = xev.xconfigure.height;
-                term_resize(s, w, h);
-                goto expose_event;
+            if (term_resize(s, xev.xconfigure.width, xev.xconfigure.height)) {
+                qe_expose_set(s, rgn, 0, 0, s->width, s->height);
             }
+            break;
+
         case Expose:
-        expose_event:
-            ev->expose_event.type = QE_EXPOSE_EVENT;
-            qe_handle_event(ev);
+            {
+                XExposeEvent *xe = &xev.xexpose;
+
+                qe_expose_add(s, rgn, xe->x, xe->y, xe->width, xe->height);
+            }
             break;
 
         case ButtonPress:
         case ButtonRelease:
             {
-                XButtonEvent *xe = (XButtonEvent *)&xev;
+                XButtonEvent *xe = &xev.xbutton;
+
                 if (xev.type == ButtonPress)
                     ev->button_event.type = QE_BUTTON_PRESS_EVENT;
                 else
                     ev->button_event.type = QE_BUTTON_RELEASE_EVENT;
+
                 ev->button_event.x = xe->x;
                 ev->button_event.y = xe->y;
                 switch (xe->button) {
@@ -1228,22 +1284,24 @@ static void x11_handle_event(void *opaque)
                     break;
                 case Button4:
                     ev->button_event.button = QE_WHEEL_UP;
-                break;
+                    break;
                 case Button5:
                     ev->button_event.button = QE_WHEEL_DOWN;
                     break;
                 default:
-                    return;
+                    continue;
                 }
+                qe_expose_flush(s, rgn);
+                qe_handle_event(ev);
             }
-            qe_handle_event(ev);
             break;
         case MotionNotify:
             {
-                XMotionEvent *xe = (XMotionEvent *)&xev;
+                XMotionEvent *xe = &xev.xmotion;
                 ev->button_event.type = QE_MOTION_EVENT;
                 ev->button_event.x = xe->x;
                 ev->button_event.y = xe->y;
+                qe_expose_flush(s, rgn);
                 qe_handle_event(ev);
             }
             break;
@@ -1252,26 +1310,26 @@ static void x11_handle_event(void *opaque)
             {
                 /* ask qemacs to stop visual notification of selection */
                 ev->type = QE_SELECTION_CLEAR_EVENT;
+                qe_expose_flush(s, rgn);
                 qe_handle_event(ev);
             }
             break;
         case SelectionRequest:
-            selection_send((XSelectionRequestEvent *)&xev);
+            qe_expose_flush(s, rgn);
+            selection_send(&xev.xselectionrequest);
             break;
         case KeyPress:
 #ifdef X_HAVE_UTF8_STRING
             /* only present since XFree 4.0.2 */
             {
                 Status status;
-                len = Xutf8LookupString(xic, (XKeyEvent *)&xev, buf,
-                                        sizeof(buf),
+                len = Xutf8LookupString(xic, &xev.xkey, buf, sizeof(buf),
                                         &keysym, &status);
             }
 #else
             {
                 static XComposeStatus status;
-                len = XLookupString((XKeyEvent *)&xev, buf,
-                                    sizeof(buf),
+                len = XLookupString(&xev.xkey, buf, sizeof(buf),
                                     &keysym, &status);
             }
 #endif
@@ -1371,6 +1429,7 @@ static void x11_handle_event(void *opaque)
                     got_key:
                         ev->key_event.type = QE_KEY_EVENT;
                         ev->key_event.key = key;
+                        qe_expose_flush(s, rgn);
                         qe_handle_event(ev);
                     }
                     break;
@@ -1378,6 +1437,7 @@ static void x11_handle_event(void *opaque)
             }
         }
     }
+    qe_expose_flush(s, rgn);
 }
 
 /* bitmap handling */
