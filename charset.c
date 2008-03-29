@@ -288,6 +288,9 @@ QECharset *find_charset(const char *name)
 {
     QECharset *charset;
 
+    if (!name)
+        return NULL;
+
     for (charset = first_charset; charset != NULL; charset = charset->next) {
         if (!strxcmp(charset->name, name)
         ||  strcasefind(charset->aliases, name)) {
