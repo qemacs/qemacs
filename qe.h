@@ -940,7 +940,7 @@ struct EditState {
     int mouse_force_highlight; /* if true, mouse can force highlight
                                   (list mode only) */
     /* low level colorization function */
-    GetColorizedLineFunc get_colorized_line_func;
+    GetColorizedLineFunc get_colorized_line;
     /* colorization function */
     ColorizeFunc colorize_func;
     /* default text style */
@@ -1153,6 +1153,13 @@ struct QEmacsState {
     int hide_status; /* true if status should be hidden */
     int complete_refresh;
     int is_full_screen;
+    /* select display aspect for non-latin1 characters:
+     * 0 (auto) -> display as unicode on utf-8 capable ttys and x11
+     * 1 (nc) -> display as ? or ?? non character symbols
+     * 2 (escape) -> display as \uXXXX escape sequence
+     */
+    int show_unicode;
+    
     /* commands */
     int flag_split_window_change_focus;
     int backspace_is_control_h;
@@ -1171,6 +1178,7 @@ struct QEmacsState {
     int yank_current;
     int argc;  /* command line arguments */
     char **argv;
+    char *tty_charset;
     char res_path[1024];        /* exported as QEPATH */
     char status_shadow[MAX_SCREEN_WIDTH];
     QErrorContext ec;
@@ -1535,8 +1543,10 @@ int text_backward_offset(EditState *s, int offset);
 int text_display(EditState *s, DisplayState *ds, int offset);
 
 void set_colorize_func(EditState *s, ColorizeFunc colorize_func);
-int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                       int *offsetp, int line_num);
+int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                               int *offsetp, int line_num);
+int get_non_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                           int *offsetp, int line_num);
 
 void do_char(EditState *s, int key, int argval);
 void do_set_mode(EditState *s, const char *name);
@@ -1670,6 +1680,7 @@ void mouse_event(QEEvent *ev);
 int parse_config_file(EditState *s, const char *filename);
 int parse_command_line(int argc, char **argv);
 void set_user_option(const char *user);
+void set_tty_charset(const char *name);
 
 /* hex.c */
 

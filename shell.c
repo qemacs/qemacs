@@ -1436,7 +1436,7 @@ static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
     s->wrap = WRAP_TRUNCATE;
     s->interactive = 1;
     set_colorize_func(s, NULL);
-    s->get_colorized_line_func = shell_get_colorized_line;
+    s->get_colorized_line = shell_get_colorized_line;
     return 0;
 }
 

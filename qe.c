@@ -180,16 +180,16 @@ static int qe_register_binding1(unsigned int *keys, int nb_keys,
     for (i = 0; i < nb_keys; i++) {
         p->keys[i] = keys[i];
     }
-    /* find position: mode keys should be before generic keys */
+    /* find position: mode keys should be before generic keys, but
+     * bindings must be prepended to override previous bindings
+     */
+    lp = &qs->first_key;
     if (m == NULL) {
-        lp = &qs->first_key;
-        while (*lp != NULL) lp = &(*lp)->next;
-        *lp = p;
-        p->next = NULL;
-    } else {
-        p->next = qs->first_key;
-        qs->first_key = p;
+        while (*lp != NULL && (*lp)->mode != NULL)
+            lp = &(*lp)->next;
     }
+    p->next = *lp;
+    *lp = p;
     return 0;
 }
 
@@ -3052,8 +3052,8 @@ static int bidir_compute_attributes(TypeLink *list_tab, int max_size,
 
 #define COLORIZED_LINE_PREALLOC_SIZE 64
 
-int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                       int *offsetp, int line_num)
+int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                               int *offsetp, int line_num)
 {
     int len, l, line, col, offset;
     int colorize_state;
@@ -3129,12 +3129,12 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
     s->colorize_nb_lines = 0;
     s->colorize_nb_valid_lines = 0;
     s->colorize_max_valid_offset = INT_MAX;
-    s->get_colorized_line_func = NULL;
+    s->get_colorized_line = get_non_colorized_line;
     s->colorize_func = NULL;
 
     if (colorize_func) {
         eb_add_callback(s->b, colorize_callback, s);
-        s->get_colorized_line_func = get_colorized_line;
+        s->get_colorized_line = generic_get_colorized_line;
         s->colorize_func = colorize_func;
     }
 }
@@ -3143,9 +3143,21 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
 
 void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
 {
+    s->get_colorized_line = get_non_colorized_line;
 }
 
 #endif /* CONFIG_TINY */
+
+int get_non_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                           int *offsetp, int line_num)
+{
+    /* compute line color */
+    int len = eb_get_line(s->b, buf, buf_size, offsetp);
+    // XXX: should force \0 instead of \n
+    buf[len] = '\n';
+
+    return len;
+}
 
 #define RLE_EMBEDDINGS_SIZE    128
 #define COLORED_MAX_LINE_SIZE  1024
@@ -3161,7 +3173,7 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     int char_index, colored_nb_chars;
 
     line_num = 0; /* avoid warning */
-    if (s->line_numbers || s->get_colorized_line_func) {
+    if (s->line_numbers || s->get_colorized_line != get_non_colorized_line) {
         eb_get_pos(s->b, &line_num, &col_num, offset);
     }
 
@@ -3209,16 +3221,16 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     /* colorize */
     colored_nb_chars = 0;
     offset0 = offset;
-    if (s->get_colorized_line_func) {
-        colored_nb_chars = s->get_colorized_line_func(s, colored_chars,
-                                                      countof(colored_chars),
-                                                      &offset0, line_num);
+    if (s->get_colorized_line != get_non_colorized_line) {
+        colored_nb_chars = s->get_colorized_line(s, colored_chars,
+                                                 countof(colored_chars),
+                                                 &offset0, line_num);
     }
 
 #if 1
     /* colorize regions */
     if (s->curline_style || s->region_style) {
-        if (!s->get_colorized_line_func) {
+        if (s->get_colorized_line == get_non_colorized_line) {
             offset0 = offset;
             colored_nb_chars = eb_get_line(s->b, colored_chars,
                 countof(colored_chars), &offset0);
@@ -3288,7 +3300,7 @@ int text_display(EditState *s, DisplayState *ds, int offset)
                 /* currently, we cannot display these chars */
                 display_printf(ds, offset0, offset, "\\U%08x", c);
             } else
-            if (c >= 256 && s->screen->charset != &charset_utf8) {
+            if (c >= 256 && s->qe_state->show_unicode == 1) {
                 display_printf(ds, offset0, offset, "\\u%04x", c);
             } else {
                 display_char_bidir(ds, offset0, offset, embedding_level, c);
@@ -7449,11 +7461,19 @@ void set_user_option(const char *user)
             "/usr/lib/qe");
 }
 
+void set_tty_charset(const char *name)
+{
+    qe_free(&qe_state.tty_charset);
+    qe_state.tty_charset = qe_strdup(name);
+}
+
 static CmdOptionDef cmd_options[] = {
     { "help", "h", NULL, 0, "display this help message and exit",
       { .func_noarg = show_usage }},
     { "no-init-file", "q", NULL, CMD_OPT_BOOL, "do not load config files",
       { .int_ptr = &no_init_file }},
+    { "ttycharset", "c", "CHARSET", CMD_OPT_ARG, "specify tty charset",
+      { .func_arg = set_tty_charset }},
     { "user", "u", "USER", CMD_OPT_ARG, "load ~USER/.qe/config instead of your own",
       { .func_arg = set_user_option }},
     { "version", "V", NULL, 0, "display version information and exit",
@@ -7674,7 +7694,7 @@ static void qe_init(void *opaque)
         }
     }
 
-    put_status(NULL, "%s display  %dx%d",
+    put_status(NULL, "%s display %dx%d",
                dpy->name, qs->screen->width, qs->screen->height);
 
     qe_event_init();

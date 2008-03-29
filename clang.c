@@ -379,7 +379,7 @@ static void do_c_indent(EditState *s)
         line_num--;
         offsetl = eb_prev_line(s->b, offsetl);
         offset1 = offsetl;
-        len = get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+        len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
         /* store indent position */
         pos1 = find_indent1(s, buf);
         p = buf + len;
@@ -494,10 +494,10 @@ static void do_c_indent(EditState *s)
         }
     prev_line: ;
     }
- end_parse:
+  end_parse:
     /* compute special cases which depend on the chars on the current line */
     offset1 = offset;
-    len = get_colorized_line(s, buf, countof(buf), &offset1, line_num1);
+    len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num1);
 
     if (stack_ptr == 0) {
         if (!pos && lpos >= 0) {
@@ -605,7 +605,7 @@ static void do_c_forward_block(EditState *s, int dir)
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
     offset = eb_goto_bol2(s->b, s->offset, &pos);
     offset1 = offset;
-    len = get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+    len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
     style = buf[pos] >> STYLE_SHIFT;
     level = 0;
 
@@ -617,7 +617,7 @@ static void do_c_forward_block(EditState *s, int dir)
                 line_num--;
                 offset = eb_prev_line(s->b, offset);
                 offset1 = offset;
-                pos = get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+                pos = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
                 continue;
             }
             c = buf[--pos];
@@ -670,7 +670,7 @@ static void do_c_forward_block(EditState *s, int dir)
                 if (offset >= s->b->total_size)
                     break;
                 offset1 = offset;
-                len = get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+                len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
                 continue;
             }
             c = buf[pos];

@@ -35,7 +35,9 @@
 
 typedef unsigned int TTYChar;
 #define TTYCHAR(ch,fg,bg)   ((ch) | ((fg) << 16) | ((bg) << 24))
+#define TTYCHAR2(ch,col)    ((ch) | ((col) << 16))
 #define TTYCHAR_GETCH(cc)   ((cc) & 0xFFFF)
+#define TTYCHAR_GETCOL(cc)  (((cc) >> 16) & 0xFFFF)
 #define TTYCHAR_GETFG(cc)   (((cc) >> 16) & 0xFF)
 #define TTYCHAR_GETBG(cc)   (((cc) >> 24) & 0xFF)
 #define TTYCHAR_DEFAULT     TTYCHAR(' ', 0, 0)
@@ -174,28 +176,39 @@ static int tty_term_init(QEditScreen *s,
                );
 #endif
 
-    s->charset = &charset_vt100;
+    /* Get charset from command line option */
+    s->charset = find_charset(qe_state.tty_charset);
 
-    /* test UTF8 support by looking at the cursor position (idea from
-       Ricardas Cepas <rch@pub.osf.lt>). Since uClibc actually tests
-       to ensure that the format string is a valid multibyte sequence
-       in the current locale (ANSI/ISO C99), use a format specifier of
-       %s to avoid printf() failing with EILSEQ. */
-    /* CG: Should also have a command line switch */
-    if (tty_state.term_code != TERM_CYGWIN) {
-        int y, x, n;
+    if (!s->charset && !isatty(fileno(s->STDOUT)))
+        s->charset = &charset_utf8;
 
-        /*               ^X  ^Z    ^M   \170101  */
-        //printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
-        /* Just print utf-8 encoding for eacute and check cursor position */
-        TTY_FPRINTF(s->STDOUT, "%s", "\030\032" "\r\xC3\xA9" "\033[6n\033D");
-        fflush(s->STDOUT);
-        n = fscanf(s->STDIN, "\033[%u;%u", &y, &x);  /* get cursor position */
-        TTY_FPRINTF(s->STDOUT, "\r   \r");        /* go back, erase 3 chars */
-        if (n == 2 && x == 2) {
-            s->charset = &charset_utf8;
+    if (!s->charset) {
+        s->charset = &charset_8859_1;
+
+        /* Test UTF8 support by looking at the cursor position (idea
+         * from Ricardas Cepas <rch@pub.osf.lt>). Since uClibc actually
+         * tests to ensure that the format string is a valid multibyte
+         * sequence in the current locale (ANSI/ISO C99), use a format
+         * specifier of %s to avoid printf() failing with EILSEQ.
+         */
+        if (tty_state.term_code != TERM_CYGWIN) {
+            int y, x, n;
+
+            /*               ^X  ^Z    ^M   \170101  */
+            //printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
+            /* Just print utf-8 encoding for eacute and check cursor position */
+            TTY_FPRINTF(s->STDOUT, "%s",
+                        "\030\032" "\r\xC3\xA9" "\033[6n\033D");
+            fflush(s->STDOUT);
+            n = fscanf(s->STDIN, "\033[%u;%u", &y, &x);  /* get cursor position */
+            TTY_FPRINTF(s->STDOUT, "\r   \r");        /* go back, erase 3 chars */
+            if (n == 2 && x == 2) {
+                s->charset = &charset_utf8;
+            }
         }
     }
+    put_status(NULL, "tty charset: %s", s->charset->name);
+
     atexit(tty_term_exit);
 
     sig.sa_handler = tty_resize;
@@ -707,9 +720,8 @@ static void tty_term_set_clip(__unused__ QEditScreen *s,
 static void tty_term_flush(QEditScreen *s)
 {
     TTYState *ts = s->private;
-    TTYChar *ptr, *ptr1, *ptr2, cc;
-    int y, shadow, ch, bgcolor, fgcolor, shifted, nc;
-    char buf[10];
+    TTYChar *ptr, *ptr1, *ptr2, *ptr3, *ptr4, cc, blankcc;
+    int y, shadow, ch, bgcolor, fgcolor, shifted;
 
     bgcolor = -1;
     fgcolor = -1;
@@ -739,6 +751,12 @@ static void tty_term_flush(QEditScreen *s)
             ptr2[shadow] = cc;
 
             /* ptr1 points to first difference on row */
+            /* find the last non blank char on row */
+            ptr3 = ptr2;
+            blankcc = TTYCHAR2(' ', TTYCHAR_GETCOL(ptr2[-1]));
+            while (ptr3 > ptr1 && ptr3[-1] == blankcc) {
+                --ptr3;
+            }
             /* scan for last difference on row: */
             while (ptr2 > ptr1 && ptr2[-1] == ptr2[shadow - 1]) {
                 --ptr2;
@@ -748,8 +766,11 @@ static void tty_term_flush(QEditScreen *s)
 
             TTY_FPRINTF(s->STDOUT, "\033[%d;%dH", y + 1, ptr1 - ptr + 1);
 
-            /* CG: should scan for sequences of blanks */
-            while (ptr1 < ptr2) {
+            ptr4 = ptr2;
+            if (ptr2 > ptr3 + 3)
+                ptr4 = ptr3;
+
+            while (ptr1 < ptr4) {
                 cc = *ptr1;
                 ptr1[shadow] = cc;
                 ptr1++;
@@ -791,7 +812,7 @@ static void tty_term_flush(QEditScreen *s)
                         // was in qemacs-0.3.1.g2.gw/tty.c:
                         // if (cc == 0x2500)
                         //    printf("\016x\017");
-                        /* s->charset is either vt100 or utf-8 */
+                        /* s->charset is either latin1 or utf-8 */
                         if (shifted) {
                             TTY_FPUTS("\033(B", s->STDOUT);
                             shifted = 0;
@@ -810,9 +831,28 @@ static void tty_term_flush(QEditScreen *s)
                         //    }
                         //} else
                         {
-                            nc = unicode_to_charset(buf, cc, s->charset);
+                            u8 buf[10], *q;
+                            int nc;
+
+                            //nc = unicode_to_charset(buf, ch, s->charset);
+
+                            q = s->charset->encode_func(s->charset, buf, ch);
+                            if (!q) {
+                                if (s->charset == &charset_8859_1) {
+                                    /* upside down question */
+                                    buf[0] = 0xBF;
+                                } else {
+                                    buf[0] = '?';
+                                }
+                                q = buf + 1;
+                                if (tty_term_glyph_width(s, ch) == 2) {
+                                    *q++ = '?';
+                                }
+                            }
+
+                            nc = q - buf;
                             if (nc == 1) {
-                                TTY_PUTC(*(u8 *)buf, s->STDOUT);
+                                TTY_PUTC(*buf, s->STDOUT);
                             } else
                             {
                                 TTY_FWRITE(buf, 1, nc, s->STDOUT);
@@ -824,6 +864,19 @@ static void tty_term_flush(QEditScreen *s)
             if (shifted) {
                 TTY_FPUTS("\033(B", s->STDOUT);
                 shifted = 0;
+            }
+            if (ptr1 < ptr2) {
+                /* More differences to synch in shadow, erase eol */
+                cc = *ptr1;
+                if (bgcolor != (int)TTYCHAR_GETBG(cc)) {
+                    bgcolor = TTYCHAR_GETBG(cc);
+                    TTY_FPRINTF(s->STDOUT, "\033[%dm", 40 + bgcolor);
+                }
+                TTY_FPUTS("\033[K", s->STDOUT);
+                while (ptr1 < ptr2) {
+                    ptr1[shadow] = cc;
+                    ptr1++;
+                }
             }
         }
     }

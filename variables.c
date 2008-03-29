@@ -34,6 +34,8 @@ static VarDef var_table[] = {
     S_VAR( "ignore-spaces", ignore_spaces, VAR_NUMBER, VAR_RW )
     S_VAR( "hilite-region", hilite_region, VAR_NUMBER, VAR_RW )
     S_VAR( "mmap-threshold", mmap_threshold, VAR_NUMBER, VAR_RW )
+    S_VAR( "show-unicode", show_unicode, VAR_NUMBER, VAR_RW )
+
 
     //B_VAR( "screen-charset", charset, VAR_NUMBER, VAR_RW )
 
