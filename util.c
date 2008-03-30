@@ -878,10 +878,11 @@ static int strtokey1(const char **pp)
     if (p[0] == 'C' && p[1] == '-' && p1 == p + 3) {
         /* control */
         key = KEY_CTRL(p[2]);
+        *pp = p1;
     } else {
         key = utf8_decode(&p);
+        *pp = p;
     }
-    *pp = p1;
 
     return key;
 }

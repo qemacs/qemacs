@@ -1168,6 +1168,7 @@ struct QEmacsState {
     void *this_cmd_func; /* current executing command */
     /* keyboard macros */
     int defining_macro;
+    int executing_macro;
     unsigned short *macro_keys;
     int nb_macro_keys;
     int macro_keys_size;

@@ -3910,25 +3910,10 @@ void do_end_macro(EditState *s)
     put_status(s, "Keyboard macro defined");
 }
 
-static void do_call_macro_bh(__unused__ void *opaque)
-{
-    QEmacsState *qs = &qe_state;
-    int key;
-
-    /* XXX: what to do if asynchronous commands ? Command completion
-       should be wait */
-    for (qs->macro_key_index = 0;
-         qs->macro_key_index < qs->nb_macro_keys;
-         qs->macro_key_index++) {
-        key = qs->macro_keys[qs->macro_key_index];
-        qe_key_process(key);
-    }
-    qs->macro_key_index = -1;
-}
-
 void do_call_macro(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
+    int key;
 
     if (qs->defining_macro) {
         qs->defining_macro = 0;
@@ -3937,14 +3922,28 @@ void do_call_macro(EditState *s)
     }
 
     if (qs->nb_macro_keys > 0) {
-        register_bottom_half(do_call_macro_bh, NULL);
+        /* CG: should share code with do_execute_macro */
+        for (qs->macro_key_index = 0;
+             qs->macro_key_index < qs->nb_macro_keys;
+             qs->macro_key_index++) {
+            key = qs->macro_keys[qs->macro_key_index];
+            qe_key_process(key);
+        }
+        qs->macro_key_index = -1;
     }
 }
 
 void do_execute_macro_keys(__unused__ EditState *s, const char *keys)
 {
-    int key;
+    QEmacsState *qs = s->qe_state;
     const char *p;
+    int key;
+
+    qs->executing_macro++;
+
+    /* Interactive commands get their input from the macro, unless some
+     * suspend mechanism is added to create interactive macros.
+     */
 
     p = keys;
     for (;;) {
@@ -3954,6 +3953,7 @@ void do_execute_macro_keys(__unused__ EditState *s, const char *keys)
         key = strtokey(&p);
         qe_key_process(key);
     }
+    qs->executing_macro--;
 }
 
 void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
@@ -3965,6 +3965,10 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
 
     size = strlen(name) + 1 + 2 + strlen(keys) + 2;
     buf = qe_malloc_array(char, size);
+
+    /* CG: should parse macro keys to an array and pass index 
+     * to do_execute_macro.
+     */
     snprintf(buf, size, "%s%cS{%s}", name, 0, keys);
 
     def = qe_mallocz_array(CmdDef, 2);
@@ -4052,10 +4056,8 @@ void qe_ungrab_keys(void)
 }
 
 /* init qe key handling context */
-static void qe_key_init(void)
+static void qe_key_init(QEKeyContext *c)
 {
-    QEKeyContext *c = &key_ctx;
-
     c->is_universal_arg = 0;
     c->is_escape = 0;
     c->noargval = 1;
@@ -4075,11 +4077,11 @@ static void qe_key_process(int key)
     char buf1[128];
     int len;
 
-    if (qs->defining_macro) {
+    if (qs->defining_macro && !qs->executing_macro) {
         macro_add_key(key);
     }
 
-again:
+  again:
     if (c->grab_key_cb) {
         c->grab_key_cb(c->grab_key_opaque, key);
         /* allow key_grabber to quit and unget last key */
@@ -4091,7 +4093,7 @@ again:
 
     /* safety check */
     if (c->nb_keys >= MAX_KEYS) {
-        qe_key_init();
+        qe_key_init(c);
         c->describe_key = 0;
         return;
     }
@@ -4164,7 +4166,7 @@ again:
         put_status(s, "No command on %s",
                    keys_to_str(buf1, sizeof(buf1), c->keys, c->nb_keys));
         c->describe_key = 0;
-        qe_key_init();
+        qe_key_init(c);
         dpy_flush(&global_screen);
         return;
     } else
@@ -4194,9 +4196,16 @@ again:
                            d->name);
                 c->describe_key = 0;
             } else {
-                exec_command(s, d, c->argval);
+                int argval = c->argval;
+
+                /* To allow recursive all to qe_key_process, especially
+                 * from macros, we reset the QEKeyContext before
+                 * dispatching the command
+                 */
+                qe_key_init(c);
+                exec_command(s, d, argval);
             }
-            qe_key_init();
+            qe_key_init(c);
             edit_display(qs);
             dpy_flush(&global_screen);
             /* CG: should move ungot key handling to generic event dispatch */
@@ -7675,7 +7684,7 @@ static void qe_init(void *opaque)
     if (!no_init_file)
         do_load_config_file(s, NULL);
 
-    qe_key_init();
+    qe_key_init(&key_ctx);
 
     /* select the suitable display manager */
     for (;;) {
