@@ -444,7 +444,7 @@ void eb_set_buffer_name(EditBuffer *b, const char *name1)
     /* set the buffer name to NULL since it will be changed */
     b->name[0] = '\0';
     pos = strlen(name);
-    n = 2;
+    n = 1;
     while (eb_find(name) != NULL) {
         snprintf(name + pos, sizeof(name) - pos, "<%d>", n);
         n++;
