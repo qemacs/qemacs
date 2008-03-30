@@ -484,8 +484,12 @@ EditBuffer *eb_new(const char *name, int flags)
     b->next = *pb;
     *pb = b;
 
-    /* CG: default charset should be selectable */
-    eb_set_charset(b, &charset_8859_1);
+    if (flags & BF_UTF8) {
+        eb_set_charset(b, &charset_utf8);
+    } else {
+        /* CG: default charset should be selectable */
+        eb_set_charset(b, &charset_8859_1);
+    }
 
     /* add mark move callback */
     eb_add_callback(b, eb_offset_callback, &b->mark);
@@ -890,6 +894,9 @@ void eb_set_charset(EditBuffer *b, QECharset *charset)
         charset_decode_close(&b->charset_state);
     }
     b->charset = charset;
+    b->flags &= ~BF_UTF8;
+    if (charset == &charset_utf8)
+        b->flags |= BF_UTF8;
     charset_decode_init(&b->charset_state, charset);
 }
 

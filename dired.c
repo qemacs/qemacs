@@ -532,7 +532,7 @@ void do_dired(EditState *s)
      */
 
     /* Should reuse previous dired buffer for same filespec */
-    b = eb_scratch("*dired*", BF_READONLY | BF_SYSTEM);
+    b = eb_scratch("*dired*", BF_READONLY | BF_SYSTEM | BF_UTF8);
 
     /* Remember target as current current buffer filename */
     pstrcpy(target, sizeof(target), s->b->filename);

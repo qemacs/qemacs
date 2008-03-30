@@ -173,7 +173,7 @@ static void do_list_buffers(EditState *s, int argval)
 
     /* XXX: must close this buffer when destroying window: add a
        special buffer flag to tell this */
-    b = eb_scratch("*bufed*", BF_READONLY | BF_SYSTEM);
+    b = eb_scratch("*bufed*", BF_READONLY | BF_SYSTEM | BF_UTF8);
 
     width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);

@@ -681,6 +681,8 @@ typedef struct EditBufferCallbackList {
 #define BF_LOADING   0x0010  /* buffer is being loaded */
 #define BF_SAVING    0x0020  /* buffer is being saved */
 #define BF_DIRED     0x0100  /* buffer is interactive dired */
+#define BF_UTF8      0x0200  /* buffer charset is utf-8 */
+#define BF_RAW       0x0400  /* buffer charset is raw (same as latin1) */
 
 struct EditBuffer {
     Page *page_table;

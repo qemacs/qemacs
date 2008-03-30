@@ -1447,7 +1447,7 @@ EditBuffer *new_yank_buffer(QEmacsState *qs)
         }
     }
     snprintf(bufname, sizeof(bufname), "*kill-%d*", qs->yank_current + 1);
-    b = eb_new(bufname, BF_SYSTEM);
+    b = eb_new(bufname, 0);
     qs->yank_buffers[qs->yank_current] = b;
     return b;
 }
@@ -1813,7 +1813,8 @@ void do_convert_buffer_file_coding_system(EditState *s,
     if (!charset)
         return;
 
-    b1 = eb_new("*tmp*", BF_SYSTEM);
+    b1 = eb_new("*tmp*", 0);
+    eb_set_charset(b1, charset);
 
     /* well, not very fast, but simple */
     b = s->b;
@@ -1823,12 +1824,12 @@ void do_convert_buffer_file_coding_system(EditState *s,
         eb_write(b1, b1->total_size, buf, len);
     }
 
-    /* replace current buffer with convertion */
+    /* replace current buffer with conversion */
     eb_delete(b, 0, b->total_size);
+    eb_set_charset(b, charset);
     eb_insert_buffer(b, 0, b1, 0, b1->total_size);
 
     eb_free(b1);
-    eb_set_charset(b, charset);
 }
 
 void do_toggle_bidir(EditState *s)
@@ -4227,7 +4228,7 @@ static void qe_key_process(int key)
             c->buf[len-1] = ' ';
         pstrcat(c->buf, sizeof(c->buf), buf1);
         pstrcat(c->buf, sizeof(c->buf), "-");
-        put_status(s, "%s", c->buf);
+        put_status(s, "~%s", c->buf);
         dpy_flush(&global_screen);
     }
 }
@@ -4278,7 +4279,7 @@ static void eb_format_message(QEmacsState *qs, const char *bufname,
                  qs->ec.function);
         len = strlen(header);
     }
-    eb = eb_find_new(bufname, BF_SYSTEM);
+    eb = eb_find_new(bufname, BF_UTF8);
     if (eb) {
         eb_printf(eb, "%s%s\n", header, message);
     } else {
@@ -4312,18 +4313,21 @@ void put_status(__unused__ EditState *s, const char *fmt, ...)
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
 
+    p = buf;
+    if (*p == '~')
+        p++;
+
     if (!qs->screen->dpy.dpy_probe) {
-        eb_format_message(qs, "*errors*", buf);
+        eb_format_message(qs, "*errors*", p);
     } else {
-        if (!strequal(buf, qs->status_shadow)) {
+        if (!strequal(p, qs->status_shadow)) {
             print_at_byte(qs->screen,
                           0, qs->screen->height - qs->status_height,
                           qs->screen->width, qs->status_height,
-                          buf, QE_STYLE_STATUS);
-            strcpy(qs->status_shadow, buf);
-            p = buf;
+                          p, QE_STYLE_STATUS);
+            strcpy(qs->status_shadow, p);
             skip_spaces(&p);
-            if (*p)
+            if (*p && *buf != '~')
                 eb_format_message(qs, "*messages*", buf);
         }
     }
@@ -4939,7 +4943,7 @@ void minibuffer_edit(const char *input, const char *prompt,
     minibuffer_cb = cb;
     minibuffer_opaque = opaque;
 
-    b = eb_new("*minibuf*", BF_SYSTEM | BF_SAVELOG);
+    b = eb_new("*minibuf*", BF_SYSTEM | BF_SAVELOG | BF_UTF8);
 
     s = edit_new(b, 0, qs->screen->height - qs->status_height,
                  qs->screen->width, qs->status_height, 0);
@@ -6456,7 +6460,7 @@ static EditBuffer *new_help_buffer(int *show_ptr)
     if (b) {
         eb_delete(b, 0, b->total_size);
     } else {
-        b = eb_new("*Help*", BF_SYSTEM);
+        b = eb_new("*Help*", BF_UTF8);
         *show_ptr = 1;
     }
     return b;

@@ -100,7 +100,7 @@ void css_error(const char *filename, int line_num, const char *msg)
 {
     EditBuffer *b;
 
-    b = eb_find_new(HTML_ERROR_BUFFER, BF_READONLY);
+    b = eb_find_new(HTML_ERROR_BUFFER, BF_READONLY | BF_UTF8);
     if (!b)
         return;
     b->flags &= ~BF_READONLY;
