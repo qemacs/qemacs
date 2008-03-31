@@ -855,6 +855,7 @@ static XCharStruct *handle_fallback(QEditScreen *s, QEFont **out_font,
     }
 
     /* really no glyph : use default char in current font */
+    /* Should have half-width and full-width default char patterns */
     xfont = font->private;
     cs = get_char_struct(font, xfont->default_char);
     *out_font = lock_font(s, font);

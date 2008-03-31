@@ -621,21 +621,59 @@ static void tty_term_close_font(__unused__ QEditScreen *s, QEFont *font)
  * chars.
  */
 
+static unsigned int const tty_term_glyph_ranges[] = {
+    0x10FF, 1, 0x115f, 2,     /*  0: Hangul Jamo */
+    0x2328, 1, 0x232a, 2,     /*  1: wide Angle brackets */
+    0x2E7F, 1, 0x2efd, 2,     /*  2: CJK Radicals */
+    0x2EFF, 1, 0x303e, 2,     /*  3: Kangxi Radicals */
+    0x303F, 1, 0x4dbf, 2,     /*  4: CJK */
+    0x4DFF, 1, 0xa4cf, 2,     /*  5: CJK */
+    0xABFF, 1, 0xd7a3, 2,     /*  6: Hangul Syllables */
+    0xF8FF, 1, 0xfaff, 2,     /*  7: CJK Compatibility Ideographs */
+    0xFDFF, 1, 0xFE1F, 2,     /*  8: */
+    0xFE2F, 1, 0xfe6f, 2,     /*  9: CJK Compatibility Forms */
+    0xFEFF, 1, 0xff5f, 2,     /* 10: Fullwidth Forms */
+    0xFFDF, 1, 0xffe6, 2,     /* 11: */
+    0x1FFFF, 1, 0x3fffd, 2,   /* 12: CJK Compatibility */
+    UINT_MAX, 1,              /* 13: catchall */
+};
+
+static unsigned int const tty_term_glyph_index[16] = {
+    4 * 0,  /* 0000-0FFF */
+    4 * 0,  /* 1000-1FFF */
+    4 * 1,  /* 2000-2FFF */
+    4 * 3,  /* 3000-3FFF */
+    4 * 4,  /* 4000-4FFF */
+    4 * 5,  /* 5000-5FFF */
+    4 * 5,  /* 6000-6FFF */
+    4 * 5,  /* 7000-7FFF */
+    4 * 5,  /* 8000-8FFF */
+    4 * 5,  /* 9000-9FFF */
+    4 * 5,  /* A000-AFFF */
+    4 * 6,  /* B000-BFFF */
+    4 * 6,  /* C000-CFFF */
+    4 * 6,  /* D000-DFFF */
+    4 * 7,  /* E000-EFFF */
+    4 * 7,  /* F000-FFFF */
+};
+
 static int tty_term_glyph_width(__unused__ QEditScreen *s, unsigned int ucs)
 {
+    unsigned int const *ip;
+
     /* fast test for majority of non-wide scripts */
-    if (ucs < 0x900)
+    if (ucs < 0x1100)
         return 1;
 
-    return 1 +
-        ((ucs >= 0x1100 && ucs <= 0x115f) || /* Hangul Jamo */
-         (ucs >= 0x2e80 && ucs <= 0xa4cf && (ucs & ~0x0011) != 0x300a &&
-          ucs != 0x303f) ||                  /* CJK ... Yi */
-         (ucs >= 0xac00 && ucs <= 0xd7a3) || /* Hangul Syllables */
-         (ucs >= 0xf900 && ucs <= 0xfaff) || /* CJK Compatibility Ideographs */
-         (ucs >= 0xfe30 && ucs <= 0xfe6f) || /* CJK Compatibility Forms */
-         (ucs >= 0xff00 && ucs <= 0xff5f) || /* Fullwidth Forms */
-         (ucs >= 0xffe0 && ucs <= 0xffe6));
+    /* Iterative lookup with fast initial jump, no boundary test needed */
+    ip = tty_term_glyph_ranges +
+         tty_term_glyph_index[(ucs >> 12) & 0xF] - 2;
+
+    for (;;) {
+        ip += 2;
+        if (ucs <= ip[0])
+            return ip[1];
+    }
 }
 
 static void tty_term_text_metrics(QEditScreen *s, __unused__ QEFont *font,
@@ -649,6 +687,7 @@ static void tty_term_text_metrics(QEditScreen *s, __unused__ QEFont *font,
     x = 0;
     for (i = 0; i < len; i++)
         x += tty_term_glyph_width(s, str[i]);
+
     metrics->width = x;
 }
 
@@ -777,28 +816,30 @@ static void tty_term_flush(QEditScreen *s)
                 ch = TTYCHAR_GETCH(cc);
                 if (ch != 0xffff) {
                     /* output attributes */
-                    if ((fgcolor != (int)TTYCHAR_GETFG(cc) && ch != ' ')
-                    ||  (bgcolor != (int)TTYCHAR_GETBG(cc))) {
-                        fgcolor = TTYCHAR_GETFG(cc);
+                    if (bgcolor != (int)TTYCHAR_GETBG(cc)) {
                         bgcolor = TTYCHAR_GETBG(cc);
+                        TTY_FPRINTF(s->STDOUT, "\033[%dm", 40 + bgcolor);
+                    }
+                    if (fgcolor != (int)TTYCHAR_GETFG(cc) && ch != ' ') {
+                        fgcolor = TTYCHAR_GETFG(cc);
                         TTY_FPRINTF(s->STDOUT, "\033[%dm",
                                     (fgcolor > 7) ? 1 : 22);
-                        TTY_FPRINTF(s->STDOUT, "\033[%d;%dm",
-                                    30 + (fgcolor & 7), 40 + bgcolor);
+                        TTY_FPRINTF(s->STDOUT, "\033[%dm",
+                                    30 + (fgcolor & 7));
                     }
-                    /* do not display escape codes or invalid codes */
-                    if (ch < 32 || ch == 127) {
-                        if (shifted) {
+                    if (shifted) {
+                        /* Kludge for linedrawing chars */
+                        if (ch < 128 || ch >= 128 + 32) {
                             TTY_FPUTS("\033(B", s->STDOUT);
                             shifted = 0;
                         }
+                    }
+
+                    /* do not display escape codes or invalid codes */
+                    if (ch < 32 || ch == 127) {
                         TTY_PUTC('.', s->STDOUT);
                     } else
                     if (ch < 127) {
-                        if (shifted) {
-                            TTY_FPUTS("\033(B", s->STDOUT);
-                            shifted = 0;
-                        }
                         TTY_PUTC(ch, s->STDOUT);
                     } else
                     if (ch < 128 + 32) {
@@ -809,54 +850,32 @@ static void tty_term_flush(QEditScreen *s)
                         }
                         TTY_PUTC(ch - 32, s->STDOUT);
                     } else {
+                        u8 buf[10], *q;
+                        int nc;
+
                         // was in qemacs-0.3.1.g2.gw/tty.c:
                         // if (cc == 0x2500)
                         //    printf("\016x\017");
                         /* s->charset is either latin1 or utf-8 */
-                        if (shifted) {
-                            TTY_FPUTS("\033(B", s->STDOUT);
-                            shifted = 0;
+                        q = s->charset->encode_func(s->charset, buf, ch);
+                        if (!q) {
+                            if (s->charset == &charset_8859_1) {
+                                /* upside down question mark */
+                                buf[0] = 0xBF;
+                            } else {
+                                buf[0] = '?';
+                            }
+                            q = buf + 1;
+                            if (tty_term_glyph_width(s, ch) == 2) {
+                                *q++ = '?';
+                            }
                         }
-                        //if (s->charset == CHARSET_LATIN1) {
-                        //    if (cc < 256) {
-                        //        buf[0] = cc;
-                        //        buf[1] = '\0';
-                        //    } else {
-                        //        buf[0] = 0xBF; /* upside down question */
-                        //        buf[1] = '\0';
-                        //        if (tty_term_glyph_width(s, NULL, cc) == 2) {
-                        //            buf[1] = '?';
-                        //            buf[2] = '\0';
-                        //        }
-                        //    }
-                        //} else
-                        {
-                            u8 buf[10], *q;
-                            int nc;
 
-                            //nc = unicode_to_charset(buf, ch, s->charset);
-
-                            q = s->charset->encode_func(s->charset, buf, ch);
-                            if (!q) {
-                                if (s->charset == &charset_8859_1) {
-                                    /* upside down question */
-                                    buf[0] = 0xBF;
-                                } else {
-                                    buf[0] = '?';
-                                }
-                                q = buf + 1;
-                                if (tty_term_glyph_width(s, ch) == 2) {
-                                    *q++ = '?';
-                                }
-                            }
-
-                            nc = q - buf;
-                            if (nc == 1) {
-                                TTY_PUTC(*buf, s->STDOUT);
-                            } else
-                            {
-                                TTY_FWRITE(buf, 1, nc, s->STDOUT);
-                            }
+                        nc = q - buf;
+                        if (nc == 1) {
+                            TTY_PUTC(*buf, s->STDOUT);
+                        } else {
+                            TTY_FWRITE(buf, 1, nc, s->STDOUT);
                         }
                     }
                 }
