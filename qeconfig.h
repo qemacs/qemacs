@@ -111,6 +111,9 @@ static CmdDef basic_commands[] = {
     CMD_( KEY_CTRLX(KEY_CTRL('f')), KEY_NONE,
           "find-file", do_find_file, ESs,
           "s{Find file: }[file]|file|") /* u? */
+    CMD_( KEY_CTRL('x'), KEY_META('f'),
+          "find-file-other-window", do_find_file_other_window, ESs,
+          "s{Find file: }[file]|file|") /* u? */
     CMD_( KEY_CTRLX(KEY_CTRL('v')), KEY_NONE,
           "find-alternate-file", do_find_alternate_file, ESs,
           "s{Find alternate file: }[file]|file|") /* u? */

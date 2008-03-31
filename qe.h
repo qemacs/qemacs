@@ -1517,6 +1517,7 @@ void edit_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data);
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);
 void do_find_file(EditState *s, const char *filename);
+void do_find_file_other_window(EditState *s, const char *filename);
 void do_load_from_path(EditState *s, const char *filename);
 void do_switch_to_buffer(EditState *s, const char *bufname);
 void do_break(EditState *s);
@@ -1684,6 +1685,12 @@ int parse_config_file(EditState *s, const char *filename);
 int parse_command_line(int argc, char **argv);
 void set_user_option(const char *user);
 void set_tty_charset(const char *name);
+
+/* extras.c */
+
+void do_compare_windows(EditState *s, int argval);
+void do_delete_horizontal_space(EditState *s);
+void do_show_date_and_time(EditState *s, int argval);
 
 /* hex.c */
 

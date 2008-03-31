@@ -5279,6 +5279,7 @@ static ModeDef *probe_mode(EditState *s, int mode, const uint8_t *buf,
     return selected_mode;
 }
 
+/* Should take bits from enumeration instead of booleans */
 static void do_load1(EditState *s, const char *filename1,
                      int kill_buffer, int load_resource)
 {
@@ -5431,6 +5432,14 @@ static void load_completion_cb(void *opaque, int err)
 void do_find_file(EditState *s, const char *filename)
 {
     do_load1(s, filename, 0, 0);
+}
+
+void do_find_file_other_window(EditState *s, const char *filename)
+{
+    QEmacsState *qs = s->qe_state;
+
+    do_split_window(s, 0);
+    do_load1(qs->active_window, filename, 0, 0);
 }
 
 void do_find_alternate_file(EditState *s, const char *filename)
@@ -7069,6 +7078,8 @@ int parse_config_file(EditState *s, const char *filename)
     skip = 0;
     err = 0;
     line_num = 0;
+    /* Should parse whole config file in a single read, or load it via
+     * a buffer */
     for (;;) {
         if (fgets(line, sizeof(line), f) == NULL)
             break;

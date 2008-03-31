@@ -592,147 +592,6 @@ static void do_c_forward_preprocessor(EditState *s, int dir)
 {
 }
 
-/* forward / backward block */
-#define MAX_LEVEL 20
-
-/* CG: move this to generic command */
-static void do_c_forward_block(EditState *s, int dir)
-{
-    unsigned int buf[MAX_BUF_SIZE];
-    char balance[MAX_LEVEL];
-    int line_num, col_num, offset, offset1, len, pos, style, c, c1, level;
-
-    eb_get_pos(s->b, &line_num, &col_num, s->offset);
-    offset = eb_goto_bol2(s->b, s->offset, &pos);
-    offset1 = offset;
-    len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
-    style = buf[pos] >> STYLE_SHIFT;
-    level = 0;
-
-    if (dir < 0) {
-        for (;;) {
-            if (pos == 0) {
-                if (offset <= 0)
-                    break;
-                line_num--;
-                offset = eb_prev_line(s->b, offset);
-                offset1 = offset;
-                pos = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
-                continue;
-            }
-            c = buf[--pos];
-            if (style != c >> STYLE_SHIFT) {
-                if (style == 0)
-                    continue;
-                style = 0;
-                if ((c >> STYLE_SHIFT) != 0)
-                    continue;
-            }
-            switch (c &= CHAR_MASK) {
-            case ')':
-                c1 = '(';
-                goto push;
-            case ']':
-                c1 = '[';
-                goto push;
-            case '}':
-                c1 = '{';
-            push:
-                if (level < MAX_LEVEL) {
-                    balance[level] = c1;
-                }
-                level++;
-                break;
-            case '(':
-            case '[':
-            case '{':
-                if (level > 0) {
-                    --level;
-                    if (balance[level] != c) {
-                        put_status(s, "Unmatched delimiter");
-                        return;
-                    }
-                    if (level <= 0)
-                        goto the_end;
-                }
-                break;
-            }
-        }
-    } else {
-        for (;;) {
-            if (pos >= len) {
-                /* Should simplify with get_colorized_line updating
-                 * offset
-                 */
-                line_num++;
-                pos = 0;
-                offset = eb_next_line(s->b, offset);
-                if (offset >= s->b->total_size)
-                    break;
-                offset1 = offset;
-                len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
-                continue;
-            }
-            c = buf[pos];
-            pos++;
-            if (style != c >> STYLE_SHIFT) {
-                if (style == 0)
-                    continue;
-                style = 0;
-                if ((c >> STYLE_SHIFT) != 0)
-                    continue;
-            }
-            switch (c &= CHAR_MASK) {
-            case '(':
-                c1 = ')';
-                goto push1;
-            case '[':
-                c1 = ']';
-                goto push1;
-            case '{':
-                c1 = '}';
-            push1:
-                if (level < MAX_LEVEL) {
-                    balance[level] = c1;
-                }
-                level++;
-                break;
-            case ')':
-            case ']':
-            case '}':
-                if (level > 0) {
-                    --level;
-                    if (balance[level] != c) {
-                        put_status(s, "Unmatched delimiter");
-                        return;
-                    }
-                    if (level <= 0)
-                        goto the_end;
-                }
-                break;
-            }
-        }
-    }
-the_end:
-    while (pos > 0) {
-        eb_nextc(s->b, offset, &offset);
-        pos--;
-    }
-    s->offset = offset;
-}
-
-/* CG: move this to generic command */
-static void do_c_kill_block(EditState *s, int dir)
-{
-    int start = s->offset;
-
-    if (s->b->flags & BF_READONLY)
-        return;
-
-    do_c_forward_block(s, dir);
-    do_kill(s, start, s->offset, dir);
-}
-
 static int c_mode_probe(ModeProbeData *p)
 {
     /* currently, only use the file extension */
@@ -784,20 +643,6 @@ static CmdDef c_commands[] = {
     CMD_DEF_END,
 };
 
-/* Non C mode specific commands */
-static CmdDef c_global_commands[] = {
-    CMDV( KEY_META(KEY_CTRL('b')), KEY_NONE,
-          "c-backward-block", do_c_forward_block, ESi, -1, "*v")
-            /* should map to KEY_META + KEY_CTRL_RIGHT */
-    CMDV( KEY_META(KEY_CTRL('f')), KEY_NONE,
-          "c-forward-block", do_c_forward_block, ESi, 1, "*v")
-    CMDV( KEY_META(KEY_CTRL('k')), KEY_NONE,
-          "c-kill-block", do_c_kill_block, ESi, 1, "*v")
-    CMDV( KEY_ESC, KEY_DELETE,
-          "c-backward-kill-block", do_c_kill_block, ESi, -1, "*v")
-    CMD_DEF_END,
-};
-
 static ModeDef c_mode;
 
 static int c_init(void)
@@ -810,7 +655,6 @@ static int c_init(void)
 
     qe_register_mode(&c_mode);
     qe_register_cmd_table(c_commands, &c_mode);
-    qe_register_cmd_table(c_global_commands, NULL);
 
     return 0;
 }
