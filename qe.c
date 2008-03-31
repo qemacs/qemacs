@@ -450,7 +450,7 @@ void text_move_eol(EditState *s)
     s->offset = eb_goto_eol(s->b, s->offset);
 }
 
-static void word_right(EditState *s, int w)
+void word_right(EditState *s, int w)
 {
     int c, offset1;
 
@@ -464,7 +464,7 @@ static void word_right(EditState *s, int w)
     }
 }
 
-static void word_left(EditState *s, int w)
+void word_left(EditState *s, int w)
 {
     int c, offset1;
 

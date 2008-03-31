@@ -137,7 +137,6 @@ void do_show_date_and_time(EditState *s, int argval)
 #define MAX_BUF_SIZE  512
 #define MAX_LEVEL     20
 
-/* CG: move this to generic command */
 static void do_forward_block(EditState *s, int dir)
 {
     unsigned int buf[MAX_BUF_SIZE];
@@ -263,7 +262,6 @@ the_end:
     s->offset = offset;
 }
 
-/* CG: move this to generic command */
 static void do_kill_block(EditState *s, int dir)
 {
     int start = s->offset;
@@ -273,6 +271,77 @@ static void do_kill_block(EditState *s, int dir)
 
     do_forward_block(s, dir);
     do_kill(s, start, s->offset, dir);
+}
+
+enum {
+    CMD_TRANSPOSE_CHARS = 1,
+    CMD_TRANSPOSE_WORDS,
+    CMD_TRANSPOSE_LINES,
+};
+
+static void do_transpose(EditState *s, int cmd)
+{
+    char buf[1024];
+    int offset0, offset1, offset2, offset3;
+    int size0, size1, size2;
+
+    switch (cmd) {
+    case CMD_TRANSPOSE_CHARS:
+        offset3 = s->offset;
+        eb_prevc(s->b, offset3, &offset2);
+        offset1 = offset2;
+        eb_prevc(s->b, offset1, &offset0);
+        break;
+    case CMD_TRANSPOSE_WORDS:
+        word_right(s, 1);
+        word_right(s, 0);
+        offset3 = s->offset;
+        word_left(s, 0);
+        offset2 = s->offset;
+        word_left(s, 1);
+        offset1 = s->offset;
+        word_left(s, 0);
+        offset0 = s->offset;
+        if (s->qe_state->flag_split_window_change_focus) {
+            /* set position to end of first word */
+            s->offset = offset0 + offset3 - offset2;
+        } else {
+            /* set position past last word (emacs behaviour) */
+            s->offset = offset3;
+        }
+        break;
+    case CMD_TRANSPOSE_LINES:
+        do_eol(s);
+        offset3 = s->offset;
+        do_bol(s);
+        offset2 = s->offset;
+        if (offset2)
+            s->offset--;
+        offset1 = s->offset;
+        do_bol(s);
+        offset0 = s->offset;
+        if (s->qe_state->flag_split_window_change_focus) {
+            /* set position to start of second line */
+            s->offset = offset0 + offset3 - offset1;
+        } else {
+            /* set position past second line (emacs behaviour) */
+            s->offset = offset3;
+        }
+        break;
+    default:
+        return;
+    }
+    size0 = offset1 - offset0;
+    size1 = offset2 - offset1;
+    size2 = offset3 - offset2;
+    if (size0 + size1 + size2 > ssizeof(buf)) {
+        /* Should use temporary buffers */
+        return;
+    }
+    eb_read(s->b, offset2, buf, size2);
+    eb_read(s->b, offset1, buf + size2, size1);
+    eb_read(s->b, offset0, buf + size2 + size1, size0);
+    eb_write(s->b, offset0, buf, size0 + size1 + size2);
 }
 
 static CmdDef extra_commands[] = {
@@ -285,14 +354,22 @@ static CmdDef extra_commands[] = {
 
           /* Should map to KEY_META + KEY_CTRL_LEFT */
     CMDV( KEY_META(KEY_CTRL('b')), KEY_NONE,
-          "backward-block", do_forward_block, ESi, -1, "*v")
+          "backward-block", do_forward_block, ESi, -1, "v")
           /* Should map to KEY_META + KEY_CTRL_RIGHT */
     CMDV( KEY_META(KEY_CTRL('f')), KEY_NONE,
-          "forward-block", do_forward_block, ESi, 1, "*v")
+          "forward-block", do_forward_block, ESi, 1, "v")
     CMDV( KEY_ESC, KEY_DELETE,
-          "backward-kill-block", do_kill_block, ESi, -1, "*v")
+          "backward-kill-block", do_kill_block, ESi, -1, "v")
     CMDV( KEY_META(KEY_CTRL('k')), KEY_NONE,
           "kill-block", do_kill_block, ESi, 1, "*v")
+          /* Should also have mark-block on C-M-@ */
+
+    CMDV( KEY_CTRL('t'), KEY_NONE,
+          "transpose-chars", do_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v")
+    CMDV( KEY_CTRLX(KEY_CTRL('t')), KEY_NONE,
+          "transpose-lines", do_transpose, ESi, CMD_TRANSPOSE_LINES, "*v")
+    CMDV( KEY_META('t'), KEY_NONE,
+          "transpose-words", do_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v")
 
     CMD_DEF_END,
 };
