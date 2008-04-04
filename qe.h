@@ -1518,7 +1518,6 @@ void edit_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data);
 void do_exit_qemacs(EditState *s, int argval);
 void do_find_file(EditState *s, const char *filename);
 void do_find_file_other_window(EditState *s, const char *filename);
-void do_load_from_path(EditState *s, const char *filename);
 void do_switch_to_buffer(EditState *s, const char *bufname);
 void do_break(EditState *s);
 void do_insert_file(EditState *s, const char *filename);
