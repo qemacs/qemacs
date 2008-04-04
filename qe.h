@@ -1635,6 +1635,9 @@ void do_set_indent_tabs_mode(EditState *s, int mode);
 void display_window_borders(EditState *e);
 QEStyleDef *find_style(const char *name);
 void style_completion(CompleteState *cp);
+void get_style(EditState *e, QEStyleDef *style, int style_index);
+void style_property_completion(CompleteState *cp);
+int find_style_property(const char *name);
 void do_define_color(EditState *e, const char *name, const char *value);
 void do_set_style(EditState *e, const char *stylestr,
                   const char *propstr, const char *value);
@@ -1705,8 +1708,6 @@ extern ModeDef list_mode;
 void list_toggle_selection(EditState *s);
 int list_get_pos(EditState *s);
 int list_get_offset(EditState *s);
-
-void get_style(EditState *e, QEStyleDef *style, int style_index);
 
 /* dired.c */
 void do_dired(EditState *s);

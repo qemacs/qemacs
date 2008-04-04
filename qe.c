@@ -2196,6 +2196,43 @@ QEStyleDef *find_style(const char *name)
     return NULL;
 }
 
+const char * const qe_style_properties[] = {
+#define CSS_PROP_COLOR  0
+    "color",
+#define CSS_PROP_BACKGROUND_COLOR  1
+    "background-color",
+#define CSS_PROP_FONT_FAMILY  2
+    "font-family",
+#define CSS_PROP_FONT_STYLE  3
+    "font-style",
+#define CSS_PROP_FONT_WEIGHT  4
+    "font-weight",
+#define CSS_PROP_FONT_SIZE  5
+    "font-size,"
+#define CSS_PROP_TEXT_DECORATION  6
+    "text-decoration",
+};
+
+void style_property_completion(CompleteState *cp)
+{
+    int i;
+
+    for (i = 0; i < countof(qe_style_properties); i++) {
+        complete_test(cp, qe_style_properties[i]);
+    }
+}
+
+int find_style_property(const char *name)
+{
+    int i;
+
+    for (i = 0; i < countof(qe_style_properties); i++) {
+        if (strequal(qe_style_properties[i], name))
+            return i;
+    }
+    return -1;
+}
+
 /* Note: we use the same syntax as CSS styles to ease merging */
 void do_set_style(EditState *e, const char *stylestr,
                   const char *propstr, const char *value)
@@ -2209,31 +2246,29 @@ void do_set_style(EditState *e, const char *stylestr,
         return;
     }
 
-    prop_index = css_get_enum(propstr,
-                              "color,background-color,font-family,"
-                              "font-style,font-weight,font-size,"
-                              "text-decoration");
+    prop_index = find_style_property(propstr);
     if (prop_index < 0) {
         put_status(e, "Unknown property '%s'", propstr);
         return;
     }
+
     switch (prop_index) {
-    case 0:
+    case CSS_PROP_COLOR:
         if (css_get_color(&style->fg_color, value))
             goto bad_color;
         break;
-    case 1:
+    case CSS_PROP_BACKGROUND_COLOR:
         if (css_get_color(&style->bg_color, value))
             goto bad_color;
         break;
     bad_color:
         put_status(e, "Unknown color '%s'", value);
         return;
-    case 2:
+    case CSS_PROP_FONT_FAMILY:
         v = css_get_font_family(value);
         style->font_style = (style->font_style & ~QE_FAMILY_MASK) | v;
         break;
-    case 3:
+    case CSS_PROP_FONT_STYLE:
         /* XXX: cannot handle inherit correctly */
         v = style->font_style;
         if (strequal(value, "italic")) {
@@ -2244,7 +2279,7 @@ void do_set_style(EditState *e, const char *stylestr,
         }
         style->font_style = v;
         break;
-    case 4:
+    case CSS_PROP_FONT_WEIGHT:
         /* XXX: cannot handle inherit correctly */
         v = style->font_style;
         if (strequal(value, "bold")) {
@@ -2255,14 +2290,14 @@ void do_set_style(EditState *e, const char *stylestr,
         }
         style->font_style = v;
         break;
-    case 5:
+    case CSS_PROP_FONT_SIZE:
         if (strequal(value, "inherit")) {
             style->font_size = 0;
         } else {
             style->font_size = strtol(value, NULL, 0);
         }
         break;
-    case 6:
+    case CSS_PROP_TEXT_DECORATION:
         /* XXX: cannot handle inherit correctly */
         if (strequal(value, "none")) {
             style->font_style &= ~QE_STYLE_UNDERLINE;
@@ -7646,6 +7681,7 @@ static void qe_init(void *opaque)
     register_completion("charset", charset_completion);
     register_completion("mode", mode_completion);
     register_completion("style", style_completion);
+    register_completion("style-property", style_property_completion);
     register_completion("file", file_completion);
     register_completion("buffer", buffer_completion);
     register_completion("color", color_completion);

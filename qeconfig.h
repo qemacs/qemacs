@@ -294,7 +294,7 @@ static CmdDef basic_commands[] = {
     CMD_( KEY_NONE, KEY_NONE,
           "set-style", do_set_style, ESsss,
           "s{Style: }[style]|style|"
-          "s{CSS Property Name: }"
+          "s{CSS Property Name: }[style-property]|style-property|"
           "s{CSS Property Value: }")
     CMD_( KEY_NONE, KEY_NONE,
           "set-display-size", do_set_display_size, ESii,
