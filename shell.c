@@ -47,6 +47,7 @@ enum TTYState {
     TTY_STATE_ESC2,
     TTY_STATE_CSI,
     TTY_STATE_STRING,
+    TTY_STATE_STRING2,
 };
 
 typedef struct ShellState {
@@ -440,10 +441,32 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
     case 25:    /* exit_blink_mode */
     case 27:    /* exit_reverse_mode, exit_standout_mode */
     case 28:    /* exit_secure_mode */
-    case 38:    /* set extended foreground color ? */
     case 39:    /* orig_pair(1) */
-    case 48:    /* set extended background color ? */
     case 49:    /* orig_pair(2) */
+        break;
+    case 38:    /* set extended foreground color ? */
+        /* complete syntax is \033[38;5;Nm where N is the index from 1
+         * to 255.
+         */
+        if (s->esc_params[1] == 5) {
+            /* set foreground color to third esc_param */
+            /* should support 256 colors */
+            s->color &= ~TTY_FG_COLOR(15);
+            s->color |= TTY_FG_COLOR(s->esc_params[2] & 15);
+            s->nb_esc_params = 1;
+        }
+        break;
+    case 48:    /* set extended background color ? */
+        /* complete syntax is \033[48;5;Nm where N is the index from 1
+         * to 255.
+         */
+        if (s->esc_params[1] == 5) {
+            /* set foreground color to third esc_param */
+            /* should support 256 colors */
+            s->color &= ~TTY_BG_COLOR(7);
+            s->color |= TTY_BG_COLOR(s->esc_params[2] & 7);
+            s->nb_esc_params = 1;
+        }
         break;
     default:
         /* 0:black 1:red 2:green 3:yellow 4:blue 5:magenta 6:cyan 7:white */
@@ -456,6 +479,16 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
             /* set background color */
             s->color &= ~TTY_BG_COLOR(7);
             s->color |= TTY_BG_COLOR(c - 40);
+        } else
+        if (c >= 90 && c <= 97) {
+            /* set bright foreground color */
+            s->color &= ~TTY_FG_COLOR(15);
+            s->color |= TTY_FG_COLOR(c - 90 + 8);
+        } else
+        if (c >= 100 && c <= 107) {
+            /* set bright background color (NYI) */
+            s->color &= ~TTY_BG_COLOR(7);
+            s->color |= TTY_BG_COLOR(c - 100);
         }
         break;
     }
@@ -561,6 +594,10 @@ static void shell_key(void *opaque, int key)
     if (p)
         tty_write(s, p, len);
 }
+
+static unsigned char const sco_color[16] = {
+    0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15,
+};
 
 static void tty_emulate(ShellState *s, int c)
 {
@@ -729,20 +766,31 @@ static void tty_emulate(ShellState *s, int c)
         case ESC2(']','R'):
             /* XXX: ??? */
             break;
-        case ESC2(']','0'):
-            /* xterm's set-window-title */
+        case ESC2(']','0'):     /* xterm's set-window-title */
             s->state = TTY_STATE_STRING;
+            break;
+        case ESC2(']','4'):     /* xterm's define-extended color */
+            /* Parse syntax: \033]4;4;16;rgb:00/00/00\033\134 */
+            s->state = TTY_STATE_STRING2;
             break;
         }
         break;
     case TTY_STATE_STRING:
         /* ignore string parameter upto \a (^G) */
         if (c == '\007') {
+            /* CG: should store window caption */
+            s->state = TTY_STATE_NORM;
+        }
+        break;
+    case TTY_STATE_STRING2:
+        /* ignore string parameter upto ESC \ */
+        if (c == '\\') {
+            /* CG: should parse color definition string */
             s->state = TTY_STATE_NORM;
         }
         break;
     case TTY_STATE_CSI:
-        if (c == '?') {
+        if (c == '?' || c == '=') {
             s->esc1 = c;
             break;
         }
@@ -782,6 +830,14 @@ static void tty_emulate(ShellState *s, int c)
                     qe_ungrab_keys();
                     s->grab_keys = 0;
                 }
+                break;
+            case ESC2('=','F'): /* select SCO foreground color */
+                s->color &= ~TTY_FG_COLOR(15);
+                s->color |= TTY_FG_COLOR(sco_color[s->esc_params[0] & 15]);
+                break;
+            case ESC2('=','G'): /* select SCO background color */
+                s->color &= ~TTY_BG_COLOR(7);
+                s->color |= TTY_BG_COLOR(sco_color[s->esc_params[0] & 7]);
                 break;
             case 'A':
                 /* move relative up */
@@ -846,11 +902,10 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case 'm':
                 /* colors */
-                n = s->nb_esc_params;
-                if (n == 0)
-                    n = 1;
-                for (i = 0; i < n; i++) {
+                for (i = 0;;) {
                     tty_csi_m(s, s->esc_params[i], s->has_params[i]);
+                    if (++i >= s->nb_esc_params)
+                        break;
                 }
                 break;
             case 'n':
@@ -937,15 +992,17 @@ static int shell_get_colorized_line(EditState *e,
     buf_ptr = buf;
     buf_end = buf + buf_size - 1;
     for (;;) {
-        eb_read(b_color, offset, buf1, 1);
-        color = buf1[0];
         c = eb_nextc(b, offset, &offset1);
         if (c == '\n')
             break;
         if (buf_ptr < buf_end) {
-            /* XXX: test */
-            if (color != s->def_color) {
-                c |= (QE_STYLE_TTY | color) << STYLE_SHIFT;
+            if (b_color) {
+                eb_read(b_color, offset, buf1, 1);
+                color = buf1[0];
+                /* XXX: test */
+                if (color != s->def_color) {
+                    c |= (QE_STYLE_TTY | color) << STYLE_SHIFT;
+                }
             }
             *buf_ptr++ = c;
         }
