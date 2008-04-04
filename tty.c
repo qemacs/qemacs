@@ -778,36 +778,59 @@ static void tty_term_flush(QEditScreen *s)
         if (ts->line_updated[y]) {
             ts->line_updated[y] = 0;
             ptr = ptr1 = ts->screen + y * s->width;
-            ptr2 = ptr1 + s->width;
+            ptr3 = ptr2 = ptr1 + s->width;
 
-            /* make sure the loop stops */
+            /* quickly find the first difference on row:
+             * patch loop guard cell to make sure the simple loop stops
+             * without testing ptr1 < ptr2
+             */
             cc = ptr2[shadow];
             ptr2[shadow] = ptr2[0] + 1;
-            /* quickly loop over one row */
             while (ptr1[0] == ptr1[shadow]) {
                 ptr1++;
             }
             ptr2[shadow] = cc;
 
-            /* ptr1 points to first difference on row */
-            /* find the last non blank char on row */
-            ptr3 = ptr2;
-            blankcc = TTYCHAR2(' ', TTYCHAR_GETCOL(ptr2[-1]));
-            while (ptr3 > ptr1 && ptr3[-1] == blankcc) {
-                --ptr3;
-            }
-            /* scan for last difference on row: */
-            while (ptr2 > ptr1 && ptr2[-1] == ptr2[shadow - 1]) {
-                --ptr2;
-            }
             if (ptr1 == ptr2)
                 continue;
 
-            TTY_FPRINTF(s->STDOUT, "\033[%d;%dH", y + 1, ptr1 - ptr + 1);
+            /* quickly scan for last difference on row:
+             * the first difference on row at ptr1 is before ptr2
+             * so we do not need a test on ptr2 > ptr1
+             */
+            while (ptr2[-1] == ptr2[shadow - 1]) {
+                --ptr2;
+            }
 
             ptr4 = ptr2;
-            if (ptr2 > ptr3 + 3)
-                ptr4 = ptr3;
+
+            /* Try to optimize with erase to end of line: if the last
+             * difference on row is a space, measure the run of same
+             * color spaces from the end of the row.  If this run
+             * starts before the last difference, the row is a
+             * candidate for a partial update with erase-end-of-line
+             */
+            if (TTYCHAR_GETCH(ptr4[-1]) == ' ') {
+                /* find the last non blank char on row */
+                blankcc = TTYCHAR2(' ', TTYCHAR_GETCOL(ptr3[-1]));
+                while (ptr3 > ptr1 && ptr3[-1] == blankcc) {
+                    --ptr3;
+                }
+                /* killing end of line is not worth it to erase 3
+                 * spaces or less, because the escape sequence itself
+                 * is 3 bytes long.
+                 */
+                if (ptr2 > ptr3 + 3) {
+                    ptr4 = ptr3;
+                }
+            }
+
+            /* Go to the first difference */
+            /* CG: this probably does not work if there are
+             * double-width glyphs on the row in front of this
+             * difference
+             */
+            TTY_FPRINTF(s->STDOUT, "\033[%d;%dH", y + 1, ptr1 - ptr + 1);
 
             while (ptr1 < ptr4) {
                 cc = *ptr1;
