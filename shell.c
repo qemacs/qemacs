@@ -109,8 +109,13 @@ static int get_pty(char *tty_str)
     return -1;
 }
 
+#define TTY_XSIZE  80
+#define TTY_YSIZE  25
+#define TTY_YSIZE_INFINITE  10000
+
 static int run_process(const char *path, const char **argv,
-                       int *fd_ptr, int *pid_ptr)
+                       int *fd_ptr, int *pid_ptr,
+                       int cols, int rows, int is_shell)
 {
     int pty_fd, pid, i, nb_fds;
     char tty_name[32];
@@ -122,9 +127,10 @@ static int run_process(const char *path, const char **argv,
         return -1;
     }
     fcntl(pty_fd, F_SETFL, O_NONBLOCK);
+
     /* set dummy screen size */
-    ws.ws_col = 80;
-    ws.ws_row = 25;
+    ws.ws_col = cols;
+    ws.ws_row = rows;
     ws.ws_xpixel = ws.ws_col;
     ws.ws_ypixel = ws.ws_row;
     ioctl(pty_fd, TIOCSWINSZ, &ws);
@@ -140,13 +146,21 @@ static int run_process(const char *path, const char **argv,
         for (i = 0; i < nb_fds; i++)
             close(i);
         /* open pseudo tty for standard i/o */
-        open(tty_name, O_RDWR);
-        dup(0);
-        dup(0);
+        if (is_shell == 2) {
+            /* non interactive colored output: input from /dev/null */
+            open("/dev/null", O_RDONLY);
+            open(tty_name, O_RDWR);
+            dup(0);
+        } else {
+            open(tty_name, O_RDWR);
+            dup(0);
+            dup(0);
+        }
 
         setsid();
 
-        //setenv("TERM", "linux", 1);
+        setenv("TERM", "xterm", 1);
+        unsetenv("PAGER");
         //setenv("QELEVEL", "1", 1);
 
         execv(path, (char *const*)argv);
@@ -159,8 +173,6 @@ static int run_process(const char *path, const char **argv,
 }
 
 /* VT100 emulation */
-
-#define TTY_YSIZE 25
 
 static void tty_init(ShellState *s)
 {
@@ -363,7 +375,7 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
         if (relative & 2)
             y += cur_line;
     }
-    if (y < 0)
+    if (y < 0 || y >= TTY_YSIZE_INFINITE - 1)
         y = 0;
     else
     if (y >= TTY_YSIZE)
@@ -818,17 +830,22 @@ static void tty_emulate(ShellState *s, int c)
                 if (s->esc_params[0] == 1047 ||
                     s->esc_params[0] == 1048 ||
                     s->esc_params[0] == 1049) {
-                    s->grab_keys = 1;
-                    qe_grab_keys(shell_key, s);
-                    /* Should also clear screen */
+                    if (s->is_shell == 1) {
+                        /* only grab keys in interactive tty buffers */
+                        s->grab_keys = 1;
+                        qe_grab_keys(shell_key, s);
+                        /* Should also clear screen */
+                    }
                 }
                 break;
             case ESC2('?','l'): /* reset terminal mode */
                 if (s->esc_params[0] == 1047 ||
                     s->esc_params[0] == 1048 ||
                     s->esc_params[0] == 1049) {
-                    qe_ungrab_keys();
-                    s->grab_keys = 0;
+                    if (s->is_shell == 1) {
+                        qe_ungrab_keys();
+                        s->grab_keys = 0;
+                    }
                 }
                 break;
             case ESC2('=','F'): /* select SCO foreground color */
@@ -1047,9 +1064,11 @@ static void shell_pid_cb(void *opaque, int status)
     EditState *e;
     char buf[1024];
 
-    if (s->is_shell) {
+    *buf = 0;
+    if (s->is_shell == 1) {
         snprintf(buf, sizeof(buf), "\nProcess shell finished\n");
-    } else {
+    } else
+    if (s->is_shell == 0) {
         time_t ti;
         char *time_str;
 
@@ -1120,6 +1139,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
 {
     ShellState *s;
     EditBuffer *b, *b_color;
+    int rows, cols;
 
     b = b0;
     if (!b)
@@ -1161,7 +1181,10 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
     }
 
     /* launch shell */
-    if (run_process(path, argv, &s->pty_fd, &s->pid) < 0) {
+    cols = TTY_XSIZE;
+    rows = (is_shell == 1) ? TTY_YSIZE : TTY_YSIZE_INFINITE;
+
+    if (run_process(path, argv, &s->pty_fd, &s->pid, cols, rows, is_shell) < 0) {
         if (!b0)
             eb_free(b);
         return NULL;
@@ -1172,10 +1195,25 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
     return b;
 }
 
-static void do_shell(EditState *s, int force)
+static EditBuffer *try_show_buffer(EditState *s, const char *bufname)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e;
+    EditBuffer *b;
+
+    b = eb_find(bufname);
+    if (b) {
+        e = edit_find(b);
+        if (e)
+            qs->active_window = e;
+        else
+            switch_to_buffer(s, b);
+    }
+    return b;
+}
+
+static void do_shell(EditState *s, int force)
+{
     EditBuffer *b;
     const char *argv[3];
     const char *shell_path;
@@ -1185,15 +1223,8 @@ static void do_shell(EditState *s, int force)
      */
     /* find shell buffer if any */
     if (!force || force == NO_ARG) {
-        b = eb_find("*shell*");
-        if (b) {
-            e = edit_find(b);
-            if (e)
-                qs->active_window = e;
-            else
-                switch_to_buffer(s, b);
+        if (try_show_buffer(s, "*shell*"))
             return;
-        }
     }
 
     /* find shell name */
@@ -1213,6 +1244,33 @@ static void do_shell(EditState *s, int force)
 
     put_status(s, "Press C-o to toggle between shell/edit mode");
     shell_launched = 1;
+}
+
+static void do_man(EditState *s, const char *arg)
+{
+    const char *man_path;
+    const char *argv[3];
+    char bufname[32];
+    EditBuffer *b;
+    
+    /* Assume standard man command */
+    man_path = "/usr/bin/man";
+
+    snprintf(bufname, sizeof(bufname), "*man %s*", arg);
+    if (try_show_buffer(s, bufname))
+        return;
+
+    /* create new buffer */
+    argv[0] = man_path;
+    argv[1] = arg;
+    argv[2] = NULL;
+    b = new_shell_buffer(NULL, bufname, man_path, argv, 2);
+    if (!b)
+        return;
+
+    switch_to_buffer(s, b);
+    edit_set_mode(s, &shell_mode, NULL);
+    s->interactive = 0;
 }
 
 static void shell_move_left_right(EditState *e, int dir)
@@ -1387,6 +1445,7 @@ static void do_compile_error(EditState *s, int dir)
         offset = 0;
         goto find_error;
     }
+
     /* CG: should use higher level parsing */
     for (;;) {
         if (dir > 0) {
@@ -1474,6 +1533,7 @@ static CmdDef shell_commands[] = {
           "shell-kill-line", shell_write_char, 11)
     CMD1( KEY_CTRL('y'), KEY_NONE,
           "shell-yank", shell_write_char, 25)
+    /* Should have KEY_CTRL('c') -> shell_kill */
     CMD_DEF_END,
 };
 
@@ -1484,6 +1544,12 @@ static CmdDef compile_commands[] = {
     CMD_( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE,
           "compile", do_compile, ESs,
           "s{Compile command: }|compile|")
+    CMD_( KEY_CTRLX('m'), KEY_NONE,
+          "make", do_compile, ESs,
+          "S{make}")
+    CMD_( KEY_NONE, KEY_NONE,
+          "man", do_man, ESs,
+          "s{Show man page for: }|man|")
     CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE,
           "previous-error", do_compile_error, -1) /* u */
     CMD1( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'),
