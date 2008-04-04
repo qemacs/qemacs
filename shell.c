@@ -1387,6 +1387,7 @@ static void do_compile_error(EditState *s, int dir)
         offset = 0;
         goto find_error;
     }
+    /* CG: should use higher level parsing */
     for (;;) {
         if (dir > 0) {
             if (offset >= b->total_size) {
@@ -1401,11 +1402,12 @@ static void do_compile_error(EditState *s, int dir)
             }
             offset = eb_prev_line(b, offset);
         }
-    find_error:
+      find_error:
         found_offset = offset;
         /* extract filename */
         q = filename;
         for (;;) {
+            /* CG: utf8 issue */
             c = eb_nextc(b, offset, &offset);
             if (c == '\n' || c == '\t' || c == ' ')
                 goto next_line;
@@ -1433,7 +1435,7 @@ static void do_compile_error(EditState *s, int dir)
                 break;
             }
         }
-    next_line:
+      next_line:
         offset = found_offset;
     }
     error_offset = found_offset;
@@ -1448,7 +1450,9 @@ static void do_compile_error(EditState *s, int dir)
 
     /* go to the error */
     do_find_file(s, filename);
-    do_goto_line(s, line_num);
+    do_goto_line(qs->active_window, line_num);
+
+    /* CG: Should put_message of error text */
 }
 
 /* specific shell commands */
