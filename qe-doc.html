@@ -1,24 +1,24 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html401/loose.dtd">
 <html>
-<!-- Created on January, 10 2008 by texi2html 1.76 -->
+<!-- Created on April, 4 2008 by texi2html 1.78 -->
 <!--
 Written by: Lionel Cons <Lionel.Cons@cern.ch> (original author)
             Karl Berry  <karl@freefriends.org>
             Olaf Bachmann <obachman@mathematik.uni-kl.de>
             and many others.
-Maintained by: Many creative people <dev@texi2html.cvshome.org>
-Send bugs and suggestions to <users@texi2html.cvshome.org>
+Maintained by: Many creative people.
+Send bugs and suggestions to <texi2html-bug@nongnu.org>
 
 -->
 <head>
-<title>QEmacs Documentation: 1. Introduction</title>
+<title>QEmacs Documentation</title>
 
-<meta name="description" content="QEmacs Documentation: 1. Introduction">
-<meta name="keywords" content="QEmacs Documentation: 1. Introduction">
+<meta name="description" content="QEmacs Documentation">
+<meta name="keywords" content="QEmacs Documentation">
 <meta name="resource-type" content="document">
 <meta name="distribution" content="global">
-<meta name="Generator" content="texi2html 1.76">
-<meta http-equiv="Content-Type" content="text/html; charset=us-ascii">
+<meta name="Generator" content="texi2html 1.78">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <style type="text/css">
 <!--
 a.summary-letter {text-decoration: none}
@@ -30,6 +30,7 @@ pre.smalldisplay {font-family: serif; font-size: smaller}
 pre.smallexample {font-size: smaller}
 pre.smallformat {font-family: serif; font-size: smaller}
 pre.smalllisp {font-size: smaller}
+span.roman {font-family:serif; font-weight:normal;}
 span.sansserif {font-family:sans-serif; font-weight:normal;}
 ul.toc {list-style: none}
 -->
@@ -127,24 +128,25 @@ rendering on VT100 terminals.
 <table><tr><td>&nbsp;</td><td><pre class="example">usage: qe [-h] [-nw] [-display display] [-geometry WxH]
           [-fs ptsize] [filename...]
 </pre></td></tr></table>
+
 <dl compact="compact">
-<dt> <samp>`-h'</samp></dt>
+<dt> &lsquo;<samp>-h</samp>&rsquo;</dt>
 <dd><p>show help
 </p>
 </dd>
-<dt> <samp>`-nw'</samp></dt>
+<dt> &lsquo;<samp>-nw</samp>&rsquo;</dt>
 <dd><p>force tty terminal usage
 </p>
 </dd>
-<dt> <samp>`-display display'</samp></dt>
+<dt> &lsquo;<samp>-display display</samp>&rsquo;</dt>
 <dd><p>set X11 display to 'display'
 </p>
 </dd>
-<dt> <samp>`-geometry WxH'</samp></dt>
+<dt> &lsquo;<samp>-geometry WxH</samp>&rsquo;</dt>
 <dd><p>set X11 display size
 </p>
 </dd>
-<dt> <samp>`-fs ptsize'</samp></dt>
+<dt> &lsquo;<samp>-fs ptsize</samp>&rsquo;</dt>
 <dd><p>set default font size
 </p>
 </dd>
@@ -153,6 +155,7 @@ rendering on VT100 terminals.
 <p>When invoked as
 </p><table><tr><td>&nbsp;</td><td><pre class="example">usage: ffplay
 </pre></td></tr></table>
+
 <p>QEmacs goes to <code>dired</code> mode automatically so that you can browse your
 files easily (same as <kbd>C-x C-d</kbd> key).
 </p>
@@ -242,6 +245,7 @@ bindings, including the ones of the current editing mode.
 C-h b                   : describe-bindings
 C-h c                   : describe-key-briefly
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC6"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -286,6 +290,7 @@ C-q                     : quoted-insert
 RET                     : newline
 C-o                     : open-line
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC7"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -316,6 +321,7 @@ M-w                     : copy-region
 C-y                     : yank
 M-y                     : yank-pop
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC8"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -348,6 +354,7 @@ C-x C-b                 : list-buffers
 C-x C-q                 : toggle-read-only
 M-~                     : not-modified
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC9"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -373,6 +380,7 @@ C-r                     : isearch-forward
 M-%                     : query-replace
 M-r                     : replace-string
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC10"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -401,6 +409,7 @@ M-u                     : upcase-word
 C-x C-l                 : downcase-region
 C-x C-u                 : upcase-region
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC11"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -429,6 +438,7 @@ C-x (                   : start-kbd-macro
 C-x )                   : end-kbd-macro
 C-x e, C-\              : call-last-kbd-macro
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC12"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -458,6 +468,7 @@ C-x 2                   : split-window-vertically
 C-x 3                   : split-window-horizontally
 C-x f                   : toggle-full-screen
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC13"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -482,6 +493,7 @@ C-x f                   : toggle-full-screen
 C-h b                   : describe-bindings
 C-h c, C-h k            : describe-key-briefly
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC14"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -507,6 +519,7 @@ C-x RET b               : toggle-bidir
 C-x RET C-\             : set-input-method
 C-x C-\                 : switch-input-method
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC15"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -532,6 +545,7 @@ C-x C-e                 : compile
 C-x C-p                 : previous-error
 C-x C-n                 : next-error
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC16"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -563,6 +577,7 @@ C-x RET t               : toggle-truncate-lines
 C-x RET w               : word-wrap
 C-x C-d                 : dired
 </pre></td></tr></table>
+
 <hr size="6">
 <a name="SEC17"></a>
 <table cellpadding="1" cellspacing="1" border="0">
@@ -604,7 +619,7 @@ C-x C-d                 : dired
 <h2 class="section"> 4.1 Resource path </h2>
 
 <p>All resources and configuration files are looked in the following paths:
-<tt>`/usr/share/qe:/usr/local/share/qe:/usr/lib/qe:/usr/local/lib/qe:~/.qe'</tt>
+&lsquo;<tt>/usr/share/qe:/usr/local/share/qe:/usr/lib/qe:/usr/local/lib/qe:~/.qe</tt>&rsquo;
 </p>
 <hr size="6">
 <a name="SEC19"></a>
@@ -626,11 +641,11 @@ C-x C-d                 : dired
 </tr></table>
 <h2 class="section"> 4.2 Configuration file </h2>
 
-<p>QEmacs tries to load a configuration file in <tt>`~/.qe/config'</tt>. Each
+<p>QEmacs tries to load a configuration file in &lsquo;<tt>~/.qe/config</tt>&rsquo;. Each
 line of the configuration file is a QEmacs command with a C like syntax
 ('-' in command name can be replaced by '_').
 </p>
-<p>Read the example file <tt>`config.eg'</tt> to have some examples.
+<p>Read the example file &lsquo;<tt>config.eg</tt>&rsquo; to have some examples.
 </p>
 <p>The following commands are useful:
 </p>
@@ -650,7 +665,7 @@ given as fallback (See section <a href="#SEC41">Fonts</a>).
 </p>
 </dd>
 <dt> <code>set_style(stylename, css_property, css_value)</code></dt>
-<dd><p>Set a colorization style (see <tt>`qestyle.h'</tt> and <tt>`config.eg'</tt> for
+<dd><p>Set a colorization style (see &lsquo;<tt>qestyle.h</tt>&rsquo; and &lsquo;<tt>config.eg</tt>&rsquo; for
 common style names)
 </p>
 </dd>
@@ -676,12 +691,12 @@ common style names)
 </tr></table>
 <h2 class="section"> 4.3 Plugins </h2>
 
-<p>Any <tt>`.so'</tt> file found in the qemacs resource paths is considered as
+<p>Any &lsquo;<tt>.so</tt>&rsquo; file found in the qemacs resource paths is considered as
 a <em>plugin</em>. It is a piece of code containing new features for
 qemacs.
 </p>
 <p>Currently, no plugins are compiled in, but you can look at the
-<tt>`plugin-example/'</tt> directory to learn how to make one.
+&lsquo;<tt>plugin-example/</tt>&rsquo; directory to learn how to make one.
 </p>
 <p>Most QEmacs object files can in fact be compiled either as a plugin or
 be statically linked in qemacs. The plugin system is strongly inspirated
@@ -769,7 +784,7 @@ convert the buffer <em>content</em> to another charset.
 (<code>set-input-method</code>). You can switch between this input method and
 the default one with 'C-\'.
 </p>
-<p>The input methods are currently stored in the resource file <tt>`kmaps'</tt>.
+<p>The input methods are currently stored in the resource file &lsquo;<tt>kmaps</tt>&rsquo;.
 They are extracted from the <em>Yudit</em> editor keyboard maps.
 </p>
 <hr size="6">
@@ -824,7 +839,7 @@ properties are supported.
 <p>Currently, QEmacs fully supports Arabic shapping. Devanagari shaping is on
 the way.
 </p>
-<p>The resource file <tt>`ligatures'</tt> contains all the standard Unicode rules
+<p>The resource file &lsquo;<tt>ligatures</tt>&rsquo; contains all the standard Unicode rules
 to handle character modifiers such as accents. It means that even if your
 font does not support the Unicode character modifiers, QEmacs will do its
 best to handle them.
@@ -869,7 +884,7 @@ best to handle them.
 </tr></table>
 <h2 class="section"> 6.1 C mode </h2>
 
-<p>This mode is currently activated by <samp>`M-x c-mode'</samp>. It is
+<p>This mode is currently activated by &lsquo;<samp>M-x c-mode</samp>&rsquo;. It is
 activated automatically when a C file is loaded.
 </p>
 <hr size="6">
@@ -1266,7 +1281,7 @@ activated automatically when an HTML file is loaded.
 </li><li> counter-increment
 
 </li><li> bidi-mode: QEmacs extension: use lower/upper case to test bidi algorithm
-</li><li> position: <samp>`fixed'</samp> is not supported. Only 'block' boxes are positionned
+</li><li> position: &lsquo;<samp>fixed</samp>&rsquo; is not supported. Only 'block' boxes are positionned
 </li><li> top
 
 </li><li> bottom
@@ -1415,7 +1430,7 @@ activated automatically when an HTML file is loaded.
 <h2 class="section"> 6.8 Graphical DocBook mode </h2>
 
 <p>This mode simply uses a different default style sheet from the HTML/CSS2
-mode. It is activated by <samp>`M-x docbook-mode'</samp>.
+mode. It is activated by &lsquo;<samp>M-x docbook-mode</samp>&rsquo;.
 </p>
 <hr size="6">
 <a name="SEC39"></a>
@@ -1446,34 +1461,34 @@ data). <kbd>C-x C-d</kbd> can be used to have an interactive file viewer.
 </p>
 <dl compact="compact">
 <dt> <kbd>t</kbd></dt>
-<dd><p>(<samp>`M-x image-rotate'</samp>) Rotate right image by 90 degrees.
+<dd><p>(&lsquo;<samp>M-x image-rotate</samp>&rsquo;) Rotate right image by 90 degrees.
 </p></dd>
 <dt> <kbd>f</kbd></dt>
-<dd><p>(<samp>`M-x toggle-full-screen'</samp>) Toggle full screen mode
+<dd><p>(&lsquo;<samp>M-x toggle-full-screen</samp>&rsquo;) Toggle full screen mode
 </p></dd>
 <dt> <kbd>c</kbd></dt>
-<dd><p>(<samp>`M-x image-convert'</samp>) Change the pixel format of the image (press tab
+<dd><p>(&lsquo;<samp>M-x image-convert</samp>&rsquo;) Change the pixel format of the image (press tab
 to have a complete list). The data loss implied by the pixel format
 change is displayed.
 </p></dd>
 <dt> <kbd>b</kbd></dt>
-<dd><p>(<samp>`M-x image-set-background-color'</samp>) Set the image background
+<dd><p>(&lsquo;<samp>M-x image-set-background-color</samp>&rsquo;) Set the image background
 color. The background is only visible if the image contains transparent
-pixels. The <samp>`transparent'</samp> color displayed a <samp>`gimp'</samp> like grid.
+pixels. The &lsquo;<samp>transparent</samp>&rsquo; color displayed a &lsquo;<samp>gimp</samp>&rsquo; like grid.
 </p></dd>
 </dl>
 
 <p>Status information:
 </p>
 <ul class="toc">
-<li> The image resolution is displayed as <samp>`NxM'</samp>.
+<li> The image resolution is displayed as &lsquo;<samp>NxM</samp>&rsquo;.
 
 </li><li> The FFmpeg pixel format is displayed.
 
-</li><li> <samp>`I'</samp> is displayed is the image is interleaved.
+</li><li> &lsquo;<samp>I</samp>&rsquo; is displayed is the image is interleaved.
 
-</li><li> <samp>`T'</samp> is displayed if the image contains transparent
-pixels. <samp>`A'</samp> is displayed if the image contains semi-transparent
+</li><li> &lsquo;<samp>T</samp>&rsquo; is displayed if the image contains transparent
+pixels. &lsquo;<samp>A</samp>&rsquo; is displayed if the image contains semi-transparent
 pixels.
 
 </li></ul>
@@ -1517,13 +1532,13 @@ currently not possible.
 <dd><p>Pause/Resume
 </p></dd>
 <dt> <kbd>f</kbd></dt>
-<dd><p>(<samp>`M-x toggle-full-screen'</samp>) Toggle full screen mode
+<dd><p>(&lsquo;<samp>M-x toggle-full-screen</samp>&rsquo;) Toggle full screen mode
 </p></dd>
 <dt> <kbd>v</kbd></dt>
-<dd><p>(<samp>`M-x av-cycle-video'</samp>) Cycle through available video channels.
+<dd><p>(&lsquo;<samp>M-x av-cycle-video</samp>&rsquo;) Cycle through available video channels.
 </p></dd>
 <dt> <kbd>a</kbd></dt>
-<dd><p>(<samp>`M-x av-cycle-audio'</samp>) Cycle through available audio channels.
+<dd><p>(&lsquo;<samp>M-x av-cycle-audio</samp>&rsquo;) Cycle through available audio channels.
 </p></dd>
 </dl>
 
@@ -1575,9 +1590,11 @@ from XFree version greater than 4.0.1.
 select UTF8 charset and a unicode fixed X11 font:
 </p><table><tr><td>&nbsp;</td><td><pre class="example">xterm -u8 -fn -misc-fixed-medium-r-normal--18-120-100-100-c-90-iso10646-1
 </pre></td></tr></table>
+
 <p>Then look at the qemacs TestPage in VT100 mode:
 </p><table><tr><td>&nbsp;</td><td><pre class="example">qe -nw tests/TestPage.txt
 </pre></td></tr></table>
+
 <p>If you are using latin scripts, you can use any fixed font in any
 terminal. Otherwise, if you use ideograms or other non latin scripts,
 you must configure your terminal emulator (usually xterm) to accept
@@ -1612,18 +1629,18 @@ usually included in the linux distributions. You can find it at
 <p>QEmacs knows three basic font families:
 </p>
 <ul class="toc">
-<li> <samp>`sans'</samp> for sans serif fonts.
-</li><li> <samp>`serif'</samp> for serif fonts.
-</li><li> <samp>`fixed'</samp> for fixed or monospace fonts.
+<li> &lsquo;<samp>sans</samp>&rsquo; for sans serif fonts.
+</li><li> &lsquo;<samp>serif</samp>&rsquo; for serif fonts.
+</li><li> &lsquo;<samp>fixed</samp>&rsquo; for fixed or monospace fonts.
 </li></ul>
 
 <p>QEmacs maps these three families to system fonts. The default mapping
-is: <samp>`helvetica'</samp> for sans, <samp>`Times'</samp> for serif and <samp>`fixed'</samp>
+is: &lsquo;<samp>helvetica</samp>&rsquo; for sans, &lsquo;<samp>Times</samp>&rsquo; for serif and &lsquo;<samp>fixed</samp>&rsquo;
 for fixed.
 </p>
 <p>For each family, you can specify any number of <em>fallback fonts</em> that
 QEmacs can use if the requested glyph is not found in the current
-font. Currently, the font <samp>`unifont'</samp> is used as fallback in all
+font. Currently, the font &lsquo;<samp>unifont</samp>&rsquo; is used as fallback in all
 cases.
 </p>
 <p>You can use the command <code>set-system-font(family, fonts)</code> to change
@@ -1651,8 +1668,8 @@ fonts which are used as principal font and fallback fonts.
 </tr></table>
 <h2 class="section"> 7.3 Internal QEmacs fonts </h2>
 
-<p>In the tool <samp>`html2png'</samp>, QEmacs uses internal fonts which are the
-<samp>`Times'</samp>, <samp>`Helvetica'</samp> and <samp>`Unifont'</samp> supplied in X11. They
+<p>In the tool &lsquo;<samp>html2png</samp>&rsquo;, QEmacs uses internal fonts which are the
+&lsquo;<samp>Times</samp>&rsquo;, &lsquo;<samp>Helvetica</samp>&rsquo; and &lsquo;<samp>Unifont</samp>&rsquo; supplied in X11. They
 are highly compressed in the <em>FBF</em> font format.
 </p>
 <hr size="6">
@@ -1734,20 +1751,21 @@ Hangul.
 
 <table><tr><td>&nbsp;</td><td><pre class="example">usage: html2png [-h] [-x] [-w width] [-o outfile] [-f charset] infile
 </pre></td></tr></table>
+
 <dl compact="compact">
-<dt> <samp>`-h'</samp></dt>
+<dt> &lsquo;<samp>-h</samp>&rsquo;</dt>
 <dd><p>display the help
 </p></dd>
-<dt> <samp>`-x'</samp></dt>
+<dt> &lsquo;<samp>-x</samp>&rsquo;</dt>
 <dd><p>use strict XML parser (xhtml type parsing)
 </p></dd>
-<dt> <samp>`-w width'</samp></dt>
+<dt> &lsquo;<samp>-w width</samp>&rsquo;</dt>
 <dd><p>set the image width (default=640)
 </p></dd>
-<dt> <samp>`-f charset'</samp></dt>
+<dt> &lsquo;<samp>-f charset</samp>&rsquo;</dt>
 <dd><p>set the default charset (default='8859-1'). Use -f ? to list supported charsets.
 </p></dd>
-<dt> <samp>`-o outfile'</samp></dt>
+<dt> &lsquo;<samp>-o outfile</samp>&rsquo;</dt>
 <dd><p>set the output filename (default='a.png')
 </p></dd>
 </dl>
@@ -1792,7 +1810,7 @@ Hangul.
 </tr></table>
 <h2 class="section"> 9.1 Plugins </h2>
 
-<p>You can use the example in <tt>`plugin-example/'</tt> to develop dynamically
+<p>You can use the example in &lsquo;<tt>plugin-example/</tt>&rsquo; to develop dynamically
 linked qemacs plugins (aka modules).
 </p>
 <p>Plugins can add any dynamic resource qemacs supports (modes, key
@@ -1810,7 +1828,7 @@ linked plugins.
 </tr></table>
 <h1>About This Document</h1>
 <p>
-  This document was generated by <em>Charlie Gordon</em> on <em>January, 10 2008</em> using <a href="http://texi2html.cvshome.org/"><em>texi2html 1.76</em></a>.
+  This document was generated by <em>Charlie Gordon</em> on <em>April, 4 2008</em> using <a href="http://www.nongnu.org/texi2html/"><em>texi2html 1.78</em></a>.
 </p>
 <p>
   The buttons in the navigation panels have the following meaning:
@@ -1825,55 +1843,55 @@ linked plugins.
   <tr>
     <td align="center"> [ &lt; ] </td>
     <td align="center">Back</td>
-    <td>previous section in reading order</td>
+    <td>Previous section in reading order</td>
     <td>1.2.2</td>
   </tr>
   <tr>
     <td align="center"> [ &gt; ] </td>
     <td align="center">Forward</td>
-    <td>next section in reading order</td>
+    <td>Next section in reading order</td>
     <td>1.2.4</td>
   </tr>
   <tr>
     <td align="center"> [ &lt;&lt; ] </td>
     <td align="center">FastBack</td>
-    <td>beginning of this chapter or previous chapter</td>
+    <td>Beginning of this chapter or previous chapter</td>
     <td>1</td>
   </tr>
   <tr>
     <td align="center"> [ Up ] </td>
     <td align="center">Up</td>
-    <td>up section</td>
+    <td>Up section</td>
     <td>1.2</td>
   </tr>
   <tr>
     <td align="center"> [ &gt;&gt; ] </td>
     <td align="center">FastForward</td>
-    <td>next chapter</td>
+    <td>Next chapter</td>
     <td>2</td>
   </tr>
   <tr>
     <td align="center"> [Top] </td>
     <td align="center">Top</td>
-    <td>cover (top) of document</td>
+    <td>Cover (top) of document</td>
     <td> &nbsp; </td>
   </tr>
   <tr>
     <td align="center"> [Contents] </td>
     <td align="center">Contents</td>
-    <td>table of contents</td>
+    <td>Table of contents</td>
     <td> &nbsp; </td>
   </tr>
   <tr>
     <td align="center"> [Index] </td>
     <td align="center">Index</td>
-    <td>index</td>
+    <td>Index</td>
     <td> &nbsp; </td>
   </tr>
   <tr>
     <td align="center"> [ ? ] </td>
     <td align="center">About</td>
-    <td>about (help)</td>
+    <td>About (help)</td>
     <td> &nbsp; </td>
   </tr>
 </table>
@@ -1912,7 +1930,7 @@ linked plugins.
 <hr size="1">
 <p>
  <font size="-1">
-  This document was generated by <em>Charlie Gordon</em> on <em>January, 10 2008</em> using <a href="http://texi2html.cvshome.org/"><em>texi2html 1.76</em></a>.
+  This document was generated by <em>Charlie Gordon</em> on <em>April, 4 2008</em> using <a href="http://www.nongnu.org/texi2html/"><em>texi2html 1.78</em></a>.
  </font>
  <br>
 
