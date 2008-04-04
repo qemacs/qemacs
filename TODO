@@ -1,10 +1,10 @@
 General TODO:
 ------------
+- rewrite TODO file with more sections
 - remember X11 window positions and restore layout ?
 - improve image viewer.
 - regex search/replace (use glibc 2.1 regex.c file)
 - tab cursor displayed size
-- fix kana input method
 - current path in compile set to current buffer path
 - avoid problems with popups (kill_buffer, delete_window, split_window)
 - avoid error in new file
@@ -15,13 +15,13 @@ General TODO:
 - integrate tinySVG renderer based on the new libraster.
 - improve speed of text renderer / improve truncate mode (merge some
   good parts with CSS renderer ?). Suppress CRC hack (not reliable).
-- set_input_method() and set_buffer_file_coding_system() in config
-  file.
+- set_input_method() and set_buffer_file_coding_system() in config file.
 - add custom memory handling functions.
+- fix kana input method
 - charset: add JIS missing encoding functions
 - display alternate cursor in non activate column in hex mode.
 - implement wheel mode in CSS display.
-- check console charset support (need to convert input?)
+DONE	- check console charset support (need to convert input?)
 - test Hebrew keymap support.
 DONE	- kill buffer handling: append next kill as command flag
 DONE	- delete word should be a kill operation
@@ -35,8 +35,8 @@ C mode TODO:
 - add TAGS support:
   * recursive search of QTAGS file.
   * C decl parser
-  * man like mode 
   * global QTAGS file indexed with global includes
+DONE	man like mode 
 - see if java/javascript/c++ is OK.
 - autocomplete
 DONE	- forward-level, backward-level: skipping balanced parentheses
@@ -64,7 +64,7 @@ Ideas
 
 - vi mode.
 - vertical scroll bar
-- better Makefile (select modes)
+DONE	- better Makefile (select modes)
 - add auto close buffer flag (for list mode)
 - improve layout scheme for better scalability.
 - make dired and bufed left windows temporary popleft windows
@@ -74,7 +74,7 @@ Ideas
 - make command declaration macros standalone
 - dpy_open_font should never return NULL, must have a system font.
 - other coloring modes
-- variables ?
+DONE	- variables ?
 - scripting
 - expression evaluator
 - dos/mac translation modes
@@ -106,7 +106,7 @@ DONE	- *messages* system buffer
   (variable pitch, tabs, ^x and \uxxxx stuff -- emacs behaviour) ?
 DONE	- check X11 connection at probe time
 DONE	- allow quoting of special keys : let do_char insert xterm/vt100 
-	  key sequence to allow typing special keys into shell process
+DONE	  key sequence to allow typing special keys into shell process
 - fix scroll up/down to move point if already at end
 - fix terminal size inside shell window ?
 - cmdline arg to force lines and columns to test shell.

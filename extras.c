@@ -359,7 +359,7 @@ static CmdDef extra_commands[] = {
     CMDV( KEY_META(KEY_CTRL('f')), KEY_NONE,
           "forward-block", do_forward_block, ESi, 1, "v")
     CMDV( KEY_ESC, KEY_DELETE,
-          "backward-kill-block", do_kill_block, ESi, -1, "v")
+          "backward-kill-block", do_kill_block, ESi, -1, "*v")
     CMDV( KEY_META(KEY_CTRL('k')), KEY_NONE,
           "kill-block", do_kill_block, ESi, 1, "*v")
           /* Should also have mark-block on C-M-@ */

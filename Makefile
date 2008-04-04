@@ -53,8 +53,8 @@ DEFINES=-DHAVE_QE_CONFIG_H
 TARGETLIBS:=
 TARGETS+= qe$(EXE) tqe$(EXE) kmaps ligatures
 
-OBJS=qe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
-TOBJS=tqe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
+OBJS= qe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
+TOBJS= tqe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
 
 OBJS+= extras.o
 
