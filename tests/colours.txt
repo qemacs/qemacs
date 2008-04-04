@@ -2,6 +2,7 @@ Test of most colour rendering. Omits the SCO fg and bg sequences,
 since they are destructive.
 Normal text [1mand bold[m; [7mreverse video [1mand bold[m
 ANSI plus bold: [30m0 [1mbold[m [31m1 [1mbold[m [32m2 [1mbold[m [33m3 [1mbold[m [34m4 [1mbold[m [35m5 [1mbold[m [36m6 [1mbold[m [37m7 [1mbold[m
+xterm normal: [30mfg0[m [40mbg0[m [31mfg1[m [41mbg1[m [32mfg2[m [42mbg2[m [33mfg3[m [43mbg3[m [34mfg4[m [44mbg4[m [35mfg5[m [45mbg5[m [36mfg6[m [46mbg6[m [37mfg7[m [47mbg7[m
 xterm bright: [90mfg0[m [100mbg0[m [91mfg1[m [101mbg1[m [92mfg2[m [102mbg2[m [93mfg3[m [103mbg3[m [94mfg4[m [104mbg4[m [95mfg5[m [105mbg5[m [96mfg6[m [106mbg6[m [97mfg7[m [107mbg7[m
 xterm 256:
 [38;5;0m   0[m[38;5;1m   1[m[38;5;2m   2[m[38;5;3m   3[m[38;5;4m   4[m[38;5;5m   5[m[38;5;6m   6[m[38;5;7m   7[m[38;5;8m   8[m[38;5;9m   9[m[38;5;10m  10[m[38;5;11m  11[m[38;5;12m  12[m[38;5;13m  13[m[38;5;14m  14[m[38;5;15m  15[m
