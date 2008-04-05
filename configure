@@ -215,7 +215,9 @@ if test "$win32" = "yes" ; then
 	CFLAGS="$CFLAGS -I/usr/include/mingw -I/usr/include/w32api"
 	LDFLAGS="$LDFLAGS -L/usr/lib/mingw"
     else
-        cross_prefix="i386-mingw32msvc-"
+        cross_prefix="i586-mingw32msvc-"
+	CFLAGS="$CFLAGS -I/usr/i586-mingw32msvc/include"
+	extralibs="$extralibs -lws2_32"
     fi
     network="no"
     doc="no"
