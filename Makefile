@@ -24,7 +24,6 @@ ifeq ($(CC),gcc)
   # do not warn about zero-length formats.
   CFLAGS   += -Wno-format-zero-length
   LDFLAGS  := -g
-  TLDFLAGS := -g
 endif
 
 #include local compiler configuration file
@@ -33,8 +32,9 @@ endif
 ifdef TARGET_GPROF
   CFLAGS   += -p
   LDFLAGS  += -p
-  TLDFLAGS += -p
 endif
+
+TLDFLAGS := $(LDFLAGS)
 
 ifdef TARGET_ARCH_X86
   #CFLAGS+=-fomit-frame-pointer
@@ -68,20 +68,23 @@ ifdef CONFIG_DLL
   LDFLAGS+=-Wl,-E
 endif
 
-LIBS+=-lm
-
-ifndef CONFIG_CYGWIN
-  TARGETS+=qe-doc.html
+ifdef CONFIG_DOC
+  TARGETS+= qe-doc.html
 endif
 
 ifdef CONFIG_WIN32
+  OBJS+= unix.o
+  TOBJS+= unix.o
   OBJS+= win32.o
   TOBJS+= win32.o
-  LIBS+= -lgdi32
-  TLIBS+= -lgdi32
+#  OBJS+= printf.o
+#  TOBJS+= printf.o
+  LIBS+= -lmsvcrt -lgdi32 -lwsock32
+  TLIBS+= -lmsvcrt -lgdi32 -lwsock32
 else
   OBJS+= unix.o tty.o
   TOBJS+= unix.o tty.o
+  LIBS+= -lm
 endif
 
 ifdef CONFIG_ALL_KMAPS
@@ -98,10 +101,10 @@ ifndef CONFIG_TINY
 endif
 
 ifdef CONFIG_ALL_MODES
-  OBJS+= unihex.o clang.o latex-mode.o xml.o bufed.o \
+  OBJS+= unihex.o clang.o xml.o bufed.o \
          lisp.o makemode.o perl.o htmlsrc.o script.o variables.o
   ifndef CONFIG_WIN32
-    OBJS+= shell.o dired.o
+    OBJS+= shell.o dired.o latex-mode.o
   endif
 endif
 
@@ -160,7 +163,7 @@ qe_g$(EXE): $(OBJS) $(DEP_LIBS)
 qe$(EXE): qe_g$(EXE) Makefile
 	rm -f $@
 	cp $< $@
-	$(STRIP) $@
+	-$(STRIP) $@
 	@ls -l $@
 	echo `size $@` `wc --bytes $@` qe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
@@ -174,7 +177,7 @@ tqe_g$(EXE): $(TOBJS)
 tqe$(EXE): tqe_g$(EXE) Makefile
 	rm -f $@
 	cp $< $@
-	$(STRIP) $@
+	-$(STRIP) $@
 	@ls -l $@
 	echo `size $@` `wc --bytes $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS

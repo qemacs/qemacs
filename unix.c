@@ -19,7 +19,15 @@
  */
 
 #include "qe.h"
+
+#ifdef CONFIG_WIN32
+#include <winsock.h>
+/* Use a conditional typedef to avoid compilation warning */
+typedef u_int fdesc_t;
+#else
 #include <sys/wait.h>
+typedef int fdesc_t;
+#endif
 
 /* NOTE: it is strongly inspirated from the 'links' browser API */
 
@@ -66,9 +74,9 @@ void set_read_handler(int fd, void (*cb)(void *opaque), void *opaque)
     if (cb) {
         if (fd >= url_fdmax)
             url_fdmax = fd;
-        FD_SET(fd, &url_rfds);
+        FD_SET((fdesc_t)fd, &url_rfds);
     } else {
-        FD_CLR(fd, &url_rfds);
+        FD_CLR((fdesc_t)fd, &url_rfds);
     }
 }
 
@@ -79,9 +87,9 @@ void set_write_handler(int fd, void (*cb)(void *opaque), void *opaque)
     if (cb) {
         if (fd >= url_fdmax)
             url_fdmax = fd;
-        FD_SET(fd, &url_wfds);
+        FD_SET((fdesc_t)fd, &url_wfds);
     } else {
-        FD_CLR(fd, &url_wfds);
+        FD_CLR((fdesc_t)fd, &url_wfds);
     }
 }
 
@@ -234,9 +242,8 @@ static void url_block_reset(void)
 static void url_block(void)
 {
     URLHandler *uh;
-    int ret, i, pid, status, delay;
+    int ret, i, delay;
     fd_set rfds, wfds;
-    PidHandler *ph, *ph1;
     struct timeval tv;
 
     delay = check_timers(MAX_DELAY);
@@ -270,8 +277,12 @@ static void url_block(void)
         }
     }
 
+#ifndef CONFIG_WIN32
     /* handle terminated children */
     for (;;) {
+        int pid, status;
+        PidHandler *ph, *ph1;
+
         if (list_empty(&pid_handlers))
             break;
         pid = waitpid(-1, &status, WNOHANG);
@@ -285,6 +296,7 @@ static void url_block(void)
             }
         }
     }
+#endif
 }
 
 void url_main_loop(void (*init)(void *opaque), void *opaque)

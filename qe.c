@@ -2132,7 +2132,7 @@ static void apply_style(QEStyleDef *style, int style_index)
 {
     QEStyleDef *s;
 
-#ifndef WIN32
+#ifndef CONFIG_WIN32
     if (style_index & QE_STYLE_TTY) {
         style->fg_color = tty_fg_colors[TTY_GET_XFG(style_index)];
         style->bg_color = tty_bg_colors[TTY_GET_BG(style_index)];
@@ -4234,7 +4234,7 @@ static void qe_key_process(int key)
             } else {
                 int argval = c->argval;
 
-                /* To allow recursive all to qe_key_process, especially
+                /* To allow recursive calls to qe_key_process, especially
                  * from macros, we reset the QEKeyContext before
                  * dispatching the command
                  */
@@ -6558,7 +6558,7 @@ void do_help_for_help(__unused__ EditState *s)
     }
 }
 
-#ifdef WIN32
+#ifdef CONFIG_WIN32
 
 void qe_event_init(void)
 {
@@ -6739,7 +6739,7 @@ void wheel_scroll_up_down(EditState *s, int dir)
     perform_scroll_up_down(s, dir * WHEEL_SCROLL_STEP * line_height);
 }
 
-void mouse_event(QEEvent *ev)
+void qe_mouse_event(QEEvent *ev)
 {
     QEmacsState *qs = &qe_state;
     EditState *e;
@@ -6908,7 +6908,7 @@ void qe_handle_event(QEEvent *ev)
     case QE_BUTTON_PRESS_EVENT:
     case QE_BUTTON_RELEASE_EVENT:
     case QE_MOTION_EVENT:
-        mouse_event(ev);
+        qe_mouse_event(ev);
         break;
     case QE_SELECTION_CLEAR_EVENT:
         save_selection();
@@ -7658,6 +7658,8 @@ static void qe_init(void *opaque)
     qs->argv = argv;
 
     qs->hilite_region = 1;
+    qs->mmap_threshold = MIN_MMAP_SIZE;
+    qs->max_load_size = MAX_LOAD_SIZE;
 
     /* setup resource path */
     set_user_option(NULL);
@@ -7767,7 +7769,7 @@ static void qe_init(void *opaque)
         /* CG: handle +linenumber */
     }
 
-#ifndef CONFIG_TINY
+#if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
     if (is_player && _optind >= argc) {
         /* if player, go to directory mode by default if no file selected */
         do_dired(s);

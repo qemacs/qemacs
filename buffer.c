@@ -20,7 +20,7 @@
  */
 
 #include "qe.h"
-#ifndef WIN32
+#ifdef CONFIG_MMAP
 #include <sys/mman.h>
 #endif
 
@@ -1374,12 +1374,9 @@ int raw_load_buffer1(EditBuffer *b, FILE *f, int offset)
     return size;
 }
 
+#ifdef CONFIG_MMAP
 int mmap_buffer(EditBuffer *b, const char *filename)
 {
-#ifdef WIN32
-    /* currently no mmap is used under Windows */
-    return -1;
-#else
     int fd, len, file_size, n, size;
     u8 *file_ptr, *ptr;
     Page *p;
@@ -1419,20 +1416,29 @@ int mmap_buffer(EditBuffer *b, const char *filename)
     b->file_handle = fd;
     //put_status(NULL, "");
     return 0;
-#endif
 }
+#endif
 
 static int raw_load_buffer(EditBuffer *b, FILE *f)
 {
-    int ret;
+    QEmacsState *qs = &qe_state;
     struct stat st;
 
-    if (stat(b->filename, &st) == 0 && st.st_size >= MIN_MMAP_SIZE) {
-        ret = mmap_buffer(b, b->filename);
-    } else {
-        ret = raw_load_buffer1(b, f, 0);
+    /* TODO: Should produce error messages */
+
+    if (stat(b->filename, &st))
+        return -1;
+
+#ifdef CONFIG_MMAP
+    if (st.st_size >= qs->mmap_threshold) {
+        if (mmap_buffer(b, b->filename))
+            return 0;
     }
-    return ret;
+#endif
+    if (st.st_size <= qs->max_load_size) {
+        return raw_load_buffer1(b, f, 0);
+    }
+    return -1;
 }
 
 /* Write bytes between <start> and <end> to file filename,
@@ -1507,11 +1513,19 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
     if (len >= size) {
         va_start(ap, fmt);
         size = len + 1;
+#ifdef CONFIG_WIN32
+        buf = malloc(size);
+#else
         buf = alloca(size);
+#endif
         vsnprintf(buf, size, fmt, ap);
         va_end(ap);
     }
     eb_insert(b, b->total_size, buf, len);
+#ifdef CONFIG_WIN32
+    if (buf != buf0)
+        free(buf);
+#endif
     return len;
 }
 
@@ -1750,7 +1764,7 @@ int eb_save_buffer(EditBuffer *b)
     if (ret < 0)
         return ret;
 
-#ifndef WIN32
+#ifndef CONFIG_WIN32
     /* set correct file mode to old file permissions */
     chmod(filename, mode);
 #endif

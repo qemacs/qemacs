@@ -20,9 +20,6 @@
  */
 
 #include "qe.h"
-#ifndef WIN32
-#include <sys/mman.h>
-#endif
 
 static int default_input(__unused__ int *match_buf,
                          __unused__ int match_buf_size,

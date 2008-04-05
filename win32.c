@@ -256,7 +256,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_KEYDOWN:
         {
             unsigned int scan;
-            int ctrl, shift, alt, key;
+            int ctrl, shift, alt;
 
             ctrl = (GetKeyState(VK_CONTROL) & 0x8000);
             shift = (GetKeyState(VK_SHIFT) & 0x8000);
@@ -396,7 +396,8 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-static int get_unicode_key(QEditScreen *s, QEPollData *pd, QEEvent *ev)
+typedef struct QEPollData QEPollData;
+int get_unicode_key(QEditScreen *s, QEPollData *pd, QEEvent *ev)
 {
     MSG msg;
     QEEventQ *e;
@@ -521,7 +522,7 @@ static QEDisplay win32_dpy = {
     NULL, /* next */
 };
 
-int win32_init(void)
+static int win32_init(void)
 {
     return qe_register_display(&win32_dpy);
 }

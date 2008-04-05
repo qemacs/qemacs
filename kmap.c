@@ -20,7 +20,7 @@
  */
 
 #include "qe.h"
-#ifndef WIN32
+#ifdef CONFIG_MMAP
 #include <sys/mman.h>
 #endif
 
@@ -161,40 +161,50 @@ static int kmap_input(int *match_buf, int match_buf_size,
     }
 }
 
-static int input_method_fd;
-static size_t input_method_size;
+#ifdef CONFIG_MMAP
 static void *input_method_map;
+static size_t input_method_size;
+#endif
+static void *input_method_ptr;
 
-void load_input_methods(void)
+int load_input_methods(void)
 {
     char buf[MAX_FILENAME_SIZE];
-    size_t file_size;
+    ssize_t file_size;
     int fd, offset;
-    const unsigned char *file_ptr, *p;
+    const unsigned char *file_ptr = NULL, *p;
     InputMethod *m;
 
-    input_method_fd = -1;
-
     if (find_resource_file(buf, sizeof(buf), "kmaps") < 0)
-        return;
+        return -1;
 
     fd = open(buf, O_RDONLY);
     if (fd < 0)
-        return;
+        return -1;
+
     file_size = lseek(fd, 0, SEEK_END);
-    file_ptr = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
-    if ((void*)file_ptr == (void*)MAP_FAILED) {
-        // XXX: allocate a buffer and read the file in memory
-    fail:
-        // XXX: print error message
-        close(fd);
-        return;
+    if (file_size <= 0)
+        goto fail;
+
+    lseek(fd, 0, SEEK_SET);
+
+#ifdef CONFIG_MMAP
+    input_method_map = mmap(NULL, file_size, PROT_READ, MAP_SHARED, fd, 0);
+    if (input_method_map != (void*)MAP_FAILED) {
+        file_ptr = input_method_map;
+        input_method_size = file_size;
+    }
+#endif
+    if (!file_ptr) {
+        file_ptr = input_method_ptr = qe_malloc_array(char, file_size);
+        if (input_method_ptr == NULL
+        ||  read(fd, input_method_ptr, file_size) != file_size) {
+            goto fail;
+        }
     }
 
-    if (memcmp(file_ptr, "kmap", 4) != 0) {
-        munmap((void*)file_ptr, file_size);
+    if (memcmp(file_ptr, "kmap", 4) != 0)
         goto fail;
-    }
 
     p = file_ptr + 4;
     for (;;) {
@@ -202,6 +212,7 @@ void load_input_methods(void)
         p += 4;
         if (offset == 0)
             break;
+        /* Should add validation tests */
         m = qe_malloc(InputMethod);
         if (m) {
             m->data = file_ptr + offset;
@@ -211,18 +222,23 @@ void load_input_methods(void)
         }
         p += strlen((const char *)p) + 1;
     }
+    return 0;
 
-    input_method_fd = fd;
-    input_method_map = (void *)file_ptr;
-    input_method_size = file_size;
+  fail:
+    unload_input_methods();
+    close(fd);
+    return -1;
 }
 
 void unload_input_methods(void)
 {
-    if (input_method_fd >= 0) {
-        munmap((void*)input_method_map, input_method_size);
+    /* Should unregister input methods, but this is only called upon exit */
+#ifdef CONFIG_MMAP
+    if (input_method_map && input_method_map != (void*)MAP_FAILED) {
+        munmap(input_method_map, input_method_size);
         input_method_map = NULL;
-        close(input_method_fd);
-        input_method_fd = -1;
+        input_method_size = 0;
     }
+#endif
+    qe_free(&input_method_ptr);
 }

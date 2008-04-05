@@ -42,7 +42,7 @@
 
 /* OS specific defines */
 
-#ifdef WIN32
+#ifdef CONFIG_WIN32
 #define snprintf   _snprintf
 #define vsnprintf  _vsnprintf
 #endif
@@ -625,7 +625,8 @@ void qe_ungrab_keys(void);
 /* buffer.c */
 
 /* begin to mmap files from this size */
-#define MIN_MMAP_SIZE (1024*1024)
+#define MIN_MMAP_SIZE  (1024*1024)
+#define MAX_LOAD_SIZE  (512*1024*1024)
 
 #define MAX_PAGE_SIZE 4096
 //#define MAX_PAGE_SIZE 16
@@ -1195,6 +1196,7 @@ struct QEmacsState {
     int ignore_spaces;  /* ignore spaces when comparing windows */
     int hilite_region;  /* hilite the current region when selecting */
     int mmap_threshold; /* minimum file size for mmap */
+    int max_load_size;  /* maximum file size for loading in memory */
 };
 
 extern QEmacsState qe_state;
@@ -1424,7 +1426,7 @@ void register_input_method(InputMethod *m);
 void do_set_input_method(EditState *s, const char *method);
 void do_switch_input_method(EditState *s);
 void init_input_methods(void);
-void load_input_methods(void);
+int load_input_methods(void);
 void unload_input_methods(void);
 
 /* the following will be suppressed */
@@ -1466,7 +1468,7 @@ void command_completion(CompleteState *cp);
 void file_completion(CompleteState *cp);
 void buffer_completion(CompleteState *cp);
 
-#ifdef WIN32
+#ifdef CONFIG_WIN32
 static inline int is_user_input_pending(void) {
     return 0;
 }
@@ -1684,7 +1686,7 @@ void qe_event_init(void);
 void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr);
 void window_resize(EditState *s, int target_w, int target_h);
 void wheel_scroll_up_down(EditState *s, int dir);
-void mouse_event(QEEvent *ev);
+void qe_mouse_event(QEEvent *ev);
 int parse_config_file(EditState *s, const char *filename);
 int parse_command_line(int argc, char **argv);
 void set_user_option(const char *user);

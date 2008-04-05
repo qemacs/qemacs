@@ -22,13 +22,13 @@
 #include "qe.h"
 #include <dirent.h>
 
-#ifdef WIN32
+#ifdef CONFIG_WIN32
 #include <sys/timeb.h>
 
 /* XXX: not sufficient, but OK for basic operations */
 int fnmatch(const char *pattern, const char *string, int flags)
 {
-    if (pattern[0] == '*')
+    if (pattern[0] == '*' && pattern[1] == '\0')
         return 0;
     else
         return !strequal(pattern, string);
@@ -112,16 +112,15 @@ void find_file_close(FindFileState *s)
     qe_free(&s);
 }
 
-#ifdef WIN32
+#ifdef CONFIG_WIN32
 /* convert '\' to '/' */
 static void path_win_to_unix(char *buf)
 {
     char *p;
-    p = buf;
-    while (*p) {
+
+    for (p = buf; *p; p++) {
         if (*p == '\\')
             *p = '/';
-        p++;
     }
 }
 #endif
@@ -250,7 +249,7 @@ void canonicalize_absolute_path(char *buf, int buf_size, const char *path1)
                 homedir = getenv("HOME");
                 if (homedir) {
                     pstrcpy(path, sizeof(path), homedir);
-#ifdef WIN32
+#ifdef CONFIG_WIN32
                     path_win_to_unix(path);
 #endif
                     remove_slash(path);
@@ -267,7 +266,7 @@ void canonicalize_absolute_path(char *buf, int buf_size, const char *path1)
             /* CG: not sufficient for windows drives */
             /* CG: should test result */
             getcwd(cwd, sizeof(cwd));
-#ifdef WIN32
+#ifdef CONFIG_WIN32
             path_win_to_unix(cwd);
 #endif
             makepath(path, sizeof(path), cwd, path1);
@@ -286,7 +285,7 @@ const char *basename(const char *filename)
     base = filename;
     if (base) {
         for (p = base; *p; p++) {
-#ifdef WIN32
+#ifdef CONFIG_WIN32
             /* Simplistic DOS filename support */
             if (*p == '/' || *p == '\\' || *p == ':')
                 base = p + 1;
