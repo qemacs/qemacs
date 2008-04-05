@@ -49,13 +49,13 @@ static int unihex_backward_offset(EditState *s, int offset)
 
 static int unihex_display(EditState *s, DisplayState *ds, int offset)
 {
-    int j, len, eof;
+    int j, len, ateof;
     int offset1;
     unsigned int b;
     unsigned int buf[LINE_MAX_SIZE];
     unsigned int pos[LINE_MAX_SIZE];
 
-    eof = 0;
+    ateof = 0;
     display_bol(ds);
 
     ds->style = QE_STYLE_COMMENT;
@@ -80,8 +80,8 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
         if (j < len) {
             display_printhex(ds, pos[j], pos[j+1], buf[j], 4);
         } else {
-            if (!eof) {
-                eof = 1;
+            if (!ateof) {
+                ateof = 1;
                 display_printf(ds, pos[j], pos[j] + 1, "    ");
             } else {
                 display_printf(ds, -1, -1, "    ");
@@ -103,8 +103,8 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
             display_char(ds, pos[j], pos[j+1], b);
         } else {
             b = ' ';
-            if (!eof) {
-                eof = 1;
+            if (!ateof) {
+                ateof = 1;
                 display_char(ds, pos[j], pos[j] + 1, b);
             } else {
                 display_char(ds, -1, -1, b);

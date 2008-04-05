@@ -48,7 +48,7 @@ static int hex_backward_offset(EditState *s, int offset)
 
 static int hex_display(EditState *s, DisplayState *ds, int offset)
 {
-    int j, len, eof;
+    int j, len, ateof;
     int offset1;
     unsigned char b;
 
@@ -59,7 +59,7 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
 
     ds->style = QE_STYLE_FUNCTION;
 
-    eof = 0;
+    ateof = 0;
     len = s->b->total_size - offset;
     if (len > s->disp_width)
         len = s->disp_width;
@@ -71,8 +71,8 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
                 eb_read(s->b, offset + j, &b, 1);
                 display_printhex(ds, offset1, offset1 + 1, b, 2);
             } else {
-                if (!eof) {
-                    eof = 1;
+                if (!ateof) {
+                    ateof = 1;
                 } else {
                     offset1 = -2;
                 }
@@ -86,15 +86,15 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
     }
     ds->style = 0;
 
-    eof = 0;
+    ateof = 0;
     for (j = 0; j < s->disp_width; j++) {
         offset1 = offset + j;
         if (j < len) {
             eb_read(s->b, offset + j, &b, 1);
         } else {
             b = ' ';
-            if (!eof) {
-                eof = 1;
+            if (!ateof) {
+                ateof = 1;
             } else {
                 offset1 = -2;
             }
