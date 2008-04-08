@@ -1753,7 +1753,7 @@ void do_next_mode(EditState *s)
     probe_data.real_filename = s->b->filename;
     probe_data.total_size = s->b->total_size;
     probe_data.filename = reduce_filename(fname, sizeof(fname),
-                                          basename(s->b->filename));
+                                          get_basename(s->b->filename));
     /* CG: should pass EditState? QEmacsState ? */
 
     m = m0 = s->mode;
@@ -4586,7 +4586,7 @@ void file_completion(CompleteState *cp)
     while (find_file_next(ffst, filename, sizeof(filename)) == 0) {
         struct stat sb;
 
-        base = basename(filename);
+        base = get_basename(filename);
         /* ignore . and .. to force direct match if
          * single entry in directory */
         if (strequal(base, ".") || strequal(base, ".."))
@@ -5297,7 +5297,7 @@ static ModeDef *probe_mode(EditState *s, int mode, const uint8_t *buf,
     probe_data.mode = mode;
     probe_data.total_size = total_size;
     probe_data.filename = reduce_filename(fname, sizeof(fname),
-                                          basename(b->filename));
+                                          get_basename(b->filename));
     /* CG: should pass EditState? QEmacsState ? */
 
     m = qs->first_mode;
@@ -7704,7 +7704,7 @@ static void qe_init(void *opaque)
     {
         const char *p;
 
-        p = basename(argv[0]);
+        p = get_basename(argv[0]);
         if (strequal(p, "ffplay"))
             is_player = 1;
         else

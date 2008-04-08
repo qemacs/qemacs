@@ -178,7 +178,7 @@ void find_file_close(FindFileState *s);
 int is_directory(const char *path);
 void canonicalize_path(char *buf, int buf_size, const char *path);
 void canonicalize_absolute_path(char *buf, int buf_size, const char *path1);
-const char *basename(const char *filename);
+const char *get_basename(const char *filename);
 const char *extension(const char *filename);
 char *get_dirname(char *dest, int size, const char *file);
 char *reduce_filename(char *dest, int size, const char *filename);
