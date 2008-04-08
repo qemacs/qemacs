@@ -126,7 +126,9 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
 static int latex_mode_probe(ModeProbeData *p)
 {
     /* currently, only use the file extension */
-    if (match_extension(p->filename, "tex"))
+    /* Halibut (by Simon Tatham) has a syntax similar to TeX and uses
+     * .but extension */
+    if (match_extension(p->filename, "tex|but"))
         return 100;
 
     return 0;
