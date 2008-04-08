@@ -26,9 +26,9 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Simple commands ----------------*/
 
-    CMDV( KEY_DEFAULT, KEY_NONE,
-	  "self-insert-command", do_char, ESii, ' ',
-          "*" "v" "ui")
+    CMD_( KEY_DEFAULT, KEY_NONE,
+	  "self-insert-command", do_char, ESii,
+          "*" "kiui")
     CMD_( KEY_META('#'), KEY_NONE,
           "insert-char", do_char, ESii,
           "*" "i{Insert char: }" "ui")

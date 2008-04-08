@@ -3493,6 +3493,7 @@ typedef struct ExecCmdState {
     CmdDef *d;
     int nb_args;
     int argval;
+    int key;
     const char *ptype;
     CmdArg args[MAX_CMD_ARGS];
     unsigned char args_type[MAX_CMD_ARGS];
@@ -3585,6 +3586,10 @@ static int parse_arg(const char **pp, unsigned char *argtype,
 
     p = *pp;
     type = 0;
+    if (*p == 'k') {
+        p++;
+        type = CMD_ARG_USE_KEY;
+    }
     if (*p == 'u') {
         p++;
         type = CMD_ARG_USE_ARGVAL;
@@ -3620,7 +3625,7 @@ static void arg_edit_cb(void *opaque, char *str);
 static void parse_args(ExecCmdState *es);
 static void free_cmd(ExecCmdState *es);
 
-void exec_command(EditState *s, CmdDef *d, int argval)
+void exec_command(EditState *s, CmdDef *d, int argval, int key)
 {
     ExecCmdState *es;
     const char *argdesc;
@@ -3640,7 +3645,8 @@ void exec_command(EditState *s, CmdDef *d, int argval)
 
     es->s = s;
     es->d = d;
-    es->argval= argval;
+    es->argval = argval;
+    es->key = key;
     es->nb_args = 0;
 
     /* first argument is always the window */
@@ -3663,7 +3669,7 @@ static void parse_args(ExecCmdState *es)
     char completion_name[64];
     char history[32];
     unsigned char arg_type;
-    int ret, rep_count, get_arg, type, use_argval;
+    int ret, rep_count, get_arg, type, use_argval, use_key;
 
     for (;;) {
         ret = parse_arg(&es->ptype, &arg_type,
@@ -3677,6 +3683,7 @@ static void parse_args(ExecCmdState *es)
         if (es->nb_args >= MAX_CMD_ARGS)
             goto fail;
         use_argval = arg_type & CMD_ARG_USE_ARGVAL;
+        use_key = arg_type & CMD_ARG_USE_KEY;
         type = arg_type & CMD_ARG_TYPE_MASK;
         es->args_type[es->nb_args] = type;
         get_arg = 0;
@@ -3688,6 +3695,9 @@ static void parse_args(ExecCmdState *es)
             es->args[es->nb_args].p = prompt;
             break;
         case CMD_ARG_INT:
+            if (use_key) {
+                es->args[es->nb_args].n = es->key;
+            } else
             if (use_argval && es->argval != NO_ARG) {
                 es->args[es->nb_args].n = es->argval;
                 es->argval = NO_ARG;
@@ -3845,7 +3855,7 @@ void do_execute_command(EditState *s, const char *cmd, int argval)
 
     d = qe_find_cmd(cmd);
     if (d) {
-        exec_command(s, d, argval);
+        exec_command(s, d, argval, 0);
     } else {
         put_status(s, "No match");
     }
@@ -4077,6 +4087,9 @@ static QEKeyContext key_ctx;
 void qe_grab_keys(void (*cb)(void *opaque, int key), void *opaque)
 {
     QEKeyContext *c = &key_ctx;
+
+    /* CG: Should free previous grab? */
+    /* CG: Should grabing be window dependent ? */
     c->grab_key_cb = cb;
     c->grab_key_opaque = opaque;
 }
@@ -4087,6 +4100,8 @@ void qe_grab_keys(void (*cb)(void *opaque, int key), void *opaque)
 void qe_ungrab_keys(void)
 {
     QEKeyContext *c = &key_ctx;
+
+    /* CG: Should free previous grab? */
     c->grab_key_cb = NULL;
     c->grab_key_opaque = NULL;
 }
@@ -4119,6 +4134,7 @@ static void qe_key_process(int key)
 
   again:
     if (c->grab_key_cb) {
+        /* grabber should return codes for quit / fall thru / ungrab */
         c->grab_key_cb(c->grab_key_opaque, key);
         /* allow key_grabber to quit and unget last key */
         if (c->grab_key_cb || qs->ungot_key == -1)
@@ -4150,6 +4166,7 @@ static void qe_key_process(int key)
     if (c->is_escape) {
         compose_keys(c->keys, &c->nb_keys);
         c->is_escape = 0;
+        key = c->keys[c->nb_keys - 1];
     }
 
     /* see if one command is found */
@@ -4239,7 +4256,7 @@ static void qe_key_process(int key)
                  * dispatching the command
                  */
                 qe_key_init(c);
-                exec_command(s, d, argval);
+                exec_command(s, d, argval, key);
             }
             qe_key_init(c);
             edit_display(qs);

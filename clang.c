@@ -631,15 +631,11 @@ static CmdDef c_commands[] = {
           "c-backward-preprocessor", do_c_forward_preprocessor, ESi, -1, "*v")
     CMDV( KEY_META(']'), KEY_NONE,
           "c-forward-preprocessor", do_c_forward_preprocessor, ESi, 1, "*v")
-    /* CG: should use 'k' intrinsic argument */
-    CMDV( ';', KEY_NONE,
-          "c-electric-semi&comma", do_c_electric, ESi, ';', "*v")
-    CMDV( ':', KEY_NONE,
-          "c-electric-colon", do_c_electric, ESi, ':', "*v")
-    CMDV( '{', KEY_NONE,
-          "c-electric-obrace", do_c_electric, ESi, '{', "*v")
-    CMDV( '}', KEY_NONE,
-          "c-electric-cbrace", do_c_electric, ESi, '}', "*v")
+    /* CG: should add more electric keys */
+    CMD_( ';', ':',
+          "c-electric-key", do_c_electric, ESi, "*ki")
+    CMD_( '{', '}',
+          "c-electric-key", do_c_electric, ESi, "*ki")
     CMD_DEF_END,
 };
 

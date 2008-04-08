@@ -619,6 +619,8 @@ typedef union QEEvent {
 } QEEvent;
 
 void qe_handle_event(QEEvent *ev);
+/* CG: Should optionally attach grab to a window */
+/* CG: Should deal with opaque object life cycle */
 void qe_grab_keys(void (*cb)(void *opaque, int key), void *opaque);
 void qe_ungrab_keys(void);
 
@@ -1223,7 +1225,8 @@ enum CmdArgType {
     CMD_ARG_STRING,
     CMD_ARG_STRINGVAL,
     CMD_ARG_WINDOW,
-    CMD_ARG_TYPE_MASK = 0x7f,
+    CMD_ARG_TYPE_MASK = 0x3f,
+    CMD_ARG_USE_KEY = 0x40,
     CMD_ARG_USE_ARGVAL = 0x80,
 };
 
@@ -1648,7 +1651,7 @@ void do_set_system_font(EditState *s, const char *qe_font_name,
                         const char *system_fonts);
 void call_func(CmdSig sig, CmdProto func, int nb_args, CmdArg *args,
                unsigned char *args_type);
-void exec_command(EditState *s, CmdDef *d, int argval);
+void exec_command(EditState *s, CmdDef *d, int argval, int key);
 void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);
 void do_universal_argument(EditState *s);

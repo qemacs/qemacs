@@ -603,8 +603,9 @@ static void shell_key(void *opaque, int key)
         }
         break;
     }
-    if (p)
+    if (p) {
         tty_write(s, p, len);
+    }
 }
 
 static unsigned char const sco_color[16] = {
@@ -1334,14 +1335,18 @@ static void shell_move_eol(EditState *e)
 
 static void shell_write_char(EditState *e, int c)
 {
-    char ch;
+    char buf[2], *p;
 
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
 
-        ch = c;
-        /* TODO: convert to tty escape sequences? */
-        tty_write(s, &ch, 1);
+        p = buf;
+        *p++ = c;
+        if (c >= KEY_META(0) && c <= KEY_META(0xff)) {
+            p[-1] = '\033';
+            *p++ = c - KEY_META(0);
+        }
+        tty_write(s, buf, p - buf);
     } else {
         /* Should dispatch as in fundamental mode */
         switch (c) {
@@ -1355,11 +1360,17 @@ static void shell_write_char(EditState *e, int c)
         case 11:
             do_kill_line(e, 1);
             break;
-        case 127:
+        case KEY_DEL:
             do_backspace(e, NO_ARG);
             break;
         case '\r':
             do_return(e, 1);
+            break;
+        case KEY_META('d'):
+            do_kill_word(e, 1);
+            break;
+        case KEY_META(KEY_DEL):
+            do_kill_word(e, -1);
             break;
         default:
             text_write_char(e, c);
@@ -1521,19 +1532,24 @@ static CmdDef shell_commands[] = {
     CMD1( '\r', KEY_NONE,
           "shell-return", shell_write_char, '\r')
     /* CG: should send s->kbs */
-    CMD1( 127, KEY_NONE,
-          "shell-backward-delete-char", shell_write_char, 127)
+    CMD1( KEY_DEL, KEY_NONE,
+          "shell-backward-delete-char", shell_write_char, KEY_DEL)
     CMD1( KEY_CTRL('c'), KEY_NONE,
           "shell-intr", shell_write_char, 3)
     CMD1( KEY_CTRL('d'), KEY_DELETE,
           "shell-delete-char", shell_write_char, 4)
+    CMD1( KEY_META('d'), KEY_NONE,
+          "shell-delete-word", shell_write_char, KEY_META('d'))
+    CMD1( KEY_META(KEY_DEL), KEY_NONE,
+          "shell-backward-delete-word", shell_write_char, KEY_META(KEY_DEL))
+    CMD_( KEY_META('p'), KEY_META('n'),
+          "shell-history-search", shell_write_char, ESi, "*ki")
     CMD1( KEY_CTRL('i'), KEY_NONE,
           "shell-tabulate", shell_write_char, 9)
     CMD1( KEY_CTRL('k'), KEY_NONE,
           "shell-kill-line", shell_write_char, 11)
     CMD1( KEY_CTRL('y'), KEY_NONE,
           "shell-yank", shell_write_char, 25)
-    /* Should have KEY_CTRL('c') -> shell_kill */
     CMD_DEF_END,
 };
 
