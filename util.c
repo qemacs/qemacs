@@ -277,7 +277,7 @@ void canonicalize_absolute_path(char *buf, int buf_size, const char *path1)
 }
 
 /* Get the filename portion of a path */
-const char *basename(const char *filename)
+const char *get_basename(const char *filename)
 {
     const char *p;
     const char *base;
@@ -303,7 +303,7 @@ const char *extension(const char *filename)
 {
     const char *p, *ext;
 
-    p = basename(filename);
+    p = get_basename(filename);
     ext = NULL;
     if (p) {
         while (*p == '.')
@@ -331,7 +331,7 @@ char *get_dirname(char *dest, int size, const char *file)
         p = dest;
         if (file) {
             pstrcpy(dest, size, file);
-            p = dest + (basename(dest) - dest);
+            p = dest + (get_basename(dest) - dest);
             if (p > dest + 1 && p[-1] != ':' && p[-2] != ':')
                 p--;
 
@@ -345,7 +345,7 @@ char *get_dirname(char *dest, int size, const char *file)
 
 char *reduce_filename(char *dest, int size, const char *filename)
 {
-    const char *base = basename(filename);
+    const char *base = get_basename(filename);
     char *dbase, *ext, *p;
 
     /* Copy path unchanged */
@@ -357,7 +357,7 @@ char *reduce_filename(char *dest, int size, const char *filename)
     
     pstrcat(dest, size, base);
 
-    dbase = dest + (basename(dest) - dest);
+    dbase = dest + (get_basename(dest) - dest);
 
     /* Strip numeric extensions (vcs version numbers) */
     for (;;) {
@@ -437,7 +437,7 @@ void splitpath(char *dirname, int dirname_size,
 {
     const char *base;
 
-    base = basename(pathname);
+    base = get_basename(pathname);
     if (dirname)
         pstrncpy(dirname, dirname_size, pathname, base - pathname);
     if (filename)

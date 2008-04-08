@@ -1495,7 +1495,7 @@ static void raw_close_buffer(__unused__ EditBuffer *b)
 void eb_set_filename(EditBuffer *b, const char *filename)
 {
     pstrcpy(b->filename, sizeof(b->filename), filename);
-    eb_set_buffer_name(b, basename(filename));
+    eb_set_buffer_name(b, get_basename(filename));
 }
 
 int eb_printf(EditBuffer *b, const char *fmt, ...)

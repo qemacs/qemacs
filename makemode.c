@@ -146,7 +146,7 @@ static void makefile_colorize_line(unsigned int *str, int n, int *statep,
 
 static int makefile_mode_probe(ModeProbeData *p)
 {
-    const char *base = basename(p->filename);
+    const char *base = get_basename(p->filename);
 
     /* check file name or extension */
     if (match_extension(base, "mk|mak")

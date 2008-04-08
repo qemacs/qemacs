@@ -290,7 +290,7 @@ static void dired_build_list(EditState *s, const char *path,
     while (!find_file_next(ffst, filename, sizeof(filename))) {
         if (lstat(filename, &st) < 0)
             continue;
-        p = basename(filename);
+        p = get_basename(filename);
 
 #if 1   /* CG: bad idea, but causes spurious bugs */
         /* exclude redundant '.' and '..' */

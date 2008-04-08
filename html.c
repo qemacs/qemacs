@@ -104,7 +104,7 @@ void css_error(const char *filename, int line_num, const char *msg)
     if (!b)
         return;
     b->flags &= ~BF_READONLY;
-    eb_printf(b, "%s:%d: %s\n", basename(filename), line_num, msg);
+    eb_printf(b, "%s:%d: %s\n", get_basename(filename), line_num, msg);
     b->flags |= ~BF_READONLY;
 }
 
@@ -320,8 +320,7 @@ static void html_display(EditState *s)
         }
 
         /* display cursor */
-        if (cursor_found &&
-            s->qe_state->active_window == s) {
+        if (cursor_found && s->qe_state->active_window == s) {
             int x, y, w, h;
 
             x = cursor_pos.x1;

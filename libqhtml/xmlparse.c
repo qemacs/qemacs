@@ -426,7 +426,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
             /* if no alt, display the name of the image */
             value = css_attr_str(box, CSS_ID_src);
             if (value)
-                value = basename(value);
+                value = get_basename(value);
         }
         if (value && value[0] != '\0') {
             arg.type = CSS_VALUE_STRING;
