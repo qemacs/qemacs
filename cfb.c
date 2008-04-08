@@ -105,6 +105,7 @@ static void cfb32_fill_rectangle(QEditScreen *s,
     unsigned char *dest, *d;
     int y, n;
     unsigned int col;
+
     col = cfb->get_color(color);
 
     dest = cfb->base + y1 * cfb->wrap + x1 * 4;

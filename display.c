@@ -120,9 +120,8 @@ static QEDisplay const dummy_dpy = {
 void fill_rectangle(QEditScreen *s,
                     int x1, int y1, int w, int h, QEColor color)
 {
-    int x2, y2;
-    x2 = x1 + w;
-    y2 = y1 + h;
+    int x2 = x1 + w;
+    int y2 = y1 + h;
 
     /* quick clip rejection */
     if (x2 <= s->clip_x1 || y2 <= s->clip_y1 ||
