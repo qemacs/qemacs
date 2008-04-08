@@ -19,6 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#define _GNU_SOURCE
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -81,11 +83,11 @@ typedef struct ShellState {
 /* move to mode */
 static int shell_launched = 0;
 
-#define PTYCHAR1 "pqrstuvwxyz"
+#define PTYCHAR1 "pqrstuvwxyzabcde"
 #define PTYCHAR2 "0123456789abcdef"
 
 /* allocate one pty/tty pair */
-static int get_pty(char *tty_str)
+static int get_pty(char *tty_str, int size)
 {
     int fd;
     char ptydev[] = "/dev/pty??";
@@ -93,6 +95,13 @@ static int get_pty(char *tty_str)
     int len = strlen(ttydev);
     const char *c1, *c2;
 
+    /* First try Unix98 pseudo tty master */
+    if ((fd = open("/dev/ptmx", O_RDWR)) >= 0) {
+        if (!ptsname_r(fd, tty_str, size) && !grantpt(fd) && !unlockpt(fd))
+            return fd;
+        close(fd);
+    }
+    /* then try BSD pseudo tty pre-created pairs */
     for (c1 = PTYCHAR1; *c1; c1++) {
         ptydev[len-2] = ttydev[len-2] = *c1;
         for (c2 = PTYCHAR2; *c2; c2++) {
@@ -121,9 +130,9 @@ static int run_process(const char *path, const char **argv,
     char tty_name[32];
     struct winsize ws;
 
-    pty_fd = get_pty(tty_name);
+    pty_fd = get_pty(tty_name, sizeof(tty_name));
     if (pty_fd < 0) {
-        put_status(NULL, "run_process: cannot get tty");
+        put_status(NULL, "run_process: cannot get tty: %m");
         return -1;
     }
     fcntl(pty_fd, F_SETFL, O_NONBLOCK);
