@@ -49,7 +49,6 @@ enum TTYState {
     TTY_STATE_ESC2,
     TTY_STATE_CSI,
     TTY_STATE_STRING,
-    TTY_STATE_STRING2,
 };
 
 typedef struct ShellState {
@@ -62,7 +61,7 @@ typedef struct ShellState {
     int has_params[MAX_ESC_PARAMS];
     int nb_esc_params;
     int state;
-    int esc1;
+    int esc1, esc2;
     int shifted;
     int grab_keys;
     EditBuffer *b;
@@ -774,6 +773,7 @@ static void tty_emulate(ShellState *s, int c)
         break;
     case TTY_STATE_ESC2:
         s->state = TTY_STATE_NORM;
+        s->esc2 = c;
         switch (ESC2(s->esc1, c)) {
         case ESC2('(','B'):     /* exit_alt_charset_mode */
             s->shifted = 0;
@@ -785,29 +785,33 @@ static void tty_emulate(ShellState *s, int c)
         case ESC2(')','0'):
         case ESC2('*','B'):
         case ESC2('+','B'):
-        case ESC2(']','R'):
-            /* XXX: ??? */
+            /* XXX: Todo */
             break;
-        case ESC2(']','0'):     /* xterm's set-window-title */
+        case ESC2(']','0'):     /* xterm's set-window-title and icon */
+        case ESC2(']','1'):     /* xterm's set-window-title */
+        case ESC2(']','2'):     /* xterm's set-window-title */
+        case ESC2(']','4'):     /* xterm's define-extended color */
+        case ESC2(']','W'):     /* word-set (define char wordness) */
             s->state = TTY_STATE_STRING;
             break;
-        case ESC2(']','4'):     /* xterm's define-extended color */
-            /* Parse syntax: \033]4;4;16;rgb:00/00/00\033\134 */
-            s->state = TTY_STATE_STRING2;
+        case ESC2(']','P'):     /* linux set palette */
+        case ESC2(']','R'):     /* linux reset palette */
+            /* XXX: Todo */
             break;
         }
         break;
     case TTY_STATE_STRING:
-        /* ignore string parameter upto \a (^G) */
-        if (c == '\007') {
-            /* CG: should store window caption */
+        /* CG: should store the string */
+        /* Stop string on CR or LF, for protection */
+        if (c == '\012' || c == '\015') {
             s->state = TTY_STATE_NORM;
+            break;
         }
-        break;
-    case TTY_STATE_STRING2:
-        /* ignore string parameter upto ESC \ */
-        if (c == '\\') {
-            /* CG: should parse color definition string */
+        /* Stop string on \a (^G) or M-\ -- need better test for ESC \ */
+        if (c == '\007' || c == 0234 || c == '\\') {
+            /* CG: ESC2(']','0') should store window caption */
+            /* CG: ESC2(']','4') should parse color definition string */
+            /* (example: "\033]4;16;rgb:00/00/00\033\134" ) */
             s->state = TTY_STATE_NORM;
         }
         break;
