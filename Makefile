@@ -332,7 +332,7 @@ clean:
 	make -C libqhtml clean
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
            qe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
-           cptoqe jistoqe allmodules.txt basemodules.txt
+           cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9]
 
 distclean: clean
 	rm -f config.h config.mak
