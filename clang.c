@@ -45,7 +45,7 @@ static const char *c_mode_types =
     "_Bool|_Complex|_Imaginary|";
 
 static const char *c_mode_extensions =
-    "c|h|y|e|cc|cs|cpp|cxx|hpp|hxx|idl|jav|java|js|qe|json|pcc|C|l|lex";
+    "c|h|y|e|cc|hh|cpp|hpp|cxx|hxx|cs|idl|jav|java|js|qe|json|pcc|C|l|lex";
 
 #if 0
 static int get_c_identifier(char *buf, int buf_size, unsigned int *p)
@@ -604,6 +604,10 @@ static int c_mode_probe(ModeProbeData *p)
 
     /* even weaker match on C++ comment start */
     if (p->buf[0] == '/' && p->buf[1] == '/')
+        return 50;
+
+    /* same for file starting with '#pragma' as in #pragma once */
+    if (strstart(cs8(p->buf), "#pragma", NULL))
         return 50;
 
     return 0;
