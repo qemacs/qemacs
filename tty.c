@@ -505,7 +505,6 @@ static void tty_read_handler(void *opaque)
     }
 }
 
-#if 0
 unsigned int const tty_full_colors[8] = {
     QERGB(0x00, 0x00, 0x00),
     QERGB(0xff, 0x00, 0x00),
@@ -516,7 +515,6 @@ unsigned int const tty_full_colors[8] = {
     QERGB(0x00, 0xff, 0xff),
     QERGB(0xff, 0xff, 0xff),
 };
-#endif
 
 unsigned int const tty_putty_colors[256] = {
     QERGB(0x00, 0x00, 0x00),
@@ -788,9 +786,16 @@ unsigned int const tty_putty_colors[256] = {
 #endif
 };
 
+#ifdef CONFIG_CYGWIN
+int tty_use_bold_as_bright = 1;
+unsigned int const *tty_bg_colors = tty_full_colors;
+int tty_bg_colors_count = 8;
+#else
+int tty_use_bold_as_bright = 0;
 unsigned int const *tty_bg_colors = tty_putty_colors;
-unsigned int const *tty_fg_colors = tty_putty_colors;
 int tty_bg_colors_count = 16;
+#endif
+unsigned int const *tty_fg_colors = tty_putty_colors;
 int tty_fg_colors_count = 16;
 
 static inline int color_dist(unsigned int c1, unsigned c2)
@@ -1101,13 +1106,13 @@ static void tty_term_flush(QEditScreen *s)
                         /* should use array of strings */
                         bgcolor = TTYCHAR_GETBG(cc);
                         TTY_FPRINTF(s->STDOUT, "\033[%dm",
-                                    bgcolor >= 8 ? 100 + bgcolor - 8 :
+                                    bgcolor > 7 ? 100 + bgcolor - 8 :
                                     40 + bgcolor);
                     }
                     if (fgcolor != (int)TTYCHAR_GETFG(cc) && ch != ' ') {
                         fgcolor = TTYCHAR_GETFG(cc);
                         /* should use array of strings */
-                        if (0) {
+                        if (tty_use_bold_as_bright) {
                             /* use bold for high color */
                             TTY_FPRINTF(s->STDOUT, "\033[%dm",
                                         (fgcolor > 7) ? 1 : 22);
@@ -1115,7 +1120,7 @@ static void tty_term_flush(QEditScreen *s)
                                         30 + (fgcolor & 7));
                         } else {
                             TTY_FPRINTF(s->STDOUT, "\033[%dm",
-                                        fgcolor >= 8 ? 90 + fgcolor - 8 :
+                                        fgcolor > 8 ? 90 + fgcolor - 8 :
                                         30 + fgcolor);
                         }
                     }

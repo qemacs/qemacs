@@ -96,8 +96,18 @@ static int get_pty(char *tty_str, int size)
 
     /* First try Unix98 pseudo tty master */
     if ((fd = open("/dev/ptmx", O_RDWR)) >= 0) {
+#ifdef CONFIG_CYGWIN
+        const char *name = ptsname(fd);
+
+        if (name) {
+            pstrcpy(tty_str, size, name);
+            if (!grantpt(fd) && !unlockpt(fd))
+                return fd;
+        }
+#else
         if (!ptsname_r(fd, tty_str, size) && !grantpt(fd) && !unlockpt(fd))
             return fd;
+#endif
         close(fd);
     }
     /* then try BSD pseudo tty pre-created pairs */
