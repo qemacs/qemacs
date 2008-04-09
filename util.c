@@ -299,7 +299,7 @@ const char *get_basename(const char *filename)
 }
 
 /* Return the last extension in a path, ignoring leading dots */
-const char *extension(const char *filename)
+const char *get_extension(const char *filename)
 {
     const char *p, *ext;
 
@@ -361,7 +361,7 @@ char *reduce_filename(char *dest, int size, const char *filename)
 
     /* Strip numeric extensions (vcs version numbers) */
     for (;;) {
-        ext = dbase + (extension(dbase) - dbase);
+        ext = dbase + (get_extension(dbase) - dbase);
         if (*ext != '.' || !qe_isdigit(ext[1]))
             break;
         *ext = '\0';
@@ -379,9 +379,9 @@ char *reduce_filename(char *dest, int size, const char *filename)
         }
     }
 
-    /* Strip backup file suffix */
+    /* Strip backup file suffix or cvs temp file suffix */
     p = dbase + strlen(dbase);
-    if (p > dbase + 1 && p[-1] == '~')
+    if (p > dbase + 1 && (p[-1] == '~' || p[-1] == '#'))
         *--p = '\0';
 
     return dest;
@@ -391,7 +391,7 @@ int match_extension(const char *filename, const char *extlist)
 {
     const char *r;
 
-    r = extension(filename);
+    r = get_extension(filename);
     if (*r == '.') {
         return strfind(extlist, r + 1);
     } else {

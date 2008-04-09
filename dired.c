@@ -145,7 +145,8 @@ static int dired_sort_func(const void *p1, const void *p2)
             }
         }
         if (mode & DIRED_SORT_EXTENSION) {
-            res = qe_collate(extension(dip1->name), extension(dip2->name));
+            res = qe_collate(get_extension(dip1->name),
+                             get_extension(dip2->name));
             if (res)
                 break;
         }

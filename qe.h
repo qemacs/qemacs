@@ -104,6 +104,9 @@ typedef struct EditState EditState;
 typedef struct EditBuffer EditBuffer;
 typedef struct QEmacsState QEmacsState;
 
+static inline char *s8(u8 *p) { return (char*)p; }
+static inline const char *cs8(const u8 *p) { return (const char*)p; }
+
 #ifndef INT_MAX
 #define INT_MAX  0x7fffffff
 #endif
@@ -179,7 +182,7 @@ int is_directory(const char *path);
 void canonicalize_path(char *buf, int buf_size, const char *path);
 void canonicalize_absolute_path(char *buf, int buf_size, const char *path1);
 const char *get_basename(const char *filename);
-const char *extension(const char *filename);
+const char *get_extension(const char *filename);
 char *get_dirname(char *dest, int size, const char *file);
 char *reduce_filename(char *dest, int size, const char *filename);
 int match_extension(const char *filename, const char *extlist);

@@ -287,7 +287,7 @@ static void do_latex(EditState *e, const char *cmd)
 
     /* strip extension from filename */
     pstrcpy(bname, sizeof(bname), e->b->filename);
-    len = extension(bname) - bname;
+    len = get_extension(bname) - bname;
     bname[len] = '\0';
 
     if (!cmd || cmd[0] == '\0')
