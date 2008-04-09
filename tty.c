@@ -1087,7 +1087,8 @@ static void tty_term_flush(QEditScreen *s)
              * double-width glyphs on the row in front of this
              * difference
              */
-            TTY_FPRINTF(s->STDOUT, "\033[%d;%dH", y + 1, ptr1 - ptr + 1);
+            TTY_FPRINTF(s->STDOUT, "\033[%d;%dH",
+                        y + 1, (int)(ptr1 - ptr + 1));
 
             while (ptr1 < ptr4) {
                 cc = *ptr1;

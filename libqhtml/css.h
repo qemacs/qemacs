@@ -521,7 +521,7 @@ int get_font_size(int i);
 struct CSSContext;
 
 #define PROPS_HASH_SIZE 521
-#define PROPS_SIZE ((int)&((CSSState *)0)->hash_next)
+#define PROPS_SIZE  offsetof(CSSState, hash_next)
 
 typedef struct CSSCounterValue {
     CSSIdent counter_id;

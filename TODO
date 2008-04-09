@@ -129,8 +129,8 @@ insert_window_left()  deletes some left-most windows
   do_list_buffers()
   do_dired()
 
-- fix 32 bit assumptions:
-  qe.c:3133: call_func(): sizeof(int) == sizeof(void*) == sizeof(char*)
+DONE	- fix 32 bit assumptions:
+DONE	  qe.c:3133: call_func(): sizeof(int) == sizeof(void*) == sizeof(char*)
 
 DONE	support for high intensity colors in terminal mode (selected as bold)
 add colorized buffers using shell buffer method
