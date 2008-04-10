@@ -307,8 +307,8 @@ void command_completion(CompleteState *cp)
 void do_set_key(EditState *s, const char *keystr,
                 const char *cmd_name, int local)
 {
-    int nb_keys;
     unsigned int keys[MAX_KEYS];
+    int nb_keys;
     CmdDef *d;
 
     nb_keys = strtokeys(keystr, keys, MAX_KEYS);
@@ -2198,19 +2198,20 @@ QEStyleDef *find_style(const char *name)
 
 const char * const qe_style_properties[] = {
 #define CSS_PROP_COLOR  0
-    "color",
+    "color",            /* color */
 #define CSS_PROP_BACKGROUND_COLOR  1
-    "background-color",
+    "background-color", /* color */
 #define CSS_PROP_FONT_FAMILY  2
-    "font-family",
+    "font-family",      /* font_family: serif|times|sans|arial|helvetica| */
+                        /*              fixed|monospace|courier */
 #define CSS_PROP_FONT_STYLE  3
-    "font-style",
+    "font-style",       /* font_style: italic / normal */
 #define CSS_PROP_FONT_WEIGHT  4
-    "font-weight",
+    "font-weight",      /* font_weight: bold / normal */
 #define CSS_PROP_FONT_SIZE  5
-    "font-size,"
+    "font-size",        /* font_size: inherit / size */
 #define CSS_PROP_TEXT_DECORATION  6
-    "text-decoration",
+    "text-decoration",  /* text_decoration: none / underline */
 };
 
 void style_property_completion(CompleteState *cp)

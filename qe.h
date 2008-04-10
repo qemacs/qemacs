@@ -1171,7 +1171,7 @@ struct QEmacsState {
      * 2 (escape) -> display as \uXXXX escape sequence
      */
     int show_unicode;
-    
+
     /* commands */
     int flag_split_window_change_focus;
     int backspace_is_control_h;
@@ -1199,7 +1199,7 @@ struct QEmacsState {
 
     ///* global variables */
     int it;             /* last result from expression evaluator */
-    ////int force_tty;    /* prevent graphics display (X11...) */
+    //int force_tty;      /* prevent graphics display (X11...) */
     //int no_config;      /* prevent config file eval */
     //int force_refresh;  /* force a complete screen refresh */
     int ignore_spaces;  /* ignore spaces when comparing windows */
@@ -1529,6 +1529,7 @@ void edit_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data);
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);
 void do_find_file(EditState *s, const char *filename);
+void do_load_from_path(EditState *s, const char *filename);
 void do_find_file_other_window(EditState *s, const char *filename);
 void do_switch_to_buffer(EditState *s, const char *bufname);
 void do_break(EditState *s);
