@@ -635,9 +635,6 @@ static CmdDef c_commands[] = {
           "c-backward-preprocessor", do_c_forward_preprocessor, ESi, -1, "*v")
     CMDV( KEY_META(']'), KEY_NONE,
           "c-forward-preprocessor", do_c_forward_preprocessor, ESi, 1, "*v")
-    /* CG: should add more electric keys */
-    CMD_( ';', ':',
-          "c-electric-key", do_c_electric, ESi, "*ki")
     CMD_( '{', '}',
           "c-electric-key", do_c_electric, ESi, "*ki")
     CMD_DEF_END,
@@ -647,6 +644,8 @@ static ModeDef c_mode;
 
 static int c_init(void)
 {
+    const char *p;
+
     /* c mode is almost like the text mode, so we copy and patch it */
     memcpy(&c_mode, &text_mode, sizeof(ModeDef));
     c_mode.name = "C";
@@ -655,7 +654,9 @@ static int c_init(void)
 
     qe_register_mode(&c_mode);
     qe_register_cmd_table(c_commands, &c_mode);
-
+    for (p = ";:#&|"; *p; p++) {
+        qe_register_binding(*p, "c-electric-key", &c_mode);
+    }
     return 0;
 }
 
