@@ -1111,6 +1111,7 @@ static void tty_term_flush(QEditScreen *s)
                     }
                     if (fgcolor != (int)TTYCHAR_GETFG(cc) && ch != ' ') {
                         fgcolor = TTYCHAR_GETFG(cc);
+                        /* should use reverse for some colors */
                         /* should use array of strings */
                         if (tty_use_bold_as_bright) {
                             /* use bold for high color */
