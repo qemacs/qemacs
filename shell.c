@@ -63,6 +63,7 @@ typedef struct ShellState {
     int state;
     int esc1, esc2;
     int shifted;
+    int cset, charset[2];
     int grab_keys;
     EditBuffer *b;
     EditBuffer *b_color; /* color buffer, one byte per char */
@@ -704,14 +705,10 @@ static void tty_emulate(ShellState *s, int c)
             s->cur_offset = eb_goto_bol(s->b, s->cur_offset);
             break;
         case 14:        /* ^N  SO = shift out */
-            // was in qemacs-0.3.1.g2.gw
-            //eb_set_charset(s->b, &charset_8859_1);
-            s->shifted = 1;
+            s->shifted = s->charset[s->cset = 1];
             break;
         case 15:        /* ^O  SI = shift in */
-            // was in qemacs-0.3.1.g2.gw
-            //eb_set_charset(s->b, &charset_cp1125);
-            s->shifted = 0;
+            s->shifted = s->charset[s->cset = 0];
             break;
         default:
             if (c >= 32) {
@@ -764,6 +761,7 @@ static void tty_emulate(ShellState *s, int c)
              *        set-window-title=\E]0;title text\007,
              */
             switch (c) {
+            case '%':
             case '(':
             case ')':
             case '*':
@@ -790,14 +788,26 @@ static void tty_emulate(ShellState *s, int c)
         s->state = TTY_STATE_NORM;
         s->esc2 = c;
         switch (ESC2(s->esc1, c)) {
-        case ESC2('(','B'):     /* exit_alt_charset_mode */
-            s->shifted = 0;
+        case ESC2('%','G'):     /* set utf mode */
+        case ESC2('%','8'):     /* set utf mode */
+        case ESC2('%','@'):     /* reset utf mode */
             break;
-        case ESC2('(','0'):     /* enter_alt_charset_mode */
-            s->shifted = 1;
+        case ESC2('(','A'):     /* set charset0 CSET_GBCHR */
+        case ESC2('(','U'):     /* set charset0 CSET_SCOACS */
+        case ESC2('(','B'):     /* set charset0 CSET_ASCII */
+            s->charset[0] = 0;
             break;
-        case ESC2(')','B'):
-        case ESC2(')','0'):
+        case ESC2('(','0'):     /* set charset0 CSET_LINEDRW */
+            s->charset[0] = 1;
+            break;
+        case ESC2(')','A'):     /* set charset1 CSET_GBCHR */
+        case ESC2(')','U'):     /* set charset1 CSET_SCOACS */
+        case ESC2(')','B'):     /* set charset1 CSET_ASCII */
+            s->charset[1] = 0;
+            break;
+        case ESC2(')','0'):     /* set charset1 CSET_LINEDRW */
+            s->charset[1] = 1;
+            break;
         case ESC2('*','B'):
         case ESC2('+','B'):
             /* XXX: Todo */
@@ -814,6 +824,7 @@ static void tty_emulate(ShellState *s, int c)
             /* XXX: Todo */
             break;
         }
+        s->shifted = s->charset[s->cset];
         break;
     case TTY_STATE_STRING:
         /* CG: should store the string */
