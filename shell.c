@@ -99,7 +99,7 @@ static int get_pty(char *tty_str, int size)
     if ((fd = open("/dev/ptmx", O_RDWR)) >= 0) {
 #if 0
         /* ptsname_r is a sensible renentrant version of ptsname, but
-         * it lacks portability, notably on FreeBSD and cygwin. So we
+         * it lacks portability, notably on OpenBSD and cygwin. So we
          * have to use ill conceived ptsname.
          */
         if (!ptsname_r(fd, tty_str, size) && !grantpt(fd) && !unlockpt(fd))
