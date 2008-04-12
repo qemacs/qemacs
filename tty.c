@@ -88,7 +88,10 @@ typedef struct TTYState {
     char *term_name;
     enum TermCode term_code;
     int term_flags;
-#define KBS_CONTROL_H  1
+#define KBS_CONTROL_H          1
+#define USE_BOLD_AS_BRIGHT     2
+#define USE_BLINK_AS_BRIGHT    4
+#define USE_ERASE_END_OF_LINE  8
 } TTYState;
 
 static void tty_resize(int sig);
@@ -120,7 +123,7 @@ static int tty_term_init(QEditScreen *s,
 
     /* Derive some settings from the TERM environment variable */
     tty_state.term_code = TERM_UNKNOWN;
-    tty_state.term_flags = 0;
+    tty_state.term_flags = USE_ERASE_END_OF_LINE;
     tty_state.term_name = getenv("TERM");
     if (tty_state.term_name) {
         /* linux and xterm -> kbs=\177
@@ -128,11 +131,11 @@ static int tty_term_init(QEditScreen *s,
          */
         if (strstart(tty_state.term_name, "ansi", NULL)) {
             tty_state.term_code = TERM_ANSI;
-            tty_state.term_flags = KBS_CONTROL_H;
+            tty_state.term_flags |= KBS_CONTROL_H;
         } else
         if (strstart(tty_state.term_name, "vt100", NULL)) {
             tty_state.term_code = TERM_VT100;
-            tty_state.term_flags = KBS_CONTROL_H;
+            tty_state.term_flags |= KBS_CONTROL_H;
         } else
         if (strstart(tty_state.term_name, "xterm", NULL)) {
             tty_state.term_code = TERM_XTERM;
@@ -142,7 +145,8 @@ static int tty_term_init(QEditScreen *s,
         } else
         if (strstart(tty_state.term_name, "cygwin", NULL)) {
             tty_state.term_code = TERM_CYGWIN;
-            tty_state.term_flags = KBS_CONTROL_H;
+            tty_state.term_flags |= KBS_CONTROL_H |
+                                    USE_BOLD_AS_BRIGHT | USE_BLINK_AS_BRIGHT;
         }
     }
 
@@ -179,10 +183,15 @@ static int tty_term_init(QEditScreen *s,
     /* Get charset from command line option */
     s->charset = find_charset(qe_state.tty_charset);
 
+    if (tty_state.term_code == TERM_CYGWIN)
+        s->charset = &charset_8859_1;
+
     if (!s->charset && !isatty(fileno(s->STDOUT)))
-        s->charset = &charset_utf8;
+        s->charset = &charset_8859_1;
 
     if (!s->charset) {
+        int y, x, n;
+
         s->charset = &charset_8859_1;
 
         /* Test UTF8 support by looking at the cursor position (idea
@@ -191,20 +200,17 @@ static int tty_term_init(QEditScreen *s,
          * sequence in the current locale (ANSI/ISO C99), use a format
          * specifier of %s to avoid printf() failing with EILSEQ.
          */
-        if (tty_state.term_code != TERM_CYGWIN) {
-            int y, x, n;
 
-            /*               ^X  ^Z    ^M   \170101  */
-            //printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
-            /* Just print utf-8 encoding for eacute and check cursor position */
-            TTY_FPRINTF(s->STDOUT, "%s",
-                        "\030\032" "\r\xC3\xA9" "\033[6n\033D");
-            fflush(s->STDOUT);
-            n = fscanf(s->STDIN, "\033[%u;%u", &y, &x);  /* get cursor position */
-            TTY_FPRINTF(s->STDOUT, "\r   \r");        /* go back, erase 3 chars */
-            if (n == 2 && x == 2) {
-                s->charset = &charset_utf8;
-            }
+        /*               ^X  ^Z    ^M   \170101  */
+        //printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
+        /* Just print utf-8 encoding for eacute and check cursor position */
+        TTY_FPRINTF(s->STDOUT, "%s",
+                    "\030\032" "\r\xC3\xA9" "\033[6n\033D");
+        fflush(s->STDOUT);
+        n = fscanf(s->STDIN, "\033[%u;%u", &y, &x);  /* get cursor position */
+        TTY_FPRINTF(s->STDOUT, "\r   \r");        /* go back, erase 3 chars */
+        if (n == 2 && x == 2) {
+            s->charset = &charset_utf8;
         }
     }
     put_status(NULL, "tty charset: %s", s->charset->name);
@@ -786,17 +792,8 @@ unsigned int const tty_putty_colors[256] = {
 #endif
 };
 
-#ifdef CONFIG_CYGWIN
-int tty_use_bold_as_bright = 1;
-int tty_use_blink_as_bright = 1;
-unsigned int const *tty_bg_colors = tty_full_colors;
-int tty_bg_colors_count = 8;
-#else
-int tty_use_bold_as_bright = 0;
-int tty_use_blink_as_bright = 0;
 unsigned int const *tty_bg_colors = tty_putty_colors;
 int tty_bg_colors_count = 16;
-#endif
 unsigned int const *tty_fg_colors = tty_putty_colors;
 int tty_fg_colors_count = 16;
 
@@ -1074,9 +1071,15 @@ static void tty_term_flush(QEditScreen *s)
              * difference on row is a space, measure the run of same
              * color spaces from the end of the row.  If this run
              * starts before the last difference, the row is a
-             * candidate for a partial update with erase-end-of-line
+             * candidate for a partial update with erase-end-of-line.
+             * exception: do not use erase end of line for a bright
+             * background color if emulated as bright.
              */
-            if (TTYCHAR_GETCH(ptr4[-1]) == ' ') {
+            if ((ts->term_flags & USE_ERASE_END_OF_LINE)
+            &&  TTYCHAR_GETCH(ptr4[-1]) == ' '
+            &&  (/*!(ts->term_flags & USE_BLINK_AS_BRIGHT) ||*/
+                 TTYCHAR_GETBG(ptr4[-1]) < 8))
+            {
                 /* find the last non blank char on row */
                 blankcc = TTYCHAR2(' ', TTYCHAR_GETCOL(ptr3[-1]));
                 while (ptr3 > ptr1 && ptr3[-1] == blankcc) {
@@ -1088,6 +1091,12 @@ static void tty_term_flush(QEditScreen *s)
                  */
                 if (ptr2 > ptr3 + 3) {
                     ptr4 = ptr3;
+                    /* if the background color changes on the last
+                     * space, use the generic loop to synchronize that
+                     * space because the color change is non trivial
+                     */
+                    if (TTYCHAR_GETBG(*ptr3) != TTYCHAR_GETBG(ptr3[-1]))
+                        ptr4++;
                 }
             }
 
@@ -1106,12 +1115,21 @@ static void tty_term_flush(QEditScreen *s)
                 ch = TTYCHAR_GETCH(cc);
                 if (ch != 0xffff) {
                     /* output attributes */
+                  again:
                     if (bgcolor != (int)TTYCHAR_GETBG(cc)) {
+                        int lastbg = bgcolor;
                         bgcolor = TTYCHAR_GETBG(cc);
-                        /* should use array of strings */
-                        if (tty_use_blink_as_bright) {
-                            TTY_FPRINTF(s->STDOUT, "\033[%dm",
-                                        (bgcolor > 7) ? 5 : 25);
+                        if (ts->term_flags & USE_BLINK_AS_BRIGHT) {
+                            if (bgcolor > 7) {
+                                if (lastbg <= 7) {
+                                    TTY_FPUTS("\033[5m", s->STDOUT);
+                                }
+                            } else {
+                                if (lastbg > 7) {
+                                    TTY_FPUTS("\033[0m", s->STDOUT);
+                                    fgcolor = -1;
+                                }
+                            }
                             TTY_FPRINTF(s->STDOUT, "\033[%dm",
                                         40 + (bgcolor & 7));
                         } else {
@@ -1121,11 +1139,21 @@ static void tty_term_flush(QEditScreen *s)
                         }
                     }
                     if (fgcolor != (int)TTYCHAR_GETFG(cc) && ch != ' ') {
+                        int lastfg = fgcolor;
                         fgcolor = TTYCHAR_GETFG(cc);
-                        /* should use array of strings */
-                        if (tty_use_bold_as_bright) {
-                            TTY_FPRINTF(s->STDOUT, "\033[%dm",
-                                        (fgcolor > 7) ? 1 : 22);
+                        if (ts->term_flags & USE_BOLD_AS_BRIGHT) {
+                            if (fgcolor > 7) {
+                                if (lastfg <= 7) {
+                                    TTY_FPUTS("\033[1m", s->STDOUT);
+                                }
+                            } else {
+                                if (lastfg > 7) {
+                                    TTY_FPUTS("\033[0m", s->STDOUT);
+                                    fgcolor = -1;
+                                    bgcolor = -1;
+                                    goto again;
+                                }
+                            }
                             TTY_FPRINTF(s->STDOUT, "\033[%dm",
                                         30 + (fgcolor & 7));
                         } else {
@@ -1194,19 +1222,24 @@ static void tty_term_flush(QEditScreen *s)
             if (ptr1 < ptr2) {
                 /* More differences to synch in shadow, erase eol */
                 cc = *ptr1;
-                if (bgcolor != (int)TTYCHAR_GETBG(cc)) {
-                    bgcolor = TTYCHAR_GETBG(cc);
-                    TTY_FPRINTF(s->STDOUT, "\033[%dm", 40 + bgcolor);
-                }
+                /* the current attribute is already set correctly */
                 TTY_FPUTS("\033[K", s->STDOUT);
                 while (ptr1 < ptr2) {
                     ptr1[shadow] = cc;
                     ptr1++;
                 }
             }
+//            if (ts->term_flags & USE_BLINK_AS_BRIGHT)
+            {
+                if (bgcolor > 7) {
+                    TTY_FPUTS("\033[0m", s->STDOUT);
+                    fgcolor = bgcolor = -1;
+                }
+            }
         }
     }
 
+    TTY_FPUTS("\033[0m", s->STDOUT);
     TTY_FPRINTF(s->STDOUT, "\033[%d;%dH", ts->cursor_y + 1, ts->cursor_x + 1);
     fflush(s->STDOUT);
 }
