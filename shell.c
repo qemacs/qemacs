@@ -97,7 +97,14 @@ static int get_pty(char *tty_str, int size)
 
     /* First try Unix98 pseudo tty master */
     if ((fd = open("/dev/ptmx", O_RDWR)) >= 0) {
-#ifdef CONFIG_CYGWIN
+#if 0
+        /* ptsname_r is a sensible renentrant version of ptsname, but
+         * it lacks portability, notably on FreeBSD and cygwin. So we
+         * have to use ill conceived ptsname.
+         */
+        if (!ptsname_r(fd, tty_str, size) && !grantpt(fd) && !unlockpt(fd))
+            return fd;
+#else
         const char *name = ptsname(fd);
 
         if (name) {
@@ -105,9 +112,6 @@ static int get_pty(char *tty_str, int size)
             if (!grantpt(fd) && !unlockpt(fd))
                 return fd;
         }
-#else
-        if (!ptsname_r(fd, tty_str, size) && !grantpt(fd) && !unlockpt(fd))
-            return fd;
 #endif
         close(fd);
     }
