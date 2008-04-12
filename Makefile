@@ -87,6 +87,10 @@ else
   LIBS+= -lm
 endif
 
+ifdef CONFIG_QSCRIPT
+  OBJS+= qscript.o eval.o
+endif
+
 ifdef CONFIG_ALL_KMAPS
   OBJS+= kmap.o
 endif
