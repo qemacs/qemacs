@@ -1082,11 +1082,11 @@ typedef struct ModeDef {
 /* special bit to indicate tty styles (for shell mode) */
 #define QE_STYLE_TTY       0x800
 #define TTY_BOLD           (1 << 7)
+#define TTY_BLINK          (1 << 3)
 #define TTY_MAKE_COLOR(fg, bg)  (((fg) << 4) | (bg))
 #define TTY_SET_FG_COLOR(color, fg)   ((color) = ((color) & ~(15 << 4)) | ((fg) << 4))
 #define TTY_SET_BG_COLOR(color, bg)   ((color) = ((color) & ~(15)) | ((bg)))
-#define TTY_GET_XFG(color) (((color) >> 4) & 15)
-#define TTY_GET_FG(color)  (((color) >> 4) & 7)
+#define TTY_GET_FG(color)  (((color) >> 4) & 15)
 #define TTY_GET_BG(color)  (((color) >> 0) & 15)
 
 /* from tty.c */

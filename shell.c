@@ -467,10 +467,16 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
         s->bold = 0;
         break;
     case 1:     /* enter_bold_mode */
-        s->bold = TTY_BOLD;
+        s->bold |= TTY_BOLD;
         break;
     case 22:    /* exit_bold_mode */
-        s->bold = 0;
+        s->bold &= ~TTY_BOLD;
+        break;
+    case 5:     /* enter_blink_mode */
+        s->bold |= TTY_BLINK;
+        break;
+    case 25:    /* exit_blink_mode */
+        s->bold &= ~TTY_BLINK;
         break;
     case 7:     /* enter_reverse_mode, enter_standout_mode */
     case 27:    /* exit_reverse_mode, exit_standout_mode */
@@ -478,8 +484,6 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
         break;
     case 4:     /* enter_underline_mode */
     case 24:    /* exit_underline_mode */
-    case 5:     /* enter_blink_mode */
-    case 25:    /* exit_blink_mode */
     case 8:     /* enter_secure_mode */
     case 28:    /* exit_secure_mode */
     case 39:    /* orig_pair(1) */

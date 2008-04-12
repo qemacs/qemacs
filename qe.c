@@ -2134,7 +2134,7 @@ static void apply_style(QEStyleDef *style, int style_index)
 
 #ifndef CONFIG_WIN32
     if (style_index & QE_STYLE_TTY) {
-        style->fg_color = tty_fg_colors[TTY_GET_XFG(style_index)];
+        style->fg_color = tty_fg_colors[TTY_GET_FG(style_index)];
         style->bg_color = tty_bg_colors[TTY_GET_BG(style_index)];
     } else
 #endif

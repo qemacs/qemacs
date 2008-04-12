@@ -788,10 +788,12 @@ unsigned int const tty_putty_colors[256] = {
 
 #ifdef CONFIG_CYGWIN
 int tty_use_bold_as_bright = 1;
+int tty_use_blink_as_bright = 1;
 unsigned int const *tty_bg_colors = tty_full_colors;
 int tty_bg_colors_count = 8;
 #else
 int tty_use_bold_as_bright = 0;
+int tty_use_blink_as_bright = 0;
 unsigned int const *tty_bg_colors = tty_putty_colors;
 int tty_bg_colors_count = 16;
 #endif
@@ -1024,6 +1026,8 @@ static void tty_term_flush(QEditScreen *s)
     TTYChar *ptr, *ptr1, *ptr2, *ptr3, *ptr4, cc, blankcc;
     int y, shadow, ch, bgcolor, fgcolor, shifted;
 
+    TTY_FPRINTF(s->STDOUT, "\033[H\033[0m\033(B");
+
     bgcolor = -1;
     fgcolor = -1;
     shifted = 0;
@@ -1103,18 +1107,23 @@ static void tty_term_flush(QEditScreen *s)
                 if (ch != 0xffff) {
                     /* output attributes */
                     if (bgcolor != (int)TTYCHAR_GETBG(cc)) {
-                        /* should use array of strings */
                         bgcolor = TTYCHAR_GETBG(cc);
-                        TTY_FPRINTF(s->STDOUT, "\033[%dm",
-                                    bgcolor > 7 ? 100 + bgcolor - 8 :
-                                    40 + bgcolor);
+                        /* should use array of strings */
+                        if (tty_use_blink_as_bright) {
+                            TTY_FPRINTF(s->STDOUT, "\033[%dm",
+                                        (bgcolor > 7) ? 5 : 25);
+                            TTY_FPRINTF(s->STDOUT, "\033[%dm",
+                                        40 + (bgcolor & 7));
+                        } else {
+                            TTY_FPRINTF(s->STDOUT, "\033[%dm",
+                                        bgcolor > 7 ? 100 + bgcolor - 8 :
+                                        40 + bgcolor);
+                        }
                     }
                     if (fgcolor != (int)TTYCHAR_GETFG(cc) && ch != ' ') {
                         fgcolor = TTYCHAR_GETFG(cc);
-                        /* should use reverse for some colors */
                         /* should use array of strings */
                         if (tty_use_bold_as_bright) {
-                            /* use bold for high color */
                             TTY_FPRINTF(s->STDOUT, "\033[%dm",
                                         (fgcolor > 7) ? 1 : 22);
                             TTY_FPRINTF(s->STDOUT, "\033[%dm",
