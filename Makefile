@@ -159,7 +159,7 @@ endif
 all: $(TARGETLIBS) $(TARGETS)
 
 libqhtml: force
-	make -C libqhtml all
+	$(MAKE) -C libqhtml all
 
 qe_g$(EXE): $(OBJS) $(DEP_LIBS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -169,7 +169,7 @@ qe$(EXE): qe_g$(EXE) Makefile
 	cp $< $@
 	-$(STRIP) $@
 	@ls -l $@
-	echo `size $@` `wc --bytes $@` qe $(OPTIONS) \
+	echo `size $@` `wc -c $@` qe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 #
@@ -183,7 +183,7 @@ tqe$(EXE): tqe_g$(EXE) Makefile
 	cp $< $@
 	-$(STRIP) $@
 	@ls -l $@
-	echo `size $@` `wc --bytes $@` tqe $(OPTIONS) \
+	echo `size $@` `wc -c $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 tqe.o: qe.c qe.h qestyles.h qeconfig.h config.h config.mak Makefile
@@ -323,7 +323,7 @@ html2png$(EXE): $(OBJS1) libqhtml/libqhtml.a
 
 # autotest target
 test:
-	make -C tests test
+	$(MAKE) -C tests test
 
 # documentation
 qe-doc.html: qe-doc.texi Makefile
@@ -333,7 +333,7 @@ qe-doc.html: qe-doc.texi Makefile
 # Maintenance targets
 #
 clean:
-	make -C libqhtml clean
+	$(MAKE) -C libqhtml clean
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
            qe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
            cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9]
@@ -342,6 +342,7 @@ distclean: clean
 	rm -f config.h config.mak
 
 install: $(TARGETS) qe.1
+	install -d $(prefix)/{bin,man/man1,share}
 	install -m 755 qe$(EXE) $(prefix)/bin/qemacs$(EXE)
 	ln -sf qemacs $(prefix)/bin/qe$(EXE)
 ifdef CONFIG_FFMPEG

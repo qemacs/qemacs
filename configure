@@ -41,6 +41,7 @@ case "$cpu" in
     ;;
 esac
 
+unlockio="no"
 gprof="no"
 network="yes"
 win32="no"
@@ -86,12 +87,15 @@ case $targetos in
   BSD/OS)
     extralibs="-lpoll -lgnugetopt -lm"
     make="gmake"
+    doc="no"
+    plugins="no"
     ;;
   CYGWIN*)
     cygwin="yes"
     ;;
   *)
     extralibs="-lm"
+    unlockio="yes"
     ;;
 esac
 
@@ -408,6 +412,10 @@ fi
 if test "$bigendian" = "yes" ; then
   echo "WORDS_BIGENDIAN=yes" >> config.mak
   echo "#define WORDS_BIGENDIAN 1" >> $TMPH
+fi
+if test "$unlockio" = "yes" ; then
+  echo "CONFIG_UNLOCKIO=yes" >> config.mak
+  echo "#define CONFIG_UNLOCKIO 1" >> $TMPH
 fi
 if test "$gprof" = "yes" ; then
   echo "TARGET_GPROF=yes" >> config.mak

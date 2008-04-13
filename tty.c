@@ -42,7 +42,7 @@ typedef unsigned int TTYChar;
 #define TTYCHAR_GETBG(cc)   (((cc) >> 24) & 0xFF)
 #define TTYCHAR_DEFAULT     TTYCHAR(' ', 7, 0)
 
-#if defined(__GNUC__) && !defined(CONFIG_CYGWIN)
+#if defined(CONFIG_UNLOCKIO)
 #  define TTY_PUTC(c,f)         putc_unlocked(c, f)
 #  define TTY_FWRITE(b,s,n,f)   fwrite_unlocked(b, s, n, f)
 #  define TTY_FPRINTF           fprintf
