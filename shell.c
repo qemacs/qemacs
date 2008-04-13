@@ -974,30 +974,30 @@ static void tty_emulate(ShellState *s, int c)
                 /* goto y */
                 tty_goto_xy(s, 0, s->esc_params[0] - 1, 1);
                 break;
-            case 'J':   /* ED: erase screen or parts of it */
-                        /*     2 -> from begin, 1 -> to end */
+            case 'J':  /* ED: erase screen or parts of it */
+                       /*     0: to end, 1: from begin, 2: all */
                 //put_status(NULL, "erase screen %d", s->esc_params[0]);
                 break;
-            case 'K':   /* EL: erase line or parts of it */
-                        /*     2 -> from begin, 1 -> to end */
+            case 'K':  /* EL: erase line or parts of it */
+                       /*     0: to end, 1: from begin, 2: all line */
                 offset1 = eb_goto_eol(s->b, s->cur_offset);
                 eb_delete(s->b, s->cur_offset, offset1 - s->cur_offset);
                 break;
-            case 'L':   /* IL: insert lines */
+            case 'L':  /* IL: insert lines */
                 /* TODO! scroll down */
                 //put_status(NULL, "insert lines %d", s->esc_params[0]);
                 break;
-            case 'M':   /* delete lines */
+            case 'M':  /* delete lines */
                 /* TODO! scroll up */
                 //put_status(NULL, "delete lines %d", s->esc_params[0]);
                 break;
-            case '@':   /* ICH: insert chars */
+            case '@':  /* ICH: insert chars */
                 buf1[0] = ' ';
                 for (n = s->esc_params[0]; n > 0; n--) {
                     eb_insert(s->b, s->cur_offset, buf1, 1);
                 }
                 break;
-            case 'P':   /* DCH: delete chars */
+            case 'P':  /* DCH: delete chars */
                 offset1 = s->cur_offset;
                 for (n = s->esc_params[0]; n > 0; n--) {
                     c = eb_nextc(s->b, offset1, &offset2);
@@ -1007,9 +1007,9 @@ static void tty_emulate(ShellState *s, int c)
                 }
                 eb_delete(s->b, s->cur_offset, offset1 - s->cur_offset);
                 break;
-            case 'c':   /* DA: terminal type query */
+            case 'c':  /* DA: terminal type query */
                 break;
-            case 'n':   /* DSR: cursor position query */
+            case 'n':  /* DSR: cursor position query */
                 if (s->esc_params[0] == 6) {
                     /* XXX: send cursor position, just to be able to
                        launch qemacs in qemacs (in 8859-1) ! */
@@ -1022,36 +1022,36 @@ static void tty_emulate(ShellState *s, int c)
                     tty_write(s, buf2, -1);
                 }
                 break;
-            case 'g':   /* TBC: clear tabs */
+            case 'g':  /* TBC: clear tabs */
                 break;
-            case 'r':   /* DECSTBM: set scroll margins */
+            case 'r':  /* DECSTBM: set scroll margins */
                 //put_status(NULL, "set scroll margins %d %d", 
                 //           s->esc_params[0], s->esc_params[1]);
                 break;
-            case 'm':   /* SGR: set graphics rendition (style and colors) */
+            case 'm':  /* SGR: set graphics rendition (style and colors) */
                 for (i = 0;;) {
                     tty_csi_m(s, s->esc_params[i], s->has_params[i]);
                     if (++i >= s->nb_esc_params)
                         break;
                 }
                 break;
-            case 's':   /* save cursor */
-            case 'u':   /* restore cursor */
-            case 't':   /* DECSLPP: set page size - ie window height */
-                        /* also used for window changing and reports */
+            case 's':  /* save cursor */
+            case 'u':  /* restore cursor */
+            case 't':  /* DECSLPP: set page size - ie window height */
+                       /* also used for window changing and reports */
                 break;
-            case 'S':   /* SU: SCO scroll up (forward) n lines */
-            case 'T':   /* SD: SCO scroll down (back) n lines */
+            case 'S':  /* SU: SCO scroll up (forward) n lines */
+            case 'T':  /* SD: SCO scroll down (back) n lines */
                 //put_status(NULL, "scroll '%c' %d", c, s->esc_params[0]);
                 break;
-            case 'X':   /* ECH: erase n characters w/o moving cursor */
+            case 'X':  /* ECH: erase n characters w/o moving cursor */
                 for (n = s->esc_params[0]; n > 0; n--) {
                     s->cur_offset = tty_put_char(s, ' ');
                 }
                 /* CG: should save and restore cursor */
                 break;
-            case 'x':   /* DECREQTPARM: report terminal characteristics */
-            case 'Z':   /* CBT: move cursor back n tabs */
+            case 'x':  /* DECREQTPARM: report terminal characteristics */
+            case 'Z':  /* CBT: move cursor back n tabs */
             case ESC2('=','c'):   /* Hide or Show Cursor */
                         /* 0: hide, 1: restore, 2: block */
             case ESC2('=','C'):  /* set cursor shape */
@@ -1485,6 +1485,7 @@ static void shell_write_char(EditState *e, int c)
         case 11:
             do_kill_line(e, 1);
             break;
+        case KEY_BS:
         case KEY_DEL:
             do_backspace(e, NO_ARG);
             break;
@@ -1494,6 +1495,7 @@ static void shell_write_char(EditState *e, int c)
         case KEY_META('d'):
             do_kill_word(e, 1);
             break;
+        case KEY_META(KEY_BS):
         case KEY_META(KEY_DEL):
             do_kill_word(e, -1);
             break;
@@ -1665,8 +1667,8 @@ static CmdDef shell_commands[] = {
           "shell-delete-char", shell_write_char, 4)
     CMD1( KEY_META('d'), KEY_NONE,
           "shell-delete-word", shell_write_char, KEY_META('d'))
-    CMD1( KEY_META(KEY_DEL), KEY_NONE,
-          "shell-backward-delete-word", shell_write_char, KEY_META(KEY_DEL))
+    CMD_( KEY_META(KEY_DEL), KEY_META(KEY_BS) ,
+          "shell-backward-delete-word", shell_write_char, ESi, "*ki")
     CMD_( KEY_META('p'), KEY_META('n'),
           "shell-history-search", shell_write_char, ESi, "*ki")
     CMD1( KEY_CTRL('i'), KEY_NONE,
