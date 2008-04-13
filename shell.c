@@ -55,7 +55,7 @@ typedef struct ShellState {
     /* buffer state */
     int pty_fd;
     int pid; /* -1 if not launched */
-    int color, bold, def_color;
+    int color, attr, def_color;
     int cur_offset; /* current offset at position x, y */
     int esc_params[MAX_ESC_PARAMS];
     int has_params[MAX_ESC_PARAMS];
@@ -206,8 +206,8 @@ static void tty_init(ShellState *s)
     /* Should compute def_color from shell default style at display
      * time and force full redisplay upon style change.
      */
-    s->color = s->def_color = TTY_MAKE_COLOR(7, 0);
-    s->bold = 0;
+    s->color = s->def_color = TTY_MAKE_COLOR(TTY_DEFFG, TTY_DEFBG);
+    s->attr = 0;
 
     term = getenv("TERM");
     /* vt100 terminfo definitions */
@@ -460,34 +460,74 @@ static int tty_put_char(ShellState *s, int c)
 
 static void tty_csi_m(ShellState *s, int c, int has_param)
 {
-    /* we handle only a few possible modes */
+    /* Comment from putty/terminal.c:
+     *
+     * A VT100 without the AVO only had one
+     * attribute, either underline or
+     * reverse video depending on the
+     * cursor type, this was selected by
+     * CSI 7m.
+     *
+     * case 2:
+     *  This is sometimes DIM, eg on the
+     *  GIGI and Linux
+     * case 8:
+     *  This is sometimes INVIS various ANSI.
+     * case 21:
+     *  This like 22 disables BOLD, DIM and INVIS
+     *
+     * The ANSI colours appear on any
+     * terminal that has colour (obviously)
+     * but the interaction between sgr0 and
+     * the colours varies but is usually
+     * related to the background colour
+     * erase item. The interaction between
+     * colour attributes and the mono ones
+     * is also very implementation
+     * dependent.
+     *
+     * The 39 and 49 attributes are likely
+     * to be unimplemented.
+     */
+
     switch (has_param ? c : 0) {
     case 0:     /* exit_attribute_mode */
         s->color = s->def_color;
-        s->bold = 0;
+        s->attr = 0;
         break;
     case 1:     /* enter_bold_mode */
-        s->bold |= TTY_BOLD;
+        s->attr |= TTY_BOLD;
         break;
     case 22:    /* exit_bold_mode */
-        s->bold &= ~TTY_BOLD;
+        s->attr &= ~TTY_BOLD;
+        break;
+    case 4:     /* enter_underline_mode */
+        s->attr |= TTY_UNDERLINE;
+        break;
+    case 24:    /* exit_underline_mode */
+        s->attr &= ~TTY_UNDERLINE;
         break;
     case 5:     /* enter_blink_mode */
-        s->bold |= TTY_BLINK;
+        s->attr |= TTY_BLINK;
         break;
     case 25:    /* exit_blink_mode */
-        s->bold &= ~TTY_BLINK;
+        s->attr &= ~TTY_BLINK;
         break;
     case 7:     /* enter_reverse_mode, enter_standout_mode */
     case 27:    /* exit_reverse_mode, exit_standout_mode */
         /* TODO */
         break;
-    case 4:     /* enter_underline_mode */
-    case 24:    /* exit_underline_mode */
+    case 6:     /* SCO light background */
     case 8:     /* enter_secure_mode */
+    case 10:    /* SCO acs off */
+    case 11:    /* SCO acs on */
+    case 12:    /* SCO acs on, |0x80 */
     case 28:    /* exit_secure_mode */
-    case 39:    /* orig_pair(1) */
-    case 49:    /* orig_pair(2) */
+    case 39:    /* orig_pair(1) default-foreground */
+        TTY_SET_FG_COLOR(s->color, TTY_DEFFG);
+        break;
+    case 49:    /* orig_pair(2) default-background */
+        TTY_SET_BG_COLOR(s->color, TTY_DEFBG);
         break;
     case 38:    /* set extended foreground color */
         /* complete syntax is \033[38;5;Nm where N is in range 1..255 */
@@ -778,13 +818,17 @@ static void tty_emulate(ShellState *s, int c)
                 s->esc1 = c;
                 s->state = TTY_STATE_ESC2;
                 break;
-            case 'H':   // hts  (set_tab)
             case '7':   // sc   (save_cursor)
             case '8':   // rc   (restore_cursor)
-            case 'M':   // ri   (scroll_reverse)
+            case '=':   // smkx (DECKPAM: Keypad application mode)
+            case '>':   // rmkx, is2, rs2  (DECKPNM: Keypad numeric mode)
+            case 'D':   // IND: exactly equivalent to LF
+            case 'E':   // NEL: exactly equivalent to CR-LF
+            case 'M':   // ri   (scroll_reverse, RI: reverse index - backwards LF)
+            case 'Z':   /* DECID: terminal type query */
             case 'c':   // rs1  (reset_1string)
-            case '>':   // rmkx, is2, rs2  (keypad_local ???)
-            case '=':   // smkx (keypad_xmit ???)
+                        /* RIS: restore power-on settings */
+            case 'H':   // hts  (set_tab)
                 // XXX: do these
             default:
                 s->state = TTY_STATE_NORM;
@@ -870,9 +914,11 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             s->state = TTY_STATE_NORM;
             switch (ESC2(s->esc1,c)) {
+            case 'h':   /* SM: toggle modes to high */
             case ESC2('?','h'): /* set terminal mode */
-                /* 1047, 1048 -> cup mode:
-                 * xterm 1049 private mode,
+                /* 1047: alternate screen
+                 * 1048: save / restore cursor
+                 * 1049: save / restore  cursor and alternate screen
                  * should grab all keys while active!
                  */
                 if (s->esc_params[0] == 1047 ||
@@ -886,6 +932,9 @@ static void tty_emulate(ShellState *s, int c)
                     }
                 }
                 break;
+            case 'i':   /* MC: Media copy */
+            case ESC2('?','i'):
+                break;
             case ESC2('?','l'): /* reset terminal mode */
                 if (s->esc_params[0] == 1047 ||
                     s->esc_params[0] == 1048 ||
@@ -896,57 +945,59 @@ static void tty_emulate(ShellState *s, int c)
                     }
                 }
                 break;
-            case ESC2('=','F'): /* select SCO foreground color */
-                TTY_SET_FG_COLOR(s->color, sco_color[s->esc_params[0] & 15]);
-                break;
-            case ESC2('=','G'): /* select SCO background color */
-                TTY_SET_BG_COLOR(s->color, sco_color[s->esc_params[0] & 15]);
-                break;
-            case 'A':
-                /* move relative up */
+            case 'A':  /* CUU: move up N lines */
                 tty_goto_xy(s, 0, -s->esc_params[0], 3);
                 break;
-            case 'B':
-                /* move relative down */
+            case 'e':  /* VPR: move down N lines */
+            case 'B':  /* CUD: Cursor down */
                 tty_goto_xy(s, 0, s->esc_params[0], 3);
                 break;
-            case 'C':
-                /* move relative forward */
+            case 'a':  /* HPR: move right N cols */
+            case 'C':  /* CUF: Cursor right */
                 tty_goto_xy(s, s->esc_params[0], 0, 3);
                 break;
-            case 'D':
-                /* move relative backward */
+            case 'D':  /* CUB: move left N cols */
                 tty_goto_xy(s, -s->esc_params[0], 0, 3);
                 break;
-            case 'G':
-                /* goto column_address */
+            case 'F':  /* CPL: move up N lines and CR */
+                tty_goto_xy(s, 0, -s->esc_params[0], 2);
+                break;
+            case 'G':  /* CHA: goto column_address */
+            case '`':  /* HPA: set horizontal posn */
                 tty_goto_xy(s, s->esc_params[0] - 1, 0, 2);
                 break;
-            case 'H':
-                /* goto xy */
+            case 'H':  /* CUP: goto xy */
+            case 'f':  /* HVP: set horz and vert posns at once */
                 tty_goto_xy(s, s->esc_params[1] - 1, s->esc_params[0] - 1, 0);
                 break;
             case 'd':
                 /* goto y */
                 tty_goto_xy(s, 0, s->esc_params[0] - 1, 1);
                 break;
-            case 'J':   /* clear to end of screen */
-            case 'L':   /* insert lines */
-            case 'M':   /* delete lines */
-            case 'S':   /* scroll forward n lines */
-            case 'T':   /* scroll back n lines */
+            case 'J':   /* ED: erase screen or parts of it */
+                        /*     2 -> from begin, 1 -> to end */
+                //put_status(NULL, "erase screen %d", s->esc_params[0]);
                 break;
-            case 'X':   /* erase n characters */
-                for (n = s->esc_params[0]; n > 0; n--) {
-                    s->cur_offset = tty_put_char(s, ' ');
-                }
-                break;
-            case 'K':   /* clear eol (parm=1 -> bol) */
+            case 'K':   /* EL: erase line or parts of it */
+                        /*     2 -> from begin, 1 -> to end */
                 offset1 = eb_goto_eol(s->b, s->cur_offset);
                 eb_delete(s->b, s->cur_offset, offset1 - s->cur_offset);
                 break;
-            case 'P':
-                /* delete chars */
+            case 'L':   /* IL: insert lines */
+                /* TODO! scroll down */
+                //put_status(NULL, "insert lines %d", s->esc_params[0]);
+                break;
+            case 'M':   /* delete lines */
+                /* TODO! scroll up */
+                //put_status(NULL, "delete lines %d", s->esc_params[0]);
+                break;
+            case '@':   /* ICH: insert chars */
+                buf1[0] = ' ';
+                for (n = s->esc_params[0]; n > 0; n--) {
+                    eb_insert(s->b, s->cur_offset, buf1, 1);
+                }
+                break;
+            case 'P':   /* DCH: delete chars */
                 offset1 = s->cur_offset;
                 for (n = s->esc_params[0]; n > 0; n--) {
                     c = eb_nextc(s->b, offset1, &offset2);
@@ -956,22 +1007,9 @@ static void tty_emulate(ShellState *s, int c)
                 }
                 eb_delete(s->b, s->cur_offset, offset1 - s->cur_offset);
                 break;
-            case '@':
-                /* insert chars */
-                buf1[0] = ' ';
-                for (n = s->esc_params[0]; n > 0; n--) {
-                    eb_insert(s->b, s->cur_offset, buf1, 1);
-                }
+            case 'c':   /* DA: terminal type query */
                 break;
-            case 'm':
-                /* colors */
-                for (i = 0;;) {
-                    tty_csi_m(s, s->esc_params[i], s->has_params[i]);
-                    if (++i >= s->nb_esc_params)
-                        break;
-                }
-                break;
-            case 'n':
+            case 'n':   /* DSR: cursor position query */
                 if (s->esc_params[0] == 6) {
                     /* XXX: send cursor position, just to be able to
                        launch qemacs in qemacs (in 8859-1) ! */
@@ -984,7 +1022,47 @@ static void tty_emulate(ShellState *s, int c)
                     tty_write(s, buf2, -1);
                 }
                 break;
-            case 'r': /* change_scroll_region (2 args) */
+            case 'g':   /* TBC: clear tabs */
+                break;
+            case 'r':   /* DECSTBM: set scroll margins */
+                //put_status(NULL, "set scroll margins %d %d", 
+                //           s->esc_params[0], s->esc_params[1]);
+                break;
+            case 'm':   /* SGR: set graphics rendition (style and colors) */
+                for (i = 0;;) {
+                    tty_csi_m(s, s->esc_params[i], s->has_params[i]);
+                    if (++i >= s->nb_esc_params)
+                        break;
+                }
+                break;
+            case 's':   /* save cursor */
+            case 'u':   /* restore cursor */
+            case 't':   /* DECSLPP: set page size - ie window height */
+                        /* also used for window changing and reports */
+                break;
+            case 'S':   /* SU: SCO scroll up (forward) n lines */
+            case 'T':   /* SD: SCO scroll down (back) n lines */
+                //put_status(NULL, "scroll '%c' %d", c, s->esc_params[0]);
+                break;
+            case 'X':   /* ECH: erase n characters w/o moving cursor */
+                for (n = s->esc_params[0]; n > 0; n--) {
+                    s->cur_offset = tty_put_char(s, ' ');
+                }
+                /* CG: should save and restore cursor */
+                break;
+            case 'x':   /* DECREQTPARM: report terminal characteristics */
+            case 'Z':   /* CBT: move cursor back n tabs */
+            case ESC2('=','c'):   /* Hide or Show Cursor */
+                        /* 0: hide, 1: restore, 2: block */
+            case ESC2('=','C'):  /* set cursor shape */
+            case ESC2('=','D'):  /* set blinking attr on/off */
+            case ESC2('=','E'):  /* set blinking on/off */
+                break;
+            case ESC2('=','F'): /* select SCO foreground color */
+                TTY_SET_FG_COLOR(s->color, sco_color[s->esc_params[0] & 15]);
+                break;
+            case ESC2('=','G'): /* select SCO background color */
+                TTY_SET_BG_COLOR(s->color, sco_color[s->esc_params[0] & 15]);
                 break;
             default:
                 break;
@@ -1014,7 +1092,7 @@ static void shell_color_callback(__unused__ EditBuffer *b,
             len = size;
             if (len > ssizeof(buf))
                 len = ssizeof(buf);
-            memset(buf, s->color | s->bold, len);
+            memset(buf, s->color | s->attr, len);
             eb_write(s->b_color, offset, buf, len);
             size -= len;
             offset += len;
@@ -1025,7 +1103,7 @@ static void shell_color_callback(__unused__ EditBuffer *b,
             len = size;
             if (len > ssizeof(buf))
                 len = ssizeof(buf);
-            memset(buf, s->color | s->bold, len);
+            memset(buf, s->color | s->attr, len);
             eb_insert(s->b_color, offset, buf, len);
             size -= len;
             offset += len;
