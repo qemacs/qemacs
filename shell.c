@@ -519,10 +519,12 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
         break;
     case 6:     /* SCO light background */
     case 8:     /* enter_secure_mode */
+    case 9:     /* cygwin dim mode */
     case 10:    /* SCO acs off */
-    case 11:    /* SCO acs on */
+    case 11:    /* SCO acs on (CP437) */
     case 12:    /* SCO acs on, |0x80 */
     case 28:    /* exit_secure_mode */
+        break;
     case 39:    /* orig_pair(1) default-foreground */
         TTY_SET_FG_COLOR(s->color, TTY_DEFFG);
         break;
@@ -763,8 +765,24 @@ static void tty_emulate(ShellState *s, int c)
                 int c1, cur_len, len;
                 /* CG: assuming ISO-8859-1 characters */
                 /* CG: horrible kludge for alternate charset support */
-                if (s->shifted && c >= 96 && c < 128)
+                if (s->shifted && c >= 96 && c < 128) {
+#if 0
+                    /* Should actually use these tables: */
+                    static const wchar_t unitab_xterm_std[32] = {
+                        0x2666, 0x2592, 0x2409, 0x240c,
+                        0x240d, 0x240a, 0x00b0, 0x00b1,
+                        0x2424, 0x240b, 0x2518, 0x2510,
+                        0x250c, 0x2514, 0x253c, 0x23ba,
+                        0x23bb, 0x2500, 0x23bc, 0x23bd,
+                        0x251c, 0x2524, 0x2534, 0x252c,
+                        0x2502, 0x2264, 0x2265, 0x03c0,
+                        0x2260, 0x00a3, 0x00b7, 0x0020
+                    };
+                    static const wchar_t unitab_xterm_poorman[32] =
+                        "*#****o~**+++++-----++++|****L. ";
+#endif
                     c += 32;
+                }
                 /* write char (should factorize with do_char() code */
                 len = unicode_to_charset(buf1, c, s->b->charset);
                 c1 = eb_nextc(s->b, s->cur_offset, &offset);

@@ -1023,7 +1023,11 @@ static void tty_term_flush(QEditScreen *s)
     TTYChar *ptr, *ptr1, *ptr2, *ptr3, *ptr4, cc, blankcc;
     int y, shadow, ch, bgcolor, fgcolor, shifted;
 
-    TTY_FPRINTF(s->STDOUT, "\033[H\033[0m\033(B");
+    TTY_FPUTS("\033[H\033[0m", s->STDOUT);
+
+    if (ts->term_code != TERM_CYGWIN) {
+        TTY_FPUTS("\033(B\033)0", s->STDOUT);
+    }
 
     bgcolor = -1;
     fgcolor = -1;
@@ -1178,12 +1182,19 @@ static void tty_term_flush(QEditScreen *s)
                         TTY_PUTC(ch, s->STDOUT);
                     } else
                     if (ch < 128 + 32) {
-                        /* Kludge for linedrawing chars */
-                        if (!shifted) {
-                            TTY_FPUTS("\033(0", s->STDOUT);
-                            shifted = 1;
+                        /* Kludges for linedrawing chars */
+                        if (ts->term_code == TERM_CYGWIN) {
+                            static const char unitab_xterm_poorman[32] =
+                                "*#****o~**+++++-----++++|****L. ";
+                            TTY_PUTC(unitab_xterm_poorman[ch - 128],
+                                     s->STDOUT);
+                        } else {
+                            if (!shifted) {
+                                TTY_FPUTS("\033(0", s->STDOUT);
+                                shifted = 1;
+                            }
+                            TTY_PUTC(ch - 32, s->STDOUT);
                         }
-                        TTY_PUTC(ch - 32, s->STDOUT);
                     } else {
                         u8 buf[10], *q;
                         int nc;
