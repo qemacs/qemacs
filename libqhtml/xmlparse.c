@@ -299,13 +299,14 @@ XMLState *xml_begin(CSSStyleSheet *style_sheet, int flags,
 static CSSAttribute *box_new_attr(CSSIdent attr_id, const char *value)
 {
     CSSAttribute *attr;
+    int len = strlen(value);
 
-    attr = qe_malloc_hack(CSSAttribute, strlen(value));
+    attr = qe_malloc_hack(CSSAttribute, len);
     if (!attr)
         return NULL;
     attr->attr = attr_id;
     attr->next = NULL;
-    strcpy(attr->value, value);
+    memcpy(attr->value, value, len + 1);
     return attr;
 }
 

@@ -246,7 +246,7 @@ QVarType qe_set_variable(EditState *s, const char *name,
         switch (vp->type) {
         case VAR_STRING:
             if (!value) {
-                sprintf(buf, "%d", num);
+                snprintf(buf, sizeof(buf), "%d", num);
                 value = buf;
             }
             pstr = (char **)ptr;
@@ -256,7 +256,7 @@ QVarType qe_set_variable(EditState *s, const char *name,
             break;
         case VAR_CHARS:
             if (!value) {
-                sprintf(buf, "%d", num);
+                snprintf(buf, sizeof(buf), "%d", num);
                 value = buf;
             }
             pstrcpy(ptr, vp->size, value);

@@ -1099,7 +1099,8 @@ static void tty_term_flush(QEditScreen *s)
                      * space, use the generic loop to synchronize that
                      * space because the color change is non trivial
                      */
-                    if (TTYCHAR_GETBG(*ptr3) != TTYCHAR_GETBG(ptr3[-1]))
+                    if (ptr3 == ptr1
+                    ||  TTYCHAR_GETBG(*ptr3) != TTYCHAR_GETBG(ptr3[-1]))
                         ptr4++;
                 }
             }

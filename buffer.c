@@ -1754,9 +1754,8 @@ int eb_save_buffer(EditBuffer *b)
 
     /* backup old file if present */
     if (strlen(filename) < MAX_FILENAME_SIZE - 1) {
-        strcpy(buf1, filename);
-        strcat(buf1, "~");
-        // should check error code
+        snprintf(buf1, sizeof(buf1), "%s~", filename);
+         // should check error code
         rename(filename, buf1);
     }
 

@@ -1246,15 +1246,17 @@ int get_clock_usec(void)
 StringItem *set_string(StringArray *cs, int index, const char *str)
 {
     StringItem *v;
+    int len;
 
     if (index >= cs->nb_items)
         return NULL;
 
-    v = qe_malloc_hack(StringItem, strlen(str));
+    len = strlen(str);
+    v = qe_malloc_hack(StringItem, len);
     if (!v)
         return NULL;
     v->selected = 0;
-    strcpy(v->str, str);
+    memcpy(v->str, str, len + 1);
     if (cs->items[index])
         qe_free(&cs->items[index]);
     cs->items[index] = v;

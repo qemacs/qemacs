@@ -347,14 +347,15 @@ static void dired_build_list(EditState *s, const char *path,
         item = add_string(&hs->items, line);
         if (item) {
             DiredItem *dip;
+            int plen = strlen(p);
 
-            dip = qe_malloc_hack(DiredItem, strlen(p));
+            dip = qe_malloc_hack(DiredItem, plen);
             dip->state = hs;
             dip->mode = st.st_mode;
             dip->size = st.st_size;
             dip->mtime = st.st_mtime;
             dip->mark = ' ';
-            strcpy(dip->name, p);
+            memcpy(dip->name, p, plen + 1);
             item->opaque = dip;
         }
     }

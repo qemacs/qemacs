@@ -741,17 +741,17 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
         if (loss != 0) {
             buf[0] = '\0';
             if (loss & FF_LOSS_RESOLUTION)
-                strcat(buf, " res");
+                pstrcat(buf, sizeof(buf), " res");
             if (loss & FF_LOSS_DEPTH)
-                strcat(buf, " depth");
+                pstrcat(buf, sizeof(buf), " depth");
             if (loss & FF_LOSS_COLORSPACE)
-                strcat(buf, " colorspace");
+                pstrcat(buf, sizeof(buf), " colorspace");
             if (loss & FF_LOSS_ALPHA)
-                strcat(buf, " alpha");
+                pstrcat(buf, sizeof(buf), " alpha");
             if (loss & FF_LOSS_COLORQUANT)
-                strcat(buf, " colorquant");
+                pstrcat(buf, sizeof(buf), " colorquant");
             if (loss & FF_LOSS_CHROMA)
-                strcat(buf, " chroma");
+                pstrcat(buf, sizeof(buf), " chroma");
             put_status(e, "Warning: data loss:%s", buf);
         }
     }

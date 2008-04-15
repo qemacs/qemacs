@@ -95,6 +95,7 @@ static int get_pty(char *tty_str, int size)
     int len = strlen(ttydev);
     const char *c1, *c2;
 
+#ifdef CONFIG_PTSNAME
     /* First try Unix98 pseudo tty master */
     if ((fd = open("/dev/ptmx", O_RDWR)) >= 0) {
 #if 0
@@ -115,6 +116,7 @@ static int get_pty(char *tty_str, int size)
 #endif
         close(fd);
     }
+#endif
     /* then try BSD pseudo tty pre-created pairs */
     for (c1 = PTYCHAR1; *c1; c1++) {
         ptydev[len-2] = ttydev[len-2] = *c1;
@@ -122,7 +124,7 @@ static int get_pty(char *tty_str, int size)
             ptydev[len-1] = ttydev[len-1] = *c2;
             if ((fd = open(ptydev, O_RDWR)) >= 0) {
                 if (access(ttydev, R_OK|W_OK) == 0) {
-                    strcpy(tty_str, ttydev);
+                    pstrcpy(tty_str, size, ttydev);
                     return fd;
                 }
                 close(fd);

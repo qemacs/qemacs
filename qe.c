@@ -2080,7 +2080,7 @@ void display_mode_line(EditState *s)
                           s->width,
                           s->qe_state->mode_line_height,
                           buf, QE_STYLE_MODE_LINE);
-            strcpy(s->modeline_shadow, buf);
+            pstrcpy(s->modeline_shadow, sizeof(s->modeline_shadow), buf);
         }
     }
 }
@@ -4378,7 +4378,7 @@ void put_status(__unused__ EditState *s, const char *fmt, ...)
                           0, qs->screen->height - qs->status_height,
                           qs->screen->width, qs->status_height,
                           p, QE_STYLE_STATUS);
-            strcpy(qs->status_shadow, p);
+            pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), p);
             skip_spaces(&p);
             if (*p && *buf != '~')
                 eb_format_message(qs, "*messages*", buf);
@@ -4953,7 +4953,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     qs->active_window = minibuffer_saved_active;
 
     /* force status update */
-    //strcpy(qs->status_shadow, " ");
+    //pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), " ");
     if (do_abort)
         put_status(NULL, "Canceled.");
     else

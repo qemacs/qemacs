@@ -42,6 +42,7 @@ case "$cpu" in
 esac
 
 unlockio="no"
+ptsname="yes"
 gprof="no"
 network="yes"
 win32="no"
@@ -89,6 +90,14 @@ case $targetos in
     make="gmake"
     doc="no"
     plugins="no"
+    ptsname="no"
+    ;;
+  OpenBSD)
+    extralibs="-lm"
+    make="gmake"
+    doc="no"
+    plugins="no"
+    ptsname="no"
     ;;
   CYGWIN*)
     cygwin="yes"
@@ -416,6 +425,10 @@ fi
 if test "$unlockio" = "yes" ; then
   echo "CONFIG_UNLOCKIO=yes" >> config.mak
   echo "#define CONFIG_UNLOCKIO 1" >> $TMPH
+fi
+if test "$ptsname" = "yes" ; then
+  echo "CONFIG_PTSNAME=yes" >> config.mak
+  echo "#define CONFIG_PTSNAME 1" >> $TMPH
 fi
 if test "$gprof" = "yes" ; then
   echo "TARGET_GPROF=yes" >> config.mak

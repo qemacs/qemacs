@@ -58,8 +58,8 @@ int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst,
                                    strlen(lpszCmdLine) + 1);
     if (!command_line)
         return 0;
-    strcpy(command_line, PROG_NAME " ");
-    strcat(command_line, lpszCmdLine);
+    pstrcpy(command_linem sizeof(command_line), PROG_NAME " ");
+    pstrcat(command_linem sizeof(command_line), lpszCmdLine);
     _hPrev = hPrevInst;
     _hInstance = hInstance;
 

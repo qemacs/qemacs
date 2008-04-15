@@ -700,7 +700,7 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
         if (i == 0)
             snprintf(buf1, sizeof(buf1), "%d", size * 10);
         else
-            strcpy(buf1, "*");
+            pstrcpy(buf1, sizeof(buf1), "*");
         snprintf(buf, sizeof(buf),
                  "-*-%s-*-*-*-*-*-%s-*-*-*-*-*-*",
                  family, buf1);

@@ -301,7 +301,7 @@ const char *css_ident_str(CSSIdent id)
 CSSIdent css_new_ident(const char *str)
 {
     CSSIdentEntry **pp, *p;
-    int n;
+    int n, len;
 
     pp = &hash_ident[hash_str(str, CSS_IDENT_HASH_SIZE)];
     p = *pp;
@@ -311,11 +311,12 @@ CSSIdent css_new_ident(const char *str)
         }
         p = p->hash_next;
     }
-    p = qe_malloc_hack(CSSIdentEntry, strlen(str));
+    len = strlen(str);
+    p = qe_malloc_hack(CSSIdentEntry, len);
     if (!p)
         return CSS_ID_NIL;
     p->id = table_ident_nb;
-    strcpy(p->str, str);
+    memcpy(p->str, str, len + 1);
     p->hash_next = *pp;
     *pp = p;
 

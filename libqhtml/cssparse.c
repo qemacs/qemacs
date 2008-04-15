@@ -755,11 +755,12 @@ void add_attribute(CSSStyleSheetAttributeEntry ***last_attr,
                    CSSIdent attr, int op, const char *value)
 {
     CSSStyleSheetAttributeEntry *ae;
+    int len = strlen(value);
 
-    ae = qe_malloc_hack(CSSStyleSheetAttributeEntry, strlen(value));
+    ae = qe_malloc_hack(CSSStyleSheetAttributeEntry, len);
     ae->attr = attr;
     ae->op = op;
-    strcpy(ae->value, value);
+    memcpy(ae->value, value, len + 1);
     ae->next = NULL;
     **last_attr = ae;
     *last_attr = &ae->next;
