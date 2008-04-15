@@ -445,7 +445,7 @@ void splitpath(char *dirname, int dirname_size,
 }
 
 /* smart compare strings, lexicographical order, but collate numbers in
- * numeric order */
+ * numeric order, and push * at end */
 int qe_collate(const char *s1, const char *s2)
 {
     int last, c1, c2, res, flags;
@@ -462,7 +462,14 @@ int qe_collate(const char *s1, const char *s2)
             break;
         }
     }
-    res = (c1 < c2) ? -1 : 1;
+    if (c1 == '*')
+        res = 1;
+    else
+    if (c2 == '*')
+        res = -1;
+    else
+        res = (c1 < c2) ? -1 : 1;
+
     for (;;) {
         flags = qe_isdigit(c1) * 2 + qe_isdigit(c2);
         if (flags == 3) {
