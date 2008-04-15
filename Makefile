@@ -19,6 +19,10 @@
 
 include config.mak
 
+ifneq ($(DESTDIR),)
+  prefix=$(DESTDIR)
+endif
+
 ifeq ($(CC),gcc)
   CFLAGS   := -Wall -g -O2 -funsigned-char
   # do not warn about zero-length formats.
