@@ -1,5 +1,6 @@
 General TODO:
 ------------
+- handle X11 window manager close window event and exit cleanly 
 - rewrite TODO file with more sections
 - remember X11 window positions and restore layout ?
 - improve image viewer.
