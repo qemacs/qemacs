@@ -1,6 +1,6 @@
 # QEmacs, tiny but powerful multimode editor
 #
-# Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
+# Copyright (c) 2000-2002 Fabrice Bellard.
 # Copyright (c) 2000-2008 Charlie Gordon.
 #
 # This library is free software; you can redistribute it and/or
@@ -201,11 +201,11 @@ qe.o: allmodules.txt
 tqe.o: basemodules.txt
 
 allmodules.txt: $(SRCS) Makefile
-	echo '/* This file was generated automatically */'  > $@
+	@echo '/* This file was generated automatically */' > $@
 	grep -h ^qe_module_init $(SRCS)                    >> $@
 
 basemodules.txt: $(TSRCS) Makefile
-	echo '/* This file was generated automatically */'  > $@
+	@echo '/* This file was generated automatically */' > $@
 	grep -h ^qe_module_init $(TSRCS)                   >> $@
 endif
 
@@ -238,16 +238,15 @@ endif
 #
 # Key maps build (Only useful if you want to build your own maps from yudit maps)
 #
-KMAPS=Arabic.kmap ArmenianEast.kmap ArmenianWest.kmap Chinese-CJ.kmap \
-      Cyrillic.kmap Czech.kmap DE-RU.kmap Danish.kmap Dutch.kmap \
-      Esperanto.kmap Ethiopic.kmap French.kmap Georgian.kmap German.kmap \
-      Greek.kmap GreekMono.kmap Guarani.kmap HebrewP.kmap \
-      Hungarian.kmap \
-      KOI8_R.kmap Lithuanian.kmap Mnemonic.kmap Polish.kmap \
-      Russian.kmap SGML.kmap TeX.kmap Troff.kmap VNtelex.kmap \
-      Vietnamese.kmap XKB_iso8859-4.kmap \
-      DanishAlternate.kmap GreekBible.kmap Polytonic.kmap Spanish.kmap \
-      Thai.kmap VietnameseTelex.kmap Welsh.kmap \
+KMAPS=Arabic.kmap ArmenianEast.kmap ArmenianWest.kmap Chinese-CJ.kmap       \
+      Cyrillic.kmap Czech.kmap DE-RU.kmap Danish.kmap Dutch.kmap            \
+      Esperanto.kmap Ethiopic.kmap French.kmap Georgian.kmap German.kmap    \
+      Greek.kmap GreekMono.kmap Guarani.kmap HebrewP.kmap Hungarian.kmap    \
+      KOI8_R.kmap Lithuanian.kmap Mnemonic.kmap Polish.kmap Russian.kmap    \
+      SGML.kmap TeX.kmap Troff.kmap VNtelex.kmap                            \
+      Vietnamese.kmap XKB_iso8859-4.kmap                                    \
+      DanishAlternate.kmap GreekBible.kmap Polytonic.kmap Spanish.kmap      \
+      Thai.kmap VietnameseTelex.kmap Welsh.kmap                             \
       Hebrew.kmap HebrewIsraeli.kmap HebrewP.kmap Israeli.kmap Yiddish.kmap \
       Kana.kmap
 #     Hangul.kmap Hangul2.kmap Hangul3.kmap Unicode2.kmap
@@ -334,7 +333,7 @@ qe-doc.html: qe-doc.texi Makefile
 #
 clean:
 	$(MAKE) -C libqhtml clean
-	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
+	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump   \
            qe tqe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
            cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9]
 
@@ -342,18 +341,31 @@ distclean: clean
 	rm -f config.h config.mak
 
 install: $(TARGETS) qe.1
-	install -d $(DESTDIR)$(prefix)/{bin,man/man1,share}
-	install -s -m 755 qe$(EXE) $(DESTDIR)$(prefix)/bin/qemacs$(EXE)
+	$(INSTALL) -m 755 -d $(DESTDIR)$(prefix)/bin
+	$(INSTALL) -m 755 -d $(DESTDIR)$(prefix)/man/man1
+	$(INSTALL) -m 755 -d $(DESTDIR)$(prefix)/share/qe
+	$(INSTALL) -m 755 -s qe$(EXE) $(DESTDIR)$(prefix)/bin/qemacs$(EXE)
 	ln -sf qemacs $(DESTDIR)$(prefix)/bin/qe$(EXE)
 ifdef CONFIG_FFMPEG
 	ln -sf qemacs$(EXE) $(DESTDIR)$(prefix)/bin/ffplay$(EXE)
 endif
-	mkdir -p $(DESTDIR)$(prefix)/share/qe
-	install kmaps ligatures $(DESTDIR)$(prefix)/share/qe
-	install qe.1 $(DESTDIR)$(prefix)/man/man1
+	$(INSTALL) -m 644 kmaps ligatures $(DESTDIR)$(prefix)/share/qe
+	$(INSTALL) -m 644 qe.1 $(DESTDIR)$(prefix)/man/man1
 ifdef CONFIG_HTML
-	install -s -m 755 -s html2png$(EXE) $(DESTDIR)$(prefix)/bin
+	$(INSTALL) -m 755 -s html2png$(EXE) $(DESTDIR)$(prefix)/bin
 endif
+
+uninstall:
+	rm -f $(DESTDIR)$(prefix)/bin/qemacs$(EXE)   \
+	      $(DESTDIR)$(prefix)/bin/qe$(EXE)       \
+	      $(DESTDIR)$(prefix)/bin/ffplay$(EXE)   \
+	      $(DESTDIR)$(prefix)/man/man1/qe.1      \
+	      $(DESTDIR)$(prefix)/share/qe/kmaps     \
+	      $(DESTDIR)$(prefix)/share/qe/ligatures \
+	      $(DESTDIR)$(prefix)/bin/html2png$(EXE)
+
+rebuild:
+	./configure && $(MAKE) clean all
 
 TAGS: force
 	etags *.[ch]
@@ -363,29 +375,29 @@ force:
 #
 # tar archive for distribution
 #
-FILES:=COPYING Changelog Makefile README TODO VERSION \
+FILES:=COPYING Changelog Makefile README TODO VERSION               \
        arabic.c bufed.c buffer.c cfb.c cfb.h charset.c charsetjis.c \
-       charsetjis.def charsetmore.c clang.c config.eg config.h \
-       configure cptoqe.c cutils.c cutils.h dired.c display.c \
-       display.h docbook.c extras.c fbffonts.c fbfrender.c \
-       fbfrender.h fbftoqe.c hex.c html.c html2png.c htmlsrc.c \
-       image.c indic.c input.c jistoqe.c kmap.c kmaptoqe.c \
-       latex-mode.c libfbf.c libfbf.h ligtoqe.c list.c makemode.c \
-       mpeg.c perl.c qe-doc.html qe-doc.texi qe.1 qe.c qe.h qe.tcc \
-       qeconfig.h qeend.c qemacs.spec qestyles.h qfribidi.c \
-       qfribidi.h script.c shell.c tty.c unicode_join.c unihex.c \
-       unix.c util.c variables.c variables.h video.c win32.c x11.c \
-       xml.c xterm-146-dw-patch 
+       charsetjis.def charsetmore.c clang.c config.eg config.h      \
+       configure cptoqe.c cutils.c cutils.h dired.c display.c       \
+       display.h docbook.c extras.c fbffonts.c fbfrender.c          \
+       fbfrender.h fbftoqe.c hex.c html.c html2png.c htmlsrc.c      \
+       image.c indic.c input.c jistoqe.c kmap.c kmaptoqe.c          \
+       latex-mode.c libfbf.c libfbf.h ligtoqe.c list.c makemode.c   \
+       mpeg.c perl.c qe-doc.html qe-doc.texi qe.1 qe.c qe.h qe.tcc  \
+       qeconfig.h qeend.c qemacs.spec qestyles.h qfribidi.c         \
+       qfribidi.h script.c shell.c tty.c unicode_join.c unihex.c    \
+       unix.c util.c variables.c variables.h video.c win32.c x11.c  \
+       xml.c xterm-146-dw-patch
 
 FILES+=plugin-example/Makefile  plugin-example/my_plugin.c
 
-FILES+=tests/HELLO.txt tests/TestPage.txt tests/test-hebrew \
-       tests/test-capital-rtl tests/test-capital-rtl.ref \
+FILES+=tests/HELLO.txt tests/TestPage.txt tests/test-hebrew         \
+       tests/test-capital-rtl tests/test-capital-rtl.ref            \
        tests/testbidi.html \
 
 # qhtml library
 FILES+=libqhtml/Makefile libqhtml/css.c libqhtml/css.h libqhtml/cssid.h \
-       libqhtml/cssparse.c libqhtml/csstoqe.c libqhtml/docbook.css \
+       libqhtml/cssparse.c libqhtml/csstoqe.c libqhtml/docbook.css      \
        libqhtml/html.css libqhtml/htmlent.h libqhtml/xmlparse.c
 
 # keyboard maps, code pages, fonts
