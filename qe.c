@@ -4045,8 +4045,8 @@ static void macro_add_key(int key)
     qs->macro_keys[qs->nb_macro_keys++] = key;
 }
 
-static const char *keys_to_str(char *buf, int buf_size,
-                               unsigned int *keys, int nb_keys)
+const char *keys_to_str(char *buf, int buf_size,
+                        unsigned int *keys, int nb_keys)
 {
     char buf1[64];
     int i;
@@ -7394,14 +7394,17 @@ void qe_register_cmd_line_options(CmdOptionDef *table)
 
 /******************************************************/
 
+const char str_version[] = "QEmacs version " QE_VERSION;
+const char str_credits[] = "Copyright (c) 2000-2003 Fabrice Bellard\n"
+                           "Copyright (c) 2000-2008 Charlie Gordon\n";
+
 static void show_version(void)
 {
-    printf("QEmacs version " QE_VERSION "\n"
-           "Copyright (c) 2000-2003 Fabrice Bellard\n"
-           "Copyright (c) 2000-2008 Charlie Gordon\n"
+    printf("%s\n%s\n"
            "QEmacs comes with ABSOLUTELY NO WARRANTY.\n"
            "You may redistribute copies of QEmacs\n"
-           "under the terms of the GNU Lesser General Public License.\n");
+           "under the terms of the GNU Lesser General Public License.\n",
+           str_version, str_credits);
     exit(1);
 }
 

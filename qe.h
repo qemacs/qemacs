@@ -121,6 +121,9 @@ static inline const char *cs8(const u8 *p) { return (const char*)p; }
 /* Size for a command name buffer */
 #define MAX_CMDNAME_SIZE     32
 
+extern const char str_version[];
+extern const char str_credits[];
+
 /* low level I/O events */
 void set_read_handler(int fd, void (*cb)(void *opaque), void *opaque);
 void set_write_handler(int fd, void (*cb)(void *opaque), void *opaque);
@@ -277,6 +280,8 @@ int compose_keys(unsigned int *keys, int *nb_keys);
 int strtokey(const char **pp);
 int strtokeys(const char *keystr, unsigned int *keys, int max_keys);
 void keytostr(char *buf, int buf_size, int key);
+const char *keys_to_str(char *buf, int buf_size,
+                        unsigned int *keys, int nb_keys);
 int to_hex(int key);
 void color_completion(CompleteState *cp);
 int css_define_color(const char *name, const char *value);
