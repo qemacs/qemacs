@@ -401,6 +401,7 @@ echo "GCC_MAJOR=$gcc_major" >> config.mak
 echo "HOST_CC=$host_cc" >> config.mak
 echo "AR=$ar" >> config.mak
 echo "STRIP=$strip -s -R .comment -R .note" >> config.mak
+echo "INSTALL=install" >> config.mak
 echo "CFLAGS=$CFLAGS" >> config.mak
 echo "LDFLAGS=$LDFLAGS" >> config.mak
 echo "EXE=$exe" >> config.mak
