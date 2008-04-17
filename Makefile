@@ -19,10 +19,6 @@
 
 include config.mak
 
-ifneq ($(DESTDIR),)
-  prefix=$(DESTDIR)
-endif
-
 ifeq ($(CC),gcc)
   CFLAGS   := -Wall -g -O2 -funsigned-char
   # do not warn about zero-length formats.
@@ -346,17 +342,17 @@ distclean: clean
 	rm -f config.h config.mak
 
 install: $(TARGETS) qe.1
-	install -d $(prefix)/{bin,man/man1,share}
-	install -m 755 qe$(EXE) $(prefix)/bin/qemacs$(EXE)
-	ln -sf qemacs $(prefix)/bin/qe$(EXE)
+	install -d $(DESTDIR)$(prefix)/{bin,man/man1,share}
+	install -s -m 755 qe$(EXE) $(DESTDIR)$(prefix)/bin/qemacs$(EXE)
+	ln -sf qemacs $(DESTDIR)$(prefix)/bin/qe$(EXE)
 ifdef CONFIG_FFMPEG
-	ln -sf qemacs$(EXE) $(prefix)/bin/ffplay$(EXE)
+	ln -sf qemacs$(EXE) $(DESTDIR)$(prefix)/bin/ffplay$(EXE)
 endif
-	mkdir -p $(prefix)/share/qe
-	install kmaps ligatures $(prefix)/share/qe
-	install qe.1 $(prefix)/man/man1
+	mkdir -p $(DESTDIR)$(prefix)/share/qe
+	install kmaps ligatures $(DESTDIR)$(prefix)/share/qe
+	install qe.1 $(DESTDIR)$(prefix)/man/man1
 ifdef CONFIG_HTML
-	install -m 755 -s html2png$(EXE) $(prefix)/bin
+	install -s -m 755 -s html2png$(EXE) $(DESTDIR)$(prefix)/bin
 endif
 
 TAGS: force
