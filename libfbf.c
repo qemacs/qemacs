@@ -27,6 +27,7 @@
 
 #define free(ptr)    do_not_use_free
 #define malloc(size) do_not_use_malloc
+#define index  index__
 
 static void init_context_tables(void);
 static int unicode_to_johab(int code);
