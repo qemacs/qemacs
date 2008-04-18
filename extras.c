@@ -22,6 +22,7 @@
 
 #include "qe.h"
 #include "qfribidi.h"
+#include "variables.h"
 
 void do_compare_windows(EditState *s, int argval)
 {
@@ -344,6 +345,39 @@ static void do_transpose(EditState *s, int cmd)
     eb_write(s->b, offset0, buf, size0 + size1 + size2);
 }
 
+/* remove a key binding from mode or globally */
+static int qe_unregister_binding1(unsigned int *keys, int nb_keys, ModeDef *m)
+{
+    QEmacsState *qs = &qe_state;
+    KeyDef **lp, *p;
+
+    lp = m ? &m->first_key : &qs->first_key;
+    while (*lp) {
+        if ((*lp)->nb_keys == nb_keys
+        &&  !memcmp((*lp)->keys, keys, nb_keys * sizeof(*keys)))
+        {
+            p = *lp;
+            *lp = (*lp)->next;
+            qe_free(p);
+            return 1;
+        }
+        lp = &(*lp)->next;
+    }
+    return 0;
+}
+
+static void do_unset_key(EditState *s, const char *keystr, int local)
+{
+    unsigned int keys[MAX_KEYS];
+    int nb_keys;
+
+    nb_keys = strtokeys(keystr, keys, MAX_KEYS);
+    if (!nb_keys)
+        return;
+
+    qe_unregister_binding1(keys, nb_keys, local ? s->mode : NULL);
+}
+
 static CmdDef extra_commands[] = {
     CMD_( KEY_META('='), KEY_NONE,
           "compare-windows", do_compare_windows, ESi, "ui" )
@@ -371,6 +405,15 @@ static CmdDef extra_commands[] = {
     CMDV( KEY_META('t'), KEY_NONE,
           "transpose-words", do_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v")
 
+    CMDV( KEY_NONE, KEY_NONE,
+          "global-unset-key", do_unset_key, ESsi, 0,
+          "s{Unset key globally: }[key]"
+	  "v")
+    CMDV( KEY_NONE, KEY_NONE,
+          "local-unset-key", do_unset_key, ESsi, 1,
+          "s{Unset key locally: }[key]"
+	  "v")
+
     CMD_DEF_END,
 };
 
@@ -379,8 +422,9 @@ static int extras_init(void)
     int key;
 
     qe_register_cmd_table(extra_commands, NULL);
-    for (key = KEY_META('0'); key <= KEY_META('9'); key++)
+    for (key = KEY_META('0'); key <= KEY_META('9'); key++) {
         qe_register_binding(key, "universal-argument", NULL);
+    }
     return 0;
 }
 

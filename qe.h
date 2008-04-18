@@ -1079,7 +1079,7 @@ typedef struct ModeDef {
     int (*get_mode_line)(EditState *s, char *buf, int buf_size); /* return mode line */
 
     /* mode specific key bindings */
-    //struct KeyDef *first_key;
+    struct KeyDef *first_key;
 
     struct ModeDef *next;
 } ModeDef;
@@ -1222,10 +1222,11 @@ extern QEmacsState qe_state;
 
 /* dynamic key binding storage */
 
+#define MAX_KEYS 10
+
 typedef struct KeyDef {
-    struct CmdDef *cmd;
     struct KeyDef *next;
-    ModeDef *mode; /* if non NULL, key is only active in this mode */
+    struct CmdDef *cmd;
     int nb_keys;
     unsigned int keys[1];
 } KeyDef;

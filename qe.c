@@ -160,6 +160,21 @@ CmdDef *qe_find_cmd(const char *cmd_name)
     return NULL;
 }
 
+void command_completion(CompleteState *cp)
+{
+    QEmacsState *qs = cp->s->qe_state;
+    CmdDef *d;
+
+    d = qs->first_cmd;
+    while (d != NULL) {
+        while (d->name != NULL) {
+            complete_test(cp, d->name);
+            d++;
+        }
+        d = d->action.next;
+    }
+}
+
 static int qe_register_binding1(unsigned int *keys, int nb_keys,
                                 CmdDef *d, ModeDef *m)
 {
@@ -175,19 +190,16 @@ static int qe_register_binding1(unsigned int *keys, int nb_keys,
     if (!p)
         return -1;
     p->cmd = d;
-    p->mode = m;
     p->nb_keys = nb_keys;
     for (i = 0; i < nb_keys; i++) {
         p->keys[i] = keys[i];
     }
-    /* find position: mode keys should be before generic keys, but
-     * bindings must be prepended to override previous bindings
-     */
-    lp = &qs->first_key;
-    if (m == NULL) {
-        while (*lp != NULL && (*lp)->mode != NULL)
-            lp = &(*lp)->next;
-    }
+    lp = m ? &m->first_key : &qs->first_key;
+    /* Bindings must be prepended to override previous bindings */
+#if 0
+    while (*lp != NULL && (*lp)->mode != NULL)
+        lp = &(*lp)->next;
+#endif
     p->next = *lp;
     *lp = p;
     return 0;
@@ -203,11 +215,13 @@ static int qe_register_binding2(int key, CmdDef *d, ModeDef *m)
     if (key >= KEY_CTRLX(0) && key <= KEY_CTRLX(0xff)) {
         keys[nb_keys++] = KEY_CTRL('x');
         keys[nb_keys++] = key & 0xff;
-    } else if (key >= KEY_CTRLXRET(0) && key <= KEY_CTRLXRET(0xff)) {
+    } else
+    if (key >= KEY_CTRLXRET(0) && key <= KEY_CTRLXRET(0xff)) {
         keys[nb_keys++] = KEY_CTRL('x');
         keys[nb_keys++] = KEY_RET;
         keys[nb_keys++] = key & 0xff;
-    } else if (key >= KEY_CTRLH(0) && key <= KEY_CTRLH(0xff)) {
+    } else
+    if (key >= KEY_CTRLH(0) && key <= KEY_CTRLH(0xff)) {
         keys[nb_keys++] = KEY_CTRL('h');
         keys[nb_keys++] = key & 0xff;
     } else {
@@ -215,28 +229,6 @@ static int qe_register_binding2(int key, CmdDef *d, ModeDef *m)
     }
     return qe_register_binding1(keys, nb_keys, d, m);
 }
-
-#if 0
-/* remove a key binding from mode or globally */
-/* should take key sequence */
-int qe_unregister_binding1(int key, ModeDef *m)
-{
-    QEmacsState *qs = &qe_state;
-    KeyDef **lp, *p;
-
-    lp = (m) ? &m->first_key : &qs->first_key;
-    while (*lp) {
-        if ((*lp)->key == key) {
-            p = *lp;
-            *lp = (*lp)->next;
-            free(p);
-            break;
-        }
-        lp = &(*lp)->next;
-    }
-    return 0;
-}
-#endif
 
 /* if mode is non NULL, the defined keys are only active in this mode */
 void qe_register_cmd_table(CmdDef *cmds, ModeDef *m)
@@ -287,23 +279,6 @@ int qe_register_binding(int key, const char *cmd_name, ModeDef *m)
     return qe_register_binding2(key, qe_find_cmd(cmd_name), m);
 }
 
-void command_completion(CompleteState *cp)
-{
-    QEmacsState *qs = cp->s->qe_state;
-    CmdDef *d;
-
-    d = qs->first_cmd;
-    while (d != NULL) {
-        while (d->name != NULL) {
-            complete_test(cp, d->name);
-            d++;
-        }
-        d = d->action.next;
-    }
-}
-
-#define MAX_KEYS 10
-
 void do_set_key(EditState *s, const char *keystr,
                 const char *cmd_name, int local)
 {
@@ -323,31 +298,14 @@ void do_set_key(EditState *s, const char *keystr,
     qe_register_binding1(keys, nb_keys, d, local ? s->mode : NULL);
 }
 
-#if 0
-void do_unset_key(EditState *s, const char *keystr, int local)
-{
-    int key;
-
-    if (!keystr) {
-        edit_display(s->qe_state);
-        put_status(s, "Unset key %s: ", local ? "locally" : "globally");
-        dpy_flush(s->screen);
-        key = get_key(s->screen);
-    } else {
-        key = strtokey(&keystr);
-    }
-    qe_unregister_binding1(key, local ? s->mode : NULL);
-    do_describe_key(s, NULL, key);
-}
-#endif
-
 void do_toggle_control_h(EditState *s, int set)
 {
     /* Achtung Minen! do_toggle_control_h can be called from tty_init
      * with a NULL EditState.
      */
     QEmacsState *qs = s ? s->qe_state : &qe_state;
-    KeyDef *p;
+    ModeDef *m;
+    KeyDef *kd;
     int i;
 
     if (set)
@@ -360,22 +318,29 @@ void do_toggle_control_h(EditState *s, int set)
 
     qs->backspace_is_control_h = set;
 
-    for (p = qs->first_key; p; p = p->next) {
-        for (i = 0; i < p->nb_keys; i++) {
-            switch (p->keys[i]) {
-            case KEY_CTRL('h'):
-                p->keys[i] = set ? KEY_META('h') : 127;
-                break;
-            case 127:
-                if (set)
-                    p->keys[i] = KEY_CTRL('h');
-                break;
-            case KEY_META('h'):
-                if (!set)
-                    p->keys[i] = KEY_CTRL('h');
-                break;
+    /* CG: This hack in incompatible with support for multiple
+     * concurrent input consoles.
+     */
+    for (m = qs->first_mode;; m = m->next) {
+        for (kd = m ? m->first_key : qs->first_key; kd; kd = kd->next) {
+            for (i = 0; i < kd->nb_keys; i++) {
+                switch (kd->keys[i]) {
+                case KEY_CTRL('h'):
+                    kd->keys[i] = set ? KEY_META('h') : 127;
+                    break;
+                case 127:
+                    if (set)
+                        kd->keys[i] = KEY_CTRL('h');
+                    break;
+                case KEY_META('h'):
+                    if (!set)
+                        kd->keys[i] = KEY_CTRL('h');
+                    break;
+                }
             }
         }
+        if (!m)
+            break;
     }
 }
 
@@ -4119,6 +4084,43 @@ static void qe_key_init(QEKeyContext *c)
     c->buf[0] = '\0';
 }
 
+static KeyDef *find_binding(unsigned int *keys, int nb_keys, int nroots, ...)
+{
+    KeyDef *kd = NULL;
+    va_list ap;
+
+    va_start(ap, nroots);
+    while (nroots--) {
+        for (kd = va_arg(ap, KeyDef *); kd != NULL; kd = kd->next) {
+            if (kd->nb_keys >= nb_keys
+            &&  !memcmp(kd->keys, keys, nb_keys * sizeof(keys[0])))
+            {
+                goto found;
+            }
+        }
+    }
+  found:
+    va_end(ap);
+    return kd;
+}
+
+static KeyDef *find_binding1(unsigned int key, int nroots, ...)
+{
+    KeyDef *kd = NULL;
+    va_list ap;
+
+    va_start(ap, nroots);
+    while (nroots--) {
+        for (kd = va_arg(ap, KeyDef *); kd != NULL; kd = kd->next) {
+            if (kd->nb_keys == 1 && kd->keys[0] == key)
+                goto found;
+        }
+    }
+  found:
+    va_end(ap);
+    return kd;
+}
+
 static void qe_key_process(int key)
 {
     QEmacsState *qs = &qe_state;
@@ -4171,16 +4173,9 @@ static void qe_key_process(int key)
     }
 
     /* see if one command is found */
-    for (kd = qs->first_key; kd != NULL; kd = kd->next) {
-        if (kd->nb_keys >= c->nb_keys) {
-            if (!memcmp(kd->keys, c->keys,
-                        c->nb_keys * sizeof(c->keys[0])) &&
-                (kd->mode == NULL || kd->mode == s->mode)) {
-                break;
-            }
-        }
-    }
-    if (!kd) {
+    if (!(kd = find_binding(c->keys, c->nb_keys, 2,
+                            s->mode->first_key, qs->first_key)))
+    {
         /* no key found */
         if (c->nb_keys == 1) {
             if (!KEY_SPECIAL(key)) {
@@ -4198,16 +4193,12 @@ static void qe_key_process(int key)
                         goto next;
                     }
                 }
-                for (kd = qs->first_key; kd != NULL; kd = kd->next) {
-                    if (kd->nb_keys == 1 &&
-                        kd->keys[0] == KEY_DEFAULT &&
-                        (kd->mode == NULL || kd->mode == s->mode)) {
-                        break;
-                    }
-                }
+                kd = find_binding1(KEY_DEFAULT, 2,
+                                   s->mode->first_key, qs->first_key);
                 if (kd) {
                     /* horrible kludge to pass key as intrinsic argument */
                     /* CG: should have an argument type for key */
+                    /* CG: should be no longer necessary */
                     kd->cmd->val = key;
                     goto exec_cmd;
                 }
@@ -6481,29 +6472,40 @@ static void print_bindings(EditBuffer *b, const char *title,
                            __unused__ int type, ModeDef *mode)
 {
     CmdDef *d;
-    KeyDef *k;
+    KeyDef *kd;
     char buf[64];
-    int found, gfound;
+    int found, gfound, pos;
 
     d = qe_state.first_cmd;
     gfound = 0;
     while (d != NULL) {
         while (d->name != NULL) {
             /* find each key mapping pointing to this command */
-            found = 0;
-            for (k = qe_state.first_key; k != NULL; k = k->next) {
-                if (k->cmd == d && k->mode == mode) {
+            found = pos = 0;
+            kd = mode ? mode->first_key : qe_state.first_key;
+            for (; kd != NULL; kd = kd->next) {
+                if (kd->cmd == d) {
                     if (!gfound)
                         eb_printf(b, "%s:\n\n", title);
                     if (found)
-                        eb_printf(b, ",");
-                    eb_printf(b, " %s", keys_to_str(buf, sizeof(buf), k->keys, k->nb_keys));
+                        pos += eb_printf(b, ",");
+                    if (pos > 50) {
+                        eb_printf(b, "\n");
+                        pos = 0;
+                    }
+                    pos += eb_printf(b, " %s",
+                                     keys_to_str(buf, sizeof(buf),
+                                                 kd->keys, kd->nb_keys));
                     found = 1;
                     gfound = 1;
                 }
             }
             if (found) {
                 /* print associated command name */
+                if (pos > 25) {
+                    eb_printf(b, "\n");
+                    pos = 0;
+                }
                 eb_line_pad(b, 25);
                 eb_printf(b, ": %s\n", d->name);
             }
