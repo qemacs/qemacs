@@ -699,20 +699,23 @@ void do_delete_char(EditState *s, int argval)
         return;
 
     if (argval == NO_ARG) {
-        eb_nextc(s->b, s->offset, &offset1);
-        eb_delete(s->b, s->offset, offset1 - s->offset);
-    } else
-    if (argval) {
-        /* save kill if universal argument given */
-        endpos = s->offset;
-        for (i = argval; i > 0 && endpos < s->b->total_size; i--) {
-            eb_nextc(s->b, endpos, &endpos);
+        if (s->qe_state->last_cmd_func != do_append_next_kill) {
+            eb_nextc(s->b, s->offset, &offset1);
+            eb_delete(s->b, s->offset, offset1 - s->offset);
+            return;
         }
-        for (i = argval; i < 0 && endpos > 0; i++) {
-            eb_prevc(s->b, endpos, &endpos);
-        }
-        do_kill(s, s->offset, endpos, argval);
+        argval = 1;
     }
+
+    /* save kill if universal argument given */
+    endpos = s->offset;
+    for (i = argval; i > 0 && endpos < s->b->total_size; i--) {
+        eb_nextc(s->b, endpos, &endpos);
+    }
+    for (i = argval; i < 0 && endpos > 0; i++) {
+        eb_prevc(s->b, endpos, &endpos);
+    }
+    do_kill(s, s->offset, endpos, argval);
 }
 
 void do_backspace(EditState *s, int argval)
@@ -730,17 +733,20 @@ void do_backspace(EditState *s, int argval)
     s->region_style = 0;
 
     if (argval == NO_ARG) {
-        eb_prevc(s->b, s->offset, &offset1);
-        if (offset1 < s->offset) {
-            s->offset = eb_delete_range(s->b, offset1, s->offset);
-            /* special case for composing */
-            if (s->compose_len > 0)
-                s->compose_len--;
+        if (s->qe_state->last_cmd_func != do_append_next_kill) {
+            eb_prevc(s->b, s->offset, &offset1);
+            if (offset1 < s->offset) {
+                s->offset = eb_delete_range(s->b, offset1, s->offset);
+                /* special case for composing */
+                if (s->compose_len > 0)
+                    s->compose_len--;
+            }
+            return;
         }
-    } else {
-        /* save kill if universal argument given */
-        do_delete_char(s, -argval);
+        argval = 1;
     }
+    /* save kill if universal argument given */
+    do_delete_char(s, -argval);
 }
 
 /* return the cursor position relative to the screen. Note that xc is
