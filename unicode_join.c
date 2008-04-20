@@ -124,6 +124,9 @@ static int unicode_ligature(unsigned int *buf_out,
     int l, l1, l2, len1, len2, i, j;
     unsigned int *q;
     const unsigned short *lig;
+    /* CG: C99 specific variable-size array: should be careful about
+     * maximum len.
+     */
     unsigned int buf[len];
 
     memcpy(buf, buf_out, len * sizeof(unsigned int));
@@ -247,6 +250,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
                       int reverse)
 {
     int len, i;
+    /* CG: C99 variable-size arrays may be too large */
     unsigned int ctog[src_size];
     unsigned int ctog1[src_size];
     unsigned int buf[src_size];
