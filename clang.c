@@ -45,7 +45,11 @@ static const char *c_mode_types =
     "_Bool|_Complex|_Imaginary|";
 
 static const char *c_mode_extensions =
-    "c|h|y|e|cc|hh|cpp|hpp|cxx|hxx|cs|idl|jav|java|js|qe|json|pcc|C|l|lex";
+    "c|h|y|l|lex|e|qe|cs|idl|jav|java|js|json|"
+    "ec|ecp|"           /* Informix embedded C */
+    "pgc|"              /* Postgres embedded C */
+    "pcc|"              /* Oracle C++ */
+    "cc|hh|cpp|hpp|cxx|hxx|C|H|CPP|CC|c++";   /* C++ extensions */
 
 #if 0
 static int get_c_identifier(char *buf, int buf_size, unsigned int *p)
