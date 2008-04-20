@@ -222,13 +222,13 @@ qfribidi.o: qfribidi.c qfribidi.h
 # Test for bidir algorithm
 #
 qfribidi$(EXE): qfribidi.c cutils.c
-	$(HOST_CC) $(CFLAGS) -DTEST -o $@ $<
+	$(HOST_CC) $(CFLAGS) -DTEST -o $@ $^
 
 #
 # build ligature table
 #
 ligtoqe$(EXE): ligtoqe.c cutils.c
-	$(HOST_CC) $(CFLAGS) -o $@ $<
+	$(HOST_CC) $(CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
 ligatures: ligtoqe$(EXE) unifont.lig
@@ -255,7 +255,7 @@ KMAPS_DIR=kmap
 KMAPS:=$(addprefix $(KMAPS_DIR)/, $(KMAPS))
 
 kmaptoqe$(EXE): kmaptoqe.c cutils.c
-	$(HOST_CC) $(CFLAGS) -o $@ $<
+	$(HOST_CC) $(CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
 kmaps: kmaptoqe$(EXE) $(KMAPS) Makefile
@@ -280,10 +280,10 @@ JIS= JIS0208.TXT JIS0212.TXT
 JIS:=$(addprefix cp/,$(JIS))
 
 cptoqe$(EXE): cptoqe.c cutils.c
-	$(HOST_CC) $(CFLAGS) -o $@ $<
+	$(HOST_CC) $(CFLAGS) -o $@ $^
 
 jistoqe$(EXE): jistoqe.c cutils.c
-	$(HOST_CC) $(CFLAGS) -o $@ $<
+	$(HOST_CC) $(CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
 charsetmore.c: cp/cpdata.txt $(CP) cptoqe$(EXE) Makefile
@@ -303,7 +303,7 @@ FONTS=fixed10.fbf fixed12.fbf fixed13.fbf fixed14.fbf \
 FONTS:=$(addprefix fonts/,$(FONTS))
 
 fbftoqe$(EXE): fbftoqe.c cutils.c
-	$(HOST_CC) $(CFLAGS) -o $@ $<
+	$(HOST_CC) $(CFLAGS) -o $@ $^
 
 fbffonts.c: fbftoqe$(EXE) $(FONTS)
 	./fbftoqe $(FONTS) > $@
