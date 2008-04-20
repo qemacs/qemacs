@@ -485,6 +485,8 @@ int qe_collate(const char *s1, const char *s2)
     return (flags == 1) ? -1 : 1;
 }
 
+/* CG: need a local version of strcasecmp: qe_strcasecmp() */
+
 /* Should return int, length of converted string? */
 void qe_strtolower(char *buf, int size, const char *str)
 {
