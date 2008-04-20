@@ -23,6 +23,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "cutils.h"
+
 static char *get_basename(const char *pathname)
 {
     const char *base = pathname;
@@ -187,7 +189,7 @@ int main(int argc, char **argv)
     for (i = 1; i < argc; i++) {
         filename = argv[i];
 
-        strcpy(name, get_basename(filename));
+        pstrcpy(name, sizeof(name), get_basename(filename));
         *get_extension(name) = '\0';
 
         f = fopen(filename, "r");

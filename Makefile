@@ -221,13 +221,13 @@ qfribidi.o: qfribidi.c qfribidi.h
 #
 # Test for bidir algorithm
 #
-qfribidi$(EXE): qfribidi.c
+qfribidi$(EXE): qfribidi.c cutils.c
 	$(HOST_CC) $(CFLAGS) -DTEST -o $@ $<
 
 #
 # build ligature table
 #
-ligtoqe$(EXE): ligtoqe.c
+ligtoqe$(EXE): ligtoqe.c cutils.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
 ifdef BUILD_ALL
@@ -254,7 +254,7 @@ KMAPS=Arabic.kmap ArmenianEast.kmap ArmenianWest.kmap Chinese-CJ.kmap       \
 KMAPS_DIR=kmap
 KMAPS:=$(addprefix $(KMAPS_DIR)/, $(KMAPS))
 
-kmaptoqe$(EXE): kmaptoqe.c
+kmaptoqe$(EXE): kmaptoqe.c cutils.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
 ifdef BUILD_ALL
@@ -279,10 +279,10 @@ CP:=$(addprefix cp/,$(CP))
 JIS= JIS0208.TXT JIS0212.TXT
 JIS:=$(addprefix cp/,$(JIS))
 
-cptoqe$(EXE): cptoqe.c
+cptoqe$(EXE): cptoqe.c cutils.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
-jistoqe$(EXE): jistoqe.c
+jistoqe$(EXE): jistoqe.c cutils.c
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
 ifdef BUILD_ALL
@@ -302,8 +302,8 @@ FONTS=fixed10.fbf fixed12.fbf fixed13.fbf fixed14.fbf \
       unifont.fbf
 FONTS:=$(addprefix fonts/,$(FONTS))
 
-fbftoqe$(EXE): fbftoqe.o cutils.o
-	$(CC) $(CFLAGS) -o $@ $^
+fbftoqe$(EXE): fbftoqe.c cutils.c
+	$(HOST_CC) $(CFLAGS) -o $@ $<
 
 fbffonts.c: fbftoqe$(EXE) $(FONTS)
 	./fbftoqe $(FONTS) > $@

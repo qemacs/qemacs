@@ -26,6 +26,8 @@
 #include <getopt.h>
 #include <assert.h>
 
+#include "cutils.h"
+
 static inline char *skipspaces(char *p) {
     while (isspace((unsigned char)*p))
         p++;

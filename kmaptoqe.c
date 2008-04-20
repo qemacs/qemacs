@@ -25,6 +25,8 @@
 #include <ctype.h>
 #include <assert.h>
 
+#include "cutils.h"
+
 #ifndef countof
 #define countof(a)  ((int)(sizeof(a) / sizeof((a)[0])))
 #endif
@@ -525,13 +527,13 @@ int main(int argc, char **argv)
         else
             p++;
 
-        strcpy(name, p);
+        pstrcpy(name, sizeof(name), p);
         for (p = name; *p != '\0' && *p != '.'; p++) {
             if (*p == '-')
                 *p = '_';
         }
         *p = '\0';
-        strcpy(kmap_names[nb_kmaps], name);
+        pstrcpy(kmap_names[nb_kmaps], sizeof(kmap_names[nb_kmaps]), name);
         kmap_offsets[nb_kmaps] = outbuf_ptr - outbuf;
         nb_kmaps++;
         /* special compression for CJ */

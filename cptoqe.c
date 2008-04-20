@@ -24,6 +24,8 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "cutils.h"
+
 static char module_init[4096];
 static char *module_init_p = module_init;
 
@@ -99,18 +101,19 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
     char includename[256];
     int has_iso_name, has_alias_list;
     int eol_char = 10;
+    int base;
     FILE *f = f0;
     const char *filename = fname;
 
     /* name_id is name with - changed into _ */
-    strcpy(name_id, name);
+    pstrcpy(name_id, sizeof(name_id), name);
     for (p = name_id; *p != '\0'; p++) {
         if (*p == '-')
             *p = '_';
     }
 
-    strcpy(iso_name, name);
-    strcpy(alias_list, "");
+    pstrcpy(iso_name, sizeof(iso_name), name);
+    pstrcpy(alias_list, sizeof(alias_list), "");
     has_iso_name = has_alias_list = 0;
 
     for (i = 0; i < 256; i++) {
@@ -132,8 +135,10 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
         if (*p == '\0' || p[0] == '#')
             continue;
         if (!memcmp(p, "include ", 8)) {
-            strcpy(includename, filename);
-            strcpy(get_basename(includename), skipspaces(p + 8));
+            pstrcpy(includename, sizeof(includename), filename);
+            base = get_basename(includename) - includename;
+            pstrcpy(includename + base, sizeof(includename) - base,
+                    skipspaces(p + 8));
             f = fopen(includename, "r");
             if (f == NULL) {
                 fprintf(stderr, "%s: cannot open %s\n", name, includename);
@@ -145,12 +150,12 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
 
         if (p[0] != '0' || (p[1] != 'x' && p[1] != 'X')) {
             if (!has_iso_name) {
-                strcpy(iso_name, p);
+                pstrcpy(iso_name, sizeof(iso_name), p);
                 has_iso_name = 1;
                 continue;
             }
             if (!has_alias_list) {
-                strcpy(alias_list, p);
+                pstrcpy(alias_list, sizeof(alias_list), p);
                 has_alias_list = 1;
                 continue;
             }
@@ -347,7 +352,7 @@ int main(int argc, char **argv)
             continue;
         }
 
-        strcpy(name, get_basename(filename));
+        pstrcpy(name, sizeof(name), get_basename(filename));
         *get_extension(name) = '\0';
         for (p = name; *p; p++) {
             if (*p == '_')
