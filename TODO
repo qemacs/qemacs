@@ -102,7 +102,7 @@ DONE	- detect full screen mode in shell buffer and grab all keys until exit
 - show modified status and mode in bufed
 DONE	- *messages* system buffer
 - doctor command should create and show *trace* buffer, remove eb_new kludge
-- invoking key as intrinsic argument
+DONE	- invoking key as intrinsic argument
 - fix column computation based on display properties:
   (variable pitch, tabs, ^x and \uxxxx stuff -- emacs behaviour) ?
 DONE	- check X11 connection at probe time
