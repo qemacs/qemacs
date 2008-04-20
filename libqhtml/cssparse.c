@@ -24,6 +24,7 @@
 
 //#define DEBUG
 
+#if 0
 #ifdef DEBUG
 #define dprintf(fmt, args...) printf(fmt, ##args)
 #else
@@ -31,6 +32,15 @@
 #define NDEBUG
 #endif
 #define ddprintf(fmt, args...)
+#else
+#ifdef DEBUG
+#define dprintf(fmt, ...)  printf(fmt, ##__VA_ARGS__)
+#else
+#define dprintf(...)
+#define NDEBUG
+#endif
+#define ddprintf(...)
+#endif
 
 #include <assert.h>
 
