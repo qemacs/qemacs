@@ -202,7 +202,7 @@ static int detect_binary(const unsigned char *buf, int size)
         c = buf[i];
         if (c < 32 &&
             (c != '\r' && c != '\n' && c != '\t' &&
-             c != '\e' && c != '\b' && c != '\f'))
+             c != '\033' && c != '\b' && c != '\f'))
             return 1;
     }
     return 0;

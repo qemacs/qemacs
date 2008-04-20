@@ -699,7 +699,7 @@ void do_delete_char(EditState *s, int argval)
         return;
 
     if (argval == NO_ARG) {
-        if (s->qe_state->last_cmd_func != do_append_next_kill) {
+        if (s->qe_state->last_cmd_func != (CmdFunc)do_append_next_kill) {
             eb_nextc(s->b, s->offset, &offset1);
             eb_delete(s->b, s->offset, offset1 - s->offset);
             return;
@@ -733,7 +733,7 @@ void do_backspace(EditState *s, int argval)
     s->region_style = 0;
 
     if (argval == NO_ARG) {
-        if (s->qe_state->last_cmd_func != do_append_next_kill) {
+        if (s->qe_state->last_cmd_func != (CmdFunc)do_append_next_kill) {
             eb_prevc(s->b, s->offset, &offset1);
             if (offset1 < s->offset) {
                 s->offset = eb_delete_range(s->b, offset1, s->offset);
@@ -854,7 +854,7 @@ void text_move_up_down(EditState *s, int dir)
     DisplayState ds1, *ds = &ds1;
     CursorContext cm;
 
-    if (s->qe_state->last_cmd_func != do_up_down)
+    if (s->qe_state->last_cmd_func != (CmdFunc)do_up_down)
         up_down_last_x = -1;
 
     get_cursor_pos(s, &cm);
@@ -1447,7 +1447,7 @@ void do_kill(EditState *s, int p1, int p2, int dir)
     }
     len = p2 - p1;
     b = qs->yank_buffers[qs->yank_current];
-    if (!b || !dir || qs->last_cmd_func != do_append_next_kill) {
+    if (!b || !dir || qs->last_cmd_func != (CmdFunc)do_append_next_kill) {
         /* append kill if last command was kill already */
         b = new_yank_buffer(qs);
     }
@@ -1456,7 +1456,7 @@ void do_kill(EditState *s, int p1, int p2, int dir)
     if (dir) {
         eb_delete(s->b, p1, len);
         s->offset = p1;
-        qs->this_cmd_func = do_append_next_kill;
+        qs->this_cmd_func = (CmdFunc)do_append_next_kill;
     }
     selection_activate(qs->screen);
 }
@@ -1524,14 +1524,14 @@ void do_yank(EditState *s)
             s->offset += size;
         }
     }
-    qs->this_cmd_func = do_yank;
+    qs->this_cmd_func = (CmdFunc)do_yank;
 }
 
 void do_yank_pop(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
 
-    if (qs->last_cmd_func != do_yank) {
+    if (qs->last_cmd_func != (CmdFunc)do_yank) {
         put_status(s, "Previous command was not a yank");
         return;
     }
@@ -1863,6 +1863,7 @@ void do_goto(EditState *s, const char *str, int unit)
         s->offset = eb_goto_char(s->b, max(0, pos));
         return;
     case '%':
+        /* CG: should not require long long for this */
         pos = pos * (long long)s->b->total_size / 100;
         if (rel)
             pos += s->offset;
@@ -3488,7 +3489,7 @@ void call_func(CmdSig sig, CmdProto func, __unused__ int nb_args,
 {
     switch (sig) {
     case CMD_void:
-        ((void (*)(void))func.func)();
+        (*func.func)();
         break;
     case CMD_ES:     /* ES, no other arguments */
         (*func.ES)(args[0].s);
@@ -4874,7 +4875,7 @@ void do_history(EditState *s, int dir)
     index = minibuffer_history_index + dir;
     if (index < 0 || index >= hist->nb_items)
         return;
-    if (qs->last_cmd_func != do_history) {
+    if (qs->last_cmd_func != (CmdFunc)do_history) {
         /* save currently edited line */
         eb_get_contents(s->b, buf, sizeof(buf));
         set_string(hist, hist->nb_items - 1, buf);
@@ -7578,9 +7579,9 @@ static CmdOptionDef cmd_options[] = {
 static void init_all_modules(void)
 {
     int (*initcall)(void);
-    void **ptr;
+    int (**ptr)(void);
 
-    ptr = (void **)(void *)&__initcall_first;
+    ptr = (int (**)(void))(void *)&__initcall_first;
     for (;;) {
         /* NOTE: if bound checking is on, a '\0' is inserted between
            each initialized 'void *' */
@@ -7625,6 +7626,7 @@ static void load_all_modules(QEmacsState *qs)
     FindFileState *ffst;
     char filename[MAX_FILENAME_SIZE];
     void *h;
+    void *sym;
     int (*init_func)(void);
 
     ec = qs->ec;
@@ -7642,7 +7644,20 @@ static void load_all_modules(QEmacsState *qs)
                        filename, error);
             continue;
         }
-        init_func = dlsym(h, "__qe_module_init");
+#if 0
+        /* Writing: init_func = (int (*)(void))dlsym(handle, "xxx");
+         * would seem more natural, but the C99 standard leaves
+         * casting from "void *" to a function pointer undefined.
+         * The assignment used below is the POSIX.1-2003 (Technical
+         * Corrigendum 1) workaround; see the Rationale for the
+         * POSIX specification of dlsym().
+         */
+        *(void **)(&init_func) = dlsym(h, "__qe_module_init");
+        //init_func = (int (*)(void))dlsym(h, "__qe_module_init");
+#else
+        sym = dlsym(h, "__qe_module_init");
+        memcpy(&init_func, &sym, sizeof(sym));
+#endif
         if (!init_func) {
             dlclose(h);
             put_status(NULL,
@@ -7652,11 +7667,11 @@ static void load_all_modules(QEmacsState *qs)
         }
 
         /* all is OK: we can init the module now */
-        init_func();
+        (*init_func)();
     }
     find_file_close(ffst);
 
-done:
+  done:
     qs->ec = ec;
 }
 

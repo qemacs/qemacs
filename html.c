@@ -548,7 +548,7 @@ static void html_move_up_down(EditState *s, int dir)
     if (!hs->up_to_date)
         return;
 
-    if (s->qe_state->last_cmd_func != do_up_down)
+    if (s->qe_state->last_cmd_func != (CmdFunc)do_up_down)
         up_down_last_x = -1;
 
     html_move_up_down1(s, dir, 0);
@@ -837,7 +837,7 @@ static int html_mode_probe(ModeProbeData *p1)
         c = *p;
         if (c == '\0')
             break;
-        if (c < 32 && (c != '\r' && c != '\n' && c != '\t' && c != '\e'))
+        if (c < 32 && (c != '\r' && c != '\n' && c != '\t' && c != '\033'))
             return 0;
         if (stristart((const char *)p, "<HTML", NULL))
             score = 100;

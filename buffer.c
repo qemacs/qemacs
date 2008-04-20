@@ -825,7 +825,7 @@ void do_undo(EditState *s)
     if (!b->log_buffer)
         return;
 
-    if (s->qe_state->last_cmd_func != do_undo)
+    if (s->qe_state->last_cmd_func != (CmdFunc)do_undo)
         b->log_current = 0;
 
     if (b->log_current == 0) {

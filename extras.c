@@ -48,7 +48,7 @@ void do_compare_windows(EditState *s, int argval)
     size1 = s1->b->total_size;
     size2 = s2->b->total_size;
 
-    if (qs->last_cmd_func == do_compare_windows
+    if (qs->last_cmd_func == (CmdFunc)do_compare_windows
     &&  (eb_nextc(s1->b, s1->offset, &offset1) !=
          eb_nextc(s2->b, s2->offset, &offset2))) {
         /* Try to resync: just skip in parallel */

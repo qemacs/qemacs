@@ -1142,6 +1142,8 @@ typedef struct QErrorContext {
     int lineno;
 } QErrorContext;
 
+typedef void (*CmdFunc)(void);
+
 struct QEmacsState {
     QEditScreen *screen;
     //struct QEDisplay *first_dpy;
@@ -1187,8 +1189,8 @@ struct QEmacsState {
     int flag_split_window_change_focus;
     int backspace_is_control_h;
     /* XXX: move these to ec */
-    void *last_cmd_func; /* last executed command function call */
-    void *this_cmd_func; /* current executing command */
+    CmdFunc last_cmd_func; /* last executed command function call */
+    CmdFunc this_cmd_func; /* current executing command */
     /* keyboard macros */
     int defining_macro;
     int executing_macro;
@@ -1270,7 +1272,7 @@ typedef union CmdArg {
 } CmdArg;
 
 typedef union CmdProto {
-    void *func;
+    void (*func)(void);
     void (*ES)(EditState *);
     void (*ESi)(EditState *, int);
     void (*ESs)(EditState *, const char *);
