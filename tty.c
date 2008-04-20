@@ -207,7 +207,7 @@ static int tty_term_init(QEditScreen *s,
         TTY_FPRINTF(s->STDOUT, "%s",
                     "\030\032" "\r\xC3\xA9" "\033[6n\033D");
         fflush(s->STDOUT);
-        n = fscanf(s->STDIN, "\033[%u;%u", &y, &x);  /* get cursor position */
+        n = fscanf(s->STDIN, "\033[%d;%d", &y, &x);  /* get cursor position */
         TTY_FPRINTF(s->STDOUT, "\r   \r");        /* go back, erase 3 chars */
         if (n == 2 && x == 2) {
             s->charset = &charset_utf8;
