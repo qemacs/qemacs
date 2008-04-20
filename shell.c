@@ -148,7 +148,8 @@ static int run_process(const char *path, const char **argv,
 
     pty_fd = get_pty(tty_name, sizeof(tty_name));
     if (pty_fd < 0) {
-        put_status(NULL, "run_process: cannot get tty: %m");
+        put_status(NULL, "run_process: cannot get tty: %s",
+                   strerror(errno));
         return -1;
     }
     fcntl(pty_fd, F_SETFL, O_NONBLOCK);
