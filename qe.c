@@ -768,8 +768,7 @@ int cursor_func(DisplayState *ds,
 {
     CursorContext *m = ds->cursor_opaque;
 
-    if (m->offsetc >= offset1 &&
-        m->offsetc < offset2) {
+    if (m->offsetc >= offset1 && m->offsetc < offset2) {
         m->xc = x;
         m->yc = y;
         m->basec = ds->base;
@@ -2864,7 +2863,7 @@ int display_char_bidir(DisplayState *s, int offset1, int offset2,
 
     /* special code to colorize block */
     e = s->edit_state;
-    if (e->show_selection) {
+    if (e->show_selection || e->region_style) {
         int mark = e->b->mark;
         int offset = e->offset;
 
