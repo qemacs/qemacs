@@ -177,7 +177,7 @@ static int ascii_mode_init(EditState *s, ModeSavedData *saved_data)
     s->disp_width &= ~15;
     if (s->disp_width < 16)
         s->disp_width = 16;
-    //s->insert = 0;
+    s->insert = 0;
     s->hex_mode = 0;
     s->wrap = WRAP_TRUNCATE;
     return 0;
