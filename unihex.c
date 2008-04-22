@@ -33,9 +33,22 @@ static int unihex_mode_init(EditState *s, ModeSavedData *saved_data)
     s->hex_mode = 1;
     s->unihex_mode = 1;
     s->hex_nibble = 0;
-    //s->insert = 0;
+    s->insert = 0;
     s->wrap = WRAP_TRUNCATE;
     return 0;
+}
+
+static int to_disp(int c)
+{
+#if 1
+    /* Do not allow characters in range 160-255 to show as graphics */
+    if ((c & 127) < ' ' || c == 127)
+        c = '.';
+#else
+    if (c < ' ' || c >= 127)
+        c = '.';
+#endif
+    return c;
 }
 
 static int unihex_backward_offset(EditState *s, int offset)
@@ -50,25 +63,27 @@ static int unihex_backward_offset(EditState *s, int offset)
 static int unihex_display(EditState *s, DisplayState *ds, int offset)
 {
     int j, len, ateof;
-    int offset1;
+    int offset1, offset2, charpos;
     unsigned int b;
+    /* CG: array size is incorrect, should be smaller and should clip
+     * disp_width too.
+     */
     unsigned int buf[LINE_MAX_SIZE];
     unsigned int pos[LINE_MAX_SIZE];
 
-    ateof = 0;
     display_bol(ds);
 
     ds->style = QE_STYLE_COMMENT;
-    display_printf(ds, -1, -1, "%08x ", offset);
+    charpos = eb_get_char_offset(s->b, offset);
+    display_printf(ds, -1, -1, "%08x %08x ", charpos, offset);
 
+    ateof = 0;
     len = 0;
     for (j = 0; j < s->disp_width; j++) {
         if (offset < s->b->total_size) {
-            b = eb_nextc(s->b, offset, &offset1);
             pos[len] = offset;
-            buf[len] = b;
+            buf[len] = eb_nextc(s->b, offset, &offset);
             len++;
-            offset = offset1;
         }
     }
     pos[len] = offset;
@@ -77,41 +92,49 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
 
     for (j = 0; j < s->disp_width; j++) {
         display_char(ds, -1, -1, ' ');
+        offset1 = pos[j];
+        offset2 = pos[j + 1];
         if (j < len) {
-            display_printhex(ds, pos[j], pos[j+1], buf[j], 4);
+            display_printhex(ds, offset1, offset2, buf[j], 4);
         } else {
             if (!ateof) {
                 ateof = 1;
-                display_printf(ds, pos[j], pos[j] + 1, "    ");
+                offset2 = offset1 + 1;
             } else {
-                display_printf(ds, -1, -1, "    ");
+                offset2 = offset1 = -1;
             }
+            ds->cur_hex_mode = s->hex_mode;
+            display_printf(ds, offset1, offset2, "    ");
+            ds->cur_hex_mode = 0;
         }
         if ((j & 7) == 7)
             display_char(ds, -1, -1, ' ');
     }
+    display_char(ds, -1, -1, ' ');
+
     ds->style = 0;
 
     display_char(ds, -1, -1, ' ');
-    display_char(ds, -1, -1, ' ');
 
+    ateof = 0;
     for (j = 0; j < s->disp_width; j++) {
+        offset1 = pos[j];
+        offset2 = pos[j + 1];
         if (j < len) {
             b = buf[j];
-            if (b < ' ' || b == 127)
-                b = '.';
-            display_char(ds, pos[j], pos[j+1], b);
+            /* CG: should handle double width glyphs */
+            b = to_disp(b);
         } else {
             b = ' ';
             if (!ateof) {
                 ateof = 1;
-                display_char(ds, pos[j], pos[j] + 1, b);
+                offset2 = offset1 + 1;
             } else {
-                display_char(ds, -1, -1, b);
+                offset2 = offset1 = -1;
             }
         }
+        display_char(ds, offset1, offset2, b);
     }
-    ds->style = 0;
     display_eol(ds, -1, -1);
 
     if (len >= s->disp_width)
@@ -119,7 +142,6 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
     else
         return -1;
 }
-
 
 static void unihex_move_bol(EditState *s)
 {

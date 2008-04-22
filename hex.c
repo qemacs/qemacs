@@ -49,7 +49,7 @@ static int hex_backward_offset(EditState *s, int offset)
 static int hex_display(EditState *s, DisplayState *ds, int offset)
 {
     int j, len, ateof;
-    int offset1;
+    int offset1, offset2;
     unsigned char b;
 
     display_bol(ds);
@@ -57,55 +57,61 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
     ds->style = QE_STYLE_COMMENT;
     display_printf(ds, -1, -1, "%08x ", offset);
 
-    ds->style = QE_STYLE_FUNCTION;
-
     ateof = 0;
     len = s->b->total_size - offset;
     if (len > s->disp_width)
         len = s->disp_width;
+
     if (s->mode == &hex_mode) {
+
+        ds->style = QE_STYLE_FUNCTION;
+
         for (j = 0; j < s->disp_width; j++) {
             display_char(ds, -1, -1, ' ');
             offset1 = offset + j;
+            offset2 = offset1 + 1;
             if (j < len) {
-                eb_read(s->b, offset + j, &b, 1);
-                display_printhex(ds, offset1, offset1 + 1, b, 2);
+                eb_read(s->b, offset1, &b, 1);
+                display_printhex(ds, offset1, offset2, b, 2);
             } else {
                 if (!ateof) {
                     ateof = 1;
                 } else {
-                    offset1 = -2;
+                    offset1 = offset2 = -1;
                 }
-                display_printf(ds, offset1, offset1 + 1, "  ");
+                ds->cur_hex_mode = s->hex_mode;
+                display_printf(ds, offset1, offset2, "  ");
+                ds->cur_hex_mode = 0;
             }
             if ((j & 7) == 7)
                 display_char(ds, -1, -1, ' ');
         }
         display_char(ds, -1, -1, ' ');
-        display_char(ds, -1, -1, ' ');
     }
     ds->style = 0;
+
+    display_char(ds, -1, -1, ' ');
 
     ateof = 0;
     for (j = 0; j < s->disp_width; j++) {
         offset1 = offset + j;
+        offset2 = offset1 + 1;
         if (j < len) {
-            eb_read(s->b, offset + j, &b, 1);
+            eb_read(s->b, offset1, &b, 1);
         } else {
             b = ' ';
             if (!ateof) {
                 ateof = 1;
             } else {
-                offset1 = -2;
+                offset1 = offset2 = -1;
             }
         }
-        display_char(ds, offset1, offset1 + 1, to_disp(b));
+        display_char(ds, offset1, offset2, to_disp(b));
     }
-    offset += len;
     display_eol(ds, -1, -1);
 
     if (len >= s->disp_width)
-        return offset;
+        return offset + len;
     else
         return -1;
 }
@@ -189,7 +195,7 @@ static int hex_mode_init(EditState *s, ModeSavedData *saved_data)
     s->hex_mode = 1;
     s->unihex_mode = 0;
     s->hex_nibble = 0;
-    //s->insert = 0;
+    s->insert = 0;
     s->wrap = WRAP_TRUNCATE;
     return 0;
 }
@@ -224,7 +230,7 @@ static void hex_move_bol(EditState *s)
 static void hex_move_eol(EditState *s)
 {
     s->offset = align(s->offset, s->disp_width) + s->disp_width - 1;
-    if (s->offset >= s->b->total_size)
+    if (s->offset > s->b->total_size)
         s->offset = s->b->total_size;
 }
 
@@ -233,7 +239,8 @@ static void hex_move_left_right(EditState *s, int dir)
     s->offset += dir;
     if (s->offset < 0)
         s->offset = 0;
-    else if (s->offset > s->b->total_size)
+    else
+    if (s->offset > s->b->total_size)
         s->offset = s->b->total_size;
 }
 
@@ -242,7 +249,8 @@ static void hex_move_up_down(EditState *s, int dir)
     s->offset += dir * s->disp_width;
     if (s->offset < 0)
         s->offset = 0;
-    else if (s->offset > s->b->total_size)
+    else
+    if (s->offset > s->b->total_size)
         s->offset = s->b->total_size;
 }
 
