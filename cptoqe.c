@@ -33,32 +33,6 @@ static char *module_init_p = module_init;
                      module_init + sizeof(module_init) - module_init_p, \
                      "%s", s))
 
-static char *get_basename(const char *pathname)
-{
-    const char *base = pathname;
-
-    while (*pathname) {
-        if (*pathname++ == '/')
-            base = pathname;
-    }
-    return (char *)base;
-}
-
-static char *get_extension(const char *pathname)
-{
-    const char *p, *ext;
-
-    for (ext = p = pathname + strlen(pathname); p > pathname; p--) {
-        if (p[-1] == '/')
-            break;
-        if (*p == '.') {
-            ext = p;
-            break;
-        }
-    }
-    return (char *)ext;
-}
-
 static inline char *skipspaces(char *p) {
     while (isspace((unsigned char)*p))
         p++;
@@ -136,7 +110,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
             continue;
         if (!memcmp(p, "include ", 8)) {
             pstrcpy(includename, sizeof(includename), filename);
-            base = get_basename(includename) - includename;
+            base = get_basename_offset(includename);
             pstrcpy(includename + base, sizeof(includename) - base,
                     skipspaces(p + 8));
             f = fopen(includename, "r");
@@ -353,7 +327,7 @@ int main(int argc, char **argv)
         }
 
         pstrcpy(name, sizeof(name), get_basename(filename));
-        *get_extension(name) = '\0';
+        strip_extension(name);
         for (p = name; *p; p++) {
             if (*p == '_')
                 *p = '-';

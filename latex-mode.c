@@ -282,13 +282,11 @@ static void do_latex(EditState *e, const char *cmd)
 {
     char bname[MAX_FILENAME_SIZE];
     char buf[1024];
-    int len;
     struct latex_function *func;
 
     /* strip extension from filename */
     pstrcpy(bname, sizeof(bname), e->b->filename);
-    len = get_extension(bname) - bname;
-    bname[len] = '\0';
+    strip_extension(bname);
 
     if (!cmd || cmd[0] == '\0')
         cmd = "LaTeX";

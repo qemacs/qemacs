@@ -25,32 +25,6 @@
 
 #include "cutils.h"
 
-static char *get_basename(const char *pathname)
-{
-    const char *base = pathname;
-
-    while (*pathname) {
-        if (*pathname++ == '/')
-            base = pathname;
-    }
-    return (char *)base;
-}
-
-static char *get_extension(const char *pathname)
-{
-    const char *p, *ext;
-
-    for (ext = p = pathname + strlen(pathname); p > pathname; p--) {
-        if (p[-1] == '/')
-            break;
-        if (*p == '.') {
-            ext = p;
-            break;
-        }
-    }
-    return (char *)ext;
-}
-
 static char *getline(char *buf, int buf_size, FILE *f, int strip_comments)
 {
     for (;;) {
@@ -190,7 +164,7 @@ int main(int argc, char **argv)
         filename = argv[i];
 
         pstrcpy(name, sizeof(name), get_basename(filename));
-        *get_extension(name) = '\0';
+        strip_extension(name);
 
         f = fopen(filename, "r");
         if (!f) {

@@ -34,6 +34,24 @@ int strstart(const char *str, const char *val, const char **ptr);
 void pstrcpy(char *buf, int buf_size, const char *str);
 char *pstrcat(char *buf, int buf_size, const char *s);
 char *pstrncpy(char *buf, int buf_size, const char *s, int len);
+const char *get_basename(const char *filename);
+static inline char *get_basename_nc(char *filename) {
+    return (char *)get_basename(filename);
+}
+static inline int get_basename_offset(const char *filename) {
+    return get_basename(filename) - filename;
+}
+const char *get_extension(const char *filename);
+static inline char *get_extension_nc(char *filename) {
+    return (char *)get_extension(filename);
+}
+static inline int get_extension_offset(const char *filename) {
+    return get_extension(filename) - filename;
+}
+static inline void strip_extension(char *filename) {
+    filename[get_extension(filename) - filename] = '\0';
+}
+char *get_dirname(char *dest, int size, const char *file);
 
 /* Double linked lists. Same API as the linux kernel */
 

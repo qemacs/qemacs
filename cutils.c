@@ -21,6 +21,7 @@
 
 #include <string.h>
 
+#include "config.h"     /* for CONFIG_WIN32 */
 #include "cutils.h"
 
 /* these functions are duplicated from ffmpeg/libavformat/cutils.c
@@ -109,4 +110,71 @@ char *pstrncpy(char *buf, int buf_size, const char *s, int len)
         *q = '\0';
     }
     return buf;
+}
+
+/* Get the filename portion of a path */
+const char *get_basename(const char *filename)
+{
+    const char *p;
+    const char *base;
+
+    base = filename;
+    if (base) {
+        for (p = base; *p; p++) {
+#ifdef CONFIG_WIN32
+            /* Simplistic DOS/Windows filename support */
+            if (*p == '/' || *p == '\\' || (*p == ':' && p == filename + 1))
+                base = p + 1;
+#else
+            if (*p == '/')
+                base = p + 1;
+#endif
+        }
+    }
+    return base;
+}
+
+/* Return the last extension in a path, ignoring leading dots */
+const char *get_extension(const char *filename)
+{
+    const char *p, *ext;
+
+    p = get_basename(filename);
+    ext = NULL;
+    if (p) {
+        while (*p == '.')
+            p++;
+        for (; *p; p++) {
+            if (*p == '.')
+                ext = p;
+        }
+        if (!ext)
+            ext = p;
+    }
+    return ext;
+}
+
+/* Extract the directory portion of a path:
+ * This leaves out the trailing slash if any.  The complete path is
+ * obtained by catenating dirname + '/' + basename.
+ * if the original path doesn't contain anything dirname is just "."
+ */
+char *get_dirname(char *dest, int size, const char *file)
+{
+    char *p;
+
+    if (dest) {
+        p = dest;
+        if (file) {
+            pstrcpy(dest, size, file);
+            p = get_basename_nc(dest);
+            if (p > dest + 1 && p[-1] != ':' && p[-2] != ':')
+                p--;
+
+            if (p == dest)
+                *p++ = '.';
+        }
+        *p = '\0';
+    }
+    return dest;
 }
