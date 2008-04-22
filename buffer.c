@@ -1362,10 +1362,11 @@ int raw_load_buffer1(EditBuffer *b, FILE *f, int offset)
     size = 0;
     for (;;) {
         len = fread(buf, 1, IOBUF_SIZE, f);
-        if (len <= 0 && ferror(f))
-            return -1;
-        if (len == 0)
+        if (len <= 0) {
+            if (ferror(f))
+                return -1;
             break;
+        }
         eb_insert(b, offset, buf, len);
         offset += len;
         size += len;
@@ -1754,11 +1755,13 @@ int eb_save_buffer(EditBuffer *b)
 
     /* backup old file if present */
     if (strlen(filename) < MAX_FILENAME_SIZE - 1) {
-        snprintf(buf1, sizeof(buf1), "%s~", filename);
-         // should check error code
-        rename(filename, buf1);
+        if (snprintf(buf1, sizeof(buf1), "%s~", filename) < ssizeof(buf1)) {
+            // should check error code
+            rename(filename, buf1);
+        }
     }
 
+    /* CG: should pass mode to buffer_save */
     ret = b->data_type->buffer_save(b, 0, b->total_size, filename);
     if (ret < 0)
         return ret;
