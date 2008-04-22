@@ -6558,12 +6558,6 @@ void do_describe_bindings(EditState *s)
     }
 }
 
-void do_describe_key_briefly(EditState *s)
-{
-    put_status(s, "Describe key: ");
-    key_ctx.describe_key = 1;
-}
-
 void do_help_for_help(__unused__ EditState *s)
 {
     EditBuffer *b;
@@ -6583,6 +6577,12 @@ void do_help_for_help(__unused__ EditState *s)
     if (show) {
         show_popup(b);
     }
+}
+
+void do_describe_key_briefly(EditState *s)
+{
+    put_status(s, "Describe key: ");
+    key_ctx.describe_key = 1;
 }
 
 #ifdef CONFIG_WIN32
@@ -7596,6 +7596,28 @@ static void init_all_modules(void)
         (*initcall)();
     }
 }
+
+#if 0
+static void exit_all_modules(void)
+{
+    /* CG: Should call in reverse order! */
+    int (*exitcall)(void);
+    int (**ptr)(void);
+
+    ptr = (int (**)(void))(void *)&__exitcall_first;
+    for (;;) {
+#if defined(__BOUNDS_CHECKING_ON)
+        ptr = (void **)((long)ptr + (2 * sizeof(void *)));
+#else
+        ptr++;
+#endif
+        exitcall = *ptr;
+        if (exitcall == NULL)
+            break;
+        (*exitcall)();
+    }
+}
+#endif
 
 #else
 
