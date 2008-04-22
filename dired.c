@@ -145,12 +145,12 @@ static int dired_sort_func(const void *p1, const void *p2)
             }
         }
         if (mode & DIRED_SORT_EXTENSION) {
-            res = qe_collate(get_extension(dip1->name),
-                             get_extension(dip2->name));
+            res = qe_strcollate(get_extension(dip1->name),
+                                get_extension(dip2->name));
             if (res)
                 break;
         }
-        res = qe_collate(dip1->name, dip2->name);
+        res = qe_strcollate(dip1->name, dip2->name);
         break;
     }
     return (mode & DIRED_SORT_DESCENDING) ? -res : res;
@@ -302,13 +302,17 @@ static void dired_build_list(EditState *s, const char *path,
         ct = 0;
         if (S_ISDIR(st.st_mode)) {
             ct = '/';
-        } else if (S_ISFIFO(st.st_mode)) {
+        } else
+        if (S_ISFIFO(st.st_mode)) {
             ct = '|';
-        } else if (S_ISSOCK(st.st_mode)) {
+        } else
+        if (S_ISSOCK(st.st_mode)) {
             ct = '=';
-        } else if (S_ISLNK(st.st_mode)) {
+        } else
+        if (S_ISLNK(st.st_mode)) {
             ct = '@';
-        } else if ((st.st_mode & 0111) != 0) {
+        } else
+        if ((st.st_mode & 0111) != 0) {
             ct = '*';
         }
         if (ct) {
@@ -324,16 +328,19 @@ static void dired_build_list(EditState *s, const char *path,
         /* add file size or file info */
         if (S_ISREG(st.st_mode)) {
             snprintf(buf, sizeof(buf), "%9ld", (long)st.st_size);
-        } else if (S_ISDIR(st.st_mode)) {
+        } else
+        if (S_ISDIR(st.st_mode)) {
             snprintf(buf, sizeof(buf), "%9s", "<dir>");
-        } else if (S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode)) {
+        } else
+        if (S_ISCHR(st.st_mode) || S_ISBLK(st.st_mode)) {
             int major, minor;
             major = (st.st_rdev >> 8) & 0xff;
             minor = st.st_rdev & 0xff;
             snprintf(buf, sizeof(buf), "%c%4d%4d",
                      S_ISCHR(st.st_mode) ? 'c' : 'b',
                      major, minor);
-        } else if (S_ISLNK(st.st_mode)) {
+        } else
+        if (S_ISLNK(st.st_mode)) {
             pstrcat(line, sizeof(line), "-> ");
             len = readlink(filename, buf, sizeof(buf) - 1);
             if (len < 0)

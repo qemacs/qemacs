@@ -244,7 +244,7 @@ static inline int qe_tolower(int c) {
     return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
 }
 
-int qe_collate(const char *s1, const char *s2);
+int qe_strcollate(const char *s1, const char *s2);
 void qe_strtolower(char *buf, int buf_size, const char *str);
 void skip_spaces(const char **pp);
 

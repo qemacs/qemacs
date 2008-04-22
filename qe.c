@@ -4689,7 +4689,7 @@ static int completion_sort_func(const void *p1, const void *p2)
     StringItem *item2 = *(StringItem **)p2;
 
     /* Use natural sort: keep numbers in order */
-    return qe_collate(item1->str, item2->str);
+    return qe_strcollate(item1->str, item2->str);
 }
 
 static void complete_end(CompleteState *cp)

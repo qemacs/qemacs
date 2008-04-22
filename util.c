@@ -379,7 +379,7 @@ void splitpath(char *dirname, int dirname_size,
 
 /* smart compare strings, lexicographical order, but collate numbers in
  * numeric order, and push * at end */
-int qe_collate(const char *s1, const char *s2)
+int qe_strcollate(const char *s1, const char *s2)
 {
     int last, c1, c2, res, flags;
 
