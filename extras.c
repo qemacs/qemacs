@@ -423,7 +423,7 @@ static int extras_init(void)
 
     qe_register_cmd_table(extra_commands, NULL);
     for (key = KEY_META('0'); key <= KEY_META('9'); key++) {
-        qe_register_binding(key, "universal-argument", NULL);
+        qe_register_binding(key, "numeric-argument", NULL);
     }
     return 0;
 }

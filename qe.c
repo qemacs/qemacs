@@ -707,7 +707,7 @@ void do_delete_char(EditState *s, int argval)
         argval = 1;
     }
 
-    /* save kill if universal argument given */
+    /* save kill if numeric argument given */
     endpos = s->offset;
     for (i = argval; i > 0 && endpos < s->b->total_size; i--) {
         eb_nextc(s->b, endpos, &endpos);
@@ -745,7 +745,7 @@ void do_backspace(EditState *s, int argval)
         }
         argval = 1;
     }
-    /* save kill if universal argument given */
+    /* save kill if numeric argument given */
     do_delete_char(s, -argval);
 }
 
@@ -4032,7 +4032,7 @@ const char *keys_to_str(char *buf, int buf_size,
     return buf;
 }
 
-void do_universal_argument(__unused__ EditState *s)
+void do_numeric_argument(__unused__ EditState *s)
 {
     /* nothing is done there (see qe_key_process()) */
 }
@@ -4041,7 +4041,7 @@ typedef struct QEKeyContext {
     int argval;
     int noargval;
     int sign;
-    int is_universal_arg;
+    int is_numeric_arg;
     int is_escape;
     int nb_keys;
     int describe_key; /* if true, the following command is only displayed */
@@ -4081,7 +4081,7 @@ void qe_ungrab_keys(void)
 /* init qe key handling context */
 static void qe_key_init(QEKeyContext *c)
 {
-    c->is_universal_arg = 0;
+    c->is_numeric_arg = 0;
     c->is_escape = 0;
     c->noargval = 1;
     c->argval = NO_ARG;
@@ -4185,7 +4185,7 @@ static void qe_key_process(int key)
         /* no key found */
         if (c->nb_keys == 1) {
             if (!KEY_SPECIAL(key)) {
-                if (c->is_universal_arg) {
+                if (c->is_numeric_arg) {
                     if (qe_isdigit(key)) {
                         if (c->argval == NO_ARG)
                             c->argval = 0;
@@ -4224,9 +4224,9 @@ static void qe_key_process(int key)
     if (c->nb_keys == kd->nb_keys) {
     exec_cmd:
         d = kd->cmd;
-        if (d->action.ES == do_universal_argument && !c->describe_key) {
-            /* special handling for universal argument */
-            c->is_universal_arg = 1;
+        if (d->action.ES == do_numeric_argument && !c->describe_key) {
+            /* special handling for numeric argument */
+            c->is_numeric_arg = 1;
             if (key == KEY_META('-')) {
                 c->sign = -c->sign;
                 if (c->noargval == 1)
@@ -4236,7 +4236,7 @@ static void qe_key_process(int key)
             }
             c->nb_keys = 0;
         } else {
-            if (c->is_universal_arg) {
+            if (c->is_numeric_arg) {
                 if (c->argval == NO_ARG)
                     c->argval = c->noargval;
                 c->argval *= c->sign;

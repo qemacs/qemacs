@@ -14,7 +14,7 @@ UNIX editor. It has features that even big editors lack :
 @itemize
 
 @item Full screen editor with an Emacs look and feel with all Emacs common
-  features: multi-buffer, multi-window, command mode, universal
+  features: multi-buffer, multi-window, command mode, numeric
   argument, keyboard macros, config file with C like syntax, minibuffer
   with completion and history.
 
@@ -207,7 +207,7 @@ C-x C-u                 : upcase-region
 
 @example
 M-x                     : execute-command
-C-u                     : universal-argument
+C-u                     : numeric-argument
 C-g                     : abort
 C-x u, C-_              : undo
 C-x (                   : start-kbd-macro

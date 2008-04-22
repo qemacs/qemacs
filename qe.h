@@ -1673,7 +1673,7 @@ void call_func(CmdSig sig, CmdProto func, int nb_args, CmdArg *args,
 void exec_command(EditState *s, CmdDef *d, int argval, int key);
 void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);
-void do_universal_argument(EditState *s);
+void do_numeric_argument(EditState *s);
 void do_start_macro(EditState *s);
 void do_end_macro(EditState *s);
 void do_call_macro(EditState *s);

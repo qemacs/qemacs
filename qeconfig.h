@@ -199,9 +199,9 @@ static CmdDef basic_commands[] = {
           "execute-command", do_execute_command, ESsi,
 	  "s{Command: }[command]|command|"
 	  "ui")
-    /* M-0 thru M-9 should start universal argument */
+    /* M-0 thru M-9 also start numeric argument */
     CMD0( KEY_CTRL('u'), KEY_META('-'),
-          "universal-argument", do_universal_argument)
+          "numeric-argument", do_numeric_argument)
     CMD0( KEY_CTRL('g'), KEY_CTRLX(KEY_CTRL('g')),
           "abort", do_break)
     CMD0( KEY_CTRLX('('), KEY_NONE,
