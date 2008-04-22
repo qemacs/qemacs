@@ -22,12 +22,8 @@ General TODO:
 - charset: add JIS missing encoding functions
 - display alternate cursor in non activate column in hex mode.
 - implement wheel mode in CSS display.
-DONE	- check console charset support (need to convert input?)
 - test Hebrew keymap support.
-DONE	- kill buffer handling: append next kill as command flag
-DONE	- delete word should be a kill operation
 - indent-with-tabs
-DONE	- increase MAX_SCREEN_WIDTH and MAX_SCREEN_HEIGHT beyond 256
 - fix crash bug on fragments longer than MAX_SCREEN_WIDTH.
 
 C mode TODO:
@@ -37,10 +33,8 @@ C mode TODO:
   * recursive search of QTAGS file.
   * C decl parser
   * global QTAGS file indexed with global includes
-DONE	man like mode 
 - see if java/javascript/c++ is OK.
 - autocomplete
-DONE	- forward-level, backward-level: skipping balanced parentheses
 - forward-ifdef, backward-ifdef, show-ifdefs
 - automatic indentation detection
 
@@ -65,7 +59,6 @@ Ideas
 
 - vi mode.
 - vertical scroll bar
-DONE	- better Makefile (select modes)
 - add auto close buffer flag (for list mode)
 - improve layout scheme for better scalability.
 - make dired and bufed left windows temporary popleft windows
@@ -75,7 +68,6 @@ DONE	- better Makefile (select modes)
 - make command declaration macros standalone
 - dpy_open_font should never return NULL, must have a system font.
 - other coloring modes
-DONE	- variables ?
 - scripting
 - expression evaluator
 - dos/mac translation modes
@@ -84,11 +76,8 @@ DONE	- variables ?
 - use failsafe memory allocator and longjmp recover.
 - scroll up/down with argument should scroll by screen row.
 - simplify C-z A-z accordingly
-DONE	- fix control-h mess
 - fix bof/eof shell mode
 - merge hex-mode and ascii mode
-DONE	- write-region -> add filename and offsets to save_buffer stuff
-DONE	- detect full screen mode in shell buffer and grab all keys until exit
 - fix configure for missing support: x11 xv png ...
 - add configure --disable-graphics
 - timers for esc key disambiguation
@@ -100,14 +89,11 @@ DONE	- detect full screen mode in shell buffer and grab all keys until exit
 - enlarge-window-horizontally
 - enlarge-window
 - show modified status and mode in bufed
-DONE	- *messages* system buffer
 - doctor command should create and show *trace* buffer, remove eb_new kludge
-DONE	- invoking key as intrinsic argument
 - fix column computation based on display properties:
   (variable pitch, tabs, ^x and \uxxxx stuff -- emacs behaviour) ?
-DONE	- check X11 connection at probe time
-DONE	- allow quoting of special keys : let do_char insert xterm/vt100 
-DONE	  key sequence to allow typing special keys into shell process
+- allow quoting of special keys : let do_char insert xterm/vt100 
+  key sequence to allow typing special keys into shell process
 - fix scroll up/down to move point if already at end
 - fix terminal size inside shell window ?
 - cmdline arg to force lines and columns to test shell.
@@ -130,10 +116,6 @@ insert_window_left()  deletes some left-most windows
   do_list_buffers()
   do_dired()
 
-DONE	- fix 32 bit assumptions:
-DONE	  qe.c:3133: call_func(): sizeof(int) == sizeof(void*) == sizeof(char*)
-
-DONE	support for high intensity colors in terminal mode (selected as bold)
 add colorized buffers using shell buffer method
 make shell buffer a colorized UCS2 buffer
 use colorized buffer for *trace* buffer to flag tty input, shell output,
