@@ -2167,7 +2167,7 @@ QEStyleDef *find_style(const char *name)
     return NULL;
 }
 
-const char * const qe_style_properties[] = {
+static const char * const qe_style_properties[] = {
 #define CSS_PROP_COLOR  0
     "color",            /* color */
 #define CSS_PROP_BACKGROUND_COLOR  1

@@ -511,6 +511,7 @@ static void tty_read_handler(void *opaque)
     }
 }
 
+#if 0
 unsigned int const tty_full_colors[8] = {
     QERGB(0x00, 0x00, 0x00),
     QERGB(0xff, 0x00, 0x00),
@@ -521,8 +522,9 @@ unsigned int const tty_full_colors[8] = {
     QERGB(0x00, 0xff, 0xff),
     QERGB(0xff, 0xff, 0xff),
 };
+#endif
 
-unsigned int const tty_putty_colors[256] = {
+static unsigned int const tty_putty_colors[256] = {
     QERGB(0x00, 0x00, 0x00),
     QERGB(0xbb, 0x00, 0x00),
     QERGB(0x00, 0xbb, 0x00),
