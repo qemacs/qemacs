@@ -193,21 +193,23 @@ ffplay$(EXE): qe$(EXE) Makefile
 	ln -sf $< $@
 
 ifndef CONFIG_INIT_CALLS
+qe.o: allmodules.txt
+tqe.o: basemodules.txt
+endif
+
 SRCS:= $(OBJS:.o=.c)
 TSRCS:= $(TOBJS:.o=.c)
 TSRCS:= $(TSRCS:tqe.c=qe.c)
 
-qe.o: allmodules.txt
-tqe.o: basemodules.txt
-
 allmodules.txt: $(SRCS) Makefile
+	@echo creating $@
 	@echo '/* This file was generated automatically */' > $@
-	grep -h ^qe_module_init $(SRCS)                    >> $@
+	@grep -h ^qe_module_init $(SRCS)                    >> $@
 
 basemodules.txt: $(TSRCS) Makefile
+	@echo creating $@
 	@echo '/* This file was generated automatically */' > $@
-	grep -h ^qe_module_init $(TSRCS)                   >> $@
-endif
+	@grep -h ^qe_module_init $(TSRCS)                   >> $@
 
 cfb.o: cfb.c cfb.h fbfrender.h
 charsetjis.o: charsetjis.c charsetjis.def
@@ -411,3 +413,11 @@ tar: $(FILES)
 	cp --parents $(FILES) /tmp/$(FILE)
 	( cd /tmp ; tar zcvf $(HOME)/$(FILE).tar.gz $(FILE) )
 	rm -rf /tmp/$(FILE)
+
+SPLINTOPTS := +posixlib -nestcomment +boolint +charintliteral -mayaliasunique
+SPLINTOPTS += -nullstate -unqualifiedtrans
+# extra options that will be removed later
+SPLINTOPTS += -mustfreeonly -temptrans -kepttrans
+
+splint: allmodules.txt basemodules.txt
+	splint $(SPLINTOPTS) -I. -Ilibqhtml $(SRCS)
