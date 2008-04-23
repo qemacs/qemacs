@@ -216,6 +216,7 @@ static int eb_nextc1(EditBuffer *b, unsigned long *offset_ptr)
     int ch, ch1;
     char name[16], *q;
 
+    /* CG: Achtung! 32/64 bit portability issue */
     ch = eb_nextc(b, *offset_ptr, (int *)offset_ptr);
     if (ch == '&') {
         /* read entity */
