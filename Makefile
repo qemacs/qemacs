@@ -415,7 +415,7 @@ tar: $(FILES)
 	rm -rf /tmp/$(FILE)
 
 SPLINTOPTS := +posixlib -nestcomment +boolint +charintliteral -mayaliasunique
-SPLINTOPTS += -nullstate -unqualifiedtrans
+SPLINTOPTS += -nullstate -unqualifiedtrans +charint
 # extra options that will be removed later
 SPLINTOPTS += -mustfreeonly -temptrans -kepttrans
 
