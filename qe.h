@@ -53,7 +53,9 @@
 #define __attr_printf(a, b)  __attribute__((format(printf, a, b)))
 #define __unused__           __attribute__((unused))
 #else
+#ifndef __attribute__
 #define __attribute__(l)
+#endif
 #define __attr_printf(a, b)
 #define __unused__
 #endif
