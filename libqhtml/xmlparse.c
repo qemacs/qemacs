@@ -1027,7 +1027,8 @@ static void flush_text(XMLState *s, const char *buf)
     css_set_text_string(box1, buf);
 }
 
-static void flush_text_buffer(XMLState *s, int offset0, int offset1)
+static void flush_text_buffer(XMLState *s, EditBuffer *b,
+                              int offset0, int offset1)
 {
     CSSBox *box, *box1;
 
@@ -1048,7 +1049,7 @@ static void flush_text_buffer(XMLState *s, int offset0, int offset1)
     } else {
         box1 = box;
     }
-    css_set_text_buffer(box1, offset0, offset1, 1);
+    css_set_text_buffer(box1, b, offset0, offset1, 1);
 }
 
 static int xml_tagcmp(const char *s1, const char *s2)
@@ -1137,7 +1138,7 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
                     flush_text(s, (char *)s->str.buf);
                     strbuf_reset(&s->str);
                 } else {
-                    flush_text_buffer(s, text_offset_start, offset0);
+                    flush_text_buffer(s, b, text_offset_start, offset0);
                 }
                 s->state = XML_STATE_TAG;
             } else {
@@ -1198,7 +1199,7 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
                             flush_text(s, (char *)s->str.buf);
                         } else {
                             /* XXX: would be incorrect if non ascii chars */
-                            flush_text_buffer(s, text_offset_start, offset - taglen);
+                            flush_text_buffer(s, b, text_offset_start, offset - taglen);
                         }
                         strbuf_reset(&s->str);
                         if (s->box)

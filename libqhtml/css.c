@@ -208,24 +208,24 @@ const CSSPropertyDef css_properties[NB_PROPERTIES] = {
 /* the following will be moved to other files */
 
 /* XXX: use unicode */
-typedef int (*NextCharFunc)(EditBuffer *b, unsigned long *offset);
+typedef int (*NextCharFunc)(CSSBox *box, int *offset);
 
-static int eb_nextc1(EditBuffer *b, unsigned long *offset_ptr)
+static int eb_nextc1(CSSBox *box, int *offset_ptr)
 {
-    unsigned long offset1;
+    EditBuffer *b = box->content_data;
+    int offset, offset1;
     int ch, ch1;
     char name[16], *q;
 
-    /* CG: Achtung! 32/64 bit portability issue */
-    ch = eb_nextc(b, *offset_ptr, (int *)offset_ptr);
+    offset = *offset_ptr;
+    ch = eb_nextc(b, offset, &offset);
     if (ch == '&') {
         /* read entity */
-        offset1 = *offset_ptr;
+        offset1 = offset;
         q = name;
         for (;;) {
-            ch1 = eb_nextc(b, *offset_ptr, (int *)offset_ptr);
-            /* CG: should stop on all white space */
-            if (ch1 == '\n' || ch1 == ';')
+            ch1 = eb_nextc(b, offset, &offset);
+            if (qe_isspace(ch1) || ch1 == ';')
                 break;
             *q++ = ch1;
             if (q >= name + sizeof(name) - 1)
@@ -237,26 +237,27 @@ static int eb_nextc1(EditBuffer *b, unsigned long *offset_ptr)
             ch = ch1;
         } else {
             /* entity not found: roll back */
-            *offset_ptr = offset1;
+            offset = offset1;
         }
     }
+    *offset_ptr = offset;
     return ch;
 }
 
-static int str_nextc(__unused__ EditBuffer *b, unsigned long *offset_ptr)
+static int str_nextc(CSSBox *box, int *offset_ptr)
 {
-    const unsigned char *ptr;
+    const char *str = box->content_data;
+    const char *ptr;
     int ch;
 
-    /* CG: Achtung! 32/64 bit portability issue */
-    ptr = *(const unsigned char **)offset_ptr;
-    ch = *ptr;
+    ptr = str + *offset_ptr;
+    ch = (unsigned char)*ptr;
     if (ch >= 128) {
-        ch = utf8_decode((const char **)(void *)&ptr);
+        ch = utf8_decode(&ptr);
     } else {
         ptr++;
     }
-    *(const unsigned char **)offset_ptr = ptr;
+    *offset_ptr = ptr - str;
     return ch;
 }
 
@@ -1208,7 +1209,7 @@ static void css_box_split(CSSBox *box1, int offset)
         dprintf("css_box_split: box=%p %d\n", box1, offset);
         if (!(offset >= box1->u.buffer.start &&
               offset < box1->u.buffer.end)) {
-            dprintf("css_box_split: error offset=%d start=%lu end=%lu\n",
+            dprintf("css_box_split: error offset=%d start=%d end=%d\n",
                     offset, box1->u.buffer.start, box1->u.buffer.end);
         }
     }
@@ -1220,6 +1221,7 @@ static void css_box_split(CSSBox *box1, int offset)
     box2->split = 1;
     box2->props = box1->props; /* same properties */
     box2->content_type = box1->content_type;
+    box2->content_data = box1->content_data;
     box2->content_eol = box1->content_eol;
     box1->content_eol = 0;
     box2->u.buffer.start = offset;
@@ -1270,8 +1272,7 @@ typedef struct BidirAttrState {
 static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
 {
     CSSState *props = box->props;
-    int c, pos;
-    unsigned long offset;
+    int c, pos, offset;
     TypeLink *p;
     FriBidiCharType type, ltype;
     NextCharFunc nextc = get_nextc(box);
@@ -1327,7 +1328,7 @@ static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
         offset = box->u.buffer.start;
         bidi_mode = props->bidi_mode;
         while (offset < box->u.buffer.end) {
-            c = nextc(s->ctx->b, &offset);
+            c = nextc(box, &offset);
             pos++;
             if (bidi_mode == CSS_BIDI_MODE_TEST)
                 type = fribidi_get_type_test(c);
@@ -1414,8 +1415,7 @@ static void css_bidir_split_box(BidirSplitState *s,  CSSBox *box)
 {
     CSSState *props = box->props;
     TypeLink *l;
-    int c, pos;
-    unsigned long offset;
+    int c, pos, offset;
     NextCharFunc nextc;
 
     l = s->l;
@@ -1443,7 +1443,7 @@ static void css_bidir_split_box(BidirSplitState *s,  CSSBox *box)
                     goto the_end;
                 }
             }
-            c = nextc(s->ctx->b, &offset);
+            c = nextc(box, &offset);
             pos++;
         }
     }
@@ -2124,7 +2124,7 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
         /* split the box containing the start of the word,
            if needed */
         box_bow = s->line_boxes[s->index_bow].box;
-        if ((unsigned long)s->offset_bow > box_bow->u.buffer.start) {
+        if (s->offset_bow > box_bow->u.buffer.start) {
             /* split the box containing the start of the word */
             css_box_split(box_bow, s->offset_bow);
             /* include the start of the splitted box */
@@ -2166,7 +2166,7 @@ static int css_layout_inline_box(InlineLayout *s,
                                  int baseline)
 {
     CSSState *props = box->props;
-    unsigned long offset, offset0;
+    int offset, offset0;
     int ch, space, eob, ret, box_stack_base, i;
     QEFont *font;
     NextCharFunc nextc;
@@ -2333,7 +2333,7 @@ static int css_layout_inline_box(InlineLayout *s,
             } else {
                 /* get next char */
                 offset0 = offset;
-                ch = nextc(s->ctx->b, &offset);
+                ch = nextc(box, &offset);
 
                 /* special case: '\n' is handled in pre mode, or
                    special '\A' character in css content
@@ -3465,7 +3465,7 @@ static int css_layout_block_recurse(LayoutState *s, LayoutOutput *block_layout,
     {
         printf("layout %s", css_ident_str(block_box->tag));
         if (block_box->content_type == CSS_CONTENT_TYPE_BUFFER)
-            printf(" offset=%ld", block_box->u.buffer.start);
+            printf(" offset=%d", block_box->u.buffer.start);
         printf("\n");
     }
 #endif
@@ -3759,7 +3759,7 @@ int box_get_text(CSSContext *s,
                  int *offsets, CSSBox *box)
 {
     /* final box with text inside */
-    unsigned long offset, offset0;
+    int offset, offset0;
     unsigned int *q;
     int c, space_collapse, last_space, space;
     NextCharFunc nextc;
@@ -3773,7 +3773,7 @@ int box_get_text(CSSContext *s,
     last_space = box->last_space;
     while (offset < box->u.buffer.end) {
         offset0 = offset;
-        c = nextc(s->b, &offset);
+        c = nextc(box, &offset);
         if (c == CSS_CONTENT_EOL)
             continue;
         space = qe_isspace(c);
@@ -4183,12 +4183,12 @@ static int css_get_cursor_func(void *opaque,
         return 0;
 
     eol = (box->content_eol != 0);
-    if (!((unsigned long)s->offset >= box->u.buffer.start &&
-          (unsigned long)s->offset < (box->u.buffer.end + eol)))
+    if (!(s->offset >= box->u.buffer.start &&
+          s->offset < (box->u.buffer.end + eol)))
             return 0;
 
     /* special case for eol */
-    if ((unsigned long)s->offset == box->u.buffer.end) {
+    if (s->offset == box->u.buffer.end) {
         /* get eol width */
         font = css_select_font(s->ctx->screen, props);
         w = glyph_width(s->ctx->screen, font, '$');
@@ -4383,17 +4383,18 @@ void css_dump_box(CSSBox *box, int level)
     case CSS_CONTENT_TYPE_BUFFER:
         for (i = 0; i < level + 1; i++)
             printf(" ");
-        printf("[offs=%lu %lu]\n",
+        printf("[offs=%d %d]\n",
                box->u.buffer.start, box->u.buffer.end);
         break;
     case CSS_CONTENT_TYPE_STRING:
         {
-            unsigned long ptr;
+            const char *ptr = box->content_data;
+
             for (i = 0; i < level + 1; i++)
                 printf(" ");
             printf("'");
-            for (ptr = box->u.buffer.start; ptr < box->u.buffer.end; ptr++)
-                printf("%c", *(unsigned char *)ptr);
+            for (i = box->u.buffer.start; i < box->u.buffer.end; i++)
+                printf("%c", ptr[i]);
             printf("'\n");
         }
         break;
@@ -4460,7 +4461,7 @@ void css_delete_box(CSSBox *box)
         case CSS_CONTENT_TYPE_STRING:
             /* split boxes never own their content */
             if (!box->split)
-                qe_free((void **)(void *)&box->u.buffer.start);
+                qe_free(&box->content_data);
             break;
         case CSS_CONTENT_TYPE_IMAGE:
             qe_free(&box->u.image.content_alt);
@@ -4484,10 +4485,11 @@ void css_delete_box(CSSBox *box)
     }
 }
 
-void css_set_text_buffer(CSSBox *box,
+void css_set_text_buffer(CSSBox *box, EditBuffer *b,
                          int offset1, int offset2, int eol)
 {
     box->content_type = CSS_CONTENT_TYPE_BUFFER;
+    box->content_data = b;
     box->content_eol = eol;
     box->u.buffer.start = offset1;
     box->u.buffer.end = offset2;
@@ -4496,19 +4498,16 @@ void css_set_text_buffer(CSSBox *box,
 /* note: the string is reallocated */
 void css_set_text_string(CSSBox *box, const char *string)
 {
-    int len;
-    char *str;
-
     box->content_type = CSS_CONTENT_TYPE_STRING;
-    str = qe_strdup(string);
-    len = strlen(string);
-    box->u.buffer.start = (unsigned long)str;
-    box->u.buffer.end = (unsigned long)str + len;
+    box->content_data = qe_strdup(string);
+    box->u.buffer.start = 0;
+    box->u.buffer.end = strlen(string);
 }
 
 void css_set_child_box(CSSBox *parent_box, CSSBox *box)
 {
     parent_box->content_type = CSS_CONTENT_TYPE_CHILDS;
+    parent_box->content_data = NULL;
     parent_box->u.child.first = box;
     parent_box->u.child.last = box;
     box->parent = parent_box;
@@ -4526,6 +4525,7 @@ void css_make_child_box(CSSBox *box)
         box1->u.buffer.start = box->u.buffer.start;
         box1->u.buffer.end = box->u.buffer.end;
         box1->content_type = box->content_type;
+        box1->content_data = box->content_data;
         box->content_type = CSS_CONTENT_TYPE_CHILDS;
         box->u.child.first = box1;
         box->u.child.last = box1;
@@ -4533,8 +4533,7 @@ void css_make_child_box(CSSBox *box)
     }
 }
 
-CSSContext *css_new_document(QEditScreen *screen,
-                             EditBuffer *b)
+CSSContext *css_new_document(QEditScreen *screen, EditBuffer *b)
 {
     CSSContext *s;
 

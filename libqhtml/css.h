@@ -358,15 +358,20 @@ struct CSSBox {
     struct CSSBox *next_inline;
     /* parent box */
     struct CSSBox *parent;
+    /* holds a pointer to the relevant data depending on content_type:
+     * - CSS_CONTENT_TYPE_BUFFER: points the the edit buffer
+     * - CSS_CONTENT_TYPE_STRING: points the an allocated string
+     * - CSS_CONTENT_TYPE_IMAGE: should point to alternate content
+     */
+    void *content_data;
     union {
         struct {
             struct CSSBox *last;  /* used only when building the tree */
             struct CSSBox *first; /* first box under this box, if any */
         } child;
-        /* either pointers to memory or in a buffer */
         struct {
-            unsigned long start;       /* start of text */
-            unsigned long end;         /* end of text */
+            int start;       /* start of text in buffer or string */
+            int end;         /* end of text in buffer or string */
         } buffer;
         struct {
             char *content_alt;         /* alternate content */
@@ -593,7 +598,7 @@ int css_box_iterate(CSSContext *s, CSSBox *box, void *opaque,
 CSSBox *css_new_box(CSSIdent tag, CSSAttribute *attrs);
 CSSBox *css_add_box(CSSBox *parent_box, CSSBox *box);
 void css_delete_box(CSSBox *box);
-void css_set_text_buffer(CSSBox *box,
+void css_set_text_buffer(CSSBox *box, EditBuffer *b,
                          int offset1, int offset2, int eol);
 void css_set_text_string(CSSBox *box, const char *string);
 void css_make_child_box(CSSBox *box);
@@ -645,4 +650,3 @@ void css_close(CSSFile *f);
 
 extern const char docbook_style[];
 extern const char html_style[];
-

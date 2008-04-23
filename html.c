@@ -372,8 +372,8 @@ static int scroll_func(void *opaque, CSSBox *box, __unused__ int x, int y)
             m->offset_found = box->u.buffer.start;
         }
     }
-    if ((unsigned long)m->offsetc >= box->u.buffer.start &&
-        (unsigned long)m->offsetc <= box->u.buffer.end &&
+    if (m->offsetc >= box->u.buffer.start &&
+        m->offsetc <= box->u.buffer.end &&
         y >= 0 && y1 <= m->height) {
         m->offset_found = m->offsetc;
         return 1;
