@@ -7582,13 +7582,12 @@ static void init_all_modules(void)
 
     ptr = (int (**)(void))(void *)&__initcall_first;
     for (;;) {
-        /* NOTE: if bound checking is on, a '\0' is inserted between
-           each initialized 'void *' */
 #if defined(__BOUNDS_CHECKING_ON)
-        ptr = (void **)((long)ptr + (2 * sizeof(void *)));
-#else
+        /* NOTE: if bound checking is on, a NULL is inserted between
+           each initialized 'void *' */
         ptr++;
 #endif
+        ptr++;
         initcall = *ptr;
         if (initcall == NULL)
             break;
@@ -7606,10 +7605,11 @@ static void exit_all_modules(void)
     ptr = (int (**)(void))(void *)&__exitcall_first;
     for (;;) {
 #if defined(__BOUNDS_CHECKING_ON)
-        ptr = (void **)((long)ptr + (2 * sizeof(void *)));
-#else
+        /* NOTE: if bound checking is on, a NULL is inserted between
+           each initialized 'void *' */
         ptr++;
 #endif
+        ptr++;
         exitcall = *ptr;
         if (exitcall == NULL)
             break;
@@ -7673,9 +7673,10 @@ static void load_all_modules(QEmacsState *qs)
          * Corrigendum 1) workaround; see the Rationale for the
          * POSIX specification of dlsym().
          */
-        *(void **)(&init_func) = dlsym(h, "__qe_module_init");
+        *(void **)&init_func = dlsym(h, "__qe_module_init");
         //init_func = (int (*)(void))dlsym(h, "__qe_module_init");
 #else
+        /* This kludge gets rid of compile and lint warnings */
         sym = dlsym(h, "__qe_module_init");
         memcpy(&init_func, &sym, sizeof(sym));
 #endif
