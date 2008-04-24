@@ -61,8 +61,18 @@ int main(int argc, char **argv)
                 continue;
             }
             /* comments */
-            /* CG: allow // comments ? */
+            if (c == '/' && peekc(stdin) == '/') {
+                /* C++ like comment */
+                for (;;) {
+                    c = getchar();
+                    if (c == EOF)
+                        goto the_end;
+                    if (c == '\n')
+                        goto end_comment;
+                }
+            }
             if (c == '/' && peekc(stdin) == '*') {
+                /* C like comment */
                 getchar();
                 for (;;) {
                     c = getchar();
@@ -81,8 +91,9 @@ int main(int argc, char **argv)
                 continue;
             }
         }
-        if (n == 0)
+        if (n == 0) {
             printf("    \"");
+        }
         /* add separator if needed */
         if (!in_string && got_space && isalnum(c) && isalnum(last_c)) {
             putchar(' ');

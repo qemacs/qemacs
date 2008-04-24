@@ -2,6 +2,7 @@
  * CSS core for qemacs.
  *
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
+ * Copyright (c) 2007-2008 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -440,54 +441,60 @@ static void css_eval_property(CSSContext *s,
                               CSSState *state_parent,
                               __unused__ CSSBox *box)
 {
-    int *ptr, val;
-    const CSSPropertyDef *def;
+    CSSPropertyDef const *def;
+    CSSPropertyStorage *ptr, *parent_ptr;
+    int val;
 
     if (p->property >= NB_PROPERTIES) {
         dprintf("css_eval: invalid property: %d\n", p->property);
         return;
     }
     def = &css_properties[p->property];
-    ptr = (int *)((char *)state + def->struct_offset);
+    ptr = CSSPropertyStoragePtr(state, def->struct_offset);
+    parent_ptr = NULL;
+    if (state_parent) {
+        parent_ptr = CSSPropertyStoragePtr(state_parent, def->struct_offset);
+    }
+
     if (p->value.u.val == CSS_INHERIT) {
         /* XXX: invalid if pointer */
         switch (def->storage) {
         default:
         case CSS_STORAGE_INT:
-            *ptr = *(int *)((char *)state_parent + def->struct_offset);
+            ptr->val = parent_ptr->val;
             break;
         case CSS_STORAGE_PTR:
-            *(void **)ptr = *(void **)((char *)state_parent + def->struct_offset);
+            ptr->ptr = parent_ptr->ptr;
             break;
         }
     } else {
         if (def->storage == CSS_STORAGE_PTR) {
-            *(void **)ptr = p;
+            ptr->ptr = p;
         } else {
-            /* CG: factorize this ? */
+            /* def->storage == CSS_STORAGE_INT */
             switch (p->value.type) {
             case CSS_VALUE_COLOR:
             case CSS_UNIT_NONE:
             case CSS_VALUE_INTEGER:
-                *ptr = p->value.u.val;
+                ptr->val = p->value.u.val;
                 break;
             case CSS_UNIT_PIXEL:
                 /* convert from px to display pixels */
-                *ptr = (p->value.u.val * s->px_size) >> CSS_LENGTH_FRAC_BITS;
+                ptr->val = (p->value.u.val * s->px_size) >> CSS_LENGTH_FRAC_BITS;
                 break;
             case CSS_UNIT_IN:
                 /* convert from inches to display pixels */
-                *ptr = (p->value.u.val * s->dots_per_inch) >> CSS_LENGTH_FRAC_BITS;
+                ptr->val = (p->value.u.val * s->dots_per_inch) >> CSS_LENGTH_FRAC_BITS;
                 break;
             case CSS_UNIT_PERCENT:
-                val = *(int *)((char *)state_parent + def->struct_offset);
-                *ptr = (p->value.u.val * val) >> CSS_LENGTH_FRAC_BITS;
+                val = parent_ptr->val;
+                ptr->val = (p->value.u.val * val) >> CSS_LENGTH_FRAC_BITS;
                 break;
             case CSS_UNIT_EX:
                 /* currently, we do not use the font metrics */
                 val = (state->font_size * CSS_EX_SCALE) >>
-                    CSS_LENGTH_FRAC_BITS;
-                *ptr = (p->value.u.val * val) >> CSS_LENGTH_FRAC_BITS;
+                      CSS_LENGTH_FRAC_BITS;
+                ptr->val = (p->value.u.val * val) >> CSS_LENGTH_FRAC_BITS;
                 break;
             case CSS_UNIT_EM:
                 /* special case for font size : inherit from parent */
@@ -495,7 +502,7 @@ static void css_eval_property(CSSContext *s,
                     val = state_parent->font_size;
                 else
                     val = state->font_size;
-                *ptr = (p->value.u.val * val) >> CSS_LENGTH_FRAC_BITS;
+                ptr->val = (p->value.u.val * val) >> CSS_LENGTH_FRAC_BITS;
                 break;
             }
         }
@@ -712,36 +719,57 @@ static int css_eval(CSSContext *s,
                     CSSState *state_parent)
 {
     const CSSPropertyDef *def;
-    int *ptr_parent, *ptr, type, val, i;
+    CSSPropertyStorage *ptr, *parent_ptr;
+    int type, val, i;
     CSSProperty *p;
     int pelement_found;
 
     /* inherit properties or set to default value */
-    def = css_properties;
-    while (def < css_properties + NB_PROPERTIES) {
+    for (i = 0; i < NB_PROPERTIES; i++) {
+        def = &css_properties[i];
         type = def->type;
-        /* the TYPE_FOUR are not real css properties */
-        if (!(type & CSS_TYPE_FOUR)) {
-            ptr = (int *)((char *)state + def->struct_offset);
-            if (def->type & CSS_TYPE_INHERITED) {
-                /* inherit value */
-                ptr_parent = (int *)((char *)state_parent + def->struct_offset);
-                val = *ptr_parent;
+
+        if (type & CSS_TYPE_FOUR) {
+            /* skip dummy css properties for groups of 4
+             * (left,right,top,bottom)
+             */
+            continue;
+        }
+
+        ptr = CSSPropertyStoragePtr(state, def->struct_offset);
+        if (def->type & CSS_TYPE_INHERITED) {
+            /* inherit value */
+            parent_ptr = CSSPropertyStoragePtr(state_parent, def->struct_offset);
+            /* XXX: invalid if pointer? */
+            switch (def->storage) {
+            default:
+            case CSS_STORAGE_INT:
+                ptr->val = parent_ptr->val;
+                break;
+            case CSS_STORAGE_PTR:
+                ptr->ptr = parent_ptr->ptr;
+                break;
+            }
+        } else {
+            if (def->storage == CSS_STORAGE_PTR) {
+                ptr->ptr = NULL;
             } else {
-                /* default values: color assumed to transparent, and
-                   if auto is a possible value, then it is
-                   set. Otherwise zero is the value */
+                /* def->storage == CSS_STORAGE_INT */
+
                 if (type & CSS_TYPE_COLOR) {
+                    /* Colors default to transparent. */
                     val = COLOR_TRANSPARENT;
-                } else if (type & CSS_TYPE_AUTO) {
+                } else
+                if (type & CSS_TYPE_AUTO) {
+                    /* If auto is a possible value, set it. */
                     val = CSS_AUTO;
                 } else {
+                    /* Otherwise, 0 is the default value. */
                     val = 0;
                 }
+                ptr->val = val;
             }
-            *ptr = val;
         }
-        def++;
     }
 
     /* apply generic attributes */
@@ -753,18 +781,18 @@ static int css_eval(CSSContext *s,
     }
 
     /* apply explicit properties */
-    p = box->properties;
-    while (p != NULL) {
+    for (p = box->properties; p != NULL; p = p->next) {
         css_eval_property(s, state, p, state_parent, box);
-        p = p->next;
     }
 
     /* first reset counters */
-    if (state->counter_reset)
+    if (state->counter_reset) {
         eval_counter_update(s, state->counter_reset);
+    }
     /* then increment */
-    if (state->counter_increment)
+    if (state->counter_increment) {
         eval_counter_update(s, state->counter_increment);
+    }
     /* alternate content if image (need more ideas) */
     if (state->content_alt &&
         box->content_type == CSS_CONTENT_TYPE_IMAGE) {
@@ -2421,7 +2449,7 @@ static int css_layout_inline_box(InlineLayout *s,
         /* remove all boxes from the stack */
         s->box_stack_index = box_stack_base;
     }
-done:
+  done:
     css_release_font(s->ctx->screen, font);
 
     return ret;

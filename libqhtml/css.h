@@ -1,3 +1,24 @@
+/*
+ * CSS core for qemacs.
+ *
+ * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
+ * Copyright (c) 2007-2008 Charlie Gordon.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
 #ifndef CSS_H
 #define CSS_H
 
@@ -217,6 +238,13 @@ typedef struct CSSPropertyDef {
 #define CSS_TYPE_IDENT         0x00000800
 
 } CSSPropertyDef;
+
+typedef union CSSPropertyStorage {
+    int val;                  /* CSS_STORAGE_INT */
+    struct CSSProperty *ptr;  /* CSS_STORAGE_PTR */
+} CSSPropertyStorage;
+
+#define CSSPropertyStoragePtr(s, off)  ((CSSPropertyStorage*)((char*)(s) + (off)))
 
 extern const CSSPropertyDef css_properties[NB_PROPERTIES];
 
@@ -648,5 +676,5 @@ int css_filesize(CSSFile *f);
 int css_read(CSSFile *f, char *buf, int size);
 void css_close(CSSFile *f);
 
-extern const char docbook_style[];
-extern const char html_style[];
+extern char const docbook_style[];
+extern char const html_style[];
