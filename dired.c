@@ -576,11 +576,11 @@ static CmdDef dired_commands[] = {
     CMD1( KEY_CTRL('g'), KEY_NONE,
           "dired-abort", do_delete_window, 0)
     CMD0( ' ', KEY_CTRL('t'),
-          "dired-toggle_selection", list_toggle_selection)
+          "dired-toggle-selection", list_toggle_selection)
     /* BS should go back to previous item and unmark it */
     CMD2( 's', KEY_NONE,
           "dired-sort", dired_sort, ESs,
-          "s{Sort order: }")
+          "s{Sort order: }|sortkey|")
     /* s -> should also change switches */
     CMD1( 'd', KEY_NONE,
           "dired-delete", dired_mark, 'D')
