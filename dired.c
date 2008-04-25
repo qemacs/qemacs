@@ -578,7 +578,7 @@ static CmdDef dired_commands[] = {
     CMD0( ' ', KEY_CTRL('t'),
           "dired-toggle_selection", list_toggle_selection)
     /* BS should go back to previous item and unmark it */
-    CMD_( 's', KEY_NONE,
+    CMD2( 's', KEY_NONE,
           "dired-sort", dired_sort, ESs,
           "s{Sort order: }")
     /* s -> should also change switches */

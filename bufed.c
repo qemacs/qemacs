@@ -291,7 +291,7 @@ static CmdDef bufed_commands[] = {
 };
 
 static CmdDef bufed_global_commands[] = {
-    CMD_( KEY_CTRLX(KEY_CTRL('b')), KEY_NONE,
+    CMD2( KEY_CTRLX(KEY_CTRL('b')), KEY_NONE,
           "list-buffers", do_list_buffers, ESi, "ui")
     CMD_DEF_END,
 };

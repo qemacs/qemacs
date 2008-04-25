@@ -379,37 +379,37 @@ static void do_unset_key(EditState *s, const char *keystr, int local)
 }
 
 static CmdDef extra_commands[] = {
-    CMD_( KEY_META('='), KEY_NONE,
+    CMD2( KEY_META('='), KEY_NONE,
           "compare-windows", do_compare_windows, ESi, "ui" )
-    CMD_( KEY_META('\\'), KEY_NONE,
+    CMD2( KEY_META('\\'), KEY_NONE,
           "delete-horizontal-space", do_delete_horizontal_space, ES, "*")
-    CMD_( KEY_CTRLX('t'), KEY_NONE,
+    CMD2( KEY_CTRLX('t'), KEY_NONE,
           "show-date-and-time", do_show_date_and_time, ESi, "ui")
 
           /* Should map to KEY_META + KEY_CTRL_LEFT */
-    CMDV( KEY_META(KEY_CTRL('b')), KEY_NONE,
+    CMD3( KEY_META(KEY_CTRL('b')), KEY_NONE,
           "backward-block", do_forward_block, ESi, -1, "v")
           /* Should map to KEY_META + KEY_CTRL_RIGHT */
-    CMDV( KEY_META(KEY_CTRL('f')), KEY_NONE,
+    CMD3( KEY_META(KEY_CTRL('f')), KEY_NONE,
           "forward-block", do_forward_block, ESi, 1, "v")
-    CMDV( KEY_ESC, KEY_DELETE,
+    CMD3( KEY_ESC, KEY_DELETE,
           "backward-kill-block", do_kill_block, ESi, -1, "*v")
-    CMDV( KEY_META(KEY_CTRL('k')), KEY_NONE,
+    CMD3( KEY_META(KEY_CTRL('k')), KEY_NONE,
           "kill-block", do_kill_block, ESi, 1, "*v")
           /* Should also have mark-block on C-M-@ */
 
-    CMDV( KEY_CTRL('t'), KEY_NONE,
+    CMD3( KEY_CTRL('t'), KEY_NONE,
           "transpose-chars", do_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v")
-    CMDV( KEY_CTRLX(KEY_CTRL('t')), KEY_NONE,
+    CMD3( KEY_CTRLX(KEY_CTRL('t')), KEY_NONE,
           "transpose-lines", do_transpose, ESi, CMD_TRANSPOSE_LINES, "*v")
-    CMDV( KEY_META('t'), KEY_NONE,
+    CMD3( KEY_META('t'), KEY_NONE,
           "transpose-words", do_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v")
 
-    CMDV( KEY_NONE, KEY_NONE,
+    CMD3( KEY_NONE, KEY_NONE,
           "global-unset-key", do_unset_key, ESsi, 0,
           "s{Unset key globally: }[key]"
 	  "v")
-    CMDV( KEY_NONE, KEY_NONE,
+    CMD3( KEY_NONE, KEY_NONE,
           "local-unset-key", do_unset_key, ESsi, 1,
           "s{Unset key locally: }[key]"
 	  "v")

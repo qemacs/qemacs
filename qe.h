@@ -1293,9 +1293,9 @@ typedef struct CmdDef {
 } CmdDef;
 
 /* new command macros */
-#define CMD_(key, key_alt, name, func, sig, args) \
+#define CMD2(key, key_alt, name, func, sig, args) \
     { key, key_alt, name "\0" args, { .sig = func }, CMD_ ## sig, 0 },
-#define CMDV(key, key_alt, name, func, sig, val, args) \
+#define CMD3(key, key_alt, name, func, sig, val, args) \
     { key, key_alt, name "\0" args, { .sig = func }, CMD_ ## sig, val },
 
 /* old macros for compatibility */

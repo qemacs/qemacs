@@ -1688,9 +1688,9 @@ static CmdDef shell_commands[] = {
           "shell-delete-char", shell_write_char, 4)
     CMD1( KEY_META('d'), KEY_NONE,
           "shell-delete-word", shell_write_char, KEY_META('d'))
-    CMD_( KEY_META(KEY_DEL), KEY_META(KEY_BS) ,
+    CMD2( KEY_META(KEY_DEL), KEY_META(KEY_BS) ,
           "shell-backward-delete-word", shell_write_char, ESi, "*ki")
-    CMD_( KEY_META('p'), KEY_META('n'),
+    CMD2( KEY_META('p'), KEY_META('n'),
           "shell-history-search", shell_write_char, ESi, "*ki")
     CMD1( KEY_CTRL('i'), KEY_NONE,
           "shell-tabulate", shell_write_char, 9)
@@ -1703,15 +1703,15 @@ static CmdDef shell_commands[] = {
 
 /* compilation commands */
 static CmdDef compile_commands[] = {
-    CMD_( KEY_CTRLXRET('\r'), KEY_NONE,
+    CMD2( KEY_CTRLXRET('\r'), KEY_NONE,
           "shell", do_shell, ESi, "ui")
-    CMD_( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE,
+    CMD2( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE,
           "compile", do_compile, ESs,
           "s{Compile command: }|compile|")
-    CMD_( KEY_CTRLX('m'), KEY_NONE,
+    CMD2( KEY_CTRLX('m'), KEY_NONE,
           "make", do_compile, ESs,
           "S{make}")
-    CMD_( KEY_NONE, KEY_NONE,
+    CMD2( KEY_NONE, KEY_NONE,
           "man", do_man, ESs,
           "s{Show man page for: }|man|")
     CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE,

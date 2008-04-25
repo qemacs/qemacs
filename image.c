@@ -801,10 +801,10 @@ static void pixel_format_completion(CompleteState *cp)
 static CmdDef image_commands[] = {
     CMD0( 't', KEY_NONE,
           "image-rotate", image_rotate)
-    CMD_( 'c', KEY_NONE,
+    CMD2( 'c', KEY_NONE,
           "image-convert", image_convert, ESs,
           "s{New pixel format: }[pixel_format]|pixel_format|")
-    CMD_( 'b', KEY_NONE,
+    CMD2( 'b', KEY_NONE,
           "image-set-background-color", image_set_background_color, ESs,
           "s{Background color (use 'transparent' for tiling): }")
 #if 1
@@ -818,7 +818,7 @@ static CmdDef image_commands[] = {
           "image-larger-10", image_mult_size, 10)
     CMD1( ',', KEY_NONE,
           "image-smaller-10", image_mult_size, -10)
-    CMD_( 'S', KEY_NONE,
+    CMD2( 'S', KEY_NONE,
           "image-set-display-size", image_set_size, ESii,
           "i{Displayed width: }"
           "i{Displayed height: }")

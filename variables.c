@@ -308,10 +308,10 @@ void qe_list_variables(EditState *s, EditBuffer *b)
 /*---------------- commands ----------------*/
 
 static CmdDef var_commands[] = {
-    CMD_( KEY_NONE, KEY_NONE,
+    CMD2( KEY_NONE, KEY_NONE,
           "show-variable", do_show_variable, ESs,
           "s{Show variable: }[var]|var|")
-    CMD_( KEY_F8, KEY_NONE,
+    CMD2( KEY_F8, KEY_NONE,
           "set-variable", do_set_variable, ESss,
           "s{Set variable: }[var]|var|s{to value: }|value|")
     CMD_DEF_END,

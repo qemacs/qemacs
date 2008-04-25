@@ -143,10 +143,10 @@ static CmdDef hex_commands[] = {
           "decrease-width", do_incr_width, -1)
     CMD1( KEY_CTRL_RIGHT, KEY_NONE,
           "increase-width", do_incr_width, 1)
-    CMD_( KEY_NONE, KEY_NONE,
+    CMD2( KEY_NONE, KEY_NONE,
           "set-width", do_set_width, ESi,
           "ui{Width: }")
-    CMDV( KEY_META('g'), KEY_NONE,
+    CMD3( KEY_META('g'), KEY_NONE,
           "goto-byte", do_goto, ESsi, 'b',
           "us{Goto byte: }"
           "v")
