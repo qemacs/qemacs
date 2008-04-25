@@ -270,7 +270,7 @@ static CmdDef bufed_commands[] = {
     CMD1( KEY_CTRL('g'), KEY_NONE,
           "bufed-abort", do_delete_window, 0)
     CMD0( ' ', KEY_CTRL('t'),
-          "bufed-toggle_selection", list_toggle_selection)
+          "bufed-toggle-selection", list_toggle_selection)
     /* BS should go back to previous item and unmark it */
     //CMD1( 'u', KEY_NONE, "bufed-unmark", bufed_mark, ' ')
     CMD0( '~', KEY_NONE,
