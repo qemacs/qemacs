@@ -31,7 +31,7 @@ static CmdDef basic_commands[] = {
           "*" "kiui")
     CMD2( KEY_META('#'), KEY_NONE,
           "insert-char", do_char, ESii,
-          "*" "i{Insert char: }" "ui")
+          "*" "i{Insert char: }|charvalue|" "ui")
     CMD1( KEY_CTRL('p'), KEY_UP,
           "previous-line", do_up_down, -1 )
     CMD1( KEY_CTRL('n'), KEY_DOWN,
@@ -141,7 +141,7 @@ static CmdDef basic_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
           "set-visited-file-name", do_set_visited_file_name, ESss,
 	  "s{Set visited file name: }[file]|file|"
-	  "s{Rename file? }")
+	  "s{Rename file? }|newname|")
 
     /*---------------- Search and replace ----------------*/
 
@@ -213,7 +213,7 @@ static CmdDef basic_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
           "define-kbd-macro", do_define_kbd_macro, ESsss,
 	  "s{Macro name: }[command]"
-	  "s{Macro keys: }"
+	  "s{Macro keys: }|macrokeys|"
 	  "s{Bind to key: }[key]")
     /* set/unset key? */
     CMD3( KEY_NONE, KEY_NONE,
@@ -263,12 +263,11 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Help ----------------*/
 
-    CMD0( KEY_CTRLH(KEY_CTRL('h')), KEY_F1,
-          "help-for-help", do_help_for_help)
-    CMD0( KEY_CTRLH('b'), KEY_NONE,
-          "describe-bindings", do_describe_bindings)
     CMD0( KEY_CTRLH('c'), KEY_CTRLH('k'),
           "describe-key-briefly", do_describe_key_briefly)
+
+    CMD0( KEY_CTRLH(KEY_CTRL('h')), KEY_F1,
+          "help-for-help", do_help_for_help)
 
     /*---------------- International ----------------*/
 
@@ -295,15 +294,15 @@ static CmdDef basic_commands[] = {
           "set-style", do_set_style, ESsss,
           "s{Style: }[style]|style|"
           "s{CSS Property Name: }[style-property]|style-property|"
-          "s{CSS Property Value: }")
+          "s{CSS Property Value: }|value|")
     CMD2( KEY_NONE, KEY_NONE,
           "set-display-size", do_set_display_size, ESii,
-	  "i{Width: }"
-	  "i{Height: }")
+	  "i{Width: }|width|"
+	  "i{Height: }|height|")
     CMD2( KEY_NONE, KEY_NONE,
           "set-system-font", do_set_system_font, ESss,
-	  "s{Font family: }"
-	  "s{System fonts: }")
+	  "s{Font family: }|fontfamily|"
+	  "s{System fonts: }|fontnames|")
 
     /*---------------- Miscellaneous ----------------*/
 
@@ -337,7 +336,7 @@ static CmdDef basic_commands[] = {
           "toggle-control-h", do_toggle_control_h, 0)
     CMD2( KEY_NONE, KEY_NONE,
           "set-emulation", do_set_emulation, ESs,
-          "s{Emulation mode: }")
+          "s{Emulation mode: }|emulation|")
     CMD0( KEY_NONE, KEY_NONE,
           "set-trace", do_set_trace)
     CMD2( KEY_NONE, KEY_NONE,

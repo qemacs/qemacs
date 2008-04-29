@@ -21,6 +21,15 @@
 #include "qe.h"
 #include "variables.h"
 
+const char * const var_domain[] = {
+    "global",   /* VAR_GLOBAL */
+    "state",    /* VAR_STATE */
+    "buffer",   /* VAR_BUFFER */
+    "window",   /* VAR_WINDOW */
+    "mode",     /* VAR_MODE */
+    "self",     /* VAR_SELF */
+};
+
 static VarDef var_table[] = {
 
     S_VAR( "screen-width", width, VAR_NUMBER, VAR_RO )
@@ -53,12 +62,12 @@ static VarDef var_table[] = {
     W_VAR( "region-style", region_style, VAR_NUMBER, VAR_RW )
     W_VAR( "curline-style", curline_style, VAR_NUMBER, VAR_RW )
     W_VAR( "window-width", width, VAR_NUMBER, VAR_RW )
-    W_VAR( "window_height", height, VAR_NUMBER, VAR_RW )
+    W_VAR( "window-height", height, VAR_NUMBER, VAR_RW )
     W_VAR( "window-left", xleft, VAR_NUMBER, VAR_RW )
     W_VAR( "window-top", ytop, VAR_NUMBER, VAR_RW )
     W_VAR( "window-prompt", prompt, VAR_STRING, VAR_RW )
 
-    M_VAR( "mode-name", name, VAR_CHARS, VAR_RO )
+    M_VAR( "mode-name", name, VAR_STRING, VAR_RO )
 
     /* more buffer fields: modified, readonly, binary, charset */
     /* more window fields: mode_line, disp_width, color, input_method...
@@ -115,7 +124,7 @@ void qe_complete_variable(CompleteState *cp)
 }
 
 QVarType qe_get_variable(EditState *s, const char *name,
-                         char *buf, int size, int *pnum)
+                         char *buf, int size, int *pnum, int as_source)
 {
     const VarDef *vp;
     int num = 0;
@@ -128,14 +137,11 @@ QVarType qe_get_variable(EditState *s, const char *name,
 
         /* Try environment */
         str = getenv(name);
-        if (str) {
-            pstrcpy(buf, size, str);
-            return VAR_STRING;
-        } else {
-            if (size > 0)
-                *buf = '\0';
-            return VAR_UNKNOWN;
-        }
+        if (as_source)
+            strquote(buf, size, str, -1);
+        else
+            pstrcpy(buf, size, str ? str : "");
+        return str ? VAR_STRING : VAR_UNKNOWN;
     }
     switch (vp->domain) {
     case VAR_SELF:
@@ -165,11 +171,17 @@ QVarType qe_get_variable(EditState *s, const char *name,
     switch (vp->type) {
     case VAR_STRING:
         str = *(const char**)ptr;
-        pstrcpy(buf, size, str);
+        if (as_source)
+            strquote(buf, size, str, -1);
+        else
+            pstrcpy(buf, size, str ? str : "");
         break;
     case VAR_CHARS:
         str = (const char*)ptr;
-        pstrcpy(buf, size, str);
+        if (as_source)
+            strquote(buf, size, str, -1);
+        else
+            pstrcpy(buf, size, str);
         break;
     case VAR_NUMBER:
         num = *(const int*)ptr;
@@ -278,7 +290,7 @@ void do_show_variable(EditState *s, const char *name)
 {
     char buf[MAX_FILENAME_SIZE];
 
-    if (qe_get_variable(s, name, buf, sizeof(buf), NULL) == VAR_UNKNOWN)
+    if (qe_get_variable(s, name, buf, sizeof(buf), NULL, 1) == VAR_UNKNOWN)
         put_status(s, "No variable %s", name);
     else
         put_status(s, "%s -> %s", name, buf);
@@ -298,7 +310,7 @@ void qe_list_variables(EditState *s, EditBuffer *b)
 
     eb_printf(b, "\n  variables:\n\n");
     for (vp = qs->first_variable; vp; vp = vp->next) {
-        qe_get_variable(s, vp->name, buf, sizeof(buf), NULL);
+        qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
         eb_printf(b, "    D%d T%d %s  %-14s  '%s'\n",
                   vp->domain, vp->type, vp->rw ? "rw" : "ro",
                   vp->name, buf);

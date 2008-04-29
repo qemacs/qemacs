@@ -1364,6 +1364,25 @@ int strsubst(char *buf, int buf_size, const char *from,
     return out.pos;
 }
 
+int strquote(char *dest, int size, const char *str, int len)
+{
+    if (str) {
+        if (len < 0)
+            len = strlen(str);
+        /* TODO: quote special chars */
+        return snprintf(dest, size, "\"%.*s\"", len, str);
+    } else {
+        return snprintf(dest, size, "null");
+    }
+}
+
+#if 0
+/* TODO */
+int strunquote(char *dest, int size, const char *str, int len)
+{
+}
+#endif
+
 /*---------------- allocation routines ----------------*/
 
 void *qe_malloc_bytes(size_t size)

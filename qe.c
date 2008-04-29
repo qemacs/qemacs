@@ -3219,8 +3219,8 @@ int text_display(EditState *s, DisplayState *ds, int offset)
 
     /* prompt display */
     if (s->prompt && offset1 == 0) {
-        const char *p;
-        p = s->prompt;
+        const char *p = s->prompt;
+
         while (*p) {
             display_char(ds, -1, -1, *p++);
         }
@@ -3591,6 +3591,58 @@ static int parse_arg(const char **pp, unsigned char *argtype,
     *pp = p;
     *argtype = type;
     return 1;
+}
+
+void qe_get_prototype(CmdDef *d, char *buf, int size)
+{
+    buf_t outbuf, *out;
+    const char *r;
+    const char *sep = "";
+
+    out = buf_init(&outbuf, buf, size);
+
+    /* construct argument type list */
+    r = d->name + strlen(d->name) + 1;
+    if (*r == '*') {
+        r++;    /* buffer modification indicator */
+    }
+
+    for (;;) {
+        unsigned char arg_type;
+        char completion[32];
+        char history[32];
+        int ret;
+
+        ret = parse_arg(&r, &arg_type, NULL, 0,
+                        completion, sizeof(completion),
+                        history, sizeof(history));
+        if (ret <= 0)
+            break;
+
+        /* pseudo arguments: skip them */
+        switch (arg_type & CMD_ARG_TYPE_MASK) {
+        case CMD_ARG_INT:
+            buf_printf(out, "%sint ", sep);
+            break;
+        case CMD_ARG_STRING:
+            buf_printf(out, "%sstring ", sep);
+            break;
+        case CMD_ARG_WINDOW:
+        case CMD_ARG_INTVAL:
+        case CMD_ARG_STRINGVAL:
+        default:
+            continue;
+        }
+        sep = ", ";
+        if (arg_type & CMD_ARG_USE_KEY) {
+            buf_puts(out, "key");
+        } else
+        if (arg_type & CMD_ARG_USE_ARGVAL) {
+            buf_puts(out, "argval");
+        } else {
+            buf_puts(out, *history ? history : completion);
+        }
+    }
 }
 
 static void arg_edit_cb(void *opaque, char *str);
@@ -4571,6 +4623,7 @@ void edit_close(EditState *s)
     if (qs->active_window == s)
         qs->active_window = qs->first_window;
 
+    qe_free(&s->prompt);
     qe_free(&s->line_shadow);
     qe_free(&s);
 }
@@ -4833,6 +4886,7 @@ static void set_minibuffer_str(EditState *s, const char *str)
     s->offset = len;
 }
 
+/* CG: should use buffer of responses */
 static StringArray *get_history(const char *name)
 {
     QEmacsState *qs = &qe_state;
@@ -4940,9 +4994,6 @@ void do_minibuffer_exit(EditState *s, int do_abort)
         if (buf[0] != '\0')
             add_string(hist, buf);
     }
-
-    /* free prompt */
-    qe_free(&s->prompt);
 
     edit_close(s);
     eb_free(b);
@@ -6474,54 +6525,13 @@ void do_split_window(EditState *s, int horiz)
 
 /* help */
 
-static void print_bindings(EditBuffer *b, const char *title,
-                           __unused__ int type, ModeDef *mode)
+void do_describe_key_briefly(EditState *s)
 {
-    CmdDef *d;
-    KeyDef *kd;
-    char buf[64];
-    int found, gfound, pos;
-
-    d = qe_state.first_cmd;
-    gfound = 0;
-    while (d != NULL) {
-        while (d->name != NULL) {
-            /* find each key mapping pointing to this command */
-            found = pos = 0;
-            kd = mode ? mode->first_key : qe_state.first_key;
-            for (; kd != NULL; kd = kd->next) {
-                if (kd->cmd == d) {
-                    if (!gfound)
-                        eb_printf(b, "%s:\n\n", title);
-                    if (found)
-                        pos += eb_printf(b, ",");
-                    if (pos > 50) {
-                        eb_printf(b, "\n");
-                        pos = 0;
-                    }
-                    pos += eb_printf(b, " %s",
-                                     keys_to_str(buf, sizeof(buf),
-                                                 kd->keys, kd->nb_keys));
-                    found = 1;
-                    gfound = 1;
-                }
-            }
-            if (found) {
-                /* print associated command name */
-                if (pos > 25) {
-                    eb_printf(b, "\n");
-                    pos = 0;
-                }
-                eb_line_pad(b, 25);
-                eb_printf(b, ": %s\n", d->name);
-            }
-            d++;
-        }
-        d = d->action.next;
-    }
+    put_status(s, "Describe key: ");
+    key_ctx.describe_key = 1;
 }
 
-static EditBuffer *new_help_buffer(int *show_ptr)
+EditBuffer *new_help_buffer(int *show_ptr)
 {
     EditBuffer *b;
 
@@ -6534,27 +6544,6 @@ static EditBuffer *new_help_buffer(int *show_ptr)
         *show_ptr = 1;
     }
     return b;
-}
-
-void do_describe_bindings(EditState *s)
-{
-    EditBuffer *b;
-    char buf[64];
-    int show;
-
-    b = new_help_buffer(&show);
-    if (!b)
-        return;
-    snprintf(buf, sizeof(buf), "%s mode bindings", s->mode->name);
-    print_bindings(b, buf, 0, s->mode);
-
-    print_bindings(b, "\nGlobal bindings", 0, NULL);
-
-    b->flags |= BF_READONLY;
-    if (show) {
-        show_popup(b);
-        //eb_free(b);
-    }
 }
 
 void do_help_for_help(__unused__ EditState *s)
@@ -6576,12 +6565,6 @@ void do_help_for_help(__unused__ EditState *s)
     if (show) {
         show_popup(b);
     }
-}
-
-void do_describe_key_briefly(EditState *s)
-{
-    put_status(s, "Describe key: ");
-    key_ctx.describe_key = 1;
 }
 
 #ifdef CONFIG_WIN32

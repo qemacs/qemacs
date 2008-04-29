@@ -378,6 +378,146 @@ static void do_unset_key(EditState *s, const char *keystr, int local)
     qe_unregister_binding1(keys, nb_keys, local ? s->mode : NULL);
 }
 
+/*---------------- help ----------------*/
+
+static int qe_list_bindings(buf_t *out, CmdDef *d, ModeDef *mode)
+{
+    char buf[128];
+    KeyDef *kd;
+
+    kd = mode ? mode->first_key : qe_state.first_key;
+    for (; kd != NULL; kd = kd->next) {
+        if (kd->cmd == d) {
+            if (out->pos)
+                buf_puts(out, ", ");
+            buf_puts(out, keys_to_str(buf, sizeof(buf),
+                                      kd->keys, kd->nb_keys));
+        }
+    }
+    return out->pos;
+}
+
+void do_show_bindings(EditState *s, const char *cmd_name)
+{
+    char buf[256];
+    buf_t out;
+    CmdDef *d;
+    
+    if ((d = qe_find_cmd(cmd_name)) == NULL) {
+        put_status(s, "No command %s", cmd_name);
+        return;
+    }
+    buf_init(&out, buf, sizeof(buf));
+
+    qe_list_bindings(&out, d, s->mode);
+    qe_list_bindings(&out, d, NULL);
+
+    if (out.pos) {
+        put_status(s, "%s is bound to %s", cmd_name, out.buf);
+    } else {
+        put_status(s, "%s is not bound to any key", cmd_name);
+    }
+}
+
+static void print_bindings(EditBuffer *b, const char *title,
+                           __unused__ int type, ModeDef *mode)
+{
+    char buf[256];
+    buf_t out;
+    CmdDef *d;
+    int gfound;
+
+    gfound = 0;
+    d = qe_state.first_cmd;
+    while (d != NULL) {
+        while (d->name != NULL) {
+            buf_init(&out, buf, sizeof(buf));
+            if (qe_list_bindings(&out, d, mode)) {
+                if (!gfound)
+                    eb_printf(b, "%s:\n\n", title);
+                gfound = 1;
+
+                eb_printf(b, "%24s : %s\n", d->name, out.buf);
+            }
+            d++;
+        }
+        d = d->action.next;
+    }
+}
+
+void do_describe_bindings(EditState *s)
+{
+    EditBuffer *b;
+    char buf[64];
+    int show;
+
+    b = new_help_buffer(&show);
+    if (!b)
+        return;
+    snprintf(buf, sizeof(buf), "%s mode bindings", s->mode->name);
+    print_bindings(b, buf, 0, s->mode);
+
+    print_bindings(b, "\nGlobal bindings", 0, NULL);
+
+    b->flags |= BF_READONLY;
+    if (show) {
+        show_popup(b);
+    }
+}
+
+void do_apropos(EditState *s, const char *str)
+{
+    QEmacsState *qs = s->qe_state;
+    char buf[256];
+    EditBuffer *b;
+    CmdDef *d;
+    VarDef *vp;
+    int found, show;
+
+    b = new_help_buffer(&show);
+    if (!b)
+        return;
+    eb_printf(b, "apropos '%s':\n\n", str);
+
+    found = 0;
+    d = qs->first_cmd;
+    while (d != NULL) {
+        while (d->name != NULL) {
+            if (strstr(d->name, str)) {
+                /* print name and prototype */
+                qe_get_prototype(d, buf, sizeof(buf));
+                eb_printf(b, "command: %s(%s);\n", d->name, buf);
+                /* TODO: print short description */
+                eb_printf(b, "\n");
+                found = 1;
+            }
+            d++;
+        }
+        d = d->action.next;
+    }
+    for (vp = qs->first_variable; vp; vp = vp->next) {
+        if (strstr(vp->name, str)) {
+            /* print class, name and current value */
+            qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
+            eb_printf(b, "%s variable: %s -> %s\n",
+                      var_domain[vp->domain], vp->name, buf);
+            /* TODO: print short description */
+            eb_printf(b, "\n");
+            found = 1;
+        }
+    }
+    if (found) {
+        b->flags |= BF_READONLY;
+        if (show) {
+            show_popup(b);
+        }
+    } else {
+        if (show)
+            eb_free(b);
+        put_status(s, "No apropos matches for `%s'", str);
+    }
+}
+
 static CmdDef extra_commands[] = {
     CMD2( KEY_META('='), KEY_NONE,
           "compare-windows", do_compare_windows, ESi, "ui" )
@@ -413,6 +553,15 @@ static CmdDef extra_commands[] = {
           "local-unset-key", do_unset_key, ESsi, 1,
           "s{Unset key locally: }[key]"
 	  "v")
+
+    CMD2( KEY_CTRLH('a'), KEY_NONE,
+          "apropos", do_apropos, ESs,
+	  "s{Apropos: }|apropos|")
+    CMD0( KEY_CTRLH('b'), KEY_NONE,
+          "describe-bindings", do_describe_bindings)
+    CMD2( KEY_CTRLH('B'), KEY_NONE,
+          "show-bindings", do_show_bindings, ESs,
+	  "s{Show bindings of command: }[command]|command|")
 
     CMD_DEF_END,
 };

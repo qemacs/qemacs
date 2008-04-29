@@ -275,6 +275,8 @@ int umemcmp(const unsigned int *s1, const unsigned int *s2, int count);
 
 int strsubst(char *buf, int buf_size, const char *from,
              const char *s1, const char *s2);
+int strquote(char *dest, int size, const char *str, int len);
+int strunquote(char *dest, int size, const char *str, int len);
 
 void get_str(const char **pp, char *buf, int buf_size, const char *stop);
 int css_get_enum(const char *str, const char *enum_str);
@@ -1311,6 +1313,7 @@ void mode_completion(CompleteState *cp);
 void qe_register_cmd_table(CmdDef *cmds, ModeDef *m);
 int qe_register_binding(int key, const char *cmd_name, ModeDef *m);
 CmdDef *qe_find_cmd(const char *cmd_name);
+void qe_get_prototype(CmdDef *d, char *buf, int size);
 
 /* text display system */
 
@@ -1703,8 +1706,11 @@ int eb_search(EditBuffer *b, int offset, int dir, int flags,
 int search_abort_func(void *opaque);
 void do_doctor(EditState *s);
 void do_delete_other_windows(EditState *s);
-void do_describe_bindings(EditState *s);
 void do_describe_key_briefly(EditState *s);
+void do_show_bindings(EditState *s, const char *cmd_name);
+void do_apropos(EditState *s, const char *str);
+EditBuffer *new_help_buffer(int *show_ptr);
+void do_describe_bindings(EditState *s);
 void do_help_for_help(EditState *s);
 void qe_event_init(void);
 void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr);

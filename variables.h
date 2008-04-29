@@ -39,6 +39,8 @@ enum QVarDomain {
     VAR_SELF,
 };
 
+extern const char * const var_domain[];
+
 typedef struct VarDef {
     const char *name;
     enum QVarDomain domain : 4;
@@ -74,7 +76,7 @@ VarDef *qe_find_variable(const char *name);
 void qe_complete_variable(CompleteState *cp);
 
 QVarType qe_get_variable(EditState *s, const char *name,
-			 char *buf, int size, int *pnum);
+			 char *buf, int size, int *pnum, int as_source);
 QVarType qe_set_variable(EditState *s, const char *name,
 			 const char *value, int num);
 
