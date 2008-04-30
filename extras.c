@@ -433,10 +433,14 @@ static void print_bindings(EditBuffer *b, const char *title,
         while (d->name != NULL) {
             buf_init(&out, buf, sizeof(buf));
             if (qe_list_bindings(&out, d, mode)) {
-                if (!gfound)
-                    eb_printf(b, "%s:\n\n", title);
-                gfound = 1;
-
+                if (!gfound) {
+                    if (title) {
+                        eb_printf(b, "%s:\n\n", title);
+                    } else {
+                        eb_printf(b, "\n%s mode bindings:\n\n", mode->name);
+                    }
+                    gfound = 1;
+                }
                 eb_printf(b, "%24s : %s\n", d->name, out.buf);
             }
             d++;
@@ -448,15 +452,13 @@ static void print_bindings(EditBuffer *b, const char *title,
 void do_describe_bindings(EditState *s)
 {
     EditBuffer *b;
-    char buf[64];
     int show;
 
     b = new_help_buffer(&show);
     if (!b)
         return;
-    snprintf(buf, sizeof(buf), "%s mode bindings", s->mode->name);
-    print_bindings(b, buf, 0, s->mode);
 
+    print_bindings(b, NULL, 0, s->mode);
     print_bindings(b, "\nGlobal bindings", 0, NULL);
 
     b->flags |= BF_READONLY;
@@ -518,6 +520,59 @@ void do_apropos(EditState *s, const char *str)
     }
 }
 
+extern char **environ;
+
+static void do_about_qemacs(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+    char buf[256];
+    EditBuffer *b;
+    ModeDef *m;
+    CmdDef *d;
+
+    b = eb_scratch("*About QEmacs*", BF_UTF8);
+    eb_printf(b, "\n  %s\n\n%s\n", str_version, str_credits);
+
+    /* list commands */
+    print_bindings(b, NULL, 0, s->mode);
+    print_bindings(b, "\nGlobal bindings", 0, NULL);
+
+    /* other mode bindings */
+    for (m = qs->first_mode; m; m = m->next) {
+        if (m != s->mode)
+            print_bindings(b, NULL, 0, m);
+    }
+
+    /* list commands */
+    eb_printf(b, "\nCommands:\n\n");
+    d = qs->first_cmd;
+    while (d != NULL) {
+        while (d->name != NULL) {
+            qe_get_prototype(d, buf, sizeof(buf));
+            eb_printf(b, "    %s(%s);\n", d->name, buf);
+            d++;
+        }
+        d = d->action.next;
+    }
+
+    qe_list_variables(s, b);
+
+    /* list environment */
+    {
+        char **envp;
+
+        eb_printf(b, "\nEnvironment:\n\n");
+        for (envp = environ; *envp; envp++) {
+            eb_printf(b, "    %s\n", *envp);
+        }
+    }
+    b->offset = 0;
+    b->flags |= BF_READONLY;
+
+    /* Should show window caption "About QEmacs" */
+    show_popup(b);
+}
+
 static CmdDef extra_commands[] = {
     CMD2( KEY_META('='), KEY_NONE,
           "compare-windows", do_compare_windows, ESi, "ui" )
@@ -554,6 +609,8 @@ static CmdDef extra_commands[] = {
           "s{Unset key locally: }[key]"
 	  "v")
 
+    CMD0( KEY_CTRLH('?'), KEY_F1,
+          "about-qemacs", do_about_qemacs)
     CMD2( KEY_CTRLH('a'), KEY_NONE,
           "apropos", do_apropos, ESs,
 	  "s{Apropos: }|apropos|")

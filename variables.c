@@ -306,13 +306,31 @@ void qe_list_variables(EditState *s, EditBuffer *b)
 {
     QEmacsState *qs = s->qe_state;
     char buf[MAX_FILENAME_SIZE];
+    char typebuf[32];
+    const char *type;
     const VarDef *vp;
 
     eb_printf(b, "\n  variables:\n\n");
     for (vp = qs->first_variable; vp; vp = vp->next) {
+        switch (vp->type) {
+        case VAR_NUMBER:
+            type = "int";
+            break;
+        case VAR_STRING:
+            type = "string";
+            break;
+        case VAR_CHARS:
+            type = typebuf;
+            snprintf(typebuf, sizeof(typebuf), "char[%d]", vp->size);
+            break;
+        default:
+            type = "var";
+            break;
+        }
         qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
-        eb_printf(b, "    D%d T%d %s  %-14s  '%s'\n",
-                  vp->domain, vp->type, vp->rw ? "rw" : "ro",
+        eb_printf(b, "    %s %s %s%s -> %s\n",
+                  var_domain[vp->domain], type,
+                  vp->rw ? "" : "read-only ",
                   vp->name, buf);
     }
 }
