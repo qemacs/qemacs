@@ -903,7 +903,7 @@ void eb_set_charset(EditBuffer *b, QECharset *charset)
 /* XXX: change API to go faster */
 int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
 {
-    u8 buf[MAX_CHAR_BYTES], *p;
+    u8 buf[MAX_CHAR_BYTES];
     int ch;
 
     if (offset >= b->total_size) {
@@ -916,10 +916,9 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
         offset++;
         if (ch == ESCAPE_CHAR) {
             eb_read(b, offset, buf + 1, MAX_CHAR_BYTES - 1);
-            p = buf;
-            ch = b->charset_state.decode_func(&b->charset_state,
-                                              (const u8 **)&p);
-            offset += (p - buf) - 1;
+            b->charset_state.p = buf;
+            ch = b->charset_state.decode_func(&b->charset_state);
+            offset += (b->charset_state.p - buf) - 1;
         }
     }
     *next_ptr = offset;
@@ -958,8 +957,8 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
             ch = utf8_decode((const char **)(void *)&q);
         } else {
             /* CG: this only works for stateless charsets */
-            ch = b->charset_state.decode_func(&b->charset_state,
-                                              (const u8 **)&q);
+            b->charset_state.p = q;
+            ch = b->charset_state.decode_func(&b->charset_state);
         }
     }
  the_end:

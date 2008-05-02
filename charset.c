@@ -230,9 +230,9 @@ static void decode_utf8_init(CharsetDecodeState *s)
     s->table = table_utf8;
 }
 
-static int decode_utf8_func(__unused__ CharsetDecodeState *s, const u8 **pp)
+static int decode_utf8_func(CharsetDecodeState *s)
 {
-    return utf8_decode((const char **)(void *)pp);
+    return utf8_decode((const char **)(void *)&s->p);
 }
 
 static u8 *encode_utf8(__unused__ QECharset *charset, u8 *q, int c)
@@ -331,15 +331,13 @@ static void decode_ucs_init(CharsetDecodeState *s)
     s->table = table_none;
 }
 
-static int decode_ucs2le(__unused__ CharsetDecodeState *s, const u8 **pp)
+static int decode_ucs2le(CharsetDecodeState *s)
 {
     const u8 *p;
-    int c;
 
-    p = *pp;
-    c = p[0] + (p[1] << 8);
-    *pp = p + 2;
-    return c;
+    p = s->p;
+    s->p += 2;
+    return p[0] + (p[1] << 8);
 }
 
 static u8 *encode_ucs2le(__unused__ QECharset *charset, u8 *p, int c)
@@ -401,15 +399,13 @@ static int charset_goto_line_ucs2(QECharset *charset, const u8 *buf, int size,
     return (u8 *)lp - buf;
 }
 
-static int decode_ucs2be(__unused__ CharsetDecodeState *s, const u8 **pp)
+static int decode_ucs2be(CharsetDecodeState *s)
 {
     const u8 *p;
-    int c;
 
-    p = *pp;
-    c = p[1] + (p[0] << 8);
-    *pp = p + 2;
-    return c;
+    p = s->p;
+    s->p += 2;
+    return p[1] + (p[0] << 8);
 }
 
 static u8 *encode_ucs2be(__unused__ QECharset *charset, u8 *p, int c)
@@ -419,12 +415,12 @@ static u8 *encode_ucs2be(__unused__ QECharset *charset, u8 *p, int c)
     return p + 2;
 }
 
-static int charset_get_chars_ucs2(QECharset *charset, const u8 *buf, int size)
+static int charset_get_chars_ucs2(__unused__ QECharset *charset, const u8 *buf, int size)
 {
     return size >> 1;
 }
 
-static int charset_goto_char_ucs2(QECharset *charset, const u8 *buf, int size, int pos)
+static int charset_goto_char_ucs2(__unused__ QECharset *charset, const u8 *buf, int size, int pos)
 {
     return min(pos << 1, size);
 }
@@ -455,15 +451,13 @@ QECharset charset_ucs2be = {
     2, 0, 0, 10, 0, 0, NULL, NULL,
 };
 
-static int decode_ucs4le(__unused__ CharsetDecodeState *s, const u8 **pp)
+static int decode_ucs4le(CharsetDecodeState *s)
 {
     const u8 *p;
-    int c;
 
-    p = *pp;
-    c = p[0] + (p[1] << 8) + (p[2] << 16) + (p[3] << 24);
-    *pp = p + 4;
-    return c;
+    p = s->p;
+    s->p += 4;
+    return p[0] + (p[1] << 8) + (p[2] << 16) + (p[3] << 24);
 }
 
 static u8 *encode_ucs4le(__unused__ QECharset *charset, u8 *p, int c)
@@ -527,15 +521,13 @@ static int charset_goto_line_ucs4(QECharset *charset, const u8 *buf, int size,
     return (u8 *)lp - buf;
 }
 
-static int decode_ucs4be(__unused__ CharsetDecodeState *s, const u8 **pp)
+static int decode_ucs4be(CharsetDecodeState *s)
 {
     const u8 *p;
-    int c;
 
-    p = *pp;
-    c = (p[0] << 24) + (p[1] << 16) + (p[2] << 8) + p[3];
-    *pp = p + 4;
-    return c;
+    p = s->p;
+    s->p += 4;
+    return (p[0] << 24) + (p[1] << 16) + (p[2] << 8) + p[3];
 }
 
 static u8 *encode_ucs4be(__unused__ QECharset *charset, u8 *p, int c)
@@ -547,12 +539,12 @@ static u8 *encode_ucs4be(__unused__ QECharset *charset, u8 *p, int c)
     return p + 4;
 }
 
-static int charset_get_chars_ucs4(QECharset *charset, const u8 *buf, int size)
+static int charset_get_chars_ucs4(__unused__ QECharset *charset, const u8 *buf, int size)
 {
     return size >> 2;
 }
 
-static int charset_goto_char_ucs4(QECharset *charset, const u8 *buf, int size, int pos)
+static int charset_goto_char_ucs4(__unused__ QECharset *charset, const u8 *buf, int size, int pos)
 {
     return min(pos << 2, size);
 }
@@ -766,9 +758,9 @@ void decode_8bit_init(CharsetDecodeState *s)
         *table++ = i;
 }
 
-int decode_8bit(CharsetDecodeState *s, const u8 **pp)
+int decode_8bit(CharsetDecodeState *s)
 {
-    return s->table[*(*pp)++];
+    return s->table[*(s->p)++];
 }
 
 /* not very fast, but not critical yet */

@@ -440,7 +440,7 @@ struct QECharset {
     const char *name;
     const char *aliases;
     void (*decode_init)(CharsetDecodeState *s);
-    int (*decode_func)(CharsetDecodeState *s, const u8 **pp);
+    int (*decode_func)(CharsetDecodeState *s);
     /* return NULL if cannot encode. Currently no state since speed is
        not critical yet */
     u8 *(*encode_func)(QECharset *charset, u8 *buf, int size);
@@ -469,8 +469,9 @@ struct CharsetDecodeState {
     /* 256 ushort table for hyper fast decoding */
     unsigned short *table;
     int char_size;
+    const u8 *p;
     /* slower decode function for complicated cases */
-    int (*decode_func)(CharsetDecodeState *s, const u8 **pp);
+    int (*decode_func)(CharsetDecodeState *s);
     void (*get_pos_func)(CharsetDecodeState *s, const u8 *buf, int size,
                          int *line_ptr, int *col_ptr);
     QECharset *charset;
@@ -503,7 +504,7 @@ int charset_goto_line_8bit(QECharset *charset, const u8 *buf, int size, int nlin
 QECharset *detect_charset(const u8 *buf, int size);
 
 void decode_8bit_init(CharsetDecodeState *s);
-int decode_8bit(CharsetDecodeState *s, const u8 **pp);
+int decode_8bit(CharsetDecodeState *s);
 u8 *encode_8bit(QECharset *charset, u8 *q, int c);
 
 int unicode_to_charset(char *buf, unsigned int c, QECharset *charset);

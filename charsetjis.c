@@ -90,13 +90,12 @@ static void decode_euc_jp_init(CharsetDecodeState *s)
 }
 
 /* XXX: add state */
-static int decode_euc_jp_func(__unused__ CharsetDecodeState *s,
-                              const unsigned char **pp)
+static int decode_euc_jp_func(CharsetDecodeState *s)
 {
     const unsigned char *p;
     int c, c2;
 
-    p = *pp;
+    p = s->p;
     c = *p++;
     if (c == 0x8e) {
         c = *p;
@@ -124,7 +123,7 @@ static int decode_euc_jp_func(__unused__ CharsetDecodeState *s,
             }
         }
     }
-    *pp = p;
+    s->p = p;
     return c;
 }
 
@@ -183,13 +182,12 @@ static void decode_sjis_init(CharsetDecodeState *s)
 }
 
 /* XXX: add state */
-static int decode_sjis_func(__unused__ CharsetDecodeState *s,
-                            const unsigned char **pp)
+static int decode_sjis_func(CharsetDecodeState *s)
 {
     const unsigned char *p;
     int c, c1, c2, adjust, row, col;
 
-    p = *pp;
+    p = s->p;
     c = *p++;
     if (c >= 0xf0) {
         /* user data */
@@ -207,7 +205,7 @@ static int decode_sjis_func(__unused__ CharsetDecodeState *s,
             }
         }
     }
-    *pp = p;
+    s->p = p;
     return c;
 }
 

@@ -1084,8 +1084,9 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
         if (buf) {
             if (buf >= buf_end)
                 break;
-            ch = s->charset_state.decode_func(&s->charset_state,
-                (const u8 **)(void*)&buf);
+            s->charset_state.p = (const u8*)buf;
+            ch = s->charset_state.decode_func(&s->charset_state);
+            buf = (const char *)s->charset_state.p;
         } else {
             if (offset >= offset_end)
                 break;
@@ -1217,6 +1218,7 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
             break;
         }
     }
+    /* CG: incorrect if parsing from buffer */
     return buf - buf_start;
 }
 
