@@ -1084,7 +1084,8 @@ static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
         if (buf) {
             if (buf >= buf_end)
                 break;
-            ch = charset_decode(&s->charset_state, &buf);
+            ch = s->charset_state.decode_func(&s->charset_state,
+                (const u8 **)(void*)&buf);
         } else {
             if (offset >= offset_end)
                 break;

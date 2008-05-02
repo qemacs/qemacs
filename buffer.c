@@ -911,8 +911,7 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
         ch = '\n';
     } else {
         eb_read(b, offset, buf, 1);
-
-        /* we use directly the charset conversion table to go faster */
+        /* we use the charset conversion table directly to go faster */
         ch = b->charset_state.table[buf[0]];
         offset++;
         if (ch == ESCAPE_CHAR) {
@@ -923,16 +922,15 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
             offset += (p - buf) - 1;
         }
     }
-    if (next_ptr)
-        *next_ptr = offset;
+    *next_ptr = offset;
     return ch;
 }
 
-/* XXX: only UTF8 charset is supported */
+/* XXX: only stateless charsets are supported */
 /* XXX: suppress that */
 int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
 {
-    int ch;
+    int ch, char_size;
     u8 buf[MAX_CHAR_BYTES], *q;
 
     if (offset <= 0) {
@@ -941,13 +939,14 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
     } else {
         /* XXX: it cannot be generic here. Should use the
            line/column system to be really generic */
-        offset--;
-        q = buf + sizeof(buf) - 1;
-        eb_read(b, offset, q, 1);
+        char_size = b->charset_state.char_size;
+        offset -= char_size;
+        q = buf + sizeof(buf) - char_size;
+        eb_read(b, offset, q, char_size);
         if (b->charset == &charset_utf8) {
             while (*q >= 0x80 && *q < 0xc0) {
                 if (offset == 0 || q == buf) {
-                    /* error: take only previous char */
+                    /* error: take only previous byte */
                     offset += buf - 1 - q;
                     ch = buf[sizeof(buf) - 1];
                     goto the_end;
@@ -958,70 +957,32 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
             }
             ch = utf8_decode((const char **)(void *)&q);
         } else {
-            ch = *q;
+            /* CG: this only works for stateless charsets */
+            ch = b->charset_state.decode_func(&b->charset_state,
+                                              (const u8 **)&q);
         }
     }
  the_end:
-    if (prev_ptr)
-        *prev_ptr = offset;
+    *prev_ptr = offset;
     return ch;
-}
-
-/* return the number of lines and column position for a buffer */
-static void get_pos(u8 *buf, int size, int *line_ptr, int *col_ptr,
-                    CharsetDecodeState *s)
-{
-    u8 *p, *p1, *lp;
-    int line, len, col, ch;
-
-    QASSERT(size >= 0);
-
-    line = 0;
-    p = buf;
-    lp = p;
-    p1 = p + size;
-    for (;;) {
-        p = memchr(p, '\n', p1 - p);
-        if (!p)
-            break;
-        p++;
-        lp = p;
-        line++;
-    }
-    /* now compute number of chars (XXX: potential problem if out of
-     * block, but for UTF8 it works) */
-    col = 0;
-    while (lp < p1) {
-        ch = s->table[*lp];
-        if (ch == ESCAPE_CHAR) {
-            /* XXX: utf8 only is handled */
-            len = utf8_length[*lp];
-            lp += len;
-        } else {
-            lp++;
-        }
-        col++;
-    }
-    *line_ptr = line;
-    *col_ptr = col;
 }
 
 int eb_goto_pos(EditBuffer *b, int line1, int col1)
 {
     Page *p, *p_end;
-    int line2, col2, line, col, offset, offset1;
-    u8 *q, *q_end;
+    int line2, col2, line, col, offset, offset1, nl;
 
     line = 0;
     col = 0;
     offset = 0;
+
     p = b->page_table;
     p_end = b->page_table + b->nb_pages;
     while (p < p_end) {
         if (!(p->flags & PG_VALID_POS)) {
             p->flags |= PG_VALID_POS;
-            get_pos(p->data, p->size, &p->nb_lines, &p->col,
-                    &b->charset_state);
+            b->charset_state.get_pos_func(&b->charset_state, p->data, p->size,
+                                          &p->nb_lines, &p->col);
         }
         line2 = line + p->nb_lines;
         if (p->nb_lines)
@@ -1029,18 +990,15 @@ int eb_goto_pos(EditBuffer *b, int line1, int col1)
         col2 = col + p->col;
         if (line2 > line1 || (line2 == line1 && col2 >= col1)) {
             /* compute offset */
-            q = p->data;
-            q_end = p->data + p->size;
-            /* seek to the correct line */
-            while (line < line1) {
+            if (line < line1) {
+                /* seek to the correct line */
+                offset += b->charset->goto_line_func(b->charset,
+                    p->data, p->size, line1 - line);
+                line = line1;
                 col = 0;
-                q = memchr(q, '\n', q_end - q);
-                q++;
-                line++;
             }
-            /* test if we want to go after the end of the line */
-            offset += q - p->data;
-            while (col < col1 && eb_nextc(b, offset, &offset1) != '\n') {
+            nl = b->charset->eol_char;
+            while (col < col1 && eb_nextc(b, offset, &offset1) != nl) {
                 col++;
                 offset = offset1;
             }
@@ -1072,8 +1030,8 @@ int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset)
             break;
         if (!(p->flags & PG_VALID_POS)) {
             p->flags |= PG_VALID_POS;
-            get_pos(p->data, p->size, &p->nb_lines, &p->col,
-                    &b->charset_state);
+            b->charset_state.get_pos_func(&b->charset_state, p->data, p->size,
+                                          &p->nb_lines, &p->col);
         }
         line += p->nb_lines;
         if (p->nb_lines)
@@ -1082,11 +1040,13 @@ int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset)
         offset -= p->size;
         p++;
     }
-    get_pos(p->data, offset, &line1, &col1, &b->charset_state);
+    b->charset_state.get_pos_func(&b->charset_state, p->data, offset,
+                                  &line1, &col1);
     line += line1;
     if (line1)
         col = 0;
     col += col1;
+
  the_end:
     *line_ptr = line;
     *col_ptr = col;
@@ -1096,58 +1056,14 @@ int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset)
 /************************************************************/
 /* char offset computation */
 
-static int get_chars(u8 *buf, int size, QECharset *charset)
-{
-    int nb_chars, c;
-    u8 *buf_end, *buf_ptr;
-
-    if (charset != &charset_utf8)
-        return size;
-
-    nb_chars = 0;
-    buf_ptr = buf;
-    buf_end = buf + size;
-    while (buf_ptr < buf_end) {
-        c = *buf_ptr++;
-        if (c < 0x80 || c >= 0xc0)
-            nb_chars++;
-    }
-    return nb_chars;
-}
-
-static int goto_char(u8 *buf, int pos, QECharset *charset)
-{
-    int nb_chars, c;
-    u8 *buf_ptr;
-
-    if (charset != &charset_utf8)
-        return pos;
-
-    nb_chars = 0;
-    buf_ptr = buf;
-    for (;;) {
-        c = *buf_ptr;
-        if (c < 0x80 || c >= 0xc0) {
-            if (nb_chars >= pos)
-                break;
-            nb_chars++;
-        }
-        buf_ptr++;
-    }
-    return buf_ptr - buf;
-}
-
-/* gives the byte offset of a given character, taking the charset into
-   account */
+/* convert a char number into a byte offset according to buffer charset */
 int eb_goto_char(EditBuffer *b, int pos)
 {
     int offset;
     Page *p, *p_end;
 
-    if (b->charset != &charset_utf8) {
-        offset = pos;
-        if (offset > b->total_size)
-            offset = b->total_size;
+    if (!b->charset->variable_size) {
+        offset = min(pos * b->charset->char_size, b->total_size);
     } else {
         offset = 0;
         p = b->page_table;
@@ -1155,10 +1071,10 @@ int eb_goto_char(EditBuffer *b, int pos)
         while (p < p_end) {
             if (!(p->flags & PG_VALID_CHAR)) {
                 p->flags |= PG_VALID_CHAR;
-                p->nb_chars = get_chars(p->data, p->size, b->charset);
+                p->nb_chars = b->charset->get_chars_func(b->charset, p->data, p->size);
             }
             if (pos < p->nb_chars) {
-                offset += goto_char(p->data, pos, b->charset);
+                offset += b->charset->goto_char_func(b->charset, p->data, p->size, pos);
                 break;
             } else {
                 pos -= p->nb_chars;
@@ -1170,43 +1086,32 @@ int eb_goto_char(EditBuffer *b, int pos)
     return offset;
 }
 
-/* get the char offset corresponding to a given byte offset, taking
-   the charset into account */
+/* convert a byte offset into a char number according to buffer charset */
 int eb_get_char_offset(EditBuffer *b, int offset)
 {
     int pos;
     Page *p, *p_end;
 
-    /* if no decoding function in charset, it means it is 8 bit only */
-    if (b->charset_state.decode_func == NULL) {
-        pos = offset;
-        if (pos > b->total_size)
-            pos = b->total_size;
+    if (!b->charset->variable_size) {
+        pos = min(offset, b->total_size) / b->charset->char_size;
     } else {
+        pos = 0;
         p = b->page_table;
         p_end = p + b->nb_pages;
-        pos = 0;
-        for (;;) {
-            if (p >= p_end)
-                goto the_end;
-            if (offset < p->size)
-                break;
+        while (p < p_end) {
             if (!(p->flags & PG_VALID_CHAR)) {
-                p->nb_chars = get_chars(p->data, p->size, b->charset);
                 p->flags |= PG_VALID_CHAR;
+                p->nb_chars = b->charset->get_chars_func(b->charset, p->data, p->size);
             }
-            pos += p->nb_chars;
-            offset -= p->size;
-            p++;
+            if (offset < p->size) {
+                pos += b->charset->get_chars_func(b->charset, p->data, offset);
+                break;
+            } else {
+                pos += p->nb_chars;
+                offset -= p->size;
+                p++;
+            }
         }
-        pos += get_chars(p->data, offset, b->charset);
-        /* Should adjust if offset falls in the middle of a character */
-        //{
-        //    int c = p->data[offset];
-        //    if (c >= 0x80 && c < 0xc0)
-        //        pos--;
-        //}
-    the_end: ;
     }
     return pos;
 }

@@ -387,7 +387,7 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
     /* compute offset */
     eb_get_pos(s->b, &total_lines, &col_num, s->b->total_size);
     if (s->cur_offset == s->b->total_size
-    ||  eb_prevc(s->b, s->b->total_size, NULL) != '\n')
+    ||  eb_prevc(s->b, s->b->total_size, &offset1) != '\n')
         total_lines++;
 
     line_num = total_lines - TTY_YSIZE;

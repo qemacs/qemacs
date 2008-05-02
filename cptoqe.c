@@ -228,8 +228,14 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
     printf("\",\n");
 
     printf("    decode_8bit_init,\n"
-           "    NULL,\n"
+           "    decode_8bit,\n"
            "    encode_8bit,\n"
+           "    charset_get_pos_8bit,\n"
+           "    charset_get_chars_8bit,\n"
+           "    charset_goto_char_8bit,\n"
+           "    charset_goto_line_8bit,\n"
+           "    .char_size = 1,\n"
+           "    .variable_size = 0,\n"
            "    .table_alloc = 1,\n"
            "    .eol_char = %d,\n"
            "    .min_char = %d,\n"

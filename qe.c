@@ -5767,7 +5767,7 @@ int eb_search(EditBuffer *b, int offset, int dir, int flags,
               CSSAbortFunc *abort_func, void *abort_opaque)
 {
     int total_size = b->total_size;
-    int i, c, lower_count, upper_count;
+    int i, c, offset1, lower_count, upper_count;
     u8 ch;
     u8 buf1[1024];
 
@@ -5818,7 +5818,7 @@ int eb_search(EditBuffer *b, int offset, int dir, int flags,
 
         /* search start of word */
         if (flags & SEARCH_FLAG_WORD) {
-            ch = eb_prevc(b, offset, NULL);
+            ch = eb_prevc(b, offset, &offset1);
             if (qe_isword(ch))
                 continue;
         }
@@ -5835,7 +5835,7 @@ int eb_search(EditBuffer *b, int offset, int dir, int flags,
             if (i == size) {
                 /* check end of word */
                 if (flags & SEARCH_FLAG_WORD) {
-                    ch = eb_nextc(b, offset + size, NULL);
+                    ch = eb_nextc(b, offset + size, &offset1);
                     if (qe_isword(ch))
                         break;
                 }

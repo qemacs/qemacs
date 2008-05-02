@@ -51,18 +51,20 @@
 /* make sure that the keyword is not disabled by glibc (TINYC case) */
 #undef __attribute__
 #define __attr_printf(a, b)  __attribute__((format(printf, a, b)))
+#define __attr_nonnull(l)    __attribute__((nonnull l))
 #define __unused__           __attribute__((unused))
 #else
 #ifndef __attribute__
 #define __attribute__(l)
 #endif
 #define __attr_printf(a, b)
+#define __attr_nonnull(l)
 #define __unused__
 #endif
 
 #ifdef __SPARSE__
 #define __bitwise__             __attribute__((bitwise))
-#define force_cast(type, expr)  ((__attribute__((force)) type)(expr))
+#define force_cast(type, expr)  ((__attribute__((force))type)(expr))
 #else
 #define __bitwise__
 #define force_cast(type, expr)  ((type)(expr))
@@ -321,7 +323,7 @@ void free_strings(StringArray *cs);
 /* simple dynamic strings wrappers. The strings are always terminated
    by zero except if they are empty. */
 typedef struct QString {
-    unsigned char *data;
+    u8 *data;
     int len; /* string length excluding trailing '\0' */
 } QString;
 
@@ -334,7 +336,7 @@ static inline void qstrfree(QString *q) {
     qe_free(&q->data);
 }
 
-int qmemcat(QString *q, const unsigned char *data1, int len1);
+int qmemcat(QString *q, const u8 *data1, int len1);
 int qstrcat(QString *q, const char *str);
 int qprintf(QString *q, const char *fmt, ...) __attr_printf(2,3);
 
@@ -431,37 +433,48 @@ static inline int clamp(int a, int b, int c) {
 /* maximum number of bytes for a character in all the supported charsets */
 #define MAX_CHAR_BYTES 6
 
-struct CharsetDecodeState;
+typedef struct CharsetDecodeState CharsetDecodeState;
+typedef struct QECharset QECharset;
 
-typedef struct QECharset {
+struct QECharset {
     const char *name;
     const char *aliases;
-    void (*decode_init)(struct CharsetDecodeState *);
-    int (*decode_func)(struct CharsetDecodeState *,
-                       const unsigned char **);
+    void (*decode_init)(CharsetDecodeState *s);
+    int (*decode_func)(CharsetDecodeState *s, const u8 **pp);
     /* return NULL if cannot encode. Currently no state since speed is
        not critical yet */
-    unsigned char *(*encode_func)(struct QECharset *, unsigned char *, int);
-    u8 table_alloc; /* true if CharsetDecodeState.table must be malloced */
+    u8 *(*encode_func)(QECharset *charset, u8 *buf, int size);
+    void (*get_pos_func)(CharsetDecodeState *s, const u8 *buf, int size,
+                         int *line_ptr, int *col_ptr);
+    int (*get_chars_func)(QECharset *charset, const u8 *buf, int size);
+    int (*goto_char_func)(QECharset *charset, const u8 *buf, int size, int pos);
+    int (*goto_line_func)(QECharset *charset, const u8 *buf, int size, int lines);
+    unsigned int char_size : 3;
+    unsigned int variable_size : 1;
+    unsigned int table_alloc : 1; /* true if CharsetDecodeState.table must be malloced */
     /* private data for some charsets */
     u8 eol_char; /* 0x0A for ASCII, 0x25 for EBCDIC */
     u8 min_char, max_char;
     const unsigned short *private_table;
     struct QECharset *next;
-} QECharset;
+};
 
 extern QECharset *first_charset;
 extern QECharset charset_utf8, charset_8859_1; /* predefined charsets */
 extern QECharset charset_vt100; /* used for the tty output */
+extern QECharset charset_ucs2le, charset_ucs2be;
+extern QECharset charset_ucs4le, charset_ucs4be;
 
-typedef struct CharsetDecodeState {
+struct CharsetDecodeState {
     /* 256 ushort table for hyper fast decoding */
     unsigned short *table;
+    int char_size;
     /* slower decode function for complicated cases */
-    int (*decode_func)(struct CharsetDecodeState *,
-                       const unsigned char **);
+    int (*decode_func)(CharsetDecodeState *s, const u8 **pp);
+    void (*get_pos_func)(CharsetDecodeState *s, const u8 *buf, int size,
+                         int *line_ptr, int *col_ptr);
     QECharset *charset;
-} CharsetDecodeState;
+};
 
 #define INVALID_CHAR 0xfffd
 #define ESCAPE_CHAR  0xffff
@@ -472,38 +485,26 @@ int charset_jis_init(void);
 
 void qe_register_charset(QECharset *charset);
 
+extern unsigned char utf8_length[256];
 int utf8_encode(char *q, int c);
 int utf8_decode(const char **pp);
-extern unsigned char utf8_length[256];
-
-int utf8_to_unicode(unsigned int *dest, int dest_length,
-                    const char *str);
+int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str);
 
 void charset_completion(CompleteState *cp);
 QECharset *find_charset(const char *str);
 void charset_decode_init(CharsetDecodeState *s, QECharset *charset);
 void charset_decode_close(CharsetDecodeState *s);
+void charset_get_pos_8bit(CharsetDecodeState *s, const u8 *buf, int size,
+                          int *line_ptr, int *col_ptr);
+int charset_get_chars_8bit(QECharset *charset, const u8 *buf, int size);
+int charset_goto_char_8bit(QECharset *charset, const u8 *buf, int size, int pos);
+int charset_goto_line_8bit(QECharset *charset, const u8 *buf, int size, int nlines);
 
-static inline int charset_decode(CharsetDecodeState *s, const char **pp)
-{
-    const unsigned char *p;
-    int c;
-    p = *(const unsigned char **)pp;
-    c = *p;
-    c = s->table[c];
-    if (c == ESCAPE_CHAR) {
-        c = s->decode_func(s, (const unsigned char **)pp);
-    } else {
-        p++;
-        *(const unsigned char **)pp = p;
-    }
-    return c;
-}
-
-QECharset *detect_charset(const unsigned char *buf, int size);
+QECharset *detect_charset(const u8 *buf, int size);
 
 void decode_8bit_init(CharsetDecodeState *s);
-unsigned char *encode_8bit(QECharset *charset, unsigned char *q, int c);
+int decode_8bit(CharsetDecodeState *s, const u8 **pp);
+u8 *encode_8bit(QECharset *charset, u8 *q, int c);
 
 int unicode_to_charset(char *buf, unsigned int c, QECharset *charset);
 
@@ -803,7 +804,9 @@ EditBuffer *eb_find_file(const char *filename);
 EditState *eb_find_window(EditBuffer *b, EditState *e);
 
 void eb_set_charset(EditBuffer *b, QECharset *charset);
+__attr_nonnull((3))
 int eb_nextc(EditBuffer *b, int offset, int *next_ptr);
+__attr_nonnull((3))
 int eb_prevc(EditBuffer *b, int offset, int *prev_ptr);
 int eb_goto_pos(EditBuffer *b, int line1, int col1);
 int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset);
