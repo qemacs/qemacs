@@ -582,6 +582,9 @@ void qe_register_charset(QECharset *charset)
 {
     QECharset **pp;
 
+    if (!charset->aliases)
+        charset->aliases = "";
+
     pp = &first_charset;
     while (*pp != NULL) {
         if (*pp == charset)
@@ -626,7 +629,7 @@ QECharset *find_charset(const char *name)
 
     for (charset = first_charset; charset != NULL; charset = charset->next) {
         if (!strxcmp(charset->name, name)
-        ||  strcasefind(charset->aliases, name)) {
+        ||  strxfind(charset->aliases, name)) {
             return charset;
         }
     }

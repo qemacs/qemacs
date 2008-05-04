@@ -257,7 +257,7 @@ static inline int strequal(const char *s1, const char *s2) {
 }
 
 int strfind(const char *list, const char *s);
-int strcasefind(const char *list, const char *s);
+int strxfind(const char *list, const char *s);
 const void *memstr(const void *buf, int size, const char *str);
 
 #define stristart(str, val, ptr)   qe_stristart(str, val, ptr)

@@ -518,13 +518,52 @@ int strfind(const char *list, const char *s)
 }
 #endif
 
-/* find a word in a list using '|' as separator, fold case to lower case. */
-int strcasefind(const char *list, const char *s)
+/* find a word in a list using '|' as separator, ignore case and "-_ ". */
+int strxfind(const char *list, const char *s)
 {
-    char buf[128];
+    const char *p, *q;
+    int c1, c2;
 
-    qe_strtolower(buf, sizeof(buf), s);
-    return strfind(list, buf);
+    q = list;
+    if (!q)
+        return 0;
+
+    if (*s == '\0') {
+        /* special case the empty string: must match || in list */
+        while (*q) {
+            if (q[0] == '|' && q[1] == '|')
+                return 1;
+            q++;
+        }
+        return 0;
+    } else {
+    scan:
+        p = s;
+        for (;;) {
+            do {
+                c1 = qe_toupper((unsigned char)*p++);
+            } while (c1 == '-' || c1 == '_' || c1 == ' ');
+            do {
+                c2 = qe_toupper((unsigned char)*q++);
+            } while (c2 == '-' || c2 == '_' || c2 == ' ');
+            if (c1 == '\0') {
+                if (c2 == '\0' || c2 == '|')
+                    return 1;
+                goto skip;
+            }
+            if (c1 != c2) {
+                for (;;) {
+                    if (c2 == '|')
+                        goto scan;
+                    
+                    if (c2 == '\0')
+                        return 0;
+                skip:
+                    c2 = *q++;
+                }
+            }
+        }
+    }
 }
 
 const void *memstr(const void *buf, int size, const char *str)
@@ -595,12 +634,12 @@ int strxstart(const char *str, const char *val, const char **ptr)
     q = val;
     while (*q != '\0') {
         if (qe_toupper((unsigned char)*p) != qe_toupper((unsigned char)*q)) {
-            if (*p == '-' || *p == '_' || *p == ' ') {
-                p++;
-                continue;
-            }
             if (*q == '-' || *q == '_' || *q == ' ') {
                 q++;
+                continue;
+            }
+            if (*p == '-' || *p == '_' || *p == ' ') {
+                p++;
                 continue;
             }
             return 0;
@@ -631,12 +670,12 @@ int strxcmp(const char *str1, const char *str2)
     for (;;) {
         d = qe_toupper((unsigned char)*p) - qe_toupper((unsigned char)*q);
         if (d) {
-            if (*p == '-' || *p == '_' || *p == ' ') {
-                p++;
-                continue;
-            }
             if (*q == '-' || *q == '_' || *q == ' ') {
                 q++;
+                continue;
+            }
+            if (*p == '-' || *p == '_' || *p == ' ') {
+                p++;
                 continue;
             }
             return d < 0 ? -1 : +1;
