@@ -127,6 +127,10 @@ http://www.unicode.org/Public/MAPPINGS/OBSOLETE/EASTASIA/JIS/
  144386 Aug  1  2001 JIS0212.TXT
  169236 Aug  1  2001 SHIFTJIS.TXT
 
+http://www.unicode.org/Public/MAPPINGS/VENDORS/MICSFT/WINDOWS/
+
+ 295324 Nov 22  2006 CP932.TXT
+
 From yudit-1.6 sources: 
 
   12378 Nov 30  1999 VISCII.TXT  (from yudit-1.6/data/VISCII.txt)
@@ -148,3 +152,10 @@ glibc-2.3.5/iconvdata/cp1125.c
 From yudit-2.8.1 sources: 
 
   11911 Aug 26  2002 TCVN.TXT     (from yudit-2.8.1/mytool/uni/tcvn.txt)
+
+From http://x0213.org/codetable
+
+ 324225 May 13  2006 euc-jis-2004-std.txt
+ 314317 May 22  2006 iso-2022-jp-2004-std.txt
+ 311985 May 22  2006 jisx0213-2004-std.txt
+ 319186 May 13  2006 sjis-0213-2004-std.txt
