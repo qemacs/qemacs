@@ -427,7 +427,7 @@ static int charset_goto_char_ucs2(__unused__ QECharset *charset, const u8 *buf, 
 
 QECharset charset_ucs2le = {
     "ucs2le",
-    "ucs2|utf16|utf16le|utf-16|utf-16le",
+    "utf16le|utf-16le",
     decode_ucs_init,
     decode_ucs2le,
     encode_ucs2le,
@@ -440,7 +440,7 @@ QECharset charset_ucs2le = {
 
 QECharset charset_ucs2be = {
     "ucs2be",
-    "utf16be|utf-16be",
+    "ucs2|utf16|utf-16|utf16be|utf-16be",
     decode_ucs_init,
     decode_ucs2be,
     encode_ucs2be,
@@ -551,7 +551,7 @@ static int charset_goto_char_ucs4(__unused__ QECharset *charset, const u8 *buf, 
 
 QECharset charset_ucs4le = {
     "ucs4le",
-    "ucs4|utf32|utf32le|utf-32|utf-32le",
+    "utf32le|utf-32le",
     decode_ucs_init,
     decode_ucs4le,
     encode_ucs4le,
@@ -564,7 +564,7 @@ QECharset charset_ucs4le = {
 
 QECharset charset_ucs4be = {
     "ucs4be",
-    "utf32be|utf-32be",
+    "ucs4|utf32|utf-32|utf32be|utf-32be",
     decode_ucs_init,
     decode_ucs4be,
     encode_ucs4be,
@@ -689,7 +689,7 @@ QECharset *detect_charset(const u8 *buf, int size)
         return &charset_utf8;
 
     /* Check for zwnbsp BOM: files starting with zero-width
-     * non-breaking space as a byte-order mark (BOM) will be detected
+     * no-break space as a byte-order mark (BOM) will be detected
      * as ucs2 or ucs4 encoded.
      */
     if (size >= 2 && buf[0] == 0xff && buf[1] == 0xfe) {
@@ -723,6 +723,9 @@ QECharset *detect_charset(const u8 *buf, int size)
             return &charset_ucs2be;
     }
 #endif
+    /* Should detect iso-2220-jp upon \033$@ and \033$B, but jis
+     * support is not selected in tiny build
+     */
     /* CG: should use a state variable for default charset */
     return &charset_8859_1;
 }
