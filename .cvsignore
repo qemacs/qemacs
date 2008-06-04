@@ -1,6 +1,6 @@
 config.mak
 config.h
-*.o
+.objs
 *.exe
 qe
 qe_g

@@ -153,6 +153,16 @@ ifdef CONFIG_INIT_CALLS
   TOBJS+= qeend.o
 endif
 
+SRCS:= $(OBJS:.o=.c)
+TSRCS:= $(TOBJS:.o=.c)
+TSRCS:= $(TSRCS:tqe.c=qe.c)
+
+OBJS_DIR:=.objs
+OBJS:=$(addprefix $(OBJS_DIR)/, $(OBJS))
+TOBJS:=$(addprefix $(OBJS_DIR)/, $(TOBJS))
+
+$(shell mkdir -p $(OBJS_DIR))
+
 #
 # Dependencies
 #
@@ -186,20 +196,16 @@ tqe$(EXE): tqe_g$(EXE) Makefile
 	echo `size $@` `wc -c $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
-tqe.o: qe.c qe.h qestyles.h qeconfig.h config.h config.mak Makefile
+$(OBJS_DIR)/tqe.o: qe.c qe.h qestyles.h qeconfig.h config.h config.mak Makefile
 	$(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
 
 ffplay$(EXE): qe$(EXE) Makefile
 	ln -sf $< $@
 
 ifndef CONFIG_INIT_CALLS
-qe.o: allmodules.txt
-tqe.o: basemodules.txt
+$(OBJS_DIR)/qe.o: allmodules.txt
+$(OBJS_DIR)/tqe.o: basemodules.txt
 endif
-
-SRCS:= $(OBJS:.o=.c)
-TSRCS:= $(TOBJS:.o=.c)
-TSRCS:= $(TSRCS:tqe.c=qe.c)
 
 allmodules.txt: $(SRCS) Makefile
 	@echo creating $@
@@ -211,13 +217,13 @@ basemodules.txt: $(TSRCS) Makefile
 	@echo '/* This file was generated automatically */' > $@
 	@grep -h ^qe_module_init $(TSRCS)                   >> $@
 
-cfb.o: cfb.c cfb.h fbfrender.h
-charsetjis.o: charsetjis.c charsetjis.def
-fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-qe.o: qe.c qe.h qfribidi.h qeconfig.h
-qfribidi.o: qfribidi.c qfribidi.h
+$(OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
+$(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
+$(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
+$(OBJS_DIR)/qe.o: qe.c qe.h qfribidi.h qeconfig.h
+$(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 
-%.o: %.c qe.h qestyles.h config.h config.mak Makefile
+$(OBJS_DIR)/%.o: %.c qe.h qestyles.h config.h config.mak Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
 #
@@ -318,6 +324,8 @@ OBJS1=html2png.o util.o cutils.o \
       charset.o charsetmore.o charsetjis.o \
       libfbf.o fbfrender.o cfb.o fbffonts.o
 
+OBJS1:=$(addprefix $(OBJS_DIR)/, $(OBJS1))
+
 html2png$(EXE): $(OBJS1) libqhtml/libqhtml.a
 	$(CC) $(LDFLAGS) -o $@ $(OBJS1) \
                    -L./libqhtml -lqhtml $(HTMLTOPPM_LIBS)
@@ -337,10 +345,11 @@ clean:
 	$(MAKE) -C libqhtml clean
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump   \
            qe tqe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
-           cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9]
+           cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9] \
+	   $(OBJS_DIR)/*.o
 
 distclean: clean
-	rm -f config.h config.mak
+	rm -rf config.h config.mak $(OBJS_DIR)
 
 install: $(TARGETS) qe.1
 	$(INSTALL) -m 755 -d $(DESTDIR)$(prefix)/bin
