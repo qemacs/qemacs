@@ -311,7 +311,7 @@ a @dfn{plugin}. It is a piece of code containing new features for
 qemacs.
 
 Currently, no plugins are compiled in, but you can look at the
-@file{plugin-example/} directory to learn how to make one.
+@file{plugins/} directory to learn how to make one.
 
 Most QEmacs object files can in fact be compiled either as a plugin or
 be statically linked in qemacs. The plugin system is strongly inspirated
@@ -894,7 +894,7 @@ set the output filename (default='a.png')
 
 @section Plugins
 
-You can use the example in @file{plugin-example/} to develop dynamically
+You can use the example in @file{plugins/} to develop dynamically
 linked qemacs plugins (aka modules).
 
 Plugins can add any dynamic resource qemacs supports (modes, key

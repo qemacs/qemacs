@@ -400,7 +400,7 @@ FILES:=COPYING Changelog Makefile README TODO VERSION               \
        unix.c util.c variables.c variables.h video.c win32.c x11.c  \
        xml.c xterm-146-dw-patch
 
-FILES+=plugin-example/Makefile  plugin-example/my_plugin.c
+FILES+=plugins/Makefile  plugins/my_plugin.c
 
 FILES+=tests/HELLO.txt tests/TestPage.txt tests/test-hebrew         \
        tests/test-capital-rtl tests/test-capital-rtl.ref            \
