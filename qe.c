@@ -3881,7 +3881,7 @@ void do_execute_command(EditState *s, const char *cmd, int argval)
     if (d) {
         exec_command(s, d, argval, 0);
     } else {
-        put_status(s, "No match");
+        put_status(s, "No command %s", cmd);
     }
 }
 
@@ -3987,7 +3987,7 @@ void do_call_macro(EditState *s)
 
     if (qs->defining_macro) {
         qs->defining_macro = 0;
-        put_status(s, "Can't execute macro while defining one");
+        put_status(s, "Cannot execute macro while defining one");
         return;
     }
 
@@ -4554,6 +4554,7 @@ EditState *edit_new(EditBuffer *b,
     compute_client_area(s);
     /* link window in window list */
     s->next_window = qs->first_window;
+    /* CG: should append window to end of list, esp. for popups */
     qs->first_window = s;
     if (!qs->active_window)
         qs->active_window = s;
@@ -5384,7 +5385,7 @@ static ModeDef *probe_mode(EditState *s, int mode, const uint8_t *buf,
 static void do_load1(EditState *s, const char *filename1,
                      int kill_buffer, int load_resource)
 {
-    u8 buf[1025];
+    u8 buf[4097];
     char filename[MAX_FILENAME_SIZE];
     int mode, buf_size;
     ModeDef *selected_mode;
