@@ -102,7 +102,7 @@ void *qe_realloc(void *pp, size_t size);
 #define qe_malloc_hack(t, n)    ((t *)qe_malloc_bytes(sizeof(t) + (n)))
 #define qe_mallocz_hack(t, n)   ((t *)qe_mallocz_bytes(sizeof(t) + (n)))
 #define qe_free(pp)      \
-    do { void *_ = (pp); free(*(void **)_); *(void **)_ = NULL; } while (0)
+    do if (sizeof(**(pp)) >= 0) { void *_ = (pp); free(*(void **)_); *(void **)_ = NULL; } while (0)
 
 /************************/
 

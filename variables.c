@@ -202,6 +202,9 @@ QVarType qe_get_variable(EditState *s, const char *name,
  * assumed to be allocated with qe_malloc
  */
 extern u8 end[];
+#ifdef CONFIG_DARWIN
+u8 end[8];  /* FIXME: not really at the end, but beyond the bss, should remove this dependency */
+#endif
 
 QVarType qe_set_variable(EditState *s, const char *name,
                          const char *value, int num)
@@ -263,7 +266,7 @@ QVarType qe_set_variable(EditState *s, const char *name,
             }
             pstr = (char **)ptr;
             if ((u8 *)*pstr > end)
-                qe_free(*pstr);
+                qe_free(pstr);
             *pstr = qe_strdup(value);
             break;
         case VAR_CHARS:

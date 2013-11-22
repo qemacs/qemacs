@@ -358,7 +358,7 @@ static int qe_unregister_binding1(unsigned int *keys, int nb_keys, ModeDef *m)
         {
             p = *lp;
             *lp = (*lp)->next;
-            qe_free(p);
+            qe_free(&p);
             return 1;
         }
         lp = &(*lp)->next;
