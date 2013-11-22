@@ -2,6 +2,7 @@ config.mak
 config.h
 .objs
 *.exe
+*.dSYM
 qe
 qe_g
 tqe
