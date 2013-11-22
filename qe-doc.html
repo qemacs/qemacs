@@ -1,14 +1,13 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html401/loose.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
-<!-- Created on April, 4 2008 by texi2html 1.78 -->
-<!--
-Written by: Lionel Cons <Lionel.Cons@cern.ch> (original author)
+<!-- Created on November 22, 2013 by texi2html 5.0
+texi2html was written by: 
+            Lionel Cons <Lionel.Cons@cern.ch> (original author)
             Karl Berry  <karl@freefriends.org>
             Olaf Bachmann <obachman@mathematik.uni-kl.de>
             and many others.
 Maintained by: Many creative people.
 Send bugs and suggestions to <texi2html-bug@nongnu.org>
-
 -->
 <head>
 <title>QEmacs Documentation</title>
@@ -17,11 +16,18 @@ Send bugs and suggestions to <texi2html-bug@nongnu.org>
 <meta name="keywords" content="QEmacs Documentation">
 <meta name="resource-type" content="document">
 <meta name="distribution" content="global">
-<meta name="Generator" content="texi2html 1.78">
+<meta name="Generator" content="texi2html 5.0">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <style type="text/css">
 <!--
 a.summary-letter {text-decoration: none}
+blockquote.smallquotation {font-size: smaller}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+div.lisp {margin-left: 3.2em}
+div.smalldisplay {margin-left: 3.2em}
+div.smallexample {margin-left: 3.2em}
+div.smalllisp {margin-left: 3.2em}
 pre.display {font-family: serif}
 pre.format {font-family: serif}
 pre.menu-comment {font-family: serif}
@@ -30,9 +36,11 @@ pre.smalldisplay {font-family: serif; font-size: smaller}
 pre.smallexample {font-size: smaller}
 pre.smallformat {font-family: serif; font-size: smaller}
 pre.smalllisp {font-size: smaller}
-span.roman {font-family:serif; font-weight:normal;}
-span.sansserif {font-family:sans-serif; font-weight:normal;}
-ul.toc {list-style: none}
+span.nocodebreak {white-space:pre}
+span.nolinebreak {white-space:pre}
+span.roman {font-family:serif; font-weight:normal}
+span.sansserif {font-family:sans-serif; font-weight:normal}
+ul.no-bullet {list-style: none}
 -->
 </style>
 
@@ -41,27 +49,38 @@ ul.toc {list-style: none}
 
 <body lang="en" bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#800080" alink="#FF0000">
 
-<a name="SEC1"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[ &lt; ]</td>
-<td valign="middle" align="left">[<a href="#SEC2" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[ &lt;&lt; ]</td>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<h1 class="titlefont">QEmacs Documentation</h1>
+<br>
+<br>
+<br>
+<hr>
+<a name="Introduction"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[ &lt;&lt; ]</td>
+<td valign="middle" align="left">[ &lt; ]</td>
 <td valign="middle" align="left">[ Up ]</td>
-<td valign="middle" align="left">[<a href="#SEC2" title="Next chapter"> &gt;&gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Invocation" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Invocation" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h1 class="chapter"> 1. Introduction </h1>
+<h1 class="chapter">1 Introduction</h1>
 <p>QEmacs (for Quick Emacs) is a very small but powerful
 UNIX editor. It has features that even big editors lack :
-</p><ul class="toc">
+</p><ul>
 <li> Full screen editor with an Emacs look and feel with all Emacs common
   features: multi-buffer, multi-window, command mode, numeric
   argument, keyboard macros, config file with C like syntax, minibuffer
@@ -105,99 +124,98 @@ rendering on VT100 terminals.
 
 </li></ul>
 
-<hr size="6">
-<a name="SEC2"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC1" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Invocation"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Introduction" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[ Up ]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h1 class="chapter"> 2. Invocation </h1>
+<h1 class="chapter">2 Invocation</h1>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">usage: qe [-h] [-nw] [-display display] [-geometry WxH]
+<div class="example">
+<pre class="example">usage: qe [-h] [-nw] [-display display] [-geometry WxH]
           [-fs ptsize] [filename...]
-</pre></td></tr></table>
+</pre></div>
 
 <dl compact="compact">
-<dt> &lsquo;<samp>-h</samp>&rsquo;</dt>
+<dt>&lsquo;<samp>-h</samp>&rsquo;</dt>
 <dd><p>show help
 </p>
 </dd>
-<dt> &lsquo;<samp>-nw</samp>&rsquo;</dt>
+<dt>&lsquo;<samp>-nw</samp>&rsquo;</dt>
 <dd><p>force tty terminal usage
 </p>
 </dd>
-<dt> &lsquo;<samp>-display display</samp>&rsquo;</dt>
-<dd><p>set X11 display to 'display'
+<dt>&lsquo;<samp>-display display</samp>&rsquo;</dt>
+<dd><p>set X11 display to &rsquo;display&rsquo;
 </p>
 </dd>
-<dt> &lsquo;<samp>-geometry WxH</samp>&rsquo;</dt>
+<dt>&lsquo;<samp>-geometry WxH</samp>&rsquo;</dt>
 <dd><p>set X11 display size
 </p>
 </dd>
-<dt> &lsquo;<samp>-fs ptsize</samp>&rsquo;</dt>
+<dt>&lsquo;<samp>-fs ptsize</samp>&rsquo;</dt>
 <dd><p>set default font size
 </p>
 </dd>
 </dl>
 
 <p>When invoked as
-</p><table><tr><td>&nbsp;</td><td><pre class="example">usage: ffplay
-</pre></td></tr></table>
+</p><div class="example">
+<pre class="example">usage: ffplay
+</pre></div>
 
 <p>QEmacs goes to <code>dired</code> mode automatically so that you can browse your
 files easily (same as <kbd>C-x C-d</kbd> key).
 </p>
-<hr size="6">
-<a name="SEC3"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC2" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC4" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC2" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Common-editing-commands"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Invocation" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Invocation" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[ Up ]</td>
+<td valign="middle" align="left">[<a href="#Concepts" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h1 class="chapter"> 3. Common editing commands </h1>
+<h1 class="chapter">3 Common editing commands</h1>
 
-<hr size="6">
-<a name="SEC4"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC3" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC5" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Concepts"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Help-1" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.1 Concepts </h2>
+<h2 class="section">3.1 Concepts</h2>
 
 <p>QEmacs store file content in <em>buffers</em>. Buffers can be seen as big
 arrays of bytes.
@@ -218,55 +236,55 @@ optional number is used to give a numeric argument to the commands which
 can handle them. If the command cannot handle a numerical argument, it
 is simply repeated <code>N</code> times.
 </p>
-<hr size="6">
-<a name="SEC5"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC4" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC6" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Help-1"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Concepts" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Simple-commands" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.2 Help </h2>
+<h2 class="section">3.2 Help</h2>
 
 <p>You can press <kbd>C-h b</kbd> to have the list of all the currently active
 bindings, including the ones of the current editing mode.
 </p>
-<table><tr><td>&nbsp;</td><td><pre class="example">C-h C-h, F1             : help-for-help
+<div class="example">
+<pre class="example">C-h C-h, F1             : help-for-help
 C-h b                   : describe-bindings
 C-h c                   : describe-key-briefly
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC6"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC5" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC7" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Simple-commands"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Help-1" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Region-handling_002c-kill-commands" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.3 Simple commands </h2>
+<h2 class="section">3.3 Simple commands</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">default                 : self-insert-command
+<div class="example">
+<pre class="example">default                 : self-insert-command
 M-#                     : insert-char
 C-p, up                 : previous-line
 C-n, down               : next-line
@@ -289,29 +307,29 @@ C-i                     : tabulate
 C-q                     : quoted-insert
 RET                     : newline
 C-o                     : open-line
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC7"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC6" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC8" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Region-handling_002c-kill-commands"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Simple-commands" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Buffer-and-file-handling" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.4 Region handling, kill commands </h2>
+<h2 class="section">3.4 Region handling, kill commands</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">C-space                 : set-mark-command
+<div class="example">
+<pre class="example">C-space                 : set-mark-command
 C-x C-x                 : exchange-point-and-mark
 C-x h                   : mark-whole-buffer
 M-C-w                   : append-next-kill
@@ -320,29 +338,29 @@ C-w                     : kill-region
 M-w                     : copy-region
 C-y                     : yank
 M-y                     : yank-pop
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC8"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC7" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC9" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Buffer-and-file-handling"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Region-handling_002c-kill-commands" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Search-and-replace" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.5 Buffer and file handling </h2>
+<h2 class="section">3.5 Buffer and file handling</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">C-x C-f                 : find-file
+<div class="example">
+<pre class="example">C-x C-f                 : find-file
 C-x C-v                 : find-alternate-file
 C-x i                   : insert-file
 C-x C-s                 : save-buffer
@@ -353,113 +371,113 @@ C-x k                   : kill-buffer
 C-x C-b                 : list-buffers
 C-x C-q                 : toggle-read-only
 M-~                     : not-modified
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC9"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC8" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC10" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Search-and-replace"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Buffer-and-file-handling" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Paragraph-_002f-case-handling" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.6 Search and replace </h2>
+<h2 class="section">3.6 Search and replace</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">C-s                     : isearch-backward
+<div class="example">
+<pre class="example">C-s                     : isearch-backward
 C-r                     : isearch-forward
 M-%                     : query-replace
 M-r                     : replace-string
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC10"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC9" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC11" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Paragraph-_002f-case-handling"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Search-and-replace" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Command-handling" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.7 Paragraph / case handling </h2>
+<h2 class="section">3.7 Paragraph / case handling</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">M-{                     : backward-paragraph
+<div class="example">
+<pre class="example">M-{                     : backward-paragraph
 M-}                     : forward-paragraph
 M-q                     : fill-paragraph
 M-l                     : downcase-word
 M-u                     : upcase-word
 C-x C-l                 : downcase-region
 C-x C-u                 : upcase-region
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC11"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC10" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC12" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Command-handling"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Paragraph-_002f-case-handling" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Window-handling" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.8 Command handling </h2>
+<h2 class="section">3.8 Command handling</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">M-x                     : execute-command
+<div class="example">
+<pre class="example">M-x                     : execute-command
 C-u                     : numeric-argument
 C-g                     : abort
 C-x u, C-_              : undo
 C-x (                   : start-kbd-macro
 C-x )                   : end-kbd-macro
 C-x e, C-\              : call-last-kbd-macro
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC12"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC11" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC13" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Window-handling"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Command-handling" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Help" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.9 Window handling </h2>
+<h2 class="section">3.9 Window handling</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">C-x o                   : other-window
+<div class="example">
+<pre class="example">C-x o                   : other-window
 C-x n                   : next-window
 C-x p                   : previous-window
 C-x 0                   : delete-window
@@ -467,106 +485,106 @@ C-x 1                   : delete-other-windows
 C-x 2                   : split-window-vertically
 C-x 3                   : split-window-horizontally
 C-x f                   : toggle-full-screen
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC13"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC12" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC14" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Help"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Window-handling" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#International" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.10 Help </h2>
+<h2 class="section">3.10 Help</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">C-h C-h, f1             : help-for-help
+<div class="example">
+<pre class="example">C-h C-h, f1             : help-for-help
 C-h b                   : describe-bindings
 C-h c, C-h k            : describe-key-briefly
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC14"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC13" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC15" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="International"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Help" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Process-control" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.11 International </h2>
+<h2 class="section">3.11 International</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">C-x RET f               : set-buffer-file-coding-system
+<div class="example">
+<pre class="example">C-x RET f               : set-buffer-file-coding-system
 C-x RET b               : toggle-bidir
 C-x RET C-\             : set-input-method
 C-x C-\                 : switch-input-method
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC15"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC14" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC16" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Process-control"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#International" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Miscellaneous" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.12 Process control </h2>
+<h2 class="section">3.12 Process control</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">C-x RET RET             : shell
+<div class="example">
+<pre class="example">C-x RET RET             : shell
 C-x C-e                 : compile
 C-x C-p                 : previous-error
 C-x C-n                 : next-error
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC16"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC15" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Miscellaneous"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Process-control" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Common-editing-commands" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 3.13 Miscellaneous </h2>
+<h2 class="section">3.13 Miscellaneous</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">C-x C-c                 : exit-qemacs
+<div class="example">
+<pre class="example">C-x C-c                 : exit-qemacs
 C-l                     : refresh
 M-g                     : goto-line
 C-x g                   : goto-char
@@ -576,120 +594,116 @@ C-x RET l               : toggle-line-numbers
 C-x RET t               : toggle-truncate-lines
 C-x RET w               : word-wrap
 C-x C-d                 : dired
-</pre></td></tr></table>
+</pre></div>
 
-<hr size="6">
-<a name="SEC17"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC16" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC18" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC3" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Configuration-file-and-resources"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Common-editing-commands" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Miscellaneous" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[ Up ]</td>
+<td valign="middle" align="left">[<a href="#Resource-path" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Internationalization" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h1 class="chapter"> 4. Configuration file and resources </h1>
+<h1 class="chapter">4 Configuration file and resources</h1>
 
-<hr size="6">
-<a name="SEC18"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC17" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC19" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Resource-path"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Internationalization" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 4.1 Resource path </h2>
+<h2 class="section">4.1 Resource path</h2>
 
 <p>All resources and configuration files are looked in the following paths:
 &lsquo;<tt>/usr/share/qe:/usr/local/share/qe:/usr/lib/qe:/usr/local/lib/qe:~/.qe</tt>&rsquo;
 </p>
-<hr size="6">
-<a name="SEC19"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC18" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC20" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Configuration-file"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Resource-path" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Plugins" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Internationalization" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 4.2 Configuration file </h2>
+<h2 class="section">4.2 Configuration file</h2>
 
 <p>QEmacs tries to load a configuration file in &lsquo;<tt>~/.qe/config</tt>&rsquo;. Each
 line of the configuration file is a QEmacs command with a C like syntax
-('-' in command name can be replaced by '_').
+(&rsquo;-&rsquo; in command name can be replaced by &rsquo;_&rsquo;).
 </p>
 <p>Read the example file &lsquo;<tt>config.eg</tt>&rsquo; to have some examples.
 </p>
 <p>The following commands are useful:
 </p>
 <dl compact="compact">
-<dt> <code>global_set_key(key, command)</code></dt>
+<dt><code>global_set_key(key, command)</code></dt>
 <dd><p>Set a global key binding to a command.
 </p>
 </dd>
-<dt> <code>set_display_size(width, height)</code></dt>
+<dt><code>set_display_size(width, height)</code></dt>
 <dd><p>(X11) Set the window size, in character cells.
 </p>
 </dd>
-<dt> <code>set_system_font(family, system_fonts)</code></dt>
+<dt><code>set_system_font(family, system_fonts)</code></dt>
 <dd>
 <p>(X11) Maps a system font to a QEmacs font family. Multiple fonts can be
-given as fallback (See section <a href="#SEC41">Fonts</a>).
+given as fallback (See section <a href="#fonts">Fonts</a>).
 </p>
 </dd>
-<dt> <code>set_style(stylename, css_property, css_value)</code></dt>
+<dt><code>set_style(stylename, css_property, css_value)</code></dt>
 <dd><p>Set a colorization style (see &lsquo;<tt>qestyle.h</tt>&rsquo; and &lsquo;<tt>config.eg</tt>&rsquo; for
 common style names)
 </p>
 </dd>
 </dl>
 
-<hr size="6">
-<a name="SEC20"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC19" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Plugins"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Internationalization" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Internationalization" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 4.3 Plugins </h2>
+<h2 class="section">4.3 Plugins</h2>
 
 <p>Any &lsquo;<tt>.so</tt>&rsquo; file found in the qemacs resource paths is considered as
 a <em>plugin</em>. It is a piece of code containing new features for
@@ -702,45 +716,43 @@ qemacs.
 be statically linked in qemacs. The plugin system is strongly inspirated
 from the Linux Kernel 2.4 module system.
 </p>
-<hr size="6">
-<a name="SEC21"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC20" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC22" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC17" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Internationalization"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Configuration-file-and-resources" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Plugins" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[ Up ]</td>
+<td valign="middle" align="left">[<a href="#Charsets" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h1 class="chapter"> 5. Internationalization </h1>
+<h1 class="chapter">5 Internationalization</h1>
 
-<hr size="6">
-<a name="SEC22"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC21" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC23" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Charsets"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Internationalization" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Internationalization" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Internationalization" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Input-methods" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 5.1 Charsets </h2>
+<h2 class="section">5.1 Charsets</h2>
 
 <p>QEmacs supports many common charsets including UTF8, shift JIS and EUC-JP. A
 charset can be selected for each buffer with <kbd>C-x RET f</kbd>
@@ -760,81 +772,78 @@ offset.
 <p>The command <code>convert-buffer-file-coding-system</code> can be used to
 convert the buffer <em>content</em> to another charset.
 </p>
-<hr size="6">
-<a name="SEC23"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC22" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC24" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Input-methods"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Internationalization" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Charsets" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Internationalization" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Bidirectional-editing" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 5.2 Input methods </h2>
+<h2 class="section">5.2 Input methods</h2>
 
 <p>The current input method can be changed with <kbd>C-x RET \</kbd>
 (<code>set-input-method</code>). You can switch between this input method and
-the default one with 'C-\'.
+the default one with &rsquo;C-\&rsquo;.
 </p>
 <p>The input methods are currently stored in the resource file &lsquo;<tt>kmaps</tt>&rsquo;.
 They are extracted from the <em>Yudit</em> editor keyboard maps.
 </p>
-<hr size="6">
-<a name="SEC24"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC23" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC25" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Bidirectional-editing"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Internationalization" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Input-methods" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Internationalization" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Unicode-scripts" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 5.3 Bidirectional editing </h2>
+<h2 class="section">5.3 Bidirectional editing</h2>
 
 <p>QEmacs fully supports the Unicode bidi algorithm.
 </p>
 <p>By default, in text editing mode, qemacs is not in bidirectional mode (it
-may change soon). You can use 'C-x RET b' to toogle between bidi and normal
+may change soon). You can use &rsquo;C-x RET b&rsquo; to toogle between bidi and normal
 editing modes.
 </p>
 <p>In HTML editing mode, bidi is always activated and all the CSS2 bidi
 properties are supported.
 </p>
-<hr size="6">
-<a name="SEC25"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC24" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Unicode-scripts"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Internationalization" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Bidirectional-editing" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Internationalization" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 5.4 Unicode scripts </h2>
+<h2 class="section">5.4 Unicode scripts</h2>
 
 <p>Currently, QEmacs fully supports Arabic shapping. Devanagari shaping is on
 the way.
@@ -844,68 +853,65 @@ to handle character modifiers such as accents. It means that even if your
 font does not support the Unicode character modifiers, QEmacs will do its
 best to handle them.
 </p>
-<hr size="6">
-<a name="SEC26"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC25" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC27" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC21" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Editing-Modes"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Internationalization" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Unicode-scripts" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[ Up ]</td>
+<td valign="middle" align="left">[<a href="#C-mode" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h1 class="chapter"> 6. Editing Modes </h1>
+<h1 class="chapter">6 Editing Modes</h1>
 
-<hr size="6">
-<a name="SEC27"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC26" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC28" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="C-mode"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Hexadecimal_002c-ascii-and-unihex-modes" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 6.1 C mode </h2>
+<h2 class="section">6.1 C mode</h2>
 
 <p>This mode is currently activated by &lsquo;<samp>M-x c-mode</samp>&rsquo;. It is
 activated automatically when a C file is loaded.
 </p>
-<hr size="6">
-<a name="SEC28"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC27" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC29" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Hexadecimal_002c-ascii-and-unihex-modes"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#C-mode" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#shell-mode" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 6.2 Hexadecimal, ascii and unihex modes </h2>
+<h2 class="section">6.2 Hexadecimal, ascii and unihex modes</h2>
 
 
 <p>Unlike other editors, QEmacs has powerful hexadecimal editing modes: all
@@ -913,7 +919,7 @@ common commands are working these modes, including the block commands.
 </p>
 <p>The hexadecimal mode (<kbd>M-x hex-mode</kbd>) shows both the hexa decimal
 and ascii (bytes) values. You can toggle between the hexa and ascii columns
-with 'TAB'.
+with &rsquo;TAB&rsquo;.
 </p>
 <p>The ascii mode (<kbd>M-x ascii-mode</kbd>) only shows the ascii column.
 </p>
@@ -921,27 +927,26 @@ with 'TAB'.
 glyph associated to each <em>character</em> of the buffer by using the current
 buffer charset.
 </p>
-<p>You can change the line width in these modes with 'C-left' and 'C-right'.
+<p>You can change the line width in these modes with &rsquo;C-left&rsquo; and &rsquo;C-right&rsquo;.
 </p>
-<hr size="6">
-<a name="SEC29"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC28" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC30" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="shell-mode"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Hexadecimal_002c-ascii-and-unihex-modes" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Dired-mode" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 6.3 shell mode </h2>
+<h2 class="section">6.3 shell mode</h2>
 
 <p>You can activate it with <kbd>M-x shell</kbd>. Unlike other editors, a very
 complete colorized VT100 emulation is done [it means you can launch
@@ -953,72 +958,69 @@ completion and editing functions. By pressing <kbd>C-o</kbd>, you toggle
 between interactive and editing mode. In editing mode, you can editing
 the shell buffer as any other buffer.
 </p>
-<hr size="6">
-<a name="SEC30"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC29" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC31" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Dired-mode"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#shell-mode" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Bufed-mode" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 6.4 Dired mode </h2>
+<h2 class="section">6.4 Dired mode</h2>
 
 <p>You can activate it with <kbd>C-x C-d</kbd>. You can open the selected
 directory with <kbd>RET</kbd> or <kbd>right</kbd>. <kbd>left</kbd> is used to go to the
 parent directory. The current selected is opened in the right window.
 </p>
-<hr size="6">
-<a name="SEC31"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC30" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC32" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Bufed-mode"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Dired-mode" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#XML-mode" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 6.5 Bufed mode </h2>
+<h2 class="section">6.5 Bufed mode</h2>
 
 <p>You can activate it with <kbd>C-x C-b</kbd>. You can select with <kbd>RET</kbd> or
 <kbd>right</kbd> the current buffer.
 </p>
-<hr size="6">
-<a name="SEC32"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC31" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC33" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="XML-mode"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Bufed-mode" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Graphical-HTML2_002fCSS-mode" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 6.6 XML mode </h2>
+<h2 class="section">6.6 XML mode</h2>
 
 <p>This mode is currently activated by <kbd>M-x xml-mode</kbd>. It is activated
 automatically when an XML file is loaded.
@@ -1027,72 +1029,69 @@ automatically when an XML file is loaded.
 mode. Javascript (in SCRIPT tags) is colored as in C mode. CSS Style
 sheets (in STYLE tags) are colorized with a specific color.
 </p>
-<hr size="6">
-<a name="SEC33"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC32" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC34" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Graphical-HTML2_002fCSS-mode"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#XML-mode" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Usage" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 6.7 Graphical HTML2/CSS mode </h2>
+<h2 class="section">6.7 Graphical HTML2/CSS mode</h2>
 
-<hr size="6">
-<a name="SEC34"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC33" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC35" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC33" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Usage"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Graphical-HTML2_002fCSS-mode" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Graphical-HTML2_002fCSS-mode" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Features" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h3 class="subsection"> 6.7.1 Usage </h3>
+<h3 class="subsection">6.7.1 Usage</h3>
 
 <p>This mode is currently activated by <kbd>M-x html-mode</kbd>. It is
 activated automatically when an HTML file is loaded.
 </p>
-<hr size="6">
-<a name="SEC35"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC34" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC36" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC33" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Features"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Usage" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Graphical-HTML2_002fCSS-mode" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Known-limitations" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h3 class="subsection"> 6.7.2 Features </h3>
+<h3 class="subsection">6.7.2 Features</h3>
 
 <p>The XML/HTML/CSS2 renderer has the following features:
-</p><ul class="toc">
-<li> The parse errors are written in buffer '*xml-error*'.
+</p><ul>
+<li> The parse errors are written in buffer &rsquo;*xml-error*&rsquo;.
 </li><li> Strict XML parser or relaxed mode for HTML pages.
 </li><li> Letter case can be ignored or strictly respected.
 </li><li> Integrated HTML to CSS2 converter so that the renderer do not
@@ -1100,66 +1099,64 @@ activated automatically when an HTML file is loaded.
 </li><li> Quite complete CSS2 support (including generated content and
      counters).
 </li><li> Full Bidirectional Unicode support.
-</li><li> Table support with both 'fixed' and 'auto' layout algorithms.
-</li><li> 'tty' and 'screen' CSS2 medias are supported.
+</li><li> Table support with both &rsquo;fixed&rsquo; and &rsquo;auto&rsquo; layout algorithms.
+</li><li> &rsquo;tty&rsquo; and &rsquo;screen&rsquo; CSS2 medias are supported.
 </li></ul>
 
-<hr size="6">
-<a name="SEC36"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC35" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC37" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC33" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Known-limitations"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Features" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Graphical-HTML2_002fCSS-mode" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#CSS-property-support" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h3 class="subsection"> 6.7.3 Known limitations </h3>
+<h3 class="subsection">6.7.3 Known limitations</h3>
 
-<ul class="toc">
+<ul>
 <li> Cannot load external resources (e.g. style sheets) from other files.
-</li><li> No image handling (only a rectangle with 'ALT' name is drawn).
+</li><li> No image handling (only a rectangle with &rsquo;ALT&rsquo; name is drawn).
 </li><li> No javascript.
 </li><li> No frames.
 </li></ul>
 
-<hr size="6">
-<a name="SEC37"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC36" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC38" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC33" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="CSS-property-support"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Known-limitations" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Graphical-HTML2_002fCSS-mode" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Graphical-DocBook-mode" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h3 class="subsection"> 6.7.4 CSS property support </h3>
+<h3 class="subsection">6.7.4 CSS property support</h3>
 
 <p>The following properties are partially (see comments) or totally supported:
 </p>
-<ul class="toc">
-<li> display: The value 'inline-block' is a QEmacs extension.
+<ul>
+<li> display: The value &rsquo;inline-block&rsquo; is a QEmacs extension.
 </li><li> color
 
 </li><li> background-color
 
-</li><li> white-space: The value 'prewrap' is a QEmacs extension.
+</li><li> white-space: The value &rsquo;prewrap&rsquo; is a QEmacs extension.
 </li><li> direction
 
 </li><li> float
@@ -1272,7 +1269,7 @@ activated automatically when an HTML file is loaded.
 
 </li><li> column-span: QEmacs extension
 </li><li> row-span: QEmacs extension
-</li><li> content-alt: QEmacs extension. Same behavior as property 'content' but used for images
+</li><li> content-alt: QEmacs extension. Same behavior as property &rsquo;content&rsquo; but used for images
 
 </li><li> list-style-position
 
@@ -1281,7 +1278,7 @@ activated automatically when an HTML file is loaded.
 </li><li> counter-increment
 
 </li><li> bidi-mode: QEmacs extension: use lower/upper case to test bidi algorithm
-</li><li> position: &lsquo;<samp>fixed</samp>&rsquo; is not supported. Only 'block' boxes are positionned
+</li><li> position: &lsquo;<samp>fixed</samp>&rsquo; is not supported. Only &rsquo;block&rsquo; boxes are positionned
 </li><li> top
 
 </li><li> bottom
@@ -1294,7 +1291,7 @@ activated automatically when an HTML file is loaded.
 
 <p>The following properties are completely unsupported:
 </p>
-<ul class="toc">
+<ul>
 <li> background
 
 </li><li> background-attachment
@@ -1409,48 +1406,46 @@ activated automatically when an HTML file is loaded.
 
 </li></ul>
 
-<hr size="6">
-<a name="SEC38"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC37" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC39" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Graphical-DocBook-mode"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#CSS-property-support" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Image-mode" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 6.8 Graphical DocBook mode </h2>
+<h2 class="section">6.8 Graphical DocBook mode</h2>
 
 <p>This mode simply uses a different default style sheet from the HTML/CSS2
 mode. It is activated by &lsquo;<samp>M-x docbook-mode</samp>&rsquo;.
 </p>
-<hr size="6">
-<a name="SEC39"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC38" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC40" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Image-mode"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Graphical-DocBook-mode" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Audio_002fVideo-mode" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 6.9 Image mode </h2>
+<h2 class="section">6.9 Image mode</h2>
 
 <p>When compiling qemacs with FFmpeg support (<a href="http://ffmpeg.org">http://ffmpeg.org</a>),
 images can be viewed. The current implementation handles PNM, PAM, PNG,
@@ -1460,18 +1455,18 @@ data). <kbd>C-x C-d</kbd> can be used to have an interactive file viewer.
 <p>Available commands:
 </p>
 <dl compact="compact">
-<dt> <kbd>t</kbd></dt>
+<dt><kbd>t</kbd></dt>
 <dd><p>(&lsquo;<samp>M-x image-rotate</samp>&rsquo;) Rotate right image by 90 degrees.
 </p></dd>
-<dt> <kbd>f</kbd></dt>
+<dt><kbd>f</kbd></dt>
 <dd><p>(&lsquo;<samp>M-x toggle-full-screen</samp>&rsquo;) Toggle full screen mode
 </p></dd>
-<dt> <kbd>c</kbd></dt>
+<dt><kbd>c</kbd></dt>
 <dd><p>(&lsquo;<samp>M-x image-convert</samp>&rsquo;) Change the pixel format of the image (press tab
 to have a complete list). The data loss implied by the pixel format
 change is displayed.
 </p></dd>
-<dt> <kbd>b</kbd></dt>
+<dt><kbd>b</kbd></dt>
 <dd><p>(&lsquo;<samp>M-x image-set-background-color</samp>&rsquo;) Set the image background
 color. The background is only visible if the image contains transparent
 pixels. The &lsquo;<samp>transparent</samp>&rsquo; color displayed a &lsquo;<samp>gimp</samp>&rsquo; like grid.
@@ -1480,7 +1475,7 @@ pixels. The &lsquo;<samp>transparent</samp>&rsquo; color displayed a &lsquo;<sam
 
 <p>Status information:
 </p>
-<ul class="toc">
+<ul>
 <li> The image resolution is displayed as &lsquo;<samp>NxM</samp>&rsquo;.
 
 </li><li> The FFmpeg pixel format is displayed.
@@ -1493,25 +1488,24 @@ pixels.
 
 </li></ul>
 
-<hr size="6">
-<a name="SEC40"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC39" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Audio_002fVideo-mode"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Image-mode" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 6.10 Audio/Video mode </h2>
+<h2 class="section">6.10 Audio/Video mode</h2>
 
 <p>When compiling qemacs with FFmpeg support (<a href="http://ffmpeg.org">http://ffmpeg.org</a>),
 video and audio files can be viewed. The X11 Xvideo extension is used
@@ -1527,78 +1521,78 @@ currently not possible.
 <p>Available commands:
 </p>
 <dl compact="compact">
-<dt> <kbd>SPC</kbd></dt>
-<dt> <kbd>p</kbd></dt>
+<dt><kbd>SPC</kbd></dt>
+<dt><kbd>p</kbd></dt>
 <dd><p>Pause/Resume
 </p></dd>
-<dt> <kbd>f</kbd></dt>
+<dt><kbd>f</kbd></dt>
 <dd><p>(&lsquo;<samp>M-x toggle-full-screen</samp>&rsquo;) Toggle full screen mode
 </p></dd>
-<dt> <kbd>v</kbd></dt>
+<dt><kbd>v</kbd></dt>
 <dd><p>(&lsquo;<samp>M-x av-cycle-video</samp>&rsquo;) Cycle through available video channels.
 </p></dd>
-<dt> <kbd>a</kbd></dt>
+<dt><kbd>a</kbd></dt>
 <dd><p>(&lsquo;<samp>M-x av-cycle-audio</samp>&rsquo;) Cycle through available audio channels.
 </p></dd>
 </dl>
 
-<hr size="6">
+<hr>
 <a name="fonts"></a>
-<a name="SEC41"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC40" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC42" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC26" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC45" title="Next chapter"> &gt;&gt; </a>]</td>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Audio_002fVideo-mode" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[ Up ]</td>
+<td valign="middle" align="left">[<a href="#VT100-display" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Html2png-Tool" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h1 class="chapter"> 7. Fonts </h1>
+<a name="Fonts"></a>
+<h1 class="chapter">7 Fonts</h1>
 
-<hr size="6">
-<a name="SEC42"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC41" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC43" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC45" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="VT100-display"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#fonts" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#X11-display" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Html2png-Tool" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 7.1 VT100 display </h2>
+<h2 class="section">7.1 VT100 display</h2>
 
 <p>In order to display Unicode characters, you must have a recent xterm
 from XFree version greater than 4.0.1.
 </p>
 <p>As a short test, you can launch xterm with the following options to
 select UTF8 charset and a unicode fixed X11 font:
-</p><table><tr><td>&nbsp;</td><td><pre class="example">xterm -u8 -fn -misc-fixed-medium-r-normal--18-120-100-100-c-90-iso10646-1
-</pre></td></tr></table>
+</p><div class="example">
+<pre class="example">xterm -u8 -fn -misc-fixed-medium-r-normal--18-120-100-100-c-90-iso10646-1
+</pre></div>
 
 <p>Then look at the qemacs TestPage in VT100 mode:
-</p><table><tr><td>&nbsp;</td><td><pre class="example">qe -nw tests/TestPage.txt
-</pre></td></tr></table>
+</p><div class="example">
+<pre class="example">qe -nw tests/TestPage.txt
+</pre></div>
 
 <p>If you are using latin scripts, you can use any fixed font in any
 terminal. Otherwise, if you use ideograms or other non latin scripts,
 you must configure your terminal emulator (usually xterm) to accept
-'double width' fonts. It means that some characters, such as ideograms,
+&rsquo;double width&rsquo; fonts. It means that some characters, such as ideograms,
 are meant to occupy two char cells instead of one. QEmacs knows that and
 does the text alyout accordingly.
 </p>
@@ -1606,29 +1600,28 @@ does the text alyout accordingly.
 usually included in the linux distributions. You can find it at
 <a href="http://czyborra.com/unifont/">http://czyborra.com/unifont/</a>.
 </p>
-<hr size="6">
-<a name="SEC43"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC42" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC44" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC45" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="X11-display"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#fonts" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#VT100-display" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Internal-QEmacs-fonts" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Html2png-Tool" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 7.2 X11 display </h2>
+<h2 class="section">7.2 X11 display</h2>
 
 <p>QEmacs knows three basic font families:
 </p>
-<ul class="toc">
+<ul>
 <li> &lsquo;<samp>sans</samp>&rsquo; for sans serif fonts.
 </li><li> &lsquo;<samp>serif</samp>&rsquo; for serif fonts.
 </li><li> &lsquo;<samp>fixed</samp>&rsquo; for fixed or monospace fonts.
@@ -1648,69 +1641,66 @@ the default qemacs mapping. <code>family</code> is <code>sans</code>, <code>seri
 or <code>fixed</code>, and <code>fonts</code> is a comma separated list of system
 fonts which are used as principal font and fallback fonts.
 </p>
-<hr size="6">
-<a name="SEC44"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC43" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC45" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC45" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Internal-QEmacs-fonts"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#fonts" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#X11-display" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Html2png-Tool" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Html2png-Tool" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 7.3 Internal QEmacs fonts </h2>
+<h2 class="section">7.3 Internal QEmacs fonts</h2>
 
 <p>In the tool &lsquo;<samp>html2png</samp>&rsquo;, QEmacs uses internal fonts which are the
 &lsquo;<samp>Times</samp>&rsquo;, &lsquo;<samp>Helvetica</samp>&rsquo; and &lsquo;<samp>Unifont</samp>&rsquo; supplied in X11. They
 are highly compressed in the <em>FBF</em> font format.
 </p>
-<hr size="6">
-<a name="SEC45"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC44" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC46" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC41" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC48" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Html2png-Tool"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#fonts" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Internal-QEmacs-fonts" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[ Up ]</td>
+<td valign="middle" align="left">[<a href="#Introduction-1" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Developper_0027s-Guide" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h1 class="chapter"> 8. Html2png Tool </h1>
+<h1 class="chapter">8 Html2png Tool</h1>
 
-<hr size="6">
-<a name="SEC46"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC45" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC47" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC45" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC45" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC48" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Introduction-1"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Html2png-Tool" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Html2png-Tool" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Html2png-Tool" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Invocation-1" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Developper_0027s-Guide" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 8.1 Introduction </h2>
+<h2 class="section">8.1 Introduction</h2>
 
 <p>Html2png is a standalone HTML/XML/CSS2 renderer based on the QEmacs
 internal renderer. It takes an HTML or XHTML file as input and produce a
@@ -1729,86 +1719,84 @@ Unifont fonts are embedded in the executable. It means that HTML2PNG can
 view documents in any languages, including Arabic, Hebrew, Japanese and
 Hangul.
 </p>
-<hr size="6">
-<a name="SEC47"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC46" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC48" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC45" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC45" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC48" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
+<hr>
+<a name="Invocation-1"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Html2png-Tool" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Introduction-1" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Html2png-Tool" title="Up section"> Up </a>]</td>
+<td valign="middle" align="left">[<a href="#Developper_0027s-Guide" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Developper_0027s-Guide" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left"> &nbsp; </td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 8.2 Invocation </h2>
+<h2 class="section">8.2 Invocation</h2>
 
-<table><tr><td>&nbsp;</td><td><pre class="example">usage: html2png [-h] [-x] [-w width] [-o outfile] [-f charset] infile
-</pre></td></tr></table>
+<div class="example">
+<pre class="example">usage: html2png [-h] [-x] [-w width] [-o outfile] [-f charset] infile
+</pre></div>
 
 <dl compact="compact">
-<dt> &lsquo;<samp>-h</samp>&rsquo;</dt>
+<dt>&lsquo;<samp>-h</samp>&rsquo;</dt>
 <dd><p>display the help
 </p></dd>
-<dt> &lsquo;<samp>-x</samp>&rsquo;</dt>
+<dt>&lsquo;<samp>-x</samp>&rsquo;</dt>
 <dd><p>use strict XML parser (xhtml type parsing)
 </p></dd>
-<dt> &lsquo;<samp>-w width</samp>&rsquo;</dt>
+<dt>&lsquo;<samp>-w width</samp>&rsquo;</dt>
 <dd><p>set the image width (default=640)
 </p></dd>
-<dt> &lsquo;<samp>-f charset</samp>&rsquo;</dt>
-<dd><p>set the default charset (default='8859-1'). Use -f ? to list supported charsets.
+<dt>&lsquo;<samp>-f charset</samp>&rsquo;</dt>
+<dd><p>set the default charset (default=&rsquo;8859-1&rsquo;). Use -f ? to list supported charsets.
 </p></dd>
-<dt> &lsquo;<samp>-o outfile</samp>&rsquo;</dt>
-<dd><p>set the output filename (default='a.png')
+<dt>&lsquo;<samp>-o outfile</samp>&rsquo;</dt>
+<dd><p>set the output filename (default=&rsquo;a.png&rsquo;)
 </p></dd>
 </dl>
 
-<hr size="6">
-<a name="SEC48"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC47" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC49" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC45" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Up section"> Up </a>]</td>
+<hr>
+<a name="Developper_0027s-Guide"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Html2png-Tool" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Invocation-1" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[ Up ]</td>
+<td valign="middle" align="left">[<a href="#Plugins-1" title="Next section in reading order"> &gt; </a>]</td>
 <td valign="middle" align="left">[ &gt;&gt; ]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h1 class="chapter"> 9. Developper's Guide </h1>
+<h1 class="chapter">9 Developper&rsquo;s Guide</h1>
 
-<hr size="6">
-<a name="SEC49"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC48" title="Previous section in reading order"> &lt; </a>]</td>
+<hr>
+<a name="Plugins-1"></a>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Developper_0027s-Guide" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Developper_0027s-Guide" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Developper_0027s-Guide" title="Up section"> Up </a>]</td>
 <td valign="middle" align="left">[ &gt; ]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC48" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#SEC48" title="Up section"> Up </a>]</td>
 <td valign="middle" align="left">[ &gt;&gt; ]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
-<h2 class="section"> 9.1 Plugins </h2>
+<h2 class="section">9.1 Plugins</h2>
 
 <p>You can use the example in &lsquo;<tt>plugins/</tt>&rsquo; to develop dynamically
 linked qemacs plugins (aka modules).
@@ -1820,15 +1808,16 @@ linked plugins.
 </p>
 <hr size="6">
 <a name="SEC_About"></a>
-<table cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#SEC1" title="Cover (top) of document">Top</a>]</td>
+<table class="header" cellpadding="1" cellspacing="1" border="0">
+<tr><td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
 <td valign="middle" align="left">[Contents]</td>
 <td valign="middle" align="left">[Index]</td>
 <td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
 </tr></table>
 <h1>About This Document</h1>
+
 <p>
-  This document was generated by <em>Charlie Gordon</em> on <em>April, 4 2008</em> using <a href="http://www.nongnu.org/texi2html/"><em>texi2html 1.78</em></a>.
+  This document was generated on <i>November 22, 2013</i> using <a href="http://www.nongnu.org/texi2html/"><i>texi2html 5.0</i></a>.
 </p>
 <p>
   The buttons in the navigation panels have the following meaning:
@@ -1841,28 +1830,28 @@ linked plugins.
     <th> From 1.2.3 go to</th>
   </tr>
   <tr>
-    <td align="center"> [ &lt; ] </td>
-    <td align="center">Back</td>
-    <td>Previous section in reading order</td>
-    <td>1.2.2</td>
-  </tr>
-  <tr>
-    <td align="center"> [ &gt; ] </td>
-    <td align="center">Forward</td>
-    <td>Next section in reading order</td>
-    <td>1.2.4</td>
-  </tr>
-  <tr>
     <td align="center"> [ &lt;&lt; ] </td>
     <td align="center">FastBack</td>
     <td>Beginning of this chapter or previous chapter</td>
     <td>1</td>
   </tr>
   <tr>
+    <td align="center"> [ &lt; ] </td>
+    <td align="center">Back</td>
+    <td>Previous section in reading order</td>
+    <td>1.2.2</td>
+  </tr>
+  <tr>
     <td align="center"> [ Up ] </td>
     <td align="center">Up</td>
     <td>Up section</td>
     <td>1.2</td>
+  </tr>
+  <tr>
+    <td align="center"> [ &gt; ] </td>
+    <td align="center">Forward</td>
+    <td>Next section in reading order</td>
+    <td>1.2.4</td>
   </tr>
   <tr>
     <td align="center"> [ &gt;&gt; ] </td>
@@ -1927,10 +1916,10 @@ linked plugins.
   </li>
 </ul>
 
-<hr size="1">
+<hr>
 <p>
  <font size="-1">
-  This document was generated by <em>Charlie Gordon</em> on <em>April, 4 2008</em> using <a href="http://www.nongnu.org/texi2html/"><em>texi2html 1.78</em></a>.
+  This document was generated on <i>November 22, 2013</i> using <a href="http://www.nongnu.org/texi2html/"><i>texi2html 5.0</i></a>.
  </font>
  <br>
 
