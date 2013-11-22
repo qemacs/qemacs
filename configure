@@ -48,8 +48,8 @@ ptsname="yes"
 gprof="no"
 network="yes"
 win32="no"
-darwin="no"
 cygwin="no"
+darwin="no"
 lshared="no"
 extralibs=""
 simpleidct="yes"
@@ -106,6 +106,7 @@ case $targetos in
     cygwin="yes"
     ;;
   Darwin)
+    darwin="yes"
     CFLAGS=""
     initcalls="no"
     unlockio="no"
@@ -496,6 +497,11 @@ fi
 if test "$cygwin" = "yes" ; then
   echo "#define CONFIG_CYGWIN 1" >> $TMPH
   echo "CONFIG_CYGWIN=yes" >> $TMPMAK
+fi
+
+if test "$darwin" = "yes" ; then
+  echo "#define CONFIG_DARWIN 1" >> $TMPH
+  echo "CONFIG_DARWIN=yes" >> $TMPMAK
 fi
 
 if test "$x11" = "yes" ; then
