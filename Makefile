@@ -20,7 +20,7 @@
 include config.mak
 
 ifeq ($(CC),gcc)
-  CFLAGS   := -Wall -g -O2 -funsigned-char
+  CFLAGS   += -Wall -g -O2 -funsigned-char
   # do not warn about zero-length formats.
   CFLAGS   += -Wno-format-zero-length
   LDFLAGS  := -g
@@ -336,7 +336,7 @@ test:
 
 # documentation
 qe-doc.html: qe-doc.texi Makefile
-	LANGUAGE=en_US LC_ALL=en_US.UTF-8 texi2html -monolithic -number $<
+	LANGUAGE=en_US LC_ALL=en_US.UTF-8 texi2html -monolithic $<
 
 #
 # Maintenance targets
