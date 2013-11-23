@@ -157,6 +157,10 @@ if test -f "/opt/X11/include/X11/Xlib.h" ; then
     fi
 fi
 
+if test -z `which texi2html` ; then
+    doc="no"
+fi
+
 for opt do
     value="none"
     case "$opt" in
@@ -373,6 +377,19 @@ if $cc -o $TMPO $TMPC 2> /dev/null ; then
     gcc_major="3"
 fi
 
+# check typeof support
+cat > $TMPC <<EOF
+int main(int argc, char **argv) {
+    typeof(**argv) **a = argv;
+    return *a != 0;
+}
+EOF
+
+has_typeof="no"
+if $cc -o $TMPO $TMPC 2> /dev/null ; then
+    has_typeof="yes"
+fi
+
 if test x"$1" = x"-h" -o x"$1" = x"--help" ; then
     cat << EOF
 
@@ -456,6 +473,10 @@ elif test "$cpu" = "alpha" ; then
 elif test "$cpu" = "powerpc" ; then
   echo "TARGET_ARCH_POWERPC=yes" >> $TMPMAK
   echo "#define ARCH_POWERPC 1" >> $TMPH
+fi
+if test "$has_typeof" = "yes" ; then
+  echo "CONFIG_HAS_TYPEOF=yes" >> $TMPMAK
+  echo "#define CONFIG_HAS_TYPEOF 1" >> $TMPH
 fi
 if test "$bigendian" = "yes" ; then
   echo "WORDS_BIGENDIAN=yes" >> $TMPMAK

@@ -101,8 +101,12 @@ void *qe_realloc(void *pp, size_t size);
 #define qe_mallocz_array(t, n)  ((t *)qe_mallocz_bytes((n) * sizeof(t)))
 #define qe_malloc_hack(t, n)    ((t *)qe_malloc_bytes(sizeof(t) + (n)))
 #define qe_mallocz_hack(t, n)   ((t *)qe_mallocz_bytes(sizeof(t) + (n)))
+#ifdef CONFIG_HAS_TYPEOF
+#define qe_free(pp)      do { typeof(**(pp)) **__ = (pp); free(*__); *__ = NULL; } while (0)
+#else
 #define qe_free(pp)      \
     do if (sizeof(**(pp)) >= 0) { void *_ = (pp); free(*(void **)_); *(void **)_ = NULL; } while (0)
+#endif
 
 /************************/
 
