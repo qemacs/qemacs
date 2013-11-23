@@ -247,8 +247,8 @@ static void latex_cmd_run(void *opaque, char *cmd)
     p = strrchr(func->es->b->filename, '/');
     if (p == func->es->b->filename)
         p++;
-    len = p - func->es->b->filename + 1;
-    pstrcpy(dir, sizeof(dir), func->es->b->filename);
+    len = p - func->es->b->filename;
+    pstrncpy(dir, sizeof(dir), func->es->b->filename, len);
     chdir(dir);
 
     if (func->output_to_buffer) {

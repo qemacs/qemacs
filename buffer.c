@@ -243,7 +243,7 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
                       int size)
 {
     Page *p, *p_start, *q;
-    int size_start, len, n, page_index;
+    int len, n, page_index;
 
     if (dest->flags & BF_READONLY)
         return;
@@ -295,7 +295,6 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
 
     /* compute the number of complete pages to insert */
     p_start = p;
-    size_start = size;
     while (size > 0 && p->size <= size) {
         size -= p->size;
         p++;

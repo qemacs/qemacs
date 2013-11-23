@@ -425,9 +425,11 @@ static void do_c_indent(EditState *s)
                             state = INDENT_FIND_EQ;
                         }
                     } else {
-                        /* XXX: syntax check ? */
-                        stack_ptr--;
-                        goto check_instr;
+			if (stack[--stack_ptr] != '}') {
+			    /* XXX: syntax check ? */
+			    goto check_instr;
+			}
+			goto check_instr;
                     }
                     break;
                 case ')':
@@ -442,8 +444,9 @@ static void do_c_indent(EditState *s)
                         pos = find_pos(s, buf, p - buf) + 1;
                         goto end_parse;
                     } else {
-                        /* XXX: syntax check ? */
-                        stack_ptr--;
+			if (stack[--stack_ptr] != (c == '(' ? ')' : ']')) {
+			    /* XXX: syntax check ? */
+			}
                     }
                     break;
                 case ' ':

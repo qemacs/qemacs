@@ -542,7 +542,7 @@ void do_kill_paragraph(EditState *s, int dir)
 void do_fill_paragraph(EditState *s)
 {
     int par_start, par_end, col;
-    int offset, offset1, n, c, line_count, indent_size;
+    int offset, offset1, n, c, indent_size;
     int chunk_start, word_start, word_size, word_count, space_size;
     unsigned char buf[1];
 
@@ -566,7 +566,6 @@ void do_fill_paragraph(EditState *s)
     col = 0;
     offset = par_start;
     word_count = 0;
-    line_count = 0;
     while (offset < par_end) {
         /* skip spaces */
         chunk_start = offset;
@@ -4964,7 +4963,6 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     static void (*cb)(void *opaque, char *buf);
     static void *opaque;
     char buf[4096], *retstr;
-    int len;
 
     /* if completion is activated, then select current file only if
        the selection is highlighted */
@@ -4987,7 +4985,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
         do_refresh(s);
     }
 
-    len = eb_get_contents(s->b, buf, sizeof(buf));
+    eb_get_contents(s->b, buf, sizeof(buf));
     if (hist && hist->nb_items > 0) {
         /* if null string, do not insert in history */
         hist->nb_items--;
@@ -7110,7 +7108,7 @@ int parse_config_file(EditState *s, const char *filename)
     char line[1024], str[1024];
     char prompt[64], cmd[128], *q, *strp;
     const char *p, *r;
-    int err, line_num;
+    int line_num;
     CmdDef *d;
     int nb_args, c, sep, i, skip;
     CmdArg args[MAX_CMD_ARGS];
@@ -7121,7 +7119,6 @@ int parse_config_file(EditState *s, const char *filename)
         return -1;
     ec = qs->ec;
     skip = 0;
-    err = 0;
     line_num = 0;
     /* Should parse whole config file in a single read, or load it via
      * a buffer */
@@ -7208,7 +7205,6 @@ int parse_config_file(EditState *s, const char *filename)
         /* search for command */
         d = qe_find_cmd(cmd);
         if (!d) {
-            err = -1;
             put_status(s, "Unknown command '%s'", cmd);
             continue;
         }
@@ -7698,7 +7694,10 @@ static void qe_init(void *opaque)
     EditState *s;
     EditBuffer *b;
     QEDisplay *dpy;
-    int i, _optind, is_player;
+    int i, _optind;
+#if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
+    int is_player;
+#endif
 
     qs->ec.function = "qe-init";
     qs->macro_key_index = -1; /* no macro executing */
@@ -7749,6 +7748,7 @@ static void qe_init(void *opaque)
     load_all_modules(qs);
 #endif
 
+#if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
 #if 0
     /* see if invoked as player */
     {
@@ -7763,6 +7763,7 @@ static void qe_init(void *opaque)
 #else
     /* Start in dired mode when invoked with no arguments */
     is_player = 1;
+#endif
 #endif
 
     /* init of the editor state */
