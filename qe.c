@@ -3819,7 +3819,7 @@ static void free_cmd(ExecCmdState *es)
     for (i = 0; i < es->nb_args; i++) {
         switch (es->args_type[i]) {
         case CMD_ARG_STRING:
-            qe_free(&es->args[i].p);
+            qe_free((char **)&es->args[i].p);
             break;
         }
     }
