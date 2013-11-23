@@ -70,6 +70,7 @@ docbook_style.c: docbook.css csstoqe$(EXE)
 	./csstoqe docbook_style < $< > $@
 
 clean:
+	rm -rf *.dSYM
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
           csstoqe html_style.c docbook_style.c \
 	  $(OBJS_DIR)/*.o
