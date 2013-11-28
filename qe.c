@@ -7512,7 +7512,11 @@ void set_user_option(const char *user)
     if (user) {
         /* use ~USER/.qe instead of ~/.qe */
         /* CG: should get user homedir */
+#ifdef CONFIG_DARWIN
+        snprintf(path, sizeof(path), "/Users/%s", user);
+#else
         snprintf(path, sizeof(path), "/home/%s", user);
+#endif
         home_path = path;
     } else {
         home_path = getenv("HOME");

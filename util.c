@@ -258,7 +258,11 @@ void canonicalize_absolute_path(char *buf, int buf_size, const char *path1)
                 }
             } else {
                 /* CG: should get info from getpwnam */
+#ifdef CONFIG_DARWIN
+                pstrcpy(path, sizeof(path), "/Users/");
+#else
                 pstrcpy(path, sizeof(path), "/home/");
+#endif
                 pstrcat(path, sizeof(path), path1 + 1);
                 path1 = path;
             }
