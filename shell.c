@@ -2,7 +2,7 @@
  * Shell mode for QEmacs.
  *
  * Copyright (c) 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2002-2008 Charlie Gordon.
+ * Copyright (c) 2002-2013 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -39,12 +39,13 @@
 /* XXX: bold & italic ? */
 /* XXX: send real cursor position (CSI n) */
 
-static ModeDef shell_mode;
+static ModeDef shell_mode, pager_mode;
 
 #define MAX_ESC_PARAMS 3
 
 enum TTYState {
     TTY_STATE_NORM,
+    TTY_STATE_UTF8,
     TTY_STATE_ESC,
     TTY_STATE_ESC2,
     TTY_STATE_CSI,
@@ -65,6 +66,8 @@ typedef struct ShellState {
     int shifted;
     int cset, charset[2];
     int grab_keys;
+    unsigned char utf8_buf[8];
+    int utf8_len, utf8_pos;
     EditBuffer *b;
     EditBuffer *b_color; /* color buffer, one byte per char */
     int is_shell; /* only used to display final message */
@@ -82,6 +85,11 @@ typedef struct ShellState {
 
 /* move to mode */
 static int shell_launched = 0;
+
+/* CG: these variables should move to mode data */
+static int error_offset = -1;
+static int last_line_num = -1;
+static char last_filename[MAX_FILENAME_SIZE];
 
 #define PTYCHAR1 "pqrstuvwxyzabcde"
 #define PTYCHAR2 "0123456789abcdef"
@@ -174,6 +182,7 @@ static int run_process(const char *path, const char **argv,
         /* open pseudo tty for standard i/o */
         if (is_shell == 2) {
             /* non interactive colored output: input from /dev/null */
+            setenv("LINES", "10000", 1);
             open("/dev/null", O_RDONLY);
             open(tty_name, O_RDWR);
             dup(0);
@@ -787,7 +796,27 @@ static void tty_emulate(ShellState *s, int c)
                     c += 32;
                 }
                 /* write char (should factorize with do_char() code */
-                len = unicode_to_charset(buf1, c, s->b->charset);
+                /* CG: Charset support is inherently broken here because
+                 * bytes are inserted one at a time and charset conversion
+                 * should not be performed between shell output and buffer
+                 * contents. UTF8 is special cased, other charsets need work. 
+                 */
+                /* CG: further improvement direction includes automatic
+                 * conversion from ISO-8859-1 to UTF-8 for invalid UTF-8
+                 * byte sequences.
+                 */
+                if (s->b->charset == &charset_utf8) {
+                    s->utf8_len = utf8_length[c];
+                    if (s->utf8_len > 1) {
+                        s->utf8_buf[0] = c;
+                        s->utf8_pos = 1;
+                        s->state = TTY_STATE_UTF8;
+                        break;
+                    }
+                }
+                //len = unicode_to_charset(buf1, c, s->b->charset);
+                buf1[0] = c;
+                len = 1;
                 c1 = eb_nextc(s->b, s->cur_offset, &offset);
                 /* Should simplify with tty_put_char */
                 if (c1 == '\n') {
@@ -805,6 +834,29 @@ static void tty_emulate(ShellState *s, int c)
                 s->cur_offset += len;
             }
             break;
+        }
+        break;
+    case TTY_STATE_UTF8:
+        s->utf8_buf[s->utf8_pos++] = c;
+        if (s->utf8_pos >= s->utf8_len) {
+            int c1, cur_len, len;
+
+            len = s->utf8_len;
+            c1 = eb_nextc(s->b, s->cur_offset, &offset);
+            if (c1 == '\n') {
+                /* insert */
+                eb_insert(s->b, s->cur_offset, s->utf8_buf, len);
+            } else {
+                cur_len = offset - s->cur_offset;
+                if (cur_len == len) {
+                    eb_write(s->b, s->cur_offset, s->utf8_buf, len);
+                } else {
+                    eb_delete(s->b, s->cur_offset, cur_len);
+                    eb_insert(s->b, s->cur_offset, s->utf8_buf, len);
+                }
+            }
+            s->cur_offset += len;
+            s->state = TTY_STATE_NORM;
         }
         break;
     case TTY_STATE_ESC:
@@ -1194,9 +1246,16 @@ static void shell_read_cb(void *opaque)
     if (qs->trace_buffer)
         eb_trace_bytes(buf, len, EB_TRACE_SHELL);
 
-    for (i = 0; i < len; i++)
-        tty_emulate(s, buf[i]);
+    {
+        /* Suspend BF_READONLY flag to allow shell output to readonly buffer */
+        int save_readonly = s->b->flags & BF_READONLY;
+        s->b->flags &= ~BF_READONLY;
 
+        for (i = 0; i < len; i++)
+            tty_emulate(s, buf[i]);
+
+        s->b->flags |= save_readonly;
+    }
     /* now we do some refresh */
     edit_display(qs);
     dpy_flush(qs->screen);
@@ -1214,7 +1273,7 @@ static void shell_pid_cb(void *opaque, int status)
     if (s->is_shell == 1) {
         snprintf(buf, sizeof(buf), "\nProcess shell finished\n");
     } else
-    if (s->is_shell == 0) {
+    if (s->is_shell == 3) {
         time_t ti;
         char *time_str;
 
@@ -1232,7 +1291,16 @@ static void shell_pid_cb(void *opaque, int status)
                      status, time_str);
         }
     }
-    eb_write(b, b->total_size, buf, strlen(buf));
+    {
+        /* Flush output to buffer, bypassing readonly flag */
+        int save_readonly = s->b->flags & BF_READONLY;
+        s->b->flags &= ~BF_READONLY;
+
+        eb_write(b, b->total_size, buf, strlen(buf));
+
+        s->b->flags |= save_readonly;
+    }
+
     set_pid_handler(s->pid, NULL, NULL);
     s->pid = -1;
     /* no need to leave the pty opened */
@@ -1286,6 +1354,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
 {
     ShellState *s;
     EditBuffer *b, *b_color;
+    const char *lang;
     int rows, cols;
 
     b = b0;
@@ -1294,7 +1363,12 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
     if (!b)
         return NULL;
     eb_set_buffer_name(b, name); /* ensure that the name is unique */
-    eb_set_charset(b, &charset_vt100);
+
+    /* Select shell output buffer encoding from LANG setting */
+    if ((lang = getenv("LANG")) != NULL && strstr(lang, "UTF-8"))
+        eb_set_charset(b, &charset_utf8);
+    else
+        eb_set_charset(b, &charset_vt100);
 
     s = qe_mallocz(ShellState);
     if (!s) {
@@ -1415,9 +1489,9 @@ static void do_man(EditState *s, const char *arg)
     if (!b)
         return;
 
+    b->flags |= BF_READONLY;
     switch_to_buffer(s, b);
-    edit_set_mode(s, &shell_mode, NULL);
-    s->interactive = 0;
+    edit_set_mode(s, &pager_mode, NULL);
 }
 
 static void shell_move_left_right(EditState *e, int dir)
@@ -1461,6 +1535,9 @@ static void shell_scroll_up_down(EditState *e, int dir)
 
 static void shell_move_bol(EditState *e)
 {
+    /* XXX: exit shell interactive mode on home / ^A */
+    e->interactive = 0;
+
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
         tty_write(s, "\001", 1); /* Control-A */
@@ -1471,28 +1548,33 @@ static void shell_move_bol(EditState *e)
 
 static void shell_move_eol(EditState *e)
 {
+    ShellState *s = e->b->priv_data;
+
     if (e->interactive) {
-        ShellState *s = e->b->priv_data;
         tty_write(s, "\005", 1); /* Control-E */
     } else {
         text_move_eol(e);
+        /* XXX: restore shell interactive mode on end / ^E */
+        e->interactive = (e->offset == s->cur_offset);
     }
 }
 
 static void shell_write_char(EditState *e, int c)
 {
-    char buf[2], *p;
+    char buf[10];
+    int len;
 
     if (e->interactive) {
         ShellState *s = e->b->priv_data;
 
-        p = buf;
-        *p++ = c;
         if (c >= KEY_META(0) && c <= KEY_META(0xff)) {
-            p[-1] = '\033';
-            *p++ = c - KEY_META(0);
+            buf[0] = '\033';
+            buf[1] = c - KEY_META(0);
+            len = 2;
+        } else {
+            len = unicode_to_charset(buf, c, e->b->charset);
         }
-        tty_write(s, buf, p - buf);
+        tty_write(s, buf, len);
     } else {
         /* Should dispatch as in fundamental mode */
         switch (c) {
@@ -1525,6 +1607,11 @@ static void shell_write_char(EditState *e, int c)
             break;
         }
     }
+    if (c == '\r') {
+        /* skip errors from previous commands */
+        error_offset = e->offset;
+        last_line_num = -1;
+    }
 }
 
 static void do_shell_toggle_input(EditState *e)
@@ -1543,11 +1630,6 @@ static void do_shell_toggle_input(EditState *e)
 #endif
 }
 
-/* CG: these variables should move to mode structure */
-static int error_offset = -1;
-static int last_line_num = -1;
-static char last_filename[MAX_FILENAME_SIZE];
-
 static void do_compile(EditState *e, const char *cmd)
 {
     const char *argv[4];
@@ -1564,17 +1646,23 @@ static void do_compile(EditState *e, const char *cmd)
     error_offset = -1;
     last_line_num = -1;
 
+    if (!cmd || !*cmd)
+        cmd = "make";
+
     /* create new buffer */
     argv[0] = "/bin/sh";
     argv[1] = "-c";
     argv[2] = (char *)cmd;
     argv[3] = NULL;
-    b = new_shell_buffer(NULL, "*compilation*", "/bin/sh", argv, 0);
+    b = new_shell_buffer(NULL, "*compilation*", "/bin/sh", argv, 3);
     if (!b)
         return;
 
     /* XXX: try to split window if necessary */
     switch_to_buffer(e, b);
+    /* XXX: pager_mode for colorized output, text mode should support color buffer */ 
+    /* XXX: compilation_buffer should handle error skipping with RET */
+    edit_set_mode(e, &pager_mode, NULL);
 }
 
 static void do_compile_error(EditState *s, int dir)
@@ -1673,7 +1761,7 @@ static void do_compile_error(EditState *s, int dir)
     /* CG: Should put_message of error text */
 }
 
-/* specific shell commands */
+/* shell mode specific commands */
 static CmdDef shell_commands[] = {
     CMD0( KEY_CTRL('o'), KEY_NONE,
           "shell-toggle-input", do_shell_toggle_input)
@@ -1701,8 +1789,21 @@ static CmdDef shell_commands[] = {
     CMD_DEF_END,
 };
 
-/* compilation commands */
-static CmdDef compile_commands[] = {
+/* pager mode specific commands */
+static CmdDef pager_commands[] = {
+    CMD1( KEY_DEL, KEY_NONE,
+          "scroll-down", do_scroll_up_down, -2 ) /* u? */
+    CMD1( KEY_SPC, KEY_NONE,
+          "scroll-up", do_scroll_up_down, 2 ) /* u? */
+    CMD3( '/', KEY_NONE,
+          "search-forward", do_search_string, ESsi, 1,
+	  "s{/}|search|"
+	  "v")
+    CMD_DEF_END,
+};
+
+/* shell global commands */
+static CmdDef shell_global_commands[] = {
     CMD2( KEY_CTRLXRET('\r'), KEY_NONE,
           "shell", do_shell, ESi, "ui")
     CMD2( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE,
@@ -1725,7 +1826,16 @@ static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 {
     s->tab_size = 8;
     s->wrap = WRAP_TRUNCATE;
+    set_colorize_func(s, NULL);
+    s->get_colorized_line = shell_get_colorized_line;
     s->interactive = 1;
+    return 0;
+}
+
+static int pager_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
+{
+    s->tab_size = 8;
+    s->wrap = WRAP_TRUNCATE;
     set_colorize_func(s, NULL);
     s->get_colorized_line = shell_get_colorized_line;
     return 0;
@@ -1733,7 +1843,7 @@ static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 
 static int shell_init(void)
 {
-    /* first register mode */
+    /* populate and register shell mode and commands */
     memcpy(&shell_mode, &text_mode, sizeof(ModeDef));
     shell_mode.name = "shell";
     shell_mode.mode_probe = NULL;
@@ -1749,10 +1859,20 @@ static int shell_init(void)
     shell_mode.mode_flags |= MODEF_NOCMD;
 
     qe_register_mode(&shell_mode);
-
-    /* commands and default keys */
     qe_register_cmd_table(shell_commands, &shell_mode);
-    qe_register_cmd_table(compile_commands, NULL);
+
+    /* populate and register pager mode and commands */
+    memcpy(&pager_mode, &text_mode, sizeof(ModeDef));
+    pager_mode.name = "pager";
+    pager_mode.mode_probe = NULL;
+    pager_mode.mode_init = pager_mode_init;
+    pager_mode.mode_flags |= MODEF_NOCMD;
+
+    qe_register_mode(&pager_mode);
+    qe_register_cmd_table(pager_commands, &pager_mode);
+
+    /* global shell related commands and default keys */
+    qe_register_cmd_table(shell_global_commands, NULL);
 
     return 0;
 }
