@@ -2,7 +2,7 @@
  * Buffer handling for QEmacs
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2002-2008 Charlie Gordon.
+ * Copyright (c) 2002-2013 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -905,11 +905,13 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
     u8 buf[MAX_CHAR_BYTES];
     int ch;
 
-    if (offset >= b->total_size) {
-        offset = b->total_size;
+    if (eb_read(b, offset, buf, 1) <= 0) {
         ch = '\n';
+        if (offset < 0)
+            offset = 0;
+        if (offset >= b->total_size)
+            offset = b->total_size;
     } else {
-        eb_read(b, offset, buf, 1);
         /* we use the charset conversion table directly to go faster */
         ch = b->charset_state.table[buf[0]];
         offset++;
@@ -1605,6 +1607,7 @@ int eb_goto_eol(EditBuffer *b, int offset)
 int eb_next_line(EditBuffer *b, int offset)
 {
     int c;
+
     for (;;) {
         c = eb_nextc(b, offset, &offset);
         if (c == '\n')
