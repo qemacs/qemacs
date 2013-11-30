@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2000-2008 Charlie Gordon.
+ * Copyright (c) 2000-2013 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -368,11 +368,16 @@ void do_set_trace(EditState *s)
     do_previous_window(s);
 }
 
-void do_cd(__unused__ EditState *s, const char *name)
+void do_cd(EditState *s, const char *name)
 {
-    chdir(name);
-    /* CG: Should issue diagnostics upon failure */
-    /* CG: Should display current directory after chdir */
+    char buf[MAX_FILENAME_SIZE];
+
+    if (chdir(name)) {
+        put_status(s, "Cannot change directory to '%s'", name);
+    } else {
+        getcwd(buf, sizeof(buf));
+        put_status(s, "Current directory: %s", buf);
+    }
 }
 
 /* basic editing functions */
