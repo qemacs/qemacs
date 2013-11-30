@@ -86,10 +86,19 @@ typedef struct ShellState {
 /* move to mode */
 static int shell_launched = 0;
 
-/* CG: these variables should move to mode data */
+/* CG: these variables should be encapsulated in a global structure */
+static char error_buffer[MAX_BUFFERNAME_SIZE];
 static int error_offset = -1;
-static int last_line_num = -1;
-static char last_filename[MAX_FILENAME_SIZE];
+static int error_line_num = -1;
+static char error_filename[MAX_FILENAME_SIZE];
+
+static void set_error_offset(EditBuffer *b, int offset)
+{
+    pstrcpy(error_buffer, sizeof(error_buffer), b ? b->name : "");
+    error_offset = offset - 1;
+    error_line_num = -1;
+    *error_filename = '\0';
+}
 
 #define PTYCHAR1 "pqrstuvwxyzabcde"
 #define PTYCHAR2 "0123456789abcdef"
@@ -1609,8 +1618,7 @@ static void shell_write_char(EditState *e, int c)
     }
     if (c == '\r') {
         /* skip errors from previous commands */
-        error_offset = e->offset;
-        last_line_num = -1;
+        set_error_offset(e->b, e->offset);
     }
 }
 
@@ -1643,9 +1651,6 @@ static void do_compile(EditState *e, const char *cmd)
         do_kill_buffer(e, "*compilation*");
     }
 
-    error_offset = -1;
-    last_line_num = -1;
-
     if (!cmd || !*cmd)
         cmd = "make";
 
@@ -1661,8 +1666,8 @@ static void do_compile(EditState *e, const char *cmd)
     /* XXX: try to split window if necessary */
     switch_to_buffer(e, b);
     /* XXX: pager_mode for colorized output, text mode should support color buffer */ 
-    /* XXX: compilation_buffer should handle error skipping with RET */
     edit_set_mode(e, &pager_mode, NULL);
+    set_error_offset(b, 0);
 }
 
 static void do_compile_error(EditState *s, int dir)
@@ -1673,6 +1678,7 @@ static void do_compile_error(EditState *s, int dir)
     int offset, found_offset;
     char filename[MAX_FILENAME_SIZE], *q;
     int line_num, c;
+    char error_message[128];
 
     /* CG: should have a buffer flag for error source.
      * first check if current buffer is an error source.
@@ -1680,27 +1686,27 @@ static void do_compile_error(EditState *s, int dir)
      * in buffer least recently used order
      */
 
-    if ((b = eb_find("*compilation*")) == NULL
-    &&  (b = eb_find("*shell*")) == NULL
-    &&  (b = eb_find("*errors*")) == NULL) {
-        put_status(s, "No compilation buffer");
-        return;
+    if ((b = eb_find(error_buffer)) == NULL) {
+        if ((b = eb_find("*compilation*")) == NULL
+        &&  (b = eb_find("*shell*")) == NULL
+        &&  (b = eb_find("*errors*")) == NULL) {
+            put_status(s, "No compilation buffer");
+            return;
+        }
+        set_error_offset(b, -1);
     }
+
     /* find next/prev error */
     offset = error_offset;
-    if (offset < 0) {
-        offset = 0;
-        goto find_error;
-    }
 
     /* CG: should use higher level parsing */
     for (;;) {
         if (dir > 0) {
+            offset = eb_next_line(b, offset);
             if (offset >= b->total_size) {
                 put_status(s, "No more errors");
                 return;
             }
-            offset = eb_next_line(b, offset);
         } else {
             if (offset <= 0) {
                 put_status(s, "No previous error");
@@ -1708,24 +1714,22 @@ static void do_compile_error(EditState *s, int dir)
             }
             offset = eb_prev_line(b, offset);
         }
-      find_error:
         found_offset = offset;
+        /* parse filename:linenum:message */
         /* extract filename */
-        q = filename;
-        for (;;) {
-            /* CG: utf8 issue */
+        for (q = filename;;) {
             c = eb_nextc(b, offset, &offset);
             if (c == '\n' || c == '\t' || c == ' ')
                 goto next_line;
             if (c == ':')
                 break;
+            /* CG: utf8 issue */
             if ((q - filename) < ssizeof(filename) - 1)
                 *q++ = c;
         }
         *q = '\0';
         /* extract line number */
-        line_num = 0;
-        for (;;) {
+        for (line_num = 0;;) {
             c = eb_nextc(b, offset, &offset);
             if (c == ':')
                 break;
@@ -1733,11 +1737,12 @@ static void do_compile_error(EditState *s, int dir)
                 goto next_line;
             line_num = line_num * 10 + c - '0';
         }
+        eb_get_strline(b, error_message, sizeof(error_message), &offset);
         if (line_num >= 1) {
-            if (line_num != last_line_num ||
-                !strequal(filename, last_filename)) {
-                last_line_num = line_num;
-                pstrcpy(last_filename, sizeof(last_filename), filename);
+            if (line_num != error_line_num ||
+                !strequal(filename, error_filename)) {
+                error_line_num = line_num;
+                pstrcpy(error_filename, sizeof(error_filename), filename);
                 break;
             }
         }
@@ -1758,7 +1763,7 @@ static void do_compile_error(EditState *s, int dir)
     do_find_file(s, filename);
     do_goto_line(qs->active_window, line_num);
 
-    /* CG: Should put_message of error text */
+    put_status(s, "=> %s", error_message);
 }
 
 /* shell mode specific commands */
