@@ -63,13 +63,13 @@ int strstart(const char *str, const char *val, const char **ptr)
  * @param buf_size size of destination buffer
  * @param str source string
  */
-void pstrcpy(char *buf, int buf_size, const char *str)
+char *pstrcpy(char *buf, int buf_size, const char *str)
 {
     int c;
     char *q = buf;
 
     if (buf_size <= 0)
-        return;
+        return buf;
 
     for (;;) {
         c = *str++;
@@ -78,6 +78,7 @@ void pstrcpy(char *buf, int buf_size, const char *str)
         *q++ = c;
     }
     *q = '\0';
+    return buf;
 }
 
 /* strcat and truncate. */
