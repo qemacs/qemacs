@@ -2,7 +2,7 @@
  * Buffer editor mode for QEmacs.
  *
  * Copyright (c) 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2002-2008 Charlie Gordon.
+ * Copyright (c) 2002-2013 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -36,7 +36,7 @@ static ModeDef bufed_mode;
 static void build_bufed_list(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
-    EditBuffer *b, *b1;
+    EditBuffer *b;
     BufedState *hs;
     int last_index = list_get_pos(s);
     int i, flags;
@@ -55,11 +55,25 @@ static void build_bufed_list(EditState *s)
     b->flags &= ~BF_READONLY;
     eb_delete(b, 0, b->total_size);
     for (i = 0; i < hs->items.nb_items; i++) {
-        eb_printf(b, " %-20s", hs->items.items[i]->str);
-        b1 = eb_find(hs->items.items[i]->str);
+        EditBuffer *b1 = eb_find(hs->items.items[i]->str);
+        char flags[4];
+        char *flagp = flags;
+
         if (b1) {
+            if (b1->modified)
+                *flagp++ = '*';
+            if (b1->flags & BF_READONLY)
+                *flagp++ = '%';
+        }
+        *flagp = '\0';
+        eb_printf(b, " %-2s%-20s", flags, hs->items.items[i]->str);
+        if (b1) {
+            char path[MAX_FILENAME_SIZE];
+
             /* CG: should also display mode */
-            eb_printf(b, " %10d  %s", b1->total_size, b1->filename);
+            eb_printf(b, " %-10s  %10d  %s", 
+                      b1->charset->name, b1->total_size,
+                      make_user_path(path, sizeof(path), b1->filename));
         }
         eb_printf(b, "\n");
     }
