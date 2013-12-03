@@ -2,7 +2,7 @@
  * Utilities for qemacs.
  *
  * Copyright (c) 2001 Fabrice Bellard.
- * Copyright (c) 2002-2008 Charlie Gordon.
+ * Copyright (c) 2002-2013 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -278,6 +278,26 @@ void canonicalize_absolute_path(char *buf, int buf_size, const char *path1)
         }
     }
     canonicalize_path(buf, buf_size, path1);
+}
+
+/* reduce path relative to homedir */
+char *make_user_path(char *buf, int buf_size, const char *path)
+{
+    char *homedir;
+
+    homedir = getenv("HOME");
+    if (homedir) {
+        int len = strlen(homedir);
+        
+        if (len && homedir[len - 1] == '/')
+            len--;
+
+        if (!memcmp(path, homedir, len) && path[len] == '/') {
+            pstrcpy(buf, buf_size, "~");
+            return pstrcat(buf, buf_size, path + len);
+        }
+    }
+    return pstrcpy(buf, buf_size, path);
 }
 
 char *reduce_filename(char *dest, int size, const char *filename)
