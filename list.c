@@ -2,6 +2,7 @@
  * List mode for QEmacs.
  *
  * Copyright (c) 2001, 2002 Fabrice Bellard.
+ * Copyright (c) 2002-2013 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,6 +20,8 @@
  */
 
 #include "qe.h"
+
+ModeDef list_mode;
 
 static int list_get_colorized_line(EditState *s,
                                    unsigned int *buf, int buf_size,
@@ -79,7 +82,6 @@ void list_toggle_selection(EditState *s)
 static int list_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 {
     s->wrap = WRAP_TRUNCATE;
-    s->interactive = 1;
     s->get_colorized_line = list_get_colorized_line;
     return 0;
 }
@@ -87,8 +89,6 @@ static int list_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 static void list_mode_close(__unused__ EditState *s)
 {
 }
-
-ModeDef list_mode;
 
 static int list_init(void)
 {
