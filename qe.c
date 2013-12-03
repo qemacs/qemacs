@@ -368,12 +368,14 @@ void do_set_trace(EditState *s)
     do_previous_window(s);
 }
 
-void do_cd(EditState *s, const char *name)
+void do_cd(EditState *s, const char *path)
 {
     char buf[MAX_FILENAME_SIZE];
 
-    if (chdir(name)) {
-        put_status(s, "Cannot change directory to '%s'", name);
+    canonicalize_absolute_path(buf, sizeof(buf), path);
+
+    if (chdir(buf)) {
+        put_status(s, "Cannot change directory to '%s'", buf);
     } else {
         getcwd(buf, sizeof(buf));
         put_status(s, "Current directory: %s", buf);
