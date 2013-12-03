@@ -1307,7 +1307,10 @@ static void shell_pid_cb(void *opaque, int status)
 
         eb_write(b, b->total_size, buf, strlen(buf));
 
-        s->b->flags |= save_readonly;
+        if (save_readonly) {
+            s->b->modified = 0;
+            s->b->flags |= save_readonly;
+        }
     }
 
     set_pid_handler(s->pid, NULL, NULL);
@@ -1486,7 +1489,7 @@ static void do_man(EditState *s, const char *arg)
     /* Assume standard man command */
     man_path = "/usr/bin/man";
 
-    snprintf(bufname, sizeof(bufname), "*man %s*", arg);
+    snprintf(bufname, sizeof(bufname), "*Man %s*", arg);
     if (try_show_buffer(s, bufname))
         return;
 
