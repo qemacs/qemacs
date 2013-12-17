@@ -405,20 +405,21 @@ FILES:=COPYING Changelog Makefile README TODO VERSION               \
        configure cptoqe.c cutils.c cutils.h dired.c display.c       \
        display.h docbook.c extras.c fbffonts.c fbfrender.c          \
        fbfrender.h fbftoqe.c haiku.cpp haiku-pe2qe.sh hex.c html.c  \
-       html2png.c htmlsrc.c                                         \
+       html2png.c htmlsrc.c lisp.c                                  \
        image.c indic.c input.c jistoqe.c kmap.c kmaptoqe.c          \
        latex-mode.c libfbf.c libfbf.h ligtoqe.c list.c makemode.c   \
        mpeg.c perl.c qe-doc.html qe-doc.texi qe.1 qe.c qe.h qe.tcc  \
        qeconfig.h qeend.c qemacs.spec qestyles.h qfribidi.c         \
        qfribidi.h script.c shell.c tty.c unicode_join.c unihex.c    \
        unix.c util.c variables.c variables.h video.c win32.c x11.c  \
-       xml.c xterm-146-dw-patch
+       xml.c
 
 FILES+=plugins/Makefile  plugins/my_plugin.c
 
-FILES+=tests/HELLO.txt tests/TestPage.txt tests/test-hebrew         \
-       tests/test-capital-rtl tests/test-capital-rtl.ref            \
-       tests/testbidi.html \
+TESTS= HELLO.txt TestPage.txt colours.txt lattrs.txt scocols.txt    \
+       test-capital-rtl test-capital-rtl.ref test-hebrew testbidi.html \
+       utf8.txt vt100.txt
+TESTS:=$(addprefix tests/,$(TESTS))
 
 # qhtml library
 FILES+=libqhtml/Makefile libqhtml/css.c libqhtml/css.h libqhtml/cssid.h \
@@ -426,15 +427,16 @@ FILES+=libqhtml/Makefile libqhtml/css.c libqhtml/css.h libqhtml/cssid.h \
        libqhtml/html.css libqhtml/htmlent.h libqhtml/xmlparse.c
 
 # keyboard maps, code pages, fonts
-FILES+=unifont.lig ligatures kmaps $(KMAPS) $(CP) $(JIS) $(FONTS)
+FILES+=unifont.lig ligatures kmaps $(KMAPS) $(CP) $(JIS) $(FONTS) $(TESTS)
 
-FILE=qemacs-$(VERSION)
+FILE=qemacs-$(shell cat VERSION)
 
 tar: $(FILES)
+	rm -f $(HOME)/$(FILE).tar.gz
 	rm -rf /tmp/$(FILE)
 	mkdir -p /tmp/$(FILE)
-	cp --parents $(FILES) /tmp/$(FILE)
-	( cd /tmp ; tar zcvf $(HOME)/$(FILE).tar.gz $(FILE) )
+	tar cf - $(FILES) | (cd /tmp/$(FILE) ; tar xf - )
+	( cd /tmp ; tar cfz $(HOME)/$(FILE).tar.gz $(FILE) )
 	rm -rf /tmp/$(FILE)
 
 SPLINTOPTS := +posixlib -nestcomment +boolint +charintliteral -mayaliasunique
