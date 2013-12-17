@@ -1,6 +1,9 @@
 #!/bin/bash
 #
-# qemacs configure script (c) 2002 Fabrice Bellard
+# QEmacs configure script
+#
+# Copyright (c) 2002 Fabrice Bellard
+# Copyright (c) 2002-2013 Charlie Gordon
 #
 
 # set temporary file name
@@ -50,7 +53,9 @@ network="yes"
 win32="no"
 cygwin="no"
 darwin="no"
+haiku="no"
 lshared="no"
+dllibs="-ldl"
 extralibs=""
 simpleidct="yes"
 bigendian="no"
@@ -82,10 +87,10 @@ case $targetos in
     # no need for libm, but the inet stuff
     # Check for BONE
     if (echo $BEINCLUDES|grep 'headers/be/bone' >/dev/null); then
-        extralibs="-lbind -lsocket -lm"
+        extralibs="-lbind -lsocket"
     else
         echo "Not sure building for net_server will succeed... good luck."
-        extralibs="-lsocket -lm"
+        extralibs="-lsocket"
     fi
     ;;
   BSD/OS)
@@ -113,6 +118,19 @@ case $targetos in
     plugins="no"
     extralibs="-lm"
     strip_args="-x -S"
+    ;;
+  Haiku)
+    prefix="`finddir B_COMMON_DIRECTORY`"
+    # no need for libm, but the network stuff
+    extralibs="-lnetwork"
+    # dlopen() is in libroot already
+    dllibs=""
+    # use Haiku GUI; avoid building for X11 even if there are headers around
+    haiku="yes"
+    html="yes"
+    png="yes"
+    x11="no"
+    xv="no"
     ;;
   *)
     extralibs="-lm"
@@ -298,6 +316,9 @@ fi
 if test "$x11" = "no" ; then
     xv="no"
     xrender="no"
+fi
+
+if test "$x11" = "no" -a "$haiku" = "no" ; then
     png="no"
     ffmpeg="no"
     html="no"
@@ -498,6 +519,7 @@ if test "$lshared" = "yes" ; then
   echo "BUILD_SHARED=yes" >> $TMPMAK
   echo "PIC=-fPIC" >> $TMPMAK
 fi
+echo "DLLIBS=$dllibs" >> $TMPMAK
 echo "EXTRALIBS=$extralibs" >> $TMPMAK
 echo -n "VERSION=" >> $TMPMAK
 echo -n `head $source_path/VERSION` >> $TMPMAK
@@ -523,6 +545,11 @@ fi
 if test "$darwin" = "yes" ; then
   echo "#define CONFIG_DARWIN 1" >> $TMPH
   echo "CONFIG_DARWIN=yes" >> $TMPMAK
+fi
+
+if test "$haiku" = "yes" ; then
+  echo "#define CONFIG_HAIKU 1" >> $TMPH
+  echo "CONFIG_HAIKU=yes" >> $TMPMAK
 fi
 
 if test "$x11" = "yes" ; then

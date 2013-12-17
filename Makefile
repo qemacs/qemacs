@@ -1,7 +1,7 @@
 # QEmacs, tiny but powerful multimode editor
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2008 Charlie Gordon.
+# Copyright (c) 2000-2013 Charlie Gordon.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -63,13 +63,18 @@ ifdef CONFIG_PNG_OUTPUT
 endif
 
 ifdef CONFIG_DLL
-  LIBS+=-ldl
+  LIBS+=$(DLLIBS)
   # export some qemacs symbols
   LDFLAGS+=-Wl,-E
 endif
 
 ifdef CONFIG_DOC
   TARGETS+= qe-doc.html
+endif
+
+ifdef CONFIG_HAIKU
+  OBJS+= haiku.o
+  LIBS+= -lbe
 endif
 
 ifdef CONFIG_WIN32
@@ -84,7 +89,7 @@ ifdef CONFIG_WIN32
 else
   OBJS+= unix.o tty.o
   TOBJS+= unix.o tty.o
-  LIBS+= -lm
+  LIBS+= $(EXTRALIBS)
 endif
 
 ifdef CONFIG_QSCRIPT
@@ -225,6 +230,9 @@ $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 
 $(OBJS_DIR)/%.o: %.c qe.h qestyles.h config.h config.mak Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
+
+$(OBJS_DIR)/haiku.o: haiku.cpp qe.h qestyles.h config.h config.mak Makefile
+	g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -c $<
 
 #
 # Test for bidir algorithm
@@ -392,7 +400,8 @@ FILES:=COPYING Changelog Makefile README TODO VERSION               \
        charsetjis.def charsetmore.c clang.c config.eg config.h      \
        configure cptoqe.c cutils.c cutils.h dired.c display.c       \
        display.h docbook.c extras.c fbffonts.c fbfrender.c          \
-       fbfrender.h fbftoqe.c hex.c html.c html2png.c htmlsrc.c      \
+       fbfrender.h fbftoqe.c haiku.cpp haiku-pe2qe.sh hex.c html.c  \
+       html2png.c htmlsrc.c                                         \
        image.c indic.c input.c jistoqe.c kmap.c kmaptoqe.c          \
        latex-mode.c libfbf.c libfbf.h ligtoqe.c list.c makemode.c   \
        mpeg.c perl.c qe-doc.html qe-doc.texi qe.1 qe.c qe.h qe.tcc  \
