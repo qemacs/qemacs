@@ -471,12 +471,12 @@ static int fbf_load_font_memory(const unsigned char *data,
 
 int fbf_render_init(__unused__ const char *font_path)
 {
-    const void **pp;
+    const struct fbf_font *pp;
 
     glyph_cache_init();
     first_font = NULL;
-    for (pp = fbf_fonts; *pp != NULL; pp += 2) {
-        fbf_load_font_memory(pp[0], (int)pp[1]);
+    for (pp = fbf_fonts; pp->data != NULL; pp++) {
+        fbf_load_font_memory(pp->data, pp->size);
     }
     if (!fallback_font)
         fallback_font = first_font;

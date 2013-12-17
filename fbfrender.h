@@ -48,6 +48,10 @@ void fbf_close_font(QEditScreen *s, QEFont *font);
 int fbf_render_init(const char *font_path);
 void fbf_render_cleanup(void);
 
-extern const void *fbf_fonts[];
+struct fbf_font {
+    const unsigned char *data;
+    unsigned int size;
+};
+extern const struct fbf_font fbf_fonts[];
 
 #endif

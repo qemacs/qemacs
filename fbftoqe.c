@@ -94,13 +94,13 @@ int main(int argc, char **argv)
     }
 
     /* dump font list */
-    printf("const void *fbf_fonts[] = {\n");
+    printf("const struct fbf_font fbf_fonts[] = {\n");
     for (i = 1; i < argc; i++) {
         filename = argv[i];
         getname(name, sizeof(name), filename);
-        printf("    font_%s, (void *)%d,\n", name, font_size[i]);
+        printf("    { font_%s, %d },\n", name, font_size[i]);
     }
-    printf("    NULL,\n");
+    printf("    { NULL, 0 },\n");
     printf("};\n");
     return 0;
 }
