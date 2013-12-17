@@ -135,7 +135,7 @@ static QEDisplay ppm_dpy = {
 /* realloc ppm bitmap */
 static int ppm_resize(QEditScreen *s, int w, int h)
 {
-    CFBContext *cfb = s->private;
+    CFBContext *cfb = s->priv_data;
 
     /* alloc bitmap */
     if (!qe_realloc(&cfb->base, w * h * sizeof(int))) {
@@ -160,7 +160,7 @@ static int ppm_init(QEditScreen *s, int w, int h)
     if (!cfb)
         return -1;
 
-    s->private = cfb;
+    s->priv_data = cfb;
     s->media = CSS_MEDIA_SCREEN;
 
     if (cfb_init(s, NULL, w * sizeof(int), 32, ".") < 0)
@@ -169,7 +169,7 @@ static int ppm_init(QEditScreen *s, int w, int h)
     if (ppm_resize(s, w, h) < 0) {
     fail:
         qe_free(&cfb->base);
-        qe_free(&s->private);
+        qe_free(&s->priv_data);
         return -1;
     }
     return 0;
@@ -177,15 +177,15 @@ static int ppm_init(QEditScreen *s, int w, int h)
 
 static void ppm_close(QEditScreen *s)
 {
-    CFBContext *cfb = s->private;
+    CFBContext *cfb = s->priv_data;
 
     qe_free(&cfb->base);
-    qe_free(&s->private);
+    qe_free(&s->priv_data);
 }
 
 static int ppm_save(QEditScreen *s, const char *filename)
 {
-    CFBContext *cfb = s->private;
+    CFBContext *cfb = s->priv_data;
     int w, h, x, y;
     unsigned int r, g, b, v;
     unsigned int *data;
@@ -219,7 +219,7 @@ static int ppm_save(QEditScreen *s, const char *filename)
 
 static int png_save(QEditScreen *s, const char *filename)
 {
-    CFBContext *cfb = s->private;
+    CFBContext *cfb = s->priv_data;
     struct png_save_data {
         FILE *f;
         png_structp png_ptr;

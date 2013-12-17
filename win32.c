@@ -139,7 +139,7 @@ static int win_init(QEditScreen *s, int w, int h)
     if (!_hPrev)
         init_application();
 
-    s->private = NULL;
+    s->priv_data = NULL;
     s->media = CSS_MEDIA_SCREEN;
 
     win_ctx.font = CreateFont(-12, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0,
@@ -452,7 +452,7 @@ static QEFont *win_open_font(QEditScreen *s, int style, int size)
     GetTextMetrics(win_ctx.hdc, &tm);
     font->ascent = tm.tmAscent;
     font->descent = tm.tmDescent;
-    font->private = NULL;
+    font->priv_data = NULL;
     return font;
 }
 

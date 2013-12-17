@@ -2,7 +2,7 @@
  * TTY handling for QEmacs
  *
  * Copyright (c) 2000,2001 Fabrice Bellard.
- * Copyright (c) 2002-2008 Charlie Gordon.
+ * Copyright (c) 2002-2013 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -118,7 +118,7 @@ static int tty_term_init(QEditScreen *s,
 
     tty_screen = s;
     ts = &tty_state;
-    s->private = ts;
+    s->priv_data = ts;
     s->media = CSS_MEDIA_TTY;
 
     /* Derive some settings from the TERM environment variable */
@@ -263,7 +263,7 @@ static void tty_term_close(QEditScreen *s)
 static void tty_term_exit(void)
 {
     QEditScreen *s = tty_screen;
-    TTYState *ts = s->private;
+    TTYState *ts = s->priv_data;
 
     tcsetattr(fileno(s->STDIN), TCSANOW, &ts->oldtty);
 }
@@ -271,7 +271,7 @@ static void tty_term_exit(void)
 static void tty_resize(__unused__ int sig)
 {
     QEditScreen *s = tty_screen;
-    TTYState *ts = s->private;
+    TTYState *ts = s->priv_data;
     struct winsize ws;
     int i, count, size;
     TTYChar tc;
@@ -318,7 +318,7 @@ static void tty_term_invalidate(QEditScreen *s)
 static void tty_term_cursor_at(QEditScreen *s, int x1, int y1,
                                __unused__ int w, __unused__ int h)
 {
-    TTYState *ts = s->private;
+    TTYState *ts = s->priv_data;
     ts->cursor_x = x1;
     ts->cursor_y = y1;
 }
@@ -380,7 +380,7 @@ static void tty_read_handler(void *opaque)
 {
     QEditScreen *s = opaque;
     QEmacsState *qs = &qe_state;
-    TTYState *ts = s->private;
+    TTYState *ts = s->priv_data;
     int ch;
     QEEvent ev1, *ev = &ev1;
 
@@ -425,6 +425,7 @@ static void tty_read_handler(void *opaque)
             ts->input_param = 0;
         } else if (ch == 'O') {
             ts->input_state = IS_ESC2;
+            ts->input_param = 0;
         } else {
             ch = KEY_META(ch);
             ts->input_state = IS_NORM;
@@ -826,7 +827,7 @@ int get_tty_color(QEColor color, unsigned int const *colors, int count)
 static void tty_term_fill_rectangle(QEditScreen *s,
                                     int x1, int y1, int w, int h, QEColor color)
 {
-    TTYState *ts = s->private;
+    TTYState *ts = s->priv_data;
     int x2 = x1 + w;
     int y2 = y1 + h;
     int x, y;
@@ -869,7 +870,7 @@ static QEFont *tty_term_open_font(__unused__ QEditScreen *s,
 
     font->ascent = 0;
     font->descent = 1;
-    font->private = NULL;
+    font->priv_data = NULL;
     return font;
 }
 
@@ -958,7 +959,7 @@ static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font,
                                int x, int y, const unsigned int *str, int len,
                                QEColor color)
 {
-    TTYState *ts = s->private;
+    TTYState *ts = s->priv_data;
     TTYChar *ptr;
     int fgcolor, w, n;
     unsigned int cc;
@@ -1021,7 +1022,7 @@ static void tty_term_set_clip(__unused__ QEditScreen *s,
 
 static void tty_term_flush(QEditScreen *s)
 {
-    TTYState *ts = s->private;
+    TTYState *ts = s->priv_data;
     TTYChar *ptr, *ptr1, *ptr2, *ptr3, *ptr4, cc, blankcc;
     int y, shadow, ch, bgcolor, fgcolor, shifted;
 

@@ -272,11 +272,11 @@ int strxcmp(const char *str1, const char *str2);
 int ustristart(const unsigned int *str, const char *val, const unsigned int **ptr);
 static inline unsigned int *umemmove(unsigned int *dest,
                                      unsigned int *src, int count) {
-    return memmove(dest, src, count * sizeof(unsigned int));
+    return (unsigned int *)memmove(dest, src, count * sizeof(unsigned int));
 }
 static inline unsigned int *umemcpy(unsigned int *dest,
                                     unsigned int *src, int count) {
-    return memcpy(dest, src, count * sizeof(unsigned int));
+    return (unsigned int *)memcpy(dest, src, count * sizeof(unsigned int));
 }
 int umemcmp(const unsigned int *s1, const unsigned int *s2, int count);
 

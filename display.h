@@ -53,7 +53,7 @@ typedef struct QEFont {
     int refcount;
     int ascent;
     int descent;
-    void *private;
+    void *priv_data;
     int system_font; /* TRUE if system font */
     /* cache data */
     int style;
@@ -148,12 +148,12 @@ struct QEditScreen {
     QECharset *charset; /* the charset of the TTY, XXX: suppress that,
                           use a system in fonts instead */
     int media; /* media type (see CSS_MEDIA_xxx) */
-    int bitmap_format; /* supported bitmap format */
-    int video_format; /* supported video format */
+    QEBitmapFormat bitmap_format; /* supported bitmap format */
+    QEBitmapFormat video_format; /* supported video format */
     /* clip region handling */
     int clip_x1, clip_y1;
     int clip_x2, clip_y2;
-    void *private;
+    void *priv_data;
 };
 
 int qe_register_display(QEDisplay *dpy);

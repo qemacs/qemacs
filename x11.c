@@ -2,7 +2,7 @@
  * X11 handling for QEmacs
  *
  * Copyright (c) 2000, 2001, 2002, 2003 Fabrice Bellard.
- * Copyright (c) 2002-2008 Charlie Gordon.
+ * Copyright (c) 2002-2013 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -194,7 +194,7 @@ static int term_init(QEditScreen *s, int w, int h)
     QEStyleDef default_style;
     XGCValues gc_val;
 
-    s->private = NULL;
+    s->priv_data = NULL;
     s->media = CSS_MEDIA_SCREEN;
 
     if (!display_str)
@@ -564,13 +564,13 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
     }
     font->ascent = renderFont->ascent;
     font->descent = renderFont->descent;
-    font->private = renderFont;
+    font->priv_data = renderFont;
     return font;
 }
 
 static void term_close_font(QEditScreen *s, QEFont *font)
 {
-    XftFont *renderFont = font->private;
+    XftFont *renderFont = font->priv_data;
 
     XftFontClose(display, renderFont);
     /* Clear structure to force crash if font is still used after
@@ -582,7 +582,7 @@ static void term_close_font(QEditScreen *s, QEFont *font)
 
 static int term_glyph_width(QEditScreen *s, QEFont *font, unsigned int cc)
 {
-    XftFont *renderFont = font->private;
+    XftFont *renderFont = font->priv_data;
     XGlyphInfo gi;
 
     XftTextExtents32(display, renderFont, &cc, 1, &gi);
@@ -593,7 +593,7 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
                            int x, int y, const unsigned int *str, int len,
                            QEColor color)
 {
-    XftFont *renderFont = font->private;
+    XftFont *renderFont = font->priv_data;
     XftColor col;
     int r, g, b, a;
 
@@ -764,7 +764,7 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
 
     font->ascent = xfont->ascent;
     font->descent = xfont->descent;
-    font->private = xfont;
+    font->priv_data = xfont;
     return font;
  fail:
     XFreeFontNames(list);
@@ -774,7 +774,7 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
 
 static void term_close_font(__unused__ QEditScreen *s, QEFont *font)
 {
-    XFontStruct *xfont = font->private;
+    XFontStruct *xfont = font->priv_data;
 
     XFreeFont(display, xfont);
     /* Clear structure to force crash if font is still used after
@@ -788,7 +788,7 @@ static void term_close_font(__unused__ QEditScreen *s, QEFont *font)
    associated. */
 static XCharStruct *get_char_struct(QEFont *font, int cc)
 {
-    XFontStruct *xfont = font->private;
+    XFontStruct *xfont = font->priv_data;
     int b1, b2;
     XCharStruct *cs;
 
@@ -856,7 +856,7 @@ static XCharStruct *handle_fallback(QEditScreen *s, QEFont **out_font,
 
     /* really no glyph : use default char in current font */
     /* Should have half-width and full-width default char patterns */
-    xfont = font->private;
+    xfont = font->priv_data;
     cs = get_char_struct(font, xfont->default_char);
     *out_font = lock_font(s, font);
     return cs;
@@ -928,13 +928,13 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
             cs = handle_fallback(s, &font1, font, cc);
             if (!cs) {
                 /* still no char: use default glyph */
-                xfont = font->private;
+                xfont = font->priv_data;
                 cc = xfont->default_char;
             }
         }
         /* flush previous chars if font change needed */
         if (font1 != last_font && q > x11_str) {
-            xfont = last_font->private;
+            xfont = last_font->priv_data;
             l = q - x11_str;
             XSetFont(display, gc, xfont->fid);
             XDrawString16(display, dbuffer, gc, x_start, y, x11_str, l);
@@ -950,7 +950,7 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
     }
     if (q > x11_str) {
         /* flush remaining chars (more common case) */
-        xfont = last_font->private;
+        xfont = last_font->priv_data;
         l = q - x11_str;
         XSetFont(display, gc, xfont->fid);
         XDrawString16(display, dbuffer, gc, x_start, y, x11_str, l);

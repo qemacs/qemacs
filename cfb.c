@@ -50,7 +50,7 @@ static unsigned int cfb24_get_color(unsigned int color)
 static void cfb16_fill_rectangle(QEditScreen *s,
                                  int x1, int y1, int w, int h, QEColor color)
 {
-    CFBContext *cfb = s->private;
+    CFBContext *cfb = s->priv_data;
     unsigned char *dest, *d;
     int y, n;
     unsigned int col;
@@ -101,7 +101,7 @@ static void cfb16_fill_rectangle(QEditScreen *s,
 static void cfb32_fill_rectangle(QEditScreen *s,
                                  int x1, int y1, int w, int h, QEColor color)
 {
-    CFBContext *cfb = s->private;
+    CFBContext *cfb = s->priv_data;
     unsigned char *dest, *d;
     int y, n;
     unsigned int col;
@@ -145,7 +145,7 @@ static void cfb16_draw_glyph(QEditScreen *s1,
                              int x1, int y1, int w, int h, QEColor color,
                              unsigned char *glyph, int glyph_wrap)
 {
-    CFBContext *cfb = s1->private;
+    CFBContext *cfb = s1->priv_data;
     unsigned char *dest, *d, *s, *src;
     int n;
     unsigned int col;
@@ -189,7 +189,7 @@ static void cfb32_draw_glyph(QEditScreen *s1,
                              int x1, int y1, int w, int h, QEColor color,
                              unsigned char *glyph, int glyph_wrap)
 {
-    CFBContext *cfb = s1->private;
+    CFBContext *cfb = s1->priv_data;
     unsigned char *dest, *d, *s, *src;
     int n;
     unsigned int col;
@@ -233,7 +233,7 @@ static void cfb_draw_text(QEditScreen *s, QEFont *font,
                           int x_start, int y, const unsigned int *str, int len,
                           QEColor color)
 {
-    CFBContext *cfb = s->private;
+    CFBContext *cfb = s->priv_data;
     GlyphCache *g;
     unsigned char *glyph_ptr;
     int i, x1, y1, x2, y2, wrap, x;
@@ -309,7 +309,7 @@ static void cfb_set_clip(__unused__ QEditScreen *s,
 int cfb_init(QEditScreen *s,
              void *base, int wrap, int depth, const char *font_path)
 {
-    CFBContext *cfb = s->private;
+    CFBContext *cfb = s->priv_data;
 
     cfb->base = base;
     cfb->wrap = wrap;
