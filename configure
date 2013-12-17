@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # QEmacs configure script
 #
@@ -521,12 +521,10 @@ if test "$lshared" = "yes" ; then
 fi
 echo "DLLIBS=$dllibs" >> $TMPMAK
 echo "EXTRALIBS=$extralibs" >> $TMPMAK
-echo -n "VERSION=" >> $TMPMAK
-echo -n `head $source_path/VERSION` >> $TMPMAK
-echo "" >> $TMPMAK
-echo -n "#define QE_VERSION \"" >> $TMPH
-echo -n `head $source_path/VERSION` >> $TMPH
-echo "\"" >> $TMPH
+version=`head $source_path/VERSION`
+echo "VERSION=$version" >> $TMPMAK
+echo "#define QE_VERSION \"$version\"" >> $TMPH
+
 if test "$network" = "yes" ; then
   echo "#define CONFIG_NETWORK 1" >> $TMPH
   echo "CONFIG_NETWORK=yes" >> $TMPMAK
