@@ -124,7 +124,7 @@ static GlyphCache *add_cached_glyph(QEFont *font, int index, int data_size)
 
 static GlyphCache *fbf_decode_glyph1(QEFont *font, int code)
 {
-    UniFontData *uf = font->private;
+    UniFontData *uf = font->priv_data;
     int glyph_index, size, src_width, src_height;
     GlyphCache *glyph_cache;
     GlyphEntry *fbf_glyph_entry;
@@ -270,7 +270,7 @@ QEFont *fbf_open_font(__unused__ QEditScreen *s, int style, int size)
             }
         }
     }
-    font->private = uf_found;
+    font->priv_data = uf_found;
     font->ascent = uf_found->ascent;
     font->descent = uf_found->descent;
     return font;
