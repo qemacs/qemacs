@@ -345,6 +345,10 @@ test:
 # documentation
 qe-doc.html: qe-doc.texi Makefile
 	LANGUAGE=en_US LC_ALL=en_US.UTF-8 texi2html -monolithic $<
+	mv $@ $@.tmp
+	sed "s/This document was generated on.*//"     < $@.tmp | \
+	sed "s/<!-- Created on .* by/<!-- Created by/" > $@
+	rm $@.tmp
 
 #
 # Maintenance targets
