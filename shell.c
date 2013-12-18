@@ -114,7 +114,12 @@ static int get_pty(char *tty_str, int size)
 
 #ifdef CONFIG_PTSNAME
     /* First try Unix98 pseudo tty master */
-    if ((fd = open("/dev/ptmx", O_RDWR)) >= 0) {
+
+    /* CG: should check if posix_openpt is more appropriate than /dev/ptmx */
+    //fd = posix_openpt(O_RDWR | O_NOCTTY);
+
+    fd = open("/dev/ptmx", O_RDWR);
+    if (fd >= 0) {
 #if 0
         /* ptsname_r is a sensible renentrant version of ptsname, but
          * it lacks portability, notably on OpenBSD and cygwin. So we
@@ -160,7 +165,7 @@ static int run_process(const char *path, const char **argv,
                        int cols, int rows, int is_shell)
 {
     int pty_fd, pid, i, nb_fds;
-    char tty_name[32];
+    char tty_name[1024];
     struct winsize ws;
 
     pty_fd = get_pty(tty_name, sizeof(tty_name));
@@ -392,7 +397,7 @@ static void tty_write(ShellState *s, const char *buf, int len)
     }
 }
 
-/* Compute offset the of the char at column x and row y (0 based).
+/* Compute offset of the char at column x and row y (0 based).
  * Can insert spaces or rows if needed.
  * x and y may each be relative to the current position.
  */
