@@ -51,13 +51,17 @@
 /* make sure that the keyword is not disabled by glibc (TINYC case) */
 #undef __attribute__
 #define __attr_printf(a, b)  __attribute__((format(printf, a, b)))
-#define __attr_nonnull(l)    __attribute__((nonnull l))
-#define __unused__           __attribute__((unused))
 #else
 #ifndef __attribute__
 #define __attribute__(l)
 #endif
 #define __attr_printf(a, b)
+#endif
+
+#if defined(__GNUC__) && __GNUC__ > 2
+#define __attr_nonnull(l)    __attribute__((nonnull l))
+#define __unused__           __attribute__((unused))
+#else
 #define __attr_nonnull(l)
 #define __unused__
 #endif
