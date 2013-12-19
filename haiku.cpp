@@ -33,8 +33,6 @@ extern "C" {
 #include <View.h>
 #include <Window.h>
 
-extern QEDisplay haiku_dpy;
-
 static int force_tty = 0;
 
 static int font_xsize;
@@ -185,9 +183,7 @@ void QEView::KeyDown(const char *bytes, int32 numBytes)
 
 void QEView::KeyUp(const char *bytes, int32 numBytes)
 {
-    uint32 mods;
     BMessage *message = Window()->DetachCurrentMessage();
-    //message->PrintToStream();
     bmessage_input(NULL, this, message);
 }
 
@@ -212,13 +208,6 @@ static int haiku_probe(void)
     if (force_tty)
         return 0;
     return 2;
-}
-
-static int32 bapp_quit_thread(void *arg)
-{
-    be_app->Lock();
-    be_app->Quit();
-    return 0;
 }
 
 static int32 bapp_thread(void *arg)
@@ -268,11 +257,8 @@ static int haiku_init(QEditScreen *s, int w, int h)
 {
     int xsize, ysize, font_ysize;
     WindowState *ctx;
-    
-    if (!be_app) 
-        init_application();
 
-    memcpy(&s->dpy, &haiku_dpy, sizeof(QEDisplay));
+    init_application();
 
     ctx = (WindowState *)malloc(sizeof(WindowState));
     if (ctx == NULL)
@@ -344,6 +330,7 @@ static void haiku_close(QEditScreen *s)
     ctx->w->Lock();
     ctx->w->Quit();
     free(s->priv_data);
+    uninit_application();
 }
 
 static void haiku_flush(QEditScreen *s)
@@ -370,19 +357,14 @@ static void haiku_handle_event(void *opaque)
 {
     QEditScreen *s = (QEditScreen *)opaque;
     WindowState *ctx = (WindowState *)s->priv_data;
-    unsigned char buf[16];
     bigtime_t timestamp_ms;
     BMessage *event;
     //fprintf(stderr, "%s()\n", __FUNCTION__);
-    /*
-    KeySym keysym;
-    */
-    int shift, ctrl, meta, len, key = 0;
+    int shift, ctrl, meta, key = 0;
     QEEvent ev1, *ev = &ev1;
 
-    if (read(ctx->events_rd, &event, sizeof(BMessage *)) < sizeof(BMessage *))
+    if (read(ctx->events_rd, &event, sizeof(event)) < (signed)sizeof(event))
         return;
-    //event->PrintToStream();
 
     switch(event->what) {
     case B_QUIT_REQUESTED:
@@ -411,14 +393,7 @@ static void haiku_handle_event(void *opaque)
     case B_VIEW_RESIZED:
         {
             int32 width, height;
-            int columns, rows;
-            //event->PrintToStream();
-/*
-            if (event->FindInt32("width", &width) < B_OK)
-                break;
-            if (event->FindInt32("height", &height) < B_OK)
-                break;
-*/
+
             ctx->v->LockLooper();
 
             width = ctx->v->Bounds().IntegerWidth() + 1;
@@ -504,7 +479,6 @@ static void haiku_handle_event(void *opaque)
 
     case B_KEY_DOWN:
         {
-            unsigned int mods = 0;
             uint32 state;
             //event->PrintToStream();
             uint32 scancode;
@@ -643,7 +617,7 @@ static void haiku_handle_event(void *opaque)
                 key = utf8_decode(&p);
             }
 
-        got_key:
+        //got_key:
             if (key) {
                 ev->key_event.type = QE_KEY_EVENT;
                 ev->key_event.key = key;
@@ -829,7 +803,7 @@ static void haiku_bmp_free(__unused__ QEditScreen *s, QEBitmap *b)
     b->priv_data = NULL;
 }
 
-extern QEDisplay haiku_dpy = {
+static QEDisplay haiku_dpy = {
     "haiku",
     haiku_probe,
     haiku_init,
