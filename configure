@@ -35,6 +35,9 @@ case "$cpu" in
   i386|i486|i586|i686|i86pc|BePC)
     cpu="x86"
     ;;
+  x86_64)
+    cpu="x86_64"
+    ;;
   armv4l)
     cpu="armv4l"
     ;;
@@ -179,6 +182,41 @@ if test -z `which texi2html` ; then
     doc="no"
 fi
 
+usage () {
+    cat << EOF
+
+Usage: configure [options]
+Options: [defaults in brackets after descriptions]
+
+EOF
+
+echo "Standard options:"
+echo "  --help                   print this message"
+echo "  --prefix=PREFIX          install in PREFIX [$prefix]"
+echo "  --enable-win32           enable win32 cross compile"
+echo "  --enable-cygwin          compile for cygwin systems"
+echo "  --disable-x11            disable Xwindow support"
+echo "  --disable-xv             disable Xvideo extension support"
+echo "  --disable-xrender        disable Xrender extension support"
+echo "  --enable-tiny            build a very small version"
+echo "  --disable-html           disable graphical html support"
+echo "  --disable-png            disable png support"
+echo "  --disable-plugins        disable plugins support"
+echo "  --disable-ffmpeg         disable ffmpeg support"
+echo "  --with-ffmpegdir=DIR     find ffmpeg sources and libraries in DIR"
+echo "                           for audio/video/image support"
+echo ""
+echo "Advanced options (experts only):"
+echo "  --source-path=PATH       path of source code [$source_path]"
+echo "  --cross-prefix=PREFIX    use PREFIX for compile tools [$cross_prefix]"
+echo "  --cc=CC                  use C compiler CC [$cc]"
+echo "  --make=MAKE              use specified make [$make]"
+echo "  --with-ffmpeglibdir=DIR  set ffmpeg object files directory"
+echo ""
+echo "NOTE: The object files are built at the place where configure is launched"
+exit 1
+}
+
 for opt do
     value="none"
     case "$opt" in
@@ -220,6 +258,9 @@ for opt do
         ;;
       --enable-*)
         value="yes"
+        ;;
+      --help|-h|-?)
+        usage
         ;;
       *)
         echo "unknown option: $opt"
@@ -324,7 +365,7 @@ if test "$x11" = "no" -a "$haiku" = "no" ; then
     html="no"
 fi
 
-# endianness : guess with cpu type. Should also use prefix
+# endianness: guess with cpu type. Should also use prefix
 if test "$cpu" = "powerpc"; then
     bigendian="yes"
 fi
@@ -411,41 +452,6 @@ if $cc -o $TMPO $TMPC 2> /dev/null ; then
     has_typeof="yes"
 fi
 
-if test x"$1" = x"-h" -o x"$1" = x"--help" ; then
-    cat << EOF
-
-Usage: configure [options]
-Options: [defaults in brackets after descriptions]
-
-EOF
-
-echo "Standard options:"
-echo "  --help                   print this message"
-echo "  --prefix=PREFIX          install in PREFIX [$prefix]"
-echo "  --enable-win32           enable win32 cross compile"
-echo "  --enable-cygwin          compile for cygwin systems"
-echo "  --disable-x11            disable Xwindow support"
-echo "  --disable-xv             disable Xvideo extension support"
-echo "  --disable-xrender        disable Xrender extension support"
-echo "  --enable-tiny            build a very small version"
-echo "  --disable-html           disable graphical html support"
-echo "  --disable-png            disable png support"
-echo "  --disable-plugins        disable plugins support"
-echo "  --disable-ffmpeg         disable ffmpeg support"
-echo "  --with-ffmpegdir=DIR     find ffmpeg sources and libraries in DIR"
-echo "                           for audio/video/image support"
-echo ""
-echo "Advanced options (experts only):"
-echo "  --source-path=PATH       path of source code [$source_path]"
-echo "  --cross-prefix=PREFIX    use PREFIX for compile tools [$cross_prefix]"
-echo "  --cc=CC                  use C compiler CC [$cc]"
-echo "  --make=MAKE              use specified make [$make]"
-echo "  --with-ffmpeglibdir=DIR  set ffmpeg object files directory"
-echo ""
-echo "NOTE: The object files are built at the place where configure is launched"
-exit 1
-fi
-
 echo "Install prefix      $prefix"
 echo "Source path         $source_path"
 echo "C compiler          $cc"
@@ -485,6 +491,9 @@ echo "EXE=$exe" >> $TMPMAK
 if test "$cpu" = "x86" ; then
   echo "TARGET_ARCH_X86=yes" >> $TMPMAK
   echo "#define ARCH_X86 1" >> $TMPH
+elif test "$cpu" = "x86_64" ; then
+  echo "TARGET_ARCH_X86_64=yes" >> $TMPMAK
+  echo "#define ARCH_X86_64 1" >> $TMPH
 elif test "$cpu" = "armv4l" ; then
   echo "TARGET_ARCH_ARMV4L=yes" >> $TMPMAK
   echo "#define ARCH_ARMV4L 1" >> $TMPH
