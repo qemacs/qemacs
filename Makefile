@@ -266,7 +266,7 @@ KMAPS=Arabic.kmap ArmenianEast.kmap ArmenianWest.kmap Chinese-CJ.kmap       \
       Hebrew.kmap HebrewIsraeli.kmap HebrewP.kmap Israeli.kmap Yiddish.kmap \
       Kana.kmap
 #     Hangul.kmap Hangul2.kmap Hangul3.kmap Unicode2.kmap
-#KMAPS_DIR=$(prefix)/share/yudit/data
+#KMAPS_DIR=$(datadir)/yudit/data
 KMAPS_DIR=kmap
 KMAPS:=$(addprefix $(KMAPS_DIR)/, $(KMAPS))
 
@@ -366,15 +366,15 @@ distclean: clean
 
 install: $(TARGETS) qe.1
 	$(INSTALL) -m 755 -d $(DESTDIR)$(prefix)/bin
-	$(INSTALL) -m 755 -d $(DESTDIR)$(prefix)/man/man1
-	$(INSTALL) -m 755 -d $(DESTDIR)$(prefix)/share/qe
+	$(INSTALL) -m 755 -d $(DESTDIR)$(mandir)/man1
+	$(INSTALL) -m 755 -d $(DESTDIR)$(datadir)/qe
 	$(INSTALL) -m 755 -s qe$(EXE) $(DESTDIR)$(prefix)/bin/qemacs$(EXE)
 	ln -sf qemacs $(DESTDIR)$(prefix)/bin/qe$(EXE)
 ifdef CONFIG_FFMPEG
 	ln -sf qemacs$(EXE) $(DESTDIR)$(prefix)/bin/ffplay$(EXE)
 endif
-	$(INSTALL) -m 644 kmaps ligatures $(DESTDIR)$(prefix)/share/qe
-	$(INSTALL) -m 644 qe.1 $(DESTDIR)$(prefix)/man/man1
+	$(INSTALL) -m 644 kmaps ligatures $(DESTDIR)$(datadir)/qe
+	$(INSTALL) -m 644 qe.1 $(DESTDIR)$(mandir)/man1
 ifdef CONFIG_HTML
 	$(INSTALL) -m 755 -s html2png$(EXE) $(DESTDIR)$(prefix)/bin
 endif
@@ -383,9 +383,9 @@ uninstall:
 	rm -f $(DESTDIR)$(prefix)/bin/qemacs$(EXE)   \
 	      $(DESTDIR)$(prefix)/bin/qe$(EXE)       \
 	      $(DESTDIR)$(prefix)/bin/ffplay$(EXE)   \
-	      $(DESTDIR)$(prefix)/man/man1/qe.1      \
-	      $(DESTDIR)$(prefix)/share/qe/kmaps     \
-	      $(DESTDIR)$(prefix)/share/qe/ligatures \
+	      $(DESTDIR)$(mandir)/man1/qe.1          \
+	      $(DESTDIR)$(datadir)/qe/kmaps          \
+	      $(DESTDIR)$(datadir)/qe/ligatures      \
 	      $(DESTDIR)$(prefix)/bin/html2png$(EXE)
 
 rebuild:
