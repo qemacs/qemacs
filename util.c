@@ -344,16 +344,41 @@ char *reduce_filename(char *dest, int size, const char *filename)
     return dest;
 }
 
+/* Return 1 iff filename extension appears in | separated list extlist.
+ * Initial and final | do not match an empty extension, but || does.
+ * Multiple tacked extensions may appear un extlist eg. |tar.gz|
+ * Initial dots do not account as extension delimiters.
+ * . and .. do not have an empty extension, nor do they match ||
+ */
 int match_extension(const char *filename, const char *extlist)
 {
-    const char *r;
+    const char *base = get_basename(filename);
+    int len;
+    const char *p, *q;
 
-    r = get_extension(filename);
-    if (*r == '.') {
-        return strfind(extlist, r + 1);
-    } else {
+    while (*base == '.')
+        base++;
+    len = strlen(base);
+    if (len == 0)
         return 0;
+
+    for (p = q = extlist;; p++) {
+        int c = *p;
+        if (c == '|' || c == '\0') {
+            int len1 = p - q;
+            if (len1 != 0 || (q != extlist && c != '\0')) {
+                if (len > len1 && base[len - len1 - 1] == '.'
+                &&  !memcmp(base + (len - len1), q, len1)) {
+                    return 1;
+                }
+            }
+            if (c == '|')
+                q = p + 1;
+            else
+                break;
+        }
     }
+    return 0;
 }
 
 /* Remove trailing slash from path, except for / directory */
