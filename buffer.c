@@ -1258,7 +1258,7 @@ static void eb_io_stop(EditBuffer *b, int err)
 #endif
 
 /* CG: returns number of bytes read, or -1 upon read error */
-int raw_load_buffer1(EditBuffer *b, FILE *f, int offset)
+int raw_buffer_load1(EditBuffer *b, FILE *f, int offset)
 {
     unsigned char buf[IOBUF_SIZE];
     int len, size;
@@ -1325,7 +1325,7 @@ int mmap_buffer(EditBuffer *b, const char *filename)
 }
 #endif
 
-static int raw_load_buffer(EditBuffer *b, FILE *f)
+static int raw_buffer_load(EditBuffer *b, FILE *f)
 {
     QEmacsState *qs = &qe_state;
     struct stat st;
@@ -1342,7 +1342,7 @@ static int raw_load_buffer(EditBuffer *b, FILE *f)
     }
 #endif
     if (st.st_size <= qs->max_load_size) {
-        return raw_load_buffer1(b, f, 0);
+        return raw_buffer_load1(b, f, 0);
     }
     return -1;
 }
@@ -1350,7 +1350,7 @@ static int raw_load_buffer(EditBuffer *b, FILE *f)
 /* Write bytes between <start> and <end> to file filename,
  * return bytes written or -1 if error
  */
-static int raw_save_buffer(EditBuffer *b, int start, int end,
+static int raw_buffer_save(EditBuffer *b, int start, int end,
                            const char *filename)
 {
     int fd, len, size, written;
@@ -1391,7 +1391,7 @@ static int raw_save_buffer(EditBuffer *b, int start, int end,
     return written;
 }
 
-static void raw_close_buffer(__unused__ EditBuffer *b)
+static void raw_buffer_close(__unused__ EditBuffer *b)
 {
     /* nothing to do */
 }
@@ -1693,9 +1693,9 @@ void eb_invalidate_raw_data(EditBuffer *b)
 
 EditBufferDataType raw_data_type = {
     "raw",
-    raw_load_buffer,
-    raw_save_buffer,
-    raw_close_buffer,
+    raw_buffer_load,
+    raw_buffer_save,
+    raw_buffer_close,
     NULL, /* next */
 };
 

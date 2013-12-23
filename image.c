@@ -343,7 +343,8 @@ static void set_new_image(EditBuffer *b, ImageBuffer *ib)
     b->modified = 1;
 }
 
-static int image_buffer_save(EditBuffer *b, const char *filename)
+static int image_buffer_save(EditBuffer *b, int start, int end,
+                             const char *filename)
 {
     ByteIOContext pb1, *pb = &pb1;
     ImageBuffer *ib = b->data;

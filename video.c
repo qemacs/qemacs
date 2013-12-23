@@ -85,7 +85,8 @@ static int video_buffer_load(EditBuffer *b, FILE *f)
     return 0;
 }
 
-static int video_buffer_save(EditBuffer *b, const char *filename)
+static int video_buffer_save(EditBuffer *b, int start, int end,
+                             const char *filename)
 {
     /* cannot save anything */
     return -1;

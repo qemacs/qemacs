@@ -827,7 +827,7 @@ int eb_delete_range(EditBuffer *b, int p1, int p2);
 void do_undo(EditState *s);
 //void do_redo(EditState *s);
 
-int raw_load_buffer1(EditBuffer *b, FILE *f, int offset);
+int raw_buffer_load1(EditBuffer *b, FILE *f, int offset);
 int mmap_buffer(EditBuffer *b, const char *filename);
 int eb_write_buffer(EditBuffer *b, int start, int end, const char *filename);
 int eb_save_buffer(EditBuffer *b);

@@ -1585,7 +1585,10 @@ static int reload_buffer(EditState *s, EditBuffer *b, FILE *f1)
     }
     saved = b->save_log;
     b->save_log = 0;
-    ret = b->data_type->buffer_load(b, f);
+    if (b->data_type->buffer_load)
+        ret = b->data_type->buffer_load(b, f);
+    else
+        ret = -1;
     b->modified = 0;
     b->save_log = saved;
     if (!f1)
@@ -5570,7 +5573,7 @@ void do_insert_file(EditState *s, const char *filename)
         return;
     }
     /* CG: file charset will not be converted to buffer charset */
-    size = raw_load_buffer1(s->b, f, s->offset);
+    size = raw_buffer_load1(s->b, f, s->offset);
     fclose(f);
 
     /* mark the insert chunk */
