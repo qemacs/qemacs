@@ -190,23 +190,28 @@ static int run_process(const char *path, const char **argv,
     }
     if (pid == 0) {
         /* child process */
+
+        /* detach controlling terminal */
+        setsid();
+
+        /* close all files */
         nb_fds = getdtablesize();
         for (i = 0; i < nb_fds; i++)
             close(i);
-        /* open pseudo tty for standard i/o */
+
+        /* open pseudo tty for standard I/O */
         if (is_shell == 2) {
-            /* non interactive colored output: input from /dev/null */
+            /* collect output from non interactive process: no input */
             setenv("LINES", "10000", 1);
             open("/dev/null", O_RDONLY);
             open(tty_name, O_RDWR);
-            dup(0);
+            dup(1);
         } else {
+            /* interactive shell: input from / output to pseudo terminal */
             open(tty_name, O_RDWR);
             dup(0);
             dup(0);
         }
-
-        setsid();
 
         setenv("TERM", "xterm", 1);
         unsetenv("PAGER");
@@ -1250,7 +1255,7 @@ static void shell_read_cb(void *opaque)
 {
     ShellState *s = opaque;
     QEmacsState *qs = s->qe_state;
-    unsigned char buf[1024];
+    unsigned char buf[16 * 1024];
     int len, i;
 
     len = read(s->pty_fd, buf, sizeof(buf));
