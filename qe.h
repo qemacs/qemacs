@@ -1776,9 +1776,14 @@ void fill_border(EditState *s, int x, int y, int w, int h, int color);
 int qe_bitmap_format_to_pix_fmt(int format);
 
 /* shell.c */
-EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
-                             const char *path, const char **argv,
-                             int is_shell);
+const char *get_shell(void);
+
+#define SF_INTERACTIVE   0x01
+#define SF_COLOR         0x02
+#define SF_INFINITE      0x04
+EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
+                             const char *caption, const char *cmd,
+                             int shell_flags);
 
 #define QASSERT(e)      do { if (!(e)) fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #e); } while (0)
 

@@ -226,7 +226,6 @@ static void latex_cmd_run(void *opaque, char *cmd)
     struct latex_function *func = (struct latex_function *)opaque;
     char cwd[MAX_FILENAME_SIZE];
     char dir[MAX_FILENAME_SIZE];
-    const char *argv[4];
     char *p;
     int len;
 
@@ -234,11 +233,6 @@ static void latex_cmd_run(void *opaque, char *cmd)
         put_status(func->es, "aborted");
         return;
     }
-
-    argv[0] = "/bin/sh";
-    argv[1] = "-c";
-    argv[2] = cmd;
-    argv[3] = NULL;
 
     getcwd(cwd, sizeof(cwd));
 
@@ -261,7 +255,8 @@ static void latex_cmd_run(void *opaque, char *cmd)
         }
 
         /* create new buffer */
-        b = new_shell_buffer(NULL, "*LaTeX output*", argv[0], argv, 0);
+        b = new_shell_buffer(NULL, "*LaTeX output*", NULL, cmd,
+                             SF_COLOR | SF_INFINITE);
         if (b) {
             /* XXX: try to split window if necessary */
             switch_to_buffer(func->es, b);
@@ -269,9 +264,17 @@ static void latex_cmd_run(void *opaque, char *cmd)
     } else {
         int pid = fork();
         if (pid == 0) {
+            const char *argv[4];
+
             /* child process */
             setsid();
-            execv("/bin/sh", (char *const*)argv);
+
+            argv[0] = get_shell();
+            argv[1] = "-c";
+            argv[2] = cmd;
+            argv[3] = NULL;
+
+            execv(argv[0], (char * const*)argv);
             exit(1);
         }
     }

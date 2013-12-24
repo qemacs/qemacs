@@ -70,7 +70,6 @@ typedef struct ShellState {
     int utf8_len, utf8_pos;
     EditBuffer *b;
     EditBuffer *b_color; /* color buffer, one byte per char */
-    int is_shell; /* only used to display final message */
     struct QEmacsState *qe_state;
     const char *ka1, *ka3, *kb2, *kc1, *kc3, *kcbt, *kspd;
     const char *kbeg, *kbs, *kent, *kdch1, *kich1;
@@ -80,11 +79,10 @@ typedef struct ShellState {
     const char *kf11, *kf12, *kf13, *kf14, *kf15;
     const char *kf16, *kf17, *kf18, *kf19, *kf20;
     const char *khome, *kend, *kmous, *knp, *kpp;
+    const char *caption;  /* process caption for exit message */
+    int shell_flags;
 
 } ShellState;
-
-/* move to mode */
-static int shell_launched = 0;
 
 /* CG: these variables should be encapsulated in a global structure */
 static char error_buffer[MAX_BUFFERNAME_SIZE];
@@ -156,13 +154,24 @@ static int get_pty(char *tty_str, int size)
     return -1;
 }
 
+const char *get_shell(void)
+{
+    const char *shell_path;
+
+    /* find shell name */
+    shell_path = getenv("SHELL");
+    if (!shell_path)
+        shell_path = "/bin/sh";
+
+    return shell_path;
+}
+
 #define TTY_XSIZE  80
 #define TTY_YSIZE  25
 #define TTY_YSIZE_INFINITE  10000
 
-static int run_process(const char *path, const char **argv,
-                       int *fd_ptr, int *pid_ptr,
-                       int cols, int rows, int is_shell)
+static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
+                       int cols, int rows, int shell_flags)
 {
     int pty_fd, pid, i, nb_fds;
     char tty_name[1024];
@@ -190,6 +199,15 @@ static int run_process(const char *path, const char **argv,
     }
     if (pid == 0) {
         /* child process */
+        const char *argv[4];
+        int argc = 0;
+
+        argv[argc++] = get_shell();
+        if (cmd) {
+            argv[argc++] = "-c";
+            argv[argc++] = cmd;
+        }
+        argv[argc] = NULL;
 
         /* detach controlling terminal */
 #ifndef CONFIG_DARWIN
@@ -200,18 +218,20 @@ static int run_process(const char *path, const char **argv,
         for (i = 0; i < nb_fds; i++)
             close(i);
 
-        /* open pseudo tty for standard I/O */
-        if (is_shell == 2) {
-            /* collect output from non interactive process: no input */
+        if (shell_flags & SF_INFINITE)
             setenv("LINES", "10000", 1);
-            open("/dev/null", O_RDONLY);
-            open(tty_name, O_RDWR);
-            dup(1);
-        } else {
+
+        /* open pseudo tty for standard I/O */
+        if (shell_flags & SF_INTERACTIVE) {
             /* interactive shell: input from / output to pseudo terminal */
             open(tty_name, O_RDWR);
             dup(0);
             dup(0);
+        } else {
+            /* collect output from non interactive process: no input */
+            open("/dev/null", O_RDONLY);
+            open(tty_name, O_RDWR);
+            dup(1);
         }
 #ifdef CONFIG_DARWIN
         setsid();
@@ -220,7 +240,7 @@ static int run_process(const char *path, const char **argv,
         unsetenv("PAGER");
         //setenv("QELEVEL", "1", 1);
 
-        execv(path, (char *const*)argv);
+        execv(argv[0], (char * const*)argv);
         exit(1);
     }
     /* return file info */
@@ -1019,7 +1039,7 @@ static void tty_emulate(ShellState *s, int c)
                 if (s->esc_params[0] == 1047 ||
                     s->esc_params[0] == 1048 ||
                     s->esc_params[0] == 1049) {
-                    if (s->is_shell == 1) {
+                    if (s->shell_flags & SF_INTERACTIVE) {
                         /* only grab keys in interactive tty buffers */
                         s->grab_keys = 1;
                         qe_grab_keys(shell_key, s);
@@ -1034,7 +1054,7 @@ static void tty_emulate(ShellState *s, int c)
                 if (s->esc_params[0] == 1047 ||
                     s->esc_params[0] == 1048 ||
                     s->esc_params[0] == 1049) {
-                    if (s->is_shell == 1) {
+                    if (s->shell_flags & SF_INTERACTIVE) {
                         qe_ungrab_keys();
                         s->grab_keys = 0;
                     }
@@ -1292,10 +1312,7 @@ static void shell_pid_cb(void *opaque, int status)
     char buf[1024];
 
     *buf = 0;
-    if (s->is_shell == 1) {
-        snprintf(buf, sizeof(buf), "\nProcess shell finished\n");
-    } else
-    if (s->is_shell == 3) {
+    if (s->caption) {
         time_t ti;
         char *time_str;
 
@@ -1306,11 +1323,11 @@ static void shell_pid_cb(void *opaque, int status)
         else
             status = -1;
         if (status == 0) {
-            snprintf(buf, sizeof(buf), "\nCompilation finished at %s",
-                     time_str);
+            snprintf(buf, sizeof(buf), "\n%s finished at %s",
+                     s->caption, time_str);
         } else {
-            snprintf(buf, sizeof(buf), "\nCompilation exited abnormally with code %d at %s",
-                     status, time_str);
+            snprintf(buf, sizeof(buf), "\n%s exited abnormally with code %d at %s",
+                     s->caption, status, time_str);
         }
     }
     {
@@ -1373,9 +1390,9 @@ static void shell_close(EditBuffer *b)
     qe_free(&s);
 }
 
-EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
-                             const char *path, const char **argv,
-                             int is_shell)
+EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
+                             const char *caption, const char *cmd,
+                             int shell_flags)
 {
     ShellState *s;
     EditBuffer *b, *b_color;
@@ -1387,7 +1404,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
         b = eb_new("", BF_SAVELOG);
     if (!b)
         return NULL;
-    eb_set_buffer_name(b, name); /* ensure that the name is unique */
+    eb_set_buffer_name(b, bufname); /* ensure that the name is unique */
 
     /* Select shell output buffer encoding from LANG setting */
     if ((lang = getenv("LANG")) != NULL && strstr(lang, "UTF-8"))
@@ -1407,12 +1424,13 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
     s->b = b;
     s->pty_fd = -1;
     s->pid = -1;
-    s->is_shell = is_shell;
     s->qe_state = &qe_state;
+    s->caption = caption;
+    s->shell_flags = shell_flags;
     tty_init(s);
 
     /* add color buffer */
-    if (is_shell) {
+    if (shell_flags & SF_COLOR) {
         b_color = eb_new("*color*", BF_SYSTEM);
         if (!b_color) {
             if (!b0)
@@ -1428,9 +1446,11 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *name,
 
     /* launch shell */
     cols = TTY_XSIZE;
-    rows = (is_shell == 1) ? TTY_YSIZE : TTY_YSIZE_INFINITE;
+    rows = TTY_YSIZE;
+    if (shell_flags & SF_INFINITE)
+        rows = TTY_YSIZE_INFINITE;
 
-    if (run_process(path, argv, &s->pty_fd, &s->pid, cols, rows, is_shell) < 0) {
+    if (run_process(cmd, &s->pty_fd, &s->pid, cols, rows, shell_flags) < 0) {
         if (!b0)
             eb_free(b);
         return NULL;
@@ -1458,22 +1478,9 @@ static EditBuffer *try_show_buffer(EditState *s, const char *bufname)
     return b;
 }
 
-static const char *get_shell(void)
-{
-    const char *shell_path;
-
-    /* find shell name */
-    shell_path = getenv("SHELL");
-    if (!shell_path)
-        shell_path = "/bin/sh";
-
-    return shell_path;
-}
-
 static void do_shell(EditState *s, int force)
 {
     EditBuffer *b;
-    const char *argv[2];
 
     /* CG: Should prompt for buffer name if arg:
      * find a syntax for optional string argument w/ prompt
@@ -1485,9 +1492,8 @@ static void do_shell(EditState *s, int force)
     }
 
     /* create new buffer */
-    argv[0] = get_shell();
-    argv[1] = NULL;
-    b = new_shell_buffer(NULL, "*shell*", argv[0], argv, 1);
+    b = new_shell_buffer(NULL, "*shell*", "Shell process", NULL,
+                         SF_COLOR | SF_INTERACTIVE);
     if (!b)
         return;
 
@@ -1495,12 +1501,10 @@ static void do_shell(EditState *s, int force)
     edit_set_mode(s, &shell_mode, NULL);
 
     put_status(s, "Press C-o to toggle between shell/edit mode");
-    shell_launched = 1;
 }
 
 static void do_man(EditState *s, const char *arg)
 {
-    const char *argv[4];
     char bufname[32];
     char cmd[128];
     EditBuffer *b;
@@ -1513,17 +1517,35 @@ static void do_man(EditState *s, const char *arg)
         return;
 
     /* create new buffer */
-    argv[0] = get_shell();
-    argv[1] = "-c";
-    argv[2] = cmd;
-    argv[3] = NULL;
-    b = new_shell_buffer(NULL, bufname, argv[0], argv, 2);
+    b = new_shell_buffer(NULL, bufname, NULL, cmd, SF_COLOR | SF_INFINITE);
     if (!b)
         return;
 
     b->flags |= BF_READONLY;
     switch_to_buffer(s, b);
     edit_set_mode(s, &pager_mode, NULL);
+}
+
+static void do_ssh(EditState *s, const char *arg)
+{
+    char bufname[64];
+    char cmd[128];
+    EditBuffer *b;
+    
+    /* Use standard ssh command */
+    snprintf(cmd, sizeof(cmd), "ssh %s", arg);
+    snprintf(bufname, sizeof(bufname), "*ssh-%s*", arg);
+
+    /* create new buffer */
+    b = new_shell_buffer(NULL, bufname, "ssh", cmd,
+                         SF_COLOR | SF_INTERACTIVE);
+    if (!b)
+        return;
+
+    switch_to_buffer(s, b);
+    edit_set_mode(s, &shell_mode, NULL);
+
+    put_status(s, "Press C-o to toggle between shell/edit mode");
 }
 
 static void shell_move_left_right(EditState *e, int dir)
@@ -1663,7 +1685,6 @@ static void do_shell_toggle_input(EditState *e)
 
 static void do_compile(EditState *e, const char *cmd)
 {
-    const char *argv[4];
     EditBuffer *b;
 
     /* if the buffer already exists, kill it */
@@ -1678,11 +1699,8 @@ static void do_compile(EditState *e, const char *cmd)
         cmd = "make";
 
     /* create new buffer */
-    argv[0] = get_shell();
-    argv[1] = "-c";
-    argv[2] = cmd;
-    argv[3] = NULL;
-    b = new_shell_buffer(NULL, "*compilation*", argv[0], argv, 3);
+    b = new_shell_buffer(NULL, "*compilation*", "Compilation", cmd,
+                         SF_COLOR | SF_INFINITE);
     if (!b)
         return;
 
@@ -1834,6 +1852,9 @@ static CmdDef pager_commands[] = {
 static CmdDef shell_global_commands[] = {
     CMD2( KEY_CTRLXRET('\r'), KEY_NONE,
           "shell", do_shell, ESi, "ui")
+    CMD2( KEY_NONE, KEY_NONE,
+          "ssh", do_ssh, ESs,
+          "s{Open connection to (host or user@host: }|ssh|")
     CMD2( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE,
           "compile", do_compile, ESs,
           "s{Compile command: }|compile|")
