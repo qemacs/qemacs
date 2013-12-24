@@ -5510,7 +5510,6 @@ static void do_load1(EditState *s, const char *filename1,
 }
 
 #if 0
-
 static void load_progress_cb(void *opaque, int size)
 {
     EditState *s = opaque;
@@ -5525,6 +5524,7 @@ static void load_completion_cb(void *opaque, int err)
     int mode;
 
     mode = S_IFREG;
+    /* CG: potential problem: EXXX may be negative, as in Haiku */
     if (err == -ENOENT || err == -ENOTDIR) {
         put_status(s, "(New file)");
     } else if (err == -EISDIR) {
