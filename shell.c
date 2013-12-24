@@ -192,8 +192,9 @@ static int run_process(const char *path, const char **argv,
         /* child process */
 
         /* detach controlling terminal */
+#ifndef CONFIG_DARWIN
         setsid();
-
+#endif
         /* close all files */
         nb_fds = getdtablesize();
         for (i = 0; i < nb_fds; i++)
@@ -212,7 +213,9 @@ static int run_process(const char *path, const char **argv,
             dup(0);
             dup(0);
         }
-
+#ifdef CONFIG_DARWIN
+        setsid();
+#endif
         setenv("TERM", "xterm", 1);
         unsetenv("PAGER");
         //setenv("QELEVEL", "1", 1);
@@ -1455,11 +1458,22 @@ static EditBuffer *try_show_buffer(EditState *s, const char *bufname)
     return b;
 }
 
+static const char *get_shell(void)
+{
+    const char *shell_path;
+
+    /* find shell name */
+    shell_path = getenv("SHELL");
+    if (!shell_path)
+        shell_path = "/bin/sh";
+
+    return shell_path;
+}
+
 static void do_shell(EditState *s, int force)
 {
     EditBuffer *b;
-    const char *argv[3];
-    const char *shell_path;
+    const char *argv[2];
 
     /* CG: Should prompt for buffer name if arg:
      * find a syntax for optional string argument w/ prompt
@@ -1470,15 +1484,10 @@ static void do_shell(EditState *s, int force)
             return;
     }
 
-    /* find shell name */
-    shell_path = getenv("SHELL");
-    if (!shell_path)
-        shell_path = "/bin/sh";
-
     /* create new buffer */
-    argv[0] = shell_path;
+    argv[0] = get_shell();
     argv[1] = NULL;
-    b = new_shell_buffer(NULL, "*shell*", shell_path, argv, 1);
+    b = new_shell_buffer(NULL, "*shell*", argv[0], argv, 1);
     if (!b)
         return;
 
@@ -1491,23 +1500,24 @@ static void do_shell(EditState *s, int force)
 
 static void do_man(EditState *s, const char *arg)
 {
-    const char *man_path;
-    const char *argv[3];
+    const char *argv[4];
     char bufname[32];
+    char cmd[128];
     EditBuffer *b;
     
     /* Assume standard man command */
-    man_path = "/usr/bin/man";
+    snprintf(cmd, sizeof(cmd), "man %s", arg);
 
     snprintf(bufname, sizeof(bufname), "*Man %s*", arg);
     if (try_show_buffer(s, bufname))
         return;
 
     /* create new buffer */
-    argv[0] = man_path;
-    argv[1] = arg;
-    argv[2] = NULL;
-    b = new_shell_buffer(NULL, bufname, man_path, argv, 2);
+    argv[0] = get_shell();
+    argv[1] = "-c";
+    argv[2] = cmd;
+    argv[3] = NULL;
+    b = new_shell_buffer(NULL, bufname, argv[0], argv, 2);
     if (!b)
         return;
 
@@ -1668,11 +1678,11 @@ static void do_compile(EditState *e, const char *cmd)
         cmd = "make";
 
     /* create new buffer */
-    argv[0] = "/bin/sh";
+    argv[0] = get_shell();
     argv[1] = "-c";
-    argv[2] = (char *)cmd;
+    argv[2] = cmd;
     argv[3] = NULL;
-    b = new_shell_buffer(NULL, "*compilation*", "/bin/sh", argv, 3);
+    b = new_shell_buffer(NULL, "*compilation*", argv[0], argv, 3);
     if (!b)
         return;
 

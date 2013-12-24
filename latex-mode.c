@@ -261,7 +261,7 @@ static void latex_cmd_run(void *opaque, char *cmd)
         }
 
         /* create new buffer */
-        b = new_shell_buffer(NULL, "*LaTeX output*", "/bin/sh", argv, 0);
+        b = new_shell_buffer(NULL, "*LaTeX output*", argv[0], argv, 0);
         if (b) {
             /* XXX: try to split window if necessary */
             switch_to_buffer(func->es, b);
