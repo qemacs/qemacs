@@ -1498,7 +1498,7 @@ static void do_shell(EditState *s, int force)
         return;
 
     switch_to_buffer(s, b);
-    edit_set_mode(s, &shell_mode, NULL);
+    edit_set_mode(s, &shell_mode);
 
     put_status(s, "Press C-o to toggle between shell/edit mode");
 }
@@ -1523,7 +1523,7 @@ static void do_man(EditState *s, const char *arg)
 
     b->flags |= BF_READONLY;
     switch_to_buffer(s, b);
-    edit_set_mode(s, &pager_mode, NULL);
+    edit_set_mode(s, &pager_mode);
 }
 
 static void do_ssh(EditState *s, const char *arg)
@@ -1543,7 +1543,7 @@ static void do_ssh(EditState *s, const char *arg)
         return;
 
     switch_to_buffer(s, b);
-    edit_set_mode(s, &shell_mode, NULL);
+    edit_set_mode(s, &shell_mode);
 
     put_status(s, "Press C-o to toggle between shell/edit mode");
 }
@@ -1707,7 +1707,7 @@ static void do_compile(EditState *e, const char *cmd)
     /* XXX: try to split window if necessary */
     switch_to_buffer(e, b);
     /* XXX: pager_mode for colorized output, text mode should support color buffer */ 
-    edit_set_mode(e, &pager_mode, NULL);
+    edit_set_mode(e, &pager_mode);
     set_error_offset(b, 0);
 }
 

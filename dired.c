@@ -557,7 +557,7 @@ void do_dired(EditState *s)
 
     width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
-    edit_set_mode(e, &dired_mode, NULL);
+    edit_set_mode(e, &dired_mode);
 
     index = dired_find_target(e, target);
     e->offset = eb_goto_pos(e->b, index + DIRED_HEADER, 0);

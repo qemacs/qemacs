@@ -1607,7 +1607,7 @@ static int reload_buffer(EditState *s, EditBuffer *b, FILE *f1)
     }
 }
 
-static void edit_set_mode_file(EditState *s, ModeDef *m,
+static void edit_set_mode_full(EditState *s, ModeDef *m,
                                ModeSavedData *saved_data, FILE *f1)
 {
     int size, data_count;
@@ -1698,9 +1698,9 @@ static void edit_set_mode_file(EditState *s, ModeDef *m,
         qe_free(&saved_data);
 }
 
-void edit_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data)
+void edit_set_mode(EditState *s, ModeDef *m)
 {
-    edit_set_mode_file(s, m, saved_data, NULL);
+    edit_set_mode_full(s, m, NULL, NULL);
 }
 
 void do_set_mode(EditState *s, const char *name)
@@ -1709,7 +1709,7 @@ void do_set_mode(EditState *s, const char *name)
 
     m = find_mode(name);
     if (m)
-        edit_set_mode(s, m, NULL);
+        edit_set_mode(s, m);
     else
         put_status(s, "No mode %s", name);
 }
@@ -1744,7 +1744,7 @@ void do_next_mode(EditState *s)
             break;
         if (!m->mode_probe
         ||  m->mode_probe(&probe_data) > 0) {
-            edit_set_mode(s, m, 0);
+            edit_set_mode(s, m);
             break;
         }
     }
@@ -4480,7 +4480,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
             b1->saved_data = s->mode->mode_save_data(s);
         }
         /* now we can close the mode */
-        edit_set_mode(s, NULL, NULL);
+        edit_set_mode(s, NULL);
     }
 
     /* now we can switch ! */
@@ -4508,7 +4508,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
             mode = &text_mode; /* default mode */
 
         /* open it ! */
-        edit_set_mode(s, mode, saved_data);
+        edit_set_mode_full(s, mode, saved_data, NULL);
     }
 }
 
@@ -4829,7 +4829,7 @@ void do_completion(EditState *s)
                 h = (h1 * 3) / 4;
                 e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
                 /* set list mode */
-                edit_set_mode(e, &list_mode, NULL);
+                edit_set_mode(e, &list_mode);
                 do_refresh(e);
                 completion_popup_window = e;
             }
@@ -5058,7 +5058,7 @@ void minibuffer_edit(const char *input, const char *prompt,
     s = edit_new(b, 0, qs->screen->height - qs->status_height,
                  qs->screen->width, qs->status_height, 0);
     /* Should insert at end of window list */
-    edit_set_mode(s, &minibuffer_mode, NULL);
+    edit_set_mode(s, &minibuffer_mode);
     s->prompt = qe_strdup(prompt);
     s->minibuf = 1;
     s->bidir = 0;
@@ -5133,7 +5133,7 @@ void show_popup(EditBuffer *b)
     h = (h1 * 3) / 4;
 
     s = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
-    edit_set_mode(s, &less_mode, NULL);
+    edit_set_mode(s, &less_mode);
     s->wrap = WRAP_TRUNCATE;
 
     popup_saved_active = qs->active_window;
@@ -5459,7 +5459,7 @@ static void do_load1(EditState *s, const char *filename1,
         selected_mode = probe_mode(s, S_IFREG, buf, 0, 0);
         /* XXX: avoid loading file */
         if (selected_mode)
-            edit_set_mode(s, selected_mode, NULL);
+            edit_set_mode(s, selected_mode);
         return;
     } else {
         mode = st.st_mode;
@@ -5490,7 +5490,7 @@ static void do_load1(EditState *s, const char *filename1,
         eb_set_charset(b, detect_charset(buf, buf_size));
 
     /* now we can set the mode */
-    edit_set_mode_file(s, selected_mode, NULL, f);
+    edit_set_mode_full(s, selected_mode, NULL, f);
     do_load_qerc(s, s->b->filename);
 
     if (access(b->filename, W_OK)) {

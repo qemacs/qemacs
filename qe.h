@@ -1553,7 +1553,7 @@ void do_split_window(EditState *s, int horiz);
 void edit_display(QEmacsState *qs);
 void edit_invalidate(EditState *s);
 void display_mode_line(EditState *s);
-void edit_set_mode(EditState *s, ModeDef *m, ModeSavedData *saved_data);
+void edit_set_mode(EditState *s, ModeDef *m);
 
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);

@@ -66,13 +66,28 @@ static void build_bufed_list(EditState *s)
                 *flagp++ = '%';
         }
         *flagp = '\0';
-        eb_printf(b, " %-2s%-20s", flags, hs->items.items[i]->str);
+        eb_printf(b, " %-2s%-16s", flags, hs->items.items[i]->str);
         if (b1) {
             char path[MAX_FILENAME_SIZE];
+            const char *mode;
+            EditState *e;
 
-            /* CG: should also display mode */
-            eb_printf(b, " %-10s  %10d  %s", 
-                      b1->charset->name, b1->total_size,
+            if (b1->saved_data) {
+                mode = b1->saved_data->mode->name;
+            } else {
+                mode = "none";
+                for (e = qs->first_window; e != NULL; e = e->next_window) {
+                    if (e->b == b1) {
+                        if (e->mode) {
+                            mode = e->mode->name;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            eb_printf(b, " %10d  %-8s %-8s %s",
+                      b1->total_size, b1->charset->name, mode,
                       make_user_path(path, sizeof(path), b1->filename));
         }
         eb_printf(b, "\n");
@@ -191,7 +206,7 @@ static void do_list_buffers(EditState *s, int argval)
 
     width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
-    edit_set_mode(e, &bufed_mode, NULL);
+    edit_set_mode(e, &bufed_mode);
 
     bs = e->mode_data;
     if (argval != NO_ARG) {
