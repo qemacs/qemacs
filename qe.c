@@ -7831,8 +7831,15 @@ static void qe_init(void *opaque)
 
     /* load file(s) */
     for (i = _optind; i < argc; i++) {
+        int line_num = 0;
+
+        if (argv[i][0] == '+' && i + 1 < argc) {
+            /* Handle +linenumber before file */
+            line_num = atoi(argv[i++]);
+        }
         do_find_file(s, argv[i]);
-        /* CG: handle +linenumber */
+        if (line_num)
+            do_goto_line(qs->active_window, line_num);
     }
 
 #if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
