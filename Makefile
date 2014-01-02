@@ -234,6 +234,9 @@ $(OBJS_DIR)/%.o: %.c qe.h qestyles.h config.h config.mak Makefile
 $(OBJS_DIR)/haiku.o: haiku.cpp qe.h qestyles.h config.h config.mak Makefile
 	g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -c $<
 
+%.s: %.c qe.h qestyles.h config.h config.mak Makefile
+	$(CC) $(DEFINES) $(CFLAGS) -o $@ -S $<
+
 #
 # Test for bidir algorithm
 #
