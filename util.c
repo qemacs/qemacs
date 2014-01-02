@@ -356,6 +356,9 @@ int match_extension(const char *filename, const char *extlist)
     int len;
     const char *p, *q;
 
+    if (!extlist)
+        return 0;
+
     while (*base == '.')
         base++;
     len = strlen(base);
