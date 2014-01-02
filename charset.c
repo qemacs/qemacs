@@ -1,8 +1,8 @@
 /*
  * Basic Charset functions for QEmacs
  *
- * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2002-2008 Charlie Gordon.
+ * Copyright (c) 2000-2002 Fabrice Bellard.
+ * Copyright (c) 2002-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,7 +23,64 @@
 
 QECharset *first_charset;
 
-/* specific tables */
+/* Unicode utilities */
+
+/* Compute tty width of unicode characters.  This is a modified
+ * implementation of wcwidth() from Markus Kuhn. We do not handle non
+ * spacing and enclosing combining characters and control chars.
+ */
+
+static unsigned int const unicode_glyph_ranges[] = {
+    0x10FF, 1, 0x115f, 2,     /*  0: Hangul Jamo */
+    0x2328, 1, 0x232a, 2,     /*  2: wide Angle brackets */
+    0x2E7F, 1, 0x2efd, 2,     /*  4: CJK Radicals */
+    0x2EFF, 1, 0x303e, 2,     /*  6: Kangxi Radicals */
+    0x303F, 1, 0x4dbf, 2,     /*  8: CJK */
+    0x4DFF, 1, 0xa4cf, 2,     /* 10: CJK */
+    0xABFF, 1, 0xd7a3, 2,     /* 12: Hangul Syllables */
+    0xF8FF, 1, 0xfaff, 2,     /* 14: CJK Compatibility Ideographs */
+    0xFDFF, 1, 0xFE1F, 2,     /* 16: */
+    0xFE2F, 1, 0xfe6f, 2,     /* 18: CJK Compatibility Forms */
+    0xFEFF, 1, 0xff5f, 2,     /* 20: Fullwidth Forms */
+    0xFFDF, 1, 0xffe6, 2,     /* 22: */
+    0x1FFFF, 1, 0x3fffd, 2,   /* 24: CJK Compatibility */
+    UINT_MAX, 1,              /* 26: catchall */
+};
+
+static unsigned int const unicode_glyph_range_index[16] = {
+    2 * 0,   /* 0000-0FFF */
+    2 * 0,   /* 1000-1FFF */
+    2 * 2,   /* 2000-2FFF */
+    2 * 7,   /* 3000-3FFF */
+    2 * 9,   /* 4000-4FFF */
+    2 * 11,  /* 5000-5FFF */
+    2 * 11,  /* 6000-6FFF */
+    2 * 11,  /* 7000-7FFF */
+    2 * 11,  /* 8000-8FFF */
+    2 * 11,  /* 9000-9FFF */
+    2 * 11,  /* A000-AFFF */
+    2 * 13,  /* B000-BFFF */
+    2 * 13,  /* C000-CFFF */
+    2 * 13,  /* D000-DFFF */
+    2 * 14,  /* E000-EFFF */
+    2 * 14,  /* F000-FFFF */
+};
+
+int unicode_glyph_tty_width(unsigned int ucs)
+{
+    unsigned int const *ip;
+
+    /* Iterative lookup with fast initial jump, no boundary test needed */
+    ip = unicode_glyph_ranges + unicode_glyph_range_index[(ucs >> 12) & 0xF];
+
+    while (ucs > ip[0]) {
+        ip += 2;
+    }
+    return ip[1];
+}
+
+/* utf-8 specific tables */
+
 static unsigned short table_idem[256];
 static unsigned short table_utf8[256];
 static unsigned short table_none[256];
@@ -286,6 +343,12 @@ static int charset_get_chars_utf8(QECharset *charset, const u8 *buf, int size)
         if (c < 0x80 || c >= 0xc0)
             nb_chars++;
     }
+    /* CG: nb_chars is the number of character boundaries, trailing
+     * utf-8 sequence at start of buffer is ignored in count while
+     * incomplete utf-8 sequence at end of buffer is counted.  This may
+     * cause problems when counting characters with eb_get_pos with an
+     * offset falling indside an utf-8 sequence.
+     */
     return nb_chars;
 }
 

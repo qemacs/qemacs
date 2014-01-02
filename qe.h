@@ -1,8 +1,8 @@
 /*
  * QEmacs, tiny but powerful multimode editor
  *
- * Copyright (c) 2000,2001 Fabrice Bellard.
- * Copyright (c) 2000-2013 Charlie Gordon.
+ * Copyright (c) 2000-2001 Fabrice Bellard.
+ * Copyright (c) 2000-2014 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -516,6 +516,7 @@ void decode_8bit_init(CharsetDecodeState *s);
 int decode_8bit(CharsetDecodeState *s);
 u8 *encode_8bit(QECharset *charset, u8 *q, int c);
 
+int unicode_glyph_tty_width(unsigned int ucs);
 int unicode_to_charset(char *buf, unsigned int c, QECharset *charset);
 
 /* arabic.c */

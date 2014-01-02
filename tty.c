@@ -1,8 +1,8 @@
 /*
  * TTY handling for QEmacs
  *
- * Copyright (c) 2000,2001 Fabrice Bellard.
- * Copyright (c) 2002-2013 Charlie Gordon.
+ * Copyright (c) 2000-2001 Fabrice Bellard.
+ * Copyright (c) 2002-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -879,65 +879,13 @@ static void tty_term_close_font(__unused__ QEditScreen *s, QEFont *font)
     qe_free(&font);
 }
 
-/*
- * Modified implementation of wcwidth() from Markus Kuhn. We do not
- * handle non spacing and enclosing combining characters and control
- * chars.
- */
-
-static unsigned int const tty_term_glyph_ranges[] = {
-    0x10FF, 1, 0x115f, 2,     /*  0: Hangul Jamo */
-    0x2328, 1, 0x232a, 2,     /*  1: wide Angle brackets */
-    0x2E7F, 1, 0x2efd, 2,     /*  2: CJK Radicals */
-    0x2EFF, 1, 0x303e, 2,     /*  3: Kangxi Radicals */
-    0x303F, 1, 0x4dbf, 2,     /*  4: CJK */
-    0x4DFF, 1, 0xa4cf, 2,     /*  5: CJK */
-    0xABFF, 1, 0xd7a3, 2,     /*  6: Hangul Syllables */
-    0xF8FF, 1, 0xfaff, 2,     /*  7: CJK Compatibility Ideographs */
-    0xFDFF, 1, 0xFE1F, 2,     /*  8: */
-    0xFE2F, 1, 0xfe6f, 2,     /*  9: CJK Compatibility Forms */
-    0xFEFF, 1, 0xff5f, 2,     /* 10: Fullwidth Forms */
-    0xFFDF, 1, 0xffe6, 2,     /* 11: */
-    0x1FFFF, 1, 0x3fffd, 2,   /* 12: CJK Compatibility */
-    UINT_MAX, 1,              /* 13: catchall */
-};
-
-static unsigned int const tty_term_glyph_index[16] = {
-    4 * 0,  /* 0000-0FFF */
-    4 * 0,  /* 1000-1FFF */
-    4 * 1,  /* 2000-2FFF */
-    4 * 3,  /* 3000-3FFF */
-    4 * 4,  /* 4000-4FFF */
-    4 * 5,  /* 5000-5FFF */
-    4 * 5,  /* 6000-6FFF */
-    4 * 5,  /* 7000-7FFF */
-    4 * 5,  /* 8000-8FFF */
-    4 * 5,  /* 9000-9FFF */
-    4 * 5,  /* A000-AFFF */
-    4 * 6,  /* B000-BFFF */
-    4 * 6,  /* C000-CFFF */
-    4 * 6,  /* D000-DFFF */
-    4 * 7,  /* E000-EFFF */
-    4 * 7,  /* F000-FFFF */
-};
-
-static int tty_term_glyph_width(__unused__ QEditScreen *s, unsigned int ucs)
+static inline int tty_term_glyph_width(__unused__ QEditScreen *s, unsigned int ucs)
 {
-    unsigned int const *ip;
-
     /* fast test for majority of non-wide scripts */
     if (ucs < 0x1100)
         return 1;
 
-    /* Iterative lookup with fast initial jump, no boundary test needed */
-    ip = tty_term_glyph_ranges +
-         tty_term_glyph_index[(ucs >> 12) & 0xF] - 2;
-
-    for (;;) {
-        ip += 2;
-        if (ucs <= ip[0])
-            return ip[1];
-    }
+    return unicode_glyph_tty_width(ucs);
 }
 
 static void tty_term_text_metrics(QEditScreen *s, __unused__ QEFont *font,
