@@ -1,8 +1,8 @@
 /*
  * Shell mode for QEmacs.
  *
- * Copyright (c) 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2002-2013 Charlie Gordon.
+ * Copyright (c) 2001-2002 Fabrice Bellard.
+ * Copyright (c) 2002-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1394,6 +1394,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
                              const char *caption, const char *cmd,
                              int shell_flags)
 {
+    QEmacsState *qs = &qe_state;
     ShellState *s;
     EditBuffer *b, *b_color;
     const char *lang;
@@ -1407,10 +1408,12 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     eb_set_buffer_name(b, bufname); /* ensure that the name is unique */
 
     /* Select shell output buffer encoding from LANG setting */
-    if ((lang = getenv("LANG")) != NULL && strstr(lang, "UTF-8"))
+    if (((lang = getenv("LANG")) != NULL && strstr(lang, "UTF-8")) ||
+          qs->screen->charset == &charset_utf8) {
         eb_set_charset(b, &charset_utf8);
-    else
+    } else {
         eb_set_charset(b, &charset_vt100);
+    }
 
     s = qe_mallocz(ShellState);
     if (!s) {
@@ -1424,7 +1427,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     s->b = b;
     s->pty_fd = -1;
     s->pid = -1;
-    s->qe_state = &qe_state;
+    s->qe_state = qs;
     s->caption = caption;
     s->shell_flags = shell_flags;
     tty_init(s);
