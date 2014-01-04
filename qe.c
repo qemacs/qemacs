@@ -1851,9 +1851,21 @@ void do_goto(EditState *s, const char *str, int unit)
     const char *p;
     int pos, line, col, rel;
 
+    /* Update s->offset from str specification:
+     * optional +- for relative moves
+     * distance in decimal, octal or hex
+     * optional space
+     * optional unit suffix:
+     *    b(bytes) c(chars) w(words) l(lines) %(percent)
+     *
+     * CG: XXX: resulting offset may fall inside a character.
+     */
     rel = (*str == '+' || *str == '-');
     pos = strtol(str, (char**)&p, 0);
 
+    /* skip space required to separate hex offset from b or c suffix */
+    if (*p == ' ')
+        p++;
     if (memchr("bcwl%", *p, 5))
         unit = *p++;
 
