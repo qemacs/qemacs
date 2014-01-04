@@ -151,7 +151,7 @@ static int mpeg_mode_init(EditState *s, ModeSavedData *saved_data)
     return 0;
 }
 
-static int mpeg_mode_probe(ModeProbeData *p)
+static int mpeg_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (p->buf_size >= 4 &&
         p->buf[0] == 0x00 &&
@@ -164,13 +164,13 @@ static int mpeg_mode_probe(ModeProbeData *p)
 }
 
 static ModeDef mpeg_mode = {
-    "mpeg",
-    mode_probe: mpeg_mode_probe,
-    mode_init: mpeg_mode_init,
-    mode_close: NULL,
-    text_display: mpeg_display,
-    text_backward_offset: mpeg_backward_offset,
-    write_char: hex_write_char,
+    .name = "mpeg",
+    .mode_probe = mpeg_mode_probe,
+    .mode_init = mpeg_mode_init,
+    .mode_close = NULL,
+    .text_display = mpeg_display,
+    .text_backward_offset = mpeg_backward_offset,
+    .write_char = hex_write_char,
 };
 
 static int mpeg_init(void)

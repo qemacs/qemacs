@@ -1660,7 +1660,7 @@ int eb_write_buffer(EditBuffer *b, int start, int end, const char *filename)
  */
 int eb_save_buffer(EditBuffer *b)
 {
-    int ret, mode;
+    int ret, st_mode;
     char buf1[MAX_FILENAME_SIZE];
     const char *filename;
     struct stat st;
@@ -1670,9 +1670,9 @@ int eb_save_buffer(EditBuffer *b)
 
     filename = b->filename;
     /* get old file permission */
-    mode = 0644;
+    st_mode = 0644;
     if (stat(filename, &st) == 0)
-        mode = st.st_mode & 0777;
+        st_mode = st.st_mode & 0777;
 
     /* backup old file if present */
     if (strlen(filename) < MAX_FILENAME_SIZE - 1) {
@@ -1682,14 +1682,14 @@ int eb_save_buffer(EditBuffer *b)
         }
     }
 
-    /* CG: should pass mode to buffer_save */
+    /* CG: should pass st_mode to buffer_save */
     ret = b->data_type->buffer_save(b, 0, b->total_size, filename);
     if (ret < 0)
         return ret;
 
 #ifndef CONFIG_WIN32
-    /* set correct file mode to old file permissions */
-    chmod(filename, mode);
+    /* set correct file st_mode to old file permissions */
+    chmod(filename, st_mode);
 #endif
     /* reset log */
     /* CG: should not do this! */

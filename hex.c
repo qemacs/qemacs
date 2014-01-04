@@ -1,8 +1,8 @@
 /*
  * Hexadecimal modes for QEmacs.
  *
- * Copyright (c) 2000, 2001 Fabrice Bellard.
- * Copyright (c) 2002-2008 Charlie Gordon.
+ * Copyright (c) 2000-2001 Fabrice Bellard.
+ * Copyright (c) 2002-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,13 +20,6 @@
  */
 
 #include "qe.h"
-
-/* CG: should get rid of this forward reference */
-#if defined(__GNUC__) && (__GNUC__ >= 4)
-static ModeDef hex_mode;
-#else
-extern ModeDef hex_mode;
-#endif
 
 static int to_disp(int c)
 {
@@ -155,7 +148,7 @@ static CmdDef hex_commands[] = {
     CMD_DEF_END,
 };
 
-static int ascii_mode_init(EditState *s, ModeSavedData *saved_data)
+static int binary_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     QEFont *font;
     QEStyleDef style;
@@ -214,7 +207,7 @@ static int detect_binary(const unsigned char *buf, int size)
     return 0;
 }
 
-static int hex_mode_probe(ModeProbeData *p)
+static int hex_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (detect_binary(p->buf, p->buf_size))
         return 50;
@@ -331,11 +324,11 @@ static int hex_mode_line(EditState *s, char *buf, int buf_size)
     return pos;
 }
 
-static ModeDef ascii_mode = {
-    "ascii",
+static ModeDef binary_mode = {
+    .name = "binary",
     .instance_size = 0,
     .mode_probe = NULL,
-    .mode_init = ascii_mode_init,
+    .mode_init = binary_mode_init,
     .mode_close = text_mode_close,
     .text_display = hex_display,
     .text_backward_offset = hex_backward_offset,
@@ -350,8 +343,8 @@ static ModeDef ascii_mode = {
     .get_mode_line = hex_mode_line,
 };
 
-static ModeDef hex_mode = {
-    "hex",
+ModeDef hex_mode = {
+    .name = "hex",
     .instance_size = 0,
     .mode_probe = hex_mode_probe,
     .mode_init = hex_mode_init,
@@ -372,12 +365,12 @@ static ModeDef hex_mode = {
 static int hex_init(void)
 {
     /* first register mode(s) */
-    qe_register_mode(&ascii_mode);
+    qe_register_mode(&binary_mode);
     qe_register_mode(&hex_mode);
 
     /* commands and default keys */
     qe_register_cmd_table(hex_commands, &hex_mode);
-    qe_register_cmd_table(hex_commands, &ascii_mode);
+    qe_register_cmd_table(hex_commands, &binary_mode);
 
     /* additional mode specific keys */
     qe_register_binding(KEY_TAB, "toggle-hex", &hex_mode);

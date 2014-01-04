@@ -24,8 +24,6 @@
 
 #define MAX_BUF_SIZE    512
 
-static ModeDef latex_mode;
-
 /* TODO: add state handling to allow colorization of elements longer
  * than one line (eg, multi-line functions and strings)
  */
@@ -123,12 +121,12 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
     *colorize_state_ptr = state;
 }
 
-static int latex_mode_probe(ModeProbeData *p)
+static int latex_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     /* currently, only use the file extension */
     /* Halibut (by Simon Tatham) has a syntax similar to TeX and uses
      * .but extension */
-    if (match_extension(p->filename, "tex|but"))
+    if (match_extension(p->filename, mode->extensions))
         return 100;
 
     return 0;
@@ -326,11 +324,14 @@ static CmdDef latex_commands[] = {
     CMD_DEF_END,
 };
 
+static ModeDef latex_mode;
+
 static int latex_init(void)
 {
     /* LaTeX mode is almost like the text mode, so we copy and patch it */
     memcpy(&latex_mode, &text_mode, sizeof(ModeDef));
     latex_mode.name = "LaTeX";
+    latex_mode.extensions = "tex|but";
     latex_mode.mode_probe = latex_mode_probe;
     latex_mode.mode_init = latex_mode_init;
 

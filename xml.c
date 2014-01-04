@@ -160,7 +160,7 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
     *colorize_state_ptr = state;
 }
 
-int xml_mode_probe(ModeProbeData *p1)
+static int xml_mode_probe(ModeDef *mode, ModeProbeData *p1)
 {
     const u8 *p;
 
@@ -185,11 +185,11 @@ static int xml_mode_init(EditState *s, ModeSavedData *saved_data)
     return 0;
 }
 
-static ModeDef xml_mode;
+ModeDef xml_mode;
 
 static int xml_init(void)
 {
-    /* c mode is almost like the text mode, so we copy and patch it */
+    /* xml mode is almost like the text mode, so we copy and patch it */
     memcpy(&xml_mode, &text_mode, sizeof(ModeDef));
     xml_mode.name = "xml";
     xml_mode.mode_probe = xml_mode_probe;

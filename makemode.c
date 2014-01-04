@@ -1,7 +1,7 @@
 /*
  * Makefile mode for QEmacs.
  *
- * Copyright (c) 2000-2008 Charlie Gordon.
+ * Copyright (c) 2000-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -144,12 +144,12 @@ static void makefile_colorize_line(unsigned int *str, int n, int *statep,
 #undef MAKEFILE_TARGET
 #undef MAKEFILE_MACRO
 
-static int makefile_mode_probe(ModeProbeData *p)
+static int makefile_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     const char *base = get_basename(p->filename);
 
     /* check file name or extension */
-    if (match_extension(base, "mk|mak")
+    if (match_extension(base, mode->extensions)
     ||  stristart(base, "makefile", NULL))
         return 70;
 
@@ -176,9 +176,10 @@ static ModeDef makefile_mode;
 
 static int makefile_init(void)
 {
-    /* c mode is almost like the text mode, so we copy and patch it */
+    /* Makefile mode is almost like the text mode, so we copy and patch it */
     memcpy(&makefile_mode, &text_mode, sizeof(ModeDef));
     makefile_mode.name = "Makefile";
+    makefile_mode.extensions = "mk|mak";
     makefile_mode.mode_probe = makefile_mode_probe;
     makefile_mode.mode_init = makefile_mode_init;
 

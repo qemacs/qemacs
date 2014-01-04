@@ -1,7 +1,7 @@
 /*
  * Lisp Source mode for QEmacs.
  *
- * Copyright (c) 2000-2008 Charlie Gordon.
+ * Copyright (c) 2000-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,8 +21,6 @@
 #include "qe.h"
 
 /* TODO: lisp-indent = 2 */
-
-static const char *lisp_mode_extensions = "ll|li|lh|lo|lm|lisp|el";
 
 /*---------------- Lisp colors ----------------*/
 
@@ -105,10 +103,10 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
 #undef LISP_COMMENT
 #undef LISP_STRING
 
-static int lisp_mode_probe(ModeProbeData *p)
+static int lisp_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     /* just check file extension */
-    if (match_extension(p->filename, lisp_mode_extensions)
+    if (match_extension(p->filename, mode->extensions)
     ||  strstart(p->filename, ".emacs", NULL))
         return 80;
 
@@ -135,9 +133,10 @@ static ModeDef lisp_mode;
 
 static int lisp_init(void)
 {
-    /* c mode is almost like the text mode, so we copy and patch it */
+    /* lisp mode is almost like the text mode, so we copy and patch it */
     memcpy(&lisp_mode, &text_mode, sizeof(ModeDef));
     lisp_mode.name = "Lisp";
+    lisp_mode.extensions = "ll|li|lh|lo|lm|lisp|el";
     lisp_mode.mode_probe = lisp_mode_probe;
     lisp_mode.mode_init = lisp_mode_init;
 

@@ -1,7 +1,7 @@
 /*
  * Module for handling variables in QEmacs
  *
- * Copyright (c) 2000-2008 Charlie Gordon.
+ * Copyright (c) 2000-2014 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -74,7 +74,7 @@ static VarDef var_table[] = {
      */
 
     //G_VAR( "text-mode-line", text_mode.mode_line, VAR_STRING, VAR_RW )
-    //G_VAR( "ascii-mode-line", ascii_mode.mode_line, VAR_STRING, VAR_RW )
+    //G_VAR( "binary-mode-line", binary_mode.mode_line, VAR_STRING, VAR_RW )
     //G_VAR( "hex-mode-line", hex_mode.mode_line, VAR_STRING, VAR_RW )
     //G_VAR( "unicode-mode-line", unihex_mode.mode_line, VAR_STRING, VAR_RW )
 

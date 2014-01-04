@@ -1,7 +1,7 @@
 /*
  * Shell script mode for QEmacs.
  *
- * Copyright (c) 2000-2008 Charlie Gordon.
+ * Copyright (c) 2000-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,8 +19,6 @@
  */
 
 #include "qe.h"
-
-static const char *script_mode_extensions = "sh|bash|zsh";
 
 /*---------------- Perl colors ----------------*/
 
@@ -104,9 +102,9 @@ static void script_colorize_line(unsigned int *str, int n, int *statep,
     }
 }
 
-static int script_mode_probe(ModeProbeData *p)
+static int script_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    if (match_extension(p->filename, script_mode_extensions))
+    if (match_extension(p->filename, mode->extensions))
         return 80;
 
     if (p->buf[0] == '#') {
@@ -138,9 +136,10 @@ static ModeDef script_mode;
 
 static int script_init(void)
 {
-    /* c mode is almost like the text mode, so we copy and patch it */
+    /* Shell-script mode is almost like the text mode, so we copy and patch it */
     memcpy(&script_mode, &text_mode, sizeof(ModeDef));
     script_mode.name = "Shell-script";
+    script_mode.extensions = "sh|bash|zsh";
     script_mode.mode_probe = script_mode_probe;
     script_mode.mode_init = script_mode_init;
 

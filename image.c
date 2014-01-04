@@ -1,7 +1,7 @@
 /*
  * Image mode for QEmacs.
  *
- * Copyright (c) 2002, 2003 Fabrice Bellard.
+ * Copyright (c) 2002-2003 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -246,7 +246,7 @@ static void image_set_size(EditState *s, int w, int h)
 }
 #endif
 
-static int image_mode_probe(ModeProbeData *pd)
+static int image_mode_probe(ModeDef *mode, ModeProbeData *pd)
 {
     AVProbeData avpd;
     AVImageFormat *fmt;
@@ -828,7 +828,7 @@ static CmdDef image_commands[] = {
 };
 
 ModeDef image_mode = {
-    "image",
+    .name = "image",
     .instance_size = sizeof(ImageState),
     .mode_probe = image_mode_probe,
     .mode_init = image_mode_init,

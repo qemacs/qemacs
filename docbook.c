@@ -21,10 +21,11 @@
 #include "qe.h"
 #include "css.h"
 
-static int docbook_mode_probe(ModeProbeData *p1)
+static int docbook_mode_probe(ModeDef *mode, ModeProbeData *p1)
 {
-    if (xml_mode_probe(p1) == 0)
+    if (xml_mode.mode_probe(&xml_mode, p1) == 0)
         return 0;
+
     /* well, very crude, but it may work OK */
     if (strstr((const char *)p1->buf, "DocBook"))
         return 100;
@@ -44,6 +45,7 @@ static int docbook_init(void)
     /* inherit from html mode */
     memcpy(&docbook_mode, &html_mode, sizeof(ModeDef));
     docbook_mode.name = "docbook";
+    docbook_mode.extensions = NULL;
     docbook_mode.mode_probe = docbook_mode_probe;
     docbook_mode.mode_init = docbook_mode_init;
 

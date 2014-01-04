@@ -858,7 +858,7 @@ int eb_goto_eol(EditBuffer *b, int offset);
 int eb_next_line(EditBuffer *b, int offset);
 
 void eb_register_data_type(EditBufferDataType *bdt);
-EditBufferDataType *eb_probe_data_type(const char *filename, int mode,
+EditBufferDataType *eb_probe_data_type(const char *filename, int st_mode,
                                        uint8_t *buf, int buf_size);
 void eb_set_data_type(EditBuffer *b, EditBufferDataType *bdt);
 void eb_invalidate_raw_data(EditBuffer *b);
@@ -952,7 +952,7 @@ struct EditState {
     int y_disp;    /* virtual position of the displayed text */
     int x_disp[2]; /* position for LTR and RTL text resp. */
     int minibuf;   /* true if single line editing */
-    int disp_width;  /* width in hex or ascii mode */
+    int disp_width;  /* width in binary, hex and unihex modes */
     int hex_mode;    /* true if we are currently editing hexa */
     int unihex_mode; /* true if unihex editing (hex_mode must be true too) */
     int hex_nibble;  /* current hexa nibble */
@@ -1039,31 +1039,36 @@ struct EditState {
 #define SAVED_DATA_SIZE  offsetof(EditState, end_of_saved_data)
 
 typedef struct DisplayState DisplayState;
+typedef struct ModeProbeData ModeProbeData;
+typedef struct ModeSavedData ModeSavedData;
+typedef struct ModeDef ModeDef;
 
-typedef struct ModeProbeData {
+struct ModeProbeData {
     const char *real_filename;
     const char *filename;  /* reduced filename for mode matching purposes */
     const u8 *buf;
     int buf_size;
     int line_len;
-    int mode;     /* unix mode */
+    int st_mode;     /* unix file mode */
     long total_size;
-} ModeProbeData;
+};
 
 /* private data saved by a mode so that it can be restored when the
    mode is started again on a buffer */
-typedef struct ModeSavedData {
-    struct ModeDef *mode; /* the mode is saved there */
+struct ModeSavedData {
+    ModeDef *mode; /* the mode is saved there */
     char generic_data[SAVED_DATA_SIZE]; /* generic text data */
     int data_size; /* mode specific saved data */
     char data[1];
-} ModeSavedData;
+};
 
-typedef struct ModeDef {
+struct ModeDef {
     const char *name;
+    const char *extensions;
     //const char *mode_line;
     int instance_size; /* size of malloced instance */
-    int (*mode_probe)(ModeProbeData *); /* return the percentage of confidence */
+    /* return the percentage of confidence */
+    int (*mode_probe)(ModeDef *, ModeProbeData *);
     int (*mode_init)(EditState *, ModeSavedData *);
     void (*mode_close)(EditState *);
     /* save the internal state of the mode so that it can be opened
@@ -1099,8 +1104,8 @@ typedef struct ModeDef {
     /* mode specific key bindings */
     struct KeyDef *first_key;
 
-    struct ModeDef *next;
-} ModeDef;
+    ModeDef *next;
+};
 
 /* special bit to indicate tty styles (for shell mode) */
 #define QE_STYLE_TTY       0x800
@@ -1673,7 +1678,7 @@ void do_count_lines(EditState *s);
 void do_what_cursor_position(EditState *s);
 void do_set_tab_width(EditState *s, int tab_width);
 void do_set_indent_width(EditState *s, int indent_width);
-void do_set_indent_tabs_mode(EditState *s, int mode);
+void do_set_indent_tabs_mode(EditState *s, int val);
 void display_window_borders(EditState *e);
 QEStyleDef *find_style(const char *name);
 void style_completion(CompleteState *cp);
@@ -1744,6 +1749,8 @@ void do_show_date_and_time(EditState *s, int argval);
 
 /* hex.c */
 
+extern ModeDef hex_mode;
+
 void hex_write_char(EditState *s, int key);
 
 /* list.c */
@@ -1755,14 +1762,17 @@ int list_get_pos(EditState *s);
 int list_get_offset(EditState *s);
 
 /* dired.c */
+
 void do_dired(EditState *s);
 
 /* c_mode.c */
+
 void c_colorize_line(unsigned int *buf, int len,
                      int *colorize_state_ptr, int state_only);
 
 /* xml.c */
-int xml_mode_probe(ModeProbeData *p1);
+
+extern ModeDef xml_mode;
 
 /* html.c */
 
@@ -1773,10 +1783,12 @@ int gxml_mode_init(EditState *s,
                    int is_html, const char *default_stylesheet);
 
 /* image.c */
+
 void fill_border(EditState *s, int x, int y, int w, int h, int color);
 int qe_bitmap_format_to_pix_fmt(int format);
 
 /* shell.c */
+
 const char *get_shell(void);
 
 #define SF_INTERACTIVE   0x01

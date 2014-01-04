@@ -1,7 +1,7 @@
 /*
  * HTML Source mode for QEmacs.
  *
- * Copyright (c) 2000-2008 Charlie Gordon.
+ * Copyright (c) 2000-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,8 +19,6 @@
  */
 
 #include "qe.h"
-
-static const char *html_mode_extensions = "html|htm|asp|shtml|hta|htp|phtml";
 
 static int get_html_entity(unsigned int *p)
 {
@@ -251,12 +249,12 @@ static int html_tagcmp(const char *s1, const char *s2)
     return 0;
 }
 
-static int htmlsrc_mode_probe(ModeProbeData *p)
+static int htmlsrc_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     const char *buf = (const char*)p->buf;
 
     /* first check file extension */
-    if (match_extension(p->filename, html_mode_extensions))
+    if (match_extension(p->filename, mode->extensions))
         return 80;
 
     /* then try buffer contents */
@@ -292,9 +290,10 @@ static ModeDef htmlsrc_mode;
 
 static int htmlsrc_init(void)
 {
-    /* c mode is almost like the text mode, so we copy and patch it */
+    /* html-src mode is almost like the text mode, so we copy and patch it */
     memcpy(&htmlsrc_mode, &text_mode, sizeof(ModeDef));
     htmlsrc_mode.name = "html-src";
+    htmlsrc_mode.extensions = "html|htm|asp|shtml|hta|htp|phtml";
     htmlsrc_mode.mode_probe = htmlsrc_mode_probe;
     htmlsrc_mode.mode_init = htmlsrc_mode_init;
 

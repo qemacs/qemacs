@@ -1,8 +1,8 @@
 /*
  * Buffer editor mode for QEmacs.
  *
- * Copyright (c) 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2002-2013 Charlie Gordon.
+ * Copyright (c) 2001-2002 Fabrice Bellard.
+ * Copyright (c) 2002-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -69,17 +69,17 @@ static void build_bufed_list(EditState *s)
         eb_printf(b, " %-2s%-16s", flags, hs->items.items[i]->str);
         if (b1) {
             char path[MAX_FILENAME_SIZE];
-            const char *mode;
+            const char *mode_name;
             EditState *e;
 
             if (b1->saved_data) {
-                mode = b1->saved_data->mode->name;
+                mode_name = b1->saved_data->mode->name;
             } else {
-                mode = "none";
+                mode_name = "none";
                 for (e = qs->first_window; e != NULL; e = e->next_window) {
                     if (e->b == b1) {
                         if (e->mode) {
-                            mode = e->mode->name;
+                            mode_name = e->mode->name;
                             break;
                         }
                     }
@@ -87,7 +87,7 @@ static void build_bufed_list(EditState *s)
             }
 
             eb_printf(b, " %10d  %-8s %-8s %s",
-                      b1->total_size, b1->charset->name, mode,
+                      b1->total_size, b1->charset->name, mode_name,
                       make_user_path(path, sizeof(path), b1->filename));
         }
         eb_printf(b, "\n");

@@ -1,8 +1,8 @@
 /*
  * QEmacs, tiny but powerful multimode editor
  *
- * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2000-2013 Charlie Gordon.
+ * Copyright (c) 2000-2002 Fabrice Bellard.
+ * Copyright (c) 2000-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1731,10 +1731,12 @@ void do_next_mode(EditState *s)
     probe_data.buf_size = size;
     probe_data.real_filename = s->b->filename;
     probe_data.total_size = s->b->total_size;
+    probe_data.st_mode = 0644;
     probe_data.filename = reduce_filename(fname, sizeof(fname),
                                           get_basename(s->b->filename));
     /* CG: should pass EditState? QEmacsState ? */
 
+    /* Should cycle modes in order of decreasing scores */
     m = m0 = s->mode;
     for (;;) {
         m = m->next;
@@ -1743,7 +1745,7 @@ void do_next_mode(EditState *s)
         if (m == m0)
             break;
         if (!m->mode_probe
-        ||  m->mode_probe(&probe_data) > 0) {
+        ||  m->mode_probe(m, &probe_data) > 0) {
             edit_set_mode(s, m);
             break;
         }
@@ -1972,9 +1974,9 @@ void do_set_indent_width(EditState *s, int indent_width)
         s->indent_size = indent_width;
 }
 
-void do_set_indent_tabs_mode(EditState *s, int mode)
+void do_set_indent_tabs_mode(EditState *s, int val)
 {
-    s->indent_tabs_mode = (mode != 0);
+    s->indent_tabs_mode = (val != 0);
 }
 
 /* compute string for the first part of the mode line (flags,
@@ -3004,6 +3006,7 @@ int text_backward_offset(EditState *s, int offset)
 {
     int line, col;
 
+    /* CG: beware: offset may fall inside a character */
     eb_get_pos(s->b, &line, &col, offset);
     return eb_goto_pos(s->b, line, 0);
 }
@@ -5349,7 +5352,7 @@ static void get_default_path(EditState *s, char *buf, int buf_size)
     splitpath(buf, buf_size, NULL, 0, buf1);
 }
 
-static ModeDef *probe_mode(EditState *s, int mode, const uint8_t *buf,
+static ModeDef *probe_mode(EditState *s, int st_mode, const uint8_t *buf,
                            int len, long total_size)
 {
     QEmacsState *qs = s->qe_state;
@@ -5357,19 +5360,19 @@ static ModeDef *probe_mode(EditState *s, int mode, const uint8_t *buf,
     EditBuffer *b;
     ModeDef *m, *selected_mode;
     ModeProbeData probe_data;
-    int best_probe_percent, percent;
+    int best_probe_score, score;
     const uint8_t *p;
 
     b = s->b;
 
     selected_mode = NULL;
-    best_probe_percent = 0;
+    best_probe_score = 0;
     probe_data.buf = buf;
     probe_data.buf_size = len;
     p = memchr(buf, '\n', len);
     probe_data.line_len = p ? p - buf : len;
     probe_data.real_filename = b->filename;
-    probe_data.mode = mode;
+    probe_data.st_mode = st_mode;
     probe_data.total_size = total_size;
     probe_data.filename = reduce_filename(fname, sizeof(fname),
                                           get_basename(b->filename));
@@ -5378,10 +5381,10 @@ static ModeDef *probe_mode(EditState *s, int mode, const uint8_t *buf,
     m = qs->first_mode;
     while (m != NULL) {
         if (m->mode_probe) {
-            percent = m->mode_probe(&probe_data);
-            if (percent > best_probe_percent) {
+            score = m->mode_probe(m, &probe_data);
+            if (score > best_probe_score) {
                 selected_mode = m;
-                best_probe_percent = percent;
+                best_probe_score = score;
             }
         }
         m = m->next;
@@ -5395,7 +5398,7 @@ static void do_load1(EditState *s, const char *filename1,
 {
     u8 buf[4097];
     char filename[MAX_FILENAME_SIZE];
-    int mode, buf_size;
+    int st_mode, buf_size;
     ModeDef *selected_mode;
     EditBuffer *b;
     EditBufferDataType *bdt;
@@ -5462,11 +5465,11 @@ static void do_load1(EditState *s, const char *filename1,
             edit_set_mode(s, selected_mode);
         return;
     } else {
-        mode = st.st_mode;
+        st_mode = st.st_mode;
         buf_size = 0;
         f = NULL;
         /* CG: should check for ISDIR and do dired */
-        if (S_ISREG(mode)) {
+        if (S_ISREG(st_mode)) {
             f = fopen(filename, "r");
             if (!f)
                 goto fail;
@@ -5480,7 +5483,7 @@ static void do_load1(EditState *s, const char *filename1,
         }
     }
     buf[buf_size] = '\0';
-    selected_mode = probe_mode(s, mode, buf, buf_size, st.st_size);
+    selected_mode = probe_mode(s, st_mode, buf, buf_size, st.st_size);
     if (!selected_mode)
         goto fail1;
     bdt = selected_mode->data_type;
@@ -5521,19 +5524,19 @@ static void load_progress_cb(void *opaque, int size)
 static void load_completion_cb(void *opaque, int err)
 {
     EditState *s = opaque;
-    int mode;
+    int st_mode;
 
-    mode = S_IFREG;
+    st_mode = S_IFREG;
     /* CG: potential problem: EXXX may be negative, as in Haiku */
     if (err == -ENOENT || err == -ENOTDIR) {
         put_status(s, "(New file)");
     } else if (err == -EISDIR) {
-        mode = S_IFDIR;
+        st_mode = S_IFDIR;
     } else if (err < 0) {
         put_status(s, "Could not read file");
     }
     if (!s->b->probed)
-        probe_mode(s, mode);
+        probe_mode(s, st_mode);
     edit_display(s->qe_state);
     dpy_flush(&global_screen);
 }
@@ -6961,7 +6964,8 @@ int detect_binary(const u8 *buf, int size)
 }
 #endif
 
-static int text_mode_probe(__unused__ ModeProbeData *p)
+static int text_mode_probe(__unused__ ModeDef *mode,
+                           __unused__ ModeProbeData *p)
 {
 #if 0
     /* text mode inappropriate for huge binary files */
@@ -7013,7 +7017,7 @@ void text_mode_close(EditState *s)
 }
 
 ModeDef text_mode = {
-    "text",
+    .name = "text",
     .instance_size = 0,
     .mode_probe = text_mode_probe,
     .mode_init = text_mode_init,
@@ -7394,7 +7398,7 @@ void qe_register_cmd_line_options(CmdOptionDef *table)
 
 const char str_version[] = "QEmacs version " QE_VERSION;
 const char str_credits[] = "Copyright (c) 2000-2003 Fabrice Bellard\n"
-                           "Copyright (c) 2000-2008 Charlie Gordon\n";
+                           "Copyright (c) 2000-2014 Charlie Gordon\n";
 
 static void show_version(void)
 {

@@ -1,8 +1,8 @@
 /*
  * C mode for QEmacs.
  *
- * Copyright (c) 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2002-2008 Charlie Gordon.
+ * Copyright (c) 2001-2002 Fabrice Bellard.
+ * Copyright (c) 2002-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -44,7 +44,7 @@ static const char *c_mode_types =
     "char|double|float|int|long|unsigned|short|signed|void|var|"
     "_Bool|_Complex|_Imaginary|";
 
-static const char *c_mode_extensions =
+static const char c_mode_extensions[] =
     "c|h|y|l|lex|e|qe|cs|idl|jav|java|js|json|"
     "ec|ecp|"           /* Informix embedded C */
     "pgc|"              /* Postgres embedded C */
@@ -599,10 +599,10 @@ static void do_c_forward_preprocessor(EditState *s, int dir)
 {
 }
 
-static int c_mode_probe(ModeProbeData *p)
+static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     /* currently, only use the file extension */
-    if (match_extension(p->filename, c_mode_extensions))
+    if (match_extension(p->filename, mode->extensions))
         return 80;
 
     /* weaker match on C comment start */
@@ -611,6 +611,10 @@ static int c_mode_probe(ModeProbeData *p)
 
     /* even weaker match on C++ comment start */
     if (p->buf[0] == '/' && p->buf[1] == '/')
+        return 50;
+
+    /* same for file starting with '#include' */
+    if (strstart(cs8(p->buf), "#include", NULL))
         return 50;
 
     /* same for file starting with '#pragma' as in #pragma once */
@@ -653,9 +657,10 @@ static int c_init(void)
 {
     const char *p;
 
-    /* c mode is almost like the text mode, so we copy and patch it */
+    /* C mode is almost like the text mode, so we copy and patch it */
     memcpy(&c_mode, &text_mode, sizeof(ModeDef));
     c_mode.name = "C";
+    c_mode.extensions = c_mode_extensions;
     c_mode.mode_probe = c_mode_probe;
     c_mode.mode_init = c_mode_init;
 

@@ -1,7 +1,7 @@
 /*
  * Graphical HTML mode for QEmacs.
  *
- * Copyright (c) 2001, 2002 Fabrice Bellard.
+ * Copyright (c) 2001-2002 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -827,7 +827,7 @@ static void html_mode_close(EditState *s)
 }
 
 /* search for HTML tag */
-static int html_mode_probe(ModeProbeData *p1)
+static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
 {
     const unsigned char *p = p1->buf;
     int c, score;
@@ -874,7 +874,7 @@ static CmdDef html_commands[] = {
 };
 
 ModeDef html_mode = {
-    "html",
+    .name = "html",
     .instance_size = sizeof(HTMLState),
     .mode_probe = html_mode_probe,
     .mode_init = html_mode_init,

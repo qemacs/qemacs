@@ -1,7 +1,7 @@
 /*
  * Perl Source mode for QEmacs.
  *
- * Copyright (c) 2000-2008 Charlie Gordon.
+ * Copyright (c) 2000-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,8 +19,6 @@
  */
 
 #include "qe.h"
-
-static const char *perl_mode_extensions = "pl|perl|pm";
 
 /*---------------- Perl colors ----------------*/
 
@@ -330,10 +328,10 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
 #undef IN_FORMAT
 #undef IN_INPUT
 
-static int perl_mode_probe(ModeProbeData *p)
+static int perl_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     /* just check file extension */
-    if (match_extension(p->filename, perl_mode_extensions))
+    if (match_extension(p->filename, mode->extensions))
         return 80;
 
     if (p->buf[0] == '#' && p->buf[1] == '!' &&
@@ -363,9 +361,10 @@ static ModeDef perl_mode;
 
 static int perl_init(void)
 {
-    /* c mode is almost like the text mode, so we copy and patch it */
+    /* perl mode is almost like the text mode, so we copy and patch it */
     memcpy(&perl_mode, &text_mode, sizeof(ModeDef));
     perl_mode.name = "Perl";
+    perl_mode.extensions = "pl|perl|pm";
     perl_mode.mode_probe = perl_mode_probe;
     perl_mode.mode_init = perl_mode_init;
 

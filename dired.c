@@ -1,8 +1,8 @@
 /*
  * Directory editor mode for QEmacs.
  *
- * Copyright (c) 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2002-2008 Charlie Gordon.
+ * Copyright (c) 2001-2002 Fabrice Bellard.
+ * Copyright (c) 2002-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -43,7 +43,7 @@ typedef struct DiredState {
 /* opaque structure for sorting DiredState.items StringArray */
 typedef struct DiredItem {
     DiredState *state;
-    mode_t mode;
+    mode_t st_mode;
     off_t size;
     time_t mtime;
     int offset;
@@ -122,29 +122,29 @@ static int dired_sort_func(const void *p1, const void *p2)
     const StringItem *item2 = *(const StringItem **)p2;
     const DiredItem *dip1 = item1->opaque;
     const DiredItem *dip2 = item2->opaque;
-    int mode = dip1->state->sort_mode, res;
+    int sort_mode = dip1->state->sort_mode, res;
     int is_dir1, is_dir2;
 
-    if (mode & DIRED_SORT_GROUP) {
-        is_dir1 = !!S_ISDIR(dip1->mode);
-        is_dir2 = !!S_ISDIR(dip2->mode);
+    if (sort_mode & DIRED_SORT_GROUP) {
+        is_dir1 = !!S_ISDIR(dip1->st_mode);
+        is_dir2 = !!S_ISDIR(dip2->st_mode);
         if (is_dir1 != is_dir2)
             return is_dir2 - is_dir1;
     }
     for (;;) {
-        if (mode & DIRED_SORT_DATE) {
+        if (sort_mode & DIRED_SORT_DATE) {
             if (dip1->mtime != dip2->mtime) {
                 res = (dip1->mtime < dip2->mtime) ? -1 : 1;
                 break;
             }
         }
-        if (mode & DIRED_SORT_SIZE) {
+        if (sort_mode & DIRED_SORT_SIZE) {
             if (dip1->size != dip2->size) {
                 res = (dip1->size < dip2->size) ? -1 : 1;
                 break;
             }
         }
-        if (mode & DIRED_SORT_EXTENSION) {
+        if (sort_mode & DIRED_SORT_EXTENSION) {
             res = qe_strcollate(get_extension(dip1->name),
                                 get_extension(dip2->name));
             if (res)
@@ -153,7 +153,7 @@ static int dired_sort_func(const void *p1, const void *p2)
         res = qe_strcollate(dip1->name, dip2->name);
         break;
     }
-    return (mode & DIRED_SORT_DESCENDING) ? -res : res;
+    return (sort_mode & DIRED_SORT_DESCENDING) ? -res : res;
 }
 
 /* select current item */
@@ -358,7 +358,7 @@ static void dired_build_list(EditState *s, const char *path,
 
             dip = qe_malloc_hack(DiredItem, plen);
             dip->state = hs;
-            dip->mode = st.st_mode;
+            dip->st_mode = st.st_mode;
             dip->size = st.st_size;
             dip->mtime = st.st_mtime;
             dip->mark = ' ';
@@ -513,9 +513,9 @@ static void dired_mode_close(EditState *s)
 }
 
 /* can only apply dired mode on directories */
-static int dired_mode_probe(ModeProbeData *p)
+static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    if (S_ISDIR(p->mode))
+    if (S_ISDIR(p->st_mode))
         return 100;
     else
         return 0;
