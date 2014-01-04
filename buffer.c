@@ -27,8 +27,6 @@
 static void eb_addlog(EditBuffer *b, enum LogOperation op,
                       int offset, int size);
 
-static EditBufferDataType *first_buffer_data_type;
-
 /************************************************************/
 /* basic access to the edit buffer */
 
@@ -1635,9 +1633,10 @@ int eb_next_line(EditBuffer *b, int offset)
 
 void eb_register_data_type(EditBufferDataType *bdt)
 {
+    QEmacsState *qs = &qe_state;
     EditBufferDataType **lp;
 
-    lp = &first_buffer_data_type;
+    lp = &qs->first_buffer_data_type;
     while (*lp != NULL)
         lp = &(*lp)->next;
     bdt->next = NULL;

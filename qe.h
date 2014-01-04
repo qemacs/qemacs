@@ -1179,6 +1179,7 @@ struct QEmacsState {
     EditState *first_window;
     EditState *active_window; /* window in which we edit */
     EditBuffer *first_buffer;
+    EditBufferDataType *first_buffer_data_type;
     //EditBuffer *message_buffer;
     EditBuffer *trace_buffer;
     int trace_buffer_state;
