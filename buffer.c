@@ -2,7 +2,7 @@
  * Buffer handling for QEmacs
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2002-2013 Charlie Gordon.
+ * Copyright (c) 2002-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1092,9 +1092,24 @@ int eb_get_char_offset(EditBuffer *b, int offset)
     int pos;
     Page *p, *p_end;
 
+    if (offset < 0)
+        offset = 0;
+
     if (!b->charset->variable_size) {
+        /* offset is round down to character boundary */
         pos = min(offset, b->total_size) / b->charset->char_size;
     } else {
+        if (b->charset == &charset_utf8) {
+            /* Round offset down to character boundary */
+            u8 buf[1];
+            while (offset > 0 && eb_read(b, offset, buf, 1) == 1 &&
+                   (buf[0] & 0xC0) == 0x80) {
+                /* backtrack over trailing bytes */
+                offset--;
+            }
+        } else {
+            /* CG: XXX: offset rounding to character boundary is undefined */
+        }
         pos = 0;
         p = b->page_table;
         p_end = p + b->nb_pages;

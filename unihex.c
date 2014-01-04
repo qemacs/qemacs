@@ -1,8 +1,8 @@
 /*
  * Unicode Hexadecimal mode for QEmacs.
  *
- * Copyright (c) 2000, 2001 Fabrice Bellard.
- * Copyright (c) 2002-2008 Charlie Gordon.
+ * Copyright (c) 2000-2001 Fabrice Bellard.
+ * Copyright (c) 2002-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -38,16 +38,13 @@ static int unihex_mode_init(EditState *s, ModeSavedData *saved_data)
     return 0;
 }
 
-static int to_disp(int c)
+static int unihex_to_disp(int c)
 {
-#if 1
-    /* Do not allow characters in range 160-255 to show as graphics */
-    if ((c & 127) < ' ' || c == 127)
+    /* Do not allow characters in range 127-160 to show as graphics
+     * nor characters beyond the BMP plane
+     */
+    if (c < ' ' || c == 127 || (c >= 128 && c < 160) || c > 0xFFFF)
         c = '.';
-#else
-    if (c < ' ' || c >= 127)
-        c = '.';
-#endif
     return c;
 }
 
@@ -55,6 +52,7 @@ static int unihex_backward_offset(EditState *s, int offset)
 {
     int pos;
 
+    /* CG: beware: offset may fall inside a character */
     pos = eb_get_char_offset(s->b, offset);
     pos = align(pos, s->disp_width);
     return eb_goto_char(s->b, pos);
@@ -62,12 +60,10 @@ static int unihex_backward_offset(EditState *s, int offset)
 
 static int unihex_display(EditState *s, DisplayState *ds, int offset)
 {
-    int j, len, ateof;
+    int j, len, ateof, disp_width;
     int offset1, offset2, charpos;
     unsigned int b;
-    /* CG: array size is incorrect, should be smaller and should clip
-     * disp_width too.
-     */
+    /* CG: array size is incorrect, should be smaller */
     unsigned int buf[LINE_MAX_SIZE];
     unsigned int pos[LINE_MAX_SIZE];
 
@@ -75,27 +71,33 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
 
     ds->style = QE_STYLE_COMMENT;
     charpos = eb_get_char_offset(s->b, offset);
-    display_printf(ds, -1, -1, "%08x %08x ", charpos, offset);
+    display_printf(ds, -1, -1, "%08x ", charpos);
+    //display_printf(ds, -1, -1, "%08x %08x ", charpos, offset);
 
+    disp_width = min(LINE_MAX_SIZE - 1, s->disp_width);
     ateof = 0;
     len = 0;
-    for (j = 0; j < s->disp_width; j++) {
-        if (offset < s->b->total_size) {
-            pos[len] = offset;
-            buf[len] = eb_nextc(s->b, offset, &offset);
-            len++;
-        }
+    for (j = 0; j < disp_width && offset < s->b->total_size; j++) {
+        pos[len] = offset;
+        buf[len] = eb_nextc(s->b, offset, &offset);
+        len++;
     }
     pos[len] = offset;
 
     ds->style = QE_STYLE_FUNCTION;
 
-    for (j = 0; j < s->disp_width; j++) {
+    for (j = 0; j < disp_width; j++) {
         display_char(ds, -1, -1, ' ');
         offset1 = pos[j];
         offset2 = pos[j + 1];
         if (j < len) {
-            display_printhex(ds, offset1, offset2, buf[j], 4);
+            if (buf[j] < 0x10000) {
+                display_printhex(ds, offset1, offset2, buf[j], 4);
+            } else {
+                ds->cur_hex_mode = 1;
+                display_printf(ds, offset1, offset2, "%x", buf[j]);
+                ds->cur_hex_mode = 0;
+            }
         } else {
             if (!ateof) {
                 ateof = 1;
@@ -117,13 +119,12 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
     display_char(ds, -1, -1, ' ');
 
     ateof = 0;
-    for (j = 0; j < s->disp_width; j++) {
+    for (j = 0; j < disp_width; j++) {
         offset1 = pos[j];
         offset2 = pos[j + 1];
         if (j < len) {
             b = buf[j];
-            /* CG: should handle double width glyphs */
-            b = to_disp(b);
+            b = unihex_to_disp(b);
         } else {
             b = ' ';
             if (!ateof) {
@@ -134,10 +135,15 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
             }
         }
         display_char(ds, offset1, offset2, b);
+#if 0
+        /* CG: spacing out single width glyphs is less readable */
+        if (unicode_glyph_tty_width(b) == 1)
+            display_char(ds, -1, -1, ' ');
+#endif
     }
     display_eol(ds, -1, -1);
 
-    if (len >= s->disp_width)
+    if (len >= disp_width)
         return offset;
     else
         return -1;
@@ -184,8 +190,24 @@ static void unihex_move_up_down(EditState *s, int dir)
     s->offset = eb_goto_char(s->b, pos);
 }
 
+static int unihex_mode_line(EditState *s, char *buf, int buf_size)
+{
+    int percent, pos, cpos;
+
+    cpos = eb_get_char_offset(s->b, s->offset);
+
+    pos = basic_mode_line(s, buf, buf_size, '-');
+    pos += snprintf(buf + pos, buf_size - pos, "0x%x--0x%x--%s",
+                    cpos, s->offset, s->b->charset->name);
+    percent = 0;
+    if (s->b->total_size > 0)
+        percent = (s->offset * 100) / s->b->total_size;
+    pos += snprintf(buf + pos, buf_size - pos, "--%d%%", percent);
+    return pos;
+}
+
 static ModeDef unihex_mode = {
-    "unihex",
+    .name = "unihex",
     .instance_size = 0,
     .mode_probe = NULL,
     .mode_init = unihex_mode_init,
@@ -200,6 +222,7 @@ static ModeDef unihex_mode = {
     .scroll_up_down = text_scroll_up_down,
     .write_char = hex_write_char,
     .mouse_goto = text_mouse_goto,
+    .get_mode_line = unihex_mode_line,
 };
 
 
