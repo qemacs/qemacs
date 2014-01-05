@@ -27,7 +27,7 @@ static int docbook_mode_probe(ModeDef *mode, ModeProbeData *p1)
         return 0;
 
     /* well, very crude, but it may work OK */
-    if (strstr((const char *)p1->buf, "DocBook"))
+    if (strstr(cs8(p1->buf), "DocBook"))
         return 100;
     return 0;
 }

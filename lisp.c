@@ -105,23 +105,12 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
 
 static int lisp_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    /* just check file extension */
+    /* check file name or extension */
     if (match_extension(p->filename, mode->extensions)
     ||  strstart(p->filename, ".emacs", NULL))
         return 80;
 
     return 0;
-}
-
-static int lisp_mode_init(EditState *s, ModeSavedData *saved_data)
-{
-    int ret;
-
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
-    set_colorize_func(s, lisp_colorize_line);
-    return ret;
 }
 
 /* specific lisp commands */
@@ -138,7 +127,7 @@ static int lisp_init(void)
     lisp_mode.name = "Lisp";
     lisp_mode.extensions = "ll|li|lh|lo|lm|lisp|el";
     lisp_mode.mode_probe = lisp_mode_probe;
-    lisp_mode.mode_init = lisp_mode_init;
+    lisp_mode.colorize_func = lisp_colorize_line;
 
     qe_register_mode(&lisp_mode);
     qe_register_cmd_table(lisp_commands, &lisp_mode);

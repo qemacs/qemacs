@@ -396,8 +396,7 @@ static void tty_read_handler(void *opaque)
     /* charset handling */
     if (s->charset == &charset_utf8) {
         if (ts->utf8_state == 0) {
-            const char *p;
-            p = (const char *)ts->buf;
+            const char *p = cs8(ts->buf);
             ch = utf8_decode(&p);
         } else {
             ts->utf8_state = utf8_length[ts->buf[0]] - 1;

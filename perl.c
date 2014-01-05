@@ -341,17 +341,6 @@ static int perl_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 0;
 }
 
-static int perl_mode_init(EditState *s, ModeSavedData *saved_data)
-{
-    int ret;
-
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
-    set_colorize_func(s, perl_colorize_line);
-    return ret;
-}
-
 /* specific perl commands */
 static CmdDef perl_commands[] = {
     CMD_DEF_END,
@@ -366,7 +355,7 @@ static int perl_init(void)
     perl_mode.name = "Perl";
     perl_mode.extensions = "pl|perl|pm";
     perl_mode.mode_probe = perl_mode_probe;
-    perl_mode.mode_init = perl_mode_init;
+    perl_mode.colorize_func = perl_colorize_line;
 
     qe_register_mode(&perl_mode);
     qe_register_cmd_table(perl_commands, &perl_mode);

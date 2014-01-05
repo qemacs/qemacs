@@ -132,17 +132,6 @@ static int latex_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 0;
 }
 
-static int latex_mode_init(EditState *s, ModeSavedData *saved_data)
-{
-    int ret;
-
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
-    set_colorize_func(s, latex_colorize_line);
-    return ret;
-}
-
 static void do_tex_insert_quote(EditState *s)
 {
     int offset_bol, len, offset1;
@@ -333,7 +322,7 @@ static int latex_init(void)
     latex_mode.name = "LaTeX";
     latex_mode.extensions = "tex|but";
     latex_mode.mode_probe = latex_mode_probe;
-    latex_mode.mode_init = latex_mode_init;
+    latex_mode.colorize_func = latex_colorize_line;
 
     qe_register_mode(&latex_mode);
     qe_register_cmd_table(latex_commands, &latex_mode);

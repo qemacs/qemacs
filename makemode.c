@@ -146,25 +146,12 @@ static void makefile_colorize_line(unsigned int *str, int n, int *statep,
 
 static int makefile_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    const char *base = get_basename(p->filename);
-
     /* check file name or extension */
-    if (match_extension(base, mode->extensions)
-    ||  stristart(base, "makefile", NULL))
+    if (match_extension(p->filename, mode->extensions)
+    ||  stristart(p->filename, "makefile", NULL))
         return 70;
 
     return 0;
-}
-
-static int makefile_mode_init(EditState *s, ModeSavedData *saved_data)
-{
-    int ret;
-
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
-    set_colorize_func(s, makefile_colorize_line);
-    return ret;
 }
 
 /* specific makefile commands */
@@ -181,7 +168,7 @@ static int makefile_init(void)
     makefile_mode.name = "Makefile";
     makefile_mode.extensions = "mk|mak";
     makefile_mode.mode_probe = makefile_mode_probe;
-    makefile_mode.mode_init = makefile_mode_init;
+    makefile_mode.colorize_func = makefile_colorize_line;
 
     qe_register_mode(&makefile_mode);
     qe_register_cmd_table(makefile_commands, &makefile_mode);

@@ -839,7 +839,7 @@ static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
             break;
         if (c < 32 && (c != '\r' && c != '\n' && c != '\t' && c != '\033'))
             return 0;
-        if (stristart((const char *)p, "<HTML", NULL))
+        if (c == '<' && stristart(cs8(p), "<HTML", NULL))
             score = 100;
         p++;
     }

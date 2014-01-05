@@ -1083,6 +1083,7 @@ struct ModeDef {
     /* text related functions */
     int (*text_display)(EditState *, DisplayState *, int);
     int (*text_backward_offset)(EditState *, int);
+    ColorizeFunc colorize_func;
 
     /* common functions are defined here */
     /* TODO: Should have single move function with move type and argument */
@@ -1098,6 +1099,7 @@ struct ModeDef {
 
     int mode_flags;
 #define MODEF_NOCMD 0x0001 /* do not register xxx-mode command automatically */
+
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
     int (*get_mode_line)(EditState *s, char *buf, int buf_size); /* return mode line */
 
@@ -1324,7 +1326,7 @@ typedef struct CmdDef {
 #define CMD0(key, key_alt, name, func) \
     { key, key_alt, name "\0", { .ES = func }, CMD_ES, 0 },
 #define CMD1(key, key_alt, name, func, val) \
-    { key, key_alt, name "\0v", { .ESi = func }, CMD_ESi, val },
+    { key, key_alt, name "\0" "v", { .ESi = func }, CMD_ESi, val },
 #define CMD_DEF_END \
     { 0, 0, NULL, { NULL }, CMD_void, 0 }
 

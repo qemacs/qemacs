@@ -175,16 +175,6 @@ static int xml_mode_probe(ModeDef *mode, ModeProbeData *p1)
     return 90; /* leave some room for more specific XML parser */
 }
 
-static int xml_mode_init(EditState *s, ModeSavedData *saved_data)
-{
-    int ret;
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
-    set_colorize_func(s, xml_colorize_line);
-    return 0;
-}
-
 ModeDef xml_mode;
 
 static int xml_init(void)
@@ -193,7 +183,7 @@ static int xml_init(void)
     memcpy(&xml_mode, &text_mode, sizeof(ModeDef));
     xml_mode.name = "xml";
     xml_mode.mode_probe = xml_mode_probe;
-    xml_mode.mode_init = xml_mode_init;
+    xml_mode.colorize_func = xml_colorize_line;
 
     qe_register_mode(&xml_mode);
 

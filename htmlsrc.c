@@ -251,7 +251,7 @@ static int html_tagcmp(const char *s1, const char *s2)
 
 static int htmlsrc_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    const char *buf = (const char*)p->buf;
+    const char *buf = cs8(p->buf);
 
     /* first check file extension */
     if (match_extension(p->filename, mode->extensions))
@@ -269,17 +269,6 @@ static int htmlsrc_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 0;
 }
 
-static int htmlsrc_mode_init(EditState *s, ModeSavedData *saved_data)
-{
-    int ret;
-
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
-    set_colorize_func(s, htmlsrc_colorize_line);
-    return ret;
-}
-
 /* specific htmlsrc commands */
 /* CG: need move / kill by tag level */
 static CmdDef htmlsrc_commands[] = {
@@ -295,7 +284,7 @@ static int htmlsrc_init(void)
     htmlsrc_mode.name = "html-src";
     htmlsrc_mode.extensions = "html|htm|asp|shtml|hta|htp|phtml";
     htmlsrc_mode.mode_probe = htmlsrc_mode_probe;
-    htmlsrc_mode.mode_init = htmlsrc_mode_init;
+    htmlsrc_mode.colorize_func = htmlsrc_colorize_line;
 
     qe_register_mode(&htmlsrc_mode);
     qe_register_cmd_table(htmlsrc_commands, &htmlsrc_mode);

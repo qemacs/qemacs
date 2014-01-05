@@ -116,17 +116,6 @@ static int script_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 0;
 }
 
-static int script_mode_init(EditState *s, ModeSavedData *saved_data)
-{
-    int ret;
-
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
-    set_colorize_func(s, script_colorize_line);
-    return ret;
-}
-
 /* specific script commands */
 static CmdDef script_commands[] = {
     CMD_DEF_END,
@@ -141,7 +130,7 @@ static int script_init(void)
     script_mode.name = "Shell-script";
     script_mode.extensions = "sh|bash|zsh";
     script_mode.mode_probe = script_mode_probe;
-    script_mode.mode_init = script_mode_init;
+    script_mode.colorize_func = script_colorize_line;
 
     qe_register_mode(&script_mode);
     qe_register_cmd_table(script_commands, &script_mode);

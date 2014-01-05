@@ -88,6 +88,10 @@ void qe_register_mode(ModeDef *m)
     *p = m;
 
     /* add missing functions */
+    if (!m->mode_init)
+        m->mode_init = text_mode_init;
+    if (!m->mode_close)
+        m->mode_close = text_mode_close;
     if (!m->display)
         m->display = generic_text_display;
     if (!m->mode_save_data)
@@ -1690,6 +1694,8 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
 
         /* init mode */
         m->mode_init(s, saved_data);
+        if (m->colorize_func)
+            set_colorize_func(s, m->colorize_func);
         /* modify offset_top so that its value is correct */
         if (s->mode->text_backward_offset)
             s->offset_top = s->mode->text_backward_offset(s, s->offset_top);

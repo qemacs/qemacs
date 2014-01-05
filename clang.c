@@ -601,7 +601,7 @@ static void do_c_forward_preprocessor(EditState *s, int dir)
 
 static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    /* currently, only use the file extension */
+    /* trust the file extension */
     if (match_extension(p->filename, mode->extensions))
         return 80;
 
@@ -613,26 +613,17 @@ static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
     if (p->buf[0] == '/' && p->buf[1] == '/')
         return 50;
 
-    /* same for file starting with '#include' */
-    if (strstart(cs8(p->buf), "#include", NULL))
-        return 50;
+    if (p->buf[0] == '#') {
+        /* same for file starting with '#include' */
+        if (strstart(cs8(p->buf), "#include", NULL))
+            return 50;
 
-    /* same for file starting with '#pragma' as in #pragma once */
-    if (strstart(cs8(p->buf), "#pragma", NULL))
-        return 50;
+        /* same for file starting with '#pragma' as in #pragma once */
+        if (strstart(cs8(p->buf), "#pragma", NULL))
+            return 50;
+    }
 
     return 0;
-}
-
-static int c_mode_init(EditState *s, ModeSavedData *saved_data)
-{
-    int ret;
-
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
-    set_colorize_func(s, c_colorize_line);
-    return ret;
 }
 
 /* C mode specific commands */
@@ -662,7 +653,7 @@ static int c_init(void)
     c_mode.name = "C";
     c_mode.extensions = c_mode_extensions;
     c_mode.mode_probe = c_mode_probe;
-    c_mode.mode_init = c_mode_init;
+    c_mode.colorize_func = c_colorize_line;
 
     qe_register_mode(&c_mode);
     qe_register_cmd_table(c_commands, &c_mode);
