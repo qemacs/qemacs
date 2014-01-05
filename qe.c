@@ -1779,6 +1779,7 @@ void do_set_buffer_file_coding_system(EditState *s, const char *charset_str)
     if (!charset)
         return;
     eb_set_charset(s->b, charset);
+    put_status(s, "Charset is now %s for this buffer", s->b->charset->name);
 }
 
 /* convert the charset of a buffer to another charset */
@@ -4488,7 +4489,10 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
             if (e != s && e->b == b1)
                 break;
         }
-        if (!e) {
+        if (e) {
+            /* no need to save mode data */
+            /* CG: bogus! e and s might have different modes */
+        } else {
             /* if no more window uses the buffer, then save the data
                in the buffer */
             /* CG: Should free previous such data ? */
@@ -4508,12 +4512,12 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
             if (e != s && e->b == b)
                 break;
         }
-        if (!e) {
-            psaved_data = &b->saved_data;
-            saved_data = *psaved_data;
-        } else {
+        if (e) {
             psaved_data = NULL;
             saved_data = e->mode->mode_save_data(e);
+        } else {
+            psaved_data = &b->saved_data;
+            saved_data = *psaved_data;
         }
 
         /* find the mode */
@@ -4654,7 +4658,7 @@ void edit_close(EditState *s)
 }
 
 static const char *file_completion_ignore_extensions =
-    "|bak|bin|dll|exe|o|so|obj|a|gz|tgz";
+    "|bak|bin|obj|dll|exe|o|so|a|gz|tgz|bz2|bzip2|xz";
 
 void file_completion(CompleteState *cp)
 {
@@ -5364,30 +5368,29 @@ static void get_default_path(EditState *s, char *buf, int buf_size)
     splitpath(buf, buf_size, NULL, 0, buf1);
 }
 
-static ModeDef *probe_mode(EditState *s, int st_mode, const uint8_t *buf,
-                           int len, long total_size)
+static ModeDef *probe_mode(EditState *s,
+                           const char *filename, int st_mode, long total_size,
+                           const uint8_t *buf, int len)
 {
     QEmacsState *qs = s->qe_state;
     char fname[MAX_FILENAME_SIZE];
-    EditBuffer *b;
     ModeDef *m, *selected_mode;
     ModeProbeData probe_data;
     int best_probe_score, score;
     const uint8_t *p;
 
-    b = s->b;
-
     selected_mode = NULL;
     best_probe_score = 0;
+
     probe_data.buf = buf;
     probe_data.buf_size = len;
     p = memchr(buf, '\n', len);
     probe_data.line_len = p ? p - buf : len;
-    probe_data.real_filename = b->filename;
+    probe_data.real_filename = filename;
     probe_data.st_mode = st_mode;
     probe_data.total_size = total_size;
     probe_data.filename = reduce_filename(fname, sizeof(fname),
-                                          get_basename(b->filename));
+                                          get_basename(filename));
     /* CG: should pass EditState? QEmacsState ? */
 
     m = qs->first_mode;
@@ -5418,8 +5421,10 @@ static void do_load1(EditState *s, const char *filename1,
     struct stat st;
 
     if (load_resource) {
-        if (find_resource_file(filename, sizeof(filename), filename1))
+        if (find_resource_file(filename, sizeof(filename), filename1)) {
+            /* XXX: issue error message? */
             return;
+        }
     } else {
         /* compute full name */
         canonicalize_absolute_path(filename, sizeof(filename), filename1);
@@ -5471,7 +5476,7 @@ static void do_load1(EditState *s, const char *filename1,
         /* Try to determine the desired mode based on the filename.
          * This avoids having to set c-mode for each new .c or .h file. */
         buf[0] = '\0';
-        selected_mode = probe_mode(s, S_IFREG, buf, 0, 0);
+        selected_mode = probe_mode(s, filename, S_IFREG, 0, buf, 0);
         /* XXX: avoid loading file */
         if (selected_mode)
             edit_set_mode(s, selected_mode);
@@ -5480,6 +5485,7 @@ static void do_load1(EditState *s, const char *filename1,
         st_mode = st.st_mode;
         buf_size = 0;
         f = NULL;
+
         /* CG: should check for ISDIR and do dired */
         if (S_ISREG(st_mode)) {
             f = fopen(filename, "r");
@@ -5495,9 +5501,10 @@ static void do_load1(EditState *s, const char *filename1,
         }
     }
     buf[buf_size] = '\0';
-    selected_mode = probe_mode(s, st_mode, buf, buf_size, st.st_size);
+    selected_mode = probe_mode(s, filename, st_mode, st.st_size, buf, buf_size);
     if (!selected_mode)
         goto fail1;
+
     bdt = selected_mode->data_type;
 
     /* autodetect buffer charset (could move it to raw buffer loader) */
@@ -5530,7 +5537,7 @@ static void load_progress_cb(void *opaque, int size)
     EditState *s = opaque;
     EditBuffer *b = s->b;
     if (size >= 1024 && !b->probed)
-        probe_mode(s, S_IFREG);
+        edit_set_mode(s, probe_mode(s, b->filename, S_IFREG, b->total_size, buf, size));
 }
 
 static void load_completion_cb(void *opaque, int err)
@@ -5548,7 +5555,7 @@ static void load_completion_cb(void *opaque, int err)
         put_status(s, "Could not read file");
     }
     if (!s->b->probed)
-        probe_mode(s, st_mode);
+        edit_set_mode(s, probe_mode(s, b->filename, st_mode, b->total_size, buf, size));
     edit_display(s->qe_state);
     dpy_flush(&global_screen);
 }
@@ -5588,6 +5595,9 @@ void do_insert_file(EditState *s, const char *filename)
         return;
     }
     /* CG: file charset will not be converted to buffer charset */
+    /* CG: should load in a separate buffer, auto-detect charset and
+     * copy buffer contents with charset translation
+     */
     size = raw_buffer_load1(s->b, f, s->offset);
     fclose(f);
 

@@ -822,43 +822,56 @@ static void tty_emulate(ShellState *s, int c)
                 if (s->shifted && c >= 96 && c < 128) {
 #if 0
                     /* Should actually use these tables: */
-                    static const wchar_t unitab_xterm_std[32] = {
-                        0x2666, 0x2592, 0x2409, 0x240c,
-                        0x240d, 0x240a, 0x00b0, 0x00b1,
-                        0x2424, 0x240b, 0x2518, 0x2510,
-                        0x250c, 0x2514, 0x253c, 0x23ba,
-                        0x23bb, 0x2500, 0x23bc, 0x23bd,
-                        0x251c, 0x2524, 0x2534, 0x252c,
-                        0x2502, 0x2264, 0x2265, 0x03c0,
-                        0x2260, 0x00a3, 0x00b7, 0x0020
-                    };
                     static const wchar_t unitab_xterm_poorman[32] =
                         "*#****o~**+++++-----++++|****L. ";
 #endif
-                    c += 32;
-                }
-                /* write char (should factorize with do_char() code */
-                /* CG: Charset support is inherently broken here because
-                 * bytes are inserted one at a time and charset conversion
-                 * should not be performed between shell output and buffer
-                 * contents. UTF8 is special cased, other charsets need work. 
-                 */
-                /* CG: further improvement direction includes automatic
-                 * conversion from ISO-8859-1 to UTF-8 for invalid UTF-8
-                 * byte sequences.
-                 */
-                if (s->b->charset == &charset_utf8) {
-                    s->utf8_len = utf8_length[c];
-                    if (s->utf8_len > 1) {
-                        s->utf8_buf[0] = c;
-                        s->utf8_pos = 1;
-                        s->state = TTY_STATE_UTF8;
-                        break;
+                    if (s->b->charset == &charset_utf8) {
+                        static const wchar_t unitab_xterm_std[32] = {
+                            0x2666, 0x2592, 0x2409, 0x240c,
+                            0x240d, 0x240a, 0x00b0, 0x00b1,
+                            0x2424, 0x240b, 0x2518, 0x2510,
+                            0x250c, 0x2514, 0x253c, 0x23ba,
+                            0x23bb, 0x2500, 0x23bc, 0x23bd,
+                            0x251c, 0x2524, 0x2534, 0x252c,
+                            0x2502, 0x2264, 0x2265, 0x03c0,
+                            0x2260, 0x00a3, 0x00b7, 0x0020
+                        };
+                        c = unitab_xterm_std[c - 96];
+                        len = utf8_encode(buf1, c);
+                    } else {
+                        /* CG: quick 8 bit hack: store line drawing
+                         * characters in [96..127] as meta control
+                         * characters in [128..159].
+                         * This hack is reversed in tty_term_flush().
+                         */
+                        c += 32;
+                        buf1[0] = c;
+                        len = 1;
                     }
+                } else {
+                    /* write char (should factorize with do_char() code */
+                    /* CG: Charset support is inherently broken here because
+                     * bytes are inserted one at a time and charset conversion
+                     * should not be performed between shell output and buffer
+                     * contents. UTF8 is special cased, other charsets need work. 
+                     */
+                    /* CG: further improvement direction includes automatic
+                     * conversion from ISO-8859-1 to UTF-8 for invalid UTF-8
+                     * byte sequences.
+                     */
+                    if (s->b->charset == &charset_utf8) {
+                        s->utf8_len = utf8_length[c];
+                        if (s->utf8_len > 1) {
+                            s->utf8_buf[0] = c;
+                            s->utf8_pos = 1;
+                            s->state = TTY_STATE_UTF8;
+                            break;
+                        }
+                    }
+                    //len = unicode_to_charset(buf1, c, s->b->charset);
+                    buf1[0] = c;
+                    len = 1;
                 }
-                //len = unicode_to_charset(buf1, c, s->b->charset);
-                buf1[0] = c;
-                len = 1;
                 c1 = eb_nextc(s->b, s->cur_offset, &offset);
                 /* Should simplify with tty_put_char */
                 if (c1 == '\n') {
