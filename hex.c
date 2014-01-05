@@ -195,13 +195,14 @@ static int hex_mode_init(EditState *s, ModeSavedData *saved_data)
 
 static int detect_binary(const unsigned char *buf, int size)
 {
+    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
+                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
+                                  (1 << 0x0e) | (1 << 0x0f);
     int i, c;
 
     for (i = 0; i < size; i++) {
         c = buf[i];
-        if (c < 32 &&
-            (c != '\r' && c != '\n' && c != '\t' &&
-             c != '\033' && c != '\b' && c != '\f'))
+        if (c < 32 && !(magic & (1 << c)))
             return 1;
     }
     return 0;
