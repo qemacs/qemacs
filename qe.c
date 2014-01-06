@@ -1349,9 +1349,12 @@ void do_quote(EditState *s, int argval)
     put_status(s, "Quote: ");
 }
 
-void do_insert(EditState *s)
+void do_overwrite_mode(EditState *s, int argval)
 {
-    s->insert = !s->insert;
+    if (argval == NO_ARG)
+        s->insert = !s->insert;
+    else
+        s->insert = !argval;
 }
 
 void do_tab(EditState *s, int argval)

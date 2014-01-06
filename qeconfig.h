@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000,2001 Fabrice Bellard.
- * Copyright (c) 2000-2008 Charlie Gordon.
+ * Copyright (c) 2000-2014 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,8 +56,10 @@ static CmdDef basic_commands[] = {
           "beginning-of-line", do_bol)
     CMD0( KEY_CTRL('e'), KEY_END,
           "end-of-line", do_eol)
-    CMD0( KEY_INSERT, KEY_NONE,
-          "overwrite-mode", do_insert)
+    CMD2( KEY_INSERT, KEY_NONE,
+          "overwrite-mode", do_overwrite_mode, ESi, "ui")
+    CMD3( KEY_NONE, KEY_NONE,
+          "insert-mode", do_overwrite_mode, ESi, 0, "v")
     /* deletion commands should be allowed in read only buffers,
      * they should merely copy the data to the kill ring */
     CMD2( KEY_CTRL('d'), KEY_DELETE,

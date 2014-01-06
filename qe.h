@@ -1668,7 +1668,7 @@ void do_scroll_up_down(EditState *s, int dir);
 void perform_scroll_up_down(EditState *s, int h);
 void do_center_cursor(EditState *s);
 void do_quote(EditState *s, int argval);
-void do_insert(EditState *s);
+void do_overwrite_mode(EditState *s, int argval);
 // should take argval
 void do_set_mark(EditState *s);
 void do_mark_whole_buffer(EditState *s);
