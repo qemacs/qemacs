@@ -606,9 +606,8 @@ void do_fill_paragraph(EditState *s)
             /* insert space single space then word */
             if (offset == par_end ||
                 (col + 1 + word_size > PARAGRAPH_WIDTH)) {
-                buf[0] = '\n';
-                eb_write(s->b, chunk_start, buf, 1);
-                chunk_start++;
+                eb_delete_nextc(s->b, chunk_start);
+                chunk_start += eb_insert_uchar(s->b, chunk_start, '\n');
                 if (offset < par_end) {
                     /* indent */
                     buf[0] = ' ';
@@ -642,7 +641,6 @@ void do_fill_paragraph(EditState *s)
 
 /* Upper / lower / capital case functions. Update offset, return isword */
 /* arg: -1=lower-case, +1=upper-case, +2=capital-case */
-/* (XXX: use generic unicode function). */
 static int eb_changecase(EditBuffer *b, int *offsetp, int arg)
 {
     int offset0, ch, ch1, len;
@@ -1364,11 +1362,15 @@ void do_tab(EditState *s, int argval)
 
 void do_return(EditState *s, int move)
 {
+    int len;
+
     if (s->b->flags & BF_READONLY)
         return;
 
-    eb_insert(s->b, s->offset, "\n", 1);
-    s->offset += move;
+    /* CG: in overwrite mode, should just go to beginning of next line */
+    len = eb_insert_uchar(s->b, s->offset, '\n');
+    if (move)
+        s->offset += len;
 }
 
 #if 0
@@ -1427,7 +1429,7 @@ EditBuffer *new_yank_buffer(QEmacsState *qs)
         }
     }
     snprintf(bufname, sizeof(bufname), "*kill-%d*", qs->yank_current + 1);
-    b = eb_new(bufname, 0);
+    b = eb_new(bufname, BF_UTF8);
     qs->yank_buffers[qs->yank_current] = b;
     return b;
 }
@@ -1459,9 +1461,10 @@ void do_kill(EditState *s, int p1, int p2, int dir)
     if (!b || !dir || qs->last_cmd_func != (CmdFunc)do_append_next_kill) {
         /* append kill if last command was kill already */
         b = new_yank_buffer(qs);
+        eb_set_charset(b, s->b->charset);
     }
     /* insert at beginning or end depending on kill direction */
-    eb_insert_buffer(b, dir < 0 ? 0 : b->total_size, s->b, p1, len);
+    eb_insert_buffer_convert(b, dir < 0 ? 0 : b->total_size, s->b, p1, len);
     if (dir) {
         eb_delete(s->b, p1, len);
         s->offset = p1;
@@ -1529,8 +1532,7 @@ void do_yank(EditState *s)
     if (b) {
         size = b->total_size;
         if (size > 0) {
-            eb_insert_buffer(s->b, s->offset, b, 0, size);
-            s->offset += size;
+            s->offset += eb_insert_buffer_convert(s->b, s->offset, b, 0, size);
         }
     }
     qs->this_cmd_func = (CmdFunc)do_yank;
@@ -4847,7 +4849,7 @@ void do_completion(EditState *s)
                buffer */
             if (!completion_popup_window) {
                 EditBuffer *b;
-                b = eb_new("*completion*", BF_SYSTEM);
+                b = eb_new("*completion*", BF_SYSTEM | BF_UTF8);
                 w1 = qs->screen->width;
                 h1 = qs->screen->height - qs->status_height;
                 w = (w1 * 3) / 4;
@@ -5334,7 +5336,7 @@ static void kill_buffer_noconfirm(EditBuffer *b)
             break;
     }
     if (!b1)
-        b1 = eb_new("*scratch*", BF_SAVELOG);
+        b1 = eb_new("*scratch*", BF_SAVELOG | BF_UTF8);
 
     /* if the buffer remains because we cannot delete the main
        window, then switch to the scratch buffer */
@@ -5801,25 +5803,27 @@ static void quit_confirm_cb(__unused__ void *opaque, char *reply)
 #define SEARCH_FLAG_WORD       0x0004
 
 /* XXX: OPTIMIZE ! */
-/* XXX: use UTF8 for words/chars ? */
 int eb_search(EditBuffer *b, int offset, int dir, int flags,
-              const u8 *buf, int size,
-              CSSAbortFunc *abort_func, void *abort_opaque)
+              const char *buf, int size,
+              CSSAbortFunc *abort_func, void *abort_opaque,
+              int *found_offset, int *found_end)
 {
     int total_size = b->total_size;
-    int i, c, offset1, lower_count, upper_count;
-    u8 ch;
-    u8 buf1[1024];
+    int c, c2, offset1, offset2;
+    char buf1[1024];
+    const char *bufp, *bufend;
 
     if (size == 0 || size >= (int)sizeof(buf1))
-        return -1;
+        return 0;
 
     /* analyze buffer if smart case */
     if (flags & SEARCH_FLAG_SMARTCASE) {
-        upper_count = 0;
-        lower_count = 0;
-        for (i = 0; i < size; i++) {
-            c = buf[i];
+        int upper_count = 0;
+        int lower_count = 0;
+        bufp = buf;
+        bufend = buf + size;
+        while (bufp < bufend) {
+            c = utf8_decode(&bufp);
             lower_count += qe_islower(c);
             upper_count += qe_isupper(c);
         }
@@ -5828,58 +5832,64 @@ int eb_search(EditBuffer *b, int offset, int dir, int flags,
     }
 
     /* copy buffer */
-    for (i = 0; i < size; i++) {
-        c = buf[i];
-        if (flags & SEARCH_FLAG_IGNORECASE)
-            buf1[i] = qe_toupper(c);
-        else
-            buf1[i] = c;
-    }
-
-    if (dir < 0) {
-        if (offset > (total_size - size))
-            offset = total_size - size;
+    if (flags & SEARCH_FLAG_IGNORECASE) {
+        bufp = buf;
+        bufend = buf + size;
+        size = 0;
+        while (bufp < bufend) {
+            c = utf8_decode(&bufp);
+            size += utf8_encode(buf1 + size, qe_toupper(c));
+        }
     } else {
-        offset--;
+        memcpy(buf1, buf, size);
     }
 
-    for (;;) {
-        offset += dir;
-        if (offset < 0)
-            return -1;
-        if (offset > (total_size - size))
-            return -1;
+    *found_offset = -1;
+    *found_end = -1;
+
+    for (;; dir >= 0 && eb_nextc(b, offset, &offset)) {
+        if (dir < 0) {
+            if (offset == 0)
+                return 0;
+            eb_prevc(b, offset, &offset);
+        }
+        if (offset >= total_size)
+            return 0;
 
         /* search abort */
         if ((offset & 0xfff) == 0) {
             if (abort_func && abort_func(abort_opaque))
-                return -1;
+                return 0;
         }
 
         /* search start of word */
         if (flags & SEARCH_FLAG_WORD) {
-            ch = eb_prevc(b, offset, &offset1);
-            if (qe_isword(ch))
+            c = eb_prevc(b, offset, &offset1);
+            if (qe_isword(c))
                 continue;
         }
 
-        i = 0;
-        for (;;) {
+        bufp = buf1;
+        bufend = buf1 + size;
+        offset2 = offset;
+        while (offset2 < total_size) {
             /* CG: Should bufferize a bit ? */
-            eb_read(b, offset + i, &ch, 1);
+            c = eb_nextc(b, offset2, &offset2);
             if (flags & SEARCH_FLAG_IGNORECASE)
-                ch = qe_toupper(ch);
-            if (ch != buf1[i])
+                c = qe_toupper(c);
+            c2 = utf8_decode(&bufp);
+            if (c != c2)
                 break;
-            i++;
-            if (i == size) {
+            if (bufp >= bufend) {
                 /* check end of word */
                 if (flags & SEARCH_FLAG_WORD) {
-                    ch = eb_nextc(b, offset + size, &offset1);
-                    if (qe_isword(ch))
+                    c = eb_nextc(b, offset2, &offset1);
+                    if (qe_isword(c))
                         break;
                 }
-                return offset;
+                *found_offset = offset;
+                *found_end = offset2;
+                return 1;
             }
         }
     }
@@ -5905,7 +5915,7 @@ typedef struct ISearchState {
     int pos;
     int stack_ptr;
     int search_flags;
-    int found_offset;
+    int found_offset, found_end;
     unsigned int search_string[SEARCH_LENGTH];
 } ISearchState;
 
@@ -5914,7 +5924,7 @@ static void isearch_display(ISearchState *is)
     EditState *s = is->s;
     char ubuf[256];
     buf_t out;
-    u8 buf[2*SEARCH_LENGTH], *q; /* XXX: incorrect size */
+    char buf[2*SEARCH_LENGTH], *q; /* XXX: incorrect size */
     int i, len, hex_nibble, h;
     unsigned int v;
     int search_offset;
@@ -5939,10 +5949,11 @@ static void isearch_display(ISearchState *is)
                     }
                     /* CG: should handle unihex mode */
                 } else {
-                    q += unicode_to_charset((char *)q, v, s->b->charset);
+                    q += utf8_encode(q, v);
                 }
             }
         } else {
+            /* CG: XXX: offset cannot be adjusted this way */
             search_offset = (v & ~FOUND_TAG) + is->dir;
         }
     }
@@ -5954,10 +5965,11 @@ static void isearch_display(ISearchState *is)
         flags = is->search_flags;
         if (s->hex_mode)
             flags = 0;
-        is->found_offset = eb_search(s->b, search_offset, is->dir, flags,
-                                     buf, len, search_abort_func, NULL);
-        if (is->found_offset >= 0)
-            s->offset = is->found_offset + len;
+        if (eb_search(s->b, search_offset, is->dir, flags,
+                      buf, len, search_abort_func, NULL,
+                      &is->found_offset, &is->found_end)) {
+            s->offset = is->found_end;
+        }
     }
 
     /* display search string */
@@ -6022,6 +6034,8 @@ static void isearch_key(void *opaque, int ch)
         }
         qe_ungrab_keys();
         qe_free(&is);
+        edit_display(s->qe_state);
+        dpy_flush(s->screen);
         return;
     case KEY_CTRL('s'):
         is->dir = 1;
@@ -6106,11 +6120,11 @@ void do_isearch(EditState *s, int dir)
     isearch_display(is);
 }
 
-static int to_bytes(EditState *s1, u8 *dst, int dst_size, const char *str)
+static int to_bytes(EditState *s1, char *dst, int dst_size, const char *str)
 {
     const char *s;
     int c, len, hex_nibble, h;
-    u8 *d;
+    char *d;
 
     d = dst;
     if (s1->hex_mode) {
@@ -6134,7 +6148,7 @@ static int to_bytes(EditState *s1, u8 *dst, int dst_size, const char *str)
         }
         return d - dst;
     } else {
-        /* XXX: potentially incorrect if charset change */
+        /* dest buffer has utf8 contents */
         len = strlen(str);
         if (len > dst_size)
             len = dst_size;
@@ -6146,13 +6160,13 @@ static int to_bytes(EditState *s1, u8 *dst, int dst_size, const char *str)
 typedef struct QueryReplaceState {
     EditState *s;
     int nb_reps;
-    int search_bytes_len, replace_bytes_len, found_offset;
+    int search_bytes_len, replace_bytes_len, found_offset, found_end;
     int replace_all;
     int flags;
-    char search_str[SEARCH_LENGTH];
-    char replace_str[SEARCH_LENGTH];
-    u8 search_bytes[SEARCH_LENGTH];
-    u8 replace_bytes[SEARCH_LENGTH];
+    char search_str[SEARCH_LENGTH];     /* may be in hex */
+    char replace_str[SEARCH_LENGTH];    /* may be in hex */
+    char search_bytes[SEARCH_LENGTH];   /* utf8 bytes */
+    char replace_bytes[SEARCH_LENGTH];  /* utf8 bytes */
 } QueryReplaceState;
 
 static void query_replace_abort(QueryReplaceState *is)
@@ -6170,9 +6184,9 @@ static void query_replace_replace(QueryReplaceState *is)
 {
     EditState *s = is->s;
 
-    eb_delete(s->b, is->found_offset, is->search_bytes_len);
-    eb_insert(s->b, is->found_offset, is->replace_bytes, is->replace_bytes_len);
-    is->found_offset += is->replace_bytes_len;
+    eb_delete(s->b, is->found_offset, is->found_end - is->found_offset);
+    is->found_offset += eb_insert_utf8_buf(s->b, is->found_offset,
+                                           is->replace_bytes, is->replace_bytes_len);
     is->nb_reps++;
 }
 
@@ -6181,10 +6195,9 @@ static void query_replace_display(QueryReplaceState *is)
     EditState *s = is->s;
 
  redo:
-    is->found_offset = eb_search(s->b, is->found_offset, 1, is->flags,
-                                 is->search_bytes, is->search_bytes_len,
-                                 NULL, NULL);
-    if (is->found_offset < 0) {
+    if (!eb_search(s->b, is->found_offset, 1, is->flags,
+                   is->search_bytes, is->search_bytes_len,
+                   NULL, NULL, &is->found_offset, &is->found_end)) {
         query_replace_abort(is);
         return;
     }
@@ -6253,7 +6266,7 @@ static void query_replace(EditState *s,
                                      replace_str);
     is->nb_reps = 0;
     is->replace_all = all;
-    is->found_offset = s->offset;
+    is->found_offset = is->found_end = s->offset;
     is->flags = flags;
 
     qe_grab_keys(query_replace_key, is);
@@ -6275,17 +6288,16 @@ void do_replace_string(EditState *s, const char *search_str,
 
 void do_search_string(EditState *s, const char *search_str, int dir)
 {
-    u8 search_bytes[SEARCH_LENGTH];
+    char search_bytes[SEARCH_LENGTH];
     int search_bytes_len;
-    int found_offset;
+    int found_offset, found_end;
 
     search_bytes_len = to_bytes(s, search_bytes, sizeof(search_bytes),
                                 search_str);
 
-    found_offset = eb_search(s->b, s->offset, dir, 0,
-                             search_bytes, search_bytes_len, NULL, NULL);
-    if (found_offset >= 0) {
-        s->offset = found_offset;
+    if (eb_search(s->b, s->offset, dir, 0, search_bytes, search_bytes_len,
+                  NULL, NULL, &found_offset, &found_end)) {
+        s->offset = (dir < 0) ? found_offset : found_end;
         do_center_cursor(s);
     }
 }
@@ -7019,6 +7031,7 @@ int text_mode_init(EditState *s, ModeSavedData *saved_data)
         memcpy(s, saved_data->generic_data, SAVED_DATA_SIZE);
     }
     s->hex_mode = 0;
+    s->insert = 1;
     set_colorize_func(s, NULL);
     return 0;
 }
@@ -7817,7 +7830,7 @@ static void qe_init(void *opaque)
     qs->screen = &global_screen;
 
     /* create first buffer */
-    b = eb_new("*scratch*", BF_SAVELOG);
+    b = eb_new("*scratch*", BF_SAVELOG | BF_UTF8);
 
     /* will be positionned by do_refresh() */
     s = edit_new(b, 0, 0, 0, 0, WF_MODELINE);

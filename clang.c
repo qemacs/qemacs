@@ -337,9 +337,7 @@ static void insert_spaces(EditState *s, int *offset_ptr, int i)
     /* insert tabs */
     if (s->indent_tabs_mode) {
         while (i >= s->tab_size) {
-            buf1[0] = '\t';
-            eb_insert(s->b, offset, buf1, 1);
-            offset++;
+            offset += eb_insert_uchar(s->b, offset, '\t');
             i -= s->tab_size;
         }
     }
@@ -350,9 +348,8 @@ static void insert_spaces(EditState *s, int *offset_ptr, int i)
         if (size > ssizeof(buf1))
             size = ssizeof(buf1);
         memset(buf1, ' ', size);
-        eb_insert(s->b, offset, buf1, size);
+        offset += eb_insert_utf8_buf(s->b, offset, buf1, size);
         i -= size;
-        offset += size;
     }
     *offset_ptr = offset;
 }

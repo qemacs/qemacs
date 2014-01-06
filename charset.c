@@ -459,7 +459,7 @@ static int charset_goto_line_ucs2(QECharset *charset, const u8 *buf, int size,
             }
         }
     }
-    return (u8 *)lp - buf;
+    return (const u8 *)lp - buf;
 }
 
 static int decode_ucs2be(CharsetDecodeState *s)
@@ -468,7 +468,7 @@ static int decode_ucs2be(CharsetDecodeState *s)
 
     p = s->p;
     s->p += 2;
-    return p[1] + (p[0] << 8);
+    return (p[0] << 8) + p[1];
 }
 
 static u8 *encode_ucs2be(__unused__ QECharset *charset, u8 *p, int c)
@@ -562,11 +562,11 @@ static void charset_get_pos_ucs4(CharsetDecodeState *s, const u8 *buf, int size,
 static int charset_goto_line_ucs4(QECharset *charset, const u8 *buf, int size,
                                   int nlines)
 {
-    uint32_t *p, *p1, *lp;
+    const uint32_t *p, *p1, *lp;
     uint32_t nl;
-    union { uint32_t n; char c[2]; } u;
+    union { uint32_t n; char c[4]; } u;
 
-    lp = p = (uint32_t *)buf;
+    lp = p = (const uint32_t *)buf;
     p1 = p + (size >> 2);
     u.n = 0;
     u.c[(charset == &charset_ucs2be) * 3] = charset->eol_char;
@@ -581,7 +581,7 @@ static int charset_goto_line_ucs4(QECharset *charset, const u8 *buf, int size,
             }
         }
     }
-    return (u8 *)lp - buf;
+    return (const u8 *)lp - buf;
 }
 
 static int decode_ucs4be(CharsetDecodeState *s)

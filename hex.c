@@ -262,9 +262,9 @@ void hex_write_char(EditState *s, int key)
         h = to_hex(key);
         if (h < 0)
             return;
-        if (s->insert && s->hex_nibble == 0) {
+        if ((s->insert || s->offset >= s->b->total_size) && s->hex_nibble == 0) {
             ch = h << ((hsize - 1) * 4);
-            if (s->unihex_mode) {
+            if (s->unihex_mode || s->b->charset->char_size > 1) {
                 len = unicode_to_charset(buf, ch, s->b->charset);
             } else {
                 len = 1;

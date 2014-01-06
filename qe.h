@@ -797,9 +797,9 @@ void eb_trace_bytes(const void *buf, int size, int state);
 void eb_init(void);
 int eb_read(EditBuffer *b, int offset, void *buf, int size);
 void eb_write(EditBuffer *b, int offset, const void *buf, int size);
-void eb_insert_buffer(EditBuffer *dest, int dest_offset,
-                      EditBuffer *src, int src_offset,
-                      int size);
+int eb_insert_buffer(EditBuffer *dest, int dest_offset,
+                     EditBuffer *src, int src_offset,
+                     int size);
 void eb_insert(EditBuffer *b, int offset, const void *buf, int size);
 void eb_delete(EditBuffer *b, int offset, int size);
 void eb_replace(EditBuffer *b, int offset, int size,
@@ -843,9 +843,15 @@ void eb_offset_callback(EditBuffer *b,
                         enum LogOperation op,
                         int offset,
                         int size);
+int eb_delete_nextc(EditBuffer *b, int offset);
+int eb_insert_uchar(EditBuffer *b, int offset, int c);
+int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len);
 int eb_printf(EditBuffer *b, const char *fmt, ...) __attr_printf(2,3);
 void eb_line_pad(EditBuffer *b, int n);
 int eb_get_contents(EditBuffer *b, char *buf, int buf_size);
+int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
+                             EditBuffer *src, int src_offset,
+                             int size);
 int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
                 int *offset_ptr);
 int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
@@ -1723,8 +1729,9 @@ void do_load_file_from_path(EditState *s, const char *filename);
 void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile);
 int eb_search(EditBuffer *b, int offset, int dir, int flags,
-              const u8 *buf, int size,
-              CSSAbortFunc *abort_func, void *abort_opaque);
+              const char *buf, int size,
+              CSSAbortFunc *abort_func, void *abort_opaque,
+              int *found_start, int *found_end);
 int search_abort_func(void *opaque);
 void do_doctor(EditState *s);
 void do_delete_other_windows(EditState *s);

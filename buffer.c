@@ -233,21 +233,23 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
     b->cur_page = NULL;
 }
 
-/* Insert 'size bytes of 'src' buffer from position 'src_offset' into
-   buffer 'dest' at offset 'dest_offset'. 'src' MUST BE DIFFERENT from
-   'dest' */
-void eb_insert_buffer(EditBuffer *dest, int dest_offset,
-                      EditBuffer *src, int src_offset,
-                      int size)
+/* Insert 'size' bytes of 'src' buffer from position 'src_offset' into
+ * buffer 'dest' at offset 'dest_offset'. 'src' MUST BE DIFFERENT from
+ * 'dest'. Raw insertion performed, encoding is ignored.
+ */
+int eb_insert_buffer(EditBuffer *dest, int dest_offset,
+                     EditBuffer *src, int src_offset,
+                     int size)
 {
     Page *p, *p_start, *q;
     int len, n, page_index;
+    int size0 = size;
 
     if (dest->flags & BF_READONLY)
-        return;
+        return 0;
 
-    if (size == 0)
-        return;
+    if (size <= 0)
+        return 0;
 
     /* CG: should assert parameter consistency */
 
@@ -267,7 +269,7 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
     }
 
     if (size == 0)
-        return;
+        return size0;
 
     /* cut the page at dest offset if needed */
     if (dest_offset < dest->total_size) {
@@ -332,6 +334,7 @@ void eb_insert_buffer(EditBuffer *dest, int dest_offset,
 
     /* the page cache is no longer valid */
     dest->cur_page = NULL;
+    return size0;
 }
 
 /* Insert 'size' bytes from 'buf' into 'b' at offset 'offset'. We must
@@ -895,6 +898,12 @@ void eb_set_charset(EditBuffer *b, QECharset *charset)
     if (charset == &charset_utf8)
         b->flags |= BF_UTF8;
     charset_decode_init(&b->charset_state, charset);
+
+    /* Reset page cache flags */
+    for (int n = 0; n < b->nb_pages; n++) {
+        Page *p = &b->page_table[n];
+        p->flags &= ~(PG_VALID_POS | PG_VALID_CHAR | PG_VALID_COLORS);
+    }
 }
 
 /* XXX: change API to go faster */
@@ -922,6 +931,19 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
     }
     *next_ptr = offset;
     return ch;
+}
+
+/* delete one character at offset 'offset', return number of bytes removed */
+int eb_delete_nextc(EditBuffer *b, int offset)
+{
+    int offset1, size = 0;
+    
+    eb_nextc(b, offset, &offset1);
+    if (offset < offset1) {
+        size = offset1 - offset;
+        eb_delete(b, offset, size);
+    }
+    return size;
 }
 
 /* XXX: only stateless charsets are supported */
@@ -1417,6 +1439,43 @@ void eb_set_filename(EditBuffer *b, const char *filename)
     eb_set_buffer_name(b, get_basename(filename));
 }
 
+/* Insert unicode character according to buffer encoding */
+int eb_insert_uchar(EditBuffer *b, int offset, int c)
+{
+    char buf[MAX_CHAR_BYTES];
+    int len;
+
+    len = unicode_to_charset(buf, c, b->charset);
+    eb_insert(b, offset, buf, len);
+    return len;
+}
+
+/* Insert buffer with utf8 chars according to buffer encoding */
+int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
+{
+    if (b->charset == &charset_utf8) {
+        eb_insert(b, offset, buf, len);
+        return len;
+    } else {
+        char buf1[1024];
+        int size, size1;
+        const char *bufend = buf + len;
+
+        size = size1 = 0;
+        while (buf < bufend) {
+            int c = utf8_decode(&buf);
+            int clen = unicode_to_charset(buf1 + size1, c, b->charset);
+            size1 += clen;
+            if (size1 > ssizeof(buf) - MAX_CHAR_BYTES || buf >= bufend) {
+                eb_insert(b, offset + size, buf1, size1);
+                size += size1;
+                size1 = 0;
+            }
+        }
+        return size;
+    }
+}
+
 int eb_printf(EditBuffer *b, const char *fmt, ...)
 {
     char buf0[1024];
@@ -1440,7 +1499,8 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
         vsnprintf(buf, size, fmt, ap);
         va_end(ap);
     }
-    eb_insert(b, b->total_size, buf, len);
+    /* CG: insert buffer translating according b->charset */
+    eb_insert_utf8_buf(b, b->total_size, buf, len);
 #ifdef CONFIG_WIN32
     if (buf != buf0)
         free(buf);
@@ -1452,6 +1512,7 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
 void eb_line_pad(EditBuffer *b, int n)
 {
     int offset, i;
+
     i = 0;
     offset = b->total_size;
     for (;;) {
@@ -1460,7 +1521,7 @@ void eb_line_pad(EditBuffer *b, int n)
         i++;
     }
     while (i < n) {
-        eb_printf(b, " ");
+        eb_insert_uchar(b, b->total_size, ' ');
         i++;
     }
 }
@@ -1475,6 +1536,46 @@ int eb_get_contents(EditBuffer *b, char *buf, int buf_size)
     eb_read(b, 0, buf, len);
     buf[len] = '\0';
     return len;
+}
+
+/* Insert 'size' bytes of 'src' buffer from position 'src_offset' into
+ * buffer 'dest' at offset 'dest_offset'. 'src' MUST BE DIFFERENT from
+ * 'dest'. Charset converson between source and destination buffer is
+ * performed.
+ */
+int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
+                             EditBuffer *src, int src_offset,
+                             int size)
+{
+    if (dest->charset == src->charset) {
+        return eb_insert_buffer(dest, dest_offset, src, src_offset, size);
+    } else {
+        EditBuffer *b;
+        int offset, offset_max;
+
+        b = dest;
+        if ((b->flags & BF_SAVELOG) || dest_offset != b->total_size) {
+            b = eb_new("*tmp*", 0);
+            eb_set_charset(b, dest->charset);
+        }
+
+        /* well, not very fast, but simple */
+        offset_max = min(src->total_size, src_offset + size);
+        size = 0;
+        for (offset = src_offset; offset < offset_max;) {
+            char buf[MAX_CHAR_BYTES];
+            int c = eb_nextc(src, offset, &offset);
+            int len = unicode_to_charset(buf, c, b->charset);
+            eb_write(b, b->total_size, buf, len);
+            size += len;
+        }
+
+        if (b != dest) {
+            size = eb_insert_buffer(dest, dest_offset, b, 0, b->total_size);
+            eb_free(b);
+        }
+        return size;
+    }
 }
 
 /* get the line starting at offset 'offset' as an array of code points */

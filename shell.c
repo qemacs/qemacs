@@ -433,7 +433,6 @@ static void tty_write(ShellState *s, const char *buf, int len)
 static void tty_goto_xy(ShellState *s, int x, int y, int relative)
 {
     int total_lines, cur_line, line_num, col_num, offset, offset1, c;
-    unsigned char buf1[10];
 
     /* compute offset */
     eb_get_pos(s->b, &total_lines, &col_num, s->b->total_size);
@@ -466,18 +465,15 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
     line_num += y;
     /* add lines if necessary */
     while (line_num >= total_lines) {
-        buf1[0] = '\n';
-        eb_insert(s->b, s->b->total_size, buf1, 1);
+        eb_insert_uchar(s->b, s->b->total_size, '\n');
         total_lines++;
     }
     offset = eb_goto_pos(s->b, line_num, 0);
     for (; x > 0; x--) {
         c = eb_nextc(s->b, offset, &offset1);
         if (c == '\n') {
-            buf1[0] = ' ';
             for (; x > 0; x--) {
-                eb_insert(s->b, offset, buf1, 1);
-                offset++;
+                offset += eb_insert_uchar(s->b, offset, ' ');
             }
             break;
         } else {
@@ -487,6 +483,7 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
     s->cur_offset = offset;
 }
 
+/* CG: XXX: tty_put_char purposely ignores charset when inserting chars */
 static int tty_put_char(ShellState *s, int c)
 {
     char buf[1];
@@ -793,6 +790,7 @@ static void tty_emulate(ShellState *s, int c)
             for (;;) {
                 if (offset == s->b->total_size) {
                     /* add a new line */
+                    /* CG: XXX: ignoring charset */
                     buf1[0] = '\n';
                     eb_insert(s->b, offset, buf1, 1);
                     offset = s->b->total_size;

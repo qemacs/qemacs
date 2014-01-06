@@ -7,11 +7,9 @@
 static void insert_hello(EditState *s)
 {
     static char hello[] = "Hello";
-    int len;
-    len = strlen(hello);
+    int len = strlen(hello);
 
-    eb_insert(s->b, s->offset, hello, len);
-    s->offset += len;
+    s->offset += eb_insert_utf8_buf(s->b, s->offset, hello, len);
 }
 
 static CmdDef my_commands[] = {

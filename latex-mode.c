@@ -144,22 +144,19 @@ static void do_tex_insert_quote(EditState *s)
     if (pos > len)
         return;
     if (pos >= 1 && buf[pos-1] == '\"') {
-        eb_insert(s->b, s->offset, "\"", 1);
-        s->offset++;
+        s->offset += eb_insert_uchar(s->b, s->offset, '\"');
     } else
     if (pos >= 2 && (buf[pos-1] == '`' || buf[pos-1] == '\'') &&
           buf[pos-1] == buf[pos-2])
     {
+        /* CG: this is incorrect for non 8-bit encodings */
         eb_delete(s->b, s->offset - 2, 2);
-        eb_insert(s->b, s->offset, "\"", 1);
-        s->offset++;
+        s->offset += eb_insert_uchar(s->b, s->offset, '\"');
     } else {
         if (pos == 0 || buf[pos-1] == ' ') {
-            eb_insert(s->b, s->offset, "``", 2);
-            s->offset += 2;
+            s->offset += eb_insert_utf8_buf(s->b, s->offset, "``", 2);
         } else {
-            eb_insert(s->b, s->offset, "''", 2);
-            s->offset += 2;
+            s->offset += eb_insert_utf8_buf(s->b, s->offset, "''", 2);
         }
     }
 }

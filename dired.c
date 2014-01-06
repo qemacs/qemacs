@@ -432,7 +432,7 @@ static void dired_view_file(EditState *s, const char *filename)
         e->wrap = WRAP_TRUNCATE;
         b = e->b;
         if (!b) {
-            b = eb_new("*scratch*", BF_SAVELOG);
+            b = eb_new("*scratch*", BF_SAVELOG | BF_UTF8);
             e->b = b;
         }
         /* mark buffer as preview, so that it will get recycled if needed */
