@@ -951,8 +951,10 @@ void charset_init(void)
 
     qe_register_charset(&charset_8859_1);
     qe_register_charset(&charset_vt100);
-    qe_register_charset(&charset_utf8);
     qe_register_charset(&charset_7bit);
+    qe_register_charset(&charset_utf8);
     qe_register_charset(&charset_ucs2le);
     qe_register_charset(&charset_ucs2be);
+    qe_register_charset(&charset_ucs4le);
+    qe_register_charset(&charset_ucs4be);
 }
