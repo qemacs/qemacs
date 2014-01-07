@@ -23,8 +23,6 @@ TMPMAK="${TMPDIR1}/qemacs-conf-${RANDOM}-$$-${RANDOM}.mak"
 
 # default parameters
 prefix="/usr/local"
-datadir="${prefix}/share"
-mandir="${prefix}/man"
 cross_prefix=""
 cc="gcc"
 host_cc="gcc"
@@ -324,6 +322,13 @@ for opt do
         ;;
     esac
 done
+
+if test -z "$datadir"; then
+    datadir="${prefix}/share"
+fi
+if test -z "$mandir"; then
+    mandir="${prefix}/man"
+fi
 
 # Checking for CFLAGS
 if test -z "$CFLAGS"; then
