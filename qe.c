@@ -5132,21 +5132,40 @@ static ModeDef less_mode;
 /* XXX: incorrect to save it. Should use a safer method */
 static EditState *popup_saved_active;
 
+/* Verify that window still exists, return argument or NULL */
+EditState *check_window(EditState *s)
+{
+    QEmacsState *qs = &qe_state;
+    EditState *e;
+
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
+        if (e == s)
+            break;
+    }
+    return e;
+}
+
 /* less like mode */
 void do_less_exit(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
     EditBuffer *b;
+    EditState *e;
 
-    /* CG: should verify that popup_saved_active still exists */
-    /* CG: This command crashes if not invoked from less popup mode */
-    if (popup_saved_active) {
-        qs->active_window = popup_saved_active;
-        b = s->b;
-        edit_close(s);
-        eb_free(b);
-        do_refresh(qs->active_window);
+    /* CG: Should make buffer transient, free'd upon last window close? */
+    b = s->b;
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
+        if (e != s && e->b == b)
+            break;
     }
+    edit_close(s);
+    if (!e)
+        eb_free(b);
+
+    qs->active_window = check_window(popup_saved_active);
+    popup_saved_active = NULL;
+
+    do_refresh(qs->active_window);
 }
 
 /* show a popup on a readonly buffer */
@@ -5155,6 +5174,10 @@ void show_popup(EditBuffer *b)
     EditState *s;
     QEmacsState *qs = &qe_state;
     int w, h, w1, h1;
+
+    /* Prevent recursion */
+    if (qs->active_window && qs->active_window->b == b)
+        return;
 
     /* XXX: generic function to open popup ? */
     w1 = qs->screen->width;
