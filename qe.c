@@ -228,6 +228,10 @@ static int qe_register_binding2(int key, CmdDef *d, ModeDef *m)
     if (key >= KEY_CTRLH(0) && key <= KEY_CTRLH(0xff)) {
         keys[nb_keys++] = KEY_CTRL('h');
         keys[nb_keys++] = key & 0xff;
+    } else
+    if (key >= KEY_CTRLC(0) && key <= KEY_CTRLC(0xff)) {
+        keys[nb_keys++] = KEY_CTRL('c');
+        keys[nb_keys++] = key & 0xff;
     } else {
         keys[nb_keys++] = key;
     }
@@ -262,7 +266,8 @@ void qe_register_cmd_table(CmdDef *cmds, ModeDef *m)
 
     /* add default bindings */
     for (d = cmds; d->name != NULL; d++) {
-        if (d->key == KEY_CTRL('x') || d->key == KEY_ESC) {
+        if (d->key == KEY_CTRL('x') || d->key == KEY_CTRL('c')
+        ||  d->key == KEY_ESC) {
             unsigned int keys[2];
             keys[0] = d->key;
             keys[1] = d->alt_key;

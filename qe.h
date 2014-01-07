@@ -549,6 +549,7 @@ enum QEEventType {
 #define KEY_CTRLX(c)    ((c) | 0xe200)
 #define KEY_CTRLXRET(c) ((c) | 0xe300)
 #define KEY_CTRLH(c)    ((c) | 0xe500)
+#define KEY_CTRLC(c)    ((c) | 0xe600)
 #define KEY_SPECIAL(c)  (((c) >= 0xe000 && (c) < 0xf000) || ((c) >= 0 && (c) < 32) || (c) == 127)
 
 #define KEY_NONE        0xffff

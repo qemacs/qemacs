@@ -1830,7 +1830,7 @@ static CmdDef shell_commands[] = {
     /* CG: should send s->kbs */
     CMD1( KEY_DEL, KEY_NONE,
           "shell-backward-delete-char", shell_write_char, KEY_DEL)
-    CMD1( KEY_CTRL('c'), KEY_NONE,
+    CMD1( KEY_CTRLC(KEY_CTRL('c')), KEY_NONE,   /* C-c C-c */
           "shell-intr", shell_write_char, 3)
     CMD1( KEY_CTRL('d'), KEY_DELETE,
           "shell-delete-char", shell_write_char, 4)
