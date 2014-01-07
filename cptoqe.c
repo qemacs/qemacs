@@ -39,6 +39,7 @@ static inline char *skipspaces(char *p) {
     return p;
 }
 
+#define getline my_getline        /* prevent name clash */
 static char *getline(char *buf, int buf_size, FILE *f, int strip_comments)
 {
     for (;;) {
