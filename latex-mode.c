@@ -127,7 +127,11 @@ static int latex_mode_probe(ModeDef *mode, ModeProbeData *p)
     /* Halibut (by Simon Tatham) has a syntax similar to TeX and uses
      * .but extension */
     if (match_extension(p->filename, mode->extensions))
-        return 100;
+        return 80;
+
+    /* Match TeX style sheets if they start with a comment */
+    if (match_extension(p->filename, "sty") && p->buf[0] == '%')
+        return 80;
 
     return 0;
 }
@@ -303,8 +307,7 @@ static void do_latex(EditState *e, const char *cmd)
 static CmdDef latex_commands[] = {
     CMD2( '\"', KEY_NONE,
           "tex-insert-quote", do_tex_insert_quote, ES, "*")
-    /* this should actually be KEY_CTRLC(KEY_CTRL('c')), ie C-c C-c */
-    CMD2( KEY_CTRL('c'), KEY_NONE,
+    CMD2( KEY_CTRLC(KEY_CTRL('c')), KEY_NONE,   /* C-c C-c */
           "TeX-command-master", do_latex, ESs,
           "s{Command: (default LaTeX) }[latex]|latex|")
     CMD_DEF_END,
