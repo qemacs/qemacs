@@ -890,6 +890,8 @@ void do_undo(EditState *s)
 
 void eb_set_charset(EditBuffer *b, QECharset *charset)
 {
+    int n;
+
     if (b->charset) {
         charset_decode_close(&b->charset_state);
     }
@@ -900,7 +902,7 @@ void eb_set_charset(EditBuffer *b, QECharset *charset)
     charset_decode_init(&b->charset_state, charset);
 
     /* Reset page cache flags */
-    for (int n = 0; n < b->nb_pages; n++) {
+    for (n = 0; n < b->nb_pages; n++) {
         Page *p = &b->page_table[n];
         p->flags &= ~(PG_VALID_POS | PG_VALID_CHAR | PG_VALID_COLORS);
     }
