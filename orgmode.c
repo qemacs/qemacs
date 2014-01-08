@@ -137,34 +137,33 @@ static void do_org_todo(EditState *s)
     /* find start of line */
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
     offset = eb_goto_bol(s->b, s->offset);
-    do {
+    for (;;) {
         offsetl = offset;
         len = eb_get_line(s->b, buf, countof(buf), &offsetl);
         bullets = org_bullet_depth(buf, len);
         if (bullets > -1) {
             break;
         }
-        offsetl = offset;
+        if (offset == 0)
+            return;
+
         offset = eb_prev_line(s->b, offset);
-    } while (offsetl > 0);
+    }
 
-    if (bullets < 0)
-        return;
+    offset += eb_skip_chars(s->b, offset, bullets + 2);
 
-    offset = eb_goto_bol(s->b, offset);
     kw = org_todo_keyword(buf + bullets + 2, len - bullets);
-
     if (kw > -1) {
         int kwlen = strlen(OrgTodoKeywords[kw].keyword);
-        eb_delete(s->b, offset + bullets + 2, kwlen + 1);
+        eb_delete_chars(s->b, offset, kwlen + 1);
     }
 
     kw++;
 
     if (kw < countof(OrgTodoKeywords)) {
         int kwlen = strlen(OrgTodoKeywords[kw].keyword);
-        eb_insert(s->b, offset + bullets + 2, " ", 1);
-        eb_insert(s->b, offset + bullets + 2, OrgTodoKeywords[kw].keyword, kwlen);
+        eb_insert_uchar(s->b, offset, ' ');
+        eb_insert_utf8_buf(s->b, offset, OrgTodoKeywords[kw].keyword, kwlen);
     }
 }
 
@@ -185,11 +184,11 @@ static void do_org_meta_return(EditState *s)
     if (col_num > 0)
         offset = offsetl;
 
-    eb_insert(s->b, offset, " \n", 2);
-    do {
-        eb_insert(s->b, offset, "*", 1);
-    } while (bullets--);
-    eb_goto_eol(s->b, offset);
+    eb_insert_utf8_buf(s->b, offset, " \n", 2);
+    while (bullets-- >= 0) {
+        eb_insert_uchar(s->b, offset, '*');
+    }
+    //eb_goto_eol(s->b, offset);
     if (col_num > 0)
         text_move_up_down(s, 1);
     text_move_eol(s);
@@ -219,9 +218,9 @@ static void do_org_promote(EditState *s, int dir)
         return;
 
     if (dir > 0)
-        eb_insert(s->b, offset, "*", 1);
+        eb_insert_uchar(s->b, offset, '*');
     if (dir < 0 && bullets > 0)
-        eb_delete(s->b, offset, 1);
+        eb_delete_uchar(s->b, offset);
 }
 
 static void do_org_promote_subtree(EditState *s, int dir)
@@ -240,9 +239,9 @@ static void do_org_promote_subtree(EditState *s, int dir)
         return;
 
     if (dir > 0)
-        eb_insert(s->b, offset, "*", 1);
+        eb_insert_uchar(s->b, offset, '*');
     else if (dir < 0 && bullets > 0)
-        eb_delete(s->b, offset, 1);
+        eb_delete_uchar(s->b, offset);
     else
         return;
 
@@ -261,9 +260,9 @@ static void do_org_promote_subtree(EditState *s, int dir)
             break;
 
         if (dir > 0)
-            eb_insert(s->b, offset, "*", 1);
+            eb_insert_uchar(s->b, offset, '*');
         if (dir < 0 && bullets > 0)
-            eb_delete(s->b, offset, 1);
+            eb_delete_uchar(s->b, offset);
     }
 }
 

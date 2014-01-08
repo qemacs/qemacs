@@ -611,7 +611,7 @@ void do_fill_paragraph(EditState *s)
             /* insert space single space then word */
             if (offset == par_end ||
                 (col + 1 + word_size > PARAGRAPH_WIDTH)) {
-                eb_delete_nextc(s->b, chunk_start);
+                eb_delete_uchar(s->b, chunk_start);
                 chunk_start += eb_insert_uchar(s->b, chunk_start, '\n');
                 if (offset < par_end) {
                     /* indent */

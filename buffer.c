@@ -935,8 +935,15 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
     return ch;
 }
 
+int eb_skip_chars(EditBuffer *b, int offset, int n)
+{
+    while (n-- > 0)
+        eb_nextc(b, offset, &offset);
+    return offset;
+}
+
 /* delete one character at offset 'offset', return number of bytes removed */
-int eb_delete_nextc(EditBuffer *b, int offset)
+int eb_delete_uchar(EditBuffer *b, int offset)
 {
     int offset1, size = 0;
     
@@ -946,6 +953,13 @@ int eb_delete_nextc(EditBuffer *b, int offset)
         eb_delete(b, offset, size);
     }
     return size;
+}
+
+int eb_delete_chars(EditBuffer *b, int offset, int n)
+{
+    int offset1 = eb_skip_chars(b, offset, n);
+    eb_delete(b, offset, offset1);
+    return offset1 - offset;
 }
 
 /* XXX: only stateless charsets are supported */
@@ -1510,6 +1524,7 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
     return len;
 }
 
+#if 0
 /* pad current line with spaces so that it reaches column n */
 void eb_line_pad(EditBuffer *b, int n)
 {
@@ -1527,6 +1542,7 @@ void eb_line_pad(EditBuffer *b, int n)
         i++;
     }
 }
+#endif
 
 int eb_get_contents(EditBuffer *b, char *buf, int buf_size)
 {
