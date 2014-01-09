@@ -531,9 +531,9 @@ static void haiku_handle_event(void *opaque)
                     byte = (char)raw_char;
                 switch (byte) {
                 case B_BACKSPACE:
-                    key = KEY_BS;
+                    key = KEY_DEL;
                     if (meta)
-                        key = KEY_META(KEY_BS);
+                        key = KEY_META(KEY_DEL);
                     break;
                 case B_TAB:
                     key = KEY_TAB;
