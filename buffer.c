@@ -957,9 +957,9 @@ int eb_delete_uchar(EditBuffer *b, int offset)
 
 int eb_delete_chars(EditBuffer *b, int offset, int n)
 {
-    int offset1 = eb_skip_chars(b, offset, n);
-    eb_delete(b, offset, offset1);
-    return offset1 - offset;
+    int size = eb_skip_chars(b, offset, n) -  offset;
+    eb_delete(b, offset, size);
+    return size;
 }
 
 /* XXX: only stateless charsets are supported */
@@ -1469,6 +1469,9 @@ int eb_insert_uchar(EditBuffer *b, int offset, int c)
 /* Insert buffer with utf8 chars according to buffer encoding */
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
 {
+    if (len < 0)
+        len = strlen(buf);
+
     if (b->charset == &charset_utf8) {
         eb_insert(b, offset, buf, len);
         return len;
