@@ -37,15 +37,24 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
     int colstate = *statep;
     int i = 0, j = 0;
 
-    if (colstate & IN_STRING)
-        goto instring;
-
+    if (colstate & IN_STRING) {
+        for (j = i; j < n;) {
+            if (str[j] == '\\') {
+                j += 2;
+            } else
+            if (str[j++] == '"') {
+                colstate &= ~IN_STRING;
+                break;
+            }
+        }
+        set_color(str + i, str + j, LISP_STRING);
+        i = j;
+    }
     if (colstate & IN_COMMENT) {
         for (j = i; j < n; j++) {
-            if (str[j] == '|'
-            &&  str[j + 1] == '#') {
+            if (str[j] == '|' && str[j + 1] == '#') {
                 j += 2;
-                colstate = 0;
+                colstate &= ~IN_COMMENT;
                 break;
             }
         }
@@ -61,12 +70,11 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
         case '#':
             /* check for block comment */
             if (str[i + 1] == '|') {
-                colstate = IN_COMMENT;
+                colstate |= IN_COMMENT;
                 for (j = i + 2; j < n; j++) {
-                    if (str[j] == '|'
-                    &&  str[j + 1] == '#') {
+                    if (str[j] == '|' && str[j + 1] == '#') {
                         j += 2;
-                        colstate = 0;
+                        colstate &= ~IN_COMMENT;
                         break;
                     }
                 }
@@ -77,9 +85,8 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
             break;
         case '"':
             /* parse string const */
+            colstate |= IN_STRING;
             for (j = i + 1; j < n;) {
-              instring:
-                colstate |= IN_STRING;
                 if (str[j++] == '"') {
                     colstate &= ~IN_STRING;
                     break;
@@ -118,7 +125,7 @@ static CmdDef lisp_commands[] = {
     CMD_DEF_END,
 };
 
-static ModeDef lisp_mode;
+ModeDef lisp_mode;
 
 static int lisp_init(void)
 {

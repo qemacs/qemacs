@@ -1766,6 +1766,10 @@ extern ModeDef hex_mode;
 
 void hex_write_char(EditState *s, int key);
 
+/* lisp.c */
+
+extern ModeDef lisp_mode;
+
 /* list.c */
 
 extern ModeDef list_mode;
