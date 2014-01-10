@@ -315,6 +315,13 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
     *statep = colstate;
 }
 
+static int org_is_header_line(EditState *s, int offset)
+{
+    /* Check if line starts with '*' */
+    /* XXX: should ignore blocks using colorstate */
+    return eb_nextc(s->b, eb_goto_bol(s->b, offset), &offset) == '*';
+}
+
 static int org_find_heading(EditState *s, int offset, int *level)
 {
     int offset1, nb, c;
@@ -344,19 +351,22 @@ static int org_next_heading(EditState *s, int offset, int target, int *level)
 
     for (;;) {
         offset = eb_next_line(s->b, offset);
-        if (offset >= s->b->total_size)
+        if (offset >= s->b->total_size) {
+            nb = 0;
             break;
+        }
         /* XXX: should ignore blocks using colorstate */
         if (eb_nextc(s->b, offset, &offset1) == '*') {
             for (nb = 1; (c = eb_nextc(s->b, offset1, &offset1)) == '*'; nb++)
                 continue;
             if (c == ' ' && nb <= target) {
-                *level = nb;
-                return offset;
+                break;
             }
         }
     }
-    return -1;
+    if (level)
+        *level = nb;
+    return offset;
 }
 
 static int org_prev_heading(EditState *s, int offset, int target, int *level)
@@ -364,20 +374,111 @@ static int org_prev_heading(EditState *s, int offset, int target, int *level)
     int offset1, nb, c;
 
     for (;;) {
-        if (offset == 0)
+        if (offset == 0) {
+            nb = 0;
             break;
+        }
         offset = eb_prev_line(s->b, offset);
         /* XXX: should ignore blocks using colorstate */
         if (eb_nextc(s->b, offset, &offset1) == '*') {
             for (nb = 1; (c = eb_nextc(s->b, offset1, &offset1)) == '*'; nb++)
                 continue;
             if (c == ' ' && nb <= target) {
-                *level = nb;
-                return offset;
+                break;
             }
         }
     }
-    return -1;
+    if (level)
+        *level = nb;
+    return offset;
+}
+
+static void do_outline_next_vsible_heading(EditState *s)
+{
+    s->offset = org_next_heading(s, s->offset, MAX_LEVEL, NULL);
+}
+
+static void do_outline_previous_vsible_heading(EditState *s)
+{
+    s->offset = org_prev_heading(s, s->offset, MAX_LEVEL, NULL);
+}
+
+static void do_outline_up_heading(EditState *s)
+{
+    int offset, level;
+
+    offset = org_find_heading(s, s->offset, &level);
+    if (offset < 0) {
+        put_status(s, "before first heading");
+        return;
+    }
+    if (level <= 1) {
+        put_status(s, "already at top level of the outline");
+        return;
+    }
+
+    s->offset = org_prev_heading(s, offset, level - 1, &level);
+}
+
+static void do_org_backward_same_level(EditState *s)
+{
+    int offset, level, level1;
+
+    offset = org_find_heading(s, s->offset, &level);
+    if (offset < 0) {
+        put_status(s, "before first heading");
+        return;
+    }
+    offset = org_prev_heading(s, offset, level, &level1);
+    if (level1 != level) {
+        put_status(s, "no previous same-level heading");
+        return;
+    }
+    s->offset = offset;
+}
+
+static void do_org_forward_same_level(EditState *s)
+{
+    int offset, level, level1;
+
+    offset = org_find_heading(s, s->offset, &level);
+    if (offset < 0) {
+        put_status(s, "before first heading");
+        return;
+    }
+    offset = org_next_heading(s, offset, level, &level1);
+    if (level1 != level) {
+        put_status(s, "no following same-level heading");
+        return;
+    }
+    s->offset = offset;
+}
+
+static void do_org_goto(EditState *s, const char *dest)
+{
+    int offset, level, level1, nb;
+    const char *p = dest;
+
+    /* XXX: Should pop up a window with numbered outline index
+     * and let the user select the target interactively.
+     */
+
+    /* Jump to numbered destination. */
+    for (offset = 0, level = 0; qe_isdigit(*p); ) {
+        nb = strtol(p, (char **)&p, 10);
+        if (*p == '.')
+            p++;
+        level++;
+        for (; nb > 0; nb--) {
+            offset = org_next_heading(s, offset, level, &level1);
+            if (level != level1) {
+                put_status(s, "heading not found");
+                return;
+            }
+        }
+    }
+    if (level)
+        s->offset = offset;
 }
 
 static void do_org_todo(EditState *s)
@@ -413,14 +514,7 @@ static void do_org_todo(EditState *s)
     }
 }
 
-static int org_is_header_line(EditState *s, int offset)
-{
-    /* Check if line starts with '*' */
-    /* XXX: should ignore blocks using colorstate */
-    return eb_nextc(s->b, eb_goto_bol(s->b, offset), &offset) == '*';
-}
-
-static void do_org_insert_heading(EditState *s)
+static void do_org_insert_heading(EditState *s, int flags)
 {
     int offset, offset0, offset1, level = 1;
 
@@ -435,6 +529,12 @@ static void do_org_insert_heading(EditState *s)
      * if in the middle of a heading line, split the heading,
      * otherwise, make the current line a heading line at current level.
      */
+    if (flags & 2) {
+        /* respect-content: insert heading at end of subtree */
+        offset = org_next_heading(s, offset, level, NULL);
+        eb_insert_uchar(s->b, offset, '\n');
+        eb_insert_uchar(s->b, offset, '\n');
+    } else
     if (s->offset <= offset + level + 1) {
         eb_insert_uchar(s->b, offset, '\n');
     } else
@@ -452,15 +552,10 @@ static void do_org_insert_heading(EditState *s)
     }
     offset += eb_insert_uchar(s->b, offset, ' ');
     s->offset = eb_goto_eol(s->b, offset);
-}
-
-static void do_org_insert_todo_heading(EditState *s)
-{
-    if (check_read_only(s))
-        return;
-
-    do_org_insert_heading(s);
-    do_org_todo(s);
+    if (flags & 1) {
+        /* insert-todo-heading */
+        do_org_todo(s);
+    }
 }
 
 static void do_org_promote(EditState *s, int dir)
@@ -512,7 +607,7 @@ static void do_org_promote_subtree(EditState *s, int dir)
             }
         }
         offset = org_next_heading(s, offset, MAX_LEVEL, &level1);
-        if (offset < 0 || level1 <= level)
+        if (level1 <= level)
             break;
     }
 }
@@ -537,13 +632,11 @@ static void do_org_move_subtree(EditState *s, int dir)
     }
     
     offset1 = org_next_heading(s, offset, level, &level1);
-    if (offset1 < 0)
-        offset1 = s->b->total_size;
     size = offset1 - offset;
 
     if (dir < 0) {
         offset2 = org_prev_heading(s, offset, level, &level2);
-        if (offset2 < 0 || level2 < level) {
+        if (level2 < level) {
             put_status(s, "cannot move substree");
             return;
         }
@@ -553,8 +646,6 @@ static void do_org_move_subtree(EditState *s, int dir)
             return;
         }
         offset2 = org_next_heading(s, offset1, level, &level2);
-        if (offset2 < 0)
-            offset2 = s->b->total_size;
     }
     b1 = eb_new("*tmp*", 0);
     eb_set_charset(b1, s->b->charset);
@@ -568,13 +659,13 @@ static void do_org_move_subtree(EditState *s, int dir)
 
 static void do_org_meta_return(EditState *s)
 {
-    do_org_insert_heading(s);
+    do_org_insert_heading(s, 0);
 }
 
 static void do_org_metaleft(EditState *s)
 {
     if (org_is_header_line(s, s->offset))
-        do_org_promote(s, -1);
+        do_org_promote(s, +1);
     else
         do_word_right(s, -1);
 }
@@ -582,9 +673,9 @@ static void do_org_metaleft(EditState *s)
 static void do_org_metaright(EditState *s)
 {
     if (org_is_header_line(s, s->offset))
-        do_org_promote(s, 1);
+        do_org_promote(s, -1);
     else
-        do_word_right(s, 1);
+        do_word_right(s, +1);
 }
 
 static void do_org_metadown(EditState *s)
@@ -608,12 +699,31 @@ static int org_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 /* Org mode specific commands */
 static CmdDef org_commands[] = {
+    /* Motion */
+    CMD2( KEY_CTRLC(KEY_CTRL('n')), KEY_NONE,   /* C-c C-n */
+          "outline-next-visible-heading", do_outline_next_vsible_heading, ES, "")
+    CMD2( KEY_CTRLC(KEY_CTRL('p')), KEY_NONE,   /* C-c C-p */
+          "outline-previous-visible-heading", do_outline_previous_vsible_heading, ES, "")
+    CMD2( KEY_CTRLC(KEY_CTRL('u')), KEY_NONE,   /* C-c C-u */
+          "outline-up-heading", do_outline_up_heading, ES, "")
+    CMD2( KEY_CTRLC(KEY_CTRL('b')), KEY_NONE,   /* C-c C-b */
+          "org-backward-same-level", do_org_backward_same_level, ES, "")
+    CMD2( KEY_CTRLC(KEY_CTRL('f')), KEY_NONE,   /* C-c C-f */
+          "org-forward-same-level", do_org_forward_same_level, ES, "")
+    CMD2( KEY_CTRLC(KEY_CTRL('j')), KEY_NONE,   /* C-c C-j */
+          "org-goto", do_org_goto, ESs,
+          "s{select location to jump to: }[orgjump]|orgjump|")
+    /* Editing */
     CMD2( KEY_CTRLC(KEY_CTRL('t')), KEY_NONE,   /* C-c C-t */
           "org-todo", do_org_todo, ES, "*")
-    CMD2( KEY_NONE, KEY_NONE,
-          "org-insert-heading", do_org_insert_heading, ES, "*")
-    CMD2( KEY_NONE, KEY_NONE,    /* actually M-S-RET and C-c C-x M */
-          "org-insert-todo-heading", do_org_insert_todo_heading, ES, "*")
+    CMD3( KEY_NONE, KEY_NONE,    /* indirect through M-RET */
+          "org-insert-heading", do_org_insert_heading, ESi, 0, "*v")
+    CMD3( KEY_NONE, KEY_NONE,    /* actually M-S-RET and C-c C-x M */
+          "org-insert-todo-heading", do_org_insert_heading, ESi, 1, "*v")
+    CMD3( KEY_CTRL('j'), KEY_NONE,    /* actually C-RET */
+          "org-insert-heading-respect-content", do_org_insert_heading, ESi, 2, "*v")
+    CMD3( KEY_NONE, KEY_NONE,    /* actually C-S-RET */
+          "org-insert-todo-heading-respect-content", do_org_insert_heading, ESi, 3, "*v")
     CMD3( KEY_NONE, KEY_NONE,
           "org-do-demote", do_org_promote, ESi, -1, "*v")
     CMD3( KEY_NONE, KEY_NONE,
