@@ -24,12 +24,12 @@
 
 ModeDef org_mode;
 
-#define IN_BULLET       0x01
-#define IN_ACTION       0x02
-#define IN_TAG          0x04
+#define IN_BLOCK       0x80
+#define IN_LISP        0x40
+#define IN_TABLE       0x20
 
 #define MAX_BUF_SIZE    512
-
+#define MAX_LEVEL       128
 
 /* TODO: define specific styles */
 static struct OrgTodoKeywords {
@@ -45,19 +45,52 @@ static struct OrgTodoKeywords {
 static int OrgBulletStyles[BULLET_STYLES] = {
     QE_STYLE_FUNCTION,
     QE_STYLE_VARIABLE,
-    QE_STYLE_PREPROCESS,
     QE_STYLE_STRING,
     QE_STYLE_TYPE,
 };
 
-static int org_bullet_depth(unsigned int *str, int n)
+#if 0
+static int str4_match_str(unsigned int *str, int n, const char *str1)
 {
     int i;
 
-    for (i = 0; i < n && (str[i] & CHAR_MASK) == '*'; i++) {
-        if ((str[i + 1] & CHAR_MASK) == ' ') {
+    for (i = 0; i < n && str1[i]; i++) {
+        if (str[i] != str1[i])
+            return 0;
+    }
+    return i;
+}
+
+static int str4_find_str(unsigned int *str, int n, const char *str1)
+{
+    int i, c = str1[0];
+
+    for (i = 0; i < n; i++) {
+        if (str[i] == c && str4_match_str(str + i, n - i, str1))
             return i;
-        }
+    }
+    return -1;
+}
+#endif
+
+static int str4_match_istr(unsigned int *str, int n, const char *str1)
+{
+    int i;
+
+    for (i = 0; i < n && str1[i]; i++) {
+        if (qe_toupper(str[i]) != qe_toupper(str1[i]))
+            return 0;
+    }
+    return i;
+}
+
+static int str4_find_istr(unsigned int *str, int n, const char *str1)
+{
+    int i, c = qe_toupper(str1[0]);
+
+    for (i = 0; i < n; i++) {
+        if (qe_toupper(str[i]) == c && str4_match_istr(str + i, n - i, str1))
+            return i;
     }
     return -1;
 }
@@ -68,7 +101,7 @@ static int org_todo_keyword(unsigned int *str, int n)
     char kbuf[32];
 
     klen = 0;
-    for (i = 0; i < n && qe_isalpha(c = (str[i] & CHAR_MASK)); i++) {
+    for (i = 0; i < n && qe_isalpha(c = str[i]); i++) {
         if (klen < countof(kbuf) - 1)
             kbuf[klen++] = c;
         else
@@ -79,7 +112,6 @@ static int org_todo_keyword(unsigned int *str, int n)
         int k;
         for (k = 0; k < countof(OrgTodoKeywords); k++) {
             if (!strcmp(kbuf, OrgTodoKeywords[k].keyword)) {
-                set_color(str, str + i, OrgTodoKeywords[k].style);
                 return k;
             }
         }
@@ -87,72 +119,286 @@ static int org_todo_keyword(unsigned int *str, int n)
     return -1;
 }
 
+static int org_scan_chunk(unsigned int *str, int i0, int n,
+                          const char *begin, const char *end, int min_width)
+{
+    int i = i0, j;
+
+    if (i > 0 && str[i - 1] != ' ')
+        return 0;
+
+    for (j = 0; begin[j]; j++) {
+        if (str[i + j] != begin[j])
+            return 0;
+    }
+    for (i += j + min_width; i < n; i++) {
+        for (j = 0; end[j]; j++) {
+            if (str[i + j] != end[j])
+                break;
+        }
+        if (!end[j])
+            return i + j - i0;
+    }
+    return 0;
+}
+
 static void org_colorize_line(unsigned int *str, int n, int *statep,
                               __unused__ int state_only)
 {
     int colstate = *statep;
-    int bullets = 0;
-    int base_style = 0;
-    int i = 0;
-    int c;
+    int i = 0, j = 0, kw, bullets, base_style = 0;
 
-    bullets = org_bullet_depth(str, n);
-    if (bullets > -1) {
-        colstate = IN_BULLET;
-        base_style = OrgBulletStyles[bullets % BULLET_STYLES];
-        set_color(str, str + bullets + 1, base_style);
-        i = bullets + 2;
+    if (colstate & IN_BLOCK) {
+        for (j = i; j < n && str[j] == ' '; )
+            j++;
+        if (str4_match_istr(str + j, n - j, "#+end_")) {
+            colstate &= ~(IN_BLOCK | IN_LISP);
+        } else {
+            if (colstate & IN_LISP) {
+                colstate &= ~(IN_LISP | IN_BLOCK);
+                lisp_mode.colorize_func(str, n, &colstate, state_only);
+                colstate |= IN_LISP | IN_BLOCK;
+            }
+            *statep = colstate;
+            return;
+        }
     }
 
-    if (colstate & IN_BULLET) {
-        int kw = org_todo_keyword(str + i, n - i);
+    for (bullets = 0; bullets < n && str[bullets] == '*'; bullets++)
+        continue;
+
+    if (bullets > 0) {
+        base_style = OrgBulletStyles[(bullets - 1) % BULLET_STYLES];
+        set_color(str, str + bullets + 1, base_style);
+        i = bullets + 1;
+
+        kw = org_todo_keyword(str + i, n - i);
         if (kw > -1) {
             int kwlen = strlen(OrgTodoKeywords[kw].keyword);
             set_color(str + i, str + i + kwlen, OrgTodoKeywords[kw].style);
             i += kwlen;
         }
+    } else {
+        while (i < n && str[i] == ' ')
+            i++;
+
+        if (str[i] == '#') {
+            if (str[i+1] == ' ') {  /* [ \t]*[#][ ] -> comment */
+                set_color(str + i, str + n, QE_STYLE_COMMENT);
+                i = n;
+            } else
+            if (str[i+1] == '+') {  /* [ \t]*[#][+] -> metadata */
+                /* Should interpret litteral examples:
+                 * #+BEGIN_xxx / #+END_xxx
+                 * #+BEGIN_LATEX / #+END_LATEX
+                 * #+BEGIN_SRC / #+END_SRC
+                 */
+                if (str4_match_istr(str + i, n - i, "#+begin_")) {
+                    colstate |= IN_BLOCK;
+                    if (str4_find_istr(str + i, n - i, "lisp")) {
+                        colstate |= IN_LISP;
+                    }
+                }
+                set_color(str + i, str + n, QE_STYLE_PREPROCESS);
+                i = n;
+            }
+        } else
+        if (str[i] == ':') {
+            if (str[i + 1] == ' ') {
+                /* code snipplet, should use code colorizer */
+                set_color(str + i, str + n, QE_STYLE_FUNCTION);
+                i = n;
+            } else {
+                /* property */
+                set_color(str + i, str + n, QE_STYLE_KEYWORD);
+                i = n;
+            }
+        } else
+        if (str[i] == '-') {
+            /* five or more dashes indicate a horizontal bar */
+        } else
+        if (str[i] == '|') {
+            colstate |= IN_TABLE;
+            base_style = QE_STYLE_TYPE;
+        }
     }
 
     while (i < n) {
-        c = str[i] & CHAR_MASK;
+        int chunk = 0;
+        int c = str[i];
+
         switch (c) {
+        case '#':
+            break;
+        case '*':  /* bold */
+            chunk = org_scan_chunk(str, i, n, "*", "*", 1);
+            break;
+        case '/':  /* italic */
+            chunk = org_scan_chunk(str, i, n, "/", "/", 1);
+            break;
+        case '_':  /* underline */
+            chunk = org_scan_chunk(str, i, n, "_", "_", 1);
+            break;
+        case '=':  /* code */
+            chunk = org_scan_chunk(str, i, n, "=", "=", 1);
+            break;
+        case '~':  /* verbatim */
+            chunk = org_scan_chunk(str, i, n, "~", "~", 1);
+            break;
+        case '+':  /* strike-through */
+            chunk = org_scan_chunk(str, i, n, "+", "+", 1);
+            break;
+        case '@':  /* litteral stuff @@...@@ */
+            chunk = org_scan_chunk(str, i, n, "@@", "@@", 1);
+            break;
+        case '[':  /* wiki syntax for links [[...]..[...]] */
+            chunk = org_scan_chunk(str, i, n, "[[", "]]", 1);
+            break;
+        case '{': /* LaTeX syntax for macros {{{...}}} and {} */
+            if (str[i + 1] == '}')
+                chunk = 2;
+            else
+                chunk = org_scan_chunk(str, i, n, "{{{", "}}}", 1);
+            break;
+        case '\\':  /* TeX syntax: \keyword \- \[ \] \( \) */
+            if (str[i + 1] == '\\') {  /* \\ escape */
+                set_color(str + i, str + i + 2, base_style);
+                i += 2;
+                continue;
+            }
+            if (str[i + 1] == '-') {
+                chunk = 2;
+                break;
+            }
+            for (chunk = 1; i + chunk < n
+                         && qe_isalnum(str[i + chunk]); chunk++) {
+                continue;
+            }
+            if (chunk > 0)
+                break;
+            chunk = org_scan_chunk(str, i, n, "\\(", "\\)", 1);
+            if (chunk > 0)
+                break;
+            chunk = org_scan_chunk(str, i, n, "\\[", "\\]", 1);
+            if (chunk > 0)
+                break;
+            break;
+        case '-':  /* Colorize special glyphs -- and --- */
+            if (i == 0 || str[i - 1] == ' ') {
+                if (str[i + 1] == '-') {
+                    chunk = 2;
+                    if (str[i + 2] == '-')
+                        chunk++;
+                    break;
+                }
+            }
+            break;
+        case '.':  /* Colorize special glyph ... */
+            if (str[i + 1] == '.' && str[i + 2] == '.') {
+                chunk = 3;
+                break;
+            }
+            break;
         default:
             break;
         }
-        set_color1(str + i, base_style);
-        i++;
-        continue;
+        if (chunk) {
+            set_color(str + i, str + i + chunk, QE_STYLE_STRING);
+            i += chunk;
+        } else {
+            set_color1(str + i, base_style);
+            i++;
+        }
     }
 
-    colstate = 0;
+    colstate &= ~IN_TABLE;
     *statep = colstate;
+}
+
+static int org_find_heading(EditState *s, int offset, int *level)
+{
+    int offset1, nb, c;
+
+    offset = eb_goto_bol(s->b, offset);
+    for (;;) {
+        /* Find line starting with '*' */
+        /* XXX: should ignore blocks using colorstate */
+        if (eb_nextc(s->b, offset, &offset1) == '*') {
+            for (nb = 1; (c = eb_nextc(s->b, offset1, &offset1)) == '*'; nb++)
+                continue;
+            if (c == ' ') {
+                *level = nb;
+                return offset;
+            }
+        }
+        if (offset == 0)
+            break;
+        offset = eb_prev_line(s->b, offset);
+    }
+    return -1;
+}
+
+static int org_next_heading(EditState *s, int offset, int target, int *level)
+{
+    int offset1, nb, c;
+
+    for (;;) {
+        offset = eb_next_line(s->b, offset);
+        if (offset >= s->b->total_size)
+            break;
+        /* XXX: should ignore blocks using colorstate */
+        if (eb_nextc(s->b, offset, &offset1) == '*') {
+            for (nb = 1; (c = eb_nextc(s->b, offset1, &offset1)) == '*'; nb++)
+                continue;
+            if (c == ' ' && nb <= target) {
+                *level = nb;
+                return offset;
+            }
+        }
+    }
+    return -1;
+}
+
+static int org_prev_heading(EditState *s, int offset, int target, int *level)
+{
+    int offset1, nb, c;
+
+    for (;;) {
+        if (offset == 0)
+            break;
+        offset = eb_prev_line(s->b, offset);
+        /* XXX: should ignore blocks using colorstate */
+        if (eb_nextc(s->b, offset, &offset1) == '*') {
+            for (nb = 1; (c = eb_nextc(s->b, offset1, &offset1)) == '*'; nb++)
+                continue;
+            if (c == ' ' && nb <= target) {
+                *level = nb;
+                return offset;
+            }
+        }
+    }
+    return -1;
 }
 
 static void do_org_todo(EditState *s)
 {
-    int offset, offsetl, line_num, col_num, bullets, len;
+    int offset, offsetl, bullets, len, kw;
     unsigned int buf[MAX_BUF_SIZE];
-    int kw;
 
-    /* find start of line */
-    eb_get_pos(s->b, &line_num, &col_num, s->offset);
-    offset = eb_goto_bol(s->b, s->offset);
-    for (;;) {
-        offsetl = offset;
-        len = eb_get_line(s->b, buf, countof(buf), &offsetl);
-        bullets = org_bullet_depth(buf, len);
-        if (bullets > -1) {
-            break;
-        }
-        if (offset == 0)
-            return;
+    if (check_read_only(s))
+        return;
 
-        offset = eb_prev_line(s->b, offset);
+    offset = org_find_heading(s, s->offset, &bullets);
+    if (offset < 0) {
+        put_status(s, "before first heading");
+        return;
     }
 
-    offset += eb_skip_chars(s->b, offset, bullets + 2);
+    offset = eb_skip_chars(s->b, offset, bullets + 1);
+    offsetl = offset;
+    len = eb_get_line(s->b, buf, countof(buf), &offsetl);
 
-    kw = org_todo_keyword(buf + bullets + 2, len - bullets);
+    kw = org_todo_keyword(buf, len);
     if (kw > -1) {
         int kwlen = strlen(OrgTodoKeywords[kw].keyword);
         eb_delete_chars(s->b, offset, kwlen + 1);
@@ -162,128 +408,193 @@ static void do_org_todo(EditState *s)
 
     if (kw < countof(OrgTodoKeywords)) {
         int kwlen = strlen(OrgTodoKeywords[kw].keyword);
+        offset += eb_insert_utf8_buf(s->b, offset, OrgTodoKeywords[kw].keyword, kwlen);
         eb_insert_uchar(s->b, offset, ' ');
-        eb_insert_utf8_buf(s->b, offset, OrgTodoKeywords[kw].keyword, kwlen);
     }
 }
 
-static void do_org_meta_return(EditState *s)
+static int org_is_header_line(EditState *s, int offset)
 {
-    int offset, offsetl, line_num, col_num, bullets, len;
-    unsigned int buf[MAX_BUF_SIZE];
+    /* Check if line starts with '*' */
+    /* XXX: should ignore blocks using colorstate */
+    return eb_nextc(s->b, eb_goto_bol(s->b, offset), &offset) == '*';
+}
 
-    /* find start of line */
-    eb_get_pos(s->b, &line_num, &col_num, s->offset);
-    offset = eb_goto_bol(s->b, s->offset);
-    offsetl = offset;
-    len = eb_get_line(s->b, buf, countof(buf), &offsetl);
-    bullets = org_bullet_depth(buf, len);
-    if (bullets < 0)
+static void do_org_insert_heading(EditState *s)
+{
+    int offset, offset0, offset1, level = 1;
+
+    if (check_read_only(s))
         return;
 
-    if (col_num > 0)
-        offset = offsetl;
+    offset = org_find_heading(s, s->offset, &level);
+    offset0 = eb_goto_bol(s->b, s->offset);
+    offset1 = eb_goto_eol(s->b, s->offset);
 
-    eb_insert_utf8_buf(s->b, offset, " \n", 2);
-    while (bullets-- >= 0) {
-        eb_insert_uchar(s->b, offset, '*');
+    /* if at beginning of heading line, insert sibling heading before,
+     * if in the middle of a heading line, split the heading,
+     * otherwise, make the current line a heading line at current level.
+     */
+    if (s->offset <= offset + level + 1) {
+        eb_insert_uchar(s->b, offset, '\n');
+    } else
+    if (offset == offset0 || offset == offset1) {
+        offset = s->offset;
+        offset += eb_insert_uchar(s->b, offset, '\n');
+    } else {
+        offset = offset0;
+    }        
+    while (eb_nextc(s->b, offset, &offset1) == ' ') {
+        eb_delete_uchar(s->b, offset);
     }
-    //eb_goto_eol(s->b, offset);
-    if (col_num > 0)
-        text_move_up_down(s, 1);
-    text_move_eol(s);
+    while (level-- > 0) {
+        offset += eb_insert_uchar(s->b, offset, '*');
+    }
+    offset += eb_insert_uchar(s->b, offset, ' ');
+    s->offset = eb_goto_eol(s->b, offset);
 }
 
-#if 0
 static void do_org_insert_todo_heading(EditState *s)
 {
-    printf("M-S-RET\n");
-    /* TODO */
+    if (check_read_only(s))
+        return;
+
+    do_org_insert_heading(s);
+    do_org_todo(s);
 }
-#endif
 
 static void do_org_promote(EditState *s, int dir)
 {
-    int offset, offsetl, line_num, col_num, len;
-    int bullets;
-    unsigned int buf[MAX_BUF_SIZE];
+    int offset, level;
 
-    /* find start of line */
-    eb_get_pos(s->b, &line_num, &col_num, s->offset);
-    offset = eb_goto_bol(s->b, s->offset);
-    offsetl = offset;
-    len = eb_get_line(s->b, buf, countof(buf), &offsetl);
-    bullets = org_bullet_depth(buf, len);
-    if (bullets < 0)
+    if (check_read_only(s))
         return;
 
-    if (dir > 0)
+    offset = org_find_heading(s, s->offset, &level);
+    if (offset < 0) {
+        put_status(s, "before first heading");
+        return;
+    }
+    if (dir < 0) {
         eb_insert_uchar(s->b, offset, '*');
-    if (dir < 0 && bullets > 0)
-        eb_delete_uchar(s->b, offset);
+    } else
+    if (dir > 0) {
+        if (level > 1)
+            eb_delete_uchar(s->b, offset);
+        else
+            put_status(s, "cannot promote to level 0");
+    }
 }
 
 static void do_org_promote_subtree(EditState *s, int dir)
 {
-    int offset, offsetl, offseti, line_num, col_num, len;
-    int bullets, bullets1;
-    unsigned int buf[MAX_BUF_SIZE];
+    int offset, level, level1;
 
-    /* find start of line */
-    eb_get_pos(s->b, &line_num, &col_num, s->offset);
-    offset = eb_goto_bol(s->b, s->offset);
-    offsetl = offset;
-    len = eb_get_line(s->b, buf, countof(buf), &offsetl);
-    bullets = org_bullet_depth(buf, len);
-    if (bullets < 0)
+    if (check_read_only(s))
         return;
 
-    if (dir > 0)
-        eb_insert_uchar(s->b, offset, '*');
-    else if (dir < 0 && bullets > 0)
-        eb_delete_uchar(s->b, offset);
-    else
+    offset = org_find_heading(s, s->offset, &level);
+    if (offset < 0) {
+        put_status(s, "before first heading");
         return;
-
-    bullets1 = bullets;
-    for (;;) {
-        offsetl = eb_next_line(s->b, offset);
-        if (offsetl == offset)
-            break;
-        offset = offseti = offsetl;
-        eb_get_pos(s->b, &line_num, &col_num, offseti);
-        len = eb_get_line(s->b, buf, countof(buf), &offseti);
-        bullets = org_bullet_depth(buf, len);
-        if (bullets < 0)
-            continue;
-        if (bullets <= bullets1)
-            break;
-
-        if (dir > 0)
-            eb_insert_uchar(s->b, offset, '*');
-        if (dir < 0 && bullets > 0)
-            eb_delete_uchar(s->b, offset);
     }
+    
+    for (;;) {
+        if (dir < 0) {
+            eb_insert_uchar(s->b, offset, '*');
+        } else
+        if (dir > 0) {
+            if (level > 1) {
+                eb_delete_uchar(s->b, offset);
+            } else {
+                put_status(s, "cannot promote to level 0");
+                return;
+            }
+        }
+        offset = org_next_heading(s, offset, MAX_LEVEL, &level1);
+        if (offset < 0 || level1 <= level)
+            break;
+    }
+}
+
+static void do_org_move_subtree(EditState *s, int dir)
+{
+    int offset, offset1, offset2, level, level1, level2, size;
+    EditBuffer *b1;
+
+    if (check_read_only(s))
+        return;
+
+    if (!org_is_header_line(s, s->offset)) {
+        put_status(s, "not on header line");
+        return;
+    }
+
+    offset = org_find_heading(s, s->offset, &level);
+    if (offset < 0) {
+        put_status(s, "before first heading");
+        return;
+    }
+    
+    offset1 = org_next_heading(s, offset, level, &level1);
+    if (offset1 < 0)
+        offset1 = s->b->total_size;
+    size = offset1 - offset;
+
+    if (dir < 0) {
+        offset2 = org_prev_heading(s, offset, level, &level2);
+        if (offset2 < 0 || level2 < level) {
+            put_status(s, "cannot move substree");
+            return;
+        }
+    } else {
+        if (offset1 == s->b->total_size || level1 < level) {
+            put_status(s, "cannot move substree");
+            return;
+        }
+        offset2 = org_next_heading(s, offset1, level, &level2);
+        if (offset2 < 0)
+            offset2 = s->b->total_size;
+    }
+    b1 = eb_new("*tmp*", 0);
+    eb_set_charset(b1, s->b->charset);
+    eb_insert_buffer(b1, 0, s->b, offset, size);
+    eb_delete(s->b, offset, size);
+    if (offset2 > offset)
+        offset2 -= size;
+    eb_insert_buffer(s->b, offset2, b1, 0, size);
+    s->offset = offset2;
+}
+
+static void do_org_meta_return(EditState *s)
+{
+    do_org_insert_heading(s);
 }
 
 static void do_org_metaleft(EditState *s)
 {
-    do_org_promote(s, -1);
+    if (org_is_header_line(s, s->offset))
+        do_org_promote(s, -1);
+    else
+        do_word_right(s, -1);
 }
 
 static void do_org_metaright(EditState *s)
 {
-    do_org_promote(s, 1);
+    if (org_is_header_line(s, s->offset))
+        do_org_promote(s, 1);
+    else
+        do_word_right(s, 1);
 }
 
-static void do_org_shiftmetaleft(EditState *s)
+static void do_org_metadown(EditState *s)
 {
-    do_org_promote_subtree(s, -1);
+    do_org_move_subtree(s, +1);
 }
 
-static void do_org_shiftmetaright(EditState *s)
+static void do_org_metaup(EditState *s)
 {
-    do_org_promote_subtree(s, 1);
+    do_org_move_subtree(s, -1);
 }
 
 static int org_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -295,40 +606,36 @@ static int org_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 0;
 }
 
-static int org_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
-{
-    int ret;
-
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
-
-    s->wrap = WRAP_TRUNCATE;
-    return 0;
-}
-
 /* Org mode specific commands */
 static CmdDef org_commands[] = {
     CMD2( KEY_CTRLC(KEY_CTRL('t')), KEY_NONE,   /* C-c C-t */
-    "org-todo", do_org_todo, ES, "*")
-    CMD2( KEY_META(KEY_RET), KEY_NONE,
-    "org-meta-return", do_org_meta_return, ES, "*")
-    /*
-    CMD2( KEY_META_S('\n'), KEY_NONE,
-    "org-insert-todo-heading", do_org_insert_todo_heading, ES, "*")
-*/
-    /* actually M-left */
-    CMD2( KEY_CTRL_LEFT, KEY_NONE,
-    "org-meta-left", do_org_metaleft, ES, "*")
-    /* actually M-right */
-    CMD2( KEY_CTRL_RIGHT, KEY_NONE,
-    "org-meta-right", do_org_metaright, ES, "*")
-    /* actually M-S-left */
-    CMD2( KEY_CTRLX('<'), KEY_NONE,
-    "org-shift-meta-left", do_org_shiftmetaleft, ES, "*")
-    /* actually M-S-right */
-    CMD2( KEY_CTRLX('>'), KEY_NONE,
-    "org-shift-meta-right", do_org_shiftmetaright, ES, "*")
+          "org-todo", do_org_todo, ES, "*")
+    CMD2( KEY_NONE, KEY_NONE,
+          "org-insert-heading", do_org_insert_heading, ES, "*")
+    CMD2( KEY_NONE, KEY_NONE,    /* actually M-S-RET and C-c C-x M */
+          "org-insert-todo-heading", do_org_insert_todo_heading, ES, "*")
+    CMD3( KEY_NONE, KEY_NONE,
+          "org-do-demote", do_org_promote, ESi, -1, "*v")
+    CMD3( KEY_NONE, KEY_NONE,
+          "org-do-promote", do_org_promote, ESi, +1, "*v")
+    CMD3( KEY_CTRLX('>'), KEY_NONE,    /* actually M-S-right | C-c C-x R */
+          "org-demote-subtree", do_org_promote_subtree, ESi, -1, "*v")
+    CMD3( KEY_CTRLX('<'), KEY_NONE,    /* actually M-S-left | C-c C-x L */
+          "org-promote-subtree", do_org_promote_subtree, ESi, +1, "*v")
+    CMD3( KEY_NONE, KEY_NONE,
+          "org-move-subtree-down", do_org_move_subtree, ESi, +1, "*v")
+    CMD3( KEY_NONE, KEY_NONE,
+          "org-move-subtree-up", do_org_move_subtree, ESi, -1, "*v")
+    CMD2( KEY_META(KEY_RET), KEY_NONE,    /* Actually M-RET | C-c C-x m */
+          "org-meta-return", do_org_meta_return, ES, "*")
+    CMD2( KEY_ESC, KEY_LEFT,    /* actually M-left | C-c C-x l */
+          "org-metaleft", do_org_metaleft, ES, "")
+    CMD2( KEY_ESC, KEY_RIGHT,    /* actually M-right | C-c C-x r */
+          "org-metaright", do_org_metaright, ES, "")
+    CMD2( KEY_ESC, KEY_DOWN,    /* actually M-down | C-c C-x d */
+          "org-metadown", do_org_metadown, ES, "")
+    CMD2( KEY_ESC, KEY_UP,    /* actually M-up | C-c C-x u */
+          "org-metaup", do_org_metaup, ES, "")
     CMD_DEF_END,
 };
 
@@ -338,7 +645,6 @@ static int org_init(void)
     org_mode.name = "org";
     org_mode.extensions = "org";
     org_mode.mode_probe = org_mode_probe;
-    org_mode.mode_init = org_mode_init;
     org_mode.colorize_func = org_colorize_line;
 
     qe_register_mode(&org_mode);
