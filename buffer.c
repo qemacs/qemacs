@@ -1497,12 +1497,16 @@ int eb_insert_str(EditBuffer *b, int offset, const char *str)
     return eb_insert_utf8_buf(b, offset, str, strlen(str));
 }
 
-int eb_match_uchar(EditBuffer *b, int offset, int c)
+int eb_match_uchar(EditBuffer *b, int offset, int c, int *offsetp)
 {
-    return eb_nextc(b, offset, &offset) == c;
+    if (eb_nextc(b, offset, &offset) != c)
+        return 0;
+    if (offsetp)
+        *offsetp = offset;
+    return 1;
 }
 
-int eb_match_str(EditBuffer *b, int offset, const char *str)
+int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp)
 {
     const char *p = str;
 
@@ -1511,10 +1515,12 @@ int eb_match_str(EditBuffer *b, int offset, const char *str)
         if (eb_nextc(b, offset, &offset) != c)
             return 0;
     }
+    if (offsetp)
+        *offsetp = offset;
     return 1;
 }
 
-int eb_match_istr(EditBuffer *b, int offset, const char *str)
+int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp)
 {
     const char *p = str;
 
@@ -1523,6 +1529,8 @@ int eb_match_istr(EditBuffer *b, int offset, const char *str)
         if (qe_toupper(eb_nextc(b, offset, &offset)) != qe_toupper(c))
             return 0;
     }
+    if (offsetp)
+        *offsetp = offset;
     return 1;
 }
 
