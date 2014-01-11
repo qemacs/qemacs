@@ -1202,7 +1202,9 @@ static void tty_term_flush(QEditScreen *s)
     }
 
     TTY_FPUTS("\033[0m", s->STDOUT);
-    TTY_FPRINTF(s->STDOUT, "\033[%d;%dH", ts->cursor_y + 1, ts->cursor_x + 1);
+    if (ts->cursor_y + 1 >= 0 && ts->cursor_x + 1 >= 0) {
+        TTY_FPRINTF(s->STDOUT, "\033[%d;%dH", ts->cursor_y + 1, ts->cursor_x + 1);
+    }
     fflush(s->STDOUT);
 }
 
