@@ -158,9 +158,9 @@ static void do_tex_insert_quote(EditState *s)
         s->offset += eb_insert_uchar(s->b, s->offset, '\"');
     } else {
         if (pos == 0 || buf[pos-1] == ' ') {
-            s->offset += eb_insert_utf8_buf(s->b, s->offset, "``", 2);
+            s->offset += eb_insert_str(s->b, s->offset, "``");
         } else {
-            s->offset += eb_insert_utf8_buf(s->b, s->offset, "''", 2);
+            s->offset += eb_insert_str(s->b, s->offset, "''");
         }
     }
 }

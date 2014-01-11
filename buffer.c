@@ -1469,9 +1469,6 @@ int eb_insert_uchar(EditBuffer *b, int offset, int c)
 /* Insert buffer with utf8 chars according to buffer encoding */
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
 {
-    if (len < 0)
-        len = strlen(buf);
-
     if (b->charset == &charset_utf8) {
         eb_insert(b, offset, buf, len);
         return len;
@@ -1493,6 +1490,40 @@ int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
         }
         return size;
     }
+}
+
+int eb_insert_str(EditBuffer *b, int offset, const char *str)
+{
+    return eb_insert_utf8_buf(b, offset, str, strlen(str));
+}
+
+int eb_match_uchar(EditBuffer *b, int offset, int c)
+{
+    return eb_nextc(b, offset, &offset) == c;
+}
+
+int eb_match_str(EditBuffer *b, int offset, const char *str)
+{
+    const char *p = str;
+
+    while (*p) {
+        int c = utf8_decode((const char **)(void *)&p);
+        if (eb_nextc(b, offset, &offset) != c)
+            return 0;
+    }
+    return 1;
+}
+
+int eb_match_istr(EditBuffer *b, int offset, const char *str)
+{
+    const char *p = str;
+
+    while (*p) {
+        int c = utf8_decode((const char **)(void *)&p);
+        if (qe_toupper(eb_nextc(b, offset, &offset)) != qe_toupper(c))
+            return 0;
+    }
+    return 1;
 }
 
 int eb_printf(EditBuffer *b, const char *fmt, ...)
@@ -1518,7 +1549,10 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
         vsnprintf(buf, size, fmt, ap);
         va_end(ap);
     }
-    /* CG: insert buffer translating according b->charset */
+    /* CG: insert buffer translating according b->charset.
+     * buf may contain \0 characters via the %c modifer.
+     * XXX: %c does not encode non ASCII characters as utf8.
+     */
     eb_insert_utf8_buf(b, b->total_size, buf, len);
 #ifdef CONFIG_WIN32
     if (buf != buf0)

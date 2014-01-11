@@ -849,6 +849,10 @@ void eb_offset_callback(EditBuffer *b,
 int eb_delete_uchar(EditBuffer *b, int offset);
 int eb_insert_uchar(EditBuffer *b, int offset, int c);
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len);
+int eb_insert_str(EditBuffer *b, int offset, const char *str);
+int eb_match_uchar(EditBuffer *b, int offset, int c);
+int eb_match_str(EditBuffer *b, int offset, const char *str);
+int eb_match_istr(EditBuffer *b, int offset, const char *str);
 int eb_printf(EditBuffer *b, const char *fmt, ...) __attr_printf(2,3);
 void eb_line_pad(EditBuffer *b, int n);
 int eb_get_contents(EditBuffer *b, char *buf, int buf_size);
