@@ -426,8 +426,8 @@ static void charset_get_pos_ucs2(CharsetDecodeState *s, const u8 *buf, int size,
     u.c[s->charset == &charset_ucs2be] = s->charset->eol_char;
     nl = u.n;
 
-    for (; p < p1; p++) {
-        if (*p == nl) {
+    while (p < p1) {
+        if (*p++ == nl) {
             lp = p;
             line++;
         }
@@ -450,7 +450,7 @@ static int charset_goto_line_ucs2(QECharset *charset, const u8 *buf, int size,
     u.c[charset == &charset_ucs2be] = charset->eol_char;
     nl = u.n;
 
-    while (nlines > 0) {
+    while (nlines > 0 && p < p1) {
         while (p < p1) {
             if (*p++ == nl) {
                 lp = p;
@@ -548,8 +548,8 @@ static void charset_get_pos_ucs4(CharsetDecodeState *s, const u8 *buf, int size,
     u.c[(s->charset == &charset_ucs4be) * 3] = s->charset->eol_char;
     nl = u.n;
 
-    for (; p < p1; p++) {
-        if (*p == nl) {
+    while (p < p1) {
+        if (*p++ == nl) {
             lp = p;
             line++;
         }
@@ -569,10 +569,10 @@ static int charset_goto_line_ucs4(QECharset *charset, const u8 *buf, int size,
     lp = p = (const uint32_t *)buf;
     p1 = p + (size >> 2);
     u.n = 0;
-    u.c[(charset == &charset_ucs2be) * 3] = charset->eol_char;
+    u.c[(charset == &charset_ucs4be) * 3] = charset->eol_char;
     nl = u.n;
 
-    while (nlines > 0) {
+    while (nlines > 0 && p < p1) {
         while (p < p1) {
             if (*p++ == nl) {
                 lp = p;
