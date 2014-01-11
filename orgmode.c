@@ -49,8 +49,8 @@ static int OrgBulletStyles[BULLET_STYLES] = {
     QE_STYLE_TYPE,
 };
 
-#if 0
-static int str4_match_str(unsigned int *str, int n, const char *str1)
+static int str4_match_str(unsigned int *str, int n, const char *str1,
+                          int *matchlen)
 {
     int i;
 
@@ -58,22 +58,26 @@ static int str4_match_str(unsigned int *str, int n, const char *str1)
         if (str[i] != str1[i])
             return 0;
     }
-    return i;
+    if (matchlen)
+        *matchlen = i;
+    return 1;
 }
 
+#if 0
 static int str4_find_str(unsigned int *str, int n, const char *str1)
 {
     int i, c = str1[0];
 
     for (i = 0; i < n; i++) {
-        if (str[i] == c && str4_match_str(str + i, n - i, str1))
+        if (str[i] == c && str4_match_str(str + i, n - i, str1, NULL))
             return i;
     }
     return -1;
 }
 #endif
 
-static int str4_match_istr(unsigned int *str, int n, const char *str1)
+static int str4_match_istr(unsigned int *str, int n, const char *str1,
+                           int *matchlen)
 {
     int i;
 
@@ -81,7 +85,9 @@ static int str4_match_istr(unsigned int *str, int n, const char *str1)
         if (qe_toupper(str[i]) != qe_toupper(str1[i]))
             return 0;
     }
-    return i;
+    if (matchlen)
+        *matchlen = i;
+    return 1;
 }
 
 static int str4_find_istr(unsigned int *str, int n, const char *str1)
@@ -89,32 +95,22 @@ static int str4_find_istr(unsigned int *str, int n, const char *str1)
     int i, c = qe_toupper(str1[0]);
 
     for (i = 0; i < n; i++) {
-        if (qe_toupper(str[i]) == c && str4_match_istr(str + i, n - i, str1))
+        if (qe_toupper(str[i]) == c
+        &&  str4_match_istr(str + i, n - i, str1, NULL)) {
             return i;
+        }
     }
     return -1;
 }
 
 static int org_todo_keyword(unsigned int *str, int n)
 {
-    int i, c, klen;
-    char kbuf[32];
+    int kw, j;
 
-    klen = 0;
-    for (i = 0; i < n && qe_isalpha(c = str[i]); i++) {
-        if (klen < countof(kbuf) - 1)
-            kbuf[klen++] = c;
-        else
-            break;
-    }
-    kbuf[klen] = '\0';
-    if (klen > 0 && c == ' ') {
-        int k;
-        for (k = 0; k < countof(OrgTodoKeywords); k++) {
-            if (!strcmp(kbuf, OrgTodoKeywords[k].keyword)) {
-                return k;
-            }
-        }
+    for (kw = 0; kw < countof(OrgTodoKeywords); kw++) {
+        if (str4_match_str(str, n, OrgTodoKeywords[kw].keyword, &j)
+        &&  j < n && str[j] == ' ')
+            return kw;
     }
     return -1;
 }
@@ -123,9 +119,6 @@ static int org_scan_chunk(unsigned int *str, int i0, int n,
                           const char *begin, const char *end, int min_width)
 {
     int i = i0, j;
-
-    if (i > 0 && str[i - 1] != ' ')
-        return 0;
 
     for (j = 0; begin[j]; j++) {
         if (str[i + j] != begin[j])
@@ -146,12 +139,12 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
                               __unused__ int state_only)
 {
     int colstate = *statep;
-    int i = 0, j = 0, kw, bullets, base_style = 0;
+    int i = 0, j = 0, kw, base_style = 0, has_space;
 
     if (colstate & IN_BLOCK) {
         for (j = i; j < n && str[j] == ' '; )
             j++;
-        if (str4_match_istr(str + j, n - j, "#+end_")) {
+        if (str4_match_istr(str + j, n - j, "#+end_", NULL)) {
             colstate &= ~(IN_BLOCK | IN_LISP);
         } else {
             if (colstate & IN_LISP) {
@@ -164,19 +157,22 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
         }
     }
 
-    for (bullets = 0; bullets < n && str[bullets] == '*'; bullets++)
-        continue;
+    if (str[i] == '*') {
+        /* Check for heading: initial string of '*' followed by ' ' */
+        for (j = i + 1; j < n && str[j] == '*'; j++)
+            continue;
 
-    if (bullets > 0) {
-        base_style = OrgBulletStyles[(bullets - 1) % BULLET_STYLES];
-        set_color(str, str + bullets + 1, base_style);
-        i = bullets + 1;
+        if (j < n && str[j] == ' ') {
+            base_style = OrgBulletStyles[(j - i - 1) % BULLET_STYLES];
+            set_color(str + i, str + j + 1, base_style);
+            i = j + 1;
 
-        kw = org_todo_keyword(str + i, n - i);
-        if (kw > -1) {
-            int kwlen = strlen(OrgTodoKeywords[kw].keyword);
-            set_color(str + i, str + i + kwlen, OrgTodoKeywords[kw].style);
-            i += kwlen;
+            kw = org_todo_keyword(str + i, n - i);
+            if (kw > -1) {
+                j = i + strlen(OrgTodoKeywords[kw].keyword) + 1;
+                set_color(str + i, str + j, OrgTodoKeywords[kw].style);
+                i = j;
+            }
         }
     } else {
         while (i < n && str[i] == ' ')
@@ -193,7 +189,7 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
                  * #+BEGIN_LATEX / #+END_LATEX
                  * #+BEGIN_SRC / #+END_SRC
                  */
-                if (str4_match_istr(str + i, n - i, "#+begin_")) {
+                if (str4_match_istr(str + i, n - i, "#+begin_", NULL)) {
                     colstate |= IN_BLOCK;
                     if (str4_find_istr(str + i, n - i, "lisp")) {
                         colstate |= IN_LISP;
@@ -223,84 +219,92 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
         }
     }
 
+    has_space = 1;
+
     while (i < n) {
         int chunk = 0;
         int c = str[i];
 
-        switch (c) {
-        case '#':
-            break;
-        case '*':  /* bold */
-            chunk = org_scan_chunk(str, i, n, "*", "*", 1);
-            break;
-        case '/':  /* italic */
-            chunk = org_scan_chunk(str, i, n, "/", "/", 1);
-            break;
-        case '_':  /* underline */
-            chunk = org_scan_chunk(str, i, n, "_", "_", 1);
-            break;
-        case '=':  /* code */
-            chunk = org_scan_chunk(str, i, n, "=", "=", 1);
-            break;
-        case '~':  /* verbatim */
-            chunk = org_scan_chunk(str, i, n, "~", "~", 1);
-            break;
-        case '+':  /* strike-through */
-            chunk = org_scan_chunk(str, i, n, "+", "+", 1);
-            break;
-        case '@':  /* litteral stuff @@...@@ */
-            chunk = org_scan_chunk(str, i, n, "@@", "@@", 1);
-            break;
-        case '[':  /* wiki syntax for links [[...]..[...]] */
-            chunk = org_scan_chunk(str, i, n, "[[", "]]", 1);
-            break;
-        case '{': /* LaTeX syntax for macros {{{...}}} and {} */
-            if (str[i + 1] == '}')
-                chunk = 2;
-            else
-                chunk = org_scan_chunk(str, i, n, "{{{", "}}}", 1);
-            break;
-        case '\\':  /* TeX syntax: \keyword \- \[ \] \( \) */
-            if (str[i + 1] == '\\') {  /* \\ escape */
-                set_color(str + i, str + i + 2, base_style);
-                i += 2;
-                continue;
-            }
-            if (str[i + 1] == '-') {
-                chunk = 2;
+        if (has_space || c == '\\') {
+            switch (c) {
+            case '#':
                 break;
-            }
-            for (chunk = 1; i + chunk < n
-                         && qe_isalnum(str[i + chunk]); chunk++) {
-                continue;
-            }
-            if (chunk > 0)
+            case '*':  /* bold */
+                chunk = org_scan_chunk(str, i, n, "*", "*", 1);
                 break;
-            chunk = org_scan_chunk(str, i, n, "\\(", "\\)", 1);
-            if (chunk > 0)
+            case '/':  /* italic */
+                chunk = org_scan_chunk(str, i, n, "/", "/", 1);
                 break;
-            chunk = org_scan_chunk(str, i, n, "\\[", "\\]", 1);
-            if (chunk > 0)
+            case '_':  /* underline */
+                chunk = org_scan_chunk(str, i, n, "_", "_", 1);
                 break;
-            break;
-        case '-':  /* Colorize special glyphs -- and --- */
-            if (i == 0 || str[i - 1] == ' ') {
+            case '=':  /* code */
+                chunk = org_scan_chunk(str, i, n, "=", "=", 1);
+                break;
+            case '~':  /* verbatim */
+                chunk = org_scan_chunk(str, i, n, "~", "~", 1);
+                break;
+            case '+':  /* strike-through */
+                chunk = org_scan_chunk(str, i, n, "+", "+", 1);
+                break;
+            case '@':  /* litteral stuff @@...@@ */
+                chunk = org_scan_chunk(str, i, n, "@@", "@@", 1);
+                break;
+            case '[':  /* wiki syntax for links [[...]..[...]] */
+                chunk = org_scan_chunk(str, i, n, "[[", "]]", 1);
+                break;
+            case '{': /* LaTeX syntax for macros {{{...}}} and {} */
+                if (str[i + 1] == '}')
+                    chunk = 2;
+                else
+                    chunk = org_scan_chunk(str, i, n, "{{{", "}}}", 1);
+                break;
+            case '\\':  /* TeX syntax: \keyword \- \[ \] \( \) */
+                if (str[i + 1] == '\\') {  /* \\ escape */
+                    set_color(str + i, str + i + 2, base_style);
+                    i += 2;
+                    continue;
+                }
+                if (str[i + 1] == '-') {
+                    chunk = 2;
+                    break;
+                }
+                for (chunk = 1; i + chunk < n
+                && qe_isalnum(str[i + chunk]); chunk++) {
+                    continue;
+                }
+                if (chunk > 0)
+                    break;
+                chunk = org_scan_chunk(str, i, n, "\\(", "\\)", 1);
+                if (chunk > 0)
+                    break;
+                chunk = org_scan_chunk(str, i, n, "\\[", "\\]", 1);
+                if (chunk > 0)
+                    break;
+                break;
+            case '-':  /* Colorize special glyphs -- and --- */
                 if (str[i + 1] == '-') {
                     chunk = 2;
                     if (str[i + 2] == '-')
                         chunk++;
                     break;
                 }
-            }
-            break;
-        case '.':  /* Colorize special glyph ... */
-            if (str[i + 1] == '.' && str[i + 2] == '.') {
-                chunk = 3;
+                break;
+            case '.':  /* Colorize special glyph ... */
+                if (str[i + 1] == '.' && str[i + 2] == '.') {
+                    chunk = 3;
+                    break;
+                }
+                break;
+            case ' ':
+                has_space = 1;
+                break;
+            default:
+                has_space = 0;
                 break;
             }
-            break;
-        default:
-            break;
+        } else {
+            has_space = (str[i] == ' ');
         }
         if (chunk) {
             set_color(str + i, str + i + chunk, QE_STYLE_STRING);
@@ -481,10 +485,31 @@ static void do_org_goto(EditState *s, const char *dest)
         s->offset = offset;
 }
 
+static void do_org_mark_element(EditState *s, int subtree)
+{
+    QEmacsState *qs = s->qe_state;
+    int offset, offset1, level;
+
+    offset = org_find_heading(s, s->offset, &level);
+    if (offset < 0) {
+        put_status(s, "before first heading");
+        return;
+    }
+    offset1 = org_next_heading(s, offset, subtree ? level : MAX_LEVEL, NULL);
+
+    /* XXX: if repeating last command, add subtree to region */
+    if (qs->last_cmd_func != qs->this_cmd_func)
+        s->b->mark = offset;
+
+    s->offset = offset1;
+    /* activate region hilite */
+    if (s->qe_state->hilite_region)
+        s->region_style = QE_STYLE_REGION_HILITE;
+}
+
 static void do_org_todo(EditState *s)
 {
-    int offset, offsetl, bullets, len, kw;
-    unsigned int buf[MAX_BUF_SIZE];
+    int offset, offset1, bullets, kw;
 
     if (check_read_only(s))
         return;
@@ -496,20 +521,20 @@ static void do_org_todo(EditState *s)
     }
 
     offset = eb_skip_chars(s->b, offset, bullets + 1);
-    offsetl = offset;
-    len = eb_get_line(s->b, buf, countof(buf), &offsetl);
-
-    kw = org_todo_keyword(buf, len);
-    if (kw > -1) {
-        int kwlen = strlen(OrgTodoKeywords[kw].keyword);
-        eb_delete_chars(s->b, offset, kwlen + 1);
+    for (kw = 0; kw < countof(OrgTodoKeywords); kw++) {
+        if (eb_match_str(s->b, offset, OrgTodoKeywords[kw].keyword, &offset1)
+        &&  eb_match_uchar(s->b, offset1, ' ', &offset1)) {
+            eb_delete_range(s->b, offset, offset1);
+            break;
+        }
     }
-
-    kw++;
+    if (kw == countof(OrgTodoKeywords))
+        kw = 0;
+    else
+        kw++;
 
     if (kw < countof(OrgTodoKeywords)) {
-        int kwlen = strlen(OrgTodoKeywords[kw].keyword);
-        offset += eb_insert_utf8_buf(s->b, offset, OrgTodoKeywords[kw].keyword, kwlen);
+        offset += eb_insert_str(s->b, offset, OrgTodoKeywords[kw].keyword);
         eb_insert_uchar(s->b, offset, ' ');
     }
 }
@@ -713,6 +738,10 @@ static CmdDef org_commands[] = {
     CMD2( KEY_CTRLC(KEY_CTRL('j')), KEY_NONE,   /* C-c C-j */
           "org-goto", do_org_goto, ESs,
           "s{select location to jump to: }[orgjump]|orgjump|")
+    CMD3( KEY_META('h'), KEY_NONE,   /* M-h */
+          "org-mark-element", do_org_mark_element, ESi, 0, "v")
+    CMD3( KEY_CTRLC('@'), KEY_NONE,   /* C-c @ */
+          "org-mark-subtree", do_org_mark_element, ESi, 1, "v")
     /* Editing */
     CMD2( KEY_CTRLC(KEY_CTRL('t')), KEY_NONE,   /* C-c C-t */
           "org-todo", do_org_todo, ES, "*")
