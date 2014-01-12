@@ -139,6 +139,8 @@ static inline const char *cs8(const u8 *p) { return (const char*)p; }
 extern const char str_version[];
 extern const char str_credits[];
 
+extern int debug_flags;
+
 /* low level I/O events */
 void set_read_handler(int fd, void (*cb)(void *opaque), void *opaque);
 void set_write_handler(int fd, void (*cb)(void *opaque), void *opaque);

@@ -42,6 +42,8 @@ typedef struct HistoryEntry {
     char name[32];
 } HistoryEntry;
 
+int debug_flags;
+
 #ifdef CONFIG_INIT_CALLS
 static int (*__initcall_first)(void) __init_call = NULL;
 static void (*__exitcall_first)(void) __exit_call = NULL;
@@ -1804,7 +1806,9 @@ void do_convert_buffer_file_coding_system(EditState *s,
 {
     QECharset *charset;
     EditBuffer *b1, *b;
-    int offset, c, len;
+    int offset, c, len, i;
+    EditBufferCallbackList *cb;
+    int pos[32];
     char buf[MAX_CHAR_BYTES];
 
     charset = read_charset(s, charset_str);
@@ -1814,8 +1818,18 @@ void do_convert_buffer_file_coding_system(EditState *s,
     b1 = eb_new("*tmp*", 0);
     eb_set_charset(b1, charset);
 
-    /* well, not very fast, but simple */
     b = s->b;
+
+    /* preserve positions */
+    cb = b->first_callback;
+    for (i = 0; i < countof(pos) && cb; cb = cb->next) {
+        if (cb->callback == eb_offset_callback) {
+            pos[i] = eb_get_char_offset(b, *(int*)cb->opaque);
+            i++;
+        }
+    }
+
+    /* slow, but simple iterative method */
     for (offset = 0; offset < b->total_size;) {
         c = eb_nextc(b, offset, &offset);
         len = unicode_to_charset(buf, c, charset);
@@ -1827,7 +1841,19 @@ void do_convert_buffer_file_coding_system(EditState *s,
     eb_set_charset(b, charset);
     eb_insert_buffer(b, 0, b1, 0, b1->total_size);
 
+    /* restore positions */
+    cb = b->first_callback;
+    for (i = 0; i < countof(pos) && cb; cb = cb->next) {
+        if (cb->callback == eb_offset_callback) {
+            *(int*)cb->opaque = eb_goto_char(b, pos[i]);
+            i++;
+        }
+    }
+
     eb_free(b1);
+
+    put_status(s, "Buffer charset is now %s, %d bytes",
+               s->b->charset->name, b->total_size);
 }
 
 void do_toggle_bidir(EditState *s)
