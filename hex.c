@@ -197,7 +197,7 @@ static int detect_binary(const unsigned char *buf, int size)
 {
     static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
                                   (1 << '\n') | (1 << '\r') | (1 << '\033') |
-                                  (1 << 0x0e) | (1 << 0x0f);
+                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
     int i, c;
 
     for (i = 0; i < size; i++) {
@@ -256,7 +256,7 @@ void hex_write_char(EditState *s, int key)
 
     if (s->hex_mode) {
         if (s->unihex_mode)
-            hsize = 4;
+            hsize = s->unihex_mode;
         else
             hsize = 2;
         h = to_hex(key);

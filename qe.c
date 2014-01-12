@@ -1995,7 +1995,9 @@ void do_what_cursor_position(EditState *s)
             buf_put_byte(&out, '\'');
             buf_put_byte(&out, ' ');
         }
-        buf_printf(&out, "\\%03o %d 0x%02x ", c, c, c);
+        if (c < 0x100)
+            buf_printf(&out, "\\%03o ", c);
+        buf_printf(&out, "%d 0x%02x ", c, c);
 
         /* Display buffer bytes if char is encoded */
         off = s->offset;
@@ -2012,7 +2014,7 @@ void do_what_cursor_position(EditState *s)
         buf_put_byte(&out, ' ');
     }
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
-    put_status(s, "%spoint=%d column=%d mark=%d size=%d region=%d",
+    put_status(s, "%spoint=%d col=%d mark=%d size=%d region=%d",
                out.buf, s->offset, col_num, s->b->mark, s->b->total_size,
                abs(s->offset - s->b->mark));
 }

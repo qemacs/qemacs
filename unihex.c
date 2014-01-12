@@ -23,15 +23,24 @@
 
 static int unihex_mode_init(EditState *s, ModeSavedData *saved_data)
 {
-    int ret;
+    int ret, c, maxc, offset, max_offset;
 
     ret = text_mode_init(s, saved_data);
     if (ret)
         return ret;
 
-    s->disp_width = 8;
+    /* Compute max width of character in hex dump (limit to first 64K) */
+    maxc = 0xFF;
+    max_offset = min(65536, s->b->total_size);
+    for (offset = 0; offset < max_offset;) {
+        c = eb_nextc(s->b, offset, &offset);
+        maxc = max(maxc, c);
+    }
+
+    s->unihex_mode = snprintf(NULL, 0, "%x", maxc);
+
+    s->disp_width = 32 / s->unihex_mode;
     s->hex_mode = 1;
-    s->unihex_mode = 1;
     s->hex_nibble = 0;
     s->insert = 0;
     s->wrap = WRAP_TRUNCATE;
@@ -61,7 +70,7 @@ static int unihex_backward_offset(EditState *s, int offset)
 static int unihex_display(EditState *s, DisplayState *ds, int offset)
 {
     int j, len, ateof, disp_width;
-    int offset1, offset2, charpos;
+    int offset1, offset2;
     unsigned int b;
     /* CG: array size is incorrect, should be smaller */
     unsigned int buf[LINE_MAX_SIZE];
@@ -70,8 +79,9 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
     display_bol(ds);
 
     ds->style = QE_STYLE_COMMENT;
-    charpos = eb_get_char_offset(s->b, offset);
-    display_printf(ds, -1, -1, "%08x ", charpos);
+    display_printf(ds, -1, -1, "%08x ", offset);
+    //int charpos = eb_get_char_offset(s->b, offset);
+    //display_printf(ds, -1, -1, "%08x ", charpos);
     //display_printf(ds, -1, -1, "%08x %08x ", charpos, offset);
 
     disp_width = min(LINE_MAX_SIZE - 1, s->disp_width);
@@ -91,13 +101,10 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
         offset1 = pos[j];
         offset2 = pos[j + 1];
         if (j < len) {
-            if (buf[j] < 0x10000) {
-                display_printhex(ds, offset1, offset2, buf[j], 4);
-            } else {
-                ds->cur_hex_mode = 1;
-                display_printf(ds, offset1, offset2, "%x", buf[j]);
-                ds->cur_hex_mode = 0;
-            }
+            display_printhex(ds, offset1, offset2, buf[j], s->unihex_mode);
+            //ds->cur_hex_mode = 1;
+            //display_printf(ds, offset1, offset2, "%0*x", s->unihex_mode, buf[j]);
+            //ds->cur_hex_mode = 0;
         } else {
             if (!ateof) {
                 ateof = 1;

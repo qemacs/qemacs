@@ -969,7 +969,7 @@ struct EditState {
     int minibuf;   /* true if single line editing */
     int disp_width;  /* width in binary, hex and unihex modes */
     int hex_mode;    /* true if we are currently editing hexa */
-    int unihex_mode; /* true if unihex editing (hex_mode must be true too) */
+    int unihex_mode; /* true if unihex editing (width of hex char dump) */
     int hex_nibble;  /* current hexa nibble */
     int insert;      /* insert/overtype mode */
     int bidir;
