@@ -26,12 +26,42 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Simple commands ----------------*/
 
+    /* Character insertion */
+
     CMD2( KEY_DEFAULT, KEY_NONE,
 	  "self-insert-command", do_char, ESii,
           "*" "kiui")
     CMD2( KEY_META('#'), KEY_NONE,
           "insert-char", do_char, ESii,
           "*" "i{Insert char: }|charvalue|" "ui")
+    /* do_tab will not change read only buffer */
+    CMD2( KEY_CTRL('i'), KEY_NONE,
+          "tabulate", do_tab, ESi, "ui")
+    //CMD2( KEY_SPC, KEY_NONE, "space", do_space, "*ui")
+    CMD2( KEY_CTRL('q'), KEY_NONE,
+          "quoted-insert", do_quote, ESi, "*ui")
+    CMD3( KEY_CTRL('j'), KEY_RET,
+          "newline", do_return, ESi, 1, "*v")
+    CMD3( KEY_CTRL('o'), KEY_NONE,
+          "open-line", do_return, ESi, 0, "*v")
+
+    CMD2( KEY_INSERT, KEY_NONE,
+          "overwrite-mode", do_overwrite_mode, ESi, "ui")
+    CMD3( KEY_NONE, KEY_NONE,
+          "insert-mode", do_overwrite_mode, ESi, 0, "v")
+
+    /* Insert combining accent: should combine with preceding letter */
+    CMD3( KEY_META('`'), KEY_NONE,
+          "insert-grave-accent", do_char, ESii, 0x300, "vui")
+    CMD3( KEY_META('\''), KEY_NONE,
+          "insert-acute-accent", do_char, ESii, 0x301, "vui")
+    CMD3( KEY_META('^'), KEY_NONE,
+          "insert-circumflex-accent", do_char, ESii, 0x302, "vui")
+    CMD3( KEY_META('"'), KEY_NONE,
+          "insert-diaeresis", do_char, ESii, 0x308, "vui")
+
+    /* Moving around */
+
     CMD1( KEY_CTRL('p'), KEY_UP,
           "previous-line", do_up_down, -1 )
     CMD1( KEY_CTRL('n'), KEY_DOWN,
@@ -56,33 +86,19 @@ static CmdDef basic_commands[] = {
           "beginning-of-line", do_bol)
     CMD0( KEY_CTRL('e'), KEY_END,
           "end-of-line", do_eol)
-    CMD2( KEY_INSERT, KEY_NONE,
-          "overwrite-mode", do_overwrite_mode, ESi, "ui")
-    CMD3( KEY_NONE, KEY_NONE,
-          "insert-mode", do_overwrite_mode, ESi, 0, "v")
+    CMD0( KEY_META('<'), KEY_CTRL_HOME,
+          "beginning-of-buffer", do_bof )
+    CMD0( KEY_META('>'), KEY_CTRL_END,
+          "end-of-buffer", do_eof )
+
+    /*---------------- Region handling / Kill commands ----------------*/
+
     /* deletion commands should be allowed in read only buffers,
      * they should merely copy the data to the kill ring */
     CMD2( KEY_CTRL('d'), KEY_DELETE,
           "delete-char", do_delete_char, ESi, "*ui")
     CMD2( 127, KEY_NONE,
           "backward-delete-char", do_backspace, ESi, "*ui")
-    CMD0( KEY_META('<'), KEY_CTRL_HOME,
-          "beginning-of-buffer", do_bof )
-    CMD0( KEY_META('>'), KEY_CTRL_END,
-          "end-of-buffer", do_eof )
-    /* do_tab will not change read only buffer */
-    CMD2( KEY_CTRL('i'), KEY_NONE,
-          "tabulate", do_tab, ESi, "ui")
-    //CMD2( KEY_SPC, KEY_NONE, "space", do_space, "*ui")
-    CMD2( KEY_CTRL('q'), KEY_NONE,
-          "quoted-insert", do_quote, ESi, "*ui")
-    CMD3( KEY_CTRL('j'), KEY_RET,
-          "newline", do_return, ESi, 1, "*v")
-    CMD3( KEY_CTRL('o'), KEY_NONE,
-          "open-line", do_return, ESi, 0, "*v")
-
-    /*---------------- Region handling / Kill commands ----------------*/
-
     CMD0( KEY_CTRL('@'), KEY_NONE,
           "set-mark-command", do_set_mark)
     CMD0( KEY_CTRLX(KEY_CTRL('x')), KEY_NONE,
@@ -288,6 +304,7 @@ static CmdDef basic_commands[] = {
           "switch-input-method", do_switch_input_method)
 
     /*---------------- Styles & display ----------------*/
+
     CMD2( KEY_NONE, KEY_NONE,
           "define-color", do_define_color, ESss,
 	  "s{Color name: }[color]|color|"
