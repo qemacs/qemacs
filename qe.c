@@ -4846,7 +4846,6 @@ static StringArray *minibuffer_history;
 static int minibuffer_history_index;
 static int minibuffer_history_saved_offset;
 
-/* XXX: utf8 ? */
 void do_completion(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
@@ -4854,10 +4853,22 @@ void do_completion(EditState *s)
     CompleteState cs;
     StringItem **outputs;
     EditState *e;
+    EditBuffer *b;
     int w, h, h1, w1;
 
     if (!completion_function)
         return;
+
+    /* XXX: if completion_popup_window already displayed, should page
+     * through the window, if at end, should remove focus from
+     * completion_popup_window or close it.
+     */
+    if (completion_popup_window && qs->last_cmd_func == qs->this_cmd_func) {
+        edit_close(completion_popup_window);
+        completion_popup_window = NULL;
+        do_refresh(s);
+        return;
+    }
 
     complete_start(s, &cs);
     (*completion_function)(&cs);
@@ -4868,22 +4879,27 @@ void do_completion(EditState *s)
     for (i = 0; i < count; i++)
         printf("out[%d]=%s\n", i, outputs[i]->str);
 #endif
-    /* no completion ? */
-    if (count == 0)
-        goto the_end;
     /* compute the longest match len */
     match_len = cs.len;
-    for (;;) {
-        /* Potential UTF-8 issue: should use utility function */
-        c = outputs[0]->str[match_len];
-        if (c == '\0')
-            break;
-        for (i = 1; i < count; i++)
-            if (outputs[i]->str[match_len] != c)
-                goto no_match;
-        match_len++;
+
+    if (count > 0) {
+        for (; (c = outputs[0]->str[match_len]) != '\0'; match_len++) {
+            for (i = 1; i < count; i++) {
+                if (outputs[i]->str[match_len] != c)
+                    break;
+            }
+            if (i < count)
+                break;
+        }
+        /* Clip incomplete UTF-8 character before match_len */
+        for (i = cs.len; i < match_len; ) {
+            int clen = utf8_length[(unsigned char)outputs[0]->str[i]];
+            if (i + clen > match_len)
+                match_len = i;
+            else
+                i += clen;
+        }
     }
- no_match:
     if (match_len > cs.len) {
         /* add the possible chars */
         eb_write(s->b, 0, outputs[0]->str, match_len);
@@ -4893,7 +4909,6 @@ void do_completion(EditState *s)
             /* if more than one match, then display them in a new popup
                buffer */
             if (!completion_popup_window) {
-                EditBuffer *b;
                 b = eb_new("*completion*", BF_SYSTEM | BF_UTF8 | BF_TRANSIENT);
                 w1 = qs->screen->width;
                 h1 = qs->screen->height - qs->status_height;
@@ -4905,10 +4920,17 @@ void do_completion(EditState *s)
                 do_refresh(e);
                 completion_popup_window = e;
             }
+        } else {
+            if (completion_popup_window) {
+                edit_close(completion_popup_window);
+                completion_popup_window = NULL;
+                do_refresh(s);
+            }
         }
         if (completion_popup_window) {
-            EditBuffer *b = completion_popup_window->b;
             /* modify the list with the current matches */
+            e = completion_popup_window;
+            b = e->b;
             qsort(outputs, count, sizeof(StringItem *), completion_sort_func);
             b->flags &= ~BF_READONLY;
             eb_delete(b, 0, b->total_size);
@@ -4918,13 +4940,12 @@ void do_completion(EditState *s)
                     eb_printf(b, "\n");
             }
             b->flags |= BF_READONLY;
-            completion_popup_window->mouse_force_highlight = 1;
-            completion_popup_window->force_highlight = 0;
-            completion_popup_window->offset = 0;
+            e->mouse_force_highlight = 1;
+            e->force_highlight = 1;
+            e->offset = 0;
         }
     }
- the_end:
-    complete_end(&cs);
+     complete_end(&cs);
 }
 
 void do_electric_filename(EditState *s, int key)
@@ -5044,23 +5065,24 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     static void (*cb)(void *opaque, char *buf);
     static void *opaque;
     char buf[4096], *retstr;
+    EditState *cw = completion_popup_window;
 
     /* if completion is activated, then select current file only if
        the selection is highlighted */
-    if (completion_popup_window &&
-        completion_popup_window->force_highlight) {
+    if (cw && cw->force_highlight) {
         int offset;
 
-        offset = list_get_offset(completion_popup_window);
-        eb_get_strline(completion_popup_window->b, buf, sizeof(buf), &offset);
+        offset = list_get_offset(cw);
+        eb_get_strline(cw->b, buf, sizeof(buf), &offset);
         if (buf[0] != '\0')
             set_minibuffer_str(s, buf + 1);
     }
 
     /* remove completion popup if present */
     /* CG: assuming completion_popup_window != s */
-    if (completion_popup_window) {
-        edit_close(completion_popup_window);
+    if (cw) {
+        edit_close(cw);
+        completion_popup_window = cw = NULL;
         do_refresh(s);
     }
 
