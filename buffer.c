@@ -242,16 +242,25 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
                      int size)
 {
     Page *p, *p_start, *q;
-    int len, n, page_index;
-    int size0 = size;
+    int len, n, page_index, size0;
 
     if (dest->flags & BF_READONLY)
         return 0;
 
+    /* Assert parameter consistency */
+    if (dest_offset < 0 || src_offset < 0 || src_offset >= src->total_size)
+        return 0;
+
+    if (src_offset + size > src->total_size)
+        size = src->total_size - src_offset;
+
+    if (dest_offset > dest->total_size)
+        dest_offset = dest->total_size;
+
     if (size <= 0)
         return 0;
 
-    /* CG: should assert parameter consistency */
+    size0 = size;
 
     eb_addlog(dest, LOGOP_INSERT, dest_offset, size);
 
@@ -374,8 +383,10 @@ void eb_delete(EditBuffer *b, int offset, int size)
     if (offset < 0 || size <= 0)
         return;
 
-    b->total_size -= size;
+    /* dispatch callbacks before buffer update */
     eb_addlog(b, LOGOP_DELETE, offset, size);
+
+    b->total_size -= size;
 
     /* find the correct page */
     p = find_page(b, &offset);
@@ -469,7 +480,7 @@ EditBuffer *eb_new(const char *name, int flags)
     /* set default data type */
     b->data_type = &raw_data_type;
 
-    /* XXX: suppress save_log and always use flag ? */
+    /* initial value of save_log: 0 or 1 */
     b->save_log = ((flags & BF_SAVELOG) != 0);
 
     /* initialize default mode stuff */
@@ -518,6 +529,8 @@ EditBuffer *eb_scratch(const char *name, int flags)
 void eb_clear(EditBuffer *b)
 {
     b->flags &= ~BF_READONLY;
+
+    /* XXX: should just reset logging instead of disabling it */
     b->save_log = 0;
     eb_delete(b, 0, b->total_size);
     log_reset(b);
@@ -713,7 +726,7 @@ void eb_free_callback(EditBuffer *b, EditBufferCallback cb, void *opaque)
 }
 
 /* standard callback to move offsets */
-void eb_offset_callback(__unused__ EditBuffer *b, void *opaque,
+void eb_offset_callback(EditBuffer *b, void *opaque,
                         enum LogOperation op, int offset, int size)
 {
     int *offset_ptr = opaque;
@@ -751,6 +764,10 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
     LogBuffer lb;
     EditBufferCallbackList *l;
 
+    /* callbacks and logging disabled for composite undo phase */
+    if (b->save_log & 2)
+        return;
+
     /* call each callback */
     for (l = b->first_callback; l != NULL; l = l->next) {
         l->callback(b, l->opaque, op, offset, size);
@@ -758,8 +775,10 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
 
     was_modified = b->modified;
     b->modified = 1;
+
     if (!b->save_log)
         return;
+
     if (!b->log_buffer) {
         char buf[MAX_BUFFERNAME_SIZE];
         /* Name should be unique because b->name is, but b->name may
@@ -775,7 +794,8 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
     /* XXX: better test to limit size */
     if (b->nb_logs >= (NB_LOGS_MAX-1)) {
         /* no free space, delete least recent entry */
-        eb_read(b->log_buffer, 0, &lb, sizeof(LogBuffer));
+        /* XXX: should check undo record integrity */
+        eb_read(b->log_buffer, 0, &lb, sizeof(lb));
         len = lb.size;
         if (lb.op == LOGOP_INSERT)
             len = 0;
@@ -787,6 +807,9 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
         b->nb_logs--;
     }
 
+    /* XXX: should check undo record integrity */
+    /* XXX: if inserting, should coalesce log record with previous */
+
     /* header */
     lb.pad1 = '\n';   /* make log buffer display readable */
     lb.pad2 = ':';
@@ -794,8 +817,8 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
     lb.offset = offset;
     lb.size = size;
     lb.was_modified = was_modified;
-    eb_write(b->log_buffer, b->log_new_index, &lb, sizeof(LogBuffer));
-    b->log_new_index += sizeof(LogBuffer);
+    eb_write(b->log_buffer, b->log_new_index, &lb, sizeof(lb));
+    b->log_new_index += sizeof(lb);
 
     /* data */
     switch (op) {
@@ -819,7 +842,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
 void do_undo(EditState *s)
 {
     EditBuffer *b = s->b;
-    int log_index, saved, size_trailer;
+    int log_index, size_trailer;
     LogBuffer lb;
 
     if (!b->log_buffer)
@@ -855,11 +878,10 @@ void do_undo(EditState *s)
     case LOGOP_WRITE:
         /* we must disable the log because we want to record a single
            write (we should have the single operation: eb_write_buffer) */
-        saved = b->save_log;
-        b->save_log = 0;
+        b->save_log |= 2;
         eb_delete(b, lb.offset, lb.size);
         eb_insert_buffer(b, lb.offset, b->log_buffer, log_index, lb.size);
-        b->save_log = saved;
+        b->save_log &= ~2;
         eb_addlog(b, LOGOP_WRITE, lb.offset, lb.size);
         s->offset = lb.offset + lb.size;
         break;
@@ -867,10 +889,9 @@ void do_undo(EditState *s)
         /* we must also disable the log there because the log buffer
            would be modified BEFORE we insert it by the implicit
            eb_addlog */
-        saved = b->save_log;
-        b->save_log = 0;
+        b->save_log |= 2;
         eb_insert_buffer(b, lb.offset, b->log_buffer, log_index, lb.size);
-        b->save_log = saved;
+        b->save_log &= ~2;
         eb_addlog(b, LOGOP_INSERT, lb.offset, lb.size);
         s->offset = lb.offset + lb.size;
         break;
@@ -1641,6 +1662,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
         }
 
         /* well, not very fast, but simple */
+        /* XXX: should optimize save_log system for insert sequences */
         offset_max = min(src->total_size, src_offset + size);
         size = 0;
         for (offset = src_offset; offset < offset_max;) {
