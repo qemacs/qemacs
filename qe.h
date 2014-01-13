@@ -713,6 +713,7 @@ typedef struct EditBufferCallbackList {
 #define BF_DIRED     0x0100  /* buffer is interactive dired */
 #define BF_UTF8      0x0200  /* buffer charset is utf-8 */
 #define BF_RAW       0x0400  /* buffer charset is raw (same as latin1) */
+#define BF_TRANSIENT 0x0800  /* buffer is deleted upon window close */
 
 struct EditBuffer {
     Page *page_table;
@@ -1565,7 +1566,7 @@ void edit_close(EditState *s);
 EditState *edit_new(EditBuffer *b,
                     int x1, int y1, int width, int height, int flags);
 void edit_detach(EditState *s);
-void edit_append(EditState *s, EditState *e);
+EditState *check_window(EditState *s);
 EditState *edit_find(EditBuffer *b);
 void do_refresh(EditState *s);
 // should take direction argument

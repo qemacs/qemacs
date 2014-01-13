@@ -337,9 +337,9 @@ void do_toggle_control_h(EditState *s, int set)
             for (i = 0; i < kd->nb_keys; i++) {
                 switch (kd->keys[i]) {
                 case KEY_CTRL('h'):
-                    kd->keys[i] = set ? KEY_META('h') : 127;
+                    kd->keys[i] = set ? KEY_META('h') : KEY_DEL;
                     break;
-                case 127:
+                case KEY_DEL:
                     if (set)
                         kd->keys[i] = KEY_CTRL('h');
                     break;
@@ -4528,7 +4528,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
 
     b1 = s->b;
     if (b1) {
-        /* save old buffer data if no other window uses the buffer */
+        /* save mode data if no other window uses the buffer */
         for (e = qs->first_window; e != NULL; e = e->next_window) {
             if (e != s && e->b == b1)
                 break;
@@ -4536,11 +4536,20 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
         if (e) {
             /* no need to save mode data */
             /* CG: bogus! e and s might have different modes */
+            /* Keep the buffer contents */
+            b1->flags &= ~BF_TRANSIENT;
         } else {
-            /* if no more window uses the buffer, then save the data
-               in the buffer */
-            /* CG: Should free previous such data ? */
-            b1->saved_data = s->mode->mode_save_data(s);
+            /* if no more window uses the buffer:
+             * - if transient contents, free the buffer
+             * - otherwise, save the mode data in the buffer.
+             *   CG: Should free previous such data ?
+             */
+            if (b1->flags & BF_TRANSIENT) {
+                eb_free(b1);
+                b1 = NULL;
+            } else {
+                b1->saved_data = s->mode->mode_save_data(s);
+            }
         }
         /* now we can close the mode */
         edit_set_mode(s, NULL);
@@ -4885,7 +4894,7 @@ void do_completion(EditState *s)
                buffer */
             if (!completion_popup_window) {
                 EditBuffer *b;
-                b = eb_new("*completion*", BF_SYSTEM | BF_UTF8);
+                b = eb_new("*completion*", BF_SYSTEM | BF_UTF8 | BF_TRANSIENT);
                 w1 = qs->screen->width;
                 h1 = qs->screen->height - qs->status_height;
                 w = (w1 * 3) / 4;
@@ -5031,7 +5040,6 @@ void do_minibuffer_get_binary(EditState *s)
 void do_minibuffer_exit(EditState *s, int do_abort)
 {
     QEmacsState *qs = s->qe_state;
-    EditBuffer *b = s->b;
     StringArray *hist = minibuffer_history;
     static void (*cb)(void *opaque, char *buf);
     static void *opaque;
@@ -5052,9 +5060,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     /* remove completion popup if present */
     /* CG: assuming completion_popup_window != s */
     if (completion_popup_window) {
-        EditBuffer *b1 = completion_popup_window->b;
         edit_close(completion_popup_window);
-        eb_free(b1);
         do_refresh(s);
     }
 
@@ -5067,10 +5073,11 @@ void do_minibuffer_exit(EditState *s, int do_abort)
             add_string(hist, buf);
     }
 
+    s->b->flags |= BF_TRANSIENT;
     edit_close(s);
-    eb_free(b);
+
     /* restore active window */
-    qs->active_window = minibuffer_saved_active;
+    qs->active_window = check_window(minibuffer_saved_active);
 
     /* force status update */
     //pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), " ");
@@ -5182,18 +5189,9 @@ EditState *check_window(EditState *s)
 void do_less_exit(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
-    EditBuffer *b;
-    EditState *e;
 
-    /* CG: Should make buffer transient, free'd upon last window close? */
-    b = s->b;
-    for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e != s && e->b == b)
-            break;
-    }
+    s->b->flags |= BF_TRANSIENT;
     edit_close(s);
-    if (!e)
-        eb_free(b);
 
     qs->active_window = check_window(popup_saved_active);
     popup_saved_active = NULL;

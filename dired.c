@@ -406,7 +406,7 @@ static void dired_select(EditState *s)
 static void dired_view_file(EditState *s, const char *filename)
 {
     EditBuffer *b;
-    EditState *e, *e1;
+    EditState *e;
 
     e = find_window(s, KEY_RIGHT);
     if (!e)
@@ -415,15 +415,9 @@ static void dired_view_file(EditState *s, const char *filename)
     /* CG: Should use the do_find_alternate to replace buffer */
     b = e->b;
     if ((b->flags & BF_PREVIEW) && !b->modified) {
+        /* free the buffer if no longer viewed */
+        b->flags |= BF_TRANSIENT;
         switch_to_buffer(e, NULL);
-        /* Before freeing buffer, make sure it isn't used by another window.
-         * This could happen if we split the view window and continue browsing. */
-        for (e1 = s->qe_state->first_window; e1 != NULL; e1 = e1->next_window) {
-            if (e1 != s && e1->b == b)
-                break;
-        }
-        if (!e1)
-            eb_free(b);
     }
 
     if (e) {
@@ -497,6 +491,9 @@ static int dired_mode_init(EditState *s, ModeSavedData *saved_data)
     DiredState *hs;
 
     list_mode.mode_init(s, saved_data);
+
+    /* XXX: File system charset should be detected automatically */
+    eb_set_charset(s->b, &charset_utf8);
 
     hs = s->mode_data;
     hs->sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
