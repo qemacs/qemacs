@@ -1629,7 +1629,7 @@ void do_return(EditState *s, int move);
 void do_backspace(EditState *s, int argval);
 void do_delete_char(EditState *s, int argval);
 void do_tab(EditState *s, int argval);
-EditBuffer *new_yank_buffer(QEmacsState *qs);
+EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base);
 void do_append_next_kill(EditState *s);
 void do_kill(EditState *s, int p1, int p2, int dir);
 void do_kill_region(EditState *s, int killtype);

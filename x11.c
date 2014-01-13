@@ -1093,7 +1093,7 @@ static void term_selection_request(__unused__ QEditScreen *s)
     prop = xev.xselection.property;
 
     /* copy GUI selection a new yank buffer */
-    b = new_yank_buffer(qs);
+    b = new_yank_buffer(qs, NULL);
 
     nread = 0;
     for (;;) {

@@ -1423,7 +1423,7 @@ void do_mark_whole_buffer(EditState *s)
     s->offset = 0;
 }
 
-EditBuffer *new_yank_buffer(QEmacsState *qs)
+EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
 {
     char bufname[32];
     EditBuffer *b;
@@ -1439,7 +1439,8 @@ EditBuffer *new_yank_buffer(QEmacsState *qs)
         }
     }
     snprintf(bufname, sizeof(bufname), "*kill-%d*", qs->yank_current + 1);
-    b = eb_new(bufname, BF_UTF8);
+    b = eb_new(bufname, base->flags & BF_UTF8);
+    eb_set_charset(b, base->charset);
     qs->yank_buffers[qs->yank_current] = b;
     return b;
 }
@@ -1458,7 +1459,7 @@ void do_kill(EditState *s, int p1, int p2, int dir)
     /* deactivate region hilite */
     s->region_style = 0;
 
-    if (s->b->flags & BF_READONLY)
+    if (dir && (s->b->flags & BF_READONLY))
         return;
 
     if (p1 > p2) {
@@ -1470,8 +1471,7 @@ void do_kill(EditState *s, int p1, int p2, int dir)
     b = qs->yank_buffers[qs->yank_current];
     if (!b || !dir || qs->last_cmd_func != (CmdFunc)do_append_next_kill) {
         /* append kill if last command was kill already */
-        b = new_yank_buffer(qs);
-        eb_set_charset(b, s->b->charset);
+        b = new_yank_buffer(qs, s->b);
     }
     /* insert at beginning or end depending on kill direction */
     eb_insert_buffer_convert(b, dir < 0 ? 0 : b->total_size, s->b, p1, len);
@@ -1815,10 +1815,10 @@ void do_convert_buffer_file_coding_system(EditState *s,
     if (!charset)
         return;
 
+    b = s->b;
+
     b1 = eb_new("*tmp*", 0);
     eb_set_charset(b1, charset);
-
-    b = s->b;
 
     /* preserve positions */
     cb = b->first_callback;
