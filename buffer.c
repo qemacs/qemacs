@@ -935,10 +935,19 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
     return ch;
 }
 
+/* compute offset after moving 'n' chars from 'offset'.
+ * 'n' can be negative
+ */ 
 int eb_skip_chars(EditBuffer *b, int offset, int n)
 {
-    while (n-- > 0)
+    while (n < 0) {
+        eb_prevc(b, offset, &offset);
+        n++;
+    }
+    while (n > 0) {
         eb_nextc(b, offset, &offset);
+        n--;
+    }
     return offset;
 }
 
@@ -955,9 +964,18 @@ int eb_delete_uchar(EditBuffer *b, int offset)
     return size;
 }
 
+/* return number of bytes deleted */
 int eb_delete_chars(EditBuffer *b, int offset, int n)
 {
-    int size = eb_skip_chars(b, offset, n) -  offset;
+    int offset1 = eb_skip_chars(b, offset, n);
+    int size = offset1 - offset;
+
+    if (size < 0) {
+        offset += size;
+        offset1 -= size;
+        size = -size;
+    }        
+
     eb_delete(b, offset, size);
     return size;
 }
