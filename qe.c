@@ -5733,6 +5733,8 @@ void do_save_buffer(EditState *s)
 void do_write_file(EditState *s, const char *filename)
 {
     do_set_visited_file_name(s, filename, "n");
+    /* CG: Override bogus behaviour on unmodified buffers */
+    s->b->modified = 1;
     do_save_buffer(s);
 }
 
