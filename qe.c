@@ -1268,6 +1268,12 @@ void text_write_char(EditState *s, int key)
         if (s->compose_len == 0)
             s->compose_start_offset = s->offset;
 
+        /* break sequence of insertions */
+        if (key == '\n' || (key != ' ' && s->b->last_log_char == ' ')) {
+            s->b->last_log = 0;
+        }
+        s->b->last_log_char = key;
+
         /* insert char */
         eb_insert(s->b, s->offset, buf, len);
         s->offset += len;
@@ -1542,6 +1548,7 @@ void do_yank(EditState *s)
     if (b) {
         size = b->total_size;
         if (size > 0) {
+            s->b->last_log = 0;
             s->offset += eb_insert_buffer_convert(s->b, s->offset, b, 0, size);
         }
     }
@@ -3187,7 +3194,7 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 
 /* invalidate the colorize data */
 static void colorize_callback(__unused__ EditBuffer *b,
-                              void *opaque,
+                              void *opaque, __unused__ int arg,
                               __unused__ enum LogOperation op,
                               int offset,
                               __unused__ int size)
@@ -3210,7 +3217,7 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
     s->colorize_func = NULL;
 
     if (colorize_func) {
-        eb_add_callback(s->b, colorize_callback, s);
+        eb_add_callback(s->b, colorize_callback, s, 0);
         s->get_colorized_line = generic_get_colorized_line;
         s->colorize_func = colorize_func;
     }
@@ -7099,8 +7106,8 @@ static int text_mode_probe(__unused__ ModeDef *mode,
 
 int text_mode_init(EditState *s, ModeSavedData *saved_data)
 {
-    eb_add_callback(s->b, eb_offset_callback, &s->offset);
-    eb_add_callback(s->b, eb_offset_callback, &s->offset_top);
+    eb_add_callback(s->b, eb_offset_callback, &s->offset, 0);
+    eb_add_callback(s->b, eb_offset_callback, &s->offset_top, 0);
     if (!saved_data) {
         memset(s, 0, SAVED_DATA_SIZE);
         s->insert = 1;

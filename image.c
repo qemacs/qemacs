@@ -68,11 +68,8 @@ int qe_bitmap_format_to_pix_fmt(int format)
     return dst_pix_fmt;
 }
 
-static void image_callback(EditBuffer *b,
-                           void *opaque,
-                           enum LogOperation op,
-                           int offset,
-                           int size);
+static void image_callback(EditBuffer *b, void *opaque, int arg,
+                           enum LogOperation op, int offset, int size);
 
 /* draw only the border of a rectangle */
 void fill_border(EditState *s, int x, int y, int w, int h, int color)
@@ -502,7 +499,7 @@ static int image_mode_init(EditState *s, ModeSavedData *saved_data)
 
     update_bmp(s);
 
-    eb_add_callback(s->b, image_callback, s);
+    eb_add_callback(s->b, image_callback, s, 1);
     return 0;
 }
 
@@ -581,11 +578,8 @@ static void image_mode_close(EditState *s)
 }
 
 /* when the image is modified, reparse it */
-static void image_callback(EditBuffer *b,
-                          void *opaque,
-                          enum LogOperation op,
-                          int offset,
-                          int size)
+static void image_callback(EditBuffer *b, void *opaque, int arg,
+                          enum LogOperation op, int offset, int size)
 {
     //    EditState *s = opaque;
 

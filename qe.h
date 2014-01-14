@@ -691,14 +691,12 @@ enum LogOperation {
 };
 
 /* Each buffer modification can be caught with this callback */
-typedef void (*EditBufferCallback)(EditBuffer *,
-                                   void *opaque,
-                                   enum LogOperation op,
-                                   int offset,
-                                   int size);
+typedef void (*EditBufferCallback)(EditBuffer *b, void *opaque, int arg,
+                                   enum LogOperation op, int offset, int size);
 
 typedef struct EditBufferCallbackList {
     void *opaque;
+    int arg;
     EditBufferCallback callback;
     struct EditBufferCallbackList *next;
 } EditBufferCallbackList;
@@ -740,6 +738,8 @@ struct EditBuffer {
     /* undo system */
     int save_log;    /* if true, each buffer operation is logged */
     int log_new_index, log_current;
+    enum LogOperation last_log;
+    int last_log_char;
     EditBuffer *log_buffer;
     int nb_logs;
 
@@ -832,7 +832,7 @@ int eb_get_char_offset(EditBuffer *b, int offset);
 int eb_delete_range(EditBuffer *b, int p1, int p2);
 //int eb_clip_offset(EditBuffer *b, int offset);
 void do_undo(EditState *s);
-//void do_redo(EditState *s);
+void do_redo(EditState *s);
 
 int raw_buffer_load1(EditBuffer *b, FILE *f, int offset);
 int mmap_buffer(EditBuffer *b, const char *filename);
@@ -842,13 +842,10 @@ int eb_save_buffer(EditBuffer *b);
 void eb_set_buffer_name(EditBuffer *b, const char *name1);
 void eb_set_filename(EditBuffer *b, const char *filename);
 
-int eb_add_callback(EditBuffer *b, EditBufferCallback cb, void *opaque);
+int eb_add_callback(EditBuffer *b, EditBufferCallback cb, void *opaque, int arg);
 void eb_free_callback(EditBuffer *b, EditBufferCallback cb, void *opaque);
-void eb_offset_callback(EditBuffer *b,
-                        void *opaque,
-                        enum LogOperation op,
-                        int offset,
-                        int size);
+void eb_offset_callback(EditBuffer *b, void *opaque, int edge,
+                        enum LogOperation op, int offset, int size);
 int eb_delete_uchar(EditBuffer *b, int offset);
 int eb_insert_uchar(EditBuffer *b, int offset, int c);
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len);

@@ -487,26 +487,27 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
 static int tty_put_char(ShellState *s, int c)
 {
     char buf[1];
-    int c1, cur_len, offset;
+    int c1, cur_len, offset, offset1;
 
+    offset = s->cur_offset;
     buf[0] = c;
-    c1 = eb_nextc(s->b, s->cur_offset, &offset);
+    c1 = eb_nextc(s->b, offset, &offset1);
     if (c1 == '\n') {
         /* insert */
-        eb_insert(s->b, s->cur_offset, buf, 1);
+        eb_insert(s->b, offset, buf, 1);
     } else {
         /* check for (c1 != c) is not advisable optimisation because
          * re-writing the same character may cause color changes.
          */
-        cur_len = offset - s->cur_offset;
+        cur_len = offset1 - offset;
         if (cur_len == 1) {
-            eb_write(s->b, s->cur_offset, buf, 1);
+            eb_write(s->b, offset, buf, 1);
         } else {
-            eb_delete(s->b, s->cur_offset, cur_len);
-            eb_insert(s->b, s->cur_offset, buf, 1);
+            eb_delete(s->b, offset, cur_len);
+            eb_insert(s->b, offset, buf, 1);
         }
     }
-    return s->cur_offset + 1;
+    return s->cur_offset = offset + 1;
 }
 
 static void tty_csi_m(ShellState *s, int c, int has_param)
@@ -742,6 +743,8 @@ static void tty_emulate(ShellState *s, int c)
     int i, offset, offset1, offset2, n;
     char buf1[10];
 
+    offset = s->cur_offset;
+
 #define ESC2(c1,c2)  (((c1)<<8)|((unsigned char)c2))
     /* some bytes are state independent */
     switch (c) {
@@ -768,9 +771,9 @@ static void tty_emulate(ShellState *s, int c)
         case 8:         /* ^H  BS = backspace */
             {
                 int c1;
-                c1 = eb_prevc(s->b, s->cur_offset, &offset);
+                c1 = eb_prevc(s->b, offset, &offset1);
                 if (c1 != '\n') {
-                    s->cur_offset = offset;
+                    s->cur_offset = offset1;
                     /* back_color_erase */
                     //tty_put_char(s, ' ');
                 }
@@ -779,14 +782,13 @@ static void tty_emulate(ShellState *s, int c)
         case 9:        /* ^I  HT = horizontal tab */
             {
                 int col_num, cur_line;
-                eb_get_pos(s->b, &cur_line, &col_num, s->cur_offset);
+                eb_get_pos(s->b, &cur_line, &col_num, offset);
                 tty_goto_xy(s, (col_num + 8) & ~7, 0, 2);
                 break;
             }
         case 10:        /* ^J  NL = line feed */
             /* go to next line */
             /* CG: should check if column should be kept */
-            offset = s->cur_offset;
             for (;;) {
                 if (offset == s->b->total_size) {
                     /* add a new line */
@@ -800,11 +802,12 @@ static void tty_emulate(ShellState *s, int c)
                 if (c == '\n')
                     break;
             }
+            s->b->last_log = 0; /* close undo record */
             s->cur_offset = offset;
             break;
         case 13:        /* ^M  CR = carriage return */
             /* move to bol */
-            s->cur_offset = eb_goto_bol(s->b, s->cur_offset);
+            s->cur_offset = eb_goto_bol(s->b, offset);
             break;
         case 14:        /* ^N  SO = shift out */
             s->shifted = s->charset[s->cset = 1];
@@ -870,21 +873,21 @@ static void tty_emulate(ShellState *s, int c)
                     buf1[0] = c;
                     len = 1;
                 }
-                c1 = eb_nextc(s->b, s->cur_offset, &offset);
+                c1 = eb_nextc(s->b, offset, &offset1);
                 /* Should simplify with tty_put_char */
                 if (c1 == '\n') {
                     /* insert */
-                    eb_insert(s->b, s->cur_offset, buf1, len);
+                    eb_insert(s->b, offset, buf1, len);
                 } else {
-                    cur_len = offset - s->cur_offset;
+                    cur_len = offset1 - offset;
                     if (cur_len == len) {
-                        eb_write(s->b, s->cur_offset, buf1, len);
+                        eb_write(s->b, offset, buf1, len);
                     } else {
-                        eb_delete(s->b, s->cur_offset, cur_len);
-                        eb_insert(s->b, s->cur_offset, buf1, len);
+                        eb_delete(s->b, offset, cur_len);
+                        eb_insert(s->b, offset, buf1, len);
                     }
                 }
-                s->cur_offset += len;
+                s->cur_offset = offset + len;
             }
             break;
         }
@@ -895,20 +898,20 @@ static void tty_emulate(ShellState *s, int c)
             int c1, cur_len, len;
 
             len = s->utf8_len;
-            c1 = eb_nextc(s->b, s->cur_offset, &offset);
+            c1 = eb_nextc(s->b, offset, &offset1);
             if (c1 == '\n') {
                 /* insert */
-                eb_insert(s->b, s->cur_offset, s->utf8_buf, len);
+                eb_insert(s->b, offset, s->utf8_buf, len);
             } else {
-                cur_len = offset - s->cur_offset;
+                cur_len = offset1 - offset;
                 if (cur_len == len) {
-                    eb_write(s->b, s->cur_offset, s->utf8_buf, len);
+                    eb_write(s->b, offset, s->utf8_buf, len);
                 } else {
-                    eb_delete(s->b, s->cur_offset, cur_len);
-                    eb_insert(s->b, s->cur_offset, s->utf8_buf, len);
+                    eb_delete(s->b, offset, cur_len);
+                    eb_insert(s->b, offset, s->utf8_buf, len);
                 }
             }
-            s->cur_offset += len;
+            s->cur_offset = offset + len;
             s->state = TTY_STATE_NORM;
         }
         break;
@@ -1106,8 +1109,8 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case 'K':  /* EL: erase line or parts of it */
                        /*     0: to end, 1: from begin, 2: all line */
-                offset1 = eb_goto_eol(s->b, s->cur_offset);
-                eb_delete(s->b, s->cur_offset, offset1 - s->cur_offset);
+                offset1 = eb_goto_eol(s->b, offset);
+                eb_delete(s->b, offset, offset1 - offset);
                 break;
             case 'L':  /* IL: insert lines */
                 /* TODO! scroll down */
@@ -1117,21 +1120,23 @@ static void tty_emulate(ShellState *s, int c)
                 /* TODO! scroll up */
                 //put_status(NULL, "delete lines %d", s->esc_params[0]);
                 break;
-            case '@':  /* ICH: insert chars */
+            case '@':  /* ICH: insert chars (no cursor update) */
                 buf1[0] = ' ';
                 for (n = s->esc_params[0]; n > 0; n--) {
-                    eb_insert(s->b, s->cur_offset, buf1, 1);
+                    /* XXX: incorrect for non 8 bit charsets */
+                    eb_insert(s->b, offset, buf1, 1);
                 }
+                s->cur_offset = offset;
                 break;
             case 'P':  /* DCH: delete chars */
-                offset1 = s->cur_offset;
+                offset1 = offset;
                 for (n = s->esc_params[0]; n > 0; n--) {
                     c = eb_nextc(s->b, offset1, &offset2);
                     if (c == '\n')
                         break;
                     offset1 = offset2;
                 }
-                eb_delete(s->b, s->cur_offset, offset1 - s->cur_offset);
+                eb_delete(s->b, offset, offset1 - offset);
                 break;
             case 'c':  /* DA: terminal type query */
                 break;
@@ -1141,7 +1146,7 @@ static void tty_emulate(ShellState *s, int c)
                        launch qemacs in qemacs (in 8859-1) ! */
                     char buf2[20];
                     int col_num, cur_line;
-                    eb_get_pos(s->b, &cur_line, &col_num, s->cur_offset);
+                    eb_get_pos(s->b, &cur_line, &col_num, offset);
                     /* XXX: actually send position of point in window */
                     snprintf(buf2, sizeof(buf2), "\033[%d;%dR",
                              1, col_num + 1);
@@ -1172,7 +1177,7 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case 'X':  /* ECH: erase n characters w/o moving cursor */
                 for (n = s->esc_params[0]; n > 0; n--) {
-                    s->cur_offset = tty_put_char(s, ' ');
+                    tty_put_char(s, ' ');
                 }
                 /* CG: should save and restore cursor */
                 break;
@@ -1203,10 +1208,8 @@ static void tty_emulate(ShellState *s, int c)
 /* modify the color according to the current one (may be incorrect if
    we are editing because we should write default color) */
 static void shell_color_callback(__unused__ EditBuffer *b,
-                                 void *opaque,
-                                 enum LogOperation op,
-                                 int offset,
-                                 int size)
+                                 void *opaque, int arg,
+                                 enum LogOperation op, int offset, int size)
 {
     ShellState *s = opaque;
     unsigned char buf[256];
@@ -1303,6 +1306,7 @@ static void shell_read_cb(void *opaque)
         /* Suspend BF_READONLY flag to allow shell output to readonly buffer */
         int save_readonly = s->b->flags & BF_READONLY;
         s->b->flags &= ~BF_READONLY;
+        s->b->last_log = 0;
 
         for (i = 0; i < len; i++)
             tty_emulate(s, buf[i]);
@@ -1434,7 +1438,8 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     }
     b->priv_data = s;
     b->close = shell_close;
-    eb_add_callback(b, eb_offset_callback, &s->cur_offset);
+    /* Track cursor with edge effect */
+    eb_add_callback(b, eb_offset_callback, &s->cur_offset, 1);
     s->b = b;
     s->pty_fd = -1;
     s->pid = -1;
@@ -1454,7 +1459,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
         }
         /* no undo info in this color buffer */
         b_color->save_log = 0;
-        eb_add_callback(b, shell_color_callback, s);
+        eb_add_callback(b, shell_color_callback, s, 0);
         s->b_color = b_color;
     }
 

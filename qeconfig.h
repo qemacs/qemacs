@@ -333,6 +333,8 @@ static CmdDef basic_commands[] = {
           "doctor", do_doctor)
     CMD0( KEY_CTRLX('u'), KEY_CTRL('_'),
           "undo", do_undo)
+    CMD0( KEY_CTRLX('r'), KEY_CTRLX(KEY_CTRL('_')),
+          "redo", do_redo)
     CMD3( KEY_META('g'), KEY_NONE,
           "goto-line", do_goto, ESsi, 'l',
           "us{Goto line: }" "v")

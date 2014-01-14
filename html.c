@@ -756,7 +756,7 @@ static void html_mouse_goto(EditState *s, int x, int y)
 
 /* invalidate the html data if modification done (XXX: be more precise) */
 static void html_callback(__unused__ EditBuffer *b,
-                          void *opaque,
+                          void *opaque, __unused__ int arg,
                           __unused__ enum LogOperation op,
                           __unused__ int offset,
                           __unused__ int size)
@@ -797,7 +797,7 @@ int gxml_mode_init(EditState *s,
         memcpy(s, saved_data->generic_data, SAVED_DATA_SIZE);
     }
 
-    eb_add_callback(s->b, html_callback, s);
+    eb_add_callback(s->b, html_callback, s, 0);
     hs->parse_flags = flags;
 
     load_default_style_sheet(hs, default_stylesheet, flags);
