@@ -1122,9 +1122,11 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case '@':  /* ICH: insert chars (no cursor update) */
                 buf1[0] = ' ';
+                offset1 = offset;
                 for (n = s->esc_params[0]; n > 0; n--) {
                     /* XXX: incorrect for non 8 bit charsets */
-                    eb_insert(s->b, offset, buf1, 1);
+                    eb_insert(s->b, offset1, buf1, 1);
+                    offset1 += 1;
                 }
                 s->cur_offset = offset;
                 break;
@@ -1179,7 +1181,8 @@ static void tty_emulate(ShellState *s, int c)
                 for (n = s->esc_params[0]; n > 0; n--) {
                     tty_put_char(s, ' ');
                 }
-                /* CG: should save and restore cursor */
+                /* restore cursor */
+                s->cur_offset = offset;
                 break;
             case 'x':  /* DECREQTPARM: report terminal characteristics */
             case 'Z':  /* CBT: move cursor back n tabs */
