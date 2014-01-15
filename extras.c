@@ -1,7 +1,7 @@
 /*
  * QEmacs, extra commands non full version
  *
- * Copyright (c) 2000-2008 Charlie Gordon.
+ * Copyright (c) 2000-2014 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -575,6 +575,64 @@ static void do_about_qemacs(EditState *s)
     show_popup(b);
 }
 
+static void do_set_region_color(EditState *s, const char *str)
+{
+    int offset, size, style;
+
+    /* deactivate region hilite */
+    s->region_style = 0;
+
+    style = get_tty_style(str);
+    if (style < 0) {
+        put_status(s, "Invalid color '%s'", str);
+        return;
+    }
+
+    offset = s->b->mark;
+    size = s->offset - offset;
+    if (size < 0) {
+        offset += size;
+        size = -size;
+    }
+    if (size > 0) {
+        eb_create_style_buffer(s->b, BF_STYLE2);
+        eb_set_style(s->b, style, LOGOP_WRITE, offset, size);
+    }
+}
+
+static void do_set_region_style(EditState *s, const char *str)
+{
+    int offset, size, style;
+    QEStyleDef *st;
+
+    /* deactivate region hilite */
+    s->region_style = 0;
+
+    st = find_style(str);
+    if (!st) {
+        put_status(s, "Invalid style '%s'", str);
+        return;
+    }
+    style = st - qe_styles;
+
+    offset = s->b->mark;
+    size = s->offset - offset;
+    if (size < 0) {
+        offset += size;
+        size = -size;
+    }
+    if (size > 0) {
+        eb_create_style_buffer(s->b, BF_STYLE2);
+        eb_set_style(s->b, style, LOGOP_WRITE, offset, size);
+    }
+}
+
+static void do_drop_styles(EditState *s)
+{
+    eb_free_style_buffer(s->b);
+    s->b->flags &= ~BF_STYLES;
+}
+
 static CmdDef extra_commands[] = {
     CMD2( KEY_META('='), KEY_NONE,
           "compare-windows", do_compare_windows, ESi, "ui" )
@@ -621,6 +679,15 @@ static CmdDef extra_commands[] = {
     CMD2( KEY_CTRLH('B'), KEY_NONE,
           "show-bindings", do_show_bindings, ESs,
 	  "s{Show bindings of command: }[command]|command|")
+
+    CMD2( KEY_CTRLC('c'), KEY_NONE,
+          "set-region-color", do_set_region_color, ESs,
+	  "s{Select color: }[color]|color|")
+    CMD2( KEY_CTRLC('s'), KEY_NONE,
+          "set-region-style", do_set_region_style, ESs,
+	  "s{Select style: }[style]|style|")
+    CMD0( KEY_NONE, KEY_NONE,
+          "drop-styles", do_drop_styles)
 
     CMD_DEF_END,
 };

@@ -1445,7 +1445,7 @@ EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
         }
     }
     snprintf(bufname, sizeof(bufname), "*kill-%d*", qs->yank_current + 1);
-    b = eb_new(bufname, base->flags & BF_UTF8);
+    b = eb_new(bufname, base->flags & (BF_STYLES | BF_UTF8));
     eb_set_charset(b, base->charset);
     qs->yank_buffers[qs->yank_current] = b;
     return b;
@@ -1824,7 +1824,7 @@ void do_convert_buffer_file_coding_system(EditState *s,
 
     b = s->b;
 
-    b1 = eb_new("*tmp*", 0);
+    b1 = eb_new("*tmp*", b->flags & BF_STYLES);
     eb_set_charset(b1, charset);
 
     /* preserve positions */
@@ -1840,13 +1840,19 @@ void do_convert_buffer_file_coding_system(EditState *s,
     for (offset = 0; offset < b->total_size;) {
         c = eb_nextc(b, offset, &offset);
         len = unicode_to_charset(buf, c, charset);
+        b1->cur_style = b->cur_style;
         eb_write(b1, b1->total_size, buf, len);
     }
 
     /* replace current buffer with conversion */
+    /* quick hack to transfer styles from tmp buffer to b */
+    eb_free(b->b_styles);
+    b->b_styles = NULL;
     eb_delete(b, 0, b->total_size);
     eb_set_charset(b, charset);
     eb_insert_buffer(b, 0, b1, 0, b1->total_size);
+    b->b_styles = b1->b_styles;
+    b1->b_styles = NULL;
 
     /* restore positions */
     cb = b->first_callback;
@@ -3232,14 +3238,42 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
 
 #endif /* CONFIG_TINY */
 
+int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                                int *offset_ptr, int line_num)
+{
+    EditBuffer *b = s->b;
+    unsigned int *buf_ptr, *buf_end;
+    int c, offset;
+
+    offset = *offset_ptr;
+
+    buf_ptr = buf;
+    buf_end = buf + buf_size - 1;
+    b->cur_style = 0;
+    for (;;) {
+        c = eb_nextc(b, offset, &offset);
+        if (c == '\n')
+            break;
+        if (buf_ptr < buf_end) {
+            c |= b->cur_style << STYLE_SHIFT;
+            *buf_ptr++ = c;
+        }
+    }
+    *buf_ptr = '\0';
+    *offset_ptr = offset;
+    return buf_ptr - buf;
+}
+
 int get_non_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                            int *offsetp, int line_num)
 {
-    /* compute line color */
+    if (s->b->b_styles) {
+        return get_staticly_colorized_line(s, buf, buf_size, offsetp, line_num);
+    }
+
     int len = eb_get_line(s->b, buf, buf_size, offsetp);
     // XXX: should force \0 instead of \n
     buf[len] = '\n';
-
     return len;
 }
 
@@ -3256,7 +3290,8 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     unsigned int colored_chars[COLORED_MAX_LINE_SIZE];
     int char_index, colored_nb_chars;
 
-    line_num = 0; /* avoid warning */
+    line_num = 0;
+    /* XXX: should test a flag, to avoid this call in hex/binary */
     if (s->line_numbers || s->get_colorized_line != get_non_colorized_line) {
         eb_get_pos(s->b, &line_num, &col_num, offset);
     }
@@ -3305,7 +3340,9 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     /* colorize */
     colored_nb_chars = 0;
     offset0 = offset;
-    if (s->get_colorized_line != get_non_colorized_line) {
+    if (s->get_colorized_line != get_non_colorized_line
+    ||  s->curline_style || s->region_style
+    ||  s->b->b_styles) {
         colored_nb_chars = s->get_colorized_line(s, colored_chars,
                                                  countof(colored_chars),
                                                  &offset0, line_num);
@@ -3314,11 +3351,6 @@ int text_display(EditState *s, DisplayState *ds, int offset)
 #if 1
     /* colorize regions */
     if (s->curline_style || s->region_style) {
-        if (s->get_colorized_line == get_non_colorized_line) {
-            offset0 = offset;
-            colored_nb_chars = eb_get_line(s->b, colored_chars,
-                countof(colored_chars), &offset0);
-        }
         /* CG: Should combine styles instead of replacing */
         if (s->region_style) {
             int line, start, stop;
@@ -4533,6 +4565,9 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
     ModeSavedData *saved_data, **psaved_data;
     ModeDef *mode;
 
+    /* remove region hilite */
+    s->region_style = 0;
+
     b1 = s->b;
     if (b1) {
         /* save mode data if no other window uses the buffer */
@@ -4870,6 +4905,8 @@ void do_completion(EditState *s)
      * through the window, if at end, should remove focus from
      * completion_popup_window or close it.
      */
+    /* check completion window */
+    completion_popup_window = check_window(completion_popup_window);
     if (completion_popup_window && qs->last_cmd_func == qs->this_cmd_func) {
         edit_close(completion_popup_window);
         completion_popup_window = NULL;
@@ -4952,7 +4989,7 @@ void do_completion(EditState *s)
             e->offset = 0;
         }
     }
-     complete_end(&cs);
+    complete_end(&cs);
 }
 
 void do_electric_filename(EditState *s, int key)
@@ -5107,6 +5144,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
 
     /* restore active window */
     qs->active_window = check_window(minibuffer_saved_active);
+    minibuffer_saved_active = NULL;
 
     /* force status update */
     //pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), " ");

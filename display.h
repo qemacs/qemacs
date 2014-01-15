@@ -24,12 +24,6 @@
 #define MAX_SCREEN_WIDTH  1024  /* in chars */
 #define MAX_SCREEN_LINES   256  /* in text lines */
 
-typedef unsigned int QEColor;
-#define QEARGB(a,r,g,b)    (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
-#define QERGB(r,g,b)       QEARGB(0xff, r, g, b)
-#define COLOR_TRANSPARENT  0
-#define QECOLOR_XOR        1
-
 /* XXX: use different name prefix to avoid conflict */
 #define QE_STYLE_NORM         0x0001
 #define QE_STYLE_BOLD         0x0002

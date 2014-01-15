@@ -672,13 +672,13 @@ static void do_org_move_subtree(EditState *s, int dir)
         }
         offset2 = org_next_heading(s, offset1, level, &level2);
     }
-    b1 = eb_new("*tmp*", 0);
+    b1 = eb_new("*tmp*", BF_SYSTEM | (s->b->flags & BF_STYLES));
     eb_set_charset(b1, s->b->charset);
-    eb_insert_buffer(b1, 0, s->b, offset, size);
+    eb_insert_buffer_convert(b1, 0, s->b, offset, size);
     eb_delete(s->b, offset, size);
     if (offset2 > offset)
         offset2 -= size;
-    eb_insert_buffer(s->b, offset2, b1, 0, size);
+    eb_insert_buffer_convert(s->b, offset2, b1, 0, b1->total_size);
     eb_free(b1);
     s->offset = offset2;
 }

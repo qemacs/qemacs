@@ -291,10 +291,10 @@ static CmdDef basic_commands[] = {
 
     CMD2( KEY_CTRLXRET('f'), KEY_NONE,
           "set-buffer-file-coding-system", do_set_buffer_file_coding_system, ESs,
-          "s{Charset: }[charset]")
+          "s{Charset: }[charset]|charset|")
     CMD2( KEY_NONE, KEY_NONE,
           "convert-buffer-file-coding-system", do_convert_buffer_file_coding_system, ESs,
-          "*" "s{Charset: }[charset]")
+          "*" "s{Charset: }[charset]|charset|")
     CMD0( KEY_CTRLXRET('b'), KEY_NONE,
           "toggle-bidir", do_toggle_bidir)
     CMD2( KEY_CTRLXRET(KEY_CTRL('\\')), KEY_NONE,

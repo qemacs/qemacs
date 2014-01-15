@@ -475,7 +475,7 @@ EditBuffer *eb_new(const char *name, int flags)
 
     // should ensure name uniqueness ?
     pstrcpy(b->name, sizeof(b->name), name);
-    b->flags = flags;
+    b->flags = flags & ~BF_STYLES;
 
     /* set default data type */
     b->data_type = &raw_data_type;
@@ -508,6 +508,9 @@ EditBuffer *eb_new(const char *name, int flags)
 
     if (strequal(name, "*trace*"))
         qs->trace_buffer = b;
+
+    if (flags & BF_STYLES)
+        eb_create_style_buffer(b, flags);
 
     return b;
 }
@@ -580,6 +583,8 @@ void eb_free(EditBuffer *b)
 
     if (b == qs->trace_buffer)
         qs->trace_buffer = NULL;
+
+    eb_free_style_buffer(b);
 
     qe_free(&b);
 }
@@ -754,6 +759,82 @@ void eb_offset_callback(__unused__ EditBuffer *b, void *opaque, int edge,
     }
 }
 
+int eb_create_style_buffer(EditBuffer *b, int flags)
+{
+    if (b->b_styles) {
+        return 0;
+    } else {
+        b->b_styles = eb_new("*", BF_SYSTEM);
+        b->flags |= flags & BF_STYLES;
+        b->style_shift = ((flags & BF_STYLES) / BF_STYLE1) - 1;
+        b->style_bytes = 1 << b->style_shift;
+        eb_set_style(b, 0, LOGOP_INSERT, 0, b->total_size);
+        eb_add_callback(b, eb_style_callback, NULL, 0);
+        return 1;
+    }
+}
+
+void eb_free_style_buffer(EditBuffer *b)
+{
+    if (b->b_styles) {
+        eb_free(b->b_styles);
+        b->b_styles = NULL;
+    }
+    b->style_shift = b->style_bytes = 0;
+    eb_free_callback(b, eb_style_callback, NULL);
+}
+
+/* XXX: should compress styles buffer with run length encoding */
+void eb_set_style(EditBuffer *b, int style, enum LogOperation op,
+                  int offset, int size)
+{
+    unsigned char buf[256];
+    int i, len;
+
+    if (!b->b_styles || !size)
+        return;
+
+    offset = (offset >> b->char_shift) << b->style_shift;
+    size = (size >> b->char_shift) << b->style_shift;
+
+    switch (op) {
+    case LOGOP_WRITE:
+    case LOGOP_INSERT:
+        while (size > 0) {
+            len = min(size, ssizeof(buf));
+            if (b->style_shift == 2) {
+                for (i = 0; i < len; i += 4) {
+                    *(uint32_t*)(buf + i) = style;
+                }
+            } else
+            if (b->style_shift == 1) {
+                for (i = 0; i < len; i += 2) {
+                    *(uint16_t*)(buf + i) = style;
+                }
+            } else {
+                memset(buf, style, len);
+            }
+            if (op == LOGOP_WRITE)
+                eb_write(b->b_styles, offset, buf, len);
+            else
+                eb_insert(b->b_styles, offset, buf, len);
+            size -= len;
+            offset += len;
+        }
+        break;
+    case LOGOP_DELETE:
+        eb_delete(b->b_styles, offset, size);
+        break;
+    default:
+        break;
+    }
+}
+
+void eb_style_callback(EditBuffer *b, void *opaque, int arg,
+                       enum LogOperation op, int offset, int size)
+{
+    eb_set_style(b, b->cur_style, op, offset, size);
+}
 
 
 /************************************************************/
@@ -1031,6 +1112,16 @@ void eb_set_charset(EditBuffer *b, QECharset *charset)
         b->flags |= BF_UTF8;
     charset_decode_init(&b->charset_state, charset);
 
+    b->char_bytes = 1;
+    b->char_shift = 0;
+    if (charset) {
+        b->char_bytes = charset->char_size;
+        if (charset->char_size == 4)
+            b->char_shift = 2;
+        else
+            b->char_shift = charset->char_size - 1;
+    }
+
     /* Reset page cache flags */
     for (n = 0; n < b->nb_pages; n++) {
         Page *p = &b->page_table[n];
@@ -1044,6 +1135,22 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
     u8 buf[MAX_CHAR_BYTES];
     int ch;
 
+    if (b->b_styles) {
+        if (b->style_shift == 2) {
+            *(uint32_t*)buf = 0;
+            eb_read(b->b_styles, (offset >> b->char_shift) << 2, buf, 4);
+            b->cur_style = *(uint32_t*)buf;
+        } else
+        if (b->style_shift == 1) {
+            *(uint16_t*)buf = 0;
+            eb_read(b->b_styles, (offset >> b->char_shift) << 1, buf, 2);
+            b->cur_style = *(uint16_t*)buf;
+        } else {
+            *(uint8_t*)buf = 0;
+            eb_read(b->b_styles, (offset >> b->char_shift), buf, 1);
+            b->cur_style = *(uint8_t*)buf;
+        }
+    }
     if (eb_read(b, offset, buf, 1) <= 0) {
         ch = '\n';
         if (offset < 0)
@@ -1758,16 +1865,20 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
                              EditBuffer *src, int src_offset,
                              int size)
 {
-    if (dest->charset == src->charset) {
+    int styles_flags = min((dest->flags & BF_STYLES), (src->flags & BF_STYLES));
+
+    if (dest->charset == src->charset && !styles_flags) {
         return eb_insert_buffer(dest, dest_offset, src, src_offset, size);
     } else {
         EditBuffer *b;
-        int offset, offset_max;
+        int offset, offset_max, offset1 = dest_offset;
 
         b = dest;
-        if ((b->flags & BF_SAVELOG) || dest_offset != b->total_size) {
-            b = eb_new("*tmp*", 0);
+        if (!styles_flags
+        &&  ((b->flags & BF_SAVELOG) || dest_offset != b->total_size)) {
+            b = eb_new("*tmp*", BF_SYSTEM);
             eb_set_charset(b, dest->charset);
+            offset1 = 0;
         }
 
         /* well, not very fast, but simple */
@@ -1778,7 +1889,8 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
             char buf[MAX_CHAR_BYTES];
             int c = eb_nextc(src, offset, &offset);
             int len = unicode_to_charset(buf, c, b->charset);
-            eb_write(b, b->total_size, buf, len);
+            b->cur_style = src->cur_style;
+            eb_insert(b, offset1 + size, buf, len);
             size += len;
         }
 
@@ -1810,7 +1922,7 @@ int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
         if (c == '\n')
             break;
         if (buf_ptr < buf_end)
-            *buf_ptr++ = c;
+            *buf_ptr++ = c & CHAR_MASK;
     }
     *buf_ptr = '\0';
     *offset_ptr = offset;

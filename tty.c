@@ -857,6 +857,79 @@ static void tty_term_fill_rectangle(QEditScreen *s,
     }
 }
 
+int str_get_word(char *buf, int size, const char *p, const char **pp)
+{
+    int len;
+
+    while (*p == ' ')
+        p++;
+
+    for (len = 0; *p != '\0' && *p != ' ' && *p != '/'; p++, len++) {
+        if (len < size - 1)
+            buf[len] = *p;
+    }
+    if (len < size - 1)
+        buf[len] = '\0';
+
+    while (*p == ' ')
+        p++;
+
+    if (pp)
+        *pp = p;
+
+    return len;
+}
+
+/* match a keyword, ignore case, check word boundary */
+int str_match_word(const char *str, const char *val, const char **pp)
+{
+    if (stristart(str, val, &str) && (*str == '\0' || *str == ' ')) {
+        while (*str == ' ')
+            str++;
+        if (pp)
+            *pp = str;
+        return 1;
+    }
+    return 0;
+}
+
+int get_tty_style(const char *str)
+{
+    char buf[128];
+    QEColor fg_color, bg_color;
+    int fg, bg, style;
+    const char *p = str;
+
+    style = 0;
+    for (;;) {
+        if (str_match_word(p, "bold", &p)) {
+            style |= TTY_BOLD;
+            continue;
+        }
+        if (str_match_word(p, "blinking", &p)
+        ||  str_match_word(p, "blink", &p)) {
+            style |= TTY_BLINK;
+            continue;
+        }
+        break;
+    }
+    fg_color = QERGB(0xbb, 0xbb, 0xbb);
+    bg_color = QERGB(0x00, 0x00, 0x00);
+    if (str_get_word(buf, sizeof(buf), p, &p)) {
+        if (css_get_color(&fg_color, buf))
+            return -1;
+        if (str_match_word(p, "on", &p) || (*p == '/' && p++)) {
+            str_get_word(buf, sizeof(buf), p, &p);
+            if (css_get_color(&bg_color, buf))
+                return -1;
+        }
+    }
+    fg = get_tty_color(fg_color, tty_fg_colors, tty_fg_colors_count);
+    bg = get_tty_color(bg_color, tty_fg_colors, tty_fg_colors_count);
+
+    return QE_STYLE_TTY | style | TTY_MAKE_COLOR(fg, bg);
+}
+
 /* XXX: could alloc font in wrapper */
 static QEFont *tty_term_open_font(__unused__ QEditScreen *s,
                                   __unused__ int style, __unused__ int size)

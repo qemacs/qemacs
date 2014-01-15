@@ -86,8 +86,9 @@ static void build_bufed_list(EditState *s)
                 }
             }
 
-            eb_printf(b, " %10d  %-8s %-8s %s",
-                      b1->total_size, b1->charset->name, mode_name,
+            eb_printf(b, " %10d %c %-8s %-8s %s",
+                      b1->total_size, " 1234567"[b1->style_bytes & 7],
+                      b1->charset->name, mode_name,
                       make_user_path(path, sizeof(path), b1->filename));
         }
         eb_printf(b, "\n");

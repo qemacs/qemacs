@@ -193,6 +193,12 @@ typedef struct CSSRect {
     int x1, y1, x2, y2;
 } CSSRect;
 
+typedef unsigned int QEColor;
+#define QEARGB(a,r,g,b)    (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
+#define QERGB(r,g,b)       QEARGB(0xff, r, g, b)
+#define COLOR_TRANSPARENT  0
+#define QECOLOR_XOR        1
+
 typedef struct FindFileState FindFileState;
 
 FindFileState *find_file_open(const char *path, const char *pattern);
@@ -302,7 +308,7 @@ const char *keys_to_str(char *buf, int buf_size,
 int to_hex(int key);
 void color_completion(CompleteState *cp);
 int css_define_color(const char *name, const char *value);
-int css_get_color(unsigned int *color_ptr, const char *p);
+int css_get_color(QEColor *color_ptr, const char *p);
 int css_get_font_family(const char *str);
 void css_union_rect(CSSRect *a, const CSSRect *b);
 static inline int css_is_null_rect(const CSSRect *a) {
@@ -712,6 +718,10 @@ typedef struct EditBufferCallbackList {
 #define BF_UTF8      0x0200  /* buffer charset is utf-8 */
 #define BF_RAW       0x0400  /* buffer charset is raw (same as latin1) */
 #define BF_TRANSIENT 0x0800  /* buffer is deleted upon window close */
+#define BF_STYLES    0x3000  /* buffer has styles */
+#define BF_STYLE1    0x1000  /* buffer has 1 byte styles */
+#define BF_STYLE2    0x2000  /* buffer has 2 byte styles */
+#define BF_STYLE4    0x3000  /* buffer has 4 byte styles */
 
 struct EditBuffer {
     Page *page_table;
@@ -734,6 +744,7 @@ struct EditBuffer {
     /* charset handling */
     CharsetDecodeState charset_state;
     QECharset *charset;
+    int char_bytes, char_shift;
 
     /* undo system */
     int save_log;    /* if true, each buffer operation is logged */
@@ -742,6 +753,12 @@ struct EditBuffer {
     int last_log_char;
     EditBuffer *log_buffer;
     int nb_logs;
+
+    /* style system */
+    EditBuffer *b_styles;
+    int cur_style;
+    int style_bytes;
+    int style_shift;
 
     /* modification callbacks */
     EditBufferCallbackList *first_callback;
@@ -846,6 +863,12 @@ int eb_add_callback(EditBuffer *b, EditBufferCallback cb, void *opaque, int arg)
 void eb_free_callback(EditBuffer *b, EditBufferCallback cb, void *opaque);
 void eb_offset_callback(EditBuffer *b, void *opaque, int edge,
                         enum LogOperation op, int offset, int size);
+int eb_create_style_buffer(EditBuffer *b, int flags);
+void eb_free_style_buffer(EditBuffer *b);
+void eb_set_style(EditBuffer *b, int style, enum LogOperation op,
+                  int offset, int size);
+void eb_style_callback(EditBuffer *b, void *opaque, int arg,
+                       enum LogOperation op, int offset, int size);
 int eb_delete_uchar(EditBuffer *b, int offset);
 int eb_insert_uchar(EditBuffer *b, int offset, int c);
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len);
@@ -1141,6 +1164,7 @@ extern int tty_bg_colors_count;
 extern unsigned int const *tty_fg_colors;
 extern int tty_fg_colors_count;
 int get_tty_color(QEColor color, unsigned int const *colors, int count);
+int get_tty_style(const char *style);
 
 /* special selection style (cumulative with another style) */
 #define QE_STYLE_SEL     0x400

@@ -465,6 +465,8 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
     line_num += y;
     /* add lines if necessary */
     while (line_num >= total_lines) {
+        /* XXX: color may be wrong */
+        s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
         eb_insert_uchar(s->b, s->b->total_size, '\n');
         total_lines++;
     }
@@ -473,6 +475,7 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
         c = eb_nextc(s->b, offset, &offset1);
         if (c == '\n') {
             for (; x > 0; x--) {
+                /* duplicate style of last char */
                 offset += eb_insert_uchar(s->b, offset, ' ');
             }
             break;
@@ -492,6 +495,7 @@ static int tty_put_char(ShellState *s, int c)
     offset = s->cur_offset;
     buf[0] = c;
     c1 = eb_nextc(s->b, offset, &offset1);
+    s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
     if (c1 == '\n') {
         /* insert */
         eb_insert(s->b, offset, buf, 1);
@@ -793,6 +797,7 @@ static void tty_emulate(ShellState *s, int c)
                 if (offset == s->b->total_size) {
                     /* add a new line */
                     /* CG: XXX: ignoring charset */
+                    s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
                     buf1[0] = '\n';
                     eb_insert(s->b, offset, buf1, 1);
                     offset = s->b->total_size;
@@ -874,6 +879,7 @@ static void tty_emulate(ShellState *s, int c)
                     len = 1;
                 }
                 c1 = eb_nextc(s->b, offset, &offset1);
+                s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
                 /* Should simplify with tty_put_char */
                 if (c1 == '\n') {
                     /* insert */
@@ -899,6 +905,7 @@ static void tty_emulate(ShellState *s, int c)
 
             len = s->utf8_len;
             c1 = eb_nextc(s->b, offset, &offset1);
+            s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
             if (c1 == '\n') {
                 /* insert */
                 eb_insert(s->b, offset, s->utf8_buf, len);
@@ -1123,6 +1130,7 @@ static void tty_emulate(ShellState *s, int c)
             case '@':  /* ICH: insert chars (no cursor update) */
                 buf1[0] = ' ';
                 offset1 = offset;
+                s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
                 for (n = s->esc_params[0]; n > 0; n--) {
                     /* XXX: incorrect for non 8 bit charsets */
                     eb_insert(s->b, offset1, buf1, 1);
@@ -1206,86 +1214,6 @@ static void tty_emulate(ShellState *s, int c)
     }
 #undef ESC2
     tty_update_cursor(s);
-}
-
-/* modify the color according to the current one (may be incorrect if
-   we are editing because we should write default color) */
-static void shell_color_callback(__unused__ EditBuffer *b,
-                                 void *opaque, int arg,
-                                 enum LogOperation op, int offset, int size)
-{
-    ShellState *s = opaque;
-    unsigned char buf[256];
-    int len;
-
-    switch (op) {
-    case LOGOP_WRITE:
-        while (size > 0) {
-            len = size;
-            if (len > ssizeof(buf))
-                len = ssizeof(buf);
-            memset(buf, s->color | s->attr, len);
-            eb_write(s->b_color, offset, buf, len);
-            size -= len;
-            offset += len;
-        }
-        break;
-    case LOGOP_INSERT:
-        while (size > 0) {
-            len = size;
-            if (len > ssizeof(buf))
-                len = ssizeof(buf);
-            memset(buf, s->color | s->attr, len);
-            eb_insert(s->b_color, offset, buf, len);
-            size -= len;
-            offset += len;
-        }
-        break;
-    case LOGOP_DELETE:
-        eb_delete(s->b_color, offset, size);
-        break;
-    default:
-        break;
-    }
-}
-
-static int shell_get_colorized_line(EditState *e,
-                                    unsigned int *buf, int buf_size,
-                                    int *offsetp, __unused__ int line_num)
-{
-    EditBuffer *b = e->b;
-    ShellState *s = b->priv_data;
-    EditBuffer *b_color = s->b_color;
-    int color, offset, offset1, c;
-    unsigned int *buf_ptr, *buf_end;
-    unsigned char buf1[1];
-
-    /* record line */
-    offset = *offsetp;
-    buf_ptr = buf;
-    buf_end = buf + buf_size - 1;
-    for (;;) {
-        c = eb_nextc(b, offset, &offset1);
-        if (c == '\n')
-            break;
-        if (buf_ptr < buf_end) {
-            if (b_color) {
-                eb_read(b_color, offset, buf1, 1);
-                color = buf1[0];
-                /* XXX: test */
-                //if (color != s->def_color)
-                {
-                    c |= (QE_STYLE_TTY | color) << STYLE_SHIFT;
-                }
-            }
-            *buf_ptr++ = c;
-        }
-        offset = offset1;
-    }
-    *buf_ptr = '\0';
-    *offsetp = offset1;
-
-    return buf_ptr - buf;
 }
 
 /* buffer related functions */
@@ -1414,15 +1342,20 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
 {
     QEmacsState *qs = &qe_state;
     ShellState *s;
-    EditBuffer *b, *b_color;
+    EditBuffer *b;
     const char *lang;
     int rows, cols;
 
     b = b0;
-    if (!b)
-        b = eb_new("", BF_SAVELOG);
-    if (!b)
-        return NULL;
+    if (!b) {
+        int bf_flags = BF_SAVELOG;
+        if (shell_flags & SF_COLOR)
+            bf_flags |= BF_STYLE2;
+        b = eb_new("", bf_flags);
+        if (!b)
+            return NULL;
+    }
+
     eb_set_buffer_name(b, bufname); /* ensure that the name is unique */
 
     /* Select shell output buffer encoding from LANG setting */
@@ -1450,21 +1383,6 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     s->caption = caption;
     s->shell_flags = shell_flags;
     tty_init(s);
-
-    /* add color buffer */
-    if (shell_flags & SF_COLOR) {
-        b_color = eb_new("*color*", BF_SYSTEM);
-        if (!b_color) {
-            if (!b0)
-                eb_free(b);
-            qe_free(&s);
-            return NULL;
-        }
-        /* no undo info in this color buffer */
-        b_color->save_log = 0;
-        eb_add_callback(b, shell_color_callback, s, 0);
-        s->b_color = b_color;
-    }
 
     /* launch shell */
     cols = TTY_XSIZE;
@@ -1901,7 +1819,6 @@ static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
     text_mode_init(s, saved_data);
     s->tab_size = 8;
     s->wrap = WRAP_TRUNCATE;
-    s->get_colorized_line = shell_get_colorized_line;
     s->interactive = 1;
     return 0;
 }
@@ -1911,7 +1828,6 @@ static int pager_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
     text_mode_init(s, saved_data);
     s->tab_size = 8;
     s->wrap = WRAP_TRUNCATE;
-    s->get_colorized_line = shell_get_colorized_line;
     return 0;
 }
 
