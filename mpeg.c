@@ -140,14 +140,12 @@ static int mpeg_backward_offset(EditState *s, int offset)
 
 static int mpeg_mode_init(EditState *s, ModeSavedData *saved_data)
 {
-    int ret;
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
+    text_mode_init(s, saved_data);
 
     s->hex_mode = 1;
     s->hex_nibble = 0;
     s->wrap = WRAP_TRUNCATE;
+
     return 0;
 }
 
@@ -167,7 +165,6 @@ static ModeDef mpeg_mode = {
     .name = "mpeg",
     .mode_probe = mpeg_mode_probe,
     .mode_init = mpeg_mode_init,
-    .mode_close = NULL,
     .text_display = mpeg_display,
     .text_backward_offset = mpeg_backward_offset,
     .write_char = hex_write_char,

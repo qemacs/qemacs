@@ -1654,15 +1654,18 @@ static void shell_write_char(EditState *e, int c)
     } else {
         /* Should dispatch as in fundamental mode */
         switch (c) {
-        case 4:
+        case KEY_CTRL('d'):
             do_delete_char(e, NO_ARG);
             break;
         // Do not do this: it is useless and causes infinite recursion
         //case 9:
         //    do_tab(e, 1);
         //    break;
-        case 11:
+        case KEY_CTRL('k'):
             do_kill_line(e, 1);
+            break;
+        case KEY_CTRL('y'):
+            do_yank(e);
             break;
         case KEY_BS:
         case KEY_DEL:
@@ -1895,9 +1898,9 @@ static CmdDef shell_global_commands[] = {
 
 static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 {
+    text_mode_init(s, saved_data);
     s->tab_size = 8;
     s->wrap = WRAP_TRUNCATE;
-    set_colorize_func(s, NULL);
     s->get_colorized_line = shell_get_colorized_line;
     s->interactive = 1;
     return 0;
@@ -1905,9 +1908,9 @@ static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 
 static int pager_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 {
+    text_mode_init(s, saved_data);
     s->tab_size = 8;
     s->wrap = WRAP_TRUNCATE;
-    set_colorize_func(s, NULL);
     s->get_colorized_line = shell_get_colorized_line;
     return 0;
 }

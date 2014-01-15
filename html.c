@@ -786,6 +786,8 @@ int gxml_mode_init(EditState *s,
 {
     HTMLState *hs = s->mode_data;
 
+    /* XXX: should register callbacks for s->offset and s->top_offset? */
+
     if (!saved_data) {
         memset(s, 0, SAVED_DATA_SIZE);
         s->insert = 1;

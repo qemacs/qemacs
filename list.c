@@ -81,13 +81,11 @@ void list_toggle_selection(EditState *s)
 
 static int list_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 {
+    text_mode_init(s, saved_data);
+
     s->wrap = WRAP_TRUNCATE;
     s->get_colorized_line = list_get_colorized_line;
     return 0;
-}
-
-static void list_mode_close(__unused__ EditState *s)
-{
 }
 
 static int list_init(void)
@@ -96,7 +94,6 @@ static int list_init(void)
     list_mode.name = "list";
     list_mode.mode_probe = NULL;
     list_mode.mode_init = list_mode_init;
-    list_mode.mode_close = list_mode_close;
     list_mode.mode_flags = MODEF_NOCMD;
 
     qe_register_mode(&list_mode);

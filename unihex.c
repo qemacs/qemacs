@@ -23,11 +23,9 @@
 
 static int unihex_mode_init(EditState *s, ModeSavedData *saved_data)
 {
-    int ret, c, maxc, offset, max_offset;
+    int c, maxc, offset, max_offset;
 
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
+    text_mode_init(s, saved_data);
 
     /* Compute max width of character in hex dump (limit to first 64K) */
     maxc = 0xFF;

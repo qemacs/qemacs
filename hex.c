@@ -153,11 +153,8 @@ static int binary_mode_init(EditState *s, ModeSavedData *saved_data)
     QEFont *font;
     QEStyleDef style;
     int num_width;
-    int ret;
 
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
+    text_mode_init(s, saved_data);
 
     /* get typical number width */
     get_style(s, &style, s->default_style);
@@ -178,11 +175,7 @@ static int binary_mode_init(EditState *s, ModeSavedData *saved_data)
 
 static int hex_mode_init(EditState *s, ModeSavedData *saved_data)
 {
-    int ret;
-
-    ret = text_mode_init(s, saved_data);
-    if (ret)
-        return ret;
+    text_mode_init(s, saved_data);
 
     s->disp_width = 16;
     s->hex_mode = 1;
