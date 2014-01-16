@@ -44,8 +44,8 @@ static struct OrgTodoKeywords {
 #define BULLET_STYLES 5
 static int OrgBulletStyles[BULLET_STYLES] = {
     QE_STYLE_FUNCTION,
-    QE_STYLE_VARIABLE,
     QE_STYLE_STRING,
+    QE_STYLE_VARIABLE,
     QE_STYLE_TYPE,
 };
 
