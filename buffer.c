@@ -520,12 +520,10 @@ EditBuffer *eb_scratch(const char *name, int flags)
 {
     EditBuffer *b;
 
-    b = eb_find(name);
-    if (b != NULL) {
+    b = eb_find_new(name, flags);
+    if (b != NULL)
         eb_clear(b);
-    } else {
-        b = eb_new(name, flags);
-    }
+
     return b;
 }
 
@@ -764,7 +762,7 @@ int eb_create_style_buffer(EditBuffer *b, int flags)
     if (b->b_styles) {
         return 0;
     } else {
-        b->b_styles = eb_new("*", BF_SYSTEM);
+        b->b_styles = eb_new("*", BF_SYSTEM | BF_RAW);
         b->flags |= flags & BF_STYLES;
         b->style_shift = ((flags & BF_STYLES) / BF_STYLE1) - 1;
         b->style_bytes = 1 << b->style_shift;
@@ -870,7 +868,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
          * referenced by name.
          */
         snprintf(buf, sizeof(buf), "*log <%s>*", b->name);
-        b->log_buffer = eb_new(buf, BF_SYSTEM);
+        b->log_buffer = eb_new(buf, BF_SYSTEM | BF_RAW);
         if (!b->log_buffer)
             return;
     }

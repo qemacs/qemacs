@@ -1456,7 +1456,7 @@ EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
         }
     }
     snprintf(bufname, sizeof(bufname), "*kill-%d*", qs->yank_current + 1);
-    b = eb_new(bufname, base->flags & (BF_STYLES | BF_UTF8));
+    b = eb_new(bufname, base->flags & BF_STYLES);
     eb_set_charset(b, base->charset);
     qs->yank_buffers[qs->yank_current] = b;
     return b;
@@ -5376,7 +5376,8 @@ void do_switch_to_buffer(EditState *s, const char *bufname)
 {
     EditBuffer *b;
 
-    b = eb_find_new(bufname, BF_SAVELOG);
+    /* XXX: Default buffer charset should be selectable */
+    b = eb_find_new(bufname, BF_SAVELOG | BF_UTF8);
     if (b)
         switch_to_buffer(s, b);
 }
@@ -5583,6 +5584,8 @@ static void do_load1(EditState *s, const char *filename1,
 
     /* First we try to read the first block to determine the data type */
     if (stat(filename, &st) < 0) {
+        /* XXX: default charset should be selectable.  Use utf8 for now */
+        eb_set_charset(b, &charset_utf8);
         /* CG: should check for wildcards and do dired */
         //if (strchr(filename, '*') || strchr(filename, '?'))
         //    goto dired;
