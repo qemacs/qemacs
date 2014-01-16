@@ -1844,16 +1844,27 @@ void eb_line_pad(EditBuffer *b, int n)
 }
 #endif
 
+/* Read the comtents of a buffer encoded in a utf8 string */
 int eb_get_contents(EditBuffer *b, char *buf, int buf_size)
 {
-    int len;
+    /* do not use eb_read if overflow to avoid partial characters */
+    if (b->charset == &charset_utf8 && b->total_size < buf_size) {
+        int len = b->total_size;
+        eb_read(b, 0, buf, len);
+        buf[len] = '\0';
+        return len;
+    } else {
+        buf_t outbuf, *out;
+        int c, offset;
 
-    len = b->total_size;
-    if (len > buf_size - 1)
-        len = buf_size - 1;
-    eb_read(b, 0, buf, len);
-    buf[len] = '\0';
-    return len;
+        out = buf_init(&outbuf, buf, buf_size);
+        for (offset = 0; offset < b->total_size;) {
+            c = eb_nextc(b, offset, &offset);
+            if (!buf_putc_utf8(out, c))
+                break;
+        }
+        return out->len;
+    }
 }
 
 /* Insert 'size' bytes of 'src' buffer from position 'src_offset' into
@@ -1937,38 +1948,24 @@ int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
 int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
                    int *offset_ptr)
 {
-    char utf8_buf[6];
-    char *buf_ptr, *buf_end;
-    int c, offset, len;
+    buf_t outbuf, *out;
+    int offset;
 
     offset = *offset_ptr;
 
-    buf_ptr = buf;
-    buf_end = buf + buf_size - 1;
+    out = buf_init(&outbuf, buf, buf_size);
     for (;;) {
-        c = eb_nextc(b, offset, &offset);
+        int c = eb_nextc(b, offset, &offset);
         if (c == '\n')
             break;
-        if (c < 0x80) {
-            if (buf_ptr < buf_end) {
-                *buf_ptr++ = c;
-                continue;
-            }
-        } else {
-            len = utf8_encode(utf8_buf, c);
-            if (buf_ptr + len <= buf_end) {
-                memcpy(buf_ptr, utf8_buf, len);
-                buf_ptr += len;
-                continue;
-            }
-        }
+        if (buf_putc_utf8(out, c))
+            continue;
         /* overflow: skip past '\n' */
         offset = eb_next_line(b, offset);
         break;
     }
-    *buf_ptr = '\0';
     *offset_ptr = offset;
-    return buf_ptr - buf;
+    return out->len;
 }
 
 int eb_prev_line(EditBuffer *b, int offset)
