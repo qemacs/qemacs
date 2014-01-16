@@ -445,6 +445,10 @@ static inline int clamp(int a, int b, int c) {
         return a;
 }
 
+static inline int compute_percent(int a, int b) {
+    return b <= 0 ? 0 : (int)((long long)a * 100 / b);
+}
+
 /* charset.c */
 
 /* maximum number of bytes for a character in all the supported charsets */
@@ -1137,7 +1141,7 @@ struct ModeDef {
 #define MODEF_NOCMD 0x0001 /* do not register xxx-mode command automatically */
 
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
-    int (*get_mode_line)(EditState *s, char *buf, int buf_size); /* return mode line */
+    void (*get_mode_line)(EditState *s, buf_t *out);
 
     /* mode specific key bindings */
     struct KeyDef *first_key;
@@ -1665,8 +1669,8 @@ void do_goto_line(EditState *s, int line);
 void do_up_down(EditState *s, int dir);
 void do_left_right(EditState *s, int dir);
 void text_mouse_goto(EditState *s, int x, int y);
-int basic_mode_line(EditState *s, char *buf, int buf_size, int c1);
-int text_mode_line(EditState *s, char *buf, int buf_size);
+void basic_mode_line(EditState *s, buf_t *out, int c1);
+void text_mode_line(EditState *s, buf_t *out);
 void do_toggle_full_screen(EditState *s);
 void do_toggle_control_h(EditState *s, int set);
 

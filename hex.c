@@ -304,18 +304,11 @@ void hex_write_char(EditState *s, int key)
     }
 }
 
-static int hex_mode_line(EditState *s, char *buf, int buf_size)
+static void hex_mode_line(EditState *s, buf_t *out)
 {
-    int percent, pos;
-
-    pos = basic_mode_line(s, buf, buf_size, '-');
-    pos += snprintf(buf + pos, buf_size - pos, "0x%x--0x%x",
-                    s->offset, s->b->total_size);
-    percent = 0;
-    if (s->b->total_size > 0)
-        percent = (s->offset * 100) / s->b->total_size;
-    pos += snprintf(buf + pos, buf_size - pos, "--%d%%", percent);
-    return pos;
+    basic_mode_line(s, out, '-');
+    buf_printf(out, "0x%x--0x%x", s->offset, s->b->total_size);
+    buf_printf(out, "--%d%%", compute_percent(s->offset, s->b->total_size));
 }
 
 static ModeDef binary_mode = {

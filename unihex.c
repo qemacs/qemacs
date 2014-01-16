@@ -195,20 +195,13 @@ static void unihex_move_up_down(EditState *s, int dir)
     s->offset = eb_goto_char(s->b, pos);
 }
 
-static int unihex_mode_line(EditState *s, char *buf, int buf_size)
+static void unihex_mode_line(EditState *s, buf_t *out)
 {
-    int percent, pos, cpos;
-
-    cpos = eb_get_char_offset(s->b, s->offset);
-
-    pos = basic_mode_line(s, buf, buf_size, '-');
-    pos += snprintf(buf + pos, buf_size - pos, "0x%x--0x%x--%s",
-                    cpos, s->offset, s->b->charset->name);
-    percent = 0;
-    if (s->b->total_size > 0)
-        percent = (s->offset * 100) / s->b->total_size;
-    pos += snprintf(buf + pos, buf_size - pos, "--%d%%", percent);
-    return pos;
+    basic_mode_line(s, out, '-');
+    buf_printf(out, "0x%x--0x%x--%s",
+               eb_get_char_offset(s->b, s->offset),
+               s->offset, s->b->charset->name);
+    buf_printf(out, "--%d%%", compute_percent(s->offset, s->b->total_size));
 }
 
 static ModeDef unihex_mode = {

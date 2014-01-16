@@ -1945,7 +1945,7 @@ void do_goto(EditState *s, const char *str, int unit)
         pos = pos * (long long)s->b->total_size / 100;
         if (rel)
             pos += s->offset;
-        eb_get_pos(s->b, &line, &col, max(pos, 0));
+        eb_get_pos(s->b, &line, &col, clamp(pos, 0, s->b->total_size));
         line += (col > 0);
         goto getcol;
 
@@ -2051,11 +2051,10 @@ void do_set_indent_tabs_mode(EditState *s, int val)
 
 /* compute string for the first part of the mode line (flags,
    filename, modename) */
-int basic_mode_line(EditState *s, char *buf, int buf_size, int c1)
+void basic_mode_line(EditState *s, buf_t *out, int c1)
 {
-    int mod, state, pos;
+    int mod, state;
 
-    pos = 0;
     mod = s->b->modified ? '*' : '-';
     if (s->b->flags & BF_LOADING)
         state = 'L';
@@ -2066,26 +2065,19 @@ int basic_mode_line(EditState *s, char *buf, int buf_size, int c1)
     else
         state = '-';
 
-    pos += snprintf(buf + pos, buf_size - pos, "%c%c:%c%c  %-20s  (%s",
-                    c1,
-                    state,
-                    s->b->flags & BF_READONLY ? '%' : mod,
-                    mod,
-                    s->b->name,
-                    s->mode->name);
+    buf_printf(out, "%c%c:%c%c  %-20s  (%s",
+               c1, state, s->b->flags & BF_READONLY ? '%' : mod,
+               mod, s->b->name, s->mode->name);
     if (!s->insert)
-        pos += snprintf(buf + pos, buf_size - pos, " Ovwrt");
+        buf_printf(out, " Ovwrt");
     if (s->interactive)
-        pos += snprintf(buf + pos, buf_size - pos, " Interactive");
-    pos += snprintf(buf + pos, buf_size - pos, ")--");
-
-    return pos;
+        buf_printf(out, " Interactive");
+    buf_printf(out, ")--");
 }
 
-int text_mode_line(EditState *s, char *buf, int buf_size)
+void text_mode_line(EditState *s, buf_t *out)
 {
     int line_num, col_num, wrap_mode;
-    int percent, pos;
 
     wrap_mode = '-';
     if (!s->hex_mode) {
@@ -2094,42 +2086,33 @@ int text_mode_line(EditState *s, char *buf, int buf_size)
         else if (s->wrap == WRAP_WORD)
             wrap_mode = 'W';
     }
-    pos = basic_mode_line(s, buf, buf_size, wrap_mode);
+    basic_mode_line(s, out, wrap_mode);
 
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
-    pos += snprintf(buf + pos, buf_size - pos, "L%d--C%d--%s",
-                    line_num + 1, col_num, s->b->charset->name);
-    if (s->bidir) {
-        pos += snprintf(buf + pos, buf_size - pos, "--%s",
-                        s->cur_rtl ? "RTL" : "LTR");
-    }
-    if (s->input_method) {
-        pos += snprintf(buf + pos, buf_size - pos, "--%s",
-                        s->input_method->name);
-    }
+    buf_printf(out, "L%d--C%d--%s",
+               line_num + 1, col_num, s->b->charset->name);
+    if (s->bidir)
+        buf_printf(out, "--%s", s->cur_rtl ? "RTL" : "LTR");
+
+    if (s->input_method)
+        buf_printf(out, "--%s", s->input_method->name);
 #if 0
-    pos += snprintf(buf + pos, buf_size - pos, "--[%d,%d]-[%d]",
-                    s->x_disp[0], s->x_disp[1], s->y_disp);
+    buf_printf(out, "--[%d,%d]-[%d]", s->x_disp[0], s->x_disp[1], s->y_disp);
 #endif
-    percent = 0;
-    if (s->b->total_size > 0)
-        percent = (s->offset * 100) / s->b->total_size;
-    pos += snprintf(buf + pos, buf_size - pos, "--%d%%", percent);
-    return pos;
+    buf_printf(out, "--%d%%", compute_percent(s->offset, s->b->total_size));
 }
 
 void display_mode_line(EditState *s)
 {
     char buf[MAX_SCREEN_WIDTH];
+    buf_t outbuf, *out;
     int y = s->ytop + s->height;
 
     if (s->flags & WF_MODELINE) {
-        s->mode->get_mode_line(s, buf, sizeof(buf));
+        out = buf_init(&outbuf, buf, sizeof(buf));
+        s->mode->get_mode_line(s, out);
         if (!strequal(buf, s->modeline_shadow)) {
-            print_at_byte(s->screen,
-                          s->xleft,
-                          y,
-                          s->width,
+            print_at_byte(s->screen, s->xleft, y, s->width,
                           s->qe_state->mode_line_height,
                           buf, QE_STYLE_MODE_LINE);
             pstrcpy(s->modeline_shadow, sizeof(s->modeline_shadow), buf);

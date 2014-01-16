@@ -860,33 +860,32 @@ char *get_stream_id(AVFormatContext *ic, AVStream *st, char *buf, int buf_size)
     return buf;
 }
 
-static int video_mode_line(EditState *s, char *buf, int buf_size)
+static void video_mode_line(EditState *s, buf_t *out)
 {
-    int pos;
     const char *name;
     VideoState *is = s->mode_data;
     AVCodec *codec;
     AVCodecContext *dec;
     char buf1[32];
 
-    pos = basic_mode_line(s, buf, buf_size, '-');
-    if (is->paused) {
-        pos += snprintf(buf + pos, buf_size - pos, "[paused]--");
-    }
-    if (is->ic) {
-        pos += snprintf(buf + pos, buf_size - pos, "%s",
-                        is->ic->iformat->name);
-    }
+    basic_mode_line(s, out, '-');
+
+    if (is->paused)
+        buf_printf(out, "[paused]--");
+
+    if (is->ic)
+        buf_printf(out, "%s", is->ic->iformat->name);
+
     if (is->video_st) {
         name = "???";
         dec = &is->video_st->codec;
         codec = dec->codec;
         if (codec)
             name = codec->name;
-        pos += snprintf(buf + pos, buf_size - pos, "--%s/%s[%dx%d@%0.2ffps]",
-                        name, get_stream_id(is->ic, is->video_st, buf1, sizeof(buf1)),
-                        dec->width, dec->height,
-                        (float)dec->frame_rate / dec->frame_rate_base);
+        buf_printf(out, "--%s/%s[%dx%d@%0.2ffps]",
+                   name, get_stream_id(is->ic, is->video_st, buf1, sizeof(buf1)),
+                   dec->width, dec->height,
+                   (float)dec->frame_rate / dec->frame_rate_base);
     }
     if (is->audio_st) {
         name = "???";
@@ -894,11 +893,10 @@ static int video_mode_line(EditState *s, char *buf, int buf_size)
         codec = dec->codec;
         if (codec)
             name = codec->name;
-        pos += snprintf(buf + pos, buf_size - pos, "--%s/%s[%dHz:%dch]",
-                        name, get_stream_id(is->ic, is->audio_st, buf1, sizeof(buf1)),
-                        dec->sample_rate, dec->channels);
+        buf_printf(out, "--%s/%s[%dHz:%dch]",
+                   name, get_stream_id(is->ic, is->audio_st, buf1, sizeof(buf1)),
+                   dec->sample_rate, dec->channels);
     }
-    return pos;
 }
 
 static void av_cycle_stream(EditState *s, int codec_type)
