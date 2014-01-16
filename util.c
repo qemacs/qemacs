@@ -962,36 +962,44 @@ int strtokeys(const char *kstr, unsigned int *keys, int max_keys)
     return nb_keys;
 }
 
-void keytostr(char *buf, int buf_size, int key)
+int buf_put_key(buf_t *out, int key)
 {
-    int i;
-    char buf1[32];
-    buf_t out;
-
-    buf_init(&out, buf, buf_size);
+    int i, start = out->len;
 
     for (i = 0; i < countof(keycodes); i++) {
         if (keycodes[i] == key) {
-            buf_puts(&out, keystr[i]);
-            return;
+            return buf_puts(out, keystr[i]);
         }
     }
     if (key >= KEY_META(0) && key <= KEY_META(0xff)) {
-        keytostr(buf1, sizeof(buf1), key & 0xff);
-        buf_printf(&out, "M-%s", buf1);
+        buf_puts(out, "M-");
+        buf_put_key(out, key & 0xff);
     } else
     if (key >= KEY_CTRL('a') && key <= KEY_CTRL('z')) {
-        buf_printf(&out, "C-%c", key + 'a' - 1);
+        buf_printf(out, "C-%c", key + 'a' - 1);
     } else
 #if 0
     /* Cannot do this because KEY_F1..KEY_F20 are not consecutive */
     if (key >= KEY_F1 && key <= KEY_F20) {
-        buf_printf(&out, "f%d", key - KEY_F1 + 1);
+        buf_printf(out, "f%d", key - KEY_F1 + 1);
     } else
 #endif
     {
-        buf_putc_utf8(&out, key);
+        buf_putc_utf8(out, key);
     }
+    return out->len - start;
+}
+
+int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys)
+{
+    int i, start = out->len;
+
+    for (i = 0; i < nb_keys; i++) {
+        if (i != 0)
+            buf_put_byte(out, ' ');
+        buf_put_key(out, keys[i]);
+    }
+    return out->len - start;
 }
 
 int to_hex(int key)
@@ -1440,19 +1448,19 @@ int strsubst(char *buf, int buf_size, const char *from,
              const char *s1, const char *s2)
 {
     const char *p, *q;
-    buf_t out;
+    buf_t outbuf, *out;
 
-    buf_init(&out, buf, buf_size);
+    out = buf_init(&outbuf, buf, buf_size);
 
     p = from;
     while ((q = strstr(p, s1)) != NULL) {
-        buf_write(&out, p, q - p);
-        buf_puts(&out, s2);
+        buf_write(out, p, q - p);
+        buf_puts(out, s2);
         p = q + strlen(s1);
     }
-    buf_puts(&out, p);
+    buf_puts(out, p);
 
-    return out.pos;
+    return out->pos;
 }
 
 int strquote(char *dest, int size, const char *str, int len)

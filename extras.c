@@ -380,40 +380,44 @@ static void do_unset_key(EditState *s, const char *keystr, int local)
 
 /*---------------- help ----------------*/
 
-static int qe_list_bindings(buf_t *out, CmdDef *d, ModeDef *mode)
+static int qe_list_bindings(char *buf, int size, CmdDef *d,
+                            ModeDef *mode, int inherit)
 {
-    char buf[128];
-    KeyDef *kd;
+    int pos;
+    buf_t outbuf, *out;
 
-    kd = mode ? mode->first_key : qe_state.first_key;
-    for (; kd != NULL; kd = kd->next) {
-        if (kd->cmd == d) {
-            if (out->pos)
-                buf_puts(out, ", ");
-            buf_puts(out, keys_to_str(buf, sizeof(buf),
-                                      kd->keys, kd->nb_keys));
+    out = buf_init(&outbuf, buf, size);
+    pos = 0;
+    for (;;) {
+        KeyDef *kd = mode ? mode->first_key : qe_state.first_key;
+
+        for (; kd != NULL; kd = kd->next) {
+            if (kd->cmd == d) {
+                if (out->len > pos)
+                    buf_puts(out, ", ");
+
+                buf_put_keys(out, kd->keys, kd->nb_keys);
+            }
         }
+        if (!inherit || !mode)
+            break;
+        /* Should move up to base mode */
+        mode = NULL;
     }
-    return out->pos;
+    return out->len;
 }
 
 void do_show_bindings(EditState *s, const char *cmd_name)
 {
     char buf[256];
-    buf_t out;
     CmdDef *d;
     
     if ((d = qe_find_cmd(cmd_name)) == NULL) {
         put_status(s, "No command %s", cmd_name);
         return;
     }
-    buf_init(&out, buf, sizeof(buf));
-
-    qe_list_bindings(&out, d, s->mode);
-    qe_list_bindings(&out, d, NULL);
-
-    if (out.pos) {
-        put_status(s, "%s is bound to %s", cmd_name, out.buf);
+    if (qe_list_bindings(buf, sizeof(buf), d, s->mode, 1)) {
+        put_status(s, "%s is bound to %s", cmd_name, buf);
     } else {
         put_status(s, "%s is not bound to any key", cmd_name);
     }
@@ -423,7 +427,6 @@ static void print_bindings(EditBuffer *b, const char *title,
                            __unused__ int type, ModeDef *mode)
 {
     char buf[256];
-    buf_t out;
     CmdDef *d;
     int gfound;
 
@@ -431,8 +434,7 @@ static void print_bindings(EditBuffer *b, const char *title,
     d = qe_state.first_cmd;
     while (d != NULL) {
         while (d->name != NULL) {
-            buf_init(&out, buf, sizeof(buf));
-            if (qe_list_bindings(&out, d, mode)) {
+            if (qe_list_bindings(buf, sizeof(buf), d, mode, 0)) {
                 if (!gfound) {
                     if (title) {
                         eb_printf(b, "%s:\n\n", title);
@@ -441,7 +443,7 @@ static void print_bindings(EditBuffer *b, const char *title,
                     }
                     gfound = 1;
                 }
-                eb_printf(b, "%24s : %s\n", d->name, out.buf);
+                eb_printf(b, "%24s : %s\n", d->name, buf);
             }
             d++;
         }
@@ -488,7 +490,10 @@ void do_apropos(EditState *s, const char *str)
             if (strstr(d->name, str)) {
                 /* print name and prototype */
                 qe_get_prototype(d, buf, sizeof(buf));
-                eb_printf(b, "command: %s(%s);\n", d->name, buf);
+                eb_printf(b, "command: %s(%s)", d->name, buf);
+                if (qe_list_bindings(buf, sizeof(buf), d, s->mode, 1))
+                    eb_printf(b, " bound to %s", buf);
+                eb_printf(b, "\n");
                 /* TODO: print short description */
                 eb_printf(b, "\n");
                 found = 1;

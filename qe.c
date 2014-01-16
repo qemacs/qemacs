@@ -1990,45 +1990,45 @@ void do_count_lines(EditState *s)
 void do_what_cursor_position(EditState *s)
 {
     char buf[256];
-    buf_t out;
+    buf_t outbuf, *out;
     unsigned char cc;
     int line_num, col_num;
     int c, offset1, off;
 
-    buf_init(&out, buf, sizeof(buf));
+    out = buf_init(&outbuf, buf, sizeof(buf));
     if (s->offset < s->b->total_size) {
         c = eb_nextc(s->b, s->offset, &offset1);
-        buf_puts(&out, "char: ");
+        buf_puts(out, "char: ");
         if (c < 32 || c == 127) {
-            buf_printf(&out, "^%c ", (c + '@') & 127);
+            buf_printf(out, "^%c ", (c + '@') & 127);
         } else
         if (c < 127 || c >= 160) {
-            buf_put_byte(&out, '\'');
-            buf_putc_utf8(&out, c);
-            buf_put_byte(&out, '\'');
-            buf_put_byte(&out, ' ');
+            buf_put_byte(out, '\'');
+            buf_putc_utf8(out, c);
+            buf_put_byte(out, '\'');
+            buf_put_byte(out, ' ');
         }
         if (c < 0x100)
-            buf_printf(&out, "\\%03o ", c);
-        buf_printf(&out, "%d 0x%02x ", c, c);
+            buf_printf(out, "\\%03o ", c);
+        buf_printf(out, "%d 0x%02x ", c, c);
 
         /* Display buffer bytes if char is encoded */
         off = s->offset;
         eb_read(s->b, off++, &cc, 1);
         if (cc != c || off != offset1) {
-            buf_printf(&out, "[%02X", cc);
+            buf_printf(out, "[%02X", cc);
             while (off < offset1) {
                 eb_read(s->b, off++, &cc, 1);
-                buf_printf(&out, " %02X", cc);
+                buf_printf(out, " %02X", cc);
             }
-            buf_put_byte(&out, ']');
-            buf_put_byte(&out, ' ');
+            buf_put_byte(out, ']');
+            buf_put_byte(out, ' ');
         }
-        buf_put_byte(&out, ' ');
+        buf_put_byte(out, ' ');
     }
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
     put_status(s, "%spoint=%d col=%d mark=%d size=%d region=%d",
-               out.buf, s->offset, col_num, s->b->mark, s->b->total_size,
+               out->buf, s->offset, col_num, s->b->mark, s->b->total_size,
                abs(s->offset - s->b->mark));
 }
 
@@ -3000,6 +3000,7 @@ void display_printf(DisplayState *ds, int offset1, int offset2,
 {
     char buf[256], *p;
     va_list ap;
+
     va_start(ap, fmt);
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
@@ -3684,7 +3685,7 @@ static int parse_arg(const char **pp, unsigned char *argtype,
     return 1;
 }
 
-void qe_get_prototype(CmdDef *d, char *buf, int size)
+int qe_get_prototype(CmdDef *d, char *buf, int size)
 {
     buf_t outbuf, *out;
     const char *r;
@@ -3734,6 +3735,7 @@ void qe_get_prototype(CmdDef *d, char *buf, int size)
             buf_puts(out, *history ? history : completion);
         }
     }
+    return out->len;
 }
 
 static void arg_edit_cb(void *opaque, char *str);
@@ -4159,22 +4161,6 @@ static void macro_add_key(int key)
     qs->macro_keys[qs->nb_macro_keys++] = key;
 }
 
-const char *keys_to_str(char *buf, int buf_size,
-                        unsigned int *keys, int nb_keys)
-{
-    char buf1[64];
-    int i;
-
-    buf[0] = '\0';
-    for (i = 0; i < nb_keys; i++) {
-        keytostr(buf1, sizeof(buf1), keys[i]);
-        if (i != 0)
-            pstrcat(buf, buf_size, " ");
-        pstrcat(buf, buf_size, buf1);
-    }
-    return buf;
-}
-
 void do_numeric_argument(__unused__ EditState *s)
 {
     /* nothing is done there (see qe_key_process()) */
@@ -4278,7 +4264,7 @@ static void qe_key_process(int key)
     KeyDef *kd;
     CmdDef *d;
     char buf1[128];
-    int len;
+    buf_t outbuf, *out;
 
     if (qs->defining_macro && !qs->executing_macro) {
         macro_add_key(key);
@@ -4357,8 +4343,9 @@ static void qe_key_process(int key)
             /* CG: should beep */;
         }
 
-        put_status(s, "No command on %s",
-                   keys_to_str(buf1, sizeof(buf1), c->keys, c->nb_keys));
+        out = buf_init(&outbuf, buf1, sizeof(buf1));
+        buf_put_keys(out, c->keys, c->nb_keys);
+        put_status(s, "No command on %s", buf1);
         c->describe_key = 0;
         qe_key_init(c);
         dpy_flush(&global_screen);
@@ -4369,6 +4356,7 @@ static void qe_key_process(int key)
         d = kd->cmd;
         if (d->action.ES == do_numeric_argument && !c->describe_key) {
             /* special handling for numeric argument */
+            /* CG: XXX: should display value of numeric argument */
             c->is_numeric_arg = 1;
             if (key == KEY_META('-')) {
                 c->sign = -c->sign;
@@ -4385,9 +4373,9 @@ static void qe_key_process(int key)
                 c->argval *= c->sign;
             }
             if (c->describe_key) {
-                put_status(s, "%s runs the command %s",
-                           keys_to_str(buf1, sizeof(buf1), c->keys, c->nb_keys),
-                           d->name);
+                out = buf_init(&outbuf, buf1, sizeof(buf1));
+                buf_put_keys(out, c->keys, c->nb_keys);
+                put_status(s, "%s runs the command %s", buf1, d->name);
                 c->describe_key = 0;
             } else {
                 int argval = c->argval;
@@ -4414,13 +4402,15 @@ static void qe_key_process(int key)
  next:
     /* display key pressed */
     if (!s->minibuf) {
-        /* Should print argument if any in a more readable way */
-        keytostr(buf1, sizeof(buf1), key);
+        int len;
+
         len = strlen(c->buf);
         if (len >= 1)
             c->buf[len-1] = ' ';
-        pstrcat(c->buf, sizeof(c->buf), buf1);
-        pstrcat(c->buf, sizeof(c->buf), "-");
+        /* Should print argument if any in a more readable way */
+        out = buf_attach(&outbuf, c->buf, sizeof(c->buf), len);
+        buf_put_key(out, key);
+        buf_put_byte(out, '-');
         put_status(s, "~%s", c->buf);
         dpy_flush(&global_screen);
     }
@@ -4454,24 +4444,22 @@ void print_at_byte(QEditScreen *screen,
     release_font(screen, font);
 }
 
+/* XXX: should take va_list */
 static void eb_format_message(QEmacsState *qs, const char *bufname,
                               const char *message)
 {
     char header[128];
-    int len;
     EditBuffer *eb;
+    buf_t outbuf, *out;
 
-    header[len = 0] = '\0';
-    if (qs->ec.filename) {
-        snprintf(header, sizeof(header), "%s:%d: ",
-                 qs->ec.filename, qs->ec.lineno);
-        len = strlen(header);
-    }
-    if (qs->ec.function) {
-        snprintf(header + len, sizeof(header) - len, "%s: ",
-                 qs->ec.function);
-        len = strlen(header);
-    }
+    out = buf_init(&outbuf, header, sizeof(header));
+
+    if (qs->ec.filename)
+        buf_printf(out, "%s:%d: ", qs->ec.filename, qs->ec.lineno);
+
+    if (qs->ec.function)
+        buf_printf(out, "%s: ", qs->ec.function);
+
     eb = eb_find_new(bufname, BF_UTF8);
     if (eb) {
         eb_printf(eb, "%s%s\n", header, message);
@@ -4833,7 +4821,7 @@ static void complete_start(EditState *s, CompleteState *cp)
 {
     memset(cp, 0, sizeof(*cp));
     cp->s = s;
-    cp->len = eb_get_contents(s->b, cp->current, sizeof(cp->current) - 1);
+    cp->len = eb_get_contents(s->b, cp->current, sizeof(cp->current));
 }
 
 void complete_test(CompleteState *cp, const char *str)
@@ -6032,7 +6020,7 @@ static void isearch_display(ISearchState *is)
 {
     EditState *s = is->s;
     char ubuf[256];
-    buf_t out;
+    buf_t outbuf, *out;
     char buf[2*SEARCH_LENGTH], *q; /* XXX: incorrect size */
     int i, len, hex_nibble, h;
     unsigned int v;
@@ -6082,27 +6070,27 @@ static void isearch_display(ISearchState *is)
     }
 
     /* display search string */
-    buf_init(&out, ubuf, sizeof(ubuf));
+    out = buf_init(&outbuf, ubuf, sizeof(ubuf));
     if (is->found_offset < 0 && len > 0)
-        buf_printf(&out, "Failing ");
+        buf_printf(out, "Failing ");
     if (s->hex_mode) {
-        buf_printf(&out, "hex ");
+        buf_printf(out, "hex ");
     } else {
         if (is->search_flags & SEARCH_FLAG_WORD)
-            buf_printf(&out, "word ");
+            buf_printf(out, "word ");
         if (is->search_flags & SEARCH_FLAG_IGNORECASE)
-            buf_printf(&out, "case-insensitive ");
+            buf_printf(out, "case-insensitive ");
         else if (!(is->search_flags & SEARCH_FLAG_SMARTCASE))
-            buf_printf(&out, "case-sensitive ");
+            buf_printf(out, "case-sensitive ");
     }
-    buf_printf(&out, "I-search");
+    buf_printf(out, "I-search");
     if (is->dir < 0)
-        buf_printf(&out, " backward");
-    buf_printf(&out, ": ");
+        buf_printf(out, " backward");
+    buf_printf(out, ": ");
     for (i = 0; i < is->pos; i++) {
         v = is->search_string[i];
         if (!(v & FOUND_TAG)) {
-            if (!buf_putc_utf8(&out, v))
+            if (!buf_putc_utf8(out, v))
                 break;
         }
     }
@@ -6111,7 +6099,7 @@ static void isearch_display(ISearchState *is)
     do_center_cursor(s);
     edit_display(s->qe_state);
 
-    put_status(NULL, "%s", out.buf);
+    put_status(NULL, "%s", out->buf);
 
     dpy_flush(s->screen);
 }

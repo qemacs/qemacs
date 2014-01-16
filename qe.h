@@ -299,12 +299,6 @@ int strunquote(char *dest, int size, const char *str, int len);
 
 void get_str(const char **pp, char *buf, int buf_size, const char *stop);
 int css_get_enum(const char *str, const char *enum_str);
-int compose_keys(unsigned int *keys, int *nb_keys);
-int strtokey(const char **pp);
-int strtokeys(const char *keystr, unsigned int *keys, int max_keys);
-void keytostr(char *buf, int buf_size, int key);
-const char *keys_to_str(char *buf, int buf_size,
-                        unsigned int *keys, int nb_keys);
 int to_hex(int key);
 void color_completion(CompleteState *cp);
 int css_define_color(const char *name, const char *value);
@@ -374,6 +368,13 @@ static inline buf_t *buf_init(buf_t *bp, char *buf, int size) {
         bp->size = 0;
     }
     bp->len = bp->pos = 0;
+    return bp;
+}
+static inline buf_t *buf_attach(buf_t *bp, char *buf, int size, int pos) {
+    /* assuming 0 <= pos < size */
+    bp->buf = buf;
+    bp->size = size;
+    bp->len = bp->pos = pos;
     return bp;
 }
 static inline int buf_avail(buf_t *bp) {
@@ -448,6 +449,12 @@ static inline int clamp(int a, int b, int c) {
 static inline int compute_percent(int a, int b) {
     return b <= 0 ? 0 : (int)((long long)a * 100 / b);
 }
+
+int compose_keys(unsigned int *keys, int *nb_keys);
+int strtokey(const char **pp);
+int strtokeys(const char *keystr, unsigned int *keys, int max_keys);
+int buf_put_key(buf_t *out, int key);
+int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);
 
 /* charset.c */
 
@@ -1376,7 +1383,7 @@ void mode_completion(CompleteState *cp);
 void qe_register_cmd_table(CmdDef *cmds, ModeDef *m);
 int qe_register_binding(int key, const char *cmd_name, ModeDef *m);
 CmdDef *qe_find_cmd(const char *cmd_name);
-void qe_get_prototype(CmdDef *d, char *buf, int size);
+int qe_get_prototype(CmdDef *d, char *buf, int size);
 
 /* text display system */
 
