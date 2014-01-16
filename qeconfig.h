@@ -189,6 +189,8 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Paragraph / case handling ----------------*/
 
+    CMD0( KEY_META('h'), KEY_NONE,
+          "mark-paragraph", do_mark_paragraph)
     CMD0( KEY_META('{'), KEY_NONE,
           "backward-paragraph", do_backward_paragraph)
     CMD0( KEY_META('}'), KEY_NONE,

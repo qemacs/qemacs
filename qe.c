@@ -472,6 +472,16 @@ void text_move_word_left_right(EditState *s, int dir)
     }
 }
 
+void do_mark_region(EditState *s, int mark, int offset)
+{
+    /* CG: Should have local and global mark rings */
+    s->b->mark = clamp(mark, 0, s->b->total_size);
+    s->offset = clamp(offset, 0, s->b->total_size);
+    /* activate region hilite */
+    if (s->qe_state->hilite_region)
+        s->region_style = QE_STYLE_REGION_HILITE;
+}
+
 /* paragraph handling */
 
 int eb_next_paragraph(EditBuffer *b, int offset)
@@ -509,6 +519,14 @@ int eb_start_paragraph(EditBuffer *b, int offset)
         eb_prevc(b, offset, &offset);
     }
     return offset;
+}
+
+void do_mark_paragraph(EditState *s)
+{
+    int start = eb_start_paragraph(s->b, s->offset);
+    int end = eb_next_paragraph(s->b, s->offset);
+
+    do_mark_region(s, start, end);
 }
 
 void do_backward_paragraph(EditState *s)
@@ -1413,20 +1431,13 @@ void do_break(EditState *s)
 /* block functions */
 void do_set_mark(EditState *s)
 {
-    /* CG: Should have local and global mark rings */
-    s->b->mark = s->offset;
-
-    /* activate region hilite */
-    if (s->qe_state->hilite_region)
-        s->region_style = QE_STYLE_REGION_HILITE;
-
+    do_mark_region(s, s->offset, s->offset);
     put_status(s, "Mark set");
 }
 
 void do_mark_whole_buffer(EditState *s)
 {
-    s->b->mark = s->b->total_size;
-    s->offset = 0;
+    do_mark_region(s, s->b->total_size, 0);
 }
 
 EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
