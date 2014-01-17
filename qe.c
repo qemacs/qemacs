@@ -2475,15 +2475,28 @@ static void reverse_fragments(TextFragment *str, int len)
 
 /* CRC to optimize redraw. */
 /* XXX: is it safe enough ? */
-static unsigned int compute_crc(unsigned char *data, int size, unsigned int sum)
+static unsigned int compute_crc(const void *p, int size, unsigned int sum)
 {
+    const u8 *data = (const u8 *)p;
+
+    /* Rotating sum necessary to prevent trivial collisions on
+     * line_chars because it is an array of code points stored as u32.
+     */
+    /* XXX: We still have a bug when transposing two 31 byte words as in
+     * B123456789012345678901234567890 A123456789012345678901234567890
+     */
+    while (((uintptr_t)data & 3) && size > 0) {
+        sum += ((sum >> 31) & 1) + sum + *data;
+        data++;
+        size--;
+    }
     while (size >= 4) {
-        sum += ((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3]);
+        sum += ((sum >> 31) & 1) + sum + *(const uint32_t *)data;
         data += 4;
         size -= 4;
     }
     while (size > 0) {
-        sum += data[0] << (size * 8);
+        sum += ((sum >> 31) & 1) + sum + *data;
         data++;
         size--;
     }
@@ -2544,10 +2557,8 @@ static void flush_line(DisplayState *s,
         unsigned int crc;
 
         /* test if display needed */
-        crc = compute_crc((unsigned char *)fragments,
-                          sizeof(TextFragment) * nb_fragments, 0);
-        crc = compute_crc((unsigned char *)s->line_chars,
-                          s->line_index * sizeof(int), crc);
+        crc = compute_crc(fragments, sizeof(*fragments) * nb_fragments, 0);
+        crc = compute_crc(s->line_chars, sizeof(*s->line_chars) * s->line_index, crc);
         if (s->line_num >= e->shadow_nb_lines) {
             /* realloc shadow */
             int n = e->shadow_nb_lines;

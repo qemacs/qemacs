@@ -282,16 +282,36 @@ enum {
 
 static void do_transpose(EditState *s, int cmd)
 {
-    char buf[1024];
-    int offset0, offset1, offset2, offset3;
+    int offset0, offset1, offset2, offset3, end_offset;
     int size0, size1, size2;
+    EditBuffer *b = s->b;
+
+    if (check_read_only(s))
+        return;
 
     switch (cmd) {
     case CMD_TRANSPOSE_CHARS:
-        offset3 = s->offset;
-        eb_prevc(s->b, offset3, &offset2);
-        offset1 = offset2;
-        eb_prevc(s->b, offset1, &offset0);
+        /* at end of line, transpose previous 2 characters,
+         * otherwise transpose characters before and after point.
+         */
+        end_offset = offset2 = s->offset;
+        if (eb_nextc(b, offset2, &offset3) == '\n') {
+            offset3 = offset2;
+            eb_prevc(b, offset3, &offset2);
+            end_offset = s->offset;
+            offset1 = offset2;
+            eb_prevc(b, offset1, &offset0);
+        } else {
+            offset1 = offset2;
+            eb_prevc(b, offset1, &offset0);
+            if (s->qe_state->flag_split_window_change_focus) {
+                /* keep current position between characters */
+                end_offset = offset0 + offset3 - offset2;
+            } else {
+                /* set position past second character (emacs behaviour) */
+                end_offset = offset3;
+            }
+        }
         break;
     case CMD_TRANSPOSE_WORDS:
         word_right(s, 1);
@@ -305,10 +325,10 @@ static void do_transpose(EditState *s, int cmd)
         offset0 = s->offset;
         if (s->qe_state->flag_split_window_change_focus) {
             /* set position to end of first word */
-            s->offset = offset0 + offset3 - offset2;
+            end_offset = offset0 + offset3 - offset2;
         } else {
             /* set position past last word (emacs behaviour) */
-            s->offset = offset3;
+            end_offset = offset3;
         }
         break;
     case CMD_TRANSPOSE_LINES:
@@ -316,17 +336,16 @@ static void do_transpose(EditState *s, int cmd)
         offset3 = s->offset;
         do_bol(s);
         offset2 = s->offset;
-        if (offset2)
-            s->offset--;
-        offset1 = s->offset;
+        eb_prevc(b, offset2, &offset1);    /* skip line feed */
+        s->offset = offset1;
         do_bol(s);
         offset0 = s->offset;
         if (s->qe_state->flag_split_window_change_focus) {
             /* set position to start of second line */
-            s->offset = offset0 + offset3 - offset1;
+            end_offset = offset0 + offset3 - offset1;
         } else {
             /* set position past second line (emacs behaviour) */
-            s->offset = offset3;
+            end_offset = offset3;
         }
         break;
     default:
@@ -335,14 +354,27 @@ static void do_transpose(EditState *s, int cmd)
     size0 = offset1 - offset0;
     size1 = offset2 - offset1;
     size2 = offset3 - offset2;
-    if (size0 + size1 + size2 > ssizeof(buf)) {
-        /* Should use temporary buffers */
-        return;
+
+    if (!b->b_styles && size0 + size1 + size2 <= 1024) {
+        u8 buf[1024];
+        /* Use fast method and generate single undo record */
+        eb_read(b, offset2, buf, size2);
+        eb_read(b, offset1, buf + size2, size1);
+        eb_read(b, offset0, buf + size2 + size1, size0);
+        eb_write(b, offset0, buf, size0 + size1 + size2);
+    } else {
+        EditBuffer *b1 = eb_new("*tmp*", BF_SYSTEM | (b->flags & BF_STYLES));
+
+        eb_set_charset(b1, b->charset);
+        eb_insert_buffer_convert(b1, 0, b, offset2, size2);
+        eb_insert_buffer_convert(b1, size2, b, offset1, size1);
+        eb_insert_buffer_convert(b1, size2 + size1, b, offset0, size0);
+        /* XXX: This will create 2 undo records */
+        eb_delete(b, offset0, size0 + size1 + size2);
+        eb_insert_buffer_convert(b, offset0, b1, 0, size0 + size1 + size2);
+        eb_free(b1);
     }
-    eb_read(s->b, offset2, buf, size2);
-    eb_read(s->b, offset1, buf + size2, size1);
-    eb_read(s->b, offset0, buf + size2 + size1, size0);
-    eb_write(s->b, offset0, buf, size0 + size1 + size2);
+    s->offset = end_offset;
 }
 
 /* remove a key binding from mode or globally */
