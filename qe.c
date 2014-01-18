@@ -3273,11 +3273,13 @@ int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 int get_non_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                            int *offsetp, int line_num)
 {
+    int len;
+
     if (s->b->b_styles) {
         return get_staticly_colorized_line(s, buf, buf_size, offsetp, line_num);
     }
 
-    int len = eb_get_line(s->b, buf, buf_size, offsetp);
+    len = eb_get_line(s->b, buf, buf_size, offsetp);
     // XXX: should force \0 instead of \n
     buf[len] = '\n';
     return len;
