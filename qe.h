@@ -900,7 +900,7 @@ int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
 int eb_prev_line(EditBuffer *b, int offset);
 int eb_goto_bol(EditBuffer *b, int offset);
 int eb_goto_bol2(EditBuffer *b, int offset, int *countp);
-int eb_is_empty_line(EditBuffer *b, int offset);
+int eb_is_blank_line(EditBuffer *b, int offset, int *offset1);
 int eb_goto_eol(EditBuffer *b, int offset);
 int eb_next_line(EditBuffer *b, int offset);
 

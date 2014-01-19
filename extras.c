@@ -121,27 +121,6 @@ void do_delete_horizontal_space(EditState *s)
     eb_delete_range(s->b, from, to);
 }
 
-/* test for blank line at offset.
- * return 0 if not blank.
- * return 1 if blank and boundaries in *offset0, *offset1.
- */
-static int eb_is_blank_line(EditBuffer *b, int offset, 
-                            int *offset0, int *offset1)
-{
-    int c, bol;
-    
-    bol = offset = eb_goto_bol(b, offset);
-    while ((c = eb_nextc(b, offset, &offset)) != '\n') {
-        if (!qe_isblank(c))
-            return 0;
-    }
-    if (offset0)
-        *offset0 = bol;
-    if (offset1)
-        *offset1 = offset;
-    return 1;
-}
-
 void do_delete_blank_lines(EditState *s)
 {
     /* Delete blank lines:
@@ -150,15 +129,15 @@ void do_delete_blank_lines(EditState *s)
      * On nonblank line, delete any immediately following blank lines.
      */
     /* XXX: should simplify */
-    int from, offset, offset1, all = 0;
+    int from, offset, offset0, offset1, all = 0;
     EditBuffer *b = s->b;
 
-    offset = s->offset;
-    if (eb_is_blank_line(b, offset, &offset, &offset1)) {
+    offset = eb_goto_bol(b, s->offset);
+    if (eb_is_blank_line(b, offset, &offset1)) {
         if ((offset == 0 || !eb_is_blank_line(b,
-                             eb_prev_line(b, offset), NULL, NULL))
+                             eb_prev_line(b, offset), NULL))
         &&  (offset1 >= b->total_size || !eb_is_blank_line(b,
-                            offset1, NULL, NULL))) {
+                            offset1, NULL))) {
             all = 1;
         }
     } else {
@@ -168,8 +147,10 @@ void do_delete_blank_lines(EditState *s)
 
     from = offset;
     while (from > 0) {
-        if (!eb_is_blank_line(b, eb_prev_line(b, from), &from, NULL))
+        offset0 = eb_prev_line(b, from);
+        if (!eb_is_blank_line(b, offset0, NULL))
             break;
+        from = offset0;
     }
     if (!all) {
         eb_delete_range(b, from, offset);
@@ -177,7 +158,7 @@ void do_delete_blank_lines(EditState *s)
         from = offset = eb_next_line(b, from);
     }
     while (offset < s->b->total_size) {
-        if (!eb_is_blank_line(b, offset, NULL, &offset))
+        if (!eb_is_blank_line(b, offset, &offset))
             break;
     }
     eb_delete_range(b, from, offset);

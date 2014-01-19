@@ -494,7 +494,7 @@ int eb_next_paragraph(EditBuffer *b, int offset)
     for (;;) {
         if (offset >= b->total_size)
             break;
-        if (eb_is_empty_line(b, offset)) {
+        if (eb_is_blank_line(b, offset, NULL)) {
             if (text_found)
                 break;
         } else {
@@ -512,8 +512,7 @@ int eb_start_paragraph(EditBuffer *b, int offset)
         if (offset <= 0)
             break;
         /* check if only spaces */
-        if (eb_is_empty_line(b, offset)) {
-            offset = eb_next_line(b, offset);
+        if (eb_is_blank_line(b, offset, &offset)) {
             break;
         }
         eb_prevc(b, offset, &offset);
@@ -539,7 +538,7 @@ void do_backward_paragraph(EditState *s)
         if (offset <= 0)
             break;
         offset = eb_goto_bol(s->b, offset);
-        if (!eb_is_empty_line(s->b, offset))
+        if (!eb_is_blank_line(s->b, offset, NULL))
             break;
         /* line just before */
         eb_prevc(s->b, offset, &offset);
@@ -589,10 +588,10 @@ void do_fill_paragraph(EditState *s)
     /* compute indent size */
     indent_size = 0;
     offset = eb_next_line(s->b, par_start);
-    if (!eb_is_empty_line(s->b, offset)) {
+    if (!eb_is_blank_line(s->b, offset, NULL)) {
         while (offset < par_end) {
             c = eb_nextc(s->b, offset, &offset);
-            if (!qe_isspace(c))
+            if (!qe_isblank(c))
                 break;
             indent_size++;
         }

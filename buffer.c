@@ -2009,18 +2009,21 @@ int eb_goto_bol2(EditBuffer *b, int offset, int *countp)
     return offset;
 }
 
-int eb_is_empty_line(EditBuffer *b, int offset)
+/* test for blank line starting at <offset>.
+ * return 0 if not blank.
+ * return 1 if blank and store start of next line in <*offset1>.
+ */
+int eb_is_blank_line(EditBuffer *b, int offset, int *offset1)
 {
     int c;
-
-    for (;;) {
-        c = eb_nextc(b, offset, &offset);
-        if (c == '\n')
-            return 1;
-        if (!qe_isspace(c))
-            break;
+    
+    while ((c = eb_nextc(b, offset, &offset)) != '\n') {
+        if (!qe_isblank(c))
+            return 0;
     }
-    return 0;
+    if (offset1)
+        *offset1 = offset;
+    return 1;
 }
 
 /* return offset of the end of the line containing offset */
