@@ -106,22 +106,81 @@ void do_compare_windows(EditState *s, int argval)
 
 void do_delete_horizontal_space(EditState *s)
 {
-    int from, to, offset, ch;
+    int from, to, offset;
 
+    /* boundary check unnecessary because eb_prevc returns '\n'
+     * at bof and eof and qe_isblank return true only on SPC and TAB.
+     */
     from = to = s->offset;
-    while (from > 0) {
-        ch = eb_prevc(s->b, from, &offset);
-        if (!qe_isblank(ch))
-            break;
+    while (qe_isblank(eb_prevc(s->b, from, &offset)))
         from = offset;
-    }
-    while (to < s->b->total_size) {
-        ch = eb_nextc(s->b, to, &offset);
-        if (!qe_isblank(ch))
-            break;
+
+    while (qe_isblank(eb_nextc(s->b, to, &offset)))
         to = offset;
+
+    eb_delete_range(s->b, from, to);
+}
+
+/* test for blank line at offset.
+ * return 0 if not blank.
+ * return 1 if blank and boundaries in *offset0, *offset1.
+ */
+static int eb_is_blank_line(EditBuffer *b, int offset, 
+                            int *offset0, int *offset1)
+{
+    int c, bol;
+    
+    bol = offset = eb_goto_bol(b, offset);
+    while ((c = eb_nextc(b, offset, &offset)) != '\n') {
+        if (!qe_isblank(c))
+            return 0;
     }
-    s->offset = eb_delete_range(s->b, from, to);
+    if (offset0)
+        *offset0 = bol;
+    if (offset1)
+        *offset1 = offset;
+    return 1;
+}
+
+void do_delete_blank_lines(EditState *s)
+{
+    /* Delete blank lines:
+     * On blank line, delete all surrounding blank lines, leaving just one.
+     * On isolated blank line, delete that one.
+     * On nonblank line, delete any immediately following blank lines.
+     */
+    /* XXX: should simplify */
+    int from, offset, offset1, all = 0;
+    EditBuffer *b = s->b;
+
+    offset = s->offset;
+    if (eb_is_blank_line(b, offset, &offset, &offset1)) {
+        if ((offset == 0 || !eb_is_blank_line(b,
+                             eb_prev_line(b, offset), NULL, NULL))
+        &&  (offset1 >= b->total_size || !eb_is_blank_line(b,
+                            offset1, NULL, NULL))) {
+            all = 1;
+        }
+    } else {
+        offset = eb_next_paragraph(b, offset);
+        all = 1;
+    }
+
+    from = offset;
+    while (from > 0) {
+        if (!eb_is_blank_line(b, eb_prev_line(b, from), &from, NULL))
+            break;
+    }
+    if (!all) {
+        eb_delete_range(b, from, offset);
+        /* Keep current blank line */
+        from = offset = eb_next_line(b, from);
+    }
+    while (offset < s->b->total_size) {
+        if (!eb_is_blank_line(b, offset, NULL, &offset))
+            break;
+    }
+    eb_delete_range(b, from, offset);
 }
 
 void do_show_date_and_time(EditState *s, int argval)
@@ -675,6 +734,8 @@ static CmdDef extra_commands[] = {
           "compare-windows", do_compare_windows, ESi, "ui" )
     CMD2( KEY_META('\\'), KEY_NONE,
           "delete-horizontal-space", do_delete_horizontal_space, ES, "*")
+    CMD2( KEY_CTRLX(KEY_CTRL('o')), KEY_NONE,
+          "delete-blank-lines", do_delete_blank_lines, ES, "*")
     CMD2( KEY_CTRLX('t'), KEY_NONE,
           "show-date-and-time", do_show_date_and_time, ESi, "ui")
 

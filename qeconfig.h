@@ -163,10 +163,14 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Search and replace ----------------*/
 
+    /* M-C-s should be bound to isearch-forward-regex */
+    /* mg binds search-forward to M-s */
     CMD3( KEY_META('S'), KEY_NONE,
           "search-forward", do_search_string, ESsi, 1,
 	  "s{Search forward: }|search|"
 	  "v")
+    /* M-C-r should be bound to isearch-backward-regex */
+    /* mg binds search-forward to M-r */
     CMD3( KEY_META('R'), KEY_NONE,
           "search-backward", do_search_string, ESsi, -1,
 	  "s{Search backward: }|search|"
@@ -181,6 +185,7 @@ static CmdDef basic_commands[] = {
 	  "*" "s{Query replace: }|search|"
 	  "s{With: }|replace|")
     /* passing argument restricts replace to word matches */
+    /* XXX: non standard binding */
     CMD2( KEY_META('r'), KEY_NONE,
           "replace-string", do_replace_string, ESssi,
 	  "*" "s{Replace String: }|search|"
@@ -191,9 +196,9 @@ static CmdDef basic_commands[] = {
 
     CMD0( KEY_META('h'), KEY_NONE,
           "mark-paragraph", do_mark_paragraph)
-    CMD0( KEY_META('{'), KEY_NONE,
+    CMD0( KEY_META('{'), KEY_META('['),
           "backward-paragraph", do_backward_paragraph)
-    CMD0( KEY_META('}'), KEY_NONE,
+    CMD0( KEY_META('}'), KEY_META(']'),
           "forward-paragraph", do_forward_paragraph)
     CMD2( KEY_META('q'), KEY_NONE,
           "fill-paragraph", do_fill_paragraph, ES, "*")
