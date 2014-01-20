@@ -831,6 +831,7 @@ static void html_mode_close(EditState *s)
 /* search for HTML tag */
 static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
 {
+    static const uint32_t magic = (1 << '\r') | (1 << '\n') | (1 << '\t') | (1 << '\033');
     const unsigned char *p = p1->buf;
     int c, score;
 
@@ -839,9 +840,9 @@ static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
         c = *p;
         if (c == '\0')
             break;
-        if (c < 32 && (c != '\r' && c != '\n' && c != '\t' && c != '\033'))
+        if (c < 32 && !(magic & (1 << c)))
             return 0;
-        if (c == '<' && stristart(cs8(p), "<HTML", NULL))
+        if (c == '<' && stristart(cs8(p), "<html", NULL))
             score = 100;
         p++;
     }

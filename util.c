@@ -740,23 +740,52 @@ int strxcmp(const char *str1, const char *str2)
     return 0;
 }
 
-int ustristart(const unsigned int *str, const char *val,
-               const unsigned int **ptr)
+int ustrstart(const unsigned int *str, const char *val,
+              const unsigned int **pp)
 {
-    const unsigned int *p;
-    const char *q;
-    p = str;
-    q = val;
-    while (*q != '\0') {
-        /* XXX: should filter style information */
-        if (qe_toupper(*p) != qe_toupper(*q))
+    for (; *val != '\0'; val++, str++) {
+        /* assuming val is ASCII or Latin1 */
+        if (*str != *val)
             return 0;
-        p++;
-        q++;
     }
-    if (ptr)
-        *ptr = p;
+    if (pp)
+        *pp = str;
     return 1;
+}
+
+const unsigned int *ustrstr(const unsigned int *str, const char *val)
+{
+    int c = val[0];
+
+    for (; *str != '\0'; str++) {
+        if (*str == c && ustrstart(str, val, NULL))
+            return str;
+    }
+    return NULL;
+}
+
+int ustristart(const unsigned int *str, const char *val,
+               const unsigned int **pp)
+{
+    for (; *val != '\0'; val++, str++) {
+        /* assuming val is ASCII or Latin1 */
+        if (qe_toupper(*str) != qe_toupper(*val))
+            return 0;
+    }
+    if (pp)
+        *pp = str;
+    return 1;
+}
+
+const unsigned int *ustristr(const unsigned int *str, const char *val)
+{
+    int c = qe_toupper(val[0]);
+
+    for (; *str != '\0'; str++) {
+        if (qe_toupper(*str) == c && ustristart(str, val, NULL))
+            return str;
+    }
+    return NULL;
 }
 
 int umemcmp(const unsigned int *s1, const unsigned int *s2, int count)

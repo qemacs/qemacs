@@ -119,9 +119,6 @@ void c_colorize_line(unsigned int *buf, int len,
         c = *p++;
 
         switch (c) {
-        case '\n':
-            p--;
-            goto the_end;
         case '/':
             if (*p == '*') {
                 /* normal comment */

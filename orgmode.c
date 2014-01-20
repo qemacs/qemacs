@@ -49,88 +49,38 @@ static int OrgBulletStyles[BULLET_STYLES] = {
     QE_STYLE_TYPE,
 };
 
-static int str4_match_str(unsigned int *str, int n, const char *str1,
-                          int *matchlen)
+static int org_todo_keyword(const unsigned int *str)
 {
-    int i;
-
-    for (i = 0; i < n && str1[i]; i++) {
-        if (str[i] != str1[i])
-            return 0;
-    }
-    if (matchlen)
-        *matchlen = i;
-    return 1;
-}
-
-#if 0
-static int str4_find_str(unsigned int *str, int n, const char *str1)
-{
-    int i, c = str1[0];
-
-    for (i = 0; i < n; i++) {
-        if (str[i] == c && str4_match_str(str + i, n - i, str1, NULL))
-            return i;
-    }
-    return -1;
-}
-#endif
-
-static int str4_match_istr(unsigned int *str, int n, const char *str1,
-                           int *matchlen)
-{
-    int i;
-
-    for (i = 0; i < n && str1[i]; i++) {
-        if (qe_toupper(str[i]) != qe_toupper(str1[i]))
-            return 0;
-    }
-    if (matchlen)
-        *matchlen = i;
-    return 1;
-}
-
-static int str4_find_istr(unsigned int *str, int n, const char *str1)
-{
-    int i, c = qe_toupper(str1[0]);
-
-    for (i = 0; i < n; i++) {
-        if (qe_toupper(str[i]) == c
-        &&  str4_match_istr(str + i, n - i, str1, NULL)) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-static int org_todo_keyword(unsigned int *str, int n)
-{
-    int kw, j;
+    const unsigned int *p;
+    int kw;
 
     for (kw = 0; kw < countof(OrgTodoKeywords); kw++) {
-        if (str4_match_str(str, n, OrgTodoKeywords[kw].keyword, &j)
-        &&  j < n && str[j] == ' ')
+        if (ustrstart(str, OrgTodoKeywords[kw].keyword, &p) && *p == ' ')
             return kw;
     }
     return -1;
 }
 
-static int org_scan_chunk(unsigned int *str, int i0, int n,
+static int org_scan_chunk(const unsigned int *str,
                           const char *begin, const char *end, int min_width)
 {
-    int i = i0, j;
+    int i, j;
 
-    for (j = 0; begin[j]; j++) {
-        if (str[i + j] != begin[j])
+    for (i = 0; begin[i]; i++) {
+        if (str[i] != begin[i])
             return 0;
     }
-    for (i += j + min_width; i < n; i++) {
+    for (j = 0; j < min_width; j++) {
+        if (str[i + j] == '\0')
+            return 0;
+    }
+    for (i += j; str[i] != '\0'; i++) {
         for (j = 0; end[j]; j++) {
             if (str[i + j] != end[j])
                 break;
         }
         if (!end[j])
-            return i + j - i0;
+            return i + j;
     }
     return 0;
 }
@@ -142,9 +92,9 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
     int i = 0, j = 0, kw, base_style = 0, has_space;
 
     if (colstate & IN_BLOCK) {
-        for (j = i; j < n && str[j] == ' '; )
+        for (j = i; str[j] == ' '; )
             j++;
-        if (str4_match_istr(str + j, n - j, "#+end_", NULL)) {
+        if (ustristart(str + j, "#+end_", NULL)) {
             colstate &= ~(IN_BLOCK | IN_LISP);
         } else {
             if (colstate & IN_LISP) {
@@ -159,15 +109,15 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
 
     if (str[i] == '*') {
         /* Check for heading: initial string of '*' followed by ' ' */
-        for (j = i + 1; j < n && str[j] == '*'; j++)
+        for (j = i + 1; str[j] == '*'; j++)
             continue;
 
-        if (j < n && str[j] == ' ') {
+        if (str[j] == ' ') {
             base_style = OrgBulletStyles[(j - i - 1) % BULLET_STYLES];
             set_color(str + i, str + j + 1, base_style);
             i = j + 1;
 
-            kw = org_todo_keyword(str + i, n - i);
+            kw = org_todo_keyword(str + i);
             if (kw > -1) {
                 j = i + strlen(OrgTodoKeywords[kw].keyword) + 1;
                 set_color(str + i, str + j, OrgTodoKeywords[kw].style);
@@ -175,23 +125,23 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
             }
         }
     } else {
-        while (i < n && str[i] == ' ')
+        while (str[i] == ' ')
             i++;
 
         if (str[i] == '#') {
-            if (str[i+1] == ' ') {  /* [ \t]*[#][ ] -> comment */
+            if (str[i + 1] == ' ') {  /* [ \t]*[#][ ] -> comment */
                 set_color(str + i, str + n, QE_STYLE_COMMENT);
                 i = n;
             } else
-            if (str[i+1] == '+') {  /* [ \t]*[#][+] -> metadata */
+            if (str[i + 1] == '+') {  /* [ \t]*[#][+] -> metadata */
                 /* Should interpret litteral examples:
                  * #+BEGIN_xxx / #+END_xxx
                  * #+BEGIN_LATEX / #+END_LATEX
                  * #+BEGIN_SRC / #+END_SRC
                  */
-                if (str4_match_istr(str + i, n - i, "#+begin_", NULL)) {
+                if (ustristart(str + i, "#+begin_", NULL)) {
                     colstate |= IN_BLOCK;
-                    if (str4_find_istr(str + i, n - i, "lisp")) {
+                    if (ustristr(str + i, "lisp")) {
                         colstate |= IN_LISP;
                     }
                 }
@@ -221,43 +171,46 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
 
     has_space = 1;
 
-    while (i < n) {
+    for (;;) {
         int chunk = 0;
         int c = str[i];
+
+        if (c == '\0')
+            break;
 
         if (has_space || c == '\\') {
             switch (c) {
             case '#':
                 break;
             case '*':  /* bold */
-                chunk = org_scan_chunk(str, i, n, "*", "*", 1);
+                chunk = org_scan_chunk(str + i, "*", "*", 1);
                 break;
             case '/':  /* italic */
-                chunk = org_scan_chunk(str, i, n, "/", "/", 1);
+                chunk = org_scan_chunk(str + i, "/", "/", 1);
                 break;
             case '_':  /* underline */
-                chunk = org_scan_chunk(str, i, n, "_", "_", 1);
+                chunk = org_scan_chunk(str + i, "_", "_", 1);
                 break;
             case '=':  /* code */
-                chunk = org_scan_chunk(str, i, n, "=", "=", 1);
+                chunk = org_scan_chunk(str + i, "=", "=", 1);
                 break;
             case '~':  /* verbatim */
-                chunk = org_scan_chunk(str, i, n, "~", "~", 1);
+                chunk = org_scan_chunk(str + i, "~", "~", 1);
                 break;
             case '+':  /* strike-through */
-                chunk = org_scan_chunk(str, i, n, "+", "+", 1);
+                chunk = org_scan_chunk(str + i, "+", "+", 1);
                 break;
             case '@':  /* litteral stuff @@...@@ */
-                chunk = org_scan_chunk(str, i, n, "@@", "@@", 1);
+                chunk = org_scan_chunk(str + i, "@@", "@@", 1);
                 break;
             case '[':  /* wiki syntax for links [[...]..[...]] */
-                chunk = org_scan_chunk(str, i, n, "[[", "]]", 1);
+                chunk = org_scan_chunk(str + i, "[[", "]]", 1);
                 break;
             case '{': /* LaTeX syntax for macros {{{...}}} and {} */
                 if (str[i + 1] == '}')
                     chunk = 2;
                 else
-                    chunk = org_scan_chunk(str, i, n, "{{{", "}}}", 1);
+                    chunk = org_scan_chunk(str + i, "{{{", "}}}", 1);
                 break;
             case '\\':  /* TeX syntax: \keyword \- \[ \] \( \) */
                 if (str[i + 1] == '\\') {  /* \\ escape */
@@ -269,16 +222,15 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
                     chunk = 2;
                     break;
                 }
-                for (chunk = 1; i + chunk < n
-                && qe_isalnum(str[i + chunk]); chunk++) {
+                for (chunk = 1; qe_isalnum(str[i + chunk]); chunk++) {
                     continue;
                 }
                 if (chunk > 0)
                     break;
-                chunk = org_scan_chunk(str, i, n, "\\(", "\\)", 1);
+                chunk = org_scan_chunk(str + i, "\\(", "\\)", 1);
                 if (chunk > 0)
                     break;
-                chunk = org_scan_chunk(str, i, n, "\\[", "\\]", 1);
+                chunk = org_scan_chunk(str + i, "\\[", "\\]", 1);
                 if (chunk > 0)
                     break;
                 break;

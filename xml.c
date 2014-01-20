@@ -27,10 +27,10 @@ enum {
     XML_TAG_SCRIPT,
     XML_TAG_STYLE,
     XML_STYLE,
-    XML_SCRIPT = 0x10, /* special mode for inside a script, ored with c mode */
+    XML_SCRIPT = 0x80, /* special mode for inside a script, ored with c mode */
 };
 
-static void xml_colorize_line(unsigned int *buf, __unused__ int len,
+static void xml_colorize_line(unsigned int *buf, int len,
                               int *colorize_state_ptr, int state_only)
 {
     int c, state;
@@ -58,16 +58,18 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
     for (;;) {
         p_start = p;
         c = *p;
-        if (c == '\n') {
-            goto the_end;
-        } else if (c == '<' && state == 0) {
+
+        if (c == '\0')
+            break;
+
+        if (c == '<' && state == 0) {
             p++;
             if (p[0] == '!' && p[1] == '-' && p[2] == '-') {
                 p += 3;
                 state = XML_COMMENT;
                 /* wait until end of comment */
             parse_comment:
-                while (*p != '\n') {
+                while (*p != '\0') {
                     if (p[0] == '-' && p[1] == '-' && p[2] == '>') {
                         p += 3;
                         state = 0;
@@ -81,16 +83,18 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
                 /* we are in a tag */
                 if (ustristart(p, "SCRIPT", (const unsigned int **)&p)) {
                     state = XML_TAG_SCRIPT;
-                } else if (ustristart(p, "STYLE", (const unsigned int **)&p)) {
+                } else
+                if (ustristart(p, "STYLE", (const unsigned int **)&p)) {
                     state = XML_TAG_STYLE;
                 }
             parse_tag:
-                while (*p != '\n') {
+                while (*p != '\0') {
                     if (*p == '>') {
                         p++;
                         if (state == XML_TAG_SCRIPT)
                             state = XML_SCRIPT;
-                        else if (state == XML_TAG_STYLE)
+                        else
+                        if (state == XML_TAG_STYLE)
                             state = XML_STYLE;
                         else
                             state = 0;
@@ -105,19 +109,24 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
                     p_start = p;
                 parse_script:
                     for (;;) {
-                        if (*p == '\n') {
+                        if (*p == '\0') {
                             state &= ~XML_SCRIPT;
+                            /* XXX: should have javascript specific colorize_func */
                             c_colorize_line(p_start, p - p_start, &state, state_only);
                             state |= XML_SCRIPT;
                             break;
-                        } else if (ustristart(p, "</SCRIPT", (const unsigned int **)&p1)) {
-                            while (*p1 != '\n' && *p1 != '>')
-                                p1++;
-                            if (*p1 == '>')
-                                p1++;
-                            /* XXX: need to add '\n' */
+                        } else
+                        if (ustristart(p, "</SCRIPT", (const unsigned int **)&p1)) {
+                            while (*p1 != '\0') {
+                                if (*p1++ == '>')
+                                    break;
+                            }
                             state &= ~XML_SCRIPT;
+                            c = *p;
+                            *p = '\0';
+                            /* XXX: should have javascript specific colorize_func */
                             c_colorize_line(p_start, p - p_start, &state, state_only);
+                            *p = c;
                             state |= XML_SCRIPT;
                             set_color(p, p1, QE_STYLE_TAG);
                             p = p1;
@@ -127,19 +136,21 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
                             p++;
                         }
                     }
-                } else if (state == XML_STYLE) {
+                } else
+                if (state == XML_STYLE) {
                     /* stylesheet coloring */
                     p_start = p;
                 parse_style:
                     for (;;) {
-                        if (*p == '\n') {
+                        if (*p == '\0') {
                             set_color(p_start, p, QE_STYLE_CSS);
                             break;
-                        } else if (ustristart(p, "</STYLE", (const unsigned int **)&p1)) {
-                            while (*p1 != '\n' && *p1 != '>')
-                                p1++;
-                            if (*p1 == '>')
-                                p1++;
+                        } else
+                        if (ustristart(p, "</STYLE", (const unsigned int **)&p1)) {
+                            while (*p1 != '\0') {
+                                if (*p1++ != '>')
+                                    break;
+                            }
                             set_color(p_start, p, QE_STYLE_CSS);
                             set_color(p, p1, QE_STYLE_TAG);
                             p = p1;
@@ -156,7 +167,6 @@ static void xml_colorize_line(unsigned int *buf, __unused__ int len,
             p++;
         }
     }
- the_end:
     *colorize_state_ptr = state;
 }
 

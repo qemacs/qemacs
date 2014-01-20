@@ -39,8 +39,8 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
 
     if (colstate & IN_STRING) {
         for (j = i; j < n;) {
-            if (str[j] == '\\') {
-                j += 2;
+            if (str[j] == '\\' && ++j < n) {
+                j++;
             } else
             if (str[j++] == '"') {
                 colstate &= ~IN_STRING;
@@ -52,7 +52,7 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
     }
     if (colstate & IN_COMMENT) {
         for (j = i; j < n; j++) {
-            if (str[j] == '|' && str[j + 1] == '#') {
+            if (str[j] == '|' && j + 1 < n && str[j + 1] == '#') {
                 j += 2;
                 colstate &= ~IN_COMMENT;
                 break;
@@ -99,7 +99,6 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
             break;
         }
         i++;
-        continue;
     }
     *statep = colstate;
 }

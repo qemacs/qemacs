@@ -42,19 +42,26 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
         p_start = p;
         c = *p;
         switch (c) {
-        case '\n':
+        case '\0':
+        case '\n':      /* Should not happen */
             goto the_end;
         case '`':
             p++;
             /* a ``string'' */
             if (*p == '`') {
-                while (1) {
+                for (;;) {
                     p++;
-                    if (*p == '\n' || (*p == '\'' && *(p+1) == '\''))
+                    if (*p == '\0') {
+                        /* Should either flag an error or propagate
+                         * string style to the next line
+                         */
                         break;
+                    }
+                    if (*p == '\'' && p[1] == '\'') {
+                        p += 2;
+                        break;
+                    }
                 }
-                if (*p == '\'' && *++p == '\'')
-                    p++;
                 set_color(p_start, p, QE_STYLE_STRING);
             }
             break;
@@ -64,7 +71,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
             if (*p == '\'' || *p == '\"' || *p == '~' || *p == '%' || *p == '\\') {
                 p++;
             } else {
-                while (*p != '{' && *p != '[' && *p != '\n' && *p != ' ' && *p != '\\')
+                while (*p != '\0' && *p != '{' && *p != '[' && *p != ' ' && *p != '\\')
                     p++;
             }
             set_color(p_start, p, QE_STYLE_FUNCTION);
@@ -76,7 +83,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
                 if (*p++ == '[') {
                     /* handle [keyword] */
                     p_start = p;
-                    while (*p != ']' && *p != '\n')
+                    while (*p != '\0' && *p != ']')
                         p++;
                     set_color(p_start, p, QE_STYLE_KEYWORD);
                     if (*p == ']')
@@ -85,7 +92,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
                     int braces = 0;
                     /* handle {variable} */
                     p_start = p;
-                    while (*p != '\n') {
+                    while (*p != '\0') {
                         if (*p == '{') {
                             braces++;
                         } else
@@ -108,7 +115,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
         case '%':
             p++;
             /* line comment */
-            while (*p != '\n')
+            while (*p != '\0')
                 p++;
             set_color(p_start, p, QE_STYLE_COMMENT);
             break;

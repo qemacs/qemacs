@@ -3180,20 +3180,14 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 
         for (l = s->colorize_nb_valid_lines; l <= line_num; l++) {
             len = eb_get_line(s->b, buf, buf_size, &offset);
-            // XXX: should force \0 instead of \n
-            buf[len] = '\n';
-
             s->colorize_func(buf, len, &colorize_state, 1);
             s->colorize_states[l] = colorize_state;
         }
     }
 
     /* compute line color */
-    len = eb_get_line(s->b, buf, buf_size, offsetp);
-    // XXX: should force \0 instead of \n
-    buf[len] = '\n';
-
     colorize_state = s->colorize_states[line_num];
+    len = eb_get_line(s->b, buf, buf_size, offsetp);
     s->colorize_func(buf, len, &colorize_state, 0);
 
     /* XXX: if state is same as previous, minimize invalid region? */
@@ -3272,16 +3266,11 @@ int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 int get_non_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                            int *offsetp, int line_num)
 {
-    int len;
-
     if (s->b->b_styles) {
         return get_staticly_colorized_line(s, buf, buf_size, offsetp, line_num);
+    } else {
+        return eb_get_line(s->b, buf, buf_size, offsetp);
     }
-
-    len = eb_get_line(s->b, buf, buf_size, offsetp);
-    // XXX: should force \0 instead of \n
-    buf[len] = '\n';
-    return len;
 }
 
 #define RLE_EMBEDDINGS_SIZE    128

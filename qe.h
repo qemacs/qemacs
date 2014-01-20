@@ -281,13 +281,18 @@ const void *memstr(const void *buf, int size, const char *str);
 int stristart(const char *str, const char *val, const char **ptr);
 int strxstart(const char *str, const char *val, const char **ptr);
 int strxcmp(const char *str1, const char *str2);
-int ustristart(const unsigned int *str, const char *val, const unsigned int **ptr);
+int ustrstart(const unsigned int *str, const char *val,
+              const unsigned int **pp);
+int ustristart(const unsigned int *str, const char *val,
+               const unsigned int **pp);
+const unsigned int *ustrstr(const unsigned int *str, const char *val);
+const unsigned int *ustristr(const unsigned int *str, const char *val);
 static inline unsigned int *umemmove(unsigned int *dest,
-                                     unsigned int *src, int count) {
+                                     const unsigned int *src, int count) {
     return (unsigned int *)memmove(dest, src, count * sizeof(unsigned int));
 }
 static inline unsigned int *umemcpy(unsigned int *dest,
-                                    unsigned int *src, int count) {
+                                    const unsigned int *src, int count) {
     return (unsigned int *)memcpy(dest, src, count * sizeof(unsigned int));
 }
 int umemcmp(const unsigned int *s1, const unsigned int *s2, int count);
@@ -968,9 +973,9 @@ typedef int (*GetColorizedLineFunc)(EditState *s,
                                     unsigned int *buf, int buf_size,
                                     int *offset1, int line_num);
 
-/* colorize a line : this function modifies buf to set the char
-   styles. 'buf' is guaranted to have one more char after its len
-   (it is either '\n' or '\0') */
+/* colorize a line: this function modifies buf to set the char
+ * styles. 'buf' is guaranted to have one more '\0' char after its len.
+ */
 typedef void (*ColorizeFunc)(unsigned int *buf, int len,
                              int *colorize_state_ptr, int state_only);
 

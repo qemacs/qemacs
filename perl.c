@@ -37,6 +37,7 @@
 #define IN_INPUT        0x08
 
 /* CG: bogus if multiple regions are colorized, should use signature */
+/* XXX: should move this to mode data */
 static unsigned int perl_eos[100];
 static int perl_eos_len;
 
@@ -185,8 +186,9 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
                     s2 = perl_var(str, s1, n);
                 }
                 if (s2 > s1) {
-                    umemcpy(perl_eos, str + s1, s2 - s1);
-                    perl_eos_len = s2 - s1;
+                    perl_eos_len = min((int)(s2 - s1), countof(perl_eos) - 1);
+                    umemcpy(perl_eos, str + s1, perl_eos_len);
+                    perl_eos[perl_eos_len] = '\0';
                     colstate |= IN_INPUT;
                 }
                 i += 2;

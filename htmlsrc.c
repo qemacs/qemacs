@@ -66,7 +66,6 @@ enum {
     HTML_SCRIPT    = 0x80,      /* <SCRIPT> [...] </SCRIPT> */
 };
 
-/* CG: Should rely on len instead of '\n' */
 static void htmlsrc_colorize_line(unsigned int *buf, int len,
                                   int *colorize_state_ptr, int state_only)
 {
@@ -89,9 +88,6 @@ static void htmlsrc_colorize_line(unsigned int *buf, int len,
         p_start = p;
         c = *p;
 
-        if (c == '\n')
-            break;
-
         if (state & HTML_SCRIPTTAG) {
             while (p < p_end) {
                 if (*p++ == '>') {
@@ -108,8 +104,11 @@ static void htmlsrc_colorize_line(unsigned int *buf, int len,
                     break;
             }
             js_state = state & ~HTML_SCRIPT;
-            c_colorize_line (p_start, p - p_start,
-                             &js_state, state_only);
+            c = *p;     /* save char to set '\0' delimiter */
+            *p = '\0';
+            /* XXX: should have javascript specific colorize_func */
+            c_colorize_line(p_start, p - p_start, &js_state, state_only);
+            *p = c;
             state = js_state | HTML_SCRIPT;
             if (p < p_end) {
                 p_start = p;
@@ -121,8 +120,7 @@ static void htmlsrc_colorize_line(unsigned int *buf, int len,
         }
         if (state & HTML_COMMENT) {
             for (; p < p_end; p++) {
-                if (*p == '-' && p[1] == '-'
-                &&  p[2] == '>') {
+                if (*p == '-' && p[1] == '-' && p[2] == '>') {
                     p += 2;
                     state &= ~HTML_COMMENT;
                     break;
@@ -207,7 +205,7 @@ static void htmlsrc_colorize_line(unsigned int *buf, int len,
             ||   p[1] == '!' || p[1] == '/' || p[1] == '?')) {
                 //set_color(p_start, p, QE_STYLE_HTML_TEXT);
                 p_start = p;
-                if (ustristart (p, "<script", NULL)) {
+                if (ustristart(p, "<script", NULL)) {
                     state |= HTML_SCRIPTTAG;
                     break;
                 }
@@ -224,7 +222,7 @@ static void htmlsrc_colorize_line(unsigned int *buf, int len,
                     state |= HTML_TAG;
                 break;
             }
-            if (*p == '&' && get_html_entity (p)) {
+            if (*p == '&' && get_html_entity(p)) {
                 state |= HTML_ENTITY;
                 break;
             }
