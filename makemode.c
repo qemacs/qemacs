@@ -161,6 +161,14 @@ static CmdDef makefile_commands[] = {
 
 static ModeDef makefile_mode;
 
+static int makefile_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
+{
+    text_mode_init(s, saved_data);
+    s->b->tab_width = 8;
+    s->indent_tabs_mode = 1;
+    return 0;
+}
+
 static int makefile_init(void)
 {
     /* Makefile mode is almost like the text mode, so we copy and patch it */
@@ -168,6 +176,7 @@ static int makefile_init(void)
     makefile_mode.name = "Makefile";
     makefile_mode.extensions = "mk|mak";
     makefile_mode.mode_probe = makefile_mode_probe;
+    makefile_mode.mode_init = makefile_mode_init;
     makefile_mode.colorize_func = makefile_colorize_line;
 
     qe_register_mode(&makefile_mode);

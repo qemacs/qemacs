@@ -798,7 +798,9 @@ struct EditBuffer {
 
     /* default mode stuff when buffer is detached from window */
     int offset;         /* used in eval.c */
-    int tab_size;
+
+    int tab_width;
+    int fill_column;
 
     EditBuffer *next; /* next editbuffer in qe_state buffer list */
 
@@ -1013,7 +1015,7 @@ struct EditState {
     int cur_rtl;     /* TRUE if the cursor on over RTL chars */
     enum WrapType wrap;
     int line_numbers;
-    int tab_size;    /* the tab width for the window in chars */
+    /* XXX: these should be buffer specific rather than window specific */
     int indent_size;
     int indent_tabs_mode; /* if true, use tabs to indent */
     int interactive; /* true if interaction is done instead of editing
@@ -1295,6 +1297,8 @@ struct QEmacsState {
     int hilite_region;  /* hilite the current region when selecting */
     int mmap_threshold; /* minimum file size for mmap */
     int max_load_size;  /* maximum file size for loading in memory */
+    int default_tab_width;      /* 8 */
+    int default_fill_column;    /* 70 */
 };
 
 extern QEmacsState qe_state;

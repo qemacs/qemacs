@@ -384,6 +384,9 @@ static CmdDef basic_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
           "set-indent-tabs-mode", do_set_indent_tabs_mode, ESi,
           "ui{Indent tabs mode (0 or 1): }")
+    CMD2( KEY_CTRLX('f'), KEY_NONE,
+          "set-fill-column", do_set_fill_column, ESi,
+          "ui{Fill column: }")
 
     /* other stuff */
     CMD2( KEY_NONE, KEY_NONE,

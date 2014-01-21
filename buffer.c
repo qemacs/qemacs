@@ -484,7 +484,8 @@ EditBuffer *eb_new(const char *name, int flags)
     b->save_log = ((flags & BF_SAVELOG) != 0);
 
     /* initialize default mode stuff */
-    b->tab_size = 8;    /* CG: not finished */
+    b->tab_width = qs->default_tab_width;
+    b->fill_column = qs->default_fill_column;
 
     /* add buffer in global buffer list (at end for system buffers) */
     pb = &qs->first_buffer;

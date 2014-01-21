@@ -572,8 +572,6 @@ void do_kill_paragraph(EditState *s, int dir)
     do_kill(s, start, s->offset, dir);
 }
 
-#define PARAGRAPH_WIDTH 76
-
 void do_fill_paragraph(EditState *s)
 {
     int par_start, par_end, col;
@@ -629,7 +627,7 @@ void do_fill_paragraph(EditState *s)
         } else {
             /* insert space single space then word */
             if (offset == par_end ||
-                (col + 1 + word_size > PARAGRAPH_WIDTH)) {
+                (col + 1 + word_size > s->b->fill_column)) {
                 eb_delete_uchar(s->b, chunk_start);
                 chunk_start += eb_insert_uchar(s->b, chunk_start, '\n');
                 if (offset < par_end) {
@@ -2045,7 +2043,7 @@ void do_what_cursor_position(EditState *s)
 void do_set_tab_width(EditState *s, int tab_width)
 {
     if (tab_width > 1)
-        s->tab_size = tab_width;
+        s->b->tab_width = tab_width;
 }
 
 void do_set_indent_width(EditState *s, int indent_width)
@@ -2057,6 +2055,12 @@ void do_set_indent_width(EditState *s, int indent_width)
 void do_set_indent_tabs_mode(EditState *s, int val)
 {
     s->indent_tabs_mode = (val != 0);
+}
+
+void do_set_fill_column(EditState *s, int fill_column)
+{
+    if (fill_column > 1)
+        s->b->fill_column = fill_column;
 }
 
 /* compute string for the first part of the mode line (flags,
@@ -2425,7 +2429,7 @@ void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp)
     s->eol_width = max(s->eol_width, glyph_width(e->screen, font, '$'));
     s->default_line_height = font->ascent + font->descent;
     s->space_width = glyph_width(e->screen, font, ' ');
-    s->tab_width = s->space_width * e->tab_size;
+    s->tab_width = s->space_width * e->b->tab_width;
     s->width = e->width - s->eol_width;
     s->height = e->height;
     s->hex_mode = e->hex_mode;
@@ -7135,7 +7139,6 @@ int text_mode_init(EditState *s, ModeSavedData *saved_data)
     if (!saved_data) {
         memset(s, 0, SAVED_DATA_SIZE);
         s->insert = 1;
-        s->tab_size = 8;
         s->indent_size = 4;
         s->default_style = QE_STYLE_DEFAULT;
         s->wrap = WRAP_LINE;
@@ -7879,6 +7882,8 @@ static void qe_init(void *opaque)
     qs->argv = argv;
 
     qs->hilite_region = 1;
+    qs->default_tab_width = 8;
+    qs->default_fill_column = 70;
     qs->mmap_threshold = MIN_MMAP_SIZE;
     qs->max_load_size = MAX_LOAD_SIZE;
 

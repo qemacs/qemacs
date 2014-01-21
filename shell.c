@@ -1817,7 +1817,7 @@ static CmdDef shell_global_commands[] = {
 static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 {
     text_mode_init(s, saved_data);
-    s->tab_size = 8;
+    s->b->tab_width = 8;
     s->wrap = WRAP_TRUNCATE;
     s->interactive = 1;
     return 0;
@@ -1826,7 +1826,7 @@ static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 static int pager_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
 {
     text_mode_init(s, saved_data);
-    s->tab_size = 8;
+    s->b->tab_width = 8;
     s->wrap = WRAP_TRUNCATE;
     return 0;
 }

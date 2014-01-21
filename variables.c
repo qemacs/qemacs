@@ -45,7 +45,8 @@ static VarDef var_table[] = {
     S_VAR( "mmap-threshold", mmap_threshold, VAR_NUMBER, VAR_RW )
     S_VAR( "max-load-size", max_load_size, VAR_NUMBER, VAR_RW )
     S_VAR( "show-unicode", show_unicode, VAR_NUMBER, VAR_RW )
-
+    S_VAR( "default-tab-width", default_tab_width, VAR_NUMBER, VAR_RW )
+    S_VAR( "default-fill-column", default_fill_column, VAR_NUMBER, VAR_RW )
 
     //B_VAR( "screen-charset", charset, VAR_NUMBER, VAR_RW )
 
@@ -53,10 +54,11 @@ static VarDef var_table[] = {
     B_VAR( "bufsize", total_size, VAR_NUMBER, VAR_RO )
     B_VAR( "bufname", name, VAR_CHARS, VAR_RO )
     B_VAR( "filename", filename, VAR_CHARS, VAR_RO )
+    B_VAR( "tab-width", tab_width, VAR_NUMBER, VAR_RW )
+    B_VAR( "fill-column", fill_column, VAR_NUMBER, VAR_RW )
 
     W_VAR( "point", offset, VAR_NUMBER, VAR_RW )
-    W_VAR( "tab-size", tab_size, VAR_NUMBER, VAR_RW )
-    W_VAR( "indent-size", indent_size, VAR_NUMBER, VAR_RW )
+    W_VAR( "indent-width", indent_size, VAR_NUMBER, VAR_RW )
     W_VAR( "indent-tabs-mode", indent_tabs_mode, VAR_NUMBER, VAR_RW )
     W_VAR( "default-style", default_style, VAR_NUMBER, VAR_RW )
     W_VAR( "region-style", region_style, VAR_NUMBER, VAR_RW )

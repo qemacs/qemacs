@@ -293,7 +293,7 @@ static int find_indent1(EditState *s, unsigned int *buf)
     for (;;) {
         c = *p++ & CHAR_MASK;
         if (c == '\t')
-            pos += s->tab_size - (pos % s->tab_size);
+            pos += s->b->tab_width - (pos % s->b->tab_width);
         else if (c == ' ')
             pos++;
         else
@@ -310,7 +310,7 @@ static int find_pos(EditState *s, unsigned int *buf, int size)
     for (i = 0; i < size; i++) {
         c = buf[i] & CHAR_MASK;
         if (c == '\t')
-            pos += s->tab_size - (pos % s->tab_size);
+            pos += s->b->tab_width - (pos % s->b->tab_width);
         else
             pos++;
     }
@@ -333,9 +333,9 @@ static void insert_spaces(EditState *s, int *offset_ptr, int i)
 
     /* insert tabs */
     if (s->indent_tabs_mode) {
-        while (i >= s->tab_size) {
+        while (i >= s->b->tab_width) {
             offset += eb_insert_uchar(s->b, offset, '\t');
-            i -= s->tab_size;
+            i -= s->b->tab_width;
         }
     }
 

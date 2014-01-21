@@ -791,7 +791,6 @@ int gxml_mode_init(EditState *s,
     if (!saved_data) {
         memset(s, 0, SAVED_DATA_SIZE);
         s->insert = 1;
-        s->tab_size = 8;
         s->indent_size = 4;
         s->default_style = QE_STYLE_DEFAULT;
         s->wrap = WRAP_LINE;
