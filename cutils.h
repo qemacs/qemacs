@@ -1,7 +1,8 @@
 /*
  * Various simple C utilities
  *
- * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
+ * Copyright (c) 2000-2002 Fabrice Bellard.
+ * Copyright (c) 2000-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -29,6 +30,11 @@
 #define pstrcpy(buf, sz, str)      qe_pstrcpy(buf, sz, str)
 #define pstrcat(buf, sz, str)      qe_pstrcat(buf, sz, str)
 #define pstrncpy(buf, sz, str, n)  qe_pstrncpy(buf, sz, str, n)
+
+#undef strncpy
+#define strncpy(d,s)      do_not_use_strncpy!!(d,s)
+#undef strtok
+#define strtok(str,sep)   do_not_use_strtok!!(str,sep)
 
 int strstart(const char *str, const char *val, const char **ptr);
 char *pstrcpy(char *buf, int buf_size, const char *str);
