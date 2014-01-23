@@ -1,7 +1,7 @@
 /*
  * XML/HTML parser for qemacs.
  *
- * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
+ * Copyright (c) 2000-2002 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1277,9 +1277,13 @@ int xml_parse(XMLState *s, char *buf, int buf_len)
 }
 
 
-CSSBox *xml_end(XMLState *s)
+CSSBox *xml_end(XMLState **sp)
 {
+    XMLState *s = *sp;
     CSSBox *root_box;
+
+    if (!s)
+        return NULL;
 
     /* flush the lookahead buffer */
     if (s->lookahead_size > 0) {
@@ -1312,10 +1316,10 @@ CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end,
     s = xml_begin(style_sheet, flags, abort_func, abort_opaque, b->name, NULL);
     ret = xml_parse_internal(s, NULL, offset_end - offset_start,
                              b, offset_start);
-    box = xml_end(s);
+    box = xml_end(&s);
     if (ret < 0) {
-        css_delete_box(box);
-        box = NULL;
+        css_delete_box(&box);
+        return NULL;
     }
     return box;
 }

@@ -213,7 +213,7 @@ int load_input_methods(void)
         if (offset == 0)
             break;
         /* Should add validation tests */
-        m = qe_malloc(InputMethod);
+        m = qe_mallocz(InputMethod);
         if (m) {
             m->data = file_ptr + offset;
             m->input_match = kmap_input;

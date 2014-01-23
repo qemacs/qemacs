@@ -936,7 +936,7 @@ static QEFont *tty_term_open_font(__unused__ QEditScreen *s,
 {
     QEFont *font;
 
-    font = qe_malloc(QEFont);
+    font = qe_mallocz(QEFont);
     if (!font)
         return NULL;
 
@@ -946,9 +946,9 @@ static QEFont *tty_term_open_font(__unused__ QEditScreen *s,
     return font;
 }
 
-static void tty_term_close_font(__unused__ QEditScreen *s, QEFont *font)
+static void tty_term_close_font(__unused__ QEditScreen *s, QEFont **fontp)
 {
-    qe_free(&font);
+    qe_free(fontp);
 }
 
 static inline int tty_term_glyph_width(__unused__ QEditScreen *s, unsigned int ucs)

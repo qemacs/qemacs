@@ -1,7 +1,7 @@
 # Libqhtml tiny HTML/CSS rendering library for QEmacs
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2008 Charlie Gordon.
+# Copyright (c) 2000-2014 Charlie Gordon.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -21,13 +21,19 @@ DEPTH=..
 
 include $(DEPTH)/config.mak
 
-CFLAGS:= -Wall -g $(CFLAGS) -funsigned-char
+ifeq ($(CC),gcc)
+  CFLAGS   += -Wall -g -O2 -funsigned-char
+  # do not warn about zero-length formats.
+  CFLAGS   += -Wno-format-zero-length
+  LDFLAGS  := -g
+endif
 
+#include local compiler configuration file
 -include $(DEPTH)/cflags.mk
 
 ifdef TARGET_GPROF
-  CFLAGS+= -p
-  LDFLAGS+= -p
+  CFLAGS  += -p
+  LDFLAGS += -p
 endif
 
 ifdef TARGET_ARCH_X86
@@ -41,32 +47,39 @@ endif
 
 CFLAGS+=-I$(DEPTH)
 
-LIB=libqhtml.a
-OBJS=css.o xmlparse.o cssparse.o html_style.o docbook_style.o
+LIB= libqhtml.a
+OBJS= css.o xmlparse.o cssparse.o html_style.o docbook_style.o
 
-OBJS_DIR:=$(DEPTH)/.objs/libqhtml
-OBJS:=$(addprefix $(OBJS_DIR)/, $(OBJS))
+DEPENDS:= qe.h config.h cutils.h display.h qestyles.h config.mak
+DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
+
+OBJS_DIR:= $(DEPTH)/.objs/libqhtml
+OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
+
 $(shell mkdir -p $(OBJS_DIR))
 
+#
+# Dependencies
+#
 all: $(LIB)
 
-$(LIB): $(OBJS)
+$(LIB): $(OBJS) Makefile
 	rm -f $@
 	$(AR) rc $@ $(OBJS)
 
-$(OBJS_DIR)/%.o: %.c Makefile
+$(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
 #
 # build default style sheet file
 #
-csstoqe$(EXE): csstoqe.c
+csstoqe$(EXE): csstoqe.c Makefile
 	$(HOST_CC) $(CFLAGS) -o $@ $<
 
-html_style.c: html.css csstoqe$(EXE)
+html_style.c: html.css csstoqe$(EXE) Makefile
 	./csstoqe html_style < $< > $@
 
-docbook_style.c: docbook.css csstoqe$(EXE)
+docbook_style.c: docbook.css csstoqe$(EXE) Makefile
 	./csstoqe docbook_style < $< > $@
 
 clean:

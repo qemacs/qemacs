@@ -412,7 +412,7 @@ static void do_transpose(EditState *s, int cmd)
         /* XXX: This will create 2 undo records */
         eb_delete(b, offset0, size0 + size1 + size2);
         eb_insert_buffer_convert(b, offset0, b1, 0, size0 + size1 + size2);
-        eb_free(b1);
+        eb_free(&b1);
     }
     s->offset = end_offset;
 }
@@ -592,7 +592,7 @@ void do_apropos(EditState *s, const char *str)
         }
     } else {
         if (show)
-            eb_free(b);
+            eb_free(&b);
         put_status(s, "No apropos matches for `%s'", str);
     }
 }

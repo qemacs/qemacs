@@ -50,7 +50,7 @@ FindFileState *find_file_open(const char *path, const char *pattern)
 {
     FindFileState *s;
 
-    s = qe_malloc(FindFileState);
+    s = qe_mallocz(FindFileState);
     if (!s)
         return NULL;
     pstrcpy(s->path, sizeof(s->path), path);
@@ -105,11 +105,15 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max)
     }
 }
 
-void find_file_close(FindFileState *s)
+void find_file_close(FindFileState **sp)
 {
-    if (s->dir)
-        closedir(s->dir);
-    qe_free(&s);
+    if (*sp) {
+        FindFileState *s = *sp;
+
+        if (s->dir)
+            closedir(s->dir);
+        qe_free(sp);
+    }
 }
 
 #ifdef CONFIG_WIN32
@@ -1515,12 +1519,12 @@ int strunquote(char *dest, int size, const char *str, int len)
 
 void *qe_malloc_bytes(size_t size)
 {
-    return malloc(size);
+    return (malloc)(size);
 }
 
 void *qe_mallocz_bytes(size_t size)
 {
-    void *p = malloc(size);
+    void *p = (malloc)(size);
     if (p)
         memset(p, 0, size);
     return p;
@@ -1528,7 +1532,7 @@ void *qe_mallocz_bytes(size_t size)
 
 void *qe_malloc_dup(const void *src, size_t size)
 {
-    void *p = malloc(size);
+    void *p = (malloc)(size);
     if (p)
         memcpy(p, src, size);
     return p;
@@ -1537,7 +1541,7 @@ void *qe_malloc_dup(const void *src, size_t size)
 char *qe_strdup(const char *str)
 {
     size_t size = strlen(str) + 1;
-    char *p = malloc(size);
+    char *p = (malloc)(size);
 
     if (p)
         memcpy(p, str, size);
@@ -1546,7 +1550,7 @@ char *qe_strdup(const char *str)
 
 void *qe_realloc(void *pp, size_t size)
 {
-    void *p = realloc(*(void **)pp, size);
+    void *p = (realloc)(*(void **)pp, size);
     if (p || !size)
         *(void **)pp = p;
     return p;

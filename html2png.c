@@ -156,7 +156,7 @@ static int ppm_init(QEditScreen *s, int w, int h)
 {
     CFBContext *cfb;
 
-    cfb = qe_malloc(CFBContext);
+    cfb = qe_mallocz(CFBContext);
     if (!cfb)
         return -1;
 
@@ -372,7 +372,7 @@ static int draw_html(QEditScreen *scr,
 
     css_close(f);
 
-    top_box = xml_end(xml);
+    top_box = xml_end(&xml);
 
     /* CSS computation */
     css_compute(s, top_box);
@@ -394,16 +394,14 @@ static int draw_html(QEditScreen *scr,
 
     css_display(s, top_box, &rect, 0, 0);
 
-    css_delete_box(top_box);
-    css_delete_document(s);
+    css_delete_box(&top_box);
+    css_delete_document(&s);
     return 0;
  fail:
     if (f)
         css_close(f);
-    if (top_box)
-        css_delete_box(top_box);
-    if (s)
-        css_delete_document(s);
+    css_delete_box(&top_box);
+    css_delete_document(&s);
     return -1;
 }
 

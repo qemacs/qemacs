@@ -366,7 +366,7 @@ static void dired_build_list(EditState *s, const char *path,
             item->opaque = dip;
         }
     }
-    find_file_close(ffst);
+    find_file_close(&ffst);
     
     dired_sort_list(s);
 

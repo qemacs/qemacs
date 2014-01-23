@@ -165,13 +165,8 @@ static void html_display(EditState *s)
         }
 
         /* delete previous document */
-        css_delete_box(hs->top_box);
-        hs->top_box = NULL;
-
-        if (hs->css_ctx) {
-            css_delete_document(hs->css_ctx);
-            hs->css_ctx = NULL;
-        }
+        css_delete_box(&hs->top_box);
+        css_delete_document(&hs->css_ctx);
 
         /* find error message buffer */
         b = eb_find(HTML_ERROR_BUFFER);
@@ -820,11 +815,9 @@ static void html_mode_close(EditState *s)
     eb_free_callback(s->b, html_callback, s);
 
     s->busy = 0;
-    if (hs->top_box)
-        css_delete_box(hs->top_box);
-    if (hs->css_ctx)
-        css_delete_document(hs->css_ctx);
-    css_free_style_sheet(hs->default_style_sheet);
+    css_delete_box(&hs->top_box);
+    css_delete_document(&hs->css_ctx);
+    css_free_style_sheet(&hs->default_style_sheet);
 }
 
 /* search for HTML tag */

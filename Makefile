@@ -1,7 +1,7 @@
 # QEmacs, tiny but powerful multimode editor
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2013 Charlie Gordon.
+# Copyright (c) 2000-2014 Charlie Gordon.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -17,7 +17,9 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-include config.mak
+DEPTH=.
+
+include $(DEPTH)/config.mak
 
 ifeq ($(CC),gcc)
   CFLAGS   += -Wall -g -O2 -funsigned-char
@@ -27,11 +29,11 @@ ifeq ($(CC),gcc)
 endif
 
 #include local compiler configuration file
--include cflags.mk
+-include $(DEPTH)/cflags.mk
 
 ifdef TARGET_GPROF
-  CFLAGS   += -p
-  LDFLAGS  += -p
+  CFLAGS  += -p
+  LDFLAGS += -p
 endif
 
 TLDFLAGS := $(LDFLAGS)
@@ -125,19 +127,19 @@ endif
 ifdef CONFIG_X11
   OBJS+= x11.o
   ifdef CONFIG_XRENDER
-    LIBS+=-lXrender
+    LIBS+= -lXrender
   endif
   ifdef CONFIG_XV
-    LIBS+=-lXv
+    LIBS+= -lXv
   endif
   LIBS+= -L/usr/X11R6/lib -lXext -lX11
 endif
 
 ifdef CONFIG_HTML
-  CFLAGS+=-I./libqhtml
-  DEP_LIBS+=libqhtml/libqhtml.a
-  LIBS+=-L./libqhtml -lqhtml
-  OBJS+=html.o docbook.o
+  CFLAGS+= -I./libqhtml
+  DEP_LIBS+= libqhtml/libqhtml.a
+  LIBS+= -L./libqhtml -lqhtml
+  OBJS+= html.o docbook.o
   ifndef CONFIG_WIN32
     TARGETLIBS+= libqhtml
     TARGETS+= html2png$(EXE)
@@ -162,9 +164,12 @@ SRCS:= $(OBJS:.o=.c)
 TSRCS:= $(TOBJS:.o=.c)
 TSRCS:= $(TSRCS:tqe.c=qe.c)
 
-OBJS_DIR:=.objs
-OBJS:=$(addprefix $(OBJS_DIR)/, $(OBJS))
-TOBJS:=$(addprefix $(OBJS_DIR)/, $(TOBJS))
+DEPENDS:= qe.h config.h cutils.h display.h qestyles.h config.mak
+DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
+
+OBJS_DIR:= $(DEPTH)/.objs
+OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
+TOBJS:= $(addprefix $(OBJS_DIR)/, $(TOBJS))
 
 $(shell mkdir -p $(OBJS_DIR))
 
@@ -201,7 +206,7 @@ tqe$(EXE): tqe_g$(EXE) Makefile
 	echo `size $@` `wc -c $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
-$(OBJS_DIR)/tqe.o: qe.c qe.h qestyles.h qeconfig.h config.h config.mak Makefile
+$(OBJS_DIR)/tqe.o: qe.c qeconfig.h $(DEPENDS) Makefile
 	$(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
 
 ffplay$(EXE): qe$(EXE) Makefile
@@ -228,13 +233,13 @@ $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(OBJS_DIR)/qe.o: qe.c qe.h qfribidi.h qeconfig.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 
-$(OBJS_DIR)/%.o: %.c qe.h qestyles.h config.h config.mak Makefile
+$(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
-$(OBJS_DIR)/haiku.o: haiku.cpp qe.h qestyles.h config.h config.mak Makefile
+$(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 	g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -c $<
 
-%.s: %.c qe.h qestyles.h config.h config.mak Makefile
+%.s: %.c $(DEPENDS) Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -S $<
 
 #

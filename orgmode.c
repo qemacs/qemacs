@@ -631,7 +631,7 @@ static void do_org_move_subtree(EditState *s, int dir)
     if (offset2 > offset)
         offset2 -= size;
     eb_insert_buffer_convert(s->b, offset2, b1, 0, b1->total_size);
-    eb_free(b1);
+    eb_free(&b1);
     s->offset = offset2;
 }
 

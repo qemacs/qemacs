@@ -45,7 +45,7 @@
 /* NOTE: XFT code is currently broken */
 
 static QEFont *term_open_font(QEditScreen *s, int style, int size);
-static void term_close_font(QEditScreen *s, QEFont *font);
+static void term_close_font(QEditScreen *s, QEFont **fontp);
 #ifdef CONFIG_XV
 static void xv_init(QEditScreen *s);
 #endif
@@ -217,14 +217,14 @@ static int term_init(QEditScreen *s, int w, int h)
         qe_styles[0].font_size = font_ptsize;
     get_style(NULL, &default_style, 0);
     font = term_open_font(s, default_style.font_style,
-                            default_style.font_size);
+                          default_style.font_size);
     if (!font) {
         fprintf(stderr, "Could not open default font\n");
         exit(1);
     }
     font_ysize = font->ascent + font->descent;
     font_xsize = glyph_width(s, font, 'x');
-    term_close_font(s, font);
+    term_close_font(s, &font);
 
     if (w > 0 && h > 0) {
         xsize = w;
@@ -568,16 +568,20 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
     return font;
 }
 
-static void term_close_font(QEditScreen *s, QEFont *font)
+static void term_close_font(QEditScreen *s, QEFont **fontp)
 {
-    XftFont *renderFont = font->priv_data;
+    QEFont *font = *fontp;
 
-    XftFontClose(display, renderFont);
-    /* Clear structure to force crash if font is still used after
-     * close_font.
-     */
-    memset(font, 0, sizeof(*font));
-    qe_free(&font);
+    if (font) {
+        XftFont *renderFont = font->priv_data;
+
+        XftFontClose(display, renderFont);
+        /* Clear structure to force crash if font is still used after
+         * close_font.
+         */
+        memset(font, 0, sizeof(*font));
+        qe_free(fontp);
+    }
 }
 
 static int term_glyph_width(QEditScreen *s, QEFont *font, unsigned int cc)
@@ -665,7 +669,7 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
     char **list;
     const char *p;
 
-    font = qe_malloc(QEFont);
+    font = qe_mallocz(QEFont);
     if (!font)
         return NULL;
 
@@ -772,16 +776,19 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
     return NULL;
 }
 
-static void term_close_font(__unused__ QEditScreen *s, QEFont *font)
+static void term_close_font(__unused__ QEditScreen *s, QEFont **fontp)
 {
-    XFontStruct *xfont = font->priv_data;
+    if (*fontp) {
+        QEFont *font = *fontp;
+        XFontStruct *xfont = font->priv_data;
 
-    XFreeFont(display, xfont);
-    /* Clear structure to force crash if font is still used after
-     * close_font.
-     */
-    memset(font, 0, sizeof(*font));
-    qe_free(&font);
+        XFreeFont(display, xfont);
+        /* Clear structure to force crash if font is still used after
+         * close_font.
+         */
+        memset(font, 0, sizeof(*font));
+        qe_free(fontp);
+    }
 }
 
 /* get a char struct associated to a char. Return NULL if no glyph
@@ -1471,7 +1478,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
 {
     X11Bitmap *xb;
 
-    xb = qe_malloc(X11Bitmap);
+    xb = qe_mallocz(X11Bitmap);
     if (!xb)
         return -1;
     b->priv_data = xb;
@@ -1523,7 +1530,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
             XShmSegmentInfo *shm_info;
 
             /* XXX: error testing */
-            shm_info = qe_malloc(XShmSegmentInfo);
+            shm_info = qe_mallocz(XShmSegmentInfo);
             ximage = XShmCreateImage(display, None, attr.depth, ZPixmap, NULL,
                                      shm_info, b->width, b->height);
             shm_info->shmid = shmget(IPC_PRIVATE,
@@ -1557,7 +1564,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
             XvImage *xvimage;
             XShmSegmentInfo *shm_info;
 
-            shm_info = qe_malloc(XShmSegmentInfo);
+            shm_info = qe_mallocz(XShmSegmentInfo);
             xvimage = XvShmCreateImage(display, xv_port, xv_format, 0,
                                        b->width, b->height, shm_info);
             shm_info->shmid = shmget(IPC_PRIVATE,

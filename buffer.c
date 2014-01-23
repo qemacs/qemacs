@@ -1,7 +1,7 @@
 /*
  * Buffer handling for QEmacs
  *
- * Copyright (c) 2000 Fabrice Bellard.
+ * Copyright (c) 2000-2002 Fabrice Bellard.
  * Copyright (c) 2002-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
@@ -435,14 +435,11 @@ void eb_delete(EditBuffer *b, int offset, int size)
 /* flush the log */
 void log_reset(EditBuffer *b)
 {
-    if (b->log_buffer) {
-        eb_free(b->log_buffer);
-        b->log_buffer = NULL;
-        b->log_new_index = 0;
-        b->log_current = 0;
-        b->nb_logs = 0;
-    }
-    b->modified = 0;
+    eb_free(&b->log_buffer);
+    b->log_new_index = 0;
+    b->log_current = 0;
+    b->nb_logs = 0;
+    b->modified = 0;    /* ??? */
 }
 
 /* rename a buffer and add characters so that the name is unique */
@@ -548,44 +545,42 @@ void eb_clear(EditBuffer *b)
     //memset(b, 0, offsetof(EditBuffer, remanent_area));
 }
 
-void eb_free(EditBuffer *b)
+void eb_free(EditBuffer **bp)
 {
-    QEmacsState *qs = &qe_state;
-    EditBuffer **pb;
-    EditBufferCallbackList *l, *l1;
+    if (*bp) {
+        EditBuffer *b = *bp;
+        QEmacsState *qs = &qe_state;
+        EditBuffer **pb;
 
-    if (b == NULL)
-        return;
+        /* call user defined close */
+        if (b->close)
+            b->close(b);
 
-    /* call user defined close */
-    if (b->close)
-        b->close(b);
+        /* free each callback */
+        while (b->first_callback) {
+            EditBufferCallbackList *cb = b->first_callback;
+            b->first_callback = cb->next;
+            qe_free(&cb);
+        }
 
-    /* free each callback */
-    for (l = b->first_callback; l != NULL;) {
-        l1 = l->next;
-        qe_free(&l);
-        l = l1;
+        eb_clear(b);
+
+        /* suppress from buffer list */
+        pb = &qs->first_buffer;
+        while (*pb != NULL) {
+            if (*pb == b)
+                break;
+            pb = &(*pb)->next;
+        }
+        *pb = (*pb)->next;
+
+        if (b == qs->trace_buffer)
+            qs->trace_buffer = NULL;
+
+        eb_free_style_buffer(b);
+
+        qe_free(bp);
     }
-    b->first_callback = NULL;
-
-    eb_clear(b);
-
-    /* suppress from buffer list */
-    pb = &qs->first_buffer;
-    while (*pb != NULL) {
-        if (*pb == b)
-            break;
-        pb = &(*pb)->next;
-    }
-    *pb = (*pb)->next;
-
-    if (b == qs->trace_buffer)
-        qs->trace_buffer = NULL;
-
-    eb_free_style_buffer(b);
-
-    qe_free(&b);
 }
 
 EditBuffer *eb_find(const char *name)
@@ -702,11 +697,12 @@ void eb_trace_bytes(const void *buf, int size, int state)
 /************************************************************/
 /* callbacks */
 
-int eb_add_callback(EditBuffer *b, EditBufferCallback cb, void *opaque, int arg)
+int eb_add_callback(EditBuffer *b, EditBufferCallback cb,
+                    void *opaque, int arg)
 {
     EditBufferCallbackList *l;
 
-    l = qe_malloc(EditBufferCallbackList);
+    l = qe_mallocz(EditBufferCallbackList);
     if (!l)
         return -1;
     l->callback = cb;
@@ -775,10 +771,7 @@ int eb_create_style_buffer(EditBuffer *b, int flags)
 
 void eb_free_style_buffer(EditBuffer *b)
 {
-    if (b->b_styles) {
-        eb_free(b->b_styles);
-        b->b_styles = NULL;
-    }
+    eb_free(&b->b_styles);
     b->style_shift = b->style_bytes = 0;
     eb_free_callback(b, eb_style_callback, NULL);
 }
@@ -1488,7 +1481,7 @@ int load_buffer(EditBuffer *b, const char *filename,
     /* cannot load a buffer if already I/Os or readonly */
     if (b->flags & (BF_LOADING | BF_SAVING | BF_READONLY))
         return -1;
-    s = qe_malloc(BufferIOState);
+    s = qe_mallocz(BufferIOState);
     if (!s)
         return -1;
     b->io_state = s;
@@ -1804,7 +1797,7 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
         va_start(ap, fmt);
         size = len + 1;
 #ifdef CONFIG_WIN32
-        buf = malloc(size);
+        buf = qe_malloc_bytes(size);
 #else
         buf = alloca(size);
 #endif
@@ -1818,7 +1811,7 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
     eb_insert_utf8_buf(b, b->total_size, buf, len);
 #ifdef CONFIG_WIN32
     if (buf != buf0)
-        free(buf);
+        qe_free(&buf);
 #endif
     return len;
 }
@@ -1906,7 +1899,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
 
         if (b != dest) {
             size = eb_insert_buffer(dest, dest_offset, b, 0, b->total_size);
-            eb_free(b);
+            eb_free(&b);
         }
         return size;
     }

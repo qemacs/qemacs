@@ -1,8 +1,8 @@
 /*
  * CSS core for qemacs.
  *
- * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2007-2008 Charlie Gordon.
+ * Copyright (c) 2000-2002 Fabrice Bellard.
+ * Copyright (c) 2007-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -528,7 +528,7 @@ typedef struct {
 CSSStyleSheet *css_new_style_sheet(void);
 void css_parse_style_sheet_str(CSSStyleSheet *s, const char *buffer, int flags);
 void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b);
-void css_free_style_sheet(CSSStyleSheet *s);
+void css_free_style_sheet(CSSStyleSheet **sp);
 void css_dump_style_sheet(CSSStyleSheet *s);
 void css_merge_style_sheet(CSSStyleSheet *s, CSSStyleSheet *a);
 
@@ -599,7 +599,7 @@ void css_init(void);
 
 CSSContext *css_new_document(QEditScreen *screen,
                              EditBuffer *b);
-void css_delete_document(CSSContext *s);
+void css_delete_document(CSSContext **sp);
 
 int css_compute(CSSContext *s, CSSBox *box);
 int css_layout(CSSContext *s, CSSBox *box, int width,
@@ -625,7 +625,7 @@ int css_box_iterate(CSSContext *s, CSSBox *box, void *opaque,
 /* box tree handling */
 CSSBox *css_new_box(CSSIdent tag, CSSAttribute *attrs);
 CSSBox *css_add_box(CSSBox *parent_box, CSSBox *box);
-void css_delete_box(CSSBox *box);
+void css_delete_box(CSSBox **boxp);
 void css_set_text_buffer(CSSBox *box, EditBuffer *b,
                          int offset1, int offset2, int eol);
 void css_set_text_string(CSSBox *box, const char *string);
@@ -650,7 +650,7 @@ XMLState *xml_begin(CSSStyleSheet *style_sheet, int flags,
                     CSSAbortFunc *abort_func, void *abort_opaque,
                     const char *filename, QECharset *charset);
 int xml_parse(XMLState *s, char *buf, int buf_len);
-CSSBox *xml_end(XMLState *s);
+CSSBox *xml_end(XMLState **sp);
 
 CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end,
                          CSSStyleSheet *style_sheet, int flags,

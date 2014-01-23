@@ -202,7 +202,7 @@ static void push_event(QEEvent *ev)
 {
     QEEventQ *e;
 
-    e = qe_malloc(QEEventQ);
+    e = qe_mallocz(QEEventQ);
     if (!e)
         return;
     e->ev = *ev;
@@ -446,7 +446,7 @@ static QEFont *win_open_font(QEditScreen *s, int style, int size)
     QEFont *font;
     TEXTMETRIC tm;
 
-    font = qe_malloc(QEFont);
+    font = qe_mallocz(QEFont);
     if (!font)
         return NULL;
     GetTextMetrics(win_ctx.hdc, &tm);
@@ -456,9 +456,9 @@ static QEFont *win_open_font(QEditScreen *s, int style, int size)
     return font;
 }
 
-static void win_close_font(QEditScreen *s, QEFont *font)
+static void win_close_font(QEditScreen *s, QEFont **fontp)
 {
-    qe_free(&font);
+    qe_free(fontp);
 }
 
 static void win_text_metrics(QEditScreen *s, QEFont *font,

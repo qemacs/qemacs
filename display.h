@@ -105,7 +105,7 @@ struct QEDisplay {
     void (*dpy_fill_rectangle)(QEditScreen *s,
                                int x, int y, int w, int h, QEColor color);
     QEFont *(*dpy_open_font)(QEditScreen *s, int style, int size);
-    void (*dpy_close_font)(QEditScreen *s, QEFont *font);
+    void (*dpy_close_font)(QEditScreen *s, QEFont **fontp);
     void (*dpy_text_metrics)(QEditScreen *s, QEFont *font,
                              QECharMetrics *metrics,
                              const unsigned int *str, int len);
@@ -171,10 +171,10 @@ static inline QEFont *open_font(QEditScreen *s,
     return s->dpy.dpy_open_font(s, style, size);
 }
 
-static inline void close_font(QEditScreen *s, QEFont *font)
+static inline void close_font(QEditScreen *s, QEFont **fontp)
 {
-    if (!font->system_font)
-        s->dpy.dpy_close_font(s, font);
+    if (*fontp && !(*fontp)->system_font)
+        s->dpy.dpy_close_font(s, fontp);
 }
 
 static inline void text_metrics(QEditScreen *s, QEFont *font,

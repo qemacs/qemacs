@@ -1,8 +1,8 @@
 /*
  * CSS core for qemacs.
  *
- * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
- * Copyright (c) 2007-2008 Charlie Gordon.
+ * Copyright (c) 2000-2002 Fabrice Bellard.
+ * Copyright (c) 2007-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -324,25 +324,24 @@ CSSIdent css_new_ident(const char *str)
         }
         p = p->hash_next;
     }
-    len = strlen(str);
-    p = qe_malloc_hack(CSSIdentEntry, len);
-    if (!p)
-        return CSS_ID_NIL;
-    p->id = table_ident_nb;
-    memcpy(p->str, str, len + 1);
-    p->hash_next = *pp;
-    *pp = p;
-
-    /* put ident in table */
+    /* allocate a new ident */
     if (table_ident_nb == table_ident_allocated) {
+        /* realloc ident table if needed */
         n = table_ident_allocated + CSS_IDENT_INCR;
         if (!qe_realloc(&table_ident, n * sizeof(CSSIdentEntry *))) {
-            qe_free(&p);
             return CSS_ID_NIL;
         }
         table_ident_allocated = n;
     }
+    len = strlen(str);
+    p = qe_malloc_hack(CSSIdentEntry, len);
+    if (!p)
+        return CSS_ID_NIL;
+    memcpy(p->str, str, len + 1);
+    p->id = table_ident_nb;
     table_ident[table_ident_nb++] = p;
+    p->hash_next = *pp;
+    *pp = p;
 
     return p->id;
 }
@@ -377,7 +376,7 @@ static void set_counter(CSSContext *s, CSSIdent counter_id, int value)
             p->value = value;
         }
     }
-    p = qe_malloc(CSSCounterValue);
+    p = qe_mallocz(CSSCounterValue);
     if (!p)
         return;
     p->counter_id = counter_id;
@@ -890,9 +889,9 @@ static CSSState *allocate_props(CSSContext *s, CSSState *props)
 }
 
 /* free one CSSState */
-static void free_props(CSSState *props)
+static void free_props(CSSState **propsp)
 {
-    qe_free(&props);
+    qe_free(propsp);
 }
 
 static int css_compute_block(CSSContext *s, CSSBox *box,
@@ -1080,7 +1079,7 @@ static CSSBox *add_marker_box(CSSContext *s, CSSBox *box)
     }
     aprops = allocate_props(s, marker_props);
     if (!aprops) {
-        css_delete_box(box1);
+        css_delete_box(&box1);
         return NULL;
     }
     box1->props = aprops;
@@ -1739,7 +1738,7 @@ static int css_layout_float(InlineLayout *s, FloatBlock *b)
 #endif
     /* layout the interior */
     if (css_layout_block(s->ctx, &layout, box)) {
-        qe_free(&b);
+        //qe_free(&b);  // XXX: this is a BUG
         return -1;
     }
     /* add the float in the float list */
@@ -3241,7 +3240,7 @@ static int css_add_float(InlineLayout *s, CSSBox *box)
 {
     FloatBlock *b, **pb;
 
-    b = qe_malloc(FloatBlock);
+    b = qe_mallocz(FloatBlock);
     if (!b)
         return 0;
     b->box = box;
@@ -3256,14 +3255,12 @@ static int css_add_float(InlineLayout *s, CSSBox *box)
     return 0;
 }
 
-static void css_free_floats(FloatBlock *b)
+static void css_free_floats(FloatBlock **pp)
 {
-    FloatBlock *b1;
-
-    while (b != NULL) {
-        b1 = b->next;
+    while (*pp) {
+        FloatBlock *b = *pp;
+        *pp = b->next;
         qe_free(&b);
-        b = b1;
     }
 }
 
@@ -3576,7 +3573,7 @@ static int css_layout_block(CSSContext *s, LayoutOutput *block_layout,
     layout_state.first_float = NULL;
     ret = css_layout_block_recurse(&layout_state, block_layout, block_box, 0, 0);
 
-    css_free_floats(layout_state.first_float);
+    css_free_floats(&layout_state.first_float);
 
     return ret;
 }
@@ -4475,16 +4472,15 @@ CSSBox *css_add_box(CSSBox *parent_box, CSSBox *box)
 
 /* delete a box and all boxes after and inside */
 /* XXX: free generated content ! */
-void css_delete_box(CSSBox *box)
+void css_delete_box(CSSBox **bp)
 {
-    CSSBox *box1;
-    CSSAttribute *a1, *a;
-    CSSProperty *p1, *p;
+    while (*bp != NULL) {
+        CSSBox *box = *bp;
+        *bp = box->next;
 
-    while (box != NULL) {
         switch (box->content_type) {
         case CSS_CONTENT_TYPE_CHILDS:
-            css_delete_box(box->u.child.first);
+            css_delete_box(&box->u.child.first);
             break;
         case CSS_CONTENT_TYPE_STRING:
             /* split boxes never own their content */
@@ -4495,21 +4491,17 @@ void css_delete_box(CSSBox *box)
             qe_free(&box->u.image.content_alt);
             break;
         }
-        box1 = box->next;
-        a = box->attrs;
-        while (a != NULL) {
-            a1 = a->next;
+        while (box->attrs) {
+            CSSAttribute *a = box->attrs;
+            box->attrs = a->next;
             qe_free(&a);
-            a = a1;
         }
-        p = box->properties;
-        while (p != NULL) {
-            p1 = p->next;
+        while (box->properties) {
+            CSSProperty *p = box->properties;
+            box->properties = p->next;
             qe_free(&p);
-            p = p1;
         }
         qe_free(&box);
-        box = box1;
     }
 }
 
@@ -4583,21 +4575,22 @@ CSSContext *css_new_document(QEditScreen *screen, EditBuffer *b)
     return s;
 }
 
-void css_delete_document(CSSContext *s)
+void css_delete_document(CSSContext **sp)
 {
-    int i;
-    CSSState *props, *props_next;
+    if (*sp) {
+        CSSContext *s = *sp;
+        int i;
 
-    for (i = 0; i < PROPS_HASH_SIZE; i++) {
-        for (props = s->hash_props[i]; props != NULL; props = props_next) {
-            props_next = props->hash_next;
-            free_props(props);
+        for (i = 0; i < PROPS_HASH_SIZE; i++) {
+            while (s->hash_props[i]) {
+                CSSState *props = s->hash_props[i];
+                s->hash_props[i] = props->hash_next;
+                free_props(&props);
+            }
         }
+        css_free_style_sheet(&s->style_sheet);
+        qe_free(sp);
     }
-    if (s->style_sheet) {
-        css_free_style_sheet(s->style_sheet);
-    }
-    qe_free(&s);
 }
 
 /* must be called before using any css functions */

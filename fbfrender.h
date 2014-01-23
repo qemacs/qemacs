@@ -43,7 +43,7 @@ void fbf_text_metrics(QEditScreen *s, QEFont *font,
                       const unsigned int *str, int len);
 GlyphCache *decode_cached_glyph(QEditScreen *s, QEFont *font, int code);
 QEFont *fbf_open_font(QEditScreen *s, int style, int size);
-void fbf_close_font(QEditScreen *s, QEFont *font);
+void fbf_close_font(QEditScreen *s, QEFont **fontp);
 
 int fbf_render_init(const char *font_path);
 void fbf_render_cleanup(void);

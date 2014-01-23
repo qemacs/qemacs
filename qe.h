@@ -106,10 +106,20 @@ void *qe_realloc(void *pp, size_t size);
 #define qe_malloc_hack(t, n)    ((t *)qe_malloc_bytes(sizeof(t) + (n)))
 #define qe_mallocz_hack(t, n)   ((t *)qe_mallocz_bytes(sizeof(t) + (n)))
 #ifdef CONFIG_HAS_TYPEOF
-#define qe_free(pp)      do { typeof(**(pp)) **__ = (pp); free(*__); *__ = NULL; } while (0)
+#define qe_free(pp)    do { typeof(**(pp)) **__ = (pp); (free)(*__); *__ = NULL; } while (0)
 #else
-#define qe_free(pp)      \
-    do if (sizeof(**(pp)) >= 0) { void *_ = (pp); free(*(void **)_); *(void **)_ = NULL; } while (0)
+#define qe_free(pp)    \
+    do if (sizeof(**(pp)) >= 0) { void *_ = (pp); (free)(*(void **)_); *(void **)_ = NULL; } while (0)
+#endif
+
+#ifndef free
+#define free(p)       do_not_use_free!!(p)
+#endif
+#ifndef malloc
+#define malloc(s)     do_not_use_malloc!!(s)
+#endif
+#ifndef realloc
+#define realloc(p,s)  do_not_use_realloc!!(p,s)
 #endif
 
 /************************/
@@ -129,12 +139,9 @@ static inline const char *cs8(const u8 *p) { return (const char*)p; }
 #define INT_MIN  (-0x7fffffff-1)
 #endif
 #define NO_ARG  INT_MIN
-/* Size for a filename buffer */
-#define MAX_FILENAME_SIZE    1024
-/* Size for a buffer name buffer */
-#define MAX_BUFFERNAME_SIZE  256
-/* Size for a command name buffer */
-#define MAX_CMDNAME_SIZE     32
+#define MAX_FILENAME_SIZE    1024       /* Size for a filename buffer */
+#define MAX_BUFFERNAME_SIZE  256        /* Size for a buffer name buffer */
+#define MAX_CMDNAME_SIZE     32         /* Size for a command name buffer */
 
 extern const char str_version[];
 extern const char str_credits[];
@@ -152,7 +159,7 @@ void unregister_bottom_half(void (*cb)(void *opaque), void *opaque);
 
 typedef struct QETimer QETimer;
 QETimer *qe_add_timer(int delay, void *opaque, void (*cb)(void *opaque));
-void qe_kill_timer(QETimer *ti);
+void qe_kill_timer(QETimer **tip);
 
 /* main loop for Unix programs using liburlio */
 void url_main_loop(void (*init)(void *opaque), void *opaque);
@@ -203,7 +210,7 @@ typedef struct FindFileState FindFileState;
 
 FindFileState *find_file_open(const char *path, const char *pattern);
 int find_file_next(FindFileState *s, char *filename, int filename_size_max);
-void find_file_close(FindFileState *s);
+void find_file_close(FindFileState **sp);
 int is_directory(const char *path);
 void canonicalize_path(char *buf, int buf_size, const char *path);
 void canonicalize_absolute_path(char *buf, int buf_size, const char *path1);
@@ -847,7 +854,7 @@ void log_reset(EditBuffer *b);
 EditBuffer *eb_new(const char *name, int flags);
 EditBuffer *eb_scratch(const char *name, int flags);
 void eb_clear(EditBuffer *b);
-void eb_free(EditBuffer *b);
+void eb_free(EditBuffer **ep);
 EditBuffer *eb_find(const char *name);
 EditBuffer *eb_find_new(const char *name, int flags);
 EditBuffer *eb_find_file(const char *filename);

@@ -843,9 +843,7 @@ static void video_mode_close(EditState *s)
         bmp_free(s->screen, &vp->bmp);
     }
 
-    if (is->video_timer) {
-        qe_kill_timer(is->video_timer);
-    }
+    qe_kill_timer(&is->video_timer);
 }
 
 char *get_stream_id(AVFormatContext *ic, AVStream *st, char *buf, int buf_size)

@@ -260,7 +260,7 @@ static int haiku_init(QEditScreen *s, int w, int h)
 
     init_application();
 
-    ctx = (WindowState *)malloc(sizeof(WindowState));
+    ctx = qe_mallocz(WindowState);
     if (ctx == NULL)
         return -1;
     s->priv_data = ctx;
@@ -329,7 +329,7 @@ static void haiku_close(QEditScreen *s)
     WindowState *ctx = (WindowState *)s->priv_data;
     ctx->w->Lock();
     ctx->w->Quit();
-    free(s->priv_data);
+    qe_free(&s->priv_data);
     uninit_application();
 }
 
@@ -664,7 +664,7 @@ static QEFont *haiku_open_font(QEditScreen *s, int style, int size)
     //fprintf(stderr, "%s()\n", __FUNCTION__);
     QEFont *font;
 
-    font = (QEFont *)malloc(sizeof(QEFont));
+    font = qe_mallocz(QEFont);
     if (!font)
         return NULL;
 
@@ -679,11 +679,13 @@ static QEFont *haiku_open_font(QEditScreen *s, int style, int size)
     return font;
 }
 
-static void haiku_close_font(QEditScreen *s, QEFont *font)
+static void haiku_close_font(QEditScreen *s, QEFont **fontp)
 {
-    BFont *f = (BFont *)font->priv_data;
-    delete f;
-    free(font);
+    if (*fontp) {
+        BFont *f = (BFont *)(*fontp)->priv_data;
+        delete f;
+        qe_free(fontp);
+    }
 }
 
 static void haiku_text_metrics(QEditScreen *s, QEFont *font, 

@@ -58,7 +58,7 @@ static QEFont *dummy_dpy_open_font(__unused__ QEditScreen *s,
 }
 
 static void dummy_dpy_close_font(__unused__ QEditScreen *s,
-                                 __unused__ QEFont *font)
+                                 __unused__ QEFont **fontp)
 {
 }
 
@@ -277,8 +277,7 @@ QEFont *select_font(QEditScreen *s, int style, int size)
         goto fail;
     }
     if (font_cache[min_index]) {
-        close_font(s, font_cache[min_index]);
-        font_cache[min_index] = NULL;
+        close_font(s, &font_cache[min_index]);
     }
     fc = open_font(s, style, size);
     if (!fc) {
@@ -313,7 +312,7 @@ QEBitmap *bmp_alloc(QEditScreen *s, int width, int height, int flags)
 
     if (!s->dpy.dpy_bmp_alloc)
         return NULL;
-    b = qe_malloc(QEBitmap);
+    b = qe_mallocz(QEBitmap);
     if (!b)
         return NULL;
     b->width = width;

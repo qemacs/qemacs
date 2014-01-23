@@ -1445,12 +1445,9 @@ EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
     if (qs->yank_buffers[qs->yank_current]) {
         if (++qs->yank_current == NB_YANK_BUFFERS)
             qs->yank_current = 0;
-        b = qs->yank_buffers[qs->yank_current];
-        if (b) {
-            /* problem if buffer is displayed in window, should instead
-             * just clear the buffer */
-            eb_free(b);
-        }
+        /* problem if buffer is displayed in window, should instead
+         * just clear the buffer */
+        eb_free(&qs->yank_buffers[qs->yank_current]);
     }
     snprintf(bufname, sizeof(bufname), "*kill-%d*", qs->yank_current + 1);
     b = eb_new(bufname, base->flags & BF_STYLES);
@@ -1854,8 +1851,7 @@ void do_convert_buffer_file_coding_system(EditState *s,
 
     /* replace current buffer with conversion */
     /* quick hack to transfer styles from tmp buffer to b */
-    eb_free(b->b_styles);
-    b->b_styles = NULL;
+    eb_free(&b->b_styles);
     eb_delete(b, 0, b->total_size);
     eb_set_charset(b, charset);
     eb_insert_buffer(b, 0, b1, 0, b1->total_size);
@@ -1871,7 +1867,7 @@ void do_convert_buffer_file_coding_system(EditState *s,
         }
     }
 
-    eb_free(b1);
+    eb_free(&b1);
 
     put_status(s, "Buffer charset is now %s, %d bytes",
                s->b->charset->name, b->total_size);
@@ -3756,7 +3752,7 @@ int qe_get_prototype(CmdDef *d, char *buf, int size)
 
 static void arg_edit_cb(void *opaque, char *str);
 static void parse_args(ExecCmdState *es);
-static void free_cmd(ExecCmdState *es);
+static void free_cmd(ExecCmdState **esp);
 
 void exec_command(EditState *s, CmdDef *d, int argval, int key)
 {
@@ -3772,7 +3768,7 @@ void exec_command(EditState *s, CmdDef *d, int argval, int key)
         }
     }
 
-    es = qe_malloc(ExecCmdState);
+    es = qe_mallocz(ExecCmdState);
     if (!es)
         return;
 
@@ -3917,22 +3913,25 @@ static void parse_args(ExecCmdState *es)
 
     qs->last_cmd_func = qs->this_cmd_func;
  fail:
-    free_cmd(es);
+    free_cmd(&es);
 }
 
-static void free_cmd(ExecCmdState *es)
+static void free_cmd(ExecCmdState **esp)
 {
-    int i;
+    if (*esp) {
+        ExecCmdState *es = *esp;
+        int i;
 
-    /* free allocated parameters */
-    for (i = 0; i < es->nb_args; i++) {
-        switch (es->args_type[i]) {
-        case CMD_ARG_STRING:
-            qe_free((char **)&es->args[i].p);
-            break;
+        /* free allocated parameters */
+        for (i = 0; i < es->nb_args; i++) {
+            switch (es->args_type[i]) {
+            case CMD_ARG_STRING:
+                qe_free((char **)&es->args[i].p);
+                break;
+            }
         }
+        qe_free(esp);
     }
-    qe_free(&es);
 }
 
 /* when the argument has been typed by the user, this callback is
@@ -3947,7 +3946,7 @@ static void arg_edit_cb(void *opaque, char *str)
         /* command aborted */
     fail:
         qe_free(&str);
-        free_cmd(es);
+        free_cmd(&es);
         return;
     }
     index = es->nb_args - 1;
@@ -4574,8 +4573,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
              *   CG: Should free previous such data ?
              */
             if (b1->flags & BF_TRANSIENT) {
-                eb_free(b1);
-                b1 = NULL;
+                eb_free(&b1);
             } else {
                 b1->saved_data = s->mode->mode_save_data(s);
             }
@@ -4786,7 +4784,7 @@ void file_completion(CompleteState *cp)
         add_string(&cp->cs, filename);
     }
 
-    find_file_close(ffst);
+    find_file_close(&ffst);
 }
 
 void buffer_completion(CompleteState *cp)
@@ -4806,7 +4804,7 @@ void register_completion(const char *name, CompletionFunc completion_func)
     QEmacsState *qs = &qe_state;
     CompletionEntry **lp, *p;
 
-    p = qe_malloc(CompletionEntry);
+    p = qe_mallocz(CompletionEntry);
     if (!p)
         return;
 
@@ -5459,7 +5457,7 @@ static void kill_buffer_noconfirm(EditBuffer *b)
     }
 
     /* now we can safely delete buffer */
-    eb_free(b);
+    eb_free(&b);
 
     do_refresh(qs->first_window);
 }
@@ -5806,7 +5804,7 @@ void do_exit_qemacs(EditState *s, int argval)
         return;
     }
 
-    is = qe_malloc(QuitState);
+    is = qe_mallocz(QuitState);
     if (!is)
         return;
 
@@ -6222,7 +6220,7 @@ void do_isearch(EditState *s, int dir)
 {
     ISearchState *is;
 
-    is = qe_malloc(ISearchState);
+    is = qe_mallocz(ISearchState);
     if (!is)
         return;
     is->s = s;
@@ -7156,7 +7154,7 @@ ModeSavedData *generic_mode_save_data(EditState *s)
 {
     ModeSavedData *saved_data;
 
-    saved_data = qe_malloc(ModeSavedData);
+    saved_data = qe_mallocz(ModeSavedData);
     if (!saved_data)
         return NULL;
     saved_data->mode = s->mode;
@@ -7204,7 +7202,7 @@ int find_resource_file(char *path, int path_size, const char *pattern)
         return -1;
     ret = find_file_next(ffst, path, path_size);
 
-    find_file_close(ffst);
+    find_file_close(&ffst);
 
     return ret;
 }
@@ -7508,7 +7506,7 @@ void do_load_config_file(EditState *e, const char *file)
     while (find_file_next(ffst, filename, sizeof(filename)) == 0) {
         parse_config_file(e, filename);
     }
-    find_file_close(ffst);
+    find_file_close(&ffst);
     if (file)
         do_refresh(e);
 }
@@ -7846,7 +7844,7 @@ static void load_all_modules(QEmacsState *qs)
         /* all is OK: we can init the module now */
         (*init_func)();
     }
-    find_file_close(ffst);
+    find_file_close(&ffst);
 
   done:
     qs->ec = ec;

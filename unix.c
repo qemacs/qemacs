@@ -110,7 +110,7 @@ int set_pid_handler(int pid,
             }
         }
     } else {
-        p = qe_malloc(PidHandler);
+        p = qe_mallocz(PidHandler);
         if (!p)
             return -1;
         p->pid = pid;
@@ -129,7 +129,7 @@ void register_bottom_half(void (*cb)(void *opaque), void *opaque)
     BottomHalfEntry *bh;
 
     /* Should not fail */
-    bh = qe_malloc(BottomHalfEntry);
+    bh = qe_mallocz(BottomHalfEntry);
     bh->cb = cb;
     bh->opaque = opaque;
     list_add(bh, &bottom_halves);
@@ -154,7 +154,7 @@ QETimer *qe_add_timer(int delay, void *opaque, void (*cb)(void *opaque))
 {
     QETimer *ti;
 
-    ti = qe_malloc(QETimer);
+    ti = qe_mallocz(QETimer);
     if (!ti)
         return NULL;
     ti->timeout = get_clock_ms() + delay;
@@ -165,17 +165,21 @@ QETimer *qe_add_timer(int delay, void *opaque, void (*cb)(void *opaque))
     return ti;
 }
 
-void qe_kill_timer(QETimer *ti)
+void qe_kill_timer(QETimer **tip)
 {
-    QETimer **pt;
-    pt = &first_timer;
-    while (*pt != NULL) {
-        if (*pt == ti) {
-            *pt = ti->next;
-            qe_free(&ti);
-        } else {
-            pt = &(*pt)->next;
+    if (*tip) {
+        QETimer **pt;
+
+        /* remove timer from list of active timers and free it */
+        for (pt = &first_timer; *pt != NULL; pt = &(*pt)->next) {
+            if (*pt == (*tip)) {
+                *pt = (*tip)->next;
+                qe_free(tip);
+                return;
+            }
         }
+        /* timer not found, was probably alread freed */
+        *tip = NULL;
     }
 }
 
@@ -315,4 +319,3 @@ void url_exit(void)
 {
     url_exit_request = 1;
 }
-

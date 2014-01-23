@@ -1,7 +1,7 @@
 /*
  * CSS2 parser for qemacs.
  *
- * Copyright (c) 2000, 2001, 2002 Fabrice Bellard.
+ * Copyright (c) 2000-2002 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -638,39 +638,40 @@ CSSStyleSheet *css_new_style_sheet(void)
 
 static void free_selector(CSSSimpleSelector *ss)
 {
-    CSSStyleSheetAttributeEntry *attr, *attr1;
-
-    for (attr = ss->attrs; attr != NULL; attr = attr1) {
-        attr1 = attr->next;
+    while (ss->attrs) {
+        CSSStyleSheetAttributeEntry *attr = ss->attrs;
+        ss->attrs = attr->next;
         qe_free(&attr);
     }
 }
 
 /* XXX: free idents too */
-void css_free_style_sheet(CSSStyleSheet *s)
+void css_free_style_sheet(CSSStyleSheet **sp)
 {
-    CSSStyleSheetEntry *e, *e1;
-    CSSProperty *p, *p1;
-    CSSSimpleSelector *ss, *ss1;
+    if (*sp) {
+        CSSStyleSheet *s = *sp;
 
-    for (e = s->first_entry; e != NULL; e = e1) {
-        e1 = e->next;
+        while (s->first_entry) {
+            CSSStyleSheetEntry *e = s->first_entry;
+            s->first_entry = e->next;
 
-        for (ss = e->sel.next; ss != NULL; ss = ss1) {
-            ss1 = ss->next;
-            free_selector(ss);
-            qe_free(&ss);
+            while (e->sel.next) {
+                CSSSimpleSelector *ss = e->sel.next;
+                e->sel.next = ss->next;
+                free_selector(ss);
+                qe_free(&ss);
+            }
+            free_selector(&e->sel);
+
+            while (e->props) {
+                CSSProperty *p = e->props;
+                e->props = p->next;
+                qe_free(&p);
+            }
+            qe_free(&e);
         }
-        free_selector(&e->sel);
-
-        for (p = e->props; p != NULL; p = p1) {
-            p1 = p->next;
-            qe_free(&p);
-        }
-        qe_free(&e);
+        qe_free(sp);
     }
-
-    qe_free(&s);
 }
 
 static int bgetc1(CSSParseState *b)
@@ -845,7 +846,7 @@ void css_merge_style_sheet(CSSStyleSheet *s, CSSStyleSheet *a)
         /* add selector operations */
         pss = &e1->sel.next;
         for (ss = e->sel.next; ss != NULL; ss = ss->next) {
-            ss1 = qe_malloc(CSSSimpleSelector);
+            ss1 = qe_mallocz(CSSSimpleSelector);
             dup_selector(ss1, ss);
             *pss = ss1;
             pss = &ss1->next;

@@ -205,7 +205,9 @@ QVarType qe_get_variable(EditState *s, const char *name,
  */
 extern u8 end[];
 #ifdef CONFIG_DARWIN
-u8 end[8];  /* FIXME: not really at the end, but beyond the bss, should remove this dependency */
+/* XXX: not really at the end, but should be beyond initialized data */
+/* XXX: should remove this hack */
+u8 end[8];
 #endif
 
 QVarType qe_set_variable(EditState *s, const char *name,

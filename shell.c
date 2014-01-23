@@ -1333,7 +1333,7 @@ static void shell_close(EditBuffer *b)
     if (s->pty_fd >= 0) {
         set_read_handler(s->pty_fd, NULL, NULL);
     }
-    qe_free(&s);
+    qe_free(&b->priv_data);
 }
 
 EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
@@ -1369,7 +1369,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     s = qe_mallocz(ShellState);
     if (!s) {
         if (!b0)
-            eb_free(b);
+            eb_free(&b);
         return NULL;
     }
     b->priv_data = s;
@@ -1392,7 +1392,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
 
     if (run_process(cmd, &s->pty_fd, &s->pid, cols, rows, shell_flags) < 0) {
         if (!b0)
-            eb_free(b);
+            eb_free(&b);
         return NULL;
     }
 

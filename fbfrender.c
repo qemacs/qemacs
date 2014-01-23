@@ -237,7 +237,7 @@ QEFont *fbf_open_font(__unused__ QEditScreen *s, int style, int size)
     UniFontData *fonts[MAX_MATCHES];
     int nb_fonts, i;
 
-    font = qe_malloc(QEFont);
+    font = qe_mallocz(QEFont);
     if (!font)
         return NULL;
 
@@ -276,9 +276,9 @@ QEFont *fbf_open_font(__unused__ QEditScreen *s, int style, int size)
     return font;
 }
 
-void fbf_close_font(__unused__ QEditScreen *s, QEFont *font)
+void fbf_close_font(__unused__ QEditScreen *s, QEFont **fontp)
 {
-    qe_free(&font);
+    qe_free(fontp);
 }
 
 static void *my_malloc(__unused__ void *opaque, int size)
@@ -485,17 +485,15 @@ int fbf_render_init(__unused__ const char *font_path)
 
 void fbf_render_cleanup(void)
 {
-    UniFontData *uf, *uf1;
-
-    for (uf = first_font; uf != NULL; uf = uf1) {
-        uf1 = uf->next_font;
+    while (first_font) {
+        UniFontData *uf = first_font;
+        first_font = uf->next_font;
         /* close font data structures */
         fbf_free_font(uf);
         /* close font file */
         qe_free(&uf->infile);
         qe_free(&uf);
     }
-    first_font = NULL;
 }
 
 #endif
