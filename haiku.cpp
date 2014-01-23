@@ -55,7 +55,7 @@ static int bapp_ref_count = 0;
 static int events_wr;
 
 /* count of pending repaints */
-static vint32 repaints = 0;
+static int32 repaints = 0;
 //TODO:use double-buffering with a BBitmap
 
 static void haiku_handle_event(void *opaque);
@@ -384,7 +384,7 @@ static void haiku_handle_event(void *opaque)
 
     case _UPDATE_:
         // flush queued repaints
-        if (atomic_set(&repaints, 0)) {
+        if (atomic_get_and_set(&repaints, 0)) {
             ev->expose_event.type = QE_EXPOSE_EVENT;
             qe_handle_event(ev);
         }
