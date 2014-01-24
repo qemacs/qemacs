@@ -4721,31 +4721,35 @@ void edit_attach(EditState *s, EditState **ep)
 /* close the edit window. If it is active, find another active
    window. If the buffer is only referenced by this window, then save
    in the buffer all the window state so that it can be recovered. */
-void edit_close(EditState *s)
+void edit_close(EditState **sp)
 {
-    QEmacsState *qs = s->qe_state;
-    EditState **ps;
+    if (*sp) {
+        EditState *s = *sp;
+        QEmacsState *qs = s->qe_state;
+        EditState **ps;
 
-    /* save current state for later window reattachment */
-    switch_to_buffer(s, NULL);
+        /* save current state for later window reattachment */
+        switch_to_buffer(s, NULL);
 
-    /* free from window list */
-    ps = &qs->first_window;
-    while (*ps != NULL) {
-        if (*ps == s)
-            break;
-        ps = &(*ps)->next_window;
+        /* detach from window list */
+        ps = &qs->first_window;
+        while (*ps != NULL) {
+            if (*ps == s) {
+                *ps = s->next_window;
+                break;
+            }
+            ps = &(*ps)->next_window;
+        }
+
+        /* if active window, select another active window */
+        if (qs->active_window == s)
+            qs->active_window = qs->first_window;
+
+        qe_free(&s->mode_data);
+        qe_free(&s->prompt);
+        qe_free(&s->line_shadow);
+        qe_free(sp);
     }
-    *ps = (*ps)->next_window;
-
-    /* if active window, select another active window */
-    if (qs->active_window == s)
-        qs->active_window = qs->first_window;
-
-    qe_free(&s->mode_data);
-    qe_free(&s->prompt);
-    qe_free(&s->line_shadow);
-    qe_free(&s);
 }
 
 static const char *file_completion_ignore_extensions =
@@ -4902,10 +4906,9 @@ void do_completion(EditState *s)
      * completion_popup_window or close it.
      */
     /* check completion window */
-    completion_popup_window = check_window(completion_popup_window);
+    check_window(&completion_popup_window);
     if (completion_popup_window && qs->last_cmd_func == qs->this_cmd_func) {
-        edit_close(completion_popup_window);
-        completion_popup_window = NULL;
+        edit_close(&completion_popup_window);
         do_refresh(s);
         return;
     }
@@ -4962,8 +4965,7 @@ void do_completion(EditState *s)
             }
         } else {
             if (completion_popup_window) {
-                edit_close(completion_popup_window);
-                completion_popup_window = NULL;
+                edit_close(&completion_popup_window);
                 do_refresh(s);
             }
         }
@@ -5121,8 +5123,8 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     /* remove completion popup if present */
     /* CG: assuming completion_popup_window != s */
     if (cw) {
-        edit_close(cw);
-        completion_popup_window = cw = NULL;
+        edit_close(&completion_popup_window);
+        cw = NULL;
         do_refresh(s);
     }
 
@@ -5136,10 +5138,11 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     }
 
     s->b->flags |= BF_TRANSIENT;
-    edit_close(s);
+    /* Close the minibuffer window */
+    edit_close(&s);
 
     /* restore active window */
-    qs->active_window = check_window(minibuffer_saved_active);
+    qs->active_window = check_window(&minibuffer_saved_active);
     minibuffer_saved_active = NULL;
 
     /* force status update */
@@ -5235,17 +5238,19 @@ static ModeDef less_mode;
 /* XXX: incorrect to save it. Should use a safer method */
 static EditState *popup_saved_active;
 
-/* Verify that window still exists, return argument or NULL */
-EditState *check_window(EditState *s)
+/* Verify that window still exists, return argument or NULL,
+ * update handle if window is invalid.
+ */
+EditState *check_window(EditState **sp)
 {
     QEmacsState *qs = &qe_state;
     EditState *e;
 
     for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e == s)
-            break;
+        if (e == *sp)
+            return e;
     }
-    return e;
+    return *sp = NULL;
 }
 
 /* less like mode */
@@ -5253,10 +5258,11 @@ void do_less_exit(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
 
+    /* XXX: ony do this for a popup? */
     s->b->flags |= BF_TRANSIENT;
-    edit_close(s);
+    edit_close(&s);
 
-    qs->active_window = check_window(popup_saved_active);
+    qs->active_window = check_window(&popup_saved_active);
     popup_saved_active = NULL;
 
     do_refresh(qs->active_window);
@@ -5310,8 +5316,9 @@ EditState *insert_window_left(EditBuffer *b, int width, int flags)
         if (e->minibuf)
             continue;
         if (e->x2 <= width) {
-            edit_close(e);
-        } else if (e->x1 < width) {
+            edit_close(&e);
+        } else
+        if (e->x1 < width) {
             e->x1 = width;
         }
     }
@@ -6636,7 +6643,7 @@ void do_delete_window(EditState *s, int force)
     }
     if (qs->active_window == s)
         qs->active_window = e ? e : qs->first_window;
-    edit_close(s);
+    edit_close(&s);
     if (qs->first_window)
         do_refresh(qs->first_window);
 }
@@ -6649,7 +6656,7 @@ void do_delete_other_windows(EditState *s)
     for (e = qs->first_window; e != NULL; e = e1) {
         e1 = e->next_window;
         if (!e->minibuf && e != s)
-            edit_close(e);
+            edit_close(&e);
     }
     /* resize to whole screen */
     s->y1 = 0;
@@ -8072,7 +8079,7 @@ int main(int argc, char **argv)
         }
         while (qs->first_window) {
             EditState *e = qs->first_window;
-            edit_close(e);
+            edit_close(&e);
         }
         while (qs->first_buffer) {
             EditBuffer *b = qs->first_buffer;

@@ -1612,11 +1612,11 @@ EditState *find_window(EditState *s, int key);
 void do_find_window(EditState *s, int key);
 
 /* window handling */
-void edit_close(EditState *s);
+void edit_close(EditState **sp);
 EditState *edit_new(EditBuffer *b,
                     int x1, int y1, int width, int height, int flags);
 void edit_detach(EditState *s);
-EditState *check_window(EditState *s);
+EditState *check_window(EditState **sp);
 EditState *edit_find(EditBuffer *b);
 void do_refresh(EditState *s);
 // should take direction argument
