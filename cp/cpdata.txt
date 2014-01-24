@@ -338,3 +338,8 @@ include VISCII.TXT
 Kamenicky Brothers
 "x-kam-cs", "kam", "867", "869"
 include kamen.cp
+
+[atarist]
+Atari ST
+"atari-st", "atarist"
+include ATARIST.TXT
