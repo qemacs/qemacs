@@ -249,6 +249,14 @@ static QEFont dummy_font;
 static QEFont *font_cache[FONT_CACHE_SIZE];
 static int font_cache_timestamp = 0;
 
+void free_font_cache(QEditScreen *s)
+{
+    int i;
+    for (i = 0; i < FONT_CACHE_SIZE; i++) {
+        close_font(s, &font_cache[i]);
+    }
+}
+
 QEFont *select_font(QEditScreen *s, int style, int size)
 {
     QEFont *fc;

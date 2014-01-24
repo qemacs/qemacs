@@ -579,6 +579,7 @@ void eb_free(EditBuffer **bp)
 
         eb_free_style_buffer(b);
 
+	qe_free(&b->saved_data);
         qe_free(bp);
     }
 }

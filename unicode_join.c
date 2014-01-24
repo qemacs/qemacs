@@ -93,6 +93,13 @@ int load_ligatures(void)
     return -1;
 }
 
+void unload_ligatures(void)
+{
+    qe_free(&subst1);
+    qe_free(&ligature2);
+    qe_free(&ligature_long);
+}
+
 static int find_ligature(int l1, int l2)
 {
     int a, b, m, v1, v2;

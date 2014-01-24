@@ -72,6 +72,9 @@ static QEditScreen global_screen;
 static int screen_width = 0;
 static int screen_height = 0;
 static int no_init_file;
+#ifndef CONFIG_TINY
+static int free_everything;
+#endif
 static const char *user_option;
 
 /* mode handling */
@@ -80,7 +83,6 @@ void qe_register_mode(ModeDef *m)
 {
     QEmacsState *qs = &qe_state;
     ModeDef **p;
-    CmdDef *def;
 
     /* register mode in mode list (at end) */
     p = &qs->first_mode;
@@ -107,6 +109,7 @@ void qe_register_mode(ModeDef *m)
     if (!(m->mode_flags & MODEF_NOCMD)) {
         char buf[64];
         int size;
+        CmdDef *def;
 
         /* lower case convert for C mode, Perl... */
         qe_strtolower(buf, sizeof(buf) - 10, m->name);
@@ -121,6 +124,7 @@ void qe_register_mode(ModeDef *m)
         def->sig = CMD_ESs;
         def->val = 0;
         def->action.ESs = do_set_mode;
+        def[1].val = 1;  /* flag as allocated for free-all */
         qe_register_cmd_table(def, NULL);
     }
 }
@@ -4155,7 +4159,7 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
     def->sig = CMD_ESs;
     def->val = 0;
     def->action.ESs = do_execute_macro_keys;
-
+    def[1].val = 1;  /* flag as allocated for free-all */
     qe_register_cmd_table(def, NULL);
     do_set_key(s, key_bind, name, 0);
 }
@@ -4549,6 +4553,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
     EditBuffer *b1;
     EditState *e;
     ModeSavedData *saved_data, **psaved_data;
+    int saved_data_allocated = 0;
     ModeDef *mode;
 
     /* remove region hilite */
@@ -4572,14 +4577,16 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
              * - otherwise, save the mode data in the buffer.
              *   CG: Should free previous such data ?
              */
-            if (b1->flags & BF_TRANSIENT) {
-                eb_free(&b1);
-            } else {
+            if (!(b1->flags & BF_TRANSIENT)) {
+                qe_free(&b1->saved_data);
                 b1->saved_data = s->mode->mode_save_data(s);
             }
         }
         /* now we can close the mode */
         edit_set_mode(s, NULL);
+        if (b1->flags & BF_TRANSIENT) {
+            eb_free(&b1);
+        }
     }
 
     /* now we can switch ! */
@@ -4595,6 +4602,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
         if (e) {
             psaved_data = NULL;
             saved_data = e->mode->mode_save_data(e);
+            saved_data_allocated = 1;
         } else {
             psaved_data = &b->saved_data;
             saved_data = *psaved_data;
@@ -4608,6 +4616,8 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
 
         /* open it ! */
         edit_set_mode_full(s, mode, saved_data, NULL);
+        if (saved_data_allocated)
+            qe_free(&saved_data);
     }
 }
 
@@ -4732,6 +4742,7 @@ void edit_close(EditState *s)
     if (qs->active_window == s)
         qs->active_window = qs->first_window;
 
+    qe_free(&s->mode_data);
     qe_free(&s->prompt);
     qe_free(&s->line_shadow);
     qe_free(&s);
@@ -5853,6 +5864,7 @@ static void quit_examine_buffers(QuitState *is)
         edit_display(&qe_state);
         dpy_flush(&global_screen);
     } else {
+        qe_free(&is);
         url_exit();
     }
 }
@@ -7719,6 +7731,10 @@ static CmdOptionDef cmd_options[] = {
       { .func_arg = set_user_option }},
     { "version", "V", NULL, 0, "display version information and exit",
       { .func_noarg = show_version }},
+#ifndef CONFIG_TINY
+    { "free-all", NULL, NULL, CMD_OPT_BOOL, "free all structures upon exit",
+      { .int_ptr = &free_everything }},
+#endif
     { NULL, NULL, NULL, 0, NULL, { NULL }},
 };
 
@@ -8040,7 +8056,65 @@ int main(int argc, char **argv)
 #ifdef CONFIG_ALL_KMAPS
     unload_input_methods();
 #endif
+#ifdef CONFIG_UNICODE_JOIN
+    unload_ligatures();
+#endif
+#ifndef CONFIG_TINY
+    if (free_everything) {
+        /* free all structures for valgrind */
+        QEmacsState *qs = &qe_state;
 
+        while (qs->input_methods) {
+            InputMethod *p = qs->input_methods;
+            qs->input_methods = p->next;
+            if (p->data)
+                qe_free(&p);
+        }
+        while (qs->first_window) {
+            EditState *e = qs->first_window;
+            edit_close(e);
+        }
+        while (qs->first_buffer) {
+            EditBuffer *b = qs->first_buffer;
+            eb_free(&b);
+        }
+        while (qs->first_cmd) {
+            CmdDef *d = qs->first_cmd;
+            CmdDef *d1 = d;
+            while (d1->name)
+                d1++;
+            qs->first_cmd = d1->action.next;
+            /* free xxx-mode commands and macros */
+            if (d->name && !d[1].name && d[1].val) {
+                qe_free((char **)&d->name);
+                qe_free(&d);
+            }
+        }
+        while (qs->first_key) {
+            KeyDef *p = qs->first_key;
+            qs->first_key = p->next;
+            qe_free(&p);
+        }
+        while (qs->first_mode) {
+            ModeDef *m = qs->first_mode;
+            qs->first_mode = m->next;
+
+            while (m->first_key) {
+                KeyDef *p = m->first_key;
+                m->first_key = p->next;
+                qe_free(&p);
+            }
+        }
+        while (qs->first_completion) {
+            CompletionEntry *cp = qs->first_completion;
+            qs->first_completion = cp->next;
+            qe_free(&cp);
+        }
+        css_free_colors();
+        free_font_cache(&global_screen);
+    }
+#endif
     dpy_close(&global_screen);
+
     return 0;
 }

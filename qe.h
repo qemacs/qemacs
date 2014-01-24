@@ -315,6 +315,7 @@ int to_hex(int key);
 void color_completion(CompleteState *cp);
 int css_define_color(const char *name, const char *value);
 int css_get_color(QEColor *color_ptr, const char *p);
+void css_free_colors(void);
 int css_get_font_family(const char *str);
 void css_union_rect(CSSRect *a, const CSSRect *b);
 static inline int css_is_null_rect(const CSSRect *a) {
@@ -561,6 +562,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
                       int dst_size, unsigned int *src, int src_size,
                       int reverse);
 int load_ligatures(void);
+void unload_ligatures(void);
 
 /* qe event handling */
 

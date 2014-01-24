@@ -248,8 +248,8 @@ void fill_rectangle(QEditScreen *s,
 void set_clip_rectangle(QEditScreen *s, CSSRect *r);
 void push_clip_rectangle(QEditScreen *s, CSSRect *or, CSSRect *r);
 
+void free_font_cache(QEditScreen *s);
 QEFont *select_font(QEditScreen *s, int style, int size);
-
 static inline QEFont *lock_font(__unused__ QEditScreen *s, QEFont *font) {
     if (font && font->refcount)
         font->refcount++;

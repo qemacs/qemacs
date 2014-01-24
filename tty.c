@@ -241,6 +241,8 @@ static int tty_term_init(QEditScreen *s,
 
 static void tty_term_close(QEditScreen *s)
 {
+    TTYState *ts = s->priv_data;
+
     fcntl(fileno(s->STDIN), F_SETFL, 0);
 #if 0
     /* go to the last line */
@@ -258,6 +260,9 @@ static void tty_term_close(QEditScreen *s)
                );
 #endif
     fflush(s->STDOUT);
+
+    qe_free(&ts->screen);
+    qe_free(&ts->line_updated);
 }
 
 static void tty_term_exit(void)
@@ -290,12 +295,12 @@ static void tty_resize(__unused__ int sig)
     count = s->width * s->height;
     size = count * sizeof(TTYChar);
     /* screen buffer + shadow buffer + extra slot for loop guard */
-    qe_realloc(&ts->screen, size * 2 + 1);
+    qe_realloc(&ts->screen, size * 2 + sizeof(TTYChar));
     qe_realloc(&ts->line_updated, s->height);
     ts->screen_size = count;
 
     /* Erase shadow buffer to impossible value */
-    memset(ts->screen + count, 0xFF, size);
+    memset(ts->screen + count, 0xFF, size + sizeof(TTYChar));
     /* Fill screen buffer with black spaces */
     tc = TTYCHAR_DEFAULT;
     for (i = 0; i < count; i++) {

@@ -1328,6 +1328,7 @@ static void shell_close(EditBuffer *b)
             while (waitpid(s->pid, &status, 0) != s->pid)
                 continue;
         }
+	set_pid_handler(s->pid, NULL, NULL);
         s->pid = -1;
     }
     if (s->pty_fd >= 0) {

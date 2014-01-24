@@ -1152,6 +1152,18 @@ int css_define_color(const char *name, const char *value)
     return 0;
 }
 
+void css_free_colors(void)
+{
+    if (qe_colors != default_colors) {
+        while (nb_qe_colors > nb_default_colors) {
+            nb_qe_colors--;
+            qe_free((char **)&qe_colors[nb_qe_colors].name);
+        }
+        qe_free(&qe_colors);
+        qe_colors = (ColorDef *)default_colors;
+    }
+}
+
 /* XXX: make HTML parsing optional ? */
 int css_get_color(QEColor *color_ptr, const char *p)
 {
