@@ -1130,18 +1130,18 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
 
     if (b->b_styles) {
         if (b->style_shift == 2) {
-            *(uint32_t*)buf = 0;
-            eb_read(b->b_styles, (offset >> b->char_shift) << 2, buf, 4);
-            b->cur_style = *(uint32_t*)buf;
+            uint32_t style = 0;
+            eb_read(b->b_styles, (offset >> b->char_shift) << 2, &style, 4);
+            b->cur_style = style;
         } else
         if (b->style_shift == 1) {
-            *(uint16_t*)buf = 0;
-            eb_read(b->b_styles, (offset >> b->char_shift) << 1, buf, 2);
-            b->cur_style = *(uint16_t*)buf;
+            uint16_t style = 0;
+            eb_read(b->b_styles, (offset >> b->char_shift) << 1, &style, 2);
+            b->cur_style = style;
         } else {
-            *(uint8_t*)buf = 0;
-            eb_read(b->b_styles, (offset >> b->char_shift), buf, 1);
-            b->cur_style = *(uint8_t*)buf;
+            uint8_t style = 0;
+            eb_read(b->b_styles, (offset >> b->char_shift), &style, 1);
+            b->cur_style = style;
         }
     }
     if (eb_read(b, offset, buf, 1) <= 0) {

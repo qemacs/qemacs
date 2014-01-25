@@ -5980,7 +5980,7 @@ int eb_search(EditBuffer *b, int offset, int dir, int flags,
     *found_offset = -1;
     *found_end = -1;
 
-    for (;; dir >= 0 && eb_nextc(b, offset, &offset)) {
+    for (;; (void)(dir >= 0 && eb_nextc(b, offset, &offset))) {
         if (dir < 0) {
             if (offset == 0)
                 return 0;
