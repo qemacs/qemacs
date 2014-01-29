@@ -278,7 +278,7 @@ static int org_is_header_line(EditState *s, int offset)
     return eb_nextc(s->b, eb_goto_bol(s->b, offset), &offset) == '*';
 }
 
-static int org_find_heading(EditState *s, int offset, int *level)
+static int org_find_heading(EditState *s, int offset, int *level, int silent)
 {
     int offset1, nb, c;
 
@@ -298,6 +298,9 @@ static int org_find_heading(EditState *s, int offset, int *level)
             break;
         offset = eb_prev_line(s->b, offset);
     }
+    if (!silent)
+        put_status(s, "Before first heading");
+
     return -1;
 }
 
@@ -363,13 +366,12 @@ static void do_outline_up_heading(EditState *s)
 {
     int offset, level;
 
-    offset = org_find_heading(s, s->offset, &level);
-    if (offset < 0) {
-        put_status(s, "before first heading");
+    offset = org_find_heading(s, s->offset, &level, 0);
+    if (offset < 0)
         return;
-    }
+
     if (level <= 1) {
-        put_status(s, "already at top level of the outline");
+        put_status(s, "Already at top level of the outline");
         return;
     }
 
@@ -380,14 +382,13 @@ static void do_org_backward_same_level(EditState *s)
 {
     int offset, level, level1;
 
-    offset = org_find_heading(s, s->offset, &level);
-    if (offset < 0) {
-        put_status(s, "before first heading");
+    offset = org_find_heading(s, s->offset, &level, 0);
+    if (offset < 0)
         return;
-    }
+
     offset = org_prev_heading(s, offset, level, &level1);
     if (level1 != level) {
-        put_status(s, "no previous same-level heading");
+        put_status(s, "No previous same-level heading");
         return;
     }
     s->offset = offset;
@@ -397,14 +398,13 @@ static void do_org_forward_same_level(EditState *s)
 {
     int offset, level, level1;
 
-    offset = org_find_heading(s, s->offset, &level);
-    if (offset < 0) {
-        put_status(s, "before first heading");
+    offset = org_find_heading(s, s->offset, &level, 0);
+    if (offset < 0)
         return;
-    }
+
     offset = org_next_heading(s, offset, level, &level1);
     if (level1 != level) {
-        put_status(s, "no following same-level heading");
+        put_status(s, "No following same-level heading");
         return;
     }
     s->offset = offset;
@@ -428,7 +428,7 @@ static void do_org_goto(EditState *s, const char *dest)
         for (; nb > 0; nb--) {
             offset = org_next_heading(s, offset, level, &level1);
             if (level != level1) {
-                put_status(s, "heading not found");
+                put_status(s, "Heading not found");
                 return;
             }
         }
@@ -442,11 +442,10 @@ static void do_org_mark_element(EditState *s, int subtree)
     QEmacsState *qs = s->qe_state;
     int offset, offset1, level;
 
-    offset = org_find_heading(s, s->offset, &level);
-    if (offset < 0) {
-        put_status(s, "before first heading");
+    offset = org_find_heading(s, s->offset, &level, 0);
+    if (offset < 0)
         return;
-    }
+
     offset1 = org_next_heading(s, offset, subtree ? level : MAX_LEVEL, NULL);
 
     /* XXX: if repeating last command, add subtree to region */
@@ -466,11 +465,9 @@ static void do_org_todo(EditState *s)
     if (check_read_only(s))
         return;
 
-    offset = org_find_heading(s, s->offset, &bullets);
-    if (offset < 0) {
-        put_status(s, "before first heading");
+    offset = org_find_heading(s, s->offset, &bullets, 0);
+    if (offset < 0)
         return;
-    }
 
     offset = eb_skip_chars(s->b, offset, bullets + 1);
     for (kw = 0; kw < countof(OrgTodoKeywords); kw++) {
@@ -498,7 +495,7 @@ static void do_org_insert_heading(EditState *s, int flags)
     if (check_read_only(s))
         return;
 
-    offset = org_find_heading(s, s->offset, &level);
+    offset = org_find_heading(s, s->offset, &level, 1);
     offset0 = eb_goto_bol(s->b, s->offset);
     offset1 = eb_goto_eol(s->b, s->offset);
 
@@ -542,11 +539,10 @@ static void do_org_promote(EditState *s, int dir)
     if (check_read_only(s))
         return;
 
-    offset = org_find_heading(s, s->offset, &level);
-    if (offset < 0) {
-        put_status(s, "before first heading");
+    offset = org_find_heading(s, s->offset, &level, 0);
+    if (offset < 0)
         return;
-    }
+
     if (dir < 0) {
         eb_insert_uchar(s->b, offset, '*');
     } else
@@ -554,7 +550,7 @@ static void do_org_promote(EditState *s, int dir)
         if (level > 1)
             eb_delete_uchar(s->b, offset);
         else
-            put_status(s, "cannot promote to level 0");
+            put_status(s, "Cannot promote to level 0");
     }
 }
 
@@ -565,12 +561,10 @@ static void do_org_promote_subtree(EditState *s, int dir)
     if (check_read_only(s))
         return;
 
-    offset = org_find_heading(s, s->offset, &level);
-    if (offset < 0) {
-        put_status(s, "before first heading");
+    offset = org_find_heading(s, s->offset, &level, 0);
+    if (offset < 0)
         return;
-    }
-    
+
     for (;;) {
         if (dir < 0) {
             eb_insert_uchar(s->b, offset, '*');
@@ -579,7 +573,7 @@ static void do_org_promote_subtree(EditState *s, int dir)
             if (level > 1) {
                 eb_delete_uchar(s->b, offset);
             } else {
-                put_status(s, "cannot promote to level 0");
+                put_status(s, "Cannot promote to level 0");
                 return;
             }
         }
@@ -598,28 +592,26 @@ static void do_org_move_subtree(EditState *s, int dir)
         return;
 
     if (!org_is_header_line(s, s->offset)) {
-        put_status(s, "not on header line");
+        put_status(s, "Not on header line");
         return;
     }
 
-    offset = org_find_heading(s, s->offset, &level);
-    if (offset < 0) {
-        put_status(s, "before first heading");
+    offset = org_find_heading(s, s->offset, &level, 0);
+    if (offset < 0)
         return;
-    }
-    
+
     offset1 = org_next_heading(s, offset, level, &level1);
     size = offset1 - offset;
 
     if (dir < 0) {
         offset2 = org_prev_heading(s, offset, level, &level2);
         if (level2 < level) {
-            put_status(s, "cannot move substree");
+            put_status(s, "Cannot move substree");
             return;
         }
     } else {
         if (offset1 == s->b->total_size || level1 < level) {
-            put_status(s, "cannot move substree");
+            put_status(s, "Cannot move substree");
             return;
         }
         offset2 = org_next_heading(s, offset1, level, &level2);
