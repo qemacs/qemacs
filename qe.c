@@ -370,9 +370,9 @@ void do_set_emulation(EditState *s, const char *name)
         qs->flag_split_window_change_focus = 0;
     } else
     if (strequal(name, "vi") || strequal(name, "vim")) {
-        put_status(s, "emulation '%s' not available yet", name);
+        put_status(s, "Emulation '%s' not available yet", name);
     } else {
-        put_status(s, "unknown emulation '%s'", name);
+        put_status(s, "Unknown emulation '%s'", name);
     }
 }
 
@@ -1974,7 +1974,7 @@ void do_goto(EditState *s, const char *str, int unit)
         return;
     }
 error:
-    put_status(s, "invalid position: %s", str);
+    put_status(s, "Invalid position: %s", str);
 }
 
 void do_goto_line(EditState *s, int line)

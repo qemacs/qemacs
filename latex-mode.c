@@ -224,7 +224,7 @@ static void latex_cmd_run(void *opaque, char *cmd)
     int len;
 
     if (cmd == NULL) {
-        put_status(func->es, "aborted");
+        put_status(func->es, "Aborted");
         return;
     }
 
