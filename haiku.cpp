@@ -668,8 +668,33 @@ static QEFont *haiku_open_font(QEditScreen *s, int style, int size)
     if (!font)
         return NULL;
 
-    // TODO: use style / size
-    BFont *f = new BFont(ctx->font);
+    BFont *f;
+    uint16 face = 0;
+    switch (style & QE_FAMILY_MASK) {
+    default:
+    case QE_FAMILY_FIXED:
+        f = new BFont(be_fixed_font);
+        break;
+    case QE_FAMILY_SANS:
+    case QE_FAMILY_SERIF:
+        /* There isn't a separate default sans and serif font */
+        /* for now just only use fixed font */
+        //f = new BFont(be_plain_font);
+        f = new BFont(be_fixed_font);
+        break;
+    }
+    if (style & QE_STYLE_NORM)
+        face |= B_REGULAR_FACE;
+    if (style & QE_STYLE_BOLD)
+        face |= B_BOLD_FACE;
+    if (style & QE_STYLE_ITALIC)
+        face |= B_ITALIC_FACE;
+    if (style & QE_STYLE_UNDERLINE)
+        face |= B_UNDERSCORE_FACE; // not really supported IIRC
+    if (style & QE_STYLE_LINE_THROUGH)
+        face |= B_STRIKEOUT_FACE; // not really supported IIRC
+    if (face)
+        f->SetFace(face);
 
     font_height height;
     f->GetHeight(&height);
@@ -681,9 +706,15 @@ static QEFont *haiku_open_font(QEditScreen *s, int style, int size)
 
 static void haiku_close_font(QEditScreen *s, QEFont **fontp)
 {
-    if (*fontp) {
-        BFont *f = (BFont *)(*fontp)->priv_data;
+    QEFont *font = *fontp;
+
+    if (font) {
+        BFont *f = (BFont *)font->priv_data;
         delete f;
+        /* Clear structure to force crash if font is still used after
+         * close_font.
+         */
+        memset(font, 0, sizeof(*font));
         qe_free(fontp);
     }
 }
@@ -733,9 +764,26 @@ static void haiku_draw_text(QEditScreen *s, QEFont *font,
         cc = str[i];
         unicode_to_charset(buf, cc, &charset_utf8);
         text << buf;
-        //ctx->v->DrawString(buf);
     }
     ctx->v->DrawString(text.String());
+
+    /* underline synthesis */
+    if (font->style & (QE_STYLE_UNDERLINE | QE_STYLE_LINE_THROUGH)) {
+        int dy, h, w;
+        BFont *f = (BFont *)font->priv_data;
+        h = (font->descent + 2) / 4 - 1;
+        if (h < 0)
+            h = 0;
+        w = (int)f->StringWidth(text.String()) - 1;
+        if (font->style & QE_STYLE_UNDERLINE) {
+            dy = (font->descent + 1) / 3;
+            ctx->v->FillRect(BRect(x1, y + dy, x1 + w, y + dy + h));
+        }
+        if (font->style & QE_STYLE_LINE_THROUGH) {
+            dy = -(font->ascent / 2 - 1);
+            ctx->v->FillRect(BRect(x1, y + dy, x1 + w, y + dy + h));
+        }
+    }
 
     ctx->v->UnlockLooper();
 
