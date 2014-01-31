@@ -322,15 +322,52 @@ enum {
     INDENT_FIND_EQ,
 };
 
-/* insert n spaces at *offset_ptr. Update offset_ptr to point just
-   after. Tabs are inserted if s->indent_tabs_mode is true. */
-static void insert_spaces(EditState *s, int *offset_ptr, int i)
+/* Check if indentation is already what it should be */
+static int check_indent(EditState *s, int offset, int i, int *offset_ptr)
 {
-    int offset, size;
-    char buf1[64];
+    int offset1;
 
-    offset = *offset_ptr;
+    /* check tabs */
+    if (s->indent_tabs_mode) {
+        while (i >= s->b->tab_width) {
+            if (eb_nextc(s->b, offset, &offset) != '\t')
+                return 0;
+            i -= s->b->tab_width;
+        }
+    }
 
+    /* check needed spaces */
+    while (i > 0) {
+        if (eb_nextc(s->b, offset, &offset) != ' ')
+            return 0;
+        i--;
+    }
+    if (!qe_isblank(eb_nextc(s->b, offset, &offset1))) {
+        *offset_ptr = offset;
+    }
+    return 1;
+}
+
+static void remove_indent(EditState *s, int offset)
+{
+    int offset1 = offset, offset2;
+
+    /* suppress leading spaces */
+    for (;;) {
+        int c = eb_nextc(s->b, offset1, &offset2);
+        if (c != ' ' && c != '\t')
+            break;
+        offset1 = offset2;
+    }
+    if (offset1 > offset)
+        eb_delete_range(s->b, offset, offset1);
+}
+
+/* Insert n spaces at beginning of line at <offset>.
+ * Stop new offset after indentation to <*offset_ptr>.
+ * Tabs are inserted if s->indent_tabs_mode is true. */
+static void insert_indent(EditState *s, int offset, int i, int *offset_ptr)
+{
     /* insert tabs */
     if (s->indent_tabs_mode) {
         while (i >= s->b->tab_width) {
@@ -341,19 +378,24 @@ static void insert_spaces(EditState *s, int *offset_ptr, int i)
 
     /* insert needed spaces */
     while (i > 0) {
-        size = i;
-        if (size > ssizeof(buf1))
-            size = ssizeof(buf1);
-        memset(buf1, ' ', size);
-        offset += eb_insert_utf8_buf(s->b, offset, buf1, size);
+        char buf[64];
+        int size = i;
+
+        if (size > ssizeof(buf))
+            size = ssizeof(buf);
+        memset(buf, ' ', size);
+        offset += eb_insert_utf8_buf(s->b, offset, buf, size);
         i -= size;
     }
     *offset_ptr = offset;
 }
 
-static void do_c_indent(EditState *s)
+/* indent a line of C code starting at <offset>,
+ * store indentation in <*offset_ptr>
+ */
+static void c_indent_line(EditState *s, int offset0)
 {
-    int offset, offset1, offset2, offsetl, c, pos, size, line_num, col_num;
+    int offset, offset1, offsetl, c, pos, line_num, col_num;
     int i, eoi_found, len, pos1, lpos, style, line_num1, state;
     unsigned int buf[MAX_BUF_SIZE], *p;
     unsigned char stack[MAX_STACK_SIZE];
@@ -361,9 +403,9 @@ static void do_c_indent(EditState *s)
     int stack_ptr;
 
     /* find start of line */
-    eb_get_pos(s->b, &line_num, &col_num, s->offset);
+    eb_get_pos(s->b, &line_num, &col_num, offset0);
     line_num1 = line_num;
-    offset = eb_goto_bol(s->b, s->offset);
+    offset = eb_goto_bol(s->b, offset0);
     /* now find previous lines and compute indent */
     pos = 0;
     lpos = -1; /* position of the last instruction start */
@@ -531,61 +573,69 @@ static void do_c_indent(EditState *s)
     }
 
     /* the number of needed spaces is in 'pos' */
-
-    /* CG: should not modify buffer if indentation in correct */
-
-    /* suppress leading spaces */
-    offset1 = offset;
-    for (;;) {
-        c = eb_nextc(s->b, offset1, &offset2);
-        if (c != ' ' && c != '\t')
-            break;
-        offset1 = offset2;
+    /* if on a blank line, reset indent to 0 unless point is on it */
+    if (eb_is_blank_line(s->b, offset, &offset1)
+    &&  (s->offset < offset || s->offset >= offset1)) {
+        pos = 0;
     }
-    size = offset1 - offset;
-    if (size > 0) {
-        eb_delete(s->b, offset, size);
+    /* Do not modify buffer if indentation in correct */
+    if (!check_indent(s, offset, pos, &offset1)) {
+        /* simple approach to normalization of indentation */
+        remove_indent(s, offset);
+        insert_indent(s, offset, pos, &offset1);
     }
-    /* insert needed spaces */
-    offset1 = offset;
-    insert_spaces(s, &offset1, pos);
-    if (s->offset == offset) {
+    if (s->offset >= offset && s->offset < offset1) {
         /* move to the indentation if point was in indent space */
         s->offset = offset1;
     }
 }
 
+static void do_c_indent(EditState *s)
+{
+    c_indent_line(s, s->offset);
+}
+
 static void do_c_indent_region(EditState *s)
 {
-    int col_num, line1, line2, begin;
+    int col_num, line1, line2;
 
-    /* Swap point and mark so point <= mark */
-    if (s->offset > s->b->mark) {
+    /* deactivate region hilite */
+    s->region_style = 0;
+
+    /* Swap point and mark so mark <= point */
+    if (s->offset < s->b->mark) {
         int tmp = s->b->mark;
         s->b->mark = s->offset;
         s->offset = tmp;
     }
     /* We do it with lines to avoid offset variations during indenting */
-    eb_get_pos(s->b, &line1, &col_num, s->offset);
-    eb_get_pos(s->b, &line2, &col_num, s->b->mark);
+    eb_get_pos(s->b, &line1, &col_num, s->b->mark);
+    eb_get_pos(s->b, &line2, &col_num, s->offset);
 
-    /* Remember start of first line of region to later set mark */
-    begin = eb_goto_pos(s->b, line1, 0);
+    if (col_num == 0)
+        line2--;
 
+    /* Iterate over all lines inside block */
     for (; line1 <= line2; line1++) {
-        s->offset = eb_goto_pos(s->b, line1, 0);
-        do_c_indent(s);
+        c_indent_line(s, eb_goto_pos(s->b, line1, 0));
     }
-    /* move point to end of region, and mark to begin of first row */
-    s->offset = s->b->mark;
-    /* XXX: begin may have moved? */
-    s->b->mark = begin;
 }
 
 static void do_c_electric(EditState *s, int key)
 {
+    int offset = s->offset;
+
     do_char(s, key, 1);
-    do_c_indent(s);
+    c_indent_line(s, offset);
+}
+
+static void do_c_return(EditState *s)
+{
+    int offset = s->offset;
+
+    do_return(s, 1);
+    /* reindent line to remove indent on blank line */
+    c_indent_line(s, offset);
 }
 
 /* forward / backward preprocessor */
@@ -633,6 +683,8 @@ static CmdDef c_commands[] = {
           "c-forward-preprocessor", do_c_forward_preprocessor, ESi, 1, "*v")
     CMD2( '{', '}',
           "c-electric-key", do_c_electric, ESi, "*ki")
+    CMD2( KEY_RET, KEY_NONE,
+          "c-newline", do_c_return, ES, "*v")
     CMD_DEF_END,
 };
 
