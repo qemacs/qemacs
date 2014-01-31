@@ -636,10 +636,8 @@ void do_fill_paragraph(EditState *s)
                 chunk_start += eb_insert_uchar(s->b, chunk_start, '\n');
                 if (offset < par_end) {
                     /* indent */
-                    buf[0] = ' ';
                     for (n = indent_size; n > 0; n--)
-                        eb_insert(s->b, chunk_start, buf, 1);
-                    chunk_start += indent_size;
+                        chunk_start += eb_insert_uchar(s->b, chunk_start, ' ');
 
                     word_start += indent_size;
                     offset += indent_size;
@@ -648,6 +646,7 @@ void do_fill_paragraph(EditState *s)
                 col = word_size + indent_size;
             } else {
                 buf[0] = ' ';
+                /* XXX: incorrect for wide character buffers */
                 eb_write(s->b, chunk_start, buf, 1);
                 chunk_start++;
                 col += 1 + word_size;

@@ -348,17 +348,18 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
 
 /* Insert 'size' bytes from 'buf' into 'b' at offset 'offset'. We must
    have : 0 <= offset <= b->total_size */
-void eb_insert(EditBuffer *b, int offset, const void *buf, int size)
+/* Return number of bytes inserted */
+int eb_insert(EditBuffer *b, int offset, const void *buf, int size)
 {
     if (b->flags & BF_READONLY)
-        return;
+        return 0;
 
     /* sanity checks */
     if (offset > b->total_size)
         offset = b->total_size;
 
     if (offset < 0 || size <= 0)
-        return;
+        return 0;
 
     eb_addlog(b, LOGOP_INSERT, offset, size);
 
@@ -366,6 +367,7 @@ void eb_insert(EditBuffer *b, int offset, const void *buf, int size)
 
     /* the page cache is no longer valid */
     b->cur_page = NULL;
+    return size;
 }
 
 /* We must have : 0 <= offset <= b->total_size */
@@ -1704,22 +1706,22 @@ void eb_set_filename(EditBuffer *b, const char *filename)
 }
 
 /* Insert unicode character according to buffer encoding */
+/* Return number of bytes inserted */
 int eb_insert_uchar(EditBuffer *b, int offset, int c)
 {
     char buf[MAX_CHAR_BYTES];
     int len;
 
     len = unicode_to_charset(buf, c, b->charset);
-    eb_insert(b, offset, buf, len);
-    return len;
+    return eb_insert(b, offset, buf, len);
 }
 
 /* Insert buffer with utf8 chars according to buffer encoding */
+/* Return number of bytes inserted */
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
 {
     if (b->charset == &charset_utf8) {
-        eb_insert(b, offset, buf, len);
-        return len;
+        return eb_insert(b, offset, buf, len);
     } else {
         char buf1[1024];
         int size, size1;
@@ -1731,8 +1733,7 @@ int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
             int clen = unicode_to_charset(buf1 + size1, c, b->charset);
             size1 += clen;
             if (size1 > ssizeof(buf) - MAX_CHAR_BYTES || buf >= bufend) {
-                eb_insert(b, offset + size, buf1, size1);
-                size += size1;
+                size += eb_insert(b, offset + size, buf1, size1);
                 size1 = 0;
             }
         }
@@ -1786,7 +1787,7 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
 {
     char buf0[1024];
     char *buf;
-    int len, size;
+    int len, size, written;
     va_list ap;
 
     va_start(ap, fmt);
@@ -1809,12 +1810,12 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
      * buf may contain \0 characters via the %c modifer.
      * XXX: %c does not encode non ASCII characters as utf8.
      */
-    eb_insert_utf8_buf(b, b->total_size, buf, len);
+    written = eb_insert_utf8_buf(b, b->total_size, buf, len);
 #ifdef CONFIG_WIN32
     if (buf != buf0)
         qe_free(&buf);
 #endif
-    return len;
+    return written;
 }
 
 #if 0
@@ -1864,6 +1865,7 @@ int eb_get_contents(EditBuffer *b, char *buf, int buf_size)
  * buffer 'dest' at offset 'dest_offset'. 'src' MUST BE DIFFERENT from
  * 'dest'. Charset converson between source and destination buffer is
  * performed.
+ * Return the number of bytes inserted.
  */
 int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
                              EditBuffer *src, int src_offset,
@@ -1894,8 +1896,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
             int c = eb_nextc(src, offset, &offset);
             int len = unicode_to_charset(buf, c, b->charset);
             b->cur_style = src->cur_style;
-            eb_insert(b, offset1 + size, buf, len);
-            size += len;
+            size += eb_insert(b, offset1 + size, buf, len);
         }
 
         if (b != dest) {
