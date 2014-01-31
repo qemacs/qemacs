@@ -406,12 +406,14 @@ static void do_transpose(EditState *s, int cmd)
         EditBuffer *b1 = eb_new("*tmp*", BF_SYSTEM | (b->flags & BF_STYLES));
 
         eb_set_charset(b1, b->charset);
+        /* Use eb_insert_buffer_convert to copy styles.
+         * This conversion should not change sizes */
         eb_insert_buffer_convert(b1, 0, b, offset2, size2);
         eb_insert_buffer_convert(b1, size2, b, offset1, size1);
         eb_insert_buffer_convert(b1, size2 + size1, b, offset0, size0);
         /* XXX: This will create 2 undo records */
         eb_delete(b, offset0, size0 + size1 + size2);
-        eb_insert_buffer_convert(b, offset0, b1, 0, size0 + size1 + size2);
+        eb_insert_buffer_convert(b, offset0, b1, 0, b1->total_size);
         eb_free(&b1);
     }
     s->offset = end_offset;

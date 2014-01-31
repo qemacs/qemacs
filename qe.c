@@ -708,6 +708,9 @@ void do_changecase_region(EditState *s, int arg)
 {
     int offset;
 
+    /* deactivate region hilite */
+    s->region_style = 0;
+
     /* WARNING: during case change, the region offsets can change, so
        it is not so simple ! */
     offset = min(s->offset, s->b->mark);
@@ -5791,6 +5794,9 @@ void do_write_file(EditState *s, const char *filename)
 void do_write_region(EditState *s, const char *filename)
 {
     char absname[MAX_FILENAME_SIZE];
+
+    /* deactivate region hilite */
+    s->region_style = 0;
 
     canonicalize_absolute_path(absname, sizeof(absname), filename);
     put_save_message(s, filename,

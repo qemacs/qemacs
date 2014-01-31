@@ -939,8 +939,13 @@ void do_undo(EditState *s)
     int log_index, size_trailer;
     LogBuffer lb;
 
-    if (!b->log_buffer)
+    if (!b->log_buffer) {
+        put_status(s, "No undo information");
         return;
+    }
+
+    /* deactivate region hilite */
+    s->region_style = 0;
 
     /* Should actually keep undo state current until new logs are added */
     if (s->qe_state->last_cmd_func != (CmdFunc)do_undo
@@ -1011,8 +1016,13 @@ void do_redo(EditState *s)
     int log_index, size_trailer;
     LogBuffer lb;
 
-    if (!b->log_buffer)
+    if (!b->log_buffer) {
+        put_status(s, "No undo information");
         return;
+    }
+
+    /* deactivate region hilite */
+    s->region_style = 0;
 
     /* Should actually keep undo state current until new logs are added */
     if (s->qe_state->last_cmd_func != (CmdFunc)do_undo
