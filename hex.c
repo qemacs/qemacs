@@ -245,6 +245,7 @@ void hex_write_char(EditState *s, int key)
 {
     unsigned int cur_ch, ch;
     int hsize, shift, cur_len, len, h;
+    int offset = s->offset;
     char buf[10];
 
     if (s->hex_mode) {
@@ -255,7 +256,7 @@ void hex_write_char(EditState *s, int key)
         h = to_hex(key);
         if (h < 0)
             return;
-        if ((s->insert || s->offset >= s->b->total_size) && s->hex_nibble == 0) {
+        if ((s->insert || offset >= s->b->total_size) && s->hex_nibble == 0) {
             ch = h << ((hsize - 1) * 4);
             if (s->unihex_mode || s->b->charset->char_size > 1) {
                 len = unicode_to_charset(buf, ch, s->b->charset);
@@ -263,13 +264,13 @@ void hex_write_char(EditState *s, int key)
                 len = 1;
                 buf[0] = ch;
             }
-            eb_insert(s->b, s->offset, buf, len);
+            eb_insert(s->b, offset, buf, len);
         } else {
             if (s->unihex_mode) {
-                cur_ch = eb_nextc(s->b, s->offset, &cur_len);
-                cur_len -= s->offset;
+                cur_ch = eb_nextc(s->b, offset, &cur_len);
+                cur_len -= offset;
             } else {
-                eb_read(s->b, s->offset, buf, 1);
+                eb_read(s->b, offset, buf, 1);
                 cur_ch = buf[0];
                 cur_len = 1;
             }
@@ -284,19 +285,20 @@ void hex_write_char(EditState *s, int key)
                 buf[0] = ch;
             }
 #if 1
-            eb_replace(s->b, s->offset, cur_len, buf, len);
+            eb_replace(s->b, offset, cur_len, buf, len);
 #else
             if (cur_len == len) {
-                eb_write(s->b, s->offset, buf, len);
+                eb_write(s->b, offset, buf, len);
             } else {
-                eb_delete(s->b, s->offset, cur_len);
-                eb_insert(s->b, s->offset, buf, len);
+                eb_delete(s->b, offset, cur_len);
+                eb_insert(s->b, offset, buf, len);
             }
 #endif
         }
+        s->offset = offset;
         if (++s->hex_nibble == hsize) {
             s->hex_nibble = 0;
-            if (s->offset < s->b->total_size)
+            if (offset < s->b->total_size)
                 s->offset += len;
         }
     } else {
