@@ -958,6 +958,8 @@ static void tty_term_close_font(__unused__ QEditScreen *s, QEFont **fontp)
 
 static inline int tty_term_glyph_width(__unused__ QEditScreen *s, unsigned int ucs)
 {
+    /* XXX: should support combining marks */
+
     /* fast test for majority of non-wide scripts */
     if (ucs < 0x1100)
         return 1;
@@ -1089,6 +1091,12 @@ static void tty_term_flush(QEditScreen *s)
             if (ptr1 == ptr2)
                 continue;
 
+            /* if first modified char is an accent, backtrack on letter */
+            if (qe_isaccent(TTYCHAR_GETCH(*ptr1))
+            ||  qe_isaccent(TTYCHAR_GETCH(ptr1[shadow]))) {
+                ptr1--;
+            }
+
             /* quickly scan for last difference on row:
              * the first difference on row at ptr1 is before ptr2
              * so we do not need a test on ptr2 > ptr1
@@ -1171,7 +1179,9 @@ static void tty_term_flush(QEditScreen *s)
                                         40 + bgcolor);
                         }
                     }
-                    if (fgcolor != (int)TTYCHAR_GETFG(cc) && ch != ' ') {
+                    /* do not special case SPC on fg color change
+                     * because of combining marks */
+                    if (fgcolor != (int)TTYCHAR_GETFG(cc)) {
                         int lastfg = fgcolor;
                         fgcolor = TTYCHAR_GETFG(cc);
                         if (ts->term_flags & USE_BOLD_AS_BRIGHT) {

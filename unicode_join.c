@@ -122,6 +122,34 @@ static int find_ligature(int l1, int l2)
     return -1;
 }
 
+int combine_accent(unsigned int *buf, int c, int accent)
+{
+    int lig = find_ligature(c, accent);
+    if (lig >= 0) {
+        *buf = lig;
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+/* No need for efficiency */
+int expand_ligature(unsigned int *buf, int c)
+{
+    unsigned short *a, *b;
+
+    if (c > 0x7f) {
+        for (a = ligature2, b = a + 3 * ligature2_count; a < b; a++) {
+            if (a[2] == c) {
+                buf[0] = a[0];
+                buf[1] = a[1];
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 /* apply all the ligature rules in logical order. Always return a
    smaller buffer */
 static int unicode_ligature(unsigned int *buf_out,

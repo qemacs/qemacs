@@ -50,15 +50,19 @@ static CmdDef basic_commands[] = {
     CMD3( KEY_NONE, KEY_NONE,
           "insert-mode", do_overwrite_mode, ESi, 0, "v")
 
-    /* Insert combining accent: should combine with preceding letter */
+#ifdef CONFIG_UNICODE_JOIN
+    /* Insert combining accent: combine with letter if possible */
     CMD3( KEY_META('`'), KEY_NONE,
-          "insert-grave-accent", do_char, ESii, 0x300, "vui")
+          "combine-grave-accent", do_combine_char, ESi, 0x300, "*v")
     CMD3( KEY_META('\''), KEY_NONE,
-          "insert-acute-accent", do_char, ESii, 0x301, "vui")
+          "combine-acute-accent", do_combine_char, ESi, 0x301, "*v")
     CMD3( KEY_META('^'), KEY_NONE,
-          "insert-circumflex-accent", do_char, ESii, 0x302, "vui")
+          "combine-circumflex-accent", do_combine_char, ESi, 0x302, "*v")
     CMD3( KEY_META('"'), KEY_NONE,
-          "insert-diaeresis", do_char, ESii, 0x308, "vui")
+          "combine-diaeresis", do_combine_char, ESi, 0x308, "*v")
+    CMD3( KEY_META('~'), KEY_NONE,
+          "combine-tilde", do_combine_char, ESi, 0x303, "*v")
+#endif
 
     /* Moving around */
 

@@ -265,6 +265,10 @@ static inline int qe_isword(int c) {
     /* XXX: any unicode char >= 128 is considered as word. */
     return qe_isalnum_(c) || (c >= 128);
 }
+static inline int qe_isaccent(int c) {
+    /* XXX: only check Latin combining marks */
+    return qe_inrange(c, 0x300, 0x362);
+}
 static inline int qe_toupper(int c) {
     return (qe_inrange(c, 'a', 'z') ? c + 'A' - 'a' : c);
 }
@@ -561,6 +565,8 @@ int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len);
 int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
                       int dst_size, unsigned int *src, int src_size,
                       int reverse);
+int combine_accent(unsigned int *buf, int c, int accent);
+int expand_ligature(unsigned int *buf, int c);
 int load_ligatures(void);
 void unload_ligatures(void);
 
@@ -1669,6 +1675,7 @@ int get_non_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                            int *offsetp, int line_num);
 
 void do_char(EditState *s, int key, int argval);
+void do_combine_char(EditState *s, int accent);
 void do_set_mode(EditState *s, const char *name);
 void text_move_left_right_visual(EditState *s, int dir);
 void text_move_word_left_right(EditState *s, int dir);

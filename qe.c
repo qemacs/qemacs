@@ -1263,6 +1263,31 @@ void do_char(EditState *s, int key, int argval)
     }
 }
 
+#ifdef CONFIG_UNICODE_JOIN
+void do_combine_char(EditState *s, int accent)
+{
+    int offset0, len, c;
+    unsigned int g[2];
+    char buf[MAX_CHAR_BYTES];
+
+    if (s->b->flags & BF_READONLY)
+        return;
+
+    c = eb_prevc(s->b, s->offset, &offset0);
+    if (c == accent) {
+        eb_delete(s->b, offset0, s->offset - offset0);
+    } else
+    if (((expand_ligature(g, c) && g[1] == accent)
+    ||   (c != '\n' && combine_accent(g, c, accent)))
+    &&  (len = unicode_to_charset(buf, g[0], s->b->charset)) > 0) {
+        eb_replace(s->b, offset0, s->offset - offset0, buf, len);
+        s->offset = offset0 + len;
+    } else {
+        do_char(s, accent, 1);
+    }
+}
+#endif
+
 void text_write_char(EditState *s, int key)
 {
     int cur_ch, len, cur_len, offset1, ret, insert;
@@ -2003,43 +2028,53 @@ void do_what_cursor_position(EditState *s)
     buf_t outbuf, *out;
     unsigned char cc;
     int line_num, col_num;
-    int c, offset1, off;
+    int c, c2, offset1, offset2, off;
 
     out = buf_init(&outbuf, buf, sizeof(buf));
     if (s->offset < s->b->total_size) {
         c = eb_nextc(s->b, s->offset, &offset1);
-        buf_puts(out, "char: ");
+        c2 = eb_nextc(s->b, offset1, &offset2);
+        if (c == '\n' || !qe_isaccent(c2)) {
+            c2 = 0;
+            offset2 = offset1;
+        }
+        buf_puts(out, "char:");
         if (c < 32 || c == 127) {
-            buf_printf(out, "^%c ", (c + '@') & 127);
+            buf_printf(out, " ^%c", (c + '@') & 127);
         } else
         if (c < 127 || c >= 160) {
+            buf_put_byte(out, ' ');
             buf_put_byte(out, '\'');
             buf_putc_utf8(out, c);
+            if (c2)
+                buf_putc_utf8(out, c2);
             buf_put_byte(out, '\'');
-            buf_put_byte(out, ' ');
         }
-        if (c < 0x100)
-            buf_printf(out, "\\%03o ", c);
-        buf_printf(out, "%d 0x%02x ", c, c);
+        if (c < 0x100 && !c2)
+            buf_printf(out, " \\%03o", c);
+        buf_printf(out, " %d", c);
+        if (c2)
+            buf_printf(out, "/%d", c2);
+        buf_printf(out, " 0x%02x", c);
+        if (c2)
+            buf_printf(out, "/0x%02x", c2);
 
         /* Display buffer bytes if char is encoded */
         off = s->offset;
         eb_read(s->b, off++, &cc, 1);
-        if (cc != c || off != offset1) {
-            buf_printf(out, "[%02X", cc);
-            while (off < offset1) {
+        if (cc != c || c2 || off != offset2) {
+            buf_printf(out, " [%02X", cc);
+            while (off < offset2) {
                 eb_read(s->b, off++, &cc, 1);
                 buf_printf(out, " %02X", cc);
             }
             buf_put_byte(out, ']');
-            buf_put_byte(out, ' ');
         }
-        buf_put_byte(out, ' ');
     }
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
-    put_status(s, "%spoint=%d col=%d mark=%d size=%d region=%d",
-               out->buf, s->offset, col_num, s->b->mark, s->b->total_size,
-               abs(s->offset - s->b->mark));
+    put_status(s, "%s  point=%d mark=%d size=%d region=%d col=%d",
+               out->buf, s->offset, s->b->mark, s->b->total_size,
+               abs(s->offset - s->b->mark), col_num);
 }
 
 void do_set_tab_width(EditState *s, int tab_width)
