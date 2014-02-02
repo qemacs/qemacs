@@ -206,7 +206,7 @@ tqe$(EXE): tqe_g$(EXE) Makefile
 	echo `size $@` `wc -c $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
-$(OBJS_DIR)/tqe.o: qe.c qeconfig.h $(DEPENDS) Makefile
+$(OBJS_DIR)/tqe.o: qe.c parser.c qeconfig.h variables.h $(DEPENDS) Makefile
 	$(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
 
 ffplay$(EXE): qe$(EXE) Makefile
@@ -230,7 +230,7 @@ basemodules.txt: $(TSRCS) Makefile
 $(OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-$(OBJS_DIR)/qe.o: qe.c qe.h qfribidi.h qeconfig.h
+$(OBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qe.h qfribidi.h variables.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 
 $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
