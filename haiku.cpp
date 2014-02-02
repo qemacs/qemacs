@@ -853,6 +853,14 @@ static void haiku_bmp_free(__unused__ QEditScreen *s, QEBitmap *b)
     b->priv_data = NULL;
 }
 
+static void haiku_full_screen(QEditScreen *s, int full_screen)
+{
+    WindowState *ctx = (WindowState *)s->priv_data;
+
+    BMessenger msgr(ctx->v->Looper());
+    msgr.SendMessage(B_ZOOM);
+}
+
 static QEDisplay haiku_dpy = {
     "haiku",
     haiku_probe,
@@ -875,7 +883,7 @@ static QEDisplay haiku_dpy = {
     NULL, /* dpy_bmp_draw */
     NULL, /* dpy_bmp_lock */
     NULL, /* dpy_bmp_unlock */
-    NULL, /* dpy_full_screen */
+    haiku_full_screen,
     NULL, /* next */
 };
 
