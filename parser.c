@@ -19,6 +19,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "qe.h"
+#include "variables.h"
+
 /* config file parsing */
 
 /* CG: error messages should go to the *error* buffer.

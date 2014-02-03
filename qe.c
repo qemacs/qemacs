@@ -3693,10 +3693,10 @@ static void get_param(const char **pp, char *param, int param_size, int osep, in
 }
 
 /* return -1 if error, 0 if no more args, 1 if one arg parsed */
-static int parse_arg(const char **pp, unsigned char *argtype,
-                     char *prompt, int prompt_size,
-                     char *completion, int completion_size,
-                     char *history, int history_size)
+int parse_arg(const char **pp, unsigned char *argtype,
+              char *prompt, int prompt_size,
+              char *completion, int completion_size,
+              char *history, int history_size)
 {
     int tc, type;
     const char *p;
@@ -7267,8 +7267,6 @@ int find_resource_file(char *path, int path_size, const char *pattern)
 }
 
 /******************************************************/
-
-#include "parser.c"
 
 void do_load_config_file(EditState *e, const char *file)
 {

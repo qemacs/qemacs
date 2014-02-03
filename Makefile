@@ -55,8 +55,9 @@ DEFINES=-DHAVE_QE_CONFIG_H
 TARGETLIBS:=
 TARGETS+= qe$(EXE) tqe$(EXE) kmaps ligatures
 
-OBJS= qe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
-TOBJS= tqe.o charset.o buffer.o input.o display.o util.o hex.o list.o cutils.o
+OBJS:= qe.o parser.o charset.o buffer.o input.o display.o util.o hex.o \
+       list.o cutils.o
+TOBJS:= $(OBJS)
 
 OBJS+= extras.o
 
@@ -80,10 +81,8 @@ ifdef CONFIG_HAIKU
 endif
 
 ifdef CONFIG_WIN32
-  OBJS+= unix.o
-  TOBJS+= unix.o
-  OBJS+= win32.o
-  TOBJS+= win32.o
+  OBJS+= unix.o win32.o
+  TOBJS+= unix.o win32.o
 #  OBJS+= printf.o
 #  TOBJS+= printf.o
   LIBS+= -lmsvcrt -lgdi32 -lwsock32
@@ -107,9 +106,7 @@ ifdef CONFIG_UNICODE_JOIN
 endif
 
 # more charsets if needed
-ifndef CONFIG_TINY
-  OBJS+= charsetjis.o charsetmore.o
-endif
+OBJS+= charsetjis.o charsetmore.o
 
 ifdef CONFIG_ALL_MODES
   OBJS+= unihex.o clang.o xml.o bufed.o \
@@ -162,16 +159,16 @@ endif
 
 SRCS:= $(OBJS:.o=.c)
 TSRCS:= $(TOBJS:.o=.c)
-TSRCS:= $(TSRCS:tqe.c=qe.c)
 
 DEPENDS:= qe.h config.h cutils.h display.h qestyles.h config.mak
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
 OBJS_DIR:= $(DEPTH)/.objs
+TOBJS_DIR:= $(DEPTH)/.tobjs
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
-TOBJS:= $(addprefix $(OBJS_DIR)/, $(TOBJS))
+TOBJS:= $(addprefix $(TOBJS_DIR)/, $(TOBJS))
 
-$(shell mkdir -p $(OBJS_DIR))
+$(shell mkdir -p $(OBJS_DIR) $(TOBJS_DIR))
 
 #
 # Dependencies
@@ -206,15 +203,12 @@ tqe$(EXE): tqe_g$(EXE) Makefile
 	echo `size $@` `wc -c $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
-$(OBJS_DIR)/tqe.o: qe.c parser.c qeconfig.h variables.h $(DEPENDS) Makefile
-	$(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
-
 ffplay$(EXE): qe$(EXE) Makefile
 	ln -sf $< $@
 
 ifndef CONFIG_INIT_CALLS
 $(OBJS_DIR)/qe.o: allmodules.txt
-$(OBJS_DIR)/tqe.o: basemodules.txt
+$(TOBJS_DIR)/qe.o: basemodules.txt
 endif
 
 allmodules.txt: $(SRCS) Makefile
@@ -230,17 +224,32 @@ basemodules.txt: $(TSRCS) Makefile
 $(OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-$(OBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qe.h qfribidi.h variables.h
+$(OBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
+
+$(TOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
+$(TOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
+$(TOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
+$(TOBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
+$(TOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 
 $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
+$(TOBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
+	$(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
+
 $(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 	g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -c $<
 
+$(TOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
+	g++ $(DEFINES) -DCONFIG_TINY $(CFLAGS) -Wno-multichar -o $@ -c $<
+
 %.s: %.c $(DEPENDS) Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -S $<
+
+%.s: %.cpp $(DEPENDS) Makefile
+	g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -S $<
 
 #
 # Test for bidir algorithm
@@ -371,7 +380,7 @@ clean:
 	   $(OBJS_DIR)/*.o
 
 distclean: clean
-	rm -rf config.h config.mak $(OBJS_DIR)
+	rm -rf config.h config.mak $(OBJS_DIR) $(TOBJS_DIR)
 
 install: $(TARGETS) qe.1
 	$(INSTALL) -m 755 -d $(DESTDIR)$(prefix)/bin

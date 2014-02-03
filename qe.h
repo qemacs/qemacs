@@ -1772,6 +1772,10 @@ void do_set_system_font(EditState *s, const char *qe_font_name,
                         const char *system_fonts);
 void call_func(CmdSig sig, CmdProto func, int nb_args, CmdArg *args,
                unsigned char *args_type);
+int parse_arg(const char **pp, unsigned char *argtype,
+              char *prompt, int prompt_size,
+              char *completion, int completion_size,
+              char *history, int history_size);
 void exec_command(EditState *s, CmdDef *d, int argval, int key);
 void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);
@@ -1819,6 +1823,13 @@ int parse_config_file(EditState *s, const char *filename);
 int parse_command_line(int argc, char **argv);
 void set_user_option(const char *user);
 void set_tty_charset(const char *name);
+
+/* parser.c */
+
+int parse_config_file(EditState *s, const char *filename);
+void do_eval_expression(EditState *s, const char *expression);
+void do_eval_region(EditState *s);
+void do_eval_buffer(EditState *s);
 
 /* extras.c */
 
