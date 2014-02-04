@@ -1,6 +1,7 @@
 config.mak
 config.h
 .objs
+.tobjs
 *.exe
 *.dSYM
 qe
