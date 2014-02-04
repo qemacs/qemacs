@@ -54,6 +54,28 @@ int strstart(const char *str, const char *val, const char **ptr)
 }
 
 /**
+ * Return TRUE if val is a suffix of str. If it returns TRUE, ptr is
+ * set to the first character of the suffix in 'str'.
+ *
+ * @param str input string
+ * @param val suffix to test
+ * @param ptr updated to the suffix in str in there is a match
+ * @return TRUE if there is a match
+ */
+int strend(const char *str, const char *val, const char **ptr)
+{
+    int len1 = strlen(str);
+    int len2 = strlen(val);
+
+    if (len1 < len2 || memcmp(str + len1 - len2, val, len2)) {
+        return 0;
+    }
+    if (ptr)
+        *ptr = str + len1 - len2;
+    return 1;
+}
+
+/**
  * Copy the string str to buf. If str length is bigger than buf_size -
  * 1 then it is clamped to buf_size - 1.
  * NOTE: this function does what strncpy should have done to be
