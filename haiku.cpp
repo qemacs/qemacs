@@ -762,7 +762,7 @@ static void haiku_draw_text(QEditScreen *s, QEFont *font,
     BString text;
     for (i = 0; i < len; i++) {
         cc = str[i];
-        unicode_to_charset(buf, cc, &charset_utf8);
+        buf[utf8_encode(buf, cc)] = '\0';
         text << buf;
     }
     ctx->v->DrawString(text.String());
