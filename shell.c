@@ -874,7 +874,7 @@ static void tty_emulate(ShellState *s, int c)
                             break;
                         }
                     }
-                    //len = unicode_to_charset(buf1, c, s->b->charset);
+                    //len = eb_encode_uchar(s->b, buf1, c);
                     buf1[0] = c;
                     len = 1;
                 }
@@ -1567,7 +1567,7 @@ static void shell_write_char(EditState *e, int c)
             buf[1] = c - KEY_META(0);
             len = 2;
         } else {
-            len = unicode_to_charset(buf, c, e->b->charset);
+            len = eb_encode_uchar(e->b, buf, c);
         }
         tty_write(s, buf, len);
     } else {

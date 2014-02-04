@@ -553,7 +553,6 @@ int decode_8bit(CharsetDecodeState *s);
 u8 *encode_8bit(QECharset *charset, u8 *q, int c);
 
 int unicode_glyph_tty_width(unsigned int ucs);
-int unicode_to_charset(char *buf, unsigned int c, QECharset *charset);
 
 /* arabic.c */
 int arab_join(unsigned int *line, unsigned int *ctog, int len);
@@ -903,6 +902,7 @@ void eb_set_style(EditBuffer *b, int style, enum LogOperation op,
 void eb_style_callback(EditBuffer *b, void *opaque, int arg,
                        enum LogOperation op, int offset, int size);
 int eb_delete_uchar(EditBuffer *b, int offset);
+int eb_encode_uchar(EditBuffer *b, char *buf, unsigned int c);
 int eb_insert_uchar(EditBuffer *b, int offset, int c);
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len);
 int eb_insert_str(EditBuffer *b, int offset, const char *str);

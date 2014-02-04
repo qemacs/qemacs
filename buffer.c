@@ -1115,7 +1115,9 @@ void eb_set_charset(EditBuffer *b, QECharset *charset)
     b->flags &= ~BF_UTF8;
     if (charset == &charset_utf8)
         b->flags |= BF_UTF8;
-    charset_decode_init(&b->charset_state, charset);
+
+    if (charset)
+        charset_decode_init(&b->charset_state, charset);
 
     b->char_bytes = 1;
     b->char_shift = 0;
@@ -1266,7 +1268,7 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
 int eb_goto_pos(EditBuffer *b, int line1, int col1)
 {
     Page *p, *p_end;
-    int line2, col2, line, col, offset, offset1, nl;
+    int line2, col2, line, col, offset, offset1;
 
     line = 0;
     col = 0;
@@ -1293,8 +1295,7 @@ int eb_goto_pos(EditBuffer *b, int line1, int col1)
                 line = line1;
                 col = 0;
             }
-            nl = b->charset->eol_char;
-            while (col < col1 && eb_nextc(b, offset, &offset1) != nl) {
+            while (col < col1 && eb_nextc(b, offset, &offset1) != '\n') {
                 col++;
                 offset = offset1;
             }
@@ -1715,6 +1716,24 @@ void eb_set_filename(EditBuffer *b, const char *filename)
     eb_set_buffer_name(b, get_basename(filename));
 }
 
+/* Encode unicode character according to buffer charset */
+/* Return number of bytes of conversion */
+/* the function uses '?' to indicate that no match could be found in
+   buffer charset */
+int eb_encode_uchar(EditBuffer *b, char *buf, unsigned int c)
+{
+    QECharset *charset = b->charset;
+    u8 *q = (u8 *)buf;
+
+    q = charset->encode_func(charset, q, c);
+    if (!q) {
+        q = (u8 *)buf;
+        *q++ = '?';
+    }
+    *q = '\0';
+    return q - (u8 *)buf;
+}
+
 /* Insert unicode character according to buffer encoding */
 /* Return number of bytes inserted */
 int eb_insert_uchar(EditBuffer *b, int offset, int c)
@@ -1722,7 +1741,7 @@ int eb_insert_uchar(EditBuffer *b, int offset, int c)
     char buf[MAX_CHAR_BYTES];
     int len;
 
-    len = unicode_to_charset(buf, c, b->charset);
+    len = eb_encode_uchar(b, buf, c);
     return eb_insert(b, offset, buf, len);
 }
 
@@ -1740,7 +1759,7 @@ int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
         size = size1 = 0;
         while (buf < bufend) {
             int c = utf8_decode(&buf);
-            int clen = unicode_to_charset(buf1 + size1, c, b->charset);
+            int clen = eb_encode_uchar(b, buf1 + size1, c);
             size1 += clen;
             if (size1 > ssizeof(buf) - MAX_CHAR_BYTES || buf >= bufend) {
                 size += eb_insert(b, offset + size, buf1, size1);
@@ -1904,7 +1923,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
         for (offset = src_offset; offset < offset_max;) {
             char buf[MAX_CHAR_BYTES];
             int c = eb_nextc(src, offset, &offset);
-            int len = unicode_to_charset(buf, c, b->charset);
+            int len = eb_encode_uchar(b, buf, c);
             b->cur_style = src->cur_style;
             size += eb_insert(b, offset1 + size, buf, len);
         }

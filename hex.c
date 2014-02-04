@@ -259,7 +259,7 @@ void hex_write_char(EditState *s, int key)
         if ((s->insert || offset >= s->b->total_size) && s->hex_nibble == 0) {
             ch = h << ((hsize - 1) * 4);
             if (s->unihex_mode || s->b->charset->char_size > 1) {
-                len = unicode_to_charset(buf, ch, s->b->charset);
+                len = eb_encode_uchar(s->b, buf, ch);
             } else {
                 len = 1;
                 buf[0] = ch;
@@ -279,7 +279,7 @@ void hex_write_char(EditState *s, int key)
             ch = (cur_ch & ~(0xf << shift)) | (h << shift);
 
             if (s->unihex_mode) {
-                len = unicode_to_charset(buf, ch, s->b->charset);
+                len = eb_encode_uchar(s->b, buf, ch);
             } else {
                 len = 1;
                 buf[0] = ch;

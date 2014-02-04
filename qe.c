@@ -682,8 +682,9 @@ static int eb_changecase(EditBuffer *b, int *offsetp, int arg)
         ch1 = qe_tolower(ch);
 
     if (ch != ch1) {
-        len = unicode_to_charset(buf, ch1, b->charset);
+        len = eb_encode_uchar(b, buf, ch1);
         eb_replace(b, offset0, *offsetp - offset0, buf, len);
+        *offsetp = offset0 + len;
     }
     return 1;
 }
@@ -713,6 +714,7 @@ void do_changecase_region(EditState *s, int arg)
 
     /* WARNING: during case change, the region offsets can change, so
        it is not so simple ! */
+    /* XXX: if last char of region changes width, offset will move */
     offset = min(s->offset, s->b->mark);
     for (;;) {
         if (offset >= max(s->offset, s->b->mark))
@@ -1279,7 +1281,8 @@ void do_combine_char(EditState *s, int accent)
     } else
     if (((expand_ligature(g, c) && g[1] == accent)
     ||   (c != '\n' && combine_accent(g, c, accent)))
-    &&  (len = unicode_to_charset(buf, g[0], s->b->charset)) > 0) {
+    &&  (len = eb_encode_uchar(s->b, buf, g[0])) > 0) {
+        /* XXX: should bypass eb_encode_uchar to detect encoding failure */
         eb_replace(s->b, offset0, s->offset - offset0, buf, len);
         s->offset = offset0 + len;
     } else {
@@ -1303,7 +1306,7 @@ void text_write_char(EditState *s, int key)
 
     cur_ch = eb_nextc(s->b, s->offset, &offset1);
     cur_len = offset1 - s->offset;
-    len = unicode_to_charset(buf, key, s->b->charset);
+    len = eb_encode_uchar(s->b, buf, key);
     insert = (s->insert || cur_ch == '\n');
 
     if (insert) {
@@ -1354,7 +1357,7 @@ void text_write_char(EditState *s, int key)
                 /* then insert match */
                 for (i = 0; i < ret; i++) {
                     key = match_buf[i];
-                    len = unicode_to_charset(buf, key, s->b->charset);
+                    len = eb_encode_uchar(s->b, buf, key);
                     eb_insert(s->b, s->compose_start_offset, buf, len);
                     s->compose_start_offset += len;
                     /* should only bump s->offset if at insert point */
@@ -1875,9 +1878,9 @@ void do_convert_buffer_file_coding_system(EditState *s,
     /* slow, but simple iterative method */
     for (offset = 0; offset < b->total_size;) {
         c = eb_nextc(b, offset, &offset);
-        len = unicode_to_charset(buf, c, charset);
         b1->cur_style = b->cur_style;
-        eb_write(b1, b1->total_size, buf, len);
+        len = eb_encode_uchar(b1, buf, c);
+        eb_insert(b1, b1->total_size, buf, len);
     }
 
     /* replace current buffer with conversion */

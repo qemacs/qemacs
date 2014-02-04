@@ -793,21 +793,6 @@ QECharset *detect_charset(const u8 *buf, int size)
     return &charset_8859_1;
 }
 
-/* the function uses '?' to indicate that no match could be found in
-   current charset */
-int unicode_to_charset(char *buf, unsigned int c, QECharset *charset)
-{
-    char *q;
-
-    q = (char *)charset->encode_func(charset, (u8 *)buf, c);
-    if (!q) {
-        q = buf;
-        *q++ = '?';
-    }
-    *q = '\0';
-    return q - buf;
-}
-
 /********************************************************/
 /* 8 bit charsets */
 
