@@ -1485,7 +1485,7 @@ EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
     }
     snprintf(bufname, sizeof(bufname), "*kill-%d*", qs->yank_current + 1);
     b = eb_new(bufname, base->flags & BF_STYLES);
-    eb_set_charset(b, base->charset);
+    eb_set_charset(b, base->charset, base->eol_type);
     qs->yank_buffers[qs->yank_current] = b;
     return b;
 }
@@ -1823,26 +1823,49 @@ void do_cycle_charset(EditState *s)
 }
 #endif
 
-QECharset *read_charset(EditState *s, const char *charset_str)
+QECharset *read_charset(EditState *s, const char *charset_str,
+                        EOLType *eol_typep)
 {
+    char buf[64];
+    const char *p;
     QECharset *charset;
+    EOLType eol_type = *eol_typep;
+
+    p = NULL;
+
+    if (strend(charset_str, "-mac", &p))
+        eol_type = EOL_MAC;
+    else
+    if (strend(charset_str, "-dos", &p))
+        eol_type = EOL_DOS;
+    else
+    if (strend(charset_str, "-unix", &p))
+        eol_type = EOL_UNIX;
+
+    if (p) {
+        pstrncpy(buf, sizeof(buf), charset_str, p - charset_str);
+        charset_str = buf;
+    }
 
     charset = find_charset(charset_str);
     if (!charset) {
         put_status(s, "Unknown charset '%s'", charset_str);
         return NULL;
     }
+    *eol_typep = eol_type;
     return charset;
 }
 
 void do_set_buffer_file_coding_system(EditState *s, const char *charset_str)
 {
     QECharset *charset;
+    EOLType eol_type;
 
-    charset = read_charset(s, charset_str);
+    eol_type = s->b->eol_type;
+    charset = read_charset(s, charset_str, &eol_type);
     if (!charset)
         return;
-    eb_set_charset(s->b, charset);
+    eb_set_charset(s->b, charset, eol_type);
     put_status(s, "Charset is now %s for this buffer", s->b->charset->name);
 }
 
@@ -1851,20 +1874,22 @@ void do_convert_buffer_file_coding_system(EditState *s,
                                           const char *charset_str)
 {
     QECharset *charset;
+    EOLType eol_type;
     EditBuffer *b1, *b;
     int offset, c, len, i;
     EditBufferCallbackList *cb;
     int pos[32];
     char buf[MAX_CHAR_BYTES];
 
-    charset = read_charset(s, charset_str);
+    eol_type = s->b->eol_type;
+    charset = read_charset(s, charset_str, &eol_type);
     if (!charset)
         return;
 
     b = s->b;
 
     b1 = eb_new("*tmp*", b->flags & BF_STYLES);
-    eb_set_charset(b1, charset);
+    eb_set_charset(b1, charset, eol_type);
 
     /* preserve positions */
     cb = b->first_callback;
@@ -1887,7 +1912,7 @@ void do_convert_buffer_file_coding_system(EditState *s,
     /* quick hack to transfer styles from tmp buffer to b */
     eb_free(&b->b_styles);
     eb_delete(b, 0, b->total_size);
-    eb_set_charset(b, charset);
+    eb_set_charset(b, charset, eol_type);
     eb_insert_buffer(b, 0, b1, 0, b1->total_size);
     b->b_styles = b1->b_styles;
     b1->b_styles = NULL;
@@ -2145,6 +2170,10 @@ void text_mode_line(EditState *s, buf_t *out)
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
     buf_printf(out, "L%d--C%d--%s",
                line_num + 1, col_num, s->b->charset->name);
+    if (s->b->eol_type == EOL_DOS)
+        buf_printf(out, "-dos");
+    if (s->b->eol_type == EOL_MAC)
+        buf_printf(out, "-mac");
     if (s->bidir)
         buf_printf(out, "--%s", s->cur_rtl ? "RTL" : "LTR");
 
@@ -5646,7 +5675,7 @@ static void do_load1(EditState *s, const char *filename1,
     /* First we try to read the first block to determine the data type */
     if (stat(filename, &st) < 0) {
         /* XXX: default charset should be selectable.  Use utf8 for now */
-        eb_set_charset(b, &charset_utf8);
+        eb_set_charset(b, &charset_utf8, b->eol_type);
         /* CG: should check for wildcards and do dired */
         //if (strchr(filename, '*') || strchr(filename, '?'))
         //    goto dired;
@@ -5686,8 +5715,13 @@ static void do_load1(EditState *s, const char *filename1,
     bdt = selected_mode->data_type;
 
     /* autodetect buffer charset (could move it to raw buffer loader) */
-    if (bdt == &raw_data_type)
-        eb_set_charset(b, detect_charset(buf, buf_size));
+    if (bdt == &raw_data_type) {
+        QECharset *charset;
+        EOLType eol_type;
+
+        charset = detect_charset(buf, buf_size, &eol_type);
+        eb_set_charset(b, charset, eol_type);
+    }
 
     /* now we can set the mode */
     edit_set_mode_full(s, selected_mode, NULL, f);

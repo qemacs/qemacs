@@ -405,7 +405,7 @@ static void do_transpose(EditState *s, int cmd)
     } else {
         EditBuffer *b1 = eb_new("*tmp*", BF_SYSTEM | (b->flags & BF_STYLES));
 
-        eb_set_charset(b1, b->charset);
+        eb_set_charset(b1, b->charset, b->eol_type);
         /* Use eb_insert_buffer_convert to copy styles.
          * This conversion should not change sizes */
         eb_insert_buffer_convert(b1, 0, b, offset2, size2);
@@ -712,6 +712,11 @@ static void do_drop_styles(EditState *s)
     s->b->flags &= ~BF_STYLES;
 }
 
+static void do_set_eol_type(EditState *s, int eol_type)
+{
+    eb_set_charset(s->b, s->b->charset, eol_type);
+}
+
 static CmdDef extra_commands[] = {
     CMD2( KEY_META('='), KEY_NONE,
           "compare-windows", do_compare_windows, ESi, "ui" )
@@ -769,6 +774,10 @@ static CmdDef extra_commands[] = {
 	  "s{Select style: }[style]|style|")
     CMD0( KEY_NONE, KEY_NONE,
           "drop-styles", do_drop_styles)
+
+    CMD2( KEY_NONE, KEY_NONE,
+          "set-eol-type", do_set_eol_type, ESi,
+    	  "ui{EOL Type [0=Unix, 1=Dos, 2=Mac]: }")
 
     CMD_DEF_END,
 };

@@ -617,7 +617,7 @@ static void do_org_move_subtree(EditState *s, int dir)
         offset2 = org_next_heading(s, offset1, level, &level2);
     }
     b1 = eb_new("*tmp*", BF_SYSTEM | (s->b->flags & BF_STYLES));
-    eb_set_charset(b1, s->b->charset);
+    eb_set_charset(b1, s->b->charset, s->b->eol_type);
     eb_insert_buffer_convert(b1, 0, s->b, offset, size);
     eb_delete(s->b, offset, size);
     if (offset2 > offset)

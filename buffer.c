@@ -485,6 +485,7 @@ EditBuffer *eb_new(const char *name, int flags)
     /* initialize default mode stuff */
     b->tab_width = qs->default_tab_width;
     b->fill_column = qs->default_fill_column;
+    b->eol_type = qs->default_eol_type;
 
     /* add buffer in global buffer list (at end for system buffers) */
     pb = &qs->first_buffer;
@@ -496,10 +497,10 @@ EditBuffer *eb_new(const char *name, int flags)
     *pb = b;
 
     if (flags & BF_UTF8) {
-        eb_set_charset(b, &charset_utf8);
+        eb_set_charset(b, &charset_utf8, b->eol_type);
     } else {
         /* CG: default charset should be selectable */
-        eb_set_charset(b, &charset_8859_1);
+        eb_set_charset(b, &charset_8859_1, b->eol_type);
     }
 
     /* add mark move callback */
@@ -1104,20 +1105,21 @@ void do_redo(EditState *s)
 /************************************************************/
 /* line related functions */
 
-void eb_set_charset(EditBuffer *b, QECharset *charset)
+void eb_set_charset(EditBuffer *b, QECharset *charset, EOLType eol_type)
 {
     int n;
 
     if (b->charset) {
         charset_decode_close(&b->charset_state);
     }
+    b->eol_type = eol_type;
     b->charset = charset;
     b->flags &= ~BF_UTF8;
     if (charset == &charset_utf8)
         b->flags |= BF_UTF8;
 
     if (charset)
-        charset_decode_init(&b->charset_state, charset);
+        charset_decode_init(&b->charset_state, charset, eol_type);
 
     b->char_bytes = 1;
     b->char_shift = 0;
@@ -1168,11 +1170,21 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
         /* we use the charset conversion table directly to go faster */
         ch = b->charset_state.table[buf[0]];
         offset++;
-        if (ch == ESCAPE_CHAR) {
+        if (ch == ESCAPE_CHAR || ch == '\r') {
             eb_read(b, offset, buf + 1, MAX_CHAR_BYTES - 1);
             b->charset_state.p = buf;
             ch = b->charset_state.decode_func(&b->charset_state);
             offset += (b->charset_state.p - buf) - 1;
+            if (ch == '\r') {
+                if (b->eol_type == EOL_DOS
+                &&  b->charset_state.decode_func(&b->charset_state) == '\n') {
+                    ch = '\n';
+                    offset += b->charset_state.char_size;
+                } else
+                if (b->eol_type == EOL_MAC) {
+                    ch = '\n';
+                }
+            }                    
         }
     }
     *next_ptr = offset;
@@ -1259,6 +1271,12 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
             b->charset_state.p = q;
             ch = b->charset_state.decode_func(&b->charset_state);
         }
+        if (ch == '\n' && b->eol_type == EOL_DOS && offset >= char_size) {
+            eb_read(b, offset - char_size, buf, char_size);
+            b->charset_state.p = buf;
+            if (b->charset_state.decode_func(&b->charset_state) == '\r')
+                offset -= char_size;
+        }
     }
  the_end:
     *prev_ptr = offset;
@@ -1290,7 +1308,7 @@ int eb_goto_pos(EditBuffer *b, int line1, int col1)
             /* compute offset */
             if (line < line1) {
                 /* seek to the correct line */
-                offset += b->charset->goto_line_func(b->charset,
+                offset += b->charset->goto_line_func(&b->charset_state,
                     p->data, p->size, line1 - line);
                 line = line1;
                 col = 0;
@@ -1359,7 +1377,7 @@ int eb_goto_char(EditBuffer *b, int pos)
     int offset;
     Page *p, *p_end;
 
-    if (!b->charset->variable_size) {
+    if (!b->charset->variable_size && b->eol_type != EOL_DOS) {
         offset = min(pos * b->charset->char_size, b->total_size);
     } else {
         offset = 0;
@@ -1368,10 +1386,10 @@ int eb_goto_char(EditBuffer *b, int pos)
         while (p < p_end) {
             if (!(p->flags & PG_VALID_CHAR)) {
                 p->flags |= PG_VALID_CHAR;
-                p->nb_chars = b->charset->get_chars_func(b->charset, p->data, p->size);
+                p->nb_chars = b->charset->get_chars_func(&b->charset_state, p->data, p->size);
             }
             if (pos < p->nb_chars) {
-                offset += b->charset->goto_char_func(b->charset, p->data, p->size, pos);
+                offset += b->charset->goto_char_func(&b->charset_state, p->data, p->size, pos);
                 break;
             } else {
                 pos -= p->nb_chars;
@@ -1392,10 +1410,12 @@ int eb_get_char_offset(EditBuffer *b, int offset)
     if (offset < 0)
         offset = 0;
 
-    if (!b->charset->variable_size) {
+    if (!b->charset->variable_size && b->eol_type != EOL_DOS) {
         /* offset is round down to character boundary */
         pos = min(offset, b->total_size) / b->charset->char_size;
     } else {
+        /* XXX: should handle rounding if EOL_DOS */
+        /* XXX: should fix buffer offset via charset specific method */
         if (b->charset == &charset_utf8) {
             /* Round offset down to character boundary */
             u8 buf[1];
@@ -1413,10 +1433,10 @@ int eb_get_char_offset(EditBuffer *b, int offset)
         while (p < p_end) {
             if (!(p->flags & PG_VALID_CHAR)) {
                 p->flags |= PG_VALID_CHAR;
-                p->nb_chars = b->charset->get_chars_func(b->charset, p->data, p->size);
+                p->nb_chars = b->charset->get_chars_func(&b->charset_state, p->data, p->size);
             }
             if (offset < p->size) {
-                pos += b->charset->get_chars_func(b->charset, p->data, offset);
+                pos += b->charset->get_chars_func(&b->charset_state, p->data, offset);
                 break;
             } else {
                 pos += p->nb_chars;
@@ -1716,7 +1736,7 @@ void eb_set_filename(EditBuffer *b, const char *filename)
     eb_set_buffer_name(b, get_basename(filename));
 }
 
-/* Encode unicode character according to buffer charset */
+/* Encode unicode character according to buffer charset and eol_type */
 /* Return number of bytes of conversion */
 /* the function uses '?' to indicate that no match could be found in
    buffer charset */
@@ -1725,6 +1745,14 @@ int eb_encode_uchar(EditBuffer *b, char *buf, unsigned int c)
     QECharset *charset = b->charset;
     u8 *q = (u8 *)buf;
 
+    if (c == '\n') {
+        if (b->eol_type == EOL_MAC)
+            c = '\r';
+        else
+        if (b->eol_type == EOL_DOS) {
+            q = charset->encode_func(charset, q, '\r');
+        }
+    }
     q = charset->encode_func(charset, q, c);
     if (!q) {
         q = (u8 *)buf;
@@ -1749,7 +1777,7 @@ int eb_insert_uchar(EditBuffer *b, int offset, int c)
 /* Return number of bytes inserted */
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
 {
-    if (b->charset == &charset_utf8) {
+    if (b->charset == &charset_utf8 && b->eol_type == EOL_UNIX) {
         return eb_insert(b, offset, buf, len);
     } else {
         char buf1[1024];
@@ -1835,7 +1863,7 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
         vsnprintf(buf, size, fmt, ap);
         va_end(ap);
     }
-    /* CG: insert buffer translating according b->charset.
+    /* CG: insert buf encoding according to b->charset and b->eol_type.
      * buf may contain \0 characters via the %c modifer.
      * XXX: %c does not encode non ASCII characters as utf8.
      */
@@ -1867,11 +1895,12 @@ void eb_line_pad(EditBuffer *b, int n)
 }
 #endif
 
-/* Read the comtents of a buffer encoded in a utf8 string */
+/* Read the contents of a buffer encoded in a utf8 string */
 int eb_get_contents(EditBuffer *b, char *buf, int buf_size)
 {
     /* do not use eb_read if overflow to avoid partial characters */
-    if (b->charset == &charset_utf8 && b->total_size < buf_size) {
+    if (b->charset == &charset_utf8 && b->eol_type == EOL_UNIX
+    &&  b->total_size < buf_size) {
         int len = b->total_size;
         eb_read(b, 0, buf, len);
         buf[len] = '\0';
@@ -1902,7 +1931,9 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
 {
     int styles_flags = min((dest->flags & BF_STYLES), (src->flags & BF_STYLES));
 
-    if (dest->charset == src->charset && !styles_flags) {
+    if (dest->charset == src->charset
+    &&  dest->eol_type == src->eol_type
+    &&  !styles_flags) {
         return eb_insert_buffer(dest, dest_offset, src, src_offset, size);
     } else {
         EditBuffer *b;
@@ -1912,7 +1943,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
         if (!styles_flags
         &&  ((b->flags & BF_SAVELOG) || dest_offset != b->total_size)) {
             b = eb_new("*tmp*", BF_SYSTEM);
-            eb_set_charset(b, dest->charset);
+            eb_set_charset(b, dest->charset, dest->eol_type);
             offset1 = 0;
         }
 

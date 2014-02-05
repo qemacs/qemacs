@@ -301,7 +301,7 @@ XMLState *xml_begin(CSSStyleSheet *style_sheet, int flags,
     pstrcpy(s->filename, sizeof(s->filename), filename);
     s->charset = charset;
     if (charset) {
-        charset_decode_init(&s->charset_state, charset);
+        charset_decode_init(&s->charset_state, charset, EOL_UNIX);
     }
     return s;
 }

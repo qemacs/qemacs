@@ -1362,9 +1362,9 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     /* Select shell output buffer encoding from LANG setting */
     if (((lang = getenv("LANG")) != NULL && strstr(lang, "UTF-8")) ||
           qs->screen->charset == &charset_utf8) {
-        eb_set_charset(b, &charset_utf8);
+        eb_set_charset(b, &charset_utf8, b->eol_type);
     } else {
-        eb_set_charset(b, &charset_vt100);
+        eb_set_charset(b, &charset_vt100, b->eol_type);
     }
 
     s = qe_mallocz(ShellState);

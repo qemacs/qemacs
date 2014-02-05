@@ -493,7 +493,7 @@ static int dired_mode_init(EditState *s, ModeSavedData *saved_data)
     list_mode.mode_init(s, saved_data);
 
     /* XXX: File system charset should be detected automatically */
-    eb_set_charset(s->b, &charset_utf8);
+    eb_set_charset(s->b, &charset_utf8, s->b->eol_type);
 
     hs = s->mode_data;
     hs->sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;

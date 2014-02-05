@@ -491,9 +491,9 @@ struct QECharset {
     u8 *(*encode_func)(QECharset *charset, u8 *buf, int size);
     void (*get_pos_func)(CharsetDecodeState *s, const u8 *buf, int size,
                          int *line_ptr, int *col_ptr);
-    int (*get_chars_func)(QECharset *charset, const u8 *buf, int size);
-    int (*goto_char_func)(QECharset *charset, const u8 *buf, int size, int pos);
-    int (*goto_line_func)(QECharset *charset, const u8 *buf, int size, int lines);
+    int (*get_chars_func)(CharsetDecodeState *s, const u8 *buf, int size);
+    int (*goto_char_func)(CharsetDecodeState *s, const u8 *buf, int size, int pos);
+    int (*goto_line_func)(CharsetDecodeState *s, const u8 *buf, int size, int lines);
     unsigned int char_size : 3;
     unsigned int variable_size : 1;
     unsigned int table_alloc : 1; /* true if CharsetDecodeState.table must be malloced */
@@ -510,10 +510,18 @@ extern QECharset charset_vt100; /* used for the tty output */
 extern QECharset charset_ucs2le, charset_ucs2be;
 extern QECharset charset_ucs4le, charset_ucs4be;
 
+typedef enum EOLType {
+    EOL_UNIX = 0,
+    EOL_DOS,
+    EOL_MAC,
+} EOLType;
+
 struct CharsetDecodeState {
     /* 256 ushort table for hyper fast decoding */
     unsigned short *table;
     int char_size;
+    EOLType eol_type;
+    int eol_char;
     const u8 *p;
     /* slower decode function for complicated cases */
     int (*decode_func)(CharsetDecodeState *s);
@@ -538,15 +546,16 @@ int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str);
 
 void charset_completion(CompleteState *cp);
 QECharset *find_charset(const char *str);
-void charset_decode_init(CharsetDecodeState *s, QECharset *charset);
+void charset_decode_init(CharsetDecodeState *s, QECharset *charset,
+                         EOLType eol_type);
 void charset_decode_close(CharsetDecodeState *s);
 void charset_get_pos_8bit(CharsetDecodeState *s, const u8 *buf, int size,
                           int *line_ptr, int *col_ptr);
-int charset_get_chars_8bit(QECharset *charset, const u8 *buf, int size);
-int charset_goto_char_8bit(QECharset *charset, const u8 *buf, int size, int pos);
-int charset_goto_line_8bit(QECharset *charset, const u8 *buf, int size, int nlines);
+int charset_get_chars_8bit(CharsetDecodeState *s, const u8 *buf, int size);
+int charset_goto_char_8bit(CharsetDecodeState *s, const u8 *buf, int size, int pos);
+int charset_goto_line_8bit(CharsetDecodeState *s, const u8 *buf, int size, int nlines);
 
-QECharset *detect_charset(const u8 *buf, int size);
+QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep);
 
 void decode_8bit_init(CharsetDecodeState *s);
 int decode_8bit(CharsetDecodeState *s);
@@ -815,6 +824,7 @@ struct EditBuffer {
 
     int tab_width;
     int fill_column;
+    EOLType eol_type;
 
     EditBuffer *next; /* next editbuffer in qe_state buffer list */
 
@@ -867,7 +877,7 @@ EditBuffer *eb_find_new(const char *name, int flags);
 EditBuffer *eb_find_file(const char *filename);
 EditState *eb_find_window(EditBuffer *b, EditState *e);
 
-void eb_set_charset(EditBuffer *b, QECharset *charset);
+void eb_set_charset(EditBuffer *b, QECharset *charset, EOLType eol_type);
 __attr_nonnull((3))
 int eb_nextc(EditBuffer *b, int offset, int *next_ptr);
 __attr_nonnull((3))
@@ -1314,6 +1324,7 @@ struct QEmacsState {
     int max_load_size;  /* maximum file size for loading in memory */
     int default_tab_width;      /* 8 */
     int default_fill_column;    /* 70 */
+    EOLType default_eol_type;  /* EOL_UNIX */
 };
 
 extern QEmacsState qe_state;
@@ -1744,7 +1755,8 @@ void do_mark_whole_buffer(EditState *s);
 void do_yank(EditState *s);
 void do_yank_pop(EditState *s);
 void do_exchange_point_and_mark(EditState *s);
-QECharset *read_charset(EditState *s, const char *charset_str);
+QECharset *read_charset(EditState *s, const char *charset_str,
+                        EOLType *eol_typep);
 void do_set_buffer_file_coding_system(EditState *s, const char *charset_str);
 void do_convert_buffer_file_coding_system(EditState *s,
     const char *charset_str);

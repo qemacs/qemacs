@@ -27,6 +27,9 @@ static int unihex_mode_init(EditState *s, ModeSavedData *saved_data)
 
     text_mode_init(s, saved_data);
 
+    /* unihex mode is incompatible with EOL_DOS eol type */
+    eb_set_charset(s->b, s->b->charset, EOL_UNIX);
+
     /* Compute max width of character in hex dump (limit to first 64K) */
     maxc = 0xFF;
     max_offset = min(65536, s->b->total_size);
