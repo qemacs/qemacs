@@ -116,7 +116,7 @@ static int lisp_mode_probe(ModeDef *mode, ModeProbeData *p)
     ||  strstart(p->filename, ".emacs", NULL))
         return 80;
 
-    return 0;
+    return 1;
 }
 
 /* specific lisp commands */

@@ -667,7 +667,7 @@ static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
             return 50;
     }
 
-    return 0;
+    return 1;
 }
 
 /* C mode specific commands */

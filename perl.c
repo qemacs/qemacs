@@ -340,7 +340,7 @@ static int perl_mode_probe(ModeDef *mode, ModeProbeData *p)
           memstr(p->buf, p->line_len, "bin/perl"))
         return 80;
 
-    return 0;
+    return 1;
 }
 
 /* specific perl commands */

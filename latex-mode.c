@@ -140,7 +140,7 @@ static int latex_mode_probe(ModeDef *mode, ModeProbeData *p)
     if (match_extension(p->filename, "sty") && p->buf[0] == '%')
         return 80;
 
-    return 0;
+    return 1;
 }
 
 static void do_tex_insert_quote(EditState *s)

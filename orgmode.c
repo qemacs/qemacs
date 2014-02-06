@@ -664,7 +664,7 @@ static int org_mode_probe(ModeDef *mode, ModeProbeData *p)
     if (match_extension(p->filename, mode->extensions))
         return 80;
 
-    return 0;
+    return 1;
 }
 
 /* Org mode specific commands */

@@ -151,7 +151,7 @@ static int makefile_mode_probe(ModeDef *mode, ModeProbeData *p)
     ||  stristart(p->filename, "makefile", NULL))
         return 70;
 
-    return 0;
+    return 1;
 }
 
 /* specific makefile commands */

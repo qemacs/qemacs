@@ -7217,6 +7217,12 @@ int detect_binary(const u8 *buf, int size)
 static int text_mode_probe(__unused__ ModeDef *mode,
                            __unused__ ModeProbeData *p)
 {
+    if (mode->extensions) {
+        if (match_extension(p->filename, mode->extensions))
+            return 80;
+        else
+            return 1;
+    }
 #if 0
     /* text mode inappropriate for huge binary files */
     if (detect_binary(p->buf, p->buf_size) && p->total_size > 1000000)

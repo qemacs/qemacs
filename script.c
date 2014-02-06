@@ -113,7 +113,7 @@ static int script_mode_probe(ModeDef *mode, ModeProbeData *p)
         if (p->buf[1] == ' ')
             return 30;
     }
-    return 0;
+    return 1;
 }
 
 /* specific script commands */

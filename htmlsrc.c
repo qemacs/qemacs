@@ -264,7 +264,7 @@ static int htmlsrc_mode_probe(ModeDef *mode, ModeProbeData *p)
         return 80;
     }
 
-    return 0;
+    return 1;
 }
 
 /* specific htmlsrc commands */
