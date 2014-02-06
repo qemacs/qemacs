@@ -442,7 +442,7 @@ static void charset_get_pos_ucs2(CharsetDecodeState *s, const u8 *buf, int size,
                                  int *line_ptr, int *col_ptr)
 {
     const uint16_t *p, *p1, *lp;
-    uint16_t nl;
+    uint16_t nl, lf;
     union { uint16_t n; char c[2]; } u;
     int line, col;
 
@@ -452,10 +452,21 @@ static void charset_get_pos_ucs2(CharsetDecodeState *s, const u8 *buf, int size,
     u.n = 0;
     u.c[s->charset == &charset_ucs2be] = s->eol_char;
     nl = u.n;
+    u.c[s->charset == &charset_ucs2be] = '\n';
+    lf = u.n;
+
+    if (s->eol_type == EOL_DOS && p < p1 && *p == lf) {
+        /* Skip \n at start of buffer.
+         * Should check for pending skip state */
+        p++;
+        lp++;
+    }
 
     /* XXX: should handle surrogates */
     while (p < p1) {
         if (*p++ == nl) {
+            if (s->eol_type == EOL_DOS && p < p1 && *p == lf)
+                p++;
             lp = p;
             line++;
         }
@@ -469,7 +480,7 @@ static int charset_goto_line_ucs2(CharsetDecodeState *s,
                                   const u8 *buf, int size, int nlines)
 {
     const uint16_t *p, *p1, *lp;
-    uint16_t nl;
+    uint16_t nl, lf;
     union { uint16_t n; char c[2]; } u;
 
     lp = p = (const uint16_t *)buf;
@@ -477,10 +488,21 @@ static int charset_goto_line_ucs2(CharsetDecodeState *s,
     u.n = 0;
     u.c[s->charset == &charset_ucs2be] = s->eol_char;
     nl = u.n;
+    u.c[s->charset == &charset_ucs2be] = '\n';
+    lf = u.n;
+
+    if (s->eol_type == EOL_DOS && p < p1 && *p == lf) {
+        /* Skip \n at start of buffer.
+         * Should check for pending skip state */
+        p++;
+        lp++;
+    }
 
     while (nlines > 0 && p < p1) {
         while (p < p1) {
             if (*p++ == nl) {
+                if (s->eol_type == EOL_DOS && p < p1 && *p == lf)
+                    p++;
                 lp = p;
                 nlines--;
                 break;
@@ -617,7 +639,7 @@ static void charset_get_pos_ucs4(CharsetDecodeState *s, const u8 *buf, int size,
                                  int *line_ptr, int *col_ptr)
 {
     const uint32_t *p, *p1, *lp;
-    uint32_t nl;
+    uint32_t nl, lf;
     union { uint32_t n; char c[4]; } u;
     int line, col;
 
@@ -627,9 +649,20 @@ static void charset_get_pos_ucs4(CharsetDecodeState *s, const u8 *buf, int size,
     u.n = 0;
     u.c[(s->charset == &charset_ucs4be) * 3] = s->eol_char;
     nl = u.n;
+    u.c[(s->charset == &charset_ucs4be) * 3] = '\n';
+    lf = u.n;
+
+    if (s->eol_type == EOL_DOS && p < p1 && *p == lf) {
+        /* Skip \n at start of buffer.
+         * Should check for pending skip state */
+        p++;
+        lp++;
+    }
 
     while (p < p1) {
         if (*p++ == nl) {
+            if (s->eol_type == EOL_DOS && p < p1 && *p == lf)
+                p++;
             lp = p;
             line++;
         }
@@ -643,7 +676,7 @@ static int charset_goto_line_ucs4(CharsetDecodeState *s,
                                   const u8 *buf, int size, int nlines)
 {
     const uint32_t *p, *p1, *lp;
-    uint32_t nl;
+    uint32_t nl, lf;
     union { uint32_t n; char c[4]; } u;
 
     lp = p = (const uint32_t *)buf;
@@ -651,10 +684,21 @@ static int charset_goto_line_ucs4(CharsetDecodeState *s,
     u.n = 0;
     u.c[(s->charset == &charset_ucs4be) * 3] = s->eol_char;
     nl = u.n;
+    u.c[(s->charset == &charset_ucs4be) * 3] = '\n';
+    lf = u.n;
+
+    if (s->eol_type == EOL_DOS && p < p1 && *p == lf) {
+        /* Skip \n at start of buffer.
+         * Should check for pending skip state */
+        p++;
+        lp++;
+    }
 
     while (nlines > 0 && p < p1) {
         while (p < p1) {
             if (*p++ == nl) {
+                if (s->eol_type == EOL_DOS && p < p1 && *p == lf)
+                    p++;
                 lp = p;
                 nlines--;
                 break;
@@ -857,48 +901,178 @@ void charset_decode_close(CharsetDecodeState *s)
     memset(s, 0, sizeof(CharsetDecodeState));
 }
 
-/* detect the charset. Actually only UTF8 is detected */
-QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
+/* detect the end of line type. */
+void detect_eol_type_8bit(const u8 *buf, int size,
+                          QECharset *charset, EOLType *eol_typep)
 {
-    int i, l, c, has_utf8;
+    const u8 *p, *p1;
+    int c, eol_bits;
+    EOLType eol_type;
 
-    if (eol_typep) {
-        /* XXX: delay test after charset match */
-        /* XXX: only works for 8 bit charsets */
-        int eol_bits = 0;
-        for (i = 0; i < size - 1; i++) {
-            c = buf[i++];
-            if (c == '\r') {
-                if (buf[i] == '\n') {
-                    eol_bits |= 1 << EOL_DOS;
-                    i++;
-                } else {
-                    eol_bits |= 1 << EOL_MAC;
-                }
-            } else
-            if (buf[i] == '\n') {
-                eol_bits |= 1 << EOL_UNIX;
+    if (!eol_typep)
+        return;
+
+    eol_type = *eol_typep;
+
+    p = buf;
+    p1 = p + size - 1;
+
+    eol_bits = 0;
+    while (p < p1) {
+        c = *p++;
+        if (c == '\r') {
+            if (*p == '\n') {
+                p++;
+                eol_bits |= 1 << EOL_DOS;
+            } else {
+                eol_bits |= 1 << EOL_MAC;
             }
+        } else
+        if (c == '\n') {
+            eol_bits |= 1 << EOL_UNIX;
         }
-        switch (eol_bits) {
+    }
+    switch (eol_bits) {
         case 0:
             /* no change, keep default value */
             break;
         case 1 << EOL_UNIX:
-            *eol_typep = EOL_UNIX;
+            eol_type = EOL_UNIX;
             break;
         case 1 << EOL_DOS:
-            *eol_typep = EOL_DOS;
+            eol_type = EOL_DOS;
             break;
         case 1 << EOL_MAC:
-            *eol_typep = EOL_MAC;
+            eol_type = EOL_MAC;
             break;
         default:
             /* A mixture of different styles, binary / unix */
-            *eol_typep = EOL_UNIX;
+            eol_type = EOL_UNIX;
             break;
+    }
+    *eol_typep = eol_type;
+}
+
+void detect_eol_type_16bit(const u8 *buf, int size,
+                           QECharset *charset, EOLType *eol_typep)
+{
+    const uint16_t *p, *p1;
+    uint16_t cr, lf;
+    union { uint16_t n; char c[2]; } u;
+    int c, eol_bits;
+    EOLType eol_type;
+
+    if (!eol_typep)
+        return;
+
+    eol_type = *eol_typep;
+
+    p = (const uint16_t *)buf;
+    p1 = p + (size >> 1) - 1;
+    u.n = 0;
+    u.c[charset == &charset_ucs2be] = '\r';
+    cr = u.n;
+    u.c[charset == &charset_ucs2be] = '\n';
+    lf = u.n;
+
+    eol_bits = 0;
+    while (p < p1) {
+        c = *p++;
+        if (c == cr) {
+            if (*p == lf) {
+                p++;
+                eol_bits |= 1 << EOL_DOS;
+            } else {
+                eol_bits |= 1 << EOL_MAC;
+            }
+        } else
+        if (c == lf) {
+            eol_bits |= 1 << EOL_UNIX;
         }
     }
+    switch (eol_bits) {
+        case 0:
+            /* no change, keep default value */
+            break;
+        case 1 << EOL_UNIX:
+            eol_type = EOL_UNIX;
+            break;
+        case 1 << EOL_DOS:
+            eol_type = EOL_DOS;
+            break;
+        case 1 << EOL_MAC:
+            eol_type = EOL_MAC;
+            break;
+        default:
+            /* A mixture of different styles, binary / unix */
+            eol_type = EOL_UNIX;
+            break;
+    }
+    *eol_typep = eol_type;
+}
+
+void detect_eol_type_32bit(const u8 *buf, int size,
+                           QECharset *charset, EOLType *eol_typep)
+{
+    const uint32_t *p, *p1;
+    uint16_t cr, lf;
+    union { uint32_t n; char c[4]; } u;
+    int c, eol_bits;
+    EOLType eol_type;
+
+    if (!eol_typep)
+        return;
+
+    eol_type = *eol_typep;
+
+    p = (const uint32_t *)buf;
+    p1 = p + (size >> 2) - 1;
+    u.n = 0;
+    u.c[(charset == &charset_ucs4be) * 3] = '\r';
+    cr = u.n;
+    u.c[(charset == &charset_ucs4be) * 3] = '\n';
+    lf = u.n;
+
+    eol_bits = 0;
+    while (p < p1) {
+        c = *p++;
+        if (c == cr) {
+            if (*p == lf) {
+                p++;
+                eol_bits |= 1 << EOL_DOS;
+            } else {
+                eol_bits |= 1 << EOL_MAC;
+            }
+        } else
+        if (c == lf) {
+            eol_bits |= 1 << EOL_UNIX;
+        }
+    }
+    switch (eol_bits) {
+        case 0:
+            /* no change, keep default value */
+            break;
+        case 1 << EOL_UNIX:
+            eol_type = EOL_UNIX;
+            break;
+        case 1 << EOL_DOS:
+            eol_type = EOL_DOS;
+            break;
+        case 1 << EOL_MAC:
+            eol_type = EOL_MAC;
+            break;
+        default:
+            /* A mixture of different styles, binary / unix */
+            eol_type = EOL_UNIX;
+            break;
+    }
+    *eol_typep = eol_type;
+}
+
+/* detect the charset. Actually only UTF8 is detected */
+QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
+{
+    int i, l, c, has_utf8;
 
     has_utf8 = 0;
     for (i = 0; i < size;) {
@@ -919,24 +1093,33 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
             l--;
         }
     }
-    if (has_utf8)
+    if (has_utf8) {
+        detect_eol_type_8bit(buf, size, &charset_utf8, eol_typep);
         return &charset_utf8;
+    }
 
     /* Check for zwnbsp BOM: files starting with zero-width
      * no-break space as a byte-order mark (BOM) will be detected
      * as ucs2 or ucs4 encoded.
      */
     if (size >= 2 && buf[0] == 0xff && buf[1] == 0xfe) {
-        if (size >= 4 && buf[2] == 0 && buf[3] == 0)
+        if (size >= 4 && buf[2] == 0 && buf[3] == 0) {
+            detect_eol_type_32bit(buf, size, &charset_ucs4le, eol_typep);
             return &charset_ucs4le;
-        return &charset_ucs2le;
+        } else {
+            detect_eol_type_16bit(buf, size, &charset_ucs2le, eol_typep);
+            return &charset_ucs2le;
+        }
     }
 
-    if (size >= 2 && buf[0] == 0xfe && buf[1] == 0xff)
+    if (size >= 2 && buf[0] == 0xfe && buf[1] == 0xff) {
+        detect_eol_type_16bit(buf, size, &charset_ucs2be, eol_typep);
         return &charset_ucs2be;
+    }
 
     if (size >= 4
     &&  buf[0] == 0 && buf[1] == 0 && buf[2] == 0xfe && buf[3] == 0xff) {
+        detect_eol_type_32bit(buf, size, &charset_ucs4be, eol_typep);
         return &charset_ucs4be;
     }
 
@@ -950,17 +1133,21 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
             if (buf[i] > maxc[i & 3])
                 maxc[i & 3] = buf[i];
         }
-        if (maxc[0] > 'a' && maxc[1] < 0x2f && maxc[2] > 'a' && maxc[3] < 0x2f)
+        if (maxc[0] > 'a' && maxc[1] < 0x2f && maxc[2] > 'a' && maxc[3] < 0x2f) {
+            detect_eol_type_16bit(buf, size, &charset_ucs2le, eol_typep);
             return &charset_ucs2le;
-
-        if (maxc[1] > 'a' && maxc[0] < 0x2f && maxc[3] > 'a' && maxc[2] < 0x2f)
+        }
+        if (maxc[1] > 'a' && maxc[0] < 0x2f && maxc[3] > 'a' && maxc[2] < 0x2f) {
+            detect_eol_type_16bit(buf, size, &charset_ucs2be, eol_typep);
             return &charset_ucs2be;
+        }
     }
 #endif
     /* Should detect iso-2220-jp upon \033$@ and \033$B, but jis
      * support is not selected in tiny build
      */
     /* CG: should use a state variable for default charset */
+    detect_eol_type_8bit(buf, size, &charset_8859_1, eol_typep);
     return &charset_8859_1;
 }
 
@@ -1028,11 +1215,20 @@ void charset_get_pos_8bit(CharsetDecodeState *s, const u8 *buf, int size,
     p1 = p + size;
     nl = s->eol_char;
 
+    if (s->eol_type == EOL_DOS && p < p1 && *p == '\n') {
+        /* Skip \n at start of buffer.
+         * Should check for pending skip state */
+        p++;
+        lp++;
+    }
+
     for (;;) {
         p = memchr(p, nl, p1 - p);
         if (!p)
             break;
         p++;
+        if (s->eol_type == EOL_DOS && p < p1 && *p == '\n')
+            p++;
         lp = p;
         line++;
     }
@@ -1051,11 +1247,20 @@ int charset_goto_line_8bit(CharsetDecodeState *s,
     p1 = p + size;
     nl = s->eol_char;
 
+    if (s->eol_type == EOL_DOS && p < p1 && *p == '\n') {
+        /* Skip \n at start of buffer.
+         * Should check for pending skip state */
+        p++;
+        lp++;
+    }
+
     while (nlines > 0) {
         p = memchr(p, nl, p1 - p);
         if (!p)
             break;
         p++;
+        if (s->eol_type == EOL_DOS && p < p1 && *p == '\n')
+            p++;
         lp = p;
         nlines--;
     }
