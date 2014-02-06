@@ -1101,6 +1101,7 @@ static void term_selection_request(__unused__ QEditScreen *s)
 
     /* copy GUI selection a new yank buffer */
     b = new_yank_buffer(qs, NULL);
+    eb_set_charset(b, &charset_utf8, EOL_UNIX);
 
     nread = 0;
     for (;;) {

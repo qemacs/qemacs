@@ -1484,8 +1484,12 @@ EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
         eb_free(&qs->yank_buffers[qs->yank_current]);
     }
     snprintf(bufname, sizeof(bufname), "*kill-%d*", qs->yank_current + 1);
-    b = eb_new(bufname, base->flags & BF_STYLES);
-    eb_set_charset(b, base->charset, base->eol_type);
+    if (base) {
+        b = eb_new(bufname, base->flags & BF_STYLES);
+        eb_set_charset(b, base->charset, base->eol_type);
+    } else {
+        b = eb_new(bufname, 0);
+    }
     qs->yank_buffers[qs->yank_current] = b;
     return b;
 }
