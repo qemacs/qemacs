@@ -55,6 +55,7 @@ static void x11_handle_event(void *opaque);
 static Display *display;
 static int xscreen;
 static Window window;
+static Atom wm_delete_window;
 static GC gc, gc_pixmap;
 static XWindowAttributes attr;
 static int event_mask;
@@ -318,6 +319,9 @@ static int term_init(QEditScreen *s, int w, int h)
                     XNClientWindow, window,
                     XNFocusWindow, window,
                     NULL);
+
+    wm_delete_window = XInternAtom(display, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(display, window, &wm_delete_window, 1);
 
     gc = XCreateGC(display, window, 0, NULL);
 #ifdef CONFIG_XFT
@@ -1074,6 +1078,7 @@ static void term_selection_request(__unused__ QEditScreen *s)
     QEmacsState *qs = &qe_state;
     Window w;
     Atom prop;
+    Atom utf8;
     long nread;
     unsigned char *data;
     Atom actual_type;
@@ -1089,7 +1094,8 @@ static void term_selection_request(__unused__ QEditScreen *s)
     /* use X11 selection (Will be pasted when receiving
        SelectionNotify event) */
     prop = XInternAtom(display, "VT_SELECTION", False);
-    XConvertSelection(display, XA_PRIMARY, XA_STRING,
+    utf8 = XInternAtom(display, "UTF8_STRING", False);
+    XConvertSelection(display, XA_PRIMARY, utf8,
                       prop, window, CurrentTime);
 
     /* XXX: add timeout too if the target application is not well
@@ -1110,7 +1116,7 @@ static void term_selection_request(__unused__ QEditScreen *s)
                                 AnyPropertyType, &actual_type, &actual_fmt,
                                 &nitems, &bytes_after,
                                 &data) != Success) ||
-            (actual_type != XA_STRING)) {
+            (actual_type != utf8)) {
             XFree(data);
             break;
         }
@@ -1129,6 +1135,7 @@ static void term_selection_request(__unused__ QEditScreen *s)
 static void selection_send(XSelectionRequestEvent *rq)
 {
     static Atom xa_targets = None;
+    static Atom xa_formats[] = { None, None, None, None };
     QEmacsState *qs = &qe_state;
     unsigned char *buf;
     XEvent ev;
@@ -1136,21 +1143,29 @@ static void selection_send(XSelectionRequestEvent *rq)
 
     if (xa_targets == None)
         xa_targets = XInternAtom(display, "TARGETS", False);
+    if (xa_formats[0] == None) {
+        xa_formats[0] = XInternAtom(display, "UTF8_STRING", False);
+        xa_formats[1] = XInternAtom(display, "text/plain;charset=UTF-8", False);
+        xa_formats[2] = XInternAtom(display, "text/plain;charset=utf-8", False);
+        xa_formats[3] = XA_STRING;
+    }
 
     ev.xselection.type      = SelectionNotify;
     ev.xselection.property  = None;
     ev.xselection.display   = rq->display;
     ev.xselection.requestor = rq->requestor;
     ev.xselection.selection = rq->selection;
-    ev.xselection.target           = rq->target;
+    ev.xselection.target    = rq->target;
     ev.xselection.time      = rq->time;
 
     if (rq->target == xa_targets) {
-        unsigned int target_list[2];
+        unsigned int target_list[1 + countof(xa_formats)];
+        int i;
 
         /* indicate which are supported types */
         target_list[0] = xa_targets;
-        target_list[1] = XA_STRING;
+        for (i = 0; i < countof(xa_formats); i++)
+            target_list[i + 1] = xa_formats[i];
 
         XChangeProperty(display, rq->requestor, rq->property,
                         xa_targets, 8*sizeof(target_list[0]), PropModeReplace,
@@ -1170,6 +1185,52 @@ static void selection_send(XSelectionRequestEvent *rq)
         XChangeProperty(display, rq->requestor, rq->property,
                         XA_STRING, 8, PropModeReplace,
                         buf, b->total_size);
+        qe_free(&buf);
+    } else
+    if (rq->target == xa_formats[0]
+    ||  rq->target == xa_formats[1]
+    ||  rq->target == xa_formats[2]) {
+        int len;
+        /* get qemacs yank buffer */
+
+        b = qs->yank_buffers[qs->yank_current];
+        if (!b)
+            return;
+        buf = qe_malloc_array(unsigned char, b->total_size);
+        if (!buf)
+            return;
+        eb_read(b, 0, buf, b->total_size);
+        len = b->total_size;
+
+        /* if not UTF-8 we must convert to it */
+        if (!(b->flags & BF_UTF8)) {
+            struct CharsetDecodeState st;
+            unsigned char *utf_buf, *p;
+
+            utf_buf = qe_malloc_array(unsigned char, b->total_size * 6);
+            if (!utf_buf) {
+                qe_free(&buf);
+                return;
+            }
+
+            charset_decode_init(&st, b->charset, b->eol_type);
+            st.p = buf;
+            p = utf_buf;
+            for (;;) {
+                int c = st.decode_func(&st);
+                if (c == 0)
+                    break;
+                p += utf8_encode((char *)p, c);
+            }
+
+            qe_free(&buf);
+            len = p - utf_buf;
+            buf = utf_buf;
+        }
+
+        XChangeProperty(display, rq->requestor, rq->property,
+                        rq->target, 8, PropModeReplace,
+                        buf, len);
         qe_free(&buf);
     }
     ev.xselection.property = rq->property;
@@ -1255,6 +1316,22 @@ static void x11_handle_event(void *opaque)
     while (XPending(display)) {
         XNextEvent(display, &xev);
         switch (xev.type) {
+        case ClientMessage:
+            if ((Atom)xev.xclient.data.l[0] == wm_delete_window) {
+                // cancel pending operation
+                ev->key_event.type = QE_KEY_EVENT;
+                ev->key_event.key = KEY_CTRL('g');
+                qe_handle_event(ev);
+
+                // simulate C-x C-c
+                ev->key_event.type = QE_KEY_EVENT;
+                ev->key_event.key = KEY_CTRL('x');
+                qe_handle_event(ev);
+                ev->key_event.type = QE_KEY_EVENT;
+                ev->key_event.key = KEY_CTRL('c');
+                qe_handle_event(ev);
+            }
+            break;
         case ConfigureNotify:
             if (term_resize(s, xev.xconfigure.width, xev.xconfigure.height)) {
                 qe_expose_set(s, rgn, 0, 0, s->width, s->height);
