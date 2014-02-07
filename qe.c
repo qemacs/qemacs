@@ -904,9 +904,12 @@ void text_move_up_down(EditState *s, int dir)
     if (dir < 0) {
         /* difficult case: we need to go backward on displayed text */
         while (cm.linec <= 0) {
-            if (s->offset_top <= 0)
+            int offset_top = s->offset_top;
+
+            if (offset_top <= 0)
                 return;
-            s->offset_top = s->mode->text_backward_offset(s, s->offset_top - 1);
+            eb_prevc(s->b, offset_top, &offset_top);
+            s->offset_top = s->mode->text_backward_offset(s, offset_top);
 
             /* adjust y_disp so that the cursor is at the same position */
             s->y_disp += cm.yc;
@@ -998,12 +1001,15 @@ void perform_scroll_up_down(EditState *s, int h)
     if (s->y_disp > 0) {
         display_init(ds, s, DISP_CURSOR_SCREEN);
         do {
-            if (s->offset_top <= 0) {
+            int offset_top = s->offset_top;
+
+            if (offset_top <= 0) {
                 /* cannot go back: we stay at the top of the screen and
                    exit loop */
                 s->y_disp = 0;
             } else {
-                s->offset_top = s->mode->text_backward_offset(s, s->offset_top - 1);
+                eb_prevc(s->b, offset_top, &offset_top);
+                s->offset_top = s->mode->text_backward_offset(s, offset_top);
                 ds->y = 0;
                 s->mode->text_display(s, ds, s->offset_top);
                 s->y_disp -= ds->y;
@@ -1142,9 +1148,12 @@ void text_move_left_right_visual(EditState *s, int dir)
             } else {
                 /* no suitable position found: go to previous line */
                 if (yc <= 0) {
-                    if (s->offset_top <= 0)
+                    int offset_top = s->offset_top;
+
+                    if (offset_top <= 0)
                         break;
-                    s->offset_top = s->mode->text_backward_offset(s, s->offset_top - 1);
+                    eb_prevc(s->b, offset_top, &offset_top);
+                    s->offset_top = s->mode->text_backward_offset(s, offset_top);
                     /* adjust y_disp so that the cursor is at the same position */
                     s->y_disp += cm.yc;
                     get_cursor_pos(s, &cm);
@@ -3557,7 +3566,8 @@ static void generic_text_display(EditState *s)
         }
 
         while (ds->y < s->height && offset > 0) {
-            offset = s->mode->text_backward_offset(s, offset - 1);
+            eb_prevc(s->b, offset, &offset);
+            offset = s->mode->text_backward_offset(s, offset);
             s->mode->text_display(s, ds, offset);
         }
         s->offset_top = offset;
