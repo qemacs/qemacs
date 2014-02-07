@@ -459,6 +459,8 @@ static void haiku_handle_event(void *opaque)
             float delta;
 
             ev->button_event.type = QE_BUTTON_PRESS_EVENT;
+            ev->button_event.x = 0;
+            ev->button_event.y = 0;
 
             if (event->FindFloat("be:wheel_delta_y", &delta) < B_OK)
                 delta = 0.0;
