@@ -375,7 +375,7 @@ int match_extension(const char *filename, const char *extlist)
             int len1 = p - q;
             if (len1 != 0 || (q != extlist && c != '\0')) {
                 if (len > len1 && base[len - len1 - 1] == '.'
-                &&  !memcmp(base + (len - len1), q, len1)) {
+                &&  !qe_memicmp(base + (len - len1), q, len1)) {
                     return 1;
                 }
             }
@@ -643,6 +643,22 @@ const void *memstr(const void *buf, int size, const char *str)
             return p;
     }
     return NULL;
+}
+
+int qe_memicmp(const void *p1, const void *p2, int count)
+{
+    const u8 *s1 = (const u8 *)p1;
+    const u8 *s2 = (const u8 *)p2;
+
+    for (; count-- > 0; s1++, s2++) {
+        if (*s1 != *s2) {
+            int c1 = qe_toupper(*s1);
+            int c2 = qe_toupper(*s2);
+            if (c1 != c2)
+                return (c2 < c1) - (c1 < c2);
+        }
+    }
+    return 0;
 }
 
 /**
