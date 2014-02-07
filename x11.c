@@ -1171,9 +1171,11 @@ static void selection_send(XSelectionRequestEvent *rq)
                         xa_targets, 8*sizeof(target_list[0]), PropModeReplace,
                         (unsigned char *)target_list,
                         countof(target_list));
-    } else if (rq->target == XA_STRING) {
-        /* get qemacs yank buffer */
+    } else
+    if (rq->target == XA_STRING) {
+        /* XXX: charset is ignored! */
 
+        /* get qemacs yank buffer */
         b = qs->yank_buffers[qs->yank_current];
         if (!b)
             return;
@@ -1190,43 +1192,19 @@ static void selection_send(XSelectionRequestEvent *rq)
     if (rq->target == xa_formats[0]
     ||  rq->target == xa_formats[1]
     ||  rq->target == xa_formats[2]) {
-        int len;
-        /* get qemacs yank buffer */
+        int len, size;
 
+        /* get qemacs yank buffer */
         b = qs->yank_buffers[qs->yank_current];
         if (!b)
             return;
-        buf = qe_malloc_array(unsigned char, b->total_size);
+
+        /* Get buffer contents encoded in utf-8-unix */
+        size = eb_get_content_size(b) + 1;
+        buf = qe_malloc_array(unsigned char, size);
         if (!buf)
             return;
-        eb_read(b, 0, buf, b->total_size);
-        len = b->total_size;
-
-        /* if not UTF-8 we must convert to it */
-        if (!(b->flags & BF_UTF8)) {
-            struct CharsetDecodeState st;
-            unsigned char *utf_buf, *p;
-
-            utf_buf = qe_malloc_array(unsigned char, b->total_size * 6);
-            if (!utf_buf) {
-                qe_free(&buf);
-                return;
-            }
-
-            charset_decode_init(&st, b->charset, b->eol_type);
-            st.p = buf;
-            p = utf_buf;
-            for (;;) {
-                int c = st.decode_func(&st);
-                if (c == 0)
-                    break;
-                p += utf8_encode((char *)p, c);
-            }
-
-            qe_free(&buf);
-            len = p - utf_buf;
-            buf = utf_buf;
-        }
+        len = eb_get_contents(b, (char *)buf, size);
 
         XChangeProperty(display, rq->requestor, rq->property,
                         rq->target, 8, PropModeReplace,

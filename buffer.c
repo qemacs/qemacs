@@ -1912,10 +1912,26 @@ int eb_get_contents(EditBuffer *b, char *buf, int buf_size)
         out = buf_init(&outbuf, buf, buf_size);
         for (offset = 0; offset < b->total_size;) {
             c = eb_nextc(b, offset, &offset);
-            if (!buf_putc_utf8(out, c))
-                break;
+            buf_putc_utf8(out, c);
         }
         return out->len;
+    }
+}
+
+/* Compute the size of the contents of a buffer encoded in utf8 */
+int eb_get_content_size(EditBuffer *b)
+{
+    if (b->charset == &charset_utf8 && b->eol_type == EOL_UNIX) {
+        return b->total_size;
+    } else {
+        int c, offset, size;
+        char buf[MAX_CHAR_BYTES];
+
+        for (offset = size = 0; offset < b->total_size;) {
+            c = eb_nextc(b, offset, &offset);
+            size += utf8_encode(buf, c);
+        }
+        return size;
     }
 }
 
