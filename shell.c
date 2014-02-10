@@ -52,7 +52,10 @@ enum TTYState {
     TTY_STATE_STRING,
 };
 
+static int shell_signature;
+
 typedef struct ShellState {
+    void *signature;
     /* buffer state */
     int pty_fd;
     int pid; /* -1 if not launched */
@@ -256,7 +259,6 @@ static void tty_init(ShellState *s)
     char *term;
 
     s->state = TTY_STATE_NORM;
-    s->cur_offset = 0;
     /* Should compute def_color from shell default style at display
      * time and force full redisplay upon style change.
      */
@@ -655,11 +657,25 @@ static void tty_update_cursor(__unused__ ShellState *s)
 #endif
 }
 
+static ShellState *shell_get_state(EditState *e)
+{
+    ShellState *s = e->b->priv_data;
+
+    if (s && s->signature == &shell_signature)
+        return s;
+
+    put_status(e, "Not a shell buffer");
+    return NULL;
+}
+
 /* CG: much cleaner way! */
 /* would need a kill hook as well ? */
 static void shell_display_hook(EditState *e)
 {
-    ShellState *s = e->b->priv_data;
+    ShellState *s;
+
+    if (!(s = shell_get_state(e)))
+        return;
 
     if (e->interactive)
         e->offset = s->cur_offset;
@@ -671,6 +687,9 @@ static void shell_key(void *opaque, int key)
     char buf[10];
     const char *p;
     int len;
+
+    if (!s || s->signature != &shell_signature)
+        return;
 
     if (key == KEY_CTRL('o')) {
         qe_ungrab_keys();
@@ -1222,10 +1241,14 @@ static void tty_emulate(ShellState *s, int c)
 static void shell_read_cb(void *opaque)
 {
     ShellState *s = opaque;
-    QEmacsState *qs = s->qe_state;
+    QEmacsState *qs;
     unsigned char buf[16 * 1024];
     int len, i;
 
+    if (!s || s->signature != &shell_signature)
+        return;
+
+    qs = s->qe_state;
     len = read(s->pty_fd, buf, sizeof(buf));
     if (len <= 0)
         return;
@@ -1252,10 +1275,16 @@ static void shell_read_cb(void *opaque)
 static void shell_pid_cb(void *opaque, int status)
 {
     ShellState *s = opaque;
-    EditBuffer *b = s->b;
-    QEmacsState *qs = s->qe_state;
+    EditBuffer *b;
+    QEmacsState *qs;
     EditState *e;
     char buf[1024];
+
+    if (!s || s->signature != &shell_signature)
+        return;
+
+    b = s->b;
+    qs = s->qe_state;
 
     *buf = 0;
     if (s->caption) {
@@ -1348,7 +1377,11 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     int rows, cols;
 
     b = b0;
-    if (!b) {
+    if (b) {
+        s = b->priv_data;
+        if (s && s->signature != &shell_signature)
+            return NULL;
+    } else {
         int bf_flags = BF_SAVELOG;
         if (shell_flags & SF_COLOR)
             bf_flags |= BF_STYLE2;
@@ -1367,22 +1400,27 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
         eb_set_charset(b, &charset_vt100, b->eol_type);
     }
 
-    s = qe_mallocz(ShellState);
+    s = b->priv_data;
     if (!s) {
-        if (!b0)
-            eb_free(&b);
-        return NULL;
+        s = qe_mallocz(ShellState);
+        if (!s) {
+            if (!b0)
+                eb_free(&b);
+            return NULL;
+        }
+        s->signature = &shell_signature;
+        b->priv_data = s;
+        b->close = shell_close;
+        /* Track cursor with edge effect */
+        eb_add_callback(b, eb_offset_callback, &s->cur_offset, 1);
     }
-    b->priv_data = s;
-    b->close = shell_close;
-    /* Track cursor with edge effect */
-    eb_add_callback(b, eb_offset_callback, &s->cur_offset, 1);
     s->b = b;
     s->pty_fd = -1;
     s->pid = -1;
     s->qe_state = qs;
     s->caption = caption;
     s->shell_flags = shell_flags;
+    s->cur_offset = b->total_size;
     tty_init(s);
 
     /* launch shell */
@@ -1421,25 +1459,52 @@ static EditBuffer *try_show_buffer(EditState *s, const char *bufname)
 
 static void do_shell(EditState *s, int force)
 {
-    EditBuffer *b;
+    ShellState *shs;
+    EditBuffer *b = NULL;
 
     /* CG: Should prompt for buffer name if arg:
      * find a syntax for optional string argument w/ prompt
      */
     /* find shell buffer if any */
     if (!force || force == NO_ARG) {
-        if (try_show_buffer(s, "*shell*"))
-            return;
+        /* XXX: if current buffer is a shell buffer without a process,
+         * restart shell process.
+         */
+        b = s->b;
+        shs = b->priv_data;
+        if (strstart(b->name, "*shell*", NULL)
+        &&  shs && shs->signature == &shell_signature) {
+            if (shs->pid >= 0)
+                return;
+        } else {
+            b = try_show_buffer(s, "*shell*");
+            if (b) {
+                shs = b->priv_data;
+                if (shs) {
+                    if (shs->signature != &shell_signature) {
+                        b = NULL;
+                    } else
+                    if (shs->pid >= 0)
+                        return;
+                }
+            }
+        }
+        if (b) {
+            /* restart shell in *shell* buffer */
+            s->offset = b->total_size;
+        }
     }
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, "*shell*", "Shell process", NULL,
+    b = new_shell_buffer(b, "*shell*", "Shell process", NULL,
                          SF_COLOR | SF_INTERACTIVE);
     if (!b)
         return;
 
+    b->default_mode = &shell_mode;
     switch_to_buffer(s, b);
-    edit_set_mode(s, &shell_mode);
+    s->interactive = 1;
+    //edit_set_mode(s, &shell_mode);
 
     put_status(s, "Press C-o to toggle between shell/edit mode");
 }
@@ -1483,16 +1548,21 @@ static void do_ssh(EditState *s, const char *arg)
     if (!b)
         return;
 
+    b->default_mode = &shell_mode;
     switch_to_buffer(s, b);
-    edit_set_mode(s, &shell_mode);
+    //edit_set_mode(s, &shell_mode);
 
     put_status(s, "Press C-o to toggle between shell/edit mode");
 }
 
 static void shell_move_left_right(EditState *e, int dir)
 {
+    ShellState *s;
+
+    if (!(s = shell_get_state(e)))
+        return;
+
     if (e->interactive) {
-        ShellState *s = e->b->priv_data;
         tty_write(s, dir > 0 ? s->kcuf1 : s->kcub1, -1);
     } else {
         text_move_left_right_visual(e, dir);
@@ -1501,8 +1571,12 @@ static void shell_move_left_right(EditState *e, int dir)
 
 static void shell_move_word_left_right(EditState *e, int dir)
 {
+    ShellState *s;
+
+    if (!(s = shell_get_state(e)))
+        return;
+
     if (e->interactive) {
-        ShellState *s = e->b->priv_data;
         tty_write(s, dir > 0 ? "\033f" : "\033b", -1);
     } else {
         text_move_word_left_right(e, dir);
@@ -1511,8 +1585,12 @@ static void shell_move_word_left_right(EditState *e, int dir)
 
 static void shell_move_up_down(EditState *e, int dir)
 {
+    ShellState *s;
+
+    if (!(s = shell_get_state(e)))
+        return;
+
     if (e->interactive) {
-        ShellState *s = e->b->priv_data;
         tty_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
     } else {
         text_move_up_down(e, dir);
@@ -1521,7 +1599,10 @@ static void shell_move_up_down(EditState *e, int dir)
 
 static void shell_scroll_up_down(EditState *e, int dir)
 {
-    ShellState *s = e->b->priv_data;
+    ShellState *s;
+
+    if (!(s = shell_get_state(e)))
+        return;
 
     e->interactive = 0;
     text_scroll_up_down(e, dir);
@@ -1530,11 +1611,15 @@ static void shell_scroll_up_down(EditState *e, int dir)
 
 static void shell_move_bol(EditState *e)
 {
+    ShellState *s;
+
+    if (!(s = shell_get_state(e)))
+        return;
+
     /* XXX: exit shell interactive mode on home / ^A */
     e->interactive = 0;
 
     if (e->interactive) {
-        ShellState *s = e->b->priv_data;
         tty_write(s, "\001", 1); /* Control-A */
     } else {
         text_move_bol(e);
@@ -1543,7 +1628,10 @@ static void shell_move_bol(EditState *e)
 
 static void shell_move_eol(EditState *e)
 {
-    ShellState *s = e->b->priv_data;
+    ShellState *s;
+
+    if (!(s = shell_get_state(e)))
+        return;
 
     if (e->interactive) {
         tty_write(s, "\005", 1); /* Control-E */
@@ -1558,10 +1646,12 @@ static void shell_write_char(EditState *e, int c)
 {
     char buf[10];
     int len;
+    ShellState *s;
+
+    if (!(s = shell_get_state(e)))
+        return;
 
     if (e->interactive) {
-        ShellState *s = e->b->priv_data;
-
         if (c >= KEY_META(0) && c <= KEY_META(0xff)) {
             buf[0] = '\033';
             buf[1] = c - KEY_META(0);
@@ -1613,15 +1703,18 @@ static void shell_write_char(EditState *e, int c)
 
 static void do_shell_toggle_input(EditState *e)
 {
+    ShellState *s;
+
+    if (!(s = shell_get_state(e)))
+        return;
+
     e->interactive = !e->interactive;
     if (e->interactive) {
-        ShellState *s = e->b->priv_data;
         if (s->grab_keys)
             qe_grab_keys(shell_key, s);
     }
 #if 0
     if (e->interactive) {
-        ShellState *s = e->b->priv_data;
         tty_update_cursor(s);
     }
 #endif
@@ -1650,7 +1743,6 @@ static void do_compile(EditState *e, const char *cmd)
 
     /* XXX: try to split window if necessary */
     switch_to_buffer(e, b);
-    /* XXX: pager_mode for colorized output, text mode should support color buffer */ 
     edit_set_mode(e, &pager_mode);
     set_error_offset(b, 0);
 }
@@ -1815,7 +1907,17 @@ static CmdDef shell_global_commands[] = {
     CMD_DEF_END,
 };
 
-static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
+static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (p->b && p->b->priv_data) {
+        ShellState *s = p->b->priv_data;
+        if (s->signature == &shell_signature)
+            return 100;
+    }
+    return 0;
+}
+
+static int shell_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     text_mode_init(s, saved_data);
     s->b->tab_width = 8;
@@ -1824,7 +1926,7 @@ static int shell_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
     return 0;
 }
 
-static int pager_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
+static int pager_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     text_mode_init(s, saved_data);
     s->b->tab_width = 8;
@@ -1837,7 +1939,7 @@ static int shell_init(void)
     /* populate and register shell mode and commands */
     memcpy(&shell_mode, &text_mode, sizeof(ModeDef));
     shell_mode.name = "shell";
-    shell_mode.mode_probe = NULL;
+    shell_mode.mode_probe = shell_mode_probe;
     shell_mode.mode_init = shell_mode_init;
     shell_mode.display_hook = shell_display_hook;
     shell_mode.move_left_right = shell_move_left_right;

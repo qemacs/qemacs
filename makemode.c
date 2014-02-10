@@ -161,7 +161,7 @@ static CmdDef makefile_commands[] = {
 
 static ModeDef makefile_mode;
 
-static int makefile_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
+static int makefile_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     text_mode_init(s, saved_data);
     s->b->tab_width = 8;

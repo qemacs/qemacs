@@ -764,6 +764,9 @@ static void do_describe_buffer(EditState *s, int argval)
     eb_printf(b1, "    eol_type: %d %s\n", b->eol_type, buf);
     eb_printf(b1, "     charset: %s (bytes=%d, shift=%d)\n",
               b->charset->name, b->char_bytes, b->char_shift);
+    eb_printf(b1, "default_mode: %s, saved_mode: %s\n",
+              b->default_mode ? b->default_mode->name : "",
+              b->saved_mode ? b->saved_mode->name : "");
 
     desc = buf_init(&descbuf, buf, countof(buf));
     if (b->flags & BF_SAVELOG)

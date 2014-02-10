@@ -79,7 +79,7 @@ void list_toggle_selection(EditState *s)
     text_move_up_down(s, 1);
 }
 
-static int list_mode_init(EditState *s, __unused__ ModeSavedData *saved_data)
+static int list_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     text_mode_init(s, saved_data);
 

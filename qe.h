@@ -822,6 +822,8 @@ struct EditBuffer {
     /* CG: should instead keep a pointer to last window using this
      * buffer, even if no longer on screen
      */
+    struct ModeDef *default_mode;
+    struct ModeDef *saved_mode;
     struct ModeSavedData *saved_data;
 
     /* default mode stuff when buffer is detached from window */
@@ -833,6 +835,7 @@ struct EditBuffer {
 
     EditBuffer *next; /* next editbuffer in qe_state buffer list */
 
+    int st_mode;                        /* unix file mode */
     char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
     char filename[MAX_FILENAME_SIZE];   /* file name */
 
@@ -1136,6 +1139,10 @@ struct ModeProbeData {
     int line_len;
     int st_mode;     /* unix file mode */
     long total_size;
+    EOLType eol_type;
+    CharsetDecodeState charset_state;
+    QECharset *charset;
+    EditBuffer *b;
 };
 
 /* private data saved by a mode so that it can be restored when the

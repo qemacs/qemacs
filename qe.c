@@ -1543,6 +1543,8 @@ void do_kill(EditState *s, int p1, int p2, int dir)
         eb_delete(s->b, p1, len);
         s->offset = p1;
         qs->this_cmd_func = (CmdFunc)do_append_next_kill;
+    } else {
+        put_status(s, "Region copied");
     }
     selection_activate(qs->screen);
 }
@@ -1729,6 +1731,8 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
                 b->data_type->buffer_close(b);
                 b->data = NULL;
                 b->data_type = &raw_data_type;
+                eb_delete(b, 0, b->total_size);
+                b->modified = 0;
             }
         }
     }
@@ -1790,57 +1794,13 @@ void do_set_mode(EditState *s, const char *name)
 {
     ModeDef *m;
 
+    /* XXX: should check if mode is appropriate */
     m = find_mode(name);
     if (m)
         edit_set_mode(s, m);
     else
         put_status(s, "No mode %s", name);
 }
-
-/* CG: should have commands to cycle modes and charsets */
-#if 0
-/* cycle modes appropriate for buffer */
-void do_next_mode(EditState *s)
-{
-    QEmacsState *qs = s->qe_state;
-    char fname[MAX_FILENAME_SIZE];
-    u8 buf[1024];
-    ModeProbeData probe_data;
-    int size;
-    ModeDef *m, *m0;
-
-    size = eb_read(s->b, 0, buf, sizeof(buf));
-    probe_data.buf = buf;
-    probe_data.buf_size = size;
-    probe_data.real_filename = s->b->filename;
-    probe_data.total_size = s->b->total_size;
-    probe_data.st_mode = 0644;
-    probe_data.filename = reduce_filename(fname, sizeof(fname),
-                                          get_basename(s->b->filename));
-    /* CG: should pass EditState? QEmacsState ? */
-
-    /* Should cycle modes in order of decreasing scores */
-    m = m0 = s->mode;
-    for (;;) {
-        m = m->next;
-        if (!m)
-            m = qs->first_mode;
-        if (m == m0)
-            break;
-        if (!m->mode_probe
-        ||  m->mode_probe(m, &probe_data) > 0) {
-            edit_set_mode(s, m);
-            break;
-        }
-    }
-}
-
-void do_cycle_charset(EditState *s)
-{
-    if (++s->b->charset == CHARSET_NB)
-        s->b->charset = 0;
-}
-#endif
 
 QECharset *read_charset(EditState *s, const char *charset_str,
                         EOLType *eol_typep)
@@ -4669,12 +4629,15 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
     QEmacsState *qs = s->qe_state;
     EditBuffer *b1;
     EditState *e;
-    ModeSavedData *saved_data, **psaved_data;
+    ModeSavedData *saved_data;
     int saved_data_allocated = 0;
     ModeDef *mode;
 
     /* remove region hilite */
     s->region_style = 0;
+
+    if (s->b == b)
+        return;
 
     b1 = s->b;
     if (b1) {
@@ -4692,10 +4655,10 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
             /* if no more window uses the buffer:
              * - if transient contents, free the buffer
              * - otherwise, save the mode data in the buffer.
-             *   CG: Should free previous such data ?
              */
             if (!(b1->flags & BF_TRANSIENT)) {
                 qe_free(&b1->saved_data);
+                b1->saved_mode = s->mode;
                 b1->saved_data = s->mode->mode_save_data(s);
             }
         }
@@ -4717,18 +4680,18 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
                 break;
         }
         if (e) {
-            psaved_data = NULL;
+            mode = e->mode;
             saved_data = e->mode->mode_save_data(e);
             saved_data_allocated = 1;
         } else {
-            psaved_data = &b->saved_data;
-            saved_data = *psaved_data;
+            mode = b->saved_mode;
+            saved_data = b->saved_data;
         }
 
         /* find the mode */
-        if (saved_data)
-            mode = saved_data->mode;
-        else
+        if (!mode)
+            mode = b->default_mode;
+        if (!mode)
             mode = &text_mode; /* default mode */
 
         /* open it ! */
@@ -5070,13 +5033,12 @@ void do_completion(EditState *s)
                buffer */
             if (!completion_popup_window) {
                 b = eb_new("*completion*", BF_SYSTEM | BF_UTF8 | BF_TRANSIENT);
+                b->default_mode = &list_mode;
                 w1 = qs->screen->width;
                 h1 = qs->screen->height - qs->status_height;
                 w = (w1 * 3) / 4;
                 h = (h1 * 3) / 4;
                 e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
-                /* set list mode */
-                edit_set_mode(e, &list_mode);
                 do_refresh(e);
                 completion_popup_window = e;
             }
@@ -5307,11 +5269,11 @@ void minibuffer_edit(const char *input, const char *prompt,
     minibuffer_opaque = opaque;
 
     b = eb_new("*minibuf*", BF_SYSTEM | BF_SAVELOG | BF_UTF8);
+    b->default_mode = &minibuffer_mode;
 
     s = edit_new(b, 0, qs->screen->height - qs->status_height,
                  qs->screen->width, qs->status_height, 0);
     /* Should insert at end of window list */
-    edit_set_mode(s, &minibuffer_mode);
     s->prompt = qe_strdup(prompt);
     s->minibuf = 1;
     s->bidir = 0;
@@ -5343,6 +5305,7 @@ void minibuffer_init(void)
     /* minibuf mode inherits from text mode */
     memcpy(&minibuffer_mode, &text_mode, sizeof(ModeDef));
     minibuffer_mode.name = "minibuffer";
+    minibuffer_mode.mode_probe = NULL;
     minibuffer_mode.scroll_up_down = minibuf_complete_scroll_up_down;
     qe_register_mode(&minibuffer_mode);
     qe_register_cmd_table(minibuffer_commands, &minibuffer_mode);
@@ -5416,6 +5379,7 @@ void less_mode_init(void)
     /* less mode inherits from text mode */
     memcpy(&less_mode, &text_mode, sizeof(ModeDef));
     less_mode.name = "less";
+    less_mode.mode_probe = NULL;
     qe_register_mode(&less_mode);
     qe_register_cmd_table(less_commands, &less_mode);
 }
@@ -5621,24 +5585,31 @@ static void get_default_path(EditState *s, char *buf, int buf_size)
     splitpath(buf, buf_size, NULL, 0, buf1);
 }
 
-static ModeDef *probe_mode(EditState *s,
-                           const char *filename, int st_mode, long total_size,
-                           const uint8_t *buf, int len)
+static int probe_mode(EditState *s, EditBuffer *b,
+                      ModeDef **modes, int nb_modes,
+                      int *scores, int min_score,
+                      const char *filename, int st_mode, long total_size,
+                      const uint8_t *rawbuf, int len,
+                      QECharset *charset, EOLType eol_type)
 {
+    u8 buf[4097];
     QEmacsState *qs = s->qe_state;
     char fname[MAX_FILENAME_SIZE];
-    ModeDef *m, *selected_mode;
+    ModeDef *m;
     ModeProbeData probe_data;
-    int best_probe_score, score;
+    int found_modes;
     const uint8_t *p;
 
-    selected_mode = NULL;
-    best_probe_score = 0;
+    if (!modes || !scores || nb_modes < 1)
+        return 0;
 
+    found_modes = 0;
+    *modes = NULL;
+    *scores = 0;
+
+    probe_data.b = b;
     probe_data.buf = buf;
     probe_data.buf_size = len;
-    p = memchr(buf, '\n', len);
-    probe_data.line_len = p ? p - buf : len;
     probe_data.real_filename = filename;
     probe_data.st_mode = st_mode;
     probe_data.total_size = total_size;
@@ -5646,18 +5617,101 @@ static ModeDef *probe_mode(EditState *s,
                                           get_basename(filename));
     /* CG: should pass EditState? QEmacsState ? */
 
-    m = qs->first_mode;
-    while (m != NULL) {
+    /* XXX: Should use eb_get_range_contents to deal with charset and
+     * eol_type instead of hand coding this conversion */
+    probe_data.eol_type = eol_type;
+    probe_data.charset = charset;
+    charset_decode_init(&probe_data.charset_state, charset, eol_type);
+
+    if (charset == &charset_utf8
+    ||  charset == &charset_raw
+    ||  charset == &charset_8859_1) {
+        probe_data.buf = rawbuf;
+        probe_data.buf_size = len;
+    } else {
+        int offset = 0;
+        u8 *bufp = buf;
+
+        while (offset < len) {
+            int ch = probe_data.charset_state.table[rawbuf[offset]];
+            offset++;
+            if (ch == ESCAPE_CHAR) {
+                probe_data.charset_state.p = rawbuf + offset - 1;
+                ch = probe_data.charset_state.decode_func(&probe_data.charset_state);
+                offset = probe_data.charset_state.p - rawbuf;
+            }
+            bufp += utf8_encode((char *)bufp, ch);
+            if (bufp > buf + sizeof(buf) - MAX_CHAR_BYTES - 1)
+                break;
+            probe_data.buf = buf;
+            probe_data.buf_size = bufp - buf;
+        }
+    }
+    charset_decode_close(&probe_data.charset_state);
+
+    p = memchr(probe_data.buf, '\n', probe_data.buf_size);
+    probe_data.line_len = p ? p - probe_data.buf : probe_data.buf_size;
+
+    for (m = qs->first_mode; m != NULL; m = m->next) {
         if (m->mode_probe) {
-            score = m->mode_probe(m, &probe_data);
-            if (score > best_probe_score) {
-                selected_mode = m;
-                best_probe_score = score;
+            int score = m->mode_probe(m, &probe_data);
+            if (score > min_score) {
+                int i;
+                /* sort appropriate modes by insertion in modes array */
+                for (i = 0; i < found_modes; i++) {
+                    if (scores[i] < score)
+                        break;
+                }
+                if (i < nb_modes) {
+                    if (found_modes >= nb_modes)
+                        found_modes = nb_modes - 1;
+                    if (i < found_modes) {
+                        memmove(modes + i + 1, modes + i,
+                                (found_modes - i) * sizeof(*modes));
+                        memmove(scores + i + 1, scores + i,
+                                (found_modes - i) * sizeof(*scores));
+                    }
+                    modes[i] = m;
+                    scores[i] = score;
+                    found_modes++;
+                }
             }
         }
-        m = m->next;
     }
-    return selected_mode;
+    return found_modes;
+}
+
+/* Select appropriate mode for buffer:
+ * iff dir == 0, select best mode 
+ * iff dir > 0, select next mode
+ * iff dir < 0, select previous mode
+ */
+void do_set_next_mode(EditState *s, int dir)
+{
+    u8 buf[4097];
+    int size;
+    ModeDef *modes[32];
+    int scores[32];
+    int i, nb, found;
+    EditBuffer *b = s->b;
+
+    size = eb_read(b, 0, buf, sizeof(buf));
+
+    nb = probe_mode(s, b, modes, countof(modes), scores, 2,
+                    b->filename, b->st_mode, b->total_size,
+                    buf, size, b->charset, b->eol_type);
+    found = 0;
+    if (dir && nb > 0) {
+        for (i = 0; i < nb; i++) {
+            if (s->mode == modes[i]) {
+                found = (i + nb + dir) % nb;
+                break;
+            }
+        }
+    }
+    edit_set_mode(s, modes[found]);
+    put_status(s, "Mode is now %s, score=%d",
+               modes[found]->name, scores[found]);
 }
 
 /* Should take bits from enumeration instead of booleans */
@@ -5668,10 +5722,13 @@ static void do_load1(EditState *s, const char *filename1,
     char filename[MAX_FILENAME_SIZE];
     int st_mode, buf_size;
     ModeDef *selected_mode;
+    int mode_score;
     EditBuffer *b;
     EditBufferDataType *bdt;
     FILE *f;
     struct stat st;
+    EOLType eol_type = EOL_UNIX;
+    QECharset *charset = &charset_utf8;
 
     if (load_resource) {
         if (find_resource_file(filename, sizeof(filename), filename1)) {
@@ -5713,31 +5770,34 @@ static void do_load1(EditState *s, const char *filename1,
     b = eb_new("", BF_SAVELOG);
     eb_set_filename(b, filename);
 
-    /* Switch to the newly created buffer */
-    switch_to_buffer(s, b);
-
     s->offset = 0;
-    /* CG: need a default setting for this */
-    s->wrap = WRAP_LINE;
+    /* XXX: Should test for full width and WRAP_TRUNCATE if not */
+    s->wrap = WRAP_LINE;        /* default mode may override this */
 
     /* First we try to read the first block to determine the data type */
     if (stat(filename, &st) < 0) {
         /* XXX: default charset should be selectable.  Use utf8 for now */
         eb_set_charset(b, &charset_utf8, b->eol_type);
-        /* CG: should check for wildcards and do dired */
-        //if (strchr(filename, '*') || strchr(filename, '?'))
-        //    goto dired;
+        /* XXX: dired_mode_probe will check for wildcards in real_filename */
         put_status(s, "(New file)");
         /* Try to determine the desired mode based on the filename.
          * This avoids having to set c-mode for each new .c or .h file. */
+        b->st_mode = st_mode = S_IFREG;
         buf[0] = '\0';
-        selected_mode = probe_mode(s, filename, S_IFREG, 0, buf, 0);
-        /* XXX: avoid loading file */
-        if (selected_mode)
-            edit_set_mode(s, selected_mode);
+        buf_size = 0;
+        probe_mode(s, b, &selected_mode, 1, &mode_score, 2,
+                   b->filename, b->st_mode, b->total_size,
+                   buf, buf_size, b->charset, b->eol_type);
+
+        /* Attach buffer to window, will set default_mode
+         * XXX: this will also load the file, incorrect for non raw modes
+         */
+        b->default_mode = selected_mode;
+        switch_to_buffer(s, b);
+        do_load_qerc(s, s->b->filename);
         return;
     } else {
-        st_mode = st.st_mode;
+        b->st_mode = st_mode = st.st_mode;
         buf_size = 0;
         f = NULL;
 
@@ -5748,47 +5808,51 @@ static void do_load1(EditState *s, const char *filename1,
                 goto fail;
             buf_size = fread(buf, 1, sizeof(buf) - 1, f);
             if (buf_size <= 0 && ferror(f)) {
-              fail1:
                 fclose(f);
                 f = NULL;
                 goto fail;
             }
+            /* autodetect buffer charset */
+            charset = detect_charset(buf, buf_size, &eol_type);
         }
+        buf[buf_size] = '\0';
+        if (!probe_mode(s, b, &selected_mode, 1, &mode_score, 2,
+                        filename, b->st_mode, st.st_size,
+                        buf, buf_size, charset, eol_type)) {
+            fclose(f);
+            f = NULL;
+            goto fail;
+        }
+
+        bdt = selected_mode->data_type;
+        if (bdt == &raw_data_type)
+            eb_set_charset(b, charset, eol_type);
+
+        if (f) {
+            /* XXX: should use f to load buffer if raw_data_type */
+            fclose(f);
+            f = NULL;
+        }
+
+        /* Attach buffer to window, will set default_mode
+         * XXX: this will also load the file, incorrect for non raw modes
+         */
+        b->default_mode = selected_mode;
+        switch_to_buffer(s, b);
+        if (access(b->filename, W_OK)) {
+            b->flags |= BF_READONLY;
+        }
+        do_load_qerc(s, s->b->filename);
+
+        /* XXX: invalid place */
+        edit_invalidate(s);
+        return;
     }
-    buf[buf_size] = '\0';
-    selected_mode = probe_mode(s, filename, st_mode, st.st_size, buf, buf_size);
-    if (!selected_mode)
-        goto fail1;
-
-    bdt = selected_mode->data_type;
-
-    /* autodetect buffer charset (could move it to raw buffer loader) */
-    if (bdt == &raw_data_type) {
-        QECharset *charset;
-        EOLType eol_type;
-
-        charset = detect_charset(buf, buf_size, &eol_type);
-        eb_set_charset(b, charset, eol_type);
-    }
-
-    /* now we can set the mode */
-    edit_set_mode_full(s, selected_mode, NULL, f);
-    do_load_qerc(s, s->b->filename);
-
-    if (access(b->filename, W_OK)) {
-        b->flags |= BF_READONLY;
-    }
-
-    if (f) {
-        fclose(f);
-    }
-
-    /* XXX: invalid place */
-    edit_invalidate(s);
-    return;
 
  fail:
-    put_status(s, "Could not open '%s'", filename);
+    eb_free(&b);
+
+    put_status(s, "Could not open '%s': %m", filename);
 }
 
 #if 0
@@ -5796,26 +5860,29 @@ static void load_progress_cb(void *opaque, int size)
 {
     EditState *s = opaque;
     EditBuffer *b = s->b;
-    if (size >= 1024 && !b->probed)
-        edit_set_mode(s, probe_mode(s, b->filename, S_IFREG, b->total_size, buf, size));
+
+    if (size >= 1024 && !b->probed) {
+        do_set_next_mode(s, 0);
+    }
 }
 
 static void load_completion_cb(void *opaque, int err)
 {
     EditState *s = opaque;
-    int st_mode;
 
-    st_mode = S_IFREG;
     /* CG: potential problem: EXXX may be negative, as in Haiku */
     if (err == -ENOENT || err == -ENOTDIR) {
         put_status(s, "(New file)");
-    } else if (err == -EISDIR) {
-        st_mode = S_IFDIR;
-    } else if (err < 0) {
+    } else
+    if (err == -EISDIR) {
+        s->b->st_mode = S_IFDIR;
+    } else
+    if (err < 0) {
         put_status(s, "Could not read file");
     }
-    if (!s->b->probed)
-        edit_set_mode(s, probe_mode(s, b->filename, st_mode, b->total_size, buf, size));
+    if (!s->b->probed) {
+        do_set_next_mode(s, 0);
+    }
     edit_display(s->qe_state);
     dpy_flush(&global_screen);
 }
@@ -7284,14 +7351,14 @@ int text_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     eb_add_callback(s->b, eb_offset_callback, &s->offset, 0);
     eb_add_callback(s->b, eb_offset_callback, &s->offset_top, 0);
-    if (!saved_data) {
+    if (saved_data) {
+        memcpy(s, saved_data->generic_data, SAVED_DATA_SIZE);
+    } else {
         memset(s, 0, SAVED_DATA_SIZE);
         s->insert = 1;
         s->indent_size = 4;
         s->default_style = QE_STYLE_DEFAULT;
         s->wrap = WRAP_LINE;
-    } else {
-        memcpy(s, saved_data->generic_data, SAVED_DATA_SIZE);
     }
     s->hex_mode = 0;
     s->insert = 1;

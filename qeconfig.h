@@ -383,6 +383,12 @@ static CmdDef basic_commands[] = {
           "s{Set mode: }[mode]")
     CMD1( KEY_NONE, KEY_NONE,
           "set-auto-coding", do_set_auto_coding, 1)
+    CMD1( KEY_NONE, KEY_NONE,
+          "set-auto-mode", do_set_next_mode, 0)
+    CMD1( KEY_META('m'), KEY_NONE,
+          "set-next-mode", do_set_next_mode, 1)
+    CMD1( KEY_NONE, KEY_NONE,
+          "set-previous-mode", do_set_next_mode, -1)
 
     /* tab & indent */
     CMD2( KEY_NONE, KEY_NONE,
