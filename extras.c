@@ -717,6 +717,142 @@ static void do_set_eol_type(EditState *s, int eol_type)
     eb_set_charset(s->b, s->b->charset, eol_type);
 }
 
+static void do_describe_buffer(EditState *s, int argval)
+{
+    char buf[256];
+    buf_t descbuf, *desc;
+    EditBuffer *b = s->b;
+    EditBuffer *b1;
+    int show;
+    int total_size;
+
+    b1 = new_help_buffer(&show);
+    if (!b1)
+        return;
+
+    total_size = s->b->total_size;
+
+    eb_printf(b1, "Buffer Statistics\n\n");
+
+    eb_printf(b1, "        name: %s\n", b->name);
+    eb_printf(b1, "    filename: %s\n", b->filename);
+    eb_printf(b1, "    modified: %d\n", b->modified);
+    eb_printf(b1, "  total_size: %d\n", total_size);
+    if (total_size > 0) {
+        int nb_chars, line, col;
+        
+        eb_get_pos(b, &line, &col, total_size);
+        nb_chars = eb_get_char_offset(b, total_size);
+
+        eb_printf(b1, "       lines: %d\n", line);
+        eb_printf(b1, "       chars: %d\n", nb_chars);
+    }
+    eb_printf(b1, "        mark: %d\n", b->mark);
+    eb_printf(b1, "      offset: %d\n", b->offset);
+
+    eb_printf(b1, "   tab_width: %d\n", b->tab_width);
+    eb_printf(b1, " fill_column: %d\n", b->fill_column);
+
+    desc = buf_init(&descbuf, buf, countof(buf));
+    if (b->eol_type == EOL_UNIX)
+        buf_printf(desc, " unix");
+    if (b->eol_type == EOL_DOS)
+        buf_printf(desc, " dos");
+    if (b->eol_type == EOL_MAC)
+        buf_printf(desc, " mac");
+        
+    eb_printf(b1, "    eol_type: %d %s\n", b->eol_type, buf);
+    eb_printf(b1, "     charset: %s (bytes=%d, shift=%d)\n",
+              b->charset->name, b->char_bytes, b->char_shift);
+
+    desc = buf_init(&descbuf, buf, countof(buf));
+    if (b->flags & BF_SAVELOG)
+        buf_printf(desc, " SAVELOG");
+    if (b->flags & BF_SYSTEM)
+        buf_printf(desc, " SYSTEM");
+    if (b->flags & BF_READONLY)
+        buf_printf(desc, " READONLY");
+    if (b->flags & BF_PREVIEW)
+        buf_printf(desc, " PREVIEW");
+    if (b->flags & BF_LOADING)
+        buf_printf(desc, " LOADING");
+    if (b->flags & BF_SAVING)
+        buf_printf(desc, " SAVING");
+    if (b->flags & BF_DIRED)
+        buf_printf(desc, " DIRED");
+    if (b->flags & BF_UTF8)
+        buf_printf(desc, " UTF8");
+    if (b->flags & BF_RAW)
+        buf_printf(desc, " RAW");
+    if (b->flags & BF_TRANSIENT)
+        buf_printf(desc, " TRANSIENT");
+    if (b->flags & BF_STYLES)
+        buf_printf(desc, " STYLES");
+
+    eb_printf(b1, "       flags: 0x%02x %s\n", b->flags, buf);
+    eb_printf(b1, "      probed: %d\n", b->probed);
+
+    eb_printf(b1, "   data_type: %s\n", b->data_type->name);
+    eb_printf(b1, "       pages: %d\n", b->nb_pages);
+    eb_printf(b1, " file_handle: %d\n", b->file_handle);
+
+    eb_printf(b1, "    save_log: %d (new_index=%d, current=%d, nb_logs=%d)\n",
+              b->save_log, b->log_new_index, b->log_current, b->nb_logs);
+    eb_printf(b1, "      styles: %d (cur_style=%d, bytes=%d, shift=%d)\n",
+              !!b->b_styles, b->cur_style, b->style_bytes, b->style_shift);
+
+    if (total_size > 0) {
+        u8 buf[4096];
+        int count[256];
+        int offset, c, i, col;
+        
+        memset(count, 0, sizeof(count));
+        for (offset = 0; offset < total_size;) {
+            int size = eb_read(b, offset, buf, countof(buf));
+            for (i = 0; i < size; i++)
+                count[buf[i]] += 1;
+            offset += size;
+        }
+        eb_printf(b1, "\nByte stats:\n");
+
+        for (col = i = 0; i < 256; i++) {
+            if (count[i] == 0)
+                continue;
+            switch (i) {
+            case '\b':  c = 'b'; break;
+            case '\f':  c = 'f'; break;
+            case '\t':  c = 't'; break;
+            case '\r':  c = 'r'; break;
+            case '\n':  c = 'n'; break;
+            case '\\':  c = '\\'; break;
+            case '\'':  c = '\''; break;
+            default: c = 0; break;
+            }
+            if (c != 0)
+                col += eb_printf(b1, "  '\\%c'", c);
+            else
+            if (i >= ' ' && i < 0x7f)
+                col += eb_printf(b1, "   '%c'", i);
+            else
+                col += eb_printf(b1, "  0x%02x", i);
+
+            col += eb_printf(b1, "  %-4d", count[i]);
+            if (col >= 60) {
+                eb_printf(b1, "\n");
+                col = 0;
+            }
+        }
+        if (col) {
+            eb_printf(b1, "\n");
+        }
+    }
+
+    b1->flags |= BF_READONLY;
+    if (show) {
+        show_popup(b1);
+    }
+}
+
 static CmdDef extra_commands[] = {
     CMD2( KEY_META('='), KEY_NONE,
           "compare-windows", do_compare_windows, ESi, "ui" )
@@ -778,6 +914,8 @@ static CmdDef extra_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
           "set-eol-type", do_set_eol_type, ESi,
     	  "ui{EOL Type [0=Unix, 1=Dos, 2=Mac]: }")
+    CMD2( KEY_NONE, KEY_NONE,
+          "describe-buffer", do_describe_buffer, ESi, "ui")
 
     CMD_DEF_END,
 };
