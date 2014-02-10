@@ -976,6 +976,12 @@ static int scroll_cursor_func(DisplayState *ds,
     return 0;
 }
 
+void do_scroll_left_right(EditState *s, int dir)
+{
+    /* XXX: should chnage x_disp by space_width increments */
+    s->x_disp[0] += dir;
+}
+
 void do_scroll_up_down(EditState *s, int dir)
 {
     if (s->mode->scroll_up_down)

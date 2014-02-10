@@ -276,6 +276,10 @@ static CmdDef basic_commands[] = {
           "find-window-left", do_find_window, KEY_LEFT)
     CMD1( KEY_CTRL('x'), KEY_RIGHT,
           "find-window-right", do_find_window, KEY_RIGHT)
+    CMD1( KEY_META('('), KEY_NONE,
+          "scroll-left", do_scroll_left_right, -1)
+    CMD1( KEY_META(')'), KEY_NONE,
+          "scroll-right", do_scroll_left_right, 1)
 #endif
     CMD1( KEY_CTRLX('0'), KEY_NONE,
           "delete-window", do_delete_window, 0)
