@@ -1400,9 +1400,11 @@ static void x11_handle_event(void *opaque)
             shift = (xev.xkey.state & ShiftMask);
             ctrl = (xev.xkey.state & ControlMask);
             meta = (xev.xkey.state & Mod1Mask);
+            /* Also interpret Darwin's Command key as Meta */
+            meta |= (xev.xkey.state & Mod2Mask);
 #if 0
-            put_error(NULL, "keysym=%d %s%s%s len=%d buf[0]=%d",
-                      (int)keysym,
+            put_error(NULL, "keysym=%d %d %s%s%s len=%d buf[0]=%d",
+                      (int)keysym, (int)xev.xkey.state,
                       shift ? "shft " : "",
                       ctrl ? "ctrl " : "",
                       meta ? "meta " : "",
