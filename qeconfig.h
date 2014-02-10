@@ -381,6 +381,8 @@ static CmdDef basic_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
           "set-mode", do_set_mode, ESs,
           "s{Set mode: }[mode]")
+    CMD1( KEY_NONE, KEY_NONE,
+          "set-auto-coding", do_set_auto_coding, 1)
 
     /* tab & indent */
     CMD2( KEY_NONE, KEY_NONE,

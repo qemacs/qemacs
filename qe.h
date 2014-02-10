@@ -506,10 +506,14 @@ struct QECharset {
 };
 
 extern QECharset *first_charset;
-extern QECharset charset_utf8, charset_8859_1; /* predefined charsets */
+/* predefined charsets */
+extern QECharset charset_raw;
+extern QECharset charset_8859_1;
+extern QECharset charset_utf8;
 extern QECharset charset_vt100; /* used for the tty output */
 extern QECharset charset_ucs2le, charset_ucs2be;
 extern QECharset charset_ucs4le, charset_ucs4be;
+extern QECharset charset_mac_roman;
 
 typedef enum EOLType {
     EOL_UNIX = 0,
@@ -1760,6 +1764,8 @@ void do_yank_pop(EditState *s);
 void do_exchange_point_and_mark(EditState *s);
 QECharset *read_charset(EditState *s, const char *charset_str,
                         EOLType *eol_typep);
+void do_show_coding_system(EditState *s);
+void do_set_auto_coding(EditState *s, int verbose);
 void do_set_buffer_file_coding_system(EditState *s, const char *charset_str);
 void do_convert_buffer_file_coding_system(EditState *s,
     const char *charset_str);

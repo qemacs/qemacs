@@ -99,6 +99,37 @@ static const unsigned char utf8_first_code_mask[7] = {
 };
 
 /********************************************************/
+/* raw */
+
+static void decode_raw_init(CharsetDecodeState *s)
+{
+    s->table = table_idem;
+}
+
+static u8 *encode_raw(__unused__ QECharset *charset, u8 *p, int c)
+{
+    if (c <= 0xff) {
+        *p++ = c;
+        return p;
+    } else {
+        return NULL;
+    }
+}
+
+QECharset charset_raw = {
+    "raw",
+    "binary|none",
+    decode_raw_init,
+    decode_8bit,
+    encode_raw,
+    charset_get_pos_8bit,
+    charset_get_chars_8bit,
+    charset_goto_char_8bit,
+    charset_goto_line_8bit,
+    1, 0, 0, 10, 0, 0, NULL, NULL,
+};
+
+/********************************************************/
 /* 8859-1 */
 
 static void decode_8859_1_init(CharsetDecodeState *s)
@@ -1072,7 +1103,7 @@ void detect_eol_type_32bit(const u8 *buf, int size,
 /* detect the charset. Actually only UTF8 is detected */
 QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
 {
-    int i, l, c, has_utf8;
+    int i, l, c, has_utf8, has_binary;
 
     has_utf8 = 0;
     for (i = 0; i < size;) {
@@ -1145,10 +1176,41 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
 #endif
     /* Should detect iso-2220-jp upon \033$@ and \033$B, but jis
      * support is not selected in tiny build
+     * XXX: should use charset probe functions.
      */
-    /* CG: should use a state variable for default charset */
-    detect_eol_type_8bit(buf, size, &charset_8859_1, eol_typep);
-    return &charset_8859_1;
+
+    has_binary = 0;
+    {
+        static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
+                                      (1 << '\n') | (1 << '\r') | (1 << '\033') |
+                                      (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+
+        for (i = 0; i < size; i++) {
+            c = buf[i];
+            if (c < 32 && !(magic & (1 << c)))
+                has_binary += 1;
+        }
+    }
+    if (has_binary) {
+        *eol_typep = EOL_UNIX;
+        return &charset_raw;
+    }
+
+    detect_eol_type_8bit(buf, size, &charset_raw, eol_typep);
+
+    if (*eol_typep == EOL_DOS) {
+        /* XXX: default DOS files to Latin1, should be selectable */
+        return &charset_8859_1;
+    }
+#ifndef CONFIG_TINY
+    if (*eol_typep == EOL_MAC) {
+        /* XXX: default MAC files to Mac_roman, should be selectable */
+        /* XXX: should use probe functions */
+        return &charset_mac_roman;
+    }
+#endif
+    /* XXX: should use a state variable for default charset */
+    return &charset_utf8;
 }
 
 /********************************************************/
@@ -1347,6 +1409,7 @@ void charset_init(void)
     for (i = 0xc0; i < 0xfe; i++)
         table_utf8[i] = ESCAPE_CHAR;
 
+    qe_register_charset(&charset_raw);
     qe_register_charset(&charset_8859_1);
     qe_register_charset(&charset_vt100);
     qe_register_charset(&charset_7bit);

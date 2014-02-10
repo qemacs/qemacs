@@ -1875,6 +1875,31 @@ QECharset *read_charset(EditState *s, const char *charset_str,
     return charset;
 }
 
+void do_show_coding_system(EditState *s)
+{
+    put_status(s, "Buffer charset is now %s%s", s->b->charset->name,
+               s->b->eol_type == EOL_DOS ? "-dos" :
+               s->b->eol_type == EOL_MAC ? "-mac" : "-unix");
+}
+
+void do_set_auto_coding(EditState *s, int verbose)
+{
+    u8 buf[4097];
+    int buf_size;
+    EditBuffer *b = s->b;
+    EOLType eol_type = b->eol_type;
+    QECharset *charset;
+
+    buf_size = eb_read(b, 0, buf, sizeof(buf));
+    eol_type = b->eol_type;
+    /* XXX: detect_charset returns a default charset */
+    charset = detect_charset(buf, buf_size, &eol_type);
+    eb_set_charset(b, charset, eol_type);
+    if (verbose) {
+        do_show_coding_system(s);
+    }
+}
+
 void do_set_buffer_file_coding_system(EditState *s, const char *charset_str)
 {
     QECharset *charset;
@@ -1885,7 +1910,7 @@ void do_set_buffer_file_coding_system(EditState *s, const char *charset_str)
     if (!charset)
         return;
     eb_set_charset(s->b, charset, eol_type);
-    put_status(s, "Charset is now %s for this buffer", s->b->charset->name);
+    do_show_coding_system(s);
 }
 
 /* convert the charset of a buffer to another charset */
@@ -3242,7 +3267,7 @@ static int bidir_compute_attributes(TypeLink *list_tab, int max_size,
 int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                                int *offsetp, int line_num)
 {
-    int len, l, line, col, offset;
+    int len, l, line, col, offset, bom;
     int colorize_state;
 
     /* invalidate cache if needed */
@@ -3272,7 +3297,8 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 
         for (l = s->colorize_nb_valid_lines; l <= line_num; l++) {
             len = eb_get_line(s->b, buf, buf_size, &offset);
-            s->colorize_func(buf, len, &colorize_state, 1);
+            bom = (len > 0 && buf[0] == 0xFEFF);
+            s->colorize_func(buf + bom, len - bom, &colorize_state, 1);
             s->colorize_states[l] = colorize_state;
         }
     }
@@ -3280,7 +3306,8 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
     /* compute line color */
     colorize_state = s->colorize_states[line_num];
     len = eb_get_line(s->b, buf, buf_size, offsetp);
-    s->colorize_func(buf, len, &colorize_state, 0);
+    bom = (len > 0 && buf[0] == 0xFEFF);
+    s->colorize_func(buf + bom, len - bom, &colorize_state, 0);
 
     /* XXX: if state is same as previous, minimize invalid region? */
     s->colorize_states[line_num + 1] = colorize_state;
@@ -3504,7 +3531,8 @@ int text_display(EditState *s, DisplayState *ds, int offset)
                 /* currently, we cannot display these chars */
                 display_printf(ds, offset0, offset, "\\U%08x", c);
             } else
-            if (c >= 256 && s->qe_state->show_unicode == 1) {
+            if (c >= 256 && (s->qe_state->show_unicode == 1 || c == 0xfeff)) {
+                /* Display BOM as \uFEFF to make it explicit */
                 display_printf(ds, offset0, offset, "\\u%04x", c);
             } else {
                 display_char_bidir(ds, offset0, offset, embedding_level, c);

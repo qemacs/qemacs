@@ -1159,7 +1159,7 @@ static const unsigned short table_mac_roman[128] = {
     0x00af, 0x02d8, 0x02d9, 0x02da, 0x00b8, 0x02dd, 0x02db, 0x02c7,
 };
 
-static QECharset charset_mac_roman = {
+QECharset charset_mac_roman = {
     "mac-roman",
     "x-mac|mac",
     decode_8bit_init,

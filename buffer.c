@@ -498,6 +498,9 @@ EditBuffer *eb_new(const char *name, int flags)
 
     if (flags & BF_UTF8) {
         eb_set_charset(b, &charset_utf8, b->eol_type);
+    } else
+    if (flags & BF_RAW) {
+        eb_set_charset(b, &charset_raw, EOL_UNIX);
     } else {
         /* CG: default charset should be selectable */
         eb_set_charset(b, &charset_8859_1, b->eol_type);
