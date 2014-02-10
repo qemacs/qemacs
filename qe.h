@@ -929,8 +929,15 @@ int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp);
 int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp);
 int eb_printf(EditBuffer *b, const char *fmt, ...) __attr_printf(2,3);
 void eb_line_pad(EditBuffer *b, int n);
-int eb_get_content_size(EditBuffer *b);
-int eb_get_contents(EditBuffer *b, char *buf, int buf_size);
+int eb_get_region_content_size(EditBuffer *b, int start, int stop);
+static inline int eb_get_content_size(EditBuffer *b) {
+    return eb_get_region_content_size(b, 0, b->total_size);
+}
+int eb_get_region_contents(EditBuffer *b, int start, int stop,
+                           char *buf, int buf_size);
+static inline int eb_get_contents(EditBuffer *b, char *buf, int buf_size) {
+    return eb_get_region_contents(b, 0, b->total_size, buf, buf_size);
+}
 int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
                              EditBuffer *src, int src_offset,
                              int size);

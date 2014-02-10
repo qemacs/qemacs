@@ -1898,22 +1898,28 @@ void eb_line_pad(EditBuffer *b, int n)
 }
 #endif
 
-/* Read the contents of a buffer encoded in a utf8 string */
-int eb_get_contents(EditBuffer *b, char *buf, int buf_size)
+/* Read the contents of a buffer region encoded in a utf8 string */
+int eb_get_region_contents(EditBuffer *b, int start, int stop,
+                           char *buf, int buf_size)
 {
+    int size;
+
+    stop = clamp(stop, 0, b->total_size);
+    start = clamp(start, 0, stop);
+    size = stop - start;
+
     /* do not use eb_read if overflow to avoid partial characters */
     if (b->charset == &charset_utf8 && b->eol_type == EOL_UNIX
-    &&  b->total_size < buf_size) {
-        int len = b->total_size;
-        eb_read(b, 0, buf, len);
-        buf[len] = '\0';
-        return len;
+    &&  size < buf_size) {
+        eb_read(b, start, buf, size);
+        buf[size] = '\0';
+        return size;
     } else {
         buf_t outbuf, *out;
         int c, offset;
 
         out = buf_init(&outbuf, buf, buf_size);
-        for (offset = 0; offset < b->total_size;) {
+        for (offset = start; offset < stop;) {
             c = eb_nextc(b, offset, &offset);
             buf_putc_utf8(out, c);
         }
@@ -1921,16 +1927,19 @@ int eb_get_contents(EditBuffer *b, char *buf, int buf_size)
     }
 }
 
-/* Compute the size of the contents of a buffer encoded in utf8 */
-int eb_get_content_size(EditBuffer *b)
+/* Compute the size of the contents of a buffer region encoded in utf8 */
+int eb_get_region_content_size(EditBuffer *b, int start, int stop)
 {
+    stop = clamp(stop, 0, b->total_size);
+    start = clamp(start, 0, stop);
+
     if (b->charset == &charset_utf8 && b->eol_type == EOL_UNIX) {
-        return b->total_size;
+        return stop - start;
     } else {
         int c, offset, size;
         char buf[MAX_CHAR_BYTES];
 
-        for (offset = size = 0; offset < b->total_size;) {
+        for (size = 0, offset = start; offset < stop;) {
             c = eb_nextc(b, offset, &offset);
             size += utf8_encode(buf, c);
         }
