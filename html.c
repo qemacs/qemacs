@@ -783,14 +783,14 @@ int gxml_mode_init(EditState *s,
 
     /* XXX: should register callbacks for s->offset and s->top_offset? */
 
-    if (!saved_data) {
+    if (saved_data) {
+        memcpy(s, saved_data->generic_data, SAVED_DATA_SIZE);
+    } else {
         memset(s, 0, SAVED_DATA_SIZE);
         s->insert = 1;
         s->indent_size = 4;
         s->default_style = QE_STYLE_DEFAULT;
         s->wrap = WRAP_LINE;
-    } else {
-        memcpy(s, saved_data->generic_data, SAVED_DATA_SIZE);
     }
 
     eb_add_callback(s->b, html_callback, s, 0);

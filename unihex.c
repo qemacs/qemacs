@@ -114,7 +114,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
                 offset2 = offset1 = -1;
             }
             ds->cur_hex_mode = s->hex_mode;
-            display_printf(ds, offset1, offset2, "    ");
+            display_printf(ds, offset1, offset2, "%*c", s->unihex_mode, ' ');
             ds->cur_hex_mode = 0;
         }
         if ((j & 7) == 7)
@@ -207,10 +207,16 @@ static void unihex_mode_line(EditState *s, buf_t *out)
     buf_printf(out, "--%d%%", compute_percent(s->offset, s->b->total_size));
 }
 
+static int unihex_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    /* XXX: should check for non 8 bit characters */
+    return 1;
+}
+
 static ModeDef unihex_mode = {
     .name = "unihex",
     .instance_size = 0,
-    .mode_probe = NULL,
+    .mode_probe = unihex_mode_probe,
     .mode_init = unihex_mode_init,
     .mode_close = text_mode_close,
     .text_display = unihex_display,

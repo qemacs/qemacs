@@ -253,7 +253,7 @@ static int htmlsrc_mode_probe(ModeDef *mode, ModeProbeData *p)
 
     /* first check file extension */
     if (match_extension(p->filename, mode->extensions))
-        return 80;
+        return 90;
 
     /* then try buffer contents */
     if (p->buf_size >= 5 &&
@@ -261,7 +261,7 @@ static int htmlsrc_mode_probe(ModeDef *mode, ModeProbeData *p)
          !html_tagcmp(buf, "<SCRIPT") ||
          !html_tagcmp(buf, "<?XML") ||
          !html_tagcmp(buf, "<!DOCTYPE"))) {
-        return 80;
+        return 90;
     }
 
     return 1;
