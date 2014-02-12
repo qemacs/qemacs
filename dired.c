@@ -21,7 +21,7 @@
 
 #include "qe.h"
 
-enum { DIRED_HEADER = 1 };
+enum { DIRED_HEADER = 2 };
 
 enum {
     DIRED_SORT_NAME = 1,
@@ -195,10 +195,31 @@ static void dired_sort_list(EditState *s)
     /* construct list buffer */
     b = s->b;
     b->flags &= ~BF_READONLY;
+    /* deleting buffer contents resets s->offset and s->offset_top */
     eb_delete(b, 0, b->total_size);
 
     if (DIRED_HEADER) {
+        long long total_bytes;
+        int ndirs, nfiles;
+
         eb_printf(b, "  Directory of %s:\n", ds->path);
+
+        ndirs = nfiles = 0;
+        total_bytes = 0;
+        for (i = 0; i < ds->items.nb_items; i++) {
+            item = ds->items.items[i];
+            dip = item->opaque;
+            if (S_ISDIR(dip->st_mode)) {
+                ndirs++;
+            } else {
+                nfiles++;
+                total_bytes += dip->size;
+            }
+        }
+        eb_printf(b, "    %d director%s, %d file%s, %lld byte%s\n",
+                  ndirs, ndirs == 1 ? "y" : "ies",
+                  nfiles, &"s"[nfiles == 1],
+                  (long long)total_bytes, &"s"[total_bytes == 1]);
     }
 
     for (i = 0; i < ds->items.nb_items; i++) {
