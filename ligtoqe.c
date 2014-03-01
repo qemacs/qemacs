@@ -92,9 +92,13 @@ static int sort_func(const void *a1, const void *b1)
     int val;
 
     val = a->buf_in[0] - b->buf_in[0];
-    if (val == 0 &&
-        a->buf_in_size >= 2 && b->buf_in_size >= 2) {
+    if (val == 0
+    &&  a->buf_in_size >= 2 && b->buf_in_size >= 2) {
         val = a->buf_in[1] - b->buf_in[1];
+        if (val == 0
+        &&  a->buf_in_size >= 3 && b->buf_in_size >= 3) {
+            val = a->buf_in[2] - b->buf_in[2];
+        }
     }
     return val;
 }

@@ -2,7 +2,7 @@
  * Convert Yudit kmap files to QEmacs binary internal format
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2007-2008 Charlie Gordon.
+ * Copyright (c) 2007-2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -40,6 +40,7 @@ typedef struct InputEntry {
     int len;
     unsigned short output[20];
     int olen;
+    int order;
 } InputEntry;
 
 static InputEntry inputs[NB_MAX];
@@ -55,6 +56,7 @@ static int freq[32];
 static FILE *outfile;
 static unsigned char outbuf[100000], *outbuf_ptr;
 
+/* sort function implements strict order, making qsort stable */
 static int sort_func(const void *a1, const void *b1)
 {
     const InputEntry *a = a1;
@@ -66,7 +68,10 @@ static int sort_func(const void *a1, const void *b1)
         if (val != 0)
             return val;
     }
-    return a->output[0] - b->output[0];
+    val = a->output[0] - b->output[0];
+    if (val != 0)
+        return val;
+    return a->order - b->order;
 }
 
 
@@ -496,8 +501,9 @@ int main(int argc, char **argv)
     InputEntry *ip;
 
     if (argc < 3) {
-        printf("usage: kmaptoqe outfile kmaps...\n"
-               "Convert yudit keyboard maps to qemacs compressed format\n");
+        printf("kmaptoqe -- Convert yudit keyboard maps to qemacs compressed format\n"
+               "usage: kmaptoqe outfile kmaps...\n"
+               "       kmaptoqe --dump outfile\n");
         exit(1);
     }
     if (!strcmp(argv[1], "--dump")) {
@@ -588,6 +594,7 @@ int main(int argc, char **argv)
                 if (*p == '"')
                     break;
             }
+            ip->order = ip - inputs;
             ip++;
             nb_inputs++;
             continue;

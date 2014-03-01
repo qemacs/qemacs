@@ -485,6 +485,7 @@ typedef struct QECharset QECharset;
 struct QECharset {
     const char *name;
     const char *aliases;
+    int (*probe_func)(QECharset *charset, const u8 *buf, int size);
     void (*decode_init)(CharsetDecodeState *s);
     int (*decode_func)(CharsetDecodeState *s);
     /* return NULL if cannot encode. Currently no state since speed is

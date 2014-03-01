@@ -231,7 +231,8 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
     }
     printf("\",\n");
 
-    printf("    decode_8bit_init,\n"
+    printf("    NULL,\n"
+           "    decode_8bit_init,\n"
            "    decode_8bit,\n"
            "    encode_8bit,\n"
            "    charset_get_pos_8bit,\n"

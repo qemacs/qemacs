@@ -48,6 +48,7 @@ static const unsigned short table_8859_2[95] = {
 static QECharset charset_8859_2 = {
     "8859-2",
     "ISO-8859-2|iso-ir-101|latin2|l2|iso-latin2",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -90,6 +91,7 @@ static const unsigned short table_8859_3[95] = {
 static QECharset charset_8859_3 = {
     "8859-3",
     "ISO-8859-3",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -132,6 +134,7 @@ static const unsigned short table_8859_4[95] = {
 static QECharset charset_8859_4 = {
     "8859-4",
     "ISO-8859-4|iso-ir-110|latin4|l4|iso-latin4",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -174,6 +177,7 @@ static const unsigned short table_8859_5[95] = {
 static QECharset charset_8859_5 = {
     "8859-5",
     "ISO-8859-5",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -213,6 +217,7 @@ static const unsigned short table_8859_6[71] = {
 static QECharset charset_8859_6 = {
     "8859-6",
     "ISO-8859-6",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -255,6 +260,7 @@ static const unsigned short table_8859_7[94] = {
 static QECharset charset_8859_7 = {
     "8859-7",
     "ISO-8859-7|iso-ir-126|elot-928",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -296,6 +302,7 @@ static const unsigned short table_8859_8[85] = {
 static QECharset charset_8859_8 = {
     "8859-8",
     "ISO-8859-8",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -332,6 +339,7 @@ static const unsigned short table_8859_9[47] = {
 static QECharset charset_8859_9 = {
     "8859-9",
     "ISO-8859-9",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -374,6 +382,7 @@ static const unsigned short table_8859_10[95] = {
 static QECharset charset_8859_10 = {
     "8859-10",
     "ISO-8859-10",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -416,6 +425,7 @@ static const unsigned short table_8859_11[91] = {
 static QECharset charset_8859_11 = {
     "8859-11",
     "ISO-8859-11",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -458,6 +468,7 @@ static const unsigned short table_8859_13[95] = {
 static QECharset charset_8859_13 = {
     "8859-13",
     "ISO-8859-13|iso-ir-179|latin7|l7|iso-latin7",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -500,6 +511,7 @@ static const unsigned short table_8859_14[94] = {
 static QECharset charset_8859_14 = {
     "8859-14",
     "ISO-8859-14",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -534,6 +546,7 @@ static const unsigned short table_8859_15[27] = {
 static QECharset charset_8859_15 = {
     "8859-15",
     "ISO-8859-15|latin9|l9|latin0|l0",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -576,6 +589,7 @@ static const unsigned short table_8859_16[94] = {
 static QECharset charset_8859_16 = {
     "8859-16",
     "ISO-8859-16|latin10|l10",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -622,6 +636,7 @@ static const unsigned short table_cp437[128] = {
 static QECharset charset_cp437 = {
     "cp437",
     "437",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -668,6 +683,7 @@ static const unsigned short table_cp737[128] = {
 static QECharset charset_cp737 = {
     "cp737",
     "737",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -714,6 +730,7 @@ static const unsigned short table_cp850[128] = {
 static QECharset charset_cp850 = {
     "cp850",
     "850",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -760,6 +777,7 @@ static const unsigned short table_cp852[128] = {
 static QECharset charset_cp852 = {
     "cp852",
     "852",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -806,6 +824,7 @@ static const unsigned short table_cp866[128] = {
 static QECharset charset_cp866 = {
     "cp866",
     "866",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -852,6 +871,7 @@ static const unsigned short table_cp1125[128] = {
 static QECharset charset_cp1125 = {
     "cp1125",
     "x-cp866-u|ruscii|1125",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -898,6 +918,7 @@ static const unsigned short table_cp1250[128] = {
 static QECharset charset_cp1250 = {
     "cp1250",
     "windows-1250|1250",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -944,6 +965,7 @@ static const unsigned short table_cp1251[128] = {
 static QECharset charset_cp1251 = {
     "cp1251",
     "windows-1251|1251",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -978,6 +1000,7 @@ static const unsigned short table_cp1252[32] = {
 static QECharset charset_cp1252 = {
     "cp1252",
     "windows-1252|1252",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1024,6 +1047,7 @@ static const unsigned short table_cp1256[128] = {
 static QECharset charset_cp1256 = {
     "cp1256",
     "windows-1256|1256",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1070,6 +1094,7 @@ static const unsigned short table_cp1257[128] = {
 static QECharset charset_cp1257 = {
     "cp1257",
     "windows-1257|1257",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1116,6 +1141,7 @@ static const unsigned short table_mac_latin2[128] = {
 static QECharset charset_mac_latin2 = {
     "mac-latin2",
     "x-mac-ce|mac-ce|macce|10029",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1162,6 +1188,7 @@ static const unsigned short table_mac_roman[128] = {
 QECharset charset_mac_roman = {
     "mac-roman",
     "x-mac|mac",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1208,6 +1235,7 @@ static const unsigned short table_kamen[128] = {
 static QECharset charset_kamen = {
     "kamen",
     "x-kam-cs|kam|867|869",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1254,6 +1282,7 @@ static const unsigned short table_koi8_r[128] = {
 static QECharset charset_koi8_r = {
     "koi8-r",
     "",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1300,6 +1329,7 @@ static const unsigned short table_koi8_u[128] = {
 static QECharset charset_koi8_u = {
     "koi8-u",
     "",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1362,6 +1392,7 @@ static const unsigned short table_tcvn[255] = {
 static QECharset charset_tcvn = {
     "tcvn",
     "TCVN-5712|TCVN|TCVN-0|TCVN-1",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1424,6 +1455,7 @@ static const unsigned short table_viscii[254] = {
 static QECharset charset_viscii = {
     "viscii",
     "VISCII|VISCII-1|VISCII 1.1|VISCII-1.1|VISCII1.1-1",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1486,6 +1518,7 @@ static const unsigned short table_cp037[252] = {
 static QECharset charset_cp037 = {
     "cp037",
     "037|ebcdic-037",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1548,6 +1581,7 @@ static const unsigned short table_cp424[252] = {
 static QECharset charset_cp424 = {
     "cp424",
     "424|ebcdic-424",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1610,6 +1644,7 @@ static const unsigned short table_cp500[252] = {
 static QECharset charset_cp500 = {
     "cp500",
     "500|ebcdic-500",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1672,6 +1707,7 @@ static const unsigned short table_cp875[252] = {
 static QECharset charset_cp875 = {
     "cp875",
     "875|ebcdic-875",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1734,6 +1770,7 @@ static const unsigned short table_cp1026[252] = {
 static QECharset charset_cp1026 = {
     "cp1026",
     "1026|ebcdic-1026",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,
@@ -1780,6 +1817,7 @@ static const unsigned short table_atarist[128] = {
 static QECharset charset_atarist = {
     "atarist",
     "atari-st",
+    NULL,
     decode_8bit_init,
     decode_8bit,
     encode_8bit,

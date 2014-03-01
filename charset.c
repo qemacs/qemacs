@@ -119,6 +119,7 @@ static u8 *encode_raw(__unused__ QECharset *charset, u8 *p, int c)
 QECharset charset_raw = {
     "raw",
     "binary|none",
+    NULL,
     decode_raw_init,
     decode_8bit,
     encode_raw,
@@ -131,6 +132,46 @@ QECharset charset_raw = {
 
 /********************************************************/
 /* 8859-1 */
+
+static int probe_8859_1(__unused__ QECharset *charset, const u8 *buf, int size)
+{
+    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
+                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
+                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    const u8 *p = buf;
+    const u8 *p_end = p + size;
+    uint32_t c;
+    int count_spaces, count_lines, count_high;
+
+    count_spaces = count_lines = count_high = 0;
+
+    while (p < p_end) {
+        c = p[0];
+        p += 1;
+        if (c <= 32) {
+            if (c == ' ')
+                count_spaces++;
+            else
+            if (c == '\n')
+                count_lines++;
+            else
+            if (!(magic & (1 << c)))
+                return 0;
+        } else
+        if (c < 0x7F) {
+            continue;
+        } else
+        if (c < 0x80) {
+            return 0;
+        } else {
+            count_high++;
+        }
+    }
+    if (count_spaces | count_lines)
+        return 1;
+    else
+        return 0;
+}
 
 static void decode_8859_1_init(CharsetDecodeState *s)
 {
@@ -150,6 +191,7 @@ static u8 *encode_8859_1(__unused__ QECharset *charset, u8 *p, int c)
 QECharset charset_8859_1 = {
     "8859-1",
     "ISO-8859-1|iso-ir-100|latin1|l1|819",
+    probe_8859_1,
     decode_8859_1_init,
     decode_8bit,
     encode_8859_1,
@@ -181,6 +223,7 @@ static u8 *encode_vt100(__unused__ QECharset *charset, u8 *p, int c)
 QECharset charset_vt100 = {
     "vt100",
     NULL,
+    NULL,
     decode_vt100_init,
     decode_8bit,
     encode_vt100,
@@ -207,6 +250,7 @@ static u8 *encode_7bit(__unused__ QECharset *charset, u8 *p, int c)
 static QECharset charset_7bit = {
     "7bit",
     "us-ascii|ascii|7-bit|iso-ir-6|ANSI_X3.4|646",
+    NULL,
     decode_8859_1_init,
     decode_8bit,
     encode_7bit,
@@ -314,6 +358,80 @@ int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str)
     }
     *uq = 0;
     return uq - dest;
+}
+
+static int probe_utf8(__unused__ QECharset *charset, const u8 *buf, int size)
+{
+    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
+                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
+                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    const u8 *p = buf;
+    const u8 *p_end = p + size;
+    uint32_t c;
+    int count_spaces, count_lines, count_utf8;
+
+    count_spaces = count_lines = count_utf8 = 0;
+
+    while (p < p_end) {
+        c = p[0];
+        p += 1;
+        if (c <= 32) {
+            if (c == ' ')
+                count_spaces++;
+            else
+            if (c == '\n')
+                count_lines++;
+            else
+            if (!(magic & (1 << c)))
+                return 0;
+        } else
+        if (c < 0x7F) {
+            continue;
+        } else
+        if (c < 0xc0) {
+            return 0;
+        } else
+        if (c < 0xe0) {
+            if (p[0] < 0x80 || p[0] > 0xbf)
+                return 0;
+            count_utf8++;
+            p += 1;
+        } else
+        if (c < 0xf0) {
+            if (p[0] < 0x80 || p[0] > 0xbf || p[1] < 0x80 || p[1] > 0xbf)
+                return 0;
+            count_utf8++;
+            p += 2;
+        } else
+        if (c < 0xf8) {
+            if (p[0] < 0x80 || p[0] > 0xbf || p[1] < 0x80 || p[1] > 0xbf
+            ||  p[2] < 0x80 || p[2] > 0xbf)
+                return 0;
+            count_utf8++;
+            p += 3;
+        } else
+        if (c < 0xfc) {
+            if (p[0] < 0x80 || p[0] > 0xbf || p[1] < 0x80 || p[1] > 0xbf
+            ||  p[2] < 0x80 || p[2] > 0xbf || p[3] < 0x80 || p[3] > 0xbf)
+                return 0;
+            count_utf8++;
+            p += 4;
+        } else
+        if (c < 0xfe) {
+            if (p[0] < 0x80 || p[0] > 0xbf || p[1] < 0x80 || p[1] > 0xbf
+            ||  p[2] < 0x80 || p[2] > 0xbf || p[3] < 0x80 || p[3] > 0xbf
+            ||  p[4] < 0x80 || p[4] > 0xbf)
+                return 0;
+            count_utf8++;
+            p += 5;
+        } else {
+            return 0;
+        }
+    }
+    if (count_spaces | count_lines | count_utf8)
+        return 1;
+    else
+        return 0;
 }
 
 static void decode_utf8_init(CharsetDecodeState *s)
@@ -432,6 +550,7 @@ static int charset_goto_char_utf8(CharsetDecodeState *s,
 QECharset charset_utf8 = {
     "utf-8",
     "utf8",
+    probe_utf8,
     decode_utf8_init,
     decode_utf8_func,
     encode_utf8,
@@ -444,6 +563,44 @@ QECharset charset_utf8 = {
 
 /********************************************************/
 /* UCS2/UCS4 */
+
+static int probe_ucs2le(__unused__ QECharset *charset, const u8 *buf, int size)
+{
+    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
+                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
+                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    const u8 *p = buf;
+    const u8 *p_end = p + (size & ~1);
+    uint32_t c;
+    int count_spaces, count_lines;
+
+    if (size & 1)
+        return 0;
+
+    count_spaces = count_lines = 0;
+
+    while (p < p_end) {
+        c = (p[0] << 0) | (p[1] << 8);
+        p += 2;
+        if (c <= 32) {
+            if (c == ' ')
+                count_spaces++;
+            else
+            if (c == '\n')
+                count_lines++;
+            else
+            if (!(magic & (1 << c)))
+                return 0;
+        } else
+        if (c >= 0x10000) {
+            return 0;
+        }
+    }
+    if (count_spaces | count_lines)
+        return 1;
+    else
+        return 0;
+}
 
 static void decode_ucs_init(CharsetDecodeState *s)
 {
@@ -543,6 +700,44 @@ static int charset_goto_line_ucs2(CharsetDecodeState *s,
     return (const u8 *)lp - buf;
 }
 
+static int probe_ucs2be(__unused__ QECharset *charset, const u8 *buf, int size)
+{
+    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
+                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
+                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    const u8 *p = buf;
+    const u8 *p_end = p + (size & ~1);
+    uint32_t c;
+    int count_spaces, count_lines;
+
+    if (size & 1)
+        return 0;
+
+    count_spaces = count_lines = 0;
+
+    while (p < p_end) {
+        c = (p[0] << 8) | (p[1] << 0);
+        p += 2;
+        if (c <= 32) {
+            if (c == ' ')
+                count_spaces++;
+            else
+            if (c == '\n')
+                count_lines++;
+            else
+            if (!(magic & (1 << c)))
+                return 0;
+        } else
+        if (c >= 0x10000) {
+            return 0;
+        }
+    }
+    if (count_spaces | count_lines)
+        return 1;
+    else
+        return 0;
+}
+
 static int decode_ucs2be(CharsetDecodeState *s)
 {
     /* XXX: should handle surrogates */
@@ -624,6 +819,7 @@ static int charset_goto_char_ucs2(CharsetDecodeState *s,
 QECharset charset_ucs2le = {
     "ucs2le",
     "utf16le|utf-16le",
+    probe_ucs2le,
     decode_ucs_init,
     decode_ucs2le,
     encode_ucs2le,
@@ -637,6 +833,7 @@ QECharset charset_ucs2le = {
 QECharset charset_ucs2be = {
     "ucs2be",
     "ucs2|utf16|utf-16|utf16be|utf-16be",
+    probe_ucs2be,
     decode_ucs_init,
     decode_ucs2be,
     encode_ucs2be,
@@ -646,6 +843,44 @@ QECharset charset_ucs2be = {
     charset_goto_line_ucs2,
     2, 0, 0, 10, 0, 0, NULL, NULL,
 };
+
+static int probe_ucs4le(__unused__ QECharset *charset, const u8 *buf, int size)
+{
+    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
+                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
+                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    const u8 *p = buf;
+    const u8 *p_end = p + (size & ~3);
+    uint32_t c;
+    int count_spaces, count_lines;
+
+    if (size & 3)
+        return 0;
+
+    count_spaces = count_lines = 0;
+
+    while (p < p_end) {
+        c = (p[0] << 0) | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
+        p += 4;
+        if (c <= 32) {
+            if (c == ' ')
+                count_spaces++;
+            else
+            if (c == '\n')
+                count_lines++;
+            else
+            if (!(magic & (1 << c)))
+                return 0;
+        } else
+        if (c >= 0x10000) {
+            return 0;
+        }
+    }
+    if (count_spaces | count_lines)
+        return 1;
+    else
+        return 0;
+}
 
 static int decode_ucs4le(CharsetDecodeState *s)
 {
@@ -739,6 +974,44 @@ static int charset_goto_line_ucs4(CharsetDecodeState *s,
     return (const u8 *)lp - buf;
 }
 
+static int probe_ucs4be(__unused__ QECharset *charset, const u8 *buf, int size)
+{
+    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
+                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
+                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    const u8 *p = buf;
+    const u8 *p_end = p + (size & ~3);
+    uint32_t c;
+    int count_spaces, count_lines;
+
+    if (size & 3)
+        return 0;
+
+    count_spaces = count_lines = 0;
+
+    while (p < p_end) {
+        c = (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | (p[3] << 0);
+        p += 4;
+        if (c <= 32) {
+            if (c == ' ')
+                count_spaces++;
+            else
+            if (c == '\n')
+                count_lines++;
+            else
+            if (!(magic & (1 << c)))
+                return 0;
+        } else
+        if (c >= 0x10000) {
+            return 0;
+        }
+    }
+    if (count_spaces | count_lines)
+        return 1;
+    else
+        return 0;
+}
+
 static int decode_ucs4be(CharsetDecodeState *s)
 {
     const u8 *p;
@@ -818,6 +1091,7 @@ static int charset_goto_char_ucs4(CharsetDecodeState *s,
 QECharset charset_ucs4le = {
     "ucs4le",
     "utf32le|utf-32le",
+    probe_ucs4le,
     decode_ucs_init,
     decode_ucs4le,
     encode_ucs4le,
@@ -831,6 +1105,7 @@ QECharset charset_ucs4le = {
 QECharset charset_ucs4be = {
     "ucs4be",
     "ucs4|utf32|utf-32|utf32be|utf-32be",
+    probe_ucs4be,
     decode_ucs_init,
     decode_ucs4be,
     encode_ucs4be,
@@ -1100,9 +1375,37 @@ void detect_eol_type_32bit(const u8 *buf, int size,
     *eol_typep = eol_type;
 }
 
-/* detect the charset. Actually only UTF8 is detected */
 QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
 {
+#if 0
+    QECharset *charset;
+
+    /* Try and determine charset */
+    /* CG: should iterate over charsets with probe function and score */
+    charset = &charset_utf8;
+    if (size > 0) {
+        if (charset_utf8.probe_func(&charset_utf8, buf, size))
+            charset = &charset_utf8;
+        else
+        if (charset_ucs4le.probe_func(&charset_ucs4le, buf, size))
+            charset = &charset_ucs4le;
+        else
+        if (charset_ucs4be.probe_func(&charset_ucs4be, buf, size))
+            charset = &charset_ucs4be;
+        else
+        if (charset_ucs2le.probe_func(&charset_ucs2le, buf, size))
+            charset = &charset_ucs2le;
+        else
+        if (charset_ucs2be.probe_func(&charset_ucs2be, buf, size))
+            charset = &charset_ucs2be;
+        else
+            charset = &charset_8859_1;
+        /* CG: should distinguish charset_8859_1, charset_raw and
+         * charset_auto */
+    }
+    return charset;
+#else
+    /* detect the charset. Actually only UTF8 is detected */
     int i, l, c, has_utf8, has_binary;
 
     has_utf8 = 0;
@@ -1211,6 +1514,7 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
 #endif
     /* XXX: should use a state variable for default charset */
     return &charset_utf8;
+#endif
 }
 
 /********************************************************/

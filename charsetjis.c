@@ -145,6 +145,7 @@ static unsigned char *encode_euc_jp(__unused__ QECharset *s,
 static QECharset charset_euc_jp = {
     "euc-jp",
     NULL,
+    NULL,
     decode_euc_jp_init,
     decode_euc_jp_func,
     encode_euc_jp,
@@ -223,6 +224,7 @@ static unsigned char *encode_sjis(__unused__ QECharset *s,
 
 static QECharset charset_sjis = {
     "sjis",
+    NULL,
     NULL,
     decode_sjis_init,
     decode_sjis_func,
