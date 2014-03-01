@@ -45,11 +45,17 @@ static const char *c_mode_types =
     "_Bool|_Complex|_Imaginary|";
 
 static const char c_mode_extensions[] =
-    "c|h|y|l|lex|e|qe|cs|idl|jav|java|js|json|"
+    "c|h|C|H|"          /* C language */
+    "y|l|lex|"          /* yacc, lex */
+    "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++|"   /* C++ */
+    "m|"                /* Objective-C */
+    "e|qe|cs|idl|"
+    "jav|java|js|json|" /* Java, Javascript, JSon */
     "ec|ecp|"           /* Informix embedded C */
     "pgc|"              /* Postgres embedded C */
     "pcc|"              /* Oracle C++ */
-    "cc|hh|cpp|hpp|cxx|hxx|C|H|CPP|CC|c++";   /* C++ extensions */
+    "cal"               /* GNU Calc */
+    ;
 
 #if 0
 static int get_c_identifier(char *buf, int buf_size, unsigned int *p)
@@ -658,6 +664,11 @@ static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
         return 50;
 
     if (p->buf[0] == '#') {
+        if (p->buf[1] == '!'
+        &&  memstr(p->buf, p->line_len, "bin/calc")) {
+            /* GNU Calc script */
+            return 80;
+        }
         /* same for file starting with '#include' */
         if (strstart(cs8(p->buf), "#include", NULL))
             return 50;
