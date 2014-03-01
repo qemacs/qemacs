@@ -5753,7 +5753,7 @@ static void do_load1(EditState *s, const char *filename1,
     //    s = qs->active_window;
     //}
 
-    if (kill_buffer) {
+    if (kill_buffer && s->b) {
         /* CG: this behaviour is not correct */
         /* CG: should have a direct primitive */
         do_kill_buffer(s, s->b->name);

@@ -463,10 +463,10 @@ static void dired_view_file(EditState *s, const char *filename)
     /* close previous temporary buffers, if any */
     /* CG: Should use the do_find_alternate to replace buffer */
     b = e->b;
-    if ((b->flags & BF_PREVIEW) && !b->modified) {
+    if (b && (b->flags & BF_PREVIEW) && !b->modified) {
         /* free the buffer if no longer viewed */
         b->flags |= BF_TRANSIENT;
-        switch_to_buffer(e, NULL);
+        //switch_to_buffer(e, NULL);
     }
 
     if (e) {
