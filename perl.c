@@ -34,7 +34,8 @@
 #define IN_STRING1      0x01    /* single quote */
 #define IN_STRING2      0x02    /* double quote */
 #define IN_FORMAT       0x04    /* format = ... */
-#define IN_INPUT        0x08
+#define IN_HEREDOC      0x08
+#define IN_POD          0x10
 
 /* CG: bogus if multiple regions are colorized, should use signature */
 /* XXX: should move this to mode data */
@@ -120,13 +121,28 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
             colstate &= ~IN_FORMAT;
         set_color(str + j, str + i, PERL_STRING);
     }
-    if (colstate & IN_INPUT) {
+    if (colstate & IN_HEREDOC) {
         i = n;
         if (n == perl_eos_len && !umemcmp(perl_eos, str, n)) {
-            colstate &= ~IN_INPUT;
+            colstate &= ~IN_HEREDOC;
             set_color(str + j, str + i, PERL_KEYWORD);
         } else {
             set_color(str + j, str + i, PERL_STRING);
+        }
+    }
+    if (str[i] == '=' && qe_isalpha(str[i + 1])) {
+        colstate |= IN_POD;
+    }
+    if (colstate & IN_POD) {
+        if (ustrstart(str + i, "=cut", NULL)) {
+            colstate &= ~IN_POD;
+        }
+        if (str[i] == '=' && qe_isalpha(str[i + 1])) {
+            i = n;
+            set_color(str + j, str + i, PERL_KEYWORD);
+        } else {
+            i = n;
+            set_color(str + j, str + i, PERL_COMMENT);
         }
     }
 
@@ -179,6 +195,8 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
             if (c1 == '<') {
                 /* Should check for unary context */
                 s1 = i + 2;
+                while (qe_isspace(str[s1]))
+                    s1++;
                 c2 = str[s1];
                 if (c2 == '"' || c2 == '\'' || c2 == '`') {
                     s2 = perl_string(str, c2, ++s1, n);
@@ -189,7 +207,7 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
                     perl_eos_len = min((int)(s2 - s1), countof(perl_eos) - 1);
                     umemcpy(perl_eos, str + s1, perl_eos_len);
                     perl_eos[perl_eos_len] = '\0';
-                    colstate |= IN_INPUT;
+                    colstate |= IN_HEREDOC;
                 }
                 i += 2;
                 continue;
@@ -328,7 +346,8 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
 #undef IN_STRING1
 #undef IN_STRING2
 #undef IN_FORMAT
-#undef IN_INPUT
+#undef IN_HEREDOC
+#undef IN_POD
 
 static int perl_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
@@ -336,8 +355,8 @@ static int perl_mode_probe(ModeDef *mode, ModeProbeData *p)
     if (match_extension(p->filename, mode->extensions))
         return 80;
 
-    if (p->buf[0] == '#' && p->buf[1] == '!' &&
-          memstr(p->buf, p->line_len, "bin/perl"))
+    if (p->buf[0] == '#' && p->buf[1] == '!'
+    &&  memstr(p->buf, p->line_len, "bin/perl"))
         return 80;
 
     return 1;
