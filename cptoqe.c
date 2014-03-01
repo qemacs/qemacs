@@ -208,7 +208,10 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
         printf("};\n\n");
     }
 
-    printf("static QECharset charset_%s = {\n"
+    if (strcmp(name_id, "mac_roman"))
+        printf("static ");
+
+    printf("QECharset charset_%s = {\n"
            "    \"%s\",\n",
            name_id, name);
 
