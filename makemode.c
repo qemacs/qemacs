@@ -174,7 +174,7 @@ static int makefile_init(void)
     /* Makefile mode is almost like the text mode, so we copy and patch it */
     memcpy(&makefile_mode, &text_mode, sizeof(ModeDef));
     makefile_mode.name = "Makefile";
-    makefile_mode.extensions = "mk|mak";
+    makefile_mode.extensions = "mak|make|mk";
     makefile_mode.mode_probe = makefile_mode_probe;
     makefile_mode.mode_init = makefile_mode_init;
     makefile_mode.colorize_func = makefile_colorize_line;

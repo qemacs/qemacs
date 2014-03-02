@@ -128,7 +128,7 @@ static int script_init(void)
     /* Shell-script mode is almost like the text mode, so we copy and patch it */
     memcpy(&script_mode, &text_mode, sizeof(ModeDef));
     script_mode.name = "Shell-script";
-    script_mode.extensions = "sh|bash|zsh";
+    script_mode.extensions = "sh|bash|csh|ksh|zsh";
     script_mode.mode_probe = script_mode_probe;
     script_mode.colorize_func = script_colorize_line;
 
