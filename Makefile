@@ -59,7 +59,7 @@ OBJS:= qe.o parser.o charset.o buffer.o input.o display.o util.o hex.o \
        list.o cutils.o
 TOBJS:= $(OBJS)
 
-OBJS+= extras.o
+OBJS+= extras.o variables.o
 
 ifdef CONFIG_PNG_OUTPUT
   HTMLTOPPM_LIBS+= -lpng
@@ -110,7 +110,7 @@ OBJS+= charsetjis.o charsetmore.o
 
 ifdef CONFIG_ALL_MODES
   OBJS+= unihex.o clang.o xml.o bufed.o \
-         lisp.o makemode.o orgmode.o perl.o htmlsrc.o script.o variables.o
+         lisp.o makemode.o orgmode.o perl.o htmlsrc.o script.o extra-modes.o
   ifndef CONFIG_WIN32
     OBJS+= shell.o dired.o latex-mode.o
   endif
