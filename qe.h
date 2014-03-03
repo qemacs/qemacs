@@ -1690,6 +1690,7 @@ void do_search_string(EditState *s, const char *search_str, int dir);
 void do_refresh_complete(EditState *s);
 void do_kill_buffer(EditState *s, const char *bufname1);
 void switch_to_buffer(EditState *s, EditBuffer *b);
+void kill_buffer_noconfirm(EditBuffer *b);
 
 /* text mode */
 

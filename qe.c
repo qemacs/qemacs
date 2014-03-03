@@ -1703,6 +1703,7 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
     /* if a mode is already defined, try to close it */
     if (s->mode) {
         /* save mode data if necessary */
+        s->interactive = 0;
         if (!saved_data) {
             saved_data = s->mode->mode_save_data(s);
             if (saved_data)
@@ -5494,8 +5495,18 @@ void do_not_modified(EditState *s, int argval)
     s->b->modified = (argval != NO_ARG);
 }
 
-static void kill_buffer_confirm_cb(void *opaque, char *reply);
-static void kill_buffer_noconfirm(EditBuffer *b);
+static void kill_buffer_confirm_cb(void *opaque, char *reply)
+{
+    int yes_replied;
+
+    if (!reply)
+        return;
+    yes_replied = strequal(reply, "yes");
+    qe_free(&reply);
+    if (!yes_replied)
+        return;
+    kill_buffer_noconfirm(opaque);
+}
 
 void do_kill_buffer(EditState *s, const char *bufname)
 {
@@ -5518,20 +5529,7 @@ void do_kill_buffer(EditState *s, const char *bufname)
     }
 }
 
-static void kill_buffer_confirm_cb(void *opaque, char *reply)
-{
-    int yes_replied;
-
-    if (!reply)
-        return;
-    yes_replied = strequal(reply, "yes");
-    qe_free(&reply);
-    if (!yes_replied)
-        return;
-    kill_buffer_noconfirm(opaque);
-}
-
-static void kill_buffer_noconfirm(EditBuffer *b)
+void kill_buffer_noconfirm(EditBuffer *b)
 {
     QEmacsState *qs = &qe_state;
     EditState *e;
@@ -6915,7 +6913,7 @@ EditBuffer *new_help_buffer(int *show_ptr)
     *show_ptr = 0;
     b = eb_find("*Help*");
     if (b) {
-        eb_delete(b, 0, b->total_size);
+        eb_clear(b);
     } else {
         b = eb_new("*Help*", BF_UTF8);
         *show_ptr = 1;

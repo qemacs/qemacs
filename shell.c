@@ -657,14 +657,16 @@ static void tty_update_cursor(__unused__ ShellState *s)
 #endif
 }
 
-static ShellState *shell_get_state(EditState *e)
+static ShellState *shell_get_state(EditState *e, int status)
 {
     ShellState *s = e->b->priv_data;
 
     if (s && s->signature == &shell_signature)
         return s;
 
-    put_status(e, "Not a shell buffer");
+    if (status)
+        put_status(e, "Not a shell buffer");
+
     return NULL;
 }
 
@@ -674,11 +676,10 @@ static void shell_display_hook(EditState *e)
 {
     ShellState *s;
 
-    if (!(s = shell_get_state(e)))
-        return;
-
-    if (e->interactive)
-        e->offset = s->cur_offset;
+    if (e->interactive) {
+        if ((s = shell_get_state(e, 0)) != NULL)
+            e->offset = s->cur_offset;
+    }
 }
 
 static void shell_key(void *opaque, int key)
@@ -1272,6 +1273,40 @@ static void shell_read_cb(void *opaque)
     dpy_flush(qs->screen);
 }
 
+static void shell_close(EditBuffer *b)
+{
+    ShellState *s = b->priv_data;
+    int status;
+
+    if (!s || s->signature != &shell_signature)
+        return;
+
+    eb_free_callback(b, eb_offset_callback, &s->cur_offset);
+
+    if (s->pid != -1) {
+        kill(s->pid, SIGINT);
+        /* wait first 100 ms */
+        usleep(100 * 1000);
+        if (waitpid(s->pid, &status, WNOHANG) != s->pid) {
+            /* if still not killed, then try harder (useful for
+               shells) */
+            kill(s->pid, SIGKILL);
+            /* CG: should add timeout facility and error message */
+            while (waitpid(s->pid, &status, 0) != s->pid)
+                continue;
+        }
+	set_pid_handler(s->pid, NULL, NULL);
+        s->pid = -1;
+    }
+    if (s->pty_fd >= 0) {
+        set_read_handler(s->pty_fd, NULL, NULL);
+        s->pty_fd = -1;
+    }
+    qe_free(&b->priv_data);
+    if (b->close == shell_close)
+        b->close = NULL;
+}
+
 static void shell_pid_cb(void *opaque, int status)
 {
     ShellState *s = opaque;
@@ -1286,7 +1321,7 @@ static void shell_pid_cb(void *opaque, int status)
     b = s->b;
     qs = s->qe_state;
 
-    *buf = 0;
+    *buf = '\0';
     if (s->caption) {
         time_t ti;
         char *time_str;
@@ -1334,36 +1369,11 @@ static void shell_pid_cb(void *opaque, int status)
         if (e->b == b)
             e->interactive = 0;
     }
+    if (!(s->shell_flags & SF_INTERACTIVE)) {
+        shell_close(b);
+    }
     edit_display(qs);
     dpy_flush(qs->screen);
-}
-
-static void shell_close(EditBuffer *b)
-{
-    ShellState *s = b->priv_data;
-    int status;
-
-    eb_free_callback(b, eb_offset_callback, &s->cur_offset);
-
-    if (s->pid != -1) {
-        kill(s->pid, SIGINT);
-        /* wait first 100 ms */
-        usleep(100 * 1000);
-        if (waitpid(s->pid, &status, WNOHANG) != s->pid) {
-            /* if still not killed, then try harder (useful for
-               shells) */
-            kill(s->pid, SIGKILL);
-            /* CG: should add timeout facility and error message */
-            while (waitpid(s->pid, &status, 0) != s->pid)
-                continue;
-        }
-	set_pid_handler(s->pid, NULL, NULL);
-        s->pid = -1;
-    }
-    if (s->pty_fd >= 0) {
-        set_read_handler(s->pty_fd, NULL, NULL);
-    }
-    qe_free(&b->priv_data);
 }
 
 EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
@@ -1503,8 +1513,6 @@ static void do_shell(EditState *s, int force)
 
     b->default_mode = &shell_mode;
     switch_to_buffer(s, b);
-    s->interactive = 1;
-    //edit_set_mode(s, &shell_mode);
 
     put_status(s, "Press C-o to toggle between shell/edit mode");
 }
@@ -1557,12 +1565,12 @@ static void do_ssh(EditState *s, const char *arg)
 
 static void shell_move_left_right(EditState *e, int dir)
 {
-    ShellState *s;
-
-    if (!(s = shell_get_state(e)))
-        return;
-
     if (e->interactive) {
+        ShellState *s;
+
+        if (!(s = shell_get_state(e, 1)))
+            return;
+
         tty_write(s, dir > 0 ? s->kcuf1 : s->kcub1, -1);
     } else {
         text_move_left_right_visual(e, dir);
@@ -1571,12 +1579,12 @@ static void shell_move_left_right(EditState *e, int dir)
 
 static void shell_move_word_left_right(EditState *e, int dir)
 {
-    ShellState *s;
-
-    if (!(s = shell_get_state(e)))
-        return;
-
     if (e->interactive) {
+        ShellState *s;
+
+        if (!(s = shell_get_state(e, 1)))
+            return;
+
         tty_write(s, dir > 0 ? "\033f" : "\033b", -1);
     } else {
         text_move_word_left_right(e, dir);
@@ -1587,13 +1595,15 @@ static void shell_move_up_down(EditState *e, int dir)
 {
     ShellState *s;
 
-    if (!(s = shell_get_state(e)))
+    if (!(s = shell_get_state(e, 1)))
         return;
 
     if (e->interactive) {
         tty_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
     } else {
         text_move_up_down(e, dir);
+        if (s->shell_flags & SF_INTERACTIVE)
+            e->interactive = (e->offset == s->cur_offset);
     }
 }
 
@@ -1601,25 +1611,26 @@ static void shell_scroll_up_down(EditState *e, int dir)
 {
     ShellState *s;
 
-    if (!(s = shell_get_state(e)))
+    if (!(s = shell_get_state(e, 1)))
         return;
 
     e->interactive = 0;
     text_scroll_up_down(e, dir);
-    e->interactive = (e->offset == s->cur_offset);
+    if (s->shell_flags & SF_INTERACTIVE)
+        e->interactive = (e->offset == s->cur_offset);
 }
 
 static void shell_move_bol(EditState *e)
 {
-    ShellState *s;
-
-    if (!(s = shell_get_state(e)))
-        return;
-
     /* XXX: exit shell interactive mode on home / ^A */
     e->interactive = 0;
 
     if (e->interactive) {
+        ShellState *s;
+
+        if (!(s = shell_get_state(e, 1)))
+            return;
+
         tty_write(s, "\001", 1); /* Control-A */
     } else {
         text_move_bol(e);
@@ -1630,7 +1641,7 @@ static void shell_move_eol(EditState *e)
 {
     ShellState *s;
 
-    if (!(s = shell_get_state(e)))
+    if (!(s = shell_get_state(e, 1)))
         return;
 
     if (e->interactive) {
@@ -1638,7 +1649,8 @@ static void shell_move_eol(EditState *e)
     } else {
         text_move_eol(e);
         /* XXX: restore shell interactive mode on end / ^E */
-        e->interactive = (e->offset == s->cur_offset);
+        if (s->shell_flags & SF_INTERACTIVE)
+            e->interactive = (e->offset == s->cur_offset);
     }
 }
 
@@ -1646,12 +1658,13 @@ static void shell_write_char(EditState *e, int c)
 {
     char buf[10];
     int len;
-    ShellState *s;
-
-    if (!(s = shell_get_state(e)))
-        return;
 
     if (e->interactive) {
+        ShellState *s;
+
+        if (!(s = shell_get_state(e, 1)))
+            return;
+
         if (c >= KEY_META(0) && c <= KEY_META(0xff)) {
             buf[0] = '\033';
             buf[1] = c - KEY_META(0);
@@ -1705,11 +1718,14 @@ static void do_shell_toggle_input(EditState *e)
 {
     ShellState *s;
 
-    if (!(s = shell_get_state(e)))
+    if (!(s = shell_get_state(e, 1)))
         return;
 
-    e->interactive = !e->interactive;
     if (e->interactive) {
+        e->interactive = 0;
+    } else
+    if (s->shell_flags & SF_INTERACTIVE) {
+        e->interactive = 1;
         if (s->grab_keys)
             qe_grab_keys(shell_key, s);
     }
@@ -1720,6 +1736,27 @@ static void do_shell_toggle_input(EditState *e)
 #endif
 }
 
+static void do_shell_command(EditState *e, const char *cmd)
+{
+    EditBuffer *b;
+
+    /* if the buffer already exists, kill it */
+    b = eb_find("*shell command output*");
+    if (b) {
+        kill_buffer_noconfirm(b);
+    }
+
+    /* create new buffer */
+    b = new_shell_buffer(NULL, "*shell command output*", NULL, cmd,
+                         SF_COLOR | SF_INFINITE);
+    if (!b)
+        return;
+
+    /* XXX: try to split window if necessary */
+    switch_to_buffer(e, b);
+    edit_set_mode(e, &pager_mode);
+}
+
 static void do_compile(EditState *e, const char *cmd)
 {
     EditBuffer *b;
@@ -1727,9 +1764,7 @@ static void do_compile(EditState *e, const char *cmd)
     /* if the buffer already exists, kill it */
     b = eb_find("*compilation*");
     if (b) {
-        /* XXX: e should not become invalid */
-        b->modified = 0;
-        do_kill_buffer(e, "*compilation*");
+        kill_buffer_noconfirm(b);
     }
 
     if (!cmd || !*cmd)
@@ -1888,6 +1923,9 @@ static CmdDef pager_commands[] = {
 static CmdDef shell_global_commands[] = {
     CMD2( KEY_CTRLXRET('\r'), KEY_NONE,
           "shell", do_shell, ESi, "ui")
+    CMD2( KEY_META('!'), KEY_NONE,
+          "shell-command", do_shell_command, ESs,
+          "s{Shell command: }|shell-command|")
     CMD2( KEY_NONE, KEY_NONE,
           "ssh", do_ssh, ESs,
           "s{Open connection to (host or user@host: }|ssh|")
@@ -1917,20 +1955,26 @@ static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 0;
 }
 
-static int shell_mode_init(EditState *s, ModeSavedData *saved_data)
+static int shell_mode_init(EditState *e, ModeSavedData *saved_data)
 {
-    text_mode_init(s, saved_data);
-    s->b->tab_width = 8;
-    s->wrap = WRAP_TRUNCATE;
-    s->interactive = 1;
+    ShellState *s;
+
+    if (!(s = shell_get_state(e, 1)))
+        return -1;
+
+    text_mode_init(e, saved_data);
+    e->b->tab_width = 8;
+    e->wrap = WRAP_TRUNCATE;
+    if (s->shell_flags & SF_INTERACTIVE)
+        e->interactive = 1;
     return 0;
 }
 
-static int pager_mode_init(EditState *s, ModeSavedData *saved_data)
+static int pager_mode_init(EditState *e, ModeSavedData *saved_data)
 {
-    text_mode_init(s, saved_data);
-    s->b->tab_width = 8;
-    s->wrap = WRAP_TRUNCATE;
+    text_mode_init(e, saved_data);
+    e->b->tab_width = 8;
+    e->wrap = WRAP_TRUNCATE;
     return 0;
 }
 
