@@ -7347,8 +7347,6 @@ static int text_mode_probe(__unused__ ModeDef *mode,
 
 int text_mode_init(EditState *s, ModeSavedData *saved_data)
 {
-    eb_add_callback(s->b, eb_offset_callback, &s->offset, 0);
-    eb_add_callback(s->b, eb_offset_callback, &s->offset_top, 0);
     if (saved_data) {
         memcpy(s, saved_data->generic_data, SAVED_DATA_SIZE);
     } else {
@@ -7358,8 +7356,12 @@ int text_mode_init(EditState *s, ModeSavedData *saved_data)
         s->default_style = QE_STYLE_DEFAULT;
         s->wrap = WRAP_LINE;
     }
+    s->offset = min(s->offset, s->b->total_size);
+    s->offset_top = min(s->offset_top, s->b->total_size);
     s->hex_mode = 0;
     s->insert = 1;
+    eb_add_callback(s->b, eb_offset_callback, &s->offset, 0);
+    eb_add_callback(s->b, eb_offset_callback, &s->offset_top, 0);
     set_colorize_func(s, NULL);
     return 0;
 }
