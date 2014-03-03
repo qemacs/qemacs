@@ -73,14 +73,16 @@ static void dired_free(DiredState *ds)
     }
 }
 
-static DiredState *dired_get_state(EditState *s)
+static DiredState *dired_get_state(EditState *s, int status)
 {
     DiredState *ds = s->b->priv_data;
 
     if (ds && ds->signature == &dired_signature)
         return ds;
 
-    put_status(s, "Not a dired buffer");
+    if (status)
+        put_status(s, "Not a dired buffer");
+
     return NULL;
 }
 
@@ -91,7 +93,7 @@ static char *dired_get_filename(EditState *s,
     const StringItem *item;
     const DiredItem *dip;
 
-    if (!(ds = dired_get_state(s)))
+    if (!(ds = dired_get_state(s, 1)))
         return NULL;
 
     /* CG: assuming buf_size > 0 */
@@ -118,7 +120,7 @@ static int dired_find_target(EditState *s, const char *target)
     int i;
 
     if (target) {
-        if (!(ds = dired_get_state(s)))
+        if (!(ds = dired_get_state(s, 1)))
             return -1;
 
         for (i = 0; i < ds->items.nb_items; i++) {
@@ -181,7 +183,7 @@ static void dired_sort_list(EditState *s)
     EditBuffer *b;
     int index, i;
 
-    if (!(ds = dired_get_state(s)))
+    if (!(ds = dired_get_state(s, 1)))
         return;
 
     index = dired_get_index(s);
@@ -194,9 +196,8 @@ static void dired_sort_list(EditState *s)
 
     /* construct list buffer */
     b = s->b;
-    b->flags &= ~BF_READONLY;
     /* deleting buffer contents resets s->offset and s->offset_top */
-    eb_delete(b, 0, b->total_size);
+    eb_clear(b);
 
     if (DIRED_HEADER) {
         long long total_bytes;
@@ -244,7 +245,7 @@ static void dired_mark(EditState *s, int mark)
     unsigned char ch;
     int index;
 
-    if (!(ds = dired_get_state(s)))
+    if (!(ds = dired_get_state(s, 1)))
         return;
 
     index = dired_get_index(s);
@@ -267,7 +268,7 @@ static void dired_sort(EditState *s, const char *sort_order)
     DiredState *ds;
     const char *p;
 
-    if (!(ds = dired_get_state(s)))
+    if (!(ds = dired_get_state(s, 1)))
         return;
 
     for (p = sort_order; *p; p++) {
@@ -322,7 +323,7 @@ static void dired_build_list(EditState *s, const char *path,
     int ct, len, index;
     StringItem *item;
 
-    if (!(ds = dired_get_state(s)))
+    if (!(ds = dired_get_state(s, 1)))
         return;
 
     /* free previous list, if any */
@@ -496,7 +497,7 @@ static void dired_parent(EditState *s)
     char target[MAX_FILENAME_SIZE];
     char filename[MAX_FILENAME_SIZE];
 
-    if (!(ds = dired_get_state(s)))
+    if (!(ds = dired_get_state(s, 1)))
         return;
 
     pstrcpy(target, sizeof(target), ds->path);
@@ -510,7 +511,7 @@ static void dired_refresh(EditState *s)
     DiredState *ds;
     char target[MAX_FILENAME_SIZE];
 
-    if (!(ds = dired_get_state(s)))
+    if (!(ds = dired_get_state(s, 1)))
         return;
 
     dired_get_filename(s, target, sizeof(target), -1);
@@ -523,7 +524,7 @@ static void dired_display_hook(EditState *s)
     char filename[MAX_FILENAME_SIZE];
     int index;
 
-    if (!(ds = dired_get_state(s)))
+    if (!(ds = dired_get_state(s, 1)))
         return;
 
     /* Prevent point from going beyond list */
@@ -548,8 +549,13 @@ static void dired_close(EditBuffer *b)
 {
     DiredState *ds = b->priv_data;
 
-    dired_free(ds);
+    if (ds && ds->signature == &dired_signature) {
+        dired_free(ds);
+    }
+
     qe_free(&b->priv_data);
+    if (b->close == dired_close)
+        b->close = NULL;
 }
 
 static int dired_mode_init(EditState *s, ModeSavedData *saved_data)
@@ -583,11 +589,6 @@ static int dired_mode_init(EditState *s, ModeSavedData *saved_data)
     eb_set_charset(s->b, &charset_utf8, s->b->eol_type);
 
     return 0;
-}
-
-static void dired_mode_close(EditState *s)
-{
-    list_mode.mode_close(s);
 }
 
 /* can only apply dired mode on directories */
@@ -714,7 +715,6 @@ static int dired_init(void)
     dired_mode.name = "dired";
     dired_mode.mode_probe = dired_mode_probe;
     dired_mode.mode_init = dired_mode_init;
-    dired_mode.mode_close = dired_mode_close;
     /* CG: not a good idea, display hook has side effect on layout */
     dired_mode.display_hook = dired_display_hook;
 
