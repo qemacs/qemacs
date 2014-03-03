@@ -112,7 +112,7 @@ ifdef CONFIG_ALL_MODES
   OBJS+= unihex.o clang.o xml.o bufed.o \
          lisp.o makemode.o orgmode.o perl.o htmlsrc.o script.o extra-modes.o
   ifndef CONFIG_WIN32
-    OBJS+= shell.o dired.o latex-mode.o
+    OBJS+= shell.o dired.o latex-mode.o archive.o
   endif
 endif
 
