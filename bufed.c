@@ -36,14 +36,16 @@ typedef struct BufedState {
 
 static ModeDef bufed_mode;
 
-static BufedState *bufed_get_state(EditState *s)
+static BufedState *bufed_get_state(EditState *s, int status)
 {
     BufedState *bs = s->b->priv_data;
 
     if (bs && bs->signature == &bufed_signature)
         return bs;
 
-    put_status(s, "Not a bufed buffer");
+    if (status)
+        put_status(s, "Not a bufed buffer");
+
     return NULL;
 }
 
@@ -55,7 +57,7 @@ static void build_bufed_list(EditState *s)
     int last_index = list_get_pos(s);
     int i;
 
-    if (!(bs = bufed_get_state(s)))
+    if (!(bs = bufed_get_state(s, 1)))
         return;
 
     free_strings(&bs->items);
@@ -66,8 +68,7 @@ static void build_bufed_list(EditState *s)
 
     /* build buffer */
     b = s->b;
-    b->flags &= ~BF_READONLY;
-    eb_delete(b, 0, b->total_size);
+    eb_clear(b);
 
     for (i = 0; i < bs->items.nb_items; i++) {
         EditBuffer *b1 = eb_find(bs->items.items[i]->str);
@@ -126,7 +127,7 @@ static EditBuffer *bufed_get_buffer(EditState *s)
     BufedState *bs;
     int index;
 
-    if (!(bs = bufed_get_state(s)))
+    if (!(bs = bufed_get_state(s, 1)))
         return NULL;
 
     index = list_get_pos(s);
@@ -144,7 +145,7 @@ static void bufed_select(EditState *s, int temp)
     EditState *e;
     int index;
 
-    if (!(bs = bufed_get_state(s)))
+    if (!(bs = bufed_get_state(s, 1)))
         return;
 
     index = list_get_pos(s);
@@ -215,7 +216,7 @@ static void bufed_kill_buffer(EditState *s)
 {
     BufedState *bs;
 
-    if (!(bs = bufed_get_state(s)))
+    if (!(bs = bufed_get_state(s, 1)))
         return;
 
     string_selection_iterate(&bs->items, list_get_pos(s),
@@ -236,23 +237,27 @@ static void do_list_buffers(EditState *s, int argval)
      * s may be destroyed by insert_window_left
      * CG: remove this kludge once we have delayed EditState free
      */
-    b0 = s->b;
+    b = b0 = s->b;
 
-    /* XXX: must close this buffer when destroying window: add a
-       special buffer flag to tell this */
-    b = eb_scratch("*bufed*", BF_READONLY | BF_SYSTEM | BF_UTF8);
+    if ((bs = bufed_get_state(s, 0)) == NULL) {
+        /* XXX: must close this buffer when destroying window: add a
+        special buffer flag to tell this */
+        b = eb_scratch("*bufed*", BF_READONLY | BF_SYSTEM | BF_UTF8);
+    }
 
     width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
     edit_set_mode(e, &bufed_mode);
 
-    if (!(bs = bufed_get_state(e)))
+    if (!(bs = bufed_get_state(e, 1)))
         return;
 
-    if (argval != NO_ARG) {
+    if (argval == NO_ARG) {
+        bs->flags &= ~BUFED_ALL_VISIBLE;
+    } else {
         bs->flags |= BUFED_ALL_VISIBLE;
-        build_bufed_list(e);
     }
+    build_bufed_list(e);
 
     e1 = find_window(e, KEY_RIGHT);
     if (e1)
@@ -298,7 +303,7 @@ static void bufed_refresh(EditState *s, int toggle)
 {
     BufedState *bs;
 
-    if (!(bs = bufed_get_state(s)))
+    if (!(bs = bufed_get_state(s, 1)))
         return;
 
     if (toggle)
@@ -332,11 +337,13 @@ static void bufed_close(EditBuffer *b)
 {
     BufedState *bs = b->priv_data;
 
-    if (bs) {
+    if (bs && bs->signature == &bufed_signature) {
         free_strings(&bs->items);
     }
 
     qe_free(&b->priv_data);
+    if (b->close == bufed_close)
+        b->close = NULL;
 }
 
 static int bufed_mode_init(EditState *s, ModeSavedData *saved_data)
@@ -358,16 +365,8 @@ static int bufed_mode_init(EditState *s, ModeSavedData *saved_data)
         bs->signature = &bufed_signature;
         s->b->priv_data = bs;
         s->b->close = bufed_close;
-
-        /* XXX: should be built by buffer_load API */
-        build_bufed_list(s);
     }
     return 0;
-}
-
-static void bufed_mode_close(EditState *s)
-{
-    list_mode.mode_close(s);
 }
 
 /* specific bufed commands */
@@ -412,7 +411,6 @@ static int bufed_init(void)
     bufed_mode.name = "bufed";
     bufed_mode.mode_probe = bufed_mode_probe;
     bufed_mode.mode_init = bufed_mode_init;
-    bufed_mode.mode_close = bufed_mode_close;
     /* CG: not a good idea, display hook has side effect on layout */
     bufed_mode.display_hook = bufed_display_hook;
 
