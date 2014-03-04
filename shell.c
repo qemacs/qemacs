@@ -1300,6 +1300,7 @@ static void shell_close(EditBuffer *b)
     }
     if (s->pty_fd >= 0) {
         set_read_handler(s->pty_fd, NULL, NULL);
+        close(s->pty_fd);
         s->pty_fd = -1;
     }
     qe_free(&b->priv_data);
