@@ -266,14 +266,21 @@ static void url_block(void)
     ret = select(url_fdmax + 1, &rfds, &wfds, NULL, &tv);
 
     /* call each handler */
+    /* extra checks on callback function pointers because a callback
+     * may unregister another callback.  This was causing crash bugs
+     * when deleting a running shell output buffer such as a buffer
+     * with a huge compressed file while it decompresses.
+     * XXX: should break from the loop if callback changed the
+     *      structures but need further investigation.
+     */
     if (ret > 0) {
         uh = url_handlers;
         for (i = 0;i <= url_fdmax; i++) {
-            if (FD_ISSET(i, &rfds)) {
+            if (FD_ISSET(i, &rfds) && uh->read_cb) {
                 uh->read_cb(uh->read_opaque);
                 call_bottom_halves();
             }
-            if (FD_ISSET(i, &wfds)) {
+            if (FD_ISSET(i, &wfds) && uh->write_cb) {
                 uh->write_cb(uh->write_opaque);
                 call_bottom_halves();
             }
@@ -293,7 +300,7 @@ static void url_block(void)
         if (pid <= 0)
             break;
         list_for_each_safe(ph, ph1, &pid_handlers) {
-            if (ph->pid == pid) {
+            if (ph->pid == pid && ph->cb) {
                 ph->cb(ph->opaque, status);
                 call_bottom_halves();
                 break;
