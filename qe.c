@@ -578,10 +578,14 @@ void do_kill_paragraph(EditState *s, int dir)
 
 void do_fill_paragraph(EditState *s)
 {
-    int par_start, par_end, col;
-    int offset, offset1, n, c, indent_size;
-    int chunk_start, word_start, word_size, word_count, space_size;
-    unsigned char buf[1];
+    /* buffer offsets, byte counts */
+    int par_start, par_end, offset, offset1, chunk_start, word_start;
+    /* number of characters */
+    int col, indent_size, word_size, space_size;
+    /* other counts */
+    int n, word_count;
+    /* character */
+    int c;
 
     /* find start & end of paragraph */
     par_start = eb_start_paragraph(s->b, s->offset);
@@ -630,25 +634,24 @@ void do_fill_paragraph(EditState *s)
             col += space_size + word_size;
         } else {
             /* insert space single space then word */
-            if (offset == par_end ||
-                (col + 1 + word_size > s->b->fill_column)) {
+            if (offset == par_end
+            ||  (col + 1 + word_size > s->b->fill_column)) {
                 eb_delete_uchar(s->b, chunk_start);
                 chunk_start += eb_insert_uchar(s->b, chunk_start, '\n');
                 if (offset < par_end) {
                     /* indent */
-                    for (n = indent_size; n > 0; n--)
-                        chunk_start += eb_insert_uchar(s->b, chunk_start, ' ');
-
-                    word_start += indent_size;
-                    offset += indent_size;
-                    par_end += indent_size;
+                    for (n = indent_size; n > 0; n--) {
+                        int nb = eb_insert_uchar(s->b, chunk_start, ' ');
+                        chunk_start += nb;
+                        word_start += nb;
+                        offset += nb;
+                        par_end += nb;
+                    }
                 }
                 col = word_size + indent_size;
             } else {
-                buf[0] = ' ';
-                /* XXX: incorrect for wide character buffers */
-                eb_write(s->b, chunk_start, buf, 1);
-                chunk_start++;
+                eb_delete_uchar(s->b, chunk_start);
+                chunk_start += eb_insert_uchar(s->b, chunk_start, ' ');
                 col += 1 + word_size;
             }
 
@@ -978,7 +981,7 @@ static int scroll_cursor_func(DisplayState *ds,
 
 void do_scroll_left_right(EditState *s, int dir)
 {
-    /* XXX: should chnage x_disp by space_width increments */
+    /* XXX: should change x_disp by space_width increments */
     s->x_disp[0] += dir;
 }
 
@@ -5850,7 +5853,8 @@ static void do_load1(EditState *s, const char *filename1,
  fail:
     eb_free(&b);
 
-    put_status(s, "Could not open '%s': %m", filename);
+    put_status(s, "Could not open '%s': %s",
+               filename, strerror(errno));
 }
 
 #if 0
