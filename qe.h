@@ -1083,7 +1083,7 @@ struct EditState {
     EditBuffer *b;
 
     /* state before line n, one byte per line */
-    unsigned char *colorize_states;
+    unsigned short *colorize_states;
     int colorize_nb_lines;
     int colorize_nb_valid_lines;
     /* maximum valid offset, INT_MAX if not modified. Needed to invalide
@@ -1904,6 +1904,11 @@ void c_colorize_line(unsigned int *buf, int len,
 /* xml.c */
 
 extern ModeDef xml_mode;
+
+/* htmlsrc.c */
+
+void htmlsrc_colorize_line(unsigned int *buf, int len,
+                           int *colorize_state_ptr, int state_only);
 
 /* html.c */
 

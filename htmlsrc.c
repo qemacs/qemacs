@@ -66,8 +66,8 @@ enum {
     HTML_SCRIPT    = 0x80,      /* <SCRIPT> [...] </SCRIPT> */
 };
 
-static void htmlsrc_colorize_line(unsigned int *buf, int len,
-                                  int *colorize_state_ptr, int state_only)
+void htmlsrc_colorize_line(unsigned int *buf, int len,
+                           int *colorize_state_ptr, int state_only)
 {
     int c, state, js_state, l;
     unsigned int *p, *p_start, *p_end;

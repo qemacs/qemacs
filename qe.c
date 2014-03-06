@@ -3246,8 +3246,10 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
     /* realloc line buffer if needed */
     if ((line_num + 2) > s->colorize_nb_lines) {
         s->colorize_nb_lines = line_num + 2 + COLORIZED_LINE_PREALLOC_SIZE;
-        if (!qe_realloc(&s->colorize_states, s->colorize_nb_lines))
+        if (!qe_realloc(&s->colorize_states,
+                        s->colorize_nb_lines * sizeof(*s->colorize_states))) {
             return 0;
+        }
     }
 
     /* propagate state if needed */
