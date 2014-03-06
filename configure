@@ -110,6 +110,14 @@ case $targetos in
     plugins="no"
     ptsname="no"
     ;;
+  FreeBSD)
+    extralibs="-lm"
+    make="gmake"
+    doc="no"
+    unlockio="no"
+    plugins="no"
+    ptsname="no"
+    ;;
   CYGWIN*)
     cygwin="yes"
     ;;
@@ -665,14 +673,14 @@ echo "SRC_PATH=$source_path" >> $TMPMAK
 
 diff $TMPMAK config.mak >/dev/null 2>&1
 if test $? -ne 0 ; then
-    mv -f $TMPMAK config.mak
+    cp -f $TMPMAK config.mak
 else
     echo "config.mak is unchanged"
 fi
 
 diff $TMPH config.h >/dev/null 2>&1
 if test $? -ne 0 ; then
-    mv -f $TMPH config.h
+    cp -f $TMPH config.h
 else
     echo "config.h is unchanged"
 fi
