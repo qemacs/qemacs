@@ -828,6 +828,14 @@ static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
     int c, score;
 
     score = 0;
+
+    while (qe_isspace(*p))
+        p++;
+    if (*p != '<')
+        return 0;
+    if (p[1] != '!' && p[1] != '?' && !qe_isalpha(p[1]))
+        return 0;
+
     for (;;) {
         c = *p;
         if (c == '\0')
@@ -835,7 +843,7 @@ static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
         if (c < 32 && !(magic & (1 << c)))
             return 0;
         if (c == '<' && stristart(cs8(p), "<html", NULL))
-            score = 100;
+            score = 95;
         p++;
     }
     return score;
