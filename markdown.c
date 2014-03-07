@@ -56,11 +56,15 @@ QE_STYLE_TAG,
 #endif
 };
 
-#define IN_BLOCK       0x8000
-#define IN_C           0x4000
-#define IN_HTML_BLOCK  0x2000
-#define IN_TABLE       0x1000
-#define IN_LEVEL       0x0F00
+#define IN_HTML_BLOCK  0x8000
+#define IN_BLOCK       0x4000
+#define IN_LANG        0x3800
+#define IN_C           0x0800
+#define IN_PYTHON      0x1000
+#define IN_RUBY        0x1800
+#define IN_HASKELL     0x2000
+#define IN_LUA         0x2800
+#define IN_LEVEL       0x0700
 #define LEVEL_SHIFT  8
 
 #define MAX_BUF_SIZE    512
@@ -124,18 +128,38 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
 
     if (colstate & IN_BLOCK) {
         /* Should count number of ~ to detect end of block */
-        if (ustristart(str + i, "~~~", NULL)) {
-            colstate &= ~(IN_BLOCK | IN_C);
+        if (ustrstart(str + i, "~~~", NULL)
+        ||  ustrstart(str + i, "```", NULL)) {
+            colstate &= ~(IN_BLOCK | IN_LANG);
             set_color(str + i, str + n, QE_STYLE_MKD_TILDE);
             i = n;
         } else {
-            if (colstate & IN_C) {
-                colstate &= ~(IN_BLOCK | IN_C);
+            int lang = colstate & IN_LANG;
+            colstate &= ~(IN_BLOCK | IN_LANG);
+            switch (lang) {
+            case IN_C:
                 c_colorize_line(str, n, &colstate, state_only);
-                colstate |= (IN_BLOCK | IN_C);
-            } else {
+                break;
+#if 0
+            case IN_PYTHON:
+                python_colorize_line(str, n, &colstate, state_only);
+                break;
+            case IN_RUBY:
+                ruby_colorize_line(str, n, &colstate, state_only);
+                break;
+#endif
+            case IN_HASKELL:
+                haskell_colorize_line(str, n, &colstate, state_only);
+                break;
+            case IN_LUA:
+                lua_colorize_line(str, n, &colstate, state_only);
+                break;
+            default:
                 set_color(str + i, str + n, QE_STYLE_MKD_CODE);
+                break;
             }
+            colstate &= ~(IN_BLOCK | IN_LANG);
+            colstate |= (IN_BLOCK | lang);
         }
         *statep = colstate;
         return;
@@ -162,11 +186,25 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
         set_color(str + i, str + n, QE_STYLE_MKD_BLOCK_QUOTE);
         i = n;
     } else
-    if (ustrstart(str + i, "~~~", NULL)) {
+    if (ustrstart(str + i, "~~~", NULL)
+    ||  ustrstart(str + i, "```", NULL)) {
         /* verbatim block */
         colstate |= IN_BLOCK;
-        if (ustristart(str + i + 3, " {.c", NULL)) {
+        if (ustrstr(str + i + 3, "c")
+        ||  ustrstr(str + i + 3, "java")) {
             colstate |= IN_C;
+        } else
+        if (ustrstr(str + i + 3, "haskell")) {
+            colstate |= IN_HASKELL;
+        } else
+        if (ustrstr(str + i + 3, "lua")) {
+            colstate |= IN_LUA;
+        } else
+        if (ustrstr(str + i + 3, "python")) {
+            colstate |= IN_PYTHON;
+        } else
+        if (ustrstr(str + i + 3, "ruby")) {
+            colstate |= IN_RUBY;
         }
         set_color(str + i, str + n, QE_STYLE_MKD_TILDE);
         i = n;
@@ -190,7 +228,6 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
         }
     } else
     if (str[i] == '|') {
-        colstate |= IN_TABLE;
         base_style = QE_STYLE_MKD_TABLE;
     }
 
@@ -354,9 +391,8 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
         }
     }
 
-    colstate &= ~IN_TABLE;
     colstate &= ~IN_LEVEL;
-    colstate |= level << LEVEL_SHIFT;
+    colstate |= (level << LEVEL_SHIFT) & IN_LEVEL;
     *statep = colstate;
 }
 
