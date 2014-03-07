@@ -1143,7 +1143,6 @@ enum {
     HASKELL_TEXT =         QE_STYLE_DEFAULT,
     HASKELL_COMMENT =      QE_STYLE_COMMENT,
     HASKELL_STRING =       QE_STYLE_STRING,
-    HASKELL_LONGLIT =      QE_STYLE_STRING,
     HASKELL_NUMBER =       QE_STYLE_NUMBER,
     HASKELL_KEYWORD =      QE_STYLE_KEYWORD,
     HASKELL_FUNCTION =     QE_STYLE_FUNCTION,
@@ -1291,7 +1290,7 @@ void haskell_colorize_line(unsigned int *str, int n, int *statep,
                 continue;
             }
             if (qe_isalpha_(c)) {
-                for (klen = 0, j = i + 1;
+                for (klen = 0, j = i;
                      qe_isalnum_(str[j]) || str[j] == '\'';
                      j++) {
                     if (klen < countof(kbuf) - 1)
@@ -1332,8 +1331,6 @@ void haskell_colorize_line(unsigned int *str, int n, int *statep,
 
 #undef IN_COMMENT
 #undef IN_STRING
-#undef IN_STRING2
-#undef IN_LONGLIT
 #undef IN_LEVEL
 
 static int haskell_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -1365,6 +1362,252 @@ static int haskell_init(void)
     return 0;
 }
 
+/*---------------- Python coloring ----------------*/
+
+static char const python_keywords[] = {
+    "|False|None|True|and|as|assert|break|class|continue"
+    "|def|del|elif|else|except|finally|for|from|global"
+    "|if|import|in|is|lambda|nonlocal|not|or|pass|raise"
+    "|return|try|while|with|yield"
+    "|"
+};
+
+#define IN_COMMENT       0x80
+#define IN_STRING        0x40
+#define IN_STRING2       0x20
+#define IN_LONG_STRING   0x10
+#define IN_LONG_STRING2  0x08
+#define IN_RAW_STRING    0x04
+
+enum {
+    PYTHON_TEXT =         QE_STYLE_DEFAULT,
+    PYTHON_COMMENT =      QE_STYLE_COMMENT,
+    PYTHON_STRING =       QE_STYLE_STRING,
+    PYTHON_NUMBER =       QE_STYLE_NUMBER,
+    PYTHON_KEYWORD =      QE_STYLE_KEYWORD,
+    PYTHON_FUNCTION =     QE_STYLE_FUNCTION,
+};
+
+void python_colorize_line(unsigned int *str, int n, int *statep,
+                           __unused__ int state_only)
+{
+    int i = 0, j = i, c, sep = 0, klen;
+    int state = *statep;
+    char kbuf[32];
+
+    if (state & IN_STRING) {
+        sep = '\'';
+        goto parse_string;
+    }
+    if (state & IN_STRING2) {
+        sep = '\"';
+        goto parse_string;
+    }
+    if (state & IN_LONG_STRING) {
+        sep = '\'';
+        goto parse_long_string;
+    }
+    if (state & IN_LONG_STRING2) {
+        sep = '\"';
+        goto parse_long_string;
+    }
+
+    while (i < n) {
+        switch (c = str[i]) {
+        case '#':
+            SET_COLOR(str, i, n, PYTHON_COMMENT);
+            i = n;
+            continue;
+            
+        case '\'':
+        case '"':
+            /* parse string const */
+            j = i;
+        has_quote:
+            sep = str[j++];
+            if (str[j] == sep && str[j + 1] == sep) {
+                /* long string */
+                state = (sep == '"') ? IN_LONG_STRING2 : IN_LONG_STRING;
+                j += 2;
+            parse_long_string:
+                while (j < n) {
+                    c = str[j++];
+                    if (c == '\\') {
+                        if (j < n) {
+                            j += 1;
+                        }
+                    } else
+                    if (c == sep && str[j] == sep && str[j + 1] == sep) {
+                        j += 2;
+                        state = 0;
+                        break;
+                    }
+                }
+            } else {
+                state = (sep == '"') ? IN_STRING2 : IN_STRING;
+            parse_string:
+                while (j < n) {
+                    c = str[j++];
+                    if (c == '\\') {
+                        if (j < n) {
+                            j += 1;
+                        }
+                    } else
+                    if (c == sep) {
+                        state = 0;
+                        break;
+                    }
+                }
+            }
+            SET_COLOR(str, i, j, PYTHON_STRING);
+            i = j;
+            continue;
+
+        case '.':
+            if (qe_isdigit(str[i + 1])) {
+                j = i;
+                goto parse_decimal;
+            }
+            break;
+
+        case 'b':
+        case 'B':
+            if (qe_tolower(str[i + 1]) == 'r'
+            &&  (str[i + 2] == '\'' || str[i + 2] == '\"')) {
+                state |= IN_RAW_STRING;
+                j = i + 2;
+                goto has_quote;
+            }
+            goto has_alpha;
+
+        case 'r':
+        case 'R':
+            if (qe_tolower(str[i + 1]) == 'b'
+            &&  (str[i + 2] == '\'' || str[i + 2] == '\"')) {
+                state |= IN_RAW_STRING;
+                j = i + 2;
+                goto has_quote;
+            }
+            if ((str[i + 1] == '\'' || str[i + 1] == '\"')) {
+                state |= IN_RAW_STRING;
+                j = i + 1;
+                goto has_quote;
+            }
+            goto has_alpha;
+
+        default:
+            if (qe_isdigit(c)) {
+                j = i + 1;
+                if (c == '0' && qe_tolower(str[j]) == 'b') {
+                    /* binary numbers */
+                    for (j += 1; str[j] >= '0' && str[j] < '2'; j++)
+                        continue;
+                } else
+                if (c == '0' && qe_tolower(str[j]) == 'o') {
+                    /* octal numbers */
+                    for (j += 1; str[j] >= '0' && str[j] < '8'; j++)
+                        continue;
+                } else
+                if (c == '0' && qe_tolower(str[j]) == 'x') {
+                    /* hexadecimal numbers */
+                    for (j += 1; qe_isxdigit(str[j]); j++)
+                        continue;
+                } else {
+                    /* decimal numbers */
+                    for (j = i + 1; qe_isdigit(str[j]); j++)
+                        continue;
+                parse_decimal:
+                    if (str[j] == '.' && qe_isdigit(str[j + 1])) {
+                        /* decimal floats require a digit after the '.' */
+                        for (j = i + 2; qe_isdigit(str[j]); j++)
+                            continue;
+                    }
+                    if (qe_tolower(str[j]) == 'e') {
+                        int k = j + 1;
+                        if (str[k] == '+' || str[k] == '-')
+                            k++;
+                        if (qe_isdigit(str[k])) {
+                            for (j = k + 1; qe_isdigit(str[j]); j++)
+                                continue;
+                        }
+                    }
+                }
+                if (qe_tolower(str[j]) == 'j') {
+                    j++;
+                }
+                    
+                /* XXX: should detect malformed number constants */
+                SET_COLOR(str, i, j, PYTHON_NUMBER);
+                i = j;
+                continue;
+            }
+        has_alpha:
+            if (qe_isalpha_(c)) {
+                for (klen = 0, j = i; qe_isalnum_(str[j]); j++) {
+                    if (klen < countof(kbuf) - 1)
+                        kbuf[klen++] = str[j];
+                }
+                kbuf[klen] = '\0';
+
+                if (strfind(python_keywords, kbuf)) {
+                    SET_COLOR(str, i, j, PYTHON_KEYWORD);
+                    i = j;
+                    continue;
+                }
+                while (qe_isblank(str[j]))
+                    j++;
+                if (str[j] == '(') {
+                    SET_COLOR(str, i, j, PYTHON_FUNCTION);
+                    i = j;
+                    continue;
+                }
+                i = j;
+                continue;
+            }
+            break;
+        }
+        i++;
+        continue;
+    }
+    *statep = state;
+}
+
+#undef IN_COMMENT
+#undef IN_STRING
+#undef IN_STRING2
+#undef IN_LONG_STRING
+#undef IN_LONG_STRING2
+#undef IN_RAW_STRING
+
+static int python_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->filename, mode->extensions))
+        return 80;
+
+    return 1;
+}
+
+static CmdDef python_commands[] = {
+    CMD_DEF_END,
+};
+
+static ModeDef python_mode;
+
+static int python_init(void)
+{
+    /* python mode is almost like the text mode, so we copy and patch it */
+    memcpy(&python_mode, &text_mode, sizeof(ModeDef));
+    python_mode.name = "Python";
+    python_mode.extensions = "py";
+    python_mode.mode_probe = python_mode_probe;
+    python_mode.colorize_func = python_colorize_line;
+
+    qe_register_mode(&python_mode);
+    qe_register_cmd_table(python_commands, &python_mode);
+
+    return 0;
+}
+
 /*----------------*/
 
 static int extra_modes_init(void)
@@ -1377,6 +1620,7 @@ static int extra_modes_init(void)
     sql_init();
     lua_init();
     haskell_init();
+    python_init();
     return 0;
 }
 

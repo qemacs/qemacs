@@ -1928,6 +1928,10 @@ void lua_colorize_line(unsigned int *buf, int len,
                        int *colorize_state_ptr, int state_only);
 void haskell_colorize_line(unsigned int *buf, int len,
                            int *colorize_state_ptr, int state_only);
+void python_colorize_line(unsigned int *buf, int len,
+                          int *colorize_state_ptr, int state_only);
+void ruby_colorize_line(unsigned int *buf, int len,
+                        int *colorize_state_ptr, int state_only);
 
 /* image.c */
 

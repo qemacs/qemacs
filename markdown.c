@@ -140,10 +140,10 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
             case IN_C:
                 c_colorize_line(str, n, &colstate, state_only);
                 break;
-#if 0
             case IN_PYTHON:
                 python_colorize_line(str, n, &colstate, state_only);
                 break;
+#if 0
             case IN_RUBY:
                 ruby_colorize_line(str, n, &colstate, state_only);
                 break;
