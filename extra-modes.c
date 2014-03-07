@@ -645,7 +645,7 @@ static int ini_mode_probe(ModeDef *mode, ModeProbeData *pd)
             continue;
         }
         /* Check for ^\[.+\]\n */
-        if (*p == '[') {
+        if (*p == '[' && p[1] != '[') {
             while (++p < p_end) {
                 if (*p == ']')
                     return 40;
@@ -921,6 +921,210 @@ static int sql_init(void)
     return 0;
 }
 
+/*---------------- Lua script coloring ----------------*/
+
+static char const lua_keywords[] = {
+    "|and|break|do|else|elseif|end|false|for|function|goto|if|in"
+    "|local|nil|not|or|repeat|return|then|true|until|while"
+    "|"
+};
+
+#if 0
+static char const lua_tokens[] = {
+    "|+|-|*|/|%|^|#|==|~=|<=|>=|<|>|=|(|)|{|}|[|]|::|;|:|,|...|..|.|"
+};
+#endif
+
+#define IN_COMMENT   0x10
+#define IN_STRING    0x20
+#define IN_STRING2   0x40
+#define IN_LONGLIT   0x80
+#define IN_LEVEL     0x0F
+
+enum {
+    LUA_TEXT =         QE_STYLE_DEFAULT,
+    LUA_COMMENT =      QE_STYLE_COMMENT,
+    LUA_STRING =       QE_STYLE_STRING,
+    LUA_LONGLIT =      QE_STYLE_STRING,
+    LUA_NUMBER =       QE_STYLE_NUMBER,
+    LUA_KEYWORD =      QE_STYLE_KEYWORD,
+    LUA_FUNCTION =     QE_STYLE_FUNCTION,
+};
+
+static int lua_long_bracket(unsigned int *str, int *level)
+{
+    int i;
+
+    for (i = 1; str[i] == '='; i++)
+        continue;
+    if (str[i] == str[0]) {
+        *level = i - 1;
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+static void lua_colorize_line(unsigned int *str, int n, int *statep,
+                              __unused__ int state_only)
+{
+    int i = 0, j = i, c, sep = 0, level = 0, level1, klen, style;
+    int state = *statep;
+    char kbuf[32];
+
+    if (state & IN_LONGLIT) {
+        /* either a comment or a string */
+        level = state & IN_LEVEL;
+        goto parse_longlit;
+    }
+
+    if (state & IN_STRING) {
+        sep = '\'';
+        state = 0;
+        goto parse_string;
+    }
+    if (state & IN_STRING2) {
+        sep = '"';
+        state = 0;
+        goto parse_string;
+    }
+
+    while (i < n) {
+        switch (c = str[i]) {
+        case '-':
+            if (str[i + 1] == '-') {
+                if (str[i + 2] == '['
+                &&  lua_long_bracket(str + i + 2, &level)) {
+                    state = IN_COMMENT | IN_LONGLIT | (level & IN_LEVEL);
+                    goto parse_longlit;
+                }
+                SET_COLOR(str, i, n, LUA_COMMENT);
+                i = n;
+                continue;
+            }
+            break;
+        case '\'':
+        case '"':
+            /* parse string const */
+            sep = str[i];
+            j = i + 1;
+        parse_string:
+            for (; j < n;) {
+                c = str[j++];
+                if (c == '\\') {
+                    if (str[j] == 'z' && j + 1 == n) {
+                        /* XXX: partial support for \z */
+                        state = (sep == '\'') ? IN_STRING : IN_STRING2;
+                        j += 1;
+                    } else
+                    if (j == n) {
+                        state = (sep == '\'') ? IN_STRING : IN_STRING2;
+                    } else {
+                        j += 1;
+                    }
+                } else
+                if (c == sep) {
+                    break;
+                }
+            }
+            SET_COLOR(str, i, j, LUA_STRING);
+            i = j;
+            continue;
+        case '[':
+            if (lua_long_bracket(str + i, &level)) {
+                state = IN_LONGLIT | (level & IN_LEVEL);
+                goto parse_longlit;
+            }
+            break;
+        parse_longlit:
+            style = (state & IN_COMMENT) ? LUA_COMMENT : LUA_LONGLIT;
+            for (j = i; j < n; j++) {
+                if (str[j] != ']')
+                    continue;
+                if (lua_long_bracket(str + j, &level1) && level1 == level) {
+                    state = 0;
+                    j += level + 2;
+                    break;
+                }
+            }
+            SET_COLOR(str, i, j, style);
+            i = j;
+            continue;
+        default:
+            if (qe_isdigit(c)) {
+                for (j = i + 1; j < n; j++) {
+                    if (!qe_isalnum(str[j] && str[j] != '.'))
+                        break;
+                }
+                SET_COLOR(str, i, j, LUA_NUMBER);
+                i = j;
+                continue;
+            }
+            if (qe_isalpha_(c)) {
+                for (klen = 0, j = i; qe_isalnum_(str[j]); j++) {
+                    if (klen < countof(kbuf) - 1)
+                        kbuf[klen++] = str[j];
+                }
+                kbuf[klen] = '\0';
+
+                if (strfind(lua_keywords, kbuf)) {
+                    SET_COLOR(str, i, j, LUA_KEYWORD);
+                    i = j;
+                    continue;
+                }
+                while (qe_isblank(str[j]))
+                    j++;
+                if (str[j] == '(') {
+                    SET_COLOR(str, i, j, LUA_FUNCTION);
+                    i = j;
+                    continue;
+                }
+                i = j;
+                continue;
+            }
+            break;
+        }
+        i++;
+        continue;
+    }
+    *statep = state;
+}
+
+#undef IN_COMMENT
+#undef IN_STRING
+#undef IN_STRING2
+#undef IN_LONGLIT
+#undef IN_LEVEL
+
+static int lua_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->filename, mode->extensions))
+        return 80;
+
+    return 1;
+}
+
+static CmdDef lua_commands[] = {
+    CMD_DEF_END,
+};
+
+static ModeDef lua_mode;
+
+static int lua_init(void)
+{
+    /* lua mode is almost like the text mode, so we copy and patch it */
+    memcpy(&lua_mode, &text_mode, sizeof(ModeDef));
+    lua_mode.name = "Lua";
+    lua_mode.extensions = "lua";
+    lua_mode.mode_probe = lua_mode_probe;
+    lua_mode.colorize_func = lua_colorize_line;
+
+    qe_register_mode(&lua_mode);
+    qe_register_cmd_table(lua_commands, &lua_mode);
+
+    return 0;
+}
+
 /*----------------*/
 
 static int extra_modes_init(void)
@@ -931,6 +1135,7 @@ static int extra_modes_init(void)
     ini_init();
     ps_init();
     sql_init();
+    lua_init();
     return 0;
 }
 
