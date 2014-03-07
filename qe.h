@@ -276,6 +276,10 @@ static inline int qe_tolower(int c) {
     return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
 }
 
+static int inline qe_findchar(const char *str, int c) {
+    return qe_inrange(c, 1, 255) && strchr(str, c);
+}
+
 int qe_strcollate(const char *s1, const char *s2);
 void qe_strtolower(char *buf, int buf_size, const char *str);
 void skip_spaces(const char **pp);
@@ -1917,6 +1921,13 @@ extern ModeDef html_mode;
 int gxml_mode_init(EditState *s,
                    ModeSavedData *saved_data,
                    int is_html, const char *default_stylesheet);
+
+/* extra-modes.c */
+
+void lua_colorize_line(unsigned int *buf, int len,
+                       int *colorize_state_ptr, int state_only);
+void haskell_colorize_line(unsigned int *buf, int len,
+                           int *colorize_state_ptr, int state_only);
 
 /* image.c */
 

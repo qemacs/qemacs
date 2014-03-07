@@ -207,8 +207,10 @@ static void canonicalize_path1(char *buf, int buf_size, const char *path)
 void canonicalize_path(char *buf, int buf_size, const char *path)
 {
     const char *p;
+
     /* check for URL protocol or windows drive */
     /* CG: should not skip '/' */
+    /* XXX: bogus if filename contains ':' */
     p = strchr(path, ':');
     if (p) {
         if ((p - path) == 1) {
@@ -232,6 +234,7 @@ static int is_abs_path(const char *path)
 {
     const char *p;
 
+    /* XXX: should only accept 'drive:' and 'proto:' */
     p = strchr(path, ':');
     if (p)
         p++;

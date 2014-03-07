@@ -290,7 +290,7 @@ static void basic_colorize_line(unsigned int *str, int n, int *statep,
         if (qe_isalpha_(str[i])) {
             for (j = i + 1; j < n; j++) {
                 if (!qe_isalnum_(str[j])) {
-                    if (strchr("$&!@%#", str[j]))
+                    if (qe_findchar("$&!@%#", str[j]))
                         j++;
                     break;
                 }
@@ -693,7 +693,7 @@ enum {
     PS_IDENTIFIER =   QE_STYLE_FUNCTION,
 };
 
-#define ispssep(c)      (strchr(" \t\r\n,()<>[]{}/", (c)) != NULL)
+#define ispssep(c)      (qe_findchar(" \t\r\n,()<>[]{}/", c))
 #define wrap 0
 
 static void ps_colorize_line(unsigned int *str, int n, int *statep,
@@ -965,8 +965,8 @@ static int lua_long_bracket(unsigned int *str, int *level)
     }
 }
 
-static void lua_colorize_line(unsigned int *str, int n, int *statep,
-                              __unused__ int state_only)
+void lua_colorize_line(unsigned int *str, int n, int *statep,
+                       __unused__ int state_only)
 {
     int i = 0, j = i, c, sep = 0, level = 0, level1, klen, style;
     int state = *statep;
@@ -1052,6 +1052,7 @@ static void lua_colorize_line(unsigned int *str, int n, int *statep,
             continue;
         default:
             if (qe_isdigit(c)) {
+                /* XXX: should parse actual number syntax */
                 for (j = i + 1; j < n; j++) {
                     if (!qe_isalnum(str[j] && str[j] != '.'))
                         break;
@@ -1125,6 +1126,245 @@ static int lua_init(void)
     return 0;
 }
 
+/*---------------- Haskell coloring ----------------*/
+
+static char const haskell_keywords[] = {
+    "|_|case|class|data|default|deriving|do|else|foreign"
+    "|if|import|in|infix|infixl|infixr|instance|let"
+    "|module|newtype|of|then|type|where"
+    "|"
+};
+
+#define IN_COMMENT   0x10
+#define IN_STRING    0x20
+#define IN_LEVEL     0x0F
+
+enum {
+    HASKELL_TEXT =         QE_STYLE_DEFAULT,
+    HASKELL_COMMENT =      QE_STYLE_COMMENT,
+    HASKELL_STRING =       QE_STYLE_STRING,
+    HASKELL_LONGLIT =      QE_STYLE_STRING,
+    HASKELL_NUMBER =       QE_STYLE_NUMBER,
+    HASKELL_KEYWORD =      QE_STYLE_KEYWORD,
+    HASKELL_FUNCTION =     QE_STYLE_FUNCTION,
+    HASKELL_SYMBOL =       QE_STYLE_NUMBER,
+};
+
+static inline int haskell_is_symbol(int c)
+{
+    return qe_findchar("!#$%&+./<=>?@\\^|-~:", c);
+}
+
+void haskell_colorize_line(unsigned int *str, int n, int *statep,
+                           __unused__ int state_only)
+{
+    int i = 0, j = i, c, sep = 0, level = 0, klen;
+    int state = *statep;
+    char kbuf[32];
+
+    if (state & IN_COMMENT)
+        goto parse_comment;
+
+    if (state & IN_STRING) {
+        sep = '\"';
+        state = 0;
+        while (qe_isspace(str[j]))
+            j++;
+        if (str[j] == '\\')
+            j++;
+        goto parse_string;
+    }
+
+    while (i < n) {
+        switch (c = str[i]) {
+        case '-':
+            if (str[i + 1] == '-' && !haskell_is_symbol(str[i + 2])) {
+                SET_COLOR(str, i, n, HASKELL_COMMENT);
+                i = n;
+                continue;
+            }
+            goto parse_symbol;
+        case '{':
+            if (str[i + 1] == '-') {
+                state |= IN_COMMENT;
+                goto parse_comment;
+            }
+            /* FALL THRU */
+        case '}':
+        case '(':
+        case ')':
+        case '[':
+        case ']':
+        case ',':
+        case ';':
+        case '`':
+            /* special */
+            break;
+            
+        parse_comment:
+            level = state & IN_LEVEL;
+            for (j = i; j < n; j++) {
+                if (str[i] == '{' && str[i + 1] == '-') {
+                    level++;
+                    j++;
+                    continue;
+                }
+                if (str[i] == '-' && str[i + 1] == '}') {
+                    j++;
+                    level--;
+                    if (level == 0) {
+                        j++;
+                        state &= ~IN_COMMENT;
+                        break;
+                    }
+                }
+            }
+            state &= ~IN_COMMENT;
+            state |= level & IN_COMMENT;
+            SET_COLOR(str, i, j, HASKELL_COMMENT);
+            i = j;
+            continue;
+
+        case '\'':
+        case '"':
+            /* parse string const */
+            sep = str[i];
+            j = i + 1;
+        parse_string:
+            for (; j < n;) {
+                c = str[j++];
+                if (c == '\\') {
+                    if (j == n) {
+                        if (sep == '\"') {
+                            /* XXX: should ignore whitespace */
+                            state = IN_STRING;
+                        }
+                    } else
+                    if (str[j] == '^' && j + 1 < n && str[j + 1] != sep) {
+                        j += 2;
+                    } else {
+                        j += 1;
+                    }
+                } else
+                if (c == sep) {
+                    break;
+                }
+            }
+            SET_COLOR(str, i, j, HASKELL_STRING);
+            i = j;
+            continue;
+
+        default:
+            if (qe_isdigit(c)) {
+                j = i + 1;
+                if (c == '0' && qe_tolower(str[j]) == 'o') {
+                    /* octal numbers */
+                    for (j += 1; str[j] >= '0' && str[j] < '8'; j++)
+                        continue;
+                } else
+                if (c == '0' && qe_tolower(str[j]) == 'x') {
+                    /* hexadecimal numbers */
+                    for (j += 1; qe_isxdigit(str[j]); j++)
+                        continue;
+                } else {
+                    /* decimal numbers */
+                    for (j = i + 1; qe_isdigit(str[j]); j++)
+                        continue;
+                    if (str[j] == '.' && qe_isdigit(str[j + 1])) {
+                        /* decimal floats require a digit after the '.' */
+                        for (j = i + 2; qe_isdigit(str[j]); j++)
+                            continue;
+                        if (qe_tolower(str[j]) == 'e') {
+                            int k = j + 1;
+                            if (str[k] == '+' || str[k] == '-')
+                                k++;
+                            if (qe_isdigit(str[k])) {
+                                for (j = k + 1; qe_isdigit(str[j]); j++)
+                                    continue;
+                            }
+                        }
+                    }
+                }
+                /* XXX: should detect malformed number constants */
+                SET_COLOR(str, i, j, HASKELL_NUMBER);
+                i = j;
+                continue;
+            }
+            if (qe_isalpha_(c)) {
+                for (klen = 0, j = i + 1;
+                     qe_isalnum_(str[j]) || str[j] == '\'';
+                     j++) {
+                    if (klen < countof(kbuf) - 1)
+                        kbuf[klen++] = str[j];
+                }
+                kbuf[klen] = '\0';
+
+                if (strfind(haskell_keywords, kbuf)) {
+                    SET_COLOR(str, i, j, HASKELL_KEYWORD);
+                    i = j;
+                    continue;
+                }
+                while (qe_isblank(str[j]))
+                    j++;
+                if (str[j] == '(') {
+                    SET_COLOR(str, i, j, HASKELL_FUNCTION);
+                    i = j;
+                    continue;
+                }
+                i = j;
+                continue;
+            }
+        parse_symbol:
+            if (haskell_is_symbol(c)) {
+                for (j = i + 1; haskell_is_symbol(str[j]); j++)
+                    continue;
+                SET_COLOR(str, i, j, HASKELL_SYMBOL);
+                i = j;
+                continue;
+            }
+            break;
+        }
+        i++;
+        continue;
+    }
+    *statep = state;
+}
+
+#undef IN_COMMENT
+#undef IN_STRING
+#undef IN_STRING2
+#undef IN_LONGLIT
+#undef IN_LEVEL
+
+static int haskell_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->filename, mode->extensions))
+        return 80;
+
+    return 1;
+}
+
+static CmdDef haskell_commands[] = {
+    CMD_DEF_END,
+};
+
+static ModeDef haskell_mode;
+
+static int haskell_init(void)
+{
+    /* haskell mode is almost like the text mode, so we copy and patch it */
+    memcpy(&haskell_mode, &text_mode, sizeof(ModeDef));
+    haskell_mode.name = "Haskell";
+    haskell_mode.extensions = "hs|haskell";
+    haskell_mode.mode_probe = haskell_mode_probe;
+    haskell_mode.colorize_func = haskell_colorize_line;
+
+    qe_register_mode(&haskell_mode);
+    qe_register_cmd_table(haskell_commands, &haskell_mode);
+
+    return 0;
+}
+
 /*----------------*/
 
 static int extra_modes_init(void)
@@ -1136,6 +1376,7 @@ static int extra_modes_init(void)
     ps_init();
     sql_init();
     lua_init();
+    haskell_init();
     return 0;
 }
 
