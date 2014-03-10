@@ -831,15 +831,16 @@ static void do_describe_buffer(EditState *s, int argval)
             case '\'':  c = '\''; break;
             default: c = 0; break;
             }
+            col += eb_printf(b1, " %5d", count[i]);
+
             if (c != 0)
                 col += eb_printf(b1, "  '\\%c'", c);
             else
             if (i >= ' ' && i < 0x7f)
-                col += eb_printf(b1, "   '%c'", i);
+                col += eb_printf(b1, "  '%c' ", i);
             else
                 col += eb_printf(b1, "  0x%02x", i);
 
-            col += eb_printf(b1, "  %-4d", count[i]);
             if (col >= 60) {
                 eb_printf(b1, "\n");
                 col = 0;
