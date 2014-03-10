@@ -1554,11 +1554,15 @@ static inline int display_char(DisplayState *s, int offset1, int offset2,
     return display_char_bidir(s, offset1, offset2, 0, ch);
 }
 
-static inline void set_color(unsigned int *p, const unsigned int *to, int style) {
+#define SET_COLOR(str,a,b,style)  set_color((str) + (a), (str) + (b), style)
+
+static inline void set_color(unsigned int *p, unsigned int *to, int style) {
     style <<= STYLE_SHIFT;
     while (p < to)
         *p++ |= style;
 }
+
+#define SET_COLOR1(str,a,style)  set_color1((str) + (a), style)
 
 static inline void set_color1(unsigned int *p, int style) {
     *p |= style << STYLE_SHIFT;

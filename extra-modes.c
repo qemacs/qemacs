@@ -20,8 +20,6 @@
 
 #include "qe.h"
 
-#define SET_COLOR(str,a,b,style)  set_color((str) + (a), (str) + (b), style)
-
 #define MAX_KEYWORD_SIZE  16
 static int is_lc_keyword(unsigned int *str, int from, int to, const char *list)
 {

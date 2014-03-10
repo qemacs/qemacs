@@ -131,7 +131,7 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
         if (ustrstart(str + i, "~~~", NULL)
         ||  ustrstart(str + i, "```", NULL)) {
             colstate &= ~(IN_BLOCK | IN_LANG);
-            set_color(str + i, str + n, QE_STYLE_MKD_TILDE);
+            SET_COLOR(str, i, n, QE_STYLE_MKD_TILDE);
             i = n;
         } else {
             int lang = colstate & IN_LANG;
@@ -153,7 +153,7 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
                 lua_colorize_line(str, n, &colstate, state_only);
                 break;
             default:
-                set_color(str + i, str + n, QE_STYLE_MKD_CODE);
+                SET_COLOR(str, i, n, QE_STYLE_MKD_CODE);
                 break;
             }
             colstate &= ~(IN_BLOCK | IN_LANG);
@@ -170,18 +170,18 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
 
         if (qe_isblank(str[j])) {
             base_style = MkdBulletStyles[(j - i - 1) % BULLET_STYLES];
-            set_color(str + i, str + j + 1, base_style);
+            SET_COLOR(str, i, j + 1, base_style);
             i = j + 1;
         }
     } else
     if (str[i] == '%') {
         /* pandoc extension: line comment */
-        set_color(str + i, str + n, QE_STYLE_MKD_COMMENT);
+        SET_COLOR(str, i, n, QE_STYLE_MKD_COMMENT);
         i = n;
     } else
     if (str[i] == '>') {
         /* block quoting */
-        set_color(str + i, str + n, QE_STYLE_MKD_BLOCK_QUOTE);
+        SET_COLOR(str, i, n, QE_STYLE_MKD_BLOCK_QUOTE);
         i = n;
     } else
     if (ustrstart(str + i, "~~~", NULL)
@@ -204,7 +204,7 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
         if (ustrstr(str + i + 3, "ruby")) {
             colstate |= IN_RUBY;
         }
-        set_color(str + i, str + n, QE_STYLE_MKD_TILDE);
+        SET_COLOR(str, i, n, QE_STYLE_MKD_TILDE);
         i = n;
     } else
     if (str[i] == '-') {
@@ -212,7 +212,7 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
         for (j = i + 1; str[j] == '-'; j++)
             continue;
         if (j == n) {
-            set_color(str + i, str + n, QE_STYLE_MKD_HEADING2);
+            SET_COLOR(str, i, n, QE_STYLE_MKD_HEADING2);
             i = n;
         }
     } else
@@ -221,7 +221,7 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
         for (j = i + 1; str[j] == '='; j++)
             continue;
         if (j == n) {
-            set_color(str + i, str + n, QE_STYLE_MKD_HEADING1);
+            SET_COLOR(str, i, n, QE_STYLE_MKD_HEADING1);
             i = n;
         }
     } else
@@ -265,7 +265,7 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
 
         if (indent >= 4) {
             /* Should detect sequel lines in ordered/unordered lists */
-            set_color(str + i, str + n, QE_STYLE_MKD_CODE);
+            SET_COLOR(str, i, n, QE_STYLE_MKD_CODE);
             i = n;
         }
     }
@@ -282,7 +282,7 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
         }
         if (j == n && count >= 3) {
             /* Horizontal rule */
-            set_color(str + i, str + n, QE_STYLE_MKD_HBAR);
+            SET_COLOR(str, i, n, QE_STYLE_MKD_HBAR);
             i = n;
         }
     }
@@ -374,17 +374,17 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
             break;
         case '\\':  /* escape */
             if (strchr("\\`*_{}[]()#+-.!", str[i + 1])) {
-                set_color(str + i, str + i + 2, base_style);
+                SET_COLOR(str, i, i + 2, base_style);
                 i += 2;
                 continue;
             }
             break;
         }
         if (chunk) {
-            set_color(str + i, str + i + chunk, chunk_style);
+            SET_COLOR(str, i, i + chunk, chunk_style);
             i += chunk;
         } else {
-            set_color1(str + i, base_style);
+            SET_COLOR1(str, i, base_style);
             i++;
         }
     }

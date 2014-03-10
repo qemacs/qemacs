@@ -73,7 +73,7 @@ static void makefile_colorize_line(unsigned int *str, int n, int *statep,
                 }
             }
             if (i < j)
-                set_color(str + i, str + j, MAKEFILE_MACRO);
+                SET_COLOR(str, i, j, MAKEFILE_MACRO);
             i = j;
             continue;
         case ' ':
@@ -89,18 +89,18 @@ static void makefile_colorize_line(unsigned int *str, int n, int *statep,
                 break;
             if (str[i+1] == '=')
                 goto variable;
-            set_color(str + j, str + i, MAKEFILE_TARGET);
+            SET_COLOR(str, j, i, MAKEFILE_TARGET);
             break;
         case '=':
             if (j)
                 break;
         variable:
-            set_color(str + j, str + i, MAKEFILE_VARIABLE);
+            SET_COLOR(str, j, i, MAKEFILE_VARIABLE);
             break;
         case '#':
             if (i > 0 && str[i - 1] == '\\')
                 break;
-            set_color(str + i, str + n, MAKEFILE_COMMENT);
+            SET_COLOR(str, i, n, MAKEFILE_COMMENT);
             i = n;
             continue;
         case '!':
@@ -113,7 +113,7 @@ static void makefile_colorize_line(unsigned int *str, int n, int *statep,
                 if (str[j] == '#')
                     break;
             }
-            set_color(str + i, str + j, MAKEFILE_PREPROCESS);
+            SET_COLOR(str, i, j, MAKEFILE_PREPROCESS);
             i = j;
             continue;
         case '\'':
@@ -126,7 +126,7 @@ static void makefile_colorize_line(unsigned int *str, int n, int *statep,
                     break;
                 }
             }
-            set_color(str + i, str + j, MAKEFILE_STRING);
+            SET_COLOR(str, i, j, MAKEFILE_STRING);
             i = j;
             continue;
         default:

@@ -114,13 +114,13 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
 
         if (str[j] == ' ') {
             base_style = OrgBulletStyles[(j - i - 1) % BULLET_STYLES];
-            set_color(str + i, str + j + 1, base_style);
+            SET_COLOR(str, i, j + 1, base_style);
             i = j + 1;
 
             kw = org_todo_keyword(str + i);
             if (kw > -1) {
                 j = i + strlen(OrgTodoKeywords[kw].keyword) + 1;
-                set_color(str + i, str + j, OrgTodoKeywords[kw].style);
+                SET_COLOR(str, i, j, OrgTodoKeywords[kw].style);
                 i = j;
             }
         }
@@ -130,7 +130,7 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
 
         if (str[i] == '#') {
             if (str[i + 1] == ' ') {  /* [ \t]*[#][ ] -> comment */
-                set_color(str + i, str + n, QE_STYLE_COMMENT);
+                SET_COLOR(str, i, n, QE_STYLE_COMMENT);
                 i = n;
             } else
             if (str[i + 1] == '+') {  /* [ \t]*[#][+] -> metadata */
@@ -145,18 +145,18 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
                         colstate |= IN_LISP;
                     }
                 }
-                set_color(str + i, str + n, QE_STYLE_PREPROCESS);
+                SET_COLOR(str, i, n, QE_STYLE_PREPROCESS);
                 i = n;
             }
         } else
         if (str[i] == ':') {
             if (str[i + 1] == ' ') {
                 /* code snipplet, should use code colorizer */
-                set_color(str + i, str + n, QE_STYLE_FUNCTION);
+                SET_COLOR(str, i, n, QE_STYLE_FUNCTION);
                 i = n;
             } else {
                 /* property */
-                set_color(str + i, str + n, QE_STYLE_KEYWORD);
+                SET_COLOR(str, i, n, QE_STYLE_KEYWORD);
                 i = n;
             }
         } else
@@ -214,7 +214,7 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
                 break;
             case '\\':  /* TeX syntax: \keyword \- \[ \] \( \) */
                 if (str[i + 1] == '\\') {  /* \\ escape */
-                    set_color(str + i, str + i + 2, base_style);
+                    SET_COLOR(str, i, i + 2, base_style);
                     i += 2;
                     continue;
                 }
@@ -259,10 +259,10 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
             has_space = (str[i] == ' ');
         }
         if (chunk) {
-            set_color(str + i, str + i + chunk, QE_STYLE_STRING);
+            SET_COLOR(str, i, i + chunk, QE_STYLE_STRING);
             i += chunk;
         } else {
-            set_color1(str + i, base_style);
+            SET_COLOR1(str, i, base_style);
             i++;
         }
     }

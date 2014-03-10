@@ -113,21 +113,21 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
             i++;
             colstate &= ~(IN_STRING1|IN_STRING2);
         }
-        set_color(str + j, str + i, PERL_STRING);
+        SET_COLOR(str, j, i, PERL_STRING);
     } else
     if (colstate & IN_FORMAT) {
         i = n;
         if (n == 1 && str[0] == '.')
             colstate &= ~IN_FORMAT;
-        set_color(str + j, str + i, PERL_STRING);
+        SET_COLOR(str, j, i, PERL_STRING);
     }
     if (colstate & IN_HEREDOC) {
         i = n;
         if (n == perl_eos_len && !umemcmp(perl_eos, str, n)) {
             colstate &= ~IN_HEREDOC;
-            set_color(str + j, str + i, PERL_KEYWORD);
+            SET_COLOR(str, j, i, PERL_KEYWORD);
         } else {
-            set_color(str + j, str + i, PERL_STRING);
+            SET_COLOR(str, j, i, PERL_STRING);
         }
     }
     if (str[i] == '=' && qe_isalpha(str[i + 1])) {
@@ -139,10 +139,10 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
         }
         if (str[i] == '=' && qe_isalpha(str[i + 1])) {
             i = n;
-            set_color(str + j, str + i, PERL_KEYWORD);
+            SET_COLOR(str, j, i, PERL_KEYWORD);
         } else {
             i = n;
-            set_color(str + j, str + i, PERL_COMMENT);
+            SET_COLOR(str, j, i, PERL_COMMENT);
         }
     }
 
@@ -172,7 +172,7 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
                 break;
             s1 = perl_var(str, j, n);
             if (s1 > j) {
-                set_color(str + i, str + s1, PERL_VAR);
+                SET_COLOR(str, i, s1, PERL_VAR);
                 i = s1;
                 continue;
             }
@@ -188,7 +188,7 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
             }
             break;
         case '#':
-            set_color(str + i, str + n, PERL_COMMENT);
+            SET_COLOR(str, i, n, PERL_COMMENT);
             i = n;
             continue;
         case '<':
@@ -221,12 +221,12 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
             s1 = perl_string(str, c, j, n);
             if (s1 >= n)
                 break;
-            set_color1(str + i, PERL_DELIM);
-            set_color(str + i + 1, str + s1, PERL_REGEX);
+            SET_COLOR1(str, i, PERL_DELIM);
+            SET_COLOR(str, i + 1, s1, PERL_REGEX);
             i = s1;
             while (++i < n && qe_isalpha(str[i]))
                 continue;
-            set_color(str + s1, str + i, PERL_DELIM);
+            SET_COLOR(str, s1, i, PERL_DELIM);
             continue;
         case '\'':
         case '`':
@@ -237,13 +237,13 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
             s1 = perl_string(str, delim, j, n);
             if (s1 >= n) {
                 if (c == '\'') {
-                    set_color(str + i, str + n, PERL_STRING);
+                    SET_COLOR(str, i, n, PERL_STRING);
                     i = n;
                     colstate |= IN_STRING1;
                     continue;
                 }
                 if (c == '\"') {
-                    set_color(str + i, str + n, PERL_STRING);
+                    SET_COLOR(str, i, n, PERL_STRING);
                     i = n;
                     colstate |= IN_STRING2;
                     continue;
@@ -254,7 +254,7 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
                 break;
             }
             s1++;
-            set_color(str + i, str + s1, PERL_STRING);
+            SET_COLOR(str, i, s1, PERL_STRING);
             i = s1;
             continue;
         case '.':
@@ -266,7 +266,7 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
             if (qe_isdigit(c)) {
             number:
                 j = perl_number(str, i, n);
-                set_color(str + i, str + j, PERL_NUMBER);
+                SET_COLOR(str, i, j, PERL_NUMBER);
                 i = j;
                 continue;
             }
@@ -286,12 +286,12 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
                 s1 = perl_string(str, str[j], j + 1, n);
                 if (s1 >= n)
                     goto keyword;
-                set_color(str + i, str + j + 1, PERL_DELIM);
-                set_color(str + j + 1, str + s1, PERL_REGEX);
+                SET_COLOR(str, i, j + 1, PERL_DELIM);
+                SET_COLOR(str, j + 1, s1, PERL_REGEX);
                 i = s1;
                 while (++i < n && qe_isalpha(str[i]))
                     continue;
-                set_color(str + s1, str + i, PERL_DELIM);
+                SET_COLOR(str, s1, i, PERL_DELIM);
                 continue;
             }
             /* Should check for context */
@@ -303,14 +303,14 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
                 s2 = perl_string(str, str[j], s1 + 1, n);
                 if (s2 >= n)
                     goto keyword;
-                set_color(str + i, str + j + 1, PERL_DELIM);
-                set_color(str + j + 1, str + s1, PERL_REGEX);
-                set_color1(str + s1, PERL_DELIM);
-                set_color(str + s1 + 1, str + s2, PERL_REGEX);
+                SET_COLOR(str, i, j + 1, PERL_DELIM);
+                SET_COLOR(str, j + 1, s1, PERL_REGEX);
+                SET_COLOR1(str, s1, PERL_DELIM);
+                SET_COLOR(str, s1 + 1, s2, PERL_REGEX);
                 i = s2;
                 while (++i < n && qe_isalpha(str[i]))
                     continue;
-                set_color(str + s2, str + i, PERL_DELIM);
+                SET_COLOR(str, s2, i, PERL_DELIM);
                 continue;
             }
         keyword:
@@ -324,7 +324,7 @@ static void perl_colorize_line(unsigned int *str, int n, int *statep,
                     colstate |= IN_FORMAT;
                 }
             }
-            set_color(str + i, str + j, PERL_KEYWORD);
+            SET_COLOR(str, i, j, PERL_KEYWORD);
             i = j;
             continue;
         }

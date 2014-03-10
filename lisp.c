@@ -47,7 +47,7 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
                 break;
             }
         }
-        set_color(str + i, str + j, LISP_STRING);
+        SET_COLOR(str, i, j, LISP_STRING);
         i = j;
     }
     if (colstate & IN_COMMENT) {
@@ -58,13 +58,13 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
                 break;
             }
         }
-        set_color(str + i, str + j, LISP_COMMENT);
+        SET_COLOR(str, i, j, LISP_COMMENT);
         i = j;
     }
     while (i < n) {
         switch (str[i]) {
         case ';':
-            set_color(str + i, str + n, LISP_COMMENT);
+            SET_COLOR(str, i, n, LISP_COMMENT);
             i = n;
             continue;
         case '#':
@@ -78,7 +78,7 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
                         break;
                     }
                 }
-                set_color(str + i, str + j, LISP_COMMENT);
+                SET_COLOR(str, i, j, LISP_COMMENT);
                 i = j;
                 continue;
             }
@@ -92,7 +92,7 @@ static void lisp_colorize_line(unsigned int *str, int n, int *statep,
                     break;
                 }
             }
-            set_color(str + i, str + j, LISP_STRING);
+            SET_COLOR(str, i, j, LISP_STRING);
             i = j;
             continue;
         default:

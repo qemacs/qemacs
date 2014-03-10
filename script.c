@@ -20,7 +20,7 @@
 
 #include "qe.h"
 
-/*---------------- Perl colors ----------------*/
+/*---------------- Shell script colors ----------------*/
 
 enum {
     SCRIPT_TEXT =       QE_STYLE_DEFAULT,
@@ -57,7 +57,7 @@ static void script_colorize_line(unsigned int *str, int n, int *statep,
             style = SCRIPT_COMMENT;
             if (str[i + 1] == '!')
                 style = SCRIPT_PREPROCESS;
-            set_color(str + i, str + n, style);
+            SET_COLOR(str, i, n, style);
             i = n;
             continue;
         case '`':
@@ -74,7 +74,7 @@ static void script_colorize_line(unsigned int *str, int n, int *statep,
                     break;
                 }
             }
-            set_color(str + i, str + j, style);
+            SET_COLOR(str, i, j, style);
             i = j;
             continue;
         case ' ':
@@ -87,7 +87,7 @@ static void script_colorize_line(unsigned int *str, int n, int *statep,
                     j++;
                 if (str[j] == '=')
                     style = SCRIPT_VARIABLE;
-                set_color(str + i, str + j, style);
+                SET_COLOR(str, i, j, style);
                 style = SCRIPT_TEXT;
                 i = j;
                 continue;
