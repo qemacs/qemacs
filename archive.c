@@ -256,6 +256,8 @@ static EditBufferDataType compress_data_type = {
 
 static int compress_init(void)
 {
+    int i;
+
     /* compress mode is almost like the text mode, so we copy and patch it */
     memcpy(&compress_mode, &text_mode, sizeof(ModeDef));
     compress_mode.name = "compress";
@@ -263,7 +265,7 @@ static int compress_init(void)
     compress_mode.mode_init = compress_mode_init;
     compress_mode.data_type = &compress_data_type;
 
-    for (int i = 1; i < countof(compress_type_array); i++) {
+    for (i = 1; i < countof(compress_type_array); i++) {
         compress_type_array[i - 1].next = compress_type_array + i;
     }
     compress_types = compress_type_array;
