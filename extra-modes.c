@@ -1258,7 +1258,7 @@ void haskell_colorize_line(unsigned int *str, int n, int *statep,
                 j = i + 1;
                 if (c == '0' && qe_tolower(str[j]) == 'o') {
                     /* octal numbers */
-                    for (j += 1; str[j] >= '0' && str[j] < '8'; j++)
+                    for (j += 1; qe_isoctdigit(str[j]); j++)
                         continue;
                 } else
                 if (c == '0' && qe_tolower(str[j]) == 'x') {
@@ -1415,8 +1415,9 @@ void python_colorize_line(unsigned int *str, int n, int *statep,
     while (i < n) {
         switch (c = str[i]) {
         case '#':
-            SET_COLOR(str, i, n, PYTHON_COMMENT);
-            i = n;
+            j = n;
+            SET_COLOR(str, i, j, PYTHON_COMMENT);
+            i = j;
             continue;
             
         case '\'':
@@ -1432,7 +1433,7 @@ void python_colorize_line(unsigned int *str, int n, int *statep,
             parse_long_string:
                 while (j < n) {
                     c = str[j++];
-                    if (c == '\\') {
+                    if (!(state & IN_RAW_STRING) && c == '\\') {
                         if (j < n) {
                             j += 1;
                         }
@@ -1448,7 +1449,7 @@ void python_colorize_line(unsigned int *str, int n, int *statep,
             parse_string:
                 while (j < n) {
                     c = str[j++];
-                    if (c == '\\') {
+                    if (!(state & IN_RAW_STRING) && c == '\\') {
                         if (j < n) {
                             j += 1;
                         }
@@ -1500,12 +1501,12 @@ void python_colorize_line(unsigned int *str, int n, int *statep,
                 j = i + 1;
                 if (c == '0' && qe_tolower(str[j]) == 'b') {
                     /* binary numbers */
-                    for (j += 1; str[j] >= '0' && str[j] < '2'; j++)
+                    for (j += 1; qe_isbindigit(str[j]); j++)
                         continue;
                 } else
                 if (c == '0' && qe_tolower(str[j]) == 'o') {
                     /* octal numbers */
-                    for (j += 1; str[j] >= '0' && str[j] < '8'; j++)
+                    for (j += 1; qe_isoctdigit(str[j]); j++)
                         continue;
                 } else
                 if (c == '0' && qe_tolower(str[j]) == 'x') {
@@ -1608,6 +1609,496 @@ static int python_init(void)
     return 0;
 }
 
+/*---------------- Ruby script coloring ----------------*/
+
+static char const ruby_keywords[] = {
+    "|__ENCODING__|__END__|__FILE__|__LINE__"
+    "|BEGIN|END|alias|and|assert|begin|break"
+    "|call|case|catch|class|def|defined?|do"
+    "|else|elsif|end|ensure|eval|exit|extend"
+    "|false|for|if|in|include|lambda|lambda?|loop"
+    "|module|new|next|nil|not|or|private|proc"
+    "|raise|refute|require|rescue|retry|return"
+    "|self|super|then|throw|true|unless|until"
+    "|when|while|yield"
+    "|"
+};
+
+#define IN_HEREDOC    0x80
+#define IN_HD_INDENT  0x40
+#define IN_HD_SIG     0x3f
+#define IN_COMMENT    0x40
+#define IN_STRING     0x20      /* single quote */
+#define IN_STRING2    0x10      /* double quote */
+#define IN_STRING3    0x08      /* back quote */
+#define IN_STRING4    0x04      /* %q{...} */
+#define IN_REGEX      0x02
+#define IN_POD        0x01
+
+enum {
+    RUBY_TEXT =         QE_STYLE_DEFAULT,
+    RUBY_COMMENT =      QE_STYLE_COMMENT,
+    RUBY_STRING =       QE_STYLE_STRING,
+    RUBY_STRING2 =      QE_STYLE_STRING,
+    RUBY_STRING3 =      QE_STYLE_STRING,
+    RUBY_STRING4 =      QE_STYLE_STRING,
+    RUBY_REGEX =        QE_STYLE_STRING_Q,
+    RUBY_NUMBER =       QE_STYLE_NUMBER,
+    RUBY_KEYWORD =      QE_STYLE_KEYWORD,
+    RUBY_FUNCTION =     QE_STYLE_FUNCTION,
+    RUBY_VARIABLE =     QE_STYLE_VARIABLE,
+    RUBY_HEREDOC =      QE_STYLE_PREPROCESS,
+};
+
+static int ruby_get_name(char *buf, int size, unsigned int *str)
+{
+    int len, i = 0, j;
+
+    for (len = 0, j = i; qe_isalnum_(str[j]); j++) {
+        if (len < size - 1)
+            buf[len++] = str[j];
+    }
+    if (str[j] == '?' || str[j] == '!') {
+        if (len < size - 1)
+            buf[len++] = str[j];
+        j++;
+    }
+    if (len < size) {
+        buf[len] = '\0';
+    }
+    return j - i;
+}
+
+void ruby_colorize_line(unsigned int *str, int n, int *statep,
+                        __unused__ int state_only)
+{
+    int i = 0, j = i, c, indent, sig;
+    static int sep, sep0, level;        /* XXX: ugly patch */
+    int state = *statep;
+    char kbuf[32];
+
+    if (state & IN_HEREDOC) {
+        if (state & IN_HD_INDENT) {
+            while (qe_isspace(str[j]))
+                j++;
+        }
+        for (sig = 0; qe_isupper_(str[j]); j++) {
+            sig = ((sig << 6) + str[j]) % 61;
+        }
+        for (; qe_isspace(str[j]); j++)
+            continue;
+        SET_COLOR(str, i, n, RUBY_HEREDOC);
+        i = n;
+        if (j > 0 && j == n && (state & IN_HD_SIG) == (sig & IN_HD_SIG))
+            state &= ~(IN_HEREDOC | IN_HD_INDENT | IN_HD_SIG);
+    } else {
+        if (state & IN_COMMENT)
+            goto parse_c_comment;
+
+        if (state & IN_REGEX)
+            goto parse_regex;
+
+        if (state & IN_STRING)
+            goto parse_string;
+
+        if (state & IN_STRING2)
+            goto parse_string2;
+
+        if (state & IN_STRING3)
+            goto parse_string3;
+
+        if (state & IN_STRING4)
+            goto parse_string4;
+
+        if (str[i] == '=' && qe_isalpha(str[i + 1])) {
+            state |= IN_POD;
+        }
+        if (state & IN_POD) {
+            if (ustrstart(str + i, "=end", NULL)) {
+                state &= ~IN_POD;
+            }
+            if (str[i] == '=' && qe_isalpha(str[i + 1])) {
+                SET_COLOR(str, i, n, RUBY_KEYWORD);
+            } else {
+                SET_COLOR(str, i, n, RUBY_COMMENT);
+            }
+            i = n;
+        }
+    }
+
+    while (i < n && qe_isspace(str[i]))
+        i++;
+
+    indent = i;
+
+    while (i < n) {
+        switch (c = str[i]) {
+        case '/':
+            if (str[i + 1] == '*') {
+                /* C comment */
+                j = i + 2;
+            parse_c_comment:
+                state = IN_COMMENT;
+                for (; j < n; j++) {
+                    if (str[j] == '*' && str[j + 1] == '/') {
+                        j += 2;
+                        state &= ~IN_COMMENT;
+                        break;
+                    }
+                }
+                goto comment;
+            }
+            if (i == indent
+            ||  (str[i + 1] != ' ' && str[i + 1] != '='
+            &&   !qe_isalnum(str[i - 1] & CHAR_MASK)
+            &&   str[i - 1] != ')')) {
+                /* XXX: should use context to tell regex from divide */
+                /* parse regex */
+                j = i + 1;
+                state = IN_REGEX;
+            parse_regex:
+                while (j < n) {
+                    /* XXX: should ignore / inside char classes */
+                    c = str[j++];
+                    if (c == '\\') {
+                        if (j < n) {
+                            j += 1;
+                        }
+                    } else
+                    if (c == '#' && str[j] == '{') {
+                        /* should parse full syntax */
+                        while (j < n && str[j++] != '}')
+                            continue;
+                    } else
+                    if (c == '/') {
+                        while (qe_findchar("ensuimox", str[j])) {
+                            j++;
+                        }
+                        state = 0;
+                        break;
+                    }
+                }
+                SET_COLOR(str, i, j, RUBY_REGEX);
+                i = j;
+                continue;
+            }
+            break;
+
+        case '#':
+            j = n;
+        comment:
+            SET_COLOR(str, i, j, RUBY_COMMENT);
+            i = j;
+            continue;
+            
+        case '%':
+            /* parse alternate string/array syntaxes */
+            if (!qe_isspace(str[i + 1]) && !qe_isalnum(str[i + 1])) {
+                j = i + 1;
+                goto has_string4;
+            }
+            if (str[i + 1] == 'q' || str[i + 1] == 'Q'
+            ||  str[i + 1] == 'r' || str[i + 1] == 'x'
+            ||  str[i + 1] == 'w' || str[i + 1] == 'W') {
+                j = i + 2;
+            has_string4:
+                level = 0;
+                sep = sep0 = str[j++];
+                if (sep == '{') sep = '}';
+                if (sep == '(') sep = ')';
+                if (sep == '[') sep = ']';
+                if (sep == '<') sep = '>';
+                /* parse special string const */
+                state = IN_STRING4;
+            parse_string4:
+                while (j < n) {
+                    c = str[j++];
+                    if (c == sep) {
+                        if (level-- == 0) {
+                            state = level = 0;
+                            break;
+                        }
+                        /* XXX: should parse regex modifiers if %r */
+                    } else
+                    if (c == sep0) {
+                        level++;
+                    } else
+                    if (c == '#' && str[j] == '{') {
+                        /* XXX: should no parse if %q */
+                        /* XXX: should parse full syntax */
+                        while (j < n && str[j++] != '}')
+                            continue;
+                    } else
+                    if (c == '\\') {
+                        if (j < n) {
+                            j += 1;
+                        }
+                    }
+                }
+                SET_COLOR(str, i, j, RUBY_STRING4);
+                i = j;
+                continue;
+            }
+            break;
+
+        case '\'':
+            /* parse single quoted string const */
+            j = i + 1;
+            state = IN_STRING;
+        parse_string:
+            while (j < n) {
+                c = str[j++];
+                if (c == '\\' && (str[j] == '\\' || str[j] == '\'')) {
+                    j += 1;
+                } else
+                if (c == '\'') {
+                    state = 0;
+                    break;
+                }
+            }
+            SET_COLOR(str, i, j, RUBY_STRING);
+            i = j;
+            continue;
+
+        case '`':
+            /* parse single quoted string const */
+            j = i + 1;
+            state = IN_STRING3;
+        parse_string3:
+            while (j < n) {
+                c = str[j++];
+                if (c == '\\' && (str[j] == '\\' || str[j] == '\'')) {
+                    j += 1;
+                } else
+                if (c == '#' && str[j] == '{') {
+                    /* should parse full syntax */
+                    while (j < n && str[j++] != '}')
+                        continue;
+                } else
+                if (c == '`') {
+                    state = 0;
+                    break;
+                }
+            }
+            SET_COLOR(str, i, j, RUBY_STRING3);
+            i = j;
+            continue;
+
+        case '"':
+            /* parse double quoted string const */
+            c = '\0';
+            j = i + 1;
+        parse_string2:
+            while (j < n) {
+                c = str[j++];
+                if (c == '\\') {
+                    if (j < n) {
+                        j += 1;
+                    }
+                } else
+                if (c == '#' && str[j] == '{') {
+                    /* should parse full syntax */
+                    while (j < n && str[j++] != '}')
+                        continue;
+                } else
+                if (c == '"') {
+                    break;
+                }
+            }
+            if (c == '"') {
+                if (state == IN_STRING2)
+                    state = 0;
+            } else {
+                if (state == 0)
+                    state = IN_STRING2;
+            }
+            SET_COLOR(str, i, j, RUBY_STRING2);
+            i = j;
+            continue;
+
+        case '<':
+            if (str[i + 1] == '<') {
+                /* XXX: should use context to tell lshift from heredoc:
+                 * here documents are introduced by monadic <<.
+                 * Monadic use could be detected in some contexts, such
+                 * as eval(<<EOS), but not in the general case.
+                 * We use a heuristical approach: let's assume here
+                 * document ids are not separated from the << by white
+                 * space. 
+                 * XXX: should parse full here document syntax.
+                 */
+                j = i + 2;
+                if (str[j] == '-') {
+                    j++;
+                }
+                for (sig = 0; qe_isupper_(str[j]); j++) {
+                    sig = ((sig << 6) + str[j]) % 61;
+                }
+                if (sig) {
+                    /* Multiple here documents can be specified on the
+                     * same line, only the last one will prevail, which
+                     * is OK for coloring purposes.
+                     * state will be cleared if a string or a comment
+                     * start on the line after the << operator.  This
+                     * is a bug due to limited state bits.
+                     */
+                    state &= ~(IN_HEREDOC | IN_HD_INDENT | IN_HD_SIG);
+                    state |= IN_HEREDOC;
+                    if (str[i + 2] == '-') {
+                        state |= IN_HD_INDENT;
+                    }
+                    state |= (sig & IN_HD_SIG);
+                    SET_COLOR(str, i, j, RUBY_HEREDOC);
+                    i = j;
+                }
+            }
+            break;
+
+        case '?':
+            /* XXX: should parse character constants */
+            break;
+
+        case '.':
+            if (qe_isdigit_(str[i + 1])) {
+                j = i;
+                goto parse_decimal;
+            }
+            break;
+
+        case '$':
+            /* XXX: should parse precise $ syntax,
+             * skip $" and $' for now
+             */
+            if (i + 1 < n)
+                i++;
+            break;
+
+        case ':':
+            /* XXX: should parse Ruby symbol */
+            break;
+
+        case '@':
+            j = i + 1;
+            j += ruby_get_name(kbuf, countof(kbuf), str + j);
+            SET_COLOR(str, i, j, RUBY_VARIABLE);
+            i = j;
+            continue;
+
+        default:
+            if (qe_isdigit(c)) {
+                j = i + 1;
+                if (c == '0' && qe_tolower(str[j]) == 'b') {
+                    /* binary numbers */
+                    for (j += 1; qe_isbindigit(str[j]) || str[j] == '_'; j++)
+                        continue;
+                } else
+                if (c == '0' && qe_tolower(str[j]) == 'o') {
+                    /* octal numbers */
+                    for (j += 1; qe_isoctdigit(str[j]) || str[j] == '_'; j++)
+                        continue;
+                } else
+                if (c == '0' && qe_tolower(str[j]) == 'x') {
+                    /* hexadecimal numbers */
+                    for (j += 1; qe_isxdigit(str[j]) || str[j] == '_'; j++)
+                        continue;
+                } else
+                if (c == '0' && qe_tolower(str[j]) == 'd') {
+                    /* hexadecimal numbers */
+                    for (j += 1; qe_isdigit_(str[j]); j++)
+                        continue;
+                } else {
+                    /* decimal numbers */
+                    for (j = i + 1; qe_isdigit_(str[j]); j++)
+                        continue;
+                parse_decimal:
+                    if (str[j] == '.') {
+                        for (j = i + 1; qe_isdigit_(str[j]); j++)
+                            continue;
+                    }
+                    if (qe_tolower(str[j]) == 'e') {
+                        int k = j + 1;
+                        if (str[k] == '+' || str[k] == '-')
+                            k++;
+                        if (qe_isdigit_(str[k])) {
+                            for (j = k + 1; qe_isdigit_(str[j]); j++)
+                                continue;
+                        }
+                    }
+                }
+                    
+                /* XXX: should detect malformed number constants */
+                SET_COLOR(str, i, j, RUBY_NUMBER);
+                i = j;
+                continue;
+            }
+            if (qe_isalpha_(c)) {
+                j = i;
+                j += ruby_get_name(kbuf, countof(kbuf), str + j);
+
+                if (strfind(ruby_keywords, kbuf)) {
+                    SET_COLOR(str, i, j, RUBY_KEYWORD);
+                    i = j;
+                    continue;
+                }
+                while (qe_isblank(str[j]))
+                    j++;
+                if (str[j] == '(') {
+                    SET_COLOR(str, i, j, RUBY_FUNCTION);
+                    i = j;
+                    continue;
+                }
+                i = j;
+                continue;
+            }
+            break;
+        }
+        i++;
+        continue;
+    }
+    *statep = state;
+}
+
+#undef IN_HEREDOC
+#undef IN_HD_INDENT
+#undef IN_HD_SIG
+#undef IN_COMMENT
+#undef IN_STRING
+#undef IN_STRING2
+#undef IN_STRING3
+#undef IN_STRING4
+#undef IN_REGEX
+#undef IN_POD
+
+static int ruby_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->filename, mode->extensions)
+    ||  stristart(p->filename, "Rakefile", NULL))
+        return 80;
+
+    return 1;
+}
+
+static CmdDef ruby_commands[] = {
+    CMD_DEF_END,
+};
+
+static ModeDef ruby_mode;
+
+static int ruby_init(void)
+{
+    /* ruby mode is almost like the text mode, so we copy and patch it */
+    memcpy(&ruby_mode, &text_mode, sizeof(ModeDef));
+    ruby_mode.name = "Ruby";
+    ruby_mode.extensions = "rb|gemspec";
+    ruby_mode.mode_probe = ruby_mode_probe;
+    ruby_mode.colorize_func = ruby_colorize_line;
+
+    qe_register_mode(&ruby_mode);
+    qe_register_cmd_table(ruby_commands, &ruby_mode);
+
+    return 0;
+}
+
 /*----------------*/
 
 static int extra_modes_init(void)
@@ -1621,6 +2112,7 @@ static int extra_modes_init(void)
     lua_init();
     haskell_init();
     python_init();
+    ruby_init();
     return 0;
 }
 
