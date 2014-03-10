@@ -123,7 +123,7 @@ static void asm_colorize_line(unsigned int *str, int n, int *statep,
             i = n;
             continue;
         case '\'':
-        case '"':
+        case '\"':
             /* parse string const */
             for (j = i + 1; j < n; j++) {
                 if (str[j] == str[i]) {
@@ -262,7 +262,7 @@ static void basic_colorize_line(unsigned int *str, int n, int *statep,
                 SET_COLOR(str, i, n, BASIC_COMMENT);
             i = n;
             continue;
-        case '"':
+        case '\"':
             /* parse string const */
             for (j = i + 1; j < n; j++) {
                 if (str[j] == str[i]) {
@@ -574,10 +574,10 @@ static void ini_colorize_line(unsigned int *str, int n, int *statep,
                 continue;
             }
             break;
-        case '"':
+        case '\"':
             /* parse string const */
             for (j = i + 1; j < n; j++) {
-                if (str[j] == '"') {
+                if (str[j] == '\"') {
                     j++;
                     break;
                 }
@@ -864,7 +864,7 @@ static void sql_colorize_line(unsigned int *str, int n, int *statep,
             i = j;
             continue;
         case '\'':
-        case '"':
+        case '\"':
         case '`':
             /* parse string const */
             for (j = i + 1; j < n; j++) {
@@ -984,7 +984,7 @@ void lua_colorize_line(unsigned int *str, int n, int *statep,
         goto parse_string;
     }
     if (state & IN_STRING2) {
-        sep = '"';
+        sep = '\"';
         state = 0;
         goto parse_string;
     }
@@ -1004,7 +1004,7 @@ void lua_colorize_line(unsigned int *str, int n, int *statep,
             }
             break;
         case '\'':
-        case '"':
+        case '\"':
             /* parse string const */
             sep = str[i];
             j = i + 1;
@@ -1225,7 +1225,7 @@ void haskell_colorize_line(unsigned int *str, int n, int *statep,
             continue;
 
         case '\'':
-        case '"':
+        case '\"':
             /* parse string const */
             sep = str[i];
             j = i + 1;
@@ -1421,14 +1421,14 @@ void python_colorize_line(unsigned int *str, int n, int *statep,
             continue;
             
         case '\'':
-        case '"':
+        case '\"':
             /* parse string const */
             j = i;
         has_quote:
             sep = str[j++];
             if (str[j] == sep && str[j + 1] == sep) {
                 /* long string */
-                state = (sep == '"') ? IN_LONG_STRING2 : IN_LONG_STRING;
+                state = (sep == '\"') ? IN_LONG_STRING2 : IN_LONG_STRING;
                 j += 2;
             parse_long_string:
                 while (j < n) {
@@ -1445,7 +1445,7 @@ void python_colorize_line(unsigned int *str, int n, int *statep,
                     }
                 }
             } else {
-                state = (sep == '"') ? IN_STRING2 : IN_STRING;
+                state = (sep == '\"') ? IN_STRING2 : IN_STRING;
             parse_string:
                 while (j < n) {
                     c = str[j++];
@@ -1624,6 +1624,11 @@ static char const ruby_keywords[] = {
     "|"
 };
 
+/* Ruby operators:
+ *  `  +  -  +@  -@  *  /  %  <<  >>  <  <=  >  >=  =
+ *  ==  ===  <=>  []  []=  **  !  ~  !=  !~  =~  &  |  ^
+ */
+
 #define IN_HEREDOC    0x80
 #define IN_HD_INDENT  0x40
 #define IN_HD_SIG     0x3f
@@ -1646,7 +1651,7 @@ enum {
     RUBY_NUMBER =       QE_STYLE_NUMBER,
     RUBY_KEYWORD =      QE_STYLE_KEYWORD,
     RUBY_FUNCTION =     QE_STYLE_FUNCTION,
-    RUBY_VARIABLE =     QE_STYLE_VARIABLE,
+    RUBY_MEMBER =       QE_STYLE_VARIABLE,
     RUBY_HEREDOC =      QE_STYLE_PREPROCESS,
 };
 
@@ -1682,8 +1687,11 @@ void ruby_colorize_line(unsigned int *str, int n, int *statep,
             while (qe_isspace(str[j]))
                 j++;
         }
-        for (sig = 0; qe_isupper_(str[j]); j++) {
-            sig = ((sig << 6) + str[j]) % 61;
+        if (qe_isalpha_(str[j])) {
+            sig = str[j++] % 61;
+            for (; qe_isalnum_(str[j]); j++) {
+                sig = ((sig << 6) + str[j]) % 61;
+            }
         }
         for (; qe_isspace(str[j]); j++)
             continue;
@@ -1884,7 +1892,7 @@ void ruby_colorize_line(unsigned int *str, int n, int *statep,
             i = j;
             continue;
 
-        case '"':
+        case '\"':
             /* parse double quoted string const */
             c = '\0';
             j = i + 1;
@@ -1901,11 +1909,11 @@ void ruby_colorize_line(unsigned int *str, int n, int *statep,
                     while (j < n && str[j++] != '}')
                         continue;
                 } else
-                if (c == '"') {
+                if (c == '\"') {
                     break;
                 }
             }
-            if (c == '"') {
+            if (c == '\"') {
                 if (state == IN_STRING2)
                     state = 0;
             } else {
@@ -1927,12 +1935,26 @@ void ruby_colorize_line(unsigned int *str, int n, int *statep,
                  * space. 
                  * XXX: should parse full here document syntax.
                  */
+                sig = 0;
                 j = i + 2;
                 if (str[j] == '-') {
                     j++;
                 }
-                for (sig = 0; qe_isupper_(str[j]); j++) {
-                    sig = ((sig << 6) + str[j]) % 61;
+                if ((str[j] == '\'' || str[j] == '\"')
+                &&  qe_isalpha_(str[j + 1])) {
+                    sep = str[j++];
+                    sig = str[j++] % 61;
+                    for (; qe_isalnum_(str[j]); j++) {
+                        sig = ((sig << 6) + str[j]) % 61;
+                    }
+                    if (str[j++] != sep)
+                        break;
+                } else
+                if (qe_isalpha_(str[j])) {
+                    sig = str[j++] % 61;
+                    for (; qe_isalnum_(str[j]); j++) {
+                        sig = ((sig << 6) + str[j]) % 61;
+                    }
                 }
                 if (sig) {
                     /* Multiple here documents can be specified on the
@@ -1980,7 +2002,7 @@ void ruby_colorize_line(unsigned int *str, int n, int *statep,
         case '@':
             j = i + 1;
             j += ruby_get_name(kbuf, countof(kbuf), str + j);
-            SET_COLOR(str, i, j, RUBY_VARIABLE);
+            SET_COLOR(str, i, j, RUBY_MEMBER);
             i = j;
             continue;
 
