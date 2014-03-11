@@ -96,8 +96,8 @@ static char *dired_get_filename(EditState *s,
     if (!(ds = dired_get_state(s, 1)))
         return NULL;
 
-    /* CG: assuming buf_size > 0 */
-    buf[0] = '\0';
+    if (buf_size > 0)
+        buf[0] = '\0';
 
     if (index < 0)
         index = dired_get_index(s);
@@ -576,6 +576,7 @@ static int dired_mode_init(EditState *s, ModeSavedData *saved_data)
 
         ds->signature = &dired_signature;
         ds->sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
+        ds->last_index = -1;
 
         s->b->priv_data = ds;
         s->b->close = dired_close;

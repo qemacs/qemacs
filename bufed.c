@@ -363,6 +363,7 @@ static int bufed_mode_init(EditState *s, ModeSavedData *saved_data)
             return -1;
 
         bs->signature = &bufed_signature;
+        bs->last_index = -1;
         s->b->priv_data = bs;
         s->b->close = bufed_close;
     }
