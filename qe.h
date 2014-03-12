@@ -720,6 +720,7 @@ void qe_handle_event(QEEvent *ev);
 /* CG: Should deal with opaque object life cycle */
 void qe_grab_keys(void (*cb)(void *opaque, int key), void *opaque);
 void qe_ungrab_keys(void);
+struct KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, int nroots, ...);
 
 /* buffer.c */
 

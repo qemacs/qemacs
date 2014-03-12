@@ -4321,7 +4321,7 @@ static void qe_key_init(QEKeyContext *c)
     c->buf[0] = '\0';
 }
 
-static KeyDef *find_binding(unsigned int *keys, int nb_keys, int nroots, ...)
+KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, int nroots, ...)
 {
     KeyDef *kd = NULL;
     va_list ap;
@@ -4330,30 +4330,12 @@ static KeyDef *find_binding(unsigned int *keys, int nb_keys, int nroots, ...)
     while (nroots--) {
         for (kd = va_arg(ap, KeyDef *); kd != NULL; kd = kd->next) {
             if (kd->nb_keys >= nb_keys
-            &&  !memcmp(kd->keys, keys, nb_keys * sizeof(keys[0])))
-            {
-                goto found;
+            &&  !memcmp(kd->keys, keys, nb_keys * sizeof(keys[0]))) {
+                nroots = 0;
+                break;
             }
         }
     }
-  found:
-    va_end(ap);
-    return kd;
-}
-
-static KeyDef *find_binding1(unsigned int key, int nroots, ...)
-{
-    KeyDef *kd = NULL;
-    va_list ap;
-
-    va_start(ap, nroots);
-    while (nroots--) {
-        for (kd = va_arg(ap, KeyDef *); kd != NULL; kd = kd->next) {
-            if (kd->nb_keys == 1 && kd->keys[0] == key)
-                goto found;
-        }
-    }
-  found:
     va_end(ap);
     return kd;
 }
@@ -4410,10 +4392,12 @@ static void qe_key_process(int key)
     }
 
     /* see if one command is found */
-    if (!(kd = find_binding(c->keys, c->nb_keys, 2,
-                            s->mode->first_key, qs->first_key)))
+    if (!(kd = qe_find_binding(c->keys, c->nb_keys, 2,
+                               s->mode->first_key, qs->first_key)))
     {
         /* no key found */
+        unsigned int key_default = KEY_DEFAULT;
+
         if (c->nb_keys == 1) {
             if (!KEY_SPECIAL(key)) {
                 if (c->is_numeric_arg) {
@@ -4430,8 +4414,8 @@ static void qe_key_process(int key)
                         goto next;
                     }
                 }
-                kd = find_binding1(KEY_DEFAULT, 2,
-                                   s->mode->first_key, qs->first_key);
+                kd = qe_find_binding(&key_default, 1, 2,
+                                     s->mode->first_key, qs->first_key);
                 if (kd) {
                     /* horrible kludge to pass key as intrinsic argument */
                     /* CG: should have an argument type for key */
