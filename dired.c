@@ -228,7 +228,8 @@ static void dired_sort_list(EditState *s)
         dip = item->opaque;
         dip->offset = b->total_size;
         if (item == cur_item) {
-            ds->last_index = i;
+            if (ds->last_index == index)
+                ds->last_index = i;
             s->offset = b->total_size;
         }
         eb_printf(b, "%c %s\n", dip->mark, item->str);
