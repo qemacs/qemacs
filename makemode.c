@@ -148,7 +148,8 @@ static int makefile_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     /* check file name or extension */
     if (match_extension(p->filename, mode->extensions)
-    ||  stristart(p->filename, "makefile", NULL))
+    ||  stristart(p->filename, "makefile", NULL)
+    ||  stristart(p->filename, "gnumakefile", NULL))
         return 70;
 
     return 1;
