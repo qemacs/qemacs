@@ -171,7 +171,7 @@ static void asm_colorize_line(unsigned int *str, int n, int *statep,
                     goto prep;
             } else
             if (wn == 2) {
-                if (is_lc_keyword(str, i, j, asm_prepkeywords1)) {
+                if (is_lc_keyword(str, i, j, asm_prepkeywords2)) {
                     SET_COLOR(str, i, j, ASM_PREPROCESS);
                     i = j;
                     continue;
