@@ -1,3 +1,5 @@
+This file uses the utf-8 encoding for unicode
+
 ************ Hungarian - Magyar ****************
 A tanyÃ¡kon tÃºl a puszta mÃ©lyÃ©n
 Ãll magÃ¡nyos, dÅ‘lt kÃ©mÃ©nyÅ± csÃ¡rda;
@@ -35,10 +37,3 @@ KecskemÃ©tre menvÃ©n a vÃ¡sÃ¡rra.
 ************ French - FranÃ§ais ****************
 Juste un petit exemple pour dire que les franÃ§ais aussi
 ont Ã  cÅ“ur de pouvoir utiliser tous leurs caractÃ¨res ! :)
-************ Non BMP1 characters ****************
-ğ€€ğ€ğ€‚ğ€ƒğŸ¿¿
-ğ€€ğ €€ñ€€€ò€€€ó¿¿¿
-ô€€€õ€€€ö€€€÷€€€÷¿¿¿
-øˆ€€€ø€€€ø €€€ø¿¿¿¿
-ù€€€€ú€€€€ü„€€€€üˆ€€€€
-ü€€€€ü €€€€ı€€€€€ı¿¿¿¿¿
