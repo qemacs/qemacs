@@ -57,26 +57,27 @@ static const char c_mode_extensions[] =
     "cal"               /* GNU Calc */
     ;
 
-#if 0
+/* grab a C identifier from a uchar buf, stripping color.
+ * return char count.
+ */
 static int get_c_identifier(char *buf, int buf_size, unsigned int *p)
 {
     unsigned int c;
-    char *q;
+    int i, j;
 
-    c = *p;
-    q = buf;
-    if (qe_isalpha_(c)) {
+    i = j = 0;
+    c = p[i];
+    if (qe_isalpha_(c & CHAR_MASK)) {
         do {
-            if ((q - buf) < buf_size - 1)
-                *q++ = c;
-            p++;
-            c = *p;
-        } while (qe_isalnum_(c));
+            if (j < buf_size - 1)
+                buf[j++] = c;
+            i++;
+            c = p[i];
+        } while (qe_isalnum_(c & CHAR_MASK));
     }
-    *q = '\0';
-    return q - buf;
+    buf[j] = '\0';
+    return i;
 }
-#endif
 
 /* c-mode colorization states */
 enum {
@@ -315,10 +316,12 @@ static int find_pos(EditState *s, unsigned int *buf, int size)
     pos = 0;
     for (i = 0; i < size; i++) {
         c = buf[i] & CHAR_MASK;
-        if (c == '\t')
+        if (c == '\t') {
             pos += s->b->tab_width - (pos % s->b->tab_width);
-        else
+        } else {
+            /* simplistic case: assume single width characters */
             pos++;
+        }
     }
     return pos;
 }
@@ -331,78 +334,66 @@ enum {
 /* Check if indentation is already what it should be */
 static int check_indent(EditState *s, int offset, int i, int *offset_ptr)
 {
+    int tw, col, ntabs, nspaces, bad;
     int offset1;
 
-    /* check tabs */
-    if (s->indent_tabs_mode) {
-        while (i >= s->b->tab_width) {
-            if (eb_nextc(s->b, offset, &offset) != '\t')
-                return 0;
-            i -= s->b->tab_width;
+    tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
+    col = ntabs = nspaces = bad = 0;
+
+    for (;;) {
+        int c = eb_nextc(s->b, offset1 = offset, &offset);
+        if (c == '\t') {
+            col += tw - col % tw;
+            bad |= nspaces;
+            ntabs += 1;
+        } else
+        if (c == ' ') {
+            col += 1;
+            nspaces += 1;
+        } else {
+            break;
         }
     }
 
-    /* check needed spaces */
-    while (i > 0) {
-        if (eb_nextc(s->b, offset, &offset) != ' ')
-            return 0;
-        i--;
-    }
-    if (!qe_isblank(eb_nextc(s->b, offset, &offset1))) {
-        *offset_ptr = offset;
-    }
-    return 1;
-}
+    *offset_ptr = offset1;
 
-static void remove_indent(EditState *s, int offset)
-{
-    int offset1 = offset, offset2;
+    if (col != i || bad)
+        return 0;
 
-    /* suppress leading spaces */
-    for (;;) {
-        int c = eb_nextc(s->b, offset1, &offset2);
-        if (c != ' ' && c != '\t')
-            break;
-        offset1 = offset2;
+    /* check tabs */
+    if (s->indent_tabs_mode) {
+        return (nspaces >= tw) ? 0 : 1;
+    } else {
+        return (ntabs > 0) ? 0 : 1;
     }
-    if (offset1 > offset)
-        eb_delete_range(s->b, offset, offset1);
 }
 
 /* Insert n spaces at beginning of line at <offset>.
- * Stop new offset after indentation to <*offset_ptr>.
- * Tabs are inserted if s->indent_tabs_mode is true. */
+ * Store new offset after indentation to <*offset_ptr>.
+ * Tabs are inserted if s->indent_tabs_mode is true.
+ */
 static void insert_indent(EditState *s, int offset, int i, int *offset_ptr)
 {
     /* insert tabs */
     if (s->indent_tabs_mode) {
-        while (i >= s->b->tab_width) {
+        int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
+        while (i >= tw) {
             offset += eb_insert_uchar(s->b, offset, '\t');
-            i -= s->b->tab_width;
+            i -= tw;
         }
     }
 
     /* insert needed spaces */
-    while (i > 0) {
-        char buf[64];
-        int size = i;
+    offset += eb_insert_spaces(s->b, offset, i);
 
-        if (size > ssizeof(buf))
-            size = ssizeof(buf);
-        memset(buf, ' ', size);
-        offset += eb_insert_utf8_buf(s->b, offset, buf, size);
-        i -= size;
-    }
     *offset_ptr = offset;
 }
 
-/* indent a line of C code starting at <offset>,
- * store indentation in <*offset_ptr>
- */
+/* indent a line of C code starting at <offset> */
 static void c_indent_line(EditState *s, int offset0)
 {
     int offset, offset1, offsetl, c, pos, line_num, col_num;
-    int i, eoi_found, len, pos1, lpos, style, line_num1, state;
+    int i, j, eoi_found, len, pos1, lpos, style, line_num1, state;
     unsigned int buf[MAX_BUF_SIZE], *p;
     unsigned char stack[MAX_STACK_SIZE];
     char buf1[64], *q;
@@ -434,10 +425,11 @@ static void c_indent_line(EditState *s, int offset0)
             c = *p;
             /* skip strings or comments */
             style = c >> STYLE_SHIFT;
-            if (style == QE_STYLE_COMMENT ||
-                style == QE_STYLE_STRING ||
-                style == QE_STYLE_PREPROCESS)
+            if (style == QE_STYLE_COMMENT
+            ||  style == QE_STYLE_STRING
+            ||  style == QE_STYLE_PREPROCESS) {
                 continue;
+            }
             c = c & CHAR_MASK;
             if (state == INDENT_FIND_EQ) {
                 /* special case to search '=' or ; before { to know if
@@ -513,10 +505,12 @@ static void c_indent_line(EditState *s, int offset0)
                 case ':':
                     /* a label line is ignored */
                     /* XXX: incorrect */
-                    goto prev_line;
+                    if (style == QE_STYLE_DEFAULT)
+                        goto prev_line;
+                    break;
                 default:
                     if (stack_ptr == 0) {
-                        if ((c >> STYLE_SHIFT) == QE_STYLE_KEYWORD) {
+                        if (style == QE_STYLE_KEYWORD) {
                             unsigned int *p1, *p2;
                             /* special case for if/for/while */
                             p1 = p;
@@ -560,13 +554,31 @@ static void c_indent_line(EditState *s, int offset0)
     for (i = 0; i < len; i++) {
         c = buf[i];
         style = c >> STYLE_SHIFT;
+        if (qe_isblank(c & CHAR_MASK))
+            continue;
         /* if preprocess, no indent */
         if (style == QE_STYLE_PREPROCESS) {
             pos = 0;
             break;
         }
+        if (qe_isalpha_(c & CHAR_MASK)) {
+            j = get_c_identifier(buf1, countof(buf1), buf + i);
+
+            if (style == QE_STYLE_KEYWORD) {
+                if (strfind(buf1, "case|default"))
+                    goto unindent;
+            }
+            for (j += i; qe_isblank(buf[j] & CHAR_MASK); j++)
+                continue;
+            if (buf[j] == ':')
+                goto unindent;
+        }
         /* NOTE: strings & comments are correctly ignored there */
-        if (c == '}' || c == ':') {
+        if ((c == '&' || c == '|') && buf[i + 1] == c)
+            goto unindent;
+
+        if (c == '}') {
+        unindent:
             pos -= s->indent_size;
             if (pos < 0)
                 pos = 0;
@@ -576,29 +588,34 @@ static void c_indent_line(EditState *s, int offset0)
             pos = 0;
             break;
         }
+        break;
     }
 
-    /* the number of needed spaces is in 'pos' */
+    /* the computed indent is in 'pos' */
     /* if on a blank line, reset indent to 0 unless point is on it */
     if (eb_is_blank_line(s->b, offset, &offset1)
-    &&  (s->offset < offset || s->offset >= offset1)) {
+    &&  !(s->offset >= offset && s->offset < offset1)) {
         pos = 0;
     }
     /* Do not modify buffer if indentation in correct */
     if (!check_indent(s, offset, pos, &offset1)) {
         /* simple approach to normalization of indentation */
-        remove_indent(s, offset);
+        eb_delete_range(s->b, offset, offset1);
         insert_indent(s, offset, pos, &offset1);
     }
+    /* move to the indentation if point was in indent space */
     if (s->offset >= offset && s->offset < offset1) {
-        /* move to the indentation if point was in indent space */
         s->offset = offset1;
     }
 }
 
 static void do_c_indent(EditState *s)
 {
-    c_indent_line(s, s->offset);
+    if (s->qe_state->last_cmd_func == (CmdFunc)do_c_indent) {
+        do_tab(s, 1);
+    } else {
+        c_indent_line(s, s->offset);
+    }
 }
 
 static void do_c_indent_region(EditState *s)
