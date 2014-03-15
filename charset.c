@@ -1208,8 +1208,8 @@ void charset_decode_close(CharsetDecodeState *s)
 }
 
 /* detect the end of line type. */
-void detect_eol_type_8bit(const u8 *buf, int size,
-                          QECharset *charset, EOLType *eol_typep)
+static void detect_eol_type_8bit(const u8 *buf, int size,
+                                 QECharset *charset, EOLType *eol_typep)
 {
     const u8 *p, *p1;
     int c, eol_bits;
@@ -1259,8 +1259,8 @@ void detect_eol_type_8bit(const u8 *buf, int size,
     *eol_typep = eol_type;
 }
 
-void detect_eol_type_16bit(const u8 *buf, int size,
-                           QECharset *charset, EOLType *eol_typep)
+static void detect_eol_type_16bit(const u8 *buf, int size,
+                                  QECharset *charset, EOLType *eol_typep)
 {
     const uint16_t *p, *p1;
     uint16_t cr, lf;
@@ -1317,8 +1317,8 @@ void detect_eol_type_16bit(const u8 *buf, int size,
     *eol_typep = eol_type;
 }
 
-void detect_eol_type_32bit(const u8 *buf, int size,
-                           QECharset *charset, EOLType *eol_typep)
+static void detect_eol_type_32bit(const u8 *buf, int size,
+                                  QECharset *charset, EOLType *eol_typep)
 {
     const uint32_t *p, *p1;
     uint16_t cr, lf;
@@ -1375,6 +1375,20 @@ void detect_eol_type_32bit(const u8 *buf, int size,
     *eol_typep = eol_type;
 }
 
+static QECharset *detect_eol_type(const u8 *buf, int size,
+                                  QECharset *charset, EOLType *eol_typep)
+{
+    if (charset->char_size == 4)
+        detect_eol_type_32bit(buf, size, charset, eol_typep);
+    else
+    if (charset->char_size == 4)
+        detect_eol_type_16bit(buf, size, charset, eol_typep);
+    else
+        detect_eol_type_8bit(buf, size, charset, eol_typep);
+
+    return charset;
+}
+
 QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
 {
 #if 0
@@ -1428,8 +1442,7 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
         }
     }
     if (has_utf8) {
-        detect_eol_type_8bit(buf, size, &charset_utf8, eol_typep);
-        return &charset_utf8;
+        return detect_eol_type(buf, size, &charset_utf8, eol_typep);
     }
 
     /* Check for zwnbsp BOM: files starting with zero-width
@@ -1438,23 +1451,19 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
      */
     if (size >= 2 && buf[0] == 0xff && buf[1] == 0xfe) {
         if (size >= 4 && buf[2] == 0 && buf[3] == 0) {
-            detect_eol_type_32bit(buf, size, &charset_ucs4le, eol_typep);
-            return &charset_ucs4le;
+            return detect_eol_type(buf, size, &charset_ucs4le, eol_typep);
         } else {
-            detect_eol_type_16bit(buf, size, &charset_ucs2le, eol_typep);
-            return &charset_ucs2le;
+            return detect_eol_type(buf, size, &charset_ucs2le, eol_typep);
         }
     }
 
     if (size >= 2 && buf[0] == 0xfe && buf[1] == 0xff) {
-        detect_eol_type_16bit(buf, size, &charset_ucs2be, eol_typep);
-        return &charset_ucs2be;
+        return detect_eol_type(buf, size, &charset_ucs2be, eol_typep);
     }
 
     if (size >= 4
     &&  buf[0] == 0 && buf[1] == 0 && buf[2] == 0xfe && buf[3] == 0xff) {
-        detect_eol_type_32bit(buf, size, &charset_ucs4be, eol_typep);
-        return &charset_ucs4be;
+        return detect_eol_type(buf, size, &charset_ucs4be, eol_typep);
     }
 
 #if 0
@@ -1468,15 +1477,28 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
                 maxc[i & 3] = buf[i];
         }
         if (maxc[0] > 'a' && maxc[1] < 0x2f && maxc[2] > 'a' && maxc[3] < 0x2f) {
-            detect_eol_type_16bit(buf, size, &charset_ucs2le, eol_typep);
+            detect_eol_type(buf, size, &charset_ucs2le, eol_typep);
             return &charset_ucs2le;
         }
         if (maxc[1] > 'a' && maxc[0] < 0x2f && maxc[3] > 'a' && maxc[2] < 0x2f) {
-            detect_eol_type_16bit(buf, size, &charset_ucs2be, eol_typep);
+            detect_eol_type(buf, size, &charset_ucs2be, eol_typep);
             return &charset_ucs2be;
         }
     }
+#else
+    if (charset_ucs4le.probe_func(&charset_ucs4le, buf, size))
+        return detect_eol_type(buf, size, &charset_ucs4le, eol_typep);
+    else
+    if (charset_ucs4be.probe_func(&charset_ucs4be, buf, size))
+        return detect_eol_type(buf, size, &charset_ucs4be, eol_typep);
+    else
+    if (charset_ucs2le.probe_func(&charset_ucs2le, buf, size))
+        return detect_eol_type(buf, size, &charset_ucs2le, eol_typep);
+    else
+    if (charset_ucs2be.probe_func(&charset_ucs2be, buf, size))
+        return detect_eol_type(buf, size, &charset_ucs2be, eol_typep);
 #endif
+
     /* Should detect iso-2220-jp upon \033$@ and \033$B, but jis
      * support is not selected in tiny build
      * XXX: should use charset probe functions.
@@ -1499,7 +1521,7 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
         return &charset_raw;
     }
 
-    detect_eol_type_8bit(buf, size, &charset_raw, eol_typep);
+    detect_eol_type(buf, size, &charset_raw, eol_typep);
 
     if (*eol_typep == EOL_DOS) {
         /* XXX: default DOS files to Latin1, should be selectable */
