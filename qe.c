@@ -7597,10 +7597,12 @@ void set_user_option(const char *user)
     /* compute resources path */
     qs->res_path[0] = '\0';
 
-    /* put source directory first if qe invoked as ./qe */
-    // should use actual directory
+    /* put current directory first if qe invoked as ./qe */
     if (stristart(qs->argv[0], "./qe", NULL)) {
-        pstrcat(qs->res_path, sizeof(qs->res_path), ".:");
+        if (!getcwd(path, sizeof(path)))
+            strcpy(path, ".");
+        pstrcat(qs->res_path, sizeof(qs->res_path), path);
+        pstrcat(qs->res_path, sizeof(qs->res_path), ":");
     }
 
     /* put user directory before standard list */
