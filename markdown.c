@@ -295,14 +295,18 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
         for (j = i + 1; qe_isdigit(str[j]); j++)
             continue;
         if (str[j] == '.' && qe_isblank(str[j + 1])) {
-            base_style = QE_STYLE_MKD_DLIST;
             level++;
+            base_style = QE_STYLE_MKD_DLIST;
+            SET_COLOR(str, i, j, base_style);
+            i = j;
         }
     } else
     if ((str[i] == '-' || str[i] == '*' || str[i] == '+')
     &&  qe_isblank(str[i + 1])) {
-        base_style = QE_STYLE_MKD_LIST;
         level++;
+        base_style = QE_STYLE_MKD_LIST;
+        SET_COLOR(str, i, j, base_style);
+        i = j;
     }
 
     for (;;) {
@@ -812,6 +816,8 @@ static int mkd_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     text_mode_init(s, saved_data);
     s->b->tab_width = 4;
+    s->indent_tabs_mode = 0;
+    s->wrap = WRAP_WORD;
     return 0;
 }
 
