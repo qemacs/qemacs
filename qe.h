@@ -943,6 +943,7 @@ void eb_style_callback(EditBuffer *b, void *opaque, int arg,
 int eb_delete_uchar(EditBuffer *b, int offset);
 int eb_encode_uchar(EditBuffer *b, char *buf, unsigned int c);
 int eb_insert_uchar(EditBuffer *b, int offset, int c);
+int eb_insert_spaces(EditBuffer *b, int offset, int n);
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len);
 int eb_insert_str(EditBuffer *b, int offset, const char *str);
 int eb_match_uchar(EditBuffer *b, int offset, int c, int *offsetp);
@@ -1768,7 +1769,9 @@ void do_toggle_control_h(EditState *s, int set);
 void do_set_emulation(EditState *s, const char *name);
 void do_set_trace(EditState *s);
 void do_cd(EditState *s, const char *name);
-void do_set_key(EditState *s, const char *keystr, const char *cmd_name, int local);
+int qe_mode_set_key(ModeDef *m, const char *keystr, const char *cmd_name);
+void do_set_key(EditState *s, const char *keystr, const char *cmd_name,
+                int local);
 //void do_unset_key(EditState *s, const char *keystr, int local);
 void do_bof(EditState *s);
 void do_eof(EditState *s);

@@ -294,23 +294,27 @@ int qe_register_binding(int key, const char *cmd_name, ModeDef *m)
     return qe_register_binding2(key, qe_find_cmd(cmd_name), m);
 }
 
-void do_set_key(EditState *s, const char *keystr,
-                const char *cmd_name, int local)
+int qe_mode_set_key(ModeDef *m, const char *keystr, const char *cmd_name)
 {
     unsigned int keys[MAX_KEYS];
     int nb_keys;
-    CmdDef *d;
 
     nb_keys = strtokeys(keystr, keys, MAX_KEYS);
     if (!nb_keys)
-        return;
+        return -2;
 
-    d = qe_find_cmd(cmd_name);
-    if (!d) {
-        put_status(s, "No command %s", cmd_name);
-        return;
-    }
-    qe_register_binding1(keys, nb_keys, d, local ? s->mode : NULL);
+    return qe_register_binding1(keys, nb_keys, qe_find_cmd(cmd_name), m);
+}
+
+void do_set_key(EditState *s, const char *keystr,
+                const char *cmd_name, int local)
+{
+    int res = qe_mode_set_key(local ? s->mode : NULL, keystr, cmd_name);
+
+    if (res == -2)
+        put_status(s, "Invalid keys: %s", keystr);
+    if (res == -1)
+        put_status(s, "Invalid command: %s", cmd_name);
 }
 
 void do_toggle_control_h(EditState *s, int set)
@@ -640,13 +644,11 @@ void do_fill_paragraph(EditState *s)
                 chunk_start += eb_insert_uchar(s->b, chunk_start, '\n');
                 if (offset < par_end) {
                     /* indent */
-                    for (n = indent_size; n > 0; n--) {
-                        int nb = eb_insert_uchar(s->b, chunk_start, ' ');
-                        chunk_start += nb;
-                        word_start += nb;
-                        offset += nb;
-                        par_end += nb;
-                    }
+                    int nb = eb_insert_spaces(s->b, offset, indent_size);
+                    chunk_start += nb;
+                    word_start += nb;
+                    offset += nb;
+                    par_end += nb;
                 }
                 col = word_size + indent_size;
             } else {
@@ -774,6 +776,12 @@ void do_backspace(EditState *s, int argval)
     s->region_style = 0;
 
     if (argval == NO_ARG) {
+        if (s->qe_state->last_cmd_func == (CmdFunc)do_tab
+        &&  !s->indent_tabs_mode) {
+            /* Delete tab or indentation? */
+            do_undo(s);
+            return;
+        }
         if (s->qe_state->last_cmd_func != (CmdFunc)do_append_next_kill) {
             eb_prevc(s->b, s->offset, &offset1);
             if (offset1 < s->offset) {
@@ -1440,7 +1448,29 @@ void do_overwrite_mode(EditState *s, int argval)
 void do_tab(EditState *s, int argval)
 {
     /* CG: should do smart complete, smart indent, insert tab */
-    do_char(s, 9, argval);
+    if (s->indent_tabs_mode) {
+        do_char(s, 9, argval);
+    } else {
+        int offset = s->offset;
+        int offset0 = eb_goto_bol(s->b, offset);
+        int col = 0;
+        int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
+        int indent = s->indent_size > 0 ? s->indent_size : tw;
+
+        while (offset0 < offset) {
+            int c = eb_nextc(s->b, offset0, &offset0);
+            if (c == '\t') {
+                col += tw - col % tw;
+            } else {
+                col += unicode_glyph_tty_width(c);
+            }
+        }
+        if (argval == NO_ARG)
+            argval = 1;
+
+        s->offset += eb_insert_spaces(s->b, s->offset,
+                                      indent * argval - (col % indent));
+    }
 }
 
 void do_return(EditState *s, int move)

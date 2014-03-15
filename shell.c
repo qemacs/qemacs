@@ -476,10 +476,8 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
     for (; x > 0; x--) {
         c = eb_nextc(s->b, offset, &offset1);
         if (c == '\n') {
-            for (; x > 0; x--) {
-                /* duplicate style of last char */
-                offset += eb_insert_uchar(s->b, offset, ' ');
-            }
+            /* duplicate style of last char */
+            offset += eb_insert_spaces(s->b, offset, x);
             break;
         } else {
             offset = offset1;
@@ -1907,19 +1905,6 @@ static CmdDef shell_commands[] = {
     CMD_DEF_END,
 };
 
-/* pager mode specific commands */
-static CmdDef pager_commands[] = {
-    CMD1( KEY_DEL, KEY_NONE,
-          "scroll-down", do_scroll_up_down, -2 ) /* u? */
-    CMD1( KEY_SPC, KEY_NONE,
-          "scroll-up", do_scroll_up_down, 2 ) /* u? */
-    CMD3( '/', KEY_NONE,
-          "search-forward", do_search_string, ESsi, 1,
-	  "s{/}|search|"
-	  "v")
-    CMD_DEF_END,
-};
-
 /* shell global commands */
 static CmdDef shell_global_commands[] = {
     CMD2( KEY_CTRLXRET('\r'), KEY_NONE,
@@ -1999,6 +1984,9 @@ static int shell_init(void)
     qe_register_mode(&shell_mode);
     qe_register_cmd_table(shell_commands, &shell_mode);
 
+    /* global shell related commands and default keys */
+    qe_register_cmd_table(shell_global_commands, NULL);
+
     /* populate and register pager mode and commands */
     memcpy(&pager_mode, &text_mode, sizeof(ModeDef));
     pager_mode.name = "pager";
@@ -2007,10 +1995,10 @@ static int shell_init(void)
     pager_mode.mode_flags |= MODEF_NOCMD;
 
     qe_register_mode(&pager_mode);
-    qe_register_cmd_table(pager_commands, &pager_mode);
 
-    /* global shell related commands and default keys */
-    qe_register_cmd_table(shell_global_commands, NULL);
+    qe_mode_set_key(&pager_mode, "DEL", "scroll-down");
+    qe_mode_set_key(&pager_mode, "SPC", "scroll-up");
+    qe_mode_set_key(&pager_mode, "/", "search-forward");
 
     return 0;
 }
