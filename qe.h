@@ -1367,6 +1367,7 @@ struct QEmacsState {
     int default_tab_width;      /* 8 */
     int default_fill_column;    /* 70 */
     EOLType default_eol_type;  /* EOL_UNIX */
+    int backup_inhibited;  /* prevent qemacs from backing up files */
 };
 
 extern QEmacsState qe_state;

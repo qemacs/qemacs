@@ -47,6 +47,7 @@ static VarDef var_table[] = {
     S_VAR( "show-unicode", show_unicode, VAR_NUMBER, VAR_RW )
     S_VAR( "default-tab-width", default_tab_width, VAR_NUMBER, VAR_RW )
     S_VAR( "default-fill-column", default_fill_column, VAR_NUMBER, VAR_RW )
+    S_VAR( "backup-inhibited", backup_inhibited, VAR_NUMBER, VAR_RW )
 
     //B_VAR( "screen-charset", charset, VAR_NUMBER, VAR_RW )
 
