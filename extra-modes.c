@@ -1680,11 +1680,15 @@ void ruby_colorize_line(unsigned int *str, int n, int *statep,
     int state = *statep;
     char kbuf[32];
 
+    for (indent = 0; qe_isspace(str[indent]); indent++)
+        continue;
+
     if (state & IN_HEREDOC) {
         if (state & IN_HD_INDENT) {
             while (qe_isspace(str[j]))
                 j++;
         }
+	sig = 0;
         if (qe_isalpha_(str[j])) {
             sig = str[j++] % 61;
             for (; qe_isalnum_(str[j]); j++) {
