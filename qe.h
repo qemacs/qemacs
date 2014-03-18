@@ -1033,6 +1033,8 @@ extern EditBufferDataType raw_data_type;
 
 /* qe.c */
 
+#define COLORED_MAX_LINE_SIZE  4096
+
 /* colorize & transform a line, lower level then ColorizeFunc */
 typedef int (*GetColorizedLineFunc)(EditState *s,
                                     unsigned int *buf, int buf_size,

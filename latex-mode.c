@@ -22,8 +22,6 @@
 
 #include "qe.h"
 
-#define MAX_BUF_SIZE    512
-
 /* TODO: add state handling to allow colorization of elements longer
  * than one line (eg, multi-line functions and strings)
  */
@@ -146,7 +144,7 @@ static int latex_mode_probe(ModeDef *mode, ModeProbeData *p)
 static void do_tex_insert_quote(EditState *s)
 {
     int offset_bol, len, offset1;
-    unsigned int buf[MAX_BUF_SIZE];
+    unsigned int buf[COLORED_MAX_LINE_SIZE];
     int pos;
 
     offset_bol = eb_goto_bol2(s->b, s->offset, &pos);

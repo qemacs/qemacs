@@ -285,7 +285,6 @@ void c_colorize_line(unsigned int *buf, int len,
     *colorize_state_ptr = state;
 }
 
-#define MAX_BUF_SIZE    512
 #define MAX_STACK_SIZE  64
 
 /* gives the position of the first non white space character in
@@ -394,7 +393,7 @@ static void c_indent_line(EditState *s, int offset0)
 {
     int offset, offset1, offsetl, c, pos, line_num, col_num;
     int i, j, eoi_found, len, pos1, lpos, style, line_num1, state;
-    unsigned int buf[MAX_BUF_SIZE], *p;
+    unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
     unsigned char stack[MAX_STACK_SIZE];
     char buf1[64], *q;
     int stack_ptr;

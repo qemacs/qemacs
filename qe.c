@@ -1707,7 +1707,7 @@ static int reload_buffer(EditState *s, EditBuffer *b, FILE *f1)
         ret = -1;
     b->modified = 0;
     b->save_log = saved;
-    if (!f1)
+    if (!f1 && f)
         fclose(f);
 
     if (ret < 0) {
@@ -3389,7 +3389,6 @@ int get_non_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 }
 
 #define RLE_EMBEDDINGS_SIZE    128
-#define COLORED_MAX_LINE_SIZE  1024
 
 int text_display(EditState *s, DisplayState *ds, int offset)
 {
@@ -3589,7 +3588,7 @@ static void generic_text_display(EditState *s)
         s->mode->text_display(s, ds, offset);
         if (m->xc == NO_CURSOR) {
             /* XXX: should not happen */
-            printf("ERROR: cursor not found\n");
+            put_error(NULL, "ERROR: cursor not found");
             ds->y = 0;
         } else {
             ds->y = m->yc + m->cursor_height;
@@ -3653,7 +3652,8 @@ static void generic_text_display(EditState *s)
     xc = m->xc;
     yc = m->yc;
 
-    if (s->qe_state->active_window == s) {
+    if (xc != NO_CURSOR && yc != NO_CURSOR
+    &&  s->qe_state->active_window == s) {
         int x, y, w, h;
         x = s->xleft + xc;
         y = s->ytop + yc;

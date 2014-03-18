@@ -28,7 +28,6 @@ ModeDef org_mode;
 #define IN_LISP        0x40
 #define IN_TABLE       0x20
 
-#define MAX_BUF_SIZE    512
 #define MAX_LEVEL       128
 
 /* TODO: define specific styles */

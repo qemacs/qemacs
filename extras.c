@@ -175,12 +175,11 @@ void do_show_date_and_time(EditState *s, int argval)
 }
 
 /* forward / backward block */
-#define MAX_BUF_SIZE  512
 #define MAX_LEVEL     20
 
 static void do_forward_block(EditState *s, int dir)
 {
-    unsigned int buf[MAX_BUF_SIZE];
+    unsigned int buf[COLORED_MAX_LINE_SIZE];
     char balance[MAX_LEVEL];
     int line_num, col_num, offset, offset1, len, pos, style, c, c1, level;
 

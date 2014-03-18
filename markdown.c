@@ -67,7 +67,6 @@ QE_STYLE_TAG,
 #define IN_LEVEL       0x0700
 #define LEVEL_SHIFT  8
 
-#define MAX_BUF_SIZE    512
 #define MAX_LEVEL       128
 
 /* TODO: define specific styles */
