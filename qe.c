@@ -1686,7 +1686,7 @@ static int reload_buffer(EditState *s, EditBuffer *b, FILE *f1)
     if (b->filename[0] == '\0')
         return 0;
 
-    if (!f1) {
+    if (!f1 && b->data_type == &raw_data_type) {
         struct stat st;
 
         if (stat(b->filename, &st) < 0 || !S_ISREG(st.st_mode))
@@ -5089,14 +5089,33 @@ void do_completion(EditState *s)
     complete_end(&cs);
 }
 
+static int eb_match_string_reverse(EditBuffer *b, int offset, const char *str,
+                                   int *offsetp)
+{
+    int len = strlen(str);
+
+    while (len > 0) {
+        if (offset <= 0 || eb_prevc(b, offset, &offset) != str[--len])
+            return 0;
+    }
+    *offsetp = offset;
+    return 1;
+}
+
 void do_electric_filename(EditState *s, int key)
 {
-    int c, offset;
+    int c, offset, stop;
 
     if (completion_function == file_completion) {
+        stop = s->offset;
         c = eb_prevc(s->b, s->offset, &offset);
-        if (c == '/')
-            eb_delete(s->b, 0, s->offset);
+        if (c == '/') {
+            if (eb_match_string_reverse(s->b, offset, "http:", &stop)
+            ||  eb_match_string_reverse(s->b, offset, "https:", &stop)
+            ||  eb_match_string_reverse(s->b, offset, "ftp:", &stop))
+                ;
+            eb_delete(s->b, 0, stop);
+        }
     }
     do_char(s, key, 1);
 }
@@ -5793,12 +5812,12 @@ static void do_load1(EditState *s, const char *filename1,
 
     /* First we try to read the first block to determine the data type */
     if (stat(filename, &st) < 0) {
-        /* XXX: default charset should be selectable.  Use utf8 for now */
+        /* XXX: default charset should be selectable.  Should have auto
+         * charset transparent support for both utf8 and latin1.
+         * Use utf8 for now */
         eb_set_charset(b, &charset_utf8, b->eol_type);
         /* XXX: dired_mode_probe will check for wildcards in real_filename */
-        put_status(s, "(New file)");
-        /* Try to determine the desired mode based on the filename.
-         * This avoids having to set c-mode for each new .c or .h file. */
+        /* Try to determine the desired mode based on the filename. */
         b->st_mode = st_mode = S_IFREG;
         buf[0] = '\0';
         buf_size = 0;
@@ -5811,6 +5830,8 @@ static void do_load1(EditState *s, const char *filename1,
          */
         b->default_mode = selected_mode;
         switch_to_buffer(s, b);
+        if (b->data_type == &raw_data_type)
+            put_status(s, "(New file)");
         do_load_qerc(s, s->b->filename);
         return;
     } else {
@@ -5818,7 +5839,6 @@ static void do_load1(EditState *s, const char *filename1,
         buf_size = 0;
         f = NULL;
 
-        /* CG: should check for ISDIR and do dired */
         if (S_ISREG(st_mode)) {
             f = fopen(filename, "r");
             if (!f)

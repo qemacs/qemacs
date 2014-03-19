@@ -251,7 +251,7 @@ static void tty_term_close(QEditScreen *s)
            s->height, 1);
 #else
     /* go to last line and clear it */
-    TTY_FPRINTF(s->STDOUT, "\033[%d;%dH\033[m\033[K", s->height, 1);
+    TTY_FPRINTF(s->STDOUT, "\033[%d;%dH" "\033[m\033[K", s->height, 1);
     TTY_FPRINTF(s->STDOUT,
                 "\033[?1049l"        /* exit_ca_mode */
                 "\r"                 /* return */
@@ -1291,7 +1291,8 @@ static void tty_term_flush(QEditScreen *s)
 
     TTY_FPUTS("\033[0m", s->STDOUT);
     if (ts->cursor_y + 1 >= 0 && ts->cursor_x + 1 >= 0) {
-        TTY_FPRINTF(s->STDOUT, "\033[%d;%dH", ts->cursor_y + 1, ts->cursor_x + 1);
+        TTY_FPRINTF(s->STDOUT, "\033[%d;%dH",
+                    ts->cursor_y + 1, ts->cursor_x + 1);
     }
     fflush(s->STDOUT);
 }

@@ -1695,6 +1695,7 @@ void edit_display(QEmacsState *qs);
 void edit_invalidate(EditState *s);
 void display_mode_line(EditState *s);
 void edit_set_mode(EditState *s, ModeDef *m);
+void do_set_next_mode(EditState *s, int dir);
 
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);
@@ -1971,6 +1972,9 @@ const char *get_shell(void);
 #define SF_INTERACTIVE   0x01
 #define SF_COLOR         0x02
 #define SF_INFINITE      0x04
+#define SF_AUTO_CODING   0x08
+#define SF_AUTO_MODE     0x10
+#define SF_BUFED_MODE    0x20
 EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
                              const char *caption, const char *cmd,
                              int shell_flags);

@@ -47,7 +47,7 @@ static ArchiveType *archive_types;
 
 /* Compressors */
 typedef struct CompressType {
-    const char *name;           /* name of archive format */
+    const char *name;           /* name of compressed format */
     const char *extensions;
     const char *load_cmd;       /* uncompress file to stdout */
     const char *save_cmd;       /* compress to file from stdin */
@@ -86,8 +86,15 @@ static int archive_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     ArchiveType *atp = find_archive_type(p->filename);
 
-    if (atp)
-        return 70;
+    if (atp) {
+        if (p->b && p->b->priv_data) {
+            /* buffer loaded, re-selecting mode causes buffer reload */
+            return 9;
+        } else {
+            /* buffer not yet loaded */
+            return 70;
+        }
+    }
 
     return 0;
 }
@@ -117,7 +124,7 @@ static int archive_buffer_load(EditBuffer *b, FILE *f)
                   atp->name, b->filename);
         snprintf(cmd, sizeof(cmd), atp->list_cmd, b->filename);
         new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
-                         SF_INFINITE);
+                         SF_INFINITE | SF_BUFED_MODE);
 
         /* XXX: should check for archiver error */
         /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
@@ -154,7 +161,7 @@ static int archive_init(void)
 {
     int i;
 
-    /* archive mode is almost like the text mode, so we copy and patch it */
+    /* copy and patch text_mode */
     memcpy(&archive_mode, &text_mode, sizeof(ModeDef));
     archive_mode.name = "archive";
     archive_mode.mode_probe = archive_mode_probe;
@@ -193,8 +200,15 @@ static int compress_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     CompressType *ctp = find_compress_type(p->filename);
 
-    if (ctp)
-        return 60;
+    if (ctp) {
+        if (p->b && p->b->priv_data) {
+            /* buffer loaded, re-selecting mode causes buffer reload */
+            return 9;
+        } else {
+            /* buffer not yet loaded */
+            return 60;
+        }
+    }
 
     return 0;
 }
@@ -213,7 +227,7 @@ static ModeDef compress_mode;
 
 static int compress_buffer_load(EditBuffer *b, FILE *f)
 {
-    /* Launch subprocess to list compress contents */
+    /* Launch subprocess to expand compressed contents */
     char cmd[1024];
     CompressType *ctp;
 
@@ -222,7 +236,7 @@ static int compress_buffer_load(EditBuffer *b, FILE *f)
         eb_clear(b);
         snprintf(cmd, sizeof(cmd), ctp->load_cmd, b->filename);
         new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
-                         SF_INFINITE);
+                         SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
         /* XXX: should check for archiver error */
         /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
         b->flags |= BF_READONLY;
@@ -258,7 +272,7 @@ static int compress_init(void)
 {
     int i;
 
-    /* compress mode is almost like the text mode, so we copy and patch it */
+    /* copy and patch text_mode */
     memcpy(&compress_mode, &text_mode, sizeof(ModeDef));
     compress_mode.name = "compress";
     compress_mode.mode_probe = compress_mode_probe;
@@ -277,11 +291,82 @@ static int compress_init(void)
     return 0;
 }
 
+/*---------------- Wget ----------------*/
+
+static ModeDef wget_mode;
+
+static int wget_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (strstart(p->real_filename, "http:", NULL)
+    ||  strstart(p->real_filename, "https:", NULL)
+    ||  strstart(p->real_filename, "ftp:", NULL)) {
+        if (p->b && p->b->priv_data) {
+            /* buffer loaded, re-selecting mode causes buffer reload */
+            return 9;
+        } else {
+            /* buffer not yet loaded */
+            return 90;
+        }
+    }
+
+    return 0;
+}
+
+static int wget_buffer_load(EditBuffer *b, FILE *f)
+{
+    /* Launch wget subprocess to retrieve contents */
+    char cmd[1024];
+
+    eb_clear(b);
+    snprintf(cmd, sizeof(cmd), "wget -q -O - %s", b->filename);
+    new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
+                     SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
+    /* XXX: should check for wget error */
+    /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
+    b->flags |= BF_READONLY;
+
+    return 0;
+}
+
+static int wget_buffer_save(EditBuffer *b, int start, int end,
+                               const char *filename)
+{
+    /* XXX: should put contents back to web server */
+    return -1;
+}
+
+static void wget_buffer_close(EditBuffer *b)
+{
+    /* XXX: kill process? */
+}
+
+static EditBufferDataType wget_data_type = {
+    "wget",
+    wget_buffer_load,
+    wget_buffer_save,
+    wget_buffer_close,
+    NULL, /* next */
+};
+
+static int wget_init(void)
+{
+    /* copy and patch text_mode */
+    memcpy(&wget_mode, &text_mode, sizeof(ModeDef));
+    wget_mode.name = "wget";
+    wget_mode.mode_probe = wget_mode_probe;
+    wget_mode.data_type = &wget_data_type;
+
+    eb_register_data_type(&wget_data_type);
+    qe_register_mode(&wget_mode);
+
+    return 0;
+}
+
 /*---------------- Initialization ----------------*/
 
 static int archive_compress_init(void)
 {
-    return archive_init() || compress_init();
+    return archive_init() || compress_init() || wget_init();
 }
 
 qe_module_init(archive_compress_init);

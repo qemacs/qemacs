@@ -1367,6 +1367,10 @@ static void shell_pid_cb(void *opaque, int status)
     for (e = qs->first_window; e != NULL; e = e->next_window) {
         if (e->b == b)
             e->interactive = 0;
+        if (s->shell_flags & SF_AUTO_CODING)
+            do_set_auto_coding(e, 0);
+        if (s->shell_flags & SF_AUTO_MODE)
+            do_set_next_mode(e, 0);
     }
     if (!(s->shell_flags & SF_INTERACTIVE)) {
         shell_close(b);
@@ -1935,8 +1939,10 @@ static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (p->b && p->b->priv_data) {
         ShellState *s = p->b->priv_data;
-        if (s->signature == &shell_signature)
-            return 100;
+        if (s->signature == &shell_signature) {
+            if (s->shell_flags & SF_INTERACTIVE)
+                return 100;
+        }
     }
     return 0;
 }
