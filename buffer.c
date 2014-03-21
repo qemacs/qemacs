@@ -370,20 +370,24 @@ int eb_insert(EditBuffer *b, int offset, const void *buf, int size)
     return size;
 }
 
-/* We must have : 0 <= offset <= b->total_size */
-void eb_delete(EditBuffer *b, int offset, int size)
+/* We must have : 0 <= offset <= b->total_size,
+ * return actual number of bytes removed.
+ */
+int eb_delete(EditBuffer *b, int offset, int size)
 {
-    int n, len;
+    int n, len, size0;
     Page *del_start, *p;
 
     if (b->flags & BF_READONLY)
-        return;
+        return 0;
 
-    if (offset + size > b->total_size)
+    if (offset < 0 || offset >= b->total_size || size <= 0)
+        return 0;
+
+    if (size > b->total_size - offset)
         size = b->total_size - offset;
 
-    if (offset < 0 || size <= 0)
-        return;
+    size0 = size;
 
     /* dispatch callbacks before buffer update */
     eb_addlog(b, LOGOP_DELETE, offset, size);
@@ -432,6 +436,8 @@ void eb_delete(EditBuffer *b, int offset, int size)
 
     /* the page cache is no longer valid */
     b->cur_page = NULL;
+
+    return size0;
 }
 
 /* flush the log */
@@ -1214,17 +1220,19 @@ int eb_skip_chars(EditBuffer *b, int offset, int n)
 /* delete one character at offset 'offset', return number of bytes removed */
 int eb_delete_uchar(EditBuffer *b, int offset)
 {
-    int offset1, size = 0;
+    int offset1;
     
     eb_nextc(b, offset, &offset1);
     if (offset < offset1) {
-        size = offset1 - offset;
-        eb_delete(b, offset, size);
+        return eb_delete(b, offset, offset1 - offset);
+    } else {
+        return 0;
     }
-    return size;
 }
 
-/* return number of bytes deleted */
+/* return number of bytes deleted. n can be negative to delete
+ * characters before offset
+ */
 int eb_delete_chars(EditBuffer *b, int offset, int n)
 {
     int offset1 = eb_skip_chars(b, offset, n);
@@ -1236,8 +1244,7 @@ int eb_delete_chars(EditBuffer *b, int offset, int n)
         size = -size;
     }        
 
-    eb_delete(b, offset, size);
-    return size;
+    return eb_delete(b, offset, size);
 }
 
 /* XXX: only stateless charsets are supported */
@@ -1453,7 +1460,7 @@ int eb_get_char_offset(EditBuffer *b, int offset)
 }
 
 /* delete a range of bytes from the buffer, bounds in any order, return
- * lower bound.
+ * number of bytes removed.
  */
 int eb_delete_range(EditBuffer *b, int p1, int p2)
 {
@@ -1462,8 +1469,7 @@ int eb_delete_range(EditBuffer *b, int p1, int p2)
         p1 = p2;
         p2 = tmp;
     }
-    eb_delete(b, p1, p2 - p1);
-    return p1;
+    return eb_delete(b, p1, p2 - p1);
 }
 
 /* replace 'size' bytes at offset 'offset' with 'size1' bytes from 'buf' */

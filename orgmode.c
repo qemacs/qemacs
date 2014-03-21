@@ -517,9 +517,11 @@ static void do_org_insert_heading(EditState *s, int flags)
     } else {
         offset = offset0;
     }        
-    while (eb_nextc(s->b, offset, &offset1) == ' ') {
-        eb_delete_uchar(s->b, offset);
-    }
+    offset1 = offset;
+    while (eb_match_uchar(s->b, offset1, ' ', &offset1))
+        continue;
+    eb_delete(s->b, offset, offset1 - offset);
+
     while (level-- > 0) {
         offset += eb_insert_uchar(s->b, offset, '*');
     }

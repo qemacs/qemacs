@@ -893,7 +893,7 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
                      EditBuffer *src, int src_offset,
                      int size);
 int eb_insert(EditBuffer *b, int offset, const void *buf, int size);
-void eb_delete(EditBuffer *b, int offset, int size);
+int eb_delete(EditBuffer *b, int offset, int size);
 void eb_replace(EditBuffer *b, int offset, int size,
                 const void *buf, int size1);
 void log_reset(EditBuffer *b);

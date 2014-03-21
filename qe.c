@@ -637,7 +637,7 @@ void do_fill_paragraph(EditState *s)
             /* first word: preserve spaces */
             col += space_size + word_size;
         } else {
-            /* insert space single space then word */
+            /* insert space single space the word */
             if (offset == par_end
             ||  (col + 1 + word_size > s->b->fill_column)) {
                 eb_delete_uchar(s->b, chunk_start);
@@ -736,15 +736,14 @@ void do_changecase_region(EditState *s, int arg)
 
 void do_delete_char(EditState *s, int argval)
 {
-    int endpos, i, offset1;
+    int endpos, i;
 
     if (s->b->flags & BF_READONLY)
         return;
 
     if (argval == NO_ARG) {
         if (s->qe_state->last_cmd_func != (CmdFunc)do_append_next_kill) {
-            eb_nextc(s->b, s->offset, &offset1);
-            eb_delete(s->b, s->offset, offset1 - s->offset);
+            eb_delete_uchar(s->b, s->offset);
             return;
         }
         argval = 1;
@@ -785,7 +784,7 @@ void do_backspace(EditState *s, int argval)
         if (s->qe_state->last_cmd_func != (CmdFunc)do_append_next_kill) {
             eb_prevc(s->b, s->offset, &offset1);
             if (offset1 < s->offset) {
-                s->offset = eb_delete_range(s->b, offset1, s->offset);
+                eb_delete_range(s->b, offset1, s->offset);
                 /* special case for composing */
                 if (s->compose_len > 0)
                     s->compose_len--;
@@ -6549,7 +6548,8 @@ static void query_replace_replace(QueryReplaceState *is)
 
     eb_delete(s->b, is->found_offset, is->found_end - is->found_offset);
     is->found_offset += eb_insert_utf8_buf(s->b, is->found_offset,
-                                           is->replace_bytes, is->replace_bytes_len);
+                                           is->replace_bytes,
+                                           is->replace_bytes_len);
     is->nb_reps++;
 }
 

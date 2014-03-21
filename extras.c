@@ -164,6 +164,140 @@ void do_delete_blank_lines(EditState *s)
     eb_delete_range(b, from, offset);
 }
 
+void eb_tabify(EditBuffer *b, int p1, int p2)
+{
+    /* We implement a complete analysis of the region instead of
+     * scanning for certain space patterns (such as / [ \t]/).  It is
+     * fast enough, sometimes even faster, more concise and more
+     * correct for pathological case where initial space falls on tab
+     * column.
+     */
+    /* XXX: should extend for language modes to not replace spaces
+     * inside character constants, strings, regex, comments,
+     * preprocessor, etc.  Implementation is not too difficult with a
+     * new buffer reader eb_nextc_style() using with colorizer and a
+     * one line cache.
+     */
+    int tw = b->tab_width > 0 ? b->tab_width : 8;
+    int start = max(0, min(p1, p2));
+    int stop = min(b->total_size, max(p1, p2));
+    int col;
+    int offset, offset1, offset2, delta;
+
+    col = 0;
+    offset = eb_goto_bol(b, start);
+
+    for (; offset < stop; offset = offset1) {
+        int c = eb_nextc(b, offset, &offset1);
+        if (c == '\r' || c == '\n') {
+            col = 0;
+            continue;
+        }
+        if (c == '\t') {
+            col += tw - col % tw;
+            continue;
+        }
+        col += unicode_glyph_tty_width(c);
+        if (c != ' ' || offset < start || col % tw == 0)
+            continue;
+        while (offset1 < stop) {
+            c = eb_nextc(b, offset1, &offset2);
+            if (c == ' ') {
+                col += unicode_glyph_tty_width(c);
+                offset1 = offset2;
+                if (col % tw == 0) {
+                    delta = eb_delete_range(b, offset, offset1);
+                    delta = eb_insert_uchar(b, offset, '\t') - delta;
+                    offset1 += delta;
+                    stop += delta;
+                    break;
+                }
+                continue;
+            } else
+            if (c == '\t') {
+                col += tw - col % tw;
+                delta = -eb_delete_range(b, offset, offset1);
+                offset1 = offset2;
+                offset1 += delta;
+                stop += delta;
+            }
+            break;
+        }
+    }
+}
+
+void do_tabify_buffer(EditState *s)
+{
+    /* deactivate region hilite */
+    s->region_style = 0;
+
+    eb_tabify(s->b, 0, s->b->total_size);
+}
+
+void do_tabify_region(EditState *s)
+{
+    /* deactivate region hilite */
+    s->region_style = 0;
+
+    eb_tabify(s->b, s->b->mark, s->offset);
+}
+
+void eb_untabify(EditBuffer *b, int p1, int p2)
+{
+    /* We implement a complete analysis of the region instead of
+     * potentially faster scan for '\t'.  It is fast enough and even
+     * faster if there are lots of tabs.
+     */
+    int tw = b->tab_width > 0 ? b->tab_width : 8;
+    int start = max(0, min(p1, p2));
+    int stop = min(b->total_size, max(p1, p2));
+    int col, col0;
+    int offset, offset1, offset2, delta;
+
+    col = 0;
+    offset = eb_goto_bol(b, start);
+
+    for (; offset < stop; offset = offset1) {
+        int c = eb_nextc(b, offset, &offset1);
+        if (c == '\r' || c == '\n') {
+            col = 0;
+            continue;
+        }
+        if (c != '\t') {
+            col += unicode_glyph_tty_width(c);
+            continue;
+        }
+        col0 = col;
+        col += tw - col % tw;
+        if (offset < start)
+            continue;
+        while (eb_nextc(b, offset1, &offset2) == '\t') {
+            col += tw;
+            offset1 = offset2;
+        }
+        delta = eb_delete_range(b, offset, offset1);
+        delta = eb_insert_spaces(b, offset, col - col0) - delta;
+        offset1 += delta;
+        stop += delta;
+    }
+}
+
+void do_untabify_buffer(EditState *s)
+{
+    /* deactivate region hilite */
+    s->region_style = 0;
+
+    eb_untabify(s->b, 0, s->b->total_size);
+}
+
+void do_untabify_region(EditState *s)
+{
+    /* deactivate region hilite */
+    s->region_style = 0;
+
+    eb_untabify(s->b, s->b->mark, s->offset);
+}
+
 void do_show_date_and_time(EditState *s, int argval)
 {
     time_t t = argval;
@@ -866,6 +1000,15 @@ static CmdDef extra_commands[] = {
           "delete-horizontal-space", do_delete_horizontal_space, ES, "*")
     CMD2( KEY_CTRLX(KEY_CTRL('o')), KEY_NONE,
           "delete-blank-lines", do_delete_blank_lines, ES, "*")
+    CMD2( KEY_NONE, KEY_NONE,
+          "tabify-region", do_tabify_region, ES, "*")
+    CMD2( KEY_NONE, KEY_NONE,
+          "tabify-buffer", do_tabify_buffer, ES, "*")
+    CMD2( KEY_NONE, KEY_NONE,
+          "untabify-region", do_untabify_region, ES, "*")
+    CMD2( KEY_NONE, KEY_NONE,
+          "untabify-buffer", do_untabify_buffer, ES, "*")
+
     CMD2( KEY_CTRLX('t'), KEY_NONE,
           "show-date-and-time", do_show_date_and_time, ESi, "ui")
 
