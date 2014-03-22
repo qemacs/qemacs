@@ -19,3 +19,11 @@ allmodules.txt
 basemodules.txt
 STATS
 .tags
+patches
+cur
+old
+nnn
+msg
+doc
+junk
+.qerc
