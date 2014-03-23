@@ -414,10 +414,18 @@ static void tty_read_handler(void *opaque)
 
     switch (ts->input_state) {
     case IS_NORM:
-        if (ch == '\033')
+        if (ch == '\033') {
+            if (!tty_term_is_user_input_pending(s)) {
+                /* Trick to distinguish the ESC key from function and meta
+                 * keys  transmitting escape sequences starting with \033
+                 * but followed immediately by more characters.
+                 */
+                goto the_end;
+            }
             ts->input_state = IS_ESC;
-        else
+        } else {
             goto the_end;
+        }
         break;
     case IS_ESC:
         if (ch == '\033') {
@@ -425,6 +433,11 @@ static void tty_read_handler(void *opaque)
             goto the_end;
         }
         if (ch == '[') {
+            if (!tty_term_is_user_input_pending(s)) {
+                ch = KEY_META('[');
+                ts->input_state = IS_NORM;
+                goto the_end;
+            }
             ts->input_state = IS_CSI;
             ts->input_param = 0;
         } else if (ch == 'O') {

@@ -971,6 +971,7 @@ int eb_prev_line(EditBuffer *b, int offset);
 int eb_goto_bol(EditBuffer *b, int offset);
 int eb_goto_bol2(EditBuffer *b, int offset, int *countp);
 int eb_is_blank_line(EditBuffer *b, int offset, int *offset1);
+int eb_is_in_indentation(EditBuffer *b, int offset);
 int eb_goto_eol(EditBuffer *b, int offset);
 int eb_next_line(EditBuffer *b, int offset);
 
@@ -1225,6 +1226,7 @@ struct ModeDef {
 
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
     void (*get_mode_line)(EditState *s, buf_t *out);
+    void (*indent_func)(EditState *s, int offset);
 
     /* mode specific key bindings */
     struct KeyDef *first_key;

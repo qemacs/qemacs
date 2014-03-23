@@ -5,7 +5,6 @@
 
 * Needed for release version 5
 
-** basic: indent-region
 ** basic: indent-rigidly
 ** basic: minibuffer completion -> bad return on C-x C-f . SPC qe SPC RET
 ** basic: scripting
@@ -35,6 +34,7 @@
 ** shell: yank at shell prompt
 ** undo: undo should handle sequence of undo records upto tagged start.
 ** x11: handle X11 window manager close window event and exit cleanly
+** DONE basic: indent-region
 ** DONE basic: untabify-region, untabify-buffer
 ** DONE basic: indent on TAB according to indent-width and indent-with-tabs
 ** DONE c-mode: fix c-mode tab on line with excess indentation
@@ -54,7 +54,6 @@
 ** add custom memory handling functions.
 ** use failsafe memory allocator and longjmp recover.
 ** redefine KEY_Fx to make them sequential
-** timers for esc key disambiguation
 ** move ungot_key to key_context
 ** use trick for entering spaces in filename prompts without completion
 ** static init_call stuff ?
@@ -81,6 +80,7 @@
 ** C-x x next-buffer ??? Move to the next buffer.
 ** abbreviation mode
 ** qe_realloc -> typed and clear reallocated area
+** DONE timers for esc key disambiguation
 ** DONE ftp: / http: support
 ** DONE set-auto-mode: reselect best mode
 ** DONE set-next-mode: select nth best mode

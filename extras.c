@@ -298,6 +298,37 @@ void do_untabify_region(EditState *s)
     eb_untabify(s->b, s->b->mark, s->offset);
 }
 
+void do_indent_region(EditState *s)
+{
+    int col_num, line1, line2;
+
+    /* deactivate region hilite */
+    s->region_style = 0;
+
+    /* Swap point and mark so mark <= point */
+    if (s->offset < s->b->mark) {
+        int tmp = s->b->mark;
+        s->b->mark = s->offset;
+        s->offset = tmp;
+    }
+    /* We do it with lines to avoid offset variations during indenting */
+    eb_get_pos(s->b, &line1, &col_num, s->b->mark);
+    eb_get_pos(s->b, &line2, &col_num, s->offset);
+
+    if (col_num == 0)
+        line2--;
+
+    /* Iterate over all lines inside block */
+    for (; line1 <= line2; line1++) {
+        if (s->mode->indent_func) {
+            (s->mode->indent_func)(s, eb_goto_pos(s->b, line1, 0));
+        } else {
+            s->offset = eb_goto_pos(s->b, line1, 0);
+            do_tab(s, 1);
+        }
+    }
+}
+
 void do_show_date_and_time(EditState *s, int argval)
 {
     time_t t = argval;
@@ -1008,6 +1039,8 @@ static CmdDef extra_commands[] = {
           "untabify-region", do_untabify_region, ES, "*")
     CMD2( KEY_NONE, KEY_NONE,
           "untabify-buffer", do_untabify_buffer, ES, "*")
+    CMD2( KEY_META(KEY_CTRL('\\')), KEY_NONE,
+          "indent-region", do_indent_region, ES, "*")
 
     CMD2( KEY_CTRLX('t'), KEY_NONE,
           "show-date-and-time", do_show_date_and_time, ESi, "ui")

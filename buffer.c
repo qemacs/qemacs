@@ -2131,6 +2131,18 @@ int eb_is_blank_line(EditBuffer *b, int offset, int *offset1)
     return 1;
 }
 
+/* check if <offset> is within indentation. */
+int eb_is_in_indentation(EditBuffer *b, int offset)
+{
+    int c;
+
+    while ((c = eb_prevc(b, offset, &offset)) != '\n') {
+        if (!qe_isblank(c))
+            return 0;
+    }
+    return 1;
+}
+
 /* return offset of the end of the line containing offset */
 int eb_goto_eol(EditBuffer *b, int offset)
 {

@@ -564,7 +564,7 @@ static void c_indent_line(EditState *s, int offset0)
             j = get_c_identifier(buf1, countof(buf1), buf + i);
 
             if (style == QE_STYLE_KEYWORD) {
-                if (strfind(buf1, "case|default"))
+                if (strfind("case|default", buf1))
                     goto unindent;
             }
             for (j += i; qe_isblank(buf[j] & CHAR_MASK); j++)
@@ -610,36 +610,11 @@ static void c_indent_line(EditState *s, int offset0)
 
 static void do_c_indent(EditState *s)
 {
-    if (s->qe_state->last_cmd_func == (CmdFunc)do_c_indent) {
-        do_tab(s, 1);
-    } else {
+    if (eb_is_in_indentation(s->b, s->offset)
+    &&  s->qe_state->last_cmd_func != (CmdFunc)do_c_indent) {
         c_indent_line(s, s->offset);
-    }
-}
-
-static void do_c_indent_region(EditState *s)
-{
-    int col_num, line1, line2;
-
-    /* deactivate region hilite */
-    s->region_style = 0;
-
-    /* Swap point and mark so mark <= point */
-    if (s->offset < s->b->mark) {
-        int tmp = s->b->mark;
-        s->b->mark = s->offset;
-        s->offset = tmp;
-    }
-    /* We do it with lines to avoid offset variations during indenting */
-    eb_get_pos(s->b, &line1, &col_num, s->b->mark);
-    eb_get_pos(s->b, &line2, &col_num, s->offset);
-
-    if (col_num == 0)
-        line2--;
-
-    /* Iterate over all lines inside block */
-    for (; line1 <= line2; line1++) {
-        c_indent_line(s, eb_goto_pos(s->b, line1, 0));
+    } else {
+        do_tab(s, 1);
     }
 }
 
@@ -658,11 +633,132 @@ static void do_c_return(EditState *s)
     do_return(s, 1);
     /* reindent line to remove indent on blank line */
     c_indent_line(s, offset);
+    /* XXX: should indent line if auto-indent is active */
+}
+
+static int ustr_match_mask(const unsigned int *buf, const char *str)
+{
+    while (*str) {
+        if ((*buf++ & CHAR_MASK) != *str++)
+            return 0;
+    }
+    return 1;
 }
 
 /* forward / backward preprocessor */
-static void do_c_forward_preprocessor(EditState *s, int dir)
+static void do_c_forward_conditional(EditState *s, int dir)
 {
+    unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
+    int line_num, col_num, len, sharp, level;
+    int offset, offset0, offset1;
+
+    offset = offset0 = eb_goto_bol(s->b, s->offset);
+    eb_get_pos(s->b, &line_num, &col_num, offset);
+    level = 0;
+    for (;;) {
+        offset1 = offset;
+        len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+        sharp = 0;
+        for (p = buf; *p; p++) {
+            int c = (*p & CHAR_MASK);
+            int style = (*p >> STYLE_SHIFT);
+            if (qe_isblank(c))
+                continue;
+            if (c == '#' && style == QE_STYLE_PREPROCESS)
+                sharp++;
+            else
+                break;
+        }
+        if (sharp == 1) {
+            if (ustr_match_mask(p, dir < 0 ? "endif" : "if")) {
+                if (level || offset == offset0)
+                    level++;
+                else
+                    break;
+            } else
+            if (ustr_match_mask(p, "el")) {
+                if (offset == offset0)
+                    level++;
+                else
+                if (level <= 1)
+                    break;
+            } else
+            if (ustr_match_mask(p, dir > 0 ? "endif" : "if")) {
+                if (level)
+                    level--;
+                if (!level && offset != offset0)
+                    break;
+            }
+        }
+        if (dir > 0) {
+            line_num++;
+            offset = offset1;
+            if (offset >= s->b->total_size)
+                break;
+        } else {
+            if (offset <= 0)
+                break;
+            line_num--;
+            offset = eb_prev_line(s->b, offset);
+        }
+    }
+    s->offset = offset;
+}
+
+static void do_c_list_conditionals(EditState *s)
+{
+    unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
+    int line_num, col_num, len, sharp, level;
+    int offset, offset1;
+    EditBuffer *b;
+
+    b = eb_scratch("Preprocessor conditionals", BF_UTF8);
+    if (!b)
+        return;
+
+    offset = eb_goto_bol(s->b, s->offset);
+    eb_get_pos(s->b, &line_num, &col_num, offset);
+    level = 0;
+    while (offset > 0) {
+        line_num--;
+        offset = eb_prev_line(s->b, offset);
+        offset1 = offset;
+        len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+        sharp = 0;
+        for (p = buf; *p; p++) {
+            int c = (*p & CHAR_MASK);
+            int style = (*p >> STYLE_SHIFT);
+            if (qe_isblank(c))
+                continue;
+            if (c == '#' && style == QE_STYLE_PREPROCESS)
+                sharp++;
+            else
+                break;
+        }
+        if (sharp == 1) {
+            if (ustr_match_mask(p, "endif")) {
+                level++;
+            } else
+            if (ustr_match_mask(p, "el")) {
+                if (level == 0) {
+                    eb_insert_buffer_convert(b, 0, s->b, offset, offset1 - offset);
+                }
+            } else
+            if (ustr_match_mask(p, "if")) {
+                if (level) {
+                    level--;
+                } else {
+                    eb_insert_buffer_convert(b, 0, s->b, offset, offset1 - offset);
+                }
+            }
+        }
+    }
+    if (b->total_size > 0) {
+        show_popup(b);
+    } else {
+        eb_free(&b);
+        put_status(s, "Not in a #if conditional");
+    }
 }
 
 static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -701,13 +797,13 @@ static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
 static CmdDef c_commands[] = {
     CMD2( KEY_CTRL('i'), KEY_NONE,
           "c-indent-command", do_c_indent, ES, "*")
-    CMD2( KEY_META(KEY_CTRL('\\')), KEY_NONE,
-          "c-indent-region", do_c_indent_region, ES, "*")
             /* should map to KEY_META + KEY_CTRL_LEFT ? */
     CMD3( KEY_META('['), KEY_NONE,
-          "c-backward-preprocessor", do_c_forward_preprocessor, ESi, -1, "*v")
+          "c-backward-conditional", do_c_forward_conditional, ESi, -1, "*v")
     CMD3( KEY_META(']'), KEY_NONE,
-          "c-forward-preprocessor", do_c_forward_preprocessor, ESi, 1, "*v")
+          "c-forward-conditional", do_c_forward_conditional, ESi, 1, "*v")
+    CMD2( KEY_META('i'), KEY_NONE,
+          "c-list-conditionals", do_c_list_conditionals, ES, "")
     CMD2( '{', '}',
           "c-electric-key", do_c_electric, ESi, "*ki")
     CMD2( KEY_RET, KEY_NONE,
@@ -727,6 +823,7 @@ static int c_init(void)
     c_mode.extensions = c_mode_extensions;
     c_mode.mode_probe = c_mode_probe;
     c_mode.colorize_func = c_colorize_line;
+    c_mode.indent_func = c_indent_line;
 
     qe_register_mode(&c_mode);
     qe_register_cmd_table(c_commands, &c_mode);
