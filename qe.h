@@ -327,6 +327,7 @@ static inline unsigned int *umemcpy(unsigned int *dest,
 }
 int umemcmp(const unsigned int *s1, const unsigned int *s2, int count);
 int qe_memicmp(const void *p1, const void *p2, int count);
+const char *qe_stristr(const char *s1, const char *s2);
 
 int strsubst(char *buf, int buf_size, const char *from,
              const char *s1, const char *s2);

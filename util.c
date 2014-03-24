@@ -664,6 +664,28 @@ int qe_memicmp(const void *p1, const void *p2, int count)
     return 0;
 }
 
+const char *qe_stristr(const char *s1, const char *s2)
+{
+    int c, c1, c2, len;
+
+    len = strlen(s2);
+    if (!len)
+        return s1;
+
+    c = *s2++;
+    len--;
+    c1 = qe_toupper(c);
+    c2 = qe_tolower(c);
+
+    while ((c = *s1++) != '\0') {
+        if (c == c1 || c == c2) {
+            if (!qe_memicmp(s1, s2, len))
+                return s1 - 1;
+        }
+    }
+    return NULL;
+}
+
 /**
  * Return TRUE if val is a prefix of str (case independent). If it
  * returns TRUE, ptr is set to the next character in 'str' after the
