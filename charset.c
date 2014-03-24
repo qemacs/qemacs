@@ -596,7 +596,7 @@ static int probe_ucs2le(__unused__ QECharset *charset, const u8 *buf, int size)
             return 0;
         }
     }
-    if (count_spaces | count_lines)
+    if (count_spaces + count_lines > size / 16)
         return 1;
     else
         return 0;
@@ -732,7 +732,7 @@ static int probe_ucs2be(__unused__ QECharset *charset, const u8 *buf, int size)
             return 0;
         }
     }
-    if (count_spaces | count_lines)
+    if (count_spaces + count_lines > size / 16)
         return 1;
     else
         return 0;
@@ -876,7 +876,7 @@ static int probe_ucs4le(__unused__ QECharset *charset, const u8 *buf, int size)
             return 0;
         }
     }
-    if (count_spaces | count_lines)
+    if (count_spaces + count_lines > size / 16)
         return 1;
     else
         return 0;
@@ -1006,7 +1006,7 @@ static int probe_ucs4be(__unused__ QECharset *charset, const u8 *buf, int size)
             return 0;
         }
     }
-    if (count_spaces | count_lines)
+    if (count_spaces + count_lines > size / 16)
         return 1;
     else
         return 0;
@@ -1425,8 +1425,10 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
     has_utf8 = 0;
     for (i = 0; i < size;) {
         c = buf[i++];
-        if ((c >= 0x80 && c < 0xc0) || c >= 0xfe)
-            goto no_utf8;
+        if ((c >= 0x80 && c < 0xc0) || c >= 0xfe) {
+            has_utf8 = -1;
+            goto done_utf8;
+        }
         l = utf8_length[c];
         while (l > 1) {
             has_utf8 = 1;
@@ -1434,14 +1436,14 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
                 break;
             c = buf[i++];
             if (!(c >= 0x80 && c < 0xc0)) {
-            no_utf8:
-                has_utf8 = 0;
-                break;
+                has_utf8 = -1;
+                goto done_utf8;
             }
             l--;
         }
     }
-    if (has_utf8) {
+done_utf8:
+    if (has_utf8 > 0) {
         return detect_eol_type(buf, size, &charset_utf8, eol_typep);
     }
 
@@ -1523,7 +1525,7 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
 
     detect_eol_type(buf, size, &charset_raw, eol_typep);
 
-    if (*eol_typep == EOL_DOS) {
+    if (*eol_typep == EOL_DOS || has_utf8 < 0) {
         /* XXX: default DOS files to Latin1, should be selectable */
         return &charset_8859_1;
     }
