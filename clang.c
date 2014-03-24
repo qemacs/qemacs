@@ -21,41 +21,51 @@
 
 #include "qe.h"
 
-#if 0
-static const char cc_keywords[] =
+static const char cc_keywords[] = {
     "asm|catch|class|delete|friend|inline|new|operator|"
-    "private|protected|public|template|try|this|virtual|throw|";
+    "private|protected|public|template|try|this|virtual|throw|"
+};
 
-static const char java_keywords[] =
-    "abstract|boolean|byte|catch|class|extends|false|final|"
-    "finally|function|implements|import|in|instanceof|"
-    "interface|native|new|null|package|private|protected|"
-    "public|super|synchronized|this|throw|throws|transient|"
-    "true|try|var|with|";
-#endif
+static const char js_keywords[] = {
+    "break|continue|delete|else|for|function|if|in|new|return|"
+    "this|typeof|var|void|while|with|case|catch|class|const|"
+    "debugger|default|do|enum|export|extends|finally|import|super|"
+    "switch|throw|try|undefined|null|true|false|"
+};
 
-static const char *c_mode_keywords =
+static const char java_keywords[] = {
+    "abstract|boolean|break|byte|case|catch|class|const|continue|"
+    "default|do|alse|extends|false|final|finally|for|function|"
+    "if|implements|import|in|instanceof|interface|native|new|null|"
+    "package|private|protected|public|return|"
+    "static|super|switch|synchronized|"
+    "this|throw|throws|transient|true|try|var|while|with|"
+};
+
+static const char c_keywords[] = {
     "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
     "if|inline|register|restrict|return|sizeof|static|struct|switch|"
-    "typedef|union|volatile|while|";
+    "typedef|union|volatile|while|"
+};
 
 /* NOTE: 'var' is added for javascript */
-static const char *c_mode_types =
+static const char c_mode_types[] = {
     "char|double|float|int|long|unsigned|short|signed|void|var|"
-    "_Bool|_Complex|_Imaginary|";
+    "_Bool|_Complex|_Imaginary|"
+};
 
-static const char c_mode_extensions[] =
+static const char c_mode_extensions[] = {
     "c|h|C|H|"          /* C language */
     "y|l|lex|"          /* yacc, lex */
     "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++|"   /* C++ */
     "m|"                /* Objective-C */
-    "e|qe|cs|idl|"
+    "e|qe|cs|idl|st|"
     "jav|java|js|json|" /* Java, Javascript, JSon */
     "ec|ecp|"           /* Informix embedded C */
     "pgc|"              /* Postgres embedded C */
     "pcc|"              /* Oracle C++ */
     "cal"               /* GNU Calc */
-    ;
+};
 
 /* grab a C identifier from a uchar buf, stripping color.
  * return char count.
@@ -86,19 +96,23 @@ enum {
     C_STRING     = 4,   /* double quoted string spanning multiple lines */
     C_STRING_Q   = 8,   /* single quoted string spanning multiple lines */
     C_PREPROCESS = 16,  /* preprocessor directive with \ at EOL */
+    C_REGEX      = 32,  /* regex with \ at EOL */
 };
 
-void c_colorize_line(unsigned int *buf, int len,
+void c_colorize_line(unsigned int *str, int n, int mode_flags,
                      int *colorize_state_ptr, __unused__ int state_only)
 {
-    int c, state, style, style1, type_decl, klen, delim;
+    int i = 0, j = i, indent, c, state, style, style1, type_decl, klen, delim;
     unsigned int *p, *p_start, *p_end, *p1, *p2;
     char kbuf[32];
 
+    for (indent = 0; qe_isspace(str[indent]); indent++)
+        continue;
+
     state = *colorize_state_ptr;
-    p = buf;
+    p = str;
     p_start = p;
-    p_end = p + len;
+    p_end = p + n;
     type_decl = 0;
 
     if (p >= p_end)
@@ -119,6 +133,8 @@ void c_colorize_line(unsigned int *buf, int len,
             goto parse_string;
         if (state & C_STRING_Q)
             goto parse_string_q;
+        if (state & C_REGEX)
+            goto parse_regex;
     }
 
     while (p < p_end) {
@@ -151,6 +167,44 @@ void c_colorize_line(unsigned int *buf, int len,
                 p = p_end;
                 set_color(p_start, p, QE_STYLE_COMMENT);
                 goto the_end;
+            }
+            i = p - str - 1;
+            if ((mode_flags & CLANG_REGEX)
+            &&  (i == indent
+            ||   (str[i + 1] != ' ' && str[i + 1] != '='
+            &&    !qe_isalnum(str[i - 1] & CHAR_MASK)
+            &&    str[i - 1] != ')'))) {
+                /* XXX: should use mode context to tell regex from divide */
+                /* parse regex */
+                j = i + 1;
+                state = C_REGEX;
+            parse_regex:
+                while (j < n) {
+                    /* XXX: should ignore / inside char classes */
+                    c = str[j++];
+                    if (c == '\\') {
+                        if (j < n) {
+                            j += 1;
+                        }
+                    } else
+                    if (c == '#' && str[j] == '{') {
+                        /* should parse full syntax */
+                        while (j < n && str[j++] != '}')
+                            continue;
+                    } else
+                    if (c == '/') {
+                        while (qe_findchar("ensuimox", str[j])) {
+                            j++;
+                        }
+                        state = 0;
+                        break;
+                    }
+                }
+#define QE_STYLE_REGEX  QE_STYLE_STRING_Q
+                SET_COLOR(str, i, j, QE_STYLE_REGEX);
+                i = j;
+                p = str + i;
+                continue;
             }
             break;
         case '#':       /* preprocessor */
@@ -231,7 +285,11 @@ void c_colorize_line(unsigned int *buf, int len,
                 } while (qe_isalnum_(c));
                 kbuf[klen] = '\0';
 
-                if (strfind(c_mode_keywords, kbuf)) {
+                if (((mode_flags & (CLANG_C|CLANG_CPP|CLANG_OBJC)) && strfind(c_keywords, kbuf))
+                ||  ((mode_flags & CLANG_CPP) && strfind(cc_keywords, kbuf))
+                ||  ((mode_flags & CLANG_JS) && strfind(js_keywords, kbuf))
+                ||  ((mode_flags & CLANG_JAVA) && strfind(java_keywords, kbuf))
+                   ) {
                     set_color(p_start, p, QE_STYLE_KEYWORD);
                     continue;
                 }
@@ -254,18 +312,18 @@ void c_colorize_line(unsigned int *buf, int len,
                     continue;
                 }
 
-                if (*p == '(') {
+                if (*p == '(' || (p[0] == ' ' && p[1] == '(')) {
                     /* function call */
                     /* XXX: different styles for call and definition */
                     set_color(p_start, p, QE_STYLE_FUNCTION);
                     continue;
                 }
                 /* assume typedef if starting at first column */
-                if (p_start == buf)
+                if (p_start == str)
                     type_decl = 1;
 
                 if (type_decl) {
-                    if (p_start == buf) {
+                    if (p_start == str) {
                         /* assume type if first column */
                         set_color(p_start, p, QE_STYLE_TYPE);
                     } else {
@@ -280,7 +338,7 @@ void c_colorize_line(unsigned int *buf, int len,
     }
  the_end:
     /* strip state if not overflowing from a comment */
-    if (!(state & C_COMMENT) && p > buf && ((p[-1] & CHAR_MASK) != '\\'))
+    if (!(state & C_COMMENT) && p > str && ((p[-1] & CHAR_MASK) != '\\'))
         state &= ~(C_COMMENT1 | C_PREPROCESS);
     *colorize_state_ptr = state;
 }
@@ -793,6 +851,45 @@ static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
+static int c_mode_init(EditState *s, ModeSavedData *saved_data)
+{
+    text_mode.mode_init(s, saved_data);
+
+    /* Select C like flavor */
+    if (match_extension(s->b->filename, "c|h|C|H")) {
+        s->mode_flags = CLANG_C;
+    } else
+    if (match_extension(s->b->filename, "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++")) {
+        s->mode_name = "CPP";
+        s->mode_flags = CLANG_CPP;
+    } else
+    if (match_extension(s->b->filename, "m")) {
+        s->mode_name = "ObjC";
+        s->mode_flags = CLANG_OBJC;
+    } else
+    if (match_extension(s->b->filename, "js|json")) {
+        s->mode_name = "Javascript";
+        s->mode_flags = CLANG_JS | CLANG_REGEX;
+    } else
+    if (match_extension(s->b->filename, "st")) {
+        s->mode_name = "Syntax";
+        s->mode_flags = CLANG_C | CLANG_REGEX;
+    } else
+    if (match_extension(s->b->filename, "jav|java")) {
+        s->mode_name = "Java";
+        s->mode_flags = CLANG_JAVA;
+    } else
+    if (match_extension(s->b->filename, "l|lex")) {
+        s->mode_name = "Lex";
+        s->mode_flags = CLANG_C | CLANG_LEX;
+    } else
+    if (match_extension(s->b->filename, "y")) {
+        s->mode_name = "Yacc";
+        s->mode_flags = CLANG_C | CLANG_YACC;
+    }
+    return 0;
+}
+
 /* C mode specific commands */
 static CmdDef c_commands[] = {
     CMD2( KEY_CTRL('i'), KEY_NONE,
@@ -822,6 +919,7 @@ static int c_init(void)
     c_mode.name = "C";
     c_mode.extensions = c_mode_extensions;
     c_mode.mode_probe = c_mode_probe;
+    c_mode.mode_init = c_mode_init;
     c_mode.colorize_func = c_colorize_line;
     c_mode.indent_func = c_indent_line;
 

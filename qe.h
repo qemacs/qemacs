@@ -1045,7 +1045,7 @@ typedef int (*GetColorizedLineFunc)(EditState *s,
 /* colorize a line: this function modifies buf to set the char
  * styles. 'buf' is guaranted to have one more '\0' char after its len.
  */
-typedef void (*ColorizeFunc)(unsigned int *buf, int len,
+typedef void (*ColorizeFunc)(unsigned int *buf, int len, int mode_flags,
                              int *colorize_state_ptr, int state_only);
 
 /* contains all the information necessary to uniquely identify a line,
@@ -1114,6 +1114,8 @@ struct EditState {
     /* maximum valid offset, INT_MAX if not modified. Needed to invalide
        'colorize_states' */
     int colorize_max_valid_offset;
+    int mode_flags;            /* local mode flags for flavors */
+    const char *mode_name;     /* name for mode flavor */
 
     int busy; /* true if editing cannot be done if the window
                  (e.g. the parser HTML is parsing the buffer to
@@ -1932,7 +1934,16 @@ void do_dired(EditState *s);
 
 /* c_mode.c */
 
-void c_colorize_line(unsigned int *buf, int len,
+#define CLANG_C      0x01
+#define CLANG_CPP    0x02
+#define CLANG_OBJC   0x04
+#define CLANG_JS     0x08
+#define CLANG_JAVA   0x10
+#define CLANG_LEX    0x20
+#define CLANG_YACC   0x40
+#define CLANG_REGEX  0x80
+
+void c_colorize_line(unsigned int *buf, int len, int mode_flags,
                      int *colorize_state_ptr, int state_only);
 
 /* xml.c */
@@ -1941,7 +1952,7 @@ extern ModeDef xml_mode;
 
 /* htmlsrc.c */
 
-void htmlsrc_colorize_line(unsigned int *buf, int len,
+void htmlsrc_colorize_line(unsigned int *buf, int len, int mode_flags,
                            int *colorize_state_ptr, int state_only);
 
 /* html.c */
@@ -1954,13 +1965,13 @@ int gxml_mode_init(EditState *s,
 
 /* extra-modes.c */
 
-void lua_colorize_line(unsigned int *buf, int len,
+void lua_colorize_line(unsigned int *buf, int len, int mode_flags,
                        int *colorize_state_ptr, int state_only);
-void haskell_colorize_line(unsigned int *buf, int len,
+void haskell_colorize_line(unsigned int *buf, int len, int mode_flags,
                            int *colorize_state_ptr, int state_only);
-void python_colorize_line(unsigned int *buf, int len,
+void python_colorize_line(unsigned int *buf, int len, int mode_flags,
                           int *colorize_state_ptr, int state_only);
-void ruby_colorize_line(unsigned int *buf, int len,
+void ruby_colorize_line(unsigned int *buf, int len, int mode_flags,
                         int *colorize_state_ptr, int state_only);
 
 /* image.c */

@@ -30,7 +30,7 @@ enum {
     XML_SCRIPT = 0x80, /* special mode for inside a script, ored with c mode */
 };
 
-static void xml_colorize_line(unsigned int *buf, int len,
+static void xml_colorize_line(unsigned int *buf, int len, int mode_flags,
                               int *colorize_state_ptr, int state_only)
 {
     int c, state;
@@ -112,7 +112,8 @@ static void xml_colorize_line(unsigned int *buf, int len,
                         if (*p == '\0') {
                             state &= ~XML_SCRIPT;
                             /* XXX: should have javascript specific colorize_func */
-                            c_colorize_line(p_start, p - p_start, &state, state_only);
+                            c_colorize_line(p_start, p - p_start,
+                                CLANG_C | CLANG_REGEX, &state, state_only);
                             state |= XML_SCRIPT;
                             break;
                         } else
@@ -125,7 +126,8 @@ static void xml_colorize_line(unsigned int *buf, int len,
                             c = *p;
                             *p = '\0';
                             /* XXX: should have javascript specific colorize_func */
-                            c_colorize_line(p_start, p - p_start, &state, state_only);
+                            c_colorize_line(p_start, p - p_start,
+                                CLANG_C | CLANG_REGEX, &state, state_only);
                             *p = c;
                             state |= XML_SCRIPT;
                             set_color(p, p1, QE_STYLE_TAG);

@@ -26,6 +26,7 @@
  * than one line (eg, multi-line functions and strings)
  */
 static void latex_colorize_line(unsigned int *buf, __unused__ int len,
+                                __unused__ int mode_flags,
                                 int *colorize_state_ptr,
                                 __unused__ int state_only)
 {

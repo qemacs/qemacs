@@ -31,8 +31,8 @@
 #define LISP_COMMENT    QE_STYLE_COMMENT
 #define LISP_STRING     QE_STYLE_STRING
 
-static void lisp_colorize_line(unsigned int *str, int n, int *statep,
-                               __unused__ int state_only)
+static void lisp_colorize_line(unsigned int *str, int n, int mode_flags,
+                               int *statep, __unused__ int state_only)
 {
     int colstate = *statep;
     int i = 0, j = 0;

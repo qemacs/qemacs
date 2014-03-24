@@ -79,8 +79,8 @@ enum {
     ASM_IDENTIFIER =  QE_STYLE_VARIABLE,
 };
 
-static void asm_colorize_line(unsigned int *str, int n, int *statep,
-                              __unused__ int state_only)
+static void asm_colorize_line(unsigned int *str, int n, int mode_flags,
+                              int *statep, __unused__ int state_only)
 {
     int i = 0, j, w;
     int wn = 0; /* word number on line */
@@ -246,8 +246,8 @@ enum {
     BASIC_IDENTIFIER =  QE_STYLE_VARIABLE,
 };
 
-static void basic_colorize_line(unsigned int *str, int n, int *statep,
-                                __unused__ int state_only)
+static void basic_colorize_line(unsigned int *str, int n, int mode_flags,
+                                int *statep, __unused__ int state_only)
 {
     int i = 0, j;
 
@@ -367,8 +367,8 @@ enum {
     PAS_FUNCTION =    QE_STYLE_FUNCTION,
 };
 
-static void pascal_colorize_line(unsigned int *str, int n, int *statep,
-                                 __unused__ int state_only)
+static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
+                                 int *statep, __unused__ int state_only)
 {
     int i = 0, j = i, k;
     int colstate =  *statep;
@@ -545,8 +545,8 @@ enum {
     INI_PREPROCESS =  QE_STYLE_PREPROCESS,
 };
 
-static void ini_colorize_line(unsigned int *str, int n, int *statep,
-                              __unused__ int state_only)
+static void ini_colorize_line(unsigned int *str, int n, int mode_flags,
+                              int *statep, __unused__ int state_only)
 {
     int i = 0, j;
     int bol = 1;
@@ -694,8 +694,8 @@ enum {
 #define ispssep(c)      (qe_findchar(" \t\r\n,()<>[]{}/", c))
 #define wrap 0
 
-static void ps_colorize_line(unsigned int *str, int n, int *statep,
-                             __unused__ int state_only)
+static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
+                             int *statep, __unused__ int state_only)
 {
     int i = 0, j;
     int colstate = *statep;
@@ -783,6 +783,9 @@ static int ps_mode_probe(ModeDef *mode, ModeProbeData *p)
     if (match_extension(p->filename, mode->extensions))
         return 80;
 
+    if (*p->buf == '%' && qe_stristr((const char *)p->buf, "script"))
+        return 40;
+
     return 1;
 }
 
@@ -819,8 +822,8 @@ enum {
     SQL_PREPROCESS =   QE_STYLE_PREPROCESS,
 };
 
-static void sql_colorize_line(unsigned int *str, int n, int *statep,
-                              __unused__ int state_only)
+static void sql_colorize_line(unsigned int *str, int n, int mode_flags,
+                              int *statep, __unused__ int state_only)
 {
     int i = 0, j = i;
     int state = *statep;
@@ -963,8 +966,8 @@ static int lua_long_bracket(unsigned int *str, int *level)
     }
 }
 
-void lua_colorize_line(unsigned int *str, int n, int *statep,
-                       __unused__ int state_only)
+void lua_colorize_line(unsigned int *str, int n, int mode_flags,
+                       int *statep, __unused__ int state_only)
 {
     int i = 0, j = i, c, sep = 0, level = 0, level1, klen, style;
     int state = *statep;
@@ -1152,8 +1155,8 @@ static inline int haskell_is_symbol(int c)
     return qe_findchar("!#$%&+./<=>?@\\^|-~:", c);
 }
 
-void haskell_colorize_line(unsigned int *str, int n, int *statep,
-                           __unused__ int state_only)
+void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
+                           int *statep, __unused__ int state_only)
 {
     int i = 0, j = i, c, sep = 0, level = 0, klen;
     int state = *statep;
@@ -1386,8 +1389,8 @@ enum {
     PYTHON_FUNCTION =     QE_STYLE_FUNCTION,
 };
 
-void python_colorize_line(unsigned int *str, int n, int *statep,
-                           __unused__ int state_only)
+void python_colorize_line(unsigned int *str, int n, int mode_flags,
+                          int *statep, __unused__ int state_only)
 {
     int i = 0, j = i, c, sep = 0, klen;
     int state = *statep;
@@ -1672,8 +1675,8 @@ static int ruby_get_name(char *buf, int size, unsigned int *str)
     return j - i;
 }
 
-void ruby_colorize_line(unsigned int *str, int n, int *statep,
-                        __unused__ int state_only)
+void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
+                        int *statep, __unused__ int state_only)
 {
     int i = 0, j = i, c, indent, sig;
     static int sep, sep0, level;        /* XXX: ugly patch */

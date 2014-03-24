@@ -103,8 +103,8 @@ static void build_bufed_list(EditState *s)
                 mode_name = "none";
                 for (e = qs->first_window; e != NULL; e = e->next_window) {
                     if (e->b == b1) {
-                        if (e->mode) {
-                            mode_name = e->mode->name;
+                        if (e->mode_name) {
+                            mode_name = e->mode_name;
                             break;
                         }
                     }

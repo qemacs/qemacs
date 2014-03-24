@@ -102,8 +102,8 @@ static int mkd_scan_chunk(const unsigned int *str,
     return 0;
 }
 
-static void mkd_colorize_line(unsigned int *str, int n, int *statep,
-                              __unused__ int state_only)
+static void mkd_colorize_line(unsigned int *str, int n, int mode_flags,
+                              int *statep, __unused__ int state_only)
 {
     int colstate = *statep;
     int level, indent, i = 0, j = 0, base_style = 0;
@@ -117,7 +117,7 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
     ||  (str[i] == '<' && str[i + 1] != '/')) {
         /* block level HTML markup */
         colstate &= ~IN_HTML_BLOCK;
-        htmlsrc_colorize_line(str, n, &colstate, state_only);
+        htmlsrc_colorize_line(str, n, 0, &colstate, state_only);
         colstate |= IN_HTML_BLOCK;
         if ((str[i] & CHAR_MASK) == '<' && (str[i + 1] & CHAR_MASK) == '/')
             colstate = 0;
@@ -137,19 +137,19 @@ static void mkd_colorize_line(unsigned int *str, int n, int *statep,
             colstate &= ~(IN_BLOCK | IN_LANG);
             switch (lang) {
             case IN_C:
-                c_colorize_line(str, n, &colstate, state_only);
+                c_colorize_line(str, n, CLANG_C, &colstate, state_only);
                 break;
             case IN_PYTHON:
-                python_colorize_line(str, n, &colstate, state_only);
+                python_colorize_line(str, n, 0, &colstate, state_only);
                 break;
             case IN_RUBY:
-                ruby_colorize_line(str, n, &colstate, state_only);
+                ruby_colorize_line(str, n, 0, &colstate, state_only);
                 break;
             case IN_HASKELL:
-                haskell_colorize_line(str, n, &colstate, state_only);
+                haskell_colorize_line(str, n, 0, &colstate, state_only);
                 break;
             case IN_LUA:
-                lua_colorize_line(str, n, &colstate, state_only);
+                lua_colorize_line(str, n, 0, &colstate, state_only);
                 break;
             default:
                 SET_COLOR(str, i, n, QE_STYLE_MKD_CODE);

@@ -30,8 +30,8 @@
 #define MAKEFILE_VARIABLE       QE_STYLE_VARIABLE
 #define MAKEFILE_MACRO          QE_STYLE_TYPE
 
-static void makefile_colorize_line(unsigned int *str, int n, int *statep,
-                                   int state_only)
+static void makefile_colorize_line(unsigned int *str, int n, int mode_flags,
+                                   int *statep, int state_only)
 {
     int i, j, level;
 

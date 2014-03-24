@@ -1805,6 +1805,8 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
                 m = &text_mode;
         }
         s->mode = m;
+        s->mode_name = m->name;
+        s->mode_flags = 0;
 
         /* init mode */
         m->mode_init(s, saved_data);
@@ -2183,7 +2185,7 @@ void basic_mode_line(EditState *s, buf_t *out, int c1)
 
     buf_printf(out, "%c%c:%c%c  %-20s  (%s",
                c1, state, s->b->flags & BF_READONLY ? '%' : mod,
-               mod, s->b->name, s->mode->name);
+               mod, s->b->name, s->mode_name);
     if (!s->insert)
         buf_printf(out, " Ovwrt");
     if (s->interactive)
@@ -3293,7 +3295,8 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
         for (l = s->colorize_nb_valid_lines; l <= line_num; l++) {
             len = eb_get_line(s->b, buf, buf_size, &offset);
             bom = (len > 0 && buf[0] == 0xFEFF);
-            s->colorize_func(buf + bom, len - bom, &colorize_state, 1);
+            s->colorize_func(buf + bom, len - bom, s->mode_flags,
+                             &colorize_state, 1);
             s->colorize_states[l] = colorize_state;
         }
     }
@@ -3302,7 +3305,7 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
     colorize_state = s->colorize_states[line_num];
     len = eb_get_line(s->b, buf, buf_size, offsetp);
     bom = (len > 0 && buf[0] == 0xFEFF);
-    s->colorize_func(buf + bom, len - bom, &colorize_state, 0);
+    s->colorize_func(buf + bom, len - bom, s->mode_flags, &colorize_state, 0);
 
     /* XXX: if state is same as previous, minimize invalid region? */
     s->colorize_states[line_num + 1] = colorize_state;

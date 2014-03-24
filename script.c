@@ -42,8 +42,8 @@ static int script_var(const unsigned int *str, int j, int n)
     return j;
 }
 
-static void script_colorize_line(unsigned int *str, int n, int *statep,
-                                 __unused__ int state_only)
+static void script_colorize_line(unsigned int *str, int n, int mode_flags,
+                                 int *statep, __unused__ int state_only)
 {
     int i = 0, j, style;
 

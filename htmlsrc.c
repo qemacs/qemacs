@@ -66,7 +66,7 @@ enum {
     HTML_SCRIPT    = 0x80,      /* <SCRIPT> [...] </SCRIPT> */
 };
 
-void htmlsrc_colorize_line(unsigned int *buf, int len,
+void htmlsrc_colorize_line(unsigned int *buf, int len, int mode_flags,
                            int *colorize_state_ptr, int state_only)
 {
     int c, state, js_state, l;
@@ -107,7 +107,8 @@ void htmlsrc_colorize_line(unsigned int *buf, int len,
             c = *p;     /* save char to set '\0' delimiter */
             *p = '\0';
             /* XXX: should have javascript specific colorize_func */
-            c_colorize_line(p_start, p - p_start, &js_state, state_only);
+            c_colorize_line(p_start, p - p_start, CLANG_JS | CLANG_REGEX,
+                            &js_state, state_only);
             *p = c;
             state = js_state | HTML_SCRIPT;
             if (p < p_end) {

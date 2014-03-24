@@ -84,8 +84,8 @@ static int org_scan_chunk(const unsigned int *str,
     return 0;
 }
 
-static void org_colorize_line(unsigned int *str, int n, int *statep,
-                              __unused__ int state_only)
+static void org_colorize_line(unsigned int *str, int n, int mode_flags,
+                              int *statep, __unused__ int state_only)
 {
     int colstate = *statep;
     int i = 0, j = 0, kw, base_style = 0, has_space;
@@ -98,7 +98,7 @@ static void org_colorize_line(unsigned int *str, int n, int *statep,
         } else {
             if (colstate & IN_LISP) {
                 colstate &= ~(IN_LISP | IN_BLOCK);
-                lisp_mode.colorize_func(str, n, &colstate, state_only);
+                lisp_mode.colorize_func(str, n, 0, &colstate, state_only);
                 colstate |= IN_LISP | IN_BLOCK;
             }
             *statep = colstate;

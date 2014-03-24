@@ -100,8 +100,8 @@ static int perl_string(const unsigned int *str, unsigned int delim,
     return j;
 }
 
-static void perl_colorize_line(unsigned int *str, int n, int *statep,
-                               __unused__ int state_only)
+static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
+                               int *statep, __unused__ int state_only)
 {
     int i = 0, c, c1, c2, j = i, s1, s2, delim = 0;
     int colstate = *statep;
