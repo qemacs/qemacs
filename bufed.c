@@ -377,9 +377,10 @@ static CmdDef bufed_commands[] = {
     /* bufed-abort should restore previous buffer in right-window */
     CMD1( KEY_CTRL('g'), KEY_NONE,
           "bufed-abort", do_delete_window, 0)
-    CMD0( ' ', KEY_CTRL('t'),
-          "bufed-toggle-selection", list_toggle_selection)
-    /* BS should go back to previous item and unmark it */
+    CMD1( ' ', KEY_CTRL('t'),
+          "bufed-toggle-selection", list_toggle_selection, 1)
+    CMD1( KEY_DEL, KEY_NONE,
+          "bufed-unmark-backward", list_toggle_selection, -1)
     //CMD1( 'u', KEY_NONE, "bufed-unmark", bufed_mark, ' ')
     CMD0( '~', KEY_NONE,
           "bufed-clear-modified", bufed_clear_modified)
@@ -387,10 +388,10 @@ static CmdDef bufed_commands[] = {
           "bufed-toggle-read-only", bufed_toggle_read_only)
     CMD1( 'a', KEY_NONE,
           "bufed-toggle-all-visible", bufed_refresh, 1)
-    CMD1( 'n', KEY_NONE,
-          "next-line", do_up_down, 1)
-    CMD1( 'p', KEY_NONE,
-          "previous-line", do_up_down, -1)
+    CMD1( 'n', KEY_CTRL('n'), /* KEY_DOWN */
+          "bufed-next-line", do_up_down, 1)
+    CMD1( 'p', KEY_CTRL('p'), /* KEY_UP */
+          "bufed-previous-line", do_up_down, -1)
     CMD1( 'r', 'g',
           "bufed-refresh", bufed_refresh, 0)
     CMD0( 'k', 'd',

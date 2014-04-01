@@ -1924,7 +1924,7 @@ extern ModeDef lisp_mode;
 
 extern ModeDef list_mode;
 
-void list_toggle_selection(EditState *s);
+void list_toggle_selection(EditState *s, int dir);
 int list_get_pos(EditState *s);
 int list_get_offset(EditState *s);
 
@@ -1932,7 +1932,7 @@ int list_get_offset(EditState *s);
 
 void do_dired(EditState *s);
 
-/* c_mode.c */
+/* clang.c */
 
 #define CLANG_C      0x01
 #define CLANG_CPP    0x02

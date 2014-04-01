@@ -31,16 +31,19 @@ static int list_get_colorized_line(EditState *s,
     int offset, len;
 
     offset = *offsetp;
-    len = eb_get_line(s->b, buf, buf_size, offsetp);
+    /* Get line contents including static buffer styles */
+    len = get_non_colorized_line(s, buf, buf_size, offsetp, line_num);
 
     if (((qs->active_window == s) || s->force_highlight) &&
           s->offset >= offset && s->offset < *offsetp)
     {
         /* highlight the line if the cursor is inside */
+        clear_color(buf, len);
         set_color(buf, buf + len, QE_STYLE_HIGHLIGHT);
     } else
     if (buf[0] == '*') {
         /* selection */
+        clear_color(buf, len);
         set_color(buf, buf + len, QE_STYLE_SELECTION);
     }
     return len;
@@ -57,26 +60,32 @@ int list_get_pos(EditState *s)
 /* get current offset of the line in list */
 int list_get_offset(EditState *s)
 {
-    int line, col;
-    eb_get_pos(s->b, &line, &col, s->offset);
-    return eb_goto_pos(s->b, line, 0);
+    return eb_goto_bol(s->b, s->offset);
 }
 
-void list_toggle_selection(EditState *s)
+void list_toggle_selection(EditState *s, int dir)
 {
-    int offset;
-    unsigned char ch;
+    int offset, offset1;
+    int ch, flags;
+
+    if (dir < 0)
+        text_move_up_down(s, -1);
 
     offset = list_get_offset(s);
 
-    eb_read(s->b, offset , &ch, 1);
+    ch = eb_nextc(s->b, offset, &offset1);
     if (ch == ' ')
         ch = '*';
     else
         ch = ' ';
-    eb_write(s->b, offset , &ch, 1);
+    flags = s->b->flags & BF_READONLY;
+    s->b->flags ^= flags;
+    eb_delete_uchar(s->b, offset);
+    eb_insert_uchar(s->b, offset, ch);
+    s->b->flags ^= flags;
 
-    text_move_up_down(s, 1);
+    if (dir > 0)
+        text_move_up_down(s, 1);
 }
 
 static int list_mode_init(EditState *s, ModeSavedData *saved_data)
