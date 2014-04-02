@@ -21,6 +21,11 @@
 
 #include "qe.h"
 
+enum {
+    UNIHEX_STYLE_OFFSET = QE_STYLE_COMMENT,
+    UNIHEX_STYLE_DUMP   = QE_STYLE_FUNCTION,
+};
+
 static int unihex_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     int c, maxc, offset, max_offset;
@@ -79,7 +84,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
 
     display_bol(ds);
 
-    ds->style = QE_STYLE_COMMENT;
+    ds->style = UNIHEX_STYLE_OFFSET;
     display_printf(ds, -1, -1, "%08x ", offset);
     //int charpos = eb_get_char_offset(s->b, offset);
     //display_printf(ds, -1, -1, "%08x ", charpos);
@@ -95,7 +100,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
     }
     pos[len] = offset;
 
-    ds->style = QE_STYLE_FUNCTION;
+    ds->style = UNIHEX_STYLE_DUMP;
 
     for (j = 0; j < disp_width; j++) {
         display_char(ds, -1, -1, ' ');

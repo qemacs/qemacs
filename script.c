@@ -23,13 +23,13 @@
 /*---------------- Shell script colors ----------------*/
 
 enum {
-    SCRIPT_TEXT =       QE_STYLE_DEFAULT,
-    SCRIPT_COMMENT =    QE_STYLE_COMMENT,
-    SCRIPT_PREPROCESS = QE_STYLE_PREPROCESS,
-    SCRIPT_COMMAND =    QE_STYLE_FUNCTION,
-    SCRIPT_VARIABLE =   QE_STYLE_TYPE,
-    SCRIPT_STRING =     QE_STYLE_STRING,
-    SCRIPT_BACKTICK =   QE_STYLE_STRING_Q,
+    SCRIPT_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    SCRIPT_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    SCRIPT_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    SCRIPT_STYLE_COMMAND =    QE_STYLE_FUNCTION,
+    SCRIPT_STYLE_VARIABLE =   QE_STYLE_TYPE,
+    SCRIPT_STYLE_STRING =     QE_STYLE_STRING,
+    SCRIPT_STYLE_BACKTICK =   QE_STYLE_STRING_Q,
 };
 
 static int script_var(const unsigned int *str, int j, int n)
@@ -47,25 +47,25 @@ static void script_colorize_line(unsigned int *str, int n, int mode_flags,
 {
     int i = 0, j, style;
 
-    style = SCRIPT_COMMAND;
+    style = SCRIPT_STYLE_COMMAND;
 
     while (i < n) {
         switch (str[i]) {
         case '#':
             if (i > 0 && str[i - 1] == '$')
                 break;
-            style = SCRIPT_COMMENT;
+            style = SCRIPT_STYLE_COMMENT;
             if (str[i + 1] == '!')
-                style = SCRIPT_PREPROCESS;
+                style = SCRIPT_STYLE_PREPROCESS;
             SET_COLOR(str, i, n, style);
             i = n;
             continue;
         case '`':
-            style = SCRIPT_BACKTICK;
+            style = SCRIPT_STYLE_BACKTICK;
             goto has_string;
         case '\'':
         case '"':
-            style = SCRIPT_STRING;
+            style = SCRIPT_STYLE_STRING;
         has_string:
             /* parse string const */
             for (j = i + 1; j < n; j++) {
@@ -86,15 +86,15 @@ static void script_colorize_line(unsigned int *str, int n, int mode_flags,
                 while (qe_isblank(str[j]))
                     j++;
                 if (str[j] == '=')
-                    style = SCRIPT_VARIABLE;
+                    style = SCRIPT_STYLE_VARIABLE;
                 SET_COLOR(str, i, j, style);
-                style = SCRIPT_TEXT;
+                style = SCRIPT_STYLE_TEXT;
                 i = j;
                 continue;
             }
             // Should support << syntax
             // Should support $ syntax
-            style = SCRIPT_TEXT;
+            style = SCRIPT_STYLE_TEXT;
             break;
         }
         i++;

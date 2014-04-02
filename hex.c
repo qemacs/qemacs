@@ -21,6 +21,11 @@
 
 #include "qe.h"
 
+enum {
+    HEX_STYLE_OFFSET = QE_STYLE_COMMENT,
+    HEX_STYLE_DUMP   = QE_STYLE_FUNCTION,
+};
+
 static int to_disp(int c)
 {
 #if 1
@@ -47,7 +52,7 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
 
     display_bol(ds);
 
-    ds->style = QE_STYLE_COMMENT;
+    ds->style = HEX_STYLE_OFFSET;
     display_printf(ds, -1, -1, "%08x ", offset);
 
     ateof = 0;
@@ -57,7 +62,7 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
 
     if (s->mode == &hex_mode) {
 
-        ds->style = QE_STYLE_FUNCTION;
+        ds->style = HEX_STYLE_DUMP;
 
         for (j = 0; j < s->disp_width; j++) {
             display_char(ds, -1, -1, ' ');

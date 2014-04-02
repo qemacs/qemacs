@@ -71,12 +71,12 @@ static char const asm_prepkeywords2[] = {
 /* colstate is used to store the comment character */
 
 enum {
-    ASM_TEXT =        QE_STYLE_DEFAULT,
-    ASM_PREPROCESS =  QE_STYLE_PREPROCESS,
-    ASM_COMMENT =     QE_STYLE_COMMENT,
-    ASM_STRING =      QE_STYLE_STRING,
-    ASM_NUMBER =      QE_STYLE_NUMBER,
-    ASM_IDENTIFIER =  QE_STYLE_VARIABLE,
+    ASM_STYLE_TEXT =        QE_STYLE_DEFAULT,
+    ASM_STYLE_PREPROCESS =  QE_STYLE_PREPROCESS,
+    ASM_STYLE_COMMENT =     QE_STYLE_COMMENT,
+    ASM_STYLE_STRING =      QE_STYLE_STRING,
+    ASM_STYLE_NUMBER =      QE_STYLE_NUMBER,
+    ASM_STYLE_IDENTIFIER =  QE_STYLE_VARIABLE,
 };
 
 static void asm_colorize_line(unsigned int *str, int n, int mode_flags,
@@ -97,7 +97,7 @@ static void asm_colorize_line(unsigned int *str, int n, int mode_flags,
                 break;
             }
         }
-        SET_COLOR(str, w, i, ASM_COMMENT);
+        SET_COLOR(str, w, i, ASM_STYLE_COMMENT);
     }
     for (w = i; i < n && qe_isspace(str[i]); i++)
         continue;
@@ -113,11 +113,11 @@ static void asm_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (str[j] == ';')
                     break;
             }
-            SET_COLOR(str, i, j, ASM_PREPROCESS);
+            SET_COLOR(str, i, j, ASM_STYLE_PREPROCESS);
             i = j;
             continue;
         case ';':
-            SET_COLOR(str, i, n, ASM_COMMENT);
+            SET_COLOR(str, i, n, ASM_STYLE_COMMENT);
             i = n;
             continue;
         case '\'':
@@ -129,7 +129,7 @@ static void asm_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, ASM_STRING);
+            SET_COLOR(str, i, j, ASM_STYLE_STRING);
             i = j;
             continue;
         default:
@@ -141,7 +141,7 @@ static void asm_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (!qe_isalnum(str[j]))
                     break;
             }
-            SET_COLOR(str, i, j, ASM_NUMBER);
+            SET_COLOR(str, i, j, ASM_STYLE_NUMBER);
             i = j;
             continue;
         }
@@ -163,7 +163,7 @@ static void asm_colorize_line(unsigned int *str, int n, int mode_flags,
                             break;
                     }
                     colstate = str[w];
-                    SET_COLOR(str, i, w, ASM_PREPROCESS);
+                    SET_COLOR(str, i, w, ASM_STYLE_PREPROCESS);
                     i = w + 1;
                     goto comment;
                 }
@@ -172,12 +172,12 @@ static void asm_colorize_line(unsigned int *str, int n, int mode_flags,
             } else
             if (wn == 2) {
                 if (is_lc_keyword(str, i, j, asm_prepkeywords2)) {
-                    SET_COLOR(str, i, j, ASM_PREPROCESS);
+                    SET_COLOR(str, i, j, ASM_STYLE_PREPROCESS);
                     i = j;
                     continue;
                 }
             }
-            SET_COLOR(str, i, j, ASM_IDENTIFIER);
+            SET_COLOR(str, i, j, ASM_STYLE_IDENTIFIER);
             i = j;
             continue;
         }
@@ -238,12 +238,12 @@ static char const basic_keywords[] = {
 };
 
 enum {
-    BASIC_TEXT =        QE_STYLE_DEFAULT,
-    BASIC_KEYWORD =     QE_STYLE_KEYWORD,
-    BASIC_PREPROCESS =  QE_STYLE_PREPROCESS,
-    BASIC_COMMENT =     QE_STYLE_COMMENT,
-    BASIC_STRING =      QE_STYLE_STRING,
-    BASIC_IDENTIFIER =  QE_STYLE_VARIABLE,
+    BASIC_STYLE_TEXT =        QE_STYLE_DEFAULT,
+    BASIC_STYLE_KEYWORD =     QE_STYLE_KEYWORD,
+    BASIC_STYLE_PREPROCESS =  QE_STYLE_PREPROCESS,
+    BASIC_STYLE_COMMENT =     QE_STYLE_COMMENT,
+    BASIC_STYLE_STRING =      QE_STYLE_STRING,
+    BASIC_STYLE_IDENTIFIER =  QE_STYLE_VARIABLE,
 };
 
 static void basic_colorize_line(unsigned int *str, int n, int mode_flags,
@@ -255,9 +255,9 @@ static void basic_colorize_line(unsigned int *str, int n, int mode_flags,
         switch (str[i]) {
         case '\'':
             if (str[i + 1] == '$')
-                SET_COLOR(str, i, n, BASIC_PREPROCESS);
+                SET_COLOR(str, i, n, BASIC_STYLE_PREPROCESS);
             else
-                SET_COLOR(str, i, n, BASIC_COMMENT);
+                SET_COLOR(str, i, n, BASIC_STYLE_COMMENT);
             i = n;
             continue;
         case '\"':
@@ -268,7 +268,7 @@ static void basic_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, BASIC_STRING);
+            SET_COLOR(str, i, j, BASIC_STYLE_STRING);
             i = j;
             continue;
         default:
@@ -280,7 +280,7 @@ static void basic_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (!qe_isalnum(str[j]) && str[j] != '.')
                     break;
             }
-            SET_COLOR(str, i, j, BASIC_IDENTIFIER);
+            SET_COLOR(str, i, j, BASIC_STYLE_IDENTIFIER);
             i = j;
             continue;
         }
@@ -294,11 +294,11 @@ static void basic_colorize_line(unsigned int *str, int n, int mode_flags,
                 }
             }
             if (is_lc_keyword(str, i, j, basic_keywords)) {
-                SET_COLOR(str, i, j, BASIC_KEYWORD);
+                SET_COLOR(str, i, j, BASIC_STYLE_KEYWORD);
                 i = j;
                 continue;
             }
-            SET_COLOR(str, i, j, BASIC_IDENTIFIER);
+            SET_COLOR(str, i, j, BASIC_STYLE_IDENTIFIER);
             i = j;
             continue;
         }
@@ -352,19 +352,21 @@ static char const pascal_keywords[] = {
     "|"
 };
 
-#define IN_COMMENT      0x01
-#define IN_COMMENT1     0x02
-#define IN_COMMENT2     0x04
+enum {
+    IN_PASCAL_COMMENT  = 0x01,
+    IN_PASCAL_COMMENT1 = 0x02,
+    IN_PASCAL_COMMENT2 = 0x04,
+};
 
 enum {
-    PAS_TEXT =        QE_STYLE_DEFAULT,
-    PAS_KEYWORD =     QE_STYLE_KEYWORD,
-    PAS_PREPROCESS =  QE_STYLE_PREPROCESS,
-    PAS_COMMENT =     QE_STYLE_COMMENT,
-    PAS_STRING =      QE_STYLE_STRING,
-    PAS_IDENTIFIER =  QE_STYLE_VARIABLE,
-    PAS_NUMBER =      QE_STYLE_NUMBER,
-    PAS_FUNCTION =    QE_STYLE_FUNCTION,
+    PASCAL_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    PASCAL_STYLE_KEYWORD =    QE_STYLE_KEYWORD,
+    PASCAL_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    PASCAL_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    PASCAL_STYLE_STRING =     QE_STYLE_STRING,
+    PASCAL_STYLE_IDENTIFIER = QE_STYLE_VARIABLE,
+    PASCAL_STYLE_NUMBER =     QE_STYLE_NUMBER,
+    PASCAL_STYLE_FUNCTION =   QE_STYLE_FUNCTION,
 };
 
 static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
@@ -373,20 +375,20 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
     int i = 0, j = i, k;
     int colstate =  *statep;
 
-    if (colstate & IN_COMMENT)
+    if (colstate & IN_PASCAL_COMMENT)
         goto in_comment;
 
-    if (colstate & IN_COMMENT1)
+    if (colstate & IN_PASCAL_COMMENT1)
         goto in_comment1;
 
-    if (colstate & IN_COMMENT2)
+    if (colstate & IN_PASCAL_COMMENT2)
         goto in_comment2;
 
     while (i < n) {
         switch (str[i]) {
         case '/':
             if (str[i + 1] == '/') {    /* C++ comments, recent extension */
-                SET_COLOR(str, i, n, PAS_COMMENT);
+                SET_COLOR(str, i, n, PASCAL_STYLE_COMMENT);
                 i = n;
                 continue;
             }
@@ -394,7 +396,7 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
         case '{':
             /* check for preprocessor */
             if (str[i + 1] == '$') {
-                colstate = IN_COMMENT1;
+                colstate = IN_PASCAL_COMMENT1;
                 j = i + 2;
             in_comment1:
                 for (; j < n; j++) {
@@ -404,11 +406,11 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
                         break;
                     }
                 }
-                SET_COLOR(str, i, j, PAS_PREPROCESS);
+                SET_COLOR(str, i, j, PASCAL_STYLE_PREPROCESS);
             } else
             {
                 /* regular comment (recursive?) */
-                colstate = IN_COMMENT;
+                colstate = IN_PASCAL_COMMENT;
                 j = i + 1;
             in_comment:
                 for (; j < n; j++) {
@@ -418,7 +420,7 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
                         break;
                     }
                 }
-                SET_COLOR(str, i, j, PAS_COMMENT);
+                SET_COLOR(str, i, j, PASCAL_STYLE_COMMENT);
             }
             i = j;
             continue;
@@ -428,7 +430,7 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
                 break;
 
             /* regular comment (recursive?) */
-            colstate = IN_COMMENT2;
+            colstate = IN_PASCAL_COMMENT2;
             j = i + 2;
         in_comment2:
             for (; j < n; j++) {
@@ -438,7 +440,7 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, PAS_COMMENT);
+            SET_COLOR(str, i, j, PASCAL_STYLE_COMMENT);
             i = j;
             continue;
         case '\'':
@@ -449,7 +451,7 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, PAS_STRING);
+            SET_COLOR(str, i, j, PASCAL_STYLE_STRING);
             i = j;
             continue;
         case '#':
@@ -458,7 +460,7 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (!qe_isdigit(str[j]))
                     break;
             }
-            SET_COLOR(str, i, j, PAS_STRING);
+            SET_COLOR(str, i, j, PASCAL_STYLE_STRING);
             i = j;
             continue;
         default:
@@ -470,7 +472,7 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (!qe_isalnum(str[j]) && str[j] != '.')
                     break;
             }
-            SET_COLOR(str, i, j, PAS_NUMBER);
+            SET_COLOR(str, i, j, PASCAL_STYLE_NUMBER);
             i = j;
             continue;
         }
@@ -481,16 +483,17 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
             }
             if (is_lc_keyword(str, i, j, pascal_keywords)) {
-                SET_COLOR(str, i, j, PAS_KEYWORD);
+                SET_COLOR(str, i, j, PASCAL_STYLE_KEYWORD);
                 i = j;
                 continue;
             }
             for (k = j; k < n; k++) {
-                if (str[k] != ' ' && str[k] != '\t')
+                if (!qe_isblank(str[k]))
                     break;
             }
             SET_COLOR(str, i, j,
-                      str[k] == '(' ? PAS_FUNCTION : PAS_IDENTIFIER);
+                      str[k] == '(' ? PASCAL_STYLE_FUNCTION :
+                      PASCAL_STYLE_IDENTIFIER);
             i = j;
             continue;
         }
@@ -499,10 +502,6 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
     }
     *statep = colstate;
 }
-
-#undef IN_COMMENT2
-#undef IN_COMMENT1
-#undef IN_COMMENT
 
 static int pascal_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
@@ -536,13 +535,13 @@ static int pascal_init(void)
 /*---------------- Ini file (and similar) coloring ----------------*/
 
 enum {
-    INI_TEXT =        QE_STYLE_DEFAULT,
-    INI_COMMENT =     QE_STYLE_COMMENT,
-    INI_STRING =      QE_STYLE_STRING,
-    INI_FUNCTION =    QE_STYLE_FUNCTION,
-    INI_NUMBER =      QE_STYLE_NUMBER,
-    INI_IDENTIFIER =  QE_STYLE_VARIABLE,
-    INI_PREPROCESS =  QE_STYLE_PREPROCESS,
+    INI_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    INI_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    INI_STYLE_STRING =     QE_STYLE_STRING,
+    INI_STYLE_FUNCTION =   QE_STYLE_FUNCTION,
+    INI_STYLE_NUMBER =     QE_STYLE_NUMBER,
+    INI_STYLE_IDENTIFIER = QE_STYLE_VARIABLE,
+    INI_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
 };
 
 static void ini_colorize_line(unsigned int *str, int n, int mode_flags,
@@ -556,18 +555,18 @@ static void ini_colorize_line(unsigned int *str, int n, int mode_flags,
         case ';':
             if (!bol)
                 break;
-            SET_COLOR(str, i, n, INI_COMMENT);
+            SET_COLOR(str, i, n, INI_STYLE_COMMENT);
             i = n;
             continue;
         case '#':
             if (!bol)
                 break;
-            SET_COLOR(str, i, n, INI_PREPROCESS);
+            SET_COLOR(str, i, n, INI_STYLE_PREPROCESS);
             i = n;
             continue;
         case '[':
             if (i == 0) {
-                SET_COLOR(str, i, n, INI_FUNCTION);
+                SET_COLOR(str, i, n, INI_STYLE_FUNCTION);
                 i = n;
                 continue;
             }
@@ -580,7 +579,7 @@ static void ini_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, INI_STRING);
+            SET_COLOR(str, i, j, INI_STYLE_STRING);
             i = j;
             continue;
         default:
@@ -597,7 +596,7 @@ static void ini_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (!qe_isalnum(str[j]))
                     break;
             }
-            SET_COLOR(str, i, j, INI_NUMBER);
+            SET_COLOR(str, i, j, INI_STYLE_NUMBER);
             i = j;
             continue;
         }
@@ -610,7 +609,7 @@ static void ini_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
             }
             if (j < n) {
-                SET_COLOR(str, i, j, INI_IDENTIFIER);
+                SET_COLOR(str, i, j, INI_STYLE_IDENTIFIER);
                 i = j;
                 continue;
             } else {
@@ -680,15 +679,17 @@ static int ini_init(void)
 
 /*---------------- PostScript colors ----------------*/
 
-#define IN_STRING       0x0F            /* ( ... ) level */
-#define IN_COMMENT      0x10
+enum {
+    IN_PS_STRING  = 0x0F            /* ( ... ) level */,
+    IN_PS_COMMENT = 0x10,
+};
 
 enum {
-    PS_TEXT =         QE_STYLE_DEFAULT,
-    PS_COMMENT =      QE_STYLE_COMMENT,
-    PS_STRING =       QE_STYLE_STRING,
-    PS_NUMBER =       QE_STYLE_DEFAULT,
-    PS_IDENTIFIER =   QE_STYLE_FUNCTION,
+    PS_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    PS_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    PS_STYLE_STRING =     QE_STYLE_STRING,
+    PS_STYLE_NUMBER =     QE_STYLE_DEFAULT,
+    PS_STYLE_IDENTIFIER = QE_STYLE_FUNCTION,
 };
 
 #define ispssep(c)      (qe_findchar(" \t\r\n,()<>[]{}/", c))
@@ -700,10 +701,10 @@ static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
     int i = 0, j;
     int colstate = *statep;
 
-    if (colstate & IN_COMMENT)
+    if (colstate & IN_PS_COMMENT)
         goto in_comment;
 
-    if (colstate & IN_STRING)
+    if (colstate & IN_PS_STRING)
         goto in_string;
 
     colstate = 0;
@@ -714,10 +715,10 @@ static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
         case '%':
         in_comment:
             if (wrap)
-                colstate |= IN_COMMENT;
+                colstate |= IN_PS_COMMENT;
             else
-                colstate &= ~IN_COMMENT;
-            SET_COLOR(str, i, n, PS_COMMENT);
+                colstate &= ~IN_PS_COMMENT;
+            SET_COLOR(str, i, n, PS_STYLE_COMMENT);
             i = n;
             continue;
         case '(':
@@ -730,7 +731,7 @@ static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
                     continue;
                 case ')':
                     colstate--;
-                    if (!(colstate & IN_STRING))
+                    if (!(colstate & IN_PS_STRING))
                         break;
                     continue;
                 case '\\':
@@ -743,7 +744,7 @@ static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
                 }
                 break;
             }
-            SET_COLOR(str, i, j, PS_STRING);
+            SET_COLOR(str, i, j, PS_STYLE_STRING);
             i = j;
             continue;
         default:
@@ -755,7 +756,7 @@ static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (!qe_isalnum(str[j]) && str[j] != '.')
                     break;
             }
-            SET_COLOR(str, i, j, PS_NUMBER);
+            SET_COLOR(str, i, j, PS_STYLE_NUMBER);
             i = j;
             continue;
         }
@@ -765,7 +766,7 @@ static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (ispssep(str[j]))
                     break;
             }
-            SET_COLOR(str, i, j, PS_IDENTIFIER);
+            SET_COLOR(str, i, j, PS_STYLE_IDENTIFIER);
             i = j;
             continue;
         }
@@ -774,9 +775,6 @@ static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
     }
     *statep = colstate;
 }
-
-#undef IN_STRING
-#undef IN_COMMENT
 
 static int ps_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
@@ -812,14 +810,16 @@ static int ps_init(void)
 
 /*---------------- SQL script coloring ----------------*/
 
-#define IN_COMMENT  1
+enum {
+    IN_SQL_COMMENT = 1,
+};
 
 enum {
-    SQL_TEXT =         QE_STYLE_DEFAULT,
-    SQL_COMMENT =      QE_STYLE_COMMENT,
-    SQL_STRING =       QE_STYLE_STRING,
-    SQL_IDENTIFIER =   QE_STYLE_KEYWORD,
-    SQL_PREPROCESS =   QE_STYLE_PREPROCESS,
+    SQL_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    SQL_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    SQL_STYLE_STRING =     QE_STYLE_STRING,
+    SQL_STYLE_IDENTIFIER = QE_STYLE_KEYWORD,
+    SQL_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
 };
 
 static void sql_colorize_line(unsigned int *str, int n, int mode_flags,
@@ -828,7 +828,7 @@ static void sql_colorize_line(unsigned int *str, int n, int mode_flags,
     int i = 0, j = i;
     int state = *statep;
 
-    if (state & IN_COMMENT)
+    if (state & IN_SQL_COMMENT)
         goto parse_c_comment;
 
     while (i < n) {
@@ -840,11 +840,11 @@ static void sql_colorize_line(unsigned int *str, int n, int mode_flags,
                 /* normal comment */
                 j = i + 2;
             parse_c_comment:
-                state |= IN_COMMENT;
+                state |= IN_SQL_COMMENT;
                 while (j < n) {
                     if (str[j] == '*' && str[j + 1] == '/') {
                         j += 2;
-                        state &= ~IN_COMMENT;
+                        state &= ~IN_SQL_COMMENT;
                         break;
                     } else {
                         j++;
@@ -861,7 +861,7 @@ static void sql_colorize_line(unsigned int *str, int n, int mode_flags,
         line_comment:
             j = n;
         comment:
-            SET_COLOR(str, i, j, SQL_COMMENT);
+            SET_COLOR(str, i, j, SQL_STYLE_COMMENT);
             i = j;
             continue;
         case '\'':
@@ -879,7 +879,8 @@ static void sql_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, str[i] == '`' ? SQL_IDENTIFIER : SQL_STRING);
+            SET_COLOR(str, i, j,
+                      str[i] == '`' ? SQL_STYLE_IDENTIFIER : SQL_STYLE_STRING);
             i = j;
             continue;
         default:
@@ -890,8 +891,6 @@ static void sql_colorize_line(unsigned int *str, int n, int mode_flags,
     }
     *statep = state;
 }
-
-#undef IN_COMMENT
 
 static int sql_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
@@ -936,20 +935,22 @@ static char const lua_tokens[] = {
 };
 #endif
 
-#define IN_COMMENT   0x10
-#define IN_STRING    0x20
-#define IN_STRING2   0x40
-#define IN_LONGLIT   0x80
-#define IN_LEVEL     0x0F
+enum {
+    IN_LUA_COMMENT = 0x10,
+    IN_LUA_STRING  = 0x20,
+    IN_LUA_STRING2 = 0x40,
+    IN_LUA_LONGLIT = 0x80,
+    IN_LUA_LEVEL   = 0x0F,
+};
 
 enum {
-    LUA_TEXT =         QE_STYLE_DEFAULT,
-    LUA_COMMENT =      QE_STYLE_COMMENT,
-    LUA_STRING =       QE_STYLE_STRING,
-    LUA_LONGLIT =      QE_STYLE_STRING,
-    LUA_NUMBER =       QE_STYLE_NUMBER,
-    LUA_KEYWORD =      QE_STYLE_KEYWORD,
-    LUA_FUNCTION =     QE_STYLE_FUNCTION,
+    LUA_STYLE_TEXT =     QE_STYLE_DEFAULT,
+    LUA_STYLE_COMMENT =  QE_STYLE_COMMENT,
+    LUA_STYLE_STRING =   QE_STYLE_STRING,
+    LUA_STYLE_LONGLIT =  QE_STYLE_STRING,
+    LUA_STYLE_NUMBER =   QE_STYLE_NUMBER,
+    LUA_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
+    LUA_STYLE_FUNCTION = QE_STYLE_FUNCTION,
 };
 
 static int lua_long_bracket(unsigned int *str, int *level)
@@ -973,18 +974,18 @@ void lua_colorize_line(unsigned int *str, int n, int mode_flags,
     int state = *statep;
     char kbuf[32];
 
-    if (state & IN_LONGLIT) {
+    if (state & IN_LUA_LONGLIT) {
         /* either a comment or a string */
-        level = state & IN_LEVEL;
+        level = state & IN_LUA_LEVEL;
         goto parse_longlit;
     }
 
-    if (state & IN_STRING) {
+    if (state & IN_LUA_STRING) {
         sep = '\'';
         state = 0;
         goto parse_string;
     }
-    if (state & IN_STRING2) {
+    if (state & IN_LUA_STRING2) {
         sep = '\"';
         state = 0;
         goto parse_string;
@@ -996,10 +997,10 @@ void lua_colorize_line(unsigned int *str, int n, int mode_flags,
             if (str[i + 1] == '-') {
                 if (str[i + 2] == '['
                 &&  lua_long_bracket(str + i + 2, &level)) {
-                    state = IN_COMMENT | IN_LONGLIT | (level & IN_LEVEL);
+                    state = IN_LUA_COMMENT | IN_LUA_LONGLIT | (level & IN_LUA_LEVEL);
                     goto parse_longlit;
                 }
-                SET_COLOR(str, i, n, LUA_COMMENT);
+                SET_COLOR(str, i, n, LUA_STYLE_COMMENT);
                 i = n;
                 continue;
             }
@@ -1015,11 +1016,11 @@ void lua_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (c == '\\') {
                     if (str[j] == 'z' && j + 1 == n) {
                         /* XXX: partial support for \z */
-                        state = (sep == '\'') ? IN_STRING : IN_STRING2;
+                        state = (sep == '\'') ? IN_LUA_STRING : IN_LUA_STRING2;
                         j += 1;
                     } else
                     if (j == n) {
-                        state = (sep == '\'') ? IN_STRING : IN_STRING2;
+                        state = (sep == '\'') ? IN_LUA_STRING : IN_LUA_STRING2;
                     } else {
                         j += 1;
                     }
@@ -1028,17 +1029,18 @@ void lua_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, LUA_STRING);
+            SET_COLOR(str, i, j, LUA_STYLE_STRING);
             i = j;
             continue;
         case '[':
             if (lua_long_bracket(str + i, &level)) {
-                state = IN_LONGLIT | (level & IN_LEVEL);
+                state = IN_LUA_LONGLIT | (level & IN_LUA_LEVEL);
                 goto parse_longlit;
             }
             break;
         parse_longlit:
-            style = (state & IN_COMMENT) ? LUA_COMMENT : LUA_LONGLIT;
+            style = (state & IN_LUA_COMMENT) ?
+                    LUA_STYLE_COMMENT : LUA_STYLE_LONGLIT;
             for (j = i; j < n; j++) {
                 if (str[j] != ']')
                     continue;
@@ -1058,7 +1060,7 @@ void lua_colorize_line(unsigned int *str, int n, int mode_flags,
                     if (!qe_isalnum(str[j] && str[j] != '.'))
                         break;
                 }
-                SET_COLOR(str, i, j, LUA_NUMBER);
+                SET_COLOR(str, i, j, LUA_STYLE_NUMBER);
                 i = j;
                 continue;
             }
@@ -1070,14 +1072,14 @@ void lua_colorize_line(unsigned int *str, int n, int mode_flags,
                 kbuf[klen] = '\0';
 
                 if (strfind(lua_keywords, kbuf)) {
-                    SET_COLOR(str, i, j, LUA_KEYWORD);
+                    SET_COLOR(str, i, j, LUA_STYLE_KEYWORD);
                     i = j;
                     continue;
                 }
                 while (qe_isblank(str[j]))
                     j++;
                 if (str[j] == '(') {
-                    SET_COLOR(str, i, j, LUA_FUNCTION);
+                    SET_COLOR(str, i, j, LUA_STYLE_FUNCTION);
                     i = j;
                     continue;
                 }
@@ -1091,12 +1093,6 @@ void lua_colorize_line(unsigned int *str, int n, int mode_flags,
     }
     *statep = state;
 }
-
-#undef IN_COMMENT
-#undef IN_STRING
-#undef IN_STRING2
-#undef IN_LONGLIT
-#undef IN_LEVEL
 
 static int lua_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
@@ -1136,18 +1132,20 @@ static char const haskell_keywords[] = {
     "|"
 };
 
-#define IN_COMMENT   0x10
-#define IN_STRING    0x20
-#define IN_LEVEL     0x0F
+enum {
+    IN_HASKELL_COMMENT = 0x10,
+    IN_HASKELL_STRING  = 0x20,
+    IN_HASKELL_LEVEL   = 0x0F,
+};
 
 enum {
-    HASKELL_TEXT =         QE_STYLE_DEFAULT,
-    HASKELL_COMMENT =      QE_STYLE_COMMENT,
-    HASKELL_STRING =       QE_STYLE_STRING,
-    HASKELL_NUMBER =       QE_STYLE_NUMBER,
-    HASKELL_KEYWORD =      QE_STYLE_KEYWORD,
-    HASKELL_FUNCTION =     QE_STYLE_FUNCTION,
-    HASKELL_SYMBOL =       QE_STYLE_NUMBER,
+    HASKELL_STYLE_TEXT =     QE_STYLE_DEFAULT,
+    HASKELL_STYLE_COMMENT =  QE_STYLE_COMMENT,
+    HASKELL_STYLE_STRING =   QE_STYLE_STRING,
+    HASKELL_STYLE_NUMBER =   QE_STYLE_NUMBER,
+    HASKELL_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
+    HASKELL_STYLE_FUNCTION = QE_STYLE_FUNCTION,
+    HASKELL_STYLE_SYMBOL =   QE_STYLE_NUMBER,
 };
 
 static inline int haskell_is_symbol(int c)
@@ -1162,10 +1160,10 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
     int state = *statep;
     char kbuf[32];
 
-    if (state & IN_COMMENT)
+    if (state & IN_HASKELL_COMMENT)
         goto parse_comment;
 
-    if (state & IN_STRING) {
+    if (state & IN_HASKELL_STRING) {
         sep = '\"';
         state = 0;
         while (qe_isspace(str[j]))
@@ -1179,14 +1177,14 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
         switch (c = str[i]) {
         case '-':
             if (str[i + 1] == '-' && !haskell_is_symbol(str[i + 2])) {
-                SET_COLOR(str, i, n, HASKELL_COMMENT);
+                SET_COLOR(str, i, n, HASKELL_STYLE_COMMENT);
                 i = n;
                 continue;
             }
             goto parse_symbol;
         case '{':
             if (str[i + 1] == '-') {
-                state |= IN_COMMENT;
+                state |= IN_HASKELL_COMMENT;
                 goto parse_comment;
             }
             /* FALL THRU */
@@ -1202,7 +1200,7 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
             break;
             
         parse_comment:
-            level = state & IN_LEVEL;
+            level = state & IN_HASKELL_LEVEL;
             for (j = i; j < n; j++) {
                 if (str[i] == '{' && str[i + 1] == '-') {
                     level++;
@@ -1214,14 +1212,14 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
                     level--;
                     if (level == 0) {
                         j++;
-                        state &= ~IN_COMMENT;
+                        state &= ~IN_HASKELL_COMMENT;
                         break;
                     }
                 }
             }
-            state &= ~IN_COMMENT;
-            state |= level & IN_COMMENT;
-            SET_COLOR(str, i, j, HASKELL_COMMENT);
+            state &= ~IN_HASKELL_COMMENT;
+            state |= level & IN_HASKELL_COMMENT;
+            SET_COLOR(str, i, j, HASKELL_STYLE_COMMENT);
             i = j;
             continue;
 
@@ -1237,7 +1235,7 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
                     if (j == n) {
                         if (sep == '\"') {
                             /* XXX: should ignore whitespace */
-                            state = IN_STRING;
+                            state = IN_HASKELL_STRING;
                         }
                     } else
                     if (str[j] == '^' && j + 1 < n && str[j + 1] != sep) {
@@ -1250,7 +1248,7 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, HASKELL_STRING);
+            SET_COLOR(str, i, j, HASKELL_STYLE_STRING);
             i = j;
             continue;
 
@@ -1286,7 +1284,7 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
                     }
                 }
                 /* XXX: should detect malformed number constants */
-                SET_COLOR(str, i, j, HASKELL_NUMBER);
+                SET_COLOR(str, i, j, HASKELL_STYLE_NUMBER);
                 i = j;
                 continue;
             }
@@ -1300,14 +1298,14 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
                 kbuf[klen] = '\0';
 
                 if (strfind(haskell_keywords, kbuf)) {
-                    SET_COLOR(str, i, j, HASKELL_KEYWORD);
+                    SET_COLOR(str, i, j, HASKELL_STYLE_KEYWORD);
                     i = j;
                     continue;
                 }
                 while (qe_isblank(str[j]))
                     j++;
                 if (str[j] == '(') {
-                    SET_COLOR(str, i, j, HASKELL_FUNCTION);
+                    SET_COLOR(str, i, j, HASKELL_STYLE_FUNCTION);
                     i = j;
                     continue;
                 }
@@ -1318,7 +1316,7 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
             if (haskell_is_symbol(c)) {
                 for (j = i + 1; haskell_is_symbol(str[j]); j++)
                     continue;
-                SET_COLOR(str, i, j, HASKELL_SYMBOL);
+                SET_COLOR(str, i, j, HASKELL_STYLE_SYMBOL);
                 i = j;
                 continue;
             }
@@ -1329,10 +1327,6 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
     }
     *statep = state;
 }
-
-#undef IN_COMMENT
-#undef IN_STRING
-#undef IN_LEVEL
 
 static int haskell_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
@@ -1373,20 +1367,22 @@ static char const python_keywords[] = {
     "|"
 };
 
-#define IN_COMMENT       0x80
-#define IN_STRING        0x40
-#define IN_STRING2       0x20
-#define IN_LONG_STRING   0x10
-#define IN_LONG_STRING2  0x08
-#define IN_RAW_STRING    0x04
+enum {
+    IN_PYTHON_COMMENT      = 0x80,
+    IN_PYTHON_STRING       = 0x40,
+    IN_PYTHON_STRING2      = 0x20,
+    IN_PYTHON_LONG_STRING  = 0x10,
+    IN_PYTHON_LONG_STRING2 = 0x08,
+    IN_PYTHON_RAW_STRING   = 0x04,
+};
 
 enum {
-    PYTHON_TEXT =         QE_STYLE_DEFAULT,
-    PYTHON_COMMENT =      QE_STYLE_COMMENT,
-    PYTHON_STRING =       QE_STYLE_STRING,
-    PYTHON_NUMBER =       QE_STYLE_NUMBER,
-    PYTHON_KEYWORD =      QE_STYLE_KEYWORD,
-    PYTHON_FUNCTION =     QE_STYLE_FUNCTION,
+    PYTHON_STYLE_TEXT =     QE_STYLE_DEFAULT,
+    PYTHON_STYLE_COMMENT =  QE_STYLE_COMMENT,
+    PYTHON_STYLE_STRING =   QE_STYLE_STRING,
+    PYTHON_STYLE_NUMBER =   QE_STYLE_NUMBER,
+    PYTHON_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
+    PYTHON_STYLE_FUNCTION = QE_STYLE_FUNCTION,
 };
 
 void python_colorize_line(unsigned int *str, int n, int mode_flags,
@@ -1396,19 +1392,19 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
     int state = *statep;
     char kbuf[32];
 
-    if (state & IN_STRING) {
+    if (state & IN_PYTHON_STRING) {
         sep = '\'';
         goto parse_string;
     }
-    if (state & IN_STRING2) {
+    if (state & IN_PYTHON_STRING2) {
         sep = '\"';
         goto parse_string;
     }
-    if (state & IN_LONG_STRING) {
+    if (state & IN_PYTHON_LONG_STRING) {
         sep = '\'';
         goto parse_long_string;
     }
-    if (state & IN_LONG_STRING2) {
+    if (state & IN_PYTHON_LONG_STRING2) {
         sep = '\"';
         goto parse_long_string;
     }
@@ -1417,7 +1413,7 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
         switch (c = str[i]) {
         case '#':
             j = n;
-            SET_COLOR(str, i, j, PYTHON_COMMENT);
+            SET_COLOR(str, i, j, PYTHON_STYLE_COMMENT);
             i = j;
             continue;
             
@@ -1429,12 +1425,13 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
             sep = str[j++];
             if (str[j] == sep && str[j + 1] == sep) {
                 /* long string */
-                state = (sep == '\"') ? IN_LONG_STRING2 : IN_LONG_STRING;
+                state = (sep == '\"') ? IN_PYTHON_LONG_STRING2 :
+                        IN_PYTHON_LONG_STRING;
                 j += 2;
             parse_long_string:
                 while (j < n) {
                     c = str[j++];
-                    if (!(state & IN_RAW_STRING) && c == '\\') {
+                    if (!(state & IN_PYTHON_RAW_STRING) && c == '\\') {
                         if (j < n) {
                             j += 1;
                         }
@@ -1446,11 +1443,11 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
                     }
                 }
             } else {
-                state = (sep == '\"') ? IN_STRING2 : IN_STRING;
+                state = (sep == '\"') ? IN_PYTHON_STRING2 : IN_PYTHON_STRING;
             parse_string:
                 while (j < n) {
                     c = str[j++];
-                    if (!(state & IN_RAW_STRING) && c == '\\') {
+                    if (!(state & IN_PYTHON_RAW_STRING) && c == '\\') {
                         if (j < n) {
                             j += 1;
                         }
@@ -1461,7 +1458,7 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
                     }
                 }
             }
-            SET_COLOR(str, i, j, PYTHON_STRING);
+            SET_COLOR(str, i, j, PYTHON_STYLE_STRING);
             i = j;
             continue;
 
@@ -1476,7 +1473,7 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
         case 'B':
             if (qe_tolower(str[i + 1]) == 'r'
             &&  (str[i + 2] == '\'' || str[i + 2] == '\"')) {
-                state |= IN_RAW_STRING;
+                state |= IN_PYTHON_RAW_STRING;
                 j = i + 2;
                 goto has_quote;
             }
@@ -1486,12 +1483,12 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
         case 'R':
             if (qe_tolower(str[i + 1]) == 'b'
             &&  (str[i + 2] == '\'' || str[i + 2] == '\"')) {
-                state |= IN_RAW_STRING;
+                state |= IN_PYTHON_RAW_STRING;
                 j = i + 2;
                 goto has_quote;
             }
             if ((str[i + 1] == '\'' || str[i + 1] == '\"')) {
-                state |= IN_RAW_STRING;
+                state |= IN_PYTHON_RAW_STRING;
                 j = i + 1;
                 goto has_quote;
             }
@@ -1539,7 +1536,7 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
                 }
                     
                 /* XXX: should detect malformed number constants */
-                SET_COLOR(str, i, j, PYTHON_NUMBER);
+                SET_COLOR(str, i, j, PYTHON_STYLE_NUMBER);
                 i = j;
                 continue;
             }
@@ -1552,14 +1549,14 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
                 kbuf[klen] = '\0';
 
                 if (strfind(python_keywords, kbuf)) {
-                    SET_COLOR(str, i, j, PYTHON_KEYWORD);
+                    SET_COLOR(str, i, j, PYTHON_STYLE_KEYWORD);
                     i = j;
                     continue;
                 }
                 while (qe_isblank(str[j]))
                     j++;
                 if (str[j] == '(') {
-                    SET_COLOR(str, i, j, PYTHON_FUNCTION);
+                    SET_COLOR(str, i, j, PYTHON_STYLE_FUNCTION);
                     i = j;
                     continue;
                 }
@@ -1573,13 +1570,6 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
     }
     *statep = state;
 }
-
-#undef IN_COMMENT
-#undef IN_STRING
-#undef IN_STRING2
-#undef IN_LONG_STRING
-#undef IN_LONG_STRING2
-#undef IN_RAW_STRING
 
 static int python_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
@@ -1630,30 +1620,32 @@ static char const ruby_keywords[] = {
  *  ==  ===  <=>  []  []=  **  !  ~  !=  !~  =~  &  |  ^
  */
 
-#define IN_HEREDOC    0x80
-#define IN_HD_INDENT  0x40
-#define IN_HD_SIG     0x3f
-#define IN_COMMENT    0x40
-#define IN_STRING     0x20      /* single quote */
-#define IN_STRING2    0x10      /* double quote */
-#define IN_STRING3    0x08      /* back quote */
-#define IN_STRING4    0x04      /* %q{...} */
-#define IN_REGEX      0x02
-#define IN_POD        0x01
+enum {
+    IN_RUBY_HEREDOC   = 0x80,
+    IN_RUBY_HD_INDENT = 0x40,
+    IN_RUBY_HD_SIG    = 0x3f,
+    IN_RUBY_COMMENT   = 0x40,
+    IN_RUBY_STRING    = 0x20      /* single quote */,
+    IN_RUBY_STRING2   = 0x10      /* double quote */,
+    IN_RUBY_STRING3   = 0x08      /* back quote */,
+    IN_RUBY_STRING4   = 0x04      /* %q{...} */,
+    IN_RUBY_REGEX     = 0x02,
+    IN_RUBY_POD       = 0x01,
+};
 
 enum {
-    RUBY_TEXT =         QE_STYLE_DEFAULT,
-    RUBY_COMMENT =      QE_STYLE_COMMENT,
-    RUBY_STRING =       QE_STYLE_STRING,
-    RUBY_STRING2 =      QE_STYLE_STRING,
-    RUBY_STRING3 =      QE_STYLE_STRING,
-    RUBY_STRING4 =      QE_STYLE_STRING,
-    RUBY_REGEX =        QE_STYLE_STRING_Q,
-    RUBY_NUMBER =       QE_STYLE_NUMBER,
-    RUBY_KEYWORD =      QE_STYLE_KEYWORD,
-    RUBY_FUNCTION =     QE_STYLE_FUNCTION,
-    RUBY_MEMBER =       QE_STYLE_VARIABLE,
-    RUBY_HEREDOC =      QE_STYLE_PREPROCESS,
+    RUBY_STYLE_TEXT =     QE_STYLE_DEFAULT,
+    RUBY_STYLE_COMMENT =  QE_STYLE_COMMENT,
+    RUBY_STYLE_STRING =   QE_STYLE_STRING,
+    RUBY_STYLE_STRING2 =  QE_STYLE_STRING,
+    RUBY_STYLE_STRING3 =  QE_STYLE_STRING,
+    RUBY_STYLE_STRING4 =  QE_STYLE_STRING,
+    RUBY_STYLE_REGEX =    QE_STYLE_STRING_Q,
+    RUBY_STYLE_NUMBER =   QE_STYLE_NUMBER,
+    RUBY_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
+    RUBY_STYLE_FUNCTION = QE_STYLE_FUNCTION,
+    RUBY_STYLE_MEMBER =   QE_STYLE_VARIABLE,
+    RUBY_STYLE_HEREDOC =  QE_STYLE_PREPROCESS,
 };
 
 static int ruby_get_name(char *buf, int size, unsigned int *str)
@@ -1686,8 +1678,8 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
     for (indent = 0; qe_isspace(str[indent]); indent++)
         continue;
 
-    if (state & IN_HEREDOC) {
-        if (state & IN_HD_INDENT) {
+    if (state & IN_RUBY_HEREDOC) {
+        if (state & IN_RUBY_HD_INDENT) {
             while (qe_isspace(str[j]))
                 j++;
         }
@@ -1700,40 +1692,40 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
         }
         for (; qe_isspace(str[j]); j++)
             continue;
-        SET_COLOR(str, i, n, RUBY_HEREDOC);
+        SET_COLOR(str, i, n, RUBY_STYLE_HEREDOC);
         i = n;
-        if (j > 0 && j == n && (state & IN_HD_SIG) == (sig & IN_HD_SIG))
-            state &= ~(IN_HEREDOC | IN_HD_INDENT | IN_HD_SIG);
+        if (j > 0 && j == n && (state & IN_RUBY_HD_SIG) == (sig & IN_RUBY_HD_SIG))
+            state &= ~(IN_RUBY_HEREDOC | IN_RUBY_HD_INDENT | IN_RUBY_HD_SIG);
     } else {
-        if (state & IN_COMMENT)
+        if (state & IN_RUBY_COMMENT)
             goto parse_c_comment;
 
-        if (state & IN_REGEX)
+        if (state & IN_RUBY_REGEX)
             goto parse_regex;
 
-        if (state & IN_STRING)
+        if (state & IN_RUBY_STRING)
             goto parse_string;
 
-        if (state & IN_STRING2)
+        if (state & IN_RUBY_STRING2)
             goto parse_string2;
 
-        if (state & IN_STRING3)
+        if (state & IN_RUBY_STRING3)
             goto parse_string3;
 
-        if (state & IN_STRING4)
+        if (state & IN_RUBY_STRING4)
             goto parse_string4;
 
         if (str[i] == '=' && qe_isalpha(str[i + 1])) {
-            state |= IN_POD;
+            state |= IN_RUBY_POD;
         }
-        if (state & IN_POD) {
+        if (state & IN_RUBY_POD) {
             if (ustrstart(str + i, "=end", NULL)) {
-                state &= ~IN_POD;
+                state &= ~IN_RUBY_POD;
             }
             if (str[i] == '=' && qe_isalpha(str[i + 1])) {
-                SET_COLOR(str, i, n, RUBY_KEYWORD);
+                SET_COLOR(str, i, n, RUBY_STYLE_KEYWORD);
             } else {
-                SET_COLOR(str, i, n, RUBY_COMMENT);
+                SET_COLOR(str, i, n, RUBY_STYLE_COMMENT);
             }
             i = n;
         }
@@ -1751,11 +1743,11 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                 /* C comment */
                 j = i + 2;
             parse_c_comment:
-                state = IN_COMMENT;
+                state = IN_RUBY_COMMENT;
                 for (; j < n; j++) {
                     if (str[j] == '*' && str[j + 1] == '/') {
                         j += 2;
-                        state &= ~IN_COMMENT;
+                        state &= ~IN_RUBY_COMMENT;
                         break;
                     }
                 }
@@ -1768,7 +1760,7 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                 /* XXX: should use context to tell regex from divide */
                 /* parse regex */
                 j = i + 1;
-                state = IN_REGEX;
+                state = IN_RUBY_REGEX;
             parse_regex:
                 while (j < n) {
                     /* XXX: should ignore / inside char classes */
@@ -1791,7 +1783,7 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                         break;
                     }
                 }
-                SET_COLOR(str, i, j, RUBY_REGEX);
+                SET_COLOR(str, i, j, RUBY_STYLE_REGEX);
                 i = j;
                 continue;
             }
@@ -1800,7 +1792,7 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
         case '#':
             j = n;
         comment:
-            SET_COLOR(str, i, j, RUBY_COMMENT);
+            SET_COLOR(str, i, j, RUBY_STYLE_COMMENT);
             i = j;
             continue;
             
@@ -1822,7 +1814,7 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (sep == '[') sep = ']';
                 if (sep == '<') sep = '>';
                 /* parse special string const */
-                state = IN_STRING4;
+                state = IN_RUBY_STRING4;
             parse_string4:
                 while (j < n) {
                     c = str[j++];
@@ -1848,7 +1840,7 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                         }
                     }
                 }
-                SET_COLOR(str, i, j, RUBY_STRING4);
+                SET_COLOR(str, i, j, RUBY_STYLE_STRING4);
                 i = j;
                 continue;
             }
@@ -1857,7 +1849,7 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
         case '\'':
             /* parse single quoted string const */
             j = i + 1;
-            state = IN_STRING;
+            state = IN_RUBY_STRING;
         parse_string:
             while (j < n) {
                 c = str[j++];
@@ -1869,14 +1861,14 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, RUBY_STRING);
+            SET_COLOR(str, i, j, RUBY_STYLE_STRING);
             i = j;
             continue;
 
         case '`':
             /* parse single quoted string const */
             j = i + 1;
-            state = IN_STRING3;
+            state = IN_RUBY_STRING3;
         parse_string3:
             while (j < n) {
                 c = str[j++];
@@ -1893,7 +1885,7 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, RUBY_STRING3);
+            SET_COLOR(str, i, j, RUBY_STYLE_STRING3);
             i = j;
             continue;
 
@@ -1919,13 +1911,13 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                 }
             }
             if (c == '\"') {
-                if (state == IN_STRING2)
+                if (state == IN_RUBY_STRING2)
                     state = 0;
             } else {
                 if (state == 0)
-                    state = IN_STRING2;
+                    state = IN_RUBY_STRING2;
             }
-            SET_COLOR(str, i, j, RUBY_STRING2);
+            SET_COLOR(str, i, j, RUBY_STYLE_STRING2);
             i = j;
             continue;
 
@@ -1969,13 +1961,13 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                      * start on the line after the << operator.  This
                      * is a bug due to limited state bits.
                      */
-                    state &= ~(IN_HEREDOC | IN_HD_INDENT | IN_HD_SIG);
-                    state |= IN_HEREDOC;
+                    state &= ~(IN_RUBY_HEREDOC | IN_RUBY_HD_INDENT | IN_RUBY_HD_SIG);
+                    state |= IN_RUBY_HEREDOC;
                     if (str[i + 2] == '-') {
-                        state |= IN_HD_INDENT;
+                        state |= IN_RUBY_HD_INDENT;
                     }
-                    state |= (sig & IN_HD_SIG);
-                    SET_COLOR(str, i, j, RUBY_HEREDOC);
+                    state |= (sig & IN_RUBY_HD_SIG);
+                    SET_COLOR(str, i, j, RUBY_STYLE_HEREDOC);
                     i = j;
                 }
             }
@@ -2007,7 +1999,7 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
         case '@':
             j = i + 1;
             j += ruby_get_name(kbuf, countof(kbuf), str + j);
-            SET_COLOR(str, i, j, RUBY_MEMBER);
+            SET_COLOR(str, i, j, RUBY_STYLE_MEMBER);
             i = j;
             continue;
 
@@ -2054,7 +2046,7 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                 }
                     
                 /* XXX: should detect malformed number constants */
-                SET_COLOR(str, i, j, RUBY_NUMBER);
+                SET_COLOR(str, i, j, RUBY_STYLE_NUMBER);
                 i = j;
                 continue;
             }
@@ -2063,14 +2055,14 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                 j += ruby_get_name(kbuf, countof(kbuf), str + j);
 
                 if (strfind(ruby_keywords, kbuf)) {
-                    SET_COLOR(str, i, j, RUBY_KEYWORD);
+                    SET_COLOR(str, i, j, RUBY_STYLE_KEYWORD);
                     i = j;
                     continue;
                 }
                 while (qe_isblank(str[j]))
                     j++;
                 if (str[j] == '(') {
-                    SET_COLOR(str, i, j, RUBY_FUNCTION);
+                    SET_COLOR(str, i, j, RUBY_STYLE_FUNCTION);
                     i = j;
                     continue;
                 }
@@ -2084,17 +2076,6 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
     }
     *statep = state;
 }
-
-#undef IN_HEREDOC
-#undef IN_HD_INDENT
-#undef IN_HD_SIG
-#undef IN_COMMENT
-#undef IN_STRING
-#undef IN_STRING2
-#undef IN_STRING3
-#undef IN_STRING4
-#undef IN_REGEX
-#undef IN_POD
 
 static int ruby_mode_probe(ModeDef *mode, ModeProbeData *p)
 {

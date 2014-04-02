@@ -22,6 +22,14 @@
 
 #include "qe.h"
 
+enum {
+    LATEX_STYLE_COMMENT  = QE_STYLE_COMMENT,
+    LATEX_STYLE_STRING   = QE_STYLE_STRING,
+    LATEX_STYLE_FUNCTION = QE_STYLE_FUNCTION,
+    LATEX_STYLE_KEYWORD  = QE_STYLE_KEYWORD,
+    LATEX_STYLE_VARIABLE = QE_STYLE_VARIABLE,
+};
+
 /* TODO: add state handling to allow colorization of elements longer
  * than one line (eg, multi-line functions and strings)
  */
@@ -61,7 +69,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
                         break;
                     }
                 }
-                set_color(p_start, p, QE_STYLE_STRING);
+                set_color(p_start, p, LATEX_STYLE_STRING);
             }
             break;
         case '\\':
@@ -73,7 +81,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
                 while (*p != '\0' && *p != '{' && *p != '[' && *p != ' ' && *p != '\\')
                     p++;
             }
-            set_color(p_start, p, QE_STYLE_FUNCTION);
+            set_color(p_start, p, LATEX_STYLE_FUNCTION);
             while (*p == ' ' || *p == '\t') {
                 /* skip space */
                 p++;
@@ -84,7 +92,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
                     p_start = p;
                     while (*p != '\0' && *p != ']')
                         p++;
-                    set_color(p_start, p, QE_STYLE_KEYWORD);
+                    set_color(p_start, p, LATEX_STYLE_KEYWORD);
                     if (*p == ']')
                         p++;
                 } else {
@@ -101,7 +109,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
                         }
                         p++;
                     }
-                    set_color(p_start, p, QE_STYLE_VARIABLE);
+                    set_color(p_start, p, LATEX_STYLE_VARIABLE);
                     if (*p == '}')
                         p++;
                 }
@@ -116,7 +124,7 @@ static void latex_colorize_line(unsigned int *buf, __unused__ int len,
             /* line comment */
             while (*p != '\0')
                 p++;
-            set_color(p_start, p, QE_STYLE_COMMENT);
+            set_color(p_start, p, LATEX_STYLE_COMMENT);
             break;
         default:
             p++;

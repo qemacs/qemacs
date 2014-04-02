@@ -22,20 +22,24 @@
 
 /*---------------- Perl colors ----------------*/
 
-#define PERL_TEXT       QE_STYLE_DEFAULT
-#define PERL_COMMENT    QE_STYLE_COMMENT
-#define PERL_STRING     QE_STYLE_STRING
-#define PERL_REGEX      QE_STYLE_STRING
-#define PERL_DELIM      QE_STYLE_KEYWORD
-#define PERL_KEYWORD    QE_STYLE_KEYWORD
-#define PERL_VAR        QE_STYLE_VARIABLE
-#define PERL_NUMBER     QE_STYLE_NUMBER
+enum {
+    PERL_STYLE_TEXT    = QE_STYLE_DEFAULT,
+    PERL_STYLE_COMMENT = QE_STYLE_COMMENT,
+    PERL_STYLE_STRING  = QE_STYLE_STRING,
+    PERL_STYLE_REGEX   = QE_STYLE_STRING,
+    PERL_STYLE_DELIM   = QE_STYLE_KEYWORD,
+    PERL_STYLE_KEYWORD = QE_STYLE_KEYWORD,
+    PERL_STYLE_VAR     = QE_STYLE_VARIABLE,
+    PERL_STYLE_NUMBER  = QE_STYLE_NUMBER,
+};
 
-#define IN_STRING1      0x01    /* single quote */
-#define IN_STRING2      0x02    /* double quote */
-#define IN_FORMAT       0x04    /* format = ... */
-#define IN_HEREDOC      0x08
-#define IN_POD          0x10
+enum {
+    IN_PERL_STRING1 = 0x01,    /* single quote */
+    IN_PERL_STRING2 = 0x02,    /* double quote */
+    IN_PERL_FORMAT  = 0x04,    /* format = ... */
+    IN_PERL_HEREDOC = 0x08,
+    IN_PERL_POD     = 0x10,
+};
 
 /* CG: bogus if multiple regions are colorized, should use signature */
 /* XXX: should move this to mode data */
@@ -106,43 +110,43 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
     int i = 0, c, c1, c2, j = i, s1, s2, delim = 0;
     int colstate = *statep;
 
-    if (colstate & (IN_STRING1|IN_STRING2)) {
-        delim = (colstate & IN_STRING1) ? '\'' : '\"';
+    if (colstate & (IN_PERL_STRING1 | IN_PERL_STRING2)) {
+        delim = (colstate & IN_PERL_STRING1) ? '\'' : '\"';
         i = perl_string(str, delim, j, n);
         if (i < n) {
             i++;
-            colstate &= ~(IN_STRING1|IN_STRING2);
+            colstate &= ~(IN_PERL_STRING1 | IN_PERL_STRING2);
         }
-        SET_COLOR(str, j, i, PERL_STRING);
+        SET_COLOR(str, j, i, PERL_STYLE_STRING);
     } else
-    if (colstate & IN_FORMAT) {
+    if (colstate & IN_PERL_FORMAT) {
         i = n;
         if (n == 1 && str[0] == '.')
-            colstate &= ~IN_FORMAT;
-        SET_COLOR(str, j, i, PERL_STRING);
+            colstate &= ~IN_PERL_FORMAT;
+        SET_COLOR(str, j, i, PERL_STYLE_STRING);
     }
-    if (colstate & IN_HEREDOC) {
+    if (colstate & IN_PERL_HEREDOC) {
         i = n;
         if (n == perl_eos_len && !umemcmp(perl_eos, str, n)) {
-            colstate &= ~IN_HEREDOC;
-            SET_COLOR(str, j, i, PERL_KEYWORD);
+            colstate &= ~IN_PERL_HEREDOC;
+            SET_COLOR(str, j, i, PERL_STYLE_KEYWORD);
         } else {
-            SET_COLOR(str, j, i, PERL_STRING);
+            SET_COLOR(str, j, i, PERL_STYLE_STRING);
         }
     }
     if (str[i] == '=' && qe_isalpha(str[i + 1])) {
-        colstate |= IN_POD;
+        colstate |= IN_PERL_POD;
     }
-    if (colstate & IN_POD) {
+    if (colstate & IN_PERL_POD) {
         if (ustrstart(str + i, "=cut", NULL)) {
-            colstate &= ~IN_POD;
+            colstate &= ~IN_PERL_POD;
         }
         if (str[i] == '=' && qe_isalpha(str[i + 1])) {
             i = n;
-            SET_COLOR(str, j, i, PERL_KEYWORD);
+            SET_COLOR(str, j, i, PERL_STYLE_KEYWORD);
         } else {
             i = n;
-            SET_COLOR(str, j, i, PERL_COMMENT);
+            SET_COLOR(str, j, i, PERL_STYLE_COMMENT);
         }
     }
 
@@ -172,7 +176,7 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
                 break;
             s1 = perl_var(str, j, n);
             if (s1 > j) {
-                SET_COLOR(str, i, s1, PERL_VAR);
+                SET_COLOR(str, i, s1, PERL_STYLE_VAR);
                 i = s1;
                 continue;
             }
@@ -188,7 +192,7 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
             }
             break;
         case '#':
-            SET_COLOR(str, i, n, PERL_COMMENT);
+            SET_COLOR(str, i, n, PERL_STYLE_COMMENT);
             i = n;
             continue;
         case '<':
@@ -207,7 +211,7 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
                     perl_eos_len = min((int)(s2 - s1), countof(perl_eos) - 1);
                     umemcpy(perl_eos, str + s1, perl_eos_len);
                     perl_eos[perl_eos_len] = '\0';
-                    colstate |= IN_HEREDOC;
+                    colstate |= IN_PERL_HEREDOC;
                 }
                 i += 2;
                 continue;
@@ -221,12 +225,12 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
             s1 = perl_string(str, c, j, n);
             if (s1 >= n)
                 break;
-            SET_COLOR1(str, i, PERL_DELIM);
-            SET_COLOR(str, i + 1, s1, PERL_REGEX);
+            SET_COLOR1(str, i, PERL_STYLE_DELIM);
+            SET_COLOR(str, i + 1, s1, PERL_STYLE_REGEX);
             i = s1;
             while (++i < n && qe_isalpha(str[i]))
                 continue;
-            SET_COLOR(str, s1, i, PERL_DELIM);
+            SET_COLOR(str, s1, i, PERL_STYLE_DELIM);
             continue;
         case '\'':
         case '`':
@@ -237,15 +241,15 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
             s1 = perl_string(str, delim, j, n);
             if (s1 >= n) {
                 if (c == '\'') {
-                    SET_COLOR(str, i, n, PERL_STRING);
+                    SET_COLOR(str, i, n, PERL_STYLE_STRING);
                     i = n;
-                    colstate |= IN_STRING1;
+                    colstate |= IN_PERL_STRING1;
                     continue;
                 }
                 if (c == '\"') {
-                    SET_COLOR(str, i, n, PERL_STRING);
+                    SET_COLOR(str, i, n, PERL_STYLE_STRING);
                     i = n;
-                    colstate |= IN_STRING2;
+                    colstate |= IN_PERL_STRING2;
                     continue;
                 }
                 /* ` string spanning more than one line treated as
@@ -254,7 +258,7 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
                 break;
             }
             s1++;
-            SET_COLOR(str, i, s1, PERL_STRING);
+            SET_COLOR(str, i, s1, PERL_STYLE_STRING);
             i = s1;
             continue;
         case '.':
@@ -266,7 +270,7 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
             if (qe_isdigit(c)) {
             number:
                 j = perl_number(str, i, n);
-                SET_COLOR(str, i, j, PERL_NUMBER);
+                SET_COLOR(str, i, j, PERL_STYLE_NUMBER);
                 i = j;
                 continue;
             }
@@ -286,12 +290,12 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
                 s1 = perl_string(str, str[j], j + 1, n);
                 if (s1 >= n)
                     goto keyword;
-                SET_COLOR(str, i, j + 1, PERL_DELIM);
-                SET_COLOR(str, j + 1, s1, PERL_REGEX);
+                SET_COLOR(str, i, j + 1, PERL_STYLE_DELIM);
+                SET_COLOR(str, j + 1, s1, PERL_STYLE_REGEX);
                 i = s1;
                 while (++i < n && qe_isalpha(str[i]))
                     continue;
-                SET_COLOR(str, s1, i, PERL_DELIM);
+                SET_COLOR(str, s1, i, PERL_STYLE_DELIM);
                 continue;
             }
             /* Should check for context */
@@ -303,14 +307,14 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
                 s2 = perl_string(str, str[j], s1 + 1, n);
                 if (s2 >= n)
                     goto keyword;
-                SET_COLOR(str, i, j + 1, PERL_DELIM);
-                SET_COLOR(str, j + 1, s1, PERL_REGEX);
-                SET_COLOR1(str, s1, PERL_DELIM);
-                SET_COLOR(str, s1 + 1, s2, PERL_REGEX);
+                SET_COLOR(str, i, j + 1, PERL_STYLE_DELIM);
+                SET_COLOR(str, j + 1, s1, PERL_STYLE_REGEX);
+                SET_COLOR1(str, s1, PERL_STYLE_DELIM);
+                SET_COLOR(str, s1 + 1, s2, PERL_STYLE_REGEX);
                 i = s2;
                 while (++i < n && qe_isalpha(str[i]))
                     continue;
-                SET_COLOR(str, s2, i, PERL_DELIM);
+                SET_COLOR(str, s2, i, PERL_STYLE_DELIM);
                 continue;
             }
         keyword:
@@ -321,10 +325,10 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
                 }
                 if (s1 == i) {
                     /* keyword is first on line */
-                    colstate |= IN_FORMAT;
+                    colstate |= IN_PERL_FORMAT;
                 }
             }
-            SET_COLOR(str, i, j, PERL_KEYWORD);
+            SET_COLOR(str, i, j, PERL_STYLE_KEYWORD);
             i = j;
             continue;
         }
@@ -333,21 +337,6 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
     }
     *statep = colstate;
 }
-
-#undef PERL_TEXT
-#undef PERL_COMMENT
-#undef PERL_STRING
-#undef PERL_REGEX
-#undef PERL_DELIM
-#undef PERL_KEYWORD
-#undef PERL_VAR
-#undef PERL_NUMBER
-
-#undef IN_STRING1
-#undef IN_STRING2
-#undef IN_FORMAT
-#undef IN_HEREDOC
-#undef IN_POD
 
 static int perl_mode_probe(ModeDef *mode, ModeProbeData *p)
 {

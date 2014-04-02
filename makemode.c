@@ -22,33 +22,47 @@
 
 /*---------------- Makefile colors ----------------*/
 
-#define MAKEFILE_TEXT           QE_STYLE_DEFAULT
-#define MAKEFILE_COMMENT        QE_STYLE_COMMENT
-#define MAKEFILE_STRING         QE_STYLE_STRING
-#define MAKEFILE_PREPROCESS     QE_STYLE_PREPROCESS
-#define MAKEFILE_TARGET         QE_STYLE_FUNCTION
-#define MAKEFILE_VARIABLE       QE_STYLE_VARIABLE
-#define MAKEFILE_MACRO          QE_STYLE_TYPE
+/* grab an identifier from a uint buf, stripping color.
+ * return char count.
+ */
+static int get_word_lc(char *buf, int buf_size, unsigned int *p)
+{
+    unsigned int c;
+    int i, j;
+
+    i = j = 0;
+    c = p[i] & CHAR_MASK;
+    if (qe_isalpha_(c)) {
+        do {
+            if (j < buf_size - 1)
+                buf[j++] = qe_tolower(c);
+            i++;
+            c = p[i] & CHAR_MASK;
+        } while (qe_isalnum_(c));
+    }
+    buf[j] = '\0';
+    return i;
+}
+
+enum {
+    MAKEFILE_STYLE_TEXT       = QE_STYLE_DEFAULT,
+    MAKEFILE_STYLE_COMMENT    = QE_STYLE_COMMENT,
+    MAKEFILE_STYLE_STRING     = QE_STYLE_STRING,
+    MAKEFILE_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    MAKEFILE_STYLE_TARGET     = QE_STYLE_FUNCTION,
+    MAKEFILE_STYLE_VARIABLE   = QE_STYLE_VARIABLE,
+    MAKEFILE_STYLE_MACRO      = QE_STYLE_TYPE,
+};
 
 static void makefile_colorize_line(unsigned int *str, int n, int mode_flags,
                                    int *statep, int state_only)
 {
-    int i, j, level;
+    char buf[32];
+    int i = 0, j = i, level;
 
-    i = j = 0;
-
-    /* CG: should check for end of word */
-    if (str[0] == 'i') {
-        if (ustristart(str, "ifeq", NULL)
-        ||  ustristart(str, "ifneq", NULL)
-        ||  ustristart(str, "ifdef", NULL)
-        ||  ustristart(str, "ifndef", NULL)
-        ||  ustristart(str, "include", NULL))
-            goto preprocess;
-    } else
-    if (str[0] == 'e') {
-        if (ustristart(str, "else", NULL)
-        ||  ustristart(str, "endif", NULL))
+    if (qe_isalnum_(str[0])) {
+        get_word_lc(buf, countof(buf), str);
+        if (strfind("ifeq|ifneq|ifdef|ifndef|include|else|endif", buf))
             goto preprocess;
     }
 
@@ -73,7 +87,7 @@ static void makefile_colorize_line(unsigned int *str, int n, int mode_flags,
                 }
             }
             if (i < j)
-                SET_COLOR(str, i, j, MAKEFILE_MACRO);
+                SET_COLOR(str, i, j, MAKEFILE_STYLE_MACRO);
             i = j;
             continue;
         case ' ':
@@ -89,18 +103,18 @@ static void makefile_colorize_line(unsigned int *str, int n, int mode_flags,
                 break;
             if (str[i+1] == '=')
                 goto variable;
-            SET_COLOR(str, j, i, MAKEFILE_TARGET);
+            SET_COLOR(str, j, i, MAKEFILE_STYLE_TARGET);
             break;
         case '=':
             if (j)
                 break;
         variable:
-            SET_COLOR(str, j, i, MAKEFILE_VARIABLE);
+            SET_COLOR(str, j, i, MAKEFILE_STYLE_VARIABLE);
             break;
         case '#':
             if (i > 0 && str[i - 1] == '\\')
                 break;
-            SET_COLOR(str, i, n, MAKEFILE_COMMENT);
+            SET_COLOR(str, i, n, MAKEFILE_STYLE_COMMENT);
             i = n;
             continue;
         case '!':
@@ -113,7 +127,7 @@ static void makefile_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (str[j] == '#')
                     break;
             }
-            SET_COLOR(str, i, j, MAKEFILE_PREPROCESS);
+            SET_COLOR(str, i, j, MAKEFILE_STYLE_PREPROCESS);
             i = j;
             continue;
         case '\'':
@@ -126,7 +140,7 @@ static void makefile_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, MAKEFILE_STRING);
+            SET_COLOR(str, i, j, MAKEFILE_STYLE_STRING);
             i = j;
             continue;
         default:
@@ -135,14 +149,6 @@ static void makefile_colorize_line(unsigned int *str, int n, int mode_flags,
         i++;
     }
 }
-
-#undef MAKEFILE_TEXT
-#undef MAKEFILE_COMMENT
-#undef MAKEFILE_STRING
-#undef MAKEFILE_PREPROCESS
-#undef MAKEFILE_VARIABLE
-#undef MAKEFILE_TARGET
-#undef MAKEFILE_MACRO
 
 static int makefile_mode_probe(ModeDef *mode, ModeProbeData *p)
 {

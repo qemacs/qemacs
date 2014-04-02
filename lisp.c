@@ -24,12 +24,16 @@
 
 /*---------------- Lisp colors ----------------*/
 
-#define IN_COMMENT      0x01
-#define IN_STRING       0x02
+enum {
+    IN_LISP_COMMENT = 0x01,
+    IN_LISP_STRING  = 0x02,
+};
 
-#define LISP_TEXT       QE_STYLE_DEFAULT
-#define LISP_COMMENT    QE_STYLE_COMMENT
-#define LISP_STRING     QE_STYLE_STRING
+enum {
+    LISP_STYLE_TEXT    = QE_STYLE_DEFAULT,
+    LISP_STYLE_COMMENT = QE_STYLE_COMMENT,
+    LISP_STYLE_STRING  = QE_STYLE_STRING,
+};
 
 static void lisp_colorize_line(unsigned int *str, int n, int mode_flags,
                                int *statep, __unused__ int state_only)
@@ -37,62 +41,62 @@ static void lisp_colorize_line(unsigned int *str, int n, int mode_flags,
     int colstate = *statep;
     int i = 0, j = 0;
 
-    if (colstate & IN_STRING) {
+    if (colstate & IN_LISP_STRING) {
         for (j = i; j < n;) {
             if (str[j] == '\\' && ++j < n) {
                 j++;
             } else
             if (str[j++] == '"') {
-                colstate &= ~IN_STRING;
+                colstate &= ~IN_LISP_STRING;
                 break;
             }
         }
-        SET_COLOR(str, i, j, LISP_STRING);
+        SET_COLOR(str, i, j, LISP_STYLE_STRING);
         i = j;
     }
-    if (colstate & IN_COMMENT) {
+    if (colstate & IN_LISP_COMMENT) {
         for (j = i; j < n; j++) {
             if (str[j] == '|' && j + 1 < n && str[j + 1] == '#') {
                 j += 2;
-                colstate &= ~IN_COMMENT;
+                colstate &= ~IN_LISP_COMMENT;
                 break;
             }
         }
-        SET_COLOR(str, i, j, LISP_COMMENT);
+        SET_COLOR(str, i, j, LISP_STYLE_COMMENT);
         i = j;
     }
     while (i < n) {
         switch (str[i]) {
         case ';':
-            SET_COLOR(str, i, n, LISP_COMMENT);
+            SET_COLOR(str, i, n, LISP_STYLE_COMMENT);
             i = n;
             continue;
         case '#':
             /* check for block comment */
             if (str[i + 1] == '|') {
-                colstate |= IN_COMMENT;
+                colstate |= IN_LISP_COMMENT;
                 for (j = i + 2; j < n; j++) {
                     if (str[j] == '|' && str[j + 1] == '#') {
                         j += 2;
-                        colstate &= ~IN_COMMENT;
+                        colstate &= ~IN_LISP_COMMENT;
                         break;
                     }
                 }
-                SET_COLOR(str, i, j, LISP_COMMENT);
+                SET_COLOR(str, i, j, LISP_STYLE_COMMENT);
                 i = j;
                 continue;
             }
             break;
         case '"':
             /* parse string const */
-            colstate |= IN_STRING;
+            colstate |= IN_LISP_STRING;
             for (j = i + 1; j < n;) {
                 if (str[j++] == '"') {
-                    colstate &= ~IN_STRING;
+                    colstate &= ~IN_LISP_STRING;
                     break;
                 }
             }
-            SET_COLOR(str, i, j, LISP_STRING);
+            SET_COLOR(str, i, j, LISP_STYLE_STRING);
             i = j;
             continue;
         default:
@@ -102,12 +106,6 @@ static void lisp_colorize_line(unsigned int *str, int n, int mode_flags,
     }
     *statep = colstate;
 }
-
-#undef IN_STRING
-#undef IN_COMMENT
-#undef LISP_TEXT
-#undef LISP_COMMENT
-#undef LISP_STRING
 
 static int lisp_mode_probe(ModeDef *mode, ModeProbeData *p)
 {

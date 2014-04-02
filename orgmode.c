@@ -24,9 +24,26 @@
 
 ModeDef org_mode;
 
-#define IN_BLOCK       0x80
-#define IN_LISP        0x40
-#define IN_TABLE       0x20
+enum {
+    IN_ORG_BLOCK = 0x80,
+    IN_ORG_LISP  = 0x40,
+    IN_ORG_TABLE = 0x20,
+};
+
+enum {
+    ORG_STYLE_TODO       = QE_STYLE_STRING,
+    ORG_STYLE_DONE       = QE_STYLE_TYPE,
+    ORG_STYLE_BULLET1    = QE_STYLE_FUNCTION,
+    ORG_STYLE_BULLET2    = QE_STYLE_STRING,
+    ORG_STYLE_BULLET3    = QE_STYLE_VARIABLE,
+    ORG_STYLE_BULLET4    = QE_STYLE_TYPE,
+    ORG_STYLE_COMMENT    = QE_STYLE_COMMENT,
+    ORG_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    ORG_STYLE_CODE       = QE_STYLE_FUNCTION,
+    ORG_STYLE_PROPERTY   = QE_STYLE_KEYWORD,
+    ORG_STYLE_TABLE      = QE_STYLE_TYPE,
+    ORG_STYLE_EMPHASIS   = QE_STYLE_STRING,
+};
 
 #define MAX_LEVEL       128
 
@@ -35,17 +52,17 @@ static struct OrgTodoKeywords {
     const char *keyword;
     int style;
 } OrgTodoKeywords [] = {
-    { "TODO", QE_STYLE_STRING },
-    { "DONE", QE_STYLE_TYPE },
+    { "TODO", ORG_STYLE_TODO },
+    { "DONE", ORG_STYLE_DONE },
 };
 
 /* TODO: define specific styles */
 #define BULLET_STYLES 5
 static int OrgBulletStyles[BULLET_STYLES] = {
-    QE_STYLE_FUNCTION,
-    QE_STYLE_STRING,
-    QE_STYLE_VARIABLE,
-    QE_STYLE_TYPE,
+    ORG_STYLE_BULLET1,
+    ORG_STYLE_BULLET2,
+    ORG_STYLE_BULLET3,
+    ORG_STYLE_BULLET4,
 };
 
 static int org_todo_keyword(const unsigned int *str)
@@ -90,16 +107,16 @@ static void org_colorize_line(unsigned int *str, int n, int mode_flags,
     int colstate = *statep;
     int i = 0, j = 0, kw, base_style = 0, has_space;
 
-    if (colstate & IN_BLOCK) {
+    if (colstate & IN_ORG_BLOCK) {
         for (j = i; str[j] == ' '; )
             j++;
         if (ustristart(str + j, "#+end_", NULL)) {
-            colstate &= ~(IN_BLOCK | IN_LISP);
+            colstate &= ~(IN_ORG_BLOCK | IN_ORG_LISP);
         } else {
-            if (colstate & IN_LISP) {
-                colstate &= ~(IN_LISP | IN_BLOCK);
+            if (colstate & IN_ORG_LISP) {
+                colstate &= ~(IN_ORG_LISP | IN_ORG_BLOCK);
                 lisp_mode.colorize_func(str, n, 0, &colstate, state_only);
-                colstate |= IN_LISP | IN_BLOCK;
+                colstate |= IN_ORG_LISP | IN_ORG_BLOCK;
             }
             *statep = colstate;
             return;
@@ -129,7 +146,7 @@ static void org_colorize_line(unsigned int *str, int n, int mode_flags,
 
         if (str[i] == '#') {
             if (str[i + 1] == ' ') {  /* [ \t]*[#][ ] -> comment */
-                SET_COLOR(str, i, n, QE_STYLE_COMMENT);
+                SET_COLOR(str, i, n, ORG_STYLE_COMMENT);
                 i = n;
             } else
             if (str[i + 1] == '+') {  /* [ \t]*[#][+] -> metadata */
@@ -139,23 +156,23 @@ static void org_colorize_line(unsigned int *str, int n, int mode_flags,
                  * #+BEGIN_SRC / #+END_SRC
                  */
                 if (ustristart(str + i, "#+begin_", NULL)) {
-                    colstate |= IN_BLOCK;
+                    colstate |= IN_ORG_BLOCK;
                     if (ustristr(str + i, "lisp")) {
-                        colstate |= IN_LISP;
+                        colstate |= IN_ORG_LISP;
                     }
                 }
-                SET_COLOR(str, i, n, QE_STYLE_PREPROCESS);
+                SET_COLOR(str, i, n, ORG_STYLE_PREPROCESS);
                 i = n;
             }
         } else
         if (str[i] == ':') {
             if (str[i + 1] == ' ') {
                 /* code snipplet, should use code colorizer */
-                SET_COLOR(str, i, n, QE_STYLE_FUNCTION);
+                SET_COLOR(str, i, n, ORG_STYLE_CODE);
                 i = n;
             } else {
                 /* property */
-                SET_COLOR(str, i, n, QE_STYLE_KEYWORD);
+                SET_COLOR(str, i, n, ORG_STYLE_PROPERTY);
                 i = n;
             }
         } else
@@ -163,8 +180,8 @@ static void org_colorize_line(unsigned int *str, int n, int mode_flags,
             /* five or more dashes indicate a horizontal bar */
         } else
         if (str[i] == '|') {
-            colstate |= IN_TABLE;
-            base_style = QE_STYLE_TYPE;
+            colstate |= IN_ORG_TABLE;
+            base_style = ORG_STYLE_TABLE;
         }
     }
 
@@ -258,7 +275,7 @@ static void org_colorize_line(unsigned int *str, int n, int mode_flags,
             has_space = (str[i] == ' ');
         }
         if (chunk) {
-            SET_COLOR(str, i, i + chunk, QE_STYLE_STRING);
+            SET_COLOR(str, i, i + chunk, ORG_STYLE_EMPHASIS);
             i += chunk;
         } else {
             SET_COLOR1(str, i, base_style);
@@ -266,7 +283,7 @@ static void org_colorize_line(unsigned int *str, int n, int mode_flags,
         }
     }
 
-    colstate &= ~IN_TABLE;
+    colstate &= ~IN_ORG_TABLE;
     *statep = colstate;
 }
 
