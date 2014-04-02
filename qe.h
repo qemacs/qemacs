@@ -1226,6 +1226,7 @@ struct ModeDef {
 
     int mode_flags;
 #define MODEF_NOCMD 0x0001 /* do not register xxx-mode command automatically */
+    int auto_indent;
 
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
     void (*get_mode_line)(EditState *s, buf_t *out);

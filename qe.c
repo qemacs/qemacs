@@ -688,6 +688,8 @@ static int eb_changecase(EditBuffer *b, int *offsetp, int arg)
 
     if (ch != ch1) {
         len = eb_encode_uchar(b, buf, ch1);
+        /* replaced char may have a different encoding len from
+         * original char, such as dotless i in Turkish. */
         eb_replace(b, offset0, *offsetp - offset0, buf, len);
         *offsetp = offset0 + len;
     }
@@ -5047,6 +5049,7 @@ void do_completion(EditState *s)
     }
     if (match_len > cs.len) {
         /* add the possible chars */
+        /* XXX: should insert utf-8? */
         eb_write(s->b, 0, outputs[0]->str, match_len);
         s->offset = match_len;
     } else {
@@ -5146,6 +5149,7 @@ static void set_minibuffer_str(EditState *s, const char *str)
     int len;
 
     eb_delete(s->b, 0, s->b->total_size);
+    /* XXX: should insert utf-8? */
     len = strlen(str);
     eb_write(s->b, 0, str, len);
     s->offset = len;
@@ -5323,6 +5327,7 @@ void minibuffer_edit(const char *input, const char *prompt,
 
     /* add default input */
     if (input) {
+        /* XXX: should insert utf-8? */
         len = strlen(input);
         eb_write(b, 0, (u8 *)input, len);
         s->offset = len;

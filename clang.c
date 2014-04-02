@@ -27,10 +27,19 @@ static const char cc_keywords[] = {
 };
 
 static const char js_keywords[] = {
-    "break|continue|delete|else|for|function|if|in|new|return|"
-    "this|typeof|var|void|while|with|case|catch|class|const|"
-    "debugger|default|do|enum|export|extends|finally|import|super|"
-    "switch|throw|try|undefined|null|true|false|"
+    "break|case|catch|continue|debugger|default|delete|do|"
+    "else|finally|for|function|if|in|instanceof|new|"
+    "return|switch|this|throw|try|typeof|var|void|while|with|"
+    /* FutureReservedWord */
+    "class|const|enum|import|export|extends|super|"
+    /* The following tokens are also considered to be
+     * FutureReservedWords when parsing strict mode code */
+    "implements|interface|let|package|private|protected|"
+    "public|static|yield|"
+    /* constants */
+    "undefined|null|true|false|Infinity|NaN|"
+    /* strict mode quasi keywords */
+    "eval|arguments|"
 };
 
 static const char java_keywords[] = {
@@ -67,7 +76,7 @@ static const char c_mode_extensions[] = {
     "cal"               /* GNU Calc */
 };
 
-/* grab a C identifier from a uchar buf, stripping color.
+/* grab a C identifier from a uint buf, stripping color.
  * return char count.
  */
 static int get_c_identifier(char *buf, int buf_size, unsigned int *p)
@@ -89,14 +98,29 @@ static int get_c_identifier(char *buf, int buf_size, unsigned int *p)
     return i;
 }
 
+enum {
+    C_STYLE_DEFAULT    = 0,
+    C_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    C_STYLE_COMMENT    = QE_STYLE_COMMENT,
+    C_STYLE_REGEX      = QE_STYLE_STRING_Q,
+    C_STYLE_STRING     = QE_STYLE_STRING,
+    C_STYLE_STRING_Q   = QE_STYLE_STRING_Q,
+    C_STYLE_NUMBER     = QE_STYLE_NUMBER,
+    C_STYLE_KEYWORD    = QE_STYLE_KEYWORD,
+    C_STYLE_TYPE       = QE_STYLE_TYPE,
+    C_STYLE_FUNCTION   = QE_STYLE_FUNCTION,
+    C_STYLE_VARIABLE   = QE_STYLE_VARIABLE,
+};
+
 /* c-mode colorization states */
 enum {
-    C_COMMENT    = 1,   /* multiline comment pending */
-    C_COMMENT1   = 2,   /* single line comment with \ at EOL */
-    C_STRING     = 4,   /* double quoted string spanning multiple lines */
-    C_STRING_Q   = 8,   /* single quoted string spanning multiple lines */
-    C_PREPROCESS = 16,  /* preprocessor directive with \ at EOL */
-    C_REGEX      = 32,  /* regex with \ at EOL */
+    IN_C_COMMENT    = 0x01   /* multiline comment */,
+    IN_C_COMMENT1   = 0x02   /* single line comment with \ at EOL */,
+    IN_C_STRING     = 0x04   /* double quoted string */,
+    IN_C_STRING_Q   = 0x08   /* single quoted string */,
+    IN_C_PREPROCESS = 0x10   /* preprocessor directive with \ at EOL */,
+    IN_C_REGEX      = 0x20   /* regex */,
+    IN_C_CHARCLASS  = 0x40   /* regex char class */,
 };
 
 void c_colorize_line(unsigned int *str, int n, int mode_flags,
@@ -119,21 +143,21 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
         goto the_end;
 
     c = 0;      /* turn off stupid egcs-2.91.66 warning */
-    style = 0;
+    style = C_STYLE_DEFAULT;
 
     if (state) {
         /* if already in a state, go directly in the code parsing it */
-        if (state & C_PREPROCESS)
-            style = QE_STYLE_PREPROCESS;
-        if (state & C_COMMENT)
+        if (state & IN_C_PREPROCESS)
+            style = C_STYLE_PREPROCESS;
+        if (state & IN_C_COMMENT)
             goto parse_comment;
-        if (state & C_COMMENT1)
+        if (state & IN_C_COMMENT1)
             goto parse_comment1;
-        if (state & C_STRING)
+        if (state & IN_C_STRING)
             goto parse_string;
-        if (state & C_STRING_Q)
+        if (state & IN_C_STRING_Q)
             goto parse_string_q;
-        if (state & C_REGEX)
+        if (state & IN_C_REGEX)
             goto parse_regex;
     }
 
@@ -147,71 +171,76 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
                 /* normal comment */
                 p++;
             parse_comment:
-                state |= C_COMMENT;
+                state |= IN_C_COMMENT;
                 while (p < p_end) {
                     if (p[0] == '*' && p[1] == '/') {
                         p += 2;
-                        state &= ~C_COMMENT;
+                        state &= ~IN_C_COMMENT;
                         break;
                     } else {
                         p++;
                     }
                 }
-                set_color(p_start, p, QE_STYLE_COMMENT);
+                set_color(p_start, p, C_STYLE_COMMENT);
                 continue;
             } else
             if (*p == '/') {
                 /* line comment */
             parse_comment1:
-                state |= C_COMMENT1;
+                state |= IN_C_COMMENT1;
                 p = p_end;
-                set_color(p_start, p, QE_STYLE_COMMENT);
+                set_color(p_start, p, C_STYLE_COMMENT);
                 goto the_end;
             }
+            /* XXX: should use more context to tell regex from divide */
             i = p - str - 1;
             if ((mode_flags & CLANG_REGEX)
             &&  (i == indent
             ||   (str[i + 1] != ' ' && str[i + 1] != '='
             &&    !qe_isalnum(str[i - 1] & CHAR_MASK)
             &&    str[i - 1] != ')'))) {
-                /* XXX: should use mode context to tell regex from divide */
                 /* parse regex */
                 j = i + 1;
-                state = C_REGEX;
+                state = IN_C_REGEX;
             parse_regex:
                 while (j < n) {
-                    /* XXX: should ignore / inside char classes */
                     c = str[j++];
                     if (c == '\\') {
                         if (j < n) {
                             j += 1;
                         }
                     } else
-                    if (c == '#' && str[j] == '{') {
-                        /* should parse full syntax */
-                        while (j < n && str[j++] != '}')
-                            continue;
-                    } else
-                    if (c == '/') {
-                        while (qe_findchar("ensuimox", str[j])) {
-                            j++;
+                    if (state & IN_C_CHARCLASS) {
+                        if (c == ']') {
+                            state &= ~IN_C_CHARCLASS;
                         }
-                        state = 0;
-                        break;
+                        /* ECMA 5: ignore '/' inside char classes */
+                    } else {
+                        if (c == '[') {
+                            state |= IN_C_CHARCLASS;
+                        } else
+                        if (c == '/') {
+                            while (qe_isalnum_(str[j])) {
+                                j++;
+                            }
+                            state = 0;
+                            break;
+                        }
                     }
                 }
-#define QE_STYLE_REGEX  QE_STYLE_STRING_Q
-                SET_COLOR(str, i, j, QE_STYLE_REGEX);
+                SET_COLOR(str, i, j, C_STYLE_REGEX);
                 i = j;
                 p = str + i;
                 continue;
             }
             break;
         case '#':       /* preprocessor */
-            state = C_PREPROCESS;
-            style = QE_STYLE_PREPROCESS;
+            /* XXX: C only */
+            state = IN_C_PREPROCESS;
+            style = C_STYLE_PREPROCESS;
             break;
         case 'L':       /* wide character and string literals */
+            /* XXX: C only */
             if (*p == '\'') {
                 p++;
                 goto parse_string_q;
@@ -223,14 +252,14 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
             goto normal;
         case '\'':      /* character constant */
         parse_string_q:
-            state |= C_STRING_Q;
-            style1 = QE_STYLE_STRING_Q;
+            state |= IN_C_STRING_Q;
+            style1 = C_STYLE_STRING_Q;
             delim = '\'';
             goto string;
         case '\"':      /* string literal */
         parse_string:
-            state |= C_STRING;
-            style1 = QE_STYLE_STRING;
+            state |= IN_C_STRING;
+            style1 = C_STYLE_STRING;
             delim = '\"';
         string:
             while (p < p_end) {
@@ -242,14 +271,14 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
                 } else
                 if ((int)*p == delim) {
                     p++;
-                    state &= ~(C_STRING | C_STRING_Q);
+                    state &= ~(IN_C_STRING | IN_C_STRING_Q);
                     break;
                 } else {
                     p++;
                 }
             }
-            if (state & C_PREPROCESS)
-                style1 = QE_STYLE_PREPROCESS;
+            if (state & IN_C_PREPROCESS)
+                style1 = C_STYLE_PREPROCESS;
             set_color(p_start, p, style1);
             continue;
         case '=':
@@ -258,39 +287,32 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
             type_decl = 0;
             break;
         case '<':       /* JavaScript extension */
+            /* XXX: js only */
             if (*p == '!' && p[1] == '-' && p[2] == '-')
                 goto parse_comment1;
             break;
         default:
         normal:
-            if (state & C_PREPROCESS)
+            if (state & IN_C_PREPROCESS)
                 break;
             if (qe_isdigit(c)) {
                 while (qe_isalnum(*p) || *p == '.') {
                     p++;
                 }
-                set_color(p_start, p, QE_STYLE_NUMBER);
+                set_color(p_start, p, C_STYLE_NUMBER);
                 continue;
             }
             if (qe_isalpha_(c)) {
-
                 /* XXX: should support :: and $ */
-                klen = 0;
-                p--;
-                do {
-                    if (klen < countof(kbuf) - 1)
-                        kbuf[klen++] = c;
-                    p++;
-                    c = *p;
-                } while (qe_isalnum_(c));
-                kbuf[klen] = '\0';
+                klen = get_c_identifier(kbuf, countof(kbuf), p - 1);
+                p += klen - 1;
 
                 if (((mode_flags & (CLANG_C|CLANG_CPP|CLANG_OBJC)) && strfind(c_keywords, kbuf))
                 ||  ((mode_flags & CLANG_CPP) && strfind(cc_keywords, kbuf))
                 ||  ((mode_flags & CLANG_JS) && strfind(js_keywords, kbuf))
                 ||  ((mode_flags & CLANG_JAVA) && strfind(java_keywords, kbuf))
                    ) {
-                    set_color(p_start, p, QE_STYLE_KEYWORD);
+                    set_color(p_start, p, C_STYLE_KEYWORD);
                     continue;
                 }
 
@@ -301,6 +323,7 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
                 while (*p2 == '*' || qe_isblank(*p2))
                     p2++;
 
+                /* XXX: should check type depending on flavor */
                 if (strfind(c_mode_types, kbuf)
                 ||  (klen > 2 && kbuf[klen - 2] == '_' && kbuf[klen - 1] == 't')) {
                     /* c type */
@@ -308,14 +331,14 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
                     if (*p2 != ')') {
                         type_decl = 1;
                     }
-                    set_color(p_start, p, QE_STYLE_TYPE);
+                    set_color(p_start, p, C_STYLE_TYPE);
                     continue;
                 }
 
                 if (*p == '(' || (p[0] == ' ' && p[1] == '(')) {
                     /* function call */
                     /* XXX: different styles for call and definition */
-                    set_color(p_start, p, QE_STYLE_FUNCTION);
+                    set_color(p_start, p, C_STYLE_FUNCTION);
                     continue;
                 }
                 /* assume typedef if starting at first column */
@@ -325,9 +348,9 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (type_decl) {
                     if (p_start == str) {
                         /* assume type if first column */
-                        set_color(p_start, p, QE_STYLE_TYPE);
+                        set_color(p_start, p, C_STYLE_TYPE);
                     } else {
-                        set_color(p_start, p, QE_STYLE_VARIABLE);
+                        set_color(p_start, p, C_STYLE_VARIABLE);
                     }
                 }
                 continue;
@@ -338,8 +361,8 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
     }
  the_end:
     /* strip state if not overflowing from a comment */
-    if (!(state & C_COMMENT) && p > str && ((p[-1] & CHAR_MASK) != '\\'))
-        state &= ~(C_COMMENT1 | C_PREPROCESS);
+    if (!(state & IN_C_COMMENT) && p > str && ((p[-1] & CHAR_MASK) != '\\'))
+        state &= ~(IN_C_COMMENT1 | IN_C_PREPROCESS);
     *colorize_state_ptr = state;
 }
 
@@ -482,9 +505,9 @@ static void c_indent_line(EditState *s, int offset0)
             c = *p;
             /* skip strings or comments */
             style = c >> STYLE_SHIFT;
-            if (style == QE_STYLE_COMMENT
-            ||  style == QE_STYLE_STRING
-            ||  style == QE_STYLE_PREPROCESS) {
+            if (style == C_STYLE_COMMENT
+            ||  style == C_STYLE_STRING
+            ||  style == C_STYLE_PREPROCESS) {
                 continue;
             }
             c = c & CHAR_MASK;
@@ -562,17 +585,17 @@ static void c_indent_line(EditState *s, int offset0)
                 case ':':
                     /* a label line is ignored */
                     /* XXX: incorrect */
-                    if (style == QE_STYLE_DEFAULT)
+                    if (style == C_STYLE_DEFAULT)
                         goto prev_line;
                     break;
                 default:
                     if (stack_ptr == 0) {
-                        if (style == QE_STYLE_KEYWORD) {
+                        if (style == C_STYLE_KEYWORD) {
                             unsigned int *p1, *p2;
                             /* special case for if/for/while */
                             p1 = p;
                             while (p > buf &&
-                                   (p[-1] >> STYLE_SHIFT) == QE_STYLE_KEYWORD)
+                                   (p[-1] >> STYLE_SHIFT) == C_STYLE_KEYWORD)
                                 p--;
                             p2 = p;
                             q = buf1;
@@ -614,14 +637,14 @@ static void c_indent_line(EditState *s, int offset0)
         if (qe_isblank(c & CHAR_MASK))
             continue;
         /* if preprocess, no indent */
-        if (style == QE_STYLE_PREPROCESS) {
+        if (style == C_STYLE_PREPROCESS) {
             pos = 0;
             break;
         }
         if (qe_isalpha_(c & CHAR_MASK)) {
             j = get_c_identifier(buf1, countof(buf1), buf + i);
 
-            if (style == QE_STYLE_KEYWORD) {
+            if (style == C_STYLE_KEYWORD) {
                 if (strfind("case|default", buf1))
                     goto unindent;
             }
@@ -681,7 +704,9 @@ static void do_c_electric(EditState *s, int key)
     int offset = s->offset;
 
     do_char(s, key, 1);
-    c_indent_line(s, offset);
+    /* reindent line at original point */
+    if (s->mode->indent_func)
+        (s->mode->indent_func)(s, eb_goto_bol(s->b, offset));
 }
 
 static void do_c_return(EditState *s)
@@ -690,8 +715,11 @@ static void do_c_return(EditState *s)
 
     do_return(s, 1);
     /* reindent line to remove indent on blank line */
-    c_indent_line(s, offset);
-    /* XXX: should indent line if auto-indent is active */
+    if (s->mode->indent_func) {
+        (s->mode->indent_func)(s, eb_goto_bol(s->b, offset));
+        if (s->mode->auto_indent)
+            (s->mode->indent_func)(s, s->offset);
+    }
 }
 
 static int ustr_match_mask(const unsigned int *buf, const char *str)
@@ -722,7 +750,7 @@ static void do_c_forward_conditional(EditState *s, int dir)
             int style = (*p >> STYLE_SHIFT);
             if (qe_isblank(c))
                 continue;
-            if (c == '#' && style == QE_STYLE_PREPROCESS)
+            if (c == '#' && style == C_STYLE_PREPROCESS)
                 sharp++;
             else
                 break;
@@ -788,7 +816,7 @@ static void do_c_list_conditionals(EditState *s)
             int style = (*p >> STYLE_SHIFT);
             if (qe_isblank(c))
                 continue;
-            if (c == '#' && style == QE_STYLE_PREPROCESS)
+            if (c == '#' && style == C_STYLE_PREPROCESS)
                 sharp++;
             else
                 break;
@@ -922,6 +950,7 @@ static int c_init(void)
     c_mode.mode_init = c_mode_init;
     c_mode.colorize_func = c_colorize_line;
     c_mode.indent_func = c_indent_line;
+    c_mode.auto_indent = 1;
 
     qe_register_mode(&c_mode);
     qe_register_cmd_table(c_commands, &c_mode);
