@@ -201,7 +201,6 @@ insert_window_left()  deletes some left-most windows
 
 ** c-indent
 ** indent-with-tabs
-** auto-indent
 ** stats command for slcc
 ** add TAGS support:
 *** recursive search of QTAGS file.
@@ -209,7 +208,7 @@ insert_window_left()  deletes some left-most windows
 *** global QTAGS file indexed with global includes
 ** see if java/javascript/c++ is OK.
 ** autocomplete keyword, function, variable, member names
-** forward-ifdef, backward-ifdef, show-ifdefs
+** show-ifdefs
 ** automatic indentation detection
 ** c-mode descendants:
 *** as-mode: ActionStript files
@@ -225,6 +224,8 @@ insert_window_left()  deletes some left-most windows
 *** yacc-mode
 *** go-mode
 *** idl-mode
+** DONE auto-indent
+** DONE forward-ifdef, backward-ifdef
 
 * HTML mode
 
@@ -274,12 +275,12 @@ insert_window_left()  deletes some left-most windows
 ** make dired left window temporary popleft window
 ** dired left window delete sometimes doesn't fix layout.
 ** refresh side view when current file changes on line 1
-** full listing
 ** improve dired (file commands, nicer display)
 *** t -> dired-touch
 *** | -> dired-shell-command
 *** D -> dired-mkdir
 ** make archive mode use dired commands
+** DONE full listing
 
 * Modes
 
