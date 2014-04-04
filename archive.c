@@ -30,7 +30,7 @@ typedef struct ArchiveType {
 } ArchiveType;
 
 static ArchiveType archive_type_array[] = {
-    { "tar", "tar|tar.Z|tgz|tar.gz|tbz2|tar.bz2|tar.bzip2|"
+    { "tar", "tar|tar.Z|tgz|tar.gz|tbz|tbz2|tar.bz2|tar.bzip2|"
             "txz|tar.xz|tlz|tar.lzma",
             "tar tvf '%s'" },
     { "zip", "zip|ZIP|jar|apk", "unzip -l '%s'" },
