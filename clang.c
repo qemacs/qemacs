@@ -123,23 +123,21 @@ enum {
     IN_C_CHARCLASS  = 0x40   /* regex char class */,
 };
 
-void c_colorize_line(unsigned int *str, int n, int mode_flags,
-                     int *colorize_state_ptr, __unused__ int state_only)
+void c_colorize_line(QEColorizeContext *cp,
+                     unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j = i, indent, c, state, style, style1, type_decl, klen, delim;
-    unsigned int *p, *p_start, *p_end, *p1, *p2;
+    int i = 0, start, i1, i2, indent;
+    int c, state, style, style1, type_decl, klen, delim;
     char kbuf[32];
 
     for (indent = 0; qe_isspace(str[indent]); indent++)
         continue;
 
-    state = *colorize_state_ptr;
-    p = str;
-    p_start = p;
-    p_end = p + n;
+    state = cp->colorize_state;
+    start = i;
     type_decl = 0;
 
-    if (p >= p_end)
+    if (i >= n)
         goto the_end;
 
     c = 0;      /* turn off stupid egcs-2.91.66 warning */
@@ -161,53 +159,49 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
             goto parse_regex;
     }
 
-    while (p < p_end) {
-        p_start = p;
-        c = *p++;
+    while (i < n) {
+        start = i;
+        c = str[i++];
 
         switch (c) {
         case '/':
-            if (*p == '*') {
+            if (str[i] == '*') {
                 /* normal comment */
-                p++;
+                i++;
             parse_comment:
                 state |= IN_C_COMMENT;
-                while (p < p_end) {
-                    if (p[0] == '*' && p[1] == '/') {
-                        p += 2;
+                for (; i < n; i++) {
+                    if (str[i] == '*' && str[i + 1] == '/') {
+                        i += 2;
                         state &= ~IN_C_COMMENT;
                         break;
-                    } else {
-                        p++;
                     }
                 }
-                set_color(p_start, p, C_STYLE_COMMENT);
+                SET_COLOR(str, start, i, C_STYLE_COMMENT);
                 continue;
             } else
-            if (*p == '/') {
+            if (str[i] == '/') {
                 /* line comment */
             parse_comment1:
                 state |= IN_C_COMMENT1;
-                p = p_end;
-                set_color(p_start, p, C_STYLE_COMMENT);
-                goto the_end;
+                i = n;
+                SET_COLOR(str, start, i, C_STYLE_COMMENT);
+                continue;
             }
             /* XXX: should use more context to tell regex from divide */
-            i = p - str - 1;
             if ((mode_flags & CLANG_REGEX)
-            &&  (i == indent
-            ||   (str[i + 1] != ' ' && str[i + 1] != '='
-            &&    !qe_isalnum(str[i - 1] & CHAR_MASK)
-            &&    str[i - 1] != ')'))) {
+            &&  (start == indent
+            ||   (str[i] != ' ' && str[i] != '='
+            &&    !qe_isalnum(str[start - 1] & CHAR_MASK)
+            &&    str[start - 1] != ')'))) {
                 /* parse regex */
-                j = i + 1;
                 state = IN_C_REGEX;
             parse_regex:
-                while (j < n) {
-                    c = str[j++];
+                while (i < n) {
+                    c = str[i++];
                     if (c == '\\') {
-                        if (j < n) {
-                            j += 1;
+                        if (i < n) {
+                            i += 1;
                         }
                     } else
                     if (state & IN_C_CHARCLASS) {
@@ -220,17 +214,15 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
                             state |= IN_C_CHARCLASS;
                         } else
                         if (c == '/') {
-                            while (qe_isalnum_(str[j])) {
-                                j++;
+                            while (qe_isalnum_(str[i])) {
+                                i++;
                             }
                             state = 0;
                             break;
                         }
                     }
                 }
-                SET_COLOR(str, i, j, C_STYLE_REGEX);
-                i = j;
-                p = str + i;
+                SET_COLOR(str, start, i, C_STYLE_REGEX);
                 continue;
             }
             break;
@@ -241,12 +233,12 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
             break;
         case 'L':       /* wide character and string literals */
             /* XXX: C only */
-            if (*p == '\'') {
-                p++;
+            if (str[i] == '\'') {
+                i++;
                 goto parse_string_q;
             }
-            if (*p == '\"') {
-                p++;
+            if (str[i] == '\"') {
+                i++;
                 goto parse_string;
             }
             goto normal;
@@ -262,24 +254,21 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
             style1 = C_STYLE_STRING;
             delim = '\"';
         string:
-            while (p < p_end) {
-                if (*p == '\\') {
-                    p++;
-                    if (p >= p_end)
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\') {
+                    if (i >= n)
                         break;
-                    p++;
+                    i++;
                 } else
-                if ((int)*p == delim) {
-                    p++;
+                if (c == delim) {
                     state &= ~(IN_C_STRING | IN_C_STRING_Q);
                     break;
-                } else {
-                    p++;
                 }
             }
             if (state & IN_C_PREPROCESS)
                 style1 = C_STYLE_PREPROCESS;
-            set_color(p_start, p, style1);
+            SET_COLOR(str, start, i, style1);
             continue;
         case '=':
             /* exit type declaration */
@@ -288,7 +277,7 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
             break;
         case '<':       /* JavaScript extension */
             /* XXX: js only */
-            if (*p == '!' && p[1] == '-' && p[2] == '-')
+            if (str[i] == '!' && str[i + 1] == '-' && str[i + 2] == '-')
                 goto parse_comment1;
             break;
         default:
@@ -296,74 +285,73 @@ void c_colorize_line(unsigned int *str, int n, int mode_flags,
             if (state & IN_C_PREPROCESS)
                 break;
             if (qe_isdigit(c)) {
-                while (qe_isalnum(*p) || *p == '.') {
-                    p++;
+                while (qe_isalnum(str[i]) || str[i] == '.') {
+                    i++;
                 }
-                set_color(p_start, p, C_STYLE_NUMBER);
+                SET_COLOR(str, start, i, C_STYLE_NUMBER);
                 continue;
             }
             if (qe_isalpha_(c)) {
                 /* XXX: should support :: and $ */
-                klen = get_c_identifier(kbuf, countof(kbuf), p - 1);
-                p += klen - 1;
+                klen = get_c_identifier(kbuf, countof(kbuf), str + start);
+                i = start + klen;
 
                 if (((mode_flags & (CLANG_C|CLANG_CPP|CLANG_OBJC)) && strfind(c_keywords, kbuf))
                 ||  ((mode_flags & CLANG_CPP) && strfind(cc_keywords, kbuf))
                 ||  ((mode_flags & CLANG_JS) && strfind(js_keywords, kbuf))
                 ||  ((mode_flags & CLANG_JAVA) && strfind(java_keywords, kbuf))
                    ) {
-                    set_color(p_start, p, C_STYLE_KEYWORD);
+                    SET_COLOR(str, start, i, C_STYLE_KEYWORD);
                     continue;
                 }
 
-                p1 = p;
-                while (qe_isblank(*p1))
-                    p1++;
-                p2 = p1;
-                while (*p2 == '*' || qe_isblank(*p2))
-                    p2++;
+                i1 = i;
+                while (qe_isblank(str[i1]))
+                    i1++;
+                i2 = i1;
+                while (str[i2] == '*' || qe_isblank(str[i2]))
+                    i2++;
 
                 /* XXX: should check type depending on flavor */
-                if (strfind(c_mode_types, kbuf)
-                ||  (klen > 2 && kbuf[klen - 2] == '_' && kbuf[klen - 1] == 't')) {
+                if (strfind(c_mode_types, kbuf) || strend(kbuf, "_t", NULL)) {
                     /* c type */
                     /* if not cast, assume type declaration */
-                    if (*p2 != ')') {
+                    if (str[i2] != ')') {
                         type_decl = 1;
                     }
-                    set_color(p_start, p, C_STYLE_TYPE);
+                    SET_COLOR(str, start, i, C_STYLE_TYPE);
                     continue;
                 }
 
-                if (*p == '(' || (p[0] == ' ' && p[1] == '(')) {
+                if (str[i] == '(' || (str[i] == ' ' && str[i + 1] == '(')) {
                     /* function call */
                     /* XXX: different styles for call and definition */
-                    set_color(p_start, p, C_STYLE_FUNCTION);
+                    SET_COLOR(str, start, i, C_STYLE_FUNCTION);
                     continue;
                 }
                 /* assume typedef if starting at first column */
-                if (p_start == str)
+                if (start == 0)
                     type_decl = 1;
 
                 if (type_decl) {
-                    if (p_start == str) {
+                    if (start == 0) {
                         /* assume type if first column */
-                        set_color(p_start, p, C_STYLE_TYPE);
+                        SET_COLOR(str, start, i, C_STYLE_TYPE);
                     } else {
-                        set_color(p_start, p, C_STYLE_VARIABLE);
+                        SET_COLOR(str, start, i, C_STYLE_VARIABLE);
                     }
                 }
                 continue;
             }
             break;
         }
-        set_color1(p_start, style);
+        SET_COLOR1(str, start, style);
     }
  the_end:
     /* strip state if not overflowing from a comment */
-    if (!(state & IN_C_COMMENT) && p > str && ((p[-1] & CHAR_MASK) != '\\'))
+    if (!(state & IN_C_COMMENT) && n > 0 && ((str[n - 1] & CHAR_MASK) != '\\'))
         state &= ~(IN_C_COMMENT1 | IN_C_PREPROCESS);
-    *colorize_state_ptr = state;
+    cp->colorize_state = state;
 }
 
 #define MAX_STACK_SIZE  64

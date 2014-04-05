@@ -42,14 +42,15 @@ static int script_var(const unsigned int *str, int j, int n)
     return j;
 }
 
-static void script_colorize_line(unsigned int *str, int n, int mode_flags,
-                                 int *statep, __unused__ int state_only)
+static void script_colorize_line(QEColorizeContext *cp,
+                                 unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j, style;
+    int i = 0, j, c, start, style;
 
     style = SCRIPT_STYLE_COMMAND;
 
     while (i < n) {
+        start = i;
         switch (str[i]) {
         case '#':
             if (i > 0 && str[i - 1] == '$')
@@ -57,8 +58,8 @@ static void script_colorize_line(unsigned int *str, int n, int mode_flags,
             style = SCRIPT_STYLE_COMMENT;
             if (str[i + 1] == '!')
                 style = SCRIPT_STYLE_PREPROCESS;
-            SET_COLOR(str, i, n, style);
             i = n;
+            SET_COLOR(str, start, i, style);
             continue;
         case '`':
             style = SCRIPT_STYLE_BACKTICK;
@@ -68,28 +69,28 @@ static void script_colorize_line(unsigned int *str, int n, int mode_flags,
             style = SCRIPT_STYLE_STRING;
         has_string:
             /* parse string const */
-            for (j = i + 1; j < n; j++) {
-                if (str[j] == str[i]) {
-                    j++;
+            for (i++; i < n;) {
+                c = str[i++];
+                if (c == '\\' && str[i] == '"' && str[start] == '"')
+                    i++;
+                if (c == str[start])
                     break;
-                }
             }
-            SET_COLOR(str, i, j, style);
-            i = j;
+            SET_COLOR(str, start, i, style);
             continue;
         case ' ':
         case '\t':
             break;
         default:
-            j = script_var(str, i, n);
-            if (j > i) {
+            i = script_var(str, i, n);
+            if (i > start) {
+                j = i;
                 while (qe_isblank(str[j]))
                     j++;
                 if (str[j] == '=')
                     style = SCRIPT_STYLE_VARIABLE;
-                SET_COLOR(str, i, j, style);
+                SET_COLOR(str, start, i, style);
                 style = SCRIPT_STYLE_TEXT;
-                i = j;
                 continue;
             }
             // Should support << syntax
@@ -98,7 +99,6 @@ static void script_colorize_line(unsigned int *str, int n, int mode_flags,
             break;
         }
         i++;
-        continue;
     }
 }
 

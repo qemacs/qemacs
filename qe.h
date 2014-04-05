@@ -1042,11 +1042,17 @@ typedef int (*GetColorizedLineFunc)(EditState *s,
                                     unsigned int *buf, int buf_size,
                                     int *offset1, int line_num);
 
+typedef struct QEColorizeContext {
+    EditState *s;
+    int colorize_state;
+    int state_only;
+} QEColorizeContext;
+
 /* colorize a line: this function modifies buf to set the char
  * styles. 'buf' is guaranted to have one more '\0' char after its len.
  */
-typedef void (*ColorizeFunc)(unsigned int *buf, int len, int mode_flags,
-                             int *colorize_state_ptr, int state_only);
+typedef void (*ColorizeFunc)(QEColorizeContext *cp,
+                             unsigned int *buf, int n, int mode_flags);
 
 /* contains all the information necessary to uniquely identify a line,
    to avoid displaying it */
@@ -1944,8 +1950,8 @@ void do_dired(EditState *s);
 #define CLANG_YACC   0x40
 #define CLANG_REGEX  0x80
 
-void c_colorize_line(unsigned int *buf, int len, int mode_flags,
-                     int *colorize_state_ptr, int state_only);
+void c_colorize_line(QEColorizeContext *cp,
+                     unsigned int *str, int n, int mode_flags);
 
 /* xml.c */
 
@@ -1953,8 +1959,8 @@ extern ModeDef xml_mode;
 
 /* htmlsrc.c */
 
-void htmlsrc_colorize_line(unsigned int *buf, int len, int mode_flags,
-                           int *colorize_state_ptr, int state_only);
+void htmlsrc_colorize_line(QEColorizeContext *cp,
+                           unsigned int *str, int n, int mode_flags);
 
 /* html.c */
 
@@ -1966,14 +1972,14 @@ int gxml_mode_init(EditState *s,
 
 /* extra-modes.c */
 
-void lua_colorize_line(unsigned int *buf, int len, int mode_flags,
-                       int *colorize_state_ptr, int state_only);
-void haskell_colorize_line(unsigned int *buf, int len, int mode_flags,
-                           int *colorize_state_ptr, int state_only);
-void python_colorize_line(unsigned int *buf, int len, int mode_flags,
-                          int *colorize_state_ptr, int state_only);
-void ruby_colorize_line(unsigned int *buf, int len, int mode_flags,
-                        int *colorize_state_ptr, int state_only);
+void lua_colorize_line(QEColorizeContext *cp,
+                       unsigned int *str, int n, int mode_flags);
+void haskell_colorize_line(QEColorizeContext *cp,
+                           unsigned int *str, int n, int mode_flags);
+void python_colorize_line(QEColorizeContext *cp,
+                          unsigned int *str, int n, int mode_flags);
+void ruby_colorize_line(QEColorizeContext *cp,
+                        unsigned int *str, int n, int mode_flags);
 
 /* image.c */
 

@@ -54,17 +54,19 @@ enum {
     MAKEFILE_STYLE_MACRO      = QE_STYLE_TYPE,
 };
 
-static void makefile_colorize_line(unsigned int *str, int n, int mode_flags,
-                                   int *statep, int state_only)
+static void makefile_colorize_line(QEColorizeContext *cp,
+                                   unsigned int *str, int n, int mode_flags)
 {
     char buf[32];
     int i = 0, j = i, level;
 
-    if (qe_isalnum_(str[0])) {
+    if (qe_isalnum_(str[i])) {
         get_word_lc(buf, countof(buf), str);
         if (strfind("ifeq|ifneq|ifdef|ifndef|include|else|endif", buf))
             goto preprocess;
     }
+    if (str[i] == '-' && ustristart(str + i + 1, "include ", NULL))
+        goto preprocess;
 
     while (i < n) {
         switch (str[i]) {

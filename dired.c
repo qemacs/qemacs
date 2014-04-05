@@ -1013,31 +1013,34 @@ static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
         return 0;
 }
 
-static void dired_colorize_line(unsigned int *str, int n, int mode_flags,
-                                int *statep, int state_only)
+static void dired_colorize_line(QEColorizeContext *cp,
+                                unsigned int *str, int n, int mode_flags)
 {
     const unsigned int *p;
-    int i = 0, j = i, style;
+    int i = 0, start = i, style;
 
-    if (ustrstart(str + i, "  Directory of ", &p)) {
-        j = p - str;
-        SET_COLOR(str, i, j, DIRED_STYLE_HEADER);
-        SET_COLOR(str, j, n, DIRED_STYLE_DIRECTORY);
+    if (ustrstart(str + start, "  Directory of ", &p)) {
+        i = p - (str + start);
+        SET_COLOR(str, start, i, DIRED_STYLE_HEADER);
+        style = DIRED_STYLE_DIRECTORY;
+        start = i;
         i = n;
+        SET_COLOR(str, start, i, style);
     } else
-    if (ustrstart(str + n - 6, " bytes", &p)) {
-        SET_COLOR(str, i, n, DIRED_STYLE_HEADER);
+    if (n >= 6 && ustrstart(str + n - 6, " bytes", &p)) {
+        style = DIRED_STYLE_HEADER;
         i = n;
+        SET_COLOR(str, start, i, style);
     } else {
         style = DIRED_STYLE_FILE;
-        if (str[n - 1] == '/')
+        if (n > 0 && str[n - 1] == '/')
             style = DIRED_STYLE_DIRECTORY;
-        for (j = n; j > 2; j--) {
-            if (str[j - 1] == ' ' && str[j - 2] == ' ')
+        for (start = n; start > 2; start--) {
+            if (str[start - 1] == ' ' && str[start - 2] == ' ')
                 break;
         }
-        SET_COLOR(str, j, n, style);
         i = n;
+        SET_COLOR(str, start, i, style);
     }
 }
 

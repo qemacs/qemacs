@@ -76,172 +76,171 @@ enum {
     //HTML_STYLE_TEXT       = QE_STYLE_HTML_TEXT,
 };
 
-void htmlsrc_colorize_line(unsigned int *buf, int len, int mode_flags,
-                           int *colorize_state_ptr, int state_only)
+void htmlsrc_colorize_line(QEColorizeContext *cp,
+                           unsigned int *str, int n, int mode_flags)
 {
-    int c, state, js_state, l;
-    unsigned int *p, *p_start, *p_end;
-
-    state = *colorize_state_ptr;
-    p = buf;
-    p_start = p;
-    p_end = p + len;
+    int i = 0, start = i, c, len;
+    int state = cp->colorize_state;
 
     /* Kludge for preprocessed html */
-    if (*p == '#') {
-        p = p_end;
-        set_color(p_start, p, HTML_STYLE_PREPROCESS);
+    if (str[i] == '#') {
+        i = n;
+        SET_COLOR(str, start, i, HTML_STYLE_PREPROCESS);
         goto the_end;
     }
 
-    while (p < p_end) {
-        p_start = p;
-        c = *p;
+    while (i < n) {
+        start = i;
+        c = str[i];
 
         if (state & IN_HTML_SCRIPTTAG) {
-            while (p < p_end) {
-                if (*p++ == '>') {
+            while (i < n) {
+                if (str[i++] == '>') {
                     state = IN_HTML_SCRIPT;
                     break;
                 }
             }
-            set_color(p_start, p, HTML_STYLE_SCRIPT);
+            SET_COLOR(str, start, i, HTML_STYLE_SCRIPT);
             continue;
         }
         if (state & IN_HTML_SCRIPT) {
-            for (; p < p_end; p++) {
-                if (*p == '<' && ustristart(p, "</script>", NULL))
+            for (; i < n; i++) {
+                if (str[i] == '<' && ustristart(str + i, "</script>", NULL))
                     break;
             }
-            js_state = state & ~IN_HTML_SCRIPT;
-            c = *p;     /* save char to set '\0' delimiter */
-            *p = '\0';
-            /* XXX: should have javascript specific colorize_func */
-            c_colorize_line(p_start, p - p_start, CLANG_JS | CLANG_REGEX,
-                            &js_state, state_only);
-            *p = c;
-            state = js_state | IN_HTML_SCRIPT;
-            if (p < p_end) {
-                p_start = p;
-                p += strlen("</script>");
+            state &= ~IN_HTML_SCRIPT;
+            cp->colorize_state = state;
+            c = str[i];     /* save char to set '\0' delimiter */
+            str[i] = '\0';
+            /* XXX: should have js_colorize_func */
+            c_colorize_line(cp, str + start, i - start,
+                            CLANG_JS | CLANG_REGEX);
+            str[i] = c;
+            state = cp->colorize_state;
+            state |= IN_HTML_SCRIPT;
+            if (i < n) {
+                start = i;
+                i += strlen("</script>");
                 state = 0;
-                set_color(p_start, p, HTML_STYLE_SCRIPT);
+                SET_COLOR(str, start, i, HTML_STYLE_SCRIPT);
             }
             continue;
         }
         if (state & IN_HTML_COMMENT) {
-            for (; p < p_end; p++) {
-                if (*p == '-' && p[1] == '-' && p[2] == '>') {
-                    p += 2;
-                    state &= ~IN_HTML_COMMENT;
+            for (; i < n; i++) {
+                if (str[i] == '-' && str[i + 1] == '-' && str[i + 2] == '>') {
+                    i += 3;
+                    state &= ~(IN_HTML_COMMENT | IN_HTML_COMMENT1);
                     break;
                 }
             }
-            set_color(p_start, p, HTML_STYLE_COMMENT);
+            SET_COLOR(str, start, i, HTML_STYLE_COMMENT);
             continue;
         }
         if (state & IN_HTML_COMMENT1) {
-            for (; p < p_end; p++) {
-                if (*p == '>') {
-                    p++;
+            for (; i < n; i++) {
+                if (str[i] == '>') {
+                    i++;
                     state &= ~IN_HTML_COMMENT1;
                     break;
                 }
             }
-            set_color(p_start, p, HTML_STYLE_COMMENT);
+            SET_COLOR(str, start, i, HTML_STYLE_COMMENT);
             continue;
         }
         if (state & IN_HTML_ENTITY) {
-            if ((l = get_html_entity(p)) == 0)
-                p++;
+            if ((len = get_html_entity(str + i)) == 0)
+                i++;
             else
-                p += l;
+                i += len;
             state &= ~IN_HTML_ENTITY;
-            set_color(p_start, p, HTML_TYLE_ENTITY);
+            SET_COLOR(str, start, i, HTML_TYLE_ENTITY);
             continue;
         }
         if (state & (IN_HTML_STRING | IN_HTML_STRING1)) {
-            char delim = (char)((state & IN_HTML_STRING1) ? '\'' : '\"');
+            int delim = (state & IN_HTML_STRING1) ? '\'' : '\"';
 
-            for (; p < p_end; p++) {
-                if (*p == '&' && get_html_entity(p)) {
+            for (; i < n; i++) {
+                if (str[i] == '&' && get_html_entity(str + i)) {
                     state |= IN_HTML_ENTITY;
                     break;
                 }
-                if (*p == delim) {
-                    p++;
+                if (str[i] == delim) {
+                    i++;
                     state &= ~(IN_HTML_STRING | IN_HTML_STRING1);
                     break;
                 }
                 /* Premature end of string */
-                if (*p == '>') {
+                if (str[i] == '>') {
                     state &= ~(IN_HTML_STRING | IN_HTML_STRING1);
                     break;
                 }
             }
-            set_color(p_start, p, HTML_STYLE_STRING);
+            SET_COLOR(str, start, i, HTML_STYLE_STRING);
             continue;
         }
         if (state & IN_HTML_TAG) {
-            for (; p < p_end; p++) {
-                if (*p == '&' && get_html_entity(p)) {
+            for (; i < n; i++) {
+                if (str[i] == '&' && get_html_entity(str + i)) {
                     state |= IN_HTML_ENTITY;
                     break;
                 }
-                if (*p == '\"') {
+                if (str[i] == '\"') {
                     state |= IN_HTML_STRING;
                     break;
                 }
-                if (*p == '\'') {
+                if (str[i] == '\'') {
                     state |= IN_HTML_STRING1;
                     break;
                 }
-                if (*p == '>') {
-                    p++;
+                if (str[i] == '>') {
+                    i++;
                     state &= ~IN_HTML_TAG;
                     break;
                 }
             }
-            set_color(p_start, p, HTML_STYLE_TAG);
+            SET_COLOR(str, start, i, HTML_STYLE_TAG);
             if (state & (IN_HTML_STRING | IN_HTML_STRING1)) {
-                set_color1(p, HTML_STYLE_STRING);
-                p++;
+                SET_COLOR1(str, i, HTML_STYLE_STRING);
+                i++;
             }
             continue;
         }
         /* Plain text stream */
-        for (; p < p_end; p++) {
-            if (*p == '<'
-            &&  (qe_isalpha(p[1])
-            ||   p[1] == '!' || p[1] == '/' || p[1] == '?')) {
-                //set_color(p_start, p, HTML_STYLE_TEXT);
-                p_start = p;
-                if (ustristart(p, "<script", NULL)) {
+        for (; i < n; i++) {
+            if (str[i] == '<'
+            &&  (qe_isalpha(str[i + 1]) || str[i + 1] == '!'
+            ||   str[i + 1] == '/' || str[i + 1] == '?')) {
+                //SET_COLOR(str, start, i, HTML_STYLE_TEXT);
+                start = i;
+                if (ustristart(str + i, "<script", NULL)) {
                     state |= IN_HTML_SCRIPTTAG;
                     break;
                 }
-                if (p[1] == '!') {
+                if (str[i + 1] == '!') {
                     state |= IN_HTML_COMMENT1;
-                    p += 2;
-                    if (*p == '-' && p[1] == '-') {
-                        p += 2;
+                    i += 2;
+                    if (str[i] == '-' && str[i + 1] == '-') {
+                        i += 2;
+                        state &= ~IN_HTML_COMMENT1;
                         state |= IN_HTML_COMMENT;
                     }
-                    set_color(p_start, p, HTML_STYLE_COMMENT);
-                    p_start = p;
-                } else
+                    SET_COLOR(str, start, i, HTML_STYLE_COMMENT);
+                    start = i;
+                } else {
                     state |= IN_HTML_TAG;
+                }
                 break;
             }
-            if (*p == '&' && get_html_entity(p)) {
+            if (str[i] == '&' && get_html_entity(str + i)) {
                 state |= IN_HTML_ENTITY;
                 break;
             }
         }
-        //set_color(p_start, p - p_start, HTML_STYLE_TEXT);
+        //SET_COLOR(str, start, i, HTML_STYLE_TEXT);
     }
  the_end:
-    *colorize_state_ptr = state;
+    cp->colorize_state = state;
 }
 
 static int html_tagcmp(const char *s1, const char *s2)

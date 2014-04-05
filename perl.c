@@ -104,11 +104,11 @@ static int perl_string(const unsigned int *str, unsigned int delim,
     return j;
 }
 
-static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
-                               int *statep, __unused__ int state_only)
+static void perl_colorize_line(QEColorizeContext *cp,
+                               unsigned int *str, int n, int mode_flags)
 {
     int i = 0, c, c1, c2, j = i, s1, s2, delim = 0;
-    int colstate = *statep;
+    int colstate = cp->colorize_state;
 
     if (colstate & (IN_PERL_STRING1 | IN_PERL_STRING2)) {
         delim = (colstate & IN_PERL_STRING1) ? '\'' : '\"';
@@ -335,7 +335,7 @@ static void perl_colorize_line(unsigned int *str, int n, int mode_flags,
         i++;
         continue;
     }
-    *statep = colstate;
+    cp->colorize_state = colstate;
 }
 
 static int perl_mode_probe(ModeDef *mode, ModeProbeData *p)

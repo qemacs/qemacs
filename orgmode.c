@@ -101,10 +101,10 @@ static int org_scan_chunk(const unsigned int *str,
     return 0;
 }
 
-static void org_colorize_line(unsigned int *str, int n, int mode_flags,
-                              int *statep, __unused__ int state_only)
+static void org_colorize_line(QEColorizeContext *cp,
+                              unsigned int *str, int n, int mode_flags)
 {
-    int colstate = *statep;
+    int colstate = cp->colorize_state;
     int i = 0, j = 0, kw, base_style = 0, has_space;
 
     if (colstate & IN_ORG_BLOCK) {
@@ -115,10 +115,12 @@ static void org_colorize_line(unsigned int *str, int n, int mode_flags,
         } else {
             if (colstate & IN_ORG_LISP) {
                 colstate &= ~(IN_ORG_LISP | IN_ORG_BLOCK);
-                lisp_mode.colorize_func(str, n, 0, &colstate, state_only);
+                cp->colorize_state = colstate;
+                lisp_mode.colorize_func(cp, str, n, 0);
+                colstate = cp->colorize_state;
                 colstate |= IN_ORG_LISP | IN_ORG_BLOCK;
             }
-            *statep = colstate;
+            cp->colorize_state = colstate;
             return;
         }
     }
@@ -284,7 +286,7 @@ static void org_colorize_line(unsigned int *str, int n, int mode_flags,
     }
 
     colstate &= ~IN_ORG_TABLE;
-    *statep = colstate;
+    cp->colorize_state = colstate;
 }
 
 static int org_is_header_line(EditState *s, int offset)

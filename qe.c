@@ -3264,8 +3264,8 @@ static int bidir_compute_attributes(TypeLink *list_tab, int max_size,
 int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                                int *offsetp, int line_num)
 {
+    QEColorizeContext cctx;
     int len, l, line, col, offset, bom;
-    int colorize_state;
 
     /* invalidate cache if needed */
     if (s->colorize_max_valid_offset != INT_MAX) {
@@ -3285,6 +3285,9 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
         }
     }
 
+    memset(&cctx, 0, sizeof(cctx));
+    cctx.s = s;
+
     /* propagate state if needed */
     if (line_num >= s->colorize_nb_valid_lines) {
         if (s->colorize_nb_valid_lines == 0) {
@@ -3292,25 +3295,26 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
             s->colorize_nb_valid_lines = 1;
         }
         offset = eb_goto_pos(s->b, s->colorize_nb_valid_lines - 1, 0);
-        colorize_state = s->colorize_states[s->colorize_nb_valid_lines - 1];
+        cctx.colorize_state = s->colorize_states[s->colorize_nb_valid_lines - 1];
+        cctx.state_only = 1;
 
         for (l = s->colorize_nb_valid_lines; l <= line_num; l++) {
             len = eb_get_line(s->b, buf, buf_size, &offset);
             bom = (len > 0 && buf[0] == 0xFEFF);
-            s->colorize_func(buf + bom, len - bom, s->mode_flags,
-                             &colorize_state, 1);
-            s->colorize_states[l] = colorize_state;
+            s->colorize_func(&cctx, buf + bom, len - bom, s->mode_flags);
+            s->colorize_states[l] = cctx.colorize_state;
         }
     }
 
     /* compute line color */
-    colorize_state = s->colorize_states[line_num];
+    cctx.colorize_state = s->colorize_states[line_num];
+    cctx.state_only = 0;
     len = eb_get_line(s->b, buf, buf_size, offsetp);
     bom = (len > 0 && buf[0] == 0xFEFF);
-    s->colorize_func(buf + bom, len - bom, s->mode_flags, &colorize_state, 0);
+    s->colorize_func(&cctx, buf + bom, len - bom, s->mode_flags);
 
     /* XXX: if state is same as previous, minimize invalid region? */
-    s->colorize_states[line_num + 1] = colorize_state;
+    s->colorize_states[line_num + 1] = cctx.colorize_state;
 
     s->colorize_nb_valid_lines = line_num + 2;
     return len;

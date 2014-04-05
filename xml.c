@@ -36,15 +36,13 @@ enum {
     XML_STYLE_CSS     = QE_STYLE_CSS,
 };
 
-static void xml_colorize_line(unsigned int *buf, int len, int mode_flags,
-                              int *colorize_state_ptr, int state_only)
+static void xml_colorize_line(QEColorizeContext *cp,
+                              unsigned int *str, int n, int mode_flags)
 {
-    int c, state;
-    unsigned int *p, *p_start, *p1;
+    int i = 0, i1, start, c, state;
+    const unsigned int *p;
 
-    state = *colorize_state_ptr;
-    p = buf;
-    p_start = p;
+    state = cp->colorize_state;
 
     /* if already in a state, go directly in the code parsing it */
     if (state & IN_XML_SCRIPT)
@@ -62,41 +60,41 @@ static void xml_colorize_line(unsigned int *buf, int len, int mode_flags,
     }
 
     for (;;) {
-        p_start = p;
-        c = *p;
+        start = i;
+        c = str[i++];
 
         if (c == '\0')
             break;
 
         if (c == '<' && state == 0) {
-            p++;
-            if (p[0] == '!' && p[1] == '-' && p[2] == '-') {
-                p += 3;
+            if (str[i] == '!' && str[i + 1] == '-' && str[i + 2] == '-') {
+                i += 3;
                 state = IN_XML_COMMENT;
                 /* wait until end of comment */
             parse_comment:
-                while (*p != '\0') {
-                    if (p[0] == '-' && p[1] == '-' && p[2] == '>') {
-                        p += 3;
+                while (str[i] != '\0') {
+                    if (str[i] == '-' && str[i + 1] == '-'
+                    &&  str[i + 2] == '>') {
+                        i += 3;
                         state = 0;
                         break;
                     } else {
-                        p++;
+                        i++;
                     }
                 }
-                set_color(p_start, p, XML_STYLE_COMMENT);
+                SET_COLOR(str, start, i, XML_STYLE_COMMENT);
             } else {
                 /* we are in a tag */
-                if (ustristart(p, "SCRIPT", (const unsigned int **)&p)) {
+                if (ustristart(str + i, "SCRIPT", &p)) {
                     state = IN_XML_TAG_SCRIPT;
                 } else
-                if (ustristart(p, "STYLE", (const unsigned int **)&p)) {
+                if (ustristart(str + i, "STYLE", &p)) {
                     state = IN_XML_TAG_STYLE;
                 }
             parse_tag:
-                while (*p != '\0') {
-                    if (*p == '>') {
-                        p++;
+                /* XXX: bogus for <style src="toto" /> */
+                while (str[i] != '\0') {
+                    if (str[i++] == '>') {
                         if (state == IN_XML_TAG_SCRIPT)
                             state = IN_XML_SCRIPT;
                         else
@@ -105,77 +103,77 @@ static void xml_colorize_line(unsigned int *buf, int len, int mode_flags,
                         else
                             state = 0;
                         break;
-                    } else {
-                        p++;
                     }
                 }
-                set_color(p_start, p, XML_STYLE_TAG);
+                SET_COLOR(str, start, i, XML_STYLE_TAG);
                 if (state == IN_XML_SCRIPT) {
                     /* javascript coloring */
-                    p_start = p;
+                    start = i;
                 parse_script:
-                    for (;;) {
-                        if (*p == '\0') {
+                    for (;; i++) {
+                        if (str[i] == '\0') {
                             state &= ~IN_XML_SCRIPT;
-                            /* XXX: should have javascript specific colorize_func */
-                            c_colorize_line(p_start, p - p_start,
-                                CLANG_C | CLANG_REGEX, &state, state_only);
+                            cp->colorize_state = state;
+                            /* XXX: should have js_colorize_func */
+                            c_colorize_line(cp, str + start, i - start,
+                                            CLANG_JS | CLANG_REGEX);
+                            state = cp->colorize_state;
                             state |= IN_XML_SCRIPT;
                             break;
                         } else
-                        if (ustristart(p, "</SCRIPT", (const unsigned int **)&p1)) {
-                            while (*p1 != '\0') {
-                                if (*p1++ == '>')
+                        if (ustristart(str + i, "</SCRIPT", &p)) {
+                            i1 = p - str;
+                            /* XXX: bogus for </script LF > */
+                            while (str[i1] != '\0') {
+                                if (str[i1++] == '>')
                                     break;
                             }
+                            c = str[i];
+                            str[i] = '\0';
                             state &= ~IN_XML_SCRIPT;
-                            c = *p;
-                            *p = '\0';
-                            /* XXX: should have javascript specific colorize_func */
-                            c_colorize_line(p_start, p - p_start,
-                                CLANG_C | CLANG_REGEX, &state, state_only);
-                            *p = c;
-                            state |= IN_XML_SCRIPT;
-                            set_color(p, p1, XML_STYLE_TAG);
-                            p = p1;
+                            cp->colorize_state = state;
+                            /* XXX: should have js_colorize_func */
+                            c_colorize_line(cp, str + start, i - start,
+                                            CLANG_JS | CLANG_REGEX);
+                            str[i] = c;
                             state = 0;
+                            start = i;
+                            i = i1;
+                            SET_COLOR(str, start, i, XML_STYLE_TAG);
                             break;
-                        } else {
-                            p++;
                         }
                     }
                 } else
                 if (state == IN_XML_STYLE) {
                     /* stylesheet coloring */
-                    p_start = p;
+                    start = i;
                 parse_style:
-                    for (;;) {
-                        if (*p == '\0') {
-                            set_color(p_start, p, XML_STYLE_CSS);
+                    for (;; i++) {
+                        if (str[i] == '\0') {
+                            /* XXX: should use css_colorize_line */
+                            SET_COLOR(str, start, i, XML_STYLE_CSS);
                             break;
                         } else
-                        if (ustristart(p, "</STYLE", (const unsigned int **)&p1)) {
-                            while (*p1 != '\0') {
-                                if (*p1++ != '>')
+                        if (ustristart(str + i, "</STYLE", &p)) {
+                            /* XXX: bogus for </style LF > */
+                            i1 = p - str;
+                            while (str[i1] != '\0') {
+                                if (str[i1++] != '>')
                                     break;
                             }
-                            set_color(p_start, p, XML_STYLE_CSS);
-                            set_color(p, p1, XML_STYLE_TAG);
-                            p = p1;
+                            /* XXX: should use css_colorize_line */
+                            SET_COLOR(str, start, i, XML_STYLE_CSS);
+                            SET_COLOR(str, i, i1, XML_STYLE_TAG);
+                            i = i1;
                             state = 0;
                             break;
-                        } else {
-                            p++;
                         }
                     }
                 }
             }
-        } else {
-            /* text */
-            p++;
         }
     }
-    *colorize_state_ptr = state;
+    cp->colorize_state = state;
 }
 
 static int xml_mode_probe(ModeDef *mode, ModeProbeData *p1)

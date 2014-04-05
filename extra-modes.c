@@ -79,12 +79,12 @@ enum {
     ASM_STYLE_IDENTIFIER =  QE_STYLE_VARIABLE,
 };
 
-static void asm_colorize_line(unsigned int *str, int n, int mode_flags,
-                              int *statep, __unused__ int state_only)
+static void asm_colorize_line(QEColorizeContext *cp,
+                              unsigned int *str, int n, int mode_flags)
 {
     int i = 0, j, w;
     int wn = 0; /* word number on line */
-    int colstate = *statep;
+    int colstate = cp->colorize_state;
 
     if (colstate) {
         /* skip characters upto and including separator */
@@ -184,7 +184,7 @@ static void asm_colorize_line(unsigned int *str, int n, int mode_flags,
         i++;
         continue;
     }
-    *statep =  colstate;
+    cp->colorize_state = colstate;
 }
 
 static int asm_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -246,64 +246,58 @@ enum {
     BASIC_STYLE_IDENTIFIER =  QE_STYLE_VARIABLE,
 };
 
-static void basic_colorize_line(unsigned int *str, int n, int mode_flags,
-                                int *statep, __unused__ int state_only)
+static void basic_colorize_line(QEColorizeContext *cp,
+                                unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j;
+    int i = 0, start, c, style;
 
     while (i < n) {
-        switch (str[i]) {
+        start = i;
+        c = str[i++];
+        switch (c) {
         case '\'':
-            if (str[i + 1] == '$')
-                SET_COLOR(str, i, n, BASIC_STYLE_PREPROCESS);
-            else
-                SET_COLOR(str, i, n, BASIC_STYLE_COMMENT);
+            style = BASIC_STYLE_COMMENT;
+            if (str[i] == '$')
+                style = BASIC_STYLE_PREPROCESS;
             i = n;
+            SET_COLOR(str, start, i, style);
             continue;
         case '\"':
             /* parse string const */
-            for (j = i + 1; j < n; j++) {
-                if (str[j] == str[i]) {
-                    j++;
+            while (i < n) {
+                if (str[i++] == c)
                     break;
-                }
             }
-            SET_COLOR(str, i, j, BASIC_STYLE_STRING);
-            i = j;
+            SET_COLOR(str, start, i, BASIC_STYLE_STRING);
             continue;
         default:
             break;
         }
         /* parse numbers */
-        if (qe_isdigit(str[i])) {
-            for (j = i + 1; j < n; j++) {
-                if (!qe_isalnum(str[j]) && str[j] != '.')
+        if (qe_isdigit(c)) {
+            for (; i < n; i++) {
+                if (!qe_isalnum(str[i]) && str[i] != '.')
                     break;
             }
-            SET_COLOR(str, i, j, BASIC_STYLE_IDENTIFIER);
-            i = j;
+            SET_COLOR(str, start, i, BASIC_STYLE_IDENTIFIER);
             continue;
         }
         /* parse identifiers and keywords */
-        if (qe_isalpha_(str[i])) {
-            for (j = i + 1; j < n; j++) {
-                if (!qe_isalnum_(str[j])) {
-                    if (qe_findchar("$&!@%#", str[j]))
-                        j++;
+        if (qe_isalpha_(c)) {
+            for (; i < n; i++) {
+                if (!qe_isalnum_(str[i])) {
+                    if (qe_findchar("$&!@%#", str[i]))
+                        i++;
                     break;
                 }
             }
-            if (is_lc_keyword(str, i, j, basic_keywords)) {
-                SET_COLOR(str, i, j, BASIC_STYLE_KEYWORD);
-                i = j;
+            if (is_lc_keyword(str, start, i, basic_keywords)) {
+                SET_COLOR(str, start, i, BASIC_STYLE_KEYWORD);
                 continue;
             }
-            SET_COLOR(str, i, j, BASIC_STYLE_IDENTIFIER);
-            i = j;
+            SET_COLOR(str, start, i, BASIC_STYLE_IDENTIFIER);
             continue;
         }
-        i++;
-        continue;
     }
 }
 
@@ -369,11 +363,11 @@ enum {
     PASCAL_STYLE_FUNCTION =   QE_STYLE_FUNCTION,
 };
 
-static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
-                                 int *statep, __unused__ int state_only)
+static void pascal_colorize_line(QEColorizeContext *cp,
+                                 unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j = i, k;
-    int colstate =  *statep;
+    int i = 0, start = i, c, k, style;
+    int colstate = cp->colorize_state;
 
     if (colstate & IN_PASCAL_COMMENT)
         goto in_comment;
@@ -385,122 +379,109 @@ static void pascal_colorize_line(unsigned int *str, int n, int mode_flags,
         goto in_comment2;
 
     while (i < n) {
-        switch (str[i]) {
+        start = i;
+        c = str[i++];
+        switch (c) {
         case '/':
-            if (str[i + 1] == '/') {    /* C++ comments, recent extension */
-                SET_COLOR(str, i, n, PASCAL_STYLE_COMMENT);
+            if (str[i] == '/') {    /* C++ comments, recent extension */
                 i = n;
+                SET_COLOR(str, start, i, PASCAL_STYLE_COMMENT);
                 continue;
             }
             break;
         case '{':
             /* check for preprocessor */
-            if (str[i + 1] == '$') {
+            if (str[i] == '$') {
                 colstate = IN_PASCAL_COMMENT1;
-                j = i + 2;
+                i++;
             in_comment1:
-                for (; j < n; j++) {
-                    if (str[j] == '}') {
-                        j += 1;
+                while (i < n) {
+                    if (str[i++] == '}') {
                         colstate = 0;
                         break;
                     }
                 }
-                SET_COLOR(str, i, j, PASCAL_STYLE_PREPROCESS);
-            } else
-            {
+                SET_COLOR(str, start, i, PASCAL_STYLE_PREPROCESS);
+            } else {
                 /* regular comment (recursive?) */
                 colstate = IN_PASCAL_COMMENT;
-                j = i + 1;
             in_comment:
-                for (; j < n; j++) {
-                    if (str[j] == '}') {
-                        j += 1;
+                while (i < n) {
+                    if (str[i++] == '}') {
                         colstate = 0;
                         break;
                     }
                 }
-                SET_COLOR(str, i, j, PASCAL_STYLE_COMMENT);
+                SET_COLOR(str, start, i, PASCAL_STYLE_COMMENT);
             }
-            i = j;
             continue;
         case '(':
             /* check for preprocessor */
-            if (str[i + 1] != '*')
+            if (str[i] != '*')
                 break;
 
             /* regular comment (recursive?) */
             colstate = IN_PASCAL_COMMENT2;
-            j = i + 2;
+            i++;
         in_comment2:
-            for (; j < n; j++) {
-                if (str[j] == '*' && str[j + 1] == ')') {
-                    j += 2;
+            for (; i < n; i++) {
+                if (str[i] == '*' && str[i + 1] == ')') {
+                    i += 2;
                     colstate = 0;
                     break;
                 }
             }
-            SET_COLOR(str, i, j, PASCAL_STYLE_COMMENT);
-            i = j;
+            SET_COLOR(str, start, i, PASCAL_STYLE_COMMENT);
             continue;
         case '\'':
             /* parse string or char const */
-            for (j = i + 1; j < n; j++) {
-                if (str[j] == str[i]) {
-                    j++;
+            while (i < n) {
+                /* XXX: escape sequences? */
+                if (str[i++] == c)
                     break;
-                }
             }
-            SET_COLOR(str, i, j, PASCAL_STYLE_STRING);
-            i = j;
+            SET_COLOR(str, start, i, PASCAL_STYLE_STRING);
             continue;
         case '#':
             /* parse hex char const */
-            for (j = i + 1; j < n; j++) {
-                if (!qe_isdigit(str[j]))
+            for (; i < n; i++) {
+                if (!qe_isxdigit(str[i]))
                     break;
             }
-            SET_COLOR(str, i, j, PASCAL_STYLE_STRING);
-            i = j;
+            SET_COLOR(str, start, i, PASCAL_STYLE_STRING);
             continue;
         default:
             break;
         }
         /* parse numbers */
-        if (qe_isdigit(str[i]) || str[i] == '$') {
-            for (j = i + 1; j < n; j++) {
-                if (!qe_isalnum(str[j]) && str[j] != '.')
+        if (qe_isdigit(c) || c == '$') {
+            for (; i < n; i++) {
+                if (!qe_isalnum(str[i]) && str[i] != '.')
                     break;
             }
-            SET_COLOR(str, i, j, PASCAL_STYLE_NUMBER);
-            i = j;
+            SET_COLOR(str, start, i, PASCAL_STYLE_NUMBER);
             continue;
         }
         /* parse identifiers and keywords */
-        if (qe_isalpha_(str[i])) {
-            for (j = i + 1; j < n; j++) {
-                if (!qe_isalnum_(str[j]))
+        if (qe_isalpha_(c)) {
+            for (; i < n; i++) {
+                if (!qe_isalnum_(str[i]))
                     break;
             }
-            if (is_lc_keyword(str, i, j, pascal_keywords)) {
-                SET_COLOR(str, i, j, PASCAL_STYLE_KEYWORD);
-                i = j;
+            if (is_lc_keyword(str, start, i, pascal_keywords)) {
+                SET_COLOR(str, start, i, PASCAL_STYLE_KEYWORD);
                 continue;
             }
-            for (k = j; k < n; k++) {
-                if (!qe_isblank(str[k]))
-                    break;
-            }
-            SET_COLOR(str, i, j,
-                      str[k] == '(' ? PASCAL_STYLE_FUNCTION :
-                      PASCAL_STYLE_IDENTIFIER);
-            i = j;
+            style = PASCAL_STYLE_IDENTIFIER;
+            for (k = i; qe_isblank(str[k]); k++)
+                continue;
+            if (str[k] == '(')
+                style = PASCAL_STYLE_FUNCTION;
+            SET_COLOR(str, start, i, style);
             continue;
         }
-        i++;
-        continue;
     }
-    *statep = colstate;
+    cp->colorize_state = colstate;
 }
 
 static int pascal_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -544,81 +525,72 @@ enum {
     INI_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
 };
 
-static void ini_colorize_line(unsigned int *str, int n, int mode_flags,
-                              int *statep, __unused__ int state_only)
+static void ini_colorize_line(QEColorizeContext *cp,
+                              unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j;
-    int bol = 1;
+    int i = 0, start, c, bol = 1;
 
     while (i < n) {
-        switch (str[i]) {
+        start = i;
+        c = str[i++];
+        switch (c) {
         case ';':
             if (!bol)
                 break;
-            SET_COLOR(str, i, n, INI_STYLE_COMMENT);
             i = n;
+            SET_COLOR(str, start, i, INI_STYLE_COMMENT);
             continue;
         case '#':
             if (!bol)
                 break;
-            SET_COLOR(str, i, n, INI_STYLE_PREPROCESS);
             i = n;
+            SET_COLOR(str, start, i, INI_STYLE_PREPROCESS);
             continue;
         case '[':
-            if (i == 0) {
-                SET_COLOR(str, i, n, INI_STYLE_FUNCTION);
+            if (start == 0) {
                 i = n;
+                SET_COLOR(str, start, i, INI_STYLE_FUNCTION);
                 continue;
             }
             break;
         case '\"':
             /* parse string const */
-            for (j = i + 1; j < n; j++) {
-                if (str[j] == '\"') {
-                    j++;
+            while (i < n) {
+                /* XXX: escape sequences? */
+                if (str[i++] == '\"')
                     break;
-                }
             }
-            SET_COLOR(str, i, j, INI_STYLE_STRING);
-            i = j;
+            SET_COLOR(str, start, i, INI_STYLE_STRING);
             continue;
-        default:
-            if (bol && qe_isspace(str[i])) {
-                i++;
+        case ' ':
+        case '\t':
+            if (bol)
                 continue;
-            }
+            break;
+        default:
             break;
         }
         bol = 0;
         /* parse numbers */
-        if (qe_isdigit(str[i])) {
-            for (j = i + 1; j < n; j++) {
-                if (!qe_isalnum(str[j]))
+        if (qe_isdigit(c)) {
+            for (; i < n; i++) {
+                if (!qe_isalnum(str[i]))
                     break;
             }
-            SET_COLOR(str, i, j, INI_STYLE_NUMBER);
-            i = j;
+            SET_COLOR(str, start, i, INI_STYLE_NUMBER);
             continue;
         }
         /* parse identifiers and keywords */
-        if (i == 0
-        &&  (qe_isalpha_(str[i])
-        ||   str[i] == '@' || str[i] == '$')) {
-            for (j = i + 1; j < n; j++) {
-                if (str[j] == '=')
+        if (start == 0 && (qe_isalpha_(c) || c == '@' || c == '$')) {
+            for (; i < n; i++) {
+                if (str[i] == '=')
                     break;
             }
-            if (j < n) {
-                SET_COLOR(str, i, j, INI_STYLE_IDENTIFIER);
-                i = j;
-                continue;
-            } else {
-                i = n;
-                continue;
+            if (i < n) {
+                SET_COLOR(str, start, i, INI_STYLE_IDENTIFIER);
             }
+            continue;
         }
-        i++;
-        continue;
     }
 }
 
@@ -692,14 +664,13 @@ enum {
     PS_STYLE_IDENTIFIER = QE_STYLE_FUNCTION,
 };
 
-#define ispssep(c)      (qe_findchar(" \t\r\n,()<>[]{}/", c))
 #define wrap 0
 
-static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
-                             int *statep, __unused__ int state_only)
+static void ps_colorize_line(QEColorizeContext *cp,
+                             unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j;
-    int colstate = *statep;
+    int i = 0, start = i, c;
+    int colstate = cp->colorize_state;
 
     if (colstate & IN_PS_COMMENT)
         goto in_comment;
@@ -710,7 +681,9 @@ static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
     colstate = 0;
 
     while (i < n) {
-        switch (str[i]) {
+        start = i;
+        c = str[i++];
+        switch (c) {
             /* Should deal with '<...>' '<<...>>' '<~...~>' tokens. */
         case '%':
         in_comment:
@@ -718,14 +691,15 @@ static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
                 colstate |= IN_PS_COMMENT;
             else
                 colstate &= ~IN_PS_COMMENT;
-            SET_COLOR(str, i, n, PS_STYLE_COMMENT);
             i = n;
+            SET_COLOR(str, start, i, PS_STYLE_COMMENT);
             continue;
         case '(':
+            colstate++;
         in_string:
             /* parse string skipping embedded \\ */
-            for (j = i; j < n;) {
-                switch (str[j++]) {
+            while (i < n) {
+                switch (str[i++]) {
                 case '(':
                     colstate++;
                     continue;
@@ -735,45 +709,41 @@ static void ps_colorize_line(unsigned int *str, int n, int mode_flags,
                         break;
                     continue;
                 case '\\':
-                    if (j == n)
+                    if (i == n)
                         break;
-                    j++;
+                    i++;
                     continue;
                 default:
                     continue;
                 }
                 break;
             }
-            SET_COLOR(str, i, j, PS_STYLE_STRING);
-            i = j;
+            SET_COLOR(str, start, i, PS_STYLE_STRING);
             continue;
         default:
             break;
         }
         /* parse numbers */
-        if (qe_isdigit(str[i])) {
-            for (j = i + 1; j < n; j++) {
-                if (!qe_isalnum(str[j]) && str[j] != '.')
+        if (qe_isdigit(c)) {
+            for (; i < n; i++) {
+                if (!qe_isalnum(str[i]) && str[i] != '.')
                     break;
             }
-            SET_COLOR(str, i, j, PS_STYLE_NUMBER);
-            i = j;
+            SET_COLOR(str, start, i, PS_STYLE_NUMBER);
             continue;
         }
         /* parse identifiers and keywords */
-        if (qe_isalpha_(str[i])) {
-            for (j = i + 1; j < n; j++) {
-                if (ispssep(str[j]))
+        if (qe_isalpha_(c)) {
+            for (; i < n; i++) {
+                if (qe_findchar(" \t\r\n,()<>[]{}/", str[i]))
                     break;
             }
-            SET_COLOR(str, i, j, PS_STYLE_IDENTIFIER);
-            i = j;
+            SET_COLOR(str, start, i, PS_STYLE_IDENTIFIER);
             continue;
         }
-        i++;
-        continue;
     }
-    *statep = colstate;
+    cp->colorize_state = colstate;
+#undef wrap
 }
 
 static int ps_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -822,74 +792,72 @@ enum {
     SQL_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
 };
 
-static void sql_colorize_line(unsigned int *str, int n, int mode_flags,
-                              int *statep, __unused__ int state_only)
+static void sql_colorize_line(QEColorizeContext *cp,
+                              unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j = i;
-    int state = *statep;
+    int i = 0, start = i, c, style;
+    int state = cp->colorize_state;
 
     if (state & IN_SQL_COMMENT)
         goto parse_c_comment;
 
     while (i < n) {
-        switch (str[i]) {
+        start = i;
+        c = str[i++];
+        switch (c) {
         case '/':
-            if (str[i + 1] == '/')
+            if (str[i] == '/')
                 goto line_comment;
-            if (str[i + 1] == '*') {
+            if (str[i] == '*') {
                 /* normal comment */
-                j = i + 2;
+                i++;
             parse_c_comment:
                 state |= IN_SQL_COMMENT;
-                while (j < n) {
-                    if (str[j] == '*' && str[j + 1] == '/') {
-                        j += 2;
+                for (; i < n; i++) {
+                    if (str[i] == '*' && str[i + 1] == '/') {
+                        i += 2;
                         state &= ~IN_SQL_COMMENT;
                         break;
-                    } else {
-                        j++;
                     }
                 }
                 goto comment;
             }
             break;
         case '-':
-            if (str[i + 1] == '-')
+            if (str[i] == '-')
                 goto line_comment;
             break;
         case '#':
         line_comment:
-            j = n;
+            i = n;
         comment:
-            SET_COLOR(str, i, j, SQL_STYLE_COMMENT);
-            i = j;
+            SET_COLOR(str, start, i, SQL_STYLE_COMMENT);
             continue;
         case '\'':
         case '\"':
         case '`':
             /* parse string const */
-            for (j = i + 1; j < n; j++) {
+            for (; i < n; i++) {
                 /* FIXME: Should parse strings more accurately */
-                if (str[j] == '\\' && j + 1 < n) {
-                    j++;
+                if (str[i] == '\\' && i + 1 < n) {
+                    i++;
                     continue;
                 }
-                if (str[j] == str[i]) {
-                    j++;
+                if (str[i] == c) {
+                    i++;
                     break;
                 }
             }
-            SET_COLOR(str, i, j,
-                      str[i] == '`' ? SQL_STYLE_IDENTIFIER : SQL_STYLE_STRING);
-            i = j;
+            style = SQL_STYLE_STRING;
+            if (c == '`')
+                style = SQL_STYLE_IDENTIFIER;
+            SET_COLOR(str, start, i, style);
             continue;
         default:
             break;
         }
-        i++;
-        continue;
     }
-    *statep = state;
+    cp->colorize_state = state;
 }
 
 static int sql_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -967,11 +935,11 @@ static int lua_long_bracket(unsigned int *str, int *level)
     }
 }
 
-void lua_colorize_line(unsigned int *str, int n, int mode_flags,
-                       int *statep, __unused__ int state_only)
+void lua_colorize_line(QEColorizeContext *cp,
+                       unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j = i, c, sep = 0, level = 0, level1, klen, style;
-    int state = *statep;
+    int i = 0, start = i, c, sep = 0, level = 0, level1, klen, style;
+    int state = cp->colorize_state;
     char kbuf[32];
 
     if (state & IN_LUA_LONGLIT) {
@@ -992,48 +960,48 @@ void lua_colorize_line(unsigned int *str, int n, int mode_flags,
     }
 
     while (i < n) {
-        switch (c = str[i]) {
+        start = i;
+        c = str[i++];
+        switch (c) {
         case '-':
-            if (str[i + 1] == '-') {
-                if (str[i + 2] == '['
-                &&  lua_long_bracket(str + i + 2, &level)) {
-                    state = IN_LUA_COMMENT | IN_LUA_LONGLIT | (level & IN_LUA_LEVEL);
+            if (str[i] == '-') {
+                if (str[i + 1] == '['
+                &&  lua_long_bracket(str + i + 1, &level)) {
+                    state = IN_LUA_COMMENT | IN_LUA_LONGLIT |
+                            (level & IN_LUA_LEVEL);
                     goto parse_longlit;
                 }
-                SET_COLOR(str, i, n, LUA_STYLE_COMMENT);
-                i = n;
+                SET_COLOR(str, start, i, LUA_STYLE_COMMENT);
                 continue;
             }
             break;
         case '\'':
         case '\"':
             /* parse string const */
-            sep = str[i];
-            j = i + 1;
+            sep = c;
         parse_string:
-            for (; j < n;) {
-                c = str[j++];
+            while (i < n) {
+                c = str[i++];
                 if (c == '\\') {
-                    if (str[j] == 'z' && j + 1 == n) {
+                    if (str[i] == 'z' && i + 1 == n) {
                         /* XXX: partial support for \z */
                         state = (sep == '\'') ? IN_LUA_STRING : IN_LUA_STRING2;
-                        j += 1;
+                        i += 1;
                     } else
-                    if (j == n) {
+                    if (i == n) {
                         state = (sep == '\'') ? IN_LUA_STRING : IN_LUA_STRING2;
                     } else {
-                        j += 1;
+                        i += 1;
                     }
                 } else
                 if (c == sep) {
                     break;
                 }
             }
-            SET_COLOR(str, i, j, LUA_STYLE_STRING);
-            i = j;
+            SET_COLOR(str, start, i, LUA_STYLE_STRING);
             continue;
         case '[':
-            if (lua_long_bracket(str + i, &level)) {
+            if (lua_long_bracket(str + i - 1, &level)) {
                 state = IN_LUA_LONGLIT | (level & IN_LUA_LEVEL);
                 goto parse_longlit;
             }
@@ -1041,57 +1009,50 @@ void lua_colorize_line(unsigned int *str, int n, int mode_flags,
         parse_longlit:
             style = (state & IN_LUA_COMMENT) ?
                     LUA_STYLE_COMMENT : LUA_STYLE_LONGLIT;
-            for (j = i; j < n; j++) {
-                if (str[j] != ']')
-                    continue;
-                if (lua_long_bracket(str + j, &level1) && level1 == level) {
+            for (; i < n; i++) {
+                if (str[i] == ']'
+                &&  lua_long_bracket(str + i, &level1)
+                &&  level1 == level) {
                     state = 0;
-                    j += level + 2;
+                    i += level + 2;
                     break;
                 }
             }
-            SET_COLOR(str, i, j, style);
-            i = j;
+            SET_COLOR(str, start, i, style);
             continue;
         default:
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
-                for (j = i + 1; j < n; j++) {
-                    if (!qe_isalnum(str[j] && str[j] != '.'))
+                for (; i < n; i++) {
+                    if (!qe_isalnum(str[i] && str[i] != '.'))
                         break;
                 }
-                SET_COLOR(str, i, j, LUA_STYLE_NUMBER);
-                i = j;
+                SET_COLOR(str, start, i, LUA_STYLE_NUMBER);
                 continue;
             }
             if (qe_isalpha_(c)) {
-                for (klen = 0, j = i; qe_isalnum_(str[j]); j++) {
+                for (klen = 0, i--; qe_isalnum_(str[i]); i++) {
                     if (klen < countof(kbuf) - 1)
-                        kbuf[klen++] = str[j];
+                        kbuf[klen++] = str[i];
                 }
                 kbuf[klen] = '\0';
 
                 if (strfind(lua_keywords, kbuf)) {
-                    SET_COLOR(str, i, j, LUA_STYLE_KEYWORD);
-                    i = j;
+                    SET_COLOR(str, start, i, LUA_STYLE_KEYWORD);
                     continue;
                 }
-                while (qe_isblank(str[j]))
-                    j++;
-                if (str[j] == '(') {
-                    SET_COLOR(str, i, j, LUA_STYLE_FUNCTION);
-                    i = j;
+                while (qe_isblank(str[i]))
+                    i++;
+                if (str[i] == '(') {
+                    SET_COLOR(str, start, i, LUA_STYLE_FUNCTION);
                     continue;
                 }
-                i = j;
                 continue;
             }
             break;
         }
-        i++;
-        continue;
     }
-    *statep = state;
+    cp->colorize_state = state;
 }
 
 static int lua_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -1153,11 +1114,11 @@ static inline int haskell_is_symbol(int c)
     return qe_findchar("!#$%&+./<=>?@\\^|-~:", c);
 }
 
-void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
-                           int *statep, __unused__ int state_only)
+void haskell_colorize_line(QEColorizeContext *cp,
+                           unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j = i, c, sep = 0, level = 0, klen;
-    int state = *statep;
+    int i = 0, start = i, c, sep = 0, level = 0, klen;
+    int state = cp->colorize_state;
     char kbuf[32];
 
     if (state & IN_HASKELL_COMMENT)
@@ -1166,25 +1127,28 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
     if (state & IN_HASKELL_STRING) {
         sep = '\"';
         state = 0;
-        while (qe_isspace(str[j]))
-            j++;
-        if (str[j] == '\\')
-            j++;
+        while (qe_isspace(str[i]))
+            i++;
+        if (str[i] == '\\')
+            i++;
         goto parse_string;
     }
 
     while (i < n) {
-        switch (c = str[i]) {
+        start = i;
+        c = str[i++];
+        switch (c) {
         case '-':
-            if (str[i + 1] == '-' && !haskell_is_symbol(str[i + 2])) {
-                SET_COLOR(str, i, n, HASKELL_STYLE_COMMENT);
+            if (str[i] == '-' && !haskell_is_symbol(str[i + 1])) {
                 i = n;
+                SET_COLOR(str, start, i, HASKELL_STYLE_COMMENT);
                 continue;
             }
             goto parse_symbol;
         case '{':
-            if (str[i + 1] == '-') {
+            if (str[i] == '-') {
                 state |= IN_HASKELL_COMMENT;
+                i++;
                 goto parse_comment;
             }
             /* FALL THRU */
@@ -1201,17 +1165,17 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
             
         parse_comment:
             level = state & IN_HASKELL_LEVEL;
-            for (j = i; j < n; j++) {
+            for (; i < n; i++) {
                 if (str[i] == '{' && str[i + 1] == '-') {
                     level++;
-                    j++;
+                    i++;
                     continue;
                 }
                 if (str[i] == '-' && str[i + 1] == '}') {
-                    j++;
+                    i++;
                     level--;
                     if (level == 0) {
-                        j++;
+                        i++;
                         state &= ~IN_HASKELL_COMMENT;
                         break;
                     }
@@ -1219,113 +1183,100 @@ void haskell_colorize_line(unsigned int *str, int n, int mode_flags,
             }
             state &= ~IN_HASKELL_COMMENT;
             state |= level & IN_HASKELL_COMMENT;
-            SET_COLOR(str, i, j, HASKELL_STYLE_COMMENT);
-            i = j;
+            SET_COLOR(str, start, i, HASKELL_STYLE_COMMENT);
             continue;
 
         case '\'':
         case '\"':
             /* parse string const */
-            sep = str[i];
-            j = i + 1;
+            sep = c;
         parse_string:
-            for (; j < n;) {
-                c = str[j++];
+            while (i < n) {
+                c = str[i++];
                 if (c == '\\') {
-                    if (j == n) {
+                    if (i == n) {
                         if (sep == '\"') {
                             /* XXX: should ignore whitespace */
                             state = IN_HASKELL_STRING;
                         }
                     } else
-                    if (str[j] == '^' && j + 1 < n && str[j + 1] != sep) {
-                        j += 2;
+                    if (str[i] == '^' && i + 1 < n && str[i + 1] != sep) {
+                        i += 2;
                     } else {
-                        j += 1;
+                        i += 1;
                     }
                 } else
                 if (c == sep) {
                     break;
                 }
             }
-            SET_COLOR(str, i, j, HASKELL_STYLE_STRING);
-            i = j;
+            SET_COLOR(str, start, i, HASKELL_STYLE_STRING);
             continue;
 
         default:
             if (qe_isdigit(c)) {
-                j = i + 1;
-                if (c == '0' && qe_tolower(str[j]) == 'o') {
+                if (c == '0' && qe_tolower(str[i]) == 'o') {
                     /* octal numbers */
-                    for (j += 1; qe_isoctdigit(str[j]); j++)
+                    for (i += 1; qe_isoctdigit(str[i]); i++)
                         continue;
                 } else
-                if (c == '0' && qe_tolower(str[j]) == 'x') {
+                if (c == '0' && qe_tolower(str[i]) == 'x') {
                     /* hexadecimal numbers */
-                    for (j += 1; qe_isxdigit(str[j]); j++)
+                    for (i += 1; qe_isxdigit(str[i]); i++)
                         continue;
                 } else {
                     /* decimal numbers */
-                    for (j = i + 1; qe_isdigit(str[j]); j++)
+                    for (; qe_isdigit(str[i]); i++)
                         continue;
-                    if (str[j] == '.' && qe_isdigit(str[j + 1])) {
+                    if (str[i] == '.' && qe_isdigit(str[i + 1])) {
                         /* decimal floats require a digit after the '.' */
-                        for (j = i + 2; qe_isdigit(str[j]); j++)
+                        for (i += 2; qe_isdigit(str[i]); i++)
                             continue;
-                        if (qe_tolower(str[j]) == 'e') {
-                            int k = j + 1;
+                        if (qe_tolower(str[i]) == 'e') {
+                            int k = i + 1;
                             if (str[k] == '+' || str[k] == '-')
                                 k++;
                             if (qe_isdigit(str[k])) {
-                                for (j = k + 1; qe_isdigit(str[j]); j++)
+                                for (i = k + 1; qe_isdigit(str[i]); i++)
                                     continue;
                             }
                         }
                     }
                 }
                 /* XXX: should detect malformed number constants */
-                SET_COLOR(str, i, j, HASKELL_STYLE_NUMBER);
-                i = j;
+                SET_COLOR(str, start, i, HASKELL_STYLE_NUMBER);
                 continue;
             }
             if (qe_isalpha_(c)) {
-                for (klen = 0, j = i;
-                     qe_isalnum_(str[j]) || str[j] == '\'';
-                     j++) {
+                for (klen = 0, i--; qe_isalnum_(str[i]) || str[i] == '\''; i++) {
                     if (klen < countof(kbuf) - 1)
-                        kbuf[klen++] = str[j];
+                        kbuf[klen++] = str[i];
                 }
                 kbuf[klen] = '\0';
 
                 if (strfind(haskell_keywords, kbuf)) {
-                    SET_COLOR(str, i, j, HASKELL_STYLE_KEYWORD);
-                    i = j;
+                    SET_COLOR(str, start, i, HASKELL_STYLE_KEYWORD);
                     continue;
                 }
-                while (qe_isblank(str[j]))
-                    j++;
-                if (str[j] == '(') {
-                    SET_COLOR(str, i, j, HASKELL_STYLE_FUNCTION);
-                    i = j;
+                while (qe_isblank(str[i]))
+                    i++;
+                if (str[i] == '(') {
+                    SET_COLOR(str, start, i, HASKELL_STYLE_FUNCTION);
                     continue;
                 }
-                i = j;
                 continue;
             }
         parse_symbol:
             if (haskell_is_symbol(c)) {
-                for (j = i + 1; haskell_is_symbol(str[j]); j++)
+                for (; haskell_is_symbol(str[i]); i++)
                     continue;
-                SET_COLOR(str, i, j, HASKELL_STYLE_SYMBOL);
-                i = j;
+                SET_COLOR(str, start, i, HASKELL_STYLE_SYMBOL);
                 continue;
             }
             break;
         }
-        i++;
-        continue;
     }
-    *statep = state;
+    cp->colorize_state = state;
 }
 
 static int haskell_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -1385,11 +1336,11 @@ enum {
     PYTHON_STYLE_FUNCTION = QE_STYLE_FUNCTION,
 };
 
-void python_colorize_line(unsigned int *str, int n, int mode_flags,
-                          int *statep, __unused__ int state_only)
+void python_colorize_line(QEColorizeContext *cp,
+                          unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j = i, c, sep = 0, klen;
-    int state = *statep;
+    int i = 0, start = i, c, sep = 0, klen;
+    int state = cp->colorize_state;
     char kbuf[32];
 
     if (state & IN_PYTHON_STRING) {
@@ -1410,34 +1361,35 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
     }
 
     while (i < n) {
-        switch (c = str[i]) {
+        start = i;
+        c = str[i++];
+        switch (c) {
         case '#':
-            j = n;
-            SET_COLOR(str, i, j, PYTHON_STYLE_COMMENT);
-            i = j;
+            i = n;
+            SET_COLOR(str, start, i, PYTHON_STYLE_COMMENT);
             continue;
             
         case '\'':
         case '\"':
             /* parse string const */
-            j = i;
+            i--;
         has_quote:
-            sep = str[j++];
-            if (str[j] == sep && str[j + 1] == sep) {
+            sep = str[i++];
+            if (str[i] == sep && str[i + 1] == sep) {
                 /* long string */
                 state = (sep == '\"') ? IN_PYTHON_LONG_STRING2 :
                         IN_PYTHON_LONG_STRING;
-                j += 2;
+                i += 2;
             parse_long_string:
-                while (j < n) {
-                    c = str[j++];
+                while (i < n) {
+                    c = str[i++];
                     if (!(state & IN_PYTHON_RAW_STRING) && c == '\\') {
-                        if (j < n) {
-                            j += 1;
+                        if (i < n) {
+                            i += 1;
                         }
                     } else
-                    if (c == sep && str[j] == sep && str[j + 1] == sep) {
-                        j += 2;
+                    if (c == sep && str[i] == sep && str[i + 1] == sep) {
+                        i += 2;
                         state = 0;
                         break;
                     }
@@ -1445,11 +1397,11 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
             } else {
                 state = (sep == '\"') ? IN_PYTHON_STRING2 : IN_PYTHON_STRING;
             parse_string:
-                while (j < n) {
-                    c = str[j++];
+                while (i < n) {
+                    c = str[i++];
                     if (!(state & IN_PYTHON_RAW_STRING) && c == '\\') {
-                        if (j < n) {
-                            j += 1;
+                        if (i < n) {
+                            i += 1;
                         }
                     } else
                     if (c == sep) {
@@ -1458,117 +1410,107 @@ void python_colorize_line(unsigned int *str, int n, int mode_flags,
                     }
                 }
             }
-            SET_COLOR(str, i, j, PYTHON_STYLE_STRING);
-            i = j;
+            SET_COLOR(str, start, i, PYTHON_STYLE_STRING);
             continue;
 
         case '.':
-            if (qe_isdigit(str[i + 1])) {
-                j = i;
+            if (qe_isdigit(str[i]))
                 goto parse_decimal;
-            }
             break;
 
         case 'b':
         case 'B':
-            if (qe_tolower(str[i + 1]) == 'r'
-            &&  (str[i + 2] == '\'' || str[i + 2] == '\"')) {
+            if (qe_tolower(str[i]) == 'r'
+            &&  (str[i + 1] == '\'' || str[i + 1] == '\"')) {
                 state |= IN_PYTHON_RAW_STRING;
-                j = i + 2;
+                i += 1;
                 goto has_quote;
             }
             goto has_alpha;
 
         case 'r':
         case 'R':
-            if (qe_tolower(str[i + 1]) == 'b'
-            &&  (str[i + 2] == '\'' || str[i + 2] == '\"')) {
+            if (qe_tolower(str[i]) == 'b'
+            &&  (str[i + 1] == '\'' || str[i + 1] == '\"')) {
                 state |= IN_PYTHON_RAW_STRING;
-                j = i + 2;
+                i += 1;
                 goto has_quote;
             }
-            if ((str[i + 1] == '\'' || str[i + 1] == '\"')) {
+            if ((str[i] == '\'' || str[i] == '\"')) {
                 state |= IN_PYTHON_RAW_STRING;
-                j = i + 1;
                 goto has_quote;
             }
             goto has_alpha;
 
         default:
             if (qe_isdigit(c)) {
-                j = i + 1;
-                if (c == '0' && qe_tolower(str[j]) == 'b') {
+                if (c == '0' && qe_tolower(str[i]) == 'b') {
                     /* binary numbers */
-                    for (j += 1; qe_isbindigit(str[j]); j++)
+                    for (i += 1; qe_isbindigit(str[i]); i++)
                         continue;
                 } else
-                if (c == '0' && qe_tolower(str[j]) == 'o') {
+                if (c == '0' && qe_tolower(str[i]) == 'o') {
                     /* octal numbers */
-                    for (j += 1; qe_isoctdigit(str[j]); j++)
+                    for (i += 1; qe_isoctdigit(str[i]); i++)
                         continue;
                 } else
-                if (c == '0' && qe_tolower(str[j]) == 'x') {
+                if (c == '0' && qe_tolower(str[i]) == 'x') {
                     /* hexadecimal numbers */
-                    for (j += 1; qe_isxdigit(str[j]); j++)
+                    for (i += 1; qe_isxdigit(str[i]); i++)
                         continue;
                 } else {
                     /* decimal numbers */
-                    for (j = i + 1; qe_isdigit(str[j]); j++)
+                    for (; qe_isdigit(str[i]); i++)
                         continue;
+                    if (str[i] == '.' && qe_isdigit(str[i + 1])) {
+                        i++;
                 parse_decimal:
-                    if (str[j] == '.' && qe_isdigit(str[j + 1])) {
                         /* decimal floats require a digit after the '.' */
-                        for (j = i + 2; qe_isdigit(str[j]); j++)
+                        for (; qe_isdigit(str[i]); i++)
                             continue;
                     }
-                    if (qe_tolower(str[j]) == 'e') {
-                        int k = j + 1;
+                    if (qe_tolower(str[i]) == 'e') {
+                        int k = i + 1;
                         if (str[k] == '+' || str[k] == '-')
                             k++;
                         if (qe_isdigit(str[k])) {
-                            for (j = k + 1; qe_isdigit(str[j]); j++)
+                            for (i = k + 1; qe_isdigit(str[i]); i++)
                                 continue;
                         }
                     }
                 }
-                if (qe_tolower(str[j]) == 'j') {
-                    j++;
+                if (qe_tolower(str[i]) == 'j') {
+                    i++;
                 }
                     
                 /* XXX: should detect malformed number constants */
-                SET_COLOR(str, i, j, PYTHON_STYLE_NUMBER);
-                i = j;
+                SET_COLOR(str, start, i, PYTHON_STYLE_NUMBER);
                 continue;
             }
         has_alpha:
             if (qe_isalpha_(c)) {
-                for (klen = 0, j = i; qe_isalnum_(str[j]); j++) {
+                for (klen = 0, i--; qe_isalnum_(str[i]); i++) {
                     if (klen < countof(kbuf) - 1)
-                        kbuf[klen++] = str[j];
+                        kbuf[klen++] = str[i];
                 }
                 kbuf[klen] = '\0';
 
                 if (strfind(python_keywords, kbuf)) {
-                    SET_COLOR(str, i, j, PYTHON_STYLE_KEYWORD);
-                    i = j;
+                    SET_COLOR(str, start, i, PYTHON_STYLE_KEYWORD);
                     continue;
                 }
-                while (qe_isblank(str[j]))
-                    j++;
-                if (str[j] == '(') {
-                    SET_COLOR(str, i, j, PYTHON_STYLE_FUNCTION);
-                    i = j;
+                while (qe_isblank(str[i]))
+                    i++;
+                if (str[i] == '(') {
+                    SET_COLOR(str, start, i, PYTHON_STYLE_FUNCTION);
                     continue;
                 }
-                i = j;
                 continue;
             }
             break;
         }
-        i++;
-        continue;
     }
-    *statep = state;
+    cp->colorize_state = state;
 }
 
 static int python_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -1667,12 +1609,12 @@ static int ruby_get_name(char *buf, int size, unsigned int *str)
     return j - i;
 }
 
-void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
-                        int *statep, __unused__ int state_only)
+void ruby_colorize_line(QEColorizeContext *cp,
+                        unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j = i, c, indent, sig;
+    int i = 0, j, start = i, c, indent, sig, style;
     static int sep, sep0, level;        /* XXX: ugly patch */
-    int state = *statep;
+    int state = cp->colorize_state;
     char kbuf[32];
 
     for (indent = 0; qe_isspace(str[indent]); indent++)
@@ -1680,21 +1622,21 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
 
     if (state & IN_RUBY_HEREDOC) {
         if (state & IN_RUBY_HD_INDENT) {
-            while (qe_isspace(str[j]))
-                j++;
+            while (qe_isspace(str[i]))
+                i++;
         }
 	sig = 0;
-        if (qe_isalpha_(str[j])) {
-            sig = str[j++] % 61;
-            for (; qe_isalnum_(str[j]); j++) {
-                sig = ((sig << 6) + str[j]) % 61;
+        if (qe_isalpha_(str[i])) {
+            sig = str[i++] % 61;
+            for (; qe_isalnum_(str[i]); i++) {
+                sig = ((sig << 6) + str[i]) % 61;
             }
         }
-        for (; qe_isspace(str[j]); j++)
+        for (; qe_isspace(str[i]); i++)
             continue;
-        SET_COLOR(str, i, n, RUBY_STYLE_HEREDOC);
         i = n;
-        if (j > 0 && j == n && (state & IN_RUBY_HD_SIG) == (sig & IN_RUBY_HD_SIG))
+        SET_COLOR(str, start, i, RUBY_STYLE_HEREDOC);
+        if (i > 0 && i == n && (state & IN_RUBY_HD_SIG) == (sig & IN_RUBY_HD_SIG))
             state &= ~(IN_RUBY_HEREDOC | IN_RUBY_HD_INDENT | IN_RUBY_HD_SIG);
     } else {
         if (state & IN_RUBY_COMMENT)
@@ -1722,12 +1664,11 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
             if (ustrstart(str + i, "=end", NULL)) {
                 state &= ~IN_RUBY_POD;
             }
-            if (str[i] == '=' && qe_isalpha(str[i + 1])) {
-                SET_COLOR(str, i, n, RUBY_STYLE_KEYWORD);
-            } else {
-                SET_COLOR(str, i, n, RUBY_STYLE_COMMENT);
-            }
+            style = RUBY_STYLE_COMMENT;
+            if (str[i] == '=' && qe_isalpha(str[i + 1]))
+                style = RUBY_STYLE_KEYWORD;
             i = n;
+            SET_COLOR(str, start, i, style);
         }
     }
 
@@ -1737,78 +1678,76 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
     indent = i;
 
     while (i < n) {
-        switch (c = str[i]) {
+        start = i;
+        c = str[i++];
+        switch (c) {
         case '/':
-            if (str[i + 1] == '*') {
+            if (str[i] == '*') {
                 /* C comment */
-                j = i + 2;
+                i++;
             parse_c_comment:
                 state = IN_RUBY_COMMENT;
-                for (; j < n; j++) {
-                    if (str[j] == '*' && str[j + 1] == '/') {
-                        j += 2;
+                for (; i < n; i++) {
+                    if (str[i] == '*' && str[i + 1] == '/') {
+                        i += 2;
                         state &= ~IN_RUBY_COMMENT;
                         break;
                     }
                 }
                 goto comment;
             }
-            if (i == indent
-            ||  (str[i + 1] != ' ' && str[i + 1] != '='
-            &&   !qe_isalnum(str[i - 1] & CHAR_MASK)
-            &&   str[i - 1] != ')')) {
+            if (start == indent
+            ||  (str[i] != ' ' && str[i] != '='
+            &&   !qe_isalnum(str[i - 2] & CHAR_MASK)
+            &&   str[i - 2] != ')')) {
                 /* XXX: should use context to tell regex from divide */
                 /* parse regex */
-                j = i + 1;
                 state = IN_RUBY_REGEX;
             parse_regex:
-                while (j < n) {
+                while (i < n) {
                     /* XXX: should ignore / inside char classes */
-                    c = str[j++];
+                    c = str[i++];
                     if (c == '\\') {
-                        if (j < n) {
-                            j += 1;
+                        if (i < n) {
+                            i += 1;
                         }
                     } else
-                    if (c == '#' && str[j] == '{') {
+                    if (c == '#' && str[i] == '{') {
                         /* should parse full syntax */
-                        while (j < n && str[j++] != '}')
+                        while (i < n && str[i++] != '}')
                             continue;
                     } else
                     if (c == '/') {
-                        while (qe_findchar("ensuimox", str[j])) {
-                            j++;
+                        while (qe_findchar("ensuimox", str[i])) {
+                            i++;
                         }
                         state = 0;
                         break;
                     }
                 }
-                SET_COLOR(str, i, j, RUBY_STYLE_REGEX);
-                i = j;
+                SET_COLOR(str, start, i, RUBY_STYLE_REGEX);
                 continue;
             }
             break;
 
         case '#':
-            j = n;
+            i = n;
         comment:
-            SET_COLOR(str, i, j, RUBY_STYLE_COMMENT);
-            i = j;
+            SET_COLOR(str, start, i, RUBY_STYLE_COMMENT);
             continue;
             
         case '%':
             /* parse alternate string/array syntaxes */
-            if (!qe_isspace(str[i + 1]) && !qe_isalnum(str[i + 1])) {
-                j = i + 1;
+            if (str[i] != '\0' && !qe_isspace(str[i]) && !qe_isalnum(str[i]))
                 goto has_string4;
-            }
-            if (str[i + 1] == 'q' || str[i + 1] == 'Q'
-            ||  str[i + 1] == 'r' || str[i + 1] == 'x'
-            ||  str[i + 1] == 'w' || str[i + 1] == 'W') {
-                j = i + 2;
+
+            if (str[i] == 'q' || str[i] == 'Q'
+            ||  str[i] == 'r' || str[i] == 'x'
+            ||  str[i] == 'w' || str[i] == 'W') {
+                i++;
             has_string4:
                 level = 0;
-                sep = sep0 = str[j++];
+                sep = sep0 = str[i++];
                 if (sep == '{') sep = '}';
                 if (sep == '(') sep = ')';
                 if (sep == '[') sep = ']';
@@ -1816,8 +1755,8 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                 /* parse special string const */
                 state = IN_RUBY_STRING4;
             parse_string4:
-                while (j < n) {
-                    c = str[j++];
+                while (i < n) {
+                    c = str[i++];
                     if (c == sep) {
                         if (level-- == 0) {
                             state = level = 0;
@@ -1828,56 +1767,52 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                     if (c == sep0) {
                         level++;
                     } else
-                    if (c == '#' && str[j] == '{') {
+                    if (c == '#' && str[i] == '{') {
                         /* XXX: should no parse if %q */
                         /* XXX: should parse full syntax */
-                        while (j < n && str[j++] != '}')
+                        while (i < n && str[i++] != '}')
                             continue;
                     } else
                     if (c == '\\') {
-                        if (j < n) {
-                            j += 1;
+                        if (i < n) {
+                            i += 1;
                         }
                     }
                 }
-                SET_COLOR(str, i, j, RUBY_STYLE_STRING4);
-                i = j;
+                SET_COLOR(str, start, i, RUBY_STYLE_STRING4);
                 continue;
             }
             break;
 
         case '\'':
             /* parse single quoted string const */
-            j = i + 1;
             state = IN_RUBY_STRING;
         parse_string:
-            while (j < n) {
-                c = str[j++];
-                if (c == '\\' && (str[j] == '\\' || str[j] == '\'')) {
-                    j += 1;
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\' && (str[i] == '\\' || str[i] == '\'')) {
+                    i += 1;
                 } else
                 if (c == '\'') {
                     state = 0;
                     break;
                 }
             }
-            SET_COLOR(str, i, j, RUBY_STYLE_STRING);
-            i = j;
+            SET_COLOR(str, start, i, RUBY_STYLE_STRING);
             continue;
 
         case '`':
             /* parse single quoted string const */
-            j = i + 1;
             state = IN_RUBY_STRING3;
         parse_string3:
-            while (j < n) {
-                c = str[j++];
-                if (c == '\\' && (str[j] == '\\' || str[j] == '\'')) {
-                    j += 1;
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\' && (str[i] == '\\' || str[i] == '\'')) {
+                    i += 1;
                 } else
-                if (c == '#' && str[j] == '{') {
+                if (c == '#' && str[i] == '{') {
                     /* should parse full syntax */
-                    while (j < n && str[j++] != '}')
+                    while (i < n && str[i++] != '}')
                         continue;
                 } else
                 if (c == '`') {
@@ -1885,25 +1820,23 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                     break;
                 }
             }
-            SET_COLOR(str, i, j, RUBY_STYLE_STRING3);
-            i = j;
+            SET_COLOR(str, start, i, RUBY_STYLE_STRING3);
             continue;
 
         case '\"':
             /* parse double quoted string const */
             c = '\0';
-            j = i + 1;
         parse_string2:
-            while (j < n) {
-                c = str[j++];
+            while (i < n) {
+                c = str[i++];
                 if (c == '\\') {
-                    if (j < n) {
-                        j += 1;
+                    if (i < n) {
+                        i += 1;
                     }
                 } else
-                if (c == '#' && str[j] == '{') {
+                if (c == '#' && str[i] == '{') {
                     /* should parse full syntax */
-                    while (j < n && str[j++] != '}')
+                    while (i < n && str[i++] != '}')
                         continue;
                 } else
                 if (c == '\"') {
@@ -1917,12 +1850,11 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                 if (state == 0)
                     state = IN_RUBY_STRING2;
             }
-            SET_COLOR(str, i, j, RUBY_STYLE_STRING2);
-            i = j;
+            SET_COLOR(str, start, i, RUBY_STYLE_STRING2);
             continue;
 
         case '<':
-            if (str[i + 1] == '<') {
+            if (str[i] == '<') {
                 /* XXX: should use context to tell lshift from heredoc:
                  * here documents are introduced by monadic <<.
                  * Monadic use could be detected in some contexts, such
@@ -1933,7 +1865,7 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                  * XXX: should parse full here document syntax.
                  */
                 sig = 0;
-                j = i + 2;
+                j = i + 1;
                 if (str[j] == '-') {
                     j++;
                 }
@@ -1963,12 +1895,12 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
                      */
                     state &= ~(IN_RUBY_HEREDOC | IN_RUBY_HD_INDENT | IN_RUBY_HD_SIG);
                     state |= IN_RUBY_HEREDOC;
-                    if (str[i + 2] == '-') {
+                    if (str[i + 1] == '-') {
                         state |= IN_RUBY_HD_INDENT;
                     }
                     state |= (sig & IN_RUBY_HD_SIG);
-                    SET_COLOR(str, i, j, RUBY_STYLE_HEREDOC);
                     i = j;
+                    SET_COLOR(str, start, i, RUBY_STYLE_HEREDOC);
                 }
             }
             break;
@@ -1978,17 +1910,15 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
             break;
 
         case '.':
-            if (qe_isdigit_(str[i + 1])) {
-                j = i;
+            if (qe_isdigit_(str[i]))
                 goto parse_decimal;
-            }
             break;
 
         case '$':
             /* XXX: should parse precise $ syntax,
              * skip $" and $' for now
              */
-            if (i + 1 < n)
+            if (i < n)
                 i++;
             break;
 
@@ -1997,84 +1927,75 @@ void ruby_colorize_line(unsigned int *str, int n, int mode_flags,
             break;
 
         case '@':
-            j = i + 1;
-            j += ruby_get_name(kbuf, countof(kbuf), str + j);
-            SET_COLOR(str, i, j, RUBY_STYLE_MEMBER);
-            i = j;
+            i += ruby_get_name(kbuf, countof(kbuf), str + i);
+            SET_COLOR(str, start, i, RUBY_STYLE_MEMBER);
             continue;
 
         default:
             if (qe_isdigit(c)) {
-                j = i + 1;
-                if (c == '0' && qe_tolower(str[j]) == 'b') {
+                if (c == '0' && qe_tolower(str[i]) == 'b') {
                     /* binary numbers */
-                    for (j += 1; qe_isbindigit(str[j]) || str[j] == '_'; j++)
+                    for (i += 1; qe_isbindigit(str[i]) || str[i] == '_'; i++)
                         continue;
                 } else
-                if (c == '0' && qe_tolower(str[j]) == 'o') {
+                if (c == '0' && qe_tolower(str[i]) == 'o') {
                     /* octal numbers */
-                    for (j += 1; qe_isoctdigit(str[j]) || str[j] == '_'; j++)
+                    for (i += 1; qe_isoctdigit(str[i]) || str[i] == '_'; i++)
                         continue;
                 } else
-                if (c == '0' && qe_tolower(str[j]) == 'x') {
+                if (c == '0' && qe_tolower(str[i]) == 'x') {
                     /* hexadecimal numbers */
-                    for (j += 1; qe_isxdigit(str[j]) || str[j] == '_'; j++)
+                    for (i += 1; qe_isxdigit(str[i]) || str[i] == '_'; i++)
                         continue;
                 } else
-                if (c == '0' && qe_tolower(str[j]) == 'd') {
+                if (c == '0' && qe_tolower(str[i]) == 'd') {
                     /* hexadecimal numbers */
-                    for (j += 1; qe_isdigit_(str[j]); j++)
+                    for (i += 1; qe_isdigit_(str[i]); i++)
                         continue;
                 } else {
                     /* decimal numbers */
-                    for (j = i + 1; qe_isdigit_(str[j]); j++)
+                    for (; qe_isdigit_(str[i]); i++)
                         continue;
+                    if (str[i] == '.') {
+                        i++;
                 parse_decimal:
-                    if (str[j] == '.') {
-                        for (j = i + 1; qe_isdigit_(str[j]); j++)
+                        for (; qe_isdigit_(str[i]); i++)
                             continue;
                     }
-                    if (qe_tolower(str[j]) == 'e') {
-                        int k = j + 1;
+                    if (qe_tolower(str[i]) == 'e') {
+                        int k = i + 1;
                         if (str[k] == '+' || str[k] == '-')
                             k++;
                         if (qe_isdigit_(str[k])) {
-                            for (j = k + 1; qe_isdigit_(str[j]); j++)
+                            for (i = k + 1; qe_isdigit_(str[i]); i++)
                                 continue;
                         }
                     }
                 }
-                    
                 /* XXX: should detect malformed number constants */
-                SET_COLOR(str, i, j, RUBY_STYLE_NUMBER);
-                i = j;
+                SET_COLOR(str, start, i, RUBY_STYLE_NUMBER);
                 continue;
             }
             if (qe_isalpha_(c)) {
-                j = i;
-                j += ruby_get_name(kbuf, countof(kbuf), str + j);
+                i--;
+                i += ruby_get_name(kbuf, countof(kbuf), str + i);
 
                 if (strfind(ruby_keywords, kbuf)) {
-                    SET_COLOR(str, i, j, RUBY_STYLE_KEYWORD);
-                    i = j;
+                    SET_COLOR(str, start, i, RUBY_STYLE_KEYWORD);
                     continue;
                 }
-                while (qe_isblank(str[j]))
-                    j++;
-                if (str[j] == '(') {
-                    SET_COLOR(str, i, j, RUBY_STYLE_FUNCTION);
-                    i = j;
+                while (qe_isblank(str[i]))
+                    i++;
+                if (str[i] == '(') {
+                    SET_COLOR(str, start, i, RUBY_STYLE_FUNCTION);
                     continue;
                 }
-                i = j;
                 continue;
             }
             break;
         }
-        i++;
-        continue;
     }
-    *statep = state;
+    cp->colorize_state = state;
 }
 
 static int ruby_mode_probe(ModeDef *mode, ModeProbeData *p)

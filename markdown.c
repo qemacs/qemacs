@@ -91,11 +91,11 @@ static int mkd_scan_chunk(const unsigned int *str,
     return 0;
 }
 
-static void mkd_colorize_line(unsigned int *str, int n, int mode_flags,
-                              int *statep, __unused__ int state_only)
+static void mkd_colorize_line(QEColorizeContext *cp,
+                              unsigned int *str, int n, int mode_flags)
 {
-    int colstate = *statep;
-    int level, indent, i = 0, j = 0, base_style = 0;
+    int colstate = cp->colorize_state;
+    int level, indent, i = 0, j, start = i, base_style = 0;
 
     if (colstate & IN_MKD_HTML_BLOCK) {
         if (str[i] != '<' && str[i] != '\0' && !qe_isblank(str[i]))
@@ -106,11 +106,13 @@ static void mkd_colorize_line(unsigned int *str, int n, int mode_flags,
     ||  (str[i] == '<' && str[i + 1] != '/')) {
         /* block level HTML markup */
         colstate &= ~IN_MKD_HTML_BLOCK;
-        htmlsrc_colorize_line(str, n, 0, &colstate, state_only);
+        cp->colorize_state = colstate;
+        htmlsrc_colorize_line(cp, str, n, 0);
+        colstate = cp->colorize_state;
         colstate |= IN_MKD_HTML_BLOCK;
         if ((str[i] & CHAR_MASK) == '<' && (str[i + 1] & CHAR_MASK) == '/')
             colstate = 0;
-        *statep = colstate;
+        cp->colorize_state = colstate;
         return;
     }
 
@@ -119,58 +121,62 @@ static void mkd_colorize_line(unsigned int *str, int n, int mode_flags,
         if (ustrstart(str + i, "~~~", NULL)
         ||  ustrstart(str + i, "```", NULL)) {
             colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG);
-            SET_COLOR(str, i, n, MKD_STYLE_TILDE);
             i = n;
+            SET_COLOR(str, start, i, MKD_STYLE_TILDE);
         } else {
             int lang = colstate & IN_MKD_LANG;
+
             colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG);
+            cp->colorize_state = colstate;
+
             switch (lang) {
             case IN_MKD_C:
-                c_colorize_line(str, n, CLANG_C, &colstate, state_only);
+                c_colorize_line(cp, str, n, CLANG_C);
                 break;
             case IN_MKD_PYTHON:
-                python_colorize_line(str, n, 0, &colstate, state_only);
+                python_colorize_line(cp, str, n, 0);
                 break;
             case IN_MKD_RUBY:
-                ruby_colorize_line(str, n, 0, &colstate, state_only);
+                ruby_colorize_line(cp, str, n, 0);
                 break;
             case IN_MKD_HASKELL:
-                haskell_colorize_line(str, n, 0, &colstate, state_only);
+                haskell_colorize_line(cp, str, n, 0);
                 break;
             case IN_MKD_LUA:
-                lua_colorize_line(str, n, 0, &colstate, state_only);
+                lua_colorize_line(cp, str, n, 0);
                 break;
             default:
                 SET_COLOR(str, i, n, MKD_STYLE_CODE);
                 break;
             }
+            colstate = cp->colorize_state;
             colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG);
             colstate |= (IN_MKD_BLOCK | lang);
         }
-        *statep = colstate;
+        cp->colorize_state = colstate;
         return;
     }
 
     if (str[i] == '#') {
         /* Check for heading: initial string of '#' followed by ' ' */
-        for (j = i + 1; str[j] == '#'; j++)
+        for (i++; str[i] == '#'; i++)
             continue;
 
-        if (qe_isblank(str[j])) {
-            base_style = MkdBulletStyles[(j - i - 1) % MKD_BULLET_STYLES];
-            SET_COLOR(str, i, j + 1, base_style);
-            i = j + 1;
+        if (qe_isblank(str[i])) {
+            base_style = MkdBulletStyles[(i - start - 1) % MKD_BULLET_STYLES];
+            i++;
+            SET_COLOR(str, start, i, base_style);
         }
     } else
     if (str[i] == '%') {
         /* pandoc extension: line comment */
-        SET_COLOR(str, i, n, MKD_STYLE_COMMENT);
         i = n;
+        SET_COLOR(str, start, i, MKD_STYLE_COMMENT);
     } else
     if (str[i] == '>') {
         /* block quoting */
-        SET_COLOR(str, i, n, MKD_STYLE_BLOCK_QUOTE);
         i = n;
+        SET_COLOR(str, start, i, MKD_STYLE_BLOCK_QUOTE);
     } else
     if (ustrstart(str + i, "~~~", NULL)
     ||  ustrstart(str + i, "```", NULL)) {
@@ -192,25 +198,23 @@ static void mkd_colorize_line(unsigned int *str, int n, int mode_flags,
         if (ustrstr(str + i + 3, "ruby")) {
             colstate |= IN_MKD_RUBY;
         }
-        SET_COLOR(str, i, n, MKD_STYLE_TILDE);
         i = n;
+        SET_COLOR(str, start, i, MKD_STYLE_TILDE);
     } else
     if (str[i] == '-') {
         /* dashes underline a heading */
-        for (j = i + 1; str[j] == '-'; j++)
+        for (i++; str[i] == '-'; i++)
             continue;
-        if (j == n) {
-            SET_COLOR(str, i, n, MKD_STYLE_HEADING2);
-            i = n;
+        if (i == n) {
+            SET_COLOR(str, start, i, MKD_STYLE_HEADING2);
         }
     } else
     if (str[i] == '=') {
         /* equal signs indicate a heading */
-        for (j = i + 1; str[j] == '='; j++)
+        for (i++; str[i] == '='; i++)
             continue;
-        if (j == n) {
-            SET_COLOR(str, i, n, MKD_STYLE_HEADING1);
-            i = n;
+        if (i == n) {
+            SET_COLOR(str, start, i, MKD_STYLE_HEADING1);
         }
     } else
     if (str[i] == '|') {
@@ -245,6 +249,7 @@ static void mkd_colorize_line(unsigned int *str, int n, int mode_flags,
     }
 
     if (i < n) {
+        start = i;
         /* ignore blank lines for level and code triggers */
         if (indent < level * 4) {
             level = indent >> 2;
@@ -253,8 +258,8 @@ static void mkd_colorize_line(unsigned int *str, int n, int mode_flags,
 
         if (indent >= 4) {
             /* Should detect sequel lines in ordered/unordered lists */
-            SET_COLOR(str, i, n, MKD_STYLE_CODE);
             i = n;
+            SET_COLOR(str, start, i, MKD_STYLE_CODE);
         }
     }
 
@@ -270,8 +275,9 @@ static void mkd_colorize_line(unsigned int *str, int n, int mode_flags,
         }
         if (j == n && count >= 3) {
             /* Horizontal rule */
-            SET_COLOR(str, i, n, MKD_STYLE_HBAR);
+            start = i;
             i = n;
+            SET_COLOR(str, start, i, MKD_STYLE_HBAR);
         }
     }
 
@@ -285,22 +291,25 @@ static void mkd_colorize_line(unsigned int *str, int n, int mode_flags,
         if (str[j] == '.' && qe_isblank(str[j + 1])) {
             level++;
             base_style = MKD_STYLE_DLIST;
-            SET_COLOR(str, i, j, base_style);
+            start = i;
             i = j;
+            SET_COLOR(str, start, i, base_style);
         }
     } else
     if ((str[i] == '-' || str[i] == '*' || str[i] == '+')
     &&  qe_isblank(str[i + 1])) {
+        start = i;
         level++;
         base_style = MKD_STYLE_LIST;
-        SET_COLOR(str, i, j, base_style);
-        i = j;
+        SET_COLOR(str, start, i, base_style);
     }
 
     for (;;) {
         int chunk = 0, chunk_style = base_style;
-        int flags;
-        int c = str[i];
+        int c, flags;
+
+        start = i;
+        c = str[i];
 
         if (c == '\0')
             break;
@@ -351,39 +360,39 @@ static void mkd_colorize_line(unsigned int *str, int n, int mode_flags,
             chunk = mkd_scan_chunk(str + i, "<http", ">", 1);
             if (chunk)
                 break;
-            for (flags = 0, j = i + 1; j < n; j++) {
+            for (flags = 0, j = i + 1; j < n;) {
                 if (str[j] == '@')
                     flags |= 1;
-                if (str[j] == '>') {
+                if (str[j++] == '>') {
                     flags |= 2;
                     break;
                 }
             }
             if (flags == 3) {
-                chunk = j + 1;
+                chunk = j;
                 break;
             }
             break;
         case '\\':  /* escape */
             if (strchr("\\`*_{}[]()#+-.!", str[i + 1])) {
-                SET_COLOR(str, i, i + 2, base_style);
                 i += 2;
+                SET_COLOR(str, start, i, base_style);
                 continue;
             }
             break;
         }
         if (chunk) {
-            SET_COLOR(str, i, i + chunk, chunk_style);
             i += chunk;
+            SET_COLOR(str, start, i, chunk_style);
         } else {
-            SET_COLOR1(str, i, base_style);
             i++;
+            SET_COLOR1(str, start, base_style);
         }
     }
 
     colstate &= ~IN_MKD_LEVEL;
     colstate |= (level << MKD_LEVEL_SHIFT) & IN_MKD_LEVEL;
-    *statep = colstate;
+    cp->colorize_state = colstate;
 }
 
 static int mkd_is_header_line(EditState *s, int offset)

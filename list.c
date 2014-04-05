@@ -39,12 +39,12 @@ static int list_get_colorized_line(EditState *s,
     {
         /* highlight the line if the cursor is inside */
         clear_color(buf, len);
-        set_color(buf, buf + len, QE_STYLE_HIGHLIGHT);
+        SET_COLOR(buf, 0, len, QE_STYLE_HIGHLIGHT);
     } else
     if (buf[0] == '*') {
         /* selection */
         clear_color(buf, len);
-        set_color(buf, buf + len, QE_STYLE_SELECTION);
+        SET_COLOR(buf, 0, len, QE_STYLE_SELECTION);
     }
     return len;
 }

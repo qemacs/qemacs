@@ -33,106 +33,96 @@ enum {
 /* TODO: add state handling to allow colorization of elements longer
  * than one line (eg, multi-line functions and strings)
  */
-static void latex_colorize_line(unsigned int *buf, __unused__ int len,
-                                __unused__ int mode_flags,
-                                int *colorize_state_ptr,
-                                __unused__ int state_only)
+static void latex_colorize_line(QEColorizeContext *cp,
+                                unsigned int *str, int n, int mode_flags)
 {
-    int c, state;
-    unsigned int *p, *p_start;
-
-    state = *colorize_state_ptr;
-    p = buf;
-    p_start = p;
+    int i = 0, start, c;
+    int state = cp->colorize_state;
 
     for (;;) {
-        p_start = p;
-        c = *p;
+        start = i;
+        c = str[i++];
         switch (c) {
         case '\0':
         case '\n':      /* Should not happen */
             goto the_end;
         case '`':
-            p++;
             /* a ``string'' */
-            if (*p == '`') {
+            if (str[i] == '`') {
                 for (;;) {
-                    p++;
-                    if (*p == '\0') {
+                    i++;
+                    if (str[i] == '\0') {
                         /* Should either flag an error or propagate
                          * string style to the next line
                          */
                         break;
                     }
-                    if (*p == '\'' && p[1] == '\'') {
-                        p += 2;
+                    if (str[i] == '\'' && str[i + 1] == '\'') {
+                        i += 2;
                         break;
                     }
                 }
-                set_color(p_start, p, LATEX_STYLE_STRING);
+                SET_COLOR(str, start, i, LATEX_STYLE_STRING);
             }
             break;
         case '\\':
-            p++;
             /* \function[keyword]{variable} */
-            if (*p == '\'' || *p == '\"' || *p == '~' || *p == '%' || *p == '\\') {
-                p++;
+            if (str[i] == '\'' || str[i] == '\"' || str[i] == '~'
+            ||  str[i] == '%' || str[i] == '\\') {
+                i++;
             } else {
-                while (*p != '\0' && *p != '{' && *p != '[' && *p != ' ' && *p != '\\')
-                    p++;
+                while (str[i] != '\0' && str[i] != '{' && str[i] != '['
+                &&     str[i] != ' ' && str[i] != '\\') {
+                    i++;
+                }
             }
-            set_color(p_start, p, LATEX_STYLE_FUNCTION);
-            while (*p == ' ' || *p == '\t') {
-                /* skip space */
-                p++;
+            SET_COLOR(str, start, i, LATEX_STYLE_FUNCTION);
+            while (qe_isblank(str[i])) {
+                i++;
             }
-            while (*p == '{' || *p == '[') {
-                if (*p++ == '[') {
+            while (str[i] == '{' || str[i] == '[') {
+                if (str[i++] == '[') {
                     /* handle [keyword] */
-                    p_start = p;
-                    while (*p != '\0' && *p != ']')
-                        p++;
-                    set_color(p_start, p, LATEX_STYLE_KEYWORD);
-                    if (*p == ']')
-                        p++;
+                    start = i;
+                    while (str[i] != '\0' && str[i] != ']')
+                        i++;
+                    SET_COLOR(str, start, i, LATEX_STYLE_KEYWORD);
+                    if (str[i] == ']')
+                        i++;
                 } else {
                     int braces = 0;
                     /* handle {variable} */
-                    p_start = p;
-                    while (*p != '\0') {
-                        if (*p == '{') {
+                    start = i;
+                    while (str[i] != '\0') {
+                        if (str[i] == '{') {
                             braces++;
                         } else
-                        if (*p == '}') {
+                        if (str[i] == '}') {
                             if (braces-- == 0)
                                 break;
                         }
-                        p++;
+                        i++;
                     }
-                    set_color(p_start, p, LATEX_STYLE_VARIABLE);
-                    if (*p == '}')
-                        p++;
+                    SET_COLOR(str, start, i, LATEX_STYLE_VARIABLE);
+                    if (str[i] == '}')
+                        i++;
                 }
-                while (*p == ' ' || *p == '\t') {
-                    /* skip space */
-                    p++;
+                while (qe_isblank(str[i])) {
+                    i++;
                 }
             }
             break;
         case '%':
-            p++;
             /* line comment */
-            while (*p != '\0')
-                p++;
-            set_color(p_start, p, LATEX_STYLE_COMMENT);
+            i = n;
+            SET_COLOR(str, start, i, LATEX_STYLE_COMMENT);
             break;
         default:
-            p++;
             break;
         }
     }
  the_end:
-    *colorize_state_ptr = state;
+    cp->colorize_state = state;
 }
 
 static int latex_mode_probe(ModeDef *mode, ModeProbeData *p)
