@@ -1986,7 +1986,7 @@ void ruby_colorize_line(QEColorizeContext *cp,
                 }
                 while (qe_isblank(str[i]))
                     i++;
-                if (str[i] == '(') {
+                if (str[i] == '(' || str[i] == '{') {
                     SET_COLOR(str, start, i, RUBY_STYLE_FUNCTION);
                     continue;
                 }
