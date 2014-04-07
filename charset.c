@@ -1381,7 +1381,7 @@ static QECharset *detect_eol_type(const u8 *buf, int size,
     if (charset->char_size == 4)
         detect_eol_type_32bit(buf, size, charset, eol_typep);
     else
-    if (charset->char_size == 4)
+    if (charset->char_size == 2)
         detect_eol_type_16bit(buf, size, charset, eol_typep);
     else
         detect_eol_type_8bit(buf, size, charset, eol_typep);
