@@ -75,9 +75,6 @@
     STYLE_DEF(QE_STYLE_HTML_STRING, "html-string",
               QERGB(0xf8, 0xa0, 0x78), COLOR_TRANSPARENT,
               0, 0)
-    STYLE_DEF(QE_STYLE_HTML_SCRIPT, "html-script",
-              QERGB(0x98, 0xf8, 0x98), COLOR_TRANSPARENT,
-              0, 0)
     STYLE_DEF(QE_STYLE_HTML_ENTITY, "html-entity",
               QERGB(0xe8, 0xdc, 0x80), COLOR_TRANSPARENT,
               0, 0)

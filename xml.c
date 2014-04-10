@@ -2,6 +2,7 @@
  * XML text mode for QEmacs.
  *
  * Copyright (c) 2002 Fabrice Bellard.
+ * Copyright (c) 2014 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,8 +27,8 @@ enum {
     IN_XML_COMMENT,
     IN_XML_TAG_SCRIPT,
     IN_XML_TAG_STYLE,
-    IN_XML_STYLE,
-    IN_XML_SCRIPT = 0x80, /* special mode for inside a script, ored with c mode */
+    IN_XML_SCRIPT = 0x80, /* Inside a script tag, ored with c-mode state */
+    IN_XML_STYLE = 0x100, /* Inside a style tag, ored with c-mode state */
 };
 
 enum {
@@ -36,25 +37,41 @@ enum {
     XML_STYLE_CSS     = QE_STYLE_CSS,
 };
 
+static int xml_tag_match(const unsigned int *buf, int i, const char *str,
+                         int *iend)
+{
+    const unsigned int *p;
+
+    if (ustristart(buf + i, str, &p) && !qe_isalnum_(*p)) {
+        if (iend)
+            *iend = p - buf;
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 static void xml_colorize_line(QEColorizeContext *cp,
                               unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, i1, start, c, state;
-    const unsigned int *p;
+    int i = 0, start = i, c;
+    int state = cp->colorize_state;
 
-    state = cp->colorize_state;
+    /* XXX: should recognize and colorize entities, attribute strings */
 
     /* if already in a state, go directly in the code parsing it */
     if (state & IN_XML_SCRIPT)
         goto parse_script;
+    if (state & IN_XML_STYLE)
+        goto parse_style;
+
     switch (state) {
     case IN_XML_COMMENT:
         goto parse_comment;
     case IN_XML_TAG:
     case IN_XML_TAG_SCRIPT:
+    case IN_XML_TAG_STYLE:
         goto parse_tag;
-    case IN_XML_STYLE:
-        goto parse_style;
     default:
         break;
     }
@@ -70,31 +87,34 @@ static void xml_colorize_line(QEColorizeContext *cp,
             if (str[i] == '!' && str[i + 1] == '-' && str[i + 2] == '-') {
                 i += 3;
                 state = IN_XML_COMMENT;
-                /* wait until end of comment */
             parse_comment:
-                while (str[i] != '\0') {
+                /* scan for end of comment */
+                for (; str[i] != '\0'; i++) {
                     if (str[i] == '-' && str[i + 1] == '-'
                     &&  str[i + 2] == '>') {
                         i += 3;
                         state = 0;
                         break;
-                    } else {
-                        i++;
                     }
                 }
                 SET_COLOR(str, start, i, XML_STYLE_COMMENT);
             } else {
                 /* we are in a tag */
-                if (ustristart(str + i, "SCRIPT", &p)) {
+                if (xml_tag_match(str, i, "script", &i)) {
                     state = IN_XML_TAG_SCRIPT;
                 } else
-                if (ustristart(str + i, "STYLE", &p)) {
+                if (xml_tag_match(str, i, "style", &i)) {
                     state = IN_XML_TAG_STYLE;
                 }
             parse_tag:
-                /* XXX: bogus for <style src="toto" /> */
                 while (str[i] != '\0') {
-                    if (str[i++] == '>') {
+                    c = str[i++];
+                    if (c == '/' && str[i] == '>') {
+                        i++;
+                        state = 0;
+                        break;
+                    }
+                    if (c == '>') {
                         if (state == IN_XML_TAG_SCRIPT)
                             state = IN_XML_SCRIPT;
                         else
@@ -106,68 +126,51 @@ static void xml_colorize_line(QEColorizeContext *cp,
                     }
                 }
                 SET_COLOR(str, start, i, XML_STYLE_TAG);
-                if (state == IN_XML_SCRIPT) {
+                start = i;
+                if (state & IN_XML_SCRIPT) {
                     /* javascript coloring */
-                    start = i;
                 parse_script:
-                    for (;; i++) {
-                        if (str[i] == '\0') {
-                            state &= ~IN_XML_SCRIPT;
-                            cp->colorize_state = state;
-                            /* XXX: should have js_colorize_func */
-                            c_colorize_line(cp, str + start, i - start,
-                                            CLANG_JS | CLANG_REGEX);
-                            state = cp->colorize_state;
-                            state |= IN_XML_SCRIPT;
-                            break;
-                        } else
-                        if (ustristart(str + i, "</SCRIPT", &p)) {
-                            i1 = p - str;
-                            /* XXX: bogus for </script LF > */
-                            while (str[i1] != '\0') {
-                                if (str[i1++] == '>')
-                                    break;
-                            }
-                            c = str[i];
-                            str[i] = '\0';
-                            state &= ~IN_XML_SCRIPT;
-                            cp->colorize_state = state;
-                            /* XXX: should have js_colorize_func */
-                            c_colorize_line(cp, str + start, i - start,
-                                            CLANG_JS | CLANG_REGEX);
-                            str[i] = c;
-                            state = 0;
-                            start = i;
-                            i = i1;
-                            SET_COLOR(str, start, i, XML_STYLE_TAG);
+                    for (; str[i] != '\0'; i++) {
+                        if (str[i] == '<'
+                        &&  xml_tag_match(str, i + 1, "/script", NULL)) {
                             break;
                         }
                     }
+                    c = str[i];     /* save char to set '\0' delimiter */
+                    str[i] = '\0';
+                    state &= ~IN_XML_SCRIPT;
+                    cp->colorize_state = state;
+                    /* XXX: should have js_colorize_func */
+                    c_colorize_line(cp, str + start, i - start,
+                                    CLANG_JS | CLANG_REGEX);
+                    state = cp->colorize_state;
+                    state |= IN_XML_SCRIPT;
+                    str[i] = c;
+                    if (c) {
+                        state = 0;
+                    }
+                    continue;
                 } else
-                if (state == IN_XML_STYLE) {
+                if (state & IN_XML_STYLE) {
                     /* stylesheet coloring */
-                    start = i;
                 parse_style:
-                    for (;; i++) {
-                        if (str[i] == '\0') {
-                            /* XXX: should use css_colorize_line */
-                            SET_COLOR(str, start, i, XML_STYLE_CSS);
-                            break;
-                        } else
-                        if (ustristart(str + i, "</STYLE", &p)) {
-                            /* XXX: bogus for </style LF > */
-                            i1 = p - str;
-                            while (str[i1] != '\0') {
-                                if (str[i1++] != '>')
-                                    break;
-                            }
-                            /* XXX: should use css_colorize_line */
-                            SET_COLOR(str, start, i, XML_STYLE_CSS);
-                            SET_COLOR(str, i, i1, XML_STYLE_TAG);
-                            i = i1;
-                            state = 0;
+                    for (; str[i] != '\0'; i++) {
+                        if (str[i] == '<'
+                        &&  xml_tag_match(str, i + 1, "/style", NULL)) {
                             break;
                         }
+                    }
+                    c = str[i];
+                    str[i] = '\0';
+                    state &= ~IN_XML_STYLE;
+                    cp->colorize_state = state;
+                    /* XXX: should have css_colorize_func */
+                    c_colorize_line(cp, str + start, i - start, 0);
+                    state = cp->colorize_state;
+                    state |= IN_XML_STYLE;
+                    str[i] = c;
+                    if (c) {
+                        state = 0;
                     }
                 }
             }
