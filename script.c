@@ -77,6 +77,8 @@ static void script_colorize_line(QEColorizeContext *cp,
                     break;
             }
             SET_COLOR(str, start, i, style);
+            if (c == str[start])
+                style = SCRIPT_STYLE_TEXT;
             continue;
         case ' ':
         case '\t':
