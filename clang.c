@@ -227,9 +227,10 @@ void c_colorize_line(QEColorizeContext *cp,
             }
             break;
         case '#':       /* preprocessor */
-            /* XXX: C only */
-            state = IN_C_PREPROCESS;
-            style = C_STYLE_PREPROCESS;
+            if (mode_flags & (CLANG_C | CLANG_CPP | CLANG_OBJC)) {
+                state = IN_C_PREPROCESS;
+                style = C_STYLE_PREPROCESS;
+            }
             break;
         case 'L':       /* wide character and string literals */
             /* XXX: C only */
