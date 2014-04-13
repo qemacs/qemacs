@@ -71,13 +71,14 @@ static void script_colorize_line(QEColorizeContext *cp,
             /* parse string const */
             for (i++; i < n;) {
                 c = str[i++];
-                if (c == '\\' && str[i] == '"' && str[start] == '"')
+                if (c == '\\' && i < n && str[start] == '"')
                     i++;
+		else
                 if (c == str[start])
                     break;
             }
             SET_COLOR(str, start, i, style);
-            if (c == str[start])
+            if (i < n)
                 style = SCRIPT_STYLE_TEXT;
             continue;
         case ' ':

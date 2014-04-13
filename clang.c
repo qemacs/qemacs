@@ -724,7 +724,7 @@ static int ustr_match_mask(const unsigned int *buf, const char *str)
 static void do_c_forward_conditional(EditState *s, int dir)
 {
     unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
-    int line_num, col_num, len, sharp, level;
+    int line_num, col_num, sharp, level;
     int offset, offset0, offset1;
 
     offset = offset0 = eb_goto_bol(s->b, s->offset);
@@ -732,7 +732,7 @@ static void do_c_forward_conditional(EditState *s, int dir)
     level = 0;
     for (;;) {
         offset1 = offset;
-        len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+        s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
         sharp = 0;
         for (p = buf; *p; p++) {
             int c = (*p & CHAR_MASK);
@@ -783,7 +783,7 @@ static void do_c_forward_conditional(EditState *s, int dir)
 static void do_c_list_conditionals(EditState *s)
 {
     unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
-    int line_num, col_num, len, sharp, level;
+    int line_num, col_num, sharp, level;
     int offset, offset1;
     EditBuffer *b;
 
@@ -798,7 +798,7 @@ static void do_c_list_conditionals(EditState *s)
         line_num--;
         offset = eb_prev_line(s->b, offset);
         offset1 = offset;
-        len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+        s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
         sharp = 0;
         for (p = buf; *p; p++) {
             int c = (*p & CHAR_MASK);
