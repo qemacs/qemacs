@@ -21,6 +21,29 @@
 #include "qe.h"
 
 #define MAX_KEYWORD_SIZE  16
+
+static int is_keyword(unsigned int *str, int from, int to, const char *list)
+{
+    char keyword[MAX_KEYWORD_SIZE];
+    int c, i, len = to - from;
+
+    if (len >= MAX_KEYWORD_SIZE)
+        return 0;
+
+    for (i = 0; i < len; i++) {
+        c = str[from + i];
+        if (c >= 0x80)
+            return 0;
+        keyword[i] = c;
+    }
+    keyword[len] = '\0';
+
+    if (strfind(list, keyword))
+        return 1;
+
+    return 0;
+}
+
 static int is_lc_keyword(unsigned int *str, int from, int to, const char *list)
 {
     char keyword[MAX_KEYWORD_SIZE];
@@ -737,9 +760,10 @@ static void pascal_colorize_line(QEColorizeContext *cp,
                 continue;
             }
             style = PASCAL_STYLE_IDENTIFIER;
-            for (k = i; qe_isblank(str[k]); k++)
-                continue;
-            if (str[k] == '(')
+            k = i;
+            if (qe_isblank(str[k]))
+                k++;
+            if (str[k] == '(' && str[k + 1] != '*')
                 style = PASCAL_STYLE_FUNCTION;
             SET_COLOR(str, start, i, style);
             continue;
@@ -2199,17 +2223,17 @@ void ruby_colorize_line(QEColorizeContext *cp,
             if (qe_isdigit(c)) {
                 if (c == '0' && qe_tolower(str[i]) == 'b') {
                     /* binary numbers */
-                    for (i += 1; qe_isbindigit(str[i]) || str[i] == '_'; i++)
+                    for (i += 1; qe_isbindigit_(str[i]); i++)
                         continue;
                 } else
                 if (c == '0' && qe_tolower(str[i]) == 'o') {
                     /* octal numbers */
-                    for (i += 1; qe_isoctdigit(str[i]) || str[i] == '_'; i++)
+                    for (i += 1; qe_isoctdigit_(str[i]); i++)
                         continue;
                 } else
                 if (c == '0' && qe_tolower(str[i]) == 'x') {
                     /* hexadecimal numbers */
-                    for (i += 1; qe_isxdigit(str[i]) || str[i] == '_'; i++)
+                    for (i += 1; qe_isxdigit_(str[i]); i++)
                         continue;
                 } else
                 if (c == '0' && qe_tolower(str[i]) == 'd') {
@@ -2292,6 +2316,236 @@ static int ruby_init(void)
     return 0;
 }
 
+/*---------------- ML/Ocaml coloring ----------------*/
+
+static char const ocaml_keywords[] = {
+    "|_|and|as|asr|assert|begin|class|constraint|do|done|downto"
+    "|else|end|exception|external|false|for|fun|function|functor"
+    "|if|ignore|in|include|incr|inherit|initializer"
+    "|land|lazy|let|lnot|loop|lor|lsl|lsr|lxor"
+    "|match|method|mod|module|mutable|new|not|object|of|open|or"
+    "|parser|prec|private|raise|rec|ref|self|sig|struct"
+    "|then|to|true|try|type|value|virtual|when|while|with"
+    "|"
+};
+
+static char const ocaml_types[] = {
+    "|array|bool|char|exn|float|format|format4||int|int32|int64"
+    "|lazy_t|list|nativeint|option|string|unit|val"
+    "|"
+};
+
+enum {
+    IN_OCAML_COMMENT  = 0x01,
+    IN_OCAML_STRING   = 0x02,
+};
+
+enum {
+    OCAML_STYLE_TEXT       = QE_STYLE_DEFAULT,
+    OCAML_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    OCAML_STYLE_COMMENT    = QE_STYLE_COMMENT,
+    OCAML_STYLE_STRING     = QE_STYLE_STRING,
+    OCAML_STYLE_STRING1    = QE_STYLE_STRING,
+    OCAML_STYLE_NUMBER     = QE_STYLE_NUMBER,
+    OCAML_STYLE_KEYWORD    = QE_STYLE_KEYWORD,
+    OCAML_STYLE_TYPE       = QE_STYLE_TYPE,
+    OCAML_STYLE_IDENTIFIER = QE_STYLE_DEFAULT,
+    OCAML_STYLE_FUNCTION   = QE_STYLE_FUNCTION,
+};
+
+static void ocaml_colorize_line(QEColorizeContext *cp,
+                                 unsigned int *str, int n, int mode_flags)
+{
+    int i = 0, start = i, c, k, style;
+    int colstate = cp->colorize_state;
+
+    if (colstate & IN_OCAML_COMMENT)
+        goto parse_comment;
+
+    if (colstate & IN_OCAML_STRING)
+        goto parse_string;
+
+    if (str[i] == '#') {
+        /* Handle shbang script heading ^#!.+
+         * and preprocessor # line directives
+         */
+        i = n;
+        SET_COLOR(str, start, i, OCAML_STYLE_PREPROCESS);
+    }
+
+    while (i < n) {
+        start = i;
+        style = OCAML_STYLE_TEXT;
+        c = str[i++];
+        switch (c) {
+        case '(':
+            /* check for comment */
+            if (str[i] != '*')
+                break;
+
+            /* regular comment (recursive?) */
+            colstate = IN_OCAML_COMMENT;
+            i++;
+        parse_comment:
+            style = OCAML_STYLE_COMMENT;
+            for (; i < n; i++) {
+                if (str[i] == '*' && str[i + 1] == ')') {
+                    i += 2;
+                    colstate = 0;
+                    break;
+                }
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        case '\"':
+            colstate = IN_OCAML_STRING;
+        parse_string:
+            /* parse string */
+            style = OCAML_STYLE_STRING;
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\' && i < n)
+                    i++;
+                else
+                if (c == '\"') {
+                    colstate = 0;
+                    break;
+                }
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        case '\'':
+            /* parse type atom or char const */
+            if ((i + 1 < n && str[i] != '\\' && str[i + 1] == '\'')
+            ||  (i + 2 < n && str[i] == '\\' && str[i + 2] == '\'')
+            ||  (str[i] == '\\' && str[i + 1] == 'x' &&
+                 qe_isxdigit(str[i + 2]) && qe_isxdigit(str[i + 3]) &&
+                 str[i + 4] == '\'')
+            ||  (str[i] == '\\' && qe_isdigit(str[i + 1]) &&
+                 qe_isdigit(str[i + 2]) && qe_isdigit(str[i + 3]) &&
+                 str[i + 4] == '\'')) {
+                style = OCAML_STYLE_STRING1;
+                while (str[i++] != '\'')
+                    continue;
+            } else
+            if (qe_isalpha_(str[i])) {
+                while (i < n && (qe_isalnum_(str[i]) || str[i] == '\''))
+                    i++;
+                style = OCAML_STYLE_TYPE;
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        default:
+            break;
+        }
+        /* parse numbers */
+        if (qe_isdigit(c)) {
+            style = OCAML_STYLE_NUMBER;
+            if (c == '0' && qe_tolower(str[i]) == 'o'
+            &&  qe_isoctdigit(str[i + 1])) {
+                /* octal int: 0[oO][0-7][0-7_]*[lLn]? */
+                for (i += 1; qe_isoctdigit_(str[i]); i++)
+                    continue;
+                if (qe_findchar("lLn", str[i]))
+                    i++;
+            } else
+            if (c == '0' && qe_tolower(str[i]) == 'x'
+            &&  qe_isxdigit(str[i + 1])) {
+                /* hex int: 0[xX][0-9a-fA-F][0-9a-zA-Z_]*[lLn]? */
+                for (i += 1; qe_isxdigit(str[i]); i++)
+                    continue;
+                if (qe_findchar("lLn", str[i]))
+                    i++;
+            } else
+            if (c == '0' && qe_tolower(str[i]) == 'b'
+            &&  qe_isbindigit(str[i + 1])) {
+                /* binary int: 0[bB][01][01_]*[lLn]? */
+                for (i += 1; qe_isbindigit_(str[i]); i++)
+                    continue;
+                if (qe_findchar("lLn", str[i]))
+                    i++;
+            } else {
+                /* decimal integer: [0-9][0-9_]*[lLn]? */
+                for (; qe_isdigit_(str[i]); i++)
+                    continue;
+                if (qe_findchar("lLn", str[i])) {
+                    i++;
+                } else {
+                    /* float:
+                     * [0-9][0-9_]*(.[0-9_]*])?([eE][-+]?[0-9][0-9_]*)? */
+                    if (str[i] == '.') {
+                        for (i += 1; qe_isdigit_(str[i]); i++)
+                            continue;
+                    }
+                    if (qe_tolower(str[i]) == 'e') {
+                        int k = i + 1;
+                        if (str[k] == '+' || str[k] == '-')
+                            k++;
+                        if (qe_isdigit(str[k])) {
+                            for (i = k + 1; qe_isdigit_(str[i]); i++)
+                                continue;
+                        }
+                    }
+                }
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        }
+        /* parse identifiers and keywords */
+        if (qe_isalpha_(c)) {
+            for (; i < n; i++) {
+                if (!qe_isalnum_(str[i]) || str[i] == '\'')
+                    break;
+            }
+            if (is_keyword(str, start, i, ocaml_types)) {
+                style = OCAML_STYLE_TYPE;
+            } else
+            if (is_keyword(str, start, i, ocaml_keywords)) {
+                style = OCAML_STYLE_KEYWORD;
+            } else {
+                style = OCAML_STYLE_IDENTIFIER;
+                k = i;
+                if (qe_isblank(str[k]))
+                    k++;
+                if (str[k] == '(' && str[k + 1] != '*')
+                    style = OCAML_STYLE_FUNCTION;
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        }
+    }
+    cp->colorize_state = colstate;
+}
+
+static int ocaml_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->filename, mode->extensions))
+        return 80;
+
+    return 1;
+}
+
+static CmdDef ocaml_commands[] = {
+    CMD_DEF_END,
+};
+
+static ModeDef ocaml_mode;
+
+static int ocaml_init(void)
+{
+    /* ocaml mode is almost like the text mode, so we copy and patch it */
+    memcpy(&ocaml_mode, &text_mode, sizeof(ModeDef));
+    ocaml_mode.name = "Ocaml";
+    ocaml_mode.extensions = "ml|mli|mll|mly";
+    ocaml_mode.mode_probe = ocaml_mode_probe;
+    ocaml_mode.colorize_func = ocaml_colorize_line;
+
+    qe_register_mode(&ocaml_mode);
+    qe_register_cmd_table(ocaml_commands, &ocaml_mode);
+
+    return 0;
+}
+
 /*----------------*/
 
 static int extra_modes_init(void)
@@ -2307,6 +2561,7 @@ static int extra_modes_init(void)
     haskell_init();
     python_init();
     ruby_init();
+    ocaml_init();
     return 0;
 }
 
