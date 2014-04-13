@@ -260,12 +260,22 @@ static inline int qe_isalpha_(int c) {
 static inline int qe_isoctdigit(int c) {
     return qe_inrange(c, '0', '7');
 }
+static inline int qe_isoctdigit_(int c) {
+    return qe_inrange(c, '0', '7') || (c == '_');
+}
 static inline int qe_isbindigit(int c) {
     return qe_inrange(c, '0', '1');
+}
+static inline int qe_isbindigit_(int c) {
+    return qe_inrange(c, '0', '1') || (c == '_');
 }
 static inline int qe_isxdigit(int c) {
     return (qe_inrange(c, '0', '9') ||
             qe_inrange(c | ('a' - 'A'), 'a', 'f'));
+}
+static inline int qe_isxdigit_(int c) {
+    return (qe_inrange(c, '0', '9') ||
+            qe_inrange(c | ('a' - 'A'), 'a', 'f') || (c == '_'));
 }
 static inline int qe_isalnum(int c) {
     return (qe_inrange(c, '0', '9') ||
@@ -290,7 +300,6 @@ static inline int qe_toupper(int c) {
 static inline int qe_tolower(int c) {
     return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
 }
-
 static int inline qe_findchar(const char *str, int c) {
     return qe_inrange(c, 1, 255) && strchr(str, c);
 }
