@@ -2114,6 +2114,8 @@ void do_what_cursor_position(EditState *s)
         if (c < 127 || c >= 160) {
             buf_put_byte(out, ' ');
             buf_put_byte(out, '\'');
+            if (c == '\\' || c == '\'')
+                buf_put_byte(out, '\\');
             buf_putc_utf8(out, c);
             if (c2)
                 buf_putc_utf8(out, c2);
@@ -4860,8 +4862,11 @@ void edit_close(EditState **sp)
     }
 }
 
-static const char *file_completion_ignore_extensions =
-    "|bak|bin|obj|dll|exe|o|so|a|gz|tgz|bz2|bzip2|xz";
+static const char *file_completion_ignore_extensions = {
+    "|bak|bin|obj|dll|exe|o|so|a|gz|tgz|bz2|bzip2|xz"
+    "|cma|cmi|cmo|cmt|cmti|cmx"
+    "|"
+};
 
 void file_completion(CompleteState *cp)
 {
