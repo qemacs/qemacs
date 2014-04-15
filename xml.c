@@ -140,9 +140,7 @@ static void xml_colorize_line(QEColorizeContext *cp,
                     str[i] = '\0';
                     state &= ~IN_XML_SCRIPT;
                     cp->colorize_state = state;
-                    /* XXX: should have js_colorize_func */
-                    c_colorize_line(cp, str + start, i - start,
-                                    CLANG_JS | CLANG_REGEX);
+                    js_colorize_line(cp, str + start, i - start, 0);
                     state = cp->colorize_state;
                     state |= IN_XML_SCRIPT;
                     str[i] = c;
@@ -164,8 +162,7 @@ static void xml_colorize_line(QEColorizeContext *cp,
                     str[i] = '\0';
                     state &= ~IN_XML_STYLE;
                     cp->colorize_state = state;
-                    /* XXX: should have css_colorize_func */
-                    c_colorize_line(cp, str + start, i - start, 0);
+                    css_colorize_line(cp, str + start, i - start, 0);
                     state = cp->colorize_state;
                     state |= IN_XML_STYLE;
                     str[i] = c;

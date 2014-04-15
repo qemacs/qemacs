@@ -21,15 +21,39 @@
 
 #include "qe.h"
 
-static const char cc_keywords[] = {
+static const char c_keywords[] = {
+    "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
+    "if|inline|register|restrict|return|sizeof|static|struct|switch|"
+    "typedef|union|volatile|while|"
+};
+
+static const char c_types[] = {
+    "char|double|float|int|long|unsigned|short|signed|void|"
+    "_Bool|_Complex|_Imaginary|"
+};
+
+static const char cpp_keywords[] = {
     "asm|catch|class|delete|friend|inline|new|operator|"
     "private|protected|public|template|try|this|virtual|throw|"
+};
+
+static const char java_keywords[] = {
+    "abstract|assert|break|byte|case|catch|class|const|continue|"
+    "default|do|extends|false|final|finally|for|function|"
+    "if|implements|import|in|instanceof|interface|native|new|null|"
+    "package|private|protected|public|return|"
+    "static|super|switch|synchronized|"
+    "this|throw|throws|transient|true|try|var|while|with|"
+};
+
+static const char java_types[] = {
+    "boolean|byte|char|double|float|int|long|short|void|String|"
 };
 
 static const char js_keywords[] = {
     "break|case|catch|continue|debugger|default|delete|do|"
     "else|finally|for|function|if|in|instanceof|new|"
-    "return|switch|this|throw|try|typeof|var|void|while|with|"
+    "return|switch|this|throw|try|typeof|while|with|"
     /* FutureReservedWord */
     "class|const|enum|import|export|extends|super|"
     /* The following tokens are also considered to be
@@ -42,25 +66,22 @@ static const char js_keywords[] = {
     "eval|arguments|"
 };
 
-static const char java_keywords[] = {
-    "abstract|boolean|break|byte|case|catch|class|const|continue|"
-    "default|do|alse|extends|false|final|finally|for|function|"
-    "if|implements|import|in|instanceof|interface|native|new|null|"
-    "package|private|protected|public|return|"
-    "static|super|switch|synchronized|"
-    "this|throw|throws|transient|true|try|var|while|with|"
+static const char js_types[] = {
+    "void|var|"
 };
 
-static const char c_keywords[] = {
-    "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
-    "if|inline|register|restrict|return|sizeof|static|struct|switch|"
-    "typedef|union|volatile|while|"
+static const char php_keywords[] = {
+    "abstract|assert|break|case|catch|class|clone|const|continue|"
+    "declare|default|elseif|else|enddeclare|endif|endswitch|end|exit|"
+    "extends|false|final|foreach|for|function|goto|if|implements|"
+    "include_once|include|instanceof|interface|list|namespace|new|"
+    "overload|parent|private|public|require_once|require|return|"
+    "self|sizeof|static|switch|throw|trait|true|try|use|var|while|"
+    "NULL|"
 };
 
-/* NOTE: 'var' is added for javascript */
-static const char c_mode_types[] = {
-    "char|double|float|int|long|unsigned|short|signed|void|var|"
-    "_Bool|_Complex|_Imaginary|"
+static const char php_types[] = {
+    "array|boolean|bool|double|float|integer|int|object|real|string|"
 };
 
 static const char c_mode_extensions[] = {
@@ -86,7 +107,7 @@ static int get_c_identifier(char *buf, int buf_size, unsigned int *p)
 
     i = j = 0;
     c = p[i];
-    if (qe_isalpha_(c & CHAR_MASK)) {
+    if (qe_isalpha_(c & CHAR_MASK) || c == '$') {
         do {
             if (j < buf_size - 1)
                 buf[j++] = c;
@@ -231,16 +252,20 @@ void c_colorize_line(QEColorizeContext *cp,
                 state = IN_C_PREPROCESS;
                 style = C_STYLE_PREPROCESS;
             }
+            if (mode_flags & CLANG_PHP) {
+                goto parse_comment1;
+            }
             break;
         case 'L':       /* wide character and string literals */
-            /* XXX: C only */
-            if (str[i] == '\'') {
-                i++;
-                goto parse_string_q;
-            }
-            if (str[i] == '\"') {
-                i++;
-                goto parse_string;
+            if (mode_flags & (CLANG_C | CLANG_CPP | CLANG_OBJC)) {
+                if (str[i] == '\'') {
+                    i++;
+                    goto parse_string_q;
+                }
+                if (str[i] == '\"') {
+                    i++;
+                    goto parse_string;
+                }
             }
             goto normal;
         case '\'':      /* character constant */
@@ -277,30 +302,34 @@ void c_colorize_line(QEColorizeContext *cp,
             type_decl = 0;
             break;
         case '<':       /* JavaScript extension */
-            /* XXX: js only */
-            if (str[i] == '!' && str[i + 1] == '-' && str[i + 2] == '-')
-                goto parse_comment1;
+            if (mode_flags & CLANG_JS) {
+                if (str[i] == '!' && str[i + 1] == '-' && str[i + 2] == '-')
+                    goto parse_comment1;
+            }
             break;
         default:
         normal:
             if (state & IN_C_PREPROCESS)
                 break;
             if (qe_isdigit(c)) {
+                /* XXX: should parse actual number syntax */
                 while (qe_isalnum(str[i]) || str[i] == '.') {
                     i++;
                 }
                 SET_COLOR(str, start, i, C_STYLE_NUMBER);
                 continue;
             }
-            if (qe_isalpha_(c)) {
-                /* XXX: should support :: and $ */
+            if (qe_isalpha_(c) || c == '$') {
+                /* XXX: should support :: */
                 klen = get_c_identifier(kbuf, countof(kbuf), str + start);
                 i = start + klen;
 
-                if (((mode_flags & (CLANG_C|CLANG_CPP|CLANG_OBJC)) && strfind(c_keywords, kbuf))
-                ||  ((mode_flags & CLANG_CPP) && strfind(cc_keywords, kbuf))
-                ||  ((mode_flags & CLANG_JS) && strfind(js_keywords, kbuf))
+                if (((mode_flags & (CLANG_C|CLANG_CPP|CLANG_OBJC)) &&
+                     strfind(c_keywords, kbuf))
+                ||  ((mode_flags & CLANG_CPP) && strfind(cpp_keywords, kbuf))
                 ||  ((mode_flags & CLANG_JAVA) && strfind(java_keywords, kbuf))
+                ||  ((mode_flags & CLANG_JS) && strfind(js_keywords, kbuf))
+                ||  ((mode_flags & CLANG_PHP) && strfind(php_keywords, kbuf))
                    ) {
                     SET_COLOR(str, start, i, C_STYLE_KEYWORD);
                     continue;
@@ -313,9 +342,12 @@ void c_colorize_line(QEColorizeContext *cp,
                 while (str[i2] == '*' || qe_isblank(str[i2]))
                     i2++;
 
-                /* XXX: should check type depending on flavor */
-                if (strfind(c_mode_types, kbuf) || strend(kbuf, "_t", NULL)) {
-                    /* c type */
+                if (((mode_flags & (CLANG_C | CLANG_CPP | CLANG_OBJC)) &&
+                     (strfind(c_types, kbuf) ||
+                      strend(kbuf, "_t", NULL)))
+                ||  ((mode_flags & CLANG_JAVA) && strfind(java_types, kbuf))
+                ||  ((mode_flags & CLANG_JS) && strfind(js_types, kbuf))
+                ||  ((mode_flags & CLANG_PHP) && strfind(php_types, kbuf))) {
                     /* if not cast, assume type declaration */
                     if (str[i2] != ')') {
                         type_decl = 1;
@@ -331,7 +363,7 @@ void c_colorize_line(QEColorizeContext *cp,
                     continue;
                 }
                 /* assume typedef if starting at first column */
-                if (start == 0)
+                if (start == 0 && qe_isalpha_(str[i]))
                     type_decl = 1;
 
                 if (type_decl) {
@@ -884,17 +916,13 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
         s->mode_name = "ObjC";
         s->mode_flags = CLANG_OBJC;
     } else
-    if (match_extension(s->b->filename, "js|json")) {
-        s->mode_name = "Javascript";
-        s->mode_flags = CLANG_JS | CLANG_REGEX;
-    } else
-    if (match_extension(s->b->filename, "st")) {
-        s->mode_name = "Syntax";
-        s->mode_flags = CLANG_C | CLANG_REGEX;
-    } else
     if (match_extension(s->b->filename, "jav|java")) {
         s->mode_name = "Java";
         s->mode_flags = CLANG_JAVA;
+    } else
+    if (match_extension(s->b->filename, "js|json")) {
+        s->mode_name = "Javascript";
+        s->mode_flags = CLANG_JS | CLANG_REGEX;
     } else
     if (match_extension(s->b->filename, "l|lex")) {
         s->mode_name = "Lex";
@@ -903,6 +931,10 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     if (match_extension(s->b->filename, "y")) {
         s->mode_name = "Yacc";
         s->mode_flags = CLANG_C | CLANG_YACC;
+    } else
+    if (match_extension(s->b->filename, "st")) {
+        s->mode_name = "Syntax";
+        s->mode_flags = CLANG_C | CLANG_REGEX;
     }
     return 0;
 }

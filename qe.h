@@ -1951,17 +1951,37 @@ void do_dired(EditState *s);
 
 /* clang.c */
 
-#define CLANG_C      0x01
-#define CLANG_CPP    0x02
-#define CLANG_OBJC   0x04
-#define CLANG_JS     0x08
-#define CLANG_JAVA   0x10
-#define CLANG_LEX    0x20
-#define CLANG_YACC   0x40
-#define CLANG_REGEX  0x80
+#define CLANG_C      0x0001
+#define CLANG_CPP    0x0002
+#define CLANG_OBJC   0x0004
+#define CLANG_JS     0x0008
+#define CLANG_JAVA   0x0010
+#define CLANG_LEX    0x0020
+#define CLANG_YACC   0x0040
+#define CLANG_REGEX  0x0080
+#define CLANG_PHP    0x0100
 
 void c_colorize_line(QEColorizeContext *cp,
                      unsigned int *str, int n, int mode_flags);
+
+static inline void js_colorize_line(QEColorizeContext *cp,
+                                    unsigned int *str, int n, int mode_flags)
+{
+    c_colorize_line(cp, str, n, mode_flags | CLANG_JS | CLANG_REGEX);
+}
+
+static inline void php_colorize_line(QEColorizeContext *cp,
+                                     unsigned int *str, int n, int mode_flags)
+{
+    c_colorize_line(cp, str, n, mode_flags | CLANG_PHP | CLANG_REGEX);
+}
+
+static inline void css_colorize_line(QEColorizeContext *cp,
+                                     unsigned int *str, int n, int mode_flags)
+{
+    /* XXX: should have real colorizer for CSS syntax */
+    c_colorize_line(cp, str, n, mode_flags);
+}
 
 /* xml.c */
 

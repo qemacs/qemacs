@@ -8,6 +8,10 @@
 ** basic: indent-rigidly
 ** basic: minibuffer completion -> bad return on C-x C-f . SPC qe SPC RET
 ** basic: scripting
+** basic: handle chinese encodings
+** basic: handle euc-kr
+** basic: autodetect sjis, euc-jp...
+** basic: fix colors, default schemes...
 ** c-mode: fix c indentation inside comments
 ** c-mode: fix c indentation inside struct, array and enum initializers
 ** dired: fix layout mess when dired/bufed side window loses focus
@@ -20,6 +24,7 @@
 ** files: insert-file: load via separate buffer with charset conversion
 ** files: reload-file on C-x C-r
 ** html: fix scoring for xml / html / htmlsrc
+** html-src/xml: fix colorizer for multi-line tags and attributes
 ** modes: header-line format
 ** modes: mode-line format
 ** modes: split modes into colorizers, interaction, io, charset, eoltype
@@ -208,7 +213,6 @@ insert_window_left()  deletes some left-most windows
 *** global QTAGS file indexed with global includes
 ** see if java/javascript/c++ is OK.
 ** autocomplete keyword, function, variable, member names
-** show-ifdefs
 ** automatic indentation detection
 ** c-mode descendants:
 *** as-mode: ActionStript files
@@ -226,6 +230,7 @@ insert_window_left()  deletes some left-most windows
 *** idl-mode
 ** DONE auto-indent
 ** DONE forward-ifdef, backward-ifdef
+** DONE show-ifdefs
 
 * HTML mode
 
@@ -263,7 +268,6 @@ insert_window_left()  deletes some left-most windows
 * Bufed
 
 ** make bufed a popup window -> buffer-menu
-** adjust bufed gutter width for max name length
 ** DONE show modified status and mode in bufed
 
 * Dired
@@ -274,12 +278,12 @@ insert_window_left()  deletes some left-most windows
 ** snap dired left window horiz scroll
 ** make dired left window temporary popleft window
 ** dired left window delete sometimes doesn't fix layout.
-** refresh side view when current file changes on line 1
 ** improve dired (file commands, nicer display)
 *** t -> dired-touch
 *** | -> dired-shell-command
 *** D -> dired-mkdir
 ** make archive mode use dired commands
+** DONE refresh side view when current file changes on line 1
 ** DONE full listing
 
 * Modes
@@ -323,6 +327,8 @@ insert_window_left()  deletes some left-most windows
 *** ruby-mode ->
 *** sh-mode -> shell script files
 *** vbasic-mode -> Visual Basic.
+*** ocaml-mode ->
+*** php-mode -> PHP.
 ** missing languages:
 *** ada-mode -> Ada
 *** asp-mode -> 
@@ -381,13 +387,11 @@ insert_window_left()  deletes some left-most windows
 *** nroff-mode
 *** nsis-mode ->
 *** objj-mode ->
-*** ocaml-mode ->
 *** ocl-mode ->
 *** octave-mode ->
 *** ooc-mode ->
 *** opal-mode ->
 *** opencl-mode ->
-*** php-mode -> PHP.
 *** pkgconfig-mode ->
 *** po-mode -> translation files
 *** prolog-mode ->
