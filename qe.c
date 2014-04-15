@@ -8003,7 +8003,7 @@ static void qe_init(void *opaque)
     }
 
 #if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
-    if (is_player && _optind >= argc) {
+    if (is_player && (_optind >= argc || S_ISDIR(s->b->st_mode))) {
         /* if player, go to directory mode by default if no file selected */
         do_dired(s);
     }
