@@ -2325,13 +2325,13 @@ static char const ocaml_keywords[] = {
     "|land|lazy|let|lnot|loop|lor|lsl|lsr|lxor"
     "|match|method|mod|module|mutable|new|not|object|of|open|or"
     "|parser|prec|private|raise|rec|ref|self|sig|struct"
-    "|then|to|true|try|type|value|virtual|when|while|with"
+    "|then|to|true|try|type|val|value|virtual|when|while|with"
     "|"
 };
 
 static char const ocaml_types[] = {
     "|array|bool|char|exn|float|format|format4||int|int32|int64"
-    "|lazy_t|list|nativeint|option|string|unit|val"
+    "|lazy_t|list|nativeint|option|string|unit"
     "|"
 };
 
