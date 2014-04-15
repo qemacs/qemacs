@@ -846,6 +846,10 @@ static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
             score = 95;
         p++;
     }
+
+    if (match_extension(p1->filename, "php"))
+        return 75;
+
     return score;
 }
 
