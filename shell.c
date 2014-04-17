@@ -1264,7 +1264,10 @@ static void shell_read_cb(void *opaque)
         for (i = 0; i < len; i++)
             tty_emulate(s, buf[i]);
 
-        s->b->flags |= save_readonly;
+        if (save_readonly) {
+            s->b->modified = 0;
+            s->b->flags |= save_readonly;
+        }
     }
     /* now we do some refresh */
     edit_display(qs);
@@ -1394,6 +1397,8 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
         s = b->priv_data;
         if (s && s->signature != &shell_signature)
             return NULL;
+        if (shell_flags & SF_COLOR)
+            eb_create_style_buffer(b, BF_STYLE2);
     } else {
         int bf_flags = BF_SAVELOG;
         if (shell_flags & SF_COLOR)
