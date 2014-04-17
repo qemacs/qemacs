@@ -362,11 +362,85 @@ static int wget_init(void)
     return 0;
 }
 
+/*---------------- Manual pages ----------------*/
+
+static ModeDef man_mode;
+
+static int man_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->real_filename, "1|2|3|4|5|6|7|8")
+    &&  !strchr(p->filename, '.')
+    &&  (p->buf[0] == '.' || !memcmp(p->buf, "'\\\"", 3))) {
+        if (p->b && p->b->priv_data) {
+            /* buffer loaded, re-selecting mode causes buffer reload */
+            return 9;
+        } else {
+            /* buffer not yet loaded */
+            return 90;
+        }
+    }
+
+    return 0;
+}
+
+static int man_buffer_load(EditBuffer *b, FILE *f)
+{
+    /* Launch man subprocess to format manual page */
+    char cmd[1024];
+
+    eb_clear(b);
+    snprintf(cmd, sizeof(cmd), "man %s", b->filename);
+    new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
+                     SF_COLOR | SF_INFINITE);
+    /* XXX: should check for man error */
+    /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
+    b->flags |= BF_READONLY;
+
+    return 0;
+}
+
+static int man_buffer_save(EditBuffer *b, int start, int end,
+                               const char *filename)
+{
+    /* XXX: should put contents back to web server */
+    return -1;
+}
+
+static void man_buffer_close(EditBuffer *b)
+{
+    /* XXX: kill process? */
+}
+
+static EditBufferDataType man_data_type = {
+    "man",
+    man_buffer_load,
+    man_buffer_save,
+    man_buffer_close,
+    NULL, /* next */
+};
+
+static int man_init(void)
+{
+    /* copy and patch text_mode */
+    memcpy(&man_mode, &text_mode, sizeof(ModeDef));
+    man_mode.name = "man";
+    man_mode.mode_probe = man_mode_probe;
+    man_mode.data_type = &man_data_type;
+
+    eb_register_data_type(&man_data_type);
+    qe_register_mode(&man_mode);
+
+    return 0;
+}
+
 /*---------------- Initialization ----------------*/
 
 static int archive_compress_init(void)
 {
-    return archive_init() || compress_init() || wget_init();
+    return archive_init() ||
+            compress_init() ||
+            wget_init() ||
+            man_init();
 }
 
 qe_module_init(archive_compress_init);
