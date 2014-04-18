@@ -84,6 +84,24 @@ static const char php_types[] = {
     "array|boolean|bool|double|float|integer|int|object|real|string|"
 };
 
+static const char go_keywords[] = {
+    /* keywords */
+    "break|case|chan|const|continue|default|defer|else|fallthrough|"
+    "for|func|go|goto|if|import|interface|map|package|range|"
+    "return|select|struct|switch|type|var|"
+    /* builtins */
+    "append|cap|close|complex|copy|delete|imag|len|make|new|panic|"
+    "print|println|real|recover|"
+    /* Constants */
+    "false|iota|nil|true|"
+};
+
+static const char go_types[] = {
+    "bool|byte|complex128|complex64|error|float32|float64|"
+    "int|int16|int32|int64|int8|rune|string|"
+    "uint|uint16|uint32|uint64|uint8|uintptr|"
+};
+
 static const char c_mode_extensions[] = {
     "c|h|C|H|"          /* C language */
     "y|l|lex|"          /* yacc, lex */
@@ -94,7 +112,8 @@ static const char c_mode_extensions[] = {
     "ec|ecp|"           /* Informix embedded C */
     "pgc|"              /* Postgres embedded C */
     "pcc|"              /* Oracle C++ */
-    "cal"               /* GNU Calc */
+    "cal|"              /* GNU Calc */
+    "go|"               /* Go language */
 };
 
 /* grab a C identifier from a uint buf, stripping color.
@@ -126,6 +145,7 @@ enum {
     C_STYLE_REGEX      = QE_STYLE_STRING_Q,
     C_STYLE_STRING     = QE_STYLE_STRING,
     C_STYLE_STRING_Q   = QE_STYLE_STRING_Q,
+    C_STYLE_STRING_BQ  = QE_STYLE_STRING,
     C_STYLE_NUMBER     = QE_STYLE_NUMBER,
     C_STYLE_KEYWORD    = QE_STYLE_KEYWORD,
     C_STYLE_TYPE       = QE_STYLE_TYPE,
@@ -135,13 +155,14 @@ enum {
 
 /* c-mode colorization states */
 enum {
-    IN_C_COMMENT    = 0x01   /* multiline comment */,
-    IN_C_COMMENT1   = 0x02   /* single line comment with \ at EOL */,
-    IN_C_STRING     = 0x04   /* double quoted string */,
-    IN_C_STRING_Q   = 0x08   /* single quoted string */,
-    IN_C_PREPROCESS = 0x10   /* preprocessor directive with \ at EOL */,
-    IN_C_REGEX      = 0x20   /* regex */,
-    IN_C_CHARCLASS  = 0x40   /* regex char class */,
+    IN_C_COMMENT    = 0x01,  /* multiline comment */
+    IN_C_COMMENT1   = 0x02,  /* single line comment with \ at EOL */
+    IN_C_STRING     = 0x04,  /* double-quoted string */
+    IN_C_STRING_Q   = 0x08,  /* single-quoted string */
+    IN_C_STRING_BQ  = 0x10,  /* back-quoted string (go's multi-line string) */
+    IN_C_PREPROCESS = 0x20,  /* preprocessor directive with \ at EOL */
+    IN_C_REGEX      = 0x40,  /* regex */
+    IN_C_CHARCLASS  = 0x80,  /* regex char class */
 };
 
 void c_colorize_line(QEColorizeContext *cp,
@@ -176,6 +197,8 @@ void c_colorize_line(QEColorizeContext *cp,
             goto parse_string;
         if (state & IN_C_STRING_Q)
             goto parse_string_q;
+        if (state & IN_C_STRING_BQ)
+            goto parse_string_bq;
         if (state & IN_C_REGEX)
             goto parse_regex;
     }
@@ -274,6 +297,26 @@ void c_colorize_line(QEColorizeContext *cp,
             style1 = C_STYLE_STRING_Q;
             delim = '\'';
             goto string;
+        case '`':
+            if (mode_flags & CLANG_GO) {
+                /* go language multi-line string, no escape sequences */
+            parse_string_bq:
+                state |= IN_C_STRING_BQ;
+                style1 = C_STYLE_STRING_BQ;
+                delim = '`';
+                while (i < n) {
+                    c = str[i++];
+                    if (c == delim) {
+                        state &= ~IN_C_STRING_BQ;
+                        break;
+                    }
+                }
+                if (state & IN_C_PREPROCESS)
+                    style1 = C_STYLE_PREPROCESS;
+                SET_COLOR(str, start, i, style1);
+                continue;
+            }
+            break;
         case '\"':      /* string literal */
         parse_string:
             state |= IN_C_STRING;
@@ -288,7 +331,7 @@ void c_colorize_line(QEColorizeContext *cp,
                     i++;
                 } else
                 if (c == delim) {
-                    state &= ~(IN_C_STRING | IN_C_STRING_Q);
+                    state &= ~(IN_C_STRING | IN_C_STRING_Q | IN_C_STRING_BQ);
                     break;
                 }
             }
@@ -330,6 +373,7 @@ void c_colorize_line(QEColorizeContext *cp,
                 ||  ((mode_flags & CLANG_JAVA) && strfind(java_keywords, kbuf))
                 ||  ((mode_flags & CLANG_JS) && strfind(js_keywords, kbuf))
                 ||  ((mode_flags & CLANG_PHP) && strfind(php_keywords, kbuf))
+                ||  ((mode_flags & CLANG_GO) && strfind(go_keywords, kbuf))
                    ) {
                     SET_COLOR(str, start, i, C_STYLE_KEYWORD);
                     continue;
@@ -347,12 +391,19 @@ void c_colorize_line(QEColorizeContext *cp,
                       strend(kbuf, "_t", NULL)))
                 ||  ((mode_flags & CLANG_JAVA) && strfind(java_types, kbuf))
                 ||  ((mode_flags & CLANG_JS) && strfind(js_types, kbuf))
-                ||  ((mode_flags & CLANG_PHP) && strfind(php_types, kbuf))) {
+                ||  ((mode_flags & CLANG_PHP) && strfind(php_types, kbuf))
+                ||  ((mode_flags & CLANG_GO) && strfind(go_types, kbuf))
+                   ) {
                     /* if not cast, assume type declaration */
                     if (str[i2] != ')') {
                         type_decl = 1;
                     }
-                    SET_COLOR(str, start, i, C_STYLE_TYPE);
+                    style1 = C_STYLE_TYPE;
+                    if (str[i1] == '(') {
+                        /* function style cast */
+                        style1 = C_STYLE_KEYWORD;
+                    }
+                    SET_COLOR(str, start, i, style1);
                     continue;
                 }
 
@@ -362,16 +413,18 @@ void c_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, start, i, C_STYLE_FUNCTION);
                     continue;
                 }
-                /* assume typedef if starting at first column */
-                if (start == 0 && qe_isalpha_(str[i]))
-                    type_decl = 1;
+                if (mode_flags & (CLANG_C | CLANG_CPP | CLANG_OBJC | CLANG_JAVA)) {
+                    /* assume typedef if starting at first column */
+                    if (start == 0 && qe_isalpha_(str[i]))
+                        type_decl = 1;
 
-                if (type_decl) {
-                    if (start == 0) {
-                        /* assume type if first column */
-                        SET_COLOR(str, start, i, C_STYLE_TYPE);
-                    } else {
-                        SET_COLOR(str, start, i, C_STYLE_VARIABLE);
+                    if (type_decl) {
+                        if (start == 0) {
+                            /* assume type if first column */
+                            SET_COLOR(str, start, i, C_STYLE_TYPE);
+                        } else {
+                            SET_COLOR(str, start, i, C_STYLE_VARIABLE);
+                        }
                     }
                 }
                 continue;
@@ -935,6 +988,10 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     if (match_extension(s->b->filename, "st")) {
         s->mode_name = "Syntax";
         s->mode_flags = CLANG_C | CLANG_REGEX;
+    } else
+    if (match_extension(s->b->filename, "go")) {
+        s->mode_name = "Go";
+        s->mode_flags = CLANG_GO;
     }
     return 0;
 }

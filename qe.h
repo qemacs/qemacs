@@ -1960,6 +1960,7 @@ void do_dired(EditState *s);
 #define CLANG_YACC   0x0040
 #define CLANG_REGEX  0x0080
 #define CLANG_PHP    0x0100
+#define CLANG_GO     0x0200
 
 void c_colorize_line(QEColorizeContext *cp,
                      unsigned int *str, int n, int mode_flags);
