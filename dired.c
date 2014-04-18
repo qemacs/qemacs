@@ -522,6 +522,7 @@ static void dired_sort_list(EditState *s)
     ds->no_gid = ((width -= ds->gidlen + 1) < 0);
     ds->no_link = ((width -= ds->linklen + 1) < 0);
     ds->no_blocks = ((width -= ds->blockslen + 1) < 0);
+    ds->no_blocks = 1;  // disable blocks display to avoid confusing output
 
     for (i = 0; i < ds->items.nb_items; i++) {
         item = ds->items.items[i];
