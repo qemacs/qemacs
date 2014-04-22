@@ -125,18 +125,27 @@ static void latex_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static int latex_mode_probe(ModeDef *mode, ModeProbeData *p)
+static int latex_mode_probe(ModeDef *mode, ModeProbeData *mp)
 {
+    const u8 *p = mp->buf;
+
     /* currently, only use the file extension */
     /* Halibut (by Simon Tatham) has a syntax similar to TeX and uses
      * .but extension */
-    if (match_extension(p->filename, mode->extensions))
+    if (match_extension(mp->filename, mode->extensions))
         return 80;
 
     /* Match TeX style sheets if they start with a comment */
-    if (match_extension(p->filename, "sty") && p->buf[0] == '%')
+    if (match_extension(mp->filename, "sty|cls") && *p == '%')
         return 80;
 
+    if (*p == '\\') {
+        /* match [\][a-z0-0_]+[{] */
+        while (qe_isalnum_(*++p))
+            continue;
+        if (*p == '{')
+            return 60;
+    }
     return 1;
 }
 
