@@ -12,6 +12,7 @@
 ** basic: handle euc-kr
 ** basic: autodetect sjis, euc-jp...
 ** basic: fix colors, default schemes...
+** basic: fix behaviour on overlong lines
 ** c-mode: fix c indentation inside comments
 ** c-mode: fix c indentation inside struct, array and enum initializers
 ** dired: fix layout mess when dired/bufed side window loses focus
@@ -19,6 +20,7 @@
 ** doc: migrate coding-rules.html to pandoc markdown
 ** doc: move doc and TODO to markdown format
 ** doc: rewrite TODO file with more sections and explanations
+** files: minibuffer-electric-yank in minibuffer to fix pathname
 ** files: check file date to detect asynchronous modifications on disk
 ** files: fix s->offset reset to 0 upon C-x C-f newfile ENT C-x 2 C-x b ENT
 ** files: insert-file: load via separate buffer with charset conversion
@@ -28,6 +30,7 @@
 ** modes: header-line format
 ** modes: mode-line format
 ** modes: split modes into colorizers, interaction, io, charset, eoltype
+** modes: major and minor modes
 ** search: hex search broken for non ASCII bytes
 ** search: incremental-search should not center window, many redundant matches
 ** search: pass unicode buffer in search/replace
@@ -320,15 +323,17 @@ insert_window_left()  deletes some left-most windows
 *** lisp-mode -> Lisp language
 *** lua-mode ->
 *** makefile-mode -> Gnu and other makefiles.
+*** ocaml-mode ->
 *** pascal-mode ->
 *** perl-mode -> Perl.
+*** php-mode -> PHP.
 *** postscript-mode -> PostScript files.
 *** python-mode -> Python language.
 *** ruby-mode ->
+*** scheme-mode ->
 *** sh-mode -> shell script files
+*** sql-mode ->
 *** vbasic-mode -> Visual Basic.
-*** ocaml-mode ->
-*** php-mode -> PHP.
 ** missing languages:
 *** ada-mode -> Ada
 *** asp-mode -> 
@@ -399,11 +404,9 @@ insert_window_left()  deletes some left-most windows
 *** puppet-mode ->
 *** R-mode ->
 *** rpmspec-mode ->
-*** scheme-mode ->
 *** scilab-mode ->
 *** sml-mode ->
 *** sparql-mode ->
-*** sql-mode ->
 *** systemverilog-mode ->
 *** t2t-mode ->
 *** tcl-mode -< Tcl files.
