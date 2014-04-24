@@ -22,12 +22,17 @@
 
 /* TODO: lisp-indent = 2 */
 
+#define LISP_LANG_ELISP   2
+#define LISP_LANG_SCHEME  4
+#define LISP_LANG_RACKET  8
+
 /*---------------- Lisp colors ----------------*/
 
 static const char lisp_keywords[] = {
     "defun|defvar|let|let*|if|concat|list|set|setq|when|and|or|max|min|"
     "unless|car|cdr|cons|cond|prog1|progn|case|setcar|setcdr|while|"
     "defsubst|eq|remove|not|otherwise|dolist|incf|decf|boundp|"
+    "lambda|\xCE\xBB|"
     "1+|1-|<|>|<=|>=|-|+|*|/|=|<>|/=|"
     //"interactive|"
 };
@@ -37,20 +42,24 @@ static const char lisp_types[] = {
 };
 
 enum {
-    IN_LISP_COMMENT = 0x01,
-    IN_LISP_STRING  = 0x02,
+    IN_LISP_LEVEL    = 0x1F,    /* for IN_LISP_SCOMMENT */
+    IN_LISP_COMMENT  = 0x20,
+    IN_LISP_STRING   = 0x40,
+    IN_LISP_SCOMMENT = 0x80,
 };
 
 enum {
-    LISP_STYLE_TEXT      = QE_STYLE_DEFAULT,
-    LISP_STYLE_COMMENT   = QE_STYLE_COMMENT,
-    LISP_STYLE_NUMBER    = QE_STYLE_NUMBER,
-    LISP_STYLE_STRING    = QE_STYLE_STRING,
-    LISP_STYLE_CHARCONST = QE_STYLE_STRING_Q,
-    LISP_STYLE_KEYWORD   = QE_STYLE_KEYWORD,
-    LISP_STYLE_TYPE      = QE_STYLE_TYPE,
-    LISP_STYLE_QSYMBOL   = QE_STYLE_PREPROCESS,
-    LISP_STYLE_MACRO     = QE_STYLE_TAG,
+    LISP_STYLE_TEXT       = QE_STYLE_DEFAULT,
+    LISP_STYLE_COMMENT    = QE_STYLE_COMMENT,
+    LISP_STYLE_SCOMMENT   = QE_STYLE_COMMENT,
+    LISP_STYLE_NUMBER     = QE_STYLE_NUMBER,
+    LISP_STYLE_STRING     = QE_STYLE_STRING,
+    LISP_STYLE_CHARCONST  = QE_STYLE_STRING_Q,
+    LISP_STYLE_KEYWORD    = QE_STYLE_KEYWORD,
+    LISP_STYLE_TYPE       = QE_STYLE_TYPE,
+    LISP_STYLE_QSYMBOL    = QE_STYLE_PREPROCESS,
+    LISP_STYLE_MACRO      = QE_STYLE_TAG,
+    LISP_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
 };
 
 static int lisp_get_symbol(char *buf, int buf_size, unsigned int *p)
@@ -73,21 +82,35 @@ static int lisp_is_number(const char *str)
 {
     int i;
 
-    /* XXX: parse other syntaxes, ie hex constants */
-    if (qe_isdigit(*str)) {
-        for (; qe_isdigit(*str); str++)
+    if (*str == 'b' && str[1]) {
+        for (str++; qe_isbindigit(*str); str++)
             continue;
-        if (*str == '.') {
-            for (str++; qe_isdigit(*str); str++)
+    } else
+    if (*str == 'o' && str[1]) {
+        for (str++; qe_isoctdigit(*str); str++)
+            continue;
+    } else
+    if (*str == 'x' && str[1]) {
+        for (str++; qe_isxdigit(*str); str++)
+            continue;
+    } else {
+        if ((*str == '-' || *str == 'd') && str[1])
+            str++;
+        if (qe_isdigit(*str)) {
+            for (; qe_isdigit(*str); str++)
                 continue;
-        }
-        if (qe_tolower(*str) == 'e') {
-            i = 1;
-            if (str[i] == '+' || str[i] == '-')
-                i++;
-            if (qe_isdigit(str[i])) {
-                for (str += i + 1; qe_isdigit(*str); str++)
-                    break;
+            if (*str == '.') {
+                for (str++; qe_isdigit(*str); str++)
+                    continue;
+            }
+            if (qe_tolower(*str) == 'e') {
+                i = 1;
+                if (str[i] == '+' || str[i] == '-')
+                    i++;
+                if (qe_isdigit(str[i])) {
+                    for (str += i + 1; qe_isdigit(*str); str++)
+                        continue;
+                }
             }
         }
     }
@@ -98,47 +121,59 @@ static void lisp_colorize_line(QEColorizeContext *cp,
                                unsigned int *str, int n, int mode_flags)
 {
     int colstate = cp->colorize_state;
-    int i = 0, start = i, len;
+    int i = 0, start = i, len, level, style, has_expr;
     char kbuf[32];
 
-    if (colstate & IN_LISP_STRING) {
-        while (i < n) {
-            if (str[i] == '\\' && ++i < n) {
-                i++;
-            } else
-            if (str[i++] == '"') {
-                colstate &= ~IN_LISP_STRING;
-                break;
-            }
-        }
-        SET_COLOR(str, start, i, LISP_STYLE_STRING);
-    }
-    if (colstate & IN_LISP_COMMENT) {
-        for (; i < n; i++) {
-            if (str[i] == '|' && str[i + 1] == '#') {
-                i += 2;
-                colstate &= ~IN_LISP_COMMENT;
-                break;
-            }
-        }
-        SET_COLOR(str, start, i, LISP_STYLE_COMMENT);
-    }
+    level = colstate & IN_LISP_LEVEL;
+    style = 0;
+    has_expr = 0;
+
+    if (colstate & IN_LISP_SCOMMENT)
+        style = LISP_STYLE_SCOMMENT;
+    if (colstate & IN_LISP_STRING)
+        goto parse_string;
+    if (colstate & IN_LISP_COMMENT)
+        goto parse_comment;
+
     while (i < n) {
+        has_expr = 0;
         start = i;
         switch (str[i++]) {
-        case '`':
         case ',':
+            if (str[i] == '@')
+                i++;
+            /* FALL THRU */
+        case '`':
+            if (style)
+                break;
             SET_COLOR(str, start, i, LISP_STYLE_MACRO);
             continue;
         case ';':
             i = n;
             SET_COLOR(str, start, i, LISP_STYLE_COMMENT);
             continue;
+        case '(':
+            if (colstate & IN_LISP_SCOMMENT)
+                level++;
+            break;
+        case ')':
+            if (colstate & IN_LISP_SCOMMENT) {
+                if (level-- <= 1) {
+                    SET_COLOR(str, start, i - (level < 0), style);
+                    level = 0;
+                    style = 0;
+                    colstate &= ~IN_LISP_SCOMMENT;
+                    continue;
+                }
+            }
+            break;
         case '#':
-            /* check for block comment */
             if (str[i] == '|') {
+                /* #| ... |# -> block comment */
                 colstate |= IN_LISP_COMMENT;
-                for (i++; i < n; i++) {
+                i++;
+            parse_comment:
+                for (; i < n; i++) {
                     if (str[i] == '|' && str[i + 1] == '#') {
                         i += 2;
                         colstate &= ~IN_LISP_COMMENT;
@@ -148,19 +183,93 @@ static void lisp_colorize_line(QEColorizeContext *cp,
                 SET_COLOR(str, start, i, LISP_STYLE_COMMENT);
                 continue;
             }
+            if (str[i] == ';') {
+                /* #; sexpr -> comment out sexpr */
+                i++;
+                colstate |= IN_LISP_SCOMMENT;
+                style = LISP_STYLE_SCOMMENT;
+                break;
+            }
+            if (str[i] == '"') {
+                i++;
+                colstate |= IN_LISP_STRING;
+                goto parse_string;
+            }
+            if (str[i] == ':'
+            &&  (str[i + 1] == '-' || qe_isalnum_(str[i + 1]))) {
+                len = lisp_get_symbol(kbuf, sizeof(kbuf), str + i + 1);
+                i += 1 + len;
+                goto has_symbol;
+            }
+            if (qe_isalpha_(str[i])) {
+                len = lisp_get_symbol(kbuf, sizeof(kbuf), str + i);
+                i += len;
+                if (!strcmp(kbuf, "t") || !strcmp(kbuf, "f")) {
+                    /* #f -> false, #t -> true */
+                    goto has_qsymbol;
+                }
+                if (mode_flags & LISP_LANG_RACKET) {
+                    if (start == 0 && !strcmp(kbuf, "lang")) {
+                        i = n;
+                        SET_COLOR(str, start, i, LISP_STYLE_PREPROCESS);
+                        continue;
+                    }
+                    if (!strcmp(kbuf, "rx") || !strcmp(kbuf, "px")) {
+                        if (str[i] == '"') {
+                            /* #rx"regex" */
+                            i += 1;
+                            colstate |= IN_LISP_STRING;
+                            goto parse_string;
+                        }
+                        if (str[i] == '#' && str[i + 1] == '"') {
+                            /* #rx#"regex" */
+                            i += 2;
+                            colstate |= IN_LISP_STRING;
+                            goto parse_string;
+                        }
+                    }
+                }
+                /* #b[01]+  -> binary constant */
+                /* #o[0-7]+  -> octal constant */
+                /* #d[0-9]+  -> decimal constant */
+                /* #x[0-9a-fA-F]+  -> hex constant */
+                goto has_symbol;
+            }
+            if (str[i] == '\\') {
+                if (qe_isalnum_(str[i + 1])) {
+                    /* #\x[0-9a-fA-F]+  -> hex char constant */
+                    /* #\[a-zA-Z0-9]+  -> named char constant */
+                    len = lisp_get_symbol(kbuf, sizeof(kbuf), str + i + 1);
+                    i += 1 + len;
+                    goto has_char_const;
+                }
+                if (i + 1 < n) {
+                    i += 2;
+                    goto has_char_const;
+                }
+            }
+            {
+                /* #( ... )  -> vector object */
+                /* #! ... \n  -> line comment */
+                /* # SPC  -> NIL ? */
+            }
             break;
         case '"':
             /* parse string const */
             colstate |= IN_LISP_STRING;
+        parse_string:
             while (i < n) {
                 if (str[i] == '\\' && ++i < n) {
                     i++;
                 } else
                 if (str[i++] == '"') {
                     colstate &= ~IN_LISP_STRING;
+                    has_expr = 1;
                     break;
                 }
             }
+            if (style)
+                break;
             SET_COLOR(str, start, i, LISP_STYLE_STRING);
             continue;
         case '?':
@@ -172,12 +281,20 @@ static void lisp_colorize_line(QEColorizeContext *cp,
             if (i < n) {
                 i += 1;
             }
+        has_char_const:
+            has_expr = 1;
+            if (style)
+                break;
             SET_COLOR(str, start, i, LISP_STYLE_CHARCONST);
             continue;
         case '\'':
             len = lisp_get_symbol(kbuf, sizeof(kbuf), str + i);
             if (len > 0) {
                 i += len;
+            has_qsymbol:
+                has_expr = 1;
+                if (style)
+                    break;
                 SET_COLOR(str, start, i, LISP_STYLE_QSYMBOL);
                 continue;
             }
@@ -186,6 +303,10 @@ static void lisp_colorize_line(QEColorizeContext *cp,
             len = lisp_get_symbol(kbuf, sizeof(kbuf), str + i - 1);
             if (len > 0) {
                 i += len - 1;
+            has_symbol:
+                has_expr = 1;
+                if (style)
+                    break;
                 if (lisp_is_number(kbuf)) {
                     SET_COLOR(str, start, i, LISP_STYLE_NUMBER);
                     continue;
@@ -203,18 +324,49 @@ static void lisp_colorize_line(QEColorizeContext *cp,
             }
             break;
         }
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            if (has_expr) {
+                if ((colstate & IN_LISP_SCOMMENT) && level == 0) {
+                    colstate &= ~IN_LISP_SCOMMENT;
+                    style = 0;
+                }
+            }
+        }
     }
+    colstate = (colstate & ~IN_LISP_LEVEL) | (level & IN_LISP_LEVEL);
     cp->colorize_state = colstate;
 }
 
-static int lisp_mode_probe(ModeDef *mode, ModeProbeData *p)
+static int lisp_mode_probe(ModeDef *mode, ModeProbeData *mp)
 {
     /* check file name or extension */
-    if (match_extension(p->filename, mode->extensions)
-    ||  strstart(p->filename, ".emacs", NULL))
+    if (match_extension(mp->filename, mode->extensions)
+    ||  strstart(mp->filename, ".emacs", NULL))
         return 80;
 
     return 1;
+}
+
+static int lisp_mode_init(EditState *s, ModeSavedData *saved_data)
+{
+    text_mode.mode_init(s, saved_data);
+
+    /* select lisp flavor */
+    if (match_extension(s->b->filename, "el")
+    ||  strstart(get_basename(s->b->filename), ".emacs", NULL)) {
+        s->mode_name = "ELisp";
+        s->mode_flags = LISP_LANG_ELISP;
+    } else
+    if (match_extension(s->b->filename, "scm|ss")) {
+        s->mode_name = "Scheme";
+        s->mode_flags = LISP_LANG_SCHEME;
+    } else
+    if (match_extension(s->b->filename, "rkt|rktd")) {
+        s->mode_name = "Racket";
+        s->mode_flags = LISP_LANG_RACKET;
+    }
+    return 0;
 }
 
 /* specific lisp commands */
@@ -229,8 +381,9 @@ static int lisp_init(void)
     /* lisp mode is almost like the text mode, so we copy and patch it */
     memcpy(&lisp_mode, &text_mode, sizeof(ModeDef));
     lisp_mode.name = "Lisp";
-    lisp_mode.extensions = "ll|li|lh|lo|lm|lisp|el";
+    lisp_mode.extensions = "ll|li|lh|lo|lm|lisp|el|scm|ss|rkt|rktd";
     lisp_mode.mode_probe = lisp_mode_probe;
+    lisp_mode.mode_init = lisp_mode_init;
     lisp_mode.colorize_func = lisp_colorize_line;
 
     qe_register_mode(&lisp_mode);
