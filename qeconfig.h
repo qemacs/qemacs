@@ -431,13 +431,13 @@ CmdDef minibuffer_commands[] = {
     CMD0( ' ', KEY_NONE,
           "minibuffer-complete-space", do_completion_space)
     CMD1( KEY_CTRL('p'), KEY_UP,
-          "previous-history-element", do_history, -1)
+          "minibuffer-previous-history-element", do_history, -1)
     CMD1( KEY_CTRL('n'), KEY_DOWN,
-          "next-history-element", do_history, 1)
+          "minibuffer-next-history-element", do_history, 1)
     CMD3( '/', KEY_NONE,
-          "electric-slash", do_electric_filename, ESi, '/', "*v")
+          "minibuffer-electric-slash", do_electric_filename, ESi, '/', "*v")
     CMD3( '~', KEY_NONE,
-          "electric-tilde", do_electric_filename, ESi, '~', "*v")
+          "minibuffer-electric-tilde", do_electric_filename, ESi, '~', "*v")
     CMD_DEF_END,
 };
 
