@@ -318,7 +318,7 @@ static int wget_buffer_load(EditBuffer *b, FILE *f)
     char cmd[1024];
 
     eb_clear(b);
-    snprintf(cmd, sizeof(cmd), "wget -q -O - %s", b->filename);
+    snprintf(cmd, sizeof(cmd), "wget -q -O - '%s'", b->filename);
     new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
                      SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
     /* XXX: should check for wget error */
@@ -375,7 +375,9 @@ static int man_mode_probe(ModeDef *mode, ModeProbeData *p)
    
     if (match_extension(p->real_filename, "1|1SSL|2|3|3SSL|4|5|6|7|8")
     &&  !strchr(p->filename, '.')
-    &&  (p->buf[0] == '.' || !memcmp(p->buf, "'\\\"", 3))) {
+    &&  (p->buf[0] == '.' ||
+         !memcmp(p->buf, "'\\\"", 3) ||
+         !memcmp(p->buf, "\\\"", 2))) {
     has_man:
         if (p->b && p->b->priv_data) {
             /* buffer loaded, re-selecting mode causes buffer reload */
@@ -395,7 +397,7 @@ static int man_buffer_load(EditBuffer *b, FILE *f)
     char cmd[1024];
 
     eb_clear(b);
-    snprintf(cmd, sizeof(cmd), "man %s", b->filename);
+    snprintf(cmd, sizeof(cmd), "man '%s'", b->filename);
     new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
                      SF_COLOR | SF_INFINITE);
     /* XXX: should check for man error */
