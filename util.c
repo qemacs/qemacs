@@ -323,10 +323,21 @@ char *reduce_filename(char *dest, int size, const char *filename)
 
     dbase = get_basename_nc(dest);
 
-    /* Strip numeric extensions (vcs version numbers) */
+    /* Strip some numeric extensions (vcs version numbers) */
     for (;;) {
+        /* get the last extension */
         ext = get_extension_nc(dbase);
-        if (*ext != '.' || !qe_isdigit(ext[1]))
+        /* no extension */
+        if (*ext != '.')
+            break;
+        /* keep non numeric extension */
+        if (!qe_isdigit(ext[1]))
+            break;
+        /* keep the last extension */
+        if (strchr(dbase, '.') == ext)
+            break;
+        /* only strip multidigit extensions */
+        if (!qe_isdigit(ext[2]))
             break;
         *ext = '\0';
     }

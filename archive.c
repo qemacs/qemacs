@@ -369,14 +369,19 @@ static ModeDef man_mode;
 static int man_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (match_extension(p->real_filename,
-                        "1.gz|1SSL.gz|2.gz|3.gz|3SSL.gz|4.gz|5.gz|6.gz|7.gz|8.gz")) {
+                        "1.gz|1m.gz|1ssl.gz|1tcl.gz|2.gz|3.gz|3o.gz|3ssl.gz|"
+                        "4.gz|5.gz|5ssl.gz|6.gz|7.gz|7ssl.gz|8.gz|9.gz")) {
         goto has_man;
     }
    
-    if (match_extension(p->real_filename, "1|1SSL|2|3|3SSL|4|5|6|7|8")
-    &&  !strchr(p->filename, '.')
+    if (match_extension(p->real_filename,
+                        "1|1m|1ssl|1tcl|2|3|3o|3ssl|4|5|5ssl|6|7|7ssl|8|9|"
+                        "n|ntcl")
+//    &&  !strchr(p->filename, '.')
     &&  (p->buf[0] == '.' ||
+         (p->buf[0] == '\n' && p->buf[1] == '.') ||
          !memcmp(p->buf, "'\\\"", 3) ||
+         !memcmp(p->buf, "'''", 3) ||
          !memcmp(p->buf, "\\\"", 2))) {
     has_man:
         if (p->b && p->b->priv_data) {
