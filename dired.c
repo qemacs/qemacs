@@ -829,17 +829,17 @@ static void dired_select(EditState *s)
         return;
 
     /* now we can act */
-    if (lstat(filename, &st) < 0)
-        return;
-    if (S_ISDIR(st.st_mode)) {
+    if (lstat(filename, &st) >= 0 && S_ISDIR(st.st_mode)) {
+        /* do not descend into directories pointed to by symlinks */
         dired_build_list(s, filename, NULL);
     } else
-    if (S_ISREG(st.st_mode)) {
+    if (stat(filename, &st) >= 0 && S_ISREG(st.st_mode)) {
+        /* do explore files pointed to by symlinks */
         e = find_window(s, KEY_RIGHT);
         if (e) {
             /* delete dired window */
             do_delete_window(s, 1);
-            /* remove preview flag */
+            /* XXX: should keep BF_PREVIEW flag and set pager-mode */
             e->b->flags &= ~BF_PREVIEW;
         } else {
             do_find_file(s, filename);
