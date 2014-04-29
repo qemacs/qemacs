@@ -3278,7 +3278,7 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
         s->colorize_max_valid_offset = INT_MAX;
     }
 
-    /* realloc line buffer if needed */
+    /* realloc state array if needed */
     if ((line_num + 2) > s->colorize_nb_lines) {
         s->colorize_nb_lines = line_num + 2 + COLORIZED_LINE_PREALLOC_SIZE;
         if (!qe_realloc(&s->colorize_states,
@@ -3301,9 +3301,12 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
         cctx.state_only = 1;
 
         for (l = s->colorize_nb_valid_lines; l <= line_num; l++) {
-            len = eb_get_line(s->b, buf, buf_size, &offset);
+            len = eb_get_line(s->b, buf, buf_size - 1, &offset);
+            /* skip byte order mark if present */
             bom = (len > 0 && buf[0] == 0xFEFF);
             s->colorize_func(&cctx, buf + bom, len - bom, s->mode_flags);
+            /* buf[len] has char '\0' but may hold style, force buf ending */
+            buf[len + 1] = 0;
             s->colorize_states[l] = cctx.colorize_state;
         }
     }
@@ -3311,9 +3314,10 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
     /* compute line color */
     cctx.colorize_state = s->colorize_states[line_num];
     cctx.state_only = 0;
-    len = eb_get_line(s->b, buf, buf_size, offsetp);
+    len = eb_get_line(s->b, buf, buf_size - 1, offsetp);
     bom = (len > 0 && buf[0] == 0xFEFF);
     s->colorize_func(&cctx, buf + bom, len - bom, s->mode_flags);
+    buf[len + 1] = 0;
 
     /* XXX: if state is same as previous, minimize invalid region? */
     s->colorize_states[line_num + 1] = cctx.colorize_state;

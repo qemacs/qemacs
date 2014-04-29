@@ -106,7 +106,7 @@ static const char c_mode_extensions[] = {
     "c|h|C|H|"          /* C language */
     "y|l|lex|"          /* yacc, lex */
     "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++|"   /* C++ */
-    "m|"                /* Objective-C */
+    "m|mm|"             /* Objective-C */
     "e|qe|cs|idl|st|"
     "jav|java|js|json|" /* Java, Javascript, JSon */
     "ec|ecp|"           /* Informix embedded C */
@@ -169,7 +169,7 @@ void c_colorize_line(QEColorizeContext *cp,
                      unsigned int *str, int n, int mode_flags)
 {
     int i = 0, start, i1, i2, indent;
-    int c, state, style, style1, type_decl, klen, delim;
+    int c, state, style, style0, style1, type_decl, klen, delim;
     char kbuf[32];
 
     for (indent = 0; qe_isspace(str[indent]); indent++)
@@ -183,12 +183,12 @@ void c_colorize_line(QEColorizeContext *cp,
         goto the_end;
 
     c = 0;      /* turn off stupid egcs-2.91.66 warning */
-    style = C_STYLE_DEFAULT;
+    style0 = style = C_STYLE_DEFAULT;
 
     if (state) {
         /* if already in a state, go directly in the code parsing it */
         if (state & IN_C_PREPROCESS)
-            style = C_STYLE_PREPROCESS;
+            style0 = style = C_STYLE_PREPROCESS;
         if (state & IN_C_COMMENT)
             goto parse_comment;
         if (state & IN_C_COMMENT1)
@@ -213,11 +213,13 @@ void c_colorize_line(QEColorizeContext *cp,
                 /* normal comment */
                 i++;
             parse_comment:
+                style = C_STYLE_COMMENT;
                 state |= IN_C_COMMENT;
                 for (; i < n; i++) {
                     if (str[i] == '*' && str[i + 1] == '/') {
                         i += 2;
                         state &= ~IN_C_COMMENT;
+                        style = style0;
                         break;
                     }
                 }
@@ -227,6 +229,7 @@ void c_colorize_line(QEColorizeContext *cp,
             if (str[i] == '/') {
                 /* line comment */
             parse_comment1:
+                style = C_STYLE_COMMENT;
                 state |= IN_C_COMMENT1;
                 i = n;
                 SET_COLOR(str, start, i, C_STYLE_COMMENT);
@@ -241,6 +244,7 @@ void c_colorize_line(QEColorizeContext *cp,
                 /* parse regex */
                 state = IN_C_REGEX;
             parse_regex:
+                style = C_STYLE_REGEX;
                 while (i < n) {
                     c = str[i++];
                     if (c == '\\') {
@@ -262,6 +266,7 @@ void c_colorize_line(QEColorizeContext *cp,
                                 i++;
                             }
                             state = 0;
+                            style = style0;
                             break;
                         }
                     }
@@ -273,7 +278,7 @@ void c_colorize_line(QEColorizeContext *cp,
         case '#':       /* preprocessor */
             if (mode_flags & (CLANG_C | CLANG_CPP | CLANG_OBJC)) {
                 state = IN_C_PREPROCESS;
-                style = C_STYLE_PREPROCESS;
+                style = style0 = C_STYLE_PREPROCESS;
             }
             if (mode_flags & CLANG_PHP) {
                 goto parse_comment1;
@@ -323,6 +328,7 @@ void c_colorize_line(QEColorizeContext *cp,
             style1 = C_STYLE_STRING;
             delim = '\"';
         string:
+            style = style1;
             while (i < n) {
                 c = str[i++];
                 if (c == '\\') {
@@ -332,6 +338,7 @@ void c_colorize_line(QEColorizeContext *cp,
                 } else
                 if (c == delim) {
                     state &= ~(IN_C_STRING | IN_C_STRING_Q | IN_C_STRING_BQ);
+                    style = style0;
                     break;
                 }
             }
@@ -434,6 +441,12 @@ void c_colorize_line(QEColorizeContext *cp,
         SET_COLOR1(str, start, style);
     }
  the_end:
+    if (state & (IN_C_COMMENT | IN_C_COMMENT1 | IN_C_PREPROCESS | 
+                 IN_C_STRING | IN_C_STRING_Q | IN_C_STRING_BQ)) {
+        /* set style on eol char */
+        SET_COLOR1(str, n, style);
+    }
+
     /* strip state if not overflowing from a comment */
     if (!(state & IN_C_COMMENT) && n > 0 && ((str[n - 1] & CHAR_MASK) != '\\'))
         state &= ~(IN_C_COMMENT1 | IN_C_PREPROCESS);
@@ -965,7 +978,7 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
         s->mode_name = "CPP";
         s->mode_flags = CLANG_CPP;
     } else
-    if (match_extension(s->b->filename, "m")) {
+    if (match_extension(s->b->filename, "m|mm")) {
         s->mode_name = "ObjC";
         s->mode_flags = CLANG_OBJC;
     } else
