@@ -352,7 +352,7 @@ static void do_forward_block(EditState *s, int dir)
     offset = eb_goto_bol2(s->b, s->offset, &pos);
     offset1 = offset;
     len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
-    style = buf[pos] >> STYLE_SHIFT;
+    style = buf[max(pos, len)] >> STYLE_SHIFT;
     level = 0;
 
     if (dir < 0) {
