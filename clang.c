@@ -102,6 +102,29 @@ static const char go_types[] = {
     "uint|uint16|uint32|uint64|uint8|uintptr|"
 };
 
+static const char d_keywords[] = {
+    "abstract|alias|align|asm|assert|auto|body|break|"
+    "case|cast|catch|class|const|continue|debug|default|"
+    "delegate|deprecated|do|else|enum|export|extern|false|"
+    "final|finally|for|foreach|foreach_reverse|function|goto|"
+    "if|immutable|import|in|inout|int|interface|invariant|is|"
+    "lazy|mixin|module|new|nothrow|null|out|override|package|"
+    "pragma|private|protected|public|pure|ref|return|scope|shared|"
+    "static|struct|super|switch|synchronized|template|this|throw|"
+    "true|try|typeid|typeof|union|unittest|version|while|with|"
+    "delete|typedef|volatile|"  /* deprecated */
+    "macro|"    /* reserved, unused */
+    "__FILE__|__MODULE__|__LINE__|__FUNCTION__|__PRETTY_FUNCTION__|"
+    "__gshared|__traits|__vector|__parameters|"
+    "__DATE__|__EOF__|__TIME__|__TIMESPAMP__|__VENDOR__|__VERSION__|"
+};
+
+static const char d_types[] = {
+    "bool|byte|ubyte|short|ushort|int|uint|long|ulong|char|wchar|dchar|"
+    "float|double|real|ifloat|idouble|ireal|cfloat|cdouble|creal|void|"
+    "|cent|ucent|string|wstring|dstring|size_t|ptrdiff_t|"
+};
+
 static const char c_mode_extensions[] = {
     "c|h|C|H|"          /* C language */
     "y|l|lex|"          /* yacc, lex */
@@ -114,6 +137,7 @@ static const char c_mode_extensions[] = {
     "pcc|"              /* Oracle C++ */
     "cal|"              /* GNU Calc */
     "go|"               /* Go language */
+    "d|di|"             /* D language */
 };
 
 /* grab a C identifier from a uint buf, stripping color.
@@ -163,12 +187,14 @@ enum {
     IN_C_PREPROCESS = 0x20,  /* preprocessor directive with \ at EOL */
     IN_C_REGEX      = 0x40,  /* regex */
     IN_C_CHARCLASS  = 0x80,  /* regex char class */
+    IN_C_COMMENT_D  = 0x700, /* nesting D comment level (max 7 deep) */
+    IN_C_COMMENT_D_SHIFT = 8,
 };
 
 void c_colorize_line(QEColorizeContext *cp,
                      unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, start, i1, i2, indent;
+    int i = 0, start, i1, i2, indent, level;
     int c, state, style, style0, style1, type_decl, klen, delim;
     char kbuf[32];
 
@@ -193,6 +219,8 @@ void c_colorize_line(QEColorizeContext *cp,
             goto parse_comment;
         if (state & IN_C_COMMENT1)
             goto parse_comment1;
+        if (state & IN_C_COMMENT_D)
+            goto parse_comment_d;
         if (state & IN_C_STRING)
             goto parse_string;
         if (state & IN_C_STRING_Q)
@@ -274,9 +302,43 @@ void c_colorize_line(QEColorizeContext *cp,
                 SET_COLOR(str, start, i, C_STYLE_REGEX);
                 continue;
             }
+            if ((mode_flags & CLANG_D) && (str[i] == '+')) {
+                /* D language nesting long comment */
+                i++;
+                state |= (1 << IN_C_COMMENT_D_SHIFT);
+            parse_comment_d:
+                style = C_STYLE_COMMENT;
+                level = (state & IN_C_COMMENT_D) >> IN_C_COMMENT_D_SHIFT;
+                while (i < n) {
+                    if (str[i] == '/' && str[i + 1] == '+') {
+                        i += 2;
+                        level++;
+                    } else
+                    if (str[i] == '+' && str[i + 1] == '/') {
+                        i += 2;
+                        level--;
+                        if (level == 0) {
+                            state &= ~IN_C_COMMENT;
+                            style = style0;
+                            break;
+                        }
+                    } else {
+                        i++;
+                    }
+                }
+                state = (state & ~IN_C_COMMENT_D) |
+                        (min(level, 7) << IN_C_COMMENT_D_SHIFT);
+                SET_COLOR(str, start, i, C_STYLE_COMMENT);
+                continue;
+            }
             break;
         case '#':       /* preprocessor */
             if (mode_flags & (CLANG_C | CLANG_CPP | CLANG_OBJC)) {
+                state = IN_C_PREPROCESS;
+                style = style0 = C_STYLE_PREPROCESS;
+            }
+            if (mode_flags & CLANG_D) {
+                /* only #line is supported, but can occur anywhere */
                 state = IN_C_PREPROCESS;
                 style = style0 = C_STYLE_PREPROCESS;
             }
@@ -296,6 +358,13 @@ void c_colorize_line(QEColorizeContext *cp,
                 }
             }
             goto normal;
+        // case 'r':
+            /* XXX: D language r" wysiwyg chars " */
+        // case 'X':
+            /* XXX: D language X" hex string chars " */
+        // case 'q':
+            /* XXX: D language q" delim wysiwyg chars delim " */
+            /* XXX: D language q{ tokens } */
         case '\'':      /* character constant */
         parse_string_q:
             state |= IN_C_STRING_Q;
@@ -303,7 +372,7 @@ void c_colorize_line(QEColorizeContext *cp,
             delim = '\'';
             goto string;
         case '`':
-            if (mode_flags & CLANG_GO) {
+            if (mode_flags & (CLANG_GO | CLANG_D)) {
                 /* go language multi-line string, no escape sequences */
             parse_string_bq:
                 state |= IN_C_STRING_BQ;
@@ -342,6 +411,11 @@ void c_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
+            if (mode_flags & CLANG_D) {
+                /* ignore optional string postfix */
+                if (qe_findchar("cwd", str[i]))
+                    i++;
+            }
             if (state & IN_C_PREPROCESS)
                 style1 = C_STYLE_PREPROCESS;
             SET_COLOR(str, start, i, style1);
@@ -363,6 +437,8 @@ void c_colorize_line(QEColorizeContext *cp,
                 break;
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
+                /* XXX: D lang ignores embedded '_' and accepts 'l'
+                 * 'u' or 'U' 'f' or 'F', 'i' suffixes */
                 while (qe_isalnum(str[i]) || str[i] == '.') {
                     i++;
                 }
@@ -381,6 +457,7 @@ void c_colorize_line(QEColorizeContext *cp,
                 ||  ((mode_flags & CLANG_JS) && strfind(js_keywords, kbuf))
                 ||  ((mode_flags & CLANG_PHP) && strfind(php_keywords, kbuf))
                 ||  ((mode_flags & CLANG_GO) && strfind(go_keywords, kbuf))
+                ||  ((mode_flags & CLANG_D) && strfind(d_keywords, kbuf))
                    ) {
                     SET_COLOR(str, start, i, C_STYLE_KEYWORD);
                     continue;
@@ -400,6 +477,7 @@ void c_colorize_line(QEColorizeContext *cp,
                 ||  ((mode_flags & CLANG_JS) && strfind(js_types, kbuf))
                 ||  ((mode_flags & CLANG_PHP) && strfind(php_types, kbuf))
                 ||  ((mode_flags & CLANG_GO) && strfind(go_types, kbuf))
+                ||  ((mode_flags & CLANG_D) && strfind(d_types, kbuf))
                    ) {
                     /* if not cast, assume type declaration */
                     if (str[i2] != ')') {
@@ -450,6 +528,7 @@ void c_colorize_line(QEColorizeContext *cp,
     /* strip state if not overflowing from a comment */
     if (!(state & IN_C_COMMENT) && n > 0 && ((str[n - 1] & CHAR_MASK) != '\\'))
         state &= ~(IN_C_COMMENT1 | IN_C_PREPROCESS);
+
     cp->colorize_state = state;
 }
 
@@ -1005,6 +1084,10 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     if (match_extension(s->b->filename, "go")) {
         s->mode_name = "Go";
         s->mode_flags = CLANG_GO;
+    } else
+    if (match_extension(s->b->filename, "d|di")) {
+        s->mode_name = "D";
+        s->mode_flags = CLANG_D;
     }
     return 0;
 }
