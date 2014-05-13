@@ -3267,7 +3267,7 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                                int *offsetp, int line_num)
 {
     QEColorizeContext cctx;
-    int len, l, line, col, offset, bom;
+    int len, line, n, col, offset, bom;
 
     /* invalidate cache if needed */
     if (s->colorize_max_valid_offset != INT_MAX) {
@@ -3280,11 +3280,17 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 
     /* realloc state array if needed */
     if ((line_num + 2) > s->colorize_nb_lines) {
-        s->colorize_nb_lines = line_num + 2 + COLORIZED_LINE_PREALLOC_SIZE;
+        /* Reallocate colorization state buffer with pseudo-Fibonacci
+         * geometric progression (ratio of 1.625)
+         */
+        n = max(s->colorize_nb_lines, COLORIZED_LINE_PREALLOC_SIZE);
+        while (n < (line_num + 2))
+            n += (n >> 1) + (n >> 3);
         if (!qe_realloc(&s->colorize_states,
-                        s->colorize_nb_lines * sizeof(*s->colorize_states))) {
+                        n * sizeof(*s->colorize_states))) {
             return 0;
         }
+        s->colorize_nb_lines = n;
     }
 
     memset(&cctx, 0, sizeof(cctx));
@@ -3300,14 +3306,14 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
         cctx.colorize_state = s->colorize_states[s->colorize_nb_valid_lines - 1];
         cctx.state_only = 1;
 
-        for (l = s->colorize_nb_valid_lines; l <= line_num; l++) {
+        for (line = s->colorize_nb_valid_lines; line <= line_num; line++) {
             len = eb_get_line(s->b, buf, buf_size - 1, &offset);
             /* skip byte order mark if present */
             bom = (len > 0 && buf[0] == 0xFEFF);
             s->colorize_func(&cctx, buf + bom, len - bom, s->mode_flags);
             /* buf[len] has char '\0' but may hold style, force buf ending */
             buf[len + 1] = 0;
-            s->colorize_states[l] = cctx.colorize_state;
+            s->colorize_states[line] = cctx.colorize_state;
         }
     }
 
@@ -3322,7 +3328,10 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
     /* XXX: if state is same as previous, minimize invalid region? */
     s->colorize_states[line_num + 1] = cctx.colorize_state;
 
-    s->colorize_nb_valid_lines = line_num + 2;
+    /* Extend valid area */
+    if (s->colorize_nb_valid_lines < line_num + 2)
+        s->colorize_nb_valid_lines = line_num + 2;
+
     return len;
 }
 
