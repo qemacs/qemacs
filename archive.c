@@ -60,8 +60,8 @@ static CompressType compress_type_array[] = {
     { "compress", "Z", "uncompress -c '%s'", "compress > '%s'" },
     { "LZMA", "lzma", "unlzma -c '%s'", "lzma > '%s'" },
     { "XZ", "xz", "unxz -c '%s'", "xz > '%s'" },
-    /* Need to fix binhex encode command to read from file */
-    { "BinHex", "hqx", "binhex decode -p '%s'", NULL },
+    { "BinHex", "hqx", "binhex decode -o /tmp/qe-$$ '%s' && "
+                       "cat /tmp/qe-$$ ; rm -f /tmp/qe-$$", NULL },
 };
 
 static CompressType *compress_types;
