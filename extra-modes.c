@@ -937,6 +937,70 @@ static int ini_init(void)
     return 0;
 }
 
+/*---------------- sharp file coloring ----------------*/
+
+/* Very simple colorizer: # introduces comments, that's it! */
+
+enum {
+    SHARP_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    SHARP_STYLE_COMMENT =    QE_STYLE_COMMENT,
+};
+
+static void sharp_colorize_line(QEColorizeContext *cp,
+                               unsigned int *str, int n, int mode_flags)
+{
+    int i = 0, start, c;
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '#':
+            i = n;
+            SET_COLOR(str, start, i, SHARP_STYLE_COMMENT);
+            continue;
+        default:
+            break;
+        }
+    }
+}
+
+static int sharp_mode_probe(ModeDef *mode, ModeProbeData *pd)
+{
+    const char *p = (const char *)pd->buf;
+
+    if (match_extension(pd->filename, mode->extensions)) {
+        while (qe_isspace(*p))
+            p++;
+        if (*p == '#')
+            return 60;
+    }
+
+    return 1;
+}
+
+/* specific script commands */
+static CmdDef sharp_commands[] = {
+    CMD_DEF_END,
+};
+
+static ModeDef sharp_mode;
+
+static int sharp_init(void)
+{
+    /* sharp txt mode is almost like the text mode, so we copy and patch it */
+    memcpy(&sharp_mode, &text_mode, sizeof(ModeDef));
+    sharp_mode.name = "sharp";
+    sharp_mode.extensions = "txt";
+    sharp_mode.mode_probe = sharp_mode_probe;
+    sharp_mode.colorize_func = sharp_colorize_line;
+
+    qe_register_mode(&sharp_mode);
+    qe_register_cmd_table(sharp_commands, &sharp_mode);
+
+    return 0;
+}
+
 /*---------------- PostScript colors ----------------*/
 
 enum {
@@ -2836,6 +2900,7 @@ static int extra_modes_init(void)
     vim_init();
     pascal_init();
     ini_init();
+    sharp_init();
     ps_init();
     sql_init();
     lua_init();
