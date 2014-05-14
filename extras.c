@@ -897,7 +897,7 @@ static void do_describe_buffer(EditState *s, int argval)
     if (!b1)
         return;
 
-    total_size = s->b->total_size;
+    total_size = b->total_size;
 
     eb_printf(b1, "Buffer Statistics\n\n");
 
@@ -911,11 +911,12 @@ static void do_describe_buffer(EditState *s, int argval)
         eb_get_pos(b, &line, &col, total_size);
         nb_chars = eb_get_char_offset(b, total_size);
 
-        eb_printf(b1, "       lines: %d\n", line);
+        eb_printf(b1, "       lines: %d\n", line + (col > 0));
         eb_printf(b1, "       chars: %d\n", nb_chars);
     }
     eb_printf(b1, "        mark: %d\n", b->mark);
     eb_printf(b1, "      offset: %d\n", b->offset);
+    eb_printf(b1, "   s->offset: %d\n", s->offset);
 
     eb_printf(b1, "   tab_width: %d\n", b->tab_width);
     eb_printf(b1, " fill_column: %d\n", b->fill_column);
@@ -974,15 +975,36 @@ static void do_describe_buffer(EditState *s, int argval)
     if (total_size > 0) {
         u8 buf[4096];
         int count[256];
-        int offset, c, i, col;
+        int offset, c, i, col, max_count, count_width;
+        int word_char, word_count;
         
         memset(count, 0, sizeof(count));
+        word_count = 0;
+        word_char = 0;
         for (offset = 0; offset < total_size;) {
             int size = eb_read(b, offset, buf, countof(buf));
-            for (i = 0; i < size; i++)
-                count[buf[i]] += 1;
+            if (size == 0)
+                break;
+            for (i = 0; i < size; i++) {
+                c = buf[i];
+                count[c] += 1;
+                if (c <= 32) {
+                    word_count += word_char;
+                    word_char = 0;
+                } else {
+                    word_char = 1;
+                }
+            }
             offset += size;
         }
+        max_count = 0;
+        for (i = 0; i < 256; i++) {
+            max_count = max(max_count, count[i]);
+        }
+        count_width = snprintf(NULL, 0, "%d", max_count);
+
+        eb_printf(b1, "       words: %d\n", word_count);
+
         eb_printf(b1, "\nByte stats:\n");
 
         for (col = i = 0; i < 256; i++) {
@@ -998,7 +1020,7 @@ static void do_describe_buffer(EditState *s, int argval)
             case '\'':  c = '\''; break;
             default: c = 0; break;
             }
-            col += eb_printf(b1, " %5d", count[i]);
+            col += eb_printf(b1, "   %*d", count_width, count[i]);
 
             if (c != 0)
                 col += eb_printf(b1, "  '\\%c'", c);
