@@ -33,6 +33,17 @@
 
 #include "qe.h"
 
+#if MAX_UNICODE_DISPLAY > 0xFFFF
+typedef uint64_t TTYChar;
+#define TTYCHAR(ch,fg,bg)   ((uint32_t)(ch) | ((uint64_t)((fg) | ((bg) << 8)) << 32))
+#define TTYCHAR2(ch,col)    ((uint32_t)(ch) | ((uint64_t)(col) << 32))
+#define TTYCHAR_GETCH(cc)   ((uint32_t)(cc))
+#define TTYCHAR_GETCOL(cc)  ((uint32_t)((cc) >> 32) & 0xFFFF)
+#define TTYCHAR_GETFG(cc)   ((uint32_t)((cc) >> 32) & 0xFF)
+#define TTYCHAR_GETBG(cc)   ((uint32_t)((cc) >> (32 + 8)) & 0xFF)
+#define TTYCHAR_DEFAULT     TTYCHAR(' ', 7, 0)
+#define TTYCHAR_NONE        0xFFFFFFFF
+#else
 typedef unsigned int TTYChar;
 #define TTYCHAR(ch,fg,bg)   ((ch) | ((fg) << 16) | ((bg) << 24))
 #define TTYCHAR2(ch,col)    ((ch) | ((col) << 16))
@@ -41,6 +52,8 @@ typedef unsigned int TTYChar;
 #define TTYCHAR_GETFG(cc)   (((cc) >> 16) & 0xFF)
 #define TTYCHAR_GETBG(cc)   (((cc) >> 24) & 0xFF)
 #define TTYCHAR_DEFAULT     TTYCHAR(' ', 7, 0)
+#define TTYCHAR_NONE        0xFFFF
+#endif
 
 #if defined(CONFIG_UNLOCKIO)
 #  define TTY_PUTC(c,f)         putc_unlocked(c, f)
@@ -1046,7 +1059,7 @@ static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font,
         ptr++;
         n = w - 1;
         while (n > 0) {
-            *ptr = TTYCHAR(0xFFFFF, fgcolor, TTYCHAR_GETBG(*ptr));
+            *ptr = TTYCHAR(TTYCHAR_NONE, fgcolor, TTYCHAR_GETBG(*ptr));
             ptr++;
             n--;
         }
@@ -1167,7 +1180,7 @@ static void tty_term_flush(QEditScreen *s)
                 ptr1[shadow] = cc;
                 ptr1++;
                 ch = TTYCHAR_GETCH(cc);
-                if (ch != 0xffff) {
+                if (ch != TTYCHAR_NONE) {
                     /* output attributes */
                   again:
                     if (bgcolor != (int)TTYCHAR_GETBG(cc)) {

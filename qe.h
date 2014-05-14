@@ -1500,13 +1500,19 @@ typedef struct TextFragment {
     short dummy;  /* align, must be assigned for CRC */
 } TextFragment;
 
-#define MAX_WORD_SIZE 128
-#define NO_CURSOR 0x7fffffff
+#ifdef CONFIG_TINY
+#define MAX_UNICODE_DISPLAY  0xFFFF
+#else
+#define MAX_UNICODE_DISPLAY  0x10FFFF
+#endif
 
-#define STYLE_BITS       12
-#define STYLE_SHIFT      (32 - STYLE_BITS)
-#define STYLE_MASK       (((1 << STYLE_BITS) - 1) << STYLE_SHIFT)
-#define CHAR_MASK        ((1 << STYLE_SHIFT) - 1)
+#define MAX_WORD_SIZE  128
+#define NO_CURSOR      0x7fffffff
+
+#define STYLE_BITS     12
+#define STYLE_SHIFT    (32 - STYLE_BITS)
+#define STYLE_MASK     (((1 << STYLE_BITS) - 1) << STYLE_SHIFT)
+#define CHAR_MASK      ((1 << STYLE_SHIFT) - 1)
 
 struct DisplayState {
     int do_disp;        /* true if real display */

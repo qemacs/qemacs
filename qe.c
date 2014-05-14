@@ -3551,8 +3551,8 @@ int text_display(EditState *s, DisplayState *ds, int offset)
             if ((c < ' ' && c != '\t') || c == 127) {
                 display_printf(ds, offset0, offset, "^%c", ('@' + c) & 127);
             } else
-            if (c >= 0x10000) {
-                /* currently, we cannot display these chars */
+            if (c > MAX_UNICODE_DISPLAY) {
+                /* display unsupported unicode code points as hex */
                 display_printf(ds, offset0, offset, "\\U%08x", c);
             } else
             if (c >= 256 && (s->qe_state->show_unicode == 1 || c == 0xfeff)) {
