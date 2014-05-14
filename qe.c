@@ -3945,6 +3945,7 @@ static void parse_args(ExecCmdState *es)
     char history[32];
     unsigned char arg_type;
     int ret, rep_count, get_arg, type, use_argval, use_key;
+    int start_time, elapsed_time;
 
     for (;;) {
         ret = parse_arg(&es->ptype, &arg_type,
@@ -4036,6 +4037,8 @@ static void parse_args(ExecCmdState *es)
 
     qs->this_cmd_func = d->action.func;
 
+    start_time = get_clock_ms();
+
     do {
         /* special case for hex mode */
         if (d->action.ESii != do_char) {
@@ -4056,6 +4059,10 @@ static void parse_args(ExecCmdState *es)
         /* CG: Should test for abort condition */
         /* CG: Should follow qs->active_window ? */
     } while (--rep_count > 0);
+
+    elapsed_time = get_clock_ms() - start_time;
+    if (elapsed_time >= 100)
+        put_status(s, "%s: %dms", d->name, elapsed_time);
 
     qs->last_cmd_func = qs->this_cmd_func;
  fail:
@@ -4162,6 +4169,9 @@ void edit_display(QEmacsState *qs)
 {
     EditState *s;
     int has_popups;
+    int start_time, elapsed_time;
+
+    start_time = get_clock_ms();
 
     /* first call hooks for mode specific fixups */
     for (s = qs->first_window; s != NULL; s = s->next_window) {
@@ -4195,6 +4205,10 @@ void edit_display(QEmacsState *qs)
             }
         }
     }
+
+    elapsed_time = get_clock_ms() - start_time;
+    if (elapsed_time >= 100)
+        put_status(s, "edit_display: %dms", elapsed_time);
 
     qs->complete_refresh = 0;
 }
