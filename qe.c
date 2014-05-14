@@ -3310,6 +3310,9 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
             len = eb_get_line(s->b, buf, buf_size - 1, &offset);
             /* skip byte order mark if present */
             bom = (len > 0 && buf[0] == 0xFEFF);
+            if (bom) {
+                SET_COLOR1(buf, 0, QE_STYLE_PREPROCESS);
+            }
             s->colorize_func(&cctx, buf + bom, len - bom, s->mode_flags);
             /* buf[len] has char '\0' but may hold style, force buf ending */
             buf[len + 1] = 0;
@@ -3322,6 +3325,9 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
     cctx.state_only = 0;
     len = eb_get_line(s->b, buf, buf_size - 1, offsetp);
     bom = (len > 0 && buf[0] == 0xFEFF);
+    if (bom) {
+        SET_COLOR1(buf, 0, QE_STYLE_PREPROCESS);
+    }
     s->colorize_func(&cctx, buf + bom, len - bom, s->mode_flags);
     buf[len + 1] = 0;
 
@@ -5712,6 +5718,16 @@ static int probe_mode(EditState *s, EditBuffer *b,
             probe_data.buf_size = bufp - buf;
         }
     }
+
+    /* Skip the BOM if present */
+    if (probe_data.buf_size >= 3
+    &&  probe_data.buf[0] == 0xEF
+    &&  probe_data.buf[1] == 0xBB
+    &&  probe_data.buf[2] == 0xBF) {
+        probe_data.buf += 3;
+        probe_data.buf_size -= 3;
+    }
+
     charset_decode_close(&probe_data.charset_state);
 
     p = memchr(probe_data.buf, '\n', probe_data.buf_size);
