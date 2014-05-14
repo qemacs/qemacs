@@ -1957,17 +1957,31 @@ void do_dired(EditState *s);
 
 /* clang.c */
 
-#define CLANG_C      0x0001
-#define CLANG_CPP    0x0002
-#define CLANG_OBJC   0x0004
-#define CLANG_JS     0x0008
-#define CLANG_JAVA   0x0010
-#define CLANG_LEX    0x0020
-#define CLANG_YACC   0x0040
-#define CLANG_REGEX  0x0080
-#define CLANG_PHP    0x0100
-#define CLANG_GO     0x0200
-#define CLANG_D      0x0400
+/* C mode flavors */
+#define CLANG_SYNTAX    0
+#define CLANG_C         1
+#define CLANG_CPP       2
+#define CLANG_OBJC      3
+#define CLANG_CSHARP    4
+#define CLANG_JS        5
+#define CLANG_JAVA      6
+#define CLANG_PHP       7
+#define CLANG_GO        8
+#define CLANG_D         9
+#define CLANG_LIMBO     10
+#define CLANG_CYCLONE   11
+#define CLANG_CH        12
+#define CLANG_SQUIRREL  13
+#define CLANG_ICI       14
+#define CLANG_JSX       15
+#define CLANG_HAXE      16
+#define CLANG_FLAVOR    0x1F
+
+/* C mode options */
+#define CLANG_CC          0x0100  /* all C language features */
+#define CLANG_LEX         0x0200
+#define CLANG_YACC        0x0400
+#define CLANG_REGEX       0x0800
 
 void c_colorize_line(QEColorizeContext *cp,
                      unsigned int *str, int n, int mode_flags);
