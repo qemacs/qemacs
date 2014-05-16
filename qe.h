@@ -1958,24 +1958,27 @@ void do_dired(EditState *s);
 /* clang.c */
 
 /* C mode flavors */
-#define CLANG_SYNTAX    0
-#define CLANG_C         1
-#define CLANG_CPP       2
-#define CLANG_OBJC      3
-#define CLANG_CSHARP    4
-#define CLANG_JS        5
-#define CLANG_JAVA      6
-#define CLANG_PHP       7
-#define CLANG_GO        8
-#define CLANG_D         9
-#define CLANG_LIMBO     10
-#define CLANG_CYCLONE   11
-#define CLANG_CH        12
-#define CLANG_SQUIRREL  13
-#define CLANG_ICI       14
-#define CLANG_JSX       15
-#define CLANG_HAXE      16
-#define CLANG_FLAVOR    0x1F
+enum {
+    CLANG_SYNTAX,
+    CLANG_C,
+    CLANG_CPP,
+    CLANG_OBJC,
+    CLANG_CSHARP,
+    CLANG_JS,
+    CLANG_AS,
+    CLANG_JAVA,
+    CLANG_PHP,
+    CLANG_GO,
+    CLANG_D,
+    CLANG_LIMBO,
+    CLANG_CYCLONE,
+    CLANG_CH,
+    CLANG_SQUIRREL,
+    CLANG_ICI,
+    CLANG_JSX,
+    CLANG_HAXE,
+    CLANG_FLAVOR = 0x1F,
+};
 
 /* C mode options */
 #define CLANG_CC          0x0100  /* all C language features */

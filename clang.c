@@ -109,6 +109,25 @@ static const char js_types[] = {
     "void|var|"
 };
 
+static const char as_keywords[] = {
+    "as|break|case|catch|class|continue|default|do|else|false|"
+    "finally|for|function|if|import|interface|internal|is|new|null|"
+    "package|private|protected|public|return|super|switch|this|throw|"
+    "true|try|while|"
+    // The following AS3 keywords are no longer in AS4:
+    "delete|include|instanceof|namespace|typeof|use|with|in|const|"
+    // other constants
+    "undefined|Infinity|NaN|"
+    // introduced in AS4 (spec abandoned in december 2012)
+    //"let|defer|get|set|override|native|extends|implements|"
+};
+
+static const char as_types[] = {
+    "void|var|bool|byte|int|uint|long|ulong|float|double|"
+    "Array|Boolean|Number|Object|String|Function|Event|RegExp|"
+    "Class|Interface|"
+};
+
 static const char jsx_keywords[] = {
     // literals shared with ECMA 262
     "null|true|false|NaN|Infinity|"
@@ -268,6 +287,7 @@ struct QEModeFlavor {
     { objc_keywords,     objc_types },     /* CLANG_OBJC */
     { csharp_keywords,   csharp_types },   /* CLANG_CSHARP */
     { js_keywords,       js_types },       /* CLANG_JS */
+    { as_keywords,       as_types },       /* CLANG_AS */
     { java_keywords,     java_types },     /* CLANG_JAVA */
     { php_keywords,      php_types },      /* CLANG_PHP */
     { go_keywords,       go_types },       /* CLANG_GO */
@@ -289,6 +309,7 @@ static const char c_mode_extensions[] = {
     "cs|"               /* C Sharp */
     "jav|java|"         /* Java */
     "js|json|"          /* Javascript, JSon */
+    "as|"               /* Actionscript */
     "jsx|"              /* JSX (extended Javascript) */
     "hx|"               /* Haxe (extended Javascript) */
     "go|"               /* Go language */
@@ -678,13 +699,15 @@ void c_colorize_line(QEColorizeContext *cp,
                 while (str[i2] == '*' || qe_isblank(str[i2]))
                     i2++;
 
-                if ((types && strfind(types, kbuf))
-                ||  ((mode_flags & CLANG_CC) && strfind(c_types, kbuf))
-                ||  (((mode_flags & CLANG_CC) || (flavor == CLANG_D)) &&
+                if ((start == 0 || str[start - 1] != '.')
+                &&  !qe_findchar(".(:", str[i])
+                &&  ((types && strfind(types, kbuf))
+                ||   ((mode_flags & CLANG_CC) && strfind(c_types, kbuf))
+                ||   (((mode_flags & CLANG_CC) || (flavor == CLANG_D)) &&
                      strend(kbuf, "_t", NULL))
-                ||  (flavor == CLANG_HAXE && qe_isupper(kbuf[0]) &&
-                     qe_islower(kbuf[1]) && !qe_findchar(".(:", str[i]) &&
-                     (start == 0 || !qe_findchar(".(", str[start - 1])))) {
+                ||   (flavor == CLANG_HAXE && qe_isupper(kbuf[0]) &&
+                     qe_islower(kbuf[1]) && 
+                     (start == 0 || !qe_findchar("(", str[start - 1]))))) {
                     /* if not cast, assume type declaration */
                     if (str[i2] != ')') {
                         type_decl = 1;
@@ -1294,6 +1317,10 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     if (match_extension(base, "js|json")) {
         s->mode_name = "Javascript";
         s->mode_flags = CLANG_JS | CLANG_REGEX;
+    } else
+    if (match_extension(base, "as")) {
+        s->mode_name = "Actionscript";
+        s->mode_flags = CLANG_AS | CLANG_REGEX;
     } else
     if (match_extension(base, "jsx")) {
         s->mode_name = "JSX";
