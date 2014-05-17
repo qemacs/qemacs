@@ -68,6 +68,8 @@ enum {
     IN_HTML_STYLE      = 0x200,      /* <style> [...] </style> */
     IN_HTML_PHP_TAG    = 0x400,      /* <?php ... ?> */
     IN_HTML_PHP_STRING = 0x800,      /* "<?php ... ?>" */
+    IN_HTML_ASP_TAG    = 0x1000,      /* <% ... %> */
+    IN_HTML_ASP_STRING = 0x2000,      /* "<% ... %>" */
 };
 
 enum {
@@ -118,16 +120,41 @@ void htmlsrc_colorize_line(QEColorizeContext *cp,
             }
             c = str[i];     /* save char to set '\0' delimiter */
             str[i] = '\0';
-            cp->colorize_state = state & ~(IN_HTML_PHP_TAG|IN_HTML_PHP_STRING);
+            cp->colorize_state = state & ~(IN_HTML_PHP_TAG | IN_HTML_PHP_STRING);
             php_colorize_line(cp, str + start, i - start, 0);
             state = cp->colorize_state |
-                    (state & (IN_HTML_PHP_TAG|IN_HTML_PHP_STRING));
+                    (state & (IN_HTML_PHP_TAG | IN_HTML_PHP_STRING));
             str[i] = c;
             if (c) {
                 start = i;
                 i += 2;
                 SET_COLOR(str, start, i, HTML_STYLE_PREPROCESS);
                 if (state & IN_HTML_PHP_TAG) {
+                    state = 0;
+                } else {
+                    /* XXX: should set these bits higher */
+                    state = IN_HTML_STRING | IN_HTML_TAG;
+                }
+            }
+            continue;
+        }
+        if (state & (IN_HTML_ASP_TAG | IN_HTML_ASP_STRING)) {
+            for (; i < n; i++) {
+                if (str[i] == '%' && str[i + 1] == '>')
+                    break;
+            }
+            c = str[i];     /* save char to set '\0' delimiter */
+            str[i] = '\0';
+            cp->colorize_state = state & ~(IN_HTML_ASP_TAG | IN_HTML_ASP_STRING);
+            csharp_colorize_line(cp, str + start, i - start, 0);
+            state = cp->colorize_state |
+                    (state & (IN_HTML_ASP_TAG | IN_HTML_ASP_STRING));
+            str[i] = c;
+            if (c) {
+                start = i;
+                i += 2;
+                SET_COLOR(str, start, i, HTML_STYLE_PREPROCESS);
+                if (state & IN_HTML_ASP_TAG) {
                     state = 0;
                 } else {
                     /* XXX: should set these bits higher */
@@ -229,8 +256,20 @@ void htmlsrc_colorize_line(QEColorizeContext *cp,
                     state = IN_HTML_PHP_STRING;
                     break;
                 } else
+                if (str[i] == '<' && str[i + 1] == '%') {
+                    SET_COLOR(str, start, i, HTML_STYLE_STRING);
+                    SET_COLOR(str, i, i + 2, HTML_STYLE_PREPROCESS);
+                    i += 2;
+                    start = i;
+                    state = IN_HTML_ASP_STRING;
+                    break;
+                } else
                 if (str[i] == '?' && str[i + 1] == '>') {
-                    /* special case embedded script tags */
+                    /* special case embedded php script tags */
+                    i += 1;
+                } else
+                if (str[i] == '%' && str[i + 1] == '>') {
+                    /* special case embedded asp script tags */
                     i += 1;
                 } else
                 if (str[i] == '>') {
@@ -287,6 +326,12 @@ void htmlsrc_colorize_line(QEColorizeContext *cp,
             &&  htmlsrc_tag_match(str, i, "<?php", &i)) {
                 SET_COLOR(str, start, i, HTML_STYLE_PREPROCESS);
                 state = IN_HTML_PHP_TAG;
+                break;
+            }
+            if (str[i] == '<' && str[i + 1] == '%') {
+                i += 2;
+                SET_COLOR(str, start, i, HTML_STYLE_PREPROCESS);
+                state = IN_HTML_ASP_TAG;
                 break;
             }
             if (str[i] == '<'
@@ -377,7 +422,7 @@ static int htmlsrc_init(void)
     /* html-src mode is almost like the text mode, so we copy and patch it */
     memcpy(&htmlsrc_mode, &text_mode, sizeof(ModeDef));
     htmlsrc_mode.name = "html-src";
-    htmlsrc_mode.extensions = "html|htm|asp|shtml|hta|htp|phtml|php";
+    htmlsrc_mode.extensions = "html|htm|asp|aspx|shtml|hta|htp|phtml|php";
     htmlsrc_mode.mode_probe = htmlsrc_mode_probe;
     htmlsrc_mode.colorize_func = htmlsrc_colorize_line;
 

@@ -2001,6 +2001,12 @@ static inline void php_colorize_line(QEColorizeContext *cp,
     c_colorize_line(cp, str, n, mode_flags | CLANG_PHP | CLANG_REGEX);
 }
 
+static inline void csharp_colorize_line(QEColorizeContext *cp,
+                                        unsigned int *str, int n, int mode_flags)
+{
+    c_colorize_line(cp, str, n, mode_flags | CLANG_CSHARP);
+}
+
 static inline void css_colorize_line(QEColorizeContext *cp,
                                      unsigned int *str, int n, int mode_flags)
 {

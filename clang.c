@@ -57,16 +57,16 @@ static const char objc_types[] = {
 };
 
 static const char csharp_keywords[] = {
-    "abstract|add|as|base|break|case|catch|checked|class|const|continue|"
+    "abstract|as|base|break|case|catch|checked|class|const|continue|"
     "default|delegate|do|else|enum|event|explicit|extern|false|finally|"
     "fixed|for|foreach|goto|if|implicit|in|interface|internal|is|lock|"
     "namespace|new|null|operator|out|override|params|private|protected|"
-    "public|readonly|ref|remove|return|sealed|sizeof|stackalloc|static|"
+    "public|readonly|ref|return|sealed|sizeof|stackalloc|static|"
     "struct|switch|template|this|throw|true|try|typeof|unchecked|unsafe|"
     "using|virtual|volatile|while|"
 
     /* contextual keywords */
-    "yield|partial|get|set|where|"
+    "add|remove|yield|partial|get|set|where|"
 };
 
 static const char csharp_types[] = {
