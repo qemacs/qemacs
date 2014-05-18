@@ -1968,6 +1968,7 @@ enum {
     CLANG_CPP,
     CLANG_OBJC,
     CLANG_CSHARP,
+    CLANG_CSS,
     CLANG_JS,
     CLANG_AS,
     CLANG_JAVA,
@@ -2014,8 +2015,7 @@ static inline void csharp_colorize_line(QEColorizeContext *cp,
 static inline void css_colorize_line(QEColorizeContext *cp,
                                      unsigned int *str, int n, int mode_flags)
 {
-    /* XXX: should have real colorizer for CSS syntax */
-    c_colorize_line(cp, str, n, mode_flags);
+    c_colorize_line(cp, str, n, mode_flags | CLANG_CSS);
 }
 
 /* xml.c */

@@ -89,6 +89,14 @@ static const char java_types[] = {
     "boolean|byte|char|double|float|int|long|short|void|String|"
 };
 
+static const char css_keywords[] = {
+    "|"
+};
+
+static const char css_types[] = {
+    "|"
+};
+
 static const char js_keywords[] = {
     "break|case|catch|continue|debugger|default|delete|do|"
     "else|finally|for|function|if|in|instanceof|new|"
@@ -286,6 +294,7 @@ struct QEModeFlavor {
     { cpp_keywords,      cpp_types },      /* CLANG_CPP */
     { objc_keywords,     objc_types },     /* CLANG_OBJC */
     { csharp_keywords,   csharp_types },   /* CLANG_CSHARP */
+    { css_keywords,      css_types },      /* CLANG_CSS */
     { js_keywords,       js_types },       /* CLANG_JS */
     { as_keywords,       as_types },       /* CLANG_AS */
     { java_keywords,     java_types },     /* CLANG_JAVA */
@@ -307,9 +316,10 @@ static const char c_mode_extensions[] = {
     "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++|"   /* C++ */
     "m|mm|"             /* Objective-C, Limbo */
     "cs|"               /* C Sharp */
-    "jav|java|"         /* Java */
+    "css|"              /* Cascaded Style Sheet, CSS */
     "js|json|"          /* Javascript, JSon */
     "as|"               /* Actionscript */
+    "jav|java|"         /* Java */
     "jsx|"              /* JSX (extended Javascript) */
     "hx|"               /* Haxe (extended Javascript) */
     "go|"               /* Go language */
@@ -331,20 +341,24 @@ static const char c_mode_extensions[] = {
 /* grab a C identifier from a uint buf, stripping color.
  * return char count.
  */
-static int get_c_identifier(char *buf, int buf_size, unsigned int *p)
+static int get_c_identifier(char *buf, int buf_size, unsigned int *p, int flavor)
 {
     unsigned int c;
     int i, j;
 
     i = j = 0;
-    c = p[i];
-    if (qe_isalpha_(c & CHAR_MASK) || c == '$' || c == '@') {
-        do {
+    c = p[i] & CHAR_MASK;
+    if (qe_isalpha_(c) || c == '$' || c == '@') {
+        for (;;) {
             if (j < buf_size - 1)
                 buf[j++] = c;
             i++;
-            c = p[i];
-        } while (qe_isalnum_(c & CHAR_MASK));
+            c = p[i] & CHAR_MASK;
+            if (c == '-' && flavor == CLANG_CSS)
+                continue;
+            if (!qe_isalnum_(c))
+                break;
+        }
     }
     buf[j] = '\0';
     return i;
@@ -549,7 +563,7 @@ void c_colorize_line(QEColorizeContext *cp,
                 goto parse_regex;
             }
             if (flavor == CLANG_HAXE) {
-                i += get_c_identifier(kbuf, countof(kbuf), str + i);
+                i += get_c_identifier(kbuf, countof(kbuf), str + i, flavor);
                 // XXX: check for proper preprocessor directive?
                 SET_COLOR(str, start, i, C_STYLE_PREPROCESS);
                 continue;
@@ -683,11 +697,13 @@ void c_colorize_line(QEColorizeContext *cp,
             }
             if (qe_isalpha_(c) || c == '$' || c == '@') {
                 /* XXX: should support :: */
-                klen = get_c_identifier(kbuf, countof(kbuf), str + start);
+                klen = get_c_identifier(kbuf, countof(kbuf), str + start, flavor);
                 i = start + klen;
 
                 if ((keywords && strfind(keywords, kbuf))
-                ||  ((mode_flags & CLANG_CC) && strfind(c_keywords, kbuf))) {
+                ||  ((mode_flags & CLANG_CC) && strfind(c_keywords, kbuf))
+                ||  ((flavor == CLANG_CSS) && str[i] == ':')
+                   ) {
                     SET_COLOR(str, start, i, C_STYLE_KEYWORD);
                     continue;
                 }
@@ -1037,7 +1053,7 @@ static void c_indent_line(EditState *s, int offset0)
             break;
         }
         if (qe_isalpha_(c & CHAR_MASK)) {
-            j = get_c_identifier(buf1, countof(buf1), buf + i);
+            j = get_c_identifier(buf1, countof(buf1), buf + i, CLANG_C);
 
             if (style == C_STYLE_KEYWORD) {
                 if (strfind("case|default", buf1))
@@ -1313,6 +1329,10 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     if (match_extension(base, "jav|java")) {
         s->mode_name = "Java";
         s->mode_flags = CLANG_JAVA;
+    } else
+    if (match_extension(base, "css")) {
+        s->mode_name = "CSS";
+        s->mode_flags = CLANG_CSS;
     } else
     if (match_extension(base, "js|json")) {
         s->mode_name = "Javascript";
