@@ -813,6 +813,9 @@ struct EditBuffer {
                         its handle is there */
     int flags;
 
+    void *map_address;
+    int map_length;
+
     /* buffer data type (default is raw) */
     struct EditBufferDataType *data_type;
     void *data; /* associated buffer data, used if data_type != raw_data */
@@ -934,7 +937,8 @@ void do_undo(EditState *s);
 void do_redo(EditState *s);
 
 int raw_buffer_load1(EditBuffer *b, FILE *f, int offset);
-int mmap_buffer(EditBuffer *b, const char *filename);
+int eb_mmap_buffer(EditBuffer *b, const char *filename);
+void eb_munmap_buffer(EditBuffer *b);
 int eb_write_buffer(EditBuffer *b, int start, int end, const char *filename);
 int eb_save_buffer(EditBuffer *b);
 

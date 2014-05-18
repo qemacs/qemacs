@@ -547,6 +547,8 @@ void eb_clear(EditBuffer *b)
     eb_delete(b, 0, b->total_size);
     log_reset(b);
 
+    eb_munmap_buffer(b);
+
     /* close and reset file handle */
     if (b->file_handle > 0) {
         close(b->file_handle);
@@ -1623,11 +1625,22 @@ int raw_buffer_load1(EditBuffer *b, FILE *f, int offset)
 }
 
 #ifdef CONFIG_MMAP
-int mmap_buffer(EditBuffer *b, const char *filename)
+void eb_munmap_buffer(EditBuffer *b)
+{
+    if (b->map_address) {
+        munmap(b->map_address, b->map_length);
+        b->map_address = NULL;
+        b->map_length = 0;
+    }
+}
+
+int eb_mmap_buffer(EditBuffer *b, const char *filename)
 {
     int fd, len, file_size, n, size;
     u8 *file_ptr, *ptr;
     Page *p;
+
+    eb_munmap_buffer(b);
 
     fd = open(filename, O_RDONLY);
     if (fd < 0)
@@ -1639,6 +1652,9 @@ int mmap_buffer(EditBuffer *b, const char *filename)
         close(fd);
         return -1;
     }
+    b->map_address = file_ptr;
+    b->map_length = file_size;
+
     n = (file_size + MAX_PAGE_SIZE - 1) / MAX_PAGE_SIZE;
     p = qe_malloc_array(Page, n);
     if (!p) {
@@ -1661,6 +1677,7 @@ int mmap_buffer(EditBuffer *b, const char *filename)
         size -= len;
         p++;
     }
+    // XXX: not needed
     b->file_handle = fd;
     //put_status(NULL, "");
     return 0;
@@ -1679,7 +1696,7 @@ static int raw_buffer_load(EditBuffer *b, FILE *f)
 
 #ifdef CONFIG_MMAP
     if (st.st_size >= qs->mmap_threshold) {
-        if (mmap_buffer(b, b->filename))
+        if (!eb_mmap_buffer(b, b->filename))
             return 0;
     }
 #endif
