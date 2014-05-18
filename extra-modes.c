@@ -242,30 +242,36 @@ static int asm_init(void)
 /*---------------- Basic/Visual Basic coloring ----------------*/
 
 static char const basic_keywords[] = {
-    "|access|alias|and|any|as|base|begin|boolean|byval"
-    "|call|case|circle|close|const|currency"
-    "|declare|defcur|defdbl|defint|deflng|defsng"
-    "|defstr|defvar|delete|dim|do|double"
-    "|else|elseif|end|eqv|erase|error|exit|explicit"
-    "|false|for|function|get|global|gosub|goto"
-    "|if|imp|input|integer|is"
-    "|len|let|lib|like|line|local|lock|long|loop|lset"
-    "|me|mod|name|new|next|not|null"
-    "|on|open|option|or|print|pset|put"
-    "|redim|rem|resume|return|rset"
-    "|scale|select|set|shared|single|spc|static"
-    "|step|stop|string|sub"
-    "|tab|then|to|true|type|typeof"
-    "|unlock|until|variant|wend|while|width|xor"
-    "|"
+    "addhandler|addressof|alias|and|andalso|ansi|as|assembly|"
+    "auto|byref|byval|call|case|catch|class|const|"
+    "declare|default|delegate|dim|directcast|do|"
+    "each|else|elseif|end|enum|erase|error|"
+    "event|exit|false|finally|for|friend|function|get|"
+    "gettype|gosub|goto|handles|if|implements|imports|in|"
+    "inherits|interface|is|let|lib|like|"
+    "loop|me|mod|module|mustinherit|mustoverride|mybase|myclass|"
+    "namespace|new|next|not|nothing|notinheritable|notoverridable|"
+    "on|option|optional|or|orelse|overloads|overridable|overrides|"
+    "paramarray|preserve|private|property|protected|public|raiseevent|readonly|"
+    "redim|rem|removehandler|resume|return|select|set|shadows|"
+    "shared|static|step|stop|structure|"
+    "sub|synclock|then|throw|to|true|try|typeof|"
+    "unicode|until|when|while|with|withevents|writeonly|xor|"
+};
+
+static char const basic_types[] = {
+    "boolean|byte|char|cbool|"
+    "cbyte|cchar|cdate|cdec|cdbl|cint|clng|cobj|cshort|csng|cstr|ctype|"
+    "date|decimal|double|integer|long|object|short|single|string|variant|"
 };
 
 enum {
     BASIC_STYLE_TEXT =        QE_STYLE_DEFAULT,
-    BASIC_STYLE_KEYWORD =     QE_STYLE_KEYWORD,
-    BASIC_STYLE_PREPROCESS =  QE_STYLE_PREPROCESS,
     BASIC_STYLE_COMMENT =     QE_STYLE_COMMENT,
     BASIC_STYLE_STRING =      QE_STYLE_STRING,
+    BASIC_STYLE_KEYWORD =     QE_STYLE_KEYWORD,
+    BASIC_STYLE_TYPE =        QE_STYLE_TYPE,
+    BASIC_STYLE_PREPROCESS =  QE_STYLE_PREPROCESS,
     BASIC_STYLE_IDENTIFIER =  QE_STYLE_VARIABLE,
 };
 
@@ -316,6 +322,10 @@ static void basic_colorize_line(QEColorizeContext *cp,
             }
             if (is_lc_keyword(str, start, i, basic_keywords)) {
                 SET_COLOR(str, start, i, BASIC_STYLE_KEYWORD);
+                continue;
+            }
+            if (is_lc_keyword(str, start, i, basic_types)) {
+                SET_COLOR(str, start, i, BASIC_STYLE_TYPE);
                 continue;
             }
             SET_COLOR(str, start, i, BASIC_STYLE_IDENTIFIER);
@@ -2165,7 +2175,7 @@ static int python_init(void)
     /* python mode is almost like the text mode, so we copy and patch it */
     memcpy(&python_mode, &text_mode, sizeof(ModeDef));
     python_mode.name = "Python";
-    python_mode.extensions = "py";
+    python_mode.extensions = "py|pyt";
     python_mode.mode_probe = python_mode_probe;
     python_mode.colorize_func = python_colorize_line;
 
