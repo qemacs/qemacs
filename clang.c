@@ -302,7 +302,7 @@ struct QEModeFlavor {
 };
 
 static const char c_mode_extensions[] = {
-    "c|h|C|H|"          /* C language */
+    "c|h|i|C|H|I|"      /* C language */
     "y|l|lex|"          /* yacc, lex */
     "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++|"   /* C++ */
     "m|mm|"             /* Objective-C, Limbo */
@@ -1281,7 +1281,7 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     text_mode.mode_init(s, saved_data);
 
     /* Select C like flavor */
-    if (match_extension(base, "c|h|C|H")) {
+    if (match_extension(base, "c|h|i|C|H|I")) {
         s->mode_flags = CLANG_C | CLANG_CC;
     } else
     if (match_extension(base, "y")) {
