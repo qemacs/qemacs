@@ -340,7 +340,7 @@ void do_show_date_and_time(EditState *s, int argval)
 }
 
 /* forward / backward block */
-#define MAX_LEVEL     20
+#define MAX_LEVEL     32
 
 static void do_forward_block(EditState *s, int dir)
 {
