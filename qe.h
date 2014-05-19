@@ -1982,6 +1982,7 @@ enum {
     CLANG_ICI,
     CLANG_JSX,
     CLANG_HAXE,
+    CLANG_DART,
     CLANG_FLAVOR = 0x1F,
 };
 

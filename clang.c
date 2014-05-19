@@ -77,16 +77,19 @@ static const char csharp_types[] = {
 };
 
 static const char java_keywords[] = {
-    "abstract|assert|break|byte|case|catch|class|const|continue|"
-    "default|do|extends|false|final|finally|for|function|"
+    "abstract|assert|break|case|catch|class|const|continue|"
+    "default|do|else|extends|false|final|finally|for|function|"
     "if|implements|import|in|instanceof|interface|native|new|null|"
     "package|private|protected|public|return|"
     "static|super|switch|synchronized|"
     "this|throw|throws|transient|true|try|var|while|with|"
+    "@Override|@SuppressWarnings|@Deprecated|"
 };
 
 static const char java_types[] = {
-    "boolean|byte|char|double|float|int|long|short|void|String|"
+    "boolean|byte|char|double|float|int|long|short|void|"
+    "String|Object|List|Set|Exception|Thread|Class|HashMap|Integer|"
+    "Collection|Block|"
 };
 
 static const char css_keywords[] = {
@@ -285,6 +288,25 @@ static const char ici_types[] = {
     "auto|"
 };
 
+static const char dart_keywords[] = {
+    "abstract|as|assert|break|call|case|catch|class|const|continue|default|do|"
+    "else|equals|extends|external|factory|false|final|finally|for|"
+    "get|if|implements|in|interface|is|negate|new|null|on|operator|return|"
+    "set|show|static|super|switch|this|throw|true|try|typedef|while|"
+    // should match only at line start
+    "import|include|source|library|"
+    "@observable|@published|@override|@runTest|"
+    // XXX: should colorize is! as a keyword
+};
+
+static const char dart_types[] = {
+    "bool|double|dynamic|int|num|var|void|"
+    "String|StringBuffer|Object|RegExp|Date|DateTime|TimeZone|Duration|Stopwatch|DartType|"
+    "Collection|Comparable|Completer|Function|Future|Match|Options|Pattern|"
+    "HashMap|HashSet|Iterable|Iterator|LinkedHashMap|List|Map|Queue|Set|"
+    "Dynamic|Exception|Error|AssertionError|TypeError|FallThroughError|" 
+};
+
 struct QEModeFlavor {
     const char *keywords;
     const char *types;
@@ -308,6 +330,7 @@ struct QEModeFlavor {
     { ici_keywords,      ici_types },      /* CLANG_ICI */
     { jsx_keywords,      jsx_types },      /* CLANG_JSX */
     { haxe_keywords,     haxe_types },     /* CLANG_HAXE */
+    { dart_keywords,     dart_types },     /* CLANG_DART */
 };
 
 static const char c_mode_extensions[] = {
@@ -322,6 +345,7 @@ static const char c_mode_extensions[] = {
     "jav|java|"         /* Java */
     "jsx|"              /* JSX (extended Javascript) */
     "hx|"               /* Haxe (extended Javascript) */
+    "dart|"             /* Dart (extended Javascript) */
     "go|"               /* Go language */
     "d|di|"             /* D language */
     "cyc|cyl|cys|"      /* Cyclone language */
@@ -647,6 +671,7 @@ void c_colorize_line(QEColorizeContext *cp,
             style1 = C_STYLE_STRING;
             delim = '\"';
         string:
+            // XXX: should handle triple quoted strings (Dart)
             style = style1;
             while (i < n) {
                 c = str[i++];
@@ -1349,6 +1374,10 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     if (match_extension(base, "hx")) {
         s->mode_name = "Haxe";
         s->mode_flags = CLANG_HAXE | CLANG_REGEX;
+    } else
+    if (match_extension(base, "dart")) {
+        s->mode_name = "Dart";
+        s->mode_flags = CLANG_DART;
     } else
     if (match_extension(base, "go")) {
         s->mode_name = "Go";
