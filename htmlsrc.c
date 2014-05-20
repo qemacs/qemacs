@@ -87,7 +87,7 @@ static int htmlsrc_tag_match(const unsigned int *buf, int i, const char *str,
 {
     const unsigned int *p;
 
-    if (ustristart(buf + i, str, &p) && !qe_isalnum_(*p)) {
+    if (ustristart(buf + i, str, &p) && *p != '-' && !qe_isalnum_(*p)) {
         if (iend)
             *iend = p - buf;
         return 1;
