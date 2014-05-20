@@ -310,14 +310,15 @@ static const char dart_types[] = {
 
 static const char pike_keywords[] = {
     "break|case|catch|class|constant|continue|default|do|else|enum|extern|"
-    "final|for|foreach|function|gauge|global|if|import|inherit|inline|"
-    "lambda|local|mapping|multiset|nomask|optional|program|predef|"
+    "final|for|foreach|gauge|global|if|import|inherit|inline|"
+    "lambda|local|nomask|optional|predef|"
     "private|protected|public|return|sscanf|static|switch|typedef|typeof|"
     "while|__attribute__|__deprecated__|__func__|"
 };
 
 static const char pike_types[] = {
-    "array|float|int|mixed|object|string|variant|void|"
+    "array|float|int|string|function|mapping|multiset|mixed|object|program|"
+    "variant|void|"
 };
 
 struct QEModeFlavor {
