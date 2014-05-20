@@ -1963,7 +1963,7 @@ void do_dired(EditState *s);
 
 /* C mode flavors */
 enum {
-    CLANG_SYNTAX,
+    CLANG_GENERIC,
     CLANG_C,
     CLANG_CPP,
     CLANG_OBJC,
@@ -1983,6 +1983,7 @@ enum {
     CLANG_JSX,
     CLANG_HAXE,
     CLANG_DART,
+    CLANG_PIKE,
     CLANG_FLAVOR = 0x1F,
 };
 

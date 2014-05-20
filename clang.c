@@ -301,10 +301,23 @@ static const char dart_keywords[] = {
 
 static const char dart_types[] = {
     "bool|double|dynamic|int|num|var|void|"
-    "String|StringBuffer|Object|RegExp|Date|DateTime|TimeZone|Duration|Stopwatch|DartType|"
-    "Collection|Comparable|Completer|Function|Future|Match|Options|Pattern|"
+    "String|StringBuffer|Object|RegExp|Function|"
+    "Date|DateTime|TimeZone|Duration|Stopwatch|DartType|"
+    "Collection|Comparable|Completer|Future|Match|Options|Pattern|"
     "HashMap|HashSet|Iterable|Iterator|LinkedHashMap|List|Map|Queue|Set|"
     "Dynamic|Exception|Error|AssertionError|TypeError|FallThroughError|" 
+};
+
+static const char pike_keywords[] = {
+    "break|case|catch|class|constant|continue|default|do|else|enum|extern|"
+    "final|for|foreach|function|gauge|global|if|import|inherit|inline|"
+    "lambda|local|mapping|multiset|nomask|optional|program|predef|"
+    "private|protected|public|return|sscanf|static|switch|typedef|typeof|"
+    "while|__attribute__|__deprecated__|__func__|"
+};
+
+static const char pike_types[] = {
+    "array|float|int|mixed|object|string|variant|void|"
 };
 
 struct QEModeFlavor {
@@ -331,11 +344,12 @@ struct QEModeFlavor {
     { jsx_keywords,      jsx_types },      /* CLANG_JSX */
     { haxe_keywords,     haxe_types },     /* CLANG_HAXE */
     { dart_keywords,     dart_types },     /* CLANG_DART */
+    { pike_keywords,     pike_types },     /* CLANG_PIKE */
 };
 
 static const char c_mode_extensions[] = {
     "c|h|i|C|H|I|"      /* C language */
-    "y|l|lex|"          /* yacc, lex */
+    "y|yacc|l|lex|"     /* yacc, lex */
     "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++|"   /* C++ */
     "m|mm|"             /* Objective-C, Limbo */
     "cs|"               /* C Sharp */
@@ -346,6 +360,7 @@ static const char c_mode_extensions[] = {
     "jsx|"              /* JSX (extended Javascript) */
     "hx|"               /* Haxe (extended Javascript) */
     "dart|"             /* Dart (extended Javascript) */
+    "pike|"             /* Pike */
     "go|"               /* Go language */
     "d|di|"             /* D language */
     "cyc|cyl|cys|"      /* Cyclone language */
@@ -365,14 +380,15 @@ static const char c_mode_extensions[] = {
 /* grab a C identifier from a uint buf, stripping color.
  * return char count.
  */
-static int get_c_identifier(char *buf, int buf_size, unsigned int *p, int flavor)
+static int get_c_identifier(char *buf, int buf_size, unsigned int *p,
+                            int flavor)
 {
     unsigned int c;
     int i, j;
 
     i = j = 0;
     c = p[i] & CHAR_MASK;
-    if (qe_isalpha_(c) || c == '$' || c == '@') {
+    if (qe_isalpha_(c) || c == '$' || (c == '@' && flavor != CLANG_PIKE)) {
         for (;;) {
             if (j < buf_size - 1)
                 buf[j++] = c;
@@ -592,6 +608,14 @@ void c_colorize_line(QEColorizeContext *cp,
                 SET_COLOR(str, start, i, C_STYLE_PREPROCESS);
                 continue;
             }
+            if (flavor == CLANG_PIKE) {
+                if (str[i] == '\"') {
+                    i++;
+                    goto parse_string;
+                }
+                state = IN_C_PREPROCESS;
+                style = style0 = C_STYLE_PREPROCESS;
+            }
             break;
         case 'L':       /* wide character and string literals */
             if (mode_flags & CLANG_CC) {
@@ -720,7 +744,7 @@ void c_colorize_line(QEColorizeContext *cp,
                 SET_COLOR(str, start, i, C_STYLE_NUMBER);
                 continue;
             }
-            if (qe_isalpha_(c) || c == '$' || c == '@') {
+            if (qe_isalpha_(c) || c == '$' || (c == '@' && flavor != CLANG_PIKE)) {
                 /* XXX: should support :: */
                 klen = get_c_identifier(kbuf, countof(kbuf), str + start, flavor);
                 i = start + klen;
@@ -741,7 +765,7 @@ void c_colorize_line(QEColorizeContext *cp,
                     i2++;
 
                 if ((start == 0 || str[start - 1] != '.')
-                &&  !qe_findchar(".(:", str[i])
+                &&  (!qe_findchar(".(:", str[i]) || flavor == CLANG_PIKE)
                 &&  ((types && strfind(types, kbuf))
                 ||   ((mode_flags & CLANG_CC) && strfind(c_types, kbuf))
                 ||   (((mode_flags & CLANG_CC) || (flavor == CLANG_D)) &&
@@ -754,7 +778,7 @@ void c_colorize_line(QEColorizeContext *cp,
                         type_decl = 1;
                     }
                     style1 = C_STYLE_TYPE;
-                    if (str[i1] == '(') {
+                    if (str[i1] == '(' && flavor != CLANG_PIKE) {
                         /* function style cast */
                         style1 = C_STYLE_KEYWORD;
                     }
@@ -1325,7 +1349,7 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     if (match_extension(base, "c|h|i|C|H|I")) {
         s->mode_flags = CLANG_C | CLANG_CC;
     } else
-    if (match_extension(base, "y")) {
+    if (match_extension(base, "y|yacc")) {
         s->mode_name = "Yacc";
         s->mode_flags = CLANG_C | CLANG_CC | CLANG_YACC;
     } else
@@ -1344,6 +1368,7 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     if (match_extension(base, "m|mm")) {
         int offset = 0;
         if (eb_nextc(s->b, offset, &offset) == '/') {
+            // XXX: should also check for #import
             s->mode_name = "ObjC";
             s->mode_flags = CLANG_OBJC | CLANG_CC;
         } else {
@@ -1378,6 +1403,10 @@ static int c_mode_init(EditState *s, ModeSavedData *saved_data)
     if (match_extension(base, "dart")) {
         s->mode_name = "Dart";
         s->mode_flags = CLANG_DART;
+    } else
+    if (match_extension(base, "pike")) {
+        s->mode_name = "Pike";
+        s->mode_flags = CLANG_PIKE;
     } else
     if (match_extension(base, "go")) {
         s->mode_name = "Go";
