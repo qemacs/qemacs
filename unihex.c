@@ -220,7 +220,6 @@ static int unihex_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 static ModeDef unihex_mode = {
     .name = "unihex",
-    .instance_size = 0,
     .mode_probe = unihex_mode_probe,
     .mode_init = unihex_mode_init,
     .mode_close = text_mode_close,

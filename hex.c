@@ -320,7 +320,6 @@ static void hex_mode_line(EditState *s, buf_t *out)
 
 static ModeDef binary_mode = {
     .name = "binary",
-    .instance_size = 0,
     .mode_probe = NULL,
     .mode_init = binary_mode_init,
     .mode_close = text_mode_close,
@@ -339,7 +338,6 @@ static ModeDef binary_mode = {
 
 ModeDef hex_mode = {
     .name = "hex",
-    .instance_size = 0,
     .mode_probe = hex_mode_probe,
     .mode_init = hex_mode_init,
     .mode_close = text_mode_close,
