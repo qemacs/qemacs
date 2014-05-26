@@ -1442,7 +1442,7 @@ static void css_bidir_split_box(BidirSplitState *s,  CSSBox *box)
 {
     CSSState *props = box->props;
     TypeLink *l;
-    int c, pos, offset;
+    int /* c, */ pos, offset;
     NextCharFunc nextc;
 
     l = s->l;
@@ -1470,7 +1470,7 @@ static void css_bidir_split_box(BidirSplitState *s,  CSSBox *box)
                     goto the_end;
                 }
             }
-            c = nextc(box, &offset);
+            /* c = */ nextc(box, &offset);
             pos++;
         }
     }
@@ -2194,7 +2194,7 @@ static int css_layout_inline_box(InlineLayout *s,
 {
     CSSState *props = box->props;
     int offset, offset0;
-    int ch, space, eob, ret, box_stack_base, i;
+    int ch, space, ret, box_stack_base, i;
     QEFont *font;
     NextCharFunc nextc;
 
@@ -2329,7 +2329,6 @@ static int css_layout_inline_box(InlineLayout *s,
         offset = box->u.buffer.start;
 
         /* loop over each char of the box and separate into words */
-        eob = 0;
         ch = 0; /* not used */
         space = 0; /* not used */
         offset0 = 0; /* not used */
