@@ -7489,7 +7489,6 @@ void text_mode_close(EditState *s)
 
 ModeDef text_mode = {
     .name = "text",
-    .instance_size = 0,
     .mode_probe = text_mode_probe,
     .mode_init = text_mode_init,
     .mode_close = text_mode_close,
