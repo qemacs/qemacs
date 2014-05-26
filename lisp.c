@@ -369,11 +369,6 @@ static int lisp_mode_init(EditState *s, ModeSavedData *saved_data)
     return 0;
 }
 
-/* specific lisp commands */
-static CmdDef lisp_commands[] = {
-    CMD_DEF_END,
-};
-
 ModeDef lisp_mode;
 
 static int lisp_init(void)
@@ -387,7 +382,6 @@ static int lisp_init(void)
     lisp_mode.colorize_func = lisp_colorize_line;
 
     qe_register_mode(&lisp_mode);
-    qe_register_cmd_table(lisp_commands, &lisp_mode);
 
     return 0;
 }

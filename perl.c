@@ -351,11 +351,6 @@ static int perl_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-/* specific perl commands */
-static CmdDef perl_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef perl_mode;
 
 static int perl_init(void)
@@ -368,7 +363,6 @@ static int perl_init(void)
     perl_mode.colorize_func = perl_colorize_line;
 
     qe_register_mode(&perl_mode);
-    qe_register_cmd_table(perl_commands, &perl_mode);
 
     return 0;
 }

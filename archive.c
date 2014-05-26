@@ -99,16 +99,6 @@ static int archive_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 0;
 }
 
-static int archive_mode_init(EditState *s, ModeSavedData *saved_data)
-{
-    return text_mode_init(s, saved_data);
-}
-
-/* specific archive commands */
-static CmdDef archive_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef archive_mode;
 
 static int archive_buffer_load(EditBuffer *b, FILE *f)
@@ -165,7 +155,6 @@ static int archive_init(void)
     memcpy(&archive_mode, &text_mode, sizeof(ModeDef));
     archive_mode.name = "archive";
     archive_mode.mode_probe = archive_mode_probe;
-    archive_mode.mode_init = archive_mode_init;
     archive_mode.data_type = &archive_data_type;
 
     for (i = 1; i < countof(archive_type_array); i++) {
@@ -175,7 +164,6 @@ static int archive_init(void)
 
     eb_register_data_type(&archive_data_type);
     qe_register_mode(&archive_mode);
-    qe_register_cmd_table(archive_commands, &archive_mode);
 
     return 0;
 }
@@ -212,16 +200,6 @@ static int compress_mode_probe(ModeDef *mode, ModeProbeData *p)
 
     return 0;
 }
-
-static int compress_mode_init(EditState *s, ModeSavedData *saved_data)
-{
-    return text_mode_init(s, saved_data);
-}
-
-/* specific compress commands */
-static CmdDef compress_commands[] = {
-    CMD_DEF_END,
-};
 
 static ModeDef compress_mode;
 
@@ -276,7 +254,6 @@ static int compress_init(void)
     memcpy(&compress_mode, &text_mode, sizeof(ModeDef));
     compress_mode.name = "compress";
     compress_mode.mode_probe = compress_mode_probe;
-    compress_mode.mode_init = compress_mode_init;
     compress_mode.data_type = &compress_data_type;
 
     for (i = 1; i < countof(compress_type_array); i++) {
@@ -286,7 +263,6 @@ static int compress_init(void)
 
     eb_register_data_type(&compress_data_type);
     qe_register_mode(&compress_mode);
-    qe_register_cmd_table(compress_commands, &compress_mode);
 
     return 0;
 }

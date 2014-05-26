@@ -218,10 +218,6 @@ static int asm_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef asm_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef asm_mode;
 
 static int asm_init(void)
@@ -234,7 +230,6 @@ static int asm_init(void)
     asm_mode.colorize_func = asm_colorize_line;
 
     qe_register_mode(&asm_mode);
-    qe_register_cmd_table(asm_commands, &asm_mode);
 
     return 0;
 }
@@ -342,10 +337,6 @@ static int basic_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef basic_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef basic_mode;
 
 static int basic_init(void)
@@ -358,7 +349,6 @@ static int basic_init(void)
     basic_mode.colorize_func = basic_colorize_line;
 
     qe_register_mode(&basic_mode);
-    qe_register_cmd_table(basic_commands, &basic_mode);
 
     return 0;
 }
@@ -606,10 +596,6 @@ static int vim_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef vim_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef vim_mode;
 
 static int vim_init(void)
@@ -622,7 +608,6 @@ static int vim_init(void)
     vim_mode.colorize_func = vim_colorize_line;
 
     qe_register_mode(&vim_mode);
-    qe_register_cmd_table(vim_commands, &vim_mode);
 
     return 0;
 }
@@ -790,10 +775,6 @@ static int pascal_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef pascal_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef pascal_mode;
 
 static int pascal_init(void)
@@ -806,7 +787,6 @@ static int pascal_init(void)
     pascal_mode.colorize_func = pascal_colorize_line;
 
     qe_register_mode(&pascal_mode);
-    qe_register_cmd_table(pascal_commands, &pascal_mode);
 
     return 0;
 }
@@ -925,11 +905,6 @@ static int ini_mode_probe(ModeDef *mode, ModeProbeData *pd)
     return 1;
 }
 
-/* specific script commands */
-static CmdDef ini_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef ini_mode;
 
 static int ini_init(void)
@@ -942,7 +917,6 @@ static int ini_init(void)
     ini_mode.colorize_func = ini_colorize_line;
 
     qe_register_mode(&ini_mode);
-    qe_register_cmd_table(ini_commands, &ini_mode);
 
     return 0;
 }
@@ -989,11 +963,6 @@ static int sharp_mode_probe(ModeDef *mode, ModeProbeData *pd)
     return 1;
 }
 
-/* specific script commands */
-static CmdDef sharp_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef sharp_mode;
 
 static int sharp_init(void)
@@ -1006,7 +975,6 @@ static int sharp_init(void)
     sharp_mode.colorize_func = sharp_colorize_line;
 
     qe_register_mode(&sharp_mode);
-    qe_register_cmd_table(sharp_commands, &sharp_mode);
 
     return 0;
 }
@@ -1119,10 +1087,6 @@ static int ps_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef ps_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef ps_mode;
 
 static int ps_init(void)
@@ -1135,7 +1099,6 @@ static int ps_init(void)
     ps_mode.colorize_func = ps_colorize_line;
 
     qe_register_mode(&ps_mode);
-    qe_register_cmd_table(ps_commands, &ps_mode);
 
     return 0;
 }
@@ -1230,10 +1193,6 @@ static int sql_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef sql_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef sql_mode;
 
 static int sql_init(void)
@@ -1246,7 +1205,6 @@ static int sql_init(void)
     sql_mode.colorize_func = sql_colorize_line;
 
     qe_register_mode(&sql_mode);
-    qe_register_cmd_table(sql_commands, &sql_mode);
 
     return 0;
 }
@@ -1425,10 +1383,6 @@ static int lua_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef lua_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef lua_mode;
 
 static int lua_init(void)
@@ -1441,7 +1395,6 @@ static int lua_init(void)
     lua_mode.colorize_func = lua_colorize_line;
 
     qe_register_mode(&lua_mode);
-    qe_register_cmd_table(lua_commands, &lua_mode);
 
     return 0;
 }
@@ -1706,10 +1659,6 @@ static int julia_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef julia_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef julia_mode;
 
 static int julia_init(void)
@@ -1722,7 +1671,6 @@ static int julia_init(void)
     julia_mode.colorize_func = julia_colorize_line;
 
     qe_register_mode(&julia_mode);
-    qe_register_cmd_table(julia_commands, &julia_mode);
 
     return 0;
 }
@@ -1930,10 +1878,6 @@ static int haskell_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef haskell_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef haskell_mode;
 
 static int haskell_init(void)
@@ -1946,7 +1890,6 @@ static int haskell_init(void)
     haskell_mode.colorize_func = haskell_colorize_line;
 
     qe_register_mode(&haskell_mode);
-    qe_register_cmd_table(haskell_commands, &haskell_mode);
 
     return 0;
 }
@@ -2164,10 +2107,6 @@ static int python_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef python_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef python_mode;
 
 static int python_init(void)
@@ -2180,7 +2119,6 @@ static int python_init(void)
     python_mode.colorize_func = python_colorize_line;
 
     qe_register_mode(&python_mode);
-    qe_register_cmd_table(python_commands, &python_mode);
 
     return 0;
 }
@@ -2650,10 +2588,6 @@ static int ruby_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef ruby_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef ruby_mode;
 
 static int ruby_init(void)
@@ -2666,7 +2600,6 @@ static int ruby_init(void)
     ruby_mode.colorize_func = ruby_colorize_line;
 
     qe_register_mode(&ruby_mode);
-    qe_register_cmd_table(ruby_commands, &ruby_mode);
 
     return 0;
 }
@@ -2880,10 +2813,6 @@ static int ocaml_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static CmdDef ocaml_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef ocaml_mode;
 
 static int ocaml_init(void)
@@ -2896,7 +2825,6 @@ static int ocaml_init(void)
     ocaml_mode.colorize_func = ocaml_colorize_line;
 
     qe_register_mode(&ocaml_mode);
-    qe_register_cmd_table(ocaml_commands, &ocaml_mode);
 
     return 0;
 }

@@ -163,11 +163,6 @@ static int makefile_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-/* specific makefile commands */
-static CmdDef makefile_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef makefile_mode;
 
 static int makefile_mode_init(EditState *s, ModeSavedData *saved_data)
@@ -189,7 +184,6 @@ static int makefile_init(void)
     makefile_mode.colorize_func = makefile_colorize_line;
 
     qe_register_mode(&makefile_mode);
-    qe_register_cmd_table(makefile_commands, &makefile_mode);
 
     return 0;
 }

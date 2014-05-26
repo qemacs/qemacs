@@ -119,11 +119,6 @@ static int script_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-/* specific script commands */
-static CmdDef script_commands[] = {
-    CMD_DEF_END,
-};
-
 static ModeDef script_mode;
 
 static int script_init(void)
@@ -136,7 +131,6 @@ static int script_init(void)
     script_mode.colorize_func = script_colorize_line;
 
     qe_register_mode(&script_mode);
-    qe_register_cmd_table(script_commands, &script_mode);
 
     return 0;
 }
