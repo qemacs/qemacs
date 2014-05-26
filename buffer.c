@@ -550,10 +550,10 @@ void eb_clear(EditBuffer *b)
     eb_munmap_buffer(b);
 
     /* close and reset file handle */
-    if (b->file_handle > 0) {
-        close(b->file_handle);
+    if (b->map_handle > 0) {
+        close(b->map_handle);
     }
-    b->file_handle = 0;
+    b->map_handle = 0;
 
     /* TODO: clear buffer structure */
     //memset(b, 0, offsetof(EditBuffer, remanent_area));
@@ -1678,7 +1678,7 @@ int eb_mmap_buffer(EditBuffer *b, const char *filename)
         p++;
     }
     // XXX: not needed
-    b->file_handle = fd;
+    b->map_handle = fd;
     //put_status(NULL, "");
     return 0;
 }

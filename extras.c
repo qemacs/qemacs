@@ -961,11 +961,12 @@ static void do_describe_buffer(EditState *s, int argval)
         buf_printf(desc, " STYLES");
 
     eb_printf(b1, "       flags: 0x%02x %s\n", b->flags, buf);
+#if 0
     eb_printf(b1, "      probed: %d\n", b->probed);
-
+#endif
     eb_printf(b1, "   data_type: %s\n", b->data_type->name);
     eb_printf(b1, "       pages: %d\n", b->nb_pages);
-    eb_printf(b1, " file_handle: %d\n", b->file_handle);
+    eb_printf(b1, "  map_handle: %d\n", b->map_handle);
 
     eb_printf(b1, "    save_log: %d (new_index=%d, current=%d, nb_logs=%d)\n",
               b->save_log, b->log_new_index, b->log_current, b->nb_logs);

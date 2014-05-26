@@ -129,6 +129,12 @@ typedef unsigned char u8;
 typedef struct EditState EditState;
 typedef struct EditBuffer EditBuffer;
 typedef struct QEmacsState QEmacsState;
+typedef struct DisplayState DisplayState;
+typedef struct ModeProbeData ModeProbeData;
+typedef struct ModeSavedData ModeSavedData;
+typedef struct ModeDef ModeDef;
+typedef struct QETimer QETimer;
+typedef struct QEColorizeContext QEColorizeContext;
 
 static inline char *s8(u8 *p) { return (char*)p; }
 static inline const char *cs8(const u8 *p) { return (const char*)p; }
@@ -158,7 +164,6 @@ void url_exit(void);
 void register_bottom_half(void (*cb)(void *opaque), void *opaque);
 void unregister_bottom_half(void (*cb)(void *opaque), void *opaque);
 
-typedef struct QETimer QETimer;
 QETimer *qe_add_timer(int delay, void *opaque, void (*cb)(void *opaque));
 void qe_kill_timer(QETimer **tip);
 
@@ -733,6 +738,26 @@ void qe_grab_keys(void (*cb)(void *opaque, int key), void *opaque);
 void qe_ungrab_keys(void);
 struct KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, int nroots, ...);
 
+#define COLORED_MAX_LINE_SIZE  4096
+
+/* colorize & transform a line, lower level then ColorizeFunc */
+typedef int (*GetColorizedLineFunc)(EditState *s,
+                                    unsigned int *buf, int buf_size,
+                                    int *offset1, int line_num);
+
+struct QEColorizeContext {
+    EditState *s;
+    EditBuffer *b;
+    int colorize_state;
+    int state_only;
+};
+
+/* colorize a line: this function modifies buf to set the char
+ * styles. 'buf' is guaranted to have one more '\0' char after its len.
+ */
+typedef void (*ColorizeFunc)(QEColorizeContext *cp,
+                             unsigned int *buf, int n, int mode_flags);
+
 /* buffer.c */
 
 /* begin to mmap files from this size */
@@ -783,6 +808,15 @@ typedef struct EditBufferCallbackList {
     struct EditBufferCallbackList *next;
 } EditBufferCallbackList;
 
+/* high level buffer type handling */
+typedef struct EditBufferDataType {
+    const char *name; /* name of buffer data type (text, image, ...) */
+    int (*buffer_load)(EditBuffer *b, FILE *f);
+    int (*buffer_save)(EditBuffer *b, int start, int end, const char *filename);
+    void (*buffer_close)(EditBuffer *b);
+    struct EditBufferDataType *next;
+} EditBufferDataType;
+
 /* buffer flags */
 #define BF_SAVELOG   0x0001  /* activate buffer logging */
 #define BF_SYSTEM    0x0002  /* buffer system, cannot be seen by the user */
@@ -809,16 +843,18 @@ struct EditBuffer {
     /* page cache */
     Page *cur_page;
     int cur_offset;
-    int file_handle; /* if the file is kept open because it is mapped,
-                        its handle is there */
     int flags;
 
+    /* mmap data, including file handle if kept open */
     void *map_address;
     int map_length;
+    int map_handle;
 
     /* buffer data type (default is raw) */
-    struct EditBufferDataType *data_type;
-    void *data; /* associated buffer data, used if data_type != raw_data */
+    EditBufferDataType *data_type;
+    void *data_data;    /* associated buffer data, used if data_type != raw_data */
+    void *priv_data;    /* buffer polling & private data */
+    void (*close)(EditBuffer *);    /* called when deleting the buffer */
 
     /* charset handling */
     CharsetDecodeState charset_state;
@@ -830,8 +866,8 @@ struct EditBuffer {
     int log_new_index, log_current;
     enum LogOperation last_log;
     int last_log_char;
-    EditBuffer *log_buffer;
     int nb_logs;
+    EditBuffer *log_buffer;
 
     /* style system */
     EditBuffer *b_styles;
@@ -842,16 +878,12 @@ struct EditBuffer {
     /* modification callbacks */
     EditBufferCallbackList *first_callback;
 
+#if 0
     /* asynchronous loading/saving support */
     struct BufferIOState *io_state;
-
     /* used during loading */
     int probed;
-
-    /* buffer polling & private data */
-    void *priv_data;
-    /* called when deleting the buffer */
-    void (*close)(EditBuffer *);
+#endif
 
     /* saved data from the last opened mode, needed to restore mode */
     /* CG: should instead keep a pointer to last window using this
@@ -862,7 +894,7 @@ struct EditBuffer {
     struct ModeSavedData *saved_data;
 
     /* default mode stuff when buffer is detached from window */
-    int offset;         /* used in eval.c */
+    int offset;
 
     int tab_width;
     int fill_column;
@@ -878,15 +910,6 @@ struct EditBuffer {
      * asynchronous modifications
      */
 };
-
-/* high level buffer type handling */
-typedef struct EditBufferDataType {
-    const char *name; /* name of buffer data type (text, image, ...) */
-    int (*buffer_load)(EditBuffer *b, FILE *f);
-    int (*buffer_save)(EditBuffer *b, int start, int end, const char *filename);
-    void (*buffer_close)(EditBuffer *b);
-    struct EditBufferDataType *next;
-} EditBufferDataType;
 
 /* the log buffer is used for the undo operation */
 /* header of log operation */
@@ -1049,25 +1072,6 @@ extern EditBufferDataType raw_data_type;
 
 /* qe.c */
 
-#define COLORED_MAX_LINE_SIZE  4096
-
-/* colorize & transform a line, lower level then ColorizeFunc */
-typedef int (*GetColorizedLineFunc)(EditState *s,
-                                    unsigned int *buf, int buf_size,
-                                    int *offset1, int line_num);
-
-typedef struct QEColorizeContext {
-    EditState *s;
-    int colorize_state;
-    int state_only;
-} QEColorizeContext;
-
-/* colorize a line: this function modifies buf to set the char
- * styles. 'buf' is guaranted to have one more '\0' char after its len.
- */
-typedef void (*ColorizeFunc)(QEColorizeContext *cp,
-                             unsigned int *buf, int n, int mode_flags);
-
 /* contains all the information necessary to uniquely identify a line,
    to avoid displaying it */
 typedef struct QELineShadow {
@@ -1113,6 +1117,7 @@ struct EditState {
                                   (list mode only) */
     /* low level colorization function */
     GetColorizedLineFunc get_colorized_line;
+
     /* colorization function */
     ColorizeFunc colorize_func;
     /* default text style */
@@ -1181,11 +1186,6 @@ struct EditState {
 /* Ugly patch for saving/restoring window data upon switching buffer */
 #define SAVED_DATA_SIZE  offsetof(EditState, end_of_saved_data)
 
-typedef struct DisplayState DisplayState;
-typedef struct ModeProbeData ModeProbeData;
-typedef struct ModeSavedData ModeSavedData;
-typedef struct ModeDef ModeDef;
-
 struct ModeProbeData {
     const char *real_filename;
     const char *filename;  /* reduced filename for mode matching purposes */
@@ -1214,6 +1214,7 @@ struct ModeDef {
     const char *extensions;
     //const char *mode_line;
     int instance_size; /* size of malloced instance */
+
     /* return the percentage of confidence */
     int (*mode_probe)(ModeDef *, ModeProbeData *);
     int (*mode_init)(EditState *, ModeSavedData *);
@@ -1230,6 +1231,7 @@ struct ModeDef {
     /* text related functions */
     int (*text_display)(EditState *, DisplayState *, int);
     int (*text_backward_offset)(EditState *, int);
+
     ColorizeFunc colorize_func;
 
     /* common functions are defined here */

@@ -146,9 +146,9 @@ static ModeDef *find_mode(const char *name)
 
     for (m = qs->first_mode; m != NULL; m = m->next) {
         if (strequal(m->name, name))
-            return m;
+            break;
     }
-    return NULL;
+    return m;
 }
 
 /* commands handling */
@@ -1764,7 +1764,7 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
                always redundant if it was not modified */
             if (b->data_type != &raw_data_type) {
                 b->data_type->buffer_close(b);
-                b->data = NULL;
+                b->data_data = NULL;
                 b->data_type = &raw_data_type;
                 eb_delete(b, 0, b->total_size);
                 b->modified = 0;
