@@ -751,7 +751,7 @@ static int org_init(void)
     org_mode.mode_probe = org_mode_probe;
     org_mode.colorize_func = org_colorize_line;
 
-    qe_register_mode(&org_mode);
+    qe_register_mode(&org_mode, MODEF_SYNTAX);
     qe_register_cmd_table(org_commands, &org_mode);
 
     return 0;

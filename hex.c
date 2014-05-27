@@ -357,8 +357,8 @@ ModeDef hex_mode = {
 static int hex_init(void)
 {
     /* first register mode(s) */
-    qe_register_mode(&binary_mode);
-    qe_register_mode(&hex_mode);
+    qe_register_mode(&binary_mode, MODEF_VIEW);
+    qe_register_mode(&hex_mode, MODEF_VIEW);
 
     /* commands and default keys */
     qe_register_cmd_table(hex_commands, &hex_mode);

@@ -49,7 +49,7 @@ static int docbook_init(void)
     docbook_mode.mode_probe = docbook_mode_probe;
     docbook_mode.mode_init = docbook_mode_init;
 
-    qe_register_mode(&docbook_mode);
+    qe_register_mode(&docbook_mode, MODEF_VIEW);
     return 0;
 }
 

@@ -900,7 +900,7 @@ static int html_init(void)
 {
     css_init();
 
-    qe_register_mode(&html_mode);
+    qe_register_mode(&html_mode, MODEF_VIEW);
     qe_register_cmd_table(html_commands, &html_mode);
 
     return 0;

@@ -163,7 +163,7 @@ static int archive_init(void)
     archive_types = archive_type_array;
 
     eb_register_data_type(&archive_data_type);
-    qe_register_mode(&archive_mode);
+    qe_register_mode(&archive_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
 
     return 0;
 }
@@ -262,7 +262,7 @@ static int compress_init(void)
     compress_types = compress_type_array;
 
     eb_register_data_type(&compress_data_type);
-    qe_register_mode(&compress_mode);
+    qe_register_mode(&compress_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
 
     return 0;
 }
@@ -333,7 +333,7 @@ static int wget_init(void)
     wget_mode.data_type = &wget_data_type;
 
     eb_register_data_type(&wget_data_type);
-    qe_register_mode(&wget_mode);
+    qe_register_mode(&wget_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
 
     return 0;
 }
@@ -417,7 +417,7 @@ static int man_init(void)
     man_mode.data_type = &man_data_type;
 
     eb_register_data_type(&man_data_type);
-    qe_register_mode(&man_mode);
+    qe_register_mode(&man_mode, MODEF_DATATYPE | MODEF_SHELLPROC);
 
     return 0;
 }

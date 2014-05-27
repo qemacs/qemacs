@@ -130,7 +130,7 @@ static int script_init(void)
     script_mode.mode_probe = script_mode_probe;
     script_mode.colorize_func = script_colorize_line;
 
-    qe_register_mode(&script_mode);
+    qe_register_mode(&script_mode, MODEF_SYNTAX);
 
     return 0;
 }

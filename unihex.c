@@ -240,7 +240,7 @@ static ModeDef unihex_mode = {
 static int unihex_init(void)
 {
     /* first register mode(s) */
-    qe_register_mode(&unihex_mode);
+    qe_register_mode(&unihex_mode, MODEF_VIEW);
 
     /* additional mode specific keys */
     qe_register_binding(KEY_CTRL_LEFT, "decrease-width", &unihex_mode);

@@ -79,10 +79,12 @@ static const char *user_option;
 
 /* mode handling */
 
-void qe_register_mode(ModeDef *m)
+void qe_register_mode(ModeDef *m, int flags)
 {
     QEmacsState *qs = &qe_state;
     ModeDef **p;
+
+    m->flags |= flags;
 
     /* register mode in mode list (at end) */
     p = &qs->first_mode;
@@ -106,7 +108,7 @@ void qe_register_mode(ModeDef *m)
         m->get_mode_line = text_mode_line;
 
     /* add a new command to switch to that mode */
-    if (!(m->mode_flags & MODEF_NOCMD)) {
+    if (!(m->flags & MODEF_NOCMD)) {
         char buf[64];
         int size;
         CmdDef *def;
@@ -5395,7 +5397,7 @@ void minibuffer_init(void)
     minibuffer_mode.name = "minibuffer";
     minibuffer_mode.mode_probe = NULL;
     minibuffer_mode.scroll_up_down = minibuf_complete_scroll_up_down;
-    qe_register_mode(&minibuffer_mode);
+    qe_register_mode(&minibuffer_mode, MODEF_NOCMD | MODEF_VIEW);
     qe_register_cmd_table(minibuffer_commands, &minibuffer_mode);
 }
 
@@ -5468,7 +5470,7 @@ void less_mode_init(void)
     memcpy(&less_mode, &text_mode, sizeof(ModeDef));
     less_mode.name = "less";
     less_mode.mode_probe = NULL;
-    qe_register_mode(&less_mode);
+    qe_register_mode(&less_mode, MODEF_VIEW);
     qe_register_cmd_table(less_commands, &less_mode);
 }
 
@@ -7941,7 +7943,7 @@ static void qe_init(void *opaque)
 #endif
 
     /* init basic modules */
-    qe_register_mode(&text_mode);
+    qe_register_mode(&text_mode, MODEF_VIEW);
     qe_register_cmd_table(basic_commands, NULL);
     qe_register_cmd_line_options(cmd_options);
 

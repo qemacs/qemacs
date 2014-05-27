@@ -362,7 +362,7 @@ static int perl_init(void)
     perl_mode.mode_probe = perl_mode_probe;
     perl_mode.colorize_func = perl_colorize_line;
 
-    qe_register_mode(&perl_mode);
+    qe_register_mode(&perl_mode, MODEF_SYNTAX);
 
     return 0;
 }

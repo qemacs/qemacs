@@ -103,9 +103,8 @@ static int list_init(void)
     list_mode.name = "list";
     list_mode.mode_probe = NULL;
     list_mode.mode_init = list_mode_init;
-    list_mode.mode_flags = MODEF_NOCMD;
 
-    qe_register_mode(&list_mode);
+    qe_register_mode(&list_mode, MODEF_NOCMD | MODEF_VIEW);
 
     return 0;
 }

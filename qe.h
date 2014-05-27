@@ -1213,6 +1213,14 @@ struct ModeDef {
     const char *name;
     const char *extensions;
     //const char *mode_line;
+
+    int flags;
+#define MODEF_NOCMD      0x8000 /* do not register xxx-mode command automatically */
+#define MODEF_VIEW       0x01
+#define MODEF_SYNTAX     0x02
+#define MODEF_MAJOR      0x04
+#define MODEF_DATATYPE   0x10
+#define MODEF_SHELLPROC  0x20
     int instance_size; /* size of malloced instance */
 
     /* return the percentage of confidence */
@@ -1246,8 +1254,6 @@ struct ModeDef {
     void (*write_char)(EditState *, int);
     void (*mouse_goto)(EditState *, int x, int y);
 
-    int mode_flags;
-#define MODEF_NOCMD 0x0001 /* do not register xxx-mode command automatically */
     int auto_indent;
 
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
@@ -1486,7 +1492,7 @@ typedef struct CmdDef {
 #define CMD_DEF_END \
     { 0, 0, NULL, { NULL }, CMD_void, 0 }
 
-void qe_register_mode(ModeDef *m);
+void qe_register_mode(ModeDef *m, int flags);
 void mode_completion(CompleteState *cp);
 void qe_register_cmd_table(CmdDef *cmds, ModeDef *m);
 int qe_register_binding(int key, const char *cmd_name, ModeDef *m);

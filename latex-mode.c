@@ -336,7 +336,7 @@ static int latex_init(void)
     latex_mode.mode_probe = latex_mode_probe;
     latex_mode.colorize_func = latex_colorize_line;
 
-    qe_register_mode(&latex_mode);
+    qe_register_mode(&latex_mode, MODEF_SYNTAX);
     qe_register_cmd_table(latex_commands, &latex_mode);
     register_completion("latex", latex_completion);
 

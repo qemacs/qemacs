@@ -183,7 +183,7 @@ static int makefile_init(void)
     makefile_mode.mode_init = makefile_mode_init;
     makefile_mode.colorize_func = makefile_colorize_line;
 
-    qe_register_mode(&makefile_mode);
+    qe_register_mode(&makefile_mode, MODEF_SYNTAX);
 
     return 0;
 }

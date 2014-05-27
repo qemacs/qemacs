@@ -1990,9 +1990,8 @@ static int shell_init(void)
     shell_mode.move_bol = shell_move_bol;
     shell_mode.move_eol = shell_move_eol;
     shell_mode.write_char = shell_write_char;
-    shell_mode.mode_flags |= MODEF_NOCMD;
 
-    qe_register_mode(&shell_mode);
+    qe_register_mode(&shell_mode, MODEF_NOCMD | MODEF_VIEW);
     qe_register_cmd_table(shell_commands, &shell_mode);
 
     /* global shell related commands and default keys */
@@ -2003,9 +2002,8 @@ static int shell_init(void)
     pager_mode.name = "pager";
     pager_mode.mode_probe = NULL;
     pager_mode.mode_init = pager_mode_init;
-    pager_mode.mode_flags |= MODEF_NOCMD;
 
-    qe_register_mode(&pager_mode);
+    qe_register_mode(&pager_mode, MODEF_NOCMD | MODEF_VIEW);
 
     qe_mode_set_key(&pager_mode, "DEL", "scroll-down");
     qe_mode_set_key(&pager_mode, "SPC", "scroll-up");

@@ -201,7 +201,7 @@ static int xml_init(void)
     xml_mode.mode_probe = xml_mode_probe;
     xml_mode.colorize_func = xml_colorize_line;
 
-    qe_register_mode(&xml_mode);
+    qe_register_mode(&xml_mode, MODEF_SYNTAX);
 
     return 0;
 }

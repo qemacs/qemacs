@@ -829,7 +829,7 @@ static int mkd_init(void)
     mkd_mode.mode_init = mkd_mode_init;
     mkd_mode.colorize_func = mkd_colorize_line;
 
-    qe_register_mode(&mkd_mode);
+    qe_register_mode(&mkd_mode, MODEF_SYNTAX);
     qe_register_cmd_table(mkd_commands, &mkd_mode);
 
     return 0;

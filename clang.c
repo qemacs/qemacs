@@ -1504,7 +1504,7 @@ static int c_init(void)
     c_mode.indent_func = c_indent_line;
     c_mode.auto_indent = 1;
 
-    qe_register_mode(&c_mode);
+    qe_register_mode(&c_mode, MODEF_SYNTAX);
     qe_register_cmd_table(c_commands, &c_mode);
     for (p = ";:#&|"; *p; p++) {
         qe_register_binding(*p, "c-electric-key", &c_mode);

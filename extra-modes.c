@@ -229,7 +229,7 @@ static int asm_init(void)
     asm_mode.mode_probe = asm_mode_probe;
     asm_mode.colorize_func = asm_colorize_line;
 
-    qe_register_mode(&asm_mode);
+    qe_register_mode(&asm_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -348,7 +348,7 @@ static int basic_init(void)
     basic_mode.mode_probe = basic_mode_probe;
     basic_mode.colorize_func = basic_colorize_line;
 
-    qe_register_mode(&basic_mode);
+    qe_register_mode(&basic_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -607,7 +607,7 @@ static int vim_init(void)
     vim_mode.mode_probe = vim_mode_probe;
     vim_mode.colorize_func = vim_colorize_line;
 
-    qe_register_mode(&vim_mode);
+    qe_register_mode(&vim_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -786,7 +786,7 @@ static int pascal_init(void)
     pascal_mode.mode_probe = pascal_mode_probe;
     pascal_mode.colorize_func = pascal_colorize_line;
 
-    qe_register_mode(&pascal_mode);
+    qe_register_mode(&pascal_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -916,7 +916,7 @@ static int ini_init(void)
     ini_mode.mode_probe = ini_mode_probe;
     ini_mode.colorize_func = ini_colorize_line;
 
-    qe_register_mode(&ini_mode);
+    qe_register_mode(&ini_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -974,7 +974,7 @@ static int sharp_init(void)
     sharp_mode.mode_probe = sharp_mode_probe;
     sharp_mode.colorize_func = sharp_colorize_line;
 
-    qe_register_mode(&sharp_mode);
+    qe_register_mode(&sharp_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -1098,7 +1098,7 @@ static int ps_init(void)
     ps_mode.mode_probe = ps_mode_probe;
     ps_mode.colorize_func = ps_colorize_line;
 
-    qe_register_mode(&ps_mode);
+    qe_register_mode(&ps_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -1204,7 +1204,7 @@ static int sql_init(void)
     sql_mode.mode_probe = sql_mode_probe;
     sql_mode.colorize_func = sql_colorize_line;
 
-    qe_register_mode(&sql_mode);
+    qe_register_mode(&sql_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -1394,7 +1394,7 @@ static int lua_init(void)
     lua_mode.mode_probe = lua_mode_probe;
     lua_mode.colorize_func = lua_colorize_line;
 
-    qe_register_mode(&lua_mode);
+    qe_register_mode(&lua_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -1670,7 +1670,7 @@ static int julia_init(void)
     julia_mode.mode_probe = julia_mode_probe;
     julia_mode.colorize_func = julia_colorize_line;
 
-    qe_register_mode(&julia_mode);
+    qe_register_mode(&julia_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -1889,7 +1889,7 @@ static int haskell_init(void)
     haskell_mode.mode_probe = haskell_mode_probe;
     haskell_mode.colorize_func = haskell_colorize_line;
 
-    qe_register_mode(&haskell_mode);
+    qe_register_mode(&haskell_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -2118,7 +2118,7 @@ static int python_init(void)
     python_mode.mode_probe = python_mode_probe;
     python_mode.colorize_func = python_colorize_line;
 
-    qe_register_mode(&python_mode);
+    qe_register_mode(&python_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -2599,7 +2599,7 @@ static int ruby_init(void)
     ruby_mode.mode_probe = ruby_mode_probe;
     ruby_mode.colorize_func = ruby_colorize_line;
 
-    qe_register_mode(&ruby_mode);
+    qe_register_mode(&ruby_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -2824,7 +2824,7 @@ static int ocaml_init(void)
     ocaml_mode.mode_probe = ocaml_mode_probe;
     ocaml_mode.colorize_func = ocaml_colorize_line;
 
-    qe_register_mode(&ocaml_mode);
+    qe_register_mode(&ocaml_mode, MODEF_SYNTAX);
 
     return 0;
 }

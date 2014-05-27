@@ -1164,7 +1164,7 @@ static int dired_init(void)
     dired_mode.display_hook = dired_display_hook;
 
     /* first register mode */
-    qe_register_mode(&dired_mode);
+    qe_register_mode(&dired_mode, /* MODEF_DATATYPE | */ MODEF_MAJOR | MODEF_VIEW);
 
     qe_register_cmd_table(dired_commands, &dired_mode);
     qe_register_cmd_table(dired_global_commands, NULL);

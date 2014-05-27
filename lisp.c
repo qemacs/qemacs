@@ -381,7 +381,7 @@ static int lisp_init(void)
     lisp_mode.mode_init = lisp_mode_init;
     lisp_mode.colorize_func = lisp_colorize_line;
 
-    qe_register_mode(&lisp_mode);
+    qe_register_mode(&lisp_mode, MODEF_SYNTAX);
 
     return 0;
 }

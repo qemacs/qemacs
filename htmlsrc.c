@@ -398,8 +398,8 @@ static int htmlsrc_mode_probe(ModeDef *mode, ModeProbeData *p)
         return 85;
 
     /* then try buffer contents */
-    if (p->buf_size >= 5 &&
-        (!html_tagcmp(buf, "<HTML") ||
+    if (buf[0] == '<'
+    &&  (!html_tagcmp(buf, "<HTML") ||
          !html_tagcmp(buf, "<SCRIPT") ||
          !html_tagcmp(buf, "<?XML") ||
          !html_tagcmp(buf, "<!DOCTYPE"))) {
@@ -426,7 +426,7 @@ static int htmlsrc_init(void)
     htmlsrc_mode.mode_probe = htmlsrc_mode_probe;
     htmlsrc_mode.colorize_func = htmlsrc_colorize_line;
 
-    qe_register_mode(&htmlsrc_mode);
+    qe_register_mode(&htmlsrc_mode, MODEF_SYNTAX);
     qe_register_cmd_table(htmlsrc_commands, &htmlsrc_mode);
 
     return 0;

@@ -845,7 +845,7 @@ static int image_init(void)
 {
     av_register_all();
     eb_register_data_type(&image_data_type);
-    qe_register_mode(&image_mode);
+    qe_register_mode(&image_mode, MODEF_DATATYPE | MODEF_VIEW);
     qe_register_cmd_table(image_commands, &image_mode);
     register_completion("pixel_format", pixel_format_completion);
     /* additional mode specific keys */

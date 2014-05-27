@@ -417,7 +417,7 @@ static int bufed_init(void)
     bufed_mode.display_hook = bufed_display_hook;
 
     /* first register mode */
-    qe_register_mode(&bufed_mode);
+    qe_register_mode(&bufed_mode, MODEF_VIEW);
 
     qe_register_cmd_table(bufed_commands, &bufed_mode);
     qe_register_cmd_table(bufed_global_commands, NULL);

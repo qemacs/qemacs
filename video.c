@@ -967,7 +967,7 @@ static EditBufferDataType video_data_type = {
 int video_init(void)
 {
     eb_register_data_type(&video_data_type);
-    qe_register_mode(&video_mode);
+    qe_register_mode(&video_mode, MODEF_DATATYPE | MODEF_VIEW);
     qe_register_cmd_table(video_commands, &video_mode);
     /* additional mode specific keys */
     qe_register_binding('f', "toggle-full-screen", &video_mode);
