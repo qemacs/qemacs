@@ -678,15 +678,6 @@ static void do_org_metaup(EditState *s)
     do_org_move_subtree(s, -1);
 }
 
-static int org_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    /* just check file extension */
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 /* Org mode specific commands */
 static CmdDef org_commands[] = {
     /* Motion */
@@ -748,7 +739,6 @@ static int org_init(void)
     memcpy(&org_mode, &text_mode, sizeof(ModeDef));
     org_mode.name = "org";
     org_mode.extensions = "org";
-    org_mode.mode_probe = org_mode_probe;
     org_mode.colorize_func = org_colorize_line;
 
     qe_register_mode(&org_mode, MODEF_SYNTAX);

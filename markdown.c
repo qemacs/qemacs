@@ -750,15 +750,6 @@ static void do_mkd_metaup(EditState *s)
     do_mkd_move_subtree(s, -1);
 }
 
-static int mkd_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    /* just check file extension */
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 /* Mkd mode specific commands */
 static CmdDef mkd_commands[] = {
     /* Motion */
@@ -825,7 +816,6 @@ static int mkd_init(void)
     memcpy(&mkd_mode, &text_mode, sizeof(ModeDef));
     mkd_mode.name = "markdown";
     mkd_mode.extensions = "mkd|md";
-    mkd_mode.mode_probe = mkd_mode_probe;
     mkd_mode.mode_init = mkd_mode_init;
     mkd_mode.colorize_func = mkd_colorize_line;
 

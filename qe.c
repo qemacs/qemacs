@@ -79,6 +79,15 @@ static const char *user_option;
 
 /* mode handling */
 
+static int generic_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (mode->extensions) {
+        if (match_extension(p->filename, mode->extensions))
+            return 80;
+    }
+    return 1;
+}
+
 void qe_register_mode(ModeDef *m, int flags)
 {
     QEmacsState *qs = &qe_state;
@@ -86,12 +95,22 @@ void qe_register_mode(ModeDef *m, int flags)
 
     m->flags |= flags;
 
+    if (m->flags & MODEF_SYNTAX) {
+        /* if no syntax probing function, use extension matcher */
+        if (!m->mode_probe && m->extensions)
+            m->mode_probe = generic_mode_probe;
+    }
+
     /* register mode in mode list (at end) */
-    p = &qs->first_mode;
-    while (*p != NULL)
-        p = &(*p)->next;
-    m->next = NULL;
-    *p = m;
+    for (p = &qs->first_mode;; p = &(*p)->next) {
+        if (*p == m)
+            return;
+        if (*p == NULL) {
+            m->next = NULL;
+            *p = m;
+            break;
+        }
+    }
 
     /* add missing functions */
     if (!m->mode_init)

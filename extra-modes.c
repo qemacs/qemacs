@@ -210,14 +210,6 @@ static void asm_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
-static int asm_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 static ModeDef asm_mode;
 
 static int asm_init(void)
@@ -226,7 +218,6 @@ static int asm_init(void)
     memcpy(&asm_mode, &text_mode, sizeof(ModeDef));
     asm_mode.name = "asm";
     asm_mode.extensions = "asm|asi|cod";
-    asm_mode.mode_probe = asm_mode_probe;
     asm_mode.colorize_func = asm_colorize_line;
 
     qe_register_mode(&asm_mode, MODEF_SYNTAX);
@@ -329,14 +320,6 @@ static void basic_colorize_line(QEColorizeContext *cp,
     }
 }
 
-static int basic_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 static ModeDef basic_mode;
 
 static int basic_init(void)
@@ -345,7 +328,6 @@ static int basic_init(void)
     memcpy(&basic_mode, &text_mode, sizeof(ModeDef));
     basic_mode.name = "Basic";
     basic_mode.extensions = "bas|frm|mst|vb|vbs";
-    basic_mode.mode_probe = basic_mode_probe;
     basic_mode.colorize_func = basic_colorize_line;
 
     qe_register_mode(&basic_mode, MODEF_SYNTAX);
@@ -588,14 +570,6 @@ static void vim_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = (state << 4) | (level & 15);
 }
 
-static int vim_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 static ModeDef vim_mode;
 
 static int vim_init(void)
@@ -604,7 +578,6 @@ static int vim_init(void)
     memcpy(&vim_mode, &text_mode, sizeof(ModeDef));
     vim_mode.name = "Vim";
     vim_mode.extensions = "vim";
-    vim_mode.mode_probe = vim_mode_probe;
     vim_mode.colorize_func = vim_colorize_line;
 
     qe_register_mode(&vim_mode, MODEF_SYNTAX);
@@ -767,14 +740,6 @@ static void pascal_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
-static int pascal_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 static ModeDef pascal_mode;
 
 static int pascal_init(void)
@@ -783,7 +748,6 @@ static int pascal_init(void)
     memcpy(&pascal_mode, &text_mode, sizeof(ModeDef));
     pascal_mode.name = "Pascal";
     pascal_mode.extensions = "pas";
-    pascal_mode.mode_probe = pascal_mode_probe;
     pascal_mode.colorize_func = pascal_colorize_line;
 
     qe_register_mode(&pascal_mode, MODEF_SYNTAX);
@@ -1185,14 +1149,6 @@ static void sql_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static int sql_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 static ModeDef sql_mode;
 
 static int sql_init(void)
@@ -1201,7 +1157,6 @@ static int sql_init(void)
     memcpy(&sql_mode, &text_mode, sizeof(ModeDef));
     sql_mode.name = "SQL";
     sql_mode.extensions = "sql|mysql|sqlite|sqlplus";
-    sql_mode.mode_probe = sql_mode_probe;
     sql_mode.colorize_func = sql_colorize_line;
 
     qe_register_mode(&sql_mode, MODEF_SYNTAX);
@@ -1375,14 +1330,6 @@ void lua_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static int lua_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 static ModeDef lua_mode;
 
 static int lua_init(void)
@@ -1391,7 +1338,6 @@ static int lua_init(void)
     memcpy(&lua_mode, &text_mode, sizeof(ModeDef));
     lua_mode.name = "Lua";
     lua_mode.extensions = "lua";
-    lua_mode.mode_probe = lua_mode_probe;
     lua_mode.colorize_func = lua_colorize_line;
 
     qe_register_mode(&lua_mode, MODEF_SYNTAX);
@@ -1651,14 +1597,6 @@ void julia_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static int julia_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 static ModeDef julia_mode;
 
 static int julia_init(void)
@@ -1667,7 +1605,6 @@ static int julia_init(void)
     memcpy(&julia_mode, &text_mode, sizeof(ModeDef));
     julia_mode.name = "Julia";
     julia_mode.extensions = "jl";
-    julia_mode.mode_probe = julia_mode_probe;
     julia_mode.colorize_func = julia_colorize_line;
 
     qe_register_mode(&julia_mode, MODEF_SYNTAX);
@@ -1870,14 +1807,6 @@ void haskell_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static int haskell_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 static ModeDef haskell_mode;
 
 static int haskell_init(void)
@@ -1886,7 +1815,6 @@ static int haskell_init(void)
     memcpy(&haskell_mode, &text_mode, sizeof(ModeDef));
     haskell_mode.name = "Haskell";
     haskell_mode.extensions = "hs|haskell";
-    haskell_mode.mode_probe = haskell_mode_probe;
     haskell_mode.colorize_func = haskell_colorize_line;
 
     qe_register_mode(&haskell_mode, MODEF_SYNTAX);
@@ -2099,14 +2027,6 @@ void python_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static int python_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 static ModeDef python_mode;
 
 static int python_init(void)
@@ -2115,7 +2035,6 @@ static int python_init(void)
     memcpy(&python_mode, &text_mode, sizeof(ModeDef));
     python_mode.name = "Python";
     python_mode.extensions = "py|pyt";
-    python_mode.mode_probe = python_mode_probe;
     python_mode.colorize_func = python_colorize_line;
 
     qe_register_mode(&python_mode, MODEF_SYNTAX);
@@ -2805,14 +2724,6 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
-static int ocaml_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    return 1;
-}
-
 static ModeDef ocaml_mode;
 
 static int ocaml_init(void)
@@ -2821,7 +2732,6 @@ static int ocaml_init(void)
     memcpy(&ocaml_mode, &text_mode, sizeof(ModeDef));
     ocaml_mode.name = "Ocaml";
     ocaml_mode.extensions = "ml|mli|mll|mly";
-    ocaml_mode.mode_probe = ocaml_mode_probe;
     ocaml_mode.colorize_func = ocaml_colorize_line;
 
     qe_register_mode(&ocaml_mode, MODEF_SYNTAX);
