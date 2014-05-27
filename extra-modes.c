@@ -44,29 +44,7 @@ static int is_keyword(unsigned int *str, int from, int to, const char *list)
     return 0;
 }
 
-static int is_lc_keyword(unsigned int *str, int from, int to, const char *list)
-{
-    char keyword[MAX_KEYWORD_SIZE];
-    int c, i, len = to - from;
-
-    if (len >= MAX_KEYWORD_SIZE)
-        return 0;
-
-    for (i = 0; i < len; i++) {
-        c = str[from + i];
-        if (c >= 0x80)
-            return 0;
-        keyword[i] = qe_tolower(c);
-    }
-    keyword[len] = '\0';
-
-    if (strfind(list, keyword))
-        return 1;
-
-    return 0;
-}
-
-/*---------------- Assembly mode coloring ----------------*/
+/*---------------- x86 Assembly language coloring ----------------*/
 
 static char const asm_prepkeywords1[] = {
     "|align|arg|assume|codeseg|const|dataseg|display|dosseg"
@@ -105,107 +83,97 @@ enum {
 static void asm_colorize_line(QEColorizeContext *cp,
                               unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, j, w;
-    int wn = 0; /* word number on line */
+    char keyword[MAX_KEYWORD_SIZE];
+    int i = 0, start = 0, c, w, len, wn = 0; /* word number on line */
     int colstate = cp->colorize_state;
 
     if (colstate) {
         /* skip characters upto and including separator */
-        w = i;
     comment:
-        for (; i < n; i++) {
+        for (start = i; i < n; i++) {
             if (str[i] == (char)colstate) {
                 i++;
                 colstate = 0;
                 break;
             }
         }
-        SET_COLOR(str, w, i, ASM_STYLE_COMMENT);
+        SET_COLOR(str, start, i, ASM_STYLE_COMMENT);
     }
-    for (w = i; i < n && qe_isspace(str[i]); i++)
+    for (; i < n && qe_isspace(str[i]); i++)
         continue;
 
     for (w = i; i < n;) {
-        switch (str[i]) {
-        case '.':
-            if (i > w)
-                break;
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '\\':
+            if (str[i] == '}' || str[i] == '{')
+                goto prep;
+            break;
+        case '}':
         prep:
             /* scan for comment */
-            for (j = i + 1; j < n; j++) {
-                if (str[j] == ';')
+            for (; i < n; i++) {
+                if (str[i] == ';')
                     break;
             }
-            SET_COLOR(str, i, j, ASM_STYLE_PREPROCESS);
-            i = j;
+            SET_COLOR(str, start, i, ASM_STYLE_PREPROCESS);
             continue;
         case ';':
-            SET_COLOR(str, i, n, ASM_STYLE_COMMENT);
             i = n;
+            SET_COLOR(str, start, i, ASM_STYLE_COMMENT);
             continue;
         case '\'':
         case '\"':
             /* parse string const */
-            for (j = i + 1; j < n; j++) {
-                if (str[j] == str[i]) {
-                    j++;
+            for (; i < n; i++) {
+                if (str[i] == (unsigned int)c) {
+                    i++;
                     break;
                 }
             }
-            SET_COLOR(str, i, j, ASM_STYLE_STRING);
-            i = j;
+            SET_COLOR(str, start, i, ASM_STYLE_STRING);
             continue;
         default:
             break;
         }
         /* parse numbers */
-        if (qe_isdigit(str[i])) {
-            for (j = i + 1; j < n; j++) {
-                if (!qe_isalnum(str[j]))
-                    break;
-            }
-            SET_COLOR(str, i, j, ASM_STYLE_NUMBER);
-            i = j;
+        if (qe_isdigit(c)) {
+            for (; qe_isalnum(str[i]); i++)
+                continue;
+            SET_COLOR(str, start, i, ASM_STYLE_NUMBER);
             continue;
         }
         /* parse identifiers and keywords */
-        if (qe_isalpha_(str[i]) || str[i] == '@'
-        ||  str[i] == '$' || str[i] == '%' || str[i] == '?') {
-            for (j = i + 1; j < n; j++) {
-                if (!qe_isalnum_(str[j])
-                &&  str[j] != '@' && str[j] != '$'
-                &&  str[j] != '%' && str[j] != '?')
-                    break;
+        if (qe_isalpha_(c) || qe_findchar("@.$%?", c)) {
+            len = 0;
+            keyword[len++] = qe_tolower(c);
+            for (; qe_isalnum_(str[i]) || qe_findchar("@$%?", str[i]); i++) {
+                if (len < countof(keyword) - 1)
+                    keyword[len++] = qe_tolower(str[i]);
             }
+            keyword[len] = '\0';
             if (++wn == 1) {
-                if (j - i == 7
-                &&  n - j >= 2
-                &&  !ustristart(str + i, "comment", NULL)) {
-                    for (w = j; w < n; w++) {
-                        if (!qe_isspace(str[w]))
-                            break;
-                    }
-                    colstate = str[w];
-                    SET_COLOR(str, i, w, ASM_STYLE_PREPROCESS);
+                if (!strcmp(keyword, "comment") && n - i >= 2) {
+                    for (w = i; qe_isspace(str[w]); w++)
+                        continue;
+                    colstate = str[w];  /* end of comment character */
+                    SET_COLOR(str, start, w, ASM_STYLE_PREPROCESS);
                     i = w + 1;
                     goto comment;
                 }
-                if (is_lc_keyword(str, i, j, asm_prepkeywords1))
+                if (strfind(asm_prepkeywords1, keyword))
                     goto prep;
             } else
             if (wn == 2) {
-                if (is_lc_keyword(str, i, j, asm_prepkeywords2)) {
-                    SET_COLOR(str, i, j, ASM_STYLE_PREPROCESS);
-                    i = j;
+                if (strfind(asm_prepkeywords2, keyword)) {
+                    SET_COLOR(str, start, i, ASM_STYLE_PREPROCESS);
                     continue;
                 }
             }
-            SET_COLOR(str, i, j, ASM_STYLE_IDENTIFIER);
-            i = j;
+            SET_COLOR(str, start, i, ASM_STYLE_IDENTIFIER);
             continue;
         }
-        i++;
-        continue;
     }
     cp->colorize_state = colstate;
 }
@@ -264,7 +232,8 @@ enum {
 static void basic_colorize_line(QEColorizeContext *cp,
                                 unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, start, c, style;
+    char keyword[MAX_KEYWORD_SIZE];
+    int i = 0, start, c, style, len;
 
     while (i < n) {
         start = i;
@@ -299,18 +268,24 @@ static void basic_colorize_line(QEColorizeContext *cp,
         }
         /* parse identifiers and keywords */
         if (qe_isalpha_(c)) {
+            len = 0;
+            keyword[len++] = qe_tolower(c);
             for (; i < n; i++) {
-                if (!qe_isalnum_(str[i])) {
+                if (qe_isalnum_(str[i])) {
+                    if (len < countof(keyword) - 1)
+                        keyword[len++] = qe_tolower(str[i]);
+                } else {
                     if (qe_findchar("$&!@%#", str[i]))
                         i++;
                     break;
                 }
             }
-            if (is_lc_keyword(str, start, i, basic_keywords)) {
+            keyword[len] = '\0';
+            if (strfind(basic_keywords, keyword)) {
                 SET_COLOR(str, start, i, BASIC_STYLE_KEYWORD);
                 continue;
             }
-            if (is_lc_keyword(str, start, i, basic_types)) {
+            if (strfind(basic_types, keyword)) {
                 SET_COLOR(str, start, i, BASIC_STYLE_TYPE);
                 continue;
             }
@@ -589,15 +564,19 @@ static int vim_init(void)
 /* Should do Delphi specific things */
 
 static char const pascal_keywords[] = {
-    "|absolute|and|array|asm|begin|boolean|byte"
-    "|case|char|comp|const|div|do|double|downto"
-    "|else|end|extended|external"
-    "|false|far|file|for|forward|function|goto"
-    "|if|implementation|in|inline|integer|interface|interrupt"
-    "|label|longint|mod|near|nil|not|of|or|overlay"
-    "|packed|pointer|procedure|program|real|record|repeat"
-    "|set|shl|shortint|shr|single|string|text|then|to|true|type"
-    "|unit|until|uses|var|while|with|word|xor"
+    "|absolute|and|array|asm|begin|case|comp|const|div|do|downto"
+    "|else|end|extended|external|false|far|file|for|forward|function|goto"
+    "|if|implementation|in|inline|interface|interrupt"
+    "|label|mod|near|nil|not|of|or|overlay"
+    "|packed|procedure|program|record|repeat"
+    "|set|shl|shr|single|text|then|to|true|type"
+    "|unit|until|uses|var|while|with|xor"
+    "|"
+};
+
+static char const pascal_types[] = {
+    "|boolean|byte|char|double|integer|longint|pointer|real|shortint"
+    "|string|word"
     "|"
 };
 
@@ -610,6 +589,7 @@ enum {
 enum {
     PASCAL_STYLE_TEXT =       QE_STYLE_DEFAULT,
     PASCAL_STYLE_KEYWORD =    QE_STYLE_KEYWORD,
+    PASCAL_STYLE_TYPE =       QE_STYLE_TYPE,
     PASCAL_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
     PASCAL_STYLE_COMMENT =    QE_STYLE_COMMENT,
     PASCAL_STYLE_STRING =     QE_STYLE_STRING,
@@ -621,7 +601,8 @@ enum {
 static void pascal_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, int mode_flags)
 {
-    int i = 0, start = i, c, k, style;
+    char keyword[MAX_KEYWORD_SIZE];
+    int i = 0, start = i, c, k, style, len;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_PASCAL_COMMENT)
@@ -719,12 +700,19 @@ static void pascal_colorize_line(QEColorizeContext *cp,
         }
         /* parse identifiers and keywords */
         if (qe_isalpha_(c)) {
-            for (; i < n; i++) {
-                if (!qe_isalnum_(str[i]))
-                    break;
+            len = 0;
+            keyword[len++] = qe_tolower(c);
+            for (; qe_isalnum_(str[i]); i++) {
+                if (len < countof(keyword) - 1)
+                    keyword[len++] = qe_tolower(str[i]);
             }
-            if (is_lc_keyword(str, start, i, pascal_keywords)) {
+            keyword[len] = '\0';
+            if (strfind(pascal_keywords, keyword)) {
                 SET_COLOR(str, start, i, PASCAL_STYLE_KEYWORD);
+                continue;
+            }
+            if (strfind(pascal_types, keyword)) {
+                SET_COLOR(str, start, i, PASCAL_STYLE_TYPE);
                 continue;
             }
             style = PASCAL_STYLE_IDENTIFIER;
