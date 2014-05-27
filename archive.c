@@ -32,15 +32,15 @@ typedef struct ArchiveType {
 static ArchiveType archive_type_array[] = {
     { "tar", "tar|tar.Z|tgz|tar.gz|tbz|tbz2|tar.bz2|tar.bzip2|"
             "txz|tar.xz|tlz|tar.lzma",
-            "tar tvf '%s'" },
-    { "zip", "zip|ZIP|jar|apk", "unzip -l '%s'" },
-    { "rar", "rar|RAR", "unrar l '%s'" },
-    { "arj", "arj|ARJ", "unarj l '%s'" },
-    { "cab", "cab", "cabextract -l '%s'" },
-    { "7zip", "7z", "7z l '%s'" },
-    { "ar", "a|ar", "ar -tv '%s'" },
-    { "xar", "xar", "xar -tvf '%s'" },
-    { "zoo", "zoo", "zoo l '%s'" },
+            "tar tvf $1" },
+    { "zip", "zip|ZIP|jar|apk", "unzip -l $1" },
+    { "rar", "rar|RAR", "unrar l $1" },
+    { "arj", "arj|ARJ", "unarj l $1" },
+    { "cab", "cab", "cabextract -l $1" },
+    { "7zip", "7z", "7z l $1" },
+    { "ar", "a|ar", "ar -tv $1" },
+    { "xar", "xar", "xar -tvf $1" },
+    { "zoo", "zoo", "zoo l $1" },
 };
 
 static ArchiveType *archive_types;
@@ -55,12 +55,12 @@ typedef struct CompressType {
 } CompressType;
 
 static CompressType compress_type_array[] = {
-    { "gzip", "gz", "gunzip -c '%s'", "gzip > '%s'" },
-    { "bzip2", "bz2|bzip2", "bunzip2 -c '%s'", "bzip2 > '%s'" },
-    { "compress", "Z", "uncompress -c '%s'", "compress > '%s'" },
-    { "LZMA", "lzma", "unlzma -c '%s'", "lzma > '%s'" },
-    { "XZ", "xz", "unxz -c '%s'", "xz > '%s'" },
-    { "BinHex", "hqx", "binhex decode -o /tmp/qe-$$ '%s' && "
+    { "gzip", "gz", "gunzip -c $1", "gzip > $1" },
+    { "bzip2", "bz2|bzip2", "bunzip2 -c $1", "bzip2 > $1" },
+    { "compress", "Z", "uncompress -c $1", "compress > $1" },
+    { "LZMA", "lzma", "unlzma -c $1", "lzma > $1" },
+    { "XZ", "xz", "unxz -c $1", "xz > $1" },
+    { "BinHex", "hqx", "binhex decode -o /tmp/qe-$$ $1 && "
                        "cat /tmp/qe-$$ ; rm -f /tmp/qe-$$", NULL },
 };
 
@@ -99,6 +99,34 @@ static int archive_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 0;
 }
 
+static int qe_shell_subst(char *buf, int size, const char *cmd,
+                          const char *arg1, const char *arg2)
+{
+    buf_t outbuf, *out;
+
+    out = buf_init(&outbuf, buf, size);
+    while (*cmd) {
+        if (*cmd == '$') {
+            if (cmd[1] == '1' && arg1) {
+                buf_put_byte(out, '\'');
+                buf_puts(out, arg1);
+                buf_put_byte(out, '\'');
+                cmd += 2;
+                continue;
+            }
+            if (cmd[1] == '2' && arg2) {
+                buf_put_byte(out, '\'');
+                buf_puts(out, arg1);
+                buf_put_byte(out, '\'');
+                cmd += 2;
+                continue;
+            }
+        }
+        buf_put_byte(out, *cmd++);
+    }
+    return out->len;
+}
+
 static ModeDef archive_mode;
 
 static int archive_buffer_load(EditBuffer *b, FILE *f)
@@ -112,7 +140,7 @@ static int archive_buffer_load(EditBuffer *b, FILE *f)
         eb_clear(b);
         eb_printf(b, "  Directory of %s archive %s\n",
                   atp->name, b->filename);
-        snprintf(cmd, sizeof(cmd), atp->list_cmd, b->filename);
+        qe_shell_subst(cmd, sizeof(cmd), atp->list_cmd, b->filename, NULL);
         new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
                          SF_INFINITE | SF_BUFED_MODE);
 
@@ -212,7 +240,7 @@ static int compress_buffer_load(EditBuffer *b, FILE *f)
     ctp = find_compress_type(b->filename);
     if (ctp) {
         eb_clear(b);
-        snprintf(cmd, sizeof(cmd), ctp->load_cmd, b->filename);
+        qe_shell_subst(cmd, sizeof(cmd), ctp->load_cmd, b->filename, NULL);
         new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
                          SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
         /* XXX: should check for archiver error */
@@ -294,7 +322,7 @@ static int wget_buffer_load(EditBuffer *b, FILE *f)
     char cmd[1024];
 
     eb_clear(b);
-    snprintf(cmd, sizeof(cmd), "wget -q -O - '%s'", b->filename);
+    qe_shell_subst(cmd, sizeof(cmd), "wget -q -O - $1", b->filename, NULL);
     new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
                      SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
     /* XXX: should check for wget error */
@@ -378,7 +406,7 @@ static int man_buffer_load(EditBuffer *b, FILE *f)
     char cmd[1024];
 
     eb_clear(b);
-    snprintf(cmd, sizeof(cmd), "man '%s'", b->filename);
+    qe_shell_subst(cmd, sizeof(cmd), "man $1", b->filename, NULL);
     new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
                      SF_COLOR | SF_INFINITE);
     /* XXX: should check for man error */
