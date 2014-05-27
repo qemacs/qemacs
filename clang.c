@@ -675,7 +675,7 @@ void c_colorize_line(QEColorizeContext *cp,
                     for (i++; i < n;) {
                         c = str[i++];
                         if (c == delim) {
-                            if (str[i] == c) {
+                            if (str[i] == (unsigned int)c) {
                                 i++;
                                 continue;
                             }
@@ -1115,7 +1115,7 @@ static void c_indent_line(EditState *s, int offset0)
                 goto unindent;
         }
         /* NOTE: strings & comments are correctly ignored there */
-        if ((c == '&' || c == '|') && buf[i + 1] == c)
+        if ((c == '&' || c == '|') && buf[i + 1] == (unsigned int)c)
             goto unindent;
 
         if (c == '}') {

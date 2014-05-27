@@ -1327,7 +1327,7 @@ void do_combine_char(EditState *s, int accent)
     if (c == accent) {
         eb_delete(s->b, offset0, s->offset - offset0);
     } else
-    if (((expand_ligature(g, c) && g[1] == accent)
+    if (((expand_ligature(g, c) && g[1] == (unsigned int)accent)
     ||   (c != '\n' && combine_accent(g, c, accent)))
     &&  (len = eb_encode_uchar(s->b, buf, g[0])) > 0) {
         /* XXX: should bypass eb_encode_uchar to detect encoding failure */
@@ -1911,6 +1911,7 @@ void do_set_auto_coding(EditState *s, int verbose)
     buf_size = eb_read(b, 0, buf, sizeof(buf));
     eol_type = b->eol_type;
     /* XXX: detect_charset returns a default charset */
+    /* XXX: should enforce 32 bit alignment of buf */
     charset = detect_charset(buf, buf_size, &eol_type);
     eb_set_charset(b, charset, eol_type);
     if (verbose) {
@@ -2186,7 +2187,7 @@ void do_set_indent_tabs_mode(EditState *s, int val)
     s->indent_tabs_mode = (val != 0);
 }
 
-void do_set_fill_column(EditState *s, int fill_column)
+static void do_set_fill_column(EditState *s, int fill_column)
 {
     if (fill_column > 1)
         s->b->fill_column = fill_column;
@@ -2627,7 +2628,7 @@ static unsigned int compute_crc(const void *p, int size, unsigned int sum)
         size--;
     }
     while (size >= 4) {
-        sum += ((sum >> 31) & 1) + sum + *(const uint32_t *)data;
+        sum += ((sum >> 31) & 1) + sum + *(const uint32_t *)(const void *)data;
         data += 4;
         size -= 4;
     }
@@ -3402,8 +3403,8 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
 
 #endif /* CONFIG_TINY */
 
-int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                                int *offset_ptr, int line_num)
+static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                                       int *offset_ptr, int line_num)
 {
     EditBuffer *b = s->b;
     unsigned int *buf_ptr, *buf_end;
@@ -5930,6 +5931,7 @@ static void do_load1(EditState *s, const char *filename1,
                 goto fail;
             }
             /* autodetect buffer charset */
+            /* XXX: should enforce 32 bit alignment of buf */
             charset = detect_charset(buf, buf_size, &eol_type);
         }
         buf[buf_size] = '\0';

@@ -814,7 +814,7 @@ const unsigned int *ustrstr(const unsigned int *str, const char *val)
     int c = val[0];
 
     for (; *str != '\0'; str++) {
-        if (*str == c && ustrstart(str, val, NULL))
+        if (*str == (unsigned int)c && ustrstart(str, val, NULL))
             return str;
     }
     return NULL;

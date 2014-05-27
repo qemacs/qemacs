@@ -812,12 +812,14 @@ void eb_set_style(EditBuffer *b, int style, enum LogOperation op,
             len = min(size, ssizeof(buf));
             if (b->style_shift == 2) {
                 for (i = 0; i < len; i += 4) {
-                    *(uint32_t*)(buf + i) = style;
+                    /* XXX: should enforce 32 bit alignment of buf */
+                    *(uint32_t*)(void *)(buf + i) = style;
                 }
             } else
             if (b->style_shift == 1) {
                 for (i = 0; i < len; i += 2) {
-                    *(uint16_t*)(buf + i) = style;
+                    /* XXX: should enforce 16 bit alignment of buf */
+                    *(uint16_t*)(void *)(buf + i) = style;
                 }
             } else {
                 memset(buf, style, len);
@@ -900,7 +902,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
 
     /* If inserting, try and coalesce log record with previous */
     if (op == LOGOP_INSERT && b->last_log == LOGOP_INSERT
-    &&  b->log_new_index >= sizeof(lb) + sizeof(int)
+    &&  (size_t)b->log_new_index >= sizeof(lb) + sizeof(int)
     &&  eb_read(b->log_buffer, b->log_new_index - sizeof(int), &size_trailer,
                 sizeof(int)) == sizeof(int)
     &&  size_trailer == 0

@@ -64,7 +64,7 @@ static void cfb16_fill_rectangle(QEditScreen *s,
         for (y = 0; y < h; y++) {
             d = dest;
             for (n = w; n != 0; n--) {
-                ((short *)d)[0] ^= 0xffff;
+                ((uint16_t *)(void *)d)[0] ^= 0xffff;
                 d += 2;
             }
             dest += cfb->wrap;
@@ -75,21 +75,21 @@ static void cfb16_fill_rectangle(QEditScreen *s,
             n = w;
 
             if (((int)d & 3) != 0) {
-                ((short *)d)[0] = col;
+                ((uint16_t *)(void *)d)[0] = col;
                 d += 2;
                 n--;
             }
 
             while (n >= 8) {
-                ((int *)d)[0] = col;
-                ((int *)d)[1] = col;
-                ((int *)d)[2] = col;
-                ((int *)d)[3] = col;
+                ((uint32_t *)(void *)d)[0] = col;
+                ((uint32_t *)(void *)d)[1] = col;
+                ((uint32_t *)(void *)d)[2] = col;
+                ((uint32_t *)(void *)d)[3] = col;
                 d += 16;
                 n -= 8;
             }
             while (n > 0) {
-                ((short *)d)[0] = col;
+                ((uint16_t *)(void *)d)[0] = col;
                 d += 2;
                 n--;
             }
@@ -114,7 +114,7 @@ static void cfb32_fill_rectangle(QEditScreen *s,
         for (y = 0; y < h; y++) {
             d = dest;
             for (n = w; n != 0; n--) {
-                ((int *)d)[0] ^= 0x00ffffff;
+                ((uint32_t *)(void *)d)[0] ^= 0x00ffffff;
                 d += 4;
             }
             dest += cfb->wrap;
@@ -124,15 +124,15 @@ static void cfb32_fill_rectangle(QEditScreen *s,
             d = dest;
             n = w;
             while (n >= 4) {
-                ((int *)d)[0] = col;
-                ((int *)d)[1] = col;
-                ((int *)d)[2] = col;
-                ((int *)d)[3] = col;
+                ((uint32_t *)(void *)d)[0] = col;
+                ((uint32_t *)(void *)d)[1] = col;
+                ((uint32_t *)(void *)d)[2] = col;
+                ((uint32_t *)(void *)d)[3] = col;
                 d += 16;
                 n -= 4;
             }
             while (n > 0) {
-                ((int *)d)[0] = col;
+                ((uint32_t *)(void *)d)[0] = col;
                 d += 4;
                 n--;
             }
@@ -160,20 +160,20 @@ static void cfb16_draw_glyph(QEditScreen *s1,
         d = dest;
         while (n >= 4) {
             if (s[0] >= 0x80)
-                ((short *)d)[0] = col;
+                ((uint16_t *)(void *)d)[0] = col;
             if (s[1] >= 0x80)
-                ((short *)d)[1] = col;
+                ((uint16_t *)(void *)d)[1] = col;
             if (s[2] >= 0x80)
-                ((short *)d)[2] = col;
+                ((uint16_t *)(void *)d)[2] = col;
             if (s[3] >= 0x80)
-                ((short *)d)[3] = col;
+                ((uint16_t *)(void *)d)[3] = col;
             s += 4;
             d += 4 * 2;
             n -= 4;
         }
         while (n > 0) {
             if (s[0] >= 0x80)
-                ((short *)d)[0] = col;
+                ((uint16_t *)(void *)d)[0] = col;
             s++;
             d += 2;
             n--;
@@ -204,20 +204,20 @@ static void cfb32_draw_glyph(QEditScreen *s1,
         d = dest;
         while (n >= 4) {
             if (s[0] >= 0x80)
-                ((int *)d)[0] = col;
+                ((uint32_t *)(void *)d)[0] = col;
             if (s[1] >= 0x80)
-                ((int *)d)[1] = col;
+                ((uint32_t *)(void *)d)[1] = col;
             if (s[2] >= 0x80)
-                ((int *)d)[2] = col;
+                ((uint32_t *)(void *)d)[2] = col;
             if (s[3] >= 0x80)
-                ((int *)d)[3] = col;
+                ((uint32_t *)(void *)d)[3] = col;
             s += 4;
             d += 4 * 4;
             n -= 4;
         }
         while (n > 0) {
             if (s[0] >= 0x80)
-                ((int *)d)[0] = col;
+                ((uint32_t *)(void *)d)[0] = col;
             s++;
             d += 4;
             n--;

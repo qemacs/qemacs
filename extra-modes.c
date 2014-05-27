@@ -280,7 +280,7 @@ static void basic_colorize_line(QEColorizeContext *cp,
         case '\"':
             /* parse string const */
             while (i < n) {
-                if (str[i++] == c)
+                if (str[i++] == (unsigned int)c)
                     break;
             }
             SET_COLOR(str, start, i, BASIC_STYLE_STRING);
@@ -443,7 +443,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
             comm = 0;
             /* parse string const */
             while (i < n) {
-                if (str[i++] == c)
+                if (str[i++] == (unsigned int)c)
                     break;
             }
             SET_COLOR(str, start, i, VIM_STYLE_STRING);
@@ -456,7 +456,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
                     if (str[i] == '\\' && i + 1 < n) {
                         i += 2;
                     } else
-                    if (str[i++] == c)
+                    if (str[i++] == (unsigned int)c)
                         break;
                 }
                 SET_COLOR(str, start, i, VIM_STYLE_REGEX);
@@ -468,7 +468,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
             &&  (qe_isblank(str[i - 2]) || str[i - 2] == '=')) {
                 /* parse string const */
                 for (j = i; j < n;) {
-                    if (str[j++] == c) {
+                    if (str[j++] == (unsigned int)c) {
                         i = j;
                         SET_COLOR(str, start, i, VIM_STYLE_STRING);
                         break;
@@ -489,7 +489,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
                 if (str[i] == '\\' && i + 1 < n) {
                     i += 2;
                 } else
-                if (str[i++] == c) {
+                if (str[i++] == (unsigned int)c) {
                     style = VIM_STYLE_STRING;
                     break;
                 }
@@ -692,7 +692,7 @@ static void pascal_colorize_line(QEColorizeContext *cp,
             /* parse string or char const */
             while (i < n) {
                 /* XXX: escape sequences? */
-                if (str[i++] == c)
+                if (str[i++] == (unsigned int)c)
                     break;
             }
             SET_COLOR(str, start, i, PASCAL_STYLE_STRING);
@@ -1132,7 +1132,7 @@ static void sql_colorize_line(QEColorizeContext *cp,
                     i++;
                     continue;
                 }
-                if (str[i] == c) {
+                if (str[i] == (unsigned int)c) {
                     i++;
                     break;
                 }
@@ -1423,7 +1423,7 @@ static int julia_get_name(char *buf, int buf_size, const unsigned int *p)
     return i;
 }
 
-int julia_get_number(const unsigned int *p)
+static int julia_get_number(const unsigned int *p)
 {
     const unsigned int *p0 = p;
     int c;
@@ -1476,8 +1476,8 @@ int julia_get_number(const unsigned int *p)
     return p - p0;
 }
 
-void julia_colorize_line(QEColorizeContext *cp,
-                         unsigned int *str, int n, int mode_flags)
+static void julia_colorize_line(QEColorizeContext *cp,
+                                unsigned int *str, int n, int mode_flags)
 {
     int i = 0, start = i, c, sep = 0, klen;
     int state = cp->colorize_state;
@@ -1521,7 +1521,7 @@ void julia_colorize_line(QEColorizeContext *cp,
             /* parse string or character const */
             sep = c;
             state = IN_JULIA_STRING;
-            if (str[i] == sep && str[i + 1] == sep) {
+            if (str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
                 /* multi-line string """ ... """ */
                 state = IN_JULIA_LONG_STRING;
                 i += 2;
@@ -1533,7 +1533,7 @@ void julia_colorize_line(QEColorizeContext *cp,
                             i += 1;
                         }
                     } else
-                    if (c == sep && str[i] == sep && str[i + 1] == sep) {
+                    if (c == sep && str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
                         i += 2;
                         state = 0;
                         break;
@@ -1728,7 +1728,7 @@ void haskell_colorize_line(QEColorizeContext *cp,
                             state = IN_HASKELL_STRING;
                         }
                     } else
-                    if (str[i] == '^' && i + 1 < n && str[i + 1] != sep) {
+                    if (str[i] == '^' && i + 1 < n && str[i + 1] != (unsigned int)sep) {
                         i += 2;
                     } else {
                         i += 1;
@@ -1889,7 +1889,7 @@ void python_colorize_line(QEColorizeContext *cp,
             i--;
         has_quote:
             sep = str[i++];
-            if (str[i] == sep && str[i + 1] == sep) {
+            if (str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
                 /* long string */
                 state = (sep == '\"') ? IN_PYTHON_LONG_STRING2 :
                         IN_PYTHON_LONG_STRING;
@@ -1902,7 +1902,7 @@ void python_colorize_line(QEColorizeContext *cp,
                             i += 1;
                         }
                     } else
-                    if (c == sep && str[i] == sep && str[i + 1] == sep) {
+                    if (c == sep && str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
                         i += 2;
                         state = 0;
                         break;
@@ -2376,7 +2376,7 @@ void ruby_colorize_line(QEColorizeContext *cp,
                     for (; qe_isalnum_(str[j]); j++) {
                         sig = ((sig << 6) + str[j]) % 61;
                     }
-                    if (str[j++] != sep)
+                    if (str[j++] != (unsigned int)sep)
                         break;
                 } else
                 if (qe_isalpha_(str[j])) {

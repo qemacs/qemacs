@@ -194,7 +194,7 @@ static int ppm_save(QEditScreen *s, const char *filename)
     f = fopen(filename, "w");
     if (!f)
         return -1;
-    data = (unsigned int *)cfb->base;
+    data = (unsigned int *)(void *)cfb->base;
     w = s->width;
     h = s->height;
 

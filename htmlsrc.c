@@ -242,7 +242,7 @@ void htmlsrc_colorize_line(QEColorizeContext *cp,
                     state |= IN_HTML_ENTITY;
                     break;
                 }
-                if (str[i] == delim) {
+                if (str[i] == (unsigned int)delim) {
                     i++;
                     state &= ~(IN_HTML_STRING | IN_HTML_STRING1);
                     break;

@@ -635,7 +635,7 @@ static void charset_get_pos_ucs2(CharsetDecodeState *s, const u8 *buf, int size,
     int line, col;
 
     line = 0;
-    lp = p = (const uint16_t *)buf;
+    lp = p = (const uint16_t *)(const void *)buf;
     p1 = p + (size >> 1);
     u.n = 0;
     u.c[s->charset == &charset_ucs2be] = s->eol_char;
@@ -671,7 +671,7 @@ static int charset_goto_line_ucs2(CharsetDecodeState *s,
     uint16_t nl, lf;
     union { uint16_t n; char c[2]; } u;
 
-    lp = p = (const uint16_t *)buf;
+    lp = p = (const uint16_t *)(const void *)buf;
     p1 = p + (size >> 1);
     u.n = 0;
     u.c[s->charset == &charset_ucs2be] = s->eol_char;
@@ -769,7 +769,7 @@ static int charset_get_chars_ucs2(CharsetDecodeState *s,
         return size >> 1;
 
     nb_skip = 0;
-    buf_ptr = (const uint16_t *)buf;
+    buf_ptr = (const uint16_t *)(const void *)buf;
     buf_end = buf_ptr + (size >> 1);
     u.n = 0;
     u.c[s->charset == &charset_ucs2be] = '\n';
@@ -797,7 +797,7 @@ static int charset_goto_char_ucs2(CharsetDecodeState *s,
         return min(pos << 1, size);
 
     nb_chars = 0;
-    buf_ptr = (const uint16_t *)buf;
+    buf_ptr = (const uint16_t *)(const void *)buf;
     buf_end = buf_ptr + (size >> 1);
     u.n = 0;
     u.c[s->charset == &charset_ucs2be] = '\n';
@@ -910,7 +910,7 @@ static void charset_get_pos_ucs4(CharsetDecodeState *s, const u8 *buf, int size,
     int line, col;
 
     line = 0;
-    lp = p = (const uint32_t *)buf;
+    lp = p = (const uint32_t *)(const void *)buf;
     p1 = p + (size >> 2);
     u.n = 0;
     u.c[(s->charset == &charset_ucs4be) * 3] = s->eol_char;
@@ -945,7 +945,7 @@ static int charset_goto_line_ucs4(CharsetDecodeState *s,
     uint32_t nl, lf;
     union { uint32_t n; char c[4]; } u;
 
-    lp = p = (const uint32_t *)buf;
+    lp = p = (const uint32_t *)(const void *)buf;
     p1 = p + (size >> 2);
     u.n = 0;
     u.c[(s->charset == &charset_ucs4be) * 3] = s->eol_char;
@@ -1042,7 +1042,7 @@ static int charset_get_chars_ucs4(CharsetDecodeState *s,
         return size >> 2;
 
     nb_skip = 0;
-    buf_ptr = (const uint32_t *)buf;
+    buf_ptr = (const uint32_t *)(const void *)buf;
     buf_end = buf_ptr + (size >> 2);
     u.n = 0;
     u.c[(s->charset == &charset_ucs4be) * 3] = '\n';
@@ -1069,7 +1069,7 @@ static int charset_goto_char_ucs4(CharsetDecodeState *s,
         return min(pos << 2, size);
 
     nb_chars = 0;
-    buf_ptr = (const uint32_t *)buf;
+    buf_ptr = (const uint32_t *)(const void *)buf;
     buf_end = buf_ptr + (size >> 2);
     u.n = 0;
     u.c[(s->charset == &charset_ucs4be) * 3] = '\n';
@@ -1273,7 +1273,7 @@ static void detect_eol_type_16bit(const u8 *buf, int size,
 
     eol_type = *eol_typep;
 
-    p = (const uint16_t *)buf;
+    p = (const uint16_t *)(const void *)buf;
     p1 = p + (size >> 1) - 1;
     u.n = 0;
     u.c[charset == &charset_ucs2be] = '\r';
@@ -1331,7 +1331,7 @@ static void detect_eol_type_32bit(const u8 *buf, int size,
 
     eol_type = *eol_typep;
 
-    p = (const uint32_t *)buf;
+    p = (const uint32_t *)(const void *)buf;
     p1 = p + (size >> 2) - 1;
     u.n = 0;
     u.c[(charset == &charset_ucs4be) * 3] = '\r';

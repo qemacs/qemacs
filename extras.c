@@ -121,7 +121,7 @@ void do_delete_horizontal_space(EditState *s)
     eb_delete_range(s->b, from, to);
 }
 
-void do_delete_blank_lines(EditState *s)
+static void do_delete_blank_lines(EditState *s)
 {
     /* Delete blank lines:
      * On blank line, delete all surrounding blank lines, leaving just one.
@@ -164,7 +164,7 @@ void do_delete_blank_lines(EditState *s)
     eb_delete_range(b, from, offset);
 }
 
-void eb_tabify(EditBuffer *b, int p1, int p2)
+static void eb_tabify(EditBuffer *b, int p1, int p2)
 {
     /* We implement a complete analysis of the region instead of
      * scanning for certain space patterns (such as / [ \t]/).  It is
@@ -226,7 +226,7 @@ void eb_tabify(EditBuffer *b, int p1, int p2)
     }
 }
 
-void do_tabify_buffer(EditState *s)
+static void do_tabify_buffer(EditState *s)
 {
     /* deactivate region hilite */
     s->region_style = 0;
@@ -234,7 +234,7 @@ void do_tabify_buffer(EditState *s)
     eb_tabify(s->b, 0, s->b->total_size);
 }
 
-void do_tabify_region(EditState *s)
+static void do_tabify_region(EditState *s)
 {
     /* deactivate region hilite */
     s->region_style = 0;
@@ -242,7 +242,7 @@ void do_tabify_region(EditState *s)
     eb_tabify(s->b, s->b->mark, s->offset);
 }
 
-void eb_untabify(EditBuffer *b, int p1, int p2)
+static void eb_untabify(EditBuffer *b, int p1, int p2)
 {
     /* We implement a complete analysis of the region instead of
      * potentially faster scan for '\t'.  It is fast enough and even
@@ -282,7 +282,7 @@ void eb_untabify(EditBuffer *b, int p1, int p2)
     }
 }
 
-void do_untabify_buffer(EditState *s)
+static void do_untabify_buffer(EditState *s)
 {
     /* deactivate region hilite */
     s->region_style = 0;
@@ -290,7 +290,7 @@ void do_untabify_buffer(EditState *s)
     eb_untabify(s->b, 0, s->b->total_size);
 }
 
-void do_untabify_region(EditState *s)
+static void do_untabify_region(EditState *s)
 {
     /* deactivate region hilite */
     s->region_style = 0;
@@ -298,7 +298,7 @@ void do_untabify_region(EditState *s)
     eb_untabify(s->b, s->b->mark, s->offset);
 }
 
-void do_indent_region(EditState *s)
+static void do_indent_region(EditState *s)
 {
     int col_num, line1, line2;
 

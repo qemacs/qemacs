@@ -888,7 +888,7 @@ static void tty_term_fill_rectangle(QEditScreen *s,
     }
 }
 
-int str_get_word(char *buf, int size, const char *p, const char **pp)
+static int str_get_word(char *buf, int size, const char *p, const char **pp)
 {
     int len;
 
@@ -912,7 +912,7 @@ int str_get_word(char *buf, int size, const char *p, const char **pp)
 }
 
 /* match a keyword, ignore case, check word boundary */
-int str_match_word(const char *str, const char *val, const char **pp)
+static int str_match_word(const char *str, const char *val, const char **pp)
 {
     if (stristart(str, val, &str) && (*str == '\0' || *str == ' ')) {
         while (*str == ' ')
@@ -1180,7 +1180,7 @@ static void tty_term_flush(QEditScreen *s)
                 ptr1[shadow] = cc;
                 ptr1++;
                 ch = TTYCHAR_GETCH(cc);
-                if (ch != TTYCHAR_NONE) {
+                if ((unsigned int)ch != TTYCHAR_NONE) {
                     /* output attributes */
                   again:
                     if (bgcolor != (int)TTYCHAR_GETBG(cc)) {
