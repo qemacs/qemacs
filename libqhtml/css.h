@@ -244,7 +244,7 @@ typedef union CSSPropertyStorage {
     struct CSSProperty *ptr;  /* CSS_STORAGE_PTR */
 } CSSPropertyStorage;
 
-#define CSSPropertyStoragePtr(s, off)  ((CSSPropertyStorage*)((char*)(s) + (off)))
+#define CSSPropertyStoragePtr(s, off)  ((CSSPropertyStorage*)(void*)((char*)(s) + (off)))
 
 extern const CSSPropertyDef css_properties[NB_PROPERTIES];
 
