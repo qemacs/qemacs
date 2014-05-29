@@ -891,32 +891,20 @@ static void do_describe_buffer(EditState *s, int argval)
     EditBuffer *b = s->b;
     EditBuffer *b1;
     int show;
-    int total_size;
 
     b1 = new_help_buffer(&show);
     if (!b1)
         return;
 
-    total_size = b->total_size;
-
-    eb_printf(b1, "Buffer Statistics\n\n");
+    eb_printf(b1, "Buffer Description\n\n");
 
     eb_printf(b1, "        name: %s\n", b->name);
     eb_printf(b1, "    filename: %s\n", b->filename);
     eb_printf(b1, "    modified: %d\n", b->modified);
-    eb_printf(b1, "  total_size: %d\n", total_size);
-    if (total_size > 0) {
-        int nb_chars, line, col;
-        
-        eb_get_pos(b, &line, &col, total_size);
-        nb_chars = eb_get_char_offset(b, total_size);
-
-        eb_printf(b1, "       lines: %d\n", line + (col > 0));
-        eb_printf(b1, "       chars: %d\n", nb_chars);
-    }
+    eb_printf(b1, "  total_size: %d\n", b->total_size);
     eb_printf(b1, "        mark: %d\n", b->mark);
-    eb_printf(b1, "      offset: %d\n", b->offset);
     eb_printf(b1, "   s->offset: %d\n", s->offset);
+    eb_printf(b1, "   b->offset: %d\n", b->offset);
 
     eb_printf(b1, "   tab_width: %d\n", b->tab_width);
     eb_printf(b1, " fill_column: %d\n", b->fill_column);
@@ -930,11 +918,8 @@ static void do_describe_buffer(EditState *s, int argval)
         buf_printf(desc, " mac");
         
     eb_printf(b1, "    eol_type: %d %s\n", b->eol_type, buf);
-    eb_printf(b1, "     charset: %s (bytes=%d, shift=%d)\n",
+    eb_printf(b1, "     charset: %s  (bytes=%d, shift=%d)\n",
               b->charset->name, b->char_bytes, b->char_shift);
-    eb_printf(b1, "default_mode: %s, saved_mode: %s\n",
-              b->default_mode ? b->default_mode->name : "",
-              b->saved_mode ? b->saved_mode->name : "");
 
     desc = buf_init(&descbuf, buf, countof(buf));
     if (b->flags & BF_SAVELOG)
@@ -964,21 +949,36 @@ static void do_describe_buffer(EditState *s, int argval)
 #if 0
     eb_printf(b1, "      probed: %d\n", b->probed);
 #endif
+    if (s->mode)
+        eb_printf(b1, "     s->mode: %s\n", s->mode->name);
+    if (b->default_mode)
+        eb_printf(b1, "default_mode: %s\n", b->default_mode->name);
+    if (b->saved_mode)
+        eb_printf(b1, "  saved_mode: %s\n", b->saved_mode->name);
+
     eb_printf(b1, "   data_type: %s\n", b->data_type->name);
     eb_printf(b1, "       pages: %d\n", b->nb_pages);
-    eb_printf(b1, "  map_handle: %d\n", b->map_handle);
 
-    eb_printf(b1, "    save_log: %d (new_index=%d, current=%d, nb_logs=%d)\n",
+    if (b->map_address) {
+        eb_printf(b1, " map_address: %p  (length=%d, handle=%d)\n",
+                  b->map_address, b->map_length, b->map_handle);
+    }
+
+    eb_printf(b1, "    save_log: %d  (new_index=%d, current=%d, nb_logs=%d)\n",
               b->save_log, b->log_new_index, b->log_current, b->nb_logs);
-    eb_printf(b1, "      styles: %d (cur_style=%d, bytes=%d, shift=%d)\n",
+    eb_printf(b1, "      styles: %d  (cur_style=%d, bytes=%d, shift=%d)\n",
               !!b->b_styles, b->cur_style, b->style_bytes, b->style_shift);
 
-    if (total_size > 0) {
+    if (b->total_size > 0) {
         u8 buf[4096];
         int count[256];
+        int total_size = b->total_size;
         int offset, c, i, col, max_count, count_width;
-        int word_char, word_count;
+        int word_char, word_count, nb_chars, line, column;
         
+        eb_get_pos(b, &line, &column, total_size);
+        nb_chars = eb_get_char_offset(b, total_size);
+
         memset(count, 0, sizeof(count));
         word_count = 0;
         word_char = 0;
@@ -1004,7 +1004,9 @@ static void do_describe_buffer(EditState *s, int argval)
         }
         count_width = snprintf(NULL, 0, "%d", max_count);
 
+        eb_printf(b1, "       chars: %d\n", nb_chars);
         eb_printf(b1, "       words: %d\n", word_count);
+        eb_printf(b1, "       lines: %d\n", line + (column > 0));
 
         eb_printf(b1, "\nByte stats:\n");
 
