@@ -322,10 +322,8 @@ static ModeDef binary_mode = {
     .name = "binary",
     .mode_probe = NULL,
     .mode_init = binary_mode_init,
-    .mode_close = text_mode_close,
     .text_display = hex_display,
     .text_backward_offset = hex_backward_offset,
-
     .move_up_down = hex_move_up_down,
     .move_left_right = hex_move_left_right,
     .move_bol = hex_move_bol,
@@ -340,10 +338,8 @@ ModeDef hex_mode = {
     .name = "hex",
     .mode_probe = hex_mode_probe,
     .mode_init = hex_mode_init,
-    .mode_close = text_mode_close,
     .text_display = hex_display,
     .text_backward_offset = hex_backward_offset,
-
     .move_up_down = hex_move_up_down,
     .move_left_right = hex_move_left_right,
     .move_bol = hex_move_bol,

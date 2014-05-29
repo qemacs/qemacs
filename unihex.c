@@ -222,10 +222,8 @@ static ModeDef unihex_mode = {
     .name = "unihex",
     .mode_probe = unihex_mode_probe,
     .mode_init = unihex_mode_init,
-    .mode_close = text_mode_close,
     .text_display = unihex_display,
     .text_backward_offset = unihex_backward_offset,
-
     .move_up_down = unihex_move_up_down,
     .move_left_right = unihex_move_left_right,
     .move_bol = unihex_move_bol,
