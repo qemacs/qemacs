@@ -325,17 +325,15 @@ static CmdDef latex_commands[] = {
     CMD_DEF_END,
 };
 
-static ModeDef latex_mode;
+static ModeDef latex_mode = {
+    .name = "LaTeX",
+    .extensions = "tex|but",
+    .mode_probe = latex_mode_probe,
+    .colorize_func = latex_colorize_line,
+};
 
 static int latex_init(void)
 {
-    /* LaTeX mode is almost like the text mode, so we copy and patch it */
-    memcpy(&latex_mode, &text_mode, sizeof(ModeDef));
-    latex_mode.name = "LaTeX";
-    latex_mode.extensions = "tex|but";
-    latex_mode.mode_probe = latex_mode_probe;
-    latex_mode.colorize_func = latex_colorize_line;
-
     qe_register_mode(&latex_mode, MODEF_SYNTAX);
     qe_register_cmd_table(latex_commands, &latex_mode);
     register_completion("latex", latex_completion);

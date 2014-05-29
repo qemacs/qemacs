@@ -415,17 +415,15 @@ static CmdDef htmlsrc_commands[] = {
     CMD_DEF_END,
 };
 
-static ModeDef htmlsrc_mode;
+static ModeDef htmlsrc_mode = {
+    .name = "html-src",
+    .extensions = "html|htm|asp|aspx|shtml|hta|htp|phtml|php",
+    .mode_probe = htmlsrc_mode_probe,
+    .colorize_func = htmlsrc_colorize_line,
+};
 
 static int htmlsrc_init(void)
 {
-    /* html-src mode is almost like the text mode, so we copy and patch it */
-    memcpy(&htmlsrc_mode, &text_mode, sizeof(ModeDef));
-    htmlsrc_mode.name = "html-src";
-    htmlsrc_mode.extensions = "html|htm|asp|aspx|shtml|hta|htp|phtml|php";
-    htmlsrc_mode.mode_probe = htmlsrc_mode_probe;
-    htmlsrc_mode.colorize_func = htmlsrc_colorize_line;
-
     qe_register_mode(&htmlsrc_mode, MODEF_SYNTAX);
     qe_register_cmd_table(htmlsrc_commands, &htmlsrc_mode);
 

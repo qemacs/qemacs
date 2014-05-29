@@ -20,8 +20,6 @@
 
 #include "qe.h"
 
-ModeDef mkd_mode;
-
 enum {
     /* TODO: define specific styles */
     MKD_STYLE_HEADING1    = QE_STYLE_FUNCTION,
@@ -810,14 +808,15 @@ static int mkd_mode_init(EditState *s)
     return 0;
 }
 
+ModeDef mkd_mode = {
+    .name = "markdown",
+    .extensions = "mkd|md",
+    .mode_init = mkd_mode_init,
+    .colorize_func = mkd_colorize_line,
+};
+
 static int mkd_init(void)
 {
-    memcpy(&mkd_mode, &text_mode, sizeof(ModeDef));
-    mkd_mode.name = "markdown";
-    mkd_mode.extensions = "mkd|md";
-    mkd_mode.mode_init = mkd_mode_init;
-    mkd_mode.colorize_func = mkd_colorize_line;
-
     qe_register_mode(&mkd_mode, MODEF_SYNTAX);
     qe_register_cmd_table(mkd_commands, &mkd_mode);
 

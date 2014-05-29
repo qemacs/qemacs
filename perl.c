@@ -351,17 +351,15 @@ static int perl_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static ModeDef perl_mode;
+static ModeDef perl_mode = {
+    .name = "Perl",
+    .extensions = "pl|perl|pm",
+    .mode_probe = perl_mode_probe,
+    .colorize_func = perl_colorize_line,
+};
 
 static int perl_init(void)
 {
-    /* perl mode is almost like the text mode, so we copy and patch it */
-    memcpy(&perl_mode, &text_mode, sizeof(ModeDef));
-    perl_mode.name = "Perl";
-    perl_mode.extensions = "pl|perl|pm";
-    perl_mode.mode_probe = perl_mode_probe;
-    perl_mode.colorize_func = perl_colorize_line;
-
     qe_register_mode(&perl_mode, MODEF_SYNTAX);
 
     return 0;

@@ -163,8 +163,6 @@ static int makefile_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static ModeDef makefile_mode;
-
 static int makefile_mode_init(EditState *s)
 {
     s->b->tab_width = 8;
@@ -172,16 +170,16 @@ static int makefile_mode_init(EditState *s)
     return 0;
 }
 
+static ModeDef makefile_mode = {
+    .name = "Makefile",
+    .extensions = "mak|make|mk",
+    .mode_probe = makefile_mode_probe,
+    .mode_init = makefile_mode_init,
+    .colorize_func = makefile_colorize_line,
+};
+
 static int makefile_init(void)
 {
-    /* Makefile mode is almost like the text mode, so we copy and patch it */
-    memcpy(&makefile_mode, &text_mode, sizeof(ModeDef));
-    makefile_mode.name = "Makefile";
-    makefile_mode.extensions = "mak|make|mk";
-    makefile_mode.mode_probe = makefile_mode_probe;
-    makefile_mode.mode_init = makefile_mode_init;
-    makefile_mode.colorize_func = makefile_colorize_line;
-
     qe_register_mode(&makefile_mode, MODEF_SYNTAX);
 
     return 0;

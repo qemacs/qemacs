@@ -178,16 +178,14 @@ static void asm_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
-static ModeDef asm_mode;
+static ModeDef asm_mode = {
+    .name = "asm",
+    .extensions = "asm|asi|cod",
+    .colorize_func = asm_colorize_line,
+};
 
 static int asm_init(void)
 {
-    /* asm mode is almost like the text mode, so we copy and patch it */
-    memcpy(&asm_mode, &text_mode, sizeof(ModeDef));
-    asm_mode.name = "asm";
-    asm_mode.extensions = "asm|asi|cod";
-    asm_mode.colorize_func = asm_colorize_line;
-
     qe_register_mode(&asm_mode, MODEF_SYNTAX);
 
     return 0;
@@ -295,16 +293,14 @@ static void basic_colorize_line(QEColorizeContext *cp,
     }
 }
 
-static ModeDef basic_mode;
+static ModeDef basic_mode = {
+    .name = "Basic",
+    .extensions = "bas|frm|mst|vb|vbs",
+    .colorize_func = basic_colorize_line,
+};
 
 static int basic_init(void)
 {
-    /* basic mode is almost like the text mode, so we copy and patch it */
-    memcpy(&basic_mode, &text_mode, sizeof(ModeDef));
-    basic_mode.name = "Basic";
-    basic_mode.extensions = "bas|frm|mst|vb|vbs";
-    basic_mode.colorize_func = basic_colorize_line;
-
     qe_register_mode(&basic_mode, MODEF_SYNTAX);
 
     return 0;
@@ -545,16 +541,14 @@ static void vim_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = (state << 4) | (level & 15);
 }
 
-static ModeDef vim_mode;
+static ModeDef vim_mode = {
+    .name = "Vim",
+    .extensions = "vim",
+    .colorize_func = vim_colorize_line,
+};
 
 static int vim_init(void)
 {
-    /* vim mode is almost like the text mode, so we copy and patch it */
-    memcpy(&vim_mode, &text_mode, sizeof(ModeDef));
-    vim_mode.name = "Vim";
-    vim_mode.extensions = "vim";
-    vim_mode.colorize_func = vim_colorize_line;
-
     qe_register_mode(&vim_mode, MODEF_SYNTAX);
 
     return 0;
@@ -728,16 +722,14 @@ static void pascal_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
-static ModeDef pascal_mode;
+static ModeDef pascal_mode = {
+    .name = "Pascal",
+    .extensions = "pas",
+    .colorize_func = pascal_colorize_line,
+};
 
 static int pascal_init(void)
 {
-    /* pascal mode is almost like the text mode, so we copy and patch it */
-    memcpy(&pascal_mode, &text_mode, sizeof(ModeDef));
-    pascal_mode.name = "Pascal";
-    pascal_mode.extensions = "pas";
-    pascal_mode.colorize_func = pascal_colorize_line;
-
     qe_register_mode(&pascal_mode, MODEF_SYNTAX);
 
     return 0;
@@ -857,17 +849,15 @@ static int ini_mode_probe(ModeDef *mode, ModeProbeData *pd)
     return 1;
 }
 
-static ModeDef ini_mode;
+static ModeDef ini_mode = {
+    .name = "ini",
+    .extensions = "ini|inf|INI|INF",
+    .mode_probe = ini_mode_probe,
+    .colorize_func = ini_colorize_line,
+};
 
 static int ini_init(void)
 {
-    /* ini mode is almost like the text mode, so we copy and patch it */
-    memcpy(&ini_mode, &text_mode, sizeof(ModeDef));
-    ini_mode.name = "ini";
-    ini_mode.extensions = "ini|inf|INI|INF";
-    ini_mode.mode_probe = ini_mode_probe;
-    ini_mode.colorize_func = ini_colorize_line;
-
     qe_register_mode(&ini_mode, MODEF_SYNTAX);
 
     return 0;
@@ -915,17 +905,15 @@ static int sharp_mode_probe(ModeDef *mode, ModeProbeData *pd)
     return 1;
 }
 
-static ModeDef sharp_mode;
+static ModeDef sharp_mode = {
+    .name = "sharp",
+    .extensions = "txt",
+    .mode_probe = sharp_mode_probe,
+    .colorize_func = sharp_colorize_line,
+};
 
 static int sharp_init(void)
 {
-    /* sharp txt mode is almost like the text mode, so we copy and patch it */
-    memcpy(&sharp_mode, &text_mode, sizeof(ModeDef));
-    sharp_mode.name = "sharp";
-    sharp_mode.extensions = "txt";
-    sharp_mode.mode_probe = sharp_mode_probe;
-    sharp_mode.colorize_func = sharp_colorize_line;
-
     qe_register_mode(&sharp_mode, MODEF_SYNTAX);
 
     return 0;
@@ -1039,17 +1027,15 @@ static int ps_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static ModeDef ps_mode;
+static ModeDef ps_mode = {
+    .name = "Postscript",
+    .extensions = "ps|ms|eps",
+    .mode_probe = ps_mode_probe,
+    .colorize_func = ps_colorize_line,
+};
 
 static int ps_init(void)
 {
-    /* Poscript mode is almost like the text mode, so we copy and patch it */
-    memcpy(&ps_mode, &text_mode, sizeof(ModeDef));
-    ps_mode.name = "Postscript";
-    ps_mode.extensions = "ps|ms|eps";
-    ps_mode.mode_probe = ps_mode_probe;
-    ps_mode.colorize_func = ps_colorize_line;
-
     qe_register_mode(&ps_mode, MODEF_SYNTAX);
 
     return 0;
@@ -1137,16 +1123,14 @@ static void sql_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static ModeDef sql_mode;
+static ModeDef sql_mode = {
+    .name = "SQL",
+    .extensions = "sql|mysql|sqlite|sqlplus",
+    .colorize_func = sql_colorize_line,
+};
 
 static int sql_init(void)
 {
-    /* sql mode is almost like the text mode, so we copy and patch it */
-    memcpy(&sql_mode, &text_mode, sizeof(ModeDef));
-    sql_mode.name = "SQL";
-    sql_mode.extensions = "sql|mysql|sqlite|sqlplus";
-    sql_mode.colorize_func = sql_colorize_line;
-
     qe_register_mode(&sql_mode, MODEF_SYNTAX);
 
     return 0;
@@ -1318,16 +1302,14 @@ void lua_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static ModeDef lua_mode;
+static ModeDef lua_mode = {
+    .name = "Lua",
+    .extensions = "lua",
+    .colorize_func = lua_colorize_line,
+};
 
 static int lua_init(void)
 {
-    /* lua mode is almost like the text mode, so we copy and patch it */
-    memcpy(&lua_mode, &text_mode, sizeof(ModeDef));
-    lua_mode.name = "Lua";
-    lua_mode.extensions = "lua";
-    lua_mode.colorize_func = lua_colorize_line;
-
     qe_register_mode(&lua_mode, MODEF_SYNTAX);
 
     return 0;
@@ -1585,16 +1567,14 @@ static void julia_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static ModeDef julia_mode;
+static ModeDef julia_mode = {
+    .name = "Julia",
+    .extensions = "jl",
+    .colorize_func = julia_colorize_line,
+};
 
 static int julia_init(void)
 {
-    /* julia mode is almost like the text mode, so we copy and patch it */
-    memcpy(&julia_mode, &text_mode, sizeof(ModeDef));
-    julia_mode.name = "Julia";
-    julia_mode.extensions = "jl";
-    julia_mode.colorize_func = julia_colorize_line;
-
     qe_register_mode(&julia_mode, MODEF_SYNTAX);
 
     return 0;
@@ -1795,16 +1775,14 @@ void haskell_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static ModeDef haskell_mode;
+static ModeDef haskell_mode = {
+    .name = "Haskell",
+    .extensions = "hs|haskell",
+    .colorize_func = haskell_colorize_line,
+};
 
 static int haskell_init(void)
 {
-    /* haskell mode is almost like the text mode, so we copy and patch it */
-    memcpy(&haskell_mode, &text_mode, sizeof(ModeDef));
-    haskell_mode.name = "Haskell";
-    haskell_mode.extensions = "hs|haskell";
-    haskell_mode.colorize_func = haskell_colorize_line;
-
     qe_register_mode(&haskell_mode, MODEF_SYNTAX);
 
     return 0;
@@ -2015,16 +1993,14 @@ void python_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static ModeDef python_mode;
+static ModeDef python_mode = {
+    .name = "Python",
+    .extensions = "py|pyt",
+    .colorize_func = python_colorize_line,
+};
 
 static int python_init(void)
 {
-    /* python mode is almost like the text mode, so we copy and patch it */
-    memcpy(&python_mode, &text_mode, sizeof(ModeDef));
-    python_mode.name = "Python";
-    python_mode.extensions = "py|pyt";
-    python_mode.colorize_func = python_colorize_line;
-
     qe_register_mode(&python_mode, MODEF_SYNTAX);
 
     return 0;
@@ -2495,17 +2471,15 @@ static int ruby_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static ModeDef ruby_mode;
+static ModeDef ruby_mode = {
+    .name = "Ruby",
+    .extensions = "rb|gemspec",
+    .mode_probe = ruby_mode_probe,
+    .colorize_func = ruby_colorize_line,
+};
 
 static int ruby_init(void)
 {
-    /* ruby mode is almost like the text mode, so we copy and patch it */
-    memcpy(&ruby_mode, &text_mode, sizeof(ModeDef));
-    ruby_mode.name = "Ruby";
-    ruby_mode.extensions = "rb|gemspec";
-    ruby_mode.mode_probe = ruby_mode_probe;
-    ruby_mode.colorize_func = ruby_colorize_line;
-
     qe_register_mode(&ruby_mode, MODEF_SYNTAX);
 
     return 0;
@@ -2712,16 +2686,14 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
-static ModeDef ocaml_mode;
+static ModeDef ocaml_mode = {
+    .name = "Ocaml",
+    .extensions = "ml|mli|mll|mly",
+    .colorize_func = ocaml_colorize_line,
+};
 
 static int ocaml_init(void)
 {
-    /* ocaml mode is almost like the text mode, so we copy and patch it */
-    memcpy(&ocaml_mode, &text_mode, sizeof(ModeDef));
-    ocaml_mode.name = "Ocaml";
-    ocaml_mode.extensions = "ml|mli|mll|mly";
-    ocaml_mode.colorize_func = ocaml_colorize_line;
-
     qe_register_mode(&ocaml_mode, MODEF_SYNTAX);
 
     return 0;

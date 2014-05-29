@@ -1486,21 +1486,19 @@ static CmdDef c_commands[] = {
     CMD_DEF_END,
 };
 
-static ModeDef c_mode;
+static ModeDef c_mode = {
+    .name = "C",
+    .extensions = c_mode_extensions,
+    .mode_probe = c_mode_probe,
+    .mode_init = c_mode_init,
+    .colorize_func = c_colorize_line,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
 
 static int c_init(void)
 {
     const char *p;
-
-    /* C mode is almost like the text mode, so we copy and patch it */
-    memcpy(&c_mode, &text_mode, sizeof(ModeDef));
-    c_mode.name = "C";
-    c_mode.extensions = c_mode_extensions;
-    c_mode.mode_probe = c_mode_probe;
-    c_mode.mode_init = c_mode_init;
-    c_mode.colorize_func = c_colorize_line;
-    c_mode.indent_func = c_indent_line;
-    c_mode.auto_indent = 1;
 
     qe_register_mode(&c_mode, MODEF_SYNTAX);
     qe_register_cmd_table(c_commands, &c_mode);

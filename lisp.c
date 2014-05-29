@@ -367,18 +367,16 @@ static int lisp_mode_init(EditState *s)
     return 0;
 }
 
-ModeDef lisp_mode;
+ModeDef lisp_mode = {
+    .name = "Lisp",
+    .extensions = "ll|li|lh|lo|lm|lisp|el|scm|ss|rkt|rktd",
+    .mode_probe = lisp_mode_probe,
+    .mode_init = lisp_mode_init,
+    .colorize_func = lisp_colorize_line,
+};
 
 static int lisp_init(void)
 {
-    /* lisp mode is almost like the text mode, so we copy and patch it */
-    memcpy(&lisp_mode, &text_mode, sizeof(ModeDef));
-    lisp_mode.name = "Lisp";
-    lisp_mode.extensions = "ll|li|lh|lo|lm|lisp|el|scm|ss|rkt|rktd";
-    lisp_mode.mode_probe = lisp_mode_probe;
-    lisp_mode.mode_init = lisp_mode_init;
-    lisp_mode.colorize_func = lisp_colorize_line;
-
     qe_register_mode(&lisp_mode, MODEF_SYNTAX);
 
     return 0;

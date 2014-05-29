@@ -191,16 +191,14 @@ static int xml_mode_probe(ModeDef *mode, ModeProbeData *p1)
     return 80; /* leave some room for more specific XML parser */
 }
 
-ModeDef xml_mode;
+ModeDef xml_mode = {
+    .name = "xml",
+    .mode_probe = xml_mode_probe,
+    .colorize_func = xml_colorize_line,
+};
 
 static int xml_init(void)
 {
-    /* xml mode is almost like the text mode, so we copy and patch it */
-    memcpy(&xml_mode, &text_mode, sizeof(ModeDef));
-    xml_mode.name = "xml";
-    xml_mode.mode_probe = xml_mode_probe;
-    xml_mode.colorize_func = xml_colorize_line;
-
     qe_register_mode(&xml_mode, MODEF_SYNTAX);
 
     return 0;

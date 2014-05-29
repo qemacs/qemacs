@@ -22,8 +22,6 @@
 
 #include "qe.h"
 
-ModeDef org_mode;
-
 enum {
     IN_ORG_BLOCK = 0x80,
     IN_ORG_LISP  = 0x40,
@@ -734,13 +732,14 @@ static CmdDef org_commands[] = {
     CMD_DEF_END,
 };
 
+ModeDef org_mode = {
+    .name = "org",
+    .extensions = "org",
+    .colorize_func = org_colorize_line,
+};
+
 static int org_init(void)
 {
-    memcpy(&org_mode, &text_mode, sizeof(ModeDef));
-    org_mode.name = "org";
-    org_mode.extensions = "org";
-    org_mode.colorize_func = org_colorize_line;
-
     qe_register_mode(&org_mode, MODEF_SYNTAX);
     qe_register_cmd_table(org_commands, &org_mode);
 

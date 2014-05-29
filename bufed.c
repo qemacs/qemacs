@@ -89,7 +89,6 @@ static void build_bufed_list(EditState *s)
         if (b1) {
             char path[MAX_FILENAME_SIZE];
             const char *mode_name;
-            EditState *e;
 
             if (b1->saved_mode) {
                 mode_name = b1->saved_mode->name;
@@ -100,6 +99,8 @@ static void build_bufed_list(EditState *s)
             if (b1->default_mode) {
                 mode_name = b1->default_mode->name;
             } else {
+                EditState *e;
+
                 mode_name = "none";
                 for (e = qs->first_window; e != NULL; e = e->next_window) {
                     if (e->b == b1) {

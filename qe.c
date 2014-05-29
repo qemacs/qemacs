@@ -95,12 +95,6 @@ void qe_register_mode(ModeDef *m, int flags)
 
     m->flags |= flags;
 
-    if (m->flags & MODEF_SYNTAX) {
-        /* if no syntax probing function, use extension matcher */
-        if (!m->mode_probe && m->extensions)
-            m->mode_probe = generic_mode_probe;
-    }
-
     /* register mode in mode list (at end) */
     for (p = &qs->first_mode;; p = &(*p)->next) {
         if (*p == m)
@@ -110,6 +104,34 @@ void qe_register_mode(ModeDef *m, int flags)
             *p = m;
             break;
         }
+    }
+
+    if (m->flags & MODEF_SYNTAX) {
+        /* if no syntax probing function, use extension matcher */
+        if (!m->mode_probe && m->extensions)
+            m->mode_probe = generic_mode_probe;
+
+        /* default to text handling */
+        if (!m->text_display)
+            m->text_display = text_display;
+        if (!m->text_backward_offset)
+            m->text_backward_offset = text_backward_offset;
+        if (!m->move_up_down)
+            m->move_up_down = text_move_up_down;
+        if (!m->move_left_right)
+            m->move_left_right = text_move_left_right_visual;
+        if (!m->move_bol)
+            m->move_bol = text_move_bol;
+        if (!m->move_eol)
+            m->move_eol = text_move_eol;
+        if (!m->move_word_left_right)
+            m->move_word_left_right = text_move_word_left_right;
+        if (!m->scroll_up_down)
+            m->scroll_up_down = text_scroll_up_down;
+        if (!m->write_char)
+            m->write_char = text_write_char;
+        if (!m->mouse_goto)
+            m->mouse_goto = text_mouse_goto;
     }
 
     /* add missing functions */
