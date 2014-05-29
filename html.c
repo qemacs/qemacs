@@ -776,22 +776,11 @@ static void load_default_style_sheet(HTMLState *hs, const char *stylesheet_str,
 /* graphical XML/CSS mode init. is_html is TRUE to tell that specific HTML
    quirks are needed in the parser. */
 int gxml_mode_init(EditState *s,
-                   ModeSavedData *saved_data,
                    int flags, const char *default_stylesheet)
 {
     HTMLState *hs = s->mode_data;
 
-    /* XXX: should register callbacks for s->offset and s->top_offset? */
-
-    if (saved_data) {
-        memcpy(s, saved_data->generic_data, SAVED_DATA_SIZE);
-    } else {
-        memset(s, 0, SAVED_DATA_SIZE);
-        s->insert = 1;
-        s->indent_size = 4;
-        s->default_style = QE_STYLE_DEFAULT;
-        s->wrap = WRAP_LINE;
-    }
+    /* XXX: unregister callbacks for s->offset and s->top_offset ? */
 
     eb_add_callback(s->b, html_callback, s, 0);
     hs->parse_flags = flags;
@@ -802,10 +791,9 @@ int gxml_mode_init(EditState *s,
     return 0;
 }
 
-static int html_mode_init(EditState *s, ModeSavedData *saved_data)
+static int html_mode_init(EditState *s)
 {
-    return gxml_mode_init(s, saved_data,
-                          XML_HTML | XML_HTML_SYNTAX | XML_IGNORE_CASE,
+    return gxml_mode_init(s, XML_HTML | XML_HTML_SYNTAX | XML_IGNORE_CASE,
                           html_style);
 }
 

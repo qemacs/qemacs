@@ -58,7 +58,7 @@ static EditBuffer *predict_switch_to_buffer(EditState *s);
 static StringArray *get_history(const char *name);
 static void qe_key_process(int key);
 
-ModeSavedData *generic_mode_save_data(EditState *s);
+static ModeSavedData *generic_mode_save_data(EditState *s);
 static void generic_text_display(EditState *s);
 static void display1(DisplayState *s);
 #ifndef CONFIG_TINY
@@ -113,14 +113,8 @@ void qe_register_mode(ModeDef *m, int flags)
     }
 
     /* add missing functions */
-    if (!m->mode_init)
-        m->mode_init = text_mode_init;
-    if (!m->mode_close)
-        m->mode_close = text_mode_close;
     if (!m->display)
         m->display = generic_text_display;
-    if (!m->mode_save_data)
-        m->mode_save_data = generic_mode_save_data;
     if (!m->data_type)
         m->data_type = &raw_data_type;
     if (!m->get_mode_line)
@@ -1760,11 +1754,13 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
         /* save mode data if necessary */
         s->interactive = 0;
         if (!saved_data) {
-            saved_data = s->mode->mode_save_data(s);
+            saved_data = generic_mode_save_data(s);
             if (saved_data)
                 saved_data_allocated = 1;
         }
-        s->mode->mode_close(s);
+        if (s->mode->mode_close)
+            s->mode->mode_close(s);
+        generic_mode_close(s);
         qe_free(&s->mode_data);
         s->mode = NULL;
         set_colorize_func(s, NULL);
@@ -1832,7 +1828,9 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
         s->mode_flags = 0;
 
         /* init mode */
-        m->mode_init(s, saved_data);
+        generic_mode_init(s, saved_data);
+        if (m->mode_init)
+            m->mode_init(s);
         if (m->colorize_func)
             set_colorize_func(s, m->colorize_func);
         /* modify offset_top so that its value is correct */
@@ -4744,7 +4742,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
             if (!(b1->flags & BF_TRANSIENT)) {
                 qe_free(&b1->saved_data);
                 b1->saved_mode = s->mode;
-                b1->saved_data = s->mode->mode_save_data(s);
+                b1->saved_data = generic_mode_save_data(s);
             }
         }
         /* now we can close the mode */
@@ -4766,7 +4764,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
         }
         if (e) {
             mode = e->mode;
-            saved_data = e->mode->mode_save_data(e);
+            saved_data = generic_mode_save_data(e);
             saved_data_allocated = 1;
         } else {
             mode = b->saved_mode;
@@ -7468,7 +7466,7 @@ static int text_mode_probe(__unused__ ModeDef *mode,
         return 20;
 }
 
-int text_mode_init(EditState *s, ModeSavedData *saved_data)
+int generic_mode_init(EditState *s, ModeSavedData *saved_data)
 {
     if (saved_data) {
         memcpy(s, saved_data->generic_data, SAVED_DATA_SIZE);
@@ -7502,7 +7500,7 @@ ModeSavedData *generic_mode_save_data(EditState *s)
     return saved_data;
 }
 
-void text_mode_close(EditState *s)
+void generic_mode_close(EditState *s)
 {
     /* free all callbacks or associated buffer data */
     set_colorize_func(s, NULL);
@@ -7513,8 +7511,6 @@ void text_mode_close(EditState *s)
 ModeDef text_mode = {
     .name = "text",
     .mode_probe = text_mode_probe,
-    .mode_init = text_mode_init,
-    .mode_close = text_mode_close,
 
     .text_display = text_display,
     .text_backward_offset = text_backward_offset,

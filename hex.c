@@ -153,13 +153,11 @@ static CmdDef hex_commands[] = {
     CMD_DEF_END,
 };
 
-static int binary_mode_init(EditState *s, ModeSavedData *saved_data)
+static int binary_mode_init(EditState *s)
 {
     QEFont *font;
     QEStyleDef style;
     int num_width;
-
-    text_mode_init(s, saved_data);
 
     /* get typical number width */
     get_style(s, &style, s->default_style);
@@ -178,10 +176,8 @@ static int binary_mode_init(EditState *s, ModeSavedData *saved_data)
     return 0;
 }
 
-static int hex_mode_init(EditState *s, ModeSavedData *saved_data)
+static int hex_mode_init(EditState *s)
 {
-    text_mode_init(s, saved_data);
-
     s->disp_width = 16;
     s->hex_mode = 1;
     s->unihex_mode = 0;

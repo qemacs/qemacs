@@ -789,7 +789,7 @@ static void video_pause(EditState *s)
     is->paused = !is->paused;
 }
 
-static int video_mode_init(EditState *s, ModeSavedData *saved_data)
+static int video_mode_init(EditState *s)
 {
     VideoState *is = s->mode_data;
     QEmacsState *qs = s->qe_state;

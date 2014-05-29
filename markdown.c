@@ -802,9 +802,8 @@ static CmdDef mkd_commands[] = {
     CMD_DEF_END,
 };
 
-static int mkd_mode_init(EditState *s, ModeSavedData *saved_data)
+static int mkd_mode_init(EditState *s)
 {
-    text_mode_init(s, saved_data);
     s->b->tab_width = 4;
     s->indent_tabs_mode = 0;
     s->wrap = WRAP_WORD;

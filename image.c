@@ -484,7 +484,7 @@ static void update_bmp(EditState *s)
     edit_invalidate(s);
 }
 
-static int image_mode_init(EditState *s, ModeSavedData *saved_data)
+static int image_mode_init(EditState *s)
 {
     ImageState *is = s->mode_data;
     ImageBuffer *ib = s->b->data;

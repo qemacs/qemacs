@@ -961,11 +961,11 @@ static void dired_close(EditBuffer *b)
         b->close = NULL;
 }
 
-static int dired_mode_init(EditState *s, ModeSavedData *saved_data)
+static int dired_mode_init(EditState *s)
 {
     DiredState *ds;
 
-    list_mode.mode_init(s, saved_data);
+    list_mode.mode_init(s);
 
     if (s->b->priv_data) {
         ds = s->b->priv_data;

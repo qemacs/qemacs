@@ -1952,14 +1952,13 @@ static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 0;
 }
 
-static int shell_mode_init(EditState *e, ModeSavedData *saved_data)
+static int shell_mode_init(EditState *e)
 {
     ShellState *s;
 
     if (!(s = shell_get_state(e, 1)))
         return -1;
 
-    text_mode_init(e, saved_data);
     e->b->tab_width = 8;
     e->wrap = WRAP_TRUNCATE;
     if (s->shell_flags & SF_INTERACTIVE)
@@ -1967,9 +1966,8 @@ static int shell_mode_init(EditState *e, ModeSavedData *saved_data)
     return 0;
 }
 
-static int pager_mode_init(EditState *e, ModeSavedData *saved_data)
+static int pager_mode_init(EditState *e)
 {
-    text_mode_init(e, saved_data);
     e->b->tab_width = 8;
     e->wrap = WRAP_TRUNCATE;
     return 0;

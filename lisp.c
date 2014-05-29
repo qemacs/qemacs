@@ -348,10 +348,8 @@ static int lisp_mode_probe(ModeDef *mode, ModeProbeData *mp)
     return 1;
 }
 
-static int lisp_mode_init(EditState *s, ModeSavedData *saved_data)
+static int lisp_mode_init(EditState *s)
 {
-    text_mode.mode_init(s, saved_data);
-
     /* select lisp flavor */
     if (match_extension(s->b->filename, "el")
     ||  strstart(get_basename(s->b->filename), ".emacs", NULL)) {

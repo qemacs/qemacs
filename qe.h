@@ -1132,7 +1132,7 @@ struct EditState {
 
     EditBuffer *b;
 
-    /* state before line n, one byte per line */
+    /* state before line n, one short per line */
     unsigned short *colorize_states;
     int colorize_nb_lines;
     int colorize_nb_valid_lines;
@@ -1225,11 +1225,8 @@ struct ModeDef {
 
     /* return the percentage of confidence */
     int (*mode_probe)(ModeDef *, ModeProbeData *);
-    int (*mode_init)(EditState *, ModeSavedData *);
+    int (*mode_init)(EditState *);
     void (*mode_close)(EditState *);
-    /* save the internal state of the mode so that it can be opened
-       again in the same state */
-    ModeSavedData *(*mode_save_data)(EditState *s);
 
     /* low level display functions (must be NULL to use text related
        functions)*/
@@ -1765,8 +1762,8 @@ void kill_buffer_noconfirm(EditBuffer *b);
 
 extern ModeDef text_mode;
 
-int text_mode_init(EditState *s, ModeSavedData *saved_data);
-void text_mode_close(EditState *s);
+int generic_mode_init(EditState *s, ModeSavedData *saved_data);
+void generic_mode_close(EditState *s);
 int text_backward_offset(EditState *s, int offset);
 int text_display(EditState *s, DisplayState *ds, int offset);
 
@@ -2042,7 +2039,6 @@ void htmlsrc_colorize_line(QEColorizeContext *cp,
 extern ModeDef html_mode;
 
 int gxml_mode_init(EditState *s,
-                   ModeSavedData *saved_data,
                    int is_html, const char *default_stylesheet);
 
 /* extra-modes.c */

@@ -346,11 +346,12 @@ static void bufed_close(EditBuffer *b)
         b->close = NULL;
 }
 
-static int bufed_mode_init(EditState *s, ModeSavedData *saved_data)
+static int bufed_mode_init(EditState *s)
 {
     BufedState *bs;
 
-    list_mode.mode_init(s, saved_data);
+    if (list_mode.mode_init)
+        list_mode.mode_init(s);
 
     if (s->b->priv_data) {
         bs = s->b->priv_data;

@@ -165,9 +165,8 @@ static int makefile_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 static ModeDef makefile_mode;
 
-static int makefile_mode_init(EditState *s, ModeSavedData *saved_data)
+static int makefile_mode_init(EditState *s)
 {
-    text_mode_init(s, saved_data);
     s->b->tab_width = 8;
     s->indent_tabs_mode = 1;
     return 0;

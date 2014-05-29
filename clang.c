@@ -1340,11 +1340,9 @@ static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static int c_mode_init(EditState *s, ModeSavedData *saved_data)
+static int c_mode_init(EditState *s)
 {
     const char *base = get_basename(s->b->filename);
-
-    text_mode.mode_init(s, saved_data);
 
     /* Select C like flavor */
     if (match_extension(base, "c|h|i|C|H|I")) {

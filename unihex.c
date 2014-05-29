@@ -26,11 +26,9 @@ enum {
     UNIHEX_STYLE_DUMP   = QE_STYLE_FUNCTION,
 };
 
-static int unihex_mode_init(EditState *s, ModeSavedData *saved_data)
+static int unihex_mode_init(EditState *s)
 {
     int c, maxc, offset, max_offset;
-
-    text_mode_init(s, saved_data);
 
     /* unihex mode is incompatible with EOL_DOS eol type */
     eb_set_charset(s->b, s->b->charset, EOL_UNIX);
