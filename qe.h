@@ -135,6 +135,7 @@ typedef struct ModeSavedData ModeSavedData;
 typedef struct ModeDef ModeDef;
 typedef struct QETimer QETimer;
 typedef struct QEColorizeContext QEColorizeContext;
+typedef struct KeyDef KeyDef;
 
 static inline char *s8(u8 *p) { return (char*)p; }
 static inline const char *cs8(const u8 *p) { return (const char*)p; }
@@ -736,7 +737,8 @@ void qe_handle_event(QEEvent *ev);
 /* CG: Should deal with opaque object life cycle */
 void qe_grab_keys(void (*cb)(void *opaque, int key), void *opaque);
 void qe_ungrab_keys(void);
-struct KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, int nroots, ...);
+KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd);
+KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m);
 
 #define COLORED_MAX_LINE_SIZE  4096
 
@@ -1258,6 +1260,8 @@ struct ModeDef {
     /* mode specific key bindings */
     struct KeyDef *first_key;
 
+    ModeDef *fallback;  /* use bindings from fallback mode */
+
     ModeDef *next;
 };
 
@@ -1409,12 +1413,12 @@ extern QEmacsState qe_state;
 
 #define MAX_KEYS 10
 
-typedef struct KeyDef {
+struct KeyDef {
     struct KeyDef *next;
     struct CmdDef *cmd;
     int nb_keys;
     unsigned int keys[1];
-} KeyDef;
+};
 
 void unget_key(int key);
 

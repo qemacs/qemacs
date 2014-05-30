@@ -4437,23 +4437,27 @@ static void qe_key_init(QEKeyContext *c)
     c->buf[0] = '\0';
 }
 
-KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, int nroots, ...)
+KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd)
 {
-    KeyDef *kd = NULL;
-    va_list ap;
-
-    va_start(ap, nroots);
-    while (nroots--) {
-        for (kd = va_arg(ap, KeyDef *); kd != NULL; kd = kd->next) {
-            if (kd->nb_keys >= nb_keys
-            &&  !memcmp(kd->keys, keys, nb_keys * sizeof(keys[0]))) {
-                nroots = 0;
-                break;
-            }
+    for (; kd != NULL; kd = kd->next) {
+        if (kd->nb_keys >= nb_keys
+        &&  !memcmp(kd->keys, keys, nb_keys * sizeof(keys[0]))) {
+            break;
         }
     }
-    va_end(ap);
     return kd;
+}
+
+KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m)
+{
+    QEmacsState *qs = &qe_state;
+
+    for (; m; m = m->fallback) {
+        KeyDef *kd = qe_find_binding(keys, nb_keys, m->first_key);
+        if (kd != NULL)
+            return kd;
+    }
+    return qe_find_binding(keys, nb_keys, qs->first_key);
 }
 
 static void qe_key_process(int key)
@@ -4508,9 +4512,8 @@ static void qe_key_process(int key)
     }
 
     /* see if one command is found */
-    if (!(kd = qe_find_binding(c->keys, c->nb_keys, 2,
-                               s->mode->first_key, qs->first_key)))
-    {
+    kd = qe_find_current_binding(c->keys, c->nb_keys, s->mode);
+    if (!kd) {
         /* no key found */
         unsigned int key_default = KEY_DEFAULT;
 
@@ -4530,8 +4533,7 @@ static void qe_key_process(int key)
                         goto next;
                     }
                 }
-                kd = qe_find_binding(&key_default, 1, 2,
-                                     s->mode->first_key, qs->first_key);
+                kd = qe_find_current_binding(&key_default, 1, s->mode);
                 if (kd) {
                     /* horrible kludge to pass key as intrinsic argument */
                     /* CG: should have an argument type for key */

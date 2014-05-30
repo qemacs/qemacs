@@ -2613,7 +2613,7 @@ enum {
 };
 
 static void ocaml_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, ModeDef *syn)
+                                unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start = i, c, k, style;
     int colstate = cp->colorize_state;

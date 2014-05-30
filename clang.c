@@ -1430,6 +1430,7 @@ ModeDef yacc_mode = {
     .types = c_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef lex_mode = {
@@ -1441,6 +1442,7 @@ ModeDef lex_mode = {
     .types = c_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef cpp_mode = {
@@ -1453,6 +1455,7 @@ ModeDef cpp_mode = {
     .types = cpp_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 static int objc_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -1480,6 +1483,7 @@ ModeDef objc_mode = {
     .types = objc_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef csharp_mode = {
@@ -1492,6 +1496,7 @@ ModeDef csharp_mode = {
     .types = csharp_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef css_mode = {
@@ -1502,6 +1507,7 @@ ModeDef css_mode = {
     .keywords = css_keywords,
     .types = css_types,
     .indent_func = c_indent_line,
+    .fallback = &c_mode,
 };
 
 ModeDef js_mode = {
@@ -1513,6 +1519,7 @@ ModeDef js_mode = {
     .types = js_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef as_mode = {
@@ -1524,6 +1531,7 @@ ModeDef as_mode = {
     .types = as_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef java_mode = {
@@ -1535,6 +1543,7 @@ ModeDef java_mode = {
     .types = java_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef php_mode = {
@@ -1543,6 +1552,7 @@ ModeDef php_mode = {
     .colorize_flags = CLANG_PHP | CLANG_REGEX,
     .keywords = php_keywords,
     .types = php_types,
+    .fallback = &c_mode,
 };
 
 ModeDef go_mode = {
@@ -1554,6 +1564,7 @@ ModeDef go_mode = {
     .types = go_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef d_mode = {
@@ -1565,6 +1576,7 @@ ModeDef d_mode = {
     .types = d_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef limbo_mode = {
@@ -1576,6 +1588,7 @@ ModeDef limbo_mode = {
     .types = limbo_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef cyclone_mode = {
@@ -1587,6 +1600,7 @@ ModeDef cyclone_mode = {
     .types = cyclone_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef ch_mode = {
@@ -1598,6 +1612,7 @@ ModeDef ch_mode = {
     .types = ch_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef squirrel_mode = {
@@ -1609,6 +1624,7 @@ ModeDef squirrel_mode = {
     .types = squirrel_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef ici_mode = {
@@ -1620,6 +1636,7 @@ ModeDef ici_mode = {
     .types = ici_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef jsx_mode = {
@@ -1631,6 +1648,7 @@ ModeDef jsx_mode = {
     .types = jsx_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef haxe_mode = {
@@ -1642,6 +1660,7 @@ ModeDef haxe_mode = {
     .types = haxe_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef dart_mode = {
@@ -1653,6 +1672,7 @@ ModeDef dart_mode = {
     .types = dart_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef pike_mode = {
@@ -1664,6 +1684,7 @@ ModeDef pike_mode = {
     .types = pike_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 static ModeDef idl_mode = {
@@ -1675,6 +1696,7 @@ static ModeDef idl_mode = {
     .types = idl_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 static int calc_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -1700,6 +1722,7 @@ ModeDef calc_mode = {
     .types = calc_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef enscript_mode = {
@@ -1711,6 +1734,7 @@ ModeDef enscript_mode = {
     .types = enscript_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 static int qs_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -1735,6 +1759,7 @@ ModeDef qscript_mode = {
     .types = qs_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef ec_mode = {
@@ -1746,6 +1771,7 @@ ModeDef ec_mode = {
     .types = ec_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 ModeDef sl_mode = {
@@ -1757,6 +1783,7 @@ ModeDef sl_mode = {
     .types = sl_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
+    .fallback = &c_mode,
 };
 
 static int c_init(void)

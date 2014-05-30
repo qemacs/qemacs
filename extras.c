@@ -623,8 +623,6 @@ static int qe_list_bindings(char *buf, int size, CmdDef *d,
 {
     int pos;
     buf_t outbuf, *out;
-    KeyDef *kd1 = mode ? mode->first_key : NULL;
-    KeyDef *kd2 = inherit ? qe_state.first_key : NULL;
 
     out = buf_init(&outbuf, buf, size);
     pos = 0;
@@ -633,7 +631,7 @@ static int qe_list_bindings(char *buf, int size, CmdDef *d,
 
         for (; kd != NULL; kd = kd->next) {
             if (kd->cmd == d
-            &&  qe_find_binding(kd->keys, kd->nb_keys, 2, kd1, kd2) == kd) {
+            &&  qe_find_current_binding(kd->keys, kd->nb_keys, mode) == kd) {
                 if (out->len > pos)
                     buf_puts(out, ", ");
 
@@ -643,7 +641,7 @@ static int qe_list_bindings(char *buf, int size, CmdDef *d,
         if (!inherit || !mode)
             break;
         /* Should move up to base mode */
-        mode = NULL;
+        mode = mode->fallback;
     }
     return out->len;
 }

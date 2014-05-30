@@ -22,10 +22,10 @@
 
 /* TODO: lisp-indent = 2 */
 
-#define LISP_LANG_LISP    1
-#define LISP_LANG_ELISP   2
-#define LISP_LANG_SCHEME  4
-#define LISP_LANG_RACKET  8
+#define LISP_LANG_LISP     1
+#define LISP_LANG_ELISP    2
+#define LISP_LANG_SCHEME   4
+#define LISP_LANG_RACKET   8
 #define LISP_LANG_CLOJURE  16
 
 /*---------------- Lisp colors ----------------*/
@@ -370,6 +370,7 @@ ModeDef elisp_mode = {
     .mode_probe = elisp_mode_probe,
     .colorize_func = lisp_colorize_line,
     .colorize_flags = LISP_LANG_ELISP,
+    .fallback = &lisp_mode,
 };
 
 ModeDef scheme_mode = {
@@ -379,6 +380,7 @@ ModeDef scheme_mode = {
     .types = lisp_types,
     .colorize_func = lisp_colorize_line,
     .colorize_flags = LISP_LANG_SCHEME,
+    .fallback = &lisp_mode,
 };
 
 ModeDef racket_mode = {
@@ -388,6 +390,7 @@ ModeDef racket_mode = {
     .types = lisp_types,
     .colorize_func = lisp_colorize_line,
     .colorize_flags = LISP_LANG_RACKET,
+    .fallback = &lisp_mode,
 };
 
 ModeDef clojure_mode = {
@@ -397,6 +400,7 @@ ModeDef clojure_mode = {
     .types = lisp_types,
     .colorize_func = lisp_colorize_line,
     .colorize_flags = LISP_LANG_CLOJURE,
+    .fallback = &lisp_mode,
 };
 
 static int lisp_init(void)
