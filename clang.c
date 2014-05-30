@@ -47,6 +47,8 @@ enum {
     CLANG_CALC,
     CLANG_ENSCRIPT,
     CLANG_QSCRIPT,
+    CLANG_ELASTIC,
+    CLANG_JED,
     CLANG_FLAVOR = 0x1F,
 };
 
@@ -401,6 +403,26 @@ static const char qs_types[] = {
     "char|int|var|void|Array|Char|Function|Number|Object|String|"
 };
 
+static const char ec_keywords[] = {
+    "@false|@nil|@true|new|self|"
+    "break|catch|class|continue|do|else|extends|for|from|function|goto|if|"
+    "import|in|local|method|package|private|public|return|static|super|"
+    "throw|try|while|"
+};
+
+static const char ec_types[] = {
+    "none|short|ushort|int|uint|long|ulong|char|uchar|float|double|bool|"
+    "string|static_string|array|callback|symbol|"
+};
+
+static const char sl_keywords[] = {
+    "define|if|else|return|static|while|break|do|"
+};
+
+static const char sl_types[] = {
+    "variable|"
+};
+
 static const char c_extensions[] = {
     "c|h|i|C|H|I|"      /* C language */
     /* Other C flavors */
@@ -616,6 +638,11 @@ static void c_colorize_line(QEColorizeContext *cp,
                         (min(level, 7) << IN_C_COMMENT_D_SHIFT);
                 SET_COLOR(str, start, i, C_STYLE_COMMENT);
                 continue;
+            }
+            break;
+        case '%':
+            if (flavor == CLANG_JED) {
+                goto parse_comment1;
             }
             break;
         case '#':       /* preprocessor */
@@ -1379,7 +1406,6 @@ static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
             return 50;
         }
     }
-
     return 1;
 }
 
@@ -1711,6 +1737,28 @@ ModeDef qscript_mode = {
     .auto_indent = 1,
 };
 
+ModeDef ec_mode = {
+    .name = "elastiC",
+    .extensions = "ec",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_ELASTIC,
+    .keywords = ec_keywords,
+    .types = ec_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef sl_mode = {
+    .name = "Jed",  /* S-Lang */
+    .extensions = "sl",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_JED | CLANG_PREPROC,
+    .keywords = sl_keywords,
+    .types = sl_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
 static int c_init(void)
 {
     const char *p;
@@ -1747,6 +1795,8 @@ static int c_init(void)
     qe_register_mode(&calc_mode, MODEF_SYNTAX);
     qe_register_mode(&enscript_mode, MODEF_SYNTAX);
     qe_register_mode(&qscript_mode, MODEF_SYNTAX);
+    qe_register_mode(&ec_mode, MODEF_SYNTAX);
+    qe_register_mode(&sl_mode, MODEF_SYNTAX);
 
     return 0;
 }
