@@ -21,6 +21,14 @@ DEPTH=..
 
 include $(DEPTH)/config.mak
 
+ifeq (,$(V)$(VERBOSE))
+    echo  := @echo
+    cmd   := @
+else
+    echo  := @:
+    cmd   := 
+endif
+
 ifeq ($(CC),gcc)
   CFLAGS   += -Wall -g -O2 -funsigned-char
   # do not warn about zero-length formats.
@@ -64,17 +72,19 @@ $(shell mkdir -p $(OBJS_DIR))
 all: $(LIB)
 
 $(LIB): $(OBJS) Makefile
-	rm -f $@
+	@rm -f $@
 	$(AR) rc $@ $(OBJS)
 
 $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
-	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
+	$(echo) CC -c $<
+	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
 #
 # build default style sheet file
 #
 csstoqe$(EXE): csstoqe.c Makefile
-	$(HOST_CC) $(CFLAGS) -o $@ $<
+	$(echo) CC -o $@ $<
+	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $<
 
 html_style.c: html.css csstoqe$(EXE) Makefile
 	./csstoqe html_style < $< > $@

@@ -21,6 +21,14 @@ DEPTH=.
 
 include $(DEPTH)/config.mak
 
+ifeq (,$(V)$(VERBOSE))
+    echo  := @echo
+    cmd   := @
+else
+    echo  := @:
+    cmd   := 
+endif
+
 ifeq ($(CC),gcc)
   CFLAGS   += -Wall -g -O2 -funsigned-char
   # do not warn about zero-length formats.
@@ -179,28 +187,30 @@ libqhtml: force
 	$(MAKE) -C libqhtml all
 
 qe_g$(EXE): $(OBJS) $(DEP_LIBS)
-	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+	$(echo) LD $@
+	$(cmd)  $(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 qe$(EXE): qe_g$(EXE) Makefile
-	rm -f $@
+	@rm -f $@
 	cp $< $@
 	-$(STRIP) $@
 	@ls -l $@
-	echo `size $@` `wc -c $@` qe $(OPTIONS) \
+	@echo `size $@` `wc -c $@` qe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 #
 # Tiny version of QEmacs
 #
 tqe_g$(EXE): $(TOBJS)
-	$(CC) $(TLDFLAGS) -o $@ $^ $(TLIBS)
+	$(echo) LD $@
+	$(cmd)  $(CC) $(TLDFLAGS) -o $@ $^ $(TLIBS)
 
 tqe$(EXE): tqe_g$(EXE) Makefile
-	rm -f $@
+	@rm -f $@
 	cp $< $@
 	-$(STRIP) $@
 	@ls -l $@
-	echo `size $@` `wc -c $@` tqe $(OPTIONS) \
+	@echo `size $@` `wc -c $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 ffplay$(EXE): qe$(EXE) Makefile
@@ -234,16 +244,20 @@ $(TOBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
 $(TOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 
 $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
-	$(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
+	$(echo) CC -c $<
+	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
 $(TOBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
-	$(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
+	$(echo) CC -DCONFIG_TINY -c $<
+	$(cmd)  $(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
 
 $(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
-	g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -c $<
+	$(echo) CPP -c $<
+	$(cmd)  g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -c $<
 
 $(TOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
-	g++ $(DEFINES) -DCONFIG_TINY $(CFLAGS) -Wno-multichar -o $@ -c $<
+	$(echo) CPP -DCONFIG_TINY -c $<
+	$(cmd)  g++ $(DEFINES) -DCONFIG_TINY $(CFLAGS) -Wno-multichar -o $@ -c $<
 
 %.s: %.c $(DEPENDS) Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -S $<
@@ -255,13 +269,15 @@ $(TOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 # Test for bidir algorithm
 #
 qfribidi$(EXE): qfribidi.c cutils.c
-	$(HOST_CC) $(CFLAGS) -DTEST -o $@ $^
+	$(echo) CC -o $@ $^
+	$(cmd)  $(HOST_CC) $(CFLAGS) -DTEST -o $@ $^
 
 #
 # build ligature table
 #
 ligtoqe$(EXE): ligtoqe.c cutils.c
-	$(HOST_CC) $(CFLAGS) -o $@ $^
+	$(echo) CC -o $@ $^
+	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
 ligatures: ligtoqe$(EXE) unifont.lig
@@ -288,7 +304,8 @@ KMAPS_DIR=kmap
 KMAPS:=$(addprefix $(KMAPS_DIR)/, $(KMAPS))
 
 kmaptoqe$(EXE): kmaptoqe.c cutils.c
-	$(HOST_CC) $(CFLAGS) -o $@ $^
+	$(echo) CC -o $@ $^
+	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
 kmaps: kmaptoqe$(EXE) $(KMAPS) Makefile
@@ -314,10 +331,12 @@ JIS= JIS0208.TXT JIS0212.TXT
 JIS:=$(addprefix cp/,$(JIS))
 
 cptoqe$(EXE): cptoqe.c cutils.c
-	$(HOST_CC) $(CFLAGS) -o $@ $^
+	$(echo) CC $^
+	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
 
 jistoqe$(EXE): jistoqe.c cutils.c
-	$(HOST_CC) $(CFLAGS) -o $@ $^
+	$(echo) CC $^
+	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
 charsetmore.c: cp/cpdata.txt $(CP) cptoqe$(EXE) Makefile
@@ -337,7 +356,8 @@ FONTS=fixed10.fbf fixed12.fbf fixed13.fbf fixed14.fbf \
 FONTS:=$(addprefix fonts/,$(FONTS))
 
 fbftoqe$(EXE): fbftoqe.c cutils.c
-	$(HOST_CC) $(CFLAGS) -o $@ $^
+	$(echo) CC -o $@ $^
+	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
 
 fbffonts.c: fbftoqe$(EXE) $(FONTS)
 	./fbftoqe $(FONTS) > $@
@@ -353,8 +373,8 @@ OBJS1=html2png.o util.o cutils.o \
 OBJS1:=$(addprefix $(OBJS_DIR)/, $(OBJS1))
 
 html2png$(EXE): $(OBJS1) libqhtml/libqhtml.a
-	$(CC) $(LDFLAGS) -o $@ $(OBJS1) \
-                   -L./libqhtml -lqhtml $(HTMLTOPPM_LIBS)
+	$(echo) LD $@
+	$(cmd)  $(CC) $(LDFLAGS) -o $@ $(OBJS1) -L./libqhtml -lqhtml $(HTMLTOPPM_LIBS)
 
 # autotest target
 test:
@@ -363,10 +383,10 @@ test:
 # documentation
 qe-doc.html: qe-doc.texi Makefile
 	LANGUAGE=en_US LC_ALL=en_US.UTF-8 texi2html -monolithic $<
-	mv $@ $@.tmp
-	sed "s/This document was generated on.*//"     < $@.tmp | \
-	sed "s/<!-- Created on .* by/<!-- Created by/" > $@
-	rm $@.tmp
+	@mv $@ $@.tmp
+	@sed "s/This document was generated on.*//"     < $@.tmp | \
+		sed "s/<!-- Created on .* by/<!-- Created by/" > $@
+	@rm $@.tmp
 
 #
 # Maintenance targets
