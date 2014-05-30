@@ -26,6 +26,7 @@
 #define LISP_LANG_ELISP   2
 #define LISP_LANG_SCHEME  4
 #define LISP_LANG_RACKET  8
+#define LISP_LANG_CLOJURE  16
 
 /*---------------- Lisp colors ----------------*/
 
@@ -389,12 +390,22 @@ ModeDef racket_mode = {
     .colorize_flags = LISP_LANG_RACKET,
 };
 
+ModeDef clojure_mode = {
+    .name = "Clojure",
+    .extensions = "clj",
+    .keywords = lisp_keywords,
+    .types = lisp_types,
+    .colorize_func = lisp_colorize_line,
+    .colorize_flags = LISP_LANG_CLOJURE,
+};
+
 static int lisp_init(void)
 {
     qe_register_mode(&lisp_mode, MODEF_SYNTAX);
     qe_register_mode(&elisp_mode, MODEF_SYNTAX);
     qe_register_mode(&scheme_mode, MODEF_SYNTAX);
     qe_register_mode(&racket_mode, MODEF_SYNTAX);
+    qe_register_mode(&clojure_mode, MODEF_SYNTAX);
 
     return 0;
 }
