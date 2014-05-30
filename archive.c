@@ -62,6 +62,7 @@ static CompressType compress_type_array[] = {
     { "XZ", "xz", "unxz -c $1", "xz > $1" },
     { "BinHex", "hqx", "binhex decode -o /tmp/qe-$$ $1 && "
                        "cat /tmp/qe-$$ ; rm -f /tmp/qe-$$", NULL },
+    { "sqlite", "xdb|rdb|db", "sqlite3 $1 .dump", NULL },
 };
 
 static CompressType *compress_types;
@@ -222,7 +223,7 @@ static int compress_mode_probe(ModeDef *mode, ModeProbeData *p)
             return 9;
         } else {
             /* buffer not yet loaded */
-            return 60;
+            return 82;
         }
     }
 
