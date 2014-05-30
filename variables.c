@@ -83,11 +83,12 @@ static VarDef var_table[] = {
     //G_VAR( "unicode-mode-line", unihex_mode.mode_line, VAR_STRING, VAR_RW )
 
     //Dispatch these to the appropriate modules
-    //G_VAR( "c-mode-extensions", c_mode_extensions, VAR_STRING, VAR_RW )
-    //G_VAR( "c-mode-keywords", c_mode_keywords, VAR_STRING, VAR_RW )
-    //G_VAR( "c-mode-types", c_mode_types, VAR_STRING, VAR_RW )
-    //G_VAR( "html-mode-extensions", html_mode_extensions, VAR_STRING, VAR_RW )
-    //G_VAR( "perl-mode-extensions", perl_mode_extensions, VAR_STRING, VAR_RW )
+    //G_VAR( "c-mode-extensions", c_mode.extensions, VAR_STRING, VAR_RW )
+    //G_VAR( "c-mode-keywords", c_mode.keywords, VAR_STRING, VAR_RW )
+    //G_VAR( "c-mode-types", c_mode.types, VAR_STRING, VAR_RW )
+    //G_VAR( "html-src-mode-extensions", htmlsrc_mode.extensions, VAR_STRING, VAR_RW )
+    //G_VAR( "html-mode-extensions", html_mode.extensions, VAR_STRING, VAR_RW )
+    //G_VAR( "perl-mode-extensions", perl_mode.extensions, VAR_STRING, VAR_RW )
 };
 
 void qe_register_variables(VarDef *vars, int count)
