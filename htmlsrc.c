@@ -96,8 +96,8 @@ static int htmlsrc_tag_match(const unsigned int *buf, int i, const char *str,
     }
 }
 
-void htmlsrc_colorize_line(QEColorizeContext *cp,
-                           unsigned int *str, int n, int mode_flags)
+static void htmlsrc_colorize_line(QEColorizeContext *cp,
+                                  unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start = i, c, len;
     int state = cp->colorize_state;
@@ -121,7 +121,7 @@ void htmlsrc_colorize_line(QEColorizeContext *cp,
             c = str[i];     /* save char to set '\0' delimiter */
             str[i] = '\0';
             cp->colorize_state = state & ~(IN_HTML_PHP_TAG | IN_HTML_PHP_STRING);
-            php_colorize_line(cp, str + start, i - start, 0);
+            php_mode.colorize_func(cp, str + start, i - start, &php_mode);
             state = cp->colorize_state |
                     (state & (IN_HTML_PHP_TAG | IN_HTML_PHP_STRING));
             str[i] = c;
@@ -146,7 +146,7 @@ void htmlsrc_colorize_line(QEColorizeContext *cp,
             c = str[i];     /* save char to set '\0' delimiter */
             str[i] = '\0';
             cp->colorize_state = state & ~(IN_HTML_ASP_TAG | IN_HTML_ASP_STRING);
-            csharp_colorize_line(cp, str + start, i - start, 0);
+            csharp_mode.colorize_func(cp, str + start, i - start, &csharp_mode);
             state = cp->colorize_state |
                     (state & (IN_HTML_ASP_TAG | IN_HTML_ASP_STRING));
             str[i] = c;
@@ -174,7 +174,7 @@ void htmlsrc_colorize_line(QEColorizeContext *cp,
             str[i] = '\0';
             state &= ~IN_HTML_SCRIPT;
             cp->colorize_state = state;
-            js_colorize_line(cp, str + start, i - start, 0);
+            js_mode.colorize_func(cp, str + start, i - start, &js_mode);
             state = cp->colorize_state;
             state |= IN_HTML_SCRIPT;
             str[i] = c;
@@ -194,7 +194,7 @@ void htmlsrc_colorize_line(QEColorizeContext *cp,
             str[i] = '\0';
             state &= ~IN_HTML_STYLE;
             cp->colorize_state = state;
-            css_colorize_line(cp, str + start, i - start, 0);
+            css_mode.colorize_func(cp, str + start, i - start, &css_mode);
             state = cp->colorize_state;
             state |= IN_HTML_STYLE;
             str[i] = c;
@@ -415,7 +415,7 @@ static CmdDef htmlsrc_commands[] = {
     CMD_DEF_END,
 };
 
-static ModeDef htmlsrc_mode = {
+ModeDef htmlsrc_mode = {
     .name = "html-src",
     .extensions = "html|htm|asp|aspx|shtml|hta|htp|phtml|php",
     .mode_probe = htmlsrc_mode_probe,

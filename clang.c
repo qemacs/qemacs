@@ -21,6 +21,43 @@
 
 #include "qe.h"
 
+/* C mode flavors */
+enum {
+    CLANG_C,
+    CLANG_CPP,
+    CLANG_OBJC,
+    CLANG_CSHARP,
+    CLANG_CSS,
+    CLANG_JS,
+    CLANG_AS,
+    CLANG_JAVA,
+    CLANG_PHP,
+    CLANG_GO,
+    CLANG_D,
+    CLANG_LIMBO,
+    CLANG_CYCLONE,
+    CLANG_CH,
+    CLANG_SQUIRREL,
+    CLANG_ICI,
+    CLANG_JSX,
+    CLANG_HAXE,
+    CLANG_DART,
+    CLANG_PIKE,
+    CLANG_IDL,
+    CLANG_CALC,
+    CLANG_ENSCRIPT,
+    CLANG_QSCRIPT,
+    CLANG_FLAVOR = 0x1F,
+};
+
+/* C mode options */
+#define CLANG_LEX         0x0200
+#define CLANG_YACC        0x0400
+#define CLANG_REGEX       0x0800
+#define CLANG_WLITERALS   0x1000
+#define CLANG_PREPROC     0x2000
+#define CLANG_CC          0x3100  /* all C language features */
+
 static const char c_keywords[] = {
     "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
     "if|inline|register|restrict|return|sizeof|static|struct|switch|"
@@ -321,61 +358,56 @@ static const char pike_types[] = {
     "variant|void|"
 };
 
-struct QEModeFlavor {
-    const char *keywords;
-    const char *types;
-} const c_mode_flavors[] = {
-    { NULL,              NULL },           /* CLANG_GENERIC */
-    { c_keywords,        c_types },        /* CLANG_C */
-    { cpp_keywords,      cpp_types },      /* CLANG_CPP */
-    { objc_keywords,     objc_types },     /* CLANG_OBJC */
-    { csharp_keywords,   csharp_types },   /* CLANG_CSHARP */
-    { css_keywords,      css_types },      /* CLANG_CSS */
-    { js_keywords,       js_types },       /* CLANG_JS */
-    { as_keywords,       as_types },       /* CLANG_AS */
-    { java_keywords,     java_types },     /* CLANG_JAVA */
-    { php_keywords,      php_types },      /* CLANG_PHP */
-    { go_keywords,       go_types },       /* CLANG_GO */
-    { d_keywords,        d_types },        /* CLANG_D */
-    { limbo_keywords,    limbo_types },    /* CLANG_LIMBO */
-    { cyclone_keywords,  cyclone_types },  /* CLANG_CYCLONE */
-    { ch_keywords,       ch_types },       /* CLANG_CH */
-    { squirrel_keywords, squirrel_types }, /* CLANG_SQUIRREL */
-    { ici_keywords,      ici_types },      /* CLANG_ICI */
-    { jsx_keywords,      jsx_types },      /* CLANG_JSX */
-    { haxe_keywords,     haxe_types },     /* CLANG_HAXE */
-    { dart_keywords,     dart_types },     /* CLANG_DART */
-    { pike_keywords,     pike_types },     /* CLANG_PIKE */
+static const char idl_keywords[] = {
+    "abstract|attribute|case|component|const|consumes|context|custom|"
+    "default|emits|enum|eventtype|exception|factory|false|FALSE|finder|"
+    "fixed|getraises|home|import|in|inout|interface|local|module|multiple|"
+    "native|oneway|out|primarykey|private|provides|public|publishes|raises|"
+    "readonly|sequence|setraises|struct|supports|switch|TRUE|true|"
+    "truncatable|typedef|typeid|typeprefix|union|uses|ValueBase|valuetype|"
 };
 
-static const char c_mode_extensions[] = {
+static const char idl_types[] = {
+    "unsigned|short|long|float|double|char|wchar|string|wstring|octet|any|void|"
+    "boolean|Boolean|object|Object|"
+};
+
+static const char calc_keywords[] = {
+    "if|else|for|while|do|continue|break|goto|return|local|global|static|"
+    "switch|case|default|quit|exit|define|read|show|help|write|mat|obj|"
+    "print|cd|undefine|abort|"
+};
+
+static const char calc_types[] = {
+    "|"
+};
+
+static const char enscript_keywords[] = {
+    "if|else|return|state|extends|BEGIN|END|forever|continue|do|"
+    "not|and|or|orelse|switch|case|default|true|false|"
+};
+
+static const char enscript_types[] = {
+    "|"
+};
+
+static const char qs_keywords[] = {
+    "break|case|class|continue|def|default|del|delete|do|else|for|"
+    "function|if|module|new|return|self|string|struct|switch|this|"
+    "typeof|while|"
+};
+
+static const char qs_types[] = {
+    "char|int|var|void|Array|Char|Function|Number|Object|String|"
+};
+
+static const char c_extensions[] = {
     "c|h|i|C|H|I|"      /* C language */
-    "y|yacc|l|lex|"     /* yacc, lex */
-    "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++|"   /* C++ */
-    "m|mm|"             /* Objective-C, Limbo */
-    "cs|"               /* C Sharp */
-    "css|"              /* Cascaded Style Sheet, CSS */
-    "js|json|"          /* Javascript, JSon */
-    "as|"               /* Actionscript */
-    "jav|java|"         /* Java */
-    "jsx|"              /* JSX (extended Javascript) */
-    "hx|"               /* Haxe (extended Javascript) */
-    "dart|"             /* Dart (extended Javascript) */
-    "pike|"             /* Pike */
-    "go|"               /* Go language */
-    "d|di|"             /* D language */
-    "cyc|cyl|cys|"      /* Cyclone language */
-    "ch|"               /* Ch interpreter */
-    "nut|"              /* Squirrel language */
-    "ici|"              /* ICI language (C interpreter) */
-    "st|"               /* GNU Enscript syntax files */
-    "qe|qs|"            /* QEmacs / QScript */
-    "idl|"              /* IDL language */
+    /* Other C flavors */
     "e|"                /* EEL */
-    "ec|ecp|"           /* Informix embedded C */
+    "ecp|"              /* Informix embedded C */
     "pgc|"              /* Postgres embedded C */
     "pcc|"              /* Oracle C++ */
-    "cal|"              /* GNU Calc */
 };
 
 /* grab a C identifier from a uint buf, stripping color.
@@ -434,20 +466,20 @@ enum {
     IN_C_COMMENT_D_SHIFT = 8,
 };
 
-void c_colorize_line(QEColorizeContext *cp,
-                     unsigned int *str, int n, int mode_flags)
+static void c_colorize_line(QEColorizeContext *cp,
+                            unsigned int *str, int n, ModeDef *syn)
 {
     const char *keywords = NULL;
     const char *types = NULL;
     int i = 0, start, i1, i2, indent, level;
     int c, state, style, style0, style1, type_decl, klen, delim, flavor;
+    int mode_flags;
     char kbuf[32];
 
+    mode_flags = syn ? syn->colorize_flags : 0;
     flavor = (mode_flags & CLANG_FLAVOR);
-    if (flavor < countof(c_mode_flavors)) {
-        keywords = c_mode_flavors[flavor].keywords;
-        types = c_mode_flavors[flavor].types;
-    }
+    keywords = syn ? syn->keywords : NULL;
+    types = syn ? syn->types : NULL;
 
     for (indent = 0; qe_isspace(str[indent]); indent++)
         continue;
@@ -587,7 +619,7 @@ void c_colorize_line(QEColorizeContext *cp,
             }
             break;
         case '#':       /* preprocessor */
-            if ((mode_flags & CLANG_CC) || flavor == CLANG_CSHARP) {
+            if (mode_flags & CLANG_PREPROC) {
                 state = IN_C_PREPROCESS;
                 style = style0 = C_STYLE_PREPROCESS;
             }
@@ -619,7 +651,7 @@ void c_colorize_line(QEColorizeContext *cp,
             }
             break;
         case 'L':       /* wide character and string literals */
-            if (mode_flags & CLANG_CC) {
+            if (mode_flags & CLANG_WLITERALS) {
                 if (str[i] == '\'') {
                     i++;
                     goto parse_string_q;
@@ -1308,166 +1340,6 @@ static void do_c_list_conditionals(EditState *s)
     }
 }
 
-static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    /* trust the file extension */
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    /* weaker match on C comment start */
-    if (p->buf[0] == '/' && p->buf[1] == '*')
-        return 60;
-
-    /* even weaker match on C++ comment start */
-    if (p->buf[0] == '/' && p->buf[1] == '/')
-        return 50;
-
-    if (p->buf[0] == '#') {
-        if (p->buf[1] == '!'
-        &&  memstr(p->buf, p->line_len, "bin/calc")) {
-            /* GNU Calc script */
-            return 80;
-        }
-        /* same for file starting with '#include' */
-        if (strstart(cs8(p->buf), "#include", NULL))
-            return 50;
-
-        /* same for file starting with '#pragma' as in #pragma once */
-        if (strstart(cs8(p->buf), "#pragma", NULL))
-            return 50;
-    }
-
-    return 1;
-}
-
-static int c_mode_init(EditState *s)
-{
-    const char *base = get_basename(s->b->filename);
-
-    /* Select C like flavor */
-    if (match_extension(base, "c|h|i|C|H|I")) {
-        s->mode_flags = CLANG_C | CLANG_CC;
-    } else
-    if (match_extension(base, "y|yacc")) {
-        s->mode_name = "Yacc";
-        s->mode_flags = CLANG_C | CLANG_CC | CLANG_YACC;
-    } else
-    if (match_extension(base, "l|lex")) {
-        s->mode_name = "Lex";
-        s->mode_flags = CLANG_C | CLANG_CC | CLANG_LEX;
-    } else
-    if (match_extension(base, "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++")) {
-        s->mode_name = "CPP";
-        s->mode_flags = CLANG_CPP | CLANG_CC;
-    } else
-    if (match_extension(base, "cs")) {
-        s->mode_name = "C#";
-        s->mode_flags = CLANG_CSHARP;
-    } else
-    if (match_extension(base, "m|mm")) {
-        int offset = 0;
-        if (eb_nextc(s->b, offset, &offset) == '/') {
-            // XXX: should also check for #import
-            s->mode_name = "ObjC";
-            s->mode_flags = CLANG_OBJC | CLANG_CC;
-        } else {
-            s->mode_name = "Limbo";
-            s->mode_flags = CLANG_LIMBO;
-        }
-    } else
-    if (match_extension(base, "jav|java")) {
-        s->mode_name = "Java";
-        s->mode_flags = CLANG_JAVA;
-    } else
-    if (match_extension(base, "css")) {
-        s->mode_name = "CSS";
-        s->mode_flags = CLANG_CSS;
-    } else
-    if (match_extension(base, "js|json")) {
-        s->mode_name = "Javascript";
-        s->mode_flags = CLANG_JS | CLANG_REGEX;
-    } else
-    if (match_extension(base, "as")) {
-        s->mode_name = "Actionscript";
-        s->mode_flags = CLANG_AS | CLANG_REGEX;
-    } else
-    if (match_extension(base, "jsx")) {
-        s->mode_name = "JSX";
-        s->mode_flags = CLANG_JSX | CLANG_REGEX;
-    } else
-    if (match_extension(base, "hx")) {
-        s->mode_name = "Haxe";
-        s->mode_flags = CLANG_HAXE | CLANG_REGEX;
-    } else
-    if (match_extension(base, "dart")) {
-        s->mode_name = "Dart";
-        s->mode_flags = CLANG_DART;
-    } else
-    if (match_extension(base, "pike")) {
-        s->mode_name = "Pike";
-        s->mode_flags = CLANG_PIKE;
-    } else
-    if (match_extension(base, "go")) {
-        s->mode_name = "Go";
-        s->mode_flags = CLANG_GO;
-    } else
-    if (match_extension(base, "d|di")) {
-        s->mode_name = "D";
-        s->mode_flags = CLANG_D;
-    } else
-    if (match_extension(base, "cyc|cyl|cys")) {
-        s->mode_name = "Cyclone";
-        s->mode_flags = CLANG_CYCLONE | CLANG_CC;
-    } else
-    if (match_extension(base, "chf")) {
-        s->mode_name = "Ch";
-        s->mode_flags = CLANG_CH | CLANG_CC;
-    } else
-    if (match_extension(base, "nut")) {
-        s->mode_name = "Squirrel";
-        s->mode_flags = CLANG_SQUIRREL;
-    } else
-    if (match_extension(base, "ici")) {
-        s->mode_name = "ICI";
-        s->mode_flags = CLANG_ICI;
-    } else
-    if (match_extension(base, "st")) {
-        s->mode_name = "Enscript";
-        s->mode_flags = CLANG_C | CLANG_CC | CLANG_REGEX;
-    } else
-    if (match_extension(base, "qe|qs")
-    ||  !strcmp(base, ".qerc")
-    ||  strstr(s->b->filename, "/.qe/config")) {
-        s->mode_name = "QScript";
-        s->mode_flags = CLANG_CC | CLANG_REGEX;
-    } else
-    if (match_extension(base, "idl")) {
-        s->mode_name = "IDL";
-        s->mode_flags = CLANG_CC | CLANG_REGEX;
-    } else
-    if (match_extension(base, "e")) {
-        s->mode_name = "EEL";
-        s->mode_flags = CLANG_C | CLANG_CC;
-    } else
-    if (match_extension(base, "ec|ecp")) {
-        s->mode_name = "Informix";
-        s->mode_flags = CLANG_C | CLANG_CC;
-    } else
-    if (match_extension(base, "pgc")) {
-        s->mode_name = "Postgres";
-        s->mode_flags = CLANG_C | CLANG_CC;
-    } else
-    if (match_extension(base, "pcc")) {
-        s->mode_name = "Oracle";
-        s->mode_flags = CLANG_CPP | CLANG_CC;
-    } else
-    if (match_extension(base, "cal")) {
-        s->mode_name = "Calc";
-        s->mode_flags = CLANG_CC;
-    }
-    return 0;
-}
-
 /* C mode specific commands */
 static CmdDef c_commands[] = {
     CMD2( KEY_CTRL('i'), KEY_NONE,
@@ -1486,12 +1358,355 @@ static CmdDef c_commands[] = {
     CMD_DEF_END,
 };
 
-static ModeDef c_mode = {
+static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    /* trust the file extension */
+    if (match_extension(p->filename, mode->extensions))
+        return 80;
+
+    /* weaker match on C comment start */
+    if (p->buf[0] == '/' && p->buf[1] == '*')
+        return 60;
+
+    /* even weaker match on C++ comment start */
+    if (p->buf[0] == '/' && p->buf[1] == '/')
+        return 50;
+
+    if (p->buf[0] == '#') {
+        /* same for file starting with `#include` or `#pragma`*/
+        if (strstart(cs8(p->buf), "#include", NULL)
+        ||  strstart(cs8(p->buf), "#pragma", NULL)) {
+            return 50;
+        }
+    }
+
+    return 1;
+}
+
+ModeDef c_mode = {
     .name = "C",
-    .extensions = c_mode_extensions,
+    .extensions = c_extensions,
     .mode_probe = c_mode_probe,
-    .mode_init = c_mode_init,
     .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_C | CLANG_CC,
+    .keywords = c_keywords,
+    .types = c_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef yacc_mode = {
+    .name = "Yacc",
+    .extensions = "y|yacc",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_C | CLANG_CC | CLANG_YACC,
+    .keywords = c_keywords,
+    .types = c_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef lex_mode = {
+    .name = "Lex",
+    .extensions = "l|lex",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_C | CLANG_CC | CLANG_LEX,
+    .keywords = c_keywords,
+    .types = c_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef cpp_mode = {
+    .name = "C++",
+    .mode_name = "cpp",
+    .extensions = "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CPP | CLANG_CC,
+    .keywords = cpp_keywords,
+    .types = cpp_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+static int objc_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->filename, mode->extensions)) {
+        /* favor Objective C over Limbo for .m extension
+         * if file is empty, starts with a comment or a #import */
+        if (p->buf[0] == '/' || p->buf[0] == '\0'
+        ||  strstart(cs8(p->buf), "#import", NULL)) {
+            return 81;
+        } else {
+            return 80;
+        }
+    }
+    return 1;
+}
+
+ModeDef objc_mode = {
+    .name = "ObjC", /* Objective C */
+    .extensions = "m|mm",
+    .mode_probe = objc_mode_probe,
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_OBJC | CLANG_CC,
+    .keywords = objc_keywords,
+    .types = objc_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef csharp_mode = {
+    .name = "C#",   /* C Sharp */
+    .mode_name = "csharp",
+    .extensions = "cs",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CSHARP | CLANG_PREPROC,
+    .keywords = csharp_keywords,
+    .types = csharp_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef css_mode = {
+    .name = "CSS",
+    .extensions = "css",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CSS,
+    .keywords = css_keywords,
+    .types = css_types,
+    .indent_func = c_indent_line,
+};
+
+ModeDef js_mode = {
+    .name = "Javascript",
+    .extensions = "js|json",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_JS | CLANG_REGEX,
+    .keywords = js_keywords,
+    .types = js_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef as_mode = {
+    .name = "Actionscript",
+    .extensions = "as",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_AS | CLANG_REGEX,
+    .keywords = as_keywords,
+    .types = as_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef java_mode = {
+    .name = "Java",
+    .extensions = "jav|java",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_JAVA,
+    .keywords = java_keywords,
+    .types = java_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef php_mode = {
+    .name = "PHP",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_PHP | CLANG_REGEX,
+    .keywords = php_keywords,
+    .types = php_types,
+};
+
+ModeDef go_mode = {
+    .name = "Go",
+    .extensions = "go",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_GO,
+    .keywords = go_keywords,
+    .types = go_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef d_mode = {
+    .name = "D",
+    .extensions = "d|di",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_D,
+    .keywords = d_keywords,
+    .types = d_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef limbo_mode = {
+    .name = "Limbo",
+    .extensions = "m",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_LIMBO,
+    .keywords = limbo_keywords,
+    .types = limbo_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef cyclone_mode = {
+    .name = "Cyclone",
+    .extensions = "cyc|cyl|cys",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CYCLONE | CLANG_CC,
+    .keywords = cyclone_keywords,
+    .types = cyclone_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef ch_mode = {
+    .name = "Ch",
+    .extensions = "chf",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CH | CLANG_CC,
+    .keywords = ch_keywords,
+    .types = ch_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef squirrel_mode = {
+    .name = "Squirrel",
+    .extensions = "nut",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_SQUIRREL,
+    .keywords = squirrel_keywords,
+    .types = squirrel_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef ici_mode = {
+    .name = "ICI",
+    .extensions = "ici",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_ICI,
+    .keywords = ici_keywords,
+    .types = ici_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef jsx_mode = {
+    .name = "JSX",
+    .extensions = "jsx",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_JSX | CLANG_REGEX,
+    .keywords = jsx_keywords,
+    .types = jsx_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef haxe_mode = {
+    .name = "Haxe",
+    .extensions = "hx",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_HAXE | CLANG_REGEX,
+    .keywords = haxe_keywords,
+    .types = haxe_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef dart_mode = {
+    .name = "Dart",
+    .extensions = "dart",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_DART,
+    .keywords = dart_keywords,
+    .types = dart_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef pike_mode = {
+    .name = "Pike",
+    .extensions = "pike",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_PIKE,
+    .keywords = pike_keywords,
+    .types = pike_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+static ModeDef idl_mode = {
+    .name = "IDL",
+    .extensions = "idl",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_IDL | CLANG_PREPROC | CLANG_WLITERALS | CLANG_REGEX,
+    .keywords = idl_keywords,
+    .types = idl_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+static int calc_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->filename, mode->extensions))
+        return 80;
+    
+    if (p->buf[0] == '#' && p->buf[1] == '!'
+    &&  memstr(p->buf, p->line_len, "/calc")) {
+        /* GNU Calc script */
+        return 80;
+    }
+    return 1;
+}
+
+ModeDef calc_mode = {
+    .name = "calc", /* GNU Calc */
+    .extensions = "cal|calc",
+    .mode_probe = calc_mode_probe,
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CALC | CLANG_CC,
+    .keywords = calc_keywords,
+    .types = calc_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+ModeDef enscript_mode = {
+    .name = "Enscript", /* GNU Enscript */
+    .extensions = "st", /* syntax files */
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_ENSCRIPT | CLANG_REGEX,
+    .keywords = enscript_keywords,
+    .types = enscript_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
+static int qs_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->filename, mode->extensions))
+        return 80;
+    
+    if (!strcmp(p->filename, ".qerc")
+    ||  strstr(p->real_filename, "/.qe/config"))
+        return 80;
+
+    return 1;
+}
+
+ModeDef qscript_mode = {
+    .name = "QScript",
+    .extensions = "qe|qs",
+    .mode_probe = qs_mode_probe,
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_QSCRIPT | CLANG_REGEX,
+    .keywords = qs_keywords,
+    .types = qs_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
 };
@@ -1505,6 +1720,34 @@ static int c_init(void)
     for (p = ";:#&|"; *p; p++) {
         qe_register_binding(*p, "c-electric-key", &c_mode);
     }
+
+    qe_register_mode(&idl_mode, MODEF_SYNTAX);
+    qe_register_mode(&yacc_mode, MODEF_SYNTAX);
+    qe_register_mode(&lex_mode, MODEF_SYNTAX);
+    qe_register_mode(&cpp_mode, MODEF_SYNTAX);
+    qe_register_mode(&objc_mode, MODEF_SYNTAX);
+    qe_register_mode(&csharp_mode, MODEF_SYNTAX);
+    qe_register_mode(&css_mode, MODEF_SYNTAX);
+    qe_register_mode(&js_mode, MODEF_SYNTAX);
+    qe_register_mode(&as_mode, MODEF_SYNTAX);
+    qe_register_mode(&java_mode, MODEF_SYNTAX);
+    qe_register_mode(&php_mode, MODEF_SYNTAX);
+    qe_register_mode(&go_mode, MODEF_SYNTAX);
+    qe_register_mode(&d_mode, MODEF_SYNTAX);
+    qe_register_mode(&limbo_mode, MODEF_SYNTAX);
+    qe_register_mode(&cyclone_mode, MODEF_SYNTAX);
+    qe_register_mode(&ch_mode, MODEF_SYNTAX);
+    qe_register_mode(&squirrel_mode, MODEF_SYNTAX);
+    qe_register_mode(&ici_mode, MODEF_SYNTAX);
+    qe_register_mode(&jsx_mode, MODEF_SYNTAX);
+    qe_register_mode(&haxe_mode, MODEF_SYNTAX);
+    qe_register_mode(&dart_mode, MODEF_SYNTAX);
+    qe_register_mode(&pike_mode, MODEF_SYNTAX);
+    qe_register_mode(&idl_mode, MODEF_SYNTAX);
+    qe_register_mode(&calc_mode, MODEF_SYNTAX);
+    qe_register_mode(&enscript_mode, MODEF_SYNTAX);
+    qe_register_mode(&qscript_mode, MODEF_SYNTAX);
+
     return 0;
 }
 

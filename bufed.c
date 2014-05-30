@@ -99,17 +99,7 @@ static void build_bufed_list(EditState *s)
             if (b1->default_mode) {
                 mode_name = b1->default_mode->name;
             } else {
-                EditState *e;
-
                 mode_name = "none";
-                for (e = qs->first_window; e != NULL; e = e->next_window) {
-                    if (e->b == b1) {
-                        if (e->mode_name) {
-                            mode_name = e->mode_name;
-                            break;
-                        }
-                    }
-                }
             }
 
             eb_printf(b, " %10d %c %-8s %-8s %s",

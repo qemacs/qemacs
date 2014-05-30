@@ -100,7 +100,7 @@ static int org_scan_chunk(const unsigned int *str,
 }
 
 static void org_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, int mode_flags)
+                              unsigned int *str, int n, ModeDef *syn)
 {
     int colstate = cp->colorize_state;
     int i = 0, j = 0, kw, base_style = 0, has_space;
@@ -114,7 +114,7 @@ static void org_colorize_line(QEColorizeContext *cp,
             if (colstate & IN_ORG_LISP) {
                 colstate &= ~(IN_ORG_LISP | IN_ORG_BLOCK);
                 cp->colorize_state = colstate;
-                lisp_mode.colorize_func(cp, str, n, 0);
+                lisp_mode.colorize_func(cp, str, n, &lisp_mode);
                 colstate = cp->colorize_state;
                 colstate |= IN_ORG_LISP | IN_ORG_BLOCK;
             }

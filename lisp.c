@@ -22,6 +22,7 @@
 
 /* TODO: lisp-indent = 2 */
 
+#define LISP_LANG_LISP    1
 #define LISP_LANG_ELISP   2
 #define LISP_LANG_SCHEME  4
 #define LISP_LANG_RACKET  8
@@ -118,10 +119,13 @@ static int lisp_is_number(const char *str)
 }
 
 static void lisp_colorize_line(QEColorizeContext *cp,
-                               unsigned int *str, int n, int mode_flags)
+                               unsigned int *str, int n, ModeDef *syn)
 {
     int colstate = cp->colorize_state;
     int i = 0, start = i, len, level, style, has_expr;
+    int mode_flags = syn ? syn->colorize_flags : 0;
+    const char *keywords = syn && syn->keywords ? syn->keywords : lisp_keywords;
+    const char *types = syn && syn->types ? syn->types : lisp_types;
     char kbuf[32];
 
     level = colstate & IN_LISP_LEVEL;
@@ -311,11 +315,11 @@ static void lisp_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, start, i, LISP_STYLE_NUMBER);
                     continue;
                 }
-                if (strfind(lisp_keywords, kbuf)) {
+                if (strfind(keywords, kbuf)) {
                     SET_COLOR(str, start, i, LISP_STYLE_KEYWORD);
                     continue;
                 }
-                if (strfind(lisp_types, kbuf)) {
+                if (strfind(types, kbuf)) {
                     SET_COLOR(str, start, i, LISP_STYLE_TYPE);
                     continue;
                 }
@@ -338,7 +342,7 @@ static void lisp_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
-static int lisp_mode_probe(ModeDef *mode, ModeProbeData *mp)
+static int elisp_mode_probe(ModeDef *mode, ModeProbeData *mp)
 {
     /* check file name or extension */
     if (match_extension(mp->filename, mode->extensions)
@@ -348,36 +352,49 @@ static int lisp_mode_probe(ModeDef *mode, ModeProbeData *mp)
     return 1;
 }
 
-static int lisp_mode_init(EditState *s)
-{
-    /* select lisp flavor */
-    if (match_extension(s->b->filename, "el")
-    ||  strstart(get_basename(s->b->filename), ".emacs", NULL)) {
-        s->mode_name = "ELisp";
-        s->mode_flags = LISP_LANG_ELISP;
-    } else
-    if (match_extension(s->b->filename, "scm|ss")) {
-        s->mode_name = "Scheme";
-        s->mode_flags = LISP_LANG_SCHEME;
-    } else
-    if (match_extension(s->b->filename, "rkt|rktd")) {
-        s->mode_name = "Racket";
-        s->mode_flags = LISP_LANG_RACKET;
-    }
-    return 0;
-}
-
 ModeDef lisp_mode = {
     .name = "Lisp",
-    .extensions = "ll|li|lh|lo|lm|lisp|el|scm|ss|rkt|rktd",
-    .mode_probe = lisp_mode_probe,
-    .mode_init = lisp_mode_init,
+    .extensions = "ll|li|lh|lo|lm|lisp",
+    .keywords = lisp_keywords,
+    .types = lisp_types,
     .colorize_func = lisp_colorize_line,
+    .colorize_flags = LISP_LANG_LISP,
+};
+
+ModeDef elisp_mode = {
+    .name = "ELisp",
+    .extensions = "el",
+    .keywords = lisp_keywords,
+    .types = lisp_types,
+    .mode_probe = elisp_mode_probe,
+    .colorize_func = lisp_colorize_line,
+    .colorize_flags = LISP_LANG_ELISP,
+};
+
+ModeDef scheme_mode = {
+    .name = "Scheme",
+    .extensions = "scm|ss",
+    .keywords = lisp_keywords,
+    .types = lisp_types,
+    .colorize_func = lisp_colorize_line,
+    .colorize_flags = LISP_LANG_SCHEME,
+};
+
+ModeDef racket_mode = {
+    .name = "Racket",
+    .extensions = "rkt|rktd",
+    .keywords = lisp_keywords,
+    .types = lisp_types,
+    .colorize_func = lisp_colorize_line,
+    .colorize_flags = LISP_LANG_RACKET,
 };
 
 static int lisp_init(void)
 {
     qe_register_mode(&lisp_mode, MODEF_SYNTAX);
+    qe_register_mode(&elisp_mode, MODEF_SYNTAX);
+    qe_register_mode(&scheme_mode, MODEF_SYNTAX);
+    qe_register_mode(&racket_mode, MODEF_SYNTAX);
 
     return 0;
 }

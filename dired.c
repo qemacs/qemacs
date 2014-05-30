@@ -1015,7 +1015,7 @@ static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
 }
 
 static void dired_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, int mode_flags)
+                                unsigned int *str, int n, ModeDef *syn)
 {
     const unsigned int *p;
     int i = 0, start = i, style;

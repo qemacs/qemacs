@@ -55,7 +55,7 @@ enum {
 };
 
 static void makefile_colorize_line(QEColorizeContext *cp,
-                                   unsigned int *str, int n, int mode_flags)
+                                   unsigned int *str, int n, ModeDef *syn)
 {
     char buf[32];
     int i = 0, j = i, level;

@@ -43,7 +43,7 @@ static int script_var(const unsigned int *str, int j, int n)
 }
 
 static void script_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, int mode_flags)
+                                 unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, j, c, start, style;
 

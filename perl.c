@@ -105,7 +105,7 @@ static int perl_string(const unsigned int *str, unsigned int delim,
 }
 
 static void perl_colorize_line(QEColorizeContext *cp,
-                               unsigned int *str, int n, int mode_flags)
+                               unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, c, c1, c2, j = i, s1, s2, delim = 0;
     int colstate = cp->colorize_state;

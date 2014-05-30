@@ -52,7 +52,7 @@ static int xml_tag_match(const unsigned int *buf, int i, const char *str,
 }
 
 static void xml_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, int mode_flags)
+                              unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start = i, c;
     int state = cp->colorize_state;
@@ -140,7 +140,7 @@ static void xml_colorize_line(QEColorizeContext *cp,
                     str[i] = '\0';
                     state &= ~IN_XML_SCRIPT;
                     cp->colorize_state = state;
-                    js_colorize_line(cp, str + start, i - start, 0);
+                    js_mode.colorize_func(cp, str + start, i - start, &js_mode);
                     state = cp->colorize_state;
                     state |= IN_XML_SCRIPT;
                     str[i] = c;
@@ -162,7 +162,7 @@ static void xml_colorize_line(QEColorizeContext *cp,
                     str[i] = '\0';
                     state &= ~IN_XML_STYLE;
                     cp->colorize_state = state;
-                    css_colorize_line(cp, str + start, i - start, 0);
+                    css_mode.colorize_func(cp, str + start, i - start, &css_mode);
                     state = cp->colorize_state;
                     state |= IN_XML_STYLE;
                     str[i] = c;

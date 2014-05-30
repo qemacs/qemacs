@@ -34,7 +34,7 @@ enum {
  * than one line (eg, multi-line functions and strings)
  */
 static void latex_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, int mode_flags)
+                                unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start, c;
     int state = cp->colorize_state;

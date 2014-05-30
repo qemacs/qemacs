@@ -90,7 +90,7 @@ static int mkd_scan_chunk(const unsigned int *str,
 }
 
 static void mkd_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, int mode_flags)
+                              unsigned int *str, int n, ModeDef *syn)
 {
     int colstate = cp->colorize_state;
     int level, indent, i = 0, j, start = i, base_style = 0;
@@ -105,7 +105,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         /* block level HTML markup */
         colstate &= ~IN_MKD_HTML_BLOCK;
         cp->colorize_state = colstate;
-        htmlsrc_colorize_line(cp, str, n, 0);
+        htmlsrc_mode.colorize_func(cp, str, n, &htmlsrc_mode);
         colstate = cp->colorize_state;
         colstate |= IN_MKD_HTML_BLOCK;
         if ((str[i] & CHAR_MASK) == '<' && (str[i + 1] & CHAR_MASK) == '/')
@@ -129,19 +129,19 @@ static void mkd_colorize_line(QEColorizeContext *cp,
 
             switch (lang) {
             case IN_MKD_C:
-                c_colorize_line(cp, str, n, CLANG_C);
+                c_mode.colorize_func(cp, str, n, &c_mode);
                 break;
             case IN_MKD_PYTHON:
-                python_colorize_line(cp, str, n, 0);
+                python_mode.colorize_func(cp, str, n, &python_mode);
                 break;
             case IN_MKD_RUBY:
-                ruby_colorize_line(cp, str, n, 0);
+                ruby_mode.colorize_func(cp, str, n, &ruby_mode);
                 break;
             case IN_MKD_HASKELL:
-                haskell_colorize_line(cp, str, n, 0);
+                haskell_mode.colorize_func(cp, str, n, &haskell_mode);
                 break;
             case IN_MKD_LUA:
-                lua_colorize_line(cp, str, n, 0);
+                lua_mode.colorize_func(cp, str, n, &lua_mode);
                 break;
             default:
                 SET_COLOR(str, i, n, MKD_STYLE_CODE);
@@ -810,7 +810,7 @@ static int mkd_mode_init(EditState *s)
 
 ModeDef mkd_mode = {
     .name = "markdown",
-    .extensions = "mkd|md",
+    .extensions = "mkd|md|markdown",
     .mode_init = mkd_mode_init,
     .colorize_func = mkd_colorize_line,
 };

@@ -756,7 +756,7 @@ struct QEColorizeContext {
  * styles. 'buf' is guaranted to have one more '\0' char after its len.
  */
 typedef void (*ColorizeFunc)(QEColorizeContext *cp,
-                             unsigned int *buf, int n, int mode_flags);
+                             unsigned int *buf, int n, ModeDef *syn);
 
 /* buffer.c */
 
@@ -1117,11 +1117,9 @@ struct EditState {
                                   (list mode only) */
     /* low level colorization function */
     GetColorizedLineFunc get_colorized_line;
+    ColorizeFunc colorize_func; /* colorization function */
 
-    /* colorization function */
-    ColorizeFunc colorize_func;
-    /* default text style */
-    int default_style;
+    int default_style;  /* default text style */
 
     /* after this limit, the fields are not saved into the buffer */
     int end_of_saved_data;
@@ -1139,8 +1137,6 @@ struct EditState {
     /* maximum valid offset, INT_MAX if not modified. Needed to invalide
        'colorize_states' */
     int colorize_max_valid_offset;
-    int mode_flags;            /* local mode flags for flavors */
-    const char *mode_name;     /* name for mode flavor */
 
     int busy; /* true if editing cannot be done if the window
                  (e.g. the parser HTML is parsing the buffer to
@@ -1211,8 +1207,10 @@ struct ModeSavedData {
 
 struct ModeDef {
     const char *name;
+    const char *mode_name;
     const char *extensions;
-    //const char *mode_line;
+    const char *keywords;
+    const char *types;
 
     int flags;
 #define MODEF_NOCMD      0x8000 /* do not register xxx-mode command automatically */
@@ -1238,6 +1236,8 @@ struct ModeDef {
     int (*text_backward_offset)(EditState *, int);
 
     ColorizeFunc colorize_func;
+    int colorize_flags;
+    int auto_indent;
 
     /* common functions are defined here */
     /* TODO: Should have single move function with move type and argument */
@@ -1250,8 +1250,6 @@ struct ModeDef {
     void (*scroll_line_up_down)(EditState *, int);
     void (*write_char)(EditState *, int);
     void (*mouse_goto)(EditState *, int x, int y);
-
-    int auto_indent;
 
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
     void (*get_mode_line)(EditState *s, buf_t *out);
@@ -1964,75 +1962,20 @@ int list_get_offset(EditState *s);
 
 void do_dired(EditState *s);
 
-/* clang.c */
+/* syntax colorizers */
 
-/* C mode flavors */
-enum {
-    CLANG_GENERIC,
-    CLANG_C,
-    CLANG_CPP,
-    CLANG_OBJC,
-    CLANG_CSHARP,
-    CLANG_CSS,
-    CLANG_JS,
-    CLANG_AS,
-    CLANG_JAVA,
-    CLANG_PHP,
-    CLANG_GO,
-    CLANG_D,
-    CLANG_LIMBO,
-    CLANG_CYCLONE,
-    CLANG_CH,
-    CLANG_SQUIRREL,
-    CLANG_ICI,
-    CLANG_JSX,
-    CLANG_HAXE,
-    CLANG_DART,
-    CLANG_PIKE,
-    CLANG_FLAVOR = 0x1F,
-};
-
-/* C mode options */
-#define CLANG_CC          0x0100  /* all C language features */
-#define CLANG_LEX         0x0200
-#define CLANG_YACC        0x0400
-#define CLANG_REGEX       0x0800
-
-void c_colorize_line(QEColorizeContext *cp,
-                     unsigned int *str, int n, int mode_flags);
-
-static inline void js_colorize_line(QEColorizeContext *cp,
-                                    unsigned int *str, int n, int mode_flags)
-{
-    c_colorize_line(cp, str, n, mode_flags | CLANG_JS | CLANG_REGEX);
-}
-
-static inline void php_colorize_line(QEColorizeContext *cp,
-                                     unsigned int *str, int n, int mode_flags)
-{
-    c_colorize_line(cp, str, n, mode_flags | CLANG_PHP | CLANG_REGEX);
-}
-
-static inline void csharp_colorize_line(QEColorizeContext *cp,
-                                        unsigned int *str, int n, int mode_flags)
-{
-    c_colorize_line(cp, str, n, mode_flags | CLANG_CSHARP);
-}
-
-static inline void css_colorize_line(QEColorizeContext *cp,
-                                     unsigned int *str, int n, int mode_flags)
-{
-    c_colorize_line(cp, str, n, mode_flags | CLANG_CSS);
-}
-
-/* xml.c */
-
+extern ModeDef c_mode;
+extern ModeDef cpp_mode;
+extern ModeDef js_mode;
+extern ModeDef php_mode;
+extern ModeDef csharp_mode;
+extern ModeDef css_mode;
 extern ModeDef xml_mode;
-
-/* htmlsrc.c */
-
-void htmlsrc_colorize_line(QEColorizeContext *cp,
-                           unsigned int *str, int n, int mode_flags);
+extern ModeDef htmlsrc_mode;
+extern ModeDef lua_mode;
+extern ModeDef haskell_mode;
+extern ModeDef python_mode;
+extern ModeDef ruby_mode;
 
 /* html.c */
 
@@ -2040,17 +1983,6 @@ extern ModeDef html_mode;
 
 int gxml_mode_init(EditState *s,
                    int is_html, const char *default_stylesheet);
-
-/* extra-modes.c */
-
-void lua_colorize_line(QEColorizeContext *cp,
-                       unsigned int *str, int n, int mode_flags);
-void haskell_colorize_line(QEColorizeContext *cp,
-                           unsigned int *str, int n, int mode_flags);
-void python_colorize_line(QEColorizeContext *cp,
-                          unsigned int *str, int n, int mode_flags);
-void ruby_colorize_line(QEColorizeContext *cp,
-                        unsigned int *str, int n, int mode_flags);
 
 /* image.c */
 

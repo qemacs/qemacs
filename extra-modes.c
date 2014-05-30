@@ -81,7 +81,7 @@ enum {
 };
 
 static void asm_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, int mode_flags)
+                              unsigned int *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
     int i = 0, start = 0, c, w, len, wn = 0; /* word number on line */
@@ -228,7 +228,7 @@ enum {
 };
 
 static void basic_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, int mode_flags)
+                                unsigned int *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
     int i = 0, start, c, style, len;
@@ -279,11 +279,11 @@ static void basic_colorize_line(QEColorizeContext *cp,
                 }
             }
             keyword[len] = '\0';
-            if (strfind(basic_keywords, keyword)) {
+            if (syn && syn->keywords && strfind(syn->keywords, keyword)) {
                 SET_COLOR(str, start, i, BASIC_STYLE_KEYWORD);
                 continue;
             }
-            if (strfind(basic_types, keyword)) {
+            if (syn && syn->types && strfind(syn->types, keyword)) {
                 SET_COLOR(str, start, i, BASIC_STYLE_TYPE);
                 continue;
             }
@@ -296,6 +296,8 @@ static void basic_colorize_line(QEColorizeContext *cp,
 static ModeDef basic_mode = {
     .name = "Basic",
     .extensions = "bas|frm|mst|vb|vbs",
+    .keywords = basic_keywords,
+    .types = basic_types,
     .colorize_func = basic_colorize_line,
 };
 
@@ -388,7 +390,7 @@ static int is_vim_keyword(unsigned int *str, int from, int to,
 }
 
 static void vim_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, int mode_flags)
+                              unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, j, start, c, state, comm, level, style;
 
@@ -593,7 +595,7 @@ enum {
 };
 
 static void pascal_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, int mode_flags)
+                                 unsigned int *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
     int i = 0, start = i, c, k, style, len;
@@ -701,11 +703,11 @@ static void pascal_colorize_line(QEColorizeContext *cp,
                     keyword[len++] = qe_tolower(str[i]);
             }
             keyword[len] = '\0';
-            if (strfind(pascal_keywords, keyword)) {
+            if (syn && syn->keywords && strfind(syn->keywords, keyword)) {
                 SET_COLOR(str, start, i, PASCAL_STYLE_KEYWORD);
                 continue;
             }
-            if (strfind(pascal_types, keyword)) {
+            if (syn && syn->types && strfind(syn->types, keyword)) {
                 SET_COLOR(str, start, i, PASCAL_STYLE_TYPE);
                 continue;
             }
@@ -725,6 +727,8 @@ static void pascal_colorize_line(QEColorizeContext *cp,
 static ModeDef pascal_mode = {
     .name = "Pascal",
     .extensions = "pas",
+    .keywords = pascal_keywords,
+    .types = pascal_types,
     .colorize_func = pascal_colorize_line,
 };
 
@@ -748,7 +752,7 @@ enum {
 };
 
 static void ini_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, int mode_flags)
+                              unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start, c, bol = 1;
 
@@ -873,7 +877,7 @@ enum {
 };
 
 static void sharp_colorize_line(QEColorizeContext *cp,
-                               unsigned int *str, int n, int mode_flags)
+                               unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start, c;
 
@@ -937,7 +941,7 @@ enum {
 #define wrap 0
 
 static void ps_colorize_line(QEColorizeContext *cp,
-                             unsigned int *str, int n, int mode_flags)
+                             unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start = i, c;
     int colstate = cp->colorize_state;
@@ -1056,7 +1060,7 @@ enum {
 };
 
 static void sql_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, int mode_flags)
+                              unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start = i, c, style;
     int state = cp->colorize_state;
@@ -1182,8 +1186,8 @@ static int lua_long_bracket(unsigned int *str, int *level)
     }
 }
 
-void lua_colorize_line(QEColorizeContext *cp,
-                       unsigned int *str, int n, int mode_flags)
+static void lua_colorize_line(QEColorizeContext *cp,
+                              unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start = i, c, sep = 0, level = 0, level1, klen, style;
     int state = cp->colorize_state;
@@ -1302,7 +1306,7 @@ void lua_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static ModeDef lua_mode = {
+ModeDef lua_mode = {
     .name = "Lua",
     .extensions = "lua",
     .colorize_func = lua_colorize_line,
@@ -1447,7 +1451,7 @@ static int julia_get_number(const unsigned int *p)
 }
 
 static void julia_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, int mode_flags)
+                                unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start = i, c, sep = 0, klen;
     int state = cp->colorize_state;
@@ -1610,8 +1614,8 @@ static inline int haskell_is_symbol(int c)
     return qe_findchar("!#$%&+./<=>?@\\^|-~:", c);
 }
 
-void haskell_colorize_line(QEColorizeContext *cp,
-                           unsigned int *str, int n, int mode_flags)
+static void haskell_colorize_line(QEColorizeContext *cp,
+                                  unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start = i, c, sep = 0, level = 0, klen;
     int state = cp->colorize_state;
@@ -1775,7 +1779,7 @@ void haskell_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static ModeDef haskell_mode = {
+ModeDef haskell_mode = {
     .name = "Haskell",
     .extensions = "hs|haskell",
     .colorize_func = haskell_colorize_line,
@@ -1816,8 +1820,8 @@ enum {
     PYTHON_STYLE_FUNCTION = QE_STYLE_FUNCTION,
 };
 
-void python_colorize_line(QEColorizeContext *cp,
-                          unsigned int *str, int n, int mode_flags)
+static void python_colorize_line(QEColorizeContext *cp,
+                                 unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start = i, c, sep = 0, klen;
     int state = cp->colorize_state;
@@ -1993,7 +1997,7 @@ void python_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static ModeDef python_mode = {
+ModeDef python_mode = {
     .name = "Python",
     .extensions = "py|pyt",
     .colorize_func = python_colorize_line,
@@ -2073,8 +2077,8 @@ static int ruby_get_name(char *buf, int size, unsigned int *str)
     return j - i;
 }
 
-void ruby_colorize_line(QEColorizeContext *cp,
-                        unsigned int *str, int n, int mode_flags)
+static void ruby_colorize_line(QEColorizeContext *cp,
+                               unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, j, start = i, c, indent, sig, style;
     static int sep, sep0, level;        /* XXX: ugly patch */
@@ -2471,7 +2475,7 @@ static int ruby_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static ModeDef ruby_mode = {
+ModeDef ruby_mode = {
     .name = "Ruby",
     .extensions = "rb|gemspec",
     .mode_probe = ruby_mode_probe,
@@ -2523,7 +2527,7 @@ enum {
 };
 
 static void ocaml_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, int mode_flags)
+                                 unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start = i, c, k, style;
     int colstate = cp->colorize_state;

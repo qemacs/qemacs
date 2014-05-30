@@ -95,6 +95,9 @@ void qe_register_mode(ModeDef *m, int flags)
 
     m->flags |= flags;
 
+    if (!m->mode_name)
+        m->mode_name = m->name;
+
     /* register mode in mode list (at end) */
     for (p = &qs->first_mode;; p = &(*p)->next) {
         if (*p == m)
@@ -149,12 +152,12 @@ void qe_register_mode(ModeDef *m, int flags)
         CmdDef *def;
 
         /* lower case convert for C mode, Perl... */
-        qe_strtolower(buf, sizeof(buf) - 10, m->name);
+        qe_strtolower(buf, sizeof(buf) - 10, m->mode_name);
         pstrcat(buf, sizeof(buf), "-mode");
         size = strlen(buf) + 1;
         /* constant immediate string parameter */
         size += snprintf(buf + size, sizeof(buf) - size,
-                         "S{%s}", m->name) + 1;
+                         "S{%s}", m->mode_name) + 1;
         def = qe_mallocz_array(CmdDef, 2);
         def->name = qe_malloc_dup(buf, size);
         def->key = def->alt_key = KEY_NONE;
@@ -172,7 +175,7 @@ void mode_completion(CompleteState *cp)
     ModeDef *m;
 
     for (m = qs->first_mode; m != NULL; m = m->next) {
-        complete_test(cp, m->name);
+        complete_test(cp, m->mode_name);
     }
 }
 
@@ -182,7 +185,7 @@ static ModeDef *find_mode(const char *name)
     ModeDef *m;
 
     for (m = qs->first_mode; m != NULL; m = m->next) {
-        if (strequal(m->name, name))
+        if (strequal(m->mode_name, name))
             break;
     }
     return m;
@@ -1846,8 +1849,6 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
                 m = &text_mode;
         }
         s->mode = m;
-        s->mode_name = m->name;
-        s->mode_flags = 0;
 
         /* init mode */
         generic_mode_init(s, saved_data);
@@ -2231,7 +2232,7 @@ void basic_mode_line(EditState *s, buf_t *out, int c1)
 
     buf_printf(out, "%c%c:%c%c  %-20s  (%s",
                c1, state, s->b->flags & BF_READONLY ? '%' : mod,
-               mod, s->b->name, s->mode_name);
+               mod, s->b->name, s->mode ? s->mode->name : "raw");
     if (!s->insert)
         buf_printf(out, " Ovwrt");
     if (s->interactive)
@@ -3355,7 +3356,7 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
             if (bom) {
                 SET_COLOR1(buf, 0, QE_STYLE_PREPROCESS);
             }
-            s->colorize_func(&cctx, buf + bom, len - bom, s->mode_flags);
+            s->colorize_func(&cctx, buf + bom, len - bom, s->mode);
             /* buf[len] has char '\0' but may hold style, force buf ending */
             buf[len + 1] = 0;
             s->colorize_states[line] = cctx.colorize_state;
@@ -3370,7 +3371,7 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
     if (bom) {
         SET_COLOR1(buf, 0, QE_STYLE_PREPROCESS);
     }
-    s->colorize_func(&cctx, buf + bom, len - bom, s->mode_flags);
+    s->colorize_func(&cctx, buf + bom, len - bom, s->mode);
     buf[len + 1] = 0;
 
     /* XXX: if state is same as previous, minimize invalid region? */
