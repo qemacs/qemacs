@@ -109,7 +109,7 @@ endif
 OBJS+= charsetjis.o charsetmore.o
 
 ifdef CONFIG_ALL_MODES
-  OBJS+= unihex.o bufed.o clang.o xml.o htmlsrc.o forth.o \
+  OBJS+= unihex.o bufed.o clang.o xml.o htmlsrc.o forth.o arm.o \
          lisp.o makemode.o markdown.o orgmode.o perl.o script.o extra-modes.o
   ifndef CONFIG_WIN32
     OBJS+= shell.o dired.o latex-mode.o archive.o
