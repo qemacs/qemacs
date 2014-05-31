@@ -1923,7 +1923,7 @@ void do_show_coding_system(EditState *s)
 
 void do_set_auto_coding(EditState *s, int verbose)
 {
-    u8 buf[4097];
+    u8 buf[4096];
     int buf_size;
     EditBuffer *b = s->b;
     EOLType eol_type = b->eol_type;

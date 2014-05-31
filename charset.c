@@ -596,7 +596,7 @@ static int probe_ucs2le(__unused__ QECharset *charset, const u8 *buf, int size)
             return 0;
         }
     }
-    if (count_spaces + count_lines > size / 16)
+    if (count_spaces + count_lines > size / (16 * 2))
         return 1;
     else
         return 0;
@@ -732,7 +732,7 @@ static int probe_ucs2be(__unused__ QECharset *charset, const u8 *buf, int size)
             return 0;
         }
     }
-    if (count_spaces + count_lines > size / 16)
+    if (count_spaces + count_lines > size / (16 * 2))
         return 1;
     else
         return 0;
@@ -872,11 +872,11 @@ static int probe_ucs4le(__unused__ QECharset *charset, const u8 *buf, int size)
             if (!(magic & (1 << c)))
                 return 0;
         } else
-        if (c >= 0x10000) {
+        if (c > 0x10FFFF) {
             return 0;
         }
     }
-    if (count_spaces + count_lines > size / 16)
+    if (count_spaces + count_lines > size / (16 * 4))
         return 1;
     else
         return 0;
@@ -1002,11 +1002,11 @@ static int probe_ucs4be(__unused__ QECharset *charset, const u8 *buf, int size)
             if (!(magic & (1 << c)))
                 return 0;
         } else
-        if (c >= 0x10000) {
+        if (c > 0x10FFFF) {
             return 0;
         }
     }
-    if (count_spaces + count_lines > size / 16)
+    if (count_spaces + count_lines > size / (16 * 4))
         return 1;
     else
         return 0;
