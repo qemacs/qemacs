@@ -33,7 +33,7 @@ static ArchiveType archive_type_array[] = {
     { "tar", "tar|tar.Z|tgz|tar.gz|tbz|tbz2|tar.bz2|tar.bzip2|"
             "txz|tar.xz|tlz|tar.lzma",
             "tar tvf $1" },
-    { "zip", "zip|ZIP|jar|apk", "unzip -l $1" },
+    { "zip", "zip|ZIP|jar|apk|bbb", "unzip -l $1" },
     { "rar", "rar|RAR", "unrar l $1" },
     { "arj", "arj|ARJ", "unarj l $1" },
     { "cab", "cab", "cabextract -l $1" },
