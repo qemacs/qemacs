@@ -853,10 +853,21 @@ struct EditBuffer {
     int map_handle;
 
     /* buffer data type (default is raw) */
+    ModeDef *data_mode;
     EditBufferDataType *data_type;
     void *data_data;    /* associated buffer data, used if data_type != raw_data */
     void *priv_data;    /* buffer polling & private data */
     void (*close)(EditBuffer *);    /* called when deleting the buffer */
+
+    /* buffer syntax or major mode */
+    ModeDef *syntax_mode;
+    ColorizeFunc colorize_func; /* line colorization function */
+    unsigned short *colorize_states; /* state before line n, one per line */
+    int colorize_nb_lines;
+    int colorize_nb_valid_lines;
+    /* maximum valid offset, INT_MAX if not modified. Needed to
+     * invalidate 'colorize_states' */
+    int colorize_max_valid_offset;
 
     /* charset handling */
     CharsetDecodeState charset_state;
@@ -1225,8 +1236,8 @@ struct ModeDef {
 
     /* return the percentage of confidence */
     int (*mode_probe)(ModeDef *, ModeProbeData *);
-    int (*mode_init)(EditState *);
-    void (*mode_close)(EditState *);
+    int (*mode_init)(EditState *s, EditBuffer *b, int flags);
+    void (*mode_close)(EditState *s);
 
     /* low level display functions (must be NULL to use text related
        functions)*/
@@ -1661,7 +1672,6 @@ static inline int scale(int a, int b, int c) {
 
 /* minibuffer & status */
 
-void less_mode_init(void);
 void minibuffer_init(void);
 
 extern CmdDef minibuffer_commands[];

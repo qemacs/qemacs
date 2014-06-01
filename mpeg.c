@@ -138,12 +138,13 @@ static int mpeg_backward_offset(EditState *s, int offset)
     return offset;
 }
 
-static int mpeg_mode_init(EditState *s)
+static int mpeg_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    s->hex_mode = 1;
-    s->hex_nibble = 0;
-    s->wrap = WRAP_TRUNCATE;
-
+    if (s) {
+        s->hex_mode = 1;
+        s->hex_nibble = 0;
+        s->wrap = WRAP_TRUNCATE;
+    }
     return 0;
 }
 

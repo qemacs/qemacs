@@ -789,42 +789,44 @@ static void video_pause(EditState *s)
     is->paused = !is->paused;
 }
 
-static int video_mode_init(EditState *s)
+static int video_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    VideoState *is = s->mode_data;
-    QEmacsState *qs = s->qe_state;
-    int err, video_playing;
-    EditState *e;
+    if (s) {
+        VideoState *is = s->mode_data;
+        QEmacsState *qs = s->qe_state;
+        int err, video_playing;
+        EditState *e;
 
-    /* XXX: avoid annoying Overwrite in mode line */
-    s->insert = 1;
+        /* XXX: avoid annoying Overwrite in mode line */
+        s->insert = 1;
 
-    /* start video display */
-    is->edit_state = s;
-    pthread_mutex_init(&is->pictq_mutex, NULL);
-    pthread_cond_init(&is->pictq_cond, NULL);
+        /* start video display */
+        is->edit_state = s;
+        pthread_mutex_init(&is->pictq_mutex, NULL);
+        pthread_cond_init(&is->pictq_cond, NULL);
 
-    /* add the refresh timer to draw the picture */
-    is->video_timer = qe_add_timer(0, s, video_refresh_timer);
+        /* add the refresh timer to draw the picture */
+        is->video_timer = qe_add_timer(0, s, video_refresh_timer);
 
-    /* if there is already a window with this video playing, then we
-       stop this new instance (C-x 2 case) */
-    video_playing = 0;
-    for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e->mode == s->mode && e != s && e->b == s->b) {
-            VideoState *is1 = e->mode_data;
-            if (!is1->paused)
-                video_playing = 1;
+        /* if there is already a window with this video playing, then we
+           stop this new instance (C-x 2 case) */
+        video_playing = 0;
+        for (e = qs->first_window; e != NULL; e = e->next_window) {
+            if (e->mode == s->mode && e != s && e->b == s->b) {
+                VideoState *is1 = e->mode_data;
+                if (!is1->paused)
+                    video_playing = 1;
+            }
         }
-    }
-    if (video_playing) {
-        is->paused = 1;
-    }
-    is->sample_array_index = SAMPLE_ARRAY_SIZE;
+        if (video_playing) {
+            is->paused = 1;
+        }
+        is->sample_array_index = SAMPLE_ARRAY_SIZE;
 
-    err = pthread_create(&is->parse_tid, NULL, decode_thread, s);
-    if (err != 0)
-        return -1;
+        err = pthread_create(&is->parse_tid, NULL, decode_thread, s);
+        if (err != 0)
+            return -1;
+    }
     return 0;
 }
 

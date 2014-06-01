@@ -163,10 +163,12 @@ static int makefile_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static int makefile_mode_init(EditState *s)
+static int makefile_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    s->b->tab_width = 8;
-    s->indent_tabs_mode = 1;
+    if (s) {
+        s->b->tab_width = 8;
+        s->indent_tabs_mode = 1;
+    }
     return 0;
 }
 

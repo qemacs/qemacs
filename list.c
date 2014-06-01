@@ -88,10 +88,12 @@ void list_toggle_selection(EditState *s, int dir)
         text_move_up_down(s, 1);
 }
 
-static int list_mode_init(EditState *s)
+static int list_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    s->wrap = WRAP_TRUNCATE;
-    s->get_colorized_line = list_get_colorized_line;
+    if (s) {
+        s->wrap = WRAP_TRUNCATE;
+        s->get_colorized_line = list_get_colorized_line;
+    }
     return 0;
 }
 

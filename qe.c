@@ -79,6 +79,8 @@ static const char *user_option;
 
 /* mode handling */
 
+static int default_mode_init(EditState *s, EditBuffer *b, int flags) { return 0; }
+
 static int generic_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (mode->extensions) {
@@ -138,6 +140,8 @@ void qe_register_mode(ModeDef *m, int flags)
     }
 
     /* add missing functions */
+    if (!m->mode_init)
+        m->mode_init = default_mode_init;
     if (!m->display)
         m->display = generic_text_display;
     if (!m->data_type)
@@ -1852,8 +1856,7 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
 
         /* init mode */
         generic_mode_init(s, saved_data);
-        if (m->mode_init)
-            m->mode_init(s);
+        m->mode_init(s, s->b, MODEF_VIEW);
         if (m->colorize_func)
             set_colorize_func(s, m->colorize_func);
         /* modify offset_top so that its value is correct */
@@ -5507,7 +5510,7 @@ void show_popup(EditBuffer *b)
     do_refresh(s);
 }
 
-void less_mode_init(void)
+static void less_init(void)
 {
     /* less mode inherits from text mode */
     memcpy(&less_mode, &text_mode, sizeof(ModeDef));
@@ -7999,7 +8002,7 @@ static void qe_init(void *opaque)
     register_completion("color", color_completion);
 
     minibuffer_init();
-    less_mode_init();
+    less_init();
 
     /* init all external modules in link order */
     init_all_modules();

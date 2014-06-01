@@ -800,11 +800,13 @@ static CmdDef mkd_commands[] = {
     CMD_DEF_END,
 };
 
-static int mkd_mode_init(EditState *s)
+static int mkd_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    s->b->tab_width = 4;
-    s->indent_tabs_mode = 0;
-    s->wrap = WRAP_WORD;
+    if (s) {
+        s->b->tab_width = 4;
+        s->indent_tabs_mode = 0;
+        s->wrap = WRAP_WORD;
+    }
     return 0;
 }
 

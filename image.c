@@ -484,22 +484,24 @@ static void update_bmp(EditState *s)
     edit_invalidate(s);
 }
 
-static int image_mode_init(EditState *s)
+static int image_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    ImageState *is = s->mode_data;
-    ImageBuffer *ib = s->b->data;
+    if (s) {
+        ImageState *is = s->mode_data;
+        ImageBuffer *ib = s->b->data;
 
-    is->w = ib->width;
-    is->h = ib->height;
-    is->xfactor_num = 1;
-    is->xfactor_den = 1;
-    is->yfactor_num = 1;
-    is->yfactor_den = 1;
-    is->background_color = 0; /* display tiles */
+        is->w = ib->width;
+        is->h = ib->height;
+        is->xfactor_num = 1;
+        is->xfactor_den = 1;
+        is->yfactor_num = 1;
+        is->yfactor_den = 1;
+        is->background_color = 0; /* display tiles */
 
-    update_bmp(s);
+        update_bmp(s);
 
-    eb_add_callback(s->b, image_callback, s, 1);
+        eb_add_callback(s->b, image_callback, s, 1);
+    }
     return 0;
 }
 

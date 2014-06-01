@@ -640,7 +640,7 @@ static int qe_list_bindings(char *buf, int size, CmdDef *d,
         }
         if (!inherit || !mode)
             break;
-        /* Should move up to base mode */
+        /* Move up to base mode */
         mode = mode->fallback;
     }
     return out->len;
@@ -947,6 +947,11 @@ static void do_describe_buffer(EditState *s, int argval)
 #if 0
     eb_printf(b1, "      probed: %d\n", b->probed);
 #endif
+
+    if (b->data_mode)
+        eb_printf(b1, "   data_mode: %s\n", b->data_mode->name);
+    if (b->syntax_mode)
+        eb_printf(b1, " syntax_mode: %s\n", b->syntax_mode->name);
     if (s->mode)
         eb_printf(b1, "     s->mode: %s\n", s->mode->name);
     if (b->default_mode)

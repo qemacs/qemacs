@@ -778,20 +778,22 @@ static void load_default_style_sheet(HTMLState *hs, const char *stylesheet_str,
 int gxml_mode_init(EditState *s,
                    int flags, const char *default_stylesheet)
 {
-    HTMLState *hs = s->mode_data;
+    if (s) {
+        HTMLState *hs = s->mode_data;
 
-    /* XXX: unregister callbacks for s->offset and s->top_offset ? */
+        /* XXX: unregister callbacks for s->offset and s->top_offset ? */
 
-    eb_add_callback(s->b, html_callback, s, 0);
-    hs->parse_flags = flags;
+        eb_add_callback(s->b, html_callback, s, 0);
+        hs->parse_flags = flags;
 
-    load_default_style_sheet(hs, default_stylesheet, flags);
+        load_default_style_sheet(hs, default_stylesheet, flags);
 
-    hs->up_to_date = 0;
+        hs->up_to_date = 0;
+    }
     return 0;
 }
 
-static int html_mode_init(EditState *s)
+static int html_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     return gxml_mode_init(s, XML_HTML | XML_HTML_SYNTAX | XML_IGNORE_CASE,
                           html_style);

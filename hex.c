@@ -153,37 +153,41 @@ static CmdDef hex_commands[] = {
     CMD_DEF_END,
 };
 
-static int binary_mode_init(EditState *s)
+static int binary_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    QEFont *font;
-    QEStyleDef style;
-    int num_width;
+    if (s) {
+        QEFont *font;
+        QEStyleDef style;
+        int num_width;
 
-    /* get typical number width */
-    get_style(s, &style, s->default_style);
-    font = select_font(s->screen, style.font_style, style.font_size);
-    num_width = glyph_width(s->screen, font, '0');
-    release_font(s->screen, font);
+        /* get typical number width */
+        get_style(s, &style, s->default_style);
+        font = select_font(s->screen, style.font_style, style.font_size);
+        num_width = glyph_width(s->screen, font, '0');
+        release_font(s->screen, font);
 
-    s->disp_width = (s->screen->width / num_width) - 10;
-    /* align on 16 byte boundary */
-    s->disp_width &= ~15;
-    if (s->disp_width < 16)
-        s->disp_width = 16;
-    s->insert = 0;
-    s->hex_mode = 0;
-    s->wrap = WRAP_TRUNCATE;
+        s->disp_width = (s->screen->width / num_width) - 10;
+        /* align on 16 byte boundary */
+        s->disp_width &= ~15;
+        if (s->disp_width < 16)
+            s->disp_width = 16;
+        s->insert = 0;
+        s->hex_mode = 0;
+        s->wrap = WRAP_TRUNCATE;
+    }
     return 0;
 }
 
-static int hex_mode_init(EditState *s)
+static int hex_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    s->disp_width = 16;
-    s->hex_mode = 1;
-    s->unihex_mode = 0;
-    s->hex_nibble = 0;
-    s->insert = 0;
-    s->wrap = WRAP_TRUNCATE;
+    if (s) {
+        s->disp_width = 16;
+        s->hex_mode = 1;
+        s->unihex_mode = 0;
+        s->hex_nibble = 0;
+        s->insert = 0;
+        s->wrap = WRAP_TRUNCATE;
+    }
     return 0;
 }
 

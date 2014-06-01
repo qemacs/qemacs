@@ -26,28 +26,30 @@ enum {
     UNIHEX_STYLE_DUMP   = QE_STYLE_FUNCTION,
 };
 
-static int unihex_mode_init(EditState *s)
+static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    int c, maxc, offset, max_offset;
+    if (s) {
+        int c, maxc, offset, max_offset;
 
-    /* unihex mode is incompatible with EOL_DOS eol type */
-    eb_set_charset(s->b, s->b->charset, EOL_UNIX);
+        /* unihex mode is incompatible with EOL_DOS eol type */
+        eb_set_charset(s->b, s->b->charset, EOL_UNIX);
 
-    /* Compute max width of character in hex dump (limit to first 64K) */
-    maxc = 0xFF;
-    max_offset = min(65536, s->b->total_size);
-    for (offset = 0; offset < max_offset;) {
-        c = eb_nextc(s->b, offset, &offset);
-        maxc = max(maxc, c);
+        /* Compute max width of character in hex dump (limit to first 64K) */
+        maxc = 0xFF;
+        max_offset = min(65536, s->b->total_size);
+        for (offset = 0; offset < max_offset;) {
+            c = eb_nextc(s->b, offset, &offset);
+            maxc = max(maxc, c);
+        }
+
+        s->unihex_mode = snprintf(NULL, 0, "%x", maxc);
+
+        s->disp_width = 32 / s->unihex_mode;
+        s->hex_mode = 1;
+        s->hex_nibble = 0;
+        s->insert = 0;
+        s->wrap = WRAP_TRUNCATE;
     }
-
-    s->unihex_mode = snprintf(NULL, 0, "%x", maxc);
-
-    s->disp_width = 32 / s->unihex_mode;
-    s->hex_mode = 1;
-    s->hex_nibble = 0;
-    s->insert = 0;
-    s->wrap = WRAP_TRUNCATE;
     return 0;
 }
 

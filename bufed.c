@@ -93,11 +93,11 @@ static void build_bufed_list(EditState *s)
             if (b1->saved_mode) {
                 mode_name = b1->saved_mode->name;
             } else
-            if (b1->saved_data) {
-                mode_name = b1->saved_data->mode->name;
-            } else
             if (b1->default_mode) {
                 mode_name = b1->default_mode->name;
+            } else
+            if (b1->syntax_mode) {
+                mode_name = b1->syntax_mode->name;
             } else {
                 mode_name = "none";
             }
@@ -337,27 +337,28 @@ static void bufed_close(EditBuffer *b)
         b->close = NULL;
 }
 
-static int bufed_mode_init(EditState *s)
+static int bufed_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     BufedState *bs;
 
-    if (list_mode.mode_init)
-        list_mode.mode_init(s);
+    list_mode.mode_init(s, b, flags);
 
-    if (s->b->priv_data) {
-        bs = s->b->priv_data;
-        if (bs->signature != &bufed_signature)
-            return -1;
-    } else {
-        /* XXX: should be allocated by buffer_load API */
-        bs = qe_mallocz(BufedState);
-        if (!bs)
-            return -1;
+    if (s) {
+        if (s->b->priv_data) {
+            bs = s->b->priv_data;
+            if (bs->signature != &bufed_signature)
+                return -1;
+        } else {
+            /* XXX: should be allocated by buffer_load API */
+            bs = qe_mallocz(BufedState);
+            if (!bs)
+                return -1;
 
-        bs->signature = &bufed_signature;
-        bs->last_index = -1;
-        s->b->priv_data = bs;
-        s->b->close = bufed_close;
+            bs->signature = &bufed_signature;
+            bs->last_index = -1;
+            s->b->priv_data = bs;
+            s->b->close = bufed_close;
+        }
     }
     return 0;
 }

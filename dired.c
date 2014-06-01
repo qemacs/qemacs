@@ -961,36 +961,38 @@ static void dired_close(EditBuffer *b)
         b->close = NULL;
 }
 
-static int dired_mode_init(EditState *s)
+static int dired_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     DiredState *ds;
 
-    list_mode.mode_init(s);
+    list_mode.mode_init(s, b, flags);
 
-    if (s->b->priv_data) {
-        ds = s->b->priv_data;
-        if (ds->signature != &dired_signature)
-            return -1;
-    } else {
-        /* XXX: should be allocated by buffer_load API */
-        ds = qe_mallocz(DiredState);
-        if (!ds)
-            return -1;
+    if (s) {
+        if (s->b->priv_data) {
+            ds = s->b->priv_data;
+            if (ds->signature != &dired_signature)
+                return -1;
+        } else {
+            /* XXX: should be allocated by buffer_load API */
+            ds = qe_mallocz(DiredState);
+            if (!ds)
+                return -1;
 
-        ds->signature = &dired_signature;
-        ds->sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
-        ds->last_index = -1;
+            ds->signature = &dired_signature;
+            ds->sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
+            ds->last_index = -1;
 
-        s->b->priv_data = ds;
-        s->b->close = dired_close;
+            s->b->priv_data = ds;
+            s->b->close = dired_close;
 
-        /* XXX: should be built by buffer_load API */
-        dired_build_list(s, s->b->filename, NULL);
+            /* XXX: should be built by buffer_load API */
+            dired_build_list(s, s->b->filename, NULL);
+        }
+
+        /* XXX: File system charset should be detected automatically */
+        /* XXX: If file system charset is not utf8, eb_printf will fail */
+        eb_set_charset(s->b, &charset_utf8, s->b->eol_type);
     }
-
-    /* XXX: File system charset should be detected automatically */
-    /* XXX: If file system charset is not utf8, eb_printf will fail */
-    eb_set_charset(s->b, &charset_utf8, s->b->eol_type);
 
     return 0;
 }
