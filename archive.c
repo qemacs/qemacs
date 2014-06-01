@@ -93,7 +93,7 @@ static int archive_mode_probe(ModeDef *mode, ModeProbeData *p)
             return 9;
         } else {
             /* buffer not yet loaded */
-            return 70;
+            return 85;//70
         }
     }
 
