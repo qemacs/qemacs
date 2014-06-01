@@ -93,7 +93,6 @@ docbook_style.c: docbook.css csstoqe$(EXE) Makefile
 	./csstoqe docbook_style < $< > $@
 
 clean:
-	rm -rf *.dSYM
+	rm -rf *.dSYM $(OBJS_DIR)
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
-          csstoqe html_style.c docbook_style.c \
-	  $(OBJS_DIR)/*.o
+          csstoqe html_style.c docbook_style.c
