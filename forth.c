@@ -270,18 +270,16 @@ static void ff_colorize_line(QEColorizeContext *cp,
         if (word[len - 1] == '\"')
             goto has_string;
 
-        if (syn && syn->keywords) {
+        if (!strcmp("|`", word) || strfind(syn->keywords, word)) {
+            SET_COLOR(str, start, i, FF_STYLE_KEYWORD);
+            continue;
+        }
+        if (len < countof(word) - 1 && word[len - 1] != '`') {
+            word[len] = '`';
+            word[len + 1] = '\0';
             if (!strcmp("|`", word) || strfind(syn->keywords, word)) {
                 SET_COLOR(str, start, i, FF_STYLE_KEYWORD);
                 continue;
-            }
-            if (len < countof(word) - 1 && word[len - 1] != '`') {
-                word[len] = '`';
-                word[len + 1] = '\0';
-                if (!strcmp("|`", word) || strfind(syn->keywords, word)) {
-                    SET_COLOR(str, start, i, FF_STYLE_KEYWORD);
-                    continue;
-                }
             }
         }
         numlen = len;

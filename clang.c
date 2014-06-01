@@ -86,13 +86,14 @@ static const char objc_keywords[] = {
     "@class|@interface|@implementation|@public|@private|@protected|"
     "@try|@catch|@throw|@finally|@end|@protocol|@selector|@synchronized|"
     "@encode|@defs|@optional|@required|@property|@dynamic|@synthesize|"
+    "@compatibility_alias|"
     // context sensitive keywords
     "in|out|inout|bycopy|byref|oneway|"
     "getter|setter|readwrite|readonly|assign|retain|copy|nonatomic|"
 };
 
 static const char objc_types[] = {
-    "id|BOOL|SEL|"
+    "id|BOOL|SEL|Class|Object|"
 };
 
 static const char csharp_keywords[] = {
@@ -491,17 +492,13 @@ enum {
 static void c_colorize_line(QEColorizeContext *cp,
                             unsigned int *str, int n, ModeDef *syn)
 {
-    const char *keywords = NULL;
-    const char *types = NULL;
     int i = 0, start, i1, i2, indent, level;
     int c, state, style, style0, style1, type_decl, klen, delim, flavor;
     int mode_flags;
     char kbuf[32];
 
-    mode_flags = syn ? syn->colorize_flags : 0;
+    mode_flags = syn->colorize_flags;
     flavor = (mode_flags & CLANG_FLAVOR);
-    keywords = syn ? syn->keywords : NULL;
-    types = syn ? syn->types : NULL;
 
     for (indent = 0; qe_isspace(str[indent]); indent++)
         continue;
@@ -809,7 +806,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 klen = get_c_identifier(kbuf, countof(kbuf), str + start, flavor);
                 i = start + klen;
 
-                if ((keywords && strfind(keywords, kbuf))
+                if (strfind(syn->keywords, kbuf)
                 ||  ((mode_flags & CLANG_CC) && strfind(c_keywords, kbuf))
                 ||  ((flavor == CLANG_CSS) && str[i] == ':')
                    ) {
@@ -826,7 +823,7 @@ static void c_colorize_line(QEColorizeContext *cp,
 
                 if ((start == 0 || str[start - 1] != '.')
                 &&  (!qe_findchar(".(:", str[i]) || flavor == CLANG_PIKE)
-                &&  ((types && strfind(types, kbuf))
+                &&  (strfind(syn->types, kbuf)
                 ||   ((mode_flags & CLANG_CC) && strfind(c_types, kbuf))
                 ||   (((mode_flags & CLANG_CC) || (flavor == CLANG_D)) &&
                      strend(kbuf, "_t", NULL))

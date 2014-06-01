@@ -142,7 +142,7 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
                 SET_COLOR(str, start, i, ASM_STYLE_OPCODE);
                 continue;
             }
-            if (syn && syn->keywords && strfind(syn->keywords, keyword)) {
+            if (strfind(syn->keywords, keyword)) {
                 SET_COLOR(str, start, i, ASM_STYLE_REGISTER);
                 continue;
             }
@@ -259,7 +259,7 @@ static void lst_colorize_line(QEColorizeContext *cp,
                             keyword[len++] = str[i];
                     }
                     keyword[len] = '\0';
-                    if (syn && syn->keywords && strfind(syn->keywords, keyword))
+                    if (strfind(syn->keywords, keyword))
                         SET_COLOR(str, start, i, LST_STYLE_KEYWORD);
                     continue;
                 }
