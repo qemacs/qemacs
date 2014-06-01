@@ -188,7 +188,8 @@ static int xml_mode_probe(ModeDef *mode, ModeProbeData *p1)
     p++;
     if (*p != '!' && *p != '?' && !qe_isalpha(*p))
         return 0;
-    return 80; /* leave some room for more specific XML parser */
+
+    return 60; /* leave some room for more specific XML parser */
 }
 
 ModeDef xml_mode = {
