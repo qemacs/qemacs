@@ -522,6 +522,9 @@ int strfind(const char *keytable, const char *str)
     int c, len;
     const char *p;
 
+    if (!keytable)
+        return 0;
+
     c = *str;
     len = strlen(str);
     /* need to special case the empty string */
