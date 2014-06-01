@@ -174,7 +174,7 @@ static int makefile_mode_init(EditState *s, EditBuffer *b, int flags)
 
 static ModeDef makefile_mode = {
     .name = "Makefile",
-    .extensions = "mak|make|mk",
+    .extensions = "mak|make|mk|gmk",
     .mode_probe = makefile_mode_probe,
     .mode_init = makefile_mode_init,
     .colorize_func = makefile_colorize_line,
