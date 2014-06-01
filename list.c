@@ -32,7 +32,7 @@ static int list_get_colorized_line(EditState *s,
 
     offset = *offsetp;
     /* Get line contents including static buffer styles */
-    len = get_non_colorized_line(s, buf, buf_size, offsetp, line_num);
+    len = generic_get_colorized_line(s, buf, buf_size, offsetp, line_num);
 
     if (((qs->active_window == s) || s->force_highlight) &&
           s->offset >= offset && s->offset < *offsetp)

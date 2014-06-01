@@ -3297,27 +3297,54 @@ static int bidir_compute_attributes(TypeLink *list_tab, int max_size,
 }
 #endif
 
-#ifndef CONFIG_TINY
-
 /************************************************************/
 /* colorization handling */
 /* NOTE: only one colorization mode can be selected at a time for a
    buffer */
+
+static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                                       int *offset_ptr, int line_num)
+{
+    EditBuffer *b = s->b;
+    unsigned int *buf_ptr, *buf_end;
+    int c, offset;
+
+    offset = *offset_ptr;
+
+    buf_ptr = buf;
+    buf_end = buf + buf_size - 1;
+    b->cur_style = 0;
+    for (;;) {
+        c = eb_nextc(b, offset, &offset);
+        if (c == '\n')
+            break;
+        if (buf_ptr < buf_end) {
+            c |= b->cur_style << STYLE_SHIFT;
+            *buf_ptr++ = c;
+        }
+    }
+    *buf_ptr = '\0';
+    *offset_ptr = offset;
+    return buf_ptr - buf;
+}
+
+#ifndef CONFIG_TINY
 
 /* Gets the colorized line beginning at 'offset'. Its length
    excluding '\n' is returned */
 
 #define COLORIZED_LINE_PREALLOC_SIZE 64
 
-int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                               int *offsetp, int line_num)
+static int syntax_get_colorized_line(EditState *s, unsigned int *buf,
+                                     int buf_size, int *offsetp, int line_num)
 {
     QEColorizeContext cctx;
+    EditBuffer *b = s->b;
     int len, line, n, col, offset, bom;
 
     /* invalidate cache if needed */
     if (s->colorize_max_valid_offset != INT_MAX) {
-        eb_get_pos(s->b, &line, &col, s->colorize_max_valid_offset);
+        eb_get_pos(b, &line, &col, s->colorize_max_valid_offset);
         line++;
         if (line < s->colorize_nb_valid_lines)
             s->colorize_nb_valid_lines = line;
@@ -3341,6 +3368,7 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 
     memset(&cctx, 0, sizeof(cctx));
     cctx.s = s;
+    cctx.b = b;
 
     /* propagate state if needed */
     if (line_num >= s->colorize_nb_valid_lines) {
@@ -3348,12 +3376,12 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
             s->colorize_states[0] = 0; /* initial state : zero */
             s->colorize_nb_valid_lines = 1;
         }
-        offset = eb_goto_pos(s->b, s->colorize_nb_valid_lines - 1, 0);
+        offset = eb_goto_pos(b, s->colorize_nb_valid_lines - 1, 0);
         cctx.colorize_state = s->colorize_states[s->colorize_nb_valid_lines - 1];
         cctx.state_only = 1;
 
         for (line = s->colorize_nb_valid_lines; line <= line_num; line++) {
-            len = eb_get_line(s->b, buf, buf_size - 1, &offset);
+            len = eb_get_line(b, buf, buf_size - 1, &offset);
             /* skip byte order mark if present */
             bom = (len > 0 && buf[0] == 0xFEFF);
             if (bom) {
@@ -3369,7 +3397,7 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
     /* compute line color */
     cctx.colorize_state = s->colorize_states[line_num];
     cctx.state_only = 0;
-    len = eb_get_line(s->b, buf, buf_size - 1, offsetp);
+    len = eb_get_line(b, buf, buf_size - 1, offsetp);
     bom = (len > 0 && buf[0] == 0xFEFF);
     if (bom) {
         SET_COLOR1(buf, 0, QE_STYLE_PREPROCESS);
@@ -3399,68 +3427,38 @@ static void colorize_callback(__unused__ EditBuffer *b,
     if (offset < e->colorize_max_valid_offset)
         e->colorize_max_valid_offset = offset;
 }
+#endif /* CONFIG_TINY */
 
 void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
 {
+    s->get_colorized_line = generic_get_colorized_line;
+    s->colorize_func = NULL;
+
+#ifndef CONFIG_TINY
     /* invalidate the previous states & free previous colorizer */
     eb_free_callback(s->b, colorize_callback, s);
     qe_free(&s->colorize_states);
     s->colorize_nb_lines = 0;
     s->colorize_nb_valid_lines = 0;
     s->colorize_max_valid_offset = INT_MAX;
-    s->get_colorized_line = get_non_colorized_line;
-    s->colorize_func = NULL;
-
-    if (colorize_func) {
+    s->colorize_func = colorize_func;
+    if (colorize_func)
         eb_add_callback(s->b, colorize_callback, s, 0);
-        s->get_colorized_line = generic_get_colorized_line;
-        s->colorize_func = colorize_func;
-    }
+#endif
 }
 
-#else /* CONFIG_TINY */
-
-void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
+int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                               int *offsetp, int line_num)
 {
-    s->get_colorized_line = get_non_colorized_line;
-}
-
-#endif /* CONFIG_TINY */
-
-static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                                       int *offset_ptr, int line_num)
-{
-    EditBuffer *b = s->b;
-    unsigned int *buf_ptr, *buf_end;
-    int c, offset;
-
-    offset = *offset_ptr;
-
-    buf_ptr = buf;
-    buf_end = buf + buf_size - 1;
-    b->cur_style = 0;
-    for (;;) {
-        c = eb_nextc(b, offset, &offset);
-        if (c == '\n')
-            break;
-        if (buf_ptr < buf_end) {
-            c |= b->cur_style << STYLE_SHIFT;
-            *buf_ptr++ = c;
-        }
-    }
-    *buf_ptr = '\0';
-    *offset_ptr = offset;
-    return buf_ptr - buf;
-}
-
-int get_non_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                           int *offsetp, int line_num)
-{
-    if (s->b->b_styles) {
+    if (s->b->b_styles)
         return get_staticly_colorized_line(s, buf, buf_size, offsetp, line_num);
-    } else {
-        return eb_get_line(s->b, buf, buf_size, offsetp);
-    }
+
+#ifndef CONFIG_TINY
+    if (s->colorize_func)
+        return syntax_get_colorized_line(s, buf, buf_size, offsetp, line_num);
+#endif
+
+    return eb_get_line(s->b, buf, buf_size, offsetp);
 }
 
 #define RLE_EMBEDDINGS_SIZE    128
@@ -3477,7 +3475,7 @@ int text_display(EditState *s, DisplayState *ds, int offset)
 
     line_num = 0;
     /* XXX: should test a flag, to avoid this call in hex/binary */
-    if (s->line_numbers || s->get_colorized_line != get_non_colorized_line) {
+    if (s->line_numbers || s->colorize_func) {
         eb_get_pos(s->b, &line_num, &col_num, offset);
     }
 
@@ -3525,7 +3523,7 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     /* colorize */
     colored_nb_chars = 0;
     offset0 = offset;
-    if (s->get_colorized_line != get_non_colorized_line
+    if (s->colorize_func
     ||  s->curline_style || s->region_style
     ||  s->b->b_styles) {
         colored_nb_chars = s->get_colorized_line(s, colored_chars,
