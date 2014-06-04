@@ -373,7 +373,7 @@ ModeDef elisp_mode = {
 
 ModeDef scheme_mode = {
     .name = "Scheme",
-    .extensions = "scm|ss",
+    .extensions = "scm|sch|ss",
     .keywords = lisp_keywords,
     .types = lisp_types,
     .colorize_func = lisp_colorize_line,
