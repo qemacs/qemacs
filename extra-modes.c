@@ -22,28 +22,6 @@
 
 #define MAX_KEYWORD_SIZE  16
 
-static int is_keyword(unsigned int *str, int from, int to, const char *list)
-{
-    char keyword[MAX_KEYWORD_SIZE];
-    int c, i, len = to - from;
-
-    if (len >= MAX_KEYWORD_SIZE)
-        return 0;
-
-    for (i = 0; i < len; i++) {
-        c = str[from + i];
-        if (c >= 0x80)
-            return 0;
-        keyword[i] = c;
-    }
-    keyword[len] = '\0';
-
-    if (strfind(list, keyword))
-        return 1;
-
-    return 0;
-}
-
 /*---------------- x86 Assembly language coloring ----------------*/
 
 static char const asm_prepkeywords1[] = {
@@ -279,11 +257,11 @@ static void basic_colorize_line(QEColorizeContext *cp,
                 }
             }
             keyword[len] = '\0';
-            if (syn && syn->keywords && strfind(syn->keywords, keyword)) {
+            if (strfind(syn->keywords, keyword)) {
                 SET_COLOR(str, start, i, BASIC_STYLE_KEYWORD);
                 continue;
             }
-            if (syn && syn->types && strfind(syn->types, keyword)) {
+            if (strfind(syn->types, keyword)) {
                 SET_COLOR(str, start, i, BASIC_STYLE_TYPE);
                 continue;
             }
@@ -295,7 +273,7 @@ static void basic_colorize_line(QEColorizeContext *cp,
 
 static ModeDef basic_mode = {
     .name = "Basic",
-    .extensions = "bas|frm|mst|vb|vbs",
+    .extensions = "bas|frm|mst|vb|vbs|cls",
     .keywords = basic_keywords,
     .types = basic_types,
     .colorize_func = basic_colorize_line,
@@ -703,20 +681,20 @@ static void pascal_colorize_line(QEColorizeContext *cp,
                     keyword[len++] = qe_tolower(str[i]);
             }
             keyword[len] = '\0';
-            if (syn && syn->keywords && strfind(syn->keywords, keyword)) {
-                SET_COLOR(str, start, i, PASCAL_STYLE_KEYWORD);
-                continue;
+            if (strfind(syn->keywords, keyword)) {
+                style = PASCAL_STYLE_KEYWORD;
+            } else
+            if (strfind(syn->types, keyword)) {
+                style = PASCAL_STYLE_TYPE;
+            } else {
+                k = i;
+                if (qe_isblank(str[k]))
+                    k++;
+                if (str[k] == '(' && str[k + 1] != '*')
+                    style = PASCAL_STYLE_FUNCTION;
+                else
+                    style = PASCAL_STYLE_IDENTIFIER;
             }
-            if (syn && syn->types && strfind(syn->types, keyword)) {
-                SET_COLOR(str, start, i, PASCAL_STYLE_TYPE);
-                continue;
-            }
-            style = PASCAL_STYLE_IDENTIFIER;
-            k = i;
-            if (qe_isblank(str[k]))
-                k++;
-            if (str[k] == '(' && str[k + 1] != '*')
-                style = PASCAL_STYLE_FUNCTION;
             SET_COLOR(str, start, i, style);
             continue;
         }
@@ -726,7 +704,7 @@ static void pascal_colorize_line(QEColorizeContext *cp,
 
 static ModeDef pascal_mode = {
     .name = "Pascal",
-    .extensions = "pas",
+    .extensions = "p|pas",
     .keywords = pascal_keywords,
     .types = pascal_types,
     .colorize_func = pascal_colorize_line,
@@ -735,6 +713,331 @@ static ModeDef pascal_mode = {
 static int pascal_init(void)
 {
     qe_register_mode(&pascal_mode, MODEF_SYNTAX);
+
+    return 0;
+}
+
+/*---------------- Ada coloring ----------------*/
+
+static char const ada_keywords[] = {
+    "asm|begin|case|const|constructor|destructor|do|downto|else|elsif|end|"
+    "file|for|function|goto|if|implementation|in|inline|interface|label|"
+    "nil|object|of|procedure|program|repeat|then|to|type|unit|until|"
+    "uses|var|while|with|use|is|new|all|package|private|loop|body|"
+    "raise|return|pragma|constant|exception|when|out|range|tagged|access|"
+    "record|exit|subtype|generic|limited|"
+
+    "and|div|mod|not|or|shl|shr|xor|false|true|null|eof|eoln|"
+    //"'class|'first|'last|"
+};
+
+static char const ada_types[] = {
+    "array|boolean|byte|char|comp|double|extended|integer|longint|"
+    "packed|real|shortint|single|string|text|word|"
+    "duration|time|character|set|"
+    "wide_character|wide_string|wide_wide_character|wide_wide_string|"
+};
+
+enum {
+    IN_ADA_COMMENT1 = 0x01,
+    IN_ADA_COMMENT2 = 0x02,
+};
+
+enum {
+    ADA_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    ADA_STYLE_KEYWORD =    QE_STYLE_KEYWORD,
+    ADA_STYLE_TYPE =       QE_STYLE_TYPE,
+    ADA_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    ADA_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    ADA_STYLE_STRING =     QE_STYLE_STRING,
+    ADA_STYLE_IDENTIFIER = QE_STYLE_DEFAULT,
+    ADA_STYLE_NUMBER =     QE_STYLE_NUMBER,
+    ADA_STYLE_FUNCTION =   QE_STYLE_FUNCTION,
+};
+
+static void ada_colorize_line(QEColorizeContext *cp,
+                                 unsigned int *str, int n, ModeDef *syn)
+{
+    char keyword[MAX_KEYWORD_SIZE];
+    int i = 0, start = i, c, k, style, len;
+    int colstate = cp->colorize_state;
+
+    if (colstate & IN_ADA_COMMENT1)
+        goto in_comment1;
+
+    if (colstate & IN_ADA_COMMENT2)
+        goto in_comment2;
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '-':
+        case '/':
+            if (str[i] == (unsigned int)c) {  /* // or -- comments */
+                i = n;
+                SET_COLOR(str, start, i, ADA_STYLE_COMMENT);
+                continue;
+            }
+            break;
+        case '{':
+            /* regular comment (recursive?) */
+            colstate = IN_ADA_COMMENT1;
+        in_comment1:
+            while (i < n) {
+                if (str[i++] == '}') {
+                    colstate = 0;
+                    break;
+                }
+            }
+            SET_COLOR(str, start, i, ADA_STYLE_COMMENT);
+            continue;
+        case '(':
+            if (str[i] != '*')
+                break;
+
+            /* regular comment (recursive?) */
+            colstate = IN_ADA_COMMENT2;
+            i++;
+        in_comment2:
+            for (; i < n; i++) {
+                if (str[i] == '*' && str[i + 1] == ')') {
+                    i += 2;
+                    colstate = 0;
+                    break;
+                }
+            }
+            SET_COLOR(str, start, i, ADA_STYLE_COMMENT);
+            continue;
+        case '\'':
+            if (i + 2 < n && str[i + 2] == '\'') {
+                i += 2;
+                SET_COLOR(str, start, i, ADA_STYLE_STRING);
+                continue;
+            }
+            break;
+        case '\"':
+            /* parse string or char const */
+            while (i < n) {
+                /* XXX: escape sequences? */
+                if (str[i++] == (unsigned int)c)
+                    break;
+            }
+            SET_COLOR(str, start, i, ADA_STYLE_STRING);
+            continue;
+        default:
+            break;
+        }
+        /* parse numbers */
+        if (qe_isdigit(c)) {
+            for (; qe_isdigit_(str[i]) || str[i] == '.'; i++)
+                continue;
+            if (str[i] == '#') {
+                for (k = 1; qe_isalnum_(str[k]) || str[i] == '.'; k++)
+                    continue;
+                if (k > 1 && str[k] == '#')
+                    i = k + 1;
+            }
+            if (qe_tolower(str[i]) == 'e') {
+                k = i + 1;
+                if (str[k] == '+' || str[k] == '-')
+                    k++;
+                if (qe_isdigit(str[k])) {
+                    for (i = k + 1; qe_isdigit_(str[i]); i++)
+                        continue;
+                }
+            }
+            SET_COLOR(str, start, i, ADA_STYLE_NUMBER);
+            continue;
+        }
+        /* parse identifiers and keywords */
+        if (qe_isalpha_(c)) {
+            len = 0;
+            keyword[len++] = qe_tolower(c);
+            for (; qe_isalnum_(str[i]); i++) {
+                if (len < countof(keyword) - 1)
+                    keyword[len++] = qe_tolower(str[i]);
+            }
+            keyword[len] = '\0';
+            if (strfind(syn->keywords, keyword)) {
+                style = ADA_STYLE_KEYWORD;
+            } else
+            if (strfind(syn->types, keyword)) {
+                style = ADA_STYLE_TYPE;
+            } else {
+                k = i;
+                if (qe_isblank(str[k]))
+                    k++;
+                if (str[k] == '(')
+                    style = ADA_STYLE_FUNCTION;
+                else
+                    style = ADA_STYLE_IDENTIFIER;
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        }
+    }
+    cp->colorize_state = colstate;
+}
+
+static ModeDef ada_mode = {
+    .name = "Ada",
+    .extensions = "ada|adb|ads",
+    .keywords = ada_keywords,
+    .types = ada_types,
+    .colorize_func = ada_colorize_line,
+};
+
+static int ada_init(void)
+{
+    qe_register_mode(&ada_mode, MODEF_SYNTAX);
+
+    return 0;
+}
+
+/*---------------- Fortran coloring ----------------*/
+
+static char const fortran_keywords[] = {
+    "recursive|block|call|case|common|contains|continue|"
+    "default|do|else|elseif|elsewhere|end|enddo|endif|exit|format|"
+    "function|goto|if|implicit|kind|module|private|procedure|"
+    "program|public|return|select|stop|subroutine|then|"
+    "use|where|in|out|inout|interface|none|while|"
+    "forall|equivalence|any|assign|go|to|pure|elemental|"
+    "external|intrinsic|"
+    "open|close|read|write|rewind|backspace|print|inquire|"
+    "allocate|deallocate|associated|nullify|present|"
+    ".and.|.eq.|.false.|.ge.|.gt.|.le.|.lt.|.ne.|.not.|.or.|.true.|"
+};
+
+static char const fortran_types[] = {
+    "character|complex|digits|double|dimension|epsilon|huge|"
+    "integer|logical|maxexponent|minexponent|operator|target|"
+    "parameter|pointer|precision|radix|range|real|tiny|intent|"
+    "optional|allocatable|type|"
+};
+
+enum {
+    FORTRAN_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    FORTRAN_STYLE_KEYWORD =    QE_STYLE_KEYWORD,
+    FORTRAN_STYLE_TYPE =       QE_STYLE_TYPE,
+    FORTRAN_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    FORTRAN_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    FORTRAN_STYLE_STRING =     QE_STYLE_STRING,
+    FORTRAN_STYLE_IDENTIFIER = QE_STYLE_DEFAULT,
+    FORTRAN_STYLE_NUMBER =     QE_STYLE_NUMBER,
+    FORTRAN_STYLE_FUNCTION =   QE_STYLE_FUNCTION,
+};
+
+static void fortran_colorize_line(QEColorizeContext *cp,
+                                 unsigned int *str, int n, ModeDef *syn)
+{
+    char keyword[MAX_KEYWORD_SIZE];
+    int i = 0, start = i, c, k, style, len, w;
+    int colstate = cp->colorize_state;
+
+    for (w = 0; qe_isspace(str[w]); w++)
+        continue;
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '#':
+            if (start == 0)
+                goto preprocess;
+            break;
+        case '*':
+        case 'c':
+        case 'C':
+            if (start == 0 && !qe_isalpha(str[i]))
+                goto comment;
+            break;
+        case '!':
+        comment:
+            while (str[i] == ' ')
+                i++;
+            if (str[i] == '{') {
+            preprocess:
+                i = n;                
+                SET_COLOR(str, start, i, FORTRAN_STYLE_PREPROCESS);
+                continue;
+            }
+            i = n;                
+            SET_COLOR(str, start, i, FORTRAN_STYLE_COMMENT);
+            continue;
+        case '\'':
+        case '\"':
+            /* parse string or char const */
+            while (i < n) {
+                /* XXX: escape sequences? */
+                if (str[i++] == (unsigned int)c)
+                    break;
+            }
+            SET_COLOR(str, start, i, FORTRAN_STYLE_STRING);
+            continue;
+        default:
+            break;
+        }
+        /* parse numbers */
+        if (qe_isdigit(c)) {
+            for (; i < n; i++) {
+                /* XXX: should parse actual Fortran number syntax,
+                 * with D or E for exponent
+                 */
+                if (!qe_isalnum(str[i])
+                &&  !(str[i] == '.' && !qe_isalpha(str[i + 1]) && !qe_isalpha(str[i + 2]))) {
+                    break;
+                }
+            }
+            SET_COLOR(str, start, i, FORTRAN_STYLE_NUMBER);
+            continue;
+        }
+        /* parse identifiers and keywords */
+        if (qe_isalpha_(c) || (c == '.' && qe_isalpha(str[i]))) {
+            len = 0;
+            keyword[len++] = qe_tolower(c);
+            for (; qe_isalnum_(str[i]); i++) {
+                if (len < countof(keyword) - 1)
+                    keyword[len++] = qe_tolower(str[i]);
+            }
+            if (c == '.' && str[i] == '.' && len < countof(keyword) - 1)
+                keyword[len++] = str[i++];
+            keyword[len] = '\0';
+
+            if (strfind(syn->keywords, keyword)
+            ||  (start == w && strfind("data|save", keyword))) {
+                style = FORTRAN_STYLE_KEYWORD;
+            } else
+            if (strfind(syn->types, keyword)) {
+                style = FORTRAN_STYLE_TYPE;
+            } else {
+                k = i;
+                if (qe_isblank(str[k]))
+                    k++;
+                if (str[k] == '(')
+                    style = FORTRAN_STYLE_FUNCTION;
+                else
+                    style = FORTRAN_STYLE_IDENTIFIER;
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        }
+    }
+    cp->colorize_state = colstate;
+}
+
+static ModeDef fortran_mode = {
+    .name = "Fortran",
+    .extensions = "f|f77|f90",
+    .keywords = fortran_keywords,
+    .types = fortran_types,
+    .colorize_func = fortran_colorize_line,
+};
+
+static int fortran_init(void)
+{
+    qe_register_mode(&fortran_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -855,7 +1158,7 @@ static int ini_mode_probe(ModeDef *mode, ModeProbeData *pd)
 
 static ModeDef ini_mode = {
     .name = "ini",
-    .extensions = "ini|inf|INI|INF",
+    .extensions = "ini|inf|INI|INF|reg",
     .mode_probe = ini_mode_probe,
     .colorize_func = ini_colorize_line,
 };
@@ -1196,11 +1499,11 @@ static void sql_colorize_line(QEColorizeContext *cp,
                 }
             }
             keyword[len] = '\0';
-            if (syn && syn->keywords && strfind(syn->keywords, keyword)) {
+            if (strfind(syn->keywords, keyword)) {
                 SET_COLOR(str, start, i, SQL_STYLE_KEYWORD);
                 continue;
             }
-            if (syn && syn->types && strfind(syn->types, keyword)) {
+            if (strfind(syn->types, keyword)) {
                 SET_COLOR(str, start, i, SQL_STYLE_TYPE);
                 continue;
             }
@@ -1374,11 +1677,11 @@ static void lua_colorize_line(QEColorizeContext *cp,
                 }
                 kbuf[klen] = '\0';
 
-                if (strfind(lua_keywords, kbuf)) {
+                if (strfind(syn->keywords, kbuf)) {
                     SET_COLOR(str, start, i, LUA_STYLE_KEYWORD);
                     continue;
                 }
-                while (qe_isblank(str[i]))
+                if (qe_isblank(str[i]))
                     i++;
                 if (str[i] == '(') {
                     SET_COLOR(str, start, i, LUA_STYLE_FUNCTION);
@@ -1395,6 +1698,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
 ModeDef lua_mode = {
     .name = "Lua",
     .extensions = "lua",
+    .keywords = lua_keywords,
     .colorize_func = lua_colorize_line,
 };
 
@@ -1636,16 +1940,18 @@ static void julia_colorize_line(QEColorizeContext *cp,
                     c = str[i++];
                     goto has_string;
                 }
-                if (strfind(julia_keywords, kbuf)
+                if (strfind(syn->keywords, kbuf)
                 ||  strfind(julia_constants, kbuf)) {
                     SET_COLOR(str, start, i, JULIA_STYLE_KEYWORD);
                     continue;
                 }
-                if (strfind(julia_types, kbuf)) {
+                if (strfind(syn->types, kbuf)) {
                     SET_COLOR(str, start, i, JULIA_STYLE_TYPE);
                     continue;
                 }
-                if (str[i] == '(' || (str[i] == ' ' && str[i + 1] == '(')) {
+                if (qe_isblank(str[i]))
+                    i++;
+                if (str[i] == '(') {
                     SET_COLOR(str, start, i, JULIA_STYLE_FUNCTION);
                     continue;
                 }
@@ -1660,6 +1966,8 @@ static void julia_colorize_line(QEColorizeContext *cp,
 static ModeDef julia_mode = {
     .name = "Julia",
     .extensions = "jl",
+    .keywords = julia_keywords,
+    .types = julia_types,
     .colorize_func = julia_colorize_line,
 };
 
@@ -1840,11 +2148,11 @@ static void haskell_colorize_line(QEColorizeContext *cp,
                 }
                 kbuf[klen] = '\0';
 
-                if (strfind(haskell_keywords, kbuf)) {
+                if (strfind(syn->keywords, kbuf)) {
                     SET_COLOR(str, start, i, HASKELL_STYLE_KEYWORD);
                     continue;
                 }
-                while (qe_isblank(str[i]))
+                if (qe_isblank(str[i]))
                     i++;
                 if (str[i] == '(') {
                     SET_COLOR(str, start, i, HASKELL_STYLE_FUNCTION);
@@ -1868,6 +2176,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
 ModeDef haskell_mode = {
     .name = "Haskell",
     .extensions = "hs|haskell",
+    .keywords = haskell_keywords,
     .colorize_func = haskell_colorize_line,
 };
 
@@ -2065,11 +2374,11 @@ static void python_colorize_line(QEColorizeContext *cp,
                 }
                 kbuf[klen] = '\0';
 
-                if (strfind(python_keywords, kbuf)) {
+                if (strfind(syn->keywords, kbuf)) {
                     SET_COLOR(str, start, i, PYTHON_STYLE_KEYWORD);
                     continue;
                 }
-                while (qe_isblank(str[i]))
+                if (qe_isblank(str[i]))
                     i++;
                 if (str[i] == '(') {
                     SET_COLOR(str, start, i, PYTHON_STYLE_FUNCTION);
@@ -2086,6 +2395,7 @@ static void python_colorize_line(QEColorizeContext *cp,
 ModeDef python_mode = {
     .name = "Python",
     .extensions = "py|pyt",
+    .keywords = python_keywords,
     .colorize_func = python_colorize_line,
 };
 
@@ -2534,11 +2844,11 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                 i--;
                 i += ruby_get_name(kbuf, countof(kbuf), str + i);
 
-                if (strfind(ruby_keywords, kbuf)) {
+                if (strfind(syn->keywords, kbuf)) {
                     SET_COLOR(str, start, i, RUBY_STYLE_KEYWORD);
                     continue;
                 }
-                while (qe_isblank(str[i]))
+                if (qe_isblank(str[i]))
                     i++;
                 if (str[i] == '(' || str[i] == '{') {
                     SET_COLOR(str, start, i, RUBY_STYLE_FUNCTION);
@@ -2564,6 +2874,7 @@ static int ruby_mode_probe(ModeDef *mode, ModeProbeData *p)
 ModeDef ruby_mode = {
     .name = "Ruby",
     .extensions = "rb|gemspec",
+    .keywords = ruby_keywords,
     .mode_probe = ruby_mode_probe,
     .colorize_func = ruby_colorize_line,
 };
@@ -2615,7 +2926,8 @@ enum {
 static void ocaml_colorize_line(QEColorizeContext *cp,
                                 unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, k, style;
+    char keyword[MAX_KEYWORD_SIZE];
+    int i = 0, start = i, c, k, style, len;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_OCAML_COMMENT)
@@ -2752,14 +3064,17 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
         }
         /* parse identifiers and keywords */
         if (qe_isalpha_(c)) {
-            for (; i < n; i++) {
-                if (!qe_isalnum_(str[i]) || str[i] == '\'')
-                    break;
+            len = 0;
+            keyword[len++] = c;
+            for (; qe_isalnum_(str[i]) || str[i] == '\''; i++) {
+                if (len < countof(keyword) - 1)
+                    keyword[len++] = qe_tolower(str[i]);
             }
-            if (is_keyword(str, start, i, ocaml_types)) {
+            keyword[len] = '\0';
+            if (strfind(syn->types, keyword)) {
                 style = OCAML_STYLE_TYPE;
             } else
-            if (is_keyword(str, start, i, ocaml_keywords)) {
+            if (strfind(syn->keywords, keyword)) {
                 style = OCAML_STYLE_KEYWORD;
             } else {
                 style = OCAML_STYLE_IDENTIFIER;
@@ -2779,12 +3094,125 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
 static ModeDef ocaml_mode = {
     .name = "Ocaml",
     .extensions = "ml|mli|mll|mly",
+    .keywords = ocaml_keywords,
+    .types = ocaml_types,
     .colorize_func = ocaml_colorize_line,
 };
 
 static int ocaml_init(void)
 {
     qe_register_mode(&ocaml_mode, MODEF_SYNTAX);
+
+    return 0;
+}
+
+/*---------------- EMF (JASSPA microemacs macro files) ----------------*/
+
+static char const emf_keywords[] = {
+    "define-macro|!emacro|!if|!elif|!else|!endif|!while|!done|"
+    "!repeat|!until|!force|!return|!abort|!goto|!jump|!bell|"
+};
+
+static char const emf_types[] = {
+    "|"
+};
+
+enum {
+    EMF_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    EMF_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    EMF_STYLE_STRING =     QE_STYLE_STRING,
+    EMF_STYLE_KEYWORD =    QE_STYLE_KEYWORD,
+    EMF_STYLE_TYPE =       QE_STYLE_TYPE,
+    EMF_STYLE_FUNCTION =   QE_STYLE_FUNCTION,
+    EMF_STYLE_NUMBER =     QE_STYLE_NUMBER,
+    EMF_STYLE_VARIABLE =   QE_STYLE_VARIABLE,
+    EMF_STYLE_IDENTIFIER = QE_STYLE_DEFAULT,
+    EMF_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+};
+
+static void emf_colorize_line(QEColorizeContext *cp,
+                              unsigned int *str, int n, ModeDef *syn)
+{
+    char keyword[MAX_KEYWORD_SIZE];
+    int i = 0, start, c, nw = 1, len, style;
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '-':
+            if (qe_isdigit(str[i]))
+                goto number;
+            break;
+        case ';':
+            i = n;
+            SET_COLOR(str, start, i, EMF_STYLE_COMMENT);
+            continue;
+        case '\"':
+            /* parse string const */
+            while (i < n) {
+                if (str[i] == '\\' && i + 1 < n) {
+                    i += 2; /* skip escaped char */
+                    continue;
+                }
+                if (str[i++] == '\"')
+                    break;
+            }
+            SET_COLOR(str, start, i, EMF_STYLE_STRING);
+            continue;
+        default:
+            break;
+        }
+        /* parse numbers */
+        if (qe_isdigit(c)) {
+        number:
+            for (; i < n; i++) {
+                if (!qe_isalnum(str[i]))
+                    break;
+            }
+            SET_COLOR(str, start, i, EMF_STYLE_NUMBER);
+            continue;
+        }
+        /* parse identifiers and keywords */
+        if (c == '$' || c == '!' || c == '#' || qe_isalpha_(c)) {
+            len = 0;
+            keyword[len++] = c;
+            for (; qe_isalnum_(str[i]) || str[i] == '-'; i++) {
+                if (len < countof(keyword) - 1)
+                    keyword[len++] = str[i];
+            }
+            keyword[len] = '\0';
+            if (c == '$' || c == '#') {
+                style = EMF_STYLE_VARIABLE;
+            } else
+            if (strfind(syn->keywords, keyword)) {
+                style = EMF_STYLE_KEYWORD;
+            } else
+            if (strfind(syn->types, keyword)) {
+                style = EMF_STYLE_TYPE;
+            } else
+            if (nw++ == 1) {
+                style = EMF_STYLE_FUNCTION;
+            } else {
+                style = EMF_STYLE_IDENTIFIER;
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        }
+    }
+}
+
+static ModeDef emf_mode = {
+    .name = "emf",
+    .extensions = "emf",
+    .keywords = emf_keywords,
+    .types = emf_types,
+    .colorize_func = emf_colorize_line,
+};
+
+static int emf_init(void)
+{
+    qe_register_mode(&emf_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -2797,6 +3225,8 @@ static int extra_modes_init(void)
     basic_init();
     vim_init();
     pascal_init();
+    ada_init();
+    fortran_init();
     ini_init();
     sharp_init();
     ps_init();
@@ -2807,6 +3237,7 @@ static int extra_modes_init(void)
     python_init();
     ruby_init();
     ocaml_init();
+    emf_init();
     return 0;
 }
 
