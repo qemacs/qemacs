@@ -47,10 +47,12 @@ enum {
     IN_MKD_BLOCK      = 0x4000,
     IN_MKD_LANG       = 0x3800,
     IN_MKD_C          = 0x0800,
-    IN_MKD_PYTHON     = 0x1000,
-    IN_MKD_RUBY       = 0x1800,
-    IN_MKD_HASKELL    = 0x2000,
-    IN_MKD_LUA        = 0x2800,
+    IN_MKD_JAVA       = 0x1000,
+    IN_MKD_PYTHON     = 0x1800,
+    IN_MKD_RUBY       = 0x2000,
+    IN_MKD_HASKELL    = 0x2800,
+    IN_MKD_LUA        = 0x3000,
+    IN_MKD_SWIFT      = 0x3800,
     IN_MKD_LEVEL      = 0x0700,
 };
 
@@ -131,6 +133,9 @@ static void mkd_colorize_line(QEColorizeContext *cp,
             case IN_MKD_C:
                 c_mode.colorize_func(cp, str, n, &c_mode);
                 break;
+            case IN_MKD_JAVA:
+                java_mode.colorize_func(cp, str, n, &java_mode);
+                break;
             case IN_MKD_PYTHON:
                 python_mode.colorize_func(cp, str, n, &python_mode);
                 break;
@@ -142,6 +147,9 @@ static void mkd_colorize_line(QEColorizeContext *cp,
                 break;
             case IN_MKD_LUA:
                 lua_mode.colorize_func(cp, str, n, &lua_mode);
+                break;
+            case IN_MKD_SWIFT:
+                swift_mode.colorize_func(cp, str, n, &swift_mode);
                 break;
             default:
                 SET_COLOR(str, i, n, MKD_STYLE_CODE);
@@ -180,9 +188,11 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     ||  ustrstart(str + i, "```", NULL)) {
         /* verbatim block */
         colstate |= IN_MKD_BLOCK;
-        if (ustrstr(str + i + 3, "c")
-        ||  ustrstr(str + i + 3, "java")) {
+        if (ustrstr(str + i + 3, "c")) {
             colstate |= IN_MKD_C;
+        } else
+        if (ustrstr(str + i + 3, "java")) {
+            colstate |= IN_MKD_JAVA;
         } else
         if (ustrstr(str + i + 3, "haskell")) {
             colstate |= IN_MKD_HASKELL;
@@ -195,6 +205,9 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         } else
         if (ustrstr(str + i + 3, "ruby")) {
             colstate |= IN_MKD_RUBY;
+        } else
+        if (ustrstr(str + i + 3, "swift")) {
+            colstate |= IN_MKD_SWIFT;
         }
         i = n;
         SET_COLOR(str, start, i, MKD_STYLE_TILDE);

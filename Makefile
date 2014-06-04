@@ -236,12 +236,14 @@ $(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(OBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
+$(OBJS_DIR)/clang.o: clang.c swift.c
 
 $(TOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(TOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(TOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(TOBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
 $(TOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
+$(TOBJS_DIR)/clang.o: clang.c swift.c
 
 $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(echo) CC -c $<

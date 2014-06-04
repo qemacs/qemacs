@@ -49,6 +49,7 @@ enum {
     CLANG_QSCRIPT,
     CLANG_ELASTIC,
     CLANG_JED,
+    CLANG_SWIFT,
     CLANG_FLAVOR = 0x1F,
 };
 
@@ -510,7 +511,7 @@ static void c_colorize_line(QEColorizeContext *cp,
     if (i >= n)
         goto the_end;
 
-    c = 0;      /* turn off stupid egcs-2.91.66 warning */
+    c = 0;
     style0 = style = C_STYLE_DEFAULT;
 
     if (state) {
@@ -623,7 +624,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                         i += 2;
                         level--;
                         if (level == 0) {
-                            state &= ~IN_C_COMMENT;
+                            state &= ~IN_C_COMMENT_D;
                             style = style0;
                             break;
                         }
@@ -870,7 +871,8 @@ static void c_colorize_line(QEColorizeContext *cp,
         SET_COLOR1(str, start, style);
     }
  the_end:
-    if (state & (IN_C_COMMENT | IN_C_COMMENT1 | IN_C_PREPROCESS | 
+    if (state & (IN_C_COMMENT | IN_C_COMMENT1 | IN_C_COMMENT_D |
+                 IN_C_PREPROCESS | 
                  IN_C_STRING | IN_C_STRING_Q | IN_C_STRING_BQ)) {
         /* set style on eol char */
         SET_COLOR1(str, n, style);
@@ -1783,6 +1785,8 @@ ModeDef sl_mode = {
     .fallback = &c_mode,
 };
 
+#include "swift.c"
+
 static int c_init(void)
 {
     const char *p;
@@ -1821,6 +1825,7 @@ static int c_init(void)
     qe_register_mode(&qscript_mode, MODEF_SYNTAX);
     qe_register_mode(&ec_mode, MODEF_SYNTAX);
     qe_register_mode(&sl_mode, MODEF_SYNTAX);
+    swift_init();
 
     return 0;
 }
