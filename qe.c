@@ -83,9 +83,9 @@ static int default_mode_init(EditState *s, EditBuffer *b, int flags) { return 0;
 
 static int generic_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    if (mode->extensions) {
-        if (match_extension(p->filename, mode->extensions))
-            return 80;
+    if (match_extension(p->filename, mode->extensions)
+    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)) {
+        return 80;
     }
     return 1;
 }

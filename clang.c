@@ -73,13 +73,18 @@ static const char c_types[] = {
 };
 
 static const char cpp_keywords[] = {
-    "asm|catch|class|delete|friend|inline|new|operator|"
+    "asm|catch|class|delete|friend|inline|namespace|new|operator|"
     "private|protected|public|template|try|this|virtual|throw|"
+    "explicit|override|mutable|using|assert|true|false|nullptr|"
     // XXX: many missing keywords
 };
 
 static const char cpp_types[] = {
-    ""
+    "bool|exception|istream|ostream|ofstream|string|vector|map|set|stack|"
+    "std::istream|std::ostream|std::ofstream|std::string|"
+    "std::vector|std::unique_ptr|std::map|std::set|std::stack|"
+    "std::hash|std::unordered_set|std::unordered_map|std::exception|"
+    "std::string::iterator|std::stringstream|std::ostringstream|"
 };
 
 static const char objc_keywords[] = {
@@ -453,8 +458,20 @@ static int get_c_identifier(char *buf, int buf_size, unsigned int *p,
             c = p[i] & CHAR_MASK;
             if (c == '-' && flavor == CLANG_CSS)
                 continue;
-            if (!qe_isalnum_(c))
-                break;
+            if (qe_isalnum_(c))
+                continue;
+            if (c == ':' && (p[i + 1] & CHAR_MASK) == ':'
+            &&  flavor == CLANG_CPP
+            &&  qe_isalpha_(p[i + 2] & CHAR_MASK)) {
+                if (j < buf_size - 2) {
+                    buf[j++] = c;
+                    buf[j++] = c;
+                }
+                i += 2;
+                c = p[i] & CHAR_MASK;
+                continue;
+            }
+            break;
         }
     }
     buf[j] = '\0';
@@ -844,7 +861,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                     continue;
                 }
 
-                if (str[i] == '(' || (str[i] == ' ' && str[i + 1] == '(')) {
+                if (str[i1] == '(') {
                     /* function call */
                     /* XXX: different styles for call and definition */
                     SET_COLOR(str, start, i, C_STYLE_FUNCTION);
@@ -1386,10 +1403,11 @@ static CmdDef c_commands[] = {
 
 static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    /* trust the file extension */
-    if (match_extension(p->filename, mode->extensions))
+    /* trust the file extension and/or shell handler */
+    if (match_extension(p->filename, mode->extensions)
+    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)) {
         return 80;
-
+    }
     /* weaker match on C comment start */
     if (p->buf[0] == '/' && p->buf[1] == '*')
         return 60;
@@ -1411,6 +1429,7 @@ static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
 ModeDef c_mode = {
     .name = "C",
     .extensions = c_extensions,
+    .shell_handlers = "tcc",
     .mode_probe = c_mode_probe,
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_C | CLANG_CC,
@@ -1444,10 +1463,31 @@ ModeDef lex_mode = {
     .fallback = &c_mode,
 };
 
+static int cpp_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    int score;
+
+    /* trust the file extension */
+    if (match_extension(p->filename, mode->extensions))
+        return 80;
+
+    score = c_mode_probe(&c_mode, p);
+    if (score > 5) {
+        if (strstr(cs8(p->buf), "namespace")
+        ||  strstr(cs8(p->buf), "class")
+        ||  strstr(cs8(p->buf), "::")) {
+            return score + 5;
+        }
+        return score - 5;
+    }
+    return 1;
+}
+
 ModeDef cpp_mode = {
     .name = "C++",
     .mode_name = "cpp",
     .extensions = "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++",
+    .mode_probe = cpp_mode_probe,
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_CPP | CLANG_CC,
     .keywords = cpp_keywords,
@@ -1698,23 +1738,10 @@ static ModeDef idl_mode = {
     .fallback = &c_mode,
 };
 
-static int calc_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-    
-    if (p->buf[0] == '#' && p->buf[1] == '!'
-    &&  memstr(p->buf, p->line_len, "/calc")) {
-        /* GNU Calc script */
-        return 80;
-    }
-    return 1;
-}
-
 ModeDef calc_mode = {
     .name = "calc", /* GNU Calc */
     .extensions = "cal|calc",
-    .mode_probe = calc_mode_probe,
+    .shell_handlers = "calc",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_CALC | CLANG_CC,
     .keywords = calc_keywords,
@@ -1738,9 +1765,10 @@ ModeDef enscript_mode = {
 
 static int qs_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    if (match_extension(p->filename, mode->extensions))
+    if (match_extension(p->filename, mode->extensions)
+    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)) {
         return 80;
-    
+    }
     if (!strcmp(p->filename, ".qerc")
     ||  strstr(p->real_filename, "/.qe/config"))
         return 80;
@@ -1751,6 +1779,7 @@ static int qs_mode_probe(ModeDef *mode, ModeProbeData *p)
 ModeDef qscript_mode = {
     .name = "QScript",
     .extensions = "qe|qs",
+    .shell_handlers = "qscript|qs",
     .mode_probe = qs_mode_probe,
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_QSCRIPT | CLANG_REGEX,

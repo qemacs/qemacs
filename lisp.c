@@ -341,11 +341,12 @@ static void lisp_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
-static int elisp_mode_probe(ModeDef *mode, ModeProbeData *mp)
+static int elisp_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     /* check file name or extension */
-    if (match_extension(mp->filename, mode->extensions)
-    ||  strstart(mp->filename, ".emacs", NULL))
+    if (match_extension(p->filename, mode->extensions)
+    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)
+    ||  strstart(p->filename, ".emacs", NULL))
         return 80;
 
     return 1;
@@ -355,6 +356,7 @@ ModeDef lisp_mode = {
     .name = "Lisp",
     .extensions = "ll|li|lh|lo|lm|lisp",
     .keywords = lisp_keywords,
+    .shell_handlers = "lisp",
     .types = lisp_types,
     .colorize_func = lisp_colorize_line,
     .colorize_flags = LISP_LANG_LISP,

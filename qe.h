@@ -224,6 +224,7 @@ void canonicalize_absolute_path(char *buf, int buf_size, const char *path1);
 char *make_user_path(char *buf, int buf_size, const char *path);
 char *reduce_filename(char *dest, int size, const char *filename);
 int match_extension(const char *filename, const char *extlist);
+int match_shell_handler(const char *p, const char *list);
 int remove_slash(char *buf);
 int append_slash(char *buf, int buf_size);
 char *makepath(char *buf, int buf_size, const char *path, const char *filename);
@@ -319,6 +320,7 @@ static inline int strequal(const char *s1, const char *s2) {
     return !strcmp(s1, s2);
 }
 
+int memfind(const char *list, const char *p, int len);
 int strfind(const char *list, const char *s);
 int strxfind(const char *list, const char *s);
 const void *memstr(const void *buf, int size, const char *str);
@@ -1222,6 +1224,7 @@ struct ModeDef {
     const char *name;
     const char *mode_name;
     const char *extensions;
+    const char *shell_handlers;
     const char *keywords;
     const char *types;
 

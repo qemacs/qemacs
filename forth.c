@@ -295,20 +295,14 @@ static void ff_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
-static int ff_probe(ModeDef *syn, ModeProbeData *pd)
+static int ff_probe(ModeDef *mode, ModeProbeData *pd)
 {
     const char *p = (const char *)pd->buf;
     const char *p1 = (const char *)pd->buf + pd->line_len;
 
-    if (match_extension(pd->filename, syn->extensions))
+    if (match_extension(pd->filename, mode->extensions)
+    ||  match_shell_handler(cs8(pd->buf), mode->shell_handlers)) {
         return 80;
-
-    if (p[0] == '#' && p[1] == '!') {
-        if (memstr(p, pd->line_len, "forth")
-        ||  memstr(p, pd->line_len, "fth")
-        ||  memstr(p, pd->line_len, "needs")) {
-            return 80;
-        }
     }
 
     if ((p[0] == ':' || p[0] == '\\') && p[1] == ' ')
@@ -323,6 +317,7 @@ static int ff_probe(ModeDef *syn, ModeProbeData *pd)
 static ModeDef ff_mode = {
     .name = "Forth",
     .extensions = "ff|fth|fs|fr|4th",
+    .shell_handlers = "forth|fth",
     .mode_probe = ff_probe,
     .keywords = ff_keywords,
     .colorize_func = ff_colorize_line,

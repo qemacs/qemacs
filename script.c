@@ -107,14 +107,16 @@ static void script_colorize_line(QEColorizeContext *cp,
 
 static int script_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    if (match_extension(p->filename, mode->extensions))
+    if (match_extension(p->filename, mode->extensions)
+    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)) {
         return 80;
+    }
 
     if (p->buf[0] == '#') {
         if (p->buf[1] == '!')
             return 60;
         if (p->buf[1] == ' ')
-            return 30;
+            return 25;
     }
     return 1;
 }
@@ -122,6 +124,7 @@ static int script_mode_probe(ModeDef *mode, ModeProbeData *p)
 static ModeDef script_mode = {
     .name = "Shell-script",
     .extensions = "sh|bash|csh|ksh|zsh",
+    .shell_handlers = "sh|bash|csh|ksh|zsh",
     .mode_probe = script_mode_probe,
     .colorize_func = script_colorize_line,
 };

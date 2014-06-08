@@ -1200,15 +1200,16 @@ static void sharp_colorize_line(QEColorizeContext *cp,
 
 static int sharp_mode_probe(ModeDef *mode, ModeProbeData *pd)
 {
-    const char *p = (const char *)pd->buf;
+    const char *p = cs8(pd->buf);
 
-    if (match_extension(pd->filename, mode->extensions)) {
-        while (qe_isspace(*p))
-            p++;
-        if (*p == '#')
+    while (qe_isspace(*p))
+        p++;
+
+    if (*p == '#') {
+        if (match_extension(pd->filename, mode->extensions))
             return 60;
+        return 30;
     }
-
     return 1;
 }
 
@@ -1698,6 +1699,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
 ModeDef lua_mode = {
     .name = "Lua",
     .extensions = "lua",
+    .shell_handlers = "lua",
     .keywords = lua_keywords,
     .colorize_func = lua_colorize_line,
 };
@@ -2176,6 +2178,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
 ModeDef haskell_mode = {
     .name = "Haskell",
     .extensions = "hs|haskell",
+    .shell_handlers = "haskell",
     .keywords = haskell_keywords,
     .colorize_func = haskell_colorize_line,
 };
@@ -2395,6 +2398,7 @@ static void python_colorize_line(QEColorizeContext *cp,
 ModeDef python_mode = {
     .name = "Python",
     .extensions = "py|pyt",
+    .shell_handlers = "python|python2.6|python2.7",
     .keywords = python_keywords,
     .colorize_func = python_colorize_line,
 };
@@ -2865,9 +2869,10 @@ static void ruby_colorize_line(QEColorizeContext *cp,
 static int ruby_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (match_extension(p->filename, mode->extensions)
-    ||  stristart(p->filename, "Rakefile", NULL))
+    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)
+    ||  stristart(p->filename, "Rakefile", NULL)) {
         return 80;
-
+    }
     return 1;
 }
 
@@ -2875,6 +2880,7 @@ ModeDef ruby_mode = {
     .name = "Ruby",
     .extensions = "rb|gemspec",
     .keywords = ruby_keywords,
+    .shell_handlers = "ruby",
     .mode_probe = ruby_mode_probe,
     .colorize_func = ruby_colorize_line,
 };
@@ -3094,6 +3100,7 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
 static ModeDef ocaml_mode = {
     .name = "Ocaml",
     .extensions = "ml|mli|mll|mly",
+    .shell_handlers = "ocaml",
     .keywords = ocaml_keywords,
     .types = ocaml_types,
     .colorize_func = ocaml_colorize_line,

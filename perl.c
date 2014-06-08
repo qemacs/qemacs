@@ -338,23 +338,10 @@ static void perl_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
-static int perl_mode_probe(ModeDef *mode, ModeProbeData *p)
-{
-    /* just check file extension */
-    if (match_extension(p->filename, mode->extensions))
-        return 80;
-
-    if (p->buf[0] == '#' && p->buf[1] == '!'
-    &&  memstr(p->buf, p->line_len, "bin/perl"))
-        return 80;
-
-    return 1;
-}
-
 static ModeDef perl_mode = {
     .name = "Perl",
     .extensions = "pl|perl|pm",
-    .mode_probe = perl_mode_probe,
+    .shell_handlers = "perl|perl5",
     .colorize_func = perl_colorize_line,
 };
 

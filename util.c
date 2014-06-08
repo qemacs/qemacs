@@ -402,6 +402,37 @@ int match_extension(const char *filename, const char *extlist)
     return 0;
 }
 
+int match_shell_handler(const char *p, const char *list)
+{
+    const char *base;
+
+    if (!list)
+        return 0;
+
+    if (p[0] == '#' && p[1] == '!') {
+        for (p += 2; qe_isblank(*p); p++)
+            continue;
+        for (base = p; *p && !qe_isspace(*p); p++) {
+            if (*p == '/')
+                base = p + 1;
+        }
+        if (memfind(list, base, p - base))
+            return 1;
+        if (p - base == 3 && !memcmp(base, "env", 3)) {
+            while (*p != '\0' && *p != '\n') {
+                for (; qe_isblank(*p); p++)
+                    continue;
+                base = p;
+                for (; *p && !qe_isspace(*p); p++)
+                    continue;
+                if (*base != '-')
+                    return memfind(list, base, p - base);
+            }
+        }
+    }
+    return 0;
+}
+
 /* Remove trailing slash from path, except for / directory */
 int remove_slash(char *buf)
 {
@@ -513,6 +544,40 @@ void skip_spaces(const char **pp)
     while (qe_isspace(*p))
         p++;
     *pp = p;
+}
+
+int memfind(const char *list, const char *s, int len)
+{
+    const char *q = list;
+
+    if (!q)
+        return 0;
+
+    for (;;) {
+        int i = 0;
+        for (;;) {
+            int c2 = q[i];
+            if (c2 == '|') {
+                if (i == len)
+                    return 1;
+                break;
+            }
+            if (c2 == '\0') {
+                /* match the empty string against || only */
+                return (len > 0 && i == len);
+            }
+            if (c2 == s[i++] && i <= len)
+                continue;
+            for (q += i;;) {
+                c2 = *q++;
+                if (c2 == '\0')
+                    return 0;
+                if (c2 == '|')
+                    break;
+            }
+            break;
+        }
+    }
 }
 
 #if 0
