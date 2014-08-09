@@ -108,7 +108,9 @@ static void script_colorize_line(QEColorizeContext *cp,
 static int script_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (match_extension(p->filename, mode->extensions)
-    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)) {
+    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)
+    ||  stristart(p->filename, ".bash", NULL)
+    ||  stristart(p->filename, ".profile", NULL)) {
         return 80;
     }
 
