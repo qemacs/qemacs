@@ -1982,6 +1982,7 @@ static int shell_init(void)
     /* populate and register shell mode and commands */
     memcpy(&shell_mode, &text_mode, sizeof(ModeDef));
     shell_mode.name = "shell";
+    shell_mode.mode_name = NULL;
     shell_mode.mode_probe = shell_mode_probe;
     shell_mode.mode_init = shell_mode_init;
     shell_mode.display_hook = shell_display_hook;
@@ -2002,6 +2003,7 @@ static int shell_init(void)
     /* populate and register pager mode and commands */
     memcpy(&pager_mode, &text_mode, sizeof(ModeDef));
     pager_mode.name = "pager";
+    pager_mode.mode_name = NULL;
     pager_mode.mode_probe = NULL;
     pager_mode.mode_init = pager_mode_init;
 

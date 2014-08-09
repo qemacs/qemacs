@@ -5439,6 +5439,7 @@ void minibuffer_init(void)
     /* minibuf mode inherits from text mode */
     memcpy(&minibuffer_mode, &text_mode, sizeof(ModeDef));
     minibuffer_mode.name = "minibuffer";
+    minibuffer_mode.mode_name = NULL;
     minibuffer_mode.mode_probe = NULL;
     minibuffer_mode.scroll_up_down = minibuf_complete_scroll_up_down;
     qe_register_mode(&minibuffer_mode, MODEF_NOCMD | MODEF_VIEW);
@@ -5513,6 +5514,7 @@ static void less_init(void)
     /* less mode inherits from text mode */
     memcpy(&less_mode, &text_mode, sizeof(ModeDef));
     less_mode.name = "less";
+    less_mode.mode_name = NULL;
     less_mode.mode_probe = NULL;
     qe_register_mode(&less_mode, MODEF_VIEW);
     qe_register_cmd_table(less_commands, &less_mode);
