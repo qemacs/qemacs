@@ -27,6 +27,7 @@ enum {
     CLANG_CPP,
     CLANG_OBJC,
     CLANG_CSHARP,
+    CLANG_AWK,
     CLANG_CSS,
     CLANG_JS,
     CLANG_AS,
@@ -49,6 +50,7 @@ enum {
     CLANG_QSCRIPT,
     CLANG_ELASTIC,
     CLANG_JED,
+    CLANG_CSL,  /* Peter Koch's CSL C Scripting Language */
     CLANG_SWIFT,
     CLANG_FLAVOR = 0x1F,
 };
@@ -428,6 +430,15 @@ static const char sl_keywords[] = {
 
 static const char sl_types[] = {
     "variable|"
+};
+
+static const char csl_keywords[] = {
+    "const|sizeof|try|catch|throw|static|extern|resize|exists|if|else|"
+    "switch|case|default|while|do|break|continue|for|trace|true|false|"
+};
+
+static const char csl_types[] = {
+    "var|"
 };
 
 static const char c_extensions[] = {
@@ -1417,8 +1428,10 @@ static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
         return 50;
 
     if (p->buf[0] == '#') {
-        /* same for file starting with `#include` or `#pragma`*/
+        /* same for files starting with a preprocessor directive */
         if (strstart(cs8(p->buf), "#include", NULL)
+        ||  strstart(cs8(p->buf), "#ifndef", NULL)
+        ||  strstart(cs8(p->buf), "#define", NULL)
         ||  strstart(cs8(p->buf), "#pragma", NULL)) {
             return 50;
         }
@@ -1533,6 +1546,27 @@ ModeDef csharp_mode = {
     .colorize_flags = CLANG_CSHARP | CLANG_PREPROC,
     .keywords = csharp_keywords,
     .types = csharp_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+static const char awk_keywords[] = {
+    "BEGIN|break|case|continue|default|do|else|for|if|next|switch|while|"
+    "print|printf|split|"
+};
+
+static const char awk_types[] = {
+    "char|double|float|int|long|unsigned|short|signed|void|"
+};
+
+ModeDef awk_mode = {
+    .name = "awk",
+    .extensions = "awk",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_AWK | CLANG_REGEX,
+    .keywords = awk_keywords,
+    .types = awk_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
@@ -1814,6 +1848,19 @@ ModeDef sl_mode = {
     .fallback = &c_mode,
 };
 
+ModeDef csl_mode = {
+    .name = "CSL",
+    .extensions = "csl",
+    .shell_handlers = "csl",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CSL | CLANG_PREPROC,
+    .keywords = csl_keywords,
+    .types = csl_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 #include "swift.c"
 
 static int c_init(void)
@@ -1832,6 +1879,7 @@ static int c_init(void)
     qe_register_mode(&cpp_mode, MODEF_SYNTAX);
     qe_register_mode(&objc_mode, MODEF_SYNTAX);
     qe_register_mode(&csharp_mode, MODEF_SYNTAX);
+    qe_register_mode(&awk_mode, MODEF_SYNTAX);
     qe_register_mode(&css_mode, MODEF_SYNTAX);
     qe_register_mode(&js_mode, MODEF_SYNTAX);
     qe_register_mode(&as_mode, MODEF_SYNTAX);
@@ -1854,6 +1902,7 @@ static int c_init(void)
     qe_register_mode(&qscript_mode, MODEF_SYNTAX);
     qe_register_mode(&ec_mode, MODEF_SYNTAX);
     qe_register_mode(&sl_mode, MODEF_SYNTAX);
+    qe_register_mode(&csl_mode, MODEF_SYNTAX);
     swift_init();
 
     return 0;
