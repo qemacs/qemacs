@@ -1612,6 +1612,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
                             (level & IN_LUA_LEVEL);
                     goto parse_longlit;
                 }
+                i = n;
                 SET_COLOR(str, start, i, LUA_STYLE_COMMENT);
                 continue;
             }

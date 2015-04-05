@@ -51,8 +51,10 @@ enum {
     CLANG_ELASTIC,
     CLANG_JED,
     CLANG_CSL,  /* Peter Koch's CSL C Scripting Language */
+    CLANG_NEKO,
+    CLANG_NML,
     CLANG_SWIFT,
-    CLANG_FLAVOR = 0x1F,
+    CLANG_FLAVOR = 0x3F,
 };
 
 /* C mode options */
@@ -438,7 +440,28 @@ static const char csl_keywords[] = {
 };
 
 static const char csl_types[] = {
+    "var|void|string|int|"
+};
+
+static const char neko_keywords[] = {
+    "function|if|else|return|while|do|switch|default|"
+    "try|catch|break|continue|"
+    "this|null|true|false|"
+};
+
+static const char neko_types[] = {
     "var|"
+};
+
+static const char nml_keywords[] = {
+    "function|rec|if|then|else|return|while|do|switch|default|"
+    "try|catch|break|continue|when|"
+    "this|null|true|false|or|and|xor|"
+    "match|type|exception|throw|mutable|list|"
+};
+
+static const char nml_types[] = {
+    "var|int|float|string|bool|char|void|"
 };
 
 static const char c_extensions[] = {
@@ -1861,6 +1884,32 @@ ModeDef csl_mode = {
     .fallback = &c_mode,
 };
 
+ModeDef neko_mode = {
+    .name = "Neko",
+    .extensions = "neko",
+    .shell_handlers = NULL,
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_NEKO,
+    .keywords = neko_keywords,
+    .types = neko_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+ModeDef nml_mode = {
+    .name = "NekoML",
+    .extensions = "nml",
+    .shell_handlers = NULL,
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_NML,
+    .keywords = nml_keywords,
+    .types = nml_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 #include "swift.c"
 
 static int c_init(void)
@@ -1903,6 +1952,8 @@ static int c_init(void)
     qe_register_mode(&ec_mode, MODEF_SYNTAX);
     qe_register_mode(&sl_mode, MODEF_SYNTAX);
     qe_register_mode(&csl_mode, MODEF_SYNTAX);
+    qe_register_mode(&neko_mode, MODEF_SYNTAX);
+    qe_register_mode(&nml_mode, MODEF_SYNTAX);
     swift_init();
 
     return 0;

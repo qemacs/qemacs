@@ -50,6 +50,7 @@ enum {
     MAKEFILE_STYLE_STRING     = QE_STYLE_STRING,
     MAKEFILE_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
     MAKEFILE_STYLE_TARGET     = QE_STYLE_FUNCTION,
+    MAKEFILE_STYLE_FUNCTION   = QE_STYLE_FUNCTION,
     MAKEFILE_STYLE_VARIABLE   = QE_STYLE_VARIABLE,
     MAKEFILE_STYLE_MACRO      = QE_STYLE_TYPE,
 };
@@ -58,9 +59,10 @@ static void makefile_colorize_line(QEColorizeContext *cp,
                                    unsigned int *str, int n, ModeDef *syn)
 {
     char buf[32];
-    int i = 0, j = i, level;
+    int i = 0, start = i, bol = 1, from = 0, level, style;
+    unsigned int c;
 
-    if (qe_isalnum_(str[i])) {
+    if (qe_isalpha_(str[i])) {
         get_word_lc(buf, countof(buf), str);
         if (strfind("ifeq|ifneq|ifdef|ifndef|include|else|endif", buf))
             goto preprocess;
@@ -69,86 +71,85 @@ static void makefile_colorize_line(QEColorizeContext *cp,
         goto preprocess;
 
     while (i < n) {
-        switch (str[i]) {
+        start = i;
+        c = str[i++];
+        switch (c) {
         case '$':
-            i += 1;
-            j = i + 1;
+            style = MAKEFILE_STYLE_MACRO;
             if (str[i] == '(') {
-                i += 1;
                 level = 1;
-                for (j = i; j < n; j++) {
-                    if (str[j] == '(')
+                for (i += 1; i < n; i++) {
+                    if (str[i] == '(')
                         level++;
-                    if (str[j] == ')' && --level <= 0)
+                    if (str[i] == ')' && --level <= 0)
                         break;
-                    if (str[j] == ' ' || str[j] == '$') {
+                    if (str[i] == ' ' || str[i] == '$') {
                         /* should have function color */
-                        j = i;
-                        break;
                     }
                 }
+                from = i + 1;
+                SET_COLOR(str, start + 2, i, style);
+                continue;
             }
-            if (i < j)
-                SET_COLOR(str, i, j, MAKEFILE_STYLE_MACRO);
-            i = j;
+            /* Should colorize non parenthesized macro */
             continue;
         case ' ':
         case '\t':
-            if (i == 0)
-                j = 1;
+            if (start == 0)
+                bol = 0;
             break;
         case '+':
-            if (!j && str[i+1] == '=')
+        case '?':
+            if (bol && str[i] == '=')
                 goto variable;
+            break;
         case ':':
-            if (j)
+            if (!bol)
                 break;
-            if (str[i+1] == '=')
+            if (str[i] == '=')
                 goto variable;
-            SET_COLOR(str, j, i, MAKEFILE_STYLE_TARGET);
+            SET_COLOR(str, from, i - 1, MAKEFILE_STYLE_TARGET);
+            bol = 0;
             break;
         case '=':
-            if (j)
+            if (!bol)
                 break;
         variable:
-            SET_COLOR(str, j, i, MAKEFILE_STYLE_VARIABLE);
+            SET_COLOR(str, from, i - 1, MAKEFILE_STYLE_VARIABLE);
+            bol = 0;
             break;
         case '#':
-            if (i > 0 && str[i - 1] == '\\')
+            if (i > 1 && str[i - 2] == '\\')
                 break;
-            SET_COLOR(str, i, n, MAKEFILE_STYLE_COMMENT);
             i = n;
+            SET_COLOR(str, start, i, MAKEFILE_STYLE_COMMENT);
             continue;
         case '!':
             /*          case '.':*/
-            if (i > 0)
+            if (start > 0)
                 break;
         preprocess:
             /* scan for comment */
-            for (j = i + 1; j < n; j++) {
-                if (str[j] == '#')
+            for (; i < n; i++) {
+                if (str[i] == '#')
                     break;
             }
-            SET_COLOR(str, i, j, MAKEFILE_STYLE_PREPROCESS);
-            i = j;
+            SET_COLOR(str, start, i, MAKEFILE_STYLE_PREPROCESS);
             continue;
         case '\'':
         case '`':
         case '"':
             /* parse string const */
-            for (j = i + 1; j < n; j++) {
-                if (str[j] == str[i]) {
-                    j++;
+            while (i < n) {
+                if (str[i++] == c) {
                     break;
                 }
             }
-            SET_COLOR(str, i, j, MAKEFILE_STYLE_STRING);
-            i = j;
+            SET_COLOR(str, start, i, MAKEFILE_STYLE_STRING);
             continue;
         default:
             break;
         }
-        i++;
     }
 }
 

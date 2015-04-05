@@ -6779,7 +6779,7 @@ void do_search_string(EditState *s, const char *search_str, int dir)
 void do_doctor(EditState *s)
 {
     /* Should show keys? */
-    put_status(s, "Hello, how are you ?");
+    put_status(s, "Hello, how are you?");
 }
 
 static int get_line_height(QEditScreen *screen, int style_index)

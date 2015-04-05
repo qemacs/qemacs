@@ -5,6 +5,12 @@
 
 * Needed for release version 5
 
+** test /Users/ogu/Applications/AirspaceApps/CyberScienceMotion.app/Contents/Data/Managed/etc/mono/1.0/DefaultWsdlHelpGenerator.aspx
+** crash on tests/dartIdl.json (overlong line)
+** crash on /Users/ogu/comp/lang/pike/pike/refdoc/template.xsl
+   
+** new flavor for GoogleClosureCompiler
+
 ** basic: indent-rigidly
 ** basic: minibuffer completion -> bad return on C-x C-f . SPC qe SPC RET
 ** basic: scripting
@@ -21,11 +27,11 @@
 ** doc: move doc and TODO to markdown format
 ** doc: rewrite TODO file with more sections and explanations
 ** files: minibuffer-electric-yank in minibuffer to fix pathname
+** files: minibuffer input ~ should not kill http: prefix
 ** files: check file date to detect asynchronous modifications on disk
 ** files: fix s->offset reset to 0 upon C-x C-f newfile ENT C-x 2 C-x b ENT
 ** files: insert-file: load via separate buffer with charset conversion
 ** files: reload-file on C-x C-r
-** html: fix scoring for xml / html / htmlsrc
 ** html-src/xml: fix colorizer for multi-line tags and attributes
 ** modes: header-line format
 ** modes: mode-line format
@@ -42,6 +48,7 @@
 ** shell: yank at shell prompt
 ** undo: undo should handle sequence of undo records upto tagged start.
 ** x11: handle X11 window manager close window event and exit cleanly
+** html: DONE fix scoring for xml / html / htmlsrc
 ** DONE basic: indent-region
 ** DONE basic: untabify-region, untabify-buffer
 ** DONE basic: indent on TAB according to indent-width and indent-with-tabs
@@ -256,7 +263,7 @@ insert_window_left()  deletes some left-most windows
 ** fix terminal size inside shell window ?
 ** cmdline arg to force lines and columns to test shell.
 ** toggling interactive shell mode is not automatic enough
-** man pager -> more bindings
+** man pager -> more bindings, such as RET -> push-button (jump to map page)
 ** accented letter input in shell mode
 ** transcode between tty charset and shell buffer charset
 ** track unsupported escapes in shell buffer
@@ -318,8 +325,11 @@ insert_window_left()  deletes some left-most windows
 ** mode for undo buffers
 ** visual-diff-mode -> Use color-coding to compare two buffers.
 ** improve existing language modes:
+*** html-mode: support hex entities
+*** calc-mode: fix syntax, disable C++ comments
 *** asm-mode -> Assembly Language files.
 *** haskell-mode ->
+*** julia-mode ->
 *** lisp-mode -> Lisp language
 *** lua-mode ->
 *** makefile-mode -> Gnu and other makefiles.
@@ -332,8 +342,13 @@ insert_window_left()  deletes some left-most windows
 *** ruby-mode ->
 *** scheme-mode ->
 *** sh-mode -> shell script files
+Handle here documents
+Handle multiline strings
 *** sql-mode ->
 *** vbasic-mode -> Visual Basic.
+*** css-mode -> CSS files.
+*** fcl-mode ->
+*** forth-mode ->
 ** missing languages:
 *** ada-mode -> Ada
 *** asp-mode -> 
@@ -348,7 +363,6 @@ insert_window_left()  deletes some left-most windows
 *** cmake-mode ->
 *** cobol-mode ->
 *** conf-mode -> configuration files.
-*** css-mode -> CSS files.
 *** cuda-mode ->
 *** DCL mode
 *** def-mode ->
@@ -363,8 +377,6 @@ insert_window_left()  deletes some left-most windows
 *** eiffel-mode ->
 *** erlang-mode ->
 *** exelis-mode ->
-*** fcl-mode ->
-*** forth-mode ->
 *** fortran-mode ->
 *** fsharp-mode ->
 *** gams-mode -> GAMS files.
@@ -375,7 +387,6 @@ insert_window_left()  deletes some left-most windows
 *** imagej-mode ->
 *** ini-mode -> Windows .ini files.
 *** j-mode ->
-*** julia-mode ->
 *** language-mode ->
 *** libtool-mode ->
 *** literate-mode ->
