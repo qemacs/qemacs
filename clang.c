@@ -54,6 +54,7 @@ enum {
     CLANG_NEKO,
     CLANG_NML,
     CLANG_SWIFT,
+    CLANG_ALLOY,
     CLANG_FLAVOR = 0x3F,
 };
 
@@ -462,6 +463,17 @@ static const char nml_keywords[] = {
 
 static const char nml_types[] = {
     "var|int|float|string|bool|char|void|"
+};
+
+static const char alloy_keywords[] = {
+    "if|else|do|for|loop|while|break|continue|match|return|use|"
+    "mut|_|true|false|"
+    "struct|enum|fn|func|self|impl"
+};
+
+static const char alloy_types[] = {
+    "void|bool|char|int|float|double|usize|string|"
+    "u8|u16|u32|u64|i8|i16|i32|i64|f64|f32|"
 };
 
 static const char c_extensions[] = {
@@ -1910,6 +1922,19 @@ ModeDef nml_mode = {
     .fallback = &c_mode,
 };
 
+ModeDef alloy_mode = {
+    .name = "Alloy",
+    .extensions = "ay",
+    .shell_handlers = NULL,
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_ALLOY,
+    .keywords = alloy_keywords,
+    .types = alloy_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 #include "swift.c"
 
 static int c_init(void)
@@ -1954,6 +1979,7 @@ static int c_init(void)
     qe_register_mode(&csl_mode, MODEF_SYNTAX);
     qe_register_mode(&neko_mode, MODEF_SYNTAX);
     qe_register_mode(&nml_mode, MODEF_SYNTAX);
+    qe_register_mode(&alloy_mode, MODEF_SYNTAX);
     swift_init();
 
     return 0;
