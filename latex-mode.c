@@ -128,6 +128,8 @@ static void latex_colorize_line(QEColorizeContext *cp,
             }
             break;
         case '%':
+            if (syn->colorize_flags == TEX_TEXINFO)
+                break;
             /* line comment */
             i = n;
             SET_COLOR(str, start, i, LATEX_STYLE_COMMENT);
