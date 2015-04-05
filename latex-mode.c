@@ -23,6 +23,12 @@
 #include "qe.h"
 
 enum {
+    TEX_TEX,
+    TEX_LATEX,
+    TEX_TEXINFO,
+};
+
+enum {
     LATEX_STYLE_COMMENT  = QE_STYLE_COMMENT,
     LATEX_STYLE_STRING   = QE_STYLE_STRING,
     LATEX_STYLE_FUNCTION = QE_STYLE_FUNCTION,
@@ -39,7 +45,7 @@ static void latex_colorize_line(QEColorizeContext *cp,
     int i = 0, start, c;
     int state = cp->colorize_state;
 
-    for (;;) {
+    for (i = 0; i < n;) {
         start = i;
         c = str[i++];
         switch (c) {
@@ -65,6 +71,15 @@ static void latex_colorize_line(QEColorizeContext *cp,
                 SET_COLOR(str, start, i, LATEX_STYLE_STRING);
             }
             break;
+        case '@':
+            if (syn->colorize_flags != TEX_TEXINFO)
+                break;
+            if (str[i] == 'c' && !qe_isalnum_(str[i + 1])) {
+                i = n;
+                SET_COLOR(str, start, i, LATEX_STYLE_COMMENT);
+                break;
+            }
+            /* fall thru */
         case '\\':
             /* \function[keyword]{variable} */
             if (str[i] == '\'' || str[i] == '\"' || str[i] == '~'
@@ -330,11 +345,20 @@ static ModeDef latex_mode = {
     .extensions = "tex|but",
     .mode_probe = latex_mode_probe,
     .colorize_func = latex_colorize_line,
+    .colorize_flags = TEX_LATEX,
+};
+
+static ModeDef texinfo_mode = {
+    .name = "TeXinfo",
+    .extensions = "texi",
+    .colorize_func = latex_colorize_line,
+    .colorize_flags = TEX_TEXINFO,
 };
 
 static int latex_init(void)
 {
     qe_register_mode(&latex_mode, MODEF_SYNTAX);
+    qe_register_mode(&texinfo_mode, MODEF_SYNTAX);
     qe_register_cmd_table(latex_commands, &latex_mode);
     register_completion("latex", latex_completion);
 
