@@ -438,7 +438,7 @@ force:
 #
 # tar archive for distribution
 #
-FILES:=COPYING Changelog Makefile README TODO VERSION               \
+FILES:=COPYING Changelog Makefile README TODO.org VERSION           \
        arabic.c bufed.c buffer.c cfb.c cfb.h charset.c charsetjis.c \
        charsetjis.def charsetmore.c clang.c config.eg config.h      \
        configure cptoqe.c cutils.c cutils.h dired.c display.c       \
