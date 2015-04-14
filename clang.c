@@ -55,6 +55,7 @@ enum {
     CLANG_NML,
     CLANG_SWIFT,
     CLANG_ALLOY,
+    CLANG_SCILAB,
     CLANG_FLAVOR = 0x3F,
 };
 
@@ -476,6 +477,16 @@ static const char alloy_types[] = {
     "u8|u16|u32|u64|i8|i16|i32|i64|f64|f32|"
 };
 
+static const char scilab_keywords[] = {
+    "if|else|for|while|end|select|case|quit|return|help|what|who|"
+    "pause|clear|resume|then|do|apropos|abort|break|elseif|pwd|"
+    "function|endfunction|clc|continue|try|catch|exit|"
+    "global|local|get|sorted|"
+};
+
+static const char scilab_types[] = {
+};
+
 static const char c_extensions[] = {
     "c|h|i|C|H|I|"      /* C language */
     /* Other C flavors */
@@ -758,6 +769,8 @@ static void c_colorize_line(QEColorizeContext *cp,
             /* XXX: D language q" delim wysiwyg chars delim " */
             /* XXX: D language q{ tokens } */
         case '\'':      /* character constant */
+            if (flavor == CLANG_SCILAB)
+                goto normal;
         parse_string_q:
             state |= IN_C_STRING_Q;
             style1 = C_STYLE_STRING_Q;
@@ -820,12 +833,16 @@ static void c_colorize_line(QEColorizeContext *cp,
             style = style1;
             while (i < n) {
                 c = str[i++];
-                if (c == '\\') {
+                if (c == '\\' && flavor != CLANG_SCILAB) {
                     if (i >= n)
                         break;
                     i++;
                 } else
                 if (c == delim) {
+                    if (flavor == CLANG_SCILAB && (int)str[i] == delim) {
+                        i++;
+                        continue;
+                    }
                     state &= ~(IN_C_STRING | IN_C_STRING_Q | IN_C_STRING_BQ);
                     style = style0;
                     break;
@@ -1935,6 +1952,33 @@ ModeDef alloy_mode = {
     .fallback = &c_mode,
 };
 
+static int scilab_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->filename, mode->extensions)
+    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)) {
+        return 80;
+    }
+    if (match_extension(p->filename, "start|quit")
+    &&  (p->buf[0] == '/' && p->buf[1] == '/')) {
+        return 80;
+    }
+    return 1;
+}
+
+ModeDef scilab_mode = {
+    .name = "SciLab",
+    .extensions = "sce|sci",
+    .shell_handlers = NULL,
+    .mode_probe = scilab_mode_probe,
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_SCILAB,
+    .keywords = scilab_keywords,
+    .types = scilab_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 #include "swift.c"
 
 static int c_init(void)
@@ -1980,6 +2024,7 @@ static int c_init(void)
     qe_register_mode(&neko_mode, MODEF_SYNTAX);
     qe_register_mode(&nml_mode, MODEF_SYNTAX);
     qe_register_mode(&alloy_mode, MODEF_SYNTAX);
+    qe_register_mode(&scilab_mode, MODEF_SYNTAX);
     swift_init();
 
     return 0;
