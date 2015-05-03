@@ -2893,6 +2893,265 @@ static int ruby_init(void)
     return 0;
 }
 
+/*---------------- Erlang coloring ----------------*/
+
+static char const erlang_keywords[] = {
+    "|after|and|andalso|band|begin|bnot|bor|bsl|bsr|bxor|case|catch|cond"
+    "|div|end|fun|if|let|not|of|or|orelse|receive|rem|try|when|xor"
+    "|true|false|_"
+    "|"
+};
+
+static char const erlang_commands[] = {
+    "|module|compile|define|export|import|vsn|on_load|record|include|file"
+    "|mode|author|include_lib|behaviour"
+    "|type|opaque|spec|callback|export_type"
+    "|ifdef|ifndef|undef|else|endif"
+    "|"
+};
+
+static char const erlang_types[] = {
+    "|"
+};
+
+enum {
+    IN_ERLANG_STRING   = 0x01,
+};
+
+enum {
+    ERLANG_STYLE_TEXT       = QE_STYLE_DEFAULT,
+    ERLANG_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    ERLANG_STYLE_COMMENT    = QE_STYLE_COMMENT,
+    ERLANG_STYLE_STRING     = QE_STYLE_STRING,
+    ERLANG_STYLE_CHARCONST  = QE_STYLE_STRING,
+    ERLANG_STYLE_ATOM       = QE_STYLE_DEFAULT,
+    ERLANG_STYLE_INTEGER    = QE_STYLE_NUMBER,
+    ERLANG_STYLE_FLOAT      = QE_STYLE_NUMBER,
+    ERLANG_STYLE_KEYWORD    = QE_STYLE_KEYWORD,
+    ERLANG_STYLE_TYPE       = QE_STYLE_TYPE,
+    ERLANG_STYLE_IDENTIFIER = QE_STYLE_DEFAULT,
+    ERLANG_STYLE_FUNCTION   = QE_STYLE_FUNCTION,
+};
+
+static inline int qe_basedigit(int c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'z') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'Z') return c - 'A' + 10;
+    return 255;
+}
+
+static int erlang_match_char(unsigned int *str, int i)
+{
+    /* erlang character constant */
+    if (str[i++] == '\\') {
+        switch (str[i++]) {
+        case '0': case '1': case '2': case '3':
+        case '4': case '5': case '6': case '7':
+            if (qe_isoctdigit(str[i])) i++;
+            if (qe_isoctdigit(str[i])) i++;
+            break;
+        case 'x':
+        case 'X':
+            if (str[i] == '{') {
+                for (i++; qe_isxdigit(str[i]); i++)
+                    continue;
+                if (str[i] == '}')
+                    i++;
+                break;
+            }
+            if (qe_isxdigit(str[i])) i++;
+            if (qe_isxdigit(str[i])) i++;
+            break;
+        case '^':
+            if (qe_isalpha(str[i])) i++;
+            break;
+        case 'b': /* backspace (8) */
+        case 'd': /* delete (127) */
+        case 'e': /* escape (27) */
+        case 'f': /* formfeed (12) */
+        case 'n': /* newline (10) */
+        case 'r': /* return (13) */
+        case 's': /* space (32) */
+        case 't': /* tab (9) */
+        case 'v': /* vtab (?) */
+        case '\'': /* single quote */
+        case '\"': /* double quote */
+        case '\\': /* backslash */
+            break;
+        default:
+            break;
+        }
+    }
+    return i;
+}
+
+static void erlang_colorize_line(QEColorizeContext *cp,
+                                unsigned int *str, int n, ModeDef *syn)
+{
+    char keyword[MAX_KEYWORD_SIZE];
+    int i = 0, start = i, c, k, style, len, base;
+    int colstate = cp->colorize_state;
+
+    if (colstate & IN_ERLANG_STRING)
+        goto parse_string;
+
+    if (str[i] == '#' && str[i + 1] == '!') {
+        /* Handle shbang script heading ^#!.+
+         * and preprocessor # line directives
+         */
+        i = n;
+        SET_COLOR(str, start, i, ERLANG_STYLE_PREPROCESS);
+    }
+
+    while (i < n) {
+        start = i;
+        style = ERLANG_STYLE_TEXT;
+        c = str[i++];
+        switch (c) {
+        case '%':
+            i = n;
+            style = ERLANG_STYLE_COMMENT;
+            SET_COLOR(str, start, i, style);
+            continue;
+        case '$':
+            i = erlang_match_char(str, i);
+            style = ERLANG_STYLE_CHARCONST;
+            SET_COLOR(str, start, i, style);
+            continue;
+
+        case '\"':
+            colstate = IN_ERLANG_STRING;
+        parse_string:
+            /* parse string */
+            style = ERLANG_STYLE_STRING;
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\' && i < n)
+                    i++;
+                else
+                if (c == '\"') {
+                    colstate = 0;
+                    break;
+                }
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        case '\'':
+            /* parse an Erlang atom */
+            style = ERLANG_STYLE_ATOM;
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\' && i < n)
+                    i++;
+                else
+                if (c == '\'') {
+                    break;
+                }
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        default:
+            break;
+        }
+        if (qe_isdigit(c)) {
+            /* parse numbers */
+            style = ERLANG_STYLE_INTEGER;
+            base = c - '0';
+            while (qe_isdigit(str[i])) {
+                base = base * 10 + str[i++] - '0';
+            }
+            if (base >= 2 && base <= 36 && str[i] == '#') {
+                for (i += 1; qe_basedigit(str[i]) < base; i++)
+                    continue;
+                if (str[i - 1] == '#')
+                    i--;
+            } else {
+                /* float: [0-9]+(.[0-9]+])?([eE][-+]?[0-9]+)? */
+                if (str[i] == '.' && qe_isdigit(str[i + 1])) {
+                    style = ERLANG_STYLE_FLOAT;
+                    for (i += 2; qe_isdigit(str[i]); i++)
+                        continue;
+                }
+                if (qe_tolower(str[i]) == 'e') {
+                    int k = i + 1;
+                    if (str[k] == '+' || str[k] == '-')
+                        k++;
+                    if (qe_isdigit(str[k])) {
+                        style = ERLANG_STYLE_FLOAT;
+                        for (i = k + 1; qe_isdigit(str[i]); i++)
+                            continue;
+                    }
+                }
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        }
+        if (qe_isalpha_(c) || c == '@') {
+            /* parse an Erlang atom or identifier */
+            len = 0;
+            keyword[len++] = c;
+            for (; qe_isalnum_(str[i]) || str[i] == '@'; i++) {
+                if (len < countof(keyword) - 1)
+                    keyword[len++] = str[i];
+            }
+            keyword[len] = '\0';
+            if (start && str[start - 1] == '-'
+            &&  strfind(erlang_commands, keyword)) {
+                style = ERLANG_STYLE_PREPROCESS;
+            } else
+            if (strfind(syn->types, keyword)) {
+                style = ERLANG_STYLE_TYPE;
+            } else
+            if (strfind(syn->keywords, keyword)) {
+                style = ERLANG_STYLE_KEYWORD;
+            } else {
+                k = i;
+                if (qe_isblank(str[k]))
+                    k++;
+                if (str[k] == '(') {
+                    style = ERLANG_STYLE_FUNCTION;
+                } else
+                if (qe_islower(keyword[0])) {
+                    style = ERLANG_STYLE_ATOM;
+                } else {
+                    style = ERLANG_STYLE_IDENTIFIER;
+                }
+            }
+            SET_COLOR(str, start, i, style);
+            continue;
+        }
+    }
+    cp->colorize_state = colstate;
+}
+
+static int erlang_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->filename, mode->extensions)
+    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)
+    ||  strstr(cs8(p->buf), "-*- erlang -*-")) {
+        return 80;
+    }
+    return 1;
+}
+
+static ModeDef erlang_mode = {
+    .name = "Erlang",
+    .extensions = "erl|hrl",
+    .shell_handlers = "erlang",
+    .mode_probe = erlang_mode_probe,
+    .keywords = erlang_keywords,
+    .types = erlang_types,
+    .colorize_func = erlang_colorize_line,
+};
+
+static int erlang_init(void)
+{
+    qe_register_mode(&erlang_mode, MODEF_SYNTAX);
+
+    return 0;
+}
+
 /*---------------- ML/Ocaml coloring ----------------*/
 
 static char const ocaml_keywords[] = {
@@ -3244,6 +3503,7 @@ static int extra_modes_init(void)
     haskell_init();
     python_init();
     ruby_init();
+    erlang_init();
     ocaml_init();
     emf_init();
     return 0;
