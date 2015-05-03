@@ -27,6 +27,7 @@
 #define LISP_LANG_SCHEME   4
 #define LISP_LANG_RACKET   8
 #define LISP_LANG_CLOJURE  16
+#define LISP_LANG_SANDBOX  32
 
 /*---------------- Lisp colors ----------------*/
 
@@ -403,6 +404,16 @@ ModeDef clojure_mode = {
     .fallback = &lisp_mode,
 };
 
+ModeDef sandbox_mode = {
+    .name = "Sandbox",  /* MacOS, Tinyscheme based? */
+    .extensions = "sb",
+    .keywords = lisp_keywords,
+    .types = lisp_types,
+    .colorize_func = lisp_colorize_line,
+    .colorize_flags = LISP_LANG_SANDBOX,
+    .fallback = &lisp_mode,
+};
+
 static int lisp_init(void)
 {
     qe_register_mode(&lisp_mode, MODEF_SYNTAX);
@@ -410,6 +421,7 @@ static int lisp_init(void)
     qe_register_mode(&scheme_mode, MODEF_SYNTAX);
     qe_register_mode(&racket_mode, MODEF_SYNTAX);
     qe_register_mode(&clojure_mode, MODEF_SYNTAX);
+    qe_register_mode(&sandbox_mode, MODEF_SYNTAX);
 
     return 0;
 }
