@@ -830,12 +830,12 @@ int tty_bg_colors_count = 16;
 unsigned int const *tty_fg_colors = tty_putty_colors;
 int tty_fg_colors_count = 16;
 
-static inline int color_dist(unsigned int c1, unsigned c2)
+static inline int color_dist(unsigned int c1, unsigned int c2)
 {
 
-    return (abs( (c1 & 0xff) - (c2 & 0xff)) +
-            2 * abs( ((c1 >> 8) & 0xff) - ((c2 >> 8) & 0xff)) +
-            abs( ((c1 >> 16) & 0xff) - ((c2 >> 16) & 0xff)));
+    return      abs((int)((c1 >>  0) & 0xff) - (int)((c2 >>  0) & 0xff)) +
+            2 * abs((int)((c1 >>  8) & 0xff) - (int)((c2 >>  8) & 0xff)) +
+                abs((int)((c1 >> 16) & 0xff) - (int)((c2 >> 16) & 0xff));
 }
 
 int get_tty_color(QEColor color, unsigned int const *colors, int count)
