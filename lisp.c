@@ -32,16 +32,109 @@
 /*---------------- Lisp colors ----------------*/
 
 static const char lisp_keywords[] = {
-    "defun|defvar|let|let*|if|concat|list|set|setq|when|and|or|max|min|"
-    "unless|car|cdr|cons|cond|prog1|progn|case|setcar|setcdr|while|"
-    "defsubst|eq|remove|not|otherwise|dolist|incf|decf|boundp|"
-    "lambda|\xCE\xBB|"
+    "defun|let|let*|set|setq|prog1|progn|cond|if|unless|when|while|"
+    "defsubst|remove|otherwise|dolist|incf|decf|boundp|"
+    "and|or|not|case|eq|"
+    "cons|list|concat|car|cdr|setcar|setcdr|nth|nthcdr|length|"
+    "reverse|sort|"
+    "caar|cadr|cdar|cddr|caddr|cadddr|"
+    "lambda|"
+    "\xCE\xBB|"  /* greek character lambda in utf-8 */
+    "mod|abs|max|min|log|logand|logior|logxor|ash|"
     "1+|1-|<|>|<=|>=|-|+|*|/|=|<>|/=|"
-    //"interactive|"
+};
+
+static const char elisp_keywords[] = {
+    /* elisp primitives */
+    "eval|load|read|null|get|put|catch|throw|unwind-protect|atom|delete|"
+    "dotimes|aset|aref|setplist|equal|fset|setq-default|pcase-let|"
+    "consp|vectorp|listp|symbolp|stringp|numberp|zerop|functionp|integerp|"
+    "assq|apply|funcall|mapatoms|mapc|mapcar|mapconcat|plist-get|plist-put|"
+    "function|intern|intern-soft|copy-sequence|delete-dups|fboundp|"
+    "push|pop|append|nconc|nreverse|memq|delq|remq|pcase|assoc|member|"
+    "defalias|defgroup|defmacro|type-of|condition-case|declare-function|"
+    "make-obsolete-variable|define-obsolete-variable-alias|set-default|"
+    "default-boundp|default-value|car-safe|cdr-safe|"
+    "make-variable-buffer-local|make-local-variable|local-variable-p|"
+    "symbol-value|symbol-name|symbol-function|symbol-plist|"
+    "string-match|downcase|upcase|string<|string=|format|substring|"
+    "string-lessp|string-as-unibyte|"
+    "format-time-string|current-time-string|"
+    "string-to-number|number-to-string|read-from-string|char-to-string|"
+    "make-string|string-to-char|string-equal|split-string|"
+    "regexp-quote|"
+    "make-vector|vector|vconcat|add-to-list|"
+    /* emacs specific stuff */
+    "eval-when-compile|assert|cl-assert|cl-pushnew|require|provide|"
+    "interactive|save-excursion|save-restriction|error|message|sit-for|"
+    "save-match-data|narrow-to-region|widen|"
+    "call-interactively|run-hooks|add-hook|remove-hook|run-hook-with-args|"
+    "defcustom|defvar|defconst|featurep|defvar-local|commandp|macrop|"
+    "define-minor-mode|define-derived-mode|define-major-mode|"
+    "define-key|make-keymap|make-sparse-keymap|key-binding|keymapp|lookup-key|"
+    /* editing primitives */
+    "marker-position|move-marker|copy-marker|set-marker|markerp|point-marker|"
+    "mark|point|goto-char|char-after|preceding-char|following-char|"
+    "current-column|"
+    "move-beginning-of-line|move-end-of-line|beginning-of-line|end-of-line|"
+    "count-lines|line-move|open-line|newline|"
+    "region-beginning|region-end|line-beginning-position|line-end-position|"
+    "line-beginning|line-end|bobp|eobp|bolp|eolp|"
+    "forward-word|backward-word|forward-line|backward-line|"
+    "forward-char|backward-char|skip-chars-forward|"
+    "push-mark|point-min|point-max|exchange-point-and-mark|"
+    "match-beginning|match-end|match-data|set-match-data|replace-match|"
+    "search-forward|search-backward|re-search-forward|re-search-backward|"
+    "looking-at|looking-back|"
+    "display-buffer|erase-buffer|current-buffer|"
+    "buffer-modified-p|set-buffer-modified-p|"
+    "save-current-buffer|buffer-file-name|buffer-name|buffer-list|buffer-size|"
+    "set-buffer|"
+    "switch-to-buffer|get-buffer-create|kill-buffer|"
+    "buffer-substring|buffer-substring-no-properties|"
+    "set-text-properties|remove-text-properties|"
+    "get-char-property|get-text-property|put-text-property|"
+    "read-char|read-string|read-file-name|y-or-n-p|yes-or-no-p|"
+    "completing-read|"
+    "expand-file-name|file-name-directory|"
+    "with-current-buffer|with-temp-buffer|"
+    "with-syntax-table|syntax-table|standard-syntax-table|"
+    "skip-syntax-forward|skip-syntax-backward|skip-chars-backward|"
+    "insert|delete-char|delete-region|prin1|princ|terpri|indent-to|"
+    "insert-file-contents|"
+    "downcase-region|upcase-region|upcase-initials-region|"
+    "delete-horizontal-space|kill-line|kill-region|yank|yank-pop|"
+    "move-to-column|align|align-column|align-region|indent-region|"
+    "write-region|undo-boundary|undo-in-progress|window-minibuffer-p|"
+    "make-overlay|delete-overlay|remove-overlays|move-overlay|"
+    "overlay-start|overlay-end|overlays-at|overlay-get|overlay-put|"
+    "overlay-buffer|overlay-properties|"
+    "define-abbrev|abbrev-get|abbrev-put|"
+    "defface|make-face|set-face-property|facep|"
+};
+
+static const char scheme_keywords[] = {
+    ""
+};
+
+static const char racket_keywords[] = {
+    ""
+};
+
+static const char clojure_keywords[] = {
+    ""
+};
+
+static const char sandbox_keywords[] = {
+    ""
 };
 
 static const char lisp_types[] = {
     "nil|t|"
+};
+
+static const char elisp_types[] = {
+    "nil|t|&optional|"
 };
 
 enum {
@@ -315,7 +408,8 @@ static void lisp_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, start, i, LISP_STYLE_NUMBER);
                     continue;
                 }
-                if (strfind(syn->keywords, kbuf)) {
+                if (strfind(lisp_keywords, kbuf)
+                ||  strfind(syn->keywords, kbuf)) {
                     SET_COLOR(str, start, i, LISP_STYLE_KEYWORD);
                     continue;
                 }
@@ -356,7 +450,7 @@ static int elisp_mode_probe(ModeDef *mode, ModeProbeData *p)
 ModeDef lisp_mode = {
     .name = "Lisp",
     .extensions = "ll|li|lh|lo|lm|lisp",
-    .keywords = lisp_keywords,
+    .keywords = NULL,
     .shell_handlers = "lisp",
     .types = lisp_types,
     .colorize_func = lisp_colorize_line,
@@ -366,8 +460,8 @@ ModeDef lisp_mode = {
 ModeDef elisp_mode = {
     .name = "ELisp",
     .extensions = "el",
-    .keywords = lisp_keywords,
-    .types = lisp_types,
+    .keywords = elisp_keywords,
+    .types = elisp_types,
     .mode_probe = elisp_mode_probe,
     .colorize_func = lisp_colorize_line,
     .colorize_flags = LISP_LANG_ELISP,
@@ -377,7 +471,7 @@ ModeDef elisp_mode = {
 ModeDef scheme_mode = {
     .name = "Scheme",
     .extensions = "scm|sch|ss",
-    .keywords = lisp_keywords,
+    .keywords = scheme_keywords,
     .types = lisp_types,
     .colorize_func = lisp_colorize_line,
     .colorize_flags = LISP_LANG_SCHEME,
@@ -387,7 +481,7 @@ ModeDef scheme_mode = {
 ModeDef racket_mode = {
     .name = "Racket",
     .extensions = "rkt|rktd",
-    .keywords = lisp_keywords,
+    .keywords = racket_keywords,
     .types = lisp_types,
     .colorize_func = lisp_colorize_line,
     .colorize_flags = LISP_LANG_RACKET,
@@ -397,7 +491,7 @@ ModeDef racket_mode = {
 ModeDef clojure_mode = {
     .name = "Clojure",
     .extensions = "clj",
-    .keywords = lisp_keywords,
+    .keywords = clojure_keywords,
     .types = lisp_types,
     .colorize_func = lisp_colorize_line,
     .colorize_flags = LISP_LANG_CLOJURE,
@@ -407,7 +501,7 @@ ModeDef clojure_mode = {
 ModeDef sandbox_mode = {
     .name = "Sandbox",  /* MacOS, Tinyscheme based? */
     .extensions = "sb",
-    .keywords = lisp_keywords,
+    .keywords = sandbox_keywords,
     .types = lisp_types,
     .colorize_func = lisp_colorize_line,
     .colorize_flags = LISP_LANG_SANDBOX,
