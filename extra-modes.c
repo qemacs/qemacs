@@ -3152,6 +3152,244 @@ static int erlang_init(void)
     return 0;
 }
 
+/*---------------- Elixir coloring ----------------*/
+
+static char const elixir_keywords[] = {
+    "|do|end|cond|case|if|else|after|for|unless|when|quote|in"
+    "|try|catch|rescue|raise"
+    "|def|defp|defmodule|defcallback|defmacro|alias|import|use|fn"
+    "|defmacrop|defdelegate|defstruct|defexception|require"
+    "|setup|test|assert|refute|using"
+    "|true|false|nil|and|or|not"
+    "|"
+};
+
+enum {
+    IN_ELIXIR_STRING   = 0x01,
+    IN_ELIXIR_STRING2  = 0x02,
+    IN_ELIXIR_HEREDOC  = 0x04,
+    IN_ELIXIR_HEREDOC2 = 0x08,
+};
+
+enum {
+    ELIXIR_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    ELIXIR_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    ELIXIR_STYLE_STRING =     QE_STYLE_STRING,
+    ELIXIR_STYLE_NUMBER =     QE_STYLE_NUMBER,
+    ELIXIR_STYLE_KEYWORD =    QE_STYLE_KEYWORD,
+    ELIXIR_STYLE_ATOM =       QE_STYLE_TYPE,
+    ELIXIR_STYLE_TAG =        QE_STYLE_VARIABLE,
+    ELIXIR_STYLE_FUNCTION =   QE_STYLE_FUNCTION,
+    ELIXIR_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+};
+
+static void elixir_colorize_line(QEColorizeContext *cp,
+                                 unsigned int *str, int n, ModeDef *syn)
+{
+    int i = 0, start = i, c, sep = 0, klen, has_under;
+    int state = cp->colorize_state;
+    char kbuf[32];
+
+    if (state & IN_ELIXIR_STRING) {
+        sep = '\'';
+        goto parse_string;
+    }
+    if (state & IN_ELIXIR_STRING2) {
+        sep = '\"';
+        goto parse_string;
+    }
+    if (state & IN_ELIXIR_HEREDOC) {
+        sep = '\'';
+        goto parse_heredoc;
+    }
+    if (state & IN_ELIXIR_HEREDOC2) {
+        sep = '\"';
+        goto parse_heredoc;
+    }
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '#':
+            i = n;
+            SET_COLOR(str, start, i, ELIXIR_STYLE_COMMENT);
+            continue;
+            
+        case '\'':
+        case '\"':
+            /* parse string constants and here documents */
+            /* XXX: should colorize <% %> expressions and interpolation */
+            sep = c;
+            if (str[i] == (unsigned int)sep
+            &&  str[i + 1] == (unsigned int)sep) {
+                /* here documents */
+                state = (sep == '\"') ? IN_ELIXIR_HEREDOC2 : IN_ELIXIR_HEREDOC;
+                i += 2;
+            parse_heredoc:
+                while (i < n) {
+                    c = str[i++];
+                    if (c == '\\') {
+                        if (i < n) {
+                            i += 1;
+                        }
+                    } else
+                    if (c == sep
+                    &&  str[i] == (unsigned int)sep
+                    &&  str[i + 1] == (unsigned int)sep) {
+                        i += 2;
+                        state = 0;
+                        break;
+                    }
+                }
+            } else {
+                /* regular string constants */
+                state = (sep == '\"') ? IN_ELIXIR_STRING2 : IN_ELIXIR_STRING;
+            parse_string:
+                while (i < n) {
+                    c = str[i++];
+                    if (c == '\\') {
+                        if (i < n) {
+                            i += 1;
+                        }
+                    } else
+                    if (c == sep) {
+                        state = 0;
+                        break;
+                    }
+                }
+            }
+            SET_COLOR(str, start, i, ELIXIR_STYLE_STRING);
+            continue;
+
+        case '@':
+        case ':':
+            if (qe_isalpha(str[i]))
+                goto has_alpha;
+            break;
+
+        case '<':
+            if (str[i] == '%') {
+                i++;
+                if (str[i] == '=')
+                    i++;
+                SET_COLOR(str, start, i, ELIXIR_STYLE_PREPROCESS);
+                continue;
+            }
+            break;
+
+        case '%':
+            if (str[i] == '>') {
+                i++;
+                SET_COLOR(str, start, i, ELIXIR_STYLE_PREPROCESS);
+                continue;
+            }
+            break;
+
+        default:
+            if (qe_isdigit(c)) {
+                if (c == '0' && qe_tolower(str[i]) == 'b') {
+                    /* binary numbers */
+                    for (i += 1; qe_isbindigit(str[i]); i++)
+                        continue;
+                } else
+                if (c == '0' && qe_tolower(str[i]) == 'o') {
+                    /* octal numbers */
+                    for (i += 1; qe_isoctdigit(str[i]); i++)
+                        continue;
+                } else
+                if (c == '0' && qe_tolower(str[i]) == 'x') {
+                    /* hexadecimal numbers */
+                    for (i += 1; qe_isxdigit(str[i]); i++)
+                        continue;
+                } else {
+                    /* decimal numbers */
+                    for (has_under = 0;; i++) {
+                        if (qe_isdigit(str[i]))
+                            continue;
+                        if (str[i] == '_' && qe_isdigit(str[i + 1])) {
+                            /* integers may contain embedded _ characters */
+                            has_under = 1;
+                            i++;
+                            continue;
+                        }
+                        break;
+                    }
+                    if (!has_under && str[i] == '.' && qe_isdigit(str[i + 1])) {
+                        i += 2;
+                        /* decimal floats require a digit after the '.' */
+                        for (; qe_isdigit(str[i]); i++)
+                            continue;
+                        /* exponent notation requires a decimal point */
+                        if (qe_tolower(str[i]) == 'e') {
+                            int k = i + 1;
+                            if (str[k] == '+' || str[k] == '-')
+                                k++;
+                            if (qe_isdigit(str[k])) {
+                                for (i = k + 1; qe_isdigit(str[i]); i++)
+                                    continue;
+                            }
+                        }
+                    }
+                }
+                SET_COLOR(str, start, i, ELIXIR_STYLE_NUMBER);
+                continue;
+            }
+            if (qe_isalpha_(c)) {
+        has_alpha:
+                klen = 0;
+                kbuf[klen++] = c;
+                for (; qe_isalnum_(c = str[i]); i++) {
+                    if (klen < countof(kbuf) - 1)
+                        kbuf[klen++] = c;
+                }
+                kbuf[klen] = '\0';
+
+                if (kbuf[0] == '@') {
+                    SET_COLOR(str, start, i, ELIXIR_STYLE_PREPROCESS);
+                    continue;
+                }
+                if (kbuf[0] == ':') {
+                    SET_COLOR(str, start, i, ELIXIR_STYLE_ATOM);
+                    continue;
+                }
+                if (strfind(syn->keywords, kbuf)) {
+                    SET_COLOR(str, start, i, ELIXIR_STYLE_KEYWORD);
+                    continue;
+                }
+                if (c == ':') {
+                    SET_COLOR(str, start, i, ELIXIR_STYLE_TAG);
+                    continue;
+                }
+                if (qe_isblank(str[i]))
+                    i++;
+                if (str[i] == '(') {
+                    SET_COLOR(str, start, i, ELIXIR_STYLE_FUNCTION);
+                    continue;
+                }
+                continue;
+            }
+            break;
+        }
+    }
+    cp->colorize_state = state;
+}
+
+ModeDef elixir_mode = {
+    .name = "Elixir",
+    .extensions = "ex|exs",
+    .shell_handlers = "elixir",
+    .keywords = elixir_keywords,
+    .colorize_func = elixir_colorize_line,
+};
+
+static int elixir_init(void)
+{
+    qe_register_mode(&elixir_mode, MODEF_SYNTAX);
+
+    return 0;
+}
+
 /*---------------- ML/Ocaml coloring ----------------*/
 
 static char const ocaml_keywords[] = {
@@ -3504,6 +3742,7 @@ static int extra_modes_init(void)
     python_init();
     ruby_init();
     erlang_init();
+    elixir_init();
     ocaml_init();
     emf_init();
     return 0;
