@@ -417,7 +417,8 @@ static CmdDef htmlsrc_commands[] = {
 
 ModeDef htmlsrc_mode = {
     .name = "html-src",
-    .extensions = "html|htm|asp|aspx|shtml|hta|htp|phtml|php|php3|php4|xml",
+    .extensions = "html|htm|asp|aspx|shtml|hta|htp|phtml|"
+                  "php|php3|php4|xml|eex",
     .mode_probe = htmlsrc_mode_probe,
     .colorize_func = htmlsrc_colorize_line,
 };
