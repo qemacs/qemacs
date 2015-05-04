@@ -2898,7 +2898,7 @@ static int ruby_init(void)
 static char const erlang_keywords[] = {
     "|after|and|andalso|band|begin|bnot|bor|bsl|bsr|bxor|case|catch|cond"
     "|div|end|fun|if|let|not|of|or|orelse|receive|rem|try|when|xor"
-    "|true|false|_"
+    "|true|false|nil|_"
     "|"
 };
 
