@@ -928,12 +928,25 @@ static int down_cursor_func(DisplayState *ds,
 
 void do_up_down(EditState *s, int dir)
 {
+#ifndef CONFIG_TINY
+    if (s->b->flags & BF_PREVIEW) {
+        if (s->mode->scroll_up_down)
+            s->mode->scroll_up_down(s, dir);
+    } else
+#endif
     if (s->mode->move_up_down)
         s->mode->move_up_down(s, dir);
 }
 
 void do_left_right(EditState *s, int dir)
 {
+#ifndef CONFIG_TINY
+    if (s->b->flags & BF_PREVIEW) {
+        EditState *e = find_window(s, KEY_LEFT);
+        if (e && (e->b->flags & BF_DIRED) && dir < 0)
+            s->qe_state->active_window = e;
+    } else
+#endif
     if (s->mode->move_left_right)
         s->mode->move_left_right(s, dir);
 }

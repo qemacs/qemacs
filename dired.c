@@ -837,10 +837,14 @@ static void dired_select(EditState *s)
         /* do explore files pointed to by symlinks */
         e = find_window(s, KEY_RIGHT);
         if (e) {
+#if 1
+            s->qe_state->active_window = e;
+#else
             /* delete dired window */
             do_delete_window(s, 1);
             /* XXX: should keep BF_PREVIEW flag and set pager-mode */
             e->b->flags &= ~BF_PREVIEW;
+#endif
         } else {
             do_find_file(s, filename);
         }
