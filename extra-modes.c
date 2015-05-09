@@ -3611,7 +3611,7 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
             keyword[len++] = c;
             for (; qe_isalnum_(str[i]) || str[i] == '\''; i++) {
                 if (len < countof(keyword) - 1)
-                    keyword[len++] = qe_tolower(str[i]);
+                    keyword[len++] = str[i];
             }
             keyword[len] = '\0';
             if (strfind(syn->types, keyword)) {
