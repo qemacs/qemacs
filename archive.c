@@ -23,6 +23,8 @@
 /* Archivers */
 typedef struct ArchiveType {
     const char *name;           /* name of archive format */
+    const char *magic;          /* magic signature */
+    int magic_size;
     const char *extensions;
     const char *list_cmd;       /* list archive contents to stdout */
     const char *extract_cmd;    /* extract archive element to stdout */
@@ -30,17 +32,17 @@ typedef struct ArchiveType {
 } ArchiveType;
 
 static ArchiveType archive_type_array[] = {
-    { "tar", "tar|tar.Z|tgz|tar.gz|tbz|tbz2|tar.bz2|tar.bzip2|"
+    { "tar", NULL, 0, "tar|tar.Z|tgz|tar.gz|tbz|tbz2|tar.bz2|tar.bzip2|"
             "txz|tar.xz|tlz|tar.lzma",
             "tar tvf $1" },
-    { "zip", "zip|ZIP|jar|apk|bbb", "unzip -l $1" },
-    { "rar", "rar|RAR", "unrar l $1" },
-    { "arj", "arj|ARJ", "unarj l $1" },
-    { "cab", "cab", "cabextract -l $1" },
-    { "7zip", "7z", "7z l $1" },
-    { "ar", "a|ar", "ar -tv $1" },
-    { "xar", "xar", "xar -tvf $1" },
-    { "zoo", "zoo", "zoo l $1" },
+    { "zip", "PK\003\004", 4, "zip|ZIP|jar|apk|bbb", "unzip -l $1" },
+    { "rar", NULL, 0, "rar|RAR", "unrar l $1" },
+    { "arj", NULL, 0, "arj|ARJ", "unarj l $1" },
+    { "cab", NULL, 0, "cab", "cabextract -l $1" },
+    { "7zip", NULL, 0, "7z", "7z l $1" },
+    { "ar", NULL, 0, "a|ar", "ar -tv $1" },
+    { "xar", NULL, 0, "xar|pkg", "xar -tvf $1" },
+    { "zoo", NULL, 0, "zoo", "zoo l $1" },
 };
 
 static ArchiveType *archive_types;
@@ -48,6 +50,8 @@ static ArchiveType *archive_types;
 /* Compressors */
 typedef struct CompressType {
     const char *name;           /* name of compressed format */
+    const char *magic;          /* magic signature */
+    int magic_size;
     const char *extensions;
     const char *load_cmd;       /* uncompress file to stdout */
     const char *save_cmd;       /* compress to file from stdin */
@@ -55,21 +59,24 @@ typedef struct CompressType {
 } CompressType;
 
 static CompressType compress_type_array[] = {
-    { "gzip", "gz", "gunzip -c $1", "gzip > $1" },
-    { "bzip2", "bz2|bzip2", "bunzip2 -c $1", "bzip2 > $1" },
-    { "compress", "Z", "uncompress -c $1", "compress > $1" },
-    { "LZMA", "lzma", "unlzma -c $1", "lzma > $1" },
-    { "XZ", "xz", "unxz -c $1", "xz > $1" },
-    { "BinHex", "hqx", "binhex decode -o /tmp/qe-$$ $1 && "
+    { "gzip", NULL, 0, "gz", "gunzip -c $1", "gzip > $1" },
+    { "bzip2", NULL, 0, "bz2|bzip2", "bunzip2 -c $1", "bzip2 > $1" },
+    { "compress", NULL, 0, "Z", "uncompress -c $1", "compress > $1" },
+    { "LZMA", NULL, 0, "lzma", "unlzma -c $1", "lzma > $1" },
+    { "XZ", NULL, 0, "xz", "unxz -c $1", "xz > $1" },
+    { "BinHex", NULL, 0, "hqx", "binhex decode -o /tmp/qe-$$ $1 && "
                        "cat /tmp/qe-$$ ; rm -f /tmp/qe-$$", NULL },
-    { "sqlite", "xdb|rdb|db", "sqlite3 $1 .dump", NULL },
+    { "sqlite", "SQLite format 3\0", 16, "xdb|rdb|db", "sqlite3 $1 .dump", NULL },
+    { "bplist", "bplist00", 8, "plist", "plutil -p $1", NULL },
+//    { "bplist", "bplist00", 8, "plist", "plutil -convert xml1 -o - $1", NULL },
 };
 
 static CompressType *compress_types;
 
 /*---------------- Archivers ----------------*/
 
-static ArchiveType *find_archive_type(const char *filename)
+static ArchiveType *find_archive_type(const char *filename,
+                                      const u8 *buf, int buf_size)
 {
     char rname[MAX_FILENAME_SIZE];
     ArchiveType *atp;
@@ -77,6 +84,9 @@ static ArchiveType *find_archive_type(const char *filename)
     /* File extension based test */
     reduce_filename(rname, sizeof(rname), get_basename(filename));
     for (atp = archive_types; atp; atp = atp->next) {
+        if (atp->magic_size && atp->magic_size <= buf_size
+        &&  !memcmp(atp->magic, buf, atp->magic_size))
+            return atp;
         if (match_extension(rname, atp->extensions))
             return atp;
     }
@@ -85,7 +95,7 @@ static ArchiveType *find_archive_type(const char *filename)
 
 static int archive_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    ArchiveType *atp = find_archive_type(p->filename);
+    ArchiveType *atp = find_archive_type(p->filename, p->buf, p->buf_size);
 
     if (atp) {
         if (p->b && p->b->priv_data) {
@@ -130,13 +140,30 @@ static int qe_shell_subst(char *buf, int size, const char *cmd,
 
 static ModeDef archive_mode;
 
+static int file_read_block(EditBuffer *b, FILE *f1, u8 *buf, int buf_size)
+{
+    FILE *f = f1;
+    int nread = 0;
+
+    if (!f)
+        f = fopen(b->filename, "rb");
+    if (f)
+        nread = fread(buf, 1, buf_size, f);
+    if (f && !f1)
+        fclose(f);
+    return nread;
+}
+
 static int archive_buffer_load(EditBuffer *b, FILE *f)
 {
     /* Launch subprocess to list archive contents */
     char cmd[1024];
     ArchiveType *atp;
+    u8 buf[256];
+    int buf_size;
 
-    atp = find_archive_type(b->filename);
+    buf_size = file_read_block(b, f, buf, sizeof(buf));
+    atp = find_archive_type(b->filename, buf, buf_size);
     if (atp) {
         eb_clear(b);
         eb_printf(b, "  Directory of %s archive %s\n",
@@ -200,7 +227,8 @@ static int archive_init(void)
 
 /*---------------- Compressors ----------------*/
 
-static CompressType *find_compress_type(const char *filename)
+static CompressType *find_compress_type(const char *filename,
+                                        const u8 *buf, int buf_size)
 {
     char rname[MAX_FILENAME_SIZE];
     CompressType *ctp;
@@ -208,6 +236,9 @@ static CompressType *find_compress_type(const char *filename)
     /* File extension based test */
     reduce_filename(rname, sizeof(rname), get_basename(filename));
     for (ctp = compress_types; ctp; ctp = ctp->next) {
+        if (ctp->magic_size && ctp->magic_size <= buf_size
+        &&  !memcmp(ctp->magic, buf, ctp->magic_size))
+            return ctp;
         if (match_extension(rname, ctp->extensions))
             return ctp;
     }
@@ -216,7 +247,7 @@ static CompressType *find_compress_type(const char *filename)
 
 static int compress_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    CompressType *ctp = find_compress_type(p->filename);
+    CompressType *ctp = find_compress_type(p->filename, p->buf, p->buf_size);
 
     if (ctp) {
         if (p->b && p->b->priv_data) {
@@ -238,8 +269,11 @@ static int compress_buffer_load(EditBuffer *b, FILE *f)
     /* Launch subprocess to expand compressed contents */
     char cmd[1024];
     CompressType *ctp;
+    u8 buf[256];
+    int buf_size;
 
-    ctp = find_compress_type(b->filename);
+    buf_size = file_read_block(b, f, buf, sizeof(buf));
+    ctp = find_compress_type(b->filename, buf, buf_size);
     if (ctp) {
         eb_clear(b);
         qe_shell_subst(cmd, sizeof(cmd), ctp->load_cmd, b->filename, NULL);
@@ -328,6 +362,7 @@ static int wget_buffer_load(EditBuffer *b, FILE *f)
     qe_shell_subst(cmd, sizeof(cmd), "wget -q -O - $1", b->filename, NULL);
     new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
                      SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
+    /* XXX: should have a way to keep http headers --save-headers */
     /* XXX: should check for wget error */
     /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
     b->flags |= BF_READONLY;
