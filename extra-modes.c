@@ -1515,9 +1515,22 @@ static void sql_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
+static int sql_mode_probe(ModeDef *mode, ModeProbeData *pd)
+{
+    const char *p = cs8(pd->buf);
+
+    if (strstart(p, "PRAGMA foreign_keys=OFF;", NULL))
+        return 80;
+    if (match_extension(pd->filename, mode->extensions))
+        return 60;
+
+    return 1;
+}
+
 static ModeDef sql_mode = {
     .name = "SQL",
     .extensions = "sql|mysql|sqlite|sqlplus|rdb|xdb|db",
+    .mode_probe = sql_mode_probe,
     .keywords = sql_keywords,
     .types = sql_types,
     .colorize_func = sql_colorize_line,
