@@ -3158,24 +3158,31 @@ static int erlang_init(void)
 static char const elixir_keywords[] = {
     "|do|end|cond|case|if|else|after|for|unless|when|quote|in"
     "|try|catch|rescue|raise"
-    "|def|defp|defmodule|defcallback|defmacro|alias|import|use|fn"
-    "|defmacrop|defdelegate|defstruct|defexception|require"
+    "|def|defp|defmodule|defcallback|defmacro|defsequence"
+    "|defmacrop|defdelegate|defstruct|defexception|defimpl"
+    "|require|alias|import|use|fn"
     "|setup|test|assert|refute|using"
-    "|true|false|nil|and|or|not"
+    "|true|false|nil|and|or|not|_"
     "|"
 };
 
+static char const elixir_delim1[] = "\'\"/|([{<";
+static char const elixir_delim2[] = "\'\"/|)]}>";
+
 enum {
-    IN_ELIXIR_STRING   = 0x01,
-    IN_ELIXIR_STRING2  = 0x02,
-    IN_ELIXIR_HEREDOC  = 0x04,
-    IN_ELIXIR_HEREDOC2 = 0x08,
+    IN_ELIXIR_DELIM  = 0x0F,
+    IN_ELIXIR_STRING = 0x10,
+    IN_ELIXIR_REGEX  = 0x20,
+    IN_ELIXIR_TRIPLE = 0x40,
 };
 
 enum {
     ELIXIR_STYLE_TEXT =       QE_STYLE_DEFAULT,
     ELIXIR_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    ELIXIR_STYLE_CHARCONST =  QE_STYLE_STRING,
     ELIXIR_STYLE_STRING =     QE_STYLE_STRING,
+    ELIXIR_STYLE_HEREDOC =    QE_STYLE_STRING,
+    ELIXIR_STYLE_REGEX =      QE_STYLE_STRING,
     ELIXIR_STYLE_NUMBER =     QE_STYLE_NUMBER,
     ELIXIR_STYLE_KEYWORD =    QE_STYLE_KEYWORD,
     ELIXIR_STYLE_ATOM =       QE_STYLE_TYPE,
@@ -3187,26 +3194,14 @@ enum {
 static void elixir_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, sep = 0, klen, has_under;
+    int i = 0, start = i, c, sep, nc, klen, has_under, style = 0;
     int state = cp->colorize_state;
     char kbuf[32];
 
-    if (state & IN_ELIXIR_STRING) {
-        sep = '\'';
+    if (state & IN_ELIXIR_STRING)
         goto parse_string;
-    }
-    if (state & IN_ELIXIR_STRING2) {
-        sep = '\"';
-        goto parse_string;
-    }
-    if (state & IN_ELIXIR_HEREDOC) {
-        sep = '\'';
-        goto parse_heredoc;
-    }
-    if (state & IN_ELIXIR_HEREDOC2) {
-        sep = '\"';
-        goto parse_heredoc;
-    }
+    if (state & IN_ELIXIR_REGEX)
+        goto parse_regex;
 
     while (i < n) {
         start = i;
@@ -3214,78 +3209,118 @@ static void elixir_colorize_line(QEColorizeContext *cp,
         switch (c) {
         case '#':
             i = n;
-            SET_COLOR(str, start, i, ELIXIR_STYLE_COMMENT);
-            continue;
+            style = ELIXIR_STYLE_COMMENT;
+            break;
             
+        case '?':
+            i = erlang_match_char(str, i);
+            style = ELIXIR_STYLE_CHARCONST;
+            break;
+
+        case '~':
+            if (qe_tolower(str[i]) == 'r') {
+                nc = qe_indexof(elixir_delim1, str[i + 1]);
+                if (nc >= 0) {
+                    i += 2;
+                    state = IN_ELIXIR_REGEX | nc;
+                    if (nc < 2) { /* '\'' or '\"' */
+                        if (str[i + 0] == (unsigned int)c
+                        &&  str[i + 1] == (unsigned int)c) {
+                            state |= IN_ELIXIR_TRIPLE;
+                            i += 2;
+                        }
+                    }
+                parse_regex:
+                    sep = elixir_delim2[state & 15];
+                    /* parse regular expression */
+                    while (i < n) {
+                        if ((c = str[i++]) == '\\') {
+                            if (i < n)
+                                i += 1;
+                            continue;
+                        }
+                        if (c == sep) {
+                            if (!(state & IN_ELIXIR_TRIPLE)) {
+                                state = 0;
+                                break;
+                            }
+                            if (str[i] == (unsigned int)sep
+                            &&  str[i + 1] == (unsigned int)sep) {
+                                i += 2;
+                                state = 0;
+                                break;
+                            }
+                        }
+                    }
+                    while (qe_islower(str[i])) {
+                        /* regex suffix */
+                        i++;
+                    }
+                    style = ELIXIR_STYLE_REGEX;
+                    break;
+                }
+            }
+            continue;
+
         case '\'':
         case '\"':
             /* parse string constants and here documents */
-            /* XXX: should colorize <% %> expressions and interpolation */
-            sep = c;
-            if (str[i] == (unsigned int)sep
-            &&  str[i + 1] == (unsigned int)sep) {
+            state = IN_ELIXIR_STRING | (c == '\"');
+            if (str[i + 0] == (unsigned int)c
+            &&  str[i + 1] == (unsigned int)c) {
                 /* here documents */
-                state = (sep == '\"') ? IN_ELIXIR_HEREDOC2 : IN_ELIXIR_HEREDOC;
+                state |= IN_ELIXIR_TRIPLE;
                 i += 2;
-            parse_heredoc:
-                while (i < n) {
-                    c = str[i++];
-                    if (c == '\\') {
-                        if (i < n) {
-                            i += 1;
-                        }
-                    } else
-                    if (c == sep
-                    &&  str[i] == (unsigned int)sep
+            }
+        parse_string:
+            sep = elixir_delim2[state & 15];
+            style = (state & IN_ELIXIR_TRIPLE) ?
+                ELIXIR_STYLE_HEREDOC : ELIXIR_STYLE_STRING;
+            while (i < n) {
+                if ((c = str[i++]) == '\\') {
+                    if (i < n)
+                        i += 1;
+                    continue;
+                }
+                /* XXX: should colorize <% %> expressions and interpolation */
+                if (c == sep) {
+                    if (!(state & IN_ELIXIR_TRIPLE)) {
+                        state = 0;
+                        break;
+                    }
+                    if (str[i] == (unsigned int)sep
                     &&  str[i + 1] == (unsigned int)sep) {
                         i += 2;
                         state = 0;
                         break;
                     }
                 }
-            } else {
-                /* regular string constants */
-                state = (sep == '\"') ? IN_ELIXIR_STRING2 : IN_ELIXIR_STRING;
-            parse_string:
-                while (i < n) {
-                    c = str[i++];
-                    if (c == '\\') {
-                        if (i < n) {
-                            i += 1;
-                        }
-                    } else
-                    if (c == sep) {
-                        state = 0;
-                        break;
-                    }
-                }
             }
-            SET_COLOR(str, start, i, ELIXIR_STYLE_STRING);
-            continue;
+            break;
 
         case '@':
         case ':':
             if (qe_isalpha(str[i]))
                 goto has_alpha;
-            break;
+            continue;
 
         case '<':
             if (str[i] == '%') {
                 i++;
                 if (str[i] == '=')
                     i++;
-                SET_COLOR(str, start, i, ELIXIR_STYLE_PREPROCESS);
-                continue;
+                style = ELIXIR_STYLE_PREPROCESS;
+                break;
             }
-            break;
+            continue;
 
         case '%':
             if (str[i] == '>') {
                 i++;
-                SET_COLOR(str, start, i, ELIXIR_STYLE_PREPROCESS);
-                continue;
+                style = ELIXIR_STYLE_PREPROCESS;
+                break;
             }
-            break;
+            continue;
 
         default:
             if (qe_isdigit(c)) {
@@ -3333,8 +3368,8 @@ static void elixir_colorize_line(QEColorizeContext *cp,
                         }
                     }
                 }
-                SET_COLOR(str, start, i, ELIXIR_STYLE_NUMBER);
-                continue;
+                style = ELIXIR_STYLE_NUMBER;
+                break;
             }
             if (qe_isalpha_(c)) {
         has_alpha:
@@ -3344,31 +3379,36 @@ static void elixir_colorize_line(QEColorizeContext *cp,
                     if (klen < countof(kbuf) - 1)
                         kbuf[klen++] = c;
                 }
+                if (c == '!' || c == '?') {
+                    i++;
+                    if (klen < countof(kbuf) - 1)
+                        kbuf[klen++] = c;
+                }
                 kbuf[klen] = '\0';
 
+                style = 0;
                 if (kbuf[0] == '@') {
-                    SET_COLOR(str, start, i, ELIXIR_STYLE_PREPROCESS);
-                    continue;
-                }
+                    style = ELIXIR_STYLE_PREPROCESS;
+                } else
                 if (kbuf[0] == ':') {
-                    SET_COLOR(str, start, i, ELIXIR_STYLE_ATOM);
-                    continue;
-                }
+                    style = ELIXIR_STYLE_ATOM;
+                } else
                 if (strfind(syn->keywords, kbuf)) {
-                    SET_COLOR(str, start, i, ELIXIR_STYLE_KEYWORD);
-                    continue;
-                }
+                    style = ELIXIR_STYLE_KEYWORD;
+                } else
                 if (c == ':') {
-                    SET_COLOR(str, start, i, ELIXIR_STYLE_TAG);
-                    continue;
-                }
+                    style = ELIXIR_STYLE_TAG;
+                } else
                 if (check_fcall(str, i)) {
-                    SET_COLOR(str, start, i, ELIXIR_STYLE_FUNCTION);
-                    continue;
+                    style = ELIXIR_STYLE_FUNCTION;
                 }
-                continue;
+                break;
             }
-            break;
+            continue;
+        }
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
         }
     }
     cp->colorize_state = state;
