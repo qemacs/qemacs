@@ -3761,6 +3761,174 @@ static int emf_init(void)
     return 0;
 }
 
+/*---------------- AGENA script coloring ----------------*/
+
+#define AGN_SHORTSTRINGDELIM " ,~[]{}();:#'=?&%$\xA7\"!^@<>|\r\n\t"
+
+enum {
+    IN_AGENA_COMMENT = 0x01,
+    IN_AGENA_STRING1 = 0x02,
+    IN_AGENA_STRING2 = 0x04,
+};
+
+enum {
+    AGENA_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    AGENA_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    AGENA_STYLE_STRING =     QE_STYLE_STRING,
+    AGENA_STYLE_NUMBER =     QE_STYLE_NUMBER,
+    AGENA_STYLE_KEYWORD =    QE_STYLE_KEYWORD,
+    AGENA_STYLE_TYPE =       QE_STYLE_TYPE,
+    AGENA_STYLE_FUNCTION =   QE_STYLE_FUNCTION,
+    AGENA_STYLE_IDENTIFIER = QE_STYLE_DEFAULT,
+};
+
+static char const agena_keywords[] = {
+    /* keywords */
+    "|alias|as|bottom|break|by|case|catch|clear|cls|create|dec|delete"
+    "|dict|div|do|duplicate|elif|else|end|enum|epocs|esac|external|exchange"
+    "|fi|for|from|if|import|inc|insert|into|keys"
+    "|lightuserdata|mul|nargs|od|of|onsuccess|pop|proc"
+    "|quit|redo|reg|relaunch|return|rotate|scope|seq"
+    "|skip|then|thread|try|to|top|try|until|userdata|varargs"
+    "|when|while|yrt|and|fail|nand|nor|not|or|subset|xor|xsubset"
+    "|in|is|union|intersect|readlib"
+    /* constants */
+    "|infinity|nan|I"
+    /* operators */
+    "|split|assigned|unassigned|size|type"
+    "|typeof|atendof|left|right|filled|finite"
+    "|"
+};
+
+static char const agena_types[] = {
+    "|global|local|boolean|char|complex|float|number|pair|procedure"
+    "|register|sequence|set|string|table|undefined|true|false|fail|null"
+    "|"
+};
+
+static void agena_colorize_line(QEColorizeContext *cp,
+                                unsigned int *str, int n, ModeDef *syn)
+{
+    char keyword[MAX_KEYWORD_SIZE];
+    int i = 0, start = i, c, sep = 0, style = 0, len;
+    int state = cp->colorize_state;
+
+    if (state & IN_AGENA_COMMENT)
+        goto parse_block_comment;
+    if (state & IN_AGENA_STRING1)
+        goto parse_string1;
+    if (state & IN_AGENA_STRING2)
+        goto parse_string2;
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '#':
+            if (str[i] == '/') {
+                /* block comment */
+                i++;
+            parse_block_comment:
+                state |= IN_AGENA_COMMENT;
+                for (; i < n; i++) {
+                    if (str[i] == '/' && str[i + 1] == '#') {
+                        i += 2;
+                        state &= ~IN_AGENA_COMMENT;
+                        break;
+                    }
+                }
+            } else {
+                i = n;
+            }
+            style = AGENA_STYLE_COMMENT;
+            break;
+        case '\"':
+            state = IN_AGENA_STRING2;
+        parse_string2:
+            sep = '\"';
+            goto parse_string;
+        case '\'':
+            state = IN_AGENA_STRING1;
+        parse_string1:
+            sep = '\'';
+            /* parse string const */
+        parse_string:
+            for (; i < n; i++) {
+                if (str[i] == '\\' && i + 1 < n) {
+                    i++;
+                    continue;
+                }
+                if (str[i] == (unsigned int)sep) {
+                    state = 0;
+                    i++;
+                    break;
+                }
+            }
+            style = AGENA_STYLE_STRING;
+            break;
+        case '`':   /* short string */
+            while (i < n && !qe_findchar(AGN_SHORTSTRINGDELIM, str[i]))
+                i++;
+            style = AGENA_STYLE_IDENTIFIER;
+            break;
+        default:
+            /* parse identifiers and keywords */
+            if (qe_isalpha_(c)) {
+                len = 0;
+                keyword[len++] = c;
+                for (; i < n && qe_isalnum_(str[i]); i++) {
+                    if (len < countof(keyword) - 1)
+                        keyword[len++] = str[i];
+                }
+                keyword[len] = '\0';
+                if (strfind(syn->keywords, keyword))
+                    style = AGENA_STYLE_KEYWORD;
+                else
+                if (strfind(syn->types, keyword))
+                    style = AGENA_STYLE_TYPE;
+                else
+                if (check_fcall(str, i))
+                    style = AGENA_STYLE_FUNCTION;
+                else
+                    style = AGENA_STYLE_IDENTIFIER;
+                break;
+            }
+            if (qe_isdigit(c) || (c == '.' && qe_isdigit(str[i]))) {
+                while (qe_isdigit_(str[i]) || str[i] == '\'' || str[i] == '.')
+                    i++;
+                if (qe_findchar("eE", str[i])) {
+                    i++;
+                    if (qe_findchar("+-", str[i]))
+                        i++;
+                }
+                while (qe_isalnum_(str[i]))
+                    i++;
+                style = AGENA_STYLE_NUMBER;
+                break;
+            }
+            continue;
+        }
+        SET_COLOR(str, start, i, style);
+        style = 0;
+    }
+    cp->colorize_state = state;
+}
+
+static ModeDef agena_mode = {
+    .name = "Agena",
+    .extensions = "agn",
+    .keywords = agena_keywords,
+    .types = agena_types,
+    .colorize_func = agena_colorize_line,
+};
+
+static int agena_init(void)
+{
+    qe_register_mode(&agena_mode, MODEF_SYNTAX);
+
+    return 0;
+}
+
 /*----------------*/
 
 static int extra_modes_init(void)
@@ -3784,6 +3952,7 @@ static int extra_modes_init(void)
     elixir_init();
     ocaml_init();
     emf_init();
+    agena_init();
     return 0;
 }
 
