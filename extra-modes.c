@@ -22,6 +22,12 @@
 
 #define MAX_KEYWORD_SIZE  16
 
+static int check_fcall(unsigned int *str, int i) {
+    while (str[i] == ' ')
+        i++;
+    return str[i] == '(';
+}
+        
 /*---------------- x86 Assembly language coloring ----------------*/
 
 static char const asm_prepkeywords1[] = {
@@ -511,7 +517,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
                 }
             }
             if (style == VIM_STYLE_IDENTIFIER) {
-                if (str[i] == '(' || (str[i] == ' ' && str[i + 1] == '('))
+                if (check_fcall(str, i))
                     style = VIM_STYLE_FUNCTION;
             }
             SET_COLOR(str, start, i, style);
@@ -864,15 +870,12 @@ static void ada_colorize_line(QEColorizeContext *cp,
             } else
             if (strfind(syn->types, keyword)) {
                 style = ADA_STYLE_TYPE;
-            } else {
-                k = i;
-                if (qe_isblank(str[k]))
-                    k++;
-                if (str[k] == '(')
-                    style = ADA_STYLE_FUNCTION;
-                else
-                    style = ADA_STYLE_IDENTIFIER;
-            }
+            } else
+            if (check_fcall(str, i))
+                style = ADA_STYLE_FUNCTION;
+            else
+                style = ADA_STYLE_IDENTIFIER;
+
             SET_COLOR(str, start, i, style);
             continue;
         }
@@ -933,7 +936,7 @@ static void fortran_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = i, c, k, style, len, w;
+    int i = 0, start = i, c, style, len, w;
     int colstate = cp->colorize_state;
 
     for (w = 0; qe_isspace(str[w]); w++)
@@ -1011,15 +1014,12 @@ static void fortran_colorize_line(QEColorizeContext *cp,
             } else
             if (strfind(syn->types, keyword)) {
                 style = FORTRAN_STYLE_TYPE;
-            } else {
-                k = i;
-                if (qe_isblank(str[k]))
-                    k++;
-                if (str[k] == '(')
-                    style = FORTRAN_STYLE_FUNCTION;
-                else
-                    style = FORTRAN_STYLE_IDENTIFIER;
-            }
+            } else
+            if (check_fcall(str, i))
+                style = FORTRAN_STYLE_FUNCTION;
+            else
+                style = FORTRAN_STYLE_IDENTIFIER;
+
             SET_COLOR(str, start, i, style);
             continue;
         }
@@ -1683,9 +1683,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, start, i, LUA_STYLE_KEYWORD);
                     continue;
                 }
-                if (qe_isblank(str[i]))
-                    i++;
-                if (str[i] == '(') {
+                if (check_fcall(str, i)) {
                     SET_COLOR(str, start, i, LUA_STYLE_FUNCTION);
                     continue;
                 }
@@ -1952,9 +1950,7 @@ static void julia_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, start, i, JULIA_STYLE_TYPE);
                     continue;
                 }
-                if (qe_isblank(str[i]))
-                    i++;
-                if (str[i] == '(') {
+                if (check_fcall(str, i)) {
                     SET_COLOR(str, start, i, JULIA_STYLE_FUNCTION);
                     continue;
                 }
@@ -2155,9 +2151,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, start, i, HASKELL_STYLE_KEYWORD);
                     continue;
                 }
-                if (qe_isblank(str[i]))
-                    i++;
-                if (str[i] == '(') {
+                if (check_fcall(str, i)) {
                     SET_COLOR(str, start, i, HASKELL_STYLE_FUNCTION);
                     continue;
                 }
@@ -2382,9 +2376,7 @@ static void python_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, start, i, PYTHON_STYLE_KEYWORD);
                     continue;
                 }
-                if (qe_isblank(str[i]))
-                    i++;
-                if (str[i] == '(') {
+                if (check_fcall(str, i)) {
                     SET_COLOR(str, start, i, PYTHON_STYLE_FUNCTION);
                     continue;
                 }
@@ -2990,7 +2982,7 @@ static void erlang_colorize_line(QEColorizeContext *cp,
                                 unsigned int *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = i, c, k, style, len, base;
+    int i = 0, start = i, c, style, len, base;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_ERLANG_STRING)
@@ -3105,18 +3097,14 @@ static void erlang_colorize_line(QEColorizeContext *cp,
             } else
             if (strfind(syn->keywords, keyword)) {
                 style = ERLANG_STYLE_KEYWORD;
+            } else
+            if (check_fcall(str, i)) {
+                style = ERLANG_STYLE_FUNCTION;
+            } else
+            if (qe_islower(keyword[0])) {
+                style = ERLANG_STYLE_ATOM;
             } else {
-                k = i;
-                if (qe_isblank(str[k]))
-                    k++;
-                if (str[k] == '(') {
-                    style = ERLANG_STYLE_FUNCTION;
-                } else
-                if (qe_islower(keyword[0])) {
-                    style = ERLANG_STYLE_ATOM;
-                } else {
-                    style = ERLANG_STYLE_IDENTIFIER;
-                }
+                style = ERLANG_STYLE_IDENTIFIER;
             }
             SET_COLOR(str, start, i, style);
             continue;
@@ -3361,9 +3349,7 @@ static void elixir_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, start, i, ELIXIR_STYLE_TAG);
                     continue;
                 }
-                if (qe_isblank(str[i]))
-                    i++;
-                if (str[i] == '(') {
+                if (check_fcall(str, i)) {
                     SET_COLOR(str, start, i, ELIXIR_STYLE_FUNCTION);
                     continue;
                 }
