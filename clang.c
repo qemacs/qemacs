@@ -1837,9 +1837,21 @@ ModeDef calc_mode = {
     .fallback = &c_mode,
 };
 
+static int enscript_mode_probe(ModeDef *mode, ModeProbeData *pd)
+{
+    if (match_extension(pd->filename, mode->extensions)) {
+        if (*cs8(pd->buf) == '/')
+            return 80;
+        else
+            return 50;
+    }
+    return 1;
+}
+
 ModeDef enscript_mode = {
     .name = "Enscript", /* GNU Enscript */
     .extensions = "st", /* syntax files */
+    .mode_probe = enscript_mode_probe,
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_ENSCRIPT | CLANG_REGEX,
     .keywords = enscript_keywords,
