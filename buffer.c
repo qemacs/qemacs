@@ -1184,21 +1184,29 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
         /* we use the charset conversion table directly to go faster */
         ch = b->charset_state.table[buf[0]];
         offset++;
-        if (ch == ESCAPE_CHAR || ch == '\r') {
+        if (ch == ESCAPE_CHAR) {
             eb_read(b, offset, buf + 1, MAX_CHAR_BYTES - 1);
             b->charset_state.p = buf;
             ch = b->charset_state.decode_func(&b->charset_state);
             offset += (b->charset_state.p - buf) - 1;
-            if (ch == '\r') {
-                if (b->eol_type == EOL_DOS
+        }
+        if (ch == '\r') {
+            if (b->eol_type == EOL_DOS) {
+                b->charset_state.p = buf;
+                if (eb_read(b, offset, buf, MAX_CHAR_BYTES) >= 1
                 &&  b->charset_state.decode_func(&b->charset_state) == '\n') {
-                    ch = '\n';
                     offset += b->charset_state.char_size;
-                } else
-                if (b->eol_type == EOL_MAC) {
                     ch = '\n';
                 }
-            }                    
+            } else
+            if (b->eol_type == EOL_MAC) {
+                ch = '\n';
+            }
+        } else
+        if (ch == '\n') {
+            if (b->eol_type == EOL_MAC) {
+                ch = '\r';
+            }
         }
     }
     *next_ptr = offset;
@@ -1286,11 +1294,23 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
             b->charset_state.p = q;
             ch = b->charset_state.decode_func(&b->charset_state);
         }
-        if (ch == '\n' && b->eol_type == EOL_DOS && offset >= char_size) {
-            eb_read(b, offset - char_size, buf, char_size);
-            b->charset_state.p = buf;
-            if (b->charset_state.decode_func(&b->charset_state) == '\r')
-                offset -= char_size;
+        if (ch == '\r') {
+            if (b->eol_type == EOL_MAC) {
+                ch = '\n';
+            }
+        } else
+        if (ch == '\n') {
+            if (b->eol_type == EOL_DOS) {
+                if (offset >= char_size) {
+                    eb_read(b, offset - char_size, buf, char_size);
+                    b->charset_state.p = buf;
+                    if (b->charset_state.decode_func(&b->charset_state) == '\r')
+                        offset -= char_size;
+                }
+            } else
+            if (b->eol_type == EOL_MAC) {
+                ch = '\r';
+            }
         }
     }
  the_end:

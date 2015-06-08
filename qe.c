@@ -2166,6 +2166,13 @@ void do_what_cursor_position(EditState *s)
             c2 = 0;
             offset2 = offset1;
         }
+        if (s->b->eol_type == EOL_MAC) {
+            if (c == '\r')
+                c = '\n';
+            else
+            if (c == '\n')
+                c = '\r';
+        }
         buf_puts(out, "char:");
         if (c < 32 || c == 127) {
             buf_printf(out, " ^%c", (c + '@') & 127);
@@ -3606,6 +3613,8 @@ int text_display(EditState *s, DisplayState *ds, int offset)
             /* XXX: use embedding level for all cases ? */
             /* CG: should query screen or window about display methods */
             if ((c < ' ' && c != '\t') || c == 127) {
+                if (c == '\r' && s->b->eol_type == EOL_MAC)
+                    c = '\n';
                 display_printf(ds, offset0, offset, "^%c", ('@' + c) & 127);
             } else
             if (c > MAX_UNICODE_DISPLAY) {
@@ -5769,6 +5778,7 @@ static int probe_mode(EditState *s, EditBuffer *b,
     probe_data.charset = charset;
     charset_decode_init(&probe_data.charset_state, charset, eol_type);
 
+    /* XXX: Should handle eol_type and transcode \r and \r\n */
     if (charset == &charset_utf8
     ||  charset == &charset_raw
     ||  charset == &charset_8859_1) {
