@@ -5,12 +5,6 @@
 
 * Needed for release version 5
 
-** test /Users/ogu/Applications/AirspaceApps/CyberScienceMotion.app/Contents/Data/Managed/etc/mono/1.0/DefaultWsdlHelpGenerator.aspx
-** crash on tests/dartIdl.json (overlong line)
-** crash on /Users/ogu/comp/lang/pike/pike/refdoc/template.xsl
-   
-** new flavor for GoogleClosureCompiler
-
 ** basic: indent-rigidly
 ** basic: minibuffer completion -> bad return on C-x C-f . SPC qe SPC RET
 ** basic: scripting
@@ -210,7 +204,6 @@ insert_window_left()  deletes some left-most windows
 
 ** outline styles
 ** implement hide / show regions
-** markdown-mode (.mkd files, different syntax)
 
 * C mode
 
@@ -342,8 +335,8 @@ insert_window_left()  deletes some left-most windows
 *** ruby-mode ->
 *** scheme-mode ->
 *** sh-mode -> shell script files
-Handle here documents
-Handle multiline strings
+*** sh-mode -> Handle here documents
+*** sh-mode -> Handle multiline strings
 *** sql-mode ->
 *** vbasic-mode -> Visual Basic.
 *** css-mode -> CSS files.
@@ -429,4 +422,17 @@ Handle multiline strings
 *** xslt-mode ->
 ** DONE dos/mac translation modes
 
-* Ideas from other emacsen
+* Ideas from other editors
+
+** <enter> to exit browse mode
+** prevent edit in browse mode
+** dynamic project based settings, include, exclude patterns...
+** electric-c-mode
+** http request with headings
+** save file to non existent path -> create path.
+** dired view with outline and expand/collapse
+** dired view with generalized file matcher
+** open file with fuzzy search
+** execute command with fuzzy search
+** find-file: gist:snippet
+** new flavor for GoogleClosureCompiler
