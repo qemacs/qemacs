@@ -130,13 +130,18 @@ static const char csharp_types[] = {
 };
 
 static const char java_keywords[] = {
-    "abstract|assert|break|case|catch|class|const|continue|"
-    "default|do|else|extends|false|final|finally|for|function|"
-    "if|implements|import|in|instanceof|interface|native|new|null|"
+    /* language keywords */
+    "abstract|assert||break|case|catch|class|const|continue|"
+    "default|do|else|enum|extends|final|finally|for|goto|"
+    "if|implements|import|instanceof|interface|native|new|"
     "package|private|protected|public|return|"
-    "static|super|switch|synchronized|"
-    "this|throw|throws|transient|true|try|var|while|with|"
+    "static|strictfp|super|switch|synchronized|"
+    "this|throw|throws|transient|try|volatile|while|"
+    /* boolean and null literals */
+    "false|null|true|"
+    /* other stuff */
     "@Override|@SuppressWarnings|@Deprecated|"
+    //"function|in|instanceof|var|with|"
 };
 
 static const char java_types[] = {
