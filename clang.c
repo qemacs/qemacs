@@ -33,6 +33,7 @@ enum {
     CLANG_JS,
     CLANG_AS,
     CLANG_JAVA,
+    CLANG_SCALA,
     CLANG_PHP,
     CLANG_GO,
     CLANG_D,
@@ -148,6 +149,24 @@ static const char java_types[] = {
     "boolean|byte|char|double|float|int|long|short|void|"
     "String|Object|List|Set|Exception|Thread|Class|HashMap|Integer|"
     "Collection|Block|"
+};
+
+static const char scala_keywords[] = {
+    /* language keywords */
+    "abstract|case|catch|class|def|do|else|extends|final|"
+    "finally|for|forSome|if|implicit|import|lazy|match|new|"
+    "object|override|package|private|protected|return|sealed|super|this|throw|"
+    "trait|try|type|val|var|while|with|yield|"
+    /* boolean and null literals */
+    "false|null|true|_|"
+    /* other stuff */
+    "@serializable|@suspendable|@specialized|@inline|@deprecated|@tailrec|"
+};
+
+static const char scala_types[] = {
+    /* all identifiers starting with an uppercase letter are types */
+    //"Boolean|Byte|Char|Double|Float|Int|Integer|Long|Short|String|Unit|"
+    //"Comparable|Iterator|Iterable|List|Object|Nothing|Any|Set|"
 };
 
 static const char css_keywords[] = {
@@ -563,6 +582,7 @@ enum {
     IN_C_STRING     = 0x04,  /* double-quoted string */
     IN_C_STRING_Q   = 0x08,  /* single-quoted string */
     IN_C_STRING_BQ  = 0x10,  /* back-quoted string (go's multi-line string) */
+                             /* """ multiline quoted string (dart, scala) */
     IN_C_PREPROCESS = 0x20,  /* preprocessor directive with \ at EOL */
     IN_C_REGEX      = 0x40,  /* regex */
     IN_C_CHARCLASS  = 0x80,  /* regex char class */
@@ -608,6 +628,9 @@ static void c_colorize_line(QEColorizeContext *cp,
             goto parse_string;
         if (state & IN_C_STRING_Q)
             goto parse_string_q;
+        if ((state & IN_C_STRING_BQ)
+        &&  (flavor == CLANG_SCALA || flavor == CLANG_DART))
+            goto parse_string3;
         if (state & IN_C_STRING_BQ)
             goto parse_string_bq;
         if (state & IN_C_REGEX) {
@@ -624,6 +647,7 @@ static void c_colorize_line(QEColorizeContext *cp,
         case '/':
             if (str[i] == '*') {
                 /* normal comment */
+                /* XXX: support nested comments for Scala */
                 i++;
             parse_comment:
                 style = C_STYLE_COMMENT;
@@ -783,6 +807,16 @@ static void c_colorize_line(QEColorizeContext *cp,
             delim = '\'';
             goto string;
         case '`':
+            if (flavor == CLANG_SCALA) {
+                /* scala quoted identifier */
+                while (i < n) {
+                    c = str[i++];
+                    if (c == '`')
+                        break;
+                }
+                SET_COLOR(str, start, i, C_STYLE_VARIABLE);
+                continue;
+            }
             if (flavor == CLANG_GO || flavor == CLANG_D) {
                 /* go language multi-line string, no escape sequences */
             parse_string_bq:
@@ -830,12 +864,33 @@ static void c_colorize_line(QEColorizeContext *cp,
             goto normal;
 
         case '\"':      /* string literal */
+            if ((flavor == CLANG_SCALA || flavor == CLANG_DART)
+            &&  (str[i] == '\"' && str[i + 1] == '\"')) {
+                /* multiline """ quoted string */
+                i += 2;
+                state |= IN_C_STRING_BQ;
+                style1 = C_STYLE_STRING;
+            parse_string3:
+                while (i < n) {
+                    c = str[i++];
+                    if (c == '\\') {
+                        if (i < n)
+                            i++;
+                    } else
+                    if (c == '\"' && str[i] == '\"' && str[i + 1] == '\"') {
+                        state &= ~IN_C_STRING_BQ;
+                        style = style0;
+                        break;
+                    }
+                }
+                SET_COLOR(str, start, i, style1);
+                continue;
+            }
         parse_string:
             state |= IN_C_STRING;
             style1 = C_STYLE_STRING;
             delim = '\"';
         string:
-            // XXX: should handle triple quoted strings (Dart)
             style = style1;
             while (i < n) {
                 c = str[i++];
@@ -880,9 +935,12 @@ static void c_colorize_line(QEColorizeContext *cp,
                 break;
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
-                /* XXX: D lang ignores embedded '_' and accepts 'l'
-                 * 'u' or 'U' 'f' or 'F', 'i' suffixes */
-                while (qe_isalnum(str[i]) || str[i] == '.') {
+                /* XXX: D ignores embedded '_' and accepts l,u,U,f,F,i suffixes */
+                /* XXX: Java accepts 0b prefix for binary literals,
+                 * ignores '_' between digits and accepts 'l' or 'L' suffixes */
+                /* scala ignores '_' in integers */
+                /* XXX: should parse decimal and hex floating point syntaxes */
+                while (qe_isalnum_(str[i]) || str[i] == '.') {
                     i++;
                 }
                 SET_COLOR(str, start, i, C_STYLE_NUMBER);
@@ -914,6 +972,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 ||   ((mode_flags & CLANG_CC) && strfind(c_types, kbuf))
                 ||   (((mode_flags & CLANG_CC) || (flavor == CLANG_D)) &&
                      strend(kbuf, "_t", NULL))
+                ||   (flavor == CLANG_SCALA && qe_isupper(kbuf[0]))
                 ||   (flavor == CLANG_HAXE && qe_isupper(kbuf[0]) &&
                      qe_islower(kbuf[1]) && 
                      (start == 0 || !qe_findchar("(", str[start - 1]))))) {
@@ -1706,6 +1765,18 @@ ModeDef java_mode = {
     .fallback = &c_mode,
 };
 
+ModeDef scala_mode = {
+    .name = "Scala",
+    .extensions = "scala|sbt",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_SCALA,
+    .keywords = scala_keywords,
+    .types = scala_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 ModeDef php_mode = {
     .name = "PHP",
     .colorize_func = c_colorize_line,
@@ -2050,6 +2121,7 @@ static int c_init(void)
     qe_register_mode(&js_mode, MODEF_SYNTAX);
     qe_register_mode(&as_mode, MODEF_SYNTAX);
     qe_register_mode(&java_mode, MODEF_SYNTAX);
+    qe_register_mode(&scala_mode, MODEF_SYNTAX);
     qe_register_mode(&php_mode, MODEF_SYNTAX);
     qe_register_mode(&go_mode, MODEF_SYNTAX);
     qe_register_mode(&d_mode, MODEF_SYNTAX);

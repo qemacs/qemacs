@@ -1990,6 +1990,7 @@ extern ModeDef c_mode;
 extern ModeDef cpp_mode;
 extern ModeDef js_mode;
 extern ModeDef java_mode;
+extern ModeDef scala_mode;
 extern ModeDef php_mode;
 extern ModeDef csharp_mode;
 extern ModeDef css_mode;
