@@ -3763,7 +3763,7 @@ static int emf_init(void)
 
 /*---------------- AGENA script coloring ----------------*/
 
-#define AGN_SHORTSTRINGDELIM " ,~[]{}();:#'=?&%$\xA7\"!^@<>|\r\n\t"
+#define AGN_SHORTSTRINGDELIM " ,~[]{}();:#'=?&%$\xA7\\!^@<>|\r\n\t"
 
 enum {
     IN_AGENA_COMMENT = 0x01,
@@ -3783,26 +3783,40 @@ enum {
 };
 
 static char const agena_keywords[] = {
+    /* abs alias and antilo2 antilog10 arccos arcsec arcsin arctan as
+    assigned atendof bea bottom break by bye case catch char cis clear cls
+    conjugate copy cos cosh cosxx create dec delete dict div do downto
+    duplicate elif else end entier enum esac even exchange exp fail false fi
+    filled first finite flip for from global if imag import in inc infinity
+    insert int intersect into is join keys last left ln lngamma local lower
+    minus mul nan nand nargs nor not numeric od of onsuccess or pop proc
+    qmdev qsadd real redo reg relaunch replace restart return right rotate
+    sadd seq shift sign signum sin sinc sinh size skip smul split sqrt
+    subset tan tanh then to top trim true try type typeof unassigned
+    undefined union unique until upper values when while xor xsubset
+    yrt */
+
     /* keywords */
     "|alias|as|bottom|break|by|case|catch|clear|cls|create|dec|delete"
     "|dict|div|do|duplicate|elif|else|end|enum|epocs|esac|external|exchange"
-    "|fi|for|from|if|import|inc|insert|into|keys"
-    "|lightuserdata|mul|nargs|od|of|onsuccess|pop|proc"
-    "|quit|redo|reg|relaunch|return|rotate|scope|seq"
-    "|skip|then|thread|try|to|top|try|until|userdata|varargs"
-    "|when|while|yrt|and|fail|nand|nor|not|or|subset|xor|xsubset"
-    "|in|is|union|intersect|readlib"
+    "|fi|for|from|if|import|inc|insert|into|is|keys|mul|nargs"
+    "|od|of|onsuccess|pop|proc|quit|redo|reg|relaunch|return|rotate"
+    "|scope|seq|skip|then|try|to|top|try|until|varargs"
+    "|when|while|yrt"
+    "|readlib"
     /* constants */
     "|infinity|nan|I"
     /* operators */
-    "|split|assigned|unassigned|size|type"
-    "|typeof|atendof|left|right|filled|finite"
+    "|or|xor|nor|and|nand|in|subset|xsubset|union|minus|intersect|atendof"
+    "|split|shift|not"
+    "|assigned|unassigned|size|type|typeof|left|right|filled|finite"
     "|"
 };
 
 static char const agena_types[] = {
-    "|global|local|boolean|char|complex|float|number|pair|procedure"
-    "|register|sequence|set|string|table|undefined|true|false|fail|null"
+    "|boolean|complex|lightuserdata|null|number|pair|register|procedure"
+    "|sequence|set|string|table|thread|userdata"
+    "|global|local|char|float|undefined|true|false|fail"
     "|"
 };
 
@@ -3901,7 +3915,7 @@ static void agena_colorize_line(QEColorizeContext *cp,
                     if (qe_findchar("+-", str[i]))
                         i++;
                 }
-                while (qe_isalnum_(str[i]))
+                while (qe_isalnum(str[i]))
                     i++;
                 style = AGENA_STYLE_NUMBER;
                 break;
