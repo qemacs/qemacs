@@ -66,7 +66,7 @@ static CompressType compress_type_array[] = {
     { "XZ", NULL, 0, "xz", "unxz -c $1", "xz > $1" },
     { "BinHex", NULL, 0, "hqx", "binhex decode -o /tmp/qe-$$ $1 && "
                        "cat /tmp/qe-$$ ; rm -f /tmp/qe-$$", NULL },
-    { "sqlite", "SQLite format 3\0", 16, "xdb|rdb|db", "sqlite3 $1 .dump", NULL },
+    { "sqlite", "SQLite format 3\0", 16, NULL, "sqlite3 $1 .dump", NULL },
     { "bplist", "bplist00", 8, "plist", "plutil -p $1", NULL },
 //    { "bplist", "bplist00", 8, "plist", "plutil -convert xml1 -o - $1", NULL },
 };
