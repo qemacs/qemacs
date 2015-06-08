@@ -29,6 +29,7 @@ enum {
     CLANG_CSHARP,
     CLANG_AWK,
     CLANG_CSS,
+    CLANG_JSON,
     CLANG_JS,
     CLANG_AS,
     CLANG_JAVA,
@@ -1635,9 +1636,38 @@ ModeDef css_mode = {
     .fallback = &c_mode,
 };
 
+static int json_mode_probe(ModeDef *mode, ModeProbeData *pd)
+{
+    const char *p = cs8(pd->buf);
+
+    if (match_extension(pd->filename, mode->extensions))
+        return 80;
+
+    if (*p == '{' && p[1] == '\n') {
+        while (qe_isspace((unsigned char)*++p))
+            continue;
+        if (*p == '\"')
+            return 50;
+    }
+    return 1;
+}
+
+ModeDef json_mode = {
+    .name = "json",
+    .extensions = "json",
+    .mode_probe = json_mode_probe,
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_JSON,
+    .keywords = js_keywords,
+    .types = js_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 ModeDef js_mode = {
     .name = "Javascript",
-    .extensions = "js|json",
+    .extensions = "js",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_JS | CLANG_REGEX,
     .keywords = js_keywords,
@@ -2011,6 +2041,7 @@ static int c_init(void)
     qe_register_mode(&csharp_mode, MODEF_SYNTAX);
     qe_register_mode(&awk_mode, MODEF_SYNTAX);
     qe_register_mode(&css_mode, MODEF_SYNTAX);
+    qe_register_mode(&json_mode, MODEF_SYNTAX);
     qe_register_mode(&js_mode, MODEF_SYNTAX);
     qe_register_mode(&as_mode, MODEF_SYNTAX);
     qe_register_mode(&java_mode, MODEF_SYNTAX);
