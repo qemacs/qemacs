@@ -118,7 +118,7 @@ OBJS+= charsetjis.o charsetmore.o
 
 ifdef CONFIG_ALL_MODES
   OBJS+= unihex.o bufed.o clang.o xml.o htmlsrc.o forth.o arm.o \
-         lisp.o makemode.o markdown.o orgmode.o perl.o rust.o script.o extra-modes.o
+         lisp.o makemode.o markdown.o orgmode.o perl.o script.o extra-modes.o
   ifndef CONFIG_WIN32
     OBJS+= shell.o dired.o latex-mode.o archive.o
   endif
@@ -236,7 +236,7 @@ $(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(OBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(OBJS_DIR)/clang.o: clang.c swift.c
+$(OBJS_DIR)/clang.o: clang.c rust.c swift.c
 
 $(TOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(TOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
