@@ -20,6 +20,7 @@
  */
 
 #include "qe.h"
+#include "variables.h"
 
 #include <grp.h>
 #include <pwd.h>
@@ -56,6 +57,11 @@ static time_t curtime;
 static enum time_format time_format;
 
 static int dired_signature;
+
+static int dired_show_dot_files = 1;
+#ifdef CONFIG_DARWIN
+static int dired_show_ds_store = 0;
+#endif
 
 typedef struct DiredState {
     void *signature;
@@ -753,6 +759,13 @@ static void dired_build_list(EditState *s, const char *path,
         if (strequal(p, ".") || strequal(p, ".."))
             continue;
 #endif
+        if (!dired_show_dot_files && *p == '.')
+            continue;
+
+#ifdef CONFIG_DARWIN
+        if (!dired_show_ds_store && strequal(p, ".DS_Store"))
+            continue;
+#endif
         pstrcpy(line, sizeof(line), p);
         if (S_ISDIR(st.st_mode)) {
             ds->ndirs++;
@@ -871,7 +884,8 @@ static void dired_view_file(EditState *s, const char *filename)
     if (e) {
         do_find_file(e, filename);
         /* disable wrapping to get nicer display */
-        e->wrap = WRAP_TRUNCATE;
+        /* XXX: should wrap lines unless window is narrow */
+        //e->wrap = WRAP_TRUNCATE;
         b = e->b;
         if (!b) {
             b = eb_new("*scratch*", BF_SAVELOG | BF_UTF8);
@@ -1023,18 +1037,17 @@ static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
 static void dired_colorize_line(QEColorizeContext *cp,
                                 unsigned int *str, int n, ModeDef *syn)
 {
-    const unsigned int *p;
     int i = 0, start = i, style;
 
-    if (ustrstart(str + start, "  Directory of ", &p)) {
-        i = p - (str + start);
+    if (ustrstart(str + start, "  Directory of ", &i)) {
+        i += start;
         SET_COLOR(str, start, i, DIRED_STYLE_HEADER);
         style = DIRED_STYLE_DIRECTORY;
         start = i;
         i = n;
         SET_COLOR(str, start, i, style);
     } else
-    if (n >= 6 && ustrstart(str + n - 6, " bytes", &p)) {
+    if (n >= 6 && ustrstart(str + n - 6, " bytes", NULL)) {
         style = DIRED_STYLE_HEADER;
         i = n;
         SET_COLOR(str, start, i, style);
@@ -1157,6 +1170,13 @@ static CmdDef dired_global_commands[] = {
     CMD_DEF_END,
 };
 
+static VarDef dired_variables[] = {
+    G_VAR( "dired-show-dot-files", dired_show_dot_files, VAR_NUMBER, VAR_RW )
+#ifdef CONFIG_DARWIN
+    G_VAR( "dired-show-ds-store", dired_show_ds_store, VAR_NUMBER, VAR_RW )
+#endif
+};
+
 static int dired_init(void)
 {
     /* inherit from list mode */
@@ -1172,6 +1192,7 @@ static int dired_init(void)
     /* first register mode */
     qe_register_mode(&dired_mode, /* MODEF_DATATYPE | */ MODEF_MAJOR | MODEF_VIEW);
 
+    qe_register_variables(dired_variables, countof(dired_variables));
     qe_register_cmd_table(dired_commands, &dired_mode);
     qe_register_cmd_table(dired_global_commands, NULL);
 

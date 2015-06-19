@@ -60,8 +60,8 @@ typedef struct VarDef {
 
 #define U_VAR(name, type) \
     { (name), VAR_SELF, type, VAR_RW, 0, { .num = 0 }, NULL },
-#define G_VAR(name,ptr,type,rw) \
-    { (name), VAR_GLOBAL, type, rw, 0, { (void*)&(ptr) }, NULL },
+#define G_VAR(name,var,type,rw) \
+    { (name), VAR_GLOBAL, type, rw, 0, { .ptr = (void*)&(var) }, NULL },
 #define S_VAR(name,fld,type,rw) \
     { (name), VAR_STATE, type, rw, sizeof(((QEmacsState*)0)->fld), { .offset = offsetof(QEmacsState, fld) }, NULL },
 #define B_VAR(name,fld,type,rw) \
