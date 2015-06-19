@@ -336,10 +336,8 @@ const void *memstr(const void *buf, int size, const char *str);
 int stristart(const char *str, const char *val, const char **ptr);
 int strxstart(const char *str, const char *val, const char **ptr);
 int strxcmp(const char *str1, const char *str2);
-int ustrstart(const unsigned int *str, const char *val,
-              const unsigned int **pp);
-int ustristart(const unsigned int *str, const char *val,
-               const unsigned int **pp);
+int ustrstart(const unsigned int *str, const char *val, int *lenp);
+int ustristart(const unsigned int *str, const char *val, int *lenp);
 const unsigned int *ustrstr(const unsigned int *str, const char *val);
 const unsigned int *ustristr(const unsigned int *str, const char *val);
 static inline unsigned int *umemmove(unsigned int *dest,

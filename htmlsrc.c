@@ -85,11 +85,12 @@ enum {
 static int htmlsrc_tag_match(const unsigned int *buf, int i, const char *str,
                              int *iend)
 {
-    const unsigned int *p;
+    int len;
 
-    if (ustristart(buf + i, str, &p) && *p != '-' && !qe_isalnum_(*p)) {
+    if (ustristart(buf + i, str, &len)
+    &&  buf[i + len] != '-' && !qe_isalnum_(buf[i + len])) {
         if (iend)
-            *iend = p - buf;
+            *iend = i + len;
         return 1;
     } else {
         return 0;

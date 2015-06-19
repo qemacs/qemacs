@@ -65,11 +65,10 @@ static int OrgBulletStyles[BULLET_STYLES] = {
 
 static int org_todo_keyword(const unsigned int *str)
 {
-    const unsigned int *p;
-    int kw;
+    int kw, len;
 
     for (kw = 0; kw < countof(OrgTodoKeywords); kw++) {
-        if (ustrstart(str, OrgTodoKeywords[kw].keyword, &p) && *p == ' ')
+        if (ustrstart(str, OrgTodoKeywords[kw].keyword, &len) && str[len] == ' ')
             return kw;
     }
     return -1;

@@ -864,16 +864,17 @@ int strxcmp(const char *str1, const char *str2)
     return 0;
 }
 
-int ustrstart(const unsigned int *str, const char *val,
-              const unsigned int **pp)
+int ustrstart(const unsigned int *str0, const char *val, int *lenp)
 {
+    const unsigned int *str = str0;
+
     for (; *val != '\0'; val++, str++) {
         /* assuming val is ASCII or Latin1 */
         if (*str != *val)
             return 0;
     }
-    if (pp)
-        *pp = str;
+    if (lenp)
+        *lenp = str - str0;
     return 1;
 }
 
@@ -888,16 +889,17 @@ const unsigned int *ustrstr(const unsigned int *str, const char *val)
     return NULL;
 }
 
-int ustristart(const unsigned int *str, const char *val,
-               const unsigned int **pp)
+int ustristart(const unsigned int *str0, const char *val, int *lenp)
 {
+    const unsigned int *str = str0;
+
     for (; *val != '\0'; val++, str++) {
         /* assuming val is ASCII or Latin1 */
         if (qe_toupper(*str) != qe_toupper(*val))
             return 0;
     }
-    if (pp)
-        *pp = str;
+    if (lenp)
+        *lenp = str - str0;
     return 1;
 }
 
