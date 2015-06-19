@@ -90,6 +90,21 @@ static int generic_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
+ModeDef *qe_find_mode(const char *name, int flags)
+{
+    QEmacsState *qs = &qe_state;
+    ModeDef *m;
+
+    for (m = qs->first_mode; m; m = m->next) {
+        if ((m->flags & flags) == flags) {
+            if ((m->name && !strcasecmp(m->name, name))
+            ||  (m->mode_name && !strcasecmp(m->mode_name, name)))
+                break;
+        }
+    }
+    return m;
+}
+
 void qe_register_mode(ModeDef *m, int flags)
 {
     QEmacsState *qs = &qe_state;
@@ -181,18 +196,6 @@ void mode_completion(CompleteState *cp)
     for (m = qs->first_mode; m != NULL; m = m->next) {
         complete_test(cp, m->mode_name);
     }
-}
-
-static ModeDef *find_mode(const char *name)
-{
-    QEmacsState *qs = &qe_state;
-    ModeDef *m;
-
-    for (m = qs->first_mode; m != NULL; m = m->next) {
-        if (strequal(m->mode_name, name))
-            break;
-    }
-    return m;
 }
 
 /* commands handling */
@@ -1890,7 +1893,7 @@ void do_set_mode(EditState *s, const char *name)
     ModeDef *m;
 
     /* XXX: should check if mode is appropriate */
-    m = find_mode(name);
+    m = qe_find_mode(name, 0);
     if (m)
         edit_set_mode(s, m);
     else

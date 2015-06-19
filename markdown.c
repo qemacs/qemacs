@@ -49,26 +49,12 @@ enum {
     IN_MKD_HTML_BLOCK   = 0x8000,
     IN_MKD_HTML_COMMENT = 0xC000,
     MKD_LANG_SHIFT      = 11,
-    MKD_LANG_MAX        = 16,
+    MKD_LANG_MAX        = (IN_MKD_BLOCK >> MKD_LANG_SHIFT),
     MKD_LEVEL_SHIFT     = 8,
     MKD_LEVEL_MAX       = 7,
 };
 
-ModeDef *mkd_lang_def[MKD_LANG_MAX - 1] = {
-    NULL,
-    &js_mode,
-    &java_mode,
-    &scala_mode,
-    &php_mode,
-    &csharp_mode,
-    &python_mode,
-    &ruby_mode,
-    &haskell_mode,
-    &lua_mode,
-    &swift_mode,
-    &cpp_mode,
-    &c_mode,
-};
+ModeDef *mkd_lang_def[MKD_LANG_MAX + 1];
 
 #define MKD_BULLET_STYLES  4
 static int MkdBulletStyles[MKD_BULLET_STYLES] = {
@@ -127,27 +113,6 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         return;
     }
 
-    if (colstate & IN_MKD_HTML_BLOCK) {
-        if (str[i] != '<' && str[i] != '\0' && !qe_isblank(str[i])) {
-            /* formating error, exit html block */
-            colstate = 0;
-        }
-    }
-
-    if ((colstate & IN_MKD_HTML_BLOCK)
-    ||  (str[i] == '<' && str[i + 1] != '/')) {
-        /* block level HTML markup */
-        colstate &= ~IN_MKD_HTML_BLOCK;
-        cp->colorize_state = colstate;
-        htmlsrc_mode.colorize_func(cp, str, n, &htmlsrc_mode);
-        colstate = cp->colorize_state;
-        colstate |= IN_MKD_HTML_BLOCK;
-        if ((str[i] & CHAR_MASK) == '<' && (str[i + 1] & CHAR_MASK) == '/')
-            colstate = 0;
-        cp->colorize_state = colstate;
-        return;
-    }
-
     if (str[i] == '>') {
         if (str[++i] == ' ')
             i++;
@@ -167,7 +132,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
 
             cp->colorize_state = colstate & IN_MKD_LANG_STATE;
 
-            if (lang < countof(mkd_lang_def) && mkd_lang_def[lang]) {
+            if (mkd_lang_def[lang]) {
                 mkd_lang_def[lang]->colorize_func(cp, str + i, n - i, mkd_lang_def[lang]);
             } else {
                 SET_COLOR(str, i, n, MKD_STYLE_CODE);
@@ -176,6 +141,27 @@ static void mkd_colorize_line(QEColorizeContext *cp,
             colstate &= ~IN_MKD_LANG_STATE;
             colstate |= cp->colorize_state & IN_MKD_LANG_STATE;
         }
+        cp->colorize_state = colstate;
+        return;
+    }
+
+    if (colstate & IN_MKD_HTML_BLOCK) {
+        if (i < n && str[i] != '<' && !qe_isblank(str[i])) {
+            /* formating error, exit html block */
+            colstate = 0;
+        }
+    }
+
+    if ((colstate & IN_MKD_HTML_BLOCK)
+    ||  (str[i] == '<' && (str[i + 1] == '!' || str[i + 1] == '?' || qe_isalpha(str[i + 1])))) {
+        /* block level HTML markup */
+        colstate &= ~IN_MKD_HTML_BLOCK;
+        cp->colorize_state = colstate;
+        htmlsrc_mode.colorize_func(cp, str, n, &htmlsrc_mode);
+        colstate = cp->colorize_state;
+        colstate |= IN_MKD_HTML_BLOCK;
+        if ((str[i] & CHAR_MASK) == '<' && (str[i + 1] & CHAR_MASK) == '/')
+            colstate = 0;
         cp->colorize_state = colstate;
         return;
     }
@@ -218,15 +204,25 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     if (ustrstart(str + i, "~~~", NULL)
     ||  ustrstart(str + i, "```", NULL)) {
         /* verbatim block */
-        int lang;
+        char lang_name[16];
+        int lang = MKD_LANG_MAX, len;
+        ModeDef *m;
 
         colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG_STATE);
-        for (j = i + 3; qe_isspace(str[j]); j++)
+        for (i += 3; qe_isspace(str[i]); i++)
             continue;
-        for (lang = 1; lang < countof(mkd_lang_def); lang++) {
-            if (mkd_lang_def[lang]
-            &&  ustristart(str + j, mkd_lang_def[lang]->name, NULL))
-                break;
+        for (len = 0; i < n && qe_isalnum_(str[i]); i++) {
+            if (len < countof(lang_name) - 1)
+                lang_name[len++] = str[i];
+        }
+        lang_name[len] = '\0';
+        if (len > 0 && (m = qe_find_mode(lang_name, MODEF_SYNTAX)) != NULL) {
+            for (lang = 1; lang < MKD_LANG_MAX; lang++) {
+                if (mkd_lang_def[lang] == NULL)
+                    mkd_lang_def[lang] = m;
+                if (mkd_lang_def[lang] == m)
+                    break;
+            }
         }
         colstate |= lang << MKD_LANG_SHIFT;
         i = n;

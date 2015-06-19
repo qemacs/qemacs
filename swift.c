@@ -328,7 +328,7 @@ static const char swift_types[] = {
     "CChar32|CFloat|CDouble|"
 };
 
-ModeDef swift_mode = {
+static ModeDef swift_mode = {
     .name = "Swift",
     .extensions = "swift",
     .shell_handlers = "swift",

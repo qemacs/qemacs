@@ -1753,7 +1753,7 @@ ModeDef as_mode = {
     .fallback = &c_mode,
 };
 
-ModeDef java_mode = {
+static ModeDef java_mode = {
     .name = "Java",
     .extensions = "jav|java",
     .colorize_func = c_colorize_line,
@@ -1765,7 +1765,7 @@ ModeDef java_mode = {
     .fallback = &c_mode,
 };
 
-ModeDef scala_mode = {
+static ModeDef scala_mode = {
     .name = "Scala",
     .extensions = "scala|sbt",
     .colorize_func = c_colorize_line,

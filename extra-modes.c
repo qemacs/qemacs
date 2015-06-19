@@ -1708,7 +1708,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-ModeDef lua_mode = {
+static ModeDef lua_mode = {
     .name = "Lua",
     .extensions = "lua",
     .shell_handlers = "lua",
@@ -2183,7 +2183,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-ModeDef haskell_mode = {
+static ModeDef haskell_mode = {
     .name = "Haskell",
     .extensions = "hs|haskell",
     .shell_handlers = "haskell",
@@ -2401,7 +2401,7 @@ static void python_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-ModeDef python_mode = {
+static ModeDef python_mode = {
     .name = "Python",
     .extensions = "py|pyt",
     .shell_handlers = "python|python2.6|python2.7",
@@ -2882,7 +2882,7 @@ static int ruby_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-ModeDef ruby_mode = {
+static ModeDef ruby_mode = {
     .name = "Ruby",
     .extensions = "rb|gemspec",
     .keywords = ruby_keywords,

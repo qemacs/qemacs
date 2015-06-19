@@ -1510,6 +1510,7 @@ typedef struct CmdDef {
 #define CMD_DEF_END \
     { 0, 0, NULL, { NULL }, CMD_void, 0 }
 
+ModeDef *qe_find_mode(const char *name, int flags);
 void qe_register_mode(ModeDef *m, int flags);
 void mode_completion(CompleteState *cp);
 void qe_register_cmd_table(CmdDef *cmds, ModeDef *m);
@@ -1987,18 +1988,11 @@ void do_dired(EditState *s);
 extern ModeDef c_mode;
 extern ModeDef cpp_mode;
 extern ModeDef js_mode;
-extern ModeDef java_mode;
-extern ModeDef scala_mode;
 extern ModeDef php_mode;
 extern ModeDef csharp_mode;
 extern ModeDef css_mode;
-extern ModeDef swift_mode;
 extern ModeDef xml_mode;
 extern ModeDef htmlsrc_mode;
-extern ModeDef lua_mode;
-extern ModeDef haskell_mode;
-extern ModeDef python_mode;
-extern ModeDef ruby_mode;
 
 /* html.c */
 
