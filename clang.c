@@ -55,9 +55,10 @@ enum {
     CLANG_CSL,  /* Peter Koch's CSL C Scripting Language */
     CLANG_NEKO,
     CLANG_NML,
-    CLANG_SWIFT,
     CLANG_ALLOY,
     CLANG_SCILAB,
+    CLANG_RUST,
+    CLANG_SWIFT,
     CLANG_FLAVOR = 0x3F,
 };
 
@@ -532,15 +533,20 @@ static int get_c_identifier(char *buf, int buf_size, unsigned int *p,
 
     i = j = 0;
     c = p[i] & CHAR_MASK;
-    if (qe_isalpha_(c) || c == '$' || (c == '@' && flavor != CLANG_PIKE)) {
+    if (qe_isalpha_(c)
+    ||  c == '$'
+    ||  (c == '@' && flavor != CLANG_PIKE)
+    ||  (flavor == CLANG_RUST && c >= 128)) {
         for (;;) {
             if (j < buf_size - 1)
-                buf[j++] = c;
+                buf[j++] = (c < 0xFF) ? c : 0xFF;
             i++;
             c = p[i] & CHAR_MASK;
             if (c == '-' && flavor == CLANG_CSS)
                 continue;
             if (qe_isalnum_(c))
+                continue;
+            if (flavor == CLANG_RUST && c >= 128)
                 continue;
             if (c == ':' && (p[i + 1] & CHAR_MASK) == ':'
             &&  flavor == CLANG_CPP
@@ -974,8 +980,8 @@ static void c_colorize_line(QEColorizeContext *cp,
                      strend(kbuf, "_t", NULL))
                 ||   (flavor == CLANG_SCALA && qe_isupper(kbuf[0]))
                 ||   (flavor == CLANG_HAXE && qe_isupper(kbuf[0]) &&
-                     qe_islower(kbuf[1]) && 
-                     (start == 0 || !qe_findchar("(", str[start - 1]))))) {
+                      qe_islower(kbuf[1]) && 
+                      (start == 0 || !qe_findchar("(", str[start - 1]))))) {
                     /* if not cast, assume type declaration */
                     if (str[i2] != ')') {
                         type_decl = 1;
@@ -988,7 +994,6 @@ static void c_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, start, i, style1);
                     continue;
                 }
-
                 if (str[i1] == '(') {
                     /* function call */
                     /* XXX: different styles for call and definition */
@@ -2097,6 +2102,7 @@ ModeDef scilab_mode = {
     .fallback = &c_mode,
 };
 
+#include "rust.c"
 #include "swift.c"
 
 static int c_init(void)
@@ -2145,6 +2151,7 @@ static int c_init(void)
     qe_register_mode(&nml_mode, MODEF_SYNTAX);
     qe_register_mode(&alloy_mode, MODEF_SYNTAX);
     qe_register_mode(&scilab_mode, MODEF_SYNTAX);
+    rust_init();
     swift_init();
 
     return 0;
