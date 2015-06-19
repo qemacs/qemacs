@@ -830,9 +830,8 @@ int tty_bg_colors_count = 16;
 unsigned int const *tty_fg_colors = tty_putty_colors;
 int tty_fg_colors_count = 16;
 
-static inline int color_dist(unsigned int c1, unsigned int c2)
-{
-
+static inline int color_dist(unsigned int c1, unsigned int c2) {
+    /* using casts because c1 and c2 are unsigned */
     return      abs((int)((c1 >>  0) & 0xff) - (int)((c2 >>  0) & 0xff)) +
             2 * abs((int)((c1 >>  8) & 0xff) - (int)((c2 >>  8) & 0xff)) +
                 abs((int)((c1 >> 16) & 0xff) - (int)((c2 >> 16) & 0xff));
