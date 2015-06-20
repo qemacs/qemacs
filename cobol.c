@@ -25,40 +25,36 @@
 #define COBOL_KEYWORD_SIZE  24
 
 static char const cobol_keywords[] = {
-    "|identification|procedure|data|division|program-id"
+    "|identification|procedure|data|division|program-id|author|file|linkage"
     "|section|working-storage|environment|configuration|input-output"
     "|source-computer|object-computer|special-names"
-    "|if|else|end-if|of|is|equal|less|greater|than|to|into|not|or|and"
+    "|date-written|date-compiled|file-control|i-o-control"
+    "|if|then|else|end-if|of|is|equal|less|greater|than|to|into|not|or|and"
     "|compute|end-compute|call|end-call|using|length|rounded"
-    "|move|set|up|down|address"
-    "|add|end-add|subtract|end-subtract"
-    "|multiply|end-multiply"
-    "|divide|by|giving|remainder|end-divide"
-    "|perform|end-perform|varying|from|until|thru|after"
-    "|on|size|error|exit|initialize|continue"
-    "|evaluate|when|other|end-evaluate"
-    "|display|at|line|column|plus|minus|with|highlight|lowlight"
-    "|background-color|foreground-color|reverse-video|blink"
-    "|with|no|advancing|upon|end-display"
-    "|function|end|program"
-    "|stop|run|returning"
-    "|filler|value|values|occurs|times|redefines"
+    "|move|set|up|down|address|add|end-add|subtract|end-subtract"
+    "|multiply|end-multiply|divide|by|giving|remainder|end-divide"
+    "|perform|end-perform|varying|from|until|thru|after|before|test"
+    "|exec|end-exec|on|size|error|exit|initialize|continue"
+    "|evaluate|when|other|end-evaluate|search"
+    "|display|at|line|column|col|plus|minus|with|highlight|lowlight"
+    "|screen|blank|erase|background-color|foreground-color|reverse-video|blink"
+    "|with|no|advancing|upon|end-display|eos"
+    "|function|end|program|stop|run|returning"
+    "|filler|value|values|occurs|times|redefines|indexed|auto"
     "|constant|as"
-    "|accept|end-accept"
-    "|goback|go|to|depending|on"
-    "|copy|inspect|replacing|converting|leading|trailing|to|tallying"
-    "|first|last|for|all|by"
+    "|accept|end-accept|goback|go|to|depending|on"
+    "|copy|inspect|replacing|converting|leading|trailing|to|tallying|"
+    "|first|last|for|all|by|characters|initial"
     "|string|end-string|unstring|end-unstring|delimited|by|into"
-    "|open|input|output"
-    "|close"
-    "|read|write"
+    "|open|input|output|close|read|write"
     "|select|assign|organization|line|sequential|status"
+    "|label|records|contains|are|record|block|recording|mode|standard"
     "|next|sentence"
     "|usage|any|length"
 };
 
 static char const cobol_types[] = {
-    "|fd|pic|zero|zeros|zeroes|space|spaces|true|false"
+    "|fd|pic|picture|zero|zeros|zeroes|space|spaces|true|false"
     //"|byteint|char|float|display-numeric"
     "|group|native|binary|pointer|binary-char|binary-long|unsigned"
     "|character|date|decimal|graphic|integer|numeric|smallint"
@@ -148,7 +144,7 @@ static void cobol_colorize_line(QEColorizeContext *cp,
         c = str[i++];
         switch (c) {
         case '*':
-            if ((i == 7 && heading == 6) || str[i] == '>') {
+            if ((i == 7 && heading == 6) || i == indent + 1 || str[i] == '>') {
                 i = n;
                 style = COBOL_STYLE_COMMENT;
                 break;
@@ -161,12 +157,14 @@ static void cobol_colorize_line(QEColorizeContext *cp,
             style = COBOL_STYLE_STRING;
             break;
         case '-':
+        case '+':
             if (qe_isdigit(str[i]) || (str[i] == '.' && qe_isdigit(str[i + 1])))
                 goto number;
             break;
         case '.':
             if (qe_isdigit(str[i]))
                 goto number;
+            style = COBOL_STYLE_KEYWORD;
             break;
         default:
             if (qe_isdigit(c)) {
