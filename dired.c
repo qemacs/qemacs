@@ -922,12 +922,25 @@ static void dired_refresh(EditState *s)
 {
     DiredState *ds;
     char target[MAX_FILENAME_SIZE];
+    char dirname[MAX_FILENAME_SIZE];
 
     if (!(ds = dired_get_state(s, 1)))
         return;
 
     dired_get_filename(s, target, sizeof(target), -1);
-    dired_build_list(s, ds->path, target);
+    pstrcpy(dirname, sizeof(dirname), ds->path);
+    dired_build_list(s, dirname, target);
+}
+
+static void dired_toggle_dot_files(EditState *s, int val)
+{
+    if (val == -1)
+        val = !dired_show_dot_files;
+    if (dired_show_dot_files != val) {
+        dired_show_dot_files = val;
+        dired_refresh(s);
+        put_status(s, "dot files are %s", val ? "visible" : "hidden");
+    }
 }
 
 static void dired_display_hook(EditState *s)
@@ -1150,6 +1163,8 @@ static CmdDef dired_commands[] = {
           "dired-previous-line", dired_up_down, -1)
     CMD0( 'r', KEY_NONE,
           "dired-refresh", dired_refresh)
+    CMD1( '.', KEY_NONE,
+          "dired-toggle-dot-files", dired_toggle_dot_files, -1)
     /* g -> refresh all expanded dirs ? */
     /* l -> relist single directory or marked files ? */
     CMD0( '^', KEY_LEFT,
