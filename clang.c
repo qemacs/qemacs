@@ -59,6 +59,7 @@ enum {
     CLANG_SCILAB,
     CLANG_RUST,
     CLANG_SWIFT,
+    CLANG_ICON,
     CLANG_FLAVOR = 0x3F,
 };
 
@@ -2104,6 +2105,7 @@ ModeDef scilab_mode = {
 
 #include "rust.c"
 #include "swift.c"
+#include "icon.c"
 
 static int c_init(void)
 {
@@ -2153,6 +2155,7 @@ static int c_init(void)
     qe_register_mode(&scilab_mode, MODEF_SYNTAX);
     rust_init();
     swift_init();
+    icon_init();
 
     return 0;
 }

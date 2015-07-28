@@ -237,7 +237,7 @@ $(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(OBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(OBJS_DIR)/clang.o: clang.c rust.c swift.c
+$(OBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c
 
 $(TOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(TOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
@@ -439,20 +439,19 @@ force:
 #
 # tar archive for distribution
 #
-FILES:=COPYING Changelog Makefile README TODO.org VERSION           \
-       arabic.c bufed.c buffer.c cfb.c cfb.h charset.c charsetjis.c \
-       charsetjis.def charsetmore.c clang.c config.eg config.h      \
-       configure cptoqe.c cutils.c cutils.h dired.c display.c       \
-       display.h docbook.c extras.c fbffonts.c fbfrender.c          \
-       fbfrender.h fbftoqe.c haiku.cpp haiku-pe2qe.sh hex.c html.c  \
-       html2png.c htmlsrc.c lisp.c                                  \
-       image.c indic.c input.c jistoqe.c kmap.c kmaptoqe.c          \
-       latex-mode.c libfbf.c libfbf.h ligtoqe.c list.c makemode.c   \
-       mpeg.c perl.c qe-doc.html qe-doc.texi qe.1 qe.c qe.h qe.tcc  \
-       qeconfig.h qeend.c qemacs.spec qestyles.h qfribidi.c         \
-       qfribidi.h script.c shell.c tty.c unicode_join.c unihex.c    \
-       unix.c util.c variables.c variables.h video.c win32.c x11.c  \
-       xml.c
+FILES:= .cvsignore COPYING Changelog Makefile README TODO.org VERSION \
+        arabic.c archive.c arm.c bufed.c buffer.c cfb.c cfb.h charset.c \
+        charsetjis.c charsetjis.def charsetmore.c clang.c cobol.c config.eg \
+        configure cptoqe.c cutils.c cutils.h dired.c display.c display.h \
+        docbook.c ebnf.c extra-modes.c extras.c fbfrender.c fbfrender.h \
+        fbftoqe.c forth.c haiku-pe2qe.sh haiku.cpp hex.c html.c html2png.c \
+        htmlsrc.c icon.c image.c indic.c input.c jistoqe.c kmap.c kmaptoqe.c \
+        latex-mode.c libfbf.c libfbf.h ligtoqe.c lisp.c list.c makemode.c \
+        markdown.c mpeg.c orgmode.c parser.c perl.c qe-doc.html qe-doc.texi \
+        qe.1 qe.c qe.h qe.tcc qeconfig.h qeend.c qemacs.spec qestyles.h \
+        qfribidi.c qfribidi.h rlang.c rust.c script.c shell.c swift.c tty.c \
+        unicode_join.c unifont.lig unihex.c unix.c util.c variables.c \
+        variables.h video.c win32.c x11.c xml.c
 
 FILES+=plugins/Makefile  plugins/my_plugin.c
 
