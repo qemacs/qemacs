@@ -93,7 +93,7 @@ static void r_colorize_line(QEColorizeContext *cp,
         case '%':
             for (j = i; qe_isalpha(str[j]); j++)
                 continue;
-            if (str[j] == '%') {
+            if (j > i && str[j] == '%') {
                 i = j + 1;
                 style = R_STYLE_KEYWORD;
                 break;
@@ -161,7 +161,7 @@ static void r_colorize_line(QEColorizeContext *cp,
                     style = R_STYLE_ARGDEF;
                     break;
                 }
-                if (str[j] == '=') {
+                if (str[j] == '=' && str[j + 1] != '=') {
                     style = R_STYLE_ARGNAME;
                     break;
                 }
@@ -185,11 +185,22 @@ static void r_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = colstate;
 }
 
+static int r_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    /* check file name or extension */
+    if (match_extension(p->filename, mode->extensions)
+    &&  !(p->buf[0] == '/' && p->buf[1] == '*'))
+        return 80;
+
+    return 1;
+}
+
 static ModeDef r_mode = {
     .name = "R",
     .extensions = "R",
     .keywords = r_keywords,
     .types = r_types,
+    .mode_probe = r_mode_probe,
     .colorize_func = r_colorize_line,
 };
 
