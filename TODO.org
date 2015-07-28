@@ -42,14 +42,13 @@
 ** shell: yank at shell prompt
 ** undo: undo should handle sequence of undo records upto tagged start.
 ** x11: handle X11 window manager close window event and exit cleanly
-** html: DONE fix scoring for xml / html / htmlsrc
+** html: merge xml / htmlsrc modes
 ** DONE basic: indent-region
 ** DONE basic: untabify-region, untabify-buffer
 ** DONE basic: indent on TAB according to indent-width and indent-with-tabs
 ** DONE c-mode: fix c-mode tab on line with excess indentation
 ** DONE c-mode: fix c indentation bug on lines with ternary operator
 ** DONE files: http / ftp / https protocols via wget -q -O - URL
-** DONE modes: fix set-auto-coding to detect multibyte charsets
 
 * Basic stuff
 
@@ -126,11 +125,6 @@
 ** auto-revert-mode, global-auto-revert-mode, auto-revert-tail-mode
 ** extend hex mode to support 16,32,64 words as little and big endian
 ** rectangular regions, cut/paste
-** DONE transpose-chars broken except at end of line
-** DONE transpose-words broken except at beginning of line
-** DONE mark-paragraph -> M-h
-** DONE combine accents with M-` M-' M-" M-^
-** DONE inserting accents should combine with previous char
 
 * Windowing / Display
 
@@ -231,9 +225,6 @@ insert_window_left()  deletes some left-most windows
 *** yacc-mode
 *** go-mode
 *** idl-mode
-** DONE auto-indent
-** DONE forward-ifdef, backward-ifdef
-** DONE show-ifdefs
 
 * HTML mode
 
@@ -263,15 +254,10 @@ insert_window_left()  deletes some left-most windows
 ** doctor command should create and show *trace* buffer, remove eb_new kludge
 ** use colorized buffer for *trace* buffer to flag tty input, shell output, supported and unsupported escapes.
 ** telnet-mode -> Connect to a remote computer using telnet
-** DONE add colorized buffers using shell buffer method
-** DONE make shell buffer a colorized UCS2 buffer
-** DONE process output buffer
-** DONE ssh-mode -> Connect to a remote computer and send commands (ssh)
 
 * Bufed
 
 ** make bufed a popup window -> buffer-menu
-** DONE show modified status and mode in bufed
 
 * Dired
 
@@ -286,8 +272,6 @@ insert_window_left()  deletes some left-most windows
 *** | -> dired-shell-command
 *** D -> dired-mkdir
 ** make archive mode use dired commands
-** DONE refresh side view when current file changes on line 1
-** DONE full listing
 
 * Modes
 
@@ -306,44 +290,54 @@ insert_window_left()  deletes some left-most windows
 ** set-gosmacs-bindings
 ** wikipedia mode
 ** info-mode -> unix info mode
+
 ** improve latex-mode
 *** mode for tek style sheets
 *** mode for texi intermediary files
 *** latex-mode -> LaTeX documents.
 *** bibtex-mode ->
 *** tex-mode -> TeX or LaTeX documents.
+
 ** vim mode.
 ** minor modes with key override such as "preview" mode
 ** merge hex-mode and binary-mode
 ** mode for undo buffers
 ** visual-diff-mode -> Use color-coding to compare two buffers.
+
 ** improve existing language modes:
-*** html-mode: support hex entities
+*** ada-mode ->
+*** asm-mode: handle various assembly styles
 *** calc-mode: fix syntax, disable C++ comments
-*** asm-mode -> Assembly Language files.
-*** haskell-mode ->
-*** julia-mode ->
-*** lisp-mode -> Lisp language
-*** lua-mode ->
-*** makefile-mode -> Gnu and other makefiles.
-*** ocaml-mode ->
-*** pascal-mode ->
-*** perl-mode -> Perl.
-*** php-mode -> PHP.
-*** postscript-mode -> PostScript files.
-*** python-mode -> Python language.
-*** ruby-mode ->
-*** scheme-mode ->
-*** sh-mode -> shell script files
-*** sh-mode -> Handle here documents
-*** sh-mode -> Handle multiline strings
-*** sql-mode ->
-*** vbasic-mode -> Visual Basic.
-*** css-mode -> CSS files.
+*** cobol-mode ->
+*** css-mode ->
+*** erlang-mode ->
 *** fcl-mode ->
 *** forth-mode ->
+*** fortran-mode ->
+*** haskell-mode ->
+*** html-mode: support hex entities
+*** julia-mode ->
+*** lisp-mode ->
+*** lua-mode ->
+*** makefile-mode: Gnu and other makefiles.
+*** markdown-mode: syntax modes for toml, bash (bash output), sh, text, txt
+*** ocaml-mode ->
+*** pascal-mode ->
+*** perl-mode ->
+*** php-mode ->
+*** postscript-mode: more restrictive match
+*** python-mode ->
+*** R-mode ->
+*** ruby-mode ->
+*** scheme-mode ->
+*** scilab-mode ->
+*** sh-mode: Handle here documents
+*** sh-mode: Handle multiline strings
+*** sh-mode: shell script files
+*** sql-mode ->
+*** vbasic-mode: more restrictive matcher because .cls files may be latex
+
 ** missing languages:
-*** ada-mode -> Ada
 *** asp-mode -> 
 *** automake-mode -> 
 *** batch-mode -> Windows Batch files.
@@ -354,7 +348,6 @@ insert_window_left()  deletes some left-most windows
 *** changelog-mode ->
 *** chdr-mode ->
 *** cmake-mode ->
-*** cobol-mode ->
 *** conf-mode -> configuration files.
 *** cuda-mode ->
 *** DCL mode
@@ -368,9 +361,7 @@ insert_window_left()  deletes some left-most windows
 *** dpatch-mode ->
 *** dtd-mode ->
 *** eiffel-mode ->
-*** erlang-mode ->
 *** exelis-mode ->
-*** fortran-mode ->
 *** fsharp-mode ->
 *** gams-mode -> GAMS files.
 *** gap-mode ->
@@ -401,14 +392,13 @@ insert_window_left()  deletes some left-most windows
 *** ooc-mode ->
 *** opal-mode ->
 *** opencl-mode ->
+*** patch-mode ->
 *** pkgconfig-mode ->
 *** po-mode -> translation files
 *** prolog-mode ->
 *** protobuf-mode ->
 *** puppet-mode ->
-*** R-mode ->
 *** rpmspec-mode ->
-*** scilab-mode ->
 *** sml-mode ->
 *** sparql-mode ->
 *** systemverilog-mode ->
@@ -420,7 +410,6 @@ insert_window_left()  deletes some left-most windows
 *** verilog-mode ->
 *** vhdl-mode -> VHDL files.
 *** xslt-mode ->
-** DONE dos/mac translation modes
 
 * Ideas from other editors
 
