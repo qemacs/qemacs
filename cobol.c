@@ -208,6 +208,7 @@ static void cobol_colorize_line(QEColorizeContext *cp,
                 //style = COBOL_STYLE_IDENTIFIER;
                 break;
             }
+            continue;
         }
         if (style) {
             SET_COLOR(str, start, i, style);
