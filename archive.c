@@ -43,6 +43,7 @@ static ArchiveType archive_type_array[] = {
     { "ar", NULL, 0, "a|ar", "ar -tv $1" },
     { "xar", NULL, 0, "xar|pkg", "xar -tvf $1" },
     { "zoo", NULL, 0, "zoo", "zoo l $1" },
+    { "lha", NULL, 0, "lha", "lha -l $1" },
 };
 
 static ArchiveType *archive_types;
