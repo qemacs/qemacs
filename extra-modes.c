@@ -1029,7 +1029,7 @@ static void fortran_colorize_line(QEColorizeContext *cp,
 
 static ModeDef fortran_mode = {
     .name = "Fortran",
-    .extensions = "f|f77|f90|f95",
+    .extensions = "f|for|f77|f90|f95|f03",
     .keywords = fortran_keywords,
     .types = fortran_types,
     .colorize_func = fortran_colorize_line,
