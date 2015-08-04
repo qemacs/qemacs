@@ -142,15 +142,10 @@ static const char java_keywords[] = {
     "this|throw|throws|transient|try|volatile|while|"
     /* boolean and null literals */
     "false|null|true|"
-    /* other stuff */
-    "@Override|@SuppressWarnings|@Deprecated|"
-    //"function|in|instanceof|var|with|"
 };
 
 static const char java_types[] = {
     "boolean|byte|char|double|float|int|long|short|void|"
-    "String|Object|List|Set|Exception|Thread|Class|HashMap|Integer|"
-    "Collection|Block|"
 };
 
 static const char scala_keywords[] = {
@@ -161,14 +156,10 @@ static const char scala_keywords[] = {
     "trait|try|type|val|var|while|with|yield|"
     /* boolean and null literals */
     "false|null|true|_|"
-    /* other stuff */
-    "@serializable|@suspendable|@specialized|@inline|@deprecated|@tailrec|"
 };
 
 static const char scala_types[] = {
-    /* all identifiers starting with an uppercase letter are types */
-    //"Boolean|Byte|Char|Double|Float|Int|Integer|Long|Short|String|Unit|"
-    //"Comparable|Iterator|Iterable|List|Object|Nothing|Any|Set|"
+    /* all mixed case identifiers starting with an uppercase letter are types */
 };
 
 static const char css_keywords[] = {
@@ -567,6 +558,13 @@ static int get_c_identifier(char *buf, int buf_size, unsigned int *p,
     return i;
 }
 
+static int qe_haslower(const char *str) {
+    while (*str) {
+        if (qe_islower(*str++)) return 1;
+    }
+    return 0;
+}
+
 enum {
     C_STYLE_DEFAULT    = 0,
     C_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
@@ -755,6 +753,13 @@ static void c_colorize_line(QEColorizeContext *cp,
             }
             break;
         case '#':       /* preprocessor */
+            if (start == 0 && str[i] == '!') {
+                /* recognize a shebang comment line */
+                style = style0 = C_STYLE_PREPROCESS;
+                i = n;
+                SET_COLOR(str, start, i, C_STYLE_PREPROCESS);
+                break;
+            }
             if (mode_flags & CLANG_PREPROC) {
                 state = IN_C_PREPROCESS;
                 style = style0 = C_STYLE_PREPROCESS;
@@ -868,6 +873,14 @@ static void c_colorize_line(QEColorizeContext *cp,
                     continue;
                 }
             }
+            if ((flavor == CLANG_JAVA || flavor == CLANG_SCALA) && qe_isalpha(str[i])) {
+                /* Java annotations */
+                while (qe_isalnum_(str[i]) || str[i] == '.')
+                    i++;
+                if (start == 0 || str[start - 1] != '.')
+                    SET_COLOR(str, start, i, C_STYLE_PREPROCESS);
+                continue;
+            }
             goto normal;
 
         case '\"':      /* string literal */
@@ -960,8 +973,7 @@ static void c_colorize_line(QEColorizeContext *cp,
 
                 if (strfind(syn->keywords, kbuf)
                 ||  ((mode_flags & CLANG_CC) && strfind(c_keywords, kbuf))
-                ||  ((flavor == CLANG_CSS) && str[i] == ':')
-                   ) {
+                ||  ((flavor == CLANG_CSS) && str[i] == ':')) {
                     SET_COLOR(str, start, i, C_STYLE_KEYWORD);
                     continue;
                 }
@@ -979,9 +991,9 @@ static void c_colorize_line(QEColorizeContext *cp,
                 ||   ((mode_flags & CLANG_CC) && strfind(c_types, kbuf))
                 ||   (((mode_flags & CLANG_CC) || (flavor == CLANG_D)) &&
                      strend(kbuf, "_t", NULL))
-                ||   (flavor == CLANG_SCALA && qe_isupper(kbuf[0]))
-                ||   (flavor == CLANG_HAXE && qe_isupper(kbuf[0]) &&
-                      qe_islower(kbuf[1]) && 
+                ||   ((flavor == CLANG_JAVA || flavor == CLANG_SCALA) &&
+                      qe_isupper(c) && qe_haslower(kbuf))
+                ||   (flavor == CLANG_HAXE && qe_isupper(c) && qe_haslower(kbuf) &&
                       (start == 0 || !qe_findchar("(", str[start - 1]))))) {
                     /* if not cast, assume type declaration */
                     if (str[i2] != ')') {
