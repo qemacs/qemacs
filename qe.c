@@ -2423,6 +2423,11 @@ QEStyleDef *find_style(const char *name)
         if (strequal(style->name, name))
             return style;
     }
+    if (qe_isdigit(*name)) {
+        i = strtol(name, NULL, 0);
+        if (i < QE_STYLE_NB)
+            return qe_styles + i;
+    }
     return NULL;
 }
 
@@ -3406,7 +3411,7 @@ static int syntax_get_colorized_line(EditState *s, unsigned int *buf,
         for (line = s->colorize_nb_valid_lines; line <= line_num; line++) {
             len = eb_get_line(b, buf, buf_size - 1, &offset);
             /* skip byte order mark if present */
-            bom = (len > 0 && buf[0] == 0xFEFF);
+            bom = (buf[0] == 0xFEFF);
             if (bom) {
                 SET_COLOR1(buf, 0, QE_STYLE_PREPROCESS);
             }
@@ -3421,7 +3426,7 @@ static int syntax_get_colorized_line(EditState *s, unsigned int *buf,
     cctx.colorize_state = s->colorize_states[line_num];
     cctx.state_only = 0;
     len = eb_get_line(b, buf, buf_size - 1, offsetp);
-    bom = (len > 0 && buf[0] == 0xFEFF);
+    bom = (buf[0] == 0xFEFF);
     if (bom) {
         SET_COLOR1(buf, 0, QE_STYLE_PREPROCESS);
     }
@@ -3450,6 +3455,35 @@ static void colorize_callback(__unused__ EditBuffer *b,
     if (offset < e->colorize_max_valid_offset)
         e->colorize_max_valid_offset = offset;
 }
+
+static int combine_static_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+    int *offset_ptr, int line_num)
+{
+    EditBuffer *b = s->b;
+    unsigned int *buf_ptr, *buf_end;
+    int c, offset;
+
+    offset = *offset_ptr;
+
+    buf_ptr = buf;
+    buf_end = buf + buf_size - 1;
+    b->cur_style = 0;
+    for (;;) {
+        c = eb_nextc(b, offset, &offset);
+        if (c == '\n')
+            break;
+        if (buf_ptr < buf_end) {
+            if (b->cur_style) {
+                *buf_ptr = (*buf_ptr & CHAR_MASK) | (b->cur_style << STYLE_SHIFT);
+            }
+            buf_ptr++;
+        }
+    }
+    *buf_ptr = '\0';
+    *offset_ptr = offset;
+    return buf_ptr - buf;
+}
+
 #endif /* CONFIG_TINY */
 
 void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
@@ -3473,13 +3507,17 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
 int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                                int *offsetp, int line_num)
 {
+#ifndef CONFIG_TINY
+    if (s->colorize_func) {
+        int offset = *offsetp;
+        int len = syntax_get_colorized_line(s, buf, buf_size, offsetp, line_num);
+        if (s->b->b_styles)
+            len = combine_static_colorized_line(s, buf, buf_size, &offset, line_num);
+        return len;
+    }
+#endif
     if (s->b->b_styles)
         return get_staticly_colorized_line(s, buf, buf_size, offsetp, line_num);
-
-#ifndef CONFIG_TINY
-    if (s->colorize_func)
-        return syntax_get_colorized_line(s, buf, buf_size, offsetp, line_num);
-#endif
 
     return eb_get_line(s->b, buf, buf_size, offsetp);
 }
