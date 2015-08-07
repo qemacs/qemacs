@@ -60,6 +60,7 @@ enum {
     CLANG_RUST,
     CLANG_SWIFT,
     CLANG_ICON,
+    CLANG_GROOVY,
     CLANG_FLAVOR = 0x3F,
 };
 
@@ -134,11 +135,11 @@ static const char csharp_types[] = {
 
 static const char java_keywords[] = {
     /* language keywords */
-    "abstract|assert||break|case|catch|class|const|continue|"
+    "abstract|assert|break|case|catch|class|const|continue|"
     "default|do|else|enum|extends|final|finally|for|goto|"
     "if|implements|import|instanceof|interface|native|new|"
     "package|private|protected|public|return|"
-    "static|strictfp|super|switch|synchronized|"
+    "static|strictfp|super|switch|synchronized|threadsafe|"
     "this|throw|throws|transient|try|volatile|while|"
     /* boolean and null literals */
     "false|null|true|"
@@ -2118,6 +2119,7 @@ ModeDef scilab_mode = {
 #include "rust.c"
 #include "swift.c"
 #include "icon.c"
+#include "groovy.c"
 
 static int c_init(void)
 {
@@ -2168,6 +2170,7 @@ static int c_init(void)
     rust_init();
     swift_init();
     icon_init();
+    groovy_init();
 
     return 0;
 }
