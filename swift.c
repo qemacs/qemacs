@@ -179,18 +179,9 @@ static int swift_parse_number(unsigned int *p)
 static void swift_colorize_line(QEColorizeContext *cp,
                                 unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start, level;
-    int c, state, style, klen, flavor;
-    int mode_flags;
+    int i = 0, start = 0, c, style, klen, level;
+    int state = cp->colorize_state;
     char kbuf[32];
-
-    mode_flags = syn->colorize_flags;
-    flavor = (mode_flags & CLANG_FLAVOR);
-
-    state = cp->colorize_state;
-    start = i;
-
-    c = 0;
 
     if (state) {
         /* if already in a state, go directly in the code parsing it */
@@ -198,10 +189,10 @@ static void swift_colorize_line(QEColorizeContext *cp,
             goto parse_comment_d;
     }
 
+    style = 0;
     while (i < n) {
         start = i;
         c = str[i++];
-
         switch (c) {
         case '/':
             if (str[i] == '*') {
@@ -234,16 +225,17 @@ static void swift_colorize_line(QEColorizeContext *cp,
                      */
                     i++;
                 }
-                SET_COLOR(str, start, i, C_STYLE_COMMENT);
-                continue;
+                style = C_STYLE_COMMENT;
+                break;
             }
             if (str[i] == '/') {
                 /* end of line comment (include eol char, see above) */
                 i = n + 1;
-                SET_COLOR(str, start, i, C_STYLE_COMMENT);
-                continue;
+                style = C_STYLE_COMMENT;
+                break;
             }
-            break;
+            continue;
+
         case '`':       /* `symbol` for reserved words */
         case '@':       /* @attribute */
             goto identifier;
@@ -261,14 +253,15 @@ static void swift_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, C_STYLE_STRING);
-            continue;
+            style = C_STYLE_STRING;
+            break;
+
         default:
             if (qe_isdigit(c)) {
                 i -= 1;
                 i += swift_parse_number(str + i);
-                SET_COLOR(str, start, i, C_STYLE_NUMBER);
-                continue;
+                style = C_STYLE_NUMBER;
+                break;
             }
             if (is_swift_identifier_head(c)) {
             identifier:
@@ -276,24 +269,28 @@ static void swift_colorize_line(QEColorizeContext *cp,
                 i = start + klen;
 
                 if (strfind(syn->keywords, kbuf)) {
-                    SET_COLOR(str, start, i, C_STYLE_KEYWORD);
-                    continue;
+                    style = C_STYLE_KEYWORD;
+                    break;
                 }
                 if (strfind(syn->types, kbuf)) {
                     style = C_STYLE_TYPE;
-                    if (check_fcall(str, i) && flavor != CLANG_PIKE) {
+                    if (check_fcall(str, i)) {
                         /* function style cast */
                         style = C_STYLE_KEYWORD;
                     }
-                    SET_COLOR(str, start, i, style);
-                    continue;
+                    break;
                 }
                 if (check_fcall(str, i)) {
-                    SET_COLOR(str, start, i, C_STYLE_FUNCTION);
-                    continue;
+                    style = C_STYLE_FUNCTION;
+                    break;
                 }
                 continue;
             }
+            continue;
+        }
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
         }
     }
     cp->colorize_state = state;

@@ -56,7 +56,7 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
                                   unsigned int *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = 0, c, w = 0, wn = 0, len;
+    int i = 0, start = 0, c, style, klen, w = 0, wn = 0;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_ASM_TRAIL)
@@ -65,7 +65,9 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
     for (; qe_isspace(str[i]); i++)
         continue;
 
-    for (w = i; i < n;) {
+    style = 0;
+    w = i;
+    while (i < n) {
         start = i;
         c = str[i++];
         switch (c) {
@@ -89,13 +91,13 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
                 if (str[i] == '@')
                     break;
             }
-            SET_COLOR(str, start, i, ASM_STYLE_PREPROCESS);
-            continue;
+            style = ASM_STYLE_PREPROCESS;
+            break;
         case '@':
         comment:
             i = n;
-            SET_COLOR(str, start, i, ASM_STYLE_COMMENT);
-            continue;
+            style = ASM_STYLE_COMMENT;
+            break;
         case '\'':
         case '\"':
             /* parse string const */
@@ -105,48 +107,52 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, ASM_STYLE_STRING);
-            continue;
+            style = ASM_STYLE_STRING;
+            break;
         case ';':       /* instruction separator */
             wn = 0;
             continue;
         default:
-            break;
-        }
-        /* parse numbers */
-        if (qe_isdigit(c)) {
-            for (; qe_isalnum(str[i]) || str[i] == '.'; i++)
+            /* parse numbers */
+            if (qe_isdigit(c)) {
+                for (; qe_isalnum(str[i]) || str[i] == '.'; i++)
+                    continue;
+                if (str[i] == ':')
+                    goto label;
+                wn++;
+                style = ASM_STYLE_NUMBER;
+                break;
+            }
+            /* parse identifiers and keywords */
+            if (qe_isalpha_(c)) {
+            opcode:
+                klen = 0;
+                keyword[klen++] = qe_tolower(c);
+                for (; qe_isalnum_(str[i]) || str[i] == '.'; i++) {
+                    if (klen < countof(keyword) - 1)
+                        keyword[klen++] = qe_tolower(str[i]);
+                }
+                keyword[klen] = '\0';
+                if (str[i] == ':') {
+                label:
+                    style = ASM_STYLE_LABEL;
+                    break;
+                }
+                if (++wn == 1) {
+                    style = ASM_STYLE_OPCODE;
+                    break;
+                }
+                if (strfind(syn->keywords, keyword)) {
+                    style = ASM_STYLE_REGISTER;
+                    break;
+                }
                 continue;
-            if (str[i] == ':')
-                goto label;
-            wn++;
-            SET_COLOR(str, start, i, ASM_STYLE_NUMBER);
+            }
             continue;
         }
-        /* parse identifiers and keywords */
-        if (qe_isalpha_(c)) {
-        opcode:
-            len = 0;
-            keyword[len++] = qe_tolower(c);
-            for (; qe_isalnum_(str[i]) || str[i] == '.'; i++) {
-                if (len < countof(keyword) - 1)
-                    keyword[len++] = qe_tolower(str[i]);
-            }
-            keyword[len] = '\0';
-            if (str[i] == ':') {
-            label:
-                SET_COLOR(str, start, i, ASM_STYLE_LABEL);
-                continue;
-            }
-            if (++wn == 1) {
-                SET_COLOR(str, start, i, ASM_STYLE_OPCODE);
-                continue;
-            }
-            if (strfind(syn->keywords, keyword)) {
-                SET_COLOR(str, start, i, ASM_STYLE_REGISTER);
-                continue;
-            }
-            continue;
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
         }
     }
     cp->colorize_state = colstate;

@@ -73,6 +73,7 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
     if (colstate & IN_EBNF_COMMENT3)
         goto in_comment3;
 
+    style = 0;
     while (i < n) {
         start = i;
         c = str[i++];
@@ -105,8 +106,8 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
                 i = n;
             }
             style = EBNF_STYLE_COMMENT;
-            SET_COLOR(str, start, i, style);
-            continue;
+            break;
+
         case '/':
             if (str[i] == '*') {  /* C block comment */
                 colstate |= IN_EBNF_COMMENT3;
@@ -119,16 +120,16 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
                         break;
                     }
                 }
-                SET_COLOR(str, start, i, EBNF_STYLE_COMMENT);
-                continue;
-            } else
-            if (str[i] == '/') { /* line comment */
-                i = n;
-                SET_COLOR(str, start, i, EBNF_STYLE_COMMENT);
-                continue;
-            } else {
+                style = EBNF_STYLE_COMMENT;
                 break;
             }
+            if (str[i] == '/') { /* line comment */
+                i = n;
+                style = EBNF_STYLE_COMMENT;
+                break;
+            }
+            continue;
+
         case '\'':
         case '`':
         case U_LEFT_SINGLE_QUOTATION_MARK:
@@ -138,8 +139,9 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
                 if (c == '\'' || c == U_RIGHT_SINGLE_QUOTATION_MARK)
                     break;
             }
-            SET_COLOR(str, start, i, EBNF_STYLE_CHARCONST);
-            continue;
+            style = EBNF_STYLE_CHARCONST;
+            break;
+
         case '\"':
             /* parse quoted token */
             while (i < n) {
@@ -147,43 +149,48 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
                 if (c == '\"')
                     break;
             }
-            SET_COLOR(str, start, i, EBNF_STYLE_STRING);
-            continue;
-        default:
+            style = EBNF_STYLE_STRING;
             break;
-        }
-        /* parse numbers */
-        if (qe_isdigit(c)) {
-            for (; i < n; i++) {
-                if (!qe_isalnum(str[i]) && str[i] != '.')
-                    break;
+
+        default:
+            /* parse numbers */
+            if (qe_isdigit(c)) {
+                for (; i < n; i++) {
+                    if (!qe_isalnum(str[i]) && str[i] != '.')
+                        break;
+                }
+                style = EBNF_STYLE_NUMBER;
+                break;
             }
-            SET_COLOR(str, start, i, EBNF_STYLE_NUMBER);
-            continue;
-        }
-        /* parse identifiers and keywords */
-        if (qe_isalpha_(c) || c == U_HORIZONTAL_ELLIPSIS) {
-            len = 0;
-            keyword[len++] = c;
-            for (; i < n; i++) {
-                if (qe_isalnum_(str[i])) {
-                    if (len < countof(keyword) - 1)
-                        keyword[len++] = c;
-                } else {
+            /* parse identifiers and keywords */
+            if (qe_isalpha_(c) || c == U_HORIZONTAL_ELLIPSIS) {
+                len = 0;
+                keyword[len++] = c;
+                for (; i < n; i++) {
+                    if (qe_isalnum_(str[i])) {
+                        if (len < countof(keyword) - 1)
+                            keyword[len++] = c;
+                    } else {
+                        break;
+                    }
+                }
+                keyword[len] = '\0';
+                if (strfind(syn->keywords, keyword)) {
+                    style = EBNF_STYLE_KEYWORD;
                     break;
                 }
+                if (strfind(syn->types, keyword)) {
+                    style = EBNF_STYLE_TYPE;
+                    break;
+                }
+                style = EBNF_STYLE_IDENTIFIER;
+                break;
             }
-            keyword[len] = '\0';
-            if (strfind(syn->keywords, keyword)) {
-                SET_COLOR(str, start, i, EBNF_STYLE_KEYWORD);
-                continue;
-            }
-            if (strfind(syn->types, keyword)) {
-                SET_COLOR(str, start, i, EBNF_STYLE_TYPE);
-                continue;
-            }
-            SET_COLOR(str, start, i, EBNF_STYLE_IDENTIFIER);
             continue;
+        }
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
         }
     }
 }
