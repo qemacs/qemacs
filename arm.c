@@ -62,7 +62,7 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
     if (colstate & IN_ASM_TRAIL)
         goto comment;
 
-    for (; qe_isspace(str[i]); i++)
+    for (; qe_isblank(str[i]); i++)
         continue;
 
     style = 0;
@@ -201,7 +201,7 @@ static void lst_colorize_line(QEColorizeContext *cp,
     char keyword[16];
     int i, w, start, c, len, colstate = cp->colorize_state;
 
-    for (w = 0; qe_isspace(str[w]); w++)
+    for (w = 0; qe_isblank(str[w]); w++)
         continue;
 
     if (str[0] && str[1] == ':' && str[2] == '\\') {
@@ -228,7 +228,7 @@ static void lst_colorize_line(QEColorizeContext *cp,
             i += 1;
             SET_COLOR(str, start, i, LST_STYLE_OFFSET);
 
-            for (; qe_isspace(str[i]); i++)
+            for (; qe_isblank(str[i]); i++)
                 continue;
             for (start = i; qe_isxdigit(str[i]); i++)
                 continue;
@@ -237,12 +237,12 @@ static void lst_colorize_line(QEColorizeContext *cp,
                     continue;
             }
             SET_COLOR(str, start, i, LST_STYLE_DUMP);
-            for (; qe_isspace(str[i]); i++)
+            for (; qe_isblank(str[i]); i++)
                 continue;
-            for (start  = i; i < n && !qe_isspace(str[i]); i++)
+            for (start  = i; i < n && !qe_isblank(str[i]); i++)
                 continue;
             SET_COLOR(str, start, i, LST_STYLE_OPCODE);
-            for (; qe_isspace(str[i]); i++)
+            for (; qe_isblank(str[i]); i++)
                 continue;
             while (i < n) {
                 start = i;

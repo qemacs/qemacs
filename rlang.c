@@ -145,7 +145,7 @@ static void r_colorize_line(QEColorizeContext *cp,
                     }
                 }
                 keyword[len] = '\0';
-                for (j = i; qe_isspace(str[j]); j++)
+                for (j = i; qe_isblank(str[j]); j++)
                     continue;
                 if (strfind(syn->keywords, keyword)) {
                     if (strequal(keyword, "function"))

@@ -167,7 +167,7 @@ static int lisp_get_symbol(char *buf, int buf_size, unsigned int *p)
     out = buf_init(&outbuf, buf, buf_size);
 
     for (i = 0; (c = p[i]) != '\0'; i++) {
-        if (qe_isspace(c) || qe_findchar(";(){}[]#'`,\"", c))
+        if (qe_isblank(c) || qe_findchar(";(){}[]#'`,\"", c))
             break;
         buf_putc_utf8(out, c);
     }

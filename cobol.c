@@ -88,7 +88,7 @@ static void cobol_colorize_line(QEColorizeContext *cp,
     int i = 0, start = i, j, c, style, len, indent, heading = 0, preproc = 0, comment = -1;
     int state = cp->colorize_state;
 
-    for (; i < n && qe_isspace(str[i]); i++)
+    for (; i < n && qe_isblank(str[i]); i++)
         continue;
     indent = i;
 

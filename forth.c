@@ -218,7 +218,7 @@ static void ff_colorize_line(QEColorizeContext *cp,
             SET_COLOR1(str, start, FF_STYLE_COMMENT);
             continue;
         }
-        if (qe_isspace(c))
+        if (qe_isblank(c))
             continue;
         if (c == '\\' && str[i] == ' ') {
         comment:
@@ -256,7 +256,7 @@ static void ff_colorize_line(QEColorizeContext *cp,
         /* scan for space and determine word type */
         len = 0;
         word[len++] = c;
-        for (; i < n && !qe_isspace(str[i]); i++) {
+        for (; i < n && !qe_isblank(str[i]); i++) {
             if (len < countof(word) - 1)
                 word[len++] = str[i];
         }

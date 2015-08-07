@@ -199,7 +199,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
             if (c1 == '<') {
                 /* Should check for unary context */
                 s1 = i + 2;
-                while (qe_isspace(str[s1]))
+                while (qe_isblank(str[s1]))
                     s1++;
                 c2 = str[s1];
                 if (c2 == '"' || c2 == '\'' || c2 == '`') {
@@ -320,7 +320,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
         keyword:
             if (j - i == 6 && ustristart(str + i, "format", NULL)) {
                 for (s1 = 0; s1 < i; s1++) {
-                    if (!qe_isspace(str[s1]))
+                    if (!qe_isblank(str[s1]))
                         break;
                 }
                 if (s1 == i) {

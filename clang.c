@@ -607,7 +607,7 @@ static void c_colorize_line(QEColorizeContext *cp,
     mode_flags = syn->colorize_flags;
     flavor = (mode_flags & CLANG_FLAVOR);
 
-    for (indent = 0; qe_isspace(str[indent]); indent++)
+    for (indent = 0; qe_isblank(str[indent]); indent++)
         continue;
 
     state = cp->colorize_state;

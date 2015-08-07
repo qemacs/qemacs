@@ -62,7 +62,7 @@ static void rust_colorize_line(QEColorizeContext *cp,
     int i = 0, start, i1, i2, indent, c, state, style, klen, delim;
     char kbuf[32];
 
-    for (indent = 0; qe_isspace(str[indent]); indent++)
+    for (indent = 0; qe_isblank(str[indent]); indent++)
         continue;
 
     state = cp->colorize_state;

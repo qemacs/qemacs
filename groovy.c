@@ -256,7 +256,7 @@ static void groovy_colorize_line(QEColorizeContext *cp,
             continue;
             
         case '~':
-            while (str[i] == ' ')
+            while (qe_isblank(str[i]))
                 i++;
             if (str[i] == '/') {
                 /* parse slashy string as regex */

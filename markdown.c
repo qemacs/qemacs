@@ -209,7 +209,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         ModeDef *m;
 
         colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG_STATE);
-        for (i += 3; qe_isspace(str[i]); i++)
+        for (i += 3; qe_isblank(str[i]); i++)
             continue;
         for (len = 0; i < n && qe_isalnum_(str[i]); i++) {
             if (len < countof(lang_name) - 1)

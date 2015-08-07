@@ -77,7 +77,7 @@ static void asm_colorize_line(QEColorizeContext *cp,
         }
         SET_COLOR(str, start, i, ASM_STYLE_COMMENT);
     }
-    for (; i < n && qe_isspace(str[i]); i++)
+    for (; i < n && qe_isblank(str[i]); i++)
         continue;
 
     for (w = i; i < n;) {
@@ -133,7 +133,7 @@ static void asm_colorize_line(QEColorizeContext *cp,
             keyword[len] = '\0';
             if (++wn == 1) {
                 if (!strcmp(keyword, "comment") && n - i >= 2) {
-                    for (w = i; qe_isspace(str[w]); w++)
+                    for (w = i; qe_isblank(str[w]); w++)
                         continue;
                     colstate = str[w];  /* end of comment character */
                     SET_COLOR(str, start, w, ASM_STYLE_PREPROCESS);
@@ -933,7 +933,7 @@ static void fortran_colorize_line(QEColorizeContext *cp,
     int i = 0, start = i, c, style, len, w;
     int colstate = cp->colorize_state;
 
-    for (w = 0; qe_isspace(str[w]); w++)
+    for (w = 0; qe_isblank(str[w]); w++)
         continue;
 
     while (i < n) {
@@ -2027,7 +2027,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
     if (state & IN_HASKELL_STRING) {
         sep = '\"';
         state = 0;
-        while (qe_isspace(str[i]))
+        while (qe_isblank(str[i]))
             i++;
         if (str[i] == '\\')
             i++;
@@ -2485,12 +2485,12 @@ static void ruby_colorize_line(QEColorizeContext *cp,
     int state = cp->colorize_state;
     char kbuf[32];
 
-    for (indent = 0; qe_isspace(str[indent]); indent++)
+    for (indent = 0; qe_isblank(str[indent]); indent++)
         continue;
 
     if (state & IN_RUBY_HEREDOC) {
         if (state & IN_RUBY_HD_INDENT) {
-            while (qe_isspace(str[i]))
+            while (qe_isblank(str[i]))
                 i++;
         }
 	sig = 0;
@@ -2500,7 +2500,7 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                 sig = ((sig << 6) + str[i]) % 61;
             }
         }
-        for (; qe_isspace(str[i]); i++)
+        for (; qe_isblank(str[i]); i++)
             continue;
         i = n;
         SET_COLOR(str, start, i, RUBY_STYLE_HEREDOC);
@@ -2540,7 +2540,7 @@ static void ruby_colorize_line(QEColorizeContext *cp,
         }
     }
 
-    while (i < n && qe_isspace(str[i]))
+    while (i < n && qe_isblank(str[i]))
         i++;
 
     indent = i;
@@ -2606,7 +2606,7 @@ static void ruby_colorize_line(QEColorizeContext *cp,
             
         case '%':
             /* parse alternate string/array syntaxes */
-            if (str[i] != '\0' && !qe_isspace(str[i]) && !qe_isalnum(str[i]))
+            if (str[i] != '\0' && !qe_isblank(str[i]) && !qe_isalnum(str[i]))
                 goto has_string4;
 
             if (str[i] == 'q' || str[i] == 'Q'
