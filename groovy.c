@@ -18,16 +18,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-static int check_fcall(unsigned int *str, int i) {
-    while (str[i] == ' ')
-        i++;
-    return str[i] == '(';
-}
-
-static inline int qe_match2(int c, int c1, int c2) {
-    return c == c1 || c == c2;
-}
-
 static const char groovy_keywords[] = {
     /* language specific keywords */
     "as|def|in|trait|"

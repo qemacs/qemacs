@@ -22,12 +22,6 @@
 
 #define MAX_KEYWORD_SIZE  16
 
-static int check_fcall(unsigned int *str, int i) {
-    while (str[i] == ' ')
-        i++;
-    return str[i] == '(';
-}
-        
 /*---------------- x86 Assembly language coloring ----------------*/
 
 static char const asm_prepkeywords1[] = {

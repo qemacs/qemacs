@@ -319,6 +319,16 @@ static int inline qe_indexof(const char *str, int c) {
     return -1;
 }
 
+static inline int qe_match2(int c, int c1, int c2) {
+    return c == c1 || c == c2;
+}
+
+static inline int check_fcall(const unsigned int *str, int i) {
+    while (str[i] == ' ')
+        i++;
+    return str[i] == '(';
+}
+
 int qe_strcollate(const char *s1, const char *s2);
 void qe_strtolower(char *buf, int buf_size, const char *str);
 void skip_spaces(const char **pp);

@@ -179,7 +179,7 @@ static int swift_parse_number(unsigned int *p)
 static void swift_colorize_line(QEColorizeContext *cp,
                                 unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start, i1, level;
+    int i = 0, start, level;
     int c, state, style, klen, flavor;
     int mode_flags;
     char kbuf[32];
@@ -279,21 +279,16 @@ static void swift_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, start, i, C_STYLE_KEYWORD);
                     continue;
                 }
-                i1 = i;
-                if (qe_isblank(str[i1]))
-                    i1++;
-
                 if (strfind(syn->types, kbuf)) {
                     style = C_STYLE_TYPE;
-                    if (str[i1] == '(' && flavor != CLANG_PIKE) {
+                    if (check_fcall(str, i) && flavor != CLANG_PIKE) {
                         /* function style cast */
                         style = C_STYLE_KEYWORD;
                     }
                     SET_COLOR(str, start, i, style);
                     continue;
                 }
-                if (str[i1] == '(') {
-                    /* function call */
+                if (check_fcall(str, i)) {
                     SET_COLOR(str, start, i, C_STYLE_FUNCTION);
                     continue;
                 }

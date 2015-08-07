@@ -54,7 +54,7 @@ enum {
 static void icon_colorize_line(QEColorizeContext *cp,
                                unsigned int *str, int n, ModeDef *syn)
 {
-    int i, start, i1, indent, c, state, style, klen, delim;
+    int i, start, indent, c, state, style, klen, delim;
     char kbuf[32];
 
     for (i = 0; qe_isspace(str[i]); i++)
@@ -172,13 +172,7 @@ static void icon_colorize_line(QEColorizeContext *cp,
                     style = ICON_STYLE_KEYWORD;
                     break;
                 }
-
-                i1 = i;
-                while (qe_isblank(str[i1]))
-                    i1++;
-
-                if (str[i1] == '(') {
-                    /* function call */
+                if (check_fcall(str, i)) {
                     /* XXX: different styles for call and definition */
                     style = ICON_STYLE_FUNCTION;
                     break;
