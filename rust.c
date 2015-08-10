@@ -166,7 +166,7 @@ static void rust_colorize_line(QEColorizeContext *cp,
                 // [0-9][0-9_]*\.[0-9_]*([eE][-\+]?[0-9_]+)?
                 // [0-9][0-9_]*(\.[0-9_]*)?[eE][-\+]?[0-9_]+
                 // number suffixes:
-                const char * const suffixes[] = {
+                static const char * const suffixes[] = {
                     "i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64",
                     "f32", "f64",
                 };
