@@ -1767,10 +1767,11 @@ void do_set_next_mode(EditState *s, int dir);
 
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);
-void do_find_file(EditState *s, const char *filename);
-void do_load_from_path(EditState *s, const char *filename);
-void do_find_file_other_window(EditState *s, const char *filename);
+void do_find_file(EditState *s, const char *filename, int bflags);
+void do_load_from_path(EditState *s, const char *filename, int bflags);
+void do_find_file_other_window(EditState *s, const char *filename, int bflags);
 void do_switch_to_buffer(EditState *s, const char *bufname);
+void do_preview_mode(EditState *s, int set);
 void do_break(EditState *s);
 void do_insert_file(EditState *s, const char *filename);
 // should take argument?
@@ -1931,8 +1932,8 @@ void do_minibuffer_exit(EditState *s, int fabort);
 void do_less_exit(EditState *s);
 void do_toggle_read_only(EditState *s);
 void do_not_modified(EditState *s, int argval);
-void do_find_alternate_file(EditState *s, const char *filename);
-void do_load_file_from_path(EditState *s, const char *filename);
+void do_find_alternate_file(EditState *s, const char *filename, int bflags);
+void do_load_file_from_path(EditState *s, const char *filename, int bflags);
 void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile);
 int eb_search(EditBuffer *b, int offset, int dir, int flags,

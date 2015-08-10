@@ -130,14 +130,14 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Buffer and file handling ----------------*/
 
-    CMD2( KEY_CTRLX(KEY_CTRL('f')), KEY_NONE,
-          "find-file", do_find_file, ESs,
+    CMD3( KEY_CTRLX(KEY_CTRL('f')), KEY_NONE,
+          "find-file", do_find_file, ESsi, 0,
           "s{Find file: }[file]|file|") /* u? */
-    CMD2( KEY_CTRL('x'), KEY_META('f'),
-          "find-file-other-window", do_find_file_other_window, ESs,
+    CMD3( KEY_CTRL('x'), KEY_META('f'),
+          "find-file-other-window", do_find_file_other_window, ESsi, 0,
           "s{Find file: }[file]|file|") /* u? */
-    CMD2( KEY_CTRLX(KEY_CTRL('v')), KEY_NONE,
-          "find-alternate-file", do_find_alternate_file, ESs,
+    CMD3( KEY_CTRLX(KEY_CTRL('v')), KEY_NONE,
+          "find-alternate-file", do_find_alternate_file, ESsi, 0,
           "s{Find alternate file: }[file]|file|") /* u? */
     CMD2( KEY_CTRLX('i'), KEY_NONE,
           "insert-file", do_insert_file, ESs,
@@ -280,6 +280,8 @@ static CmdDef basic_commands[] = {
           "scroll-left", do_scroll_left_right, -1)
     CMD1( KEY_META(')'), KEY_NONE,
           "scroll-right", do_scroll_left_right, 1)
+    CMD1( KEY_NONE, KEY_NONE,
+          "preview-mode", do_preview_mode, 1)
 #endif
     CMD1( KEY_CTRLX('0'), KEY_NONE,
           "delete-window", do_delete_window, 0)
@@ -405,8 +407,8 @@ static CmdDef basic_commands[] = {
           "ui{Fill column: }")
 
     /* other stuff */
-    CMD2( KEY_NONE, KEY_NONE,
-          "load-file-from-path", do_load_file_from_path, ESs,
+    CMD3( KEY_NONE, KEY_NONE,
+          "load-file-from-path", do_load_file_from_path, ESsi, 0,
           "s{Load file from path: }|file|")
     CMD2( KEY_NONE, KEY_NONE,
           "load-config-file", do_load_config_file, ESs,

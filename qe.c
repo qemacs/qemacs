@@ -813,6 +813,13 @@ void do_backspace(EditState *s, int argval)
 {
     int offset1;
 
+#ifndef CONFIG_TINY
+    if (s->b->flags & BF_PREVIEW) {
+        do_scroll_up_down(s, -2);
+        return;
+    }
+#endif
+
     if (s->b->flags & BF_READONLY) {
         /* CG: could scroll down */
         return;
@@ -1336,6 +1343,17 @@ void text_mouse_goto(EditState *s, int x, int y)
 
 void do_char(EditState *s, int key, int argval)
 {
+#ifndef CONFIG_TINY
+    if (s->b->flags & BF_PREVIEW) {
+        if (key == KEY_SPC) {
+            do_scroll_up_down(s, 2);
+            return;
+        }
+        do_preview_mode(s, 0);
+        return;
+    }
+#endif
+
     if (s->b->flags & BF_READONLY)
         return;
 
@@ -1534,10 +1552,37 @@ void do_tab(EditState *s, int argval)
     }
 }
 
+#ifndef CONFIG_TINY
+void do_preview_mode(EditState *s, int set)
+{
+    const char *state = NULL;
+
+    if (set < 0 && (s->b->flags & BF_PREVIEW)) {
+        s->b->flags &= ~BF_PREVIEW;
+        state = "exited";
+    } else
+    if (set > 0 && !(s->b->flags & BF_PREVIEW)) {
+        s->b->flags |= BF_PREVIEW;
+        state = "started";
+    } else
+    if (set == 0) {
+        state = (s->b->flags & BF_PREVIEW) ? "active" : "inactive";
+    }
+    if (state)
+        put_status(s, "Preview mode %s", state);
+}
+#endif
+
 void do_return(EditState *s, int move)
 {
     int len;
 
+#ifndef CONFIG_TINY
+    if (s->b->flags & BF_PREVIEW) {
+        do_preview_mode(s, -1);
+        return;
+    }
+#endif
     if (s->b->flags & BF_READONLY)
         return;
 
@@ -1560,6 +1605,12 @@ void do_space(EditState *s, int key, int argval)
 
 void do_break(EditState *s)
 {
+#ifndef CONFIG_TINY
+    if (s->b->flags & BF_PREVIEW) {
+        do_preview_mode(s, -1);
+        return;
+    }
+#endif
     /* deactivate region hilite */
     s->region_style = 0;
 
@@ -2263,6 +2314,8 @@ void basic_mode_line(EditState *s, buf_t *out, int c1)
         buf_printf(out, " Ovwrt");
     if (s->interactive)
         buf_printf(out, " Interactive");
+    if (s->b->flags & BF_PREVIEW)
+        buf_printf(out, " Preview");
     buf_printf(out, ")--");
 }
 
@@ -5923,7 +5976,7 @@ void do_set_next_mode(EditState *s, int dir)
 
 /* Should take bits from enumeration instead of booleans */
 static void do_load1(EditState *s, const char *filename1,
-                     int kill_buffer, int load_resource)
+                     int kill_buffer, int load_resource, int bflags)
 {
     u8 buf[4097];
     char filename[MAX_FILENAME_SIZE];
@@ -5974,7 +6027,7 @@ static void do_load1(EditState *s, const char *filename1,
     }
 
     /* Create new buffer with unique name from filename */
-    b = eb_new("", BF_SAVELOG);
+    b = eb_new("", BF_SAVELOG | bflags);
     eb_set_filename(b, filename);
 
     s->offset = 0;
@@ -6098,27 +6151,27 @@ static void load_completion_cb(void *opaque, int err)
 }
 #endif
 
-void do_find_file(EditState *s, const char *filename)
+void do_find_file(EditState *s, const char *filename, int bflags)
 {
-    do_load1(s, filename, 0, 0);
+    do_load1(s, filename, 0, 0, bflags);
 }
 
-void do_find_file_other_window(EditState *s, const char *filename)
+void do_find_file_other_window(EditState *s, const char *filename, int bflags)
 {
     QEmacsState *qs = s->qe_state;
 
     do_split_window(s, 0);
-    do_load1(qs->active_window, filename, 0, 0);
+    do_load1(qs->active_window, filename, 0, 0, bflags);
 }
 
-void do_find_alternate_file(EditState *s, const char *filename)
+void do_find_alternate_file(EditState *s, const char *filename, int bflags)
 {
-    do_load1(s, filename, 1, 0);
+    do_load1(s, filename, 1, 0, bflags);
 }
 
-void do_load_file_from_path(EditState *s, const char *filename)
+void do_load_file_from_path(EditState *s, const char *filename, int bflags)
 {
-    do_load1(s, filename, 0, 1);
+    do_load1(s, filename, 0, 1, bflags);
 }
 
 void do_insert_file(EditState *s, const char *filename)
@@ -8150,7 +8203,7 @@ static void qe_init(void *opaque)
             /* Handle +linenumber before file */
             line_num = atoi(argv[i++]);
         }
-        do_find_file(s, argv[i]);
+        do_find_file(s, argv[i], 0);
         if (line_num)
             do_goto_line(qs->active_window, line_num, 1);
     }

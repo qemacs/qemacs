@@ -859,7 +859,7 @@ static void dired_select(EditState *s)
             e->b->flags &= ~BF_PREVIEW;
 #endif
         } else {
-            do_find_file(s, filename);
+            do_find_file(s, filename, 0);
         }
     }
 }
@@ -882,7 +882,9 @@ static void dired_view_file(EditState *s, const char *filename)
     }
 
     if (e) {
-        do_find_file(e, filename);
+        /* If buffer is not present already, mark it as preview, so
+         * that it will get recycled if needed */
+        do_find_file(e, filename, BF_PREVIEW);
         /* disable wrapping to get nicer display */
         /* XXX: should wrap lines unless window is narrow */
         //e->wrap = WRAP_TRUNCATE;
@@ -891,9 +893,6 @@ static void dired_view_file(EditState *s, const char *filename)
             b = eb_new("*scratch*", BF_SAVELOG | BF_UTF8);
             e->b = b;
         }
-        /* mark buffer as preview, so that it will get recycled if needed */
-        /* CG: this is wrong if buffer existed already */
-        b->flags |= BF_PREVIEW;
     }
 }
 

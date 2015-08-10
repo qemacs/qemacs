@@ -1896,7 +1896,7 @@ static void do_compile_error(EditState *s, int dir)
     /* CG: Should remove popups, sidepanes, helppanes... */
 
     /* go to the error */
-    do_find_file(s, filename);
+    do_find_file(s, filename, 0);
     do_goto_line(qs->active_window, line_num, col_num);
 
     put_status(s, "=> %s", error_message);

@@ -1390,8 +1390,11 @@ static void do_c_indent(EditState *s)
 static void do_c_electric(EditState *s, int key)
 {
     int offset = s->offset;
+    int was_preview = s->b->flags & BF_PREVIEW;
 
     do_char(s, key, 1);
+    if (was_preview)
+        return;
     /* reindent line at original point */
     if (s->mode->indent_func)
         (s->mode->indent_func)(s, eb_goto_bol(s->b, offset));
@@ -1400,8 +1403,11 @@ static void do_c_electric(EditState *s, int key)
 static void do_c_return(EditState *s)
 {
     int offset = s->offset;
+    int was_preview = s->b->flags & BF_PREVIEW;
 
     do_return(s, 1);
+    if (was_preview)
+        return;
     /* reindent line to remove indent on blank line */
     if (s->mode->indent_func) {
         (s->mode->indent_func)(s, eb_goto_bol(s->b, offset));
