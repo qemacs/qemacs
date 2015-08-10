@@ -25,6 +25,7 @@
 enum {
     CLANG_C,
     CLANG_CPP,
+    CLANG_C2,
     CLANG_OBJC,
     CLANG_CSHARP,
     CLANG_AWK,
@@ -850,6 +851,10 @@ static void c_colorize_line(QEColorizeContext *cp,
             }
             break;
         case '@':
+            if (flavor == CLANG_C2) {
+                // XXX: should colorize attributes as C_STYLE_PREPROC
+                // @(...)
+            }
             if (flavor == CLANG_CSHARP || flavor == CLANG_SQUIRREL) {
                 if (str[i] == '\"') {
                     /* Csharp and Squirrel Verbatim strings */
@@ -1646,6 +1651,36 @@ ModeDef cpp_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- C2 language ----------------*/
+
+static const char c2_keywords[] = {
+    // should remove C keywords:
+    //"extern|static|typedef|long|short|signed|unsigned|"
+    /* new C2 keywords */
+    "module|import|as|public|local|type|func|nil|elemsof|"
+    /* boolean values */
+    "false|true|"
+};
+
+static const char c2_types[] = {
+    "bool|int8|int16|int32|int64|uint8|uint16|uint32|uint64|"
+    "float32|float64|"
+};
+
+ModeDef c2_mode = {
+    .name = "C2",
+    .extensions = "c2|c2h|c2t",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_C2 | CLANG_CC,
+    .keywords = c2_keywords,
+    .types = c2_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+/*---------------- Objective C ----------------*/
+
 static int objc_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (match_extension(p->filename, mode->extensions)) {
@@ -2135,6 +2170,7 @@ static int c_init(void)
     qe_register_mode(&yacc_mode, MODEF_SYNTAX);
     qe_register_mode(&lex_mode, MODEF_SYNTAX);
     qe_register_mode(&cpp_mode, MODEF_SYNTAX);
+    qe_register_mode(&c2_mode, MODEF_SYNTAX);
     qe_register_mode(&objc_mode, MODEF_SYNTAX);
     qe_register_mode(&csharp_mode, MODEF_SYNTAX);
     qe_register_mode(&awk_mode, MODEF_SYNTAX);
