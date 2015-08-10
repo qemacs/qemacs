@@ -1796,8 +1796,9 @@ static void do_compile_error(EditState *s, int dir)
     EditState *e;
     EditBuffer *b;
     int offset, found_offset;
-    char filename[MAX_FILENAME_SIZE], *q;
-    int line_num, c;
+    char filename[MAX_FILENAME_SIZE];
+    buf_t fnamebuf, *fname;
+    int c, line_num, col_num;
     char error_message[128];
 
     /* CG: should have a buffer flag for error source.
@@ -1836,26 +1837,41 @@ static void do_compile_error(EditState *s, int dir)
         }
         found_offset = offset;
         /* parse filename:linenum:message */
+        /* and:  filename(linenum[, col]) ...: ... */
+
         /* extract filename */
-        for (q = filename;;) {
+        fname = buf_init(&fnamebuf, filename, countof(filename));
+        for (;;) {
             c = eb_nextc(b, offset, &offset);
             if (c == '\n' || c == '\t' || c == ' ')
                 goto next_line;
-            if (c == ':')
+            if (c == ':' || c == '(')
                 break;
-            /* CG: utf8 issue */
-            if ((q - filename) < ssizeof(filename) - 1)
-                *q++ = c;
+            buf_putc_utf8(fname, c);
         }
-        *q = '\0';
+
         /* extract line number */
-        for (line_num = 0;;) {
+        for (line_num = col_num = 0;;) {
             c = eb_nextc(b, offset, &offset);
-            if (c == ':')
+            if (c == ':' || c == ',' || c == ')')
                 break;
             if (!qe_isdigit(c))
                 goto next_line;
             line_num = line_num * 10 + c - '0';
+        }
+        if (c == ',') {
+            for (;;) {
+                c = eb_nextc(b, offset, &offset);
+                if (c == ' ') continue;
+                if (!qe_isdigit(c))
+                    break;
+                col_num = col_num * 10 + c - '0';
+            }
+        }
+        while (c != ':') {
+            if (c == '\n')
+                goto next_line;
+            c = eb_nextc(b, offset, &offset);
         }
         eb_get_strline(b, error_message, sizeof(error_message), &offset);
         if (line_num >= 1) {
@@ -1881,7 +1897,7 @@ static void do_compile_error(EditState *s, int dir)
 
     /* go to the error */
     do_find_file(s, filename);
-    do_goto_line(qs->active_window, line_num);
+    do_goto_line(qs->active_window, line_num, col_num);
 
     put_status(s, "=> %s", error_message);
 }

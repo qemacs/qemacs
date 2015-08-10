@@ -2135,10 +2135,10 @@ error:
     put_status(s, "Invalid position: %s", str);
 }
 
-void do_goto_line(EditState *s, int line)
+void do_goto_line(EditState *s, int line, int column)
 {
     if (line >= 1)
-        s->offset = eb_goto_pos(s->b, line - 1, 0);
+        s->offset = eb_goto_pos(s->b, line - 1, column > 0 ? column - 1 : 0);
 }
 
 void do_count_lines(EditState *s)
@@ -8152,7 +8152,7 @@ static void qe_init(void *opaque)
         }
         do_find_file(s, argv[i]);
         if (line_num)
-            do_goto_line(qs->active_window, line_num);
+            do_goto_line(qs->active_window, line_num, 1);
     }
 
 #if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)

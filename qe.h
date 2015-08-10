@@ -1825,7 +1825,7 @@ void text_move_eol(EditState *s);
 void word_right(EditState *s, int w);
 void word_left(EditState *s, int w);
 void do_goto(EditState *s, const char *str, int unit);
-void do_goto_line(EditState *s, int line);
+void do_goto_line(EditState *s, int line, int column);
 void do_up_down(EditState *s, int dir);
 void do_left_right(EditState *s, int dir);
 void text_mouse_goto(EditState *s, int x, int y);
