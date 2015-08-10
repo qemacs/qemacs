@@ -2311,12 +2311,12 @@ void basic_mode_line(EditState *s, buf_t *out, int c1)
                c1, state, s->b->flags & BF_READONLY ? '%' : mod,
                mod, s->b->name, s->mode ? s->mode->name : "raw");
     if (!s->insert)
-        buf_printf(out, " Ovwrt");
+        buf_puts(out, " Ovwrt");
     if (s->interactive)
-        buf_printf(out, " Interactive");
+        buf_puts(out, " Interactive");
     if (s->b->flags & BF_PREVIEW)
-        buf_printf(out, " Preview");
-    buf_printf(out, ")--");
+        buf_puts(out, " Preview");
+    buf_puts(out, ")--");
 }
 
 void text_mode_line(EditState *s, buf_t *out)
@@ -2336,9 +2336,9 @@ void text_mode_line(EditState *s, buf_t *out)
     buf_printf(out, "L%d--C%d--%s",
                line_num + 1, col_num, s->b->charset->name);
     if (s->b->eol_type == EOL_DOS)
-        buf_printf(out, "-dos");
+        buf_puts(out, "-dos");
     if (s->b->eol_type == EOL_MAC)
-        buf_printf(out, "-mac");
+        buf_puts(out, "-mac");
     if (s->bidir)
         buf_printf(out, "--%s", s->cur_rtl ? "RTL" : "LTR");
 
@@ -6563,21 +6563,21 @@ static void isearch_display(ISearchState *is)
     /* display search string */
     out = buf_init(&outbuf, ubuf, sizeof(ubuf));
     if (is->found_offset < 0 && len > 0)
-        buf_printf(out, "Failing ");
+        buf_puts(out, "Failing ");
     if (s->hex_mode) {
-        buf_printf(out, "hex ");
+        buf_puts(out, "hex ");
     } else {
         if (is->search_flags & SEARCH_FLAG_WORD)
-            buf_printf(out, "word ");
+            buf_puts(out, "word ");
         if (is->search_flags & SEARCH_FLAG_IGNORECASE)
-            buf_printf(out, "case-insensitive ");
+            buf_puts(out, "case-insensitive ");
         else if (!(is->search_flags & SEARCH_FLAG_SMARTCASE))
-            buf_printf(out, "case-sensitive ");
+            buf_puts(out, "case-sensitive ");
     }
-    buf_printf(out, "I-search");
+    buf_puts(out, "I-search");
     if (is->dir < 0)
-        buf_printf(out, " backward");
-    buf_printf(out, ": ");
+        buf_puts(out, " backward");
+    buf_puts(out, ": ");
     for (i = 0; i < is->pos; i++) {
         v = is->search_string[i];
         if (!(v & FOUND_TAG)) {
@@ -6595,11 +6595,25 @@ static void isearch_display(ISearchState *is)
     dpy_flush(s->screen);
 }
 
+static int isearch_grab(ISearchState *is, EditBuffer *b, int from, int to)
+{
+    int offset, c, last = is->pos;
+    if (b) {
+        if (to < 0 || to > b->total_size) to = b->total_size;
+        for (offset = from; is->pos < SEARCH_LENGTH && offset < to;) {
+            c = eb_nextc(b, offset, &offset);
+            is->search_string[is->pos++] = c;
+        }
+    }
+    return is->pos - last;
+}
+
 static void isearch_key(void *opaque, int ch)
 {
     ISearchState *is = opaque;
     EditState *s = is->s;
-    int i, j;
+    QEmacsState *qs = &qe_state;
+    int i, j, offset0, offset1;
 
     switch (ch) {
     case KEY_DEL:
@@ -6625,10 +6639,10 @@ static void isearch_key(void *opaque, int ch)
         edit_display(s->qe_state);
         dpy_flush(s->screen);
         return;
-    case KEY_CTRL('s'):
+    case KEY_CTRL('s'):         /* next match */
         is->dir = 1;
         goto addpos;
-    case KEY_CTRL('r'):
+    case KEY_CTRL('r'):         /* previous match */
         is->dir = -1;
     addpos:
         /* use last seached string if no input */
@@ -6646,17 +6660,33 @@ static void isearch_key(void *opaque, int ch)
     case KEY_CTRL('q'):
         ch = get_key(s->screen);
         goto addch;
-    case KEY_CTRL('w'):
-    case KEY_CTRL('y'):
-        /* emacs compatibility: get word / line */
-        /* CG: should yank into search string */
+    case KEY_CTRL('w'):   /* emacs: get word */
+    case KEY_CTRL('y'):   /* emacs: get line */
         break;
 #endif
-        /* case / word */
-    case KEY_CTRL('w'):
+    case KEY_CTRL('d'):   /* get word */
+        offset0 = s->offset;
+        do_word_right(s, 1);
+        offset1 = s->offset;
+        s->offset = offset1;
+        isearch_grab(is, s->b, offset0, offset1);
+        break;
+    case KEY_CTRL('l'):   /* get line */
+        offset0 = s->offset;
+        if (eb_nextc(s->b, offset0, &offset1) == '\n')
+            offset0 = offset1;
+        do_eol(s);
+        offset1 = s->offset;
+        s->offset = offset1;
+        isearch_grab(is, s->b, offset0, offset1);
+        break;
+    case KEY_CTRL('y'):   /* yank into search string */
+        isearch_grab(is, qs->yank_buffers[qs->yank_current], 0, -1);
+        break;
+    case KEY_CTRL('w'):   /* toggle word match */
         is->search_flags ^= SEARCH_FLAG_WORD;
         break;
-    case KEY_CTRL('c'):
+    case KEY_CTRL('c'):   /* toggle case sensitivity */
         is->search_flags ^= SEARCH_FLAG_IGNORECASE;
         is->search_flags &= ~SEARCH_FLAG_SMARTCASE;
         break;
