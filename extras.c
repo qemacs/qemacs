@@ -909,11 +909,11 @@ static void do_describe_buffer(EditState *s, int argval)
 
     desc = buf_init(&descbuf, buf, countof(buf));
     if (b->eol_type == EOL_UNIX)
-        buf_printf(desc, " unix");
+        buf_puts(desc, " unix");
     if (b->eol_type == EOL_DOS)
-        buf_printf(desc, " dos");
+        buf_puts(desc, " dos");
     if (b->eol_type == EOL_MAC)
-        buf_printf(desc, " mac");
+        buf_puts(desc, " mac");
         
     eb_printf(b1, "    eol_type: %d %s\n", b->eol_type, buf);
     eb_printf(b1, "     charset: %s  (bytes=%d, shift=%d)\n",
@@ -921,27 +921,27 @@ static void do_describe_buffer(EditState *s, int argval)
 
     desc = buf_init(&descbuf, buf, countof(buf));
     if (b->flags & BF_SAVELOG)
-        buf_printf(desc, " SAVELOG");
+        buf_puts(desc, " SAVELOG");
     if (b->flags & BF_SYSTEM)
-        buf_printf(desc, " SYSTEM");
+        buf_puts(desc, " SYSTEM");
     if (b->flags & BF_READONLY)
-        buf_printf(desc, " READONLY");
+        buf_puts(desc, " READONLY");
     if (b->flags & BF_PREVIEW)
-        buf_printf(desc, " PREVIEW");
+        buf_puts(desc, " PREVIEW");
     if (b->flags & BF_LOADING)
-        buf_printf(desc, " LOADING");
+        buf_puts(desc, " LOADING");
     if (b->flags & BF_SAVING)
-        buf_printf(desc, " SAVING");
+        buf_puts(desc, " SAVING");
     if (b->flags & BF_DIRED)
-        buf_printf(desc, " DIRED");
+        buf_puts(desc, " DIRED");
     if (b->flags & BF_UTF8)
-        buf_printf(desc, " UTF8");
+        buf_puts(desc, " UTF8");
     if (b->flags & BF_RAW)
-        buf_printf(desc, " RAW");
+        buf_puts(desc, " RAW");
     if (b->flags & BF_TRANSIENT)
-        buf_printf(desc, " TRANSIENT");
+        buf_puts(desc, " TRANSIENT");
     if (b->flags & BF_STYLES)
-        buf_printf(desc, " STYLES");
+        buf_puts(desc, " STYLES");
 
     eb_printf(b1, "       flags: 0x%02x %s\n", b->flags, buf);
 #if 0
