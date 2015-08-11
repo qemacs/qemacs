@@ -223,7 +223,7 @@ static void latex_completion(CompleteState *cp)
 
     for (func = latex_funcs; func->name; func++) {
         if (strxstart(func->name, cp->current, NULL))
-            add_string(&cp->cs, func->name);
+            add_string(&cp->cs, func->name, 0);
     }
 }
 

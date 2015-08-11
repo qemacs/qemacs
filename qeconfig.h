@@ -421,6 +421,9 @@ static CmdDef basic_commands[] = {
 };
 
 CmdDef minibuffer_commands[] = {
+    CMD2( KEY_DEFAULT, KEY_NONE,
+	  "minibuffer-insert", do_minibuffer_char, ESii,
+          "*" "kiui")
     CMD1( KEY_RET, KEY_NONE,
           "minibuffer-exit", do_minibuffer_exit, 0)
     CMD1( KEY_CTRL('g'), KEY_NONE,

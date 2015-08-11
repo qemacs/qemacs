@@ -1143,14 +1143,14 @@ void charset_completion(CompleteState *cp)
 
     for (charset = first_charset; charset != NULL; charset = charset->next) {
         if (strxstart(charset->name, cp->current, NULL))
-            add_string(&cp->cs, charset->name);
+            add_string(&cp->cs, charset->name, 0);
         if (charset->aliases) {
             for (q = p = charset->aliases;; q++) {
                 if (*q == '\0' || *q == '|') {
                     if (q > p) {
                         pstrncpy(name, sizeof(name), p, q - p);
                         if (strxstart(name, cp->current, NULL))
-                            add_string(&cp->cs, name);
+                            add_string(&cp->cs, name, 0);
                     }
                     if (*q == '\0')
                         break;

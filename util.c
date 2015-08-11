@@ -704,6 +704,33 @@ int strxfind(const char *list, const char *s)
     }
 }
 
+const char *strmem(const char *str, const void *mem, int size)
+{
+    int c, len;
+    const char *p, *str_max, *p1 = mem;
+
+    if (size <= 0)
+        return (size < 0) ? NULL : str;
+
+    size--;
+    c = *p1++;
+    if (!c) {
+        /* cannot find chunk with embedded nuls */
+        return NULL;
+    }
+
+    len = strlen(str);
+    if (size >= len)
+        return NULL;
+
+    str_max = str + len - size;
+    for (p = str; p < str_max; p++) {
+        if (*p == c && !memcmp(p + 1, p1, size))
+            return p;
+    }
+    return NULL;
+}
+
 const void *memstr(const void *buf, int size, const char *str)
 {
     int c, len;
@@ -1219,7 +1246,7 @@ void color_completion(CompleteState *cp)
     count = nb_qe_colors;
     while (count > 0) {
         if (strxstart(def->name, cp->current, NULL))
-            add_string(&cp->cs, def->name);
+            add_string(&cp->cs, def->name, 0);
         def++;
         count--;
     }
@@ -1444,7 +1471,7 @@ int get_clock_usec(void)
 }
 
 /* set one string. */
-StringItem *set_string(StringArray *cs, int index, const char *str)
+StringItem *set_string(StringArray *cs, int index, const char *str, int group)
 {
     StringItem *v;
     int len;
@@ -1457,6 +1484,7 @@ StringItem *set_string(StringArray *cs, int index, const char *str)
     if (!v)
         return NULL;
     v->selected = 0;
+    v->group = group;
     memcpy(v->str, str, len + 1);
     if (cs->items[index])
         qe_free(&cs->items[index]);
@@ -1465,7 +1493,7 @@ StringItem *set_string(StringArray *cs, int index, const char *str)
 }
 
 /* make a generic array alloc */
-StringItem *add_string(StringArray *cs, const char *str)
+StringItem *add_string(StringArray *cs, const char *str, int group)
 {
     int n;
 
@@ -1476,7 +1504,7 @@ StringItem *add_string(StringArray *cs, const char *str)
         cs->nb_allocated = n;
     }
     cs->items[cs->nb_items++] = NULL;
-    return set_string(cs, cs->nb_items - 1, str);
+    return set_string(cs, cs->nb_items - 1, str, group);
 }
 
 void free_strings(StringArray *cs)

@@ -63,7 +63,7 @@ static void build_bufed_list(EditState *s)
     free_strings(&bs->items);
     for (b = qs->first_buffer; b != NULL; b = b->next) {
         if (!(b->flags & BF_SYSTEM) || (bs->flags & BUFED_ALL_VISIBLE))
-            add_string(&bs->items, b->name);
+            add_string(&bs->items, b->name, 0);
     }
 
     /* build buffer */

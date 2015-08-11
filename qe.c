@@ -5104,7 +5104,7 @@ void file_completion(CompleteState *cp)
          */
         if (!stat(filename, &sb) && S_ISDIR(sb.st_mode))
             pstrcat(filename, sizeof(filename), "/");
-        add_string(&cp->cs, filename);
+        add_string(&cp->cs, filename, 0);
     }
 
     find_file_close(&ffst);
@@ -5161,10 +5161,19 @@ static void complete_start(EditState *s, CompleteState *cp)
     cp->len = eb_get_contents(s->b, cp->current, sizeof(cp->current));
 }
 
+/* XXX: should have a globbing and a case insensitive option */
 void complete_test(CompleteState *cp, const char *str)
 {
-    if (!memcmp(str, cp->current, cp->len))
-        add_string(&cp->cs, str);
+    QEmacsState *qs = &qe_state;
+    int fuzzy = 0;
+
+    if (memcmp(str, cp->current, cp->len)) {
+        if (!qs->fuzzy_search
+        ||  !strmem(str, cp->current, cp->len))
+            return;
+        fuzzy = 1;
+    }
+    add_string(&cp->cs, str, fuzzy);
 }
 
 static int completion_sort_func(const void *p1, const void *p2)
@@ -5172,6 +5181,9 @@ static int completion_sort_func(const void *p1, const void *p2)
     StringItem *item1 = *(StringItem **)p1;
     StringItem *item2 = *(StringItem **)p2;
 
+    /* Group items by group order */
+    if (item1->group != item2->group)
+        return item1->group - item2->group;
     /* Use natural sort: keep numbers in order */
     return qe_strcollate(item1->str, item2->str);
 }
@@ -5339,6 +5351,13 @@ void do_completion_space(EditState *s)
     }
 }
 
+static void do_minibuffer_char(EditState *s, int key, int argval)
+{
+    do_char(s, key, argval);
+    if (completion_popup_window)
+        do_completion(s);
+}
+
 /* scroll in completion popup */
 void minibuf_complete_scroll_up_down(__unused__ EditState *s, int dir)
 {
@@ -5404,7 +5423,7 @@ void do_history(EditState *s, int dir)
     if (qs->last_cmd_func != (CmdFunc)do_history) {
         /* save currently edited line */
         eb_get_contents(s->b, buf, sizeof(buf));
-        set_string(hist, hist->nb_items - 1, buf);
+        set_string(hist, hist->nb_items - 1, buf, 0);
         minibuffer_history_saved_offset = s->offset;
     }
     /* insert history text */
@@ -5462,7 +5481,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
         hist->nb_items--;
         qe_free(&hist->items[hist->nb_items]);
         if (buf[0] != '\0')
-            add_string(hist, buf);
+            add_string(hist, buf, 0);
     }
 
     s->b->flags |= BF_TRANSIENT;
@@ -5546,7 +5565,7 @@ void minibuffer_edit(const char *input, const char *prompt,
     minibuffer_history_saved_offset = 0;
     if (hist) {
         minibuffer_history_index = hist->nb_items;
-        add_string(hist, "");
+        add_string(hist, "", 0);
     }
 }
 
@@ -6581,7 +6600,12 @@ static void isearch_display(ISearchState *is)
     for (i = 0; i < is->pos; i++) {
         v = is->search_string[i];
         if (!(v & FOUND_TAG)) {
-            if (!buf_putc_utf8(out, v))
+            if (v < 32 || v == 127) {
+                buf_printf(out, "^%c", (v + '@') & 127);
+            } else {
+                buf_putc_utf8(out, v);
+            }
+            if (buf_avail(out) <= 0)
                 break;
         }
     }
@@ -6691,7 +6715,7 @@ static void isearch_key(void *opaque, int ch)
         is->search_flags &= ~SEARCH_FLAG_SMARTCASE;
         break;
     default:
-        if (KEY_SPECIAL(ch)) {
+        if (KEY_SPECIAL(ch) && ch != '\t') {
             /* exit search mode */
 #if 0
             // FIXME: behaviour from qemacs-0.3pre13

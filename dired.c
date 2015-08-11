@@ -773,7 +773,7 @@ static void dired_build_list(EditState *s, const char *path,
             ds->nfiles++;
             ds->total_bytes += st.st_size;
         }
-        item = add_string(&ds->items, line);
+        item = add_string(&ds->items, line, 0);
         if (item) {
             DiredItem *dip;
             int plen = strlen(p);

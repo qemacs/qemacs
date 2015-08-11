@@ -175,8 +175,9 @@ void url_main_loop(void (*init)(void *opaque), void *opaque);
 
 /* string arrays */
 typedef struct StringItem {
-    void *opaque; /* opaque data that the user can use */
+    void *opaque;  /* opaque data that the user can use */
     char selected; /* true if selected */
+    char group;    /* used to group sorted items */
     char str[1];
 } StringItem;
 
@@ -340,6 +341,7 @@ static inline int strequal(const char *s1, const char *s2) {
 int memfind(const char *list, const char *p, int len);
 int strfind(const char *list, const char *s);
 int strxfind(const char *list, const char *s);
+const char *strmem(const char *str, const void *mem, int size);
 const void *memstr(const void *buf, int size, const char *str);
 
 #define stristart(str, val, ptr)   qe_stristart(str, val, ptr)
@@ -398,8 +400,8 @@ int get_clock_usec(void);
 
 /* Various string packages: should unify these but keep API simple */
 
-StringItem *set_string(StringArray *cs, int index, const char *str);
-StringItem *add_string(StringArray *cs, const char *str);
+StringItem *set_string(StringArray *cs, int index, const char *str, int group);
+StringItem *add_string(StringArray *cs, const char *str, int group);
 void free_strings(StringArray *cs);
 
 /* simple dynamic strings wrappers. The strings are always terminated
@@ -1432,6 +1434,7 @@ struct QEmacsState {
     int default_fill_column;    /* 70 */
     EOLType default_eol_type;  /* EOL_UNIX */
     int backup_inhibited;  /* prevent qemacs from backing up files */
+    int fuzzy_search;    /* use fuzzy search for completion matcher */
 };
 
 extern QEmacsState qe_state;
