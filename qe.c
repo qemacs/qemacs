@@ -8250,16 +8250,31 @@ static void qe_init(void *opaque)
     do_refresh(s);
 
     /* load file(s) */
-    for (i = _optind; i < argc; i++) {
-        int line_num = 0;
+    for (i = _optind; i < argc; ) {
+        int line_num = 0, col_num = 0;
+        char *arg, *p;
 
-        if (argv[i][0] == '+' && i + 1 < argc) {
-            /* Handle +linenumber before file */
-            line_num = atoi(argv[i++]);
+        arg = argv[i++];
+
+        if (*arg == '+' && i < argc) {
+            if (strequal(arg, "+eval")) {
+                do_eval_expression(s, argv[i++]);
+                continue;
+            }
+            if (strequal(arg, "+load")) {
+                /* load script file */
+                parse_config_file(s, argv[i++]);
+                continue;
+            }
+            /* Handle +linenumber[,column] before file */
+            line_num = strtol(arg + 1, &p, 10);
+            if (*p == ',')
+                col_num = strtol(p + 1, NULL, 10);
+            arg = argv[i++];
         }
-        do_find_file(s, argv[i], 0);
+        do_find_file(s, arg, 0);
         if (line_num)
-            do_goto_line(qs->active_window, line_num, 1);
+            do_goto_line(qs->active_window, line_num, col_num);
     }
 
 #if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)

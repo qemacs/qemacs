@@ -1957,7 +1957,6 @@ void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr);
 void window_resize(EditState *s, int target_w, int target_h);
 void wheel_scroll_up_down(EditState *s, int dir);
 void qe_mouse_event(QEEvent *ev);
-int parse_config_file(EditState *s, const char *filename);
 int parse_command_line(int argc, char **argv);
 void set_user_option(const char *user);
 void set_tty_charset(const char *name);
@@ -1966,7 +1965,7 @@ void set_tty_charset(const char *name);
 
 int parse_config_file(EditState *s, const char *filename);
 void do_eval_expression(EditState *s, const char *expression);
-void do_eval_region(EditState *s);
+void do_eval_region(EditState *s); /* should pass actual offsets */
 void do_eval_buffer(EditState *s);
 
 /* extras.c */

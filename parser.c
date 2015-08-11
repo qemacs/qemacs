@@ -82,11 +82,46 @@ static int qe_cfg_parse_string(EditState *s, const char **pp,
     return res;
 }
 
-int parse_config_file(EditState *s, const char *filename)
+typedef struct QEmacsDataSource {
+    const char *filename;
+    FILE *f;
+    EditBuffer *b;
+    const char *str;
+    int line_num;
+    int pos, len;
+    int offset, stop;
+} QEmacsDataSource;
+
+static char *data_gets(QEmacsDataSource *ds, char *buf, int size)
+{
+    if (ds->f) {
+        return fgets(buf, size, ds->f);
+    }
+    if (ds->b) {
+        /* buffer should not be modified during parse! */
+        if (ds->offset < ds->stop && ds->offset < ds->b->total_size) {
+            eb_get_strline(ds->b, buf, size, &ds->offset);
+            return buf;
+        }
+        return NULL;
+    }
+    if (ds->str) {
+        int i;
+        for (i = 0; i < size - 1; i++) {
+            if (ds->pos >= ds->len
+            ||  (buf[i] = ds->str[ds->pos++]) == '\n')
+                break;
+        }
+        buf[i] = '\0';
+        return i ? buf : NULL;
+    }
+    return NULL;
+}
+
+static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
 {
     QEmacsState *qs = s->qe_state;
     QErrorContext ec;
-    FILE *f;
     char line[1024], str[1024];
     char prompt[64], cmd[128], *q, *strp;
     const char *p, *r;
@@ -96,19 +131,16 @@ int parse_config_file(EditState *s, const char *filename)
     CmdArg args[MAX_CMD_ARGS];
     unsigned char args_type[MAX_CMD_ARGS];
 
-    f = fopen(filename, "r");
-    if (!f)
-        return -1;
     ec = qs->ec;
     skip = 0;
-    line_num = 0;
+    line_num = ds->line_num;
     /* Should parse whole config file in a single read, or load it via
      * a buffer */
     for (;;) {
-        if (fgets(line, sizeof(line), f) == NULL)
+        if (data_gets(ds, line, sizeof(line)) == NULL)
             break;
         line_num++;
-        qs->ec.filename = filename;
+        qs->ec.filename = ds->filename;
         qs->ec.function = NULL;
         qs->ec.lineno = line_num;
 
@@ -297,8 +329,85 @@ int parse_config_file(EditState *s, const char *filename)
     fail:
         ;
     }
-    fclose(f);
     qs->ec = ec;
 
     return 0;
 }
+
+int parse_config_file(EditState *s, const char *filename)
+{
+    QEmacsDataSource ds = { 0 };
+    int res;
+
+    ds.filename = filename;
+    ds.f = fopen(filename, "r");
+    if (!ds.f)
+        return -1;
+    res = qe_parse_script(s, &ds);
+    fclose(ds.f);
+    return res;
+}
+
+void do_eval_expression(EditState *s, const char *expression)
+{
+    QEmacsDataSource ds = { 0 };
+
+    ds.filename = "<string>";
+    ds.str = expression;
+    ds.len = strlen(expression);
+    qe_parse_script(s, &ds);
+}
+
+static int do_eval_buffer_region(EditState *s, int start, int stop)
+{
+    QEmacsDataSource ds = { 0 };
+
+    ds.filename = s->b->name;
+    ds.b = s->b;
+    if (stop < 0)
+        stop = INT_MAX;
+    if (start < 0)
+        start = INT_MAX;
+    if (start < stop) {
+        ds.offset = start;
+        ds.stop = stop;
+    } else {
+        ds.offset = stop;
+        ds.stop = start;
+    }
+    return qe_parse_script(s, &ds);
+}
+
+void do_eval_region(EditState *s)
+{
+    /* deactivate region hilite */
+    s->region_style = 0;
+
+    do_eval_buffer_region(s, s->b->mark, s->offset);
+}
+
+void do_eval_buffer(EditState *s)
+{
+    do_eval_buffer_region(s, 0, -1);
+}
+
+static CmdDef parser_commands[] = {
+
+    CMD2( KEY_META(':'), KEY_NONE,
+          "eval-expression", do_eval_expression, ESs,
+          "s{Eval: }|expression|")
+    CMD0( KEY_NONE, KEY_NONE,
+          "eval-region", do_eval_region)
+    CMD0( KEY_NONE, KEY_NONE,
+          "eval-buffer", do_eval_buffer)
+
+    CMD_DEF_END,
+};
+
+static int parser_init(void)
+{
+    qe_register_cmd_table(parser_commands, NULL);
+    return 0;
+}
+
+qe_module_init(parser_init);
