@@ -44,7 +44,7 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
 
         s->unihex_mode = snprintf(NULL, 0, "%x", maxc);
 
-        s->disp_width = 32 / s->unihex_mode;
+        s->dump_width = 32 / s->unihex_mode;
         s->hex_mode = 1;
         s->hex_nibble = 0;
         s->insert = 0;
@@ -69,13 +69,13 @@ static int unihex_backward_offset(EditState *s, int offset)
 
     /* CG: beware: offset may fall inside a character */
     pos = eb_get_char_offset(s->b, offset);
-    pos = align(pos, s->disp_width);
+    pos = align(pos, s->dump_width);
     return eb_goto_char(s->b, pos);
 }
 
 static int unihex_display(EditState *s, DisplayState *ds, int offset)
 {
-    int j, len, ateof, disp_width;
+    int j, len, ateof, dump_width;
     int offset1, offset2;
     unsigned int b;
     /* CG: array size is incorrect, should be smaller */
@@ -90,10 +90,10 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
     //display_printf(ds, -1, -1, "%08x ", charpos);
     //display_printf(ds, -1, -1, "%08x %08x ", charpos, offset);
 
-    disp_width = min(LINE_MAX_SIZE - 1, s->disp_width);
+    dump_width = min(LINE_MAX_SIZE - 1, s->dump_width);
     ateof = 0;
     len = 0;
-    for (j = 0; j < disp_width && offset < s->b->total_size; j++) {
+    for (j = 0; j < dump_width && offset < s->b->total_size; j++) {
         pos[len] = offset;
         buf[len] = eb_nextc(s->b, offset, &offset);
         len++;
@@ -102,7 +102,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
 
     ds->style = UNIHEX_STYLE_DUMP;
 
-    for (j = 0; j < disp_width; j++) {
+    for (j = 0; j < dump_width; j++) {
         display_char(ds, -1, -1, ' ');
         offset1 = pos[j];
         offset2 = pos[j + 1];
@@ -132,7 +132,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
     display_char(ds, -1, -1, ' ');
 
     ateof = 0;
-    for (j = 0; j < disp_width; j++) {
+    for (j = 0; j < dump_width; j++) {
         offset1 = pos[j];
         offset2 = pos[j + 1];
         if (j < len) {
@@ -156,7 +156,7 @@ static int unihex_display(EditState *s, DisplayState *ds, int offset)
     }
     display_eol(ds, -1, -1);
 
-    if (len >= disp_width)
+    if (len >= dump_width)
         return offset;
     else
         return -1;
@@ -167,7 +167,7 @@ static void unihex_move_bol(EditState *s)
     int pos;
 
     pos = eb_get_char_offset(s->b, s->offset);
-    pos = align(pos, s->disp_width);
+    pos = align(pos, s->dump_width);
     s->offset = eb_goto_char(s->b, pos);
 }
 
@@ -178,7 +178,7 @@ static void unihex_move_eol(EditState *s)
     pos = eb_get_char_offset(s->b, s->offset);
 
     /* CG: should include the last character! */
-    pos = align(pos, s->disp_width) + s->disp_width - 1;
+    pos = align(pos, s->dump_width) + s->dump_width - 1;
 
     s->offset = eb_goto_char(s->b, pos);
 }
@@ -198,7 +198,7 @@ static void unihex_move_up_down(EditState *s, int dir)
 
     pos = eb_get_char_offset(s->b, s->offset);
 
-    pos += dir * s->disp_width;
+    pos += dir * s->dump_width;
 
     s->offset = eb_goto_char(s->b, pos);
 }

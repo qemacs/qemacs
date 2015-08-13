@@ -1129,7 +1129,7 @@ struct EditState {
     int y_disp;    /* virtual position of the displayed text */
     int x_disp[2]; /* position for LTR and RTL text resp. */
     int minibuf;   /* true if single line editing */
-    int disp_width;  /* width in binary, hex and unihex modes */
+    int dump_width;  /* width in binary, hex and unihex modes */
     int hex_mode;    /* true if we are currently editing hexa */
     int unihex_mode; /* true if unihex editing (width of hex char dump) */
     int hex_nibble;  /* current hexa nibble */

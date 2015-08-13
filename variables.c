@@ -70,12 +70,13 @@ static VarDef var_table[] = {
     W_VAR( "window-left", xleft, VAR_NUMBER, VAR_RW )
     W_VAR( "window-top", ytop, VAR_NUMBER, VAR_RW )
     W_VAR( "window-prompt", prompt, VAR_STRING, VAR_RW )
+    W_VAR( "dump-width", dump_width, VAR_NUMBER, VAR_RW )
 
     M_VAR( "mode-name", name, VAR_STRING, VAR_RO )
     M_VAR( "auto-indent", auto_indent, VAR_NUMBER, VAR_RW )
 
     /* more buffer fields: modified, readonly, binary, charset */
-    /* more window fields: mode_line, disp_width, color, input_method...
+    /* more window fields: mode_line, color, input_method...
      */
 
     //G_VAR( "text-mode-line", text_mode.mode_line, VAR_STRING, VAR_RW )

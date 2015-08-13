@@ -41,7 +41,7 @@ static int to_disp(int c)
 
 static int hex_backward_offset(EditState *s, int offset)
 {
-    return align(offset, s->disp_width);
+    return align(offset, s->dump_width);
 }
 
 static int hex_display(EditState *s, DisplayState *ds, int offset)
@@ -57,14 +57,14 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
 
     ateof = 0;
     len = s->b->total_size - offset;
-    if (len > s->disp_width)
-        len = s->disp_width;
+    if (len > s->dump_width)
+        len = s->dump_width;
 
     if (s->mode == &hex_mode) {
 
         ds->style = HEX_STYLE_DUMP;
 
-        for (j = 0; j < s->disp_width; j++) {
+        for (j = 0; j < s->dump_width; j++) {
             display_char(ds, -1, -1, ' ');
             offset1 = offset + j;
             offset2 = offset1 + 1;
@@ -91,7 +91,7 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
     display_char(ds, -1, -1, ' ');
 
     ateof = 0;
-    for (j = 0; j < s->disp_width; j++) {
+    for (j = 0; j < s->dump_width; j++) {
         offset1 = offset + j;
         offset2 = offset1 + 1;
         if (j < len) {
@@ -108,7 +108,7 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
     }
     display_eol(ds, -1, -1);
 
-    if (len >= s->disp_width)
+    if (len >= s->dump_width)
         return offset + len;
     else
         return -1;
@@ -117,7 +117,7 @@ static int hex_display(EditState *s, DisplayState *ds, int offset)
 static void do_set_width(EditState *s, int w)
 {
     if (w >= 1) {
-        s->disp_width = w;
+        s->dump_width = w;
         s->offset_top = s->mode->text_backward_offset(s, s->offset_top);
     }
 }
@@ -125,7 +125,7 @@ static void do_set_width(EditState *s, int w)
 static void do_incr_width(EditState *s, int incr)
 {
     int w;
-    w = s->disp_width + incr;
+    w = s->dump_width + incr;
     if (w >= 1)
         do_set_width(s, w);
 }
@@ -166,11 +166,15 @@ static int binary_mode_init(EditState *s, EditBuffer *b, int flags)
         num_width = glyph_width(s->screen, font, '0');
         release_font(s->screen, font);
 
-        s->disp_width = (s->screen->width / num_width) - 10;
+        s->dump_width = s->screen->width / num_width;
+        if (s->b->flags & BF_PREVIEW)
+            s->dump_width = s->dump_width * 4 / 5;
+
+        s->dump_width -= 10;
         /* align on 16 byte boundary */
-        s->disp_width &= ~15;
-        if (s->disp_width < 16)
-            s->disp_width = 16;
+        s->dump_width &= ~15;
+        if (s->dump_width < 16)
+            s->dump_width = 16;
         s->insert = 0;
         s->hex_mode = 0;
         s->wrap = WRAP_TRUNCATE;
@@ -181,7 +185,7 @@ static int binary_mode_init(EditState *s, EditBuffer *b, int flags)
 static int hex_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
-        s->disp_width = 16;
+        s->dump_width = 16;
         s->hex_mode = 1;
         s->unihex_mode = 0;
         s->hex_nibble = 0;
@@ -216,12 +220,12 @@ static int hex_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 static void hex_move_bol(EditState *s)
 {
-    s->offset = align(s->offset, s->disp_width);
+    s->offset = align(s->offset, s->dump_width);
 }
 
 static void hex_move_eol(EditState *s)
 {
-    s->offset = align(s->offset, s->disp_width) + s->disp_width - 1;
+    s->offset = align(s->offset, s->dump_width) + s->dump_width - 1;
     if (s->offset > s->b->total_size)
         s->offset = s->b->total_size;
 }
@@ -238,7 +242,7 @@ static void hex_move_left_right(EditState *s, int dir)
 
 static void hex_move_up_down(EditState *s, int dir)
 {
-    s->offset += dir * s->disp_width;
+    s->offset += dir * s->dump_width;
     if (s->offset < 0)
         s->offset = 0;
     else
@@ -318,9 +322,14 @@ static void hex_mode_line(EditState *s, buf_t *out)
     buf_printf(out, "--%d%%", compute_percent(s->offset, s->b->total_size));
 }
 
+static int binary_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    return 5;
+}
+
 static ModeDef binary_mode = {
     .name = "binary",
-    .mode_probe = NULL,
+    .mode_probe = binary_mode_probe,
     .mode_init = binary_mode_init,
     .text_display = hex_display,
     .text_backward_offset = hex_backward_offset,
