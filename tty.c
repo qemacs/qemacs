@@ -94,7 +94,7 @@ typedef struct TTYState {
     int cursor_x, cursor_y;
     /* input handling */
     enum InputState input_state;
-    int input_param;
+    int input_param, input_param2;
     int utf8_state;
     int utf8_index;
     unsigned char buf[10];
@@ -453,9 +453,11 @@ static void tty_read_handler(void *opaque)
             }
             ts->input_state = IS_CSI;
             ts->input_param = 0;
+            ts->input_param2 = 0;
         } else if (ch == 'O') {
             ts->input_state = IS_ESC2;
             ts->input_param = 0;
+            ts->input_param2 = 0;
         } else {
             ch = KEY_META(ch);
             ts->input_state = IS_NORM;
@@ -469,6 +471,14 @@ static void tty_read_handler(void *opaque)
         }
         ts->input_state = IS_NORM;
         switch (ch) {
+        case ';': /* multi ignore but the last 2 */
+            /* iterm2 uses this for some keys:
+             * C-up, C-down, C-left, C-right, S-left, S-right,
+             */
+            ts->input_param2 = ts->input_param;
+            ts->input_param = 0;
+            ts->input_state = IS_CSI;
+            break;
         case '[':
             ts->input_state = IS_CSI2;
             break;
@@ -479,10 +489,6 @@ static void tty_read_handler(void *opaque)
             }
             break;
             /* All these for ansi|cygwin */
-        case 'A': ch = KEY_UP; goto the_end;    // kcuu1
-        case 'B': ch = KEY_DOWN; goto the_end;  // kcud1
-        case 'C': ch = KEY_RIGHT; goto the_end; // kcuf1
-        case 'D': ch = KEY_LEFT; goto the_end;  // kcub1
         case 'F': ch = KEY_END; goto the_end;   // kend
         //case 'G': ch = KEY_CENTER; goto the_end;    // kb2
         case 'H': ch = KEY_HOME; goto the_end;  // khome
@@ -490,16 +496,41 @@ static void tty_read_handler(void *opaque)
         //case 'M': ch = KEY_MOUSE; goto the_end;     // kmous
         case 'Z': ch = KEY_SHIFT_TAB; goto the_end;     // kcbt
         default:
-#if 0           /* xterm CTRL-arrows */
             if (ts->input_param == 5) {
+                /* xterm CTRL-arrows */
+                /* iterm2 CTRL-arrows:
+                 * C-up    = ^[[1;5A
+                 * C-down  = ^[[1;5B
+                 * C-left  = ^[[1;5D
+                 * C-right = ^[[1;5C
+                 */
                 switch (ch) {
                 case 'A': ch = KEY_CTRL_UP; goto the_end;
                 case 'B': ch = KEY_CTRL_DOWN; goto the_end;
                 case 'C': ch = KEY_CTRL_RIGHT; goto the_end;
                 case 'D': ch = KEY_CTRL_LEFT; goto the_end;
                 }
+            } else
+            if (ts->input_param == 2) {
+                /* iterm2 SHIFT-arrows:
+                 * S-left  = ^[[1;2D
+                 * S-right = ^[[1;2C
+                 * should set-mark if region not visible
+                 */
+                switch (ch) {
+                case 'A': ch = KEY_UP; goto the_end;
+                case 'B': ch = KEY_DOWN; goto the_end;
+                case 'C': ch = KEY_RIGHT; goto the_end;
+                case 'D': ch = KEY_LEFT; goto the_end;
+                }
+            } else {
+                switch (ch) {
+                case 'A': ch = KEY_UP; goto the_end;    // kcuu1
+                case 'B': ch = KEY_DOWN; goto the_end;  // kcud1
+                case 'C': ch = KEY_RIGHT; goto the_end; // kcuf1
+                case 'D': ch = KEY_LEFT; goto the_end;  // kcub1
+                }
             }
-#endif
             break;
         }
         break;
@@ -522,6 +553,8 @@ static void tty_read_handler(void *opaque)
         case 'B': ch = KEY_DOWN; goto the_end;
         case 'C': ch = KEY_RIGHT; goto the_end;
         case 'D': ch = KEY_LEFT; goto the_end;
+        case 'F': ch = KEY_CTRL_RIGHT; goto the_end; /* iterm2 F-right */
+        case 'H': ch = KEY_CTRL_LEFT; goto the_end; /* iterm2 F-left */
         case 'P': ch = KEY_F1; goto the_end;
         case 'Q': ch = KEY_F2; goto the_end;
         case 'R': ch = KEY_F3; goto the_end;
