@@ -28,6 +28,7 @@ typedef enum QVarType {
 enum QVarAccess {
     VAR_RO,
     VAR_RW,
+    VAR_RW_SAVE,
 };
 
 enum QVarDomain {
@@ -63,13 +64,17 @@ typedef struct VarDef {
 #define G_VAR(name,var,type,rw) \
     { (name), VAR_GLOBAL, type, rw, 0, { .ptr = (void*)&(var) }, NULL },
 #define S_VAR(name,fld,type,rw) \
-    { (name), VAR_STATE, type, rw, sizeof(((QEmacsState*)0)->fld), { .offset = offsetof(QEmacsState, fld) }, NULL },
+    { (name), VAR_STATE, type, rw, sizeof(((QEmacsState*)0)->fld), \
+      { .offset = offsetof(QEmacsState, fld) }, NULL },
 #define B_VAR(name,fld,type,rw) \
-    { (name), VAR_BUFFER, type, rw, sizeof(((EditBuffer*)0)->fld), { .offset = offsetof(EditBuffer, fld) }, NULL },
+    { (name), VAR_BUFFER, type, rw, sizeof(((EditBuffer*)0)->fld), \
+      { .offset = offsetof(EditBuffer, fld) }, NULL },
 #define W_VAR(name,fld,type,rw) \
-    { (name), VAR_WINDOW, type, rw, sizeof(((EditState*)0)->fld), { .offset = offsetof(EditState, fld) }, NULL },
+    { (name), VAR_WINDOW, type, rw, sizeof(((EditState*)0)->fld), \
+      { .offset = offsetof(EditState, fld) }, NULL },
 #define M_VAR(name,fld,type,rw) \
-    { (name), VAR_MODE, type, rw, sizeof(((ModeDef*)0)->fld), { .offset = offsetof(ModeDef, fld) }, NULL },
+    { (name), VAR_MODE, type, rw, sizeof(((ModeDef*)0)->fld), \
+      { .offset = offsetof(ModeDef, fld) }, NULL },
 
 void qe_register_variables(VarDef *vars, int count);
 VarDef *qe_find_variable(const char *name);

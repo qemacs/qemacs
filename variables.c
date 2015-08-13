@@ -35,20 +35,20 @@ static VarDef var_table[] = {
     S_VAR( "screen-width", width, VAR_NUMBER, VAR_RO )
     S_VAR( "screen-height", height, VAR_NUMBER, VAR_RO )
     S_VAR( "is-full-screen", is_full_screen, VAR_NUMBER, VAR_RO )
-    S_VAR( "flag-split-window-change-focus", flag_split_window_change_focus, VAR_NUMBER, VAR_RW )
-    S_VAR( "backspace-is-control-h", backspace_is_control_h, VAR_NUMBER, VAR_RW )
+    S_VAR( "flag-split-window-change-focus", flag_split_window_change_focus, VAR_NUMBER, VAR_RW_SAVE )
+    S_VAR( "backspace-is-control-h", backspace_is_control_h, VAR_NUMBER, VAR_RW_SAVE )
     S_VAR( "ungot-key", ungot_key, VAR_NUMBER, VAR_RW )
     S_VAR( "QEPATH", res_path, VAR_CHARS, VAR_RO )
     //S_VAR( "it", it, VAR_NUMBER, VAR_RW )
-    S_VAR( "ignore-spaces", ignore_spaces, VAR_NUMBER, VAR_RW )
-    S_VAR( "hilite-region", hilite_region, VAR_NUMBER, VAR_RW )
-    S_VAR( "mmap-threshold", mmap_threshold, VAR_NUMBER, VAR_RW )
-    S_VAR( "max-load-size", max_load_size, VAR_NUMBER, VAR_RW )
-    S_VAR( "show-unicode", show_unicode, VAR_NUMBER, VAR_RW )
-    S_VAR( "default-tab-width", default_tab_width, VAR_NUMBER, VAR_RW )
-    S_VAR( "default-fill-column", default_fill_column, VAR_NUMBER, VAR_RW )
-    S_VAR( "backup-inhibited", backup_inhibited, VAR_NUMBER, VAR_RW )
-    S_VAR( "fuzzy-search", fuzzy_search, VAR_NUMBER, VAR_RW )
+    S_VAR( "ignore-spaces", ignore_spaces, VAR_NUMBER, VAR_RW_SAVE )
+    S_VAR( "hilite-region", hilite_region, VAR_NUMBER, VAR_RW_SAVE )
+    S_VAR( "mmap-threshold", mmap_threshold, VAR_NUMBER, VAR_RW_SAVE )
+    S_VAR( "max-load-size", max_load_size, VAR_NUMBER, VAR_RW_SAVE )
+    S_VAR( "show-unicode", show_unicode, VAR_NUMBER, VAR_RW_SAVE )
+    S_VAR( "default-tab-width", default_tab_width, VAR_NUMBER, VAR_RW_SAVE )
+    S_VAR( "default-fill-column", default_fill_column, VAR_NUMBER, VAR_RW_SAVE )
+    S_VAR( "backup-inhibited", backup_inhibited, VAR_NUMBER, VAR_RW_SAVE )
+    S_VAR( "fuzzy-search", fuzzy_search, VAR_NUMBER, VAR_RW_SAVE )
 
     //B_VAR( "screen-charset", charset, VAR_NUMBER, VAR_RW )
 
@@ -228,7 +228,7 @@ QVarType qe_set_variable(EditState *s, const char *name,
         vp = qe_mallocz(VarDef);
         vp->name = qe_strdup(name);
         vp->domain = VAR_SELF;
-        vp->rw = VAR_RW;
+        vp->rw = VAR_RW_SAVE;
         if (value) {
             vp->value.str = qe_strdup(value);
             vp->type = VAR_STRING;
@@ -347,6 +347,42 @@ void qe_list_variables(EditState *s, EditBuffer *b)
     }
 }
 
+static void qe_save_variables(EditState *s, EditBuffer *b)
+{
+    QEmacsState *qs = s->qe_state;
+    char buf[MAX_FILENAME_SIZE];
+    char varname[32], *p;
+    const VarDef *vp;
+
+    eb_printf(b, "// variables:\n");
+    eb_printf(b, "// version: %s\n", QE_VERSION);
+    eb_printf(b, "\n");
+
+    for (vp = qs->first_variable; vp; vp = vp->next) {
+        if (vp->rw != VAR_RW_SAVE)
+            continue;
+        pstrcpy(varname, countof(varname), vp->name);
+        for (p = varname; *p; p++) {
+            if (*p == '-')
+                *p = '_';
+        }
+        qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
+        eb_printf(b, "%s = %s;\n", varname, buf);
+    }
+    eb_printf(b, "\n");
+}
+
+static void do_save_variables(EditState *s)
+{
+    EditBuffer *b = eb_scratch("*session*", BF_UTF8);
+    qe_save_variables(s, b);
+    b->offset = 0;
+    b->flags |= BF_READONLY;
+
+    /* Should show window caption "qemacs session" */
+    show_popup(b);
+}
+
 /*---------------- commands ----------------*/
 
 static CmdDef var_commands[] = {
@@ -356,6 +392,9 @@ static CmdDef var_commands[] = {
     CMD2( KEY_F8, KEY_NONE,
           "set-variable", do_set_variable, ESss,
           "s{Set variable: }[var]|var|s{to value: }|value|")
+    CMD0( KEY_F8, KEY_NONE,
+          "save-variables", do_save_variables)
+
     CMD_DEF_END,
 };
 
