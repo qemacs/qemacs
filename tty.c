@@ -95,9 +95,8 @@ typedef struct TTYState {
     /* input handling */
     enum InputState input_state;
     int input_param, input_param2;
-    int utf8_state;
     int utf8_index;
-    unsigned char buf[10];
+    unsigned char buf[8];
     char *term_name;
     enum TermCode term_code;
     int term_flags;
@@ -399,34 +398,42 @@ static void tty_read_handler(void *opaque)
     QEditScreen *s = opaque;
     QEmacsState *qs = &qe_state;
     TTYState *ts = s->priv_data;
-    int ch;
     QEEvent ev1, *ev = &ev1;
+    u8 buf[1];
+    int ch, len;
 
-    if (read(fileno(s->STDIN), ts->buf + ts->utf8_index, 1) != 1)
+    if (read(fileno(s->STDIN), buf, 1) != 1)
         return;
 
     if (qs->trace_buffer &&
         qs->active_window &&
         qs->active_window->b != qs->trace_buffer) {
-        eb_trace_bytes(ts->buf + ts->utf8_index, 1, EB_TRACE_TTY);
+        eb_trace_bytes(buf, 1, EB_TRACE_TTY);
     }
 
-    /* charset handling */
-    if (s->charset == &charset_utf8) {
-        if (ts->utf8_state == 0) {
-            const char *p = cs8(ts->buf);
-            ch = utf8_decode(&p);
-        } else {
-            ts->utf8_state = utf8_length[ts->buf[0]] - 1;
-            ts->utf8_index = 0;
-            return;
-        }
-    } else {
-        ch = ts->buf[0];
-    }
+    ch = buf[0];
 
     switch (ts->input_state) {
     case IS_NORM:
+        /* charset handling */
+        if (s->charset == &charset_utf8) {
+            if (ts->utf8_index && !(ch > 0x80 && ch < 0xc0)) {
+                /* not a valid continuation byte */
+                /* flush stored prefix, restart from current byte */
+                /* XXX: maybe should consume prefix byte as binary */
+                ts->utf8_index = 0;
+            }
+            ts->buf[ts->utf8_index] = ch;
+            len = utf8_length[ts->buf[0]];
+            if (len > 1) {
+                const char *p = cs8(ts->buf);
+                if (++ts->utf8_index < len) {
+                    /* valid utf8 sequence underway, wait for next */
+                    return;
+                }
+                ch = utf8_decode(&p);
+            }
+        }
         if (ch == '\033') {
             if (!tty_term_is_user_input_pending(s)) {
                 /* Trick to distinguish the ESC key from function and meta
@@ -465,7 +472,7 @@ static void tty_read_handler(void *opaque)
         }
         break;
     case IS_CSI:
-        if (qe_isdigit(ch)) {
+        if (ch >= '0' && ch <= '9') {
             ts->input_param = ts->input_param * 10 + ch - '0';
             break;
         }
