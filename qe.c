@@ -5185,17 +5185,20 @@ static void complete_start(EditState *s, CompleteState *cp)
     cp->len = eb_get_contents(s->b, cp->current, sizeof(cp->current));
 }
 
-/* XXX: should have a globbing and a case insensitive option */
+/* XXX: should have a globbing option */
 void complete_test(CompleteState *cp, const char *str)
 {
     QEmacsState *qs = &qe_state;
     int fuzzy = 0;
 
     if (memcmp(str, cp->current, cp->len)) {
-        if (!qs->fuzzy_search
-        ||  !strmem(str, cp->current, cp->len))
+        if (!qe_memicmp(str, cp->current, cp->len))
+            fuzzy = 1;
+        else
+        if (qs->fuzzy_search && strmem(str, cp->current, cp->len))
+            fuzzy = 2;
+        else
             return;
-        fuzzy = 1;
     }
     add_string(&cp->cs, str, fuzzy);
 }
