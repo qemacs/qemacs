@@ -415,9 +415,11 @@ void do_set_emulation(EditState *s, const char *name)
     QEmacsState *qs = s->qe_state;
 
     if (strequal(name, "epsilon")) {
+        qs->emulation_flags = 1;
         qs->flag_split_window_change_focus = 1;
     } else
     if (strequal(name, "emacs") || strequal(name, "xemacs")) {
+        qs->emulation_flags = 0;
         qs->flag_split_window_change_focus = 0;
     } else
     if (strequal(name, "vi") || strequal(name, "vim")) {
@@ -1144,12 +1146,27 @@ void do_center_cursor(EditState *s)
     if (!s->mode->text_display)
         return;
 
+    if (s->offset < s->offset_top) {
+        int offset_top = s->offset_top;
+        eb_prevc(s->b, offset_top, &offset_top);
+        s->offset_top = s->mode->text_backward_offset(s, offset_top);
+    }
+
     get_cursor_pos(s, &cm);
     if (cm.xc == NO_CURSOR)
         return;
 
     /* try to center display */
     perform_scroll_up_down(s, -((s->height / 2) - cm.yc));
+}
+
+/* center window if offset is not currently visible */
+static void do_center_cursor_maybe(EditState *s)
+{
+    if (s->offset < s->offset_top
+    ||  (s->offset_bottom >= 0 && s->offset >= s->offset_bottom)) {
+        do_center_cursor(s);
+    }
 }
 
 /* called each time the cursor could be displayed */
@@ -1497,7 +1514,7 @@ static void quote_key(void *opaque, int key)
         return;
 
     /* CG: why not insert special keys as well? */
-    if (!KEY_SPECIAL(key) || (key >= 0 && key <= 31)) {
+    if (!KEY_IS_SPECIAL(key)) {
         do_char(s, key, qa->argval);
         edit_display(s->qe_state);
         dpy_flush(&global_screen);
@@ -3196,8 +3213,12 @@ int display_char_bidir(DisplayState *s, int offset1, int offset2,
         int offset = e->offset;
 
         if ((offset1 >= offset && offset1 < mark) ||
-            (offset1 >= mark && offset1 < offset))
-            style |= QE_STYLE_SEL;
+            (offset1 >= mark && offset1 < offset)) {
+            if (e->show_selection)
+                style |= QE_STYLE_SEL;
+            else
+                style = e->region_style;
+        }
     }
     /* special patch for selection in hex mode */
     if (offset1 == offset2) {
@@ -3297,6 +3318,7 @@ static void display1(DisplayState *s)
     offset = e->offset_top;
     for (;;) {
         offset = e->mode->text_display(e, s, offset);
+        e->offset_bottom = offset;
         /* EOF reached ? */
         if (offset < 0)
             break;
@@ -3649,7 +3671,7 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     /* colorize regions */
     if (s->curline_style || s->region_style) {
         /* CG: Should combine styles instead of replacing */
-        if (s->region_style) {
+        if (!s->curline_style && s->region_style) {
             int line, start, stop;
 
             if (s->b->mark < s->offset) {
@@ -3732,7 +3754,7 @@ static void generic_text_display(EditState *s)
 {
     CursorContext m1, *m = &m1;
     DisplayState ds1, *ds = &ds1;
-    int x1, xc, yc, offset;
+    int x1, xc, yc, offset, bottom = -1;
 
     /* if the cursor is before the top of the display zone, we must
        resync backward */
@@ -3762,6 +3784,7 @@ static void generic_text_display(EditState *s)
             s->y_disp = ds->y;
         }
         offset = s->mode->text_display(s, ds, offset);
+        s->offset_bottom = offset;
         if (offset < 0 || ds->y >= s->height || m->xc != NO_CURSOR)
             break;
     }
@@ -3774,7 +3797,7 @@ static void generic_text_display(EditState *s)
         ds->cursor_func = cursor_func;
         ds->y = 0;
         offset = s->mode->text_backward_offset(s, s->offset);
-        s->mode->text_display(s, ds, offset);
+        bottom = s->mode->text_display(s, ds, offset);
         if (m->xc == NO_CURSOR) {
             /* XXX: should not happen */
             put_error(NULL, "ERROR: cursor not found");
@@ -3786,9 +3809,10 @@ static void generic_text_display(EditState *s)
         while (ds->y < s->height && offset > 0) {
             eb_prevc(s->b, offset, &offset);
             offset = s->mode->text_backward_offset(s, offset);
-            s->mode->text_display(s, ds, offset);
+            bottom = s->mode->text_display(s, ds, offset);
         }
         s->offset_top = offset;
+        s->offset_bottom = bottom;
         /* adjust y_disp so that the cursor is at the bottom of the
            screen */
         s->y_disp = s->height - ds->y;
@@ -4635,7 +4659,7 @@ static void qe_key_process(int key)
         unsigned int key_default = KEY_DEFAULT;
 
         if (c->nb_keys == 1) {
-            if (!KEY_SPECIAL(key)) {
+            if (!KEY_IS_SPECIAL(key) && !KEY_IS_CONTROL(key)) {
                 if (c->is_numeric_arg) {
                     if (qe_isdigit(key)) {
                         if (c->argval == NO_ARG)
@@ -6405,54 +6429,77 @@ static void quit_confirm_cb(__unused__ void *opaque, char *reply)
 
 /* Search stuff */
 
-#define SEARCH_FLAG_IGNORECASE 0x0001
-#define SEARCH_FLAG_SMARTCASE  0x0002 /* case sensitive if upper case present */
+#define SEARCH_FLAG_SMARTCASE  0x0001  /* case fold unless upper case present */
+#define SEARCH_FLAG_IGNORECASE 0x0002
 #define SEARCH_FLAG_WORD       0x0004
+#define SEARCH_FLAG_WRAPPED    0x0008
+#define SEARCH_FLAG_HEX        0x0010
+#define SEARCH_FLAG_UNIHEX     0x0020
 
 /* XXX: OPTIMIZE ! */
-int eb_search(EditBuffer *b, int offset, int dir, int flags,
-              const char *buf, int size,
+int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
+              const unsigned int *buf, int len,
               CSSAbortFunc *abort_func, void *abort_opaque,
               int *found_offset, int *found_end)
 {
     int total_size = b->total_size;
-    int c, c2, offset1, offset2;
-    char buf1[1024];
-    const char *bufp, *bufend;
+    int c, c2, offset = start_offset, offset1, offset2, pos;
 
-    if (size == 0 || size >= (int)sizeof(buf1))
+    if (len == 0)
         return 0;
+
+    *found_offset = -1;
+    *found_end = -1;
+
+    if (flags & SEARCH_FLAG_HEX) {
+        /* handle buffer as single bytes */
+        /* XXX: should handle ucs2 and ucs4 as words */
+        for (;; (void)(dir >= 0 && offset++)) {
+            if (dir < 0) {
+                if (offset == 0)
+                    return 0;
+                offset--;
+            }
+            if (offset >= total_size)
+                return 0;
+
+            if ((offset & 0xfffff) == 0) {
+                /* check for search abort every meg */
+                if (abort_func && abort_func(abort_opaque))
+                    return 0;
+            }
+
+            pos = 0;
+            for (offset2 = offset; offset2 < total_size;) {
+                u8 data[1];
+
+                /* CG: Should bufferize a bit ? */
+                eb_read(b, offset2++, data, 1);
+                c = data[0];
+                c2 = buf[pos++];
+                if (c != c2)
+                    break;
+                if (pos >= len) {
+                    /* check end of word */
+                    *found_offset = offset;
+                    *found_end = offset2;
+                    return 1;
+                }
+            }
+        }
+    }
 
     /* analyze buffer if smart case */
     if (flags & SEARCH_FLAG_SMARTCASE) {
         int upper_count = 0;
         int lower_count = 0;
-        bufp = buf;
-        bufend = buf + size;
-        while (bufp < bufend) {
-            c = utf8_decode(&bufp);
-            lower_count += qe_islower(c);
-            upper_count += qe_isupper(c);
+        for (pos = 0; pos < len; pos++) {
+            lower_count += qe_islower(buf[pos]);
+            upper_count += qe_isupper(buf[pos]);
         }
         if (lower_count > 0 && upper_count == 0)
             flags |= SEARCH_FLAG_IGNORECASE;
     }
-
-    /* copy buffer */
-    if (flags & SEARCH_FLAG_IGNORECASE) {
-        bufp = buf;
-        bufend = buf + size;
-        size = 0;
-        while (bufp < bufend) {
-            c = utf8_decode(&bufp);
-            size += utf8_encode(buf1 + size, qe_toupper(c));
-        }
-    } else {
-        memcpy(buf1, buf, size);
-    }
-
-    *found_offset = -1;
-    *found_end = -1;
 
     for (;; (void)(dir >= 0 && eb_nextc(b, offset, &offset))) {
         if (dir < 0) {
@@ -6463,40 +6510,44 @@ int eb_search(EditBuffer *b, int offset, int dir, int flags,
         if (offset >= total_size)
             return 0;
 
-        /* search abort */
-        if ((offset & 0xfff) == 0) {
+        if ((offset & 0x1ffff) == 0) {
+            /* check for search abort every 128k */
             if (abort_func && abort_func(abort_opaque))
                 return 0;
         }
 
-        /* search start of word */
         if (flags & SEARCH_FLAG_WORD) {
+            /* check for start of word */
             c = eb_prevc(b, offset, &offset1);
             if (qe_isword(c))
                 continue;
         }
 
-        bufp = buf1;
-        bufend = buf1 + size;
+        pos = 0;
         offset2 = offset;
         while (offset2 < total_size) {
-            /* CG: Should bufferize a bit ? */
+            /* CG: XXX: Should use buffer specific accelerator */
             c = eb_nextc(b, offset2, &offset2);
-            if (flags & SEARCH_FLAG_IGNORECASE)
-                c = qe_toupper(c);
-            c2 = utf8_decode(&bufp);
-            if (c != c2)
-                break;
-            if (bufp >= bufend) {
-                /* check end of word */
+            c2 = buf[pos++];
+            if (flags & SEARCH_FLAG_IGNORECASE) {
+                if (qe_toupper(c) != qe_toupper(c2))
+                    break;
+            } else {
+                if (c != c2)
+                    break;
+            }
+            if (pos >= len) {
                 if (flags & SEARCH_FLAG_WORD) {
+                    /* check for end of word */
                     c = eb_nextc(b, offset2, &offset1);
                     if (qe_isword(c))
                         break;
                 }
-                *found_offset = offset;
-                *found_end = offset2;
-                return 1;
+                if (dir > 0 || offset2 <= start_offset) {
+                    *found_offset = offset;
+                    *found_end = offset2;
+                    return 1;
+                }
             }
         }
     }
@@ -6505,10 +6556,11 @@ int eb_search(EditBuffer *b, int offset, int dir, int flags,
 /* should separate search string length and number of match positions */
 #define SEARCH_LENGTH  256
 #define FOUND_TAG      0x80000000
+#define FOUND_REV      0x40000000
 
 /* store last searched string */
-static unsigned int last_search_string[SEARCH_LENGTH];
-static int last_search_string_len = 0;
+static unsigned int last_search_u32[SEARCH_LENGTH];
+static int last_search_u32_len = 0;
 
 int search_abort_func(__unused__ void *opaque)
 {
@@ -6517,88 +6569,23 @@ int search_abort_func(__unused__ void *opaque)
 
 typedef struct ISearchState {
     EditState *s;
+    int saved_mark;
     int start_offset;
+    int start_dir;
+    int quoting;
     int dir;
     int pos;
-    int stack_ptr;
     int search_flags;
     int found_offset, found_end;
-    unsigned int search_string[SEARCH_LENGTH];
+    unsigned int search_u32[SEARCH_LENGTH];
 } ISearchState;
 
-static void isearch_display(ISearchState *is)
+static void buf_encode_search_u32(buf_t *out, const unsigned int *str, int len)
 {
-    EditState *s = is->s;
-    char ubuf[256];
-    buf_t outbuf, *out;
-    char buf[2*SEARCH_LENGTH], *q; /* XXX: incorrect size */
-    int i, len, hex_nibble, h;
-    unsigned int v;
-    int search_offset;
-    int flags;
+    int i;
 
-    /* prepare the search bytes */
-    q = buf;
-    search_offset = is->start_offset;
-    hex_nibble = 0;
-    for (i = 0; i < is->pos; i++) {
-        v = is->search_string[i];
-        if (!(v & FOUND_TAG)) {
-            if ((q - buf) < ((int)sizeof(buf) - 10)) {
-                if (s->hex_mode) {
-                    h = to_hex(v);
-                    if (h >= 0) {
-                        if (hex_nibble == 0)
-                            *q = h << 4;
-                        else
-                            *q++ |= h;
-                        hex_nibble ^= 1;
-                    }
-                    /* CG: should handle unihex mode */
-                } else {
-                    q += utf8_encode(q, v);
-                }
-            }
-        } else {
-            /* CG: XXX: offset cannot be adjusted this way */
-            search_offset = (v & ~FOUND_TAG) + is->dir;
-        }
-    }
-    len = q - buf;
-    if (len == 0) {
-        s->offset = is->start_offset;
-        is->found_offset = -1;
-    } else {
-        flags = is->search_flags;
-        if (s->hex_mode)
-            flags = 0;
-        if (eb_search(s->b, search_offset, is->dir, flags,
-                      buf, len, search_abort_func, NULL,
-                      &is->found_offset, &is->found_end)) {
-            s->offset = is->found_end;
-        }
-    }
-
-    /* display search string */
-    out = buf_init(&outbuf, ubuf, sizeof(ubuf));
-    if (is->found_offset < 0 && len > 0)
-        buf_puts(out, "Failing ");
-    if (s->hex_mode) {
-        buf_puts(out, "hex ");
-    } else {
-        if (is->search_flags & SEARCH_FLAG_WORD)
-            buf_puts(out, "word ");
-        if (is->search_flags & SEARCH_FLAG_IGNORECASE)
-            buf_puts(out, "case-insensitive ");
-        else if (!(is->search_flags & SEARCH_FLAG_SMARTCASE))
-            buf_puts(out, "case-sensitive ");
-    }
-    buf_puts(out, "I-search");
-    if (is->dir < 0)
-        buf_puts(out, " backward");
-    buf_puts(out, ": ");
-    for (i = 0; i < is->pos; i++) {
-        v = is->search_string[i];
+    for (i = 0; i < len; i++) {
+        unsigned int v = str[i];
         if (!(v & FOUND_TAG)) {
             if (v < 32 || v == 127) {
                 buf_printf(out, "^%c", (v + '@') & 127);
@@ -6609,13 +6596,130 @@ static void isearch_display(ISearchState *is)
                 break;
         }
     }
+}
+
+static void buf_encode_search_str(buf_t *out, const char *str)
+{
+    while (*str) {
+        int c = utf8_decode(&str);
+        if (c < 32 || c == 127) {
+            buf_printf(out, "^%c", (c + '@') & 127);
+        } else {
+            buf_putc_utf8(out, c);
+        }
+        if (buf_avail(out) <= 0)
+            break;
+    }
+}
+
+static void isearch_display(ISearchState *is)
+{
+    EditState *s = is->s;
+    char ubuf[256];
+    buf_t outbuf, *out;
+    unsigned int buf[SEARCH_LENGTH];
+    int c, i, len, hex_nibble, max_nibble, h, hc;
+    unsigned int v;
+    int search_offset, flags, dir = is->start_dir;
+
+    /* prepare the search bytes */
+    len = 0;
+    search_offset = is->start_offset;
+    max_nibble = hex_nibble = hc = 0;
+    flags = is->search_flags;
+    if (flags & SEARCH_FLAG_UNIHEX)
+        max_nibble = 6;
+    if (flags & SEARCH_FLAG_HEX)
+        max_nibble = 2;
+
+    for (i = 0; i < is->pos; i++) {
+        v = is->search_u32[i];
+        if (v & FOUND_TAG) {
+            dir = (v & FOUND_REV) ? -1 : 1;
+            search_offset = v & ~(FOUND_TAG | FOUND_REV);
+            continue;
+        }
+        c = v;
+        if (len < countof(buf)) {
+            if (max_nibble) {
+                h = to_hex(c);
+                if (h >= 0) {
+                    hc = (hc << 4) | h;
+                    if (++hex_nibble == max_nibble) {
+                        buf[len++] = hc;
+                        hex_nibble = hc = 0;
+                    }
+                } else {
+                    if (c == ' ' && hex_nibble) {
+                        buf[len++] = hc;
+                        hex_nibble = hc = 0;
+                    }
+                }
+            } else {
+                buf[len++] = c;
+            }
+        }
+    }
+    if (hex_nibble >= 2) {
+        buf[len++] = hc;
+        hex_nibble = hc = 0;
+    }
+
+    is->dir = dir;
+
+    if (len == 0) {
+        s->b->mark = is->saved_mark;
+        s->offset = is->start_offset;
+        s->region_style = 0;
+        is->found_offset = -1;
+    } else {
+        if (eb_search(s->b, search_offset, is->dir, flags,
+                      buf, len, search_abort_func, NULL,
+                      &is->found_offset, &is->found_end)) {
+            s->region_style = QE_STYLE_SEARCH_MATCH;
+            if (is->dir > 0) {
+                s->b->mark = is->found_offset;
+                s->offset = is->found_end;
+            } else {
+                s->b->mark = is->found_end;
+                s->offset = is->found_offset;
+            }
+        }
+    }
+
+    /* display search string */
+    out = buf_init(&outbuf, ubuf, sizeof(ubuf));
+    if (is->found_offset < 0 && len > 0)
+        buf_puts(out, "Failing ");
+    else
+    if (is->search_flags & SEARCH_FLAG_WRAPPED) {
+        buf_puts(out, "Wrapped ");
+        is->search_flags &= ~SEARCH_FLAG_WRAPPED;
+    }
+    if (is->search_flags & SEARCH_FLAG_UNIHEX)
+        buf_puts(out, "Unihex ");
+    if (is->search_flags & SEARCH_FLAG_HEX)
+        buf_puts(out, "Hex ");
+    if (is->search_flags & SEARCH_FLAG_WORD)
+        buf_puts(out, "Word ");
+    if (is->search_flags & SEARCH_FLAG_IGNORECASE)
+        buf_puts(out, "Folding ");
+    else
+    if (!(is->search_flags & SEARCH_FLAG_SMARTCASE))
+        buf_puts(out, "Exact ");
+
+    buf_puts(out, "I-search");
+    if (is->dir < 0)
+        buf_puts(out, " backward");
+    buf_puts(out, ": ");
+    buf_encode_search_u32(out, is->search_u32, is->pos);
+    if (is->quoting)
+        buf_puts(out, "^Q-");
 
     /* display text */
-    do_center_cursor(s);
+    do_center_cursor_maybe(s);
     edit_display(s->qe_state);
-
     put_status(NULL, "%s", out->buf);
-
     dpy_flush(s->screen);
 }
 
@@ -6623,10 +6727,11 @@ static int isearch_grab(ISearchState *is, EditBuffer *b, int from, int to)
 {
     int offset, c, last = is->pos;
     if (b) {
-        if (to < 0 || to > b->total_size) to = b->total_size;
+        if (to < 0 || to > b->total_size)
+            to = b->total_size;
         for (offset = from; is->pos < SEARCH_LENGTH && offset < to;) {
             c = eb_nextc(b, offset, &offset);
-            is->search_string[is->pos++] = c;
+            is->search_u32[is->pos++] = c;
         }
     }
     return is->pos - last;
@@ -6637,26 +6742,35 @@ static void isearch_key(void *opaque, int ch)
     ISearchState *is = opaque;
     EditState *s = is->s;
     QEmacsState *qs = &qe_state;
-    int i, j, offset0, offset1;
+    int i, j, offset0, offset1, curdir = is->dir;
+    int emacs_behaviour = !qs->emulation_flags;
 
+    if (is->quoting) {
+        is->quoting = 0;
+        if (!KEY_IS_SPECIAL(ch))
+            goto addch;
+    }
+    /* XXX: all these should be isearch-mode bindings */
     switch (ch) {
     case KEY_DEL:
-    case KEY_BS:        /* Should test actual binding of KEY_BS */
+    case KEY_BS:
         if (is->pos > 0)
             is->pos--;
         break;
     case KEY_CTRL('g'):
+        s->b->mark = is->saved_mark;
         s->offset = is->start_offset;
+        s->region_style = 0;
         put_status(s, "Quit");
     the_end:
         /* save current searched string */
         if (is->pos > 0) {
             j = 0;
             for (i = 0; i < is->pos; i++) {
-                if (!(is->search_string[i] & FOUND_TAG))
-                    last_search_string[j++] = is->search_string[i];
+                if (!(is->search_u32[i] & FOUND_TAG))
+                    last_search_u32[j++] = is->search_u32[i];
             }
-            last_search_string_len = j;
+            last_search_u32_len = j;
         }
         qe_ungrab_keys();
         qe_free(&is);
@@ -6670,52 +6784,86 @@ static void isearch_key(void *opaque, int ch)
         is->dir = -1;
     addpos:
         /* use last seached string if no input */
-        if (is->pos == 0) {
-            memcpy(is->search_string, last_search_string,
-                   last_search_string_len * sizeof(unsigned int));
-            is->pos = last_search_string_len;
-        } else {
+        if (is->pos == 0 && is->dir == curdir) {
+            memcpy(is->search_u32, last_search_u32,
+                   last_search_u32_len * sizeof(*is->search_u32));
+            is->pos = last_search_u32_len;
+        } else
+        if (is->pos < SEARCH_LENGTH) {
             /* add the match position, if any */
-            if (is->pos < SEARCH_LENGTH && is->found_offset >= 0)
-                is->search_string[is->pos++] = FOUND_TAG | is->found_offset;
+            unsigned long v = is->dir > 0 ? FOUND_TAG : FOUND_TAG | FOUND_REV;
+            if (is->found_offset < 0) {
+                is->search_flags |= SEARCH_FLAG_WRAPPED;
+                if (is->dir < 0)
+                    v |= s->b->total_size;
+            } else {
+                v |= s->offset;
+            }
+            is->search_u32[is->pos++] = v;
         }
         break;
-#if 0
     case KEY_CTRL('q'):
-        ch = get_key(s->screen);
-        goto addch;
-    case KEY_CTRL('w'):   /* emacs: get word */
-    case KEY_CTRL('y'):   /* emacs: get line */
+        is->quoting = 1;
         break;
-#endif
-    case KEY_CTRL('d'):   /* get word */
-        offset0 = s->offset;
-        do_word_right(s, 1);
-        offset1 = s->offset;
-        s->offset = offset1;
-        isearch_grab(is, s->b, offset0, offset1);
+    case KEY_META('w'):
+        emacs_behaviour ^= 1;
+        /* fall thru */
+    case KEY_CTRL('w'):
+        if (emacs_behaviour) {
+            /* grab word at cursor */
+            offset0 = s->offset;
+            do_word_right(s, 1);
+            offset1 = s->offset;
+            s->offset = offset0;
+            isearch_grab(is, s->b, offset0, offset1);
+        } else {
+            /* toggle word match */
+            is->search_flags ^= SEARCH_FLAG_WORD;
+        }
         break;
-    case KEY_CTRL('l'):   /* get line */
-        offset0 = s->offset;
-        if (eb_nextc(s->b, offset0, &offset1) == '\n')
-            offset0 = offset1;
-        do_eol(s);
-        offset1 = s->offset;
-        s->offset = offset1;
-        isearch_grab(is, s->b, offset0, offset1);
+    case KEY_META('y'):
+        emacs_behaviour ^= 1;
+        /* fall thru */
+    case KEY_CTRL('y'):
+        if (emacs_behaviour) {
+            /* grab line at cursor */
+            offset0 = s->offset;
+            if (eb_nextc(s->b, offset0, &offset1) == '\n')
+                offset0 = offset1;
+            do_eol(s);
+            offset1 = s->offset;
+            s->offset = offset0;
+            isearch_grab(is, s->b, offset0, offset1);
+        } else {
+            /* yank into search string */
+            isearch_grab(is, qs->yank_buffers[qs->yank_current], 0, -1);
+        }
         break;
-    case KEY_CTRL('y'):   /* yank into search string */
-        isearch_grab(is, qs->yank_buffers[qs->yank_current], 0, -1);
+    case KEY_META('b'):
+    case KEY_CTRL('b'):
+        /* cycle unihex, hex, normal search */
+        if (is->search_flags & SEARCH_FLAG_UNIHEX)
+            is->search_flags ^= SEARCH_FLAG_HEX | SEARCH_FLAG_UNIHEX;
+        else
+        if (is->search_flags & SEARCH_FLAG_HEX)
+            is->search_flags ^= SEARCH_FLAG_HEX;
+        else
+            is->search_flags ^= SEARCH_FLAG_UNIHEX;
         break;
-    case KEY_CTRL('w'):   /* toggle word match */
-        is->search_flags ^= SEARCH_FLAG_WORD;
+    case KEY_META('c'):
+    case KEY_CTRL('c'):
+        /* toggle case sensitivity */
+        if (is->search_flags & (SEARCH_FLAG_IGNORECASE | SEARCH_FLAG_SMARTCASE)) {
+            is->search_flags &= ~SEARCH_FLAG_IGNORECASE;
+        } else {
+            is->search_flags |= SEARCH_FLAG_IGNORECASE;
+        }
         break;
-    case KEY_CTRL('c'):   /* toggle case sensitivity */
-        is->search_flags ^= SEARCH_FLAG_IGNORECASE;
-        is->search_flags &= ~SEARCH_FLAG_SMARTCASE;
+    case KEY_CTRL('l'):
+        do_center_cursor(s);
         break;
     default:
-        if (KEY_SPECIAL(ch) && ch != '\t') {
+        if ((KEY_IS_SPECIAL(ch) || KEY_IS_CONTROL(ch)) && ch != '\t') {
             /* exit search mode */
 #if 0
             // FIXME: behaviour from qemacs-0.3pre13
@@ -6727,15 +6875,16 @@ static void isearch_key(void *opaque, int ch)
             put_status(s, "Marked");
 #endif
             s->b->mark = is->start_offset;
+            s->region_style = 0;
             put_status(s, "Mark saved where search started");
             /* repost key */
             if (ch != KEY_RET)
                 unget_key(ch);
             goto the_end;
         } else {
-            //addch:
+        addch:
             if (is->pos < SEARCH_LENGTH) {
-                is->search_string[is->pos++] = ch;
+                is->search_u32[is->pos++] = ch;
             }
         }
         break;
@@ -6747,68 +6896,81 @@ static void isearch_key(void *opaque, int ch)
 void do_isearch(EditState *s, int dir)
 {
     ISearchState *is;
+    int flags = SEARCH_FLAG_SMARTCASE;
 
     is = qe_mallocz(ISearchState);
     if (!is)
         return;
     is->s = s;
+    is->saved_mark = s->b->mark;
     is->start_offset = s->offset;
-    is->dir = dir;
+    is->start_dir = is->dir = dir;
     is->pos = 0;
-    is->stack_ptr = 0;
-    is->search_flags = SEARCH_FLAG_SMARTCASE;
+    if (s->hex_mode) {
+        if (s->unihex_mode)
+            flags = SEARCH_FLAG_UNIHEX;
+        else
+            flags = SEARCH_FLAG_HEX;
+    }
+    is->search_flags = flags;
 
     qe_grab_keys(isearch_key, is);
     isearch_display(is);
 }
 
-static int to_bytes(EditState *s1, char *dst, int dst_size, const char *str)
+static int search_to_u32(unsigned int *buf, int size,
+                         const char *str, int flags)
 {
-    const char *s;
-    int c, len, hex_nibble, h;
-    char *d;
+    if (flags & (SEARCH_FLAG_HEX | SEARCH_FLAG_UNIHEX)) {
+        /* CG: XXX: Should mix utf8 and hex syntax in hex modes */
+        const char *s;
+        int c, hex_nibble, max_nibble, h, hc, len;
 
-    d = dst;
-    if (s1->hex_mode) {
+        max_nibble = (flags & SEARCH_FLAG_UNIHEX) ? 6 : 2;
         s = str;
-        h = 0;
-        hex_nibble = 0;
-        for (;;) {
+        hex_nibble = hc = 0;
+        for (len = 0; len < size;) {
             c = *s++;
-            if (c == '\0')
-                break;
-            c = to_hex(c);
-            if (c >= 0) {
-                h = (h << 4) | c;
-                if (hex_nibble) {
-                    if (d < dst + dst_size)
-                        *d++ = h;
-                    h = 0;
+            if (c == '\0') {
+                if (hex_nibble >= 2) {
+                    buf[len++] = hc;
+                    hex_nibble = hc = 0;
                 }
-                hex_nibble ^= 1;
+                break;
+            }
+            h = to_hex(c);
+            if (h >= 0) {
+                hc = (hc << 4) | h;
+                if (++hex_nibble == max_nibble) {
+                    buf[len++] = hc;
+                    hex_nibble = hc = 0;
+                }
+            } else {
+                if (c == ' ' && hex_nibble) {
+                    buf[len++] = hc;
+                    hex_nibble = hc = 0;
+                }
             }
         }
-        return d - dst;
-    } else {
-        /* dest buffer has utf8 contents */
-        len = strlen(str);
-        if (len > dst_size)
-            len = dst_size;
-        memcpy(dst, str, len);
         return len;
+    } else {
+        return utf8_to_unicode(buf, size, str);
     }
 }
 
 typedef struct QueryReplaceState {
     EditState *s;
-    int nb_reps;
-    int search_bytes_len, replace_bytes_len, found_offset, found_end;
+    int start_offset;
+    int search_flags;
     int replace_all;
-    int flags;
+    int nb_reps;
+    int search_u32_len, replace_u32_len;
+    int found_offset, found_end;
+    int last_offset;
     char search_str[SEARCH_LENGTH];     /* may be in hex */
     char replace_str[SEARCH_LENGTH];    /* may be in hex */
-    char search_bytes[SEARCH_LENGTH];   /* utf8 bytes */
-    char replace_bytes[SEARCH_LENGTH];  /* utf8 bytes */
+    unsigned int search_u32[SEARCH_LENGTH];   /* code points */
+    unsigned int replace_u32[SEARCH_LENGTH];  /* code points */
 } QueryReplaceState;
 
 static void query_replace_abort(QueryReplaceState *is)
@@ -6816,6 +6978,8 @@ static void query_replace_abort(QueryReplaceState *is)
     EditState *s = is->s;
 
     qe_ungrab_keys();
+    s->b->mark = is->start_offset;
+    s->region_style = 0;
     put_status(NULL, "Replaced %d occurrences", is->nb_reps);
     qe_free(&is);
     edit_display(s->qe_state);
@@ -6826,49 +6990,81 @@ static void query_replace_replace(QueryReplaceState *is)
 {
     EditState *s = is->s;
 
-    eb_delete(s->b, is->found_offset, is->found_end - is->found_offset);
-    is->found_offset += eb_insert_utf8_buf(s->b, is->found_offset,
-                                           is->replace_bytes,
-                                           is->replace_bytes_len);
+    /* XXX: handle smart case replacement */
     is->nb_reps++;
+    eb_delete(s->b, is->found_offset, is->found_end - is->found_offset);
+    is->found_offset += eb_insert_u32_buf(s->b, is->found_offset,
+        is->replace_u32, is->replace_u32_len);
 }
 
 static void query_replace_display(QueryReplaceState *is)
 {
     EditState *s = is->s;
+    char ubuf[256];
+    buf_t outbuf, *out;
 
- redo:
-    if (!eb_search(s->b, is->found_offset, 1, is->flags,
-                   is->search_bytes, is->search_bytes_len,
-                   NULL, NULL, &is->found_offset, &is->found_end)) {
-        query_replace_abort(is);
-        return;
+    is->last_offset = is->found_offset;
+    is->search_u32_len = search_to_u32(is->search_u32,
+                                       countof(is->search_u32),
+                                       is->search_str, is->search_flags);
+    is->replace_u32_len = search_to_u32(is->replace_u32,
+                                        countof(is->replace_u32),
+                                        is->replace_str, is->search_flags);
+
+    for (;;) {
+        if (!eb_search(s->b, is->found_offset, 1, is->search_flags,
+                       is->search_u32, is->search_u32_len,
+                       NULL, NULL, &is->found_offset, &is->found_end)) {
+            query_replace_abort(is);
+            return;
+        }
+        if (is->replace_all) {
+            query_replace_replace(is);
+            continue;
+        }
+        break;
     }
+    /* display prompt string */
+    out = buf_init(&outbuf, ubuf, sizeof(ubuf));
+    if (is->search_flags & SEARCH_FLAG_UNIHEX)
+        buf_puts(out, "Unihex ");
+    if (is->search_flags & SEARCH_FLAG_HEX)
+        buf_puts(out, "Hex ");
+    if (is->search_flags & SEARCH_FLAG_WORD)
+        buf_puts(out, "Word ");
+    if (is->search_flags & SEARCH_FLAG_IGNORECASE)
+        buf_puts(out, "Folding ");
+    else
+    if (!(is->search_flags & SEARCH_FLAG_SMARTCASE))
+        buf_puts(out, "Exact ");
 
-    if (is->replace_all) {
-        query_replace_replace(is);
-        goto redo;
-    }
+    buf_puts(out, "Query replace ");
+    buf_encode_search_str(out, is->search_str);
+    buf_puts(out, " with ");
+    buf_encode_search_str(out, is->replace_str);
+    buf_puts(out, ": ");
 
-    /* display text */
-    s->offset = is->found_offset;
-    do_center_cursor(s);
+    s->offset = is->found_end;
+    s->b->mark = is->found_offset;
+    s->region_style = QE_STYLE_SEARCH_MATCH;
+    do_center_cursor_maybe(s);
     edit_display(s->qe_state);
-
-    put_status(NULL, "Query replace %s with %s: ",
-               is->search_str, is->replace_str);
-    dpy_flush(&global_screen);
+    put_status(NULL, "%s", out->buf);
+    dpy_flush(s->screen);
 }
 
 static void query_replace_key(void *opaque, int ch)
 {
     QueryReplaceState *is = opaque;
+    EditState *s = is->s;
+    QEmacsState *qs = &qe_state;
 
     switch (ch) {
     case 'Y':
     case 'y':
     case KEY_SPC:
         query_replace_replace(is);
+        s->offset = is->found_offset;
         break;
     case '!':
         is->replace_all = 1;
@@ -6876,9 +7072,51 @@ static void query_replace_key(void *opaque, int ch)
     case 'N':
     case 'n':
     case KEY_DELETE:
+        is->found_offset = is->found_end;
+        break;
+    case KEY_META('w'):
+    case KEY_CTRL('w'):
+        /* toggle word match */
+        is->search_flags ^= SEARCH_FLAG_WORD;
+        is->found_offset = is->last_offset;
+        break;
+    case KEY_META('b'):
+    case KEY_CTRL('b'):
+        /* cycle unihex, hex, normal search */
+        if (is->search_flags & SEARCH_FLAG_UNIHEX)
+            is->search_flags ^= SEARCH_FLAG_HEX | SEARCH_FLAG_UNIHEX;
+        else
+        if (is->search_flags & SEARCH_FLAG_HEX)
+            is->search_flags ^= SEARCH_FLAG_HEX;
+        else
+            is->search_flags ^= SEARCH_FLAG_UNIHEX;
+        is->found_offset = is->last_offset;
+        break;
+    case KEY_META('c'):
+    case KEY_CTRL('c'):
+        /* toggle case sensitivity */
+        if (is->search_flags & (SEARCH_FLAG_IGNORECASE | SEARCH_FLAG_SMARTCASE)) {
+            is->search_flags &= ~SEARCH_FLAG_IGNORECASE;
+        } else {
+            is->search_flags |= SEARCH_FLAG_IGNORECASE;
+        }
+        is->search_flags &= ~SEARCH_FLAG_SMARTCASE;
+        is->found_offset = is->last_offset;
+        break;
+    case KEY_CTRL('g'):
+        /* abort */
+        if (qs->emulation_flags) {
+            /* restore point to original location */
+            s->offset = is->start_offset;
+        }
+        query_replace_abort(is);
+        return;
+    case KEY_CTRL('l'):
+        do_center_cursor(s);
         break;
     case '.':
         query_replace_replace(is);
+        s->offset = is->found_offset;
         /* FALL THRU */
     default:
         query_replace_abort(is);
@@ -6887,8 +7125,7 @@ static void query_replace_key(void *opaque, int ch)
     query_replace_display(is);
 }
 
-static void query_replace(EditState *s,
-                          const char *search_str,
+static void query_replace(EditState *s, const char *search_str,
                           const char *replace_str, int all, int flags)
 {
     QueryReplaceState *is;
@@ -6903,14 +7140,16 @@ static void query_replace(EditState *s,
     pstrcpy(is->search_str, sizeof(is->search_str), search_str);
     pstrcpy(is->replace_str, sizeof(is->replace_str), replace_str);
 
-    is->search_bytes_len = to_bytes(s, is->search_bytes, sizeof(is->search_bytes),
-                                    search_str);
-    is->replace_bytes_len = to_bytes(s, is->replace_bytes, sizeof(is->replace_bytes),
-                                     replace_str);
-    is->nb_reps = 0;
+    if (s->hex_mode) {
+        if (s->unihex_mode)
+            flags = SEARCH_FLAG_UNIHEX;
+        else
+            flags = SEARCH_FLAG_HEX;
+    }
+    is->search_flags = flags;
     is->replace_all = all;
+    is->start_offset = is->last_offset = s->offset;
     is->found_offset = is->found_end = s->offset;
-    is->flags = flags;
 
     qe_grab_keys(query_replace_key, is);
     query_replace_display(is);
@@ -6919,29 +7158,38 @@ static void query_replace(EditState *s,
 void do_query_replace(EditState *s, const char *search_str,
                       const char *replace_str)
 {
-    query_replace(s, search_str, replace_str, 0, 0);
+    int flags = SEARCH_FLAG_SMARTCASE;
+    query_replace(s, search_str, replace_str, 0, flags);
 }
 
 void do_replace_string(EditState *s, const char *search_str,
                        const char *replace_str, int argval)
 {
-    query_replace(s, search_str, replace_str, 1,
-                  argval == NO_ARG ? 0 : SEARCH_FLAG_WORD);
+    int flags = SEARCH_FLAG_SMARTCASE;
+    if (argval != NO_ARG)
+        flags |= SEARCH_FLAG_WORD;
+    query_replace(s, search_str, replace_str, 1, flags);
 }
 
 void do_search_string(EditState *s, const char *search_str, int dir)
 {
-    char search_bytes[SEARCH_LENGTH];
-    int search_bytes_len;
+    unsigned int search_u32[SEARCH_LENGTH];
+    int search_u32_len;
     int found_offset, found_end;
+    int flags = 0;
 
-    search_bytes_len = to_bytes(s, search_bytes, sizeof(search_bytes),
-                                search_str);
-
-    if (eb_search(s->b, s->offset, dir, 0, search_bytes, search_bytes_len,
+    if (s->hex_mode) {
+        if (s->unihex_mode)
+            flags = SEARCH_FLAG_UNIHEX;
+        else
+            flags = SEARCH_FLAG_HEX;
+    }
+    search_u32_len = search_to_u32(search_u32, countof(search_u32),
+                                   search_str, flags);
+    if (eb_search(s->b, s->offset, dir, flags, search_u32, search_u32_len,
                   NULL, NULL, &found_offset, &found_end)) {
         s->offset = (dir < 0) ? found_offset : found_end;
-        do_center_cursor(s);
+        do_center_cursor_maybe(s);
     }
 }
 

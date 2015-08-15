@@ -1825,15 +1825,15 @@ int eb_insert_uchar(EditBuffer *b, int offset, int c)
 int eb_insert_spaces(EditBuffer *b, int offset, int n)
 {
     char buf1[1024];
-    int size, size1;
+    int size, pos1;
 
-    size = size1 = 0;
+    size = pos1 = 0;
     while (n-- > 0) {
-        int clen = eb_encode_uchar(b, buf1 + size1, ' ');
-        size1 += clen;
-        if (size1 > ssizeof(buf1) - MAX_CHAR_BYTES || n == 0) {
-            size += eb_insert(b, offset + size, buf1, size1);
-            size1 = 0;
+        int clen = eb_encode_uchar(b, buf1 + pos1, ' ');
+        pos1 += clen;
+        if (pos1 > ssizeof(buf1) - MAX_CHAR_BYTES || n == 0) {
+            size += eb_insert(b, offset + size, buf1, pos1);
+            pos1 = 0;
         }
     }
     return size;
@@ -1862,6 +1862,26 @@ int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
         }
         return size;
     }
+}
+
+/* Insert chars from u32 array according to buffer encoding */
+/* Return number of bytes inserted */
+int eb_insert_u32_buf(EditBuffer *b, int offset, const unsigned int *buf, int len)
+{
+    char buf1[1024];
+    int pos, size, pos1;
+
+    pos = size = pos1 = 0;
+    while (pos < len) {
+        int c = buf[pos++];
+        int clen = eb_encode_uchar(b, buf1 + pos1, c);
+        pos1 += clen;
+        if (pos1 > ssizeof(buf) - MAX_CHAR_BYTES || pos >= len) {
+            size += eb_insert(b, offset + size, buf1, pos1);
+            pos1 = 0;
+        }
+    }
+    return size;
 }
 
 int eb_insert_str(EditBuffer *b, int offset, const char *str)

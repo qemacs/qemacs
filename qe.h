@@ -658,7 +658,8 @@ enum QEEventType {
 #define KEY_CTRLXRET(c) ((c) | 0xe300)
 #define KEY_CTRLH(c)    ((c) | 0xe500)
 #define KEY_CTRLC(c)    ((c) | 0xe600)
-#define KEY_SPECIAL(c)  (((c) >= 0xe000 && (c) < 0xf000) || ((c) >= 0 && (c) < 32) || (c) == 127)
+#define KEY_IS_SPECIAL(c)  ((c) >= 0xe000 && (c) < 0xf000)
+#define KEY_IS_CONTROL(c)  (((c) >= 0 && (c) < 32) || (c) == 127)
 
 #define KEY_NONE        0xffff
 #define KEY_DEFAULT     0xe401 /* to handle all non special keys */
@@ -1015,6 +1016,7 @@ int eb_encode_uchar(EditBuffer *b, char *buf, unsigned int c);
 int eb_insert_uchar(EditBuffer *b, int offset, int c);
 int eb_insert_spaces(EditBuffer *b, int offset, int n);
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len);
+int eb_insert_u32_buf(EditBuffer *b, int offset, const unsigned int *buf, int len);
 int eb_insert_str(EditBuffer *b, int offset, const char *str);
 int eb_match_uchar(EditBuffer *b, int offset, int c, int *offsetp);
 int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp);
@@ -1125,7 +1127,9 @@ enum WrapType {
 struct EditState {
     int offset;     /* offset of the cursor */
     /* text display state */
-    int offset_top;
+    int offset_top; /* offset of first character displayed in window */
+    int offset_bottom; /* offset of first character beyond window or -1
+                        * if end of file displayed */
     int y_disp;    /* virtual position of the displayed text */
     int x_disp[2]; /* position for LTR and RTL text resp. */
     int minibuf;   /* true if single line editing */
@@ -1397,8 +1401,6 @@ struct QEmacsState {
     int show_unicode;
 
     /* commands */
-    int flag_split_window_change_focus;
-    int backspace_is_control_h;
     /* XXX: move these to ec */
     CmdFunc last_cmd_func; /* last executed command function call */
     CmdFunc this_cmd_func; /* current executing command */
@@ -1433,6 +1435,9 @@ struct QEmacsState {
     int default_tab_width;      /* 8 */
     int default_fill_column;    /* 70 */
     EOLType default_eol_type;  /* EOL_UNIX */
+    int flag_split_window_change_focus;
+    int emulation_flags;
+    int backspace_is_control_h;
     int backup_inhibited;  /* prevent qemacs from backing up files */
     int fuzzy_search;    /* use fuzzy search for completion matcher */
 };
@@ -1940,7 +1945,7 @@ void do_load_file_from_path(EditState *s, const char *filename, int bflags);
 void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile);
 int eb_search(EditBuffer *b, int offset, int dir, int flags,
-              const char *buf, int size,
+              const unsigned int *buf, int size,
               CSSAbortFunc *abort_func, void *abort_opaque,
               int *found_start, int *found_end);
 int search_abort_func(void *opaque);
