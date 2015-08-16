@@ -1947,11 +1947,6 @@ void do_find_alternate_file(EditState *s, const char *filename, int bflags);
 void do_load_file_from_path(EditState *s, const char *filename, int bflags);
 void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile);
-int eb_search(EditBuffer *b, int offset, int dir, int flags,
-              const unsigned int *buf, int size,
-              CSSAbortFunc *abort_func, void *abort_opaque,
-              int *found_start, int *found_end);
-int search_abort_func(void *opaque);
 void do_doctor(EditState *s);
 void do_delete_other_windows(EditState *s);
 void do_describe_key_briefly(EditState *s);

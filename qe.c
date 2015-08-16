@@ -6460,10 +6460,10 @@ static void quit_confirm_cb(__unused__ void *opaque, char *reply)
 #define SEARCH_FLAG_UNIHEX     0x0020
 
 /* XXX: OPTIMIZE ! */
-int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
-              const unsigned int *buf, int len,
-              CSSAbortFunc *abort_func, void *abort_opaque,
-              int *found_offset, int *found_end)
+static int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
+                     const unsigned int *buf, int len,
+                     CSSAbortFunc *abort_func, void *abort_opaque,
+                     int *found_offset, int *found_end)
 {
     int total_size = b->total_size;
     int c, c2, offset = start_offset, offset1, offset2, pos;
@@ -6473,6 +6473,18 @@ int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
 
     *found_offset = -1;
     *found_end = -1;
+
+    /* analyze buffer if smart case */
+    if (flags & SEARCH_FLAG_SMARTCASE) {
+        int upper_count = 0;
+        int lower_count = 0;
+        for (pos = 0; pos < len; pos++) {
+            lower_count += qe_islower(buf[pos]);
+            upper_count += qe_isupper(buf[pos]);
+        }
+        if (lower_count > 0 && upper_count == 0)
+            flags |= SEARCH_FLAG_IGNORECASE;
+    }
 
     if (flags & SEARCH_FLAG_HEX) {
         /* handle buffer as single bytes */
@@ -6486,10 +6498,10 @@ int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
             if (offset >= total_size)
                 return 0;
 
-            if ((offset & 0xfffff) == 0) {
-                /* check for search abort every meg */
+            if ((offset & 0x1ffff) == 0) {
+                /* check for search abort every 128k */
                 if (abort_func && abort_func(abort_opaque))
-                    return 0;
+                    return -1;
             }
 
             pos = 0;
@@ -6512,18 +6524,6 @@ int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
         }
     }
 
-    /* analyze buffer if smart case */
-    if (flags & SEARCH_FLAG_SMARTCASE) {
-        int upper_count = 0;
-        int lower_count = 0;
-        for (pos = 0; pos < len; pos++) {
-            lower_count += qe_islower(buf[pos]);
-            upper_count += qe_isupper(buf[pos]);
-        }
-        if (lower_count > 0 && upper_count == 0)
-            flags |= SEARCH_FLAG_IGNORECASE;
-    }
-
     for (;; (void)(dir >= 0 && eb_nextc(b, offset, &offset))) {
         if (dir < 0) {
             if (offset == 0)
@@ -6536,7 +6536,7 @@ int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
         if ((offset & 0x1ffff) == 0) {
             /* check for search abort every 128k */
             if (abort_func && abort_func(abort_opaque))
-                return 0;
+                return -1;
         }
 
         if (flags & SEARCH_FLAG_WORD) {
@@ -6585,7 +6585,7 @@ int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
 static unsigned int last_search_u32[SEARCH_LENGTH];
 static int last_search_u32_len = 0;
 
-int search_abort_func(__unused__ void *opaque)
+static int search_abort_func(__unused__ void *opaque)
 {
     return is_user_input_pending();
 }
@@ -6698,7 +6698,7 @@ static void isearch_display(ISearchState *is)
     } else {
         if (eb_search(s->b, search_offset, is->dir, flags,
                       buf, len, search_abort_func, NULL,
-                      &is->found_offset, &is->found_end)) {
+                      &is->found_offset, &is->found_end) > 0) {
             s->region_style = QE_STYLE_SEARCH_MATCH;
             if (is->dir > 0) {
                 s->b->mark = is->found_offset;
@@ -6881,6 +6881,7 @@ static void isearch_key(void *opaque, int ch)
         } else {
             is->search_flags |= SEARCH_FLAG_IGNORECASE;
         }
+        is->search_flags &= ~SEARCH_FLAG_SMARTCASE;
         break;
     case KEY_CTRL('l'):
         do_center_cursor(s);
@@ -6931,9 +6932,9 @@ void do_isearch(EditState *s, int dir)
     is->pos = 0;
     if (s->hex_mode) {
         if (s->unihex_mode)
-            flags = SEARCH_FLAG_UNIHEX;
+            flags |= SEARCH_FLAG_UNIHEX;
         else
-            flags = SEARCH_FLAG_HEX;
+            flags |= SEARCH_FLAG_HEX;
     }
     is->search_flags = flags;
 
@@ -7035,9 +7036,9 @@ static void query_replace_display(QueryReplaceState *is)
                                         is->replace_str, is->search_flags);
 
     for (;;) {
-        if (!eb_search(s->b, is->found_offset, 1, is->search_flags,
-                       is->search_u32, is->search_u32_len,
-                       NULL, NULL, &is->found_offset, &is->found_end)) {
+        if (eb_search(s->b, is->found_offset, 1, is->search_flags,
+                      is->search_u32, is->search_u32_len,
+                      NULL, NULL, &is->found_offset, &is->found_end) <= 0) {
             query_replace_abort(is);
             return;
         }
@@ -7199,20 +7200,22 @@ void do_search_string(EditState *s, const char *search_str, int dir)
     unsigned int search_u32[SEARCH_LENGTH];
     int search_u32_len;
     int found_offset, found_end;
-    int flags = 0;
+    int flags = SEARCH_FLAG_SMARTCASE;
 
     if (s->hex_mode) {
         if (s->unihex_mode)
-            flags = SEARCH_FLAG_UNIHEX;
+            flags |= SEARCH_FLAG_UNIHEX;
         else
-            flags = SEARCH_FLAG_HEX;
+            flags |= SEARCH_FLAG_HEX;
     }
     search_u32_len = search_to_u32(search_u32, countof(search_u32),
                                    search_str, flags);
     if (eb_search(s->b, s->offset, dir, flags, search_u32, search_u32_len,
-                  NULL, NULL, &found_offset, &found_end)) {
+                  NULL, NULL, &found_offset, &found_end) > 0) {
         s->offset = (dir < 0) ? found_offset : found_end;
         do_center_cursor_maybe(s);
+    } else {
+        put_status(s, "Search failed: \"%s\"", search_str);
     }
 }
 
