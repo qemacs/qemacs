@@ -1166,8 +1166,14 @@ void do_center_cursor(EditState *s)
     if (!s->mode->text_display)
         return;
 
-    if (s->offset < s->offset_top) {
-        int offset_top = s->offset_top;
+    if (s->offset < s->offset_top
+    ||  (s->offset_bottom >= 0 && s->offset >= s->offset_bottom)) {
+        /* if point is outside the current window, first move the
+         * window to start at the line with point.  This significantly
+         * speeds up get_cursor_pos() on large files, except for the
+         * pathological case of huge lines.
+         */
+        int offset_top = s->offset;
         eb_prevc(s->b, offset_top, &offset_top);
         s->offset_top = s->mode->text_backward_offset(s, offset_top);
     }
