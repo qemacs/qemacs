@@ -601,17 +601,15 @@ static void c_colorize_line(QEColorizeContext *cp,
                             unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start, i1, i2, indent, level;
-    int c, state, style, style0, style1, type_decl, klen, delim, flavor;
-    int mode_flags;
+    int c, style, style0, style1, type_decl, klen, delim, prev;
     char kbuf[32];
-
-    mode_flags = syn->colorize_flags;
-    flavor = (mode_flags & CLANG_FLAVOR);
+    int mode_flags = syn->colorize_flags;
+    int flavor = (mode_flags & CLANG_FLAVOR);
+    int state = cp->colorize_state;
 
     for (indent = 0; qe_isblank(str[indent]); indent++)
         continue;
 
-    state = cp->colorize_state;
     start = i;
     type_decl = 0;
 
@@ -679,14 +677,47 @@ static void c_colorize_line(QEColorizeContext *cp,
                 SET_COLOR(str, start, i, C_STYLE_COMMENT);
                 continue;
             }
+            if (flavor == CLANG_D && (str[i] == '+')) {
+                /* D language nesting long comment */
+                i++;
+                state |= (1 << IN_C_COMMENT_D_SHIFT);
+            parse_comment_d:
+                style = C_STYLE_COMMENT;
+                level = (state & IN_C_COMMENT_D) >> IN_C_COMMENT_D_SHIFT;
+                while (i < n) {
+                    if (str[i] == '/' && str[i + 1] == '+') {
+                        i += 2;
+                        level++;
+                    } else
+                    if (str[i] == '+' && str[i + 1] == '/') {
+                        i += 2;
+                        level--;
+                        if (level == 0) {
+                            style = style0;
+                            break;
+                        }
+                    } else {
+                        i++;
+                    }
+                }
+                state = (state & ~IN_C_COMMENT_D) |
+                        (min(level, 7) << IN_C_COMMENT_D_SHIFT);
+                SET_COLOR(str, start, i, C_STYLE_COMMENT);
+                continue;
+            }
             /* XXX: should use more context to tell regex from divide */
+            prev = ' ';
+            for (i1 = start; i1-- > indent; ) {
+                prev = str[i1] & CHAR_MASK;
+                if (!qe_isblank(prev))
+                    break;
+            }
             if ((mode_flags & CLANG_REGEX)
-            &&  (start == indent
+            &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
             ||   (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
-            &&    !qe_isalnum(str[start - 1] & CHAR_MASK)
-            &&    str[start - 1] != ')'))) {
+            &&    !(qe_isalnum(prev) || prev == ')')))) {
                 /* parse regex */
-                state = IN_C_REGEX;
+                state |= IN_C_REGEX;
                 delim = '/';
             parse_regex:
                 style = C_STYLE_REGEX;
@@ -710,42 +741,13 @@ static void c_colorize_line(QEColorizeContext *cp,
                             while (qe_isalnum_(str[i])) {
                                 i++;
                             }
-                            state = 0;
+                            state &= ~IN_C_REGEX;
                             style = style0;
                             break;
                         }
                     }
                 }
                 SET_COLOR(str, start, i, C_STYLE_REGEX);
-                continue;
-            }
-            if (flavor == CLANG_D && (str[i] == '+')) {
-                /* D language nesting long comment */
-                i++;
-                state |= (1 << IN_C_COMMENT_D_SHIFT);
-            parse_comment_d:
-                style = C_STYLE_COMMENT;
-                level = (state & IN_C_COMMENT_D) >> IN_C_COMMENT_D_SHIFT;
-                while (i < n) {
-                    if (str[i] == '/' && str[i + 1] == '+') {
-                        i += 2;
-                        level++;
-                    } else
-                    if (str[i] == '+' && str[i + 1] == '/') {
-                        i += 2;
-                        level--;
-                        if (level == 0) {
-                            state &= ~IN_C_COMMENT_D;
-                            style = style0;
-                            break;
-                        }
-                    } else {
-                        i++;
-                    }
-                }
-                state = (state & ~IN_C_COMMENT_D) |
-                        (min(level, 7) << IN_C_COMMENT_D_SHIFT);
-                SET_COLOR(str, start, i, C_STYLE_COMMENT);
                 continue;
             }
             break;
@@ -763,12 +765,12 @@ static void c_colorize_line(QEColorizeContext *cp,
                 break;
             }
             if (mode_flags & CLANG_PREPROC) {
-                state = IN_C_PREPROCESS;
+                state |= IN_C_PREPROCESS;
                 style = style0 = C_STYLE_PREPROCESS;
             }
             if (flavor == CLANG_D) {
                 /* only #line is supported, but can occur anywhere */
-                state = IN_C_PREPROCESS;
+                state |= IN_C_PREPROCESS;
                 style = style0 = C_STYLE_PREPROCESS;
             }
             if (flavor == CLANG_PHP || flavor == CLANG_LIMBO || flavor == CLANG_SQUIRREL) {
@@ -789,7 +791,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                     i++;
                     goto parse_string;
                 }
-                state = IN_C_PREPROCESS;
+                state |= IN_C_PREPROCESS;
                 style = style0 = C_STYLE_PREPROCESS;
             }
             break;
