@@ -2251,9 +2251,8 @@ void do_what_cursor_position(EditState *s)
 {
     char buf[256];
     buf_t outbuf, *out;
-    unsigned char cc;
     int line_num, col_num;
-    int c, c2, offset1, offset2, off;
+    int c, c2, cc, offset1, offset2, off;
 
     out = buf_init(&outbuf, buf, sizeof(buf));
     if (s->offset < s->b->total_size) {
@@ -2295,11 +2294,11 @@ void do_what_cursor_position(EditState *s)
 
         /* Display buffer bytes if char is encoded */
         off = s->offset;
-        eb_read(s->b, off++, &cc, 1);
+        cc = eb_read_one_byte(s->b, off++);
         if (cc != c || c2 || off != offset2) {
             buf_printf(out, " [%02X", cc);
             while (off < offset2) {
-                eb_read(s->b, off++, &cc, 1);
+                cc = eb_read_one_byte(s->b, off++);
                 buf_printf(out, " %02X", cc);
             }
             buf_put_byte(out, ']');
@@ -6472,7 +6471,7 @@ static int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
                      int *found_offset, int *found_end)
 {
     int total_size = b->total_size;
-    int c, c2, offset = start_offset, offset1, offset2, pos;
+    int c, c2, offset = start_offset, offset1, offset2, offset3, pos;
 
     if (len == 0)
         return 0;
@@ -6504,19 +6503,16 @@ static int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
             if (offset >= total_size)
                 return 0;
 
-            if ((offset & 0x1ffff) == 0) {
-                /* check for search abort every 128k */
+            if ((offset & 0xfffff) == 0) {
+                /* check for search abort every megabyte */
                 if (abort_func && abort_func(abort_opaque))
                     return -1;
             }
 
             pos = 0;
             for (offset2 = offset; offset2 < total_size;) {
-                u8 data[1];
-
                 /* CG: Should bufferize a bit ? */
-                eb_read(b, offset2++, data, 1);
-                c = data[0];
+                c = eb_read_one_byte(b, offset2++);
                 c2 = buf[pos++];
                 if (c != c2)
                     break;
@@ -6530,33 +6526,35 @@ static int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
         }
     }
 
-    for (;; (void)(dir >= 0 && eb_nextc(b, offset, &offset))) {
+    for (offset1 = offset;;) {
         if (dir < 0) {
             if (offset == 0)
                 return 0;
             eb_prevc(b, offset, &offset);
+        } else {
+            offset = offset1;
+            if (offset >= total_size)
+                return 0;
         }
-        if (offset >= total_size)
-            return 0;
-
-        if ((offset & 0x1ffff) == 0) {
-            /* check for search abort every 128k */
+        if ((offset & 0xfffff) == 0) {
+            /* check for search abort every megabyte */
             if (abort_func && abort_func(abort_opaque))
                 return -1;
         }
 
         if (flags & SEARCH_FLAG_WORD) {
             /* check for start of word */
-            c = eb_prevc(b, offset, &offset1);
+            c = eb_prevc(b, offset, &offset3);
             if (qe_isword(c))
                 continue;
         }
 
+        /* CG: XXX: Should use buffer specific accelerator */
+        /* Get first char separately to compute offset1 */
+        c = eb_nextc(b, offset, &offset1);
+
         pos = 0;
-        offset2 = offset;
-        while (offset2 < total_size) {
-            /* CG: XXX: Should use buffer specific accelerator */
-            c = eb_nextc(b, offset2, &offset2);
+        for (offset2 = offset1;;) {
             c2 = buf[pos++];
             if (flags & SEARCH_FLAG_IGNORECASE) {
                 if (qe_toupper(c) != qe_toupper(c2))
@@ -6568,7 +6566,7 @@ static int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
             if (pos >= len) {
                 if (flags & SEARCH_FLAG_WORD) {
                     /* check for end of word */
-                    c = eb_nextc(b, offset2, &offset1);
+                    c = eb_nextc(b, offset2, &offset3);
                     if (qe_isword(c))
                         break;
                 }
@@ -6578,6 +6576,9 @@ static int eb_search(EditBuffer *b, int start_offset, int dir, int flags,
                     return 1;
                 }
             }
+            if (offset2 >= total_size)
+                break;
+            c = eb_nextc(b, offset2, &offset2);
         }
     }
 }

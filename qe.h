@@ -601,6 +601,7 @@ int charset_jis_init(void);
 void qe_register_charset(QECharset *charset);
 
 extern unsigned char utf8_length[256];
+static inline int utf8_is_trailing_byte(int c) { return (c & 0xC0) == 0x80; }
 int utf8_encode(char *q, int c);
 int utf8_decode(const char **pp);
 int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str);

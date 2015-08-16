@@ -1214,6 +1214,7 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
         if (ch == ESCAPE_CHAR) {
             eb_read(b, offset - 1, buf, MAX_CHAR_BYTES);
             b->charset_state.p = buf;
+            /* XXX: incorrect behaviour on ill encoded utf8 sequences */
             ch = b->charset_state.decode_func(&b->charset_state);
             offset += (b->charset_state.p - buf) - 1;
         }
@@ -1297,27 +1298,36 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
         offset = 0;
         ch = '\n';
     } else {
-        /* XXX: it cannot be generic here. Should use the
-           line/column system to be really generic */
-        char_size = b->charset_state.char_size;
-        offset -= char_size;
-        q = buf + sizeof(buf) - char_size;
-        eb_read(b, offset, q, char_size);
         if (b->charset == &charset_utf8) {
-            while (*q >= 0x80 && *q < 0xc0) {
-                if (offset == 0 || q == buf) {
-                    /* error: take only previous byte */
-                    offset += buf - 1 - q;
-                    ch = buf[sizeof(buf) - 1];
-                    goto the_end;
+            char_size = 1;
+            offset -= 1;
+            ch = eb_read_one_byte(b, offset);
+            if (utf8_is_trailing_byte(ch)) {
+                int offset1 = offset;
+                q = buf + sizeof(buf);
+                *--q = ch;
+                while (utf8_is_trailing_byte(ch) && offset > 0 && q > buf) {
+                    offset -= 1;
+                    *--q = ch = eb_read_one_byte(b, offset);
                 }
-                offset--;
-                q--;
-                eb_read(b, offset, q, 1);
+                if (ch >= 0xc0) {
+                    ch = utf8_decode((const char **)(void *)&q);
+                }
+                if (q != buf + sizeof(buf)) {
+                    /* decoding error: only take the last byte */
+                    offset = offset1;
+                    ch = buf[sizeof(buf) - 1];
+                }
             }
-            ch = utf8_decode((const char **)(void *)&q);
         } else {
-            /* CG: this only works for stateless charsets */
+            /* XXX: this only works for stateless charsets.
+             * it would fail for utf-16 and east-asian encodings.
+             * Should use the line/column system to be really generic
+             */
+            char_size = b->charset_state.char_size;
+            offset -= char_size;
+            q = buf + sizeof(buf) - char_size;
+            eb_read(b, offset, q, char_size);
             b->charset_state.p = q;
             ch = b->charset_state.decode_func(&b->charset_state);
         }
@@ -1340,7 +1350,6 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
             }
         }
     }
- the_end:
     *prev_ptr = offset;
     return ch;
 }
@@ -1482,7 +1491,7 @@ int eb_get_char_offset(EditBuffer *b, int offset)
             /* Round offset down to character boundary */
             u8 buf[1];
             while (offset > 0 && eb_read(b, offset, buf, 1) == 1 &&
-                   (buf[0] & 0xC0) == 0x80) {
+                   utf8_is_trailing_byte(buf[0])) {
                 /* backtrack over trailing bytes */
                 offset--;
             }
