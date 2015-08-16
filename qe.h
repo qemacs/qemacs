@@ -794,12 +794,12 @@ typedef void (*ColorizeFunc)(QEColorizeContext *cp,
 #define PG_READ_ONLY    0x0001 /* the page is read only */
 #define PG_VALID_POS    0x0002 /* set if the nb_lines / col fields are up to date */
 #define PG_VALID_CHAR   0x0004 /* nb_chars is valid */
-#define PG_VALID_COLORS 0x0008 /* color state is valid */
+#define PG_VALID_COLORS 0x0008 /* color state is valid (unused) */
 
-typedef struct Page {
-    int size; /* data size */
-    u8 *data;
+typedef struct Page {   /* should pack this */
+    int size;     /* data size */
     int flags;
+    u8 *data;
     /* the following are needed to handle line / column computation */
     int nb_lines; /* Number of EOL characters in data */
     int col;      /* Number of chars since the last EOL */
@@ -957,8 +957,9 @@ typedef struct LogBuffer {
 void eb_trace_bytes(const void *buf, int size, int state);
 
 void eb_init(void);
+int eb_read_one_byte(EditBuffer *b, int offset);
 int eb_read(EditBuffer *b, int offset, void *buf, int size);
-void eb_write(EditBuffer *b, int offset, const void *buf, int size);
+int eb_write(EditBuffer *b, int offset, const void *buf, int size);
 int eb_insert_buffer(EditBuffer *dest, int dest_offset,
                      EditBuffer *src, int src_offset,
                      int size);

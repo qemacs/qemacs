@@ -31,7 +31,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
 /* basic access to the edit buffer */
 
 /* find a page at a given offset */
-static Page *find_page(EditBuffer *b, int *offset_ptr)
+static inline Page *find_page(EditBuffer *b, int *offset_ptr)
 {
     Page *p;
     int offset;
@@ -72,70 +72,95 @@ static void update_page(Page *p)
     p->flags &= ~(PG_VALID_POS | PG_VALID_CHAR | PG_VALID_COLORS);
 }
 
-/* Read or write in the buffer. We must have 0 <= offset < b->total_size */
-static int eb_rw(EditBuffer *b, int offset, u8 *buf, int size1, int do_write)
+/* Read one raw byte from the buffer:
+ * We should have: 0 <= offset < b->total_size
+ * Returns the byte or -1 upon failure.
+ */
+int eb_read_one_byte(EditBuffer *b, int offset)
 {
-    Page *p;
-    int len, size;
+    const Page *p;
 
-    if (offset < 0)
-        return 0;
-
-    if ((offset + size1) > b->total_size)
-        size1 = b->total_size - offset;
-
-    if (size1 <= 0)
-        return 0;
-
-    size = size1;
-    if (do_write)
-        eb_addlog(b, LOGOP_WRITE, offset, size);
+    /* We clip the request for safety */
+    if (offset < 0 || offset >= b->total_size)
+        return -1;
 
     p = find_page(b, &offset);
-    while (size > 0) {
-        len = p->size - offset;
-        if (len > size)
-            len = size;
-        if (do_write) {
-            update_page(p);
-            memcpy(p->data + offset, buf, len);
-        } else {
-            memcpy(buf, p->data + offset, len);
-        }
-        buf += len;
-        size -= len;
-        offset += len;
-        if (offset >= p->size) {
-            p++;
-            offset = 0;
-        }
-    }
-    return size1;
+    return p->data[offset];
 }
 
-/* We must have: 0 <= offset < b->total_size */
-/* Safety: request will be clipped */
+/* Read raw data from the buffer:
+ * We should have: 0 <= offset < b->total_size, size >= 0
+ */
 int eb_read(EditBuffer *b, int offset, void *buf, int size)
 {
-    return eb_rw(b, offset, buf, size, 0);
+    int len, remain;
+    const Page *p;
+
+    /* We carefully clip the request, avoiding and integer overflow */
+    if (offset < 0 || size <= 0 || offset >= b->total_size)
+        return 0;
+
+    len = b->total_size - offset;
+    if (size > len)
+        size = len;
+
+    p = find_page(b, &offset);
+    for (remain = size;;) {
+        len = p->size - offset;
+        if (len > remain)
+            len = remain;
+        memcpy(buf, p->data + offset, len);
+        if ((remain -= len) <= 0)
+            break;
+        buf = (u8*)buf + len;
+        p++;
+        offset = 0;
+    }
+    return size;
 }
 
-/* Note: eb_write can be used to insert after the end of the buffer */
-void eb_write(EditBuffer *b, int offset, const void *buf_arg, int size)
+/* Write raw data into the buffer.
+ * We should have 0 <= offset <= b->total_size, size >= 0.
+ * Note: eb_write can be used to append data at the end of the buffer
+ */
+int eb_write(EditBuffer *b, int offset, const void *buf, int size)
 {
-    int len, left;
-    const u8 *buf = buf_arg;
+    int len, remain, write_size, page_offset;
+    Page *p;
 
     if (b->flags & BF_READONLY)
-        return;
+        return 0;
 
-    len = eb_rw(b, offset, (void *)buf, size, 1);
-    left = size - len;
-    if (left > 0) {
-        offset += len;
-        buf += len;
-        eb_insert(b, offset, buf, left);
+    /* We carefully clip the request, avoiding and integer overflow */
+    if (offset < 0 || size <= 0 || offset > b->total_size)
+        return 0;
+
+    write_size = size;
+    len = b->total_size - offset;
+    if (write_size > len)
+        write_size = len;
+
+    if (write_size > 0) {
+        eb_addlog(b, LOGOP_WRITE, offset, write_size);
+
+        page_offset = offset;
+        p = find_page(b, &page_offset);
+        for (remain = write_size;;) {
+            len = p->size - page_offset;
+            if (len > remain)
+                len = remain;
+            update_page(p);
+            memcpy(p->data + page_offset, buf, len);
+            buf = (const u8*)buf + len;
+            if ((remain -= len) <= 0)
+                break;
+            p++;
+            page_offset = 0;
+        }
     }
+    if (size > write_size)
+        eb_insert(b, offset + write_size, buf, size - write_size);
+    return size;
 }
 
 /* internal function for insertion : 'buf' of size 'size' at the
@@ -1174,7 +1199,9 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
             b->cur_style = style;
         }
     }
-    if (eb_read(b, offset, buf, 1) <= 0) {
+    ch = eb_read_one_byte(b, offset);
+    if (ch < 0) {
+        /* to simplify calling code, return '\n' at buffer boundaries */
         ch = '\n';
         if (offset < 0)
             offset = 0;
@@ -1182,10 +1209,10 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
             offset = b->total_size;
     } else {
         /* we use the charset conversion table directly to go faster */
-        ch = b->charset_state.table[buf[0]];
         offset++;
+        ch = b->charset_state.table[ch];
         if (ch == ESCAPE_CHAR) {
-            eb_read(b, offset, buf + 1, MAX_CHAR_BYTES - 1);
+            eb_read(b, offset - 1, buf, MAX_CHAR_BYTES);
             b->charset_state.p = buf;
             ch = b->charset_state.decode_func(&b->charset_state);
             offset += (b->charset_state.p - buf) - 1;
