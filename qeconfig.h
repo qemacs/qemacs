@@ -200,9 +200,9 @@ static CmdDef basic_commands[] = {
 
     CMD0( KEY_META('h'), KEY_NONE,
           "mark-paragraph", do_mark_paragraph)
-    CMD0( KEY_META('{'), KEY_META('['),
+    CMD0( KEY_META('{'), KEY_CTRL_UP,  /* KEY_META('[') */
           "backward-paragraph", do_backward_paragraph)
-    CMD0( KEY_META('}'), KEY_META(']'),
+    CMD0( KEY_META('}'), KEY_CTRL_DOWN, /* KEY_META(']') */
           "forward-paragraph", do_forward_paragraph)
     CMD2( KEY_META('q'), KEY_NONE,
           "fill-paragraph", do_fill_paragraph, ES, "*")
@@ -277,9 +277,9 @@ static CmdDef basic_commands[] = {
     CMD1( KEY_CTRL('x'), KEY_RIGHT,
           "find-window-right", do_find_window, KEY_RIGHT)
     CMD1( KEY_META('('), KEY_NONE,
-          "scroll-left", do_scroll_left_right, -1)
+          "scroll-left", do_scroll_left_right, 1)
     CMD1( KEY_META(')'), KEY_NONE,
-          "scroll-right", do_scroll_left_right, 1)
+          "scroll-right", do_scroll_left_right, -1)
     CMD1( KEY_NONE, KEY_NONE,
           "preview-mode", do_preview_mode, 1)
 #endif

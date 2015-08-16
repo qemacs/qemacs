@@ -942,9 +942,13 @@ void do_up_down(EditState *s, int dir)
 {
 #ifndef CONFIG_TINY
     if (s->b->flags & BF_PREVIEW) {
-        if (s->mode->scroll_up_down)
+        if (s->mode->scroll_up_down
+        &&  (dir > 0 || s->offset_top > 0)
+        &&  eb_at_bol(s->b, s->offset)) {
             s->mode->scroll_up_down(s, dir);
-    } else
+            return;
+        }
+    }
 #endif
     if (s->mode->move_up_down)
         s->mode->move_up_down(s, dir);
@@ -955,9 +959,12 @@ void do_left_right(EditState *s, int dir)
 #ifndef CONFIG_TINY
     if (s->b->flags & BF_PREVIEW) {
         EditState *e = find_window(s, KEY_LEFT);
-        if (e && (e->b->flags & BF_DIRED) && dir < 0)
+        if (e && (e->b->flags & BF_DIRED)
+        &&  dir < 0 && eb_at_bol(s->b, s->offset)) {
             s->qe_state->active_window = e;
-    } else
+            return;
+        }        
+    }
 #endif
     if (s->mode->move_left_right)
         s->mode->move_left_right(s, dir);
@@ -1059,8 +1066,21 @@ static int scroll_cursor_func(DisplayState *ds,
 
 void do_scroll_left_right(EditState *s, int dir)
 {
-    /* XXX: should change x_disp by space_width increments */
-    s->x_disp[0] += dir;
+    if (dir < 0) {
+        if (s->x_disp[0] == 0) {
+            s->wrap = WRAP_LINE;
+        } else {
+            /* XXX: should change x_disp by space_width increments */
+            s->x_disp[0] += dir;
+        }
+    } else {
+        if (s->wrap == WRAP_LINE) {
+            s->wrap = WRAP_TRUNCATE;
+        } else {
+            /* XXX: should change x_disp by space_width increments */
+            s->x_disp[0] += dir;
+        }
+    }
 }
 
 void do_scroll_up_down(EditState *s, int dir)

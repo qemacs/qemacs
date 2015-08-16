@@ -988,6 +988,9 @@ int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset);
 int eb_goto_char(EditBuffer *b, int pos);
 int eb_get_char_offset(EditBuffer *b, int offset);
 int eb_delete_range(EditBuffer *b, int p1, int p2);
+static inline int eb_at_bol(EditBuffer *b, int offset) {
+    return eb_prevc(b, offset, &offset) == '\n';
+}
 //int eb_clip_offset(EditBuffer *b, int offset);
 void do_undo(EditState *s);
 void do_redo(EditState *s);
