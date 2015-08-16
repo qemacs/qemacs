@@ -1989,14 +1989,20 @@ static int julia_init(void)
 static char const haskell_keywords[] = {
     "|_|case|class|data|default|deriving|do|else|foreign"
     "|if|import|in|infix|infixl|infixr|instance|let"
-    "|module|newtype|of|then|type|where"
+    "|module|newtype|of|then|type|where|as|qualified"
+    "|return"
+    "|True|False"
+};
+
+static char const haskell_types[] = {
+    //String|Int|Char|Bool
     "|"
 };
 
 enum {
-    IN_HASKELL_COMMENT = 0x10,
-    IN_HASKELL_STRING  = 0x20,
-    IN_HASKELL_LEVEL   = 0x0F,
+    IN_HASKELL_COMMENT = 0x0F,
+    IN_HASKELL_COMMENT_SHIFT = 0,
+    IN_HASKELL_STRING  = 0x10,
 };
 
 enum {
@@ -2006,6 +2012,7 @@ enum {
     HASKELL_STYLE_NUMBER =   QE_STYLE_NUMBER,
     HASKELL_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
     HASKELL_STYLE_FUNCTION = QE_STYLE_FUNCTION,
+    HASKELL_STYLE_TYPE =     QE_STYLE_TYPE,
     HASKELL_STYLE_SYMBOL =   QE_STYLE_NUMBER,
 };
 
@@ -2017,7 +2024,7 @@ static inline int haskell_is_symbol(int c)
 static void haskell_colorize_line(QEColorizeContext *cp,
                                   unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, sep = 0, level = 0, klen;
+    int i = 0, start = i, c, style = 0, sep = 0, level = 0, klen;
     int state = cp->colorize_state;
     char kbuf[32];
 
@@ -2041,15 +2048,37 @@ static void haskell_colorize_line(QEColorizeContext *cp,
         case '-':
             if (str[i] == '-' && !haskell_is_symbol(str[i + 1])) {
                 i = n;
-                SET_COLOR(str, start, i, HASKELL_STYLE_COMMENT);
-                continue;
+                style = HASKELL_STYLE_COMMENT;
+                break;
             }
             goto parse_symbol;
+
         case '{':
             if (str[i] == '-') {
-                state |= IN_HASKELL_COMMENT;
+                state |= 1 << IN_HASKELL_COMMENT_SHIFT;
                 i++;
-                goto parse_comment;
+            parse_comment:
+                level = (state & IN_HASKELL_COMMENT) >> IN_HASKELL_COMMENT_SHIFT;
+                while (i < n) {
+                    c = str[i++];
+                    if (c == '{' && str[i] == '-') {
+                        level++;
+                        i++;
+                        continue;
+                    }
+                    if (c == '-' && str[i] == '}') {
+                        i++;
+                        level--;
+                        if (level == 0) {
+                            i++;
+                            break;
+                        }
+                    }
+                }
+                state &= ~IN_HASKELL_COMMENT;
+                state |= level << IN_HASKELL_COMMENT_SHIFT;
+                style = HASKELL_STYLE_COMMENT;
+                break;
             }
             /* FALL THRU */
         case '}':
@@ -2061,31 +2090,8 @@ static void haskell_colorize_line(QEColorizeContext *cp,
         case ';':
         case '`':
             /* special */
-            break;
-            
-        parse_comment:
-            level = state & IN_HASKELL_LEVEL;
-            for (; i < n; i++) {
-                if (str[i] == '{' && str[i + 1] == '-') {
-                    level++;
-                    i++;
-                    continue;
-                }
-                if (str[i] == '-' && str[i + 1] == '}') {
-                    i++;
-                    level--;
-                    if (level == 0) {
-                        i++;
-                        state &= ~IN_HASKELL_COMMENT;
-                        break;
-                    }
-                }
-            }
-            state &= ~IN_HASKELL_COMMENT;
-            state |= level & IN_HASKELL_COMMENT;
-            SET_COLOR(str, start, i, HASKELL_STYLE_COMMENT);
             continue;
-
+            
         case '\'':
         case '\"':
             /* parse string const */
@@ -2097,7 +2103,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
                     if (i == n) {
                         if (sep == '\"') {
                             /* XXX: should ignore whitespace */
-                            state = IN_HASKELL_STRING;
+                            state |= IN_HASKELL_STRING;
                         }
                     } else
                     if (str[i] == '^' && i + 1 < n && str[i + 1] != (unsigned int)sep) {
@@ -2107,11 +2113,12 @@ static void haskell_colorize_line(QEColorizeContext *cp,
                     }
                 } else
                 if (c == sep) {
+                    state &= ~IN_HASKELL_STRING;
                     break;
                 }
             }
-            SET_COLOR(str, start, i, HASKELL_STYLE_STRING);
-            continue;
+            style = HASKELL_STYLE_STRING;
+            break;
 
         default:
             if (qe_isdigit(c)) {
@@ -2144,8 +2151,8 @@ static void haskell_colorize_line(QEColorizeContext *cp,
                     }
                 }
                 /* XXX: should detect malformed number constants */
-                SET_COLOR(str, start, i, HASKELL_STYLE_NUMBER);
-                continue;
+                style = HASKELL_STYLE_NUMBER;
+                break;
             }
             if (qe_isalpha_(c)) {
                 for (klen = 0, i--; qe_isalnum_(str[i]) || str[i] == '\''; i++) {
@@ -2155,12 +2162,16 @@ static void haskell_colorize_line(QEColorizeContext *cp,
                 kbuf[klen] = '\0';
 
                 if (strfind(syn->keywords, kbuf)) {
-                    SET_COLOR(str, start, i, HASKELL_STYLE_KEYWORD);
-                    continue;
+                    style = HASKELL_STYLE_KEYWORD;
+                    break;
+                }
+                if (strfind(syn->types, kbuf)) {
+                    style = HASKELL_STYLE_TYPE;
+                    break;
                 }
                 if (check_fcall(str, i)) {
-                    SET_COLOR(str, start, i, HASKELL_STYLE_FUNCTION);
-                    continue;
+                    style = HASKELL_STYLE_FUNCTION;
+                    break;
                 }
                 continue;
             }
@@ -2168,10 +2179,14 @@ static void haskell_colorize_line(QEColorizeContext *cp,
             if (haskell_is_symbol(c)) {
                 for (; haskell_is_symbol(str[i]); i++)
                     continue;
-                SET_COLOR(str, start, i, HASKELL_STYLE_SYMBOL);
-                continue;
+                style = HASKELL_STYLE_SYMBOL;
+                break;
             }
-            break;
+            continue;
+        }
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
         }
     }
     cp->colorize_state = state;
@@ -2182,6 +2197,7 @@ static ModeDef haskell_mode = {
     .extensions = "hs|haskell",
     .shell_handlers = "haskell",
     .keywords = haskell_keywords,
+    .types = haskell_types,
     .colorize_func = haskell_colorize_line,
 };
 
