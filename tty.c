@@ -496,12 +496,6 @@ static void tty_read_handler(void *opaque)
             }
             break;
             /* All these for ansi|cygwin */
-        case 'F': ch = KEY_END; goto the_end;   // kend
-        //case 'G': ch = KEY_CENTER; goto the_end;    // kb2
-        case 'H': ch = KEY_HOME; goto the_end;  // khome
-        case 'L': ch = KEY_INSERT; goto the_end;        // kich1
-        //case 'M': ch = KEY_MOUSE; goto the_end;     // kmous
-        case 'Z': ch = KEY_SHIFT_TAB; goto the_end;     // kcbt
         default:
             if (ts->input_param == 5) {
                 /* xterm CTRL-arrows */
@@ -512,10 +506,10 @@ static void tty_read_handler(void *opaque)
                  * C-right = ^[[1;5C
                  */
                 switch (ch) {
-                case 'A': ch = KEY_CTRL_UP; goto the_end;
-                case 'B': ch = KEY_CTRL_DOWN; goto the_end;
+                case 'A': ch = KEY_CTRL_UP;    goto the_end;
+                case 'B': ch = KEY_CTRL_DOWN;  goto the_end;
                 case 'C': ch = KEY_CTRL_RIGHT; goto the_end;
-                case 'D': ch = KEY_CTRL_LEFT; goto the_end;
+                case 'D': ch = KEY_CTRL_LEFT;  goto the_end;
                 }
             } else
             if (ts->input_param == 2) {
@@ -525,17 +519,23 @@ static void tty_read_handler(void *opaque)
                  * should set-mark if region not visible
                  */
                 switch (ch) {
-                case 'A': ch = KEY_UP; goto the_end;
-                case 'B': ch = KEY_DOWN; goto the_end;
+                case 'A': ch = KEY_UP;    goto the_end;
+                case 'B': ch = KEY_DOWN;  goto the_end;
                 case 'C': ch = KEY_RIGHT; goto the_end;
-                case 'D': ch = KEY_LEFT; goto the_end;
+                case 'D': ch = KEY_LEFT;  goto the_end;
                 }
             } else {
                 switch (ch) {
-                case 'A': ch = KEY_UP; goto the_end;    // kcuu1
-                case 'B': ch = KEY_DOWN; goto the_end;  // kcud1
-                case 'C': ch = KEY_RIGHT; goto the_end; // kcuf1
-                case 'D': ch = KEY_LEFT; goto the_end;  // kcub1
+                case 'A': ch = KEY_UP;        goto the_end; // kcuu1
+                case 'B': ch = KEY_DOWN;      goto the_end; // kcud1
+                case 'C': ch = KEY_RIGHT;     goto the_end; // kcuf1
+                case 'D': ch = KEY_LEFT;      goto the_end; // kcub1
+                case 'F': ch = KEY_END;       goto the_end; // kend
+                //case 'G': ch = KEY_CENTER;  goto the_end; // kb2
+                case 'H': ch = KEY_HOME;      goto the_end; // khome
+                case 'L': ch = KEY_INSERT;    goto the_end; // kich1
+                //case 'M': ch = KEY_MOUSE;   goto the_end; // kmous
+                case 'Z': ch = KEY_SHIFT_TAB; goto the_end; // kcbt
                 }
             }
             break;
@@ -556,22 +556,22 @@ static void tty_read_handler(void *opaque)
         /* xterm/vt100 fn */
         ts->input_state = IS_NORM;
         switch (ch) {
-        case 'A': ch = KEY_UP; goto the_end;
-        case 'B': ch = KEY_DOWN; goto the_end;
-        case 'C': ch = KEY_RIGHT; goto the_end;
-        case 'D': ch = KEY_LEFT; goto the_end;
+        case 'A': ch = KEY_UP;         goto the_end;
+        case 'B': ch = KEY_DOWN;       goto the_end;
+        case 'C': ch = KEY_RIGHT;      goto the_end;
+        case 'D': ch = KEY_LEFT;       goto the_end;
         case 'F': ch = KEY_CTRL_RIGHT; goto the_end; /* iterm2 F-right */
-        case 'H': ch = KEY_CTRL_LEFT; goto the_end; /* iterm2 F-left */
-        case 'P': ch = KEY_F1; goto the_end;
-        case 'Q': ch = KEY_F2; goto the_end;
-        case 'R': ch = KEY_F3; goto the_end;
-        case 'S': ch = KEY_F4; goto the_end;
-        case 't': ch = KEY_F5; goto the_end;
-        case 'u': ch = KEY_F6; goto the_end;
-        case 'v': ch = KEY_F7; goto the_end;
-        case 'l': ch = KEY_F8; goto the_end;
-        case 'w': ch = KEY_F9; goto the_end;
-        case 'x': ch = KEY_F10; goto the_end;
+        case 'H': ch = KEY_CTRL_LEFT;  goto the_end; /* iterm2 F-left */
+        case 'P': ch = KEY_F1;         goto the_end;
+        case 'Q': ch = KEY_F2;         goto the_end;
+        case 'R': ch = KEY_F3;         goto the_end;
+        case 'S': ch = KEY_F4;         goto the_end;
+        case 't': ch = KEY_F5;         goto the_end;
+        case 'u': ch = KEY_F6;         goto the_end;
+        case 'v': ch = KEY_F7;         goto the_end;
+        case 'l': ch = KEY_F8;         goto the_end;
+        case 'w': ch = KEY_F9;         goto the_end;
+        case 'x': ch = KEY_F10;        goto the_end;
         }
         break;
     the_end:
