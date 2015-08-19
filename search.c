@@ -164,7 +164,7 @@ static int search_abort_func(__unused__ void *opaque)
     return is_user_input_pending();
 }
 
-typedef struct ISearchState {
+struct ISearchState {
     EditState *s;
     int saved_mark;
     int start_offset;
@@ -175,7 +175,7 @@ typedef struct ISearchState {
     int search_flags;
     int found_offset, found_end;
     unsigned int search_u32[SEARCH_LENGTH];
-} ISearchState;
+};
 
 static void buf_encode_search_u32(buf_t *out, const unsigned int *str, int len)
 {

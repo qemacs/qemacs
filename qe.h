@@ -85,6 +85,8 @@
 #define ssizeof(a)  ((int)(sizeof(a)))
 #endif
 
+#define OWNED     /* ptr attribute for allocated data owned by a structure */
+
 /* prevent gcc warning about shadowing a global declaration */
 #define index  index__
 
@@ -136,6 +138,8 @@ typedef struct ModeDef ModeDef;
 typedef struct QETimer QETimer;
 typedef struct QEColorizeContext QEColorizeContext;
 typedef struct KeyDef KeyDef;
+typedef struct InputMethod InputMethod;
+typedef struct ISearchState ISearchState;
 
 static inline char *s8(u8 *p) { return (char*)p; }
 static inline const char *cs8(const u8 *p) { return (const char*)p; }
@@ -535,7 +539,7 @@ int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);
 #define MAX_CHAR_BYTES 6
 
 typedef struct CharsetDecodeState CharsetDecodeState;
-typedef struct QECharset QECharset;
+typedef const struct QECharset QECharset;
 
 struct QECharset {
     const char *name;
@@ -561,15 +565,15 @@ struct QECharset {
     struct QECharset *next;
 };
 
-extern QECharset *first_charset;
+extern struct QECharset *first_charset;
 /* predefined charsets */
-extern QECharset charset_raw;
-extern QECharset charset_8859_1;
-extern QECharset charset_utf8;
-extern QECharset charset_vt100; /* used for the tty output */
-extern QECharset charset_ucs2le, charset_ucs2be;
-extern QECharset charset_ucs4le, charset_ucs4be;
-extern QECharset charset_mac_roman;
+extern struct QECharset charset_raw;
+extern struct QECharset charset_8859_1;
+extern struct QECharset charset_utf8;
+extern struct QECharset charset_vt100; /* used for the tty output */
+extern struct QECharset charset_ucs2le, charset_ucs2be;
+extern struct QECharset charset_ucs4le, charset_ucs4be;
+extern struct QECharset charset_mac_roman;
 
 typedef enum EOLType {
     EOL_UNIX = 0,
@@ -598,7 +602,7 @@ void charset_init(void);
 int charset_more_init(void);
 int charset_jis_init(void);
 
-void qe_register_charset(QECharset *charset);
+void qe_register_charset(struct QECharset *charset);
 
 extern unsigned char utf8_length[256];
 static inline int utf8_is_trailing_byte(int c) { return (c & 0xC0) == 0x80; }
@@ -857,7 +861,7 @@ typedef struct EditBufferDataType {
 #define BF_STYLE4    0x3000  /* buffer has 4 byte styles */
 
 struct EditBuffer {
-    Page *page_table;
+    OWNED Page *page_table;
     int nb_pages;
     int mark;       /* current mark (moved with text) */
     int total_size; /* total size of the buffer */
@@ -910,7 +914,7 @@ struct EditBuffer {
     int style_shift;
 
     /* modification callbacks */
-    EditBufferCallbackList *first_callback;
+    OWNED EditBufferCallbackList *first_callback;
 
 #if 0
     /* asynchronous loading/saving support */
@@ -925,7 +929,7 @@ struct EditBuffer {
      */
     struct ModeDef *default_mode;
     struct ModeDef *saved_mode;
-    struct ModeSavedData *saved_data;
+    OWNED struct ModeSavedData *saved_data;
 
     /* default mode stuff when buffer is detached from window */
     int offset;
@@ -934,7 +938,7 @@ struct EditBuffer {
     int fill_column;
     EOLType eol_type;
 
-    EditBuffer *next; /* next editbuffer in qe_state buffer list */
+    OWNED EditBuffer *next; /* next editbuffer in qe_state buffer list */
 
     int st_mode;                        /* unix file mode */
     char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
@@ -1165,11 +1169,11 @@ struct EditState {
     /* after this limit, the fields are not saved into the buffer */
     int end_of_saved_data;
 
-    /* mode specific info */
-    struct ModeDef *mode;
-    void *mode_data; /* mode private data */
-
     EditBuffer *b;
+
+    /* mode specific info */
+    ModeDef *mode;
+    void *mode_data; /* mode private data */
 
     /* state before line n, one short per line */
     unsigned short *colorize_states;
@@ -1202,22 +1206,22 @@ struct EditState {
 #define WF_MODELINE   0x0002 /* mode line must be displayed */
 #define WF_RSEPARATOR 0x0004 /* right window separator */
 
-    char *prompt;
+    OWNED char *prompt;  /* optional window prompt, utf8, owned by the window */
     //const char *mode_line;
     //const char *title;
     struct QEmacsState *qe_state;
     struct QEditScreen *screen; /* copy of qe_state->screen */
     /* display shadow to optimize redraw */
     char modeline_shadow[MAX_SCREEN_WIDTH];
-    QELineShadow *line_shadow; /* per window shadow */
+    OWNED QELineShadow *line_shadow; /* per window shadow */
     int shadow_nb_lines;
     /* compose state for input method */
-    struct InputMethod *input_method; /* current input method */
-    struct InputMethod *selected_input_method; /* selected input method (used to switch) */
+    InputMethod *input_method; /* current input method */
+    InputMethod *selected_input_method; /* selected input method (used to switch) */
     int compose_len;
     int compose_start_offset;
     unsigned int compose_buf[20];
-    EditState *next_window;
+    OWNED EditState *next_window;
 };
 
 /* Ugly patch for saving/restoring window data upon switching buffer */
@@ -1264,7 +1268,7 @@ struct ModeDef {
     int instance_size; /* size of malloced instance */
 
     /* return the percentage of confidence */
-    int (*mode_probe)(ModeDef *, ModeProbeData *);
+    int (*mode_probe)(ModeDef *m, ModeProbeData *pd);
     int (*mode_init)(EditState *s, EditBuffer *b, int flags);
     void (*mode_close)(EditState *s);
 
@@ -1374,7 +1378,7 @@ struct QEmacsState {
     //struct QECharset *first_charset;
     //struct QETimer *first_timer;
     struct VarDef *first_variable;
-    struct InputMethod *input_methods;
+    InputMethod *input_methods;
     EditState *first_window;
     EditState *active_window; /* window in which we edit */
     EditBuffer *first_buffer;
@@ -1667,7 +1671,7 @@ static inline void clear_color(unsigned int *p, int count) {
 #define INPUTMETHOD_NOMATCH   (-1)
 #define INPUTMETHOD_MORECHARS (-2)
 
-typedef struct InputMethod {
+struct InputMethod {
     const char *name;
     /* input match returns:
        n > 0: number of code points in replacement found for a sequence
@@ -1681,8 +1685,8 @@ typedef struct InputMethod {
                        int *match_len_ptr, const u8 *data,
                        const unsigned int *buf, int len);
     const u8 *data;
-    struct InputMethod *next;
-} InputMethod;
+    InputMethod *next;
+};
 
 void register_input_method(InputMethod *m);
 void do_set_input_method(EditState *s, const char *method);

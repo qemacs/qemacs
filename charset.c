@@ -21,7 +21,8 @@
 
 #include "qe.h"
 
-QECharset *first_charset;
+/* XXX: Should move this to QEmacsState, and find a way for html2png */
+struct QECharset *first_charset;
 
 /* Unicode utilities */
 
@@ -116,7 +117,7 @@ static u8 *encode_raw(__unused__ QECharset *charset, u8 *p, int c)
     }
 }
 
-QECharset charset_raw = {
+struct QECharset charset_raw = {
     "raw",
     "binary|none",
     NULL,
@@ -188,7 +189,7 @@ static u8 *encode_8859_1(__unused__ QECharset *charset, u8 *p, int c)
     }
 }
 
-QECharset charset_8859_1 = {
+struct QECharset charset_8859_1 = {
     "8859-1",
     "ISO-8859-1|iso-ir-100|latin1|l1|819",
     probe_8859_1,
@@ -220,7 +221,7 @@ static u8 *encode_vt100(__unused__ QECharset *charset, u8 *p, int c)
     }
 }
 
-QECharset charset_vt100 = {
+struct QECharset charset_vt100 = {
     "vt100",
     NULL,
     NULL,
@@ -247,7 +248,7 @@ static u8 *encode_7bit(__unused__ QECharset *charset, u8 *p, int c)
     }
 }
 
-static QECharset charset_7bit = {
+static struct QECharset charset_7bit = {
     "7bit",
     "us-ascii|ascii|7-bit|iso-ir-6|ANSI_X3.4|646",
     NULL,
@@ -547,7 +548,7 @@ static int charset_goto_char_utf8(CharsetDecodeState *s,
     return buf_ptr - buf;
 }
 
-QECharset charset_utf8 = {
+struct QECharset charset_utf8 = {
     "utf-8",
     "utf8",
     probe_utf8,
@@ -816,7 +817,7 @@ static int charset_goto_char_ucs2(CharsetDecodeState *s,
     return (const u8*)buf_ptr - buf;
 }
 
-QECharset charset_ucs2le = {
+struct QECharset charset_ucs2le = {
     "ucs2le",
     "utf16le|utf-16le",
     probe_ucs2le,
@@ -830,7 +831,7 @@ QECharset charset_ucs2le = {
     2, 0, 0, 10, 0, 0, NULL, NULL,
 };
 
-QECharset charset_ucs2be = {
+struct QECharset charset_ucs2be = {
     "ucs2be",
     "ucs2|utf16|utf-16|utf16be|utf-16be",
     probe_ucs2be,
@@ -1088,7 +1089,7 @@ static int charset_goto_char_ucs4(CharsetDecodeState *s,
     return (const u8*)buf_ptr - buf;
 }
 
-QECharset charset_ucs4le = {
+struct QECharset charset_ucs4le = {
     "ucs4le",
     "utf32le|utf-32le",
     probe_ucs4le,
@@ -1102,7 +1103,7 @@ QECharset charset_ucs4le = {
     4, 0, 0, 10, 0, 0, NULL, NULL,
 };
 
-QECharset charset_ucs4be = {
+struct QECharset charset_ucs4be = {
     "ucs4be",
     "ucs4|utf32|utf-32|utf32be|utf-32be",
     probe_ucs4be,
@@ -1119,9 +1120,9 @@ QECharset charset_ucs4be = {
 /********************************************************/
 /* generic charset functions */
 
-void qe_register_charset(QECharset *charset)
+void qe_register_charset(struct QECharset *charset)
 {
-    QECharset **pp;
+    struct QECharset **pp;
 
     if (!charset->aliases)
         charset->aliases = "";

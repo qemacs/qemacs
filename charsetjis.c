@@ -142,7 +142,7 @@ static unsigned char *encode_euc_jp(__unused__ QECharset *s,
     return q;
 }
 
-static QECharset charset_euc_jp = {
+static struct QECharset charset_euc_jp = {
     "euc-jp",
     NULL,
     NULL,
@@ -222,7 +222,7 @@ static unsigned char *encode_sjis(__unused__ QECharset *s,
     return q;
 }
 
-static QECharset charset_sjis = {
+static struct QECharset charset_sjis = {
     "sjis",
     NULL,
     NULL,
