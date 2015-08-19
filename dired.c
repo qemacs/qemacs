@@ -51,20 +51,22 @@ enum time_format {
     TF_TOUCH_LONG,
     TF_FULL,
     TF_SECONDS,
+    TF_MAX = TF_SECONDS,
 };
 
+static ModeDef dired_mode;
+
 static time_t curtime;
-static enum time_format time_format;
 
-static int dired_signature;
-
+/* XXX: need a function to set these variables and trigger refresh */
+static enum time_format dired_time_format;
 static int dired_show_dot_files = 1;
 #ifdef CONFIG_DARWIN
 static int dired_show_ds_store = 0;
 #endif
 
 typedef struct DiredState {
-    void *signature;
+    ModeDef *signature;
     StringArray items;
     int sort_mode; /* DIRED_SORT_GROUP | DIRED_SORT_NAME */
     int last_index;
@@ -93,6 +95,19 @@ typedef struct DiredItem {
     char    name[1];
 } DiredItem;
 
+static DiredState *dired_get_state(EditState *s, int status)
+{
+    DiredState *ds = s->b->priv_data;
+
+    if (ds && ds->signature == &dired_mode)
+        return ds;
+
+    if (status)
+        put_status(s, "Not a dired buffer");
+
+    return NULL;
+}
+
 static inline int dired_get_index(EditState *s) {
     return list_get_pos(s) - DIRED_HEADER;
 }
@@ -112,34 +127,14 @@ static void dired_free(DiredState *ds)
     }
 }
 
-static DiredState *dired_get_state(EditState *s, int status)
+static char *dired_get_filename(DiredState *ds, int index,
+                                char *buf, int buf_size)
 {
-    DiredState *ds = s->b->priv_data;
-
-    if (ds && ds->signature == &dired_signature)
-        return ds;
-
-    if (status)
-        put_status(s, "Not a dired buffer");
-
-    return NULL;
-}
-
-static char *dired_get_filename(EditState *s,
-                                char *buf, int buf_size, int index)
-{
-    DiredState *ds;
     const StringItem *item;
     const DiredItem *dip;
 
-    if (!(ds = dired_get_state(s, 1)))
-        return NULL;
-
     if (buf_size > 0)
         buf[0] = '\0';
-
-    if (index < 0)
-        index = dired_get_index(s);
 
     if (index < 0 || index >= ds->items.nb_items)
         return NULL;
@@ -152,18 +147,14 @@ static char *dired_get_filename(EditState *s,
     return makepath(buf, buf_size, ds->path, dip->name);
 }
 
-static int dired_find_target(EditState *s, const char *target)
+static int dired_find_target(DiredState *ds, const char *target)
 {
-    DiredState *ds;
     char filename[MAX_FILENAME_SIZE];
     int i;
 
     if (target) {
-        if (!(ds = dired_get_state(s, 1)))
-            return -1;
-
         for (i = 0; i < ds->items.nb_items; i++) {
-            if (dired_get_filename(s, filename, sizeof(filename), i)
+            if (dired_get_filename(ds, i, filename, sizeof(filename))
             &&  strequal(filename, target)) {
                 return i;
             }
@@ -482,23 +473,24 @@ static char *compute_attr(char *atts, mode_t mode)
     return atts;
 }
 
-/* select current item */
-static void dired_sort_list(EditState *s)
+/* `ds` and `b` are valid, `s` may be NULL */
+static void dired_sort_list(DiredState *ds, EditBuffer *b, EditState *s)
 {
     char buf[MAX_FILENAME_SIZE];
-    DiredState *ds;
     StringItem *item, *cur_item;
     DiredItem *dip;
-    EditBuffer *b;
     int index, i, col, width, top_line;
 
-    if (!(ds = dired_get_state(s, 1)))
-        return;
-
     /* Try and preserve scroll position */
-    eb_get_pos(s->b, &top_line, &col, s->offset_top);
+    if (s) {
+        eb_get_pos(s->b, &top_line, &col, s->offset_top);
+        index = dired_get_index(s);
+        width = s->width;
+    } else {
+        index = col = top_line = 0;
+        width = 80;
+    }
 
-    index = dired_get_index(s);
     cur_item = NULL;
     if (index >= 0 && index < ds->items.nb_items)
         cur_item = ds->items.items[index];
@@ -507,7 +499,6 @@ static void dired_sort_list(EditState *s)
           sizeof(StringItem *), dired_sort_func);
 
     /* construct list buffer */
-    b = s->b;
     /* deleting buffer contents resets s->offset and s->offset_top */
     eb_clear(b);
 
@@ -519,8 +510,9 @@ static void dired_sort_list(EditState *s)
                   (long long)ds->total_bytes, &"s"[ds->total_bytes == 1]);
     }
 
-    ds->last_width = s->width;
-    width = s->width - clamp(ds->namelen, 16, 40);
+    /* XXX: should use screen specific space_width, separator_width or em_width */
+    ds->last_width = width;
+    width -= clamp(ds->namelen, 16, 40);
     ds->no_size = ((width -= ds->sizelen + 2) < 0);
     ds->no_date = ((width -= ds->datelen + 2) < 0);
     ds->no_mode = ((width -= ds->modelen + 1) < 0);
@@ -537,7 +529,8 @@ static void dired_sort_list(EditState *s)
         if (item == cur_item) {
             if (ds->last_index == index)
                 ds->last_index = i;
-            s->offset = b->total_size;
+            if (s)
+                s->offset = b->total_size;
         }
         col = eb_printf(b, "%c ", dip->mark);
         if (!ds->no_blocks) {
@@ -565,7 +558,7 @@ static void dired_sort_list(EditState *s)
             col += eb_printf(b, " %*s  ", ds->sizelen, buf);
         }
         if (!ds->no_date) {
-            format_date(buf, sizeof(buf), dip->mtime, time_format);
+            format_date(buf, sizeof(buf), dip->mtime, dired_time_format);
             col += eb_printf(b, "%s  ", buf);
         }
         ds->fnamecol = col - 1;
@@ -586,8 +579,12 @@ static void dired_sort_list(EditState *s)
     }
     b->modified = 0;
     b->flags |= BF_READONLY;
-    s->offset_top = eb_goto_pos(s->b, top_line, 0);
+    if (s) {
+        s->offset_top = eb_goto_pos(b, top_line, 0);
+    }
 }
+
+/* dired-mode commands */
 
 static void dired_up_down(EditState *s, int dir)
 {
@@ -685,7 +682,7 @@ static void dired_sort(EditState *s, const char *sort_order)
             break;
         }
     }
-    dired_sort_list(s);
+    dired_sort_list(ds, s->b, s);
 }
 
 static void dired_set_time_format(EditState *s, int format)
@@ -697,24 +694,27 @@ static void dired_set_time_format(EditState *s, int format)
     if (!(ds = dired_get_state(s, 1)))
         return;
 
-    time_format = format;
+    if (format < 0 || format > TF_MAX)
+        return;
+
+    dired_time_format = format;
 
     ds->datelen = 0;
     for (i = 0; i < ds->items.nb_items; i++) {
         const StringItem *item = ds->items.items[i];
         const DiredItem *dip = item->opaque;
 
-        len = format_date(buf, sizeof(buf), dip->mtime, time_format);
+        len = format_date(buf, sizeof(buf), dip->mtime, format);
         if (ds->datelen < len)
             ds->datelen = len;
     }
-    dired_sort_list(s);
+    dired_sort_list(ds, s->b, s);
 }
 
-static void dired_build_list(EditState *s, const char *path,
-                             const char *target)
+/* `ds` and `b` are valid, `s` and `target` may be NULL */
+static void dired_build_list(DiredState *ds, const char *path,
+                             const char *target, EditBuffer *b, EditState *s)
 {
-    DiredState *ds;
     FindFileState *ffst;
     char filename[MAX_FILENAME_SIZE];
     char line[1024], buf[1024];
@@ -722,9 +722,6 @@ static void dired_build_list(EditState *s, const char *path,
     struct stat st;
     int len, index;
     StringItem *item;
-
-    if (!(ds = dired_get_state(s, 1)))
-        return;
 
     /* free previous list, if any */
     dired_free(ds);
@@ -740,10 +737,10 @@ static void dired_build_list(EditState *s, const char *path,
 
     /* CG: should make absolute ? */
     canonicalize_path(ds->path, sizeof(ds->path), path);
-    eb_set_filename(s->b, ds->path);
-    s->b->flags |= BF_DIRED;
+    eb_set_filename(b, ds->path);
+    b->flags |= BF_DIRED;
 
-    eb_clear(s->b);
+    eb_clear(b);
 
     ffst = find_file_open(ds->path, "*");
     /* Should scan directory/filespec before computing lines to adjust
@@ -818,35 +815,44 @@ static void dired_build_list(EditState *s, const char *path,
             if (ds->sizelen < len)
                 ds->sizelen = len;
 
-            len = format_date(buf, sizeof(buf), dip->mtime, time_format);
+            len = format_date(buf, sizeof(buf), dip->mtime, dired_time_format);
             if (ds->datelen < len)
                 ds->datelen = len;
         }
     }
     find_file_close(&ffst);
     
-    dired_sort_list(s);
-
-    index = dired_find_target(s, target);
-    s->offset = eb_goto_pos(s->b, max(index, 0) + DIRED_HEADER, ds->fnamecol);
+    dired_sort_list(ds, b, s);
+    if (s) {
+        index = dired_find_target(ds, target);
+        s->offset = eb_goto_pos(b, max(index, 0) + DIRED_HEADER, ds->fnamecol);
+    }
 }
 
 /* select current item */
 static void dired_select(EditState *s)
 {
+    DiredState *ds;
     struct stat st;
     char filename[MAX_FILENAME_SIZE];
     EditState *e;
 
-    if (!dired_get_filename(s, filename, sizeof(filename), -1))
+    if (!(ds = dired_get_state(s, 1)))
         return;
 
-    /* now we can act */
-    if (lstat(filename, &st) >= 0 && S_ISDIR(st.st_mode)) {
-        /* do not descend into directories pointed to by symlinks */
-        dired_build_list(s, filename, NULL);
+    if (!dired_get_filename(ds, dired_get_index(s), filename, sizeof(filename)))
+        return;
+
+    /* Check if path leads somewhere */
+    if (stat(filename, &st) < 0)
+        return;
+
+    if (S_ISDIR(st.st_mode)) {
+        /* DO descend into directories pointed to by symlinks */
+        /* XXX: should expand directory below current position */
+        dired_build_list(ds, filename, NULL, s->b, s);
     } else
-    if (stat(filename, &st) >= 0 && S_ISREG(st.st_mode)) {
+    if (S_ISREG(st.st_mode)) {
         /* do explore files pointed to by symlinks */
         e = find_window(s, KEY_RIGHT);
         if (e) {
@@ -872,28 +878,33 @@ static void dired_view_file(EditState *s, const char *filename)
     e = find_window(s, KEY_RIGHT);
     if (!e)
         return;
+
     /* close previous temporary buffers, if any */
-    /* CG: Should use the do_find_alternate to replace buffer */
     b = e->b;
     if (b && (b->flags & BF_PREVIEW) && !b->modified) {
-        /* free the buffer if no longer viewed */
+        /* will free the buffer if no longer viewed */
         b->flags |= BF_TRANSIENT;
-        //switch_to_buffer(e, NULL);
     }
 
-    if (e) {
-        /* If buffer is not present already, mark it as preview, so
-         * that it will get recycled if needed */
-        do_find_file(e, filename, BF_PREVIEW);
+    /* Load file and attach to window. If file not loaded already, mark
+     * new buffer as BF_PREVIEW, to trigger paging mode and so that it
+     * will get freed if closed.
+     */
+#if 1
+    /* XXX: need a way to verify that file was correctly loaded */
+    do_find_file(e, filename, BF_PREVIEW);
+#else
+    rc = qe_load_file(e, filename, 0, 0, BF_PREVIEW);
+    if (rc >= 0) {
         /* disable wrapping to get nicer display */
         /* XXX: should wrap lines unless window is narrow */
         //e->wrap = WRAP_TRUNCATE;
-        b = e->b;
-        if (!b) {
-            b = eb_new("*scratch*", BF_SAVELOG | BF_UTF8);
-            e->b = b;
-        }
     }
+    if (rc < 0) {
+        /* if file failed to load, show a scratch buffer */
+        switch_to_buffer(e, eb_new("*scratch*", BF_SAVELOG | BF_UTF8 | BF_PREVIEW));
+    }
+#endif
 }
 
 static void dired_execute(EditState *s)
@@ -908,13 +919,21 @@ static void dired_parent(EditState *s)
     char target[MAX_FILENAME_SIZE];
     char filename[MAX_FILENAME_SIZE];
 
+    if (s->b->flags & BF_PREVIEW) {
+        EditState *e = find_window(s, KEY_LEFT);
+        if (e && (e->b->flags & BF_DIRED)) {
+            s->qe_state->active_window = e;
+            return;
+        }        
+    }
+
     if (!(ds = dired_get_state(s, 1)))
         return;
 
     pstrcpy(target, sizeof(target), ds->path);
     makepath(filename, sizeof(filename), ds->path, "..");
 
-    dired_build_list(s, filename, target);
+    dired_build_list(ds, filename, target, s->b, s);
 }
 
 static void dired_refresh(EditState *s)
@@ -926,15 +945,16 @@ static void dired_refresh(EditState *s)
     if (!(ds = dired_get_state(s, 1)))
         return;
 
-    dired_get_filename(s, target, sizeof(target), -1);
+    dired_get_filename(ds, dired_get_index(s), target, sizeof(target));
     pstrcpy(dirname, sizeof(dirname), ds->path);
-    dired_build_list(s, dirname, target);
+    dired_build_list(ds, dirname, target, s->b, s);
 }
 
 static void dired_toggle_dot_files(EditState *s, int val)
 {
     if (val == -1)
         val = !dired_show_dot_files;
+
     if (dired_show_dot_files != val) {
         dired_show_dot_files = val;
         dired_refresh(s);
@@ -961,7 +981,7 @@ static void dired_display_hook(EditState *s)
             /* XXX: this may cause problems if buffer is displayed in
              * multiple windows, hence the test on s->y1.
              * Should test for current window */
-            dired_sort_list(s);
+            dired_sort_list(ds, s->b, s);
         }
         /* open file so that user can see it before it is selected */
         /* XXX: find a better solution (callback) */
@@ -971,7 +991,7 @@ static void dired_display_hook(EditState *s)
         /* Should not rely on last_index! */
         if (index != ds->last_index) {
             ds->last_index = index;
-            if (dired_get_filename(s, filename, sizeof(filename), index)) {
+            if (dired_get_filename(ds, index, filename, sizeof(filename))) {
                 dired_view_file(s, filename);
             }
         }
@@ -982,7 +1002,7 @@ static void dired_close(EditBuffer *b)
 {
     DiredState *ds = b->priv_data;
 
-    if (ds && ds->signature == &dired_signature) {
+    if (ds && ds->signature == &dired_mode) {
         dired_free(ds);
     }
 
@@ -1000,7 +1020,7 @@ static int dired_mode_init(EditState *s, EditBuffer *b, int flags)
     if (s) {
         if (s->b->priv_data) {
             ds = s->b->priv_data;
-            if (ds->signature != &dired_signature)
+            if (ds->signature != &dired_mode)
                 return -1;
         } else {
             /* XXX: should be allocated by buffer_load API */
@@ -1008,7 +1028,8 @@ static int dired_mode_init(EditState *s, EditBuffer *b, int flags)
             if (!ds)
                 return -1;
 
-            ds->signature = &dired_signature;
+            ds->signature = &dired_mode;
+            /* XXX: Should use last sort mode, a global variable */
             ds->sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
             ds->last_index = -1;
 
@@ -1016,14 +1037,12 @@ static int dired_mode_init(EditState *s, EditBuffer *b, int flags)
             s->b->close = dired_close;
 
             /* XXX: should be built by buffer_load API */
-            dired_build_list(s, s->b->filename, NULL);
+            dired_build_list(ds, s->b->filename, NULL, s->b, s);
+            /* XXX: File system charset should be detected automatically */
+            /* XXX: If file system charset is not utf8, eb_printf will fail */
+            eb_set_charset(s->b, &charset_utf8, s->b->eol_type);
         }
-
-        /* XXX: File system charset should be detected automatically */
-        /* XXX: If file system charset is not utf8, eb_printf will fail */
-        eb_set_charset(s->b, &charset_utf8, s->b->eol_type);
     }
-
     return 0;
 }
 
@@ -1032,7 +1051,7 @@ static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (p->b->priv_data) {
         DiredState *ds = p->b->priv_data;
-        if (ds->signature != &dired_signature)
+        if (ds->signature != &dired_mode)
             return 0;
         else
             return 100;
@@ -1076,8 +1095,6 @@ static void dired_colorize_line(QEColorizeContext *cp,
     }
 }
 
-static ModeDef dired_mode;
-
 /* open dired window on the left. The directory of the current file is
    used */
 void do_dired(EditState *s)
@@ -1097,7 +1114,7 @@ void do_dired(EditState *s)
      */
 
     /* Should reuse previous dired buffer for same filespec */
-    b = eb_scratch("*dired*", BF_READONLY | BF_SYSTEM | BF_UTF8);
+    b = eb_scratch("*dired*", BF_READONLY | BF_UTF8);
 
     /* Remember target as current current buffer filename */
     pstrcpy(target, sizeof(target), s->b->filename);
@@ -1113,11 +1130,12 @@ void do_dired(EditState *s)
 
     width = qs->width / 5;
     e = insert_window_left(b, width, WF_MODELINE);
+    /* set dired mode: dired_mode_init() will load buffer content */
     edit_set_mode(e, &dired_mode);
 
     ds = dired_get_state(e, 0);
     if (ds) {
-        index = dired_find_target(e, target);
+        index = dired_find_target(ds, target);
         e->offset = eb_goto_pos(e->b, max(index, 0) + DIRED_HEADER,
                                 ds->fnamecol);
     }
@@ -1185,9 +1203,10 @@ static CmdDef dired_global_commands[] = {
 };
 
 static VarDef dired_variables[] = {
-    G_VAR( "dired-show-dot-files", dired_show_dot_files, VAR_NUMBER, VAR_RW )
+    G_VAR( "dired-time-format", dired_time_format, VAR_NUMBER, VAR_RW_SAVE )
+    G_VAR( "dired-show-dot-files", dired_show_dot_files, VAR_NUMBER, VAR_RW_SAVE )
 #ifdef CONFIG_DARWIN
-    G_VAR( "dired-show-ds-store", dired_show_ds_store, VAR_NUMBER, VAR_RW )
+    G_VAR( "dired-show-ds-store", dired_show_ds_store, VAR_NUMBER, VAR_RW_SAVE )
 #endif
 };
 
