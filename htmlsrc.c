@@ -25,24 +25,26 @@ static int get_html_entity(unsigned int *p)
     unsigned int *p_start, c;
 
     p_start = p;
-    c = (u8)*p;
+    c = *p;
 
     if (c != '&')
         return 0;
 
-    p++;
-    c = (u8)*p;
-
+    c = *++p;
     if (c == '#') {
-        do {
-            p++;
-            c = (u8)*p;
-        } while (qe_isdigit(c));
+        c = *++p;
+        if (c == 'x') {
+            do {
+                c = *++p;
+            } while (qe_isxdigit(c));
+        } else {
+            while (qe_isdigit(c))
+                c = *++p;
+        }
     } else
     if (qe_isalpha(c)) {
         do {
-            p++;
-            c = (u8)*p;
+            c = *++p;
         } while (qe_isalnum(c));
     } else {
         /* not an entity */
