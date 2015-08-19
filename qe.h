@@ -859,6 +859,8 @@ typedef struct EditBufferDataType {
 #define BF_STYLE1    0x1000  /* buffer has 1 byte styles */
 #define BF_STYLE2    0x2000  /* buffer has 2 byte styles */
 #define BF_STYLE4    0x3000  /* buffer has 4 byte styles */
+#define BF_IS_STYLE  0x4000  /* buffer is a styles buffer */
+#define BF_IS_LOG    0x8000  /* buffer is a log buffer */
 
 struct EditBuffer {
     OWNED Page *page_table;
@@ -927,9 +929,9 @@ struct EditBuffer {
     /* CG: should instead keep a pointer to last window using this
      * buffer, even if no longer on screen
      */
-    struct ModeDef *default_mode;
-    struct ModeDef *saved_mode;
-    OWNED struct ModeSavedData *saved_data;
+    ModeDef *default_mode;
+    ModeDef *saved_mode;
+    OWNED ModeSavedData *saved_data;
 
     /* default mode stuff when buffer is detached from window */
     int offset;
@@ -1171,6 +1173,8 @@ struct EditState {
 
     EditBuffer *b;
 
+    EditBuffer *last_buffer;    /* for predict_switch_to_buffer */
+
     /* mode specific info */
     ModeDef *mode;
     void *mode_data; /* mode private data */
@@ -1205,6 +1209,7 @@ struct EditState {
 #define WF_POPUP      0x0001 /* popup window (with borders) */
 #define WF_MODELINE   0x0002 /* mode line must be displayed */
 #define WF_RSEPARATOR 0x0004 /* right window separator */
+#define WF_POPLEFT    0x0008 /* left side window */
 
     OWNED char *prompt;  /* optional window prompt, utf8, owned by the window */
     //const char *mode_line;
@@ -1751,15 +1756,19 @@ static inline int is_user_input_pending(void) {
 }
 #endif
 
+/* file loading */
+int qe_load_file(EditState *s, const char *filename1,
+                 int kill_buffer, int load_resource, int bflags);
+
 /* config file support */
 void do_load_config_file(EditState *e, const char *file);
 void do_load_qerc(EditState *e, const char *file);
 
 /* popup / low level window handling */
-void show_popup(EditBuffer *b);
+EditState *show_popup(EditBuffer *b);
 int check_read_only(EditState *s);
 EditState *insert_window_left(EditBuffer *b, int width, int flags);
-EditState *find_window(EditState *s, int key);
+EditState *find_window(EditState *s, int key, EditState *def);
 void do_find_window(EditState *s, int key);
 
 /* window handling */
@@ -1767,8 +1776,8 @@ void edit_close(EditState **sp);
 EditState *edit_new(EditBuffer *b,
                     int x1, int y1, int width, int height, int flags);
 void edit_detach(EditState *s);
+EditBuffer *check_buffer(EditBuffer **sp);
 EditState *check_window(EditState **sp);
-EditState *edit_find(EditBuffer *b);
 void do_refresh(EditState *s);
 // should take direction argument
 void do_other_window(EditState *s);
@@ -1939,7 +1948,7 @@ void do_call_macro(EditState *s);
 void do_execute_macro_keys(EditState *s, const char *keys);
 void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
                          const char *key_bind);
-void edit_attach(EditState *s, EditState **ep);
+void edit_attach(EditState *s, EditState *e);
 void do_completion(EditState *s);
 void do_completion_space(EditState *s);
 void do_electric_filename(EditState *s, int key);

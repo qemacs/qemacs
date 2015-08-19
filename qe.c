@@ -958,7 +958,7 @@ void do_left_right(EditState *s, int dir)
 {
 #ifndef CONFIG_TINY
     if (s->b->flags & BF_PREVIEW) {
-        EditState *e = find_window(s, KEY_LEFT);
+        EditState *e = find_window(s, KEY_LEFT, NULL);
         if (e && (e->b->flags & BF_DIRED)
         &&  dir < 0 && eb_at_bol(s->b, s->offset)) {
             s->qe_state->active_window = e;
@@ -4900,7 +4900,6 @@ EditState *find_file_window(const char *filename)
 
 void switch_to_buffer(EditState *s, EditBuffer *b)
 {
-    QEmacsState *qs = s->qe_state;
     EditBuffer *b1;
     EditState *e;
     ModeSavedData *saved_data;
@@ -4916,10 +4915,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
     b1 = s->b;
     if (b1) {
         /* save mode data if no other window uses the buffer */
-        for (e = qs->first_window; e != NULL; e = e->next_window) {
-            if (e != s && e->b == b1)
-                break;
-        }
+        e = eb_find_window(b1, s);
         if (e) {
             /* no need to save mode data */
             /* CG: bogus! e and s might have different modes */
@@ -4940,6 +4936,9 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
         edit_set_mode(s, NULL);
         if (b1->flags & BF_TRANSIENT) {
             eb_free(&b1);
+        } else {
+            /* save buffer for predict_switch_to_buffer */
+            s->last_buffer = s->b;
         }
     }
 
@@ -4947,12 +4946,8 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
     s->b = b;
 
     if (b) {
-        /* try to restore saved data from another window or from the
-           buffer saved data */
-        for (e = qs->first_window; e != NULL; e = e->next_window) {
-            if (e != s && e->b == b)
-                break;
-        }
+        /* Try to get window mode and data from another window */
+        e = eb_find_window(b, s);
         if (e) {
             mode = e->mode;
             saved_data = generic_mode_save_data(e);
@@ -5016,6 +5011,7 @@ EditState *edit_new(EditBuffer *b,
     s = qe_mallocz(EditState);
     if (!s)
         return NULL;
+
     s->qe_state = qs;
     s->screen = qs->screen;
     s->x1 = x1;
@@ -5024,28 +5020,13 @@ EditState *edit_new(EditBuffer *b,
     s->y2 = y1 + height;
     s->flags = flags;
     compute_client_area(s);
+
     /* link window in window list */
-    s->next_window = qs->first_window;
-    /* CG: should append window to end of list, esp. for popups */
-    qs->first_window = s;
-    if (!qs->active_window)
-        qs->active_window = s;
+    edit_attach(s, qs->first_window);
+
     /* restore saved window settings, set mode */
     switch_to_buffer(s, b);
     return s;
-}
-
-/* find a window with a given buffer if any. */
-EditState *edit_find(EditBuffer *b)
-{
-    QEmacsState *qs = &qe_state;
-    EditState *e;
-
-    for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e->b == b)
-            break;
-    }
-    return e;
 }
 
 /* detach the window from the window tree. */
@@ -5065,11 +5046,24 @@ void edit_detach(EditState *s)
         qs->active_window = qs->first_window;
 }
 
-/* attach the window to the window list. */
-void edit_attach(EditState *s, EditState **ep)
+/* move a window before another one */
+void edit_attach(EditState *s, EditState *e)
 {
-    s->next_window = *ep;
-    *ep = s;
+    QEmacsState *qs = s->qe_state;
+    EditState *active_window = qs->active_window;
+    EditState **ep;
+
+    if (s != e) {
+        edit_detach(s);
+
+        for (ep = &qs->first_window; *ep; ep = &(*ep)->next_window) {
+            if (*ep == e)
+                break;
+        }
+        s->next_window = e;
+        *ep = s;
+        qs->active_window = active_window ? active_window : s;
+    }
 }
 
 /* close the edit window. If it is active, find another active
@@ -5079,26 +5073,10 @@ void edit_close(EditState **sp)
 {
     if (*sp) {
         EditState *s = *sp;
-        QEmacsState *qs = s->qe_state;
-        EditState **ps;
 
         /* save current state for later window reattachment */
         switch_to_buffer(s, NULL);
-
-        /* detach from window list */
-        ps = &qs->first_window;
-        while (*ps != NULL) {
-            if (*ps == s) {
-                *ps = s->next_window;
-                break;
-            }
-            ps = &(*ps)->next_window;
-        }
-
-        /* if active window, select another active window */
-        if (qs->active_window == s)
-            qs->active_window = qs->first_window;
-
+        edit_detach(s);
         qe_free(&s->mode_data);
         qe_free(&s->prompt);
         qe_free(&s->line_shadow);
@@ -5671,15 +5649,15 @@ void do_less_exit(EditState *s)
 }
 
 /* show a popup on a readonly buffer */
-void show_popup(EditBuffer *b)
+EditState *show_popup(EditBuffer *b)
 {
-    EditState *s;
     QEmacsState *qs = &qe_state;
+    EditState *s = qs->active_window;
     int w, h, w1, h1;
 
     /* Prevent recursion */
-    if (qs->active_window && qs->active_window->b == b)
-        return;
+    if (s && s->b == b)
+        return s;
 
     /* XXX: generic function to open popup ? */
     w1 = qs->screen->width;
@@ -5694,6 +5672,7 @@ void show_popup(EditBuffer *b)
     popup_saved_active = qs->active_window;
     qs->active_window = s;
     do_refresh(s);
+    return s;
 }
 
 static void less_init(void)
@@ -5728,13 +5707,13 @@ EditState *insert_window_left(EditBuffer *b, int width, int flags)
     }
 
     e_new = edit_new(b, 0, 0, width, qs->height - qs->status_height,
-                     flags | WF_RSEPARATOR);
-    do_refresh(qs->first_window);
+                     flags | WF_POPLEFT | WF_RSEPARATOR);
+    do_refresh(e_new);
     return e_new;
 }
 
 /* return a window on the side of window 's' */
-EditState *find_window(EditState *s, int key)
+EditState *find_window(EditState *s, int key, EditState *def)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e;
@@ -5760,41 +5739,35 @@ EditState *find_window(EditState *s, int key)
                 return e;
         }
     }
-    return NULL;
+    return def;
 }
 
 void do_find_window(EditState *s, int key)
 {
-    QEmacsState *qs = s->qe_state;
-    EditState *e;
-
-    e = find_window(s, key);
-    if (e)
-        qs->active_window = e;
+    s->qe_state->active_window = find_window(s, key, s);
 }
 #endif
 
-/* give a good guess to the user for the next buffer */
+/* Give a good guess to the user for the next buffer */
 static EditBuffer *predict_switch_to_buffer(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
-    EditState *e;
     EditBuffer *b;
 
+    /* try and switch to the last buffer attached to the window */
+    b = check_buffer(&s->last_buffer);
+    if (b)
+        return b;
+
+    /* else try and switch to a buffer not shown in any window */
     for (b = qs->first_buffer; b != NULL; b = b->next) {
         if (!(b->flags & BF_SYSTEM)) {
-            for (e = qs->first_window; e != NULL; e = e->next_window) {
-                if (e->b == b)
-                    break;
-            }
-            if (!e)
-                goto found;
+            if (!eb_find_window(b, NULL))
+                return b;
         }
     }
-    /* select current buffer if none found */
-    b = s->b;
- found:
-    return b;
+    /* otherwise select current buffer. */
+    return s->b;
 }
 
 void do_switch_to_buffer(EditState *s, const char *bufname)
@@ -5857,7 +5830,10 @@ void kill_buffer_noconfirm(EditBuffer *b)
     EditState *e;
     EditBuffer *b1;
 
-    // FIXME: used to delete windows containing the buffer ???
+    /* Emacs makes any window showing the killed buffer switch to
+     * another buffer.
+     * An alternative is to delete windows showing the buffer.
+     */
 
     /* find a new buffer to switch to */
     for (b1 = qs->first_buffer; b1 != NULL; b1 = b1->next) {
@@ -6045,15 +6021,20 @@ void do_set_next_mode(EditState *s, int dir)
                modes[found]->name, scores[found]);
 }
 
-/* Should take bits from enumeration instead of booleans */
-static void do_load1(EditState *s, const char *filename1,
-                     int kill_buffer, int load_resource, int bflags)
+/* Load a file and attach buffer to window `s`.
+ * Return -1 if loading failed.
+ * Return 0 if file or resource was already loaded,
+ * Return 1 if file or resource was newly loaded,
+ * Return 2 if buffer was created for a new file.
+ * Should take bits from enumeration instead of booleans.
+ */
+int qe_load_file(EditState *s, const char *filename1,
+                 int kill_buffer, int load_resource, int bflags)
 {
     u8 buf[4097];
     char filename[MAX_FILENAME_SIZE];
-    int st_mode, buf_size;
+    int st_mode, buf_size, mode_score;
     ModeDef *selected_mode;
-    int mode_score;
     EditBuffer *b;
     EditBufferDataType *bdt;
     FILE *f;
@@ -6061,46 +6042,47 @@ static void do_load1(EditState *s, const char *filename1,
     EOLType eol_type = EOL_UNIX;
     QECharset *charset = &charset_utf8;
 
+#ifndef CONFIG_TINY
+    /* avoid messing with the dired pane */
+    if ((s->flags & WF_POPLEFT) && s->x1 == 0) {
+        EditState *e = find_window(s, KEY_RIGHT, NULL);
+        if (e) {
+            if (s->qe_state->active_window == s)
+                s->qe_state->active_window = e;
+            s = e;
+        }
+    }
+#endif
+
     if (load_resource) {
         if (find_resource_file(filename, sizeof(filename), filename1)) {
             /* XXX: issue error message? */
-            return;
+            return -1;
         }
     } else {
         /* compute full name */
         canonicalize_absolute_path(filename, sizeof(filename), filename1);
     }
 
-    ///* If file already shown in window, switch to that */
-    //s1 = find_file_window(filename);
-    //if (s1 != NULL) {
-    //    qs->active_window = s1;
-    //    return;
-    //}
-
-    ///* Split window if window large enough and not empty */
-    //if (other_window && s->height > 10 && s->b->total_size > 0) {
-    //    do_split_window(s, 0, 0);
-    //    s = qs->active_window;
-    //}
-
-    if (kill_buffer && s->b) {
-        /* CG: this behaviour is not correct */
-        /* CG: should have a direct primitive */
-        do_kill_buffer(s, s->b->name);
-    }
-
     /* If file already loaded in existing buffer, switch to that */
     b = eb_find_file(filename);
     if (b != NULL) {
         switch_to_buffer(s, b);
-        return;
+        return 0;
+    }
+
+    /* We are going to try and load a new file: potentially delete the
+     * current buffer if requested.
+     */
+    if (kill_buffer && s->b && !s->b->modified) {
+        s->b->flags |= BF_TRANSIENT;
     }
 
     /* Create new buffer with unique name from filename */
     b = eb_new("", BF_SAVELOG | bflags);
     eb_set_filename(b, filename);
 
+    /* XXX: should actually initialize SAVED_DATA area in new buffer */
     s->offset = 0;
     /* XXX: Should test for full width and WRAP_TRUNCATE if not */
     s->wrap = WRAP_LINE;        /* default mode may override this */
@@ -6128,7 +6110,7 @@ static void do_load1(EditState *s, const char *filename1,
         if (b->data_type == &raw_data_type)
             put_status(s, "(New file)");
         do_load_qerc(s, s->b->filename);
-        return;
+        return 2;
     } else {
         b->st_mode = st_mode = st.st_mode;
         buf_size = 0;
@@ -6179,7 +6161,7 @@ static void do_load1(EditState *s, const char *filename1,
 
         /* XXX: invalid place */
         edit_invalidate(s);
-        return;
+        return 1;
     }
 
  fail:
@@ -6187,6 +6169,7 @@ static void do_load1(EditState *s, const char *filename1,
 
     put_status(s, "Could not open '%s': %s",
                filename, strerror(errno));
+    return -1;
 }
 
 #if 0
@@ -6224,25 +6207,28 @@ static void load_completion_cb(void *opaque, int err)
 
 void do_find_file(EditState *s, const char *filename, int bflags)
 {
-    do_load1(s, filename, 0, 0, bflags);
+    qe_load_file(s, filename, 0, 0, bflags);
 }
 
 void do_find_file_other_window(EditState *s, const char *filename, int bflags)
 {
-    QEmacsState *qs = s->qe_state;
-
-    do_split_window(s, 0);
-    do_load1(qs->active_window, filename, 0, 0, bflags);
+    /* Split window if window large enough and not empty */
+    /* XXX: should check s->height units */
+    if (s->height > 10 && s->b->total_size > 0) {
+        do_split_window(s, 0);
+        s = s->qe_state->active_window;
+    }
+    qe_load_file(s, filename, 0, 0, bflags);
 }
 
 void do_find_alternate_file(EditState *s, const char *filename, int bflags)
 {
-    do_load1(s, filename, 1, 0, bflags);
+    qe_load_file(s, filename, 1, 0, bflags);
 }
 
 void do_load_file_from_path(EditState *s, const char *filename, int bflags)
 {
-    do_load1(s, filename, 0, 1, bflags);
+    qe_load_file(s, filename, 0, 1, bflags);
 }
 
 void do_insert_file(EditState *s, const char *filename)
@@ -6608,9 +6594,8 @@ void do_previous_window(EditState *s)
 void do_delete_window(EditState *s, int force)
 {
     QEmacsState *qs = s->qe_state;
-    EditState *e;
-    int count, x1, y1, x2, y2;
-    int ex1, ey1, ex2, ey2;
+    EditState *e, *e1 = NULL;
+    int count, pass, x1, y1, x2, y2;
 
     count = 0;
     for (e = qs->first_window; e != NULL; e = e->next_window) {
@@ -6622,47 +6607,53 @@ void do_delete_window(EditState *s, int force)
         return;
 
     if (!(s->flags & WF_POPUP)) {
-        /* try to merge the window with one adjacent window. If none
-           found, just leave a hole */
+        /* Try to merge the window with adjacent windows.
+         * If this cannot be done, just leave a hole and force full
+         * redisplay.
+         */
         x1 = s->x1;
         x2 = s->x2;
         y1 = s->y1;
         y2 = s->y2;
 
-        for (e = qs->first_window; e != NULL; e = e->next_window) {
-            if (e->minibuf || e == s)
-                continue;
-            ex1 = e->x1;
-            ex2 = e->x2;
-            ey1 = e->y1;
-            ey2 = e->y2;
+        for (pass = 0; pass < 2; pass++) {
+            for (e = qs->first_window; e != NULL; e = e->next_window) {
+                if (e->minibuf || e == s || (e->flags & WF_POPUP))
+                    continue;
 
-            if (x1 == ex2 && y1 == ey1 && y2 == ey2) {
-                /* left border */
-                e->x2 = x2;
-                break;
-            } else
-            if (x2 == ex1 && y1 == ey1 && y2 == ey2) {
-                /* right border */
-                e->x1 = x1;
-                break;
-            } else
-            if (y1 == ey2 && x1 == ex1 && x2 == ex2) {
-                /* top border */
-                e->y2 = y2;
-                break;
-            } else
-            if (y2 == ey1 && x1 == ex1 && x2 == ex2) {
-                /* bottom border */
-                e->y1 = y1;
-                break;
+                if (x1 == e->x2 && y1 == e->y1 && y2 >= e->y2) {
+                    /* partial vertical split along the left border */
+                    e->x2 = x2;
+                    y1 = e->y2;
+                } else
+                if (x2 == e->x1 && y1 == e->y1 && y2 >= e->y2) {
+                    /* partial vertical split along the right border */
+                    e->x1 = x1;
+                    y1 = e->y2;
+                } else
+                if (y1 == e->y2 && x1 == e->x1 && x2 >= e->x2) {
+                    /* partial horizontal split along the top border */
+                    e->y2 = y2;
+                    x1 = e->x2;
+                } else
+                if (y2 == e->y1 && x1 == e->x1 && x2 >= e->x2) {
+                    /* partial horizontal split along bottom border */
+                    e->y1 = y1;
+                    x1 = e->x2;
+                } else {
+                    continue;
+                }
+                compute_client_area(e1 = e);
             }
+            if (x1 == x2 || y1 == y2)
+                break;
         }
-        if (e)
-            compute_client_area(e);
+        if (x1 != x2 && y1 != y2)
+            qs->complete_refresh = 1;
     }
     if (qs->active_window == s)
-        qs->active_window = e ? e : qs->first_window;
+        qs->active_window = e1 ? e1 : qs->first_window;
+
     edit_close(&s);
     if (qs->first_window)
         do_refresh(qs->first_window);
@@ -6672,6 +6663,9 @@ void do_delete_other_windows(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e, *e1;
+
+    if (s->minibuf || (s->flags & WF_POPUP))
+        return;
 
     for (e = qs->first_window; e != NULL; e = e1) {
         e1 = e->next_window;
@@ -6718,8 +6712,7 @@ void do_split_window(EditState *s, int horiz)
         s->y2 = y;
     }
     /* insert in the window list after current window */
-    edit_detach(e);
-    edit_attach(e, &s->next_window);
+    edit_attach(e, s->next_window);
 
     if (qs->flag_split_window_change_focus)
         qs->active_window = e;

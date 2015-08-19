@@ -395,6 +395,21 @@ int eb_insert(EditBuffer *b, int offset, const void *buf, int size)
     return size;
 }
 
+/* Verify that window still exists, return argument or NULL,
+ * update handle if window is invalid.
+ */
+EditBuffer *check_buffer(EditBuffer **sp)
+{
+    QEmacsState *qs = &qe_state;
+    EditBuffer *b;
+
+    for (b = qs->first_buffer; b != NULL; b = b->next) {
+        if (b == *sp)
+            return b;
+    }
+    return *sp = NULL;
+}
+
 /* We must have : 0 <= offset <= b->total_size,
  * return actual number of bytes removed.
  */
@@ -663,19 +678,17 @@ EditBuffer *eb_find_file(const char *filename)
     return NULL;
 }
 
-/* Find the next window showing a given buffer */
-EditState *eb_find_window(EditBuffer *b, EditState *e)
+/* Find a window attached to a given buffer, different from s */
+EditState *eb_find_window(EditBuffer *b, EditState *s)
 {
     QEmacsState *qs = &qe_state;
+    EditState *e;
 
-    for (e = e ? e->next_window : qs->first_window;
-         e != NULL;
-         e = e->next_window)
-    {
-            if (e->b == b)
-                return e;
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
+        if (e != s && e->b == b)
+            break;
     }
-    return NULL;
+    return e;
 }
 
 void eb_trace_bytes(const void *buf, int size, int state)
@@ -800,7 +813,9 @@ int eb_create_style_buffer(EditBuffer *b, int flags)
     if (b->b_styles) {
         return 0;
     } else {
-        b->b_styles = eb_new("*", BF_SYSTEM | BF_RAW);
+        char name[MAX_BUFFERNAME_SIZE];
+        snprintf(name, sizeof(name), "*S<%s>", b->name);
+        b->b_styles = eb_new(name, BF_SYSTEM | BF_IS_STYLE | BF_RAW);
         b->flags |= flags & BF_STYLES;
         b->style_shift = ((flags & BF_STYLES) / BF_STYLE1) - 1;
         b->style_bytes = 1 << b->style_shift;
@@ -904,8 +919,8 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
          * should not be a problem since this log buffer is never
          * referenced by name.
          */
-        snprintf(buf, sizeof(buf), "*log <%s>*", b->name);
-        b->log_buffer = eb_new(buf, BF_SYSTEM | BF_RAW);
+        snprintf(buf, sizeof(buf), "*L<%s>", b->name);
+        b->log_buffer = eb_new(buf, BF_SYSTEM | BF_IS_LOG | BF_RAW);
         if (!b->log_buffer)
             return;
     }

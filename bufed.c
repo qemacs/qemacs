@@ -22,16 +22,17 @@
 #include "qe.h"
 
 enum {
-    BUFED_ALL_VISIBLE = 1
+    BUFED_HIDE_SYSTEM = 0,
+    BUFED_ALL_VISIBLE = 1,
 };
 
-static int bufed_signature;
-
 typedef struct BufedState {
-    void *signature;
-    StringArray items;
+    ModeDef *signature;
     int flags;
-    int last_index;
+    EditState *cur_window;
+    EditBuffer *cur_buffer;
+    EditBuffer *last_buffer;
+    StringArray items;
 } BufedState;
 
 static ModeDef bufed_mode;
@@ -40,7 +41,7 @@ static BufedState *bufed_get_state(EditState *s, int status)
 {
     BufedState *bs = s->b->priv_data;
 
-    if (bs && bs->signature == &bufed_signature)
+    if (bs && bs->signature == &bufed_mode)
         return bs;
 
     if (status)
@@ -90,6 +91,12 @@ static void build_bufed_list(EditState *s)
             char path[MAX_FILENAME_SIZE];
             const char *mode_name;
 
+            if (b1->flags & BF_IS_LOG) {
+                mode_name = "log";
+            } else
+            if (b1->flags & BF_IS_STYLE) {
+                mode_name = "style";
+            } else
             if (b1->saved_mode) {
                 mode_name = b1->saved_mode->name;
             } else
@@ -102,8 +109,8 @@ static void build_bufed_list(EditState *s)
                 mode_name = "none";
             }
 
-            eb_printf(b, " %10d %c %-8s %-8s %s",
-                      b1->total_size, " 1234567"[b1->style_bytes & 7],
+            eb_printf(b, " %10d %1.0d %-8s %-8s %s",
+                      b1->total_size, b1->style_bytes & 7,
                       b1->charset->name, mode_name,
                       make_user_path(path, sizeof(path), b1->filename));
         }
@@ -131,39 +138,36 @@ static EditBuffer *bufed_get_buffer(EditState *s)
 static void bufed_select(EditState *s, int temp)
 {
     BufedState *bs;
-    StringItem *item;
-    EditBuffer *b;
+    EditBuffer *b, *last_buffer;
     EditState *e;
     int index;
 
     if (!(bs = bufed_get_state(s, 1)))
         return;
 
-    index = list_get_pos(s);
-    if (index < 0 || index >= bs->items.nb_items)
-        return;
+    if (temp < 0) {
+        b = check_buffer(&bs->cur_buffer);
+        last_buffer = check_buffer(&bs->last_buffer);
+    } else {
+        index = list_get_pos(s);
+        if (index < 0 || index >= bs->items.nb_items)
+            return;
 
-    if (temp && index == bs->last_index)
-        return;
-
-    item = bs->items.items[index];
-    b = eb_find(item->str);
-    if (!b)
-        return;
-    e = find_window(s, KEY_RIGHT);
-    if (temp) {
-        if (e) {
-            bs->last_index = index;
-            switch_to_buffer(e, b);
-        }
-        return;
+        b = eb_find(bs->items.items[index]->str);
+        last_buffer = bs->cur_buffer;
     }
-    if (e) {
+    e = check_window(&bs->cur_window);
+    if (e && b) {
+        switch_to_buffer(e, b);
+        e->last_buffer = last_buffer;
+    }
+    if (temp <= 0) {
         /* delete bufed window */
         do_delete_window(s, 1);
-        switch_to_buffer(e, b);
+        if (e)
+            e->qe_state->active_window = e;
     } else {
-        switch_to_buffer(s, b);
+        do_refresh_complete(s);
     }
 }
 
@@ -218,30 +222,37 @@ static void bufed_kill_buffer(EditState *s)
 /* show a list of buffers */
 static void do_list_buffers(EditState *s, int argval)
 {
-    QEmacsState *qs = s->qe_state;
     BufedState *bs;
-    EditBuffer *b, *b0;
-    EditState *e, *e1;
-    int width, i;
+    EditBuffer *b;
+    EditState *e;
+    int i;
 
-    /* remember current buffer for target positioning, because
-     * s may be destroyed by insert_window_left
-     * CG: remove this kludge once we have delayed EditState free
-     */
-    b = b0 = s->b;
+    /* ignore command from the minibuffer and popups */
+    if (s->minibuf || (s->flags & WF_POPUP))
+        return;
 
-    if ((bs = bufed_get_state(s, 0)) == NULL) {
-        /* XXX: must close this buffer when destroying window: add a
-        special buffer flag to tell this */
-        b = eb_scratch("*bufed*", BF_READONLY | BF_SYSTEM | BF_UTF8);
+    if (s->flags & WF_POPLEFT) {
+        /* avoid messing with the dired pane */
+        s = find_window(s, KEY_RIGHT, s);
+        s->qe_state->active_window = s;
     }
 
-    width = qs->width / 5;
-    e = insert_window_left(b, width, WF_MODELINE);
+    b = eb_scratch("*bufed*", BF_READONLY | BF_SYSTEM | BF_UTF8);
+    if (!b)
+        return;
+
+    e = show_popup(b);
+    if (!e)
+        return;
+
     edit_set_mode(e, &bufed_mode);
 
     if (!(bs = bufed_get_state(e, 1)))
         return;
+
+    bs->cur_window = s;
+    bs->cur_buffer = s->b;
+    bs->last_buffer = s->last_buffer;
 
     if (argval == NO_ARG) {
         bs->flags &= ~BUFED_ALL_VISIBLE;
@@ -250,20 +261,13 @@ static void do_list_buffers(EditState *s, int argval)
     }
     build_bufed_list(e);
 
-    e1 = find_window(e, KEY_RIGHT);
-    if (e1)
-        b0 = e1->b;
-
     /* if active buffer is found, go directly on it */
     for (i = 0; i < bs->items.nb_items; i++) {
-        if (strequal(bs->items.items[i]->str, b0->name)) {
+        if (strequal(bs->items.items[i]->str, s->b->name)) {
             e->offset = eb_goto_pos(e->b, i, 0);
             break;
         }
     }
-
-    /* modify active window */
-    qs->active_window = e;
 }
 
 static void bufed_clear_modified(EditState *s)
@@ -309,14 +313,15 @@ static void bufed_display_hook(EditState *s)
     if (s->offset && s->offset == s->b->total_size)
         do_up_down(s, -1);
 
-    bufed_select(s, 1);
+    if (s->flags & WF_POPUP)
+        bufed_select(s, 1);
 }
 
 static int bufed_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (p->b->priv_data) {
         BufedState *bs = p->b->priv_data;
-        if (bs->signature == &bufed_signature)
+        if (bs->signature == &bufed_mode)
             return 95;
         else
             return 0;
@@ -328,7 +333,7 @@ static void bufed_close(EditBuffer *b)
 {
     BufedState *bs = b->priv_data;
 
-    if (bs && bs->signature == &bufed_signature) {
+    if (bs && bs->signature == &bufed_mode) {
         free_strings(&bs->items);
     }
 
@@ -346,7 +351,7 @@ static int bufed_mode_init(EditState *s, EditBuffer *b, int flags)
     if (s) {
         if (s->b->priv_data) {
             bs = s->b->priv_data;
-            if (bs->signature != &bufed_signature)
+            if (bs->signature != &bufed_mode)
                 return -1;
         } else {
             /* XXX: should be allocated by buffer_load API */
@@ -354,8 +359,7 @@ static int bufed_mode_init(EditState *s, EditBuffer *b, int flags)
             if (!bs)
                 return -1;
 
-            bs->signature = &bufed_signature;
-            bs->last_index = -1;
+            bs->signature = &bufed_mode;
             s->b->priv_data = bs;
             s->b->close = bufed_close;
         }
@@ -365,11 +369,11 @@ static int bufed_mode_init(EditState *s, EditBuffer *b, int flags)
 
 /* specific bufed commands */
 static CmdDef bufed_commands[] = {
-    CMD1( KEY_RET, KEY_RIGHT,
+    CMD1( KEY_RET, KEY_NONE,
           "bufed-select", bufed_select, 0)
     /* bufed-abort should restore previous buffer in right-window */
-    CMD1( KEY_CTRL('g'), KEY_NONE,
-          "bufed-abort", do_delete_window, 0)
+    CMD1( KEY_CTRL('g'), KEY_CTRLX(KEY_CTRL('g')),
+          "bufed-abort", bufed_select, -1)
     CMD1( ' ', KEY_CTRL('t'),
           "bufed-toggle-selection", list_toggle_selection, 1)
     CMD1( KEY_DEL, KEY_NONE,
@@ -379,7 +383,7 @@ static CmdDef bufed_commands[] = {
           "bufed-clear-modified", bufed_clear_modified)
     CMD0( '%', KEY_NONE,
           "bufed-toggle-read-only", bufed_toggle_read_only)
-    CMD1( 'a', KEY_NONE,
+    CMD1( 'a', '.',
           "bufed-toggle-all-visible", bufed_refresh, 1)
     CMD1( 'n', KEY_CTRL('n'), /* KEY_DOWN */
           "bufed-next-line", do_up_down, 1)
@@ -406,7 +410,6 @@ static int bufed_init(void)
     bufed_mode.name = "bufed";
     bufed_mode.mode_probe = bufed_mode_probe;
     bufed_mode.mode_init = bufed_mode_init;
-    /* CG: not a good idea, display hook has side effect on layout */
     bufed_mode.display_hook = bufed_display_hook;
 
     /* first register mode */

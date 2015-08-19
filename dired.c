@@ -854,7 +854,7 @@ static void dired_select(EditState *s)
     } else
     if (S_ISREG(st.st_mode)) {
         /* do explore files pointed to by symlinks */
-        e = find_window(s, KEY_RIGHT);
+        e = find_window(s, KEY_RIGHT, NULL);
         if (e) {
 #if 1
             s->qe_state->active_window = e;
@@ -874,8 +874,9 @@ static void dired_view_file(EditState *s, const char *filename)
 {
     EditBuffer *b;
     EditState *e;
+    int rc;
 
-    e = find_window(s, KEY_RIGHT);
+    e = find_window(s, KEY_RIGHT, NULL);
     if (!e)
         return;
 
@@ -890,10 +891,6 @@ static void dired_view_file(EditState *s, const char *filename)
      * new buffer as BF_PREVIEW, to trigger paging mode and so that it
      * will get freed if closed.
      */
-#if 1
-    /* XXX: need a way to verify that file was correctly loaded */
-    do_find_file(e, filename, BF_PREVIEW);
-#else
     rc = qe_load_file(e, filename, 0, 0, BF_PREVIEW);
     if (rc >= 0) {
         /* disable wrapping to get nicer display */
@@ -904,7 +901,6 @@ static void dired_view_file(EditState *s, const char *filename)
         /* if file failed to load, show a scratch buffer */
         switch_to_buffer(e, eb_new("*scratch*", BF_SAVELOG | BF_UTF8 | BF_PREVIEW));
     }
-#endif
 }
 
 static void dired_execute(EditState *s)
@@ -920,7 +916,7 @@ static void dired_parent(EditState *s)
     char filename[MAX_FILENAME_SIZE];
 
     if (s->b->flags & BF_PREVIEW) {
-        EditState *e = find_window(s, KEY_LEFT);
+        EditState *e = find_window(s, KEY_LEFT, NULL);
         if (e && (e->b->flags & BF_DIRED)) {
             s->qe_state->active_window = e;
             return;

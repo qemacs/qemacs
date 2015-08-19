@@ -52,10 +52,8 @@ enum TTYState {
     TTY_STATE_STRING,
 };
 
-static int shell_signature;
-
 typedef struct ShellState {
-    void *signature;
+    ModeDef *signature;
     /* buffer state */
     int pty_fd;
     int pid; /* -1 if not launched */
@@ -659,7 +657,7 @@ static ShellState *shell_get_state(EditState *e, int status)
 {
     ShellState *s = e->b->priv_data;
 
-    if (s && s->signature == &shell_signature)
+    if (s && s->signature == &shell_mode)
         return s;
 
     if (status)
@@ -687,7 +685,7 @@ static void shell_key(void *opaque, int key)
     const char *p;
     int len;
 
-    if (!s || s->signature != &shell_signature)
+    if (!s || s->signature != &shell_mode)
         return;
 
     if (key == KEY_CTRL('o')) {
@@ -1244,7 +1242,7 @@ static void shell_read_cb(void *opaque)
     unsigned char buf[16 * 1024];
     int len, i;
 
-    if (!s || s->signature != &shell_signature)
+    if (!s || s->signature != &shell_mode)
         return;
 
     qs = s->qe_state;
@@ -1279,7 +1277,7 @@ static void shell_close(EditBuffer *b)
     ShellState *s = b->priv_data;
     int status;
 
-    if (!s || s->signature != &shell_signature)
+    if (!s || s->signature != &shell_mode)
         return;
 
     eb_free_callback(b, eb_offset_callback, &s->cur_offset);
@@ -1317,7 +1315,7 @@ static void shell_pid_cb(void *opaque, int status)
     EditState *e;
     char buf[1024];
 
-    if (!s || s->signature != &shell_signature)
+    if (!s || s->signature != &shell_mode)
         return;
 
     b = s->b;
@@ -1395,7 +1393,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     b = b0;
     if (b) {
         s = b->priv_data;
-        if (s && s->signature != &shell_signature)
+        if (s && s->signature != &shell_mode)
             return NULL;
         if (shell_flags & SF_COLOR)
             eb_create_style_buffer(b, BF_STYLE2);
@@ -1426,7 +1424,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
                 eb_free(&b);
             return NULL;
         }
-        s->signature = &shell_signature;
+        s->signature = &shell_mode;
         b->priv_data = s;
         b->close = shell_close;
         /* Track cursor with edge effect */
@@ -1466,7 +1464,7 @@ static EditBuffer *try_show_buffer(EditState *s, const char *bufname)
 
     b = eb_find(bufname);
     if (b) {
-        e = edit_find(b);
+        e = eb_find_window(b, NULL);
         if (e)
             qs->active_window = e;
         else
@@ -1480,26 +1478,33 @@ static void do_shell(EditState *s, int force)
     ShellState *shs;
     EditBuffer *b = NULL;
 
+    if (s->flags & WF_POPLEFT) {
+        /* avoid messing with the dired pane */
+        s = find_window(s, KEY_RIGHT, s);
+        s->qe_state->active_window = s;
+    }
+
     /* CG: Should prompt for buffer name if arg:
      * find a syntax for optional string argument w/ prompt
      */
     /* find shell buffer if any */
     if (!force || force == NO_ARG) {
         /* XXX: if current buffer is a shell buffer without a process,
-         * restart shell process.
+         * restart shell process in it.
          */
         b = s->b;
         shs = b->priv_data;
         if (strstart(b->name, "*shell*", NULL)
-        &&  shs && shs->signature == &shell_signature) {
+        &&  shs && shs->signature == &shell_mode) {
             if (shs->pid >= 0)
                 return;
         } else {
+            /* XXX: should find the last used shell buffer */
             b = try_show_buffer(s, "*shell*");
             if (b) {
                 shs = b->priv_data;
                 if (shs) {
-                    if (shs->signature != &shell_signature) {
+                    if (shs->signature != &shell_mode) {
                         b = NULL;
                     } else
                     if (shs->pid >= 0)
@@ -1960,7 +1965,7 @@ static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (p->b && p->b->priv_data) {
         ShellState *s = p->b->priv_data;
-        if (s->signature == &shell_signature) {
+        if (s->signature == &shell_mode) {
             if (s->shell_flags & SF_INTERACTIVE)
                 return 100;
         }
