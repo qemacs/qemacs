@@ -1174,6 +1174,7 @@ struct EditState {
     EditBuffer *b;
 
     EditBuffer *last_buffer;    /* for predict_switch_to_buffer */
+    ISearchState *isearch_state;  /* active search to colorize matches */
 
     /* mode specific info */
     ModeDef *mode;
@@ -1804,7 +1805,8 @@ void do_insert_file(EditState *s, const char *filename);
 void do_save_buffer(EditState *s);
 void do_write_file(EditState *s, const char *filename);
 void do_write_region(EditState *s, const char *filename);
-// should take argument?
+void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
+                              int offset, int offset_end);
 void do_isearch(EditState *s, int dir);
 void do_query_replace(EditState *s, const char *search_str,
                       const char *replace_str);

@@ -1656,6 +1656,8 @@ void do_break(EditState *s)
 #endif
     /* deactivate region hilite */
     s->region_style = 0;
+    /* deactivate search hilite */
+    s->isearch_state = NULL;
 
     /* well, currently nothing needs to be aborted in global context */
     /* CG: Should remove popups, sidepanes, helppanes... */
@@ -3607,19 +3609,24 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
 int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                                int *offsetp, int line_num)
 {
+    int len, offset = *offsetp;
+
 #ifndef CONFIG_TINY
     if (s->colorize_func) {
-        int offset = *offsetp;
-        int len = syntax_get_colorized_line(s, buf, buf_size, offsetp, line_num);
+        len = syntax_get_colorized_line(s, buf, buf_size, offsetp, line_num);
         if (s->b->b_styles)
             len = combine_static_colorized_line(s, buf, buf_size, &offset, line_num);
-        return len;
-    }
+    } else
 #endif
     if (s->b->b_styles)
-        return get_staticly_colorized_line(s, buf, buf_size, offsetp, line_num);
+        len = get_staticly_colorized_line(s, buf, buf_size, offsetp, line_num);
+    else
+        len = eb_get_line(s->b, buf, buf_size, offsetp);
 
-    return eb_get_line(s->b, buf, buf_size, offsetp);
+    if (s->isearch_state)
+        isearch_colorize_matches(s, buf, len, offset, *offsetp);
+
+    return len;
 }
 
 #define RLE_EMBEDDINGS_SIZE    128
@@ -3686,7 +3693,8 @@ int text_display(EditState *s, DisplayState *ds, int offset)
     offset0 = offset;
     if (s->colorize_func
     ||  s->curline_style || s->region_style
-    ||  s->b->b_styles) {
+    ||  s->b->b_styles
+    ||  s->isearch_state) {
         colored_nb_chars = s->get_colorized_line(s, colored_chars,
                                                  countof(colored_chars),
                                                  &offset0, line_num);
