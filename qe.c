@@ -5881,6 +5881,7 @@ static void get_default_path(EditState *s, char *buf, int buf_size)
     splitpath(buf, buf_size, NULL, 0, buf1);
 }
 
+/* should have: rawbuf[len] == '\0' */
 static int probe_mode(EditState *s, EditBuffer *b,
                       ModeDef **modes, int nb_modes,
                       int *scores, int min_score,
@@ -5940,9 +5941,10 @@ static int probe_mode(EditState *s, EditBuffer *b,
             bufp += utf8_encode((char *)bufp, ch);
             if (bufp > buf + sizeof(buf) - MAX_CHAR_BYTES - 1)
                 break;
-            probe_data.buf = buf;
-            probe_data.buf_size = bufp - buf;
         }
+        probe_data.buf = buf;
+        probe_data.buf_size = bufp - buf;
+        *bufp = '\0';
     }
 
     /* Skip the BOM if present */
@@ -6002,7 +6004,8 @@ void do_set_next_mode(EditState *s, int dir)
     int i, nb, found;
     EditBuffer *b = s->b;
 
-    size = eb_read(b, 0, buf, sizeof(buf));
+    size = eb_read(b, 0, buf, sizeof(buf) - 1);
+    buf[size] = '\0';
 
     nb = probe_mode(s, b, modes, countof(modes), scores, 2,
                     b->filename, b->st_mode, b->total_size,
