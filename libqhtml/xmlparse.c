@@ -64,7 +64,10 @@ int find_entity(const char *str)
     int code;
 
     if (str[0] == '#') {
-        code = strtol(str + 1, NULL, 10);
+        if (str[1] == 'x')
+            code = strtol(str + 2, NULL, 16);
+        else
+            code = strtol(str + 1, NULL, 10);
         if (code <= 0)
             return -1;
         return code;
