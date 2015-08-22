@@ -1046,6 +1046,39 @@ static void do_describe_buffer(EditState *s, int argval)
         }
     }
 
+    if (b->nb_pages) {
+        Page *p;
+        const u8 *pc;
+        int i, c, n;
+
+        eb_printf(b1, "\nBuffer page layout:\n");
+
+        eb_printf(b1, "    page  size  flags  lines   col  chars  addr\n");
+        for (i = 0, p = b->page_table; i < b->nb_pages && i < 100; i++, p++) {
+            eb_printf(b1, "    %4d  %4d  %5x  %5d  %4d  %5d  %p  |",
+                      i, p->size, p->flags, p->nb_lines, p->col, p->nb_chars, p->data);
+            pc = p->data;
+            n = min(p->size, 16);
+            while (n-- > 0) {
+                switch (c = *pc++) {
+                case '\r': c = 'r'; break;
+                case '\n': c = 'n'; break;
+                case '\t': c = 't'; break;
+                case '\\': break;
+                default:
+                    if (c < 32 || c >= 127)
+                        eb_printf(b1, "\\%03o", c);
+                    else
+                        eb_printf(b1, "%c", c);
+                    continue;
+                }
+                eb_printf(b1, "\\%c", c);
+            }
+            eb_printf(b1, "|%s\n", p->size > 16 ? "..." : "");
+        }
+        eb_printf(b1, "\n");
+    }
+
     b1->flags |= BF_READONLY;
     if (show) {
         show_popup(b1);
