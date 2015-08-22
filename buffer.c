@@ -131,7 +131,7 @@ int eb_write(EditBuffer *b, int offset, const void *buf, int size)
     if (b->flags & BF_READONLY)
         return 0;
 
-    /* We carefully clip the request, avoiding and integer overflow */
+    /* We carefully clip the request, avoiding integer overflow */
     if (offset < 0 || size <= 0 || offset > b->total_size)
         return 0;
 
@@ -222,7 +222,7 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
         offset--;
         p = find_page(b, &offset);
         offset++;
-
+    retry:
         /* compute what we can insert in current page */
         len = MAX_PAGE_SIZE - offset;
         if (len > size)
@@ -230,13 +230,49 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
         /* number of bytes to put in next pages */
         len_out = p->size + len - MAX_PAGE_SIZE;
         page_index = p - b->page_table;
-        if (len_out > 0)
+        if (len_out > 0) {
+#if 1
+            /* XXX: should first try and shift some of these bytes to
+             * the previous pages */
+            if (page_index > 0 && p[-1].size < MAX_PAGE_SIZE) {
+                int chunk;
+                update_page(p - 1);
+                update_page(p);
+                chunk = min(MAX_PAGE_SIZE - p[-1].size, offset);
+                qe_realloc(&p[-1].data, p[-1].size + chunk);
+                memcpy(p[-1].data + p[-1].size, p->data, chunk);
+                p[-1].size += chunk;
+                p->size -= chunk;
+                if (p->size == 0) {
+                    /* if page was completely fused with previous one */
+                    b->nb_pages -= 1;
+                    qe_free(&p->data);
+                    memmove(p, p + 1,
+                            (b->nb_pages - page_index) * sizeof(Page));
+                    qe_realloc(&b->page_table, b->nb_pages * sizeof(Page));
+                    p = b->page_table + page_index - 1;
+                    offset = p->size;
+                    goto retry;
+                }
+                memmove(p->data, p->data + chunk, p->size);
+                qe_realloc(&p->data, p->size);
+                offset -= chunk;
+                if (offset == 0 && p[-1].size < MAX_PAGE_SIZE) {
+                    /* restart from previous page */
+                    p--;
+                    offset = p->size;
+                }
+                goto retry;
+            }
+#endif
             eb_insert1(b, page_index + 1,
                        p->data + p->size - len_out, len_out);
-        else
+        } else {
             len_out = 0;
+        }
         /* now we can insert in current page */
         if (len > 0) {
+            /* reload p because page_table may have been reallocated */
             p = b->page_table + page_index;
             update_page(p);
             p->size += len - len_out;
@@ -288,11 +324,39 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
     size0 = size;
 
     eb_addlog(dest, LOGOP_INSERT, dest_offset, size);
-
+#if 1
+    /* Unused variables */
+    n = 0; q = NULL; p_start = NULL; page_index = 0;
+    /* Much simpler algorithm with fewer pathological cases */
+    p = find_page(src, &src_offset);
+    while (size > 0) {
+        len = p->size - src_offset;
+        if (len > size)
+            len = size;
+        if ((p->flags & PG_READ_ONLY) && src_offset == 0 && len == MAX_PAGE_SIZE) {
+            /* XXX: should share complete read-only pages.  This is
+             * actually a little tricky: the mapping may be removed
+             * upon buffer close. We need a ref count scheme to keep
+             * track of these pages.
+             * A brute force approach may prove best: upon unmapping a
+             * file, scan all buffers for shared pages and delay
+             * unmapping until these get freed.  We may keep a global
+             * and a buffer based count of shared pages and a list of
+             * mappings to accelerate this phase.
+             */
+        }
+        eb_insert_lowlevel(dest, dest_offset, p->data + src_offset, len);
+        dest_offset += len;
+        src_offset = 0;
+        p++;
+        size -= len;
+    }
+    return size0;
+#else
     /* insert the data from the first page if it is not completely
        selected */
     p = find_page(src, &src_offset);
-    if (src_offset > 0) {
+    if (src_offset > 0 /* || size <= p->size */ ) {
         len = p->size - src_offset;
         if (len > size)
             len = size;
@@ -365,10 +429,10 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
     if (size > 0) {
         eb_insert1(dest, page_index, p->data, size);
     }
-
     /* the page cache is no longer valid */
     dest->cur_page = NULL;
     return size0;
+#endif
 }
 
 /* Insert 'size' bytes from 'buf' into 'b' at offset 'offset'. We must
@@ -393,21 +457,6 @@ int eb_insert(EditBuffer *b, int offset, const void *buf, int size)
     /* the page cache is no longer valid */
     b->cur_page = NULL;
     return size;
-}
-
-/* Verify that window still exists, return argument or NULL,
- * update handle if window is invalid.
- */
-EditBuffer *check_buffer(EditBuffer **sp)
-{
-    QEmacsState *qs = &qe_state;
-    EditBuffer *b;
-
-    for (b = qs->first_buffer; b != NULL; b = b->next) {
-        if (b == *sp)
-            return b;
-    }
-    return *sp = NULL;
 }
 
 /* We must have : 0 <= offset <= b->total_size,
@@ -458,6 +507,7 @@ int eb_delete(EditBuffer *b, int offset, int size)
             p->size -= len;
             qe_realloc(&p->data, p->size);
             offset += len;
+            /* XXX: should merge with adjacent pages if size becomes small? */
             if (offset >= p->size) {
                 p++;
                 offset = 0;
@@ -478,6 +528,37 @@ int eb_delete(EditBuffer *b, int offset, int size)
     b->cur_page = NULL;
 
     return size0;
+}
+
+/*---------------- finding buffers ----------------*/
+
+/* Verify that window still exists, return argument or NULL,
+ * update handle if window is invalid.
+ */
+EditBuffer *check_buffer(EditBuffer **sp)
+{
+    QEmacsState *qs = &qe_state;
+    EditBuffer *b;
+
+    for (b = qs->first_buffer; b != NULL; b = b->next) {
+        if (b == *sp)
+            return b;
+    }
+    return *sp = NULL;
+}
+
+EditBuffer *eb_find(const char *name)
+{
+    QEmacsState *qs = &qe_state;
+    EditBuffer *b;
+
+    b = qs->first_buffer;
+    while (b != NULL) {
+        if (strequal(b->name, name))
+            return b;
+        b = b->next;
+    }
+    return NULL;
 }
 
 /* flush the log */
@@ -637,20 +718,6 @@ void eb_free(EditBuffer **bp)
 	qe_free(&b->priv_data);
         qe_free(bp);
     }
-}
-
-EditBuffer *eb_find(const char *name)
-{
-    QEmacsState *qs = &qe_state;
-    EditBuffer *b;
-
-    b = qs->first_buffer;
-    while (b != NULL) {
-        if (strequal(b->name, name))
-            return b;
-        b = b->next;
-    }
-    return NULL;
 }
 
 EditBuffer *eb_find_new(const char *name, int flags)
