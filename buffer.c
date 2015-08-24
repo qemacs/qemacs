@@ -31,28 +31,27 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
 /* basic access to the edit buffer */
 
 /* find a page at a given offset */
-static inline Page *find_page(EditBuffer *b, int *offset_ptr)
+static inline Page *find_page(EditBuffer *b, int offset, int *page_offset_ptr)
 {
-    Page *p;
-    int offset;
+    Page *p = b->page_table;
+    int page_offset = offset;
 
-    offset = *offset_ptr;
-    if (b->cur_page && offset >= b->cur_offset &&
-        offset < b->cur_offset + b->cur_page->size) {
-        /* use the cache */
-        *offset_ptr -= b->cur_offset;
-        return b->cur_page;
-    } else {
-        p = b->page_table;
-        while (offset >= p->size) {
-            offset -= p->size;
-            p++;
+    if (b->cur_page && offset >= b->cur_offset) {
+        p = b->cur_page;
+        page_offset -= b->cur_offset;
+        if (page_offset < p->size) {
+            *page_offset_ptr = page_offset;
+            return p;
         }
-        b->cur_page = p;
-        b->cur_offset = *offset_ptr - offset;
-        *offset_ptr = offset;
-        return p;
     }
+    while (page_offset >= p->size) {
+        page_offset -= p->size;
+        p++;
+    }
+    *page_offset_ptr = page_offset;
+    b->cur_offset = offset - page_offset;
+    b->cur_page = p;
+    return p;
 }
 
 /* prepare a page to be written */
@@ -84,7 +83,7 @@ int eb_read_one_byte(EditBuffer *b, int offset)
     if (offset < 0 || offset >= b->total_size)
         return -1;
 
-    p = find_page(b, &offset);
+    p = find_page(b, offset, &offset);
     return p->data[offset];
 }
 
@@ -104,7 +103,7 @@ int eb_read(EditBuffer *b, int offset, void *buf, int size)
     if (size > len)
         size = len;
 
-    p = find_page(b, &offset);
+    p = find_page(b, offset, &offset);
     for (remain = size;;) {
         len = p->size - offset;
         if (len > remain)
@@ -143,8 +142,7 @@ int eb_write(EditBuffer *b, int offset, const void *buf, int size)
     if (write_size > 0) {
         eb_addlog(b, LOGOP_WRITE, offset, write_size);
 
-        page_offset = offset;
-        p = find_page(b, &page_offset);
+        p = find_page(b, offset, &page_offset);
         for (remain = write_size;;) {
             len = p->size - page_offset;
             if (len > remain)
@@ -220,7 +218,7 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
     p = b->page_table;
     if (offset > 0) {
         offset--;
-        p = find_page(b, &offset);
+        p = find_page(b, offset, &offset);
         offset++;
     retry:
         /* compute what we can insert in current page */
@@ -232,8 +230,7 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
         page_index = p - b->page_table;
         if (len_out > 0) {
 #if 1
-            /* XXX: should first try and shift some of these bytes to
-             * the previous pages */
+            /* First try and shift some of these bytes to the previous pages */
             if (page_index > 0 && p[-1].size < MAX_PAGE_SIZE) {
                 int chunk;
                 update_page(p - 1);
@@ -325,10 +322,9 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
 
     eb_addlog(dest, LOGOP_INSERT, dest_offset, size);
 #if 1
-    /* Unused variables */
-    n = 0; q = NULL; p_start = NULL; page_index = 0;
     /* Much simpler algorithm with fewer pathological cases */
-    p = find_page(src, &src_offset);
+    n = 0; q = NULL; p_start = NULL; page_index = 0; /* Unused variables */
+    p = find_page(src, src_offset, &src_offset);
     while (size > 0) {
         len = p->size - src_offset;
         if (len > size)
@@ -355,7 +351,7 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
 #else
     /* insert the data from the first page if it is not completely
        selected */
-    p = find_page(src, &src_offset);
+    p = find_page(src, src_offset, &src_offset);
     if (src_offset > 0 /* || size <= p->size */ ) {
         len = p->size - src_offset;
         if (len > size)
@@ -371,7 +367,7 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
 
     /* cut the page at dest offset if needed */
     if (dest_offset < dest->total_size) {
-        q = find_page(dest, &dest_offset);
+        q = find_page(dest, dest_offset, &dest_offset);
         page_index = q - dest->page_table;
         if (dest_offset > 0) {
             page_index++;
@@ -484,7 +480,7 @@ int eb_delete(EditBuffer *b, int offset, int size)
     b->total_size -= size;
 
     /* find the correct page */
-    p = find_page(b, &offset);
+    p = find_page(b, offset, &offset);
     n = 0;
     del_start = NULL;
     while (size > 0) {
