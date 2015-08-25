@@ -89,7 +89,9 @@ static void build_bufed_list(EditState *s)
         eb_printf(b, " %-2s%-16s", flags, bs->items.items[i]->str);
         if (b1) {
             char path[MAX_FILENAME_SIZE];
+            char mode_buf[64];
             const char *mode_name;
+            buf_t outbuf, *out;
 
             if (b1->flags & BF_IS_LOG) {
                 mode_name = "log";
@@ -108,10 +110,15 @@ static void build_bufed_list(EditState *s)
             } else {
                 mode_name = "none";
             }
+            out = buf_init(&outbuf, mode_buf, sizeof(mode_buf));
+            if (b1->data_type_name) {
+                buf_printf(out, "%s+", b1->data_type_name);
+            }
+            buf_puts(out, mode_name);
 
             eb_printf(b, " %10d %1.0d %-8s %-8s %s",
                       b1->total_size, b1->style_bytes & 7,
-                      b1->charset->name, mode_name,
+                      b1->charset->name, mode_buf,
                       make_user_path(path, sizeof(path), b1->filename));
         }
         eb_printf(b, "\n");

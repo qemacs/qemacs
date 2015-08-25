@@ -791,7 +791,7 @@ typedef void (*ColorizeFunc)(QEColorizeContext *cp,
 #define MIN_MMAP_SIZE  (1024*1024)
 #define MAX_LOAD_SIZE  (512*1024*1024)
 
-#define MAX_PAGE_SIZE 4096
+#define MAX_PAGE_SIZE  4096
 //#define MAX_PAGE_SIZE 16
 
 #define NB_LOGS_MAX     100000  /* need better way to limit undo information */
@@ -881,6 +881,7 @@ struct EditBuffer {
 
     /* buffer data type (default is raw) */
     ModeDef *data_mode;
+    const char *data_type_name;
     EditBufferDataType *data_type;
     void *data_data;    /* associated buffer data, used if data_type != raw_data */
     void *priv_data;    /* buffer polling & private data */
@@ -925,11 +926,12 @@ struct EditBuffer {
     int probed;
 #endif
 
-    /* saved data from the last opened mode, needed to restore mode */
-    /* CG: should instead keep a pointer to last window using this
-     * buffer, even if no longer on screen
-     */
     ModeDef *default_mode;
+
+    /* Saved window data from the last closed window attached to this buffer.
+     * Used to restore mode and position when buffer gets re-attached
+     * to the same window.
+     */
     ModeDef *saved_mode;
     OWNED ModeSavedData *saved_data;
 
@@ -974,7 +976,7 @@ int eb_insert(EditBuffer *b, int offset, const void *buf, int size);
 int eb_delete(EditBuffer *b, int offset, int size);
 void eb_replace(EditBuffer *b, int offset, int size,
                 const void *buf, int size1);
-void log_reset(EditBuffer *b);
+void eb_free_log_buffer(EditBuffer *b);
 EditBuffer *eb_new(const char *name, int flags);
 EditBuffer *eb_scratch(const char *name, int flags);
 void eb_clear(EditBuffer *b);
@@ -1003,7 +1005,7 @@ static inline int eb_at_bol(EditBuffer *b, int offset) {
 void do_undo(EditState *s);
 void do_redo(EditState *s);
 
-int raw_buffer_load1(EditBuffer *b, FILE *f, int offset);
+int eb_raw_buffer_load1(EditBuffer *b, FILE *f, int offset);
 int eb_mmap_buffer(EditBuffer *b, const char *filename);
 void eb_munmap_buffer(EditBuffer *b);
 int eb_write_buffer(EditBuffer *b, int start, int end, const char *filename);
@@ -1178,9 +1180,10 @@ struct EditState {
 
     /* mode specific info */
     ModeDef *mode;
-    void *mode_data; /* mode private data */
+    OWNED void *mode_data; /* mode private window based data */
 
     /* state before line n, one short per line */
+    /* XXX: move this to buffer based mode_data */
     unsigned short *colorize_states;
     int colorize_nb_lines;
     int colorize_nb_valid_lines;

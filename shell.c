@@ -1548,6 +1548,7 @@ static void do_man(EditState *s, const char *arg)
     if (!b)
         return;
 
+    b->data_type_name = "man";
     b->flags |= BF_READONLY;
     switch_to_buffer(s, b);
     edit_set_mode(s, &pager_mode);
@@ -1569,6 +1570,7 @@ static void do_ssh(EditState *s, const char *arg)
     if (!b)
         return;
 
+    b->data_type_name = "ssh";
     b->default_mode = &shell_mode;
     switch_to_buffer(s, b);
     //edit_set_mode(s, &shell_mode);
@@ -1789,6 +1791,7 @@ static void do_compile(EditState *e, const char *cmd)
     if (!b)
         return;
 
+    b->data_type_name = "compile";
     /* XXX: try to split window if necessary */
     switch_to_buffer(e, b);
     edit_set_mode(e, &pager_mode);

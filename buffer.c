@@ -558,13 +558,12 @@ EditBuffer *eb_find(const char *name)
 }
 
 /* flush the log */
-void log_reset(EditBuffer *b)
+void eb_free_log_buffer(EditBuffer *b)
 {
     eb_free(&b->log_buffer);
     b->log_new_index = 0;
     b->log_current = 0;
     b->nb_logs = 0;
-    b->modified = 0;    /* ??? */
 }
 
 /* rename a buffer and add characters so that the name is unique */
@@ -662,7 +661,7 @@ void eb_clear(EditBuffer *b)
     b->save_log = 0;
     b->last_log = 0;
     eb_delete(b, 0, b->total_size);
-    log_reset(b);
+    eb_free_log_buffer(b);
 
     eb_munmap_buffer(b);
 
@@ -671,6 +670,7 @@ void eb_clear(EditBuffer *b)
         close(b->map_handle);
     }
     b->map_handle = 0;
+    b->modified = 0;
 
     /* TODO: clear buffer structure */
     //memset(b, 0, offsetof(EditBuffer, remanent_area));
@@ -1738,7 +1738,7 @@ static void eb_io_stop(EditBuffer *b, int err)
 #endif
 
 /* CG: returns number of bytes read, or -1 upon read error */
-int raw_buffer_load1(EditBuffer *b, FILE *f, int offset)
+int eb_raw_buffer_load1(EditBuffer *b, FILE *f, int offset)
 {
     unsigned char buf[IOBUF_SIZE];
     int len, size;
@@ -1837,7 +1837,7 @@ static int raw_buffer_load(EditBuffer *b, FILE *f)
     }
 #endif
     if (st.st_size <= qs->max_load_size) {
-        return raw_buffer_load1(b, f, 0);
+        return eb_raw_buffer_load1(b, f, 0);
     }
     return -1;
 }
@@ -2407,7 +2407,7 @@ int eb_save_buffer(EditBuffer *b)
 #endif
     /* reset log */
     /* CG: should not do this! */
-    //log_reset(b);
+    //eb_free_log_buffer(b);
     b->modified = 0;
     return ret;
 }
@@ -2417,7 +2417,8 @@ void eb_invalidate_raw_data(EditBuffer *b)
 {
     b->save_log = 0;
     eb_delete(b, 0, b->total_size);
-    log_reset(b);
+    eb_free_log_buffer(b);
+    b->modified = 0;
 }
 
 EditBufferDataType raw_data_type = {

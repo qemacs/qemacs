@@ -1939,10 +1939,12 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
                 /* non raw data type: we must call a mode specific
                    load method */
                 b->data_type = m->data_type;
+                b->data_type_name = m->data_type->name;
                 if (reload_buffer(s, b, f1) < 0) {
                     /* error: reset to text mode */
                     m = &text_mode;
                     b->data_type = &raw_data_type;
+                    b->data_type_name = NULL;
                 }
             } else
             if (b->data_type != m->data_type) {
@@ -2351,9 +2353,12 @@ void basic_mode_line(EditState *s, buf_t *out, int c1)
     else
         state = '-';
 
-    buf_printf(out, "%c%c:%c%c  %-20s  (%s",
+    buf_printf(out, "%c%c:%c%c  %-20s  (",
                c1, state, s->b->flags & BF_READONLY ? '%' : mod,
-               mod, s->b->name, s->mode ? s->mode->name : "raw");
+               mod, s->b->name);
+    if (s->b->data_type_name)
+        buf_printf(out, "%s+", s->b->data_type_name);
+    buf_puts(out, s->mode ? s->mode->name : "raw");
     if (!s->insert)
         buf_puts(out, " Ovwrt");
     if (s->interactive)
@@ -4368,6 +4373,7 @@ void window_display(EditState *s)
     CSSRect rect;
 
     /* set the clipping rectangle to the whole window */
+    /* XXX: should clip out popup windows */
     rect.x1 = s->xleft;
     rect.y1 = s->ytop;
     rect.x2 = rect.x1 + s->width;
@@ -6256,7 +6262,7 @@ void do_insert_file(EditState *s, const char *filename)
     /* CG: should load in a separate buffer, auto-detect charset and
      * copy buffer contents with charset translation
      */
-    size = raw_buffer_load1(s->b, f, s->offset);
+    size = eb_raw_buffer_load1(s->b, f, s->offset);
     fclose(f);
 
     /* mark the insert chunk */

@@ -166,6 +166,7 @@ static int archive_buffer_load(EditBuffer *b, FILE *f)
     buf_size = file_read_block(b, f, buf, sizeof(buf));
     atp = find_archive_type(b->filename, buf, buf_size);
     if (atp) {
+        b->data_type_name = atp->name;
         eb_clear(b);
         eb_printf(b, "  Directory of %s archive %s\n",
                   atp->name, b->filename);
@@ -276,6 +277,7 @@ static int compress_buffer_load(EditBuffer *b, FILE *f)
     buf_size = file_read_block(b, f, buf, sizeof(buf));
     ctp = find_compress_type(b->filename, buf, buf_size);
     if (ctp) {
+        b->data_type_name = ctp->name;
         eb_clear(b);
         qe_shell_subst(cmd, sizeof(cmd), ctp->load_cmd, b->filename, NULL);
         new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
