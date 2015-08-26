@@ -1395,9 +1395,10 @@ struct QEmacsState {
     //EditBuffer *message_buffer;
     EditBuffer *trace_buffer;
     int trace_buffer_state;
-#define EB_TRACE_TTY    1
-#define EB_TRACE_SHELL  2
-#define EB_TRACE_PTY    4
+#define EB_TRACE_TTY      1
+#define EB_TRACE_SHELL    2
+#define EB_TRACE_PTY      4
+#define EB_TRACE_COMMAND  8
 
     /* global layout info : DO NOT modify these directly. do_refresh
        does it */

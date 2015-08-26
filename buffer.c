@@ -759,56 +759,84 @@ void eb_trace_bytes(const void *buf, int size, int state)
     QEmacsState *qs = &qe_state;
     EditBuffer *b = qs->trace_buffer;
     EditState *e;
-    int point;
+    const char *str = NULL;
+    const u8 *p0, *endp, *p;
+    int c, line, col, len, point;
 
-    if (b) {
-        point = b->total_size;
-        if (qs->trace_buffer_state != state) {
-            const char *str = NULL;
-            switch (qs->trace_buffer_state) {
-            case EB_TRACE_TTY:
-                str = "|\n";
-                break;
-            case EB_TRACE_PTY:
-                str = "|\n";
-                break;
-            case EB_TRACE_SHELL:
-                str = "|\n";
-                break;
-            }
-            if (str) {
-                eb_write(b, b->total_size, str, strlen(str));
-            }
-            qs->trace_buffer_state = state;
-            switch (qs->trace_buffer_state) {
-            case EB_TRACE_TTY:
-                str = "--|";
-                break;
-            case EB_TRACE_PTY:
-                str = ">>|";
-                break;
-            case EB_TRACE_SHELL:
-                str = "<<|";
-                break;
-            }
-            if (str) {
-                eb_write(b, b->total_size, str, strlen(str));
-            }
+    if (!b)
+        return;
+
+    point = b->total_size;
+    if (size < 0)
+        size = strlen(buf);
+
+    eb_get_pos(b, &line, &col, point);
+    if (col == 0 || qs->trace_buffer_state != state) {
+        if (col) {
+            eb_insert_uchar(b, b->total_size, '\n');
+            col = 0;
         }
-#if 0
-        /* CG: could make traces more readable: */
-        if (ch < 32 || ch == 127)
-            fprintf(stderr, "got %d '^%c'\n", ch, ('@' + ch) & 127);
-        else
-            fprintf(stderr, "got %d '%c'\n", ch, ch);
-#endif
-        eb_write(b, b->total_size, buf, size);
-
-        /* If point is visible in window, should keep it so */
-        e = eb_find_window(b, NULL);
-        if (e && e->offset == point)
-            e->offset = b->total_size;
+        qs->trace_buffer_state = state;
+        switch (state) {
+        case EB_TRACE_TTY:
+            str = "    tty: ";
+            break;
+        case EB_TRACE_PTY:
+            str = "    pty: ";
+            break;
+        case EB_TRACE_SHELL:
+            str = "  shell: ";
+            break;
+        case EB_TRACE_COMMAND:
+            eb_printf(b, "command: %s\n", buf);
+            size = 0;
+            break;
+        }
+        if (str) {
+            col += eb_write(b, b->total_size, str, strlen(str));
+        }
     }
+    p0 = buf;
+    endp = p0 + size;
+
+#define MAX_TRACE_WIDTH  1024
+    for (p = p0; p0 < endp; p++) {
+        while (p >= endp || *p < 32 || *p >= 127 || *p == '\\') {
+            if (p0 >= endp)
+                break;
+            if (col >= MAX_TRACE_WIDTH) {
+                eb_write(b, b->total_size, "\n         ", 10);
+                col = 9;
+            }
+            if (p0 < p) {
+                len = min(p - p0, MAX_TRACE_WIDTH - col);
+                eb_write(b, b->total_size, p0, len);
+                p0 += len;
+                col += len;
+                continue;
+            }
+            if (p < endp) {
+                if ((c = 'n', *p == '\n')
+                ||  (c = 'r', *p == '\r')
+                ||  (c = 't', *p == '\t')
+                ||  (c = '\\', *p == '\\')) {
+                    col += eb_printf(b, "\\%c", c);
+                } else
+                if (*p < 32) {
+                    col += eb_printf(b, "\\^%c", (*p + '@') & 127);
+                } else {
+                    col += eb_printf(b, "\\%03o", *p);
+                }
+                p0 = p + 1;
+            }
+            break;
+        }
+    }
+    /* If point is visible in window, should keep it so */
+    /* XXX: proper tracking should do this automatically */
+    e = eb_find_window(b, NULL);
+    if (e && e->offset == point)
+        e->offset = b->total_size;
 }
 
 /************************************************************/

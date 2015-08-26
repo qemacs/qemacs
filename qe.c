@@ -4127,6 +4127,9 @@ void exec_command(EditState *s, CmdDef *d, int argval, int key)
     ExecCmdState *es;
     const char *argdesc;
 
+    if (qe_state.trace_buffer && qe_state.trace_buffer != s->b)
+        eb_trace_bytes(d->name, -1, EB_TRACE_COMMAND);
+
     argdesc = d->name + strlen(d->name) + 1;
     if (*argdesc == '*') {
         argdesc++;
