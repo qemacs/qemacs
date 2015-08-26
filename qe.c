@@ -1680,22 +1680,23 @@ EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
 {
     char bufname[32];
     EditBuffer *b;
+    int cur = qs->yank_current;
 
-    if (qs->yank_buffers[qs->yank_current]) {
-        if (++qs->yank_current == NB_YANK_BUFFERS)
-            qs->yank_current = 0;
-        /* problem if buffer is displayed in window, should instead
-         * just clear the buffer */
-        eb_free(&qs->yank_buffers[qs->yank_current]);
+    if (qs->yank_buffers[cur]) {
+        cur = (cur + 1) % NB_YANK_BUFFERS;
+        qs->yank_current = cur; 
+        /* Maybe should instead just clear the buffer and reset styles */
+        qe_kill_buffer(qs->yank_buffers[cur]);
+        qs->yank_buffers[cur] = NULL;
     }
-    snprintf(bufname, sizeof(bufname), "*kill-%d*", qs->yank_current + 1);
+    snprintf(bufname, sizeof(bufname), "*kill-%d*", cur + 1);
     if (base) {
         b = eb_new(bufname, base->flags & BF_STYLES);
         eb_set_charset(b, base->charset, base->eol_type);
     } else {
         b = eb_new(bufname, 0);
     }
-    qs->yank_buffers[qs->yank_current] = b;
+    qs->yank_buffers[cur] = b;
     return b;
 }
 
@@ -5817,10 +5818,10 @@ static void kill_buffer_confirm_cb(void *opaque, char *reply)
     qe_free(&reply);
     if (!yes_replied)
         return;
-    kill_buffer_noconfirm(opaque);
+    qe_kill_buffer(opaque);
 }
 
-void do_kill_buffer(EditState *s, const char *bufname)
+void do_kill_buffer(EditState *s, const char *bufname, int force)
 {
     char buf[1024];
     EditBuffer *b;
@@ -5830,18 +5831,18 @@ void do_kill_buffer(EditState *s, const char *bufname)
         put_status(s, "No buffer %s", bufname);
     } else {
         /* if modified and associated to a filename, then ask */
-        if (b->modified && b->filename[0] != '\0') {
+        if (!force && b->modified && b->filename[0] != '\0') {
             snprintf(buf, sizeof(buf),
                      "Buffer %s modified; kill anyway? (yes or no) ", bufname);
             minibuffer_edit(NULL, buf, NULL, NULL,
                             kill_buffer_confirm_cb, b);
         } else {
-            kill_buffer_noconfirm(b);
+            qe_kill_buffer(b);
         }
     }
 }
 
-void kill_buffer_noconfirm(EditBuffer *b)
+void qe_kill_buffer(EditBuffer *b)
 {
     QEmacsState *qs = &qe_state;
     EditState *e;
@@ -6099,7 +6100,7 @@ int qe_load_file(EditState *s, const char *filename1,
     }
 
     /* Create new buffer with unique name from filename */
-    b = eb_new("", BF_SAVELOG | bflags);
+    b = eb_new(get_basename(filename), BF_SAVELOG | bflags);
     eb_set_filename(b, filename);
 
     /* XXX: should actually initialize SAVED_DATA area in new buffer */

@@ -267,8 +267,7 @@ static void latex_cmd_run(void *opaque, char *cmd)
         EditBuffer *b = eb_find("*LaTeX output*");
         if (b) {
             /* XXX: e should not become invalid */
-            b->modified = 0;
-            do_kill_buffer(func->es, "*LaTeX output*");
+            qe_kill_buffer(b);
         }
 
         /* create new buffer */

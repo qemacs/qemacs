@@ -211,7 +211,7 @@ static void bufed_kill_item(void *opaque, StringItem *item)
 
     /* XXX: avoid killing buffer list by mistake */
     if (strcmp(s->b->name, item->str))
-        do_kill_buffer(s, item->str);
+        do_kill_buffer(s, item->str, 0);
 }
 
 static void bufed_kill_buffer(EditState *s)

@@ -1401,7 +1401,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
         int bf_flags = BF_SAVELOG;
         if (shell_flags & SF_COLOR)
             bf_flags |= BF_STYLE2;
-        b = eb_new("", bf_flags);
+        b = eb_new(bufname, bf_flags);
         if (!b)
             return NULL;
     }
@@ -1758,7 +1758,7 @@ static void do_shell_command(EditState *e, const char *cmd)
     /* if the buffer already exists, kill it */
     b = eb_find("*shell command output*");
     if (b) {
-        kill_buffer_noconfirm(b);
+        qe_kill_buffer(b);
     }
 
     /* create new buffer */
@@ -1779,7 +1779,7 @@ static void do_compile(EditState *e, const char *cmd)
     /* if the buffer already exists, kill it */
     b = eb_find("*compilation*");
     if (b) {
-        kill_buffer_noconfirm(b);
+        qe_kill_buffer(b);
     }
 
     if (!cmd || !*cmd)

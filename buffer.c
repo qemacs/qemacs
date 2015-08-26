@@ -543,6 +543,7 @@ EditBuffer *check_buffer(EditBuffer **sp)
     return *sp = NULL;
 }
 
+#ifdef CONFIG_TINY
 EditBuffer *eb_find(const char *name)
 {
     QEmacsState *qs = &qe_state;
@@ -556,6 +557,86 @@ EditBuffer *eb_find(const char *name)
     }
     return NULL;
 }
+#define eb_cache_remove(b)  0
+#define eb_cache_insert(b)  0
+#else
+/* return index >= 0 if found, -1-insert_pos if not found */
+static int eb_cache_locate(EditBuffer **cache, int len, const char *name)
+{
+    int aa, bb, m, cmp;
+
+    for (aa = 0, bb = len; aa < bb;) {
+        m = (aa + bb) >> 1;
+        cmp = strcmp(name, cache[m]->name);
+        if (cmp < 0) {
+            bb = m;
+        } else
+        if (cmp > 0) {
+            aa = m + 1;
+        } else {
+            return m;
+        }
+    }
+    return -aa - 1;
+}
+
+static int eb_cache_remove(EditBuffer *b)
+{
+    QEmacsState *qs = &qe_state;
+    EditBuffer **cache = qs->buffer_cache;
+    int len = qs->buffer_cache_len;
+    int pos = eb_cache_locate(cache, len, b->name);
+
+    if (pos < 0)
+        return -1;
+
+    if (cache[pos] != b)
+        return -2;
+
+    memmove(cache + pos, cache + pos + 1, (len - pos - 1) * sizeof(*cache));
+    len -= 1;
+    qs->buffer_cache_len = len;
+    return 0;
+}
+
+static int eb_cache_insert(EditBuffer *b)
+{
+    QEmacsState *qs = &qe_state;
+    EditBuffer **cache = qs->buffer_cache;
+    int len = qs->buffer_cache_len;
+    int pos = eb_cache_locate(cache, len, b->name);
+
+    if (pos >= 0)
+        return (cache[pos] == b) ? -3 : -2;
+
+    if (len >= qs->buffer_cache_size) {
+        int size = max(32, len + (len >> 1) + (len >> 3));
+        cache = qe_realloc(&qs->buffer_cache, size * sizeof(*cache));
+        if (!cache)
+            return -1;
+        qs->buffer_cache_size = size;
+    }
+    pos = -pos - 1;
+    memmove(cache + pos + 1, cache + pos, (len - pos) * sizeof(*cache));
+    cache[pos] = b;
+    len += 1;
+    qs->buffer_cache_len = len;
+    return 0;
+}
+
+EditBuffer *eb_find(const char *name)
+{
+    QEmacsState *qs = &qe_state;
+    EditBuffer **cache = qs->buffer_cache;
+    int len = qs->buffer_cache_len;
+    int pos = eb_cache_locate(cache, len, name);
+
+    if (pos < 0)
+        return NULL;
+
+    return cache[pos];
+}
+#endif
 
 /* flush the log */
 void eb_free_log_buffer(EditBuffer *b)
@@ -566,22 +647,36 @@ void eb_free_log_buffer(EditBuffer *b)
     b->nb_logs = 0;
 }
 
-/* rename a buffer and add characters so that the name is unique */
-void eb_set_buffer_name(EditBuffer *b, const char *name1)
+/* rename a buffer: modify name to ensure uniqueness */
+/* eb_set_buffer_name() may fail only for a newly created buffer */
+int eb_set_buffer_name(EditBuffer *b, const char *name1)
 {
     char name[MAX_BUFFERNAME_SIZE];
     int n, pos;
+    const char *prefix = "<";
+    const char *suffix = ">";
+    EditBuffer *b1;
 
     pstrcpy(name, sizeof(name) - 10, name1);
-    /* set the buffer name to NULL since it will be changed */
-    b->name[0] = '\0';
     pos = strlen(name);
-    n = 1;
-    while (eb_find(name) != NULL) {
-        snprintf(name + pos, sizeof(name) - pos, "<%d>", n);
-        n++;
+    if (pos > 0 && name[pos - 1] == '*') {
+        pos--;
+        prefix = "-";
+        suffix = "*";
     }
-    pstrcpy(b->name, sizeof(b->name), name);
+    n = 0;
+    /* do not allow an empty name */
+    while ((b1 = eb_find(name)) != NULL || *name == '\0') {
+        if (b == b1)
+            return 0;
+        n++;
+        snprintf(name + pos, sizeof(name) - pos, "%s%d%s", prefix, n, suffix);
+    }
+    /* This is the only place where b->name is modified */
+    eb_cache_remove(b);
+    pstrcpy((char *)b->name, sizeof(b->name), name);
+    /* eb_cache_insert may fail only for a newly created buffer */
+    return eb_cache_insert(b);
 }
 
 EditBuffer *eb_new(const char *name, int flags)
@@ -594,8 +689,12 @@ EditBuffer *eb_new(const char *name, int flags)
     if (!b)
         return NULL;
 
-    // should ensure name uniqueness ?
-    pstrcpy(b->name, sizeof(b->name), name);
+    /* set the buffer name to a unique name */
+    if (eb_set_buffer_name(b, name)) {
+        qe_free(&b);
+        return NULL;
+    }
+
     b->flags = flags & ~BF_STYLES;
 
     /* set default data type */
@@ -694,6 +793,7 @@ void eb_free(EditBuffer **bp)
             qe_free(&cb);
         }
 
+        eb_cache_remove(b);
         eb_clear(b);
 
         /* suppress from buffer list */
@@ -939,6 +1039,9 @@ void eb_set_style(EditBuffer *b, int style, enum LogOperation op,
     switch (op) {
     case LOGOP_WRITE:
     case LOGOP_INSERT:
+        /* XXX: should make buf uint32_t[] */
+        /* XXX: should use a single loop to initialize buf */
+        /* XXX: should initialize buf just once */
         while (size > 0) {
             len = min(size, ssizeof(buf));
             if (b->style_shift == 2) {
@@ -1923,7 +2026,7 @@ static void raw_buffer_close(__unused__ EditBuffer *b)
    filename. Find a unique buffer name */
 void eb_set_filename(EditBuffer *b, const char *filename)
 {
-    pstrcpy(b->filename, sizeof(b->filename), filename);
+    pstrcpy((char *)b->filename, sizeof(b->filename), filename);
     eb_set_buffer_name(b, get_basename(filename));
 }
 

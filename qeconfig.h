@@ -153,8 +153,8 @@ static CmdDef basic_commands[] = {
     CMD2( KEY_CTRLX('b'), KEY_NONE,
           "switch-to-buffer", do_switch_to_buffer, ESs,
           "s{Switch to buffer: }[buffer]|buffer|")
-    CMD2( KEY_CTRLX('k'), KEY_NONE,
-          "kill-buffer", do_kill_buffer, ESs,
+    CMD3( KEY_CTRLX('k'), KEY_NONE,
+          "kill-buffer", do_kill_buffer, ESsi, 0,
           "s{Kill buffer: }[buffer]|buffer|")
     CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE,
           "toggle-read-only", do_toggle_read_only)

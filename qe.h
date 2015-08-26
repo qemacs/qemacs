@@ -945,8 +945,8 @@ struct EditBuffer {
     OWNED EditBuffer *next; /* next editbuffer in qe_state buffer list */
 
     int st_mode;                        /* unix file mode */
-    char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
-    char filename[MAX_FILENAME_SIZE];   /* file name */
+    const char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
+    const char filename[MAX_FILENAME_SIZE];   /* file name */
 
     /* Should keep a stat buffer to check for file type and
      * asynchronous modifications
@@ -1011,7 +1011,7 @@ void eb_munmap_buffer(EditBuffer *b);
 int eb_write_buffer(EditBuffer *b, int start, int end, const char *filename);
 int eb_save_buffer(EditBuffer *b);
 
-void eb_set_buffer_name(EditBuffer *b, const char *name1);
+int eb_set_buffer_name(EditBuffer *b, const char *name1);
 void eb_set_filename(EditBuffer *b, const char *filename);
 
 int eb_add_callback(EditBuffer *b, EditBufferCallback cb, void *opaque, int arg);
@@ -1393,6 +1393,11 @@ struct QEmacsState {
     EditBuffer *first_buffer;
     EditBufferDataType *first_buffer_data_type;
     //EditBuffer *message_buffer;
+#ifndef CONFIG_TINY
+    EditBuffer **buffer_cache;
+    int buffer_cache_size;
+    int buffer_cache_len;
+#endif
     EditBuffer *trace_buffer;
     int trace_buffer_state;
 #define EB_TRACE_TTY      1
@@ -1818,9 +1823,9 @@ void do_replace_string(EditState *s, const char *search_str,
                        const char *replace_str, int argval);
 void do_search_string(EditState *s, const char *search_str, int dir);
 void do_refresh_complete(EditState *s);
-void do_kill_buffer(EditState *s, const char *bufname1);
+void do_kill_buffer(EditState *s, const char *bufname, int force);
 void switch_to_buffer(EditState *s, EditBuffer *b);
-void kill_buffer_noconfirm(EditBuffer *b);
+void qe_kill_buffer(EditBuffer *b);
 
 /* text mode */
 
