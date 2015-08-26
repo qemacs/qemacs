@@ -26,9 +26,10 @@
 #include <pwd.h>
 
 enum {
+    DIRED_STYLE_NORMAL = QE_STYLE_DEFAULT,
     DIRED_STYLE_HEADER = QE_STYLE_STRING,
     DIRED_STYLE_DIRECTORY = QE_STYLE_COMMENT,
-    DIRED_STYLE_FILE = QE_STYLE_FUNCTION,
+    DIRED_STYLE_FILENAME = QE_STYLE_FUNCTION,
 };
 
 enum { DIRED_HEADER = 2 };
@@ -503,12 +504,17 @@ static void dired_sort_list(DiredState *ds, EditBuffer *b, EditState *s)
     eb_clear(b);
 
     if (DIRED_HEADER) {
-        eb_printf(b, "  Directory of %s\n", ds->path);
-        eb_printf(b, "    %d director%s, %d file%s, %lld byte%s\n",
+        b->cur_style = DIRED_STYLE_HEADER;
+        eb_printf(b, "  Directory of ");
+        b->cur_style = DIRED_STYLE_DIRECTORY;
+        eb_printf(b, "%s", ds->path);
+        b->cur_style = DIRED_STYLE_HEADER;
+        eb_printf(b, "\n    %d director%s, %d file%s, %lld byte%s\n",
                   ds->ndirs, ds->ndirs == 1 ? "y" : "ies",
                   ds->nfiles, &"s"[ds->nfiles == 1],
                   (long long)ds->total_bytes, &"s"[ds->total_bytes == 1]);
     }
+    b->cur_style = DIRED_STYLE_NORMAL;
 
     /* XXX: should use screen specific space_width, separator_width or em_width */
     ds->last_width = width;
@@ -563,6 +569,11 @@ static void dired_sort_list(DiredState *ds, EditBuffer *b, EditState *s)
         }
         ds->fnamecol = col - 1;
 
+        if (S_ISDIR(dip->mode))
+            b->cur_style = DIRED_STYLE_DIRECTORY;
+        else
+            b->cur_style = DIRED_STYLE_FILENAME;
+
         eb_printf(b, "%s", dip->name);
 
         if (1) {
@@ -575,6 +586,7 @@ static void dired_sort_list(DiredState *ds, EditBuffer *b, EditState *s)
         &&  getentryslink(buf, sizeof(buf), ds->path, dip->name)) {
             eb_printf(b, " -> %s", buf);
         }
+        b->cur_style = DIRED_STYLE_NORMAL;
         eb_printf(b, "\n");
     }
     b->modified = 0;
@@ -1032,6 +1044,7 @@ static int dired_mode_init(EditState *s, EditBuffer *b, int flags)
             s->b->priv_data = ds;
             s->b->close = dired_close;
 
+            eb_create_style_buffer(b, BF_STYLE1);
             /* XXX: should be built by buffer_load API */
             dired_build_list(ds, s->b->filename, NULL, s->b, s);
             /* XXX: File system charset should be detected automatically */
@@ -1059,36 +1072,6 @@ static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
         return 90;
     else
         return 0;
-}
-
-static void dired_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, ModeDef *syn)
-{
-    int i = 0, start = i, style;
-
-    if (ustrstart(str + start, "  Directory of ", &i)) {
-        i += start;
-        SET_COLOR(str, start, i, DIRED_STYLE_HEADER);
-        style = DIRED_STYLE_DIRECTORY;
-        start = i;
-        i = n;
-        SET_COLOR(str, start, i, style);
-    } else
-    if (n >= 6 && ustrstart(str + n - 6, " bytes", NULL)) {
-        style = DIRED_STYLE_HEADER;
-        i = n;
-        SET_COLOR(str, start, i, style);
-    } else {
-        style = DIRED_STYLE_FILE;
-        if (n > 0 && str[n - 1] == '/')
-            style = DIRED_STYLE_DIRECTORY;
-        for (start = n; start > 2; start--) {
-            if (str[start - 1] == ' ' && str[start - 2] == ' ')
-                break;
-        }
-        i = n;
-        SET_COLOR(str, start, i, style);
-    }
 }
 
 /* open dired window on the left. The directory of the current file is
@@ -1214,7 +1197,6 @@ static int dired_init(void)
     dired_mode.name = "dired";
     dired_mode.mode_probe = dired_mode_probe;
     dired_mode.mode_init = dired_mode_init;
-    dired_mode.colorize_func = dired_colorize_line;
     /* CG: not a good idea, display hook has side effect on layout */
     dired_mode.display_hook = dired_display_hook;
 
