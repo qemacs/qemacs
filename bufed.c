@@ -26,9 +26,19 @@ enum {
     BUFED_ALL_VISIBLE = 1,
 };
 
+enum {
+    BUFED_STYLE_NORMAL = QE_STYLE_DEFAULT,
+    BUFED_STYLE_HEADER = QE_STYLE_STRING,
+    BUFED_STYLE_BUFNAME = QE_STYLE_KEYWORD,
+    BUFED_STYLE_FILENAME = QE_STYLE_FUNCTION,
+    BUFED_STYLE_DIRECTORY = QE_STYLE_COMMENT,
+    BUFED_STYLE_SYSTEM = QE_STYLE_ERROR,
+};
+
 typedef struct BufedState {
     ModeDef *signature;
     int flags;
+    int last_index;
     EditState *cur_window;
     EditBuffer *cur_buffer;
     EditBuffer *last_buffer;
@@ -55,6 +65,7 @@ static void build_bufed_list(EditState *s)
     QEmacsState *qs = s->qe_state;
     EditBuffer *b;
     BufedState *bs;
+    StringItem *item;
     int last_index = list_get_pos(s);
     int i;
 
@@ -63,30 +74,54 @@ static void build_bufed_list(EditState *s)
 
     free_strings(&bs->items);
     for (b = qs->first_buffer; b != NULL; b = b->next) {
-        if (!(b->flags & BF_SYSTEM) || (bs->flags & BUFED_ALL_VISIBLE))
-            add_string(&bs->items, b->name, 0);
+        if (!(b->flags & BF_SYSTEM) || (bs->flags & BUFED_ALL_VISIBLE)) {
+            item = add_string(&bs->items, b->name, 0);
+            item->opaque = b;
+        }
     }
+    bs->last_index = -1;
 
     /* build buffer */
     b = s->b;
     eb_clear(b);
 
     for (i = 0; i < bs->items.nb_items; i++) {
-        EditBuffer *b1 = eb_find(bs->items.items[i]->str);
+        EditBuffer *b1;
         char flags[4];
         char *flagp = flags;
+        int len, style0;
+
+        item = bs->items.items[i];
+        b1 = check_buffer((EditBuffer**)&item->opaque);
+        style0 = (b1->flags & BF_SYSTEM) ? BUFED_STYLE_SYSTEM : 0;
 
         if (i == last_index) {
             s->offset = b->total_size;
         }
         if (b1) {
+            if (b1->flags & BF_SYSTEM)
+                *flagp++ = 'S';
+            else
             if (b1->modified)
                 *flagp++ = '*';
+            else
             if (b1->flags & BF_READONLY)
                 *flagp++ = '%';
         }
         *flagp = '\0';
-        eb_printf(b, " %-2s%-16s", flags, bs->items.items[i]->str);
+
+        b->cur_style = style0;
+        eb_printf(b, " %-2s", flags);
+        b->cur_style = BUFED_STYLE_BUFNAME;
+        len = strlen(item->str);
+        /* simplistic column fitting, does not work for wide characters */
+#define COLWIDTH  20
+        if (len > COLWIDTH) {
+            eb_printf(b, "%.*s...%s",
+                      COLWIDTH - 5 - 3, item->str, item->str + len - 5);
+        } else {
+            eb_printf(b, "%-*s", COLWIDTH, item->str);
+        }
         if (b1) {
             char path[MAX_FILENAME_SIZE];
             char mode_buf[64];
@@ -116,10 +151,17 @@ static void build_bufed_list(EditState *s)
             }
             buf_puts(out, mode_name);
 
-            eb_printf(b, " %10d %1.0d %-8s %-8s %s",
+            b->cur_style = style0;
+            eb_printf(b, " %10d %1.0d %-8.8s %-11s ",
                       b1->total_size, b1->style_bytes & 7,
-                      b1->charset->name, mode_buf,
+                      b1->charset->name, mode_buf);
+            if (strequal(mode_name, "dired"))
+                b->cur_style = BUFED_STYLE_DIRECTORY;
+            else
+                b->cur_style = BUFED_STYLE_FILENAME;
+            eb_printf(b, "%s",
                       make_user_path(path, sizeof(path), b1->filename));
+            b->cur_style = style0;
         }
         eb_printf(b, "\n");
     }
@@ -139,7 +181,7 @@ static EditBuffer *bufed_get_buffer(EditState *s)
     if (index < 0 || index >= bs->items.nb_items)
         return NULL;
 
-    return eb_find(bs->items.items[index]->str);
+    return check_buffer((EditBuffer**)&bs->items.items[index]->opaque);
 }
 
 static void bufed_select(EditState *s, int temp)
@@ -160,7 +202,10 @@ static void bufed_select(EditState *s, int temp)
         if (index < 0 || index >= bs->items.nb_items)
             return;
 
-        b = eb_find(bs->items.items[index]->str);
+        if (temp > 0 && index == bs->last_index)
+            return;
+
+        b = check_buffer((EditBuffer**)&bs->items.items[index]->opaque);
         last_buffer = bs->cur_buffer;
     }
     e = check_window(&bs->cur_window);
@@ -174,6 +219,7 @@ static void bufed_select(EditState *s, int temp)
         if (e)
             e->qe_state->active_window = e;
     } else {
+        bs->last_index = index;
         do_refresh_complete(s);
     }
 }
@@ -208,10 +254,13 @@ static void string_selection_iterate(StringArray *cs,
 static void bufed_kill_item(void *opaque, StringItem *item)
 {
     EditState *s = opaque;
+    EditBuffer *b = check_buffer((EditBuffer**)&item->opaque);
 
     /* XXX: avoid killing buffer list by mistake */
-    if (strcmp(s->b->name, item->str))
+    if (b && b != s->b) {
+        /* Give the user a chance to confirm if buffer is modified */
         do_kill_buffer(s, item->str, 0);
+    }
 }
 
 static void bufed_kill_buffer(EditState *s)
@@ -244,7 +293,7 @@ static void do_list_buffers(EditState *s, int argval)
         s->qe_state->active_window = s;
     }
 
-    b = eb_scratch("*bufed*", BF_READONLY | BF_SYSTEM | BF_UTF8);
+    b = eb_scratch("*bufed*", BF_READONLY | BF_SYSTEM | BF_UTF8 | BF_STYLE1);
     if (!b)
         return;
 
@@ -257,6 +306,7 @@ static void do_list_buffers(EditState *s, int argval)
     if (!(bs = bufed_get_state(e, 1)))
         return;
 
+    bs->last_index = -1;
     bs->cur_window = s;
     bs->cur_buffer = s->b;
     bs->last_buffer = s->last_buffer;
