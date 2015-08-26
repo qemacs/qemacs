@@ -175,8 +175,9 @@ static int binary_mode_init(EditState *s, EditBuffer *b, int flags)
         s->dump_width &= ~15;
         if (s->dump_width < 16)
             s->dump_width = 16;
-        s->insert = 0;
         s->hex_mode = 0;
+        s->unihex_mode = 0;
+        s->insert = 0;
         s->wrap = WRAP_TRUNCATE;
     }
     return 0;
@@ -187,8 +188,8 @@ static int hex_mode_init(EditState *s, EditBuffer *b, int flags)
     if (s) {
         s->dump_width = 16;
         s->hex_mode = 1;
-        s->unihex_mode = 0;
         s->hex_nibble = 0;
+        s->unihex_mode = 0;
         s->insert = 0;
         s->wrap = WRAP_TRUNCATE;
     }

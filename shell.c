@@ -1371,7 +1371,7 @@ static void shell_pid_cb(void *opaque, int status)
         if (s->shell_flags & SF_AUTO_CODING)
             do_set_auto_coding(e, 0);
         if (s->shell_flags & SF_AUTO_MODE)
-            do_set_next_mode(e, 0);
+            qe_set_next_mode(e, 0, 0);
     }
     if (!(s->shell_flags & SF_INTERACTIVE)) {
         shell_close(b);

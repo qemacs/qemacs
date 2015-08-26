@@ -133,7 +133,6 @@ typedef struct EditBuffer EditBuffer;
 typedef struct QEmacsState QEmacsState;
 typedef struct DisplayState DisplayState;
 typedef struct ModeProbeData ModeProbeData;
-typedef struct ModeSavedData ModeSavedData;
 typedef struct ModeDef ModeDef;
 typedef struct QETimer QETimer;
 typedef struct QEColorizeContext QEColorizeContext;
@@ -933,7 +932,7 @@ struct EditBuffer {
      * to the same window.
      */
     ModeDef *saved_mode;
-    OWNED ModeSavedData *saved_data;
+    OWNED u8 *saved_data; /* SAVED_DATA_SIZE bytes */
 
     /* default mode stuff when buffer is detached from window */
     int offset;
@@ -1248,15 +1247,6 @@ struct ModeProbeData {
     CharsetDecodeState charset_state;
     QECharset *charset;
     EditBuffer *b;
-};
-
-/* private data saved by a mode so that it can be restored when the
-   mode is started again on a buffer */
-struct ModeSavedData {
-    ModeDef *mode; /* the mode is saved there */
-    char generic_data[SAVED_DATA_SIZE]; /* generic text data */
-    int data_size; /* mode specific saved data */
-    char data[1];
 };
 
 struct ModeDef {
@@ -1799,6 +1789,7 @@ void edit_display(QEmacsState *qs);
 void edit_invalidate(EditState *s);
 void display_mode_line(EditState *s);
 void edit_set_mode(EditState *s, ModeDef *m);
+void qe_set_next_mode(EditState *s, int dir, int status);
 void do_set_next_mode(EditState *s, int dir);
 
 /* loading files */
@@ -1831,8 +1822,6 @@ void qe_kill_buffer(EditBuffer *b);
 
 extern ModeDef text_mode;
 
-int generic_mode_init(EditState *s, ModeSavedData *saved_data);
-void generic_mode_close(EditState *s);
 int text_backward_offset(EditState *s, int offset);
 int text_display(EditState *s, DisplayState *ds, int offset);
 

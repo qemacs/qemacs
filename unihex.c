@@ -42,11 +42,10 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
             maxc = max(maxc, c);
         }
 
-        s->unihex_mode = snprintf(NULL, 0, "%x", maxc);
-
         s->dump_width = 32 / s->unihex_mode;
         s->hex_mode = 1;
         s->hex_nibble = 0;
+        s->unihex_mode = snprintf(NULL, 0, "%x", maxc);
         s->insert = 0;
         s->wrap = WRAP_TRUNCATE;
     }

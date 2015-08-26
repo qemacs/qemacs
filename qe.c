@@ -58,7 +58,9 @@ static EditBuffer *predict_switch_to_buffer(EditState *s);
 static StringArray *get_history(const char *name);
 static void qe_key_process(int key);
 
-static ModeSavedData *generic_mode_save_data(EditState *s);
+static int generic_save_window_data(EditState *s);
+static int generic_mode_init(EditState *s);
+static void generic_mode_close(EditState *s);
 static void generic_text_display(EditState *s);
 static void display1(DisplayState *s);
 #ifndef CONFIG_TINY
@@ -1835,16 +1837,16 @@ void do_exchange_point_and_mark(EditState *s)
     s->offset = tmp;
 }
 
-static int reload_buffer(EditState *s, EditBuffer *b, FILE *f1)
+static int reload_buffer(EditState *s, EditBuffer *b)
 {
-    FILE *f;
+    FILE *f, *f1 = NULL;
     int ret, saved;
 
     /* if no file associated, cannot do anything */
     if (b->filename[0] == '\0')
         return 0;
 
-    if (!f1 && b->data_type == &raw_data_type) {
+    if (b->data_type == &raw_data_type) {
         struct stat st;
 
         if (stat(b->filename, &st) < 0 || !S_ISREG(st.st_mode))
@@ -1865,6 +1867,7 @@ static int reload_buffer(EditState *s, EditBuffer *b, FILE *f1)
         ret = -1;
     b->modified = 0;
     b->save_log = saved;
+
     if (!f1 && f)
         fclose(f);
 
@@ -1881,11 +1884,9 @@ static int reload_buffer(EditState *s, EditBuffer *b, FILE *f1)
     }
 }
 
-static void edit_set_mode_full(EditState *s, ModeDef *m,
-                               ModeSavedData *saved_data, FILE *f1)
+void edit_set_mode(EditState *s, ModeDef *m)
 {
-    int size, data_count;
-    int saved_data_allocated = 0;
+    int data_count;
     EditState *e;
     EditBuffer *b;
 
@@ -1895,11 +1896,6 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
     if (s->mode) {
         /* save mode data if necessary */
         s->interactive = 0;
-        if (!saved_data) {
-            saved_data = generic_mode_save_data(s);
-            if (saved_data)
-                saved_data_allocated = 1;
-        }
         if (s->mode->mode_close)
             s->mode->mode_close(s);
         generic_mode_close(s);
@@ -1930,10 +1926,16 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
             }
         }
     }
+
     /* if a new mode is wanted, open it */
     if (m) {
-        size = m->instance_size;
         s->mode_data = NULL;
+        if (m->instance_size > 0) {
+            s->mode_data = qe_mallocz_array(u8, m->instance_size);
+            /* safe fall back: use text mode */
+            if (!s->mode_data)
+                m = &text_mode;
+        }
         if (m->data_type != &raw_data_type) {
             /* if a non raw data type is requested, we see if we can use it */
             if (b->data_type == &raw_data_type) {
@@ -1941,7 +1943,7 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
                    load method */
                 b->data_type = m->data_type;
                 b->data_type_name = m->data_type->name;
-                if (reload_buffer(s, b, f1) < 0) {
+                if (reload_buffer(s, b) < 0) {
                     /* error: reset to text mode */
                     m = &text_mode;
                     b->data_type = &raw_data_type;
@@ -1959,32 +1961,21 @@ static void edit_set_mode_full(EditState *s, ModeDef *m,
         } else {
             /* if raw data and nothing loaded, we try to load */
             if (b->total_size == 0 && !b->modified)
-                reload_buffer(s, b, f1);
-        }
-        if (size > 0) {
-            s->mode_data = qe_mallocz_array(u8, size);
-            /* safe fall back: use text mode */
-            if (!s->mode_data)
-                m = &text_mode;
+                reload_buffer(s, b);
         }
         s->mode = m;
 
         /* init mode */
-        generic_mode_init(s, saved_data);
+        generic_mode_init(s);
         m->mode_init(s, s->b, MODEF_VIEW);
         if (m->colorize_func)
             set_colorize_func(s, m->colorize_func);
         /* modify offset_top so that its value is correct */
         if (s->mode->text_backward_offset)
             s->offset_top = s->mode->text_backward_offset(s, s->offset_top);
+        /* keep saved data in sync with last mode used for buffer */
+        generic_save_window_data(s);
     }
-    if (saved_data_allocated)
-        qe_free(&saved_data);
-}
-
-void edit_set_mode(EditState *s, ModeDef *m)
-{
-    edit_set_mode_full(s, m, NULL, NULL);
 }
 
 void do_set_mode(EditState *s, const char *name)
@@ -4918,73 +4909,69 @@ EditState *find_file_window(const char *filename)
 
 void switch_to_buffer(EditState *s, EditBuffer *b)
 {
-    EditBuffer *b1;
+    EditBuffer *b0 = s->b;
     EditState *e;
-    ModeSavedData *saved_data;
-    int saved_data_allocated = 0;
     ModeDef *mode;
 
     /* remove region hilite */
     s->region_style = 0;
 
-    if (s->b == b)
+    if (b == b0)
         return;
 
-    b1 = s->b;
-    if (b1) {
-        /* save mode data if no other window uses the buffer */
-        e = eb_find_window(b1, s);
-        if (e) {
-            /* no need to save mode data */
-            /* CG: bogus! e and s might have different modes */
-            /* Keep the buffer contents */
-            b1->flags &= ~BF_TRANSIENT;
-        } else {
-            /* if no more window uses the buffer:
-             * - if transient contents, free the buffer
-             * - otherwise, save the mode data in the buffer.
-             */
-            if (!(b1->flags & BF_TRANSIENT)) {
-                qe_free(&b1->saved_data);
-                b1->saved_mode = s->mode;
-                b1->saved_data = generic_mode_save_data(s);
-            }
-        }
-        /* now we can close the mode */
+    if (b0) {
+        /* Save generic mode data to the buffer */
+        generic_save_window_data(s);
+
+        /* Close the mode */
         edit_set_mode(s, NULL);
-        if (b1->flags & BF_TRANSIENT) {
-            eb_free(&b1);
-        } else {
-            /* save buffer for predict_switch_to_buffer */
-            s->last_buffer = s->b;
-        }
     }
 
     /* now we can switch ! */
     s->b = b;
 
-    if (b) {
-        /* Try to get window mode and data from another window */
-        e = eb_find_window(b, s);
-        if (e) {
-            mode = e->mode;
-            saved_data = generic_mode_save_data(e);
-            saved_data_allocated = 1;
+    /* Delete transient buffer if no other window displays it */
+    if (b0) {
+        if ((b0->flags & BF_TRANSIENT) && !eb_find_window(b0, NULL)) {
+            eb_free(&b0);
         } else {
-            mode = b->saved_mode;
-            saved_data = b->saved_data;
+            /* save buffer for predict_switch_to_buffer */
+            s->last_buffer = b0;
         }
+    }
 
-        /* find the mode */
+    if (b) {
+        if (b->saved_data) {
+            /* Restore window mode and data from buffer saved data */
+            memcpy(s, b->saved_data, SAVED_DATA_SIZE);
+            s->offset = min(s->offset, b->total_size);
+            s->offset_top = min(s->offset_top, b->total_size);
+            mode = b->saved_mode;
+        } else {
+            /* Try to get window mode and data from another window */
+            e = eb_find_window(b, s);
+            if (e) {
+                memcpy(s, e, SAVED_DATA_SIZE);
+                mode = e->mode;
+            } else {
+                memset(s, 0, SAVED_DATA_SIZE);
+                mode = b->default_mode;
+                /* <default> default values */
+                s->insert = 1;
+                s->indent_size = s->qe_state->default_tab_width;
+                s->default_style = QE_STYLE_DEFAULT;
+                s->wrap = WRAP_LINE;
+            }
+        }
+        /* validate the mode */
         if (!mode)
             mode = b->default_mode;
-        if (!mode)
-            mode = &text_mode; /* default mode */
-
-        /* open it ! */
-        edit_set_mode_full(s, mode, saved_data, NULL);
-        if (saved_data_allocated)
-            qe_free(&saved_data);
+        if (!mode) {
+            /* default mode */
+            mode = &text_mode;
+        }
+        /* initialize the mode */
+        edit_set_mode(s, mode);
     }
 }
 
@@ -6015,6 +6002,11 @@ static int probe_mode(EditState *s, EditBuffer *b,
  */
 void do_set_next_mode(EditState *s, int dir)
 {
+    qe_set_next_mode(s, dir, 1);
+}
+
+void qe_set_next_mode(EditState *s, int dir, int status)
+{
     u8 buf[4097];
     int size;
     ModeDef *modes[32];
@@ -6038,8 +6030,10 @@ void do_set_next_mode(EditState *s, int dir)
         }
     }
     edit_set_mode(s, modes[found]);
-    put_status(s, "Mode is now %s, score=%d",
-               modes[found]->name, scores[found]);
+    if (status) {
+        put_status(s, "Mode is now %s, score=%d",
+                   modes[found]->name, scores[found]);
+    }
 }
 
 /* Load a file and attach buffer to window `s`.
@@ -6200,7 +6194,7 @@ static void load_progress_cb(void *opaque, int size)
     EditBuffer *b = s->b;
 
     if (size >= 1024 && !b->probed) {
-        do_set_next_mode(s, 0);
+        qe_set_next_mode(s, 0, 0);
     }
 }
 
@@ -6219,7 +6213,7 @@ static void load_completion_cb(void *opaque, int err)
         put_status(s, "Could not read file");
     }
     if (!s->b->probed) {
-        do_set_next_mode(s, 0);
+        qe_set_next_mode(s, 0, 0);
     }
     edit_display(s->qe_state);
     dpy_flush(&global_screen);
@@ -6714,6 +6708,8 @@ void do_split_window(EditState *s, int horiz)
     if (s->minibuf || (s->flags & WF_POPUP))
         return;
 
+    /* This will clone mode and mode data to the newly created window */
+    generic_save_window_data(s);
     if (horiz) {
         x = (s->x2 + s->x1) / 2;
         e = edit_new(s->b, x, s->y1,
@@ -7189,42 +7185,38 @@ static int text_mode_probe(__unused__ ModeDef *mode,
         return 20;
 }
 
-int generic_mode_init(EditState *s, ModeSavedData *saved_data)
+static int generic_mode_init(EditState *s)
 {
-    if (saved_data) {
-        memcpy(s, saved_data->generic_data, SAVED_DATA_SIZE);
-    } else {
-        memset(s, 0, SAVED_DATA_SIZE);
-        s->insert = 1;
-        s->indent_size = 4;
-        s->default_style = QE_STYLE_DEFAULT;
-        s->wrap = WRAP_LINE;
-    }
     s->offset = min(s->offset, s->b->total_size);
     s->offset_top = min(s->offset_top, s->b->total_size);
-    s->hex_mode = 0;
-    s->insert = 1;
     eb_add_callback(s->b, eb_offset_callback, &s->offset, 0);
     eb_add_callback(s->b, eb_offset_callback, &s->offset_top, 0);
     set_colorize_func(s, NULL);
     return 0;
 }
 
-/* generic save mode data (saves text presentation information) */
-ModeSavedData *generic_mode_save_data(EditState *s)
+/* Save window generic window data and mode */
+static int generic_save_window_data(EditState *s)
 {
-    ModeSavedData *saved_data;
+    EditBuffer *b = s->b;
 
-    saved_data = qe_mallocz(ModeSavedData);
-    if (!saved_data)
-        return NULL;
-    saved_data->mode = s->mode;
-    memcpy(saved_data->generic_data, s, SAVED_DATA_SIZE);
-    return saved_data;
+    if (!b->saved_data
+    &&  !(b->saved_data = qe_mallocz_array(u8, SAVED_DATA_SIZE))) {
+        return -1;
+    }
+    memcpy(b->saved_data, s, SAVED_DATA_SIZE);
+    b->saved_mode = s->mode;
+    return 0;
 }
 
-void generic_mode_close(EditState *s)
+static void generic_mode_close(EditState *s)
 {
+    s->hex_mode = 0;
+    s->hex_nibble = 0;
+    s->unihex_mode = 0;
+    s->insert = 1;
+    s->wrap = WRAP_LINE;
+
     /* free all callbacks or associated buffer data */
     set_colorize_func(s, NULL);
     eb_free_callback(s->b, eb_offset_callback, &s->offset);
