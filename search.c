@@ -56,6 +56,7 @@ ISearchState isearch_state;
 /* store last searched string */
 static unsigned int last_search_u32[SEARCH_LENGTH];
 static int last_search_u32_len = 0;
+static int last_search_u32_flags = 0;
 
 static int eb_search(EditBuffer *b, int dir, int flags,
                      int start_offset, int end_offset,
@@ -370,6 +371,7 @@ static void isearch_key(void *opaque, int ch)
             memcpy(last_search_u32, is->search_u32,
                    is->search_u32_len * sizeof(*is->search_u32));
             last_search_u32_len = is->search_u32_len;
+            last_search_u32_flags = is->search_flags;
         }
         qe_ungrab_keys();
         edit_display(s->qe_state);
@@ -387,6 +389,7 @@ static void isearch_key(void *opaque, int ch)
             memcpy(is->search_u32_flags + is->pos, last_search_u32,
                    len * sizeof(*is->search_u32_flags));
             is->pos += len;
+            is->search_flags = last_search_u32_flags;
         } else
         if (is->pos < SEARCH_LENGTH) {
             /* add the match position, if any */
@@ -836,6 +839,10 @@ void do_search_string(EditState *s, const char *search_str, int dir)
     }
     search_u32_len = search_to_u32(search_u32, countof(search_u32),
                                    search_str, flags);
+    /* empty string matches */
+    if (search_u32_len <= 0)
+        return;
+
     if (eb_search(s->b, dir, flags,
                   s->offset, s->b->total_size,
                   search_u32, search_u32_len,
