@@ -783,6 +783,7 @@ void eb_free(EditBuffer **bp)
         EditBuffer *b = *bp;
         QEmacsState *qs = &qe_state;
         EditBuffer **pb;
+        EditBuffer *b1;
 
         /* free b->mode_data_list by calling destructors */
         while (b->mode_data_list) {
@@ -806,12 +807,18 @@ void eb_free(EditBuffer **bp)
 
         /* suppress from buffer list */
         pb = &qs->first_buffer;
-        while (*pb != NULL) {
-            if (*pb == b)
-                break;
-            pb = &(*pb)->next;
+        while ((b1 = *pb) != NULL) {
+            if (b1->log_buffer == b) {
+                b1->log_buffer = NULL;
+            }
+            if (b1->b_styles == b) {
+                b1->b_styles = NULL;
+            }
+            if (b1 == b)
+                *pb = b1->next;
+            else
+                pb = &b1->next;
         }
-        *pb = (*pb)->next;
 
         if (b == qs->trace_buffer)
             qs->trace_buffer = NULL;
@@ -1124,6 +1131,11 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
         b->log_buffer = eb_new(buf, BF_SYSTEM | BF_IS_LOG | BF_RAW);
         if (!b->log_buffer)
             return;
+        b->log_new_index = 0;
+        b->log_current = 0;
+        b->last_log = 0;
+        b->last_log_char = 0;
+        b->nb_logs = 0;
     }
     /* XXX: better test to limit size */
     if (b->nb_logs >= (NB_LOGS_MAX-1)) {

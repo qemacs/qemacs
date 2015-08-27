@@ -1693,7 +1693,7 @@ EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
     }
     snprintf(bufname, sizeof(bufname), "*kill-%d*", cur + 1);
     if (base) {
-        b = eb_new(bufname, base->flags & BF_STYLES);
+        b = eb_new(bufname, BF_SYSTEM | (base->flags & BF_STYLES));
         eb_set_charset(b, base->charset, base->eol_type);
     } else {
         b = eb_new(bufname, 0);
@@ -3868,7 +3868,7 @@ int text_display(EditState *s, DisplayState *ds, int offset)
                 ds->style = c >> STYLE_SHIFT;
             }
             c = eb_nextc(s->b, offset, &offset);
-            if (c == '\n') {
+            if (c == '\n' && !s->minibuf) {
                 display_eol(ds, offset0, offset);
                 break;
             }
@@ -5955,26 +5955,41 @@ void qe_kill_buffer(EditBuffer *b)
 {
     QEmacsState *qs = &qe_state;
     EditState *e;
-    EditBuffer *b1;
+    EditBuffer *b1 = NULL;
 
-    /* Emacs makes any window showing the killed buffer switch to
-     * another buffer.
-     * An alternative is to delete windows showing the buffer.
+    if (!b)
+        return;
+
+    /* Check for windows showing the buffer:
+     * - Emacs makes any window showing the killed buffer switch to
+     *   another buffer.
+     * - An alternative is to delete windows showing the buffer, but we
+     *   cannot delete the main window, so switch to the scratch buffer.
      */
-
-    /* find a new buffer to switch to */
-    for (b1 = qs->first_buffer; b1 != NULL; b1 = b1->next) {
-        if (b1 != b && !(b1->flags & BF_SYSTEM))
-            break;
-    }
-    if (!b1)
-        b1 = eb_new("*scratch*", BF_SAVELOG | BF_UTF8);
-
-    /* if the buffer remains because we cannot delete the main
-       window, then switch to the scratch buffer */
     for (e = qs->first_window; e != NULL; e = e->next_window) {
+        if (e->last_buffer == b) {
+            e->last_buffer = NULL;
+        }
         if (e->b == b) {
+            if (!b1) {
+                /* find a new buffer to switch to */
+                for (b1 = qs->first_buffer; b1 != NULL; b1 = b1->next) {
+                    if (b1 != b && !(b1->flags & BF_SYSTEM))
+                        break;
+                }
+                if (!b1) {
+                    b1 = eb_new("*scratch*", BF_SAVELOG | BF_UTF8);
+                }
+            }
             switch_to_buffer(e, b1);
+        }
+    }
+
+    if (b->flags & BF_SYSTEM) {
+        int i;
+        for (i = 0; i < NB_YANK_BUFFERS; i++) {
+            if (qs->yank_buffers[i] == b)
+                qs->yank_buffers[i] = NULL;
         }
     }
 
@@ -8014,6 +8029,8 @@ int main(int argc, char **argv)
         }
         css_free_colors();
         free_font_cache(&global_screen);
+        qe_free(&qs->buffer_cache);
+        qs->buffer_cache_size = qs->buffer_cache_len = 0;
     }
 #endif
     dpy_close(&global_screen);
