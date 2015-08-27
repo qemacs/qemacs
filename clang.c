@@ -612,12 +612,11 @@ static void c_colorize_line(QEColorizeContext *cp,
 
     start = i;
     type_decl = 0;
+    c = 0;
+    style0 = style = C_STYLE_DEFAULT;
 
     if (i >= n)
         goto the_end;
-
-    c = 0;
-    style0 = style = C_STYLE_DEFAULT;
 
     if (state) {
         /* if already in a state, go directly in the code parsing it */

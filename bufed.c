@@ -178,7 +178,7 @@ static void bufed_select(EditState *s, int temp)
     BufedState *bs;
     EditBuffer *b, *last_buffer;
     EditState *e;
-    int index;
+    int index = -1;
 
     if (!(bs = bufed_get_state(s, 1)))
         return;

@@ -893,7 +893,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
             str = "  shell: ";
             break;
         case EB_TRACE_COMMAND:
-            eb_printf(b, "command: %s\n", buf);
+            eb_printf(b, "command: %s\n", cs8(buf));
             size = 0;
             break;
         }

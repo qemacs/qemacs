@@ -61,7 +61,7 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
                                unsigned int *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start, c, style, len;
+    int i = 0, start = 0, c, style, len;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_EBNF_COMMENT1)
