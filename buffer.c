@@ -782,9 +782,15 @@ void eb_free(EditBuffer **bp)
         QEmacsState *qs = &qe_state;
         EditBuffer **pb;
 
-        /* call user defined close */
-        if (b->close)
-            b->close(b);
+        /* free b->mode_data_list by calling destructors */
+        while (b->mode_data_list) {
+            QEModeData *md = b->mode_data_list;
+            b->mode_data_list = md->next;
+            md->next = NULL;
+            if (md->mode && md->mode->mode_free)
+                md->mode->mode_free(b, md);
+            qe_free(&md);
+        }
 
         /* free each callback */
         while (b->first_callback) {
@@ -810,8 +816,7 @@ void eb_free(EditBuffer **bp)
 
         eb_free_style_buffer(b);
 
-	qe_free(&b->saved_data);
-	qe_free(&b->priv_data);
+        qe_free(&b->saved_data);
         qe_free(bp);
     }
 }

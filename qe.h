@@ -133,6 +133,7 @@ typedef struct EditBuffer EditBuffer;
 typedef struct QEmacsState QEmacsState;
 typedef struct DisplayState DisplayState;
 typedef struct ModeProbeData ModeProbeData;
+typedef struct QEModeData QEModeData;
 typedef struct ModeDef ModeDef;
 typedef struct QETimer QETimer;
 typedef struct QEColorizeContext QEColorizeContext;
@@ -883,8 +884,6 @@ struct EditBuffer {
     const char *data_type_name;
     EditBufferDataType *data_type;
     void *data_data;    /* associated buffer data, used if data_type != raw_data */
-    void *priv_data;    /* buffer polling & private data */
-    void (*close)(EditBuffer *);    /* called when deleting the buffer */
 
     /* buffer syntax or major mode */
     ModeDef *syntax_mode;
@@ -933,6 +932,9 @@ struct EditBuffer {
      */
     ModeDef *saved_mode;
     OWNED u8 *saved_data; /* SAVED_DATA_SIZE bytes */
+
+    /* list of mode data associated with buffer */
+    OWNED QEModeData *mode_data_list;
 
     /* default mode stuff when buffer is detached from window */
     int offset;
@@ -1179,7 +1181,7 @@ struct EditState {
 
     /* mode specific info */
     ModeDef *mode;
-    OWNED void *mode_data; /* mode private window based data */
+    OWNED QEModeData *mode_data; /* mode private window based data */
 
     /* state before line n, one short per line */
     /* XXX: move this to buffer based mode_data */
@@ -1249,6 +1251,14 @@ struct ModeProbeData {
     EditBuffer *b;
 };
 
+struct QEModeData {
+    QEModeData *next;
+    ModeDef *mode;
+    EditState *s;
+    EditBuffer *b;
+    /* Other mode specific data follows */
+};
+
 struct ModeDef {
     const char *name;
     const char *mode_name;
@@ -1258,18 +1268,21 @@ struct ModeDef {
     const char *types;
 
     int flags;
-#define MODEF_NOCMD      0x8000 /* do not register xxx-mode command automatically */
-#define MODEF_VIEW       0x01
-#define MODEF_SYNTAX     0x02
-#define MODEF_MAJOR      0x04
-#define MODEF_DATATYPE   0x10
-#define MODEF_SHELLPROC  0x20
-    int instance_size; /* size of malloced instance */
+#define MODEF_NOCMD        0x8000 /* do not register xxx-mode command automatically */
+#define MODEF_VIEW         0x01
+#define MODEF_SYNTAX       0x02
+#define MODEF_MAJOR        0x04
+#define MODEF_DATATYPE     0x10
+#define MODEF_SHELLPROC    0x20
+#define MODEF_NEWINSTANCE  0x100
+    int buffer_instance_size;   /* size of malloced buffer state  */
+    int window_instance_size;   /* size of malloced window state */
 
     /* return the percentage of confidence */
     int (*mode_probe)(ModeDef *m, ModeProbeData *pd);
     int (*mode_init)(EditState *s, EditBuffer *b, int flags);
     void (*mode_close)(EditState *s);
+    void (*mode_free)(EditBuffer *b, void *state);
 
     /* low level display functions (must be NULL to use text related
        functions)*/
@@ -1320,6 +1333,12 @@ struct ModeDef {
 #define TTY_SET_BG_COLOR(color, bg)   ((color) = ((color) & ~(15)) | ((bg)))
 #define TTY_GET_FG(color)  (((color) >> 4) & 15)
 #define TTY_GET_BG(color)  (((color) >> 0) & 15)
+
+QEModeData *qe_create_buffer_mode_data(EditBuffer *b, ModeDef *m);
+void *qe_get_buffer_mode_data(EditBuffer *b, ModeDef *m, EditState *e);
+QEModeData *qe_create_window_mode_data(EditState *s, ModeDef *m);
+void *qe_get_window_mode_data(EditState *e, ModeDef *m, int status);
+int qe_free_mode_data(QEModeData *md);
 
 /* from tty.c */
 extern unsigned int const *tty_bg_colors;
@@ -1788,7 +1807,7 @@ void do_split_window(EditState *s, int horiz);
 void edit_display(QEmacsState *qs);
 void edit_invalidate(EditState *s);
 void display_mode_line(EditState *s);
-void edit_set_mode(EditState *s, ModeDef *m);
+int edit_set_mode(EditState *s, ModeDef *m);
 void qe_set_next_mode(EditState *s, int dir, int status);
 void do_set_next_mode(EditState *s, int dir);
 
@@ -2029,8 +2048,8 @@ extern ModeDef htmlsrc_mode;
 
 extern ModeDef html_mode;
 
-int gxml_mode_init(EditState *s,
-                   int is_html, const char *default_stylesheet);
+/* flags from libqhtml/css.h */
+int gxml_mode_init(EditBuffer *b, int flags, const char *default_stylesheet);
 
 /* image.c */
 

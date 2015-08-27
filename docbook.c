@@ -34,7 +34,12 @@ static int docbook_mode_probe(ModeDef *mode, ModeProbeData *p1)
 
 static int docbook_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    return gxml_mode_init(s, XML_IGNORE_CASE | XML_DOCBOOK, docbook_style);
+    if (flags & MODEF_NEWINSTANCE) {
+        /* Implement mode inheritance manually */
+        qe_create_buffer_mode_data(b, &html_mode);
+        return gxml_mode_init(b, XML_IGNORE_CASE | XML_DOCBOOK, docbook_style);
+    }
+    return 0;
 }
 
 static ModeDef docbook_mode;
@@ -44,6 +49,7 @@ static int docbook_init(void)
     /* inherit from html mode */
     memcpy(&docbook_mode, &html_mode, sizeof(ModeDef));
     docbook_mode.name = "docbook";
+    docbook_mode.buffer_instance_size = sizeof(QEModeData);
     docbook_mode.extensions = NULL;
     docbook_mode.mode_probe = docbook_mode_probe;
     docbook_mode.mode_init = docbook_mode_init;

@@ -53,7 +53,7 @@ enum TTYState {
 };
 
 typedef struct ShellState {
-    ModeDef *signature;
+    QEModeData base;
     /* buffer state */
     int pty_fd;
     int pid; /* -1 if not launched */
@@ -653,17 +653,9 @@ static void tty_update_cursor(__unused__ ShellState *s)
 #endif
 }
 
-static ShellState *shell_get_state(EditState *e, int status)
+static inline ShellState *shell_get_state(EditState *e, int status)
 {
-    ShellState *s = e->b->priv_data;
-
-    if (s && s->signature == &shell_mode)
-        return s;
-
-    if (status)
-        put_status(e, "Not a shell buffer");
-
-    return NULL;
+    return qe_get_buffer_mode_data(e->b, &shell_mode, status ? e : NULL);
 }
 
 /* CG: much cleaner way! */
@@ -685,7 +677,7 @@ static void shell_key(void *opaque, int key)
     const char *p;
     int len;
 
-    if (!s || s->signature != &shell_mode)
+    if (!s || s->base.mode != &shell_mode)
         return;
 
     if (key == KEY_CTRL('o')) {
@@ -1242,7 +1234,7 @@ static void shell_read_cb(void *opaque)
     unsigned char buf[16 * 1024];
     int len, i;
 
-    if (!s || s->signature != &shell_mode)
+    if (!s || s->base.mode != &shell_mode)
         return;
 
     qs = s->qe_state;
@@ -1259,6 +1251,12 @@ static void shell_read_cb(void *opaque)
         s->b->flags &= ~BF_READONLY;
         s->b->last_log = 0;
 
+#if 0
+        /* XXX: tty emulation should be optional */
+        if (!emulate) {
+            eb_write(s->b, s->b->total_size, buf, len);
+        } else
+#endif
         for (i = 0; i < len; i++)
             tty_emulate(s, buf[i]);
 
@@ -1272,13 +1270,10 @@ static void shell_read_cb(void *opaque)
     dpy_flush(qs->screen);
 }
 
-static void shell_close(EditBuffer *b)
+static void shell_mode_free(EditBuffer *b, void *state)
 {
-    ShellState *s = b->priv_data;
+    ShellState *s = state;
     int status;
-
-    if (!s || s->signature != &shell_mode)
-        return;
 
     eb_free_callback(b, eb_offset_callback, &s->cur_offset);
 
@@ -1302,9 +1297,6 @@ static void shell_close(EditBuffer *b)
         close(s->pty_fd);
         s->pty_fd = -1;
     }
-    qe_free(&b->priv_data);
-    if (b->close == shell_close)
-        b->close = NULL;
 }
 
 static void shell_pid_cb(void *opaque, int status)
@@ -1315,7 +1307,7 @@ static void shell_pid_cb(void *opaque, int status)
     EditState *e;
     char buf[1024];
 
-    if (!s || s->signature != &shell_mode)
+    if (!s || s->base.mode != &shell_mode)
         return;
 
     b = s->b;
@@ -1374,7 +1366,7 @@ static void shell_pid_cb(void *opaque, int status)
             qe_set_next_mode(e, 0, 0);
     }
     if (!(s->shell_flags & SF_INTERACTIVE)) {
-        shell_close(b);
+        qe_free_mode_data(&s->base);
     }
     edit_display(qs);
     dpy_flush(qs->screen);
@@ -1391,22 +1383,15 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     int rows, cols;
 
     b = b0;
-    if (b) {
-        s = b->priv_data;
-        if (s && s->signature != &shell_mode)
-            return NULL;
-        if (shell_flags & SF_COLOR)
-            eb_create_style_buffer(b, BF_STYLE2);
-    } else {
-        int bf_flags = BF_SAVELOG;
-        if (shell_flags & SF_COLOR)
-            bf_flags |= BF_STYLE2;
-        b = eb_new(bufname, bf_flags);
+    if (!b) {
+        b = eb_new(bufname, BF_SAVELOG);
         if (!b)
             return NULL;
     }
 
     eb_set_buffer_name(b, bufname); /* ensure that the name is unique */
+    if (shell_flags & SF_COLOR)
+        eb_create_style_buffer(b, BF_STYLE2);
 
     /* Select shell output buffer encoding from LANG setting */
     if (((lang = getenv("LANG")) != NULL && strstr(lang, "UTF-8")) ||
@@ -1416,17 +1401,14 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
         eb_set_charset(b, &charset_vt100, b->eol_type);
     }
 
-    s = b->priv_data;
+    s = qe_get_buffer_mode_data(b, &shell_mode, NULL);
     if (!s) {
-        s = qe_mallocz(ShellState);
+        s = (ShellState*)qe_create_buffer_mode_data(b, &shell_mode);
         if (!s) {
             if (!b0)
                 eb_free(&b);
             return NULL;
         }
-        s->signature = &shell_mode;
-        b->priv_data = s;
-        b->close = shell_close;
         /* Track cursor with edge effect */
         eb_add_callback(b, eb_offset_callback, &s->cur_offset, 1);
     }
@@ -1493,23 +1475,17 @@ static void do_shell(EditState *s, int force)
          * restart shell process in it.
          */
         b = s->b;
-        shs = b->priv_data;
-        if (strstart(b->name, "*shell*", NULL)
-        &&  shs && shs->signature == &shell_mode) {
+        shs = shell_get_state(s, 0);
+        if (shs && strstart(b->name, "*shell", NULL)) {
             if (shs->pid >= 0)
                 return;
         } else {
             /* XXX: should find the last used shell buffer */
             b = try_show_buffer(s, "*shell*");
             if (b) {
-                shs = b->priv_data;
-                if (shs) {
-                    if (shs->signature != &shell_mode) {
-                        b = NULL;
-                    } else
-                    if (shs->pid >= 0)
-                        return;
-                }
+                shs = qe_get_buffer_mode_data(b, &shell_mode, NULL);
+                if (shs && shs->pid >= 0)
+                    return;
             }
         }
         if (b) {
@@ -1573,7 +1549,6 @@ static void do_ssh(EditState *s, const char *arg)
     b->data_type_name = "ssh";
     b->default_mode = &shell_mode;
     switch_to_buffer(s, b);
-    //edit_set_mode(s, &shell_mode);
 
     put_status(s, "Press C-o to toggle between shell/edit mode");
 }
@@ -1966,13 +1941,11 @@ static CmdDef shell_global_commands[] = {
 
 static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    if (p->b && p->b->priv_data) {
-        ShellState *s = p->b->priv_data;
-        if (s->signature == &shell_mode) {
-            if (s->shell_flags & SF_INTERACTIVE)
-                return 100;
-        }
-    }
+    ShellState *s = qe_get_buffer_mode_data(p->b, &shell_mode, NULL);
+
+    if (s && s->shell_flags & SF_INTERACTIVE)
+        return 100;
+
     return 0;
 }
 
@@ -2008,7 +1981,9 @@ static int shell_init(void)
     shell_mode.name = "shell";
     shell_mode.mode_name = NULL;
     shell_mode.mode_probe = shell_mode_probe;
+    shell_mode.buffer_instance_size = sizeof(ShellState);
     shell_mode.mode_init = shell_mode_init;
+    shell_mode.mode_free = shell_mode_free;
     shell_mode.display_hook = shell_display_hook;
     shell_mode.move_left_right = shell_move_left_right;
     shell_mode.move_word_left_right = shell_move_word_left_right;

@@ -67,7 +67,7 @@ static int dired_show_ds_store = 0;
 #endif
 
 typedef struct DiredState {
-    ModeDef *signature;
+    QEModeData base;    /* derived from QEModeData */
     StringArray items;
     int sort_mode; /* DIRED_SORT_GROUP | DIRED_SORT_NAME */
     int last_index;
@@ -96,17 +96,9 @@ typedef struct DiredItem {
     char    name[1];
 } DiredItem;
 
-static DiredState *dired_get_state(EditState *s, int status)
+static inline DiredState *dired_get_state(EditState *e, int status)
 {
-    DiredState *ds = s->b->priv_data;
-
-    if (ds && ds->signature == &dired_mode)
-        return ds;
-
-    if (status)
-        put_status(s, "Not a dired buffer");
-
-    return NULL;
+    return qe_get_buffer_mode_data(e->b, &dired_mode, status ? e : NULL);
 }
 
 static inline int dired_get_index(EditState *s) {
@@ -976,7 +968,7 @@ static void dired_display_hook(EditState *s)
     char filename[MAX_FILENAME_SIZE];
     int index;
 
-    if (!(ds = dired_get_state(s, 1)))
+    if (!(ds = dired_get_state(s, 0)))
         return;
 
     /* Prevent point from going beyond list */
@@ -1006,72 +998,50 @@ static void dired_display_hook(EditState *s)
     }
 }
 
-static void dired_close(EditBuffer *b)
-{
-    DiredState *ds = b->priv_data;
-
-    if (ds && ds->signature == &dired_mode) {
-        dired_free(ds);
-    }
-
-    qe_free(&b->priv_data);
-    if (b->close == dired_close)
-        b->close = NULL;
-}
-
 static int dired_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    DiredState *ds;
+    DiredState *ds = qe_get_buffer_mode_data(b, &dired_mode, NULL);
+
+    if (!ds)
+        return -1;
 
     list_mode.mode_init(s, b, flags);
 
-    if (s) {
-        if (s->b->priv_data) {
-            ds = s->b->priv_data;
-            if (ds->signature != &dired_mode)
-                return -1;
-        } else {
-            /* XXX: should be allocated by buffer_load API */
-            ds = qe_mallocz(DiredState);
-            if (!ds)
-                return -1;
+    if (flags & MODEF_NEWINSTANCE) {
+        /* XXX: Should use last sort mode, a global variable */
+        ds->sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
+        ds->last_index = -1;
 
-            ds->signature = &dired_mode;
-            /* XXX: Should use last sort mode, a global variable */
-            ds->sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
-            ds->last_index = -1;
-
-            s->b->priv_data = ds;
-            s->b->close = dired_close;
-
-            eb_create_style_buffer(b, BF_STYLE1);
-            /* XXX: should be built by buffer_load API */
-            dired_build_list(ds, s->b->filename, NULL, s->b, s);
-            /* XXX: File system charset should be detected automatically */
-            /* XXX: If file system charset is not utf8, eb_printf will fail */
-            eb_set_charset(s->b, &charset_utf8, s->b->eol_type);
-        }
+        eb_create_style_buffer(b, BF_STYLE1);
+        /* XXX: should be built by buffer_load API */
+        dired_build_list(ds, b->filename, NULL, b, s);
+        /* XXX: File system charset should be detected automatically */
+        /* XXX: If file system charset is not utf8, eb_printf will fail */
+        eb_set_charset(b, &charset_utf8, b->eol_type);
     }
     return 0;
+}
+
+static void dired_mode_free(EditBuffer *b, void *state)
+{
+    DiredState *ds = state;
+
+    dired_free(ds);
 }
 
 /* can only apply dired mode on directories */
 static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    if (p->b->priv_data) {
-        DiredState *ds = p->b->priv_data;
-        if (ds->signature != &dired_mode)
-            return 0;
-        else
-            return 100;
-    }
+    if (qe_get_buffer_mode_data(p->b, &dired_mode, NULL))
+        return 100;
+
     if (S_ISDIR(p->st_mode))
         return 95;
-    else
+
     if (strchr(p->real_filename, '*') || strchr(p->real_filename, '?'))
         return 90;
-    else
-        return 0;
+
+    return 0;
 }
 
 /* open dired window on the left. The directory of the current file is
@@ -1196,7 +1166,9 @@ static int dired_init(void)
     memcpy(&dired_mode, &list_mode, sizeof(ModeDef));
     dired_mode.name = "dired";
     dired_mode.mode_probe = dired_mode_probe;
+    dired_mode.buffer_instance_size = sizeof(DiredState);
     dired_mode.mode_init = dired_mode_init;
+    dired_mode.mode_free = dired_mode_free;
     /* CG: not a good idea, display hook has side effect on layout */
     dired_mode.display_hook = dired_display_hook;
 

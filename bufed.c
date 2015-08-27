@@ -36,7 +36,7 @@ enum {
 };
 
 typedef struct BufedState {
-    ModeDef *signature;
+    QEModeData base;
     int flags;
     int last_index;
     EditState *cur_window;
@@ -47,30 +47,18 @@ typedef struct BufedState {
 
 static ModeDef bufed_mode;
 
-static BufedState *bufed_get_state(EditState *s, int status)
+static inline BufedState *bufed_get_state(EditState *e, int status)
 {
-    BufedState *bs = s->b->priv_data;
-
-    if (bs && bs->signature == &bufed_mode)
-        return bs;
-
-    if (status)
-        put_status(s, "Not a bufed buffer");
-
-    return NULL;
+    return qe_get_buffer_mode_data(e->b, &bufed_mode, status ? e : NULL);
 }
 
-static void build_bufed_list(EditState *s)
+static void build_bufed_list(BufedState *bs, EditState *s)
 {
     QEmacsState *qs = s->qe_state;
     EditBuffer *b;
-    BufedState *bs;
     StringItem *item;
     int last_index = list_get_pos(s);
     int i;
-
-    if (!(bs = bufed_get_state(s, 1)))
-        return;
 
     free_strings(&bs->items);
     for (b = qs->first_buffer; b != NULL; b = b->next) {
@@ -127,6 +115,7 @@ static void build_bufed_list(EditState *s)
             char mode_buf[64];
             const char *mode_name;
             buf_t outbuf, *out;
+            QEModeData *md;
 
             if (b1->flags & BF_IS_LOG) {
                 mode_name = "log";
@@ -150,6 +139,10 @@ static void build_bufed_list(EditState *s)
                 buf_printf(out, "%s+", b1->data_type_name);
             }
             buf_puts(out, mode_name);
+            for (md = b1->mode_data_list; md; md = md->next) {
+                if (md->mode && md->mode != b1->saved_mode)
+                    buf_printf(out, ",%s", md->mode->name);
+            }
 
             b->cur_style = style0;
             eb_printf(b, " %10d %1.0d %-8.8s %-11s ",
@@ -169,13 +162,9 @@ static void build_bufed_list(EditState *s)
     b->flags |= BF_READONLY;
 }
 
-static EditBuffer *bufed_get_buffer(EditState *s)
+static EditBuffer *bufed_get_buffer(BufedState *bs, EditState *s)
 {
-    BufedState *bs;
     int index;
-
-    if (!(bs = bufed_get_state(s, 1)))
-        return NULL;
 
     index = list_get_pos(s);
     if (index < 0 || index >= bs->items.nb_items)
@@ -272,7 +261,7 @@ static void bufed_kill_buffer(EditState *s)
 
     string_selection_iterate(&bs->items, list_get_pos(s),
                              bufed_kill_item, s);
-    build_bufed_list(s);
+    build_bufed_list(bs, s);
 }
 
 /* show a list of buffers */
@@ -316,7 +305,7 @@ static void do_list_buffers(EditState *s, int argval)
     } else {
         bs->flags |= BUFED_ALL_VISIBLE;
     }
-    build_bufed_list(e);
+    build_bufed_list(bs, e);
 
     /* if active buffer is found, go directly on it */
     for (i = 0; i < bs->items.nb_items; i++) {
@@ -329,26 +318,34 @@ static void do_list_buffers(EditState *s, int argval)
 
 static void bufed_clear_modified(EditState *s)
 {
+    BufedState *bs;
     EditBuffer *b;
 
-    b = bufed_get_buffer(s);
+    if (!(bs = bufed_get_state(s, 1)))
+        return;
+
+    b = bufed_get_buffer(bs, s);
     if (!b)
         return;
 
     b->modified = 0;
-    build_bufed_list(s);
+    build_bufed_list(bs, s);
 }
 
 static void bufed_toggle_read_only(EditState *s)
 {
+    BufedState *bs;
     EditBuffer *b;
 
-    b = bufed_get_buffer(s);
+    if (!(bs = bufed_get_state(s, 1)))
+        return;
+
+    b = bufed_get_buffer(bs, s);
     if (!b)
         return;
 
     b->flags ^= BF_READONLY;
-    build_bufed_list(s);
+    build_bufed_list(bs, s);
 }
 
 static void bufed_refresh(EditState *s, int toggle)
@@ -361,7 +358,7 @@ static void bufed_refresh(EditState *s, int toggle)
     if (toggle)
         bs->flags ^= BUFED_ALL_VISIBLE;
 
-    build_bufed_list(s);
+    build_bufed_list(bs, s);
 }
 
 static void bufed_display_hook(EditState *s)
@@ -376,52 +373,27 @@ static void bufed_display_hook(EditState *s)
 
 static int bufed_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    if (p->b->priv_data) {
-        BufedState *bs = p->b->priv_data;
-        if (bs->signature == &bufed_mode)
-            return 95;
-        else
-            return 0;
-    }
+    if (qe_get_buffer_mode_data(p->b, &bufed_mode, NULL))
+        return 95;
+
     return 0;
-}
-
-static void bufed_close(EditBuffer *b)
-{
-    BufedState *bs = b->priv_data;
-
-    if (bs && bs->signature == &bufed_mode) {
-        free_strings(&bs->items);
-    }
-
-    qe_free(&b->priv_data);
-    if (b->close == bufed_close)
-        b->close = NULL;
 }
 
 static int bufed_mode_init(EditState *s, EditBuffer *b, int flags)
 {
-    BufedState *bs;
+    BufedState *bs = qe_get_buffer_mode_data(b, &bufed_mode, NULL);
 
-    list_mode.mode_init(s, b, flags);
+    if (!bs)
+        return -1;
 
-    if (s) {
-        if (s->b->priv_data) {
-            bs = s->b->priv_data;
-            if (bs->signature != &bufed_mode)
-                return -1;
-        } else {
-            /* XXX: should be allocated by buffer_load API */
-            bs = qe_mallocz(BufedState);
-            if (!bs)
-                return -1;
+    return list_mode.mode_init(s, b, flags);
+}
 
-            bs->signature = &bufed_mode;
-            s->b->priv_data = bs;
-            s->b->close = bufed_close;
-        }
-    }
-    return 0;
+static void bufed_mode_free(EditBuffer *b, void *state)
+{
+    BufedState *bs = state;
+
+    free_strings(&bs->items);
 }
 
 /* specific bufed commands */
@@ -466,7 +438,9 @@ static int bufed_init(void)
     memcpy(&bufed_mode, &list_mode, sizeof(ModeDef));
     bufed_mode.name = "bufed";
     bufed_mode.mode_probe = bufed_mode_probe;
+    bufed_mode.buffer_instance_size = sizeof(BufedState);
     bufed_mode.mode_init = bufed_mode_init;
+    bufed_mode.mode_free = bufed_mode_free;
     bufed_mode.display_hook = bufed_display_hook;
 
     /* first register mode */

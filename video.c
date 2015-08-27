@@ -51,6 +51,7 @@ typedef struct VideoPicture {
 } VideoPicture;
 
 typedef struct VideoState {
+    QEModeData base;
     EditState *edit_state;
     pthread_t parse_tid;
     pthread_t audio_tid;
@@ -207,13 +208,21 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
     return ret;
 }
 
+static inline VideoState *video_get_state(EditState *e, int status)
+{
+    return qe_get_window_mode_data(e, &video_mode, status);
+}
+
 /* called to display each frame */
 static void video_refresh_timer(void *opaque)
 {
     EditState *s = opaque;
     QEmacsState *qs = &qe_state;
-    VideoState *is = s->mode_data;
+    VideoState *is;
     VideoPicture *vp;
+
+    if (!(is = video_get_state(s, 1)))
+        return;
 
     if (is->video_st) {
         if (is->pictq_size == 0) {
@@ -263,10 +272,13 @@ static void video_refresh_timer(void *opaque)
 
 static void video_image_display(EditState *s)
 {
-    VideoState *is = s->mode_data;
+    VideoState *is;
     VideoPicture *vp;
     float aspect_ratio;
     int width, height, x, y;
+
+    if (!(is = video_get_state(s, 1)))
+        return;
 
     vp = &is->pictq[is->pictq_rindex];
     if (vp->bmp) {
@@ -301,8 +313,11 @@ static void video_image_display(EditState *s)
 
 static void video_audio_display(EditState *s)
 {
-    VideoState *is = s->mode_data;
+    VideoState *is;
     int i, x, y1, y, h, ys;
+
+    if (!(is = video_get_state(s, 1)))
+        return;
 
     fill_rectangle(s->screen,
                    s->xleft, s->ytop, s->width, s->height,
@@ -333,7 +348,10 @@ static void video_audio_display(EditState *s)
 /* display the current picture, if any */
 static void video_display(EditState *s)
 {
-    VideoState *is = s->mode_data;
+    VideoState *is;
+
+    if (!(is = video_get_state(s, 1)))
+        return;
 
     if (s->display_invalid) {
         if (is->video_st)
@@ -583,16 +601,20 @@ static void *audio_thread(void *arg)
 /* open a given stream. Return 0 if OK */
 static int stream_open(EditState *s, int stream_index)
 {
-    VideoState *is = s->mode_data;
-    AVFormatContext *ic = is->ic;
+    VideoState *is;
+    AVFormatContext *ic;
     AVCodecContext *enc;
     AVCodec *codec;
     AVStream *st;
 
+    if (!(is = video_get_state(s, 1)))
+        return;
+
+    ic = is->ic;
     if (stream_index < 0 || stream_index >= ic->nb_streams)
         return -1;
-    enc = &ic->streams[stream_index]->codec;
 
+    enc = &ic->streams[stream_index]->codec;
 
     /* prepare audio output */
     if (enc->codec_type == CODEC_TYPE_AUDIO) {
@@ -636,10 +658,14 @@ static int stream_open(EditState *s, int stream_index)
 
 static void stream_close(EditState *s, int stream_index)
 {
-    VideoState *is = s->mode_data;
-    AVFormatContext *ic = is->ic;
+    VideoState *is;
+    AVFormatContext *ic;
     AVCodecContext *enc;
 
+    if (!(is = video_get_state(s, 1)))
+        return;
+
+    ic = is->ic;
     enc = &ic->streams[stream_index]->codec;
 
     switch (enc->codec_type) {
@@ -690,10 +716,13 @@ static void stream_close(EditState *s, int stream_index)
 static void *decode_thread(void *arg)
 {
     EditState *s = arg;
-    VideoState *is = s->mode_data;
+    VideoState *is;
     AVFormatContext *ic;
     int err, i, ret, video_index, audio_index;
     AVPacket pkt1, *pkt = &pkt1;
+
+    if (!(is = video_get_state(s, 1)))
+        return NULL;
 
     video_index = -1;
     audio_index = -1;
@@ -785,17 +814,24 @@ static void *decode_thread(void *arg)
 /* pause or resume the video */
 static void video_pause(EditState *s)
 {
-    VideoState *is = s->mode_data;
+    VideoState *is;
+
+    if (!(is = video_get_state(s, 1)))
+        return;
+
     is->paused = !is->paused;
 }
 
 static int video_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
-        VideoState *is = s->mode_data;
+        VideoState *is = qe_get_buffer_mode_data(b, &video_mode, NULL);
         QEmacsState *qs = s->qe_state;
         int err, video_playing;
         EditState *e;
+
+        if (!is)
+            return -1;
 
         /* XXX: avoid annoying Overwrite in mode line */
         s->insert = 1;
@@ -811,10 +847,11 @@ static int video_mode_init(EditState *s, EditBuffer *b, int flags)
         /* if there is already a window with this video playing, then we
            stop this new instance (C-x 2 case) */
         video_playing = 0;
+        /* need window based mode data for this */
         for (e = qs->first_window; e != NULL; e = e->next_window) {
             if (e->mode == s->mode && e != s && e->b == s->b) {
-                VideoState *is1 = e->mode_data;
-                if (!is1->paused)
+                VideoState *is1 = qe_get_window_mode_data(e, &video_mode, 0);
+                if (is1 && !is1->paused)
                     video_playing = 1;
             }
         }
@@ -832,9 +869,12 @@ static int video_mode_init(EditState *s, EditBuffer *b, int flags)
 
 static void video_mode_close(EditState *s)
 {
-    VideoState *is = s->mode_data;
+    VideoState *is;
     VideoPicture *vp;
     int i;
+
+    if (!(is = video_get_state(s, 1)))
+        return;
 
     /* XXX: use a special url_shutdown call to abort parse cleanly */
     is->abort_request = 1;
@@ -863,12 +903,15 @@ char *get_stream_id(AVFormatContext *ic, AVStream *st, char *buf, int buf_size)
 static void video_mode_line(EditState *s, buf_t *out)
 {
     const char *name;
-    VideoState *is = s->mode_data;
+    VideoState *is;
     AVCodec *codec;
     AVCodecContext *dec;
     char buf1[32];
 
     basic_mode_line(s, out, '-');
+
+    if (!(is = video_get_state(s, 0)))
+        return;
 
     if (is->paused)
         buf_printf(out, "[paused]--");
@@ -901,16 +944,22 @@ static void video_mode_line(EditState *s, buf_t *out)
 
 static void av_cycle_stream(EditState *s, int codec_type)
 {
-    VideoState *is = s->mode_data;
-    AVFormatContext *ic = is->ic;
+    VideoState *is;
+    AVFormatContext *ic;
     int start_index, stream_index;
     AVStream *st;
     char buf[32];
+
+    if (!(is = video_get_state(s, 0)))
+        return;
+
+    ic = is->ic;
 
     if (codec_type == CODEC_TYPE_VIDEO)
         start_index = is->video_stream;
     else
         start_index = is->audio_stream;
+
     if (start_index < 0) {
         put_status(s, "No %s stream to cycle",
                    (codec_type == CODEC_TYPE_VIDEO) ? "video" : "audio");
@@ -950,7 +999,7 @@ static CmdDef video_commands[] = {
 
 ModeDef video_mode = {
     .name = "av",
-    .instance_size = sizeof(VideoState),
+    .window_instance_size = sizeof(VideoState),
     .mode_probe = video_mode_probe,
     .mode_init = video_mode_init,
     .mode_close = video_mode_close,

@@ -1846,7 +1846,7 @@ static int reload_buffer(EditState *s, EditBuffer *b)
     if (b->filename[0] == '\0')
         return 0;
 
-    if (b->data_type == &raw_data_type) {
+    if (!f1 && b->data_type == &raw_data_type) {
         struct stat st;
 
         if (stat(b->filename, &st) < 0 || !S_ISREG(st.st_mode))
@@ -1859,6 +1859,11 @@ static int reload_buffer(EditState *s, EditBuffer *b)
     } else {
         f = f1;
     }
+    /* XXX: the log buffer is inappropriate if the file was modified on
+     * disk. If this is a reload operation, should create a log for
+     * clearing the buffer and another one for loading it. So the
+     * operation can be undone.
+     */
     saved = b->save_log;
     b->save_log = 0;
     if (b->data_type->buffer_load)
@@ -1884,13 +1889,104 @@ static int reload_buffer(EditState *s, EditBuffer *b)
     }
 }
 
-void edit_set_mode(EditState *s, ModeDef *m)
+QEModeData *qe_create_buffer_mode_data(EditBuffer *b, ModeDef *m)
 {
-    int data_count;
-    EditState *e;
-    EditBuffer *b;
+    QEModeData *md = NULL;
+    int size = m->buffer_instance_size - sizeof(QEModeData);
 
-    b = s->b;
+    if (size >= 0) {
+        md = qe_mallocz_hack(QEModeData, size);
+        if (md) {
+            md->mode = m;
+            md->b = b;
+            md->next = b->mode_data_list;
+            b->mode_data_list = md;
+        }
+    }
+    return md;
+}
+
+void *qe_get_buffer_mode_data(EditBuffer *b, ModeDef *m, EditState *e)
+{
+    if (b) {
+        QEModeData *md;
+        for (md = b->mode_data_list; md; md = md->next) {
+            if (md->mode == m)
+                return md;
+        }
+    }
+    if (e)
+        put_status(e, "Not a %s buffer", m->name);
+
+    return NULL;
+}
+
+QEModeData *qe_create_window_mode_data(EditState *s, ModeDef *m)
+{
+    QEModeData *md = NULL;
+    int size = m->window_instance_size - sizeof(QEModeData);
+
+    if (!s->mode_data && size >= 0) {
+        md = qe_mallocz_hack(QEModeData, size);
+        if (md) {
+            md->mode = m;
+            md->s = s;
+            s->mode_data = md;
+        }
+    }
+    return md;
+}
+
+void *qe_get_window_mode_data(EditState *e, ModeDef *m, int status)
+{
+    if (e) {
+        QEModeData *md = e->mode_data;
+        if (md && md->mode == m)
+            return md;
+    }
+    if (status)
+        put_status(e, "Not a %s buffer", m->name);
+
+    return NULL;
+}
+
+int qe_free_mode_data(QEModeData *md)
+{
+    int rc = -1;
+
+    if (!md)
+        return 0;
+
+    if (check_buffer(&md->b)) {
+        EditBuffer *b = md->b;
+        QEModeData **mdp;
+        for (mdp = &b->mode_data_list; *mdp; mdp = &(*mdp)->next) {
+            if (*mdp == md) {
+                /* unlink before calling destructor */
+                *mdp = md->next;
+                if (md->mode->mode_free)
+                    md->mode->mode_free(b, md);
+                rc = 0;
+                break;
+            }
+        }
+    }
+    if (check_window(&md->s)) {
+        if (md->s->mode_data == md) {
+            md->s->mode_data = NULL;
+            rc = 0;
+        }
+    }        
+    qe_free(&md);
+    return rc;
+}
+
+int edit_set_mode(EditState *s, ModeDef *m)
+{
+    int mode_flags = 0;
+    EditBuffer *b = s->b;
+    const char *errstr = NULL;
+    int rc = 0;
 
     /* if a mode is already defined, try to close it */
     if (s->mode) {
@@ -1899,16 +1995,21 @@ void edit_set_mode(EditState *s, ModeDef *m)
         if (s->mode->mode_close)
             s->mode->mode_close(s);
         generic_mode_close(s);
-        qe_free(&s->mode_data);
-        s->mode = NULL;
+        qe_free_mode_data(s->mode_data);
+        s->mode = NULL;  /* XXX: should instead use fundamental_mode */
         set_colorize_func(s, NULL);
+
+        /* XXX: this code makes no sense, if must be reworked! */
+#if 0
+        int data_count;
+        EditState *e;
 
         /* try to remove the raw or mode specific data if it is no
            longer used. */
         data_count = 0;
         for (e = s->qe_state->first_window; e != NULL; e = e->next_window) {
             if (e != s && e->b == b) {
-                if (e->mode->data_type != &raw_data_type)
+                if (e->mode && e->mode->data_type != &raw_data_type)
                     data_count++;
             }
         }
@@ -1917,6 +2018,8 @@ void edit_set_mode(EditState *s, ModeDef *m)
         if (data_count == 0 && !b->modified) {
             /* close mode specific buffer representation because it is
                always redundant if it was not modified */
+            /* XXX: move this to reset buffer data: eb_free or changing
+             * data_type */
             if (b->data_type != &raw_data_type) {
                 b->data_type->buffer_close(b);
                 b->data_data = NULL;
@@ -1925,36 +2028,46 @@ void edit_set_mode(EditState *s, ModeDef *m)
                 b->modified = 0;
             }
         }
+#endif
     }
 
     /* if a new mode is wanted, open it */
     if (m) {
         s->mode_data = NULL;
-        if (m->instance_size > 0) {
-            s->mode_data = qe_mallocz_array(u8, m->instance_size);
-            /* safe fall back: use text mode */
-            if (!s->mode_data)
-                m = &text_mode;
+        if (m->buffer_instance_size > 0) {
+            if (!qe_get_buffer_mode_data(b, m, NULL)) {
+                if (qe_create_buffer_mode_data(b, m)) {
+                    mode_flags = MODEF_NEWINSTANCE;
+                } else {
+                    errstr = "Cannot allocate buffer mode data";
+                }
+            }
+        }
+        if (m->window_instance_size > 0) {
+            if (!qe_create_window_mode_data(s, m)) {
+                /* safe fall back: use text mode */
+                errstr = "Cannot allocate window mode data";
+            }
         }
         if (m->data_type != &raw_data_type) {
             /* if a non raw data type is requested, we see if we can use it */
             if (b->data_type == &raw_data_type) {
                 /* non raw data type: we must call a mode specific
                    load method */
+                s->mode = m;
                 b->data_type = m->data_type;
                 b->data_type_name = m->data_type->name;
                 if (reload_buffer(s, b) < 0) {
-                    /* error: reset to text mode */
-                    m = &text_mode;
                     b->data_type = &raw_data_type;
                     b->data_type_name = NULL;
+                    errstr = "Cannot reload buffer";
                 }
             } else
             if (b->data_type != m->data_type) {
                 /* non raw data type requested, but the the buffer has
                    a different type: we cannot switch mode, so we fall
                    back to text */
-                m = &text_mode;
+                errstr = "incompatible data type";
             } else {
                 /* same data type: nothing more to do */
             }
@@ -1963,11 +2076,17 @@ void edit_set_mode(EditState *s, ModeDef *m)
             if (b->total_size == 0 && !b->modified)
                 reload_buffer(s, b);
         }
+        if (errstr) {
+            put_status(s, "Cannot set mode %s: %s", m->name, errstr);
+            m = &text_mode;
+            rc = -1;
+        }
+
         s->mode = m;
 
         /* init mode */
         generic_mode_init(s);
-        m->mode_init(s, s->b, MODEF_VIEW);
+        m->mode_init(s, s->b, MODEF_VIEW | mode_flags);
         if (m->colorize_func)
             set_colorize_func(s, m->colorize_func);
         /* modify offset_top so that its value is correct */
@@ -1976,6 +2095,7 @@ void edit_set_mode(EditState *s, ModeDef *m)
         /* keep saved data in sync with last mode used for buffer */
         generic_save_window_data(s);
     }
+    return rc;
 }
 
 void do_set_mode(EditState *s, const char *name)
@@ -5071,9 +5191,10 @@ void edit_attach(EditState *s, EditState *e)
     }
 }
 
-/* close the edit window. If it is active, find another active
-   window. If the buffer is only referenced by this window, then save
-   in the buffer all the window state so that it can be recovered. */
+/* Close the edit window.
+ * Save the window state to the buffer for later retrieval.
+ * If it is active, find another window to activate.
+ */
 void edit_close(EditState **sp)
 {
     if (*sp) {
@@ -5082,7 +5203,7 @@ void edit_close(EditState **sp)
         /* save current state for later window reattachment */
         switch_to_buffer(s, NULL);
         edit_detach(s);
-        qe_free(&s->mode_data);
+        qe_free_mode_data(s->mode_data);
         qe_free(&s->prompt);
         qe_free(&s->line_shadow);
         qe_free(sp);
@@ -5713,6 +5834,7 @@ EditState *insert_window_left(EditBuffer *b, int width, int flags)
 
     e_new = edit_new(b, 0, 0, width, qs->height - qs->status_height,
                      flags | WF_POPLEFT | WF_RSEPARATOR);
+    e_new->wrap = WRAP_TRUNCATE;
     do_refresh(e_new);
     return e_new;
 }
@@ -6164,10 +6286,15 @@ int qe_load_file(EditState *s, const char *filename1,
             f = NULL;
         }
 
-        /* Attach buffer to window, will set default_mode
-         * XXX: this will also load the file, incorrect for non raw modes
-         */
         b->default_mode = selected_mode;
+        /* attaching the buffer to the window will set the default_mode
+         * which in turn will load the data.
+         * XXX: This is an ugly side effect, ineffective for
+         * asynchronous shell buffers.
+         * XXX: should instead instantiate the mode on the buffer and
+         * test the resulting data_mode, loading the file if raw_mode
+         * selected.
+         */
         switch_to_buffer(s, b);
         if (access(b->filename, W_OK)) {
             b->flags |= BF_READONLY;

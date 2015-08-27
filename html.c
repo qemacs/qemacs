@@ -29,6 +29,7 @@
 
 /* mode state */
 typedef struct HTMLState {
+    QEModeData base;
     /* default style sheet */
     CSSStyleSheet *default_style_sheet;
     CSSContext *css_ctx;
@@ -81,10 +82,18 @@ static int recompute_offset_func(void *opaque, CSSBox *box,
     return 0;
 }
 
+static inline HTMLState *html_get_state(EditState *e, int status)
+{
+    return qe_get_buffer_mode_data(e->b, &html_mode, status ? e : NULL);
+}
+
 static void recompute_offset(EditState *s)
 {
-    HTMLState *hs = s->mode_data;
+    HTMLState *hs;
     RecomputeOffsetData data;
+
+    if (!(hs = html_get_state(s, 0)))
+        return;
 
     data.ctx = hs->css_ctx;
     data.wanted_offset = s->offset;
@@ -138,12 +147,15 @@ static int html_test_abort(__unused__ void *opaque)
 
 static void html_display(EditState *s)
 {
-    HTMLState *hs = s->mode_data;
+    HTMLState *hs;
     CSSRect cursor_pos;
     DirType dirc;
     int n, cursor_found, d, ret, sel_start, sel_end;
     CSSRect rect;
     EditBuffer *b;
+
+    if (!(hs = html_get_state(s, 0)))
+        return;
 
     /* XXX: should be generic ? */
     if (hs->last_width != s->width) {
@@ -379,9 +391,12 @@ static int scroll_func(void *opaque, CSSBox *box, __unused__ int x, int y)
 
 static void html_scroll_up_down(EditState *s, int dir)
 {
-    HTMLState *hs = s->mode_data;
+    HTMLState *hs;
     ScrollContext m1, *m = &m1;
     int h;
+
+    if (!(hs = html_get_state(s, 1)))
+        return;
 
     if (!hs->up_to_date)
         return;
@@ -491,10 +506,13 @@ static int up_down_last_x = -1;
 
 static void html_move_up_down1(EditState *s, int dir, int xtarget)
 {
-    HTMLState *hs = s->mode_data;
+    HTMLState *hs;
     MoveContext m1, *m = &m1;
     CSSRect cursor_pos;
     int dirc, offset;
+
+    if (!(hs = html_get_state(s, 1)))
+        return;
 
     /* get the cursor position in the current chunk */
     if (!css_get_cursor_pos(hs->css_ctx, hs->top_box, NULL, NULL, NULL,
@@ -538,7 +556,10 @@ static void html_move_up_down1(EditState *s, int dir, int xtarget)
 
 static void html_move_up_down(EditState *s, int dir)
 {
-    HTMLState *hs = s->mode_data;
+    HTMLState *hs;
+
+    if (!(hs = html_get_state(s, 1)))
+        return;
 
     if (!hs->up_to_date)
         return;
@@ -586,11 +607,14 @@ static int left_right_func(void *opaque, CSSBox *box, int x, int y)
 /* go to left or right in visual order */
 static void html_move_left_right_visual(EditState *s, int dir)
 {
-    HTMLState *hs = s->mode_data;
+    HTMLState *hs;
     LeftRightMoveContext m1, *m = &m1;
     CSSRect cursor_pos;
     int dirc, offset, x0;
     CSSBox *box;
+
+    if (!(hs = html_get_state(s, 1)))
+        return;
 
     if (!hs->up_to_date)
         return;
@@ -635,11 +659,14 @@ static void html_move_left_right_visual(EditState *s, int dir)
 
 static void html_move_bol_eol(EditState *s, int dir)
 {
-    HTMLState *hs = s->mode_data;
+    HTMLState *hs;
     LeftRightMoveContext m1, *m = &m1;
     CSSRect cursor_pos;
     int dirc, offset, x0, xtarget;
     CSSBox *box;
+
+    if (!(hs = html_get_state(s, 1)))
+        return;
 
     if (!hs->up_to_date)
         return;
@@ -726,9 +753,12 @@ static int mouse_goto_func(void *opaque, CSSBox *box, int x, int y)
 
 static void html_mouse_goto(EditState *s, int x, int y)
 {
-    HTMLState *hs = s->mode_data;
+    HTMLState *hs;
     MouseGotoContext m1, *m = &m1;
     int offset;
+
+    if (!(hs = html_get_state(s, 1)))
+        return;
 
     if (!hs->up_to_date)
         return;
@@ -756,9 +786,10 @@ static void html_callback(__unused__ EditBuffer *b,
                           __unused__ int offset,
                           __unused__ int size)
 {
-    EditState *s = opaque;
-    HTMLState *hs = s->mode_data;
-    hs->up_to_date = 0;
+    HTMLState *hs = opaque;
+
+    if (hs)
+        hs->up_to_date = 0;
 }
 
 static void load_default_style_sheet(HTMLState *hs, const char *stylesheet_str,
@@ -775,36 +806,49 @@ static void load_default_style_sheet(HTMLState *hs, const char *stylesheet_str,
 
 /* graphical XML/CSS mode init. is_html is TRUE to tell that specific HTML
    quirks are needed in the parser. */
-int gxml_mode_init(EditState *s,
-                   int flags, const char *default_stylesheet)
+int gxml_mode_init(EditBuffer *b, int flags, const char *default_stylesheet)
 {
-    if (s) {
-        HTMLState *hs = s->mode_data;
+    HTMLState *hs = qe_get_buffer_mode_data(b, &html_mode, NULL);
 
-        /* XXX: unregister callbacks for s->offset and s->top_offset ? */
+    if (!hs)
+        return -1;
 
-        eb_add_callback(s->b, html_callback, s, 0);
-        hs->parse_flags = flags;
+    /* XXX: unregister callbacks for s->offset and s->top_offset ? */
 
-        load_default_style_sheet(hs, default_stylesheet, flags);
+    eb_add_callback(b, html_callback, hs, 0);
+    hs->parse_flags = flags;
+    load_default_style_sheet(hs, default_stylesheet, flags);
+    hs->up_to_date = 0;
 
-        hs->up_to_date = 0;
+    return 0;
+}
+
+/* XXX: should keep parsed data for buffer lifetime? */
+static int html_mode_init(EditState *s, EditBuffer *b, int flags)
+{
+    HTMLState *hs = qe_get_buffer_mode_data(b, &html_mode, NULL);
+
+    if (flags & MODEF_NEWINSTANCE) {
+        if (!hs)
+            return -1;
+        return gxml_mode_init(b, XML_HTML | XML_HTML_SYNTAX | XML_IGNORE_CASE,
+                              html_style);
     }
     return 0;
 }
 
-static int html_mode_init(EditState *s, EditBuffer *b, int flags)
-{
-    return gxml_mode_init(s, XML_HTML | XML_HTML_SYNTAX | XML_IGNORE_CASE,
-                          html_style);
-}
-
 static void html_mode_close(EditState *s)
 {
-    HTMLState *hs = s->mode_data;
-    eb_free_callback(s->b, html_callback, s);
+    s->busy = 0; /* make it a buffer flag? */
+}
 
-    s->busy = 0;
+static void html_mode_free(EditBuffer *b, void *state)
+{
+    HTMLState *hs = state;
+
+    eb_free_callback(b, html_callback, hs);
+
+    //s->busy = 0; /* make it a buffer flag? */
     css_delete_box(&hs->top_box);
     css_delete_document(&hs->css_ctx);
     css_free_style_sheet(&hs->default_style_sheet);
@@ -872,10 +916,11 @@ static CmdDef html_commands[] = {
 
 ModeDef html_mode = {
     .name = "html",
-    .instance_size = sizeof(HTMLState),
+    .buffer_instance_size = sizeof(HTMLState),
     .mode_probe = html_mode_probe,
     .mode_init = html_mode_init,
     .mode_close = html_mode_close,
+    .mode_free = html_mode_free,
     .display = html_display,
     .move_left_right = html_move_left_right_visual,
     .move_up_down = html_move_up_down,

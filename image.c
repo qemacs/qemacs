@@ -23,25 +23,35 @@
 
 #define SCROLL_MHEIGHT     10
 
-typedef struct ImageBuffer {
+typedef struct ImageBuffer ImageBuffer;
+typedef struct ImageState ImageState;
+typedef struct ImageBufferState ImageBufferState;
+
+struct ImageBufferState {
+    QEModeData base;
+    ImageBuffer *ib;
+};
+
+struct ImageBuffer {
     int pix_fmt;
     int width;
     int height;
     int interleaved; /* just an info to tell if the image is interleaved */
     int alpha_info;  /* see FF_ALPHA_xxx constants */
     AVPicture pict; /* NOTE: data[] fields are temporary */
-} ImageBuffer;
+};
 
-typedef struct ImageState {
+struct ImageState {
+    QEModeData base;
+    ImageBufferState *ibs;
     QEBitmap *disp_bmp;
     int x, y; /* position of the center of the image in window */
     int w, h; /* displayed size */
     int xfactor_num, xfactor_den;
     int yfactor_num, yfactor_den;
+    /* XXX: should also have a current zone with mark(x/y) and cur(x/y) */
     QEColor background_color; /* transparent to display tiles */
-} ImageState;
-
-static EditBufferDataType image_data_type;
+};
 
 int qe_bitmap_format_to_pix_fmt(int format)
 {
@@ -89,6 +99,7 @@ void fill_border(EditState *s, int x, int y, int w, int h, int color)
     h2 = s->height - (y + h);
     if (h2 < 0)
         h2 = 0;
+
     fill_rectangle(s->screen,
                    s->xleft, s->ytop,
                    w1, s->height,
@@ -125,12 +136,20 @@ void draw_alpha_grid(EditState *s, int x1, int y1, int w, int h)
     }
 }
 
+static ImageState *image_get_state(EditState *e, int status)
+{
+    return qe_get_window_mode_data(e, &image_mode, status);
+}
+
 /* transp: 0x94 and 0x64, 16x16 grid */
 
 static void image_display(EditState *s)
 {
-    ImageState *is = s->mode_data;
+    ImageState *is = image_get_state(s, 0);
     int x, y;
+
+    if (!is)
+        return;
 
     if (s->display_invalid) {
         if (is->disp_bmp) {
@@ -166,9 +185,14 @@ static int gcd(int a, int b)
 /* resize current image using the current factors */
 static void image_resize(EditState *s)
 {
-    ImageState *is = s->mode_data;
-    ImageBuffer *ib = s->b->data;
+    ImageState *is = image_get_state(s, 1);
+    ImageBuffer *ib;
     int d, w, h;
+
+    if (!is)
+        return;
+
+    ib = is->ibs->ib;
 
     /* simplify factors */
     d = gcd(is->xfactor_num, is->xfactor_den);
@@ -190,8 +214,7 @@ static void image_resize(EditState *s)
         h = 1;
 
     /* if no resize needed, exit */
-    if (w == is->w &&
-        h == is->h)
+    if (w == is->w && h == is->h)
         return;
 
     edit_invalidate(s);
@@ -200,7 +223,10 @@ static void image_resize(EditState *s)
 
 static void image_normal_size(EditState *s)
 {
-    ImageState *is = s->mode_data;
+    ImageState *is = image_get_state(s, 1);
+
+    if (!is)
+        return;
 
     is->xfactor_num = 1;
     is->xfactor_den = 1;
@@ -214,7 +240,10 @@ static void image_normal_size(EditState *s)
 /* increase or decrease image size by percent */
 static void image_mult_size(EditState *s, int percent)
 {
-    ImageState *is = s->mode_data;
+    ImageState *is = image_get_state(s, 1);
+
+    if (!is)
+        return;
 
     is->xfactor_num *= (100 + percent);
     is->xfactor_den *= 100;
@@ -226,8 +255,13 @@ static void image_mult_size(EditState *s, int percent)
 
 static void image_set_size(EditState *s, int w, int h)
 {
-    ImageState *is = s->mode_data;
-    ImageBuffer *ib = s->b->data;
+    ImageState *is = image_get_state(s, 1);
+    ImageBuffer *ib;
+
+    if (!is)
+        return;
+
+    ib = is->ibs->ib;
 
     if (w < 1 || h < 1) {
         put_status(s, "Invalid image size");
@@ -258,6 +292,13 @@ static int image_mode_probe(ModeDef *mode, ModeProbeData *pd)
         return 100;
 }
 
+static void image_mode_free(EditBuffer *b, void *state)
+{
+    ImageBufferState *ibs = state;
+
+    image_free(&ibs->ib);
+}
+
 /* allocate a new image at the end of the buffer */
 static ImageBuffer *image_allocate(int pix_fmt, int width, int height)
 {
@@ -286,24 +327,26 @@ static ImageBuffer *image_allocate(int pix_fmt, int width, int height)
     return ib;
 }
 
-static void image_free(ImageBuffer *ib)
+static void image_free(ImageBuffer **ibp)
 {
-    qe_free(&ib->pict.data[0]);
-    qe_free(&ib);
+    if (*ibp) {
+        qe_free(&(*ibp)->pict.data[0]);
+        qe_free(ibp);
+    }
 }
-
 
 static int read_image_cb(void *opaque, AVImageInfo *info)
 {
-    EditBuffer *b = opaque;
+    ImageBufferState *ibs = opaque;
     ImageBuffer *ib;
     int i;
 
     ib = image_allocate(info->pix_fmt, info->width, info->height);
     if (!ib)
         return AVERROR_NOMEM;
+
+    ibs->ib = ib;
     ib->interleaved = info->interleaved;
-    b->data = ib;
     for (i = 0; i < 4; i++) {
         info->pict.linesize[i] = ib->pict.linesize[i];
         info->pict.data[i] = ib->pict.data[i];
@@ -314,41 +357,60 @@ static int read_image_cb(void *opaque, AVImageInfo *info)
 static int image_buffer_load(EditBuffer *b, FILE *f)
 {
     ByteIOContext pb1, *pb = &pb1;
+    ImageBufferState *ibs;
     int ret;
+
+    ibs = qe_get_buffer_mode_data(b, &image_mode, NULL);
+    if (!ibs)
+        return;
 
     /* start loading the image */
     ret = url_fopen(pb, b->filename, URL_RDONLY);
     if (ret < 0)
         return -1;
 
-    ret = av_read_image(pb, b->filename, NULL, read_image_cb, b);
+    ret = av_read_image(pb, b->filename, NULL, read_image_cb, ibs);
     url_fclose(pb);
     if (ret) {
         return -1;
     } else {
-        ImageBuffer *ib = b->data;
+        ImageBuffer *ib = ibs->ib;
         ib->alpha_info = img_get_alpha_info(&ib->pict, ib->pix_fmt,
                                             ib->width, ib->height);
         return 0;
     }
 }
 
-static void set_new_image(EditBuffer *b, ImageBuffer *ib)
+static int set_new_image(EditBuffer *b, ImageBuffer *ib)
 {
-    b->data = ib;
+    ImageBufferState *ibs = qe_get_buffer_mode_data(b, &image_mode, NULL);
+
+    if (!ibs)
+        return -1;
+
+    image_free(&ibs->ib);
+    ibs->ib = ib;
+    /* XXX: should signal all windows that image changed? */
     eb_invalidate_raw_data(b);
-    b->modified = 1;
+    b->modified = 1;  /* not really */
+    return 0;
 }
 
 static int image_buffer_save(EditBuffer *b, int start, int end,
                              const char *filename)
 {
     ByteIOContext pb1, *pb = &pb1;
-    ImageBuffer *ib = b->data;
+    ImageBufferState *ibs = qe_get_buffer_mode_data(b, &image_mode, NULL);
+    ImageBuffer *ib;
     ImageBuffer *ib1 = NULL;
     int ret, dst_pix_fmt, loss;
     AVImageFormat *fmt;
     AVImageInfo info;
+
+    if (!ibs || !ibs->ib)
+        return -1;
+
+    ib = ibs->ib;
 
     /* find image format */
     fmt = guess_image_format(filename);
@@ -360,17 +422,18 @@ static int image_buffer_save(EditBuffer *b, int start, int end,
                                             ib->pix_fmt, ib->alpha_info, &loss);
     if (dst_pix_fmt < 0)
         return -1;
+
     /* convert to new format if needed */
     if (dst_pix_fmt != ib->pix_fmt) {
         ib1 = image_allocate(dst_pix_fmt, ib->width, ib->height);
         if (!ib1)
             return -1;
         if (img_convert(&ib1->pict, ib1->pix_fmt,
-                        &ib->pict, ib->pix_fmt, ib->width, ib->height) < 0)
+                        &ib->pict, ib->pix_fmt, ib->width, ib->height) < 0) {
+            image_free(&ib1);
             return -1;
-
+        }
         set_new_image(b, ib1);
-        image_free(ib);
         ib = ib1;
     }
 
@@ -392,22 +455,27 @@ static int image_buffer_save(EditBuffer *b, int start, int end,
 
 static void image_buffer_close(EditBuffer *b)
 {
-    ImageBuffer *ib = b->data;
+    ImageBufferState *ibs = qe_get_buffer_mode_data(b, &image_mode, NULL);
 
-    image_free(ib);
-    b->data = NULL;
+    if (ibs) {
+        image_free(&ibs->ib);
+    }
 }
-
 
 static void update_bmp(EditState *s)
 {
-    ImageState *is = s->mode_data;
-    ImageBuffer *ib = s->b->data;
+    ImageState *is = image_get_state(s, 1);
+    ImageBuffer *ib;
     QEPicture pict;
     AVPicture avpict;
     ImageBuffer *ib1;
     int dst_pix_fmt;
     int i;
+
+    if (!is)
+        return;
+
+    ib = is->ibs->ib;
 
     bmp_free(s->screen, &is->disp_bmp);
 
@@ -487,17 +555,28 @@ static void update_bmp(EditState *s)
 static int image_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
-        ImageState *is = s->mode_data;
-        ImageBuffer *ib = s->b->data;
+        if (flags & MODEF_NEWINSTANCE) {
+            ImageState *is = qe_get_window_mode_data(s, &image_mode, 0);
+            ImageBufferState *ibs = qe_get_buffer_mode_data(b, &image_mode, NULL);
+            ImageBuffer *ib;
 
-        is->w = ib->width;
-        is->h = ib->height;
-        is->xfactor_num = 1;
-        is->xfactor_den = 1;
-        is->yfactor_num = 1;
-        is->yfactor_den = 1;
-        is->background_color = 0; /* display tiles */
+            if (!ibs || !is)
+                return -1;
 
+            ib = qe_mallocz(ImageBuffer);
+            if (!ib)
+                return -1;
+
+            is->ibs = ibs;
+            ibs->ib = ib;
+            is->w = ib->width;
+            is->h = ib->height;
+            is->xfactor_num = 1;
+            is->xfactor_den = 1;
+            is->yfactor_num = 1;
+            is->yfactor_den = 1;
+            is->background_color = 0; /* display tiles */
+        }
         update_bmp(s);
 
         eb_add_callback(s->b, image_callback, s, 1);
@@ -507,8 +586,11 @@ static int image_mode_init(EditState *s, EditBuffer *b, int flags)
 
 static void update_pos(EditState *s, int dx, int dy)
 {
-    ImageState *is = s->mode_data;
+    ImageState *is = image_get_state(s, 1);
     int delta;
+
+    if (!is)
+        return;
 
     is->x += dx;
     delta = (s->width - is->w) / 2;
@@ -573,7 +655,10 @@ static void image_scroll_up_down(EditState *s, int dir)
 
 static void image_mode_close(EditState *s)
 {
-    ImageState *is = s->mode_data;
+    ImageState *is = image_get_state(s, 0);
+
+    if (!is)
+        return;
 
     bmp_free(s->screen, &is->disp_bmp);
     eb_free_callback(s->b, image_callback, s);
@@ -581,7 +666,7 @@ static void image_mode_close(EditState *s)
 
 /* when the image is modified, reparse it */
 static void image_callback(EditBuffer *b, void *opaque, int arg,
-                          enum LogOperation op, int offset, int size)
+                           enum LogOperation op, int offset, int size)
 {
     //    EditState *s = opaque;
 
@@ -663,11 +748,15 @@ static int img_rotate(AVPicture *dst,
 
 static void image_rotate(EditState *e)
 {
-    ImageState *is = e->mode_data;
-    EditBuffer *b = e->b;
-    ImageBuffer *ib = b->data;
+    ImageState *is = image_get_state(e, 1);
+    ImageBuffer *ib;
     int ret, w, h, pix_fmt;
     ImageBuffer *ib1;
+
+    if (!is)
+        return;
+
+    ib = is->ibs->ib;
 
     pix_fmt = ib->pix_fmt;
     w = ib->width;
@@ -686,8 +775,7 @@ static void image_rotate(EditState *e)
         return;
     }
     ib1->alpha_info = ib->alpha_info;
-    set_new_image(b, ib1);
-    image_free(ib);
+    set_new_image(e->b, ib1);
     /* temporary */
     is->w = h;
     is->h = w;
@@ -697,7 +785,10 @@ static void image_rotate(EditState *e)
 
 static void image_set_background_color(EditState *e, const char *color_str)
 {
-    ImageState *is = e->mode_data;
+    ImageState *is = image_get_state(s, 0);
+
+    if (!is)
+        return;
 
     css_get_color(&is->background_color, color_str);
     update_bmp(e);
@@ -705,11 +796,16 @@ static void image_set_background_color(EditState *e, const char *color_str)
 
 static void image_convert(EditState *e, const char *pix_fmt_str)
 {
-    EditBuffer *b = e->b;
-    ImageBuffer *ib = b->data;
+    ImageState *is = image_get_state(s, 0);
+    ImageBuffer *ib;
     int ret, new_pix_fmt, i, loss;
     ImageBuffer *ib1;
     const char *name;
+
+    if (!is)
+        return;
+
+    ib = is->ibs->ib;
 
     for (i = 0; i < PIX_FMT_NB; i++) {
         name = avcodec_get_pix_fmt_name(i);
@@ -754,8 +850,7 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
     }
     ib1->alpha_info = img_get_alpha_info(&ib1->pict, ib1->pix_fmt,
                                          ib1->width, ib1->height);
-    set_new_image(b, ib1);
-    image_free(ib);
+    set_new_image(e->b, ib1);
     /* suppress that and use callback */
     update_bmp(e);
 }
@@ -763,8 +858,14 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
 void image_mode_line(EditState *s, buf_t *out)
 {
     EditBuffer *b = s->b;
-    ImageBuffer *ib = b->data;
+    ImageState *is = image_get_state(s, 0);
+    ImageBuffer *ib;
     char alpha_mode;
+
+    if (!is)
+        return;
+
+    ib = is->ib;
 
     basic_mode_line(s, out, '-');
 
@@ -822,25 +923,27 @@ static CmdDef image_commands[] = {
     CMD_DEF_END,
 };
 
+static EditBufferDataType image_data_type = {
+    "image",
+    image_buffer_load,
+    image_buffer_save,
+    image_buffer_close,
+};
+
 ModeDef image_mode = {
     .name = "image",
-    .instance_size = sizeof(ImageState),
+    .buffer_instance_size = sizeof(ImageBufferState),
+    .window_instance_size = sizeof(ImageState),
     .mode_probe = image_mode_probe,
     .mode_init = image_mode_init,
     .mode_close = image_mode_close,
+    .mode_free = image_mode_free,
     .display = image_display,
     .move_up_down = image_move_up_down,
     .move_left_right = image_move_left_right,
     .scroll_up_down = image_scroll_up_down,
     .data_type = &image_data_type,
     .get_mode_line = image_mode_line,
-};
-
-static EditBufferDataType image_data_type = {
-    "image",
-    image_buffer_load,
-    image_buffer_save,
-    image_buffer_close,
 };
 
 static int image_init(void)

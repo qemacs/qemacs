@@ -20,8 +20,11 @@
 
 #include "qe.h"
 
-/* Archivers */
-typedef struct ArchiveType {
+/*---------------- Archivers ----------------*/
+
+typedef struct ArchiveType ArchiveType;
+
+struct ArchiveType {
     const char *name;           /* name of archive format */
     const char *magic;          /* magic signature */
     int magic_size;
@@ -29,7 +32,7 @@ typedef struct ArchiveType {
     const char *list_cmd;       /* list archive contents to stdout */
     const char *extract_cmd;    /* extract archive element to stdout */
     struct ArchiveType *next;
-} ArchiveType;
+};
 
 static ArchiveType archive_type_array[] = {
     { "tar", NULL, 0, "tar|tar.Z|tgz|tar.gz|tbz|tbz2|tar.bz2|tar.bzip2|"
@@ -47,34 +50,6 @@ static ArchiveType archive_type_array[] = {
 };
 
 static ArchiveType *archive_types;
-
-/* Compressors */
-typedef struct CompressType {
-    const char *name;           /* name of compressed format */
-    const char *magic;          /* magic signature */
-    int magic_size;
-    const char *extensions;
-    const char *load_cmd;       /* uncompress file to stdout */
-    const char *save_cmd;       /* compress to file from stdin */
-    struct CompressType *next;
-} CompressType;
-
-static CompressType compress_type_array[] = {
-    { "gzip", NULL, 0, "gz", "gunzip -c $1", "gzip > $1" },
-    { "bzip2", NULL, 0, "bz2|bzip2", "bunzip2 -c $1", "bzip2 > $1" },
-    { "compress", NULL, 0, "Z", "uncompress -c $1", "compress > $1" },
-    { "LZMA", NULL, 0, "lzma", "unlzma -c $1", "lzma > $1" },
-    { "XZ", NULL, 0, "xz", "unxz -c $1", "xz > $1" },
-    { "BinHex", NULL, 0, "hqx", "binhex decode -o /tmp/qe-$$ $1 && "
-                       "cat /tmp/qe-$$ ; rm -f /tmp/qe-$$", NULL },
-    { "sqlite", "SQLite format 3\0", 16, NULL, "sqlite3 $1 .dump", NULL },
-    { "bplist", "bplist00", 8, "plist", "plutil -p $1", NULL },
-//    { "bplist", "bplist00", 8, "plist", "plutil -convert xml1 -o - $1", NULL },
-};
-
-static CompressType *compress_types;
-
-/*---------------- Archivers ----------------*/
 
 static ArchiveType *find_archive_type(const char *filename,
                                       const u8 *buf, int buf_size)
@@ -99,9 +74,9 @@ static int archive_mode_probe(ModeDef *mode, ModeProbeData *p)
     ArchiveType *atp = find_archive_type(p->filename, p->buf, p->buf_size);
 
     if (atp) {
-        if (p->b && p->b->priv_data) {
+        if (p->b && p->b->data_type == mode->data_type) {
             /* buffer loaded, re-selecting mode causes buffer reload */
-            return 9;
+            return 0;//9
         } else {
             /* buffer not yet loaded */
             return 85;//70
@@ -138,8 +113,6 @@ static int qe_shell_subst(char *buf, int size, const char *cmd,
     }
     return out->len;
 }
-
-static ModeDef archive_mode;
 
 static int file_read_block(EditBuffer *b, FILE *f1, u8 *buf, int buf_size)
 {
@@ -205,6 +178,12 @@ static EditBufferDataType archive_data_type = {
     NULL, /* next */
 };
 
+static ModeDef archive_mode = {
+    .name = "archive",
+    .mode_probe = archive_mode_probe,
+    .data_type = &archive_data_type,
+};
+
 static int archive_init(void)
 {
     int i;
@@ -229,6 +208,33 @@ static int archive_init(void)
 
 /*---------------- Compressors ----------------*/
 
+typedef struct CompressType CompressType;
+
+struct CompressType {
+    const char *name;           /* name of compressed format */
+    const char *magic;          /* magic signature */
+    int magic_size;
+    const char *extensions;
+    const char *load_cmd;       /* uncompress file to stdout */
+    const char *save_cmd;       /* compress to file from stdin */
+    struct CompressType *next;
+};
+
+static CompressType compress_type_array[] = {
+    { "gzip", NULL, 0, "gz", "gunzip -c $1", "gzip > $1" },
+    { "bzip2", NULL, 0, "bz2|bzip2", "bunzip2 -c $1", "bzip2 > $1" },
+    { "compress", NULL, 0, "Z", "uncompress -c $1", "compress > $1" },
+    { "LZMA", NULL, 0, "lzma", "unlzma -c $1", "lzma > $1" },
+    { "XZ", NULL, 0, "xz", "unxz -c $1", "xz > $1" },
+    { "BinHex", NULL, 0, "hqx", "binhex decode -o /tmp/qe-$$ $1 && "
+                       "cat /tmp/qe-$$ ; rm -f /tmp/qe-$$", NULL },
+    { "sqlite", "SQLite format 3\0", 16, NULL, "sqlite3 $1 .dump", NULL },
+    { "bplist", "bplist00", 8, "plist", "plutil -p $1", NULL },
+//    { "bplist", "bplist00", 8, "plist", "plutil -convert xml1 -o - $1", NULL },
+};
+
+static CompressType *compress_types;
+
 static CompressType *find_compress_type(const char *filename,
                                         const u8 *buf, int buf_size)
 {
@@ -252,9 +258,9 @@ static int compress_mode_probe(ModeDef *mode, ModeProbeData *p)
     CompressType *ctp = find_compress_type(p->filename, p->buf, p->buf_size);
 
     if (ctp) {
-        if (p->b && p->b->priv_data) {
+        if (p->b && p->b->data_type == mode->data_type) {
             /* buffer loaded, re-selecting mode causes buffer reload */
-            return 9;
+            return 0;//9;
         } else {
             /* buffer not yet loaded */
             return 82;
@@ -263,8 +269,6 @@ static int compress_mode_probe(ModeDef *mode, ModeProbeData *p)
 
     return 0;
 }
-
-static ModeDef compress_mode;
 
 static int compress_buffer_load(EditBuffer *b, FILE *f)
 {
@@ -313,6 +317,12 @@ static EditBufferDataType compress_data_type = {
     NULL, /* next */
 };
 
+static ModeDef compress_mode = {
+    .name = "compress",
+    .mode_probe = compress_mode_probe,
+    .data_type = &compress_data_type,
+};
+
 static int compress_init(void)
 {
     int i;
@@ -344,7 +354,7 @@ static int wget_mode_probe(ModeDef *mode, ModeProbeData *p)
     if (strstart(p->real_filename, "http:", NULL)
     ||  strstart(p->real_filename, "https:", NULL)
     ||  strstart(p->real_filename, "ftp:", NULL)) {
-        if (p->b && p->b->priv_data) {
+        if (p->b && p->b->data_type == mode->data_type) {
             /* buffer loaded, re-selecting mode causes buffer reload */
             return 9;
         } else {
@@ -430,7 +440,7 @@ static int man_mode_probe(ModeDef *mode, ModeProbeData *p)
          !memcmp(p->buf, "'''", 3) ||
          !memcmp(p->buf, "\\\"", 2))) {
     has_man:
-        if (p->b && p->b->priv_data) {
+        if (p->b && p->b->data_type == mode->data_type) {
             /* buffer loaded, re-selecting mode causes buffer reload */
             return 9;
         } else {
