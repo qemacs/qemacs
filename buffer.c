@@ -299,8 +299,8 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
                      EditBuffer *src, int src_offset,
                      int size)
 {
-    Page *p, *p_start, *q;
-    int len, n, page_index, size0;
+    Page *p;
+    int len, size0;
 
     if (dest->flags & BF_READONLY)
         return 0;
@@ -323,7 +323,6 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
     eb_addlog(dest, LOGOP_INSERT, dest_offset, size);
 #if 1
     /* Much simpler algorithm with fewer pathological cases */
-    n = 0; q = NULL; p_start = NULL; page_index = 0; /* Unused variables */
     p = find_page(src, src_offset, &src_offset);
     while (size > 0) {
         len = p->size - src_offset;
@@ -349,6 +348,9 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
     }
     return size0;
 #else
+    Page *p_start, *q;
+    int n, page_index;
+
     /* insert the data from the first page if it is not completely
        selected */
     p = find_page(src, src_offset, &src_offset);
@@ -557,7 +559,7 @@ EditBuffer *eb_find(const char *name)
     }
     return NULL;
 }
-#define eb_cache_remove(b)  0
+#define eb_cache_remove(b)
 #define eb_cache_insert(b)  0
 #else
 /* return index >= 0 if found, -1-insert_pos if not found */
