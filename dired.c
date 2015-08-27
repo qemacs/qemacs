@@ -299,7 +299,7 @@ static int format_date(char *dest, int size,
     case TF_TOUCH:
     case TF_TOUCH_LONG:
         buf_printf(out, "%02d%02d%02d%02d%02d",
-                   systm.tm_year % 100,  /* year */ 
+                   systm.tm_year % 100,  /* year */
                    fmonth,               /* month */
                    systm.tm_mday,        /* day */
                    systm.tm_hour,        /* hours */
@@ -313,7 +313,7 @@ static int format_date(char *dest, int size,
         buf_printf(out, "%s %2d %4d  %2d:%02d",
                    month[fmonth],        /* month */
                    systm.tm_mday,        /* day */
-                   systm.tm_year + 1900, /* year */ 
+                   systm.tm_year + 1900, /* year */
                    systm.tm_hour,        /* hours */
                    systm.tm_min);        /* minutes */
         if (time_format == TF_DOS_LONG) {
@@ -327,7 +327,7 @@ static int format_date(char *dest, int size,
                    systm.tm_hour,        /* hours */
                    systm.tm_min,         /* minutes */
                    systm.tm_sec,         /* seconds */
-                   systm.tm_year + 1900); /* year */ 
+                   systm.tm_year + 1900); /* year */
         break;
     case TF_SECONDS:
         buf_printf(out, "%10lu", systime); /* seconds */
@@ -345,7 +345,7 @@ static int format_date(char *dest, int size,
             buf_printf(out,     "%s %2d  %4d",
                        month[fmonth],        /* month */
                        systm.tm_mday,        /* day */
-                       systm.tm_year + 1900); /* year */ 
+                       systm.tm_year + 1900); /* year */
         }
         break;
     }
@@ -425,7 +425,7 @@ static char *compute_attr(char *atts, mode_t mode)
         if (S_ISSOCK(mode)  /* socket */)
             atts[0] = 's';
 #endif
-        if (S_ISLNK(mode))  /* symbolic link */  
+        if (S_ISLNK(mode))  /* symbolic link */
             atts[0] = 'l';  /* overrides directory */
     }
 
@@ -825,7 +825,7 @@ static void dired_build_list(DiredState *ds, const char *path,
         }
     }
     find_file_close(&ffst);
-    
+
     dired_sort_list(ds, b, s);
     if (s) {
         index = dired_find_target(ds, target);
@@ -924,7 +924,7 @@ static void dired_parent(EditState *s)
         if (e && (e->b->flags & BF_DIRED)) {
             s->qe_state->active_window = e;
             return;
-        }        
+        }
     }
 
     if (!(ds = dired_get_state(s, 1)))

@@ -533,7 +533,7 @@ static int charset_goto_char_utf8(CharsetDecodeState *s,
         c = *buf_ptr;
         if (c == '\n' && s->eol_type == EOL_DOS) {
             /* ignore \n in EOL_DOS scan, but count \r.
-             * see comment above. 
+             * see comment above.
              */
             continue;
         }
@@ -1473,7 +1473,7 @@ done_utf8:
     {
         /* Need a more reliable generic ucs2/ucs4 detection */
         int maxc[4];
-        
+
         maxc[0] = maxc[1] = maxc[2] = maxc[3] = 0;
         for (i = 0; i < size; i += 2) {
             if (buf[i] > maxc[i & 3])

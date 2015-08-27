@@ -295,7 +295,7 @@ char *make_user_path(char *buf, int buf_size, const char *path)
     homedir = getenv("HOME");
     if (homedir) {
         int len = strlen(homedir);
-        
+
         if (len && homedir[len - 1] == '/')
             len--;
 
@@ -318,7 +318,7 @@ char *reduce_filename(char *dest, int size, const char *filename)
     /* Strip cvs temp file prefix */
     if (base[0] == '.' && base[1] == '#' && base[2] != '\0')
         base += 2;
-    
+
     pstrcat(dest, size, base);
 
     dbase = get_basename_nc(dest);
@@ -341,7 +341,7 @@ char *reduce_filename(char *dest, int size, const char *filename)
             break;
         *ext = '\0';
     }
-    
+
     if (*ext == '.') {
         /* Convert all upper case filenames with extension to lower
          * case */
@@ -644,7 +644,7 @@ int strfind(const char *list, const char *s)
                 for (;;) {
                     if (c2 == '|')
                         goto scan;
-                    
+
                     if (c2 == '\0')
                         return 0;
                 skip:
@@ -693,7 +693,7 @@ int strxfind(const char *list, const char *s)
                 for (;;) {
                     if (c2 == '|')
                         goto scan;
-                    
+
                     if (c2 == '\0')
                         return 0;
                 skip:

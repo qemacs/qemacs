@@ -965,7 +965,7 @@ void do_left_right(EditState *s, int dir)
         &&  dir < 0 && eb_at_bol(s->b, s->offset)) {
             s->qe_state->active_window = e;
             return;
-        }        
+        }
     }
 #endif
     if (s->mode->move_left_right)
@@ -1686,7 +1686,7 @@ EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
 
     if (qs->yank_buffers[cur]) {
         cur = (cur + 1) % NB_YANK_BUFFERS;
-        qs->yank_current = cur; 
+        qs->yank_current = cur;
         /* Maybe should instead just clear the buffer and reset styles */
         qe_kill_buffer(qs->yank_buffers[cur]);
         qs->yank_buffers[cur] = NULL;
@@ -1976,7 +1976,7 @@ int qe_free_mode_data(QEModeData *md)
             md->s->mode_data = NULL;
             rc = 0;
         }
-    }        
+    }
     qe_free(&md);
     return rc;
 }
@@ -4642,7 +4642,7 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
     size = strlen(name) + 1 + 2 + strlen(keys) + 2;
     buf = qe_malloc_array(char, size);
 
-    /* CG: should parse macro keys to an array and pass index 
+    /* CG: should parse macro keys to an array and pass index
      * to do_execute_macro.
      */
     snprintf(buf, size, "%s%cS{%s}", name, 0, keys);
@@ -6133,7 +6133,7 @@ static int probe_mode(EditState *s, EditBuffer *b,
 }
 
 /* Select appropriate mode for buffer:
- * iff dir == 0, select best mode 
+ * iff dir == 0, select best mode
  * iff dir > 0, select next mode
  * iff dir < 0, select previous mode
  */

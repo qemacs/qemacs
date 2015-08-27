@@ -1471,7 +1471,7 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
 
 /* compute offset after moving 'n' chars from 'offset'.
  * 'n' can be negative
- */ 
+ */
 int eb_skip_chars(EditBuffer *b, int offset, int n)
 {
     while (n < 0) {
@@ -1489,7 +1489,7 @@ int eb_skip_chars(EditBuffer *b, int offset, int n)
 int eb_delete_uchar(EditBuffer *b, int offset)
 {
     int offset1;
-    
+
     eb_nextc(b, offset, &offset1);
     if (offset < offset1) {
         return eb_delete(b, offset, offset1 - offset);
@@ -1510,7 +1510,7 @@ int eb_delete_chars(EditBuffer *b, int offset, int n)
         offset += size;
         offset1 -= size;
         size = -size;
-    }        
+    }
 
     return eb_delete(b, offset, size);
 }
@@ -2444,7 +2444,7 @@ int eb_goto_bol2(EditBuffer *b, int offset, int *countp)
 int eb_is_blank_line(EditBuffer *b, int offset, int *offset1)
 {
     int c;
-    
+
     while ((c = eb_nextc(b, offset, &offset)) != '\n') {
         if (!qe_isblank(c))
             return 0;

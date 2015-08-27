@@ -29,7 +29,7 @@ static CmdDef basic_commands[] = {
     /* Character insertion */
 
     CMD2( KEY_DEFAULT, KEY_NONE,
-	  "self-insert-command", do_char, ESii,
+          "self-insert-command", do_char, ESii,
           "*" "kiui")
     CMD2( KEY_META('#'), KEY_NONE,
           "insert-char", do_char, ESii,
@@ -162,8 +162,8 @@ static CmdDef basic_commands[] = {
           "not-modified", do_not_modified, ESi, "ui")
     CMD2( KEY_NONE, KEY_NONE,
           "set-visited-file-name", do_set_visited_file_name, ESss,
-	  "s{Set visited file name: }[file]|file|"
-	  "s{Rename file? }|newname|")
+          "s{Set visited file name: }[file]|file|"
+          "s{Rename file? }|newname|")
 
     /*---------------- Search and replace ----------------*/
 
@@ -171,14 +171,14 @@ static CmdDef basic_commands[] = {
     /* mg binds search-forward to M-s */
     CMD3( KEY_META('S'), KEY_NONE,
           "search-forward", do_search_string, ESsi, 1,
-	  "s{Search forward: }|search|"
-	  "v")
+          "s{Search forward: }|search|"
+          "v")
     /* M-C-r should be bound to isearch-backward-regex */
     /* mg binds search-forward to M-r */
     CMD3( KEY_META('R'), KEY_NONE,
           "search-backward", do_search_string, ESsi, -1,
-	  "s{Search backward: }|search|"
-	  "v")
+          "s{Search backward: }|search|"
+          "v")
     /* passing argument should switch to regex incremental search */
     CMD1( KEY_CTRL('r'), KEY_NONE,
           "isearch-backward", do_isearch, -1 )
@@ -186,15 +186,15 @@ static CmdDef basic_commands[] = {
           "isearch-forward", do_isearch, 1 )
     CMD2( KEY_META('%'), KEY_NONE,
           "query-replace", do_query_replace, ESss,
-	  "*" "s{Query replace: }|search|"
-	  "s{With: }|replace|")
+          "*" "s{Query replace: }|search|"
+          "s{With: }|replace|")
     /* passing argument restricts replace to word matches */
     /* XXX: non standard binding */
     CMD2( KEY_META('r'), KEY_NONE,
           "replace-string", do_replace_string, ESssi,
-	  "*" "s{Replace String: }|search|"
-	  "s{With: }|replace|"
-	  "ui")
+          "*" "s{Replace String: }|search|"
+          "s{With: }|replace|"
+          "ui")
 
     /*---------------- Paragraph / case handling ----------------*/
 
@@ -226,8 +226,8 @@ static CmdDef basic_commands[] = {
 
     CMD2( KEY_META('x'), KEY_NONE,
           "execute-command", do_execute_command, ESsi,
-	  "s{Command: }[command]|command|"
-	  "ui")
+          "s{Command: }[command]|command|"
+          "ui")
     /* M-0 thru M-9 also start numeric argument */
     CMD0( KEY_CTRL('u'), KEY_META('-'),
           "numeric-argument", do_numeric_argument)
@@ -241,20 +241,20 @@ static CmdDef basic_commands[] = {
           "call-last-kbd-macro", do_call_macro)
     CMD2( KEY_NONE, KEY_NONE,
           "define-kbd-macro", do_define_kbd_macro, ESsss,
-	  "s{Macro name: }[command]"
-	  "s{Macro keys: }|macrokeys|"
-	  "s{Bind to key: }[key]")
+          "s{Macro name: }[command]"
+          "s{Macro keys: }|macrokeys|"
+          "s{Bind to key: }[key]")
     /* set/unset key? */
     CMD3( KEY_NONE, KEY_NONE,
           "global-set-key", do_set_key, ESssi, 0,
           "s{Set key globally: }[key]"
-	  "s{command: }[command]|command|"
-	  "v")
+          "s{command: }[command]|command|"
+          "v")
     CMD3( KEY_NONE, KEY_NONE,
           "local-set-key", do_set_key, ESssi, 1,
           "s{Set key locally: }[key]"
-	  "s{command: }[command]|command|"
-	  "v")
+          "s{command: }[command]|command|"
+          "v")
 
     /*---------------- Window handling ----------------*/
 
@@ -324,8 +324,8 @@ static CmdDef basic_commands[] = {
 
     CMD2( KEY_NONE, KEY_NONE,
           "define-color", do_define_color, ESss,
-	  "s{Color name: }[color]|color|"
-	  "s{Color value: }[color]|color|")
+          "s{Color name: }[color]|color|"
+          "s{Color value: }[color]|color|")
     CMD2( KEY_NONE, KEY_NONE,
           "set-style", do_set_style, ESsss,
           "s{Style: }[style]|style|"
@@ -333,12 +333,12 @@ static CmdDef basic_commands[] = {
           "s{CSS Property Value: }|value|")
     CMD2( KEY_NONE, KEY_NONE,
           "set-display-size", do_set_display_size, ESii,
-	  "i{Width: }|width|"
-	  "i{Height: }|height|")
+          "i{Width: }|width|"
+          "i{Height: }|height|")
     CMD2( KEY_NONE, KEY_NONE,
           "set-system-font", do_set_system_font, ESss,
-	  "s{Font family: }|fontfamily|"
-	  "s{System fonts: }|fontnames|")
+          "s{Font family: }|fontfamily|"
+          "s{System fonts: }|fontnames|")
 
     /*---------------- Miscellaneous ----------------*/
 
@@ -422,7 +422,7 @@ static CmdDef basic_commands[] = {
 
 CmdDef minibuffer_commands[] = {
     CMD2( KEY_DEFAULT, KEY_NONE,
-	  "minibuffer-insert", do_minibuffer_char, ESii,
+          "minibuffer-insert", do_minibuffer_char, ESii,
           "*" "kiui")
     CMD1( KEY_RET, KEY_NONE,
           "minibuffer-exit", do_minibuffer_exit, 0)

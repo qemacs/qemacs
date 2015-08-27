@@ -158,9 +158,9 @@ static void rust_colorize_line(QEColorizeContext *cp,
             if (qe_isdigit(c)) {
                 int j;
                 // Integers:
-                // 0x[0-9a-fA-F_]+      // 
-                // 0o[0-8_]+            // 
-                // 0b[01_]+             // 
+                // 0x[0-9a-fA-F_]+      //
+                // 0o[0-8_]+            //
+                // 0b[01_]+             //
                 // [0-9][0-9_]*         //
                 // Floats:
                 // [0-9][0-9_]*\.[0-9_]*([eE][-\+]?[0-9_]+)?

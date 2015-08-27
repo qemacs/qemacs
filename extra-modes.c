@@ -44,7 +44,7 @@ static char const asm_prepkeywords1[] = {
 static char const asm_prepkeywords2[] = {
     "|catstr|endp|ends|enum|equ|group"
     "|label|macro|proc|record|segment|struc"
-    "|"    
+    "|"
 };
 
 /* colstate is used to store the comment character */
@@ -956,11 +956,11 @@ static void fortran_colorize_line(QEColorizeContext *cp,
                 i++;
             if (str[i] == '{') {
             preprocess:
-                i = n;                
+                i = n;
                 SET_COLOR(str, start, i, FORTRAN_STYLE_PREPROCESS);
                 continue;
             }
-            i = n;                
+            i = n;
             SET_COLOR(str, start, i, FORTRAN_STYLE_COMMENT);
             continue;
         case '\'':
@@ -2091,7 +2091,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
         case '`':
             /* special */
             continue;
-            
+
         case '\'':
         case '\"':
             /* parse string const */
@@ -2268,7 +2268,7 @@ static void python_colorize_line(QEColorizeContext *cp,
             i = n;
             SET_COLOR(str, start, i, PYTHON_STYLE_COMMENT);
             continue;
-            
+
         case '\'':
         case '\"':
             /* parse string const */
@@ -2382,7 +2382,7 @@ static void python_colorize_line(QEColorizeContext *cp,
                 if (qe_tolower(str[i]) == 'j') {
                     i++;
                 }
-                    
+
                 /* XXX: should detect malformed number constants */
                 SET_COLOR(str, start, i, PYTHON_STYLE_NUMBER);
                 continue;
@@ -2509,7 +2509,7 @@ static void ruby_colorize_line(QEColorizeContext *cp,
             while (qe_isblank(str[i]))
                 i++;
         }
-	sig = 0;
+        sig = 0;
         if (qe_isalpha_(str[i])) {
             sig = str[i++] % 61;
             for (; qe_isalnum_(str[i]); i++) {
@@ -2619,7 +2619,7 @@ static void ruby_colorize_line(QEColorizeContext *cp,
         comment:
             SET_COLOR(str, start, i, RUBY_STYLE_COMMENT);
             continue;
-            
+
         case '%':
             /* parse alternate string/array syntaxes */
             if (str[i] != '\0' && !qe_isblank(str[i]) && !qe_isalnum(str[i]))
@@ -2745,7 +2745,7 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                  * as eval(<<EOS), but not in the general case.
                  * We use a heuristical approach: let's assume here
                  * document ids are not separated from the << by white
-                 * space. 
+                 * space.
                  * XXX: should parse full here document syntax.
                  */
                 sig = 0;
@@ -3221,7 +3221,7 @@ static void elixir_colorize_line(QEColorizeContext *cp,
             i = n;
             style = ELIXIR_STYLE_COMMENT;
             break;
-            
+
         case '?':
             i = erlang_match_char(str, i);
             style = ELIXIR_STYLE_CHARCONST;

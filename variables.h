@@ -81,9 +81,9 @@ VarDef *qe_find_variable(const char *name);
 void qe_complete_variable(CompleteState *cp);
 
 QVarType qe_get_variable(EditState *s, const char *name,
-			 char *buf, int size, int *pnum, int as_source);
+                         char *buf, int size, int *pnum, int as_source);
 QVarType qe_set_variable(EditState *s, const char *name,
-			 const char *value, int num);
+                         const char *value, int num);
 
 void qe_list_variables(EditState *s, EditBuffer *b);
 

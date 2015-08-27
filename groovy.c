@@ -254,7 +254,7 @@ static void groovy_colorize_line(QEColorizeContext *cp,
                 break;
             }
             continue;
-            
+
         case '~':
             while (qe_isblank(str[i]))
                 i++;

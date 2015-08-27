@@ -377,7 +377,7 @@ static const char dart_types[] = {
     "Date|DateTime|TimeZone|Duration|Stopwatch|DartType|"
     "Collection|Comparable|Completer|Future|Match|Options|Pattern|"
     "HashMap|HashSet|Iterable|Iterator|LinkedHashMap|List|Map|Queue|Set|"
-    "Dynamic|Exception|Error|AssertionError|TypeError|FallThroughError|" 
+    "Dynamic|Exception|Error|AssertionError|TypeError|FallThroughError|"
 };
 
 static const char pike_keywords[] = {
@@ -860,7 +860,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 if (str[i] == '\"') {
                     /* Csharp and Squirrel Verbatim strings */
                     /* ignore escape sequences and newlines */
-                    state |= IN_C_STRING;   // XXX: IN_RAW_STRING 
+                    state |= IN_C_STRING;   // XXX: IN_RAW_STRING
                     style1 = C_STYLE_STRING;
                     delim = str[i];
                     style = style1;
@@ -1042,7 +1042,7 @@ static void c_colorize_line(QEColorizeContext *cp,
     }
  the_end:
     if (state & (IN_C_COMMENT | IN_C_COMMENT1 | IN_C_COMMENT_D |
-                 IN_C_PREPROCESS | 
+                 IN_C_PREPROCESS |
                  IN_C_STRING | IN_C_STRING_Q | IN_C_STRING_BQ)) {
         /* set style on eol char */
         SET_COLOR1(str, n, style);
@@ -1228,11 +1228,11 @@ static void c_indent_line(EditState *s, int offset0)
                             state = INDENT_FIND_EQ;
                         }
                     } else {
-			if (stack[--stack_ptr] != '}') {
-			    /* XXX: syntax check ? */
-			    goto check_instr;
-			}
-			goto check_instr;
+                        if (stack[--stack_ptr] != '}') {
+                            /* XXX: syntax check ? */
+                            goto check_instr;
+                        }
+                        goto check_instr;
                     }
                     break;
                 case ')':
@@ -1247,9 +1247,9 @@ static void c_indent_line(EditState *s, int offset0)
                         pos = find_pos(s, buf, p - buf) + 1;
                         goto end_parse;
                     } else {
-			if (stack[--stack_ptr] != (c == '(' ? ')' : ']')) {
-			    /* XXX: syntax check ? */
-			}
+                        if (stack[--stack_ptr] != (c == '(' ? ')' : ']')) {
+                            /* XXX: syntax check ? */
+                        }
                     }
                     break;
                 case ' ':

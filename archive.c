@@ -429,7 +429,7 @@ static int man_mode_probe(ModeDef *mode, ModeProbeData *p)
                         "4.gz|5.gz|5ssl.gz|6.gz|7.gz|7ssl.gz|8.gz|9.gz")) {
         goto has_man;
     }
-   
+
     if (match_extension(p->real_filename,
                         "1|1m|1ssl|1tcl|2|3|3o|3ssl|4|5|5ssl|6|7|7ssl|8|9|"
                         "n|ntcl")

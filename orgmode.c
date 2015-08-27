@@ -532,7 +532,7 @@ static void do_org_insert_heading(EditState *s, int flags)
         offset += eb_insert_uchar(s->b, offset, '\n');
     } else {
         offset = offset0;
-    }        
+    }
     offset1 = offset;
     while (eb_match_uchar(s->b, offset1, ' ', &offset1))
         continue;

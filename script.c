@@ -73,7 +73,7 @@ static void script_colorize_line(QEColorizeContext *cp,
                 c = str[i++];
                 if (c == '\\' && i < n && str[start] == '"')
                     i++;
-		else
+                else
                 if ((unsigned int)c == str[start])
                     break;
             }

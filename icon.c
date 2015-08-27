@@ -92,7 +92,7 @@ static void icon_colorize_line(QEColorizeContext *cp,
             i = n;
             style = ICON_STYLE_COMMENT;
             break;
-                
+
         case '\'':      /* character constant */
         parse_string_q:
             state |= IN_ICON_STRING_Q;

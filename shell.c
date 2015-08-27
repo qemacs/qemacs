@@ -867,7 +867,7 @@ static void tty_emulate(ShellState *s, int c)
                     /* CG: Charset support is inherently broken here because
                      * bytes are inserted one at a time and charset conversion
                      * should not be performed between shell output and buffer
-                     * contents. UTF8 is special cased, other charsets need work. 
+                     * contents. UTF8 is special cased, other charsets need work.
                      */
                     /* CG: further improvement direction includes automatic
                      * conversion from ISO-8859-1 to UTF-8 for invalid UTF-8
@@ -1174,7 +1174,7 @@ static void tty_emulate(ShellState *s, int c)
             case 'g':  /* TBC: clear tabs */
                 break;
             case 'r':  /* DECSTBM: set scroll margins */
-                //put_status(NULL, "set scroll margins %d %d", 
+                //put_status(NULL, "set scroll margins %d %d",
                 //           s->esc_params[0], s->esc_params[1]);
                 break;
             case 'm':  /* SGR: set graphics rendition (style and colors) */
@@ -1289,7 +1289,7 @@ static void shell_mode_free(EditBuffer *b, void *state)
             while (waitpid(s->pid, &status, 0) != s->pid)
                 continue;
         }
-	set_pid_handler(s->pid, NULL, NULL);
+        set_pid_handler(s->pid, NULL, NULL);
         s->pid = -1;
     }
     if (s->pty_fd >= 0) {
@@ -1511,7 +1511,7 @@ static void do_man(EditState *s, const char *arg)
     char bufname[32];
     char cmd[128];
     EditBuffer *b;
-    
+
     /* Assume standard man command */
     snprintf(cmd, sizeof(cmd), "man %s", arg);
 
@@ -1535,7 +1535,7 @@ static void do_ssh(EditState *s, const char *arg)
     char bufname[64];
     char cmd[128];
     EditBuffer *b;
-    
+
     /* Use standard ssh command */
     snprintf(cmd, sizeof(cmd), "ssh %s", arg);
     snprintf(bufname, sizeof(bufname), "*ssh-%s*", arg);

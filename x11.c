@@ -1231,7 +1231,7 @@ static int x11_is_user_input_pending(__unused__ QEditScreen *s)
 typedef struct QExposeRegion QExposeRegion;
 struct QExposeRegion {
     int pending;
-    /* simplistic single rectangle region */ 
+    /* simplistic single rectangle region */
     int x0, y0, x1, y1;
 };
 

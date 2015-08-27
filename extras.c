@@ -650,7 +650,7 @@ void do_show_bindings(EditState *s, const char *cmd_name)
 {
     char buf[256];
     CmdDef *d;
-    
+
     if ((d = qe_find_cmd(cmd_name)) == NULL) {
         put_status(s, "No command %s", cmd_name);
         return;
@@ -914,7 +914,7 @@ static void do_describe_buffer(EditState *s, int argval)
         buf_puts(desc, " dos");
     if (b->eol_type == EOL_MAC)
         buf_puts(desc, " mac");
-        
+
     eb_printf(b1, "    eol_type: %d %s\n", b->eol_type, buf);
     eb_printf(b1, "     charset: %s  (bytes=%d, shift=%d)\n",
               b->charset->name, b->char_bytes, b->char_shift);
@@ -978,7 +978,7 @@ static void do_describe_buffer(EditState *s, int argval)
         int total_size = b->total_size;
         int offset, c, i, col, max_count, count_width;
         int word_char, word_count, nb_chars, line, column;
-        
+
         eb_get_pos(b, &line, &column, total_size);
         nb_chars = eb_get_char_offset(b, total_size);
 
@@ -1128,35 +1128,35 @@ static CmdDef extra_commands[] = {
     CMD3( KEY_NONE, KEY_NONE,
           "global-unset-key", do_unset_key, ESsi, 0,
           "s{Unset key globally: }[key]"
-	  "v")
+          "v")
     CMD3( KEY_NONE, KEY_NONE,
           "local-unset-key", do_unset_key, ESsi, 1,
           "s{Unset key locally: }[key]"
-	  "v")
+          "v")
 
     CMD0( KEY_CTRLH('?'), KEY_F1,
           "about-qemacs", do_about_qemacs)
     CMD2( KEY_CTRLH('a'), KEY_NONE,
           "apropos", do_apropos, ESs,
-	  "s{Apropos: }|apropos|")
+          "s{Apropos: }|apropos|")
     CMD0( KEY_CTRLH('b'), KEY_NONE,
           "describe-bindings", do_describe_bindings)
     CMD2( KEY_CTRLH('B'), KEY_NONE,
           "show-bindings", do_show_bindings, ESs,
-	  "s{Show bindings of command: }[command]|command|")
+          "s{Show bindings of command: }[command]|command|")
 
     CMD2( KEY_CTRLC('c'), KEY_NONE,
           "set-region-color", do_set_region_color, ESs,
-	  "s{Select color: }[color]|color|")
+          "s{Select color: }[color]|color|")
     CMD2( KEY_CTRLC('s'), KEY_NONE,
           "set-region-style", do_set_region_style, ESs,
-	  "s{Select style: }[style]|style|")
+          "s{Select style: }[style]|style|")
     CMD0( KEY_NONE, KEY_NONE,
           "drop-styles", do_drop_styles)
 
     CMD2( KEY_NONE, KEY_NONE,
           "set-eol-type", do_set_eol_type, ESi,
-    	  "ui{EOL Type [0=Unix, 1=Dos, 2=Mac]: }")
+          "ui{EOL Type [0=Unix, 1=Dos, 2=Mac]: }")
     CMD2( KEY_NONE, KEY_NONE,
           "describe-buffer", do_describe_buffer, ESi, "ui")
 

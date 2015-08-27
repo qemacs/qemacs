@@ -1,6 +1,6 @@
 /*
  * FriBidi - Library of BiDi algorithm
- * 
+ *
  * Copyright (C) 1999 Dov Grobgeld
  *
  * The optimizations to reduce the code size from 13 KB to 3 KB and
