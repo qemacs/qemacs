@@ -2,7 +2,7 @@
  * Directory editor mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2014 Charlie Gordon.
+ * Copyright (c) 2002-2015 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -44,6 +44,14 @@ enum {
     DIRED_SORT_DESCENDING = 32,
 };
 
+enum {
+    DIRED_UPDATE_SORT = 1,
+    DIRED_UPDATE_FILTER = 2,
+    DIRED_UPDATE_COLUMNS = 4,
+    DIRED_UPDATE_REBUILD = 8,
+    DIRED_UPDATE_ALL = 15,
+};
+
 enum time_format {
     TF_COMPACT,
     TF_DOS,
@@ -55,34 +63,30 @@ enum time_format {
     TF_MAX = TF_SECONDS,
 };
 
-static ModeDef dired_mode;
+typedef struct DiredState DiredState;
+typedef struct DiredItem DiredItem;
 
-static time_t curtime;
-
-/* XXX: need a function to set these variables and trigger refresh */
-static enum time_format dired_time_format;
-static int dired_show_dot_files = 1;
-#ifdef CONFIG_DARWIN
-static int dired_show_ds_store = 0;
-#endif
-
-typedef struct DiredState {
+struct DiredState {
     QEModeData base;    /* derived from QEModeData */
-    StringArray items;
-    int sort_mode; /* DIRED_SORT_GROUP | DIRED_SORT_NAME */
-    int last_index;
+    StringArray items;  /* XXX: should just use a generic array */
+    enum time_format time_format;
+    int show_dot_files;
+    int show_ds_store;
+    int hflag, nflag;
+    int sort_mode;
+    DiredItem *last_cur;
     long long total_bytes;
-    int ndirs, nfiles;
+    int ndirs, nfiles, ndirs_hidden, nfiles_hidden;
     int blocksize;
-    int hflag, nflag, last_width;
+    int last_width;
     int no_blocks, no_mode, no_link, no_uid, no_gid, no_size, no_date;
     int blockslen, modelen, linklen, uidlen, gidlen, sizelen, datelen, namelen;
     int fnamecol;
     char path[MAX_FILENAME_SIZE]; /* current path */
-} DiredState;
+};
 
 /* opaque structure for sorting DiredState.items StringArray */
-typedef struct DiredItem {
+struct DiredItem {
     DiredState *state;
     mode_t  mode;   /* inode protection mode */
     nlink_t nlink;  /* number of hard links to the file */
@@ -92,17 +96,38 @@ typedef struct DiredItem {
     time_t  mtime;
     off_t   size;
     int     offset;
+    char    hidden;
     char    mark;
     char    name[1];
-} DiredItem;
+};
+
+static ModeDef dired_mode;
+
+static time_t dired_curtime;
+
+static enum time_format dired_time_format;
+static int dired_show_dot_files = 1;
+static int dired_show_ds_store = 0;
+static int dired_nflag = 0; /* 0=name, 1=numeric, 2=hidden */
+static int dired_hflag = 0; /* 0=exact, 1=human-decimal, 2=human-binary */
+static int dired_sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
 
 static inline DiredState *dired_get_state(EditState *e, int status)
 {
     return qe_get_buffer_mode_data(e->b, &dired_mode, status ? e : NULL);
 }
 
-static inline int dired_get_index(EditState *s) {
-    return list_get_pos(s) - DIRED_HEADER;
+static DiredItem *dired_get_cur_item(DiredState *ds, EditState *s) {
+    int i, index = list_get_pos(s) - DIRED_HEADER;
+
+    if (index >= 0) {
+        for (i = 0; i < ds->items.nb_items; i++) {
+            DiredItem *dip = ds->items.items[i]->opaque;
+            if (!dip->hidden && index-- == 0)
+                return dip;
+        }
+    }
+    return NULL;
 }
 
 static void dired_free(DiredState *ds)
@@ -116,24 +141,18 @@ static void dired_free(DiredState *ds)
 
         free_strings(&ds->items);
 
-        ds->last_index = -1;
+        ds->last_cur = NULL;
     }
 }
 
-static char *dired_get_filename(DiredState *ds, int index,
+static char *dired_get_filename(DiredState *ds, const DiredItem *dip,
                                 char *buf, int buf_size)
 {
-    const StringItem *item;
-    const DiredItem *dip;
-
     if (buf_size > 0)
         buf[0] = '\0';
 
-    if (index < 0 || index >= ds->items.nb_items)
+    if (!dip)
         return NULL;
-
-    item = ds->items.items[index];
-    dip = item->opaque;
 
     /* build filename */
     /* CG: Should canonicalize path */
@@ -143,17 +162,22 @@ static char *dired_get_filename(DiredState *ds, int index,
 static int dired_find_target(DiredState *ds, const char *target)
 {
     char filename[MAX_FILENAME_SIZE];
-    int i;
+    int i, row = 0;
 
     if (target) {
+        row = DIRED_HEADER;
         for (i = 0; i < ds->items.nb_items; i++) {
-            if (dired_get_filename(ds, i, filename, sizeof(filename))
+            DiredItem *dip = ds->items.items[i]->opaque;
+    
+            if (dired_get_filename(ds, dip, filename, sizeof(filename))
             &&  strequal(filename, target)) {
-                return i;
+                return row;
             }
+            if (!dip->hidden)
+                row++;
         }
     }
-    return -1;
+    return row;
 }
 
 /* sort alphabetically with directories first */
@@ -334,8 +358,8 @@ static int format_date(char *dest, int size,
         break;
     default:
     case TF_COMPACT:
-        if (systime > curtime - 182 * 86400
-        &&  systime < curtime + 182 * 86400) {
+        if (systime > dired_curtime - 182 * 86400
+        &&  systime < dired_curtime + 182 * 86400) {
             buf_printf(out,     "%s %2d %02d:%02d",
                        month[fmonth],        /* month */
                        systm.tm_mday,        /* day */
@@ -466,74 +490,226 @@ static char *compute_attr(char *atts, mode_t mode)
     return atts;
 }
 
-/* `ds` and `b` are valid, `s` may be NULL */
-static void dired_sort_list(DiredState *ds, EditBuffer *b, EditState *s)
+static void dired_filter_files(DiredState *ds)
+{
+    int i;
+
+    ds->show_dot_files = dired_show_dot_files;
+    ds->show_ds_store = dired_show_ds_store;
+    ds->total_bytes = 0;
+    ds->ndirs = ds->nfiles = 0;
+    ds->ndirs_hidden = ds->nfiles_hidden = 0;
+
+    for (i = 0; i < ds->items.nb_items; i++) {
+        DiredItem *dip = ds->items.items[i]->opaque;
+        const char *p = ds->items.items[i]->str;
+        int hidden = 0;
+
+        if (*p == '.') {
+            if ((!dired_show_dot_files)
+            ||  (!dired_show_ds_store && strequal(p, ".DS_Store")))
+                hidden = 1;
+        }
+        /* XXX: should apply other filters? */
+        dip->hidden = hidden;
+        if (hidden) {
+            if (S_ISDIR(dip->mode)) {
+                ds->ndirs_hidden++;
+            } else {
+                ds->nfiles_hidden++;
+            }
+        } else {
+            if (S_ISDIR(dip->mode)) {
+                ds->ndirs++;
+            } else {
+                ds->nfiles++;
+                ds->total_bytes += dip->size;
+            }
+        }
+    }
+}
+
+static void dired_compute_columns(DiredState *ds)
+{
+    char buf[32];
+    int i, len;
+
+    dired_curtime = time(NULL);
+    ds->time_format = dired_time_format;
+    ds->hflag = dired_hflag;
+    ds->nflag = dired_nflag;
+    ds->blockslen = ds->modelen = ds->linklen = 0;
+    ds->uidlen = ds->gidlen = 0;
+    ds->sizelen = ds->datelen = ds->namelen = 0;
+
+    for (i = 0; i < ds->items.nb_items; i++) {
+        DiredItem *dip = ds->items.items[i]->opaque;
+    
+        len = strlen(dip->name);
+        if (ds->namelen < len)
+            ds->namelen = len;
+
+        len = snprintf(buf, sizeof(buf), "%ld",
+                       (long)(((long long)dip->size + ds->blocksize - 1) /
+                              ds->blocksize));
+        if (ds->blockslen < len)
+            ds->blockslen = len;
+
+        ds->modelen = 10;
+
+        len = snprintf(buf, sizeof(buf), "%d", (int)dip->nlink);
+        if (ds->linklen < len)
+            ds->linklen = len;
+
+        len = format_uid(buf, sizeof(buf), ds->nflag, dip->uid);
+        if (ds->uidlen < len)
+            ds->uidlen = len;
+
+        len = format_gid(buf, sizeof(buf), ds->nflag, dip->gid);
+        if (ds->gidlen < len)
+            ds->gidlen = len;
+
+        len = format_size(buf, sizeof(buf), ds->hflag, dip);
+        if (ds->sizelen < len)
+            ds->sizelen = len;
+
+        len = format_date(buf, sizeof(buf), dip->mtime, dired_time_format);
+        if (ds->datelen < len)
+            ds->datelen = len;
+    }
+}
+
+#define inflect(n, singular, plural)  ((n) == 1 ? (singular) : (plural))
+
+/* `b` is valid, `ds` and `s` may be NULL */
+static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
+                                int flags)
 {
     char buf[MAX_FILENAME_SIZE];
-    StringItem *item, *cur_item;
-    DiredItem *dip;
-    int index, i, col, width, top_line;
+    DiredItem *dip, *cur_item;
+    int i, col, width, top_line;
+
+    if (!ds)
+        return;
 
     /* Try and preserve scroll position */
     if (s) {
         eb_get_pos(s->b, &top_line, &col, s->offset_top);
-        index = dired_get_index(s);
+        /* XXX: should use dip->offset and delay to rebuild phase */
+        cur_item = dired_get_cur_item(ds, s);
         width = s->width;
     } else {
-        index = col = top_line = 0;
+        col = top_line = 0;
+        cur_item = NULL;
         width = 80;
     }
 
-    cur_item = NULL;
-    if (index >= 0 && index < ds->items.nb_items)
-        cur_item = ds->items.items[index];
+    if (ds->sort_mode != dired_sort_mode)
+        flags |= DIRED_UPDATE_SORT;
 
-    qsort(ds->items.items, ds->items.nb_items,
-          sizeof(StringItem *), dired_sort_func);
+    if (flags & DIRED_UPDATE_SORT) {
+        flags |= DIRED_UPDATE_REBUILD;
+        ds->sort_mode = dired_sort_mode;
+        qsort(ds->items.items, ds->items.nb_items,
+              sizeof(StringItem *), dired_sort_func);
+    }
+
+    if (ds->show_dot_files != dired_show_dot_files
+    ||  ds->show_ds_store != dired_show_ds_store) {
+        flags |= DIRED_UPDATE_FILTER;
+    }
+
+    if (flags & DIRED_UPDATE_FILTER) {
+        flags |= DIRED_UPDATE_REBUILD;
+        dired_filter_files(ds);
+    }
+
+    if (ds->time_format != dired_time_format
+    ||  ds->nflag != dired_nflag
+    ||  ds->hflag != dired_hflag) {
+        flags |= DIRED_UPDATE_COLUMNS;
+    }
+
+    if (flags & DIRED_UPDATE_COLUMNS) {
+        flags |= DIRED_UPDATE_REBUILD;
+        dired_compute_columns(ds);
+    }
+
+    if (!(flags & DIRED_UPDATE_REBUILD))
+        return;
+
+    /* XXX: should use screen specific space_width, separator_width or em_width */
+    ds->last_width = width;
+    ds->last_cur = NULL;
+    width -= clamp(ds->namelen, 16, 40);
+    ds->no_size = ((width -= ds->sizelen + 2) < 0);
+    ds->no_date = ((width -= ds->datelen + 2) < 0);
+    ds->no_mode = ((width -= ds->modelen + 1) < 0);
+    ds->no_uid = (ds->nflag == 2) || ((width -= ds->uidlen + 1) < 0);
+    ds->no_gid = (ds->nflag == 2) || ((width -= ds->gidlen + 1) < 0);
+    ds->no_link = ((width -= ds->linklen + 1) < 0);
+    ds->no_blocks = ((width -= ds->blockslen + 1) < 0);
+    ds->no_blocks = 1;  // disable blocks display to avoid confusing output
 
     /* construct list buffer */
     /* deleting buffer contents resets s->offset and s->offset_top */
     eb_clear(b);
 
     if (DIRED_HEADER) {
+        int seq = ' ';
         b->cur_style = DIRED_STYLE_HEADER;
         eb_printf(b, "  Directory of ");
         b->cur_style = DIRED_STYLE_DIRECTORY;
         eb_printf(b, "%s", ds->path);
         b->cur_style = DIRED_STYLE_HEADER;
-        eb_printf(b, "\n    %d director%s, %d file%s, %lld byte%s\n",
-                  ds->ndirs, ds->ndirs == 1 ? "y" : "ies",
-                  ds->nfiles, &"s"[ds->nfiles == 1],
-                  (long long)ds->total_bytes, &"s"[ds->total_bytes == 1]);
+        eb_printf(b, "\n  ");
+        if (ds->ndirs) {
+            eb_printf(b, "%c %d %s", seq, ds->ndirs,
+                      inflect(ds->ndirs, "directory", "directories"));
+            seq = ',';
+        }
+        if (ds->ndirs_hidden) {
+            eb_printf(b, "%c %d %s", seq, ds->ndirs_hidden,
+                      inflect(ds->ndirs_hidden, "hidden directory", "hidden directories"));
+            seq = ',';
+        }
+        if (ds->nfiles) {
+            eb_printf(b, "%c %d %s", seq, ds->nfiles,
+                      inflect(ds->nfiles, "file", "files"));
+            seq = ',';
+        }
+        if (ds->nfiles_hidden) {
+            eb_printf(b, "%c %d %s", seq, ds->nfiles_hidden,
+                      inflect(ds->nfiles_hidden, "hidden file", "hidden files"));
+            seq = ',';
+        }
+        if (ds->total_bytes) {
+            format_number(buf, sizeof(buf), ds->hflag, ds->total_bytes);
+            eb_printf(b, "%c %s %s", seq, buf,
+                      inflect(ds->total_bytes, "byte", "bytes"));
+            seq = ',';
+        }
+        if (ds->ndirs + ds->ndirs_hidden + ds->nfiles + ds->nfiles_hidden == 0) {
+            eb_printf(b, "%c empty", seq);
+        }
+        eb_printf(b, "\n");
     }
     b->cur_style = DIRED_STYLE_NORMAL;
 
-    /* XXX: should use screen specific space_width, separator_width or em_width */
-    ds->last_width = width;
-    width -= clamp(ds->namelen, 16, 40);
-    ds->no_size = ((width -= ds->sizelen + 2) < 0);
-    ds->no_date = ((width -= ds->datelen + 2) < 0);
-    ds->no_mode = ((width -= ds->modelen + 1) < 0);
-    ds->no_uid = ((width -= ds->uidlen + 1) < 0);
-    ds->no_gid = ((width -= ds->gidlen + 1) < 0);
-    ds->no_link = ((width -= ds->linklen + 1) < 0);
-    ds->no_blocks = ((width -= ds->blockslen + 1) < 0);
-    ds->no_blocks = 1;  // disable blocks display to avoid confusing output
-
     for (i = 0; i < ds->items.nb_items; i++) {
-        item = ds->items.items[i];
-        dip = item->opaque;
+        dip = ds->items.items[i]->opaque;
         dip->offset = b->total_size;
-        if (item == cur_item) {
-            if (ds->last_index == index)
-                ds->last_index = i;
+        if (dip == cur_item) {
+            ds->last_cur = dip;
             if (s)
                 s->offset = b->total_size;
         }
+        if (dip->hidden)
+            continue;
         col = eb_printf(b, "%c ", dip->mark);
         if (!ds->no_blocks) {
-            col += eb_printf(b, "%*lu ", ds->blockslen,
-                             (long)((dip->size + ds->blocksize - 1) /
+            col += eb_printf(b, "%*ld ", ds->blockslen,
+                             (long)(((long long)dip->size + ds->blocksize - 1) /
                                     ds->blocksize));
         }
         if (!ds->no_mode) {
@@ -611,9 +787,8 @@ static void dired_up_down(EditState *s, int dir)
 static void dired_mark(EditState *s, int mark)
 {
     DiredState *ds;
-    const StringItem *item;
     DiredItem *dip;
-    int ch, index, dir = 1, flags;
+    int ch, dir = 1, flags;
 
     if (!(ds = dired_get_state(s, 1)))
         return;
@@ -625,94 +800,99 @@ static void dired_mark(EditState *s, int mark)
     if (dir < 0)
         dired_up_down(s, -1);
 
-    index = dired_get_index(s);
-    if (index < 0 || index >= ds->items.nb_items)
-        return;
-    item = ds->items.items[index];
-    dip = item->opaque;
-
-    ch = dip->mark = mark;
-    do_bol(s);
-    flags = s->b->flags & BF_READONLY;
-    s->b->flags ^= flags;
-    eb_delete_uchar(s->b, s->offset);
-    eb_insert_uchar(s->b, s->offset, ch);
-    s->b->flags ^= flags;
-
+    dip = dired_get_cur_item(ds, s);
+    if (dip) {
+        ch = dip->mark = mark;
+        do_bol(s);
+        flags = s->b->flags & BF_READONLY;
+        s->b->flags ^= flags;
+        eb_delete_uchar(s->b, s->offset);
+        eb_insert_uchar(s->b, s->offset, ch);
+        s->b->flags ^= flags;
+    }
     if (dir > 0)
         dired_up_down(s, 1);
 }
 
-static void dired_sort(EditState *s, const char *sort_order)
+static QVarType dired_sort_mode_set_value(EditState *s, VarDef *vp,
+    void *ptr, const char *str, int sort_mode)
 {
-    DiredState *ds;
     const char *p;
 
-    if (!(ds = dired_get_state(s, 1)))
-        return;
-
-    for (p = sort_order; *p; p++) {
+    for (p = str; p && *p; p++) {
         switch (qe_tolower((unsigned char)*p)) {
         case 'n':       /* name */
-            ds->sort_mode &= ~DIRED_SORT_MASK;
-            ds->sort_mode |= DIRED_SORT_NAME;
+            sort_mode &= ~DIRED_SORT_MASK;
+            sort_mode |= DIRED_SORT_NAME;
             break;
         case 'e':       /* extension */
-            ds->sort_mode &= ~DIRED_SORT_MASK;
-            ds->sort_mode |= DIRED_SORT_EXTENSION;
+            sort_mode &= ~DIRED_SORT_MASK;
+            sort_mode |= DIRED_SORT_EXTENSION;
             break;
         case 's':       /* size */
-            ds->sort_mode &= ~DIRED_SORT_MASK;
-            ds->sort_mode |= DIRED_SORT_SIZE;
+            sort_mode &= ~DIRED_SORT_MASK;
+            sort_mode |= DIRED_SORT_SIZE;
             break;
         case 'd':       /* direct */
-            ds->sort_mode &= ~DIRED_SORT_MASK;
-            ds->sort_mode |= DIRED_SORT_DATE;
+            sort_mode &= ~DIRED_SORT_MASK;
+            sort_mode |= DIRED_SORT_DATE;
             break;
         case 'u':       /* ungroup */
-            ds->sort_mode &= ~DIRED_SORT_GROUP;
+            sort_mode &= ~DIRED_SORT_GROUP;
             break;
         case 'g':       /* group */
-            ds->sort_mode |= DIRED_SORT_GROUP;
+            sort_mode |= DIRED_SORT_GROUP;
             break;
         case '+':       /* ascending */
-            ds->sort_mode &= ~DIRED_SORT_DESCENDING;
+            sort_mode &= ~DIRED_SORT_DESCENDING;
             break;
         case '-':       /* descending */
-            ds->sort_mode |= DIRED_SORT_DESCENDING;
+            sort_mode |= DIRED_SORT_DESCENDING;
             break;
         case 'r':       /* reverse */
-            ds->sort_mode ^= DIRED_SORT_DESCENDING;
+            sort_mode ^= DIRED_SORT_DESCENDING;
             break;
         }
     }
-    dired_sort_list(ds, s->b, s);
+    dired_sort_mode = sort_mode;
+    return VAR_NUMBER;
+}
+
+static void dired_sort(EditState *s, const char *sort_order)
+{
+    int sort_mode = dired_sort_mode;
+
+    dired_sort_mode_set_value(s, NULL, &dired_sort_mode, sort_order, sort_mode);
+
+    if (sort_mode != dired_sort_mode)
+        dired_update_buffer(dired_get_state(s, 0), s->b, s, DIRED_UPDATE_SORT);
+}
+
+static QVarType dired_time_format_set_value(EditState *s, VarDef *vp,
+    void *ptr, const char *str, int format)
+{
+    if (str) {
+        if (!strxcmp(str, "default"))    format = TF_COMPACT;    else
+        if (!strxcmp(str, "compact"))    format = TF_COMPACT;    else
+        if (!strxcmp(str, "dos"))        format = TF_DOS;        else
+        if (!strxcmp(str, "dos-long"))   format = TF_DOS_LONG;   else
+        if (!strxcmp(str, "touch"))      format = TF_TOUCH;      else
+        if (!strxcmp(str, "touch-long")) format = TF_TOUCH_LONG; else
+        if (!strxcmp(str, "full"))       format = TF_FULL;       else
+        if (!strxcmp(str, "seconds"))    format = TF_SECONDS;    else
+            return VAR_UNKNOWN;
+    }
+    if (format < 0 || format > TF_MAX)
+       return VAR_UNKNOWN;
+
+    dired_time_format = format;
+
+    return VAR_NUMBER;
 }
 
 static void dired_set_time_format(EditState *s, int format)
 {
-    char buf[32];
-    DiredState *ds;
-    int i, len;
-
-    if (!(ds = dired_get_state(s, 1)))
-        return;
-
-    if (format < 0 || format > TF_MAX)
-        return;
-
-    dired_time_format = format;
-
-    ds->datelen = 0;
-    for (i = 0; i < ds->items.nb_items; i++) {
-        const StringItem *item = ds->items.items[i];
-        const DiredItem *dip = item->opaque;
-
-        len = format_date(buf, sizeof(buf), dip->mtime, format);
-        if (ds->datelen < len)
-            ds->datelen = len;
-    }
-    dired_sort_list(ds, s->b, s);
+    dired_time_format_set_value(s, NULL, &dired_time_format, NULL, format);
 }
 
 /* `ds` and `b` are valid, `s` and `target` may be NULL */
@@ -721,23 +901,16 @@ static void dired_build_list(DiredState *ds, const char *path,
 {
     FindFileState *ffst;
     char filename[MAX_FILENAME_SIZE];
-    char line[1024], buf[1024];
+    char line[1024];
     const char *p;
     struct stat st;
-    int len, index;
     StringItem *item;
 
     /* free previous list, if any */
     dired_free(ds);
 
-    curtime = time(NULL);
     ds->blocksize = 1024;
-    ds->ndirs = ds->nfiles = 0;
-    ds->total_bytes = 0;
     ds->last_width = 0;
-    ds->blockslen = ds->modelen = ds->linklen = 0;
-    ds->uidlen = ds->gidlen = 0;
-    ds->sizelen = ds->datelen = ds->namelen = 0;
 
     /* CG: should make absolute ? */
     canonicalize_path(ds->path, sizeof(ds->path), path);
@@ -760,20 +933,7 @@ static void dired_build_list(DiredState *ds, const char *path,
         if (strequal(p, ".") || strequal(p, ".."))
             continue;
 #endif
-        if (!dired_show_dot_files && *p == '.')
-            continue;
-
-#ifdef CONFIG_DARWIN
-        if (!dired_show_ds_store && strequal(p, ".DS_Store"))
-            continue;
-#endif
         pstrcpy(line, sizeof(line), p);
-        if (S_ISDIR(st.st_mode)) {
-            ds->ndirs++;
-        } else {
-            ds->nfiles++;
-            ds->total_bytes += st.st_size;
-        }
         item = add_string(&ds->items, line, 0);
         if (item) {
             DiredItem *dip;
@@ -788,64 +948,35 @@ static void dired_build_list(DiredState *ds, const char *path,
             dip->rdev = st.st_rdev;
             dip->mtime = st.st_mtime;
             dip->size = st.st_size;
+            dip->hidden = 0;
             dip->mark = ' ';
             memcpy(dip->name, p, plen + 1);
             item->opaque = dip;
-
-            if (ds->namelen < plen)
-                ds->namelen = plen;
-
-            len = snprintf(buf, sizeof(buf), "%lu",
-                           ((unsigned long)st.st_size + ds->blocksize - 1) /
-                           ds->blocksize);
-            if (ds->blockslen < len)
-                ds->blockslen = len;
-
-            ds->modelen = 10;
-
-            len = snprintf(buf, sizeof(buf), "%d", (int)st.st_nlink);
-            if (ds->linklen < len)
-                ds->linklen = len;
-
-            len = format_uid(buf, sizeof(buf), ds->nflag, st.st_uid);
-            if (ds->uidlen < len)
-                ds->uidlen = len;
-
-            len = format_gid(buf, sizeof(buf), ds->nflag, st.st_gid);
-            if (ds->gidlen < len)
-                ds->gidlen = len;
-
-            len = format_size(buf, sizeof(buf), ds->hflag, dip);
-            if (ds->sizelen < len)
-                ds->sizelen = len;
-
-            len = format_date(buf, sizeof(buf), dip->mtime, dired_time_format);
-            if (ds->datelen < len)
-                ds->datelen = len;
         }
     }
     find_file_close(&ffst);
 
-    dired_sort_list(ds, b, s);
+    dired_update_buffer(ds, b, s, DIRED_UPDATE_ALL);
     if (s) {
-        index = dired_find_target(ds, target);
-        s->offset = eb_goto_pos(b, max(index, 0) + DIRED_HEADER, ds->fnamecol);
+        s->offset = eb_goto_pos(b, dired_find_target(ds, target), ds->fnamecol);
     }
 }
 
 /* select current item */
 static void dired_select(EditState *s)
 {
+    char filename[MAX_FILENAME_SIZE];
     DiredState *ds;
     struct stat st;
-    char filename[MAX_FILENAME_SIZE];
     EditState *e;
 
     if (!(ds = dired_get_state(s, 1)))
         return;
 
-    if (!dired_get_filename(ds, dired_get_index(s), filename, sizeof(filename)))
+    if (!dired_get_filename(ds, dired_get_cur_item(ds, s),
+                            filename, sizeof(filename))) {
         return;
+    }
 
     /* Check if path leads somewhere */
     if (stat(filename, &st) < 0)
@@ -936,6 +1067,16 @@ static void dired_parent(EditState *s)
     dired_build_list(ds, filename, target, s->b, s);
 }
 
+static void dired_toggle_human(EditState *s)
+{
+    dired_hflag = (dired_hflag + 1) % 3;
+}
+
+static void dired_toggle_nflag(EditState *s)
+{
+    dired_nflag = (dired_nflag + 1) % 3;
+}
+
 static void dired_refresh(EditState *s)
 {
     DiredState *ds;
@@ -945,7 +1086,8 @@ static void dired_refresh(EditState *s)
     if (!(ds = dired_get_state(s, 1)))
         return;
 
-    dired_get_filename(ds, dired_get_index(s), target, sizeof(target));
+    dired_get_filename(ds, dired_get_cur_item(ds, s),
+                       target, sizeof(target));
     pstrcpy(dirname, sizeof(dirname), ds->path);
     dired_build_list(ds, dirname, target, s->b, s);
 }
@@ -957,16 +1099,17 @@ static void dired_toggle_dot_files(EditState *s, int val)
 
     if (dired_show_dot_files != val) {
         dired_show_dot_files = val;
-        dired_refresh(s);
+        dired_update_buffer(dired_get_state(s, 0), s->b, s, DIRED_UPDATE_FILTER);
         put_status(s, "dot files are %s", val ? "visible" : "hidden");
     }
 }
 
 static void dired_display_hook(EditState *s)
 {
-    DiredState *ds;
     char filename[MAX_FILENAME_SIZE];
-    int index;
+    DiredState *ds;
+    DiredItem *dip;
+    int flags = 0;
 
     if (!(ds = dired_get_state(s, 0)))
         return;
@@ -975,23 +1118,23 @@ static void dired_display_hook(EditState *s)
     if (s->offset && s->offset == s->b->total_size)
         dired_up_down(s, -1);
 
+    if (s->x1 == 0 && s->y1 == 0 && ds->last_width != s->width) {
+        /* rebuild buffer contents according to new window width */
+        /* XXX: this may cause problems if buffer is displayed in
+         * multiple windows, hence the test on s->y1.
+         * Should test for current window */
+        flags |= DIRED_UPDATE_REBUILD;
+    }
+
+    dired_update_buffer(ds, s->b, s, flags);
+
     if (s->x1 == 0) {
-        if (s->y1 == 0 && ds->last_width != s->width) {
-            /* rebuild buffer contents according to new window width */
-            /* XXX: this may cause problems if buffer is displayed in
-             * multiple windows, hence the test on s->y1.
-             * Should test for current window */
-            dired_sort_list(ds, s->b, s);
-        }
         /* open file so that user can see it before it is selected */
         /* XXX: find a better solution (callback) */
-        index = dired_get_index(s);
-        if (index < 0 || index >= ds->items.nb_items)
-            return;
-        /* Should not rely on last_index! */
-        if (index != ds->last_index) {
-            ds->last_index = index;
-            if (dired_get_filename(ds, index, filename, sizeof(filename))) {
+        dip = dired_get_cur_item(ds, s);
+        if (dip != ds->last_cur) {
+            ds->last_cur = dip;
+            if (dired_get_filename(ds, dip, filename, sizeof(filename))) {
                 dired_view_file(s, filename);
             }
         }
@@ -1008,10 +1151,6 @@ static int dired_mode_init(EditState *s, EditBuffer *b, int flags)
     list_mode.mode_init(s, b, flags);
 
     if (flags & MODEF_NEWINSTANCE) {
-        /* XXX: Should use last sort mode, a global variable */
-        ds->sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
-        ds->last_index = -1;
-
         eb_create_style_buffer(b, BF_STYLE1);
         /* XXX: should be built by buffer_load API */
         dired_build_list(ds, b->filename, NULL, b, s);
@@ -1052,7 +1191,7 @@ void do_dired(EditState *s)
     EditBuffer *b;
     EditState *e;
     DiredState *ds;
-    int width, index;
+    int width;
     char filename[MAX_FILENAME_SIZE], *p;
     char target[MAX_FILENAME_SIZE];
 
@@ -1084,8 +1223,7 @@ void do_dired(EditState *s)
 
     ds = dired_get_state(e, 0);
     if (ds) {
-        index = dired_find_target(ds, target);
-        e->offset = eb_goto_pos(e->b, max(index, 0) + DIRED_HEADER,
+        e->offset = eb_goto_pos(e->b, dired_find_target(ds, target),
                                 ds->fnamecol);
     }
     /* modify active window */
@@ -1142,6 +1280,10 @@ static CmdDef dired_commands[] = {
     /* R -> rename a file or move selection to another directory */
     /* C -> copy files */
     /* mark files globally */
+    CMD0( 'H', KEY_NONE,
+          "dired-toggle-human", dired_toggle_human)
+    CMD0( 'N', KEY_NONE,
+          "dired-toggle-nflag", dired_toggle_nflag)
     CMD_DEF_END,
 };
 
@@ -1152,11 +1294,12 @@ static CmdDef dired_global_commands[] = {
 };
 
 static VarDef dired_variables[] = {
-    G_VAR( "dired-time-format", dired_time_format, VAR_NUMBER, VAR_RW_SAVE )
+    G_VAR_F( "dired-time-format", dired_time_format, VAR_NUMBER, VAR_RW_SAVE,
+            dired_time_format_set_value )
     G_VAR( "dired-show-dot-files", dired_show_dot_files, VAR_NUMBER, VAR_RW_SAVE )
-#ifdef CONFIG_DARWIN
     G_VAR( "dired-show-ds-store", dired_show_ds_store, VAR_NUMBER, VAR_RW_SAVE )
-#endif
+    G_VAR_F( "dired-sort-mode", dired_sort_mode, VAR_NUMBER, VAR_RW_SAVE,
+            dired_sort_mode_set_value )
 };
 
 static int dired_init(void)
