@@ -93,18 +93,6 @@ static VarDef var_table[] = {
     //G_VAR( "perl-mode-extensions", perl_mode.extensions, VAR_STRING, VAR_RW )
 };
 
-void qe_register_variables(VarDef *vars, int count)
-{
-    QEmacsState *qs = &qe_state;
-    VarDef *vp;
-
-    for (vp = vars; vp < vars + count - 1; vp++) {
-        vp->next = vp + 1;
-    }
-    vp->next = qs->first_variable;
-    qs->first_variable = vars;
-}
-
 VarDef *qe_find_variable(const char *name)
 {
     QEmacsState *qs = &qe_state;
@@ -215,12 +203,48 @@ extern u8 end[];
 u8 end[8];
 #endif
 
+static QVarType qe_generic_set_variable(EditState *s, VarDef *vp, void *ptr,
+                                        const char *value, int num)
+{
+    char buf[32];
+    char **pstr;
+
+    switch (vp->type) {
+    case VAR_STRING:
+        if (!value) {
+            snprintf(buf, sizeof(buf), "%d", num);
+            value = buf;
+        }
+        pstr = (char **)ptr;
+        if ((u8 *)*pstr > end)
+            qe_free(pstr);
+        *pstr = qe_strdup(value);
+        break;
+    case VAR_CHARS:
+        if (!value) {
+            snprintf(buf, sizeof(buf), "%d", num);
+            value = buf;
+        }
+        pstrcpy(ptr, vp->size, value);
+        break;
+    case VAR_NUMBER:
+        if (!value) {
+            /* XXX: should have default, min and max values */
+            *(int*)ptr = num;
+        } else {
+            return VAR_INVALID;
+        }
+        break;
+    default:
+        return VAR_UNKNOWN;
+    }
+    return vp->type;
+}
+
 QVarType qe_set_variable(EditState *s, const char *name,
                          const char *value, int num)
 {
-    char buf[32];
     void *ptr;
-    char **pstr;
     VarDef *vp;
 
     vp = qe_find_variable(name);
@@ -241,8 +265,7 @@ QVarType qe_set_variable(EditState *s, const char *name,
         return vp->type;
     } else
     if (vp->rw == VAR_RO) {
-        put_status(s, "Variable %s is read-only", name);
-        return VAR_UNKNOWN;
+        return VAR_READONLY;
     } else {
         switch (vp->domain) {
         case VAR_SELF:
@@ -266,35 +289,13 @@ QVarType qe_set_variable(EditState *s, const char *name,
         default:
             return VAR_UNKNOWN;
         }
-
-        switch (vp->type) {
-        case VAR_STRING:
-            if (!value) {
-                snprintf(buf, sizeof(buf), "%d", num);
-                value = buf;
-            }
-            pstr = (char **)ptr;
-            if ((u8 *)*pstr > end)
-                qe_free(pstr);
-            *pstr = qe_strdup(value);
-            break;
-        case VAR_CHARS:
-            if (!value) {
-                snprintf(buf, sizeof(buf), "%d", num);
-                value = buf;
-            }
-            pstrcpy(ptr, vp->size, value);
-            break;
-        case VAR_NUMBER:
-            if (!value)
-                *(int*)ptr = num;
-            else
-                *(int*)ptr = strtol(value, NULL, 0);
-            break;
-        default:
-            return VAR_UNKNOWN;
+        if (vp->type == VAR_NUMBER && value) {
+            char *p;
+            num = strtol(value, &p, 0);
+            if (!*p)
+                value = NULL;
         }
-        return vp->type;
+        return vp->set_value(s, vp, ptr, value, num);
     }
 }
 
@@ -310,8 +311,34 @@ void do_show_variable(EditState *s, const char *name)
 
 void do_set_variable(EditState *s, const char *name, const char *value)
 {
-    qe_set_variable(s, name, value, 0);
-    do_show_variable(s, name);
+    switch (qe_set_variable(s, name, value, 0)) {
+    case VAR_UNKNOWN:
+        put_status(s, "Variable %s is invalid", name);
+        break;
+    case VAR_READONLY:
+        put_status(s, "Variable %s is read-only", name);
+        break;
+    case VAR_INVALID:
+        put_status(s, "Invalid value for variable %s: %s", name, value);
+        break;
+    default:
+        do_show_variable(s, name);
+        break;
+    }
+}
+
+void qe_register_variables(VarDef *vars, int count)
+{
+    QEmacsState *qs = &qe_state;
+    VarDef *vp;
+
+    for (vp = vars; vp < vars + count - 1; vp++) {
+        if (!vp->set_value)
+            vp->set_value = qe_generic_set_variable;
+        vp->next = vp + 1;
+    }
+    vp->next = qs->first_variable;
+    qs->first_variable = vars;
 }
 
 /* should register this as help function */

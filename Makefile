@@ -169,7 +169,7 @@ endif
 SRCS:= $(OBJS:.o=.c)
 TSRCS:= $(TOBJS:.o=.c)
 
-DEPENDS:= qe.h config.h cutils.h display.h qestyles.h config.mak
+DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
 OBJS_DIR:= $(DEPTH)/.objs

@@ -23,6 +23,8 @@ typedef enum QVarType {
     VAR_NUMBER,
     VAR_STRING,
     VAR_CHARS,
+    VAR_READONLY,
+    VAR_INVALID,
 } QVarType;
 
 enum QVarAccess {
@@ -42,7 +44,8 @@ enum QVarDomain {
 
 extern const char * const var_domain[];
 
-typedef struct VarDef {
+typedef struct VarDef VarDef;
+struct VarDef {
     const char *name;
     enum QVarDomain domain : 4;
     enum QVarType type : 4;
@@ -56,25 +59,34 @@ typedef struct VarDef {
         char *str;
         int num;
     } value;
-    struct VarDef *next;
-} VarDef;
+    QVarType (*set_value)(EditState *s, VarDef *vp, void *ptr,
+                          const char *str, int num);
+    VarDef *next;
+};
 
-#define U_VAR(name, type) \
-    { (name), VAR_SELF, type, VAR_RW, 0, { .num = 0 }, NULL },
-#define G_VAR(name,var,type,rw) \
-    { (name), VAR_GLOBAL, type, rw, 0, { .ptr = (void*)&(var) }, NULL },
-#define S_VAR(name,fld,type,rw) \
+#define U_VAR_F(name, type, fun) \
+    { (name), VAR_SELF, type, VAR_RW, 0, { .num = 0 }, fun, NULL },
+#define G_VAR_F(name, var, type, rw, fun) \
+    { (name), VAR_GLOBAL, type, rw, 0, { .ptr = (void*)&(var) }, fun, NULL },
+#define S_VAR_F(name, fld, type, rw, fun) \
     { (name), VAR_STATE, type, rw, sizeof(((QEmacsState*)0)->fld), \
-      { .offset = offsetof(QEmacsState, fld) }, NULL },
-#define B_VAR(name,fld,type,rw) \
+      { .offset = offsetof(QEmacsState, fld) }, fun, NULL },
+#define B_VAR_F(name, fld, type, rw, fun) \
     { (name), VAR_BUFFER, type, rw, sizeof(((EditBuffer*)0)->fld), \
-      { .offset = offsetof(EditBuffer, fld) }, NULL },
-#define W_VAR(name,fld,type,rw) \
+      { .offset = offsetof(EditBuffer, fld) }, fun, NULL },
+#define W_VAR_F(name, fld, type, rw, fun) \
     { (name), VAR_WINDOW, type, rw, sizeof(((EditState*)0)->fld), \
-      { .offset = offsetof(EditState, fld) }, NULL },
-#define M_VAR(name,fld,type,rw) \
+      { .offset = offsetof(EditState, fld) }, fun, NULL },
+#define M_VAR_F(name, fld, type, rw, fun) \
     { (name), VAR_MODE, type, rw, sizeof(((ModeDef*)0)->fld), \
-      { .offset = offsetof(ModeDef, fld) }, NULL },
+      { .offset = offsetof(ModeDef, fld) }, fun, NULL },
+
+#define U_VAR(name, type)        U_VAR_F(name, type, NULL)
+#define G_VAR(name,var,type,rw)  G_VAR_F(name,var,type,rw, NULL)
+#define S_VAR(name,fld,type,rw)  S_VAR_F(name,fld,type,rw, NULL)
+#define B_VAR(name,fld,type,rw)  B_VAR_F(name,fld,type,rw, NULL)
+#define W_VAR(name,fld,type,rw)  W_VAR_F(name,fld,type,rw, NULL)
+#define M_VAR(name,fld,type,rw)  M_VAR_F(name,fld,type,rw, NULL)
 
 void qe_register_variables(VarDef *vars, int count);
 VarDef *qe_find_variable(const char *name);
