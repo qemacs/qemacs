@@ -162,7 +162,7 @@ static char *dired_get_filename(DiredState *ds, const DiredItem *dip,
 static int dired_find_target(DiredState *ds, const char *target)
 {
     char filename[MAX_FILENAME_SIZE];
-    int i, row = 0;
+    int i, row;
 
     if (target) {
         row = DIRED_HEADER;
@@ -177,7 +177,7 @@ static int dired_find_target(DiredState *ds, const char *target)
                 row++;
         }
     }
-    return row;
+    return DIRED_HEADER;
 }
 
 /* sort alphabetically with directories first */
