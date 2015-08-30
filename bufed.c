@@ -148,7 +148,7 @@ static void build_bufed_list(BufedState *bs, EditState *s)
             eb_printf(b, " %10d %1.0d %-8.8s %-11s ",
                       b1->total_size, b1->style_bytes & 7,
                       b1->charset->name, mode_buf);
-            if (strequal(mode_name, "dired"))
+            if (b1->flags & BF_DIRED)
                 b->cur_style = BUFED_STYLE_DIRECTORY;
             else
                 b->cur_style = BUFED_STYLE_FILENAME;
