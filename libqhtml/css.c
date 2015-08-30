@@ -923,8 +923,8 @@ static CSSBox *add_before_after_box(CSSContext *s,
 
 /* Convert a number to alpha representation.
  * - 'dest' must be large enough for maximum conversion
- *   namely INT32_MAX (2147483647) -> "FXSHRXW" 8 bytes 
- *          INT64_MAX (9223372036854775807) -> "CRPXNLSKVLJFHG" 15 bytes 
+ *   namely INT32_MAX (2147483647) -> "FXSHRXW" 8 bytes
+ *          INT64_MAX (9223372036854775807) -> "CRPXNLSKVLJFHG" 15 bytes
  * - n should be greater than 0
  * - return 0 if conversion succeeds
  * - return -1 if n not in range, dest untouched
