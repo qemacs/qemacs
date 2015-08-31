@@ -828,12 +828,14 @@ static int html_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     HTMLState *hs = qe_get_buffer_mode_data(b, &html_mode, NULL);
 
+    if (!hs)
+        return -1;
+
     if (flags & MODEF_NEWINSTANCE) {
-        if (!hs)
-            return -1;
         return gxml_mode_init(b, XML_HTML | XML_HTML_SYNTAX | XML_IGNORE_CASE,
                               html_style);
     }
+    hs->up_to_date = 0;
     return 0;
 }
 
