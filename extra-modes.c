@@ -2000,20 +2000,22 @@ static char const haskell_types[] = {
 };
 
 enum {
-    IN_HASKELL_COMMENT = 0x0F,
-    IN_HASKELL_COMMENT_SHIFT = 0,
-    IN_HASKELL_STRING  = 0x10,
-};
-
-enum {
     HASKELL_STYLE_TEXT =     QE_STYLE_DEFAULT,
     HASKELL_STYLE_COMMENT =  QE_STYLE_COMMENT,
+    HASKELL_STYLE_PP_COMMENT = QE_STYLE_PREPROCESS,
     HASKELL_STYLE_STRING =   QE_STYLE_STRING,
     HASKELL_STYLE_NUMBER =   QE_STYLE_NUMBER,
     HASKELL_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
     HASKELL_STYLE_FUNCTION = QE_STYLE_FUNCTION,
     HASKELL_STYLE_TYPE =     QE_STYLE_TYPE,
     HASKELL_STYLE_SYMBOL =   QE_STYLE_NUMBER,
+};
+
+enum {
+    IN_HASKELL_COMMENT = 0x0F,
+    IN_HASKELL_COMMENT_SHIFT = 0,
+    IN_HASKELL_PP_COMMENT  = 0x10,  /* compiler directives {-# ... #-} */
+    IN_HASKELL_STRING  = 0x20,
 };
 
 static inline int haskell_is_symbol(int c)
@@ -2057,8 +2059,15 @@ static void haskell_colorize_line(QEColorizeContext *cp,
             if (str[i] == '-') {
                 state |= 1 << IN_HASKELL_COMMENT_SHIFT;
                 i++;
+                if (str[i] == '#') {
+                    state |= IN_HASKELL_PP_COMMENT;
+                    i++;
+                }
             parse_comment:
                 level = (state & IN_HASKELL_COMMENT) >> IN_HASKELL_COMMENT_SHIFT;
+                style = HASKELL_STYLE_COMMENT;
+                if (state & IN_HASKELL_PP_COMMENT)
+                    style = HASKELL_STYLE_PP_COMMENT;
                 while (i < n) {
                     c = str[i++];
                     if (c == '{' && str[i] == '-') {
@@ -2070,6 +2079,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
                         i++;
                         level--;
                         if (level == 0) {
+                            state &= ~IN_HASKELL_PP_COMMENT;
                             i++;
                             break;
                         }
@@ -2077,7 +2087,6 @@ static void haskell_colorize_line(QEColorizeContext *cp,
                 }
                 state &= ~IN_HASKELL_COMMENT;
                 state |= level << IN_HASKELL_COMMENT_SHIFT;
-                style = HASKELL_STYLE_COMMENT;
                 break;
             }
             /* FALL THRU */
