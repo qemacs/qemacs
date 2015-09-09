@@ -229,7 +229,7 @@ static const char jsx_keywords[] = {
     // ECMA 262 strict mode future reserved words
     "let|private|public|yield|protected|"
     // JSX specific reserved words
-    "extern|native|as|operator|"
+    "extern|native|as|operator|abstract|"
 };
 
 static const char jsx_types[] = {
@@ -713,6 +713,7 @@ static void c_colorize_line(QEColorizeContext *cp,
             }
             if ((mode_flags & CLANG_REGEX)
             &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
+            ||   (str[i1] >> STYLE_SHIFT) == C_STYLE_KEYWORD
             ||   (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
             &&    !(qe_isalnum(prev) || prev == ')')))) {
                 /* parse regex */
