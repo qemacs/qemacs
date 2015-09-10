@@ -112,6 +112,20 @@ static int dired_nflag = 0; /* 0=name, 1=numeric, 2=hidden */
 static int dired_hflag = 0; /* 0=exact, 1=human-decimal, 2=human-binary */
 static int dired_sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
 
+static QVarType dired_sort_mode_set_value(EditState *s, VarDef *vp,
+    void *ptr, const char *str, int sort_mode);
+static QVarType dired_time_format_set_value(EditState *s, VarDef *vp,
+    void *ptr, const char *str, int format);
+
+static VarDef dired_variables[] = {
+    G_VAR_F( "dired-sort-mode", dired_sort_mode, VAR_NUMBER, VAR_RW_SAVE,
+            dired_sort_mode_set_value )
+    G_VAR_F( "dired-time-format", dired_time_format, VAR_NUMBER, VAR_RW_SAVE,
+            dired_time_format_set_value )
+    G_VAR( "dired-show-dot-files", dired_show_dot_files, VAR_NUMBER, VAR_RW_SAVE )
+    G_VAR( "dired-show-ds-store", dired_show_ds_store, VAR_NUMBER, VAR_RW_SAVE )
+};
+
 static inline DiredState *dired_get_state(EditState *e, int status)
 {
     return qe_get_buffer_mode_data(e->b, &dired_mode, status ? e : NULL);
@@ -854,7 +868,10 @@ static QVarType dired_sort_mode_set_value(EditState *s, VarDef *vp,
             break;
         }
     }
-    dired_sort_mode = sort_mode;
+    if (dired_sort_mode != sort_mode) {
+        dired_sort_mode = sort_mode;
+        vp->modified = 1;
+    }
     return VAR_NUMBER;
 }
 
@@ -862,7 +879,8 @@ static void dired_sort(EditState *s, const char *sort_order)
 {
     int sort_mode = dired_sort_mode;
 
-    dired_sort_mode_set_value(s, NULL, &dired_sort_mode, sort_order, sort_mode);
+    dired_sort_mode_set_value(s, &dired_variables[0], &dired_sort_mode,
+                              sort_order, sort_mode);
 
     if (sort_mode != dired_sort_mode)
         dired_update_buffer(dired_get_state(s, 0), s->b, s, DIRED_UPDATE_SORT);
@@ -885,14 +903,17 @@ static QVarType dired_time_format_set_value(EditState *s, VarDef *vp,
     if (format < 0 || format > TF_MAX)
        return VAR_UNKNOWN;
 
-    dired_time_format = format;
-
+    if (dired_time_format != format) {
+        dired_time_format = format;
+        vp->modified = 1;
+    }
     return VAR_NUMBER;
 }
 
 static void dired_set_time_format(EditState *s, int format)
 {
-    dired_time_format_set_value(s, NULL, &dired_time_format, NULL, format);
+    dired_time_format_set_value(s, &dired_variables[1], &dired_time_format,
+                                NULL, format);
 }
 
 /* `ds` and `b` are valid, `s` and `target` may be NULL */
@@ -1030,7 +1051,7 @@ static void dired_view_file(EditState *s, const char *filename)
     if (rc >= 0) {
         /* disable wrapping to get nicer display */
         /* XXX: should wrap lines unless window is narrow */
-        //e->wrap = WRAP_TRUNCATE;
+        e->wrap = WRAP_TRUNCATE;
     }
     if (rc < 0) {
         /* if file failed to load, show a scratch buffer */
@@ -1291,15 +1312,6 @@ static CmdDef dired_global_commands[] = {
     CMD0( KEY_CTRLX(KEY_CTRL('d')), KEY_NONE,
           "dired", do_dired)
     CMD_DEF_END,
-};
-
-static VarDef dired_variables[] = {
-    G_VAR_F( "dired-time-format", dired_time_format, VAR_NUMBER, VAR_RW_SAVE,
-            dired_time_format_set_value )
-    G_VAR( "dired-show-dot-files", dired_show_dot_files, VAR_NUMBER, VAR_RW_SAVE )
-    G_VAR( "dired-show-ds-store", dired_show_ds_store, VAR_NUMBER, VAR_RW_SAVE )
-    G_VAR_F( "dired-sort-mode", dired_sort_mode, VAR_NUMBER, VAR_RW_SAVE,
-            dired_sort_mode_set_value )
 };
 
 static int dired_init(void)

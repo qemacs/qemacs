@@ -224,9 +224,6 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         }
         nb_args = 0;
 
-        /* first argument is always the window */
-        args_type[nb_args++] = CMD_ARG_WINDOW;
-
         /* construct argument type list */
         r = d->name + strlen(d->name) + 1;
         if (*r == '*') {
@@ -236,6 +233,9 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 continue;
             }
         }
+
+        /* first argument is always the window */
+        args_type[nb_args++] = CMD_ARG_WINDOW;
 
         for (;;) {
             unsigned char arg_type;
@@ -324,6 +324,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         qs->last_cmd_func = qs->this_cmd_func;
         if (qs->active_window)
             s = qs->active_window;
+        check_window(&s);
         continue;
 
     fail:
@@ -391,6 +392,39 @@ void do_eval_buffer(EditState *s)
     do_eval_buffer_region(s, 0, -1);
 }
 
+#ifndef CONFIG_TINY
+int qe_load_session(EditState *s)
+{
+    return parse_config_file(s, ".qesession");
+}
+
+void do_save_session(EditState *s, int popup)
+{
+    EditBuffer *b = eb_scratch("*session*", BF_UTF8);
+    time_t now;
+
+    eb_printf(b, "// qemacs version: %s\n", QE_VERSION);
+    now = time(NULL);
+    eb_printf(b, "// session saved: %s\n", ctime(&now));
+
+    qe_save_variables(s, b);
+    qe_save_macros(s, b);
+    qe_save_open_files(s, b);
+    qe_save_window_layout(s, b);
+
+    if (popup) {
+        b->offset = 0;
+        b->flags |= BF_READONLY;
+
+        /* Should show window caption "qemacs session" */
+        show_popup(b);
+    } else {
+        eb_write_buffer(b, 0, b->total_size, ".qesession");
+        eb_free(&b);
+    }
+}
+#endif
+
 static CmdDef parser_commands[] = {
 
     CMD2( KEY_META(':'), KEY_NONE,
@@ -400,7 +434,10 @@ static CmdDef parser_commands[] = {
           "eval-region", do_eval_region)
     CMD0( KEY_NONE, KEY_NONE,
           "eval-buffer", do_eval_buffer)
-
+#ifndef CONFIG_TINY
+    CMD1( KEY_NONE, KEY_NONE,
+          "save-session", do_save_session, 1)
+#endif
     CMD_DEF_END,
 };
 

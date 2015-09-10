@@ -74,6 +74,7 @@ static QEditScreen global_screen;
 static int screen_width = 0;
 static int screen_height = 0;
 static int no_init_file;
+int use_session_file;
 #ifndef CONFIG_TINY
 static int free_everything;
 #endif
@@ -1870,6 +1871,7 @@ static int reload_buffer(EditState *s, EditBuffer *b)
         ret = b->data_type->buffer_load(b, f);
     else
         ret = -1;
+
     b->modified = 0;
     b->save_log = saved;
 
@@ -4636,26 +4638,88 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
                          const char *key_bind)
 {
     CmdDef *def;
-    int size;
+    int namelen, size;
     char *buf;
 
-    size = strlen(name) + 1 + 2 + strlen(keys) + 2;
+    namelen = strlen(name);
+    size = namelen + 1 + 2 + strlen(keys) + 2;
     buf = qe_malloc_array(char, size);
+
+    // XXX: should special case "last-kbd-macro"
 
     /* CG: should parse macro keys to an array and pass index
      * to do_execute_macro.
      */
     snprintf(buf, size, "%s%cS{%s}", name, 0, keys);
 
-    def = qe_mallocz_array(CmdDef, 2);
-    def->key = def->alt_key = KEY_NONE;
-    def->name = buf;
-    def->sig = CMD_ESs;
-    def->val = 0;
-    def->action.ESs = do_execute_macro_keys;
-    def[1].val = 1;  /* flag as allocated for free-all */
-    qe_register_cmd_table(def, NULL);
-    do_set_key(s, key_bind, name, 0);
+    def = qe_find_cmd(name);
+    if (def && def->action.ESs == do_execute_macro_keys) {
+        /* redefininig a macro */
+        /* XXX: freeing the current macro definition may cause a crash if it
+         * is currently executing.
+         */
+        qe_free((char **)&def->name);
+        def->name = buf;
+    } else {
+        def = qe_mallocz_array(CmdDef, 2);
+        def->key = def->alt_key = KEY_NONE;
+        def->name = buf;
+        def->sig = CMD_ESs;
+        def->val = 0;
+        def->action.ESs = do_execute_macro_keys;
+        def[1].val = 1;  /* flag as allocated for free-all */
+        qe_register_cmd_table(def, NULL);
+    }
+    if (key_bind && *key_bind) {
+        do_set_key(s, key_bind, name, 0);
+    }
+}
+
+static void qe_save_macro(EditState *s, CmdDef *def, EditBuffer *b)
+{
+    QEmacsState *qs = s->qe_state;
+    char buf[32];
+    buf_t outbuf, *out;
+    int i;
+    const char *name = "last-kbd-macro";
+
+    if (def)
+        name = def->name;
+
+    eb_printf(b, "define_kbd_macro(\"%s\", \"", name);
+
+    if (def) {
+        const char *keys = def->name;
+        keys += strlen(keys) + 1 + 2;
+        while (keys[1]) {
+            eb_putc(b, utf8_decode(&keys));
+        }
+    } else {
+        for (i = 0; i < qs->nb_macro_keys; i++) {
+            out = buf_init(&outbuf, buf, sizeof(buf));
+            buf_put_key(out, qs->macro_keys[i]);
+            eb_puts(b, out->buf);
+        }
+    }
+    eb_puts(b, "\", \"\");\n");
+}
+
+void qe_save_macros(EditState *s, EditBuffer *b)
+{
+    QEmacsState *qs = &qe_state;
+    CmdDef *d;
+
+    eb_puts(b, "// macros:\n");
+    qe_save_macro(s, NULL, b);
+
+    /* Enumerate defined macros */
+    for (d = qs->first_cmd; d != NULL; d = d->action.next) {
+        for (; d->name != NULL; d++) {
+            if (d->action.ESs == do_execute_macro_keys)
+                qe_save_macro(s, d, b);
+        }
+    }
+    eb_putc(b, '\n');
 }
 
 #define MACRO_KEY_INCR 64
@@ -5131,7 +5195,7 @@ EditState *edit_new(EditBuffer *b,
 {
     /* b may be NULL ??? */
     QEmacsState *qs = &qe_state;
-    EditState *s;
+    EditState *s, *e;
 
     s = qe_mallocz(EditState);
     if (!s)
@@ -5147,7 +5211,11 @@ EditState *edit_new(EditBuffer *b,
     compute_client_area(s);
 
     /* link window in window list */
-    edit_attach(s, qs->first_window);
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
+        if (e->y1 > s->y1 || (e->y1 == s->y1 && e->x1 > s->x1))
+            break;
+    }
+    edit_attach(s, e);
 
     /* restore saved window settings, set mode */
     switch_to_buffer(s, b);
@@ -6290,7 +6358,6 @@ int qe_load_file(EditState *s, const char *filename1,
             f = NULL;
             goto fail;
         }
-
         bdt = selected_mode->data_type;
         if (bdt == &raw_data_type)
             eb_set_charset(b, charset, eol_type);
@@ -6327,6 +6394,19 @@ int qe_load_file(EditState *s, const char *filename1,
     put_status(s, "Could not open '%s': %s",
                filename, strerror(errno));
     return -1;
+}
+
+void qe_save_open_files(EditState *s, EditBuffer *b)
+{
+    QEmacsState *qs = &qe_state;
+    EditBuffer *b1;
+
+    eb_puts(b, "// open files:\n");
+    for (b1 = qs->first_buffer; b1 != NULL; b1 = b1->next) {
+        if (!(b1->flags & BF_SYSTEM) && *b1->filename)
+            eb_printf(b, "find_file(\"%s\");\n", b1->filename);
+    }
+    eb_putc(b, '\n');
 }
 
 #if 0
@@ -6540,6 +6620,10 @@ static void quit_examine_buffers(QuitState *is)
         edit_display(&qe_state);
         dpy_flush(&global_screen);
     } else {
+#ifndef CONFIG_TINY
+        if (use_session_file)
+            do_save_session(qe_state.active_window, 0);
+#endif
         qe_free(&is);
         url_exit();
     }
@@ -6781,6 +6865,8 @@ void do_delete_window(EditState *s, int force)
                 if (x1 == e->x2 && y1 == e->y1 && y2 >= e->y2) {
                     /* partial vertical split along the left border */
                     e->x2 = x2;
+                    e->flags &= ~WF_RSEPARATOR;
+                    e->flags |= s->flags & WF_RSEPARATOR;
                     y1 = e->y2;
                 } else
                 if (x2 == e->x1 && y1 == e->y1 && y2 >= e->y2) {
@@ -6816,7 +6902,7 @@ void do_delete_window(EditState *s, int force)
         do_refresh(qs->first_window);
 }
 
-void do_delete_other_windows(EditState *s)
+void do_delete_other_windows(EditState *s, int all)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e, *e1;
@@ -6829,14 +6915,38 @@ void do_delete_other_windows(EditState *s)
         if (!e->minibuf && e != s)
             edit_close(&e);
     }
-    /* resize to whole screen */
-    s->y1 = 0;
-    s->x1 = 0;
-    s->x2 = qs->width;
-    s->y2 = qs->height - qs->status_height;
-    s->flags &= ~WF_RSEPARATOR;
-    compute_client_area(s);
-    do_refresh(s);
+    if (all) {
+        edit_close(&s);
+    } else {
+        /* resize to whole screen */
+        s->y1 = 0;
+        s->x1 = 0;
+        s->x2 = qs->width;
+        s->y2 = qs->height - qs->status_height;
+        s->flags &= ~WF_RSEPARATOR;
+        compute_client_area(s);
+        do_refresh(s);
+    }
+}
+
+void do_hide_window(EditState *s, int set)
+{
+    if (set)
+        s->flags |= WF_HIDDEN;
+    else
+        s->flags &= ~WF_HIDDEN;
+}
+
+void do_delete_hidden_windows(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+    EditState *e, *e1;
+
+    for (e = qs->first_window; e != NULL; e = e1) {
+        e1 = e->next_window;
+        if (e->flags & WF_HIDDEN)
+            edit_close(&e);
+    }
 }
 
 /* XXX: add minimum size test and refuse to split if reached */
@@ -6878,6 +6988,110 @@ void do_split_window(EditState *s, int horiz)
 
     compute_client_area(s);
     do_refresh(s);
+}
+
+void do_create_window(EditState *s, const char *filename, const char *layout)
+{
+    QEmacsState *qs = s->qe_state;
+    static const char * const names[] = {
+        "x1:", "y1:", "x2:", "y2:", "flags:", "wrap:",
+        "offset:", "offset.col:", "mark:", "mark.col:", "top:", "top.col:",
+        "active:",
+    };
+    int args[] = { 0, 0, 0, 0, WF_MODELINE, WRAP_LINE, 0, 0, 0, 0, 0, 0, 0  };
+    ModeDef *m = NULL;
+    int i, n, x1, y1, x2, y2, flags, wrap;
+    const char *p = layout;
+    EditBuffer *b1;
+
+    b1 = eb_find_file(filename);
+    if (!b1) {
+        put_status(s, "create_window: no such file loaded: %s", filename);
+        return;
+    }
+
+    for (n = 0; *p; n++) {
+        while (qe_isblank(*p))
+            p++;
+        for (i = 0; i < countof(names); i++) {
+            if (strstart(p, names[i], &p)) {
+                n = i;
+                break;
+            }
+        }
+        if (strstart(p, "mode:", &p)) {
+            m = qe_find_mode(p, 0);
+            break;
+        }
+        if (n >= countof(args))
+            break;
+
+        args[n] = strtol(p, (char **)&p, 0);
+        while (qe_isblank(*p))
+            p++;
+        if (*p == ',')
+            p++;
+    }
+    x1 = scale(args[0], qs->width, 1000);
+    y1 = scale(args[1], qs->height - qs->status_height, 1000);
+    x2 = scale(args[2], qs->width, 1000);
+    y2 = scale(args[3], qs->height - qs->status_height, 1000);
+    flags = args[4];
+    wrap = args[5];
+
+    s = edit_new(b1, x1, y1, x2 - x1, y2 - y1, flags);
+    if (m)
+        edit_set_mode(s, m);
+    s->wrap = wrap;
+    s->offset = clamp(eb_goto_pos(b1, args[6], args[7]), 0, b1->total_size);
+    s->b->mark = clamp(eb_goto_pos(b1, args[8], args[9]), 0, b1->total_size);
+    s->offset_top = clamp(eb_goto_pos(b1, args[10], args[11]), 0, b1->total_size);
+    if (args[12])
+        qs->active_window = s;
+
+    do_refresh(s);
+}
+
+void qe_save_window_layout(EditState *s, EditBuffer *b)
+{
+    QEmacsState *qs = s->qe_state;
+    const EditState *e;
+    int offset_row, offset_col;
+    int mark_row, mark_col;
+    int top_row, top_col;
+
+    eb_puts(b, "// window layout:\n");
+    /* Get rid of default window */
+    // XXX: should simplify layout management
+    // XXX: should save mark, offset, offset_top
+    eb_puts(b, "delete_other_windows();\n");
+    eb_puts(b, "hide_window();\n");
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
+        if (*e->b->filename) {
+            eb_get_pos(e->b, &offset_row, &offset_col, e->offset);
+            eb_get_pos(e->b, &mark_row, &mark_col, e->b->mark);
+            eb_get_pos(e->b, &top_row, &top_col, e->offset_top);
+            eb_printf(b, "create_window(\"%s\", "
+                      "\"%d,%d,%d,%d flags:%d wrap:%d",
+                      e->b->filename,
+                      scale(e->x1, 1000, qs->width),
+                      scale(e->y1, 1000, qs->height - qs->status_height),
+                      scale(e->x2, 1000, qs->width),
+                      scale(e->y2, 1000, qs->height - qs->status_height),
+                      e->flags, e->wrap);
+            if (e->offset)
+                eb_printf(b, " offset:%d,%d", offset_row, offset_col);
+            if (e->b->mark)
+                eb_printf(b, " mark:%d,%d", mark_row, mark_col);
+            if (e->offset_top)
+                eb_printf(b, " top:%d,%d", top_row, top_col);
+            if (e == qs->active_window)
+                eb_printf(b, " active:1");
+            eb_printf(b, " mode:%s\");\n", e->mode->name);
+        }
+    }
+    eb_puts(b, "delete_hidden_windows();\n");
+    eb_putc(b, '\n');
 }
 
 /* help */
@@ -7627,6 +7841,8 @@ static CmdOptionDef cmd_options[] = {
       { .func_noarg = show_usage }},
     { "no-init-file", "q", NULL, CMD_OPT_BOOL, "do not load config files",
       { .int_ptr = &no_init_file }},
+    { "use-session", "s", NULL, CMD_OPT_BOOL, "load and save session files",
+      { .int_ptr = &use_session_file }},
     { "ttycharset", "c", "CHARSET", CMD_OPT_ARG, "specify tty charset",
       { .func_arg = set_tty_charset }},
     { "user", "u", "USER", CMD_OPT_ARG, "load ~USER/.qe/config instead of your own",
@@ -7787,7 +8003,7 @@ static void qe_init(void *opaque)
     QEDisplay *dpy;
     int i, _optind;
 #if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
-    int is_player;
+    int is_player, session_loaded = 0;
 #endif
 
     qs->ec.function = "qe-init";
@@ -7905,6 +8121,10 @@ static void qe_init(void *opaque)
 
     qe_event_init();
 
+#ifndef CONFIG_TINY
+    if (use_session_file)
+        session_loaded = !qe_load_session(s);
+#endif
     do_refresh(s);
 
     /* load file(s) */
@@ -7936,7 +8156,7 @@ static void qe_init(void *opaque)
     }
 
 #if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
-    if (is_player && (_optind >= argc || S_ISDIR(s->b->st_mode))) {
+    if (is_player && !session_loaded && (_optind >= argc || S_ISDIR(s->b->st_mode))) {
         /* if player, go to directory mode by default if no file selected */
         do_dired(s);
     }

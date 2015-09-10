@@ -1891,10 +1891,10 @@ static void eb_io_stop(EditBuffer *b, int err)
 int eb_raw_buffer_load1(EditBuffer *b, FILE *f, int offset)
 {
     unsigned char buf[IOBUF_SIZE];
-    int len, size;
+    int len, size, inserted;
 
     //put_status(NULL, "loading %s", filename);
-    size = 0;
+    size = inserted = 0;
     for (;;) {
         len = fread(buf, 1, IOBUF_SIZE, f);
         if (len <= 0) {
@@ -1902,7 +1902,7 @@ int eb_raw_buffer_load1(EditBuffer *b, FILE *f, int offset)
                 return -1;
             break;
         }
-        eb_insert(b, offset, buf, len);
+        inserted += eb_insert(b, offset, buf, len);
         offset += len;
         size += len;
     }
@@ -2188,6 +2188,19 @@ int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp)
     if (offsetp)
         *offsetp = offset;
     return 1;
+}
+
+int eb_putc(EditBuffer *b, int c)
+{
+    char buf[8];
+    int len = eb_encode_uchar(b, buf, c);
+
+    return eb_insert(b, b->total_size, buf, len);
+}
+
+int eb_puts(EditBuffer *b, const char *s)
+{
+    return eb_insert_utf8_buf(b, b->total_size, s, strlen(s));
 }
 
 int eb_printf(EditBuffer *b, const char *fmt, ...)

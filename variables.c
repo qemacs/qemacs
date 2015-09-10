@@ -75,7 +75,10 @@ static VarDef var_table[] = {
     M_VAR( "mode-name", name, VAR_STRING, VAR_RO )
     M_VAR( "auto-indent", auto_indent, VAR_NUMBER, VAR_RW )
 
+    G_VAR( "use-session-file", use_session_file, VAR_NUMBER, VAR_RW )
+
     /* more buffer fields: modified, readonly, binary, charset */
+
     /* more window fields: mode_line, color, input_method...
      */
 
@@ -215,23 +218,32 @@ static QVarType qe_generic_set_variable(EditState *s, VarDef *vp, void *ptr,
             snprintf(buf, sizeof(buf), "%d", num);
             value = buf;
         }
-        pstr = (char **)ptr;
-        if ((u8 *)*pstr > end)
-            qe_free(pstr);
-        *pstr = qe_strdup(value);
+        if (!strequal(ptr, value)) {
+            pstr = (char **)ptr;
+            if ((u8 *)*pstr > end)
+                qe_free(pstr);
+            *pstr = qe_strdup(value);
+            vp->modified = 1;
+        }
         break;
     case VAR_CHARS:
         if (!value) {
             snprintf(buf, sizeof(buf), "%d", num);
             value = buf;
         }
-        pstrcpy(ptr, vp->size, value);
+        if (!strequal(ptr, value)) {
+            pstrcpy(ptr, vp->size, value);
+            vp->modified = 1;
+        }
         break;
     case VAR_NUMBER:
         if (!value) {
-            /* XXX: should have default, min and max values */
-            *(int*)ptr = num;
+            if (*(int*)ptr != num) {
+                *(int*)ptr = num;
+                vp->modified = 1;
+            }
         } else {
+            /* XXX: should have default, min and max values */
             return VAR_INVALID;
         }
         break;
@@ -252,6 +264,7 @@ QVarType qe_set_variable(EditState *s, const char *name,
         /* Create user variable (global/buffer/window/mode?) */
         vp = qe_mallocz(VarDef);
         vp->name = qe_strdup(name);
+        vp->modified = 1;
         vp->domain = VAR_SELF;
         vp->rw = VAR_RW_SAVE;
         if (value) {
@@ -332,12 +345,12 @@ void qe_register_variables(VarDef *vars, int count)
     QEmacsState *qs = &qe_state;
     VarDef *vp;
 
-    for (vp = vars; vp < vars + count - 1; vp++) {
+    for (vp = vars; vp < vars + count; vp++) {
         if (!vp->set_value)
             vp->set_value = qe_generic_set_variable;
         vp->next = vp + 1;
     }
-    vp->next = qs->first_variable;
+    vp[-1].next = qs->first_variable;
     qs->first_variable = vars;
 }
 
@@ -350,7 +363,7 @@ void qe_list_variables(EditState *s, EditBuffer *b)
     const char *type;
     const VarDef *vp;
 
-    eb_printf(b, "\n  variables:\n\n");
+    eb_puts(b, "\n  variables:\n\n");
     for (vp = qs->first_variable; vp; vp = vp->next) {
         switch (vp->type) {
         case VAR_NUMBER:
@@ -375,19 +388,17 @@ void qe_list_variables(EditState *s, EditBuffer *b)
     }
 }
 
-static void qe_save_variables(EditState *s, EditBuffer *b)
+void qe_save_variables(EditState *s, EditBuffer *b)
 {
     QEmacsState *qs = s->qe_state;
     char buf[MAX_FILENAME_SIZE];
     char varname[32], *p;
     const VarDef *vp;
 
-    eb_printf(b, "// variables:\n");
-    eb_printf(b, "// version: %s\n", QE_VERSION);
-    eb_printf(b, "\n");
-
+    eb_puts(b, "// variables:\n");
+    /* Only save customized variables */
     for (vp = qs->first_variable; vp; vp = vp->next) {
-        if (vp->rw != VAR_RW_SAVE)
+        if (vp->rw != VAR_RW_SAVE || !vp->modified)
             continue;
         pstrcpy(varname, countof(varname), vp->name);
         for (p = varname; *p; p++) {
@@ -397,18 +408,7 @@ static void qe_save_variables(EditState *s, EditBuffer *b)
         qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
         eb_printf(b, "%s = %s;\n", varname, buf);
     }
-    eb_printf(b, "\n");
-}
-
-static void do_save_variables(EditState *s)
-{
-    EditBuffer *b = eb_scratch("*session*", BF_UTF8);
-    qe_save_variables(s, b);
-    b->offset = 0;
-    b->flags |= BF_READONLY;
-
-    /* Should show window caption "qemacs session" */
-    show_popup(b);
+    eb_putc(b, '\n');
 }
 
 /*---------------- commands ----------------*/
@@ -420,8 +420,6 @@ static CmdDef var_commands[] = {
     CMD2( KEY_F8, KEY_NONE,
           "set-variable", do_set_variable, ESss,
           "s{Set variable: }[var]|var|s{to value: }|value|")
-    CMD0( KEY_F8, KEY_NONE,
-          "save-variables", do_save_variables)
 
     CMD_DEF_END,
 };

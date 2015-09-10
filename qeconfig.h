@@ -132,13 +132,16 @@ static CmdDef basic_commands[] = {
 
     CMD3( KEY_CTRLX(KEY_CTRL('f')), KEY_NONE,
           "find-file", do_find_file, ESsi, 0,
-          "s{Find file: }[file]|file|") /* u? */
+          "s{Find file: }[file]|file|"
+          "v") /* u? */
     CMD3( KEY_CTRL('x'), KEY_META('f'),
           "find-file-other-window", do_find_file_other_window, ESsi, 0,
-          "s{Find file: }[file]|file|") /* u? */
+          "s{Find file: }[file]|file|"
+          "v") /* u? */
     CMD3( KEY_CTRLX(KEY_CTRL('v')), KEY_NONE,
           "find-alternate-file", do_find_alternate_file, ESsi, 0,
-          "s{Find alternate file: }[file]|file|") /* u? */
+          "s{Find alternate file: }[file]|file|"
+          "v") /* u? */
     CMD2( KEY_CTRLX('i'), KEY_NONE,
           "insert-file", do_insert_file, ESs,
           "*s{Insert file: }[file]|file|") /* u? */
@@ -155,7 +158,8 @@ static CmdDef basic_commands[] = {
           "s{Switch to buffer: }[buffer]|buffer|")
     CMD3( KEY_CTRLX('k'), KEY_NONE,
           "kill-buffer", do_kill_buffer, ESsi, 0,
-          "s{Kill buffer: }[buffer]|buffer|")
+          "s{Kill buffer: }[buffer]|buffer|"
+          "v")
     CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE,
           "toggle-read-only", do_toggle_read_only)
     CMD2( KEY_META('~'), KEY_NONE,
@@ -285,8 +289,14 @@ static CmdDef basic_commands[] = {
 #endif
     CMD1( KEY_CTRLX('0'), KEY_NONE,
           "delete-window", do_delete_window, 0)
-    CMD0( KEY_CTRLX('1'), KEY_NONE,
-          "delete-other-windows", do_delete_other_windows)
+    CMD1( KEY_CTRLX('1'), KEY_NONE,
+          "delete-other-windows", do_delete_other_windows, 0)
+    CMD1( KEY_NONE, KEY_NONE,
+          "delete-all-windows", do_delete_other_windows, 1)
+    CMD1( KEY_NONE, KEY_NONE,
+          "hide-window", do_hide_window, 1)
+    CMD0( KEY_NONE, KEY_NONE,
+          "delete-hidden-windows", do_delete_hidden_windows)
     CMD1( KEY_CTRLX('2'), KEY_NONE,
           "split-window-vertically", do_split_window, 0) /* u? */
     CMD1( KEY_CTRLX('3'), KEY_NONE,
@@ -295,6 +305,10 @@ static CmdDef basic_commands[] = {
           "toggle-full-screen", do_toggle_full_screen)
     CMD0( KEY_NONE, KEY_NONE,
           "toggle-mode-line", do_toggle_mode_line)
+    CMD2( KEY_NONE, KEY_NONE,
+          "create-window", do_create_window, ESss,
+          "s{Filename: }[file]|file|"
+          "s{Layout: }|layout|")
 
     /*---------------- Help ----------------*/
 
@@ -409,7 +423,8 @@ static CmdDef basic_commands[] = {
     /* other stuff */
     CMD3( KEY_NONE, KEY_NONE,
           "load-file-from-path", do_load_file_from_path, ESsi, 0,
-          "s{Load file from path: }|file|")
+          "s{Load file from path: }|file|"
+          "v")
     CMD2( KEY_NONE, KEY_NONE,
           "load-config-file", do_load_config_file, ESs,
           "s{Configuration file: }[file]|file|")

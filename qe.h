@@ -1036,6 +1036,8 @@ int eb_match_uchar(EditBuffer *b, int offset, int c, int *offsetp);
 int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp);
 int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp);
 int eb_printf(EditBuffer *b, const char *fmt, ...) __attr_printf(2,3);
+int eb_puts(EditBuffer *b, const char *s);
+int eb_putc(EditBuffer *b, int c);
 void eb_line_pad(EditBuffer *b, int n);
 int eb_get_region_content_size(EditBuffer *b, int start, int stop);
 static inline int eb_get_content_size(EditBuffer *b) {
@@ -1215,8 +1217,9 @@ struct EditState {
 #define WF_MODELINE   0x0002 /* mode line must be displayed */
 #define WF_RSEPARATOR 0x0004 /* right window separator */
 #define WF_POPLEFT    0x0008 /* left side window */
+#define WF_HIDDEN     0x0010 /* hidden window, used for temporary changes */
 
-    OWNED char *prompt;  /* optional window prompt, utf8, owned by the window */
+    OWNED char *prompt;  /* optional window prompt, utf8 */
     //const char *mode_line;
     //const char *title;
     struct QEmacsState *qe_state;
@@ -1804,6 +1807,9 @@ void do_previous_window(EditState *s);
 void do_delete_window(EditState *s, int force);
 // should take argval
 void do_split_window(EditState *s, int horiz);
+void do_create_window(EditState *s, const char *filename, const char *layout);
+void qe_save_window_layout(EditState *s, EditBuffer *b);
+
 void edit_display(QEmacsState *qs);
 void edit_invalidate(EditState *s);
 void display_mode_line(EditState *s);
@@ -1967,6 +1973,8 @@ void do_call_macro(EditState *s);
 void do_execute_macro_keys(EditState *s, const char *keys);
 void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
                          const char *key_bind);
+void qe_save_macros(EditState *s, EditBuffer *b);
+
 void edit_attach(EditState *s, EditState *e);
 void do_completion(EditState *s);
 void do_completion_space(EditState *s);
@@ -1982,8 +1990,12 @@ void do_find_alternate_file(EditState *s, const char *filename, int bflags);
 void do_load_file_from_path(EditState *s, const char *filename, int bflags);
 void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile);
+void qe_save_open_files(EditState *s, EditBuffer *b);
+
 void do_doctor(EditState *s);
-void do_delete_other_windows(EditState *s);
+void do_delete_other_windows(EditState *s, int all);
+void do_hide_window(EditState *s, int set);
+void do_delete_hidden_windows(EditState *s);
 void do_describe_key_briefly(EditState *s);
 void do_show_bindings(EditState *s, const char *cmd_name);
 void do_apropos(EditState *s, const char *str);
@@ -2004,6 +2016,9 @@ int parse_config_file(EditState *s, const char *filename);
 void do_eval_expression(EditState *s, const char *expression);
 void do_eval_region(EditState *s); /* should pass actual offsets */
 void do_eval_buffer(EditState *s);
+extern int use_session_file;
+int qe_load_session(EditState *s);
+void do_save_session(EditState *s, int popup);
 
 /* extras.c */
 
