@@ -50,6 +50,7 @@ static int qe_cfg_parse_string(EditState *s, const char **pp,
     int pos = 0;
 
     for (;;) {
+        /* encoding issues delibarately ignored */
         c = *p;
         if (c == '\0') {
             put_status(s, "Unterminated string");
@@ -99,6 +100,7 @@ static char *data_gets(QEmacsDataSource *ds, char *buf, int size)
     }
     if (ds->b) {
         /* buffer should not be modified during parse! */
+        // XXX: parsing will continue beyond `stop` to end of line */
         if (ds->offset < ds->stop && ds->offset < ds->b->total_size) {
             eb_get_strline(ds->b, buf, size, &ds->offset);
             return buf;
@@ -127,7 +129,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
     const char *p, *r;
     int line_num;
     CmdDef *d;
-    int nb_args, c, sep, i, skip;
+    int nb_args, sep, i, skip;
     CmdArg args[MAX_CMD_ARGS];
     unsigned char args_type[MAX_CMD_ARGS];
 
@@ -144,6 +146,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         qs->ec.function = NULL;
         qs->ec.lineno = line_num;
 
+        /* XXX: line based parser does not handle multiline comments */
         p = line;
         skip_spaces(&p);
         if (p[0] == '}') {
@@ -158,20 +161,20 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         /* skip comments */
         while (p[0] == '/' && p[1] == '*') {
             for (p += 2; *p; p++) {
-                if (*p == '*' && p[1] == '/') {
+                if (p[0] == '*' && p[1] == '/') {
                     p += 2;
                     break;
                 }
             }
             skip_spaces(&p);
-            /* CG: unfinished comments silently unsupported */
+            /* XXX: unfinished comments silently unsupported */
         }
         if (p[0] == '/' && p[1] == '/')
             continue;
         if (p[0] == '\0')
             continue;
 
-        get_str(&p, cmd, sizeof(cmd), "(");
+        get_str(&p, cmd, sizeof(cmd), "{}();=/");
         if (*cmd == '\0') {
             put_status(s, "Syntax error");
             continue;
@@ -210,12 +213,15 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                     qe_set_variable(s, cmd, NULL, strtol(p, (char**)&p, 0));
                 }
                 skip_spaces(&p);
-                if (*p != ';' && *p != '\n')
+                if (*p != ';' && *p != '\0')
                     put_status(s, "Syntax error '%s'", cmd);
                 continue;
             }
         }
 #endif
+        if (!expect_token(&p, '('))
+            goto fail;
+
         /* search for command */
         d = qe_find_cmd(cmd);
         if (!d) {
@@ -255,9 +261,6 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
             args[nb_args].p = NULL;
             args_type[nb_args++] = arg_type & CMD_ARG_TYPE_MASK;
         }
-
-        if (!expect_token(&p, '('))
-            goto fail;
 
         sep = '\0';
         strp = str;
@@ -312,8 +315,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
             }
         }
         skip_spaces(&p);
-        c = ')';
-        if (*p != c) {
+        if (*p != ')') {
             put_status(s, "Too many arguments for %s", d->name);
             goto fail;
         }
