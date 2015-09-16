@@ -171,15 +171,15 @@ void set_clip_rectangle(QEditScreen *s, CSSRect *r)
     s->dpy.dpy_set_clip(s, x1, y1, x2 - x1, y2 - y1);
 }
 
-void push_clip_rectangle(QEditScreen *s, CSSRect *or, CSSRect *r)
+void push_clip_rectangle(QEditScreen *s, CSSRect *r0, CSSRect *r)
 {
     int x1, y1, x2, y2;
 
     /* save old rectangle */
-    or->x1 = s->clip_x1;
-    or->y1 = s->clip_y1;
-    or->x2 = s->clip_x2;
-    or->y2 = s->clip_y2;
+    r0->x1 = s->clip_x1;
+    r0->y1 = s->clip_y1;
+    r0->x2 = s->clip_x2;
+    r0->y2 = s->clip_y2;
 
     /* load and clip new rectangle against the current one */
     x1 = r->x1;

@@ -246,7 +246,7 @@ static inline int glyph_width(QEditScreen *s, QEFont *font, int ch)
 void fill_rectangle(QEditScreen *s,
                     int x1, int y1, int w, int h, QEColor color);
 void set_clip_rectangle(QEditScreen *s, CSSRect *r);
-void push_clip_rectangle(QEditScreen *s, CSSRect *or, CSSRect *r);
+void push_clip_rectangle(QEditScreen *s, CSSRect *r0, CSSRect *r);
 
 void free_font_cache(QEditScreen *s);
 QEFont *select_font(QEditScreen *s, int style, int size);
