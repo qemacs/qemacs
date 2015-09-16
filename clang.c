@@ -71,6 +71,7 @@ enum {
 #define CLANG_REGEX       0x0800
 #define CLANG_WLITERALS   0x1000
 #define CLANG_PREPROC     0x2000
+#define CLANG_CAP_TYPE    0x4000  /* Mixed case initial cap is type */
 #define CLANG_CC          0x3100  /* all C language features */
 
 static const char c_keywords[] = {
@@ -395,16 +396,20 @@ static const char pike_types[] = {
 
 static const char idl_keywords[] = {
     "abstract|attribute|case|component|const|consumes|context|custom|"
-    "default|emits|enum|eventtype|exception|factory|false|FALSE|finder|"
+    "default|emits|enum|eventtype|exception|factory|finder|"
     "fixed|getraises|home|import|in|inout|interface|local|module|multiple|"
     "native|oneway|out|primarykey|private|provides|public|publishes|raises|"
-    "readonly|sequence|setraises|struct|supports|switch|TRUE|true|"
-    "truncatable|typedef|typeid|typeprefix|union|uses|ValueBase|valuetype|"
+    "readonly|setraises|struct|supports|switch|"
+    "typedef|typeid|typeprefix|union|uses|ValueBase|valuetype|"
+    "sequence|iterable|truncatable|"
+    "unrestricted|namespace|dictionary|or|implements|optional|partial|required|"
+    "getter|setter|creator|deleter|callback|legacycaller|"
+    "false|true|null|FALSE|TRUE|"
 };
 
 static const char idl_types[] = {
     "unsigned|short|long|float|double|char|wchar|string|wstring|octet|any|void|"
-    "boolean|Boolean|object|Object|"
+    "byte|boolean|object|"
 };
 
 static const char calc_keywords[] = {
@@ -999,7 +1004,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 ||   ((mode_flags & CLANG_CC) && strfind(c_types, kbuf))
                 ||   (((mode_flags & CLANG_CC) || (flavor == CLANG_D)) &&
                      strend(kbuf, "_t", NULL))
-                ||   ((flavor == CLANG_JAVA || flavor == CLANG_SCALA) &&
+                ||   ((mode_flags & CLANG_CAP_TYPE) &&
                       qe_isupper(c) && qe_haslower(kbuf))
                 ||   (flavor == CLANG_HAXE && qe_isupper(c) && qe_haslower(kbuf) &&
                       (start == 0 || !qe_findchar("(", str[start - 1]))))) {
@@ -1819,7 +1824,7 @@ static ModeDef java_mode = {
     .name = "Java",
     .extensions = "jav|java",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_JAVA,
+    .colorize_flags = CLANG_JAVA | CLANG_CAP_TYPE,
     .keywords = java_keywords,
     .types = java_types,
     .indent_func = c_indent_line,
@@ -1831,7 +1836,7 @@ static ModeDef scala_mode = {
     .name = "Scala",
     .extensions = "scala|sbt",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_SCALA,
+    .colorize_flags = CLANG_SCALA | CLANG_CAP_TYPE,
     .keywords = scala_keywords,
     .types = scala_types,
     .indent_func = c_indent_line,
@@ -1984,7 +1989,8 @@ static ModeDef idl_mode = {
     .name = "IDL",
     .extensions = "idl",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_IDL | CLANG_PREPROC | CLANG_WLITERALS | CLANG_REGEX,
+    .colorize_flags = CLANG_IDL | CLANG_PREPROC | CLANG_WLITERALS |
+                      CLANG_REGEX | CLANG_CAP_TYPE,
     .keywords = idl_keywords,
     .types = idl_types,
     .indent_func = c_indent_line,
