@@ -298,6 +298,8 @@ static void tty_resize(__unused__ int sig)
     if (ioctl(fileno(s->STDIN), TIOCGWINSZ, &ws) == 0) {
         s->width = ws.ws_col;
         s->height = ws.ws_row;
+        if (s->width < 10)
+            s->width = 10;
         if (s->width > MAX_SCREEN_WIDTH)
             s->width = MAX_SCREEN_WIDTH;
         if (s->height < 3)
