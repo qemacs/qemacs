@@ -50,29 +50,17 @@
 
 #if (defined(__GNUC__) || defined(__TINYC__))
 /* make sure that the keyword is not disabled by glibc (TINYC case) */
-#undef __attribute__
-#define __attr_printf(a, b)  __attribute__((format(printf, a, b)))
+#define qe__attr_printf(a, b)  __attribute__((format(printf, a, b)))
 #else
-#ifndef __attribute__
-#define __attribute__(l)
-#endif
-#define __attr_printf(a, b)
+#define qe__attr_printf(a, b)
 #endif
 
 #if defined(__GNUC__) && __GNUC__ > 2
-#define __attr_nonnull(l)    __attribute__((nonnull l))
-#define __unused__           __attribute__((unused))
+#define qe__attr_nonnull(l)   __attribute__((nonnull l))
+#define qe__unused__          __attribute__((unused))
 #else
-#define __attr_nonnull(l)
-#define __unused__
-#endif
-
-#ifdef __SPARSE__
-#define __bitwise__             __attribute__((bitwise))
-#define force_cast(type, expr)  ((__attribute__((force))type)(expr))
-#else
-#define __bitwise__
-#define force_cast(type, expr)  ((type)(expr))
+#define qe__attr_nonnull(l)
+#define qe__unused__
 #endif
 
 #ifndef offsetof
@@ -426,7 +414,7 @@ static inline void qstrfree(QString *q) {
 
 int qmemcat(QString *q, const u8 *data1, int len1);
 int qstrcat(QString *q, const char *str);
-int qprintf(QString *q, const char *fmt, ...) __attr_printf(2,3);
+int qprintf(QString *q, const char *fmt, ...) qe__attr_printf(2,3);
 
 /* Dynamic buffers with static allocation */
 typedef struct buf_t buf_t;
@@ -469,7 +457,7 @@ static inline int buf_puts(buf_t *bp, const char *str) {
     return buf_write(bp, str, strlen(str));
 }
 
-int buf_printf(buf_t *bp, const char *fmt, ...) __attr_printf(2,3);
+int buf_printf(buf_t *bp, const char *fmt, ...) qe__attr_printf(2,3);
 int buf_putc_utf8(buf_t *bp, int c);
 
 /* command line option */
@@ -992,9 +980,9 @@ EditBuffer *eb_find_file(const char *filename);
 EditState *eb_find_window(EditBuffer *b, EditState *e);
 
 void eb_set_charset(EditBuffer *b, QECharset *charset, EOLType eol_type);
-__attr_nonnull((3))
+qe__attr_nonnull((3))
 int eb_nextc(EditBuffer *b, int offset, int *next_ptr);
-__attr_nonnull((3))
+qe__attr_nonnull((3))
 int eb_prevc(EditBuffer *b, int offset, int *prev_ptr);
 int eb_skip_chars(EditBuffer *b, int offset, int n);
 int eb_delete_chars(EditBuffer *b, int offset, int n);
@@ -1039,7 +1027,7 @@ int eb_insert_str(EditBuffer *b, int offset, const char *str);
 int eb_match_uchar(EditBuffer *b, int offset, int c, int *offsetp);
 int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp);
 int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp);
-int eb_printf(EditBuffer *b, const char *fmt, ...) __attr_printf(2,3);
+int eb_printf(EditBuffer *b, const char *fmt, ...) qe__attr_printf(2,3);
 int eb_puts(EditBuffer *b, const char *s);
 int eb_putc(EditBuffer *b, int c);
 void eb_line_pad(EditBuffer *b, int n);
@@ -1081,34 +1069,33 @@ extern EditBufferDataType raw_data_type;
 /* dynamic module case */
 
 #define qe_module_init(fn) \
-        int __qe_module_init(void) { return fn(); }
+        int qe__module_init(void) { return fn(); }
 
 #define qe_module_exit(fn) \
-        void __qe_module_exit(void) { fn(); }
+        void qe__module_exit(void) { fn(); }
 
 #else /* QE_MODULE */
 
 #if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
 #if __GNUC__ < 3 || (__GNUC__ == 3 && __GNUC_MINOR__ < 3)
 /* same method as the linux kernel... */
-#define __init_call     __attribute__((unused, __section__ (".initcall.init")))
-#define __exit_call     __attribute__((unused, __section__ (".exitcall.exit")))
+#define qe__init_call   __attribute__((unused, __section__ (".initcall.init")))
+#define qe__exit_call   __attribute__((unused, __section__ (".exitcall.exit")))
 #else
-#undef __attribute_used__
-#define __attribute_used__      __attribute__((__used__))
-#define __init_call     __attribute_used__ __attribute__((__section__ (".initcall.init")))
-#define __exit_call     __attribute_used__ __attribute__((__section__ (".exitcall.exit")))
+#define qe__attr_used   __attribute__((__used__))
+#define qe__init_call   qe__attr_used __attribute__((__section__ (".initcall.init")))
+#define qe__exit_call   qe__attr_used __attribute__((__section__ (".exitcall.exit")))
 #endif
 
 #define qe_module_init(fn) \
-        static int (*__initcall_##fn)(void) __init_call = fn
+        static int (*qe__initcall_##fn)(void) qe__init_call = fn
 
 #define qe_module_exit(fn) \
-        static void (*__exitcall_##fn)(void) __exit_call = fn
+        static void (*qe__exitcall_##fn)(void) qe__exit_call = fn
 #else
 
-#define __init_call
-#define __exit_call
+#define qe__init_call
+#define qe__exit_call
 
 #define qe_module_init(fn) \
         extern int module_ ## fn (void); \
@@ -1666,7 +1653,7 @@ int display_char_bidir(DisplayState *s, int offset1, int offset2,
 void display_eol(DisplayState *s, int offset1, int offset2);
 
 void display_printf(DisplayState *ds, int offset1, int offset2,
-                    const char *fmt, ...) __attr_printf(4,5);
+                    const char *fmt, ...) qe__attr_printf(4,5);
 void display_printhex(DisplayState *s, int offset1, int offset2,
                       unsigned int h, int n);
 
@@ -1755,8 +1742,8 @@ typedef struct CompletionEntry {
 void complete_test(CompleteState *cp, const char *str);
 
 void register_completion(const char *name, CompletionFunc completion_func);
-void put_status(EditState *s, const char *fmt, ...) __attr_printf(2,3);
-void put_error(EditState *s, const char *fmt, ...) __attr_printf(2,3);
+void put_status(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
+void put_error(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void minibuffer_edit(const char *input, const char *prompt,
                      StringArray *hist, CompletionFunc completion_func,
                      void (*cb)(void *opaque, char *buf), void *opaque);
@@ -1769,13 +1756,13 @@ static inline int is_user_input_pending(void) {
     return 0;
 }
 #else
-extern int __fast_test_event_poll_flag;
-int __is_user_input_pending(void);
+extern int qe__fast_test_event_poll_flag;
+int qe__is_user_input_pending(void);
 
 static inline int is_user_input_pending(void) {
-    if (__fast_test_event_poll_flag) {
-        __fast_test_event_poll_flag = 0;
-        return __is_user_input_pending();
+    if (qe__fast_test_event_poll_flag) {
+        qe__fast_test_event_poll_flag = 0;
+        return qe__is_user_input_pending();
     } else {
         return 0;
     }

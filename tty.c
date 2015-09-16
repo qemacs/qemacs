@@ -119,7 +119,7 @@ static int tty_term_probe(void)
 }
 
 static int tty_term_init(QEditScreen *s,
-                         __unused__ int w, __unused__ int h)
+                         qe__unused__ int w, qe__unused__ int h)
 {
     TTYState *ts;
     struct termios tty;
@@ -285,7 +285,7 @@ static void tty_term_exit(void)
     tcsetattr(fileno(s->STDIN), TCSANOW, &ts->oldtty);
 }
 
-static void tty_resize(__unused__ int sig)
+static void tty_resize(qe__unused__ int sig)
 {
     QEditScreen *s = tty_screen;
     TTYState *ts = s->priv_data;
@@ -335,7 +335,7 @@ static void tty_term_invalidate(QEditScreen *s)
 }
 
 static void tty_term_cursor_at(QEditScreen *s, int x1, int y1,
-                               __unused__ int w, __unused__ int h)
+                               qe__unused__ int w, qe__unused__ int h)
 {
     TTYState *ts = s->priv_data;
     ts->cursor_x = x1;
@@ -1003,8 +1003,8 @@ int get_tty_style(const char *str)
 }
 
 /* XXX: could alloc font in wrapper */
-static QEFont *tty_term_open_font(__unused__ QEditScreen *s,
-                                  __unused__ int style, __unused__ int size)
+static QEFont *tty_term_open_font(qe__unused__ QEditScreen *s,
+                                  qe__unused__ int style, qe__unused__ int size)
 {
     QEFont *font;
 
@@ -1018,12 +1018,12 @@ static QEFont *tty_term_open_font(__unused__ QEditScreen *s,
     return font;
 }
 
-static void tty_term_close_font(__unused__ QEditScreen *s, QEFont **fontp)
+static void tty_term_close_font(qe__unused__ QEditScreen *s, QEFont **fontp)
 {
     qe_free(fontp);
 }
 
-static inline int tty_term_glyph_width(__unused__ QEditScreen *s, unsigned int ucs)
+static inline int tty_term_glyph_width(qe__unused__ QEditScreen *s, unsigned int ucs)
 {
     /* XXX: should support combining marks */
 
@@ -1034,7 +1034,7 @@ static inline int tty_term_glyph_width(__unused__ QEditScreen *s, unsigned int u
     return unicode_glyph_tty_width(ucs);
 }
 
-static void tty_term_text_metrics(QEditScreen *s, __unused__ QEFont *font,
+static void tty_term_text_metrics(QEditScreen *s, qe__unused__ QEFont *font,
                                   QECharMetrics *metrics,
                                   const unsigned int *str, int len)
 {
@@ -1049,7 +1049,7 @@ static void tty_term_text_metrics(QEditScreen *s, __unused__ QEFont *font,
     metrics->width = x;
 }
 
-static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font,
+static void tty_term_draw_text(QEditScreen *s, qe__unused__ QEFont *font,
                                int x, int y, const unsigned int *str, int len,
                                QEColor color)
 {
@@ -1108,9 +1108,9 @@ static void tty_term_draw_text(QEditScreen *s, __unused__ QEFont *font,
     }
 }
 
-static void tty_term_set_clip(__unused__ QEditScreen *s,
-                              __unused__ int x, __unused__ int y,
-                              __unused__ int w, __unused__ int h)
+static void tty_term_set_clip(qe__unused__ QEditScreen *s,
+                              qe__unused__ int x, qe__unused__ int y,
+                              qe__unused__ int w, qe__unused__ int h)
 {
 }
 

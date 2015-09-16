@@ -636,7 +636,7 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
 
 
 /* Well, almost a hack to update cursor */
-static void tty_update_cursor(__unused__ ShellState *s)
+static void tty_update_cursor(qe__unused__ ShellState *s)
 {
 #if 0
     QEmacsState *qs = s->qe_state;

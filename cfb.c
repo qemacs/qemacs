@@ -300,9 +300,9 @@ static void cfb_draw_text(QEditScreen *s, QEFont *font,
 }
 
 
-static void cfb_set_clip(__unused__ QEditScreen *s,
-                         __unused__ int x, __unused__ int y,
-                         __unused__ int w, __unused__ int h)
+static void cfb_set_clip(qe__unused__ QEditScreen *s,
+                         qe__unused__ int x, qe__unused__ int y,
+                         qe__unused__ int w, qe__unused__ int h)
 {
 }
 

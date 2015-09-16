@@ -35,7 +35,7 @@
 
 /* file I/O for the qHTML library */
 
-CSSFile *css_open(__unused__ CSSContext *s, const char *filename)
+CSSFile *css_open(qe__unused__ CSSContext *s, const char *filename)
 {
     FILE *f;
     f = fopen(filename, "rb");
@@ -75,7 +75,7 @@ void css_error(const char *filename, int line_num,
     fprintf(stderr, "%s:%d: %s\n", filename, line_num, msg);
 }
 
-void put_error(__unused__ EditState *s, const char *fmt, ...)
+void put_error(qe__unused__ EditState *s, const char *fmt, ...)
 {
     va_list ap;
 
@@ -87,16 +87,16 @@ void put_error(__unused__ EditState *s, const char *fmt, ...)
 
 
 /* dummy functions */
-int eb_nextc(__unused__ EditBuffer *b,
-             __unused__ int offset, __unused__ int *next_ptr)
+int eb_nextc(qe__unused__ EditBuffer *b,
+             qe__unused__ int offset, qe__unused__ int *next_ptr)
 {
     return 0;
 }
 
 /* find a resource file */
 /* XXX: suppress that */
-int find_resource_file(__unused__ char *path, __unused__ int path_size,
-                       __unused__ const char *pattern)
+int find_resource_file(qe__unused__ char *path, qe__unused__ int path_size,
+                       qe__unused__ const char *pattern)
 {
     return -1;
 }
@@ -322,7 +322,7 @@ void test_display(QEditScreen *screen)
 }
 #endif
 
-static int html_test_abort(__unused__ void *opaque)
+static int html_test_abort(qe__unused__ void *opaque)
 {
     return 0;
 }

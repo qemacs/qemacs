@@ -987,7 +987,7 @@ void eb_free_callback(EditBuffer *b, EditBufferCallback cb, void *opaque)
 }
 
 /* standard callback to move offsets */
-void eb_offset_callback(__unused__ EditBuffer *b, void *opaque, int edge,
+void eb_offset_callback(qe__unused__ EditBuffer *b, void *opaque, int edge,
                         enum LogOperation op, int offset, int size)
 {
     int *offset_ptr = opaque;
@@ -2036,7 +2036,7 @@ static int raw_buffer_save(EditBuffer *b, int start, int end,
     return written;
 }
 
-static void raw_buffer_close(__unused__ EditBuffer *b)
+static void raw_buffer_close(qe__unused__ EditBuffer *b)
 {
     /* nothing to do */
 }

@@ -229,7 +229,7 @@ void fbf_text_metrics(QEditScreen *s, QEFont *font,
 
 #define MAX_MATCHES 32
 
-QEFont *fbf_open_font(__unused__ QEditScreen *s, int style, int size)
+QEFont *fbf_open_font(qe__unused__ QEditScreen *s, int style, int size)
 {
     QEFont *font;
     UniFontData *uf, *uf_found;
@@ -276,17 +276,17 @@ QEFont *fbf_open_font(__unused__ QEditScreen *s, int style, int size)
     return font;
 }
 
-void fbf_close_font(__unused__ QEditScreen *s, QEFont **fontp)
+void fbf_close_font(qe__unused__ QEditScreen *s, QEFont **fontp)
 {
     qe_free(fontp);
 }
 
-static void *my_malloc(__unused__ void *opaque, int size)
+static void *my_malloc(qe__unused__ void *opaque, int size)
 {
     return qe_malloc_bytes(size);
 }
 
-static void my_free(__unused__ void *opaque, void *ptr)
+static void my_free(qe__unused__ void *opaque, void *ptr)
 {
     qe_free(&ptr);
 }
@@ -469,7 +469,7 @@ static int fbf_load_font_memory(const unsigned char *data,
     return 0;
 }
 
-int fbf_render_init(__unused__ const char *font_path)
+int fbf_render_init(qe__unused__ const char *font_path)
 {
     const struct fbf_font *pp;
 

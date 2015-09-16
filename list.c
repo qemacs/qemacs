@@ -25,7 +25,7 @@ ModeDef list_mode;
 
 static int list_get_colorized_line(EditState *s,
                                    unsigned int *buf, int buf_size,
-                                   int *offsetp, __unused__ int line_num)
+                                   int *offsetp, qe__unused__ int line_num)
 {
     QEmacsState *qs = s->qe_state;
     int offset, len;

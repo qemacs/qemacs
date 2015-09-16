@@ -24,67 +24,67 @@ static QEDisplay *first_dpy;
 
 /* dummy display driver for initialization time */
 
-static int dummy_dpy_init(QEditScreen *s, __unused__ int w, __unused__ int h)
+static int dummy_dpy_init(QEditScreen *s, qe__unused__ int w, qe__unused__ int h)
 {
     s->charset = &charset_8859_1;
 
     return 0;
 }
 
-static void dummy_dpy_close(__unused__ QEditScreen *s)
+static void dummy_dpy_close(qe__unused__ QEditScreen *s)
 {
 }
 
-static void dummy_dpy_flush(__unused__ QEditScreen *s)
+static void dummy_dpy_flush(qe__unused__ QEditScreen *s)
 {
 }
 
-static int dummy_dpy_is_user_input_pending(__unused__ QEditScreen *s)
+static int dummy_dpy_is_user_input_pending(qe__unused__ QEditScreen *s)
 {
     return 0;
 }
 
-static void dummy_dpy_fill_rectangle(__unused__ QEditScreen *s,
-                                     __unused__ int x1, __unused__ int y1,
-                                     __unused__ int w, __unused__ int h,
-                                     __unused__ QEColor color)
+static void dummy_dpy_fill_rectangle(qe__unused__ QEditScreen *s,
+                                     qe__unused__ int x1, qe__unused__ int y1,
+                                     qe__unused__ int w, qe__unused__ int h,
+                                     qe__unused__ QEColor color)
 {
 }
 
-static QEFont *dummy_dpy_open_font(__unused__ QEditScreen *s,
-                                   __unused__ int style, __unused__ int size)
+static QEFont *dummy_dpy_open_font(qe__unused__ QEditScreen *s,
+                                   qe__unused__ int style, qe__unused__ int size)
 {
     return NULL;
 }
 
-static void dummy_dpy_close_font(__unused__ QEditScreen *s,
-                                 __unused__ QEFont **fontp)
+static void dummy_dpy_close_font(qe__unused__ QEditScreen *s,
+                                 qe__unused__ QEFont **fontp)
 {
 }
 
-static void dummy_dpy_text_metrics(__unused__ QEditScreen *s,
-                                   __unused__ QEFont *font,
+static void dummy_dpy_text_metrics(qe__unused__ QEditScreen *s,
+                                   qe__unused__ QEFont *font,
                                    QECharMetrics *metrics,
-                                   __unused__ const unsigned int *str,
-                                   __unused__ int len)
+                                   qe__unused__ const unsigned int *str,
+                                   qe__unused__ int len)
 {
     metrics->font_ascent = 1;
     metrics->font_descent = 0;
     metrics->width = len;
 }
 
-static void dummy_dpy_draw_text(__unused__ QEditScreen *s,
-                                __unused__ QEFont *font,
-                                __unused__ int x, __unused__ int y,
-                                __unused__ const unsigned int *str,
-                                __unused__ int len,
-                                __unused__ QEColor color)
+static void dummy_dpy_draw_text(qe__unused__ QEditScreen *s,
+                                qe__unused__ QEFont *font,
+                                qe__unused__ int x, qe__unused__ int y,
+                                qe__unused__ const unsigned int *str,
+                                qe__unused__ int len,
+                                qe__unused__ QEColor color)
 {
 }
 
-static void dummy_dpy_set_clip(__unused__ QEditScreen *s,
-                               __unused__ int x, __unused__ int y,
-                               __unused__ int w, __unused__ int h)
+static void dummy_dpy_set_clip(qe__unused__ QEditScreen *s,
+                               qe__unused__ int x, qe__unused__ int y,
+                               qe__unused__ int w, qe__unused__ int h)
 {
 }
 

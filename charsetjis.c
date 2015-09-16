@@ -127,7 +127,7 @@ static int decode_euc_jp_func(CharsetDecodeState *s)
     return c;
 }
 
-static unsigned char *encode_euc_jp(__unused__ QECharset *s,
+static unsigned char *encode_euc_jp(qe__unused__ QECharset *s,
                                     unsigned char *q, int c)
 {
     if (c <= 0x7f) {
@@ -210,7 +210,7 @@ static int decode_sjis_func(CharsetDecodeState *s)
     return c;
 }
 
-static unsigned char *encode_sjis(__unused__ QECharset *s,
+static unsigned char *encode_sjis(qe__unused__ QECharset *s,
                                   unsigned char *q, int c)
 {
     if (c <= 0x7f) {

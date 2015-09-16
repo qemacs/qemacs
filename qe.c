@@ -45,8 +45,8 @@ typedef struct HistoryEntry {
 int debug_flags;
 
 #ifdef CONFIG_INIT_CALLS
-static int (*__initcall_first)(void) __init_call = NULL;
-static void (*__exitcall_first)(void) __exit_call = NULL;
+static int (*qe__initcall_first)(void) qe__init_call = NULL;
+static void (*qe__exitcall_first)(void) qe__exit_call = NULL;
 #endif
 
 static int get_line_height(QEditScreen *screen, int style_index);
@@ -873,7 +873,7 @@ typedef struct {
 
 int cursor_func(DisplayState *ds,
                 int offset1, int offset2, int line_num,
-                int x, int y, int w, int h, __unused__ int hex_mode)
+                int x, int y, int w, int h, qe__unused__ int hex_mode)
 {
     CursorContext *m = ds->cursor_opaque;
 
@@ -917,10 +917,10 @@ typedef struct {
 
 /* called each time the cursor could be displayed */
 static int down_cursor_func(DisplayState *ds,
-                            int offset1, __unused__ int offset2, int line_num,
-                            int x, __unused__ int y,
-                            __unused__ int w, __unused__ int h,
-                            __unused__ int hex_mode)
+                            int offset1, qe__unused__ int offset2, int line_num,
+                            int x, qe__unused__ int y,
+                            qe__unused__ int w, qe__unused__ int h,
+                            qe__unused__ int hex_mode)
 {
     int d;
     MoveContext *m = ds->cursor_opaque;
@@ -1036,10 +1036,10 @@ typedef struct {
 /* called each time the cursor could be displayed */
 static int scroll_cursor_func(DisplayState *ds,
                               int offset1, int offset2,
-                              __unused__ int line_num,
-                              __unused__ int x, int y,
-                              __unused__ int w, int h,
-                              __unused__ int hex_mode)
+                              qe__unused__ int line_num,
+                              qe__unused__ int x, int y,
+                              qe__unused__ int w, int h,
+                              qe__unused__ int hex_mode)
 {
     ScrollContext *m = ds->cursor_opaque;
     int y1;
@@ -1209,11 +1209,11 @@ typedef struct {
 } LeftRightMoveContext;
 
 static int left_right_cursor_func(DisplayState *ds,
-                                  int offset1, __unused__ int offset2,
+                                  int offset1, qe__unused__ int offset2,
                                   int line_num,
-                                  int x, __unused__ int y,
-                                  __unused__ int w, __unused__ int h,
-                                  __unused__ int hex_mode)
+                                  int x, qe__unused__ int y,
+                                  qe__unused__ int w, qe__unused__ int h,
+                                  qe__unused__ int hex_mode)
 {
     int d;
     LeftRightMoveContext *m = ds->cursor_opaque;
@@ -1325,8 +1325,8 @@ static int seg_dist(int x, int x1, int x2)
 /* XXX: would need two passes in the general case (first search line,
    then colunm */
 static int mouse_goto_func(DisplayState *ds,
-                           int offset1, __unused__ int offset2,
-                           __unused__ int line_num,
+                           int offset1, qe__unused__ int offset2,
+                           qe__unused__ int line_num,
                            int x, int y, int w, int h, int hex_mode)
 {
     MouseGotoContext *m = ds->cursor_opaque;
@@ -1703,7 +1703,7 @@ EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
     return b;
 }
 
-void do_append_next_kill(__unused__ EditState *s)
+void do_append_next_kill(qe__unused__ EditState *s)
 {
     /* do nothing! */
 }
@@ -2768,7 +2768,7 @@ void do_define_color(EditState *e, const char *name, const char *value)
 }
 #endif
 
-void do_set_display_size(__unused__ EditState *s, int w, int h)
+void do_set_display_size(qe__unused__ EditState *s, int w, int h)
 {
     if (w != NO_ARG && h != NO_ARG) {
         screen_width = w;
@@ -3665,11 +3665,11 @@ static int syntax_get_colorized_line(EditState *s, unsigned int *buf,
 }
 
 /* invalidate the colorize data */
-static void colorize_callback(__unused__ EditBuffer *b,
-                              void *opaque, __unused__ int arg,
-                              __unused__ enum LogOperation op,
+static void colorize_callback(qe__unused__ EditBuffer *b,
+                              void *opaque, qe__unused__ int arg,
+                              qe__unused__ enum LogOperation op,
                               int offset,
-                              __unused__ int size)
+                              qe__unused__ int size)
 {
     EditState *e = opaque;
 
@@ -4069,8 +4069,8 @@ typedef struct ExecCmdState {
    - void (*)(EditState *, const char *, const char *, const char *); (2)
    - void (*)(EditState *, const char *, const char *, int); (2)
 */
-void call_func(CmdSig sig, CmdProto func, __unused__ int nb_args,
-               CmdArg *args, __unused__ unsigned char *args_type)
+void call_func(CmdSig sig, CmdProto func, qe__unused__ int nb_args,
+               CmdArg *args, qe__unused__ unsigned char *args_type)
 {
     switch (sig) {
     case CMD_void:
@@ -4611,7 +4611,7 @@ void do_call_macro(EditState *s)
     }
 }
 
-void do_execute_macro_keys(__unused__ EditState *s, const char *keys)
+void do_execute_macro_keys(qe__unused__ EditState *s, const char *keys)
 {
     QEmacsState *qs = s->qe_state;
     const char *p;
@@ -4738,7 +4738,7 @@ static void macro_add_key(int key)
     qs->macro_keys[qs->nb_macro_keys++] = key;
 }
 
-void do_numeric_argument(__unused__ EditState *s)
+void do_numeric_argument(qe__unused__ EditState *s)
 {
     /* nothing is done there (see qe_key_process()) */
 }
@@ -5031,7 +5031,7 @@ static void eb_format_message(QEmacsState *qs, const char *bufname,
     }
 }
 
-void put_error(__unused__ EditState *s, const char *fmt, ...)
+void put_error(qe__unused__ EditState *s, const char *fmt, ...)
 {
     /* CG: s is not used and may be NULL! */
     QEmacsState *qs = &qe_state;
@@ -5045,7 +5045,7 @@ void put_error(__unused__ EditState *s, const char *fmt, ...)
     eb_format_message(qs, "*errors*", buf);
 }
 
-void put_status(__unused__ EditState *s, const char *fmt, ...)
+void put_status(qe__unused__ EditState *s, const char *fmt, ...)
 {
     /* CG: s is not used and may be NULL! */
     QEmacsState *qs = &qe_state;
@@ -5584,7 +5584,7 @@ static void do_minibuffer_char(EditState *s, int key, int argval)
 }
 
 /* scroll in completion popup */
-void minibuf_complete_scroll_up_down(__unused__ EditState *s, int dir)
+void minibuf_complete_scroll_up_down(qe__unused__ EditState *s, int dir)
 {
     if (completion_popup_window) {
         completion_popup_window->force_highlight = 1;
@@ -6676,7 +6676,7 @@ static void quit_key(void *opaque, int ch)
     quit_examine_buffers(is);
 }
 
-static void quit_confirm_cb(__unused__ void *opaque, char *reply)
+static void quit_confirm_cb(qe__unused__ void *opaque, char *reply)
 {
     if (!reply)
         return;
@@ -6714,7 +6714,7 @@ void edit_invalidate(EditState *s)
 }
 
 /* refresh the screen, s1 can be any edit window */
-void do_refresh(__unused__ EditState *s1)
+void do_refresh(qe__unused__ EditState *s1)
 {
     /* CG: s1 may be NULL */
     QEmacsState *qs = &qe_state;
@@ -7120,7 +7120,7 @@ EditBuffer *new_help_buffer(int *show_ptr)
     return b;
 }
 
-void do_help_for_help(__unused__ EditState *s)
+void do_help_for_help(qe__unused__ EditState *s)
 {
     EditBuffer *b;
     int show;
@@ -7152,11 +7152,11 @@ void qe_event_init(void)
 /* we install a signal handler to set poll_flag to one so that we can
    avoid polling too often in some cases */
 
-int __fast_test_event_poll_flag = 0;
+int qe__fast_test_event_poll_flag = 0;
 
-static void poll_action(__unused__ int sig)
+static void poll_action(qe__unused__ int sig)
 {
-    __fast_test_event_poll_flag = 1;
+    qe__fast_test_event_poll_flag = 1;
 }
 
 /* init event system */
@@ -7177,7 +7177,7 @@ void qe_event_init(void)
 }
 
 /* see also qe_fast_test_event() */
-int __is_user_input_pending(void)
+int qe__is_user_input_pending(void)
 {
     QEditScreen *s = &global_screen;
     return s->dpy.dpy_is_user_input_pending(s);
@@ -7275,7 +7275,7 @@ static int motion_type = MOTION_NONE;
 static EditState *motion_target;
 static int motion_x, motion_y;
 
-static int check_motion_target(__unused__ EditState *s)
+static int check_motion_target(qe__unused__ EditState *s)
 {
     QEmacsState *qs = &qe_state;
     EditState *e;
@@ -7526,8 +7526,8 @@ int detect_binary(const u8 *buf, int size)
 }
 #endif
 
-static int text_mode_probe(__unused__ ModeDef *mode,
-                           __unused__ ModeProbeData *p)
+static int text_mode_probe(qe__unused__ ModeDef *mode,
+                           qe__unused__ ModeProbeData *p)
 {
     if (mode->extensions) {
         if (match_extension(p->filename, mode->extensions))
@@ -7870,7 +7870,7 @@ static void init_all_modules(void)
     int (*initcall)(void);
     int (**ptr)(void);
 
-    ptr = (int (**)(void))(void *)&__initcall_first;
+    ptr = (int (**)(void))(void *)&qe__initcall_first;
     for (;;) {
 #if defined(__BOUNDS_CHECKING_ON)
         /* NOTE: if bound checking is on, a NULL is inserted between
@@ -7892,7 +7892,7 @@ static void exit_all_modules(void)
     int (*exitcall)(void);
     int (**ptr)(void);
 
-    ptr = (int (**)(void))(void *)&__exitcall_first;
+    ptr = (int (**)(void))(void *)&qe__exitcall_first;
     for (;;) {
 #if defined(__BOUNDS_CHECKING_ON)
         /* NOTE: if bound checking is on, a NULL is inserted between

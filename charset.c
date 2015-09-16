@@ -107,7 +107,7 @@ static void decode_raw_init(CharsetDecodeState *s)
     s->table = table_idem;
 }
 
-static u8 *encode_raw(__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_raw(qe__unused__ QECharset *charset, u8 *p, int c)
 {
     if (c <= 0xff) {
         *p++ = c;
@@ -134,7 +134,7 @@ struct QECharset charset_raw = {
 /********************************************************/
 /* 8859-1 */
 
-static int probe_8859_1(__unused__ QECharset *charset, const u8 *buf, int size)
+static int probe_8859_1(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
     static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
                                   (1 << '\n') | (1 << '\r') | (1 << '\033') |
@@ -179,7 +179,7 @@ static void decode_8859_1_init(CharsetDecodeState *s)
     s->table = table_idem;
 }
 
-static u8 *encode_8859_1(__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_8859_1(qe__unused__ QECharset *charset, u8 *p, int c)
 {
     if (c <= 0xff) {
         *p++ = c;
@@ -211,7 +211,7 @@ static void decode_vt100_init(CharsetDecodeState *s)
     s->table = table_idem;
 }
 
-static u8 *encode_vt100(__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_vt100(qe__unused__ QECharset *charset, u8 *p, int c)
 {
     if (c <= 0xff) {
         *p++ = c;
@@ -238,7 +238,7 @@ struct QECharset charset_vt100 = {
 /********************************************************/
 /* 7 bit */
 
-static u8 *encode_7bit(__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_7bit(qe__unused__ QECharset *charset, u8 *p, int c)
 {
     if (c <= 0x7f) {
         *p++ = c;
@@ -361,7 +361,7 @@ int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str)
     return uq - dest;
 }
 
-static int probe_utf8(__unused__ QECharset *charset, const u8 *buf, int size)
+static int probe_utf8(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
     static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
                                   (1 << '\n') | (1 << '\r') | (1 << '\033') |
@@ -445,7 +445,7 @@ static int decode_utf8_func(CharsetDecodeState *s)
     return utf8_decode((const char **)(void *)&s->p);
 }
 
-static u8 *encode_utf8(__unused__ QECharset *charset, u8 *q, int c)
+static u8 *encode_utf8(qe__unused__ QECharset *charset, u8 *q, int c)
 {
     return q + utf8_encode((char*)q, c);
 }
@@ -565,7 +565,7 @@ struct QECharset charset_utf8 = {
 /********************************************************/
 /* UCS2/UCS4 */
 
-static int probe_ucs2le(__unused__ QECharset *charset, const u8 *buf, int size)
+static int probe_ucs2le(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
     static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
                                   (1 << '\n') | (1 << '\r') | (1 << '\033') |
@@ -618,7 +618,7 @@ static int decode_ucs2le(CharsetDecodeState *s)
     return p[0] + (p[1] << 8);
 }
 
-static u8 *encode_ucs2le(__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_ucs2le(qe__unused__ QECharset *charset, u8 *p, int c)
 {
     /* XXX: should handle surrogates */
     p[0] = c;
@@ -701,7 +701,7 @@ static int charset_goto_line_ucs2(CharsetDecodeState *s,
     return (const u8 *)lp - buf;
 }
 
-static int probe_ucs2be(__unused__ QECharset *charset, const u8 *buf, int size)
+static int probe_ucs2be(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
     static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
                                   (1 << '\n') | (1 << '\r') | (1 << '\033') |
@@ -749,7 +749,7 @@ static int decode_ucs2be(CharsetDecodeState *s)
     return (p[0] << 8) + p[1];
 }
 
-static u8 *encode_ucs2be(__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_ucs2be(qe__unused__ QECharset *charset, u8 *p, int c)
 {
     /* XXX: should handle surrogates */
     p[0] = c >> 8;
@@ -845,7 +845,7 @@ struct QECharset charset_ucs2be = {
     2, 0, 0, 10, 0, 0, NULL, NULL,
 };
 
-static int probe_ucs4le(__unused__ QECharset *charset, const u8 *buf, int size)
+static int probe_ucs4le(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
     static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
                                   (1 << '\n') | (1 << '\r') | (1 << '\033') |
@@ -892,7 +892,7 @@ static int decode_ucs4le(CharsetDecodeState *s)
     return p[0] + (p[1] << 8) + (p[2] << 16) + (p[3] << 24);
 }
 
-static u8 *encode_ucs4le(__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_ucs4le(qe__unused__ QECharset *charset, u8 *p, int c)
 {
     p[0] = c;
     p[1] = c >> 8;
@@ -975,7 +975,7 @@ static int charset_goto_line_ucs4(CharsetDecodeState *s,
     return (const u8 *)lp - buf;
 }
 
-static int probe_ucs4be(__unused__ QECharset *charset, const u8 *buf, int size)
+static int probe_ucs4be(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
     static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
                                   (1 << '\n') | (1 << '\r') | (1 << '\033') |
@@ -1022,7 +1022,7 @@ static int decode_ucs4be(CharsetDecodeState *s)
     return (p[0] << 24) + (p[1] << 16) + (p[2] << 8) + p[3];
 }
 
-static u8 *encode_ucs4be(__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_ucs4be(qe__unused__ QECharset *charset, u8 *p, int c)
 {
     p[0] = c >> 24;
     p[1] = c >> 16;

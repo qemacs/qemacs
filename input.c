@@ -21,12 +21,12 @@
 
 #include "qe.h"
 
-static int default_input(__unused__ int *match_buf,
-                         __unused__ int match_buf_size,
-                         __unused__ int *match_len_ptr,
-                         __unused__ const u8 *data,
-                         __unused__ const unsigned int *buf,
-                         __unused__ int len)
+static int default_input(qe__unused__ int *match_buf,
+                         qe__unused__ int match_buf_size,
+                         qe__unused__ int *match_len_ptr,
+                         qe__unused__ const u8 *data,
+                         qe__unused__ const unsigned int *buf,
+                         qe__unused__ int len)
 {
     return INPUTMETHOD_NOMATCH;
 }
@@ -34,7 +34,7 @@ static int default_input(__unused__ int *match_buf,
 static int unicode_input(int *match_buf,
                          int match_buf_size,
                          int *match_len_ptr,
-                         __unused__ const u8 *data,
+                         qe__unused__ const u8 *data,
                          const unsigned int *buf, int len)
 {
     int i, h, c;

@@ -848,7 +848,7 @@ static int haiku_bmp_alloc(QEditScreen *s, QEBitmap *b)
     return 0;
 }
 
-static void haiku_bmp_free(__unused__ QEditScreen *s, QEBitmap *b)
+static void haiku_bmp_free(qe__unused__ QEditScreen *s, QEBitmap *b)
 {
     BBitmap *bitmap = (BBitmap *)b->priv_data;
     delete bitmap;

@@ -162,8 +162,8 @@ static void update_rect(int x1, int y1, int x2, int y2)
 }
 
 #else
-static inline void update_rect(__unused__ int x1, __unused__ int y1,
-                               __unused__ int x2, __unused__ int y2)
+static inline void update_rect(qe__unused__ int x1, qe__unused__ int y1,
+                               qe__unused__ int x2, qe__unused__ int y2)
 {
 }
 #endif
@@ -433,7 +433,7 @@ static void xv_init(QEditScreen *s)
 }
 #endif
 
-static void term_close(__unused__ QEditScreen *s)
+static void term_close(qe__unused__ QEditScreen *s)
 {
 #ifdef CONFIG_DOUBLE_BUFFER
     XFreePixmap(display, dbuffer);
@@ -483,7 +483,7 @@ static unsigned long get_x11_color(QEColor color)
     }
 }
 
-static void xor_rectangle(__unused__ QEditScreen *s,
+static void xor_rectangle(qe__unused__ QEditScreen *s,
                           int x, int y, int w, int h)
 {
     int fg;
@@ -662,7 +662,7 @@ static void get_entry(char *buf, int buf_size, const char **pp)
 }
 
 
-static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
+static QEFont *term_open_font(qe__unused__ QEditScreen *s, int style, int size)
 {
     char family[128];
     const char *family_list, *p1;
@@ -780,7 +780,7 @@ static QEFont *term_open_font(__unused__ QEditScreen *s, int style, int size)
     return NULL;
 }
 
-static void term_close_font(__unused__ QEditScreen *s, QEFont **fontp)
+static void term_close_font(qe__unused__ QEditScreen *s, QEFont **fontp)
 {
     if (*fontp) {
         QEFont *font = *fontp;
@@ -986,7 +986,7 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
 }
 #endif
 
-static void term_set_clip(__unused__ QEditScreen *s,
+static void term_set_clip(qe__unused__ QEditScreen *s,
                           int x, int y, int w, int h)
 {
     XRectangle rect;
@@ -998,7 +998,7 @@ static void term_set_clip(__unused__ QEditScreen *s,
     XSetClipRectangles(display, gc, 0, 0, &rect, 1, YXSorted);
 }
 
-static void term_flush(__unused__ QEditScreen *s)
+static void term_flush(qe__unused__ QEditScreen *s)
 {
 #ifdef CONFIG_DOUBLE_BUFFER
     CSSRect *r;
@@ -1034,7 +1034,7 @@ static void term_flush(__unused__ QEditScreen *s)
 #endif
 }
 
-static void x11_full_screen(__unused__ QEditScreen *s, int full_screen)
+static void x11_full_screen(qe__unused__ QEditScreen *s, int full_screen)
 {
     XWindowAttributes attr1;
     Window win;
@@ -1059,21 +1059,21 @@ static void x11_full_screen(__unused__ QEditScreen *s, int full_screen)
     }
 }
 
-static void term_selection_activate(__unused__ QEditScreen *s)
+static void term_selection_activate(qe__unused__ QEditScreen *s)
 {
     /* own selection from now */
     XSetSelectionOwner(display, XA_PRIMARY, window, CurrentTime);
 }
 
-static Bool test_event(__unused__ Display *dpy, XEvent *ev,
-                       __unused__ char *arg)
+static Bool test_event(qe__unused__ Display *dpy, XEvent *ev,
+                       qe__unused__ char *arg)
 {
     return (ev->type == SelectionNotify);
 }
 
 /* request the selection from the GUI and put it in a new yank buffer
    if needed */
-static void term_selection_request(__unused__ QEditScreen *s)
+static void term_selection_request(qe__unused__ QEditScreen *s)
 {
     QEmacsState *qs = &qe_state;
     Window w;
@@ -1216,7 +1216,7 @@ static void selection_send(XSelectionRequestEvent *rq)
 }
 
 /* fast test to see if the user pressed a key or a mouse button */
-static int x11_is_user_input_pending(__unused__ QEditScreen *s)
+static int x11_is_user_input_pending(qe__unused__ QEditScreen *s)
 {
     XEvent xev;
 
@@ -1651,7 +1651,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
     return -1;
 }
 
-static void x11_bmp_free(__unused__ QEditScreen *s, QEBitmap *b)
+static void x11_bmp_free(qe__unused__ QEditScreen *s, QEBitmap *b)
 {
     X11Bitmap *xb = b->priv_data;
 
@@ -1687,10 +1687,10 @@ static void x11_bmp_free(__unused__ QEditScreen *s, QEBitmap *b)
     qe_free(&b->priv_data);
 }
 
-static void x11_bmp_draw(__unused__ QEditScreen *s, QEBitmap *b,
+static void x11_bmp_draw(qe__unused__ QEditScreen *s, QEBitmap *b,
                          int dst_x, int dst_y, int dst_w, int dst_h,
-                         __unused__ int offset_x, __unused__ int offset_y,
-                         __unused__ int flags)
+                         qe__unused__ int offset_x, qe__unused__ int offset_y,
+                         qe__unused__ int flags)
 {
     X11Bitmap *xb = b->priv_data;
 
@@ -1728,7 +1728,7 @@ static void x11_bmp_draw(__unused__ QEditScreen *s, QEBitmap *b,
     }
 }
 
-static void x11_bmp_lock(__unused__ QEditScreen *s, QEBitmap *b, QEPicture *pict,
+static void x11_bmp_lock(qe__unused__ QEditScreen *s, QEBitmap *b, QEPicture *pict,
                          int x1, int y1, int w1, int h1)
 {
     X11Bitmap *xb = b->priv_data;
@@ -1785,7 +1785,7 @@ static void x11_bmp_lock(__unused__ QEditScreen *s, QEBitmap *b, QEPicture *pict
     }
 }
 
-static void x11_bmp_unlock(__unused__ QEditScreen *s, QEBitmap *b)
+static void x11_bmp_unlock(qe__unused__ QEditScreen *s, QEBitmap *b)
 {
     X11Bitmap *xb = b->priv_data;
     int ret;

@@ -45,7 +45,7 @@
 #include <assert.h>
 
 static void css_error1(CSSParseState *b, const char *fmt, ...)
-         __attr_printf(2,3);
+         qe__attr_printf(2,3);
 
 static void css_error1(CSSParseState *b, const char *fmt, ...)
 {

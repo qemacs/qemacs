@@ -788,7 +788,7 @@ static void html_eval_tag(XMLState *s, CSSBox *box)
 }
 
 static void xml_error(XMLState *s, const char *fmt, ...)
-        __attr_printf(2,3);
+        qe__attr_printf(2,3);
 
 static void xml_error(XMLState *s, const char *fmt, ...)
 {

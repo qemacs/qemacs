@@ -438,7 +438,7 @@ static void css_eval_property(CSSContext *s,
                               CSSState *state,
                               CSSProperty *p,
                               CSSState *state_parent,
-                              __unused__ CSSBox *box)
+                              qe__unused__ CSSBox *box)
 {
     CSSPropertyDef const *def;
     CSSPropertyStorage *ptr, *parent_ptr;
@@ -4055,7 +4055,7 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
 }
 
 static void css_display_block(CSSContext *s,
-                              CSSBox *box, __unused__ CSSState *props_parent,
+                              CSSBox *box, qe__unused__ CSSState *props_parent,
                               CSSRect *clip_box, int dx, int dy)
 {
     CSSState *props;

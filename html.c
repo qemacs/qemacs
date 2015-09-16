@@ -56,7 +56,7 @@ typedef struct {
 #define MAX_LINE_SIZE 256
 
 static int recompute_offset_func(void *opaque, CSSBox *box,
-                                 __unused__ int x0, __unused__ int y0)
+                                 qe__unused__ int x0, qe__unused__ int y0)
 {
     RecomputeOffsetData *data = opaque;
     int offsets[MAX_LINE_SIZE+1];
@@ -140,7 +140,7 @@ static int get_time(void)
 
 #endif
 
-static int html_test_abort(__unused__ void *opaque)
+static int html_test_abort(qe__unused__ void *opaque)
 {
     return is_user_input_pending();
 }
@@ -358,7 +358,7 @@ typedef struct {
     int offsetc;
 } ScrollContext;
 
-static int scroll_func(void *opaque, CSSBox *box, __unused__ int x, int y)
+static int scroll_func(void *opaque, CSSBox *box, qe__unused__ int x, int y)
 {
     ScrollContext *m = opaque;
     int y1;
@@ -780,11 +780,11 @@ static void html_mouse_goto(EditState *s, int x, int y)
 }
 
 /* invalidate the html data if modification done (XXX: be more precise) */
-static void html_callback(__unused__ EditBuffer *b,
-                          void *opaque, __unused__ int arg,
-                          __unused__ enum LogOperation op,
-                          __unused__ int offset,
-                          __unused__ int size)
+static void html_callback(qe__unused__ EditBuffer *b,
+                          void *opaque, qe__unused__ int arg,
+                          qe__unused__ enum LogOperation op,
+                          qe__unused__ int offset,
+                          qe__unused__ int size)
 {
     HTMLState *hs = opaque;
 

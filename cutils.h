@@ -72,8 +72,8 @@ static inline int list_empty(struct list_head *head)
     return head->next == head;
 }
 
-static inline void __list_add(struct list_head *elem,
-                              struct list_head *prev, struct list_head *next)
+static inline void qe__list_add(struct list_head *elem,
+                                struct list_head *prev, struct list_head *next)
 {
     next->prev = elem;
     elem->next = next;
@@ -81,7 +81,7 @@ static inline void __list_add(struct list_head *elem,
     elem->prev = prev;
 }
 
-static inline void __list_del(struct list_head *prev, struct list_head *next)
+static inline void qe__list_del(struct list_head *prev, struct list_head *next)
 {
     prev->next = next;
     next->prev = prev;
@@ -91,15 +91,15 @@ static inline void __list_del(struct list_head *prev, struct list_head *next)
 
 /* add at the head */
 #define list_add(elem, head) \
-   __list_add((struct list_head *)elem, head, (head)->next);
+   qe__list_add((struct list_head *)elem, head, (head)->next);
 
 /* add at tail */
 #define list_add_tail(elem, head) \
-   __list_add((struct list_head *)elem, (head)->prev, head)
+   qe__list_add((struct list_head *)elem, (head)->prev, head)
 
 /* delete */
-#define list_del(elem) __list_del(((struct list_head *)elem)->prev,  \
-                                  ((struct list_head *)elem)->next)
+#define list_del(elem)  qe__list_del(((struct list_head *)elem)->prev,  \
+                                     ((struct list_head *)elem)->next)
 
 #define list_for_each(elem, head) \
    for (elem = (void *)(head)->next; elem != (void *)(head); elem = elem->next)

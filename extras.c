@@ -663,7 +663,7 @@ void do_show_bindings(EditState *s, const char *cmd_name)
 }
 
 static void print_bindings(EditBuffer *b, const char *title,
-                           __unused__ int type, ModeDef *mode)
+                           qe__unused__ int type, ModeDef *mode)
 {
     char buf[256];
     CmdDef *d;

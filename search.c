@@ -177,7 +177,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
     }
 }
 
-static int search_abort_func(__unused__ void *opaque)
+static int search_abort_func(qe__unused__ void *opaque)
 {
     return is_user_input_pending();
 }

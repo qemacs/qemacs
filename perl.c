@@ -61,7 +61,7 @@ static int perl_var(const unsigned int *str, int j, int n)
     return j;
 }
 
-static int perl_number(const unsigned int *str, int j, __unused__ int n)
+static int perl_number(const unsigned int *str, int j, qe__unused__ int n)
 {
     if (str[j] == '0') {
         j++;

@@ -184,7 +184,7 @@ void qe_kill_timer(QETimer **tip)
 }
 
 /* execute stacked bottom halves */
-static void __call_bottom_halves(void)
+static void qe__call_bottom_halves(void)
 {
     BottomHalfEntry *bh;
 
@@ -199,7 +199,7 @@ static void __call_bottom_halves(void)
 static inline void call_bottom_halves(void)
 {
     if (!list_empty(&bottom_halves))
-        __call_bottom_halves();
+        qe__call_bottom_halves();
 }
 
 /* call timer callbacks and compute maximum next call time to
