@@ -6502,7 +6502,7 @@ void do_set_visited_file_name(EditState *s, const char *filename,
     char path[MAX_FILENAME_SIZE];
 
     canonicalize_absolute_path(path, sizeof(path), filename);
-    if (*renamefile == 'y' && s->b->filename) {
+    if (*renamefile == 'y' && *s->b->filename) {
         if (rename(s->b->filename, path))
             put_status(s, "Cannot rename file to %s", path);
     }
