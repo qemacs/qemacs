@@ -18,6 +18,9 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#ifndef QE_VARIABLES_H
+#define QE_VARIABLES_H
+
 typedef enum QVarType {
     VAR_UNKNOWN = 0,
     VAR_NUMBER,
@@ -104,3 +107,5 @@ void qe_list_variables(EditState *s, EditBuffer *b);
 void do_set_variable(EditState *s, const char *name, const char *value);
 void do_show_variable(EditState *s, const char *name);
 void qe_save_variables(EditState *s, EditBuffer *b);
+
+#endif  /* QE_VARIABLES_H */
