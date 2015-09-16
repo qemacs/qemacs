@@ -903,7 +903,7 @@ static QVarType dired_time_format_set_value(EditState *s, VarDef *vp,
     if (format < 0 || format > TF_MAX)
        return VAR_UNKNOWN;
 
-    if (dired_time_format != format) {
+    if (dired_time_format != (enum time_format)format) {
         dired_time_format = format;
         vp->modified = 1;
     }
