@@ -248,18 +248,22 @@ $(TOBJS_DIR)/clang.o: clang.c swift.c
 
 $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(echo) CC -c $<
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
 $(TOBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(echo) CC -DCONFIG_TINY -c $<
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
 
 $(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 	$(echo) CPP -c $<
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -c $<
 
 $(TOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 	$(echo) CPP -DCONFIG_TINY -c $<
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  g++ $(DEFINES) -DCONFIG_TINY $(CFLAGS) -Wno-multichar -o $@ -c $<
 
 %.s: %.c $(DEPENDS) Makefile
