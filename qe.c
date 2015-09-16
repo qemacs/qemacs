@@ -1470,7 +1470,7 @@ void text_write_char(EditState *s, int key)
 
         /* break sequence of insertions */
         if (key == '\n' || (key != ' ' && s->b->last_log_char == ' ')) {
-            s->b->last_log = 0;
+            s->b->last_log = LOGOP_FREE;
         }
         s->b->last_log_char = key;
 
@@ -1802,7 +1802,7 @@ void do_yank(EditState *s)
     if (b) {
         size = b->total_size;
         if (size > 0) {
-            s->b->last_log = 0;
+            s->b->last_log = LOGOP_FREE;
             s->offset += eb_insert_buffer_convert(s->b, s->offset, b, 0, size);
         }
     }
@@ -6548,12 +6548,14 @@ void do_write_region(EditState *s, const char *filename)
                      eb_write_buffer(s->b, s->b->mark, s->offset, filename));
 }
 
+enum QSState {
+    QS_ASK,
+    QS_NOSAVE,
+    QS_SAVE,
+};
+
 typedef struct QuitState {
-    enum {
-        QS_ASK,
-        QS_NOSAVE,
-        QS_SAVE,
-    } state;
+    enum QSState state;
     int modified;
     EditBuffer *b;
 } QuitState;
@@ -7043,7 +7045,7 @@ void do_create_window(EditState *s, const char *filename, const char *layout)
     s = edit_new(b1, x1, y1, x2 - x1, y2 - y1, flags);
     if (m)
         edit_set_mode(s, m);
-    s->wrap = wrap;
+    s->wrap = (enum WrapType)wrap;
     s->offset = clamp(eb_goto_pos(b1, args[6], args[7]), 0, b1->total_size);
     s->b->mark = clamp(eb_goto_pos(b1, args[8], args[9]), 0, b1->total_size);
     s->offset_top = clamp(eb_goto_pos(b1, args[10], args[11]), 0, b1->total_size);
