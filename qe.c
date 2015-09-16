@@ -5557,8 +5557,9 @@ void do_electric_filename(EditState *s, int key)
         if (c == '/') {
             if (eb_match_string_reverse(s->b, offset, "http:", &stop)
             ||  eb_match_string_reverse(s->b, offset, "https:", &stop)
-            ||  eb_match_string_reverse(s->b, offset, "ftp:", &stop))
-                ;
+            ||  eb_match_string_reverse(s->b, offset, "ftp:", &stop)) {
+		    /* nothing, stop already updated */
+	    }
             eb_delete(s->b, 0, stop);
         }
     }
@@ -8094,8 +8095,10 @@ static void qe_init(void *opaque)
     _optind = parse_command_line(argc, argv);
 
     /* load config file unless command line option given */
-    if (!no_init_file)
+    if (!no_init_file) {
         do_load_config_file(s, NULL);
+        s = qs->active_window;
+    }
 
     qe_key_init(&key_ctx);
 
@@ -8122,8 +8125,10 @@ static void qe_init(void *opaque)
     qe_event_init();
 
 #ifndef CONFIG_TINY
-    if (use_session_file)
+    if (use_session_file) {
         session_loaded = !qe_load_session(s);
+        s = qs->active_window;
+    }
 #endif
     do_refresh(s);
 
@@ -8137,11 +8142,13 @@ static void qe_init(void *opaque)
         if (*arg == '+' && i < argc) {
             if (strequal(arg, "+eval")) {
                 do_eval_expression(s, argv[i++]);
+                s = qs->active_window;
                 continue;
             }
             if (strequal(arg, "+load")) {
                 /* load script file */
                 parse_config_file(s, argv[i++]);
+                s = qs->active_window;
                 continue;
             }
             /* Handle +linenumber[,column] before file */
@@ -8151,14 +8158,16 @@ static void qe_init(void *opaque)
             arg = argv[i++];
         }
         do_find_file(s, arg, 0);
+        s = qs->active_window;
         if (line_num)
-            do_goto_line(qs->active_window, line_num, col_num);
+            do_goto_line(s, line_num, col_num);
     }
 
 #if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
     if (is_player && !session_loaded && (_optind >= argc || S_ISDIR(s->b->st_mode))) {
         /* if player, go to directory mode by default if no file selected */
         do_dired(s);
+        s = qs->active_window;
     }
 #endif
 
