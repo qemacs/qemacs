@@ -539,7 +539,11 @@ int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);
 #define MAX_CHAR_BYTES 6
 
 typedef struct CharsetDecodeState CharsetDecodeState;
+#if defined(__cplusplus)
+typedef struct QECharset QECharset;
+#else
 typedef const struct QECharset QECharset;
+#endif
 
 struct QECharset {
     const char *name;
