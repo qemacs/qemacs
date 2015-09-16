@@ -313,10 +313,10 @@ static inline int qe_toupper(int c) {
 static inline int qe_tolower(int c) {
     return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
 }
-static int inline qe_findchar(const char *str, int c) {
+static inline int qe_findchar(const char *str, int c) {
     return qe_inrange(c, 1, 255) && strchr(str, c) != NULL;
 }
-static int inline qe_indexof(const char *str, int c) {
+static inline int qe_indexof(const char *str, int c) {
     if (qe_inrange(c, 1, 255)) {
         const char *p = strchr(str, c);
         if (p) return p - str;
