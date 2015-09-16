@@ -62,6 +62,7 @@ enum {
     CLANG_SWIFT,
     CLANG_ICON,
     CLANG_GROOVY,
+    CLANG_KOTLIN,
     CLANG_FLAVOR = 0x3F,
 };
 
@@ -897,7 +898,7 @@ static void c_colorize_line(QEColorizeContext *cp,
             goto normal;
 
         case '\"':      /* string literal */
-            if ((flavor == CLANG_SCALA || flavor == CLANG_DART)
+            if ((flavor == CLANG_SCALA || flavor == CLANG_DART || flavor == CLANG_KOTLIN)
             &&  (str[i] == '\"' && str[i + 1] == '\"')) {
                 /* multiline """ quoted string */
                 i += 2;
@@ -906,7 +907,7 @@ static void c_colorize_line(QEColorizeContext *cp,
             parse_string3:
                 while (i < n) {
                     c = str[i++];
-                    if (c == '\\') {
+                    if (c == '\\' && flavor != CLANG_KOTLIN) {
                         if (i < n)
                             i++;
                     } else
@@ -2170,6 +2171,40 @@ ModeDef scilab_mode = {
 #include "icon.c"
 #include "groovy.c"
 
+static const char kotlin_keywords[] = {
+    /* language keywords */
+    "package|import|as|fun|val|var|if|else|is|return|for|do|while|"
+    "break|continue|when|it|to|by|in|out|try|catch|throw|finally|"
+    "class|object|interface|public|private|protected|internal|inner|"
+    "constructor|this|super|open|override|final|abstract|enum|companion|"
+    "vararg|inline|reified|annotation|data|"
+    //"get|set|"  // do not colorize as keyword because used as function
+    //"case|def|extends|forSome|implicit|lazy|"  // unused java keywords
+    //"match|new|sealed|trait|type|with|yield|"  // unused java keywords
+    /* boolean and null literals */
+    "false|true|null|"
+};
+
+/* numbers: hex, binary, L suffix for Long, f/F suffix for Float */
+/* escape keywords as identifiers with backticks: a.`if` */
+
+static const char kotlin_types[] = {
+    /* all mixed case identifiers starting with an uppercase letter are types */
+    "dynamic|"
+};
+
+static ModeDef kotlin_mode = {
+    .name = "Kotlin",
+    .extensions = "kt",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_KOTLIN | CLANG_CAP_TYPE,
+    .keywords = kotlin_keywords,
+    .types = kotlin_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 static int c_init(void)
 {
     const char *p;
@@ -2221,6 +2256,7 @@ static int c_init(void)
     swift_init();
     icon_init();
     groovy_init();
+    qe_register_mode(&kotlin_mode, MODEF_SYNTAX);
 
     return 0;
 }
