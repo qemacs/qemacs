@@ -63,6 +63,7 @@ enum {
     CLANG_ICON,
     CLANG_GROOVY,
     CLANG_KOTLIN,
+    CLANG_CBANG,
     CLANG_FLAVOR = 0x3F,
 };
 
@@ -786,7 +787,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 delim = '#';
                 goto parse_regex;
             }
-            if (flavor == CLANG_HAXE) {
+            if (flavor == CLANG_HAXE | flavor == CLANG_CBANG) {
                 i += get_c_identifier(kbuf, countof(kbuf), str + i, flavor);
                 // XXX: check for proper preprocessor directive?
                 SET_COLOR(str, start, i, C_STYLE_PREPROCESS);
@@ -2205,6 +2206,41 @@ static ModeDef kotlin_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- C! (cbang) from EPITA's LSE laboratory ----------------*/
+
+static const char cbang_keywords[] = {
+    /* language keywords */
+    "enum|struct|union|packed|sizeof|static|volatile|"
+    "const|local|inline|if|else|while|do|for|switch|case|break|continue|"
+    "default|typedef|class|macro|init|del|return|import|include|open_import|"
+    "goto|as|interface|support|property|"
+    /* Builtins */
+    "false|true|NULL|"
+};
+
+/* integers: hex, octal, binary */
+/* floats: [0-9]+([.][0-9]*)?([eE][+-]?[0-9]+)? */
+
+static const char cbang_types[] = {
+    /* all mixed case identifiers starting with an uppercase letter are types */
+    "int|char|float|void|"
+};
+
+static ModeDef cbang_mode = {
+    .name = "C!",
+    .mode_name = "cbang",
+    .extensions = "cb|cbi",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CBANG | CLANG_CAP_TYPE,
+    .keywords = cbang_keywords,
+    .types = cbang_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+/*---------------- common initialization code ----------------*/
+
 static int c_init(void)
 {
     const char *p;
@@ -2257,6 +2293,7 @@ static int c_init(void)
     icon_init();
     groovy_init();
     qe_register_mode(&kotlin_mode, MODEF_SYNTAX);
+    qe_register_mode(&cbang_mode, MODEF_SYNTAX);
 
     return 0;
 }
