@@ -787,7 +787,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 delim = '#';
                 goto parse_regex;
             }
-            if (flavor == CLANG_HAXE | flavor == CLANG_CBANG) {
+            if (flavor == CLANG_HAXE || flavor == CLANG_CBANG) {
                 i += get_c_identifier(kbuf, countof(kbuf), str + i, flavor);
                 // XXX: check for proper preprocessor directive?
                 SET_COLOR(str, start, i, C_STYLE_PREPROCESS);
