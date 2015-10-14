@@ -33,7 +33,7 @@ ifeq ($(CC),gcc)
   CFLAGS   += -Wall -g -O2 -funsigned-char
   # do not warn about zero-length formats.
   CFLAGS   += -Wno-format-zero-length
-  LDFLAGS  := -g
+  LDFLAGS  += -g
 endif
 
 #include local compiler configuration file
@@ -49,9 +49,9 @@ TLDFLAGS := $(LDFLAGS)
 ifdef TARGET_ARCH_X86
   #CFLAGS+=-fomit-frame-pointer
   ifeq ($(GCC_MAJOR),2)
-    CFLAGS+=-m386 -malign-functions=0
+    CFLAGS += -m386 -malign-functions=0
   else
-    CFLAGS+=-march=i386 -falign-functions=0
+    CFLAGS += -march=i386 -falign-functions=0
   endif
 endif
 
@@ -70,22 +70,22 @@ TOBJS:= $(OBJS)
 OBJS+= extras.o variables.o
 
 ifdef CONFIG_PNG_OUTPUT
-  HTMLTOPPM_LIBS+= -lpng
+  HTMLTOPPM_LIBS += -lpng
 endif
 
 ifdef CONFIG_DLL
-  LIBS+=$(DLLIBS)
+  LIBS += $(DLLIBS)
   # export some qemacs symbols
-  LDFLAGS+=-Wl,-E
+  LDFLAGS += -Wl,-E
 endif
 
 ifdef CONFIG_DOC
-  TARGETS+= qe-doc.html
+  TARGETS += qe-doc.html
 endif
 
 ifdef CONFIG_HAIKU
-  OBJS+= haiku.o
-  LIBS+= -lbe
+  OBJS += haiku.o
+  LIBS += -lbe
 endif
 
 ifdef CONFIG_WIN32
@@ -133,12 +133,15 @@ endif
 ifdef CONFIG_X11
   OBJS+= x11.o
   ifdef CONFIG_XRENDER
-    LIBS+= -lXrender
+    LIBS += -lXrender
   endif
   ifdef CONFIG_XV
-    LIBS+= -lXv
+    LIBS += -lXv
   endif
-  LIBS+= -L/usr/X11R6/lib -lXext -lX11
+  ifdef CONFIG_XSHM
+    LIBS += -lXext
+  endif
+  LIBS += -lX11
 endif
 
 ifdef CONFIG_HTML
@@ -172,8 +175,8 @@ TSRCS:= $(TOBJS:.o=.c)
 DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
-OBJS_DIR:= $(DEPTH)/.objs
-TOBJS_DIR:= $(DEPTH)/.tobjs
+OBJS_DIR:= $(DEPTH)/.objs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
+TOBJS_DIR:= $(DEPTH)/.tobjs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
 TOBJS:= $(addprefix $(TOBJS_DIR)/, $(TOBJS))
 
@@ -214,6 +217,18 @@ tqe$(EXE): tqe_g$(EXE) Makefile
 	@echo `size $@` `wc -c $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
+xqe_g$(EXE): tqe.c $(TSRCS) Makefile
+	$(echo) CC -o $@ $<
+	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) $(TLDFLAGS) -o $@ $< $(TLIBS)
+
+xqe$(EXE): xqe_g$(EXE) Makefile
+	@rm -f $@
+	cp $< $@
+	-$(STRIP) $@
+	@ls -l $@
+	@echo `size $@` `wc -c $@` xqe $(OPTIONS) \
+		| cut -d ' ' -f 7-10,13,15-40 >> STATS
+
 ffplay$(EXE): qe$(EXE) Makefile
 	ln -sf $< $@
 
@@ -225,12 +240,14 @@ endif
 allmodules.txt: $(SRCS) Makefile
 	@echo creating $@
 	@echo '/* This file was generated automatically */' > $@
-	@grep -h ^qe_module_init $(SRCS)                    >> $@
+	@grep -h ^qe_module_init $(SRCS) | \
+            sed s/qe_module_init/qe_module_declare/ >> $@
 
 basemodules.txt: $(TSRCS) Makefile
 	@echo creating $@
 	@echo '/* This file was generated automatically */' > $@
-	@grep -h ^qe_module_init $(TSRCS)                   >> $@
+	@grep -h ^qe_module_init $(TSRCS) | \
+            sed s/qe_module_init/qe_module_declare/ >> $@
 
 $(OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def

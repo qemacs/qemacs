@@ -67,6 +67,7 @@ mpegaudio_hp="yes"
 tiny="no"
 x11="no"
 xv="no"
+xshm="no"
 xrender="no"
 png="no"
 ffmpeg="no"
@@ -141,7 +142,6 @@ case $targetos in
     html="yes"
     png="yes"
     x11="no"
-    xv="no"
     ;;
   *)
     extralibs="-lm"
@@ -175,14 +175,26 @@ if test -f "/usr/include/X11/Xlib.h" ; then
     if test -f "/usr/include/X11/extensions/Xv.h" ; then
         xv="yes"
     fi
+    if test -f "/usr/include/X11/extensions/Xshm.h" ; then
+        xshm="yes"
+    fi
+fi
+
+if test -d "/opt/X11/lib" ; then
+    x11_libdir="/opt/X11/lib"
+elif test -d "/usr/X11R6/lib" ; then
+    x11_libdir="/usr/X11R6/lib"
 fi
 
 if test -f "/opt/X11/include/X11/Xlib.h" ; then
-    CFLAGS="$CFLAGS -I/opt/X11/include"
     x11="yes"
+    x11_includedir="/opt/X11/include"
     html="yes"
     if test -f "/opt/X11/include/X11/extensions/Xv.h" ; then
         xv="yes"
+    fi
+    if test -f "/opt/X11/include/X11/extensions/Xshm.h" ; then
+        xshm="yes"
     fi
 fi
 
@@ -205,6 +217,7 @@ echo "  --enable-win32           enable win32 cross compile"
 echo "  --enable-cygwin          compile for cygwin systems"
 echo "  --disable-x11            disable Xwindow support"
 echo "  --disable-xv             disable Xvideo extension support"
+echo "  --disable-xshm           disable XShm extension support"
 echo "  --disable-xrender        disable Xrender extension support"
 echo "  --enable-tiny            build a very small version"
 echo "  --disable-html           disable graphical html support"
@@ -309,6 +322,9 @@ for opt do
       --enable-xv | --disable-xv)
         xv="$value"
         ;;
+      --enable-xshm | --disable-xshm)
+        xshm="$value"
+        ;;
       --enable-xrender | --disable-xrender)
         xrender="$value"
         ;;
@@ -377,6 +393,7 @@ fi
 
 if test "$x11" = "no" ; then
     xv="no"
+    xshm="no"
     xrender="no"
 fi
 
@@ -430,6 +447,7 @@ if test "$tiny" = "yes" ; then
     ffmpeg="no"
     x11="no"
     xv="no"
+    xshm="no"
     xrender="no"
     png="no"
     html="no"
@@ -473,6 +491,15 @@ if $cc -o $TMPO $TMPC 2> /dev/null ; then
     has_typeof="yes"
 fi
 
+if test "$x11" = "yes" ; then
+    if test ! -z "$x11_libdir" ; then
+        LIBS="$LIBS -L$x11_libdir"
+    fi
+    if test ! -z "$x11_includedir" ; then
+        CFLAGS="$CFLAGS -I$x11_includedir"
+    fi
+fi
+
 echo "Install prefix      $prefix"
 echo "Shared data dir     $datadir"
 echo "Manpages dir        $mandir"
@@ -481,6 +508,7 @@ echo "C compiler          $cc"
 echo "Tiny build          $tiny"
 echo "X11 support         $x11"
 echo "Xvideo support      $xv"
+echo "XShm support        $xshm"
 #echo "Xrender support     $xrender"
 echo "libpng support      $png"
 echo "FFMPEG support      $ffmpeg"
@@ -512,8 +540,11 @@ echo "AR=$ar" >> $TMPMAK
 echo "STRIP=$strip $strip_args" >> $TMPMAK
 echo "INSTALL=install" >> $TMPMAK
 echo "CFLAGS=$CFLAGS" >> $TMPMAK
+echo "LIBS=$LIBS" >> $TMPMAK
 echo "LDFLAGS=$LDFLAGS" >> $TMPMAK
 echo "EXE=$exe" >> $TMPMAK
+echo "TARGET_OS=$targetos" >> $TMPMAK
+echo "TARGET_ARCH=$cpu" >> $TMPMAK
 
 if test "$cpu" = "x86" ; then
   echo "TARGET_ARCH_X86=yes" >> $TMPMAK
@@ -594,6 +625,11 @@ fi
 if test "$xv" = "yes" ; then
   echo "#define CONFIG_XV 1" >> $TMPH
   echo "CONFIG_XV=yes" >> $TMPMAK
+fi
+
+if test "$xshm" = "yes" ; then
+  echo "#define CONFIG_XSHM 1" >> $TMPH
+  echo "CONFIG_XSHM=yes" >> $TMPMAK
 fi
 
 if test "$xrender" = "yes" ; then

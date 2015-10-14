@@ -30,7 +30,9 @@
 #include <X11/Xatom.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#ifdef CONFIG_XSHM
 #include <X11/extensions/XShm.h>
+#endif
 #ifdef CONFIG_XFT
 #include <X11/extensions/Xrender.h>
 #include <X11/Xft/Xft.h>
@@ -64,9 +66,11 @@ static int last_window_width, last_window_height, last_window_x, last_window_y;
 static XIM xim; /* X11 input method */
 static XIC xic; /* X11 input context */
 static Pixmap dbuffer;
+#ifdef CONFIG_XSHM
 static int shm_use;
+#endif
 #ifdef CONFIG_XFT
-static XftDraw          *renderDraw;
+static XftDraw *renderDraw;
 #endif
 #ifdef CONFIG_XV
 static unsigned int xv_nb_adaptors;
@@ -342,6 +346,7 @@ static int term_init(QEditScreen *s, int w, int h)
     dbuffer = window;
 #endif
 
+#ifdef CONFIG_XSHM
     /* shm extension usable ? */
     p = XDisplayName(display_str);
     strstart(p, "unix:", &p);
@@ -350,6 +355,7 @@ static int term_init(QEditScreen *s, int w, int h)
     /* Check if display is local and XShm available */
     if ((*p == ':') && XShmQueryExtension(display))
         shm_use = 1;
+#endif
 
     /* compute bitmap format */
     switch (visual_depth) {
@@ -1412,6 +1418,13 @@ static void x11_handle_event(void *opaque)
                       meta ? "meta " : "",
                       len, buf[0]);
 #endif
+            if (shift) {
+                switch (keysym) {
+                case XK_ISO_Left_Tab: key = KEY_SHIFT_TAB; goto got_key;
+                default:
+                    break;
+                }
+            } else
             if (meta) {
                 switch (keysym) {
                 case XK_BackSpace:
@@ -1513,7 +1526,9 @@ static void x11_handle_event(void *opaque)
 enum X11BitmapType {
     BMP_PIXMAP,
     BMP_XIMAGE,
+#ifdef CONFIG_XSHM
     BMP_XSHMIMAGE,
+#endif
 #ifdef CONFIG_XV
     BMP_XVIMAGE,
     BMP_XVSHMIMAGE,
@@ -1529,7 +1544,9 @@ typedef struct X11Bitmap {
         XvImage *xvimage;
 #endif
     } u;
+#ifdef CONFIG_XSHM
     XShmSegmentInfo *shm_info;
+#endif
     int x_lock, y_lock; /* destination for locking */
     XImage *ximage_lock;
 } X11Bitmap;
@@ -1556,9 +1573,11 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
         } else
 #endif
         {
+#ifdef CONFIG_XSHM
             if (shm_use)
                 xb->type = BMP_XSHMIMAGE;
             else
+#endif
                 xb->type = BMP_XIMAGE;
             b->format = s->bitmap_format;
         }
@@ -1584,6 +1603,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
             xb->u.ximage = ximage;
         }
         break;
+#ifdef CONFIG_XSHM
     case BMP_XSHMIMAGE:
         {
             XImage *ximage;
@@ -1609,6 +1629,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
             xb->u.ximage = ximage;
         }
         break;
+#endif
 #ifdef CONFIG_XV
     case BMP_XVIMAGE:
         {
@@ -1663,12 +1684,14 @@ static void x11_bmp_free(qe__unused__ QEditScreen *s, QEBitmap *b)
         /* NOTE: also frees the ximage data */
         XDestroyImage(xb->u.ximage);
         break;
+#ifdef CONFIG_XSHM
     case BMP_XSHMIMAGE:
         XShmDetach(display, xb->shm_info);
         XDestroyImage(xb->u.ximage);
         shmdt(xb->shm_info->shmaddr);
         qe_free(&xb->shm_info);
         break;
+#endif
 #ifdef CONFIG_XV
     case BMP_XVIMAGE:
         qe_free(&xb->u.xvimage->data);
@@ -1708,11 +1731,13 @@ static void x11_bmp_draw(qe__unused__ QEditScreen *s, QEBitmap *b,
                   b->width, b->height);
         break;
 
+#ifdef CONFIG_XSHM
     case BMP_XSHMIMAGE:
         XShmPutImage(display, dbuffer, gc,
                      xb->u.ximage, 0, 0, dst_x, dst_y,
                      b->width, b->height, False);
         break;
+#endif
 #ifdef CONFIG_XV
     case BMP_XVIMAGE:
         XvPutImage(display, xv_port, window, gc, xb->u.xvimage,
@@ -1752,7 +1777,9 @@ static void x11_bmp_lock(qe__unused__ QEditScreen *s, QEBitmap *b, QEPicture *pi
         }
         break;
     case BMP_XIMAGE:
+#ifdef CONFIG_XSHM
     case BMP_XSHMIMAGE:
+#endif
         bpp = (xb->u.ximage->bits_per_pixel + 7) >> 3;
         pict->data[0] = (unsigned char *)xb->u.ximage->data +
                         y1 * xb->u.ximage->bytes_per_line + x1 * bpp;
@@ -1788,10 +1815,10 @@ static void x11_bmp_lock(qe__unused__ QEditScreen *s, QEBitmap *b, QEPicture *pi
 static void x11_bmp_unlock(qe__unused__ QEditScreen *s, QEBitmap *b)
 {
     X11Bitmap *xb = b->priv_data;
-    int ret;
+
     switch (xb->type) {
     case BMP_PIXMAP:
-        ret = XPutImage(display, xb->u.pixmap, gc_pixmap, xb->ximage_lock,
+        XPutImage(display, xb->u.pixmap, gc_pixmap, xb->ximage_lock,
                   0, 0, xb->x_lock, xb->y_lock,
                   xb->ximage_lock->width, xb->ximage_lock->height);
         /* NOTE: also frees the ximage data */

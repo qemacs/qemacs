@@ -7916,16 +7916,15 @@ static void exit_all_modules(void)
 #define MODULE_LIST  "allmodules.txt"
 #endif
 
-#undef qe_module_init
-#define qe_module_init(fn)  extern int module_ ## fn(void)
+#define qe_module_declare(fn)  extern int module_ ## fn(void)
 #include MODULE_LIST
-#undef qe_module_init
+#undef qe_module_declare
 
 static void init_all_modules(void)
 {
-#define qe_module_init(fn)  module_ ## fn()
+#define qe_module_declare(fn)  module_ ## fn()
 #include MODULE_LIST
-#undef qe_module_init
+#undef qe_module_declare
 }
 #endif
 
