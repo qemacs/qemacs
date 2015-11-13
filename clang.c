@@ -53,17 +53,18 @@ enum {
     CLANG_QSCRIPT,
     CLANG_ELASTIC,
     CLANG_JED,
-    CLANG_CSL,  /* Peter Koch's CSL C Scripting Language */
+    CLANG_CSL,
     CLANG_NEKO,
     CLANG_NML,
     CLANG_ALLOY,
     CLANG_SCILAB,
+    CLANG_KOTLIN,
+    CLANG_CBANG,
+    CLANG_VALA,
     CLANG_RUST,
     CLANG_SWIFT,
     CLANG_ICON,
     CLANG_GROOVY,
-    CLANG_KOTLIN,
-    CLANG_CBANG,
     CLANG_FLAVOR = 0x3F,
 };
 
@@ -74,6 +75,7 @@ enum {
 #define CLANG_WLITERALS   0x1000
 #define CLANG_PREPROC     0x2000
 #define CLANG_CAP_TYPE    0x4000  /* Mixed case initial cap is type */
+#define CLANG_STR3        0x8000  /* Support """strings""" */
 #define CLANG_CC          0x3100  /* all C language features */
 
 static const char c_keywords[] = {
@@ -85,433 +87,6 @@ static const char c_keywords[] = {
 static const char c_types[] = {
     "char|double|float|int|long|unsigned|short|signed|void|va_list|"
     "_Bool|_Complex|_Imaginary|"
-};
-
-static const char cpp_keywords[] = {
-    "asm|catch|class|delete|friend|inline|namespace|new|operator|"
-    "private|protected|public|template|try|this|virtual|throw|"
-    "explicit|override|mutable|using|assert|true|false|nullptr|"
-    // XXX: many missing keywords
-};
-
-static const char cpp_types[] = {
-    "bool|exception|istream|ostream|ofstream|string|vector|map|set|stack|"
-    "std::istream|std::ostream|std::ofstream|std::string|"
-    "std::vector|std::unique_ptr|std::map|std::set|std::stack|"
-    "std::hash|std::unordered_set|std::unordered_map|std::exception|"
-    "std::string::iterator|std::stringstream|std::ostringstream|"
-};
-
-static const char objc_keywords[] = {
-    "self|super|class|nil|YES|NO|"
-    "@class|@interface|@implementation|@public|@private|@protected|"
-    "@try|@catch|@throw|@finally|@end|@protocol|@selector|@synchronized|"
-    "@encode|@defs|@optional|@required|@property|@dynamic|@synthesize|"
-    "@compatibility_alias|"
-    // context sensitive keywords
-    "in|out|inout|bycopy|byref|oneway|"
-    "getter|setter|readwrite|readonly|assign|retain|copy|nonatomic|"
-};
-
-static const char objc_types[] = {
-    "id|BOOL|SEL|Class|Object|"
-};
-
-static const char csharp_keywords[] = {
-    "abstract|as|base|break|case|catch|checked|class|const|continue|"
-    "default|delegate|do|else|enum|event|explicit|extern|false|finally|"
-    "fixed|for|foreach|goto|if|implicit|in|interface|internal|is|lock|"
-    "namespace|new|null|operator|out|override|params|private|protected|"
-    "public|readonly|ref|return|sealed|sizeof|stackalloc|static|"
-    "struct|switch|template|this|throw|true|try|typeof|unchecked|unsafe|"
-    "using|virtual|volatile|while|"
-
-    /* contextual keywords */
-    "add|remove|yield|partial|get|set|where|"
-};
-
-static const char csharp_types[] = {
-    "bool|byte|char|decimal|double|float|int|long|object|sbyte|short|"
-    "string|uint|ulong|ushort|void|"
-    "Boolean|Byte|DateTime|Exception|Int32|Int64|Object|String|Thread|"
-    "UInt32|UInt64|"
-};
-
-static const char java_keywords[] = {
-    /* language keywords */
-    "abstract|assert|break|case|catch|class|const|continue|"
-    "default|do|else|enum|extends|final|finally|for|goto|"
-    "if|implements|import|instanceof|interface|native|new|"
-    "package|private|protected|public|return|"
-    "static|strictfp|super|switch|synchronized|threadsafe|"
-    "this|throw|throws|transient|try|volatile|while|"
-    /* boolean and null literals */
-    "false|null|true|"
-};
-
-static const char java_types[] = {
-    "boolean|byte|char|double|float|int|long|short|void|"
-};
-
-static const char scala_keywords[] = {
-    /* language keywords */
-    "abstract|case|catch|class|def|do|else|extends|final|"
-    "finally|for|forSome|if|implicit|import|lazy|match|new|"
-    "object|override|package|private|protected|return|sealed|super|this|throw|"
-    "trait|try|type|val|var|while|with|yield|"
-    /* boolean and null literals */
-    "false|null|true|_|"
-};
-
-static const char scala_types[] = {
-    /* all mixed case identifiers starting with an uppercase letter are types */
-};
-
-static const char css_keywords[] = {
-    "|"
-};
-
-static const char css_types[] = {
-    "|"
-};
-
-static const char js_keywords[] = {
-    "break|case|catch|continue|debugger|default|delete|do|"
-    "else|finally|for|function|if|in|instanceof|new|"
-    "return|switch|this|throw|try|typeof|while|with|"
-    /* FutureReservedWord */
-    "class|const|enum|import|export|extends|super|"
-    /* The following tokens are also considered to be
-     * FutureReservedWords when parsing strict mode code */
-    "implements|interface|let|package|private|protected|"
-    "public|static|yield|"
-    /* constants */
-    "undefined|null|true|false|Infinity|NaN|"
-    /* strict mode quasi keywords */
-    "eval|arguments|"
-};
-
-static const char js_types[] = {
-    "void|var|"
-};
-
-static const char as_keywords[] = {
-    "as|break|case|catch|class|continue|default|do|else|false|"
-    "finally|for|function|if|import|interface|internal|is|new|null|"
-    "package|private|protected|public|return|super|switch|this|throw|"
-    "true|try|while|"
-    // The following AS3 keywords are no longer in AS4:
-    "delete|include|instanceof|namespace|typeof|use|with|in|const|"
-    // other constants
-    "undefined|Infinity|NaN|"
-    // introduced in AS4 (spec abandoned in december 2012)
-    //"let|defer|get|set|override|native|extends|implements|"
-};
-
-static const char as_types[] = {
-    "void|var|bool|byte|int|uint|long|ulong|float|double|"
-    "Array|Boolean|Number|Object|String|Function|Event|RegExp|"
-    "Class|Interface|"
-};
-
-static const char jsx_keywords[] = {
-    // literals shared with ECMA 262
-    "null|true|false|NaN|Infinity|"
-    // keywords shared with ECMA 262
-    "break|case|const|do|else|finally|for|function|if|in|"
-    "instanceof|new|return|switch|this|throw|try|typeof|var|while|"
-    // JSX keywords
-    "class|extends|super|import|implements|static|"
-    "__FILE__|__LINE__|undefined|"
-    // contextual keywords
-    // "assert|log|catch|continue|default|delete|interface",
-    // ECMA 262 literals but not used by JSX
-    "debugger|with|"
-    // ECMA 262 future reserved words
-    "export|"
-    // ECMA 262 strict mode future reserved words
-    "let|private|public|yield|protected|"
-    // JSX specific reserved words
-    "extern|native|as|operator|abstract|"
-};
-
-static const char jsx_types[] = {
-    "void|variant|boolean|int|number|string|Error|"
-};
-
-static const char haxe_keywords[] = {
-    "abstract|break|case|cast|catch|class|continue|default|do|dynamic|else|"
-    "enum|extends|extern|false|for|function|if|implements|import|inline|"
-    "interface|in|macro|new|null|override|package|private|public|return|"
-    "static|switch|this|throw|true|try|typedef|untyped|using|var|while|"
-};
-
-static const char haxe_types[] = {
-    "Void|Array|Bool|Int|Float|Class|Enum|Dynamic|String|Date|Null|"
-    "Iterator|"
-};
-
-static const char php_keywords[] = {
-    "abstract|assert|break|case|catch|class|clone|const|continue|"
-    "declare|default|elseif|else|enddeclare|endif|endswitch|end|exit|"
-    "extends|false|final|foreach|for|function|goto|if|implements|"
-    "include_once|include|instanceof|interface|list|namespace|new|"
-    "overload|parent|private|public|require_once|require|return|"
-    "self|sizeof|static|switch|throw|trait|true|try|use|var|while|"
-    "NULL|"
-};
-
-static const char php_types[] = {
-    "array|boolean|bool|double|float|integer|int|object|real|string|"
-};
-
-static const char go_keywords[] = {
-    /* keywords */
-    "break|case|chan|const|continue|default|defer|else|fallthrough|"
-    "for|func|go|goto|if|import|interface|map|package|range|"
-    "return|select|struct|switch|type|var|"
-    /* builtins */
-    "append|cap|close|complex|copy|delete|imag|len|make|new|panic|"
-    "print|println|real|recover|"
-    /* Constants */
-    "false|iota|nil|true|"
-};
-
-static const char go_types[] = {
-    "bool|byte|complex128|complex64|error|float32|float64|"
-    "int|int16|int32|int64|int8|rune|string|"
-    "uint|uint16|uint32|uint64|uint8|uintptr|"
-};
-
-static const char d_keywords[] = {
-    "abstract|alias|align|asm|assert|auto|body|break|"
-    "case|cast|catch|class|const|continue|debug|default|"
-    "delegate|deprecated|do|else|enum|export|extern|false|"
-    "final|finally|for|foreach|foreach_reverse|function|goto|"
-    "if|immutable|import|in|inout|int|interface|invariant|is|"
-    "lazy|mixin|module|new|nothrow|null|out|override|package|"
-    "pragma|private|protected|public|pure|ref|return|scope|shared|"
-    "static|struct|super|switch|synchronized|template|this|throw|"
-    "true|try|typeid|typeof|union|unittest|version|while|with|"
-    "delete|typedef|volatile|"  /* deprecated */
-    "macro|"    /* reserved, unused */
-    "__FILE__|__MODULE__|__LINE__|__FUNCTION__|__PRETTY_FUNCTION__|"
-    "__gshared|__traits|__vector|__parameters|"
-    "__DATE__|__EOF__|__TIME__|__TIMESPAMP__|__VENDOR__|__VERSION__|"
-};
-
-static const char d_types[] = {
-    "bool|byte|ubyte|short|ushort|int|uint|long|ulong|char|wchar|dchar|"
-    "float|double|real|ifloat|idouble|ireal|cfloat|cdouble|creal|void|"
-    "|cent|ucent|string|wstring|dstring|size_t|ptrdiff_t|"
-};
-
-static const char limbo_keywords[] = {
-    "adt|alt|array|break|case|chan|con|continue|cyclic|do|else|exit|"
-    "fn|for|hd|if|implement|import|include|len|list|load|module|nil|"
-    "of|or|pick|ref|return|self|spawn|tagof|tl|to|type|while|"
-};
-
-static const char limbo_types[] = {
-    "big|byte|int|real|string|"
-};
-
-static const char cyclone_keywords[] = {
-    "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
-    "if|inline|register|restrict|return|sizeof|static|struct|switch|"
-    "typedef|union|volatile|while|"
-    "abstract|alias|as|catch|datatype|export|fallthru|inject|let|"
-    "namespace|new|numelts|offsetof|region|regions|reset_region|rnew|"
-    "tagcheck|throw|try|using|valueof|"
-    "calloc|malloc|rcalloc|rmalloc|"
-    "NULL|"
-};
-
-static const char cyclone_types[] = {
-    "char|double|float|int|long|unsigned|short|signed|void|"
-    "_Bool|_Complex|_Imaginary|"
-    "bool|dynregion_t|region_t|tag_t|valueof_t|"
-    "@numelts|@region|@thin|@fat|@zeroterm|@nozeroterm|@notnull|@nullable|"
-    "@extensible|@tagged"
-};
-
-static const char ch_keywords[] = {
-    "local|offsetof|Inf|NaN|"
-};
-
-static const char ch_types[] = {
-    "complex|"
-};
-
-static const char squirrel_keywords[] = {
-    "base|break|continue|const|extends|for|null|throw|try|instanceof|true|"
-    "case|catch|class|clone|default|delete|else|enum|foreach|function|if|in|"
-    "resume|return|switch|this|typeof|while|yield|constructor|false|static|"
-};
-
-static const char squirrel_types[] = {
-    "local|"
-};
-
-static const char ici_keywords[] = {
-    "array|break|case|class|continue|default|do|else|extern|float|"
-    "for|forall|func|if|in|module|NULL|onerror|return|set|static|struct|"
-    "switch|try|while|"
-};
-
-static const char ici_types[] = {
-    "auto|"
-};
-
-static const char dart_keywords[] = {
-    "abstract|as|assert|break|call|case|catch|class|const|continue|default|do|"
-    "else|equals|extends|external|factory|false|final|finally|for|"
-    "get|if|implements|in|interface|is|negate|new|null|on|operator|return|"
-    "set|show|static|super|switch|this|throw|true|try|typedef|while|"
-    // should match only at line start
-    "import|include|source|library|"
-    "@observable|@published|@override|@runTest|"
-    // XXX: should colorize is! as a keyword
-};
-
-static const char dart_types[] = {
-    "bool|double|dynamic|int|num|var|void|"
-    "String|StringBuffer|Object|RegExp|Function|"
-    "Date|DateTime|TimeZone|Duration|Stopwatch|DartType|"
-    "Collection|Comparable|Completer|Future|Match|Options|Pattern|"
-    "HashMap|HashSet|Iterable|Iterator|LinkedHashMap|List|Map|Queue|Set|"
-    "Dynamic|Exception|Error|AssertionError|TypeError|FallThroughError|"
-};
-
-static const char pike_keywords[] = {
-    "break|case|catch|class|constant|continue|default|do|else|enum|extern|"
-    "final|for|foreach|gauge|global|if|import|inherit|inline|"
-    "lambda|local|nomask|optional|predef|"
-    "private|protected|public|return|sscanf|static|switch|typedef|typeof|"
-    "while|__attribute__|__deprecated__|__func__|"
-};
-
-static const char pike_types[] = {
-    "array|float|int|string|function|mapping|multiset|mixed|object|program|"
-    "variant|void|"
-};
-
-static const char idl_keywords[] = {
-    "abstract|attribute|case|component|const|consumes|context|custom|"
-    "default|emits|enum|eventtype|exception|factory|finder|"
-    "fixed|getraises|home|import|in|inout|interface|local|module|multiple|"
-    "native|oneway|out|primarykey|private|provides|public|publishes|raises|"
-    "readonly|setraises|struct|supports|switch|"
-    "typedef|typeid|typeprefix|union|uses|ValueBase|valuetype|"
-    "sequence|iterable|truncatable|"
-    "unrestricted|namespace|dictionary|or|implements|optional|partial|required|"
-    "getter|setter|creator|deleter|callback|legacycaller|"
-    "false|true|null|FALSE|TRUE|"
-};
-
-static const char idl_types[] = {
-    "unsigned|short|long|float|double|char|wchar|string|wstring|octet|any|void|"
-    "byte|boolean|object|"
-};
-
-static const char calc_keywords[] = {
-    "if|else|for|while|do|continue|break|goto|return|local|global|static|"
-    "switch|case|default|quit|exit|define|read|show|help|write|mat|obj|"
-    "print|cd|undefine|abort|"
-};
-
-static const char calc_types[] = {
-    "|"
-};
-
-static const char enscript_keywords[] = {
-    "if|else|return|state|extends|BEGIN|END|forever|continue|do|"
-    "not|and|or|orelse|switch|case|default|true|false|"
-};
-
-static const char enscript_types[] = {
-    "|"
-};
-
-static const char qs_keywords[] = {
-    "break|case|class|continue|def|default|del|delete|do|else|for|"
-    "function|if|module|new|return|self|string|struct|switch|this|"
-    "typeof|while|"
-};
-
-static const char qs_types[] = {
-    "char|int|var|void|Array|Char|Function|Number|Object|String|"
-};
-
-static const char ec_keywords[] = {
-    "@false|@nil|@true|new|self|"
-    "break|catch|class|continue|do|else|extends|for|from|function|goto|if|"
-    "import|in|local|method|package|private|public|return|static|super|"
-    "throw|try|while|"
-};
-
-static const char ec_types[] = {
-    "none|short|ushort|int|uint|long|ulong|char|uchar|float|double|bool|"
-    "string|static_string|array|callback|symbol|"
-};
-
-static const char sl_keywords[] = {
-    "define|if|else|return|static|while|break|do|"
-};
-
-static const char sl_types[] = {
-    "variable|"
-};
-
-static const char csl_keywords[] = {
-    "const|sizeof|try|catch|throw|static|extern|resize|exists|if|else|"
-    "switch|case|default|while|do|break|continue|for|trace|true|false|"
-};
-
-static const char csl_types[] = {
-    "var|void|string|int|"
-};
-
-static const char neko_keywords[] = {
-    "function|if|else|return|while|do|switch|default|"
-    "try|catch|break|continue|"
-    "this|null|true|false|"
-};
-
-static const char neko_types[] = {
-    "var|"
-};
-
-static const char nml_keywords[] = {
-    "function|rec|if|then|else|return|while|do|switch|default|"
-    "try|catch|break|continue|when|"
-    "this|null|true|false|or|and|xor|"
-    "match|type|exception|throw|mutable|list|"
-};
-
-static const char nml_types[] = {
-    "var|int|float|string|bool|char|void|"
-};
-
-static const char alloy_keywords[] = {
-    "if|else|do|for|loop|while|break|continue|match|return|use|"
-    "mut|_|true|false|"
-    "struct|enum|fn|func|self|impl"
-};
-
-static const char alloy_types[] = {
-    "void|bool|char|int|float|double|usize|string|"
-    "u8|u16|u32|u64|i8|i16|i32|i64|f64|f32|"
-};
-
-static const char scilab_keywords[] = {
-    "if|else|for|while|end|select|case|quit|return|help|what|who|"
-    "pause|clear|resume|then|do|apropos|abort|break|elseif|pwd|"
-    "function|endfunction|clc|continue|try|catch|exit|"
-    "global|local|get|sorted|"
-};
-
-static const char scilab_types[] = {
 };
 
 static const char c_extensions[] = {
@@ -899,7 +474,7 @@ static void c_colorize_line(QEColorizeContext *cp,
             goto normal;
 
         case '\"':      /* string literal */
-            if ((flavor == CLANG_SCALA || flavor == CLANG_DART || flavor == CLANG_KOTLIN)
+            if ((mode_flags & CLANG_STR3)
             &&  (str[i] == '\"' && str[i + 1] == '\"')) {
                 /* multiline """ quoted string */
                 i += 2;
@@ -1017,7 +592,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                     style1 = C_STYLE_TYPE;
                     if (str[i1] == '(' && flavor != CLANG_PIKE) {
                         /* function style cast */
-                        style1 = C_STYLE_KEYWORD;
+                        style1 = C_STYLE_FUNCTION; //C_STYLE_KEYWORD;
                     }
                     SET_COLOR(str, start, i, style1);
                     continue;
@@ -1608,6 +1183,8 @@ ModeDef c_mode = {
     .auto_indent = 1,
 };
 
+/* XXX: support Yacc / Bison syntax extensions */
+
 ModeDef yacc_mode = {
     .name = "Yacc",
     .extensions = "y|yacc",
@@ -1620,6 +1197,8 @@ ModeDef yacc_mode = {
     .fallback = &c_mode,
 };
 
+/* XXX: support Lex / Flex syntax extensions */
+
 ModeDef lex_mode = {
     .name = "Lex",
     .extensions = "l|lex",
@@ -1630,6 +1209,23 @@ ModeDef lex_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- C++ programming language ----------------*/
+
+static const char cpp_keywords[] = {
+    "asm|catch|class|delete|friend|inline|namespace|new|operator|"
+    "private|protected|public|template|try|this|virtual|throw|"
+    "explicit|override|mutable|using|assert|true|false|nullptr|"
+    // XXX: many missing keywords
+};
+
+static const char cpp_types[] = {
+    "bool|exception|istream|ostream|ofstream|string|vector|map|set|stack|"
+    "std::istream|std::ostream|std::ofstream|std::string|"
+    "std::vector|std::unique_ptr|std::map|std::set|std::stack|"
+    "std::hash|std::unordered_set|std::unordered_map|std::exception|"
+    "std::string::iterator|std::stringstream|std::ostringstream|"
 };
 
 static int cpp_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -1694,7 +1290,22 @@ ModeDef c2_mode = {
     .fallback = &c_mode,
 };
 
-/*---------------- Objective C ----------------*/
+/*---------------- Objective C programming language ----------------*/
+
+static const char objc_keywords[] = {
+    "self|super|class|nil|YES|NO|"
+    "@class|@interface|@implementation|@public|@private|@protected|"
+    "@try|@catch|@throw|@finally|@end|@protocol|@selector|@synchronized|"
+    "@encode|@defs|@optional|@required|@property|@dynamic|@synthesize|"
+    "@compatibility_alias|"
+    // context sensitive keywords
+    "in|out|inout|bycopy|byref|oneway|"
+    "getter|setter|readwrite|readonly|assign|retain|copy|nonatomic|"
+};
+
+static const char objc_types[] = {
+    "id|BOOL|SEL|Class|Object|"
+};
 
 static int objc_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
@@ -1724,6 +1335,28 @@ ModeDef objc_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- C# programming language ----------------*/
+
+static const char csharp_keywords[] = {
+    "abstract|as|base|break|case|catch|checked|class|const|continue|"
+    "default|delegate|do|else|enum|event|explicit|extern|false|finally|"
+    "fixed|for|foreach|goto|if|implicit|in|interface|internal|is|lock|"
+    "namespace|new|null|operator|out|override|params|private|protected|"
+    "public|readonly|ref|return|sealed|sizeof|stackalloc|static|"
+    "struct|switch|template|this|throw|true|try|typeof|unchecked|unsafe|"
+    "using|virtual|volatile|while|"
+
+    /* contextual keywords */
+    "add|remove|yield|partial|get|set|where|"
+};
+
+static const char csharp_types[] = {
+    "bool|byte|char|decimal|double|float|int|long|object|sbyte|short|"
+    "string|uint|ulong|ushort|void|"
+    "Boolean|Byte|DateTime|Exception|Int32|Int64|Object|String|Thread|"
+    "UInt32|UInt64|"
+};
+
 ModeDef csharp_mode = {
     .name = "C#",   /* C Sharp */
     .mode_name = "csharp",
@@ -1736,6 +1369,8 @@ ModeDef csharp_mode = {
     .auto_indent = 1,
     .fallback = &c_mode,
 };
+
+/*---------------- AWK programming language ----------------*/
 
 static const char awk_keywords[] = {
     "BEGIN|break|case|continue|default|do|else|for|if|next|switch|while|"
@@ -1758,6 +1393,16 @@ ModeDef awk_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- CSS syntax ----------------*/
+
+static const char css_keywords[] = {
+    "|"
+};
+
+static const char css_types[] = {
+    "|"
+};
+
 ModeDef css_mode = {
     .name = "CSS",
     .extensions = "css",
@@ -1768,6 +1413,42 @@ ModeDef css_mode = {
     .indent_func = c_indent_line,
     .fallback = &c_mode,
 };
+
+/*---------------- Javascript programming language ----------------*/
+
+static const char js_keywords[] = {
+    "break|case|catch|continue|debugger|default|delete|do|"
+    "else|finally|for|function|if|in|instanceof|new|"
+    "return|switch|this|throw|try|typeof|while|with|"
+    /* FutureReservedWord */
+    "class|const|enum|import|export|extends|super|"
+    /* The following tokens are also considered to be
+     * FutureReservedWords when parsing strict mode code */
+    "implements|interface|let|package|private|protected|"
+    "public|static|yield|"
+    /* constants */
+    "undefined|null|true|false|Infinity|NaN|"
+    /* strict mode quasi keywords */
+    "eval|arguments|"
+};
+
+static const char js_types[] = {
+    "void|var|"
+};
+
+ModeDef js_mode = {
+    .name = "Javascript",
+    .extensions = "js",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_JS | CLANG_REGEX,
+    .keywords = js_keywords,
+    .types = js_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+/*---------------- JSON data format ----------------*/
 
 static int json_mode_probe(ModeDef *mode, ModeProbeData *pd)
 {
@@ -1798,16 +1479,25 @@ ModeDef json_mode = {
     .fallback = &c_mode,
 };
 
-ModeDef js_mode = {
-    .name = "Javascript",
-    .extensions = "js",
-    .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_JS | CLANG_REGEX,
-    .keywords = js_keywords,
-    .types = js_types,
-    .indent_func = c_indent_line,
-    .auto_indent = 1,
-    .fallback = &c_mode,
+/*---------------- ActioScript programming language ----------------*/
+
+static const char as_keywords[] = {
+    "as|break|case|catch|class|continue|default|do|else|false|"
+    "finally|for|function|if|import|interface|internal|is|new|null|"
+    "package|private|protected|public|return|super|switch|this|throw|"
+    "true|try|while|"
+    // The following AS3 keywords are no longer in AS4:
+    "delete|include|instanceof|namespace|typeof|use|with|in|const|"
+    // other constants
+    "undefined|Infinity|NaN|"
+    // introduced in AS4 (spec abandoned in december 2012)
+    //"let|defer|get|set|override|native|extends|implements|"
+};
+
+static const char as_types[] = {
+    "void|var|bool|byte|int|uint|long|ulong|float|double|"
+    "Array|Boolean|Number|Object|String|Function|Event|RegExp|"
+    "Class|Interface|"
 };
 
 ModeDef as_mode = {
@@ -1822,6 +1512,24 @@ ModeDef as_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Java programming language ----------------*/
+
+static const char java_keywords[] = {
+    /* language keywords */
+    "abstract|assert|break|case|catch|class|const|continue|"
+    "default|do|else|enum|extends|final|finally|for|goto|"
+    "if|implements|import|instanceof|interface|native|new|"
+    "package|private|protected|public|return|"
+    "static|strictfp|super|switch|synchronized|threadsafe|"
+    "this|throw|throws|transient|try|volatile|while|"
+    /* boolean and null literals */
+    "false|null|true|"
+};
+
+static const char java_types[] = {
+    "boolean|byte|char|double|float|int|long|short|void|"
+};
+
 static ModeDef java_mode = {
     .name = "Java",
     .extensions = "jav|java",
@@ -1834,16 +1542,48 @@ static ModeDef java_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Scala programming language ----------------*/
+
+static const char scala_keywords[] = {
+    /* language keywords */
+    "abstract|case|catch|class|def|do|else|extends|final|"
+    "finally|for|forSome|if|implicit|import|lazy|match|new|"
+    "object|override|package|private|protected|return|sealed|super|this|throw|"
+    "trait|try|type|val|var|while|with|yield|"
+    /* boolean and null literals */
+    "false|null|true|_|"
+};
+
+static const char scala_types[] = {
+    /* all mixed case identifiers starting with an uppercase letter are types */
+};
+
 static ModeDef scala_mode = {
     .name = "Scala",
     .extensions = "scala|sbt",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_SCALA | CLANG_CAP_TYPE,
+    .colorize_flags = CLANG_SCALA | CLANG_CAP_TYPE | CLANG_STR3,
     .keywords = scala_keywords,
     .types = scala_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- PHP programming language ----------------*/
+
+static const char php_keywords[] = {
+    "abstract|assert|break|case|catch|class|clone|const|continue|"
+    "declare|default|elseif|else|enddeclare|endif|endswitch|end|exit|"
+    "extends|false|final|foreach|for|function|goto|if|implements|"
+    "include_once|include|instanceof|interface|list|namespace|new|"
+    "overload|parent|private|public|require_once|require|return|"
+    "self|sizeof|static|switch|throw|trait|true|try|use|var|while|"
+    "NULL|"
+};
+
+static const char php_types[] = {
+    "array|boolean|bool|double|float|integer|int|object|real|string|"
 };
 
 ModeDef php_mode = {
@@ -1855,6 +1595,28 @@ ModeDef php_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Go programming language ----------------*/
+
+static const char go_keywords[] = {
+    /* keywords */
+    "break|case|chan|const|continue|default|defer|else|fallthrough|"
+    "for|func|go|goto|if|import|interface|map|package|range|"
+    "return|select|struct|switch|type|var|"
+    /* builtins */
+    "append|cap|close|complex|copy|delete|imag|len|make|new|panic|"
+    "print|println|real|recover|"
+    /* Constants */
+    "false|iota|nil|true|"
+};
+
+static const char go_types[] = {
+    "bool|byte|complex128|complex64|error|float32|float64|"
+    "int|int16|int32|int64|int8|rune|string|"
+    "uint|uint16|uint32|uint64|uint8|uintptr|"
+};
+
+/* Go identifiers start with a Unicode letter or _ */
+
 ModeDef go_mode = {
     .name = "Go",
     .extensions = "go",
@@ -1865,6 +1627,31 @@ ModeDef go_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- D programming language ----------------*/
+
+static const char d_keywords[] = {
+    "abstract|alias|align|asm|assert|auto|body|break|"
+    "case|cast|catch|class|const|continue|debug|default|"
+    "delegate|deprecated|do|else|enum|export|extern|false|"
+    "final|finally|for|foreach|foreach_reverse|function|goto|"
+    "if|immutable|import|in|inout|int|interface|invariant|is|"
+    "lazy|mixin|module|new|nothrow|null|out|override|package|"
+    "pragma|private|protected|public|pure|ref|return|scope|shared|"
+    "static|struct|super|switch|synchronized|template|this|throw|"
+    "true|try|typeid|typeof|union|unittest|version|while|with|"
+    "delete|typedef|volatile|"  /* deprecated */
+    "macro|"    /* reserved, unused */
+    "__FILE__|__MODULE__|__LINE__|__FUNCTION__|__PRETTY_FUNCTION__|"
+    "__gshared|__traits|__vector|__parameters|"
+    "__DATE__|__EOF__|__TIME__|__TIMESPAMP__|__VENDOR__|__VERSION__|"
+};
+
+static const char d_types[] = {
+    "bool|byte|ubyte|short|ushort|int|uint|long|ulong|char|wchar|dchar|"
+    "float|double|real|ifloat|idouble|ireal|cfloat|cdouble|creal|void|"
+    "|cent|ucent|string|wstring|dstring|size_t|ptrdiff_t|"
 };
 
 ModeDef d_mode = {
@@ -1879,6 +1666,18 @@ ModeDef d_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Limbo programming language ----------------*/
+
+static const char limbo_keywords[] = {
+    "adt|alt|array|break|case|chan|con|continue|cyclic|do|else|exit|"
+    "fn|for|hd|if|implement|import|include|len|list|load|module|nil|"
+    "of|or|pick|ref|return|self|spawn|tagof|tl|to|type|while|"
+};
+
+static const char limbo_types[] = {
+    "big|byte|int|real|string|"
+};
+
 ModeDef limbo_mode = {
     .name = "Limbo",
     .extensions = "m",
@@ -1889,6 +1688,27 @@ ModeDef limbo_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- Cyclone programming language ----------------*/
+
+static const char cyclone_keywords[] = {
+    "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
+    "if|inline|register|restrict|return|sizeof|static|struct|switch|"
+    "typedef|union|volatile|while|"
+    "abstract|alias|as|catch|datatype|export|fallthru|inject|let|"
+    "namespace|new|numelts|offsetof|region|regions|reset_region|rnew|"
+    "tagcheck|throw|try|using|valueof|"
+    "calloc|malloc|rcalloc|rmalloc|"
+    "NULL|"
+};
+
+static const char cyclone_types[] = {
+    "char|double|float|int|long|unsigned|short|signed|void|"
+    "_Bool|_Complex|_Imaginary|"
+    "bool|dynregion_t|region_t|tag_t|valueof_t|"
+    "@numelts|@region|@thin|@fat|@zeroterm|@nozeroterm|@notnull|@nullable|"
+    "@extensible|@tagged"
 };
 
 ModeDef cyclone_mode = {
@@ -1903,6 +1723,16 @@ ModeDef cyclone_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Ch programming language ----------------*/
+
+static const char ch_keywords[] = {
+    "local|offsetof|Inf|NaN|"
+};
+
+static const char ch_types[] = {
+    "complex|"
+};
+
 ModeDef ch_mode = {
     .name = "Ch",
     .extensions = "chf",
@@ -1913,6 +1743,18 @@ ModeDef ch_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- Squirrel programming language ----------------*/
+
+static const char squirrel_keywords[] = {
+    "base|break|continue|const|extends|for|null|throw|try|instanceof|true|"
+    "case|catch|class|clone|default|delete|else|enum|foreach|function|if|in|"
+    "resume|return|switch|this|typeof|while|yield|constructor|false|static|"
+};
+
+static const char squirrel_types[] = {
+    "local|"
 };
 
 ModeDef squirrel_mode = {
@@ -1927,6 +1769,18 @@ ModeDef squirrel_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- ICI programming language ----------------*/
+
+static const char ici_keywords[] = {
+    "array|break|case|class|continue|default|do|else|extern|float|"
+    "for|forall|func|if|in|module|NULL|onerror|return|set|static|struct|"
+    "switch|try|while|"
+};
+
+static const char ici_types[] = {
+    "auto|"
+};
+
 ModeDef ici_mode = {
     .name = "ICI",
     .extensions = "ici",
@@ -1937,6 +1791,33 @@ ModeDef ici_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- JSX programming language ----------------*/
+
+static const char jsx_keywords[] = {
+    // literals shared with ECMA 262
+    "null|true|false|NaN|Infinity|"
+    // keywords shared with ECMA 262
+    "break|case|const|do|else|finally|for|function|if|in|"
+    "instanceof|new|return|switch|this|throw|try|typeof|var|while|"
+    // JSX keywords
+    "class|extends|super|import|implements|static|"
+    "__FILE__|__LINE__|undefined|"
+    // contextual keywords
+    // "assert|log|catch|continue|default|delete|interface",
+    // ECMA 262 literals but not used by JSX
+    "debugger|with|"
+    // ECMA 262 future reserved words
+    "export|"
+    // ECMA 262 strict mode future reserved words
+    "let|private|public|yield|protected|"
+    // JSX specific reserved words
+    "extern|native|as|operator|abstract|"
+};
+
+static const char jsx_types[] = {
+    "void|variant|boolean|int|number|string|Error|"
 };
 
 ModeDef jsx_mode = {
@@ -1951,6 +1832,20 @@ ModeDef jsx_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Haxe programming language ----------------*/
+
+static const char haxe_keywords[] = {
+    "abstract|break|case|cast|catch|class|continue|default|do|dynamic|else|"
+    "enum|extends|extern|false|for|function|if|implements|import|inline|"
+    "interface|in|macro|new|null|override|package|private|public|return|"
+    "static|switch|this|throw|true|try|typedef|untyped|using|var|while|"
+};
+
+static const char haxe_types[] = {
+    "Void|Array|Bool|Int|Float|Class|Enum|Dynamic|String|Date|Null|"
+    "Iterator|"
+};
+
 ModeDef haxe_mode = {
     .name = "Haxe",
     .extensions = "hx",
@@ -1963,16 +1858,53 @@ ModeDef haxe_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Dart programming language ----------------*/
+
+static const char dart_keywords[] = {
+    "abstract|as|assert|break|call|case|catch|class|const|continue|default|do|"
+    "else|equals|extends|external|factory|false|final|finally|for|"
+    "get|if|implements|in|interface|is|negate|new|null|on|operator|return|"
+    "set|show|static|super|switch|this|throw|true|try|typedef|while|"
+    // should match only at line start
+    "import|include|source|library|"
+    "@observable|@published|@override|@runTest|"
+    // XXX: should colorize is! as a keyword
+};
+
+static const char dart_types[] = {
+    "bool|double|dynamic|int|num|var|void|"
+    "String|StringBuffer|Object|RegExp|Function|"
+    "Date|DateTime|TimeZone|Duration|Stopwatch|DartType|"
+    "Collection|Comparable|Completer|Future|Match|Options|Pattern|"
+    "HashMap|HashSet|Iterable|Iterator|LinkedHashMap|List|Map|Queue|Set|"
+    "Dynamic|Exception|Error|AssertionError|TypeError|FallThroughError|"
+};
+
 ModeDef dart_mode = {
     .name = "Dart",
     .extensions = "dart",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_DART,
+    .colorize_flags = CLANG_DART | CLANG_STR3,
     .keywords = dart_keywords,
     .types = dart_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- Pike programming language ----------------*/
+
+static const char pike_keywords[] = {
+    "break|case|catch|class|constant|continue|default|do|else|enum|extern|"
+    "final|for|foreach|gauge|global|if|import|inherit|inline|"
+    "lambda|local|nomask|optional|predef|"
+    "private|protected|public|return|sscanf|static|switch|typedef|typeof|"
+    "while|__attribute__|__deprecated__|__func__|"
+};
+
+static const char pike_types[] = {
+    "array|float|int|string|function|mapping|multiset|mixed|object|program|"
+    "variant|void|"
 };
 
 ModeDef pike_mode = {
@@ -1985,6 +1917,26 @@ ModeDef pike_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- IDL syntax ----------------*/
+
+static const char idl_keywords[] = {
+    "abstract|attribute|case|component|const|consumes|context|custom|"
+    "default|emits|enum|eventtype|exception|factory|finder|"
+    "fixed|getraises|home|import|in|inout|interface|local|module|multiple|"
+    "native|oneway|out|primarykey|private|provides|public|publishes|raises|"
+    "readonly|setraises|struct|supports|switch|"
+    "typedef|typeid|typeprefix|union|uses|ValueBase|valuetype|"
+    "sequence|iterable|truncatable|"
+    "unrestricted|namespace|dictionary|or|implements|optional|partial|required|"
+    "getter|setter|creator|deleter|callback|legacycaller|"
+    "false|true|null|FALSE|TRUE|"
+};
+
+static const char idl_types[] = {
+    "unsigned|short|long|float|double|char|wchar|string|wstring|octet|any|void|"
+    "byte|boolean|object|"
 };
 
 static ModeDef idl_mode = {
@@ -2000,6 +1952,18 @@ static ModeDef idl_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- GNU Calc syntax ----------------*/
+
+static const char calc_keywords[] = {
+    "if|else|for|while|do|continue|break|goto|return|local|global|static|"
+    "switch|case|default|quit|exit|define|read|show|help|write|mat|obj|"
+    "print|cd|undefine|abort|"
+};
+
+static const char calc_types[] = {
+    "|"
+};
+
 ModeDef calc_mode = {
     .name = "calc", /* GNU Calc */
     .extensions = "cal|calc",
@@ -2011,6 +1975,17 @@ ModeDef calc_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- GNU Enscript programming language ----------------*/
+
+static const char enscript_keywords[] = {
+    "if|else|return|state|extends|BEGIN|END|forever|continue|do|"
+    "not|and|or|orelse|switch|case|default|true|false|"
+};
+
+static const char enscript_types[] = {
+    "|"
 };
 
 static int enscript_mode_probe(ModeDef *mode, ModeProbeData *pd)
@@ -2035,6 +2010,18 @@ ModeDef enscript_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- QuickScript programming language ----------------*/
+
+static const char qs_keywords[] = {
+    "break|case|class|continue|def|default|del|delete|do|else|for|"
+    "function|if|module|new|return|self|string|struct|switch|this|"
+    "typeof|while|"
+};
+
+static const char qs_types[] = {
+    "char|int|var|void|Array|Char|Function|Number|Object|String|"
 };
 
 static int qs_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -2064,6 +2051,20 @@ ModeDef qscript_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Elastic C like language ----------------*/
+
+static const char ec_keywords[] = {
+    "@false|@nil|@true|new|self|"
+    "break|catch|class|continue|do|else|extends|for|from|function|goto|if|"
+    "import|in|local|method|package|private|public|return|static|super|"
+    "throw|try|while|"
+};
+
+static const char ec_types[] = {
+    "none|short|ushort|int|uint|long|ulong|char|uchar|float|double|bool|"
+    "string|static_string|array|callback|symbol|"
+};
+
 ModeDef ec_mode = {
     .name = "elastiC",
     .extensions = "ec",
@@ -2076,6 +2077,16 @@ ModeDef ec_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Jed's S-Lang extension language ----------------*/
+
+static const char sl_keywords[] = {
+    "define|if|else|return|static|while|break|do|"
+};
+
+static const char sl_types[] = {
+    "variable|"
+};
+
 ModeDef sl_mode = {
     .name = "Jed",  /* S-Lang */
     .extensions = "sl",
@@ -2086,6 +2097,17 @@ ModeDef sl_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- Peter Koch's CSL C Scripting Language ----------------*/
+
+static const char csl_keywords[] = {
+    "const|sizeof|try|catch|throw|static|extern|resize|exists|if|else|"
+    "switch|case|default|while|do|break|continue|for|trace|true|false|"
+};
+
+static const char csl_types[] = {
+    "var|void|string|int|"
 };
 
 ModeDef csl_mode = {
@@ -2101,6 +2123,18 @@ ModeDef csl_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Neko programming language ----------------*/
+
+static const char neko_keywords[] = {
+    "function|if|else|return|while|do|switch|default|"
+    "try|catch|break|continue|"
+    "this|null|true|false|"
+};
+
+static const char neko_types[] = {
+    "var|"
+};
+
 ModeDef neko_mode = {
     .name = "Neko",
     .extensions = "neko",
@@ -2112,6 +2146,19 @@ ModeDef neko_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- NekoML programming language ----------------*/
+
+static const char nml_keywords[] = {
+    "function|rec|if|then|else|return|while|do|switch|default|"
+    "try|catch|break|continue|when|"
+    "this|null|true|false|or|and|xor|"
+    "match|type|exception|throw|mutable|list|"
+};
+
+static const char nml_types[] = {
+    "var|int|float|string|bool|char|void|"
 };
 
 ModeDef nml_mode = {
@@ -2127,6 +2174,19 @@ ModeDef nml_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Alloy programming language ----------------*/
+
+static const char alloy_keywords[] = {
+    "if|else|do|for|loop|while|break|continue|match|return|use|"
+    "mut|_|true|false|"
+    "struct|enum|fn|func|self|impl"
+};
+
+static const char alloy_types[] = {
+    "void|bool|char|int|float|double|usize|string|"
+    "u8|u16|u32|u64|i8|i16|i32|i64|f64|f32|"
+};
+
 ModeDef alloy_mode = {
     .name = "Alloy",
     .extensions = "ay",
@@ -2138,6 +2198,18 @@ ModeDef alloy_mode = {
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
+};
+
+/*---------------- SCILab programming language ----------------*/
+
+static const char scilab_keywords[] = {
+    "if|else|for|while|end|select|case|quit|return|help|what|who|"
+    "pause|clear|resume|then|do|apropos|abort|break|elseif|pwd|"
+    "function|endfunction|clc|continue|try|catch|exit|"
+    "global|local|get|sorted|"
+};
+
+static const char scilab_types[] = {
 };
 
 static int scilab_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -2167,10 +2239,7 @@ ModeDef scilab_mode = {
     .fallback = &c_mode,
 };
 
-#include "rust.c"
-#include "swift.c"
-#include "icon.c"
-#include "groovy.c"
+/*---------------- Kotlin programming language ----------------*/
 
 static const char kotlin_keywords[] = {
     /* language keywords */
@@ -2198,7 +2267,7 @@ static ModeDef kotlin_mode = {
     .name = "Kotlin",
     .extensions = "kt",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_KOTLIN | CLANG_CAP_TYPE,
+    .colorize_flags = CLANG_KOTLIN | CLANG_CAP_TYPE | CLANG_STR3,
     .keywords = kotlin_keywords,
     .types = kotlin_types,
     .indent_func = c_indent_line,
@@ -2239,7 +2308,51 @@ static ModeDef cbang_mode = {
     .fallback = &c_mode,
 };
 
-/*---------------- common initialization code ----------------*/
+/*---------------- Gnome's Vala language ----------------*/
+
+static const char vala_keywords[] = {
+    //"asm|catch|delete|friend|inline|namespace|operator|"
+    //"private|protected|template|try|virtual|throw|"
+    //"explicit|mutable|assert|"
+
+    "do|if|for|case|else|enum|break|const|while|extern|public|"
+    "sizeof|static|struct|switch|default|continue|volatile|"
+    "using|private|public|protected|class|override|abstract|weak|base|"
+    "foreach|in|is|as|new|this|try|lock|async|catch|throw|yield|"
+    "signal|throws|typeof|dynamic|ensures|finally|abstract|delegate|"
+    "internal|requires|construct|interface|namespace|errordomain|"
+    "var|get|set|out|ref|owned|inline|params|sealed|unowned|virtual|"
+    "null|true|false|"
+};
+
+static const char vala_types[] = {
+    //"void|"
+    "bool|string|int|uint|uchar|nt8|short|ushort|long|ulong|size_t|ssize_t|"
+    "double|va_list|unichar|"
+};
+
+ModeDef vala_mode = {
+    .name = "Vala",
+    .mode_name = "vala",
+    .extensions = "vala|vapi",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_VALA | CLANG_CC | CLANG_REGEX |
+                      CLANG_CAP_TYPE | CLANG_STR3,
+    .keywords = vala_keywords,
+    .types = vala_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+/*---------------- Other C based syntax modes ----------------*/
+
+#include "rust.c"
+#include "swift.c"
+#include "icon.c"
+#include "groovy.c"
+
+/*---------------- Common initialization code ----------------*/
 
 static int c_init(void)
 {
@@ -2288,12 +2401,13 @@ static int c_init(void)
     qe_register_mode(&nml_mode, MODEF_SYNTAX);
     qe_register_mode(&alloy_mode, MODEF_SYNTAX);
     qe_register_mode(&scilab_mode, MODEF_SYNTAX);
+    qe_register_mode(&kotlin_mode, MODEF_SYNTAX);
+    qe_register_mode(&cbang_mode, MODEF_SYNTAX);
+    qe_register_mode(&vala_mode, MODEF_SYNTAX);
     rust_init();
     swift_init();
     icon_init();
     groovy_init();
-    qe_register_mode(&kotlin_mode, MODEF_SYNTAX);
-    qe_register_mode(&cbang_mode, MODEF_SYNTAX);
 
     return 0;
 }
