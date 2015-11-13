@@ -22,15 +22,15 @@ DEPTH=.
 include $(DEPTH)/config.mak
 
 ifeq (,$(V)$(VERBOSE))
-    echo  := @echo
-    cmd   := @
+    echo := @echo
+    cmd  := @
 else
-    echo  := @:
-    cmd   := 
+    echo := @:
+    cmd  := 
 endif
 
 ifeq ($(CC),gcc)
-  CFLAGS   += -Wall -g -O2 -funsigned-char
+  CFLAGS  += -Wall -g -O2 -funsigned-char
   # do not warn about zero-length formats.
   CFLAGS   += -Wno-format-zero-length
   LDFLAGS  += -g
@@ -417,9 +417,9 @@ qe-doc.html: qe-doc.texi Makefile
 #
 clean:
 	$(MAKE) -C libqhtml clean
-	rm -rf *.dSYM $(OBJS_DIR) $(TOBJS_DIR)
+	rm -rf *.dSYM $(OBJS_DIR) $(TOBJS_DIR) .objs-* .tobjs-*
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump   \
-           qe tqe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
+           qe tqe xqe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
            cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9]
 
 distclean: clean
