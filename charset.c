@@ -529,21 +529,21 @@ static int charset_goto_char_utf8(CharsetDecodeState *s,
     nb_chars = 0;
     buf_ptr = buf;
     buf_end = buf_ptr + size;
-    while (buf_ptr < buf_end) {
+    for (; buf_ptr < buf_end; buf_ptr++) {
         c = *buf_ptr;
+        if (c >= 0x80 && c < 0xc0) {
+            /* Test done here to skip initial trailing bytes if any */
+            continue;
+        }
         if (c == '\n' && s->eol_type == EOL_DOS) {
             /* ignore \n in EOL_DOS scan, but count \r.
              * see comment above.
              */
             continue;
         }
-        if (c < 0x80 || c >= 0xc0) {
-            /* Test done here to skip initial trailing bytes if any */
-            if (nb_chars >= pos)
-                break;
-            nb_chars++;
-        }
-        buf_ptr++;
+        if (nb_chars >= pos)
+            break;
+        nb_chars++;
     }
     return buf_ptr - buf;
 }
@@ -761,17 +761,17 @@ static int charset_get_chars_ucs2(CharsetDecodeState *s,
                                   const u8 *buf, int size)
 {
     /* XXX: should handle surrogates */
-    int nb_skip;
+    int count = size >> 1;  /* convert byte count to char16 count */
     const uint16_t *buf_end, *buf_ptr;
     uint16_t nl;
     union { uint16_t n; char c[2]; } u;
 
     if (s->eol_type != EOL_DOS)
-        return size >> 1;
+        return count;
 
-    nb_skip = 0;
     buf_ptr = (const uint16_t *)(const void *)buf;
-    buf_end = buf_ptr + (size >> 1);
+    buf_end = buf_ptr + count;
+    // XXX: undefined behavior
     u.n = 0;
     u.c[s->charset == &charset_ucs2be] = '\n';
     nl = u.n;
@@ -779,10 +779,10 @@ static int charset_get_chars_ucs2(CharsetDecodeState *s,
     while (buf_ptr < buf_end) {
         if (*buf_ptr++ == nl) {
             /* ignore \n in EOL_DOS scan, but count \r. (see above) */
-            nb_skip++;
+            count--;
         }
     }
-    return (size >> 1) - nb_skip;
+    return count;
 }
 
 static int charset_goto_char_ucs2(CharsetDecodeState *s,
@@ -800,11 +800,12 @@ static int charset_goto_char_ucs2(CharsetDecodeState *s,
     nb_chars = 0;
     buf_ptr = (const uint16_t *)(const void *)buf;
     buf_end = buf_ptr + (size >> 1);
+    // XXX: undefined behavior
     u.n = 0;
     u.c[s->charset == &charset_ucs2be] = '\n';
     nl = u.n;
 
-    while (buf_ptr < buf_end) {
+    for (; buf_ptr < buf_end; buf_ptr++) {
         if (*buf_ptr == nl) {
             /* ignore \n in EOL_DOS scan, but count \r. (see above) */
             continue;
@@ -812,7 +813,6 @@ static int charset_goto_char_ucs2(CharsetDecodeState *s,
         if (nb_chars >= pos)
             break;
         nb_chars++;
-        buf_ptr++;
     }
     return (const u8*)buf_ptr - buf;
 }
@@ -1034,17 +1034,17 @@ static u8 *encode_ucs4be(qe__unused__ QECharset *charset, u8 *p, int c)
 static int charset_get_chars_ucs4(CharsetDecodeState *s,
                                   const u8 *buf, int size)
 {
-    int nb_skip;
+    int count = size >> 2;  /* convert byte count to char32 count */
     const uint32_t *buf_end, *buf_ptr;
     uint32_t nl;
     union { uint32_t n; char c[4]; } u;
 
     if (s->eol_type != EOL_DOS)
-        return size >> 2;
+        return count;
 
-    nb_skip = 0;
     buf_ptr = (const uint32_t *)(const void *)buf;
-    buf_end = buf_ptr + (size >> 2);
+    buf_end = buf_ptr + count;
+    // XXX: undefined behavior
     u.n = 0;
     u.c[(s->charset == &charset_ucs4be) * 3] = '\n';
     nl = u.n;
@@ -1052,10 +1052,10 @@ static int charset_get_chars_ucs4(CharsetDecodeState *s,
     while (buf_ptr < buf_end) {
         if (*buf_ptr++ == nl) {
             /* ignore \n in EOL_DOS scan, but count \r. (see above) */
-            nb_skip++;
+            count--;
         }
     }
-    return (size >> 2) - nb_skip;
+    return count;
 }
 
 static int charset_goto_char_ucs4(CharsetDecodeState *s,
@@ -1072,11 +1072,12 @@ static int charset_goto_char_ucs4(CharsetDecodeState *s,
     nb_chars = 0;
     buf_ptr = (const uint32_t *)(const void *)buf;
     buf_end = buf_ptr + (size >> 2);
+    // XXX: undefined behavior
     u.n = 0;
     u.c[(s->charset == &charset_ucs4be) * 3] = '\n';
     nl = u.n;
 
-    while (buf_ptr < buf_end) {
+    for (; buf_ptr < buf_end; buf_ptr++) {
         if (*buf_ptr == nl) {
             /* ignore \n in EOL_DOS scan, but count \r. (see above) */
             continue;
@@ -1084,7 +1085,6 @@ static int charset_goto_char_ucs4(CharsetDecodeState *s,
         if (nb_chars >= pos)
             break;
         nb_chars++;
-        buf_ptr++;
     }
     return (const u8*)buf_ptr - buf;
 }
@@ -1661,22 +1661,21 @@ int charset_goto_line_8bit(CharsetDecodeState *s,
 int charset_get_chars_8bit(CharsetDecodeState *s,
                            const u8 *buf, int size)
 {
-    int nb_skip;
+    int count = size;
     const u8 *buf_end, *buf_ptr;
 
     if (s->eol_type != EOL_DOS)
-        return size;
+        return count;
 
-    nb_skip = 0;
     buf_ptr = buf;
-    buf_end = buf_ptr + size;
+    buf_end = buf_ptr + count;
     while (buf_ptr < buf_end) {
         if (*buf_ptr++ == '\n') {
             /* ignore \n in EOL_DOS scan, but count \r. (see above) */
-            nb_skip++;
+            count--;
         }
     }
-    return size - nb_skip;
+    return count;
 }
 
 int charset_goto_char_8bit(CharsetDecodeState *s,
@@ -1691,7 +1690,7 @@ int charset_goto_char_8bit(CharsetDecodeState *s,
     nb_chars = 0;
     buf_ptr = buf;
     buf_end = buf_ptr + size;
-    while (buf_ptr < buf_end) {
+    for (; buf_ptr < buf_end; buf_ptr++) {
         if (*buf_ptr == '\n') {
             /* ignore \n in EOL_DOS scan, but count \r. */
             continue;
@@ -1699,7 +1698,6 @@ int charset_goto_char_8bit(CharsetDecodeState *s,
         if (nb_chars >= pos)
             break;
         nb_chars++;
-        buf_ptr++;
     }
     return buf_ptr - buf;
 }
