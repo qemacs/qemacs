@@ -824,7 +824,7 @@ static void image_convert(EditState *e, const char *pix_fmt_str)
     if (ret < 0) {
         /* remove temporary image */
         image_free(ib1);
-        put_status(e, "Convertion from '%s' to '%s' not supported yet",
+        put_status(e, "Conversion from '%s' to '%s' not supported yet",
                    avcodec_get_pix_fmt_name(ib->pix_fmt),
                    avcodec_get_pix_fmt_name(new_pix_fmt));
         return;
