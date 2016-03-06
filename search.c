@@ -91,7 +91,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
     if (flags & SEARCH_FLAG_HEX) {
         /* handle buffer as single bytes */
         /* XXX: should handle ucs2 and ucs4 as words */
-        if (dir > 0)
+        if (dir >= 0)
               offset--;
         for (;;) {
             if (dir < 0) {
@@ -117,7 +117,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
                 if (c != c2)
                     break;
                 if (pos >= len) {
-                    if (dir > 0 || offset2 <= start_offset) {
+                    if (dir >= 0 || offset2 <= start_offset) {
                         *found_offset = offset;
                         *found_end = offset2;
                         return 1;
@@ -164,7 +164,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
                     ||  qe_isword(eb_nextc(b, offset2, &offset3)))
                         break;
                 }
-                if (dir > 0 || offset2 <= start_offset) {
+                if (dir >= 0 || offset2 <= start_offset) {
                     *found_offset = offset;
                     *found_end = offset2;
                     return 1;
@@ -212,7 +212,7 @@ static void buf_encode_search_str(buf_t *out, const char *str)
     }
 }
 
-static void isearch_display(ISearchState *is)
+static void isearch_run(ISearchState *is)
 {
     EditState *s = is->s;
     char ubuf[256];
@@ -220,6 +220,9 @@ static void isearch_display(ISearchState *is)
     int c, i, len, hex_nibble, max_nibble, h, hc;
     unsigned int v;
     int search_offset, flags, dir = is->start_dir;
+    int start_time, elapsed_time;
+
+    start_time = get_clock_ms();
 
     /* prepare the search bytes */
     len = 0;
@@ -322,6 +325,10 @@ static void isearch_display(ISearchState *is)
     do_center_cursor_maybe(s);
     edit_display(s->qe_state);
     put_status(NULL, "%s", out->buf);   /* XXX: why NULL? */
+    elapsed_time = get_clock_ms() - start_time;
+    if (elapsed_time >= 100)
+        put_status(s, "|isearch_run: %dms", elapsed_time);
+
     dpy_flush(s->screen);
 }
 
@@ -495,7 +502,7 @@ static void isearch_key(void *opaque, int ch)
         }
         break;
     }
-    isearch_display(is);
+    isearch_run(is);
 }
 
 /* XXX: handle busy */
@@ -526,7 +533,7 @@ void do_isearch(EditState *s, int dir)
     is->search_flags = flags;
 
     qe_grab_keys(isearch_key, is);
-    isearch_display(is);
+    isearch_run(is);
 }
 
 void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
@@ -540,8 +547,9 @@ void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
         return;
 
     char_offset = eb_get_char_offset(b, offset_start);
-    offset = eb_goto_char(b, char_offset <= is->search_u32_len ? 0 :
-                          char_offset - is->search_u32_len - 1);
+    offset = 0;
+    if (char_offset > is->search_u32_len + 1)
+        offset = eb_goto_char(b, char_offset - is->search_u32_len - 1);
 
     while (eb_search(b, 1, is->search_flags, offset, offset_end,
                      is->search_u32, is->search_u32_len, NULL, NULL,
@@ -824,12 +832,14 @@ void do_replace_string(EditState *s, const char *search_str,
     query_replace(s, search_str, replace_str, 1, flags);
 }
 
+/* dir = 0, 1, -2 -> count matches, reverse, forward */
 void do_search_string(EditState *s, const char *search_str, int dir)
 {
     unsigned int search_u32[SEARCH_LENGTH];
     int search_u32_len;
     int found_offset, found_end;
     int flags = SEARCH_FLAG_SMARTCASE;
+    int offset, count = 0;
 
     if (s->hex_mode) {
         if (s->unihex_mode)
@@ -843,13 +853,27 @@ void do_search_string(EditState *s, const char *search_str, int dir)
     if (search_u32_len <= 0)
         return;
 
-    if (eb_search(s->b, dir, flags,
-                  s->offset, s->b->total_size,
-                  search_u32, search_u32_len,
-                  NULL, NULL, &found_offset, &found_end) > 0) {
-        s->offset = (dir < 0) ? found_offset : found_end;
-        do_center_cursor_maybe(s);
-    } else {
-        put_status(s, "Search failed: \"%s\"", search_str);
+    for (offset = s->offset;;) {
+        if (eb_search(s->b, dir, flags,
+                      offset, s->b->total_size,
+                      search_u32, search_u32_len,
+                      NULL, NULL, &found_offset, &found_end) > 0) {
+            if (dir == 0) {
+                count++;
+                offset = found_end;
+                continue;
+            } else {
+                s->offset = (dir < 0) ? found_offset : found_end;
+                do_center_cursor_maybe(s);
+                return;
+            }
+        } else {
+            if (dir == 0) {
+                put_status(s, "\"%s\": %d matches", search_str, count);
+            } else {
+                put_status(s, "Search failed: \"%s\"", search_str);
+            }
+            return;
+        }
     }
 }

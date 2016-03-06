@@ -183,6 +183,10 @@ static CmdDef basic_commands[] = {
           "search-backward", do_search_string, ESsi, -1,
           "s{Search backward: }|search|"
           "v")
+    CMD3( KEY_META('C'), KEY_NONE,
+          "count-matches", do_search_string, ESsi, 0,
+          "s{Count Matches: }|search|"
+          "v")
     /* passing argument should switch to regex incremental search */
     CMD1( KEY_CTRL('r'), KEY_NONE,
           "isearch-backward", do_isearch, -1 )
