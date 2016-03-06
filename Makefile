@@ -66,6 +66,7 @@ TARGETS+= qe$(EXE) tqe$(EXE) kmaps ligatures
 OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o parser.o input.o display.o hex.o \
        list.o
 TOBJS:= $(OBJS)
+XOBJS:= $(OBJS) x11.o
 
 OBJS+= extras.o variables.o
 
@@ -130,20 +131,6 @@ ifdef CONFIG_CFB
   OBJS+= libfbf.o fbfrender.o cfb.o fbffonts.o
 endif
 
-ifdef CONFIG_X11
-  OBJS+= x11.o
-  ifdef CONFIG_XRENDER
-    LIBS += -lXrender
-  endif
-  ifdef CONFIG_XV
-    LIBS += -lXv
-  endif
-  ifdef CONFIG_XSHM
-    LIBS += -lXext
-  endif
-  LIBS += -lX11
-endif
-
 ifdef CONFIG_HTML
   CFLAGS+= -I./libqhtml
   DEP_LIBS+= libqhtml/libqhtml.a
@@ -163,21 +150,47 @@ ifdef CONFIG_FFMPEG
   TARGETS+= ffplay$(EXE)
 endif
 
+ifdef CONFIG_X11
+  TARGETS += xqe$(EXE)
+  XOBJS := x11.o
+  XLIBS :=
+  ifdef CONFIG_XRENDER
+    XLIBS += -lXrender
+  endif
+  ifdef CONFIG_XV
+    XLIBS += -lXv
+  endif
+  ifdef CONFIG_XSHM
+    XLIBS += -lXext
+  endif
+  XLIBS += -lX11
+  XLDFLAGS := $(LDFLAGS)
+  ifdef CONFIG_DARWIN
+    XLDFLAGS += -L/opt/X11/lib/
+  endif
+endif
+
+XOBJS:= $(OBJS) $(XOBJS)
+
 ifdef CONFIG_INIT_CALLS
   # must be the last object
   OBJS+= qeend.o
   TOBJS+= qeend.o
+  XOBJS+= qeend.o
 endif
 
 SRCS:= $(OBJS:.o=.c)
 TSRCS:= $(TOBJS:.o=.c)
+XSRCS:= $(XOBJS:.o=.c)
 
 DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
 OBJS_DIR:= $(DEPTH)/.objs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
-TOBJS_DIR:= $(DEPTH)/.tobjs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
+XOBJS:= $(addprefix $(OBJS_DIR)/, $(XOBJS))
+
+TOBJS_DIR:= $(DEPTH)/.tobjs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
 TOBJS:= $(addprefix $(TOBJS_DIR)/, $(TOBJS))
 
 $(shell mkdir -p $(OBJS_DIR) $(TOBJS_DIR))
@@ -203,6 +216,21 @@ qe$(EXE): qe_g$(EXE) Makefile
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 #
+# X11 version of QEmacs
+#
+xqe_g$(EXE): $(XOBJS) $(DEP_LIBS)
+	$(echo) LD $@
+	$(cmd)  $(CC) $(XLDFLAGS) -o $@ $^ $(XLIBS)
+
+xqe$(EXE): xqe_g$(EXE) Makefile
+	@rm -f $@
+	cp $< $@
+	-$(STRIP) $@
+	@ls -l $@
+	@echo `size $@` `wc -c $@` xqe $(OPTIONS) \
+		| cut -d ' ' -f 7-10,13,15-40 >> STATS
+
+#
 # Tiny version of QEmacs
 #
 tqe_g$(EXE): $(TOBJS)
@@ -217,16 +245,16 @@ tqe$(EXE): tqe_g$(EXE) Makefile
 	@echo `size $@` `wc -c $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
-xqe_g$(EXE): tqe.c $(TSRCS) Makefile
+t1qe_g$(EXE): tqe.c $(TSRCS) Makefile
 	$(echo) CC -o $@ $<
 	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) $(TLDFLAGS) -o $@ $< $(TLIBS)
 
-xqe$(EXE): xqe_g$(EXE) Makefile
+t1qe$(EXE): t1qe_g$(EXE) Makefile
 	@rm -f $@
 	cp $< $@
 	-$(STRIP) $@
 	@ls -l $@
-	@echo `size $@` `wc -c $@` xqe $(OPTIONS) \
+	@echo `size $@` `wc -c $@` t1qe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 ffplay$(EXE): qe$(EXE) Makefile
@@ -419,7 +447,7 @@ clean:
 	$(MAKE) -C libqhtml clean
 	rm -rf *.dSYM $(OBJS_DIR) $(TOBJS_DIR) .objs-* .tobjs-*
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump   \
-           qe tqe xqe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
+           qe tqe t1qe xqe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
            cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9]
 
 distclean: clean
