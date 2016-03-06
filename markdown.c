@@ -1,7 +1,7 @@
 /*
  * Markdown mode for QEmacs.
  *
- * Copyright (c) 2014 Charlie Gordon.
+ * Copyright (c) 2014-2016 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

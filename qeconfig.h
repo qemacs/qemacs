@@ -1,8 +1,8 @@
 /*
  * QEmacs, tiny but powerful multimode editor
  *
- * Copyright (c) 2000,2001 Fabrice Bellard.
- * Copyright (c) 2000-2014 Charlie Gordon.
+ * Copyright (c) 2000-2001 Fabrice Bellard.
+ * Copyright (c) 2000-2016 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
