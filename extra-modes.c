@@ -978,13 +978,20 @@ static void fortran_colorize_line(QEColorizeContext *cp,
         }
         /* parse numbers */
         if (qe_isdigit(c)) {
-            for (; i < n; i++) {
-                /* XXX: should parse actual Fortran number syntax,
-                 * with D or E for exponent
-                 */
-                if (!qe_isalnum(str[i])
-                &&  !(str[i] == '.' && !qe_isalpha(str[i + 1]) && !qe_isalpha(str[i + 2]))) {
-                    break;
+            /* Parse actual Fortran number syntax, with D or E for exponent */
+            for (; qe_isdigit(str[i]); i++)
+                continue;
+            if (str[i] == '.' && qe_isdigit(str[i + 1])) {
+                for (i += 2; qe_isdigit(str[i]); i++)
+                    continue;
+            }
+            if ((c = qe_tolower(str[i])) == 'e' || c == 'd') {
+                int k = i + 1;
+                if (str[k] == '+' || str[k] == '-')
+                    k++;
+                if (qe_isdigit(str[k])) {
+                    for (i = k + 1; qe_isdigit(str[i]); i++)
+                        continue;
                 }
             }
             SET_COLOR(str, start, i, FORTRAN_STYLE_NUMBER);
@@ -1051,31 +1058,38 @@ enum {
 static void ini_colorize_line(QEColorizeContext *cp,
                               unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start, c, bol = 1;
+    int i = 0, start, c, style = 0, indent;
+
+    while (qe_isblank(str[i]))
+        i++;
+
+    indent = i;
 
     while (i < n) {
         start = i;
         c = str[i++];
         switch (c) {
         case ';':
-            if (!bol)
+            if (start == indent) {
+                i = n;
+                style = INI_STYLE_COMMENT;
                 break;
-            i = n;
-            SET_COLOR(str, start, i, INI_STYLE_COMMENT);
+            }
             continue;
         case '#':
-            if (!bol)
+            if (start == indent) {
+                i = n;
+                style = INI_STYLE_PREPROCESS;
                 break;
-            i = n;
-            SET_COLOR(str, start, i, INI_STYLE_PREPROCESS);
+            }
             continue;
         case '[':
             if (start == 0) {
                 i = n;
-                SET_COLOR(str, start, i, INI_STYLE_FUNCTION);
-                continue;
+                style = INI_STYLE_FUNCTION;
+                break;
             }
-            break;
+            continue;
         case '\"':
             /* parse string const */
             while (i < n) {
@@ -1083,36 +1097,36 @@ static void ini_colorize_line(QEColorizeContext *cp,
                 if (str[i++] == '\"')
                     break;
             }
-            SET_COLOR(str, start, i, INI_STYLE_STRING);
-            continue;
+            style = INI_STYLE_STRING;
+            break;
         case ' ':
         case '\t':
-            if (bol)
-                continue;
-            break;
+            continue;
         default:
-            break;
+            /* parse numbers */
+            if (qe_isdigit(c)) {
+                for (; i < n; i++) {
+                    if (!qe_isalnum(str[i]))
+                        break;
+                }
+                style = INI_STYLE_NUMBER;
+                break;
+            }
+            /* parse identifiers and keywords */
+            if (start == 0 && (qe_isalpha_(c) || c == '@' || c == '$')) {
+                for (; i < n; i++) {
+                    if (str[i] == '=')
+                        break;
+                }
+                if (i < n) {
+                    style = INI_STYLE_IDENTIFIER;
+                }
+                break;
+            }
         }
-        bol = 0;
-        /* parse numbers */
-        if (qe_isdigit(c)) {
-            for (; i < n; i++) {
-                if (!qe_isalnum(str[i]))
-                    break;
-            }
-            SET_COLOR(str, start, i, INI_STYLE_NUMBER);
-            continue;
-        }
-        /* parse identifiers and keywords */
-        if (start == 0 && (qe_isalpha_(c) || c == '@' || c == '$')) {
-            for (; i < n; i++) {
-                if (str[i] == '=')
-                    break;
-            }
-            if (i < n) {
-                SET_COLOR(str, start, i, INI_STYLE_IDENTIFIER);
-            }
-            continue;
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
         }
     }
 }
@@ -2217,6 +2231,367 @@ static int haskell_init(void)
     return 0;
 }
 
+/*---------------- Coffee coloring ----------------*/
+
+static char const coffee_keywords[] = {
+    // keywords common with Javascript:
+    "true|false|null|this|new|delete|typeof|in|instanceof|"
+    "return|throw|break|continue|debugger|yield|if|else|"
+    "switch|for|while|do|try|catch|finally|class|extends|super|"
+    // CoffeeScript only keywords:
+    "undefined|then|unless|until|loop|of|by|when|"
+    // aliasses
+    "and|or|is|isnt|not|yes|no|on|off|"
+    // reserved: should be flagged as errors
+    "case|default|function|var|void|with|const|let|enum|export|import|"
+    "native|implements|interface|package|private|protected|public|static|"
+    // proscribed in strict mode
+    "arguments|eval|yield*|"
+};
+
+enum {
+    IN_COFFEE_STRING       = 0x100,
+    IN_COFFEE_STRING2      = 0x200,
+    IN_COFFEE_REGEX        = 0x400,
+    IN_COFFEE_LONG_STRING  = 0x01,
+    IN_COFFEE_LONG_STRING2 = 0x02,
+    IN_COFFEE_LONG_REGEX   = 0x04,
+    IN_COFFEE_REGEX_CCLASS = 0x08,
+    IN_COFFEE_JSTOKEN      = 0x10,
+    IN_COFFEE_LONG_COMMENT = 0x20,
+};
+
+enum {
+    COFFEE_STYLE_TEXT =     QE_STYLE_DEFAULT,
+    COFFEE_STYLE_COMMENT =  QE_STYLE_COMMENT,
+    COFFEE_STYLE_STRING =   QE_STYLE_STRING,
+    COFFEE_STYLE_REGEX =    QE_STYLE_STRING,
+    COFFEE_STYLE_JSTOKEN =  QE_STYLE_STRING,
+    COFFEE_STYLE_NUMBER =   QE_STYLE_NUMBER,
+    COFFEE_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
+    COFFEE_STYLE_FUNCTION = QE_STYLE_FUNCTION,
+    COFFEE_STYLE_ERROR =    QE_STYLE_ERROR,
+};
+
+static void coffee_colorize_line(QEColorizeContext *cp,
+                                 unsigned int *str, int n, ModeDef *syn)
+{
+    int i = 0, start = i, c, style = 0, sep, klen, prev, i1;
+    int state = cp->colorize_state;
+    char kbuf[32];
+
+    if (state & IN_COFFEE_STRING) {
+        sep = '\'';
+        goto parse_string;
+    }
+    if (state & IN_COFFEE_STRING2) {
+        sep = '\"';
+        goto parse_string;
+    }
+    if (state & IN_COFFEE_REGEX) {
+        goto parse_regex;
+    }
+    if (state & IN_COFFEE_LONG_STRING) {
+        sep = '\'';
+        goto parse_long_string;
+    }
+    if (state & IN_COFFEE_LONG_STRING2) {
+        sep = '\"';
+        goto parse_long_string;
+    }
+    if (state & IN_COFFEE_LONG_REGEX) {
+        goto parse_regex;
+    }
+    if (state & IN_COFFEE_JSTOKEN) {
+        goto parse_jstoken;
+    }
+    if (state & IN_COFFEE_LONG_COMMENT) {
+        goto parse_long_comment;
+    }
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '#':
+            if (str[i] == '#' && str[i + 1] == '#') {
+                /* multi-line block comments with ### */
+                state = IN_COFFEE_LONG_COMMENT;
+            parse_long_comment:
+                while (i < n) {
+                    c = str[i++];
+                    if (c == '#' && str[i] == '#' && str[i + 1] == '#') {
+                        i += 2;
+                        state = 0;
+                        break;
+                    }
+                }
+            } else {
+                i = n;
+            }
+            style = COFFEE_STYLE_COMMENT;
+            break;
+
+        case '\'':
+        case '\"':
+            /* parse string constant */
+            i--;
+            sep = str[i++];
+            if (str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
+                /* long string */
+                state = (sep == '\"') ? IN_COFFEE_LONG_STRING2 :
+                        IN_COFFEE_LONG_STRING;
+                i += 2;
+            parse_long_string:
+                while (i < n) {
+                    c = str[i++];
+                    if (c == '\\') {
+                        if (i < n) {
+                            i += 1;
+                        }
+                    } else
+                    if (c == sep && str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
+                        i += 2;
+                        state = 0;
+                        break;
+                    }
+                }
+            } else {
+                state = (sep == '\"') ? IN_COFFEE_STRING2 : IN_COFFEE_STRING;
+            parse_string:
+                while (i < n) {
+                    c = str[i++];
+                    if (c == '\\') {
+                        if (i < n) {
+                            i += 1;
+                        }
+                    } else
+                    if (c == sep) {
+                        state = 0;
+                        break;
+                    }
+                }
+                if (state) {
+                    state = 0;
+                    // unterminated string literal, should flag unless
+                    // point is at end of line.
+                    style = COFFEE_STYLE_ERROR;
+                    break;
+                }
+            }
+            style = COFFEE_STYLE_STRING;
+            break;
+
+        case '`':
+            /* parse multi-line JS token */
+            state = IN_COFFEE_JSTOKEN;
+        parse_jstoken:
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\') {
+                    if (i < n) {
+                        i += 1;
+                    }
+                } else
+                if (c == '`') {
+                    state = 0;
+                    break;
+                }
+            }
+            style = COFFEE_STYLE_JSTOKEN;
+            break;
+
+        case '.':
+            if (qe_isdigit(str[i]))
+                goto parse_decimal;
+            if (str[i] == '.') /* .. range operator */
+                i++;
+            if (str[i] == '.') /* ... range operator */
+                i++;
+            continue;
+
+        case '/':
+            /* XXX: should use more context to tell regex from divide */
+            if (str[i] == '/') {
+                i++;
+                if (str[i] == '/') {
+                    /* multiline /// regex */
+                    state = IN_COFFEE_LONG_REGEX;
+                    i++;
+                    goto parse_regex;
+                } else {
+                    /* floor divide // operator */
+                    break;
+                }
+            }
+            prev = ' ';
+            for (i1 = start; i1 > 0; ) {
+                prev = str[--i1] & CHAR_MASK;
+                if (!qe_isblank(prev))
+                    break;
+            }
+            if (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
+            ||  qe_findchar("^\\?.[{},;<>!~&|*%:", str[i])
+            ||  (str[i] == '=' && str[i + 1] == '/')
+            ||  (str[i] == '(' && str[i + 1] == '?')
+            ||  (str[i1] >> STYLE_SHIFT) == COFFEE_STYLE_KEYWORD
+            ||  (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
+            &&   !(qe_isalnum(prev) || qe_findchar(")]}\"\'?:", prev)))) {
+                state = IN_COFFEE_REGEX;
+            parse_regex:
+                style = COFFEE_STYLE_REGEX;
+                while (i < n) {
+                    c = str[i++];
+                    if (c == '\\') {
+                        if (i < n) {
+                            i += 1;
+                        }
+                    } else
+                    if (state & IN_COFFEE_REGEX_CCLASS) {
+                        if (c == ']') {
+                            state &= ~IN_COFFEE_REGEX_CCLASS;
+                        }
+                        /* ignore '/' inside char classes */
+                    } else {
+                        if (c == '[') {
+                            state |= IN_COFFEE_REGEX_CCLASS;
+                            if (str[i] == '^')
+                                i++;
+                            if (str[i] == ']')
+                                i++;
+                        } else
+                        if (state & IN_COFFEE_LONG_REGEX) {
+                            if (c == '/' && str[i] == '/' && str[i + 1] == '/') {
+                                i += 2;
+                                state = 0;
+                                while (qe_isalpha(str[i]))
+                                    i++;
+                                break;
+                            } else
+                            if (qe_isblank(c) && str[i] == '#' && str[i+1] != '{') {
+                                SET_COLOR(str, start, i, style);
+                                start = i;
+                                i = n;
+                                style = COFFEE_STYLE_COMMENT;
+                                break;
+                            }
+                        } else {
+                            if (c == '/') {
+                                state = 0;
+                                while (qe_isalpha(str[i]))
+                                    i++;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (state & ~IN_COFFEE_LONG_REGEX) {
+                    state = 0;
+                    // unterminated regex literal, should flag unless
+                    // point is at end of line.
+                    style = COFFEE_STYLE_ERROR;
+                    break;
+                }
+                break;
+            }
+            continue;
+
+        default:
+            if (qe_isdigit(c)) {
+                if (c == '0' && str[i] == 'b') {
+                    /* binary numbers */
+                    for (i += 1; qe_isbindigit(str[i]); i++)
+                        continue;
+                } else
+                if (c == '0' && str[i] == 'o') {
+                    /* octal numbers */
+                    for (i += 1; qe_isoctdigit(str[i]); i++)
+                        continue;
+                } else
+                if (c == '0' && str[i] == 'x') {
+                    /* hexadecimal numbers */
+                    for (i += 1; qe_isxdigit(str[i]); i++)
+                        continue;
+                } else {
+                    /* decimal numbers */
+                    for (; qe_isdigit(str[i]); i++)
+                        continue;
+                    if (str[i] == '.' && qe_isdigit(str[i + 1])) {
+                        i++;
+                    parse_decimal:
+                        /* decimal floats require a digit after the '.' */
+                        for (; qe_isdigit(str[i]); i++)
+                            continue;
+                    }
+                    if (str[i] == 'e') {
+                        int k = i + 1;
+                        if (str[k] == '+' || str[k] == '-')
+                            k++;
+                        if (qe_isdigit(str[k])) {
+                            for (i = k + 1; qe_isdigit(str[i]); i++)
+                                continue;
+                        }
+                    }
+                }
+
+                /* XXX: should detect malformed number constants */
+                style = COFFEE_STYLE_NUMBER;
+                break;
+            }
+            if (qe_isalpha_(c)) {
+                for (klen = 0, i--; qe_isalnum_(str[i]); i++) {
+                    if (klen < countof(kbuf) - 1)
+                        kbuf[klen++] = str[i];
+                }
+                kbuf[klen] = '\0';
+
+                if (strfind(syn->keywords, kbuf)) {
+                    style = COFFEE_STYLE_KEYWORD;
+                    break;
+                }
+                if (check_fcall(str, i)) {
+                    style = COFFEE_STYLE_FUNCTION;
+                    break;
+                }
+                continue;
+            }
+            continue;
+        }
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
+        }
+    }
+    cp->colorize_state = state;
+}
+
+static int coffee_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_extension(p->filename, mode->extensions)
+    ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)
+    ||  stristart(p->filename, "Cakefile", NULL)) {
+        return 80;
+    }
+    return 1;
+}
+
+static ModeDef coffee_mode = {
+    .name = "CoffeeScript",
+    .mode_name = "coffee",
+    .extensions = "coffee",
+    .shell_handlers = "coffee",
+    .mode_probe = coffee_mode_probe,
+    .keywords = coffee_keywords,
+    .colorize_func = coffee_colorize_line,
+};
+
+static int coffee_init(void)
+{
+    qe_register_mode(&coffee_mode, MODEF_SYNTAX);
+
+    return 0;
+}
+
 /*---------------- Python coloring ----------------*/
 
 static char const python_keywords[] = {
@@ -2248,7 +2623,7 @@ enum {
 static void python_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, sep = 0, klen;
+    int i = 0, start = i, c, style = 0, sep, klen;
     int state = cp->colorize_state;
     char kbuf[32];
 
@@ -2275,12 +2650,12 @@ static void python_colorize_line(QEColorizeContext *cp,
         switch (c) {
         case '#':
             i = n;
-            SET_COLOR(str, start, i, PYTHON_STYLE_COMMENT);
-            continue;
+            style = PYTHON_STYLE_COMMENT;
+            break;
 
         case '\'':
         case '\"':
-            /* parse string const */
+            /* parse string constant */
             i--;
         has_quote:
             sep = str[i++];
@@ -2319,13 +2694,13 @@ static void python_colorize_line(QEColorizeContext *cp,
                     }
                 }
             }
-            SET_COLOR(str, start, i, PYTHON_STYLE_STRING);
-            continue;
+            style = PYTHON_STYLE_STRING;
+            break;
 
         case '.':
             if (qe_isdigit(str[i]))
                 goto parse_decimal;
-            break;
+            continue;
 
         case 'b':
         case 'B':
@@ -2393,8 +2768,8 @@ static void python_colorize_line(QEColorizeContext *cp,
                 }
 
                 /* XXX: should detect malformed number constants */
-                SET_COLOR(str, start, i, PYTHON_STYLE_NUMBER);
-                continue;
+                style = PYTHON_STYLE_NUMBER;
+                break;
             }
         has_alpha:
             if (qe_isalpha_(c)) {
@@ -2405,16 +2780,20 @@ static void python_colorize_line(QEColorizeContext *cp,
                 kbuf[klen] = '\0';
 
                 if (strfind(syn->keywords, kbuf)) {
-                    SET_COLOR(str, start, i, PYTHON_STYLE_KEYWORD);
-                    continue;
+                    style = PYTHON_STYLE_KEYWORD;
+                    break;
                 }
                 if (check_fcall(str, i)) {
-                    SET_COLOR(str, start, i, PYTHON_STYLE_FUNCTION);
-                    continue;
+                    style = PYTHON_STYLE_FUNCTION;
+                    break;
                 }
                 continue;
             }
-            break;
+            continue;
+        }
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
         }
     }
     cp->colorize_state = state;
@@ -2505,7 +2884,7 @@ static int ruby_get_name(char *buf, int size, unsigned int *str)
 static void ruby_colorize_line(QEColorizeContext *cp,
                                unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, j, start = i, c, indent, sig, style;
+    int i = 0, j, start = i, c, style, indent, sig;
     static int sep, sep0, level;        /* XXX: ugly patch */
     int state = cp->colorize_state;
     char kbuf[32];
@@ -2618,16 +2997,16 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                         break;
                     }
                 }
-                SET_COLOR(str, start, i, RUBY_STYLE_REGEX);
-                continue;
+                style = RUBY_STYLE_REGEX;
+                break;
             }
-            break;
+            continue;
 
         case '#':
             i = n;
         comment:
-            SET_COLOR(str, start, i, RUBY_STYLE_COMMENT);
-            continue;
+            style = RUBY_STYLE_COMMENT;
+            break;
 
         case '%':
             /* parse alternate string/array syntaxes */
@@ -2672,10 +3051,10 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                         }
                     }
                 }
-                SET_COLOR(str, start, i, RUBY_STYLE_STRING4);
-                continue;
+                style = RUBY_STYLE_STRING4;
+                break;
             }
-            break;
+            continue;
 
         case '\'':
             /* parse single quoted string const */
@@ -2691,8 +3070,8 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, RUBY_STYLE_STRING);
-            continue;
+            style = RUBY_STYLE_STRING;
+            break;
 
         case '`':
             /* parse single quoted string const */
@@ -2713,8 +3092,8 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, RUBY_STYLE_STRING3);
-            continue;
+            style = RUBY_STYLE_STRING3;
+            break;
 
         case '\"':
             /* parse double quoted string const */
@@ -2743,8 +3122,8 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                 if (state == 0)
                     state = IN_RUBY_STRING2;
             }
-            SET_COLOR(str, start, i, RUBY_STYLE_STRING2);
-            continue;
+            style = RUBY_STYLE_STRING2;
+            break;
 
         case '<':
             if (str[i] == '<') {
@@ -2793,19 +3172,20 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                     }
                     state |= (sig & IN_RUBY_HD_SIG);
                     i = j;
-                    SET_COLOR(str, start, i, RUBY_STYLE_HEREDOC);
+                    style = RUBY_STYLE_HEREDOC;
+                    break;
                 }
             }
-            break;
+            continue;
 
         case '?':
             /* XXX: should parse character constants */
-            break;
+            continue;
 
         case '.':
             if (qe_isdigit_(str[i]))
                 goto parse_decimal;
-            break;
+            continue;
 
         case '$':
             /* XXX: should parse precise $ syntax,
@@ -2813,16 +3193,16 @@ static void ruby_colorize_line(QEColorizeContext *cp,
              */
             if (i < n)
                 i++;
-            break;
+            continue;
 
         case ':':
             /* XXX: should parse Ruby symbol */
-            break;
+            continue;
 
         case '@':
             i += ruby_get_name(kbuf, countof(kbuf), str + i);
-            SET_COLOR(str, start, i, RUBY_STYLE_MEMBER);
-            continue;
+            style = RUBY_STYLE_MEMBER;
+            break;
 
         default:
             if (qe_isdigit(c)) {
@@ -2851,7 +3231,7 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                         continue;
                     if (str[i] == '.') {
                         i++;
-                parse_decimal:
+                    parse_decimal:
                         for (; qe_isdigit_(str[i]); i++)
                             continue;
                     }
@@ -2866,26 +3246,30 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                     }
                 }
                 /* XXX: should detect malformed number constants */
-                SET_COLOR(str, start, i, RUBY_STYLE_NUMBER);
-                continue;
+                style = RUBY_STYLE_NUMBER;
+                break;
             }
             if (qe_isalpha_(c)) {
                 i--;
                 i += ruby_get_name(kbuf, countof(kbuf), str + i);
 
                 if (strfind(syn->keywords, kbuf)) {
-                    SET_COLOR(str, start, i, RUBY_STYLE_KEYWORD);
-                    continue;
+                    style = RUBY_STYLE_KEYWORD;
+                    break;
                 }
                 if (qe_isblank(str[i]))
                     i++;
                 if (str[i] == '(' || str[i] == '{') {
-                    SET_COLOR(str, start, i, RUBY_STYLE_FUNCTION);
-                    continue;
+                    style = RUBY_STYLE_FUNCTION;
+                    break;
                 }
                 continue;
             }
-            break;
+            continue;
+        }
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
         }
     }
     cp->colorize_state = state;
@@ -2904,9 +3288,9 @@ static int ruby_mode_probe(ModeDef *mode, ModeProbeData *p)
 static ModeDef ruby_mode = {
     .name = "Ruby",
     .extensions = "rb|gemspec",
-    .keywords = ruby_keywords,
     .shell_handlers = "ruby",
     .mode_probe = ruby_mode_probe,
+    .keywords = ruby_keywords,
     .colorize_func = ruby_colorize_line,
 };
 
@@ -3213,7 +3597,7 @@ enum {
 static void elixir_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, sep, nc, klen, has_under, style = 0;
+    int i = 0, start = i, c, style = 0, sep, klen, nc, has_under;
     int state = cp->colorize_state;
     char kbuf[32];
 
@@ -3296,7 +3680,8 @@ static void elixir_colorize_line(QEColorizeContext *cp,
             style = (state & IN_ELIXIR_TRIPLE) ?
                 ELIXIR_STYLE_HEREDOC : ELIXIR_STYLE_STRING;
             while (i < n) {
-                if ((c = str[i++]) == '\\') {
+                c = str[i++];
+                if (c == '\\') {
                     if (i < n)
                         i += 1;
                     continue;
@@ -3843,7 +4228,7 @@ static void agena_colorize_line(QEColorizeContext *cp,
                                 unsigned int *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = i, c, sep = 0, style = 0, len;
+    int i = 0, start = i, c, style = 0, sep = 0, len;
     int state = cp->colorize_state;
 
     if (state & IN_AGENA_COMMENT)
@@ -3941,8 +4326,10 @@ static void agena_colorize_line(QEColorizeContext *cp,
             }
             continue;
         }
-        SET_COLOR(str, start, i, style);
-        style = 0;
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
+        }
     }
     cp->colorize_state = state;
 }
@@ -4137,6 +4524,185 @@ static int smalltalk_init(void)
     return 0;
 }
 
+/*---------------- OpenSCAD language ----------------*/
+
+static const char scad_keywords[] = {
+    "true|false|undef|"
+    "module|function|for|if|else|len|"
+//    "assert|break|case|const|continue|default|defined|do|exit|"
+//    "forward|goto|native|new|operator|public|return|sizeof|sleep|"
+//    "state|static|stock|switch|tagof|while|",
+};
+
+static const char scad_preprocessor_keywords[] = {
+    "use|include|"
+};
+
+static const char scad_types[] = {
+    //"void|"
+    //"bool|string|int|uint|uchar|nt8|short|ushort|long|ulong|size_t|ssize_t|"
+    //"double|va_list|unichar|"
+};
+
+enum {
+    IN_SCAD_COMMENT  = 0x01,
+};
+
+enum {
+    SCAD_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    SCAD_STYLE_KEYWORD =    QE_STYLE_KEYWORD,
+    SCAD_STYLE_TYPE =       QE_STYLE_TYPE,
+    SCAD_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    SCAD_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    SCAD_STYLE_STRING =     QE_STYLE_STRING,
+    SCAD_STYLE_NUMBER =     QE_STYLE_NUMBER,
+    SCAD_STYLE_FUNCTION =   QE_STYLE_FUNCTION,
+    SCAD_STYLE_ARGNAME =    QE_STYLE_FUNCTION,
+};
+
+static void scad_colorize_line(QEColorizeContext *cp,
+                               unsigned int *str, int n, ModeDef *syn)
+{
+    char keyword[MAX_KEYWORD_SIZE];
+    int i = 0, start = i, c, style = 0, k, len, laststyle = 0, isnum;
+    int colstate = cp->colorize_state;
+    int level = colstate >> 1;
+
+    if (colstate & IN_SCAD_COMMENT)
+        goto in_comment;
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '/':
+            if (str[i] == '/') {  /* single line comment */
+                i = n;
+                style = SCAD_STYLE_COMMENT;
+                break;
+            }
+            if (str[i] == '*') {  /* multi-line comment */
+                colstate |= IN_SCAD_COMMENT;
+                i++;
+            in_comment:
+                for (; i < n; i++) {
+                    if (str[i] == '*' && str[i + 1] == '/') {
+                        i += 2;
+                        colstate &= ~IN_SCAD_COMMENT;
+                        break;
+                    }
+                }
+                style = SCAD_STYLE_COMMENT;
+                break;
+            }
+            continue;
+        case '<':
+            if (laststyle == SCAD_STYLE_PREPROCESS) {
+                /* filename for include and use directives */
+                while (i < n) {
+                    if (str[i++] == '>')
+                        break;
+                }
+                style = SCAD_STYLE_STRING;
+                break;
+            }
+            continue;
+        case '(':
+        case '[':
+        case '{':
+            level <<= 1;
+            continue;
+        case '}':
+        case ']':
+        case ')':
+            level >>= 1;
+            continue;
+        case '\'':
+        case '\"':
+            /* parse string or char const */
+            while (i < n) {
+                /* XXX: escape sequences? */
+                if (str[i] == '\\' && i + 1 < n) {
+                    i++;
+                    continue;
+                }
+                if (str[i++] == (unsigned int)c)
+                    break;
+            }
+            style = SCAD_STYLE_STRING;
+            break;
+        default:
+            /* parse identifiers, keywords and numbers */
+            if (qe_isalnum_(c) || c == '$') {
+                isnum = qe_isdigit(c);
+                len = 0;
+                keyword[len++] = c;
+                for (; qe_isalnum_(str[i]) || str[i] == '.'; i++) {
+                    if (str[i] == '.') {
+                        if (!isnum)
+                            break;
+                    } else {
+                    if (!qe_isdigit(str[i]))
+                        isnum = 0;
+                    }
+                    if (len < countof(keyword) - 1)
+                        keyword[len++] = str[i];
+                }
+                keyword[len] = '\0';
+                if (isnum) {
+                    style = SCAD_STYLE_NUMBER;
+                }
+                if (strfind(syn->keywords, keyword)) {
+                    style = SCAD_STYLE_KEYWORD;
+                } else
+                if (strfind(scad_preprocessor_keywords, keyword)) {
+                    style = SCAD_STYLE_PREPROCESS;
+                } else
+                if (strfind(syn->types, keyword)) {
+                    style = SCAD_STYLE_TYPE;
+                } else {
+                    k = i;
+                    if (qe_isblank(str[k]))
+                        k++;
+                    if ((level & 2) && str[k] == '=') {
+                        style = SCAD_STYLE_ARGNAME;
+                    } else
+                    if (str[k] == '(') {
+                        style = SCAD_STYLE_FUNCTION;
+                        level |= 1;
+                    }
+                }
+                break;
+            }
+            continue;
+        }
+        if (style) {
+            laststyle = style;
+            SET_COLOR(str, start, i, style);
+            style = 0;
+        }
+    }
+    cp->colorize_state = (colstate & IN_SCAD_COMMENT) | (level << 1);
+}
+
+static ModeDef scad_mode = {
+    .name = "OpenSCAD",
+    .mode_name = "openscad",
+    .extensions = "scad",
+    .colorize_func = scad_colorize_line,
+    .keywords = scad_keywords,
+    .types = scad_types,
+    //.indent_func = c_indent_line,
+    //.auto_indent = 1,
+};
+
+static int scad_init(void)
+{
+    qe_register_mode(&scad_mode, MODEF_SYNTAX);
+
+    return 0;
+}
+
 /*----------------*/
 
 static int extra_modes_init(void)
@@ -4154,6 +4720,7 @@ static int extra_modes_init(void)
     lua_init();
     julia_init();
     haskell_init();
+    coffee_init();
     python_init();
     ruby_init();
     erlang_init();
@@ -4162,6 +4729,7 @@ static int extra_modes_init(void)
     emf_init();
     agena_init();
     smalltalk_init();
+    scad_init();
     return 0;
 }
 
