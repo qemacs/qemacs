@@ -913,7 +913,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
     p0 = buf;
     endp = p0 + size;
 
-#define MAX_TRACE_WIDTH  1024
+#define MAX_TRACE_WIDTH  76
     for (p = p0; p0 < endp; p++) {
         while (p >= endp || *p < 32 || *p >= 127 || *p == '\\') {
             if (p0 >= endp)
@@ -937,6 +937,10 @@ void eb_trace_bytes(const void *buf, int size, int state)
                     col += eb_printf(b, "\\%c", c);
                 } else
                 if (*p < 32) {
+                    //if (*p == '\e' && col > 9) {
+                    //    eb_write(b, b->total_size, "\n         ", 10);
+                    //    col = 9;
+                    //}
                     col += eb_printf(b, "\\^%c", (*p + '@') & 127);
                 } else {
                     col += eb_printf(b, "\\%03o", *p);

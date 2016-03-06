@@ -41,7 +41,7 @@
 
 static ModeDef shell_mode, pager_mode;
 
-#define MAX_ESC_PARAMS 3
+#define MAX_ESC_PARAMS 6
 
 enum TTYState {
     TTY_STATE_NORM,
@@ -251,6 +251,10 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
 }
 
 /* VT100 emulation */
+
+#define TRACE_MSG(m)  /* do { if (qe_state.trace_buffer) \
+                               eb_trace_bytes(" <-- "m" ", -1, \
+                               EB_TRACE_SHELL); } while (0) */
 
 static void tty_init(ShellState *s)
 {
@@ -570,6 +574,7 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
     case 7:     /* enter_reverse_mode, enter_standout_mode */
     case 27:    /* exit_reverse_mode, exit_standout_mode */
         /* TODO */
+        TRACE_MSG("unhandled");
         break;
     case 6:     /* SCO light background */
     case 8:     /* enter_secure_mode */
@@ -578,6 +583,7 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
     case 11:    /* SCO acs on (CP437) */
     case 12:    /* SCO acs on, |0x80 */
     case 28:    /* exit_secure_mode */
+        TRACE_MSG("unhandled");
         break;
     case 39:    /* orig_pair(1) default-foreground */
         TTY_SET_FG_COLOR(s->color, TTY_DEFFG);
@@ -629,6 +635,8 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
         if (c >= 100 && c <= 107) {
             /* set bright background color */
             TTY_SET_BG_COLOR(s->color, c - 100 + 8);
+        } else {
+            TRACE_MSG("unhandled");
         }
         break;
     }
@@ -902,7 +910,9 @@ static void tty_emulate(ShellState *s, int c)
                     }
                 }
                 s->cur_offset = offset + len;
-            }
+	    } else {
+                TRACE_MSG("control");
+	    }
             break;
         }
         break;
@@ -975,6 +985,7 @@ static void tty_emulate(ShellState *s, int c)
             case 'H':   // hts  (set_tab)
                 // XXX: do these
             default:
+                TRACE_MSG("unhandled");
                 s->state = TTY_STATE_NORM;
                 break;
             }
@@ -987,6 +998,7 @@ static void tty_emulate(ShellState *s, int c)
         case ESC2('%','G'):     /* set utf mode */
         case ESC2('%','8'):     /* set utf mode */
         case ESC2('%','@'):     /* reset utf mode */
+            TRACE_MSG("utf mode");
             break;
         case ESC2('(','A'):     /* set charset0 CSET_GBCHR */
         case ESC2('(','U'):     /* set charset0 CSET_SCOACS */
@@ -1007,6 +1019,7 @@ static void tty_emulate(ShellState *s, int c)
         case ESC2('*','B'):
         case ESC2('+','B'):
             /* XXX: Todo */
+            TRACE_MSG("unhandled");
             break;
         case ESC2(']','0'):     /* xterm's set-window-title and icon */
         case ESC2(']','1'):     /* xterm's set-window-title */
@@ -1018,6 +1031,10 @@ static void tty_emulate(ShellState *s, int c)
         case ESC2(']','P'):     /* linux set palette */
         case ESC2(']','R'):     /* linux reset palette */
             /* XXX: Todo */
+            TRACE_MSG("linux palette");
+            break;
+	default:
+            TRACE_MSG("unhandled");
             break;
         }
         s->shifted = s->charset[s->cset];
@@ -1058,6 +1075,14 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             s->state = TTY_STATE_NORM;
             switch (ESC2(s->esc1,c)) {
+		/* unhandled:
+		 * \^[[4l
+		 * \^[[?1h
+		 * \^[[?7h
+		 * \^[[?25l
+		 * \^[[?1000h
+		 */
+
             case 'h':   /* SM: toggle modes to high */
             case ESC2('?','h'): /* set terminal mode */
                 /* 1047: alternate screen
@@ -1074,10 +1099,13 @@ static void tty_emulate(ShellState *s, int c)
                         qe_grab_keys(shell_key, s);
                         /* Should also clear screen */
                     }
-                }
+		} else {
+                    TRACE_MSG("set term mode");
+		}
                 break;
             case 'i':   /* MC: Media copy */
             case ESC2('?','i'):
+                TRACE_MSG("media copy");
                 break;
             case ESC2('?','l'): /* reset terminal mode */
                 if (s->esc_params[0] == 1047 ||
@@ -1087,7 +1115,9 @@ static void tty_emulate(ShellState *s, int c)
                         qe_ungrab_keys();
                         s->grab_keys = 0;
                     }
-                }
+		} else {
+                    TRACE_MSG("reset term mode");
+		}
                 break;
             case 'A':  /* CUU: move up N lines */
                 tty_goto_xy(s, 0, -s->esc_params[0], 3);
@@ -1120,6 +1150,7 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case 'J':  /* ED: erase screen or parts of it */
                        /*     0: to end, 1: from begin, 2: all */
+		TRACE_MSG("erase screen");
                 //put_status(NULL, "erase screen %d", s->esc_params[0]);
                 break;
             case 'K':  /* EL: erase line or parts of it */
@@ -1129,10 +1160,12 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case 'L':  /* IL: insert lines */
                 /* TODO! scroll down */
+		TRACE_MSG("insert lines");
                 //put_status(NULL, "insert lines %d", s->esc_params[0]);
                 break;
             case 'M':  /* delete lines */
                 /* TODO! scroll up */
+		TRACE_MSG("delete lines");
                 //put_status(NULL, "delete lines %d", s->esc_params[0]);
                 break;
             case '@':  /* ICH: insert chars (no cursor update) */
@@ -1157,6 +1190,7 @@ static void tty_emulate(ShellState *s, int c)
                 eb_delete(s->b, offset, offset1 - offset);
                 break;
             case 'c':  /* DA: terminal type query */
+                TRACE_MSG("term type query");
                 break;
             case 'n':  /* DSR: cursor position query */
                 if (s->esc_params[0] == 6) {
@@ -1172,8 +1206,10 @@ static void tty_emulate(ShellState *s, int c)
                 }
                 break;
             case 'g':  /* TBC: clear tabs */
+		TRACE_MSG("clear tabs");
                 break;
             case 'r':  /* DECSTBM: set scroll margins */
+		TRACE_MSG("set scroll margins");
                 //put_status(NULL, "set scroll margins %d %d",
                 //           s->esc_params[0], s->esc_params[1]);
                 break;
@@ -1185,13 +1221,22 @@ static void tty_emulate(ShellState *s, int c)
                 }
                 break;
             case 's':  /* save cursor */
+		TRACE_MSG("save cursor");
+		break;
             case 'u':  /* restore cursor */
+		TRACE_MSG("restore cursor");
+		break;
             case 't':  /* DECSLPP: set page size - ie window height */
                        /* also used for window changing and reports */
+		TRACE_MSG("set page size");
                 break;
             case 'S':  /* SU: SCO scroll up (forward) n lines */
+		TRACE_MSG("scroll up");
+                //put_status(NULL, "scroll up %d", s->esc_params[0]);
+                break;
             case 'T':  /* SD: SCO scroll down (back) n lines */
-                //put_status(NULL, "scroll '%c' %d", c, s->esc_params[0]);
+		TRACE_MSG("scroll down");
+                //put_status(NULL, "scroll down %d", s->esc_params[0]);
                 break;
             case 'X':  /* ECH: erase n characters w/o moving cursor */
                 for (n = s->esc_params[0]; n > 0; n--) {
@@ -1207,6 +1252,7 @@ static void tty_emulate(ShellState *s, int c)
             case ESC2('=','C'):  /* set cursor shape */
             case ESC2('=','D'):  /* set blinking attr on/off */
             case ESC2('=','E'):  /* set blinking on/off */
+		TRACE_MSG("unhandled");
                 break;
             case ESC2('=','F'): /* select SCO foreground color */
                 TTY_SET_FG_COLOR(s->color, sco_color[s->esc_params[0] & 15]);
@@ -1215,6 +1261,7 @@ static void tty_emulate(ShellState *s, int c)
                 TTY_SET_BG_COLOR(s->color, sco_color[s->esc_params[0] & 15]);
                 break;
             default:
+		TRACE_MSG("unhandled");
                 break;
             }
         }
