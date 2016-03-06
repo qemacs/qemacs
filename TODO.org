@@ -1,54 +1,145 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Date: 2014-03-22
+; Updated: 2016-03-06
 
 * Needed for release version 5
 
-** basic: indent-rigidly
-** basic: minibuffer completion -> bad return on C-x C-f . SPC qe SPC RET
-** basic: scripting
-** basic: handle chinese encodings
-** basic: handle euc-kr
-** basic: autodetect sjis, euc-jp...
-** basic: fix colors, default schemes...
+* Priority 0
+** turn on interactive mode on A-e and some other commands that move
+   the cursor to the end of file
+** reset last command when executing macro
+** add function to add entry in TOTO.org
+** indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
+** completion behaviour on SPC
+** yank at shell prompt
+** improve speed: C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET -> 96s
+
+* Priority 1
+
+** basic: check abort during long operations: bufferize input and check for ^G
+** basic: share mmapped pages correctly
+** basic: show memory stats in describe-buffer and about-qemacs
+** basic: fix mode setting mess
+** basic: fix default wrap setting mess
+** basic: fix fuzzy completion when single unanchored match
+** basic: make styles and log buffers read-only and display as binary
+** basic: optional 64 bit offsets on 64 bit systems
+** basic: use rune and u8 types
+** basic: auto/mixed eol mode
 ** basic: fix behaviour on overlong lines
-** c-mode: fix c indentation inside comments
-** c-mode: fix c indentation inside struct, array and enum initializers
-** dired: fix layout mess when dired/bufed side window loses focus
-** dired: keep dired current file upon: RET C-x C-k RET
-** doc: migrate coding-rules.html to pandoc markdown
-** doc: move doc and TODO to markdown format
+** basic: fix offset when exiting s->hex_mode
+** completion: minibuffer completion: bad return on C-x C-f . SPC qe SPC RET
+** completion: fix selection hilite in popup-view
+** completion: remove or update popup-view as more typing occurs
+** completion: use fuzzy or glob matcher
+** dired: find-file should explore directory in the left pane
+** dired: display directory links as directories and links
+** doc: migrate TODO and documentation to markdown or reStructuredText
+** doc: migrate coding-rules.html to markdown
 ** doc: rewrite TODO file with more sections and explanations
-** files: minibuffer-electric-yank in minibuffer to fix pathname
-** files: minibuffer input ~ should not kill http: prefix
+** edit: track file modifications and reload upon change
+** files: handle files starting with re:
+** files: check file permissions.
+** files: use trick for entering spaces in filename prompts without completion
 ** files: check file date to detect asynchronous modifications on disk
 ** files: fix s->offset reset to 0 upon C-x C-f newfile ENT C-x 2 C-x b ENT
 ** files: insert-file: load via separate buffer with charset conversion
 ** files: reload-file on C-x C-r
-** html-src/xml: fix colorizer for multi-line tags and attributes
-** modes: header-line format
-** modes: mode-line format
-** modes: split modes into colorizers, interaction, io, charset, eoltype
-** modes: major and minor modes
-** search: hex search broken for non ASCII bytes
-** search: incremental-search should not center window, many redundant matches
-** search: pass unicode buffer in search/replace
-** search: tab in incremental search
-** search: yank in incremental search
+** html: &#x200c; -> zero width causes missing chars at end of line
+** html: mode_probe fails on junk/Books/881256329.epub/OEBPS/Attributes.xhtml when cycling
+** html: preview mode does not work
+** html: checksum stuff does not work
+** macros: allow redefining the keyboard macro embedding itself
+** macros: show-macro, dump-macro to ease macro debugging and timing
+** macros: fix macro slowliness in 6000 line buffer junk/dirs/x
+** macros: do not use visual movement inside macros (definition and execution)
+** macros: do not redisplay during macro execution, esp with prefix
+** macros: check for abort during repeated command execution
+** macros: check for failure during repeated command execution
+** minibuf: use more mode specific bindings
+** minibuf: minibuffer-electric-yank in minibuffer to fix pathname
+** minibuf: minibuffer input ~ should not kill http: prefix
+** screen: check coordinate system to 1000 based with optional sidebars
+** search: add regex support
+** search: hex-mode search strings should mix hex ut8 strings and ASCII control char names
+** search: delete-matching-lines
+** search: make isearch bindings for minibuffer
+** session: previous answers, ...
+** session: register session store functions
+** shell: fix current directory for process buffer
+** shell: handle long shell lines
+** shell: integrate kill/paste including multiple lines
 ** shell: fix crash bug when invoking qemacs recursively in the terminal
 ** shell: set current directory of new shell buffer to that of current window
 ** shell: set qemacs default directory to that of shell window upon cd command
 ** shell: yank at shell prompt
+** syntax: fix overlong line coloring
+** syntax: support ReStructuredText (RST)
+** text: \u200c -> zero width
+  cp="200B" na="ZERO WIDTH SPACE" alias="ZWSP"
+  cp="200C" na="ZERO WIDTH NON-JOINER" alias="ZWNJ"
+  cp="200D" na="ZERO WIDTH JOINER" alias="ZWJ"
+  cp="200E" na="LEFT-TO-RIGHT MARK" alias="LRM"
+  cp="200F" na="RIGHT-TO-LEFT MARK" alias="RLM"
+** tiny: remove extra features
+** tiny: compile as 32 bits
+** undo: kill redo list when forking after undo
 ** undo: undo should handle sequence of undo records upto tagged start.
+** undo: add disable-undo for tests and benchmarking
+** view-mode: typing text should auto-search
 ** x11: handle X11 window manager close window event and exit cleanly
-** html: merge xml / htmlsrc modes
-** DONE basic: indent-region
-** DONE basic: untabify-region, untabify-buffer
-** DONE basic: indent on TAB according to indent-width and indent-with-tabs
-** DONE c-mode: fix c-mode tab on line with excess indentation
-** DONE c-mode: fix c indentation bug on lines with ternary operator
-** DONE files: http / ftp / https protocols via wget -q -O - URL
+** archive: add API to register new file formats
+
+* Priority 2
+
+** basic: better display of invalid utf-8 encodings
+** basic: indent-rigidly
+** basic: scripting
+** basic: fix colors, default schemes...
+** basic: disable messages from commands if non-interactive (eg: set-variable)
+** basic: make style-buffer-mode and log-buffer-mode
+** charset: handle chinese encodings
+** charset: handle euc-kr
+** charset: autodetect sjis, euc-jp...
+** c-mode: fix c indentation inside comments
+** c-mode: fix c indentation inside struct, array and enum initializers
+** dired: keep dired current file upon: RET C-x C-k RET
+** dired: fork for directory scan, background inode tracking, dir size scan
+** hex: extend hex mode to support 16,32,64 bit words as little and big endian
+** html/xml: merge xml / htmlsrc modes
+** html/xml: fix colorizer for multi-line tags and attributes
+** macros: improve dump-macro to convert macro to string
+** macros: fix dump-macro to save/restore last-kbd-macro to/from session
+** macros: do not store messages during repeated macro execution or limit buffer size
+** macros: name-last-kbd-macro
+** macros: fix source syntax issues
+   (define-macro "last-kbd-macro" "A-fA-fC-FC-FC-@C-EA-wC-AC-NC-XnC-YC-MC-Xp")
+   (define-macro "last-kbd-macro" "A\-f")
+   ---   - - -
+   (define-macro "last-kbd-macro" "---   - - -C-M
+   <Down><Up><Right><Left>")
+   <><>(define-macro "last-kbd-macro" "\<>\<>")
+** modes: header-line format
+** modes: mode-line format
+** modes: major and minor modes
+** modes: split modes into colorizers, interaction, io, charset, eoltype
+** script: expression evaluator
+** search: add low-level accelerator function
+** search: use do_isearch to input string for do_search_string
+** search: use do_isearch to input string for do_query_replace (might need recursive edit)
+** search: count-matches
+** search: count-words, wc
+** search: stats command for word count and mode specific stats
+** search: improve speed finally
+** undo: limit size of undo buffers
+** undo: add undo records for styles, modes...
+** undo: disable undo for archive parse and uncompress phases
+** undo: compress logs and limit size
+** variables: set variable values via function pointer
+** variables: add boolean variables
+
+* Priority 3
 
 * Basic stuff
 
@@ -58,53 +149,32 @@
 ** tty_put_char should convert charsets
 ** current path in compile set to current buffer path
 ** avoid error in new file
-** check file permissions.
 ** add custom memory handling functions.
 ** use failsafe memory allocator and longjmp recover.
 ** redefine KEY_Fx to make them sequential
 ** move ungot_key to key_context
-** use trick for entering spaces in filename prompts without completion
 ** static init_call stuff ?
-** add default for new buffer creation, set that to utf8
+** add default charset for new buffer creation, set that to utf8
 ** splitting pages should fall on 32 bit boundaries (difficult)
 ** handle broken charset sequences across page boundaries
 ** add command help/description in declarations
 ** make command declaration macros standalone
-** expression evaluator
 ** allow recursive main loop, and remove input callbacks
 ** fix column computation based on display properties:
   (variable pitch, tabs, ^x and \uxxxx stuff -- emacs behaviour) ?
-** undo: limit size of undo buffers
-** undo: add undo records for styles, modes...
-** undo: disable undo for archive parse and uncompress phases
 ** synced virtual buffers with restricted range
 ** unsynced virtual buffers with restricted range and specific mode/charset
 ** spell checker
 ** printing support
 ** bfs: built in file system for embedded extensions and files
    Jasspa bfs is way too complicated, make simpler system
-** session history
 ** notes
 ** C-x x next-buffer ??? Move to the next buffer.
 ** abbreviation mode
-** qe_realloc -> typed and clear reallocated area
-** DONE timers for esc key disambiguation
-** DONE ftp: / http: support
-** DONE set-auto-mode: reselect best mode
-** DONE set-next-mode: select nth best mode
-** DONE handle \r\n as a minor charset mode
-** DONE eb_printf return value
-** DONE do_fill_paragraph for wide char buffers
-** DONE add auto close buffer flag (for list mode)
-** DONE add raw|none|binary encoding
-** DONE simplify paragraph stuff with eb_is_blank_line
-** DONE show-bindings fails if binding is redefined (eg: M-q)
-** DONE set-fill-column
-** DONE fill-column variable
+** qe_realloc: typed and clear reallocated area
 
 * Moving / Editing
 
-** ESC left/right -> descrease/increase-width in hex / binary / unihex modes
 ** remote editing
 ** blink-and-insert on ) } ] >
 ** fix scroll up/down to move point if already at end
@@ -119,11 +189,9 @@
    qemacs does not take into account combination performed by the terminal.
    Terminal glyph width of 0 should be supported.
 ** deal with accents in filenames (OS/X uses separate utf8 accents)
-** stats command for word count and mode specific stats
 ** 256 color mode
 ** auto-fill-mode
 ** auto-revert-mode, global-auto-revert-mode, auto-revert-tail-mode
-** extend hex mode to support 16,32,64 words as little and big endian
 ** rectangular regions, cut/paste
 
 * Windowing / Display
@@ -136,7 +204,7 @@
 ** enlarge-window-horizontally
 ** enlarge-window
 ** tab cursor displayed size
-** improve speed of text renderer / improve truncate mode 
+** improve speed of text renderer / improve truncate mode
 merge some good parts with CSS renderer ?.
 Suppress CRC hack (not reliable).
 ** display alternate cursor in non active column in hex mode.
@@ -166,13 +234,9 @@ insert_window_left()  deletes some left-most windows
 
 * Search / Replace
 
-** unihex search broken for non ASCII chars
-** query_replace_replace for non utf8 buffers
-** regex search/replace (use glibc 2.1 regex.c file)
-** search replace across multiple files
-** faster search
-** is->dir fixup in incremental search
-** query-replace options: u -> undo last change
+** search: regex search/replace (use glibc 2.1 regex.c file)
+** search: query replace across multiple files
+** search: query replace options: u -> undo last change
 
 * Unicode / bidir
 
@@ -184,6 +248,7 @@ insert_window_left()  deletes some left-most windows
 
 * X11 display / graphics
 
+** clip display by popup size
 ** move -nw cmd line option to tty.c and make term_probe return better score
 ** remember X11 window positions and restore layout ?
 ** improve image viewer.
@@ -242,7 +307,7 @@ insert_window_left()  deletes some left-most windows
 * Shell
 
 ** fix bof/eof shell mode
-** allow quoting of special keys : let do_char insert xterm/vt100 
+** allow quoting of special keys : let do_char insert xterm/vt100
   key sequence to allow typing special keys into shell process
 ** fix terminal size inside shell window ?
 ** cmdline arg to force lines and columns to test shell.
@@ -253,11 +318,7 @@ insert_window_left()  deletes some left-most windows
 ** track unsupported escapes in shell buffer
 ** doctor command should create and show *trace* buffer, remove eb_new kludge
 ** use colorized buffer for *trace* buffer to flag tty input, shell output, supported and unsupported escapes.
-** telnet-mode -> Connect to a remote computer using telnet
-
-* Bufed
-
-** make bufed a popup window -> buffer-menu
+** telnet-mode: Connect to a remote computer using telnet
 
 * Dired
 
@@ -266,7 +327,6 @@ insert_window_left()  deletes some left-most windows
 ** adjust dired gutter width for max name length
 ** snap dired left window horiz scroll
 ** make dired left window temporary popleft window
-** dired left window delete sometimes doesn't fix layout.
 ** improve dired (file commands, nicer display)
 *** t -> dired-touch
 *** | -> dired-shell-command
@@ -289,131 +349,135 @@ insert_window_left()  deletes some left-most windows
 ** rss
 ** set-gosmacs-bindings
 ** wikipedia mode
-** info-mode -> unix info mode
+** info-mode: unix info mode
 
 ** improve latex-mode
+
 *** mode for tek style sheets
 *** mode for texi intermediary files
-*** latex-mode -> LaTeX documents.
-*** bibtex-mode ->
-*** tex-mode -> TeX or LaTeX documents.
+*** latex-mode: LaTeX documents.
+*** bibtex-mode
+*** tex-mode: TeX or LaTeX documents.
 
 ** vim mode.
 ** minor modes with key override such as "preview" mode
 ** merge hex-mode and binary-mode
 ** mode for undo buffers
-** visual-diff-mode -> Use color-coding to compare two buffers.
+** visual-diff-mode: Use color-coding to compare two buffers.
 
 ** improve existing language modes:
-*** ada-mode ->
+
+*** ada-mode
 *** asm-mode: handle various assembly styles
 *** calc-mode: fix syntax, disable C++ comments
-*** cobol-mode ->
-*** css-mode ->
-*** erlang-mode ->
-*** fcl-mode ->
-*** forth-mode ->
-*** fortran-mode ->
-*** haskell-mode ->
+*** cobol-mode
+*** css-mode
+*** erlang-mode
+*** fcl-mode
+*** forth-mode
+*** fortran-mode
+*** haskell-mode
 *** html-mode: support hex entities
-*** julia-mode ->
-*** lisp-mode ->
-*** lua-mode ->
+*** julia-mode
+*** lisp-mode
+*** lua-mode
 *** makefile-mode: Gnu and other makefiles.
 *** markdown-mode: syntax modes for toml, bash (bash output), sh, text, txt
-*** ocaml-mode ->
-*** pascal-mode ->
-*** perl-mode ->
-*** php-mode ->
+*** ocaml-mode
+*** pascal-mode
+*** perl-mode
+*** php-mode
 *** postscript-mode: more restrictive match
-*** python-mode ->
-*** R-mode ->
-*** ruby-mode ->
-*** scheme-mode ->
-*** scilab-mode ->
+*** python-mode
+*** r-mode
+*** ruby-mode
+*** scheme-mode
+*** scilab-mode
 *** sh-mode: Handle here documents
 *** sh-mode: Handle multiline strings
 *** sh-mode: shell script files
-*** sql-mode ->
+*** sql-mode
 *** vbasic-mode: more restrictive matcher because .cls files may be latex
 
 ** missing languages:
-*** asp-mode -> 
-*** automake-mode -> 
-*** batch-mode -> Windows Batch files.
-*** bennugd-mode ->
-*** bluespec-mode ->
-*** boo-mode ->
-*** cg-mode ->
-*** changelog-mode ->
-*** chdr-mode ->
-*** cmake-mode ->
-*** conf-mode -> configuration files.
-*** cuda-mode ->
+*** asp-mode:
+*** automake-mode:
+*** batch-mode: Windows Batch files.
+*** bennugd-mode
+*** bluespec-mode
+*** boo-mode
+*** cg-mode
+*** changelog-mode
+*** chdr-mode
+*** cmake-mode
+*** conf-mode: configuration files.
+*** cuda-mode
 *** DCL mode
-*** def-mode ->
-*** desktop-mode ->
-*** diff-mode ->
-*** doc-mode ->
-*** docbook-mode ->
-*** dosbatch-mode ->
-*** dot-mode ->
-*** dpatch-mode ->
-*** dtd-mode ->
-*** eiffel-mode ->
-*** exelis-mode ->
-*** fsharp-mode ->
-*** gams-mode -> GAMS files.
-*** gap-mode ->
-*** glsl-mode ->
-*** gtkrc-mode ->
-*** haddock-mode ->
-*** imagej-mode ->
-*** ini-mode -> Windows .ini files.
-*** j-mode ->
-*** language-mode ->
-*** libtool-mode ->
-*** literate-mode ->
-*** log-mode ->
-*** m4-mode -> M4 macro processor files
-*** maildrop-mode (a direct descendent of C mode) for .mailfilter
-*** mallard-mode ->
-*** matlab-mode ->
-*** mediawiki-mode ->
-*** modelica-mode ->
-*** mxml-mode ->
-*** nemerle-mode ->
-*** netrexx-mode ->
+*** def-mode
+*** desktop-mode
+*** diff-mode
+*** doc-mode
+*** docbook-mode
+*** dosbatch-mode
+*** dot-mode
+*** dpatch-mode
+*** dtd-mode
+*** eiffel-mode
+*** exelis-mode
+*** fsharp-mode
+*** gams-mode: GAMS files.
+*** gap-mode
+*** glsl-mode
+*** gtkrc-mode
+*** haddock-mode
+*** imagej-mode
+*** ini-mode: Windows .ini files.
+*** j-mode
+*** language-mode
+*** libtool-mode
+*** literate-mode
+*** log-mode
+*** m4-mode: M4 macro processor files
+*** maildrop-mode: for .mailfilter
+*** mallard-mode
+*** matlab-mode
+*** mediawiki-mode
+*** modelica-mode
+*** mxml-mode
+*** nemerle-mode
+*** netrexx-mode
 *** nroff-mode
-*** nsis-mode ->
-*** objj-mode ->
-*** ocl-mode ->
-*** octave-mode ->
-*** ooc-mode ->
-*** opal-mode ->
-*** opencl-mode ->
-*** patch-mode ->
-*** pkgconfig-mode ->
-*** po-mode -> translation files
-*** prolog-mode ->
-*** protobuf-mode ->
-*** puppet-mode ->
-*** rpmspec-mode ->
-*** sml-mode ->
-*** sparql-mode ->
-*** systemverilog-mode ->
-*** t2t-mode ->
-*** tcl-mode -< Tcl files.
-*** texinfo-mode ->
-*** vala-mode ->
-*** vbnet-mode ->
-*** verilog-mode ->
-*** vhdl-mode -> VHDL files.
-*** xslt-mode ->
+*** nsis-mode
+*** objj-mode
+*** ocl-mode
+*** octave-mode
+*** ooc-mode
+*** opal-mode
+*** opencl-mode
+*** patch-mode
+*** pkgconfig-mode
+*** po-mode: translation files
+*** prolog-mode
+*** protobuf-mode
+*** puppet-mode
+*** rpmspec-mode
+*** sml-mode
+*** sparql-mode
+*** systemverilog-mode
+*** t2t-mode
+*** tcl-mode: Tcl files.
+*** texinfo-mode
+*** vala-mode
+*** vbnet-mode
+*** verilog-mode
+*** vhdl-mode: VHDL files.
+*** xslt-mode
+
+** syntax: look at qmake, cmake, scons, ant, maven...
+** syntax: look at typescript, bitC
 
 * Ideas from other editors
 
-** <enter> to exit browse mode
 ** prevent edit in browse mode
 ** dynamic project based settings, include, exclude patterns...
 ** electric-c-mode
@@ -421,7 +485,22 @@ insert_window_left()  deletes some left-most windows
 ** save file to non existent path -> create path.
 ** dired view with outline and expand/collapse
 ** dired view with generalized file matcher
-** open file with fuzzy search
-** execute command with fuzzy search
+** open file with fuzzy completion
+** execute command with fuzzy completion
+** completion with fuzzy matching
 ** find-file: gist:snippet
 ** new flavor for GoogleClosureCompiler
+
+** handle or remove extra code page files:
+
+APL-ISO-IR-68.TXT GSM0338.TXT SGML.TXT
+CP1006.TXT CP1253.TXT CP1254.TXT CP1255.TXT CP1258.TXT
+CP775.TXT CP855.TXT CP856.TXT CP857.TXT CP860.TXT CP861.TXT
+CP862.TXT CP863.TXT CP864.TXT CP865.TXT CP869.TXT CP874.TXT CP932.TXT
+JIS0201.TXT SHIFTJIS.TXT
+euc-jis-2004-std.txt iso-2022-jp-2004-std.txt jisx0213-2004-std.txt
+sjis-0213-2004-std.txt
+MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT 
+cpdata.txt
+koi8_ru.cp
+
