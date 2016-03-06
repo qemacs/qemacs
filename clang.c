@@ -61,6 +61,7 @@ enum {
     CLANG_KOTLIN,
     CLANG_CBANG,
     CLANG_VALA,
+    CLANG_PAWN,
     CLANG_RUST,
     CLANG_SWIFT,
     CLANG_ICON,
@@ -288,8 +289,8 @@ static void c_colorize_line(QEColorizeContext *cp,
             }
             /* XXX: should use more context to tell regex from divide */
             prev = ' ';
-            for (i1 = start; i1-- > indent; ) {
-                prev = str[i1] & CHAR_MASK;
+            for (i1 = start; i1 > indent; ) {
+                prev = str[--i1] & CHAR_MASK;
                 if (!qe_isblank(prev))
                     break;
             }
@@ -1439,6 +1440,7 @@ static const char js_types[] = {
 ModeDef js_mode = {
     .name = "Javascript",
     .extensions = "js",
+    .shell_handlers = "node",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_JS | CLANG_REGEX,
     .keywords = js_keywords,
@@ -2345,6 +2347,66 @@ ModeDef vala_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Compuphase's Pawn language ----------------*/
+
+static const char pawn_keywords[] = {
+    "assert|break|case|const|continue|default|defined|do|else|exit|"
+    "for|forward|goto|if|native|new|operator|public|return|sizeof|sleep|"
+    "state|static|stock|switch|tagof|while|",
+};
+
+//static const char pawn_preprocessor_keywords[] = {
+//    "assert|define|else|elseif|endif|endinput|error|file|if|include|"
+//    "line|pragma|tryinclude|undef"
+//};
+
+static const char pawn_types[] = {
+    //"void|"
+    //"bool|string|int|uint|uchar|nt8|short|ushort|long|ulong|size_t|ssize_t|"
+    //"double|va_list|unichar|"
+};
+
+static int pawn_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    if (match_shell_handler(cs8(p->buf), mode->shell_handlers))
+        return 81;
+
+    if (match_extension(p->filename, mode->extensions)) {
+        /* disambiguate .p extension, can be Pascal too. */
+#define NUL  "\0"
+        static const char pawn_checks[] =
+            "@" NUL "//" NUL "/*" NUL
+            "#include" NUL "#define" NUL "#if" NUL
+            "forward" NUL "new" NUL "main()" NUL
+            NUL;
+        const char *pref;
+        const char *cp = cs8(p->buf);
+
+        while (qe_isspace(*cp))
+            cp++;
+        for (pref = pawn_checks; *pref; pref += strlen(pref) + 1) {
+            if (strstart(cp, pref, NULL))
+                return 81;
+        }
+        return 79;
+    }
+    return 1;
+}
+
+ModeDef pawn_mode = {
+    .name = "Pawn",
+    .mode_name = "pawn",
+    .extensions = "p",
+    .mode_probe = pawn_mode_probe,
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_PAWN | CLANG_CC,  // needs '' delimited strings
+    .keywords = pawn_keywords,
+    .types = pawn_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 /*---------------- Other C based syntax modes ----------------*/
 
 #include "rust.c"
@@ -2404,6 +2466,7 @@ static int c_init(void)
     qe_register_mode(&kotlin_mode, MODEF_SYNTAX);
     qe_register_mode(&cbang_mode, MODEF_SYNTAX);
     qe_register_mode(&vala_mode, MODEF_SYNTAX);
+    qe_register_mode(&pawn_mode, MODEF_SYNTAX);
     rust_init();
     swift_init();
     icon_init();
