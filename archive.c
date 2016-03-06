@@ -31,6 +31,7 @@ struct ArchiveType {
     const char *extensions;
     const char *list_cmd;       /* list archive contents to stdout */
     const char *extract_cmd;    /* extract archive element to stdout */
+    int sf_flags;
     struct ArchiveType *next;
 };
 
@@ -145,7 +146,7 @@ static int archive_buffer_load(EditBuffer *b, FILE *f)
                   atp->name, b->filename);
         qe_shell_subst(cmd, sizeof(cmd), atp->list_cmd, b->filename, NULL);
         new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
-                         SF_INFINITE | SF_BUFED_MODE);
+                         atp->sf_flags | SF_INFINITE | SF_BUFED_MODE);
 
         /* XXX: should check for archiver error */
         /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
@@ -217,6 +218,7 @@ struct CompressType {
     const char *extensions;
     const char *load_cmd;       /* uncompress file to stdout */
     const char *save_cmd;       /* compress to file from stdin */
+    int sf_flags;
     struct CompressType *next;
 };
 
@@ -231,6 +233,9 @@ static CompressType compress_type_array[] = {
     { "sqlite", "SQLite format 3\0", 16, NULL, "sqlite3 $1 .dump", NULL },
     { "bplist", "bplist00", 8, "plist", "plutil -p $1", NULL },
 //    { "bplist", "bplist00", 8, "plist", "plutil -convert xml1 -o - $1", NULL },
+    { "jpeg", NULL, 0, "jpg", "jp2a --height=35 --background=dark $1", NULL, SF_COLOR },
+    { "image", NULL, 0, "bmp", "img2txt -f ansi $1", NULL, SF_COLOR  },
+    { "pdf", NULL, 0, "pdf", "pstotext $1", NULL },
 };
 
 static CompressType *compress_types;
@@ -285,7 +290,7 @@ static int compress_buffer_load(EditBuffer *b, FILE *f)
         eb_clear(b);
         qe_shell_subst(cmd, sizeof(cmd), ctp->load_cmd, b->filename, NULL);
         new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
-                         SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
+                         ctp->sf_flags | SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
         /* XXX: should check for archiver error */
         /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
         b->flags |= BF_READONLY;
@@ -375,6 +380,7 @@ static int wget_buffer_load(EditBuffer *b, FILE *f)
     qe_shell_subst(cmd, sizeof(cmd), "wget -q -O - $1", b->filename, NULL);
     new_shell_buffer(b, get_basename(b->filename), NULL, cmd,
                      SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
+    /* XXX: should refilter by content type */
     /* XXX: should have a way to keep http headers --save-headers */
     /* XXX: should check for wget error */
     /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
