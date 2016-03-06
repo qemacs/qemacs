@@ -181,9 +181,104 @@ static ModeDef makefile_mode = {
     .colorize_func = makefile_colorize_line,
 };
 
+enum {
+    CMAKE_STYLE_TEXT       = QE_STYLE_DEFAULT,
+    CMAKE_STYLE_COMMENT    = QE_STYLE_COMMENT,
+    CMAKE_STYLE_STRING     = QE_STYLE_STRING,
+    CMAKE_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    CMAKE_STYLE_TARGET     = QE_STYLE_FUNCTION,
+    CMAKE_STYLE_FUNCTION   = QE_STYLE_FUNCTION,
+    CMAKE_STYLE_KEYWORD    = QE_STYLE_KEYWORD,
+    CMAKE_STYLE_VARIABLE   = QE_STYLE_VARIABLE,
+    CMAKE_STYLE_MACRO      = QE_STYLE_TYPE,
+};
+
+static void cmake_colorize_line(QEColorizeContext *cp,
+                                unsigned int *str, int n, ModeDef *syn)
+{
+    char buf[32];
+    int i = 0, start = i, style;
+    unsigned int c;
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '$':
+            style = CMAKE_STYLE_MACRO;
+            if (str[i] == '{') {
+                for (i += 1; i < n; i++) {
+                    if (str[i] == '}')
+                        break;
+                }
+                SET_COLOR(str, start + 2, i, style);
+                if (str[i] == '}')
+                    i++;
+                continue;
+            }
+            continue;
+        case '#':
+            if (i > 1 && str[i - 2] == '\\')
+                break;
+            i = n;
+            SET_COLOR(str, start, i, CMAKE_STYLE_COMMENT);
+            continue;
+        case '"':
+            /* parse string const */
+            while (i < n) {
+                unsigned int cc = str[i++];
+
+                if (cc == c)
+                    break;
+
+                if (cc == '$' && str[i] == '{') {
+                    SET_COLOR(str, start, i + 1, CMAKE_STYLE_STRING);
+                    for (start = i += 1; i < n && str[i] != c; i++) {
+                        if (str[i] == '}')
+                            break;
+                    }
+                    SET_COLOR(str, start, i, style);
+                }
+            }
+            SET_COLOR(str, start, i, CMAKE_STYLE_STRING);
+            continue;
+        default:
+            if (qe_isalpha_(c)) {
+                i -= 1;
+                i += get_word_lc(buf, countof(buf), str + i);
+                if (strfind("if|else|endif|set|true|false|include", buf)) {
+                    SET_COLOR(str, start, i, CMAKE_STYLE_KEYWORD);
+                } else
+                if (str[i] == '(' || (str[i] == ' ' && str[i+1] == '(')) {
+                    SET_COLOR(str, start, i, CMAKE_STYLE_FUNCTION);
+                }
+            }
+            break;
+        }
+    }
+}
+
+static int cmake_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    /* check file name or extension */
+    if (match_extension(p->filename, mode->extensions)
+    ||  stristart(p->filename, "cmakelists.txt", NULL))
+        return 70;
+
+    return 1;
+}
+
+static ModeDef cmake_mode = {
+    .name = "CMake",
+    .extensions = "cmake",
+    .mode_probe = cmake_mode_probe,
+    .colorize_func = cmake_colorize_line,
+};
+
 static int makefile_init(void)
 {
     qe_register_mode(&makefile_mode, MODEF_SYNTAX);
+    qe_register_mode(&cmake_mode, MODEF_SYNTAX);
 
     return 0;
 }
