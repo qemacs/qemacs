@@ -20,6 +20,8 @@
 
 #include "qe.h"
 
+extern ModeDef litcoffee_mode;
+
 enum {
     /* TODO: define specific styles */
     MKD_STYLE_HEADING1    = QE_STYLE_FUNCTION,
@@ -88,11 +90,29 @@ static int mkd_scan_chunk(const unsigned int *str,
     return 0;
 }
 
+static int mkd_add_lang(const char *lang_name) {
+    ModeDef *m;
+    int lang = 0;
+
+    if (lang_name && (m = qe_find_mode(lang_name, MODEF_SYNTAX)) != NULL) {
+        for (lang = 1; lang < MKD_LANG_MAX; lang++) {
+            if (mkd_lang_def[lang] == NULL)
+                mkd_lang_def[lang] = m;
+            if (mkd_lang_def[lang] == m)
+                break;
+        }
+    }
+    return lang;
+}
+
 static void mkd_colorize_line(QEColorizeContext *cp,
                               unsigned int *str, int n, ModeDef *syn)
 {
     int colstate = cp->colorize_state;
     int level, indent, i = 0, j, start = i, base_style = 0;
+
+    if (syn == &litcoffee_mode)
+        base_style = MKD_STYLE_COMMENT;
 
     if (str[i] == '<' && str[i + 1] == '!' && str[i + 2] == '-' && str[i + 3] == '-') {
         colstate |= IN_MKD_HTML_COMMENT;
@@ -130,16 +150,15 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         } else {
             int lang = (colstate & IN_MKD_BLOCK) >> MKD_LANG_SHIFT;
 
-            cp->colorize_state = colstate & IN_MKD_LANG_STATE;
-
             if (mkd_lang_def[lang]) {
+                cp->colorize_state = colstate & IN_MKD_LANG_STATE;
                 mkd_lang_def[lang]->colorize_func(cp, str + i, n - i, mkd_lang_def[lang]);
+                colstate &= ~IN_MKD_LANG_STATE;
+                colstate |= cp->colorize_state & IN_MKD_LANG_STATE;
             } else {
                 SET_COLOR(str, i, n, MKD_STYLE_CODE);
             }
             i = n;
-            colstate &= ~IN_MKD_LANG_STATE;
-            colstate |= cp->colorize_state & IN_MKD_LANG_STATE;
         }
         cp->colorize_state = colstate;
         return;
@@ -205,8 +224,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     ||  ustrstart(str + i, "```", NULL)) {
         /* verbatim block */
         char lang_name[16];
-        int lang = MKD_LANG_MAX, len;
-        ModeDef *m;
+        int lang = syn->colorize_flags, len;  // was MKD_LANG_MAX
 
         colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG_STATE);
         for (i += 3; qe_isblank(str[i]); i++)
@@ -216,13 +234,8 @@ static void mkd_colorize_line(QEColorizeContext *cp,
                 lang_name[len++] = str[i];
         }
         lang_name[len] = '\0';
-        if (len > 0 && (m = qe_find_mode(lang_name, MODEF_SYNTAX)) != NULL) {
-            for (lang = 1; lang < MKD_LANG_MAX; lang++) {
-                if (mkd_lang_def[lang] == NULL)
-                    mkd_lang_def[lang] = m;
-                if (mkd_lang_def[lang] == m)
-                    break;
-            }
+        if (len) {
+            lang = mkd_add_lang(lang_name);
         }
         colstate |= lang << MKD_LANG_SHIFT;
         i = n;
@@ -265,9 +278,18 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         indent -= level * 4;
 
         if (indent >= 4) {
+            int lang = syn->colorize_flags; /* default language */
+
             /* Should detect sequel lines in ordered/unordered lists */
+            if (mkd_lang_def[lang]) {
+                cp->colorize_state = colstate & IN_MKD_LANG_STATE;
+                mkd_lang_def[lang]->colorize_func(cp, str + 4, n - 4, mkd_lang_def[lang]);
+                colstate &= ~IN_MKD_LANG_STATE;
+                colstate |= cp->colorize_state & IN_MKD_LANG_STATE;
+            } else {
+                SET_COLOR(str, i, n, MKD_STYLE_CODE);
+            }
             i = n;
-            SET_COLOR(str, start, i, MKD_STYLE_CODE);
         }
     }
 
@@ -827,10 +849,30 @@ ModeDef mkd_mode = {
     .colorize_func = mkd_colorize_line,
 };
 
+static int litcoffee_mode_init(EditState *s, EditBuffer *b, int flags)
+{
+    if (s) {
+        s->b->tab_width = 4;
+        s->indent_tabs_mode = 0;
+        s->wrap = WRAP_WORD;
+        s->mode->colorize_flags = mkd_add_lang("coffee");
+    }
+    return 0;
+}
+
+ModeDef litcoffee_mode = {
+    .name = "LitCoffee",
+    .extensions = "litcoffee",
+    .mode_init = litcoffee_mode_init,
+    .colorize_func = mkd_colorize_line,
+};
+
 static int mkd_init(void)
 {
     qe_register_mode(&mkd_mode, MODEF_SYNTAX);
     qe_register_cmd_table(mkd_commands, &mkd_mode);
+    qe_register_mode(&litcoffee_mode, MODEF_SYNTAX);
+    qe_register_cmd_table(mkd_commands, &litcoffee_mode);
 
     return 0;
 }
