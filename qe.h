@@ -229,10 +229,10 @@ static inline int qe_inrange(int c, int a, int b) {
 }
 static inline int qe_isspace(int c) {
     /* CG: what about \v and \f */
-    return (c == ' ' || c == '\t' || c == '\n' || c == '\r');
+    return (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == 160);
 }
 static inline int qe_isblank(int c) {
-    return (c == ' ' || c == '\t');
+    return (c == ' ' || c == '\t' || c == 160);
 }
 static inline int qe_isdigit(int c) {
     return qe_inrange(c, '0', '9');
@@ -1431,6 +1431,7 @@ struct QEmacsState {
     /* XXX: move these to ec */
     CmdFunc last_cmd_func; /* last executed command function call */
     CmdFunc this_cmd_func; /* current executing command */
+    int cmd_start_time;
     /* keyboard macros */
     int defining_macro;
     int executing_macro;
@@ -1447,6 +1448,7 @@ struct QEmacsState {
     char *tty_charset;
     char res_path[1024];        /* exported as QEPATH */
     char status_shadow[MAX_SCREEN_WIDTH];
+    char diag_shadow[MAX_SCREEN_WIDTH];
     QErrorContext ec;
     char system_fonts[NB_FONT_FAMILIES][256];
 

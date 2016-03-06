@@ -4284,7 +4284,7 @@ static void parse_args(ExecCmdState *es)
     char history[32];
     unsigned char arg_type;
     int ret, rep_count, get_arg, type, use_argval, use_key;
-    int start_time, elapsed_time;
+    int elapsed_time;
 
     for (;;) {
         ret = parse_arg(&es->ptype, &arg_type,
@@ -4376,7 +4376,7 @@ static void parse_args(ExecCmdState *es)
 
     qs->this_cmd_func = d->action.func;
 
-    start_time = get_clock_ms();
+    qs->cmd_start_time = get_clock_ms();
 
     do {
         /* special case for hex mode */
@@ -4399,9 +4399,10 @@ static void parse_args(ExecCmdState *es)
         /* CG: Should follow qs->active_window ? */
     } while (--rep_count > 0);
 
-    elapsed_time = get_clock_ms() - start_time;
+    elapsed_time = get_clock_ms() - qs->cmd_start_time;
+    qs->cmd_start_time += elapsed_time;
     if (elapsed_time >= 100)
-        put_status(s, "%s: %dms", d->name, elapsed_time);
+        put_status(s, "|%s: %dms", d->name, elapsed_time);
 
     qs->last_cmd_func = qs->this_cmd_func;
  fail:
@@ -4548,7 +4549,7 @@ void edit_display(QEmacsState *qs)
 
     elapsed_time = get_clock_ms() - start_time;
     if (elapsed_time >= 100)
-        put_status(s, "edit_display: %dms", elapsed_time);
+        put_status(s, "|edit_display: %dms", elapsed_time);
 
     qs->complete_refresh = 0;
 }
@@ -5052,28 +5053,49 @@ void put_status(qe__unused__ EditState *s, const char *fmt, ...)
     char buf[MAX_SCREEN_WIDTH];
     const char *p;
     va_list ap;
+    int silent = 0;
+    int diag = 0;
 
     va_start(ap, fmt);
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
 
-    p = buf;
-    if (*p == '~')
-        p++;
+    for (p = buf;; p++) {
+        if (*p == '|') {
+            diag = 1;
+        } else
+        if (*p == '~') {
+            silent = 1;
+        } else {
+            break;
+        }
+    }
 
     if (!qs->screen->dpy.dpy_probe) {
         eb_format_message(qs, "*errors*", p);
     } else {
-        if (!strequal(p, qs->status_shadow)) {
-            print_at_byte(qs->screen,
-                          0, qs->screen->height - qs->status_height,
-                          qs->screen->width, qs->status_height,
-                          p, QE_STYLE_STATUS);
-            pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), p);
-            skip_spaces(&p);
-            if (*p && *buf != '~')
-                eb_format_message(qs, "*messages*", buf);
+        if (diag) {
+            if (!strequal(p, qs->diag_shadow)) {
+                int w = strlen(p) + 1; /* @@@ should right align */
+                print_at_byte(qs->screen,
+                              qs->screen->width - w,
+                              qs->screen->height - qs->status_height,
+                              qs->screen->width - w, qs->status_height,
+                              p, QE_STYLE_STATUS);
+                pstrcpy(qs->diag_shadow, sizeof(qs->diag_shadow), p);
+            }
+        } else {
+            if (!strequal(p, qs->status_shadow)) {
+                print_at_byte(qs->screen,
+                              0, qs->screen->height - qs->status_height,
+                              qs->screen->width, qs->status_height,
+                              p, QE_STYLE_STATUS);
+                pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), p);
+            }
         }
+        skip_spaces(&p);
+        if (!silent)
+            eb_format_message(qs, "*messages*", buf);
     }
 }
 
@@ -7670,6 +7692,8 @@ void qe_register_cmd_line_options(CmdOptionDef *table)
     pp = &first_cmd_options;
     while (*pp != NULL) {
         p = *pp;
+	if (p == table)
+	    return;  /* already registered */
         while (p->name != NULL)
             p++;
         pp = &p->u.next;
@@ -7725,9 +7749,19 @@ static void show_usage(void)
     exit(1);
 }
 
+static int force_tty;
+
+static CmdOptionDef null_cmd_options[] = {
+    { "no-windows", "nw", NULL, CMD_OPT_BOOL, "force tty terminal usage",
+       { .int_ptr = &force_tty }},
+    { NULL, NULL, NULL, 0, NULL, { NULL }},
+};
+
 static int parse_command_line(int argc, char **argv)
 {
     int _optind;
+
+    qe_register_cmd_line_options(null_cmd_options);
 
     _optind = 1;
     for (;;) {
