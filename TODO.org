@@ -6,17 +6,19 @@
 * Needed for release version 5
 
 * Priority 0
-** turn on interactive mode on A-e and some other commands that move
+** shell: turn on interactive mode on M-> and some other commands that move
    the cursor to the end of file
-** reset last command when executing macro
-** add function to add entry in TOTO.org
-** indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
-** completion behaviour on SPC
-** yank at shell prompt
-** improve speed: C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET -> 96s
+** basic: reset last command when executing macro
+** extra: add function to add entry in TOTO.org
+** clang: indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
+** completion: completion behaviour on SPC
+** shell: yank at shell prompt
+** edit: track file modifications and reload upon change
 
 * Priority 1
 
+** basic: improve speed: C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET -> 96s
+** basic: improve speed: C-x C-f ~/x2m RET C-u 1000 C-n -> 4s
 ** basic: check abort during long operations: bufferize input and check for ^G
 ** basic: share mmapped pages correctly
 ** basic: show memory stats in describe-buffer and about-qemacs
@@ -38,7 +40,6 @@
 ** doc: migrate TODO and documentation to markdown or reStructuredText
 ** doc: migrate coding-rules.html to markdown
 ** doc: rewrite TODO file with more sections and explanations
-** edit: track file modifications and reload upon change
 ** files: handle files starting with re:
 ** files: check file permissions.
 ** files: use trick for entering spaces in filename prompts without completion
@@ -83,7 +84,6 @@
   cp="200E" na="LEFT-TO-RIGHT MARK" alias="LRM"
   cp="200F" na="RIGHT-TO-LEFT MARK" alias="RLM"
 ** tiny: remove extra features
-** tiny: compile as 32 bits
 ** undo: kill redo list when forking after undo
 ** undo: undo should handle sequence of undo records upto tagged start.
 ** undo: add disable-undo for tests and benchmarking
