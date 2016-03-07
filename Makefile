@@ -44,7 +44,8 @@ ifdef TARGET_GPROF
   LDFLAGS += -p
 endif
 
-TLDFLAGS := $(LDFLAGS)
+TCFLAGS := -DCONFIG_TINY -m32 $(CFLAGS) -Os
+TLDFLAGS := -m32 $(LDFLAGS)
 
 ifdef TARGET_ARCH_X86
   #CFLAGS+=-fomit-frame-pointer
@@ -299,7 +300,7 @@ $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 $(TOBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(echo) CC -DCONFIG_TINY -c $<
 	$(cmd)  mkdir -p $(dir $@)
-	$(cmd)  $(CC) $(DEFINES) -DCONFIG_TINY $(CFLAGS) -o $@ -c $<
+	$(cmd)  $(CC) $(DEFINES) $(TCFLAGS) -o $@ -c $<
 
 $(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 	$(echo) CPP -c $<
@@ -309,7 +310,7 @@ $(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 $(TOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 	$(echo) CPP -DCONFIG_TINY -c $<
 	$(cmd)  mkdir -p $(dir $@)
-	$(cmd)  g++ $(DEFINES) -DCONFIG_TINY $(CFLAGS) -Wno-multichar -o $@ -c $<
+	$(cmd)  g++ $(DEFINES) $(TCFLAGS) -Wno-multichar -o $@ -c $<
 
 %.s: %.c $(DEPENDS) Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -S $<
