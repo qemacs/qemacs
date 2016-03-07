@@ -1,8 +1,8 @@
 /*
  * X11 handling for QEmacs
  *
- * Copyright (c) 2000, 2001, 2002, 2003 Fabrice Bellard.
- * Copyright (c) 2002-2013 Charlie Gordon.
+ * Copyright (c) 2000-2003 Fabrice Bellard.
+ * Copyright (c) 2002-2016 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -89,7 +89,6 @@ static CSSRect update_rects[UPDATE_MAX_REGIONS];
 
 static int visual_depth;
 
-static int force_tty;
 static const char *display_str;
 static const char *geometry_str;
 static int font_ptsize;
@@ -1857,8 +1856,6 @@ static QEDisplay x11_dpy = {
 };
 
 static CmdOptionDef cmd_options[] = {
-    { "no-windows", "nw", NULL, CMD_OPT_BOOL, "force tty terminal usage",
-      { .int_ptr = &force_tty }},
     { "display", "d", "display", CMD_OPT_STRING | CMD_OPT_ARG, "set X11 display",
       { .string_ptr = &display_str }},
     { "geometry", "g", "WxH", CMD_OPT_STRING | CMD_OPT_ARG, "set X11 display size",
@@ -1871,6 +1868,8 @@ static CmdOptionDef cmd_options[] = {
 static int x11_init(void)
 {
     qe_register_cmd_line_options(cmd_options);
+    if (force_tty)
+        return 0;
     return qe_register_display(&x11_dpy);
 }
 

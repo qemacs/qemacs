@@ -1,6 +1,8 @@
 /*
  * Haiku driver for QEmacs
+ *
  * Copyright (c) 2013 Francois Revol.
+ * Copyright (c) 2015-2016 Charlie Gordon.
  * Copyright (c) 2002 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or
@@ -32,8 +34,6 @@ extern "C" {
 #include <String.h>
 #include <View.h>
 #include <Window.h>
-
-static int force_tty = 0;
 
 static int font_xsize;
 
@@ -889,12 +889,6 @@ static QEDisplay haiku_dpy = {
     NULL, /* next */
 };
 
-static CmdOptionDef cmd_options[] = {
-    { "no-windows", "nw", NULL, CMD_OPT_BOOL, "force tty terminal usage",
-       { int_ptr: &force_tty }},
-    { NULL, NULL, NULL, 0, NULL, { NULL }},
-};
-
 static int haiku_init(void)
 {
     QEmacsState *qs = &qe_state;
@@ -910,7 +904,9 @@ static int haiku_init(void)
     }
     pstrcat(qs->res_path, sizeof(qs->res_path), old.String());
 
-    qe_register_cmd_line_options(cmd_options);
+    if (force_tty)
+        return 0;
+
     return qe_register_display(&haiku_dpy);
 }
 

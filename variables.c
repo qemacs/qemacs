@@ -1,7 +1,7 @@
 /*
  * Module for handling variables in QEmacs
  *
- * Copyright (c) 2000-2014 Charlie Gordon.
+ * Copyright (c) 2000-2016 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -76,6 +76,7 @@ static VarDef var_table[] = {
     M_VAR( "auto-indent", auto_indent, VAR_NUMBER, VAR_RW )
 
     G_VAR( "use-session-file", use_session_file, VAR_NUMBER, VAR_RW )
+    G_VAR( "force-tty", force_tty, VAR_NUMBER, VAR_RW )
 
     /* more buffer fields: modified, readonly, binary, charset */
 

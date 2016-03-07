@@ -74,6 +74,7 @@ static QEditScreen global_screen;
 static int screen_width = 0;
 static int screen_height = 0;
 static int no_init_file;
+int force_tty;
 int use_session_file;
 #ifndef CONFIG_TINY
 static int free_everything;
@@ -7749,19 +7750,9 @@ static void show_usage(void)
     exit(1);
 }
 
-static int force_tty;
-
-static CmdOptionDef null_cmd_options[] = {
-    { "no-windows", "nw", NULL, CMD_OPT_BOOL, "force tty terminal usage",
-       { .int_ptr = &force_tty }},
-    { NULL, NULL, NULL, 0, NULL, { NULL }},
-};
-
 static int parse_command_line(int argc, char **argv)
 {
     int _optind;
-
-    qe_register_cmd_line_options(null_cmd_options);
 
     _optind = 1;
     for (;;) {
@@ -7819,6 +7810,7 @@ static int parse_command_line(int argc, char **argv)
         put_status(NULL, "unknown cmdline option '%s'", r);
     next_cmd: ;
     }
+
     return _optind;
 }
 
@@ -7878,10 +7870,12 @@ static CmdOptionDef cmd_options[] = {
       { .func_noarg = show_usage }},
     { "no-init-file", "q", NULL, CMD_OPT_BOOL, "do not load config files",
       { .int_ptr = &no_init_file }},
-    { "use-session", "s", NULL, CMD_OPT_BOOL, "load and save session files",
-      { .int_ptr = &use_session_file }},
+    { "no-windows", "nw", NULL, CMD_OPT_BOOL, "force tty terminal usage",
+       { .int_ptr = &force_tty }},
     { "ttycharset", "c", "CHARSET", CMD_OPT_ARG, "specify tty charset",
       { .func_arg = set_tty_charset }},
+    { "use-session", "s", NULL, CMD_OPT_BOOL, "load and save session files",
+      { .int_ptr = &use_session_file }},
     { "user", "u", "USER", CMD_OPT_ARG, "load ~USER/.qe/config instead of your own",
       { .func_arg = set_user_option }},
     { "version", "V", NULL, 0, "display version information and exit",

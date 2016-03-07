@@ -1335,6 +1335,8 @@ void *qe_get_window_mode_data(EditState *e, ModeDef *m, int status);
 int qe_free_mode_data(QEModeData *md);
 
 /* from tty.c */
+/* set from command line option to prevent GUI such as X11 */
+extern int force_tty;
 extern unsigned int const *tty_bg_colors;
 extern int tty_bg_colors_count;
 extern unsigned int const *tty_fg_colors;
