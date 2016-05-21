@@ -30,7 +30,7 @@ void do_compare_windows(EditState *s, int argval)
     EditState *s1;
     EditState *s2;
     int offset1, offset2, size1, size2, ch1, ch2;
-    int tries;
+    int tries, resync = 0;
 
     s1 = s;
     /* Should use same internal function as for next_window */
@@ -39,24 +39,22 @@ void do_compare_windows(EditState *s, int argval)
     else
         s2 = qs->first_window;
 
-    if (argval)
+    if (argval != NO_ARG)
         qs->ignore_spaces ^= 1;
 
-    if (s1 == s2)
+    if (s1 == s2) {
+        /* single window: bail out */
         return;
+    }
 
     size1 = s1->b->total_size;
     size2 = s2->b->total_size;
 
-    if (qs->last_cmd_func == (CmdFunc)do_compare_windows
-    &&  (eb_nextc(s1->b, s1->offset, &offset1) !=
-         eb_nextc(s2->b, s2->offset, &offset2))) {
-        /* Try to resync: just skip in parallel */
-        s1->offset = offset1;
-        s2->offset = offset2;
+    if (qs->last_cmd_func == (CmdFunc)do_compare_windows) {
+        resync = 1;
     }
 
-    for (tries = 0;;) {
+    for (tries = 0;; resync = 0) {
 
         if (++tries >= 100000) {
             tries = 0;
@@ -88,10 +86,40 @@ void do_compare_windows(EditState *s, int argval)
                     continue;
                 }
             }
-            if (ch1 == EOF || ch2 == EOF)
+            if (ch1 == EOF || ch2 == EOF) {
                 put_status(s, "Extra characters");
-            else
-                put_status(s, "Difference: %c <-> %c", ch1, ch2);
+                break;
+            }
+            if (resync) {
+                int save1 = s1->offset, save2 = s2->offset;
+
+                /* Try to resync from end of line */
+                if (ch1 != '\n' && ch2 != '\n') {
+                    int pos1, off1, pos2, off2;
+                    do_eol(s1);
+                    do_eol(s2);
+                    pos1 = s1->offset;
+                    pos2 = s2->offset;
+                    while (pos1 > save1 && pos2 > save2 && 
+                           eb_prevc(s1->b, pos1, &off1) == eb_prevc(s2->b, pos2, &off2)) {
+                        pos1 = off1;
+                        pos2 = off2;
+                    }
+                    if (pos1 < s1->offset) {
+                        s1->offset = pos1;
+                        s2->offset = pos2;
+                        put_status(s, "Skipped %d and %d bytes", pos1 - save1, pos2 - save2);
+                        break;
+                    }
+                }
+                /* Skip to next line in parallel */
+                s1->offset = eb_next_line(s1->b, s1->offset);
+                s2->offset = eb_next_line(s2->b, s2->offset);
+                put_status(s, "Skipped %d and %d bytes",
+                           s1->offset - save1, s2->offset - save2);
+                break;
+            }
+            put_status(s, "Difference: %c <-> %c", ch1, ch2);
             break;
         }
         if (ch1 != EOF) {
@@ -102,6 +130,49 @@ void do_compare_windows(EditState *s, int argval)
         put_status(s, "No difference");
         break;
     }
+}
+
+void do_compare_files(EditState *s, const char *filename, int bflags)
+{
+    char buf[MAX_FILENAME_SIZE];
+    int pathlen, parent_pathlen;
+
+    pathlen = get_basename_offset(filename);
+    if (pathlen == 0) {
+        snprintf(buf, sizeof(buf), "../%s", filename);
+    } else
+    if (pathlen == 1) {
+        put_status(s, "Reference file is in root directory: %s", filename);
+        return;
+    } else
+    if (pathlen >= MAX_FILENAME_SIZE) {
+        put_status(s, "Filename too long: %s", filename);
+        return;
+    } else {
+        pstrcpy(buf, sizeof(buf), filename);
+        buf[pathlen - 1] = '\0';  /* overwite the path separator */
+        parent_pathlen = get_basename_offset(buf);
+        pstrcpy(buf + parent_pathlen, sizeof(buf) - parent_pathlen, filename + pathlen);
+    }
+
+    // XXX: should check for regular file
+    if (access(filename, R_OK)) {
+        put_status(s, "Cannot access file %s: %s",
+                   filename, strerror(errno));
+        return;
+    }
+    if (access(buf, R_OK)) {
+        put_status(s, "Cannot access file %s: %s",
+                   buf, strerror(errno));
+        return;
+    }
+
+    do_find_file(s, filename, bflags);
+    do_delete_other_windows(s, 0);
+    do_split_window(s, 0);
+    do_previous_window(s);
+    s = s->qe_state->active_window;
+    do_find_file(s, buf, bflags);
 }
 
 void do_delete_horizontal_space(EditState *s)
@@ -333,7 +404,7 @@ void do_show_date_and_time(EditState *s, int argval)
 {
     time_t t = argval;
 
-    if (t == 0)
+    if (argval == NO_ARG)
         time(&t);
 
     put_status(s, "%.24s", ctime(&t));
@@ -1088,6 +1159,10 @@ static void do_describe_buffer(EditState *s, int argval)
 static CmdDef extra_commands[] = {
     CMD2( KEY_META('='), KEY_NONE,
           "compare-windows", do_compare_windows, ESi, "ui" )
+    CMD3( KEY_CTRLX(KEY_CTRL('l')), KEY_NONE,
+          "conpare-files", do_compare_files, ESsi, 0,
+          "s{Compare file: }[file]|file|"
+          "v") /* u? */
     CMD2( KEY_META('\\'), KEY_NONE,
           "delete-horizontal-space", do_delete_horizontal_space, ES, "*")
     CMD2( KEY_CTRLX(KEY_CTRL('o')), KEY_NONE,
