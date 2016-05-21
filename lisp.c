@@ -1,7 +1,7 @@
 /*
  * Lisp Source mode for QEmacs.
  *
- * Copyright (c) 2000-2014 Charlie Gordon.
+ * Copyright (c) 2000-2016 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -217,16 +217,16 @@ static void lisp_colorize_line(QEColorizeContext *cp,
                                unsigned int *str, int n, ModeDef *syn)
 {
     int colstate = cp->colorize_state;
-    int i = 0, start = i, len, level, style, has_expr;
+    int i = 0, start = i, len, level, style, style1, has_expr;
     int mode_flags = syn->colorize_flags;
     char kbuf[32];
 
     level = colstate & IN_LISP_LEVEL;
-    style = 0;
+    style1 = style = 0;
     has_expr = 0;
 
     if (colstate & IN_LISP_SCOMMENT)
-        style = LISP_STYLE_SCOMMENT;
+        style1 = LISP_STYLE_SCOMMENT;
     if (colstate & IN_LISP_STRING)
         goto parse_string;
     if (colstate & IN_LISP_COMMENT)
@@ -241,14 +241,12 @@ static void lisp_colorize_line(QEColorizeContext *cp,
                 i++;
             /* FALL THRU */
         case '`':
-            if (style)
-                break;
-            SET_COLOR(str, start, i, LISP_STYLE_MACRO);
-            continue;
+            style = LISP_STYLE_MACRO;
+            break;
         case ';':
             i = n;
-            SET_COLOR(str, start, i, LISP_STYLE_COMMENT);
-            continue;
+            style = LISP_STYLE_COMMENT;
+            break;
         case '(':
             if (colstate & IN_LISP_SCOMMENT)
                 level++;
@@ -256,10 +254,10 @@ static void lisp_colorize_line(QEColorizeContext *cp,
         case ')':
             if (colstate & IN_LISP_SCOMMENT) {
                 if (level-- <= 1) {
-                    SET_COLOR(str, start, i - (level < 0), style);
-                    level = 0;
-                    style = 0;
+                    SET_COLOR(str, start, i - (level < 0), style1);
                     colstate &= ~IN_LISP_SCOMMENT;
+                    level = 0;
+                    style1 = 0;
                     continue;
                 }
             }
@@ -277,14 +275,14 @@ static void lisp_colorize_line(QEColorizeContext *cp,
                         break;
                     }
                 }
-                SET_COLOR(str, start, i, LISP_STYLE_COMMENT);
-                continue;
+                style = LISP_STYLE_COMMENT;
+                break;
             }
             if (str[i] == ';') {
                 /* #; sexpr -> comment out sexpr */
                 i++;
                 colstate |= IN_LISP_SCOMMENT;
-                style = LISP_STYLE_SCOMMENT;
+                style1 = LISP_STYLE_SCOMMENT;
                 break;
             }
             if (str[i] == '"') {
@@ -308,8 +306,8 @@ static void lisp_colorize_line(QEColorizeContext *cp,
                 if (mode_flags & LISP_LANG_RACKET) {
                     if (start == 0 && !strcmp(kbuf, "lang")) {
                         i = n;
-                        SET_COLOR(str, start, i, LISP_STYLE_PREPROCESS);
-                        continue;
+                        style = LISP_STYLE_PREPROCESS;
+                        break;
                     }
                     if (!strcmp(kbuf, "rx") || !strcmp(kbuf, "px")) {
                         if (str[i] == '"') {
@@ -365,10 +363,8 @@ static void lisp_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            if (style)
-                break;
-            SET_COLOR(str, start, i, LISP_STYLE_STRING);
-            continue;
+            style = LISP_STYLE_STRING;
+            break;
         case '?':
             /* parse char const */
             /* XXX: Should parse keys syntax */
@@ -380,20 +376,16 @@ static void lisp_colorize_line(QEColorizeContext *cp,
             }
         has_char_const:
             has_expr = 1;
-            if (style)
-                break;
-            SET_COLOR(str, start, i, LISP_STYLE_CHARCONST);
-            continue;
+            style = LISP_STYLE_CHARCONST;
+            break;
         case '\'':
             len = lisp_get_symbol(kbuf, sizeof(kbuf), str + i);
             if (len > 0) {
                 i += len;
             has_qsymbol:
                 has_expr = 1;
-                if (style)
-                    break;
-                SET_COLOR(str, start, i, LISP_STYLE_QSYMBOL);
-                continue;
+                style = LISP_STYLE_QSYMBOL;
+                break;
             }
             break;
         default:
@@ -402,34 +394,37 @@ static void lisp_colorize_line(QEColorizeContext *cp,
                 i += len - 1;
             has_symbol:
                 has_expr = 1;
-                if (style)
-                    break;
                 if (lisp_is_number(kbuf)) {
-                    SET_COLOR(str, start, i, LISP_STYLE_NUMBER);
-                    continue;
+                    style = LISP_STYLE_NUMBER;
+                    break;
                 }
                 if (strfind(lisp_keywords, kbuf)
                 ||  strfind(syn->keywords, kbuf)) {
-                    SET_COLOR(str, start, i, LISP_STYLE_KEYWORD);
-                    continue;
+                    style = LISP_STYLE_KEYWORD;
+                    break;
                 }
                 if (strfind(syn->types, kbuf)) {
-                    SET_COLOR(str, start, i, LISP_STYLE_TYPE);
-                    continue;
+                    style = LISP_STYLE_TYPE;
+                    break;
                 }
                 /* skip other symbol */
-                continue;
+                break;
             }
             break;
         }
-        if (style) {
-            SET_COLOR(str, start, i, style);
+        if (style1) {
+            style = style1;
             if (has_expr) {
-                if ((colstate & IN_LISP_SCOMMENT) && level == 0) {
+                if ((colstate & IN_LISP_SCOMMENT) && level <= 0) {
                     colstate &= ~IN_LISP_SCOMMENT;
-                    style = 0;
+                    level = 0;
+                    style1 = 0;
                 }
             }
+        }
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
         }
     }
     colstate = (colstate & ~IN_LISP_LEVEL) | (level & IN_LISP_LEVEL);
