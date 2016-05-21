@@ -62,6 +62,7 @@ enum {
     CLANG_CBANG,
     CLANG_VALA,
     CLANG_PAWN,
+    CLANG_CMINUS,
     CLANG_RUST,
     CLANG_SWIFT,
     CLANG_ICON,
@@ -2407,6 +2408,40 @@ ModeDef pawn_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Kenneth Louden's C-minus language ----------------*/
+
+/* C minus supports a very crude subset of C:
+ *
+ * numbers: [0-9]+
+ * identifiers: [a-zA-Z]+
+ * comments: multi-line C comments
+ * keywords: if else return while
+ * types: int void
+ * operators: = ( ) { } [ ] \ . ; - + * / > < >= <= == !=
+ * no strings, charconst, pointers, preproc...
+ */
+
+static const char cminus_keywords[] = {
+    "if|else|return|while|",
+};
+
+static const char cminus_types[] = {
+    "int|void|"
+};
+
+ModeDef cminus_mode = {
+    .name = "C-minus",
+    .mode_name = "cminus",
+    .extensions = "cm",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CMINUS,
+    .keywords = cminus_keywords,
+    .types = cminus_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 /*---------------- Other C based syntax modes ----------------*/
 
 #include "rust.c"
@@ -2467,6 +2502,7 @@ static int c_init(void)
     qe_register_mode(&cbang_mode, MODEF_SYNTAX);
     qe_register_mode(&vala_mode, MODEF_SYNTAX);
     qe_register_mode(&pawn_mode, MODEF_SYNTAX);
+    qe_register_mode(&cminus_mode, MODEF_SYNTAX);
     rust_init();
     swift_init();
     icon_init();
