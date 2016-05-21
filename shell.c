@@ -1602,12 +1602,9 @@ static void do_ssh(EditState *s, const char *arg)
 
 static void shell_move_left_right(EditState *e, int dir)
 {
-    if (e->interactive) {
-        ShellState *s;
+    ShellState *s = shell_get_state(e, 1);
 
-        if (!(s = shell_get_state(e, 1)))
-            return;
-
+    if (s && e->interactive) {
         tty_write(s, dir > 0 ? s->kcuf1 : s->kcub1, -1);
     } else {
         text_move_left_right_visual(e, dir);
@@ -1616,12 +1613,9 @@ static void shell_move_left_right(EditState *e, int dir)
 
 static void shell_move_word_left_right(EditState *e, int dir)
 {
-    if (e->interactive) {
-        ShellState *s;
+    ShellState *s = shell_get_state(e, 1);
 
-        if (!(s = shell_get_state(e, 1)))
-            return;
-
+    if (s && e->interactive) {
         tty_write(s, dir > 0 ? "\033f" : "\033b", -1);
     } else {
         text_move_word_left_right(e, dir);
@@ -1630,44 +1624,37 @@ static void shell_move_word_left_right(EditState *e, int dir)
 
 static void shell_move_up_down(EditState *e, int dir)
 {
-    ShellState *s;
+    ShellState *s = shell_get_state(e, 1);
 
-    if (!(s = shell_get_state(e, 1)))
-        return;
-
-    if (e->interactive) {
+    if (s && e->interactive) {
         tty_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
     } else {
         text_move_up_down(e, dir);
-        if (s->shell_flags & SF_INTERACTIVE)
+        if (s && (s->shell_flags & SF_INTERACTIVE))
             e->interactive = (e->offset == s->cur_offset);
     }
 }
 
 static void shell_scroll_up_down(EditState *e, int dir)
 {
-    ShellState *s;
-
-    if (!(s = shell_get_state(e, 1)))
-        return;
+    ShellState *s = shell_get_state(e, 1);
 
     e->interactive = 0;
     text_scroll_up_down(e, dir);
-    if (s->shell_flags & SF_INTERACTIVE)
+    if (s && (s->shell_flags & SF_INTERACTIVE))
         e->interactive = (e->offset == s->cur_offset);
 }
 
 static void shell_move_bol(EditState *e)
 {
+    ShellState *s = shell_get_state(e, 1);
+
     /* XXX: exit shell interactive mode on home / ^A */
+    /* XXX: should first perform the shell's ^A,
+     * then exit interactive-mode */
     e->interactive = 0;
 
-    if (e->interactive) {
-        ShellState *s;
-
-        if (!(s = shell_get_state(e, 1)))
-            return;
-
+    if (s && e->interactive) {
         tty_write(s, "\001", 1); /* Control-A */
     } else {
         text_move_bol(e);
@@ -1676,17 +1663,35 @@ static void shell_move_bol(EditState *e)
 
 static void shell_move_eol(EditState *e)
 {
-    ShellState *s;
+    ShellState *s = shell_get_state(e, 1);
 
-    if (!(s = shell_get_state(e, 1)))
-        return;
-
-    if (e->interactive) {
+    if (s && e->interactive) {
         tty_write(s, "\005", 1); /* Control-E */
     } else {
         text_move_eol(e);
         /* XXX: restore shell interactive mode on end / ^E */
-        if (s->shell_flags & SF_INTERACTIVE)
+        if (s && (s->shell_flags & SF_INTERACTIVE))
+            e->interactive = (e->offset == s->cur_offset);
+    }
+}
+
+static void shell_move_bof(EditState *e)
+{
+    /* Exit shell interactive mode on home-buffer / M-< */
+    e->interactive = 0;
+    text_move_bof(e);
+}
+
+static void shell_move_eof(EditState *e)
+{
+    ShellState *s = shell_get_state(e, 1);
+
+    if (s && e->interactive) {
+        tty_write(s, "\005", 1); /* Control-E */
+    } else {
+        text_move_eof(e);
+        /* Restore shell interactive mode on end-buffer / M-> */
+        if (s && (s->shell_flags & SF_INTERACTIVE))
             e->interactive = (e->offset == s->cur_offset);
     }
 }
@@ -1695,13 +1700,9 @@ static void shell_write_char(EditState *e, int c)
 {
     char buf[10];
     int len;
+    ShellState *s = shell_get_state(e, 1);
 
-    if (e->interactive) {
-        ShellState *s;
-
-        if (!(s = shell_get_state(e, 1)))
-            return;
-
+    if (s && e->interactive) {
         if (c >= KEY_META(0) && c <= KEY_META(0xff)) {
             buf[0] = '\033';
             buf[1] = c - KEY_META(0);
@@ -1748,6 +1749,78 @@ static void shell_write_char(EditState *e, int c)
     if (c == '\r') {
         /* skip errors from previous commands */
         set_error_offset(e->b, e->offset);
+    }
+}
+
+static void do_shell_enter(EditState *e)
+{
+    if (e->interactive) {
+        shell_write_char(e, '\r');
+    } else {
+        do_return(e, 1);
+    }
+}
+
+static void do_shell_intr(EditState *e)
+{
+    if (e->interactive) {
+        shell_write_char(e, 3);
+    } else {
+        text_write_char(e, 3);
+    }
+}
+
+static void do_shell_delete_char(EditState *e)
+{
+    if (e->interactive) {
+        shell_write_char(e, 4);
+    } else {
+        do_delete_char(e, NO_ARG);
+    }
+}
+
+static void do_shell_backspace(EditState *e)
+{
+    if (e->interactive) {
+        shell_write_char(e, KEY_DEL);
+    } else {
+        do_backspace(e, NO_ARG);
+    }
+}
+
+static void do_shell_delete_word(EditState *e, int dir)
+{
+    if (e->interactive) {
+        shell_write_char(e, dir > 0 ? KEY_META('d') : KEY_META(KEY_DEL));
+    } else {
+        do_kill_word(e, dir);
+    }
+}
+
+static void do_shell_kill_line(EditState *e, int dir)
+{
+    if (e->interactive) {
+        shell_write_char(e, dir > 0 ? 11 : KEY_META('k'));
+    } else {
+        do_kill_line(e, dir);
+    }
+}
+
+static void do_shell_yank(EditState *e)
+{
+    if (e->interactive) {
+        shell_write_char(e, KEY_CTRL('y'));
+    } else {
+        do_yank(e);
+    }
+}
+
+static void do_shell_tabulate(EditState *e)
+{
+    if (e->interactive) {
+        shell_write_char(e, 9);
+    } else {
+        text_write_char(e, 9);
     }
 }
 
@@ -1936,27 +2009,29 @@ static void do_compile_error(EditState *s, int dir)
 static CmdDef shell_commands[] = {
     CMD0( KEY_CTRL('o'), KEY_NONE,
           "shell-toggle-input", do_shell_toggle_input)
-    CMD1( '\r', KEY_NONE,
-          "shell-return", shell_write_char, '\r')
+    CMD0( '\r', KEY_NONE,
+          "shell-enter", do_shell_enter)
     /* CG: should send s->kbs */
-    CMD1( KEY_DEL, KEY_NONE,
-          "shell-backward-delete-char", shell_write_char, KEY_DEL)
-    CMD1( KEY_CTRLC(KEY_CTRL('c')), KEY_NONE,   /* C-c C-c */
-          "shell-intr", shell_write_char, 3)
-    CMD1( KEY_CTRL('d'), KEY_DELETE,
-          "shell-delete-char", shell_write_char, 4)
-    CMD1( KEY_META('d'), KEY_NONE,
-          "shell-delete-word", shell_write_char, KEY_META('d'))
-    CMD2( KEY_META(KEY_DEL), KEY_META(KEY_BS) ,
-          "shell-backward-delete-word", shell_write_char, ESi, "*ki")
+    CMD0( KEY_DEL, KEY_NONE,
+          "shell-backward-delete-char", do_shell_backspace)
+    CMD0( KEY_CTRLC(KEY_CTRL('c')), KEY_NONE,   /* C-c C-c */
+          "shell-intr", do_shell_intr)
+    CMD2( KEY_CTRL('d'), KEY_DELETE,
+          "shell-delete-char", do_shell_delete_char, ES, "*")
+    CMD3( KEY_META('d'), KEY_NONE,
+          "shell-delete-word", do_shell_delete_word, ESi, 1, "*v")
+    CMD3( KEY_META(KEY_DEL), KEY_META(KEY_BS) ,
+          "shell-backward-delete-word", do_shell_delete_word, ESi, -1, "*v")
     CMD2( KEY_META('p'), KEY_META('n'),
           "shell-history-search", shell_write_char, ESi, "*ki")
-    CMD1( KEY_CTRL('i'), KEY_NONE,
-          "shell-tabulate", shell_write_char, 9)
+    CMD0( KEY_CTRL('i'), KEY_NONE,
+          "shell-tabulate", do_shell_tabulate)
     CMD1( KEY_CTRL('k'), KEY_NONE,
-          "shell-kill-line", shell_write_char, 11)
-    CMD1( KEY_CTRL('y'), KEY_NONE,
-          "shell-yank", shell_write_char, 25)
+          "shell-kill-line", do_shell_kill_line, 1)
+    CMD1( KEY_META('k'), KEY_NONE,
+          "shell-kill-beginning-of-line", do_shell_kill_line, -1)
+    CMD0( KEY_CTRL('y'), KEY_NONE,
+          "shell-yank", do_shell_yank)
     CMD_DEF_END,
 };
 
@@ -2038,6 +2113,8 @@ static int shell_init(void)
     shell_mode.scroll_up_down = shell_scroll_up_down;
     shell_mode.move_bol = shell_move_bol;
     shell_mode.move_eol = shell_move_eol;
+    shell_mode.move_bof = shell_move_bof;
+    shell_mode.move_eof = shell_move_eof;
     shell_mode.write_char = shell_write_char;
 
     qe_register_mode(&shell_mode, MODEF_NOCMD | MODEF_VIEW);

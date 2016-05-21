@@ -148,6 +148,10 @@ void qe_register_mode(ModeDef *m, int flags)
             m->move_bol = text_move_bol;
         if (!m->move_eol)
             m->move_eol = text_move_eol;
+        if (!m->move_bof)
+            m->move_bof = text_move_bof;
+        if (!m->move_eof)
+            m->move_eof = text_move_eof;
         if (!m->move_word_left_right)
             m->move_word_left_right = text_move_word_left_right;
         if (!m->scroll_up_down)
@@ -455,15 +459,17 @@ void do_cd(EditState *s, const char *path)
 }
 
 /* basic editing functions */
-/* CG: should indirect these through mode ! */
+
 void do_bof(EditState *s)
 {
-    s->offset = 0;
+    if (s->mode->move_bof)
+        s->mode->move_bof(s);
 }
 
 void do_eof(EditState *s)
 {
-    s->offset = s->b->total_size;
+    if (s->mode->move_eof)
+        s->mode->move_eof(s);
 }
 
 void do_bol(EditState *s)
@@ -482,6 +488,16 @@ void do_word_right(EditState *s, int dir)
 {
     if (s->mode->move_word_left_right)
         s->mode->move_word_left_right(s, dir);
+}
+
+void text_move_bof(EditState *s)
+{
+    s->offset = 0;
+}
+
+void text_move_eof(EditState *s)
+{
+    s->offset = s->b->total_size;
 }
 
 void text_move_bol(EditState *s)
@@ -7616,6 +7632,8 @@ ModeDef text_mode = {
     .move_left_right = text_move_left_right_visual,
     .move_bol = text_move_bol,
     .move_eol = text_move_eol,
+    .move_bof = text_move_bof,
+    .move_eof = text_move_eof,
     .move_word_left_right = text_move_word_left_right,
     .scroll_up_down = text_scroll_up_down,
     .write_char = text_write_char,

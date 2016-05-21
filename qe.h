@@ -1297,11 +1297,14 @@ struct ModeDef {
     void (*move_left_right)(EditState *, int);
     void (*move_bol)(EditState *);
     void (*move_eol)(EditState *);
+    void (*move_bof)(EditState *);
+    void (*move_eof)(EditState *);
     void (*move_word_left_right)(EditState *, int);
     void (*scroll_up_down)(EditState *, int);
     void (*scroll_line_up_down)(EditState *, int);
     void (*write_char)(EditState *, int);
     void (*mouse_goto)(EditState *, int x, int y);
+    /* XXX: need functions to insert and delete contents */
 
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
     void (*get_mode_line)(EditState *s, buf_t *out);
@@ -1869,6 +1872,8 @@ void do_kill_line(EditState *s, int dir);
 void do_kill_word(EditState *s, int dir);
 void text_move_bol(EditState *s);
 void text_move_eol(EditState *s);
+void text_move_bof(EditState *s);
+void text_move_eof(EditState *s);
 void word_right(EditState *s, int w);
 void word_left(EditState *s, int w);
 void do_goto(EditState *s, const char *str, int unit);
