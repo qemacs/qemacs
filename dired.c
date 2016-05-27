@@ -1162,6 +1162,11 @@ static void dired_display_hook(EditState *s)
     }
 }
 
+static char *dired_get_default_path(EditState *s, char *buf, int buf_size)
+{
+    return makepath(buf, buf_size, s->b->filename, "");
+}
+
 static int dired_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     DiredState *ds = qe_get_buffer_mode_data(b, &dired_mode, NULL);
@@ -1326,6 +1331,7 @@ static int dired_init(void)
     dired_mode.mode_free = dired_mode_free;
     /* CG: not a good idea, display hook has side effect on layout */
     dired_mode.display_hook = dired_display_hook;
+    dired_mode.get_default_path = dired_get_default_path;
 
     /* first register mode */
     qe_register_mode(&dired_mode, /* MODEF_DATATYPE | */ MODEF_MAJOR | MODEF_VIEW);

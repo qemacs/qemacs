@@ -53,7 +53,7 @@ static int get_line_height(QEditScreen *screen, int style_index);
 void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
                    const char *str, int style_index);
-static void get_default_path(EditState *s, char *buf, int buf_size);
+static char *get_default_path(EditState *s, char *buf, int buf_size);
 static EditBuffer *predict_switch_to_buffer(EditState *s);
 static StringArray *get_history(const char *name);
 static void qe_key_process(int key);
@@ -6108,16 +6108,15 @@ void qe_kill_buffer(EditBuffer *b)
 }
 
 /* compute default path for find/save buffer */
-static void get_default_path(EditState *s, char *buf, int buf_size)
+static char *get_default_path(EditState *s, char *buf, int buf_size)
 {
     EditBuffer *b = s->b;
     char buf1[MAX_FILENAME_SIZE];
     const char *filename;
 
-    /* CG: should have more specific code for dired/shell buffer... */
-    if (b->flags & BF_DIRED) {
-        makepath(buf, buf_size, b->filename, "");
-        return;
+    /* dispatch to mode specific handler if any */
+    if (s->mode->get_default_path) {
+        return s->mode->get_default_path(s, buf, buf_size);
     }
 
     if ((b->flags & BF_SYSTEM)
@@ -6129,6 +6128,7 @@ static void get_default_path(EditState *s, char *buf, int buf_size)
     }
     canonicalize_absolute_path(buf1, sizeof(buf1), filename);
     splitpath(buf, buf_size, NULL, 0, buf1);
+    return buf;
 }
 
 /* should have: rawbuf[len] == '\0' */

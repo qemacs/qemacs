@@ -1309,6 +1309,7 @@ struct ModeDef {
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
     void (*get_mode_line)(EditState *s, buf_t *out);
     void (*indent_func)(EditState *s, int offset);
+    char *(*get_default_path)(EditState *s, char *buf, int buf_size);
 
     /* mode specific key bindings */
     struct KeyDef *first_key;

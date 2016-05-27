@@ -6,8 +6,8 @@
 * Needed for release version 5
 
 * Priority 0
-** shell: turn on interactive mode on M-> and some other commands that move
-   the cursor to the end of file
+** shell: turn on interactive mode on commands that move the cursor 
+   to the end of buffer
 ** basic: reset last command when executing macro
 ** extra: add function to add entry in TOTO.org
 ** clang: indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
@@ -68,12 +68,10 @@
 ** search: make isearch bindings for minibuffer
 ** session: previous answers, ...
 ** session: register session store functions
-** shell: fix current directory for process buffer
 ** shell: handle long shell lines
 ** shell: integrate kill/paste including multiple lines
 ** shell: fix crash bug when invoking qemacs recursively in the terminal
 ** shell: set current directory of new shell buffer to that of current window
-** shell: set qemacs default directory to that of shell window upon cd command
 ** shell: yank at shell prompt
 ** syntax: fix overlong line coloring
 ** syntax: support ReStructuredText (RST)
@@ -503,4 +501,3 @@ sjis-0213-2004-std.txt
 MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT 
 cpdata.txt
 koi8_ru.cp
-

@@ -1846,6 +1846,42 @@ static void do_shell_toggle_input(EditState *e)
 #endif
 }
 
+/* get current directory from prompt on current line */
+/* XXX: should extend behavior to handle more subtile cases */
+static char *shell_get_default_path(EditState *s, char *buf, int buf_size)
+{
+    char line[1024];
+    int offset = eb_goto_bol(s->b, s->offset);
+    int start, first_blank, last_blank, stop, i;
+    
+    eb_get_strline(s->b, line, sizeof(line), &offset);
+
+    first_blank = last_blank = 0;
+    for (i = 0; line[i] != '\0'; i++) {
+        int c = line[i];
+        if (c == '$' || c == '>')
+            break;
+        if (c == ' ') {
+            if (!first_blank)
+                first_blank = i + 1;
+            last_blank = i;
+        }
+    }
+    stop = i;
+    if (last_blank == i - 1)
+        stop = last_blank;
+
+    start = 0;
+    if (first_blank < last_blank)
+        start = first_blank;
+
+    line[stop] = '\0';
+
+    canonicalize_absolute_path(buf, buf_size, line + start);
+    append_slash(buf, buf_size);
+    return buf;
+}
+
 static void do_shell_command(EditState *e, const char *cmd)
 {
     EditBuffer *b;
@@ -2116,6 +2152,7 @@ static int shell_init(void)
     shell_mode.move_bof = shell_move_bof;
     shell_mode.move_eof = shell_move_eof;
     shell_mode.write_char = shell_write_char;
+    shell_mode.get_default_path = shell_get_default_path;
 
     qe_register_mode(&shell_mode, MODEF_NOCMD | MODEF_VIEW);
     qe_register_cmd_table(shell_commands, &shell_mode);
