@@ -1650,6 +1650,19 @@ static void shell_previous_next(EditState *e, int dir)
     }
 }
 
+static void shell_exchange_point_and_mark(EditState *e)
+{
+    ShellState *s = shell_get_state(e, 1);
+
+    if (s && e->interactive) {
+        tty_write(s, "\030\030", 2);  /* C-x C-x */
+    } else {
+        do_exchange_point_and_mark(e);
+        if (s && (s->shell_flags & SF_INTERACTIVE))
+            e->interactive = (e->offset == s->cur_offset);
+    }
+}
+
 static void shell_scroll_up_down(EditState *e, int dir)
 {
     ShellState *s = shell_get_state(e, 1);
@@ -2077,6 +2090,8 @@ static CmdDef shell_commands[] = {
           "shell-previous", shell_previous_next, -1)
     CMD1( KEY_META('n'), KEY_NONE,
           "shell-next", shell_previous_next, -1)
+    CMD0( KEY_CTRLX(KEY_CTRL('x')), KEY_NONE,
+          "shell-exchange-point-and-mark", shell_exchange_point_and_mark)
     CMD2( KEY_CTRL('i'), KEY_NONE,
           "shell-tabulate", do_shell_tabulate, ES, "*")
     CMD3( KEY_CTRL('k'), KEY_NONE,
