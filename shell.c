@@ -1635,6 +1635,21 @@ static void shell_move_up_down(EditState *e, int dir)
     }
 }
 
+static void shell_previous_next(EditState *e, int dir)
+{
+    ShellState *s = shell_get_state(e, 1);
+
+    if (s && e->interactive) {
+        /* hack: M-p silently converted to C-p */
+        tty_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
+    } else {
+        /* hack: M-p silently converted to C-u C-p */
+        text_move_up_down(e, dir * 4);
+        if (s && (s->shell_flags & SF_INTERACTIVE))
+            e->interactive = (e->offset == s->cur_offset);
+    }
+}
+
 static void shell_scroll_up_down(EditState *e, int dir)
 {
     ShellState *s = shell_get_state(e, 1);
@@ -2045,11 +2060,11 @@ static void do_compile_error(EditState *s, int dir)
 static CmdDef shell_commands[] = {
     CMD0( KEY_CTRL('o'), KEY_NONE,
           "shell-toggle-input", do_shell_toggle_input)
-    CMD0( '\r', KEY_NONE,
-          "shell-enter", do_shell_enter)
+    CMD2( '\r', KEY_NONE,
+          "shell-enter", do_shell_enter, ES, "*")
     /* CG: should send s->kbs */
-    CMD0( KEY_DEL, KEY_NONE,
-          "shell-backward-delete-char", do_shell_backspace)
+    CMD2( KEY_DEL, KEY_NONE,
+          "shell-backward-delete-char", do_shell_backspace, ES, "*")
     CMD0( KEY_CTRLC(KEY_CTRL('c')), KEY_NONE,   /* C-c C-c */
           "shell-intr", do_shell_intr)
     CMD2( KEY_CTRL('d'), KEY_DELETE,
@@ -2058,16 +2073,18 @@ static CmdDef shell_commands[] = {
           "shell-delete-word", do_shell_delete_word, ESi, 1, "*v")
     CMD3( KEY_META(KEY_DEL), KEY_META(KEY_BS) ,
           "shell-backward-delete-word", do_shell_delete_word, ESi, -1, "*v")
-    CMD2( KEY_META('p'), KEY_META('n'),
-          "shell-history-search", shell_write_char, ESi, "*ki")
-    CMD0( KEY_CTRL('i'), KEY_NONE,
-          "shell-tabulate", do_shell_tabulate)
-    CMD1( KEY_CTRL('k'), KEY_NONE,
-          "shell-kill-line", do_shell_kill_line, 1)
-    CMD1( KEY_META('k'), KEY_NONE,
-          "shell-kill-beginning-of-line", do_shell_kill_line, -1)
-    CMD0( KEY_CTRL('y'), KEY_NONE,
-          "shell-yank", do_shell_yank)
+    CMD1( KEY_META('p'), KEY_NONE,
+          "shell-previous", shell_previous_next, -1)
+    CMD1( KEY_META('n'), KEY_NONE,
+          "shell-next", shell_previous_next, -1)
+    CMD2( KEY_CTRL('i'), KEY_NONE,
+          "shell-tabulate", do_shell_tabulate, ES, "*")
+    CMD3( KEY_CTRL('k'), KEY_NONE,
+          "shell-kill-line", do_shell_kill_line, ESi, 1, "*v")
+    CMD3( KEY_META('k'), KEY_NONE,
+          "shell-kill-beginning-of-line", do_shell_kill_line, ESi, -1, "*v")
+    CMD2( KEY_CTRL('y'), KEY_NONE,
+          "shell-yank", do_shell_yank, ES, "*")
     CMD_DEF_END,
 };
 
