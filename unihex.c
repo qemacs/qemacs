@@ -228,8 +228,8 @@ static ModeDef unihex_mode = {
     .move_bol = unihex_move_bol,
     .move_eol = unihex_move_eol,
     .scroll_up_down = text_scroll_up_down,
-    .write_char = hex_write_char,
     .mouse_goto = text_mouse_goto,
+    .write_char = hex_write_char,
     .get_mode_line = unihex_mode_line,
 };
 

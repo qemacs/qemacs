@@ -2484,15 +2484,15 @@ int eb_is_in_indentation(EditBuffer *b, int offset)
 }
 
 /* return offset of the end of the line containing offset */
-int eb_goto_eol(EditBuffer *b, int offset)
+int eb_goto_eol(EditBuffer *b, int offset1)
 {
-    int c, offset1;
+    int c, offset;
 
     for (;;) {
+        offset = offset1;
         c = eb_nextc(b, offset, &offset1);
         if (c == '\n')
             break;
-        offset = offset1;
     }
     return offset;
 }

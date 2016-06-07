@@ -59,6 +59,7 @@ typedef struct ShellState {
     int pid; /* -1 if not launched */
     int color, attr, def_color;
     int cur_offset; /* current offset at position x, y */
+    int cur_prompt; /* offset of end of prompt on current line */
     int esc_params[MAX_ESC_PARAMS];
     int has_params[MAX_ESC_PARAMS];
     int nb_esc_params;
@@ -82,6 +83,7 @@ typedef struct ShellState {
     const char *khome, *kend, *kmous, *knp, *kpp;
     const char *caption;  /* process caption for exit message */
     int shell_flags;
+    int last_char;  /* last char sent to the process */
 
 } ShellState;
 
@@ -408,6 +410,7 @@ static void tty_init(ShellState *s)
     }
 }
 
+// XXX: should use an auxiliary buffer to make this asynchous
 static void tty_write(ShellState *s, const char *buf, int len)
 {
     int ret;
@@ -426,6 +429,7 @@ static void tty_write(ShellState *s, const char *buf, int len)
             break;
         buf += ret;
         len -= ret;
+        s->last_char = buf[-1];
     }
 }
 
@@ -1312,6 +1316,18 @@ static void shell_read_cb(void *opaque)
             s->b->flags |= save_readonly;
         }
     }
+    if (s->last_char == '\000' || s->last_char == '\001'
+    ||  s->last_char == '\003'
+    ||  s->last_char == '\r' || s->last_char == '\n') {
+        /* if the last char sent to the process was the enter key, C-C
+         * to kill the process, C-A to go to beginning of line, or if
+         * nothing was sent to the process yet, assume the process is
+         * prompting for input and save the current input position as
+         * the start of input.
+         */
+        s->b->mark = s->cur_prompt = s->cur_offset;
+    }
+
     /* now we do some refresh */
     edit_display(qs);
     dpy_flush(qs->screen);
@@ -1323,6 +1339,7 @@ static void shell_mode_free(EditBuffer *b, void *state)
     int status;
 
     eb_free_callback(b, eb_offset_callback, &s->cur_offset);
+    eb_free_callback(b, eb_offset_callback, &s->cur_prompt);
 
     if (s->pid != -1) {
         kill(s->pid, SIGINT);
@@ -1458,6 +1475,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
         }
         /* Track cursor with edge effect */
         eb_add_callback(b, eb_offset_callback, &s->cur_offset, 1);
+        eb_add_callback(b, eb_offset_callback, &s->cur_prompt, 0);
     }
     s->b = b;
     s->pty_fd = -1;
@@ -1465,7 +1483,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     s->qe_state = qs;
     s->caption = caption;
     s->shell_flags = shell_flags;
-    s->cur_offset = b->total_size;
+    s->cur_prompt = s->cur_offset = b->total_size;
     tty_init(s);
 
     /* launch shell */
@@ -1630,6 +1648,7 @@ static void shell_move_up_down(EditState *e, int dir)
         tty_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
     } else {
         text_move_up_down(e, dir);
+        // XXX: what if beyond?
         if (s && (s->shell_flags & SF_INTERACTIVE))
             e->interactive = (e->offset == s->cur_offset);
     }
@@ -1645,6 +1664,7 @@ static void shell_previous_next(EditState *e, int dir)
     } else {
         /* hack: M-p silently converted to C-u C-p */
         text_move_up_down(e, dir * 4);
+        // XXX: what if beyond?
         if (s && (s->shell_flags & SF_INTERACTIVE))
             e->interactive = (e->offset == s->cur_offset);
     }
@@ -1658,6 +1678,7 @@ static void shell_exchange_point_and_mark(EditState *e)
         tty_write(s, "\030\030", 2);  /* C-x C-x */
     } else {
         do_exchange_point_and_mark(e);
+        // XXX: what if beyond?
         if (s && (s->shell_flags & SF_INTERACTIVE))
             e->interactive = (e->offset == s->cur_offset);
     }
@@ -1669,6 +1690,7 @@ static void shell_scroll_up_down(EditState *e, int dir)
 
     e->interactive = 0;
     text_scroll_up_down(e, dir);
+    // XXX: what if beyond?
     if (s && (s->shell_flags & SF_INTERACTIVE))
         e->interactive = (e->offset == s->cur_offset);
 }
@@ -1677,10 +1699,9 @@ static void shell_move_bol(EditState *e)
 {
     ShellState *s = shell_get_state(e, 1);
 
-    /* XXX: exit shell interactive mode on home / ^A */
-    /* XXX: should first perform the shell's ^A,
-     * then exit interactive-mode */
-    e->interactive = 0;
+    /* exit shell interactive mode on home / ^A at start of shell input */
+    if (!s || e->offset == s->cur_prompt)
+        e->interactive = 0;
 
     if (s && e->interactive) {
         tty_write(s, "\001", 1); /* Control-A */
@@ -1698,8 +1719,12 @@ static void shell_move_eol(EditState *e)
     } else {
         text_move_eol(e);
         /* XXX: restore shell interactive mode on end / ^E */
-        if (s && (s->shell_flags & SF_INTERACTIVE))
-            e->interactive = (e->offset == s->cur_offset);
+        if (s && (s->shell_flags & SF_INTERACTIVE)
+        &&  e->offset >= s->cur_offset) {
+            e->interactive = 1;
+            if (e->offset > s->cur_offset)
+                tty_write(s, "\005", 1); /* Control-E */
+        }
     }
 }
 
@@ -1719,18 +1744,23 @@ static void shell_move_eof(EditState *e)
     } else {
         text_move_eof(e);
         /* Restore shell interactive mode on end-buffer / M-> */
-        if (s && (s->shell_flags & SF_INTERACTIVE))
-            e->interactive = (e->offset == s->cur_offset);
+        if (s && (s->shell_flags & SF_INTERACTIVE)
+        &&  e->offset >= s->cur_offset) {
+            e->interactive = 1;
+            if (e->offset != s->cur_offset)
+                tty_write(s, "\005", 1); /* Control-E */
+        }
     }
 }
 
 static void shell_write_char(EditState *e, int c)
 {
-    char buf[10];
-    int len;
     ShellState *s = shell_get_state(e, 1);
 
     if (s && e->interactive) {
+        char buf[10];
+        int len;
+
         if (c >= KEY_META(0) && c <= KEY_META(0xff)) {
             buf[0] = '\033';
             buf[1] = c - KEY_META(0);
@@ -1740,53 +1770,71 @@ static void shell_write_char(EditState *e, int c)
         }
         tty_write(s, buf, len);
     } else {
-        /* Should dispatch as in fundamental mode */
-        switch (c) {
-        case KEY_CTRL('d'):
-            do_delete_char(e, NO_ARG);
-            break;
-        // Do not do this: it is useless and causes infinite recursion
-        //case 9:
-        //    do_tab(e, 1);
-        //    break;
-        case KEY_CTRL('k'):
-            do_kill_line(e, 1);
-            break;
-        case KEY_CTRL('y'):
-            do_yank(e);
-            break;
-        case KEY_BS:
-        case KEY_DEL:
-            do_backspace(e, NO_ARG);
-            break;
-        case '\r':
-            do_return(e, 1);
-            break;
-        case KEY_META('d'):
-            do_kill_word(e, 1);
-            break;
-        case KEY_META(KEY_BS):
-        case KEY_META(KEY_DEL):
-            do_kill_word(e, -1);
-            break;
-        default:
-            text_write_char(e, c);
-            break;
-        }
+        text_write_char(e, c);
     }
-    if (c == '\r') {
-        /* skip errors from previous commands */
-        set_error_offset(e->b, e->offset);
+}
+
+static void shell_delete_bytes(EditState *e, int offset, int size)
+{
+    ShellState *s = shell_get_state(e, 1);
+    int start = offset;
+    int end = offset + size;
+
+    // XXX: should deal with regions spanning current input line and
+    // previous buffer contents
+    if (s && !s->grab_keys && end > s->cur_prompt) {
+        int start_char, cur_char, end_char, size;
+        if (start < s->cur_prompt) {
+            /* delete part before the interactive input */
+            size = eb_delete(e->b, start, s->cur_prompt);
+            end -= size;
+            start = s->cur_prompt;
+        }
+        start_char = eb_get_char_offset(e->b, start);
+        cur_char = eb_get_char_offset(e->b, s->cur_offset);
+        end_char = eb_get_char_offset(e->b, end);
+        while (cur_char > end_char) {
+            tty_write(s, "\002", 1);  /* C-b */
+            cur_char--;
+        }
+        while (cur_char < start_char) {
+            tty_write(s, "\006", 1);  /* C-f */
+            cur_char++;
+        }
+        if (start_char == cur_char && end == e->b->total_size) {
+            /* kill to end of line with control-k */
+            tty_write(s, "\013", 1);
+        } else {
+            while (cur_char < end_char) {
+                tty_write(s, "\004", 1);  /* C-d */
+                end_char--;
+            }
+            while (start_char < cur_char) {
+                tty_write(s, "\010", 1);  /* backspace */
+                cur_char--;
+                end_char--;
+            }
+        }
+    } else {
+        eb_delete(e->b, offset, size);
     }
 }
 
 static void do_shell_enter(EditState *e)
 {
+    struct timespec ts;
+
     if (e->interactive) {
         shell_write_char(e, '\r');
+        /* give the process a chance to handle the input */
+        ts.tv_sec = 0;
+        ts.tv_nsec = 1000000;  /* 1 ms */
+        nanosleep(&ts, NULL);
     } else {
         do_return(e, 1);
     }
+    /* reset offset to scan errors and matches from */
+    set_error_offset(e->b, e->offset);
 }
 
 static void do_shell_intr(EditState *e)
@@ -1816,28 +1864,116 @@ static void do_shell_backspace(EditState *e)
     }
 }
 
-static void do_shell_delete_word(EditState *e, int dir)
+static void do_shell_kill_word(EditState *e, int dir)
 {
-    if (e->interactive) {
+    ShellState *s = shell_get_state(e, 1);
+
+    if (s && e->interactive) {
+        /* copy word to the kill ring */
+        int start = e->offset;
+
+        text_move_word_left_right(e, dir);
+        if (e->offset < s->cur_prompt) {
+            e->offset = s->cur_prompt;
+        }
+        do_kill(e, start, e->offset, dir, 1);
+        // XXX: word pattern consistency issue
         shell_write_char(e, dir > 0 ? KEY_META('d') : KEY_META(KEY_DEL));
     } else {
         do_kill_word(e, dir);
     }
 }
 
-static void do_shell_kill_line(EditState *e, int dir)
+static void do_shell_kill_line(EditState *e, int argval)
 {
-    if (e->interactive) {
-        shell_write_char(e, dir > 0 ? 11 : KEY_META('k'));
+    ShellState *s = shell_get_state(e, 1);
+    int dir = (argval == NO_ARG || argval > 0) ? 1 : -1;
+    int offset, p1 = e->offset, p2 = p1;
+
+    if (s && e->interactive) {
+        /* ignore count argument in interactive mode */
+        if (dir < 0) {
+            /* kill backwards upto prompt position */
+            p2 = max(eb_goto_bol(e->b, p1), s->cur_prompt);
+            do_kill(e, p1, p2, dir, 0);
+            //shell_write_char(e, KEY_META('k'));
+        } else {
+            p2 = eb_goto_eol(e->b, p1);
+            do_kill(e, p1, p2, dir, 0);
+            //shell_write_char(e, KEY_CTRL('k'));
+        }
     } else {
-        do_kill_line(e, dir);
+        /* Cannot use do_kill_line() because it relies on mode specific
+         * cursor movement methods, which are handled asynchronously in
+         * shell mode.
+         */
+        if (argval == NO_ARG) {
+            /* kill to end of line */
+            if (eb_nextc(e->b, p2, &offset) == '\n') {
+                p2 = offset;
+            } else {
+                p2 = eb_goto_eol(e->b, p2);
+            }
+        } else
+        if (argval <= 0) {
+            /* kill backwards */
+            dir = -1;
+            for (;;) {
+                p2 = eb_goto_bol(e->b, p2);
+                if (p2 <= 0 || argval == 0)
+                    break;
+                eb_prevc(e->b, p2, &p2);
+                argval += 1;
+            }
+        } else {
+            for (;;) {
+                p2 = eb_goto_eol(e->b, p2);
+                if (p2 >= e->b->total_size || argval == 0)
+                    break;
+                eb_nextc(e->b, p2, &p2);
+                argval -= 1;
+            }
+        }
+        e->offset = p2;
+        do_kill(e, p1, p2, dir, 0);
     }
 }
+
+static void do_shell_kill_beginning_of_line(EditState *s, int argval)
+{
+    do_shell_kill_line(s, argval == NO_ARG ? 0 : -argval);
+}
+
+// XXX: need shell_set_mark, shell_kill_region...
 
 static void do_shell_yank(EditState *e)
 {
     if (e->interactive) {
-        shell_write_char(e, KEY_CTRL('y'));
+        /* yank from kill-ring and insert via shell_write_char().
+         * This will cause a deadlock if kill buffer contents is too
+         * large. Hard coded limit can be removed if shell input is
+         * made asynchronous via an auxiliary buffer.
+         */
+        int offset;
+        QEmacsState *qs = e->qe_state;
+        EditBuffer *b = qs->yank_buffers[qs->yank_current];
+
+        e->b->mark = e->offset;
+        
+        if (b) {
+            if (b->total_size > 1024) {
+                put_status(e, "too much data to yank at shell prompt");
+                return;
+            }
+            for (offset = 0; offset < b->total_size;) {
+                int c = eb_nextc(b, offset, &offset);
+                if (c == '\n')
+                    do_shell_enter(e);
+                else
+                    shell_write_char(e, c);
+            }
+        }
+        qs->this_cmd_func = (CmdFunc)do_yank;
     } else {
         do_yank(e);
     }
@@ -2083,21 +2219,21 @@ static CmdDef shell_commands[] = {
     CMD2( KEY_CTRL('d'), KEY_DELETE,
           "shell-delete-char", do_shell_delete_char, ES, "*")
     CMD3( KEY_META('d'), KEY_NONE,
-          "shell-delete-word", do_shell_delete_word, ESi, 1, "*v")
+          "shell-kill-word", do_shell_kill_word, ESi, 1, "v")
     CMD3( KEY_META(KEY_DEL), KEY_META(KEY_BS) ,
-          "shell-backward-delete-word", do_shell_delete_word, ESi, -1, "*v")
+          "shell-backward-kill-word", do_shell_kill_word, ESi, -1, "v")
     CMD1( KEY_META('p'), KEY_NONE,
           "shell-previous", shell_previous_next, -1)
     CMD1( KEY_META('n'), KEY_NONE,
-          "shell-next", shell_previous_next, -1)
+          "shell-next", shell_previous_next, 1)
     CMD0( KEY_CTRLX(KEY_CTRL('x')), KEY_NONE,
           "shell-exchange-point-and-mark", shell_exchange_point_and_mark)
     CMD2( KEY_CTRL('i'), KEY_NONE,
           "shell-tabulate", do_shell_tabulate, ES, "*")
-    CMD3( KEY_CTRL('k'), KEY_NONE,
-          "shell-kill-line", do_shell_kill_line, ESi, 1, "*v")
-    CMD3( KEY_META('k'), KEY_NONE,
-          "shell-kill-beginning-of-line", do_shell_kill_line, ESi, -1, "*v")
+    CMD2( KEY_CTRL('k'), KEY_NONE,
+          "shell-kill-line", do_shell_kill_line, ESi, "ui")
+    CMD2( KEY_META('k'), KEY_NONE,
+          "shell-kill-beginning-of-line", do_shell_kill_beginning_of_line, ESi, "ui")
     CMD2( KEY_CTRL('y'), KEY_NONE,
           "shell-yank", do_shell_yank, ES, "*")
     CMD_DEF_END,
@@ -2184,6 +2320,7 @@ static int shell_init(void)
     shell_mode.move_bof = shell_move_bof;
     shell_mode.move_eof = shell_move_eof;
     shell_mode.write_char = shell_write_char;
+    shell_mode.delete_bytes = shell_delete_bytes;
     shell_mode.get_default_path = shell_get_default_path;
 
     qe_register_mode(&shell_mode, MODEF_NOCMD | MODEF_VIEW);

@@ -111,18 +111,18 @@ static CmdDef basic_commands[] = {
           "mark-whole-buffer", do_mark_whole_buffer)
     CMD0( KEY_META(KEY_CTRL('w')), KEY_NONE,
           "append-next-kill", do_append_next_kill)
-    CMD3( KEY_CTRL('k'), KEY_NONE,
-          "kill-line", do_kill_line, ESi, 1, "*v" )
-    CMD3( KEY_NONE, KEY_NONE,
-          "kill-beginning-of-line", do_kill_line, ESi, -1, "*v" )
+    CMD2( KEY_CTRL('k'), KEY_NONE,
+          "kill-line", do_kill_line, ESi, "ui" )
+    CMD2( KEY_NONE, KEY_NONE,
+          "kill-beginning-of-line", do_kill_beginning_of_line, ESi, "ui" )
     CMD3( KEY_META(KEY_DEL), KEY_META(KEY_BS),
-          "backward-kill-word", do_kill_word, ESi, -1, "*v" )
+          "backward-kill-word", do_kill_word, ESi, -1, "v" )
     CMD3( KEY_META('d'), KEY_NONE,
-          "kill-word", do_kill_word, ESi, 1, "*v" )
-    CMD3( KEY_CTRL('w'), KEY_NONE,
-          "kill-region", do_kill_region, ESi, 1, "*v" )
+          "kill-word", do_kill_word, ESi, 1, "v" )
+    CMD1( KEY_CTRL('w'), KEY_NONE,
+          "kill-region", do_kill_region, 0 )
     CMD1( KEY_META('w'), KEY_NONE,
-          "copy-region", do_kill_region, 0 )
+          "copy-region", do_kill_region, 1 )
     CMD2( KEY_CTRL('y'), KEY_NONE,
           "yank", do_yank, ES, "*")
     CMD2( KEY_META('y'), KEY_NONE,
@@ -215,7 +215,7 @@ static CmdDef basic_commands[] = {
     CMD2( KEY_META('q'), KEY_NONE,
           "fill-paragraph", do_fill_paragraph, ES, "*")
     CMD3( KEY_NONE, KEY_NONE,
-          "kill-paragraph", do_kill_paragraph, ESi, 1, "*v")
+          "kill-paragraph", do_kill_paragraph, ESi, 1, "v")
 
     CMD3( KEY_META('c'), KEY_NONE,
           "capitalize-word", do_changecase_word, ESi, 2, "*v")

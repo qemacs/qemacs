@@ -542,11 +542,8 @@ static void do_kill_block(EditState *s, int dir)
 {
     int start = s->offset;
 
-    if (s->b->flags & BF_READONLY)
-        return;
-
     do_forward_block(s, dir);
-    do_kill(s, start, s->offset, dir);
+    do_kill(s, start, s->offset, dir, 0);
 }
 
 enum {
@@ -1188,9 +1185,9 @@ static CmdDef extra_commands[] = {
     CMD3( KEY_META(KEY_CTRL('f')), KEY_NONE,
           "forward-block", do_forward_block, ESi, 1, "v")
     CMD3( KEY_ESC, KEY_DELETE,
-          "backward-kill-block", do_kill_block, ESi, -1, "*v")
+          "backward-kill-block", do_kill_block, ESi, -1, "v")
     CMD3( KEY_META(KEY_CTRL('k')), KEY_NONE,
-          "kill-block", do_kill_block, ESi, 1, "*v")
+          "kill-block", do_kill_block, ESi, 1, "v")
           /* Should also have mark-block on C-M-@ */
 
     CMD3( KEY_CTRL('t'), KEY_NONE,

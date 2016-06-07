@@ -339,8 +339,8 @@ static ModeDef binary_mode = {
     .move_bol = hex_move_bol,
     .move_eol = hex_move_eol,
     .scroll_up_down = text_scroll_up_down,
-    .write_char = text_write_char,
     .mouse_goto = text_mouse_goto,
+    .write_char = text_write_char,
     .get_mode_line = hex_mode_line,
 };
 
@@ -355,8 +355,8 @@ ModeDef hex_mode = {
     .move_bol = hex_move_bol,
     .move_eol = hex_move_eol,
     .scroll_up_down = text_scroll_up_down,
-    .write_char = hex_write_char,
     .mouse_goto = text_mouse_goto,
+    .write_char = hex_write_char,
     .get_mode_line = hex_mode_line,
 };
 

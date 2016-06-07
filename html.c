@@ -929,8 +929,8 @@ ModeDef html_mode = {
     .move_bol = html_move_bol,
     .move_eol = html_move_eol,
     .scroll_up_down = html_scroll_up_down,
-    .write_char = text_write_char,
     .mouse_goto = html_mouse_goto,
+    .write_char = text_write_char,
 };
 
 static int html_init(void)

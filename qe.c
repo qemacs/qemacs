@@ -156,10 +156,10 @@ void qe_register_mode(ModeDef *m, int flags)
             m->move_word_left_right = text_move_word_left_right;
         if (!m->scroll_up_down)
             m->scroll_up_down = text_scroll_up_down;
-        if (!m->write_char)
-            m->write_char = text_write_char;
         if (!m->mouse_goto)
             m->mouse_goto = text_mouse_goto;
+        if (!m->write_char)
+            m->write_char = text_write_char;
     }
 
     /* add missing functions */
@@ -638,15 +638,12 @@ void do_kill_paragraph(EditState *s, int dir)
 {
     int start = s->offset;
 
-    if (s->b->flags & BF_READONLY)
-        return;
-
     if (dir < 0)
         do_backward_paragraph(s);
     else
         do_forward_paragraph(s);
 
-    do_kill(s, start, s->offset, dir);
+    do_kill(s, start, s->offset, dir, 0);
 }
 
 void do_fill_paragraph(EditState *s)
@@ -828,7 +825,7 @@ void do_delete_char(EditState *s, int argval)
     for (i = argval; i < 0 && endpos > 0; i++) {
         eb_prevc(s->b, endpos, &endpos);
     }
-    do_kill(s, s->offset, endpos, argval);
+    do_kill(s, s->offset, endpos, argval, 0);
 }
 
 void do_backspace(EditState *s, int argval)
@@ -1725,7 +1722,7 @@ void do_append_next_kill(qe__unused__ EditState *s)
     /* do nothing! */
 }
 
-void do_kill(EditState *s, int p1, int p2, int dir)
+void do_kill(EditState *s, int p1, int p2, int dir, int keep)
 {
     QEmacsState *qs = s->qe_state;
     int len, tmp;
@@ -1733,9 +1730,6 @@ void do_kill(EditState *s, int p1, int p2, int dir)
 
     /* deactivate region hilite */
     s->region_style = 0;
-
-    if (dir && (s->b->flags & BF_READONLY))
-        return;
 
     if (p1 > p2) {
         tmp = p1;
@@ -1750,56 +1744,81 @@ void do_kill(EditState *s, int p1, int p2, int dir)
     }
     /* insert at beginning or end depending on kill direction */
     eb_insert_buffer_convert(b, dir < 0 ? 0 : b->total_size, s->b, p1, len);
-    if (dir) {
-        eb_delete(s->b, p1, len);
+    if (keep) {
+        /* no message */
+    } else
+    if (!(s->b->flags & BF_READONLY)) {
+        if (s->mode->delete_bytes) {
+            s->mode->delete_bytes(s, p1, len);
+        } else {
+            eb_delete(s->b, p1, len);
+        }
         s->offset = p1;
-        qs->this_cmd_func = (CmdFunc)do_append_next_kill;
     } else {
         put_status(s, "Region copied");
+    }
+    if (dir) {
+        qs->this_cmd_func = (CmdFunc)do_append_next_kill;
     }
     selection_activate(qs->screen);
 }
 
-void do_kill_region(EditState *s, int killtype)
+void do_kill_region(EditState *s, int keep)
 {
-    do_kill(s, s->b->mark, s->offset, killtype);
+    do_kill(s, s->b->mark, s->offset, 0, keep);
 }
 
-void do_kill_line(EditState *s, int dir)
+void do_kill_line(EditState *s, int argval)
 {
-    int p1, p2, offset1;
-
-    if (s->b->flags & BF_READONLY)
-        return;
+    int p1, p2, offset1, dir = 1;
 
     p1 = s->offset;
-    if (dir < 0) {
-        /* kill beginning of line */
-        do_bol(s);
-        p2 = s->offset;
-    } else {
-        /* kill line */
+    if (argval == NO_ARG) {
+        /* kill to end of line */
         if (eb_nextc(s->b, p1, &offset1) == '\n') {
-            p2 = offset1;
+            p2 = s->offset = offset1;
         } else {
-            p2 = offset1;
-            while (eb_nextc(s->b, p2, &offset1) != '\n') {
-                p2 = offset1;
-            }
+            do_eol(s);
+            p2 = s->offset;
+        }
+    } else
+    if (argval <= 0) {
+        /* kill backwards */
+        dir = -1;
+        for (;;) {
+            do_bol(s);
+            p2 = s->offset;
+            if (p2 <= 0 || argval == 0)
+                break;
+            eb_prevc(s->b, p2, &p2);
+            s->offset = p2;
+            argval += 1;
+        }
+    } else {
+        for (;;) {
+            do_eol(s);
+            p2 = s->offset;
+            if (p2 >= s->b->total_size || argval == 0)
+                break;
+            eb_nextc(s->b, p2, &p2);
+            s->offset = p2;
+            argval -= 1;
         }
     }
-    do_kill(s, p1, p2, dir);
+    do_kill(s, p1, p2, dir, 0);
+}
+
+void do_kill_beginning_of_line(EditState *s, int argval)
+{
+    do_kill_line(s, argval == NO_ARG ? 0 : -argval);
 }
 
 void do_kill_word(EditState *s, int dir)
 {
     int start = s->offset;
 
-    if (s->b->flags & BF_READONLY)
-        return;
-
     do_word_right(s, dir);
-    do_kill(s, start, s->offset, dir);
+    do_kill(s, start, s->offset, dir, 0);
 }
 
 void do_yank(EditState *s)
@@ -7343,7 +7362,7 @@ static void save_selection(void)
         e = motion_target;
         if (!check_motion_target(e))
             return;
-        do_kill_region(e, 0);
+        do_kill_region(e, 1);
     }
 }
 
@@ -7636,8 +7655,8 @@ ModeDef text_mode = {
     .move_eof = text_move_eof,
     .move_word_left_right = text_move_word_left_right,
     .scroll_up_down = text_scroll_up_down,
-    .write_char = text_write_char,
     .mouse_goto = text_mouse_goto,
+    .write_char = text_write_char,
 };
 
 /* find a resource file */

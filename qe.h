@@ -1293,18 +1293,20 @@ struct ModeDef {
 
     /* common functions are defined here */
     /* TODO: Should have single move function with move type and argument */
-    void (*move_up_down)(EditState *, int);
-    void (*move_left_right)(EditState *, int);
-    void (*move_bol)(EditState *);
-    void (*move_eol)(EditState *);
-    void (*move_bof)(EditState *);
-    void (*move_eof)(EditState *);
-    void (*move_word_left_right)(EditState *, int);
-    void (*scroll_up_down)(EditState *, int);
-    void (*scroll_line_up_down)(EditState *, int);
-    void (*write_char)(EditState *, int);
-    void (*mouse_goto)(EditState *, int x, int y);
-    /* XXX: need functions to insert and delete contents */
+    void (*move_up_down)(EditState *s, int dir);
+    void (*move_left_right)(EditState *s, int dir);
+    void (*move_bol)(EditState *s);
+    void (*move_eol)(EditState *s);
+    void (*move_bof)(EditState *s);
+    void (*move_eof)(EditState *s);
+    void (*move_word_left_right)(EditState *s, int dir);
+    void (*scroll_up_down)(EditState *s, int dir);
+    void (*scroll_line_up_down)(EditState *s, int dir);
+    void (*mouse_goto)(EditState *s, int x, int y);
+
+    /* Functions to insert and delete contents: */
+    void (*write_char)(EditState *s, int c);
+    void (*delete_bytes)(EditState *s, int offset, int size);
 
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
     void (*get_mode_line)(EditState *s, buf_t *out);
@@ -1867,9 +1869,10 @@ void do_delete_char(EditState *s, int argval);
 void do_tab(EditState *s, int argval);
 EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base);
 void do_append_next_kill(EditState *s);
-void do_kill(EditState *s, int p1, int p2, int dir);
-void do_kill_region(EditState *s, int killtype);
-void do_kill_line(EditState *s, int dir);
+void do_kill(EditState *s, int p1, int p2, int dir, int keep);
+void do_kill_region(EditState *s, int keep);
+void do_kill_line(EditState *s, int argval);
+void do_kill_beginning_of_line(EditState *s, int argval);
 void do_kill_word(EditState *s, int dir);
 void text_move_bol(EditState *s);
 void text_move_eol(EditState *s);
