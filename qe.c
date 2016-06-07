@@ -6302,18 +6302,6 @@ int qe_load_file(EditState *s, const char *filename1,
     EOLType eol_type = EOL_UNIX;
     QECharset *charset = &charset_utf8;
 
-#ifndef CONFIG_TINY
-    /* avoid messing with the dired pane */
-    if ((s->flags & WF_POPLEFT) && s->x1 == 0) {
-        EditState *e = find_window(s, KEY_RIGHT, NULL);
-        if (e) {
-            if (s->qe_state->active_window == s)
-                s->qe_state->active_window = e;
-            s = e;
-        }
-    }
-#endif
-
     if (load_resource) {
         if (find_resource_file(filename, sizeof(filename), filename1)) {
             /* XXX: issue error message? */
@@ -6323,6 +6311,18 @@ int qe_load_file(EditState *s, const char *filename1,
         /* compute full name */
         canonicalize_absolute_path(filename, sizeof(filename), filename1);
     }
+
+#ifndef CONFIG_TINY
+    /* avoid messing with the dired pane */
+    if ((s->flags & WF_POPLEFT) && s->x1 == 0 && !is_directory(filename)) {
+        EditState *e = find_window(s, KEY_RIGHT, NULL);
+        if (e) {
+            if (s->qe_state->active_window == s)
+                s->qe_state->active_window = e;
+            s = e;
+        }
+    }
+#endif
 
     /* If file already loaded in existing buffer, switch to that */
     b = eb_find_file(filename);
