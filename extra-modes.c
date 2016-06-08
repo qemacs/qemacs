@@ -2884,7 +2884,7 @@ static int ruby_get_name(char *buf, int size, unsigned int *str)
 static void ruby_colorize_line(QEColorizeContext *cp,
                                unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, j, start = i, c, style, indent, sig;
+    int i = 0, j, start = i, c, style = 0, indent, sig;
     static int sep, sep0, level;        /* XXX: ugly patch */
     int state = cp->colorize_state;
     char kbuf[32];
