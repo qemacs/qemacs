@@ -1,21 +1,29 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2016-03-06
+; Updated: 2016-06-08
 
 * Needed for release version 5
 
 * Priority 0
+
 ** basic: reset last command when executing macro
-** extra: add function to add entry in TOTO.org
+** extra: add function to add entry in TODO.org
 ** clang: indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
 ** completion: completion behaviour on SPC
-** edit: track file modifications and reload upon change
-** shell: turn on interactive mode on commands that move the cursor 
-   to the end of buffer
+** completion: fix or disable fuzzy/glob matcher
+** completion: fix electric behavior
+** completion: hilite current line in popup-view
+** files: track file modifications and reload upon change
+** files: check file date to detect asynchronous modifications on disk
+** shell: turn on interactive mode on commands that move the cursor to EOB
+** shell: asynchronous input buffer
+** shell: give commands a chance to execute for macros to behave correctly
+** x11: commit patches
 
 * Priority 1
 
+** shell: M-l, M-u, M-c and other buffer modifications in shell input region
 ** basic: improve speed: C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET -> 96s
 ** basic: improve speed: C-x C-f ~/x2m RET C-u 1000 C-n -> 4s
 ** basic: check abort during long operations: bufferize input and check for ^G
@@ -31,18 +39,14 @@
 ** basic: fix behaviour on overlong lines
 ** basic: fix offset when exiting s->hex_mode
 ** completion: minibuffer completion: bad return on C-x C-f . SPC qe SPC RET
-** completion: fix selection hilite in popup-view
 ** completion: remove or update popup-view as more typing occurs
-** completion: use fuzzy or glob matcher
-** dired: find-file should explore directory in the left pane
 ** dired: display directory links as directories and links
 ** doc: migrate TODO and documentation to markdown or reStructuredText
-** doc: migrate coding-rules.html to markdown
 ** doc: rewrite TODO file with more sections and explanations
+** doc: migrate coding-rules.html to markdown
 ** files: handle files starting with re:
 ** files: check file permissions.
 ** files: use trick for entering spaces in filename prompts without completion
-** files: check file date to detect asynchronous modifications on disk
 ** files: fix s->offset reset to 0 upon C-x C-f newfile ENT C-x 2 C-x b ENT
 ** files: insert-file: load via separate buffer with charset conversion
 ** files: reload-file on C-x C-r
@@ -68,7 +72,6 @@
 ** session: previous answers, ...
 ** session: register session store functions
 ** shell: handle long shell lines
-** shell: integrate kill/paste including multiple lines
 ** shell: fix crash bug when invoking qemacs recursively in the terminal
 ** shell: set current directory of new shell buffer to that of current window
 ** shell: use auxiliary buffer to make process input asynchronous
