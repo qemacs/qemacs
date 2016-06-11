@@ -166,7 +166,7 @@ ifdef CONFIG_X11
   ifdef CONFIG_XSHM
     XLIBS += -lXext
   endif
-  XLIBS += -lX11
+  XLIBS += -lX11 -ldl
   XLDFLAGS := $(LDFLAGS)
   ifdef CONFIG_DARWIN
     XLDFLAGS += -L/opt/X11/lib/
@@ -460,8 +460,16 @@ install: $(TARGETS) qe.1
 	$(INSTALL) -m 755 -d $(DESTDIR)$(prefix)/bin
 	$(INSTALL) -m 755 -d $(DESTDIR)$(mandir)/man1
 	$(INSTALL) -m 755 -d $(DESTDIR)$(datadir)/qe
+ifdef CONFIG_X11
+	$(INSTALL) -m 755 -s xqe$(EXE) $(DESTDIR)$(prefix)/bin/qemacs$(EXE)
+else
+  ifdef CONFIG_TINY
+	$(INSTALL) -m 755 -s tqe$(EXE) $(DESTDIR)$(prefix)/bin/qemacs$(EXE)
+  else
 	$(INSTALL) -m 755 -s qe$(EXE) $(DESTDIR)$(prefix)/bin/qemacs$(EXE)
-	ln -sf qemacs $(DESTDIR)$(prefix)/bin/qe$(EXE)
+  endif
+endif
+	ln -sf qemacs$(EXE) $(DESTDIR)$(prefix)/bin/qe$(EXE)
 ifdef CONFIG_FFMPEG
 	ln -sf qemacs$(EXE) $(DESTDIR)$(prefix)/bin/ffplay$(EXE)
 endif

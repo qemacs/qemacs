@@ -1419,8 +1419,14 @@ static void x11_handle_event(void *opaque)
 #endif
             if (shift) {
                 switch (keysym) {
-                case XK_ISO_Left_Tab: key = KEY_SHIFT_TAB; goto got_key;
+                case XK_ISO_Left_Tab:
+                    key = KEY_SHIFT_TAB; 
+                    goto got_key;
                 default:
+                    if (len > 0) {
+                        key = buf[0] & 0xff;
+                        goto got_key;
+                    }
                     break;
                 }
             } else
