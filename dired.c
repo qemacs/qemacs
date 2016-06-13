@@ -170,7 +170,13 @@ static char *dired_get_filename(DiredState *ds, const DiredItem *dip,
 
     /* build filename */
     /* CG: Should canonicalize path */
-    return makepath(buf, buf_size, ds->path, dip->name);
+    if (is_directory(ds->path)) {
+        return makepath(buf, buf_size, ds->path, dip->name);
+    } else {
+        get_dirname(buf, buf_size, ds->path);
+        append_slash(buf, buf_size);
+        return pstrcat(buf, buf_size, dip->name);
+    }
 }
 
 static int dired_find_target(DiredState *ds, const char *target)
@@ -922,8 +928,10 @@ static void dired_build_list(DiredState *ds, const char *path,
 {
     FindFileState *ffst;
     char filename[MAX_FILENAME_SIZE];
+    char dir[MAX_FILENAME_SIZE];
     char line[1024];
     const char *p;
+    const char *pattern;
     struct stat st;
     StringItem *item;
 
@@ -940,9 +948,24 @@ static void dired_build_list(DiredState *ds, const char *path,
 
     eb_clear(b);
 
-    ffst = find_file_open(ds->path, "*");
+    pstrcpy(dir, sizeof(dir), ds->path);
+    pattern = "*";
+
+    if (!is_directory(dir)) {
+        get_dirname(dir, sizeof(dir), ds->path);
+        pattern = get_basename(ds->path);
+    }
+
+    /* XXX: should scan directory for subdirectories and filter with
+     * pattern only for regular files.
+     * XXX: should handle generalized file patterns.
+     * XXX: should use a separate thread to make the scan asynchronous.
+     * XXX: should compute recursive size data.
+     * XXX: should track file creation, deletion and modifications.
+     */
+    ffst = find_file_open(dir, pattern);
     /* Should scan directory/filespec before computing lines to adjust
-     * filename gutter width
+     * filename gutter width.
      */
     while (!find_file_next(ffst, filename, sizeof(filename))) {
         if (lstat(filename, &st) < 0)
@@ -1164,7 +1187,13 @@ static void dired_display_hook(EditState *s)
 
 static char *dired_get_default_path(EditState *s, char *buf, int buf_size)
 {
-    return makepath(buf, buf_size, s->b->filename, "");
+    if (is_directory(s->b->filename)) {
+        return makepath(buf, buf_size, s->b->filename, "");
+    } else {
+        get_dirname(buf, buf_size, s->b->filename);
+        append_slash(buf, buf_size);
+        return buf;
+    }
 }
 
 static int dired_mode_init(EditState *s, EditBuffer *b, int flags)
@@ -1194,7 +1223,7 @@ static void dired_mode_free(EditBuffer *b, void *state)
     dired_free(ds);
 }
 
-/* can only apply dired mode on directories */
+/* can only apply dired mode on directories and file patterns */
 static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (qe_get_buffer_mode_data(p->b, &dired_mode, NULL))
@@ -1203,7 +1232,7 @@ static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
     if (S_ISDIR(p->st_mode))
         return 95;
 
-    if (strchr(p->real_filename, '*') || strchr(p->real_filename, '?'))
+    if (is_filepattern(p->real_filename))
         return 90;
 
     return 0;
@@ -1235,7 +1264,7 @@ void do_dired(EditState *s)
 
     /* Set the filename to the directory of the current file */
     canonicalize_absolute_path(filename, sizeof(filename), target);
-    if (!is_directory(filename)) {
+    if (!is_directory(filename) && !is_filepattern(filename)) {
         p = strrchr(filename, '/');
         if (p)
             *p = '\0';

@@ -53,7 +53,6 @@ static int get_line_height(QEditScreen *screen, int style_index);
 void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
                    const char *str, int style_index);
-static char *get_default_path(EditState *s, char *buf, int buf_size);
 static EditBuffer *predict_switch_to_buffer(EditState *s);
 static StringArray *get_history(const char *name);
 static void qe_key_process(int key);
@@ -6127,7 +6126,7 @@ void qe_kill_buffer(EditBuffer *b)
 }
 
 /* compute default path for find/save buffer */
-static char *get_default_path(EditState *s, char *buf, int buf_size)
+char *get_default_path(EditState *s, char *buf, int buf_size)
 {
     EditBuffer *b = s->b;
     char buf1[MAX_FILENAME_SIZE];
@@ -6332,8 +6331,11 @@ int qe_load_file(EditState *s, const char *filename1,
     }
 
 #ifndef CONFIG_TINY
-    /* avoid messing with the dired pane */
-    if ((s->flags & WF_POPLEFT) && s->x1 == 0 && !is_directory(filename)) {
+    /* when exploring from a popleft dired buffer, load a directory or
+     * file pattern into the same pane, but load a regular file into the view pane
+     */
+    if ((s->flags & WF_POPLEFT) && s->x1 == 0
+    &&  !is_directory(filename) && !is_filepattern(filename)) {
         EditState *e = find_window(s, KEY_RIGHT, NULL);
         if (e) {
             if (s->qe_state->active_window == s)

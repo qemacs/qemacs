@@ -212,6 +212,7 @@ FindFileState *find_file_open(const char *path, const char *pattern);
 int find_file_next(FindFileState *s, char *filename, int filename_size_max);
 void find_file_close(FindFileState **sp);
 int is_directory(const char *path);
+int is_filepattern(const char *filespec);
 void canonicalize_path(char *buf, int buf_size, const char *path);
 void canonicalize_absolute_path(char *buf, int buf_size, const char *path1);
 char *make_user_path(char *buf, int buf_size, const char *path);
@@ -1820,6 +1821,7 @@ void do_set_next_mode(EditState *s, int dir);
 
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);
+char *get_default_path(EditState *s, char *buf, int buf_size);
 void do_find_file(EditState *s, const char *filename, int bflags);
 void do_load_from_path(EditState *s, const char *filename, int bflags);
 void do_find_file_other_window(EditState *s, const char *filename, int bflags);

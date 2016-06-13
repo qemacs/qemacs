@@ -2,7 +2,7 @@
  * Utilities for qemacs.
  *
  * Copyright (c) 2001 Fabrice Bellard.
- * Copyright (c) 2002-2013 Charlie Gordon.
+ * Copyright (c) 2002-2016 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -137,6 +137,13 @@ int is_directory(const char *path)
         return 1;
     else
         return 0;
+}
+
+int is_filepattern(const char *filespec) 
+{
+    // XXX: should also accept character ranges and {} comprehensions
+    int pos = strcspn(filespec, "*?");
+    return filespec[pos] != '\0';
 }
 
 /* suppress redundant ".", ".." and "/" from paths */

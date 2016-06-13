@@ -102,8 +102,9 @@
 ** charset: handle chinese encodings
 ** charset: handle euc-kr
 ** charset: autodetect sjis, euc-jp...
-** c-mode: fix c indentation inside comments
-** c-mode: fix c indentation inside struct, array and enum initializers
+** clang: align multi line comments leading * one space to the right
+** clang: fix c indentation inside comments
+** clang: fix c indentation inside struct, array and enum initializers
 ** dired: keep dired current file upon: RET C-x C-k RET
 ** dired: fork for directory scan, background inode tracking, dir size scan
 ** hex: extend hex mode to support 16,32,64 bit words as little and big endian
@@ -122,6 +123,7 @@
    <><>(define-macro "last-kbd-macro" "\<>\<>")
 ** modes: header-line format
 ** modes: mode-line format
+** modes: display filename relative to current directory instead of buffer name on mode-line
 ** modes: major and minor modes
 ** modes: split modes into colorizers, interaction, io, charset, eoltype
 ** script: expression evaluator

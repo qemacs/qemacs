@@ -135,9 +135,16 @@ void do_compare_windows(EditState *s, int argval)
 void do_compare_files(EditState *s, const char *filename, int bflags)
 {
     char buf[MAX_FILENAME_SIZE];
+    char dir[MAX_FILENAME_SIZE];
     int pathlen, parent_pathlen;
+    const char *tail;
 
     pathlen = get_basename_offset(filename);
+    get_default_path(s, dir, sizeof(dir));
+
+    if (strstart(filename, dir, &tail)) {
+        snprintf(buf, sizeof(buf), "%s../%s", dir, tail);
+    } else
     if (pathlen == 0) {
         snprintf(buf, sizeof(buf), "../%s", filename);
     } else
