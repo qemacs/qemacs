@@ -2041,7 +2041,8 @@ static char *shell_get_default_path(EditState *s, char *buf, int buf_size)
 
     line[stop] = '\0';
 
-    canonicalize_absolute_path(buf, buf_size, line + start);
+    /* XXX: should use a lower level function to avoid potential recursion */
+    canonicalize_absolute_path(NULL, buf, buf_size, line + start);
     append_slash(buf, buf_size);
     return buf;
 }
@@ -2100,6 +2101,7 @@ static void do_compile_error(EditState *s, int dir)
     EditBuffer *b;
     int offset, found_offset;
     char filename[MAX_FILENAME_SIZE];
+    char fullpath[MAX_FILENAME_SIZE];
     buf_t fnamebuf, *fname;
     int c, line_num, col_num;
     char error_message[128];
@@ -2153,6 +2155,9 @@ static void do_compile_error(EditState *s, int dir)
             buf_putc_utf8(fname, c);
         }
 
+        /* XXX: default directory should depend on current position in `s` */
+        canonicalize_absolute_path(s, fullpath, sizeof(fullpath), filename);
+
         /* extract line number */
         for (line_num = col_num = 0;;) {
             c = eb_nextc(b, offset, &offset);
@@ -2178,10 +2183,10 @@ static void do_compile_error(EditState *s, int dir)
         }
         eb_get_strline(b, error_message, sizeof(error_message), &offset);
         if (line_num >= 1) {
-            if (line_num != error_line_num ||
-                !strequal(filename, error_filename)) {
+            if (line_num != error_line_num
+            ||  !strequal(fullpath, error_filename)) {
                 error_line_num = line_num;
-                pstrcpy(error_filename, sizeof(error_filename), filename);
+                pstrcpy(error_filename, sizeof(error_filename), fullpath);
                 break;
             }
         }
@@ -2199,7 +2204,7 @@ static void do_compile_error(EditState *s, int dir)
     /* CG: Should remove popups, sidepanes, helppanes... */
 
     /* go to the error */
-    do_find_file(s, filename, 0);
+    do_find_file(s, fullpath, 0);
     do_goto_line(qs->active_window, line_num, col_num);
 
     put_status(s, "=> %s", error_message);

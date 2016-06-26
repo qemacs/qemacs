@@ -214,7 +214,7 @@ void find_file_close(FindFileState **sp);
 int is_directory(const char *path);
 int is_filepattern(const char *filespec);
 void canonicalize_path(char *buf, int buf_size, const char *path);
-void canonicalize_absolute_path(char *buf, int buf_size, const char *path1);
+void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const char *path1);
 char *make_user_path(char *buf, int buf_size, const char *path);
 char *reduce_filename(char *dest, int size, const char *filename);
 int match_extension(const char *filename, const char *extlist);

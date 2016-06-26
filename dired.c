@@ -1263,7 +1263,7 @@ void do_dired(EditState *s)
     pstrcpy(target, sizeof(target), s->b->filename);
 
     /* Set the filename to the directory of the current file */
-    canonicalize_absolute_path(filename, sizeof(filename), target);
+    canonicalize_absolute_path(s, filename, sizeof(filename), target);
     if (!is_directory(filename) && !is_filepattern(filename)) {
         p = strrchr(filename, '/');
         if (p)

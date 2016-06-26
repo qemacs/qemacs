@@ -236,64 +236,6 @@ void canonicalize_path(char *buf, int buf_size, const char *path)
     }
 }
 
-/* return TRUE if absolute path. works for files and URLs */
-static int is_abs_path(const char *path)
-{
-    const char *p;
-
-    /* XXX: should only accept 'drive:' and 'proto:' */
-    p = strchr(path, ':');
-    if (p)
-        p++;
-    else
-        p = path;
-    return *p == '/';
-}
-
-/* canonicalize the path and make it absolute */
-void canonicalize_absolute_path(char *buf, int buf_size, const char *path1)
-{
-    char cwd[MAX_FILENAME_SIZE];
-    char path[MAX_FILENAME_SIZE];
-    char *homedir;
-
-    if (!is_abs_path(path1)) {
-        if (*path1 == '~') {
-            if (path1[1] == '\0' || path1[1] == '/') {
-                homedir = getenv("HOME");
-                if (homedir) {
-                    pstrcpy(path, sizeof(path), homedir);
-#ifdef CONFIG_WIN32
-                    path_win_to_unix(path);
-#endif
-                    remove_slash(path);
-                    pstrcat(path, sizeof(path), path1 + 1);
-                    path1 = path;
-                }
-            } else {
-                /* CG: should get info from getpwnam */
-#ifdef CONFIG_DARWIN
-                pstrcpy(path, sizeof(path), "/Users/");
-#else
-                pstrcpy(path, sizeof(path), "/home/");
-#endif
-                pstrcat(path, sizeof(path), path1 + 1);
-                path1 = path;
-            }
-        } else {
-            /* CG: not sufficient for windows drives */
-            /* CG: should test result */
-            getcwd(cwd, sizeof(cwd));
-#ifdef CONFIG_WIN32
-            path_win_to_unix(cwd);
-#endif
-            makepath(path, sizeof(path), cwd, path1);
-            path1 = path;
-        }
-    }
-    canonicalize_path(buf, buf_size, path1);
-}
-
 /* reduce path relative to homedir */
 char *make_user_path(char *buf, int buf_size, const char *path)
 {

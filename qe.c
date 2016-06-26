@@ -447,7 +447,7 @@ void do_cd(EditState *s, const char *path)
 {
     char buf[MAX_FILENAME_SIZE];
 
-    canonicalize_absolute_path(buf, sizeof(buf), path);
+    canonicalize_absolute_path(s, buf, sizeof(buf), path);
 
     if (chdir(buf)) {
         put_status(s, "Cannot change directory to '%s'", buf);
@@ -5353,7 +5353,7 @@ void file_completion(CompleteState *cp)
 
     current = cp->current;
     if (*current == '~') {
-        canonicalize_absolute_path(filename, sizeof(filename), cp->current);
+        canonicalize_absolute_path(cp->s, filename, sizeof(filename), cp->current);
         current = filename;
     }
 
@@ -6125,6 +6125,70 @@ void qe_kill_buffer(EditBuffer *b)
     do_refresh(qs->first_window);
 }
 
+/* return TRUE if absolute path. works for files and URLs */
+static int is_abs_path(const char *path)
+{
+    size_t prefix;
+
+    if (*path == '/')
+        return 1;
+
+    /* Accept as absolute a drive or protocol followed by `/` */
+    prefix = strcspn(path, "/:");
+    if (path[prefix] == ':' && path[prefix + 1] == '/')
+        return 1;
+    
+    return 0;
+}
+
+/* canonicalize the path for a given window and make it absolute */
+void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const char *path1)
+{
+    char cwd[MAX_FILENAME_SIZE];
+    char path[MAX_FILENAME_SIZE];
+    char *homedir;
+
+    if (!is_abs_path(path1)) {
+        if (*path1 == '~') {
+            if (path1[1] == '\0' || path1[1] == '/') {
+                homedir = getenv("HOME");
+                if (homedir) {
+                    pstrcpy(path, sizeof(path), homedir);
+#ifdef CONFIG_WIN32
+                    path_win_to_unix(path);
+#endif
+                    remove_slash(path);
+                    pstrcat(path, sizeof(path), path1 + 1);
+                    path1 = path;
+                }
+            } else {
+                /* CG: should get info from getpwnam */
+#ifdef CONFIG_DARWIN
+                pstrcpy(path, sizeof(path), "/Users/");
+#else
+                pstrcpy(path, sizeof(path), "/home/");
+#endif
+                pstrcat(path, sizeof(path), path1 + 1);
+                path1 = path;
+            }
+        } else {
+            /* CG: not sufficient for windows drives */
+            /* CG: should test result */
+            if (s) {
+                get_default_path(s, cwd, sizeof(cwd));
+            } else {
+                getcwd(cwd, sizeof(cwd));
+#ifdef CONFIG_WIN32
+                path_win_to_unix(cwd);
+#endif
+            }
+            makepath(path, sizeof(path), cwd, path1);
+            path1 = path;
+        }
+    }
+    canonicalize_path(buf, buf_size, path1);
+}
+
 /* compute default path for find/save buffer */
 char *get_default_path(EditState *s, char *buf, int buf_size)
 {
@@ -6144,7 +6208,8 @@ char *get_default_path(EditState *s, char *buf, int buf_size)
     } else {
         filename = s->b->filename;
     }
-    canonicalize_absolute_path(buf1, sizeof(buf1), filename);
+    /* XXX: should just retrieve the current directory */
+    canonicalize_absolute_path(NULL, buf1, sizeof(buf1), filename);
     splitpath(buf, buf_size, NULL, 0, buf1);
     return buf;
 }
@@ -6327,7 +6392,7 @@ int qe_load_file(EditState *s, const char *filename1,
         }
     } else {
         /* compute full name */
-        canonicalize_absolute_path(filename, sizeof(filename), filename1);
+        canonicalize_absolute_path(s, filename, sizeof(filename), filename1);
     }
 
 #ifndef CONFIG_TINY
@@ -6561,7 +6626,7 @@ void do_set_visited_file_name(EditState *s, const char *filename,
 {
     char path[MAX_FILENAME_SIZE];
 
-    canonicalize_absolute_path(path, sizeof(path), filename);
+    canonicalize_absolute_path(s, path, sizeof(path), filename);
     if (*renamefile == 'y' && *s->b->filename) {
         if (rename(s->b->filename, path))
             put_status(s, "Cannot rename file to %s", path);
@@ -6603,7 +6668,7 @@ void do_write_region(EditState *s, const char *filename)
     /* deactivate region hilite */
     s->region_style = 0;
 
-    canonicalize_absolute_path(absname, sizeof(absname), filename);
+    canonicalize_absolute_path(s, absname, sizeof(absname), filename);
     put_save_message(s, filename,
                      eb_write_buffer(s->b, s->b->mark, s->offset, filename));
 }
