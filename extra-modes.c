@@ -576,7 +576,7 @@ static void pascal_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = i, c, k, style, len;
+    int i = 0, start = i, c, k, style = 0, len;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_PASCAL_COMMENT)
@@ -595,53 +595,47 @@ static void pascal_colorize_line(QEColorizeContext *cp,
         case '/':
             if (str[i] == '/') {    /* C++ comments, recent extension */
                 i = n;
-                SET_COLOR(str, start, i, PASCAL_STYLE_COMMENT);
-                continue;
+                style = PASCAL_STYLE_COMMENT;
+                break;
             }
-            break;
+            continue;
         case '{':
             /* check for preprocessor */
             if (str[i] == '$') {
                 colstate = IN_PASCAL_COMMENT1;
                 i++;
             in_comment1:
-                while (i < n) {
-                    if (str[i++] == '}') {
-                        colstate = 0;
-                        break;
-                    }
-                }
-                SET_COLOR(str, start, i, PASCAL_STYLE_PREPROCESS);
+                style = PASCAL_STYLE_PREPROCESS;
             } else {
                 /* regular comment (recursive?) */
                 colstate = IN_PASCAL_COMMENT;
             in_comment:
-                while (i < n) {
-                    if (str[i++] == '}') {
-                        colstate = 0;
-                        break;
-                    }
-                }
-                SET_COLOR(str, start, i, PASCAL_STYLE_COMMENT);
+                style = PASCAL_STYLE_COMMENT;
             }
-            continue;
-        case '(':
-            /* check for preprocessor */
-            if (str[i] != '*')
-                break;
-
-            /* regular comment (recursive?) */
-            colstate = IN_PASCAL_COMMENT2;
-            i++;
-        in_comment2:
-            for (; i < n; i++) {
-                if (str[i] == '*' && str[i + 1] == ')') {
-                    i += 2;
+            while (i < n) {
+                if (str[i++] == '}') {
                     colstate = 0;
                     break;
                 }
             }
-            SET_COLOR(str, start, i, PASCAL_STYLE_COMMENT);
+            break;
+        case '(':
+            /* check for preprocessor */
+            if (str[i] == '*') {
+                /* regular comment (recursive?) */
+                colstate = IN_PASCAL_COMMENT2;
+                i++;
+            in_comment2:
+                while (i < n) {
+                    if (str[i++] == '*' && str[i] == ')') {
+                        i++;
+                        colstate = 0;
+                        break;
+                    }
+                }
+                style = PASCAL_STYLE_COMMENT;
+                break;
+            }
             continue;
         case '\'':
             /* parse string or char const */
@@ -650,53 +644,56 @@ static void pascal_colorize_line(QEColorizeContext *cp,
                 if (str[i++] == (unsigned int)c)
                     break;
             }
-            SET_COLOR(str, start, i, PASCAL_STYLE_STRING);
-            continue;
+            style = PASCAL_STYLE_STRING;
+            break;
         case '#':
             /* parse hex char const */
             for (; i < n; i++) {
                 if (!qe_isxdigit(str[i]))
                     break;
             }
-            SET_COLOR(str, start, i, PASCAL_STYLE_STRING);
-            continue;
-        default:
+            style = PASCAL_STYLE_STRING;
             break;
-        }
-        /* parse numbers */
-        if (qe_isdigit(c) || c == '$') {
-            for (; i < n; i++) {
-                if (!qe_isalnum(str[i]) && str[i] != '.')
-                    break;
+        default:
+            /* parse numbers */
+            if (qe_isdigit(c) || c == '$') {
+                for (; i < n; i++) {
+                    if (!qe_isalnum(str[i]) && str[i] != '.')
+                        break;
+                }
+                style = PASCAL_STYLE_NUMBER;
+                break;
             }
-            SET_COLOR(str, start, i, PASCAL_STYLE_NUMBER);
+            /* parse identifiers and keywords */
+            if (qe_isalpha_(c)) {
+                len = 0;
+                keyword[len++] = qe_tolower(c);
+                for (; qe_isalnum_(str[i]); i++) {
+                    if (len < countof(keyword) - 1)
+                        keyword[len++] = qe_tolower(str[i]);
+                }
+                keyword[len] = '\0';
+                if (strfind(syn->keywords, keyword)) {
+                    style = PASCAL_STYLE_KEYWORD;
+                } else
+                if (strfind(syn->types, keyword)) {
+                    style = PASCAL_STYLE_TYPE;
+                } else {
+                    k = i;
+                    if (qe_isblank(str[k]))
+                        k++;
+                    if (str[k] == '(' && str[k + 1] != '*')
+                        style = PASCAL_STYLE_FUNCTION;
+                    else
+                        style = PASCAL_STYLE_IDENTIFIER;
+                }
+                break;
+            }
             continue;
         }
-        /* parse identifiers and keywords */
-        if (qe_isalpha_(c)) {
-            len = 0;
-            keyword[len++] = qe_tolower(c);
-            for (; qe_isalnum_(str[i]); i++) {
-                if (len < countof(keyword) - 1)
-                    keyword[len++] = qe_tolower(str[i]);
-            }
-            keyword[len] = '\0';
-            if (strfind(syn->keywords, keyword)) {
-                style = PASCAL_STYLE_KEYWORD;
-            } else
-            if (strfind(syn->types, keyword)) {
-                style = PASCAL_STYLE_TYPE;
-            } else {
-                k = i;
-                if (qe_isblank(str[k]))
-                    k++;
-                if (str[k] == '(' && str[k + 1] != '*')
-                    style = PASCAL_STYLE_FUNCTION;
-                else
-                    style = PASCAL_STYLE_IDENTIFIER;
-            }
+        if (style) {
             SET_COLOR(str, start, i, style);
-            continue;
+            style = 0;
         }
     }
     cp->colorize_state = colstate;
