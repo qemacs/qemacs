@@ -647,14 +647,15 @@ static void c_colorize_line(QEColorizeContext *cp,
 static int find_indent1(EditState *s, unsigned int *buf)
 {
     unsigned int *p;
-    int pos, c;
+    int pos, c, tw;
 
+    tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
     p = buf;
     pos = 0;
     for (;;) {
         c = *p++ & CHAR_MASK;
         if (c == '\t')
-            pos += s->b->tab_width - (pos % s->b->tab_width);
+            pos += tw - (pos % tw);
         else if (c == ' ')
             pos++;
         else
@@ -665,13 +666,14 @@ static int find_indent1(EditState *s, unsigned int *buf)
 
 static int find_pos(EditState *s, unsigned int *buf, int size)
 {
-    int pos, c, i;
+    int pos, c, tw, i;
 
+    tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
     pos = 0;
     for (i = 0; i < size; i++) {
         c = buf[i] & CHAR_MASK;
         if (c == '\t') {
-            pos += s->b->tab_width - (pos % s->b->tab_width);
+            pos += tw - (pos % tw);
         } else {
             /* simplistic case: assume single width characters */
             pos++;
