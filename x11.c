@@ -1536,7 +1536,9 @@ enum X11BitmapType {
 #endif
 #ifdef CONFIG_XV
     BMP_XVIMAGE,
+#ifdef CONFIG_XSHM
     BMP_XVSHMIMAGE,
+#endif
 #endif
 };
 
@@ -1569,9 +1571,11 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
     if (b->flags & QEBITMAP_FLAG_VIDEO) {
 #if defined(CONFIG_XV)
         if (xv_port != 0 && xv_open_count == 0) {
+#ifdef CONFIG_XSHM
             if (shm_use)
                 xb->type = BMP_XVSHMIMAGE;
             else
+#endif
                 xb->type = BMP_XVIMAGE;
             b->format = s->video_format;
             xv_open_count++;
@@ -1645,6 +1649,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
             xb->u.xvimage = xvimage;
         }
         break;
+#ifdef CONFIG_XSHM
     case BMP_XVSHMIMAGE:
         {
             XvImage *xvimage;
@@ -1669,6 +1674,7 @@ static int x11_bmp_alloc(QEditScreen *s, QEBitmap *b)
             xb->u.xvimage = xvimage;
         }
         break;
+#endif
 #endif
     }
     return 0;
@@ -1703,6 +1709,7 @@ static void x11_bmp_free(qe__unused__ QEditScreen *s, QEBitmap *b)
         XFree(xb->u.xvimage);
         xv_open_count--;
         break;
+#ifdef CONFIG_XSHM
     case BMP_XVSHMIMAGE:
         XShmDetach(display, xb->shm_info);
         XFree(xb->u.xvimage);
@@ -1710,6 +1717,7 @@ static void x11_bmp_free(qe__unused__ QEditScreen *s, QEBitmap *b)
         qe_free(&xb->shm_info);
         xv_open_count--;
         break;
+#endif
 #endif
     }
     qe_free(&b->priv_data);
@@ -1749,11 +1757,13 @@ static void x11_bmp_draw(qe__unused__ QEditScreen *s, QEBitmap *b,
                    0, 0, b->width, b->height,
                    dst_x, dst_y, dst_w, dst_h);
         break;
+#ifdef CONFIG_XSHM
     case BMP_XVSHMIMAGE:
         XvShmPutImage(display, xv_port, window, gc, xb->u.xvimage,
                       0, 0, b->width, b->height,
                       dst_x, dst_y, dst_w, dst_h, False);
         break;
+#endif
 #endif
     }
 }
@@ -1792,7 +1802,9 @@ static void x11_bmp_lock(qe__unused__ QEditScreen *s, QEBitmap *b, QEPicture *pi
         break;
 #ifdef CONFIG_XV
     case BMP_XVIMAGE:
+#ifdef CONFIG_XSHM
     case BMP_XVSHMIMAGE:
+#endif
         /* XXX: only YUV420P is handled yet */
         {
             XvImage *xvimage = xb->u.xvimage;
