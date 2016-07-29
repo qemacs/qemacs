@@ -1,29 +1,23 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2016-06-08
+; Updated: 2016-07-29
 
 * Needed for release version 5
 
 * Priority 0
 
 ** basic: reset last command when executing macro
-** extra: add function to add entry in TODO.org
 ** clang: indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
-** completion: completion behaviour on SPC
-** completion: fix or disable fuzzy/glob matcher
 ** completion: fix electric behavior
-** completion: hilite current line in popup-view
 ** files: track file modifications and reload upon change
 ** files: check file date to detect asynchronous modifications on disk
 ** shell: turn on interactive mode on commands that move the cursor to EOB
 ** shell: asynchronous input buffer
 ** shell: give commands a chance to execute for macros to behave correctly
-** x11: commit patches
 
 * Priority 1
 
-** shell: M-l, M-u, M-c and other buffer modifications in shell input region
 ** basic: improve speed: C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET -> 96s
 ** basic: improve speed: C-x C-f ~/x2m RET C-u 1000 C-n -> 4s
 ** basic: check abort during long operations: bufferize input and check for ^G
@@ -39,8 +33,11 @@
 ** basic: fix behaviour on overlong lines
 ** basic: fix offset when exiting s->hex_mode
 ** completion: minibuffer completion: bad return on C-x C-f . SPC qe SPC RET
-** completion: remove or update popup-view as more typing occurs
 ** dired: display directory links as directories and links
+** dired: fork process and use asynchronous function to:
+   - list directory contents
+   - track directory contents file stats
+   - compute subdirectory sizes
 ** doc: migrate TODO and documentation to markdown or reStructuredText
 ** doc: rewrite TODO file with more sections and explanations
 ** doc: migrate coding-rules.html to markdown
@@ -75,6 +72,7 @@
 ** shell: fix crash bug when invoking qemacs recursively in the terminal
 ** shell: set current directory of new shell buffer to that of current window
 ** shell: use auxiliary buffer to make process input asynchronous
+** shell: M-l, M-u, M-c and other buffer modifications in shell input region
 ** syntax: fix overlong line coloring
 ** syntax: support ReStructuredText (RST)
 ** text: \u200c -> zero width
@@ -107,6 +105,7 @@
 ** clang: fix c indentation inside struct, array and enum initializers
 ** dired: keep dired current file upon: RET C-x C-k RET
 ** dired: fork for directory scan, background inode tracking, dir size scan
+** extra: add function to add entry in TODO.org
 ** hex: extend hex mode to support 16,32,64 bit words as little and big endian
 ** html/xml: merge xml / htmlsrc modes
 ** html/xml: fix colorizer for multi-line tags and attributes
@@ -145,11 +144,12 @@
 
 * Basic stuff
 
-** crash bug on johnmacfarlane.net/texmath.xhtml
-** abbreviate lines in file completion list popup
-** wrap long lines past line numbers column
-** tty_put_char should convert charsets
-** current path in compile set to current buffer path
+** xml: crash bug on johnmacfarlane.net/texmath.xhtml
+** completion: abbreviate lines in file completion list popup
+** display: wrap long lines past line numbers column
+** shell: tty_put_char should convert charsets
+** shell: current path in compile set to current buffer path
+** shell: current path retrieved from shell prompt backwards from point
 ** avoid error in new file
 ** add custom memory handling functions.
 ** use failsafe memory allocator and longjmp recover.
@@ -372,6 +372,7 @@ insert_window_left()  deletes some left-most windows
 *** ada-mode
 *** asm-mode: handle various assembly styles
 *** calc-mode: fix syntax, disable C++ comments
+*** cmake-mode
 *** cobol-mode
 *** css-mode
 *** erlang-mode
@@ -404,14 +405,14 @@ insert_window_left()  deletes some left-most windows
 ** missing languages:
 *** asp-mode:
 *** automake-mode:
-*** batch-mode: Windows Batch files.
+*** bat-mode: DOS command.com batch files.
 *** bennugd-mode
 *** bluespec-mode
 *** boo-mode
 *** cg-mode
 *** changelog-mode
 *** chdr-mode
-*** cmake-mode
+*** cmd-mode: Windows cmd.exe command files.
 *** conf-mode: configuration files.
 *** cuda-mode
 *** DCL mode
@@ -480,7 +481,7 @@ insert_window_left()  deletes some left-most windows
 
 * Ideas from other editors
 
-** prevent edit in browse mode
+** prevent edit in browse mode (current called preview-mode)
 ** dynamic project based settings, include, exclude patterns...
 ** electric-c-mode
 ** http request with headings

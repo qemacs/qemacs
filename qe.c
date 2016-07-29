@@ -5518,7 +5518,7 @@ static StringArray *minibuffer_history;
 static int minibuffer_history_index;
 static int minibuffer_history_saved_offset;
 
-void do_completion(EditState *s)
+void do_completion(EditState *s, int type)
 {
     QEmacsState *qs = s->qe_state;
     int count, i, match_len, c;
@@ -5531,13 +5531,17 @@ void do_completion(EditState *s)
     if (!completion_function)
         return;
 
-    /* XXX: if completion_popup_window already displayed, should page
-     * through the window, if at end, should remove focus from
-     * completion_popup_window or close it.
-     */
+    /* Remove highlighted selection. */
+    // XXX: Should complete based on point position,
+    //      not necessarily full minibuffer contents
+    do_delete_selection(s);
+
     /* check completion window */
     check_window(&completion_popup_window);
-    if (completion_popup_window && qs->last_cmd_func == qs->this_cmd_func) {
+    if (completion_popup_window
+    &&  type == COMPLETION_TAB
+    &&  qs->last_cmd_func == qs->this_cmd_func) {
+        /* toggle cpmpletion popup on TAB */
         edit_close(&completion_popup_window);
         do_refresh(s);
         return;
@@ -5575,15 +5579,19 @@ void do_completion(EditState *s)
     }
     if (match_len > cs.len) {
         /* add the possible chars */
-        /* XXX: should insert utf-8? */
+        // XXX: potential utf-8 issue?
         eb_write(s->b, 0, outputs[0]->str, match_len);
         s->offset = match_len;
+        if (type == COMPLETION_OTHER) {
+            do_mark_region(s, match_len, cs.len);
+        }
     } else {
         if (count > 1) {
             /* if more than one match, then display them in a new popup
                buffer */
             if (!completion_popup_window) {
-                b = eb_new("*completion*", BF_SYSTEM | BF_UTF8 | BF_TRANSIENT);
+                b = eb_new("*completion*", 
+                           BF_SYSTEM | BF_UTF8 | BF_TRANSIENT | BF_STYLE1);
                 b->default_mode = &list_mode;
                 w1 = qs->screen->width;
                 h1 = qs->screen->height - qs->status_height;
@@ -5593,29 +5601,29 @@ void do_completion(EditState *s)
                 do_refresh(e);
                 completion_popup_window = e;
             }
-        } else {
-            if (completion_popup_window) {
-                edit_close(&completion_popup_window);
-                do_refresh(s);
-            }
+        } else
+        if (count == 0 || type != COMPLETION_OTHER) {
+            /* close the popup when minibuf contents matches nothing */
+            edit_close(&completion_popup_window);
+            do_refresh(s);
         }
-        if (completion_popup_window) {
-            /* modify the list with the current matches */
-            e = completion_popup_window;
-            b = e->b;
-            qsort(outputs, count, sizeof(StringItem *), completion_sort_func);
-            b->flags &= ~BF_READONLY;
-            eb_delete(b, 0, b->total_size);
-            for (i = 0; i < count; i++) {
-                eb_printf(b, " %s", outputs[i]->str);
-                if (i != count - 1)
-                    eb_printf(b, "\n");
-            }
-            b->flags |= BF_READONLY;
-            e->mouse_force_highlight = 1;
-            e->force_highlight = 1;
-            e->offset = 0;
+    }
+    if (completion_popup_window) {
+        /* modify the list with the current matches */
+        e = completion_popup_window;
+        b = e->b;
+        qsort(outputs, count, sizeof(StringItem *), completion_sort_func);
+        b->flags &= ~BF_READONLY;
+        eb_delete(b, 0, b->total_size);
+        for (i = 0; i < count; i++) {
+            eb_printf(b, " %s", outputs[i]->str);
+            if (i != count - 1)
+                eb_printf(b, "\n");
         }
+        b->flags |= BF_READONLY;
+        e->mouse_force_highlight = 1;
+        e->force_highlight = 1;
+        e->offset = 0;
     }
     complete_end(&cs);
 }
@@ -5655,18 +5663,28 @@ void do_electric_filename(EditState *s, int key)
 /* space does completion only if a completion method is defined */
 void do_completion_space(EditState *s)
 {
+    QEmacsState *qs = s->qe_state;
+
     if (!completion_function) {
         do_char(s, ' ', 1);
+    } else
+    if (completion_popup_window && qs->last_cmd_func == qs->this_cmd_func) {
+        /* page through the list */
+        // XXX: should close the popup at the bottom of the list
+        do_scroll_up_down(completion_popup_window, 2);
     } else {
-        do_completion(s);
+        do_completion(s, COMPLETION_SPACE);
     }
 }
 
 static void do_minibuffer_char(EditState *s, int key, int argval)
 {
     do_char(s, key, argval);
-    if (completion_popup_window)
-        do_completion(s);
+    if (completion_popup_window) {
+        /* automatic filtering of completion list */
+        // XXX: should prevent auto-completion
+        do_completion(s, COMPLETION_OTHER);
+    }
 }
 
 /* scroll in completion popup */

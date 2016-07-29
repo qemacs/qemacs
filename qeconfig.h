@@ -447,8 +447,8 @@ CmdDef minibuffer_commands[] = {
           "minibuffer-exit", do_minibuffer_exit, 0)
     CMD1( KEY_CTRL('g'), KEY_NONE,
           "minibuffer-abort", do_minibuffer_exit, 1)
-    CMD0( KEY_CTRL('i'), KEY_NONE,
-          "minibuffer-complete", do_completion)
+    CMD1( KEY_CTRL('i'), KEY_NONE,
+          "minibuffer-complete", do_completion, COMPLETION_TAB)
     /* should take numeric prefix to specify word size */
     CMD0( KEY_META('='), KEY_NONE,
           "minibuffer-get-binary", do_minibuffer_get_binary)

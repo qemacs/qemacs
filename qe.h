@@ -1983,7 +1983,10 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
 void qe_save_macros(EditState *s, EditBuffer *b);
 
 void edit_attach(EditState *s, EditState *e);
-void do_completion(EditState *s);
+#define COMPLETION_TAB    0
+#define COMPLETION_SPACE  1
+#define COMPLETION_OTHER  2
+void do_completion(EditState *s, int type);
 void do_completion_space(EditState *s);
 void do_electric_filename(EditState *s, int key);
 void minibuf_complete_scroll_up_down(EditState *s, int dir);
