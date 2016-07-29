@@ -808,6 +808,12 @@ void do_delete_char(EditState *s, int argval)
     if (s->b->flags & BF_READONLY)
         return;
 
+    /* Delete hilighted region, if any.
+     * do_append_next_kill silently ignored.
+     */
+    if (do_delete_selection(s))
+        return;
+
     if (argval == NO_ARG) {
         if (s->qe_state->last_cmd_func != (CmdFunc)do_append_next_kill) {
             eb_delete_uchar(s->b, s->offset);
@@ -843,10 +849,11 @@ void do_backspace(EditState *s, int argval)
         return;
     }
 
-    /* XXX: Should delete hilighted region */
-
-    /* deactivate region hilite */
-    s->region_style = 0;
+    /* Delete hilighted region, if any.
+     * do_append_next_kill silently ignored.
+     */
+    if (do_delete_selection(s))
+        return;
 
     if (argval == NO_ARG) {
         if (s->qe_state->last_cmd_func == (CmdFunc)do_tab
@@ -1400,6 +1407,21 @@ void text_mouse_goto(EditState *s, int x, int y)
 }
 #endif
 
+int do_delete_selection(EditState *s)
+{
+    int res = 0;
+
+    if (s->region_style && s->b->mark != s->offset) {
+        /* Delete hilighted region */
+        // XXX: make it optional?
+        res = eb_delete_range(s->b, s->b->mark, s->offset);
+    }
+    /* deactivate region hilite */
+    s->region_style = 0;
+
+    return res;
+}
+
 void do_char(EditState *s, int key, int argval)
 {
 #ifndef CONFIG_TINY
@@ -1416,10 +1438,8 @@ void do_char(EditState *s, int key, int argval)
     if (s->b->flags & BF_READONLY)
         return;
 
-    /* XXX: Should delete hilighted region */
-
-    /* deactivate region hilite */
-    s->region_style = 0;
+    /* Delete hilighted region */
+    do_delete_selection(s);
 
     for (;;) {
         if (s->mode->write_char)
@@ -1773,10 +1793,16 @@ void do_kill_line(EditState *s, int argval)
 
     p1 = s->offset;
     if (argval == NO_ARG) {
-        /* kill to end of line */
+        if (s->region_style && s->b->mark != s->offset) {
+            /* kill highlighted region */
+            p1 = s->b->mark;
+            p2 = s->offset;
+        } else
         if (eb_nextc(s->b, p1, &offset1) == '\n') {
+            /* kill end of line marker */
             p2 = s->offset = offset1;
         } else {
+            /* kill to end of line */
             do_eol(s);
             p2 = s->offset;
         }
@@ -1828,6 +1854,9 @@ void do_yank(EditState *s)
 
     if (s->b->flags & BF_READONLY)
         return;
+
+    /* First delete any highlighted range */
+    do_delete_selection(s);
 
     /* if the GUI selection is used, it will be handled in the GUI code */
     selection_request(qs->screen);

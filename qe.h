@@ -1857,6 +1857,7 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func);
 int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                                int *offsetp, int line_num);
 
+int do_delete_selection(EditState *s);
 void do_char(EditState *s, int key, int argval);
 void do_combine_char(EditState *s, int accent);
 void do_set_mode(EditState *s, const char *name);
