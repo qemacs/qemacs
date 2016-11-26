@@ -1552,7 +1552,8 @@ static int sql_init(void)
 
 static char const lua_keywords[] = {
     "|and|break|do|else|elseif|end|false|for|function|goto|if|in"
-    "|local|nil|not|or|repeat|return|then|true|until|while"
+    "|local|nil|not|or|repeat|require|return|then|true|until|while"
+    "|self"
     "|"
 };
 
