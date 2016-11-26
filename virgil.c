@@ -67,7 +67,7 @@ static int qe_is_virgil_letter(int c) {
             (qe_inrange(c, 0x00C0, 0xFFFE) && c != 0x00D7 && c != 0x00F7);
 }
 
-static int java_scan_number(unsigned int *str0, int flavor)
+static int virgil_scan_number(unsigned int *str0, int flavor)
 {
     unsigned int *str = str0;
     int c = *str++;
@@ -379,7 +379,7 @@ static void virgil_colorize_line(QEColorizeContext *cp,
         case '0': case '1': case '2': case '3': case '4':
         case '5': case '6': case '7': case '8': case '9':
             i--;
-            klen = java_scan_number(str + i, CLANG_VIRGIL);
+            klen = virgil_scan_number(str + i, CLANG_VIRGIL);
             if (klen > 0) {
                 i += klen;
                 style = VIRGIL_STYLE_NUMBER;
