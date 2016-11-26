@@ -215,6 +215,9 @@ int is_directory(const char *path);
 int is_filepattern(const char *filespec);
 void canonicalize_path(char *buf, int buf_size, const char *path);
 void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const char *path1);
+void canonicalize_absolute_buffer_path(EditBuffer *b, int offset, 
+                                       char *buf, int buf_size, 
+                                       const char *path1);
 char *make_user_path(char *buf, int buf_size, const char *path);
 char *reduce_filename(char *dest, int size, const char *filename);
 int match_extension(const char *filename, const char *extlist);
@@ -1312,7 +1315,9 @@ struct ModeDef {
     EditBufferDataType *data_type; /* native buffer data type (NULL = raw) */
     void (*get_mode_line)(EditState *s, buf_t *out);
     void (*indent_func)(EditState *s, int offset);
-    char *(*get_default_path)(EditState *s, char *buf, int buf_size);
+    /* Get the current directory for the window, return NULL if none */
+    char *(*get_default_path)(EditBuffer *s, int offset, 
+                              char *buf, int buf_size);
 
     /* mode specific key bindings */
     struct KeyDef *first_key;
@@ -1821,7 +1826,7 @@ void do_set_next_mode(EditState *s, int dir);
 
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);
-char *get_default_path(EditState *s, char *buf, int buf_size);
+char *get_default_path(EditBuffer *b, int offset, char *buf, int buf_size);
 void do_find_file(EditState *s, const char *filename, int bflags);
 void do_load_from_path(EditState *s, const char *filename, int bflags);
 void do_find_file_other_window(EditState *s, const char *filename, int bflags);

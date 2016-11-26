@@ -1968,6 +1968,9 @@ QEModeData *qe_create_buffer_mode_data(EditBuffer *b, ModeDef *m)
             md->next = b->mode_data_list;
             b->mode_data_list = md;
         }
+        if (!b->default_mode) {
+            b->default_mode = m;
+        }
     }
     return md;
 }
@@ -4407,7 +4410,7 @@ static void parse_args(ExecCmdState *es)
             def_input[0] = '\0';
             es->default_input[0] = '\0';
             if (strequal(completion_name, "file")) {
-                get_default_path(s, def_input, sizeof(def_input));
+                get_default_path(s->b, s->offset, def_input, sizeof(def_input));
             } else
             if (strequal(completion_name, "buffer")) {
                 EditBuffer *b;
@@ -6191,6 +6194,11 @@ static int is_abs_path(const char *path)
 /* canonicalize the path for a given window and make it absolute */
 void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const char *path1)
 {
+    return canonicalize_absolute_buffer_path(s ? s->b : NULL, s ? s->offset : 0, buf, buf_size, path1);
+}
+
+void canonicalize_absolute_buffer_path(EditBuffer *b, int offset, char *buf, int buf_size, const char *path1)
+{
     char cwd[MAX_FILENAME_SIZE];
     char path[MAX_FILENAME_SIZE];
     char *homedir;
@@ -6220,10 +6228,7 @@ void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const cha
             }
         } else {
             /* CG: not sufficient for windows drives */
-            /* CG: should test result */
-            if (s) {
-                get_default_path(s, cwd, sizeof(cwd));
-            } else {
+            if (!b || !get_default_path(b, offset, cwd, sizeof(cwd))) {
                 getcwd(cwd, sizeof(cwd));
 #ifdef CONFIG_WIN32
                 path_win_to_unix(cwd);
@@ -6237,15 +6242,16 @@ void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const cha
 }
 
 /* compute default path for find/save buffer */
-char *get_default_path(EditState *s, char *buf, int buf_size)
+char *get_default_path(EditBuffer *b, int offset, char *buf, int buf_size)
 {
-    EditBuffer *b = s->b;
     char buf1[MAX_FILENAME_SIZE];
     const char *filename;
 
     /* dispatch to mode specific handler if any */
-    if (s->mode->get_default_path) {
-        return s->mode->get_default_path(s, buf, buf_size);
+    if (b->default_mode
+    &&  b->default_mode->get_default_path
+    &&  b->default_mode->get_default_path(b, offset, buf, buf_size)) {
+        return buf;
     }
 
     if ((b->flags & BF_SYSTEM)
@@ -6253,7 +6259,7 @@ char *get_default_path(EditState *s, char *buf, int buf_size)
     ||  b->filename[0] == '\0') {
         filename = "a";
     } else {
-        filename = s->b->filename;
+        filename = b->filename;
     }
     /* XXX: should just retrieve the current directory */
     canonicalize_absolute_path(NULL, buf1, sizeof(buf1), filename);

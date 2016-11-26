@@ -1185,14 +1185,18 @@ static void dired_display_hook(EditState *s)
     }
 }
 
-static char *dired_get_default_path(EditState *s, char *buf, int buf_size)
+static char *dired_get_default_path(EditBuffer *b, int offset, 
+                                    char *buf, int buf_size)
 {
-    if (is_directory(s->b->filename)) {
-        return makepath(buf, buf_size, s->b->filename, "");
-    } else {
-        get_dirname(buf, buf_size, s->b->filename);
+    if (is_directory(b->filename)) {
+        return makepath(buf, buf_size, b->filename, "");
+    } else
+    if (b->filename[0]) {
+        get_dirname(buf, buf_size, b->filename);
         append_slash(buf, buf_size);
         return buf;
+    } else {
+        return NULL;
     }
 }
 

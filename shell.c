@@ -84,7 +84,7 @@ typedef struct ShellState {
     const char *caption;  /* process caption for exit message */
     int shell_flags;
     int last_char;  /* last char sent to the process */
-
+    char curpath[MAX_FILENAME_SIZE]; /* should keep a list with validity ranges */
 } ShellState;
 
 /* CG: these variables should be encapsulated in a global structure */
@@ -92,6 +92,9 @@ static char error_buffer[MAX_BUFFERNAME_SIZE];
 static int error_offset = -1;
 static int error_line_num = -1;
 static char error_filename[MAX_FILENAME_SIZE];
+
+static char *shell_get_curpath(EditBuffer *b, int offset,
+                               char *buf, int buf_size);
 
 static void set_error_offset(EditBuffer *b, int offset)
 {
@@ -177,7 +180,7 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
                        int cols, int rows, int shell_flags)
 {
     int pty_fd, pid, i, nb_fds;
-    char tty_name[1024];
+    char tty_name[MAX_FILENAME_SIZE];
     struct winsize ws;
 
     pty_fd = get_pty(tty_name, sizeof(tty_name));
@@ -1327,6 +1330,7 @@ static void shell_read_cb(void *opaque)
          */
         s->b->mark = s->cur_prompt = s->cur_offset;
     }
+    shell_get_curpath(s->b, s->cur_offset, s->curpath, sizeof(s->curpath));
 
     /* now we do some refresh */
     edit_display(qs);
@@ -1825,6 +1829,11 @@ static void do_shell_enter(EditState *e)
     struct timespec ts;
 
     if (e->interactive) {
+        ShellState *s = shell_get_state(e, 1);
+
+        if (s) {
+            shell_get_curpath(e->b, e->offset, s->curpath, sizeof(s->curpath));
+        }
         shell_write_char(e, '\r');
         /* give the process a chance to handle the input */
         ts.tv_sec = 0;
@@ -2012,17 +2021,21 @@ static void do_shell_toggle_input(EditState *e)
 
 /* get current directory from prompt on current line */
 /* XXX: should extend behavior to handle more subtile cases */
-static char *shell_get_default_path(EditState *s, char *buf, int buf_size)
+static char *shell_get_curpath(EditBuffer *b, int offset,
+                               char *buf, int buf_size)
 {
     char line[1024];
-    int offset = eb_goto_bol(s->b, s->offset);
+    char curpath[MAX_FILENAME_SIZE];
     int start, first_blank, last_blank, stop, i;
     
-    eb_get_strline(s->b, line, sizeof(line), &offset);
+    offset = eb_goto_bol(b, offset);
+    eb_get_strline(b, line, sizeof(line), &offset);
 
     first_blank = last_blank = 0;
-    for (i = 0; line[i] != '\0'; i++) {
+    for (i = 0;; i++) {
         int c = line[i];
+        if (c == '\0')
+            return NULL;
         if (c == '$' || c == '>')
             break;
         if (c == ' ') {
@@ -2041,10 +2054,26 @@ static char *shell_get_default_path(EditState *s, char *buf, int buf_size)
 
     line[stop] = '\0';
 
+    if (start == stop)
+        return NULL;
+
     /* XXX: should use a lower level function to avoid potential recursion */
-    canonicalize_absolute_path(NULL, buf, buf_size, line + start);
-    append_slash(buf, buf_size);
-    return buf;
+    canonicalize_absolute_path(NULL, curpath, sizeof curpath, line + start);
+    if (!is_directory(curpath))
+        return NULL;
+    append_slash(curpath, sizeof curpath);
+    return pstrcpy(buf, buf_size, curpath);
+}
+
+static char *shell_get_default_path(EditBuffer *b, int offset,
+                                    char *buf, int buf_size)
+{
+    ShellState *s = qe_get_buffer_mode_data(b, &shell_mode, NULL);
+
+    if (s && (s->curpath[0] || shell_get_curpath(b, offset, s->curpath, sizeof(s->curpath)))) {
+        return pstrcpy(buf, buf_size, s->curpath);
+    }
+    return shell_get_curpath(b, offset, buf, buf_size);
 }
 
 static void do_shell_command(EditState *e, const char *cmd)
@@ -2155,8 +2184,8 @@ static void do_compile_error(EditState *s, int dir)
             buf_putc_utf8(fname, c);
         }
 
-        /* XXX: default directory should depend on current position in `s` */
-        canonicalize_absolute_path(s, fullpath, sizeof(fullpath), filename);
+        canonicalize_absolute_buffer_path(b, found_offset, 
+                                          fullpath, sizeof(fullpath), filename);
 
         /* extract line number */
         for (line_num = col_num = 0;;) {
@@ -2204,6 +2233,7 @@ static void do_compile_error(EditState *s, int dir)
     /* CG: Should remove popups, sidepanes, helppanes... */
 
     /* go to the error */
+    /* XXX: should check for file existence */
     do_find_file(s, fullpath, 0);
     do_goto_line(qs->active_window, line_num, col_num);
 

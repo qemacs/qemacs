@@ -140,7 +140,7 @@ void do_compare_files(EditState *s, const char *filename, int bflags)
     const char *tail;
 
     pathlen = get_basename_offset(filename);
-    get_default_path(s, dir, sizeof(dir));
+    get_default_path(s->b, s->offset, dir, sizeof(dir));
 
     if (strstart(filename, dir, &tail)) {
         snprintf(buf, sizeof(buf), "%s../%s", dir, tail);
