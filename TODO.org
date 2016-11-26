@@ -7,6 +7,7 @@
 
 * Priority 0
 
+** markdown: a_bb_c should not detect bb as underlined
 ** basic: reset last command when executing macro
 ** clang: indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
 ** completion: fix electric behavior
@@ -33,6 +34,7 @@
 ** basic: fix behaviour on overlong lines
 ** basic: fix offset when exiting s->hex_mode
 ** completion: minibuffer completion: bad return on C-x C-f . SPC qe SPC RET
+** config: reparse .qerc upon change
 ** dired: display directory links as directories and links
 ** dired: fork process and use asynchronous function to:
    - list directory contents
@@ -41,6 +43,7 @@
 ** doc: migrate TODO and documentation to markdown or reStructuredText
 ** doc: rewrite TODO file with more sections and explanations
 ** doc: migrate coding-rules.html to markdown
+** files: add hook on file change
 ** files: handle files starting with re:
 ** files: check file permissions.
 ** files: use trick for entering spaces in filename prompts without completion
@@ -66,8 +69,10 @@
 ** search: hex-mode search strings should mix hex ut8 strings and ASCII control char names
 ** search: delete-matching-lines
 ** search: make isearch bindings for minibuffer
-** session: previous answers, ...
 ** session: register session store functions
+** session: save previous answers, ...
+** session: save preview mode, buffer modes and properties
+** session: save process buffers?  non file-based buffers?  dired buffers?
 ** shell: handle long shell lines
 ** shell: fix crash bug when invoking qemacs recursively in the terminal
 ** shell: set current directory of new shell buffer to that of current window
@@ -292,6 +297,8 @@ insert_window_left()  deletes some left-most windows
 *** yacc-mode
 *** go-mode
 *** idl-mode
+*** typescript-mode
+*** jspp-mode: JS++
 
 * HTML mode
 
@@ -481,7 +488,7 @@ insert_window_left()  deletes some left-most windows
 
 * Ideas from other editors
 
-** prevent edit in browse mode (current called preview-mode)
+** prevent edit in browse mode (currently called preview-mode)
 ** dynamic project based settings, include, exclude patterns...
 ** electric-c-mode
 ** http request with headings
