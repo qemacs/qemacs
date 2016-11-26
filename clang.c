@@ -67,6 +67,7 @@ enum {
     CLANG_SWIFT,
     CLANG_ICON,
     CLANG_GROOVY,
+    CLANG_VIRGIL,
     CLANG_FLAVOR = 0x3F,
 };
 
@@ -1255,7 +1256,7 @@ static int cpp_mode_probe(ModeDef *mode, ModeProbeData *p)
 ModeDef cpp_mode = {
     .name = "C++",
     .mode_name = "cpp",
-    .extensions = "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++",
+    .extensions = "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++|lzz",
     .mode_probe = cpp_mode_probe,
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_CPP | CLANG_CC,
@@ -2450,6 +2451,7 @@ ModeDef cminus_mode = {
 #include "swift.c"
 #include "icon.c"
 #include "groovy.c"
+#include "virgil.c"
 
 /*---------------- Common initialization code ----------------*/
 
@@ -2509,6 +2511,7 @@ static int c_init(void)
     swift_init();
     icon_init();
     groovy_init();
+    virgil_init();
 
     return 0;
 }
