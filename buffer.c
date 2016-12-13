@@ -95,7 +95,7 @@ int eb_read(EditBuffer *b, int offset, void *buf, int size)
     int len, remain;
     const Page *p;
 
-    /* We carefully clip the request, avoiding and integer overflow */
+    /* We carefully clip the request, avoiding integer overflow */
     if (offset < 0 || size <= 0 || offset >= b->total_size)
         return 0;
 
@@ -1415,22 +1415,7 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
     u8 buf[MAX_CHAR_BYTES];
     int ch;
 
-    if (b->b_styles) {
-        if (b->style_shift == 2) {
-            uint32_t style = 0;
-            eb_read(b->b_styles, (offset >> b->char_shift) << 2, &style, 4);
-            b->cur_style = style;
-        } else
-        if (b->style_shift == 1) {
-            uint16_t style = 0;
-            eb_read(b->b_styles, (offset >> b->char_shift) << 1, &style, 2);
-            b->cur_style = style;
-        } else {
-            uint8_t style = 0;
-            eb_read(b->b_styles, (offset >> b->char_shift), &style, 1);
-            b->cur_style = style;
-        }
-    }
+    /* XXX: should inline this */
     ch = eb_read_one_byte(b, offset);
     if (ch < 0) {
         /* to simplify calling code, return '\n' at buffer boundaries */
@@ -1471,6 +1456,27 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
     }
     *next_ptr = offset;
     return ch;
+}
+
+int eb_nextc_style(EditBuffer *b, int offset, int *next_ptr)
+{
+    if (b->b_styles) {
+        if (b->style_shift == 2) {
+            uint32_t style = 0;
+            eb_read(b->b_styles, (offset >> b->char_shift) << 2, &style, 4);
+            b->cur_style = style;
+        } else
+        if (b->style_shift == 1) {
+            uint16_t style = 0;
+            eb_read(b->b_styles, (offset >> b->char_shift) << 1, &style, 2);
+            b->cur_style = style;
+        } else {
+            uint8_t style = 0;
+            eb_read(b->b_styles, (offset >> b->char_shift), &style, 1);
+            b->cur_style = style;
+        }
+    }
+    return eb_nextc(b, offset, next_ptr);
 }
 
 /* compute offset after moving 'n' chars from 'offset'.
@@ -2294,6 +2300,7 @@ int eb_get_region_content_size(EditBuffer *b, int start, int stop)
     stop = clamp(stop, 0, b->total_size);
     start = clamp(start, 0, stop);
 
+    /* assuming start and stop fall on character boundaries */
     if (b->charset == &charset_utf8 && b->eol_type == EOL_UNIX) {
         return stop - start;
     } else {
@@ -2342,7 +2349,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
         size = 0;
         for (offset = src_offset; offset < offset_max;) {
             char buf[MAX_CHAR_BYTES];
-            int c = eb_nextc(src, offset, &offset);
+            int c = eb_nextc_style(src, offset, &offset);
             int len = eb_encode_uchar(b, buf, c);
             b->cur_style = src->cur_style;
             size += eb_insert(b, offset1 + size, buf, len);

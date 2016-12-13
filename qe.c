@@ -2284,7 +2284,7 @@ void do_convert_buffer_file_coding_system(EditState *s,
 
     /* slow, but simple iterative method */
     for (offset = 0; offset < b->total_size;) {
-        c = eb_nextc(b, offset, &offset);
+        c = eb_nextc_style(b, offset, &offset);
         b1->cur_style = b->cur_style;
         len = eb_encode_uchar(b1, buf, c);
         eb_insert(b1, b1->total_size, buf, len);
@@ -3631,7 +3631,7 @@ static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_
     buf_end = buf + buf_size - 1;
     b->cur_style = 0;
     for (;;) {
-        c = eb_nextc(b, offset, &offset);
+        c = eb_nextc_style(b, offset, &offset);
         if (c == '\n')
             break;
         if (buf_ptr < buf_end) {
@@ -3757,7 +3757,7 @@ static int combine_static_colorized_line(EditState *s, unsigned int *buf, int bu
     buf_end = buf + buf_size - 1;
     b->cur_style = 0;
     for (;;) {
-        c = eb_nextc(b, offset, &offset);
+        c = eb_nextc_style(b, offset, &offset);
         if (c == '\n')
             break;
         if (buf_ptr < buf_end) {

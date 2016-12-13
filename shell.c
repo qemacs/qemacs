@@ -503,7 +503,7 @@ static int tty_put_char(ShellState *s, int c)
 
     offset = s->cur_offset;
     buf[0] = c;
-    c1 = eb_nextc(s->b, offset, &offset1);
+    c1 = eb_nextc_style(s->b, offset, &offset1);
     s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
     if (c1 == '\n') {
         /* insert */

@@ -987,6 +987,8 @@ void eb_set_charset(EditBuffer *b, QECharset *charset, EOLType eol_type);
 qe__attr_nonnull((3))
 int eb_nextc(EditBuffer *b, int offset, int *next_ptr);
 qe__attr_nonnull((3))
+int eb_nextc_style(EditBuffer *b, int offset, int *next_ptr);
+qe__attr_nonnull((3))
 int eb_prevc(EditBuffer *b, int offset, int *prev_ptr);
 int eb_skip_chars(EditBuffer *b, int offset, int n);
 int eb_delete_chars(EditBuffer *b, int offset, int n);
