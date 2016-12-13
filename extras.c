@@ -253,7 +253,7 @@ static void eb_tabify(EditBuffer *b, int p1, int p2)
     /* XXX: should extend for language modes to not replace spaces
      * inside character constants, strings, regex, comments,
      * preprocessor, etc.  Implementation is not too difficult with a
-     * new buffer reader eb_nextc_style() using with colorizer and a
+     * new buffer reader eb_nextc_style() using colorizer and a
      * one line cache.
      */
     int tw = b->tab_width > 0 ? b->tab_width : 8;
@@ -1170,6 +1170,102 @@ static void do_describe_buffer(EditState *s, int argval)
     }
 }
 
+/*---------------- buffer contents sorting ----------------*/
+
+struct chunk_ctx {
+    EditBuffer *b;
+    int flags;
+#define SF_REVERSE  1
+#define SF_FOLD     2
+#define SF_DICT     4
+#define SF_NUMBER   8
+    int dir;
+};
+
+struct chunk {
+    int start, end;
+};
+
+static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
+    const struct chunk_ctx *cp = vp0;
+    const struct chunk *p1 = vp1;
+    const struct chunk *p2 = vp2;
+    int pos1 = p1->start;
+    int pos2 = p2->start;
+    // XXX: should support SF_DICT and SF_NUMBER
+    for (;;) {
+        int c1, c2;
+        c1 = (pos1 < p1->end) ? eb_nextc(cp->b, pos1, &pos1) : 0;
+        c2 = (pos2 < p2->end) ? eb_nextc(cp->b, pos2, &pos2) : 0;
+        if (cp->flags & SF_FOLD) {
+            // XXX: should support unicode case folding
+            c1 = qe_toupper(c1);
+            c2 = qe_toupper(c2);
+        }
+        if (c1 < c2)
+            return -cp->dir;
+        if (c1 > c2)
+            return +cp->dir;
+        if (c1 == 0)
+            return 0;
+    }
+}
+
+static void do_sort_span(EditState *s, int p1, int p2, int flags) {
+    struct chunk_ctx ctx;
+    EditBuffer *b;
+    int i, offset, line1, line2, col1, col2, lines;
+    struct chunk *chunk_array;
+
+    s->region_style = 0;
+
+    if (p1 > p2) {
+        int tmp = p1;
+        p1 = p2;
+        p2 = tmp;
+    }
+    ctx.b = s->b;
+    ctx.flags = flags;  //  SF_FOLD ?
+    ctx.dir = (flags & SF_REVERSE) ? -1 : +1;
+    eb_get_pos(s->b, &line1, &col1, p1); /* line1 is included */
+    eb_get_pos(s->b, &line2, &col2, p2); /* line1 is excluded? */
+    lines = line2 - line1;
+    chunk_array = qe_malloc_array(struct chunk, lines);
+    if (!chunk_array) {
+        put_status(s, "Out of memory");
+        return;
+    }
+    offset = eb_goto_bol(s->b, p1);
+    for (i = 0; i < lines; i++) {
+        chunk_array[i].start = offset;
+        chunk_array[i].end = offset = eb_goto_eol(s->b, offset);
+        eb_nextc(s->b, offset, &offset);
+    }
+    qsort_r(chunk_array, lines, sizeof(*chunk_array), &ctx, chunk_cmp);
+        
+    b = eb_new("*sorted*", BF_SYSTEM);
+    eb_set_charset(b, s->b->charset, s->b->eol_type);
+
+    for (i = 0; i < lines; i++) {
+        eb_insert_buffer(b, b->total_size, s->b, chunk_array[i].start,
+                         chunk_array[i].end - chunk_array[i].start);
+        eb_putc(b, '\n');
+    }
+    eb_delete_range(s->b, p1, p2);
+    s->b->mark = p1;
+    s->offset = p1 + eb_insert_buffer(s->b, p1, b, 0, b->total_size);
+    eb_free(&b);
+    qe_free(&chunk_array);
+}
+
+static void do_sort_region(EditState *s, int flags) {
+    do_sort_span(s, s->b->mark, s->offset, flags);
+}
+
+static void do_sort_buffer(EditState *s, int flags) {
+    do_sort_span(s, 0, s->b->total_size, flags);
+}
+
 static CmdDef extra_commands[] = {
     CMD2( KEY_META('='), KEY_NONE,
           "compare-windows", do_compare_windows, ESi, "ui" )
@@ -1248,6 +1344,15 @@ static CmdDef extra_commands[] = {
           "ui{EOL Type [0=Unix, 1=Dos, 2=Mac]: }")
     CMD2( KEY_NONE, KEY_NONE,
           "describe-buffer", do_describe_buffer, ESi, "ui")
+
+    CMD3( KEY_NONE, KEY_NONE,
+          "sort-buffer", do_sort_buffer, ESi, 0, "*v")
+    CMD3( KEY_NONE, KEY_NONE,
+          "sort-region", do_sort_region, ESi, 0, "*v")
+    CMD3( KEY_NONE, KEY_NONE,
+          "reverse-sort-buffer", do_sort_buffer, ESi, SF_REVERSE, "*v")
+    CMD3( KEY_NONE, KEY_NONE,
+          "reverse-sort-region", do_sort_region, ESi, SF_REVERSE, "*v")
 
     CMD_DEF_END,
 };
