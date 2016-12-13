@@ -773,6 +773,7 @@ static void c_indent_line(EditState *s, int offset0)
         line_num--;
         offsetl = eb_prev_line(s->b, offsetl);
         offset1 = offsetl;
+        /* XXX: deal with truncation */
         len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
         /* store indent position */
         pos1 = find_indent1(s, buf);
@@ -897,6 +898,7 @@ static void c_indent_line(EditState *s, int offset0)
   end_parse:
     /* compute special cases which depend on the chars on the current line */
     offset1 = offset;
+    /* XXX: deal with truncation */
     len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num1);
 
     if (stack_ptr == 0) {
@@ -1441,11 +1443,249 @@ static const char js_types[] = {
     "void|var|"
 };
 
+static int get_js_identifier(char *buf, int buf_size, unsigned int *p)
+{
+    unsigned int c;
+    int i, j;
+
+    i = j = 0;
+    c = p[i];
+    if (qe_isalpha_(c) || c == '$') {
+        for (;;) {
+            if (j < buf_size - 1)
+                buf[j++] = (c < 0xFF) ? c : 0xFF;
+            i++;
+            c = p[i];
+            if (!qe_isalnum_(c))
+                break;
+        }
+    }
+    buf[j] = '\0';
+    return i;
+}
+
+static void js_colorize_line(QEColorizeContext *cp,
+                             unsigned int *str, int n, ModeDef *syn)
+{
+    int i = 0, start, i1, indent;
+    int c, style, type_decl, klen, delim, prev;
+    char kbuf[32];
+    int mode_flags = syn->colorize_flags;
+    int flavor = (mode_flags & CLANG_FLAVOR);
+    int state = cp->colorize_state;
+
+    indent = 0;
+    //for (; qe_isblank(str[indent]); indent++) continue;
+
+    start = i;
+    type_decl = 0;
+    c = 0;
+    style = 0;
+
+    if (i >= n)
+        goto the_end;
+
+    if (state) {
+        /* if already in a state, go directly in the code parsing it */
+        if (state & IN_C_COMMENT)
+            goto parse_comment;
+        if (state & IN_C_STRING)
+            goto parse_string;
+        if (state & IN_C_STRING_Q)
+            goto parse_string_q;
+        if (state & IN_C_REGEX) {
+            delim = '/';
+            goto parse_regex;
+        }
+    }
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+
+        switch (c) {
+        case '/':
+            if (str[i] == '*') {
+                /* C style multi-line comment */
+                i++;
+            parse_comment:
+                style = C_STYLE_COMMENT;
+                state |= IN_C_COMMENT;
+                for (; i < n; i++) {
+                    if (str[i] == '*' && str[i + 1] == '/') {
+                        i += 2;
+                        state &= ~IN_C_COMMENT;
+                        break;
+                    }
+                }
+                break;
+            } else
+            if (str[i] == '/') {
+                /* line comment */
+            parse_comment1:
+                style = C_STYLE_COMMENT;
+                state |= IN_C_COMMENT1;
+                i = n;
+                break;
+            }
+            /* XXX: should use more context to tell regex from divide */
+            prev = ' ';
+            for (i1 = start; i1 > indent; ) {
+                prev = str[--i1] & CHAR_MASK;
+                if (!qe_isblank(prev))
+                    break;
+            }
+            if ((mode_flags & CLANG_REGEX)
+            &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
+            ||   (str[i1] >> STYLE_SHIFT) == C_STYLE_KEYWORD
+            ||   (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
+            &&    !(qe_isalnum(prev) || prev == ')')))) {
+                /* parse regex */
+                state |= IN_C_REGEX;
+                delim = '/';
+            parse_regex:
+                style = C_STYLE_REGEX;
+                while (i < n) {
+                    c = str[i++];
+                    if (c == '\\') {
+                        if (i < n) {
+                            i += 1;
+                        }
+                    } else
+                    if (state & IN_C_CHARCLASS) {
+                        if (c == ']') {
+                            state &= ~IN_C_CHARCLASS;
+                        }
+                        /* ECMA 5: ignore '/' inside char classes */
+                    } else {
+                        if (c == '[') {
+                            state |= IN_C_CHARCLASS;
+                        } else
+                        if (c == delim) {
+                            while (qe_isalnum_(str[i])) {
+                                i++;
+                            }
+                            state &= ~IN_C_REGEX;
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+            continue;
+        case '#':       /* preprocessor */
+            if (start == 0 && str[i] == '!') {
+                /* recognize a shebang comment line */
+                style = C_STYLE_PREPROCESS;
+                i = n;
+                break;
+            }
+            continue;
+        case '\'':      /* character constant */
+        parse_string_q:
+            state |= IN_C_STRING_Q;
+            style = C_STYLE_STRING_Q;
+            delim = '\'';
+            goto string;
+
+        case '\"':      /* string literal */
+        parse_string:
+            state |= IN_C_STRING;
+            style = C_STYLE_STRING;
+            delim = '\"';
+        string:
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\') {
+                    if (i >= n)
+                        break;
+                    i++;
+                } else
+                if (c == delim) {
+                    state &= ~(IN_C_STRING | IN_C_STRING_Q);
+                    break;
+                }
+            }
+            break;
+        case '=':
+            /* exit type declaration */
+            /* does not handle this: int i = 1, j = 2; */
+            type_decl = 0;
+            continue;
+        case '<':       /* JavaScript extension */
+            if (flavor == CLANG_JS) {
+                if (str[i] == '!' && str[i + 1] == '-' && str[i + 2] == '-')
+                    goto parse_comment1;
+            }
+            continue;
+        default:
+            if (qe_isdigit(c)) {
+                /* XXX: should parse actual number syntax */
+                /* maybe ignore '_' in integers */
+                /* XXX: should parse decimal and hex floating point syntaxes */
+                while (qe_isalnum_(str[i]) || str[i] == '.') {
+                    i++;
+                }
+                style = C_STYLE_NUMBER;
+                break;
+            }
+            if (qe_isalpha_(c) || c == '$') {
+                klen = get_js_identifier(kbuf, countof(kbuf), str + start);
+                i = start + klen;
+
+                if (cp->state_only)
+                    continue;
+
+                if (strfind(syn->keywords, kbuf)) {
+                    style = C_STYLE_KEYWORD;
+                    break;
+                }
+
+                i1 = i;
+                while (qe_isblank(str[i1]))
+                    i1++;
+
+                if (str[i1] == '(') {
+                    /* function call */
+                    style = C_STYLE_FUNCTION;
+                    break;
+                }
+                if ((start == 0 || str[start - 1] != '.')
+                &&  !qe_findchar(".(:", str[i])
+                &&  strfind(syn->types, kbuf)) {
+                    /* if not cast, assume type declaration */
+                    type_decl = 1;
+                    style = C_STYLE_TYPE;
+                    break;
+                }
+                continue;
+            }
+            continue;
+        }
+        if (style) {
+            if (!cp->state_only) {
+                SET_COLOR(str, start, i, style);
+            }
+            style = 0;
+        }
+    }
+ the_end:
+    if (state & (IN_C_COMMENT | IN_C_COMMENT1 | IN_C_STRING | IN_C_STRING_Q)) {
+        /* set style on eol char */
+        SET_COLOR1(str, n, style);
+    }
+
+    /* strip state if not overflowing from a comment */
+    state &= ~IN_C_COMMENT1;
+
+    cp->colorize_state = state;
+}
+
 ModeDef js_mode = {
     .name = "Javascript",
     .extensions = "js",
     .shell_handlers = "node",
-    .colorize_func = c_colorize_line,
+    .colorize_func = js_colorize_line,
     .colorize_flags = CLANG_JS | CLANG_REGEX,
     .keywords = js_keywords,
     .types = js_types,
@@ -1455,6 +1695,14 @@ ModeDef js_mode = {
 };
 
 /*---------------- JSON data format ----------------*/
+
+static const char json_keywords[] = {
+    "null|true|false|NaN"
+};
+
+static const char json_types[] = {
+    ""
+};
 
 static int json_mode_probe(ModeDef *mode, ModeProbeData *pd)
 {
@@ -1476,10 +1724,10 @@ ModeDef json_mode = {
     .name = "json",
     .extensions = "json",
     .mode_probe = json_mode_probe,
-    .colorize_func = c_colorize_line,
+    .colorize_func = js_colorize_line,
     .colorize_flags = CLANG_JSON,
-    .keywords = js_keywords,
-    .types = js_types,
+    .keywords = json_keywords,
+    .types = json_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
