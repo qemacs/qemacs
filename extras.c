@@ -429,8 +429,14 @@ static void do_forward_block(EditState *s, int dir)
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
     offset = eb_goto_bol2(s->b, s->offset, &pos);
     offset1 = offset;
+    /* XXX: deal with truncation */
     len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
-    style = buf[max(pos, len)] >> STYLE_SHIFT;
+    if (pos > len) {
+        /* cannot use colorized line buffer */
+        /* XXX: should use buffer contents */
+        pos = len;
+    }
+    style = buf[pos] >> STYLE_SHIFT;
     level = 0;
 
     if (dir < 0) {
@@ -441,6 +447,8 @@ static void do_forward_block(EditState *s, int dir)
                 line_num--;
                 offset = eb_prev_line(s->b, offset);
                 offset1 = offset;
+                /* XXX: this will actually ignore the end of very long lines */
+                /* XXX: deal with truncation */
                 pos = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
                 continue;
             }
@@ -494,6 +502,8 @@ static void do_forward_block(EditState *s, int dir)
                 if (offset >= s->b->total_size)
                     break;
                 offset1 = offset;
+                /* XXX: this will actually ignore the end of very long lines */
+                /* XXX: deal with truncation */
                 len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
                 continue;
             }
