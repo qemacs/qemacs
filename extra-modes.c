@@ -1148,7 +1148,7 @@ static int ini_mode_probe(ModeDef *mode, ModeProbeData *pd)
             continue;
         }
         /* Check for ^\[.+\]\n */
-        if (*p == '[' && p[1] != '[') {
+        if (*p == '[' && p[1] != '[' && p[1] != '{') {
             while (++p < p_end) {
                 if (*p == ']')
                     return 40;
@@ -1534,7 +1534,7 @@ static int sql_mode_probe(ModeDef *mode, ModeProbeData *pd)
 
 static ModeDef sql_mode = {
     .name = "SQL",
-    .extensions = "sql|mysql|sqlite|sqlplus|rdb|xdb|db",
+    .extensions = "sql|Sql|mysql|sqlite|sqlplus|rdb|xdb|db",
     .mode_probe = sql_mode_probe,
     .keywords = sql_keywords,
     .types = sql_types,

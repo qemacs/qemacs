@@ -1828,13 +1828,16 @@ static ModeDef scala_mode = {
 /*---------------- PHP programming language ----------------*/
 
 static const char php_keywords[] = {
-    "abstract|assert|break|case|catch|class|clone|const|continue|"
+    "abstract|as|assert|break|case|catch|class|clone|const|continue|"
     "declare|default|elseif|else|enddeclare|endif|endswitch|end|exit|"
     "extends|false|final|foreach|for|function|goto|if|implements|"
     "include_once|include|instanceof|interface|list|namespace|new|"
-    "overload|parent|private|public|require_once|require|return|"
+    "overload|parent|private|protected|public|require_once|require|return|"
+    "self|sizeof|static|switch|$this|throw|trait|true|try|use|var|while|"
     "self|sizeof|static|switch|throw|trait|true|try|use|var|while|"
-    "NULL|"
+    "NULL|null|$this"
+    // built-in pseudo functions
+    "array|count|defined|echo|empty|"
 };
 
 static const char php_types[] = {
