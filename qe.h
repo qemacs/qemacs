@@ -1675,12 +1675,18 @@ struct DisplayState {
 };
 
 enum DisplayType {
+    DISP_NONE,
     DISP_CURSOR,
     DISP_PRINT,
     DISP_CURSOR_SCREEN,
 };
 
-void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp);
+void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp,
+                  int (*cursor_func)(DisplayState *,
+                                     int offset1, int offset2, int line_num,
+                                     int x, int y, int w, int h, int hex_mode),
+                  void *cursor_opaque);
+void display_close(DisplayState *s);
 void display_bol(DisplayState *s);
 void display_setcursor(DisplayState *s, DirType dir);
 int display_char_bidir(DisplayState *s, int offset1, int offset2,

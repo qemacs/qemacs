@@ -913,13 +913,12 @@ static void get_cursor_pos(EditState *s, CursorContext *m)
 {
     DisplayState ds1, *ds = &ds1;
 
-    display_init(ds, s, DISP_CURSOR);
-    ds->cursor_opaque = m;
-    ds->cursor_func = cursor_func;
     memset(m, 0, sizeof(*m));
     m->offsetc = s->offset;
     m->xc = m->yc = NO_CURSOR;
+    display_init(ds, s, DISP_CURSOR, cursor_func, m);
     display1(ds);
+    display_close(ds);
 }
 
 typedef struct {
@@ -1013,6 +1012,7 @@ void text_move_up_down(EditState *s, int dir)
 
             if (offset_top <= 0)
                 return;
+
             offset_top = eb_prev(s->b, offset_top);
             s->offset_top = s->mode->backward_offset(s, offset_top);
 
@@ -1033,10 +1033,9 @@ void text_move_up_down(EditState *s, int dir)
         m->offsetd = s->b->total_size;
     else
         m->offsetd = 0;
-    display_init(ds, s, DISP_CURSOR);
-    ds->cursor_opaque = m;
-    ds->cursor_func = down_cursor_func;
+    display_init(ds, s, DISP_CURSOR, down_cursor_func, m);
     display1(ds);
+    display_close(ds);
     s->offset = m->offsetd;
 }
 
@@ -1087,8 +1086,9 @@ void do_scroll_left_right(EditState *s, int dir)
     int adjust;
 
     /* compute space_width */
-    display_init(ds, s, DISP_CURSOR);
+    display_init(ds, s, DISP_NONE, NULL, NULL);
     adjust = dir * ds->space_width;
+    display_close(ds);
 
     if (dir > 0) {
         if (s->wrap == WRAP_TRUNCATE) {
@@ -1136,7 +1136,7 @@ void perform_scroll_up_down(EditState *s, int h)
     /* y_disp should not be > 0. So we update offset_top until we have
        it negative */
     if (s->y_disp > 0) {
-        display_init(ds, s, DISP_CURSOR_SCREEN);
+        display_init(ds, s, DISP_CURSOR_SCREEN, NULL, NULL);
         while (s->y_disp > 0) {
             if (s->offset_top <= 0) {
                 /* cannot go back: we stay at the top of the screen and
@@ -1150,6 +1150,7 @@ void perform_scroll_up_down(EditState *s, int h)
                 s->y_disp -= ds->y;
             }
         }
+        display_close(ds);
     }
 
     /* now update cursor position so that it is on screen */
@@ -1157,10 +1158,9 @@ void perform_scroll_up_down(EditState *s, int h)
     m->dir = -dir;
     m->y_found = 0x7fffffff * dir;
     m->offset_found = s->offset; /* default offset */
-    display_init(ds, s, DISP_CURSOR_SCREEN);
-    ds->cursor_opaque = m;
-    ds->cursor_func = scroll_cursor_func;
+    display_init(ds, s, DISP_CURSOR_SCREEN, scroll_cursor_func, m);
     display1(ds);
+    display_close(ds);
 
     s->offset = m->offset_found;
 }
@@ -1280,10 +1280,9 @@ void text_move_left_right_visual(EditState *s, int dir)
         m->offsetd = -1;
         m->dir = dir;
         m->after_found = 0;
-        display_init(ds, s, DISP_CURSOR);
-        ds->cursor_opaque = m;
-        ds->cursor_func = left_right_cursor_func;
+        display_init(ds, s, DISP_CURSOR, left_right_cursor_func, m);
         display1(ds);
+        display_close(ds);
         if (m->offsetd >= 0) {
             /* position found : update and exit */
             s->offset = m->offsetd;
@@ -1384,11 +1383,10 @@ void text_mouse_goto(EditState *s, int x, int y)
     m->offset_found = s->offset; /* fail safe */
     m->hex_mode = s->hex_mode;
 
-    display_init(ds, s, DISP_CURSOR_SCREEN);
+    display_init(ds, s, DISP_CURSOR_SCREEN, mouse_goto_func, m);
     ds->hex_mode = -1; /* we select both hex chars and normal chars */
-    ds->cursor_opaque = m;
-    ds->cursor_func = mouse_goto_func;
     display1(ds);
+    display_close(ds);
 
     s->offset = m->offset_found;
     s->hex_mode = m->hex_mode;
@@ -2899,14 +2897,44 @@ void do_set_system_font(EditState *s, const char *qe_font_name,
             system_fonts);
 }
 
-void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp)
+static void display_bol_bidir(DisplayState *s, DirType base,
+                              int embedding_level_max)
+{
+    s->base = base;
+    s->x = s->x_disp = s->edit_state->x_disp[base];
+    s->style = 0;
+    s->last_style = 0;
+    s->fragment_index = 0;
+    s->line_index = 0;
+    s->nb_fragments = 0;
+    s->word_index = 0;
+    s->embedding_level_max = embedding_level_max;
+    s->last_word_space = 0;
+}
+
+void display_bol(DisplayState *s)
+{
+    display_bol_bidir(s, DIR_LTR, 0);
+}
+
+void display_close(DisplayState *s)
+{
+}
+
+void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp,
+                  int (*cursor_func)(DisplayState *ds,
+                                     int offset1, int offset2, int line_num,
+                                     int x, int y, int w, int h, int hex_mode),
+                  void *cursor_opaque)
 {
     QEFont *font;
     QEStyleDef style;
 
-    s->do_disp = do_disp;
-    s->wrap = e->wrap;
     s->edit_state = e;
+    s->do_disp = do_disp;
+    s->cursor_func = cursor_func;
+    s->cursor_opaque = cursor_opaque;
+    s->wrap = e->wrap;
     /* select default values */
     get_style(e, &style, e->default_style);
     font = select_font(e->screen, style.font_style, style.font_size);
@@ -2923,30 +2951,9 @@ void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp)
     s->y = e->y_disp;
     s->line_num = 0;
     s->eol_reached = 0;
-    s->cursor_func = NULL;
     s->eod = 0;
+    display_bol(s);
     release_font(e->screen, font);
-}
-
-static void display_bol_bidir(DisplayState *s, DirType base,
-                              int embedding_level_max)
-{
-    s->base = base;
-    s->x_disp = s->edit_state->x_disp[base];
-    s->x = s->x_disp;
-    s->style = 0;
-    s->last_style = 0;
-    s->fragment_index = 0;
-    s->line_index = 0;
-    s->nb_fragments = 0;
-    s->word_index = 0;
-    s->embedding_level_max = embedding_level_max;
-    s->last_word_space = 0;
-}
-
-void display_bol(DisplayState *s)
-{
-    display_bol_bidir(s, DIR_LTR, 0);
 }
 
 static void reverse_fragments(TextFragment *str, int len)
@@ -3258,6 +3265,7 @@ static void flush_fragment(DisplayState *s)
 
     if (s->fragment_index == 0)
         return;
+
     if (s->nb_fragments >= MAX_SCREEN_WIDTH)
         goto the_end;
 
@@ -3522,6 +3530,7 @@ void display_printf(DisplayState *ds, int offset1, int offset2,
 
     p = buf;
     if (*p) {
+        /* XXX: utf-8 unsupported, not needed at this point */
         display_char(ds, offset1, offset2, *p++);
         while (*p) {
             display_char(ds, -1, -1, *p++);
@@ -3549,23 +3558,26 @@ static void display1(DisplayState *s)
     for (;;) {
         offset = e->mode->display_line(e, s, offset);
         e->offset_bottom = offset;
+
         /* EOF reached ? */
         if (offset < 0)
             break;
 
         switch (s->do_disp) {
+        case DISP_NONE:
+            return;
         case DISP_CURSOR:
             if (s->eod)
                 return;
             break;
-        default:
-        case DISP_PRINT:
-            if (s->y >= s->height)
-                return; /* end of screen */
-            break;
         case DISP_CURSOR_SCREEN:
             if (s->eod || s->y >= s->height)
                 return;
+            break;
+        case DISP_PRINT:
+        default:
+            if (s->y >= s->height)
+                return; /* end of screen */
             break;
         }
     }
@@ -3816,7 +3828,7 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
             combine_static_colorized_line(s, buf, buf_size, len);
     } else
 #endif
-        if (s->b->b_styles) {
+    if (s->b->b_styles) {
         len = get_staticly_colorized_line(s, buf, buf_size, offset, offsetp, line_num);
     } else {
         len = eb_get_line(s->b, buf, buf_size, offset, offsetp);
@@ -4012,12 +4024,10 @@ static void generic_text_display(EditState *s)
 
     /* find cursor position with the current x_disp & y_disp and
        update y_disp so that we display only the needed lines */
-    display_init(ds, s, DISP_CURSOR_SCREEN);
-    ds->cursor_opaque = m;
-    ds->cursor_func = cursor_func;
     memset(m, 0, sizeof(*m));
     m->offsetc = s->offset;
     m->xc = m->yc = NO_CURSOR;
+    display_init(ds, s, DISP_CURSOR_SCREEN, cursor_func, m);
     offset = s->offset_top;
     for (;;) {
         if (ds->y <= 0) {
@@ -4029,13 +4039,13 @@ static void generic_text_display(EditState *s)
         if (offset < 0 || ds->y >= s->height || m->xc != NO_CURSOR)
             break;
     }
+    display_close(ds);
+
     //printf("cursor: xc=%d yc=%d linec=%d\n", m->xc, m->yc, m->linec);
     if (m->xc == NO_CURSOR) {
         /* if no cursor found then we compute offset_top so that we
            have a chance to find the cursor in a small amount of time */
-        display_init(ds, s, DISP_CURSOR_SCREEN);
-        ds->cursor_opaque = m;
-        ds->cursor_func = cursor_func;
+        display_init(ds, s, DISP_CURSOR_SCREEN, cursor_func, m);
         ds->y = 0;
         offset = s->mode->backward_offset(s, s->offset);
         bottom = s->mode->display_line(s, ds, offset);
@@ -4056,6 +4066,7 @@ static void generic_text_display(EditState *s)
         s->offset_bottom = bottom;
         /* adjust y_disp so that the cursor is at the bottom of the screen */
         s->y_disp = s->height - ds->y;
+        display_close(ds);
     } else {
         yc = m->yc;
         if (yc < 0) {
@@ -4085,11 +4096,9 @@ static void generic_text_display(EditState *s)
 
     /* now we can display the text and get the real cursor position !  */
 
-    display_init(ds, s, DISP_PRINT);
-    ds->cursor_opaque = m;
-    ds->cursor_func = cursor_func;
     m->offsetc = s->offset;
     m->xc = m->yc = NO_CURSOR;
+    display_init(ds, s, DISP_PRINT, cursor_func, m);
     display1(ds);
     /* display the remaining region */
     if (ds->y < s->height) {
@@ -4102,6 +4111,8 @@ static void generic_text_display(EditState *s)
         memset(&s->line_shadow[ds->line_num], 0xff,
                (s->shadow_nb_lines - ds->line_num) * sizeof(QELineShadow));
     }
+    display_close(ds);
+
     xc = m->xc;
     yc = m->yc;
 
@@ -5164,12 +5175,16 @@ void put_status(qe__unused__ EditState *s, const char *fmt, ...)
     } else {
         if (diag) {
             if (!strequal(p, qs->diag_shadow)) {
-                int w = strlen(p) + 1; /* @@@ should right align */
+                /* right align display and overwrite last diag message */
+                int w = strlen(qs->diag_shadow);
+                snprintf(qs->diag_shadow, sizeof(qs->diag_shadow),
+                             "%*s", w, p);
+                w = strlen(qs->diag_shadow) + 1;
                 print_at_byte(qs->screen,
                               qs->screen->width - w,
                               qs->screen->height - qs->status_height,
                               qs->screen->width - w, qs->status_height,
-                              p, QE_STYLE_STATUS);
+                              qs->diag_shadow, QE_STYLE_STATUS);
                 pstrcpy(qs->diag_shadow, sizeof(qs->diag_shadow), p);
             }
         } else {
@@ -5182,7 +5197,7 @@ void put_status(qe__unused__ EditState *s, const char *fmt, ...)
             }
         }
         skip_spaces(&p);
-        if (!silent)
+        if (!silent && *buf)
             eb_format_message(qs, "*messages*", buf);
     }
 }
@@ -7204,7 +7219,8 @@ void do_create_window(EditState *s, const char *filename, const char *layout)
     };
     int args[] = { 0, 0, 0, 0, WF_MODELINE, WRAP_LINE, 0, 0, 0, 0, 0, 0, 0  };
     ModeDef *m = NULL;
-    int i, n, x1, y1, x2, y2, flags, wrap;
+    int i, n, x1, y1, x2, y2, flags;
+    enum WrapType wrap;
     const char *p = layout;
     EditBuffer *b1;
 
@@ -7241,12 +7257,12 @@ void do_create_window(EditState *s, const char *filename, const char *layout)
     x2 = scale(args[2], qs->width, 1000);
     y2 = scale(args[3], qs->height - qs->status_height, 1000);
     flags = args[4];
-    wrap = args[5];
+    wrap = (enum WrapType)args[5];
 
     s = edit_new(b1, x1, y1, x2 - x1, y2 - y1, flags);
     if (m)
         edit_set_mode(s, m);
-    s->wrap = (enum WrapType)wrap;
+    s->wrap = wrap;
     s->offset = clamp(eb_goto_pos(b1, args[6], args[7]), 0, b1->total_size);
     s->b->mark = clamp(eb_goto_pos(b1, args[8], args[9]), 0, b1->total_size);
     s->offset_top = clamp(eb_goto_pos(b1, args[10], args[11]), 0, b1->total_size);
