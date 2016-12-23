@@ -420,58 +420,101 @@ void do_show_date_and_time(EditState *s, int argval)
 /* forward / backward block */
 #define MAX_LEVEL     32
 
+/* Return the matching delimiter for all pairs */
+static int matching_delimiter(int c) {
+    static const char pairs[] = "(){}[]<>";
+    for (int i = 0; pairs[i]; i++) {
+        if (pairs[i] == c)
+            return pairs[i ^ 1];
+    }
+    return c;
+}
+
 static void do_forward_block(EditState *s, int dir)
 {
     unsigned int buf[COLORED_MAX_LINE_SIZE];
     char balance[MAX_LEVEL];
-    int line_num, col_num, offset, offset1, len, pos, style, c, c1, level;
+    int use_colors;
+    int line_num, col_num, style, style0, c, level;
+    int pos;      /* position of the current character on line */
+    int len;      /* number of colorized positions */
+    int offset;   /* offset of the current character */
+    int offset0;  /* offset of the beginning of line */
+    int offset1;  /* offset of the beginning of the next line */
 
-    eb_get_pos(s->b, &line_num, &col_num, s->offset);
-    offset = eb_goto_bol2(s->b, s->offset, &pos);
-    offset1 = offset;
-    /* XXX: deal with truncation */
-    len = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
-    if (pos > len) {
-        /* cannot use colorized line buffer */
-        /* XXX: should use buffer contents */
-        pos = len;
+    offset = s->offset;
+    eb_get_pos(s->b, &line_num, &col_num, offset);
+    offset1 = offset0 = eb_goto_bol2(s->b, offset, &pos);
+    use_colors = s->colorize_func || s->b->b_styles;
+    style0 = 0;
+    len = 0;
+    if (use_colors) {
+        /* XXX: should only query the syntax colorizer */
+        len = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
+        if (len < countof(buf) - 2) {
+            if (pos < len) {
+                style0 = buf[pos] >> STYLE_SHIFT;
+            }
+        } else {
+            /* very long line detected, use fallback version */
+            use_colors = 0;
+            len = 0;
+        }
     }
-    style = buf[pos] >> STYLE_SHIFT;
     level = 0;
 
     if (dir < 0) {
         for (;;) {
-            if (pos == 0) {
+            c = eb_prevc(s->b, offset, &offset);
+            if (c == '\n') {
                 if (offset <= 0)
                     break;
                 line_num--;
-                offset = eb_prev_line(s->b, offset);
-                offset1 = offset;
-                /* XXX: this will actually ignore the end of very long lines */
-                /* XXX: deal with truncation */
-                pos = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
+                offset1 = offset0 = eb_goto_bol2(s->b, offset, &pos);
+                len = 0;
+                if (use_colors) {
+                    /* XXX: should only query the syntax colorizer */
+                    len = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
+                    if (len >= countof(buf) - 2) {
+                        /* very long line detected, use fallback version */
+                        use_colors = 0;
+                        len = 0;
+                        style0 = 0;
+                    }
+                }
                 continue;
             }
-            c = buf[--pos];
-            if (style != c >> STYLE_SHIFT) {
-                if (style == 0)
+            style = 0;
+            --pos;
+            if (pos >= 0 && pos < len) {
+                style = buf[pos] >> STYLE_SHIFT;
+            }
+            if (style != style0) {
+                if (style0 == 0)
                     continue;
-                style = 0;
-                if ((c >> STYLE_SHIFT) != 0)
+                style0 = 0;
+                if (style != 0)
                     continue;
             }
-            switch (c &= CHAR_MASK) {
+            switch (c) {
+            case '\"':
+            case '\'':
+                if (pos >= len) {
+                    /* simplistic string skip with escape char */
+                    int c1, off;
+                    while ((c1 = eb_prevc(s->b, offset, &off)) != '\n') {
+                        offset = off;
+                        pos--;
+                        if (c1 == c && eb_prevc(s->b, offset, &off) != '\\')
+                            break;
+                    }
+                }
+                break;
             case ')':
-                c1 = '(';
-                goto push;
             case ']':
-                c1 = '[';
-                goto push;
             case '}':
-                c1 = '{';
-            push:
                 if (level < MAX_LEVEL) {
-                    balance[level] = c1;
+                    balance[level] = matching_delimiter(c);
                 }
                 level++;
                 break;
@@ -480,54 +523,82 @@ static void do_forward_block(EditState *s, int dir)
             case '{':
                 if (level > 0) {
                     --level;
-                    if (balance[level] != c) {
-                        put_status(s, "Unmatched delimiter");
+                    if (level < MAX_LEVEL && balance[level] != c) {
+                        /* XXX: should set mark and offset */
+                        put_status(s, "Unmatched delimiter %c <> %c",
+                                   c, balance[level]);
                         return;
                     }
-                    if (level <= 0)
-                        goto the_end;
+                    if (level == 0) {
+                        s->offset = offset;
+                        return;
+                    }
+                } else {
+                    /* silently move up one level */
                 }
                 break;
             }
         }
     } else {
         for (;;) {
-            if (pos >= len) {
-                /* Should simplify with get_colorized_line updating
-                 * offset
-                 */
+            c = eb_nextc(s->b, offset, &offset);
+            if (c == '\n') {
                 line_num++;
-                pos = 0;
-                offset = eb_next_line(s->b, offset);
                 if (offset >= s->b->total_size)
                     break;
-                offset1 = offset;
-                /* XXX: this will actually ignore the end of very long lines */
-                /* XXX: deal with truncation */
-                len = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
+                offset1 = offset0 = offset;
+                len = 0;
+                if (use_colors) {
+                    /* XXX: should only query the syntax colorizer */
+                    len = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
+                    if (len >= countof(buf) - 2) {
+                        /* very long line detected, use fallback version */
+                        use_colors = 0;
+                        len = 0;
+                        style0 = 0;
+                    }
+                }
+                pos = 0;
                 continue;
             }
-            c = buf[pos];
+            style = 0;
+            if (pos < len) {
+                style = buf[pos] >> STYLE_SHIFT;
+            }
             pos++;
-            if (style != c >> STYLE_SHIFT) {
-                if (style == 0)
+            if (style0 != style) {
+                if (style0 == 0)
                     continue;
-                style = 0;
-                if ((c >> STYLE_SHIFT) != 0)
+                style0 = 0;
+                if (style != 0)
                     continue;
             }
-            switch (c &= CHAR_MASK) {
+            switch (c) {
+            case '\"':
+            case '\'':
+                if (pos >= len) {
+                    /* simplistic string skip with escape char */
+                    int c1, off;
+                    while ((c1 = eb_nextc(s->b, offset, &off)) != '\n') {
+                        offset = off;
+                        pos++;
+                        if (c1 == '\\') {
+                            if (eb_nextc(s->b, offset, &off) == '\n')
+                                break;
+                            offset = off;
+                            pos++;
+                        } else
+                        if (c1 == c) {
+                            break;
+                        }
+                    }
+                }
+                break;
             case '(':
-                c1 = ')';
-                goto push1;
             case '[':
-                c1 = ']';
-                goto push1;
             case '{':
-                c1 = '}';
-            push1:
                 if (level < MAX_LEVEL) {
-                    balance[level] = c1;
+                    balance[level] = matching_delimiter(c);
                 }
                 level++;
                 break;
@@ -536,23 +607,29 @@ static void do_forward_block(EditState *s, int dir)
             case '}':
                 if (level > 0) {
                     --level;
-                    if (balance[level] != c) {
-                        put_status(s, "Unmatched delimiter");
+                    if (level < MAX_LEVEL && balance[level] != c) {
+                        /* XXX: should set mark and offset */
+                        put_status(s, "Unmatched delimiter %c <> %c",
+                                   c, balance[level]);
                         return;
                     }
-                    if (level <= 0)
-                        goto the_end;
+                    if (level == 0) {
+                        s->offset = offset;
+                        return;
+                    }
+                } else {
+                    /* silently move up one level */
                 }
                 break;
             }
         }
     }
-the_end:
-    while (pos > 0) {
-        eb_nextc(s->b, offset, &offset);
-        pos--;
+    if (level != 0) {
+        /* XXX: should set mark and offset */
+        put_status(s, "Unmatched delimiter");
+    } else {
+        s->offset = offset;
     }
-    s->offset = offset;
 }
 
 static void do_kill_block(EditState *s, int dir)
@@ -578,21 +655,23 @@ static void do_transpose(EditState *s, int cmd)
     if (check_read_only(s))
         return;
 
+    /* compute positions of ranges to swap:
+       offset0..offset1 and offset2..offset3
+       end_offset is the ending position after the swap
+    */
     switch (cmd) {
     case CMD_TRANSPOSE_CHARS:
         /* at end of line, transpose previous 2 characters,
          * otherwise transpose characters before and after point.
          */
-        end_offset = offset2 = s->offset;
+        offset1 = offset2 = s->offset;
+        offset0 = eb_prev(b, offset1);
         if (eb_nextc(b, offset2, &offset3) == '\n') {
-            offset3 = offset2;
-            offset2 = eb_prev(b, offset3);
-            end_offset = s->offset;
-            offset1 = offset2;
+            end_offset = offset3 = offset2;
+            offset1 = offset2 = offset0;
             offset0 = eb_prev(b, offset1);
         } else {
-            offset1 = offset2;
-            offset0 = eb_prev(b, offset1);
+            /* XXX: should have specific flag */
             if (s->qe_state->flag_split_window_change_focus) {
                 /* keep current position between characters */
                 end_offset = offset0 + offset3 - offset2;
@@ -1170,6 +1249,74 @@ static void do_describe_buffer(EditState *s, int argval)
     }
 }
 
+static void do_describe_window(EditState *s, int argval)
+{
+    EditBuffer *b1;
+    int show;
+
+    b1 = new_help_buffer(&show);
+    if (!b1)
+        return;
+
+    eb_printf(b1, "Window Description\n\n");
+
+    int w = 28;
+    eb_printf(b1, "%*s: %d, %d\n", w, "xleft, ytop", s->xleft, s->ytop);
+    eb_printf(b1, "%*s: %d, %d\n", w, "width, height", s->width, s->height);
+    eb_printf(b1, "%*s: %d, %d, %d, %d\n", w, "x1, y1, x2, y2", s->x1, s->y1, s->x2, s->y2);
+    eb_printf(b1, "%*s: %#x %s%s%s%s%s\n", w, "flags", s->flags,
+              (s->flags & WF_POPUP) ? " POPUP" : "",
+              (s->flags & WF_MODELINE) ? " MODELINE" : "",
+              (s->flags & WF_RSEPARATOR) ? " RSEPARATOR" : "",
+              (s->flags & WF_POPLEFT) ? " POPLEFT" : "",
+              (s->flags & WF_HIDDEN) ? " HIDDEN" : "");
+    eb_printf(b1, "%*s: %d\n", w, "offset", s->offset);
+    eb_printf(b1, "%*s: %d\n", w, "offset_top", s->offset_top);
+    eb_printf(b1, "%*s: %d\n", w, "offset_bottom", s->offset_bottom);
+    eb_printf(b1, "%*s: %d\n", w, "y_disp", s->y_disp);
+    eb_printf(b1, "%*s: %d, %d\n", w, "x_disp[]", s->x_disp[0], s->x_disp[1]);
+    eb_printf(b1, "%*s: %d\n", w, "minibuf", s->minibuf);
+    eb_printf(b1, "%*s: %d\n", w, "dump_width", s->dump_width);
+    eb_printf(b1, "%*s: %d\n", w, "hex_mode", s->hex_mode);
+    eb_printf(b1, "%*s: %d\n", w, "unihex_mode", s->unihex_mode);
+    eb_printf(b1, "%*s: %d\n", w, "hex_nibble", s->hex_nibble);
+    eb_printf(b1, "%*s: %d\n", w, "insert", s->insert);
+    eb_printf(b1, "%*s: %d\n", w, "bidir", s->bidir);
+    eb_printf(b1, "%*s: %d\n", w, "cur_rtl", s->cur_rtl);
+    eb_printf(b1, "%*s: %d  %s\n", w, "wrap", s->wrap,
+              s->wrap == WRAP_TRUNCATE ? "TRUNCATE" :
+              s->wrap == WRAP_LINE ? "LINE" : 
+              s->wrap == WRAP_WORD ? "WORD" : "???");
+    eb_printf(b1, "%*s: %d\n", w, "line_numbers", s->line_numbers);
+    eb_printf(b1, "%*s: %d\n", w, "indent_size", s->indent_size);
+    eb_printf(b1, "%*s: %d\n", w, "indent_tabs_mode", s->indent_tabs_mode);
+    eb_printf(b1, "%*s: %d\n", w, "interactive", s->interactive);
+    eb_printf(b1, "%*s: %d\n", w, "force_highlight", s->force_highlight);
+    eb_printf(b1, "%*s: %d\n", w, "mouse_force_highlight", s->mouse_force_highlight);
+    eb_printf(b1, "%*s: %p\n", w, "get_colorized_line", (void*)s->get_colorized_line);
+    eb_printf(b1, "%*s: %p\n", w, "colorize_func", (void*)s->colorize_func);
+    eb_printf(b1, "%*s: %d\n", w, "default_style", s->default_style);
+    eb_printf(b1, "%*s: %s\n", w, "buffer", s->b->name);
+    if (s->last_buffer)
+        eb_printf(b1, "%*s: %s\n", w, "last_buffer", s->last_buffer->name);
+    eb_printf(b1, "%*s: %s\n", w, "mode", s->mode->name);
+    eb_printf(b1, "%*s: %d\n", w, "colorize_nb_lines", s->colorize_nb_lines);
+    eb_printf(b1, "%*s: %d\n", w, "colorize_nb_valid_lines", s->colorize_nb_valid_lines);
+    eb_printf(b1, "%*s: %d\n", w, "colorize_max_valid_offset", s->colorize_max_valid_offset);
+    eb_printf(b1, "%*s: %d\n", w, "busy", s->busy);
+    eb_printf(b1, "%*s: %d\n", w, "display_invalid", s->display_invalid);
+    eb_printf(b1, "%*s: %d\n", w, "borders_invalid", s->borders_invalid);
+    eb_printf(b1, "%*s: %d\n", w, "show_selection", s->show_selection);
+    eb_printf(b1, "%*s: %d\n", w, "region_style", s->region_style);
+    eb_printf(b1, "%*s: %d\n", w, "curline_style", s->curline_style);
+    eb_printf(b1, "\n");
+
+    b1->flags |= BF_READONLY;
+    if (show) {
+        show_popup(b1);
+    }
+}
+
 /*---------------- buffer contents sorting ----------------*/
 
 struct chunk_ctx {
@@ -1321,7 +1468,7 @@ static CmdDef extra_commands[] = {
 
     CMD0( KEY_CTRLH('?'), KEY_F1,
           "about-qemacs", do_about_qemacs)
-    CMD2( KEY_CTRLH('a'), KEY_NONE,
+    CMD2( KEY_CTRLH('a'), KEY_CTRLH(KEY_CTRL('A')),
           "apropos", do_apropos, ESs,
           "s{Apropos: }|apropos|")
     CMD0( KEY_CTRLH('b'), KEY_NONE,
@@ -1329,6 +1476,10 @@ static CmdDef extra_commands[] = {
     CMD2( KEY_CTRLH('B'), KEY_NONE,
           "show-bindings", do_show_bindings, ESs,
           "s{Show bindings of command: }[command]|command|")
+    CMD2( KEY_CTRLH(KEY_CTRL('B')), KEY_NONE,
+          "describe-buffer", do_describe_buffer, ESi, "ui")
+    CMD2( KEY_CTRLH('w'), KEY_CTRLH(KEY_CTRL('W')),
+          "describe-window", do_describe_window, ESi, "ui")
 
     CMD2( KEY_CTRLC('c'), KEY_NONE,
           "set-region-color", do_set_region_color, ESs,
@@ -1342,8 +1493,6 @@ static CmdDef extra_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
           "set-eol-type", do_set_eol_type, ESi,
           "ui{EOL Type [0=Unix, 1=Dos, 2=Mac]: }")
-    CMD2( KEY_NONE, KEY_NONE,
-          "describe-buffer", do_describe_buffer, ESi, "ui")
 
     CMD3( KEY_NONE, KEY_NONE,
           "sort-buffer", do_sort_buffer, ESi, 0, "*v")
