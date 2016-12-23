@@ -274,8 +274,8 @@ static CmdDef basic_commands[] = {
     CMD0( KEY_CTRLX('p'), KEY_NONE,
           "previous-window", do_previous_window)
 #ifndef CONFIG_TINY
-    CMD0( KEY_META(KEY_CTRL('l')), KEY_NONE,
-          "center-cursor", do_center_cursor)
+    CMD1( KEY_META(KEY_CTRL('l')), KEY_NONE,
+          "center-cursor", do_center_cursor, 1)
     CMD1( KEY_CTRL('x'), KEY_UP,
           "find-window-up", do_find_window, KEY_UP)
     CMD1( KEY_CTRL('x'), KEY_DOWN,
@@ -285,9 +285,9 @@ static CmdDef basic_commands[] = {
     CMD1( KEY_CTRL('x'), KEY_RIGHT,
           "find-window-right", do_find_window, KEY_RIGHT)
     CMD1( KEY_META('('), KEY_NONE,
-          "scroll-left", do_scroll_left_right, 1)
+          "scroll-left", do_scroll_left_right, -1)
     CMD1( KEY_META(')'), KEY_NONE,
-          "scroll-right", do_scroll_left_right, -1)
+          "scroll-right", do_scroll_left_right, 1)
     CMD1( KEY_NONE, KEY_NONE,
           "preview-mode", do_preview_mode, 1)
 #endif
@@ -357,6 +357,9 @@ static CmdDef basic_commands[] = {
           "set-system-font", do_set_system_font, ESss,
           "s{Font family: }|fontfamily|"
           "s{System fonts: }|fontnames|")
+    CMD2( KEY_NONE, KEY_NONE,
+          "set-window-style", do_set_window_style, ESs,
+          "s{Style: }[style]|style|")
 
     /*---------------- Miscellaneous ----------------*/
 

@@ -1074,11 +1074,12 @@ static void dired_view_file(EditState *s, const char *filename)
     if (rc >= 0) {
         /* disable wrapping to get nicer display */
         /* XXX: should wrap lines unless window is narrow */
-        e->wrap = WRAP_TRUNCATE;
-    }
-    if (rc < 0) {
+        //e->wrap = WRAP_TRUNCATE; // causes bug on very long lines
+    } else {
         /* if file failed to load, show a scratch buffer */
-        switch_to_buffer(e, eb_new("*scratch*", BF_SAVELOG | BF_UTF8 | BF_PREVIEW));
+        b = eb_new("*scratch*", BF_SAVELOG | BF_UTF8 | BF_PREVIEW);
+        eb_printf(b, "Cannot load file %s", filename);
+        switch_to_buffer(e, b);
     }
 }
 
@@ -1196,6 +1197,12 @@ static char *dired_get_default_path(EditBuffer *b, int offset,
         append_slash(buf, buf_size);
         return buf;
     } else {
+        //// unused because buffer filename has been changed upon navigation
+        //// should deal with file view from multiple directories
+        //DiredState *ds = qe_get_buffer_mode_data(b, &dired_mode, NULL);
+        //if (ds) {
+        //    return makepath(buf, buf_size, ds->path, "");
+        //}
         return NULL;
     }
 }

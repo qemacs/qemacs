@@ -1089,19 +1089,32 @@ static int scroll_cursor_func(DisplayState *ds,
 
 void do_scroll_left_right(EditState *s, int dir)
 {
-    if (dir < 0) {
-        if (s->x_disp[0] == 0) {
-            s->wrap = WRAP_LINE;
-        } else {
-            /* XXX: should change x_disp by space_width increments */
-            s->x_disp[0] += dir;
+    DisplayState ds1, *ds = &ds1;
+    int adjust;
+
+    /* compute space_width */
+    display_init(ds, s, DISP_CURSOR);
+    adjust = dir * ds->space_width;
+
+    if (dir > 0) {
+        if (s->wrap == WRAP_TRUNCATE) {
+            if (s->x_disp[0] == 0) {
+                s->wrap = WRAP_LINE;
+            } else {
+                s->x_disp[0] = min(s->x_disp[0] + adjust, 0);
+            }
+        } else
+        if (s->wrap == WRAP_LINE) {
+            s->wrap = WRAP_WORD;
         }
     } else {
+        if (s->wrap == WRAP_WORD) {
+            s->wrap = WRAP_LINE;
+        } else
         if (s->wrap == WRAP_LINE) {
             s->wrap = WRAP_TRUNCATE;
         } else {
-            /* XXX: should change x_disp by space_width increments */
-            s->x_disp[0] += dir;
+            s->x_disp[0] = min(s->x_disp[0] + adjust, 0);
         }
     }
 }
@@ -1181,7 +1194,7 @@ void text_scroll_up_down(EditState *s, int dir)
 
 /* center the cursor in the window */
 /* XXX: make it generic to all modes */
-void do_center_cursor(EditState *s)
+void do_center_cursor(EditState *s, int force)
 {
     CursorContext cm;
 
@@ -1199,6 +1212,9 @@ void do_center_cursor(EditState *s)
         int offset_top = s->offset;
         eb_prevc(s->b, offset_top, &offset_top);
         s->offset_top = s->mode->text_backward_offset(s, offset_top);
+    } else {
+        if (!force)
+            return;
     }
 
     get_cursor_pos(s, &cm);
@@ -1207,15 +1223,6 @@ void do_center_cursor(EditState *s)
 
     /* try to center display */
     perform_scroll_up_down(s, -((s->height / 2) - cm.yc));
-}
-
-/* center window if offset is not currently visible */
-void do_center_cursor_maybe(EditState *s)
-{
-    if (s->offset < s->offset_top
-    ||  (s->offset_bottom >= 0 && s->offset >= s->offset_bottom)) {
-        do_center_cursor(s);
-    }
 }
 
 /* called each time the cursor could be displayed */
@@ -2696,7 +2703,7 @@ void style_completion(CompleteState *cp)
     }
 }
 
-QEStyleDef *find_style(const char *name)
+int find_style_index(const char *name)
 {
     int i;
     QEStyleDef *style;
@@ -2704,14 +2711,24 @@ QEStyleDef *find_style(const char *name)
     style = qe_styles;
     for (i = 0; i < QE_STYLE_NB; i++, style++) {
         if (strequal(style->name, name))
-            return style;
+            return i;
     }
     if (qe_isdigit(*name)) {
         i = strtol(name, NULL, 0);
         if (i < QE_STYLE_NB)
-            return qe_styles + i;
+            return i;
     }
-    return NULL;
+    return -1;
+}
+
+QEStyleDef *find_style(const char *name)
+{
+    int i = find_style_index(name);
+
+    if (i >= 0 && i < QE_STYLE_NB)
+        return qe_styles + i;
+    else
+        return NULL;
 }
 
 static const char * const qe_style_properties[] = {
@@ -2866,6 +2883,17 @@ void do_toggle_mode_line(EditState *s)
     do_refresh(s);
 }
 
+void do_set_window_style(EditState *s, const char *stylestr)
+{
+    int style = find_style_index(stylestr);
+
+    if (style < 0) {
+        put_status(s, "Unknown style '%s'", stylestr);
+        return;
+    }
+    s->default_style = style;
+}
+
 void do_set_system_font(EditState *s, const char *qe_font_name,
                         const char *system_fonts)
 {
@@ -2880,7 +2908,6 @@ void do_set_system_font(EditState *s, const char *qe_font_name,
             sizeof(s->qe_state->system_fonts[0]),
             system_fonts);
 }
-
 
 void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp)
 {

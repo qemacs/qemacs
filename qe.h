@@ -498,11 +498,19 @@ static inline int max(int a, int b) {
         return b;
 }
 
+static inline int max3(int a, int b, int c) {
+    return max(max(a, b), c);
+}
+
 static inline int min(int a, int b) {
     if (a < b)
         return a;
     else
         return b;
+}
+
+static inline int min3(int a, int b, int c) {
+    return min(min(a, b), c);
 }
 
 static inline int clamp(int a, int b, int c) {
@@ -1932,8 +1940,7 @@ int cursor_func(DisplayState *ds,
 void do_scroll_left_right(EditState *s, int dir);
 void do_scroll_up_down(EditState *s, int dir);
 void perform_scroll_up_down(EditState *s, int h);
-void do_center_cursor_maybe(EditState *s);
-void do_center_cursor(EditState *s);
+void do_center_cursor(EditState *s, int force);
 void do_quote(EditState *s, int argval);
 void do_overwrite_mode(EditState *s, int argval);
 // should take argval
@@ -1959,6 +1966,7 @@ void do_set_tab_width(EditState *s, int tab_width);
 void do_set_indent_width(EditState *s, int indent_width);
 void do_set_indent_tabs_mode(EditState *s, int val);
 void display_window_borders(EditState *e);
+int find_style_index(const char *name);
 QEStyleDef *find_style(const char *name);
 void style_completion(CompleteState *cp);
 void get_style(EditState *e, QEStyleDef *style, int style_index);
@@ -1971,6 +1979,7 @@ void do_set_display_size(EditState *s, int w, int h);
 void do_toggle_mode_line(EditState *s);
 void do_set_system_font(EditState *s, const char *qe_font_name,
                         const char *system_fonts);
+void do_set_window_style(EditState *s, const char *stylestr);
 void call_func(CmdSig sig, CmdProto func, int nb_args, CmdArg *args,
                unsigned char *args_type);
 int parse_arg(const char **pp, unsigned char *argtype,

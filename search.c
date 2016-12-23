@@ -322,7 +322,7 @@ static void isearch_run(ISearchState *is)
         buf_puts(out, "^Q-");
 
     /* display text */
-    do_center_cursor_maybe(s);
+    do_center_cursor(s, 0);
     edit_display(s->qe_state);
     put_status(NULL, "%s", out->buf);   /* XXX: why NULL? */
     elapsed_time = get_clock_ms() - start_time;
@@ -470,7 +470,7 @@ static void isearch_key(void *opaque, int ch)
         is->search_flags &= ~SEARCH_FLAG_SMARTCASE;
         break;
     case KEY_CTRL('l'):
-        do_center_cursor(s);
+        do_center_cursor(s, 1);
         break;
     default:
         if ((KEY_IS_SPECIAL(ch) || KEY_IS_CONTROL(ch)) && ch != '\t') {
@@ -708,7 +708,7 @@ static void query_replace_display(QueryReplaceState *is)
     s->offset = is->found_end;
     s->b->mark = is->found_offset;
     s->region_style = QE_STYLE_SEARCH_MATCH;
-    do_center_cursor_maybe(s);
+    do_center_cursor(s, 0);
     edit_display(s->qe_state);
     put_status(NULL, "%s", out->buf);
     dpy_flush(s->screen);
@@ -773,7 +773,7 @@ static void query_replace_key(void *opaque, int ch)
         query_replace_abort(is);
         return;
     case KEY_CTRL('l'):
-        do_center_cursor(s);
+        do_center_cursor(s, 1);
         break;
     case '.':
         query_replace_replace(is);
@@ -864,7 +864,7 @@ void do_search_string(EditState *s, const char *search_str, int dir)
                 continue;
             } else {
                 s->offset = (dir < 0) ? found_offset : found_end;
-                do_center_cursor_maybe(s);
+                do_center_cursor(s, 0);
                 return;
             }
         } else {
