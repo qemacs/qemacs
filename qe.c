@@ -892,6 +892,10 @@ int cursor_func(DisplayState *ds,
     CursorContext *m = ds->cursor_opaque;
 
     if (m->offsetc >= offset1 && m->offsetc < offset2) {
+        if (w < 0) {  /* for RTL glyphs */
+            x += w;
+            w = -w;
+        }
         m->xc = x;
         m->yc = y;
         m->basec = ds->base;
@@ -939,6 +943,10 @@ static int down_cursor_func(DisplayState *ds,
     MoveContext *m = ds->cursor_opaque;
 
     if (line_num == m->yd) {
+        if (w < 0) {  /* for RTL glyphs */
+            x += w;
+            w = -w;
+        }
         /* find the closest char */
         d = abs(x - m->xd);
         if (d < m->xdmin) {
@@ -1070,6 +1078,7 @@ static int scroll_cursor_func(DisplayState *ds,
             m->offset_found = offset1;
         }
     }
+    /* XXX: should also track horizontal position? */
     if (m->offsetc >= offset1 && m->offsetc < offset2 &&
         y >= 0 && y1 <= ds->height) {
         m->offset_found = m->offsetc;
@@ -1170,6 +1179,7 @@ void text_scroll_up_down(EditState *s, int dir)
     int h, line_height;
 
     /* try to round to a line height */
+    /* XXX: should use QE_STYLE_DEFAULT and pass EditState */
     line_height = get_line_height(s->screen, s->default_style);
     h = 1;
     if (abs(dir) == 2) {
@@ -1236,6 +1246,10 @@ static int left_right_cursor_func(DisplayState *ds,
     int d;
     LeftRightMoveContext *m = ds->cursor_opaque;
 
+    if (w < 0) {  /* for RTL glyphs */
+        x += w;
+        w = -w;
+    }
     if (line_num == m->yd &&
         ((m->dir < 0 && x < m->xd) ||
          (m->dir > 0 && x > m->xd))) {
@@ -2321,18 +2335,22 @@ void do_toggle_line_numbers(EditState *s)
 
 void do_toggle_truncate_lines(EditState *s)
 {
-    if (s->wrap == WRAP_TRUNCATE)
+    if (s->wrap == WRAP_TRUNCATE) {
         s->wrap = WRAP_LINE;
-    else
+        s->x_disp[0] = s->x_disp[1] = 0;
+    } else {
         s->wrap = WRAP_TRUNCATE;
+    }
 }
 
 void do_word_wrap(EditState *s)
 {
-    if (s->wrap == WRAP_WORD)
+    if (s->wrap == WRAP_WORD) {
         s->wrap = WRAP_LINE;
-    else
+    } else {
         s->wrap = WRAP_WORD;
+        s->x_disp[0] = s->x_disp[1] = 0;
+    }
 }
 
 /* do_goto: move point to a specified position.
@@ -2569,10 +2587,14 @@ void text_mode_line(EditState *s, buf_t *out)
 
     if (s->input_method)
         buf_printf(out, "--%s", s->input_method->name);
-#if 0
-    buf_printf(out, "--[%d,%d]-[%d]", s->x_disp[0], s->x_disp[1], s->y_disp);
-#endif
     buf_printf(out, "--%d%%", compute_percent(s->offset, s->b->total_size));
+    if (s->x_disp[0])
+        buf_printf(out, "--<%d", -s->x_disp[0]);
+    if (s->x_disp[1])
+        buf_printf(out, "-->%d", -s->x_disp[1]);
+#if 0
+    buf_printf(out, "--[%d]", s->y_disp);
+#endif
 }
 
 void display_mode_line(EditState *s)
@@ -2999,6 +3021,10 @@ static unsigned int compute_crc(const void *p, int size, unsigned int sum)
     return sum;
 }
 
+/* flush the line fragments to the screen.
+   `offset1..offset2` is the range of offsets for cursor management
+   `last` is 0 for a line wrap, 1 for end of line, -1 for continuation
+*/
 static void flush_line(DisplayState *s,
                        TextFragment *fragments, int nb_fragments,
                        int offset1, int offset2, int last)
@@ -3009,7 +3035,7 @@ static void flush_line(DisplayState *s,
     TextFragment *frag;
     QEFont *font;
 
-    /* compute baseline and lineheight */
+    /* compute baseline and lineheight (incorrect for very long lines) */
     baseline = 0;
     max_descent = 0;
     for (i = 0; i < nb_fragments; i++) {
@@ -3025,7 +3051,7 @@ static void flush_line(DisplayState *s,
         line_height = baseline + max_descent;
     }
 
-    /* swap according to embedding level */
+    /* swap according to embedding level (incorrect for very long lines) */
     for (level = s->embedding_level_max; level > 0; level--) {
         pos = 0;
         while (pos < nb_fragments) {
@@ -3065,6 +3091,7 @@ static void flush_line(DisplayState *s,
             memset(&e->line_shadow[n], 0xff,
                    LINE_SHADOW_INCR * sizeof(QELineShadow));
         }
+        /* XXX: incorrect for very long lines */
         ls = &e->line_shadow[s->line_num];
         if (ls->y == s->y &&
             ls->x_start == x_start &&
@@ -3114,14 +3141,13 @@ static void flush_line(DisplayState *s,
             x = e->xleft;
             if (x_start > 0) {
                 /* RTL eol mark */
-                if (!last && s->base == DIR_RTL) {
-                    /* XXX: optimize that ! */
-                    unsigned int markbuf[1];
+                if (last == 0 && s->base == DIR_RTL) {
+                    unsigned int markbuf[1] = { '/' };
 
+                    /* XXX: potential font metrics mismatch */
                     font = select_font(screen,
                                        default_style.font_style,
                                        default_style.font_size);
-                    markbuf[0] = '/';
                     draw_text(screen, font, x, y + font->ascent,
                               markbuf, 1, default_style.fg_color);
                     release_font(screen, font);
@@ -3136,20 +3162,19 @@ static void flush_line(DisplayState *s,
                 draw_text(screen, font, x, y + baseline,
                           s->line_chars + frag->line_index,
                           frag->len, style.fg_color);
-                x += frag->width;
                 release_font(screen, font);
+                x += frag->width;
             }
             x1 = e->xleft + s->width + s->eol_width;
             if (x < x1) {
                 /* LTR eol mark */
-                if (!last && s->base == DIR_LTR) {
-                    /* XXX: optimize that ! */
-                    unsigned int markbuf[1];
+                if (last == 0 && s->base == DIR_LTR) {
+                    unsigned int markbuf[1] = { '\\' };
 
+                    /* XXX: potential font metrics mismatch */
                     font = select_font(screen,
                                        default_style.font_style,
                                        default_style.font_size);
-                    markbuf[0] = '\\';
                     draw_text(screen, font,
                               e->xleft + s->width, y + font->ascent,
                               markbuf, 1, default_style.fg_color);
@@ -3161,9 +3186,8 @@ static void flush_line(DisplayState *s,
 
     /* call cursor callback */
     if (s->cursor_func) {
-
         x = x_start;
-        /* mark eol */
+        /* RTL eol cursor check (probably incorrect) */
         if (offset1 >= 0 && offset2 >= 0 &&
             s->base == DIR_RTL &&
             s->cursor_func(s, offset1, offset2, s->line_num,
@@ -3172,37 +3196,32 @@ static void flush_line(DisplayState *s,
         }
 
         for (i = 0; i < nb_fragments; i++) {
-            int w, k, j, _offset1, _offset2;
+            int j, k;
 
             frag = &fragments[i];
 
-            j = frag->line_index;
-            for (k = 0; k < frag->len; k++) {
-                int hex_mode;
-                _offset1 = s->line_offsets[j][0];
-                _offset2 = s->line_offsets[j][1];
-                hex_mode = s->line_hex_mode[j];
-                w = s->line_char_widths[j];
-                if (hex_mode == s->hex_mode || s->hex_mode == -1) {
+            for (j = frag->line_index, k = 0; k < frag->len; k++, j++) {
+                int _offset1 = s->line_offsets[j][0];
+                int _offset2 = s->line_offsets[j][1];
+                int hex_mode = s->line_hex_mode[j];
+                int w = s->line_char_widths[j];
+                if ((hex_mode == s->hex_mode || s->hex_mode == -1) &&
+                    _offset1 >= 0 && _offset2 >= 0) {
                     if (s->base == DIR_RTL) {
-                        if (_offset1 >= 0 && _offset2 >= 0 &&
-                            s->cursor_func(s, _offset1, _offset2, s->line_num,
-                                           x + w, s->y, -w, line_height,
-                                           hex_mode))
+                        if (s->cursor_func(s, _offset1, _offset2, s->line_num,
+                                           x + w, s->y, -w, line_height, hex_mode))
                             s->eod = 1;
                     } else {
-                        if (_offset1 >= 0 && _offset2 >= 0 &&
-                            s->cursor_func(s, _offset1, _offset2, s->line_num,
-                                           x, s->y, w, line_height,
-                                           hex_mode))
+                        if (s->cursor_func(s, _offset1, _offset2, s->line_num,
+                                           x, s->y, w, line_height, hex_mode))
                             s->eod = 1;
                     }
                 }
                 x += w;
-                j++;
             }
         }
-        /* mark eol */
+
+        /* LTR eol cursor check */
         if (offset1 >= 0 && offset2 >= 0 &&
             s->base == DIR_LTR &&
             s->cursor_func(s, offset1, offset2, s->line_num,
@@ -3266,7 +3285,8 @@ static void flush_fragment(DisplayState *s)
     if (s->fragment_index == 0)
         return;
 
-    if (s->nb_fragments >= MAX_SCREEN_WIDTH)
+    if (s->nb_fragments >= MAX_SCREEN_WIDTH ||
+        s->line_index + s->fragment_index > MAX_SCREEN_WIDTH)
         goto the_end;
 
     /* update word start index if needed */
@@ -3309,6 +3329,7 @@ static void flush_fragment(DisplayState *s)
     }
 
     style_index = s->last_style;
+    /* XXX: useless test, e->default_style is combined by get_style() */
     if (style_index == QE_STYLE_DEFAULT)
         style_index = s->edit_state->default_style;
     get_style(s->edit_state, &style, style_index);
@@ -3328,6 +3349,7 @@ static void flush_fragment(DisplayState *s)
     } else {
         /* XXX: use text metrics for full fragment */
         w = 0;
+        /* XXX: is the width negative for a RTL fragment? */
         for (i = 0; i < nb_glyphs; i++) {
             QECharMetrics metrics;
             text_metrics(screen, font, &metrics, &s->line_chars[j], 1);
@@ -3386,6 +3408,8 @@ static void flush_fragment(DisplayState *s)
             n = s->nb_fragments;
             if (len == 0)
                 n--;
+
+            /* flush fragments with a line continuation mark */
             flush_line(s, s->fragments, n, -1, -1, 0);
 
             /* move the remaining fragment to next line */
@@ -3411,6 +3435,7 @@ static void flush_fragment(DisplayState *s)
         if (s->x > s->width) {
             int index;
 
+            /* flush fragments with a line continuation mark */
             flush_line(s, s->fragments, s->word_index, -1, -1, 0);
 
             /* put words on next line */
@@ -3420,7 +3445,7 @@ static void flush_fragment(DisplayState *s)
             s->nb_fragments -= s->word_index;
             s->x = 0;
             if (s->edit_state->line_numbers) {
-                /* skip line number column if present */
+                /* should skip line number column if present */
                 //s->x = s->space_width * 8;
             }
             for (i = 0; i < s->nb_fragments; i++) {
@@ -3556,6 +3581,9 @@ static void display1(DisplayState *s)
     s->eod = 0;
     offset = e->offset_top;
     for (;;) {
+        /* XXX: need early bailout from display_line if WRAP_TRUNCATE
+           and far beyond the right border after cursor found.
+        */
         offset = e->mode->display_line(e, s, offset);
         e->offset_bottom = offset;
 
@@ -3923,7 +3951,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     /* colorize regions */
     if (s->curline_style || s->region_style) {
         /* CG: Should combine styles instead of replacing */
-        if (!s->curline_style && s->region_style) {
+        if (s->region_style && !s->curline_style) {
             int line, start_offset, end_offset;
             int start_char, end_char;
 
@@ -3959,6 +3987,9 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     for (;;) {
         offset0 = offset;
         if (offset >= s->b->total_size) {
+            /* the offset passed here is for cursor positioning 
+               when s->offset == s->b->total_size.
+            */
             display_eol(ds, offset0, offset0 + 1);
             offset = -1; /* signal end of text */
             break;
@@ -4024,6 +4055,9 @@ static void generic_text_display(EditState *s)
 
     /* find cursor position with the current x_disp & y_disp and
        update y_disp so that we display only the needed lines */
+    /* XXX: should update x_disp, y_disp to bring the cursor closest
+       to the center, top or bottom of the screen depending on
+       window movement */
     memset(m, 0, sizeof(*m));
     m->offsetc = s->offset;
     m->xc = m->yc = NO_CURSOR;
@@ -4071,7 +4105,8 @@ static void generic_text_display(EditState *s)
         yc = m->yc;
         if (yc < 0) {
             s->y_disp -= yc;
-        } else if ((yc + m->cursor_height) >= s->height) {
+        } else
+        if ((yc + m->cursor_height) > s->height) {
             s->y_disp += s->height - (yc + m->cursor_height);
         }
     }
@@ -4084,9 +4119,11 @@ static void generic_text_display(EditState *s)
         x1 = xc - s->x_disp[m->basec];
         if (x1 >= 0 && x1 < ds->width - ds->eol_width) {
             s->x_disp[m->basec] = 0;
-        } else if (xc < 0) {
+        } else
+        if (xc < 0) {
             s->x_disp[m->basec] -= xc;
-        } else if (xc >= ds->width) {
+        } else
+        if (xc >= ds->width) {
             s->x_disp[m->basec] += ds->width - xc - ds->eol_width;
         }
     } else {
@@ -7535,6 +7572,7 @@ void wheel_scroll_up_down(EditState *s, int dir)
     if (!s->mode->display_line)
         return;
 
+    /* XXX: s->default_style implicit, just pass `s` */
     line_height = get_line_height(s->screen, s->default_style);
     perform_scroll_up_down(s, dir * WHEEL_SCROLL_STEP * line_height);
 }
