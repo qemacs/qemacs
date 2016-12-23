@@ -44,7 +44,7 @@ static int hex_backward_offset(EditState *s, int offset)
     return align(offset, s->dump_width);
 }
 
-static int hex_display(EditState *s, DisplayState *ds, int offset)
+static int hex_display_line(EditState *s, DisplayState *ds, int offset)
 {
     int j, len, ateof;
     int offset1, offset2;
@@ -118,7 +118,7 @@ static void do_set_width(EditState *s, int w)
 {
     if (w >= 1) {
         s->dump_width = w;
-        s->offset_top = s->mode->text_backward_offset(s, s->offset_top);
+        s->offset_top = s->mode->backward_offset(s, s->offset_top);
     }
 }
 
@@ -332,12 +332,14 @@ static ModeDef binary_mode = {
     .name = "binary",
     .mode_probe = binary_mode_probe,
     .mode_init = binary_mode_init,
-    .text_display = hex_display,
-    .text_backward_offset = hex_backward_offset,
+    .display_line = hex_display_line,
+    .backward_offset = hex_backward_offset,
     .move_up_down = hex_move_up_down,
     .move_left_right = hex_move_left_right,
     .move_bol = hex_move_bol,
     .move_eol = hex_move_eol,
+    .move_bof = text_move_bof,
+    .move_eof = text_move_eof,
     .scroll_up_down = text_scroll_up_down,
     .mouse_goto = text_mouse_goto,
     .write_char = text_write_char,
@@ -348,12 +350,14 @@ ModeDef hex_mode = {
     .name = "hex",
     .mode_probe = hex_mode_probe,
     .mode_init = hex_mode_init,
-    .text_display = hex_display,
-    .text_backward_offset = hex_backward_offset,
+    .display_line = hex_display_line,
+    .backward_offset = hex_backward_offset,
     .move_up_down = hex_move_up_down,
     .move_left_right = hex_move_left_right,
     .move_bol = hex_move_bol,
     .move_eol = hex_move_eol,
+    .move_bof = text_move_bof,
+    .move_eof = text_move_eof,
     .scroll_up_down = text_scroll_up_down,
     .mouse_goto = text_mouse_goto,
     .write_char = hex_write_char,

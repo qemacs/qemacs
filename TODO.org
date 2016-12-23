@@ -1,24 +1,39 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2016-07-29
+; Updated: 2016-12-23
 
 * Needed for release version 5
 
 * Priority 0
 
-** markdown: a_bb_c should not detect bb as underlined
 ** basic: reset last command when executing macro
-** clang: indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
 ** completion: fix electric behavior
-** files: track file modifications and reload upon change
 ** files: check file date to detect asynchronous modifications on disk
+** files: reload modified file upon change if untouched since load
+** layout: kill buffer should delete popup and popleft window
 ** shell: turn on interactive mode on commands that move the cursor to EOB
 ** shell: asynchronous input buffer
 ** shell: give commands a chance to execute for macros to behave correctly
+** shell: A-y at process prompt
+** shell: fix very long lines in shell buffer
+** undo: saving the file kills the redo stack!
 
 * Priority 1
 
+** API: use style cache in DisplayState
+** API: remove implicit e->default_style references
+** API: remove screen argument in release_font
+** API: remove screen argument in glyph_width
+** API: add create-style(name, properties)
+** API: pass EditState to get_line_height(screen, s, style)
+** API: add get_glyph_width(screen, s, style, c)
+
+** php: improve coloring
+** basic: A-m in dired left window should apply to right pane
+** basic: goto-byte 10%, 10k, 10m...
+** clang: indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
+** markdown: a_bb_c should not detect bb as underlined
 ** basic: improve speed: C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET -> 96s
 ** basic: improve speed: C-x C-f ~/x2m RET C-u 1000 C-n -> 4s
 ** basic: check abort during long operations: bufferize input and check for ^G
@@ -28,7 +43,7 @@
 ** basic: fix default wrap setting mess
 ** basic: fix fuzzy completion when single unanchored match
 ** basic: make styles and log buffers read-only and display as binary
-** basic: optional 64 bit offsets on 64 bit systems
+** basic: optional 64-bit offsets on 64-bit systems, use typedef for buffer offsets
 ** basic: use rune and u8 types
 ** basic: auto/mixed eol mode
 ** basic: fix behaviour on overlong lines
@@ -69,11 +84,13 @@
 ** search: hex-mode search strings should mix hex ut8 strings and ASCII control char names
 ** search: delete-matching-lines
 ** search: make isearch bindings for minibuffer
+** search: query replace word/case/hex toggles
 ** session: register session store functions
 ** session: save previous answers, ...
 ** session: save preview mode, buffer modes and properties
 ** session: save process buffers?  non file-based buffers?  dired buffers?
 ** shell: handle long shell lines
+** shell: fix screen size notifications, SIGWINCH signals and ioctl
 ** shell: fix crash bug when invoking qemacs recursively in the terminal
 ** shell: set current directory of new shell buffer to that of current window
 ** shell: use auxiliary buffer to make process input asynchronous
@@ -87,6 +104,7 @@
   cp="200E" na="LEFT-TO-RIGHT MARK" alias="LRM"
   cp="200F" na="RIGHT-TO-LEFT MARK" alias="RLM"
 ** tiny: remove extra features
+** undo: store cursor movements in undo records
 ** undo: kill redo list when forking after undo
 ** undo: undo should handle sequence of undo records upto tagged start.
 ** undo: add disable-undo for tests and benchmarking
@@ -106,8 +124,8 @@
 ** charset: handle euc-kr
 ** charset: autodetect sjis, euc-jp...
 ** clang: align multi line comments leading * one space to the right
-** clang: fix c indentation inside comments
-** clang: fix c indentation inside struct, array and enum initializers
+** clang: fix C indentation inside comments
+** clang: fix C indentation inside struct, array and enum initializers
 ** dired: keep dired current file upon: RET C-x C-k RET
 ** dired: fork for directory scan, background inode tracking, dir size scan
 ** extra: add function to add entry in TODO.org

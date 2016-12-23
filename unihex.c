@@ -72,7 +72,7 @@ static int unihex_backward_offset(EditState *s, int offset)
     return eb_goto_char(s->b, pos);
 }
 
-static int unihex_display(EditState *s, DisplayState *ds, int offset)
+static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
 {
     int j, len, ateof, dump_width;
     int offset1, offset2;
@@ -221,12 +221,14 @@ static ModeDef unihex_mode = {
     .name = "unihex",
     .mode_probe = unihex_mode_probe,
     .mode_init = unihex_mode_init,
-    .text_display = unihex_display,
-    .text_backward_offset = unihex_backward_offset,
+    .display_line = unihex_display_line,
+    .backward_offset = unihex_backward_offset,
     .move_up_down = unihex_move_up_down,
     .move_left_right = unihex_move_left_right,
     .move_bol = unihex_move_bol,
     .move_eol = unihex_move_eol,
+    .move_bof = text_move_bof,
+    .move_eof = text_move_eof,
     .scroll_up_down = text_scroll_up_down,
     .mouse_goto = text_mouse_goto,
     .write_char = hex_write_char,

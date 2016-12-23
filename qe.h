@@ -1298,8 +1298,8 @@ struct ModeDef {
     void (*display)(EditState *);
 
     /* text related functions */
-    int (*text_display)(EditState *, DisplayState *, int);
-    int (*text_backward_offset)(EditState *, int);
+    int (*display_line)(EditState *, DisplayState *, int);
+    int (*backward_offset)(EditState *, int);
 
     ColorizeFunc colorize_func;
     int colorize_flags;
@@ -1648,6 +1648,7 @@ struct DisplayState {
     int nb_fragments;
     int last_word_space; /* true if last word was a space */
     int word_index;     /* fragment index of the start of the current word */
+
     /* line char (in fact glyph) buffer */
     unsigned int line_chars[MAX_SCREEN_WIDTH];
     short line_char_widths[MAX_SCREEN_WIDTH];
@@ -1866,7 +1867,7 @@ void qe_kill_buffer(EditBuffer *b);
 extern ModeDef text_mode;
 
 int text_backward_offset(EditState *s, int offset);
-int text_display(EditState *s, DisplayState *ds, int offset);
+int text_display_line(EditState *s, DisplayState *ds, int offset);
 
 void set_colorize_func(EditState *s, ColorizeFunc colorize_func);
 int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,

@@ -135,10 +135,10 @@ void qe_register_mode(ModeDef *m, int flags)
             m->mode_probe = generic_mode_probe;
 
         /* default to text handling */
-        if (!m->text_display)
-            m->text_display = text_display;
-        if (!m->text_backward_offset)
-            m->text_backward_offset = text_backward_offset;
+        if (!m->display_line)
+            m->display_line = text_display_line;
+        if (!m->backward_offset)
+            m->backward_offset = text_backward_offset;
         if (!m->move_up_down)
             m->move_up_down = text_move_up_down;
         if (!m->move_left_right)
@@ -1020,7 +1020,7 @@ void text_move_up_down(EditState *s, int dir)
             if (offset_top <= 0)
                 return;
             eb_prevc(s->b, offset_top, &offset_top);
-            s->offset_top = s->mode->text_backward_offset(s, offset_top);
+            s->offset_top = s->mode->backward_offset(s, offset_top);
 
             /* adjust y_disp so that the cursor is at the same position */
             s->y_disp += cm.yc;
@@ -1152,9 +1152,9 @@ void perform_scroll_up_down(EditState *s, int h)
                 s->y_disp = 0;
             } else {
                 eb_prevc(s->b, offset_top, &offset_top);
-                s->offset_top = s->mode->text_backward_offset(s, offset_top);
+                s->offset_top = s->mode->backward_offset(s, offset_top);
                 ds->y = 0;
-                s->mode->text_display(s, ds, s->offset_top);
+                s->mode->display_line(s, ds, s->offset_top);
                 s->y_disp -= ds->y;
             }
         } while (s->y_disp > 0);
@@ -1199,7 +1199,7 @@ void do_center_cursor(EditState *s, int force)
     CursorContext cm;
 
     /* only apply to text modes */
-    if (!s->mode->text_display)
+    if (!s->mode->display_line)
         return;
 
     if (s->offset < s->offset_top
@@ -1211,7 +1211,7 @@ void do_center_cursor(EditState *s, int force)
          */
         int offset_top = s->offset;
         eb_prevc(s->b, offset_top, &offset_top);
-        s->offset_top = s->mode->text_backward_offset(s, offset_top);
+        s->offset_top = s->mode->backward_offset(s, offset_top);
     } else {
         if (!force)
             return;
@@ -1311,7 +1311,7 @@ void text_move_left_right_visual(EditState *s, int dir)
                     if (offset_top <= 0)
                         break;
                     eb_prevc(s->b, offset_top, &offset_top);
-                    s->offset_top = s->mode->text_backward_offset(s, offset_top);
+                    s->offset_top = s->mode->backward_offset(s, offset_top);
                     /* adjust y_disp so that the cursor is at the same position */
                     s->y_disp += cm.yc;
                     get_cursor_pos(s, &cm);
@@ -2166,8 +2166,8 @@ int edit_set_mode(EditState *s, ModeDef *m)
         if (m->colorize_func)
             set_colorize_func(s, m->colorize_func);
         /* modify offset_top so that its value is correct */
-        if (s->mode->text_backward_offset)
-            s->offset_top = s->mode->text_backward_offset(s, s->offset_top);
+        if (s->mode->backward_offset)
+            s->offset_top = s->mode->backward_offset(s, s->offset_top);
         /* keep saved data in sync with last mode used for buffer */
         generic_save_window_data(s);
     }
@@ -3557,7 +3557,7 @@ static void display1(DisplayState *s)
     s->eod = 0;
     offset = e->offset_top;
     for (;;) {
-        offset = e->mode->text_display(e, s, offset);
+        offset = e->mode->display_line(e, s, offset);
         e->offset_bottom = offset;
         /* EOF reached ? */
         if (offset < 0)
@@ -3844,7 +3844,8 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 
 #define RLE_EMBEDDINGS_SIZE    128
 
-int text_display(EditState *s, DisplayState *ds, int offset)
+/* Display one line in the window */
+int text_display_line(EditState *s, DisplayState *ds, int offset)
 {
     int c;
     int offset0, offset1, line_num, col_num;
@@ -3897,7 +3898,7 @@ int text_display(EditState *s, DisplayState *ds, int offset)
         const char *p = s->prompt;
 
         while (*p) {
-            display_char(ds, -1, -1, *p++);
+            display_char(ds, -1, -1, utf8_decode(&p));
         }
     }
 
@@ -4005,7 +4006,7 @@ static void generic_text_display(EditState *s)
     /* if the cursor is before the top of the display zone, we must
        resync backward */
     if (s->offset < s->offset_top) {
-        s->offset_top = s->mode->text_backward_offset(s, s->offset);
+        s->offset_top = s->mode->backward_offset(s, s->offset);
     }
 
     if (s->display_invalid) {
@@ -4029,7 +4030,7 @@ static void generic_text_display(EditState *s)
             s->offset_top = offset;
             s->y_disp = ds->y;
         }
-        offset = s->mode->text_display(s, ds, offset);
+        offset = s->mode->display_line(s, ds, offset);
         s->offset_bottom = offset;
         if (offset < 0 || ds->y >= s->height || m->xc != NO_CURSOR)
             break;
@@ -4042,8 +4043,8 @@ static void generic_text_display(EditState *s)
         ds->cursor_opaque = m;
         ds->cursor_func = cursor_func;
         ds->y = 0;
-        offset = s->mode->text_backward_offset(s, s->offset);
-        bottom = s->mode->text_display(s, ds, offset);
+        offset = s->mode->backward_offset(s, s->offset);
+        bottom = s->mode->display_line(s, ds, offset);
         if (m->xc == NO_CURSOR) {
             /* XXX: should not happen */
             put_error(NULL, "ERROR: cursor not found");
@@ -4054,8 +4055,8 @@ static void generic_text_display(EditState *s)
 
         while (ds->y < s->height && offset > 0) {
             eb_prevc(s->b, offset, &offset);
-            offset = s->mode->text_backward_offset(s, offset);
-            bottom = s->mode->text_display(s, ds, offset);
+            offset = s->mode->backward_offset(s, offset);
+            bottom = s->mode->display_line(s, ds, offset);
         }
         s->offset_top = offset;
         s->offset_bottom = bottom;
@@ -5901,6 +5902,7 @@ void minibuffer_edit(const char *input, const char *prompt,
     s = edit_new(b, 0, qs->screen->height - qs->status_height,
                  qs->screen->width, qs->status_height, 0);
     /* Should insert at end of window list */
+    /* XXX: should qe_free previous value? */
     s->prompt = qe_strdup(prompt);
     s->minibuf = 1;
     s->bidir = 0;
@@ -7520,7 +7522,7 @@ void wheel_scroll_up_down(EditState *s, int dir)
     int line_height;
 
     /* only apply to text modes */
-    if (!s->mode->text_display)
+    if (!s->mode->display_line)
         return;
 
     line_height = get_line_height(s->screen, s->default_style);
@@ -7791,8 +7793,8 @@ ModeDef text_mode = {
     .name = "text",
     .mode_probe = text_mode_probe,
 
-    .text_display = text_display,
-    .text_backward_offset = text_backward_offset,
+    .display_line = text_display_line,
+    .backward_offset = text_backward_offset,
 
     .move_up_down = text_move_up_down,
     .move_left_right = text_move_left_right_visual,

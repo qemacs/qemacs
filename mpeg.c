@@ -33,7 +33,7 @@
 #define SYSTEM_HEADER_START_CODE    0x000001bb
 #define ISO_11172_END_CODE          0x000001b9
 
-static int mpeg_display(EditState *s, DisplayState *ds, int offset)
+static int mpeg_display_line(EditState *s, DisplayState *ds, int offset)
 {
     unsigned int startcode;
     int ret, badchars, offset_start;
@@ -164,8 +164,8 @@ static ModeDef mpeg_mode = {
     .name = "mpeg",
     .mode_probe = mpeg_mode_probe,
     .mode_init = mpeg_mode_init,
-    .text_display = mpeg_display,
-    .text_backward_offset = mpeg_backward_offset,
+    .display_line = mpeg_display_line,
+    .backward_offset = mpeg_backward_offset,
     .write_char = hex_write_char,
 };
 
