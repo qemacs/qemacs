@@ -1526,15 +1526,17 @@ int qprintf(QString *q, const char *fmt, ...)
 
 int buf_write(buf_t *bp, const void *src, int size)
 {
-    int n = buf_avail(bp);
+    int n = 0;
 
-    if (n > size)
-        n = size;
-    memcpy(bp->buf + bp->len, src, n);
-    bp->pos += size;
-    bp->len += n;
-    if (bp->len < bp->size)
+    if (bp->pos < bp->size) {
+        int n = bp->size - bp->pos - 1;
+        if (n > size)
+            n = size;
+        memcpy(bp->buf + bp->len, src, n);
+        bp->len += n;
         bp->buf[bp->len] = '\0';
+    }
+    bp->pos += size;
     return n;
 }
 
@@ -1576,7 +1578,7 @@ int buf_putc_utf8(buf_t *bp, int c)
 
         len = utf8_encode(buf, c);
 
-        if (buf_avail(bp) >= len) {
+        if (bp->pos + len < bp->size) {
             memcpy(bp->buf + bp->len, buf, len);
             bp->pos += len;
             bp->len += len;
