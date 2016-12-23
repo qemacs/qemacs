@@ -168,28 +168,22 @@ static int latex_mode_probe(ModeDef *mode, ModeProbeData *mp)
 
 static void do_tex_insert_quote(EditState *s)
 {
-    int offset_bol, len, offset1;
-    unsigned int buf[COLORED_MAX_LINE_SIZE];
-    int pos;
+    EditBuffer *b = s->b;
+    int offset = s->offset;
+    int c1 = eb_prevc(b, offset, &offset);
+    int c2 = eb_prevc(b, offset, &offset);
 
-    offset_bol = eb_goto_bol2(s->b, s->offset, &pos);
-    offset1 = offset_bol;
-    len = eb_get_line(s->b, buf, countof(buf), &offset1);
-    if (pos > len)
-        return;
-    if (pos >= 1 && buf[pos-1] == '\"') {
-        s->offset += eb_insert_uchar(s->b, s->offset, '\"');
+    if (c1 == '\"') {
+        s->offset += eb_insert_uchar(b, s->offset, '\"');
     } else
-    if (pos >= 2 && (buf[pos-1] == '`' || buf[pos-1] == '\'') &&
-          buf[pos-1] == buf[pos-2])
-    {
-        eb_delete_chars(s->b, s->offset, -2);
-        s->offset += eb_insert_uchar(s->b, s->offset, '\"');
+    if ((c1 == '`' || c1 == '\'') && c1 == c2) {
+        eb_delete_chars(b, s->offset, -2);
+        s->offset += eb_insert_uchar(b, s->offset, '\"');
     } else {
-        if (pos == 0 || buf[pos-1] == ' ') {
-            s->offset += eb_insert_str(s->b, s->offset, "``");
+        if (c1 == '\n' || c1 == ' ') {
+            s->offset += eb_insert_str(b, s->offset, "``");
         } else {
-            s->offset += eb_insert_str(s->b, s->offset, "''");
+            s->offset += eb_insert_str(b, s->offset, "''");
         }
     }
 }
