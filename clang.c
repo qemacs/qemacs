@@ -987,7 +987,7 @@ static void do_c_electric(EditState *s, int key)
     if (was_preview)
         return;
     /* reindent line at original point */
-    if (s->mode->indent_func)
+    if (s->mode->auto_indent && s->mode->indent_func)
         (s->mode->indent_func)(s, eb_goto_bol(s->b, offset));
 }
 
@@ -996,14 +996,15 @@ static void do_c_return(EditState *s)
     int offset = s->offset;
     int was_preview = s->b->flags & BF_PREVIEW;
 
+    /* XXX: should also remove trailing spaces on current line */
     do_return(s, 1);
     if (was_preview)
         return;
+
     /* reindent line to remove indent on blank line */
-    if (s->mode->indent_func) {
+    if (s->mode->auto_indent && s->mode->indent_func) {
         (s->mode->indent_func)(s, eb_goto_bol(s->b, offset));
-        if (s->mode->auto_indent)
-            (s->mode->indent_func)(s, s->offset);
+        (s->mode->indent_func)(s, s->offset);
     }
 }
 
