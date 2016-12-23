@@ -25,14 +25,16 @@ ModeDef list_mode;
 
 static int list_get_colorized_line(EditState *s,
                                    unsigned int *buf, int buf_size,
-                                   int *offsetp, qe__unused__ int line_num)
+                                   int offset, int *offsetp, 
+                                   qe__unused__ int line_num)
 {
     QEmacsState *qs = s->qe_state;
-    int offset, len;
+    int len;
 
-    offset = *offsetp;
     /* Get line contents including static buffer styles */
-    len = generic_get_colorized_line(s, buf, buf_size, offsetp, line_num);
+    /* XXX: deal with truncation */
+    /* XXX: should just use s->cur_line style */
+    len = generic_get_colorized_line(s, buf, buf_size, offset, offsetp, line_num);
 
     if (((qs->active_window == s) || s->force_highlight) &&
           s->offset >= offset && s->offset < *offsetp)

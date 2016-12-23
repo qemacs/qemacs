@@ -591,7 +591,7 @@ int eb_start_paragraph(EditBuffer *b, int offset)
         if (eb_is_blank_line(b, offset, &offset)) {
             break;
         }
-        eb_prevc(b, offset, &offset);
+        offset = eb_prev(b, offset);
     }
     return offset;
 }
@@ -617,7 +617,7 @@ void do_backward_paragraph(EditState *s)
         if (!eb_is_blank_line(s->b, offset, NULL))
             break;
         /* line just before */
-        eb_prevc(s->b, offset, &offset);
+        offset = eb_prev(s->b, offset);
     }
 
     offset = eb_start_paragraph(s->b, offset);
@@ -803,7 +803,7 @@ void do_changecase_region(EditState *s, int arg)
 
 void do_delete_char(EditState *s, int argval)
 {
-    int endpos, i;
+    int endpos;
 
     if (s->b->flags & BF_READONLY)
         return;
@@ -823,13 +823,7 @@ void do_delete_char(EditState *s, int argval)
     }
 
     /* save kill if numeric argument given */
-    endpos = s->offset;
-    for (i = argval; i > 0 && endpos < s->b->total_size; i--) {
-        eb_nextc(s->b, endpos, &endpos);
-    }
-    for (i = argval; i < 0 && endpos > 0; i++) {
-        eb_prevc(s->b, endpos, &endpos);
-    }
+    endpos = eb_skip_chars(s->b, s->offset, argval);
     do_kill(s, s->offset, endpos, argval, 0);
 }
 
@@ -863,7 +857,7 @@ void do_backspace(EditState *s, int argval)
             return;
         }
         if (s->qe_state->last_cmd_func != (CmdFunc)do_append_next_kill) {
-            eb_prevc(s->b, s->offset, &offset1);
+            offset1 = eb_prev(s->b, s->offset);
             if (offset1 < s->offset) {
                 eb_delete_range(s->b, offset1, s->offset);
                 /* special case for composing */
@@ -1019,7 +1013,7 @@ void text_move_up_down(EditState *s, int dir)
 
             if (offset_top <= 0)
                 return;
-            eb_prevc(s->b, offset_top, &offset_top);
+            offset_top = eb_prev(s->b, offset_top);
             s->offset_top = s->mode->backward_offset(s, offset_top);
 
             /* adjust y_disp so that the cursor is at the same position */
@@ -1143,21 +1137,19 @@ void perform_scroll_up_down(EditState *s, int h)
        it negative */
     if (s->y_disp > 0) {
         display_init(ds, s, DISP_CURSOR_SCREEN);
-        do {
-            int offset_top = s->offset_top;
-
-            if (offset_top <= 0) {
+        while (s->y_disp > 0) {
+            if (s->offset_top <= 0) {
                 /* cannot go back: we stay at the top of the screen and
                    exit loop */
                 s->y_disp = 0;
             } else {
-                eb_prevc(s->b, offset_top, &offset_top);
-                s->offset_top = s->mode->backward_offset(s, offset_top);
+                int offset = eb_prev(s->b, s->offset_top);
+                s->offset_top = s->mode->backward_offset(s, offset);
                 ds->y = 0;
                 s->mode->display_line(s, ds, s->offset_top);
                 s->y_disp -= ds->y;
             }
-        } while (s->y_disp > 0);
+        }
     }
 
     /* now update cursor position so that it is on screen */
@@ -1209,9 +1201,8 @@ void do_center_cursor(EditState *s, int force)
          * speeds up get_cursor_pos() on large files, except for the
          * pathological case of huge lines.
          */
-        int offset_top = s->offset;
-        eb_prevc(s->b, offset_top, &offset_top);
-        s->offset_top = s->mode->backward_offset(s, offset_top);
+        int offset = eb_prev(s->b, s->offset);
+        s->offset_top = s->mode->backward_offset(s, offset);
     } else {
         if (!force)
             return;
@@ -1306,12 +1297,12 @@ void text_move_left_right_visual(EditState *s, int dir)
             } else {
                 /* no suitable position found: go to previous line */
                 if (yc <= 0) {
-                    int offset_top = s->offset_top;
+                    int offset = s->offset_top;
 
-                    if (offset_top <= 0)
+                    if (offset <= 0)
                         break;
-                    eb_prevc(s->b, offset_top, &offset_top);
-                    s->offset_top = s->mode->backward_offset(s, offset_top);
+                    offset = eb_prev(s->b, offset);
+                    s->offset_top = s->mode->backward_offset(s, offset);
                     /* adjust y_disp so that the cursor is at the same position */
                     s->y_disp += cm.yc;
                     get_cursor_pos(s, &cm);
@@ -1538,9 +1529,7 @@ void text_write_char(EditState *s, int key)
                 break;
             } else {
                 /* match: delete matched chars */
-                offset = s->compose_start_offset;
-                for (i = 0; i < match_len; i++)
-                    eb_nextc(s->b, offset, &offset);
+                offset = eb_skip_chars(s->b, s->compose_start_offset, match_len);
                 eb_delete_range(s->b, s->compose_start_offset, offset);
                 s->compose_len -= match_len;
                 umemmove(s->compose_buf, s->compose_buf + match_len,
@@ -1822,7 +1811,7 @@ void do_kill_line(EditState *s, int argval)
             p2 = s->offset;
             if (p2 <= 0 || argval == 0)
                 break;
-            eb_prevc(s->b, p2, &p2);
+            p2 = eb_prev(s->b, p2);
             s->offset = p2;
             argval += 1;
         }
@@ -1832,7 +1821,7 @@ void do_kill_line(EditState *s, int argval)
             p2 = s->offset;
             if (p2 >= s->b->total_size || argval == 0)
                 break;
-            eb_nextc(s->b, p2, &p2);
+            p2 = eb_next(s->b, p2);
             s->offset = p2;
             argval -= 1;
         }
@@ -2265,7 +2254,7 @@ void do_convert_buffer_file_coding_system(EditState *s,
     QECharset *charset;
     EOLType eol_type;
     EditBuffer *b1, *b;
-    int offset, c, len, i;
+    int offset, len, i;
     EditBufferCallbackList *cb;
     int pos[32];
     char buf[MAX_CHAR_BYTES];
@@ -2291,8 +2280,9 @@ void do_convert_buffer_file_coding_system(EditState *s,
 
     /* slow, but simple iterative method */
     for (offset = 0; offset < b->total_size;) {
-        c = eb_nextc_style(b, offset, &offset);
-        b1->cur_style = b->cur_style;
+        int style = eb_get_style(b, offset);
+        int c = eb_nextc(b, offset, &offset);
+        b1->cur_style = style;
         len = eb_encode_uchar(b1, buf, c);
         eb_insert(b1, b1->total_size, buf, len);
     }
@@ -3646,23 +3636,20 @@ static int bidir_compute_attributes(TypeLink *list_tab, int max_size,
    buffer */
 
 static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                                       int *offset_ptr, int line_num)
+                                       int offset, int *offset_ptr, int line_num)
 {
     EditBuffer *b = s->b;
     unsigned int *buf_ptr, *buf_end;
-    int c, offset;
-
-    offset = *offset_ptr;
 
     buf_ptr = buf;
     buf_end = buf + buf_size - 1;
-    b->cur_style = 0;
     for (;;) {
-        c = eb_nextc_style(b, offset, &offset);
+        int style = eb_get_style(b, offset);
+        int c = eb_nextc(b, offset, &offset);
         if (c == '\n')
             break;
         if (buf_ptr < buf_end) {
-            c |= b->cur_style << STYLE_SHIFT;
+            c = (c & CHAR_MASK) | (style << STYLE_SHIFT);
             *buf_ptr++ = c;
         }
     }
@@ -3678,12 +3665,13 @@ static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_
 
 #define COLORIZED_LINE_PREALLOC_SIZE 64
 
-static int syntax_get_colorized_line(EditState *s, unsigned int *buf,
-                                     int buf_size, int *offsetp, int line_num)
+static int syntax_get_colorized_line(EditState *s, 
+                                     unsigned int *buf, int buf_size, 
+                                     int offset, int *offsetp, int line_num)
 {
     QEColorizeContext cctx;
     EditBuffer *b = s->b;
-    int len, line, n, col, offset, bom;
+    int len, line, n, col, bom;
 
     /* invalidate cache if needed */
     if (s->colorize_max_valid_offset != INT_MAX) {
@@ -3724,15 +3712,17 @@ static int syntax_get_colorized_line(EditState *s, unsigned int *buf,
         cctx.state_only = 1;
 
         for (line = s->colorize_nb_valid_lines; line <= line_num; line++) {
-            len = eb_get_line(b, buf, buf_size - 1, &offset);
+            len = eb_get_line(b, buf, buf_size - 1, offset, &offset);
+            if (buf[len] != '\n') {
+                /* line was truncated */
+                /* XXX: should use reallocatable buffer */
+                offset = eb_goto_pos(b, line, 0);
+            }
+            buf[len] = '\0';
+
             /* skip byte order mark if present */
             bom = (buf[0] == 0xFEFF);
-            if (bom) {
-                SET_COLOR1(buf, 0, QE_STYLE_PREPROCESS);
-            }
             s->colorize_func(&cctx, buf + bom, len - bom, s->mode);
-            /* buf[len] has char '\0' but may hold style, force buf ending */
-            buf[len + 1] = 0;
             s->colorize_states[line] = cctx.colorize_state;
         }
     }
@@ -3740,12 +3730,20 @@ static int syntax_get_colorized_line(EditState *s, unsigned int *buf,
     /* compute line color */
     cctx.colorize_state = s->colorize_states[line_num];
     cctx.state_only = 0;
-    len = eb_get_line(b, buf, buf_size - 1, offsetp);
+    len = eb_get_line(b, buf, buf_size - 1, offset, offsetp);
+    if (buf[len] != '\n') {
+        /* line was truncated */
+        /* XXX: should use reallocatable buffer */
+        *offsetp = eb_goto_pos(b, line_num + 1, 0);
+    }
+    buf[len] = '\0';
+
     bom = (buf[0] == 0xFEFF);
     if (bom) {
         SET_COLOR1(buf, 0, QE_STYLE_PREPROCESS);
     }
     s->colorize_func(&cctx, buf + bom, len - bom, s->mode);
+    /* buf[len] has char '\0' but may hold style, force buf ending */
     buf[len + 1] = 0;
 
     /* XXX: if state is same as previous, minimize invalid region? */
@@ -3771,32 +3769,19 @@ static void colorize_callback(qe__unused__ EditBuffer *b,
         e->colorize_max_valid_offset = offset;
 }
 
-static int combine_static_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-    int *offset_ptr, int line_num)
+static int combine_static_colorized_line(EditState *s, unsigned int *buf, 
+                                         int len, int offset)
 {
     EditBuffer *b = s->b;
-    unsigned int *buf_ptr, *buf_end;
-    int c, offset;
 
-    offset = *offset_ptr;
-
-    buf_ptr = buf;
-    buf_end = buf + buf_size - 1;
-    b->cur_style = 0;
-    for (;;) {
-        c = eb_nextc_style(b, offset, &offset);
-        if (c == '\n')
-            break;
-        if (buf_ptr < buf_end) {
-            if (b->cur_style) {
-                *buf_ptr = (*buf_ptr & CHAR_MASK) | (b->cur_style << STYLE_SHIFT);
-            }
-            buf_ptr++;
+    for (int i = 0; i < len; i++) {
+        int style = eb_get_style(b, offset);
+        if (style) {
+            buf[i] = (buf[i] & CHAR_MASK) | (style << STYLE_SHIFT);
         }
+        offset = eb_next(b, offset);
     }
-    *buf_ptr = '\0';
-    *offset_ptr = offset;
-    return buf_ptr - buf;
+    return len;
 }
 
 #endif /* CONFIG_TINY */
@@ -3820,25 +3805,28 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
 }
 
 int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                               int *offsetp, int line_num)
+                               int offset, int *offsetp, int line_num)
 {
-    int len, offset = *offsetp;
+    int len;
 
 #ifndef CONFIG_TINY
     if (s->colorize_func) {
-        len = syntax_get_colorized_line(s, buf, buf_size, offsetp, line_num);
+        len = syntax_get_colorized_line(s, buf, buf_size, offset, offsetp, line_num);
         if (s->b->b_styles)
-            len = combine_static_colorized_line(s, buf, buf_size, &offset, line_num);
+            combine_static_colorized_line(s, buf, buf_size, len);
     } else
 #endif
-    if (s->b->b_styles)
-        len = get_staticly_colorized_line(s, buf, buf_size, offsetp, line_num);
-    else
-        len = eb_get_line(s->b, buf, buf_size, offsetp);
-
-    if (s->isearch_state)
-        isearch_colorize_matches(s, buf, len, offset, *offsetp);
-
+        if (s->b->b_styles) {
+        len = get_staticly_colorized_line(s, buf, buf_size, offset, offsetp, line_num);
+    } else {
+        len = eb_get_line(s->b, buf, buf_size, offset, offsetp);
+        if (buf[len] != '\n') {
+            /* line was truncated */
+            /* XXX: should use reallocatable buffer */
+            *offsetp = eb_goto_pos(s->b, line_num + 1, 0);
+        }
+        buf[len] = '\0';
+    }
     return len;
 }
 
@@ -3909,9 +3897,14 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     ||  s->curline_style || s->region_style
     ||  s->b->b_styles
     ||  s->isearch_state) {
+        /* XXX: deal with truncation */
         colored_nb_chars = s->get_colorized_line(s, colored_chars,
                                                  countof(colored_chars),
-                                                 &offset0, line_num);
+                                                 offset, &offset0, line_num);
+        if (s->isearch_state) {
+            isearch_colorize_matches(s, colored_chars, colored_nb_chars,
+                                     offset);
+        }
     }
 
 #if 1
@@ -3919,24 +3912,25 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     if (s->curline_style || s->region_style) {
         /* CG: Should combine styles instead of replacing */
         if (!s->curline_style && s->region_style) {
-            int line, start, stop;
+            int line, start_offset, end_offset;
+            int start_char, end_char;
 
             if (s->b->mark < s->offset) {
-                start = max(offset, s->b->mark);
-                stop = min(offset0, s->offset);
+                start_offset = max(offset, s->b->mark);
+                end_offset = min(offset0, s->offset);
             } else {
-                start = max(offset, s->offset);
-                stop = min(offset0, s->b->mark);
+                start_offset = max(offset, s->offset);
+                end_offset = min(offset0, s->b->mark);
             }
-            if (start < stop) {
+            if (start_offset < end_offset) {
                 /* Compute character positions */
-                eb_get_pos(s->b, &line, &start, start);
-                if (stop >= offset0)
-                    stop = colored_nb_chars;
+                eb_get_pos(s->b, &line, &start_char, start_offset);
+                if (end_offset >= offset0)
+                    end_char = colored_nb_chars;
                 else
-                    eb_get_pos(s->b, &line, &stop, stop);
-                clear_color(colored_chars + start, stop - start);
-                set_color(colored_chars + start, colored_chars + stop,
+                    eb_get_pos(s->b, &line, &end_char, end_offset);
+                clear_color(colored_chars + start_char, end_char - start_char);
+                set_color(colored_chars + start_char, colored_chars + end_char,
                           s->region_style);
             }
         } else
@@ -4054,14 +4048,13 @@ static void generic_text_display(EditState *s)
         }
 
         while (ds->y < s->height && offset > 0) {
-            eb_prevc(s->b, offset, &offset);
+            offset = eb_prev(s->b, offset);
             offset = s->mode->backward_offset(s, offset);
             bottom = s->mode->display_line(s, ds, offset);
         }
         s->offset_top = offset;
         s->offset_bottom = bottom;
-        /* adjust y_disp so that the cursor is at the bottom of the
-           screen */
+        /* adjust y_disp so that the cursor is at the bottom of the screen */
         s->y_disp = s->height - ds->y;
     } else {
         yc = m->yc;
@@ -5819,12 +5812,13 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     /* if completion is activated, then select current file only if
        the selection is highlighted */
     if (cw && cw->force_highlight) {
-        int offset;
+        int offset, len;
 
-        offset = list_get_offset(cw);
-        eb_get_strline(cw->b, buf, sizeof(buf), &offset);
-        if (buf[0] != '\0')
+        len = eb_fgets(cw->b, buf, sizeof(buf), list_get_offset(cw), &offset);
+        buf[len] = '\0';   /* strip the trailing newline if any */
+        if (len > 0) {
             set_minibuffer_str(s, buf + 1);
+        }
     }
 
     /* remove completion popup if present */

@@ -772,9 +772,10 @@ static void c_indent_line(EditState *s, int offset0)
             break;
         line_num--;
         offsetl = eb_prev_line(s->b, offsetl);
-        offset1 = offsetl;
         /* XXX: deal with truncation */
-        len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+        /* XXX: should only query the syntax colorizer */
+        len = s->get_colorized_line(s, buf, countof(buf),
+                                    offsetl, &offset1, line_num);
         /* store indent position */
         pos1 = find_indent1(s, buf);
         p = buf + len;
@@ -897,9 +898,10 @@ static void c_indent_line(EditState *s, int offset0)
     }
   end_parse:
     /* compute special cases which depend on the chars on the current line */
-    offset1 = offset;
     /* XXX: deal with truncation */
-    len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num1);
+    /* XXX: should only query the syntax colorizer */
+    len = s->get_colorized_line(s, buf, countof(buf),
+                                offset, &offset1, line_num1);
 
     if (stack_ptr == 0) {
         if (!pos && lpos >= 0) {
@@ -1028,8 +1030,8 @@ static void do_c_forward_conditional(EditState *s, int dir)
     eb_get_pos(s->b, &line_num, &col_num, offset);
     level = 0;
     for (;;) {
-        offset1 = offset;
-        s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+        /* XXX: should only query the syntax colorizer */
+        s->get_colorized_line(s, buf, countof(buf), offset, &offset1, line_num);
         sharp = 0;
         for (p = buf; *p; p++) {
             int c = (*p & CHAR_MASK);
@@ -1094,8 +1096,8 @@ static void do_c_list_conditionals(EditState *s)
     while (offset > 0) {
         line_num--;
         offset = eb_prev_line(s->b, offset);
-        offset1 = offset;
-        s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+        /* XXX: should only query the syntax colorizer */
+        s->get_colorized_line(s, buf, countof(buf), offset, &offset1, line_num);
         sharp = 0;
         for (p = buf; *p; p++) {
             int c = (*p & CHAR_MASK);
@@ -1833,7 +1835,6 @@ static const char php_keywords[] = {
     "extends|false|final|foreach|for|function|goto|if|implements|"
     "include_once|include|instanceof|interface|list|namespace|new|"
     "overload|parent|private|protected|public|require_once|require|return|"
-    "self|sizeof|static|switch|$this|throw|trait|true|try|use|var|while|"
     "self|sizeof|static|switch|throw|trait|true|try|use|var|while|"
     "NULL|null|$this"
     // built-in pseudo functions

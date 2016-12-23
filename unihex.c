@@ -185,9 +185,9 @@ static void unihex_move_eol(EditState *s)
 static void unihex_move_left_right(EditState *s, int dir)
 {
     if (dir > 0) {
-        eb_nextc(s->b, s->offset, &s->offset);
+        s->offset = eb_next(s->b, s->offset);
     } else {
-        eb_prevc(s->b, s->offset, &s->offset);
+        s->offset = eb_prev(s->b, s->offset);
     }
 }
 

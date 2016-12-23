@@ -131,7 +131,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
         if (dir < 0) {
             if (offset == 0)
                 return 0;
-            eb_prevc(b, offset, &offset);
+            offset = eb_prev(b, offset);
         } else {
             offset = offset1;
             if (offset >= end_offset)
@@ -537,16 +537,17 @@ void do_isearch(EditState *s, int dir)
 }
 
 void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
-                              int offset_start, int offset_end)
+                              int offset_start)
 {
     ISearchState *is = s->isearch_state;
     EditBuffer *b = s->b;
-    int offset, char_offset, found_offset, found_end;
+    int offset, char_offset, found_offset, found_end, offset_end;
 
     if (!is || is->search_u32_len <= 0)
         return;
 
     char_offset = eb_get_char_offset(b, offset_start);
+    offset_end = eb_goto_char(b, char_offset + len);
     offset = 0;
     if (char_offset > is->search_u32_len + 1)
         offset = eb_goto_char(b, char_offset - is->search_u32_len - 1);

@@ -774,7 +774,7 @@ KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m);
 /* colorize & transform a line, lower level then ColorizeFunc */
 typedef int (*GetColorizedLineFunc)(EditState *s,
                                     unsigned int *buf, int buf_size,
-                                    int *offset1, int line_num);
+                                    int offset, int *offsetp, int line_num);
 
 struct QEColorizeContext {
     EditState *s;
@@ -914,7 +914,7 @@ struct EditBuffer {
 
     /* style system */
     EditBuffer *b_styles;
-    int cur_style;
+    int cur_style;  /* current style for buffer writing APIs */
     int style_bytes;
     int style_shift;
 
@@ -995,8 +995,6 @@ void eb_set_charset(EditBuffer *b, QECharset *charset, EOLType eol_type);
 qe__attr_nonnull((3))
 int eb_nextc(EditBuffer *b, int offset, int *next_ptr);
 qe__attr_nonnull((3))
-int eb_nextc_style(EditBuffer *b, int offset, int *next_ptr);
-qe__attr_nonnull((3))
 int eb_prevc(EditBuffer *b, int offset, int *prev_ptr);
 int eb_skip_chars(EditBuffer *b, int offset, int n);
 int eb_delete_chars(EditBuffer *b, int offset, int n);
@@ -1008,6 +1006,15 @@ int eb_delete_range(EditBuffer *b, int p1, int p2);
 static inline int eb_at_bol(EditBuffer *b, int offset) {
     return eb_prevc(b, offset, &offset) == '\n';
 }
+static inline int eb_next(EditBuffer *b, int offset) {
+    eb_nextc(b, offset, &offset);
+    return offset;
+}
+static inline int eb_prev(EditBuffer *b, int offset) {
+    eb_prevc(b, offset, &offset);
+    return offset;
+}
+
 //int eb_clip_offset(EditBuffer *b, int offset);
 void do_undo(EditState *s);
 void do_redo(EditState *s);
@@ -1027,6 +1034,7 @@ void eb_offset_callback(EditBuffer *b, void *opaque, int edge,
                         enum LogOperation op, int offset, int size);
 int eb_create_style_buffer(EditBuffer *b, int flags);
 void eb_free_style_buffer(EditBuffer *b);
+int eb_get_style(EditBuffer *b, int offset);
 void eb_set_style(EditBuffer *b, int style, enum LogOperation op,
                   int offset, int size);
 void eb_style_callback(EditBuffer *b, void *opaque, int arg,
@@ -1058,9 +1066,9 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
                              EditBuffer *src, int src_offset,
                              int size);
 int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
-                int *offset_ptr);
-int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
-                   int *offset_ptr);
+                int offset, int *offset_ptr);
+int eb_fgets(EditBuffer *b, char *buf, int buf_size, 
+             int offset, int *offset_ptr);
 int eb_prev_line(EditBuffer *b, int offset);
 int eb_goto_bol(EditBuffer *b, int offset);
 int eb_goto_bol2(EditBuffer *b, int offset, int *countp);
@@ -1641,7 +1649,7 @@ struct DisplayState {
     int wrap;
     int eol_reached;
     EditState *edit_state;
-    int style;          /* css display style */
+    int style;          /* current style for display_printf... */
 
     /* fragment buffers */
     TextFragment fragments[MAX_SCREEN_WIDTH];
@@ -1850,7 +1858,7 @@ void do_save_buffer(EditState *s);
 void do_write_file(EditState *s, const char *filename);
 void do_write_region(EditState *s, const char *filename);
 void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
-                              int offset, int offset_end);
+                              int offset);
 void do_isearch(EditState *s, int dir);
 void do_query_replace(EditState *s, const char *search_str,
                       const char *replace_str);
@@ -1871,7 +1879,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset);
 
 void set_colorize_func(EditState *s, ColorizeFunc colorize_func);
 int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                               int *offsetp, int line_num);
+                               int offset, int *offsetp, int line_num);
 
 int do_delete_selection(EditState *s);
 void do_char(EditState *s, int key, int argval);

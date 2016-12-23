@@ -503,7 +503,7 @@ static int tty_put_char(ShellState *s, int c)
 
     offset = s->cur_offset;
     buf[0] = c;
-    c1 = eb_nextc_style(s->b, offset, &offset1);
+    c1 = eb_nextc(s->b, offset, &offset1);
     s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
     if (c1 == '\n') {
         /* insert */
@@ -1931,7 +1931,7 @@ static void do_shell_kill_line(EditState *e, int argval)
                 p2 = eb_goto_bol(e->b, p2);
                 if (p2 <= 0 || argval == 0)
                     break;
-                eb_prevc(e->b, p2, &p2);
+                p2 = eb_prev(e->b, p2);
                 argval += 1;
             }
         } else {
@@ -1939,7 +1939,7 @@ static void do_shell_kill_line(EditState *e, int argval)
                 p2 = eb_goto_eol(e->b, p2);
                 if (p2 >= e->b->total_size || argval == 0)
                     break;
-                eb_nextc(e->b, p2, &p2);
+                p2 = eb_next(e->b, p2);
                 argval -= 1;
             }
         }
@@ -2026,10 +2026,10 @@ static char *shell_get_curpath(EditBuffer *b, int offset,
 {
     char line[1024];
     char curpath[MAX_FILENAME_SIZE];
-    int start, first_blank, last_blank, stop, i;
+    int start, first_blank, last_blank, stop, i, len;
     
-    offset = eb_goto_bol(b, offset);
-    eb_get_strline(b, line, sizeof(line), &offset);
+    len = eb_fgets(b, line, sizeof(line), eb_goto_bol(b, offset), &offset);
+    line[len] = '\0';   /* strip the trailing newline if any */
 
     first_blank = last_blank = 0;
     for (i = 0;; i++) {
@@ -2132,7 +2132,7 @@ static void do_compile_error(EditState *s, int dir)
     char filename[MAX_FILENAME_SIZE];
     char fullpath[MAX_FILENAME_SIZE];
     buf_t fnamebuf, *fname;
-    int c, line_num, col_num;
+    int c, line_num, col_num, len;
     char error_message[128];
 
     /* CG: should have a buffer flag for error source.
@@ -2210,7 +2210,8 @@ static void do_compile_error(EditState *s, int dir)
                 goto next_line;
             c = eb_nextc(b, offset, &offset);
         }
-        eb_get_strline(b, error_message, sizeof(error_message), &offset);
+        len = eb_fgets(b, error_message, sizeof(error_message), offset, &offset);
+        error_message[len] = '\0';   /* strip the trailing newline if any */
         if (line_num >= 1) {
             if (line_num != error_line_num
             ||  !strequal(fullpath, error_filename)) {

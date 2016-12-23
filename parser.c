@@ -99,10 +99,10 @@ static char *data_gets(QEmacsDataSource *ds, char *buf, int size)
         return fgets(buf, size, ds->f);
     }
     if (ds->b) {
-        /* buffer should not be modified during parse! */
-        // XXX: parsing will continue beyond `stop` to end of line */
+        /* EditBuffer should not be modified during parse! */
         if (ds->offset < ds->stop && ds->offset < ds->b->total_size) {
-            eb_get_strline(ds->b, buf, size, &ds->offset);
+            // XXX: parsing will continue beyond `stop` to end of line */
+            eb_fgets(ds->b, buf, size, ds->offset, &ds->offset);
             return buf;
         }
         return NULL;

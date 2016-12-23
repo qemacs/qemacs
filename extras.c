@@ -430,7 +430,7 @@ static void do_forward_block(EditState *s, int dir)
     offset = eb_goto_bol2(s->b, s->offset, &pos);
     offset1 = offset;
     /* XXX: deal with truncation */
-    len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+    len = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
     if (pos > len) {
         /* cannot use colorized line buffer */
         /* XXX: should use buffer contents */
@@ -449,7 +449,7 @@ static void do_forward_block(EditState *s, int dir)
                 offset1 = offset;
                 /* XXX: this will actually ignore the end of very long lines */
                 /* XXX: deal with truncation */
-                pos = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+                pos = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
                 continue;
             }
             c = buf[--pos];
@@ -504,7 +504,7 @@ static void do_forward_block(EditState *s, int dir)
                 offset1 = offset;
                 /* XXX: this will actually ignore the end of very long lines */
                 /* XXX: deal with truncation */
-                len = s->get_colorized_line(s, buf, countof(buf), &offset1, line_num);
+                len = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
                 continue;
             }
             c = buf[pos];
@@ -586,13 +586,13 @@ static void do_transpose(EditState *s, int cmd)
         end_offset = offset2 = s->offset;
         if (eb_nextc(b, offset2, &offset3) == '\n') {
             offset3 = offset2;
-            eb_prevc(b, offset3, &offset2);
+            offset2 = eb_prev(b, offset3);
             end_offset = s->offset;
             offset1 = offset2;
-            eb_prevc(b, offset1, &offset0);
+            offset0 = eb_prev(b, offset1);
         } else {
             offset1 = offset2;
-            eb_prevc(b, offset1, &offset0);
+            offset0 = eb_prev(b, offset1);
             if (s->qe_state->flag_split_window_change_focus) {
                 /* keep current position between characters */
                 end_offset = offset0 + offset3 - offset2;
@@ -625,7 +625,7 @@ static void do_transpose(EditState *s, int cmd)
         offset3 = s->offset;
         do_bol(s);
         offset2 = s->offset;
-        eb_prevc(b, offset2, &offset1);    /* skip line feed */
+        offset1 = eb_prev(b, offset2);    /* skip line feed */
         s->offset = offset1;
         do_bol(s);
         offset0 = s->offset;
@@ -1239,7 +1239,7 @@ static void do_sort_span(EditState *s, int p1, int p2, int flags) {
     for (i = 0; i < lines; i++) {
         chunk_array[i].start = offset;
         chunk_array[i].end = offset = eb_goto_eol(s->b, offset);
-        eb_nextc(s->b, offset, &offset);
+        offset = eb_next(s->b, offset);
     }
     qsort_r(chunk_array, lines, sizeof(*chunk_array), &ctx, chunk_cmp);
         

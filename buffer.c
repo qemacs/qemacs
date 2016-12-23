@@ -1458,25 +1458,25 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
     return ch;
 }
 
-int eb_nextc_style(EditBuffer *b, int offset, int *next_ptr)
+int eb_get_style(EditBuffer *b, int offset)
 {
     if (b->b_styles) {
         if (b->style_shift == 2) {
             uint32_t style = 0;
             eb_read(b->b_styles, (offset >> b->char_shift) << 2, &style, 4);
-            b->cur_style = style;
+            return style;
         } else
         if (b->style_shift == 1) {
             uint16_t style = 0;
             eb_read(b->b_styles, (offset >> b->char_shift) << 1, &style, 2);
-            b->cur_style = style;
+            return style;
         } else {
             uint8_t style = 0;
             eb_read(b->b_styles, (offset >> b->char_shift), &style, 1);
-            b->cur_style = style;
+            return style;
         }
     }
-    return eb_nextc(b, offset, next_ptr);
+    return 0;
 }
 
 /* compute offset after moving 'n' chars from 'offset'.
@@ -1484,13 +1484,11 @@ int eb_nextc_style(EditBuffer *b, int offset, int *next_ptr)
  */
 int eb_skip_chars(EditBuffer *b, int offset, int n)
 {
-    while (n < 0) {
-        eb_prevc(b, offset, &offset);
-        n++;
+    for (; n < 0 && offset > 0; n++) {
+        offset = eb_prev(b, offset);
     }
-    while (n > 0) {
-        eb_nextc(b, offset, &offset);
-        n--;
+    for (; n > 0 && offset < b->total_size; n--) {
+        offset = eb_next(b, offset);
     }
     return offset;
 }
@@ -1500,7 +1498,7 @@ int eb_delete_uchar(EditBuffer *b, int offset)
 {
     int offset1;
 
-    eb_nextc(b, offset, &offset1);
+    offset1 = eb_next(b, offset);
     if (offset < offset1) {
         return eb_delete(b, offset, offset1 - offset);
     } else {
@@ -1530,7 +1528,7 @@ int eb_delete_chars(EditBuffer *b, int offset, int n)
 int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
 {
     int ch, char_size;
-    u8 buf[MAX_CHAR_BYTES], *q;
+    u8 buf[MAX_CHAR_BYTES + 1], *q;
 
     if (offset <= 0) {
         offset = 0;
@@ -1543,6 +1541,7 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
             if (utf8_is_trailing_byte(ch)) {
                 int offset1 = offset;
                 q = buf + sizeof(buf);
+                *--q = '\0';
                 *--q = ch;
                 while (utf8_is_trailing_byte(ch) && offset > 0 && q > buf) {
                     offset -= 1;
@@ -1551,10 +1550,10 @@ int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
                 if (ch >= 0xc0) {
                     ch = utf8_decode((const char **)(void *)&q);
                 }
-                if (q != buf + sizeof(buf)) {
+                if (q != buf + sizeof(buf) - 1) {
                     /* decoding error: only take the last byte */
                     offset = offset1;
-                    ch = buf[sizeof(buf) - 1];
+                    ch = buf[sizeof(buf) - 2];
                 }
             }
         } else {
@@ -1725,6 +1724,7 @@ int eb_get_char_offset(EditBuffer *b, int offset)
     } else {
         /* XXX: should handle rounding if EOL_DOS */
         /* XXX: should fix buffer offset via charset specific method */
+        /* XXX: fails in case of encoding error */
         if (b->charset == &charset_utf8) {
             /* Round offset down to character boundary */
             u8 buf[1];
@@ -2349,9 +2349,10 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
         size = 0;
         for (offset = src_offset; offset < offset_max;) {
             char buf[MAX_CHAR_BYTES];
-            int c = eb_nextc_style(src, offset, &offset);
+            int style = eb_get_style(src, offset);
+            int c = eb_nextc(src, offset, &offset);
             int len = eb_encode_uchar(b, buf, c);
-            b->cur_style = src->cur_style;
+            b->cur_style = style;
             size += eb_insert(b, offset1 + size, buf, len);
         }
 
@@ -2363,59 +2364,67 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
     }
 }
 
-/* get the line starting at offset 'offset' as an array of code points */
-/* offset is bumped to the beginning of the next line */
-/* returns the number of code points stored in buf, excluding '\0' */
-/* buf_size must be > 0 */
-/* XXX: cannot detect truncation */
-int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
-                int *offset_ptr)
+/* Get the line starting at offset `offset` as an array of code points.
+ * `offset` is bumped to point to the first unread character.
+ * Returns `len` >= 0 and < buf_size, the offset into the destination
+ * of the end of the line, either the '\n' or the final '\0'.
+ * Truncation can be detected by checking if buf[len] is '\n'.
+ */
+int eb_get_line(EditBuffer *b, unsigned int *buf, int size,
+                int offset, int *offset_ptr)
 {
-    unsigned int *buf_ptr, *buf_end;
-    int c, offset;
+    int c, len = 0;
 
-    offset = *offset_ptr;
-
-    buf_ptr = buf;
-    buf_end = buf + buf_size - 1;
-    for (;;) {
-        c = eb_nextc(b, offset, &offset);
-        if (c == '\n')
-            break;
-        if (buf_ptr < buf_end)
-            *buf_ptr++ = c & CHAR_MASK;
+    if (size > 0) {
+        for (;;) {
+            if (len + 1 >= size) {
+                buf[len] = '\0';
+                break;
+            }
+            c = eb_nextc(b, offset, &offset);
+            buf[len++] = c & CHAR_MASK;
+            if (c == '\n') {
+                /* add null terminator but return offset of newline */
+                buf[len--] = '\0';
+                break;
+            }
+        }
     }
-    *buf_ptr = '\0';
-    *offset_ptr = offset;
-    return buf_ptr - buf;
+    if (offset_ptr)
+        *offset_ptr = offset;
+
+    return len;
 }
 
-/* get the line starting at offset 'offset' encoded in utf-8 */
-/* offset is bumped to the beginning of the next line */
-/* returns the number of bytes stored in buf, excluding '\0' */
-/* buf_size must be > 0 */
-/* XXX: cannot detect truncation */
-int eb_get_strline(EditBuffer *b, char *buf, int buf_size,
-                   int *offset_ptr)
+/* Get the line starting at offset `offset` encoded in UTF-8.
+ * `offset` is bumped to point to the first unread character.
+ * Returns `len` >= 0 and < buf_size, the offset into the destination
+ * of the end of the line, either the '\n' or the final '\0'.
+ * Truncation can be detected by checking if buf[len] is '\n'.
+ */
+int eb_fgets(EditBuffer *b, char *buf, int buf_size,
+             int offset, int *offset_ptr)
 {
     buf_t outbuf, *out;
-    int offset;
-
-    offset = *offset_ptr;
 
     out = buf_init(&outbuf, buf, buf_size);
     for (;;) {
-        int c = eb_nextc(b, offset, &offset);
-        if (c == '\n')
+        int next;
+        int c = eb_nextc(b, offset, &next);
+        if (!buf_putc_utf8(out, c)) {
+            /* truncation: offset points to the first unread character */
             break;
-        if (buf_putc_utf8(out, c))
-            continue;
-        /* overflow: skip past '\n' */
-        offset = eb_next_line(b, offset);
-        break;
+        }
+        offset = next;
+        if (c == '\n') {
+            /* end of line: offset points to the beginning of the next line */
+            /* adjust return value for easy stripping and truncation test */
+            out->pos--;
+            break;
+        }
     }
     *offset_ptr = offset;
-    return out->len;
+    return out->pos;
 }
 
 int eb_prev_line(EditBuffer *b, int offset)
