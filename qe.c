@@ -8172,21 +8172,19 @@ static void exit_all_modules(void)
 
 #else
 
-#ifdef CONFIG_TINY
-#define MODULE_LIST  "basemodules.txt"
-#else
-#define MODULE_LIST  "allmodules.txt"
-#endif
-
+#ifndef SPLINT
 #define qe_module_declare(fn)  extern int module_ ## fn(void)
-#include MODULE_LIST
+#include "modules.txt"
 #undef qe_module_declare
+#endif
 
 static void init_all_modules(void)
 {
+#ifndef SPLINT
 #define qe_module_declare(fn)  module_ ## fn()
-#include MODULE_LIST
+#include "modules.txt"
 #undef qe_module_declare
+#endif
 }
 #endif
 

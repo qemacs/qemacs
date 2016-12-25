@@ -618,7 +618,7 @@ if test "$haiku" = "yes" ; then
 fi
 
 if test "$x11" = "yes" ; then
-  echo "#define CONFIG_X11 1" >> $TMPH
+  #echo "#define CONFIG_X11 1" >> $TMPH
   echo "CONFIG_X11=yes" >> $TMPMAK
 fi
 

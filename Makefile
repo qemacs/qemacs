@@ -64,13 +64,11 @@ DEFINES=-DHAVE_QE_CONFIG_H
 # do not modify after this
 
 TARGETLIBS:=
-TARGETS+= qe$(EXE) tqe$(EXE) kmaps ligatures
+TARGETS+= qe$(EXE) kmaps ligatures
 
 OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o parser.o input.o display.o hex.o \
        list.o
 TOBJS:= $(OBJS)
-XOBJS:= $(OBJS) x11.o
-
 OBJS+= extras.o variables.o
 
 ifdef CONFIG_PNG_OUTPUT
@@ -154,6 +152,7 @@ ifdef CONFIG_FFMPEG
 endif
 
 ifdef CONFIG_X11
+  XCFLAGS:= -DCONFIG_X11 $(CFLAGS)
   TARGETS += xqe$(EXE)
   XOBJS := x11.o
   XLIBS :=
@@ -173,6 +172,10 @@ ifdef CONFIG_X11
   endif
 endif
 
+ifndef CONFIG_TINY
+  TARGETS += tqe$(EXE)
+endif
+
 XOBJS:= $(OBJS) $(XOBJS)
 
 ifdef CONFIG_INIT_CALLS
@@ -190,13 +193,18 @@ DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
 OBJS_DIR:= $(DEPTH)/.objs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
+CFLAGS+= -I$(OBJS_DIR)
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
-XOBJS:= $(addprefix $(OBJS_DIR)/, $(XOBJS))
+
+XOBJS_DIR:= $(DEPTH)/.xobjs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
+XCFLAGS+= -I$(XOBJS_DIR)
+XOBJS:= $(addprefix $(XOBJS_DIR)/, $(XOBJS))
 
 TOBJS_DIR:= $(DEPTH)/.tobjs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
+TCFLAGS+= -I$(TOBJS_DIR)
 TOBJS:= $(addprefix $(TOBJS_DIR)/, $(TOBJS))
 
-$(shell mkdir -p $(OBJS_DIR) $(TOBJS_DIR))
+$(shell mkdir -p $(OBJS_DIR) $(TOBJS_DIR) $(XOBJS_DIR))
 
 #
 # Dependencies
@@ -264,17 +272,24 @@ ffplay$(EXE): qe$(EXE) Makefile
 	ln -sf $< $@
 
 ifndef CONFIG_INIT_CALLS
-$(OBJS_DIR)/qe.o: allmodules.txt
-$(TOBJS_DIR)/qe.o: basemodules.txt
+$(OBJS_DIR)/qe.o: $(OBJS_DIR)/modules.txt
+$(XOBJS_DIR)/qe.o: $(XOBJS_DIR)/modules.txt
+$(TOBJS_DIR)/qe.o: $(TOBJS_DIR)/modules.txt
 endif
 
-allmodules.txt: $(SRCS) Makefile
+$(OBJS_DIR)/modules.txt: $(SRCS) Makefile
 	@echo creating $@
 	@echo '/* This file was generated automatically */' > $@
 	@grep -h ^qe_module_init $(SRCS) | \
             sed s/qe_module_init/qe_module_declare/ >> $@
 
-basemodules.txt: $(TSRCS) Makefile
+$(XOBJS_DIR)/modules.txt: $(XSRCS) Makefile
+	@echo creating $@
+	@echo '/* This file was generated automatically */' > $@
+	@grep -h ^qe_module_init $(XSRCS) | \
+            sed s/qe_module_init/qe_module_declare/ >> $@
+
+$(TOBJS_DIR)/modules.txt: $(TSRCS) Makefile
 	@echo creating $@
 	@echo '/* This file was generated automatically */' > $@
 	@grep -h ^qe_module_init $(TSRCS) | \
@@ -286,6 +301,13 @@ $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(OBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 $(OBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
+
+$(XOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
+$(XOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
+$(XOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
+$(XOBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
+$(XOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
+$(XOBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
 
 $(TOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(TOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
@@ -299,6 +321,11 @@ $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
+$(XOBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
+	$(echo) CC -DCONFIG_X11 -c $<
+	$(cmd)  mkdir -p $(dir $@)
+	$(cmd)  $(CC) $(DEFINES) $(XCFLAGS) -o $@ -c $<
+
 $(TOBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(echo) CC -DCONFIG_TINY -c $<
 	$(cmd)  mkdir -p $(dir $@)
@@ -309,11 +336,17 @@ $(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -c $<
 
+$(XOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
+	$(echo) CPP -c -DCONFIG_X11 $<
+	$(cmd)  mkdir -p $(dir $@)
+	$(cmd)  g++ $(DEFINES) $(XCFLAGS) -Wno-multichar -o $@ -c $<
+
 $(TOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 	$(echo) CPP -DCONFIG_TINY -c $<
 	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  g++ $(DEFINES) $(TCFLAGS) -Wno-multichar -o $@ -c $<
 
+#debugging targets
 %.s: %.c $(DEPENDS) Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -S $<
 
@@ -448,13 +481,13 @@ qe-doc.html: qe-doc.texi Makefile
 #
 clean:
 	$(MAKE) -C libqhtml clean
-	rm -rf *.dSYM $(OBJS_DIR) $(TOBJS_DIR) .objs-* .tobjs-*
+	rm -rf *.dSYM $(OBJS_DIR) $(XOBJS_DIR) $(TOBJS_DIR) .objs-* .tobjs-*
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump   \
            qe tqe t1qe xqe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
            cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9]
 
 distclean: clean
-	rm -rf config.h config.mak $(OBJS_DIR) $(TOBJS_DIR)
+	rm -rf config.h config.mak $(OBJS_DIR) $(XOBJS_DIR) $(TOBJS_DIR)
 
 install: $(TARGETS) qe.1
 	$(INSTALL) -m 755 -d $(DESTDIR)$(prefix)/bin
@@ -538,7 +571,7 @@ tar: $(FILES)
 	( cd /tmp ; tar cfz $(HOME)/$(FILE).tar.gz $(FILE) )
 	rm -rf /tmp/$(FILE)
 
-SPLINTOPTS := +posixlib -nestcomment +boolint +charintliteral -mayaliasunique
+SPLINTOPTS := -DSPLINT +posixlib -nestcomment +boolint +charintliteral -mayaliasunique
 SPLINTOPTS += -nullstate -unqualifiedtrans +charint
 # extra options that will be removed later
 SPLINTOPTS += -mustfreeonly -temptrans -kepttrans
