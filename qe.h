@@ -464,6 +464,10 @@ static inline int buf_puts(buf_t *bp, const char *str) {
 int buf_printf(buf_t *bp, const char *fmt, ...) qe__attr_printf(2,3);
 int buf_putc_utf8(buf_t *bp, int c);
 
+/* our own implementation of qsort_r() */
+void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
+                int (*compar)(void *, const void *, const void *));
+
 /* command line option */
 #define CMD_OPT_ARG      0x0001 /* argument */
 #define CMD_OPT_STRING   0x0002 /* string */

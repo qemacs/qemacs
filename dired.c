@@ -87,7 +87,6 @@ struct DiredState {
 
 /* opaque structure for sorting DiredState.items StringArray */
 struct DiredItem {
-    DiredState *state;
     mode_t  mode;   /* inode protection mode */
     nlink_t nlink;  /* number of hard links to the file */
     uid_t   uid;    /* user-id of owner */
@@ -201,13 +200,14 @@ static int dired_find_target(DiredState *ds, const char *target)
 }
 
 /* sort alphabetically with directories first */
-static int dired_sort_func(const void *p1, const void *p2)
+static int dired_sort_func(void *opaque, const void *p1, const void *p2)
 {
     const StringItem *item1 = *(const StringItem **)p1;
     const StringItem *item2 = *(const StringItem **)p2;
     const DiredItem *dip1 = item1->opaque;
     const DiredItem *dip2 = item2->opaque;
-    int sort_mode = dip1->state->sort_mode, res;
+    DiredState *ds = opaque;
+    int sort_mode = ds->sort_mode, res;
     int is_dir1, is_dir2;
 
     if (sort_mode & DIRED_SORT_GROUP) {
@@ -630,8 +630,8 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
     if (flags & DIRED_UPDATE_SORT) {
         flags |= DIRED_UPDATE_REBUILD;
         ds->sort_mode = dired_sort_mode;
-        qsort(ds->items.items, ds->items.nb_items,
-              sizeof(StringItem *), dired_sort_func);
+        qe_qsort_r(ds->items.items, ds->items.nb_items,
+                   sizeof(StringItem *), ds, dired_sort_func);
     }
 
     if (ds->show_dot_files != dired_show_dot_files
@@ -984,7 +984,6 @@ static void dired_build_list(DiredState *ds, const char *path,
             int plen = strlen(p);
 
             dip = qe_malloc_hack(DiredItem, plen);
-            dip->state = ds;
             dip->mode = st.st_mode;
             dip->nlink = st.st_nlink;
             dip->uid = st.st_uid;

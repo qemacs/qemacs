@@ -1354,8 +1354,10 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
         if (c1 > c2)
             return +cp->dir;
         if (c1 == 0)
-            return 0;
+            break;
     }
+    /* make sort stable by comparing offsets of equal elements */
+    return (p1->start > p2->start) - (p1->start < p2->start);
 }
 
 static void do_sort_span(EditState *s, int p1, int p2, int flags) {
@@ -1388,7 +1390,7 @@ static void do_sort_span(EditState *s, int p1, int p2, int flags) {
         chunk_array[i].end = offset = eb_goto_eol(s->b, offset);
         offset = eb_next(s->b, offset);
     }
-    qsort_r(chunk_array, lines, sizeof(*chunk_array), &ctx, chunk_cmp);
+    qe_qsort_r(chunk_array, lines, sizeof(*chunk_array), &ctx, chunk_cmp);
         
     b = eb_new("*sorted*", BF_SYSTEM);
     eb_set_charset(b, s->b->charset, s->b->eol_type);

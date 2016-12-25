@@ -1668,3 +1668,170 @@ void *qe_realloc(void *pp, size_t size)
         *(void **)pp = p;
     return p;
 }
+
+/*---------------- qe_qsort_r ----------------*/
+
+/* Our own implementation of qsort_r() since it is not available
+ * on some targets, such as OpenBSD.
+ */
+
+typedef void (*exchange_f)(void *a, void *b, size_t size);
+
+static void exchange_bytes(void *a, void *b, size_t size) {
+    unsigned char t;
+    unsigned char *ac = (unsigned char *)a;
+    unsigned char *bc = (unsigned char *)b;
+
+    while (size-- > 0) {
+        t = *ac;
+        *ac++ = *bc;
+        *bc++ = t;
+    }
+}
+
+static void exchange_ints(void *a, void *b, size_t size) {
+    int *ai = (int *)a;
+    int *bi = (int *)b;
+
+    for (size /= sizeof(int); size-- != 0;) {
+        int t = *ai;
+        *ai++ = *bi;
+        *bi++ = t;
+    }
+}
+
+static void exchange_one_int(void *a, void *b, size_t size) {
+    int *ai = (int *)a;
+    int *bi = (int *)b;
+    int t = *ai;
+    *ai = *bi;
+    *bi = t;
+}
+
+#if LONG_MAX != INT_MAX
+static void exchange_longs(void *a, void *b, size_t size) {
+    long *ai = (long *)a;
+    long *bi = (long *)b;
+
+    for (size /= sizeof(long); size-- != 0;) {
+        long t = *ai;
+        *ai++ = *bi;
+        *bi++ = t;
+    }
+}
+
+static void exchange_one_long(void *a, void *b, size_t size) {
+    long *ai = (long *)a;
+    long *bi = (long *)b;
+    long t = *ai;
+    *ai = *bi;
+    *bi = t;
+}
+#endif
+
+static inline exchange_f exchange_func(void *base, size_t size) {
+    exchange_f exchange = exchange_bytes;
+#if LONG_MAX != INT_MAX
+    if ((((uintptr_t)base | (uintptr_t)size) & (sizeof(long) - 1)) == 0) {
+        exchange = exchange_longs;
+        if (size == sizeof(long))
+            exchange = exchange_one_long;
+    } else
+#endif
+    if ((((uintptr_t)base | (uintptr_t)size) & (sizeof(int) - 1)) == 0) {
+        exchange = exchange_ints;
+        if (size == sizeof(int))
+            exchange = exchange_one_int;
+    }
+    return exchange;
+}
+
+static inline void *med3_r(void *a, void *b, void *c, void *thunk,
+                           int (*compare)(void *, const void *, const void *))
+{
+    return compare(thunk, a, b) < 0 ?
+        (compare(thunk, b, c) < 0 ? b : (compare(thunk, a, c) < 0 ? c : a )) :
+        (compare(thunk, b, c) > 0 ? b : (compare(thunk, a, c) < 0 ? a : c ));
+}
+
+#define MAXSTACK 64
+
+void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
+                int (*compare)(void *, const void *, const void *))
+{
+    struct {
+        unsigned char *base;
+        size_t count;
+    } stack[MAXSTACK], *sp;
+    size_t m0, n;
+    unsigned char *lb, *m, *i, *j;
+    exchange_f exchange = exchange_func(base, size);
+
+    if (nmemb < 2 || size <= 0)
+        return;
+
+    sp = stack;
+    sp->base = base;
+    sp->count = nmemb;
+    sp++;
+    while (sp-- > stack) {
+        lb = sp->base;
+        n = sp->count;
+
+        while (n >= 7) {
+            /* partition into two segments */
+            i = lb + size;
+            j = lb + (n - 1) * size;
+            /* select pivot and exchange with 1st element */
+            m0 = (n >> 2) * size;
+            /* should use median of 3 or 9 */
+            m = med3_r(lb + m0, lb + 2 * m0, lb + 3 * m0, thunk, compare);
+
+            exchange(lb, m, size);
+
+            m0 = n - 1;  /* m is the offset of j */
+            for (;;) {
+                while (i < j && compare(thunk, lb, i) > 0) {
+                    i += size;
+                }
+                while (j >= i && compare(thunk, j, lb) > 0) {
+                    j -= size;
+                    m0--;
+                }
+                if (i >= j)
+                    break;
+                exchange(i, j, size);
+                i += size;
+                j -= size;
+                m0--;
+            }
+
+            /* pivot belongs in A[j] */
+            exchange(lb, j, size);
+
+            /* keep processing smallest segment,
+            * and stack largest */
+            n = n - m0 - 1;
+            if (m0 < n) {
+                if (n > 1) {
+                    sp->base = j + size;
+                    sp->count = n;
+                    sp++;
+                }
+                n = m0;
+            } else {
+                if (m0 > 1) {
+                    sp->base = lb;
+                    sp->count = m0;
+                    sp++;
+                }
+                lb = j + size;
+            }
+        }
+        /* Use insertion sort for small fragments */
+        for (i = lb + size, j = lb + n * size; i < j; i += size) {
+			for (m = i; m > lb && compare(thunk, m - size, m) > 0; m -= size)
+                exchange(m, m - size, size);
+        }
+    }
+}
