@@ -607,21 +607,30 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
 {
     char buf[MAX_FILENAME_SIZE];
     DiredItem *dip, *cur_item;
-    int i, col, width, top_line;
+    int i, col, w, width, window_width, top_line;
 
     if (!ds)
         return;
 
     /* Try and preserve scroll position */
     if (s) {
+        QEFont *font;
+        QEStyleDef style;
+
+        get_style(s, &style, s->default_style);
+        font = select_font(s->screen, style.font_style, style.font_size);
+        w = glyph_width(s->screen, font, '0');
+        release_font(s->screen, font);
+        window_width = s->width;
+        width = window_width / (w ? w : 1);
+
         eb_get_pos(s->b, &top_line, &col, s->offset_top);
         /* XXX: should use dip->offset and delay to rebuild phase */
         cur_item = dired_get_cur_item(ds, s);
-        width = s->width;
     } else {
+        width = window_width = 80;
         col = top_line = 0;
         cur_item = NULL;
-        width = 80;
     }
 
     if (ds->sort_mode != dired_sort_mode)
@@ -659,7 +668,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         return;
 
     /* XXX: should use screen specific space_width, separator_width or em_width */
-    ds->last_width = width;
+    ds->last_width = window_width;
     ds->last_cur = NULL;
     width -= clamp(ds->namelen, 16, 40);
     ds->no_size = ((width -= ds->sizelen + 2) < 0);
