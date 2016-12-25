@@ -180,8 +180,7 @@ static int term_probe(void)
 
     /* if no env variable DISPLAY, we do not use x11 */
     dpy = getenv("DISPLAY");
-    if (dpy == NULL ||
-        dpy[0] == '\0')
+    if (dpy == NULL || dpy[0] == '\0')
         return 0;
     return 1;
 }
@@ -560,6 +559,7 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
     slant = XFT_SLANT_ROMAN;
     if (style & QE_STYLE_ITALIC)
         slant = XFT_SLANT_ITALIC;
+
     renderFont = XftFontOpen(display, xscreen,
                              XFT_FAMILY, XftTypeString, family,
                              XFT_SIZE, XftTypeInteger, size,
@@ -1873,6 +1873,45 @@ static QEDisplay x11_dpy = {
     NULL, /* next */
 };
 
+static void x11_list_fonts(EditState *s, int argval)
+{
+    char buf[80];
+    EditBuffer *b;
+    int show, i, count;
+    char **list;
+
+    b = new_help_buffer(&show);
+    if (!b)
+        return;
+
+    if (argval == NO_ARG) {
+        snprintf(buf, sizeof(buf), "-*-*-*-*-*-*-*-*-*-*-*-*-iso10646-1");
+    } else {
+        snprintf(buf, sizeof(buf), "-*-*-*-*-*-*-*-%d-*-*-*-*-iso10646-1", argval);
+    }
+    list = XListFonts(display, buf, 20000, &count);
+
+    eb_printf(b, "X11 Font list: %d entries\n\n", count);
+
+    for (i = 0; i < count; i++) {
+        eb_printf(b, "%d: %s\n", i, list[i]);
+    }
+    XFreeFontNames(list);
+
+    b->flags |= BF_READONLY;
+    if (show) {
+        show_popup(b);
+    }
+}
+
+static CmdDef x11_commands[] = {
+
+    CMD2( KEY_CTRLH('f'), KEY_CTRLH(KEY_CTRL('F')),
+          "x11-list-fonts", x11_list_fonts, ESi, "ui")
+
+    CMD_DEF_END,
+};
+
 static CmdOptionDef cmd_options[] = {
     { "display", "d", "display", CMD_OPT_STRING | CMD_OPT_ARG, "set X11 display",
       { .string_ptr = &display_str }},
@@ -1886,6 +1925,7 @@ static CmdOptionDef cmd_options[] = {
 static int x11_init(void)
 {
     qe_register_cmd_line_options(cmd_options);
+    qe_register_cmd_table(x11_commands, NULL);
     if (force_tty)
         return 0;
     return qe_register_display(&x11_dpy);
