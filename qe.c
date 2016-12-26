@@ -3813,8 +3813,9 @@ static int combine_static_colorized_line(EditState *s, unsigned int *buf,
                                          int len, int offset)
 {
     EditBuffer *b = s->b;
+    int i;
 
-    for (int i = 0; i < len; i++) {
+    for (i = 0; i < len; i++) {
         int style = eb_get_style(b, offset);
         if (style) {
             buf[i] = (buf[i] & CHAR_MASK) | (style << STYLE_SHIFT);
