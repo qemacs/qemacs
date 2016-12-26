@@ -1410,26 +1410,13 @@ static void x11_handle_event(void *opaque)
             meta |= (xev.xkey.state & Mod2Mask);
 #endif
 #if 0
-            put_error(NULL, "keysym=%d %d %s%s%s len=%d buf[0]=%d",
-                      (int)keysym, (int)xev.xkey.state,
-                      shift ? "shft " : "",
-                      ctrl ? "ctrl " : "",
-                      meta ? "meta " : "",
+            fprintf(stderr, "keysym=%lx  state=%lx%s%s%s  len=%d  buf[0]='\\x%02x'\n",
+                      (long)keysym, (long)xev.xkey.state,
+                      shift ? " shft" : "",
+                      ctrl ? " ctrl" : "",
+                      meta ? " meta" : "",
                       len, buf[0]);
 #endif
-            if (shift) {
-                switch (keysym) {
-                case XK_ISO_Left_Tab:
-                    key = KEY_SHIFT_TAB; 
-                    goto got_key;
-                default:
-                    if (len > 0) {
-                        key = buf[0] & 0xff;
-                        goto got_key;
-                    }
-                    break;
-                }
-            } else
             if (meta) {
                 switch (keysym) {
                 case XK_BackSpace:
@@ -1442,6 +1429,19 @@ static void x11_handle_event(void *opaque)
                     }
                     if (keysym >= ' ' && keysym <= '~') {
                         key = KEY_META(' ') + keysym - ' ';
+                        goto got_key;
+                    }
+                    break;
+                }
+            } else
+            if (shift) {
+                switch (keysym) {
+                case XK_ISO_Left_Tab:
+                    key = KEY_SHIFT_TAB; 
+                    goto got_key;
+                default:
+                    if (len > 0) {
+                        key = buf[0] & 0xff;
                         goto got_key;
                     }
                     break;
