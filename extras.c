@@ -1328,7 +1328,6 @@ struct chunk_ctx {
 #define SF_FOLD     2
 #define SF_DICT     4
 #define SF_NUMBER   8
-    int dir;
 };
 
 struct chunk {
@@ -1339,22 +1338,37 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
     const struct chunk_ctx *cp = vp0;
     const struct chunk *p1 = vp1;
     const struct chunk *p2 = vp2;
-    int pos1 = p1->start;
-    int pos2 = p2->start;
-    // XXX: should support SF_DICT and SF_NUMBER
+    int pos1, pos2;
+
+    if (cp->flags & SF_REVERSE) {
+        p1 = vp2;
+        p2 = vp1;
+    }
+
+    // XXX: should support SF_NUMBER
+    pos1 = p1->start;
+    pos2 = p2->start;
     for (;;) {
-        int c1, c2;
-        c1 = (pos1 < p1->end) ? eb_nextc(cp->b, pos1, &pos1) : 0;
-        c2 = (pos2 < p2->end) ? eb_nextc(cp->b, pos2, &pos2) : 0;
+        int c1 = 0, c2 = 0;
+        while (pos1 < p1->end) {
+            c1 = eb_nextc(cp->b, pos1, &pos1);
+            if (!(cp->flags & SF_DICT) || qe_isalpha(c1))
+                break;
+        }
+        while (pos2 < p2->end) {
+            c2 = eb_nextc(cp->b, pos2, &pos2);
+            if (!(cp->flags & SF_DICT) || qe_isalpha(c2))
+                break;
+        }
         if (cp->flags & SF_FOLD) {
             // XXX: should support unicode case folding
             c1 = qe_toupper(c1);
             c2 = qe_toupper(c2);
         }
         if (c1 < c2)
-            return -cp->dir;
+            return -1;
         if (c1 > c2)
-            return +cp->dir;
+            return +1;
         if (c1 == 0)
             break;
     }
@@ -1362,7 +1376,7 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
     return (p1->start > p2->start) - (p1->start < p2->start);
 }
 
-static void do_sort_span(EditState *s, int p1, int p2, int flags) {
+static void do_sort_span(EditState *s, int p1, int p2, int flags, int argval) {
     struct chunk_ctx ctx;
     EditBuffer *b;
     int i, offset, line1, line2, col1, col2, lines;
@@ -1376,10 +1390,11 @@ static void do_sort_span(EditState *s, int p1, int p2, int flags) {
         p2 = tmp;
     }
     ctx.b = s->b;
-    ctx.flags = flags;  //  SF_FOLD ?
-    ctx.dir = (flags & SF_REVERSE) ? -1 : +1;
+    if (argval != NO_ARG)
+        flags |= argval;
+    ctx.flags = flags;
     eb_get_pos(s->b, &line1, &col1, p1); /* line1 is included */
-    eb_get_pos(s->b, &line2, &col2, p2); /* line1 is excluded? */
+    eb_get_pos(s->b, &line2, &col2, p2); /* line2 is excluded */
     lines = line2 - line1;
     chunk_array = qe_malloc_array(struct chunk, lines);
     if (!chunk_array) {
@@ -1409,12 +1424,12 @@ static void do_sort_span(EditState *s, int p1, int p2, int flags) {
     qe_free(&chunk_array);
 }
 
-static void do_sort_region(EditState *s, int flags) {
-    do_sort_span(s, s->b->mark, s->offset, flags);
+static void do_sort_region(EditState *s, int flags, int argval) {
+    do_sort_span(s, s->b->mark, s->offset, flags, argval);
 }
 
-static void do_sort_buffer(EditState *s, int flags) {
-    do_sort_span(s, 0, s->b->total_size, flags);
+static void do_sort_buffer(EditState *s, int flags, int argval) {
+    do_sort_span(s, 0, s->b->total_size, flags, argval);
 }
 
 static CmdDef extra_commands[] = {
@@ -1499,13 +1514,13 @@ static CmdDef extra_commands[] = {
           "ui{EOL Type [0=Unix, 1=Dos, 2=Mac]: }")
 
     CMD3( KEY_NONE, KEY_NONE,
-          "sort-buffer", do_sort_buffer, ESi, 0, "*v")
+          "sort-buffer", do_sort_buffer, ESii, 0, "*vui")
     CMD3( KEY_NONE, KEY_NONE,
-          "sort-region", do_sort_region, ESi, 0, "*v")
+          "sort-region", do_sort_region, ESii, 0, "*vui")
     CMD3( KEY_NONE, KEY_NONE,
-          "reverse-sort-buffer", do_sort_buffer, ESi, SF_REVERSE, "*v")
+          "reverse-sort-buffer", do_sort_buffer, ESii, SF_REVERSE, "*vui")
     CMD3( KEY_NONE, KEY_NONE,
-          "reverse-sort-region", do_sort_region, ESi, SF_REVERSE, "*v")
+          "reverse-sort-region", do_sort_region, ESii, SF_REVERSE, "*vui")
 
     CMD_DEF_END,
 };
