@@ -943,15 +943,17 @@ static int down_cursor_func(DisplayState *ds,
     MoveContext *m = ds->cursor_opaque;
 
     if (line_num == m->yd) {
-        if (w < 0) {  /* for RTL glyphs */
-            x += w;
-            w = -w;
-        }
-        /* find the closest char */
-        d = abs(x - m->xd);
-        if (d < m->xdmin) {
-            m->xdmin = d;
-            m->offsetd = offset1;
+        if (offset1 >= 0) {
+            if (w < 0) {  /* for RTL glyphs */
+                x += w;
+                w = -w;
+            }
+            /* find the closest char */
+            d = abs(x - m->xd);
+            if (d < m->xdmin) {
+                m->xdmin = d;
+                m->offsetd = offset1;
+            }
         }
         return 0;
     } else if (line_num > m->yd) {
@@ -2924,6 +2926,13 @@ static void display_bol_bidir(DisplayState *s, DirType base,
 {
     s->base = base;
     s->x = s->x_disp = s->edit_state->x_disp[base];
+    if (s->base == DIR_RTL) {
+        /* XXX: probably broken. bidir handling needs fixing */
+        s->x_start = s->edit_state->width - s->x;
+    } else {
+        s->x_start = s->x;
+    }
+    s->x_line = s->x_start;
     s->style = 0;
     s->last_style = 0;
     s->fragment_index = 0;
@@ -2960,10 +2969,10 @@ void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp,
     /* select default values */
     get_style(e, &style, e->default_style);
     font = select_font(e->screen, style.font_style, style.font_size);
-    s->eol_width = max(glyph_width(e->screen, font, '/'),
-                       glyph_width(e->screen, font, '\\'));
-    s->eol_width = max(s->eol_width, glyph_width(e->screen, font, '$'));
     s->default_line_height = font->ascent + font->descent;
+    s->eol_width = max3(glyph_width(e->screen, font, '/'),
+                        glyph_width(e->screen, font, '\\'),
+                        glyph_width(e->screen, font, '$'));
     s->space_width = glyph_width(e->screen, font, ' ');
     s->tab_width = s->space_width * e->b->tab_width;
     s->width = e->width - s->eol_width;
@@ -2972,6 +2981,9 @@ void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp,
     s->cur_hex_mode = 0;
     s->y = e->y_disp;
     s->line_num = 0;
+    s->line_numbers = e->line_numbers * s->space_width * 8;
+    if (s->line_numbers > s->width / 2)
+        s->line_numbers = 0;
     s->eol_reached = 0;
     s->eod = 0;
     display_bol(s);
@@ -3031,7 +3043,7 @@ static void flush_line(DisplayState *s,
 {
     EditState *e = s->edit_state;
     QEditScreen *screen = e->screen;
-    int level, pos, p, i, x_start, x, x1, y, baseline, line_height, max_descent;
+    int level, pos, p, i, x, x1, y, baseline, line_height, max_descent;
     TextFragment *frag;
     QEFont *font;
 
@@ -3039,10 +3051,11 @@ static void flush_line(DisplayState *s,
     baseline = 0;
     max_descent = 0;
     for (i = 0; i < nb_fragments; i++) {
-        if (fragments[i].ascent > baseline)
-            baseline = fragments[i].ascent;
-        if (fragments[i].descent > max_descent)
-            max_descent = fragments[i].descent;
+        frag = &fragments[i];
+        if (frag->ascent > baseline)
+            baseline = frag->ascent;
+        if (frag->descent > max_descent)
+            max_descent = frag->descent;
     }
     if (nb_fragments == 0) {
         /* if empty line, still needs a non zero line height */
@@ -3057,19 +3070,14 @@ static void flush_line(DisplayState *s,
         while (pos < nb_fragments) {
             if (fragments[pos].embedding_level >= level) {
                 /* find all chars >= level */
-                for (p = pos + 1; p < nb_fragments && fragments[p].embedding_level >= level; p++);
+                for (p = pos + 1; p < nb_fragments && fragments[p].embedding_level >= level; p++)
+                    continue;
                 reverse_fragments(fragments + pos, p - pos);
                 pos = p + 1;
             } else {
                 pos++;
             }
         }
-    }
-
-    if (s->base == DIR_RTL) {
-        x_start = e->width - s->x;
-    } else {
-        x_start = s->x_disp;
     }
 
     /* draw everything */
@@ -3091,39 +3099,35 @@ static void flush_line(DisplayState *s,
             memset(&e->line_shadow[n], 0xff,
                    LINE_SHADOW_INCR * sizeof(QELineShadow));
         }
-        /* XXX: incorrect for very long lines */
+        /* Use checksum based line cache to improve speed in graphics mode.
+         * XXX: overlong lines will fail the cache test
+         */
         ls = &e->line_shadow[s->line_num];
-        if (ls->y == s->y &&
-            ls->x_start == x_start &&
-            ls->height == line_height &&
-            ls->crc == crc) {
-            /* no display needed */
-        } else {
-#if 0
-            printf("old=%d %d %d %d\n",
-                   ls->y, ls->x_start, ls->height, ls->crc);
-            printf("cur=%d %d %d %d\n",
-                   s->y, x_start, line_height, crc);
-#endif
-            /* init line shadow */
+        if (ls->y != s->y || ls->x != s->x_line
+        ||  ls->height != line_height || ls->crc != crc) {
+            /* update values for the line cache */
             ls->y = s->y;
-            ls->x_start = x_start;
+            ls->x = s->x_line;
             ls->height = line_height;
             ls->crc = crc;
 
-            /* display ! */
-
+            /* display */
             get_style(e, &default_style, 0);
             x = e->xleft;
             y = e->ytop + s->y;
 
             /* first display background rectangles */
-            if (x_start > 0) {
-                fill_rectangle(screen, x, y,
-                               x_start, line_height,
+            /* XXX: should coalesce rectangles with identical style */
+            /* XXX: test is incorrect for subsequent flushes of very long lines */
+            if (s->x_line > 0) {
+                /* erase space before the line display, 
+                 * for example the column for line numbers 
+                 * on continuation lines.
+                 */
+                fill_rectangle(screen, x, y, s->x_line, line_height,
                                default_style.bg_color);
             }
-            x += x_start;
+            x += s->x_line;
             for (i = 0; i < nb_fragments; i++) {
                 frag = &fragments[i];
                 get_style(e, &style, frag->style);
@@ -3132,66 +3136,57 @@ static void flush_line(DisplayState *s,
                 x += frag->width;
             }
             x1 = e->xleft + s->width + s->eol_width;
-            if (x < x1) {
+            if (x < x1 && last != -1) {
                 fill_rectangle(screen, x, y, x1 - x, line_height,
                                default_style.bg_color);
             }
 
             /* then display text */
-            x = e->xleft;
-            if (x_start > 0) {
-                /* RTL eol mark */
-                if (last == 0 && s->base == DIR_RTL) {
-                    unsigned int markbuf[1] = { '/' };
+            x = e->xleft + s->x_line;
+            y += baseline;
 
-                    /* XXX: potential font metrics mismatch */
-                    font = select_font(screen,
-                                       default_style.font_style,
-                                       default_style.font_size);
-                    draw_text(screen, font, x, y + font->ascent,
-                              markbuf, 1, default_style.fg_color);
-                    release_font(screen, font);
-                }
-            }
-            x += x_start;
             for (i = 0; i < nb_fragments; i++) {
                 frag = &fragments[i];
                 get_style(e, &style, frag->style);
                 font = select_font(screen,
                                    style.font_style, style.font_size);
-                draw_text(screen, font, x, y + baseline,
+                draw_text(screen, font, x, y,
                           s->line_chars + frag->line_index,
                           frag->len, style.fg_color);
                 release_font(screen, font);
                 x += frag->width;
             }
-            x1 = e->xleft + s->width + s->eol_width;
-            if (x < x1) {
-                /* LTR eol mark */
-                if (last == 0 && s->base == DIR_LTR) {
-                    unsigned int markbuf[1] = { '\\' };
 
-                    /* XXX: potential font metrics mismatch */
-                    font = select_font(screen,
-                                       default_style.font_style,
-                                       default_style.font_size);
-                    draw_text(screen, font,
-                              e->xleft + s->width, y + font->ascent,
-                              markbuf, 1, default_style.fg_color);
-                    release_font(screen, font);
+            if (last == 0) {
+                /* draw eol mark */
+                unsigned int markbuf[1];
+
+                markbuf[0] = '/';        /* RTL eol mark */
+                x = e->xleft;            /* displayed at the left border */
+                if (s->base == DIR_LTR) {
+                    markbuf[0] = '\\';   /* LTR eol mark */
+                    x += s->width;       /* displayed at the right border */
                 }
+                font = select_font(screen,
+                                   default_style.font_style,
+                                   default_style.font_size);
+                draw_text(screen, font, x, y,
+                          markbuf, 1, default_style.fg_color);
+                release_font(screen, font);
             }
         }
     }
 
     /* call cursor callback */
     if (s->cursor_func) {
-        x = x_start;
+        x = s->x_line;
+        y = s->y;
+
         /* RTL eol cursor check (probably incorrect) */
         if (offset1 >= 0 && offset2 >= 0 &&
             s->base == DIR_RTL &&
             s->cursor_func(s, offset1, offset2, s->line_num,
-                           x, s->y, -s->eol_width, line_height, e->hex_mode)) {
+                           x, y, -s->eol_width, line_height, e->hex_mode)) {
             s->eod = 1;
         }
 
@@ -3209,11 +3204,11 @@ static void flush_line(DisplayState *s,
                     _offset1 >= 0 && _offset2 >= 0) {
                     if (s->base == DIR_RTL) {
                         if (s->cursor_func(s, _offset1, _offset2, s->line_num,
-                                           x + w, s->y, -w, line_height, hex_mode))
+                                           x + w, y, -w, line_height, hex_mode))
                             s->eod = 1;
                     } else {
                         if (s->cursor_func(s, _offset1, _offset2, s->line_num,
-                                           x, s->y, w, line_height, hex_mode))
+                                           x, y, w, line_height, hex_mode))
                             s->eod = 1;
                     }
                 }
@@ -3225,16 +3220,21 @@ static void flush_line(DisplayState *s,
         if (offset1 >= 0 && offset2 >= 0 &&
             s->base == DIR_LTR &&
             s->cursor_func(s, offset1, offset2, s->line_num,
-                           x, s->y, s->eol_width, line_height, e->hex_mode)) {
+                           x, y, s->eol_width, line_height, e->hex_mode)) {
             s->eod = 1;
         }
+        s->x_line = x;
     }
 #if 0
     printf("y=%d line_num=%d line_height=%d baseline=%d\n",
            s->y, s->line_num, line_height, baseline);
 #endif
-    s->y += line_height;
-    s->line_num++;
+    if (last != -1) {
+        /* bump to next line */
+        s->x_line = s->x_start;
+        s->y += line_height;
+        s->line_num++;
+    }
 }
 
 /* keep 'n' line chars at the start of the line */
@@ -3286,8 +3286,13 @@ static void flush_fragment(DisplayState *s)
         return;
 
     if (s->nb_fragments >= MAX_SCREEN_WIDTH ||
-        s->line_index + s->fragment_index > MAX_SCREEN_WIDTH)
-        goto the_end;
+        s->line_index + s->fragment_index > MAX_SCREEN_WIDTH) {
+        /* too many fragments on the same line, flush and stay on the line */
+        flush_line(s, s->fragments, s->nb_fragments, -1, -1, -1);
+        s->nb_fragments = 0;
+        s->line_index = 0;
+        s->word_index = 0;
+    }
 
     /* update word start index if needed */
     if (s->nb_fragments >= 1 && s->last_word_space != s->last_space) {
@@ -3415,10 +3420,11 @@ static void flush_fragment(DisplayState *s)
             /* move the remaining fragment to next line */
             s->nb_fragments = 0;
             s->x = 0;
-            if (s->edit_state->line_numbers) {
-                /* should skip line number column if present */
-                //s->x = s->space_width * 8;
-            }
+
+            /* skip line number column if present */
+            s->x += s->line_numbers;
+            s->x_line += s->line_numbers;
+
             if (len1 > 0) {
                 memmove(s->fragments, frag, sizeof(TextFragment));
                 frag = s->fragments;
@@ -3444,10 +3450,11 @@ static void flush_fragment(DisplayState *s)
                     (s->nb_fragments - s->word_index) * sizeof(TextFragment));
             s->nb_fragments -= s->word_index;
             s->x = 0;
-            if (s->edit_state->line_numbers) {
-                /* should skip line number column if present */
-                //s->x = s->space_width * 8;
-            }
+
+            /* skip line number column if present */
+            s->x += s->line_numbers;
+            s->x_line += s->line_numbers;
+
             for (i = 0; i < s->nb_fragments; i++) {
                 s->fragments[i].line_index -= index;
                 s->x += s->fragments[i].width;
@@ -3457,7 +3464,6 @@ static void flush_fragment(DisplayState *s)
         }
         break;
     }
- the_end:
     s->fragment_index = 0;
 }
 
@@ -3916,7 +3922,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     display_bol_bidir(ds, base, embedding_max_level);
 
     /* line numbers */
-    if (s->line_numbers) {
+    if (ds->line_numbers) {
         ds->style = QE_STYLE_COMMENT;
         display_printf(ds, -1, -1, "%6d  ", line_num + 1);
         ds->style = 0;
@@ -4029,6 +4035,8 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
                 display_char_bidir(ds, offset0, offset, embedding_level, c);
             }
             char_index++;
+            //if (ds->y >= s->height && ds->eod)  //@@@ causes bug
+            //    break;
         }
     }
     return offset;
@@ -4041,10 +4049,16 @@ static void generic_text_display(EditState *s)
     DisplayState ds1, *ds = &ds1;
     int x1, xc, yc, offset, bottom = -1;
 
+    if (s->offset == 0) {
+        s->offset_top = s->y_disp = s->x_disp[0] = s->x_disp[1] = 0;
+    }
+
     /* if the cursor is before the top of the display zone, we must
        resync backward */
     if (s->offset < s->offset_top) {
         s->offset_top = s->mode->backward_offset(s, s->offset);
+        ///XXXX probably too strong, should keep cursor close to top
+        //s->y_disp = 0;  //@@@?
     }
 
     if (s->display_invalid) {
@@ -4100,12 +4114,12 @@ static void generic_text_display(EditState *s)
         s->offset_top = offset;
         s->offset_bottom = bottom;
         /* adjust y_disp so that the cursor is at the bottom of the screen */
-        s->y_disp = s->height - ds->y;
+        s->y_disp = min(s->height - ds->y, 0);
         display_close(ds);
     } else {
         yc = m->yc;
         if (yc < 0) {
-            s->y_disp -= yc;
+            s->y_disp += -yc;
         } else
         if ((yc + m->cursor_height) > s->height) {
             s->y_disp += s->height - (yc + m->cursor_height);
@@ -4116,6 +4130,32 @@ static void generic_text_display(EditState *s)
        between rtl and ltr margins. We try to have x_disp == 0 as much
        as possible */
     if (s->wrap == WRAP_TRUNCATE) {
+#if 1  //@@@?
+        //put_status(s, "|xc=%d x_disp+%d", m->xc, s->x_disp[m->basec]);
+        if (m->xc != NO_CURSOR) {
+            xc = m->xc;
+            x1 = xc - s->x_disp[m->basec];
+            // Do not snap x_disp to 0 to allow scroll_left()
+            //if (x1 >= 0 && x1 < ds->width) {
+            //    s->x_disp[m->basec] = 0;
+            //} else
+            if (xc < 0) {
+                /* XXX: refering to ds after display_close(ds) */
+                if (x1 >= 0 && x1 < ds->width) {
+                    /* snap back to left margin */
+                    s->x_disp[m->basec] = 0;
+                } else {
+                    /* XXX: should center screen horizontally? */
+                    /* XXX: maybe scroll horizontally by a quarter screen? */
+                    s->x_disp[m->basec] += -xc;
+                }
+            } else
+            if (xc + m->cursor_width >= ds->width) {
+                /* XXX: maybe scroll horizontally by a quarter screen? */
+                s->x_disp[m->basec] += ds->width - (xc + m->cursor_width);
+            }
+        }
+#else
         xc = m->xc;
         x1 = xc - s->x_disp[m->basec];
         if (x1 >= 0 && x1 < ds->width - ds->eol_width) {
@@ -4127,6 +4167,7 @@ static void generic_text_display(EditState *s)
         if (xc >= ds->width) {
             s->x_disp[m->basec] += ds->width - xc - ds->eol_width;
         }
+#endif
     } else {
         s->x_disp[0] = 0;
         s->x_disp[1] = 0;

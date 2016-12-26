@@ -1142,10 +1142,10 @@ extern EditBufferDataType raw_data_type;
 /* contains all the information necessary to uniquely identify a line,
    to avoid displaying it */
 typedef struct QELineShadow {
-    short x_start;
+    unsigned int crc;
+    int x;
     short y;
     short height;
-    unsigned int crc;
 } QELineShadow;
 
 enum WrapType {
@@ -1605,13 +1605,13 @@ int qe_get_prototype(CmdDef *d, char *buf, int size);
 
 typedef struct TextFragment {
     unsigned short embedding_level;
-    short width; /* fragment width */
+    short width;      /* fragment width */
     short ascent;
     short descent;
     short style;      /* style index */
-    short line_index; /* index in line_buf */
-    short len;   /* number of glyphs */
-    short dummy;  /* align, must be assigned for CRC */
+    short line_index; /* index into line_buf */
+    short len;        /* number of glyphs */
+    short dummy;      /* alignment, must be set for CRC */
 } TextFragment;
 
 #ifdef CONFIG_TINY
@@ -1637,11 +1637,14 @@ struct DisplayState {
     int space_width;    /* width of space character */
     int tab_width;      /* width of tabulation */
     int x_disp;         /* starting x display */
+    int x_start;        /* start_x adjusted for RTL */
+    int x_line;         /* updated x position for line */
     int x;              /* current x position */
     int y;              /* current y position */
     int line_num;       /* current text line number */
     int cur_hex_mode;   /* true if current char is in hex mode */
     int hex_mode;       /* hex mode from edit_state, -1 if all chars wanted */
+    int line_numbers;   /* display line numbers if enough space */
     void *cursor_opaque;
     int (*cursor_func)(struct DisplayState *,
                        int offset1, int offset2, int line_num,
