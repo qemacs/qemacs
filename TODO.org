@@ -7,6 +7,7 @@
 
 * Priority 0
 
+** basic: remove some hotkeys in incremental search: C-b
 ** basic: reset last command when executing macro
 ** completion: fix electric behavior
 ** files: check file date to detect asynchronous modifications on disk

@@ -1,7 +1,12 @@
+# generated-files
 config.mak
 config.h
+fbffonts.c
+# object-directories
 .objs*
 .tobjs*
+.xobjs*
+# target-files
 *.exe
 *.dSYM
 qe
@@ -11,40 +16,43 @@ tqe_g
 xqe
 xqe_g
 fbftoqe
-fbffonts.c
 html2png
 cptoqe
 kmaptoqe
 ligtoqe
 jistoqe
-allmodules.txt
-basemodules.txt
-STATS
-.tags
+# temp-directories
+doc
+junk
 patches
+qsn
+# work-directories
 cur
 old
 nnn
-msg
-doc
-junk
-.qerc
-
+new
+xxx
+# temp-files
+.tags
+m
+t
+tt
+ttt
+# uncommitted-files
+STATS
 BUGS
 DONE
-fff
-ggg
-m
-r
-tt
+.qerc
 cflags.mk
 fnmatch.c
+parser-new.c
 itoa.c
+strtools.c
 lang-discuss.md
 rationale.md
+txl.c
 nim.c
 rebol.c
-txl.c
 elm.c
 jai.c
 ats.c

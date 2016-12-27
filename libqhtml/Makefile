@@ -55,13 +55,13 @@ endif
 
 CFLAGS+=-I$(DEPTH)
 
-LIB= libqhtml.a
+LIB= libqhtml-$(TARGET_OS)-$(TARGET_ARCH)-$(CC).a
 OBJS= css.o xmlparse.o cssparse.o html_style.o docbook_style.o
 
 DEPENDS:= qe.h config.h cutils.h display.h qestyles.h config.mak
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
-OBJS_DIR:= $(DEPTH)/.objs/libqhtml
+OBJS_DIR:= $(DEPTH)/.objs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/libqhtml
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
 
 $(shell mkdir -p $(OBJS_DIR))
@@ -96,3 +96,5 @@ clean:
 	rm -rf *.dSYM $(OBJS_DIR)
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
           csstoqe html_style.c docbook_style.c
+
+distclean: clean

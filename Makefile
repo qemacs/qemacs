@@ -71,6 +71,10 @@ OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o parser.o input.o display
 TOBJS:= $(OBJS)
 OBJS+= extras.o variables.o
 
+ifdef CONFIG_DARWIN
+  LDFLAGS += -L/opt/local/lib/
+endif
+
 ifdef CONFIG_PNG_OUTPUT
   HTMLTOPPM_LIBS += -lpng
 endif
@@ -133,9 +137,11 @@ ifdef CONFIG_CFB
 endif
 
 ifdef CONFIG_HTML
+  QHTML_DEPS:= libqhtml/libqhtml-$(TARGET_OS)-$(TARGET_ARCH)-$(CC).a
+  QHTML_LIBS:= -L./libqhtml -lqhtml-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
   CFLAGS+= -I./libqhtml
-  DEP_LIBS+= libqhtml/libqhtml.a
-  LIBS+= -L./libqhtml -lqhtml
+  DEP_LIBS+= $(QHTML_DEPS)
+  LIBS+= $(QHTML_LIBS)
   OBJS+= html.o docbook.o
   ifndef CONFIG_WIN32
     TARGETLIBS+= libqhtml
@@ -460,9 +466,9 @@ OBJS1=html2png.o util.o cutils.o \
 
 OBJS1:=$(addprefix $(OBJS_DIR)/, $(OBJS1))
 
-html2png$(EXE): $(OBJS1) libqhtml/libqhtml.a
+html2png$(EXE): $(OBJS1) $(QHTML_DEPS)
 	$(echo) LD $@
-	$(cmd)  $(CC) $(LDFLAGS) -o $@ $(OBJS1) -L./libqhtml -lqhtml $(HTMLTOPPM_LIBS)
+	$(cmd)  $(CC) $(LDFLAGS) -o $@ $(OBJS1) $(QHTML_LIBS) $(HTMLTOPPM_LIBS)
 
 # autotest target
 test:
@@ -481,13 +487,15 @@ qe-doc.html: qe-doc.texi Makefile
 #
 clean:
 	$(MAKE) -C libqhtml clean
-	rm -rf *.dSYM $(OBJS_DIR) $(XOBJS_DIR) $(TOBJS_DIR) .objs-* .tobjs-*
+	rm -rf *.dSYM .objs* .tobjs* .xobjs* $(OBJS_DIR) $(XOBJS_DIR) $(TOBJS_DIR)
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump   \
            qe tqe t1qe xqe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
            cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9]
 
 distclean: clean
-	rm -rf config.h config.mak $(OBJS_DIR) $(XOBJS_DIR) $(TOBJS_DIR)
+	$(MAKE) -C libqhtml distclean
+	rm -rf .objs* .tobjs* .xobjs* $(OBJS_DIR) $(XOBJS_DIR) $(TOBJS_DIR)
+	rm -rf config.h config.mak
 
 install: $(TARGETS) qe.1
 	$(INSTALL) -m 755 -d $(DESTDIR)$(prefix)/bin
