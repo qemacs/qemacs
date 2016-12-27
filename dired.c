@@ -661,7 +661,6 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
     if (!(flags & DIRED_UPDATE_REBUILD))
         return;
 
-    /* XXX: should use screen specific space_width, separator_width or em_width */
     ds->last_width = window_width;
     ds->last_cur = NULL;
     width -= clamp(ds->namelen, 16, 40);

@@ -3978,6 +3978,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             }
         } else
         if (s->curline_style && s->offset >= offset && s->offset <= offset0) {
+            /* XXX: only if qs->active_window == s ? */
             clear_color(colored_chars, colored_nb_chars);
             set_color(colored_chars, colored_chars + colored_nb_chars,
                       s->curline_style);
@@ -6053,7 +6054,7 @@ void do_less_exit(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
 
-    /* XXX: ony do this for a popup? */
+    /* XXX: only do this for a popup? */
     s->b->flags |= BF_TRANSIENT;
     edit_close(&s);
 
