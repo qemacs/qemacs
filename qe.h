@@ -1639,6 +1639,7 @@ struct DisplayState {
     int x_disp;         /* starting x display */
     int x_start;        /* start_x adjusted for RTL */
     int x_line;         /* updated x position for line */
+    int left_gutter;    /* width of the gutter at the left of output */
     int x;              /* current x position */
     int y;              /* current y position */
     int line_num;       /* current text line number */
@@ -1839,6 +1840,10 @@ EditState *edit_new(EditBuffer *b,
 void edit_detach(EditState *s);
 EditBuffer *check_buffer(EditBuffer **sp);
 EditState *check_window(EditState **sp);
+int get_glyph_width(QEditScreen *screen, 
+                    EditState *s, int style_index, int c);
+int get_line_height(QEditScreen *screen,
+                    EditState *s, int style_index);
 void do_refresh(EditState *s);
 // should take direction argument
 void do_other_window(EditState *s);

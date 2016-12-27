@@ -156,15 +156,10 @@ static CmdDef hex_commands[] = {
 static int binary_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
-        QEFont *font;
-        QEStyleDef style;
         int num_width;
 
         /* get typical number width */
-        get_style(s, &style, s->default_style);
-        font = select_font(s->screen, style.font_style, style.font_size);
-        num_width = glyph_width(s->screen, font, '0');
-        release_font(s->screen, font);
+        num_width = get_glyph_width(s->screen, s, QE_STYLE_DEFAULT, '0');
 
         s->dump_width = s->screen->width / num_width;
         if (s->b->flags & BF_PREVIEW)

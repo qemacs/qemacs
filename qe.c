@@ -49,7 +49,6 @@ static int (*qe__initcall_first)(void) qe__init_call = NULL;
 static void (*qe__exitcall_first)(void) qe__exit_call = NULL;
 #endif
 
-static int get_line_height(QEditScreen *screen, int style_index);
 void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
                    const char *str, int style_index);
@@ -1181,8 +1180,7 @@ void text_scroll_up_down(EditState *s, int dir)
     int h, line_height;
 
     /* try to round to a line height */
-    /* XXX: should use QE_STYLE_DEFAULT and pass EditState */
-    line_height = get_line_height(s->screen, s->default_style);
+    line_height = get_line_height(s->screen, s, QE_STYLE_DEFAULT);
     h = 1;
     if (abs(dir) == 2) {
         /* one page at a time: C-v / M-v */
@@ -2625,6 +2623,12 @@ void display_window_borders(EditState *e)
         if (e->flags & (WF_POPUP | WF_RSEPARATOR)) {
             CSSRect rect;
             QEColor color;
+            int x = e->x1;
+            int y = e->y1;
+            int width = e->x2 - e->x1;
+            int height = e->y2 - e->y1;
+            int bw = qs->border_width;
+            int bh = qs->border_width;
 
             rect.x1 = 0;
             rect.y1 = 0;
@@ -2633,23 +2637,18 @@ void display_window_borders(EditState *e)
             set_clip_rectangle(qs->screen, &rect);
             color = qe_styles[QE_STYLE_WINDOW_BORDER].bg_color;
             if (e->flags & WF_POPUP) {
+                fill_rectangle(qs->screen, x, y, width, bh, color);
                 fill_rectangle(qs->screen,
-                               e->x1, e->y1,
-                               qs->border_width, e->y2 - e->y1, color);
+                               x, y + bh, bw, height - bh - bh, color);
                 fill_rectangle(qs->screen,
-                               e->x2 - qs->border_width, e->y1,
-                               qs->border_width, e->y2 - e->y1, color);
+                               x + width - bw, y + bh, bw, height - bh - bh, color);
                 fill_rectangle(qs->screen,
-                               e->x1, e->y1,
-                               e->x2 - e->x1, qs->border_width, color);
-                fill_rectangle(qs->screen,
-                               e->x1, e->y2 - qs->border_width,
-                               e->x2 - e->x1, qs->border_width, color);
+                               x, y + height - bh, width, bh, color);
             }
             if (e->flags & WF_RSEPARATOR) {
                 fill_rectangle(qs->screen,
-                               e->x2 - qs->separator_width, e->y1,
-                               qs->separator_width, e->y2 - e->y1, color);
+                               x + width - qs->separator_width, y,
+                               qs->separator_width, height, color);
             }
         }
         e->borders_invalid = 0;
@@ -2932,6 +2931,7 @@ static void display_bol_bidir(DisplayState *s, DirType base,
     } else {
         s->x_start = s->x;
     }
+    s->left_gutter = 0;
     s->x_line = s->x_start;
     s->style = 0;
     s->last_style = 0;
@@ -2967,7 +2967,7 @@ void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp,
     s->cursor_opaque = cursor_opaque;
     s->wrap = e->wrap;
     /* select default values */
-    get_style(e, &style, e->default_style);
+    get_style(e, &style, QE_STYLE_DEFAULT);
     font = select_font(e->screen, style.font_style, style.font_size);
     s->default_line_height = font->ascent + font->descent;
     s->eol_width = max3(glyph_width(e->screen, font, '/'),
@@ -3080,8 +3080,10 @@ static void flush_line(DisplayState *s,
         }
     }
 
-    /* draw everything */
-    if (s->do_disp == DISP_PRINT) {
+    /* draw everything if line is visible in window */
+    if (s->do_disp == DISP_PRINT 
+    &&  s->y + line_height >= 0
+    &&  s->y < e->ytop + e->height) {
         QEStyleDef style, default_style;
         QELineShadow *ls;
         unsigned int crc;
@@ -3112,49 +3114,49 @@ static void flush_line(DisplayState *s,
             ls->crc = crc;
 
             /* display */
-            get_style(e, &default_style, 0);
-            x = e->xleft;
-            y = e->ytop + s->y;
+            get_style(e, &default_style, QE_STYLE_DEFAULT);
+            x = s->x_start;
+            y = s->y;
 
             /* first display background rectangles */
             /* XXX: should coalesce rectangles with identical style */
-            /* XXX: test is incorrect for subsequent flushes of very long lines */
-            if (s->x_line > 0) {
-                /* erase space before the line display, 
-                 * for example the column for line numbers 
-                 * on continuation lines.
-                 */
-                fill_rectangle(screen, x, y, s->x_line, line_height,
+            if (s->left_gutter > 0) {
+                /* erase space before the line display, aka left gutter */
+                fill_rectangle(screen, e->xleft + x, e->ytop + y,
+                               s->left_gutter, line_height,
                                default_style.bg_color);
             }
-            x += s->x_line;
-            for (i = 0; i < nb_fragments; i++) {
+            x = s->x_line;
+            x1 = s->width + s->eol_width;
+            for (i = 0; i < nb_fragments && x < x1; i++) {
                 frag = &fragments[i];
                 get_style(e, &style, frag->style);
-                fill_rectangle(screen, x, y, frag->width, line_height,
-                               style.bg_color);
+                fill_rectangle(screen, e->xleft + x, e->ytop + y, 
+                               frag->width, line_height, style.bg_color);
                 x += frag->width;
             }
-            x1 = e->xleft + s->width + s->eol_width;
             if (x < x1 && last != -1) {
-                fill_rectangle(screen, x, y, x1 - x, line_height,
-                               default_style.bg_color);
+                fill_rectangle(screen, e->xleft + x, e->ytop + y,
+                               x1 - x, line_height, default_style.bg_color);
             }
 
             /* then display text */
-            x = e->xleft + s->x_line;
+            x = s->x_line;
             y += baseline;
 
-            for (i = 0; i < nb_fragments; i++) {
+            for (i = 0; i < nb_fragments && x < x1; i++) {
                 frag = &fragments[i];
-                get_style(e, &style, frag->style);
-                font = select_font(screen,
-                                   style.font_style, style.font_size);
-                draw_text(screen, font, x, y,
-                          s->line_chars + frag->line_index,
-                          frag->len, style.fg_color);
-                release_font(screen, font);
                 x += frag->width;
+                if (x > 0) {
+                    get_style(e, &style, frag->style);
+                    font = select_font(screen,
+                                       style.font_style, style.font_size);
+                    draw_text(screen, font, 
+                              e->xleft + x - frag->width, e->ytop + y,
+                              s->line_chars + frag->line_index,
+                              frag->len, style.fg_color);
+                    release_font(screen, font);
+                }
             }
 
             if (last == 0) {
@@ -3162,15 +3164,15 @@ static void flush_line(DisplayState *s,
                 unsigned int markbuf[1];
 
                 markbuf[0] = '/';        /* RTL eol mark */
-                x = e->xleft;            /* displayed at the left border */
+                x = 0;                   /* displayed at the left border */
                 if (s->base == DIR_LTR) {
                     markbuf[0] = '\\';   /* LTR eol mark */
-                    x += s->width;       /* displayed at the right border */
+                    x = s->width;        /* displayed at the right border */
                 }
                 font = select_font(screen,
                                    default_style.font_style,
                                    default_style.font_size);
-                draw_text(screen, font, x, y,
+                draw_text(screen, font, e->xleft + x, e->ytop + y,
                           markbuf, 1, default_style.fg_color);
                 release_font(screen, font);
             }
@@ -3334,9 +3336,6 @@ static void flush_fragment(DisplayState *s)
     }
 
     style_index = s->last_style;
-    /* XXX: useless test, e->default_style is combined by get_style() */
-    if (style_index == QE_STYLE_DEFAULT)
-        style_index = s->edit_state->default_style;
     get_style(s->edit_state, &style, style_index);
     /* select font according to current style */
     font = select_font(screen, style.font_style, style.font_size);
@@ -3417,14 +3416,12 @@ static void flush_fragment(DisplayState *s)
             /* flush fragments with a line continuation mark */
             flush_line(s, s->fragments, n, -1, -1, 0);
 
+            /* skip line number column if present */
+            s->left_gutter = s->line_numbers;
+            s->x = s->x_line += s->left_gutter;
+
             /* move the remaining fragment to next line */
             s->nb_fragments = 0;
-            s->x = 0;
-
-            /* skip line number column if present */
-            s->x += s->line_numbers;
-            s->x_line += s->line_numbers;
-
             if (len1 > 0) {
                 memmove(s->fragments, frag, sizeof(TextFragment));
                 frag = s->fragments;
@@ -3444,16 +3441,15 @@ static void flush_fragment(DisplayState *s)
             /* flush fragments with a line continuation mark */
             flush_line(s, s->fragments, s->word_index, -1, -1, 0);
 
+            /* skip line number column if present */
+            s->left_gutter = s->line_numbers;
+            s->x = s->x_line += s->left_gutter;
+
             /* put words on next line */
             index = s->fragments[s->word_index].line_index;
             memmove(s->fragments, s->fragments + s->word_index,
                     (s->nb_fragments - s->word_index) * sizeof(TextFragment));
             s->nb_fragments -= s->word_index;
-            s->x = 0;
-
-            /* skip line number column if present */
-            s->x += s->line_numbers;
-            s->x_line += s->line_numbers;
 
             for (i = 0; i < s->nb_fragments; i++) {
                 s->fragments[i].line_index -= index;
@@ -4182,7 +4178,7 @@ static void generic_text_display(EditState *s)
     /* display the remaining region */
     if (ds->y < s->height) {
         QEStyleDef default_style;
-        get_style(s, &default_style, 0);
+        get_style(s, &default_style, QE_STYLE_DEFAULT);
         fill_rectangle(s->screen, s->xleft, s->ytop + ds->y,
                        s->width, s->height - ds->y,
                        default_style.bg_color);
@@ -5256,9 +5252,9 @@ void put_status(qe__unused__ EditState *s, const char *fmt, ...)
             if (!strequal(p, qs->diag_shadow)) {
                 /* right align display and overwrite last diag message */
                 int w = strlen(qs->diag_shadow);
-                snprintf(qs->diag_shadow, sizeof(qs->diag_shadow),
-                             "%*s", w, p);
-                w = strlen(qs->diag_shadow) + 1;
+                w = snprintf(qs->diag_shadow, sizeof(qs->diag_shadow),
+                             "%*s", w, p) + 1;
+                w *= get_glyph_width(qs->screen, NULL, QE_STYLE_STATUS, '0');
                 print_at_byte(qs->screen,
                               qs->screen->width - w,
                               qs->screen->height - qs->status_height,
@@ -6988,13 +6984,28 @@ void do_doctor(EditState *s)
     put_status(s, "Hello, how are you?");
 }
 
-static int get_line_height(QEditScreen *screen, int style_index)
+int get_glyph_width(QEditScreen *screen, 
+                    EditState *s, int style_index, int c)
+{
+    QEFont *font;
+    QEStyleDef style;
+    int width;
+
+    get_style(s, &style, style_index);
+    font = select_font(screen, style.font_style, style.font_size);
+    width = glyph_width(screen, font, c);
+    release_font(screen, font);
+    return width;
+}
+
+int get_line_height(QEditScreen *screen, 
+                    EditState *s, int style_index)
 {
     QEFont *font;
     QEStyleDef style;
     int height;
 
-    get_style(NULL, &style, style_index);
+    get_style(s, &style, style_index);
     font = select_font(screen, style.font_style, style.font_size);
     height = font->ascent + font->descent;
     release_font(screen, font);
@@ -7031,8 +7042,8 @@ void do_refresh(qe__unused__ EditState *s1)
 
     width = qs->screen->width;
     height = qs->screen->height;
-    new_status_height = get_line_height(qs->screen, QE_STYLE_STATUS);
-    new_mode_line_height = get_line_height(qs->screen, QE_STYLE_MODE_LINE);
+    new_status_height = get_line_height(qs->screen, NULL, QE_STYLE_STATUS);
+    new_mode_line_height = get_line_height(qs->screen, NULL, QE_STYLE_MODE_LINE);
     content_height = height;
     if (!qs->hide_status)
         content_height -= new_status_height;
@@ -7614,8 +7625,7 @@ void wheel_scroll_up_down(EditState *s, int dir)
     if (!s->mode->display_line)
         return;
 
-    /* XXX: s->default_style implicit, just pass `s` */
-    line_height = get_line_height(s->screen, s->default_style);
+    line_height = get_line_height(s->screen, s, QE_STYLE_DEFAULT);
     perform_scroll_up_down(s, dir * WHEEL_SCROLL_STEP * line_height);
 }
 

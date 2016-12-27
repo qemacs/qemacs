@@ -16,19 +16,18 @@
 ** shell: asynchronous input buffer
 ** shell: give commands a chance to execute for macros to behave correctly
 ** shell: A-y at process prompt
+** shell: C-t at process prompt
 ** shell: fix very long lines in shell buffer
 ** undo: saving the file kills the redo stack!
 
 * Priority 1
 
 ** API: use style cache in DisplayState
-** API: remove implicit e->default_style references
 ** API: remove screen argument in release_font
 ** API: remove screen argument in glyph_width
 ** API: add create-style(name, properties)
-** API: pass EditState to get_line_height(screen, s, style)
-** API: add get_glyph_width(screen, s, style, c)
 
+** extras: do_transpose should take argval and swap distant fragments
 ** php: improve coloring
 ** basic: A-m in dired left window should apply to right pane
 ** basic: goto-byte 10%, 10k, 10m...

@@ -614,15 +614,9 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
 
     /* Try and preserve scroll position */
     if (s) {
-        QEFont *font;
-        QEStyleDef style;
-
-        get_style(s, &style, s->default_style);
-        font = select_font(s->screen, style.font_style, style.font_size);
-        w = glyph_width(s->screen, font, '0');
-        release_font(s->screen, font);
+        w = max(1, get_glyph_width(s->screen, s, QE_STYLE_DEFAULT, '0'));
         window_width = s->width;
-        width = window_width / (w ? w : 1);
+        width = window_width / w;
 
         eb_get_pos(s->b, &top_line, &col, s->offset_top);
         /* XXX: should use dip->offset and delay to rebuild phase */
