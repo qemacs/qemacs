@@ -256,7 +256,7 @@ static int png_save(QEditScreen *s, const char *filename)
 
         png_init_io(d.png_ptr, d.f);
 
-        data = (unsigned int *)cfb->base;
+        data = (unsigned int *)(void *)cfb->base;
         w = s->width;
         h = s->height;
 
