@@ -171,7 +171,7 @@ ifdef CONFIG_X11
   ifdef CONFIG_XSHM
     XLIBS += -lXext
   endif
-  XLIBS += -lX11 -ldl
+  XLIBS += -lX11 $(DLLIBS)
   XLDFLAGS := $(LDFLAGS)
   ifdef CONFIG_DARWIN
     XLDFLAGS += -L/opt/X11/lib/

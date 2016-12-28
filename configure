@@ -110,6 +110,7 @@ case $targetos in
     doc="no"
     plugins="no"
     ptsname="no"
+    dllibs=
     ;;
   FreeBSD)
     extralibs="-lm"
@@ -169,34 +170,22 @@ if test -f "/usr/include/png.h" ; then
     png="yes"
 fi
 
-if test -f "/usr/include/X11/Xlib.h" ; then
-    x11="yes"
-    html="yes"
-    if test -f "/usr/include/X11/extensions/Xv.h" ; then
-        xv="yes"
+for x11path in /usr/include/X11 /opt/X11 /usr/X11R6; do
+    if test -f "$x11path/include/X11/Xlib.h" ; then
+        x11="yes"
+        x11_libdir="$x11path/lib"
+        x11_includedir="$x11path/include"
+        LDFLAGS="$LDFLAGS -L$x11path/lib"
+        html="yes"
+        if test -f "$x11path/include/X11/extensions/Xv.h" ; then
+            xv="yes"
+        fi
+        if test -f "$x11path/include/X11/extensions/Xshm.h" ; then
+            xshm="yes"
+        fi
+        break
     fi
-    if test -f "/usr/include/X11/extensions/Xshm.h" ; then
-        xshm="yes"
-    fi
-fi
-
-if test -d "/opt/X11/lib" ; then
-    x11_libdir="/opt/X11/lib"
-elif test -d "/usr/X11R6/lib" ; then
-    x11_libdir="/usr/X11R6/lib"
-fi
-
-if test -f "/opt/X11/include/X11/Xlib.h" ; then
-    x11="yes"
-    x11_includedir="/opt/X11/include"
-    html="yes"
-    if test -f "/opt/X11/include/X11/extensions/Xv.h" ; then
-        xv="yes"
-    fi
-    if test -f "/opt/X11/include/X11/extensions/Xshm.h" ; then
-        xshm="yes"
-    fi
-fi
+done
 
 if test -z `which texi2html` ; then
     doc="no"
