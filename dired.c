@@ -1076,7 +1076,6 @@ static EditState *dired_view_file(EditState *s, const char *filename)
         /* disable wrapping to get nicer display */
         /* XXX: should wrap lines unless window is narrow */
         //e->wrap = WRAP_TRUNCATE; // causes bug on very long lines
-        put_status(e, "Previewing %s", filename);
         return e;
     } else {
         /* if file failed to load, show a scratch buffer */
@@ -1442,6 +1441,7 @@ static void filelist_display_hook(EditState *s)
                 if (target_line > 0)
                     do_goto_line(e, target_line, 0);
             }
+            put_status(e, "Previewing %s", filename);
         } else {
             put_status(s, "No access to %s", filename);
         }
