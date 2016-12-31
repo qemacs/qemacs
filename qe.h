@@ -1831,6 +1831,7 @@ int qe_load_file(EditState *s, const char *filename1,
 /* config file support */
 void do_load_config_file(EditState *e, const char *file);
 void do_load_qerc(EditState *e, const char *file);
+void do_add_resource_path(EditState *s, const char *path);
 
 /* popup / low level window handling */
 EditState *show_popup(EditBuffer *b);

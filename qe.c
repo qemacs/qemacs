@@ -8105,6 +8105,13 @@ static int parse_command_line(int argc, char **argv)
     return _optind;
 }
 
+void do_add_resource_path(EditState *s, const char *path)
+{
+    QEmacsState *qs = s->qe_state;
+    pstrcat(qs->res_path, sizeof(qs->res_path), ":");
+    pstrcat(qs->res_path, sizeof(qs->res_path), path);
+}
+
 void set_user_option(const char *user)
 {
     QEmacsState *qs = &qe_state;

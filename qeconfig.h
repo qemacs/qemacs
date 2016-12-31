@@ -428,7 +428,7 @@ static CmdDef basic_commands[] = {
           "ui{Fill column: }")
 
     /* other stuff */
-    CMD3( KEY_NONE, KEY_NONE,
+    CMD3( KEY_CTRLC(KEY_CTRL('f')), KEY_NONE,
           "load-file-from-path", do_load_file_from_path, ESsi, 0,
           "s{Load file from path: }|file|"
           "v")
@@ -438,6 +438,10 @@ static CmdDef basic_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
           "load-qerc", do_load_qerc, ESs,
           "s{path: }[file]|file|")
+    CMD2( KEY_NONE, KEY_NONE,
+          "add-resource-path", do_add_resource_path, ESs,
+          "s{resource path: }[file]|file|")
+
 
     CMD_DEF_END,
 };
