@@ -30,6 +30,7 @@
 #define SEARCH_FLAG_WRAPPED    0x0008
 #define SEARCH_FLAG_HEX        0x0010
 #define SEARCH_FLAG_UNIHEX     0x0020
+#define SEARCH_FLAG_REGEX      0x0040
 
 /* should separate search string length and number of match positions */
 #define SEARCH_LENGTH  256
@@ -51,9 +52,11 @@ struct ISearchState {
     unsigned int search_u32[SEARCH_LENGTH];
 };
 
+/* XXX: should store to screen */
 ISearchState isearch_state;
 
-/* store last searched string */
+/* last searched string */
+/* XXX: should store in a buffer as a list */
 static unsigned int last_search_u32[SEARCH_LENGTH];
 static int last_search_u32_len = 0;
 static int last_search_u32_flags = 0;
@@ -212,6 +215,22 @@ static void buf_encode_search_str(buf_t *out, const char *str)
     }
 }
 
+static void buf_disp_search_flags(buf_t *out, int search_flags) {
+    if (search_flags & SEARCH_FLAG_UNIHEX)
+        buf_puts(out, "Unihex ");
+    if (search_flags & SEARCH_FLAG_HEX)
+        buf_puts(out, "Hex ");
+    if (search_flags & SEARCH_FLAG_IGNORECASE)
+        buf_puts(out, "Folding ");
+    else
+    if (!(search_flags & SEARCH_FLAG_SMARTCASE))
+        buf_puts(out, "Exact ");
+    if (search_flags & SEARCH_FLAG_REGEX)
+        buf_puts(out, "Regex ");
+    if (search_flags & SEARCH_FLAG_WORD)
+        buf_puts(out, "Word ");
+}
+
 static void isearch_run(ISearchState *is)
 {
     EditState *s = is->s;
@@ -301,18 +320,7 @@ static void isearch_run(ISearchState *is)
         buf_puts(out, "Wrapped ");
         is->search_flags &= ~SEARCH_FLAG_WRAPPED;
     }
-    if (is->search_flags & SEARCH_FLAG_UNIHEX)
-        buf_puts(out, "Unihex ");
-    if (is->search_flags & SEARCH_FLAG_HEX)
-        buf_puts(out, "Hex ");
-    if (is->search_flags & SEARCH_FLAG_WORD)
-        buf_puts(out, "Word ");
-    if (is->search_flags & SEARCH_FLAG_IGNORECASE)
-        buf_puts(out, "Folding ");
-    else
-    if (!(is->search_flags & SEARCH_FLAG_SMARTCASE))
-        buf_puts(out, "Exact ");
-
+    buf_disp_search_flags(out, is->search_flags);
     buf_puts(out, "I-search");
     if (is->dir < 0)
         buf_puts(out, " backward");
@@ -363,10 +371,15 @@ static void isearch_key(void *opaque, int ch)
     switch (ch) {
     case KEY_DEL:
     case KEY_BS:
+        /* cancel last input item from search string */
         if (is->pos > 0)
             is->pos--;
         break;
     case KEY_CTRL('g'):
+        /* XXX: when search has failed should cancel input back to what has been
+         * found successfully.
+         * when search is successful aborts and moves point to starting point.
+         */
         s->b->mark = is->saved_mark;
         s->offset = is->start_offset;
         s->region_style = 0;
@@ -390,7 +403,7 @@ static void isearch_key(void *opaque, int ch)
     case KEY_CTRL('r'):         /* previous match */
         is->dir = -1;
     addpos:
-        /* use last seached string if no input */
+        /* use last searched string if no input */
         if (is->search_u32_len == 0 && is->dir == curdir) {
             int len = min(last_search_u32_len, SEARCH_LENGTH - is->pos);
             memcpy(is->search_u32_flags + is->pos, last_search_u32,
@@ -448,8 +461,7 @@ static void isearch_key(void *opaque, int ch)
             isearch_grab(is, qs->yank_buffers[qs->yank_current], 0, -1);
         }
         break;
-    case KEY_META('b'):
-    case KEY_CTRL('b'):
+    case KEY_META(KEY_CTRL('b')):
         /* cycle unihex, hex, normal search */
         if (is->search_flags & SEARCH_FLAG_UNIHEX)
             is->search_flags ^= SEARCH_FLAG_HEX | SEARCH_FLAG_UNIHEX;
@@ -469,11 +481,16 @@ static void isearch_key(void *opaque, int ch)
         }
         is->search_flags &= ~SEARCH_FLAG_SMARTCASE;
         break;
+    case KEY_META('r'):
+    case KEY_CTRL('t'):
+        is->search_flags ^= ~SEARCH_FLAG_REGEX;
+        break;
     case KEY_CTRL('l'):
         do_center_cursor(s, 1);
         break;
     default:
-        if ((KEY_IS_SPECIAL(ch) || KEY_IS_CONTROL(ch)) && ch != '\t') {
+        if ((KEY_IS_SPECIAL(ch) || KEY_IS_CONTROL(ch)) &&
+            ch != '\t' && ch != KEY_CTRL('j')) {
             /* exit search mode */
 #if 0
             // FIXME: behaviour from qemacs-0.3pre13
@@ -488,9 +505,9 @@ static void isearch_key(void *opaque, int ch)
             s->region_style = 0;
             put_status(s, "Mark saved where search started");
             /* repost key */
+            /* do not keep search matches lingering */
+            s->isearch_state = NULL;
             if (ch != KEY_RET) {
-                /* keep search matches lingering if exit via RET */
-                s->isearch_state = NULL;
                 unget_key(ch);
             }
             goto the_end;
@@ -506,7 +523,7 @@ static void isearch_key(void *opaque, int ch)
 }
 
 /* XXX: handle busy */
-void do_isearch(EditState *s, int dir)
+void do_isearch(EditState *s, int dir, int argval)
 {
     ISearchState *is = &isearch_state;
     EditState *e;
@@ -530,6 +547,9 @@ void do_isearch(EditState *s, int dir)
         else
             flags |= SEARCH_FLAG_HEX;
     }
+    if (argval != NO_ARG)
+        flags |= SEARCH_FLAG_REGEX;
+
     is->search_flags = flags;
 
     qe_grab_keys(isearch_key, is);
@@ -688,18 +708,7 @@ static void query_replace_display(QueryReplaceState *is)
     }
     /* display prompt string */
     out = buf_init(&outbuf, ubuf, sizeof(ubuf));
-    if (is->search_flags & SEARCH_FLAG_UNIHEX)
-        buf_puts(out, "Unihex ");
-    if (is->search_flags & SEARCH_FLAG_HEX)
-        buf_puts(out, "Hex ");
-    if (is->search_flags & SEARCH_FLAG_WORD)
-        buf_puts(out, "Word ");
-    if (is->search_flags & SEARCH_FLAG_IGNORECASE)
-        buf_puts(out, "Folding ");
-    else
-    if (!(is->search_flags & SEARCH_FLAG_SMARTCASE))
-        buf_puts(out, "Exact ");
-
+    buf_disp_search_flags(out, is->search_flags);
     buf_puts(out, "Query replace ");
     buf_encode_search_str(out, is->search_str);
     buf_puts(out, " with ");

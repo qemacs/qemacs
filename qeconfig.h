@@ -188,10 +188,10 @@ static CmdDef basic_commands[] = {
           "s{Count Matches: }|search|"
           "v")
     /* passing argument should switch to regex incremental search */
-    CMD1( KEY_CTRL('r'), KEY_NONE,
-          "isearch-backward", do_isearch, -1 )
-    CMD1( KEY_CTRL('s'), KEY_NONE,
-          "isearch-forward", do_isearch, 1 )
+    CMD3( KEY_CTRL('r'), KEY_NONE,
+          "isearch-backward", do_isearch, ESii, -1, "vui" )
+    CMD3( KEY_CTRL('s'), KEY_NONE,
+          "isearch-forward", do_isearch, ESii, 1, "vui" )
     CMD2( KEY_META('%'), KEY_NONE,
           "query-replace", do_query_replace, ESss,
           "*" "s{Query replace: }|search|"
@@ -471,8 +471,8 @@ CmdDef minibuffer_commands[] = {
 CmdDef less_commands[] = {
     CMD0( 'q', KEY_CTRL('g'),
           "less-exit", do_less_exit)
-    CMD1( '/', KEY_NONE,
-          "less-isearch", do_isearch, 1)
+    CMD3( '/', KEY_NONE,
+          "less-isearch", do_isearch, ESii, 1, "vui" )
     CMD_DEF_END,
 };
 

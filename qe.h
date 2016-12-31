@@ -776,6 +776,11 @@ KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m);
 #define COLORED_MAX_LINE_SIZE  4096
 
 /* colorize & transform a line, lower level then ColorizeFunc */
+/* XXX: should return `len`, the number of valid codepoints copied to 
+ * destination excluding the null terminator and newline if present.
+ * Truncation can be detected by testing if a newline is present 
+ * at this offset.
+ */
 typedef int (*GetColorizedLineFunc)(EditState *s,
                                     unsigned int *buf, int buf_size,
                                     int offset, int *offsetp, int line_num);
@@ -1878,7 +1883,7 @@ void do_write_file(EditState *s, const char *filename);
 void do_write_region(EditState *s, const char *filename);
 void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
                               int offset);
-void do_isearch(EditState *s, int dir);
+void do_isearch(EditState *s, int dir, int argval);
 void do_query_replace(EditState *s, const char *search_str,
                       const char *replace_str);
 void do_replace_string(EditState *s, const char *search_str,

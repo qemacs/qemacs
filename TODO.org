@@ -1,13 +1,12 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2016-12-23
+; Updated: 2016-12-31
 
 * Needed for release version 5
 
 * Priority 0
 
-** basic: remove some hotkeys in incremental search: C-b
 ** basic: reset last command when executing macro
 ** completion: fix electric behavior
 ** files: check file date to detect asynchronous modifications on disk
@@ -152,7 +151,6 @@
 ** search: add low-level accelerator function
 ** search: use do_isearch to input string for do_search_string
 ** search: use do_isearch to input string for do_query_replace (might need recursive edit)
-** search: count-matches
 ** search: count-words, wc
 ** search: stats command for word count and mode specific stats
 ** search: improve speed finally
