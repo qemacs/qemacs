@@ -1266,12 +1266,13 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d, %d\n", w, "xleft, ytop", s->xleft, s->ytop);
     eb_printf(b1, "%*s: %d, %d\n", w, "width, height", s->width, s->height);
     eb_printf(b1, "%*s: %d, %d, %d, %d\n", w, "x1, y1, x2, y2", s->x1, s->y1, s->x2, s->y2);
-    eb_printf(b1, "%*s: %#x %s%s%s%s%s\n", w, "flags", s->flags,
+    eb_printf(b1, "%*s: %#x %s%s%s%s%s%s\n", w, "flags", s->flags,
               (s->flags & WF_POPUP) ? " POPUP" : "",
               (s->flags & WF_MODELINE) ? " MODELINE" : "",
               (s->flags & WF_RSEPARATOR) ? " RSEPARATOR" : "",
               (s->flags & WF_POPLEFT) ? " POPLEFT" : "",
-              (s->flags & WF_HIDDEN) ? " HIDDEN" : "");
+              (s->flags & WF_HIDDEN) ? " HIDDEN" : "",
+              (s->flags & WF_FILELIST) ? " FILELIST" : "");
     eb_printf(b1, "%*s: %d\n", w, "offset", s->offset);
     eb_printf(b1, "%*s: %d\n", w, "offset_top", s->offset_top);
     eb_printf(b1, "%*s: %d\n", w, "offset_bottom", s->offset_bottom);

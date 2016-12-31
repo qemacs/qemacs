@@ -984,7 +984,7 @@ void do_left_right(EditState *s, int dir)
 #ifndef CONFIG_TINY
     if (s->b->flags & BF_PREVIEW) {
         EditState *e = find_window(s, KEY_LEFT, NULL);
-        if (e && (e->b->flags & BF_DIRED)
+        if (e && (e->flags & WF_FILELIST)
         &&  dir < 0 && eb_at_bol(s->b, s->offset)) {
             s->qe_state->active_window = e;
             return;
@@ -8480,7 +8480,7 @@ static void qe_init(void *opaque)
 #if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
     if (is_player && !session_loaded && (_optind >= argc || S_ISDIR(s->b->st_mode))) {
         /* if player, go to directory mode by default if no file selected */
-        do_dired(s);
+        do_dired(s, NO_ARG);
         s = qs->active_window;
     }
 #endif

@@ -1235,6 +1235,7 @@ struct EditState {
 #define WF_RSEPARATOR 0x0004 /* right window separator */
 #define WF_POPLEFT    0x0008 /* left side window */
 #define WF_HIDDEN     0x0010 /* hidden window, used for temporary changes */
+#define WF_FILELIST   0x1000 /* window is interactive file list */
 
     OWNED char *prompt;  /* optional window prompt, utf8 */
     //const char *mode_line;
@@ -2100,7 +2101,8 @@ int list_get_offset(EditState *s);
 
 /* dired.c */
 
-void do_dired(EditState *s);
+void do_dired(EditState *s, int argval);
+void do_filelist(EditState *s, int argval);
 
 /* syntax colorizers */
 

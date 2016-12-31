@@ -1050,7 +1050,7 @@ static void dired_select(EditState *s)
     }
 }
 
-static void dired_view_file(EditState *s, const char *filename)
+static EditState *dired_view_file(EditState *s, const char *filename)
 {
     EditBuffer *b;
     EditState *e;
@@ -1058,7 +1058,7 @@ static void dired_view_file(EditState *s, const char *filename)
 
     e = find_window(s, KEY_RIGHT, NULL);
     if (!e)
-        return;
+        return NULL;
 
     /* close previous temporary buffers, if any */
     b = e->b;
@@ -1076,11 +1076,14 @@ static void dired_view_file(EditState *s, const char *filename)
         /* disable wrapping to get nicer display */
         /* XXX: should wrap lines unless window is narrow */
         //e->wrap = WRAP_TRUNCATE; // causes bug on very long lines
+        put_status(e, "Previewing %s", filename);
+        return e;
     } else {
         /* if file failed to load, show a scratch buffer */
         b = eb_new("*scratch*", BF_SAVELOG | BF_UTF8 | BF_PREVIEW);
         eb_printf(b, "Cannot load file %s", filename);
         switch_to_buffer(e, b);
+        return NULL;
     }
 }
 
@@ -1098,7 +1101,7 @@ static void dired_parent(EditState *s)
 
     if (s->b->flags & BF_PREVIEW) {
         EditState *e = find_window(s, KEY_LEFT, NULL);
-        if (e && (e->b->flags & BF_DIRED)) {
+        if (e && (e->flags & WF_FILELIST)) {
             s->qe_state->active_window = e;
             return;
         }
@@ -1252,7 +1255,7 @@ static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 /* open dired window on the left. The directory of the current file is
    used */
-void do_dired(EditState *s)
+void do_dired(EditState *s, int argval)
 {
     QEmacsState *qs = s->qe_state;
     EditBuffer *b;
@@ -1267,6 +1270,11 @@ void do_dired(EditState *s)
      * else create one and do this.
      * recursive listing and multi directory patterns.
      */
+
+    if (argval != NO_ARG) {
+        do_filelist(s, argval);
+        return;
+    }
 
     /* Should reuse previous dired buffer for same filespec */
     b = eb_scratch("*dired*", BF_READONLY | BF_UTF8);
@@ -1284,7 +1292,7 @@ void do_dired(EditState *s)
     eb_set_filename(b, filename);
 
     width = qs->width / 5;
-    e = insert_window_left(b, width, WF_MODELINE);
+    e = insert_window_left(b, width, WF_MODELINE | WF_FILELIST);
     /* set dired mode: dired_mode_init() will load buffer content */
     edit_set_mode(e, &dired_mode);
 
@@ -1355,10 +1363,12 @@ static CmdDef dired_commands[] = {
 };
 
 static CmdDef dired_global_commands[] = {
-    CMD0( KEY_CTRLX(KEY_CTRL('d')), KEY_NONE,
-          "dired", do_dired)
+    CMD2( KEY_CTRLX(KEY_CTRL('d')), KEY_NONE,
+          "dired", do_dired, ESi, "ui")
     CMD_DEF_END,
 };
+
+static int filelist_init(void);
 
 static int dired_init(void)
 {
@@ -1381,6 +1391,114 @@ static int dired_init(void)
     qe_register_cmd_table(dired_commands, &dired_mode);
     qe_register_cmd_table(dired_global_commands, NULL);
 
+    filelist_init();
+
+    return 0;
+}
+
+/*---------------- filelist mode ----------------*/
+
+static char filelist_last_buf[MAX_FILENAME_SIZE];
+
+static ModeDef filelist_mode;
+
+static void filelist_display_hook(EditState *s)
+{
+    char buf[MAX_FILENAME_SIZE];
+    char dir[MAX_FILENAME_SIZE];
+    char filename[MAX_FILENAME_SIZE];
+    QEmacsState *qs = s->qe_state;
+    EditState *e;
+    int i, len, offset, target_line;
+
+    offset = eb_goto_bol(s->b, s->offset);
+    len = eb_fgets(s->b, buf, sizeof(buf), offset, &offset);
+    buf[len] = '\0';
+
+    if (s->x1 == 0 && s->y1 == 0 && s->width != qs->width
+    &&  *buf && !strequal(buf, filelist_last_buf)) {
+        /* open file so that user can see it before it is selected */
+        /* XXX: find a better solution (callback) */
+        pstrcpy(filelist_last_buf, sizeof(filelist_last_buf), buf);
+        get_default_path(s->b, offset, dir, sizeof(dir));
+        makepath(filename, sizeof(filename), dir, buf);
+        target_line = 0;
+        if (access(filename, R_OK)) {
+            for (i = 0; i < len; i++) {
+                if (buf[i] == ':' || buf[i] == *"()") {
+                    buf[i] = '\0';
+                    target_line = strtol(buf + i + 1, NULL, 10);
+                    break;
+                }
+            }
+            if (*buf) {
+                makepath(filename, sizeof(filename), dir, buf);
+            }
+        }
+        if (!access(filename, R_OK)) {
+            e = dired_view_file(s, filename);
+            if (e) {
+                e->wrap = WRAP_TRUNCATE;
+                if (target_line > 0)
+                    do_goto_line(e, target_line, 0);
+            }
+        } else {
+            put_status(s, "No access to %s", filename);
+        }
+    }
+}
+
+void do_filelist(EditState *s, int argval)
+{
+    QEmacsState *qs = s->qe_state;
+    EditState *e;
+
+    e = insert_window_left(s->b, qs->width / 5, WF_MODELINE | WF_FILELIST);
+    if (e != NULL) {
+        edit_set_mode(e, &filelist_mode);
+        e->wrap = WRAP_TRUNCATE;
+        filelist_last_buf[0] = '\0';
+        qs->active_window = e;
+    }
+}
+
+static int filelist_mode_init(EditState *s, EditBuffer *b, int flags)
+{
+    if (s) {
+        s->wrap = WRAP_TRUNCATE;
+    }
+    return 0;
+}
+
+static CmdDef filelist_commands[] = {
+    CMD0( KEY_RET, KEY_RIGHT,
+          "filelist-select", do_other_window)
+    CMD0( KEY_TAB, KEY_NONE,
+          "filelist-tab", do_other_window)
+    /* filelist-abort should restore previous buffer in right-window
+     * or at least exit preview mode */
+    CMD1( KEY_CTRL('g'), KEY_NONE,
+          "filelist-abort", do_delete_window, 0)
+    CMD_DEF_END,
+};
+
+static CmdDef filelist_global_commands[] = {
+    CMD2( KEY_NONE, KEY_NONE,
+          "filelist", do_filelist, ESi, "ui")
+    CMD_DEF_END,
+};
+
+static int filelist_init(void)
+{
+    memcpy(&filelist_mode, &text_mode, sizeof(ModeDef));
+    filelist_mode.name = "filelist";
+    filelist_mode.mode_name = NULL;
+    filelist_mode.mode_probe = NULL;
+    filelist_mode.mode_init = filelist_mode_init;
+    filelist_mode.display_hook = filelist_display_hook;
+    qe_register_mode(&filelist_mode, MODEF_VIEW);
+    qe_register_cmd_table(filelist_commands, &filelist_mode);
+    qe_register_cmd_table(filelist_global_commands, NULL);
     return 0;
 }
 
