@@ -3202,19 +3202,23 @@ static void flush_line(DisplayState *s,
                 int _offset2 = s->line_offsets[j][1];
                 int hex_mode = s->line_hex_mode[j];
                 int w = s->line_char_widths[j];
+                x += w;
                 if ((hex_mode == s->hex_mode || s->hex_mode == -1) &&
                     _offset1 >= 0 && _offset2 >= 0) {
+#if 0
+                    /* probably broken, bidir needs rework */
                     if (s->base == DIR_RTL) {
                         if (s->cursor_func(s, _offset1, _offset2, s->line_num,
-                                           x + w, y, -w, line_height, hex_mode))
+                                           x, y, -w, line_height, hex_mode))
                             s->eod = 1;
-                    } else {
+                    } else 
+#endif
+                    {
                         if (s->cursor_func(s, _offset1, _offset2, s->line_num,
-                                           x, y, w, line_height, hex_mode))
+                                           x - w, y, w, line_height, hex_mode))
                             s->eod = 1;
                     }
                 }
-                x += w;
             }
         }
 
