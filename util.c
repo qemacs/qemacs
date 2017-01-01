@@ -2,7 +2,7 @@
  * Utilities for qemacs.
  *
  * Copyright (c) 2001 Fabrice Bellard.
- * Copyright (c) 2002-2016 Charlie Gordon.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -319,13 +319,13 @@ char *reduce_filename(char *dest, int size, const char *filename)
  */
 int match_extension(const char *filename, const char *extlist)
 {
-    const char *base = get_basename(filename);
+    const char *base, *p, *q;
     int len;
-    const char *p, *q;
 
     if (!extlist)
         return 0;
 
+    base = get_basename(filename);
     while (*base == '.')
         base++;
     len = strlen(base);

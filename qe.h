@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2016 Charlie Gordon.
+ * Copyright (c) 2000-2017 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -788,6 +788,7 @@ typedef int (*GetColorizedLineFunc)(EditState *s,
 struct QEColorizeContext {
     EditState *s;
     EditBuffer *b;
+    int offset;
     int colorize_state;
     int state_only;
 };
@@ -1600,6 +1601,7 @@ typedef struct CmdDef {
     { 0, 0, NULL, { NULL }, CMD_void, 0 }
 
 ModeDef *qe_find_mode(const char *name, int flags);
+ModeDef *qe_find_mode_filename(const char *filename, int flags);
 void qe_register_mode(ModeDef *m, int flags);
 void mode_completion(CompleteState *cp);
 void qe_register_cmd_table(CmdDef *cmds, ModeDef *m);
@@ -1905,6 +1907,8 @@ int text_display_line(EditState *s, DisplayState *ds, int offset);
 void set_colorize_func(EditState *s, ColorizeFunc colorize_func);
 int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
                                int offset, int *offsetp, int line_num);
+int combine_static_colorized_line(EditState *s, unsigned int *buf, 
+                                  int len, int offset);
 
 int do_delete_selection(EditState *s);
 void do_char(EditState *s, int key, int argval);
@@ -2136,6 +2140,8 @@ int qe_bitmap_format_to_pix_fmt(int format);
 /* shell.c */
 
 const char *get_shell(void);
+void shell_colorize_line(QEColorizeContext *cp,
+                         unsigned int *str, int n, ModeDef *syn);
 
 #define SF_INTERACTIVE   0x01
 #define SF_COLOR         0x02

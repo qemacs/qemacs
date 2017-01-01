@@ -107,6 +107,20 @@ ModeDef *qe_find_mode(const char *name, int flags)
     return m;
 }
 
+ModeDef *qe_find_mode_filename(const char *filename, int flags)
+{
+    QEmacsState *qs = &qe_state;
+    ModeDef *m;
+
+    for (m = qs->first_mode; m; m = m->next) {
+        if ((m->flags & flags) == flags
+        &&  match_extension(filename, m->extensions)) {
+            break;
+        }
+    }
+    return m;
+}
+
 void qe_register_mode(ModeDef *m, int flags)
 {
     QEmacsState *qs = &qe_state;
@@ -3758,6 +3772,7 @@ static int syntax_get_colorized_line(EditState *s,
         cctx.state_only = 1;
 
         for (line = s->colorize_nb_valid_lines; line <= line_num; line++) {
+            cctx.offset = offset;
             len = eb_get_line(b, buf, buf_size - 1, offset, &offset);
             if (buf[len] != '\n') {
                 /* line was truncated */
@@ -3768,6 +3783,9 @@ static int syntax_get_colorized_line(EditState *s,
 
             /* skip byte order mark if present */
             bom = (buf[0] == 0xFEFF);
+            if (bom) {
+                cctx.offset = eb_next(b, cctx.offset);
+            }
             s->colorize_func(&cctx, buf + bom, len - bom, s->mode);
             s->colorize_states[line] = cctx.colorize_state;
         }
@@ -3776,6 +3794,7 @@ static int syntax_get_colorized_line(EditState *s,
     /* compute line color */
     cctx.colorize_state = s->colorize_states[line_num];
     cctx.state_only = 0;
+    cctx.offset = offset;
     len = eb_get_line(b, buf, buf_size - 1, offset, offsetp);
     if (buf[len] != '\n') {
         /* line was truncated */
@@ -3787,6 +3806,7 @@ static int syntax_get_colorized_line(EditState *s,
     bom = (buf[0] == 0xFEFF);
     if (bom) {
         SET_COLOR1(buf, 0, QE_STYLE_PREPROCESS);
+        cctx.offset = eb_next(b, cctx.offset);
     }
     s->colorize_func(&cctx, buf + bom, len - bom, s->mode);
     /* buf[len] has char '\0' but may hold style, force buf ending */
@@ -3815,18 +3835,20 @@ static void colorize_callback(qe__unused__ EditBuffer *b,
         e->colorize_max_valid_offset = offset;
 }
 
-static int combine_static_colorized_line(EditState *s, unsigned int *buf, 
-                                         int len, int offset)
+int combine_static_colorized_line(EditState *s, unsigned int *buf, 
+                                  int len, int offset)
 {
     EditBuffer *b = s->b;
     int i;
 
-    for (i = 0; i < len; i++) {
-        int style = eb_get_style(b, offset);
-        if (style) {
-            buf[i] = (buf[i] & CHAR_MASK) | (style << STYLE_SHIFT);
+    if (b->b_styles) {
+        for (i = 0; i < len; i++) {
+            int style = eb_get_style(b, offset);
+            if (style) {
+                buf[i] = (buf[i] & CHAR_MASK) | (style << STYLE_SHIFT);
+            }
+            offset = eb_next(b, offset);
         }
-        offset = eb_next(b, offset);
     }
     return len;
 }
@@ -3859,7 +3881,7 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 #ifndef CONFIG_TINY
     if (s->colorize_func) {
         len = syntax_get_colorized_line(s, buf, buf_size, offset, offsetp, line_num);
-        if (s->b->b_styles)
+        if (s->b->b_styles && s->colorize_func != shell_colorize_line)
             combine_static_colorized_line(s, buf, buf_size, len);
     } else
 #endif

@@ -2,7 +2,7 @@
  * Shell mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2016 Charlie Gordon.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -2241,6 +2241,83 @@ static void do_compile_error(EditState *s, int dir)
     put_status(s, "=> %s", error_message);
 }
 
+static int match_digits(unsigned int *buf, int n, unsigned int sep) {
+    if (n >= 2 && qe_isdigit(buf[0])) {
+        int i = 1;
+        while (i < n && qe_isdigit(buf[i]))
+            i++;
+        if (buf[i] == sep) {
+            return i + 1;
+        }
+    }
+    return 0;
+}
+
+static int match_string(unsigned int *buf, int n, const char *str) {
+    int i;
+    for (i = 0; i < n && str[i] && buf[i] == str[i]; i++)
+        continue;
+    return (str[i] == '\0') ? i : 0;
+}
+
+void shell_colorize_line(QEColorizeContext *cp,
+                         unsigned int *str, int n, ModeDef *syn)
+{
+    /* detect match lines for known languages and colorize accordingly */
+    static char filename[MAX_FILENAME_SIZE];
+    ModeDef *m;
+    int i = 0, len, stop = n;
+
+    if (cp->colorize_state) {
+        cp->colorize_state -= 1;
+    } else {
+        len = 0;
+        if (!qe_isspace(str[0])) {
+            while (i < n) {
+                int c = str[i++];
+                if (c == "()"[0]) {
+                    i += match_digits(str + i, n - i, "()"[1]); /* old style */
+                    i += (str[i] == ':');
+                    break;
+                }
+                if (c == ':') {
+                    i += match_digits(str + i, n - i, ':'); /* line number */
+                    i += match_digits(str + i, n - i, ':'); /* col number */
+                    if (match_string(str + i, n - i, " error:")
+                    ||  match_string(str + i, n - i, " warning:")) {
+                        /* clang diagnostic, will colorize the next line */
+                        cp->colorize_state = 1;
+                        i = n;
+                    }
+                    break;
+                }
+                if (qe_isspace(c)) {
+                    len = 0;
+                    break;
+                }
+                if (len < countof(filename) - 1) {
+                    /* capture filename extension */
+                    filename[len++] = c;
+                }
+            }
+        }
+        filename[len] = '\0';
+    }
+    if (cp->colorize_state == 0 && *filename) {
+        /* XXX: should verify if filename exists, but this is difficult
+         * if the current directory of the shell process changes and
+         * is not possible for remote shells.
+         */
+        if (i < n && (m = qe_find_mode_filename(filename, MODEF_SYNTAX)) != NULL) {
+            cp->colorize_state = 0;
+            m->colorize_func(cp, str + i, n - i, m);
+            stop = i;
+        }
+        cp->colorize_state = 0;
+    }
+    combine_static_colorized_line(cp->s, str, stop, cp->offset);
+}
+
 /* shell mode specific commands */
 static CmdDef shell_commands[] = {
     CMD0( KEY_CTRL('o'), KEY_NONE,
@@ -2343,6 +2420,7 @@ static int shell_init(void)
     shell_mode.name = "shell";
     shell_mode.mode_name = NULL;
     shell_mode.mode_probe = shell_mode_probe;
+    shell_mode.colorize_func = shell_colorize_line,
     shell_mode.buffer_instance_size = sizeof(ShellState);
     shell_mode.mode_init = shell_mode_init;
     shell_mode.mode_free = shell_mode_free;
