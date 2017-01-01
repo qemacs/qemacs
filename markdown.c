@@ -1,7 +1,7 @@
 /*
  * Markdown mode for QEmacs.
  *
- * Copyright (c) 2014-2016 Charlie Gordon.
+ * Copyright (c) 2014-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -229,7 +229,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG_STATE);
         for (i += 3; qe_isblank(str[i]); i++)
             continue;
-        for (len = 0; i < n && qe_isalnum_(str[i]); i++) {
+        for (len = 0; i < n && !qe_isblank(str[i]); i++) {
             if (len < countof(lang_name) - 1)
                 lang_name[len++] = str[i];
         }
