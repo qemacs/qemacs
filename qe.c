@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2016 Charlie Gordon.
+ * Copyright (c) 2000-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -7117,7 +7117,12 @@ void do_refresh_complete(EditState *s)
     QEmacsState *qs = s->qe_state;
 
     qs->complete_refresh = 1;
-    do_refresh(s);
+
+    if (s->qe_state->last_cmd_func == (CmdFunc)do_refresh_complete) {
+        do_center_cursor(s, 1);
+    } else {
+        do_refresh(s);
+    }
 }
 
 void do_other_window(EditState *s)
