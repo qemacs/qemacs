@@ -81,7 +81,6 @@
 ** screen: check coordinate system to 1000 based with optional sidebars
 ** search: add regex support
 ** search: hex-mode search strings should mix hex ut8 strings and ASCII control char names
-** search: delete-matching-lines
 ** search: make isearch bindings for minibuffer
 ** search: query replace word/case/hex toggles
 ** session: register session store functions

@@ -301,7 +301,7 @@ static void isearch_run(ISearchState *is)
                       search_abort_func, NULL,
                       &is->found_offset, &is->found_end) > 0) {
             s->region_style = QE_STYLE_SEARCH_MATCH;
-            if (is->dir > 0) {
+            if (is->dir >= 0) {
                 s->b->mark = is->found_offset;
                 s->offset = is->found_end;
             } else {
@@ -413,7 +413,7 @@ static void isearch_key(void *opaque, int ch)
         } else
         if (is->pos < SEARCH_LENGTH) {
             /* add the match position, if any */
-            unsigned long v = is->dir > 0 ? FOUND_TAG : FOUND_TAG | FOUND_REV;
+            unsigned long v = (is->dir >= 0) ? FOUND_TAG : FOUND_TAG | FOUND_REV;
             if (is->found_offset < 0 && is->search_u32_len > 0) {
                 is->search_flags |= SEARCH_FLAG_WRAPPED;
                 if (is->dir < 0)
@@ -842,7 +842,7 @@ void do_replace_string(EditState *s, const char *search_str,
     query_replace(s, search_str, replace_str, 1, flags);
 }
 
-/* dir = 0, 1, -2 -> count matches, reverse, forward */
+/* dir = 0, -1, 1, 2 -> count matches, reverse, forward, delete-matching-lines */
 void do_search_string(EditState *s, const char *search_str, int dir)
 {
     unsigned int search_u32[SEARCH_LENGTH];
@@ -868,9 +868,15 @@ void do_search_string(EditState *s, const char *search_str, int dir)
                       offset, s->b->total_size,
                       search_u32, search_u32_len,
                       NULL, NULL, &found_offset, &found_end) > 0) {
+            count++;
             if (dir == 0) {
-                count++;
                 offset = found_end;
+                continue;
+            } else
+            if (dir == 2) {
+                offset = eb_goto_bol(s->b, found_offset);
+                eb_delete(s->b, offset, 
+                          eb_next_line(s->b, found_offset) - offset);
                 continue;
             } else {
                 s->offset = (dir < 0) ? found_offset : found_end;
@@ -879,7 +885,10 @@ void do_search_string(EditState *s, const char *search_str, int dir)
             }
         } else {
             if (dir == 0) {
-                put_status(s, "\"%s\": %d matches", search_str, count);
+                put_status(s, "%d matches", count);
+            } else
+            if (dir == 2) {
+                put_status(s, "deleted %d lines", count);
             } else {
                 put_status(s, "Search failed: \"%s\"", search_str);
             }
@@ -887,3 +896,54 @@ void do_search_string(EditState *s, const char *search_str, int dir)
         }
     }
 }
+
+static CmdDef search_commands[] = {
+
+    /*---------------- Search and replace ----------------*/
+
+    /* M-C-s should be bound to isearch-forward-regex */
+    /* mg binds search-forward to M-s */
+    CMD3( KEY_META('S'), KEY_NONE,
+          "search-forward", do_search_string, ESsi, 1,
+          "s{Search forward: }|search|"
+          "v")
+    /* M-C-r should be bound to isearch-backward-regex */
+    /* mg binds search-forward to M-r */
+    CMD3( KEY_META('R'), KEY_NONE,
+          "search-backward", do_search_string, ESsi, -1,
+          "s{Search backward: }|search|"
+          "v")
+    CMD3( KEY_META('C'), KEY_NONE,
+          "count-matches", do_search_string, ESsi, 0,
+          "s{Count Matches: }|search|"
+          "v")
+    CMD3( KEY_NONE, KEY_NONE,
+          "delete-matching-lines", do_search_string, ESsi, 2,
+          "s{Delete lines containing: }|search|"
+          "v")
+    /* passing argument should switch to regex incremental search */
+    CMD3( KEY_CTRL('r'), KEY_NONE,
+          "isearch-backward", do_isearch, ESii, -1, "vui" )
+    CMD3( KEY_CTRL('s'), KEY_NONE,
+          "isearch-forward", do_isearch, ESii, 1, "vui" )
+    CMD2( KEY_META('%'), KEY_NONE,
+          "query-replace", do_query_replace, ESss,
+          "*" "s{Query replace: }|search|"
+          "s{With: }|replace|")
+    /* passing argument restricts replace to word matches */
+    /* XXX: non standard binding */
+    CMD2( KEY_META('r'), KEY_NONE,
+          "replace-string", do_replace_string, ESssi,
+          "*" "s{Replace String: }|search|"
+          "s{With: }|replace|"
+          "ui")
+
+    CMD_DEF_END,
+};
+
+static int search_init(void) {
+    qe_register_cmd_table(search_commands, NULL);
+    return 0;
+}
+
+qe_module_init(search_init);
