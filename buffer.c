@@ -2419,12 +2419,12 @@ int eb_fgets(EditBuffer *b, char *buf, int buf_size,
         if (c == '\n') {
             /* end of line: offset points to the beginning of the next line */
             /* adjust return value for easy stripping and truncation test */
-            out->pos--;
+            out->len--;
             break;
         }
     }
     *offset_ptr = offset;
-    return out->pos;
+    return out->len;
 }
 
 int eb_prev_line(EditBuffer *b, int offset)
