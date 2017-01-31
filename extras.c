@@ -1255,6 +1255,7 @@ static void do_describe_window(EditState *s, int argval)
 {
     EditBuffer *b1;
     int show;
+    int w;
 
     b1 = new_help_buffer(&show);
     if (!b1)
@@ -1262,7 +1263,7 @@ static void do_describe_window(EditState *s, int argval)
 
     eb_printf(b1, "Window Description\n\n");
 
-    int w = 28;
+    w = 28;
     eb_printf(b1, "%*s: %d, %d\n", w, "xleft, ytop", s->xleft, s->ytop);
     eb_printf(b1, "%*s: %d, %d\n", w, "width, height", s->width, s->height);
     eb_printf(b1, "%*s: %d, %d, %d, %d\n", w, "x1, y1, x2, y2", s->x1, s->y1, s->x2, s->y2);
