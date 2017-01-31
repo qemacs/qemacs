@@ -7987,6 +7987,8 @@ void do_load_qerc(EditState *e, const char *filename)
 {
     char buf[MAX_FILENAME_SIZE];
     char *p = buf;
+    QEmacsState *qs = e->qe_state;
+    EditState *saved = qs->active_window;
 
     for (;;) {
         pstrcpy(buf, sizeof(buf), filename);
@@ -7995,8 +7997,10 @@ void do_load_qerc(EditState *e, const char *filename)
             break;
         p += 1;
         pstrcpy(p, buf + sizeof(buf) - p, ".qerc");
+        qs->active_window = e;
         parse_config_file(e, buf);
     }
+    qs->active_window = saved;
 }
 
 /******************************************************/
