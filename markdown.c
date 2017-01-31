@@ -114,6 +114,16 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     if (syn == &litcoffee_mode)
         base_style = MKD_STYLE_COMMENT;
 
+    for (indent = j = 0;; j++) {
+        if (str[j] == ' ')
+            indent++;
+        else
+        if (str[j] == '\t')
+            indent += 4;
+        else
+            break;
+    }
+
     if (str[i] == '<' && str[i + 1] == '!' && str[i + 2] == '-' && str[i + 3] == '-') {
         colstate |= IN_MKD_HTML_COMMENT;
         i += 3;
@@ -142,8 +152,8 @@ static void mkd_colorize_line(QEColorizeContext *cp,
 
     if (colstate & IN_MKD_BLOCK) {
         /* Should count number of ~ to detect end of block */
-        if (ustrstart(str + i, "~~~", NULL)
-        ||  ustrstart(str + i, "```", NULL)) {
+        if (ustrstart(str + j, "~~~", NULL)
+        ||  ustrstart(str + j, "```", NULL)) {
             colstate &= ~IN_MKD_BLOCK;
             i = n;
             SET_COLOR(str, start, i, MKD_STYLE_TILDE);
@@ -156,7 +166,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
                 colstate &= ~IN_MKD_LANG_STATE;
                 colstate |= cp->colorize_state & IN_MKD_LANG_STATE;
             } else {
-                SET_COLOR(str, i, n, MKD_STYLE_CODE);
+                SET_COLOR(str, start, n, MKD_STYLE_CODE);
             }
             i = n;
         }
@@ -220,14 +230,14 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     if (str[i] == '|') {
         base_style = MKD_STYLE_TABLE;
     } else
-    if (ustrstart(str + i, "~~~", NULL)
-    ||  ustrstart(str + i, "```", NULL)) {
+    if (ustrstart(str + j, "~~~", NULL)
+    ||  ustrstart(str + j, "```", NULL)) {
         /* verbatim block */
         char lang_name[16];
         int lang = syn->colorize_flags, len;  // was MKD_LANG_MAX
 
         colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG_STATE);
-        for (i += 3; qe_isblank(str[i]); i++)
+        for (i = j + 3; qe_isblank(str[i]); i++)
             continue;
         for (len = 0; i < n && !qe_isblank(str[i]); i++) {
             if (len < countof(lang_name) - 1)
@@ -259,15 +269,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     /*                 \ ` * _ { } [ ] ( ) # + - . ! */
 
     level = (colstate & IN_MKD_LEVEL) >> MKD_LEVEL_SHIFT;
-    for (indent = 0;; i++) {
-        if (str[i] == ' ')
-            indent++;
-        else
-        if (str[i] == '\t')
-            indent += 4;
-        else
-            break;
-    }
+    i = j;
 
     if (i < n) {
         start = i;
