@@ -91,6 +91,7 @@ typedef struct ShellState {
 static char error_buffer[MAX_BUFFERNAME_SIZE];
 static int error_offset = -1;
 static int error_line_num = -1;
+static int error_col_num = -1;
 static char error_filename[MAX_FILENAME_SIZE];
 
 static char *shell_get_curpath(EditBuffer *b, int offset,
@@ -100,7 +101,7 @@ static void set_error_offset(EditBuffer *b, int offset)
 {
     pstrcpy(error_buffer, sizeof(error_buffer), b ? b->name : "");
     error_offset = offset - 1;
-    error_line_num = -1;
+    error_line_num = error_col_num = -1;
     *error_filename = '\0';
 }
 
@@ -2196,13 +2197,19 @@ static void do_compile_error(EditState *s, int dir)
                 goto next_line;
             line_num = line_num * 10 + c - '0';
         }
-        if (c == ',') {
+        if (c == ',' || c == ':') {
+            int offset0 = offset;
+            int c0 = c;
             for (;;) {
                 c = eb_nextc(b, offset, &offset);
                 if (c == ' ') continue;
                 if (!qe_isdigit(c))
                     break;
                 col_num = col_num * 10 + c - '0';
+            }
+            if (col_num == 0) {
+                offset = offset0;
+                c = c0;
             }
         }
         while (c != ':') {
@@ -2214,8 +2221,10 @@ static void do_compile_error(EditState *s, int dir)
         error_message[len] = '\0';   /* strip the trailing newline if any */
         if (line_num >= 1) {
             if (line_num != error_line_num
+            ||  col_num != error_col_num
             ||  !strequal(fullpath, error_filename)) {
                 error_line_num = line_num;
+                error_col_num = col_num;
                 pstrcpy(error_filename, sizeof(error_filename), fullpath);
                 break;
             }
