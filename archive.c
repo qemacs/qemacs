@@ -225,7 +225,7 @@ struct CompressType {
 static CompressType compress_type_array[] = {
     { "gzip", NULL, 0, "gz", "gunzip -c $1", "gzip > $1" },
     { "bzip2", NULL, 0, "bz2|bzip2", "bunzip2 -c $1", "bzip2 > $1" },
-    { "compress", NULL, 0, "Z", "uncompress -c $1", "compress > $1" },
+    { "compress", NULL, 0, "Z", "uncompress -c < $1", "compress > $1" },
     { "LZMA", NULL, 0, "lzma", "unlzma -c $1", "lzma > $1" },
     { "XZ", NULL, 0, "xz", "unxz -c $1", "xz > $1" },
     { "BinHex", NULL, 0, "hqx", "binhex decode -o /tmp/qe-$$ $1 && "
