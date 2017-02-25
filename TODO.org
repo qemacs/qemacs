@@ -1,12 +1,18 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-01-02
+; Updated: 2017-02-25
 
 * Needed for release version 5
 
 * Priority 0
 
+** shell: A-x kill-buffer RET -> hang
+** basic: enter should optionally remove whitespace at end of line
+** archive: issue with current directory
+** minibuf: spurious recursive edit cases.
+** basic: make `do_word_right`, `do_word_left`, `do_bol`, `do_eol`... return new offset
+** xml/htmlsrc: scan for `</script>` beyond end of very long line
 ** basic: reset last command when executing macro
 ** completion: fix electric behavior
 ** files: check file date to detect asynchronous modifications on disk
@@ -116,6 +122,8 @@
 
 * Priority 2
 
+** basic: completion in load-resource-file
+** basic: elastic-tabs
 ** basic: better display of invalid utf-8 encodings
 ** basic: indent-rigidly
 ** basic: scripting
