@@ -454,6 +454,10 @@ static void do_forward_block(EditState *s, int dir)
         /* XXX: should only query the syntax colorizer */
         len = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
         if (len < countof(buf) - 2) {
+            if (pos > 0
+            &&  ((c = buf[pos - 1] & CHAR_MASK) == ']' || c == '}' || c == ')')) {
+                style0 = buf[pos - 1] >> STYLE_SHIFT;
+            } else
             if (pos < len) {
                 style0 = buf[pos] >> STYLE_SHIFT;
             }
