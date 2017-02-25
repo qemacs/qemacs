@@ -6580,7 +6580,7 @@ int qe_load_file(EditState *s, const char *filename1,
 
     if (load_resource) {
         if (find_resource_file(filename, sizeof(filename), filename1)) {
-            /* XXX: issue error message? */
+            put_status(s, "Cannot find resource file '%s'", filename1);
             return -1;
         }
     } else {
