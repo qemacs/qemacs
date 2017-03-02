@@ -2369,7 +2369,7 @@ void do_word_wrap(EditState *s)
 
 /* do_goto: move point to a specified position.
  * take string and default unit,
- * string is parsed as an integer with an optional unit and suffix
+ * string is parsed as an integer with an optional sign, unit and suffix
  * units: (b)yte, (c)har, (w)ord, (l)line, (%)percentage
  * optional suffix :col or .col for column number in goto_line
  */
@@ -2394,6 +2394,31 @@ void do_goto(EditState *s, const char *str, int unit)
     /* skip space required to separate hex offset from b or c suffix */
     if (*p == ' ')
         p++;
+
+    /* handle an optional multiple suffix */
+    switch (*p) {
+    case 'g':
+        pos *= 1000;
+        /* fall thru */
+    case 'm':
+        pos *= 1000;
+        /* fall thru */
+    case 'k':
+        pos *= 1000;
+        p++;
+        break;
+    case 'G':
+        pos *= 1024;
+        /* fall thru */
+    case 'M':
+        pos *= 1024;
+        /* fall thru */
+    case 'K':
+        pos *= 1024;
+        p++;
+        break;
+    }
+
     if (memchr("bcwl%", *p, 5))
         unit = *p++;
 
@@ -2403,6 +2428,9 @@ void do_goto(EditState *s, const char *str, int unit)
             goto error;
         if (rel)
             pos += s->offset;
+        /* XXX: should realign on character boundary?
+         *      realignment probably better addressed in display module
+         */
         s->offset = clamp(pos, 0, s->b->total_size);
         return;
     case 'c':
@@ -2423,7 +2451,7 @@ void do_goto(EditState *s, const char *str, int unit)
 
     case 'l':
         line = pos - 1;
-        if (rel || pos == 0) {
+        if (rel || pos <= 0) {
             eb_get_pos(s->b, &line, &col, s->offset);
             line += pos;
         }
@@ -6516,6 +6544,21 @@ static int probe_mode(EditState *s, EditBuffer *b,
     return found_modes;
 }
 
+static EditState *qe_find_target_window(EditState *s, int activate) {
+    /* Find the target window for some commands run from the dired window */
+#ifndef CONFIG_TINY
+    if ((s->flags & WF_POPLEFT) && s->x1 == 0) {
+        EditState *e = find_window(s, KEY_RIGHT, NULL);
+        if (e) {
+            if (activate && s->qe_state->active_window == s)
+                s->qe_state->active_window = e;
+            s = e;
+        }
+    }
+#endif
+    return s;
+}
+
 /* Select appropriate mode for buffer:
  * iff dir == 0, select best mode
  * iff dir > 0, select next mode
@@ -6523,6 +6566,8 @@ static int probe_mode(EditState *s, EditBuffer *b,
  */
 void do_set_next_mode(EditState *s, int dir)
 {
+    /* next-mode from the dired window applies to the target window */
+    s = qe_find_target_window(s, 0);
     qe_set_next_mode(s, dir, 1);
 }
 
@@ -6592,14 +6637,8 @@ int qe_load_file(EditState *s, const char *filename1,
     /* when exploring from a popleft dired buffer, load a directory or
      * file pattern into the same pane, but load a regular file into the view pane
      */
-    if ((s->flags & WF_POPLEFT) && s->x1 == 0
-    &&  !is_directory(filename) && !is_filepattern(filename)) {
-        EditState *e = find_window(s, KEY_RIGHT, NULL);
-        if (e) {
-            if (s->qe_state->active_window == s)
-                s->qe_state->active_window = e;
-            s = e;
-        }
+    if (!is_directory(filename) && !is_filepattern(filename)) {
+        s = qe_find_target_window(s, 1);
     }
 #endif
 
