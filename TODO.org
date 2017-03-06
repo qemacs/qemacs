@@ -1,23 +1,23 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-02-25
+; Updated: 2017-03-06
 
 * Needed for release version 5
 
 * Priority 0
 
-** shell: A-x kill-buffer RET -> hang
-** basic: enter should optionally remove whitespace at end of line
 ** archive: issue with current directory
-** minibuf: spurious recursive edit cases.
-** basic: make `do_word_right`, `do_word_left`, `do_bol`, `do_eol`... return new offset
-** xml/htmlsrc: scan for `</script>` beyond end of very long line
+** basic: fix current position when changing buffer attached to window
+** basic: enter should optionally remove whitespace at end of line
 ** basic: reset last command when executing macro
+** basic: make `do_word_right`, `do_word_left`, `do_bol`, `do_eol`... return new offset
 ** completion: fix electric behavior
 ** files: check file date to detect asynchronous modifications on disk
 ** files: reload modified file upon change if untouched since load
 ** layout: kill buffer should delete popup and popleft window
+** minibuf: spurious recursive edit cases.
+** shell: A-x kill-buffer RET -> hang
 ** shell: turn on interactive mode on commands that move the cursor to EOB
 ** shell: asynchronous input buffer
 ** shell: give commands a chance to execute for macros to behave correctly
@@ -25,6 +25,8 @@
 ** shell: C-t at process prompt
 ** shell: fix very long lines in shell buffer
 ** undo: saving the file kills the redo stack!
+** undo: when undo resets the modified buffer flag, this prevents file save
+** xml/htmlsrc: scan for `</script>` beyond end of very long line
 
 * Priority 1
 
@@ -33,12 +35,7 @@
 ** API: remove screen argument in glyph_width
 ** API: add create-style(name, properties)
 
-** extras: do_transpose should take argval and swap distant fragments
-** php: improve coloring
-** basic: A-m in dired left window should apply to right pane
-** basic: goto-byte 10%, 10k, 10m...
-** clang: indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
-** markdown: a_bb_c should not detect bb as underlined
+** archive: add API to register new file formats
 ** basic: improve speed: C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET -> 96s
 ** basic: improve speed: C-x C-f ~/x2m RET C-u 1000 C-n -> 4s
 ** basic: check abort during long operations: bufferize input and check for ^G
@@ -51,8 +48,11 @@
 ** basic: optional 64-bit offsets on 64-bit systems, use typedef for buffer offsets
 ** basic: use rune and u8 types
 ** basic: auto/mixed eol mode
+** basic: display ^L as horizontal line and consider as linebreak character
 ** basic: fix behaviour on overlong lines
 ** basic: fix offset when exiting s->hex_mode
+** clang: indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
+** extras: do_transpose should take argval and swap distant fragments
 ** completion: minibuffer completion: bad return on C-x C-f . SPC qe SPC RET
 ** config: reparse .qerc upon change
 ** dired: display directory links as directories and links
@@ -81,9 +81,12 @@
 ** macros: do not redisplay during macro execution, esp with prefix
 ** macros: check for abort during repeated command execution
 ** macros: check for failure during repeated command execution
+** markdown: a_bb_c should not detect bb as underlined
 ** minibuf: use more mode specific bindings
 ** minibuf: minibuffer-electric-yank in minibuffer to fix pathname
 ** minibuf: minibuffer input ~ should not kill http: prefix
+** php: improve coloring
+** preview-mode: typing text should auto-search
 ** screen: check coordinate system to 1000 based with optional sidebars
 ** search: improve speed finally
 ** search: add low-level accelerator function
@@ -93,6 +96,7 @@
 ** search: add regex support
 ** search: hex-mode search strings should mix hex ut8 strings and ASCII control char names
 ** search: make isearch bindings for minibuffer
+** search: handle word and case toggles matches in query-replace
 ** session: register session store functions
 ** session: save previous answers, ...
 ** session: save preview mode, buffer modes and properties
@@ -116,9 +120,7 @@
 ** undo: kill redo list when forking after undo
 ** undo: undo should handle sequence of undo records upto tagged start.
 ** undo: add disable-undo for tests and benchmarking
-** view-mode: typing text should auto-search
 ** x11: handle X11 window manager close window event and exit cleanly
-** archive: add API to register new file formats
 
 * Priority 2
 
