@@ -2,7 +2,7 @@
  * C mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2016 Charlie Gordon.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -820,6 +820,7 @@ static void c_indent_line(EditState *s, int offset0)
                     } else {
                         if (stack[--stack_ptr] != '}') {
                             /* XXX: syntax check ? */
+                            /* XXX: should set mark and complain */
                             goto check_instr;
                         }
                         goto check_instr;
@@ -839,6 +840,7 @@ static void c_indent_line(EditState *s, int offset0)
                     } else {
                         if (stack[--stack_ptr] != (c == '(' ? ')' : ']')) {
                             /* XXX: syntax check ? */
+                            /* XXX: should set mark and complain */
                         }
                     }
                     break;
@@ -863,7 +865,7 @@ static void c_indent_line(EditState *s, int offset0)
                     break;
                 case ':':
                     /* a label line is ignored */
-                    /* XXX: incorrect */
+                    /* XXX: incorrect, should check for ternary operator ?: */
                     if (style == C_STYLE_DEFAULT)
                         goto prev_line;
                     break;
@@ -884,6 +886,7 @@ static void c_indent_line(EditState *s, int offset0)
                             *q = '\0';
 
                             if (!eoi_found && strfind("if|for|while", buf1)) {
+                                /* XXX: do/while? switch? foreach? */
                                 pos = pos1 + s->indent_size;
                                 goto end_parse;
                             }
@@ -954,8 +957,8 @@ static void c_indent_line(EditState *s, int offset0)
 
     /* the computed indent is in 'pos' */
     /* if on a blank line, reset indent to 0 unless point is on it */
-    if (eb_is_blank_line(s->b, offset, &offset1)
-    &&  !(s->offset >= offset && s->offset < offset1)) {
+    if (eb_is_blank_line(s->b, offset, NULL)
+    &&  !(s->offset >= offset && s->offset <= eb_goto_eol(s->b, offset))) {
         pos = 0;
     }
     /* Do not modify buffer if indentation in correct */
@@ -964,6 +967,27 @@ static void c_indent_line(EditState *s, int offset0)
         eb_delete_range(s->b, offset, offset1);
         insert_indent(s, offset, pos, &offset1);
     }
+#if 0
+    if (s->mode->auto_indent > 1) {  /* auto format */
+        /* recompute colorization of the current line (after re-indentation) */
+        len = s->get_colorized_line(s, buf, countof(buf),
+                                    offset, &offset1, line_num1);
+        /* skip indentation */
+        for (pos = 0; qe_isblank(buf[pos] & CHAR_MASK); pos++)
+            continue;
+        /* XXX: keywords "if|for|while|switch -> one space before `(` */
+        /* XXX: keyword "return" -> one space before expression */
+        /* XXX: keyword "do" -> one space before '{' */
+        /* XXX: other words -> no space before '(', '[', `++`, `--`, `->`, `.` */
+        /* XXX: other words and sequences -> space before `*`, but not after */
+        /* XXX: unary prefix operators: ! ~ - + & * ++ -- */
+        /* XXX: postfix operators: ++ -- -> . [ */
+        /* XXX: grouping operators: ( ) [ ] */
+        /* XXX: binary operators: = == === != !== < > <= >= && || 
+        ^ & | + - * / % << >> ^= &= |= += -= *= /= %= <<= >>= ? : */
+        /* XXX: sequence operators: , ; */
+    }
+#endif
     /* move to the indentation if point was in indent space */
     if (s->offset >= offset && s->offset < offset1) {
         s->offset = offset1;
@@ -1005,6 +1029,14 @@ static void do_c_return(EditState *s)
 
     /* reindent line to remove indent on blank line */
     if (s->mode->auto_indent && s->mode->indent_func) {
+        /* delete blanks at end of line (necessary for non blank lines) */
+        /* XXX: should factorize with do_delete_horizontal_space() */
+        int from = offset, to = offset;
+        while (qe_isblank(eb_prevc(s->b, from, &offset)))
+            from = offset;
+        eb_delete_range(s->b, from, to);
+        offset = from;
+            
         (s->mode->indent_func)(s, eb_goto_bol(s->b, offset));
         (s->mode->indent_func)(s, s->offset);
     }
