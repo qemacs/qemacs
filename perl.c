@@ -1,7 +1,7 @@
 /*
  * Perl Source mode for QEmacs.
  *
- * Copyright (c) 2000-2016 Charlie Gordon.
+ * Copyright (c) 2000-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,6 +21,31 @@
 #include "qe.h"
 
 /*---------------- Perl colors ----------------*/
+
+static char const perl_keywords[] = {
+    /* Perl keywords */
+    "ge|gt|le|lt|cmp|eq|ne|int|x|or|and|not|xor|"  // special case x=
+    "do|else|elsif|if|for|until|while|foreach|unless|last|"
+    "require|package|use|strict|BEGIN|bless|isa|"
+    "sub|return|eval|try|catch|with|throw|except|otherwise|finally|"
+    "undef|true|false|"
+    "exit|die|warn|system|"
+    "print|printf|open|close|readline|read|binmode|seek|tell|flock|"
+    "opendir|closedir|readdir|unlink|rename|chdir|truncate|"
+    "chmod|kill|killall|"
+    "chomp|pos|length|substr|lc|uc|lcfirst|ucfirst|split|hex|"
+    "sprintf|index|"
+    "reverse|pop|push|shift|unshift|splice|join|map|sort|"
+    "delete|insert|keys|values|exists|defined|"
+    "scalar|wantarray|ref|"
+    "STDIN|STDOUT|STDERR|"
+};
+
+static char const perl_types[] = {
+    "my|local|"
+};
+
+// qq~ multiline string ~
 
 enum {
     PERL_STYLE_TEXT    = QE_STYLE_DEFAULT,
@@ -48,7 +73,7 @@ static int perl_eos_len;
 
 static int perl_var(const unsigned int *str, int j, int n)
 {
-    if (qe_isdigit(str[j]))
+    if (qe_isdigit_(str[j]))
         return j;
     for (; j < n; j++) {
         if (qe_isalnum_(str[j]))
@@ -66,20 +91,30 @@ static int perl_number(const unsigned int *str, int j, qe__unused__ int n)
     if (str[j] == '0') {
         j++;
         if (str[j] == 'x' || str[j] == 'X') {
+            /* hexadecimal numbers */
+            // XXX: should verify if 'X' is really accepted
+            // XXX: should accept embedded '_'
             do { j++; } while (qe_isxdigit(str[j]));
             return j;
         }
         if (str[j] >= '0' && str[j] <= '7') {
+            /* octal numbers */
+            // XXX: should accept embedded '_'
             do { j++; } while (str[j] >= '0' && str[j] <= '7');
             return j;
         }
     }
+    // XXX: should accept embedded '_'
     while (qe_isdigit(str[j]))
         j++;
 
-    if (str[j] == '.')
+    /* integral part is optional */
+    if (str[j] == '.') {
+        // XXX: should accept embedded '_'
         do { j++; } while (qe_isdigit(str[j]));
+    }
 
+    // XXX: should verify if 'E' is really accepted
     if (str[j] == 'E' || str[j] == 'e') {
         j++;
         if (str[j] == '-' || str[j] == '+')
@@ -343,6 +378,8 @@ static ModeDef perl_mode = {
     .extensions = "pl|perl|pm",
     .shell_handlers = "perl|perl5",
     .colorize_func = perl_colorize_line,
+    .keywords = perl_keywords,
+    .types = perl_types,
 };
 
 static int perl_init(void)
