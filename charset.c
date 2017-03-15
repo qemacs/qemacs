@@ -2,7 +2,7 @@
  * Basic Charset functions for QEmacs
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2002-2016 Charlie Gordon.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -136,9 +136,9 @@ struct QECharset charset_raw = {
 
 static int probe_8859_1(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
-                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
-                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + size;
     uint32_t c;
@@ -156,7 +156,7 @@ static int probe_8859_1(qe__unused__ QECharset *charset, const u8 *buf, int size
             if (c == '\n')
                 count_lines++;
             else
-            if (!(magic & (1 << c)))
+            if (!(magic & (1U << c)))
                 return 0;
         } else
         if (c < 0x7F) {
@@ -363,9 +363,9 @@ int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str)
 
 static int probe_utf8(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
-                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
-                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + size;
     uint32_t c;
@@ -383,7 +383,7 @@ static int probe_utf8(qe__unused__ QECharset *charset, const u8 *buf, int size)
             if (c == '\n')
                 count_lines++;
             else
-            if (!(magic & (1 << c)))
+            if (!(magic & (1U << c)))
                 return 0;
         } else
         if (c < 0x7F) {
@@ -567,9 +567,9 @@ struct QECharset charset_utf8 = {
 
 static int probe_ucs2le(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
-                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
-                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~1);
     uint32_t c;
@@ -590,7 +590,7 @@ static int probe_ucs2le(qe__unused__ QECharset *charset, const u8 *buf, int size
             if (c == '\n')
                 count_lines++;
             else
-            if (!(magic & (1 << c)))
+            if (!(magic & (1U << c)))
                 return 0;
         } else
         if (c >= 0x10000) {
@@ -703,9 +703,9 @@ static int charset_goto_line_ucs2(CharsetDecodeState *s,
 
 static int probe_ucs2be(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
-                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
-                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~1);
     uint32_t c;
@@ -726,7 +726,7 @@ static int probe_ucs2be(qe__unused__ QECharset *charset, const u8 *buf, int size
             if (c == '\n')
                 count_lines++;
             else
-            if (!(magic & (1 << c)))
+            if (!(magic & (1U << c)))
                 return 0;
         } else
         if (c >= 0x10000) {
@@ -847,9 +847,9 @@ struct QECharset charset_ucs2be = {
 
 static int probe_ucs4le(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
-                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
-                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~3);
     uint32_t c;
@@ -870,7 +870,7 @@ static int probe_ucs4le(qe__unused__ QECharset *charset, const u8 *buf, int size
             if (c == '\n')
                 count_lines++;
             else
-            if (!(magic & (1 << c)))
+            if (!(magic & (1U << c)))
                 return 0;
         } else
         if (c > 0x10FFFF) {
@@ -977,9 +977,9 @@ static int charset_goto_line_ucs4(CharsetDecodeState *s,
 
 static int probe_ucs4be(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
-                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
-                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~3);
     uint32_t c;
@@ -1000,7 +1000,7 @@ static int probe_ucs4be(qe__unused__ QECharset *charset, const u8 *buf, int size
             if (c == '\n')
                 count_lines++;
             else
-            if (!(magic & (1 << c)))
+            if (!(magic & (1U << c)))
                 return 0;
         } else
         if (c > 0x10FFFF) {
@@ -1509,13 +1509,13 @@ done_utf8:
 
     has_binary = 0;
     {
-        static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
-                                      (1 << '\n') | (1 << '\r') | (1 << '\033') |
-                                      (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+        static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                                      (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                                      (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
 
         for (i = 0; i < size; i++) {
             c = buf[i];
-            if (c < 32 && !(magic & (1 << c)))
+            if (c < 32 && !(magic & (1U << c)))
                 has_binary += 1;
         }
     }

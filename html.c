@@ -2,7 +2,7 @@
  * Graphical HTML mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2003-2016 Charlie Gordon.
+ * Copyright (c) 2003-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -860,7 +860,7 @@ static void html_mode_free(EditBuffer *b, void *state)
 /* search for HTML tag */
 static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
 {
-    static const uint32_t magic = (1 << '\r') | (1 << '\n') | (1 << '\t') | (1 << '\033');
+    static const uint32_t magic = (1U << '\r') | (1U << '\n') | (1U << '\t') | (1U << '\033');
     const unsigned char *p = p1->buf;
     int c, score;
 
@@ -877,7 +877,7 @@ static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
         c = *p;
         if (c == '\0')
             break;
-        if (c < 32 && !(magic & (1 << c)))
+        if (c < 32 && !(magic & (1U << c)))
             return 0;
         if (c == '<' && stristart(cs8(p), "<html", NULL))
             score = 95;

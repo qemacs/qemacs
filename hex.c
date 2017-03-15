@@ -2,7 +2,7 @@
  * Hexadecimal modes for QEmacs.
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2002-2016 Charlie Gordon.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -193,14 +193,14 @@ static int hex_mode_init(EditState *s, EditBuffer *b, int flags)
 
 static int detect_binary(const unsigned char *buf, int size)
 {
-    static const uint32_t magic = (1 << '\b') | (1 << '\t') | (1 << '\f') |
-                                  (1 << '\n') | (1 << '\r') | (1 << '\033') |
-                                  (1 << 0x0e) | (1 << 0x0f) | (1 << 0x1f);
+    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     int i, c;
 
     for (i = 0; i < size; i++) {
         c = buf[i];
-        if (c < 32 && !(magic & (1 << c)))
+        if (c < 32 && !(magic & (1U << c)))
             return 1;
     }
     return 0;
