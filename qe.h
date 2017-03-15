@@ -1827,8 +1827,11 @@ static inline int is_user_input_pending(void) {
 #endif
 
 /* file loading */
-int qe_load_file(EditState *s, const char *filename1,
-                 int kill_buffer, int load_resource, int bflags);
+#define LF_KILL_BUFFER    1
+#define LF_LOAD_RESOURCE  2
+#define LF_CWD_RELATIVE   4
+#define LF_SPLIT_WINDOW   8
+int qe_load_file(EditState *s, const char *filename, int lflags, int bflags);
 
 /* config file support */
 void do_load_config_file(EditState *e, const char *file);

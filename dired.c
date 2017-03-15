@@ -2,7 +2,7 @@
  * Directory editor mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2016 Charlie Gordon.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1071,7 +1071,7 @@ static EditState *dired_view_file(EditState *s, const char *filename)
      * new buffer as BF_PREVIEW, to trigger paging mode and so that it
      * will get freed if closed.
      */
-    rc = qe_load_file(e, filename, 0, 0, BF_PREVIEW);
+    rc = qe_load_file(e, filename, 0, BF_PREVIEW);
     if (rc >= 0) {
         /* disable wrapping to get nicer display */
         /* XXX: should wrap lines unless window is narrow */

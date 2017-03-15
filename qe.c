@@ -6609,8 +6609,7 @@ void qe_set_next_mode(EditState *s, int dir, int status)
  * Return 2 if buffer was created for a new file.
  * Should take bits from enumeration instead of booleans.
  */
-int qe_load_file(EditState *s, const char *filename1,
-                 int kill_buffer, int load_resource, int bflags)
+int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
 {
     u8 buf[4097];
     char filename[MAX_FILENAME_SIZE];
@@ -6623,14 +6622,24 @@ int qe_load_file(EditState *s, const char *filename1,
     EOLType eol_type = EOL_UNIX;
     QECharset *charset = &charset_utf8;
 
-    if (load_resource) {
+    if (lflags & LF_SPLIT_WINDOW) {
+        /* Split window if window large enough and not empty */
+        /* XXX: should check s->height units */
+        if (s->height > 10 && s->b->total_size > 0) {
+            do_split_window(s, 0);
+            s = s->qe_state->active_window;
+        }
+    }
+
+    if (lflags & LF_LOAD_RESOURCE) {
         if (find_resource_file(filename, sizeof(filename), filename1)) {
             put_status(s, "Cannot find resource file '%s'", filename1);
             return -1;
         }
     } else {
         /* compute full name */
-        canonicalize_absolute_path(s, filename, sizeof(filename), filename1);
+        canonicalize_absolute_path((lflags & LF_CWD_RELATIVE) ? NULL : s,
+                                   filename, sizeof(filename), filename1);
     }
 
 #ifndef CONFIG_TINY
@@ -6652,7 +6661,7 @@ int qe_load_file(EditState *s, const char *filename1,
     /* We are going to try and load a new file: potentially delete the
      * current buffer if requested.
      */
-    if (kill_buffer && s->b && !s->b->modified) {
+    if ((lflags & LF_KILL_BUFFER) && s->b && !s->b->modified) {
         s->b->flags |= BF_TRANSIENT;
     }
 
@@ -6802,28 +6811,22 @@ static void load_completion_cb(void *opaque, int err)
 
 void do_find_file(EditState *s, const char *filename, int bflags)
 {
-    qe_load_file(s, filename, 0, 0, bflags);
+    qe_load_file(s, filename, 0, bflags);
 }
 
 void do_find_file_other_window(EditState *s, const char *filename, int bflags)
 {
-    /* Split window if window large enough and not empty */
-    /* XXX: should check s->height units */
-    if (s->height > 10 && s->b->total_size > 0) {
-        do_split_window(s, 0);
-        s = s->qe_state->active_window;
-    }
-    qe_load_file(s, filename, 0, 0, bflags);
+    qe_load_file(s, filename, LF_SPLIT_WINDOW, bflags);
 }
 
 void do_find_alternate_file(EditState *s, const char *filename, int bflags)
 {
-    qe_load_file(s, filename, 1, 0, bflags);
+    qe_load_file(s, filename, LF_KILL_BUFFER, bflags);
 }
 
 void do_load_file_from_path(EditState *s, const char *filename, int bflags)
 {
-    qe_load_file(s, filename, 0, 1, bflags);
+    qe_load_file(s, filename, LF_LOAD_RESOURCE, bflags);
 }
 
 void do_insert_file(EditState *s, const char *filename)
@@ -8552,7 +8555,9 @@ static void qe_init(void *opaque)
                 col_num = strtol(p + 1, NULL, 10);
             arg = argv[i++];
         }
-        do_find_file(s, arg, 0);
+        /* load filename relative to qe current directory */
+        /* XXX: should split windows evenly */
+        qe_load_file(s, arg, LF_CWD_RELATIVE | LF_SPLIT_WINDOW, 0);
         s = qs->active_window;
         if (line_num)
             do_goto_line(s, line_num, col_num);
