@@ -1325,6 +1325,37 @@ static void do_describe_window(EditState *s, int argval)
     }
 }
 
+static void do_describe_screen(EditState *e, int argval)
+{
+    QEditScreen *s = e->screen;
+    EditBuffer *b1;
+    int show;
+    int w;
+
+    b1 = new_help_buffer(&show);
+    if (!b1)
+        return;
+
+    eb_printf(b1, "Screen Description\n\n");
+
+    w = 16;
+    eb_printf(b1, "%*s: %s\n", w, "dpy.name", s->dpy.name);
+    eb_printf(b1, "%*s: %d, %d\n", w, "width, height", s->width, s->height);
+    eb_printf(b1, "%*s: %s\n", w, "charset", s->charset->name);
+    eb_printf(b1, "%*s: %d\n", w, "media", s->media);
+    eb_printf(b1, "%*s: %d\n", w, "bitmap_format", s->bitmap_format);
+    eb_printf(b1, "%*s: %d\n\n", w, "video_format", s->video_format);
+
+    if (s->dpy.dpy_describe) {
+        s->dpy.dpy_describe(s, b1);
+    }
+
+    b1->flags |= BF_READONLY;
+    if (show) {
+        show_popup(b1);
+    }
+}
+
 /*---------------- buffer contents sorting ----------------*/
 
 struct chunk_ctx {
@@ -1505,6 +1536,8 @@ static CmdDef extra_commands[] = {
           "describe-buffer", do_describe_buffer, ESi, "ui")
     CMD2( KEY_CTRLH('w'), KEY_CTRLH(KEY_CTRL('W')),
           "describe-window", do_describe_window, ESi, "ui")
+    CMD2( KEY_CTRLH('s'), KEY_CTRLH(KEY_CTRL('S')),
+          "describe-screen", do_describe_screen, ESi, "ui")
 
     CMD2( KEY_CTRLC('c'), KEY_NONE,
           "set-region-color", do_set_region_color, ESs,

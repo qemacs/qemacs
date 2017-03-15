@@ -2,6 +2,7 @@
  * Display system for QEmacs
  *
  * Copyright (c) 2000 Fabrice Bellard.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -130,8 +131,8 @@ struct QEDisplay {
     void (*dpy_bmp_lock)(QEditScreen *s, QEBitmap *bitmap, QEPicture *pict,
                          int x1, int y1, int w1, int h1);
     void (*dpy_bmp_unlock)(QEditScreen *s, QEBitmap *b);
-    /* full screen support */
     void (*dpy_full_screen)(QEditScreen *s, int full_screen);
+    void (*dpy_describe)(QEditScreen *s, EditBuffer *b);
     QEDisplay *next;
 };
 
@@ -153,7 +154,7 @@ struct QEditScreen {
 int qe_register_display(QEDisplay *dpy);
 QEDisplay *probe_display(void);
 
-int dpy_init(QEditScreen *s, QEDisplay *dpy, int w, int h);
+int screen_init(QEditScreen *s, QEDisplay *dpy, int w, int h);
 
 static inline void dpy_close(QEditScreen *s)
 {

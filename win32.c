@@ -2,6 +2,7 @@
  * MS Windows driver for QEmacs
  *
  * Copyright (c) 2002 Fabrice Bellard.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -519,6 +520,7 @@ static QEDisplay win32_dpy = {
     NULL, /* dpy_bmp_lock */
     NULL, /* dpy_bmp_unlock */
     NULL, /* dpy_full_screen */
+    NULL, /* dpy_describe */
     NULL, /* next */
 };
 

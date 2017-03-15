@@ -8484,7 +8484,7 @@ static void qe_init(void *opaque)
      * null display driver to have a consistent state
      * else many commands such as put_status would crash.
      */
-    dpy_init(&global_screen, NULL, screen_width, screen_height);
+    screen_init(&global_screen, NULL, screen_width, screen_height);
 
     /* handle options */
     _optind = parse_command_line(argc, argv);
@@ -8504,7 +8504,7 @@ static void qe_init(void *opaque)
             fprintf(stderr, "No suitable display found, exiting\n");
             exit(1);
         }
-        if (dpy_init(&global_screen, dpy, screen_width, screen_height) < 0) {
+        if (screen_init(&global_screen, dpy, screen_width, screen_height) < 0) {
             /* Just disable the display and try another */
             //fprintf(stderr, "Could not initialize display '%s', exiting\n",
             //        dpy->name);

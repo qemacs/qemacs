@@ -1870,6 +1870,7 @@ static QEDisplay x11_dpy = {
     x11_bmp_lock,
     x11_bmp_unlock,
     x11_full_screen,
+    NULL, /* dpy_describe */
     NULL, /* next */
 };
 

@@ -2,6 +2,7 @@
  * HTML to PPM converter using the qHTML library
  *
  * Copyright (c) 2002 Fabrice Bellard.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -129,6 +130,7 @@ static QEDisplay ppm_dpy = {
     NULL, /* dpy_bmp_lock */
     NULL, /* dpy_bmp_unlock */
     NULL, /* dpy_full_screen */
+    NULL, /* dpy_describe */
     NULL, /* next */
 };
 
@@ -480,7 +482,7 @@ int main(int argc, char **argv)
     infilename = argv[optind];
 
     /* init display driver with dummy height */
-    if (dpy_init(screen, &ppm_dpy, page_width, 1) < 0) {
+    if (screen_init(screen, &ppm_dpy, page_width, 1) < 0) {
         fprintf(stderr, "Could not init display driver\n");
         exit(1);
     }

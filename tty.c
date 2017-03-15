@@ -2,7 +2,7 @@
  * TTY handling for QEmacs
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2002-2016 Charlie Gordon.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -110,8 +110,7 @@ static void tty_resize(int sig);
 static void tty_term_exit(void);
 static void tty_read_handler(void *opaque);
 
-static struct TTYState tty_state;
-static QEditScreen *tty_screen;
+static QEditScreen *tty_screen;   /* for tty_term_exit and tty_resize */
 
 static int tty_term_probe(void)
 {
@@ -125,39 +124,42 @@ static int tty_term_init(QEditScreen *s,
     struct termios tty;
     struct sigaction sig;
 
-    s->STDIN = stdin;
-    s->STDOUT = stdout;
+    ts = calloc(1, sizeof(*ts));
+    if (ts == NULL) {
+        return 1;
+    }
 
     tty_screen = s;
-    ts = &tty_state;
+    s->STDIN = stdin;
+    s->STDOUT = stdout;
     s->priv_data = ts;
     s->media = CSS_MEDIA_TTY;
 
     /* Derive some settings from the TERM environment variable */
-    tty_state.term_code = TERM_UNKNOWN;
-    tty_state.term_flags = USE_ERASE_END_OF_LINE;
-    tty_state.term_name = getenv("TERM");
-    if (tty_state.term_name) {
+    ts->term_code = TERM_UNKNOWN;
+    ts->term_flags = USE_ERASE_END_OF_LINE;
+    ts->term_name = getenv("TERM");
+    if (ts->term_name) {
         /* linux and xterm -> kbs=\177
          * ansi cygwin vt100 -> kbs=^H
          */
-        if (strstart(tty_state.term_name, "ansi", NULL)) {
-            tty_state.term_code = TERM_ANSI;
-            tty_state.term_flags |= KBS_CONTROL_H;
+        if (strstart(ts->term_name, "ansi", NULL)) {
+            ts->term_code = TERM_ANSI;
+            ts->term_flags |= KBS_CONTROL_H;
         } else
-        if (strstart(tty_state.term_name, "vt100", NULL)) {
-            tty_state.term_code = TERM_VT100;
-            tty_state.term_flags |= KBS_CONTROL_H;
+        if (strstart(ts->term_name, "vt100", NULL)) {
+            ts->term_code = TERM_VT100;
+            ts->term_flags |= KBS_CONTROL_H;
         } else
-        if (strstart(tty_state.term_name, "xterm", NULL)) {
-            tty_state.term_code = TERM_XTERM;
+        if (strstart(ts->term_name, "xterm", NULL)) {
+            ts->term_code = TERM_XTERM;
         } else
-        if (strstart(tty_state.term_name, "linux", NULL)) {
-            tty_state.term_code = TERM_LINUX;
+        if (strstart(ts->term_name, "linux", NULL)) {
+            ts->term_code = TERM_LINUX;
         } else
-        if (strstart(tty_state.term_name, "cygwin", NULL)) {
-            tty_state.term_code = TERM_CYGWIN;
-            tty_state.term_flags |= KBS_CONTROL_H |
+        if (strstart(ts->term_name, "cygwin", NULL)) {
+            ts->term_code = TERM_CYGWIN;
+            ts->term_flags |= KBS_CONTROL_H |
                                     USE_BOLD_AS_BRIGHT | USE_BLINK_AS_BRIGHT;
         }
     }
@@ -195,7 +197,7 @@ static int tty_term_init(QEditScreen *s,
     /* Get charset from command line option */
     s->charset = find_charset(qe_state.tty_charset);
 
-    if (tty_state.term_code == TERM_CYGWIN)
+    if (ts->term_code == TERM_CYGWIN)
         s->charset = &charset_8859_1;
 
     if (!s->charset && !isatty(fileno(s->STDOUT)))
@@ -244,7 +246,7 @@ static int tty_term_init(QEditScreen *s,
 
     tty_resize(0);
 
-    if (tty_state.term_flags & KBS_CONTROL_H) {
+    if (ts->term_flags & KBS_CONTROL_H) {
         do_toggle_control_h(NULL, 1);
     }
 
@@ -1387,6 +1389,7 @@ static QEDisplay tty_dpy = {
     NULL, /* dpy_bmp_lock */
     NULL, /* dpy_bmp_unlock */
     NULL, /* dpy_full_screen */
+    NULL, /* dpy__describe */
     NULL, /* next */
 };
 

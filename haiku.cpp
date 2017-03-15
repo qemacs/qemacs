@@ -2,7 +2,7 @@
  * Haiku driver for QEmacs
  *
  * Copyright (c) 2013 Francois Revol.
- * Copyright (c) 2015-2016 Charlie Gordon.
+ * Copyright (c) 2015-2017 Charlie Gordon.
  * Copyright (c) 2002 Fabrice Bellard.
  *
  * This library is free software; you can redistribute it and/or
@@ -886,6 +886,7 @@ static QEDisplay haiku_dpy = {
     NULL, /* dpy_bmp_lock */
     NULL, /* dpy_bmp_unlock */
     haiku_full_screen,
+    NULL, /* dpy_describe */
     NULL, /* next */
 };
 

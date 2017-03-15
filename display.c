@@ -2,6 +2,7 @@
  * Display system for QEmacs
  *
  * Copyright (c) 2000 Fabrice Bellard.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -112,6 +113,7 @@ static QEDisplay const dummy_dpy = {
     NULL, /* dpy_bmp_lock */
     NULL, /* dpy_bmp_unlock */
     NULL, /* dpy_full_screen */
+    NULL, /* dpy_describe */
     NULL, /* next */
 };
 
@@ -236,7 +238,7 @@ QEDisplay *probe_display(void)
     return dpy;
 }
 
-int dpy_init(QEditScreen *s, QEDisplay *dpy, int w, int h)
+int screen_init(QEditScreen *s, QEDisplay *dpy, int w, int h)
 {
     s->dpy = dpy ? *dpy : dummy_dpy;
     return s->dpy.dpy_init(s, w, h);
