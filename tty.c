@@ -1033,7 +1033,7 @@ static inline int tty_term_glyph_width(qe__unused__ QEditScreen *s, unsigned int
     if (ucs < 0x1100)
         return 1;
 
-    return unicode_glyph_tty_width(ucs);
+    return unicode_tty_glyph_width(ucs);
 }
 
 static void tty_term_text_metrics(QEditScreen *s, qe__unused__ QEFont *font,
@@ -1140,6 +1140,7 @@ static void tty_term_flush(QEditScreen *s)
     /* We cannot print anything on the bottom right screen cell,
      * pretend it's OK: */
     ts->screen[shadow - 1] = ts->screen[2 * shadow - 1];
+
     for (y = 0; y < s->height; y++) {
         if (ts->line_updated[y]) {
             ts->line_updated[y] = 0;

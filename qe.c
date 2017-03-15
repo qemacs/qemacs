@@ -1642,7 +1642,7 @@ void do_tab(EditState *s, int argval)
             if (c == '\t') {
                 col += tw - col % tw;
             } else {
-                col += unicode_glyph_tty_width(c);
+                col += unicode_tty_glyph_width(c);
             }
         }
         if (argval == NO_ARG)
@@ -8070,7 +8070,7 @@ void qe_register_cmd_line_options(CmdOptionDef *table)
 
 const char str_version[] = "QEmacs version " QE_VERSION;
 const char str_credits[] = "Copyright (c) 2000-2003 Fabrice Bellard\n"
-                           "Copyright (c) 2000-2016 Charlie Gordon\n";
+                           "Copyright (c) 2000-2017 Charlie Gordon\n";
 
 static void show_version(void)
 {

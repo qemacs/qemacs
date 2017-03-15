@@ -275,13 +275,13 @@ static void eb_tabify(EditBuffer *b, int p1, int p2)
             col += tw - col % tw;
             continue;
         }
-        col += unicode_glyph_tty_width(c);
+        col += unicode_tty_glyph_width(c);
         if (c != ' ' || offset < start || col % tw == 0)
             continue;
         while (offset1 < stop) {
             c = eb_nextc(b, offset1, &offset2);
             if (c == ' ') {
-                col += unicode_glyph_tty_width(c);
+                col += unicode_tty_glyph_width(c);
                 offset1 = offset2;
                 if (col % tw == 0) {
                     delta = eb_delete_range(b, offset, offset1);
@@ -342,7 +342,7 @@ static void eb_untabify(EditBuffer *b, int p1, int p2)
             continue;
         }
         if (c != '\t') {
-            col += unicode_glyph_tty_width(c);
+            col += unicode_tty_glyph_width(c);
             continue;
         }
         col0 = col;

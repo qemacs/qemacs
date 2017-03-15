@@ -569,6 +569,7 @@ struct QECharset {
     /* private data for some charsets */
     u8 eol_char; /* 0x0A for ASCII, 0x25 for EBCDIC */
     u8 min_char, max_char;
+    const unsigned short *encode_table;
     const unsigned short *private_table;
     struct QECharset *next;
 };
@@ -591,7 +592,7 @@ typedef enum EOLType {
 
 struct CharsetDecodeState {
     /* 256 ushort table for hyper fast decoding */
-    unsigned short *table;
+    const unsigned short *table;
     int char_size;
     EOLType eol_type;
     int eol_char;
@@ -612,7 +613,7 @@ int charset_jis_init(void);
 
 void qe_register_charset(struct QECharset *charset);
 
-extern unsigned char utf8_length[256];
+extern unsigned char const utf8_length[256];
 static inline int utf8_is_trailing_byte(int c) { return (c & 0xC0) == 0x80; }
 int utf8_encode(char *q, int c);
 int utf8_decode(const char **pp);
@@ -635,7 +636,7 @@ void decode_8bit_init(CharsetDecodeState *s);
 int decode_8bit(CharsetDecodeState *s);
 u8 *encode_8bit(QECharset *charset, u8 *q, int c);
 
-int unicode_glyph_tty_width(unsigned int ucs);
+int unicode_tty_glyph_width(unsigned int ucs);
 
 /* arabic.c */
 int arab_join(unsigned int *line, unsigned int *ctog, int len);

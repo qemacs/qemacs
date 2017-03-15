@@ -146,11 +146,10 @@ static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
             }
         }
         display_char(ds, offset1, offset2, b);
-#if 0
-        /* CG: spacing out single width glyphs is less readable */
-        if (unicode_glyph_tty_width(b) == 1)
+        /* spacing out single width glyphs may be less readable */
+        if (unicode_tty_glyph_width(b) < 2) {
             display_char(ds, -1, -1, ' ');
-#endif
+        }
     }
     display_eol(ds, -1, -1);
 

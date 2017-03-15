@@ -51,31 +51,13 @@ static unsigned int const unicode_glyph_ranges[] = {
     UINT_MAX, 1,              /* 26: catchall */
 };
 
-static unsigned int const unicode_glyph_range_index[16] = {
-    2 * 0,   /* 0000-0FFF */
-    2 * 0,   /* 1000-1FFF */
-    2 * 2,   /* 2000-2FFF */
-    2 * 7,   /* 3000-3FFF */
-    2 * 9,   /* 4000-4FFF */
-    2 * 11,  /* 5000-5FFF */
-    2 * 11,  /* 6000-6FFF */
-    2 * 11,  /* 7000-7FFF */
-    2 * 11,  /* 8000-8FFF */
-    2 * 11,  /* 9000-9FFF */
-    2 * 11,  /* A000-AFFF */
-    2 * 13,  /* B000-BFFF */
-    2 * 13,  /* C000-CFFF */
-    2 * 13,  /* D000-DFFF */
-    2 * 14,  /* E000-EFFF */
-    2 * 14,  /* F000-FFFF */
-};
+static const unsigned int *unicode_glyph_range_index[0x20];
 
-int unicode_glyph_tty_width(unsigned int ucs)
+int unicode_tty_glyph_width(unsigned int ucs)
 {
-    unsigned int const *ip;
-
     /* Iterative lookup with fast initial jump, no boundary test needed */
-    ip = unicode_glyph_ranges + unicode_glyph_range_index[(ucs >> 12) & 0xF];
+    /* Very efficient for BMP and SMP code-points */
+    unsigned int const *ip = unicode_glyph_range_index[(ucs >> 12) & 0x1F];
 
     while (ucs > ip[0]) {
         ip += 2;
@@ -85,27 +67,61 @@ int unicode_glyph_tty_width(unsigned int ucs)
 
 /* utf-8 specific tables */
 
-static unsigned short table_idem[256];
-static unsigned short table_utf8[256];
-static unsigned short table_none[256];
+#define REP2(x)    x, x
+#define REP4(x)    x, x, x, x
+#define REP8(x)    REP4(x), REP4(x)
+#define REP16(x)   REP4(x), REP4(x), REP4(x), REP4(x)
+#define REP32(x)   REP16(x), REP16(x)
+#define REP64(x)   REP16(x), REP16(x), REP16(x), REP16(x)
+#define REP128(x)  REP64(x), REP64(x)
+#define REP256(x)  REP64(x), REP64(x), REP64(x), REP64(x)
 
-unsigned char utf8_length[256];
+#define RUN2(x)    (x)+0, (x)+1
+#define RUN4(x)    (x)+0, (x)+1, (x)+2, (x)+3
+#define RUN8(x)    RUN4(x), RUN4((x)+4)
+#define RUN16(x)   RUN4(x), RUN4((x)+4), RUN4((x)+8), RUN4((x)+12)
+#define RUN32(x)   RUN16(x), RUN16((x)+16)
+#define RUN64(x)   RUN16(x), RUN16((x)+16), RUN16((x)+32), RUN16((x)+48)
+#define RUN128(x)  RUN64(x), RUN64((x)+64)
+#define RUN256(x)  RUN64(x), RUN64((x)+64), RUN64((x)+128), RUN64((x)+192)
 
-static const unsigned int utf8_min_code[7] = {
+static unsigned short const table_idem[256] = { RUN256(0) };
+static unsigned short const table_none[256] = { REP256(ESCAPE_CHAR) };
+
+static unsigned short const table_utf8[256] = {
+    RUN128(0),              /* [0x00...0x80] are self-encoding ASCII bytes */
+    REP64(INVALID_CHAR),    /* [0x80...0xC0] are invalid prefix bytes */
+    REP32(ESCAPE_CHAR),     /* [0xC0...0xE0] leading bytes of 2 byte sequences */
+    REP16(ESCAPE_CHAR),     /* [0xE0...0xF0] leading bytes of 3 byte sequences */
+    REP8(ESCAPE_CHAR),      /* [0xF0...0xF8] leading bytes of 4 byte sequences */
+    REP4(ESCAPE_CHAR),      /* [0xF8...0xFC] leading bytes of 5 byte sequences */
+    REP2(ESCAPE_CHAR),      /* [0xFC...0xFE] leading bytes of  byte sequences */
+    INVALID_CHAR,           /* 0xFE is invalid in UTF-8 encoding */
+    INVALID_CHAR,           /* 0xFF is invalid in UTF-8 encoding */
+};
+
+unsigned char const utf8_length[256] = {
+    REP128(1),  /* [0x00...0x80] are self-encoding ASCII bytes */
+    REP64(1),   /* [0x80...0xC0] are invalid prefix bytes, could use 0 */
+    REP32(2),   /* [0xC0...0xE0] leading bytes of 2 byte sequences */
+    REP16(3),   /* [0xE0...0xF0] leading bytes of 3 byte sequences */
+    REP8(4),    /* [0xF0...0xF8] leading bytes of 4 byte sequences */
+    REP4(5),    /* [0xF8...0xFC] leading bytes of 5 byte sequences */
+    REP2(6),    /* [0xFC...0xFE] leading bytes of  byte sequences */
+    1,          /* 0xFE is invalid in UTF-8 encoding */
+    1,          /* 0xFF is invalid in UTF-8 encoding */
+};
+
+static unsigned int const utf8_min_code[7] = {
     0, 0, 0x80, 0x800, 0x10000, 0x00200000, 0x04000000,
 };
 
-static const unsigned char utf8_first_code_mask[7] = {
+static unsigned char const utf8_first_code_mask[7] = {
     0, 0, 0x1f, 0xf, 0x7, 0x3, 0x1,
 };
 
 /********************************************************/
 /* raw */
-
-static void decode_raw_init(CharsetDecodeState *s)
-{
-    s->table = table_idem;
-}
 
 static u8 *encode_raw(qe__unused__ QECharset *charset, u8 *p, int c)
 {
@@ -121,14 +137,14 @@ struct QECharset charset_raw = {
     "raw",
     "binary|none",
     NULL,
-    decode_raw_init,
+    NULL,
     decode_8bit,
     encode_raw,
     charset_get_pos_8bit,
     charset_get_chars_8bit,
     charset_goto_char_8bit,
     charset_goto_line_8bit,
-    1, 0, 0, 10, 0, 0, NULL, NULL,
+    1, 0, 0, 10, 0, 0, table_idem, NULL, NULL,
 };
 
 /********************************************************/
@@ -174,11 +190,6 @@ static int probe_8859_1(qe__unused__ QECharset *charset, const u8 *buf, int size
         return 0;
 }
 
-static void decode_8859_1_init(CharsetDecodeState *s)
-{
-    s->table = table_idem;
-}
-
 static u8 *encode_8859_1(qe__unused__ QECharset *charset, u8 *p, int c)
 {
     if (c <= 0xff) {
@@ -193,23 +204,18 @@ struct QECharset charset_8859_1 = {
     "8859-1",
     "ISO-8859-1|iso-ir-100|latin1|l1|819",
     probe_8859_1,
-    decode_8859_1_init,
+    NULL,
     decode_8bit,
     encode_8859_1,
     charset_get_pos_8bit,
     charset_get_chars_8bit,
     charset_goto_char_8bit,
     charset_goto_line_8bit,
-    1, 0, 0, 10, 0, 0, NULL, NULL,
+    1, 0, 0, 10, 0, 0, table_idem, NULL, NULL,
 };
 
 /********************************************************/
 /* vt100 */
-
-static void decode_vt100_init(CharsetDecodeState *s)
-{
-    s->table = table_idem;
-}
 
 static u8 *encode_vt100(qe__unused__ QECharset *charset, u8 *p, int c)
 {
@@ -225,14 +231,14 @@ struct QECharset charset_vt100 = {
     "vt100",
     NULL,
     NULL,
-    decode_vt100_init,
+    NULL,
     decode_8bit,
     encode_vt100,
     charset_get_pos_8bit,
     charset_get_chars_8bit,
     charset_goto_char_8bit,
     charset_goto_line_8bit,
-    1, 0, 0, 10, 0, 0, NULL, NULL,
+    1, 0, 0, 10, 0, 0, table_idem, NULL, NULL,
 };
 
 /********************************************************/
@@ -252,14 +258,14 @@ static struct QECharset charset_7bit = {
     "7bit",
     "us-ascii|ascii|7-bit|iso-ir-6|ANSI_X3.4|646",
     NULL,
-    decode_8859_1_init,
+    NULL,
     decode_8bit,
     encode_7bit,
     charset_get_pos_8bit,
     charset_get_chars_8bit,
     charset_goto_char_8bit,
     charset_goto_line_8bit,
-    1, 0, 0, 10, 0, 0, NULL, NULL,
+    1, 0, 0, 10, 0, 0, table_idem, NULL, NULL,
 };
 
 /********************************************************/
@@ -435,11 +441,6 @@ static int probe_utf8(qe__unused__ QECharset *charset, const u8 *buf, int size)
         return 0;
 }
 
-static void decode_utf8_init(CharsetDecodeState *s)
-{
-    s->table = table_utf8;
-}
-
 static int decode_utf8_func(CharsetDecodeState *s)
 {
     return utf8_decode((const char **)(void *)&s->p);
@@ -550,16 +551,16 @@ static int charset_goto_char_utf8(CharsetDecodeState *s,
 
 struct QECharset charset_utf8 = {
     "utf-8",
-    "utf8",
+    "utf8|al32utf8",
     probe_utf8,
-    decode_utf8_init,
+    NULL,
     decode_utf8_func,
     encode_utf8,
     charset_get_pos_utf8,
     charset_get_chars_utf8,
     charset_goto_char_utf8,
     charset_goto_line_8bit,
-    1, 1, 0, 10, 0, 0, NULL, NULL,
+    1, 1, 0, 10, 0, 0, table_utf8, NULL, NULL,
 };
 
 /********************************************************/
@@ -601,11 +602,6 @@ static int probe_ucs2le(qe__unused__ QECharset *charset, const u8 *buf, int size
         return 1;
     else
         return 0;
-}
-
-static void decode_ucs_init(CharsetDecodeState *s)
-{
-    s->table = table_none;
 }
 
 static int decode_ucs2le(CharsetDecodeState *s)
@@ -821,28 +817,28 @@ struct QECharset charset_ucs2le = {
     "ucs2le",
     "utf16le|utf-16le",
     probe_ucs2le,
-    decode_ucs_init,
+    NULL,
     decode_ucs2le,
     encode_ucs2le,
     charset_get_pos_ucs2,
     charset_get_chars_ucs2,
     charset_goto_char_ucs2,
     charset_goto_line_ucs2,
-    2, 0, 0, 10, 0, 0, NULL, NULL,
+    2, 0, 0, 10, 0, 0, table_none, NULL, NULL,
 };
 
 struct QECharset charset_ucs2be = {
     "ucs2be",
     "ucs2|utf16|utf-16|utf16be|utf-16be",
     probe_ucs2be,
-    decode_ucs_init,
+    NULL,
     decode_ucs2be,
     encode_ucs2be,
     charset_get_pos_ucs2,
     charset_get_chars_ucs2,
     charset_goto_char_ucs2,
     charset_goto_line_ucs2,
-    2, 0, 0, 10, 0, 0, NULL, NULL,
+    2, 0, 0, 10, 0, 0, table_none, NULL, NULL,
 };
 
 static int probe_ucs4le(qe__unused__ QECharset *charset, const u8 *buf, int size)
@@ -1093,28 +1089,28 @@ struct QECharset charset_ucs4le = {
     "ucs4le",
     "utf32le|utf-32le",
     probe_ucs4le,
-    decode_ucs_init,
+    NULL,
     decode_ucs4le,
     encode_ucs4le,
     charset_get_pos_ucs4,
     charset_get_chars_ucs4,
     charset_goto_char_ucs4,
     charset_goto_line_ucs4,
-    4, 0, 0, 10, 0, 0, NULL, NULL,
+    4, 0, 0, 10, 0, 0, table_none, NULL, NULL,
 };
 
 struct QECharset charset_ucs4be = {
     "ucs4be",
     "ucs4|utf32|utf-32|utf32be|utf-32be",
     probe_ucs4be,
-    decode_ucs_init,
+    NULL,
     decode_ucs4be,
     encode_ucs4be,
     charset_get_pos_ucs4,
     charset_get_chars_ucs4,
     charset_goto_char_ucs4,
     charset_goto_line_ucs4,
-    4, 0, 0, 10, 0, 0, NULL, NULL,
+    4, 0, 0, 10, 0, 0, table_none, NULL, NULL,
 };
 
 /********************************************************/
@@ -1181,11 +1177,12 @@ QECharset *find_charset(const char *name)
 void charset_decode_init(CharsetDecodeState *s, QECharset *charset,
                          EOLType eol_type)
 {
-    s->table = NULL; /* fail safe */
+    s->table = charset->encode_table;  /* default encode table */
     if (charset->table_alloc) {
         s->table = qe_malloc_array(unsigned short, 256);
         if (!s->table) {
             charset = &charset_8859_1;
+            s->table = charset->encode_table;
         }
     }
     s->charset = charset;
@@ -1202,8 +1199,10 @@ void charset_decode_init(CharsetDecodeState *s, QECharset *charset,
 
 void charset_decode_close(CharsetDecodeState *s)
 {
-    if (s->charset->table_alloc)
-        qe_free(&s->table);
+    if (s->charset->table_alloc) {
+        /* remove the const qualifier */
+        qe_free((unsigned short **)&s->table);
+    }
     /* safety */
     memset(s, 0, sizeof(CharsetDecodeState));
 }
@@ -1551,7 +1550,7 @@ void decode_8bit_init(CharsetDecodeState *s)
     unsigned short *table;
     int i, n;
 
-    table = s->table;
+    table = (unsigned short *)s->table;     /* remove const qualifier */
     for (i = 0; i < charset->min_char; i++)
         *table++ = i;
     n = charset->max_char - charset->min_char + 1;
@@ -1706,35 +1705,15 @@ int charset_goto_char_8bit(CharsetDecodeState *s,
 
 void charset_init(void)
 {
-    int l, i, n;
+    /* initialize unicode_glyph_range_index[] */
+    unsigned int const *ip = unicode_glyph_ranges;
+    unsigned int ucs;
 
-    for (i = 0; i < 256; i++) {
-        table_idem[i] = i;
-        table_none[i] = ESCAPE_CHAR;
+    for (ucs = 0; ucs < 0x20000; ucs += 0x1000) {
+        while (ucs > ip[0])
+            ip += 2;
+        unicode_glyph_range_index[ucs >> 12] = ip;
     }
-
-    /* utf8 tables */
-
-    // could set utf8_length[128...0xc0] to 0 as invalid bytes
-    memset(utf8_length, 1, 256);
-
-    i = 0xc0;
-    l = 2;
-    while (l <= 6) {
-        n = utf8_first_code_mask[l] + 1;
-        while (n > 0) {
-            utf8_length[i++] = l;
-            n--;
-        }
-        l++;
-    }
-
-    for (i = 0; i < 256; i++)
-        table_utf8[i] = INVALID_CHAR;
-    for (i = 0; i < 0x80; i++)
-        table_utf8[i] = i;
-    for (i = 0xc0; i < 0xfe; i++)
-        table_utf8[i] = ESCAPE_CHAR;
 
     qe_register_charset(&charset_raw);
     qe_register_charset(&charset_8859_1);

@@ -2,6 +2,7 @@
  * JIS Charset handling for QEmacs
  *
  * Copyright (c) 2002 Fabrice Bellard.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -78,7 +79,8 @@ static int jis0212_decode(int b1, int b2)
 
 static void decode_euc_jp_init(CharsetDecodeState *s)
 {
-    unsigned short *table = s->table;
+    /* XXX: should use static table instead of removing const qualifier */
+    unsigned short *table = (unsigned short *)s->table;
     int i;
 
     for (i = 0; i < 256; i++)
@@ -162,7 +164,8 @@ static struct QECharset charset_euc_jp = {
 
 static void decode_sjis_init(CharsetDecodeState *s)
 {
-    unsigned short *table = s->table;
+    /* XXX: should use static table instead of removing const qualifier */
+    unsigned short *table = (unsigned short *)s->table;
     int i;
 
     for (i = 0; i < 256; i++)
