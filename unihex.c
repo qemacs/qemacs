@@ -2,7 +2,7 @@
  * Unicode Hexadecimal mode for QEmacs.
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2002-2016 Charlie Gordon.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -42,10 +42,10 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
             maxc = max(maxc, c);
         }
 
-        s->dump_width = 32 / s->unihex_mode;
         s->hex_mode = 1;
         s->hex_nibble = 0;
         s->unihex_mode = snprintf(NULL, 0, "%x", maxc);
+        s->dump_width = 32 / s->unihex_mode;
         s->insert = 0;
         s->wrap = WRAP_TRUNCATE;
     }
@@ -54,10 +54,9 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
 
 static int unihex_to_disp(int c)
 {
-    /* Do not allow characters in range 127-160 to show as graphics
-     * nor characters beyond the BMP plane
-     */
-    if (c < ' ' || c == 127 || (c >= 128 && c < 160) || c > 0xFFFF)
+    /* Prevent display of C1 control codes and invalid code points */
+    if (c < ' ' || c == 127 || (c >= 128 && c < 160)
+    ||  (c >= 0xD800 && c <= 0xDFFF) || c > 0x10FFFF)
         c = '.';
     return c;
 }
