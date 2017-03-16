@@ -27,28 +27,12 @@ struct QECharset *first_charset;
 /* Unicode utilities */
 
 /* Compute tty width of unicode characters.  This is a modified
- * implementation of wcwidth() from Markus Kuhn. We do not handle non
- * spacing and enclosing combining characters and control chars.
- */
-
-/* XXX: This table is incomplete, should compute from UnicodeData.txt
- * via a specialized utility
+ * implementation of wcwidth() from Markus Kuhn. We handle most
+ * non spacing and enclosing combining characters.
  */
 static unsigned int const unicode_glyph_ranges[] = {
-    0x10FF, 1, 0x115f, 2,     /*  0: Hangul Jamo */
-    0x2328, 1, 0x232a, 2,     /*  2: wide Angle brackets */
-    0x2E7F, 1, 0x2efd, 2,     /*  4: CJK Radicals */
-    0x2EFF, 1, 0x303e, 2,     /*  6: Kangxi Radicals */
-    0x303F, 1, 0x4dbf, 2,     /*  8: CJK */
-    0x4DFF, 1, 0xa4cf, 2,     /* 10: CJK */
-    0xABFF, 1, 0xd7a3, 2,     /* 12: Hangul Syllables */
-    0xF8FF, 1, 0xfaff, 2,     /* 14: CJK Compatibility Ideographs */
-    0xFDFF, 1, 0xFE1F, 2,     /* 16: */
-    0xFE2F, 1, 0xfe6f, 2,     /* 18: CJK Compatibility Forms */
-    0xFEFF, 1, 0xff5f, 2,     /* 20: Fullwidth Forms */
-    0xFFDF, 1, 0xffe6, 2,     /* 22: */
-    0x1FFFF, 1, 0x3fffd, 2,   /* 24: CJK Compatibility */
-    UINT_MAX, 1,              /* 26: catchall */
+/* width table is produced by unitable.c */
+#include "unicode_width.h"
 };
 
 static const unsigned int *unicode_glyph_range_index[0x20];
@@ -342,6 +326,14 @@ int utf8_encode(char *q0, int c)
         *q++ = (c & 0x3f) | 0x80;
     }
     return q - q0;
+}
+
+char *utf8_char_to_string(char *buf, int c) {
+    char *p = buf;
+    if (qe_isaccent(c))
+        *p++ = ' ';
+    p[utf8_encode(p, c)] = '\0';
+    return buf;
 }
 
 int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str)

@@ -145,7 +145,13 @@ static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
                 offset2 = offset1 = -1;
             }
         }
-        display_char(ds, offset1, offset2, b);
+        if (qe_isaccent(b)) {
+            /* insert space to make accent stand on its own */
+            display_char(ds, offset1, offset2, ' ');
+            display_char(ds, -1, -1, b);
+        } else {
+            display_char(ds, offset1, offset2, b);
+        }
         /* spacing out single width glyphs may be less readable */
         if (unicode_tty_glyph_width(b) < 2) {
             display_char(ds, -1, -1, ' ');

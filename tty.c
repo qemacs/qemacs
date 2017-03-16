@@ -42,7 +42,10 @@ typedef uint64_t TTYChar;
 #define TTYCHAR_GETFG(cc)   ((uint32_t)((cc) >> 32) & 0xFF)
 #define TTYCHAR_GETBG(cc)   ((uint32_t)((cc) >> (32 + 8)) & 0xFF)
 #define TTYCHAR_DEFAULT     TTYCHAR(' ', 7, 0)
+#define TTYCHAR_COMB        0x200000
+#define TTYCHAR_BAD         0xFFFD
 #define TTYCHAR_NONE        0xFFFFFFFF
+#define COMB_CACHE_SIZE     2048
 #else
 typedef unsigned int TTYChar;
 #define TTYCHAR(ch,fg,bg)   ((ch) | ((fg) << 16) | ((bg) << 24))
@@ -52,7 +55,9 @@ typedef unsigned int TTYChar;
 #define TTYCHAR_GETFG(cc)   (((cc) >> 16) & 0xFF)
 #define TTYCHAR_GETBG(cc)   (((cc) >> 24) & 0xFF)
 #define TTYCHAR_DEFAULT     TTYCHAR(' ', 7, 0)
+#define TTYCHAR_BAD         0xFFFD
 #define TTYCHAR_NONE        0xFFFF
+#define COMB_CACHE_SIZE     1
 #endif
 
 #if defined(CONFIG_UNLOCKIO)
@@ -104,6 +109,7 @@ typedef struct TTYState {
 #define USE_BOLD_AS_BRIGHT     2
 #define USE_BLINK_AS_BRIGHT    4
 #define USE_ERASE_END_OF_LINE  8
+    unsigned int comb_cache[COMB_CACHE_SIZE];
 } TTYState;
 
 static void tty_resize(int sig);
@@ -1027,10 +1033,8 @@ static void tty_term_close_font(qe__unused__ QEditScreen *s, QEFont **fontp)
 
 static inline int tty_term_glyph_width(qe__unused__ QEditScreen *s, unsigned int ucs)
 {
-    /* XXX: should support combining marks */
-
     /* fast test for majority of non-wide scripts */
-    if (ucs < 0x1100)
+    if (ucs < 0x300)
         return 1;
 
     return unicode_tty_glyph_width(ucs);
@@ -1051,14 +1055,102 @@ static void tty_term_text_metrics(QEditScreen *s, qe__unused__ QEFont *font,
     metrics->width = x;
 }
 
+#if MAX_UNICODE_DISPLAY > 0xFFFF
+
+static unsigned int comb_cache_add(TTYState *ts, const unsigned int *seq, int len) {
+    unsigned int *ip;
+    for (ip = ts->comb_cache; *ip; ip += *ip & 0xFFFF) {
+        if (*ip == len + 1U && !memcmp(ip + 1, seq, len * sizeof(*ip))) {
+            return TTYCHAR_COMB + (ip - ts->comb_cache);
+        }
+    }
+    for (ip = ts->comb_cache; *ip; ip += *ip & 0xFFFF) {
+        if (*ip >= 0x10001U + len) {
+            /* found free slot */
+            if (*ip > 0x10001U + len) {
+                /* split free block */
+                ip[len + 1] = *ip - (len + 1);
+            }
+            break;
+        }
+    }
+    if (*ip == 0) {
+        if ((ip - ts->comb_cache) + len + 1 >= countof(ts->comb_cache)) {
+            return TTYCHAR_BAD;
+        }
+        ip[len + 1] = 0;
+    }
+    *ip = len + 1;
+    memcpy(ip + 1, seq, len * sizeof(*ip));
+    return TTYCHAR_COMB + (ip - ts->comb_cache);
+}
+
+static void comb_cache_clean(TTYState *ts, const TTYChar *screen, int len) {
+    unsigned int *ip;
+
+    if (ts->comb_cache[0] == 0)
+        return;
+
+    for (ip = ts->comb_cache; *ip != 0; ip += *ip & 0xFFFF) {
+        *ip |= 0x10000;
+    }
+    ip = ts->comb_cache;
+    for (int i = 0; i < len; i++) {
+        int ch = TTYCHAR_GETCH(screen[i]);
+        if (ch >= TTYCHAR_COMB && ch < TTYCHAR_COMB + countof(ts->comb_cache) - 1) {
+            ip[ch - TTYCHAR_COMB] &= ~0x10000;
+        }
+    }
+    for (; *ip != 0; ip += *ip & 0xFFFF) {
+        if (*ip & 0x10000) {
+            while (ip[*ip & 0xFFFF] & 0x10000) {
+                /* coalesce subsequent free blocks */
+                *ip += ip[*ip & 0xFFFF] & 0xFFFF;
+            }
+            if (ip[*ip & 0xFFFF] == 0) {
+                /* truncate free list */
+                *ip = 0;
+                break;
+            }
+        }
+    }
+}
+
+static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
+    TTYState *ts = s->priv_data;
+    unsigned int *ip;
+
+    eb_printf(b, "Unicode combination cache:\n\n");
+    
+    for (ip = ts->comb_cache; *ip != 0; ip += *ip & 0xFFFF) {
+        if (*ip & 0x10000) {
+            eb_printf(b, "   FREE   %d\n", (*ip & 0xFFFF) - 1);
+        } else {
+            eb_printf(b, "  %06X  %d:",
+                      (unsigned int)(TTYCHAR_COMB + (ip - ts->comb_cache)),
+                      (*ip & 0xFFFF) - 1);
+            for (unsigned int i = 1; i < (*ip & 0xFFFF); i++) {
+                eb_printf(b, " %04X", ip[i]);
+            }
+            eb_printf(b, "\n");
+        }
+    }
+}
+#else
+#define comb_cache_add(s, p, n)  TTYCHAR_BAD
+#define comb_cache_clean(s, p, n)
+#define comb_cache_describe(s, b)
+#endif
+
 static void tty_term_draw_text(QEditScreen *s, qe__unused__ QEFont *font,
-                               int x, int y, const unsigned int *str, int len,
+                               int x, int y, const unsigned int *str0, int len,
                                QEColor color)
 {
     TTYState *ts = s->priv_data;
     TTYChar *ptr;
     int fgcolor, w, n;
     unsigned int cc;
+    const unsigned int *str = str0;
 
     if (y < s->clip_y1 || y >= s->clip_y2 || x >= s->clip_x2)
         return;
@@ -1076,15 +1168,19 @@ static void tty_term_draw_text(QEditScreen *s, qe__unused__ QEFont *font,
             w = tty_term_glyph_width(s, cc);
             x += w;
             if (x >= s->clip_x1) {
-                /* now we are on the screen. need to put spaces for
-                   wide chars */
+                /* pad partially clipped wide char with spaces */
                 n = x;
-                if (s->clip_x2 < n)
+                if (n > s->clip_x2)
                     n = s->clip_x2;
                 n -= s->clip_x1;
                 for (; n > 0; n--) {
                     *ptr = TTYCHAR(' ', fgcolor, TTYCHAR_GETBG(*ptr));
                     ptr++;
+                }
+                /* skip combining code points if any */
+                while (len > 0 && tty_term_glyph_width(s, *str) == 0) {
+                    len--;
+                    str++;
                 }
                 break;
             }
@@ -1092,21 +1188,40 @@ static void tty_term_draw_text(QEditScreen *s, qe__unused__ QEFont *font,
     } else {
         ptr += x;
     }
-    for (; len > 0; len--) {
-        cc = *str++;
+    for (; len > 0; len--, str++) {
+        cc = *str;
         w = tty_term_glyph_width(s, cc);
-        /* XXX: would need to put spaces for wide chars */
-        if (x + w > s->clip_x2)
+        if (x + w > s->clip_x2) {
+            /* pad partially clipped wide char with spaces */
+            while (x < s->clip_x2) {
+                *ptr = TTYCHAR(' ', fgcolor, TTYCHAR_GETBG(*ptr));
+                ptr++;
+                x++;
+            }
             break;
-        *ptr = TTYCHAR(cc, fgcolor, TTYCHAR_GETBG(*ptr));
-        ptr++;
-        n = w - 1;
-        while (n > 0) {
-            *ptr = TTYCHAR(TTYCHAR_NONE, fgcolor, TTYCHAR_GETBG(*ptr));
-            ptr++;
-            n--;
         }
-        x += w;
+        if (w == 0) {
+            if (str == str0)
+                continue;
+            /* allocate synthetic glyph for multicharacter combination */
+            int nacc = 1;
+            while (nacc < len && tty_term_glyph_width(s, str[nacc]) == 0)
+                nacc++;
+            cc = comb_cache_add(ts, str - 1, nacc + 1);
+            str += nacc - 1;
+            len -= nacc - 1;
+            ptr[-1] = TTYCHAR(cc, fgcolor, TTYCHAR_GETBG(ptr[-1]));
+        } else {
+            *ptr = TTYCHAR(cc, fgcolor, TTYCHAR_GETBG(*ptr));
+            ptr++;
+            x += w;
+            while (w > 1) {
+                /* put placeholders for wide chars */
+                *ptr = TTYCHAR(TTYCHAR_NONE, fgcolor, TTYCHAR_GETBG(*ptr));
+                ptr++;
+                w--;
+            }
+        }
     }
 }
 
@@ -1161,12 +1276,6 @@ static void tty_term_flush(QEditScreen *s)
             if (ptr1 == ptr2)
                 continue;
 
-            /* if first modified char is an accent, backtrack on letter */
-            if (qe_isaccent(TTYCHAR_GETCH(*ptr1))
-            ||  qe_isaccent(TTYCHAR_GETCH(ptr1[shadow]))) {
-                ptr1--;
-            }
-
             /* quickly scan for last difference on row:
              * the first difference on row at ptr1 is before ptr2
              * so we do not need a test on ptr2 > ptr1
@@ -1214,7 +1323,7 @@ static void tty_term_flush(QEditScreen *s)
             /* Go to the first difference */
             /* CG: this probably does not work if there are
              * double-width glyphs on the row in front of this
-             * difference
+             * difference (actually it should)
              */
             TTY_FPRINTF(s->STDOUT, "\033[%d;%dH",
                         y + 1, (int)(ptr1 - ptr + 1));
@@ -1304,7 +1413,24 @@ static void tty_term_flush(QEditScreen *s)
                             }
                             TTY_PUTC(ch - 32, s->STDOUT);
                         }
-                    } else {
+                    } else
+#if MAX_UNICODE_DISPLAY > 0xFFFF
+                    if (ch >= TTYCHAR_COMB && ch < TTYCHAR_COMB + COMB_CACHE_SIZE - 1) {
+                        u8 buf[10], *q;
+                        unsigned int *ip = ts->comb_cache + (ch - TTYCHAR_COMB);
+                        int ncc = *ip++;
+
+                        if (ncc < 0x300) {
+                            while (ncc-- > 1) {
+                                q = s->charset->encode_func(s->charset, buf, *ip++);
+                                if (q) {
+                                    TTY_FWRITE(buf, 1, q - buf, s->STDOUT);
+                                }
+                            }
+                        }
+                    } else
+#endif
+                    {
                         u8 buf[10], *q;
                         int nc;
 
@@ -1365,6 +1491,13 @@ static void tty_term_flush(QEditScreen *s)
                     ts->cursor_y + 1, ts->cursor_x + 1);
     }
     fflush(s->STDOUT);
+
+    /* Update combination cache from screen. Should do this before redisplay */
+    comb_cache_clean(ts, ts->screen, ts->screen_size);
+}
+
+static void tty_term_describe(QEditScreen *s, EditBuffer *b) {
+    comb_cache_describe(s, b);
 }
 
 static QEDisplay tty_dpy = {
@@ -1390,7 +1523,7 @@ static QEDisplay tty_dpy = {
     NULL, /* dpy_bmp_lock */
     NULL, /* dpy_bmp_unlock */
     NULL, /* dpy_full_screen */
-    NULL, /* dpy__describe */
+    tty_term_describe,
     NULL, /* next */
 };
 

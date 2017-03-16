@@ -31,6 +31,7 @@ void do_compare_windows(EditState *s, int argval)
     EditState *s2;
     int offset1, offset2, size1, size2, ch1, ch2;
     int tries, resync = 0;
+    char buf1[MAX_CHAR_BYTES + 2], buf2[MAX_CHAR_BYTES + 2];
 
     s1 = s;
     /* Should use same internal function as for next_window */
@@ -119,7 +120,9 @@ void do_compare_windows(EditState *s, int argval)
                            s1->offset - save1, s2->offset - save2);
                 break;
             }
-            put_status(s, "Difference: %c <-> %c", ch1, ch2);
+            put_status(s, "Difference: '%s' [0x%02X] <-> '%s' [0x%02X]",
+                       utf8_char_to_string(buf1, ch1), ch1,
+                       utf8_char_to_string(buf2, ch2), ch2);
             break;
         }
         if (ch1 != EOF) {

@@ -2490,24 +2490,28 @@ void do_count_lines(EditState *s)
 void do_what_cursor_position(EditState *s)
 {
     char buf[256];
+    int accents[6];
     buf_t outbuf, *out;
     int line_num, col_num;
-    int c, c2, cc, offset1, offset2, off;
+    int offset1, off;
+    int c, cc;
+    int i, n;
 
     out = buf_init(&outbuf, buf, sizeof(buf));
     if (s->offset < s->b->total_size) {
         c = eb_nextc(s->b, s->offset, &offset1);
-        c2 = eb_nextc(s->b, offset1, &offset2);
-        if (c == '\n' || !qe_isaccent(c2)) {
-            c2 = 0;
-            offset2 = offset1;
+        n = 0;
+        if (c != '\n' && !s->unihex_mode) {
+            while (n < countof(accents)
+               &&  qe_isaccent(cc = eb_nextc(s->b, offset1, &off))) {
+                   accents[n++] = cc;
+                   offset1 = off;
+               }
         }
         if (s->b->eol_type == EOL_MAC) {
-            if (c == '\r')
-                c = '\n';
-            else
-            if (c == '\n')
-                c = '\r';
+            /* CR and LF are swapped in old style Mac buffers */
+            if (c == '\r' || c == '\n')
+                c ^= '\r' ^ '\n';
         }
         buf_puts(out, "char:");
         if (c < 32 || c == 127) {
@@ -2516,30 +2520,37 @@ void do_what_cursor_position(EditState *s)
         if (c < 127 || c >= 160) {
             buf_put_byte(out, ' ');
             buf_put_byte(out, '\'');
-            if (c == '\\' || c == '\'')
+            if (c == '\\' || c == '\'') {
                 buf_put_byte(out, '\\');
+            }
+            if (qe_isaccent(c)) {
+                buf_putc_utf8(out, ' ');
+            }
             buf_putc_utf8(out, c);
-            if (c2)
-                buf_putc_utf8(out, c2);
+            for (i = 0; i < n; i++) {
+                buf_put_byte(out, ' ');
+                buf_putc_utf8(out, accents[i]);
+            }
             buf_put_byte(out, '\'');
         }
-        if (c < 0x100 && !c2)
-            buf_printf(out, " \\%03o", c);
-        buf_printf(out, " %d", c);
-        if (c2)
-            buf_printf(out, "/%d", c2);
+        if (n == 0) {
+            if (c < 0x100) {
+                buf_printf(out, " \\%03o", c);
+            }
+            buf_printf(out, " %d", c);
+        }
         buf_printf(out, " 0x%02x", c);
-        if (c2)
-            buf_printf(out, "/0x%02x", c2);
-
+        for (i = 0; i < n; i++) {
+            buf_printf(out, "/0x%02x", accents[i]);
+        }
         /* Display buffer bytes if char is encoded */
-        off = s->offset;
-        cc = eb_read_one_byte(s->b, off++);
-        if (cc != c || c2 || off != offset2) {
-            buf_printf(out, " [%02X", cc);
-            while (off < offset2) {
-                cc = eb_read_one_byte(s->b, off++);
-                buf_printf(out, " %02X", cc);
+        if (offset1 != s->offset + 1) {
+            int sep = '[';
+            buf_put_byte(out, ' ');
+            for (off = s->offset; off < offset1; off++) {
+                cc = eb_read_one_byte(s->b, off);
+                buf_printf(out, "%c%02X", sep, cc);
+                sep = ' ';
             }
             buf_put_byte(out, ']');
         }
@@ -3512,7 +3523,7 @@ static void flush_fragment(DisplayState *s)
 int display_char_bidir(DisplayState *s, int offset1, int offset2,
                        int embedding_level, int ch)
 {
-    int space, style, istab;
+    int space, style, istab, isaccent;
     EditState *e;
 
     style = s->style;
@@ -3539,18 +3550,43 @@ int display_char_bidir(DisplayState *s, int offset1, int offset2,
 
     space = (ch == ' ');
     istab = (ch == '\t');
+    isaccent = qe_isaccent(ch);
     /* a fragment is a part of word where style/embedding_level do not
        change. For TAB, only one fragment containing it is sent */
-    if ((s->fragment_index >= MAX_WORD_SIZE) ||
-        istab ||
-        (s->fragment_index >= 1 &&
-         (space != s->last_space ||
-          style != s->last_style ||
-          embedding_level != s->last_embedding_level))) {
-        /* flush the current fragment if needed */
-        flush_fragment(s);
+    if (s->fragment_index >= 1) {
+        if (s->fragment_index >= MAX_WORD_SIZE ||
+            istab ||
+            space != s->last_space ||
+            style != s->last_style ||
+            embedding_level != s->last_embedding_level) {
+            /* flush the current fragment if needed */
+            if (isaccent && s->fragment_chars[s->fragment_index - 1] == ' ') {
+                /* separate last space to make it part of the next word */
+                int off1, off2, cur_hex;
+                --s->fragment_index;
+                off1 = s->fragment_offsets[s->fragment_index][0];
+                off2 = s->fragment_offsets[s->fragment_index][1];
+                cur_hex = s->fragment_hex_mode[s->fragment_index];
+                flush_fragment(s);
+                s->fragment_chars[s->fragment_index] = ' ';
+                s->fragment_offsets[s->fragment_index][0] = off1;
+                s->fragment_offsets[s->fragment_index][1] = off2;
+                s->fragment_hex_mode[s->fragment_index] = cur_hex;
+                s->fragment_index++;
+            } else {
+                flush_fragment(s);
+            }
+        }
     }
 
+    if (isaccent && s->fragment_index == 0) {
+        /* prepend a space if fragment starts with an accent */
+        s->fragment_chars[s->fragment_index] = ' ';
+        s->fragment_offsets[s->fragment_index][0] = offset1;
+        s->fragment_offsets[s->fragment_index][1] = offset2;
+        s->fragment_hex_mode[s->fragment_index] = s->cur_hex_mode;
+        s->fragment_index++;
+    }
     /* store the char and its embedding level */
     s->fragment_chars[s->fragment_index] = ch;
     s->fragment_offsets[s->fragment_index][0] = offset1;
@@ -4075,13 +4111,16 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
                     c = '\n';
                 display_printf(ds, offset0, offset, "^%c", ('@' + c) & 127);
             } else
-            if (c > MAX_UNICODE_DISPLAY) {
+            if (c >= 128
+            &&  (s->qe_state->show_unicode == 1 ||
+                 c == 0xfeff ||   /* Display BOM as \uFEFF to make it explicit */
+                 c > MAX_UNICODE_DISPLAY)) {
                 /* display unsupported unicode code points as hex */
-                display_printf(ds, offset0, offset, "\\U%08x", c);
-            } else
-            if (c >= 256 && (s->qe_state->show_unicode == 1 || c == 0xfeff)) {
-                /* Display BOM as \uFEFF to make it explicit */
-                display_printf(ds, offset0, offset, "\\u%04x", c);
+                if (c > 0xffff) {
+                    display_printf(ds, offset0, offset, "\\U%08x", c);
+                } else {
+                    display_printf(ds, offset0, offset, "\\u%04x", c);
+                }
             } else {
                 display_char_bidir(ds, offset0, offset, embedding_level, c);
             }

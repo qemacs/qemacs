@@ -295,10 +295,6 @@ static inline int qe_isword(int c) {
     /* XXX: any unicode char >= 128 is considered as word. */
     return qe_isalnum_(c) || (c >= 128);
 }
-static inline int qe_isaccent(int c) {
-    /* XXX: only check Latin combining marks */
-    return qe_inrange(c, 0x300, 0x362);
-}
 static inline int qe_toupper(int c) {
     return (qe_inrange(c, 'a', 'z') ? c + 'A' - 'a' : c);
 }
@@ -617,6 +613,7 @@ extern unsigned char const utf8_length[256];
 static inline int utf8_is_trailing_byte(int c) { return (c & 0xC0) == 0x80; }
 int utf8_encode(char *q, int c);
 int utf8_decode(const char **pp);
+char *utf8_char_to_string(char *buf, int c);
 int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str);
 
 void charset_completion(CompleteState *cp);
@@ -637,6 +634,10 @@ int decode_8bit(CharsetDecodeState *s);
 u8 *encode_8bit(QECharset *charset, u8 *q, int c);
 
 int unicode_tty_glyph_width(unsigned int ucs);
+
+static inline int qe_isaccent(int c) {
+    return c >= 0x300 && unicode_tty_glyph_width(c) == 0;
+}
 
 /* arabic.c */
 int arab_join(unsigned int *line, unsigned int *ctog, int len);
