@@ -1,7 +1,7 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-03-06
+; Updated: 2017-03-16
 
 * Needed for release version 5
 
@@ -12,11 +12,13 @@
 ** basic: enter should optionally remove whitespace at end of line
 ** basic: reset last command when executing macro
 ** basic: make `do_word_right`, `do_word_left`, `do_bol`, `do_eol`... return new offset
+** basic: use visual movement for left, right, up, down and character based for C-b C-f C-n C-p
 ** completion: fix electric behavior
 ** files: check file date to detect asynchronous modifications on disk
 ** files: reload modified file upon change if untouched since load
 ** layout: kill buffer should delete popup and popleft window
 ** minibuf: spurious recursive edit cases.
+** shell: start-shell should kill popup window
 ** shell: A-x kill-buffer RET -> hang
 ** shell: turn on interactive mode on commands that move the cursor to EOB
 ** shell: asynchronous input buffer
@@ -30,11 +32,6 @@
 
 * Priority 1
 
-** API: use style cache in DisplayState
-** API: remove screen argument in release_font
-** API: remove screen argument in glyph_width
-** API: add create-style(name, properties)
-
 ** archive: add API to register new file formats
 ** basic: improve speed: C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET -> 96s
 ** basic: improve speed: C-x C-f ~/x2m RET C-u 1000 C-n -> 4s
@@ -46,11 +43,17 @@
 ** basic: fix fuzzy completion when single unanchored match
 ** basic: make styles and log buffers read-only and display as binary
 ** basic: optional 64-bit offsets on 64-bit systems, use typedef for buffer offsets
-** basic: use rune and u8 types
-** basic: auto/mixed eol mode
-** basic: display ^L as horizontal line and consider as linebreak character
 ** basic: fix behaviour on overlong lines
 ** basic: fix offset when exiting s->hex_mode
+** charset: use rune and u8 types
+** charset: auto/mixed eol mode
+** charset: display ^L as horizontal line and consider as linebreak character
+** charset: \u200c -> zero width
+  cp="200B" na="ZERO WIDTH SPACE" alias="ZWSP"
+  cp="200C" na="ZERO WIDTH NON-JOINER" alias="ZWNJ"
+  cp="200D" na="ZERO WIDTH JOINER" alias="ZWJ"
+  cp="200E" na="LEFT-TO-RIGHT MARK" alias="LRM"
+  cp="200F" na="RIGHT-TO-LEFT MARK" alias="RLM"
 ** clang: indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
 ** extras: do_transpose should take argval and swap distant fragments
 ** completion: minibuffer completion: bad return on C-x C-f . SPC qe SPC RET
@@ -60,6 +63,10 @@
    - list directory contents
    - track directory contents file stats
    - compute subdirectory sizes
+** display: API: use style cache in DisplayState
+** display: API: remove screen argument in release_font
+** display: API: remove screen argument in glyph_width
+** display: API: add create-style(name, properties)
 ** doc: migrate TODO and documentation to markdown or reStructuredText
 ** doc: rewrite TODO file with more sections and explanations
 ** doc: migrate coding-rules.html to markdown
@@ -70,6 +77,7 @@
 ** files: fix s->offset reset to 0 upon C-x C-f newfile ENT C-x 2 C-x b ENT
 ** files: insert-file: load via separate buffer with charset conversion
 ** files: reload-file on C-x C-r
+** files: qe_load_file should split screen evenly for LF_SPLIT_SCREEN flag
 ** html: &#x200c; -> zero width causes missing chars at end of line
 ** html: mode_probe fails on junk/Books/881256329.epub/OEBPS/Attributes.xhtml when cycling
 ** html: preview mode does not work
@@ -109,12 +117,6 @@
 ** shell: M-l, M-u, M-c and other buffer modifications in shell input region
 ** syntax: fix overlong line coloring
 ** syntax: support ReStructuredText (RST)
-** text: \u200c -> zero width
-  cp="200B" na="ZERO WIDTH SPACE" alias="ZWSP"
-  cp="200C" na="ZERO WIDTH NON-JOINER" alias="ZWNJ"
-  cp="200D" na="ZERO WIDTH JOINER" alias="ZWJ"
-  cp="200E" na="LEFT-TO-RIGHT MARK" alias="LRM"
-  cp="200F" na="RIGHT-TO-LEFT MARK" alias="RLM"
 ** tiny: remove extra features
 ** undo: store cursor movements in undo records
 ** undo: kill redo list when forking after undo
@@ -126,15 +128,20 @@
 
 ** basic: completion in load-resource-file
 ** basic: elastic-tabs
-** basic: better display of invalid utf-8 encodings
 ** basic: indent-rigidly
 ** basic: scripting
 ** basic: fix colors, default schemes...
 ** basic: disable messages from commands if non-interactive (eg: set-variable)
 ** basic: make style-buffer-mode and log-buffer-mode
+** charset: better display of invalid utf-8 encodings
+** charset: change character detection API to handle cross page spanning
+** charset: fix eb_prev_char to handle non self-synchronizing charsets
 ** charset: handle chinese encodings
 ** charset: handle euc-kr
 ** charset: autodetect sjis, euc-jp...
+** charset: update cp directory from more recent unicode tables
+** charset: UTF-8 variants: CESU-8, Modified UTF-8, UTF-16
+** charset: UTF-1 obsolete standard encoding for Unicode
 ** clang: align multi line comments leading * one space to the right
 ** clang: fix C indentation inside comments
 ** clang: fix C indentation inside struct, array and enum initializers
