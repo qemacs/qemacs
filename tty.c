@@ -1087,6 +1087,7 @@ static unsigned int comb_cache_add(TTYState *ts, const unsigned int *seq, int le
 
 static void comb_cache_clean(TTYState *ts, const TTYChar *screen, int len) {
     unsigned int *ip;
+    int i;
 
     if (ts->comb_cache[0] == 0)
         return;
@@ -1095,7 +1096,7 @@ static void comb_cache_clean(TTYState *ts, const TTYChar *screen, int len) {
         *ip |= 0x10000;
     }
     ip = ts->comb_cache;
-    for (int i = 0; i < len; i++) {
+    for (i = 0; i < len; i++) {
         int ch = TTYCHAR_GETCH(screen[i]);
         if (ch >= TTYCHAR_COMB && ch < TTYCHAR_COMB + countof(ts->comb_cache) - 1) {
             ip[ch - TTYCHAR_COMB] &= ~0x10000;
@@ -1119,6 +1120,7 @@ static void comb_cache_clean(TTYState *ts, const TTYChar *screen, int len) {
 static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
     TTYState *ts = s->priv_data;
     unsigned int *ip;
+    unsigned int i;
 
     eb_printf(b, "Unicode combination cache:\n\n");
     
@@ -1129,7 +1131,7 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
             eb_printf(b, "  %06X  %d:",
                       (unsigned int)(TTYCHAR_COMB + (ip - ts->comb_cache)),
                       (*ip & 0xFFFF) - 1);
-            for (unsigned int i = 1; i < (*ip & 0xFFFF); i++) {
+            for (i = 1; i < (*ip & 0xFFFF); i++) {
                 eb_printf(b, " %04X", ip[i]);
             }
             eb_printf(b, "\n");

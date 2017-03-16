@@ -1503,17 +1503,18 @@ static void js_colorize_line(QEColorizeContext *cp,
                              unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start, i1, indent;
-    int c, style, type_decl, klen, delim, prev;
+    int c, style, klen, delim, prev;
     char kbuf[32];
     int mode_flags = syn->colorize_flags;
     int flavor = (mode_flags & CLANG_FLAVOR);
     int state = cp->colorize_state;
+    //int type_decl;  /* unused */
 
     indent = 0;
     //for (; qe_isblank(str[indent]); indent++) continue;
 
     start = i;
-    type_decl = 0;
+    //type_decl = 0;
     c = 0;
     style = 0;
 
@@ -1645,7 +1646,7 @@ static void js_colorize_line(QEColorizeContext *cp,
         case '=':
             /* exit type declaration */
             /* does not handle this: int i = 1, j = 2; */
-            type_decl = 0;
+            //type_decl = 0;
             continue;
         case '<':       /* JavaScript extension */
             if (flavor == CLANG_JS) {
@@ -1689,7 +1690,7 @@ static void js_colorize_line(QEColorizeContext *cp,
                 &&  !qe_findchar(".(:", str[i])
                 &&  strfind(syn->types, kbuf)) {
                     /* if not cast, assume type declaration */
-                    type_decl = 1;
+                    //type_decl = 1;
                     style = C_STYLE_TYPE;
                     break;
                 }
