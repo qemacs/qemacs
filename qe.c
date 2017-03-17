@@ -3586,6 +3586,7 @@ int display_char_bidir(DisplayState *s, int offset1, int offset2,
         s->fragment_offsets[s->fragment_index][1] = offset2;
         s->fragment_hex_mode[s->fragment_index] = s->cur_hex_mode;
         s->fragment_index++;
+        offset1 = offset2 = -1;
     }
     /* store the char and its embedding level */
     s->fragment_chars[s->fragment_index] = ch;
