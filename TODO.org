@@ -114,7 +114,7 @@
 ** shell: fix crash bug when invoking qemacs recursively in the terminal
 ** shell: set current directory of new shell buffer to that of current window
 ** shell: use auxiliary buffer to make process input asynchronous
-** shell: M-l, M-u, M-c and other buffer modifications in shell input region
+** shell: other buffer modification functions in shell input region
 ** syntax: fix overlong line coloring
 ** syntax: support ReStructuredText (RST)
 ** tiny: remove extra features
@@ -170,7 +170,7 @@
 ** script: expression evaluator
 ** search: count-words, wc
 ** search: stats command for word count and mode specific stats
-** undo: limit size of undo buffers
+** undo: limit size of undo buffers (undo-outer-limit, default 3000000)
 ** undo: add undo records for styles, modes...
 ** undo: disable undo for archive parse and uncompress phases
 ** undo: compress logs and limit size

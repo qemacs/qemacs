@@ -1989,6 +1989,20 @@ static void do_shell_yank(EditState *e)
     }
 }
 
+static void do_shell_changecase_word(EditState *e, int dir)
+{
+    ShellState *s = shell_get_state(e, 1);
+
+    if (s && e->interactive) {
+        // XXX: word pattern consistency issue
+        shell_write_char(e, dir == 2 ? KEY_META('c')
+                         : dir < 0 ? KEY_META('l')
+                         : KEY_META('u'));
+    } else {
+        do_changecase_word(e, dir);
+    }
+}
+
 static void do_shell_tabulate(EditState *e)
 {
     if (e->interactive) {
@@ -2358,6 +2372,12 @@ static CmdDef shell_commands[] = {
           "shell-kill-beginning-of-line", do_shell_kill_beginning_of_line, ESi, "ui")
     CMD2( KEY_CTRL('y'), KEY_NONE,
           "shell-yank", do_shell_yank, ES, "*")
+    CMD3( KEY_META('c'), KEY_NONE,
+          "shell-capitalize-word", do_shell_changecase_word, ESi, 2, "*v")
+    CMD3( KEY_META('l'), KEY_NONE,
+          "shell-downcase-word", do_shell_changecase_word, ESi, -1, "*v")
+    CMD3( KEY_META('u'), KEY_NONE,
+          "shell-upcase-word", do_shell_changecase_word, ESi, 1, "*v")
     CMD_DEF_END,
 };
 
