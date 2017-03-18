@@ -53,7 +53,6 @@
   cp="200D" na="ZERO WIDTH JOINER" alias="ZWJ"
   cp="200E" na="LEFT-TO-RIGHT MARK" alias="LRM"
   cp="200F" na="RIGHT-TO-LEFT MARK" alias="RLM"
-** clang: indentation bug on {\nputchar(expr ? 'a' : 'b');\n}
 ** extras: do_transpose should take argval and swap distant fragments
 ** completion: minibuffer completion: bad return on C-x C-f . SPC qe SPC RET
 ** config: reparse .qerc upon change

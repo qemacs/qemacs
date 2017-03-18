@@ -864,9 +864,11 @@ static void c_indent_line(EditState *s, int offset0)
                     }
                     break;
                 case ':':
-                    /* a label line is ignored */
-                    /* XXX: incorrect, should check for ternary operator ?: */
-                    if (style == C_STYLE_DEFAULT)
+                    /* a label line is ignored: regular, case and default labels
+                     * are assumed to have no preceding space
+                     */
+                    if (style == C_STYLE_DEFAULT
+                    &&  (p == buf || !qe_isspace(p[-1] & CHAR_MASK)))
                         goto prev_line;
                     break;
                 default:
