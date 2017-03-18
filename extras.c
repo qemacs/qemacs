@@ -649,13 +649,7 @@ static void do_kill_block(EditState *s, int dir)
     do_kill(s, start, s->offset, dir, 0);
 }
 
-enum {
-    CMD_TRANSPOSE_CHARS = 1,
-    CMD_TRANSPOSE_WORDS,
-    CMD_TRANSPOSE_LINES,
-};
-
-static void do_transpose(EditState *s, int cmd)
+void do_transpose(EditState *s, int cmd)
 {
     int offset0, offset1, offset2, offset3, end_offset;
     int size0, size1, size2;

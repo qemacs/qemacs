@@ -24,7 +24,6 @@
 ** shell: asynchronous input buffer
 ** shell: give commands a chance to execute for macros to behave correctly
 ** shell: A-y at process prompt
-** shell: C-t at process prompt
 ** shell: fix very long lines in shell buffer
 ** undo: saving the file kills the redo stack!
 ** undo: when undo resets the modified buffer flag, this prevents file save
@@ -78,6 +77,14 @@
 ** files: insert-file: load via separate buffer with charset conversion
 ** files: reload-file on C-x C-r
 ** files: qe_load_file should split screen evenly for LF_SPLIT_SCREEN flag
+** help: info-mode
+** help: qemacs-faq on C-h C-f
+** help: qemacs-manual on C-h C-f
+** help: add inline documentation for commands on C-h C-f
+** help: data-directory, data-path...
+** basic: frame-title-format and mode-line-format
+** basic: transient-mark-mode to highlight the current region
+** basic: delete-selection-mode to delete the highlighted region on DEL and typing text
 ** html: &#x200c; -> zero width causes missing chars at end of line
 ** html: mode_probe fails on junk/Books/881256329.epub/OEBPS/Attributes.xhtml when cycling
 ** html: preview mode does not work

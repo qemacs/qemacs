@@ -2096,6 +2096,13 @@ void do_compare_files(EditState *s, const char *filename, int bflags);
 void do_delete_horizontal_space(EditState *s);
 void do_show_date_and_time(EditState *s, int argval);
 
+enum {
+    CMD_TRANSPOSE_CHARS = 1,
+    CMD_TRANSPOSE_WORDS,
+    CMD_TRANSPOSE_LINES,
+};
+void do_transpose(EditState *s, int cmd);
+
 /* hex.c */
 
 extern ModeDef hex_mode;

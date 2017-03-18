@@ -2003,6 +2003,18 @@ static void do_shell_changecase_word(EditState *e, int dir)
     }
 }
 
+static void do_shell_transpose(EditState *e, int cmd)
+{
+    ShellState *s = shell_get_state(e, 1);
+
+    if (s && e->interactive) {
+        shell_write_char(e, cmd == CMD_TRANSPOSE_CHARS ?
+                         KEY_CTRL('T') : KEY_META('t'));
+    } else {
+        do_transpose(e, cmd);
+    }
+}
+
 static void do_shell_tabulate(EditState *e)
 {
     if (e->interactive) {
@@ -2378,6 +2390,10 @@ static CmdDef shell_commands[] = {
           "shell-downcase-word", do_shell_changecase_word, ESi, -1, "*v")
     CMD3( KEY_META('u'), KEY_NONE,
           "shell-upcase-word", do_shell_changecase_word, ESi, 1, "*v")
+    CMD3( KEY_CTRL('t'), KEY_NONE,
+          "shell-transpose-chars", do_shell_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v")
+    CMD3( KEY_META('t'), KEY_NONE,
+          "shell-transpose-words", do_shell_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v")
     CMD_DEF_END,
 };
 
