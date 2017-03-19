@@ -41,6 +41,7 @@ static VarDef var_table[] = {
     S_VAR( "QEPATH", res_path, VAR_CHARS, VAR_RO )
     //S_VAR( "it", it, VAR_NUMBER, VAR_RW )
     S_VAR( "ignore-spaces", ignore_spaces, VAR_NUMBER, VAR_RW_SAVE )
+    S_VAR( "ignore-comments", ignore_comments, VAR_NUMBER, VAR_RW_SAVE )
     S_VAR( "hilite-region", hilite_region, VAR_NUMBER, VAR_RW_SAVE )
     S_VAR( "mmap-threshold", mmap_threshold, VAR_NUMBER, VAR_RW_SAVE )
     S_VAR( "max-load-size", max_load_size, VAR_NUMBER, VAR_RW_SAVE )

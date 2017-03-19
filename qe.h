@@ -1503,6 +1503,7 @@ struct QEmacsState {
     //int no_config;      /* prevent config file eval */
     //int force_refresh;  /* force a complete screen refresh */
     int ignore_spaces;  /* ignore spaces when comparing windows */
+    int ignore_comments;  /* ignore comments when comparing windows */
     int hilite_region;  /* hilite the current region when selecting */
     int mmap_threshold; /* minimum file size for mmap */
     int max_load_size;  /* maximum file size for loading in memory */

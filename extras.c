@@ -24,6 +24,48 @@
 #include "qfribidi.h"
 #include "variables.h"
 
+static int qe_skip_comments(EditState *s, int offset, int *offsetp)
+{
+    unsigned int buf[COLORED_MAX_LINE_SIZE];
+    int line_num, col_num, len, pos;
+    int offset0, offset1;
+
+    if (!s->colorize_func && !s->b->b_styles)
+        return 0;
+
+    eb_get_pos(s->b, &line_num, &col_num, offset);
+    offset0 = eb_goto_bol2(s->b, offset, &pos);
+    /* XXX: should only query the syntax colorizer */
+    len = s->get_colorized_line(s, buf, countof(buf), offset0, &offset1, line_num);
+    if (len > countof(buf))
+        len = countof(buf);
+    if (pos >= len)
+        return 0;
+    if ((buf[pos] >> STYLE_SHIFT) != QE_STYLE_COMMENT)
+        return 0;
+    while (pos < len && (buf[pos] >> STYLE_SHIFT) == QE_STYLE_COMMENT) {
+        offset = eb_next(s->b, offset);
+        pos++;
+    }
+    *offsetp = offset;
+    return 1;
+}
+
+static int qe_skip_spaces(EditState *s, int offset, int *offsetp)
+{
+    int offset0 = offset, offset1;
+
+    while (offset < s->b->total_size
+        && qe_isspace(eb_nextc(s->b, offset, &offset1))) {
+        offset = offset1;
+    }
+    if (offset != offset0) {
+        *offsetp = offset;
+        return 1;
+    }
+    return 0;
+}
+
 void do_compare_windows(EditState *s, int argval)
 {
     QEmacsState *qs = s->qe_state;
@@ -32,6 +74,7 @@ void do_compare_windows(EditState *s, int argval)
     int offset1, offset2, size1, size2, ch1, ch2;
     int tries, resync = 0;
     char buf1[MAX_CHAR_BYTES + 2], buf2[MAX_CHAR_BYTES + 2];
+    const char *comment = "";
 
     s1 = s;
     /* Should use same internal function as for next_window */
@@ -40,9 +83,12 @@ void do_compare_windows(EditState *s, int argval)
     else
         s2 = qs->first_window;
 
-    if (argval != NO_ARG)
-        qs->ignore_spaces ^= 1;
-
+    if (argval != NO_ARG) {
+        if (argval & 4)
+            qs->ignore_spaces ^= 1;
+        if (argval & 16)
+            qs->ignore_comments ^= 1;
+    }
     if (s1 == s2) {
         /* single window: bail out */
         return;
@@ -78,17 +124,23 @@ void do_compare_windows(EditState *s, int argval)
         if (ch1 != ch2) {
             if (qs->ignore_spaces) {
                 /* UTF-8 issue */
-                if (qe_isspace(ch1)) {
-                    s1->offset = offset1;
+                if (qe_isspace(ch1) || qe_isspace(ch2)) {
+                    qe_skip_spaces(s1, s1->offset, &s1->offset);
+                    qe_skip_spaces(s2, s2->offset, &s2->offset);
+                    if (!*comment)
+                        comment = "Skipped spaces, ";
                     continue;
                 }
-                if (qe_isspace(ch2)) {
-                    s2->offset = offset2;
+            }
+            if (qs->ignore_comments) {
+                if (qe_skip_comments(s1, s1->offset, &s1->offset) |
+                    qe_skip_comments(s2, s2->offset, &s2->offset)) {
+                    comment = "Skipped comments, ";
                     continue;
                 }
             }
             if (ch1 == EOF || ch2 == EOF) {
-                put_status(s, "Extra characters");
+                put_status(s, "%sExtra characters", comment);
                 break;
             }
             if (resync) {
@@ -120,7 +172,7 @@ void do_compare_windows(EditState *s, int argval)
                            s1->offset - save1, s2->offset - save2);
                 break;
             }
-            put_status(s, "Difference: '%s' [0x%02X] <-> '%s' [0x%02X]",
+            put_status(s, "%sDifference: '%s' [0x%02X] <-> '%s' [0x%02X]", comment,
                        utf8_char_to_string(buf1, ch1), ch1,
                        utf8_char_to_string(buf2, ch2), ch2);
             break;
@@ -130,7 +182,7 @@ void do_compare_windows(EditState *s, int argval)
             s2->offset = offset2;
             continue;
         }
-        put_status(s, "No difference");
+        put_status(s, "%sNo difference", comment);
         break;
     }
 }
