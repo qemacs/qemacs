@@ -742,6 +742,6 @@
                  /* E0080-E00FF  unassigned */
                  /* E0100-E01EF  Variation Selectors Supplement */
     0xE01EF, 0,  /* E01F0-EFFFF  unassigned */
-    0x10FFFF, 2, /* F0000-FFFFF  Supplementary Private Use Area-A */
+    0xFFFFFFFF, 1, /* F0000-FFFFF  Supplementary Private Use Area-A */
                  /* 100000-10FFFF  Supplementary Private Use Area-B */
-    0xFFFFFFFF, 1, /* catch all */
+                 /* catch all */

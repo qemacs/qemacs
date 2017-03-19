@@ -29,13 +29,13 @@ enum {
 static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
-        int c, maxc, offset, max_offset;
+        int c, maxc, offset, max_offset, w;
 
         /* unihex mode is incompatible with EOL_DOS eol type */
         eb_set_charset(s->b, s->b->charset, EOL_UNIX);
 
         /* Compute max width of character in hex dump (limit to first 64K) */
-        maxc = 0xFF;
+        maxc = 0xFFFF;
         max_offset = min(65536, s->b->total_size);
         for (offset = 0; offset < max_offset;) {
             c = eb_nextc(s->b, offset, &offset);
@@ -44,8 +44,8 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
 
         s->hex_mode = 1;
         s->hex_nibble = 0;
-        s->unihex_mode = snprintf(NULL, 0, "%x", maxc);
-        s->dump_width = 32 / s->unihex_mode;
+        s->unihex_mode = w = snprintf(NULL, 0, "%x", maxc);
+        s->dump_width = clamp((s->width - 8 - 2 - 2 - 1) / (w + 3), 8, 16);
         s->insert = 0;
         s->wrap = WRAP_TRUNCATE;
     }
@@ -54,7 +54,7 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
 
 static int unihex_to_disp(int c)
 {
-    /* Prevent display of C1 control codes and invalid code points */
+    /* Prevent display of C0 and C1 control codes and invalid code points */
     if (c < ' ' || c == 127 || (c >= 128 && c < 160)
     ||  (c >= 0xD800 && c <= 0xDFFF) || c > 0x10FFFF)
         c = '.';
@@ -75,6 +75,7 @@ static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
 {
     int j, len, ateof, dump_width;
     int offset1, offset2;
+    int c, maxc;
     unsigned int b;
     /* CG: array size is incorrect, should be smaller */
     unsigned int buf[LINE_MAX_SIZE];
@@ -91,12 +92,19 @@ static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
     dump_width = min(LINE_MAX_SIZE - 1, s->dump_width);
     ateof = 0;
     len = 0;
+    maxc = 0;
     for (j = 0; j < dump_width && offset < s->b->total_size; j++) {
         pos[len] = offset;
-        buf[len] = eb_nextc(s->b, offset, &offset);
+        buf[len] = c = eb_nextc(s->b, offset, &offset);
+        if (maxc < c)
+            maxc = c;
         len++;
     }
     pos[len] = offset;
+
+    /* adjust s->unihex_mode if a larger character has been found */
+    while (s->unihex_mode < 8 && maxc >> (s->unihex_mode * 4) != 0)
+        s->unihex_mode++;
 
     ds->style = UNIHEX_STYLE_DUMP;
 
@@ -218,6 +226,7 @@ static void unihex_mode_line(EditState *s, buf_t *out)
 static int unihex_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     /* XXX: should check for non 8 bit characters */
+    /* XXX: should auto-detect if content has non ASCII utf8 contents */
     return 1;
 }
 

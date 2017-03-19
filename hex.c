@@ -221,9 +221,10 @@ static void hex_move_bol(EditState *s)
 
 static void hex_move_eol(EditState *s)
 {
-    s->offset = align(s->offset, s->dump_width) + s->dump_width - 1;
-    if (s->offset > s->b->total_size)
-        s->offset = s->b->total_size;
+    int offset = align(s->offset, s->dump_width) + s->dump_width - 1;
+    if (offset > s->b->total_size)
+        offset = s->b->total_size;
+    s->offset = offset;
 }
 
 static void hex_move_left_right(EditState *s, int dir)
