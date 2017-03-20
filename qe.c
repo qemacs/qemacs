@@ -73,6 +73,7 @@ static int screen_width = 0;
 static int screen_height = 0;
 static int no_init_file;
 int force_tty;
+int single_window;
 int use_session_file;
 #ifndef CONFIG_TINY
 static int free_everything;
@@ -8281,6 +8282,8 @@ static CmdOptionDef cmd_options[] = {
       { .func_noarg = show_usage }},
     { "no-init-file", "q", NULL, CMD_OPT_BOOL, "do not load config files",
       { .int_ptr = &no_init_file }},
+    { "single-window", "1", NULL, CMD_OPT_BOOL, "keep a single window when loading multiple files",
+       { .int_ptr = &single_window }},
     { "no-windows", "nw", NULL, CMD_OPT_BOOL, "force tty terminal usage",
        { .int_ptr = &force_tty }},
     { "ttycharset", "c", "CHARSET", CMD_OPT_ARG, "specify tty charset",
@@ -8597,7 +8600,10 @@ static void qe_init(void *opaque)
         }
         /* load filename relative to qe current directory */
         /* XXX: should split windows evenly */
-        qe_load_file(s, arg, LF_CWD_RELATIVE | LF_SPLIT_WINDOW, 0);
+        qe_load_file(s, arg,
+                     single_window ? LF_CWD_RELATIVE :
+                     LF_CWD_RELATIVE | LF_SPLIT_WINDOW,
+                     0);
         s = qs->active_window;
         if (line_num)
             do_goto_line(s, line_num, col_num);
