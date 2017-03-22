@@ -1517,10 +1517,6 @@ done_utf8:
 
     detect_eol_type(buf, size, &charset_raw, eol_typep);
 
-    if (*eol_typep == EOL_DOS || has_utf8 < 0) {
-        /* XXX: default DOS files to Latin1, should be selectable */
-        return &charset_8859_1;
-    }
 #ifndef CONFIG_TINY
     if (*eol_typep == EOL_MAC) {
         /* XXX: default MAC files to Mac_roman, should be selectable */
@@ -1528,6 +1524,10 @@ done_utf8:
         return &charset_mac_roman;
     }
 #endif
+    if (*eol_typep == EOL_DOS || has_utf8 < 0) {
+        /* XXX: default DOS files to Latin1, should be selectable */
+        return &charset_8859_1;
+    }
     /* XXX: should use a state variable for default charset */
     return &charset_utf8;
 #endif
