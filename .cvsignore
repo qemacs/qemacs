@@ -34,6 +34,7 @@ new
 xxx
 # temp-files
 .tags
+f
 m
 t
 tt
@@ -42,6 +43,7 @@ ttt
 STATS
 BUGS
 DONE
+IDEAS
 .qerc
 cflags.mk
 fnmatch.c
