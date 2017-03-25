@@ -1,7 +1,7 @@
 /*
  * Miscellaneous QEmacs modes for arm development related file formats
  *
- * Copyright (c) 2014 Charlie Gordon.
+ * Copyright (c) 2014-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -317,17 +317,6 @@ enum {
     INTEL_HEX_STYLE_ERROR    = QE_STYLE_ERROR,
 };
 
-static inline int hex_value(int c)
-{
-    if (c >= '0' && c <= '9')
-        return c - '0';
-    if (c >= 'a' && c <= 'f')
-        return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F')
-        return c - 'A' + 10;
-    return -1;
-}
-
 static void intel_hex_colorize_line(QEColorizeContext *cp,
                                     unsigned int *str, int n, ModeDef *syn)
 {
@@ -335,15 +324,15 @@ static void intel_hex_colorize_line(QEColorizeContext *cp,
         /* Hex Load format: `:SSOOOOTTxx...xxCC` */
         int i, sh, sum = 0, chksum = 0;
         for (i = 1, sh = 4; i < n - 2; i++) {
-            int x = hex_value(str[i]);
+            int x = to_hex(str[i]);
             if (x >= 0) {
                 sum += x << sh;
                 sh ^= 4;
             }
         }
         sum = (-sum & 0xFF);
-        chksum = hex_value(str[i]) << 4;
-        chksum += hex_value(str[i + 1]);
+        chksum = to_hex(str[i]) << 4;
+        chksum += to_hex(str[i + 1]);
 
         SET_COLOR(str, 0, 1, INTEL_HEX_STYLE_LEAD);
         SET_COLOR(str, 1, 3, INTEL_HEX_STYLE_SIZE);
