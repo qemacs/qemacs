@@ -1,18 +1,18 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-03-16
+; Updated: 2017-03-25
 
 * Needed for release version 5
 
 * Priority 0
 
-** archive: issue with current directory
 ** basic: fix current position when changing buffer attached to window
 ** basic: enter should optionally remove whitespace at end of line
 ** basic: reset last command when executing macro
 ** basic: make `do_word_right`, `do_word_left`, `do_bol`, `do_eol`... return new offset
 ** basic: use visual movement for left, right, up, down and character based for C-b C-f C-n C-p
+** basic: share mmapped pages correctly
 ** completion: fix electric behavior
 ** files: check file date to detect asynchronous modifications on disk
 ** files: reload modified file upon change if untouched since load
@@ -31,11 +31,11 @@
 
 * Priority 1
 
+** archive: issue with current directory
 ** archive: add API to register new file formats
 ** basic: improve speed: C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET -> 96s
 ** basic: improve speed: C-x C-f ~/x2m RET C-u 1000 C-n -> 4s
 ** basic: check abort during long operations: bufferize input and check for ^G
-** basic: share mmapped pages correctly
 ** basic: show memory stats in describe-buffer and about-qemacs
 ** basic: fix mode setting mess
 ** basic: fix default wrap setting mess
@@ -44,6 +44,7 @@
 ** basic: optional 64-bit offsets on 64-bit systems, use typedef for buffer offsets
 ** basic: fix behaviour on overlong lines
 ** basic: fix offset when exiting s->hex_mode
+** charset: detect bad encoding and use errno to tell caller
 ** charset: use rune and u8 types
 ** charset: auto/mixed eol mode
 ** charset: display ^L as horizontal line and consider as linebreak character
@@ -78,7 +79,7 @@
 ** files: qe_load_file should split screen evenly for LF_SPLIT_SCREEN flag
 ** help: info-mode
 ** help: qemacs-faq on C-h C-f
-** help: qemacs-manual on C-h C-f
+** help: qemacs-manual on C-h m
 ** help: add inline documentation for commands on C-h C-f
 ** help: data-directory, data-path...
 ** basic: frame-title-format and mode-line-format
@@ -148,6 +149,7 @@
 ** charset: update cp directory from more recent unicode tables
 ** charset: UTF-8 variants: CESU-8, Modified UTF-8, UTF-16
 ** charset: UTF-1 obsolete standard encoding for Unicode
+** charset: handle tty-width to compute alignement in dired, bufed...
 ** clang: align multi line comments leading * one space to the right
 ** clang: fix C indentation inside comments
 ** clang: fix C indentation inside struct, array and enum initializers
@@ -270,7 +272,7 @@ edit_close(s)
 do_delete_window(s)
   bufed_select(s) if vertical split
   dired_select(s) if vertical split
-do_less_quit(s)
+do_popup_exit(s)
 do_delete_other_windows(s) deletes other windows (!)
 do_minibuffer_exit(s) also deletes completion_popup
 insert_window_left()  deletes some left-most windows
@@ -539,6 +541,7 @@ insert_window_left()  deletes some left-most windows
 ** find-file: gist:snippet
 ** new flavor for GoogleClosureCompiler
 
+** use Unicode file hierarchy for code page files
 ** handle or remove extra code page files:
 
 APL-ISO-IR-68.TXT GSM0338.TXT SGML.TXT
@@ -551,3 +554,9 @@ sjis-0213-2004-std.txt
 MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT 
 cpdata.txt
 koi8_ru.cp
+
+emacs-22 bindings:
+C-x ` for next-error
+M-g M-g goto-line (with prefix argument)
+M-g M-p previous-error
+M-g M-n next-error

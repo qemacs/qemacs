@@ -5549,7 +5549,7 @@ void edit_attach(EditState *s, EditState *e)
             if (*ep == e)
                 break;
         }
-        s->next_window = e;
+        s->next_window = *ep;
         *ep = s;
         qs->active_window = active_window ? active_window : s;
     }
@@ -6122,11 +6122,11 @@ void minibuffer_init(void)
     qe_register_cmd_table(minibuffer_commands, &minibuffer_mode);
 }
 
-/* less mode */
+/* popup paging mode */
 
-static ModeDef less_mode;
+static ModeDef popup_mode;
 
-/* XXX: incorrect to save it. Should use a safer method */
+/* XXX: incorrect to save it. Should use window target member */
 static EditState *popup_saved_active;
 
 /* Verify that window still exists, return argument or NULL,
@@ -6144,8 +6144,7 @@ EditState *check_window(EditState **sp)
     return *sp = NULL;
 }
 
-/* less like mode */
-void do_less_exit(EditState *s)
+void do_popup_exit(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
 
@@ -6177,7 +6176,7 @@ EditState *show_popup(EditBuffer *b)
     h = (h1 * 3) / 4;
 
     s = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
-    edit_set_mode(s, &less_mode);
+    edit_set_mode(s, &popup_mode);
     s->wrap = WRAP_TRUNCATE;
 
     popup_saved_active = qs->active_window;
@@ -6186,15 +6185,15 @@ EditState *show_popup(EditBuffer *b)
     return s;
 }
 
-static void less_init(void)
+static void popup_init(void)
 {
-    /* less mode inherits from text mode */
-    memcpy(&less_mode, &text_mode, sizeof(ModeDef));
-    less_mode.name = "less";
-    less_mode.mode_name = NULL;
-    less_mode.mode_probe = NULL;
-    qe_register_mode(&less_mode, MODEF_VIEW);
-    qe_register_cmd_table(less_commands, &less_mode);
+    /* popup mode inherits from text mode */
+    memcpy(&popup_mode, &text_mode, sizeof(ModeDef));
+    popup_mode.name = "popup";
+    popup_mode.mode_name = NULL;
+    popup_mode.mode_probe = NULL;
+    qe_register_mode(&popup_mode, MODEF_VIEW);
+    qe_register_cmd_table(popup_commands, &popup_mode);
 }
 
 #ifndef CONFIG_TINY
@@ -8489,7 +8488,7 @@ static void qe_init(void *opaque)
     register_completion("color", color_completion);
 
     minibuffer_init();
-    less_init();
+    popup_init();
 
     /* init all external modules in link order */
     init_all_modules();

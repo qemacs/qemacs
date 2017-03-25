@@ -437,11 +437,11 @@ CmdDef minibuffer_commands[] = {
     CMD_DEF_END,
 };
 
-CmdDef less_commands[] = {
+CmdDef popup_commands[] = {
     CMD0( 'q', KEY_CTRL('g'),
-          "less-exit", do_less_exit)
+          "popup-exit", do_popup_exit)
     CMD3( '/', KEY_NONE,
-          "less-isearch", do_isearch, ESii, 1, "vui" )
+          "popup-isearch", do_isearch, ESii, 1, "vui" )
     CMD_DEF_END,
 };
 

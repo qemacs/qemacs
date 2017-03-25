@@ -89,7 +89,7 @@ static const char c_keywords[] = {
 
 static const char c_types[] = {
     "char|double|float|int|long|unsigned|short|signed|void|va_list|"
-    "_Bool|_Complex|_Imaginary|"
+    "_Bool|_Complex|_Imaginary|FILE|"
 };
 
 static const char c_extensions[] = {
@@ -1458,6 +1458,27 @@ ModeDef css_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- less css preprocessor ----------------*/
+
+static const char less_keywords[] = {
+    "|"
+};
+
+static const char less_types[] = {
+    "|"
+};
+
+ModeDef less_mode = {
+    .name = "less",
+    .extensions = "less",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CSS,
+    .keywords = less_keywords,
+    .types = less_types,
+    .indent_func = c_indent_line,
+    .fallback = &c_mode,
+};
+
 /*---------------- Javascript programming language ----------------*/
 
 static const char js_keywords[] = {
@@ -2762,6 +2783,7 @@ static int c_init(void)
     qe_register_mode(&csharp_mode, MODEF_SYNTAX);
     qe_register_mode(&awk_mode, MODEF_SYNTAX);
     qe_register_mode(&css_mode, MODEF_SYNTAX);
+    qe_register_mode(&less_mode, MODEF_SYNTAX);
     qe_register_mode(&json_mode, MODEF_SYNTAX);
     qe_register_mode(&js_mode, MODEF_SYNTAX);
     qe_register_mode(&as_mode, MODEF_SYNTAX);

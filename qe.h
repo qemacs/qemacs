@@ -1789,7 +1789,7 @@ static inline int scale(int a, int b, int c) {
 void minibuffer_init(void);
 
 extern CmdDef minibuffer_commands[];
-extern CmdDef less_commands[];
+extern CmdDef popup_commands[];
 
 typedef void (*CompletionFunc)(CompleteState *cp);
 
@@ -2053,7 +2053,7 @@ void minibuf_complete_scroll_up_down(EditState *s, int dir);
 void do_history(EditState *s, int dir);
 void do_minibuffer_get_binary(EditState *s);
 void do_minibuffer_exit(EditState *s, int fabort);
-void do_less_exit(EditState *s);
+void do_popup_exit(EditState *s);
 void do_toggle_read_only(EditState *s);
 void do_not_modified(EditState *s, int argval);
 void do_find_alternate_file(EditState *s, const char *filename, int bflags);
