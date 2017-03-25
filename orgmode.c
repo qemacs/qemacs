@@ -2,7 +2,7 @@
  * Org mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2014 Charlie Gordon.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  * Copyright (c) 2014 Francois Revol.
  *
  * This library is free software; you can redistribute it and/or

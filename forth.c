@@ -1,7 +1,7 @@
 /*
  * Miscellaneous QEmacs modes for Forth variants
  *
- * Copyright (c) 2014 Charlie Gordon.
+ * Copyright (c) 2014-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
