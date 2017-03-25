@@ -1550,8 +1550,14 @@ static void do_shell(EditState *s, int force)
             if (shs->pid >= 0)
                 return;
         } else {
-            /* XXX: should find the last used shell buffer */
-            b = try_show_buffer(s, "*shell*");
+            /* Find the last used shell buffer */
+            const char *bname = "*shell*";
+
+            if ((b = eb_find(error_buffer)) != NULL
+            &&  qe_get_buffer_mode_data(b, &shell_mode, NULL) != NULL) {
+                bname = error_buffer;
+            }
+            b = try_show_buffer(s, bname);
             if (b) {
                 shs = qe_get_buffer_mode_data(b, &shell_mode, NULL);
                 if (shs && shs->pid >= 0)
