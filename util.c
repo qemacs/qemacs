@@ -1133,16 +1133,16 @@ int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys)
     return out->len - start;
 }
 
-int to_hex(int key)
+int to_hex(int c)
 {
     /* Only ASCII supported */
-    if (qe_isdigit(key))
-        return key - '0';
-    else
-    if (qe_inrange(key | ('a' - 'A'), 'a', 'f'))
-        return (key & 7) + 9;
-    else
-        return -1;
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return -1;
 }
 
 #if 1
