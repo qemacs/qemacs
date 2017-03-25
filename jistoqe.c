@@ -2,6 +2,7 @@
  * Convert Unicode JIS tables to QEmacs format
  *
  * Copyright (c) 2002 Fabrice Bellard.
+ * Copyright (c) 2002-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -51,7 +52,7 @@ static char *getline(char *buf, int buf_size, FILE *f, int strip_comments)
 }
 
 /* handle jis208 or jis212 table */
-static void handle_jis(FILE **fp, const char *name, const char *filename)
+static void handle_jis(FILE *f, const char *name, const char *filename)
 {
     int c1, c2, b1, b2, b1_max, b2_max, i, j, nb, n;
     int table[94*94];
@@ -77,9 +78,7 @@ static void handle_jis(FILE **fp, const char *name, const char *filename)
     b1_max = 0;
     b2_max = 0;
     nb = 0;
-    for (;;) {
-        if (!getline(line, sizeof(line), *fp, 1))
-            break;
+    while (getline(line, sizeof(line), f, 1)) {
         p = line;
         if (is_jis208)
             c1 = strtol(p, (char **)&p, 0);
@@ -92,11 +91,11 @@ static void handle_jis(FILE **fp, const char *name, const char *filename)
         /* compress the code */
         b1 = b1 - 0x21;
         b2 = b2 - 0x21;
-        if (b1 > b1_max)
+        if (b1_max < b1)
             b1_max = b1;
-        if (b2 > b2_max)
+        if (b2_max < b2)
             b2_max = b2;
-        if (b2 > table_b2_max[b1])
+        if (table_b2_max[b1] < b2)
             table_b2_max[b1] = b2;
         table[b1 * 94 + b2] = c2;
         nb++;
@@ -143,6 +142,7 @@ int main(int argc, char **argv)
     printf("\n" "/*"
            "\n" " * JIS Tables for QEmacs"
            "\n" " * Copyright (c) 2002 Fabrice Bellard."
+           "\n" " * Copyright (c) 2002-2017 Charlie Gordon."
            "\n" " *"
            "\n" " * This library is free software; you can redistribute it and/or"
            "\n" " * modify it under the terms of the GNU Lesser General Public"
@@ -173,7 +173,7 @@ int main(int argc, char **argv)
             exit(1);
         }
 
-        handle_jis(&f, name, filename);
+        handle_jis(f, name, filename);
 
         fclose(f);
     }

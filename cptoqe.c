@@ -2,7 +2,7 @@
  * Convert Unicode 8-bit code page files to QEmacs format
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2007-2008 Charlie Gordon.
+ * Copyright (c) 2007-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -114,12 +114,13 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
             base = get_basename_offset(includename);
             pstrcpy(includename + base, sizeof(includename) - base,
                     skipspaces(p + 8));
+            filename = includename;
             f = fopen(includename, "r");
             if (f == NULL) {
                 fprintf(stderr, "%s: cannot open %s\n", name, includename);
                 f = f0;
+                filename = fname;
             }
-            filename = includename;
             continue;
         }
 
@@ -176,9 +177,9 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
     max_code = -1;
     for (i = 0; i < 256; i++) {
         if (table[i] != i) {
-            if (i < min_code)
+            if (min_code > i)
                 min_code = i;
-            if (i > max_code)
+            if (max_code < i)
                 max_code = i;
         }
     }
@@ -229,24 +230,25 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
             }
         }
     }
-    printf("\",\n");
+    printf("\",");
 
-    printf("    NULL,\n"
-           "    decode_8bit_init,\n"
-           "    decode_8bit,\n"
-           "    encode_8bit,\n"
-           "    charset_get_pos_8bit,\n"
-           "    charset_get_chars_8bit,\n"
-           "    charset_goto_char_8bit,\n"
-           "    charset_goto_line_8bit,\n"
-           "    .char_size = 1,\n"
-           "    .variable_size = 0,\n"
-           "    .table_alloc = 1,\n"
-           "    .eol_char = %d,\n"
-           "    .min_char = %d,\n"
-           "    .max_char = %d,\n"
-           "    .private_table = table_%s,\n"
-           "};\n\n",
+    printf("\n" "    NULL,"
+           "\n" "    decode_8bit_init,"
+           "\n" "    decode_8bit,"
+           "\n" "    encode_8bit,"
+           "\n" "    charset_get_pos_8bit,"
+           "\n" "    charset_get_chars_8bit,"
+           "\n" "    charset_goto_char_8bit,"
+           "\n" "    charset_goto_line_8bit,"
+           "\n" "    .char_size = 1,"
+           "\n" "    .variable_size = 0,"
+           "\n" "    .table_alloc = 1,"
+           "\n" "    .eol_char = %d,"
+           "\n" "    .min_char = %d,"
+           "\n" "    .max_char = %d,"
+           "\n" "    .private_table = table_%s,"
+           "\n" "};"
+           "\n\n",
            eol_char, min_code, max_code, name_id);
 
     add_init("    qe_register_charset(&charset_");
@@ -303,7 +305,7 @@ int main(int argc, char **argv)
            "\n" " * More Charsets and Tables for QEmacs"
            "\n" " *"
            "\n" " * Copyright (c) 2002 Fabrice Bellard."
-           "\n" " * Copyright (c) 2002-2008 Charlie Gordon."
+           "\n" " * Copyright (c) 2002-2017 Charlie Gordon."
            "\n" " *"
            "\n" " * This library is free software; you can redistribute it and/or"
            "\n" " * modify it under the terms of the GNU Lesser General Public"
