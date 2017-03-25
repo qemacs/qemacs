@@ -3,7 +3,7 @@
  * linked with qemacs
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2007-2008 Charlie Gordon.
+ * Copyright (c) 2007-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
