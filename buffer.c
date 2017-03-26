@@ -2213,20 +2213,19 @@ int eb_puts(EditBuffer *b, const char *s)
     return eb_insert_utf8_buf(b, b->total_size, s, strlen(s));
 }
 
-int eb_printf(EditBuffer *b, const char *fmt, ...)
+int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap)
 {
     char buf0[1024];
     char *buf;
     int len, size, written;
-    va_list ap;
+    va_list ap2;
 
-    va_start(ap, fmt);
+    va_copy(ap2, ap);
     size = sizeof(buf0);
     buf = buf0;
-    len = vsnprintf(buf, size, fmt, ap);
-    va_end(ap);
+    len = vsnprintf(buf, size, fmt, ap2);
+    va_end(ap2);
     if (len >= size) {
-        va_start(ap, fmt);
         size = len + 1;
 #ifdef CONFIG_WIN32
         buf = qe_malloc_bytes(size);
@@ -2234,7 +2233,6 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
         buf = alloca(size);
 #endif
         vsnprintf(buf, size, fmt, ap);
-        va_end(ap);
     }
     /* CG: insert buf encoding according to b->charset and b->eol_type.
      * buf may contain \0 characters via the %c modifer.
@@ -2245,6 +2243,17 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
     if (buf != buf0)
         qe_free(&buf);
 #endif
+    return written;
+}
+
+int eb_printf(EditBuffer *b, const char *fmt, ...)
+{
+    va_list ap;
+    int written;
+
+    va_start(ap, fmt);
+    written = eb_vprintf(b, fmt, ap);
+    va_end(ap);
     return written;
 }
 

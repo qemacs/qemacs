@@ -1061,6 +1061,7 @@ int eb_insert_str(EditBuffer *b, int offset, const char *str);
 int eb_match_uchar(EditBuffer *b, int offset, int c, int *offsetp);
 int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp);
 int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp);
+int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) qe__attr_printf(2,0);
 int eb_printf(EditBuffer *b, const char *fmt, ...) qe__attr_printf(2,3);
 int eb_puts(EditBuffer *b, const char *s);
 int eb_putc(EditBuffer *b, int c);
@@ -1842,7 +1843,7 @@ void do_load_qerc(EditState *e, const char *file);
 void do_add_resource_path(EditState *s, const char *path);
 
 /* popup / low level window handling */
-EditState *show_popup(EditBuffer *b);
+EditState *show_popup(EditState *s, EditBuffer *b);
 int check_read_only(EditState *s);
 EditState *insert_window_left(EditBuffer *b, int width, int flags);
 EditState *find_window(EditState *s, int key, EditState *def);
@@ -2069,7 +2070,7 @@ void do_delete_hidden_windows(EditState *s);
 void do_describe_key_briefly(EditState *s);
 void do_show_bindings(EditState *s, const char *cmd_name);
 void do_apropos(EditState *s, const char *str);
-EditBuffer *new_help_buffer(int *show_ptr);
+EditBuffer *new_help_buffer(void);
 void do_describe_bindings(EditState *s);
 void do_help_for_help(EditState *s);
 void qe_event_init(void);

@@ -1162,7 +1162,7 @@ static void do_c_list_conditionals(EditState *s)
         }
     }
     if (b->total_size > 0) {
-        show_popup(b);
+        show_popup(s, b);
     } else {
         eb_free(&b);
         put_status(s, "Not in a #if conditional");

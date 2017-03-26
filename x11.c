@@ -1878,10 +1878,10 @@ static void x11_list_fonts(EditState *s, int argval)
 {
     char buf[80];
     EditBuffer *b;
-    int show, i, count;
+    int i, count;
     char **list;
 
-    b = new_help_buffer(&show);
+    b = new_help_buffer();
     if (!b)
         return;
 
@@ -1900,9 +1900,7 @@ static void x11_list_fonts(EditState *s, int argval)
     XFreeFontNames(list);
 
     b->flags |= BF_READONLY;
-    if (show) {
-        show_popup(b);
-    }
+    show_popup(s, b);
 }
 
 static CmdDef x11_commands[] = {

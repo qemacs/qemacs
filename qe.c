@@ -6159,10 +6159,10 @@ void do_popup_exit(EditState *s)
 }
 
 /* show a popup on a readonly buffer */
-EditState *show_popup(EditBuffer *b)
+EditState *show_popup(EditState *s, EditBuffer *b)
 {
     QEmacsState *qs = &qe_state;
-    EditState *s = qs->active_window;
+    EditState *e;
     int w, h, w1, h1;
 
     /* Prevent recursion */
@@ -6175,14 +6175,14 @@ EditState *show_popup(EditBuffer *b)
     w = (w1 * 4) / 5;
     h = (h1 * 3) / 4;
 
-    s = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
-    edit_set_mode(s, &popup_mode);
-    s->wrap = WRAP_TRUNCATE;
+    e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
+    edit_set_mode(e, &popup_mode);
+    e->wrap = WRAP_TRUNCATE;
 
     popup_saved_active = qs->active_window;
-    qs->active_window = s;
-    do_refresh(s);
-    return s;
+    qs->active_window = e;
+    do_refresh(e);
+    return e;
 }
 
 static void popup_init(void)
@@ -7526,29 +7526,27 @@ void do_describe_key_briefly(EditState *s)
     key_ctx.describe_key = 1;
 }
 
-EditBuffer *new_help_buffer(int *show_ptr)
+EditBuffer *new_help_buffer(void)
 {
     EditBuffer *b;
 
-    *show_ptr = 0;
     b = eb_find("*Help*");
     if (b) {
         eb_clear(b);
     } else {
         b = eb_new("*Help*", BF_UTF8);
-        *show_ptr = 1;
     }
     return b;
 }
 
-void do_help_for_help(qe__unused__ EditState *s)
+void do_help_for_help(EditState *s)
 {
     EditBuffer *b;
-    int show;
 
-    b = new_help_buffer(&show);
+    b = new_help_buffer();
     if (!b)
         return;
+
     eb_printf(b,
               "QEmacs help for help - Press q to quit:\n"
               "\n"
@@ -7557,9 +7555,7 @@ void do_help_for_help(qe__unused__ EditState *s)
               "C-h c     Describe key briefly\n"
               );
     b->flags |= BF_READONLY;
-    if (show) {
-        show_popup(b);
-    }
+    show_popup(s, b);
 }
 
 #ifdef CONFIG_WIN32
@@ -8623,7 +8619,7 @@ static void qe_init(void *opaque)
 
     b = eb_find("*errors*");
     if (b != NULL) {
-        show_popup(b);
+        show_popup(s, b);
         edit_display(qs);
         dpy_flush(&global_screen);
     }

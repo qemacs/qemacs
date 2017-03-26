@@ -912,9 +912,8 @@ static void print_bindings(EditBuffer *b, const char *title,
 void do_describe_bindings(EditState *s)
 {
     EditBuffer *b;
-    int show;
 
-    b = new_help_buffer(&show);
+    b = new_help_buffer();
     if (!b)
         return;
 
@@ -922,9 +921,7 @@ void do_describe_bindings(EditState *s)
     print_bindings(b, "\nGlobal bindings", 0, NULL);
 
     b->flags |= BF_READONLY;
-    if (show) {
-        show_popup(b);
-    }
+    show_popup(s, b);
 }
 
 void do_apropos(EditState *s, const char *str)
@@ -934,11 +931,12 @@ void do_apropos(EditState *s, const char *str)
     EditBuffer *b;
     CmdDef *d;
     VarDef *vp;
-    int found, show;
+    int found;
 
-    b = new_help_buffer(&show);
+    b = new_help_buffer();
     if (!b)
         return;
+
     eb_printf(b, "apropos '%s':\n\n", str);
 
     found = 0;
@@ -973,12 +971,9 @@ void do_apropos(EditState *s, const char *str)
     }
     if (found) {
         b->flags |= BF_READONLY;
-        if (show) {
-            show_popup(b);
-        }
+        show_popup(s, b);
     } else {
-        if (show)
-            eb_free(&b);
+        eb_free(&b);
         put_status(s, "No apropos matches for `%s'", str);
     }
 }
@@ -1035,7 +1030,7 @@ static void do_about_qemacs(EditState *s)
     b->flags |= BF_READONLY;
 
     /* Should show window caption "About QEmacs" */
-    show_popup(b);
+    show_popup(s, b);
 }
 
 static void do_set_region_color(EditState *s, const char *str)
@@ -1107,9 +1102,8 @@ static void do_describe_buffer(EditState *s, int argval)
     buf_t descbuf, *desc;
     EditBuffer *b = s->b;
     EditBuffer *b1;
-    int show;
 
-    b1 = new_help_buffer(&show);
+    b1 = new_help_buffer();
     if (!b1)
         return;
 
@@ -1299,18 +1293,15 @@ static void do_describe_buffer(EditState *s, int argval)
     }
 
     b1->flags |= BF_READONLY;
-    if (show) {
-        show_popup(b1);
-    }
+    show_popup(s, b1);
 }
 
 static void do_describe_window(EditState *s, int argval)
 {
     EditBuffer *b1;
-    int show;
     int w;
 
-    b1 = new_help_buffer(&show);
+    b1 = new_help_buffer();
     if (!b1)
         return;
 
@@ -1369,19 +1360,16 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "\n");
 
     b1->flags |= BF_READONLY;
-    if (show) {
-        show_popup(b1);
-    }
+    show_popup(s, b1);
 }
 
 static void do_describe_screen(EditState *e, int argval)
 {
     QEditScreen *s = e->screen;
     EditBuffer *b1;
-    int show;
     int w;
 
-    b1 = new_help_buffer(&show);
+    b1 = new_help_buffer();
     if (!b1)
         return;
 
@@ -1400,9 +1388,7 @@ static void do_describe_screen(EditState *e, int argval)
     }
 
     b1->flags |= BF_READONLY;
-    if (show) {
-        show_popup(b1);
-    }
+    show_popup(e, b1);
 }
 
 /*---------------- buffer contents sorting ----------------*/

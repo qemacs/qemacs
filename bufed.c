@@ -286,7 +286,7 @@ static void do_list_buffers(EditState *s, int argval)
     if (!b)
         return;
 
-    e = show_popup(b);
+    e = show_popup(s, b);
     if (!e)
         return;
 
