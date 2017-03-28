@@ -329,7 +329,7 @@ static void haiku_close(QEditScreen *s)
     WindowState *ctx = (WindowState *)s->priv_data;
     ctx->w->Lock();
     ctx->w->Quit();
-    qe_free(&s->priv_data);
+    qe_free((WindowState **)&s->priv_data);
     uninit_application();
 }
 

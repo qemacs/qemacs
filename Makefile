@@ -91,7 +91,7 @@ endif
 
 ifdef CONFIG_HAIKU
   OBJS += haiku.o
-  LIBS += -lbe
+  LIBS += -lbe -lstdc++
 endif
 
 ifdef CONFIG_WIN32
