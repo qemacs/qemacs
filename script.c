@@ -23,89 +23,245 @@
 /*---------------- Shell script colors ----------------*/
 
 enum {
-    SCRIPT_STYLE_TEXT =       QE_STYLE_DEFAULT,
-    SCRIPT_STYLE_COMMENT =    QE_STYLE_COMMENT,
-    SCRIPT_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
-    SCRIPT_STYLE_COMMAND =    QE_STYLE_FUNCTION,
-    SCRIPT_STYLE_VARIABLE =   QE_STYLE_TYPE,
-    SCRIPT_STYLE_STRING =     QE_STYLE_STRING,
-    SCRIPT_STYLE_BACKTICK =   QE_STYLE_STRING_Q,
+    SHELL_SCRIPT_STYLE_TEXT =       QE_STYLE_DEFAULT,
+    SHELL_SCRIPT_STYLE_COMMENT =    QE_STYLE_COMMENT,
+    SHELL_SCRIPT_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    SHELL_SCRIPT_STYLE_COMMAND =    QE_STYLE_FUNCTION,
+    SHELL_SCRIPT_STYLE_VARIABLE =   QE_STYLE_TYPE,
+    SHELL_SCRIPT_STYLE_STRING =     QE_STYLE_STRING,
+    SHELL_SCRIPT_STYLE_OP =         QE_STYLE_KEYWORD,
+    SHELL_SCRIPT_STYLE_KEYWORD =    QE_STYLE_KEYWORD,
 };
 
-static int script_var(const unsigned int *str, int j, int n)
+static const char shell_script_keywords[] = {
+    /* reserved words */
+    "if|then|elif|else|fi|case|esac|for|while|until|do|done|shift|"
+    "function|return|export|alias|in|select|time|"
+    /* internal commands */
+    //"cd|echo|umask|"
+};
+
+static int shell_script_get_var(char *buf, int buf_size,
+                                unsigned int *str, int j, int n)
 {
-    for (; j < n; j++) {
-        if (qe_isalnum_(str[j]) || str[j] == '-')
-            continue;
-        break;
+    int i = 0, c;
+
+    while (j < n && qe_isalnum_(c = str[j])) {
+        if (i < buf_size - 1) {
+            buf[i++] = c;
+        }
+        j++;
+    }
+    if (i < buf_size) {
+        buf[i] = '\0';
     }
     return j;
 }
 
-static void script_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, ModeDef *syn)
+static int shell_script_string(unsigned int *str, int i, int n,
+                               int sep, int escape, int dollar)
 {
-    int i = 0, j, c, start, style;
+    while (i < n) {
+        int c = str[i++];
+        if (c == '\\' && escape && i < n) {
+            i++;
+        } else
+        if (c == '$' && dollar && i < n) {
+            /* XXX: should highlight variable substitutions */ 
+            i++;
+        } else
+        if (c == sep) {
+            break;
+        }
+    }
+    return i;
+}
 
-    style = SCRIPT_STYLE_COMMAND;
+static void shell_script_colorize_line(QEColorizeContext *cp,
+                                       unsigned int *str, int n, ModeDef *syn)
+{
+    int i = 0, j, c, start, style, bits = 0;
+
+start_cmd:
+    style = SHELL_SCRIPT_STYLE_COMMAND;
+    while (i < n  && qe_isblank(str[i])) {
+        i++;
+    }
 
     while (i < n) {
         start = i;
-        switch (str[i]) {
+        switch (c = str[i++]) {
         case '#':
-            if (i > 0 && str[i - 1] == '$')
-                break;
-            style = SCRIPT_STYLE_COMMENT;
-            if (str[i + 1] == '!')
-                style = SCRIPT_STYLE_PREPROCESS;
-            i = n;
-            SET_COLOR(str, start, i, style);
-            continue;
-        case '`':
-            style = SCRIPT_STYLE_BACKTICK;
-            goto has_string;
-        case '\'':
-        case '"':
-            style = SCRIPT_STYLE_STRING;
-        has_string:
-            /* parse string const */
-            for (i++; i < n;) {
-                c = str[i++];
-                if (c == '\\' && i < n && str[start] == '"')
-                    i++;
-                else
-                if ((unsigned int)c == str[start])
-                    break;
+            style = SHELL_SCRIPT_STYLE_COMMENT;
+            if (start == 0 && str[i] == '!') {
+                /* use special style for sh-bang line */
+                style = SHELL_SCRIPT_STYLE_PREPROCESS;
             }
-            SET_COLOR(str, start, i, style);
-            if (i < n)
-                style = SCRIPT_STYLE_TEXT;
-            continue;
-        case ' ':
-        case '\t':
+            i = n;
             break;
-        default:
-            i = script_var(str, i, n);
-            if (i > start) {
-                j = i;
-                while (qe_isblank(str[j]))
-                    j++;
-                if (str[j] == '=')
-                    style = SCRIPT_STYLE_VARIABLE;
-                SET_COLOR(str, start, i, style);
-                style = SCRIPT_STYLE_TEXT;
+        case '`':
+            /* XXX: should be a state */
+            SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+            goto start_cmd;
+        case '\'':
+            i = shell_script_string(str, i, n, c, 0, 0);
+            SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_STRING);
+            /* XXX: should support multi-line strings? */
+            continue;
+        case '"':
+            i = shell_script_string(str, i, n, c, 1, 1);
+            SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_STRING);
+            /* XXX: should support multi-line strings? */
+            continue;
+        case '\\':
+            if (i >= n) {
+                /* Should keep state for next line */
+                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
                 continue;
             }
-            // Should support << syntax
-            // Should support $ syntax
-            style = SCRIPT_STYLE_TEXT;
+            /* Do not interpret the next character */
+            i++;
+            break;
+        case '$':
+            if (i == n || qe_findchar(" \t'\"", str[i]))
+                break;
+            SET_COLOR1(str, start++, SHELL_SCRIPT_STYLE_OP);
+			switch (c = str[i++]) {
+            case '\'':
+                i = shell_script_string(str, i, n, c, 1, 0);
+                SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_STRING);
+                continue;
+            case '(':  /* expand command output */
+                bits = (bits << 2) | 1;
+                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                goto start_cmd;
+            case '[':  /* expression */
+                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                for (j = i; i < n; i++) {
+                    if (str[i] == ']')
+                        break;
+                }
+                SET_COLOR(str, j, i, SHELL_SCRIPT_STYLE_TEXT);
+                if (i < n) {
+                    i++;
+                    SET_COLOR(str, i - 1, i, SHELL_SCRIPT_STYLE_OP);
+                }
+                continue;
+            case '{':  /* variable name */
+                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                /* XXX: should parse variable name or single char */
+                /* XXX: should support % syntax with regex */
+                for (j = i; i < n; i++) {
+                    if (str[i] == '}')
+                        break;
+                }
+                SET_COLOR(str, j, i, SHELL_SCRIPT_STYLE_VARIABLE);
+                if (i < n) {
+                    i++;
+                    SET_COLOR(str, i - 1, i, SHELL_SCRIPT_STYLE_OP);
+                }
+                continue;
+            case '$':
+            case '?':
+            case '#':
+            default:
+                if (qe_isalpha_(c)) {
+                    i = shell_script_get_var(NULL, 0, str, i, n);
+                    SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_VARIABLE);
+                } else {
+                    SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                }
+                continue;
+            }
+			continue;
+		case ' ':
+        case '\t':
+			style = SHELL_SCRIPT_STYLE_TEXT;
+            break;
+        case '{':  /* compound command */
+        case '}':
+            /* XXX: should support numeric enumerations */
+            if (i == n || qe_isblank(str[i])) {
+                SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_OP);
+                goto start_cmd;
+            }
+			style = SHELL_SCRIPT_STYLE_TEXT;
+            break;
+        case '>':
+        case '<':
+            // XXX: Should support other punctuation syntaxes
+            if (str[i] == (unsigned int)c) {  /* handle >> and << */
+                i++;
+            }
+            SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_OP);
+            // XXX: Should support << syntax
+			style = SHELL_SCRIPT_STYLE_TEXT;
+            continue;
+        case '|':
+        case '&':
+            if (str[i] == (unsigned int)c) {  /* handle || and && */
+                i++;
+            }
+            SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_OP);
+            goto start_cmd;
+        case ';':
+            SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+            goto start_cmd;
+        case '(':
+            bits = (bits << 2) | 2;
+            SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+            goto start_cmd;
+        case ')':
+            bits = (bits >> 2);
+            SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+            goto start_cmd;
+        case '[':
+            if (style == SHELL_SCRIPT_STYLE_COMMAND) {
+                bits = (bits << 2) | 3;
+                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                style = SHELL_SCRIPT_STYLE_TEXT;
+                continue;
+            }
+            break;
+        case ']':
+            if ((bits & 3) == 3) {
+                bits = (bits >> 2);
+                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                style = SHELL_SCRIPT_STYLE_TEXT;
+                continue;
+            }
+            break;
+
+        default:
+            if (style == SHELL_SCRIPT_STYLE_COMMAND && qe_isalpha_(c)) {
+                char kbuf[64];
+
+                i = shell_script_get_var(kbuf, sizeof kbuf, str, i - 1, n);
+                if (strfind(syn->keywords, kbuf)) {
+                    SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_KEYWORD);
+                    if (strfind("function|export|alias|if|elif|while", kbuf))
+                        goto start_cmd;
+                    else
+                        continue;
+                }
+                for (j = i; qe_isblank(str[j]); j++)
+                    continue;
+                if (str[j] == '=') {
+                    j++;
+                    SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_VARIABLE);
+                    SET_COLOR(str, i, j, SHELL_SCRIPT_STYLE_OP);
+                    i = j;
+                    style = SHELL_SCRIPT_STYLE_TEXT;
+                    continue;
+                }
+            }
             break;
         }
-        i++;
+        SET_COLOR(str, start, i, style);
     }
 }
 
-static int script_mode_probe(ModeDef *mode, ModeProbeData *p)
+static int shell_script_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (match_extension(p->filename, mode->extensions)
     ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)
@@ -123,19 +279,21 @@ static int script_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-static ModeDef script_mode = {
+/* XXX: should have shell specific variations */
+static ModeDef shell_script_mode = {
     .name = "Shell-script",
     .extensions = "sh|bash|csh|ksh|zsh",
     .shell_handlers = "sh|bash|csh|ksh|zsh",
-    .mode_probe = script_mode_probe,
-    .colorize_func = script_colorize_line,
+    .mode_probe = shell_script_mode_probe,
+    .colorize_func = shell_script_colorize_line,
+    .keywords = shell_script_keywords,
 };
 
-static int script_init(void)
+static int shell_script_init(void)
 {
-    qe_register_mode(&script_mode, MODEF_SYNTAX);
+    qe_register_mode(&shell_script_mode, MODEF_SYNTAX);
 
     return 0;
 }
 
-qe_module_init(script_init);
+qe_module_init(shell_script_init);

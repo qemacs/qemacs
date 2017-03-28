@@ -550,7 +550,7 @@ static void do_forward_block(EditState *s, int dir)
             if (pos >= 0 && pos < len) {
                 style = buf[pos] >> STYLE_SHIFT;
             }
-            if (style != style0) {
+            if (style != style0 && style != QE_STYLE_KEYWORD && style != QE_STYLE_FUNCTION) {
                 if (style0 == 0)
                     continue;
                 style0 = 0;
@@ -627,7 +627,7 @@ static void do_forward_block(EditState *s, int dir)
                 style = buf[pos] >> STYLE_SHIFT;
             }
             pos++;
-            if (style0 != style) {
+            if (style0 != style && style != QE_STYLE_KEYWORD && style != QE_STYLE_FUNCTION) {
                 if (style0 == 0)
                     continue;
                 style0 = 0;
