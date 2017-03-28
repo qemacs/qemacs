@@ -58,6 +58,10 @@ static int shell_script_get_var(char *buf, int buf_size,
     return j;
 }
 
+static int shell_script_has_sep(unsigned int *str, int i, int n) {
+    return i >= n || qe_findchar(" \t<>|&;()", str[i]);
+}
+
 static int shell_script_string(unsigned int *str, int i, int n,
                                int sep, int escape, int dollar)
 {
@@ -82,6 +86,12 @@ static void shell_script_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, j, c, start, style, bits = 0;
 
+    /* special case sh-bang line */
+    if (n >= 2 && str[0] == '#' && str[1] == '!') {
+        SET_COLOR(str, 0, n, SHELL_SCRIPT_STYLE_PREPROCESS);
+        return;
+    }
+
 start_cmd:
     style = SHELL_SCRIPT_STYLE_COMMAND;
     while (i < n  && qe_isblank(str[i])) {
@@ -93,10 +103,6 @@ start_cmd:
         switch (c = str[i++]) {
         case '#':
             style = SHELL_SCRIPT_STYLE_COMMENT;
-            if (start == 0 && str[i] == '!') {
-                /* use special style for sh-bang line */
-                style = SHELL_SCRIPT_STYLE_PREPROCESS;
-            }
             i = n;
             break;
         case '`':
@@ -123,7 +129,7 @@ start_cmd:
             i++;
             break;
         case '$':
-            if (i == n || qe_findchar(" \t'\"", str[i]))
+            if (i == n || qe_findchar(" \t\"", str[i]))
                 break;
             SET_COLOR1(str, start++, SHELL_SCRIPT_STYLE_OP);
 			switch (c = str[i++]) {
@@ -147,7 +153,7 @@ start_cmd:
                     SET_COLOR(str, i - 1, i, SHELL_SCRIPT_STYLE_OP);
                 }
                 continue;
-            case '{':  /* variable name */
+            case '{':  /* variable substitution with options */
                 SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
                 /* XXX: should parse variable name or single char */
                 /* XXX: should support % syntax with regex */
@@ -237,20 +243,17 @@ start_cmd:
                 char kbuf[64];
 
                 i = shell_script_get_var(kbuf, sizeof kbuf, str, i - 1, n);
-                if (strfind(syn->keywords, kbuf)) {
+                if (shell_script_has_sep(str, i, n) && strfind(syn->keywords, kbuf)) {
                     SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_KEYWORD);
-                    if (strfind("function|export|alias|if|elif|while", kbuf))
+                    if (!strfind("for|case|export|in", kbuf))
                         goto start_cmd;
                     else
                         continue;
                 }
-                for (j = i; qe_isblank(str[j]); j++)
-                    continue;
-                if (str[j] == '=') {
-                    j++;
+                if (str[i] == '=') {
                     SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_VARIABLE);
-                    SET_COLOR(str, i, j, SHELL_SCRIPT_STYLE_OP);
-                    i = j;
+                    SET_COLOR1(str, i, SHELL_SCRIPT_STYLE_OP);
+                    i++;
                     style = SHELL_SCRIPT_STYLE_TEXT;
                     continue;
                 }
