@@ -2621,7 +2621,7 @@ enum {
 static void python_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, style = 0, sep, klen;
+    int i = 0, start = i, c, style = 0, sep, klen, i1, tag = 0;
     int state = cp->colorize_state;
     char kbuf[32];
 
@@ -2641,6 +2641,8 @@ static void python_colorize_line(QEColorizeContext *cp,
         sep = '\"';
         goto parse_long_string;
     }
+
+    tag = !qe_isblank(str[i]);
 
     while (i < n) {
         start = i;
@@ -2724,6 +2726,11 @@ static void python_colorize_line(QEColorizeContext *cp,
             }
             goto has_alpha;
 
+        case '(':
+        case '{':
+            tag = 0;
+            continue;
+
         default:
             if (qe_isdigit(c)) {
                 if (c == '0' && qe_tolower(str[i]) == 'b') {
@@ -2778,12 +2785,29 @@ static void python_colorize_line(QEColorizeContext *cp,
                 kbuf[klen] = '\0';
 
                 if (strfind(syn->keywords, kbuf)) {
+                    tag = strequal(kbuf, "def");
                     style = PYTHON_STYLE_KEYWORD;
                     break;
                 }
                 if (check_fcall(str, i)) {
                     style = PYTHON_STYLE_FUNCTION;
+                    if (tag) {
+                        /* tag function definition */
+                        eb_add_property(cp->b, cp->offset + start,
+                                        QE_PROP_TAG, qe_strdup(kbuf));
+                        tag = 0;
+                    }
                     break;
+                }
+                if (tag) {
+                    for (i1 = i; i1 < n && qe_isblank(str[i1]); i1++)
+                        continue;
+                    if (qe_findchar(",=", str[i1])) {
+                        /* tag variable definition */
+                        eb_add_property(cp->b, cp->offset + start,
+                                        QE_PROP_TAG, qe_strdup(kbuf));
+                        /* XXX: should colorize variable definition */
+                    }
                 }
                 continue;
             }

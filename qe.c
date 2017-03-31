@@ -5711,10 +5711,11 @@ static CompletionFunc find_completion(const char *name)
     return NULL;
 }
 
-static void complete_start(EditState *s, CompleteState *cp)
+static void complete_start(CompleteState *cp, EditState *s, EditState *target)
 {
     memset(cp, 0, sizeof(*cp));
     cp->s = s;
+    cp->target = target;
     cp->len = eb_get_contents(s->b, cp->current, sizeof(cp->current));
 }
 
@@ -5797,7 +5798,7 @@ void do_completion(EditState *s, int type)
         return;
     }
 
-    complete_start(s, &cs);
+    complete_start(&cs, s, check_window(&minibuffer_saved_active));
     (*completion_function)(&cs);
     count = cs.cs.nb_items;
     outputs = cs.cs.items;

@@ -184,8 +184,9 @@ typedef struct StringArray {
 typedef struct CompleteState {
     StringArray cs;
     struct EditState *s;
-    char current[MAX_FILENAME_SIZE];
+    struct EditState *target;
     int len;
+    char current[MAX_FILENAME_SIZE];
 } CompleteState;
 
 /* media definitions */

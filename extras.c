@@ -1518,11 +1518,13 @@ static void tag_completion(CompleteState *cp) {
     /* XXX: only support current buffer */
     QEProperty *p;
 
-    tag_buffer(cp->s);
+    if (cp->target) {
+        tag_buffer(cp->target);
 
-    for (p = cp->s->b->property_list; p; p = p->next) {
-        if (p->type == QE_PROP_TAG) {
-            complete_test(cp, p->data);
+        for (p = cp->target->b->property_list; p; p = p->next) {
+            if (p->type == QE_PROP_TAG) {
+                complete_test(cp, p->data);
+            }
         }
     }
 }

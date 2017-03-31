@@ -546,7 +546,8 @@ static void c_colorize_line(QEColorizeContext *cp,
         case '(':
         case '{':
             tag = 0;
-            break;
+            continue;
+
         default:
         normal:
             if (state & IN_C_PREPROCESS)
@@ -584,7 +585,8 @@ static void c_colorize_line(QEColorizeContext *cp,
                     i2++;
 
                 if (tag && qe_findchar("({[,;=", str[i1])) {
-                    eb_add_property(cp->b, cp->offset, QE_PROP_TAG, qe_strdup(kbuf));
+                    eb_add_property(cp->b, cp->offset + start,
+                                    QE_PROP_TAG, qe_strdup(kbuf));
                 }
 
                 if ((start == 0 || str[start - 1] != '.')
@@ -1723,14 +1725,16 @@ static void js_colorize_line(QEColorizeContext *cp,
                     style = C_STYLE_FUNCTION;
                     if (tag) {
                         /* tag function definition */
-                        eb_add_property(cp->b, cp->offset, QE_PROP_TAG, qe_strdup(kbuf));
+                        eb_add_property(cp->b, cp->offset + start,
+                                        QE_PROP_TAG, qe_strdup(kbuf));
                         tag = 0;
                     }
                     break;
                 } else
                 if (tag && qe_findchar("(,;=", str[i1])) {
                     /* tag variable definition */
-                    eb_add_property(cp->b, cp->offset, QE_PROP_TAG, qe_strdup(kbuf));
+                    eb_add_property(cp->b, cp->offset + start,
+                                    QE_PROP_TAG, qe_strdup(kbuf));
                 }
 
                 if ((start == 0 || str[start - 1] != '.')
