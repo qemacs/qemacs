@@ -2325,6 +2325,7 @@ void shell_colorize_line(QEColorizeContext *cp,
                     i += match_digits(str + i, n - i, ':'); /* line number */
                     i += match_digits(str + i, n - i, ':'); /* col number */
                     if (match_string(str + i, n - i, " error:")
+                    ||  match_string(str + i, n - i, " note:")
                     ||  match_string(str + i, n - i, " warning:")) {
                         /* clang diagnostic, will colorize the next line */
                         cp->colorize_state = 1;
