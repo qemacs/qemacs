@@ -1504,6 +1504,83 @@ static void do_sort_buffer(EditState *s, int flags, int argval) {
     do_sort_span(s, 0, s->b->total_size, flags, argval);
 }
 
+static void tag_buffer(EditState *s) {
+    unsigned int buf[100];
+    int offset, line_num, col_num;
+
+    /* force complete buffer colorizarion */
+    eb_get_pos(s->b, &line_num, &col_num, s->b->total_size);
+    s->get_colorized_line(s, buf, countof(buf), s->b->total_size,
+                          &offset, line_num);
+}
+
+static void tag_completion(CompleteState *cp) {
+    /* XXX: only support current buffer */
+    QEProperty *p;
+
+    tag_buffer(cp->s);
+
+    for (p = cp->s->b->property_list; p; p = p->next) {
+        if (p->type == QE_PROP_TAG) {
+            complete_test(cp, p->data);
+        }
+    }
+}
+
+static void do_find_tag(EditState *s, const char *str) {
+    QEProperty *p;
+
+    tag_buffer(s);
+
+    for (p = s->b->property_list; p; p = p->next) {
+        if (p->type == QE_PROP_TAG && strequal(p->data, str)) {
+            s->offset = p->offset;
+            return;
+        }
+    }
+    put_status(s, "Tag not found: %s", str);
+}
+
+static void do_goto_tag(EditState *s) {
+    char buf[80];
+    size_t len;
+
+    len = qe_get_word(s, buf, sizeof buf, s->offset, NULL);
+    if (len >= sizeof(buf)) {
+        put_status(s, "Tag too large");
+        return;
+    } else
+    if (len == 0) {
+        put_status(s, "No tag");
+        return;
+    } else {
+        do_find_tag(s, buf);
+    }
+}
+
+/* XXX: should have next-tag and previous-tag */
+
+static void do_list_tags(EditState *s) {
+    EditBuffer *b;
+    QEProperty *p;
+
+    b = new_help_buffer();
+    if (!b)
+        return;
+
+    tag_buffer(s);
+
+    eb_printf(b, "\nTags in file %s:\n\n", s->b->filename);
+    for (p = s->b->property_list; p; p = p->next) {
+        if (p->type == QE_PROP_TAG) {
+            eb_printf(b, "%12d  %s\n", p->offset, (char*)p->data);
+        }
+    }
+
+    b->flags |= BF_READONLY;
+    show_popup(s, b);
+}
+
 static CmdDef extra_commands[] = {
     CMD2( KEY_META('='), KEY_NONE,
           "compare-windows", do_compare_windows, ESi, "ui" )
@@ -1596,6 +1673,14 @@ static CmdDef extra_commands[] = {
     CMD3( KEY_NONE, KEY_NONE,
           "reverse-sort-region", do_sort_region, ESii, SF_REVERSE, "*vui")
 
+    CMD0( KEY_NONE, KEY_NONE,
+          "list-tags", do_list_tags)
+    CMD0( KEY_CTRLX(','), KEY_META(KEY_F1),
+          "goto-tag", do_goto_tag)
+    CMD2( KEY_CTRLX('.'), KEY_NONE,
+          "find-tag", do_find_tag, ESs,
+          "s{Find tag: }[tag]|tag|")
+
     CMD_DEF_END,
 };
 
@@ -1607,6 +1692,8 @@ static int extras_init(void)
     for (key = KEY_META('0'); key <= KEY_META('9'); key++) {
         qe_register_binding(key, "numeric-argument", NULL);
     }
+    register_completion("tag", tag_completion);
+
     return 0;
 }
 

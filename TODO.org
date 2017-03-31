@@ -5,6 +5,7 @@
 
 * Needed for release version 5
 
+
 * Priority 0
 
 ** basic: fix current position when changing buffer attached to window
@@ -14,6 +15,7 @@
 ** basic: use visual movement for left, right, up, down and character based for C-b C-f C-n C-p
 ** basic: share mmapped pages correctly
 ** completion: fix electric behavior
+** completion: add completion function to get the default value
 ** files: check file date to detect asynchronous modifications on disk
 ** files: reload modified file upon change if untouched since load
 ** layout: kill buffer should delete popup and popleft window
@@ -316,10 +318,16 @@ insert_window_left()  deletes some left-most windows
 ** c-indent
 ** indent-with-tabs
 ** stats command for slcc
-** add TAGS support:
-*** recursive search of QTAGS file.
-*** C decl parser
-*** global QTAGS file indexed with global includes
+** improve tag support:
+*** tag multiple files and buffers
+*** tag project files recursively
+*** save tags to QTAGS or .qetags file
+*** handle multiple tag files
+*** update tag files automatically
+*** list-definitions with hot load function
+*** show-definition in popup
+*** handle standard libraries with tag system
+*** generate #include lines automatically
 ** see if java/javascript/c++ is OK.
 ** autocomplete keyword, function, variable, member names
 ** automatic indentation detection

@@ -562,6 +562,39 @@ void text_move_word_left_right(EditState *s, int dir)
     }
 }
 
+int qe_get_word(EditState *s, char *buf, int buf_size,
+                int offset, int *offset_ptr)
+{
+    EditBuffer *b = s->b;
+    buf_t outbuf, *out;
+    int offset1;
+    int c;
+
+    out = buf_init(&outbuf, buf, buf_size);
+
+    /* XXX: the qe_isword pattern should depend on the current mode */
+    if (qe_isword(eb_nextc(b, offset, &offset1))) {
+        while (qe_isword(eb_prevc(b, offset, &offset1))) {
+            offset = offset1;
+        }
+    } else {
+        while ((offset = offset1) < b->total_size) {
+            if (!qe_isword(eb_nextc(b, offset, &offset1)))
+                break;
+        }
+    }
+    while (offset < b->total_size) {
+        if (!qe_isword(c = eb_nextc(b, offset, &offset1)))
+            break;
+        buf_putc_utf8(out, c);
+        offset = offset1;
+    }
+    if (offset_ptr) {
+        *offset_ptr = offset;
+    }
+    return out->len;
+}
+
 void do_mark_region(EditState *s, int mark, int offset)
 {
     /* CG: Should have local and global mark rings */
@@ -2619,6 +2652,7 @@ void basic_mode_line(EditState *s, buf_t *out, int c1)
 void text_mode_line(EditState *s, buf_t *out)
 {
     int line_num, col_num, wrap_mode;
+    const QEProperty *tag;
 
     wrap_mode = '-';
     if (!s->hex_mode) {
@@ -2646,6 +2680,9 @@ void text_mode_line(EditState *s, buf_t *out)
         buf_printf(out, "--<%d", -s->x_disp[0]);
     if (s->x_disp[1])
         buf_printf(out, "-->%d", -s->x_disp[1]);
+    tag = eb_find_property(s->b, 0, s->offset + 1, QE_PROP_TAG);
+    if (tag)
+        buf_printf(out, "--%s", tag->data);
 #if 0
     buf_printf(out, "--[%d]", s->y_disp);
 #endif
@@ -3805,6 +3842,7 @@ static int syntax_get_colorized_line(EditState *s,
         line++;
         if (line < s->colorize_nb_valid_lines)
             s->colorize_nb_valid_lines = line;
+        eb_delete_properties(b, s->colorize_max_valid_offset, INT_MAX);
         s->colorize_max_valid_offset = INT_MAX;
     }
 
@@ -3947,8 +3985,10 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 #ifndef CONFIG_TINY
     if (s->colorize_func) {
         len = syntax_get_colorized_line(s, buf, buf_size, offset, offsetp, line_num);
-        if (s->b->b_styles && s->colorize_func != shell_colorize_line)
+        if (s->b->b_styles && s->colorize_func != shell_colorize_line) {
+            /* XXX: shell mode should have its own get_colorized_line handler */
             combine_static_colorized_line(s, buf, buf_size, len);
+        }
     } else
 #endif
     if (s->b->b_styles) {

@@ -128,6 +128,7 @@ typedef struct QEColorizeContext QEColorizeContext;
 typedef struct KeyDef KeyDef;
 typedef struct InputMethod InputMethod;
 typedef struct ISearchState ISearchState;
+typedef struct QEProperty QEProperty;
 
 static inline char *s8(u8 *p) { return (char*)p; }
 static inline const char *cs8(const u8 *p) { return (const char*)p; }
@@ -932,6 +933,7 @@ struct EditBuffer {
 
     /* modification callbacks */
     OWNED EditBufferCallbackList *first_callback;
+    OWNED QEProperty *property_list;
 
 #if 0
     /* asynchronous loading/saving support */
@@ -1096,6 +1098,19 @@ EditBufferDataType *eb_probe_data_type(const char *filename, int st_mode,
 void eb_set_data_type(EditBuffer *b, EditBufferDataType *bdt);
 void eb_invalidate_raw_data(EditBuffer *b);
 extern EditBufferDataType raw_data_type;
+
+struct QEProperty {
+    int offset;
+#define QE_PROP_FREE  1
+#define QE_PROP_TAG   3
+    int type;
+    void *data;
+    QEProperty *next;
+};
+
+void eb_add_property(EditBuffer *b, int offset, int type, void *data);
+QEProperty *eb_find_property(EditBuffer *b, int offset, int offset2, int type);
+void eb_delete_properties(EditBuffer *b, int offset, int offset2);
 
 /* qe module handling */
 
@@ -1637,7 +1652,6 @@ typedef struct TextFragment {
 
 #define STYLE_BITS     12
 #define STYLE_SHIFT    (32 - STYLE_BITS)
-#define STYLE_MASK     (((1 << STYLE_BITS) - 1) << STYLE_SHIFT)
 #define CHAR_MASK      ((1 << STYLE_SHIFT) - 1)
 
 struct DisplayState {
@@ -1742,7 +1756,7 @@ static inline void clear_color(unsigned int *p, int count) {
     int i;
 
     for (i = 0; i < count; i++)
-        p[i] &= ~STYLE_MASK;
+        p[i] &= CHAR_MASK;
 }
 
 /* input.c */
@@ -1943,6 +1957,8 @@ void text_move_bof(EditState *s);
 void text_move_eof(EditState *s);
 void word_right(EditState *s, int w);
 void word_left(EditState *s, int w);
+int qe_get_word(EditState *s, char *buf, int buf_size,
+                int offset, int *offset_ptr);
 void do_goto(EditState *s, const char *str, int unit);
 void do_goto_line(EditState *s, int line, int column);
 void do_up_down(EditState *s, int dir);

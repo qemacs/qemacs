@@ -186,7 +186,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                             unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start, i1, i2, indent, level;
-    int c, style, style0, style1, type_decl, klen, delim, prev;
+    int c, style, style0, style1, type_decl, klen, delim, prev, tag;
     char kbuf[32];
     int mode_flags = syn->colorize_flags;
     int flavor = (mode_flags & CLANG_FLAVOR);
@@ -195,6 +195,7 @@ static void c_colorize_line(QEColorizeContext *cp,
     for (indent = 0; qe_isblank(str[indent]); indent++)
         continue;
 
+    tag = !indent && cp->s->mode == syn;
     start = i;
     type_decl = 0;
     c = 0;
@@ -542,6 +543,10 @@ static void c_colorize_line(QEColorizeContext *cp,
                     goto parse_comment1;
             }
             break;
+        case '(':
+        case '{':
+            tag = 0;
+            break;
         default:
         normal:
             if (state & IN_C_PREPROCESS)
@@ -577,6 +582,10 @@ static void c_colorize_line(QEColorizeContext *cp,
                 i2 = i1;
                 while (str[i2] == '*' || qe_isblank(str[i2]))
                     i2++;
+
+                if (tag && qe_findchar("({[,;=", str[i1])) {
+                    eb_add_property(cp->b, cp->offset, QE_PROP_TAG, qe_strdup(kbuf));
+                }
 
                 if ((start == 0 || str[start - 1] != '.')
                 &&  (!qe_findchar(".(:", str[i]) || flavor == CLANG_PIKE)
@@ -1526,7 +1535,7 @@ static void js_colorize_line(QEColorizeContext *cp,
                              unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start, i1, indent;
-    int c, style, klen, delim, prev;
+    int c, style, klen, delim, prev, tag;
     char kbuf[32];
     int mode_flags = syn->colorize_flags;
     int flavor = (mode_flags & CLANG_FLAVOR);
@@ -1535,6 +1544,7 @@ static void js_colorize_line(QEColorizeContext *cp,
 
     indent = 0;
     //for (; qe_isblank(str[indent]); indent++) continue;
+    tag = !qe_isblank(str[0]) && (cp->s->mode == syn || cp->s->mode == &htmlsrc_mode);
 
     start = i;
     //type_decl = 0;
@@ -1677,6 +1687,10 @@ static void js_colorize_line(QEColorizeContext *cp,
                     goto parse_comment1;
             }
             continue;
+        case '(':
+        case '{':
+            tag = 0;
+            break;
         default:
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
@@ -1692,7 +1706,7 @@ static void js_colorize_line(QEColorizeContext *cp,
                 klen = get_js_identifier(kbuf, countof(kbuf), str + start);
                 i = start + klen;
 
-                if (cp->state_only)
+                if (cp->state_only && !tag)
                     continue;
 
                 if (strfind(syn->keywords, kbuf)) {
@@ -1705,10 +1719,20 @@ static void js_colorize_line(QEColorizeContext *cp,
                     i1++;
 
                 if (str[i1] == '(') {
-                    /* function call */
+                    /* function call or definition */
                     style = C_STYLE_FUNCTION;
+                    if (tag) {
+                        /* tag function definition */
+                        eb_add_property(cp->b, cp->offset, QE_PROP_TAG, qe_strdup(kbuf));
+                        tag = 0;
+                    }
                     break;
+                } else
+                if (tag && qe_findchar("(,;=", str[i1])) {
+                    /* tag variable definition */
+                    eb_add_property(cp->b, cp->offset, QE_PROP_TAG, qe_strdup(kbuf));
                 }
+
                 if ((start == 0 || str[start - 1] != '.')
                 &&  !qe_findchar(".(:", str[i])
                 &&  strfind(syn->types, kbuf)) {

@@ -802,6 +802,7 @@ void eb_free(EditBuffer **bp)
             qe_free(&cb);
         }
 
+        eb_delete_properties(b, 0, INT_MAX);
         eb_cache_remove(b);
         eb_clear(b);
 
@@ -1020,6 +1021,7 @@ void eb_offset_callback(qe__unused__ EditBuffer *b, void *opaque, int edge,
 int eb_create_style_buffer(EditBuffer *b, int flags)
 {
     if (b->b_styles) {
+        /* XXX: should extend style width if needed */
         return 0;
     } else {
         char name[MAX_BUFFERNAME_SIZE];
@@ -2532,6 +2534,99 @@ int eb_next_line(EditBuffer *b, int offset)
             break;
     }
     return offset;
+}
+
+/* buffer property handling */
+
+static void eb_plist_callback(EditBuffer *b, void *opaque, int edge,
+                              enum LogOperation op, int offset, int size)
+{
+    QEProperty **pp;
+    QEProperty *p;
+                                 
+    /* update properties */
+    if (op == LOGOP_INSERT) {
+        for (p = b->property_list; p; p = p->next) {
+            if (p->offset >= offset)
+                p->offset += size;
+        }
+    } else
+    if (op == LOGOP_DELETE) {
+        for (pp = &b->property_list; (p = *pp) != NULL;) {
+            if (p->offset >= offset) {
+                if (p->offset < offset + size) {
+                    /* property is anchored inside block: remove it */
+                    *pp = (*pp)->next;
+                    if (p->type & QE_PROP_FREE) {
+                        qe_free(&p->data);
+                    }
+                    qe_free(&p);
+                    continue;
+                }
+                p->offset -= size;
+            }
+            pp = &(*pp)->next;
+        }
+    }
+}
+
+void eb_add_property(EditBuffer *b, int offset, int type, void *data) {
+    QEProperty *p = qe_mallocz(QEProperty);
+    QEProperty **pp;
+
+    if (!b->property_list) {
+        eb_add_callback(b, eb_plist_callback, NULL, 0);
+    }
+
+    p->offset = offset;
+    p->type = type;
+    p->data = data;
+    for (pp = &b->property_list; *pp; pp = &(*pp)->next) {
+        if ((*pp)->offset >= offset) {
+            if ((*pp)->offset == offset && p->type == type && type == QE_PROP_TAG) {
+                /* prevent tag duplicates */
+                if (strequal(p->data, data))
+                    return;
+                continue;
+            }
+            break;
+        }
+    }
+    p->next = *pp;
+    *pp = p;
+}
+
+QEProperty *eb_find_property(EditBuffer *b, int offset, int offset2, int type) {
+    QEProperty *found = NULL;
+    QEProperty *p;
+    for (p = b->property_list; p && p->offset < offset2; p = p->next) {
+        if (p->offset >= offset) {
+            found = p;
+        }
+    }
+    return found;
+}
+
+void eb_delete_properties(EditBuffer *b, int offset, int offset2) {
+    QEProperty *p;
+    QEProperty **pp;
+
+    if (b->property_list) {
+        for (pp = &b->property_list; (p = *pp) != NULL;) {
+            if (p->offset >= offset && p->offset < offset2) {
+                *pp = (*pp)->next;
+                if (p->type & QE_PROP_FREE) {
+                    qe_free(&p->data);
+                }
+                qe_free(&p);
+            } else {
+                pp = &(*pp)->next;
+            }
+        }
+        if (!b->property_list) {
+            eb_free_callback(b, eb_plist_callback, NULL);
+        }
+    }
 }
 
 /* buffer data type handling */
