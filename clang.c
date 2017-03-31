@@ -546,8 +546,7 @@ static void c_colorize_line(QEColorizeContext *cp,
         case '(':
         case '{':
             tag = 0;
-            continue;
-
+            break;
         default:
         normal:
             if (state & IN_C_PREPROCESS)
@@ -1692,7 +1691,7 @@ static void js_colorize_line(QEColorizeContext *cp,
         case '(':
         case '{':
             tag = 0;
-            break;
+            continue;
         default:
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
