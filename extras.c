@@ -66,6 +66,43 @@ static int qe_skip_spaces(EditState *s, int offset, int *offsetp)
     return 0;
 }
 
+static void compare_resync(EditState *s1, EditState *s2,
+                           int save1, int save2,
+                           int *offset1_ptr, int *offset2_ptr)
+{
+    int pos1, off1, pos2, off2;
+    int ch1, ch2;
+
+    off1 = save1;
+    off2 = save2;
+    /* try skipping blanks */
+    while (qe_isblank(ch1 = eb_nextc(s1->b, pos1 = off1, &off1)))
+        continue;
+    while (qe_isblank(ch2 = eb_nextc(s2->b, pos2 = off2, &off2)))
+        continue;
+    if (ch1 != ch2) {
+        /* try skipping current words */
+        off1 = pos1;
+        off2 = pos2;
+        while (!qe_isspace(ch1 = eb_nextc(s1->b, pos1 = off1, &off1)))
+            continue;
+        while (!qe_isspace(ch2 = eb_nextc(s2->b, pos2 = off2, &off2)))
+            continue;
+        if (ch1 != ch2) {
+            /* Try to resync from end of line */
+            pos1 = eb_goto_eol(s1->b, save1);
+            pos2 = eb_goto_eol(s2->b, save2);
+        }
+    }
+    while (pos1 > save1 && pos2 > save2
+       &&  eb_prevc(s1->b, pos1, &off1) == eb_prevc(s2->b, pos2, &off2)) {
+           pos1 = off1;
+           pos2 = off2;
+    }
+    *offset1_ptr = pos1;
+    *offset2_ptr = pos2;
+}
+
 void do_compare_windows(EditState *s, int argval)
 {
     QEmacsState *qs = s->qe_state;
@@ -145,29 +182,7 @@ void do_compare_windows(EditState *s, int argval)
             }
             if (resync) {
                 int save1 = s1->offset, save2 = s2->offset;
-
-                /* Try to resync from end of line */
-                if (ch1 != '\n' && ch2 != '\n') {
-                    int pos1, off1, pos2, off2;
-                    do_eol(s1);
-                    do_eol(s2);
-                    pos1 = s1->offset;
-                    pos2 = s2->offset;
-                    while (pos1 > save1 && pos2 > save2 && 
-                           eb_prevc(s1->b, pos1, &off1) == eb_prevc(s2->b, pos2, &off2)) {
-                        pos1 = off1;
-                        pos2 = off2;
-                    }
-                    if (pos1 < s1->offset) {
-                        s1->offset = pos1;
-                        s2->offset = pos2;
-                        put_status(s, "Skipped %d and %d bytes", pos1 - save1, pos2 - save2);
-                        break;
-                    }
-                }
-                /* Skip to next line in parallel */
-                s1->offset = eb_next_line(s1->b, s1->offset);
-                s2->offset = eb_next_line(s2->b, s2->offset);
+                compare_resync(s1, s2, save1, save2, &s1->offset, &s2->offset);
                 put_status(s, "Skipped %d and %d bytes",
                            s1->offset - save1, s2->offset - save2);
                 break;
