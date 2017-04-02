@@ -31,6 +31,7 @@
 #define QE_STYLE_ITALIC       0x0004
 #define QE_STYLE_UNDERLINE    0x0008
 #define QE_STYLE_LINE_THROUGH 0x0010
+#define QE_STYLE_BLINK        0x0020
 #define QE_STYLE_MASK         0x00ff
 
 #define NB_FONT_FAMILIES      3

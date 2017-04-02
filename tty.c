@@ -1,5 +1,5 @@
 /*
- * TTY handling for QEmacs
+ * TTY Terminal handling for QEmacs
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
  * Copyright (c) 2002-2017 Charlie Gordon.
@@ -35,28 +35,40 @@
 
 #if MAX_UNICODE_DISPLAY > 0xFFFF
 typedef uint64_t TTYChar;
-#define TTYCHAR(ch,fg,bg)   ((uint32_t)(ch) | ((uint64_t)((fg) | ((bg) << 8)) << 32))
+/* TTY composite style has 8 bit color number for FG and BG plus attribute bits */
+#define TTY_STYLE_BITS      32
+#define TTYCHAR(ch,fg,bg)   ((uint32_t)(ch) | ((uint64_t)((fg) | ((bg) << 16)) << 32))
 #define TTYCHAR2(ch,col)    ((uint32_t)(ch) | ((uint64_t)(col) << 32))
 #define TTYCHAR_GETCH(cc)   ((uint32_t)(cc))
-#define TTYCHAR_GETCOL(cc)  ((uint32_t)((cc) >> 32) & 0xFFFF)
+#define TTYCHAR_GETCOL(cc)  ((uint32_t)((cc) >> 32))
 #define TTYCHAR_GETFG(cc)   ((uint32_t)((cc) >> 32) & 0xFF)
-#define TTYCHAR_GETBG(cc)   ((uint32_t)((cc) >> (32 + 8)) & 0xFF)
+#define TTYCHAR_GETBG(cc)   ((uint32_t)((cc) >> (32 + 16)) & 0xFF)
 #define TTYCHAR_DEFAULT     TTYCHAR(' ', 7, 0)
 #define TTYCHAR_COMB        0x200000
 #define TTYCHAR_BAD         0xFFFD
 #define TTYCHAR_NONE        0xFFFFFFFF
+#define TTY_BOLD            0x0100
+#define TTY_UNDERLINE       0x0200
+#define TTY_BLINK           0x0400
+#define TTY_ITALIC          0x0800
 #define COMB_CACHE_SIZE     2048
 #else
-typedef unsigned int TTYChar;
-#define TTYCHAR(ch,fg,bg)   ((ch) | ((fg) << 16) | ((bg) << 24))
-#define TTYCHAR2(ch,col)    ((ch) | ((col) << 16))
+typedef uint32_t TTYChar;
+/* TTY composite style has 4 bit color number for FG and BG plus attribute bits */
+#define TTY_STYLE_BITS      16
+#define TTYCHAR(ch,fg,bg)   ((uint32_t)(ch) | ((uint32_t)((fg) | ((bg) << 12)) << 16))
+#define TTYCHAR2(ch,col)    ((uint32_t)(ch) | ((uint32_t)(col) << 16))
 #define TTYCHAR_GETCH(cc)   ((cc) & 0xFFFF)
 #define TTYCHAR_GETCOL(cc)  (((cc) >> 16) & 0xFFFF)
 #define TTYCHAR_GETFG(cc)   (((cc) >> 16) & 0xFF)
-#define TTYCHAR_GETBG(cc)   (((cc) >> 24) & 0xFF)
+#define TTYCHAR_GETBG(cc)   (((cc) >> (16 + 8)) & 0xFF)
 #define TTYCHAR_DEFAULT     TTYCHAR(' ', 7, 0)
 #define TTYCHAR_BAD         0xFFFD
 #define TTYCHAR_NONE        0xFFFF
+#define TTY_BOLD            0x0100
+#define TTY_UNDERLINE       0x0200
+#define TTY_BLINK           0x0400
+#define TTY_ITALIC          0x0800
 #define COMB_CACHE_SIZE     1
 #endif
 
@@ -105,10 +117,15 @@ typedef struct TTYState {
     char *term_name;
     enum TermCode term_code;
     int term_flags;
-#define KBS_CONTROL_H          1
-#define USE_BOLD_AS_BRIGHT     2
-#define USE_BLINK_AS_BRIGHT    4
-#define USE_ERASE_END_OF_LINE  8
+#define KBS_CONTROL_H           0x01
+#define USE_ERASE_END_OF_LINE   0x02
+#define USE_BOLD_AS_BRIGHT_FG   0x04
+#define USE_BLINK_AS_BRIGHT_BG  0x08
+#define USE_256_COLORS          0x10
+#define USE_24_BIT_COLORS       0x20
+    const QEColor *term_colors;
+    int term_fg_colors_count;
+    int term_bg_colors_count;
     unsigned int comb_cache[COMB_CACHE_SIZE];
 } TTYState;
 
@@ -144,6 +161,10 @@ static int tty_term_init(QEditScreen *s,
     /* Derive some settings from the TERM environment variable */
     ts->term_code = TERM_UNKNOWN;
     ts->term_flags = USE_ERASE_END_OF_LINE;
+    ts->term_colors = xterm_colors;
+    ts->term_fg_colors_count = 16;
+    ts->term_bg_colors_count = 16;
+
     ts->term_name = getenv("TERM");
     if (ts->term_name) {
         /* linux and xterm -> kbs=\177
@@ -166,8 +187,29 @@ static int tty_term_init(QEditScreen *s,
         if (strstart(ts->term_name, "cygwin", NULL)) {
             ts->term_code = TERM_CYGWIN;
             ts->term_flags |= KBS_CONTROL_H |
-                                    USE_BOLD_AS_BRIGHT | USE_BLINK_AS_BRIGHT;
+                              USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG;
         }
+#if defined(CONFIG_TINY)
+        ts->term_flags &= ~(USE_256_COLORS | USE_24_BIT_COLORS);
+#else
+        if (strstr(ts->term_name, "256")) {
+            ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
+                                USE_256_COLORS | USE_24_BIT_COLORS);
+            ts->term_flags |= USE_256_COLORS;
+        }
+        if (strstr(ts->term_name, "true") || strstr(ts->term_name, "24")) {
+            ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
+                                USE_256_COLORS | USE_24_BIT_COLORS);
+            ts->term_flags |= USE_24_BIT_COLORS;
+        }
+#endif
+    }
+
+    if (ts->term_flags & (USE_256_COLORS | USE_24_BIT_COLORS)) {
+        ts->term_fg_colors_count = 256;
+#if TTY_STYLE_BITS == 32
+        ts->term_bg_colors_count = 256;
+#endif
     }
 
     tcgetattr(fileno(s->STDIN), &tty);
@@ -593,7 +635,7 @@ static void tty_read_handler(void *opaque)
 }
 
 #if 0
-unsigned int const tty_full_colors[8] = {
+static QEColor const tty_full_colors[8] = {
     QERGB(0x00, 0x00, 0x00),
     QERGB(0xff, 0x00, 0x00),
     QERGB(0x00, 0xff, 0x00),
@@ -605,7 +647,7 @@ unsigned int const tty_full_colors[8] = {
 };
 #endif
 
-static unsigned int const tty_putty_colors[256] = {
+QEColor const xterm_colors[256] = {
     QERGB(0x00, 0x00, 0x00),
     QERGB(0xbb, 0x00, 0x00),
     QERGB(0x00, 0xbb, 0x00),
@@ -875,19 +917,49 @@ static unsigned int const tty_putty_colors[256] = {
 #endif
 };
 
-unsigned int const *tty_bg_colors = tty_putty_colors;
-int tty_bg_colors_count = 16;
-unsigned int const *tty_fg_colors = tty_putty_colors;
-int tty_fg_colors_count = 16;
+static unsigned char const scale_cube[256] = {
+    /* This array is used for mapping rgb colors to the standard palette */
+    /* 216 entry RGB cube with axes 0,95,135,175,215,255 */
+#define REP5(x)   (x), (x), (x), (x), (x)
+#define REP10(x)  REP5(x), REP5(x)
+#define REP20(x)  REP10(x), REP10(x)
+#define REP40(x)  REP20(x), REP20(x)
+#define REP25(x)  REP5(x), REP5(x), REP5(x), REP5(x), REP5(x)
+#define REP47(x)  REP10(x), REP10(x), REP10(x), REP10(x), REP5(x), (x), (x)
+    REP47(0), REP47(1), REP20(1), REP40(2), REP40(3), REP40(4), REP20(5), 5
+};
 
-static inline int color_dist(unsigned int c1, unsigned int c2) {
+static unsigned char const scale_grey[256] = {
+    /* This array is used for mapping gray levels to the standard palette */
+    /* 232..255: 24 entry grey scale 8,18..238 */
+    16, 16, 16, 16,
+    REP10(232), REP10(233), REP10(234), REP10(235),
+    REP10(236), REP10(237), REP10(238), REP10(239), 
+    REP10(240), REP10(241), REP10(242), REP10(243), 
+    REP10(244), REP10(245), REP10(246), REP10(247),
+    REP10(248), REP10(249), REP10(250), REP10(251),
+    REP10(252), REP10(253), REP10(254), REP10(255),
+    255, 255, 255,
+    231, 231, 231, 231, 231, 231, 231, 231, 231
+};
+
+static inline int color_dist(QEColor c1, QEColor c2) {
     /* using casts because c1 and c2 are unsigned */
+#if 0
+    /* using a quick approximation to give green extra weight */
     return      abs((int)((c1 >>  0) & 0xff) - (int)((c2 >>  0) & 0xff)) +
             2 * abs((int)((c1 >>  8) & 0xff) - (int)((c2 >>  8) & 0xff)) +
                 abs((int)((c1 >> 16) & 0xff) - (int)((c2 >> 16) & 0xff));
+#else
+    /* using different weights to R, G, B according to luminance levels */
+    return  11 * abs((int)((c1 >>  0) & 0xff) - (int)((c2 >>  0) & 0xff)) +
+            59 * abs((int)((c1 >>  8) & 0xff) - (int)((c2 >>  8) & 0xff)) +
+            30 * abs((int)((c1 >> 16) & 0xff) - (int)((c2 >> 16) & 0xff));
+#endif
 }
 
-int get_tty_color(QEColor color, unsigned int const *colors, int count)
+/* XXX: should have a more generic API with precomputed mapping scales */
+int get_tty_color(QEColor color, QEColor const *colors, int count)
 {
     int i, cmin, dmin, d;
 
@@ -900,6 +972,29 @@ int get_tty_color(QEColor color, unsigned int const *colors, int count)
             dmin = d;
         }
     }
+#if 1
+    if (dmin > 0 && count > 16) {
+        unsigned int r = (color >> 16) & 0xff;
+        unsigned int g = (color >>  8) & 0xff;
+        unsigned int b = (color >>  0) & 0xff;
+        if (r == g && g == b) {
+            i = scale_grey[r];
+            d = color_dist(color, colors[i]);
+            if (d < dmin) {
+                cmin = i;
+                dmin = d;
+            }
+        } else {
+            /* XXX: should use more precise projection */
+            i = scale_cube[r] * 36 + scale_cube[g] * 6 + scale_cube[b];
+            d = color_dist(color, colors[i]);
+            if (d < dmin) {
+                cmin = i;
+                dmin = d;
+            }
+        }
+    }
+#endif
     return cmin;
 }
 
@@ -925,7 +1020,7 @@ static void tty_term_fill_rectangle(QEditScreen *s,
             ptr += wrap;
         }
     } else {
-        bgcolor = get_tty_color(color, tty_bg_colors, tty_bg_colors_count);
+        bgcolor = get_tty_color(color, ts->term_colors, ts->term_bg_colors_count);
         for (y = y1; y < y2; y++) {
             ts->line_updated[y] = 1;
             for (x = x1; x < x2; x++) {
@@ -935,79 +1030,6 @@ static void tty_term_fill_rectangle(QEditScreen *s,
             ptr += wrap;
         }
     }
-}
-
-static int str_get_word(char *buf, int size, const char *p, const char **pp)
-{
-    int len;
-
-    while (*p == ' ')
-        p++;
-
-    for (len = 0; *p != '\0' && *p != ' ' && *p != '/'; p++, len++) {
-        if (len < size - 1)
-            buf[len] = *p;
-    }
-    if (len < size - 1)
-        buf[len] = '\0';
-
-    while (*p == ' ')
-        p++;
-
-    if (pp)
-        *pp = p;
-
-    return len;
-}
-
-/* match a keyword, ignore case, check word boundary */
-static int str_match_word(const char *str, const char *val, const char **pp)
-{
-    if (stristart(str, val, &str) && (*str == '\0' || *str == ' ')) {
-        while (*str == ' ')
-            str++;
-        if (pp)
-            *pp = str;
-        return 1;
-    }
-    return 0;
-}
-
-int get_tty_style(const char *str)
-{
-    char buf[128];
-    QEColor fg_color, bg_color;
-    int fg, bg, style;
-    const char *p = str;
-
-    style = 0;
-    for (;;) {
-        if (str_match_word(p, "bold", &p)) {
-            style |= TTY_BOLD;
-            continue;
-        }
-        if (str_match_word(p, "blinking", &p)
-        ||  str_match_word(p, "blink", &p)) {
-            style |= TTY_BLINK;
-            continue;
-        }
-        break;
-    }
-    fg_color = QERGB(0xbb, 0xbb, 0xbb);
-    bg_color = QERGB(0x00, 0x00, 0x00);
-    if (str_get_word(buf, sizeof(buf), p, &p)) {
-        if (css_get_color(&fg_color, buf))
-            return -1;
-        if (str_match_word(p, "on", &p) || (*p == '/' && p++)) {
-            str_get_word(buf, sizeof(buf), p, &p);
-            if (css_get_color(&bg_color, buf))
-                return -1;
-        }
-    }
-    fg = get_tty_color(fg_color, tty_fg_colors, tty_fg_colors_count);
-    bg = get_tty_color(bg_color, tty_fg_colors, tty_fg_colors_count);
-
-    return QE_STYLE_TTY | style | TTY_MAKE_COLOR(fg, bg);
 }
 
 /* XXX: could alloc font in wrapper */
@@ -1121,7 +1143,30 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
     TTYState *ts = s->priv_data;
     unsigned int *ip;
     unsigned int i;
+    int w = 16;
 
+    eb_printf(b, "Device Description\n\n");
+
+    eb_printf(b, "%*s: %s\n", w, "term_name", ts->term_name);
+    eb_printf(b, "%*s: %d  %s\n", w, "term_code", ts->term_code,
+              ts->term_code == TERM_UNKNOWN ? "UNKNOWN" :
+              ts->term_code == TERM_ANSI ? "ANSI" :
+              ts->term_code == TERM_VT100 ? "VT100" :
+              ts->term_code == TERM_XTERM ? "XTERM" :
+              ts->term_code == TERM_LINUX ? "LINUX" :
+              ts->term_code == TERM_CYGWIN ? "CYGWIN" :
+              "");
+    eb_printf(b, "%*s: %#x %s%s%s%s%s%s\n", w, "term_flags", ts->term_flags,
+              ts->term_flags & KBS_CONTROL_H ? " KBS_CONTROL_H" : "",
+              ts->term_flags & USE_ERASE_END_OF_LINE ? " USE_ERASE_END_OF_LINE" : "",
+              ts->term_flags & USE_BOLD_AS_BRIGHT_FG ? " USE_BOLD_AS_BRIGHT_FG" : "",
+              ts->term_flags & USE_BLINK_AS_BRIGHT_BG ? " USE_BLINK_AS_BRIGHT_BG" : "",
+              ts->term_flags & USE_256_COLORS ? " USE_256_COLORS" : "",
+              ts->term_flags & USE_24_BIT_COLORS ? " USE_24_BIT_COLORS" : "");
+    eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "colors",
+              ts->term_fg_colors_count, ts->term_bg_colors_count);
+    
+    eb_printf(b, "\n");
     eb_printf(b, "Unicode combination cache:\n\n");
     
     for (ip = ts->comb_cache; *ip != 0; ip += *ip & 0xFFFF) {
@@ -1158,7 +1203,15 @@ static void tty_term_draw_text(QEditScreen *s, qe__unused__ QEFont *font,
         return;
 
     ts->line_updated[y] = 1;
-    fgcolor = get_tty_color(color, tty_fg_colors, tty_fg_colors_count);
+    fgcolor = get_tty_color(color, ts->term_colors, ts->term_fg_colors_count);
+    if (font->style & QE_STYLE_UNDERLINE)
+        fgcolor |= TTY_UNDERLINE;
+    if (font->style & QE_STYLE_BOLD)
+        fgcolor |= TTY_BOLD;
+    if (font->style & QE_STYLE_BLINK)
+        fgcolor |= TTY_BLINK;
+    if (font->style & QE_STYLE_ITALIC)
+        fgcolor |= TTY_ITALIC;
     ptr = ts->screen + y * s->width;
 
     if (x < s->clip_x1) {
@@ -1237,7 +1290,7 @@ static void tty_term_flush(QEditScreen *s)
 {
     TTYState *ts = s->priv_data;
     TTYChar *ptr, *ptr1, *ptr2, *ptr3, *ptr4, cc, blankcc;
-    int y, shadow, ch, bgcolor, fgcolor, shifted;
+    int y, shadow, ch, bgcolor, fgcolor, shifted, attr;
 
     TTY_FPUTS("\033[H\033[0m", s->STDOUT);
 
@@ -1247,6 +1300,7 @@ static void tty_term_flush(QEditScreen *s)
 
     bgcolor = -1;
     fgcolor = -1;
+    attr = 0;
     shifted = 0;
 
     /* CG: Should optimize output by computing it in a temporary buffer
@@ -1298,7 +1352,7 @@ static void tty_term_flush(QEditScreen *s)
              */
             if ((ts->term_flags & USE_ERASE_END_OF_LINE)
             &&  TTYCHAR_GETCH(ptr4[-1]) == ' '
-            &&  (/*!(ts->term_flags & USE_BLINK_AS_BRIGHT) ||*/
+            &&  (/*!(ts->term_flags & USE_BLINK_AS_BRIGHT_BG) ||*/
                  TTYCHAR_GETBG(ptr4[-1]) < 8))
             {
                 /* find the last non blank char on row */
@@ -1337,19 +1391,22 @@ static void tty_term_flush(QEditScreen *s)
                 ch = TTYCHAR_GETCH(cc);
                 if ((unsigned int)ch != TTYCHAR_NONE) {
                     /* output attributes */
-                  again:
+                    again:
                     if (bgcolor != (int)TTYCHAR_GETBG(cc)) {
                         int lastbg = bgcolor;
                         bgcolor = TTYCHAR_GETBG(cc);
-                        if (ts->term_flags & USE_BLINK_AS_BRIGHT) {
+                        if (ts->term_flags & (USE_256_COLORS | USE_24_BIT_COLORS)) {
+                            TTY_FPRINTF(s->STDOUT, "\033[48;5;%dm", bgcolor);
+                        } else
+                        if (ts->term_flags & USE_BLINK_AS_BRIGHT_BG) {
                             if (bgcolor > 7) {
                                 if (lastbg <= 7) {
                                     TTY_FPUTS("\033[5m", s->STDOUT);
                                 }
                             } else {
                                 if (lastbg > 7) {
-                                    TTY_FPUTS("\033[0m", s->STDOUT);
-                                    fgcolor = -1;
+                                    TTY_FPUTS("\033[25m", s->STDOUT);
+                                    //fgcolor = -1;
                                 }
                             }
                             TTY_FPRINTF(s->STDOUT, "\033[%dm",
@@ -1361,20 +1418,23 @@ static void tty_term_flush(QEditScreen *s)
                         }
                     }
                     /* do not special case SPC on fg color change
-                     * because of combining marks */
+                    * because of combining marks */
                     if (fgcolor != (int)TTYCHAR_GETFG(cc)) {
                         int lastfg = fgcolor;
                         fgcolor = TTYCHAR_GETFG(cc);
-                        if (ts->term_flags & USE_BOLD_AS_BRIGHT) {
+                        if (ts->term_flags & (USE_256_COLORS | USE_24_BIT_COLORS)) {
+                            TTY_FPRINTF(s->STDOUT, "\033[38;5;%dm", fgcolor);
+                        } else
+                        if (ts->term_flags & USE_BOLD_AS_BRIGHT_FG) {
                             if (fgcolor > 7) {
                                 if (lastfg <= 7) {
                                     TTY_FPUTS("\033[1m", s->STDOUT);
                                 }
                             } else {
                                 if (lastfg > 7) {
-                                    TTY_FPUTS("\033[0m", s->STDOUT);
-                                    fgcolor = -1;
-                                    bgcolor = -1;
+                                    TTY_FPUTS("\033[22m", s->STDOUT);
+                                    //fgcolor = -1;
+                                    //bgcolor = -1;
                                     goto again;
                                 }
                             }
@@ -1385,6 +1445,41 @@ static void tty_term_flush(QEditScreen *s)
                                         fgcolor > 8 ? 90 + fgcolor - 8 :
                                         30 + fgcolor);
                         }
+                    }
+#if 1
+                    if (attr != (int)TTYCHAR_GETCOL(cc)) {
+                        int lastattr = attr;
+                        attr = TTYCHAR_GETCOL(cc);
+
+                        if ((attr ^ lastattr) & TTY_BOLD) {
+                            if (attr & TTY_BOLD) {
+                                TTY_FPUTS("\033[1m", s->STDOUT);
+                            } else {
+                                TTY_FPUTS("\033[22m", s->STDOUT);
+                            }
+                        }
+                        if ((attr ^ lastattr) & TTY_UNDERLINE) {
+                            if (attr & TTY_UNDERLINE) {
+                                TTY_FPUTS("\033[4m", s->STDOUT);
+                            } else {
+                                TTY_FPUTS("\033[24m", s->STDOUT);
+                            }
+                        }
+                        if ((attr ^ lastattr) & TTY_BLINK) {
+                            if (attr & TTY_BLINK) {
+                                TTY_FPUTS("\033[5m", s->STDOUT);
+                            } else {
+                                TTY_FPUTS("\033[25m", s->STDOUT);
+                            }
+                        }
+                        if ((attr ^ lastattr) & TTY_ITALIC) {
+                            if (attr & TTY_ITALIC) {
+                                TTY_FPUTS("\033[3m", s->STDOUT);
+                            } else {
+                                TTY_FPUTS("\033[23m", s->STDOUT);
+                            }
+                        }
+#endif
                     }
                     if (shifted) {
                         /* Kludge for linedrawing chars */
@@ -1477,11 +1572,12 @@ static void tty_term_flush(QEditScreen *s)
                     ptr1++;
                 }
             }
-//            if (ts->term_flags & USE_BLINK_AS_BRIGHT)
+//            if (ts->term_flags & USE_BLINK_AS_BRIGHT_BG)
             {
                 if (bgcolor > 7) {
                     TTY_FPUTS("\033[0m", s->STDOUT);
                     fgcolor = bgcolor = -1;
+                    attr = 0;
                 }
             }
         }

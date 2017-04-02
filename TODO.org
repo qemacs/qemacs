@@ -1,7 +1,7 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-03-31
+; Updated: 2017-04-02
 
 * Needed for release version 5
 
@@ -15,6 +15,7 @@
 ** basic: share mmapped pages correctly
 ** completion: fix electric behavior
 ** completion: add completion function to get the default value
+** display: remove QECOLOR_XOR mess, use dpy_cursor_at for all devices
 ** files: check file date to detect asynchronous modifications on disk
 ** files: reload modified file upon change if untouched since load
 ** layout: kill buffer should delete popup and popleft window
@@ -26,6 +27,7 @@
 ** shell: give commands a chance to execute for macros to behave correctly
 ** shell: A-y at process prompt
 ** shell: fix very long lines in shell buffer
+** shell: C-x RET should switch to last process buffer and move to the end of buffer
 ** undo: saving the file kills the redo stack!
 ** undo: when undo resets the modified buffer flag, this prevents file save
 ** xml/htmlsrc: scan for `</script>` beyond end of very long line
@@ -238,8 +240,6 @@
    Terminal glyph width of 0 should be supported.
 ** deal with accents in filenames (OS/X uses separate utf8 accents)
 ** support 256 and true color escapes in tty emulator
-** support st-256-color terminal
-** support 256 and true color terminals
 ** auto-fill-mode
 ** auto-revert-mode, global-auto-revert-mode, auto-revert-tail-mode
 ** rectangular regions, cut/paste

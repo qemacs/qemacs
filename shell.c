@@ -43,13 +43,13 @@ static ModeDef shell_mode, pager_mode;
 
 #define MAX_ESC_PARAMS 6
 
-enum TTYState {
-    TTY_STATE_NORM,
-    TTY_STATE_UTF8,
-    TTY_STATE_ESC,
-    TTY_STATE_ESC2,
-    TTY_STATE_CSI,
-    TTY_STATE_STRING,
+enum QETermState {
+    QE_TERM_STATE_NORM,
+    QE_TERM_STATE_UTF8,
+    QE_TERM_STATE_ESC,
+    QE_TERM_STATE_ESC2,
+    QE_TERM_STATE_CSI,
+    QE_TERM_STATE_STRING,
 };
 
 typedef struct ShellState {
@@ -57,7 +57,7 @@ typedef struct ShellState {
     /* buffer state */
     int pty_fd;
     int pid; /* -1 if not launched */
-    int color, attr, def_color;
+    int attr, fgcolor, bgcolor, reverse;
     int cur_offset; /* current offset at position x, y */
     int cur_prompt; /* offset of end of prompt on current line */
     int esc_params[MAX_ESC_PARAMS];
@@ -173,9 +173,9 @@ const char *get_shell(void)
     return shell_path;
 }
 
-#define TTY_XSIZE  80
-#define TTY_YSIZE  25
-#define TTY_YSIZE_INFINITE  10000
+#define QE_TERM_XSIZE  80
+#define QE_TERM_YSIZE  25
+#define QE_TERM_YSIZE_INFINITE  10000
 
 static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
                        int cols, int rows, int shell_flags)
@@ -262,16 +262,18 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
                                eb_trace_bytes(" <-- "m" ", -1, \
                                EB_TRACE_SHELL); } while (0) */
 
-static void tty_init(ShellState *s)
+static void qe_term_init(ShellState *s)
 {
     char *term;
 
-    s->state = TTY_STATE_NORM;
+    s->state = QE_TERM_STATE_NORM;
     /* Should compute def_color from shell default style at display
      * time and force full redisplay upon style change.
      */
-    s->color = s->def_color = TTY_MAKE_COLOR(TTY_DEFFG, TTY_DEFBG);
     s->attr = 0;
+    s->fgcolor = QE_TERM_DEF_FG;
+    s->bgcolor = QE_TERM_DEF_BG;
+    s->reverse = 0;
 
     term = getenv("TERM");
     /* vt100 terminfo definitions */
@@ -415,7 +417,7 @@ static void tty_init(ShellState *s)
 }
 
 // XXX: should use an auxiliary buffer to make this asynchous
-static void tty_write(ShellState *s, const char *buf, int len)
+static void qe_term_write(ShellState *s, const char *buf, int len)
 {
     int ret;
 
@@ -437,12 +439,23 @@ static void tty_write(ShellState *s, const char *buf, int len)
     }
 }
 
+static inline void qe_term_set_setyle(ShellState *s) {
+    int composite_color;
+
+    if (s->reverse) {
+        composite_color = QE_TERM_MAKE_COLOR(s->bgcolor, s->fgcolor);
+    } else {
+        composite_color = QE_TERM_MAKE_COLOR(s->fgcolor, s->bgcolor);
+    }
+    s->b->cur_style = QE_TERM_COMPOSITE | s->attr | composite_color;
+}
+
 /* Compute offset of the char at column x and row y (0 based).
  * Can insert spaces or rows if needed.
  * x and y may each be relative to the current position.
  */
 /* XXX: optimize !!!!! */
-static void tty_goto_xy(ShellState *s, int x, int y, int relative)
+static void qe_term_goto_xy(ShellState *s, int x, int y, int relative)
 {
     int total_lines, cur_line, line_num, col_num, offset, offset1, c;
 
@@ -452,7 +465,7 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
     ||  eb_prevc(s->b, s->b->total_size, &offset1) != '\n')
         total_lines++;
 
-    line_num = total_lines - TTY_YSIZE;
+    line_num = total_lines - QE_TERM_YSIZE;
     if (line_num < 0)
         line_num = 0;
 
@@ -466,11 +479,11 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
         if (relative & 2)
             y += cur_line;
     }
-    if (y < 0 || y >= TTY_YSIZE_INFINITE - 1)
+    if (y < 0 || y >= QE_TERM_YSIZE_INFINITE - 1)
         y = 0;
     else
-    if (y >= TTY_YSIZE)
-        y = TTY_YSIZE - 1;
+    if (y >= QE_TERM_YSIZE)
+        y = QE_TERM_YSIZE - 1;
     if (x < 0)
         x = 0;
 
@@ -478,7 +491,7 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
     /* add lines if necessary */
     while (line_num >= total_lines) {
         /* XXX: color may be wrong */
-        s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
+        qe_term_set_setyle(s);
         eb_insert_uchar(s->b, s->b->total_size, '\n');
         total_lines++;
     }
@@ -497,7 +510,7 @@ static void tty_goto_xy(ShellState *s, int x, int y, int relative)
 }
 
 /* CG: XXX: tty_put_char purposely ignores charset when inserting chars */
-static int tty_put_char(ShellState *s, int c)
+static int qe_term_put_char(ShellState *s, int c)
 {
     char buf[1];
     int c1, cur_len, offset, offset1;
@@ -505,7 +518,7 @@ static int tty_put_char(ShellState *s, int c)
     offset = s->cur_offset;
     buf[0] = c;
     c1 = eb_nextc(s->b, offset, &offset1);
-    s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
+    qe_term_set_setyle(s);
     if (c1 == '\n') {
         /* insert */
         eb_insert(s->b, offset, buf, 1);
@@ -524,7 +537,7 @@ static int tty_put_char(ShellState *s, int c)
     return s->cur_offset = offset + 1;
 }
 
-static void tty_csi_m(ShellState *s, int c, int has_param)
+static void qe_term_csi_m(ShellState *s, int c, int has_param)
 {
     /* Comment from putty/terminal.c:
      *
@@ -558,32 +571,43 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
 
     switch (has_param ? c : 0) {
     case 0:     /* exit_attribute_mode */
-        s->color = s->def_color;
+        s->fgcolor = QE_TERM_DEF_FG;
+        s->bgcolor = QE_TERM_DEF_BG;
+        s->reverse = 0;
         s->attr = 0;
         break;
     case 1:     /* enter_bold_mode */
-        s->attr |= TTY_BOLD;
+        s->attr |= QE_TERM_BOLD;
         break;
-    case 22:    /* exit_bold_mode */
-        s->attr &= ~TTY_BOLD;
+    case 3:     /* enter_italic_mode */
+        s->attr |= QE_TERM_ITALIC;
         break;
     case 4:     /* enter_underline_mode */
-        s->attr |= TTY_UNDERLINE;
-        break;
-    case 24:    /* exit_underline_mode */
-        s->attr &= ~TTY_UNDERLINE;
+        s->attr |= QE_TERM_UNDERLINE;
         break;
     case 5:     /* enter_blink_mode */
-        s->attr |= TTY_BLINK;
-        break;
-    case 25:    /* exit_blink_mode */
-        s->attr &= ~TTY_BLINK;
+        s->attr |= QE_TERM_BLINK;
         break;
     case 7:     /* enter_reverse_mode, enter_standout_mode */
-    case 27:    /* exit_reverse_mode, exit_standout_mode */
-        /* TODO */
-        TRACE_MSG("unhandled");
+                /* also Xenix combined reverse fg/bg: \027[7;FG;BGm */
+        s->reverse = 1;
         break;
+    case 22:    /* exit_bold_mode */
+        s->attr &= ~QE_TERM_BOLD;
+        break;
+    case 23:    /* exit_italic_mode */
+        s->attr &= ~QE_TERM_ITALIC;
+        break;
+    case 24:    /* exit_underline_mode */
+        s->attr &= ~QE_TERM_UNDERLINE;
+        break;
+    case 25:    /* exit_blink_mode */
+        s->attr &= ~QE_TERM_BLINK;
+        break;
+    case 27:    /* exit_reverse_mode, exit_standout_mode */
+        s->reverse = 0;
+        break;
+    case 2:     /* Xenix combined fg/bg: \027[2;FG;BGm */
     case 6:     /* SCO light background */
     case 8:     /* enter_secure_mode */
     case 9:     /* cygwin dim mode */
@@ -594,35 +618,54 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
         TRACE_MSG("unhandled");
         break;
     case 39:    /* orig_pair(1) default-foreground */
-        TTY_SET_FG_COLOR(s->color, TTY_DEFFG);
+        s->fgcolor = QE_TERM_DEF_FG;
         break;
     case 49:    /* orig_pair(2) default-background */
-        TTY_SET_BG_COLOR(s->color, TTY_DEFBG);
+        s->bgcolor = QE_TERM_DEF_BG;
         break;
     case 38:    /* set extended foreground color */
-        /* complete syntax is \033[38;5;Nm where N is in range 1..255 */
         if (s->esc_params[1] == 5) {
             /* set foreground color to third esc_param */
+            /* complete syntax is \033[38;5;Nm where N is in range 0..255 */
             int color = s->esc_params[2];
+            QEColor rgb = xterm_colors[color & 255];
 
-            /* simulate 256 colors */
-            color = get_tty_color(tty_fg_colors[color & 255],
-                                  tty_fg_colors, 16);
+            /* map color to qe-term palette */
+            s->fgcolor = get_tty_color(rgb, xterm_colors, QE_TERM_FG_COLORS);
+            s->nb_esc_params = 1;
+        } else
+        if (s->esc_params[1] == 2) {
+            /* set foreground color to 24-bit color */
+            /* complete syntax is \033[38;2;r;g;bm where r,g,b are in 0..255 */
+            QEColor rgb = QERGB(s->esc_params[2] & 255,
+                                s->esc_params[3] & 255,
+                                s->esc_params[4] & 255);
 
-            TTY_SET_FG_COLOR(s->color, color);
+            /* map 24-bit colors to qe-term palette */
+            s->fgcolor = get_tty_color(rgb, xterm_colors, QE_TERM_FG_COLORS);
             s->nb_esc_params = 1;
         }
         break;
     case 48:    /* set extended background color */
-        /* complete syntax is \033[48;5;Nm where N is in range 1..255 */
         if (s->esc_params[1] == 5) {
             /* set background color to third esc_param */
+            /* complete syntax is \033[48;5;Nm where N is in range 0..255 */
             int color = s->esc_params[2];
+            QEColor rgb = xterm_colors[color & 255];
 
-            /* simulate 256 colors */
-            color = get_tty_color(tty_fg_colors[color & 255],
-                                  tty_fg_colors, 16);
-            TTY_SET_BG_COLOR(s->color, color);
+            /* map color to qe-term palette */
+            s->bgcolor = get_tty_color(rgb, xterm_colors, QE_TERM_BG_COLORS);
+            s->nb_esc_params = 1;
+        } else
+        if (s->esc_params[1] == 2) {
+            /* set background color to 24-bit color */
+            /* complete syntax is \033[48;2;r;g;bm where r,g,b are in 0..255 */
+            QEColor rgb = QERGB(s->esc_params[2] & 255,
+                                s->esc_params[3] & 255,
+                                s->esc_params[4] & 255);
+
+            /* map 24-bit colors to qe-term palette */
+            s->bgcolor = get_tty_color(rgb, xterm_colors, QE_TERM_BG_COLORS);
             s->nb_esc_params = 1;
         }
         break;
@@ -630,19 +673,19 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
         /* 0:black 1:red 2:green 3:yellow 4:blue 5:magenta 6:cyan 7:white */
         if (c >= 30 && c <= 37) {
             /* set foreground color */
-            TTY_SET_FG_COLOR(s->color, c - 30);
+            s->fgcolor = c - 30;
         } else
         if (c >= 40 && c <= 47) {
             /* set background color */
-            TTY_SET_BG_COLOR(s->color, c - 40);
+            s->bgcolor = c - 40;
         } else
         if (c >= 90 && c <= 97) {
             /* set bright foreground color */
-            TTY_SET_FG_COLOR(s->color, c - 90 + 8);
+            s->fgcolor = c - 90 + 8;
         } else
         if (c >= 100 && c <= 107) {
             /* set bright background color */
-            TTY_SET_BG_COLOR(s->color, c - 100 + 8);
+            s->bgcolor = c - 100 + 8;
         } else {
             TRACE_MSG("unhandled");
         }
@@ -652,7 +695,7 @@ static void tty_csi_m(ShellState *s, int c, int has_param)
 
 
 /* Well, almost a hack to update cursor */
-static void tty_update_cursor(qe__unused__ ShellState *s)
+static void qe_term_update_cursor(qe__unused__ ShellState *s)
 {
 #if 0
     QEmacsState *qs = s->qe_state;
@@ -758,7 +801,7 @@ static void shell_key(void *opaque, int key)
         break;
     }
     if (p) {
-        tty_write(s, p, len);
+        qe_term_write(s, p, len);
     }
 }
 
@@ -766,7 +809,7 @@ static unsigned char const sco_color[16] = {
     0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15,
 };
 
-static void tty_emulate(ShellState *s, int c)
+static void qe_term_emulate(ShellState *s, int c)
 {
     int i, offset, offset1, offset2, n;
     char buf1[10];
@@ -778,10 +821,10 @@ static void tty_emulate(ShellState *s, int c)
     switch (c) {
     case 0x18:
     case 0x1A:
-        s->state = TTY_STATE_NORM;
+        s->state = QE_TERM_STATE_NORM;
         return;
     case 0x1B:
-        s->state = TTY_STATE_ESC;
+        s->state = QE_TERM_STATE_ESC;
         return;
 #if 0
     case 0x9B:
@@ -790,7 +833,7 @@ static void tty_emulate(ShellState *s, int c)
     }
 
     switch (s->state) {
-    case TTY_STATE_NORM:
+    case QE_TERM_STATE_NORM:
         switch (c) {
             /* BEL            Bell (Ctrl-G) */
             /* FF             Form Feed or New Page (NP) (Ctrl-L) same as LF */
@@ -803,7 +846,7 @@ static void tty_emulate(ShellState *s, int c)
                 if (c1 != '\n') {
                     s->cur_offset = offset1;
                     /* back_color_erase */
-                    //tty_put_char(s, ' ');
+                    //qe_term_put_char(s, ' ');
                 }
             }
             break;
@@ -811,7 +854,7 @@ static void tty_emulate(ShellState *s, int c)
             {
                 int col_num, cur_line;
                 eb_get_pos(s->b, &cur_line, &col_num, offset);
-                tty_goto_xy(s, (col_num + 8) & ~7, 0, 2);
+                qe_term_goto_xy(s, (col_num + 8) & ~7, 0, 2);
                 break;
             }
         case 10:        /* ^J  NL = line feed */
@@ -821,7 +864,7 @@ static void tty_emulate(ShellState *s, int c)
                 if (offset == s->b->total_size) {
                     /* add a new line */
                     /* CG: XXX: ignoring charset */
-                    s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
+                    qe_term_set_setyle(s);
                     buf1[0] = '\n';
                     eb_insert(s->b, offset, buf1, 1);
                     offset = s->b->total_size;
@@ -894,7 +937,7 @@ static void tty_emulate(ShellState *s, int c)
                         if (s->utf8_len > 1) {
                             s->utf8_buf[0] = c;
                             s->utf8_pos = 1;
-                            s->state = TTY_STATE_UTF8;
+                            s->state = QE_TERM_STATE_UTF8;
                             break;
                         }
                     }
@@ -903,8 +946,8 @@ static void tty_emulate(ShellState *s, int c)
                     len = 1;
                 }
                 c1 = eb_nextc(s->b, offset, &offset1);
-                s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
-                /* Should simplify with tty_put_char */
+                qe_term_set_setyle(s);
+                /* Should simplify with qe_term_put_char */
                 if (c1 == '\n') {
                     /* insert */
                     eb_insert(s->b, offset, buf1, len);
@@ -924,14 +967,14 @@ static void tty_emulate(ShellState *s, int c)
             break;
         }
         break;
-    case TTY_STATE_UTF8:
+    case QE_TERM_STATE_UTF8:
         s->utf8_buf[s->utf8_pos++] = c;
         if (s->utf8_pos >= s->utf8_len) {
             int c1, cur_len, len;
 
             len = s->utf8_len;
             c1 = eb_nextc(s->b, offset, &offset1);
-            s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
+            qe_term_set_setyle(s);
             if (c1 == '\n') {
                 /* insert */
                 eb_insert(s->b, offset, s->utf8_buf, len);
@@ -945,10 +988,10 @@ static void tty_emulate(ShellState *s, int c)
                 }
             }
             s->cur_offset = offset + len;
-            s->state = TTY_STATE_NORM;
+            s->state = QE_TERM_STATE_NORM;
         }
         break;
-    case TTY_STATE_ESC:
+    case QE_TERM_STATE_ESC:
         if (c == '[') {
             for (i = 0; i < MAX_ESC_PARAMS; i++) {
                 s->esc_params[i] = 1;
@@ -956,7 +999,7 @@ static void tty_emulate(ShellState *s, int c)
             }
             s->nb_esc_params = 0;
             s->esc1 = 0;
-            s->state = TTY_STATE_CSI;
+            s->state = QE_TERM_STATE_CSI;
         } else {
             /* CG: should deal with other sequences:
              * ansi: hts=\EH, s0ds=\E(B, s1ds=\E)B, s2ds=\E*B, s3ds=\E+B,
@@ -969,6 +1012,8 @@ static void tty_emulate(ShellState *s, int c)
              *        rc=\E8, ri=\EM, rmkx=\E[?1l\E>, rs1=\Ec,
              *        rs2=\E[!p\E[?3;4l\E[4l\E>, sc=\E7, smkx=\E[?1h\E=,
              *        set-window-title=\E]0;title text\007,
+             * tests: \E#8  fill screen with 'E's
+             * tests: \Ec   reset
              */
             switch (c) {
             case '%':
@@ -978,7 +1023,7 @@ static void tty_emulate(ShellState *s, int c)
             case '+':
             case ']':
                 s->esc1 = c;
-                s->state = TTY_STATE_ESC2;
+                s->state = QE_TERM_STATE_ESC2;
                 break;
             case '7':   // sc   (save_cursor)
             case '8':   // rc   (restore_cursor)
@@ -994,13 +1039,13 @@ static void tty_emulate(ShellState *s, int c)
                 // XXX: do these
             default:
                 TRACE_MSG("unhandled");
-                s->state = TTY_STATE_NORM;
+                s->state = QE_TERM_STATE_NORM;
                 break;
             }
         }
         break;
-    case TTY_STATE_ESC2:
-        s->state = TTY_STATE_NORM;
+    case QE_TERM_STATE_ESC2:
+        s->state = QE_TERM_STATE_NORM;
         s->esc2 = c;
         switch (ESC2(s->esc1, c)) {
         case ESC2('%','G'):     /* set utf mode */
@@ -1034,7 +1079,7 @@ static void tty_emulate(ShellState *s, int c)
         case ESC2(']','2'):     /* xterm's set-window-title */
         case ESC2(']','4'):     /* xterm's define-extended color */
         case ESC2(']','W'):     /* word-set (define char wordness) */
-            s->state = TTY_STATE_STRING;
+            s->state = QE_TERM_STATE_STRING;
             break;
         case ESC2(']','P'):     /* linux set palette */
         case ESC2(']','R'):     /* linux reset palette */
@@ -1047,11 +1092,11 @@ static void tty_emulate(ShellState *s, int c)
         }
         s->shifted = s->charset[s->cset];
         break;
-    case TTY_STATE_STRING:
+    case QE_TERM_STATE_STRING:
         /* CG: should store the string */
         /* Stop string on CR or LF, for protection */
         if (c == '\012' || c == '\015') {
-            s->state = TTY_STATE_NORM;
+            s->state = QE_TERM_STATE_NORM;
             break;
         }
         /* Stop string on \a (^G) or M-\ -- need better test for ESC \ */
@@ -1059,10 +1104,10 @@ static void tty_emulate(ShellState *s, int c)
             /* CG: ESC2(']','0') should set shell caption */
             /* CG: ESC2(']','4') should parse color definition string */
             /* (example: "\033]4;16;rgb:00/00/00\033\134" ) */
-            s->state = TTY_STATE_NORM;
+            s->state = QE_TERM_STATE_NORM;
         }
         break;
-    case TTY_STATE_CSI:
+    case QE_TERM_STATE_CSI:
         if (c == '?' || c == '=') {
             s->esc1 = c;
             break;
@@ -1081,7 +1126,7 @@ static void tty_emulate(ShellState *s, int c)
             s->nb_esc_params++;
             if (c == ';')
                 break;
-            s->state = TTY_STATE_NORM;
+            s->state = QE_TERM_STATE_NORM;
             switch (ESC2(s->esc1,c)) {
 		/* unhandled:
 		 * \^[[4l
@@ -1102,7 +1147,7 @@ static void tty_emulate(ShellState *s, int c)
                     s->esc_params[0] == 1048 ||
                     s->esc_params[0] == 1049) {
                     if (s->shell_flags & SF_INTERACTIVE) {
-                        /* only grab keys in interactive tty buffers */
+                        /* only grab keys in interactive qe_term buffers */
                         s->grab_keys = 1;
                         qe_grab_keys(shell_key, s);
                         /* Should also clear screen */
@@ -1128,33 +1173,33 @@ static void tty_emulate(ShellState *s, int c)
 		}
                 break;
             case 'A':  /* CUU: move up N lines */
-                tty_goto_xy(s, 0, -s->esc_params[0], 3);
+                qe_term_goto_xy(s, 0, -s->esc_params[0], 3);
                 break;
             case 'e':  /* VPR: move down N lines */
             case 'B':  /* CUD: Cursor down */
-                tty_goto_xy(s, 0, s->esc_params[0], 3);
+                qe_term_goto_xy(s, 0, s->esc_params[0], 3);
                 break;
             case 'a':  /* HPR: move right N cols */
             case 'C':  /* CUF: Cursor right */
-                tty_goto_xy(s, s->esc_params[0], 0, 3);
+                qe_term_goto_xy(s, s->esc_params[0], 0, 3);
                 break;
             case 'D':  /* CUB: move left N cols */
-                tty_goto_xy(s, -s->esc_params[0], 0, 3);
+                qe_term_goto_xy(s, -s->esc_params[0], 0, 3);
                 break;
             case 'F':  /* CPL: move up N lines and CR */
-                tty_goto_xy(s, 0, -s->esc_params[0], 2);
+                qe_term_goto_xy(s, 0, -s->esc_params[0], 2);
                 break;
             case 'G':  /* CHA: goto column_address */
             case '`':  /* HPA: set horizontal posn */
-                tty_goto_xy(s, s->esc_params[0] - 1, 0, 2);
+                qe_term_goto_xy(s, s->esc_params[0] - 1, 0, 2);
                 break;
             case 'H':  /* CUP: goto xy */
             case 'f':  /* HVP: set horz and vert posns at once */
-                tty_goto_xy(s, s->esc_params[1] - 1, s->esc_params[0] - 1, 0);
+                qe_term_goto_xy(s, s->esc_params[1] - 1, s->esc_params[0] - 1, 0);
                 break;
             case 'd':
                 /* goto y */
-                tty_goto_xy(s, 0, s->esc_params[0] - 1, 1);
+                qe_term_goto_xy(s, 0, s->esc_params[0] - 1, 1);
                 break;
             case 'J':  /* ED: erase screen or parts of it */
                        /*     0: to end, 1: from begin, 2: all */
@@ -1179,7 +1224,7 @@ static void tty_emulate(ShellState *s, int c)
             case '@':  /* ICH: insert chars (no cursor update) */
                 buf1[0] = ' ';
                 offset1 = offset;
-                s->b->cur_style = QE_STYLE_TTY | s->color | s->attr;
+                qe_term_set_setyle(s);
                 for (n = s->esc_params[0]; n > 0; n--) {
                     /* XXX: incorrect for non 8 bit charsets */
                     eb_insert(s->b, offset1, buf1, 1);
@@ -1198,9 +1243,16 @@ static void tty_emulate(ShellState *s, int c)
                 eb_delete(s->b, offset, offset1 - offset);
                 break;
             case 'c':  /* DA: terminal type query */
-                TRACE_MSG("term type query");
+                if (s->esc_params[0] == 0) {
+                    /* Report Advanced Video option (AVO) */
+                    qe_term_write(s, "\033[?1;2c", -1);
+                }
                 break;
             case 'n':  /* DSR: cursor position query */
+                if (s->esc_params[0] == 5) {
+                    /* Status report: terminal is OK */
+                    qe_term_write(s, "\033[0n", -1);
+                } else
                 if (s->esc_params[0] == 6) {
                     /* XXX: send cursor position, just to be able to
                        launch qemacs in qemacs (in 8859-1) ! */
@@ -1210,7 +1262,7 @@ static void tty_emulate(ShellState *s, int c)
                     /* XXX: actually send position of point in window */
                     snprintf(buf2, sizeof(buf2), "\033[%d;%dR",
                              1, col_num + 1);
-                    tty_write(s, buf2, -1);
+                    qe_term_write(s, buf2, -1);
                 }
                 break;
             case 'g':  /* TBC: clear tabs */
@@ -1223,7 +1275,7 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case 'm':  /* SGR: set graphics rendition (style and colors) */
                 for (i = 0;;) {
-                    tty_csi_m(s, s->esc_params[i], s->has_params[i]);
+                    qe_term_csi_m(s, s->esc_params[i], s->has_params[i]);
                     if (++i >= s->nb_esc_params)
                         break;
                 }
@@ -1248,7 +1300,7 @@ static void tty_emulate(ShellState *s, int c)
                 break;
             case 'X':  /* ECH: erase n characters w/o moving cursor */
                 for (n = s->esc_params[0]; n > 0; n--) {
-                    tty_put_char(s, ' ');
+                    qe_term_put_char(s, ' ');
                 }
                 /* restore cursor */
                 s->cur_offset = offset;
@@ -1263,10 +1315,10 @@ static void tty_emulate(ShellState *s, int c)
 		TRACE_MSG("unhandled");
                 break;
             case ESC2('=','F'): /* select SCO foreground color */
-                TTY_SET_FG_COLOR(s->color, sco_color[s->esc_params[0] & 15]);
+                s->fgcolor = sco_color[s->esc_params[0] & 15];
                 break;
             case ESC2('=','G'): /* select SCO background color */
-                TTY_SET_BG_COLOR(s->color, sco_color[s->esc_params[0] & 15]);
+                s->bgcolor = sco_color[s->esc_params[0] & 15];
                 break;
             default:
 		TRACE_MSG("unhandled");
@@ -1276,12 +1328,12 @@ static void tty_emulate(ShellState *s, int c)
         break;
     }
 #undef ESC2
-    tty_update_cursor(s);
+    qe_term_update_cursor(s);
 }
 
 /* buffer related functions */
 
-/* called when characters are available on the tty */
+/* called when characters are available from the process */
 static void shell_read_cb(void *opaque)
 {
     ShellState *s = opaque;
@@ -1313,7 +1365,7 @@ static void shell_read_cb(void *opaque)
         } else
 #endif
         for (i = 0; i < len; i++)
-            tty_emulate(s, buf[i]);
+            qe_term_emulate(s, buf[i]);
 
         if (save_readonly) {
             s->b->modified = 0;
@@ -1460,7 +1512,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
 
     eb_set_buffer_name(b, bufname); /* ensure that the name is unique */
     if (shell_flags & SF_COLOR)
-        eb_create_style_buffer(b, BF_STYLE2);
+        eb_create_style_buffer(b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 : BF_STYLE4);
 
     /* Select shell output buffer encoding from LANG setting */
     if (((lang = getenv("LANG")) != NULL && strstr(lang, "UTF-8")) ||
@@ -1489,13 +1541,13 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     s->caption = caption;
     s->shell_flags = shell_flags;
     s->cur_prompt = s->cur_offset = b->total_size;
-    tty_init(s);
+    qe_term_init(s);
 
     /* launch shell */
-    cols = TTY_XSIZE;
-    rows = TTY_YSIZE;
+    cols = QE_TERM_XSIZE;
+    rows = QE_TERM_YSIZE;
     if (shell_flags & SF_INFINITE)
-        rows = TTY_YSIZE_INFINITE;
+        rows = QE_TERM_YSIZE_INFINITE;
 
     if (run_process(cmd, &s->pty_fd, &s->pid, cols, rows, shell_flags) < 0) {
         if (!b0)
@@ -1634,7 +1686,7 @@ static void shell_move_left_right(EditState *e, int dir)
     ShellState *s = shell_get_state(e, 1);
 
     if (s && e->interactive) {
-        tty_write(s, dir > 0 ? s->kcuf1 : s->kcub1, -1);
+        qe_term_write(s, dir > 0 ? s->kcuf1 : s->kcub1, -1);
     } else {
         text_move_left_right_visual(e, dir);
     }
@@ -1645,7 +1697,7 @@ static void shell_move_word_left_right(EditState *e, int dir)
     ShellState *s = shell_get_state(e, 1);
 
     if (s && e->interactive) {
-        tty_write(s, dir > 0 ? "\033f" : "\033b", -1);
+        qe_term_write(s, dir > 0 ? "\033f" : "\033b", -1);
     } else {
         text_move_word_left_right(e, dir);
     }
@@ -1656,7 +1708,7 @@ static void shell_move_up_down(EditState *e, int dir)
     ShellState *s = shell_get_state(e, 1);
 
     if (s && e->interactive) {
-        tty_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
+        qe_term_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
     } else {
         text_move_up_down(e, dir);
         // XXX: what if beyond?
@@ -1671,7 +1723,7 @@ static void shell_previous_next(EditState *e, int dir)
 
     if (s && e->interactive) {
         /* hack: M-p silently converted to C-p */
-        tty_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
+        qe_term_write(s, dir > 0 ? s->kcud1 : s->kcuu1, -1);
     } else {
         /* hack: M-p silently converted to C-u C-p */
         text_move_up_down(e, dir * 4);
@@ -1686,7 +1738,7 @@ static void shell_exchange_point_and_mark(EditState *e)
     ShellState *s = shell_get_state(e, 1);
 
     if (s && e->interactive) {
-        tty_write(s, "\030\030", 2);  /* C-x C-x */
+        qe_term_write(s, "\030\030", 2);  /* C-x C-x */
     } else {
         do_exchange_point_and_mark(e);
         // XXX: what if beyond?
@@ -1715,7 +1767,7 @@ static void shell_move_bol(EditState *e)
         e->interactive = 0;
 
     if (s && e->interactive) {
-        tty_write(s, "\001", 1); /* Control-A */
+        qe_term_write(s, "\001", 1); /* Control-A */
     } else {
         text_move_bol(e);
     }
@@ -1726,7 +1778,7 @@ static void shell_move_eol(EditState *e)
     ShellState *s = shell_get_state(e, 1);
 
     if (s && e->interactive) {
-        tty_write(s, "\005", 1); /* Control-E */
+        qe_term_write(s, "\005", 1); /* Control-E */
     } else {
         text_move_eol(e);
         /* XXX: restore shell interactive mode on end / ^E */
@@ -1734,7 +1786,7 @@ static void shell_move_eol(EditState *e)
         &&  e->offset >= s->cur_offset) {
             e->interactive = 1;
             if (e->offset > s->cur_offset)
-                tty_write(s, "\005", 1); /* Control-E */
+                qe_term_write(s, "\005", 1); /* Control-E */
         }
     }
 }
@@ -1751,7 +1803,7 @@ static void shell_move_eof(EditState *e)
     ShellState *s = shell_get_state(e, 1);
 
     if (s && e->interactive) {
-        tty_write(s, "\005", 1); /* Control-E */
+        qe_term_write(s, "\005", 1); /* Control-E */
     } else {
         text_move_eof(e);
         /* Restore shell interactive mode on end-buffer / M-> */
@@ -1759,7 +1811,7 @@ static void shell_move_eof(EditState *e)
         &&  e->offset >= s->cur_offset) {
             e->interactive = 1;
             if (e->offset != s->cur_offset)
-                tty_write(s, "\005", 1); /* Control-E */
+                qe_term_write(s, "\005", 1); /* Control-E */
         }
     }
 }
@@ -1779,7 +1831,7 @@ static void shell_write_char(EditState *e, int c)
         } else {
             len = eb_encode_uchar(e->b, buf, c);
         }
-        tty_write(s, buf, len);
+        qe_term_write(s, buf, len);
     } else {
         text_write_char(e, c);
     }
@@ -1805,23 +1857,23 @@ static void shell_delete_bytes(EditState *e, int offset, int size)
         cur_char = eb_get_char_offset(e->b, s->cur_offset);
         end_char = eb_get_char_offset(e->b, end);
         while (cur_char > end_char) {
-            tty_write(s, "\002", 1);  /* C-b */
+            qe_term_write(s, "\002", 1);  /* C-b */
             cur_char--;
         }
         while (cur_char < start_char) {
-            tty_write(s, "\006", 1);  /* C-f */
+            qe_term_write(s, "\006", 1);  /* C-f */
             cur_char++;
         }
         if (start_char == cur_char && end == e->b->total_size) {
             /* kill to end of line with control-k */
-            tty_write(s, "\013", 1);
+            qe_term_write(s, "\013", 1);
         } else {
             while (cur_char < end_char) {
-                tty_write(s, "\004", 1);  /* C-d */
+                qe_term_write(s, "\004", 1);  /* C-d */
                 end_char--;
             }
             while (start_char < cur_char) {
-                tty_write(s, "\010", 1);  /* backspace */
+                qe_term_write(s, "\010", 1);  /* backspace */
                 cur_char--;
                 end_char--;
             }
@@ -2047,7 +2099,7 @@ static void do_shell_toggle_input(EditState *e)
     }
 #if 0
     if (e->interactive) {
-        tty_update_cursor(s);
+        qe_term_update_cursor(s);
     }
 #endif
 }

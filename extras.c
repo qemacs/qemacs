@@ -1048,6 +1048,87 @@ static void do_about_qemacs(EditState *s)
     show_popup(s, b);
 }
 
+/* extract the next word from the string. ignore spaces, stop on '/' */
+static int str_get_word(char *buf, int size, const char *p, const char **pp)
+{
+    int len = 0;
+
+    while (*p == ' ')
+        p++;
+
+    if (*p == '/') {
+        /* special case meta character '/' */
+        if (len + 1 < size) {
+            buf[len] = *p;
+        }
+        p++;
+        len++;
+    } else {
+        for (; *p != '\0' && *p != ' ' && *p != '/'; p++, len++) {
+            if (len + 1 < size) {
+                buf[len] = qe_tolower((unsigned char)*p);
+            }
+        }
+    }
+    if (size > 0) {
+        if (len < size)
+            buf[len] = '\0';
+        else
+            buf[size - 1] = '\0';
+    }
+
+    while (*p == ' ')
+        p++;
+
+    if (pp)
+        *pp = p;
+
+    return len;
+}
+
+int get_tty_style(const char *str)
+{
+    char buf[128];
+    QEColor fg_color, bg_color;
+    int fg, bg, style, len;
+    const char *p = str;
+
+    style = 0;
+    for (;;) {
+        len = str_get_word(buf, sizeof(buf), p, &p);
+
+        if (strfind("bold|strong", buf)) {
+            style |= QE_TERM_BOLD;
+            continue;
+        }
+        if (strfind("blinking|blink", buf)) {
+            style |= QE_TERM_BLINK;
+            continue;
+        }
+        if (strfind("underlined|underline", buf)) {
+            style |= QE_TERM_UNDERLINE;
+            continue;
+        }
+        break;
+    }
+    fg_color = QERGB(0xbb, 0xbb, 0xbb);
+    bg_color = QERGB(0x00, 0x00, 0x00);
+    if (len > 0) {
+        if (css_get_color(&fg_color, buf))
+            return -1;
+        len = str_get_word(buf, sizeof(buf), p, &p);
+        if (strfind("/|on", buf)) {
+            str_get_word(buf, sizeof(buf), p, &p);
+            if (css_get_color(&bg_color, buf))
+                return -1;
+        }
+    }
+    fg = get_tty_color(fg_color, xterm_colors, QE_TERM_FG_COLORS);
+    bg = get_tty_color(bg_color, xterm_colors, QE_TERM_BG_COLORS);
+
+    return QE_TERM_COMPOSITE | style | QE_TERM_MAKE_COLOR(fg, bg);
+}
+
 static void do_set_region_color(EditState *s, const char *str)
 {
     int offset, size, style;
@@ -1068,7 +1149,7 @@ static void do_set_region_color(EditState *s, const char *str)
         size = -size;
     }
     if (size > 0) {
-        eb_create_style_buffer(s->b, BF_STYLE2);
+        eb_create_style_buffer(s->b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 : BF_STYLE4);
         eb_set_style(s->b, style, LOGOP_WRITE, offset, size);
     }
 }
@@ -1095,7 +1176,7 @@ static void do_set_region_style(EditState *s, const char *str)
         size = -size;
     }
     if (size > 0) {
-        eb_create_style_buffer(s->b, BF_STYLE2);
+        eb_create_style_buffer(s->b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 : BF_STYLE4);
         eb_set_style(s->b, style, LOGOP_WRITE, offset, size);
     }
 }
@@ -1326,7 +1407,7 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d, %d\n", w, "xleft, ytop", s->xleft, s->ytop);
     eb_printf(b1, "%*s: %d, %d\n", w, "width, height", s->width, s->height);
     eb_printf(b1, "%*s: %d, %d, %d, %d\n", w, "x1, y1, x2, y2", s->x1, s->y1, s->x2, s->y2);
-    eb_printf(b1, "%*s: %#x %s%s%s%s%s%s\n", w, "flags", s->flags,
+    eb_printf(b1, "%*s: %#x%s%s%s%s%s%s\n", w, "flags", s->flags,
               (s->flags & WF_POPUP) ? " POPUP" : "",
               (s->flags & WF_MODELINE) ? " MODELINE" : "",
               (s->flags & WF_RSEPARATOR) ? " RSEPARATOR" : "",

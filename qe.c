@@ -2588,6 +2588,10 @@ void do_what_cursor_position(EditState *s)
             }
             buf_put_byte(out, ']');
         }
+        if (s->b->style_bytes) {
+            buf_printf(out, " {%0*X}", s->b->style_bytes * 2,
+                       eb_get_style(s->b, s->offset));
+        }
     }
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
     put_status(s, "%s  point=%d mark=%d size=%d region=%d col=%d",
@@ -2754,14 +2758,17 @@ static void apply_style(QEStyleDef *style, int style_index)
 {
     QEStyleDef *s;
 
-#ifndef CONFIG_WIN32
-    if (style_index & QE_STYLE_TTY) {
-        style->fg_color = tty_fg_colors[TTY_GET_FG(style_index)];
-        style->bg_color = tty_bg_colors[TTY_GET_BG(style_index)];
-    } else
-#endif
-    {
-        s = &qe_styles[style_index & ~QE_STYLE_SEL];
+    if (style_index & QE_TERM_COMPOSITE) {
+        style->fg_color = xterm_colors[QE_TERM_GET_FG(style_index)];
+        style->bg_color = xterm_colors[QE_TERM_GET_BG(style_index)];
+        if (style_index & QE_TERM_UNDERLINE)
+            style->font_style |= QE_STYLE_UNDERLINE;
+        if (style_index & QE_TERM_BOLD)
+            style->font_style |= QE_STYLE_BOLD;
+        if (style_index & QE_TERM_BLINK)
+            style->font_style |= QE_STYLE_BLINK;
+    } else {
+        s = &qe_styles[style_index & QE_STYLE_NUM];
         if (s->fg_color != COLOR_TRANSPARENT)
             style->fg_color = s->fg_color;
         if (s->bg_color != COLOR_TRANSPARENT)
@@ -4135,7 +4142,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             if (char_index < colored_nb_chars) {
                 /* colored_chars should just be a style array */
                 c = colored_chars[char_index];
-                ds->style = c >> STYLE_SHIFT;
+                ds->style = (unsigned int)c >> STYLE_SHIFT;
             }
             c = eb_nextc(s->b, offset, &offset);
             if (c == '\n' && !s->minibuf) {

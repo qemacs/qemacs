@@ -793,7 +793,7 @@ static void c_indent_line(EditState *s, int offset0)
             p--;
             c = *p;
             /* skip strings or comments */
-            style = c >> STYLE_SHIFT;
+            style = (unsigned int)c >> STYLE_SHIFT;
             if (style == C_STYLE_COMMENT
             ||  style == C_STYLE_STRING
             ||  style == C_STYLE_PREPROCESS) {
@@ -929,7 +929,7 @@ static void c_indent_line(EditState *s, int offset0)
 
     for (i = 0; i < len; i++) {
         c = buf[i];
-        style = c >> STYLE_SHIFT;
+        style = (unsigned int)c >> STYLE_SHIFT;
         if (qe_isblank(c & CHAR_MASK))
             continue;
         /* if preprocess, no indent */

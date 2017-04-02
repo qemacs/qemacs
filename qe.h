@@ -1375,18 +1375,77 @@ struct ModeDef {
     ModeDef *next;
 };
 
-/* special bit to indicate tty styles (for shell mode) */
-#define QE_STYLE_TTY       0x800
-#define TTY_UNDERLINE      0
-#define TTY_BOLD           (1 << 7)
-#define TTY_BLINK          (1 << 3)
-#define TTY_DEFFG          7
-#define TTY_DEFBG          0
-#define TTY_MAKE_COLOR(fg, bg)  (((fg) << 4) | (bg))
-#define TTY_SET_FG_COLOR(color, fg)   ((color) = ((color) & ~(15 << 4)) | ((fg) << 4))
-#define TTY_SET_BG_COLOR(color, bg)   ((color) = ((color) & ~(15)) | ((bg)))
-#define TTY_GET_FG(color)  (((color) >> 4) & 15)
-#define TTY_GET_BG(color)  (((color) >> 0) & 15)
+#if 0  /* new composite style scheme */
+
+/* A qemacs style is a named set of attributes including:
+ * - colors for foreground and background
+ * - font style bits
+ * - font style size
+ *
+ * Styles are applied to text in successive phases:
+ * - the current syntax mode computes style numbers for each character
+ *   on the line. These nubers are stored into the high bits of the
+ *   32-bit code point.
+ * - these style numbers are then extracted into an array of 32-bit composite
+ *   style values.
+ * - the styles from the optional style buffer are combined into these style
+ *   values.
+ * - search matches and selection styles are applied if relevant.
+ * - the bidirectional algorithm is applied to compute the display order
+ * - sequences of code-point with the same compsite style are formed into
+ *   display units, ligatures are applied.
+ * - the composite style is expanded and converted into display attributes
+ *   to trace the display unit on the device surface
+ */
+
+/* Style numbers are limited to 8 bits, the default set has 27 entries */
+/* Composite styles are 32-bit values that specify
+ * - a style number
+ * - display attributes for underline, bold, blink
+ * - text and background colors as either palette numbers or 4096 rgb values
+ */
+
+#define QE_TERM_STYLE_BITS  32
+#define QE_STYLE_NUM        0x00FF
+#define QE_STYLE_SEL        0x0100  /* special selection style (cumulative with another style) */
+#define QE_TERM_COMPOSITE   0x0200  /* special bit to indicate qe-term composite style */
+#define QE_TERM_UNDERLINE   0x0400
+#define QE_TERM_BOLD        0x0800
+#define QE_TERM_ITALIC      0x1000
+#define QE_TERM_BLINK       0x2000
+#define QE_TERM_BG_BITS     8
+#define QE_TERM_BG_SHIFT    0
+#define QE_TERM_FG_BITS     8
+#define QE_TERM_FG_SHIFT    16
+
+#else
+
+#define QE_TERM_STYLE_BITS  16
+#define QE_STYLE_NUM        0x00FF
+#define QE_STYLE_SEL        0x0100  /* special selection style (cumulative with another style) */
+#define QE_TERM_COMPOSITE   0x0200  /* special bit to indicate qe-term composite style */
+#define QE_TERM_UNDERLINE   0x0400
+#define QE_TERM_BOLD        0x0800
+#define QE_TERM_ITALIC      0x1000
+#define QE_TERM_BLINK       0x2000
+#define QE_TERM_BG_BITS     4
+#define QE_TERM_BG_SHIFT    0
+#define QE_TERM_FG_BITS     4
+#define QE_TERM_FG_SHIFT    4
+
+#endif
+
+#define QE_TERM_DEF_FG      7
+#define QE_TERM_DEF_BG      0
+#define QE_TERM_BG_COLORS   (1 << QE_TERM_BG_BITS)
+#define QE_TERM_FG_COLORS   (1 << QE_TERM_FG_BITS)
+#define QE_TERM_BG_MASK     ((QE_TERM_BG_COLORS - 1) << QE_TERM_BG_SHIFT)
+#define QE_TERM_FG_MASK     ((QE_TERM_FG_COLORS - 1) << QE_TERM_FG_SHIFT)
+#define QE_TERM_MAKE_COLOR(fg, bg)  (((fg) << QE_TERM_FG_SHIFT) | ((bg) << QE_TERM_BG_SHIFT))
+#define QE_TERM_SET_FG(col, fg)  ((col) = ((col) & ~(QE_TERM_FG_MASK)) | ((fg) << QE_TERM_FG_SHIFT))
+#define QE_TERM_SET_BG(col, bg)  ((col) = ((col) & ~(QE_TERM_BG_MASK)) | ((bg) << QE_TERM_BG_SHIFT))
+#define QE_TERM_GET_FG(color)  (((color) & QE_TERM_FG_MASK) >> QE_TERM_FG_SHIFT)
+#define QE_TERM_GET_BG(color)  (((color) & QE_TERM_BG_MASK) >> QE_TERM_BG_SHIFT)
 
 QEModeData *qe_create_buffer_mode_data(EditBuffer *b, ModeDef *m);
 void *qe_get_buffer_mode_data(EditBuffer *b, ModeDef *m, EditState *e);
@@ -1397,15 +1456,10 @@ int qe_free_mode_data(QEModeData *md);
 /* from tty.c */
 /* set from command line option to prevent GUI such as X11 */
 extern int force_tty;
-extern unsigned int const *tty_bg_colors;
-extern int tty_bg_colors_count;
-extern unsigned int const *tty_fg_colors;
-extern int tty_fg_colors_count;
-int get_tty_color(QEColor color, unsigned int const *colors, int count);
+extern QEColor const xterm_colors[];
+/* XXX: should have a more generic API with precomputed mapping scales */
+int get_tty_color(QEColor color, QEColor const *colors, int count);
 int get_tty_style(const char *style);
-
-/* special selection style (cumulative with another style) */
-#define QE_STYLE_SEL     0x400
 
 enum QEStyle {
 #define STYLE_DEF(constant, name, fg_color, bg_color, \
