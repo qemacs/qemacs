@@ -2393,7 +2393,7 @@ int eb_get_line(EditBuffer *b, unsigned int *buf, int size,
                 break;
             }
             c = eb_nextc(b, offset, &offset);
-            buf[len++] = c & CHAR_MASK;
+            buf[len++] = c;
             if (c == '\n') {
                 /* add null terminator but return offset of newline */
                 buf[len--] = '\0';

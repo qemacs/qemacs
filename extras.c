@@ -27,6 +27,7 @@
 static int qe_skip_comments(EditState *s, int offset, int *offsetp)
 {
     unsigned int buf[COLORED_MAX_LINE_SIZE];
+    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     int line_num, col_num, len, pos;
     int offset0, offset1;
 
@@ -36,14 +37,15 @@ static int qe_skip_comments(EditState *s, int offset, int *offsetp)
     eb_get_pos(s->b, &line_num, &col_num, offset);
     offset0 = eb_goto_bol2(s->b, offset, &pos);
     /* XXX: should only query the syntax colorizer */
-    len = s->get_colorized_line(s, buf, countof(buf), offset0, &offset1, line_num);
+    len = s->get_colorized_line(s, buf, countof(buf), sbuf,
+                                offset0, &offset1, line_num);
     if (len > countof(buf))
         len = countof(buf);
     if (pos >= len)
         return 0;
-    if ((buf[pos] >> STYLE_SHIFT) != QE_STYLE_COMMENT)
+    if (sbuf[pos] != QE_STYLE_COMMENT)
         return 0;
-    while (pos < len && (buf[pos] >> STYLE_SHIFT) == QE_STYLE_COMMENT) {
+    while (pos < len && sbuf[pos] == QE_STYLE_COMMENT) {
         offset = eb_next(s->b, offset);
         pos++;
     }
@@ -81,12 +83,16 @@ static void compare_resync(EditState *s1, EditState *s2,
     while (qe_isblank(ch2 = eb_nextc(s2->b, pos2 = off2, &off2)))
         continue;
     if (ch1 != ch2) {
-        /* try skipping current words */
+        /* try skipping current words and subsequent blanks */
         off1 = pos1;
         off2 = pos2;
         while (!qe_isspace(ch1 = eb_nextc(s1->b, pos1 = off1, &off1)))
             continue;
         while (!qe_isspace(ch2 = eb_nextc(s2->b, pos2 = off2, &off2)))
+            continue;
+        while (qe_isblank(ch1 = eb_nextc(s1->b, pos1 = off1, &off1)))
+            continue;
+        while (qe_isblank(ch2 = eb_nextc(s2->b, pos2 = off2, &off2)))
             continue;
         if (ch1 != ch2) {
             /* Try to resync from end of line */
@@ -505,6 +511,7 @@ static int matching_delimiter(int c) {
 static void do_forward_block(EditState *s, int dir)
 {
     unsigned int buf[COLORED_MAX_LINE_SIZE];
+    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     char balance[MAX_LEVEL];
     int use_colors;
     int line_num, col_num, style, style0, c, level;
@@ -522,14 +529,15 @@ static void do_forward_block(EditState *s, int dir)
     len = 0;
     if (use_colors) {
         /* XXX: should only query the syntax colorizer */
-        len = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
+        len = s->get_colorized_line(s, buf, countof(buf), sbuf,
+                                    offset1, &offset1, line_num);
         if (len < countof(buf) - 2) {
             if (pos > 0
-            &&  ((c = buf[pos - 1] & CHAR_MASK) == ']' || c == '}' || c == ')')) {
-                style0 = buf[pos - 1] >> STYLE_SHIFT;
+            &&  ((c = buf[pos - 1]) == ']' || c == '}' || c == ')')) {
+                style0 = sbuf[pos - 1];
             } else
             if (pos < len) {
-                style0 = buf[pos] >> STYLE_SHIFT;
+                style0 = sbuf[pos];
             }
         } else {
             /* very long line detected, use fallback version */
@@ -550,7 +558,8 @@ static void do_forward_block(EditState *s, int dir)
                 len = 0;
                 if (use_colors) {
                     /* XXX: should only query the syntax colorizer */
-                    len = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
+                    len = s->get_colorized_line(s, buf, countof(buf), sbuf,
+                                                offset1, &offset1, line_num);
                     if (len >= countof(buf) - 2) {
                         /* very long line detected, use fallback version */
                         use_colors = 0;
@@ -563,7 +572,7 @@ static void do_forward_block(EditState *s, int dir)
             style = 0;
             --pos;
             if (pos >= 0 && pos < len) {
-                style = buf[pos] >> STYLE_SHIFT;
+                style = sbuf[pos];
             }
             if (style != style0 && style != QE_STYLE_KEYWORD && style != QE_STYLE_FUNCTION) {
                 if (style0 == 0)
@@ -626,7 +635,8 @@ static void do_forward_block(EditState *s, int dir)
                 len = 0;
                 if (use_colors) {
                     /* XXX: should only query the syntax colorizer */
-                    len = s->get_colorized_line(s, buf, countof(buf), offset1, &offset1, line_num);
+                    len = s->get_colorized_line(s, buf, countof(buf), sbuf,
+                                                offset1, &offset1, line_num);
                     if (len >= countof(buf) - 2) {
                         /* very long line detected, use fallback version */
                         use_colors = 0;
@@ -639,7 +649,7 @@ static void do_forward_block(EditState *s, int dir)
             }
             style = 0;
             if (pos < len) {
-                style = buf[pos] >> STYLE_SHIFT;
+                style = sbuf[pos];
             }
             pos++;
             if (style0 != style && style != QE_STYLE_KEYWORD && style != QE_STYLE_FUNCTION) {
@@ -1086,7 +1096,7 @@ static int str_get_word(char *buf, int size, const char *p, const char **pp)
     return len;
 }
 
-int get_tty_style(const char *str)
+static int qe_term_get_style(const char *str)
 {
     char buf[128];
     QEColor fg_color, bg_color;
@@ -1123,8 +1133,8 @@ int get_tty_style(const char *str)
                 return -1;
         }
     }
-    fg = get_tty_color(fg_color, xterm_colors, QE_TERM_FG_COLORS);
-    bg = get_tty_color(bg_color, xterm_colors, QE_TERM_BG_COLORS);
+    fg = qe_map_color(fg_color, xterm_colors, QE_TERM_FG_COLORS, NULL);
+    bg = qe_map_color(bg_color, xterm_colors, QE_TERM_BG_COLORS, NULL);
 
     return QE_TERM_COMPOSITE | style | QE_TERM_MAKE_COLOR(fg, bg);
 }
@@ -1136,7 +1146,7 @@ static void do_set_region_color(EditState *s, const char *str)
     /* deactivate region hilite */
     s->region_style = 0;
 
-    style = get_tty_style(str);
+    style = qe_term_get_style(str);
     if (style < 0) {
         put_status(s, "Invalid color '%s'", str);
         return;
@@ -1602,12 +1612,15 @@ static void do_sort_buffer(EditState *s, int flags, int argval) {
 
 static void tag_buffer(EditState *s) {
     unsigned int buf[100];
+    QETermStyle sbuf[100];
     int offset, line_num, col_num;
 
-    /* force complete buffer colorizarion */
-    eb_get_pos(s->b, &line_num, &col_num, s->b->total_size);
-    s->get_colorized_line(s, buf, countof(buf), s->b->total_size,
-                          &offset, line_num);
+    if (s->colorize_func || s->b->b_styles) {
+        /* force complete buffer colorizarion */
+        eb_get_pos(s->b, &line_num, &col_num, s->b->total_size);
+        s->get_colorized_line(s, buf, countof(buf), sbuf,
+                              s->b->total_size, &offset, line_num);
+    }
 }
 
 static void tag_completion(CompleteState *cp) {

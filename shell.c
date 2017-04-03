@@ -631,7 +631,7 @@ static void qe_term_csi_m(ShellState *s, int c, int has_param)
             QEColor rgb = xterm_colors[color & 255];
 
             /* map color to qe-term palette */
-            s->fgcolor = get_tty_color(rgb, xterm_colors, QE_TERM_FG_COLORS);
+            s->fgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_FG_COLORS, NULL);
             s->nb_esc_params = 1;
         } else
         if (s->esc_params[1] == 2) {
@@ -642,7 +642,7 @@ static void qe_term_csi_m(ShellState *s, int c, int has_param)
                                 s->esc_params[4] & 255);
 
             /* map 24-bit colors to qe-term palette */
-            s->fgcolor = get_tty_color(rgb, xterm_colors, QE_TERM_FG_COLORS);
+            s->fgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_FG_COLORS, NULL);
             s->nb_esc_params = 1;
         }
         break;
@@ -654,7 +654,7 @@ static void qe_term_csi_m(ShellState *s, int c, int has_param)
             QEColor rgb = xterm_colors[color & 255];
 
             /* map color to qe-term palette */
-            s->bgcolor = get_tty_color(rgb, xterm_colors, QE_TERM_BG_COLORS);
+            s->bgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_BG_COLORS, NULL);
             s->nb_esc_params = 1;
         } else
         if (s->esc_params[1] == 2) {
@@ -665,7 +665,7 @@ static void qe_term_csi_m(ShellState *s, int c, int has_param)
                                 s->esc_params[4] & 255);
 
             /* map 24-bit colors to qe-term palette */
-            s->bgcolor = get_tty_color(rgb, xterm_colors, QE_TERM_BG_COLORS);
+            s->bgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_BG_COLORS, NULL);
             s->nb_esc_params = 1;
         }
         break;
@@ -2359,7 +2359,7 @@ void shell_colorize_line(QEColorizeContext *cp,
     /* detect match lines for known languages and colorize accordingly */
     static char filename[MAX_FILENAME_SIZE];
     ModeDef *m;
-    int i = 0, len, stop = n;
+    int i = 0, len;
 
     if (cp->colorize_state) {
         cp->colorize_state -= 1;
@@ -2402,14 +2402,14 @@ void shell_colorize_line(QEColorizeContext *cp,
          * if the current directory of the shell process changes and
          * is not possible for remote shells.
          */
+        /* XXX: filename based mode should be stored as a number into cp->colorize_state */
         if (i < n && (m = qe_find_mode_filename(filename, MODEF_SYNTAX)) != NULL) {
             cp->colorize_state = 0;
             m->colorize_func(cp, str + i, n - i, m);
-            stop = i;
+            cp->combine_stop = i;
         }
         cp->colorize_state = 0;
     }
-    combine_static_colorized_line(cp->s, str, stop, cp->offset);
 }
 
 /* shell mode specific commands */

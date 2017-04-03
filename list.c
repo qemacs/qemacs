@@ -25,28 +25,32 @@ ModeDef list_mode;
 
 static int list_get_colorized_line(EditState *s,
                                    unsigned int *buf, int buf_size,
-                                   int offset, int *offsetp, 
-                                   qe__unused__ int line_num)
+                                   QETermStyle *sbuf,
+                                   int offset, int *offsetp, int line_num)
 {
     QEmacsState *qs = s->qe_state;
-    int len;
+    int i, len;
 
     /* Get line contents including static buffer styles */
     /* XXX: deal with truncation */
     /* XXX: should just use s->cur_line style */
-    len = generic_get_colorized_line(s, buf, buf_size, offset, offsetp, line_num);
+    len = generic_get_colorized_line(s, buf, buf_size, sbuf,
+                                     offset, offsetp, line_num);
 
     if (((qs->active_window == s) || s->force_highlight) &&
           s->offset >= offset && s->offset < *offsetp)
     {
         /* highlight the line if the cursor is inside */
-        clear_color(buf, len);
-        SET_COLOR(buf, 0, len, QE_STYLE_HIGHLIGHT);
+        for (i = 0; i <= len; i++) {
+            sbuf[i] = QE_STYLE_HIGHLIGHT;
+        }
     } else
     if (buf[0] == '*') {
         /* selection */
-        clear_color(buf, len);
-        SET_COLOR(buf, 0, len, QE_STYLE_SELECTION);
+        /* XXX: use QE_STYLE_SEL ? */
+        for (i = 0; i <= len; i++) {
+            sbuf[i] = QE_STYLE_SELECTION;
+        }
     }
     return len;
 }

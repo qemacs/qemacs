@@ -5,6 +5,8 @@
 
 * Needed for release version 5
 
+** display: fix window split bug
+
 * Priority 0
 
 ** basic: fix current position when changing buffer attached to window
@@ -69,6 +71,7 @@
 ** display: API: remove screen argument in release_font
 ** display: API: remove screen argument in glyph_width
 ** display: API: add create-style(name, properties)
+** display: use true colors on capable terminals
 ** doc: migrate TODO and documentation to markdown or reStructuredText
 ** doc: rewrite TODO file with more sections and explanations
 ** doc: migrate coding-rules.html to markdown
@@ -239,7 +242,6 @@
    qemacs does not take into account combination performed by the terminal.
    Terminal glyph width of 0 should be supported.
 ** deal with accents in filenames (OS/X uses separate utf8 accents)
-** support 256 and true color escapes in tty emulator
 ** auto-fill-mode
 ** auto-revert-mode, global-auto-revert-mode, auto-revert-tail-mode
 ** rectangular regions, cut/paste

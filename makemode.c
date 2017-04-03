@@ -31,13 +31,13 @@ static int get_word_lc(char *buf, int buf_size, unsigned int *p)
     int i, j;
 
     i = j = 0;
-    c = p[i] & CHAR_MASK;
+    c = p[i];
     if (qe_isalpha_(c)) {
         do {
             if (j < buf_size - 1)
                 buf[j++] = qe_tolower(c);
             i++;
-            c = p[i] & CHAR_MASK;
+            c = p[i];
         } while (qe_isalnum_(c));
     }
     buf[j] = '\0';

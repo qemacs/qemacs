@@ -51,7 +51,7 @@ static void (*qe__exitcall_first)(void) qe__exit_call = NULL;
 
 void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
-                   const char *str, int style_index);
+                   const char *str, int style);
 static EditBuffer *predict_switch_to_buffer(EditState *s);
 static StringArray *get_history(const char *name);
 static void qe_key_process(int key);
@@ -60,7 +60,7 @@ static int generic_save_window_data(EditState *s);
 static int generic_mode_init(EditState *s);
 static void generic_mode_close(EditState *s);
 static void generic_text_display(EditState *s);
-static void display1(DisplayState *s);
+static void display1(DisplayState *ds);
 #ifndef CONFIG_TINY
 static void save_selection(void);
 #endif
@@ -2754,72 +2754,74 @@ void display_window_borders(EditState *e)
 /* Should move all this to display.c */
 
 /* compute style */
-static void apply_style(QEStyleDef *style, int style_index)
+static void apply_style(QEStyleDef *stp, int style)
 {
     QEStyleDef *s;
 
-    if (style_index & QE_TERM_COMPOSITE) {
-        style->fg_color = xterm_colors[QE_TERM_GET_FG(style_index)];
-        style->bg_color = xterm_colors[QE_TERM_GET_BG(style_index)];
-        if (style_index & QE_TERM_UNDERLINE)
-            style->font_style |= QE_STYLE_UNDERLINE;
-        if (style_index & QE_TERM_BOLD)
-            style->font_style |= QE_STYLE_BOLD;
-        if (style_index & QE_TERM_BLINK)
-            style->font_style |= QE_STYLE_BLINK;
+    if (style & QE_TERM_COMPOSITE) {
+        stp->fg_color = xterm_colors[QE_TERM_GET_FG(style)];
+        stp->bg_color = xterm_colors[QE_TERM_GET_BG(style)];
+        if (style & QE_TERM_UNDERLINE)
+            stp->font_style |= QE_STYLE_UNDERLINE;
+        if (style & QE_TERM_BOLD)
+            stp->font_style |= QE_STYLE_BOLD;
+        if (style & QE_TERM_ITALIC)
+            stp->font_style |= QE_STYLE_ITALIC;
+        if (style & QE_TERM_BLINK)
+            stp->font_style |= QE_STYLE_BLINK;
     } else {
-        s = &qe_styles[style_index & QE_STYLE_NUM];
+        s = &qe_styles[style & QE_STYLE_NUM];
         if (s->fg_color != COLOR_TRANSPARENT)
-            style->fg_color = s->fg_color;
+            stp->fg_color = s->fg_color;
         if (s->bg_color != COLOR_TRANSPARENT)
-            style->bg_color = s->bg_color;
+            stp->bg_color = s->bg_color;
         if (s->font_style != 0)
-            style->font_style = s->font_style;
+            stp->font_style = s->font_style;
         if (s->font_size != 0)
-            style->font_size = s->font_size;
+            stp->font_size = s->font_size;
     }
     /* for selection, we need a special handling because only color is
            changed */
-    if (style_index & QE_STYLE_SEL) {
+    if (style & QE_STYLE_SEL) {
         s = &qe_styles[QE_STYLE_SELECTION];
-        style->fg_color = s->fg_color;
-        style->bg_color = s->bg_color;
+        stp->fg_color = s->fg_color;
+        stp->bg_color = s->bg_color;
     }
 }
 
-void get_style(EditState *e, QEStyleDef *style, int style_index)
+void get_style(EditState *e, QEStyleDef *stp, int style)
 {
     /* get root default style */
-    *style = qe_styles[0];
+    *stp = qe_styles[0];
 
     /* apply window default style */
     if (e && e->default_style != 0)
-        apply_style(style, e->default_style);
+        apply_style(stp, e->default_style);
 
     /* apply specific style */
-    if (style_index != 0)
-        apply_style(style, style_index);
+    if (style != 0)
+        apply_style(stp, style);
 }
 
 void style_completion(CompleteState *cp)
 {
     int i;
-    QEStyleDef *style;
+    QEStyleDef *stp;
 
-    style = qe_styles;
-    for (i = 0; i < QE_STYLE_NB; i++, style++) {
-        complete_test(cp, style->name);
+    stp = qe_styles;
+    for (i = 0; i < QE_STYLE_NB; i++, stp++) {
+        complete_test(cp, stp->name);
     }
 }
 
 int find_style_index(const char *name)
 {
     int i;
-    QEStyleDef *style;
+    QEStyleDef *stp;
 
-    style = qe_styles;
-    for (i = 0; i < QE_STYLE_NB; i++, style++) {
-        if (strequal(style->name, name))
+    stp = qe_styles;
+    for (i = 0; i < QE_STYLE_NB; i++, stp++) {
+        if (strequal(stp->name, name))
             return i;
     }
     if (qe_isdigit(*name)) {
@@ -2882,11 +2884,11 @@ int find_style_property(const char *name)
 void do_set_style(EditState *e, const char *stylestr,
                   const char *propstr, const char *value)
 {
-    QEStyleDef *style;
+    QEStyleDef *stp;
     int v, prop_index;
 
-    style = find_style(stylestr);
-    if (!style) {
+    stp = find_style(stylestr);
+    if (!stp) {
         put_status(e, "Unknown style '%s'", stylestr);
         return;
     }
@@ -2899,11 +2901,11 @@ void do_set_style(EditState *e, const char *stylestr,
 
     switch (prop_index) {
     case CSS_PROP_COLOR:
-        if (css_get_color(&style->fg_color, value))
+        if (css_get_color(&stp->fg_color, value))
             goto bad_color;
         break;
     case CSS_PROP_BACKGROUND_COLOR:
-        if (css_get_color(&style->bg_color, value))
+        if (css_get_color(&stp->bg_color, value))
             goto bad_color;
         break;
     bad_color:
@@ -2911,44 +2913,44 @@ void do_set_style(EditState *e, const char *stylestr,
         return;
     case CSS_PROP_FONT_FAMILY:
         v = css_get_font_family(value);
-        style->font_style = (style->font_style & ~QE_FAMILY_MASK) | v;
+        stp->font_style = (stp->font_style & ~QE_FAMILY_MASK) | v;
         break;
     case CSS_PROP_FONT_STYLE:
         /* XXX: cannot handle inherit correctly */
-        v = style->font_style;
+        v = stp->font_style;
         if (strequal(value, "italic")) {
             v |= QE_STYLE_ITALIC;
         } else
         if (strequal(value, "normal")) {
             v &= ~QE_STYLE_ITALIC;
         }
-        style->font_style = v;
+        stp->font_style = v;
         break;
     case CSS_PROP_FONT_WEIGHT:
         /* XXX: cannot handle inherit correctly */
-        v = style->font_style;
+        v = stp->font_style;
         if (strequal(value, "bold")) {
             v |= QE_STYLE_BOLD;
         } else
         if (strequal(value, "normal")) {
             v &= ~QE_STYLE_BOLD;
         }
-        style->font_style = v;
+        stp->font_style = v;
         break;
     case CSS_PROP_FONT_SIZE:
         if (strequal(value, "inherit")) {
-            style->font_size = 0;
+            stp->font_size = 0;
         } else {
-            style->font_size = strtol(value, NULL, 0);
+            stp->font_size = strtol(value, NULL, 0);
         }
         break;
     case CSS_PROP_TEXT_DECORATION:
         /* XXX: cannot handle inherit correctly */
         if (strequal(value, "none")) {
-            style->font_style &= ~QE_STYLE_UNDERLINE;
+            stp->font_style &= ~QE_STYLE_UNDERLINE;
         } else
         if (strequal(value, "underline")) {
-            style->font_style |= QE_STYLE_UNDERLINE;
+            stp->font_style |= QE_STYLE_UNDERLINE;
         }
         break;
     }
@@ -3018,73 +3020,73 @@ void do_set_system_font(EditState *s, const char *qe_font_name,
             system_fonts);
 }
 
-static void display_bol_bidir(DisplayState *s, DirType base,
+static void display_bol_bidir(DisplayState *ds, DirType base,
                               int embedding_level_max)
 {
-    s->base = base;
-    s->x = s->x_disp = s->edit_state->x_disp[base];
-    if (s->base == DIR_RTL) {
+    ds->base = base;
+    ds->x = ds->x_disp = ds->edit_state->x_disp[base];
+    if (ds->base == DIR_RTL) {
         /* XXX: probably broken. bidir handling needs fixing */
-        s->x_start = s->edit_state->width - s->x;
+        ds->x_start = ds->edit_state->width - ds->x;
     } else {
-        s->x_start = s->x;
+        ds->x_start = ds->x;
     }
-    s->left_gutter = 0;
-    s->x_line = s->x_start;
-    s->style = 0;
-    s->last_style = 0;
-    s->fragment_index = 0;
-    s->line_index = 0;
-    s->nb_fragments = 0;
-    s->word_index = 0;
-    s->embedding_level_max = embedding_level_max;
-    s->last_word_space = 0;
+    ds->left_gutter = 0;
+    ds->x_line = ds->x_start;
+    ds->style = 0;
+    ds->last_style = 0;
+    ds->fragment_index = 0;
+    ds->line_index = 0;
+    ds->nb_fragments = 0;
+    ds->word_index = 0;
+    ds->embedding_level_max = embedding_level_max;
+    ds->last_word_space = 0;
 }
 
-void display_bol(DisplayState *s)
+void display_bol(DisplayState *ds)
 {
-    display_bol_bidir(s, DIR_LTR, 0);
+    display_bol_bidir(ds, DIR_LTR, 0);
 }
 
-void display_close(DisplayState *s)
+void display_close(DisplayState *ds)
 {
 }
 
-void display_init(DisplayState *s, EditState *e, enum DisplayType do_disp,
+void display_init(DisplayState *ds, EditState *e, enum DisplayType do_disp,
                   int (*cursor_func)(DisplayState *ds,
                                      int offset1, int offset2, int line_num,
                                      int x, int y, int w, int h, int hex_mode),
                   void *cursor_opaque)
 {
     QEFont *font;
-    QEStyleDef style;
+    QEStyleDef styledef;
 
-    s->edit_state = e;
-    s->do_disp = do_disp;
-    s->cursor_func = cursor_func;
-    s->cursor_opaque = cursor_opaque;
-    s->wrap = e->wrap;
+    ds->edit_state = e;
+    ds->do_disp = do_disp;
+    ds->cursor_func = cursor_func;
+    ds->cursor_opaque = cursor_opaque;
+    ds->wrap = e->wrap;
     /* select default values */
-    get_style(e, &style, QE_STYLE_DEFAULT);
-    font = select_font(e->screen, style.font_style, style.font_size);
-    s->default_line_height = font->ascent + font->descent;
-    s->eol_width = max3(glyph_width(e->screen, font, '/'),
+    get_style(e, &styledef, QE_STYLE_DEFAULT);
+    font = select_font(e->screen, styledef.font_style, styledef.font_size);
+    ds->default_line_height = font->ascent + font->descent;
+    ds->eol_width = max3(glyph_width(e->screen, font, '/'),
                         glyph_width(e->screen, font, '\\'),
                         glyph_width(e->screen, font, '$'));
-    s->space_width = glyph_width(e->screen, font, ' ');
-    s->tab_width = s->space_width * e->b->tab_width;
-    s->width = e->width - s->eol_width;
-    s->height = e->height;
-    s->hex_mode = e->hex_mode;
-    s->cur_hex_mode = 0;
-    s->y = e->y_disp;
-    s->line_num = 0;
-    s->line_numbers = e->line_numbers * s->space_width * 8;
-    if (s->line_numbers > s->width / 2)
-        s->line_numbers = 0;
-    s->eol_reached = 0;
-    s->eod = 0;
-    display_bol(s);
+    ds->space_width = glyph_width(e->screen, font, ' ');
+    ds->tab_width = ds->space_width * e->b->tab_width;
+    ds->width = e->width - ds->eol_width;
+    ds->height = e->height;
+    ds->hex_mode = e->hex_mode;
+    ds->cur_hex_mode = 0;
+    ds->y = e->y_disp;
+    ds->line_num = 0;
+    ds->line_numbers = e->line_numbers * ds->space_width * 8;
+    if (ds->line_numbers > ds->width / 2)
+        ds->line_numbers = 0;
+    ds->eol_reached = 0;
+    ds->eod = 0;
+    display_bol(ds);
     release_font(e->screen, font);
 }
 
@@ -3135,11 +3137,11 @@ static unsigned int compute_crc(const void *p, int size, unsigned int sum)
    `offset1..offset2` is the range of offsets for cursor management
    `last` is 0 for a line wrap, 1 for end of line, -1 for continuation
 */
-static void flush_line(DisplayState *s,
+static void flush_line(DisplayState *ds,
                        TextFragment *fragments, int nb_fragments,
                        int offset1, int offset2, int last)
 {
-    EditState *e = s->edit_state;
+    EditState *e = ds->edit_state;
     QEditScreen *screen = e->screen;
     int level, pos, p, i, x, x1, y, baseline, line_height, max_descent;
     TextFragment *frag;
@@ -3157,13 +3159,13 @@ static void flush_line(DisplayState *s,
     }
     if (nb_fragments == 0) {
         /* if empty line, still needs a non zero line height */
-        line_height = s->default_line_height;
+        line_height = ds->default_line_height;
     } else {
         line_height = baseline + max_descent;
     }
 
     /* swap according to embedding level (incorrect for very long lines) */
-    for (level = s->embedding_level_max; level > 0; level--) {
+    for (level = ds->embedding_level_max; level > 0; level--) {
         pos = 0;
         while (pos < nb_fragments) {
             if (fragments[pos].embedding_level >= level) {
@@ -3179,17 +3181,17 @@ static void flush_line(DisplayState *s,
     }
 
     /* draw everything if line is visible in window */
-    if (s->do_disp == DISP_PRINT 
-    &&  s->y + line_height >= 0
-    &&  s->y < e->ytop + e->height) {
-        QEStyleDef style, default_style;
+    if (ds->do_disp == DISP_PRINT 
+    &&  ds->y + line_height >= 0
+    &&  ds->y < e->ytop + e->height) {
+        QEStyleDef styledef, default_style;
         QELineShadow *ls;
         unsigned int crc;
 
         /* test if display needed */
         crc = compute_crc(fragments, sizeof(*fragments) * nb_fragments, 0);
-        crc = compute_crc(s->line_chars, sizeof(*s->line_chars) * s->line_index, crc);
-        if (s->line_num >= e->shadow_nb_lines) {
+        crc = compute_crc(ds->line_chars, sizeof(*ds->line_chars) * ds->line_index, crc);
+        if (ds->line_num >= e->shadow_nb_lines) {
             /* realloc shadow */
             int n = e->shadow_nb_lines;
             e->shadow_nb_lines = n + LINE_SHADOW_INCR;
@@ -3202,35 +3204,35 @@ static void flush_line(DisplayState *s,
         /* Use checksum based line cache to improve speed in graphics mode.
          * XXX: overlong lines will fail the cache test
          */
-        ls = &e->line_shadow[s->line_num];
-        if (ls->y != s->y || ls->x != s->x_line
+        ls = &e->line_shadow[ds->line_num];
+        if (ls->y != ds->y || ls->x != ds->x_line
         ||  ls->height != line_height || ls->crc != crc) {
             /* update values for the line cache */
-            ls->y = s->y;
-            ls->x = s->x_line;
+            ls->y = ds->y;
+            ls->x = ds->x_line;
             ls->height = line_height;
             ls->crc = crc;
 
             /* display */
             get_style(e, &default_style, QE_STYLE_DEFAULT);
-            x = s->x_start;
-            y = s->y;
+            x = ds->x_start;
+            y = ds->y;
 
             /* first display background rectangles */
             /* XXX: should coalesce rectangles with identical style */
-            if (s->left_gutter > 0) {
+            if (ds->left_gutter > 0) {
                 /* erase space before the line display, aka left gutter */
                 fill_rectangle(screen, e->xleft + x, e->ytop + y,
-                               s->left_gutter, line_height,
+                               ds->left_gutter, line_height,
                                default_style.bg_color);
             }
-            x = s->x_line;
-            x1 = s->width + s->eol_width;
+            x = ds->x_line;
+            x1 = ds->width + ds->eol_width;
             for (i = 0; i < nb_fragments && x < x1; i++) {
                 frag = &fragments[i];
-                get_style(e, &style, frag->style);
+                get_style(e, &styledef, frag->style);
                 fill_rectangle(screen, e->xleft + x, e->ytop + y, 
-                               frag->width, line_height, style.bg_color);
+                               frag->width, line_height, styledef.bg_color);
                 x += frag->width;
             }
             if (x < x1 && last != -1) {
@@ -3239,20 +3241,20 @@ static void flush_line(DisplayState *s,
             }
 
             /* then display text */
-            x = s->x_line;
+            x = ds->x_line;
             y += baseline;
 
             for (i = 0; i < nb_fragments && x < x1; i++) {
                 frag = &fragments[i];
                 x += frag->width;
                 if (x > 0) {
-                    get_style(e, &style, frag->style);
+                    get_style(e, &styledef, frag->style);
                     font = select_font(screen,
-                                       style.font_style, style.font_size);
+                                       styledef.font_style, styledef.font_size);
                     draw_text(screen, font, 
                               e->xleft + x - frag->width, e->ytop + y,
-                              s->line_chars + frag->line_index,
-                              frag->len, style.fg_color);
+                              ds->line_chars + frag->line_index,
+                              frag->len, styledef.fg_color);
                     release_font(screen, font);
                 }
             }
@@ -3263,9 +3265,9 @@ static void flush_line(DisplayState *s,
 
                 markbuf[0] = '/';        /* RTL eol mark */
                 x = 0;                   /* displayed at the left border */
-                if (s->base == DIR_LTR) {
+                if (ds->base == DIR_LTR) {
                     markbuf[0] = '\\';   /* LTR eol mark */
-                    x = s->width;        /* displayed at the right border */
+                    x = ds->width;        /* displayed at the right border */
                 }
                 font = select_font(screen,
                                    default_style.font_style,
@@ -3278,16 +3280,16 @@ static void flush_line(DisplayState *s,
     }
 
     /* call cursor callback */
-    if (s->cursor_func) {
-        x = s->x_line;
-        y = s->y;
+    if (ds->cursor_func) {
+        x = ds->x_line;
+        y = ds->y;
 
         /* RTL eol cursor check (probably incorrect) */
         if (offset1 >= 0 && offset2 >= 0 &&
-            s->base == DIR_RTL &&
-            s->cursor_func(s, offset1, offset2, s->line_num,
-                           x, y, -s->eol_width, line_height, e->hex_mode)) {
-            s->eod = 1;
+            ds->base == DIR_RTL &&
+            ds->cursor_func(ds, offset1, offset2, ds->line_num,
+                           x, y, -ds->eol_width, line_height, e->hex_mode)) {
+            ds->eod = 1;
         }
 
         for (i = 0; i < nb_fragments; i++) {
@@ -3296,25 +3298,25 @@ static void flush_line(DisplayState *s,
             frag = &fragments[i];
 
             for (j = frag->line_index, k = 0; k < frag->len; k++, j++) {
-                int _offset1 = s->line_offsets[j][0];
-                int _offset2 = s->line_offsets[j][1];
-                int hex_mode = s->line_hex_mode[j];
-                int w = s->line_char_widths[j];
+                int _offset1 = ds->line_offsets[j][0];
+                int _offset2 = ds->line_offsets[j][1];
+                int hex_mode = ds->line_hex_mode[j];
+                int w = ds->line_char_widths[j];
                 x += w;
-                if ((hex_mode == s->hex_mode || s->hex_mode == -1) &&
+                if ((hex_mode == ds->hex_mode || ds->hex_mode == -1) &&
                     _offset1 >= 0 && _offset2 >= 0) {
 #if 0
                     /* probably broken, bidir needs rework */
-                    if (s->base == DIR_RTL) {
-                        if (s->cursor_func(s, _offset1, _offset2, s->line_num,
+                    if (ds->base == DIR_RTL) {
+                        if (ds->cursor_func(ds, _offset1, _offset2, ds->line_num,
                                            x, y, -w, line_height, hex_mode))
-                            s->eod = 1;
+                            ds->eod = 1;
                     } else 
 #endif
                     {
-                        if (s->cursor_func(s, _offset1, _offset2, s->line_num,
+                        if (ds->cursor_func(ds, _offset1, _offset2, ds->line_num,
                                            x - w, y, w, line_height, hex_mode))
-                            s->eod = 1;
+                            ds->eod = 1;
                     }
                 }
             }
@@ -3322,35 +3324,35 @@ static void flush_line(DisplayState *s,
 
         /* LTR eol cursor check */
         if (offset1 >= 0 && offset2 >= 0 &&
-            s->base == DIR_LTR &&
-            s->cursor_func(s, offset1, offset2, s->line_num,
-                           x, y, s->eol_width, line_height, e->hex_mode)) {
-            s->eod = 1;
+            ds->base == DIR_LTR &&
+            ds->cursor_func(ds, offset1, offset2, ds->line_num,
+                           x, y, ds->eol_width, line_height, e->hex_mode)) {
+            ds->eod = 1;
         }
-        s->x_line = x;
+        ds->x_line = x;
     }
 #if 0
     printf("y=%d line_num=%d line_height=%d baseline=%d\n",
-           s->y, s->line_num, line_height, baseline);
+           ds->y, ds->line_num, line_height, baseline);
 #endif
     if (last != -1) {
         /* bump to next line */
-        s->x_line = s->x_start;
-        s->y += line_height;
-        s->line_num++;
+        ds->x_line = ds->x_start;
+        ds->y += line_height;
+        ds->line_num++;
     }
 }
 
 /* keep 'n' line chars at the start of the line */
-static void keep_line_chars(DisplayState *s, int n)
+static void keep_line_chars(DisplayState *ds, int n)
 {
     int index;
 
-    index = s->line_index - n;
-    memmove(s->line_chars, s->line_chars + index, n * sizeof(unsigned int));
-    memmove(s->line_offsets, s->line_offsets + index, n * 2 * sizeof(unsigned int));
-    memmove(s->line_char_widths, s->line_char_widths + index, n * sizeof(short));
-    s->line_index = n;
+    index = ds->line_index - n;
+    memmove(ds->line_chars, ds->line_chars + index, n * sizeof(unsigned int));
+    memmove(ds->line_offsets, ds->line_offsets + index, n * 2 * sizeof(unsigned int));
+    memmove(ds->line_char_widths, ds->line_char_widths + index, n * sizeof(short));
+    ds->line_index = n;
 }
 
 #ifndef CONFIG_UNICODE_JOIN
@@ -3376,205 +3378,207 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
 #endif
 
 /* layout of a word fragment */
-static void flush_fragment(DisplayState *s)
+static void flush_fragment(DisplayState *ds)
 {
-    int w, len, style_index, i, j;
-    QEditScreen *screen = s->edit_state->screen;
+    int w, len, style, i, j;
+    QEditScreen *screen = ds->edit_state->screen;
     TextFragment *frag;
-    QEStyleDef style;
+    QEStyleDef styledef;
     QEFont *font;
     unsigned int char_to_glyph_pos[MAX_WORD_SIZE];
     int nb_glyphs, dst_max_size, ascent, descent;
 
-    if (s->fragment_index == 0)
+    if (ds->fragment_index == 0)
         return;
 
-    if (s->nb_fragments >= MAX_SCREEN_WIDTH ||
-        s->line_index + s->fragment_index > MAX_SCREEN_WIDTH) {
+    if (ds->nb_fragments >= MAX_SCREEN_WIDTH ||
+        ds->line_index + ds->fragment_index > MAX_SCREEN_WIDTH) {
         /* too many fragments on the same line, flush and stay on the line */
-        flush_line(s, s->fragments, s->nb_fragments, -1, -1, -1);
-        s->nb_fragments = 0;
-        s->line_index = 0;
-        s->word_index = 0;
+        flush_line(ds, ds->fragments, ds->nb_fragments, -1, -1, -1);
+        ds->nb_fragments = 0;
+        ds->line_index = 0;
+        ds->word_index = 0;
     }
 
     /* update word start index if needed */
-    if (s->nb_fragments >= 1 && s->last_word_space != s->last_space) {
-        s->last_word_space = s->last_space;
-        s->word_index = s->nb_fragments;
+    if (ds->nb_fragments >= 1 && ds->last_word_space != ds->last_space) {
+        ds->last_word_space = ds->last_space;
+        ds->word_index = ds->nb_fragments;
     }
 
     /* convert fragment to glyphs (currently font independent, but may
        change) */
-    //dst_max_size = MAX_SCREEN_WIDTH - s->line_index;
+    //dst_max_size = MAX_SCREEN_WIDTH - ds->line_index;
     //if (dst_max_size <= 0)
     //    goto the_end;
-    dst_max_size = MAX_WORD_SIZE; // assuming s->fragment_index MAX_WORD_SIZE
-    nb_glyphs = unicode_to_glyphs(s->line_chars + s->line_index,
+    dst_max_size = MAX_WORD_SIZE; // assuming ds->fragment_index MAX_WORD_SIZE
+    nb_glyphs = unicode_to_glyphs(ds->line_chars + ds->line_index,
                                   char_to_glyph_pos, dst_max_size,
-                                  s->fragment_chars, s->fragment_index,
-                                  s->last_embedding_level & 1);
+                                  ds->fragment_chars, ds->fragment_index,
+                                  ds->last_embedding_level & 1);
 
     /* compute new offsets */
-    j = s->line_index;
+    j = ds->line_index;
     for (i = 0; i < nb_glyphs; i++) {
-        s->line_offsets[j][0] = -1;
-        s->line_offsets[j][1] = -1;
+        ds->line_offsets[j][0] = -1;
+        ds->line_offsets[j][1] = -1;
         j++;
     }
-    for (i = 0; i < s->fragment_index; i++) {
+    for (i = 0; i < ds->fragment_index; i++) {
         int offset1, offset2;
-        j = s->line_index + char_to_glyph_pos[i];
-        offset1 = s->fragment_offsets[i][0];
-        offset2 = s->fragment_offsets[i][1];
-        s->line_hex_mode[j] = s->fragment_hex_mode[i];
+        j = ds->line_index + char_to_glyph_pos[i];
+        offset1 = ds->fragment_offsets[i][0];
+        offset2 = ds->fragment_offsets[i][1];
+        ds->line_hex_mode[j] = ds->fragment_hex_mode[i];
         /* we suppose the the chars are contiguous */
-        if (s->line_offsets[j][0] == -1 ||
-            s->line_offsets[j][0] > offset1)
-            s->line_offsets[j][0] = offset1;
-        if (s->line_offsets[j][1] == -1 ||
-            s->line_offsets[j][1] < offset2)
-            s->line_offsets[j][1] = offset2;
+        if (ds->line_offsets[j][0] == -1 ||
+            ds->line_offsets[j][0] > offset1)
+            ds->line_offsets[j][0] = offset1;
+        if (ds->line_offsets[j][1] == -1 ||
+            ds->line_offsets[j][1] < offset2)
+            ds->line_offsets[j][1] = offset2;
     }
 
-    style_index = s->last_style;
-    get_style(s->edit_state, &style, style_index);
+    style = ds->last_style;
+    get_style(ds->edit_state, &styledef, style);
     /* select font according to current style */
-    font = select_font(screen, style.font_style, style.font_size);
-    j = s->line_index;
+    font = select_font(screen, styledef.font_style, styledef.font_size);
+    j = ds->line_index;
     ascent = font->ascent;
     descent = font->descent;
-    if (s->line_chars[j] == '\t') {
+    if (ds->line_chars[j] == '\t') {
         int x1;
         /* special case for TAB */
-        x1 = (s->x - s->x_disp) % s->tab_width;
-        w = s->tab_width - x1;
+        x1 = (ds->x - ds->x_disp) % ds->tab_width;
+        w = ds->tab_width - x1;
         /* display a single space */
-        s->line_chars[j] = ' ';
-        s->line_char_widths[j] = w;
+        ds->line_chars[j] = ' ';
+        ds->line_char_widths[j] = w;
     } else {
         /* XXX: use text metrics for full fragment */
         w = 0;
         /* XXX: is the width negative for a RTL fragment? */
         for (i = 0; i < nb_glyphs; i++) {
             QECharMetrics metrics;
-            text_metrics(screen, font, &metrics, &s->line_chars[j], 1);
+            text_metrics(screen, font, &metrics, &ds->line_chars[j], 1);
             if (metrics.font_ascent > ascent)
                 ascent = metrics.font_ascent;
             if (metrics.font_descent > descent)
                 descent = metrics.font_descent;
-            s->line_char_widths[j] = metrics.width;
-            w += s->line_char_widths[j];
+            ds->line_char_widths[j] = metrics.width;
+            w += ds->line_char_widths[j];
             j++;
         }
     }
     release_font(screen, font);
 
     /* add the fragment */
-    frag = &s->fragments[s->nb_fragments++];
+    frag = &ds->fragments[ds->nb_fragments++];
     frag->width = w;
-    frag->line_index = s->line_index;
+    frag->line_index = ds->line_index;
     frag->len = nb_glyphs;
-    frag->embedding_level = s->last_embedding_level;
-    frag->style = style_index;
+    frag->embedding_level = ds->last_embedding_level;
+    frag->style = style;
     frag->ascent = ascent;
     frag->descent = descent;
-    frag->dummy = 0;
+#if QE_TERM_STYLE_BITS == 16
+    frag->dummy = 0;  /* initialize padding for checksum consistency */
+#endif
 
-    s->line_index += nb_glyphs;
-    s->x += frag->width;
+    ds->line_index += nb_glyphs;
+    ds->x += frag->width;
 
-    switch (s->wrap) {
+    switch (ds->wrap) {
     case WRAP_TRUNCATE:
         break;
     case WRAP_LINE:
-        while (s->x > s->width) {
+        while (ds->x > ds->width) {
             int len1, w1, ww, n;
-            //printf("x=%d maxw=%d len=%d\n", s->x, s->width, frag->len);
-            frag = &s->fragments[s->nb_fragments - 1];
+            //printf("x=%d maxw=%d len=%d\n", ds->x, ds->width, frag->len);
+            frag = &ds->fragments[ds->nb_fragments - 1];
             /* find fragment truncation to fit the line */
             len = len1 = frag->len;
-            w1 = s->x;
-            while (s->x > s->width) {
+            w1 = ds->x;
+            while (ds->x > ds->width) {
                 len--;
-                ww = s->line_char_widths[frag->line_index + len];
-                s->x -= ww;
-                if (len == 0 && s->x == 0) {
+                ww = ds->line_char_widths[frag->line_index + len];
+                ds->x -= ww;
+                if (len == 0 && ds->x == 0) {
                     /* avoid looping by putting at least one char per line */
                     len = 1;
-                    s->x += ww;
+                    ds->x += ww;
                     break;
                 }
             }
             len1 -= len;
-            w1 -= s->x;
+            w1 -= ds->x;
             frag->len = len;
             frag->width -= w1;
-            //printf("after: x=%d w1=%d\n", s->x, w1);
-            n = s->nb_fragments;
+            //printf("after: x=%d w1=%d\n", ds->x, w1);
+            n = ds->nb_fragments;
             if (len == 0)
                 n--;
 
             /* flush fragments with a line continuation mark */
-            flush_line(s, s->fragments, n, -1, -1, 0);
+            flush_line(ds, ds->fragments, n, -1, -1, 0);
 
             /* skip line number column if present */
-            s->left_gutter = s->line_numbers;
-            s->x = s->x_line += s->left_gutter;
+            ds->left_gutter = ds->line_numbers;
+            ds->x = ds->x_line += ds->left_gutter;
 
             /* move the remaining fragment to next line */
-            s->nb_fragments = 0;
+            ds->nb_fragments = 0;
             if (len1 > 0) {
-                memmove(s->fragments, frag, sizeof(TextFragment));
-                frag = s->fragments;
+                memmove(ds->fragments, frag, sizeof(TextFragment));
+                frag = ds->fragments;
                 frag->width = w1;
                 frag->line_index = 0;
                 frag->len = len1;
-                s->nb_fragments = 1;
-                s->x += w1;
+                ds->nb_fragments = 1;
+                ds->x += w1;
             }
-            keep_line_chars(s, len1);
+            keep_line_chars(ds, len1);
         }
         break;
     case WRAP_WORD:
-        if (s->x > s->width) {
+        if (ds->x > ds->width) {
             int index;
 
             /* flush fragments with a line continuation mark */
-            flush_line(s, s->fragments, s->word_index, -1, -1, 0);
+            flush_line(ds, ds->fragments, ds->word_index, -1, -1, 0);
 
             /* skip line number column if present */
-            s->left_gutter = s->line_numbers;
-            s->x = s->x_line += s->left_gutter;
+            ds->left_gutter = ds->line_numbers;
+            ds->x = ds->x_line += ds->left_gutter;
 
             /* put words on next line */
-            index = s->fragments[s->word_index].line_index;
-            memmove(s->fragments, s->fragments + s->word_index,
-                    (s->nb_fragments - s->word_index) * sizeof(TextFragment));
-            s->nb_fragments -= s->word_index;
+            index = ds->fragments[ds->word_index].line_index;
+            memmove(ds->fragments, ds->fragments + ds->word_index,
+                    (ds->nb_fragments - ds->word_index) * sizeof(TextFragment));
+            ds->nb_fragments -= ds->word_index;
 
-            for (i = 0; i < s->nb_fragments; i++) {
-                s->fragments[i].line_index -= index;
-                s->x += s->fragments[i].width;
+            for (i = 0; i < ds->nb_fragments; i++) {
+                ds->fragments[i].line_index -= index;
+                ds->x += ds->fragments[i].width;
             }
-            keep_line_chars(s, s->line_index - index);
-            s->word_index = 0;
+            keep_line_chars(ds, ds->line_index - index);
+            ds->word_index = 0;
         }
         break;
     }
-    s->fragment_index = 0;
+    ds->fragment_index = 0;
 }
 
-int display_char_bidir(DisplayState *s, int offset1, int offset2,
+int display_char_bidir(DisplayState *ds, int offset1, int offset2,
                        int embedding_level, int ch)
 {
     int space, style, istab, isaccent;
     EditState *e;
 
-    style = s->style;
+    style = ds->style;
 
     /* special code to colorize block */
-    e = s->edit_state;
+    e = ds->edit_state;
     if (e->show_selection || e->region_style) {
         int mark = e->b->mark;
         int offset = e->offset;
@@ -3598,65 +3602,65 @@ int display_char_bidir(DisplayState *s, int offset1, int offset2,
     isaccent = qe_isaccent(ch);
     /* a fragment is a part of word where style/embedding_level do not
        change. For TAB, only one fragment containing it is sent */
-    if (s->fragment_index >= 1) {
-        if (s->fragment_index >= MAX_WORD_SIZE ||
+    if (ds->fragment_index >= 1) {
+        if (ds->fragment_index >= MAX_WORD_SIZE ||
             istab ||
-            space != s->last_space ||
-            style != s->last_style ||
-            embedding_level != s->last_embedding_level) {
+            space != ds->last_space ||
+            style != ds->last_style ||
+            embedding_level != ds->last_embedding_level) {
             /* flush the current fragment if needed */
-            if (isaccent && s->fragment_chars[s->fragment_index - 1] == ' ') {
+            if (isaccent && ds->fragment_chars[ds->fragment_index - 1] == ' ') {
                 /* separate last space to make it part of the next word */
                 int off1, off2, cur_hex;
-                --s->fragment_index;
-                off1 = s->fragment_offsets[s->fragment_index][0];
-                off2 = s->fragment_offsets[s->fragment_index][1];
-                cur_hex = s->fragment_hex_mode[s->fragment_index];
-                flush_fragment(s);
-                s->fragment_chars[s->fragment_index] = ' ';
-                s->fragment_offsets[s->fragment_index][0] = off1;
-                s->fragment_offsets[s->fragment_index][1] = off2;
-                s->fragment_hex_mode[s->fragment_index] = cur_hex;
-                s->fragment_index++;
+                --ds->fragment_index;
+                off1 = ds->fragment_offsets[ds->fragment_index][0];
+                off2 = ds->fragment_offsets[ds->fragment_index][1];
+                cur_hex = ds->fragment_hex_mode[ds->fragment_index];
+                flush_fragment(ds);
+                ds->fragment_chars[ds->fragment_index] = ' ';
+                ds->fragment_offsets[ds->fragment_index][0] = off1;
+                ds->fragment_offsets[ds->fragment_index][1] = off2;
+                ds->fragment_hex_mode[ds->fragment_index] = cur_hex;
+                ds->fragment_index++;
             } else {
-                flush_fragment(s);
+                flush_fragment(ds);
             }
         }
     }
 
-    if (isaccent && s->fragment_index == 0) {
+    if (isaccent && ds->fragment_index == 0) {
         /* prepend a space if fragment starts with an accent */
-        s->fragment_chars[s->fragment_index] = ' ';
-        s->fragment_offsets[s->fragment_index][0] = offset1;
-        s->fragment_offsets[s->fragment_index][1] = offset2;
-        s->fragment_hex_mode[s->fragment_index] = s->cur_hex_mode;
-        s->fragment_index++;
+        ds->fragment_chars[ds->fragment_index] = ' ';
+        ds->fragment_offsets[ds->fragment_index][0] = offset1;
+        ds->fragment_offsets[ds->fragment_index][1] = offset2;
+        ds->fragment_hex_mode[ds->fragment_index] = ds->cur_hex_mode;
+        ds->fragment_index++;
         offset1 = offset2 = -1;
     }
     /* store the char and its embedding level */
-    s->fragment_chars[s->fragment_index] = ch;
-    s->fragment_offsets[s->fragment_index][0] = offset1;
-    s->fragment_offsets[s->fragment_index][1] = offset2;
-    s->fragment_hex_mode[s->fragment_index] = s->cur_hex_mode;
-    s->fragment_index++;
+    ds->fragment_chars[ds->fragment_index] = ch;
+    ds->fragment_offsets[ds->fragment_index][0] = offset1;
+    ds->fragment_offsets[ds->fragment_index][1] = offset2;
+    ds->fragment_hex_mode[ds->fragment_index] = ds->cur_hex_mode;
+    ds->fragment_index++;
 
-    s->last_space = space;
-    s->last_style = style;
-    s->last_embedding_level = embedding_level;
+    ds->last_space = space;
+    ds->last_style = style;
+    ds->last_embedding_level = embedding_level;
 
     if (istab) {
-        flush_fragment(s);
+        flush_fragment(ds);
     }
     return 0;
 }
 
-void display_printhex(DisplayState *s, int offset1, int offset2,
+void display_printhex(DisplayState *ds, int offset1, int offset2,
                       unsigned int h, int n)
 {
     int i, v;
-    EditState *e = s->edit_state;
+    EditState *e = ds->edit_state;
 
-    s->cur_hex_mode = 1;
+    ds->cur_hex_mode = 1;
     for (i = 0; i < n; i++) {
         v = (h >> ((n - i - 1) * 4)) & 0xf;
         if (v >= 10)
@@ -3665,12 +3669,12 @@ void display_printhex(DisplayState *s, int offset1, int offset2,
             v += '0';
         /* XXX: simplistic */
         if (e->hex_nibble == i) {
-            display_char(s, offset1, offset2, v);
+            display_char(ds, offset1, offset2, v);
         } else {
-            display_char(s, offset1, offset1, v);
+            display_char(ds, offset1, offset1, v);
         }
     }
-    s->cur_hex_mode = 0;
+    ds->cur_hex_mode = 0;
 }
 
 void display_printf(DisplayState *ds, int offset1, int offset2,
@@ -3694,47 +3698,47 @@ void display_printf(DisplayState *ds, int offset1, int offset2,
 }
 
 /* end of line */
-void display_eol(DisplayState *s, int offset1, int offset2)
+void display_eol(DisplayState *ds, int offset1, int offset2)
 {
-    flush_fragment(s);
+    flush_fragment(ds);
 
     /* note: the line may be empty */
-    flush_line(s, s->fragments, s->nb_fragments, offset1, offset2, 1);
+    flush_line(ds, ds->fragments, ds->nb_fragments, offset1, offset2, 1);
 }
 
 /* temporary function for backward compatibility */
-static void display1(DisplayState *s)
+static void display1(DisplayState *ds)
 {
-    EditState *e = s->edit_state;
+    EditState *e = ds->edit_state;
     int offset;
 
-    s->eod = 0;
+    ds->eod = 0;
     offset = e->offset_top;
     for (;;) {
         /* XXX: need early bailout from display_line if WRAP_TRUNCATE
            and far beyond the right border after cursor found.
         */
-        offset = e->mode->display_line(e, s, offset);
+        offset = e->mode->display_line(e, ds, offset);
         e->offset_bottom = offset;
 
         /* EOF reached ? */
         if (offset < 0)
             break;
 
-        switch (s->do_disp) {
+        switch (ds->do_disp) {
         case DISP_NONE:
             return;
         case DISP_CURSOR:
-            if (s->eod)
+            if (ds->eod)
                 return;
             break;
         case DISP_CURSOR_SCREEN:
-            if (s->eod || s->y >= s->height)
+            if (ds->eod || ds->y >= ds->height)
                 return;
             break;
         case DISP_PRINT:
         default:
-            if (s->y >= s->height)
+            if (ds->y >= ds->height)
                 return; /* end of screen */
             break;
         }
@@ -3806,6 +3810,7 @@ static int bidir_compute_attributes(TypeLink *list_tab, int max_size,
    buffer */
 
 static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                                       QETermStyle *sbuf,
                                        int offset, int *offset_ptr, int line_num)
 {
     EditBuffer *b = s->b;
@@ -3816,14 +3821,17 @@ static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_
     for (;;) {
         int style = eb_get_style(b, offset);
         int c = eb_nextc(b, offset, &offset);
-        if (c == '\n')
+        if (c == '\n') {
+            /* XXX: set style for end of line? */
             break;
+        }
         if (buf_ptr < buf_end) {
-            c = (c & CHAR_MASK) | (style << STYLE_SHIFT);
+            sbuf[buf_ptr - buf] = style;
             *buf_ptr++ = c;
         }
     }
     *buf_ptr = '\0';
+    sbuf[buf_ptr - buf] = 0;  /* end of line style? */
     *offset_ptr = offset;
     return buf_ptr - buf;
 }
@@ -3837,11 +3845,12 @@ static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_
 
 static int syntax_get_colorized_line(EditState *s, 
                                      unsigned int *buf, int buf_size, 
+                                     QETermStyle *sbuf,
                                      int offset, int *offsetp, int line_num)
 {
     QEColorizeContext cctx;
     EditBuffer *b = s->b;
-    int len, line, n, col, bom;
+    int i, len, line, n, col, bom;
 
     /* invalidate cache if needed */
     if (s->colorize_max_valid_offset != INT_MAX) {
@@ -3919,6 +3928,7 @@ static int syntax_get_colorized_line(EditState *s,
         SET_COLOR1(buf, 0, QE_STYLE_PREPROCESS);
         cctx.offset = eb_next(b, cctx.offset);
     }
+    cctx.combine_stop = len - bom;
     s->colorize_func(&cctx, buf + bom, len - bom, s->mode);
     /* buf[len] has char '\0' but may hold style, force buf ending */
     buf[len + 1] = 0;
@@ -3930,6 +3940,24 @@ static int syntax_get_colorized_line(EditState *s,
     if (s->colorize_nb_valid_lines < line_num + 2)
         s->colorize_nb_valid_lines = line_num + 2;
 
+    /* Extract styles from colored codepoint array */
+    for (i = 0; i <= len + 1; i++) {
+        sbuf[i] = buf[i] >> STYLE_SHIFT;
+        buf[i] &= CHAR_MASK;
+    }
+
+    /* Combine with buffer styles on restricted range */
+    if (s->b->b_styles) {
+        int i, start = bom + cctx.combine_start, stop = bom + cctx.combine_stop;
+        int offset = cctx.offset;
+        for (i = bom; i < stop; i++) {
+            QETermStyle style = eb_get_style(b, offset);
+            if (style && i >= start) {
+                sbuf[i] = style;
+            }
+            offset = eb_next(b, offset);
+        }
+    }
     return len;
 }
 
@@ -3944,24 +3972,6 @@ static void colorize_callback(qe__unused__ EditBuffer *b,
 
     if (offset < e->colorize_max_valid_offset)
         e->colorize_max_valid_offset = offset;
-}
-
-int combine_static_colorized_line(EditState *s, unsigned int *buf, 
-                                  int len, int offset)
-{
-    EditBuffer *b = s->b;
-    int i;
-
-    if (b->b_styles) {
-        for (i = 0; i < len; i++) {
-            int style = eb_get_style(b, offset);
-            if (style) {
-                buf[i] = (buf[i] & CHAR_MASK) | (style << STYLE_SHIFT);
-            }
-            offset = eb_next(b, offset);
-        }
-    }
-    return len;
 }
 
 #endif /* CONFIG_TINY */
@@ -3985,21 +3995,20 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
 }
 
 int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                               QETermStyle *sbuf,
                                int offset, int *offsetp, int line_num)
 {
     int len;
 
 #ifndef CONFIG_TINY
     if (s->colorize_func) {
-        len = syntax_get_colorized_line(s, buf, buf_size, offset, offsetp, line_num);
-        if (s->b->b_styles && s->colorize_func != shell_colorize_line) {
-            /* XXX: shell mode should have its own get_colorized_line handler */
-            combine_static_colorized_line(s, buf, buf_size, len);
-        }
+        len = syntax_get_colorized_line(s, buf, buf_size, sbuf,
+                                        offset, offsetp, line_num);
     } else
 #endif
     if (s->b->b_styles) {
-        len = get_staticly_colorized_line(s, buf, buf_size, offset, offsetp, line_num);
+        len = get_staticly_colorized_line(s, buf, buf_size, sbuf,
+                                          offset, offsetp, line_num);
     } else {
         len = eb_get_line(s->b, buf, buf_size, offset, offsetp);
         if (buf[len] != '\n') {
@@ -4008,6 +4017,9 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
             *offsetp = eb_goto_pos(s->b, line_num + 1, 0);
         }
         buf[len] = '\0';
+        if (sbuf) {
+            memset(sbuf, 0, len * sizeof(*sbuf));
+        }
     }
     return len;
 }
@@ -4022,8 +4034,9 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     TypeLink embeds[RLE_EMBEDDINGS_SIZE], *bd;
     int embedding_level, embedding_max_level;
     FriBidiCharType base;
-    unsigned int colored_chars[COLORED_MAX_LINE_SIZE];
-    int char_index, colored_nb_chars;
+    unsigned int buf[COLORED_MAX_LINE_SIZE];
+    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
+    int i, char_index, colored_nb_chars;
 
     line_num = 0;
     /* XXX: should test a flag, to avoid this call in hex/binary */
@@ -4075,17 +4088,14 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     /* colorize */
     colored_nb_chars = 0;
     offset0 = offset;
-    if (s->colorize_func
+    if (s->colorize_func || s->b->b_styles
     ||  s->curline_style || s->region_style
-    ||  s->b->b_styles
     ||  s->isearch_state) {
         /* XXX: deal with truncation */
-        colored_nb_chars = s->get_colorized_line(s, colored_chars,
-                                                 countof(colored_chars),
+        colored_nb_chars = s->get_colorized_line(s, buf, countof(buf), sbuf,
                                                  offset, &offset0, line_num);
         if (s->isearch_state) {
-            isearch_colorize_matches(s, colored_chars, colored_nb_chars,
-                                     offset);
+            isearch_colorize_matches(s, buf, colored_nb_chars, sbuf, offset);
         }
     }
 
@@ -4095,7 +4105,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
         /* CG: Should combine styles instead of replacing */
         if (s->region_style && !s->curline_style) {
             int line, start_offset, end_offset;
-            int start_char, end_char;
+            int i, start_char, end_char;
 
             if (s->b->mark < s->offset) {
                 start_offset = max(offset, s->b->mark);
@@ -4111,16 +4121,16 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
                     end_char = colored_nb_chars;
                 else
                     eb_get_pos(s->b, &line, &end_char, end_offset);
-                clear_color(colored_chars + start_char, end_char - start_char);
-                set_color(colored_chars + start_char, colored_chars + end_char,
-                          s->region_style);
+
+                for (i = start_char; i < end_char; i++) {
+                    sbuf[i] = s->region_style;
+                }
             }
         } else
         if (s->curline_style && s->offset >= offset && s->offset <= offset0) {
             /* XXX: only if qs->active_window == s ? */
-            clear_color(colored_chars, colored_nb_chars);
-            set_color(colored_chars, colored_chars + colored_nb_chars,
-                      s->curline_style);
+            for (i = 0; i < colored_nb_chars; i++)
+                sbuf[i] = s->curline_style;
         }
     }
 #endif
@@ -4137,12 +4147,9 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             offset = -1; /* signal end of text */
             break;
         } else {
-            /* Should simplify this if colored line was computed */
             ds->style = 0;
             if (char_index < colored_nb_chars) {
-                /* colored_chars should just be a style array */
-                c = colored_chars[char_index];
-                ds->style = (unsigned int)c >> STYLE_SHIFT;
+                ds->style = sbuf[char_index];
             }
             c = eb_nextc(s->b, offset, &offset);
             if (c == '\n' && !s->minibuf) {
@@ -5300,16 +5307,16 @@ static void qe_key_process(int key)
 /* Print a utf-8 encoded buffer as unicode */
 void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
-                   const char *str, int style_index)
+                   const char *str, int style)
 {
     unsigned int ubuf[MAX_SCREEN_WIDTH];
     int len;
-    QEStyleDef style;
+    QEStyleDef styledef;
     QEFont *font;
     CSSRect rect;
 
     len = utf8_to_unicode(ubuf, countof(ubuf), str);
-    get_style(NULL, &style, style_index);
+    get_style(NULL, &styledef, style);
 
     /* clip rectangle */
     rect.x1 = x;
@@ -5319,9 +5326,9 @@ void print_at_byte(QEditScreen *screen,
     set_clip_rectangle(screen, &rect);
 
     /* start rectangle */
-    fill_rectangle(screen, x, y, width, height, style.bg_color);
-    font = select_font(screen, style.font_style, style.font_size);
-    draw_text(screen, font, x, y + font->ascent, ubuf, len, style.fg_color);
+    fill_rectangle(screen, x, y, width, height, styledef.bg_color);
+    font = select_font(screen, styledef.font_style, styledef.font_size);
+    draw_text(screen, font, x, y + font->ascent, ubuf, len, styledef.fg_color);
     release_font(screen, font);
 }
 
@@ -7141,29 +7148,27 @@ void do_doctor(EditState *s)
     put_status(s, "Hello, how are you?");
 }
 
-int get_glyph_width(QEditScreen *screen, 
-                    EditState *s, int style_index, int c)
+int get_glyph_width(QEditScreen *screen, EditState *s, int style, int c)
 {
+    QEStyleDef styledef;
     QEFont *font;
-    QEStyleDef style;
     int width;
 
-    get_style(s, &style, style_index);
-    font = select_font(screen, style.font_style, style.font_size);
+    get_style(s, &styledef, style);
+    font = select_font(screen, styledef.font_style, styledef.font_size);
     width = glyph_width(screen, font, c);
     release_font(screen, font);
     return width;
 }
 
-int get_line_height(QEditScreen *screen, 
-                    EditState *s, int style_index)
+int get_line_height(QEditScreen *screen, EditState *s, int style)
 {
+    QEStyleDef styledef;
     QEFont *font;
-    QEStyleDef style;
     int height;
 
-    get_style(s, &style, style_index);
-    font = select_font(screen, style.font_style, style.font_size);
+    get_style(s, &styledef, style);
+    font = select_font(screen, styledef.font_style, styledef.font_size);
     height = font->ascent + font->descent;
     release_font(screen, font);
     return height;

@@ -111,7 +111,7 @@ static int get_c_identifier(char *buf, int buf_size, unsigned int *p,
     int i, j;
 
     i = j = 0;
-    c = p[i] & CHAR_MASK;
+    c = p[i];
     if (qe_isalpha_(c)
     ||  c == '$'
     ||  (c == '@' && flavor != CLANG_PIKE)
@@ -120,22 +120,22 @@ static int get_c_identifier(char *buf, int buf_size, unsigned int *p,
             if (j < buf_size - 1)
                 buf[j++] = (c < 0xFF) ? c : 0xFF;
             i++;
-            c = p[i] & CHAR_MASK;
+            c = p[i];
             if (c == '-' && flavor == CLANG_CSS)
                 continue;
             if (qe_isalnum_(c))
                 continue;
             if (flavor == CLANG_RUST && c >= 128)
                 continue;
-            if (c == ':' && (p[i + 1] & CHAR_MASK) == ':'
+            if (c == ':' && p[i + 1] == ':'
             &&  flavor == CLANG_CPP
-            &&  qe_isalpha_(p[i + 2] & CHAR_MASK)) {
+            &&  qe_isalpha_(p[i + 2])) {
                 if (j < buf_size - 2) {
                     buf[j++] = c;
                     buf[j++] = c;
                 }
                 i += 2;
-                c = p[i] & CHAR_MASK;
+                c = p[i];
                 continue;
             }
             break;
@@ -664,7 +664,7 @@ static int find_indent1(EditState *s, unsigned int *buf)
     p = buf;
     pos = 0;
     for (;;) {
-        c = *p++ & CHAR_MASK;
+        c = *p++;
         if (c == '\t')
             pos += tw - (pos % tw);
         else if (c == ' ')
@@ -682,7 +682,7 @@ static int find_pos(EditState *s, unsigned int *buf, int size)
     tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
     pos = 0;
     for (i = 0; i < size; i++) {
-        c = buf[i] & CHAR_MASK;
+        c = buf[i];
         if (c == '\t') {
             pos += tw - (pos % tw);
         } else {
@@ -762,6 +762,7 @@ static void c_indent_line(EditState *s, int offset0)
     int offset, offset1, offsetl, c, pos, line_num, col_num;
     int i, j, eoi_found, len, pos1, lpos, style, line_num1, state;
     unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
+    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     unsigned char stack[MAX_STACK_SIZE];
     char buf1[64], *q;
     int stack_ptr;
@@ -784,7 +785,7 @@ static void c_indent_line(EditState *s, int offset0)
         offsetl = eb_prev_line(s->b, offsetl);
         /* XXX: deal with truncation */
         /* XXX: should only query the syntax colorizer */
-        len = s->get_colorized_line(s, buf, countof(buf),
+        len = s->get_colorized_line(s, buf, countof(buf), sbuf,
                                     offsetl, &offset1, line_num);
         /* store indent position */
         pos1 = find_indent1(s, buf);
@@ -792,14 +793,13 @@ static void c_indent_line(EditState *s, int offset0)
         while (p > buf) {
             p--;
             c = *p;
+            style = sbuf[p - buf];
             /* skip strings or comments */
-            style = (unsigned int)c >> STYLE_SHIFT;
             if (style == C_STYLE_COMMENT
             ||  style == C_STYLE_STRING
             ||  style == C_STYLE_PREPROCESS) {
                 continue;
             }
-            c = c & CHAR_MASK;
             if (state == INDENT_FIND_EQ) {
                 /* special case to search '=' or ; before { to know if
                    we are in data definition */
@@ -878,7 +878,7 @@ static void c_indent_line(EditState *s, int offset0)
                      * are assumed to have no preceding space
                      */
                     if (style == C_STYLE_DEFAULT
-                    &&  (p == buf || !qe_isspace(p[-1] & CHAR_MASK)))
+                    &&  (p == buf || !qe_isspace(p[-1])))
                         goto prev_line;
                     break;
                 default:
@@ -887,13 +887,12 @@ static void c_indent_line(EditState *s, int offset0)
                             unsigned int *p1, *p2;
                             /* special case for if/for/while */
                             p1 = p;
-                            while (p > buf &&
-                                   (p[-1] >> STYLE_SHIFT) == C_STYLE_KEYWORD)
+                            while (p > buf && sbuf[p - buf - 1] == C_STYLE_KEYWORD)
                                 p--;
                             p2 = p;
                             q = buf1;
                             while (q < buf1 + countof(buf1) - 1 && p2 <= p1) {
-                                *q++ = *p2++ & CHAR_MASK;
+                                *q++ = *p2++;
                             }
                             *q = '\0';
 
@@ -915,7 +914,7 @@ static void c_indent_line(EditState *s, int offset0)
     /* compute special cases which depend on the chars on the current line */
     /* XXX: deal with truncation */
     /* XXX: should only query the syntax colorizer */
-    len = s->get_colorized_line(s, buf, countof(buf),
+    len = s->get_colorized_line(s, buf, countof(buf), sbuf,
                                 offset, &offset1, line_num1);
 
     if (stack_ptr == 0) {
@@ -929,22 +928,22 @@ static void c_indent_line(EditState *s, int offset0)
 
     for (i = 0; i < len; i++) {
         c = buf[i];
-        style = (unsigned int)c >> STYLE_SHIFT;
-        if (qe_isblank(c & CHAR_MASK))
+        style = sbuf[i];
+        if (qe_isblank(c))
             continue;
         /* if preprocess, no indent */
         if (style == C_STYLE_PREPROCESS) {
             pos = 0;
             break;
         }
-        if (qe_isalpha_(c & CHAR_MASK)) {
+        if (qe_isalpha_(c)) {
             j = get_c_identifier(buf1, countof(buf1), buf + i, CLANG_C);
 
             if (style == C_STYLE_KEYWORD) {
                 if (strfind("case|default", buf1))
                     goto unindent;
             }
-            for (j += i; qe_isblank(buf[j] & CHAR_MASK); j++)
+            for (j += i; qe_isblank(buf[j]); j++)
                 continue;
             if (buf[j] == ':')
                 goto unindent;
@@ -982,10 +981,10 @@ static void c_indent_line(EditState *s, int offset0)
 #if 0
     if (s->mode->auto_indent > 1) {  /* auto format */
         /* recompute colorization of the current line (after re-indentation) */
-        len = s->get_colorized_line(s, buf, countof(buf),
+        len = s->get_colorized_line(s, buf, countof(buf), sbuf,
                                     offset, &offset1, line_num1);
         /* skip indentation */
-        for (pos = 0; qe_isblank(buf[pos] & CHAR_MASK); pos++)
+        for (pos = 0; qe_isblank(buf[pos]); pos++)
             continue;
         /* XXX: keywords "if|for|while|switch -> one space before `(` */
         /* XXX: keyword "return" -> one space before expression */
@@ -1054,19 +1053,11 @@ static void do_c_return(EditState *s)
     }
 }
 
-static int ustr_match_mask(const unsigned int *buf, const char *str)
-{
-    while (*str) {
-        if ((*buf++ & CHAR_MASK) != *str++)
-            return 0;
-    }
-    return 1;
-}
-
 /* forward / backward preprocessor */
 static void do_c_forward_conditional(EditState *s, int dir)
 {
     unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
+    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     int line_num, col_num, sharp, level;
     int offset, offset0, offset1;
 
@@ -1075,11 +1066,12 @@ static void do_c_forward_conditional(EditState *s, int dir)
     level = 0;
     for (;;) {
         /* XXX: should only query the syntax colorizer */
-        s->get_colorized_line(s, buf, countof(buf), offset, &offset1, line_num);
+        s->get_colorized_line(s, buf, countof(buf), sbuf,
+                              offset, &offset1, line_num);
         sharp = 0;
         for (p = buf; *p; p++) {
-            int c = (*p & CHAR_MASK);
-            int style = (*p >> STYLE_SHIFT);
+            int c = *p;
+            int style = sbuf[p - buf];
             if (qe_isblank(c))
                 continue;
             if (c == '#' && style == C_STYLE_PREPROCESS)
@@ -1088,20 +1080,20 @@ static void do_c_forward_conditional(EditState *s, int dir)
                 break;
         }
         if (sharp == 1) {
-            if (ustr_match_mask(p, dir < 0 ? "endif" : "if")) {
+            if (ustrstart(p, dir < 0 ? "endif" : "if", NULL)) {
                 if (level || offset == offset0)
                     level++;
                 else
                     break;
             } else
-            if (ustr_match_mask(p, "el")) {
+            if (ustrstart(p, "el", NULL)) {
                 if (offset == offset0)
                     level++;
                 else
                 if (level <= 1)
                     break;
             } else
-            if (ustr_match_mask(p, dir > 0 ? "endif" : "if")) {
+            if (ustrstart(p, dir > 0 ? "endif" : "if", NULL)) {
                 if (level)
                     level--;
                 if (!level && offset != offset0)
@@ -1126,6 +1118,7 @@ static void do_c_forward_conditional(EditState *s, int dir)
 static void do_c_list_conditionals(EditState *s)
 {
     unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
+    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     int line_num, col_num, sharp, level;
     int offset, offset1;
     EditBuffer *b;
@@ -1141,11 +1134,12 @@ static void do_c_list_conditionals(EditState *s)
         line_num--;
         offset = eb_prev_line(s->b, offset);
         /* XXX: should only query the syntax colorizer */
-        s->get_colorized_line(s, buf, countof(buf), offset, &offset1, line_num);
+        s->get_colorized_line(s, buf, countof(buf), sbuf,
+                              offset, &offset1, line_num);
         sharp = 0;
         for (p = buf; *p; p++) {
-            int c = (*p & CHAR_MASK);
-            int style = (*p >> STYLE_SHIFT);
+            int c = *p;
+            int style = sbuf[p - buf];
             if (qe_isblank(c))
                 continue;
             if (c == '#' && style == C_STYLE_PREPROCESS)
@@ -1154,15 +1148,15 @@ static void do_c_list_conditionals(EditState *s)
                 break;
         }
         if (sharp == 1) {
-            if (ustr_match_mask(p, "endif")) {
+            if (ustrstart(p, "endif", NULL)) {
                 level++;
             } else
-            if (ustr_match_mask(p, "el")) {
+            if (ustrstart(p, "el", NULL)) {
                 if (level == 0) {
                     eb_insert_buffer_convert(b, 0, s->b, offset, offset1 - offset);
                 }
             } else
-            if (ustr_match_mask(p, "if")) {
+            if (ustrstart(p, "if", NULL)) {
                 if (level) {
                     level--;
                 } else {

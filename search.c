@@ -557,7 +557,7 @@ void do_isearch(EditState *s, int dir, int argval)
 }
 
 void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
-                              int offset_start)
+                              QETermStyle *sbuf, int offset_start)
 {
     ISearchState *is = s->isearch_state;
     EditBuffer *b = s->b;
@@ -575,7 +575,7 @@ void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
     while (eb_search(b, 1, is->search_flags, offset, offset_end,
                      is->search_u32, is->search_u32_len, NULL, NULL,
                      &found_offset, &found_end) > 0) {
-        int line, start, stop;
+        int line, start, stop, i;
 
         if (found_offset >= offset_end)
             break;
@@ -590,9 +590,8 @@ void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
                 if (stop > len)
                     stop = len;
             }
-            if (start < stop) {
-                clear_color(buf + start, stop - start);
-                set_color(buf + start, buf + stop, QE_STYLE_SEARCH_HILITE);
+            for (i = start; i < stop; i++) {
+                sbuf[i] = QE_STYLE_SEARCH_HILITE;
             }
         }
         offset = found_end;

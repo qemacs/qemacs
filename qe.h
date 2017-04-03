@@ -208,6 +208,80 @@ typedef unsigned int QEColor;
 #define COLOR_TRANSPARENT  0
 #define QECOLOR_XOR        1
 
+#if 1  /* new composite style scheme */
+
+/* A qemacs style is a named set of attributes including:
+ * - colors for foreground and background
+ * - font style bits
+ * - font style size
+ *
+ * Styles are applied to text in successive phases:
+ * - the current syntax mode computes style numbers for each character
+ *   on the line. These nubers are stored into the high bits of the
+ *   32-bit code point.
+ * - these style numbers are then extracted into an array of 32-bit composite
+ *   style values.
+ * - the styles from the optional style buffer are combined into these style
+ *   values.
+ * - search matches and selection styles are applied if relevant.
+ * - the bidirectional algorithm is applied to compute the display order
+ * - sequences of code-point with the same compsite style are formed into
+ *   display units, ligatures are applied.
+ * - the composite style is expanded and converted into display attributes
+ *   to trace the display unit on the device surface
+ */
+
+/* Style numbers are limited to 8 bits, the default set has 27 entries */
+/* Composite styles are 32-bit values that specify
+ * - a style number
+ * - display attributes for underline, bold, blink
+ * - text and background colors as either palette numbers or 4096 rgb values
+ */
+
+#define QE_TERM_STYLE_BITS  32
+typedef uint32_t QETermStyle;
+#define QE_STYLE_NUM        0x00FF
+#define QE_STYLE_SEL        0x0100  /* special selection style (cumulative with another style) */
+#define QE_TERM_COMPOSITE   0x0200  /* special bit to indicate qe-term composite style */
+#define QE_TERM_UNDERLINE   0x0400
+#define QE_TERM_BOLD        0x0800
+#define QE_TERM_ITALIC      0x1000
+#define QE_TERM_BLINK       0x2000
+#define QE_TERM_BG_BITS     8
+#define QE_TERM_BG_SHIFT    0
+#define QE_TERM_FG_BITS     8
+#define QE_TERM_FG_SHIFT    16
+
+#else
+
+#define QE_TERM_STYLE_BITS  16
+typedef uint16_t QETermStyle;
+#define QE_STYLE_NUM        0x00FF
+#define QE_STYLE_SEL        0x0100  /* special selection style (cumulative with another style) */
+#define QE_TERM_COMPOSITE   0x0200  /* special bit to indicate qe-term composite style */
+#define QE_TERM_UNDERLINE   0x0400
+#define QE_TERM_BOLD        0x0800
+#define QE_TERM_ITALIC      0x1000
+#define QE_TERM_BLINK       0x2000
+#define QE_TERM_BG_BITS     4
+#define QE_TERM_BG_SHIFT    0
+#define QE_TERM_FG_BITS     4
+#define QE_TERM_FG_SHIFT    4
+
+#endif
+
+#define QE_TERM_DEF_FG      7
+#define QE_TERM_DEF_BG      0
+#define QE_TERM_BG_COLORS   (1 << QE_TERM_BG_BITS)
+#define QE_TERM_FG_COLORS   (1 << QE_TERM_FG_BITS)
+#define QE_TERM_BG_MASK     ((QE_TERM_BG_COLORS - 1) << QE_TERM_BG_SHIFT)
+#define QE_TERM_FG_MASK     ((QE_TERM_FG_COLORS - 1) << QE_TERM_FG_SHIFT)
+#define QE_TERM_MAKE_COLOR(fg, bg)  (((fg) << QE_TERM_FG_SHIFT) | ((bg) << QE_TERM_BG_SHIFT))
+#define QE_TERM_SET_FG(col, fg)  ((col) = ((col) & ~QE_TERM_FG_MASK) | ((fg) << QE_TERM_FG_SHIFT))
+#define QE_TERM_SET_BG(col, bg)  ((col) = ((col) & ~QE_TERM_BG_MASK) | ((bg) << QE_TERM_BG_SHIFT))
+#define QE_TERM_GET_FG(color)  (((color) & QE_TERM_FG_MASK) >> QE_TERM_FG_SHIFT)
+#define QE_TERM_GET_BG(color)  (((color) & QE_TERM_BG_MASK) >> QE_TERM_BG_SHIFT)
+
 typedef struct FindFileState FindFileState;
 
 FindFileState *find_file_open(const char *path, const char *pattern);
@@ -366,6 +440,11 @@ int strunquote(char *dest, int size, const char *str, int len);
 void get_str(const char **pp, char *buf, int buf_size, const char *stop);
 int css_get_enum(const char *str, const char *enum_str);
 int to_hex(int key);
+
+extern QEColor const xterm_colors[];
+/* XXX: should have a more generic API with precomputed mapping scales */
+int qe_map_color(QEColor color, QEColor const *colors, int count, int *dist);
+
 void color_completion(CompleteState *cp);
 int css_define_color(const char *name, const char *value);
 int css_get_color(QEColor *color_ptr, const char *p);
@@ -787,6 +866,7 @@ KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m);
  */
 typedef int (*GetColorizedLineFunc)(EditState *s,
                                     unsigned int *buf, int buf_size,
+                                    QETermStyle *sbuf,
                                     int offset, int *offsetp, int line_num);
 
 struct QEColorizeContext {
@@ -795,6 +875,7 @@ struct QEColorizeContext {
     int offset;
     int colorize_state;
     int state_only;
+    int combine_start, combine_stop; /* region for combine_static_colorized_line() */
 };
 
 /* colorize a line: this function modifies buf to set the char
@@ -1375,78 +1456,6 @@ struct ModeDef {
     ModeDef *next;
 };
 
-#if 0  /* new composite style scheme */
-
-/* A qemacs style is a named set of attributes including:
- * - colors for foreground and background
- * - font style bits
- * - font style size
- *
- * Styles are applied to text in successive phases:
- * - the current syntax mode computes style numbers for each character
- *   on the line. These nubers are stored into the high bits of the
- *   32-bit code point.
- * - these style numbers are then extracted into an array of 32-bit composite
- *   style values.
- * - the styles from the optional style buffer are combined into these style
- *   values.
- * - search matches and selection styles are applied if relevant.
- * - the bidirectional algorithm is applied to compute the display order
- * - sequences of code-point with the same compsite style are formed into
- *   display units, ligatures are applied.
- * - the composite style is expanded and converted into display attributes
- *   to trace the display unit on the device surface
- */
-
-/* Style numbers are limited to 8 bits, the default set has 27 entries */
-/* Composite styles are 32-bit values that specify
- * - a style number
- * - display attributes for underline, bold, blink
- * - text and background colors as either palette numbers or 4096 rgb values
- */
-
-#define QE_TERM_STYLE_BITS  32
-#define QE_STYLE_NUM        0x00FF
-#define QE_STYLE_SEL        0x0100  /* special selection style (cumulative with another style) */
-#define QE_TERM_COMPOSITE   0x0200  /* special bit to indicate qe-term composite style */
-#define QE_TERM_UNDERLINE   0x0400
-#define QE_TERM_BOLD        0x0800
-#define QE_TERM_ITALIC      0x1000
-#define QE_TERM_BLINK       0x2000
-#define QE_TERM_BG_BITS     8
-#define QE_TERM_BG_SHIFT    0
-#define QE_TERM_FG_BITS     8
-#define QE_TERM_FG_SHIFT    16
-
-#else
-
-#define QE_TERM_STYLE_BITS  16
-#define QE_STYLE_NUM        0x00FF
-#define QE_STYLE_SEL        0x0100  /* special selection style (cumulative with another style) */
-#define QE_TERM_COMPOSITE   0x0200  /* special bit to indicate qe-term composite style */
-#define QE_TERM_UNDERLINE   0x0400
-#define QE_TERM_BOLD        0x0800
-#define QE_TERM_ITALIC      0x1000
-#define QE_TERM_BLINK       0x2000
-#define QE_TERM_BG_BITS     4
-#define QE_TERM_BG_SHIFT    0
-#define QE_TERM_FG_BITS     4
-#define QE_TERM_FG_SHIFT    4
-
-#endif
-
-#define QE_TERM_DEF_FG      7
-#define QE_TERM_DEF_BG      0
-#define QE_TERM_BG_COLORS   (1 << QE_TERM_BG_BITS)
-#define QE_TERM_FG_COLORS   (1 << QE_TERM_FG_BITS)
-#define QE_TERM_BG_MASK     ((QE_TERM_BG_COLORS - 1) << QE_TERM_BG_SHIFT)
-#define QE_TERM_FG_MASK     ((QE_TERM_FG_COLORS - 1) << QE_TERM_FG_SHIFT)
-#define QE_TERM_MAKE_COLOR(fg, bg)  (((fg) << QE_TERM_FG_SHIFT) | ((bg) << QE_TERM_BG_SHIFT))
-#define QE_TERM_SET_FG(col, fg)  ((col) = ((col) & ~(QE_TERM_FG_MASK)) | ((fg) << QE_TERM_FG_SHIFT))
-#define QE_TERM_SET_BG(col, bg)  ((col) = ((col) & ~(QE_TERM_BG_MASK)) | ((bg) << QE_TERM_BG_SHIFT))
-#define QE_TERM_GET_FG(color)  (((color) & QE_TERM_FG_MASK) >> QE_TERM_FG_SHIFT)
-#define QE_TERM_GET_BG(color)  (((color) & QE_TERM_BG_MASK) >> QE_TERM_BG_SHIFT)
-
 QEModeData *qe_create_buffer_mode_data(EditBuffer *b, ModeDef *m);
 void *qe_get_buffer_mode_data(EditBuffer *b, ModeDef *m, EditState *e);
 QEModeData *qe_create_window_mode_data(EditState *s, ModeDef *m);
@@ -1456,10 +1465,6 @@ int qe_free_mode_data(QEModeData *md);
 /* from tty.c */
 /* set from command line option to prevent GUI such as X11 */
 extern int force_tty;
-extern QEColor const xterm_colors[];
-/* XXX: should have a more generic API with precomputed mapping scales */
-int get_tty_color(QEColor color, QEColor const *colors, int count);
-int get_tty_style(const char *style);
 
 enum QEStyle {
 #define STYLE_DEF(constant, name, fg_color, bg_color, \
@@ -1687,13 +1692,15 @@ int qe_get_prototype(CmdDef *d, char *buf, int size);
 
 typedef struct TextFragment {
     unsigned short embedding_level;
-    short width;      /* fragment width */
+    short width;       /* fragment width */
     short ascent;
     short descent;
-    short style;      /* style index */
-    short line_index; /* index into line_buf */
-    short len;        /* number of glyphs */
-    short dummy;      /* alignment, must be set for CRC */
+    QETermStyle style; /* composite style */
+    short line_index;  /* index into line_buf */
+    short len;         /* number of glyphs */
+#if QE_TERM_STYLE_BITS == 16
+    short dummy;       /* alignment, must be set for CRC */
+#endif
 } TextFragment;
 
 #ifdef CONFIG_TINY
@@ -1807,13 +1814,6 @@ static inline void set_color1(unsigned int *p, int style) {
     *p |= style << STYLE_SHIFT;
 }
 
-static inline void clear_color(unsigned int *p, int count) {
-    int i;
-
-    for (i = 0; i < count; i++)
-        p[i] &= CHAR_MASK;
-}
-
 /* input.c */
 
 #define INPUTMETHOD_NOMATCH   (-1)
@@ -1925,10 +1925,8 @@ EditState *edit_new(EditBuffer *b,
 void edit_detach(EditState *s);
 EditBuffer *check_buffer(EditBuffer **sp);
 EditState *check_window(EditState **sp);
-int get_glyph_width(QEditScreen *screen, 
-                    EditState *s, int style_index, int c);
-int get_line_height(QEditScreen *screen,
-                    EditState *s, int style_index);
+int get_glyph_width(QEditScreen *screen, EditState *s, int style, int c);
+int get_line_height(QEditScreen *screen, EditState *s, int style);
 void do_refresh(EditState *s);
 // should take direction argument
 void do_other_window(EditState *s);
@@ -1961,7 +1959,7 @@ void do_save_buffer(EditState *s);
 void do_write_file(EditState *s, const char *filename);
 void do_write_region(EditState *s, const char *filename);
 void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
-                              int offset);
+                              QETermStyle *sbuf, int offset);
 void do_isearch(EditState *s, int dir, int argval);
 void do_query_replace(EditState *s, const char *search_str,
                       const char *replace_str);
@@ -1982,9 +1980,8 @@ int text_display_line(EditState *s, DisplayState *ds, int offset);
 
 void set_colorize_func(EditState *s, ColorizeFunc colorize_func);
 int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                               QETermStyle *sbuf,
                                int offset, int *offsetp, int line_num);
-int combine_static_colorized_line(EditState *s, unsigned int *buf, 
-                                  int len, int offset);
 
 int do_delete_selection(EditState *s);
 void do_char(EditState *s, int key, int argval);
@@ -2085,7 +2082,7 @@ void display_window_borders(EditState *e);
 int find_style_index(const char *name);
 QEStyleDef *find_style(const char *name);
 void style_completion(CompleteState *cp);
-void get_style(EditState *e, QEStyleDef *style, int style_index);
+void get_style(EditState *e, QEStyleDef *stp, int style);
 void style_property_completion(CompleteState *cp);
 int find_style_property(const char *name);
 void do_define_color(EditState *e, const char *name, const char *value);
