@@ -932,8 +932,21 @@ static void c_indent_line(EditState *s, int offset0)
         if (qe_isblank(c))
             continue;
         /* if preprocess, no indent */
+        /* XXX: should indent macro definitions and align continuation marks */
         if (style == C_STYLE_PREPROCESS) {
             pos = 0;
+            break;
+        }
+        if (style == C_STYLE_COMMENT) {
+            if (c == '/') {
+                break;
+            }
+            if (c == '*') {
+                pos += 1;
+                break;
+            }
+            /* comment paragraph alignment should depend on previous line */
+            pos += 3;
             break;
         }
         if (qe_isalpha_(c)) {
@@ -965,6 +978,10 @@ static void c_indent_line(EditState *s, int offset0)
         }
         break;
     }
+    // if (i == len && state is IN_COMMENT) {
+    //     /* XXX: should indent comment paragraphs */
+    //     pos += 3;
+    // }
 
     /* the computed indent is in 'pos' */
     /* if on a blank line, reset indent to 0 unless point is on it */
@@ -2791,7 +2808,7 @@ static int c_init(void)
 
     qe_register_mode(&c_mode, MODEF_SYNTAX);
     qe_register_cmd_table(c_commands, &c_mode);
-    for (p = ";:#&|"; *p; p++) {
+    for (p = ";:#&|*"; *p; p++) {
         qe_register_binding(*p, "c-electric-key", &c_mode);
     }
 
