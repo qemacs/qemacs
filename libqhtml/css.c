@@ -812,7 +812,7 @@ static void set_default_props(CSSContext *s, CSSState *props)
 
     /* size of 12 points */
     props->font_size = (12 * s->dots_per_inch) / 72;
-    props->font_family = QE_FAMILY_SERIF;
+    props->font_family = QE_FONT_FAMILY_SERIF;
     props->border_colors[0] = COLOR_TRANSPARENT;
     props->border_colors[1] = COLOR_TRANSPARENT;
     props->border_colors[2] = COLOR_TRANSPARENT;
@@ -2047,14 +2047,14 @@ static QEFont *css_select_font(QEditScreen *screen, CSSState *props)
     /* select the correct font */
     style = 0;
     if (props->font_style == CSS_FONT_STYLE_ITALIC)
-        style |= QE_STYLE_ITALIC;
+        style |= QE_FONT_STYLE_ITALIC;
     if (props->font_weight == CSS_FONT_WEIGHT_BOLD ||
         props->font_weight == CSS_FONT_WEIGHT_BOLDER)
-        style |= QE_STYLE_BOLD;
+        style |= QE_FONT_STYLE_BOLD;
     if (props->text_decoration == CSS_TEXT_DECORATION_UNDERLINE)
-        style |= QE_STYLE_UNDERLINE;
+        style |= QE_FONT_STYLE_UNDERLINE;
     else if (props->text_decoration == CSS_TEXT_DECORATION_LINE_THROUGH)
-        style |= QE_STYLE_LINE_THROUGH;
+        style |= QE_FONT_STYLE_LINE_THROUGH;
 
     style |= props->font_family;
     return select_font(screen, style, props->font_size);
@@ -4033,7 +4033,7 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
             img_props.border.y2 = 1;
             for (i = 0; i < 4; i++) {
                 img_props.border_colors[i] = QERGB(0, 0, 0);
-                        img_props.border_styles[i] = CSS_BORDER_STYLE_INSET;
+                img_props.border_styles[i] = CSS_BORDER_STYLE_INSET;
             }
             draw_borders(scr, x0 + 1, y0 + 1,
                          x0 + box->width - 1,

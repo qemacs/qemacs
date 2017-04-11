@@ -49,6 +49,14 @@ for ($color = 0; $color < 16; $color++) {
 }
 print "\x1b[0m\n\n";
 
+print "Bold+Italic colors:\n";
+print "\x1b[1m\x1b[3m";
+for ($color = 0; $color < 16; $color++) {
+    $n = $color > 7 ? 90 + $color - 8 : $color + 30;
+    printf("\x1b[%dm %02d ", $n, $color);
+}
+print "\x1b[0m\n\n";
+
 print "Underline colors:\n";
 print "\x1b[4m";
 for ($color = 0; $color < 16; $color++) {

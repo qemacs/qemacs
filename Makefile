@@ -574,6 +574,15 @@ FILES+=unifont.lig ligatures kmaps $(KMAPS) $(CP) $(JIS) $(FONTS) $(TESTS)
 
 FILE=qemacs-$(shell cat VERSION)
 
+colortest:
+	tests/16colors.pl
+	tests/256colors2.pl
+	tests/truecolors.sh
+	tests/color-spaces.pl
+	tests/mandelbrot.sh
+	tests/xterm-colour-chart.py
+	tests/7936-colors.sh
+
 tar: $(FILES)
 	rm -f $(HOME)/$(FILE).tar.gz
 	rm -rf /tmp/$(FILE)

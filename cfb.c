@@ -282,17 +282,17 @@ static void cfb_draw_text(QEditScreen *s, QEFont *font,
     }
 
     /* underline synthesis */
-    if (font->style & (QE_STYLE_UNDERLINE | QE_STYLE_LINE_THROUGH)) {
+    if (font->style & (QE_FONT_STYLE_UNDERLINE | QE_FONT_STYLE_LINE_THROUGH)) {
         int dy, h, w;
         h = (font->descent + 2) / 4;
         if (h < 1)
             h = 1;
         w = x - x_start;
-        if (font->style & QE_STYLE_UNDERLINE) {
+        if (font->style & QE_FONT_STYLE_UNDERLINE) {
             dy = (font->descent + 1) / 3;
             fill_rectangle(s, x_start, y + dy, w, h, color);
         }
-        if (font->style & QE_STYLE_LINE_THROUGH) {
+        if (font->style & QE_FONT_STYLE_LINE_THROUGH) {
             dy = -(font->ascent / 2 - 1);
             fill_rectangle(s, x_start, y + dy, w, h, color);
         }

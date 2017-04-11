@@ -1,7 +1,7 @@
     /* root style, must be complete */
     STYLE_DEF(QE_STYLE_DEFAULT, "default",
               QERGB(0xf8, 0xd8, 0xb0), QERGB(0x00, 0x00, 0x00),
-              QE_FAMILY_FIXED, 12)
+              QE_FONT_FAMILY_FIXED, 12)
 
     /* system styles */
     STYLE_DEF(QE_STYLE_MODE_LINE, "mode-line",
@@ -20,7 +20,7 @@
     /* default style for HTML/CSS2 pages */
     STYLE_DEF(QE_STYLE_CSS_DEFAULT, "css-default",
               QERGB(0x00, 0x00, 0x00), QERGB(0xbb, 0xbb, 0xbb),
-              QE_FAMILY_SERIF, 12)
+              QE_FONT_FAMILY_SERIF, 12)
 
     /* coloring styles */
     STYLE_DEF(QE_STYLE_HIGHLIGHT, "highlight",

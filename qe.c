@@ -2762,13 +2762,13 @@ static void apply_style(QEStyleDef *stp, int style)
         stp->fg_color = xterm_colors[QE_TERM_GET_FG(style)];
         stp->bg_color = xterm_colors[QE_TERM_GET_BG(style)];
         if (style & QE_TERM_UNDERLINE)
-            stp->font_style |= QE_STYLE_UNDERLINE;
+            stp->font_style |= QE_FONT_STYLE_UNDERLINE;
         if (style & QE_TERM_BOLD)
-            stp->font_style |= QE_STYLE_BOLD;
+            stp->font_style |= QE_FONT_STYLE_BOLD;
         if (style & QE_TERM_ITALIC)
-            stp->font_style |= QE_STYLE_ITALIC;
+            stp->font_style |= QE_FONT_STYLE_ITALIC;
         if (style & QE_TERM_BLINK)
-            stp->font_style |= QE_STYLE_BLINK;
+            stp->font_style |= QE_FONT_STYLE_BLINK;
     } else {
         s = &qe_styles[style & QE_STYLE_NUM];
         if (s->fg_color != COLOR_TRANSPARENT)
@@ -2913,16 +2913,16 @@ void do_set_style(EditState *e, const char *stylestr,
         return;
     case CSS_PROP_FONT_FAMILY:
         v = css_get_font_family(value);
-        stp->font_style = (stp->font_style & ~QE_FAMILY_MASK) | v;
+        stp->font_style = (stp->font_style & ~QE_FONT_FAMILY_MASK) | v;
         break;
     case CSS_PROP_FONT_STYLE:
         /* XXX: cannot handle inherit correctly */
         v = stp->font_style;
         if (strequal(value, "italic")) {
-            v |= QE_STYLE_ITALIC;
+            v |= QE_FONT_STYLE_ITALIC;
         } else
         if (strequal(value, "normal")) {
-            v &= ~QE_STYLE_ITALIC;
+            v &= ~QE_FONT_STYLE_ITALIC;
         }
         stp->font_style = v;
         break;
@@ -2930,10 +2930,10 @@ void do_set_style(EditState *e, const char *stylestr,
         /* XXX: cannot handle inherit correctly */
         v = stp->font_style;
         if (strequal(value, "bold")) {
-            v |= QE_STYLE_BOLD;
+            v |= QE_FONT_STYLE_BOLD;
         } else
         if (strequal(value, "normal")) {
-            v &= ~QE_STYLE_BOLD;
+            v &= ~QE_FONT_STYLE_BOLD;
         }
         stp->font_style = v;
         break;
@@ -2947,10 +2947,10 @@ void do_set_style(EditState *e, const char *stylestr,
     case CSS_PROP_TEXT_DECORATION:
         /* XXX: cannot handle inherit correctly */
         if (strequal(value, "none")) {
-            stp->font_style &= ~QE_STYLE_UNDERLINE;
+            stp->font_style &= ~QE_FONT_STYLE_UNDERLINE;
         } else
         if (strequal(value, "underline")) {
-            stp->font_style |= QE_STYLE_UNDERLINE;
+            stp->font_style |= QE_FONT_STYLE_UNDERLINE;
         }
         break;
     }

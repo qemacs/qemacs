@@ -1709,17 +1709,17 @@ int css_get_font_family(const char *str)
 
     if (!strcasecmp(str, "serif") ||
         !strcasecmp(str, "times"))
-        v = QE_FAMILY_SERIF;
+        v = QE_FONT_FAMILY_SERIF;
     else
     if (!strcasecmp(str, "sans") ||
         !strcasecmp(str, "arial") ||
         !strcasecmp(str, "helvetica"))
-        v = QE_FAMILY_SANS;
+        v = QE_FONT_FAMILY_SANS;
     else
     if (!strcasecmp(str, "fixed") ||
         !strcasecmp(str, "monospace") ||
         !strcasecmp(str, "courier"))
-        v = QE_FAMILY_FIXED;
+        v = QE_FONT_FAMILY_FIXED;
     else
         v = 0; /* inherit */
     return v;

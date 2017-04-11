@@ -233,7 +233,7 @@ static int term_init(QEditScreen *s, int w, int h)
         xsize = w;
         ysize = h;
     } else {
-        xsize = 80;
+        xsize = 128;
         ysize = 50;
 
         if (geometry_str) {
@@ -541,23 +541,23 @@ static QEFont *term_open_font(QEditScreen *s, int style, int size)
     if (!font)
         return NULL;
 
-    switch (style & QE_FAMILY_MASK) {
+    switch (style & QE_FONT_FAMILY_MASK) {
     default:
-    case QE_FAMILY_FIXED:
+    case QE_FONT_FAMILY_FIXED:
         family = font_family_str;
         break;
-    case QE_FAMILY_SANS:
+    case QE_FONT_FAMILY_SANS:
         family = "sans";
         break;
-    case QE_FAMILY_SERIF:
+    case QE_FONT_FAMILY_SERIF:
         family = "serif";
         break;
     }
     weight = XFT_WEIGHT_MEDIUM;
-    if (style & QE_STYLE_BOLD)
+    if (style & QE_FONT_STYLE_BOLD)
         weight = XFT_WEIGHT_BOLD;
     slant = XFT_SLANT_ROMAN;
-    if (style & QE_STYLE_ITALIC)
+    if (style & QE_FONT_STYLE_ITALIC)
         slant = XFT_SLANT_ITALIC;
 
     renderFont = XftFontOpen(display, xscreen,
@@ -683,7 +683,7 @@ static QEFont *term_open_font(qe__unused__ QEditScreen *s, int style, int size)
         return NULL;
 
     /* get font name */
-    font_index = ((style & QE_FAMILY_MASK) >> QE_FAMILY_SHIFT) - 1;
+    font_index = ((style & QE_FONT_FAMILY_MASK) >> QE_FONT_FAMILY_SHIFT) - 1;
     if ((unsigned)font_index >= NB_FONT_FAMILIES)
         font_index = 0; /* fixed font is default */
     family_list = qe_state.system_fonts[font_index];
@@ -691,7 +691,7 @@ static QEFont *term_open_font(qe__unused__ QEditScreen *s, int style, int size)
         family_list = default_x11_fonts[font_index];
 
     /* take the nth font number in family list */
-    font_fallback = (style & QE_FAMILY_FALLBACK_MASK) >> QE_FAMILY_FALLBACK_SHIFT;
+    font_fallback = (style & QE_FONT_FAMILY_FALLBACK_MASK) >> QE_FONT_FAMILY_FALLBACK_SHIFT;
     p = family_list;
     for (i = 0; i < font_fallback; i++) {
         p = strchr(p, ',');
@@ -742,13 +742,13 @@ static QEFont *term_open_font(qe__unused__ QEditScreen *s, int style, int size)
         get_entry(NULL, 0, &p);
         get_entry(NULL, 0, &p); /* family */
         get_entry(buf, sizeof(buf), &p); /* weight */
-        if (!((strequal(buf, "bold") && (style & QE_STYLE_BOLD)) ||
-              (strequal(buf, "medium") && !(style & QE_STYLE_BOLD))))
+        if (!((strequal(buf, "bold") && (style & QE_FONT_STYLE_BOLD)) ||
+              (strequal(buf, "medium") && !(style & QE_FONT_STYLE_BOLD))))
             dist += 3;
         get_entry(buf, sizeof(buf), &p); /* slant */
-        if (!((strequal(buf, "o") && (style & QE_STYLE_ITALIC)) ||
-              (strequal(buf, "i") && (style & QE_STYLE_ITALIC)) ||
-              (strequal(buf, "r") && !(style & QE_STYLE_ITALIC))))
+        if (!((strequal(buf, "o") && (style & QE_FONT_STYLE_ITALIC)) ||
+              (strequal(buf, "i") && (style & QE_FONT_STYLE_ITALIC)) ||
+              (strequal(buf, "r") && !(style & QE_FONT_STYLE_ITALIC))))
             dist += 3;
         get_entry(NULL, 0, &p); /* swidth */
         get_entry(NULL, 0, &p); /* adstyle */
@@ -858,7 +858,7 @@ static XCharStruct *handle_fallback(QEditScreen *s, QEFont **out_font,
     /* fallback case */
     for (fallback_count = 1; fallback_count < 5; fallback_count++) {
         font1 = select_font(s, font->style |
-                            (fallback_count << QE_FAMILY_FALLBACK_SHIFT),
+                            (fallback_count << QE_FONT_FAMILY_FALLBACK_SHIFT),
                             font->size);
         if (!font1)
             break;
@@ -973,17 +973,17 @@ static void term_draw_text(QEditScreen *s, QEFont *font,
         update_rect(x_start, y - last_font->ascent, x, y + last_font->descent);
     }
     /* underline synthesis */
-    if (font->style & (QE_STYLE_UNDERLINE | QE_STYLE_LINE_THROUGH)) {
+    if (font->style & (QE_FONT_STYLE_UNDERLINE | QE_FONT_STYLE_LINE_THROUGH)) {
         int dy, h, w;
         h = (font->descent + 2) / 4;
         if (h < 1)
             h = 1;
         w = x - x1;
-        if (font->style & QE_STYLE_UNDERLINE) {
+        if (font->style & QE_FONT_STYLE_UNDERLINE) {
             dy = (font->descent + 1) / 3;
             XFillRectangle(display, dbuffer, gc, x1, y + dy, w, h);
         }
-        if (font->style & QE_STYLE_LINE_THROUGH) {
+        if (font->style & QE_FONT_STYLE_LINE_THROUGH) {
             dy = -(font->ascent / 2 - 1);
             XFillRectangle(display, dbuffer, gc, x1, y + dy, w, h);
         }

@@ -672,28 +672,28 @@ static QEFont *haiku_open_font(QEditScreen *s, int style, int size)
 
     BFont *f;
     uint16 face = 0;
-    switch (style & QE_FAMILY_MASK) {
+    switch (style & QE_FONT_FAMILY_MASK) {
     default:
-    case QE_FAMILY_FIXED:
+    case QE_FONT_FAMILY_FIXED:
         f = new BFont(be_fixed_font);
         break;
-    case QE_FAMILY_SANS:
-    case QE_FAMILY_SERIF:
+    case QE_FONT_FAMILY_SANS:
+    case QE_FONT_FAMILY_SERIF:
         /* There isn't a separate default sans and serif font */
         /* for now just only use fixed font */
         //f = new BFont(be_plain_font);
         f = new BFont(be_fixed_font);
         break;
     }
-    if (style & QE_STYLE_NORM)
+    if (style & QE_FONT_STYLE_NORM)
         face |= B_REGULAR_FACE;
-    if (style & QE_STYLE_BOLD)
+    if (style & QE_FONT_STYLE_BOLD)
         face |= B_BOLD_FACE;
-    if (style & QE_STYLE_ITALIC)
+    if (style & QE_FONT_STYLE_ITALIC)
         face |= B_ITALIC_FACE;
-    if (style & QE_STYLE_UNDERLINE)
+    if (style & QE_FONT_STYLE_UNDERLINE)
         face |= B_UNDERSCORE_FACE; // not really supported IIRC
-    if (style & QE_STYLE_LINE_THROUGH)
+    if (style & QE_FONT_STYLE_LINE_THROUGH)
         face |= B_STRIKEOUT_FACE; // not really supported IIRC
     if (face)
         f->SetFace(face);
@@ -770,18 +770,18 @@ static void haiku_draw_text(QEditScreen *s, QEFont *font,
     ctx->v->DrawString(text.String());
 
     /* underline synthesis */
-    if (font->style & (QE_STYLE_UNDERLINE | QE_STYLE_LINE_THROUGH)) {
+    if (font->style & (QE_FONT_STYLE_UNDERLINE | QE_FONT_STYLE_LINE_THROUGH)) {
         int dy, h, w;
         BFont *f = (BFont *)font->priv_data;
         h = (font->descent + 2) / 4 - 1;
         if (h < 0)
             h = 0;
         w = (int)f->StringWidth(text.String()) - 1;
-        if (font->style & QE_STYLE_UNDERLINE) {
+        if (font->style & QE_FONT_STYLE_UNDERLINE) {
             dy = (font->descent + 1) / 3;
             ctx->v->FillRect(BRect(x1, y + dy, x1 + w, y + dy + h));
         }
-        if (font->style & QE_STYLE_LINE_THROUGH) {
+        if (font->style & QE_FONT_STYLE_LINE_THROUGH) {
             dy = -(font->ascent / 2 - 1);
             ctx->v->FillRect(BRect(x1, y + dy, x1 + w, y + dy + h));
         }

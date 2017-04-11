@@ -291,7 +291,7 @@ QEFont *select_font(QEditScreen *s, int style, int size)
     }
     fc = open_font(s, style, size);
     if (!fc) {
-        if (style & QE_FAMILY_FALLBACK_MASK)
+        if (style & QE_FONT_FAMILY_FALLBACK_MASK)
             return NULL;
 
         put_error(NULL, "open_font: cannot open style=%X size=%d",

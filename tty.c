@@ -825,7 +825,7 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
 #define comb_cache_describe(s, b)
 #endif
 
-static void tty_term_draw_text(QEditScreen *s, qe__unused__ QEFont *font,
+static void tty_term_draw_text(QEditScreen *s, QEFont *font,
                                int x, int y, const unsigned int *str0, int len,
                                QEColor color)
 {
@@ -840,13 +840,13 @@ static void tty_term_draw_text(QEditScreen *s, qe__unused__ QEFont *font,
 
     ts->line_updated[y] = 1;
     fgcolor = qe_map_color(color, ts->term_colors, ts->term_fg_colors_count, NULL);
-    if (font->style & QE_STYLE_UNDERLINE)
+    if (font->style & QE_FONT_STYLE_UNDERLINE)
         fgcolor |= TTY_UNDERLINE;
-    if (font->style & QE_STYLE_BOLD)
+    if (font->style & QE_FONT_STYLE_BOLD)
         fgcolor |= TTY_BOLD;
-    if (font->style & QE_STYLE_BLINK)
+    if (font->style & QE_FONT_STYLE_BLINK)
         fgcolor |= TTY_BLINK;
-    if (font->style & QE_STYLE_ITALIC)
+    if (font->style & QE_FONT_STYLE_ITALIC)
         fgcolor |= TTY_ITALIC;
     ptr = ts->screen + y * s->width;
 
@@ -1027,7 +1027,6 @@ static void tty_term_flush(QEditScreen *s)
                 ch = TTY_CHAR_GET_CH(cc);
                 if ((unsigned int)ch != TTY_CHAR_NONE) {
                     /* output attributes */
-                    again:
                     if (bgcolor != (int)TTY_CHAR_GET_BG(cc)) {
                         int lastbg = bgcolor;
                         bgcolor = TTY_CHAR_GET_BG(cc);
@@ -1042,11 +1041,9 @@ static void tty_term_flush(QEditScreen *s)
                             } else {
                                 if (lastbg > 7) {
                                     TTY_FPUTS("\033[25m", s->STDOUT);
-                                    //fgcolor = -1;
                                 }
                             }
-                            TTY_FPRINTF(s->STDOUT, "\033[%dm",
-                                        40 + (bgcolor & 7));
+                            TTY_FPRINTF(s->STDOUT, "\033[%dm", 40 + (bgcolor & 7));
                         } else {
                             TTY_FPRINTF(s->STDOUT, "\033[%dm",
                                         bgcolor > 7 ? 100 + bgcolor - 8 :
@@ -1069,20 +1066,15 @@ static void tty_term_flush(QEditScreen *s)
                             } else {
                                 if (lastfg > 7) {
                                     TTY_FPUTS("\033[22m", s->STDOUT);
-                                    //fgcolor = -1;
-                                    //bgcolor = -1;
-                                    goto again;
                                 }
                             }
-                            TTY_FPRINTF(s->STDOUT, "\033[%dm",
-                                        30 + (fgcolor & 7));
+                            TTY_FPRINTF(s->STDOUT, "\033[%dm", 30 + (fgcolor & 7));
                         } else {
                             TTY_FPRINTF(s->STDOUT, "\033[%dm",
                                         fgcolor > 8 ? 90 + fgcolor - 8 :
                                         30 + fgcolor);
                         }
                     }
-#if 1
                     if (attr != (int)TTY_CHAR_GET_COL(cc)) {
                         int lastattr = attr;
                         attr = TTY_CHAR_GET_COL(cc);
@@ -1115,7 +1107,6 @@ static void tty_term_flush(QEditScreen *s)
                                 TTY_FPUTS("\033[23m", s->STDOUT);
                             }
                         }
-#endif
                     }
                     if (shifted) {
                         /* Kludge for linedrawing chars */
@@ -1147,7 +1138,7 @@ static void tty_term_flush(QEditScreen *s)
                             TTY_PUTC(ch - 32, s->STDOUT);
                         }
                     } else
-#if MAX_UNICODE_DISPLAY > 0xFFFF
+#if COMB_CACHE_SIZE > 1
                     if (ch >= TTY_CHAR_COMB && ch < TTY_CHAR_COMB + COMB_CACHE_SIZE - 1) {
                         u8 buf[10], *q;
                         unsigned int *ip = ts->comb_cache + (ch - TTY_CHAR_COMB);
