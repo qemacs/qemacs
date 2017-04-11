@@ -47,9 +47,8 @@ static int list_get_colorized_line(EditState *s,
     } else
     if (buf[0] == '*') {
         /* selection */
-        /* XXX: use QE_STYLE_SEL ? */
         for (i = 0; i <= len; i++) {
-            sbuf[i] = QE_STYLE_SELECTION;
+            sbuf[i] |= QE_STYLE_SEL;
         }
     }
     return len;
