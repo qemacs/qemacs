@@ -2992,8 +2992,9 @@ static void ruby_colorize_line(QEColorizeContext *cp,
             }
             if (start == indent
             ||  (str[i] != ' ' && str[i] != '='
+            &&   i >= 2
             &&   !qe_isalnum(str[i - 2] & CHAR_MASK)
-            &&   str[i - 2] != ')')) {
+            &&   (str[i - 2] & CHAR_MASK) != ')')) {
                 /* XXX: should use context to tell regex from divide */
                 /* parse regex */
                 state = IN_RUBY_REGEX;
