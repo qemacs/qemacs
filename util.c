@@ -1146,7 +1146,41 @@ int to_hex(int c)
 }
 
 #if 1
-/* Should move all this to display.c */
+/* Should move all this to a separate source file color.c */
+
+/* For 8K colors, We use a color system with 7936 colors:
+ *   - 16 standard colors
+ *   - 240 standard palette colors
+ *   - 4096 colors in a 16x16x16 cube
+ *   - a 256 level gray ramp
+ *   - 6 256-level fade to black ramps
+ *   - 6 256-level fade to white ramps
+ *   - a 256 color palette with default xterm values
+ *   - 256 unused slots
+ */
+
+/* Alternately we could use a system with 8157 colors:
+ *   - 2 default color
+ *   - 16 standard colors
+ *   - 256 standard palette colors
+ *   - 6859 colors in a 19x19x19 cube
+ *     with ramp 0,15,31,47,63,79,95,108,121,135,
+ *               148,161,175,188,201,215,228,241,255 values
+ *   - 256 level gray ramp
+ *   - extra space for 3 256 level ramps or 12 64 level ramps
+ *   - 15 unused slots
+ */
+
+/* Another possible system for 8K colors has 8042+ colors:
+ *   - 2 default color
+ *   - 16 standard colors
+ *   - 24 standard grey scale colors
+ *   - 8000 colors in a 20x20x20 cube
+ *     with ramp 0,13,27,40,54,67,81,95,108,121,135,
+ *               148,161,175,188,201,215,228,241,255 values
+ *   - extra grey scale colors
+ *   - some unused slots
+ */
 
 typedef struct ColorDef {
     const char *name;
@@ -1469,6 +1503,7 @@ QEColor const xterm_colors[256] = {
 #endif
 };
 
+#if 0
 static unsigned char const scale_cube[256] = {
     /* This array is used for mapping rgb colors to the standard palette */
     /* 216 entry RGB cube with axes 0,95,135,175,215,255 */
@@ -1494,10 +1529,11 @@ static unsigned char const scale_grey[256] = {
     255, 255, 255,
     231, 231, 231, 231, 231, 231, 231, 231, 231
 };
+#endif
 
 static inline int color_dist(QEColor c1, QEColor c2) {
     /* using casts because c1 and c2 are unsigned */
-#if 1
+#if 0
     /* using a quick approximation to give green extra weight */
     return      abs((int)((c1 >>  0) & 0xff) - (int)((c2 >>  0) & 0xff)) +
             2 * abs((int)((c1 >>  8) & 0xff) - (int)((c2 >>  8) & 0xff)) +
@@ -1511,46 +1547,196 @@ static inline int color_dist(QEColor c1, QEColor c2) {
 }
 
 /* XXX: should have a more generic API with precomputed mapping scales */
-int qe_map_color(QEColor color, QEColor const *colors, int count, int *dist)
+/* Convert RGB triplet to a composite color */
+unsigned int qe_map_color(QEColor color, QEColor const *colors, int count, int *dist)
 {
     int i, cmin, dmin, d;
 
-    dmin = INT_MAX;
-    cmin = 0;
-    for (i = 0; i < count; i++) {
-        d = color_dist(color, colors[i]);
-        if (d < dmin) {
-            cmin = i;
-            dmin = d;
-        }
-    }
-#if 1
-    if (dmin > 0 && count > 16) {
-        unsigned int r = (color >> 16) & 0xff;
-        unsigned int g = (color >>  8) & 0xff;
-        unsigned int b = (color >>  0) & 0xff;
-        if (r == g && g == b) {
-            i = scale_grey[r];
-            d = color_dist(color, colors[i]);
-            if (d < dmin) {
-                cmin = i;
-                dmin = d;
+    color &= 0xFFFFFF;  /* mask off the alpha channel */
+
+    if (count >= 0x1000000) {
+        cmin = color | 0x1000000;  /* force explicit RGB triplet */
+        dmin = 0;
+    } else {
+        dmin = INT_MAX;
+        cmin = 0;
+        if (count <= 16) {
+            for (i = 0; i < count; i++) {
+                d = color_dist(color, colors[i]);
+                if (d < dmin) {
+                    cmin = i;
+                    dmin = d;
+                }
             }
-        } else {
-            /* XXX: should use more precise projection */
-            i = scale_cube[r] * 36 + scale_cube[g] * 6 + scale_cube[b];
-            d = color_dist(color, colors[i]);
-            if (d < dmin) {
-                cmin = i;
-                dmin = d;
+        } else { /* if (dmin > 0 && count > 16) */
+            unsigned int r = (color >> 16) & 0xff;
+            unsigned int g = (color >>  8) & 0xff;
+            unsigned int b = (color >>  0) & 0xff;
+#if 0
+            if (r == g && g == b) {
+                i = scale_grey[r];
+                d = color_dist(color, colors[i]);
+                if (d < dmin) {
+                    cmin = i;
+                    dmin = d;
+                }
+            } else {
+                /* XXX: should use more precise projection */
+                i = 16 + scale_cube[r] * 36 +
+                    scale_cube[g] * 6 +
+                    scale_cube[b];
+                d = color_dist(color, colors[i]);
+                if (d < dmin) {
+                    cmin = i;
+                    dmin = d;
+                }
             }
-        }
-    }
+#else
+            if (r == g && g == b) {
+                /* color is a gray tone:
+                 * map to the closest palette entry
+                 */
+                d = color_dist(color, colors[16]);
+                if (d < dmin) {
+                    cmin = 16;
+                    dmin = d;
+                }
+                for (i = 231; i < 256; i++) {
+                    d = color_dist(color, colors[i]);
+                    if (d < dmin) {
+                        cmin = i;
+                        dmin = d;
+                    }
+                }
+            } else {
+                /* general case: try and match a palette entry
+                 * from the 6x6x6 color cube .
+                 */
+                /* XXX: this causes gliches on true color terminals
+                 * with a non standard xterm palette, such as iTerm2.
+                 * On true color terminals, we should treat palette
+                 * colors and rgb colors differently in the shell buffer
+                 * terminal emulator.
+                 */
+                for (i = 16; i < 232; i++) {
+                    d = color_dist(color, colors[i]);
+                    if (d < dmin) {
+                        cmin = i;
+                        dmin = d;
+                    }
+                }
+            }
 #endif
+            if (dmin > 0 && count >= 4096) {
+                /* 13-bit 7936 color system */
+                d = 0;
+                for (;;) {
+                    if (r == g) {
+                        if (g == b) {  /* #xxxxxx */
+                            i = 0x700 + r;
+                            break;
+                        }
+                        if (r == 0) {  /* #0000xx */
+                            i = 0x100 + b;
+                            break;
+                        }
+                        if (r == 255) {  /* #FFFFxx */
+                            i = 0x800 + 0x100 + b;
+                            break;
+                        }
+                        if (b == 0) {  /* #xxxx00 */
+                            i = 0x600 + r;
+                            break;
+                        }
+                        if (b == 255) {  /* #xxxxFF */
+                            i = 0x800 + 0x600 + r;
+                            break;
+                        }
+                    } else
+                    if (r == b) {
+                        if (r == 0) {  /* #00xx00 */
+                            i = 0x200 + g;
+                            break;
+                        }
+                        if (r == 255) {  /* #FFxxFF */
+                            i = 0x800 + 0x200 + g;
+                            break;
+                        }
+                        if (g == 0) {  /* #xx00xx */
+                            i = 0x500 + r;
+                            break;
+                        }
+                        if (g == 255) {  /* #xxFFxx */
+                            i = 0x800 + 0x500 + r;
+                            break;
+                        }
+                    } else
+                    if (g == b) {
+                        if (g == 0) {  /* #xx0000 */
+                            i = 0x400 + r;
+                            break;
+                        }
+                        if (g == 255) {  /* #xxFFFF */
+                            i = 0x800 + 0x400 + r;
+                            break;
+                        }
+                        if (r == 0) {  /* #00xxxx */
+                            i = 0x300 + g;
+                            break;
+                        }
+                        if (r == 255) {  /* #FFxxxx */
+                            i = 0x800 + 0x300 + g;
+                            break;
+                        }
+                    }
+                    i = 0x1000 | ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+                    d = color_dist(color, (color & 0xF0F0F0) | ((color & 0xF0F0F0) >> 4));
+                    break;
+                }
+                if (d < dmin) {
+                    cmin = i;
+                    dmin = d;
+                }
+            }
+        }
+    }
     if (dist) {
         *dist = dmin;
     }
     return cmin;
+}
+
+/* Convert a composite color to an RGB triplet */
+QEColor qe_unmap_color(int color, int count) {
+    /* XXX: Should use an 8K array for all colors <= 8192 */
+    if (color < 256) {
+        return xterm_colors[color];
+    }
+    if (color < 8192) {
+        /* 13-bit 7936 color system */
+        if (color & 0x1000) {
+            /* explicit 12-bit color */
+            QEColor rgb = (((color & 0xF00) << 12) |
+                           ((color & 0x0F0) <<  4) |
+                           ((color & 0x00F) <<  0));
+            return rgb | (rgb << 4);
+        }
+        if ((color & 0xf00) < 0xf00) {
+            /* 256 level color ramps */
+            /* 0x800 is unused and converts to white */
+            int r, g, b;
+            r = g = b = color & 0xFF;
+            if (!(color & 0x400)) r = -(color >> 11) & 0xFF;
+            if (!(color & 0x200)) g = -(color >> 11) & 0xFF;
+            if (!(color & 0x100)) b = -(color >> 11) & 0xFF;
+            return QERGB(r, g, b);
+        } else {
+            /* 0xf00 indicates the standard xterm color palette */
+            return xterm_colors[color & 255];
+        }
+    }
+    /* explicit RGB color */
+    return color & 0xFFFFFF;
 }
 
 void color_completion(CompleteState *cp)

@@ -1,11 +1,27 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-04-02
+; Updated: 2017-04-11
 
-* Needed for release version 5
+* Recent bugs and ideas
 
 ** display: fix window split bug
+** basic: backspace delete hacking tabs
+** basic: prevent search inside minibuf
+** display: save display-width in binary and hex modes upon window change
+** display: default display-width of 0 is automatic, other values are shared between binary and hex modes
+** display: hex-mode should optionally display chunks of 2, 4 or 8 bytes in big or little endian order
+** display: hex-mode and binary-mode should have an initial skip value to align the display on any boundary
+** display: optimize display for very large display-width in binary and hex modes
+** display: add screen dump command and format
+** files: save all modified buffers on C-x s
+** xml: select on "<plist "
+** shell: support ':' as alternate escape sequence argument separator
+** shell: use target window for man and similar commands
+** charset: use unichar typedef
+** charset: limit number of combining marks to 20
+** clang: colorizing bug: static int (*qe__initcall_first)(void) qe__init_call = NULL;
+** clang: missed tag: static int (*qe__initcall_first)(void) qe__init_call = NULL;
 
 * Priority 0
 
@@ -571,9 +587,6 @@ C-x ` for next-error
 M-g M-g goto-line (with prefix argument)
 M-g M-p previous-error
 M-g M-n next-error
-
-colorizing bug: static int (*qe__initcall_first)(void) qe__init_call = NULL;
-missed tag: static int (*qe__initcall_first)(void) qe__init_call = NULL;
 
 create tags in other languages:
 ats.c:201:                        style = ATS_STYLE_FUNCTION;

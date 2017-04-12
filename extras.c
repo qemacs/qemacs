@@ -1096,27 +1096,32 @@ static int str_get_word(char *buf, int size, const char *p, const char **pp)
     return len;
 }
 
-static int qe_term_get_style(const char *str)
+static int qe_term_get_style(const char *str, QETermStyle *style)
 {
     char buf[128];
     QEColor fg_color, bg_color;
-    int fg, bg, style, len;
+    unsigned int fg, bg, attr;
+    int len;
     const char *p = str;
 
-    style = 0;
+    attr = 0;
     for (;;) {
         len = str_get_word(buf, sizeof(buf), p, &p);
 
         if (strfind("bold|strong", buf)) {
-            style |= QE_TERM_BOLD;
+            attr |= QE_TERM_BOLD;
             continue;
         }
-        if (strfind("blinking|blink", buf)) {
-            style |= QE_TERM_BLINK;
+        if (strfind("italic|italics", buf)) {
+            attr |= QE_TERM_ITALIC;
             continue;
         }
         if (strfind("underlined|underline", buf)) {
-            style |= QE_TERM_UNDERLINE;
+            attr |= QE_TERM_UNDERLINE;
+            continue;
+        }
+        if (strfind("blinking|blink", buf)) {
+            attr |= QE_TERM_BLINK;
             continue;
         }
         break;
@@ -1125,29 +1130,30 @@ static int qe_term_get_style(const char *str)
     bg_color = QERGB(0x00, 0x00, 0x00);
     if (len > 0) {
         if (css_get_color(&fg_color, buf))
-            return -1;
+            return 1;
         len = str_get_word(buf, sizeof(buf), p, &p);
         if (strfind("/|on", buf)) {
             str_get_word(buf, sizeof(buf), p, &p);
             if (css_get_color(&bg_color, buf))
-                return -1;
+                return 2;
         }
     }
     fg = qe_map_color(fg_color, xterm_colors, QE_TERM_FG_COLORS, NULL);
     bg = qe_map_color(bg_color, xterm_colors, QE_TERM_BG_COLORS, NULL);
 
-    return QE_TERM_COMPOSITE | style | QE_TERM_MAKE_COLOR(fg, bg);
+    *style = QE_TERM_COMPOSITE | attr | QE_TERM_MAKE_COLOR(fg, bg);
+    return 0;
 }
 
 static void do_set_region_color(EditState *s, const char *str)
 {
-    int offset, size, style;
+    int offset, size;
+    QETermStyle style;
 
     /* deactivate region hilite */
     s->region_style = 0;
 
-    style = qe_term_get_style(str);
-    if (style < 0) {
+    if (qe_term_get_style(str, &style)) {
         put_status(s, "Invalid color '%s'", str);
         return;
     }
@@ -1159,14 +1165,16 @@ static void do_set_region_color(EditState *s, const char *str)
         size = -size;
     }
     if (size > 0) {
-        eb_create_style_buffer(s->b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 : BF_STYLE4);
+        eb_create_style_buffer(s->b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 :
+                               QE_TERM_STYLE_BITS <= 32 ? BF_STYLE4 : BF_STYLE8);
         eb_set_style(s->b, style, LOGOP_WRITE, offset, size);
     }
 }
 
 static void do_set_region_style(EditState *s, const char *str)
 {
-    int offset, size, style;
+    int offset, size;
+    QETermStyle style;
     QEStyleDef *st;
 
     /* deactivate region hilite */
@@ -1186,7 +1194,8 @@ static void do_set_region_style(EditState *s, const char *str)
         size = -size;
     }
     if (size > 0) {
-        eb_create_style_buffer(s->b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 : BF_STYLE4);
+        eb_create_style_buffer(s->b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 :
+                               QE_TERM_STYLE_BITS <= 32 ? BF_STYLE4 : BF_STYLE8);
         eb_set_style(s->b, style, LOGOP_WRITE, offset, size);
     }
 }
@@ -1288,8 +1297,9 @@ static void do_describe_buffer(EditState *s, int argval)
 
     eb_printf(b1, "    save_log: %d  (new_index=%d, current=%d, nb_logs=%d)\n",
               b->save_log, b->log_new_index, b->log_current, b->nb_logs);
-    eb_printf(b1, "      styles: %d  (cur_style=%d, bytes=%d, shift=%d)\n",
-              !!b->b_styles, b->cur_style, b->style_bytes, b->style_shift);
+    eb_printf(b1, "      styles: %d  (cur_style=%lld, bytes=%d, shift=%d)\n",
+              !!b->b_styles, (long long)b->cur_style,
+              b->style_bytes, b->style_shift);
 
     if (b->total_size > 0) {
         u8 buf[4096];
@@ -1449,7 +1459,7 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d\n", w, "mouse_force_highlight", s->mouse_force_highlight);
     eb_printf(b1, "%*s: %p\n", w, "get_colorized_line", (void*)s->get_colorized_line);
     eb_printf(b1, "%*s: %p\n", w, "colorize_func", (void*)s->colorize_func);
-    eb_printf(b1, "%*s: %d\n", w, "default_style", s->default_style);
+    eb_printf(b1, "%*s: %lld\n", w, "default_style", (long long)s->default_style);
     eb_printf(b1, "%*s: %s\n", w, "buffer", s->b->name);
     if (s->last_buffer)
         eb_printf(b1, "%*s: %s\n", w, "last_buffer", s->last_buffer->name);
@@ -1488,6 +1498,10 @@ static void do_describe_screen(EditState *e, int argval)
     eb_printf(b1, "%*s: %d\n", w, "media", s->media);
     eb_printf(b1, "%*s: %d\n", w, "bitmap_format", s->bitmap_format);
     eb_printf(b1, "%*s: %d\n\n", w, "video_format", s->video_format);
+
+    eb_printf(b1, "%*s: %d\n", w, "QE_TERM_STYLE_BITS", QE_TERM_STYLE_BITS);
+    eb_printf(b1, "%*s: %x << %d\n", w, "QE_TERM_FG_COLORS", QE_TERM_FG_COLORS, QE_TERM_FG_SHIFT);
+    eb_printf(b1, "%*s: %x << %d\n\n", w, "QE_TERM_BG_COLORS", QE_TERM_BG_COLORS, QE_TERM_BG_SHIFT);
 
     if (s->dpy.dpy_describe) {
         s->dpy.dpy_describe(s, b1);

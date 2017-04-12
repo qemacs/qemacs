@@ -36,7 +36,6 @@
 
 /* XXX: status line */
 /* XXX: better tab handling */
-/* XXX: bold & italic ? */
 /* XXX: send real cursor position (CSI n) */
 
 static ModeDef shell_mode, pager_mode;
@@ -57,12 +56,12 @@ typedef struct ShellState {
     /* buffer state */
     int pty_fd;
     int pid; /* -1 if not launched */
-    int attr, fgcolor, bgcolor, reverse;
+    unsigned int attr, fgcolor, bgcolor, reverse;
     int cur_offset; /* current offset at position x, y */
     int cur_prompt; /* offset of end of prompt on current line */
+    int nb_esc_params;
     int esc_params[MAX_ESC_PARAMS];
     int has_params[MAX_ESC_PARAMS];
-    int nb_esc_params;
     int state;
     int esc1, esc2;
     int shifted;
@@ -270,9 +269,9 @@ static void qe_term_init(ShellState *s)
     /* Should compute def_color from shell default style at display
      * time and force full redisplay upon style change.
      */
-    s->attr = 0;
     s->fgcolor = QE_TERM_DEF_FG;
     s->bgcolor = QE_TERM_DEF_BG;
+    s->attr = 0;
     s->reverse = 0;
 
     term = getenv("TERM");
@@ -440,7 +439,7 @@ static void qe_term_write(ShellState *s, const char *buf, int len)
 }
 
 static inline void qe_term_set_setyle(ShellState *s) {
-    int composite_color;
+    QETermStyle composite_color;
 
     if (s->reverse) {
         composite_color = QE_TERM_MAKE_COLOR(s->bgcolor, s->fgcolor);
@@ -549,7 +548,7 @@ static void qe_term_csi_m(ShellState *s, int c, int has_param)
      *
      * case 2:
      *  This is sometimes DIM, eg on the
-     *  GIGI and Linux
+     *  GIGI and Linux (aka FAINT in iTerm2)
      * case 8:
      *  This is sometimes INVIS various ANSI.
      * case 21:
@@ -607,7 +606,7 @@ static void qe_term_csi_m(ShellState *s, int c, int has_param)
     case 27:    /* exit_reverse_mode, exit_standout_mode */
         s->reverse = 0;
         break;
-    case 2:     /* Xenix combined fg/bg: \027[2;FG;BGm */
+    case 2:     /* DIM or FAINT */
     case 6:     /* SCO light background */
     case 8:     /* enter_secure_mode */
     case 9:     /* cygwin dim mode */
@@ -624,68 +623,116 @@ static void qe_term_csi_m(ShellState *s, int c, int has_param)
         s->bgcolor = QE_TERM_DEF_BG;
         break;
     case 38:    /* set extended foreground color */
+        // First subparam means:   # additional subparams:  Accepts optional params:
+        // 1: transparent          0                        NO
+        // 2: RGB                  3                        YES
+        // 3: CMY                  3                        YES
+        // 4: CMYK                 4                        YES
+        // 5: Indexed color        1                        NO
+        //
+        // Optional paramters go at position 7 and 8, and indicate toleranace as an
+        // integer; and color space (0=CIELUV, 1=CIELAB). Example:
+        //
+        // CSI 38:2:255:128:64:0:5:1 m
+        //
+        // Also accepted for xterm compatibility, but never with optional parameters:
+        // CSI 38;2;255;128;64 m
+        //
+        // Set the foreground color to red=255, green=128, blue=64 with a tolerance of
+        // 5 in the CIELAB color space. The 0 at the 6th position has no meaning and
+        // is just a filler.
+        // 
+        // For 256-color mode (indexed) use this for the foreground:
+        // CSI 38;5;N m
+        // where N is a value between 0 and 255. See the colors described in screen_char_t
+        // in the comments for fgColorCode.
+
         if (s->esc_params[1] == 5) {
             /* set foreground color to third esc_param */
             /* complete syntax is \033[38;5;Nm where N is in range 0..255 */
-            int color = s->esc_params[2];
-            QEColor rgb = xterm_colors[color & 255];
+            int color = s->esc_params[2] & 255;
+            QEColor rgb = xterm_colors[color];
 
             /* map color to qe-term palette */
-            s->fgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_FG_COLORS, NULL);
-            s->nb_esc_params = 1;
+            s->fgcolor = color;
+            if (QE_TERM_FG_COLORS < 256)
+                s->fgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_FG_COLORS, NULL);
+            s->nb_esc_params = 1;  /* XXX: should instead consume 2 arguments */
         } else
         if (s->esc_params[1] == 2) {
             /* set foreground color to 24-bit color */
             /* complete syntax is \033[38;2;r;g;bm where r,g,b are in 0..255 */
-            QEColor rgb = QERGB(s->esc_params[2] & 255,
-                                s->esc_params[3] & 255,
-                                s->esc_params[4] & 255);
+            QEColor rgb = QERGB25(s->esc_params[2] & 255,
+                                  s->esc_params[3] & 255,
+                                  s->esc_params[4] & 255);
 
             /* map 24-bit colors to qe-term palette */
             s->fgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_FG_COLORS, NULL);
-            s->nb_esc_params = 1;
+            s->nb_esc_params = 1;  /* XXX: should instead consume 4 arguments */
         }
         break;
     case 48:    /* set extended background color */
         if (s->esc_params[1] == 5) {
             /* set background color to third esc_param */
             /* complete syntax is \033[48;5;Nm where N is in range 0..255 */
-            int color = s->esc_params[2];
-            QEColor rgb = xterm_colors[color & 255];
+            int color = s->esc_params[2] & 255;
+            QEColor rgb = xterm_colors[color];
 
             /* map color to qe-term palette */
-            s->bgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_BG_COLORS, NULL);
-            s->nb_esc_params = 1;
+            s->bgcolor = color;
+            if (QE_TERM_BG_COLORS < 256)
+                s->bgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_BG_COLORS, NULL);
+            s->nb_esc_params = 1;  /* XXX: should instead consume 2 arguments */
         } else
         if (s->esc_params[1] == 2) {
             /* set background color to 24-bit color */
             /* complete syntax is \033[48;2;r;g;bm where r,g,b are in 0..255 */
-            QEColor rgb = QERGB(s->esc_params[2] & 255,
-                                s->esc_params[3] & 255,
-                                s->esc_params[4] & 255);
+            QEColor rgb = QERGB25(s->esc_params[2] & 255,
+                                  s->esc_params[3] & 255,
+                                  s->esc_params[4] & 255);
 
             /* map 24-bit colors to qe-term palette */
             s->bgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_BG_COLORS, NULL);
-            s->nb_esc_params = 1;
+            s->nb_esc_params = 1;  /* XXX: should instead consume 4 arguments */
         }
         break;
     default:
         /* 0:black 1:red 2:green 3:yellow 4:blue 5:magenta 6:cyan 7:white */
         if (c >= 30 && c <= 37) {
             /* set foreground color */
+            /* XXX: should distinguish system colors and palette colors */
             s->fgcolor = c - 30;
+            if (QE_TERM_FG_COLORS < 256) {
+                s->fgcolor = qe_map_color(xterm_colors[c - 30], xterm_colors,
+                                          QE_TERM_FG_COLORS, NULL);
+            }
         } else
         if (c >= 40 && c <= 47) {
             /* set background color */
+            /* XXX: should distinguish system colors and palette colors */
             s->bgcolor = c - 40;
+            if (QE_TERM_BG_COLORS < 256) {
+                s->bgcolor = qe_map_color(xterm_colors[c - 40], xterm_colors,
+                                          QE_TERM_BG_COLORS, NULL);
+            }
         } else
         if (c >= 90 && c <= 97) {
             /* set bright foreground color */
+            /* XXX: should distinguish system colors and palette colors */
             s->fgcolor = c - 90 + 8;
+            if (QE_TERM_FG_COLORS < 256) {
+                s->fgcolor = qe_map_color(xterm_colors[c - 90 + 8], xterm_colors,
+                                          QE_TERM_FG_COLORS, NULL);
+            }
         } else
         if (c >= 100 && c <= 107) {
             /* set bright background color */
+            /* XXX: should distinguish system colors and palette colors */
             s->bgcolor = c - 100 + 8;
+            if (QE_TERM_BG_COLORS < 256) {
+                s->bgcolor = qe_map_color(xterm_colors[c - 100 + 8], xterm_colors,
+                                          QE_TERM_BG_COLORS, NULL);
+            }
         } else {
             TRACE_MSG("unhandled");
         }
@@ -1077,7 +1124,38 @@ static void qe_term_emulate(ShellState *s, int c)
         case ESC2(']','0'):     /* xterm's set-window-title and icon */
         case ESC2(']','1'):     /* xterm's set-window-title */
         case ESC2(']','2'):     /* xterm's set-window-title */
-        case ESC2(']','4'):     /* xterm's define-extended color */
+        case ESC2(']','3'):     /* Set X property on top-level window */
+            /* Pt should be in the form "prop=value", or just "prop" to delete the property */
+        case ESC2(']','4'):     /* xterm's define-extended color "\033]4;c;name\007" */
+            /* Change Color #c to cname. Any number of c name pairs may be given. */
+            /* iTerm2 has a specific behavior for colors 16 to 22:
+                16: terminalSetForegroundColor
+                17: terminalSetBackgroundColor
+                18: terminalSetBoldColor
+                19: terminalSetSelectionColor
+                20: terminalSetSelectedTextColor
+                21: terminalSetCursorColor
+                22: terminalSetCursorTextColor
+            */
+            /* xterm has the following set extended attribute: */
+            /* 10    Change color names starting with text foreground to Pt
+                     (a list of one or more color names or RGB specifications,
+                     separated by semicolon, up to eight, as per XParseColor).
+            */
+            /* 11    Change colors starting with text background to Pt */
+            /* 12    Change colors starting with text cursor to Pt */
+            /* 13    Change colors starting with mouse foreground to Pt */
+            /* 14    Change colors starting with mouse background to Pt */
+            /* 15    Change colors starting with Tek foreground to Pt */
+            /* 16    Change colors starting with Tek background to Pt */
+            /* 17    Change colors starting with highlight to Pt */
+            /* 46    Change Log File to Pt (normally disabled by a compile-time option) */
+            /* 50    Set Font to Pt If Pt begins with a "#", index in the font 
+                     menu, relative (if the next character is a plus or minus
+                     sign) or absolute. A number is expected but not required
+                     after the sign (the default is the current entry for 
+                     relative, zero for absolute indexing).
+            */
         case ESC2(']','W'):     /* word-set (define char wordness) */
             s->state = QE_TERM_STATE_STRING;
             break;
@@ -1085,6 +1163,11 @@ static void qe_term_emulate(ShellState *s, int c)
         case ESC2(']','R'):     /* linux reset palette */
             /* XXX: Todo */
             TRACE_MSG("linux palette");
+            /* followed by 7 digit palette entry nrrggbb with
+               n: letter 0-f for standard palette entries
+                         g-m for extended attributes:
+               rr, gg, bb 2 hex digit values
+            */
             break;
 	default:
             TRACE_MSG("unhandled");
@@ -1104,6 +1187,8 @@ static void qe_term_emulate(ShellState *s, int c)
             /* CG: ESC2(']','0') should set shell caption */
             /* CG: ESC2(']','4') should parse color definition string */
             /* (example: "\033]4;16;rgb:00/00/00\033\134" ) */
+            // executeXtermSetRgb
+            // iTerm2 reports the current rgb value with "<index>;?", e.g. "105;?" -> report as \033]4;P;rgb:00/cc/ff\007",
             s->state = QE_TERM_STATE_NORM;
         }
         break;
@@ -1511,9 +1596,10 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     }
 
     eb_set_buffer_name(b, bufname); /* ensure that the name is unique */
-    if (shell_flags & SF_COLOR)
-        eb_create_style_buffer(b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 : BF_STYLE4);
-
+    if (shell_flags & SF_COLOR) {
+        eb_create_style_buffer(b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 :
+                               QE_TERM_STYLE_BITS <= 32 ? BF_STYLE4 : BF_STYLE8);
+    }
     /* Select shell output buffer encoding from LANG setting */
     if (((lang = getenv("LANG")) != NULL && strstr(lang, "UTF-8")) ||
           qs->screen->charset == &charset_utf8) {

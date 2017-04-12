@@ -4,7 +4,7 @@
 
 print "256 color mode\n\n";
 
-# display back ground colors
+# display foreground and background colors
 
 for ($fgbg = 38; $fgbg <= 48; $fgbg +=10) {
 
@@ -73,7 +73,7 @@ print "Compare direct palette and RGB color modes\n\n";
 
 $s = "::";
 
-for ($fgbg = 38; $fgbg <= 48; $fgbg +=10) {
+for ($fgbg = 48; $fgbg <= 48; $fgbg +=10) {
     # the color cube
     print "RGB color cube\n";
     for ($green = 0; $green < 6; $green += 1) {

@@ -1028,7 +1028,7 @@ int eb_create_style_buffer(EditBuffer *b, int flags)
         snprintf(name, sizeof(name), "*S<%s>", b->name);
         b->b_styles = eb_new(name, BF_SYSTEM | BF_IS_STYLE | BF_RAW);
         b->flags |= flags & BF_STYLES;
-        b->style_shift = ((flags & BF_STYLES) / BF_STYLE1) - 1;
+        b->style_shift = ((unsigned)(flags & BF_STYLES) / BF_STYLE1) - 1;
         b->style_bytes = 1 << b->style_shift;
         eb_set_style(b, 0, LOGOP_INSERT, 0, b->total_size);
         eb_add_callback(b, eb_style_callback, NULL, 0);
@@ -1044,10 +1044,13 @@ void eb_free_style_buffer(EditBuffer *b)
 }
 
 /* XXX: should compress styles buffer with run length encoding */
-void eb_set_style(EditBuffer *b, int style, enum LogOperation op,
+void eb_set_style(EditBuffer *b, QETermStyle style, enum LogOperation op,
                   int offset, int size)
 {
-    unsigned char buf[256];
+    union {
+        unsigned char buf[256];
+        QETermStyle align;
+    } s;
     int i, len;
 
     if (!b->b_styles || !size)
@@ -1059,29 +1062,31 @@ void eb_set_style(EditBuffer *b, int style, enum LogOperation op,
     switch (op) {
     case LOGOP_WRITE:
     case LOGOP_INSERT:
-        /* XXX: should make buf uint32_t[] */
         /* XXX: should use a single loop to initialize buf */
         /* XXX: should initialize buf just once */
         while (size > 0) {
-            len = min(size, ssizeof(buf));
+            len = min(size, ssizeof(s.buf));
+            if (b->style_shift == 3) {
+                for (i = 0; i < len; i += 8) {
+                    *(uint64_t*)(void *)(s.buf + i) = style;
+                }
+            } else
             if (b->style_shift == 2) {
                 for (i = 0; i < len; i += 4) {
-                    /* XXX: should enforce 32 bit alignment of buf */
-                    *(uint32_t*)(void *)(buf + i) = style;
+                    *(uint32_t*)(void *)(s.buf + i) = style;
                 }
             } else
             if (b->style_shift == 1) {
                 for (i = 0; i < len; i += 2) {
-                    /* XXX: should enforce 16 bit alignment of buf */
-                    *(uint16_t*)(void *)(buf + i) = style;
+                    *(uint16_t*)(void *)(s.buf + i) = style;
                 }
             } else {
-                memset(buf, style, len);
+                memset(s.buf, style, len);
             }
             if (op == LOGOP_WRITE)
-                eb_write(b->b_styles, offset, buf, len);
+                eb_write(b->b_styles, offset, s.buf, len);
             else
-                eb_insert(b->b_styles, offset, buf, len);
+                eb_insert(b->b_styles, offset, s.buf, len);
             size -= len;
             offset += len;
         }
@@ -1460,9 +1465,14 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
     return ch;
 }
 
-int eb_get_style(EditBuffer *b, int offset)
+QETermStyle eb_get_style(EditBuffer *b, int offset)
 {
     if (b->b_styles) {
+        if (b->style_shift == 3) {
+            uint64_t style = 0;
+            eb_read(b->b_styles, (offset >> b->char_shift) << 3, &style, 8);
+            return style;
+        } else
         if (b->style_shift == 2) {
             uint32_t style = 0;
             eb_read(b->b_styles, (offset >> b->char_shift) << 2, &style, 4);
@@ -1474,7 +1484,7 @@ int eb_get_style(EditBuffer *b, int offset)
             return style;
         } else {
             uint8_t style = 0;
-            eb_read(b->b_styles, (offset >> b->char_shift), &style, 1);
+            eb_read(b->b_styles, (offset >> b->char_shift) << 0, &style, 1);
             return style;
         }
     }
@@ -2360,7 +2370,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
         size = 0;
         for (offset = src_offset; offset < offset_max;) {
             char buf[MAX_CHAR_BYTES];
-            int style = eb_get_style(src, offset);
+            QETermStyle style = eb_get_style(src, offset);
             int c = eb_nextc(src, offset, &offset);
             int len = eb_encode_uchar(b, buf, c);
             b->cur_style = style;

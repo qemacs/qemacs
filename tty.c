@@ -35,46 +35,56 @@
 
 #if MAX_UNICODE_DISPLAY > 0xFFFF
 typedef uint64_t TTYChar;
-/* TTY composite style has 8 bit color number for FG and BG plus attribute bits */
+/* TTY composite style has 13-bit BG color, 4 attribute bits and 13-bit FG color */
 #define TTY_STYLE_BITS        32
-#define TTY_CHAR(ch,fg,bg)    ((uint32_t)(ch) | ((uint64_t)((fg) | ((bg) << 16)) << 32))
+#define TTY_FG_COLORS         7936
+#define TTY_BG_COLORS         7936
+#define TTY_CHAR(ch,fg,bg)    ((uint32_t)(ch) | ((uint64_t)((fg) | ((bg) << 17)) << 32))
 #define TTY_CHAR2(ch,col)     ((uint32_t)(ch) | ((uint64_t)(col) << 32))
 #define TTY_CHAR_GET_CH(cc)   ((uint32_t)(cc))
 #define TTY_CHAR_GET_COL(cc)  ((uint32_t)((cc) >> 32))
-#define TTY_CHAR_GET_FG(cc)   ((uint32_t)((cc) >> 32) & 0xFF)
-#define TTY_CHAR_GET_BG(cc)   ((uint32_t)((cc) >> (32 + 16)) & 0xFF)
+#define TTY_CHAR_GET_ATTR(cc) ((uint32_t)((cc) >> 32) & 0x1E000)
+#define TTY_CHAR_GET_FG(cc)   ((uint32_t)((cc) >> 32) & 0x1FFF)
+#define TTY_CHAR_GET_BG(cc)   ((uint32_t)((cc) >> (32 + 17)) & 0x1FFF)
 #define TTY_CHAR_DEFAULT      TTY_CHAR(' ', 7, 0)
 #define TTY_CHAR_COMB         0x200000
 #define TTY_CHAR_BAD          0xFFFD
 #define TTY_CHAR_NONE         0xFFFFFFFF
-#define TTY_BOLD              0x0100
-#define TTY_UNDERLINE         0x0200
-#define TTY_BLINK             0x0400
-#define TTY_ITALIC            0x0800
+#define TTY_BOLD              0x02000
+#define TTY_UNDERLINE         0x04000
+#define TTY_ITALIC            0x08000
+#define TTY_BLINK             0x10000
 #define COMB_CACHE_SIZE       2048
 #else
 typedef uint32_t TTYChar;
-/* TTY composite style has 4 bit color number for FG and BG plus attribute bits */
+/* TTY composite style has 4-bit BG color, 4 attribute bits and 8-bit FG color */
 #define TTY_STYLE_BITS        16
+#define TTY_FG_COLORS         256
+#define TTY_BG_COLORS         16
 #define TTY_CHAR(ch,fg,bg)    ((uint32_t)(ch) | ((uint32_t)((fg) | ((bg) << 12)) << 16))
 #define TTY_CHAR2(ch,col)     ((uint32_t)(ch) | ((uint32_t)(col) << 16))
 #define TTY_CHAR_GET_CH(cc)   ((cc) & 0xFFFF)
 #define TTY_CHAR_GET_COL(cc)  (((cc) >> 16) & 0xFFFF)
+#define TTY_CHAR_GET_ATTR(cc) ((uint32_t)((cc) >> 16) & 0x0F000)
 #define TTY_CHAR_GET_FG(cc)   (((cc) >> 16) & 0xFF)
-#define TTY_CHAR_GET_BG(cc)   (((cc) >> (16 + 8)) & 0xFF)
+#define TTY_CHAR_GET_BG(cc)   (((cc) >> (16 + 12)) & 0x0F)
 #define TTY_CHAR_DEFAULT      TTY_CHAR(' ', 7, 0)
 #define TTY_CHAR_BAD          0xFFFD
 #define TTY_CHAR_NONE         0xFFFF
 #define TTY_BOLD              0x0100
 #define TTY_UNDERLINE         0x0200
-#define TTY_BLINK             0x0400
-#define TTY_ITALIC            0x0800
+#define TTY_ITALIC            0x0400
+#define TTY_BLINK             0x0800
 #define COMB_CACHE_SIZE       1
 #endif
 
 #if defined(CONFIG_UNLOCKIO)
 #  define TTY_PUTC(c,f)         putc_unlocked(c, f)
+#ifdef CONFIG_DARWIN
+#  define TTY_FWRITE(b,s,n,f)   fwrite(b, s, n, f)
+#else
 #  define TTY_FWRITE(b,s,n,f)   fwrite_unlocked(b, s, n, f)
+#endif
 #  define TTY_FPRINTF           fprintf
 static inline void TTY_FPUTS(const char *s, FILE *fp) {
     TTY_FWRITE(s, 1, strlen(s), fp);
@@ -122,10 +132,15 @@ typedef struct TTYState {
 #define USE_BOLD_AS_BRIGHT_FG   0x04
 #define USE_BLINK_AS_BRIGHT_BG  0x08
 #define USE_256_COLORS          0x10
-#define USE_24_BIT_COLORS       0x20
+#define USE_TRUE_COLORS         0x20
+    /* number of colors supported by the actual terminal */
     const QEColor *term_colors;
     int term_fg_colors_count;
     int term_bg_colors_count;
+    /* number of colors supported by the virtual terminal */
+    const QEColor *tty_colors;
+    int tty_fg_colors_count;
+    int tty_bg_colors_count;
     unsigned int comb_cache[COMB_CACHE_SIZE];
 } TTYState;
 
@@ -189,28 +204,52 @@ static int tty_term_init(QEditScreen *s,
             ts->term_flags |= KBS_CONTROL_H |
                               USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG;
         }
-#if defined(CONFIG_TINY)
-        ts->term_flags &= ~(USE_256_COLORS | USE_24_BIT_COLORS);
-#else
-        if (strstr(ts->term_name, "256")) {
-            ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
-                                USE_256_COLORS | USE_24_BIT_COLORS);
-            ts->term_flags |= USE_256_COLORS;
-        }
-        if (strstr(ts->term_name, "true") || strstr(ts->term_name, "24")) {
-            ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
-                                USE_256_COLORS | USE_24_BIT_COLORS);
-            ts->term_flags |= USE_24_BIT_COLORS;
-        }
-#endif
     }
-
-    if (ts->term_flags & (USE_256_COLORS | USE_24_BIT_COLORS)) {
-        ts->term_fg_colors_count = 256;
 #if TTY_STYLE_BITS == 32
-        ts->term_bg_colors_count = 256;
-#endif
+    if (strstr(ts->term_name, "true") || strstr(ts->term_name, "24")) {
+        ts->term_flags |= USE_TRUE_COLORS;
     }
+#endif
+    if (strstr(ts->term_name, "256")) {
+        ts->term_flags |= USE_256_COLORS;
+    }
+    /* actual color mode can be forced via environment variables */
+    /* XXX: should have qemacs variables too */
+#if TTY_STYLE_BITS == 32
+    if (getenv("USE_24_BIT_COLORS") || getenv("USE_TRUE_COLORS")) {
+        ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
+                            USE_256_COLORS | USE_TRUE_COLORS);
+        ts->term_flags |= USE_TRUE_COLORS;
+    } else
+#endif
+    if (getenv("USE_256_COLORS")) {
+        ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
+                            USE_256_COLORS | USE_TRUE_COLORS);
+        ts->term_flags |= USE_256_COLORS;
+    } else
+    if (getenv("USE_16_COLORS")) {
+        ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
+                            USE_256_COLORS | USE_TRUE_COLORS);
+    }
+#if TTY_STYLE_BITS == 32
+    if (ts->term_flags & USE_TRUE_COLORS) {
+        ts->term_fg_colors_count = 0x1000000;
+        ts->term_bg_colors_count = 0x1000000;
+    } else
+    if (ts->term_flags & USE_256_COLORS) {
+        ts->term_fg_colors_count = 256;
+        ts->term_bg_colors_count = 256;
+    }
+#else
+    ts->term_flags &= ~USE_TRUE_COLORS;
+    if (ts->term_flags & USE_256_COLORS) {
+        ts->term_fg_colors_count = 256;
+    }
+#endif
+
+    ts->tty_bg_colors_count = min(ts->term_bg_colors_count, TTY_BG_COLORS);
+    ts->tty_fg_colors_count = min(ts->term_fg_colors_count, TTY_FG_COLORS);
+    ts->tty_colors = xterm_colors;
 
     tcgetattr(fileno(s->STDIN), &tty);
     ts->oldtty = tty;
@@ -269,6 +308,7 @@ static int tty_term_init(QEditScreen *s,
         TTY_FPRINTF(s->STDOUT, "%s",
                     "\030\032" "\r\xC3\xA9" "\033[6n\033D");
         fflush(s->STDOUT);
+        /* XXX: should have a timeout to avoid locking on unsupported terminals */
         n = fscanf(s->STDIN, "\033[%d;%d", &y, &x);  /* get cursor position */
         TTY_FPRINTF(s->STDOUT, "\r   \r");        /* go back, erase 3 chars */
         if (n == 2 && x == 2) {
@@ -643,20 +683,21 @@ static void tty_term_fill_rectangle(QEditScreen *s,
     int x, y;
     TTYChar *ptr;
     int wrap = s->width - w;
-    int bgcolor;
+    unsigned int bgcolor;
 
     ptr = ts->screen + y1 * s->width + x1;
     if (color == QECOLOR_XOR) {
         for (y = y1; y < y2; y++) {
             ts->line_updated[y] = 1;
             for (x = x1; x < x2; x++) {
+                /* XXX: should reverse fg and bg */
                 *ptr ^= TTY_CHAR(0, 7, 7);
                 ptr++;
             }
             ptr += wrap;
         }
     } else {
-        bgcolor = qe_map_color(color, ts->term_colors, ts->term_bg_colors_count, NULL);
+        bgcolor = qe_map_color(color, ts->tty_colors, ts->tty_bg_colors_count, NULL);
         for (y = y1; y < y2; y++) {
             ts->line_updated[y] = 1;
             for (x = x1; x < x2; x++) {
@@ -798,9 +839,11 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
               ts->term_flags & USE_BOLD_AS_BRIGHT_FG ? " USE_BOLD_AS_BRIGHT_FG" : "",
               ts->term_flags & USE_BLINK_AS_BRIGHT_BG ? " USE_BLINK_AS_BRIGHT_BG" : "",
               ts->term_flags & USE_256_COLORS ? " USE_256_COLORS" : "",
-              ts->term_flags & USE_24_BIT_COLORS ? " USE_24_BIT_COLORS" : "");
-    eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "colors",
+              ts->term_flags & USE_TRUE_COLORS ? " USE_TRUE_COLORS" : "");
+    eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "terminal colors",
               ts->term_fg_colors_count, ts->term_bg_colors_count);
+    eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "virtual tty colors",
+              ts->tty_fg_colors_count, ts->tty_bg_colors_count);
     
     eb_printf(b, "\n");
     eb_printf(b, "Unicode combination cache:\n\n");
@@ -839,7 +882,7 @@ static void tty_term_draw_text(QEditScreen *s, QEFont *font,
         return;
 
     ts->line_updated[y] = 1;
-    fgcolor = qe_map_color(color, ts->term_colors, ts->term_fg_colors_count, NULL);
+    fgcolor = qe_map_color(color, ts->tty_colors, ts->tty_fg_colors_count, NULL);
     if (font->style & QE_FONT_STYLE_UNDERLINE)
         fgcolor |= TTY_UNDERLINE;
     if (font->style & QE_FONT_STYLE_BOLD)
@@ -1030,7 +1073,15 @@ static void tty_term_flush(QEditScreen *s)
                     if (bgcolor != (int)TTY_CHAR_GET_BG(cc)) {
                         int lastbg = bgcolor;
                         bgcolor = TTY_CHAR_GET_BG(cc);
-                        if (ts->term_flags & (USE_256_COLORS | USE_24_BIT_COLORS)) {
+#if TTY_STYLE_BITS == 32
+                        if (ts->term_bg_colors_count > 256 && bgcolor >= 256) {
+                            /* XXX: should special case dynamic palette */
+                            QEColor rgb = qe_unmap_color(bgcolor, ts->tty_bg_colors_count);
+                            TTY_FPRINTF(s->STDOUT, "\033[48;2;%d;%d;%dm",
+                                        (rgb >> 16) & 255, (rgb >> 8) & 255, (rgb >> 0) & 255);
+                        } else
+#endif
+                        if (ts->term_bg_colors_count > 16) {
                             TTY_FPRINTF(s->STDOUT, "\033[48;5;%dm", bgcolor);
                         } else
                         if (ts->term_flags & USE_BLINK_AS_BRIGHT_BG) {
@@ -1055,7 +1106,14 @@ static void tty_term_flush(QEditScreen *s)
                     if (fgcolor != (int)TTY_CHAR_GET_FG(cc)) {
                         int lastfg = fgcolor;
                         fgcolor = TTY_CHAR_GET_FG(cc);
-                        if (ts->term_flags & (USE_256_COLORS | USE_24_BIT_COLORS)) {
+#if TTY_STYLE_BITS == 32
+                        if (ts->term_fg_colors_count > 256 && fgcolor >= 256) {
+                            QEColor rgb = qe_unmap_color(fgcolor, ts->tty_fg_colors_count);
+                            TTY_FPRINTF(s->STDOUT, "\033[38;2;%d;%d;%dm",
+                                        (rgb >> 16) & 255, (rgb >> 8) & 255, (rgb >> 0) & 255);
+                        } else
+#endif
+                        if (ts->term_fg_colors_count > 16) {
                             TTY_FPRINTF(s->STDOUT, "\033[38;5;%dm", fgcolor);
                         } else
                         if (ts->term_flags & USE_BOLD_AS_BRIGHT_FG) {

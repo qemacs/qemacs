@@ -51,7 +51,7 @@ static void (*qe__exitcall_first)(void) qe__exit_call = NULL;
 
 void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
-                   const char *str, int style);
+                   const char *str, QETermStyle style);
 static EditBuffer *predict_switch_to_buffer(EditState *s);
 static StringArray *get_history(const char *name);
 static void qe_key_process(int key);
@@ -2340,7 +2340,7 @@ void do_convert_buffer_file_coding_system(EditState *s,
 
     /* slow, but simple iterative method */
     for (offset = 0; offset < b->total_size;) {
-        int style = eb_get_style(b, offset);
+        QETermStyle style = eb_get_style(b, offset);
         int c = eb_nextc(b, offset, &offset);
         b1->cur_style = style;
         len = eb_encode_uchar(b1, buf, c);
@@ -2589,8 +2589,8 @@ void do_what_cursor_position(EditState *s)
             buf_put_byte(out, ']');
         }
         if (s->b->style_bytes) {
-            buf_printf(out, " {%0*X}", s->b->style_bytes * 2,
-                       eb_get_style(s->b, s->offset));
+            buf_printf(out, " {%0*llX}", s->b->style_bytes * 2,
+                       (unsigned long long)eb_get_style(s->b, s->offset));
         }
     }
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
@@ -2754,13 +2754,13 @@ void display_window_borders(EditState *e)
 /* Should move all this to display.c */
 
 /* compute style */
-static void apply_style(QEStyleDef *stp, int style)
+static void apply_style(QEStyleDef *stp, QETermStyle style)
 {
     QEStyleDef *s;
 
     if (style & QE_TERM_COMPOSITE) {
-        stp->fg_color = xterm_colors[QE_TERM_GET_FG(style)];
-        stp->bg_color = xterm_colors[QE_TERM_GET_BG(style)];
+        stp->fg_color = qe_unmap_color(QE_TERM_GET_FG(style), QE_TERM_FG_COLORS);
+        stp->bg_color = qe_unmap_color(QE_TERM_GET_BG(style), QE_TERM_BG_COLORS);
         if (style & QE_TERM_UNDERLINE)
             stp->font_style |= QE_FONT_STYLE_UNDERLINE;
         if (style & QE_TERM_BOLD)
@@ -2789,7 +2789,7 @@ static void apply_style(QEStyleDef *stp, int style)
     }
 }
 
-void get_style(EditState *e, QEStyleDef *stp, int style)
+void get_style(EditState *e, QEStyleDef *stp, QETermStyle style)
 {
     /* get root default style */
     *stp = qe_styles[0];
@@ -2996,13 +2996,13 @@ void do_toggle_mode_line(EditState *s)
 
 void do_set_window_style(EditState *s, const char *stylestr)
 {
-    int style = find_style_index(stylestr);
+    int style_index = find_style_index(stylestr);
 
-    if (style < 0) {
+    if (style_index < 0) {
         put_status(s, "Unknown style '%s'", stylestr);
         return;
     }
-    s->default_style = style;
+    s->default_style = style_index;
 }
 
 void do_set_system_font(EditState *s, const char *qe_font_name,
@@ -3380,7 +3380,8 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
 /* layout of a word fragment */
 static void flush_fragment(DisplayState *ds)
 {
-    int w, len, style, i, j;
+    int w, len, i, j;
+    QETermStyle style;
     QEditScreen *screen = ds->edit_state->screen;
     TextFragment *frag;
     QEStyleDef styledef;
@@ -3572,7 +3573,8 @@ static void flush_fragment(DisplayState *ds)
 int display_char_bidir(DisplayState *ds, int offset1, int offset2,
                        int embedding_level, int ch)
 {
-    int space, style, istab, isaccent;
+    int space, istab, isaccent;
+    QETermStyle style;
     EditState *e;
 
     style = ds->style;
@@ -3819,7 +3821,7 @@ static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_
     buf_ptr = buf;
     buf_end = buf + buf_size - 1;
     for (;;) {
-        int style = eb_get_style(b, offset);
+        QETermStyle style = eb_get_style(b, offset);
         int c = eb_nextc(b, offset, &offset);
         if (c == '\n') {
             /* XXX: set style for end of line? */
@@ -5307,7 +5309,7 @@ static void qe_key_process(int key)
 /* Print a utf-8 encoded buffer as unicode */
 void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
-                   const char *str, int style)
+                   const char *str, QETermStyle style)
 {
     unsigned int ubuf[MAX_SCREEN_WIDTH];
     int len;
@@ -7148,7 +7150,7 @@ void do_doctor(EditState *s)
     put_status(s, "Hello, how are you?");
 }
 
-int get_glyph_width(QEditScreen *screen, EditState *s, int style, int c)
+int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, int c)
 {
     QEStyleDef styledef;
     QEFont *font;
@@ -7161,7 +7163,7 @@ int get_glyph_width(QEditScreen *screen, EditState *s, int style, int c)
     return width;
 }
 
-int get_line_height(QEditScreen *screen, EditState *s, int style)
+int get_line_height(QEditScreen *screen, EditState *s, QETermStyle style)
 {
     QEStyleDef styledef;
     QEFont *font;

@@ -205,10 +205,9 @@ typedef struct CSSRect {
 typedef unsigned int QEColor;
 #define QEARGB(a,r,g,b)    (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
 #define QERGB(r,g,b)       QEARGB(0xff, r, g, b)
+#define QERGB25(r,g,b)     QEARGB(1, r, g, b)
 #define COLOR_TRANSPARENT  0
 #define QECOLOR_XOR        1
-
-#if 1  /* new composite style scheme */
 
 /* A qemacs style is a named set of attributes including:
  * - colors for foreground and background
@@ -238,6 +237,42 @@ typedef unsigned int QEColor;
  * - text and background colors as either palette numbers or 4096 rgb values
  */
 
+#if 0   /* 25-bit color for FG and BG */
+
+#define QE_TERM_STYLE_BITS  64
+typedef uint64_t QETermStyle;
+#define QE_STYLE_NUM        0x00FF
+#define QE_STYLE_SEL        0x02000000  /* special selection style (cumulative with another style) */
+#define QE_TERM_COMPOSITE   0x04000000  /* special bit to indicate qe-term composite style */
+/* XXX: reversed as attribute? */
+/* XXX: faint? */
+#define QE_TERM_UNDERLINE   0x08000000
+#define QE_TERM_BOLD        0x10000000
+#define QE_TERM_ITALIC      0x20000000
+#define QE_TERM_BLINK       0x40000000
+#define QE_TERM_BG_BITS     25
+#define QE_TERM_BG_SHIFT    32
+#define QE_TERM_FG_BITS     25
+#define QE_TERM_FG_SHIFT    0
+
+#elif 1   /* 8K colors for FG and BG */
+
+#define QE_TERM_STYLE_BITS  32
+typedef uint32_t QETermStyle;
+#define QE_STYLE_NUM        0x00FF
+#define QE_STYLE_SEL        0x02000  /* special selection style (cumulative with another style) */
+#define QE_TERM_COMPOSITE   0x04000  /* special bit to indicate qe-term composite style */
+#define QE_TERM_UNDERLINE   0x08000
+#define QE_TERM_BOLD        0x10000
+#define QE_TERM_ITALIC      0x20000
+#define QE_TERM_BLINK       0x40000
+#define QE_TERM_BG_BITS     13
+#define QE_TERM_BG_SHIFT    19
+#define QE_TERM_FG_BITS     13
+#define QE_TERM_FG_SHIFT    0
+
+#elif 1   /* 256 colors for FG and BG */
+
 #define QE_TERM_STYLE_BITS  32
 typedef uint32_t QETermStyle;
 #define QE_STYLE_NUM        0x00FF
@@ -248,11 +283,11 @@ typedef uint32_t QETermStyle;
 #define QE_TERM_ITALIC      0x1000
 #define QE_TERM_BLINK       0x2000
 #define QE_TERM_BG_BITS     8
-#define QE_TERM_BG_SHIFT    0
+#define QE_TERM_BG_SHIFT    16
 #define QE_TERM_FG_BITS     8
-#define QE_TERM_FG_SHIFT    16
+#define QE_TERM_FG_SHIFT    0
 
-#else
+#else   /* 16 colors for FG and 16 color BG */
 
 #define QE_TERM_STYLE_BITS  16
 typedef uint16_t QETermStyle;
@@ -274,11 +309,11 @@ typedef uint16_t QETermStyle;
 #define QE_TERM_DEF_BG      0
 #define QE_TERM_BG_COLORS   (1 << QE_TERM_BG_BITS)
 #define QE_TERM_FG_COLORS   (1 << QE_TERM_FG_BITS)
-#define QE_TERM_BG_MASK     ((QE_TERM_BG_COLORS - 1) << QE_TERM_BG_SHIFT)
-#define QE_TERM_FG_MASK     ((QE_TERM_FG_COLORS - 1) << QE_TERM_FG_SHIFT)
-#define QE_TERM_MAKE_COLOR(fg, bg)  (((fg) << QE_TERM_FG_SHIFT) | ((bg) << QE_TERM_BG_SHIFT))
-#define QE_TERM_SET_FG(col, fg)  ((col) = ((col) & ~QE_TERM_FG_MASK) | ((fg) << QE_TERM_FG_SHIFT))
-#define QE_TERM_SET_BG(col, bg)  ((col) = ((col) & ~QE_TERM_BG_MASK) | ((bg) << QE_TERM_BG_SHIFT))
+#define QE_TERM_BG_MASK     ((QETermStyle)(QE_TERM_BG_COLORS - 1) << QE_TERM_BG_SHIFT)
+#define QE_TERM_FG_MASK     ((QETermStyle)(QE_TERM_FG_COLORS - 1) << QE_TERM_FG_SHIFT)
+#define QE_TERM_MAKE_COLOR(fg, bg)  (((QETermStyle)(fg) << QE_TERM_FG_SHIFT) | ((QETermStyle)(bg) << QE_TERM_BG_SHIFT))
+#define QE_TERM_SET_FG(col, fg)  ((col) = ((col) & ~QE_TERM_FG_MASK) | ((QETermStyle)(fg) << QE_TERM_FG_SHIFT))
+#define QE_TERM_SET_BG(col, bg)  ((col) = ((col) & ~QE_TERM_BG_MASK) | ((QETermStyle)(bg) << QE_TERM_BG_SHIFT))
 #define QE_TERM_GET_FG(color)  (((color) & QE_TERM_FG_MASK) >> QE_TERM_FG_SHIFT)
 #define QE_TERM_GET_BG(color)  (((color) & QE_TERM_BG_MASK) >> QE_TERM_BG_SHIFT)
 
@@ -443,7 +478,10 @@ int to_hex(int key);
 
 extern QEColor const xterm_colors[];
 /* XXX: should have a more generic API with precomputed mapping scales */
-int qe_map_color(QEColor color, QEColor const *colors, int count, int *dist);
+/* Convert RGB triplet to a composite color */
+unsigned int qe_map_color(QEColor color, QEColor const *colors, int count, int *dist);
+/* Convert a composite color to an RGB triplet */
+QEColor qe_unmap_color(int color, int count);
 
 void color_completion(CompleteState *cp);
 int css_define_color(const char *name, const char *value);
@@ -954,12 +992,13 @@ typedef struct EditBufferDataType {
 #define BF_UTF8      0x0200  /* buffer charset is utf-8 */
 #define BF_RAW       0x0400  /* buffer charset is raw (no charset translation) */
 #define BF_TRANSIENT 0x0800  /* buffer is deleted upon window close */
-#define BF_STYLES    0x3000  /* buffer has styles */
+#define BF_STYLES    0x7000  /* buffer has styles */
 #define BF_STYLE1    0x1000  /* buffer has 1 byte styles */
 #define BF_STYLE2    0x2000  /* buffer has 2 byte styles */
 #define BF_STYLE4    0x3000  /* buffer has 4 byte styles */
-#define BF_IS_STYLE  0x4000  /* buffer is a styles buffer */
-#define BF_IS_LOG    0x8000  /* buffer is a log buffer */
+#define BF_STYLE8    0x4000  /* buffer has 8 byte styles */
+#define BF_IS_STYLE  0x8000  /* buffer is a styles buffer */
+#define BF_IS_LOG    0x10000  /* buffer is a log buffer */
 
 struct EditBuffer {
     OWNED Page *page_table;
@@ -1009,9 +1048,9 @@ struct EditBuffer {
 
     /* style system */
     EditBuffer *b_styles;
-    int cur_style;  /* current style for buffer writing APIs */
-    int style_bytes;
-    int style_shift;
+    QETermStyle cur_style;  /* current style for buffer writing APIs */
+    int style_bytes;  /* 0, 1, 2, 4 or 8 bytes per char */
+    int style_shift;  /* 0, 0, 1, 2 or 3 */
 
     /* modification callbacks */
     OWNED EditBufferCallbackList *first_callback;
@@ -1130,8 +1169,8 @@ void eb_offset_callback(EditBuffer *b, void *opaque, int edge,
                         enum LogOperation op, int offset, int size);
 int eb_create_style_buffer(EditBuffer *b, int flags);
 void eb_free_style_buffer(EditBuffer *b);
-int eb_get_style(EditBuffer *b, int offset);
-void eb_set_style(EditBuffer *b, int style, enum LogOperation op,
+QETermStyle eb_get_style(EditBuffer *b, int offset);
+void eb_set_style(EditBuffer *b, QETermStyle style, enum LogOperation op,
                   int offset, int size);
 void eb_style_callback(EditBuffer *b, void *opaque, int arg,
                        enum LogOperation op, int offset, int size);
@@ -1294,7 +1333,7 @@ struct EditState {
     GetColorizedLineFunc get_colorized_line;
     ColorizeFunc colorize_func; /* colorization function */
 
-    int default_style;  /* default text style */
+    QETermStyle default_style;  /* default text style */
 
     /* after this limit, the fields are not saved into the buffer */
     int end_of_saved_data;
@@ -1712,7 +1751,7 @@ typedef struct TextFragment {
 #define MAX_WORD_SIZE  128
 #define NO_CURSOR      0x7fffffff
 
-#define STYLE_BITS     12
+#define STYLE_BITS     8
 #define STYLE_SHIFT    (32 - STYLE_BITS)
 #define CHAR_MASK      ((1 << STYLE_SHIFT) - 1)
 
@@ -1745,7 +1784,7 @@ struct DisplayState {
     int wrap;
     int eol_reached;
     EditState *edit_state;
-    int style;          /* current style for display_printf... */
+    QETermStyle style;   /* current style for display_printf... */
 
     /* fragment buffers */
     TextFragment fragments[MAX_SCREEN_WIDTH];
@@ -1766,8 +1805,8 @@ struct DisplayState {
     unsigned char fragment_hex_mode[MAX_WORD_SIZE];
     int fragment_index;
     int last_space;
-    int last_style;
     int last_embedding_level;
+    QETermStyle last_style;
 };
 
 enum DisplayType {
@@ -1803,15 +1842,15 @@ static inline int display_char(DisplayState *s, int offset1, int offset2,
 #define SET_COLOR(str,a,b,style)  set_color((str) + (a), (str) + (b), style)
 
 static inline void set_color(unsigned int *p, unsigned int *to, int style) {
-    style <<= STYLE_SHIFT;
+    unsigned int bits = (unsigned int)style << STYLE_SHIFT;
     while (p < to)
-        *p++ |= style;
+        *p++ |= bits;
 }
 
 #define SET_COLOR1(str,a,style)  set_color1((str) + (a), style)
 
 static inline void set_color1(unsigned int *p, int style) {
-    *p |= style << STYLE_SHIFT;
+    *p |= (unsigned int)style << STYLE_SHIFT;
 }
 
 /* input.c */
@@ -1925,8 +1964,8 @@ EditState *edit_new(EditBuffer *b,
 void edit_detach(EditState *s);
 EditBuffer *check_buffer(EditBuffer **sp);
 EditState *check_window(EditState **sp);
-int get_glyph_width(QEditScreen *screen, EditState *s, int style, int c);
-int get_line_height(QEditScreen *screen, EditState *s, int style);
+int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, int c);
+int get_line_height(QEditScreen *screen, EditState *s, QETermStyle style);
 void do_refresh(EditState *s);
 // should take direction argument
 void do_other_window(EditState *s);
@@ -2082,7 +2121,7 @@ void display_window_borders(EditState *e);
 int find_style_index(const char *name);
 QEStyleDef *find_style(const char *name);
 void style_completion(CompleteState *cp);
-void get_style(EditState *e, QEStyleDef *stp, int style);
+void get_style(EditState *e, QEStyleDef *stp, QETermStyle style);
 void style_property_completion(CompleteState *cp);
 int find_style_property(const char *name);
 void do_define_color(EditState *e, const char *name, const char *value);
