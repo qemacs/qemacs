@@ -6205,14 +6205,16 @@ void do_popup_exit(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
 
-    /* XXX: only do this for a popup? */
-    s->b->flags |= BF_TRANSIENT;
-    edit_close(&s);
+    if (s->flags & WF_POPUP) {
+        /* only do this for a popup? */
+        s->b->flags |= BF_TRANSIENT;
+        edit_close(&s);
 
-    qs->active_window = check_window(&popup_saved_active);
-    popup_saved_active = NULL;
+        qs->active_window = check_window(&popup_saved_active);
+        popup_saved_active = NULL;
 
-    do_refresh(qs->active_window);
+        do_refresh(qs->active_window);
+    }
 }
 
 /* show a popup on a readonly buffer */
@@ -6642,10 +6644,24 @@ static int probe_mode(EditState *s, EditBuffer *b,
 }
 
 static EditState *qe_find_target_window(EditState *s, int activate) {
+    EditState *e;
+
     /* Find the target window for some commands run from the dired window */
+    if (s->flags & WF_POPUP) {
+        e = check_window(&popup_saved_active);
+        popup_saved_active = NULL;
+        if (e) {
+            if (activate && s->qe_state->active_window == s)
+                s->qe_state->active_window = e;
+        }
+        s->b->flags |= BF_TRANSIENT;
+        edit_close(&s);
+        s = e;
+        do_refresh(s);
+    }
 #ifndef CONFIG_TINY
     if ((s->flags & WF_POPLEFT) && s->x1 == 0) {
-        EditState *e = find_window(s, KEY_RIGHT, NULL);
+        e = find_window(s, KEY_RIGHT, NULL);
         if (e) {
             if (activate && s->qe_state->active_window == s)
                 s->qe_state->active_window = e;
@@ -6663,6 +6679,9 @@ static EditState *qe_find_target_window(EditState *s, int activate) {
  */
 void do_set_next_mode(EditState *s, int dir)
 {
+    if (s->flags & WF_POPUP)
+        return;
+
     /* next-mode from the dired window applies to the target window */
     s = qe_find_target_window(s, 0);
     qe_set_next_mode(s, dir, 1);
@@ -6719,6 +6738,19 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
     EOLType eol_type = EOL_UNIX;
     QECharset *charset = &charset_utf8;
 
+#ifndef CONFIG_TINY
+    /* when exploring from a popleft dired buffer, load a directory or
+     * file pattern into the same pane, but load a regular file into the view pane
+     */
+    if ((s->flags & WF_POPUP)
+    ||  (!is_directory(filename) && !is_filepattern(filename))) {
+        s = qe_find_target_window(s, 1);
+    }
+#endif
+
+    if (s->flags & WF_POPUP)
+        return - 1;
+
     if (lflags & LF_SPLIT_WINDOW) {
         /* Split window if window large enough and not empty */
         /* XXX: should check s->height units */
@@ -6738,15 +6770,6 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         canonicalize_absolute_path((lflags & LF_CWD_RELATIVE) ? NULL : s,
                                    filename, sizeof(filename), filename1);
     }
-
-#ifndef CONFIG_TINY
-    /* when exploring from a popleft dired buffer, load a directory or
-     * file pattern into the same pane, but load a regular file into the view pane
-     */
-    if (!is_directory(filename) && !is_filepattern(filename)) {
-        s = qe_find_target_window(s, 1);
-    }
-#endif
 
     /* If file already loaded in existing buffer, switch to that */
     b = eb_find_file(filename);

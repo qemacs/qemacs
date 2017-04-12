@@ -1668,6 +1668,9 @@ static void do_shell(EditState *s, int force)
     ShellState *shs;
     EditBuffer *b = NULL;
 
+    if (s->flags & WF_POPUP)
+        return;
+
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
         s = find_window(s, KEY_RIGHT, s);
