@@ -1688,6 +1688,8 @@ static void do_shell(EditState *s, int force)
         b = s->b;
         shs = shell_get_state(s, 0);
         if (shs && strstart(b->name, "*shell", NULL)) {
+            /* move to end of buffer (start interactive mode) */
+            s->offset = b->total_size;
             if (shs->pid >= 0)
                 return;
         } else {
