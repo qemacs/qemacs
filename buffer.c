@@ -1048,6 +1048,9 @@ void eb_set_style(EditBuffer *b, QETermStyle style, enum LogOperation op,
                   int offset, int size)
 {
     union {
+        uint64_t buf8[256 / 8];
+        uint32_t buf4[256 / 4];
+        uint16_t buf2[256 / 2];
         unsigned char buf[256];
         QETermStyle align;
     } s;
@@ -1067,18 +1070,18 @@ void eb_set_style(EditBuffer *b, QETermStyle style, enum LogOperation op,
         while (size > 0) {
             len = min(size, ssizeof(s.buf));
             if (b->style_shift == 3) {
-                for (i = 0; i < len; i += 8) {
-                    *(uint64_t*)(void *)(s.buf + i) = style;
+                for (i = 0; i < len >> 3; i++) {
+                    s.buf8[i] = style;
                 }
             } else
             if (b->style_shift == 2) {
-                for (i = 0; i < len; i += 4) {
-                    *(uint32_t*)(void *)(s.buf + i) = style;
+                for (i = 0; i < len >> 2; i++) {
+                    s.buf4[i] = style;
                 }
             } else
             if (b->style_shift == 1) {
-                for (i = 0; i < len; i += 2) {
-                    *(uint16_t*)(void *)(s.buf + i) = style;
+                for (i = 0; i < len >> 1; i++) {
+                    s.buf2[i] = style;
                 }
             } else {
                 memset(s.buf, style, len);

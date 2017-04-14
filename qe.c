@@ -2686,7 +2686,7 @@ void text_mode_line(EditState *s, buf_t *out)
         buf_printf(out, "-->%d", -s->x_disp[1]);
     tag = eb_find_property(s->b, 0, s->offset + 1, QE_PROP_TAG);
     if (tag)
-        buf_printf(out, "--%s", tag->data);
+        buf_printf(out, "--%s", (char*)tag->data);
 #if 0
     buf_printf(out, "--[%d]", s->y_disp);
 #endif

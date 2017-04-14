@@ -935,10 +935,12 @@ static void tty_term_draw_text(QEditScreen *s, QEFont *font,
             break;
         }
         if (w == 0) {
+            int nacc;
+
             if (str == str0)
                 continue;
             /* allocate synthetic glyph for multicharacter combination */
-            int nacc = 1;
+            nacc = 1;
             while (nacc < len && tty_term_glyph_width(s, str[nacc]) == 0)
                 nacc++;
             cc = comb_cache_add(ts, str - 1, nacc + 1);
