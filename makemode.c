@@ -237,7 +237,8 @@ static void cmake_colorize_line(QEColorizeContext *cp,
                         if (str[i] == '}')
                             break;
                     }
-                    SET_COLOR(str, start, i, style);
+                    SET_COLOR(str, start, i, CMAKE_STYLE_MACRO);
+                    start = i;
                 }
             }
             SET_COLOR(str, start, i, CMAKE_STYLE_STRING);

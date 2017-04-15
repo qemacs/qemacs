@@ -3778,7 +3778,7 @@ int css_layout(CSSContext *s, CSSBox *box, int width,
 
 #define MAX_LINE_SIZE 256
 
-int box_get_text(CSSContext *s,
+int box_get_text(qe__unused__ CSSContext *s,
                  unsigned int *line_buf, int max_size,
                  int *offsets, CSSBox *box)
 {

@@ -216,6 +216,7 @@ static void lst_colorize_line(QEColorizeContext *cp,
     } else {
         int has_assembly = 0;
 
+        i = 0;
         if (w > 0 && qe_isxdigit(str[w])) {
             for (i = w + 1; qe_isxdigit(str[i]); i++)
                 continue;

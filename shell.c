@@ -1188,7 +1188,8 @@ static void qe_term_emulate(ShellState *s, int c)
             /* CG: ESC2(']','4') should parse color definition string */
             /* (example: "\033]4;16;rgb:00/00/00\033\134" ) */
             // executeXtermSetRgb
-            // iTerm2 reports the current rgb value with "<index>;?", e.g. "105;?" -> report as \033]4;P;rgb:00/cc/ff\007",
+            // iTerm2 reports the current rgb value with "<index>;?",
+            //   e.g. "105;?" -> report as \033]4;P;rgb:00/cc/ff\007",
             s->state = QE_TERM_STATE_NORM;
         }
         break;

@@ -352,6 +352,8 @@ static int haiku_is_user_input_pending(QEditScreen *s)
     return 0;
 }
 
+extern int32 atomic_get_and_set(int32 *p, int32 v);
+
 /* called when an BMessage is forwarded. dispatch events to qe_handle_event() */
 static void haiku_handle_event(void *opaque)
 {
@@ -662,7 +664,7 @@ static void haiku_fill_rectangle(QEditScreen *s,
 
 static QEFont *haiku_open_font(QEditScreen *s, int style, int size)
 {
-    WindowState *ctx = (WindowState *)s->priv_data;
+    //WindowState *ctx = (WindowState *)s->priv_data;
     //fprintf(stderr, "%s()\n", __FUNCTION__);
     QEFont *font;
 

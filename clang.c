@@ -482,9 +482,9 @@ static void c_colorize_line(QEColorizeContext *cp,
             &&  (str[i] == '\"' && str[i + 1] == '\"')) {
                 /* multiline """ quoted string */
                 i += 2;
+            parse_string3:
                 state |= IN_C_STRING_BQ;
                 style1 = C_STYLE_STRING;
-            parse_string3:
                 while (i < n) {
                     c = str[i++];
                     if (c == '\\' && flavor != CLANG_KOTLIN) {

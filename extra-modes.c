@@ -3120,8 +3120,8 @@ static void ruby_colorize_line(QEColorizeContext *cp,
 
         case '\"':
             /* parse double quoted string const */
-            c = '\0';
         parse_string2:
+            c = '\0';
             while (i < n) {
                 c = str[i++];
                 if (c == '\\') {
