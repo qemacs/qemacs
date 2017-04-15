@@ -1939,10 +1939,11 @@ static inline int is_user_input_pending(void) {
 #endif
 
 /* file loading */
-#define LF_KILL_BUFFER    1
-#define LF_LOAD_RESOURCE  2
-#define LF_CWD_RELATIVE   4
-#define LF_SPLIT_WINDOW   8
+#define LF_KILL_BUFFER    0x01
+#define LF_LOAD_RESOURCE  0x02
+#define LF_CWD_RELATIVE   0x04
+#define LF_SPLIT_WINDOW   0x08
+#define LF_NOSELECT       0x10
 int qe_load_file(EditState *s, const char *filename, int lflags, int bflags);
 
 /* config file support */
@@ -2165,6 +2166,7 @@ void do_popup_exit(EditState *s);
 void do_toggle_read_only(EditState *s);
 void do_not_modified(EditState *s, int argval);
 void do_find_alternate_file(EditState *s, const char *filename, int bflags);
+void do_find_file_noselect(EditState *s, const char *filename, int bflags);
 void do_load_file_from_path(EditState *s, const char *filename, int bflags);
 void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile);

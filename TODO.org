@@ -14,7 +14,7 @@
 ** display: hex-mode and binary-mode should have an initial skip value to align the display on any boundary
 ** display: optimize display for very large display-width in binary and hex modes
 ** display: add screen dump command and format
-** files: save all modified buffers on C-x s
+** files: actually load file in find-file-noselect
 ** xml: select on "<plist "
 ** shell: support ':' as alternate escape sequence argument separator
 ** shell: use target window for man and similar commands
@@ -618,3 +618,15 @@ rlang.c:169:                    style = R_STYLE_FUNCTION;
 rust.c:249:                    style = RUST_STYLE_FUNCTION;
 swift.c:284:                    style = C_STYLE_FUNCTION;
 virgil.c:426:                    style = VIRGIL_STYLE_FUNCTION;
+
+** Missing commands:
+
+find-file-existing
+find-other-frame on C-x 5 f, C-x 5 C-f
+find-other-window on C-x 4 f, C-x 4 C-f
+find-other-read-only on C-x C-r
+find-file-read-only-other-frame on C-x 5 r
+find-file-read-only-other-window on C-x 4 r
+save-modified-buffers on C-x s
+show-matching-delimiters
+

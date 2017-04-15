@@ -3071,8 +3071,8 @@ void display_init(DisplayState *ds, EditState *e, enum DisplayType do_disp,
     font = select_font(e->screen, styledef.font_style, styledef.font_size);
     ds->default_line_height = font->ascent + font->descent;
     ds->eol_width = max3(glyph_width(e->screen, font, '/'),
-                        glyph_width(e->screen, font, '\\'),
-                        glyph_width(e->screen, font, '$'));
+                         glyph_width(e->screen, font, '\\'),
+                         glyph_width(e->screen, font, '$'));
     ds->space_width = glyph_width(e->screen, font, ' ');
     ds->tab_width = ds->space_width * e->b->tab_width;
     ds->width = e->width - ds->eol_width;
@@ -5803,6 +5803,11 @@ void do_completion(EditState *s, int type)
     //      not necessarily full minibuffer contents
     do_delete_selection(s);
 
+    /* XXX: if completion_popup_window already displayed, should page
+     * through the window, if at end, should remove focus from
+     * completion_popup_window or close it.
+     */
+
     /* check completion window */
     check_window(&completion_popup_window);
     if (completion_popup_window
@@ -6864,7 +6869,12 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
          * test the resulting data_mode, loading the file if raw_mode
          * selected.
          */
-        switch_to_buffer(s, b);
+        if (!(lflags & LF_NOSELECT)) {
+            /* XXX: bug: file loading will be delayed until buffer is
+             * attached to a window.
+             */
+            switch_to_buffer(s, b);
+        }
         if (access(b->filename, W_OK)) {
             b->flags |= BF_READONLY;
         }
@@ -6942,6 +6952,11 @@ void do_find_file_other_window(EditState *s, const char *filename, int bflags)
 void do_find_alternate_file(EditState *s, const char *filename, int bflags)
 {
     qe_load_file(s, filename, LF_KILL_BUFFER, bflags);
+}
+
+void do_find_file_noselect(EditState *s, const char *filename, int bflags)
+{
+    qe_load_file(s, filename, LF_NOSELECT, bflags);
 }
 
 void do_load_file_from_path(EditState *s, const char *filename, int bflags)

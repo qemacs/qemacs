@@ -142,6 +142,10 @@ static CmdDef basic_commands[] = {
           "find-alternate-file", do_find_alternate_file, ESsi, 0,
           "s{Find alternate file: }[file]|file|"
           "v") /* u? */
+    CMD3( KEY_NONE, KEY_NONE,
+          "find-file-noselect", do_find_file_noselect, ESsi, 0,
+          "s{Find file: }[file]|file|"
+          "v") /* u? */
     CMD2( KEY_CTRLX('i'), KEY_NONE,
           "insert-file", do_insert_file, ESs,
           "*s{Insert file: }[file]|file|") /* u? */
