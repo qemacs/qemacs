@@ -503,8 +503,6 @@ static int up_down_func(void *opaque, CSSBox *box, int x, int y)
     return 0;
 }
 
-static int up_down_last_x = -1;
-
 static void html_move_up_down1(EditState *s, int dir, int xtarget)
 {
     HTMLState *hs;
@@ -522,8 +520,8 @@ static void html_move_up_down1(EditState *s, int dir, int xtarget)
 
     /* compute the position to which we would like to go */
     if (xtarget == 0) {
-        if (up_down_last_x == -1)
-            up_down_last_x = cursor_pos.x1;
+        if (s->up_down_last_x == -1)
+            s->up_down_last_x = cursor_pos.x1;
     }
 
     if (dir > 0)
@@ -533,7 +531,7 @@ static void html_move_up_down1(EditState *s, int dir, int xtarget)
 
     /* find a suitable box upward or downward */
     if (xtarget == 0) {
-        m->xd = up_down_last_x;
+        m->xd = s->up_down_last_x;
     } else {
         m->xd = xtarget;
     }
@@ -566,7 +564,7 @@ static void html_move_up_down(EditState *s, int dir)
         return;
 
     if (s->qe_state->last_cmd_func != (CmdFunc)do_up_down)
-        up_down_last_x = -1;
+        s->up_down_last_x = -1;
 
     html_move_up_down1(s, dir, 0);
 }

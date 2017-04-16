@@ -975,6 +975,7 @@ static unsigned short const keycodes[] = {
     KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10,
     KEY_F11, KEY_F12, KEY_F13, KEY_F14, KEY_F15,
     KEY_F16, KEY_F17, KEY_F18, KEY_F19, KEY_F20,
+    '{', '}', '|',
 };
 
 static const char * const keystr[] = {
@@ -990,6 +991,7 @@ static const char * const keystr[] = {
     "f6",     "f7",       "f8",       "f9",    "f10",
     "f11",    "f12",      "f13",      "f14",   "f15",
     "f16",    "f17",      "f18",      "f19",   "f20",
+    "LB",     "RB",       "VB",
 };
 
 int compose_keys(unsigned int *keys, int *nb_keys)

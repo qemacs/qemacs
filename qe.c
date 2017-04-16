@@ -72,13 +72,12 @@ static QEditScreen global_screen;
 static int screen_width = 0;
 static int screen_height = 0;
 static int no_init_file;
+static int single_window;
 int force_tty;
-int single_window;
 int use_session_file;
 #ifndef CONFIG_TINY
 static int free_everything;
 #endif
-static const char *user_option;
 
 /* mode handling */
 
@@ -1043,9 +1042,6 @@ void do_left_right(EditState *s, int dir)
         s->mode->move_left_right(s, dir);
 }
 
-/* CG: Should move this to EditState */
-static int up_down_last_x = -1;
-
 void text_move_up_down(EditState *s, int dir)
 {
     MoveContext m1, *m = &m1;
@@ -1053,14 +1049,14 @@ void text_move_up_down(EditState *s, int dir)
     CursorContext cm;
 
     if (s->qe_state->last_cmd_func != (CmdFunc)do_up_down)
-        up_down_last_x = -1;
+        s->up_down_last_x = -1;
 
     get_cursor_pos(s, &cm);
     if (cm.xc == NO_CURSOR)
         return;
 
-    if (up_down_last_x == -1)
-        up_down_last_x = cm.xc;
+    if (s->up_down_last_x == -1)
+        s->up_down_last_x = cm.xc;
 
     if (dir < 0) {
         /* difficult case: we need to go backward on displayed text */
@@ -1082,7 +1078,7 @@ void text_move_up_down(EditState *s, int dir)
 
     /* find cursor offset */
     m->yd = cm.linec + dir;
-    m->xd = up_down_last_x;
+    m->xd = s->up_down_last_x;
     m->xdmin = 0x7fffffff;
     /* if no cursor position is found, we go to bof or eof according
        to dir */
@@ -5772,18 +5768,21 @@ static void complete_end(CompleteState *cp)
 
 /* mini buffer stuff */
 
+struct MinibufState {
+    void (*cb)(void *opaque, char *buf);
+    void *opaque;
+    EditState *saved_active;
+
+    EditState *completion_popup_window;
+    CompletionFunc completion_function;
+
+    StringArray *history;
+    int history_index;
+    int history_saved_offset;
+};
+
+static struct MinibufState minibuffer;
 static ModeDef minibuffer_mode;
-
-static void (*minibuffer_cb)(void *opaque, char *buf);
-static void *minibuffer_opaque;
-static EditState *minibuffer_saved_active;
-
-static EditState *completion_popup_window;
-static CompletionFunc completion_function;
-
-static StringArray *minibuffer_history;
-static int minibuffer_history_index;
-static int minibuffer_history_saved_offset;
 
 void do_completion(EditState *s, int type)
 {
@@ -5795,7 +5794,7 @@ void do_completion(EditState *s, int type)
     EditBuffer *b;
     int w, h, h1, w1;
 
-    if (!completion_function)
+    if (!minibuffer.completion_function)
         return;
 
     /* Remove highlighted selection. */
@@ -5809,18 +5808,18 @@ void do_completion(EditState *s, int type)
      */
 
     /* check completion window */
-    check_window(&completion_popup_window);
-    if (completion_popup_window
+    check_window(&minibuffer.completion_popup_window);
+    if (minibuffer.completion_popup_window
     &&  type == COMPLETION_TAB
     &&  qs->last_cmd_func == qs->this_cmd_func) {
         /* toggle cpmpletion popup on TAB */
-        edit_close(&completion_popup_window);
+        edit_close(&minibuffer.completion_popup_window);
         do_refresh(s);
         return;
     }
 
-    complete_start(&cs, s, check_window(&minibuffer_saved_active));
-    (*completion_function)(&cs);
+    complete_start(&cs, s, check_window(&minibuffer.saved_active));
+    (*minibuffer.completion_function)(&cs);
     count = cs.cs.nb_items;
     outputs = cs.cs.items;
 #if 0
@@ -5861,7 +5860,7 @@ void do_completion(EditState *s, int type)
         if (count > 1) {
             /* if more than one match, then display them in a new popup
                buffer */
-            if (!completion_popup_window) {
+            if (!minibuffer.completion_popup_window) {
                 b = eb_new("*completion*", 
                            BF_SYSTEM | BF_UTF8 | BF_TRANSIENT | BF_STYLE1);
                 b->default_mode = &list_mode;
@@ -5871,18 +5870,18 @@ void do_completion(EditState *s, int type)
                 h = (h1 * 3) / 4;
                 e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
                 do_refresh(e);
-                completion_popup_window = e;
+                minibuffer.completion_popup_window = e;
             }
         } else
         if (count == 0 || type != COMPLETION_OTHER) {
             /* close the popup when minibuf contents matches nothing */
-            edit_close(&completion_popup_window);
+            edit_close(&minibuffer.completion_popup_window);
             do_refresh(s);
         }
     }
-    if (completion_popup_window) {
+    if (minibuffer.completion_popup_window) {
         /* modify the list with the current matches */
-        e = completion_popup_window;
+        e = minibuffer.completion_popup_window;
         b = e->b;
         qsort(outputs, count, sizeof(StringItem *), completion_sort_func);
         b->flags &= ~BF_READONLY;
@@ -5917,7 +5916,7 @@ void do_electric_filename(EditState *s, int key)
 {
     int c, offset, stop;
 
-    if (completion_function == file_completion) {
+    if (minibuffer.completion_function == file_completion) {
         stop = s->offset;
         c = eb_prevc(s->b, s->offset, &offset);
         if (c == '/') {
@@ -5937,13 +5936,13 @@ void do_completion_space(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
 
-    if (!completion_function) {
+    if (!minibuffer.completion_function) {
         do_char(s, ' ', 1);
     } else
-    if (completion_popup_window && qs->last_cmd_func == qs->this_cmd_func) {
+    if (minibuffer.completion_popup_window && qs->last_cmd_func == qs->this_cmd_func) {
         /* page through the list */
         // XXX: should close the popup at the bottom of the list
-        do_scroll_up_down(completion_popup_window, 2);
+        do_scroll_up_down(minibuffer.completion_popup_window, 2);
     } else {
         do_completion(s, COMPLETION_SPACE);
     }
@@ -5952,7 +5951,7 @@ void do_completion_space(EditState *s)
 static void do_minibuffer_char(EditState *s, int key, int argval)
 {
     do_char(s, key, argval);
-    if (completion_popup_window) {
+    if (minibuffer.completion_popup_window) {
         /* automatic filtering of completion list */
         // XXX: should prevent auto-completion
         do_completion(s, COMPLETION_OTHER);
@@ -5962,9 +5961,9 @@ static void do_minibuffer_char(EditState *s, int key, int argval)
 /* scroll in completion popup */
 void minibuf_complete_scroll_up_down(qe__unused__ EditState *s, int dir)
 {
-    if (completion_popup_window) {
-        completion_popup_window->force_highlight = 1;
-        do_scroll_up_down(completion_popup_window, dir);
+    if (minibuffer.completion_popup_window) {
+        minibuffer.completion_popup_window->force_highlight = 1;
+        do_scroll_up_down(minibuffer.completion_popup_window, dir);
     }
 }
 
@@ -6004,35 +6003,35 @@ static StringArray *get_history(const char *name)
 void do_history(EditState *s, int dir)
 {
     QEmacsState *qs = s->qe_state;
-    StringArray *hist = minibuffer_history;
+    StringArray *hist = minibuffer.history;
     int index;
     char *str;
     char buf[1024];
 
     /* if completion visible, move in it */
-    if (completion_popup_window) {
-        completion_popup_window->force_highlight = 1;
-        do_up_down(completion_popup_window, dir);
+    if (minibuffer.completion_popup_window) {
+        minibuffer.completion_popup_window->force_highlight = 1;
+        do_up_down(minibuffer.completion_popup_window, dir);
         return;
     }
 
     if (!hist)
         return;
-    index = minibuffer_history_index + dir;
+    index = minibuffer.history_index + dir;
     if (index < 0 || index >= hist->nb_items)
         return;
     if (qs->last_cmd_func != (CmdFunc)do_history) {
         /* save currently edited line */
         eb_get_contents(s->b, buf, sizeof(buf));
         set_string(hist, hist->nb_items - 1, buf, 0);
-        minibuffer_history_saved_offset = s->offset;
+        minibuffer.history_saved_offset = s->offset;
     }
     /* insert history text */
-    minibuffer_history_index = index;
+    minibuffer.history_index = index;
     str = hist->items[index]->str;
     set_minibuffer_str(s, str);
     if (index == hist->nb_items - 1) {
-        s->offset = minibuffer_history_saved_offset;
+        s->offset = minibuffer.history_saved_offset;
     }
 }
 
@@ -6040,9 +6039,9 @@ void do_minibuffer_get_binary(EditState *s)
 {
     unsigned long offset;
 
-    if (minibuffer_saved_active) {
-        eb_read(minibuffer_saved_active->b,
-                minibuffer_saved_active->offset,
+    if (minibuffer.saved_active) {
+        eb_read(minibuffer.saved_active->b,
+                minibuffer.saved_active->offset,
                 &offset, sizeof(offset));
         eb_printf(s->b, "%lu", offset);
     }
@@ -6051,11 +6050,11 @@ void do_minibuffer_get_binary(EditState *s)
 void do_minibuffer_exit(EditState *s, int do_abort)
 {
     QEmacsState *qs = s->qe_state;
-    StringArray *hist = minibuffer_history;
-    static void (*cb)(void *opaque, char *buf);
-    static void *opaque;
+    StringArray *hist = minibuffer.history;
+    void (*cb)(void *opaque, char *buf);
+    void *opaque;
     char buf[4096], *retstr;
-    EditState *cw = completion_popup_window;
+    EditState *cw = minibuffer.completion_popup_window;
 
     /* if completion is activated, then select current file only if
        the selection is highlighted */
@@ -6070,9 +6069,9 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     }
 
     /* remove completion popup if present */
-    /* CG: assuming completion_popup_window != s */
+    /* CG: assuming minibuffer.completion_popup_window != s */
     if (cw) {
-        edit_close(&completion_popup_window);
+        edit_close(&minibuffer.completion_popup_window);
         cw = NULL;
         do_refresh(s);
     }
@@ -6091,8 +6090,8 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     edit_close(&s);
 
     /* restore active window */
-    qs->active_window = check_window(&minibuffer_saved_active);
-    minibuffer_saved_active = NULL;
+    qs->active_window = check_window(&minibuffer.saved_active);
+    minibuffer.saved_active = NULL;
 
     /* force status update */
     //pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), " ");
@@ -6102,10 +6101,10 @@ void do_minibuffer_exit(EditState *s, int do_abort)
         put_status(NULL, "");
 
     /* call the callback */
-    cb = minibuffer_cb;
-    opaque = minibuffer_opaque;
-    minibuffer_cb = NULL;
-    minibuffer_opaque = NULL;
+    cb = minibuffer.cb;
+    opaque = minibuffer.opaque;
+    minibuffer.cb = NULL;
+    minibuffer.opaque = NULL;
 
     if (do_abort) {
         cb(opaque, NULL);
@@ -6129,14 +6128,14 @@ void minibuffer_edit(const char *input, const char *prompt,
     int len;
 
     /* check if already in minibuffer editing */
-    if (minibuffer_cb) {
+    if (minibuffer.cb) {
         put_status(NULL, "Already editing in minibuffer");
         cb(opaque, NULL);
         return;
     }
 
-    minibuffer_cb = cb;
-    minibuffer_opaque = opaque;
+    minibuffer.cb = cb;
+    minibuffer.opaque = opaque;
 
     b = eb_new("*minibuf*", BF_SYSTEM | BF_SAVELOG | BF_UTF8);
     b->default_mode = &minibuffer_mode;
@@ -6159,15 +6158,15 @@ void minibuffer_edit(const char *input, const char *prompt,
         s->offset = len;
     }
 
-    minibuffer_saved_active = qs->active_window;
+    minibuffer.saved_active = qs->active_window;
     qs->active_window = s;
 
-    completion_popup_window = NULL;
-    completion_function = completion_func;
-    minibuffer_history = hist;
-    minibuffer_history_saved_offset = 0;
+    minibuffer.completion_popup_window = NULL;
+    minibuffer.completion_function = completion_func;
+    minibuffer.history = hist;
+    minibuffer.history_saved_offset = 0;
     if (hist) {
-        minibuffer_history_index = hist->nb_items;
+        minibuffer.history_index = hist->nb_items;
         add_string(hist, "", 0);
     }
 }
@@ -8342,7 +8341,7 @@ void set_user_option(const char *user)
     char path[MAX_FILENAME_SIZE];
     const char *home_path;
 
-    user_option = user;
+    qs->user_option = user;
 
     /* compute resources path */
     qs->res_path[0] = '\0';

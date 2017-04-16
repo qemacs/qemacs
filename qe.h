@@ -1359,6 +1359,8 @@ struct EditState {
                              window not focused (list mode only) */
     int mouse_force_highlight; /* if true, mouse can force highlight
                                   (list mode only) */
+    int up_down_last_x; /* last x offset for vertical movement */
+
     /* low level colorization function */
     GetColorizedLineFunc get_colorized_line;
     ColorizeFunc colorize_func; /* colorization function */
@@ -1660,6 +1662,7 @@ struct QEmacsState {
     int backspace_is_control_h;
     int backup_inhibited;  /* prevent qemacs from backing up files */
     int fuzzy_search;    /* use fuzzy search for completion matcher */
+    const char *user_option;
 };
 
 extern QEmacsState qe_state;
