@@ -470,6 +470,14 @@ int qe_strcollate(const char *s1, const char *s2)
 
 /* CG: need a local version of strcasecmp: qe_strcasecmp() */
 
+int qe_strtobool(const char *s, int def) {
+    if (s && *s) {
+        return strxfind("1|y|yes|t|true", s) ? 1 : 0;
+    } else {
+        return def;
+    }
+}
+
 /* Should return int, length of converted string? */
 void qe_strtolower(char *buf, int size, const char *str)
 {
@@ -2220,6 +2228,47 @@ void *qe_realloc(void *pp, size_t size)
     if (p || !size)
         *(void **)pp = p;
     return p;
+}
+
+/*---------------- bounded strings ----------------*/
+
+/* get the n-th string from a `|` separated list */
+bstr_t bstr_get_nth(const char *s, int n) {
+    bstr_t bs;
+
+    for (bs.s = s;; s++) {
+        if (*s == '\0' || *s == '|') {
+            if (n-- == 0) {
+                bs.len = s - bs.s;
+                break;
+            }
+            if (*s) {
+                bs.s = s + 1;
+            } else {
+                bs.len = 0;
+                bs.s = NULL;
+                break;
+            }
+        }
+    }
+    return bs;
+}
+
+/* get the first string from a list and push pointer */
+bstr_t bstr_token(const char *s, int sep, const char **pp) {
+    bstr_t bs = { s, 0 };
+
+    if (s) {
+        /* XXX: should special case spaces? */
+        for (; s != '\0' && *s != sep; s++)
+            continue;
+
+        bs.len = s - bs.s;
+        if (pp) {
+            *pp = *s ? s + 1 : NULL;
+        }
+    }
+    return bs;
 }
 
 /*---------------- qe_qsort_r ----------------*/

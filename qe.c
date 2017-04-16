@@ -8176,21 +8176,19 @@ void do_load_qerc(EditState *e, const char *filename)
 
 /******************************************************/
 /* command line option handling */
-static CmdOptionDef *first_cmd_options;
+static CmdLineOptionDef *first_cmd_options;
 
-void qe_register_cmd_line_options(CmdOptionDef *table)
+void qe_register_cmd_line_options(CmdLineOptionDef *table)
 {
-    CmdOptionDef **pp, *p;
+    CmdLineOptionDef **pp, *p;
 
     /* link command line options table at end of list */
-    pp = &first_cmd_options;
-    while (*pp != NULL) {
+    for (pp = &first_cmd_options; *pp != NULL; pp = &p->u.next) {
         p = *pp;
-	if (p == table)
-	    return;  /* already registered */
-        while (p->name != NULL)
+        if (p == table)
+            return;  /* already registered */
+        while (p->desc != NULL)
             p++;
-        pp = &p->u.next;
     }
     *pp = table;
 }
@@ -8213,8 +8211,7 @@ static void show_version(void)
 
 static void show_usage(void)
 {
-    CmdOptionDef *p;
-    int pos;
+    CmdLineOptionDef *p;
 
     printf("Usage: qe [OPTIONS] [filename ...]\n"
            "\n"
@@ -8222,20 +8219,26 @@ static void show_usage(void)
            "\n");
 
     /* print all registered command line options */
-    p = first_cmd_options;
-    while (p != NULL) {
-        while (p->name != NULL) {
-            pos = printf("--%s", p->name);
-            if (p->shortname)
-                pos += printf(", -%s", p->shortname);
-            if (p->flags & CMD_OPT_ARG)
-                pos += printf(" %s", p->argname);
-            if (pos < 24)
-                printf("%*s", pos - 24, "");
-            printf("%s\n", p->help);
+    for (p = first_cmd_options; p != NULL; p = p->u.next) {
+        while (p->desc != NULL) {
+            const char *s = p->desc;
+            bstr_t shortname = bstr_token(s, '|', &s);
+            bstr_t name = bstr_token(s, '|', &s);
+            bstr_t argname = bstr_token(s, '|', &s);
+            bstr_t help = bstr_make(s);
+            int pos = printf(" ");
+            
+            if (shortname.len)
+                pos += printf(" -%.*s", shortname.len, shortname.s);
+            if (name.len)
+                pos += printf(" --%.*s", name.len, name.s);
+            if (argname.len)
+                pos += printf(" %.*s", argname.len, argname.s);
+            if (pos < 22)
+                printf("%*s", pos - 22, "");
+            printf("  %.*s\n", help.len, help.s);
             p++;
         }
-        p = p->u.next;
     }
     printf("\n"
            "Report bugs to bug@qemacs.org.  First, please see the Bugs\n"
@@ -8247,60 +8250,79 @@ static int parse_command_line(int argc, char **argv)
 {
     int _optind;
 
-    _optind = 1;
-    for (;;) {
-        const char *r, *r1, *r2, *_optarg;
-        CmdOptionDef *p;
+    for (_optind = 1; _optind < argc;) {
+        const char *arg, *r, *_optarg;
+        CmdLineOptionDef *p;
+        bstr_t opt1;
+        bstr_t opt2;
 
-        if (_optind >= argc)
-            break;
-        r = argv[_optind];
+        r = arg = argv[_optind];
         /* stop before first non option */
         if (r[0] != '-')
             break;
         _optind++;
 
-        r2 = r1 = r + 1;
-        if (r2[0] == '-') {
-            r2++;
+        opt1.s = opt2.s = r + 1;
+        if (r[1] == '-') {
+            opt2.s++;
             /* stop after `--' marker */
-            if (r2[0] == '\0')
+            if (r[2] == '\0')
                 break;
         }
+        /* parse optional argument specified with opt=arg or opt:arg syntax */
+        _optarg = NULL;
+        while (*r) {
+            if (*r == ':' || *r == '=') {
+                _optarg = r + 1;
+                break;
+            }
+            r++;
+        }
+        opt1.len = r - opt1.s;
+        opt2.len = r - opt2.s;
 
-        p = first_cmd_options;
-        while (p != NULL) {
-            while (p->name != NULL) {
-                if (strequal(p->name, r2) ||
-                    (p->shortname && strequal(p->shortname, r1))) {
-                    if (p->flags & CMD_OPT_ARG) {
+        for (p = first_cmd_options; p != NULL; p = p->u.next) {
+            while (p->desc != NULL) {
+                const char *s = p->desc;
+                bstr_t shortname = bstr_token(s, '|', &s);
+                bstr_t name = bstr_token(s, '|', &s);
+                bstr_t argname = bstr_token(s, '|', &s);
+                if (bstr_equal(opt1, shortname) || bstr_equal(opt2, name)) {
+                    if (argname.len && _optarg == NULL) {
                         if (_optind >= argc) {
                             put_status(NULL,
-                                       "cmdline argument expected -- %s", r);
+                                       "cmdline argument %.*s expected for --%.*s",
+                                       argname.len, argname.s, name.len, name.s);
                             goto next_cmd;
                         }
                         _optarg = argv[_optind++];
-                    } else {
-                        _optarg = NULL;
                     }
-                    if (p->flags & CMD_OPT_BOOL) {
-                        *p->u.int_ptr = 1;
-                    } else if (p->flags & CMD_OPT_STRING) {
-                        *p->u.string_ptr = _optarg;
-                    } else if (p->flags & CMD_OPT_INT) {
+                    switch (p->type) {
+                    case CMD_LINE_TYPE_BOOL:
+                        *p->u.int_ptr = qe_strtobool(_optarg, 1);
+                        break;
+                    case CMD_LINE_TYPE_INT:
                         *p->u.int_ptr = strtol(_optarg, NULL, 0);
-                    } else if (p->flags & CMD_OPT_ARG) {
-                        p->u.func_arg(_optarg);
-                    } else {
+                        break;
+                    case CMD_LINE_TYPE_STRING:
+                        *p->u.string_ptr = _optarg;
+                        break;
+                    case CMD_LINE_TYPE_FVOID:
                         p->u.func_noarg();
+                        break;
+                    case CMD_LINE_TYPE_FARG:
+                        p->u.func_arg(_optarg);
+                        break;
+                    case CMD_LINE_TYPE_NONE:
+                    case CMD_LINE_TYPE_NEXT:
+                        break;
                     }
                     goto next_cmd;
                 }
                 p++;
             }
-            p = p->u.next;
         }
-        put_status(NULL, "unknown cmdline option '%s'", r);
+        put_status(NULL, "unknown cmdline option '%s'", arg);
     next_cmd: ;
     }
 
@@ -8365,28 +8387,29 @@ void set_tty_charset(const char *name)
     qe_state.tty_charset = qe_strdup(name);
 }
 
-static CmdOptionDef cmd_options[] = {
-    { "help", "h", NULL, 0, "display this help message and exit",
-      { .func_noarg = show_usage }},
-    { "no-init-file", "q", NULL, CMD_OPT_BOOL, "do not load config files",
-      { .int_ptr = &no_init_file }},
-    { "single-window", "1", NULL, CMD_OPT_BOOL, "keep a single window when loading multiple files",
-       { .int_ptr = &single_window }},
-    { "no-windows", "nw", NULL, CMD_OPT_BOOL, "force tty terminal usage",
-       { .int_ptr = &force_tty }},
-    { "ttycharset", "c", "CHARSET", CMD_OPT_ARG, "specify tty charset",
-      { .func_arg = set_tty_charset }},
-    { "use-session", "s", NULL, CMD_OPT_BOOL, "load and save session files",
-      { .int_ptr = &use_session_file }},
-    { "user", "u", "USER", CMD_OPT_ARG, "load ~USER/.qe/config instead of your own",
-      { .func_arg = set_user_option }},
-    { "version", "V", NULL, 0, "display version information and exit",
-      { .func_noarg = show_version }},
+static CmdLineOptionDef cmd_options[] = {
+    CMD_LINE_FVOID("h", "help", show_usage,
+                   "display this help message and exit"),
+    CMD_LINE_FVOID("?", "", show_usage, ""),
+    CMD_LINE_BOOL("q", "no-init-file", &no_init_file,
+                  "do not load config files"),
+    CMD_LINE_BOOL("1", "single-window", &single_window,
+                  "keep a single window when loading multiple files"),
+    CMD_LINE_BOOL("nw", "no-windows", &force_tty,
+                  "force tty terminal usage"),
+    CMD_LINE_FARG("c", "charset", "CHARSET", set_tty_charset,
+                  "specify tty charset"),
+    CMD_LINE_BOOL("s", "use-session", &use_session_file,
+                  "load and save session files"),
+    CMD_LINE_FARG("u", "user", "USER", set_user_option,
+                  "load ~USER/.qe/config instead of your own"),
+    CMD_LINE_FVOID("V", "version", show_version,
+                   "display version information and exit"),
 #ifndef CONFIG_TINY
-    { "free-all", NULL, NULL, CMD_OPT_BOOL, "free all structures upon exit",
-      { .int_ptr = &free_everything }},
+    CMD_LINE_BOOL("", "free-all", &free_everything,
+                  "free all structures upon exit"),
 #endif
-    { NULL, NULL, NULL, 0, NULL, { NULL }},
+    CMD_LINE_LINK()
 };
 
 /* default key bindings */

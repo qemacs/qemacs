@@ -1911,14 +1911,14 @@ static CmdDef x11_commands[] = {
     CMD_DEF_END,
 };
 
-static CmdOptionDef cmd_options[] = {
-    { "display", "d", "display", CMD_OPT_STRING | CMD_OPT_ARG, "set X11 display",
-      { .string_ptr = &display_str }},
-    { "geometry", "g", "WxH", CMD_OPT_STRING | CMD_OPT_ARG, "set X11 display size",
-      { .string_ptr = &geometry_str }},
-    { "font-size", "fs", "ptsize", CMD_OPT_INT | CMD_OPT_ARG, "set default font size",
-      { .int_ptr = &font_ptsize }},
-    { NULL, NULL, NULL, 0, NULL, { NULL }},
+static CmdLineOptionDef cmd_options[] = {
+    CMD_LINE_STRING("d", "display", "DISPLAY", &display_str,
+                    "set X11 display"),
+    CMD_LINE_STRING("g", "geometry", "WxH", &geometry_str,
+                    "set X11 display size"),
+    CMD_LINE_INT("fs", "font-size", "ptsize", &font_ptsize,
+                 "set default font size"),
+    CMD_LINE_LINK()
 };
 
 static int x11_init(void)

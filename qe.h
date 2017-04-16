@@ -434,6 +434,7 @@ static inline int check_fcall(const unsigned int *str, int i) {
 }
 
 int qe_strcollate(const char *s1, const char *s2);
+int qe_strtobool(const char *s, int def);
 void qe_strtolower(char *buf, int buf_size, const char *str);
 void skip_spaces(const char **pp);
 
@@ -579,32 +580,61 @@ static inline int buf_puts(buf_t *bp, const char *str) {
 int buf_printf(buf_t *bp, const char *fmt, ...) qe__attr_printf(2,3);
 int buf_putc_utf8(buf_t *bp, int c);
 
+/* Bounded constant strings used in various parse functions */
+typedef struct bstr_t {
+    const char *s;
+    int len;
+} bstr_t;
+
+static inline bstr_t bstr_make(const char *s) {
+    bstr_t bs = { s, s ? strlen(s) : 0 };
+    return bs;
+}
+
+bstr_t bstr_token(const char *s, int sep, const char **pp);
+bstr_t bstr_get_nth(const char *s, int n);
+
+static inline int bstr_equal(bstr_t s1, bstr_t s2) {
+    /* NULL and empty strings are equivalent */
+    return s1.len == s2.len && !memcmp(s1.s, s2.s, s1.len);
+}
+
 /* our own implementation of qsort_r() */
 void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
                 int (*compar)(void *, const void *, const void *));
 
-/* command line option */
-#define CMD_OPT_ARG      0x0001 /* argument */
-#define CMD_OPT_STRING   0x0002 /* string */
-#define CMD_OPT_BOOL     0x0004 /* boolean */
-#define CMD_OPT_INT      0x0008 /* int */
+/* Command line options */
+enum CmdLineOptionType {
+    CMD_LINE_TYPE_NONE   = 0,  /* nothing */
+    CMD_LINE_TYPE_BOOL   = 1,  /* boolean ptr */
+    CMD_LINE_TYPE_INT    = 2,  /* int ptr */
+    CMD_LINE_TYPE_STRING = 3,  /* string ptr */
+    CMD_LINE_TYPE_FVOID  = 4,  /* function() */
+    CMD_LINE_TYPE_FARG   = 5,  /* function(string) */
+    CMD_LINE_TYPE_NEXT   = 6,  /* next pointer */
+};
 
-typedef struct CmdOptionDef {
-    const char *name;
-    const char *shortname;
-    const char *argname;
-    int flags;
-    const char *help;
+typedef struct CmdLineOptionDef {
+    const char *desc;
+    enum CmdLineOptionType type;
     union {
-        const char **string_ptr;
         int *int_ptr;
+        const char **string_ptr;
         void (*func_noarg)(void);
         void (*func_arg)(const char *);
-        struct CmdOptionDef *next;
+        struct CmdLineOptionDef *next;
     } u;
-} CmdOptionDef;
+} CmdLineOptionDef;
 
-void qe_register_cmd_line_options(CmdOptionDef *table);
+#define CMD_LINE_NONE()          { NULL, CMD_LINE_TYPE_NONE, { NULL }}
+#define CMD_LINE_BOOL(s,n,p,h)   { s "|" n "||" h, CMD_LINE_TYPE_BOOL, { .int_ptr = p }}
+#define CMD_LINE_INT(s,n,a,p,h)  { s "|" n "|" a "|" h, CMD_LINE_TYPE_INT, { .int_ptr = p }}
+#define CMD_LINE_STRING(s,n,a,p,h) { s "|" n "|" a "|" h, CMD_LINE_TYPE_STRING, { .string_ptr = p }}
+#define CMD_LINE_FVOID(s,n,p,h)  { s "|" n "||" h, CMD_LINE_TYPE_FVOID, { .func_noarg = p }}
+#define CMD_LINE_FARG(s,n,a,p,h) { s "|" n "|" a "|" h, CMD_LINE_TYPE_FARG, { .func_arg = p }}
+#define CMD_LINE_LINK()          { NULL, CMD_LINE_TYPE_NEXT, { NULL }}
+
+void qe_register_cmd_line_options(CmdLineOptionDef *table);
 
 int find_resource_file(char *path, int path_size, const char *pattern);
 
