@@ -498,7 +498,7 @@ void do_show_date_and_time(EditState *s, int argval)
 
 /* Return the matching delimiter for all pairs */
 static int matching_delimiter(int c) {
-    static const char pairs[] = "(){}[]<>";
+    const char *pairs = "(){}[]<>";
     int i;
 
     for (i = 0; pairs[i]; i++) {

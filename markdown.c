@@ -20,7 +20,7 @@
 
 #include "qe.h"
 
-extern ModeDef litcoffee_mode;
+static ModeDef litcoffee_mode;
 
 enum {
     /* TODO: define specific styles */
@@ -56,7 +56,7 @@ enum {
     MKD_LEVEL_MAX       = 7,
 };
 
-ModeDef *mkd_lang_def[MKD_LANG_MAX + 1];
+static ModeDef *mkd_lang_def[MKD_LANG_MAX + 1];
 
 #define MKD_BULLET_STYLES  4
 static int MkdBulletStyles[MKD_BULLET_STYLES] = {
@@ -844,7 +844,7 @@ static int mkd_mode_init(EditState *s, EditBuffer *b, int flags)
     return 0;
 }
 
-ModeDef mkd_mode = {
+static ModeDef mkd_mode = {
     .name = "markdown",
     .extensions = "mkd|md|markdown",
     .mode_init = mkd_mode_init,
@@ -862,7 +862,7 @@ static int litcoffee_mode_init(EditState *s, EditBuffer *b, int flags)
     return 0;
 }
 
-ModeDef litcoffee_mode = {
+static ModeDef litcoffee_mode = {
     .name = "LitCoffee",
     .extensions = "litcoffee",
     .mode_init = litcoffee_mode_init,

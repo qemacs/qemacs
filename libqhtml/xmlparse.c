@@ -338,7 +338,7 @@ static const char *css_attr_str(CSSBox *box, CSSIdent attr_id)
 
 static const char *css_attr_strlower(CSSBox *box, CSSIdent attr_id)
 {
-    static char buf[200];
+    static char buf[200];   /* ugly patch to return a string */
     const char *value;
 
     value = css_attr_str(box, attr_id);

@@ -997,7 +997,7 @@ static CmdDef video_commands[] = {
     CMD_DEF_END,
 };
 
-ModeDef video_mode = {
+static ModeDef video_mode = {
     .name = "av",
     .window_instance_size = sizeof(VideoState),
     .mode_probe = video_mode_probe,

@@ -195,7 +195,7 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
     }
 }
 
-ModeDef ebnf_mode = {
+static ModeDef ebnf_mode = {
     .name = "ebnf",
     .extensions = "ebnf",
     .keywords = ebnf_keywords,
@@ -203,7 +203,7 @@ ModeDef ebnf_mode = {
     .colorize_func = ebnf_colorize_line,
 };
 
-ModeDef antlr_mode = {
+static ModeDef antlr_mode = {
     .name = "antlr",
     .extensions = "antlr",
     .keywords = ebnf_keywords,

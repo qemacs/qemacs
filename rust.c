@@ -265,7 +265,7 @@ static void rust_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-ModeDef rust_mode = {
+static ModeDef rust_mode = {
     .name = "Rust",
     .extensions = "rs",
     .shell_handlers = "rustc",

@@ -452,7 +452,7 @@ ModeDef lisp_mode = {
     .colorize_flags = LISP_LANG_LISP,
 };
 
-ModeDef elisp_mode = {
+static ModeDef elisp_mode = {
     .name = "ELisp",
     .extensions = "el",
     .keywords = elisp_keywords,
@@ -463,7 +463,7 @@ ModeDef elisp_mode = {
     .fallback = &lisp_mode,
 };
 
-ModeDef scheme_mode = {
+static ModeDef scheme_mode = {
     .name = "Scheme",
     .extensions = "scm|sch|ss",
     .keywords = scheme_keywords,
@@ -473,7 +473,7 @@ ModeDef scheme_mode = {
     .fallback = &lisp_mode,
 };
 
-ModeDef racket_mode = {
+static ModeDef racket_mode = {
     .name = "Racket",
     .extensions = "rkt|rktd",
     .keywords = racket_keywords,
@@ -483,7 +483,7 @@ ModeDef racket_mode = {
     .fallback = &lisp_mode,
 };
 
-ModeDef clojure_mode = {
+static ModeDef clojure_mode = {
     .name = "Clojure",
     .extensions = "clj",
     .keywords = clojure_keywords,
@@ -493,7 +493,7 @@ ModeDef clojure_mode = {
     .fallback = &lisp_mode,
 };
 
-ModeDef sandbox_mode = {
+static ModeDef sandbox_mode = {
     .name = "Sandbox",  /* MacOS, Tinyscheme based? */
     .extensions = "sb",
     .keywords = sandbox_keywords,

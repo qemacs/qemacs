@@ -3841,7 +3841,7 @@ static void elixir_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-ModeDef elixir_mode = {
+static ModeDef elixir_mode = {
     .name = "Elixir",
     .extensions = "ex|exs",
     .shell_handlers = "elixir",

@@ -193,7 +193,7 @@ static void icon_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-ModeDef icon_mode = {
+static ModeDef icon_mode = {
     .name = "Icon",
     .extensions = "icn",
     .shell_handlers = "iconc",

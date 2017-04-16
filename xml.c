@@ -130,6 +130,7 @@ static void xml_colorize_line(QEColorizeContext *cp,
                 start = i;
                 if (state & IN_XML_SCRIPT) {
                     /* javascript coloring */
+                    /* XXX: should support actual scripting language if supported */
                 parse_script:
                     for (; str[i] != '\0'; i++) {
                         if (str[i] == '<'

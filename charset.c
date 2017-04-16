@@ -136,9 +136,9 @@ struct QECharset charset_raw = {
 
 static int probe_8859_1(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
-                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+    const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                           (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + size;
     uint32_t c;
@@ -361,9 +361,9 @@ int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str)
 
 static int probe_utf8(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
-                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+    const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                           (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + size;
     uint32_t c;
@@ -560,9 +560,9 @@ struct QECharset charset_utf8 = {
 
 static int probe_ucs2le(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
-                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+    const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                           (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~1);
     uint32_t c;
@@ -691,9 +691,9 @@ static int charset_goto_line_ucs2(CharsetDecodeState *s,
 
 static int probe_ucs2be(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
-                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+    const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                           (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~1);
     uint32_t c;
@@ -835,9 +835,9 @@ struct QECharset charset_ucs2be = {
 
 static int probe_ucs4le(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
-                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+    const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                           (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~3);
     uint32_t c;
@@ -965,9 +965,9 @@ static int charset_goto_line_ucs4(CharsetDecodeState *s,
 
 static int probe_ucs4be(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
-    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
-                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+    const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                           (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~3);
     uint32_t c;
@@ -1500,9 +1500,9 @@ done_utf8:
 
     has_binary = 0;
     {
-        static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
-                                      (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                                      (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+        const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                               (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                               (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
 
         for (i = 0; i < size; i++) {
             c = buf[i];

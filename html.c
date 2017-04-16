@@ -858,7 +858,7 @@ static void html_mode_free(EditBuffer *b, void *state)
 /* search for HTML tag */
 static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
 {
-    static const uint32_t magic = (1U << '\r') | (1U << '\n') | (1U << '\t') | (1U << '\033');
+    const uint32_t magic = (1U << '\r') | (1U << '\n') | (1U << '\t') | (1U << '\033');
     const unsigned char *p = p1->buf;
     int c, score;
 

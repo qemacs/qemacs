@@ -26,6 +26,8 @@ enum {
     HEX_STYLE_DUMP   = QE_STYLE_FUNCTION,
 };
 
+static ModeDef hex_mode;
+
 static int to_disp(int c)
 {
 #if 1
@@ -193,9 +195,9 @@ static int hex_mode_init(EditState *s, EditBuffer *b, int flags)
 
 static int detect_binary(const unsigned char *buf, int size)
 {
-    static const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
-                                  (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                                  (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+    const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
+                           (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
     int i, c;
 
     for (i = 0; i < size; i++) {
@@ -342,7 +344,7 @@ static ModeDef binary_mode = {
     .get_mode_line = hex_mode_line,
 };
 
-ModeDef hex_mode = {
+static ModeDef hex_mode = {
     .name = "hex",
     .mode_probe = hex_mode_probe,
     .mode_init = hex_mode_init,

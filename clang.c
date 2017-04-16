@@ -1250,7 +1250,7 @@ ModeDef c_mode = {
 
 /* XXX: support Yacc / Bison syntax extensions */
 
-ModeDef yacc_mode = {
+static ModeDef yacc_mode = {
     .name = "Yacc",
     .extensions = "y|yacc",
     .colorize_func = c_colorize_line,
@@ -1264,7 +1264,7 @@ ModeDef yacc_mode = {
 
 /* XXX: support Lex / Flex syntax extensions */
 
-ModeDef lex_mode = {
+static ModeDef lex_mode = {
     .name = "Lex",
     .extensions = "l|lex",
     .colorize_func = c_colorize_line,
@@ -1343,7 +1343,7 @@ static const char c2_types[] = {
     "float32|float64|"
 };
 
-ModeDef c2_mode = {
+static ModeDef c2_mode = {
     .name = "C2",
     .extensions = "c2|c2h|c2t",
     .colorize_func = c_colorize_line,
@@ -1387,7 +1387,7 @@ static int objc_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-ModeDef objc_mode = {
+static ModeDef objc_mode = {
     .name = "ObjC", /* Objective C */
     .extensions = "m|mm",
     .mode_probe = objc_mode_probe,
@@ -1446,7 +1446,7 @@ static const char awk_types[] = {
     "char|double|float|int|long|unsigned|short|signed|void|"
 };
 
-ModeDef awk_mode = {
+static ModeDef awk_mode = {
     .name = "awk",
     .extensions = "awk",
     .colorize_func = c_colorize_line,
@@ -1489,7 +1489,7 @@ static const char less_types[] = {
     "|"
 };
 
-ModeDef less_mode = {
+static ModeDef less_mode = {
     .name = "less",
     .extensions = "less",
     .colorize_func = c_colorize_line,
@@ -1817,7 +1817,7 @@ static int json_mode_probe(ModeDef *mode, ModeProbeData *pd)
     return 1;
 }
 
-ModeDef json_mode = {
+static ModeDef json_mode = {
     .name = "json",
     .extensions = "json",
     .mode_probe = json_mode_probe,
@@ -1851,7 +1851,7 @@ static const char as_types[] = {
     "Class|Interface|"
 };
 
-ModeDef as_mode = {
+static ModeDef as_mode = {
     .name = "Actionscript",
     .extensions = "as",
     .colorize_func = c_colorize_line,
@@ -1970,7 +1970,7 @@ static const char go_types[] = {
 
 /* Go identifiers start with a Unicode letter or _ */
 
-ModeDef go_mode = {
+static ModeDef go_mode = {
     .name = "Go",
     .extensions = "go",
     .colorize_func = c_colorize_line,
@@ -2007,7 +2007,7 @@ static const char d_types[] = {
     "|cent|ucent|string|wstring|dstring|size_t|ptrdiff_t|"
 };
 
-ModeDef d_mode = {
+static ModeDef d_mode = {
     .name = "D",
     .extensions = "d|di",
     .colorize_func = c_colorize_line,
@@ -2031,7 +2031,7 @@ static const char limbo_types[] = {
     "big|byte|int|real|string|"
 };
 
-ModeDef limbo_mode = {
+static ModeDef limbo_mode = {
     .name = "Limbo",
     .extensions = "m",
     .colorize_func = c_colorize_line,
@@ -2064,7 +2064,7 @@ static const char cyclone_types[] = {
     "@extensible|@tagged"
 };
 
-ModeDef cyclone_mode = {
+static ModeDef cyclone_mode = {
     .name = "Cyclone",
     .extensions = "cyc|cyl|cys",
     .colorize_func = c_colorize_line,
@@ -2086,7 +2086,7 @@ static const char ch_types[] = {
     "complex|"
 };
 
-ModeDef ch_mode = {
+static ModeDef ch_mode = {
     .name = "Ch",
     .extensions = "chf",
     .colorize_func = c_colorize_line,
@@ -2110,7 +2110,7 @@ static const char squirrel_types[] = {
     "local|"
 };
 
-ModeDef squirrel_mode = {
+static ModeDef squirrel_mode = {
     .name = "Squirrel",
     .extensions = "nut",
     .colorize_func = c_colorize_line,
@@ -2134,7 +2134,7 @@ static const char ici_types[] = {
     "auto|"
 };
 
-ModeDef ici_mode = {
+static ModeDef ici_mode = {
     .name = "ICI",
     .extensions = "ici",
     .colorize_func = c_colorize_line,
@@ -2173,7 +2173,7 @@ static const char jsx_types[] = {
     "void|variant|boolean|int|number|string|Error|"
 };
 
-ModeDef jsx_mode = {
+static ModeDef jsx_mode = {
     .name = "JSX",
     .extensions = "jsx",
     .colorize_func = c_colorize_line,
@@ -2199,7 +2199,7 @@ static const char haxe_types[] = {
     "Iterator|"
 };
 
-ModeDef haxe_mode = {
+static ModeDef haxe_mode = {
     .name = "Haxe",
     .extensions = "hx",
     .colorize_func = c_colorize_line,
@@ -2233,7 +2233,7 @@ static const char dart_types[] = {
     "Dynamic|Exception|Error|AssertionError|TypeError|FallThroughError|"
 };
 
-ModeDef dart_mode = {
+static ModeDef dart_mode = {
     .name = "Dart",
     .extensions = "dart",
     .colorize_func = c_colorize_line,
@@ -2260,7 +2260,7 @@ static const char pike_types[] = {
     "variant|void|"
 };
 
-ModeDef pike_mode = {
+static ModeDef pike_mode = {
     .name = "Pike",
     .extensions = "pike",
     .colorize_func = c_colorize_line,
@@ -2317,7 +2317,7 @@ static const char calc_types[] = {
     "|"
 };
 
-ModeDef calc_mode = {
+static ModeDef calc_mode = {
     .name = "calc", /* GNU Calc */
     .extensions = "cal|calc",
     .shell_handlers = "calc",
@@ -2352,7 +2352,7 @@ static int enscript_mode_probe(ModeDef *mode, ModeProbeData *pd)
     return 1;
 }
 
-ModeDef enscript_mode = {
+static ModeDef enscript_mode = {
     .name = "Enscript", /* GNU Enscript */
     .extensions = "st", /* syntax files */
     .mode_probe = enscript_mode_probe,
@@ -2390,7 +2390,7 @@ static int qs_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-ModeDef qscript_mode = {
+static ModeDef qscript_mode = {
     .name = "QScript",
     .extensions = "qe|qs",
     .shell_handlers = "qscript|qs",
@@ -2418,7 +2418,7 @@ static const char ec_types[] = {
     "string|static_string|array|callback|symbol|"
 };
 
-ModeDef ec_mode = {
+static ModeDef ec_mode = {
     .name = "elastiC",
     .extensions = "ec",
     .colorize_func = c_colorize_line,
@@ -2440,7 +2440,7 @@ static const char sl_types[] = {
     "variable|"
 };
 
-ModeDef sl_mode = {
+static ModeDef sl_mode = {
     .name = "Jed",  /* S-Lang */
     .extensions = "sl",
     .colorize_func = c_colorize_line,
@@ -2463,7 +2463,7 @@ static const char csl_types[] = {
     "var|void|string|int|"
 };
 
-ModeDef csl_mode = {
+static ModeDef csl_mode = {
     .name = "CSL",
     .extensions = "csl",
     .shell_handlers = "csl",
@@ -2488,7 +2488,7 @@ static const char neko_types[] = {
     "var|"
 };
 
-ModeDef neko_mode = {
+static ModeDef neko_mode = {
     .name = "Neko",
     .extensions = "neko",
     .shell_handlers = NULL,
@@ -2514,7 +2514,7 @@ static const char nml_types[] = {
     "var|int|float|string|bool|char|void|"
 };
 
-ModeDef nml_mode = {
+static ModeDef nml_mode = {
     .name = "NekoML",
     .extensions = "nml",
     .shell_handlers = NULL,
@@ -2540,7 +2540,7 @@ static const char alloy_types[] = {
     "u8|u16|u32|u64|i8|i16|i32|i64|f64|f32|"
 };
 
-ModeDef alloy_mode = {
+static ModeDef alloy_mode = {
     .name = "Alloy",
     .extensions = "ay",
     .shell_handlers = NULL,
@@ -2578,7 +2578,7 @@ static int scilab_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-ModeDef scilab_mode = {
+static ModeDef scilab_mode = {
     .name = "SciLab",
     .extensions = "sce|sci",
     .shell_handlers = NULL,
@@ -2684,7 +2684,7 @@ static const char vala_types[] = {
     "double|va_list|unichar|"
 };
 
-ModeDef vala_mode = {
+static ModeDef vala_mode = {
     .name = "Vala",
     .mode_name = "vala",
     .extensions = "vala|vapi",
@@ -2744,7 +2744,7 @@ static int pawn_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
-ModeDef pawn_mode = {
+static ModeDef pawn_mode = {
     .name = "Pawn",
     .mode_name = "pawn",
     .extensions = "p",
@@ -2779,7 +2779,7 @@ static const char cminus_types[] = {
     "int|void|"
 };
 
-ModeDef cminus_mode = {
+static ModeDef cminus_mode = {
     .name = "C-minus",
     .mode_name = "cminus",
     .extensions = "cm",

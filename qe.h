@@ -2249,13 +2249,11 @@ void do_transpose(EditState *s, int cmd);
 
 /* hex.c */
 
-extern ModeDef hex_mode;
-
 void hex_write_char(EditState *s, int key);
 
 /* lisp.c */
 
-extern ModeDef lisp_mode;
+extern ModeDef lisp_mode;  /* used for org_mode */
 
 /* list.c */
 
@@ -2278,12 +2276,12 @@ extern ModeDef js_mode;
 extern ModeDef php_mode;
 extern ModeDef csharp_mode;
 extern ModeDef css_mode;
-extern ModeDef xml_mode;
+extern ModeDef xml_mode;  /* used in docbook_mode */
 extern ModeDef htmlsrc_mode;
 
 /* html.c */
 
-extern ModeDef html_mode;
+extern ModeDef html_mode;  /* used in docbook_mode */
 
 /* flags from libqhtml/css.h */
 int gxml_mode_init(EditBuffer *b, int flags, const char *default_stylesheet);

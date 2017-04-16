@@ -5781,8 +5781,10 @@ struct MinibufState {
     int history_saved_offset;
 };
 
-static struct MinibufState minibuffer;
 static ModeDef minibuffer_mode;
+
+/* XXX: should be opaque mode data */
+static struct MinibufState minibuffer;
 
 void do_completion(EditState *s, int type)
 {

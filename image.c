@@ -931,7 +931,7 @@ static EditBufferDataType image_data_type = {
     image_buffer_close,
 };
 
-ModeDef image_mode = {
+static ModeDef image_mode = {
     .name = "image",
     .buffer_instance_size = sizeof(ImageBufferState),
     .window_instance_size = sizeof(ImageState),

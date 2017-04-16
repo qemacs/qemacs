@@ -731,7 +731,7 @@ static CmdDef org_commands[] = {
     CMD_DEF_END,
 };
 
-ModeDef org_mode = {
+static ModeDef org_mode = {
     .name = "org",
     .extensions = "org",
     .colorize_func = org_colorize_line,
