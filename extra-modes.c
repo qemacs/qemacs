@@ -1600,7 +1600,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start = i, c, sep = 0, level = 0, level1, klen, style;
     int state = cp->colorize_state;
-    char kbuf[32];
+    char kbuf[64];
 
     if (state & IN_LUA_LONGLIT) {
         /* either a comment or a string */
@@ -1865,7 +1865,7 @@ static void julia_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start = i, c, sep = 0, klen;
     int state = cp->colorize_state;
-    char kbuf[32];
+    char kbuf[64];
 
     if (state & IN_JULIA_STRING) {
         sep = '\"';
@@ -2040,7 +2040,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start = i, c, style = 0, sep = 0, level = 0, klen;
     int state = cp->colorize_state;
-    char kbuf[32];
+    char kbuf[64];
 
     if (state & IN_HASKELL_COMMENT)
         goto parse_comment;
@@ -2276,7 +2276,7 @@ static void coffee_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start = i, c, style = 0, sep, klen, prev, i1;
     int state = cp->colorize_state;
-    char kbuf[32];
+    char kbuf[64];
 
     if (state & IN_COFFEE_STRING) {
         sep = '\'';
@@ -2623,7 +2623,7 @@ static void python_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start = i, c, style = 0, sep, klen, i1, tag = 0;
     int state = cp->colorize_state;
-    char kbuf[32];
+    char kbuf[64];
 
     if (state & IN_PYTHON_STRING) {
         sep = '\'';
@@ -2909,7 +2909,7 @@ static void ruby_colorize_line(QEColorizeContext *cp,
     int i = 0, j, start = i, c, style = 0, indent, sig;
     static int sep, sep0, level;        /* XXX: ugly patch */
     int state = cp->colorize_state;
-    char kbuf[32];
+    char kbuf[64];
 
     for (indent = 0; qe_isblank(str[indent]); indent++)
         continue;
@@ -3622,7 +3622,7 @@ static void elixir_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start = i, c, style = 0, sep, klen, nc, has_under;
     int state = cp->colorize_state;
-    char kbuf[32];
+    char kbuf[64];
 
     if (state & IN_ELIXIR_STRING)
         goto parse_string;

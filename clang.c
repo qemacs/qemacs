@@ -117,8 +117,10 @@ static int get_c_identifier(char *buf, int buf_size, unsigned int *p,
     ||  (c == '@' && flavor != CLANG_PIKE)
     ||  (flavor == CLANG_RUST && c >= 128)) {
         for (;;) {
-            if (j < buf_size - 1)
+            if (j < buf_size - 1) {
+                /* XXX: utf-8 bug */
                 buf[j++] = (c < 0xFF) ? c : 0xFF;
+            }
             i++;
             c = p[i];
             if (c == '-' && flavor == CLANG_CSS)
@@ -187,7 +189,7 @@ static void c_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start, i1, i2, indent, level;
     int c, style, style0, style1, type_decl, klen, delim, prev, tag;
-    char kbuf[32];
+    char kbuf[64];
     int mode_flags = syn->colorize_flags;
     int flavor = (mode_flags & CLANG_FLAVOR);
     int state = cp->colorize_state;
@@ -1548,7 +1550,7 @@ static void js_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start, i1, indent;
     int c, style, klen, delim, prev, tag;
-    char kbuf[32];
+    char kbuf[64];
     int mode_flags = syn->colorize_flags;
     int flavor = (mode_flags & CLANG_FLAVOR);
     int state = cp->colorize_state;

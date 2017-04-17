@@ -219,7 +219,7 @@ static void lisp_colorize_line(QEColorizeContext *cp,
     int colstate = cp->colorize_state;
     int i = 0, start = i, len, level, style, style1, has_expr;
     int mode_flags = syn->colorize_flags;
-    char kbuf[32];
+    char kbuf[64];
 
     level = colstate & IN_LISP_LEVEL;
     style1 = style = 0;

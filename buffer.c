@@ -2588,27 +2588,31 @@ static void eb_plist_callback(EditBuffer *b, void *opaque, int edge,
 }
 
 void eb_add_property(EditBuffer *b, int offset, int type, void *data) {
-    QEProperty *p = qe_mallocz(QEProperty);
+    QEProperty *p;
     QEProperty **pp;
 
     if (!b->property_list) {
         eb_add_callback(b, eb_plist_callback, NULL, 0);
     }
 
-    p->offset = offset;
-    p->type = type;
-    p->data = data;
-    for (pp = &b->property_list; *pp; pp = &(*pp)->next) {
-        if ((*pp)->offset >= offset) {
-            if ((*pp)->offset == offset && p->type == type && type == QE_PROP_TAG) {
-                /* prevent tag duplicates */
-                if (strequal(p->data, data))
-                    return;
+    for (pp = &b->property_list; (p = *pp) != NULL; pp = &(*pp)->next) {
+        if (p->offset >= offset) {
+            if (p->offset == offset) {
+                if (p->type == type && type == QE_PROP_TAG) {
+                    /* prevent tag duplicates */
+                    if (strequal(p->data, data))
+                        return;
+                }
                 continue;
             }
             break;
         }
     }
+
+    p = qe_mallocz(QEProperty);
+    p->offset = offset;
+    p->type = type;
+    p->data = data;
     p->next = *pp;
     *pp = p;
 }
@@ -2617,7 +2621,8 @@ QEProperty *eb_find_property(EditBuffer *b, int offset, int offset2, int type) {
     QEProperty *found = NULL;
     QEProperty *p;
     for (p = b->property_list; p && p->offset < offset2; p = p->next) {
-        if (p->offset >= offset) {
+        if (p->offset >= offset && p->type == type) {
+            /* return the last property between offset and offset2 */
             found = p;
         }
     }
@@ -2628,21 +2633,22 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2) {
     QEProperty *p;
     QEProperty **pp;
 
-    if (b->property_list) {
-        for (pp = &b->property_list; (p = *pp) != NULL;) {
-            if (p->offset >= offset && p->offset < offset2) {
-                *pp = (*pp)->next;
-                if (p->type & QE_PROP_FREE) {
-                    qe_free(&p->data);
-                }
-                qe_free(&p);
-            } else {
-                pp = &(*pp)->next;
+    if (!b->property_list)
+        return;
+
+    for (pp = &b->property_list; (p = *pp) != NULL && p->offset < offset2;) {
+        if (p->offset >= offset && p->offset < offset2) {
+            *pp = (*pp)->next;
+            if (p->type & QE_PROP_FREE) {
+                qe_free(&p->data);
             }
+            qe_free(&p);
+        } else {
+            pp = &(*pp)->next;
         }
-        if (!b->property_list) {
-            eb_free_callback(b, eb_plist_callback, NULL);
-        }
+    }
+    if (!b->property_list) {
+        eb_free_callback(b, eb_plist_callback, NULL);
     }
 }
 

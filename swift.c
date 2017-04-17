@@ -181,7 +181,7 @@ static void swift_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start = 0, c, style, klen, level;
     int state = cp->colorize_state;
-    char kbuf[32];
+    char kbuf[64];
 
     if (state) {
         /* if already in a state, go directly in the code parsing it */

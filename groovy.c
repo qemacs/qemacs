@@ -215,7 +215,7 @@ static void groovy_colorize_line(QEColorizeContext *cp,
 {
     int i = 0, start = i, c, style, sep = 0, klen, haslower;
     int state = cp->colorize_state;
-    char kbuf[32];
+    char kbuf[64];
 
     /* all these states are exclusive */
     if (state & IN_GROOVY_COMMENT) {
