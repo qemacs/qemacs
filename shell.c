@@ -1669,7 +1669,7 @@ static void do_shell(EditState *s, int force)
     ShellState *shs;
     EditBuffer *b = NULL;
 
-    if (s->flags & WF_POPUP)
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
 
     if (s->flags & WF_POPLEFT) {

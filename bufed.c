@@ -273,7 +273,7 @@ static void do_list_buffers(EditState *s, int argval)
     int i;
 
     /* ignore command from the minibuffer and popups */
-    if (s->minibuf || (s->flags & WF_POPUP))
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
 
     if (s->flags & WF_POPLEFT) {

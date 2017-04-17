@@ -558,6 +558,8 @@ struct QECharset charset_utf8 = {
 /********************************************************/
 /* UCS2/UCS4 */
 
+extern struct QECharset charset_ucs2le, charset_ucs2be;
+
 static int probe_ucs2le(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
     const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
@@ -832,6 +834,8 @@ struct QECharset charset_ucs2be = {
     charset_goto_line_ucs2,
     2, 0, 0, 10, 0, 0, table_none, NULL, NULL,
 };
+
+extern struct QECharset charset_ucs4le, charset_ucs4be;
 
 static int probe_ucs4le(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {

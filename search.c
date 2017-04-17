@@ -529,6 +529,10 @@ void do_isearch(EditState *s, int dir, int argval)
     EditState *e;
     int flags = SEARCH_FLAG_SMARTCASE;
 
+    /* prevent search from minibuffer */
+    if (s->flags & WF_MINIBUF)
+        return;
+
     /* stop displaying search matches on last window */
     e = check_window(&is->s);
     if (e) {
@@ -799,6 +803,10 @@ static void query_replace(EditState *s, const char *search_str,
                           const char *replace_str, int all, int flags)
 {
     QueryReplaceState *is;
+
+    /* prevent replace from minibuffer */
+    if (s->flags & WF_MINIBUF)
+        return;
 
     if (s->b->flags & BF_READONLY)
         return;

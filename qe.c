@@ -42,8 +42,6 @@ typedef struct HistoryEntry {
     char name[32];
 } HistoryEntry;
 
-int debug_flags;
-
 #ifdef CONFIG_INIT_CALLS
 static int (*qe__initcall_first)(void) qe__init_call = NULL;
 static void (*qe__exitcall_first)(void) qe__exit_call = NULL;
@@ -1032,6 +1030,7 @@ void do_left_right(EditState *s, int dir)
     if (s->b->flags & BF_PREVIEW) {
         EditState *e = find_window(s, KEY_LEFT, NULL);
         if (e && (e->flags & WF_FILELIST)
+        &&  s->qe_state->active_window == s
         &&  dir < 0 && eb_at_bol(s->b, s->offset)) {
             s->qe_state->active_window = e;
             return;
@@ -1622,7 +1621,7 @@ static void quote_key(void *opaque, int key)
     struct QuoteKeyArgument *qa = opaque;
     EditState *s = qa->s;
 
-    put_status(s, "");
+    put_status(s, "");  /* erase "Quote: " message */
 
     if (!s)
         return;
@@ -2982,6 +2981,7 @@ void do_toggle_full_screen(EditState *s)
     else
         s->flags |= WF_MODELINE;
     qs->hide_status = qs->is_full_screen;
+    do_refresh(s);
 }
 
 void do_toggle_mode_line(EditState *s)
@@ -4150,7 +4150,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
                 ds->style = sbuf[char_index];
             }
             c = eb_nextc(s->b, offset, &offset);
-            if (c == '\n' && !s->minibuf) {
+            if (c == '\n' && !(s->flags & WF_MINIBUF)) {
                 display_eol(ds, offset0, offset);
                 break;
             }
@@ -4680,7 +4680,7 @@ static void parse_args(ExecCmdState *es)
                 pstrcat(prompt, sizeof(prompt), es->default_input);
                 pstrcat(prompt, sizeof(prompt), ") ");
             }
-            minibuffer_edit(def_input, prompt,
+            minibuffer_edit(s, def_input, prompt,
                             get_history(history),
                             find_completion(completion_name),
                             arg_edit_cb, es);
@@ -4831,7 +4831,7 @@ void window_display(EditState *s)
 void edit_display(QEmacsState *qs)
 {
     EditState *s;
-    int has_popups;
+    int has_popups, has_minibuf;
     int start_time, elapsed_time;
 
     start_time = get_clock_ms();
@@ -4845,16 +4845,20 @@ void edit_display(QEmacsState *qs)
     /* count popups */
     /* CG: maybe a separate list for popups? */
     has_popups = 0;
+    has_minibuf = 0;
     for (s = qs->first_window; s != NULL; s = s->next_window) {
         if (s->flags & WF_POPUP) {
-            has_popups = 1;
+            has_popups++;
+        }
+        if (s->flags & WF_MINIBUF) {
+            has_minibuf++;
         }
     }
 
     /* refresh normal windows and minibuf with popup kludge */
     for (s = qs->first_window; s != NULL; s = s->next_window) {
         if (!(s->flags & WF_POPUP) &&
-            (s->minibuf || !has_popups || qs->complete_refresh)) {
+            ((s->flags & WF_MINIBUF) || !has_popups || qs->complete_refresh)) {
             window_display(s);
         }
     }
@@ -4866,6 +4870,24 @@ void edit_display(QEmacsState *qs)
                 //    /* refresh frame */;
                 window_display(s);
             }
+        }
+    }
+
+    /* Redraw status and diag messages */
+    if (*qs->status_shadow || *qs->diag_shadow) {
+        int width = qs->screen->width;
+        int height = qs->status_height;
+        int x = 0, y = qs->screen->height - height;
+
+        if (*qs->status_shadow && !has_minibuf) {
+            print_at_byte(qs->screen, x, y, width, height,
+                          qs->status_shadow, QE_STYLE_STATUS);
+        }
+        if (*qs->diag_shadow) {
+            int w = strlen(qs->diag_shadow) + 1;
+            w *= get_glyph_width(qs->screen, NULL, QE_STYLE_STATUS, '0');
+            print_at_byte(qs->screen, x + width - w, y, w, height,
+                          qs->diag_shadow, QE_STYLE_STATUS);
         }
     }
 
@@ -5151,6 +5173,7 @@ static void qe_key_process(int key)
     CmdDef *d;
     char buf1[128];
     buf_t outbuf, *out;
+    int len;
 
     if (qs->defining_macro && !qs->executing_macro) {
         macro_add_key(key);
@@ -5176,10 +5199,8 @@ static void qe_key_process(int key)
 
     c->keys[c->nb_keys++] = key;
     s = qs->active_window;
-    if (!s->minibuf) {
-        put_status(s, " ");
-        dpy_flush(&global_screen);
-    }
+    put_status(s, " ");     /* Erase pending keystrokes and message */
+    dpy_flush(&global_screen);
 
     /* Special case for escape: we transform it as meta so
        that unix users are happy ! */
@@ -5287,19 +5308,15 @@ static void qe_key_process(int key)
     }
  next:
     /* display key pressed */
-    if (!s->minibuf) {
-        int len;
-
-        len = strlen(c->buf);
-        if (len >= 1)
-            c->buf[len-1] = ' ';
-        /* Should print argument if any in a more readable way */
-        out = buf_attach(&outbuf, c->buf, sizeof(c->buf), len);
-        buf_put_key(out, key);
-        buf_put_byte(out, '-');
-        put_status(s, "~%s", c->buf);
-        dpy_flush(&global_screen);
-    }
+    len = strlen(c->buf);
+    if (len > 0)
+        c->buf[len-1] = ' ';
+    /* Should print argument if any in a more readable way */
+    out = buf_attach(&outbuf, c->buf, sizeof(c->buf), len);
+    buf_put_key(out, key);
+    buf_put_byte(out, '-');
+    put_status(s, "~%s", c->buf);
+    dpy_flush(&global_screen);
 }
 
 /* Print a utf-8 encoded buffer as unicode */
@@ -5368,19 +5385,25 @@ void put_error(qe__unused__ EditState *s, const char *fmt, ...)
     eb_format_message(qs, "*errors*", buf);
 }
 
-void put_status(qe__unused__ EditState *s, const char *fmt, ...)
+void put_status(EditState *s, const char *fmt, ...)
 {
-    /* CG: s is not used and may be NULL! */
-    QEmacsState *qs = &qe_state;
+    /* XXX: s may be NULL! */
+    QEmacsState *qs = s ? s->qe_state : &qe_state;
     char buf[MAX_SCREEN_WIDTH];
     const char *p;
     va_list ap;
     int silent = 0;
     int diag = 0;
+    int force = 0;
 
     va_start(ap, fmt);
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
+
+    if (qs->active_window && (qs->active_window->flags & WF_MINIBUF)) {
+        /* display status messages in diag area if minibuffer is active */
+        diag = 1;
+    }
 
     for (p = buf;; p++) {
         if (*p == '|') {
@@ -5388,6 +5411,9 @@ void put_status(qe__unused__ EditState *s, const char *fmt, ...)
         } else
         if (*p == '~') {
             silent = 1;
+        } else
+        if (*p == '!') {
+            force = 1;
         } else {
             break;
         }
@@ -5396,31 +5422,30 @@ void put_status(qe__unused__ EditState *s, const char *fmt, ...)
     if (!qs->screen->dpy.dpy_probe) {
         eb_format_message(qs, "*errors*", p);
     } else {
+        int width = qs->screen->width;
+        int height = qs->status_height;
+        int x = 0, y = qs->screen->height - height;
+
         if (diag) {
-            if (!strequal(p, qs->diag_shadow)) {
+            if (force || !strequal(p, qs->diag_shadow)) {
                 /* right align display and overwrite last diag message */
                 int w = strlen(qs->diag_shadow);
                 w = snprintf(qs->diag_shadow, sizeof(qs->diag_shadow),
                              "%*s", w, p) + 1;
                 w *= get_glyph_width(qs->screen, NULL, QE_STYLE_STATUS, '0');
-                print_at_byte(qs->screen,
-                              qs->screen->width - w,
-                              qs->screen->height - qs->status_height,
-                              qs->screen->width - w, qs->status_height,
+                print_at_byte(qs->screen, x + width - w, y, w, height,
                               qs->diag_shadow, QE_STYLE_STATUS);
                 pstrcpy(qs->diag_shadow, sizeof(qs->diag_shadow), p);
             }
         } else {
-            if (!strequal(p, qs->status_shadow)) {
-                print_at_byte(qs->screen,
-                              0, qs->screen->height - qs->status_height,
-                              qs->screen->width, qs->status_height,
+            if (force || !strequal(p, qs->status_shadow)) {
+                print_at_byte(qs->screen, x, y, width, height,
                               p, QE_STYLE_STATUS);
                 pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), p);
             }
         }
         skip_spaces(&p);
-        if (!silent && *buf)
+        if (!silent && *p)
             eb_format_message(qs, "*messages*", buf);
     }
 }
@@ -5507,6 +5532,60 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
     }
 }
 
+/* detach the window from the window tree. */
+static void edit_detach(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+    EditState **ep;
+
+    /* unlink the window from the frame */
+    for (ep = &qs->first_window; *ep;) {
+        if ((*ep)->target_window == s) {
+            (*ep)->target_window = NULL;
+        }
+        if (*ep == s) {
+            *ep = s->next_window;
+            s->next_window = NULL;
+        } else {
+            ep = &(*ep)->next_window;
+        }
+    }
+    /* if window was active, activate target window or default window */
+    if (qs->active_window == s) {
+        if (s->target_window)
+            qs->active_window = s->target_window;
+        else
+            qs->active_window = qs->first_window;
+    }
+}
+
+/* move a window before another one */
+static void edit_attach(EditState *s, EditState *e)
+{
+    QEmacsState *qs = s->qe_state;
+    EditState **ep;
+
+    if (s != e) {
+        /* Detach the window from the frame */
+        for (ep = &qs->first_window; *ep; ep = &(*ep)->next_window) {
+            if (*ep == s) {
+                *ep = s->next_window;
+                s->next_window = NULL;
+                break;
+            }
+        }
+        /* Re-attach the window before `e` */
+        for (ep = &qs->first_window; *ep; ep = &(*ep)->next_window) {
+            if (*ep == e)
+                break;
+        }
+        s->next_window = *ep;
+        *ep = s;
+        if (qs->active_window == NULL)
+            qs->active_window = s;
+    }
+}
+
 /* compute the client area from the window position */
 static void compute_client_area(EditState *s)
 {
@@ -5568,43 +5647,6 @@ EditState *edit_new(EditBuffer *b,
     /* restore saved window settings, set mode */
     switch_to_buffer(s, b);
     return s;
-}
-
-/* detach the window from the window tree. */
-void edit_detach(EditState *s)
-{
-    QEmacsState *qs = s->qe_state;
-    EditState **ep;
-
-    for (ep = &qs->first_window; *ep; ep = &(*ep)->next_window) {
-        if (*ep == s) {
-            *ep = s->next_window;
-            s->next_window = NULL;
-            break;
-        }
-    }
-    if (qs->active_window == s)
-        qs->active_window = qs->first_window;
-}
-
-/* move a window before another one */
-void edit_attach(EditState *s, EditState *e)
-{
-    QEmacsState *qs = s->qe_state;
-    EditState *active_window = qs->active_window;
-    EditState **ep;
-
-    if (s != e) {
-        edit_detach(s);
-
-        for (ep = &qs->first_window; *ep; ep = &(*ep)->next_window) {
-            if (*ep == e)
-                break;
-        }
-        s->next_window = *ep;
-        *ep = s;
-        qs->active_window = active_window ? active_window : s;
-    }
 }
 
 /* Close the edit window.
@@ -5768,25 +5810,27 @@ static void complete_end(CompleteState *cp)
 
 /* mini buffer stuff */
 
-struct MinibufState {
+typedef struct MinibufState {
+    QEModeData base;
+
     void (*cb)(void *opaque, char *buf);
     void *opaque;
-    EditState *saved_active;
 
-    EditState *completion_popup_window;
+    EditState *completion_popup_window;  /* XXX: should have a popup_window member */
     CompletionFunc completion_function;
 
     StringArray *history;
     int history_index;
     int history_saved_offset;
-};
+} MinibufState;
 
 static ModeDef minibuffer_mode;
 
-/* XXX: should be opaque mode data */
-static struct MinibufState minibuffer;
+static inline MinibufState *minibuffer_get_state(EditState *e, int status) {
+    return qe_get_buffer_mode_data(e->b, &minibuffer_mode, status ? e : NULL);
+}
 
-void do_completion(EditState *s, int type)
+void do_minibuffer_complete(EditState *s, int type)
 {
     QEmacsState *qs = s->qe_state;
     int count, i, match_len, c;
@@ -5795,8 +5839,12 @@ void do_completion(EditState *s, int type)
     EditState *e;
     EditBuffer *b;
     int w, h, h1, w1;
+    MinibufState *mb;
 
-    if (!minibuffer.completion_function)
+    if ((mb = minibuffer_get_state(s, 1)) == NULL)
+        return;
+
+    if (!mb->completion_function)
         return;
 
     /* Remove highlighted selection. */
@@ -5810,18 +5858,18 @@ void do_completion(EditState *s, int type)
      */
 
     /* check completion window */
-    check_window(&minibuffer.completion_popup_window);
-    if (minibuffer.completion_popup_window
+    check_window(&mb->completion_popup_window);
+    if (mb->completion_popup_window
     &&  type == COMPLETION_TAB
     &&  qs->last_cmd_func == qs->this_cmd_func) {
         /* toggle cpmpletion popup on TAB */
-        edit_close(&minibuffer.completion_popup_window);
+        edit_close(&mb->completion_popup_window);
         do_refresh(s);
         return;
     }
 
-    complete_start(&cs, s, check_window(&minibuffer.saved_active));
-    (*minibuffer.completion_function)(&cs);
+    complete_start(&cs, s, s->target_window);
+    (*mb->completion_function)(&cs);
     count = cs.cs.nb_items;
     outputs = cs.cs.items;
 #if 0
@@ -5862,7 +5910,7 @@ void do_completion(EditState *s, int type)
         if (count > 1) {
             /* if more than one match, then display them in a new popup
                buffer */
-            if (!minibuffer.completion_popup_window) {
+            if (!mb->completion_popup_window) {
                 b = eb_new("*completion*", 
                            BF_SYSTEM | BF_UTF8 | BF_TRANSIENT | BF_STYLE1);
                 b->default_mode = &list_mode;
@@ -5871,19 +5919,20 @@ void do_completion(EditState *s, int type)
                 w = (w1 * 3) / 4;
                 h = (h1 * 3) / 4;
                 e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
+                e->target_window = s;
+                mb->completion_popup_window = e;
                 do_refresh(e);
-                minibuffer.completion_popup_window = e;
             }
         } else
         if (count == 0 || type != COMPLETION_OTHER) {
             /* close the popup when minibuf contents matches nothing */
-            edit_close(&minibuffer.completion_popup_window);
+            edit_close(&mb->completion_popup_window);
             do_refresh(s);
         }
     }
-    if (minibuffer.completion_popup_window) {
+    if (mb->completion_popup_window) {
         /* modify the list with the current matches */
-        e = minibuffer.completion_popup_window;
+        e = mb->completion_popup_window;
         b = e->b;
         qsort(outputs, count, sizeof(StringItem *), completion_sort_func);
         b->flags &= ~BF_READONLY;
@@ -5914,11 +5963,12 @@ static int eb_match_string_reverse(EditBuffer *b, int offset, const char *str,
     return 1;
 }
 
-void do_electric_filename(EditState *s, int key)
+void do_minibuffer_electric(EditState *s, int key)
 {
     int c, offset, stop;
+    MinibufState *mb = minibuffer_get_state(s, 0);
 
-    if (minibuffer.completion_function == file_completion) {
+    if (mb && mb->completion_function == file_completion) {
         stop = s->offset;
         c = eb_prevc(s->b, s->offset, &offset);
         if (c == '/') {
@@ -5934,42 +5984,48 @@ void do_electric_filename(EditState *s, int key)
 }
 
 /* space does completion only if a completion method is defined */
-void do_completion_space(EditState *s)
+void do_minibuffer_complete_space(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
+    MinibufState *mb = minibuffer_get_state(s, 0);
 
-    if (!minibuffer.completion_function) {
+    if (!mb || !mb->completion_function) {
         do_char(s, ' ', 1);
     } else
-    if (minibuffer.completion_popup_window && qs->last_cmd_func == qs->this_cmd_func) {
+    if (check_window(&mb->completion_popup_window)
+    &&  qs->last_cmd_func == qs->this_cmd_func) {
         /* page through the list */
         // XXX: should close the popup at the bottom of the list
-        do_scroll_up_down(minibuffer.completion_popup_window, 2);
+        do_scroll_up_down(mb->completion_popup_window, 2);
     } else {
-        do_completion(s, COMPLETION_SPACE);
+        do_minibuffer_complete(s, COMPLETION_SPACE);
     }
 }
 
 static void do_minibuffer_char(EditState *s, int key, int argval)
 {
+    MinibufState *mb = minibuffer_get_state(s, 0);
+
     do_char(s, key, argval);
-    if (minibuffer.completion_popup_window) {
+    if (mb && check_window(&mb->completion_popup_window)) {
         /* automatic filtering of completion list */
         // XXX: should prevent auto-completion
-        do_completion(s, COMPLETION_OTHER);
+        do_minibuffer_complete(s, COMPLETION_OTHER);
     }
 }
 
 /* scroll in completion popup */
 void minibuf_complete_scroll_up_down(qe__unused__ EditState *s, int dir)
 {
-    if (minibuffer.completion_popup_window) {
-        minibuffer.completion_popup_window->force_highlight = 1;
-        do_scroll_up_down(minibuffer.completion_popup_window, dir);
+    MinibufState *mb = minibuffer_get_state(s, 0);
+
+    if (mb && check_window(&mb->completion_popup_window)) {
+        mb->completion_popup_window->force_highlight = 1;
+        do_scroll_up_down(mb->completion_popup_window, dir);
     }
 }
 
-static void set_minibuffer_str(EditState *s, const char *str)
+static void minibuf_set_str(EditState *s, const char *str)
 {
     int len;
 
@@ -6002,38 +6058,45 @@ static StringArray *get_history(const char *name)
     return &p->history;
 }
 
-void do_history(EditState *s, int dir)
+void do_minibuffer_history(EditState *s, int dir)
 {
     QEmacsState *qs = s->qe_state;
-    StringArray *hist = minibuffer.history;
+    MinibufState *mb;
+    StringArray *hist;
     int index;
     char *str;
     char buf[1024];
 
+    if ((mb = minibuffer_get_state(s, 0)) == NULL)
+        return;
+
     /* if completion visible, move in it */
-    if (minibuffer.completion_popup_window) {
-        minibuffer.completion_popup_window->force_highlight = 1;
-        do_up_down(minibuffer.completion_popup_window, dir);
+    if (check_window(&mb->completion_popup_window)) {
+        mb->completion_popup_window->force_highlight = 1;
+        do_up_down(mb->completion_popup_window, dir);
         return;
     }
 
+    hist = mb->history;
     if (!hist)
         return;
-    index = minibuffer.history_index + dir;
+
+    index = mb->history_index + dir;
     if (index < 0 || index >= hist->nb_items)
         return;
-    if (qs->last_cmd_func != (CmdFunc)do_history) {
+
+    if (qs->last_cmd_func != (CmdFunc)do_minibuffer_history) {
         /* save currently edited line */
         eb_get_contents(s->b, buf, sizeof(buf));
         set_string(hist, hist->nb_items - 1, buf, 0);
-        minibuffer.history_saved_offset = s->offset;
+        mb->history_saved_offset = s->offset;
     }
     /* insert history text */
-    minibuffer.history_index = index;
+    mb->history_index = index;
     str = hist->items[index]->str;
-    set_minibuffer_str(s, str);
+    minibuf_set_str(s, str);
     if (index == hist->nb_items - 1) {
-        s->offset = minibuffer.history_saved_offset;
+        s->offset = mb->history_saved_offset;
     }
 }
 
@@ -6041,9 +6104,8 @@ void do_minibuffer_get_binary(EditState *s)
 {
     unsigned long offset;
 
-    if (minibuffer.saved_active) {
-        eb_read(minibuffer.saved_active->b,
-                minibuffer.saved_active->offset,
+    if (s->target_window) {
+        eb_read(s->target_window->b, s->target_window->offset,
                 &offset, sizeof(offset));
         eb_printf(s->b, "%lu", offset);
     }
@@ -6051,135 +6113,161 @@ void do_minibuffer_get_binary(EditState *s)
 
 void do_minibuffer_exit(EditState *s, int do_abort)
 {
-    QEmacsState *qs = s->qe_state;
-    StringArray *hist = minibuffer.history;
+    char buf[4096], *retstr;
+    MinibufState *mb;
+    StringArray *hist;
+    EditState *cw;
+    EditState *target;
     void (*cb)(void *opaque, char *buf);
     void *opaque;
-    char buf[4096], *retstr;
-    EditState *cw = minibuffer.completion_popup_window;
 
-    /* if completion is activated, then select current file only if
-       the selection is highlighted */
-    if (cw && cw->force_highlight) {
-        int offset, len;
+    if ((mb = minibuffer_get_state(s, 1)) == NULL)
+        return;
 
-        len = eb_fgets(cw->b, buf, sizeof(buf), list_get_offset(cw), &offset);
-        buf[len] = '\0';   /* strip the trailing newline if any */
-        if (len > 0) {
-            set_minibuffer_str(s, buf + 1);
+    cw = check_window(&mb->completion_popup_window);
+
+    if (!do_abort) {
+        /* if completion is activated, then select current file only if
+           the selection is highlighted */
+        if (cw && cw->force_highlight) {
+            int offset, len;
+
+            len = eb_fgets(cw->b, buf, sizeof(buf), list_get_offset(cw), &offset);
+            buf[len] = '\0';   /* strip the trailing newline if any */
+            if (len > 0) {
+                minibuf_set_str(s, buf + 1);
+            }
+        }
+
+        eb_get_contents(s->b, buf, sizeof(buf));
+
+        /* Append response to history list */
+        hist = mb->history;
+        if (hist && hist->nb_items > 0) {
+            /* if null string, do not insert in history */
+            hist->nb_items--;
+            qe_free(&hist->items[hist->nb_items]);
+            if (buf[0] != '\0')
+                add_string(hist, buf, 0);
         }
     }
 
     /* remove completion popup if present */
-    /* CG: assuming minibuffer.completion_popup_window != s */
     if (cw) {
-        edit_close(&minibuffer.completion_popup_window);
+        edit_close(&mb->completion_popup_window);
         cw = NULL;
         do_refresh(s);
     }
 
-    eb_get_contents(s->b, buf, sizeof(buf));
-    if (hist && hist->nb_items > 0) {
-        /* if null string, do not insert in history */
-        hist->nb_items--;
-        qe_free(&hist->items[hist->nb_items]);
-        if (buf[0] != '\0')
-            add_string(hist, buf, 0);
-    }
+    cb = mb->cb;
+    opaque = mb->opaque;
+    target = s->target_window;
+    mb->cb = NULL;
+    mb->opaque = NULL;
 
-    s->b->flags |= BF_TRANSIENT;
     /* Close the minibuffer window */
+    s->b->flags |= BF_TRANSIENT;
     edit_close(&s);
 
-    /* restore active window */
-    qs->active_window = check_window(&minibuffer.saved_active);
-    minibuffer.saved_active = NULL;
-
-    /* force status update */
-    //pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), " ");
-    if (do_abort)
-        put_status(NULL, "Canceled.");
-    else
-        put_status(NULL, "");
-
-    /* call the callback */
-    cb = minibuffer.cb;
-    opaque = minibuffer.opaque;
-    minibuffer.cb = NULL;
-    minibuffer.opaque = NULL;
-
+    /* Force status update and call the callback */
     if (do_abort) {
-        cb(opaque, NULL);
+        put_status(target, "!Canceled.");
+        (*cb)(opaque, NULL);
     } else {
+        put_status(target, "!");
         retstr = qe_strdup(buf);
-        cb(opaque, retstr);
+        (*cb)(opaque, retstr);
     }
 }
 
 /* Start minibuffer editing. When editing is finished, the callback is
    called with an allocated string. If the string is null, it means
    editing was aborted. */
-void minibuffer_edit(const char *input, const char *prompt,
+void minibuffer_edit(EditState *e, const char *input, const char *prompt,
                      StringArray *hist, CompletionFunc completion_func,
                      void (*cb)(void *opaque, char *buf), void *opaque)
 {
-
-    EditState *s;
     QEmacsState *qs = &qe_state;
+    MinibufState *mb;
+    EditState *s;
     EditBuffer *b;
     int len;
 
     /* check if already in minibuffer editing */
-    if (minibuffer.cb) {
-        put_status(NULL, "Already editing in minibuffer");
+    if (e->flags & WF_MINIBUF) {
+        put_status(NULL, "|Already editing in minibuffer");
         cb(opaque, NULL);
         return;
     }
-
-    minibuffer.cb = cb;
-    minibuffer.opaque = opaque;
 
     b = eb_new("*minibuf*", BF_SYSTEM | BF_SAVELOG | BF_UTF8);
     b->default_mode = &minibuffer_mode;
 
     s = edit_new(b, 0, qs->screen->height - qs->status_height,
-                 qs->screen->width, qs->status_height, 0);
-    /* Should insert at end of window list */
-    /* XXX: should qe_free previous value? */
+                 qs->screen->width, qs->status_height, WF_MINIBUF);
+    s->target_window = e;
     s->prompt = qe_strdup(prompt);
-    s->minibuf = 1;
     s->bidir = 0;
     s->default_style = QE_STYLE_MINIBUF;
     s->wrap = WRAP_TRUNCATE;
 
     /* add default input */
     if (input) {
-        /* XXX: should insert utf-8? */
+        /* Default input should already be encoded as utf-8 */
         len = strlen(input);
         eb_write(b, 0, (u8 *)input, len);
         s->offset = len;
     }
 
-    minibuffer.saved_active = qs->active_window;
-    qs->active_window = s;
+    mb = minibuffer_get_state(s, 0);
+    if (mb) {
+        mb->completion_popup_window = NULL;
+        mb->completion_function = completion_func;
+        mb->history = hist;
+        mb->history_saved_offset = 0;
+        if (hist) {
+            mb->history_index = hist->nb_items;
+            add_string(hist, "", 0);
+        }
+        mb->cb = cb;
+        mb->opaque = opaque;
+        qs->active_window = s;
+    }
+}
 
-    minibuffer.completion_popup_window = NULL;
-    minibuffer.completion_function = completion_func;
-    minibuffer.history = hist;
-    minibuffer.history_saved_offset = 0;
-    if (hist) {
-        minibuffer.history_index = hist->nb_items;
-        add_string(hist, "", 0);
+static void minibuffer_mode_free(EditBuffer *b, void *state)
+{
+    /* If minibuffer is destroyed, call callback with NULL pointer */
+    MinibufState *mb = state;
+    void (*cb)(void *opaque, char *buf);
+    void *opaque;
+
+    if (!mb)
+        return;
+
+    if (check_window(&mb->completion_popup_window))
+        edit_close(&mb->completion_popup_window);
+
+    cb = mb->cb;
+    opaque = mb->opaque;
+    mb->cb = NULL;
+    mb->opaque = NULL;
+
+    if (cb) {
+        put_status(NULL, "!Abort.");
+        (*cb)(opaque, NULL);
     }
 }
 
 void minibuffer_init(void)
 {
-    /* minibuf mode inherits from text mode */
+    /* populate and register minibuffer mode and commands */
     memcpy(&minibuffer_mode, &text_mode, sizeof(ModeDef));
     minibuffer_mode.name = "minibuffer";
     minibuffer_mode.mode_name = NULL;
     minibuffer_mode.mode_probe = NULL;
+    minibuffer_mode.buffer_instance_size = sizeof(MinibufState);
+    minibuffer_mode.mode_free = minibuffer_mode_free;
     minibuffer_mode.scroll_up_down = minibuf_complete_scroll_up_down;
     qe_register_mode(&minibuffer_mode, MODEF_NOCMD | MODEF_VIEW);
     qe_register_cmd_table(minibuffer_commands, &minibuffer_mode);
@@ -6188,9 +6276,6 @@ void minibuffer_init(void)
 /* popup paging mode */
 
 static ModeDef popup_mode;
-
-/* XXX: incorrect to save it. Should use window target member */
-static EditState *popup_saved_active;
 
 /* Verify that window still exists, return argument or NULL,
  * update handle if window is invalid.
@@ -6216,9 +6301,6 @@ void do_popup_exit(EditState *s)
         s->b->flags |= BF_TRANSIENT;
         edit_close(&s);
 
-        qs->active_window = check_window(&popup_saved_active);
-        popup_saved_active = NULL;
-
         do_refresh(qs->active_window);
     }
 }
@@ -6226,7 +6308,7 @@ void do_popup_exit(EditState *s)
 /* show a popup on a readonly buffer */
 EditState *show_popup(EditState *s, EditBuffer *b)
 {
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
     EditState *e;
     int w, h, w1, h1;
 
@@ -6240,11 +6322,10 @@ EditState *show_popup(EditState *s, EditBuffer *b)
     w = (w1 * 4) / 5;
     h = (h1 * 3) / 4;
 
+    b->default_mode = &popup_mode;
     e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
-    edit_set_mode(e, &popup_mode);
     e->wrap = WRAP_TRUNCATE;
-
-    popup_saved_active = qs->active_window;
+    e->target_window = s;
     qs->active_window = e;
     do_refresh(e);
     return e;
@@ -6271,7 +6352,7 @@ EditState *insert_window_left(EditBuffer *b, int width, int flags)
 
     for (e = qs->first_window; e != NULL; e = e_next) {
         e_next = e->next_window;
-        if (e->minibuf)
+        if (e->flags & WF_MINIBUF)
             continue;
         if (e->x2 <= width) {
             edit_close(&e);
@@ -6298,7 +6379,7 @@ EditState *find_window(EditState *s, int key, EditState *def)
      * non regular window layouts
      */
     for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e->minibuf)
+        if (e->flags & WF_MINIBUF)
             continue;
         if (e->y1 < s->y2 && e->y2 > s->y1) {
             /* horizontal overlap */
@@ -6350,6 +6431,9 @@ void do_switch_to_buffer(EditState *s, const char *bufname)
 {
     EditBuffer *b;
 
+    if (s->flags & WF_MINIBUF)
+        return;
+
     /* XXX: Default buffer charset should be selectable */
     b = eb_find_new(bufname, BF_SAVELOG | BF_UTF8);
     if (b)
@@ -6392,7 +6476,7 @@ void do_kill_buffer(EditState *s, const char *bufname, int force)
         if (!force && b->modified && b->filename[0] != '\0') {
             snprintf(buf, sizeof(buf),
                      "Buffer %s modified; kill anyway? (yes or no) ", bufname);
-            minibuffer_edit(NULL, buf, NULL, NULL,
+            minibuffer_edit(s, NULL, buf, NULL, NULL,
                             kill_buffer_confirm_cb, b);
         } else {
             qe_kill_buffer(b);
@@ -6650,15 +6734,15 @@ static int probe_mode(EditState *s, EditBuffer *b,
 }
 
 static EditState *qe_find_target_window(EditState *s, int activate) {
+    QEmacsState *qs = s->qe_state;
     EditState *e;
 
     /* Find the target window for some commands run from the dired window */
     if (s->flags & WF_POPUP) {
-        e = check_window(&popup_saved_active);
-        popup_saved_active = NULL;
+        e = check_window(&s->target_window);
         if (e) {
-            if (activate && s->qe_state->active_window == s)
-                s->qe_state->active_window = e;
+            if (activate && qs->active_window == s)
+                qs->active_window = e;
         }
         s->b->flags |= BF_TRANSIENT;
         edit_close(&s);
@@ -6666,11 +6750,11 @@ static EditState *qe_find_target_window(EditState *s, int activate) {
         do_refresh(s);
     }
 #ifndef CONFIG_TINY
-    if ((s->flags & WF_POPLEFT) && s->x1 == 0) {
+    if (s && (s->flags & WF_POPLEFT) && s->x1 == 0) {
         e = find_window(s, KEY_RIGHT, NULL);
         if (e) {
-            if (activate && s->qe_state->active_window == s)
-                s->qe_state->active_window = e;
+            if (activate && qs->active_window == s)
+                qs->active_window = e;
             s = e;
         }
     }
@@ -6685,7 +6769,7 @@ static EditState *qe_find_target_window(EditState *s, int activate) {
  */
 void do_set_next_mode(EditState *s, int dir)
 {
-    if (s->flags & WF_POPUP)
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
 
     /* next-mode from the dired window applies to the target window */
@@ -6700,8 +6784,22 @@ void qe_set_next_mode(EditState *s, int dir, int status)
     ModeDef *modes[32];
     int scores[32];
     int i, nb, found;
-    EditBuffer *b = s->b;
+    EditBuffer *b;
 
+    if (s->flags & WF_MINIBUF)
+        return;
+
+#ifndef CONFIG_TINY
+    /* Find target window for POPLEFT pane */
+    if ((s->flags & WF_POPLEFT) && s->x1 == 0) {
+        EditState *e = find_window(s, KEY_RIGHT, NULL);
+        if (e) {
+            s = e;
+        }
+    }
+#endif
+
+    b = s->b;
     size = eb_read(b, 0, buf, sizeof(buf) - 1);
     buf[size] = '\0';
 
@@ -6754,7 +6852,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
     }
 #endif
 
-    if (s->flags & WF_POPUP)
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
         return - 1;
 
     if (lflags & LF_SPLIT_WINDOW) {
@@ -7086,6 +7184,7 @@ void do_exit_qemacs(EditState *s, int argval)
 /* analyse next buffer and ask question if needed */
 static void quit_examine_buffers(QuitState *is)
 {
+    QEmacsState *qs = &qe_state;
     EditBuffer *b;
 
     while (is->b != NULL) {
@@ -7094,8 +7193,8 @@ static void quit_examine_buffers(QuitState *is)
             switch (is->state) {
             case QS_ASK:
                 /* XXX: display cursor */
-                put_status(NULL, "Save file %s? (y, n, !, ., q) ",
-                           b->filename);
+                put_status(qs->active_window,
+                           "Save file %s? (y, n, !, ., q) ", b->filename);
                 dpy_flush(&global_screen);
                 /* will wait for a key */
                 return;
@@ -7113,15 +7212,15 @@ static void quit_examine_buffers(QuitState *is)
 
     /* now asks for confirmation or exit directly */
     if (is->modified) {
-        minibuffer_edit(NULL, "Modified buffers exist; exit anyway? (yes or no) ",
-                        NULL, NULL,
-                        quit_confirm_cb, NULL);
+        minibuffer_edit(qs->active_window,
+                        NULL, "Modified buffers exist; exit anyway? (yes or no) ",
+                        NULL, NULL, quit_confirm_cb, NULL);
         edit_display(&qe_state);
         dpy_flush(&global_screen);
     } else {
 #ifndef CONFIG_TINY
         if (use_session_file)
-            do_save_session(qe_state.active_window, 0);
+            do_save_session(qs->active_window, 0);
 #endif
         qe_free(&is);
         url_exit();
@@ -7223,10 +7322,10 @@ void edit_invalidate(EditState *s)
 }
 
 /* refresh the screen, s1 can be any edit window */
-void do_refresh(qe__unused__ EditState *s1)
+void do_refresh(EditState *s1)
 {
     /* CG: s1 may be NULL */
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s1 ? s1->qe_state : &qe_state;
     EditState *e;
     int new_status_height, new_mode_line_height, content_height;
     int width, height, resized;
@@ -7251,6 +7350,11 @@ void do_refresh(qe__unused__ EditState *s1)
     if (!qs->hide_status)
         content_height -= new_status_height;
 
+    /* Prevent potential division overflow */
+    width = max(1, width);
+    height = max(1, height);
+    content_height = max(1, content_height);
+
     resized = 0;
 
     /* see if resize is necessary */
@@ -7262,14 +7366,16 @@ void do_refresh(qe__unused__ EditState *s1)
 
         /* do the resize */
         resized = 1;
+        qs->complete_refresh = 1;
         for (e = qs->first_window; e != NULL; e = e->next_window) {
-            if (e->minibuf) {
+            if (e->flags & WF_MINIBUF) {
                 /* first resize minibuffer if present */
                 e->x1 = 0;
                 e->y1 = content_height;
                 e->x2 = width;
                 e->y2 = height;
-            } else if (qs->height == 0) {
+            } else
+            if (qs->height == 0 || qs->width == 0 || qs->content_height == 0) {
                 /* needed only to init the window size for the first time */
                 e->x1 = 0;
                 e->y1 = 0;
@@ -7357,11 +7463,11 @@ void do_delete_window(EditState *s, int force)
 
     count = 0;
     for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (!e->minibuf && !(e->flags & WF_POPUP))
+        if (!(e->flags & (WF_POPUP | WF_MINIBUF)))
             count++;
     }
     /* cannot close minibuf or if single window */
-    if ((s->minibuf || count <= 1) && !force)
+    if (((s->flags & WF_MINIBUF) || count <= 1) && !force)
         return;
 
     if (!(s->flags & WF_POPUP)) {
@@ -7376,7 +7482,7 @@ void do_delete_window(EditState *s, int force)
 
         for (pass = 0; pass < 2; pass++) {
             for (e = qs->first_window; e != NULL; e = e->next_window) {
-                if (e->minibuf || e == s || (e->flags & WF_POPUP))
+                if (e == s || (e->flags & (WF_POPUP | WF_MINIBUF)))
                     continue;
 
                 if (x1 == e->x2 && y1 == e->y1 && y2 >= e->y2) {
@@ -7422,15 +7528,22 @@ void do_delete_window(EditState *s, int force)
 void do_delete_other_windows(EditState *s, int all)
 {
     QEmacsState *qs = s->qe_state;
-    EditState *e, *e1;
+    EditState *e;
 
-    if (s->minibuf || (s->flags & WF_POPUP))
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
 
-    for (e = qs->first_window; e != NULL; e = e1) {
-        e1 = e->next_window;
-        if (!e->minibuf && e != s)
-            edit_close(&e);
+    for (;;) {
+        for (e = qs->first_window; e != NULL; e = e->next_window) {
+            if (!(e->flags & WF_MINIBUF) && e != s)
+                break;
+        }
+        if (e == NULL)
+            break;
+        /* rescan after closing a window because another window could
+         * be closed as a side effect
+         */
+        edit_close(&e);
     }
     if (all) {
         edit_close(&s);
@@ -7474,7 +7587,7 @@ void do_split_window(EditState *s, int horiz)
     int x, y;
 
     /* cannot split minibuf or popup */
-    if (s->minibuf || (s->flags & WF_POPUP))
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
 
     /* This will clone mode and mode data to the newly created window */
@@ -7733,7 +7846,7 @@ void window_resize(EditState *s, int target_w, int target_h)
         return;
 
     for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e->minibuf || e == s)
+        if ((e->flags & WF_MINIBUF) || e == s)
             continue;
         window_get_min_size(e, &min_w, &min_h);
         if (e->y1 == s->y2) {
@@ -7758,7 +7871,7 @@ void window_resize(EditState *s, int target_w, int target_h)
 
     /* now everything is OK, we can resize all windows */
     for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e->minibuf || e == s)
+        if ((e->flags & WF_MINIBUF) || e == s)
             continue;
         if (e->y1 == s->y2)
             e->y1 += delta_y;
@@ -8172,7 +8285,8 @@ void do_load_qerc(EditState *e, const char *filename)
         qs->active_window = e;
         parse_config_file(e, buf);
     }
-    qs->active_window = saved;
+    if (check_window(&saved))
+        qs->active_window = saved;
 }
 
 /******************************************************/
@@ -8742,7 +8856,6 @@ static void qe_init(void *opaque)
     }
     qs->ec.function = NULL;
 }
-
 
 #ifdef CONFIG_WIN32
 int main1(int argc, char **argv)

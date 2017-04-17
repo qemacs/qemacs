@@ -314,7 +314,7 @@ static void do_latex(EditState *e, const char *cmd)
         if (func->ask) {
             char prompt[128];
             snprintf(prompt, sizeof(prompt), "%s command: ", func->name);
-            minibuffer_edit(buf, prompt, &func->history,
+            minibuffer_edit(e, buf, prompt, &func->history,
                             NULL /* completion */,
                             latex_cmd_run, func);
         } else {

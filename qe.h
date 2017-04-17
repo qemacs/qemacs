@@ -147,8 +147,6 @@ static inline const char *cs8(const u8 *p) { return (const char*)p; }
 extern const char str_version[];
 extern const char str_credits[];
 
-extern int debug_flags;
-
 /* low level I/O events */
 void set_read_handler(int fd, void (*cb)(void *opaque), void *opaque);
 void set_write_handler(int fd, void (*cb)(void *opaque), void *opaque);
@@ -725,8 +723,6 @@ extern struct QECharset charset_raw;
 extern struct QECharset charset_8859_1;
 extern struct QECharset charset_utf8;
 extern struct QECharset charset_vt100; /* used for the tty output */
-extern struct QECharset charset_ucs2le, charset_ucs2be;
-extern struct QECharset charset_ucs4le, charset_ucs4be;
 extern struct QECharset charset_mac_roman;
 
 typedef enum EOLType {
@@ -1340,7 +1336,6 @@ struct EditState {
                         * if end of file displayed */
     int y_disp;    /* virtual position of the displayed text */
     int x_disp[2]; /* position for LTR and RTL text resp. */
-    int minibuf;   /* true if single line editing */
     int dump_width;  /* width in binary, hex and unihex modes */
     int hex_mode;    /* true if we are currently editing hexa */
     int unihex_mode; /* true if unihex editing (width of hex char dump) */
@@ -1374,6 +1369,7 @@ struct EditState {
 
     EditBuffer *last_buffer;    /* for predict_switch_to_buffer */
     ISearchState *isearch_state;  /* active search to colorize matches */
+    EditState *target_window;   /* for minibuf, popleft and popup windows */
 
     /* mode specific info */
     ModeDef *mode;
@@ -1412,6 +1408,7 @@ struct EditState {
 #define WF_RSEPARATOR 0x0004 /* right window separator */
 #define WF_POPLEFT    0x0008 /* left side window */
 #define WF_HIDDEN     0x0010 /* hidden window, used for temporary changes */
+#define WF_MINIBUF    0x0020 /* true if single line editing */
 #define WF_FILELIST   0x1000 /* window is interactive file list */
 
     OWNED char *prompt;  /* optional window prompt, utf8 */
@@ -1946,7 +1943,7 @@ void complete_test(CompleteState *cp, const char *str);
 void register_completion(const char *name, CompletionFunc completion_func);
 void put_status(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void put_error(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
-void minibuffer_edit(const char *input, const char *prompt,
+void minibuffer_edit(EditState *e, const char *input, const char *prompt,
                      StringArray *hist, CompletionFunc completion_func,
                      void (*cb)(void *opaque, char *buf), void *opaque);
 void command_completion(CompleteState *cp);
@@ -1995,7 +1992,6 @@ void do_find_window(EditState *s, int key);
 void edit_close(EditState **sp);
 EditState *edit_new(EditBuffer *b,
                     int x1, int y1, int width, int height, int flags);
-void edit_detach(EditState *s);
 EditBuffer *check_buffer(EditBuffer **sp);
 EditState *check_window(EditState **sp);
 int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, int c);
@@ -2184,15 +2180,14 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
                          const char *key_bind);
 void qe_save_macros(EditState *s, EditBuffer *b);
 
-void edit_attach(EditState *s, EditState *e);
 #define COMPLETION_TAB    0
 #define COMPLETION_SPACE  1
 #define COMPLETION_OTHER  2
-void do_completion(EditState *s, int type);
-void do_completion_space(EditState *s);
-void do_electric_filename(EditState *s, int key);
+void do_minibuffer_complete(EditState *s, int type);
+void do_minibuffer_complete_space(EditState *s);
+void do_minibuffer_electric(EditState *s, int key);
 void minibuf_complete_scroll_up_down(EditState *s, int dir);
-void do_history(EditState *s, int dir);
+void do_minibuffer_history(EditState *s, int dir);
 void do_minibuffer_get_binary(EditState *s);
 void do_minibuffer_exit(EditState *s, int fabort);
 void do_popup_exit(EditState *s);

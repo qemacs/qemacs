@@ -285,9 +285,10 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Help ----------------*/
 
+    CMD0( KEY_CTRLH('d'), KEY_NONE,
+          "doctor", do_doctor)
     CMD0( KEY_CTRLH('c'), KEY_CTRLH('k'),
           "describe-key-briefly", do_describe_key_briefly)
-
     CMD0( KEY_CTRLH(KEY_CTRL('h')), KEY_F1,
           "help-for-help", do_help_for_help)
 
@@ -336,8 +337,6 @@ static CmdDef basic_commands[] = {
           "exit-qemacs", do_exit_qemacs, ESi, "ui")
     CMD0( KEY_CTRL('l'), KEY_NONE,
           "refresh", do_refresh_complete)
-    CMD0( KEY_NONE, KEY_NONE,
-          "doctor", do_doctor)
     CMD0( KEY_CTRLX('u'), KEY_CTRL('_'),
           "undo", do_undo)
     CMD0( KEY_CTRLX('r'), KEY_CTRLX(KEY_CTRL('_')),
@@ -421,23 +420,23 @@ CmdDef minibuffer_commands[] = {
           "*" "kiui")
     CMD1( KEY_RET, KEY_NONE,
           "minibuffer-exit", do_minibuffer_exit, 0)
-    CMD1( KEY_CTRL('g'), KEY_NONE,
+    CMD1( KEY_CTRL('g'), KEY_CTRLX(KEY_CTRL('g')),
           "minibuffer-abort", do_minibuffer_exit, 1)
     CMD1( KEY_CTRL('i'), KEY_NONE,
-          "minibuffer-complete", do_completion, COMPLETION_TAB)
+          "minibuffer-complete", do_minibuffer_complete, COMPLETION_TAB)
     /* should take numeric prefix to specify word size */
     CMD0( KEY_META('='), KEY_NONE,
           "minibuffer-get-binary", do_minibuffer_get_binary)
     CMD0( ' ', KEY_NONE,
-          "minibuffer-complete-space", do_completion_space)
+          "minibuffer-complete-space", do_minibuffer_complete_space)
     CMD1( KEY_CTRL('p'), KEY_UP,
-          "minibuffer-previous-history-element", do_history, -1)
+          "minibuffer-previous-history-element", do_minibuffer_history, -1)
     CMD1( KEY_CTRL('n'), KEY_DOWN,
-          "minibuffer-next-history-element", do_history, 1)
+          "minibuffer-next-history-element", do_minibuffer_history, 1)
     CMD3( '/', KEY_NONE,
-          "minibuffer-electric-slash", do_electric_filename, ESi, '/', "*v")
+          "minibuffer-electric-slash", do_minibuffer_electric, ESi, '/', "*v")
     CMD3( '~', KEY_NONE,
-          "minibuffer-electric-tilde", do_electric_filename, ESi, '~', "*v")
+          "minibuffer-electric-tilde", do_minibuffer_electric, ESi, '~', "*v")
     CMD_DEF_END,
 };
 

@@ -1,13 +1,12 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-04-11
+; Updated: 2017-04-17
 
 * Recent bugs and ideas
 
-** display: fix window split bug
 ** basic: backspace delete hacking tabs
-** basic: prevent search inside minibuf
+** display: minibuffer and popup windows should be in a separate lists
 ** display: save display-width in binary and hex modes upon window change
 ** display: default display-width of 0 is automatic, other values are shared between binary and hex modes
 ** display: hex-mode should optionally display chunks of 2, 4 or 8 bytes in big or little endian order
@@ -132,7 +131,6 @@
    count-matches, delete-matching-lines (might need recursive edit)
 ** search: add regex support
 ** search: hex-mode search strings should mix hex ut8 strings and ASCII control char names
-** search: make isearch bindings for minibuffer
 ** search: handle word and case toggles matches in query-replace
 ** session: register session store functions
 ** session: save previous answers, ...
