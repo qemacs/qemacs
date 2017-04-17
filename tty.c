@@ -144,6 +144,7 @@ typedef struct TTYState {
     unsigned int comb_cache[COMB_CACHE_SIZE];
 } TTYState;
 
+static void tty_term_invalidate(QEditScreen *s);
 static void tty_resize(int sig);
 static void tty_term_exit(void);
 static void tty_read_handler(void *opaque);
@@ -254,11 +255,11 @@ static int tty_term_init(QEditScreen *s,
     tcgetattr(fileno(s->STDIN), &tty);
     ts->oldtty = tty;
 
-    tty.c_iflag &= ~(IGNBRK|BRKINT|PARMRK|ISTRIP
-                     |INLCR|IGNCR|ICRNL|IXON);
+    tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP |
+                     INLCR | IGNCR | ICRNL | IXON);
     tty.c_oflag |= OPOST;
-    tty.c_lflag &= ~(ECHO|ECHONL|ICANON|IEXTEN|ISIG);
-    tty.c_cflag &= ~(CSIZE|PARENB);
+    tty.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+    tty.c_cflag &= ~(CSIZE | PARENB);
     tty.c_cflag |= CS8;
     tty.c_cc[VMIN] = 1;
     tty.c_cc[VTIME] = 0;
@@ -332,7 +333,7 @@ static int tty_term_init(QEditScreen *s,
 
     set_read_handler(fileno(s->STDIN), tty_read_handler, s);
 
-    tty_resize(0);
+    tty_term_invalidate(s);
 
     if (ts->term_flags & KBS_CONTROL_H) {
         do_toggle_control_h(NULL, 1);
@@ -378,10 +379,25 @@ static void tty_term_exit(void)
 static void tty_resize(qe__unused__ int sig)
 {
     QEditScreen *s = tty_screen;
-    TTYState *ts = s->priv_data;
+
+    tty_term_invalidate(s);
+
+    //fprintf(stderr, "tty_resize: width=%d, height=%d\n", s->width, s->height);
+
+    url_redisplay();
+}
+
+static void tty_term_invalidate(QEditScreen *s)
+{
+    TTYState *ts;
     struct winsize ws;
     int i, count, size;
     TTYChar tc;
+
+    if (s == NULL)
+        return;
+
+    ts = s->priv_data;
 
     s->width = 80;
     s->height = 24;
@@ -417,11 +433,6 @@ static void tty_resize(qe__unused__ int sig)
     s->clip_y1 = 0;
     s->clip_x2 = s->width;
     s->clip_y2 = s->height;
-}
-
-static void tty_term_invalidate(QEditScreen *s)
-{
-    tty_resize(0);
 }
 
 static void tty_term_cursor_at(QEditScreen *s, int x1, int y1,

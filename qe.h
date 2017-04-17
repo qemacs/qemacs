@@ -153,6 +153,7 @@ void set_write_handler(int fd, void (*cb)(void *opaque), void *opaque);
 int set_pid_handler(int pid,
                     void (*cb)(void *opaque, int status), void *opaque);
 void url_exit(void);
+void url_redisplay(void);
 void register_bottom_half(void (*cb)(void *opaque), void *opaque);
 void unregister_bottom_half(void (*cb)(void *opaque), void *opaque);
 

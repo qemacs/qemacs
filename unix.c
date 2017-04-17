@@ -2,6 +2,7 @@
  * Unix main loop for QEmacs
  *
  * Copyright (c) 2002, 2003 Fabrice Bellard.
+ * Copyright (c) 2000-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -62,6 +63,7 @@ static fd_set url_rfds, url_wfds;
 static int url_fdmax;
 static URLHandler url_handlers[256];
 static int url_exit_request;
+static int url_display_request;
 static LIST_HEAD(pid_handlers);
 static LIST_HEAD(bottom_halves);
 static QETimer *first_timer;
@@ -240,7 +242,7 @@ static void url_block_reset(void)
     url_exit_request = 0;
 }
 
-#define MAX_DELAY 500
+#define MAX_DELAY 500  /* milliseconds */
 
 /* block until one event */
 static void url_block(void)
@@ -313,11 +315,20 @@ static void url_block(void)
 void url_main_loop(void (*init)(void *opaque), void *opaque)
 {
     url_block_reset();
-    init(opaque);
+    (*init)(opaque);
     for (;;) {
         if (url_exit_request)
             break;
         url_block();
+        if (url_display_request) {
+            QEmacsState *qs = &qe_state;
+
+            //qs->complete_refresh = 1;
+            do_refresh(NULL);
+            edit_display(qs);
+            dpy_flush(qs->screen);
+            url_display_request = 0;
+        }
     }
 }
 
@@ -325,4 +336,10 @@ void url_main_loop(void (*init)(void *opaque), void *opaque)
 void url_exit(void)
 {
     url_exit_request = 1;
+}
+
+/* asynchronous redisplay signal received */
+void url_redisplay(void)
+{
+    url_display_request = 1;
 }

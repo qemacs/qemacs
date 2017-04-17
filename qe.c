@@ -7384,10 +7384,10 @@ void do_refresh(EditState *s1)
             } else {
                 /* NOTE: to ensure that no rounding errors are made,
                    we resize the absolute coordinates */
-                e->x1 = (e->x1 * width) / qs->width;
-                e->x2 = (e->x2 * width) / qs->width;
-                e->y1 = (e->y1 * content_height) / qs->content_height;
-                e->y2 = (e->y2 * content_height) / qs->content_height;
+                e->x1 = (e->x1 * width + qs->width / 2) / qs->width;
+                e->x2 = (e->x2 * width + qs->width / 2) / qs->width;
+                e->y1 = (e->y1 * content_height + qs->content_height / 2) / qs->content_height;
+                e->y2 = (e->y2 * content_height + qs->content_height / 2) / qs->content_height;
             }
         }
 
