@@ -341,7 +341,7 @@ static void html_display(EditState *s)
                 /* hardware cursor */
                 s->screen->dpy.dpy_cursor_at(s->screen, x, y, w, h);
             } else {
-                fill_rectangle(s->screen, x, y, w, h, QECOLOR_XOR);
+                xor_rectangle(s->screen, x, y, w, h, QERGB(0xFF, 0xFF, 0xFF));
                 /* invalidate rectangle modified by cursor */
                 css_set_rect(&rect, x, y, x + w, y + h);
                 css_union_rect(&hs->invalid_rect, &rect);

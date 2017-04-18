@@ -105,6 +105,8 @@ struct QEDisplay {
     int (*dpy_is_user_input_pending)(QEditScreen *s);
     void (*dpy_fill_rectangle)(QEditScreen *s,
                                int x, int y, int w, int h, QEColor color);
+    void (*dpy_xor_rectangle)(QEditScreen *s,
+                              int x, int y, int w, int h, QEColor color);
     QEFont *(*dpy_open_font)(QEditScreen *s, int style, int size);
     void (*dpy_close_font)(QEditScreen *s, QEFont **fontp);
     void (*dpy_text_metrics)(QEditScreen *s, QEFont *font,
@@ -217,8 +219,10 @@ static inline void bmp_draw(QEditScreen *s, QEBitmap *b,
                             int dst_x, int dst_y, int dst_w, int dst_h,
                             int offset_x, int offset_y, int flags)
 {
-    s->dpy.dpy_bmp_draw(s, b, dst_x, dst_y, dst_w, dst_h,
-                        offset_x, offset_y, flags);
+    if (s->dpy.dpy_bmp_draw) {
+        s->dpy.dpy_bmp_draw(s, b, dst_x, dst_y, dst_w, dst_h,
+                            offset_x, offset_y, flags);
+    }
 }
 
 /* used to access the bitmap data. Return the necessary pointers to
@@ -226,12 +230,26 @@ static inline void bmp_draw(QEditScreen *s, QEBitmap *b,
 static inline void bmp_lock(QEditScreen *s, QEBitmap *bitmap, QEPicture *pict,
                             int x1, int y1, int w1, int h1)
 {
-    s->dpy.dpy_bmp_lock(s, bitmap, pict, x1, y1, w1, h1);
+    if (s->dpy.dpy_bmp_lock)
+        s->dpy.dpy_bmp_lock(s, bitmap, pict, x1, y1, w1, h1);
 }
 
 static inline void bmp_unlock(QEditScreen *s, QEBitmap *bitmap)
 {
-    s->dpy.dpy_bmp_unlock(s, bitmap);
+    if (s->dpy.dpy_bmp_unlock)
+        s->dpy.dpy_bmp_unlock(s, bitmap);
+}
+
+static inline void dpy_full_screen(QEditScreen *s, int full_screen)
+{
+    if (s->dpy.dpy_full_screen)
+        s->dpy.dpy_full_screen(s, full_screen);
+}
+
+static inline void dpy_describe(QEditScreen *s, EditBuffer *b)
+{
+    if (s->dpy.dpy_describe)
+        s->dpy.dpy_describe(s, b);
 }
 
 /* XXX: only needed for backward compatibility */
@@ -246,6 +264,8 @@ static inline int glyph_width(QEditScreen *s, QEFont *font, int ch)
 
 void fill_rectangle(QEditScreen *s,
                     int x1, int y1, int w, int h, QEColor color);
+void xor_rectangle(QEditScreen *s,
+                   int x1, int y1, int w, int h, QEColor color);
 void set_clip_rectangle(QEditScreen *s, CSSRect *r);
 void push_clip_rectangle(QEditScreen *s, CSSRect *r0, CSSRect *r);
 

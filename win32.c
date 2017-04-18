@@ -431,13 +431,26 @@ static void win_fill_rectangle(QEditScreen *s,
     HBRUSH hbr;
     COLORREF col;
 
-    /* XXX: suppress XOR mode */
-    if (color == QECOLOR_XOR)
-        color = QERGB(0xff, 0xff, 0xff);
+    SetRect(&rc, x1, y1, x1 + w, y1 + h);
+    col = RGB((color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
+    hbr = CreateSolidBrush(col);
+    FillRect(win_ctx.hdc, &rc, hbr);
+    DeleteObject(hbr);
+}
+
+static void win_xor_rectangle(QEditScreen *s,
+                              int x1, int y1, int w, int h, QEColor color)
+{
+    RECT rc;
+    HBRUSH hbr;
+    COLORREF col;
+
+    color = QERGB(0xff, 0xff, 0xff);
 
     SetRect(&rc, x1, y1, x1 + w, y1 + h);
     col = RGB((color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
     hbr = CreateSolidBrush(col);
+    // XXX: set XOR rop?
     FillRect(win_ctx.hdc, &rc, hbr);
     DeleteObject(hbr);
 }
@@ -505,6 +518,7 @@ static QEDisplay win32_dpy = {
     win_flush,
     win_is_user_input_pending,
     win_fill_rectangle,
+    win_xor_rectangle,
     win_open_font,
     win_close_font,
     win_text_metrics,

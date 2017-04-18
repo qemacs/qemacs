@@ -115,6 +115,7 @@ static QEDisplay ppm_dpy = {
     NULL, /* dpy_flush */
     NULL, /* dpy_is_user_input_pending */
     NULL, /* dpy_fill_rectangle */
+    NULL, /* dpy_xor_rectangle */
     NULL, /* dpy_open_font */
     NULL, /* dpy_close_font */
     NULL, /* dpy_text_metrics */

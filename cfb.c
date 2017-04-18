@@ -59,42 +59,52 @@ static void cfb16_fill_rectangle(QEditScreen *s,
     col = (col << 16) | col;
 
     dest = cfb->base + y1 * cfb->wrap + x1 * 2;
-    if (color == QECOLOR_XOR) {
-        /* XXX: suppress this mess */
-        for (y = 0; y < h; y++) {
-            d = dest;
-            for (n = w; n != 0; n--) {
-                ((uint16_t *)(void *)d)[0] ^= 0xffff;
-                d += 2;
-            }
-            dest += cfb->wrap;
-        }
-    } else {
-        for (y = 0; y < h; y++) {
-            d = dest;
-            n = w;
+    for (y = 0; y < h; y++) {
+        d = dest;
+        n = w;
 
-            if (((intptr_t)d & 3) != 0) {
-                ((uint16_t *)(void *)d)[0] = col;
-                d += 2;
-                n--;
-            }
-
-            while (n >= 8) {
-                ((uint32_t *)(void *)d)[0] = col;
-                ((uint32_t *)(void *)d)[1] = col;
-                ((uint32_t *)(void *)d)[2] = col;
-                ((uint32_t *)(void *)d)[3] = col;
-                d += 16;
-                n -= 8;
-            }
-            while (n > 0) {
-                ((uint16_t *)(void *)d)[0] = col;
-                d += 2;
-                n--;
-            }
-            dest += cfb->wrap;
+        if (((intptr_t)d & 3) != 0) {
+            ((uint16_t *)(void *)d)[0] = col;
+            d += 2;
+            n--;
         }
+
+        while (n >= 8) {
+            ((uint32_t *)(void *)d)[0] = col;
+            ((uint32_t *)(void *)d)[1] = col;
+            ((uint32_t *)(void *)d)[2] = col;
+            ((uint32_t *)(void *)d)[3] = col;
+            d += 16;
+            n -= 8;
+        }
+        while (n > 0) {
+            ((uint16_t *)(void *)d)[0] = col;
+            d += 2;
+            n--;
+        }
+        dest += cfb->wrap;
+    }
+}
+
+static void cfb16_xor_rectangle(QEditScreen *s,
+                                int x1, int y1, int w, int h, QEColor color)
+{
+    CFBContext *cfb = s->priv_data;
+    unsigned char *dest, *d;
+    int y, n;
+    unsigned int col;
+
+    col = cfb->get_color(color);
+    col = (col << 16) | col;
+
+    dest = cfb->base + y1 * cfb->wrap + x1 * 2;
+    for (y = 0; y < h; y++) {
+        d = dest;
+        for (n = w; n != 0; n--) {
+            ((uint16_t *)(void *)d)[0] ^= 0xffff;
+            d += 2;
+        }
+        dest += cfb->wrap;
     }
 }
 
@@ -109,35 +119,44 @@ static void cfb32_fill_rectangle(QEditScreen *s,
     col = cfb->get_color(color);
 
     dest = cfb->base + y1 * cfb->wrap + x1 * 4;
-    if (color == QECOLOR_XOR) {
-        /* XXX: suppress this mess */
-        for (y = 0; y < h; y++) {
-            d = dest;
-            for (n = w; n != 0; n--) {
-                ((uint32_t *)(void *)d)[0] ^= 0x00ffffff;
-                d += 4;
-            }
-            dest += cfb->wrap;
+    for (y = 0; y < h; y++) {
+        d = dest;
+        n = w;
+        while (n >= 4) {
+            ((uint32_t *)(void *)d)[0] = col;
+            ((uint32_t *)(void *)d)[1] = col;
+            ((uint32_t *)(void *)d)[2] = col;
+            ((uint32_t *)(void *)d)[3] = col;
+            d += 16;
+            n -= 4;
         }
-    } else {
-        for (y = 0; y < h; y++) {
-            d = dest;
-            n = w;
-            while (n >= 4) {
-                ((uint32_t *)(void *)d)[0] = col;
-                ((uint32_t *)(void *)d)[1] = col;
-                ((uint32_t *)(void *)d)[2] = col;
-                ((uint32_t *)(void *)d)[3] = col;
-                d += 16;
-                n -= 4;
-            }
-            while (n > 0) {
-                ((uint32_t *)(void *)d)[0] = col;
-                d += 4;
-                n--;
-            }
-            dest += cfb->wrap;
+        while (n > 0) {
+            ((uint32_t *)(void *)d)[0] = col;
+            d += 4;
+            n--;
         }
+        dest += cfb->wrap;
+    }
+}
+
+static void cfb32_xor_rectangle(QEditScreen *s,
+                                int x1, int y1, int w, int h, QEColor color)
+{
+    CFBContext *cfb = s->priv_data;
+    unsigned char *dest, *d;
+    int y, n;
+    unsigned int col;
+
+    col = cfb->get_color(color);
+
+    dest = cfb->base + y1 * cfb->wrap + x1 * 4;
+    for (y = 0; y < h; y++) {
+        d = dest;
+        for (n = w; n != 0; n--) {
+            ((uint32_t *)(void *)d)[0] ^= 0x00ffffff;
+            d += 4;
+        }
+        dest += cfb->wrap;
     }
 }
 
@@ -332,11 +351,13 @@ int cfb_init(QEditScreen *s,
     switch (cfb->bpp) {
     case 2:
         s->dpy.dpy_fill_rectangle = cfb16_fill_rectangle;
+        s->dpy.dpy_xor_rectangle = cfb16_xor_rectangle;
         cfb->draw_glyph = cfb16_draw_glyph;
        break;
     default:
     case 4:
         s->dpy.dpy_fill_rectangle = cfb32_fill_rectangle;
+        s->dpy.dpy_xor_rectangle = cfb32_xor_rectangle;
         cfb->draw_glyph = cfb32_draw_glyph;
         break;
     }

@@ -144,20 +144,21 @@ typedef struct TTYState {
     unsigned int comb_cache[COMB_CACHE_SIZE];
 } TTYState;
 
-static void tty_term_invalidate(QEditScreen *s);
-static void tty_resize(int sig);
+static QEditScreen *tty_screen;   /* for tty_term_exit and tty_term_resize */
+
+static void tty_dpy_invalidate(QEditScreen *s);
+
+static void tty_term_resize(int sig);
 static void tty_term_exit(void);
 static void tty_read_handler(void *opaque);
 
-static QEditScreen *tty_screen;   /* for tty_term_exit and tty_resize */
-
-static int tty_term_probe(void)
+static int tty_dpy_probe(void)
 {
     return 1;
 }
 
-static int tty_term_init(QEditScreen *s,
-                         qe__unused__ int w, qe__unused__ int h)
+static int tty_dpy_init(QEditScreen *s,
+                        qe__unused__ int w, qe__unused__ int h)
 {
     TTYState *ts;
     struct termios tty;
@@ -320,7 +321,7 @@ static int tty_term_init(QEditScreen *s,
 
     atexit(tty_term_exit);
 
-    sig.sa_handler = tty_resize;
+    sig.sa_handler = tty_term_resize;
     sigemptyset(&sig.sa_mask);
     sig.sa_flags = 0;
     sigaction(SIGWINCH, &sig, NULL);
@@ -333,7 +334,7 @@ static int tty_term_init(QEditScreen *s,
 
     set_read_handler(fileno(s->STDIN), tty_read_handler, s);
 
-    tty_term_invalidate(s);
+    tty_dpy_invalidate(s);
 
     if (ts->term_flags & KBS_CONTROL_H) {
         do_toggle_control_h(NULL, 1);
@@ -342,7 +343,7 @@ static int tty_term_init(QEditScreen *s,
     return 0;
 }
 
-static void tty_term_close(QEditScreen *s)
+static void tty_dpy_close(QEditScreen *s)
 {
     TTYState *ts = s->priv_data;
 
@@ -371,23 +372,29 @@ static void tty_term_close(QEditScreen *s)
 static void tty_term_exit(void)
 {
     QEditScreen *s = tty_screen;
-    TTYState *ts = s->priv_data;
 
-    tcsetattr(fileno(s->STDIN), TCSANOW, &ts->oldtty);
+    if (s) {
+        TTYState *ts = s->priv_data;
+        if (ts) {
+            tcsetattr(fileno(s->STDIN), TCSANOW, &ts->oldtty);
+        }
+    }
 }
 
-static void tty_resize(qe__unused__ int sig)
+static void tty_term_resize(qe__unused__ int sig)
 {
     QEditScreen *s = tty_screen;
 
-    tty_term_invalidate(s);
+    if (s) {
+        tty_dpy_invalidate(s);
 
-    //fprintf(stderr, "tty_resize: width=%d, height=%d\n", s->width, s->height);
+        //fprintf(stderr, "tty_term_resize: width=%d, height=%d\n", s->width, s->height);
 
-    url_redisplay();
+        url_redisplay();
+    }
 }
 
-static void tty_term_invalidate(QEditScreen *s)
+static void tty_dpy_invalidate(QEditScreen *s)
 {
     TTYState *ts;
     struct winsize ws;
@@ -435,15 +442,15 @@ static void tty_term_invalidate(QEditScreen *s)
     s->clip_y2 = s->height;
 }
 
-static void tty_term_cursor_at(QEditScreen *s, int x1, int y1,
-                               qe__unused__ int w, qe__unused__ int h)
+static void tty_dpy_cursor_at(QEditScreen *s, int x1, int y1,
+                              qe__unused__ int w, qe__unused__ int h)
 {
     TTYState *ts = s->priv_data;
     ts->cursor_x = x1;
     ts->cursor_y = y1;
 }
 
-static int tty_term_is_user_input_pending(QEditScreen *s)
+static int tty_dpy_is_user_input_pending(QEditScreen *s)
 {
     fd_set rfds;
     struct timeval tv;
@@ -538,7 +545,7 @@ static void tty_read_handler(void *opaque)
             }
         }
         if (ch == '\033') {
-            if (!tty_term_is_user_input_pending(s)) {
+            if (!tty_dpy_is_user_input_pending(s)) {
                 /* Trick to distinguish the ESC key from function and meta
                  * keys  transmitting escape sequences starting with \033
                  * but followed immediately by more characters.
@@ -556,7 +563,7 @@ static void tty_read_handler(void *opaque)
             goto the_end;
         }
         if (ch == '[') {
-            if (!tty_term_is_user_input_pending(s)) {
+            if (!tty_dpy_is_user_input_pending(s)) {
                 ch = KEY_META('[');
                 ts->input_state = IS_NORM;
                 goto the_end;
@@ -685,44 +692,54 @@ static void tty_read_handler(void *opaque)
     }
 }
 
-static void tty_term_fill_rectangle(QEditScreen *s,
-                                    int x1, int y1, int w, int h, QEColor color)
+static void tty_dpy_fill_rectangle(QEditScreen *s,
+                                   int x1, int y1, int w, int h, QEColor color)
 {
     TTYState *ts = s->priv_data;
+    int x, y;
     int x2 = x1 + w;
     int y2 = y1 + h;
-    int x, y;
-    TTYChar *ptr;
     int wrap = s->width - w;
+    TTYChar *ptr;
     unsigned int bgcolor;
 
     ptr = ts->screen + y1 * s->width + x1;
-    if (color == QECOLOR_XOR) {
-        for (y = y1; y < y2; y++) {
-            ts->line_updated[y] = 1;
-            for (x = x1; x < x2; x++) {
-                /* XXX: should reverse fg and bg */
-                *ptr ^= TTY_CHAR(0, 7, 7);
-                ptr++;
-            }
-            ptr += wrap;
+    bgcolor = qe_map_color(color, ts->tty_colors, ts->tty_bg_colors_count, NULL);
+    for (y = y1; y < y2; y++) {
+        ts->line_updated[y] = 1;
+        for (x = x1; x < x2; x++) {
+            *ptr = TTY_CHAR(' ', 7, bgcolor);
+            ptr++;
         }
-    } else {
-        bgcolor = qe_map_color(color, ts->tty_colors, ts->tty_bg_colors_count, NULL);
-        for (y = y1; y < y2; y++) {
-            ts->line_updated[y] = 1;
-            for (x = x1; x < x2; x++) {
-                *ptr = TTY_CHAR(' ', 7, bgcolor);
-                ptr++;
-            }
-            ptr += wrap;
+        ptr += wrap;
+    }
+}
+
+static void tty_dpy_xor_rectangle(QEditScreen *s,
+                                  int x1, int y1, int w, int h, QEColor color)
+{
+    TTYState *ts = s->priv_data;
+    int x, y;
+    int x2 = x1 + w;
+    int y2 = y1 + h;
+    int wrap = s->width - w;
+    TTYChar *ptr;
+
+    ptr = ts->screen + y1 * s->width + x1;
+    for (y = y1; y < y2; y++) {
+        ts->line_updated[y] = 1;
+        for (x = x1; x < x2; x++) {
+            /* XXX: should reverse fg and bg */
+            *ptr ^= TTY_CHAR(0, 7, 7);
+            ptr++;
         }
+        ptr += wrap;
     }
 }
 
 /* XXX: could alloc font in wrapper */
-static QEFont *tty_term_open_font(qe__unused__ QEditScreen *s,
-                                  qe__unused__ int style, qe__unused__ int size)
+static QEFont *tty_dpy_open_font(qe__unused__ QEditScreen *s,
+                                 qe__unused__ int style, qe__unused__ int size)
 {
     QEFont *font;
 
@@ -736,7 +753,7 @@ static QEFont *tty_term_open_font(qe__unused__ QEditScreen *s,
     return font;
 }
 
-static void tty_term_close_font(qe__unused__ QEditScreen *s, QEFont **fontp)
+static void tty_dpy_close_font(qe__unused__ QEditScreen *s, QEFont **fontp)
 {
     qe_free(fontp);
 }
@@ -750,9 +767,9 @@ static inline int tty_term_glyph_width(qe__unused__ QEditScreen *s, unsigned int
     return unicode_tty_glyph_width(ucs);
 }
 
-static void tty_term_text_metrics(QEditScreen *s, qe__unused__ QEFont *font,
-                                  QECharMetrics *metrics,
-                                  const unsigned int *str, int len)
+static void tty_dpy_text_metrics(QEditScreen *s, qe__unused__ QEFont *font,
+                                 QECharMetrics *metrics,
+                                 const unsigned int *str, int len)
 {
     int i, x;
 
@@ -879,9 +896,9 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
 #define comb_cache_describe(s, b)
 #endif
 
-static void tty_term_draw_text(QEditScreen *s, QEFont *font,
-                               int x, int y, const unsigned int *str0, int len,
-                               QEColor color)
+static void tty_dpy_draw_text(QEditScreen *s, QEFont *font,
+                              int x, int y, const unsigned int *str0, int len,
+                              QEColor color)
 {
     TTYState *ts = s->priv_data;
     TTYChar *ptr;
@@ -972,13 +989,13 @@ static void tty_term_draw_text(QEditScreen *s, QEFont *font,
     }
 }
 
-static void tty_term_set_clip(qe__unused__ QEditScreen *s,
-                              qe__unused__ int x, qe__unused__ int y,
-                              qe__unused__ int w, qe__unused__ int h)
+static void tty_dpy_set_clip(qe__unused__ QEditScreen *s,
+                             qe__unused__ int x, qe__unused__ int y,
+                             qe__unused__ int w, qe__unused__ int h)
 {
 }
 
-static void tty_term_flush(QEditScreen *s)
+static void tty_dpy_flush(QEditScreen *s)
 {
     TTYState *ts = s->priv_data;
     TTYChar *ptr, *ptr1, *ptr2, *ptr3, *ptr4, cc, blankcc;
@@ -1292,34 +1309,36 @@ static void tty_term_flush(QEditScreen *s)
     comb_cache_clean(ts, ts->screen, ts->screen_size);
 }
 
-static void tty_term_describe(QEditScreen *s, EditBuffer *b) {
+static void tty_dpy_describe(QEditScreen *s, EditBuffer *b)
+{
     comb_cache_describe(s, b);
 }
 
 static QEDisplay tty_dpy = {
     "vt100",
-    tty_term_probe,
-    tty_term_init,
-    tty_term_close,
-    tty_term_flush,
-    tty_term_is_user_input_pending,
-    tty_term_fill_rectangle,
-    tty_term_open_font,
-    tty_term_close_font,
-    tty_term_text_metrics,
-    tty_term_draw_text,
-    tty_term_set_clip,
+    tty_dpy_probe,
+    tty_dpy_init,
+    tty_dpy_close,
+    tty_dpy_flush,
+    tty_dpy_is_user_input_pending,
+    tty_dpy_fill_rectangle,
+    tty_dpy_xor_rectangle,
+    tty_dpy_open_font,
+    tty_dpy_close_font,
+    tty_dpy_text_metrics,
+    tty_dpy_draw_text,
+    tty_dpy_set_clip,
     NULL, /* dpy_selection_activate */
     NULL, /* dpy_selection_request */
-    tty_term_invalidate,
-    tty_term_cursor_at,
+    tty_dpy_invalidate,
+    tty_dpy_cursor_at,
     NULL, /* dpy_bmp_alloc */
     NULL, /* dpy_bmp_free */
     NULL, /* dpy_bmp_draw */
     NULL, /* dpy_bmp_lock */
     NULL, /* dpy_bmp_unlock */
     NULL, /* dpy_full_screen */
-    tty_term_describe,
+    tty_dpy_describe,
     NULL, /* next */
 };
 

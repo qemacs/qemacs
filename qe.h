@@ -206,7 +206,6 @@ typedef unsigned int QEColor;
 #define QERGB(r,g,b)       QEARGB(0xff, r, g, b)
 #define QERGB25(r,g,b)     QEARGB(1, r, g, b)
 #define COLOR_TRANSPARENT  0
-#define QECOLOR_XOR        1
 
 /* A qemacs style is a named set of attributes including:
  * - colors for foreground and background

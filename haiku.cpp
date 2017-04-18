@@ -638,27 +638,29 @@ static void haiku_fill_rectangle(QEditScreen *s,
                                  int x1, int y1, int w, int h, QEColor color)
 {
     WindowState *ctx = (WindowState *)s->priv_data;
-    //fprintf(stderr, "%s()\n", __FUNCTION__);
-    drawing_mode oldMode;
 
     BRect r(x1, y1, x1 + w - 1, y1 + h - 1);
     rgb_color c = { (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff, 0xff };
 
     ctx->v->LockLooper();
-
-    oldMode = ctx->v->DrawingMode();
-
-    /* XXX: suppress XOR mode */
-    if (color == QECOLOR_XOR)
-        ctx->v->SetDrawingMode(B_OP_INVERT);
-    else
-        ctx->v->SetHighColor(c);
+    ctx->v->SetHighColor(c);
     ctx->v->FillRect(r);
+    ctx->v->UnlockLooper();
+}
 
-    /* XXX: suppress XOR mode */
-    if (color == QECOLOR_XOR)
-        ctx->v->SetDrawingMode(oldMode);
-    
+static void haiku_xor_rectangle(QEditScreen *s,
+                                int x1, int y1, int w, int h, QEColor color)
+{
+    WindowState *ctx = (WindowState *)s->priv_data;
+    drawing_mode oldMode;
+
+    BRect r(x1, y1, x1 + w - 1, y1 + h - 1);
+
+    ctx->v->LockLooper();
+    oldMode = ctx->v->DrawingMode();
+    ctx->v->SetDrawingMode(B_OP_INVERT);
+    ctx->v->FillRect(r);
+    ctx->v->SetDrawingMode(oldMode);
     ctx->v->UnlockLooper();
 }
 
@@ -746,10 +748,6 @@ static void haiku_draw_text(QEditScreen *s, QEFont *font,
     BFont *f = (BFont *)(font->priv_data);
     int i;
     //fprintf(stderr, "%s()\n", __FUNCTION__);
-
-   /* XXX: suppress XOR mode */
-   if (color == QECOLOR_XOR)
-       color = QERGB(0xff, 0xff, 0xff);
 
     rgb_color c = { (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff, 0xff };
 
@@ -873,13 +871,14 @@ static QEDisplay haiku_dpy = {
     haiku_flush,
     haiku_is_user_input_pending,
     haiku_fill_rectangle,
+    haiku_xor_rectangle,
     haiku_open_font,
     haiku_close_font,
     haiku_text_metrics,
     haiku_draw_text,
     haiku_set_clip,
-    NULL, /* no selection handling */
-    NULL, /* no selection handling */
+    NULL, /* dpy_selection_activate */
+    NULL, /* dpy_selection_request */
     NULL, /* dpy_invalidate */
     NULL, /* dpy_cursor_at */
     haiku_bmp_alloc, /* dpy_bmp_alloc */

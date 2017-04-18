@@ -499,20 +499,6 @@ static unsigned long get_x11_color(X11State *xs, QEColor color)
     }
 }
 
-static void xor_rectangle(QEditScreen *s, int x, int y, int w, int h)
-{
-    X11State *xs = s->priv_data;
-    int fg;
-
-    fg = WhitePixel(xs->display, xs->xscreen);
-    XSetForeground(xs->display, xs->gc, fg);
-    XSetFunction(xs->display, xs->gc, GXxor);
-
-    XFillRectangle(xs->display, xs->dbuffer, xs->gc, x, y, w, h);
-
-    XSetFunction(xs->display, xs->gc, GXcopy);
-}
-
 /* Print the unicode string 'str' with baseline at position (x,y). The
    higher bits of each char may contain attributes. */
 #ifdef CONFIG_XFT
@@ -523,11 +509,6 @@ static void x11_dpy_fill_rectangle(QEditScreen *s,
     X11State *xs = s->priv_data;
     XftColor col;
     int r, g, b, a;
-
-    if (color == QECOLOR_XOR) {
-        xor_rectangle(s, x1, y1, w, h);
-        return;
-    }
 
     a = (color >> 24) & 0xff;
     r = (color >> 16) & 0xff;
@@ -540,6 +521,19 @@ static void x11_dpy_fill_rectangle(QEditScreen *s,
     col.color.alpha = a << 8;
     col.pixel = get_x11_color(xs, color);
     XftDrawRect(xs->renderDraw, &col, x1, y1, w, h);
+}
+
+static void x11_dpy_xor_rectangle(QEditScreen *s,
+                                  int x1, int y1, int w, int h, QEColor color)
+{
+    X11State *xs = s->priv_data;
+    int fg;
+
+    fg = WhitePixel(xs->display, xs->xscreen);
+    XSetForeground(xs->display, xs->gc, fg);
+    XSetFunction(xs->display, xs->gc, GXxor);
+    XFillRectangle(xs->display, xs->dbuffer, xs->gc, x1, y1, w, h);
+    XSetFunction(xs->display, xs->gc, GXcopy);
 }
 
 static QEFont *x11_dpy_open_font(QEditScreen *s, int style, int size)
@@ -650,14 +644,24 @@ static void x11_dpy_fill_rectangle(QEditScreen *s,
 
     update_rect(xs, x1, y1, x1 + w, y1 + h);
 
-    if (color == QECOLOR_XOR) {
-        xor_rectangle(s, x1, y1, w, h);
-        return;
-    }
-
     xcolor = get_x11_color(xs, color);
     XSetForeground(xs->display, xs->gc, xcolor);
     XFillRectangle(xs->display, xs->dbuffer, xs->gc, x1, y1, w, h);
+}
+
+static void x11_dpy_xor_rectangle(QEditScreen *s,
+                                  int x1, int y1, int w, int h, QEColor color)
+{
+    X11State *xs = s->priv_data;
+    int fg;
+
+    update_rect(xs, x1, y1, x1 + w, y1 + h);
+
+    fg = WhitePixel(xs->display, xs->xscreen);
+    XSetForeground(xs->display, xs->gc, fg);
+    XSetFunction(xs->display, xs->gc, GXxor);
+    XFillRectangle(xs->display, xs->dbuffer, xs->gc, x1, y1, w, h);
+    XSetFunction(xs->display, xs->gc, GXcopy);
 }
 
 static void get_entry(char *buf, int buf_size, const char **pp)
@@ -1887,6 +1891,7 @@ static QEDisplay x11_dpy = {
     x11_dpy_flush,
     x11_dpy_is_user_input_pending,
     x11_dpy_fill_rectangle,
+    x11_dpy_xor_rectangle,
     x11_dpy_open_font,
     x11_dpy_close_font,
     x11_dpy_text_metrics,

@@ -1503,9 +1503,7 @@ static void do_describe_screen(EditState *e, int argval)
     eb_printf(b1, "%*s: %x << %d\n", w, "QE_TERM_FG_COLORS", QE_TERM_FG_COLORS, QE_TERM_FG_SHIFT);
     eb_printf(b1, "%*s: %x << %d\n\n", w, "QE_TERM_BG_COLORS", QE_TERM_BG_COLORS, QE_TERM_BG_SHIFT);
 
-    if (s->dpy.dpy_describe) {
-        s->dpy.dpy_describe(s, b1);
-    }
+    dpy_describe(s, b1);
 
     b1->flags |= BF_READONLY;
     show_popup(e, b1);

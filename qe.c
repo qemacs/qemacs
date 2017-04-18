@@ -2974,8 +2974,7 @@ void do_toggle_full_screen(EditState *s)
     QEditScreen *screen = s->screen;
 
     qs->is_full_screen = !qs->is_full_screen;
-    if (screen->dpy.dpy_full_screen)
-        screen->dpy.dpy_full_screen(screen, qs->is_full_screen);
+    dpy_full_screen(screen, qs->is_full_screen);
     if (qs->is_full_screen)
         s->flags &= ~WF_MODELINE;
     else
@@ -4355,10 +4354,9 @@ static void generic_text_display(EditState *s)
                 x += w;
                 w = -w;
             }
-            fill_rectangle(s->screen, x, y, w, h, QECOLOR_XOR);
+            xor_rectangle(s->screen, x, y, w, h, QERGB(0xFF, 0xFF, 0xFF));
             /* invalidate line so that the cursor will be erased next time */
-            memset(&s->line_shadow[m->linec], 0xff,
-                   sizeof(QELineShadow));
+            memset(&s->line_shadow[m->linec], 0xff, sizeof(QELineShadow));
         }
     }
     s->cur_rtl = (m->dirc == DIR_RTL);

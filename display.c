@@ -52,6 +52,13 @@ static void dummy_dpy_fill_rectangle(qe__unused__ QEditScreen *s,
 {
 }
 
+static void dummy_dpy_xor_rectangle(qe__unused__ QEditScreen *s,
+                                    qe__unused__ int x1, qe__unused__ int y1,
+                                    qe__unused__ int w, qe__unused__ int h,
+                                    qe__unused__ QEColor color)
+{
+}
+
 static QEFont *dummy_dpy_open_font(qe__unused__ QEditScreen *s,
                                    qe__unused__ int style, qe__unused__ int size)
 {
@@ -91,12 +98,13 @@ static void dummy_dpy_set_clip(qe__unused__ QEditScreen *s,
 
 static QEDisplay const dummy_dpy = {
     "dummy",
-    NULL,
+    NULL, /* dpy_probe */
     dummy_dpy_init,
     dummy_dpy_close,
     dummy_dpy_flush,
     dummy_dpy_is_user_input_pending,
     dummy_dpy_fill_rectangle,
+    dummy_dpy_xor_rectangle,
     dummy_dpy_open_font,
     dummy_dpy_close_font,
     dummy_dpy_text_metrics,
@@ -147,10 +155,25 @@ void fill_rectangle(QEditScreen *s,
     s->dpy.dpy_fill_rectangle(s, x1, y1, x2 - x1, y2 - y1, color);
 }
 
+void xor_rectangle(QEditScreen *s,
+                   int x, int y, int w, int h, QEColor color)
+{
+    /* intersect with clip region */
+    int x1 = max(s->clip_x1, x);
+    int y1 = max(s->clip_y1, y);
+    int x2 = min(s->clip_x2, x1 + w);
+    int y2 = min(s->clip_y2, y1 + h);
+
+    if (x1 < x2 && y1 < y2) {
+        s->dpy.dpy_xor_rectangle(s, x1, y1, x2 - x1, y2 - y1, color);
+    }
+}
+
 /* set the clip rectangle (and does not clip by the previous one) */
 void set_clip_rectangle(QEditScreen *s, CSSRect *r)
 {
     int x1, y1, x2, y2;
+
     x1 = r->x1;
     y1 = r->y1;
     x2 = r->x2;
@@ -322,6 +345,7 @@ QEBitmap *bmp_alloc(QEditScreen *s, int width, int height, int flags)
 
     if (!s->dpy.dpy_bmp_alloc)
         return NULL;
+
     b = qe_mallocz(QEBitmap);
     if (!b)
         return NULL;

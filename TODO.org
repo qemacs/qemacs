@@ -32,7 +32,6 @@
 ** basic: share mmapped pages correctly
 ** completion: fix electric behavior
 ** completion: add completion function to get the default value
-** display: remove QECOLOR_XOR mess, use dpy_cursor_at for all devices
 ** files: check file date to detect asynchronous modifications on disk
 ** files: reload modified file upon change if untouched since load
 ** layout: kill buffer should delete popup and popleft window
