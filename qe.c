@@ -3100,7 +3100,7 @@ static void reverse_fragments(TextFragment *str, int len)
 
 /* CRC to optimize redraw. */
 /* XXX: is it safe enough ? */
-static unsigned int compute_crc(const void *p, int size, unsigned int sum)
+static uint64_t compute_crc(const void *p, int size, uint64_t sum)
 {
     const u8 *data = (const u8 *)p;
 
@@ -3111,17 +3111,20 @@ static unsigned int compute_crc(const void *p, int size, unsigned int sum)
      * B123456789012345678901234567890 A123456789012345678901234567890
      */
     while (((uintptr_t)data & 3) && size > 0) {
-        sum += ((sum >> 31) & 1) + sum + *data;
+        //sum += ((sum >> 31) & 1) + sum + *data;
+        sum += sum + *data + (sum >> 32);
         data++;
         size--;
     }
     while (size >= 4) {
-        sum += ((sum >> 31) & 1) + sum + *(const uint32_t *)(const void *)data;
+        //sum += ((sum >> 31) & 1) + sum + *(const uint32_t *)(const void *)data;
+        sum += sum + *(const uint32_t *)(const void *)data + (sum >> 32);
         data += 4;
         size -= 4;
     }
     while (size > 0) {
-        sum += ((sum >> 31) & 1) + sum + *data;
+        //sum += ((sum >> 31) & 1) + sum + *data;
+        sum += sum + *data + (sum >> 32);
         data++;
         size--;
     }
@@ -3181,7 +3184,7 @@ static void flush_line(DisplayState *ds,
     &&  ds->y < e->ytop + e->height) {
         QEStyleDef styledef, default_style;
         QELineShadow *ls;
-        unsigned int crc;
+        uint64_t crc;
 
         /* test if display needed */
         crc = compute_crc(fragments, sizeof(*fragments) * nb_fragments, 0);

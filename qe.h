@@ -1313,7 +1313,7 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2);
 /* contains all the information necessary to uniquely identify a line,
    to avoid displaying it */
 typedef struct QELineShadow {
-    unsigned int crc;
+    uint64_t crc;
     int x;
     short y;
     short height;
