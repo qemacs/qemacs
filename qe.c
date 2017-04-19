@@ -3109,22 +3109,28 @@ static uint64_t compute_crc(const void *p, int size, uint64_t sum)
      */
     /* XXX: We still have a bug when transposing two 31 byte words as in
      * B123456789012345678901234567890 A123456789012345678901234567890
+     * Here is another trivial collision:
+                    s->esc_params[s->nb_esc_params] = 0;
+                    s->has_params[s->nb_esc_params] = 1;
      */
     while (((uintptr_t)data & 3) && size > 0) {
         //sum += ((sum >> 31) & 1) + sum + *data;
-        sum += sum + *data + (sum >> 32);
+        //sum += sum + *data + (sum >> 32);
+        sum = (sum << 3) + *data + (sum >> 32);
         data++;
         size--;
     }
     while (size >= 4) {
         //sum += ((sum >> 31) & 1) + sum + *(const uint32_t *)(const void *)data;
-        sum += sum + *(const uint32_t *)(const void *)data + (sum >> 32);
+        //sum += sum + *(const uint32_t *)(const void *)data + (sum >> 32);
+        sum = (sum << 3) + *(const uint32_t *)(const void *)data + (sum >> 32);
         data += 4;
         size -= 4;
     }
     while (size > 0) {
         //sum += ((sum >> 31) & 1) + sum + *data;
-        sum += sum + *data + (sum >> 32);
+        //sum += sum + *data + (sum >> 32);
+        sum = (sum << 2) + *data + (sum >> 32);
         data++;
         size--;
     }
