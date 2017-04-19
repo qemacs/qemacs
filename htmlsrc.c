@@ -405,6 +405,7 @@ static int htmlsrc_mode_probe(ModeDef *mode, ModeProbeData *p)
     &&  (!html_tagcmp(buf, "<HTML") ||
          !html_tagcmp(buf, "<SCRIPT") ||
          !html_tagcmp(buf, "<?XML") ||
+         !html_tagcmp(buf, "<PLIST") ||
          !html_tagcmp(buf, "<!DOCTYPE"))) {
         return 85;
     }
@@ -421,7 +422,7 @@ static CmdDef htmlsrc_commands[] = {
 ModeDef htmlsrc_mode = {
     .name = "html-src",
     .extensions = "html|htm|asp|aspx|shtml|hta|htp|phtml|"
-                  "php|php3|php4|xml|eex",
+                  "php|php3|php4|xml|eex|plist",
     .mode_probe = htmlsrc_mode_probe,
     .colorize_func = htmlsrc_colorize_line,
 };
