@@ -1374,16 +1374,34 @@ static const char objc_types[] = {
     "id|BOOL|SEL|Class|Object|"
 };
 
-static int objc_mode_probe(ModeDef *mode, ModeProbeData *p)
+static int objc_mode_probe(ModeDef *mode, ModeProbeData *mp)
 {
-    if (match_extension(p->filename, mode->extensions)) {
+    const char *p = cs8(mp->buf);
+
+    if (match_extension(mp->filename, mode->extensions)) {
         /* favor Objective C over Limbo for .m extension
-         * if file is empty, starts with a comment or a #import */
-        if (p->buf[0] == '/' || p->buf[0] == '\0'
-        ||  strstart(cs8(p->buf), "#import", NULL)) {
+         * if file is empty, starts with a comment or a #import
+         */
+        if (*p == '/' || *p == '\0'
+        ||  strstart(p, "#import", NULL)) {
             return 81;
         } else {
             return 80;
+        }
+    }
+    if (match_extension(mp->filename, "h")) {
+        /* favor Objective C over C/C++ for .h extension
+         * if file has #import or @keyword at the beginning of a line
+         */
+        const char *q;
+        for (q = p;; q++) {
+            if ((*q == '@' && qe_isalpha(q[1]))
+            ||  (*q == '#' && strstart(p, "#import", NULL))) {
+                return 85;
+            }
+            q = strchr(q, '\n');
+            if (q == NULL)
+                break;
         }
     }
     return 1;
