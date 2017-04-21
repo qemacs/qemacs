@@ -447,11 +447,68 @@ void do_set_emulation(EditState *s, const char *name)
     }
 }
 
-void do_set_trace(EditState *s)
+void do_set_trace(EditState *s, const char *options)
 {
-    do_split_window(s, 0);
-    do_switch_to_buffer(s, "*trace*");
-    do_previous_window(s);
+    char buf[80];
+    const char *p = options;
+    QEmacsState *qs = s->qe_state;
+    int last_flags = qs->trace_flags;
+
+    while (*p) {
+        p += strspn(p, " \t,");
+        if (strstart(p, "none", &p) || strstart(p, "off", &p))
+            qs->trace_flags = 0;
+        else
+        if (strstart(p, "all", &p) || strstart(p, "on", &p))
+            qs->trace_flags = EB_TRACE_ALL;
+        else
+        if (strstart(p, "tty", &p)) {
+            qs->trace_flags |= EB_TRACE_TTY;
+        } else
+        if (strstart(p, "shell", &p)) {
+            qs->trace_flags |= EB_TRACE_SHELL;
+        } else
+        if (strstart(p, "pty", &p)) {
+            qs->trace_flags |= EB_TRACE_PTY;
+        } else
+        if (strstart(p, "emulate", &p)) {
+            qs->trace_flags |= EB_TRACE_EMULATE;
+        } else
+        if (strstart(p, "command", &p)) {
+            qs->trace_flags |= EB_TRACE_COMMAND;
+        } else {
+            break;
+        }
+    }
+    if (qs->trace_flags) {
+        if (!qs->trace_buffer) {
+            qs->trace_buffer = eb_new("*trace*", BF_SYSTEM);
+        }
+        if (!last_flags) {
+            do_split_window(s, 0);
+            do_switch_to_buffer(s, "*trace*");
+            do_previous_window(s);
+        }
+        *buf = '\0';
+        if (qs->trace_flags & EB_TRACE_TTY) {
+            strcat(buf, ", tty");
+        }
+        if (qs->trace_flags & EB_TRACE_SHELL) {
+            strcat(buf, ", shell");
+        }
+        if (qs->trace_flags & EB_TRACE_PTY) {
+            strcat(buf, ", pty");
+        }
+        if (qs->trace_flags & EB_TRACE_EMULATE) {
+            strcat(buf, ", emulate");
+        }
+        if (qs->trace_flags & EB_TRACE_COMMAND) {
+            strcat(buf, ", command");
+        }
+        put_status(s, "Tracing enabled for %s", buf + 2);
+    } else {
+        put_status(s, "Tracing disabled");
+    }
 }
 
 void do_cd(EditState *s, const char *path)
@@ -749,6 +806,7 @@ void do_fill_paragraph(EditState *s)
             /* insert space single space the word */
             if (offset == par_end
             ||  (col + 1 + word_size > s->b->fill_column)) {
+                /* XXX: should check if separator is a newline */
                 eb_delete_uchar(s->b, chunk_start);
                 chunk_start += eb_insert_uchar(s->b, chunk_start, '\n');
                 if (offset < par_end) {
@@ -761,6 +819,7 @@ void do_fill_paragraph(EditState *s)
                 }
                 col = word_size + indent_size;
             } else {
+                /* XXX: should check if separator is a space */
                 eb_delete_uchar(s->b, chunk_start);
                 chunk_start += eb_insert_uchar(s->b, chunk_start, ' ');
                 col += 1 + word_size;
@@ -1514,7 +1573,7 @@ void do_combine_char(EditState *s, int accent)
 
     c = eb_prevc(s->b, s->offset, &offset0);
     if (c == accent) {
-        eb_delete(s->b, offset0, s->offset - offset0);
+        eb_delete_range(s->b, offset0, s->offset);
     } else
     if (((expand_ligature(g, c) && g[1] == (unsigned int)accent)
     ||   (c != '\n' && combine_accent(g, c, accent)))
@@ -5598,6 +5657,7 @@ static void compute_client_area(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
     int x1, y1, x2, y2;
+    int line_height, cw;
 
     x1 = s->x1;
     y1 = s->y1;
@@ -5618,6 +5678,16 @@ static void compute_client_area(EditState *s)
     s->ytop = y1;
     s->width = x2 - x1;
     s->height = y2 - y1;
+
+    line_height = cw = 1;
+    if (s->screen && s->screen->dpy.dpy_probe) {
+        /* use window default style font except for dummy display */
+        line_height = get_line_height(s->screen, s, QE_STYLE_DEFAULT);
+        cw = get_glyph_width(s->screen, s, QE_STYLE_DEFAULT, '0');
+    }
+
+    s->rows = max(1, s->height / max(line_height, 1));
+    s->cols = max(1, s->width / max(cw, 1));
 }
 
 /* Create a new edit window, add it in the window list and sets it
@@ -5982,8 +6052,8 @@ void do_minibuffer_electric(EditState *s, int key)
             if (eb_match_string_reverse(s->b, offset, "http:", &stop)
             ||  eb_match_string_reverse(s->b, offset, "https:", &stop)
             ||  eb_match_string_reverse(s->b, offset, "ftp:", &stop)) {
-		    /* nothing, stop already updated */
-	    }
+                /* nothing, stop already updated */
+            }
             eb_delete(s->b, 0, stop);
         }
     }
@@ -7289,22 +7359,18 @@ static void quit_confirm_cb(qe__unused__ void *opaque, char *reply)
 
 /*----------------*/
 
-void do_doctor(EditState *s)
-{
-    /* Should show keys? */
-    put_status(s, "Hello, how are you?");
-}
-
 int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, int c)
 {
     QEStyleDef styledef;
     QEFont *font;
-    int width;
+    int width = 1;
 
     get_style(s, &styledef, style);
     font = select_font(screen, styledef.font_style, styledef.font_size);
-    width = glyph_width(screen, font, c);
-    release_font(screen, font);
+    if (font) {
+        width = glyph_width(screen, font, c);
+        release_font(screen, font);
+    }
     return width;
 }
 
@@ -7312,12 +7378,14 @@ int get_line_height(QEditScreen *screen, EditState *s, QETermStyle style)
 {
     QEStyleDef styledef;
     QEFont *font;
-    int height;
+    int height = 1;
 
     get_style(s, &styledef, style);
     font = select_font(screen, styledef.font_style, styledef.font_size);
-    height = font->ascent + font->descent;
-    release_font(screen, font);
+    if (font) {
+        height = font->ascent + font->descent;
+        release_font(screen, font);
+    }
     return height;
 }
 

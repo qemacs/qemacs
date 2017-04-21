@@ -1,11 +1,15 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-04-17
+; Updated: 2017-04-21
 
 * Recent bugs and ideas
 
 ** basic: backspace delete hacking tabs
+** charset: use unichar typedef
+** charset: limit number of combining marks to 20
+** clang: colorizing bug: static int (*qe__initcall_first)(void) qe__init_call = NULL;
+** clang: missed tag: static int (*qe__initcall_first)(void) qe__init_call = NULL;
 ** display: minibuffer and popup windows should be in a separate lists
 ** display: save display-width in binary and hex modes upon window change
 ** display: default display-width of 0 is automatic, other values are shared between binary and hex modes
@@ -14,13 +18,13 @@
 ** display: optimize display for very large display-width in binary and hex modes
 ** display: add screen dump command and format
 ** files: actually load file in find-file-noselect
-** xml: select on "<plist "
+** files: ignore .DS_Store in completion
+** files: fix SPC / TAB distinct behaviors on ~/comp/project/gnachman/
 ** shell: support ':' as alternate escape sequence argument separator
 ** shell: use target window for man and similar commands
-** charset: use unichar typedef
-** charset: limit number of combining marks to 20
-** clang: colorizing bug: static int (*qe__initcall_first)(void) qe__init_call = NULL;
-** clang: missed tag: static int (*qe__initcall_first)(void) qe__init_call = NULL;
+** tags: remove tags for modified line
+** undo: undo some cursor movements
+** xml: merge xml and htmlsrc modes, add submodes for plist and other config files
 
 * Priority 0
 

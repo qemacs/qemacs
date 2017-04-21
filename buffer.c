@@ -733,9 +733,6 @@ EditBuffer *eb_new(const char *name, int flags)
     eb_add_callback(b, eb_offset_callback, &b->mark, 0);
     eb_add_callback(b, eb_offset_callback, &b->offset, 1);
 
-    if (strequal(name, "*trace*"))
-        qs->trace_buffer = b;
-
     if (flags & BF_STYLES)
         eb_create_style_buffer(b, flags);
 
@@ -878,7 +875,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
     const u8 *p0, *endp, *p;
     int c, line, col, len, point;
 
-    if (!b)
+    if (!b || !(qs->trace_flags & state))
         return;
 
     point = b->total_size;
@@ -891,6 +888,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
             eb_insert_uchar(b, b->total_size, '\n');
             col = 0;
         }
+        state &= ~EB_TRACE_FLUSH;
         qs->trace_buffer_state = state;
         switch (state) {
         case EB_TRACE_TTY:
@@ -901,6 +899,9 @@ void eb_trace_bytes(const void *buf, int size, int state)
             break;
         case EB_TRACE_SHELL:
             str = "  shell: ";
+            break;
+        case EB_TRACE_EMULATE:
+            str = "emulate: ";
             break;
         case EB_TRACE_COMMAND:
             eb_printf(b, "command: %s\n", cs8(buf));
@@ -934,6 +935,8 @@ void eb_trace_bytes(const void *buf, int size, int state)
                 if ((c = 'n', *p == '\n')
                 ||  (c = 'r', *p == '\r')
                 ||  (c = 't', *p == '\t')
+                ||  (c = 'b', *p == '\010')
+                ||  (c = 'E', *p == '\033')
                 ||  (c = '\\', *p == '\\')) {
                     col += eb_printf(b, "\\%c", c);
                 } else

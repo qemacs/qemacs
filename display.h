@@ -171,12 +171,14 @@ static inline void dpy_flush(QEditScreen *s)
 static inline QEFont *open_font(QEditScreen *s,
                                 int style, int size)
 {
-    return s->dpy.dpy_open_font(s, style, size);
+    if (s->dpy.dpy_open_font)
+        return s->dpy.dpy_open_font(s, style, size);
+    return NULL;
 }
 
 static inline void close_font(QEditScreen *s, QEFont **fontp)
 {
-    if (*fontp && !(*fontp)->system_font)
+    if (*fontp && !(*fontp)->system_font && s->dpy.dpy_close_font)
         s->dpy.dpy_close_font(s, fontp);
 }
 

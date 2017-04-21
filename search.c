@@ -676,7 +676,7 @@ static void query_replace_replace(QueryReplaceState *is)
 
     /* XXX: handle smart case replacement */
     is->nb_reps++;
-    eb_delete(s->b, is->found_offset, is->found_end - is->found_offset);
+    eb_delete_range(s->b, is->found_offset, is->found_end);
     is->found_offset += eb_insert_u32_buf(s->b, is->found_offset,
         is->replace_u32, is->replace_u32_len);
 }
@@ -882,8 +882,8 @@ void do_search_string(EditState *s, const char *search_str, int dir)
             } else
             if (dir == 2) {
                 offset = eb_goto_bol(s->b, found_offset);
-                eb_delete(s->b, offset, 
-                          eb_next_line(s->b, found_offset) - offset);
+                eb_delete_range(s->b, offset,
+                                eb_next_line(s->b, found_offset));
                 continue;
             } else {
                 s->offset = (dir < 0) ? found_offset : found_end;

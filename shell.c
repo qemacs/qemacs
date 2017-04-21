@@ -40,7 +40,7 @@
 
 static ModeDef shell_mode, pager_mode;
 
-#define MAX_ESC_PARAMS 6
+#define MAX_CSI_PARAMS  16
 
 enum QETermState {
     QE_TERM_STATE_NORM,
@@ -54,21 +54,23 @@ enum QETermState {
 typedef struct ShellState {
     QEModeData base;
     /* buffer state */
+    int cols, rows;
+    int scroll_top, scroll_bottom;  /* scroll region (top included, bottom excluded) */
     int pty_fd;
     int pid; /* -1 if not launched */
     unsigned int attr, fgcolor, bgcolor, reverse;
     int cur_offset; /* current offset at position x, y */
     int cur_prompt; /* offset of end of prompt on current line */
-    int nb_esc_params;
-    int esc_params[MAX_ESC_PARAMS];
-    int has_params[MAX_ESC_PARAMS];
+    int nb_params;
+    int params[MAX_CSI_PARAMS + 1];
     int state;
-    int esc1, esc2;
+    int esc1, esc2, lastc;
     int shifted;
     int cset, charset[2];
     int grab_keys;
-    unsigned char utf8_buf[8];
-    int utf8_len, utf8_pos;
+    unsigned char term_buf[256];
+    int term_len, term_pos;
+    int utf8_len;
     EditBuffer *b;
     EditBuffer *b_color; /* color buffer, one byte per char */
     struct QEmacsState *qe_state;
@@ -181,6 +183,8 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
 {
     int pty_fd, pid, i, nb_fds;
     char tty_name[MAX_FILENAME_SIZE];
+    char lines_string[20];
+    char columns_string[20];
     struct winsize ws;
 
     pty_fd = get_pty(tty_name, sizeof(tty_name));
@@ -224,9 +228,6 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
         for (i = 0; i < nb_fds; i++)
             close(i);
 
-        if (shell_flags & SF_INFINITE)
-            setenv("LINES", "10000", 1);
-
         /* open pseudo tty for standard I/O */
         if (shell_flags & SF_INTERACTIVE) {
             /* interactive shell: input from / output to pseudo terminal */
@@ -242,7 +243,15 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
 #ifdef CONFIG_DARWIN
         setsid();
 #endif
-        setenv("TERM", "xterm", 1);
+        if (shell_flags & SF_INFINITE) {
+            rows += QE_TERM_YSIZE_INFINITE;
+        }
+        snprintf(lines_string, sizeof lines_string, "%d", rows);
+        snprintf(columns_string, sizeof columns_string, "%d", cols);
+
+        setenv("LINES", lines_string, 1);
+        setenv("COLUMNS", columns_string, 1);
+        setenv("TERM", "xterm-256color", 1);
         unsetenv("PAGER");
         //setenv("QELEVEL", "1", 1);
 
@@ -257,9 +266,13 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
 
 /* VT100 emulation */
 
-#define TRACE_MSG(m)  /* do { if (qe_state.trace_buffer) \
-                               eb_trace_bytes(" <-- "m" ", -1, \
-                               EB_TRACE_SHELL); } while (0) */
+static void qe_trace_term(ShellState *s, const char *msg) {
+    eb_trace_bytes(msg, -1, EB_TRACE_FLUSH | EB_TRACE_EMULATE);
+    eb_trace_bytes(": ", -1, EB_TRACE_EMULATE);
+    eb_trace_bytes(s->term_buf, s->term_len, EB_TRACE_EMULATE);
+}
+
+#define TRACE_MSG(s, m)  qe_trace_term(s, m)
 
 static void qe_term_init(ShellState *s)
 {
@@ -273,6 +286,7 @@ static void qe_term_init(ShellState *s)
     s->bgcolor = QE_TERM_DEF_BG;
     s->attr = 0;
     s->reverse = 0;
+    s->lastc = ' ';
 
     term = getenv("TERM");
     /* vt100 terminfo definitions */
@@ -438,7 +452,7 @@ static void qe_term_write(ShellState *s, const char *buf, int len)
     }
 }
 
-static inline void qe_term_set_setyle(ShellState *s) {
+static inline void qe_term_set_style(ShellState *s) {
     QETermStyle composite_color;
 
     if (s->reverse) {
@@ -447,6 +461,26 @@ static inline void qe_term_set_setyle(ShellState *s) {
         composite_color = QE_TERM_MAKE_COLOR(s->fgcolor, s->bgcolor);
     }
     s->b->cur_style = QE_TERM_COMPOSITE | s->attr | composite_color;
+}
+
+static void qe_term_get_xy(ShellState *s, int *px, int *py, int offset)
+{
+    int total_lines, cur_line, line_num, col_num, offset1;
+
+    /* compute offset */
+    eb_get_pos(s->b, &total_lines, &col_num, s->b->total_size);
+    if (s->cur_offset == s->b->total_size
+    ||  eb_prevc(s->b, s->b->total_size, &offset1) != '\n')
+        total_lines++;
+
+    line_num = total_lines - s->rows;
+    if (line_num < 0)
+        line_num = 0;
+
+    eb_get_pos(s->b, &cur_line, &col_num, offset);
+
+    *px = col_num;
+    *py = clamp(cur_line - line_num, 0, s->rows - 1);
 }
 
 /* Compute offset of the char at column x and row y (0 based).
@@ -464,7 +498,7 @@ static void qe_term_goto_xy(ShellState *s, int x, int y, int relative)
     ||  eb_prevc(s->b, s->b->total_size, &offset1) != '\n')
         total_lines++;
 
-    line_num = total_lines - QE_TERM_YSIZE;
+    line_num = total_lines - s->rows;
     if (line_num < 0)
         line_num = 0;
 
@@ -481,8 +515,8 @@ static void qe_term_goto_xy(ShellState *s, int x, int y, int relative)
     if (y < 0 || y >= QE_TERM_YSIZE_INFINITE - 1)
         y = 0;
     else
-    if (y >= QE_TERM_YSIZE)
-        y = QE_TERM_YSIZE - 1;
+    if (y >= s->rows)
+        y = s->rows - 1;
     if (x < 0)
         x = 0;
 
@@ -490,7 +524,7 @@ static void qe_term_goto_xy(ShellState *s, int x, int y, int relative)
     /* add lines if necessary */
     while (line_num >= total_lines) {
         /* XXX: color may be wrong */
-        qe_term_set_setyle(s);
+        qe_term_set_style(s);
         eb_insert_uchar(s->b, s->b->total_size, '\n');
         total_lines++;
     }
@@ -508,121 +542,143 @@ static void qe_term_goto_xy(ShellState *s, int x, int y, int relative)
     s->cur_offset = offset;
 }
 
-/* CG: XXX: tty_put_char purposely ignores charset when inserting chars */
-static int qe_term_put_char(ShellState *s, int c)
+static void qe_term_goto_tab(ShellState *s, int n)
 {
-    char buf[1];
-    int c1, cur_len, offset, offset1;
-
-    offset = s->cur_offset;
-    buf[0] = c;
-    c1 = eb_nextc(s->b, offset, &offset1);
-    qe_term_set_setyle(s);
-    if (c1 == '\n') {
-        /* insert */
-        eb_insert(s->b, offset, buf, 1);
-    } else {
-        /* check for (c1 != c) is not advisable optimisation because
-         * re-writing the same character may cause color changes.
-         */
-        cur_len = offset1 - offset;
-        if (cur_len == 1) {
-            eb_write(s->b, offset, buf, 1);
-        } else {
-            eb_delete(s->b, offset, cur_len);
-            eb_insert(s->b, offset, buf, 1);
-        }
-    }
-    return s->cur_offset = offset + 1;
+    int col_num, cur_line;
+    eb_get_pos(s->b, &cur_line, &col_num, s->cur_offset);
+    /* assuming tab stops every 8 positions */
+    qe_term_goto_xy(s, max(0, col_num + n * 8) & ~7, 0, 2);
 }
 
-static void qe_term_csi_m(ShellState *s, int c, int has_param)
+static int qe_term_overwrite(ShellState *s, int offset,
+                             const char *buf, int len)
 {
+    int offset1;
+    int c1;
+
+    c1 = eb_nextc(s->b, offset, &offset1);
+    qe_term_set_style(s);
+    if (c1 == '\n') {
+        /* insert */
+        eb_insert(s->b, offset, buf, len);
+    } else {
+        /* check for buffer content change is not an advisable optimisation
+         * because re-writing the same character may cause color changes.
+         */
+        int cur_len = offset1 - offset;
+        if (cur_len == len) {
+            eb_write(s->b, offset, buf, len);
+        } else {
+            eb_delete(s->b, offset, cur_len);
+            eb_insert(s->b, offset, buf, len);
+        }
+    }
+    return offset + len;
+}
+
+static int qe_term_put_char(ShellState *s, int offset, int c, int n)
+{
+    /* qe_term_put_char purposely ignores charset when writing chars */
+    char buf[1];
+    int i;
+
+    buf[0] = c;
+    for (i = 0; i < n; i++) {
+        offset = qe_term_overwrite(s, offset, buf, 1);
+    }
+    return offset;
+}
+
+static int qe_term_csi_m(ShellState *s, const int *params, int count)
+{
+    int c = *params;
+
     /* Comment from putty/terminal.c:
      *
-     * A VT100 without the AVO only had one
-     * attribute, either underline or
-     * reverse video depending on the
-     * cursor type, this was selected by
+     * A VT100 without the AVO only had one attribute, either underline or
+     * reverse video depending on the cursor type, this was selected by
      * CSI 7m.
      *
      * case 2:
-     *  This is sometimes DIM, eg on the
-     *  GIGI and Linux (aka FAINT in iTerm2)
+     *  This is sometimes DIM, eg on the GIGI and Linux (aka FAINT in iTerm2)
      * case 8:
      *  This is sometimes INVIS various ANSI.
      * case 21:
      *  This like 22 disables BOLD, DIM and INVIS
      *
-     * The ANSI colours appear on any
-     * terminal that has colour (obviously)
-     * but the interaction between sgr0 and
-     * the colours varies but is usually
-     * related to the background colour
-     * erase item. The interaction between
-     * colour attributes and the mono ones
-     * is also very implementation
+     * The ANSI colours appear on any terminal that has colour (obviously)
+     * but the interaction between sgr0 and the colours varies but is usually
+     * related to the background colour erase item. The interaction between
+     * colour attributes and the mono ones is also very implementation
      * dependent.
      *
-     * The 39 and 49 attributes are likely
-     * to be unimplemented.
+     * The 39 and 49 attributes are likely to be unimplemented.
      */
-
-    switch (has_param ? c : 0) {
-    case 0:     /* exit_attribute_mode */
+    switch (c) {
+    case -1:
+    case 0:     /* Normal (default). [exit_attribute_mode] */
         s->fgcolor = QE_TERM_DEF_FG;
         s->bgcolor = QE_TERM_DEF_BG;
         s->reverse = 0;
         s->attr = 0;
         break;
-    case 1:     /* enter_bold_mode */
+    case 1:     /* Bold. [enter_bold_mode] */
         s->attr |= QE_TERM_BOLD;
         break;
-    case 3:     /* enter_italic_mode */
+    case 2:     /* Faint, decreased intensity (ISO 6429). */
+        goto unhandled;
+    case 3:     /* Italicized (ISO 6429). [enter_italic_mode] */
         s->attr |= QE_TERM_ITALIC;
         break;
-    case 4:     /* enter_underline_mode */
+    case 4:     /* Underlined. [enter_underline_mode] */
         s->attr |= QE_TERM_UNDERLINE;
         break;
-    case 5:     /* enter_blink_mode */
+    case 5:     /* Blink (appears as Bold). [enter_blink_mode] */
         s->attr |= QE_TERM_BLINK;
         break;
-    case 7:     /* enter_reverse_mode, enter_standout_mode */
-                /* also Xenix combined reverse fg/bg: \027[7;FG;BGm */
+    case 6:     /* SCO light background */
+        goto unhandled;
+    case 7:     /* Inverse. [enter_reverse_mode, enter_standout_mode] */
         s->reverse = 1;
         break;
-    case 22:    /* exit_bold_mode */
-        s->attr &= ~QE_TERM_BOLD;
-        break;
-    case 23:    /* exit_italic_mode */
-        s->attr &= ~QE_TERM_ITALIC;
-        break;
-    case 24:    /* exit_underline_mode */
-        s->attr &= ~QE_TERM_UNDERLINE;
-        break;
-    case 25:    /* exit_blink_mode */
-        s->attr &= ~QE_TERM_BLINK;
-        break;
-    case 27:    /* exit_reverse_mode, exit_standout_mode */
-        s->reverse = 0;
-        break;
-    case 2:     /* DIM or FAINT */
-    case 6:     /* SCO light background */
-    case 8:     /* enter_secure_mode */
-    case 9:     /* cygwin dim mode */
+    case 8:     /* Invisible, i.e., hidden (VT300). enter_secure_mode */
+    case 9:     /* Crossed-out characters (ISO 6429). cygwin dim mode */
     case 10:    /* SCO acs off */
     case 11:    /* SCO acs on (CP437) */
     case 12:    /* SCO acs on, |0x80 */
-    case 28:    /* exit_secure_mode */
-        TRACE_MSG("unhandled");
+        goto unhandled;
+    case 21:    /* Doubly-underlined (ISO 6429). */
+        goto unhandled;
+    case 22:    /* Normal (neither bold nor faint). [exit_bold_mode] */
+        s->attr &= ~QE_TERM_BOLD;
         break;
-    case 39:    /* orig_pair(1) default-foreground */
-        s->fgcolor = QE_TERM_DEF_FG;
+    case 23:    /* Not italicized (ISO 6429). [exit_italic_mode] */
+        s->attr &= ~QE_TERM_ITALIC;
         break;
-    case 49:    /* orig_pair(2) default-background */
-        s->bgcolor = QE_TERM_DEF_BG;
+    case 24:    /* Not underlined. [exit_underline_mode] */
+        s->attr &= ~QE_TERM_UNDERLINE;
         break;
-    case 38:    /* set extended foreground color */
+    case 25:    /* Steady (not blinking). [exit_blink_mode] */
+        s->attr &= ~QE_TERM_BLINK;
+        break;
+    case 27:    /* Positive (not inverse). [exit_reverse_mode, exit_standout_mode] */
+        s->reverse = 0;
+        break;
+    case 28:    /* Visible, i.e., not hidden (VT300). [exit_secure_mode] */
+    case 29:    /* Not crossed-out (ISO 6429). */
+        goto unhandled;
+    case 30: case 31: case 32: case 33:
+    case 34: case 35: case 36: case 37:
+        /* set foreground color */
+        /* 0:black 1:red 2:green 3:yellow 4:blue 5:magenta 6:cyan 7:white */
+        /* XXX: should distinguish system colors and palette colors */
+        s->fgcolor = c - 30;
+        if (QE_TERM_FG_COLORS < 256) {
+            s->fgcolor = qe_map_color(xterm_colors[c - 30], xterm_colors,
+                                      QE_TERM_FG_COLORS, NULL);
+        }
+        break;
+    case 38:    /* set extended foreground color (ISO-8613-3) */
         // First subparam means:   # additional subparams:  Accepts optional params:
         // 1: transparent          0                        NO
         // 2: RGB                  3                        YES
@@ -647,97 +703,97 @@ static void qe_term_csi_m(ShellState *s, int c, int has_param)
         // where N is a value between 0 and 255. See the colors described in screen_char_t
         // in the comments for fgColorCode.
 
-        if (s->esc_params[1] == 5) {
+        if (count >= 3 && params[1] == 5) {
             /* set foreground color to third esc_param */
             /* complete syntax is \033[38;5;Nm where N is in range 0..255 */
-            int color = s->esc_params[2] & 255;
+            int color = clamp(params[2], 0, 255);
             QEColor rgb = xterm_colors[color];
 
             /* map color to qe-term palette */
             s->fgcolor = color;
             if (QE_TERM_FG_COLORS < 256)
                 s->fgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_FG_COLORS, NULL);
-            s->nb_esc_params = 1;  /* XXX: should instead consume 2 arguments */
-        } else
-        if (s->esc_params[1] == 2) {
+            return 3;
+        }
+        if (count >= 5 && params[1] == 2) {
             /* set foreground color to 24-bit color */
             /* complete syntax is \033[38;2;r;g;bm where r,g,b are in 0..255 */
-            QEColor rgb = QERGB25(s->esc_params[2] & 255,
-                                  s->esc_params[3] & 255,
-                                  s->esc_params[4] & 255);
+            QEColor rgb = QERGB25(clamp(params[2], 0, 255),
+                                  clamp(params[3], 0, 255),
+                                  clamp(params[4], 0, 255));
 
             /* map 24-bit colors to qe-term palette */
             s->fgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_FG_COLORS, NULL);
-            s->nb_esc_params = 1;  /* XXX: should instead consume 4 arguments */
+            return 5;
+        }
+        return 2;
+    case 39:    /* orig_pair(1) [default-foreground] */
+        s->fgcolor = QE_TERM_DEF_FG;
+        break;
+    case 40: case 41: case 42: case 43:
+    case 44: case 45: case 46: case 47:
+        /* set background color */
+        /* XXX: should distinguish system colors and palette colors */
+        s->bgcolor = c - 40;
+        if (QE_TERM_BG_COLORS < 256) {
+            s->bgcolor = qe_map_color(xterm_colors[c - 40], xterm_colors,
+                                      QE_TERM_BG_COLORS, NULL);
         }
         break;
-    case 48:    /* set extended background color */
-        if (s->esc_params[1] == 5) {
+    case 48:    /* set extended background color (ISO-8613-3) */
+        if (count >= 3 && params[1] == 5) {
             /* set background color to third esc_param */
             /* complete syntax is \033[48;5;Nm where N is in range 0..255 */
-            int color = s->esc_params[2] & 255;
+            int color = clamp(params[2], 0, 255);
             QEColor rgb = xterm_colors[color];
 
             /* map color to qe-term palette */
             s->bgcolor = color;
             if (QE_TERM_BG_COLORS < 256)
                 s->bgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_BG_COLORS, NULL);
-            s->nb_esc_params = 1;  /* XXX: should instead consume 2 arguments */
-        } else
-        if (s->esc_params[1] == 2) {
+            return 3;
+        }
+        if (count >= 5 && params[1] == 2) {
             /* set background color to 24-bit color */
             /* complete syntax is \033[48;2;r;g;bm where r,g,b are in 0..255 */
-            QEColor rgb = QERGB25(s->esc_params[2] & 255,
-                                  s->esc_params[3] & 255,
-                                  s->esc_params[4] & 255);
+            QEColor rgb = QERGB25(clamp(params[2], 0, 255),
+                                  clamp(params[3], 0, 255),
+                                  clamp(params[4], 0, 255));
 
             /* map 24-bit colors to qe-term palette */
             s->bgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_BG_COLORS, NULL);
-            s->nb_esc_params = 1;  /* XXX: should instead consume 4 arguments */
+            return 5;
+        }
+        return 2;
+    case 49:    /* orig_pair(2) [default-background] */
+        s->bgcolor = QE_TERM_DEF_BG;
+        break;
+    case 90: case 91: case 92: case 93:
+    case 94: case 95: case 96: case 97:
+        /* set bright foreground color */
+        /* XXX: should distinguish system colors and palette colors */
+        s->fgcolor = c - 90 + 8;
+        if (QE_TERM_FG_COLORS < 256) {
+            s->fgcolor = qe_map_color(xterm_colors[c - 90 + 8], xterm_colors,
+                                      QE_TERM_FG_COLORS, NULL);
+        }
+        break;
+    case 100: case 101: case 102: case 103:
+    case 104: case 105: case 106: case 107:
+        /* set bright background color */
+        /* XXX: should distinguish system colors and palette colors */
+        s->bgcolor = c - 100 + 8;
+        if (QE_TERM_BG_COLORS < 256) {
+            s->bgcolor = qe_map_color(xterm_colors[c - 100 + 8], xterm_colors,
+                                      QE_TERM_BG_COLORS, NULL);
         }
         break;
     default:
-        /* 0:black 1:red 2:green 3:yellow 4:blue 5:magenta 6:cyan 7:white */
-        if (c >= 30 && c <= 37) {
-            /* set foreground color */
-            /* XXX: should distinguish system colors and palette colors */
-            s->fgcolor = c - 30;
-            if (QE_TERM_FG_COLORS < 256) {
-                s->fgcolor = qe_map_color(xterm_colors[c - 30], xterm_colors,
-                                          QE_TERM_FG_COLORS, NULL);
-            }
-        } else
-        if (c >= 40 && c <= 47) {
-            /* set background color */
-            /* XXX: should distinguish system colors and palette colors */
-            s->bgcolor = c - 40;
-            if (QE_TERM_BG_COLORS < 256) {
-                s->bgcolor = qe_map_color(xterm_colors[c - 40], xterm_colors,
-                                          QE_TERM_BG_COLORS, NULL);
-            }
-        } else
-        if (c >= 90 && c <= 97) {
-            /* set bright foreground color */
-            /* XXX: should distinguish system colors and palette colors */
-            s->fgcolor = c - 90 + 8;
-            if (QE_TERM_FG_COLORS < 256) {
-                s->fgcolor = qe_map_color(xterm_colors[c - 90 + 8], xterm_colors,
-                                          QE_TERM_FG_COLORS, NULL);
-            }
-        } else
-        if (c >= 100 && c <= 107) {
-            /* set bright background color */
-            /* XXX: should distinguish system colors and palette colors */
-            s->bgcolor = c - 100 + 8;
-            if (QE_TERM_BG_COLORS < 256) {
-                s->bgcolor = qe_map_color(xterm_colors[c - 100 + 8], xterm_colors,
-                                          QE_TERM_BG_COLORS, NULL);
-            }
-        } else {
-            TRACE_MSG("unhandled");
-        }
+    unhandled:
+        TRACE_MSG(s, "unhandled SGR");
         break;
     }
+    return 1;
 }
 
 
@@ -858,12 +914,21 @@ static unsigned char const sco_color[16] = {
 
 static void qe_term_emulate(ShellState *s, int c)
 {
-    int i, offset, offset1, offset2, n;
+    int i, n, param1, param2, len;
+    int offset, offset1, offset2;
     char buf1[10];
 
     offset = s->cur_offset;
 
-#define ESC2(c1,c2)  (((c1)<<8)|((unsigned char)c2))
+    if (s->state == QE_TERM_STATE_NORM) {
+        s->term_pos = 0;
+    }
+    if (s->term_pos < countof(s->term_buf)) {
+        s->term_buf[s->term_pos++] = c;
+        s->term_len = s->term_pos;
+    }
+
+#define ESC2(c1,c2)  (((c1) << 8) | (unsigned char)(c2))
     /* some bytes are state independent */
     switch (c) {
     case 0x18:
@@ -882,61 +947,70 @@ static void qe_term_emulate(ShellState *s, int c)
     switch (s->state) {
     case QE_TERM_STATE_NORM:
         switch (c) {
-            /* BEL            Bell (Ctrl-G) */
-            /* FF             Form Feed or New Page (NP) (Ctrl-L) same as LF */
-            /* VT             Vertical Tab (Ctrl-K) same as LF */
-
-        case 8:         /* ^H  BS = backspace */
+        case 5:     /* ENQ  Return Terminal Status (Ctrl-E).
+             * Default response is an empty string, but may be overridden
+             * by a resource <b>answerbackString</b>.
+             */
+            break;
+        case 7:     /* BEL  Bell (Ctrl-G). */
+            put_status(NULL, "Ding!");
+            break;
+        case 8:     /* BS   Backspace (Ctrl-H). */
             {
                 int c1;
                 c1 = eb_prevc(s->b, offset, &offset1);
                 if (c1 != '\n') {
                     s->cur_offset = offset1;
-                    /* back_color_erase */
-                    //qe_term_put_char(s, ' ');
                 }
             }
             break;
-        case 9:        /* ^I  HT = horizontal tab */
-            {
-                int col_num, cur_line;
-                eb_get_pos(s->b, &cur_line, &col_num, offset);
-                qe_term_goto_xy(s, (col_num + 8) & ~7, 0, 2);
-                break;
-            }
-        case 10:        /* ^J  NL = line feed */
-            /* go to next line */
-            /* CG: should check if column should be kept */
-            for (;;) {
-                if (offset == s->b->total_size) {
-                    /* add a new line */
-                    /* CG: XXX: ignoring charset */
-                    qe_term_set_setyle(s);
-                    buf1[0] = '\n';
-                    eb_insert(s->b, offset, buf1, 1);
-                    offset = s->b->total_size;
-                    break;
+        case 9:     /* TAB  Horizontal Tab (HT) (Ctrl-I). */
+            qe_term_goto_tab(s, 1);
+            break;
+        case 10:    /* Line Feed or New Line (NL).  (LF  is Ctrl-J). */
+        case 11:    /* VT   Vertical Tab (Ctrl-K).
+                     * This is treated the same as LF. */
+        case 12:    /* FF   Form Feed or New Page (NP) (Ctrl-L).
+                     * FF  is treated the same as LF. */
+            if (s->grab_keys) {
+                qe_term_goto_xy(s, 0, 1, 3);
+            } else {
+                /* go to next line */
+                /* CG: should check if column should be kept in cooked mode */
+                for (;;) {
+                    if (offset == s->b->total_size) {
+                        /* add a new line */
+                        /* CG: XXX: ignoring charset */
+                        qe_term_set_style(s);
+                        buf1[0] = '\n';
+                        eb_insert(s->b, offset, buf1, 1);
+                        offset = s->b->total_size;
+                        break;
+                    }
+                    c = eb_nextc(s->b, offset, &offset);
+                    if (c == '\n')
+                        break;
                 }
-                c = eb_nextc(s->b, offset, &offset);
-                if (c == '\n')
-                    break;
+                s->cur_offset = offset;
             }
             s->b->last_log = 0; /* close undo record */
-            s->cur_offset = offset;
             break;
-        case 13:        /* ^M  CR = carriage return */
+        case 13:    /* CR   Carriage Return (Ctrl-M). */
             /* move to bol */
             s->cur_offset = eb_goto_bol(s->b, offset);
             break;
-        case 14:        /* ^N  SO = shift out */
+        case 14:    /* SO   Shift Out (Ctrl-N) ->
+             * Switch to Alternate Character Set.  This
+             * invokes the G1 character set. */
             s->shifted = s->charset[s->cset = 1];
             break;
-        case 15:        /* ^O  SI = shift in */
+        case 15:    /* SI   Shift In (Ctrl-O) ->
+             * Switch to Standard Character Set.  This
+             * invokes the G0 character set (the default). */
             s->shifted = s->charset[s->cset = 0];
             break;
         default:
             if (c >= 32) {
-                int c1, cur_len, len;
                 /* CG: assuming ISO-8859-1 characters */
                 /* CG: horrible kludge for alternate charset support */
                 if (s->shifted && c >= 96 && c < 128) {
@@ -965,7 +1039,7 @@ static void qe_term_emulate(ShellState *s, int c)
                          * This hack is reversed in tty_term_flush().
                          */
                         c += 32;
-                        buf1[0] = c;
+                        buf1[0] = s->lastc = c;
                         len = 1;
                     }
                 } else {
@@ -982,151 +1056,157 @@ static void qe_term_emulate(ShellState *s, int c)
                     if (s->b->charset == &charset_utf8) {
                         s->utf8_len = utf8_length[c];
                         if (s->utf8_len > 1) {
-                            s->utf8_buf[0] = c;
-                            s->utf8_pos = 1;
                             s->state = QE_TERM_STATE_UTF8;
                             break;
                         }
                     }
                     //len = eb_encode_uchar(s->b, buf1, c);
-                    buf1[0] = c;
+                    buf1[0] = s->lastc = c;
                     len = 1;
                 }
-                c1 = eb_nextc(s->b, offset, &offset1);
-                qe_term_set_setyle(s);
-                /* Should simplify with qe_term_put_char */
-                if (c1 == '\n') {
-                    /* insert */
-                    eb_insert(s->b, offset, buf1, len);
-                } else {
-                    cur_len = offset1 - offset;
-                    if (cur_len == len) {
-                        eb_write(s->b, offset, buf1, len);
-                    } else {
-                        eb_delete(s->b, offset, cur_len);
-                        eb_insert(s->b, offset, buf1, len);
-                    }
-                }
-                s->cur_offset = offset + len;
-	    } else {
-                TRACE_MSG("control");
-	    }
+                s->cur_offset = qe_term_overwrite(s, offset, buf1, len);
+            } else {
+                TRACE_MSG(s, "control");
+            }
             break;
         }
         break;
     case QE_TERM_STATE_UTF8:
-        s->utf8_buf[s->utf8_pos++] = c;
-        if (s->utf8_pos >= s->utf8_len) {
-            int c1, cur_len, len;
-
-            len = s->utf8_len;
-            c1 = eb_nextc(s->b, offset, &offset1);
-            qe_term_set_setyle(s);
-            if (c1 == '\n') {
-                /* insert */
-                eb_insert(s->b, offset, s->utf8_buf, len);
-            } else {
-                cur_len = offset1 - offset;
-                if (cur_len == len) {
-                    eb_write(s->b, offset, s->utf8_buf, len);
-                } else {
-                    eb_delete(s->b, offset, cur_len);
-                    eb_insert(s->b, offset, s->utf8_buf, len);
-                }
-            }
-            s->cur_offset = offset + len;
+        /* XXX: should check that c is a utf-8 continuation byte */
+        if (s->term_pos >= s->utf8_len) {
+            s->cur_offset = qe_term_overwrite(s, offset,
+                                              cs8(s->term_buf), s->utf8_len);
             s->state = QE_TERM_STATE_NORM;
         }
         break;
     case QE_TERM_STATE_ESC:
-        if (c == '[') {
-            for (i = 0; i < MAX_ESC_PARAMS; i++) {
-                s->esc_params[i] = 1;
-                s->has_params[i] = 0;
-            }
-            s->nb_esc_params = 0;
+        /* CG: should deal with other sequences:
+         * ansi: hts=\EH, s0ds=\E(B, s1ds=\E)B, s2ds=\E*B, s3ds=\E+B,
+         * linux: hts=\EH, rc=\E8, ri=\EM, rs1=\Ec\E]R, sc=\E7,
+         * vt100: enacs=\E(B\E)0, hts=\EH, rc=\E8, ri=\EM$<5>,
+         *        rmkx=\E[?1l\E>,
+         *        rs2=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h, sc=\E7,
+         *        smkx=\E[?1h\E=,
+         * xterm: enacs=\E(B\E)0, hts=\EH, is2=\E[!p\E[?3;4l\E[4l\E>,
+         *        rc=\E8, ri=\EM, rmkx=\E[?1l\E>, rs1=\Ec,
+         *        rs2=\E[!p\E[?3;4l\E[4l\E>, sc=\E7, smkx=\E[?1h\E=,
+         *        set-window-title=\E]0;title text\007,
+         * tests: \E#8  fill screen with 'E's
+         * tests: \Ec   reset
+         */
+        s->esc1 = c;
+        switch (c) {
+        case '[':   // Control Sequence Introducer (CSI  is 0x9b).
+            s->nb_params = 0;
+            s->params[0] = -1;
+            s->params[1] = -1;
             s->esc1 = 0;
             s->state = QE_TERM_STATE_CSI;
-        } else {
-            /* CG: should deal with other sequences:
-             * ansi: hts=\EH, s0ds=\E(B, s1ds=\E)B, s2ds=\E*B, s3ds=\E+B,
-             * linux: hts=\EH, rc=\E8, ri=\EM, rs1=\Ec\E]R, sc=\E7,
-             * vt100: enacs=\E(B\E)0, hts=\EH, rc=\E8, ri=\EM$<5>,
-             *        rmkx=\E[?1l\E>,
-             *        rs2=\E>\E[?3l\E[?4l\E[?5l\E[?7h\E[?8h, sc=\E7,
-             *        smkx=\E[?1h\E=,
-             * xterm: enacs=\E(B\E)0, hts=\EH, is2=\E[!p\E[?3;4l\E[4l\E>,
-             *        rc=\E8, ri=\EM, rmkx=\E[?1l\E>, rs1=\Ec,
-             *        rs2=\E[!p\E[?3;4l\E[4l\E>, sc=\E7, smkx=\E[?1h\E=,
-             *        set-window-title=\E]0;title text\007,
-             * tests: \E#8  fill screen with 'E's
-             * tests: \Ec   reset
-             */
-            switch (c) {
-            case '%':
-            case '(':
-            case ')':
-            case '*':
-            case '+':
-            case ']':
-                s->esc1 = c;
-                s->state = QE_TERM_STATE_ESC2;
-                break;
-            case '7':   // sc   (save_cursor)
-            case '8':   // rc   (restore_cursor)
-            case '=':   // smkx (DECKPAM: Keypad application mode)
-            case '>':   // rmkx, is2, rs2  (DECKPNM: Keypad numeric mode)
-            case 'D':   // IND: exactly equivalent to LF
-            case 'E':   // NEL: exactly equivalent to CR-LF
-            case 'M':   // ri   (scroll_reverse, RI: reverse index - backwards LF)
-            case 'Z':   /* DECID: terminal type query */
-            case 'c':   // rs1  (reset_1string)
-                        /* RIS: restore power-on settings */
-            case 'H':   // hts  (set_tab)
-                // XXX: do these
-            default:
-                TRACE_MSG("unhandled");
-                s->state = QE_TERM_STATE_NORM;
-                break;
-            }
+            break;
+        case ' ':
+        case '#':
+        case '%':
+        case '(':
+        case ')':
+        case '*':
+        case '+':
+        case '-':
+        case '.':
+        case '/':
+        case ']':   // Operating System Command (OSC  is 0x9d).
+            s->state = QE_TERM_STATE_ESC2;
+            break;
+        case '^':   // Privacy Message (PM  is 0x9e).
+        case '_':   // Application Program Command (APC  is 0x9f).
+        case 'P':   // Device Control String (DCS  is 0x90).
+            s->state = QE_TERM_STATE_STRING;
+            break;
+        case '\\':  // String Terminator (ST  is 0x9c).
+            TRACE_MSG(s, "unhandled string");
+            s->state = QE_TERM_STATE_NORM;
+            break;
+        case '6':   // Back Index (DECBI), VT420 and up.
+        case '7':   // Save Cursor (DECSC). [sc]
+        case '8':   // Restore Cursor (DECRC). [rc]
+        case '9':   // Forward Index (DECFI), VT420 and up.
+        case '=':   // Application Keypad (DECKPAM). [smkx]
+        case '>':   // Normal Keypad (DECKPNM). [rmkx, is2, rs2]
+            s->state = QE_TERM_STATE_NORM;
+            break;
+        case 'D':   // Index (IND  is 0x84).
+        case 'E':   // Next Line (NEL  is 0x85).
+        case 'F':   // Cursor to lower left corner of screen.
+                    // This is enabled by the hpLowerleftBugCompat resource.
+        case 'H':   // Tab Set (HTS  is 0x88). [set_tab]
+        case 'M':   // Reverse Index (RI  is 0x8d). [ri]
+        case 'O':   // Single Shift Select of G3 Character Set (SS3  is 0x8f).
+                    // This affects next character only.
+        case 'V':   // Start of Guarded Area (SPA  is 0x96).
+        case 'W':   // End of Guarded Area (EPA  is 0x97).
+        case 'X':   // Start of String (SOS  is 0x98).
+        case 'Z':   // Return Terminal ID (DECID is 0x9a).
+                    // Obsolete form of CSI c  (DA).
+        case 'c':   // Full Reset (RIS). [rs1, reset_1string]
+        case 'l':   // Memory Lock (per HP terminals).  Locks memory above the cursor.
+        case 'm':   // Memory Unlock (per HP terminals).
+        case 'n':   // Invoke the G2 Character Set as GL (LS2).
+        case 'o':   // Invoke the G3 Character Set as GL (LS3).
+        case '|':   // Invoke the G3 Character Set as GR (LS3R).
+        case '}':   // Invoke the G2 Character Set as GR (LS2R).
+        case '~':   // Invoke the G1 Character Set as GR (LS1R).
+        default:
+            TRACE_MSG(s, "unhandled");
+            s->state = QE_TERM_STATE_NORM;
+            break;
         }
         break;
     case QE_TERM_STATE_ESC2:
         s->state = QE_TERM_STATE_NORM;
         s->esc2 = c;
         switch (ESC2(s->esc1, c)) {
-        case ESC2('%','G'):     /* set utf mode */
         case ESC2('%','8'):     /* set utf mode */
-        case ESC2('%','@'):     /* reset utf mode */
-            TRACE_MSG("utf mode");
+        case ESC2('%','G'):     /* Select UTF-8 character set (ISO 2022). */
+        case ESC2('%','@'):     /* Select default character set.
+                                   That is ISO 8859-1 (ISO 2022). */
+            TRACE_MSG(s, "utf mode");
             break;
-        case ESC2('(','A'):     /* set charset0 CSET_GBCHR */
-        case ESC2('(','U'):     /* set charset0 CSET_SCOACS */
-        case ESC2('(','B'):     /* set charset0 CSET_ASCII */
-            s->charset[0] = 0;
-            break;
+            /* Designate G0 Character Set (ISO 2022, VT100). */
         case ESC2('(','0'):     /* set charset0 CSET_LINEDRW */
             s->charset[0] = 1;
             break;
-        case ESC2(')','A'):     /* set charset1 CSET_GBCHR */
-        case ESC2(')','U'):     /* set charset1 CSET_SCOACS */
-        case ESC2(')','B'):     /* set charset1 CSET_ASCII */
-            s->charset[1] = 0;
+        case ESC2('(','A'):     /* set charset0 CSET_GBCHR */
+        case ESC2('(','B'):     /* set charset0 CSET_ASCII */
+        case ESC2('(','U'):     /* set charset0 CSET_SCOACS */
+            s->charset[0] = 0;
             break;
+            /* Designate G1 Character Set (ISO 2022, VT100). */
         case ESC2(')','0'):     /* set charset1 CSET_LINEDRW */
             s->charset[1] = 1;
             break;
-        case ESC2('*','B'):
-        case ESC2('+','B'):
-            /* XXX: Todo */
-            TRACE_MSG("unhandled");
+        case ESC2(')','A'):     /* set charset1 CSET_GBCHR */
+        case ESC2(')','B'):     /* set charset1 CSET_ASCII */
+        case ESC2(')','U'):     /* set charset1 CSET_SCOACS */
+            s->charset[1] = 0;
             break;
-        case ESC2(']','0'):     /* xterm's set-window-title and icon */
-        case ESC2(']','1'):     /* xterm's set-window-title */
-        case ESC2(']','2'):     /* xterm's set-window-title */
-        case ESC2(']','3'):     /* Set X property on top-level window */
+            /* Designate G2 Character Set (ISO 2022, VT220). */
+        case ESC2('*','B'):
+            /* Designate G3 Character Set (ISO 2022, VT220). */
+        case ESC2('+','B'):
+            /* Designate G1 Character Set (VT300). */
+        case ESC2('-','B'):
+            /* Designate G2 Character Set (VT300). */
+        case ESC2('.','B'):
+            /* Designate G3 Character Set (VT300). */
+        case ESC2('/','B'):
+            TRACE_MSG(s, "set charset");
+            break;
+            /* XXX: OSC sequences should parse as OSC Ps;Pt ST */
+        case ESC2(']','0'):  /* Change Icon Name and Window Title to Pt. */
+        case ESC2(']','1'):  /* Change Icon Name to Pt. */
+        case ESC2(']','2'):  /* Change Window Title to Pt. */
+        case ESC2(']','3'):  /* Set X property on top-level window */
             /* Pt should be in the form "prop=value", or just "prop" to delete the property */
-        case ESC2(']','4'):     /* xterm's define-extended color "\033]4;c;name\007" */
+        case ESC2(']','4'):  /* xterm's define-extended color "\033]4;c;name\007" */
             /* Change Color #c to cname. Any number of c name pairs may be given. */
             /* iTerm2 has a specific behavior for colors 16 to 22:
                 16: terminalSetForegroundColor
@@ -1162,15 +1242,15 @@ static void qe_term_emulate(ShellState *s, int c)
         case ESC2(']','P'):     /* linux set palette */
         case ESC2(']','R'):     /* linux reset palette */
             /* XXX: Todo */
-            TRACE_MSG("linux palette");
+            TRACE_MSG(s, "linux palette");
             /* followed by 7 digit palette entry nrrggbb with
                n: letter 0-f for standard palette entries
                          g-m for extended attributes:
                rr, gg, bb 2 hex digit values
             */
             break;
-	default:
-            TRACE_MSG("unhandled");
+        default:
+            TRACE_MSG(s, "unhandled");
             break;
         }
         s->shifted = s->charset[s->cset];
@@ -1180,6 +1260,7 @@ static void qe_term_emulate(ShellState *s, int c)
         /* Stop string on CR or LF, for protection */
         if (c == '\012' || c == '\015') {
             s->state = QE_TERM_STATE_NORM;
+            TRACE_MSG(s, "broken string");
             break;
         }
         /* Stop string on \a (^G) or M-\ -- need better test for ESC \ */
@@ -1191,225 +1272,417 @@ static void qe_term_emulate(ShellState *s, int c)
             // iTerm2 reports the current rgb value with "<index>;?",
             //   e.g. "105;?" -> report as \033]4;P;rgb:00/cc/ff\007",
             s->state = QE_TERM_STATE_NORM;
+            TRACE_MSG(s, "unhandled string");
         }
         break;
     case QE_TERM_STATE_CSI:
-        if (c == '?' || c == '=') {
+        if (c == '?' || c == '=' || c == '"' || c == ' ' || c == '\'' || c == '&') {
             s->esc1 = c;
             break;
         }
         if (qe_isdigit(c)) {
-            if (s->nb_esc_params < MAX_ESC_PARAMS) {
-                if (!s->has_params[s->nb_esc_params]) {
-                    s->esc_params[s->nb_esc_params] = 0;
-                    s->has_params[s->nb_esc_params] = 1;
+            if (s->params[s->nb_params] < 0) {
+                s->params[s->nb_params] = 0;
+            }
+            s->params[s->nb_params] *= 10;
+            s->params[s->nb_params] += c - '0';
+            break;
+        }
+        if (s->nb_params == 0
+        ||  (s->nb_params < MAX_CSI_PARAMS && s->params[s->nb_params] >= 0)) {
+            s->nb_params++;
+            s->params[s->nb_params] = -1;
+        }
+        if (c == ';' || c == ':')
+            break;
+        s->state = QE_TERM_STATE_NORM;
+        /* default param is 1 for most commands */
+        param1 = s->params[0] >= 0 ? s->params[0] : 1;
+        param2 = s->params[1] >= 0 ? s->params[1] : 1;
+        switch (ESC2(s->esc1,c)) {
+        case '@':  /* ICH: Insert Ps (Blank) Character(s) (default = 1) */
+            buf1[0] = ' ';
+            offset1 = offset;
+            qe_term_set_style(s);
+            for (n = param1; n > 0; n--) {
+                /* XXX: incorrect for non 8 bit charsets */
+                eb_insert(s->b, offset1, buf1, 1);
+                offset1 += 1;
+            }
+            s->cur_offset = offset;
+            break;
+        case 'A':  /* CUU: Cursor Up Ps Times (default = 1) */
+            qe_term_goto_xy(s, 0, -param1, 3);
+            break;
+        case 'B':  /* CUD: Cursor Down Ps Times (default = 1) */
+        case 'e':  /* VPR: Line Position Relative [rows] (default = 1) */
+            qe_term_goto_xy(s, 0, param1, 3);
+            break;
+        case 'C':  /* CUF: Cursor Forward Ps Times (default = 1) */
+        case 'a':  /* HPR: Character Position Relative [columns] (default = 1) */
+            qe_term_goto_xy(s, param1, 0, 3);
+            break;
+        case 'D':  /* CUB: Cursor Backward Ps Times (default = 1) */
+            qe_term_goto_xy(s, -param1, 0, 3);
+            break;
+        case 'E':  /* CNL: Cursor Next Line Ps Times (default = 1) and CR. */
+            qe_term_goto_xy(s, 0, param1, 2);
+            break;
+        case 'F':  /* CPL: Cursor Preceding Line Ps Times (default = 1) and CR. */
+            qe_term_goto_xy(s, 0, -param1, 2);
+            break;
+        case 'G':  /* CHA: Cursor Character Absolute [column]. */
+        case '`':  /* HPA: Character Position Absolute [column] (default = 1) */
+            qe_term_goto_xy(s, param1 - 1, 0, 2);
+            break;
+        case 'H':  /* CUP: Cursor Position [row;column] (default = [1,1]). */
+        case 'f':  /* HVP: Horizontal and Vertical Position [row;column] (default = [1,1]) */
+            qe_term_goto_xy(s, param2 - 1, param1 - 1, 0);
+            break;
+        case 'I':  /* CHT: Cursor Forward Tabulation Ps tab stops (default = 1). */
+            qe_term_goto_tab(s, param1);
+            break;
+        case 'J':  /* ED: Erase in Display. */
+        case ESC2('?','J'):  /* DECSED: Selective Erase in Display. */
+            /*     0: Below (default), 1: Above, 2: All, 3: Saved Lines (xterm) */
+            TRACE_MSG(s, "erase screen");
+            break;
+        case 'K':  /* EL: Erase in Line. */
+        case ESC2('?','K'):  /* DECSEL: Selective Erase in Line. */
+            {   /*     0: to Right (default), 1: to Left, 2: All */
+                /* XXX: should handle eol style */
+                int cur_line, col_num1, col_num2, n1, n2;
+
+                // default param is 0
+                n1 = n2 = 0;
+                eb_get_pos(s->b, &cur_line, &col_num1, offset);
+                offset1 = eb_goto_bol(s->b, offset);
+                offset2 = eb_goto_eol(s->b, offset);
+                eb_get_pos(s->b, &cur_line, &col_num2, offset2);
+                if (s->params[0] <= 0) {
+                    n2 = col_num2 - col_num1;
+                } else
+                if (s->params[0] == 1) {
+                    offset = offset1;
+                    n1 = col_num1;
+                } else
+                if (s->params[0] == 2) {
+                    offset = offset1;
+                    n1 = col_num1;
+                    n2 = col_num2 - col_num1;
                 }
-                s->esc_params[s->nb_esc_params] =
-                    s->esc_params[s->nb_esc_params] * 10 + c - '0';
+                /* update cursor as overwriting characters may change offsets */
+                s->cur_offset = qe_term_put_char(s, offset, ' ', n1);
+                qe_term_put_char(s, s->cur_offset, ' ', n2);
             }
             break;
-        } else {
-            s->nb_esc_params++;
-            if (c == ';')
-                break;
-            s->state = QE_TERM_STATE_NORM;
-            switch (ESC2(s->esc1,c)) {
-		/* unhandled:
-		 * \^[[4l
-		 * \^[[?1h
-		 * \^[[?7h
-		 * \^[[?25l
-		 * \^[[?1000h
-		 */
-
-            case 'h':   /* SM: toggle modes to high */
-            case ESC2('?','h'): /* set terminal mode */
-                /* 1047: alternate screen
-                 * 1048: save / restore cursor
-                 * 1049: save / restore  cursor and alternate screen
-                 * should grab all keys while active!
-                 */
-                if (s->esc_params[0] == 1047 ||
-                    s->esc_params[0] == 1048 ||
-                    s->esc_params[0] == 1049) {
+        case 'L':  /* IL: Insert Ps Line(s) (default = 1). */
+            //TRACE_MSG(s, "insert lines");
+            {
+                int col, row, zone, keep;
+                s->cur_offset = offset = eb_goto_bol(s->b, offset);
+                qe_term_get_xy(s, &col, &row, offset);
+                zone = max(0, s->scroll_bottom - row);
+                param1 = min(param1, zone);
+                keep = zone - param1;
+                for (i = 0; i < param1; i++) {
+                    offset += eb_insert_uchar(s->b, offset, '\n');
+                }
+                for (i = 0; i < keep; i++) {
+                    offset = eb_next_line(s->b, offset);
+                }
+                for (i = 0; i < param1; i++) {
+                    eb_delete_range(s->b, offset, eb_next_line(s->b, offset));
+                }
+            }
+            break;
+        case 'M':  /* DL: Delete Ps Line(s) (default = 1). */
+            //TRACE_MSG(s, "delete lines");
+            {
+                int col, row, zone, keep;
+                s->cur_offset = offset = eb_goto_bol(s->b, offset);
+                qe_term_get_xy(s, &col, &row, offset);
+                zone = max(0, s->scroll_bottom - row);
+                param1 = min(param1, zone);
+                keep = zone - param1;
+                for (i = 0; i < param1; i++) {
+                    eb_delete_range(s->b, offset, eb_next_line(s->b, offset));
+                }
+                for (i = 0; i < keep; i++) {
+                    offset = eb_next_line(s->b, offset);
+                }
+                for (i = 0; i < param1; i++) {
+                    offset += eb_insert_uchar(s->b, offset, '\n');
+                }
+            }
+            break;
+        case 'P':  /* DCH: Delete Ps Character(s) (default = 1). */
+            offset1 = offset;
+            for (n = param1; n > 0; n--) {
+                c = eb_nextc(s->b, offset1, &offset2);
+                if (c == '\n')
+                    break;
+                offset1 = offset2;
+            }
+            eb_delete_range(s->b, offset, offset1);
+            break;
+        case 'S':  /* SU: Scroll up Ps lines (default = 1). */
+            /* scroll the whole page up */
+            TRACE_MSG(s, "scroll up");
+            break;
+        case 'T':  /* SD: Scroll down Ps lines (default = 1). */
+            /* scroll the whole page down */
+            TRACE_MSG(s, "scroll down");
+            break;
+        case 'X':  /* ECH: Erase Ps Character(s) (default = 1). */
+            qe_term_put_char(s, offset, ' ', param1);
+            break;
+        case 'Z':  /* CBT: Cursor Backward Tabulation Ps tab stops (default = 1). */
+            qe_term_goto_tab(s, -param1);
+            break;
+        case 'b':  /* REP: Repeat the preceding graphic character Ps times. */
+            /* XXX: utf-8 issue for non ASCII characters */
+            s->cur_offset = qe_term_put_char(s, offset, s->lastc, param1);
+            break;
+        case 'c':  /* DA: Send Device Attributes (Primary DA) */
+            // default param is 0
+            if (s->params[0] <= 0) {
+                /* Report Advanced Video option (AVO) */
+                qe_term_write(s, "\033[?1;2c", -1);
+            }
+            break;
+        case ESC2('>','c'):  /* DA: Send Device Attributes (Secondary DA) */
+            // default param is 0
+            if (s->params[0] <= 0) {
+                /* Report Qemacs emulator version 0.5 */
+                qe_term_write(s, "\033[>42;0;5c", -1);
+            }
+            break;
+        case 'd':  /* VPA: Line Position Absolute [row] (default = 1). */
+            qe_term_goto_xy(s, 0, param1 - 1, 1);
+            break;
+        case 'g':  /* TBC: Tab Clear. */
+            // 0 (default) -> Clear Current Column, 3 -> Clear All */
+            TRACE_MSG(s, "clear tabs");
+            break;
+        case 'h':   /* SM: Set Mode. */
+            for (i = 0; i < s->nb_params; i++) {
+                switch (s->params[i]) {
+                case 2:   /* Keyboard Action Mode (AM). */
+                case 4:   /* Insert Mode (IRM). */
+                case 12:  /* Send/receive (SRM). */
+                case 20:  /* Automatic Newline (LNM). */
+                    break;
+                }
+            }
+            break;
+        case ESC2('?','h'): /* DEC Private Mode Set (DECSET) */
+            for (i = 0; i < s->nb_params; i++) {
+                switch (s->params[i]) {
+                case 1:     /* Application Cursor Keys (DECCKM). */
+                case 4:     /* Smooth (Slow) Scroll (DECSCLM). */
+                    break;
+                case 5:     /* Reverse Video (DECSCNM) */
+                    s->reverse = 1;
+                    break;
+                case 7:     /* Wraparound Mode (DECAWM). */
+                    break;
+                case 12:    /* Start Blinking Cursor (att610). */
+                    break;
+                case 25:    /* Show Cursor (DECTCEM). */
+                    break;
+                case 1000:  /* Send Mouse X & Y on button press and
+                                release. */
+                    break;
+                case 1034:  /* Interpret "meta" key, sets eighth bit.
+                     * (enables the eightBitInput resource).
+                     */
+                    break;
+                case 1047:  /* Use Alternate Screen Buffer. */
+                case 1048:  /* Save cursor as in DECSC. */
+                case 1049:  /* Save cursor as in DECSC and use Alternate
+                       Screen Buffer, clearing it first. */
                     if (s->shell_flags & SF_INTERACTIVE) {
                         /* only grab keys in interactive qe_term buffers */
                         s->grab_keys = 1;
                         qe_grab_keys(shell_key, s);
                         /* Should also clear screen */
                     }
-		} else {
-                    TRACE_MSG("set term mode");
-		}
-                break;
-            case 'i':   /* MC: Media copy */
-            case ESC2('?','i'):
-                TRACE_MSG("media copy");
-                break;
-            case ESC2('?','l'): /* reset terminal mode */
-                if (s->esc_params[0] == 1047 ||
-                    s->esc_params[0] == 1048 ||
-                    s->esc_params[0] == 1049) {
+                    break;
+                default:
+                    TRACE_MSG(s, "mode set");
+                    break;
+                }
+            }
+            break;
+        case 'i':   /* MC: Media Copy */
+            for (i = 0; i < s->nb_params; i++) {
+                switch (s->params[i]) {
+                case 0:   /* Print screen (default). */
+                case 4:   /* Turn off printer controller mode. */
+                case 5:   /* Turn on printer controller mode. */
+                case 10:  /* HTML screen dump. */
+                case 11:  /* SVG screen dump. */
+                    break;
+                }
+            }
+            TRACE_MSG(s, "media copy");
+            break;
+        case ESC2('?','i'):  /* MC: Media Copy (MC, DEC-specific). */
+            for (i = 0; i < s->nb_params; i++) {
+                switch (s->params[i]) {
+                case 1:   /* Print line containing cursor. */
+                case 4:   /* Turn off autoprint mode. */
+                case 5:   /* Turn on autoprint mode. */
+                case 10:  /* Print composed display, ignores DECPEX. */
+                case 11:  /* Print all pages. */
+                    break;
+                }
+            }
+            TRACE_MSG(s, "media copy");
+            break;
+        case 'l':   /* RM: Reset Mode. */
+            for (i = 0; i < s->nb_params; i++) {
+                switch (s->params[i]) {
+                case 2:   /* Keyboard Action Mode (AM). */
+                case 4:   /* Insert Mode (IRM). */
+                case 12:  /* Send/receive (SRM). */
+                case 20:  /* Automatic Newline (LNM). */
+                    break;
+                }
+            }
+            break;
+        case ESC2('?','l'): /* DEC Private Mode Reset (DECRST). */
+            for (i = 0; i < s->nb_params; i++) {
+                switch (s->params[i]) {
+                case 1:     /* Normal Cursor Keys (DECCKM). */
+                case 4:     /* Jump (Fast) Scroll (DECSCLM). */
+                    break;
+                case 5:     /* Normal Video (DECSCNM). */
+                    s->reverse = 1;
+                    break;
+                case 7:     /* No Wraparound Mode (DECAWM). */
+                    break;
+                case 12:    /* Stop Blinking Cursor (att610). */
+                    break;
+                case 25:    /* Hide Cursor (DECTCEM). */
+                    break;
+                case 1000:  /* Don't send Mouse X & Y on button press and
+                                release. */
+                case 1034:  /* Don't interpret "meta" key.  (This disables
+                       the eightBitInput resource).
+                     */
+                    break;
+                case 1047:  /* Use Normal Screen Buffer, clearing screen
+                       first if in the Alternate Screen. */
+                case 1048:  /* Restore cursor as in DECRC. */
+                case 1049:  /* Use Normal Screen Buffer and restore cursor
+                       as in DECRC. */
                     if (s->shell_flags & SF_INTERACTIVE) {
                         qe_ungrab_keys();
                         s->grab_keys = 0;
                     }
-		} else {
-                    TRACE_MSG("reset term mode");
-		}
-                break;
-            case 'A':  /* CUU: move up N lines */
-                qe_term_goto_xy(s, 0, -s->esc_params[0], 3);
-                break;
-            case 'e':  /* VPR: move down N lines */
-            case 'B':  /* CUD: Cursor down */
-                qe_term_goto_xy(s, 0, s->esc_params[0], 3);
-                break;
-            case 'a':  /* HPR: move right N cols */
-            case 'C':  /* CUF: Cursor right */
-                qe_term_goto_xy(s, s->esc_params[0], 0, 3);
-                break;
-            case 'D':  /* CUB: move left N cols */
-                qe_term_goto_xy(s, -s->esc_params[0], 0, 3);
-                break;
-            case 'F':  /* CPL: move up N lines and CR */
-                qe_term_goto_xy(s, 0, -s->esc_params[0], 2);
-                break;
-            case 'G':  /* CHA: goto column_address */
-            case '`':  /* HPA: set horizontal posn */
-                qe_term_goto_xy(s, s->esc_params[0] - 1, 0, 2);
-                break;
-            case 'H':  /* CUP: goto xy */
-            case 'f':  /* HVP: set horz and vert posns at once */
-                qe_term_goto_xy(s, s->esc_params[1] - 1, s->esc_params[0] - 1, 0);
-                break;
-            case 'd':
-                /* goto y */
-                qe_term_goto_xy(s, 0, s->esc_params[0] - 1, 1);
-                break;
-            case 'J':  /* ED: erase screen or parts of it */
-                       /*     0: to end, 1: from begin, 2: all */
-		TRACE_MSG("erase screen");
-                //put_status(NULL, "erase screen %d", s->esc_params[0]);
-                break;
-            case 'K':  /* EL: erase line or parts of it */
-                       /*     0: to end, 1: from begin, 2: all line */
-                offset1 = eb_goto_eol(s->b, offset);
-                eb_delete(s->b, offset, offset1 - offset);
-                break;
-            case 'L':  /* IL: insert lines */
-                /* TODO! scroll down */
-		TRACE_MSG("insert lines");
-                //put_status(NULL, "insert lines %d", s->esc_params[0]);
-                break;
-            case 'M':  /* delete lines */
-                /* TODO! scroll up */
-		TRACE_MSG("delete lines");
-                //put_status(NULL, "delete lines %d", s->esc_params[0]);
-                break;
-            case '@':  /* ICH: insert chars (no cursor update) */
-                buf1[0] = ' ';
-                offset1 = offset;
-                qe_term_set_setyle(s);
-                for (n = s->esc_params[0]; n > 0; n--) {
-                    /* XXX: incorrect for non 8 bit charsets */
-                    eb_insert(s->b, offset1, buf1, 1);
-                    offset1 += 1;
+                    qe_term_goto_xy(s, 0, s->rows, 0);
+                    eb_delete_range(s->b, s->cur_offset, s->b->total_size);
+                    break;
+                default:
+                    TRACE_MSG(s, "mode reset");
+                    break;
                 }
-                s->cur_offset = offset;
-                break;
-            case 'P':  /* DCH: delete chars */
-                offset1 = offset;
-                for (n = s->esc_params[0]; n > 0; n--) {
-                    c = eb_nextc(s->b, offset1, &offset2);
-                    if (c == '\n')
-                        break;
-                    offset1 = offset2;
-                }
-                eb_delete(s->b, offset, offset1 - offset);
-                break;
-            case 'c':  /* DA: terminal type query */
-                if (s->esc_params[0] == 0) {
-                    /* Report Advanced Video option (AVO) */
-                    qe_term_write(s, "\033[?1;2c", -1);
-                }
-                break;
-            case 'n':  /* DSR: cursor position query */
-                if (s->esc_params[0] == 5) {
-                    /* Status report: terminal is OK */
-                    qe_term_write(s, "\033[0n", -1);
-                } else
-                if (s->esc_params[0] == 6) {
-                    /* XXX: send cursor position, just to be able to
-                       launch qemacs in qemacs (in 8859-1) ! */
-                    char buf2[20];
-                    int col_num, cur_line;
-                    eb_get_pos(s->b, &cur_line, &col_num, offset);
-                    /* XXX: actually send position of point in window */
-                    snprintf(buf2, sizeof(buf2), "\033[%d;%dR",
-                             1, col_num + 1);
-                    qe_term_write(s, buf2, -1);
-                }
-                break;
-            case 'g':  /* TBC: clear tabs */
-		TRACE_MSG("clear tabs");
-                break;
-            case 'r':  /* DECSTBM: set scroll margins */
-		TRACE_MSG("set scroll margins");
-                //put_status(NULL, "set scroll margins %d %d",
-                //           s->esc_params[0], s->esc_params[1]);
-                break;
-            case 'm':  /* SGR: set graphics rendition (style and colors) */
-                for (i = 0;;) {
-                    qe_term_csi_m(s, s->esc_params[i], s->has_params[i]);
-                    if (++i >= s->nb_esc_params)
-                        break;
-                }
-                break;
-            case 's':  /* save cursor */
-		TRACE_MSG("save cursor");
-		break;
-            case 'u':  /* restore cursor */
-		TRACE_MSG("restore cursor");
-		break;
-            case 't':  /* DECSLPP: set page size - ie window height */
-                       /* also used for window changing and reports */
-		TRACE_MSG("set page size");
-                break;
-            case 'S':  /* SU: SCO scroll up (forward) n lines */
-		TRACE_MSG("scroll up");
-                //put_status(NULL, "scroll up %d", s->esc_params[0]);
-                break;
-            case 'T':  /* SD: SCO scroll down (back) n lines */
-		TRACE_MSG("scroll down");
-                //put_status(NULL, "scroll down %d", s->esc_params[0]);
-                break;
-            case 'X':  /* ECH: erase n characters w/o moving cursor */
-                for (n = s->esc_params[0]; n > 0; n--) {
-                    qe_term_put_char(s, ' ');
-                }
-                /* restore cursor */
-                s->cur_offset = offset;
-                break;
-            case 'x':  /* DECREQTPARM: report terminal characteristics */
-            case 'Z':  /* CBT: move cursor back n tabs */
-            case ESC2('=','c'):   /* Hide or Show Cursor */
-                        /* 0: hide, 1: restore, 2: block */
-            case ESC2('=','C'):  /* set cursor shape */
-            case ESC2('=','D'):  /* set blinking attr on/off */
-            case ESC2('=','E'):  /* set blinking on/off */
-		TRACE_MSG("unhandled");
-                break;
-            case ESC2('=','F'): /* select SCO foreground color */
-                s->fgcolor = sco_color[s->esc_params[0] & 15];
-                break;
-            case ESC2('=','G'): /* select SCO background color */
-                s->bgcolor = sco_color[s->esc_params[0] & 15];
-                break;
-            default:
-		TRACE_MSG("unhandled");
-                break;
             }
+            break;
+        case 'm':  /* SGR: Set Graphics Rendition (Character Attributes). */
+            for (i = 0; i < s->nb_params;) {
+                i += qe_term_csi_m(s, s->params + i, s->nb_params - i);
+            }
+            break;
+        case 'n':  /* DSR: Device Status Report. */
+            if (param1 == 5) {
+                /* Status Report: terminal is OK */
+                qe_term_write(s, "\033[0n", -1);
+            } else
+            if (param1 == 6) {
+                /* Report Cursor Position (CPR) [row;column]. */
+                char buf2[20];
+                int col_num, cur_line;
+                eb_get_pos(s->b, &cur_line, &col_num, offset);
+                /* XXX: actually send position of point in window */
+                snprintf(buf2, sizeof(buf2), "\033[%d;%dR",
+                         1, col_num + 1);
+                qe_term_write(s, buf2, -1);
+            }
+            break;
+        case 'p':  /* DECSCL: Set conformance level. */
+        case 'q':  /* DECLL: Load LEDs. */
+        case ESC2(' ','q'): /* Set cursor style (DECSCUSR, VT520). */
+            goto unhandled;
+        case 'r':  /* DECSTBM: Set Scrolling Region [top;bottom]
+                      (default = full size of window) */
+            /* XXX: the scrolling region should also affect LF operation */
+            s->scroll_top = clamp(s->params[0] - 1, 0, s->rows);
+            s->scroll_bottom = s->params[1] > 0 ? clamp(s->params[1], 1, s->rows) : s->rows;
+            break;
+        case ESC2('$','r'): /* DECCARA: Change Attributes in Rectangular
+                               Area, VT400 and up. */
+            goto unhandled;
+        case ESC2('?','r'):
+            /* Restore DEC Private Mode Values.  The value of Ps previously
+               saved is restored.  Ps values are the same as for DECSET. */
+            TRACE_MSG(s, "mode restore");
+            break;
+        case ESC2('?','s'):
+            /* Save DEC Private Mode Values.  <i>Ps</i> values are the same as for
+               DECSET.. */
+            TRACE_MSG(s, "mode save");
+            break;
+        case 's':  /* Save cursor (ANSI.SYS), available only when
+                      DECLRMM is disabled. */
+            /* DECSLRM: Set left and right margins, available only when
+               DECLRMM is enabled (VT420 and up). */
+            TRACE_MSG(s, "save cursor");
+            break;
+        case 't':  /* DECSLPP: set page size - ie window height */
+            /* also used for window changing and reports */
+            TRACE_MSG(s, "set page size");
+            break;
+        case ESC2('>','t'):  /* Set one or more features of the title modes. */
+            // Ps = 0  -> Set window/icon labels using hexadecimal.
+            // Ps = 1  -> Query window/icon labels using hexadecimal.
+            // Ps = 2  -> Set window/icon labels using UTF-8.
+            // Ps = 3  -> Query window/icon labels using UTF-8.  (See discussion of "Title Modes")
+            break;
+        case ESC2('$','t'):  /* DECRARA: Reverse Attributes in Rectangular Area,
+               VT400 and up. */
+            goto unhandled;
+        case 'u':  /* Restore cursor (ANSI.SYS). */
+            TRACE_MSG(s, "restore cursor");
+            break;
+        case ESC2('$','v'):  /* DECCRA: Copy Rectangular Area (VT400 and up). */
+            goto unhandled;
+        case 'x':  /* DECREQTPARM: Request Terminal Parameters */
+        case ESC2('$','x'):  /* DECFRA: Fill Rectangular Area, VT420 and up. */
+        case ESC2('$','z'):  /* DECERA: Erase Rectangular Area, VT400 and up. */
+        case ESC2('$','{'): /* DECSERA: Selective Erase Rectangular Area, VT400 and up. */
+        case ESC2('\'','{'): /* DECSLE: Select Locator Events. */
+        case ESC2('\'','|'): /* DECRQLP: Request Locator Position. */
+        case ESC2('\'','}'): /* DECIC: Insert Ps Column(s) (default = 1), VT420 and up. */
+        case ESC2('\'','~'): /* DECDC: Delete Ps Column(s) (default = 1), VT420 and up. */
+        case ESC2('=','c'):   /* Hide or Show Cursor */
+                              /* 0: hide, 1: restore, 2: block */
+        case ESC2('=','C'):  /* set cursor shape */
+        case ESC2('=','D'):  /* set blinking attr on/off */
+        case ESC2('=','E'):  /* set blinking on/off */
+            goto unhandled;
+        case ESC2('=','F'): /* select SCO foreground color */
+            s->fgcolor = sco_color[param1 & 15];
+            break;
+        case ESC2('=','G'): /* select SCO background color */
+            s->bgcolor = sco_color[param1 & 15];
+            break;
+        default:
+        unhandled:
+            TRACE_MSG(s, "unhandled");
+            break;
         }
         break;
     }
@@ -1579,15 +1852,15 @@ static void shell_pid_cb(void *opaque, int status)
     dpy_flush(qs->screen);
 }
 
-EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
-                             const char *caption, const char *cmd,
-                             int shell_flags)
+EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
+                             const char *bufname, const char *caption,
+                             const char *cmd, int shell_flags)
 {
     QEmacsState *qs = &qe_state;
     ShellState *s;
     EditBuffer *b;
     const char *lang;
-    int rows, cols;
+    int cols, rows;
 
     b = b0;
     if (!b) {
@@ -1631,10 +1904,15 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
     qe_term_init(s);
 
     /* launch shell */
+    /* default values for cols, rows should come from the screen size */
     cols = QE_TERM_XSIZE;
     rows = QE_TERM_YSIZE;
-    if (shell_flags & SF_INFINITE)
-        rows = QE_TERM_YSIZE_INFINITE;
+    if (e) {
+        cols = e->cols - 1;
+        rows = e->rows;
+    }
+    s->cols = cols;
+    s->rows = rows;
 
     if (run_process(cmd, &s->pty_fd, &s->pid, cols, rows, shell_flags) < 0) {
         if (!b0)
@@ -1715,7 +1993,7 @@ static void do_shell(EditState *s, int force)
     }
 
     /* create new buffer */
-    b = new_shell_buffer(b, "*shell*", "Shell process", NULL,
+    b = new_shell_buffer(b, s, "*shell*", "Shell process", NULL,
                          SF_COLOR | SF_INTERACTIVE);
     if (!b)
         return;
@@ -1740,7 +2018,7 @@ static void do_man(EditState *s, const char *arg)
         return;
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, bufname, NULL, cmd, SF_COLOR | SF_INFINITE);
+    b = new_shell_buffer(NULL, s, bufname, NULL, cmd, SF_COLOR | SF_INFINITE);
     if (!b)
         return;
 
@@ -1761,7 +2039,7 @@ static void do_ssh(EditState *s, const char *arg)
     snprintf(bufname, sizeof(bufname), "*ssh-%s*", arg);
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, bufname, "ssh", cmd,
+    b = new_shell_buffer(NULL, s, bufname, "ssh", cmd,
                          SF_COLOR | SF_INTERACTIVE);
     if (!b)
         return;
@@ -1941,7 +2219,7 @@ static void shell_delete_bytes(EditState *e, int offset, int size)
         int start_char, cur_char, end_char, size;
         if (start < s->cur_prompt) {
             /* delete part before the interactive input */
-            size = eb_delete(e->b, start, s->cur_prompt);
+            size = eb_delete_range(e->b, start, s->cur_prompt);
             end -= size;
             start = s->cur_prompt;
         }
@@ -2264,7 +2542,7 @@ static void do_shell_command(EditState *e, const char *cmd)
     }
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, "*shell command output*", NULL, cmd,
+    b = new_shell_buffer(NULL, e, "*shell command output*", NULL, cmd,
                          SF_COLOR | SF_INFINITE);
     if (!b)
         return;
@@ -2288,7 +2566,7 @@ static void do_compile(EditState *e, const char *cmd)
         cmd = "make";
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, "*compilation*", "Compilation", cmd,
+    b = new_shell_buffer(NULL, e, "*compilation*", "Compilation", cmd,
                          SF_COLOR | SF_INFINITE);
     if (!b)
         return;

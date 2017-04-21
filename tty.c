@@ -399,6 +399,7 @@ static void tty_dpy_invalidate(QEditScreen *s)
     TTYState *ts;
     struct winsize ws;
     int i, count, size;
+    const char *p;
     TTYChar tc;
 
     if (s == NULL)
@@ -406,18 +407,26 @@ static void tty_dpy_invalidate(QEditScreen *s)
 
     ts = s->priv_data;
 
-    s->width = 80;
-    s->height = 24;
+    /* get screen default values from environment */
+    s->width = (p = getenv("COLUMNS")) != NULL ? atoi(p) : 80;
+    s->height = (p = getenv("LINES")) != NULL ? atoi(p) : 25;
+
+    /* update screen dimensions from pseudo tty ioctl */
     if (ioctl(fileno(s->STDIN), TIOCGWINSZ, &ws) == 0) {
-        s->width = ws.ws_col;
-        s->height = ws.ws_row;
-        if (s->width < 10)
-            s->width = 10;
-        if (s->width > MAX_SCREEN_WIDTH)
-            s->width = MAX_SCREEN_WIDTH;
-        if (s->height < 3)
-            s->height = 3;
+        if (ws.ws_col >= 10 && ws.ws_row >= 4) {
+            s->width = ws.ws_col;
+            s->height = ws.ws_row;
+        }
     }
+
+    if (s->width > MAX_SCREEN_WIDTH)
+        s->width = MAX_SCREEN_WIDTH;
+    if (s->height >= 10000)
+        s->height -= 10000;
+    if (s->height > MAX_SCREEN_LINES)
+        s->height = MAX_SCREEN_LINES;
+    if (s->height < 3)
+        s->height = 25;
 
     count = s->width * s->height;
     size = count * sizeof(TTYChar);

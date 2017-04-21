@@ -285,8 +285,9 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Help ----------------*/
 
-    CMD0( KEY_CTRLH('d'), KEY_NONE,
-          "doctor", do_doctor)
+    CMD2( KEY_CTRLH('t'), KEY_NONE,
+          "set-trace", do_set_trace, ESs,
+          "s{Trace options: }|trace|")
     CMD0( KEY_CTRLH('c'), KEY_CTRLH('k'),
           "describe-key-briefly", do_describe_key_briefly)
     CMD0( KEY_CTRLH(KEY_CTRL('h')), KEY_F1,
@@ -364,8 +365,6 @@ static CmdDef basic_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
           "set-emulation", do_set_emulation, ESs,
           "s{Emulation mode: }|emulation|")
-    CMD0( KEY_NONE, KEY_NONE,
-          "set-trace", do_set_trace)
     CMD2( KEY_NONE, KEY_NONE,
           "cd", do_cd, ESs,
           "s{Change default directory: }[file]|file|")

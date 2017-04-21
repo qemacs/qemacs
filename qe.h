@@ -1397,7 +1397,8 @@ struct EditState {
 
     /* display area info */
     int width, height;
-    int ytop, xleft;
+    int xleft, ytop;
+    int cols, rows;
     /* full window size, including borders */
     int x1, y1, x2, y2;         /* window coordinates in device units */
     //int xx1, yy1, xx2, yy2;     /* window coordinates in 1/1000 */
@@ -1591,11 +1592,15 @@ struct QEmacsState {
     int buffer_cache_len;
 #endif
     EditBuffer *trace_buffer;
+    int trace_flags;
     int trace_buffer_state;
-#define EB_TRACE_TTY      1
-#define EB_TRACE_SHELL    2
-#define EB_TRACE_PTY      4
-#define EB_TRACE_COMMAND  8
+#define EB_TRACE_TTY      0x01
+#define EB_TRACE_SHELL    0x02
+#define EB_TRACE_PTY      0x04
+#define EB_TRACE_EMULATE  0x08
+#define EB_TRACE_COMMAND  0x10
+#define EB_TRACE_ALL      0x1F
+#define EB_TRACE_FLUSH    0x100
 
     /* global layout info : DO NOT modify these directly. do_refresh
        does it */
@@ -2093,7 +2098,7 @@ void do_toggle_control_h(EditState *s, int set);
 /* misc */
 
 void do_set_emulation(EditState *s, const char *name);
-void do_set_trace(EditState *s);
+void do_set_trace(EditState *s, const char *options);
 void do_cd(EditState *s, const char *name);
 int qe_mode_set_key(ModeDef *m, const char *keystr, const char *cmd_name);
 void do_set_key(EditState *s, const char *keystr, const char *cmd_name,
@@ -2200,7 +2205,6 @@ void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile);
 void qe_save_open_files(EditState *s, EditBuffer *b);
 
-void do_doctor(EditState *s);
 void do_delete_other_windows(EditState *s, int all);
 void do_hide_window(EditState *s, int set);
 void do_delete_hidden_windows(EditState *s);
@@ -2298,9 +2302,9 @@ void shell_colorize_line(QEColorizeContext *cp,
 #define SF_AUTO_CODING   0x08
 #define SF_AUTO_MODE     0x10
 #define SF_BUFED_MODE    0x20
-EditBuffer *new_shell_buffer(EditBuffer *b0, const char *bufname,
-                             const char *caption, const char *cmd,
-                             int shell_flags);
+EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
+                             const char *bufname, const char *caption,
+                             const char *cmd, int shell_flags);
 
 #define QASSERT(e)      do { if (!(e)) fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #e); } while (0)
 
