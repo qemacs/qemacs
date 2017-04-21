@@ -145,15 +145,13 @@ static void cfb32_xor_rectangle(QEditScreen *s,
     CFBContext *cfb = s->priv_data;
     unsigned char *dest, *d;
     int y, n;
-    unsigned int col;
-
-    col = cfb->get_color(color);
+    unsigned int col = 0x00ffffff;
 
     dest = cfb->base + y1 * cfb->wrap + x1 * 4;
     for (y = 0; y < h; y++) {
         d = dest;
         for (n = w; n != 0; n--) {
-            ((uint32_t *)(void *)d)[0] ^= 0x00ffffff;
+            ((uint32_t *)(void *)d)[0] ^= col;
             d += 4;
         }
         dest += cfb->wrap;
