@@ -357,10 +357,10 @@ static void tty_dpy_close(QEditScreen *s)
     /* go to last line and clear it */
     TTY_FPRINTF(s->STDOUT, "\033[%d;%dH" "\033[m\033[K", s->height, 1);
     TTY_FPRINTF(s->STDOUT,
-                "\033[?1049l"        /* exit_ca_mode */
-                "\r"                 /* return */
-                "\033[?1l\033>"      /* keypad_local */
-                "\r"                 /* return */
+                "\033[?1049l"       /* exit_ca_mode */
+                "\033[?1l\033>"     /* keypad_local */
+                "\033[?25h"         /* show cursor */
+                "\r\033[m\033[K"    /* return erase eol */
                );
 #endif
     fflush(s->STDOUT);
@@ -1010,7 +1010,8 @@ static void tty_dpy_flush(QEditScreen *s)
     TTYChar *ptr, *ptr1, *ptr2, *ptr3, *ptr4, cc, blankcc;
     int y, shadow, ch, bgcolor, fgcolor, shifted, attr;
 
-    TTY_FPUTS("\033[H\033[0m", s->STDOUT);
+    /* Hide cursor, goto home, reset attributes */
+    TTY_FPUTS("\033[?25l\033[H\033[0m", s->STDOUT);
 
     if (ts->term_code != TERM_CYGWIN) {
         TTY_FPUTS("\033(B\033)0", s->STDOUT);
@@ -1309,7 +1310,7 @@ static void tty_dpy_flush(QEditScreen *s)
 
     TTY_FPUTS("\033[0m", s->STDOUT);
     if (ts->cursor_y + 1 >= 0 && ts->cursor_x + 1 >= 0) {
-        TTY_FPRINTF(s->STDOUT, "\033[%d;%dH",
+        TTY_FPRINTF(s->STDOUT, "\033[?25h\033[%d;%dH",
                     ts->cursor_y + 1, ts->cursor_x + 1);
     }
     fflush(s->STDOUT);
