@@ -828,8 +828,7 @@ static void dired_mark(EditState *s, int mark)
         do_bol(s);
         flags = s->b->flags & BF_READONLY;
         s->b->flags ^= flags;
-        eb_delete_uchar(s->b, s->offset);
-        eb_insert_uchar(s->b, s->offset, ch);
+        eb_replace_uchar(s->b, s->offset, ch);
         s->b->flags ^= flags;
     }
     if (dir > 0)
@@ -855,24 +854,24 @@ static QVarType dired_sort_mode_set_value(EditState *s, VarDef *vp,
             sort_mode &= ~DIRED_SORT_MASK;
             sort_mode |= DIRED_SORT_SIZE;
             break;
-        case 'd':       /* direct */
+        case 'd':       /* date */
             sort_mode &= ~DIRED_SORT_MASK;
             sort_mode |= DIRED_SORT_DATE;
+            break;
+        case 'g':       /* group */
+            sort_mode |= DIRED_SORT_GROUP;
             break;
         case 'u':       /* ungroup */
             sort_mode &= ~DIRED_SORT_GROUP;
             break;
-        case 'g':       /* group */
-            sort_mode |= DIRED_SORT_GROUP;
+        case 'r':       /* reverse */
+            sort_mode ^= DIRED_SORT_DESCENDING;
             break;
         case '+':       /* ascending */
             sort_mode &= ~DIRED_SORT_DESCENDING;
             break;
         case '-':       /* descending */
             sort_mode |= DIRED_SORT_DESCENDING;
-            break;
-        case 'r':       /* reverse */
-            sort_mode ^= DIRED_SORT_DESCENDING;
             break;
         }
     }
@@ -1320,7 +1319,7 @@ static CmdDef dired_commands[] = {
           "dired-unmark-backward", dired_mark, -1)
     CMD2( 's', KEY_NONE,
           "dired-sort", dired_sort, ESs,
-          "s{Sort order: }|sortkey|")
+          "s{Sort order [nesdug+-r]: }|sortkey|")
     CMD2( 't', KEY_NONE,
           "dired-set-time-format", dired_set_time_format, ESi,
           "i{Time format: }[timeformat]")
