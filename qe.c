@@ -447,7 +447,12 @@ void do_set_emulation(EditState *s, const char *name)
     }
 }
 
-void do_set_trace(EditState *s, const char *options)
+void do_start_trace_mode(EditState *s)
+{
+    do_set_trace_options(s, "all");
+}
+
+void do_set_trace_options(EditState *s, const char *options)
 {
     char buf[80];
     const char *p = options;
@@ -485,9 +490,10 @@ void do_set_trace(EditState *s, const char *options)
             qs->trace_buffer = eb_new("*trace*", BF_SYSTEM);
         }
         if (!last_flags) {
-            do_split_window(s, 0);
-            do_switch_to_buffer(s, "*trace*");
-            do_previous_window(s);
+            EditState *e = qe_split_window(s, 75, SW_STACKED);
+            if (e) {
+                do_switch_to_buffer(e, "*trace*");
+            }
         }
         *buf = '\0';
         if (qs->trace_flags & EB_TRACE_TTY) {
@@ -6908,6 +6914,7 @@ void qe_set_next_mode(EditState *s, int dir, int status)
  */
 int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
 {
+    QEmacsState *qs = s->qe_state;
     u8 buf[4097];
     char filename[MAX_FILENAME_SIZE];
     int st_mode, buf_size, mode_score;
@@ -6936,8 +6943,10 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         /* Split window if window large enough and not empty */
         /* XXX: should check s->height units */
         if (s->height > 10 && s->b->total_size > 0) {
-            do_split_window(s, 0);
-            s = s->qe_state->active_window;
+            EditState *e = qe_split_window(s, 50, SW_STACKED);
+            if (e) {
+                qs->active_window = s = e;
+            }
         }
     }
 
@@ -7655,44 +7664,54 @@ void do_delete_hidden_windows(EditState *s)
 }
 
 /* XXX: add minimum size test and refuse to split if reached */
-void do_split_window(EditState *s, int horiz)
+EditState *qe_split_window(EditState *s, int prop, int side_by_side)
 {
-    QEmacsState *qs = s->qe_state;
     EditState *e;
-    int x, y;
+    int w, h, w1, h1;
 
     /* cannot split minibuf or popup */
     if (s->flags & (WF_POPUP | WF_MINIBUF))
-        return;
+        return NULL;
+
+    if (prop <= 0)
+        return NULL;
 
     /* This will clone mode and mode data to the newly created window */
     generic_save_window_data(s);
-    if (horiz) {
-        x = (s->x2 + s->x1) / 2;
-        e = edit_new(s->b, x, s->y1,
-                     s->x2 - x, s->y2 - s->y1, WF_MODELINE);
+    w = s->x2 - s->x1;
+    h = s->y2 - s->y1;
+    if (side_by_side) {
+        w1 = (w * min(prop, 100) + 50) / 100;
+        e = edit_new(s->b, s->x1 + w1, s->y1,
+                     w - w1, h, WF_MODELINE | (s->flags & WF_RSEPARATOR));
         if (!e)
-            return;
-        s->x2 = x;
+            return NULL;
+        s->x2 = s->x1 + w1;
         s->flags |= WF_RSEPARATOR;
-        s->wrap = e->wrap = WRAP_TRUNCATE;
     } else {
-        y = (s->y2 + s->y1) / 2;
-        e = edit_new(s->b, s->x1, y,
-                     s->x2 - s->x1, s->y2 - y,
-                     WF_MODELINE | (s->flags & WF_RSEPARATOR));
+        h1 = (h * min(prop, 100) + 50) / 100;
+        e = edit_new(s->b, s->x1, s->y1 + h1,
+                     w, h - h1, WF_MODELINE | (s->flags & WF_RSEPARATOR));
         if (!e)
-            return;
-        s->y2 = y;
+            return NULL;
+        s->y2 = s->y1 + h1;
     }
-    /* insert in the window list after current window */
+    compute_client_area(s);
+
+    /* reposition new window in window list just after s */
     edit_attach(e, s->next_window);
 
-    if (qs->flag_split_window_change_focus)
-        qs->active_window = e;
-
-    compute_client_area(s);
     do_refresh(s);
+    return e;
+}
+
+void do_split_window(EditState *s, int prop, int side_by_side)
+{
+    QEmacsState *qs = s->qe_state;
+    EditState *e = qe_split_window(s, prop == NO_ARG ? 50 : prop, side_by_side);
+
+    if (e && qs->flag_split_window_change_focus)
+        qs->active_window = e;
 }
 
 void do_create_window(EditState *s, const char *filename, const char *layout)

@@ -270,10 +270,12 @@ static CmdDef basic_commands[] = {
           "hide-window", do_hide_window, 1)
     CMD0( KEY_NONE, KEY_NONE,
           "delete-hidden-windows", do_delete_hidden_windows)
-    CMD1( KEY_CTRLX('2'), KEY_NONE,
-          "split-window-vertically", do_split_window, 0) /* u? */
-    CMD1( KEY_CTRLX('3'), KEY_NONE,
-          "split-window-horizontally", do_split_window, 1) /* u? */
+    CMD3( KEY_CTRLX('2'), KEY_NONE,
+          "split-window-vertically", do_split_window, ESii,
+          SW_STACKED, "uiv")
+    CMD3( KEY_CTRLX('3'), KEY_NONE,
+          "split-window-horizontally", do_split_window, ESii,
+          SW_SIDE_BY_SIDE, "uiv")
     CMD0( KEY_CTRLX('f'), KEY_NONE,
           "toggle-full-screen", do_toggle_full_screen)
     CMD0( KEY_NONE, KEY_NONE,
@@ -285,8 +287,10 @@ static CmdDef basic_commands[] = {
 
     /*---------------- Help ----------------*/
 
+    CMD0( KEY_CTRLH('d'), KEY_NONE,
+          "start-trace-mode", do_start_trace_mode)
     CMD2( KEY_CTRLH('t'), KEY_NONE,
-          "set-trace", do_set_trace, ESs,
+          "set-trace-options", do_set_trace_options, ESs,
           "s{Trace options: }|trace|")
     CMD0( KEY_CTRLH('c'), KEY_CTRLH('k'),
           "describe-key-briefly", do_describe_key_briefly)

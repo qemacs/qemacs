@@ -214,6 +214,7 @@ void do_compare_files(EditState *s, const char *filename, int bflags)
     char dir[MAX_FILENAME_SIZE];
     int pathlen, parent_pathlen;
     const char *tail;
+    EditState *e;
 
     pathlen = get_basename_offset(filename);
     get_default_path(s->b, s->offset, dir, sizeof(dir));
@@ -252,10 +253,11 @@ void do_compare_files(EditState *s, const char *filename, int bflags)
 
     do_find_file(s, filename, bflags);
     do_delete_other_windows(s, 0);
-    do_split_window(s, 0);
-    do_previous_window(s);
-    s = s->qe_state->active_window;
-    do_find_file(s, buf, bflags);
+    e = qe_split_window(s, 50, SW_STACKED);
+    if (e) {
+        s->qe_state->active_window = e;
+        do_find_file(e, buf, bflags);
+    }
 }
 
 void do_delete_horizontal_space(EditState *s)
@@ -728,6 +730,7 @@ static void do_kill_block(EditState *s, int dir)
 
 void do_transpose(EditState *s, int cmd)
 {
+    QEmacsState *qs = s->qe_state;
     int offset0, offset1, offset2, offset3, end_offset;
     int size0, size1, size2;
     EditBuffer *b = s->b;
@@ -752,7 +755,7 @@ void do_transpose(EditState *s, int cmd)
             offset0 = eb_prev(b, offset1);
         } else {
             /* XXX: should have specific flag */
-            if (s->qe_state->flag_split_window_change_focus) {
+            if (qs->emulation_flags == 1) {
                 /* keep current position between characters */
                 end_offset = offset0 + offset3 - offset2;
             } else {
@@ -771,7 +774,7 @@ void do_transpose(EditState *s, int cmd)
         offset1 = s->offset;
         word_left(s, 0);
         offset0 = s->offset;
-        if (s->qe_state->flag_split_window_change_focus) {
+        if (qs->emulation_flags == 1) {
             /* set position to end of first word */
             end_offset = offset0 + offset3 - offset2;
         } else {
@@ -788,7 +791,7 @@ void do_transpose(EditState *s, int cmd)
         s->offset = offset1;
         do_bol(s);
         offset0 = s->offset;
-        if (s->qe_state->flag_split_window_change_focus) {
+        if (qs->emulation_flags == 1) {
             /* set position to start of second line */
             end_offset = offset0 + offset3 - offset1;
         } else {
@@ -1708,7 +1711,7 @@ static CmdDef extra_commands[] = {
     CMD2( KEY_META('='), KEY_NONE,
           "compare-windows", do_compare_windows, ESi, "ui" )
     CMD3( KEY_CTRLX(KEY_CTRL('l')), KEY_NONE,
-          "conpare-files", do_compare_files, ESsi, 0,
+          "compare-files", do_compare_files, ESsi, 0,
           "s{Compare file: }[file]|file|"
           "v") /* u? */
     CMD2( KEY_META('\\'), KEY_NONE,

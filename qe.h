@@ -2040,8 +2040,10 @@ void do_refresh(EditState *s);
 void do_other_window(EditState *s);
 void do_previous_window(EditState *s);
 void do_delete_window(EditState *s, int force);
-// should take argval
-void do_split_window(EditState *s, int horiz);
+#define SW_STACKED       0
+#define SW_SIDE_BY_SIDE  1
+EditState *qe_split_window(EditState *s, int prop, int side_by_side);
+void do_split_window(EditState *s, int prop, int side_by_side);
 void do_create_window(EditState *s, const char *filename, const char *layout);
 void qe_save_window_layout(EditState *s, EditBuffer *b);
 
@@ -2132,7 +2134,8 @@ void do_toggle_control_h(EditState *s, int set);
 /* misc */
 
 void do_set_emulation(EditState *s, const char *name);
-void do_set_trace(EditState *s, const char *options);
+void do_start_trace_mode(EditState *s);
+void do_set_trace_options(EditState *s, const char *options);
 void do_cd(EditState *s, const char *name);
 int qe_mode_set_key(ModeDef *m, const char *keystr, const char *cmd_name);
 void do_set_key(EditState *s, const char *keystr, const char *cmd_name,
