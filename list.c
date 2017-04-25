@@ -95,6 +95,7 @@ void list_toggle_selection(EditState *s, int dir)
 static int list_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
+        /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_TRUNCATE;
         s->get_colorized_line = list_get_colorized_line;
     }

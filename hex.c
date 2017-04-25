@@ -175,6 +175,7 @@ static int binary_mode_init(EditState *s, EditBuffer *b, int flags)
         s->hex_mode = 0;
         s->unihex_mode = 0;
         s->insert = 0;
+        /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_TRUNCATE;
     }
     return 0;
@@ -188,6 +189,7 @@ static int hex_mode_init(EditState *s, EditBuffer *b, int flags)
         s->hex_nibble = 0;
         s->unihex_mode = 0;
         s->insert = 0;
+        /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_TRUNCATE;
     }
     return 0;

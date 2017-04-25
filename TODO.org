@@ -1,7 +1,7 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-04-21
+; Updated: 2017-04-24
 
 * Recent bugs and ideas
 
@@ -17,9 +17,15 @@
 ** display: hex-mode and binary-mode should have an initial skip value to align the display on any boundary
 ** display: optimize display for very large display-width in binary and hex modes
 ** display: add screen dump command and format
+** display: toggle-full-screen should work on popups
+** display: toggle-full-screen should not put modeline on popup
+** display: colorize extra ^M and ^Z as preproc at end of line prior to calling the syntax highlighter (same as BOM)
+** display: display bug on ~/comp/projects/fractal/fractint/ORGFORM/BAILOUT.FRM (double ^M)
+** display: colorizer bug on /comp/projects/fractal/fractint/ORGFORM/NOEL-2.FRM (triple ^M)
 ** files: actually load file in find-file-noselect
 ** files: ignore .DS_Store in completion
 ** files: fix SPC / TAB distinct behaviors on ~/comp/project/gnachman/
+** modes: next-mode should include buffer default_mode in list
 ** shell: support ':' as alternate escape sequence argument separator
 ** shell: use target window for man and similar commands
 ** tags: remove tags for modified line
@@ -286,7 +292,7 @@ Suppress CRC hack (not reliable).
 
 * Clean window deletion mess:
 
-** avoid problems with popups (kill_buffer, delete_window, split_window)
+** avoid problems with popups (kill_buffer, delete_window)
 ** detach window from tree and keep attached to buffer if last
 ** detach window from tree and put in delayed free tree otherwise
 

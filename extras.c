@@ -1451,8 +1451,10 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d\n", w, "bidir", s->bidir);
     eb_printf(b1, "%*s: %d\n", w, "cur_rtl", s->cur_rtl);
     eb_printf(b1, "%*s: %d  %s\n", w, "wrap", s->wrap,
+              s->wrap == WRAP_AUTO ? "AUTO" :
               s->wrap == WRAP_TRUNCATE ? "TRUNCATE" :
               s->wrap == WRAP_LINE ? "LINE" : 
+              s->wrap == WRAP_TERM ? "TERM" : 
               s->wrap == WRAP_WORD ? "WORD" : "???");
     eb_printf(b1, "%*s: %d\n", w, "line_numbers", s->line_numbers);
     eb_printf(b1, "%*s: %d\n", w, "indent_size", s->indent_size);

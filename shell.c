@@ -484,10 +484,9 @@ static void qe_term_get_xy(ShellState *s, int *px, int *py, int offset)
 }
 
 /* Compute offset of the char at column x and row y (0 based).
- * Can insert spaces or rows if needed.
+ * Can insert spaces or newlines if needed.
  * x and y may each be relative to the current position.
  */
-/* XXX: optimize !!!!! */
 static void qe_term_goto_xy(ShellState *s, int x, int y, int relative)
 {
     int total_lines, cur_line, line_num, col_num, offset, offset1, c;
@@ -1908,7 +1907,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
     cols = QE_TERM_XSIZE;
     rows = QE_TERM_YSIZE;
     if (e) {
-        cols = e->cols - 1;
+        cols = e->cols;
         rows = e->rows;
     }
     s->cols = cols;
@@ -2010,6 +2009,15 @@ static void do_man(EditState *s, const char *arg)
     char cmd[128];
     EditBuffer *b;
 
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
+        return;
+
+    if (s->flags & WF_POPLEFT) {
+        /* avoid messing with the dired pane */
+        s = find_window(s, KEY_RIGHT, s);
+        s->qe_state->active_window = s;
+    }
+
     /* Assume standard man command */
     snprintf(cmd, sizeof(cmd), "man %s", arg);
 
@@ -2033,6 +2041,15 @@ static void do_ssh(EditState *s, const char *arg)
     char bufname[64];
     char cmd[128];
     EditBuffer *b;
+
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
+        return;
+
+    if (s->flags & WF_POPLEFT) {
+        /* avoid messing with the dired pane */
+        s = find_window(s, KEY_RIGHT, s);
+        s->qe_state->active_window = s;
+    }
 
     /* Use standard ssh command */
     snprintf(cmd, sizeof(cmd), "ssh %s", arg);
@@ -2552,9 +2569,18 @@ static void do_shell_command(EditState *e, const char *cmd)
     edit_set_mode(e, &pager_mode);
 }
 
-static void do_compile(EditState *e, const char *cmd)
+static void do_compile(EditState *s, const char *cmd)
 {
     EditBuffer *b;
+
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
+        return;
+
+    if (s->flags & WF_POPLEFT) {
+        /* avoid messing with the dired pane */
+        s = find_window(s, KEY_RIGHT, s);
+        s->qe_state->active_window = s;
+    }
 
     /* if the buffer already exists, kill it */
     b = eb_find("*compilation*");
@@ -2566,15 +2592,15 @@ static void do_compile(EditState *e, const char *cmd)
         cmd = "make";
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, e, "*compilation*", "Compilation", cmd,
+    b = new_shell_buffer(NULL, s, "*compilation*", "Compilation", cmd,
                          SF_COLOR | SF_INFINITE);
     if (!b)
         return;
 
     b->data_type_name = "compile";
     /* XXX: try to split window if necessary */
-    switch_to_buffer(e, b);
-    edit_set_mode(e, &pager_mode);
+    switch_to_buffer(s, b);
+    edit_set_mode(s, &pager_mode);
     set_error_offset(b, 0);
 }
 
@@ -2871,7 +2897,9 @@ static int shell_mode_init(EditState *e, EditBuffer *b, int flags)
             return -1;
 
         e->b->tab_width = 8;
-        e->wrap = WRAP_TRUNCATE;
+        /* XXX: should come from mode.default_wrap */
+        e->wrap = WRAP_TERM;
+        e->wrap_cols = s->cols;
         if (s->shell_flags & SF_INTERACTIVE)
             e->interactive = 1;
     }
@@ -2882,6 +2910,7 @@ static int pager_mode_init(EditState *e, EditBuffer *b, int flags)
 {
     if (e) {
         e->b->tab_width = 8;
+        /* XXX: should come from mode.default_wrap */
         e->wrap = WRAP_TRUNCATE;
     }
     return 0;

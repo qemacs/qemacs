@@ -1354,9 +1354,11 @@ typedef struct QELineShadow {
 } QELineShadow;
 
 enum WrapType {
-    WRAP_TRUNCATE = 0,
+    WRAP_AUTO = 0,
+    WRAP_TRUNCATE,
     WRAP_LINE,
-    WRAP_WORD
+    WRAP_TERM,
+    WRAP_WORD,
 };
 
 #define DIR_LTR 0
@@ -1378,6 +1380,7 @@ struct EditState {
     int bidir;
     int cur_rtl;     /* TRUE if the cursor on over RTL chars */
     enum WrapType wrap;
+    int wrap_cols;   /* number of columns in terminal emulator */
     int line_numbers;
     /* XXX: these should be buffer specific rather than window specific */
     int indent_size;
@@ -1526,6 +1529,7 @@ struct ModeDef {
     ColorizeFunc colorize_func;
     int colorize_flags;
     int auto_indent;
+    int default_wrap;
 
     /* common functions are defined here */
     /* TODO: Should have single move function with move type and argument */

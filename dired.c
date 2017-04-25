@@ -1072,9 +1072,6 @@ static EditState *dired_view_file(EditState *s, const char *filename)
      */
     rc = qe_load_file(e, filename, 0, BF_PREVIEW);
     if (rc >= 0) {
-        /* disable wrapping to get nicer display */
-        /* XXX: should wrap lines unless window is narrow */
-        //e->wrap = WRAP_TRUNCATE; // causes bug on very long lines
         return e;
     } else {
         /* if file failed to load, show a scratch buffer */
@@ -1436,7 +1433,6 @@ static void filelist_display_hook(EditState *s)
         if (!access(filename, R_OK)) {
             e = dired_view_file(s, filename);
             if (e) {
-                e->wrap = WRAP_TRUNCATE;
                 if (target_line > 0)
                     do_goto_line(e, target_line, 0);
             }
@@ -1455,6 +1451,7 @@ void do_filelist(EditState *s, int argval)
     e = insert_window_left(s->b, qs->width / 5, WF_MODELINE | WF_FILELIST);
     if (e != NULL) {
         edit_set_mode(e, &filelist_mode);
+        /* XXX: should come from mode.default_wrap */
         e->wrap = WRAP_TRUNCATE;
         filelist_last_buf[0] = '\0';
         qs->active_window = e;
@@ -1464,6 +1461,7 @@ void do_filelist(EditState *s, int argval)
 static int filelist_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
+        /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_TRUNCATE;
     }
     return 0;

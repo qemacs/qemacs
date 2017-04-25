@@ -47,6 +47,7 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
         s->unihex_mode = w = snprintf(NULL, 0, "%x", maxc);
         s->dump_width = clamp((s->width - 8 - 2 - 2 - 1) / (w + 3), 8, 16);
         s->insert = 0;
+        /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_TRUNCATE;
     }
     return 0;

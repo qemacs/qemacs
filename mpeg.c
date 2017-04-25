@@ -143,6 +143,7 @@ static int mpeg_mode_init(EditState *s, EditBuffer *b, int flags)
     if (s) {
         s->hex_mode = 1;
         s->hex_nibble = 0;
+        /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_TRUNCATE;
     }
     return 0;

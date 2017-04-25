@@ -836,6 +836,7 @@ static int mkd_mode_init(EditState *s, EditBuffer *b, int flags)
     if (s) {
         s->b->tab_width = 4;
         s->indent_tabs_mode = 0;
+        /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_WORD;
     }
     return 0;
@@ -853,6 +854,7 @@ static int litcoffee_mode_init(EditState *s, EditBuffer *b, int flags)
     if (s) {
         s->b->tab_width = 4;
         s->indent_tabs_mode = 0;
+        /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_WORD;
         s->mode->colorize_flags = mkd_add_lang("coffee");
     }

@@ -124,21 +124,23 @@ void qe_register_mode(ModeDef *m, int flags)
     QEmacsState *qs = &qe_state;
     ModeDef **p;
 
-    m->flags |= flags;
-
-    if (!m->mode_name)
-        m->mode_name = m->name;
-
     /* register mode in mode list (at end) */
     for (p = &qs->first_mode;; p = &(*p)->next) {
-        if (*p == m)
+        if (*p == m) {
+            /* mode is already registered, do nothing */
             return;
+        }
         if (*p == NULL) {
             m->next = NULL;
             *p = m;
             break;
         }
     }
+
+    m->flags |= flags;
+
+    if (!m->mode_name)
+        m->mode_name = m->name;
 
     if (m->flags & MODEF_SYNTAX) {
         /* if no syntax probing function, use extension matcher */
@@ -271,6 +273,7 @@ static int qe_register_binding1(unsigned int *keys, int nb_keys,
     }
     lp = m ? &m->first_key : &qs->first_key;
     /* Bindings must be prepended to override previous bindings */
+    /* XXX: should avoid multiple redundant bindings */
 #if 0
     while (*lp != NULL && (*lp)->mode != NULL)
         lp = &(*lp)->next;
@@ -1203,6 +1206,9 @@ void do_scroll_left_right(EditState *s, int dir)
     DisplayState ds1, *ds = &ds1;
     int adjust;
 
+    if (s->wrap == WRAP_TERM)
+        return;
+
     /* compute space_width */
     display_init(ds, s, DISP_NONE, NULL, NULL);
     adjust = dir * ds->space_width;
@@ -1216,14 +1222,14 @@ void do_scroll_left_right(EditState *s, int dir)
                 s->x_disp[0] = min(s->x_disp[0] + adjust, 0);
             }
         } else
-        if (s->wrap == WRAP_LINE) {
+        if (s->wrap == WRAP_LINE || s->wrap == WRAP_AUTO) {
             s->wrap = WRAP_WORD;
         }
     } else {
         if (s->wrap == WRAP_WORD) {
             s->wrap = WRAP_LINE;
         } else
-        if (s->wrap == WRAP_LINE) {
+        if (s->wrap == WRAP_LINE || s->wrap == WRAP_AUTO) {
             s->wrap = WRAP_TRUNCATE;
         } else {
             s->x_disp[0] = min(s->x_disp[0] + adjust, 0);
@@ -2271,6 +2277,7 @@ int edit_set_mode(EditState *s, ModeDef *m)
 
         /* init mode */
         generic_mode_init(s);
+        s->wrap = m->default_wrap;
         m->mode_init(s, s->b, MODEF_VIEW | mode_flags);
         if (m->colorize_func)
             set_colorize_func(s, m->colorize_func);
@@ -2443,6 +2450,9 @@ void do_toggle_line_numbers(EditState *s)
 
 void do_toggle_truncate_lines(EditState *s)
 {
+    if (s->wrap == WRAP_TERM)
+        return;
+
     if (s->wrap == WRAP_TRUNCATE) {
         s->wrap = WRAP_LINE;
         s->x_disp[0] = s->x_disp[1] = 0;
@@ -2453,6 +2463,9 @@ void do_toggle_truncate_lines(EditState *s)
 
 void do_word_wrap(EditState *s)
 {
+    if (s->wrap == WRAP_TERM)
+        return;
+
     if (s->wrap == WRAP_WORD) {
         s->wrap = WRAP_LINE;
     } else {
@@ -3126,16 +3139,31 @@ void display_init(DisplayState *ds, EditState *e, enum DisplayType do_disp,
     ds->cursor_func = cursor_func;
     ds->cursor_opaque = cursor_opaque;
     ds->wrap = e->wrap;
+    if (ds->wrap == WRAP_AUTO) {
+        /* XXX: check e->mode->default_wrap */
+        /* Behave as WRAP_LINE if window is not at least 75% of full width.
+         * This allows the same default behavior for full width window and
+         * the dired view pane but behaves as WRAP_TRUNCATE on split screens
+         */
+        if (e->width >= e->screen->width * 3 / 4) {
+            ds->wrap = WRAP_LINE;
+        }
+    }
     /* select default values */
     get_style(e, &styledef, QE_STYLE_DEFAULT);
     font = select_font(e->screen, styledef.font_style, styledef.font_size);
     ds->default_line_height = font->ascent + font->descent;
-    ds->eol_width = max3(glyph_width(e->screen, font, '/'),
-                         glyph_width(e->screen, font, '\\'),
-                         glyph_width(e->screen, font, '$'));
     ds->space_width = glyph_width(e->screen, font, ' ');
     ds->tab_width = ds->space_width * e->b->tab_width;
-    ds->width = e->width - ds->eol_width;
+    if (ds->wrap == WRAP_TERM) {
+        ds->eol_width = 0;
+        ds->width = e->wrap_cols * glyph_width(e->screen, font, '0');
+    } else {
+        ds->eol_width = max3(glyph_width(e->screen, font, '/'),
+                             glyph_width(e->screen, font, '\\'),
+                             glyph_width(e->screen, font, '$'));
+        ds->width = e->width - ds->eol_width;
+    }
     ds->height = e->height;
     ds->hex_mode = e->hex_mode;
     ds->cur_hex_mode = 0;
@@ -3328,7 +3356,7 @@ static void flush_line(DisplayState *ds,
                 }
             }
 
-            if (last == 0) {
+            if (last == 0 && ds->eol_width != 0) {
                 /* draw eol mark */
                 unsigned int markbuf[1];
 
@@ -3560,8 +3588,10 @@ static void flush_fragment(DisplayState *ds)
 
     switch (ds->wrap) {
     case WRAP_TRUNCATE:
+    case WRAP_AUTO:
         break;
     case WRAP_LINE:
+    case WRAP_TERM:
         while (ds->x > ds->width) {
             int len1, w1, ww, n;
             //printf("x=%d maxw=%d len=%d\n", ds->x, ds->width, frag->len);
@@ -4346,7 +4376,7 @@ static void generic_text_display(EditState *s)
     /* update x cursor position if needed. Note that we distinguish
        between rtl and ltr margins. We try to have x_disp == 0 as much
        as possible */
-    if (s->wrap == WRAP_TRUNCATE) {
+    if (ds->wrap == WRAP_TRUNCATE) {
 #if 1  //@@@?
         //put_status(s, "|xc=%d x_disp+%d", m->xc, s->x_disp[m->basec]);
         if (m->xc != NO_CURSOR) {
@@ -5589,7 +5619,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
                 s->insert = 1;
                 s->indent_size = s->qe_state->default_tab_width;
                 s->default_style = QE_STYLE_DEFAULT;
-                s->wrap = WRAP_LINE;
+                s->wrap = mode ? mode->default_wrap : WRAP_AUTO;
             }
         }
         /* validate the mode */
@@ -6292,6 +6322,7 @@ void minibuffer_edit(EditState *e, const char *input, const char *prompt,
     s->prompt = qe_strdup(prompt);
     s->bidir = 0;
     s->default_style = QE_STYLE_MINIBUF;
+    /* XXX: should come from mode.default_wrap */
     s->wrap = WRAP_TRUNCATE;
 
     /* add default input */
@@ -6407,6 +6438,7 @@ EditState *show_popup(EditState *s, EditBuffer *b)
 
     b->default_mode = &popup_mode;
     e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
+    /* XXX: should come from mode.default_wrap */
     e->wrap = WRAP_TRUNCATE;
     e->target_window = s;
     qs->active_window = e;
@@ -6447,6 +6479,7 @@ EditState *insert_window_left(EditBuffer *b, int width, int flags)
 
     e_new = edit_new(b, 0, 0, width, qs->height - qs->status_height,
                      flags | WF_POPLEFT | WF_RSEPARATOR);
+    /* XXX: WRAP_AUTO is a better choice? */
     e_new->wrap = WRAP_TRUNCATE;
     do_refresh(e_new);
     return e_new;
@@ -6981,8 +7014,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
 
     /* XXX: should actually initialize SAVED_DATA area in new buffer */
     s->offset = 0;
-    /* XXX: Should test for full width and WRAP_TRUNCATE if not */
-    s->wrap = WRAP_LINE;        /* default mode may override this */
+    s->wrap = WRAP_AUTO;  /* default mode may override this */
 
     /* First we try to read the first block to determine the data type */
     if (stat(filename, &st) < 0) {
@@ -7722,7 +7754,7 @@ void do_create_window(EditState *s, const char *filename, const char *layout)
         "offset:", "offset.col:", "mark:", "mark.col:", "top:", "top.col:",
         "active:",
     };
-    int args[] = { 0, 0, 0, 0, WF_MODELINE, WRAP_LINE, 0, 0, 0, 0, 0, 0, 0  };
+    int args[] = { 0, 0, 0, 0, WF_MODELINE, WRAP_AUTO, 0, 0, 0, 0, 0, 0, 0  };
     ModeDef *m = NULL;
     int i, n, x1, y1, x2, y2, flags;
     enum WrapType wrap;
@@ -8292,7 +8324,7 @@ static void generic_mode_close(EditState *s)
     s->hex_nibble = 0;
     s->unihex_mode = 0;
     s->insert = 1;
-    s->wrap = WRAP_LINE;
+    s->wrap = WRAP_AUTO;
 
     /* free all callbacks or associated buffer data */
     set_colorize_func(s, NULL);
