@@ -28,6 +28,7 @@
 #define LISP_LANG_RACKET   8
 #define LISP_LANG_CLOJURE  16
 #define LISP_LANG_SANDBOX  32
+#define LISP_LANG_XAOS     64
 
 /*---------------- Lisp colors ----------------*/
 
@@ -503,6 +504,20 @@ static ModeDef sandbox_mode = {
     .fallback = &lisp_mode,
 };
 
+static const char xaos_keywords[] = {
+    ""
+};
+
+static ModeDef xaos_mode = {
+    .name = "Xaos",  /* Xaos fractal generator */
+    .extensions = "xhf|xaf|xpf",
+    .keywords = xaos_keywords,
+    .types = lisp_types,
+    .colorize_func = lisp_colorize_line,
+    .colorize_flags = LISP_LANG_XAOS,
+    .fallback = &lisp_mode,
+};
+
 static int lisp_init(void)
 {
     qe_register_mode(&lisp_mode, MODEF_SYNTAX);
@@ -511,6 +526,7 @@ static int lisp_init(void)
     qe_register_mode(&racket_mode, MODEF_SYNTAX);
     qe_register_mode(&clojure_mode, MODEF_SYNTAX);
     qe_register_mode(&sandbox_mode, MODEF_SYNTAX);
+    qe_register_mode(&xaos_mode, MODEF_SYNTAX);
 
     return 0;
 }
