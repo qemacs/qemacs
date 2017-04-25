@@ -138,7 +138,8 @@ static int probe_8859_1(qe__unused__ QECharset *charset, const u8 *buf, int size
 {
     const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
                            (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1a) |
+                           (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + size;
     uint32_t c;
@@ -363,7 +364,8 @@ static int probe_utf8(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
     const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
                            (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1a) |
+                           (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + size;
     uint32_t c;
@@ -562,7 +564,8 @@ static int probe_ucs2le(qe__unused__ QECharset *charset, const u8 *buf, int size
 {
     const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
                            (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1a) |
+                           (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~1);
     uint32_t c;
@@ -693,7 +696,8 @@ static int probe_ucs2be(qe__unused__ QECharset *charset, const u8 *buf, int size
 {
     const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
                            (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1a) |
+                           (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~1);
     uint32_t c;
@@ -837,7 +841,8 @@ static int probe_ucs4le(qe__unused__ QECharset *charset, const u8 *buf, int size
 {
     const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
                            (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1a) |
+                           (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~3);
     uint32_t c;
@@ -967,7 +972,8 @@ static int probe_ucs4be(qe__unused__ QECharset *charset, const u8 *buf, int size
 {
     const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
                            (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1a) |
+                           (1U << 0x1f);
     const u8 *p = buf;
     const u8 *p_end = p + (size & ~3);
     uint32_t c;
@@ -1219,6 +1225,11 @@ static void detect_eol_type_8bit(const u8 *buf, int size,
     while (p < p1) {
         c = *p++;
         if (c == '\r') {
+            if (*p == '\r') {
+                /* possibly spurious extra ^M in DOS file: ignore it,
+                 * next iteration will determine if encoding is MAC or DOS
+                 */
+            } else
             if (*p == '\n') {
                 p++;
                 eol_bits |= 1 << EOL_DOS;
@@ -1502,7 +1513,8 @@ done_utf8:
     {
         const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
                                (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                               (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+                               (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1a) |
+                               (1U << 0x1f);
 
         for (i = 0; i < size; i++) {
             c = buf[i];

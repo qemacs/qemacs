@@ -197,7 +197,8 @@ static int detect_binary(const unsigned char *buf, int size)
 {
     const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
                            (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1f);
+                           (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1a) |
+                           (1U << 0x1f);
     int i, c;
 
     for (i = 0; i < size; i++) {
