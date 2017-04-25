@@ -2114,14 +2114,29 @@ int eb_insert_uchar(EditBuffer *b, int offset, int c)
     return eb_insert(b, offset, buf, len);
 }
 
-int eb_insert_spaces(EditBuffer *b, int offset, int n)
+/* Replace the character at `offset` with `c`,
+ * return number of bytes to move past `c`.
+ */
+int eb_replace_uchar(EditBuffer *b, int offset, int c)
+{
+    char buf[MAX_CHAR_BYTES];
+    int len;
+    int offset1;
+
+    len = eb_encode_uchar(b, buf, c);
+    eb_nextc(b, offset, &offset1);
+    eb_replace(b, offset, offset1 - offset, buf, len);
+    return len;
+}
+
+int eb_insert_uchars(EditBuffer *b, int offset, int c, int n)
 {
     char buf1[1024];
     int size, pos1;
 
     size = pos1 = 0;
     while (n-- > 0) {
-        int clen = eb_encode_uchar(b, buf1 + pos1, ' ');
+        int clen = eb_encode_uchar(b, buf1 + pos1, c);
         pos1 += clen;
         if (pos1 > ssizeof(buf1) - MAX_CHAR_BYTES || n == 0) {
             size += eb_insert(b, offset + size, buf1, pos1);

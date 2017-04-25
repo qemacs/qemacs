@@ -85,8 +85,7 @@ void list_toggle_selection(EditState *s, int dir)
         ch = ' ';
     flags = s->b->flags & BF_READONLY;
     s->b->flags ^= flags;
-    eb_delete_uchar(s->b, offset);
-    eb_insert_uchar(s->b, offset, ch);
+    eb_replace_uchar(s->b, offset, ch);
     s->b->flags ^= flags;
 
     if (dir > 0)

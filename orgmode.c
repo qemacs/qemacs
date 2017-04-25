@@ -521,8 +521,7 @@ static void do_org_insert_heading(EditState *s, int flags)
     if (flags & 2) {
         /* respect-content: insert heading at end of subtree */
         offset = org_next_heading(s, offset, level, NULL);
-        eb_insert_uchar(s->b, offset, '\n');
-        eb_insert_uchar(s->b, offset, '\n');
+        eb_insert_uchars(s->b, offset, '\n', 2);
     } else
     if (s->offset <= offset + level + 1) {
         eb_insert_uchar(s->b, offset, '\n');
@@ -538,9 +537,7 @@ static void do_org_insert_heading(EditState *s, int flags)
         continue;
     eb_delete(s->b, offset, offset1 - offset);
 
-    while (level-- > 0) {
-        offset += eb_insert_uchar(s->b, offset, '*');
-    }
+    offset += eb_insert_uchars(s->b, offset, '*', level);
     offset += eb_insert_uchar(s->b, offset, ' ');
     s->offset = eb_goto_eol(s->b, offset);
     if (flags & 1) {

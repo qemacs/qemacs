@@ -645,6 +645,14 @@ static inline int max(int a, int b) {
         return b;
 }
 
+static inline int maxp(int *pa, int b) {
+    int a = *pa;
+    if (a > b)
+        return a;
+    else
+        return *pa = b;
+}
+
 static inline int max3(int a, int b, int c) {
     return max(max(a, b), c);
 }
@@ -654,6 +662,14 @@ static inline int min(int a, int b) {
         return a;
     else
         return b;
+}
+
+static inline int minp(int *pa, int b) {
+    int a = *pa;
+    if (a < b)
+        return a;
+    else
+        return *pa = b;
 }
 
 static inline int min3(int a, int b, int c) {
@@ -666,6 +682,17 @@ static inline int clamp(int a, int b, int c) {
     else
     if (a > c)
         return c;
+    else
+        return a;
+}
+
+static inline int clampp(int *pa, int b, int c) {
+    int a = *pa;
+    if (a < b)
+        return *pa = b;
+    else
+    if (a > c)
+        return *pa = c;
     else
         return a;
 }
@@ -724,6 +751,8 @@ extern struct QECharset charset_8859_1;
 extern struct QECharset charset_utf8;
 extern struct QECharset charset_vt100; /* used for the tty output */
 extern struct QECharset charset_mac_roman;
+extern struct QECharset charset_ucs2le, charset_ucs2be;
+extern struct QECharset charset_ucs4le, charset_ucs4be;
 
 typedef enum EOLType {
     EOL_UNIX = 0,
@@ -1203,7 +1232,12 @@ void eb_style_callback(EditBuffer *b, void *opaque, int arg,
 int eb_delete_uchar(EditBuffer *b, int offset);
 int eb_encode_uchar(EditBuffer *b, char *buf, unsigned int c);
 int eb_insert_uchar(EditBuffer *b, int offset, int c);
-int eb_insert_spaces(EditBuffer *b, int offset, int n);
+int eb_replace_uchar(EditBuffer *b, int offset, int c);
+int eb_insert_uchars(EditBuffer *b, int offset, int c, int n);
+static inline int eb_insert_spaces(EditBuffer *b, int offset, int n) {
+    return eb_insert_uchars(b, offset, ' ', n);
+}
+
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len);
 int eb_insert_u32_buf(EditBuffer *b, int offset, const unsigned int *buf, int len);
 int eb_insert_str(EditBuffer *b, int offset, const char *str);
