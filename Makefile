@@ -69,7 +69,7 @@ TARGETS+= qe$(EXE) kmaps ligatures
 OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o parser.o input.o display.o hex.o \
        list.o
 TOBJS:= $(OBJS)
-OBJS+= extras.o variables.o
+OBJS+= extras.o variables.o fractal.o
 
 ifdef CONFIG_DARWIN
   LDFLAGS += -L/opt/local/lib/
