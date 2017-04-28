@@ -993,7 +993,7 @@ typedef struct {
     int offsetc;
     DirType basec; /* direction of the line */
     DirType dirc; /* direction of the char under the cursor */
-    int cursor_width; /* can be negative depending on char orientation */
+    int cursor_width;
     int cursor_height;
 } CursorContext;
 
@@ -1004,9 +1004,13 @@ int cursor_func(DisplayState *ds,
     CursorContext *m = ds->cursor_opaque;
 
     if (m->offsetc >= offset1 && m->offsetc < offset2) {
-        if (w < 0) {  /* for RTL glyphs */
+        if (w <= 0) {  /* for RTL glyphs */
             x += w;
             w = -w;
+            if (w == 0) {
+                /* for end of line */
+                w = ds->space_width;
+            }
         }
         m->xc = x;
         m->yc = y;

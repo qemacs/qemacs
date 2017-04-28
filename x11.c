@@ -527,9 +527,9 @@ static void x11_dpy_xor_rectangle(QEditScreen *s,
                                   int x1, int y1, int w, int h, QEColor color)
 {
     X11State *xs = s->priv_data;
-    int fg;
+    unsigned long fg;
 
-    fg = WhitePixel(xs->display, xs->xscreen);
+    fg = get_x11_color(xs, QE_RGB(255, 255, 255));
     XSetForeground(xs->display, xs->gc, fg);
     XSetFunction(xs->display, xs->gc, GXxor);
     XFillRectangle(xs->display, xs->dbuffer, xs->gc, x1, y1, w, h);
