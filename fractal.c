@@ -322,6 +322,8 @@ typedef long double fnum_t;
 typedef struct FractalState FractalState;
 
 struct FractalState {
+    QEModeData base;
+
     int cols, rows;
     int maxiter;        /* maximum iteration number */
     int cb, nc;         /* color palette base and length */
@@ -346,8 +348,10 @@ const char fractal_default_parameters[] = {
     //" x=-1.78935604483808219844, y=0"
 };
 
-/* XXX: should be allocated as buffer mode data */
-static FractalState fractal_state;
+static inline FractalState *fractal_get_state(EditState *e, int status)
+{
+    return qe_get_buffer_mode_data(e->b, &fractal_mode, status ? e : NULL);
+}
 
 static void fractal_set_rotation(FractalState *ms, int rot) {
     ms->rot = rot;
@@ -461,19 +465,23 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
 }
 
 static void do_fractal_refresh(EditState *s) {
-    FractalState *ms = &fractal_state;
-    ms->cols = s->cols;
-    ms->rows = s->rows;
-    do_fractal_draw(s, ms);
+    FractalState *ms = fractal_get_state(s, 0);
+    if (ms) {
+        ms->cols = s->cols;
+        ms->rows = s->rows;
+        do_fractal_draw(s, ms);
+    }
 }
 
 static void do_fractal_move(EditState *s, int deltax, int deltay) {
-    FractalState *ms = &fractal_state;
-    fnum_t dx = deltax * ms->scale / 40;
-    fnum_t dy = deltay * ms->scale / 40;
-    ms->x += dx * ms->m0 + dy * ms->m1;
-    ms->y += dx * ms->m2 + dy * ms->m3;
-    do_fractal_refresh(s);
+    FractalState *ms = fractal_get_state(s, 1);
+    if (ms) {
+        fnum_t dx = deltax * ms->scale / 40;
+        fnum_t dy = deltay * ms->scale / 40;
+        ms->x += dx * ms->m0 + dy * ms->m1;
+        ms->y += dx * ms->m2 + dy * ms->m3;
+        do_fractal_refresh(s);
+    }
 }
 
 static void do_fractal_move_x(EditState *s, int delta) {
@@ -485,39 +493,52 @@ static void do_fractal_move_y(EditState *s, int delta) {
 }
 
 static void do_fractal_zoom(EditState *s, int delta) {
-    FractalState *ms = &fractal_state;
-    fractal_set_zoom(ms, ms->zoom + delta);
-    do_fractal_refresh(s);
+    FractalState *ms = fractal_get_state(s, 1);
+    if (ms) {
+        fractal_set_zoom(ms, ms->zoom + delta);
+        do_fractal_refresh(s);
+    }
 }
 
 static void do_fractal_rotate(EditState *s, int delta) {
-    FractalState *ms = &fractal_state;
-    fractal_set_rotation(ms, delta ? ms->rot + delta : 0);
-    do_fractal_refresh(s);
+    FractalState *ms = fractal_get_state(s, 1);
+    if (ms) {
+        fractal_set_rotation(ms, delta ? ms->rot + delta : 0);
+        do_fractal_refresh(s);
+    }
 }
 
 static void do_fractal_iter(EditState *s, int delta) {
-    FractalState *ms = &fractal_state;
-    ms->maxiter += delta;
-    do_fractal_refresh(s);
+    FractalState *ms = fractal_get_state(s, 1);
+    if (ms) {
+        ms->maxiter += delta;
+        do_fractal_refresh(s);
+    }
 }
 
 static void do_fractal_module(EditState *s, int delta) {
-    FractalState *ms = &fractal_state;
-    ms->bailout += delta;
-    do_fractal_refresh(s);
+    FractalState *ms = fractal_get_state(s, 1);
+    if (ms) {
+        ms->bailout += delta;
+        do_fractal_refresh(s);
+    }
 }
 
 static void do_fractal_set_parameters(EditState *s, const char *params) {
-    FractalState *ms = &fractal_state;
-    fractal_set_parameters(s, ms, params);
+    FractalState *ms = fractal_get_state(s, 1);
+    if (ms) {
+        fractal_set_parameters(s, ms, params);
+    }
 }
 
 static void do_fractal_help(EditState *s)
 {
-    FractalState *ms = &fractal_state;
+    FractalState *ms = fractal_get_state(s, 1);
     EditBuffer *b;
     int w = 16;
+
+    if (ms == NULL)
+        return;
 
     b = new_help_buffer();
     if (!b)
@@ -555,9 +576,11 @@ static void do_fractal_help(EditState *s)
 }
 
 static void fractal_display_hook(EditState *s) {
-    FractalState *ms = &fractal_state;
-    if (s->rows != ms->rows || s->cols != ms->cols)
-        do_fractal_refresh(s);
+    FractalState *ms = fractal_get_state(s, 0);
+    if (ms) {
+        if (s->rows != ms->rows || s->cols != ms->cols)
+            do_fractal_refresh(s);
+    }
 }
 
 static CmdDef fractal_commands[] = {
@@ -597,15 +620,28 @@ static CmdDef fractal_commands[] = {
 
 static int fractal_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
-    if (p->b->default_mode == &fractal_mode)
+    if (qe_get_buffer_mode_data(p->b, &fractal_mode, NULL))
         return 100;
     else
         return 0;
 }
 
+static int fractal_mode_init(EditState *e, EditBuffer *b, int flags)
+{
+    if (e) {
+        FractalState *ms;
+
+        if (!(ms = fractal_get_state(e, 0)))
+            return -1;
+
+        fractal_set_parameters(e, ms, fractal_default_parameters);
+        put_status(e, "fractal init");
+    }
+    return 0;
+}
+
 static void do_mandelbrot_test(EditState *s) {
     EditBuffer *b;
-    FractalState *ms = &fractal_state;
 
     if (!fractal_mode.name) {
         /* populate and register shell mode and commands */
@@ -613,8 +649,10 @@ static void do_mandelbrot_test(EditState *s) {
         fractal_mode.name = "fractal";
         fractal_mode.mode_name = NULL;
         fractal_mode.mode_probe = fractal_mode_probe;
-        fractal_mode.default_wrap = WRAP_TRUNCATE;
+        fractal_mode.buffer_instance_size = sizeof(FractalState);
+        fractal_mode.mode_init = fractal_mode_init;
         fractal_mode.display_hook = fractal_display_hook;
+        fractal_mode.default_wrap = WRAP_TRUNCATE;
         qe_register_mode(&fractal_mode, MODEF_NOCMD | MODEF_VIEW);
         qe_register_cmd_table(fractal_commands, &fractal_mode);
     }
@@ -628,15 +666,10 @@ static void do_mandelbrot_test(EditState *s) {
     if (!b)
         return;
 
-    if (!ms->maxiter) {
-        fractal_set_parameters(s, ms, fractal_default_parameters);
-    }
-
     b->default_mode = &fractal_mode;
     eb_set_charset(b, &charset_ucs2be, EOL_UNIX);
     do_delete_other_windows(s, 0);
     switch_to_buffer(s, b);
-    do_fractal_refresh(s);
 }
 
 static CmdDef fractal_global_commands[] = {
