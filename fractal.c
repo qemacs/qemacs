@@ -319,12 +319,15 @@ typedef long double fnum_t;
 #define MFT  "%.16Lg"
 #endif
 
+typedef struct { fnum_t a, b; } cnum_t;
+
 typedef struct FractalState FractalState;
 
 struct FractalState {
     QEModeData base;
 
     int cols, rows;
+    int type;
     int maxiter;        /* maximum iteration number */
     int cb, nc;         /* color palette base and length */
     int rot;            /* rotation in degrees */
@@ -353,6 +356,136 @@ static inline FractalState *fractal_get_state(EditState *e, int status)
     return qe_get_buffer_mode_data(e->b, &fractal_mode, status ? e : NULL);
 }
 
+static fnum_t cmod2(cnum_t z) {
+    return z.a * z.a + z.b * z.b;
+}
+
+static cnum_t cpower(cnum_t z, int exp) {
+    cnum_t r = { 1, 0 };
+    fnum_t a;
+
+    while (exp > 0) {
+        if (exp & 1) {
+            a = r.a;
+            r.a = a * z.a - r.b * z.b;
+            r.b = a * z.b + r.b * z.a;
+        }
+        exp >>= 1;
+        a = z.a;
+        z.a = a * a - z.b * z.b;
+        z.b = 2 * a * z.b;
+    }
+    return r;
+}
+
+static int mandelbrot_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
+    fnum_t a, b, c;
+    int i;
+    for (a = b = i = 0; a * a + b * b <= bailout && i++ < maxiter;) {
+        c = a;
+        a = a * a - b * b + x;
+        b = 2 * c * b + y;
+    }
+    return i;
+}
+
+static int mandelbrot3_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
+    fnum_t a, b, c;
+    int i;
+    for (a = b = i = 0; a * a + b * b <= bailout && i++ < maxiter;) {
+        c = a;
+        a = a * a * a - 3 * a * b * b + x;
+        b = 3 * c * c * b - b * b * b + y;
+    }
+    return i;
+}
+
+static int mandelbrot4_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
+    fnum_t a, b, a2, b2;
+    int i;
+    for (a = b = i = 0; a * a + b * b <= bailout && i++ < maxiter;) {
+        a2 = a * a - b * b;
+        b2 = 2 * a * b;
+        a = a2 * a2 - b2 * b2 + x;
+        b = 2 * a2 * b2 + y;
+    }
+    return i;
+}
+
+static int mandelbrot5_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
+    fnum_t a, b, a2, b2, a3, b3;
+    int i;
+    for (a = b = i = 0; a * a + b * b <= bailout && i++ < maxiter;) {
+        a3 = a * a * a - 3 * a * b * b;
+        b3 = 3 * a * a * b - b * b * b;
+        a2 = a * a - b * b;
+        b2 = 2 * a * b;
+        a = a2 * a3 - b2 * b3 + x;
+        b = b2 * a3 + a2 * b3 + y;
+    }
+    return i;
+}
+
+static int mandelbrot6_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
+    fnum_t a, b, a3, b3;
+    int i;
+    for (a = b = i = 0; a * a + b * b <= bailout && i++ < maxiter;) {
+        a3 = a * a * a - 3 * a * b * b;
+        b3 = 3 * a * a * b - b * b * b;
+        a = a3 * a3 - b3 * b3 + x;
+        b = 2 * a3 * b3 + y;
+    }
+    return i;
+}
+
+static int mandelbrot7_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
+    cnum_t z = { 0, 0 };
+    int i;
+    for (i = 0; cmod2(z) <= bailout && i++ < maxiter;) {
+        z = cpower(z, 7);
+        z.a += x;
+        z.b += y;
+    }
+    return i;
+}
+
+static int mandelbrot8_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
+    cnum_t z = { 0, 0 };
+    int i;
+    for (i = 0; cmod2(z) <= bailout && i++ < maxiter;) {
+        z = cpower(z, 8);
+        z.a += x;
+        z.b += y;
+    }
+    return i;
+}
+
+static int mandelbrot9_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
+    cnum_t z = { 0, 0 };
+    int i;
+    for (i = 0; cmod2(z) <= bailout && i++ < maxiter;) {
+        z = cpower(z, 9);
+        z.a += x;
+        z.b += y;
+    }
+    return i;
+}
+
+static struct FractalType {
+    const char *name;
+    const char *formula;
+    int (*func)(fnum_t x, fnum_t y, fnum_t bailout, int maxiter);
+} const fractal_type[] = {
+    { "Mandelbrot", "z=z^2+c", mandelbrot_func },
+    { "Mandelbrot3", "z=z^3+c", mandelbrot3_func },
+    { "Mandelbrot4", "z=z^4+c", mandelbrot4_func },
+    { "Mandelbrot5", "z=z^5+c", mandelbrot5_func },
+    { "Mandelbrot6", "z=z^6+c", mandelbrot6_func },
+    { "Mandelbrot7", "z=z^7+c", mandelbrot7_func },
+    { "Mandelbrot8", "z=z^8+c", mandelbrot8_func },
+    { "Mandelbrot9", "z=x^9+c", mandelbrot9_func },
+};
+
 static void fractal_set_rotation(FractalState *ms, int rot) {
     ms->rot = rot;
     /* compute rotation matrix */
@@ -377,6 +510,9 @@ static void fractal_set_parameters(EditState *s, FractalState *ms, const char *p
         p += strspn(p, ";, \t\r\n");
         if (*p == '\0')
             break;
+        if (strstart(p, "type=", &p)) {
+            ms->type = clamp(strtol(p, (char **)&p, 0), 0, countof(fractal_type));
+        } else
         if (strstart(p, "maxiter=", &p)) {
             ms->maxiter = strtol(p, (char **)&p, 0);
         } else
@@ -414,42 +550,34 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
     int i, j, nx, ny, fg, bg;
     fnum_t xc = ms->x, yc = ms->y, scale = ms->scale;
     fnum_t bailout = ms->bailout;
-    fnum_t sx, sy, x, y, dx, dy, xr, yr, a, b, c;
+    fnum_t x, y, dx, dy, xr, yr;
+    int (*func)(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) =
+        fractal_type[ms->type].func;
 
     if (s->height == 0 || s->width == 0 || rows == 0 || cols == 0 || nc == 0)
         return;
 
-    sx = 3.2 * scale;
+    dx = 3.2 * scale / cols;
     if (s->width == s->cols) {
         /* character based, assume 80x25 4/3 aspect ratio */
-        sy = sx * 3 / 4 * 80 / 23 * rows / cols;
+        dy = dx * 2.4;
     } else {
         /* pixel based, assume 100% pixel aspect ratio */
-        sy = sx * s->height / s->width;
+        dy = dx * cols / s->width * s->height / rows;
     }
-    dx = sx / cols;
-    dy = sy / rows;
 
     s->b->flags &= ~BF_READONLY;
 
     eb_delete_range(s->b, 0, s->b->total_size);
 
-    for (ny = 0, y = -sy / 2; ny < rows; ny++, y += dy) {
-        for (nx = 0, x = -sx / 2; nx < cols; nx++, x += dx) {
+    for (ny = 0, y = -dy * rows / 2; ny < rows; ny++, y += dy) {
+        for (nx = 0, x = -dx * cols / 2; nx < cols; nx++, x += dx) {
             xr = xc + x * ms->m0 + y * ms->m1;
             yr = yc + x * ms->m2 + y * ms->m3;
-            for (a = b = i = 0;
-                 a * a + b * b <= bailout && i++ < maxiter;
-                 c = a, a = a * a - b * b + xr, b = 2 * c * b + yr)
-                continue;
-            //xr = xc + x * ms->m0 + (y + dy / 2) * ms->m1;
-            //yr = yc + x * ms->m2 + (y + dy / 2) * ms->m3;
+            i = (*func)(xr, yr, bailout, maxiter);
             xr += dy / 2 * ms->m1;
             yr += dy / 2 * ms->m3;
-            for (a = b = j = 0;
-                 a * a + b * b <= bailout && j++ < maxiter;
-                 c = a, a = a * a - b * b + xr, b = 2 * c * b + yr)
-                continue;
+            j = (*func)(xr, yr, bailout, maxiter);
             bg = i >= maxiter ? 0 : cb + i % nc;
             fg = j >= maxiter ? 0 : cb + j % nc;
             s->b->cur_style = QE_TERM_COMPOSITE | QE_TERM_MAKE_COLOR(fg, bg);
@@ -460,7 +588,8 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
     }
     s->b->flags |= BF_READONLY;
 
-    put_status(s, "Mandelbrot set x="MFT", y="MFT", zoom=%d, scale=%.6g, rot=%d",
+    put_status(s, "%s set x="MFT", y="MFT", zoom=%d, scale=%.6g, rot=%d",
+               fractal_type[ms->type].name,
                ms->x, ms->y, ms->zoom, (double)ms->scale, ms->rot);
 }
 
@@ -524,6 +653,14 @@ static void do_fractal_module(EditState *s, int delta) {
     }
 }
 
+static void do_fractal_set_type(EditState *s, int key) {
+    FractalState *ms = fractal_get_state(s, 1);
+    if (ms) {
+        ms->type = key - '1';
+        do_fractal_refresh(s);
+    }
+}
+
 static void do_fractal_set_parameters(EditState *s, const char *params) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
@@ -546,7 +683,8 @@ static void do_fractal_help(EditState *s)
 
     eb_printf(b, "Fractal description:\n\n");
 
-    eb_printf(b, "%*s: %s\n", w, "type", "Mandelbrot");
+    eb_printf(b, "%*s: %s\n", w, "type", fractal_type[ms->type].name);
+    eb_printf(b, "%*s: %s\n", w, "formula", fractal_type[ms->type].formula);
     eb_printf(b, "%*s: "MFT"\n", w, "x", ms->x);
     eb_printf(b, "%*s: "MFT"\n", w, "y", ms->y);
     eb_printf(b, "%*s: %d\n", w, "maxiter", ms->maxiter);
@@ -610,6 +748,8 @@ static CmdDef fractal_commands[] = {
           "fractal-module-less", do_fractal_module, ESi, -1, "v")
     CMD3( '>', KEY_NONE,
           "fractal-module-more", do_fractal_module, ESi, +1, "v")
+    CMD2( '1', '2',
+          "fractal-set-type", do_fractal_set_type, ESi, "ki")
     CMD2( '=', KEY_NONE,
           "fractal-set-parameters", do_fractal_set_parameters, ESs,
           "s{Fractal parameters: }[mparm]|mparm|")
@@ -640,8 +780,17 @@ static int fractal_mode_init(EditState *e, EditBuffer *b, int flags)
     return 0;
 }
 
+static void fractal_mode_free(EditBuffer *b, void *state) {
+#if 0
+    FractalState *ms = state;
+
+    /* XXX: free bitmap and palette */
+#endif
+}
+
 static void do_mandelbrot_test(EditState *s) {
     EditBuffer *b;
+    const char *p;
 
     if (!fractal_mode.name) {
         /* populate and register shell mode and commands */
@@ -651,10 +800,14 @@ static void do_mandelbrot_test(EditState *s) {
         fractal_mode.mode_probe = fractal_mode_probe;
         fractal_mode.buffer_instance_size = sizeof(FractalState);
         fractal_mode.mode_init = fractal_mode_init;
+        fractal_mode.mode_free = fractal_mode_free;
         fractal_mode.display_hook = fractal_display_hook;
         fractal_mode.default_wrap = WRAP_TRUNCATE;
         qe_register_mode(&fractal_mode, MODEF_NOCMD | MODEF_VIEW);
         qe_register_cmd_table(fractal_commands, &fractal_mode);
+        for (p = "2345678"; *p; p++) {
+            qe_register_binding(*p, "fractal-set-type", &fractal_mode);
+        }
     }
 
     b = eb_find("*Mandelbrot*");
