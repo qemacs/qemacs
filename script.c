@@ -266,10 +266,16 @@ start_cmd:
 
 static int shell_script_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
+    /* Match on file extension, shbang line and .bashrc .bash_history... */
     if (match_extension(p->filename, mode->extensions)
     ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)
-    ||  stristart(p->filename, ".bash", NULL)
-    ||  stristart(p->filename, ".profile", NULL)) {
+    ||  (*p->filename == '.'
+     &&  stristart(p->filename + 1, mode->extensions, NULL))) {
+        return 82;
+    }
+
+    if (stristart(p->filename, ".profile", NULL)) {
+        /* XXX: Should check the user login shell */
         return 80;
     }
 
@@ -283,10 +289,55 @@ static int shell_script_mode_probe(ModeDef *mode, ModeProbeData *p)
 }
 
 /* XXX: should have shell specific variations */
-static ModeDef shell_script_mode = {
-    .name = "Shell-script",
-    .extensions = "sh|bash|csh|ksh|zsh",
-    .shell_handlers = "sh|bash|csh|ksh|zsh",
+static ModeDef sh_mode = {
+    .name = "sh",
+    .extensions = "sh",
+    .shell_handlers = "sh",
+    .mode_probe = shell_script_mode_probe,
+    .colorize_func = shell_script_colorize_line,
+    .keywords = shell_script_keywords,
+};
+
+static ModeDef bash_mode = {
+    .name = "bash",
+    .extensions = "bash",
+    .shell_handlers = "bash",
+    .mode_probe = shell_script_mode_probe,
+    .colorize_func = shell_script_colorize_line,
+    .keywords = shell_script_keywords,
+};
+
+static ModeDef csh_mode = {
+    .name = "csh",
+    .extensions = "csh",
+    .shell_handlers = "csh",
+    .mode_probe = shell_script_mode_probe,
+    .colorize_func = shell_script_colorize_line,
+    .keywords = shell_script_keywords,
+};
+
+static ModeDef ksh_mode = {
+    .name = "ksh",
+    .extensions = "ksh",
+    .shell_handlers = "ksh",
+    .mode_probe = shell_script_mode_probe,
+    .colorize_func = shell_script_colorize_line,
+    .keywords = shell_script_keywords,
+};
+
+static ModeDef zsh_mode = {
+    .name = "zsh",
+    .extensions = "zsh",
+    .shell_handlers = "zsh",
+    .mode_probe = shell_script_mode_probe,
+    .colorize_func = shell_script_colorize_line,
+    .keywords = shell_script_keywords,
+};
+
+static ModeDef tcsh_mode = {
+    .name = "tcsh",
+    .extensions = "tcsh",
+    .shell_handlers = "tcsh",
     .mode_probe = shell_script_mode_probe,
     .colorize_func = shell_script_colorize_line,
     .keywords = shell_script_keywords,
@@ -294,7 +345,12 @@ static ModeDef shell_script_mode = {
 
 static int shell_script_init(void)
 {
-    qe_register_mode(&shell_script_mode, MODEF_SYNTAX);
+    qe_register_mode(&sh_mode, MODEF_SYNTAX);
+    qe_register_mode(&bash_mode, MODEF_SYNTAX);
+    qe_register_mode(&csh_mode, MODEF_SYNTAX);
+    qe_register_mode(&ksh_mode, MODEF_SYNTAX);
+    qe_register_mode(&zsh_mode, MODEF_SYNTAX);
+    qe_register_mode(&tcsh_mode, MODEF_SYNTAX);
 
     return 0;
 }
