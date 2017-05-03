@@ -37,8 +37,7 @@ struct ArchiveType {
 
 static ArchiveType archive_type_array[] = {
     { "tar", NULL, 0, "tar|tar.Z|tgz|tar.gz|tbz|tbz2|tar.bz2|tar.bzip2|"
-            "txz|tar.xz|tlz|tar.lzma",
-            "tar tvf $1" },
+            "txz|tar.xz|tlz|tar.lzma|taz", "tar tvf $1" },
     { "zip", "PK\003\004", 4, "zip|ZIP|jar|apk|bbb", "unzip -l $1" },
     { "rar", NULL, 0, "rar|RAR", "unrar l $1" },
     { "arj", NULL, 0, "arj|ARJ", "unarj l $1" },
@@ -438,7 +437,7 @@ static int man_mode_probe(ModeDef *mode, ModeProbeData *p)
 
     if (match_extension(p->real_filename,
                         "1|1m|1ssl|1tcl|2|3|3o|3ssl|4|5|5ssl|6|7|7ssl|8|9|"
-                        "n|ntcl|man")
+                        "n|ntcl|man|roff")
 //    &&  !strchr(p->filename, '.')
     &&  (p->buf[0] == '.' ||
          (p->buf[0] == '\n' && p->buf[1] == '.') ||
