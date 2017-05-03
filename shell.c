@@ -2162,7 +2162,9 @@ static void do_shell(EditState *s, int force)
 
     b->default_mode = &shell_mode;
     switch_to_buffer(s, b);
-
+    /* set next error reference point, also used for do_shell to determine
+     * the last process buffer used */
+    set_error_offset(b, 0);
     put_status(s, "Press C-o to toggle between shell/edit mode");
 }
 
