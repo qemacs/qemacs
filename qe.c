@@ -3057,11 +3057,6 @@ void do_toggle_full_screen(EditState *s)
 
     qs->is_full_screen = !qs->is_full_screen;
     dpy_full_screen(screen, qs->is_full_screen);
-    if (qs->is_full_screen)
-        s->flags &= ~WF_MODELINE;
-    else
-        s->flags |= WF_MODELINE;
-    qs->hide_status = qs->is_full_screen;
     do_refresh(s);
 }
 
@@ -5697,7 +5692,6 @@ static void compute_client_area(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
     int x1, y1, x2, y2;
-    int line_height, cw;
 
     x1 = s->x1;
     y1 = s->y1;
@@ -5719,15 +5713,15 @@ static void compute_client_area(EditState *s)
     s->width = x2 - x1;
     s->height = y2 - y1;
 
-    line_height = cw = 1;
+    s->line_height = s->char_width = 1;
     if (s->screen && s->screen->dpy.dpy_probe) {
         /* use window default style font except for dummy display */
-        line_height = get_line_height(s->screen, s, QE_STYLE_DEFAULT);
-        cw = get_glyph_width(s->screen, s, QE_STYLE_DEFAULT, '0');
+        s->line_height = max(1, get_line_height(s->screen, s, QE_STYLE_DEFAULT));
+        s->char_width = max(1, get_glyph_width(s->screen, s, QE_STYLE_DEFAULT, '0'));
     }
 
-    s->rows = max(1, s->height / max(line_height, 1));
-    s->cols = max(1, s->width / max(cw, 1));
+    s->rows = max(1, s->height / s->line_height);
+    s->cols = max(1, s->width / s->char_width);
 }
 
 /* Create a new edit window, add it in the window list and sets it
@@ -7102,7 +7096,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         do_load_qerc(s, s->b->filename);
 
         /* XXX: invalid place */
-        edit_invalidate(s);
+        edit_invalidate(s, 0);
         return 1;
     }
 
@@ -7434,11 +7428,20 @@ int get_line_height(QEditScreen *screen, EditState *s, QETermStyle style)
     return height;
 }
 
-void edit_invalidate(EditState *s)
+void edit_invalidate(EditState *s, int all)
 {
     /* invalidate the modeline buffer */
     s->modeline_shadow[0] = '\0';
     s->display_invalid = 1;
+    if (all) {
+        EditState *e;
+        for (e = s->qe_state->first_window; e != NULL; e = e->next_window) {
+            if (e->b == s->b) {
+                s->modeline_shadow[0] = '\0';
+                s->display_invalid = 1;
+            }
+        }
+    }
 }
 
 /* refresh the screen, s1 can be any edit window */
@@ -7523,7 +7526,7 @@ void do_refresh(EditState *s1)
 
     /* invalidate all the edit windows and draw borders */
     for (e = qs->first_window; e != NULL; e = e->next_window) {
-        edit_invalidate(e);
+        edit_invalidate(e, 0);
         e->borders_invalid = 1;
     }
     /* invalidate status line */
@@ -7673,7 +7676,7 @@ void do_delete_other_windows(EditState *s, int all)
         s->x1 = 0;
         s->x2 = qs->width;
         s->y2 = qs->height - qs->status_height;
-        s->flags &= ~WF_RSEPARATOR;
+        s->flags &= ~(WF_RSEPARATOR | WF_POPLEFT);
         compute_client_area(s);
         do_refresh(s);
     }

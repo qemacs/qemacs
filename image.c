@@ -82,43 +82,6 @@ int qe_bitmap_format_to_pix_fmt(int format)
 static void image_callback(EditBuffer *b, void *opaque, int arg,
                            enum LogOperation op, int offset, int size);
 
-/* draw only the border of a rectangle */
-void fill_border(EditState *s, int x, int y, int w, int h, int color)
-{
-    int w1, w2, h1, h2;
-
-    /* fill the background */
-    w1 = x;
-    if (w1 < 0)
-        w1 = 0;
-    w2 = s->width - (x + w);
-    if (w2 < 0)
-        w2 = 0;
-    h1 = y;
-    if (h1 < 0)
-        h1 = 0;
-    h2 = s->height - (y + h);
-    if (h2 < 0)
-        h2 = 0;
-
-    fill_rectangle(s->screen,
-                   s->xleft, s->ytop,
-                   w1, s->height,
-                   color);
-    fill_rectangle(s->screen,
-                   s->xleft + s->width - w2, s->ytop,
-                   w2, s->height,
-                   color);
-    fill_rectangle(s->screen,
-                   s->xleft + w1, s->ytop,
-                   s->width - w1 - w2, h1,
-                   color);
-    fill_rectangle(s->screen,
-                   s->xleft + w1, s->ytop + s->height - h2,
-                   s->width - w1 - w2, h2,
-                   color);
-}
-
 void draw_alpha_grid(EditState *s, int x1, int y1, int w, int h)
 {
     int state, x, y;
@@ -218,7 +181,7 @@ static void image_resize(EditState *s)
     if (w == is->w && h == is->h)
         return;
 
-    edit_invalidate(s);
+    edit_invalidate(s, 1);
 }
 
 
@@ -550,7 +513,7 @@ static void update_bmp(EditState *s)
     bmp_unlock(s->screen, is->disp_bmp);
     if (ib1)
         image_free(ib1);
-    edit_invalidate(s);
+    edit_invalidate(s, 1);
 }
 
 static int image_mode_init(EditState *s, EditBuffer *b, int flags)
@@ -614,7 +577,7 @@ static void update_pos(EditState *s, int dx, int dy)
     } else {
         is->y = 0;
     }
-    edit_invalidate(s);
+    edit_invalidate(s, 1);
 }
 
 static void image_move_left_right(EditState *s, int dir)

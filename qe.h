@@ -1433,8 +1433,9 @@ struct EditState {
     int curline_style;
 
     /* display area info */
-    int width, height;
     int xleft, ytop;
+    int width, height;
+    int char_width, line_height;
     int cols, rows;
     /* full window size, including borders */
     int x1, y1, x2, y2;         /* window coordinates in device units */
@@ -2052,7 +2053,7 @@ void do_create_window(EditState *s, const char *filename, const char *layout);
 void qe_save_window_layout(EditState *s, EditBuffer *b);
 
 void edit_display(QEmacsState *qs);
-void edit_invalidate(EditState *s);
+void edit_invalidate(EditState *s, int all);
 void display_mode_line(EditState *s);
 int edit_set_mode(EditState *s, ModeDef *m);
 void qe_set_next_mode(EditState *s, int dir, int status);

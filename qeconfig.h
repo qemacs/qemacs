@@ -276,9 +276,9 @@ static CmdDef basic_commands[] = {
     CMD3( KEY_CTRLX('3'), KEY_NONE,
           "split-window-horizontally", do_split_window, ESii,
           SW_SIDE_BY_SIDE, "uiv")
-    CMD0( KEY_CTRLX('f'), KEY_NONE,
+    CMD0( KEY_CTRLC('f'), KEY_NONE,
           "toggle-full-screen", do_toggle_full_screen)
-    CMD0( KEY_NONE, KEY_NONE,
+    CMD0( KEY_CTRLC('m'), KEY_NONE,
           "toggle-mode-line", do_toggle_mode_line)
     CMD2( KEY_NONE, KEY_NONE,
           "create-window", do_create_window, ESss,

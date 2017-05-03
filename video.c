@@ -235,7 +235,7 @@ static void video_refresh_timer(void *opaque)
             is->video_timer = qe_add_timer(vp->delay, s, video_refresh_timer);
 
             /* invalidate window */
-            edit_invalidate(s);
+            edit_invalidate(s, 1);
             is->no_background = 1; /* XXX: horrible, needs complete rewrite */
 
             /* display picture */
@@ -259,7 +259,7 @@ static void video_refresh_timer(void *opaque)
            than nothing, just to test the implementation */
 
         /* invalidate window */
-        edit_invalidate(s);
+        edit_invalidate(s, 1);
         is->no_background = 1; /* XXX: horrible, needs complete rewrite */
 
         /* display picture */
