@@ -237,8 +237,8 @@ static int x11_dpy_init(QEditScreen *s, int w, int h)
         xsize = w;
         ysize = h;
     } else {
-        xsize = 128;
-        ysize = 50;
+        xsize = 128 * font_xsize;
+        ysize = 50 * font_ysize;
 
         if (geometry_str) {
             p = geometry_str;
@@ -254,8 +254,6 @@ static int x11_dpy_init(QEditScreen *s, int w, int h)
         }
     }
 
-    xsize *= font_xsize;
-    ysize *= font_ysize;
     s->width = xsize;
     s->height = ysize;
     s->charset = &charset_utf8;
@@ -983,6 +981,9 @@ static void x11_dpy_draw_text(QEditScreen *s, QEFont *font,
             q = x11_str;
         }
         last_font = font1;
+        /* XXX: invalid conversion from UCS4 to UCS2 */
+        if (cc >= 0xFFFF)
+            cc = 0xFFFD;
         q->byte1 = (cc >> 8) & 0xff;
         q->byte2 = (cc) & 0xff;
         q++;
