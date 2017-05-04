@@ -163,6 +163,7 @@ static int tty_dpy_init(QEditScreen *s,
     TTYState *ts;
     struct termios tty;
     struct sigaction sig;
+    const char *p;
 
     ts = calloc(1, sizeof(*ts));
     if (ts == NULL) {
@@ -207,31 +208,40 @@ static int tty_dpy_init(QEditScreen *s,
                               USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG;
         }
     }
-#if TTY_STYLE_BITS == 32
     if (strstr(ts->term_name, "true") || strstr(ts->term_name, "24")) {
-        ts->term_flags |= USE_TRUE_COLORS;
+        ts->term_flags |= USE_TRUE_COLORS | USE_256_COLORS;
     }
-#endif
     if (strstr(ts->term_name, "256")) {
         ts->term_flags |= USE_256_COLORS;
     }
+    if ((p = getenv("TERM_PROGRAM")) && strequal(p, "iTerm.app")) {
+        /* iTerm and iTerm2 support true colors */
+        ts->term_flags |= USE_TRUE_COLORS | USE_256_COLORS;
+    }        
     /* actual color mode can be forced via environment variables */
     /* XXX: should have qemacs variables too */
+    if ((p = getenv("COLORTERM")) != NULL) {
+        /* Check COLORTERM environment variable as documented in
+         * https://gist.github.com/XVilka/8346728
+         */
 #if TTY_STYLE_BITS == 32
-    if (getenv("USE_24_BIT_COLORS") || getenv("USE_TRUE_COLORS")) {
-        ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
-                            USE_256_COLORS | USE_TRUE_COLORS);
-        ts->term_flags |= USE_TRUE_COLORS;
-    } else
+        if (strstr(p, "truecolor")
+        ||  strstr(p, "24bit")
+        ||  strstr(p, "hicolor")) {
+            ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
+                                USE_256_COLORS | USE_TRUE_COLORS);
+            ts->term_flags |= USE_TRUE_COLORS;
+        } else
 #endif
-    if (getenv("USE_256_COLORS")) {
-        ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
-                            USE_256_COLORS | USE_TRUE_COLORS);
-        ts->term_flags |= USE_256_COLORS;
-    } else
-    if (getenv("USE_16_COLORS")) {
-        ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
-                            USE_256_COLORS | USE_TRUE_COLORS);
+        if (strstr(p, "256")) {
+            ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
+                                USE_256_COLORS | USE_TRUE_COLORS);
+            ts->term_flags |= USE_256_COLORS;
+        } else
+        if (strstr(p, "16")) {
+            ts->term_flags &= ~(USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG |
+                                USE_256_COLORS | USE_TRUE_COLORS);
+        }
     }
 #if TTY_STYLE_BITS == 32
     if (ts->term_flags & USE_TRUE_COLORS) {
