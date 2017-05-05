@@ -1329,6 +1329,97 @@ static void tty_dpy_flush(QEditScreen *s)
     comb_cache_clean(ts, ts->screen, ts->screen_size);
 }
 
+static int tty_dpy_bmp_alloc(QEditScreen *s, QEBitmap *bp) {
+    /* the private data is a QEPicture */
+    int linesize = (bp->width + 7) & ~7;   /* round up to 64 bit boundary */
+    QEPicture *pp = qe_mallocz(QEPicture);
+    if (!pp)
+        return -1;
+    pp->width = bp->width;
+    pp->height = bp->height;
+    pp->format = QEBITMAP_FORMAT_8BIT;  /* should depend on bp->flags */
+    pp->linesize[0] = linesize;
+    pp->data[0] = qe_mallocz_array(unsigned char, linesize * pp->height);
+    if (!pp->data[0]) {
+        qe_free(&pp);
+        return -1;
+    }
+    bp->priv_data = pp;
+    return 0;
+}
+
+static void tty_dpy_bmp_free(QEditScreen *s, QEBitmap *bp) {
+    qe_free(&bp->priv_data);
+}
+
+static void tty_dpy_bmp_lock(QEditScreen *s, QEBitmap *bp, QEPicture *pict,
+                             int x1, int y1, int w1, int h1)
+{
+    if (bp->priv_data) {
+        QEPicture *pp = bp->priv_data;
+        *pict = *pp;
+        x1 = clamp(x1, 0, pp->width);
+        y1 = clamp(y1, 0, pp->height);
+        pict->width = clamp(w1, 0, pp->width - x1);
+        pict->height = clamp(h1, 0, pp->height - y1);
+        pict->data[0] += y1 * pict->linesize[0] + x1;
+    }
+}
+
+static void tty_dpy_bmp_unlock(QEditScreen *s, QEBitmap *b) {
+}
+
+static void tty_dpy_bmp_draw(QEditScreen *s, QEBitmap *bp,
+                             int dst_x, int dst_y, int dst_w, int dst_h,
+                             int src_x, int src_y, qe__unused__ int flags)
+{
+    QEPicture *pp = bp->priv_data;
+    TTYState *ts = s->priv_data;
+    TTYChar *ptr = ts->screen + dst_y * s->width + dst_x;
+    unsigned char *data = pp->data[0];
+    int linesize = pp->linesize[0];
+    int x, y;
+
+    /* XXX: handle clipping ? */
+    if (pp->format == QEBITMAP_FORMAT_8BIT) {
+        for (y = 0; y < dst_h; y++) {
+            unsigned char *p1 = data + (src_y + y * 2) * linesize + src_x;
+            unsigned char *p2 = p1 + linesize;
+            ts->line_updated[dst_y + y] = 1;
+            for (x = 0; x < dst_w; x++) {
+                int bg = p1[x];
+                int fg = p2[x];
+                if (fg == bg)
+                    ptr[x] = TTY_CHAR(' ', fg, bg);
+                else
+                    ptr[x] = TTY_CHAR(0x2584, fg, bg);
+            }
+            ptr += s->width;
+        }
+    } else
+    if (pp->format == QEBITMAP_FORMAT_RGBA32) {
+#if 0
+        /* XXX: inefficient and currently unused */
+        for (y = 0; y < dst_h; y++) {
+            QEColor *p1 = (QEColor *)(void*)(data + (src_y + y * 2) * linesize) + src_x;
+            QEColor *p2 = (QEColor *)(void*)((unsigned char*)p1 + linesize);
+            ts->line_updated[dst_y + y] = 1;
+            for (x = 0; x < dst_w; x++) {
+                QEColor bg3 = p1[x];
+                QEColor fg3 = p2[x];
+                int bg = QERGB_RED(bg3) / 43 * 36 + QERGB_GREEN(bg3) / 43 * 6 + QERGB_BLUE(bg3);
+                int fg = QERGB_RED(fg3) / 43 * 36 + QERGB_GREEN(fg3) / 43 * 6 + QERGB_BLUE(fg3);
+                if (fg == bg)
+                    ptr[x] = TTY_CHAR(' ', fg, bg);
+                else
+                    ptr[x] = TTY_CHAR(0x2584, fg, bg);
+            }
+            ptr += s->width;
+        }
+#endif
+    }
+}
+
 static void tty_dpy_describe(QEditScreen *s, EditBuffer *b)
 {
     comb_cache_describe(s, b);
@@ -1352,11 +1443,11 @@ static QEDisplay tty_dpy = {
     NULL, /* dpy_selection_request */
     tty_dpy_invalidate,
     tty_dpy_cursor_at,
-    NULL, /* dpy_bmp_alloc */
-    NULL, /* dpy_bmp_free */
-    NULL, /* dpy_bmp_draw */
-    NULL, /* dpy_bmp_lock */
-    NULL, /* dpy_bmp_unlock */
+    tty_dpy_bmp_alloc,
+    tty_dpy_bmp_free,
+    tty_dpy_bmp_draw,
+    tty_dpy_bmp_lock,
+    tty_dpy_bmp_unlock,
     NULL, /* dpy_full_screen */
     tty_dpy_describe,
     NULL, /* next */
