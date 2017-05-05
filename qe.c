@@ -1823,6 +1823,7 @@ void do_break(EditState *s)
 
     /* well, currently nothing needs to be aborted in global context */
     /* CG: Should remove popups, sidepanes, helppanes... */
+    put_status(s, "|");
     put_status(s, "Quit");
 }
 
