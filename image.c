@@ -181,9 +181,8 @@ static void image_resize(EditState *s)
     if (w == is->w && h == is->h)
         return;
 
-    edit_invalidate(s, 1);
+    edit_invalidate(s, 0);
 }
-
 
 static void image_normal_size(EditState *s)
 {
@@ -513,7 +512,7 @@ static void update_bmp(EditState *s)
     bmp_unlock(s->screen, is->disp_bmp);
     if (ib1)
         image_free(ib1);
-    edit_invalidate(s, 1);
+    edit_invalidate(s, 0);
 }
 
 static int image_mode_init(EditState *s, EditBuffer *b, int flags)
@@ -577,7 +576,7 @@ static void update_pos(EditState *s, int dx, int dy)
     } else {
         is->y = 0;
     }
-    edit_invalidate(s, 1);
+    edit_invalidate(s, 0);
 }
 
 static void image_move_left_right(EditState *s, int dir)
