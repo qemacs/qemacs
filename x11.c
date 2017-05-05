@@ -1808,7 +1808,6 @@ static void x11_dpy_bmp_lock(QEditScreen *s, QEBitmap *b, QEPicture *pict,
 {
     X11State *xs = s->priv_data;
     X11Bitmap *xb = b->priv_data;
-    int bpp;
 
     pict->width = w1;
     pict->height = h1;
@@ -1825,16 +1824,28 @@ static void x11_dpy_bmp_lock(QEditScreen *s, QEBitmap *b, QEPicture *pict,
             xb->ximage_lock = ximage;
             xb->x_lock = x1;
             xb->y_lock = y1;
+            if (ximage->bits_per_pixel == 32) {
+                /* adjust format from QEBITMAP_FORMAT_RGB24 to PIX_FMT_BGR0
+                   on little endian architectures */
+                pict->format = QEBITMAP_FORMAT_RGBA32;
+            }
         }
         break;
     case BMP_XIMAGE:
 #ifdef CONFIG_XSHM
     case BMP_XSHMIMAGE:
 #endif
-        bpp = (xb->u.ximage->bits_per_pixel + 7) >> 3;
-        pict->data[0] = (unsigned char *)xb->u.ximage->data +
-                        y1 * xb->u.ximage->bytes_per_line + x1 * bpp;
-        pict->linesize[0] = xb->u.ximage->bytes_per_line;
+        {
+            int bpp = (xb->u.ximage->bits_per_pixel + 7) >> 3;
+            pict->data[0] = (unsigned char *)xb->u.ximage->data +
+                y1 * xb->u.ximage->bytes_per_line + x1 * bpp;
+            pict->linesize[0] = xb->u.ximage->bytes_per_line;
+            if (bpp == 4) {
+                /* adjust format from QEBITMAP_FORMAT_RGB24 to PIX_FMT_BGR0
+                   on little endian architectures */
+                pict->format = QEBITMAP_FORMAT_RGBA32;
+            }
+        }
         break;
 #ifdef CONFIG_XV
     case BMP_XVIMAGE:
