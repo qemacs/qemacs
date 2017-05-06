@@ -309,13 +309,15 @@ static ModeDef fractint_mode = {
 
 /*---------------- Interactive fractal explorer ----------------*/
 
+#define USE_BITMAP_API  1   /* Using device bitmap API */
+
 static ModeDef fractal_mode;
 
 #if 1
 typedef long double fnum_t;
 #define MFT  "%.21Lg"
 #else
-typedef long double fnum_t;
+typedef double fnum_t;
 #define MFT  "%.16Lg"
 #endif
 
@@ -326,22 +328,26 @@ typedef struct FractalState FractalState;
 struct FractalState {
     QEModeData base;
 
-    int cols, rows;
-    int type;
+    int cols, rows;     /* fractal size in pixels */
+    int type;           /* fractal type 0..8 */
     int maxiter;        /* maximum iteration number */
     int cb, nc;         /* color palette base and length */
     int rot;            /* rotation in degrees */
     int zoom;           /* zoom level in dB */
-    fnum_t scale;     /* zoom factor = pow(10, -mzoom/10) */
-    fnum_t bailout; /* maximum module */
-    fnum_t x, y;      /* center position */
+    fnum_t scale;       /* zoom factor = pow(10, -mzoom/10) */
+    fnum_t bailout;     /* maximum squared module (default 4.0) */
+    fnum_t x, y;        /* center position */
     fnum_t m0, m1, m2, m3; /* rotation matrix */
+    int hfactor;        /* vertical pixel granularity */
+    int shift;          /* color animation base */
+    QEColor colors[256]; /* color palette */
+    QEditScreen *screen;    /* for bmp_free() */
+    QEBitmap *disp_bmp;     /* device image */
 };
 
 const char fractal_default_parameters[] = {
+    " type=0"
     " maxiter=215"
-    " cb=16"
-    " nc=216"
     " rot=0"
     " zoom=0"
     " bailout=4"
@@ -381,41 +387,41 @@ static cnum_t cpower(cnum_t z, int exp) {
 static int mandelbrot_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
     fnum_t a, b, c;
     int i;
-    for (a = b = i = 0; a * a + b * b <= bailout && i++ < maxiter;) {
+    for (a = b = 0, i = maxiter; a * a + b * b <= bailout && --i > 0;) {
         c = a;
         a = a * a - b * b + x;
         b = 2 * c * b + y;
     }
-    return i;
+    return maxiter - i;
 }
 
 static int mandelbrot3_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
     fnum_t a, b, c;
     int i;
-    for (a = b = i = 0; a * a + b * b <= bailout && i++ < maxiter;) {
+    for (a = b = 0, i = maxiter; a * a + b * b <= bailout && --i > 0;) {
         c = a;
         a = a * a * a - 3 * a * b * b + x;
         b = 3 * c * c * b - b * b * b + y;
     }
-    return i;
+    return maxiter - i;
 }
 
 static int mandelbrot4_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
     fnum_t a, b, a2, b2;
     int i;
-    for (a = b = i = 0; a * a + b * b <= bailout && i++ < maxiter;) {
+    for (a = b = 0, i = maxiter; a * a + b * b <= bailout && --i > 0;) {
         a2 = a * a - b * b;
         b2 = 2 * a * b;
         a = a2 * a2 - b2 * b2 + x;
         b = 2 * a2 * b2 + y;
     }
-    return i;
+    return maxiter - i;
 }
 
 static int mandelbrot5_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
     fnum_t a, b, a2, b2, a3, b3;
     int i;
-    for (a = b = i = 0; a * a + b * b <= bailout && i++ < maxiter;) {
+    for (a = b = 0, i = maxiter; a * a + b * b <= bailout && --i > 0;) {
         a3 = a * a * a - 3 * a * b * b;
         b3 = 3 * a * a * b - b * b * b;
         a2 = a * a - b * b;
@@ -423,52 +429,63 @@ static int mandelbrot5_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
         a = a2 * a3 - b2 * b3 + x;
         b = b2 * a3 + a2 * b3 + y;
     }
-    return i;
+    return maxiter - i;
 }
 
 static int mandelbrot6_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
     fnum_t a, b, a3, b3;
     int i;
-    for (a = b = i = 0; a * a + b * b <= bailout && i++ < maxiter;) {
+    for (a = b = 0, i = maxiter; a * a + b * b <= bailout && --i > 0;) {
         a3 = a * a * a - 3 * a * b * b;
         b3 = 3 * a * a * b - b * b * b;
         a = a3 * a3 - b3 * b3 + x;
         b = 2 * a3 * b3 + y;
     }
-    return i;
+    return maxiter - i;
 }
 
 static int mandelbrot7_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
     cnum_t z = { 0, 0 };
     int i;
-    for (i = 0; cmod2(z) <= bailout && i++ < maxiter;) {
+    for (i = maxiter; cmod2(z) <= bailout && --i > 0;) {
         z = cpower(z, 7);
         z.a += x;
         z.b += y;
     }
-    return i;
+    return maxiter - i;
 }
 
 static int mandelbrot8_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
     cnum_t z = { 0, 0 };
     int i;
-    for (i = 0; cmod2(z) <= bailout && i++ < maxiter;) {
+    for (i = maxiter; cmod2(z) <= bailout && --i > 0;) {
         z = cpower(z, 8);
         z.a += x;
         z.b += y;
     }
-    return i;
+    return maxiter - i;
 }
 
 static int mandelbrot9_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
     cnum_t z = { 0, 0 };
     int i;
-    for (i = 0; cmod2(z) <= bailout && i++ < maxiter;) {
+    for (i = maxiter; cmod2(z) <= bailout && --i > 0;) {
         z = cpower(z, 9);
         z.a += x;
         z.b += y;
     }
-    return i;
+    return maxiter - i;
+}
+
+static int mandelbrot10_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
+    cnum_t z = { 0, 0 };
+    int i;
+    for (i = maxiter; cmod2(z) <= bailout && --i > 0;) {
+        z = cpower(z, 10);
+        z.a += x;
+        z.b += y;
+    }
+    return maxiter - i;
 }
 
 static struct FractalType {
@@ -484,7 +501,15 @@ static struct FractalType {
     { "Mandelbrot7", "z=z^7+c", mandelbrot7_func },
     { "Mandelbrot8", "z=z^8+c", mandelbrot8_func },
     { "Mandelbrot9", "z=x^9+c", mandelbrot9_func },
+    { "Mandelbrot10", "z=x^10+c", mandelbrot10_func },
 };
+
+static void fractal_invalidate(FractalState *ms) {
+    /* This will force fractal image recomputation */
+    /* XXX: color changes should not cause recomputation
+       if the fractal is computed as a paletted image */
+    ms->cols = ms->rows = 0;
+}
 
 static void fractal_set_rotation(FractalState *ms, int rot) {
     ms->rot = rot;
@@ -493,11 +518,101 @@ static void fractal_set_rotation(FractalState *ms, int rot) {
     ms->m1 = sin(-ms->rot * M_PI / 180.0);
     ms->m2 = -ms->m1;
     ms->m3 = ms->m0;
+    fractal_invalidate(ms);
 }
 
 static void fractal_set_zoom(FractalState *ms, int level) {
     ms->zoom = level;
     ms->scale = pow(10.0, -ms->zoom / 10.0);
+    fractal_invalidate(ms);
+}
+
+static int strmatchword(const char *str, const char *val, const char **ptr) {
+    if (strstart(str, val, &str) && !qe_isword(*str)) {
+        if (ptr)
+            *ptr = str;
+        return 1;
+    }
+    return 0;
+}
+
+static int fractal_get_color(const char *p, int *dac) {
+    /* convert a fractint 3 character color spec: 0-9A-Z_-z -> 0..63 */
+    int i;
+    for (i = 0; i < 3; i++) {
+        int c = p[i];
+        if (c >= '0' && c <= '9')
+            c -= '0';
+        else
+        if (c >= 'A' && c <= 'Z')
+            c -= 'A' - 10;
+        else
+        if (c >= '_' && c <= 'z')
+            c -= '_' - 36;
+        else
+            return 0;
+        dac[i] = (c << 2) | (c >> 4);
+    }
+    return 1;
+}
+
+static int fractal_set_colors(FractalState *ms, const char *p, const char **pp) {
+    /* Set the default colors */
+    memcpy(ms->colors, xterm_colors, 256 * sizeof(*ms->colors));
+    ms->cb = 16;
+    ms->nc = 216;
+    fractal_invalidate(ms);
+
+    if (p) {
+        if (strmatchword(p, "gray256", pp)) {
+            int c;
+            for (c = 0; c < 256; c++) {
+                ms->colors[c] = QERGB(c, c, c);
+            }
+            ms->cb = 0;
+            ms->nc = 256;
+        } else
+        if (strmatchword(p, "gray", pp)) {
+            ms->cb = 232;
+            ms->nc = 24;
+        } else
+        if (!strmatchword(p, "default", pp)) {
+            int i, j, n;
+            int last[3], dac[3];
+
+            /* parse a color fractint colors spec */
+            for (i = 0; i < 256; i++) {
+                if (!*p || *p == ',' || *p == ' ')
+                    break;
+                n = 0;
+                if (*p == '<') {
+                    if (i == 0)
+                        return 0;
+                    n = clamp(strtol(p + 1, (char **)&p, 10), 1, 255 - i);
+                    if (*p != '>')
+                        return 0;
+                    p++;
+                    memcpy(last, dac, sizeof dac);
+                    i += n;
+                }
+                if (!fractal_get_color(p, dac)) {
+                    return 0;
+                }
+                p += 3;
+                for (j = 1, ++n; j < n; j++) {
+                    ms->colors[i - j] = QERGB((last[0] * j + dac[0] * (n - j)) / n,
+                                               (last[1] * j + dac[1] * (n - j)) / n,
+                                               (last[2] * j + dac[2] * (n - j)) / n);
+                }
+                ms->colors[i] = QERGB(dac[0], dac[1], dac[2]);
+            }
+            if (pp)
+                *pp = p;
+            ms->cb = 1;
+            ms->nc = i - ms->cb;
+        }
+    }
+    return 1;
 }
 
 static void fractal_set_parameters(EditState *s, FractalState *ms, const char *parms)
@@ -516,11 +631,20 @@ static void fractal_set_parameters(EditState *s, FractalState *ms, const char *p
         if (strstart(p, "maxiter=", &p)) {
             ms->maxiter = strtol(p, (char **)&p, 0);
         } else
+        if (strstart(p, "colors=", &p)) {
+            if (!fractal_set_colors(ms, p, &p)) {
+                put_status(s, "invalid colors: %s", p);
+                p += strcspn(p, ", ");
+            }
+        } else
         if (strstart(p, "cb=", &p)) {
             ms->cb = strtol(p, (char **)&p, 0);
         } else
         if (strstart(p, "nc=", &p)) {
             ms->nc = strtol(p, (char **)&p, 0);
+        } else
+        if (strstart(p, "shift=", &p)) {
+            ms->shift = strtol(p, (char **)&p, 0);
         } else
         if (strstart(p, "rot=", &p)) {
             fractal_set_rotation(ms, strtol(p, (char **)&p, 0));
@@ -545,19 +669,97 @@ static void fractal_set_parameters(EditState *s, FractalState *ms, const char *p
 
 static void do_fractal_draw(EditState *s, FractalState *ms)
 {
-    int cols = ms->cols, rows = ms->rows, zoom = ms->zoom;
-    int maxiter = ms->maxiter + zoom, cb = ms->cb, nc = ms->nc;
-    int i, j, nx, ny, fg, bg;
-    fnum_t xc = ms->x, yc = ms->y, scale = ms->scale;
-    fnum_t bailout = ms->bailout;
-    fnum_t x, y, dx, dy, xr, yr;
+#if USE_BITMAP_API
+    int cols = ms->cols, rows = ms->rows;
+    int maxiter = ms->maxiter + ms->zoom, nc = ms->nc;
+    int i, nx, ny, shift;
+    fnum_t x, y, dx, dy;
     int (*func)(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) =
         fractal_type[ms->type].func;
+    unsigned char *palette8 = NULL;
+    uint32_t *palette32 = NULL;
+    QEPicture pict;
 
     if (s->height == 0 || s->width == 0 || rows == 0 || cols == 0 || nc == 0)
         return;
 
-    dx = 3.2 * scale / cols;
+    if (s->width == s->cols) {
+        /* character based, assume 80x25 4/3 aspect ratio */
+        /* XXX: get subsampling and aspect ratio from window or screen */
+        ms->hfactor = 2;
+        rows *= ms->hfactor;
+        dx = 3.2 * ms->scale / cols;
+        dy = dx * 1.2;
+    } else {
+        /* pixel based, assume 100% pixel aspect ratio */
+        ms->hfactor = 1;
+        cols = s->width;
+        rows = s->height;
+        dy = dx = 3.2 * ms->scale / cols;
+    }
+    if (ms->disp_bmp == NULL || ms->disp_bmp->width != cols || ms->disp_bmp->height != rows) {
+        bmp_free(ms->screen, &ms->disp_bmp);
+        /* create the displayed bitmap and put the image in it */
+        ms->screen = s->screen;
+        ms->disp_bmp = bmp_alloc(ms->screen, cols, rows, 0);
+    }
+    if (!ms->disp_bmp)
+        return;
+
+    bmp_lock(ms->screen, ms->disp_bmp, &pict, 0, 0, cols, rows);
+
+    /* Compute shifted palette */
+    shift = nc + ms->shift % nc; /* 0 < shift < 2 * nc */
+    if (pict.format == QEBITMAP_FORMAT_8BIT) {
+        palette8 = qe_malloc_array(unsigned char, maxiter + 1);
+        for (i = 0; i <= maxiter; i++) {
+            palette8[i] = (i >= maxiter) ? 0 : (ms->cb + (i + shift) % nc) & 255;
+        }
+    } else
+    if (pict.format == QEBITMAP_FORMAT_RGBA32) {
+        palette32 = qe_malloc_array(uint32_t, maxiter + 1);
+        for (i = 0; i <= maxiter; i++) {
+            palette32[i] = ms->colors[(i >= maxiter) ? 0 : (ms->cb + (i + shift) % nc) & 255];
+        }
+    }
+
+    /* Compute fractal bitmap */
+    for (ny = 0, y = -dy * rows / 2; ny < rows; ny++, y += dy) {
+        if (pict.format == QEBITMAP_FORMAT_8BIT) {
+            unsigned char *pb = pict.data[0] + ny * pict.linesize[0];
+            for (nx = 0, x = -dx * cols / 2; nx < cols; nx++, x += dx) {
+                fnum_t xr = ms->x + x * ms->m0 + y * ms->m1;
+                fnum_t yr = ms->y + x * ms->m2 + y * ms->m3;
+                pb[nx] = palette8[(*func)(xr, yr, ms->bailout, maxiter)];
+            }
+        } else
+        if (pict.format == QEBITMAP_FORMAT_RGBA32) {
+            uint32_t *pb = (uint32_t *)(void*)(pict.data[0] + ny * pict.linesize[0]);
+            for (nx = 0, x = -dx * cols / 2; nx < cols; nx++, x += dx) {
+                fnum_t xr = ms->x + x * ms->m0 + y * ms->m1;
+                fnum_t yr = ms->y + x * ms->m2 + y * ms->m3;
+                pb[nx] = palette32[(*func)(xr, yr, ms->bailout, maxiter)];
+            }
+        }
+    }
+    bmp_unlock(ms->screen, ms->disp_bmp);
+    qe_free(&palette8);
+    qe_free(&palette32);
+    edit_invalidate(s, 1);
+#else
+    int cols = ms->cols, rows = ms->rows;
+    int maxiter = ms->maxiter + ms->zoom, nc = ms->nc;
+    int i, nx, ny, fg, bg, shift;
+    fnum_t x, y, dx, dy;
+    int (*func)(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) =
+        fractal_type[ms->type].func;
+    unsigned char *palette8 = NULL;
+
+    if (s->height == 0 || s->width == 0 || rows == 0 || cols == 0 || nc == 0)
+        return;
+
+    ms->hfactor = 2;
+    dx = 3.2 * ms->scale / cols;
     if (s->width == s->cols) {
         /* character based, assume 80x25 4/3 aspect ratio */
         dy = dx * 2.4;
@@ -566,20 +768,25 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
         dy = dx * cols / s->width * s->height / rows;
     }
 
+    /* Compute shifted palette */
+    shift = nc + ms->shift % nc; /* 0 < shift < 2 * nc */
+    palette8 = qe_malloc_array(unsigned char, maxiter + 1);
+    for (i = 0; i <= maxiter; i++) {
+        palette8[i] = (i >= maxiter) ? 0 : (ms->cb + (i + shift) % nc) & 255;
+    }
+
     s->b->flags &= ~BF_READONLY;
 
     eb_delete_range(s->b, 0, s->b->total_size);
 
     for (ny = 0, y = -dy * rows / 2; ny < rows; ny++, y += dy) {
         for (nx = 0, x = -dx * cols / 2; nx < cols; nx++, x += dx) {
-            xr = xc + x * ms->m0 + y * ms->m1;
-            yr = yc + x * ms->m2 + y * ms->m3;
-            i = (*func)(xr, yr, bailout, maxiter);
+            fnum_t xr = ms->x + x * ms->m0 + y * ms->m1;
+            fnum_t yr = ms->y + x * ms->m2 + y * ms->m3;
+            bg = palette8[(*func)(xr, yr, ms->bailout, maxiter)];
             xr += dy / 2 * ms->m1;
             yr += dy / 2 * ms->m3;
-            j = (*func)(xr, yr, bailout, maxiter);
-            bg = i >= maxiter ? 0 : cb + i % nc;
-            fg = j >= maxiter ? 0 : cb + j % nc;
+            fg = palette8[(*func)(xr, yr, ms->bailout, maxiter)];
             s->b->cur_style = QE_TERM_COMPOSITE | QE_TERM_MAKE_COLOR(fg, bg);
             eb_insert_uchar(s->b, s->b->total_size, fg == bg ? ' ' : 0x2584);
         }
@@ -587,20 +794,45 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
         eb_insert_uchar(s->b, s->b->total_size, '\n');
     }
     s->b->flags |= BF_READONLY;
-
-    put_status(s, "%s set x="MFT", y="MFT", zoom=%d, scale=%.6g, rot=%d",
-               fractal_type[ms->type].name,
-               ms->x, ms->y, ms->zoom, (double)ms->scale, ms->rot);
+    qe_free(&palette8);
+#endif
 }
 
-static void do_fractal_refresh(EditState *s) {
+#if USE_BITMAP_API
+static void fractal_display(EditState *s) {
     FractalState *ms = fractal_get_state(s, 0);
-    if (ms) {
-        ms->cols = s->cols;
-        ms->rows = s->rows;
-        do_fractal_draw(s, ms);
+    int col = QERGB(0, 0, 0);
+
+    if (s->display_invalid) {
+        if (ms && ms->disp_bmp && ms->hfactor) {
+            int w = min(s->width, ms->disp_bmp->width);
+            int h = min(s->height, ms->disp_bmp->height / ms->hfactor);
+            int x = (s->width - w) / 2;
+            int y = (s->height - h) / 2;
+
+            bmp_draw(s->screen, ms->disp_bmp,
+                     s->xleft + x, s->ytop + y, w, h, 0, 0, 0);
+            fill_border(s, x, y, w, h, col);
+        } else {
+            fill_rectangle(s->screen, s->xleft, s->ytop, s->width, s->height, col);
+        }
+        s->display_invalid = 0;
+    }
+    if (s->qe_state->active_window == s) {
+        /* Update cursor */
+        int xc = s->xleft;
+        int yc = s->ytop;
+        int w = s->char_width;
+        int h = s->line_height;
+        if (s->screen->dpy.dpy_cursor_at) {
+            /* hardware cursor */
+            s->screen->dpy.dpy_cursor_at(s->screen, xc, yc, w, h);
+        } else {
+            xor_rectangle(s->screen, xc, yc, w, h, QERGB(0xFF, 0xFF, 0xFF));
+        }
     }
 }
+#endif
 
 static void do_fractal_move(EditState *s, int deltax, int deltay) {
     FractalState *ms = fractal_get_state(s, 1);
@@ -609,7 +841,7 @@ static void do_fractal_move(EditState *s, int deltax, int deltay) {
         fnum_t dy = deltay * ms->scale / 40;
         ms->x += dx * ms->m0 + dy * ms->m1;
         ms->y += dx * ms->m2 + dy * ms->m3;
-        do_fractal_refresh(s);
+        fractal_invalidate(ms);
     }
 }
 
@@ -625,7 +857,6 @@ static void do_fractal_zoom(EditState *s, int delta) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
         fractal_set_zoom(ms, ms->zoom + delta);
-        do_fractal_refresh(s);
     }
 }
 
@@ -633,7 +864,28 @@ static void do_fractal_rotate(EditState *s, int delta) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
         fractal_set_rotation(ms, delta ? ms->rot + delta : 0);
-        do_fractal_refresh(s);
+    }
+}
+
+static void do_fractal_shift_colors(EditState *s, int delta) {
+    FractalState *ms = fractal_get_state(s, 1);
+    if (ms) {
+        ms->shift += delta;
+        fractal_invalidate(ms);
+    }
+}
+
+static void do_fractal_set_colors(EditState *s, int type) {
+    FractalState *ms = fractal_get_state(s, 1);
+    if (ms) {
+        ms->shift = 0;
+        if (type == 0) {
+            fractal_set_colors(ms, NULL, NULL);
+        } else
+        if (type == 1) {
+            fractal_set_colors(ms, "gray", NULL);
+        }
+        fractal_invalidate(ms);
     }
 }
 
@@ -641,23 +893,15 @@ static void do_fractal_iter(EditState *s, int delta) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
         ms->maxiter += delta;
-        do_fractal_refresh(s);
+        fractal_invalidate(ms);
     }
 }
 
-static void do_fractal_module(EditState *s, int delta) {
+static void do_fractal_bailout(EditState *s, int delta) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
         ms->bailout += delta;
-        do_fractal_refresh(s);
-    }
-}
-
-static void do_fractal_set_type(EditState *s, int key) {
-    FractalState *ms = fractal_get_state(s, 1);
-    if (ms) {
-        ms->type = key - '1';
-        do_fractal_refresh(s);
+        fractal_invalidate(ms);
     }
 }
 
@@ -665,6 +909,17 @@ static void do_fractal_set_parameters(EditState *s, const char *params) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
         fractal_set_parameters(s, ms, params);
+    }
+}
+
+static void do_fractal_set_type(EditState *s, int key) {
+    FractalState *ms = fractal_get_state(s, 1);
+    if (ms) {
+        fractal_set_parameters(s, ms, fractal_default_parameters);
+        ms->type = key - '1';
+        if (ms->type) {
+            fractal_set_parameters(s, ms, "rot=0 zoom=0 x=0 y=0");
+        }
     }
 }
 
@@ -687,12 +942,13 @@ static void do_fractal_help(EditState *s)
     eb_printf(b, "%*s: %s\n", w, "formula", fractal_type[ms->type].formula);
     eb_printf(b, "%*s: "MFT"\n", w, "x", ms->x);
     eb_printf(b, "%*s: "MFT"\n", w, "y", ms->y);
-    eb_printf(b, "%*s: %d\n", w, "maxiter", ms->maxiter);
-    eb_printf(b, "%*s: %d\n", w, "rot", ms->rot);
+    eb_printf(b, "%*s: %dx%d\n", w, "size", ms->cols, ms->rows * ms->hfactor);
     eb_printf(b, "%*s: %d\n", w, "zoom", ms->zoom);
     eb_printf(b, "%*s: %.6g\n", w, "scale", (double)ms->scale);
+    eb_printf(b, "%*s: %d\n", w, "rot", ms->rot);
     eb_printf(b, "%*s: "MFT"\n", w, "bailout", ms->bailout);
-    eb_printf(b, "%*s: cb=%d nc=%d\n", w, "colors", ms->cb, ms->nc);
+    eb_printf(b, "%*s: %d\n", w, "maxiter", ms->maxiter);
+    eb_printf(b, "%*s: cb=%d nc=%d shift=%d\n", w, "colors", ms->cb, ms->nc, ms->shift);
 
     eb_printf(b, "\nFractal navigator:\n\n");
 
@@ -705,9 +961,12 @@ static void do_fractal_help(EditState *s)
     eb_printf(b, "%*s: %s\n", w, "/", "rotate right");
     eb_printf(b, "%*s: %s\n", w, "\\, .", "rotate left");
     eb_printf(b, "%*s: %s\n", w, "|", "reset rotation");
-    eb_printf(b, "%*s: %s\n", w, "[, ]", "change maxiter");
+    eb_printf(b, "%*s: %s\n", w, "{, }", "change maxiter");
+    eb_printf(b, "%*s: %s\n", w, "[, ]", "shift colors");
     eb_printf(b, "%*s: %s\n", w, "<, >", "change bailout");
     eb_printf(b, "%*s: %s\n", w, "=", "set fractal parameters");
+    eb_printf(b, "%*s: %s\n", w, "g", "set gray colors");
+    eb_printf(b, "%*s: %s\n", w, "c", "set default colors");
 
     b->flags |= BF_READONLY;
     show_popup(s, b);
@@ -716,8 +975,14 @@ static void do_fractal_help(EditState *s)
 static void fractal_display_hook(EditState *s) {
     FractalState *ms = fractal_get_state(s, 0);
     if (ms) {
-        if (s->rows != ms->rows || s->cols != ms->cols)
-            do_fractal_refresh(s);
+        if (s->xleft == 0 && s->ytop == 0
+        &&  (s->rows != ms->rows || s->cols != ms->cols)) {
+            /* XXX: should use a separate thread for this */
+            /* XXX: should use a different bitmap for each window */
+            ms->cols = s->cols;
+            ms->rows = s->rows;
+            do_fractal_draw(s, ms);
+        }
     }
 }
 
@@ -740,14 +1005,22 @@ static CmdDef fractal_commands[] = {
           "fractal-rotate-right", do_fractal_rotate, ESi, -1, "v")
     CMD3( '|', KEY_NONE,
           "fractal-rotate-none", do_fractal_rotate, ESi, 0, "v")
+    CMD3( 'c', KEY_NONE,
+          "fractal-set-colors-default", do_fractal_set_colors, ESi, 0, "v")
+    CMD3( 'g', KEY_NONE,
+          "fractal-set-colors-gray", do_fractal_set_colors, ESi, 1, "v")
     CMD3( '[', KEY_NONE,
-          "fractal-iter-less", do_fractal_iter, ESi, -1, "v")
+          "fractal-shift-colors-left", do_fractal_shift_colors, ESi, -1, "v")
     CMD3( ']', KEY_NONE,
+          "fractal-shift-colors-right", do_fractal_shift_colors, ESi, +1, "v")
+    CMD3( '{', KEY_NONE,
+          "fractal-iter-less", do_fractal_iter, ESi, -1, "v")
+    CMD3( '}', KEY_NONE,
           "fractal-iter-more", do_fractal_iter, ESi, +1, "v")
     CMD3( '<', KEY_NONE,
-          "fractal-module-less", do_fractal_module, ESi, -1, "v")
+          "fractal-bailout-less", do_fractal_bailout, ESi, -1, "v")
     CMD3( '>', KEY_NONE,
-          "fractal-module-more", do_fractal_module, ESi, +1, "v")
+          "fractal-bailout-more", do_fractal_bailout, ESi, +1, "v")
     CMD2( '1', '2',
           "fractal-set-type", do_fractal_set_type, ESi, "ki")
     CMD2( '=', KEY_NONE,
@@ -768,23 +1041,23 @@ static int fractal_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 static int fractal_mode_init(EditState *e, EditBuffer *b, int flags)
 {
-    if (e) {
+    if (e && (flags & MODEF_NEWINSTANCE)) {
         FractalState *ms;
 
         if (!(ms = fractal_get_state(e, 0)))
             return -1;
 
         fractal_set_parameters(e, ms, fractal_default_parameters);
-        put_status(e, "fractal init");
+        fractal_set_colors(ms, NULL, NULL);
     }
     return 0;
 }
 
 static void fractal_mode_free(EditBuffer *b, void *state) {
-#if 0
+#if USE_BITMAP_API
     FractalState *ms = state;
 
-    /* XXX: free bitmap and palette */
+    bmp_free(ms->screen, &ms->disp_bmp);
 #endif
 }
 
@@ -803,9 +1076,12 @@ static void do_mandelbrot_test(EditState *s) {
         fractal_mode.mode_free = fractal_mode_free;
         fractal_mode.display_hook = fractal_display_hook;
         fractal_mode.default_wrap = WRAP_TRUNCATE;
+#if USE_BITMAP_API
+        fractal_mode.display = fractal_display;
+#endif
         qe_register_mode(&fractal_mode, MODEF_NOCMD | MODEF_VIEW);
         qe_register_cmd_table(fractal_commands, &fractal_mode);
-        for (p = "2345678"; *p; p++) {
+        for (p = "23456789"; *p; p++) {
             qe_register_binding(*p, "fractal-set-type", &fractal_mode);
         }
     }
