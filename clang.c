@@ -63,6 +63,7 @@ enum {
     CLANG_VALA,
     CLANG_PAWN,
     CLANG_CMINUS,
+    CLANG_GMSCRIPT,
     CLANG_RUST,
     CLANG_SWIFT,
     CLANG_ICON,
@@ -411,7 +412,7 @@ static void c_colorize_line(QEColorizeContext *cp,
             delim = '\'';
             goto string;
         case '`':
-            if (flavor == CLANG_SCALA) {
+            if (flavor == CLANG_SCALA || flavor == CLANG_GMSCRIPT) {
                 /* scala quoted identifier */
                 while (i < n) {
                     c = str[i++];
@@ -2812,6 +2813,50 @@ static ModeDef cminus_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Game Monkey scripting language ----------------*/
+
+/* Simple C like syntax with some extensions:
+
+   c = "My " "house"; // creates the string 'My house'
+   d = `c:\windows\sys`; // d is a string
+   c = `Chris``s bike`; // creates the string 'Chris`s bike'
+   c = 2.4f // c is a float
+   a = 'BLCK'; // characters as four bytes making integer
+   a = 179; // decimal
+   a = 0xB3; // hexadecimal
+   a = 0b10110011; // binary
+   myRect = CreateRect(0, 0, 5, 10); // Construct a table that describes
+                                     // a rectangle
+   area = myRect.Area(); // myRect is automatically assigned to 'this'
+                         // within the area method.
+   Size = function() { return .width * .height; };
+   s = myRect:Size(); // Calls Size function passing 'myRect' as 'this'
+ */
+
+static const char gmscript_keywords[] = {
+    "if|else|for|while|foreach|in|and|or|function|"
+    "dowhile|break|continue|return|"
+    "array|table|global|local|member|this|"
+    "true|false|null|",
+};
+
+static const char gmscript_types[] = {
+    ""
+};
+
+static ModeDef gmscript_mode = {
+    .name = "Game Monkey",
+    .mode_name = "gmscript",
+    .extensions = "gm",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_GMSCRIPT,
+    .keywords = gmscript_keywords,
+    .types = gmscript_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 /*---------------- Other C based syntax modes ----------------*/
 
 #include "rust.c"
@@ -2875,6 +2920,7 @@ static int c_init(void)
     qe_register_mode(&vala_mode, MODEF_SYNTAX);
     qe_register_mode(&pawn_mode, MODEF_SYNTAX);
     qe_register_mode(&cminus_mode, MODEF_SYNTAX);
+    qe_register_mode(&gmscript_mode, MODEF_SYNTAX);
     rust_init();
     swift_init();
     icon_init();
