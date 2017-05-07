@@ -54,6 +54,7 @@ unlockio="no"
 ptsname="yes"
 gprof="no"
 network="yes"
+atari="no"
 win32="no"
 cygwin="no"
 darwin="no"
@@ -203,6 +204,7 @@ EOF
 echo "Standard options:"
 echo "  --help                   print this message"
 echo "  --prefix=PREFIX          install in PREFIX [$prefix]"
+echo "  --enable-atari           enable atari cross compile"
 echo "  --enable-win32           enable win32 cross compile"
 echo "  --enable-cygwin          compile for cygwin systems"
 echo "  --disable-x11            disable Xwindow support"
@@ -291,6 +293,9 @@ for opt do
       --enable-network | --disable-network)
         network="$value"
         ;;
+      --enable-atari)
+        atari="yes"
+        ;;
       --enable-win32)
         win32="yes"
         ;;
@@ -347,6 +352,27 @@ fi
 # Checking for CFLAGS
 if test -z "$CFLAGS"; then
     CFLAGS="-O2"
+fi
+
+if test "$atari" = "yes" ; then
+    if test "$cross_prefix" = ""; then
+        cross_prefix="m68k-atari-mint-"
+    fi
+    if test "$cross_env" = ""; then
+        cross_env="/opt/netsurf/${cross_prefix%-}/env"
+    fi
+    CFLAGS="$CFLAGS -m68020-60 -I${cross_env}/include"
+    LDFLAGS="$LDFLAGS -Wl,--stack,256k -m68020-60 -L${cross_env}/lib"
+    #extralibs="$extralibs -lgem"
+    ptsname="no"
+    network="no"
+    doc="no"
+    plugins="no"
+    initcalls="no"
+    x11="no"
+    mmap="no"
+    cygwin="no"
+    exe=".tos"
 fi
 
 if test "$win32" = "yes" ; then
@@ -588,6 +614,11 @@ echo "#define QE_VERSION \"$version\"" >> $TMPH
 if test "$network" = "yes" ; then
   echo "#define CONFIG_NETWORK 1" >> $TMPH
   echo "CONFIG_NETWORK=yes" >> $TMPMAK
+fi
+
+if test "$atari" = "yes" ; then
+  echo "#define CONFIG_ATARI 1" >> $TMPH
+  echo "CONFIG_ATARI=yes" >> $TMPMAK
 fi
 
 if test "$win32" = "yes" ; then
