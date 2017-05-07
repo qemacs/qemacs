@@ -229,7 +229,7 @@ qe$(EXE): qe_g$(EXE) Makefile
 	cp $< $@
 	-$(STRIP) $@
 	@ls -l $@
-	@echo `size $@` `wc -c $@` qe $(OPTIONS) \
+	@echo `$(SIZE) $@` `wc -c $@` qe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 #
@@ -244,7 +244,7 @@ xqe$(EXE): xqe_g$(EXE) Makefile
 	cp $< $@
 	-$(STRIP) $@
 	@ls -l $@
-	@echo `size $@` `wc -c $@` xqe $(OPTIONS) \
+	@echo `$(SIZE) $@` `wc -c $@` xqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 #
@@ -259,7 +259,7 @@ tqe$(EXE): tqe_g$(EXE) Makefile
 	cp $< $@
 	-$(STRIP) $@
 	@ls -l $@
-	@echo `size $@` `wc -c $@` tqe $(OPTIONS) \
+	@echo `$(SIZE) $@` `wc -c $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 t1qe_g$(EXE): tqe.c $(TSRCS) Makefile
@@ -271,7 +271,7 @@ t1qe$(EXE): t1qe_g$(EXE) Makefile
 	cp $< $@
 	-$(STRIP) $@
 	@ls -l $@
-	@echo `size $@` `wc -c $@` t1qe $(OPTIONS) \
+	@echo `$(SIZE) $@` `wc -c $@` t1qe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
 ffplay$(EXE): qe$(EXE) Makefile

@@ -28,6 +28,7 @@ cc="gcc"
 host_cc="gcc"
 ar="ar"
 make="make"
+size="size"
 strip="strip"
 strip_args="-s -R .comment -R .note"
 cpu=`uname -m`
@@ -399,6 +400,7 @@ fi
 
 cc="${cross_prefix}${cc}"
 ar="${cross_prefix}${ar}"
+size="${cross_prefix}${size}"
 strip="${cross_prefix}${strip}"
 
 # ---
@@ -527,6 +529,7 @@ echo "CC=$cc" >> $TMPMAK
 echo "GCC_MAJOR=$gcc_major" >> $TMPMAK
 echo "HOST_CC=$host_cc" >> $TMPMAK
 echo "AR=$ar" >> $TMPMAK
+echo "SIZE=$size" >> $TMPMAK
 echo "STRIP=$strip $strip_args" >> $TMPMAK
 echo "INSTALL=install" >> $TMPMAK
 echo "CFLAGS=$CFLAGS" >> $TMPMAK
