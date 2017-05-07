@@ -111,6 +111,7 @@ enum TermCode {
     TERM_XTERM,
     TERM_LINUX,
     TERM_CYGWIN,
+    TERM_TW100,
 };
 
 typedef struct TTYState {
@@ -206,6 +207,11 @@ static int tty_dpy_init(QEditScreen *s,
             ts->term_code = TERM_CYGWIN;
             ts->term_flags |= KBS_CONTROL_H |
                               USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG;
+        } else
+        if (strstart(ts->term_name, "tw100", NULL)) {
+            ts->term_code = TERM_TW100;
+            ts->term_flags |= KBS_CONTROL_H |
+                              USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG;
         }
     }
     if (strstr(ts->term_name, "true") || strstr(ts->term_name, "24")) {
@@ -298,6 +304,9 @@ static int tty_dpy_init(QEditScreen *s,
 
     if (ts->term_code == TERM_CYGWIN)
         s->charset = &charset_8859_1;
+
+    if (ts->term_code == TERM_TW100)
+        s->charset = find_charset("atarist");
 
     if (!s->charset && !isatty(fileno(s->STDOUT)))
         s->charset = &charset_8859_1;
@@ -879,6 +888,7 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
               ts->term_code == TERM_XTERM ? "XTERM" :
               ts->term_code == TERM_LINUX ? "LINUX" :
               ts->term_code == TERM_CYGWIN ? "CYGWIN" :
+              ts->term_code == TERM_TW100 ? "TW100" :
               "");
     eb_printf(b, "%*s: %#x %s%s%s%s%s%s\n", w, "term_flags", ts->term_flags,
               ts->term_flags & KBS_CONTROL_H ? " KBS_CONTROL_H" : "",
