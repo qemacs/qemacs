@@ -761,6 +761,7 @@ void eb_clear(EditBuffer *b)
     eb_delete(b, 0, b->total_size);
     eb_free_log_buffer(b);
 
+#ifdef CONFIG_MMAP
     eb_munmap_buffer(b);
 
     /* close and reset file handle */
@@ -768,6 +769,7 @@ void eb_clear(EditBuffer *b)
         close(b->map_handle);
     }
     b->map_handle = 0;
+#endif
     b->modified = 0;
 
     /* TODO: clear buffer structure */
