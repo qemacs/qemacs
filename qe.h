@@ -1572,6 +1572,7 @@ QEModeData *qe_create_buffer_mode_data(EditBuffer *b, ModeDef *m);
 void *qe_get_buffer_mode_data(EditBuffer *b, ModeDef *m, EditState *e);
 QEModeData *qe_create_window_mode_data(EditState *s, ModeDef *m);
 void *qe_get_window_mode_data(EditState *e, ModeDef *m, int status);
+void *check_mode_data(void **pp);
 int qe_free_mode_data(QEModeData *md);
 
 /* from tty.c */

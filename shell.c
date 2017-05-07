@@ -1627,6 +1627,7 @@ static void qe_term_emulate(ShellState *s, int c)
             for (i = 0; i < s->nb_params; i++) {
                 switch (s->params[i]) {
                 case 1:     /* Application Cursor Keys (DECCKM). */
+                case 3:     /* Set Number of Columns to 132 (DECCOLM) */
                 case 4:     /* Smooth (Slow) Scroll (DECSCLM). */
                     break;
                 case 5:     /* Reverse Video (DECSCNM) */
@@ -1712,6 +1713,7 @@ static void qe_term_emulate(ShellState *s, int c)
             for (i = 0; i < s->nb_params; i++) {
                 switch (s->params[i]) {
                 case 1:     /* Normal Cursor Keys (DECCKM). */
+                case 3:     /* Set Number of Columns to 80 (DECCOLM) */
                 case 4:     /* Jump (Fast) Scroll (DECSCLM). */
                     break;
                 case 5:     /* Normal Video (DECSCNM). */
@@ -1942,12 +1944,17 @@ static void shell_mode_free(EditBuffer *b, void *state)
 
 static void shell_pid_cb(void *opaque, int status)
 {
-    ShellState *s = opaque;
+    ShellState *s;
     EditBuffer *b;
     QEmacsState *qs;
     EditState *e;
     char buf[1024];
 
+    /* Extra check in case mode data was freed already.
+     * It is not completely fool proof as the same address might have
+     * been reallocated for the same purpose, quite unlikely.
+     */
+    s = check_mode_data(&opaque);
     if (!s || s->base.mode != &shell_mode)
         return;
 
@@ -2007,6 +2014,8 @@ static void shell_pid_cb(void *opaque, int status)
             qe_set_next_mode(e, 0, 0);
     }
     if (!(s->shell_flags & SF_INTERACTIVE)) {
+        /* Must Unlink the shell data to avoid potential crash */
+        //shell_mode_free(b, s);  // called by qe_free_mode_data
         qe_free_mode_data(&s->base);
     }
     edit_display(qs);
@@ -2082,6 +2091,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
         return NULL;
     }
 
+    /* XXX: ShellState life cycle is bogus */
     set_read_handler(s->pty_fd, shell_read_cb, s);
     set_pid_handler(s->pid, shell_pid_cb, s);
     return b;

@@ -2146,6 +2146,26 @@ void *qe_get_window_mode_data(EditState *e, ModeDef *m, int status)
     return NULL;
 }
 
+void *check_mode_data(void **pp) {
+    QEmacsState *qs = &qe_state;
+    QEModeData *md = *pp;
+    EditBuffer *b;
+    EditState *e;
+
+    for (b = qs->first_buffer; b != NULL; b = b->next) {
+        QEModeData **mdp;
+        for (mdp = &b->mode_data_list; *mdp; mdp = &(*mdp)->next) {
+            if (*mdp == md)
+                return md;
+        }
+    }
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
+        if (e->mode_data == md)
+            return md;
+    }
+    return NULL;
+}
+
 int qe_free_mode_data(QEModeData *md)
 {
     int rc = -1;
@@ -2173,7 +2193,10 @@ int qe_free_mode_data(QEModeData *md)
             rc = 0;
         }
     }
-    qe_free(&md);
+    if (rc == 0) {
+        /* mode data was found, OK to free */
+        qe_free(&md);
+    }
     return rc;
 }
 
@@ -5773,6 +5796,7 @@ void edit_close(EditState **sp)
         /* save current state for later window reattachment */
         switch_to_buffer(s, NULL);
         edit_detach(s);
+        /* closing the window mode should have freed it already */
         qe_free_mode_data(s->mode_data);
         qe_free(&s->prompt);
         qe_free(&s->line_shadow);
