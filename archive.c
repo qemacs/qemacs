@@ -103,7 +103,7 @@ static int qe_shell_subst(char *buf, int size, const char *cmd,
             }
             if (cmd[1] == '2' && arg2) {
                 buf_put_byte(out, '\'');
-                buf_puts(out, arg1);
+                buf_puts(out, arg2);
                 buf_put_byte(out, '\'');
                 cmd += 2;
                 continue;
@@ -233,7 +233,7 @@ static CompressType compress_type_array[] = {
     { "bplist", "bplist00", 8, "plist", "plutil -p $1", NULL },
 //    { "bplist", "bplist00", 8, "plist", "plutil -convert xml1 -o - $1", NULL },
     { "jpeg", NULL, 0, "jpg", "jp2a --height=35 --background=dark $1", NULL, SF_COLOR },
-    { "image", NULL, 0, "bmp", "img2txt -f ansi $1", NULL, SF_COLOR  },
+    { "image", NULL, 0, "bmp", "img2txt -f utf8 $1", NULL, SF_COLOR  },
     { "pdf", NULL, 0, "pdf", "pstotext $1", NULL },
 };
 
@@ -248,7 +248,7 @@ static CompressType *find_compress_type(const char *filename,
     /* File extension based test */
     reduce_filename(rname, sizeof(rname), get_basename(filename));
     for (ctp = compress_types; ctp; ctp = ctp->next) {
-        if (ctp->magic_size && ctp->magic_size <= buf_size
+        if (ctp->magic && ctp->magic_size && ctp->magic_size <= buf_size
         &&  !memcmp(ctp->magic, buf, ctp->magic_size))
             return ctp;
         if (match_extension(rname, ctp->extensions))
