@@ -172,7 +172,7 @@ if test -f "/usr/include/png.h" ; then
     png="yes"
 fi
 
-for x11path in /usr/include/X11 /opt/X11 /usr/X11R6; do
+for x11path in /usr /opt/X11 /usr/X11R6; do
     if test -f "$x11path/include/X11/Xlib.h" ; then
         x11="yes"
         x11_libdir="$x11path/lib"
