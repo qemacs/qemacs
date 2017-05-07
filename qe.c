@@ -7923,7 +7923,11 @@ void qe_event_init(void)
     struct sigaction sigact;
     struct itimerval itimer;
 
+#ifdef SA_RESTART
     sigact.sa_flags = SA_RESTART;
+#else
+#warning SA_RESTART not defined
+#endif
     sigact.sa_handler = poll_action;
     sigemptyset(&sigact.sa_mask);
     sigaction(SIGVTALRM, &sigact, NULL);
