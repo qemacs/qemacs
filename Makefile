@@ -137,8 +137,8 @@ ifdef CONFIG_CFB
 endif
 
 ifdef CONFIG_HTML
-  QHTML_DEPS:= libqhtml/libqhtml-$(TARGET_OS)-$(TARGET_ARCH)-$(CC).a
-  QHTML_LIBS:= -L./libqhtml -lqhtml-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
+  QHTML_DEPS:= $(DEPTH)/.objs/libqhtml-$(TARGET_OS)-$(TARGET_ARCH)-$(CC).a
+  QHTML_LIBS:= -L$(DEPTH)/.objs -lqhtml-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
   CFLAGS+= -I./libqhtml
   DEP_LIBS+= $(QHTML_DEPS)
   LIBS+= $(QHTML_LIBS)
@@ -198,15 +198,15 @@ XSRCS:= $(XOBJS:.o=.c)
 DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
-OBJS_DIR:= $(DEPTH)/.objs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
+OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/qe
 CFLAGS+= -I$(OBJS_DIR)
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
 
-XOBJS_DIR:= $(DEPTH)/.xobjs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
+XOBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/xqe
 XCFLAGS+= -I$(XOBJS_DIR)
 XOBJS:= $(addprefix $(XOBJS_DIR)/, $(XOBJS))
 
-TOBJS_DIR:= $(DEPTH)/.tobjs-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
+TOBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/tqe
 TCFLAGS+= -I$(TOBJS_DIR)
 TOBJS:= $(addprefix $(TOBJS_DIR)/, $(TOBJS))
 
@@ -490,14 +490,14 @@ qe-doc.html: qe-doc.texi Makefile
 #
 clean:
 	$(MAKE) -C libqhtml clean
-	rm -rf *.dSYM .objs* .tobjs* .xobjs* $(OBJS_DIR) $(XOBJS_DIR) $(TOBJS_DIR)
+	rm -rf *.dSYM .objs* .tobjs* .xobjs*
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump   \
            qe tqe t1qe xqe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
            cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9]
 
 distclean: clean
 	$(MAKE) -C libqhtml distclean
-	rm -rf .objs* .tobjs* .xobjs* $(OBJS_DIR) $(XOBJS_DIR) $(TOBJS_DIR)
+	rm -rf .objs* .tobjs* .xobjs*
 	rm -rf config.h config.mak
 
 install: $(TARGETS) qe.1
