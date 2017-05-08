@@ -1973,10 +1973,10 @@ static void shell_pid_cb(void *opaque, int status)
         else
             status = -1;
         if (status == 0) {
-            snprintf(buf, sizeof(buf), "\n%s finished at %s",
+            snprintf(buf, sizeof(buf), "\n%s finished at %s\n",
                      s->caption, time_str);
         } else {
-            snprintf(buf, sizeof(buf), "\n%s exited abnormally with code %d at %s",
+            snprintf(buf, sizeof(buf), "\n%s exited abnormally with code %d at %s\n",
                      s->caption, status, time_str);
         }
     }
@@ -2097,85 +2097,79 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
     return b;
 }
 
-static EditBuffer *try_show_buffer(EditState *s, const char *bufname)
+/* If a window is attached to buffer b, activate it,
+   otherwise attach window s to buffer b.
+ */
+static EditBuffer *try_show_buffer(EditState **sp, const char *bufname)
 {
+    EditState *e, *s = *sp;
     QEmacsState *qs = s->qe_state;
-    EditState *e;
     EditBuffer *b;
 
     b = eb_find(bufname);
-    if (b) {
+    if (b && s->b != b) {
         e = eb_find_window(b, NULL);
-        if (e)
-            qs->active_window = e;
-        else
+        if (e) {
+            qs->active_window = *sp = e;
+        } else {
             switch_to_buffer(s, b);
+        }
     }
     return b;
 }
 
-static void do_shell(EditState *s, int force)
+static void do_shell(EditState *e, int force)
 {
-    ShellState *shs;
     EditBuffer *b = NULL;
 
-    if (s->flags & (WF_POPUP | WF_MINIBUF))
+    if (e->flags & (WF_POPUP | WF_MINIBUF))
         return;
 
-    if (s->flags & WF_POPLEFT) {
-        /* avoid messing with the dired pane */
-        s = find_window(s, KEY_RIGHT, s);
-        s->qe_state->active_window = s;
-    }
+    /* avoid messing with the dired pane */
+    e = qe_find_target_window(e, 1);
 
-    /* CG: Should prompt for buffer name if arg:
-     * find a syntax for optional string argument w/ prompt
-     */
     /* find shell buffer if any */
     if (!force || force == NO_ARG) {
-        /* XXX: if current buffer is a shell buffer without a process,
-         * restart shell process in it.
-         */
-        b = s->b;
-        shs = shell_get_state(s, 0);
-        if (shs && strstart(b->name, "*shell", NULL)) {
-            /* move to end of buffer (start interactive mode) */
-            s->offset = b->total_size;
-            if (shs->pid >= 0)
-                return;
+        if (strstart(e->b->name, "*shell", NULL)) {
+            /* If the current buffer is a shell buffer, use it */
+            b = e->b;
         } else {
-            /* Find the last used shell buffer */
-            const char *bname = "*shell*";
-
-            if ((b = eb_find(error_buffer)) != NULL
-            &&  qe_get_buffer_mode_data(b, &shell_mode, NULL) != NULL) {
-                bname = error_buffer;
+            /* Find the last used shell buffer, if any */
+            if (strstart(error_buffer, "*shell", NULL)) {
+                b = try_show_buffer(&e, error_buffer);
             }
-            b = try_show_buffer(s, bname);
-            if (b) {
-                shs = qe_get_buffer_mode_data(b, &shell_mode, NULL);
-                if (shs && shs->pid >= 0)
-                    return;
+            if (b == NULL) {
+                b = try_show_buffer(&e, "*shell*");
             }
         }
         if (b) {
-            /* restart shell in *shell* buffer */
-            s->offset = b->total_size;
+            /* If the process is active, switch to interactive mode */
+            ShellState *s = shell_get_state(e, 0);
+            if (s && s->pid >= 0) {
+                e->offset = b->total_size;
+                if ((s->shell_flags & SF_INTERACTIVE) && !s->grab_keys) {
+                    e->offset = s->cur_offset;
+                    e->interactive = 1;
+                }
+                return;
+            }
+            /* otherwise, restart the process here */
+            e->offset = b->total_size;
         }
     }
 
-    /* create new buffer */
-    b = new_shell_buffer(b, s, "*shell*", "Shell process", NULL,
+    /* create new shell buffer or restart shell in current buffer */
+    b = new_shell_buffer(b, e, "*shell*", "Shell process", NULL,
                          SF_COLOR | SF_INTERACTIVE);
     if (!b)
         return;
 
     b->default_mode = &shell_mode;
-    switch_to_buffer(s, b);
-    /* set next error reference point, also used for do_shell to determine
-     * the last process buffer used */
+    switch_to_buffer(e, b);
+    /* force interactive mode if restarting */
+    shell_mode.mode_init(e, b, 0);
     set_error_offset(b, 0);
-    put_status(s, "Press C-o to toggle between shell/edit mode");
+    put_status(e, "Press C-o to toggle between shell/edit mode");
 }
 
 static void do_man(EditState *s, const char *arg)
@@ -2197,7 +2191,7 @@ static void do_man(EditState *s, const char *arg)
     snprintf(cmd, sizeof(cmd), "man %s", arg);
 
     snprintf(bufname, sizeof(bufname), "*Man %s*", arg);
-    if (try_show_buffer(s, bufname))
+    if (try_show_buffer(&s, bufname))
         return;
 
     /* create new buffer */

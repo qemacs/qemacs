@@ -6872,7 +6872,7 @@ static int probe_mode(EditState *s, EditBuffer *b,
     return found_modes;
 }
 
-static EditState *qe_find_target_window(EditState *s, int activate) {
+EditState *qe_find_target_window(EditState *s, int activate) {
     QEmacsState *qs = s->qe_state;
     EditState *e;
 

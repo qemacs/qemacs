@@ -2035,6 +2035,7 @@ EditState *show_popup(EditState *s, EditBuffer *b);
 int check_read_only(EditState *s);
 EditState *insert_window_left(EditBuffer *b, int width, int flags);
 EditState *find_window(EditState *s, int key, EditState *def);
+EditState *qe_find_target_window(EditState *s, int activate);
 void do_find_window(EditState *s, int key);
 
 /* window handling */
