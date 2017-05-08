@@ -1379,9 +1379,7 @@ static int dired_init(void)
     dired_mode.display_hook = dired_display_hook;
     dired_mode.get_default_path = dired_get_default_path;
 
-    /* first register mode */
     qe_register_mode(&dired_mode, /* MODEF_DATATYPE | */ MODEF_MAJOR | MODEF_VIEW);
-
     qe_register_variables(dired_variables, countof(dired_variables));
     qe_register_cmd_table(dired_commands, &dired_mode);
     qe_register_cmd_table(dired_global_commands, NULL);
@@ -1489,10 +1487,10 @@ static int filelist_init(void)
 {
     memcpy(&filelist_mode, &text_mode, sizeof(ModeDef));
     filelist_mode.name = "filelist";
-    filelist_mode.mode_name = NULL;
     filelist_mode.mode_probe = NULL;
     filelist_mode.mode_init = filelist_mode_init;
     filelist_mode.display_hook = filelist_display_hook;
+
     qe_register_mode(&filelist_mode, MODEF_VIEW);
     qe_register_cmd_table(filelist_commands, &filelist_mode);
     qe_register_cmd_table(filelist_global_commands, NULL);

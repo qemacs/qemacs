@@ -1318,7 +1318,7 @@ static int cpp_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 ModeDef cpp_mode = {
     .name = "C++",
-    .mode_name = "cpp",
+    .alt_name = "cpp",
     .extensions = "cc|hh|cpp|hpp|cxx|hxx|CPP|CC|c++|lzz",
     .mode_probe = cpp_mode_probe,
     .colorize_func = c_colorize_line,
@@ -1445,7 +1445,7 @@ static const char csharp_types[] = {
 
 ModeDef csharp_mode = {
     .name = "C#",   /* C Sharp */
-    .mode_name = "csharp",
+    .alt_name = "csharp",
     .extensions = "cs",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_CSHARP | CLANG_PREPROC,
@@ -2671,7 +2671,7 @@ static const char cbang_types[] = {
 
 static ModeDef cbang_mode = {
     .name = "C!",
-    .mode_name = "cbang",
+    .alt_name = "cbang",
     .extensions = "cb|cbi",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_CBANG | CLANG_CAP_TYPE,
@@ -2707,7 +2707,6 @@ static const char vala_types[] = {
 
 static ModeDef vala_mode = {
     .name = "Vala",
-    .mode_name = "vala",
     .extensions = "vala|vapi",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_VALA | CLANG_CC | CLANG_REGEX |
@@ -2767,7 +2766,6 @@ static int pawn_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 static ModeDef pawn_mode = {
     .name = "Pawn",
-    .mode_name = "pawn",
     .extensions = "p",
     .mode_probe = pawn_mode_probe,
     .colorize_func = c_colorize_line,
@@ -2802,7 +2800,7 @@ static const char cminus_types[] = {
 
 static ModeDef cminus_mode = {
     .name = "C-minus",
-    .mode_name = "cminus",
+    .alt_name = "cminus",
     .extensions = "cm",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_CMINUS,
@@ -2846,7 +2844,7 @@ static const char gmscript_types[] = {
 
 static ModeDef gmscript_mode = {
     .name = "Game Monkey",
-    .mode_name = "gmscript",
+    .alt_name = "gmscript",
     .extensions = "gm",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_GMSCRIPT,

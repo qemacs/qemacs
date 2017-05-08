@@ -2575,7 +2575,7 @@ static int coffee_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 static ModeDef coffee_mode = {
     .name = "CoffeeScript",
-    .mode_name = "coffee",
+    .alt_name = "coffee",
     .extensions = "coffee",
     .shell_handlers = "coffee",
     .mode_probe = coffee_mode_probe,
@@ -4710,7 +4710,6 @@ static void scad_colorize_line(QEColorizeContext *cp,
 
 static ModeDef scad_mode = {
     .name = "OpenSCAD",
-    .mode_name = "openscad",
     .extensions = "scad",
     .colorize_func = scad_colorize_line,
     .keywords = scad_keywords,

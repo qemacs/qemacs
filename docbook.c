@@ -2,6 +2,7 @@
  * WYSIWYG Docbook mode for QEmacs.
  *
  * Copyright (c) 2002 Fabrice Bellard.
+ * Copyright (c) 2003-2017 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -49,8 +50,10 @@ static int docbook_init(void)
     /* inherit from html mode */
     memcpy(&docbook_mode, &html_mode, sizeof(ModeDef));
     docbook_mode.name = "docbook";
-    docbook_mode.buffer_instance_size = sizeof(QEModeData);
     docbook_mode.extensions = NULL;
+    /* buffer_instance_size must be non 0 for docbook_mode_init() to
+       receive MODEF_NEWINSTANCE flag */
+    docbook_mode.buffer_instance_size = sizeof(QEModeData);
     docbook_mode.mode_probe = docbook_mode_probe;
     docbook_mode.mode_init = docbook_mode_init;
 

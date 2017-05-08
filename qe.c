@@ -98,7 +98,7 @@ ModeDef *qe_find_mode(const char *name, int flags)
     for (m = qs->first_mode; m; m = m->next) {
         if ((m->flags & flags) == flags) {
             if ((m->name && !strcasecmp(m->name, name))
-            ||  (m->mode_name && !strcasecmp(m->mode_name, name)))
+            ||  (m->alt_name && !strcasecmp(m->alt_name, name)))
                 break;
         }
     }
@@ -138,9 +138,6 @@ void qe_register_mode(ModeDef *m, int flags)
     }
 
     m->flags |= flags;
-
-    if (!m->mode_name)
-        m->mode_name = m->name;
 
     if (m->flags & MODEF_SYNTAX) {
         /* if no syntax probing function, use extension matcher */
@@ -189,14 +186,15 @@ void qe_register_mode(ModeDef *m, int flags)
         char buf[64];
         int size;
         CmdDef *def;
+        const char *mode_name = m->alt_name ? m->alt_name : m->name;
 
         /* lower case convert for C mode, Perl... */
-        qe_strtolower(buf, sizeof(buf) - 10, m->mode_name);
+        qe_strtolower(buf, sizeof(buf) - 10, mode_name);
         pstrcat(buf, sizeof(buf), "-mode");
         size = strlen(buf) + 1;
         /* constant immediate string parameter */
         size += snprintf(buf + size, sizeof(buf) - size,
-                         "S{%s}", m->mode_name) + 1;
+                         "S{%s}", mode_name) + 1;
         def = qe_mallocz_array(CmdDef, 2);
         def->name = qe_malloc_dup(buf, size);
         def->key = def->alt_key = KEY_NONE;
@@ -214,7 +212,9 @@ void mode_completion(CompleteState *cp)
     ModeDef *m;
 
     for (m = qs->first_mode; m != NULL; m = m->next) {
-        complete_test(cp, m->mode_name);
+        complete_test(cp, m->name);
+        if (m->alt_name && !strequal(m->name, m->alt_name))
+            complete_test(cp, m->alt_name);
     }
 }
 
@@ -2321,6 +2321,9 @@ int edit_set_mode(EditState *s, ModeDef *m)
 void do_set_mode(EditState *s, const char *name)
 {
     ModeDef *m;
+
+    /* set-mode from the dired window applies to the target window */
+    s = qe_find_target_window(s, 0);
 
     /* XXX: should check if mode is appropriate */
     m = qe_find_mode(name, 0);
@@ -6401,7 +6404,6 @@ void minibuffer_init(void)
     /* populate and register minibuffer mode and commands */
     memcpy(&minibuffer_mode, &text_mode, sizeof(ModeDef));
     minibuffer_mode.name = "minibuffer";
-    minibuffer_mode.mode_name = NULL;
     minibuffer_mode.mode_probe = NULL;
     minibuffer_mode.buffer_instance_size = sizeof(MinibufState);
     minibuffer_mode.mode_free = minibuffer_mode_free;
@@ -6474,7 +6476,6 @@ static void popup_init(void)
     /* popup mode inherits from text mode */
     memcpy(&popup_mode, &text_mode, sizeof(ModeDef));
     popup_mode.name = "popup";
-    popup_mode.mode_name = NULL;
     popup_mode.mode_probe = NULL;
     qe_register_mode(&popup_mode, MODEF_VIEW);
     qe_register_cmd_table(popup_commands, &popup_mode);
