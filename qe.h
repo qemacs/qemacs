@@ -1481,6 +1481,7 @@ struct ModeProbeData {
     const u8 *buf;
     int buf_size;
     int line_len;
+    int st_errno;    /* errno from the stat system call */
     int st_mode;     /* unix file mode */
     long total_size;
     EOLType eol_type;
@@ -2023,6 +2024,7 @@ static inline int is_user_input_pending(void) {
 #define LF_CWD_RELATIVE   0x04
 #define LF_SPLIT_WINDOW   0x08
 #define LF_NOSELECT       0x10
+#define LF_NOWILDCARD     0x20
 int qe_load_file(EditState *s, const char *filename, int lflags, int bflags);
 
 /* config file support */

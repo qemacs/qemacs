@@ -16,6 +16,9 @@
     STYLE_DEF(QE_STYLE_STATUS, "status",
               QERGB(0xff, 0xff, 0x00), COLOR_TRANSPARENT,
               0, 0)
+    STYLE_DEF(QE_STYLE_GUTTER, "gutter",
+              QERGB(0xf8, 0x44, 0x00), QERGB(0x3f, 0x3f, 0x3f),
+              0, 0)
 
     /* default style for HTML/CSS2 pages */
     STYLE_DEF(QE_STYLE_CSS_DEFAULT, "css-default",

@@ -3181,23 +3181,24 @@ void display_init(DisplayState *ds, EditState *e, enum DisplayType do_disp,
     ds->default_line_height = font->ascent + font->descent;
     ds->space_width = glyph_width(e->screen, font, ' ');
     ds->tab_width = ds->space_width * e->b->tab_width;
-    if (ds->wrap == WRAP_TERM) {
-        ds->eol_width = 0;
-        ds->width = e->wrap_cols * glyph_width(e->screen, font, '0');
-    } else {
-        ds->eol_width = max3(glyph_width(e->screen, font, '/'),
-                             glyph_width(e->screen, font, '\\'),
-                             glyph_width(e->screen, font, '$'));
-        ds->width = e->width - ds->eol_width;
-    }
     ds->height = e->height;
     ds->hex_mode = e->hex_mode;
     ds->cur_hex_mode = 0;
     ds->y = e->y_disp;
     ds->line_num = 0;
     ds->line_numbers = e->line_numbers * ds->space_width * 8;
-    if (ds->line_numbers > ds->width / 2)
+    if (ds->line_numbers > e->width / 2)
         ds->line_numbers = 0;
+    if (ds->wrap == WRAP_TERM) {
+        ds->eol_width = 0;
+        ds->width = ds->line_numbers +
+            e->wrap_cols * glyph_width(e->screen, font, '0');
+    } else {
+        ds->eol_width = max3(glyph_width(e->screen, font, '/'),
+                             glyph_width(e->screen, font, '\\'),
+                             glyph_width(e->screen, font, '$'));
+        ds->width = e->width - ds->eol_width;
+    }
     ds->eol_reached = 0;
     ds->eod = 0;
     display_bol(ds);
@@ -3345,9 +3346,9 @@ static void flush_line(DisplayState *ds,
             /* XXX: should coalesce rectangles with identical style */
             if (ds->left_gutter > 0) {
                 /* erase space before the line display, aka left gutter */
+                get_style(e, &styledef, QE_STYLE_GUTTER);
                 fill_rectangle(screen, e->xleft + x, e->ytop + y,
-                               ds->left_gutter, line_height,
-                               default_style.bg_color);
+                               ds->left_gutter, line_height, styledef.bg_color);
             }
             x = ds->x_line;
             x1 = ds->width + ds->eol_width;
@@ -3359,8 +3360,15 @@ static void flush_line(DisplayState *ds,
                 x += frag->width;
             }
             if (x < x1 && last != -1) {
+                /* XXX: color may be inappropriate for terminal mode */
                 fill_rectangle(screen, e->xleft + x, e->ytop + y,
                                x1 - x, line_height, default_style.bg_color);
+            }
+            if (x1 < e->width) {
+                /* right gutter like space beyond terminal right margin */
+                get_style(e, &styledef, QE_STYLE_GUTTER);
+                fill_rectangle(screen, e->xleft + x1, e->ytop + y,
+                               e->width - x1, line_height, styledef.bg_color);
             }
 
             /* then display text */
@@ -4198,12 +4206,12 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
 
     /* line numbers */
     if (ds->line_numbers) {
-        ds->style = QE_STYLE_COMMENT;
+        ds->style = QE_STYLE_GUTTER;
         display_printf(ds, -1, -1, "%6d  ", line_num + 1);
         ds->style = 0;
     }
 
-    /* prompt display */
+    /* prompt display, only on first line */
     if (s->prompt && offset1 == 0) {
         const char *p = s->prompt;
 
@@ -6768,8 +6776,8 @@ char *get_default_path(EditBuffer *b, int offset, char *buf, int buf_size)
 static int probe_mode(EditState *s, EditBuffer *b,
                       ModeDef **modes, int nb_modes,
                       int *scores, int min_score,
-                      const char *filename, int st_mode, long total_size,
-                      const uint8_t *rawbuf, int len,
+                      const char *filename, int st_errno, int st_mode,
+                      long total_size, const uint8_t *rawbuf, int len,
                       QECharset *charset, EOLType eol_type)
 {
     u8 buf[4097];
@@ -6791,6 +6799,7 @@ static int probe_mode(EditState *s, EditBuffer *b,
     probe_data.buf = buf;
     probe_data.buf_size = len;
     probe_data.real_filename = filename;
+    probe_data.st_errno = st_errno;
     probe_data.st_mode = st_mode;
     probe_data.total_size = total_size;
     probe_data.filename = reduce_filename(fname, sizeof(fname),
@@ -6944,7 +6953,7 @@ void qe_set_next_mode(EditState *s, int dir, int status)
     buf[size] = '\0';
 
     nb = probe_mode(s, b, modes, countof(modes), scores, 2,
-                    b->filename, b->st_mode, b->total_size,
+                    b->filename, 0, b->st_mode, b->total_size,
                     buf, size, b->charset, b->eol_type);
     found = 0;
     if (dir && nb > 0) {
@@ -6988,7 +6997,8 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
      * file pattern into the same pane, but load a regular file into the view pane
      */
     if ((s->flags & WF_POPUP)
-    ||  (!is_directory(filename) && !is_filepattern(filename))) {
+    ||  (!is_directory(filename) &&
+         ((lflags & LF_NOWILDCARD) || !is_filepattern(filename)))) {
         s = qe_find_target_window(s, 1);
     }
 #endif
@@ -7042,6 +7052,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
 
     /* First we try to read the first block to determine the data type */
     if (stat(filename, &st) < 0) {
+        int st_errno = errno;
         /* XXX: default charset should be selectable.  Should have auto
          * charset transparent support for both utf8 and latin1.
          * Use utf8 for now */
@@ -7052,7 +7063,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         buf[0] = '\0';
         buf_size = 0;
         probe_mode(s, b, &selected_mode, 1, &mode_score, 2,
-                   b->filename, b->st_mode, b->total_size,
+                   b->filename, st_errno, b->st_mode, b->total_size,
                    buf, buf_size, b->charset, b->eol_type);
 
         /* Attach buffer to window, will set default_mode
@@ -7085,7 +7096,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         }
         buf[buf_size] = '\0';
         if (!probe_mode(s, b, &selected_mode, 1, &mode_score, 2,
-                        filename, b->st_mode, st.st_size,
+                        filename, 0, b->st_mode, st.st_size,
                         buf, buf_size, charset, eol_type)) {
             fclose(f);
             f = NULL;
@@ -8367,6 +8378,10 @@ static void generic_mode_close(EditState *s)
     set_colorize_func(s, NULL);
     eb_free_callback(s->b, eb_offset_callback, &s->offset);
     eb_free_callback(s->b, eb_offset_callback, &s->offset_top);
+
+    /* Free crcs should when switching display modes */
+    qe_free(&s->line_shadow);
+    s->shadow_nb_lines = 0;
 }
 
 ModeDef text_mode = {

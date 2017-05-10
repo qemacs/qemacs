@@ -1859,54 +1859,73 @@ static void shell_read_cb(void *opaque)
 {
     ShellState *s = opaque;
     QEmacsState *qs;
+    EditBuffer *b;
     unsigned char buf[16 * 1024];
-    int len, i;
+    int len, i, save_readonly;
 
     if (!s || s->base.mode != &shell_mode)
         return;
 
-    qs = s->qe_state;
     len = read(s->pty_fd, buf, sizeof(buf));
     if (len <= 0)
         return;
 
-    if (qs->trace_buffer)
+    b = s->b;
+    qs = s->qe_state;
+    if (qs->trace_buffer) {
         eb_trace_bytes(buf, len, EB_TRACE_SHELL);
+    }
 
-    {
-        /* Suspend BF_READONLY flag to allow shell output to readonly buffer */
-        int save_readonly = s->b->flags & BF_READONLY;
-        s->b->flags &= ~BF_READONLY;
-        s->b->last_log = 0;
+    /* Suspend BF_READONLY flag to allow shell output to readonly buffer */
+    save_readonly = b->flags & BF_READONLY;
+    b->flags &= ~BF_READONLY;
+    b->last_log = 0;
 
-#if 0
-        /* XXX: tty emulation should be optional */
-        if (!emulate) {
-            eb_write(s->b, s->b->total_size, buf, len);
-        } else
-#endif
-        for (i = 0; i < len; i++)
+    if (s->shell_flags & SF_COLOR) {
+        /* optional terminal emulation (shell, ssh, make, latex, man modes) */
+        for (i = 0; i < len; i++) {
             qe_term_emulate(s, buf[i]);
-
-        if (save_readonly) {
-            s->b->modified = 0;
-            s->b->flags |= save_readonly;
+        }
+        if (s->last_char == '\000' || s->last_char == '\001'
+        ||  s->last_char == '\003'
+        ||  s->last_char == '\r' || s->last_char == '\n') {
+            /* if the last char sent to the process was the enter key, C-C
+             * to kill the process, C-A to go to beginning of line, or if
+             * nothing was sent to the process yet, assume the process is
+             * prompting for input and save the current input position as
+             * the start of input.
+             */
+            s->cur_prompt = s->cur_offset;
+            if (qs->active_window
+            &&  qs->active_window->b == b
+            &&  qs->active_window->interactive) {
+                /* Set mark to potential tentative position (useful?) */
+                b->mark = s->cur_prompt;
+            }
+        }
+        shell_get_curpath(b, s->cur_offset, s->curpath, sizeof(s->curpath));
+    } else {
+        int pos = b->total_size;
+        int threshold = 3 << 20;    /* 3MB for large pictures */
+        eb_write(b, b->total_size, buf, len);
+        if (pos < threshold && pos + len >= threshold) {
+            EditState *e;
+            for (e = qs->first_window; e != NULL; e = e->next_window) {
+                if (e->b == b) {
+                    if (s->shell_flags & SF_AUTO_CODING)
+                        do_set_auto_coding(e, 0);
+                    if (s->shell_flags & SF_AUTO_MODE)
+                        qe_set_next_mode(e, 0, 0);
+                }
+            }
         }
     }
-    if (s->last_char == '\000' || s->last_char == '\001'
-    ||  s->last_char == '\003'
-    ||  s->last_char == '\r' || s->last_char == '\n') {
-        /* if the last char sent to the process was the enter key, C-C
-         * to kill the process, C-A to go to beginning of line, or if
-         * nothing was sent to the process yet, assume the process is
-         * prompting for input and save the current input position as
-         * the start of input.
-         */
-        s->b->mark = s->cur_prompt = s->cur_offset;
+    if (save_readonly) {
+        b->modified = 0;
+        b->flags |= save_readonly;
     }
-    shell_get_curpath(s->b, s->cur_offset, s->curpath, sizeof(s->curpath));
 
-    /* now we do some refresh */
+    /* now we do some refresh (should just invalidate?) */
     edit_display(qs);
     dpy_flush(qs->screen);
 }
@@ -2006,12 +2025,13 @@ static void shell_pid_cb(void *opaque, int status)
     s->grab_keys = 0;
     qe_ungrab_keys();
     for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e->b == b)
+        if (e->b == b) {
             e->interactive = 0;
-        if (s->shell_flags & SF_AUTO_CODING)
-            do_set_auto_coding(e, 0);
-        if (s->shell_flags & SF_AUTO_MODE)
-            qe_set_next_mode(e, 0, 0);
+            if (s->shell_flags & SF_AUTO_CODING)
+                do_set_auto_coding(e, 0);
+            if (s->shell_flags & SF_AUTO_MODE)
+                qe_set_next_mode(e, 0, 0);
+        }
     }
     if (!(s->shell_flags & SF_INTERACTIVE)) {
         /* Must Unlink the shell data to avoid potential crash */
@@ -2647,9 +2667,19 @@ static void do_shell_refresh(EditState *e)
     ShellState *s;
 
     if ((s = shell_get_state(e, 1)) != NULL) {
+        QEmacsState *qs = e->qe_state;
+        EditState *e1;
+
         /* update the terminal size and notify process */
         s->cols = e->wrap_cols = e->cols;
         s->rows = e->rows;
+
+        for (e1 = qs->first_window; e1 != NULL; e1 = e1->next_window) {
+            if (e1->b == e->b) {
+                e1->wrap_cols = s->cols;
+            }
+        }
+
         if (s->pty_fd > 0) {
             struct winsize ws;
             ws.ws_col = s->cols;
@@ -2694,31 +2724,30 @@ static char *shell_get_curpath(EditBuffer *b, int offset,
 {
     char line[1024];
     char curpath[MAX_FILENAME_SIZE];
-    int start, first_blank, last_blank, stop, i, len;
+    int start, last_blank, stop, i, len;
     
     len = eb_fgets(b, line, sizeof(line), eb_goto_bol(b, offset), &offset);
     line[len] = '\0';   /* strip the trailing newline if any */
 
-    first_blank = last_blank = 0;
+    start = 0;
+    last_blank = 0;
     for (i = 0;; i++) {
         int c = line[i];
         if (c == '\0')
             return NULL;
-        if (c == '$' || c == '>')
+        if (c == '#' || c == '$' || c == '>')
             break;
+        if (c == ':' && !start)
+            start = i + 1;
         if (c == ' ') {
-            if (!first_blank)
-                first_blank = i + 1;
+            if (!start)
+                start = i + 1;
             last_blank = i;
         }
     }
     stop = i;
     if (last_blank == i - 1)
         stop = last_blank;
-
-    start = 0;
-    if (first_blank < last_blank)
-        start = first_blank;
 
     line[stop] = '\0';
 

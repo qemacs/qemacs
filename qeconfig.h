@@ -164,7 +164,7 @@ static CmdDef basic_commands[] = {
           "kill-buffer", do_kill_buffer, ESsi, 0,
           "s{Kill buffer: }[buffer]|buffer|"
           "v")
-    CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_NONE,
+    CMD0( KEY_CTRLX(KEY_CTRL('q')), KEY_CTRLC('~'),
           "toggle-read-only", do_toggle_read_only)
     CMD2( KEY_META('~'), KEY_NONE,
           "not-modified", do_not_modified, ESi, "ui")
@@ -299,15 +299,15 @@ static CmdDef basic_commands[] = {
 
     /*---------------- International ----------------*/
 
-    CMD2( KEY_CTRLXRET('f'), KEY_NONE,
+    CMD2( KEY_CTRLXRET('f'), KEY_CTRL('c'),
           "set-buffer-file-coding-system", do_set_buffer_file_coding_system, ESs,
           "s{Charset: }[charset]|charset|")
     CMD2( KEY_NONE, KEY_NONE,
           "convert-buffer-file-coding-system", do_convert_buffer_file_coding_system, ESs,
           "*" "s{Charset: }[charset]|charset|")
-    CMD0( KEY_CTRLXRET('b'), KEY_NONE,
+    CMD0( KEY_CTRLXRET('b'), KEY_CTRL('b'),
           "toggle-bidir", do_toggle_bidir)
-    CMD2( KEY_CTRLXRET(KEY_CTRL('\\')), KEY_NONE,
+    CMD2( KEY_CTRLXRET(KEY_CTRL('\\')), KEY_CTRLC(KEY_CTRL('\\')),
           "set-input-method", do_set_input_method, ESs,
           "s{Input method: }[input]")
     CMD0( KEY_CTRLX(KEY_CTRL('\\')), KEY_NONE,
@@ -358,11 +358,11 @@ static CmdDef basic_commands[] = {
           "what-cursor-position", do_what_cursor_position)
 
     /* non standard mappings */
-    CMD0( KEY_CTRLXRET('l'), KEY_NONE,
+    CMD0( KEY_CTRLXRET('l'), KEY_CTRLC('l'),
           "toggle-line-numbers", do_toggle_line_numbers)
-    CMD0( KEY_CTRLXRET('t'), KEY_NONE,
+    CMD0( KEY_CTRLXRET('t'), KEY_CTRLC('t'),
           "toggle-truncate-lines", do_toggle_truncate_lines)
-    CMD0( KEY_CTRLXRET('w'), KEY_NONE,
+    CMD0( KEY_CTRLXRET('w'), KEY_CTRLC('w'),
           "word-wrap", do_word_wrap)
     CMD1( KEY_NONE, KEY_NONE,
           "toggle-control-h", do_toggle_control_h, 0)

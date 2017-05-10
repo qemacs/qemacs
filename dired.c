@@ -1070,7 +1070,7 @@ static EditState *dired_view_file(EditState *s, const char *filename)
      * new buffer as BF_PREVIEW, to trigger paging mode and so that it
      * will get freed if closed.
      */
-    rc = qe_load_file(e, filename, 0, BF_PREVIEW);
+    rc = qe_load_file(e, filename, LF_NOWILDCARD, BF_PREVIEW);
     if (rc >= 0) {
         return e;
     } else {
@@ -1242,7 +1242,7 @@ static int dired_mode_probe(ModeDef *mode, ModeProbeData *p)
     if (S_ISDIR(p->st_mode))
         return 95;
 
-    if (is_filepattern(p->real_filename))
+    if (p->st_errno == ENOENT && is_filepattern(p->real_filename))
         return 90;
 
     return 0;

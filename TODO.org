@@ -1,7 +1,7 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-04-24
+; Updated: 2017-05-10
 
 * Recent bugs and ideas
 
@@ -636,4 +636,10 @@ find-file-read-only-other-frame on C-x 5 r
 find-file-read-only-other-window on C-x 4 r
 save-modified-buffers on C-x s
 show-matching-delimiters
-
+vim-mode on .vim*
+toggle-full-screen -> unsupported if screen->dpy_full_screen is NULL
+find-file: should support scp syntax for remote loading
+ssh: should use the host name and get files via scp syntax
+charset: set-eol-type should take a string: auto/binary/dos/unix/mac/0/1/2...
+archive: use window/buffer caption for output description
+files: handle files with embedded spaces
