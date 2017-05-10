@@ -1524,8 +1524,10 @@ static int sql_mode_probe(ModeDef *mode, ModeProbeData *pd)
 {
     const char *p = cs8(pd->buf);
 
-    if (strstart(p, "PRAGMA foreign_keys=OFF;", NULL))
+    if (strstart(p, "PRAGMA foreign_keys=OFF;", NULL)
+    ||  strstart(p, "-- phpMyAdmin SQL Dump", NULL)) {
         return 80;
+    }
     if (match_extension(pd->filename, mode->extensions))
         return 60;
 
