@@ -362,6 +362,10 @@ $(TOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 %.s: %.cpp $(DEPENDS) Makefile
 	g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -S $<
 
+%$(EXE): %.c
+	$(echo) CC -o $@ $^
+	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
+
 #
 # Test for bidir algorithm
 #
