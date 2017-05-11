@@ -299,13 +299,13 @@ static CmdDef basic_commands[] = {
 
     /*---------------- International ----------------*/
 
-    CMD2( KEY_CTRLXRET('f'), KEY_CTRL('c'),
+    CMD2( KEY_CTRLXRET('f'), KEY_CTRLC('c'),
           "set-buffer-file-coding-system", do_set_buffer_file_coding_system, ESs,
           "s{Charset: }[charset]|charset|")
     CMD2( KEY_NONE, KEY_NONE,
           "convert-buffer-file-coding-system", do_convert_buffer_file_coding_system, ESs,
           "*" "s{Charset: }[charset]|charset|")
-    CMD0( KEY_CTRLXRET('b'), KEY_CTRL('b'),
+    CMD0( KEY_CTRLXRET('b'), KEY_CTRLC('b'),
           "toggle-bidir", do_toggle_bidir)
     CMD2( KEY_CTRLXRET(KEY_CTRL('\\')), KEY_CTRLC(KEY_CTRL('\\')),
           "set-input-method", do_set_input_method, ESs,
