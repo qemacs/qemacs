@@ -140,10 +140,6 @@ void qe_register_mode(ModeDef *m, int flags)
     m->flags |= flags;
 
     if (m->flags & MODEF_SYNTAX) {
-        /* if no syntax probing function, use extension matcher */
-        if (!m->mode_probe && m->extensions)
-            m->mode_probe = generic_mode_probe;
-
         /* default to text handling */
         if (!m->display_line)
             m->display_line = text_display_line;
@@ -174,6 +170,9 @@ void qe_register_mode(ModeDef *m, int flags)
     /* add missing functions */
     if (!m->mode_init)
         m->mode_init = default_mode_init;
+    /* if no syntax probing function, use extension matcher */
+    if (!m->mode_probe && m->extensions)
+        m->mode_probe = generic_mode_probe;
     if (!m->display)
         m->display = generic_text_display;
     if (!m->data_type)
@@ -377,7 +376,8 @@ int qe_mode_set_key(ModeDef *m, const char *keystr, const char *cmd_name)
 void do_set_key(EditState *s, const char *keystr,
                 const char *cmd_name, int local)
 {
-    int res = qe_mode_set_key(local ? s->mode : NULL, keystr, cmd_name);
+    ModeDef *m = local ? s->mode : NULL;
+    int res = qe_mode_set_key(m, keystr, cmd_name);
 
     if (res == -2)
         put_status(s, "Invalid keys: %s", keystr);
@@ -2726,10 +2726,33 @@ static void do_set_fill_column(EditState *s, int fill_column)
         s->b->fill_column = fill_column;
 }
 
+static char *qe_get_mode_name(EditState *s, char *buf, int size, int full)
+{
+    buf_t outbuf, *out;
+
+    out = buf_init(&outbuf, buf, size);
+
+    if (s->b->data_type_name)
+        buf_printf(out, "%s+", s->b->data_type_name);
+    buf_puts(out, s->mode ? s->mode->name : "raw");
+
+    if (full) {
+        if (!s->insert)
+            buf_puts(out, " Ovwrt");
+        if (s->interactive)
+            buf_puts(out, " Interactive");
+        if (s->b->flags & BF_PREVIEW)
+            buf_puts(out, " Preview");
+    }
+    return buf;
+}
+
 /* compute string for the first part of the mode line (flags,
    filename, modename) */
 void basic_mode_line(EditState *s, buf_t *out, int c1)
 {
+    char buf[128];
+    const char *mode_name;
     int mod, state;
 
     mod = s->b->modified ? '*' : '-';
@@ -2742,19 +2765,13 @@ void basic_mode_line(EditState *s, buf_t *out, int c1)
     else
         state = '-';
 
-    buf_printf(out, "%c%c:%c%c  %-20s  (",
+    mode_name = qe_get_mode_name(s, buf, sizeof(buf), 1);
+    /* Strip text mode name if another mode is also active */
+    strstart(mode_name, "text ", &mode_name);
+
+    buf_printf(out, "%c%c:%c%c  %-20s  (%s)--",
                c1, state, s->b->flags & BF_READONLY ? '%' : mod,
-               mod, s->b->name);
-    if (s->b->data_type_name)
-        buf_printf(out, "%s+", s->b->data_type_name);
-    buf_puts(out, s->mode ? s->mode->name : "raw");
-    if (!s->insert)
-        buf_puts(out, " Ovwrt");
-    if (s->interactive)
-        buf_puts(out, " Interactive");
-    if (s->b->flags & BF_PREVIEW)
-        buf_puts(out, " Preview");
-    buf_puts(out, ")--");
+               mod, s->b->name, mode_name);
 }
 
 void text_mode_line(EditState *s, buf_t *out)
@@ -3309,34 +3326,44 @@ static void flush_line(DisplayState *ds,
     &&  ds->y + line_height >= 0
     &&  ds->y < e->ytop + e->height) {
         QEStyleDef styledef, default_style;
-        QELineShadow *ls;
-        uint64_t crc;
+        int no_display = 0;
 
         /* test if display needed */
-        crc = compute_crc(fragments, sizeof(*fragments) * nb_fragments, 0);
-        crc = compute_crc(ds->line_chars, sizeof(*ds->line_chars) * ds->line_index, crc);
-        if (ds->line_num >= e->shadow_nb_lines) {
-            /* realloc shadow */
-            int n = e->shadow_nb_lines;
-            e->shadow_nb_lines = n + LINE_SHADOW_INCR;
-            qe_realloc(&e->line_shadow,
-                       e->shadow_nb_lines * sizeof(QELineShadow));
-            /* put an impossible value so that we redraw */
-            memset(&e->line_shadow[n], 0xff,
-                   LINE_SHADOW_INCR * sizeof(QELineShadow));
-        }
-        /* Use checksum based line cache to improve speed in graphics mode.
-         * XXX: overlong lines will fail the cache test
-         */
-        ls = &e->line_shadow[ds->line_num];
-        if (ls->y != ds->y || ls->x != ds->x_line
-        ||  ls->height != line_height || ls->crc != crc) {
-            /* update values for the line cache */
-            ls->y = ds->y;
-            ls->x = ds->x_line;
-            ls->height = line_height;
-            ls->crc = crc;
+        if (ds->line_num >= 0 && ds->line_num < 2048) {
+            /* paranoid: prevent cache growing too large */
+            /* Use checksum based line cache to improve speed in graphics mode.
+             * XXX: overlong lines will fail the cache test
+             */
+            if (ds->line_num >= e->shadow_nb_lines) {
+                /* reallocate shadow */
+                int n = ds->line_num + LINE_SHADOW_INCR;
+                if (qe_realloc(&e->line_shadow, n * sizeof(QELineShadow))) {
+                    /* put an impossible value so that we redraw */
+                    memset(&e->line_shadow[e->shadow_nb_lines], 0xff,
+                           (n - e->shadow_nb_lines) * sizeof(QELineShadow));
+                    e->shadow_nb_lines = n;
+                }
+            }
+            if (ds->line_num < e->shadow_nb_lines) {
+                QELineShadow *ls;
+                uint64_t crc;
 
+                crc = compute_crc(fragments, sizeof(*fragments) * nb_fragments, 0);
+                crc = compute_crc(ds->line_chars, sizeof(*ds->line_chars) * ds->line_index, crc);
+                ls = &e->line_shadow[ds->line_num];
+                if (ls->y != ds->y || ls->x != ds->x_line
+                ||  ls->height != line_height || ls->crc != crc) {
+                    /* update values for the line cache */
+                    ls->y = ds->y;
+                    ls->x = ds->x_line;
+                    ls->height = line_height;
+                    ls->crc = crc;
+                } else {
+                    no_display = 1;
+                }
+            }
+        }
+        if (!no_display) {
             /* display */
             get_style(e, &default_style, QE_STYLE_DEFAULT);
             x = ds->x_start;
@@ -3827,6 +3854,7 @@ void display_printf(DisplayState *ds, int offset1, int offset2,
         /* XXX: utf-8 unsupported, not needed at this point */
         display_char(ds, offset1, offset2, *p++);
         while (*p) {
+            /* XXX: Should make these display character mouse selectable */
             display_char(ds, -1, -1, *p++);
         }
     }
@@ -4297,7 +4325,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             embedding_level = bd[0].level;
             /* XXX: use embedding level for all cases ? */
             /* CG: should query screen or window about display methods */
-            if ((c < ' ' && c != '\t') || c == 127) {
+            if ((c < ' ' && (c != '\t' || (s->flags & WF_MINIBUF))) || c == 127) {
                 if (c == '\r' && s->b->eol_type == EOL_MAC)
                     c = '\n';
                 display_printf(ds, offset0, offset, "^%c", ('@' + c) & 127);
@@ -4305,12 +4333,16 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             if (c >= 128
             &&  (s->qe_state->show_unicode == 1 ||
                  c == 0xfeff ||   /* Display BOM as \uFEFF to make it explicit */
-                 c > MAX_UNICODE_DISPLAY)) {
+                 c > MAX_UNICODE_DISPLAY ||
+                 (c < 160 && s->b->charset == &charset_raw))) {
                 /* display unsupported unicode code points as hex */
                 if (c > 0xffff) {
                     display_printf(ds, offset0, offset, "\\U%08x", c);
-                } else {
+                } else
+                if (c > 0xff) {
                     display_printf(ds, offset0, offset, "\\u%04x", c);
+                } else {
+                    display_printf(ds, offset0, offset, "\\x%02x", c);
                 }
             } else {
                 display_char_bidir(ds, offset0, offset, embedding_level, c);
@@ -4467,9 +4499,11 @@ static void generic_text_display(EditState *s)
         fill_rectangle(s->screen, s->xleft, s->ytop + ds->y,
                        s->width, s->height - ds->y,
                        default_style.bg_color);
-        /* do not forget to erase the line shadow  */
-        memset(&s->line_shadow[ds->line_num], 0xff,
-               (s->shadow_nb_lines - ds->line_num) * sizeof(QELineShadow));
+        if (ds->line_num >= 0 && ds->line_num < s->shadow_nb_lines) {
+            /* erase the line shadow for the rest of the window */
+            memset(&s->line_shadow[ds->line_num], 0xff,
+                   (s->shadow_nb_lines - ds->line_num) * sizeof(QELineShadow));
+        }
     }
     display_close(ds);
 
@@ -4493,8 +4527,10 @@ static void generic_text_display(EditState *s)
                 w = -w;
             }
             xor_rectangle(s->screen, x, y, w, h, QERGB(0xFF, 0xFF, 0xFF));
-            /* invalidate line so that the cursor will be erased next time */
-            memset(&s->line_shadow[m->linec], 0xff, sizeof(QELineShadow));
+            if (m->linec >= 0 && m->linec < s->shadow_nb_lines) {
+                /* invalidate line so that the cursor will be erased next time */
+                memset(&s->line_shadow[m->linec], 0xff, sizeof(QELineShadow));
+            }
         }
     }
     s->cur_rtl = (m->dirc == DIR_RTL);
@@ -4946,6 +4982,7 @@ void do_execute_command(EditState *s, const char *cmd, int argval)
 
 void window_display(EditState *s)
 {
+    QEmacsState *qs = s->qe_state;
     CSSRect rect;
 
     /* set the clipping rectangle to the whole window */
@@ -4955,6 +4992,11 @@ void window_display(EditState *s)
     rect.x2 = rect.x1 + s->width;
     rect.y2 = rect.y1 + s->height;
     set_clip_rectangle(s->screen, &rect);
+
+    if (qs->complete_refresh) {
+        edit_invalidate(s, 0);
+        s->borders_invalid = 1;
+    }
 
     s->mode->display(s);
 
@@ -5811,6 +5853,7 @@ void edit_close(EditState **sp)
         qe_free_mode_data(s->mode_data);
         qe_free(&s->prompt);
         qe_free(&s->line_shadow);
+        s->shadow_nb_lines = 0;
         qe_free(sp);
     }
 }

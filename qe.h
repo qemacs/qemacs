@@ -1461,7 +1461,7 @@ struct EditState {
     struct QEditScreen *screen; /* copy of qe_state->screen */
     /* display shadow to optimize redraw */
     char modeline_shadow[MAX_SCREEN_WIDTH];
-    OWNED QELineShadow *line_shadow; /* per window shadow */
+    OWNED QELineShadow *line_shadow; /* per window shadow CRC data */
     int shadow_nb_lines;
     /* compose state for input method */
     InputMethod *input_method; /* current input method */
