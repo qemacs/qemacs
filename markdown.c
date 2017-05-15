@@ -57,6 +57,7 @@ enum {
 };
 
 static ModeDef *mkd_lang_def[MKD_LANG_MAX + 1];
+static char mkd_lang_char[MKD_LANG_MAX + 1];
 
 #define MKD_BULLET_STYLES  4
 static int MkdBulletStyles[MKD_BULLET_STYLES] = {
@@ -90,7 +91,7 @@ static int mkd_scan_chunk(const unsigned int *str,
     return 0;
 }
 
-static int mkd_add_lang(const char *lang_name) {
+static int mkd_add_lang(const char *lang_name, char c) {
     ModeDef *m;
     int lang = 0;
 
@@ -98,8 +99,10 @@ static int mkd_add_lang(const char *lang_name) {
         for (lang = 1; lang < MKD_LANG_MAX; lang++) {
             if (mkd_lang_def[lang] == NULL)
                 mkd_lang_def[lang] = m;
-            if (mkd_lang_def[lang] == m)
+            if (mkd_lang_def[lang] == m) {
+                mkd_lang_char[lang] = c;
                 break;
+            }
         }
     }
     return lang;
@@ -151,15 +154,16 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     }
 
     if (colstate & IN_MKD_BLOCK) {
+        int lang = (colstate & IN_MKD_BLOCK) >> MKD_LANG_SHIFT;
+
         /* Should count number of ~ to detect end of block */
         if (ustrstart(str + j, "~~~", NULL)
-        ||  ustrstart(str + j, "```", NULL)) {
+        ||  ustrstart(str + j, "```", NULL)
+        ||  (indent < 4 && mkd_lang_char[lang] == ':')) {
             colstate &= ~IN_MKD_BLOCK;
             i = n;
             SET_COLOR(str, start, i, MKD_STYLE_TILDE);
         } else {
-            int lang = (colstate & IN_MKD_BLOCK) >> MKD_LANG_SHIFT;
-
             if (mkd_lang_def[lang]) {
                 cp->colorize_state = colstate & IN_MKD_LANG_STATE;
                 mkd_lang_def[lang]->colorize_func(cp, str + i, n - i, mkd_lang_def[lang]);
@@ -231,7 +235,8 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         base_style = MKD_STYLE_TABLE;
     } else
     if (ustrstart(str + j, "~~~", NULL)
-    ||  ustrstart(str + j, "```", NULL)) {
+    ||  ustrstart(str + j, "```", NULL)
+    ||  ustrstart(str + j, ":::", NULL)) {
         /* verbatim block */
         char lang_name[16];
         int lang = syn->colorize_flags, len;  // was MKD_LANG_MAX
@@ -245,7 +250,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         }
         lang_name[len] = '\0';
         if (len) {
-            lang = mkd_add_lang(lang_name);
+            lang = mkd_add_lang(lang_name, str[j]);
         }
         colstate |= lang << MKD_LANG_SHIFT;
         i = n;
@@ -856,7 +861,7 @@ static int litcoffee_mode_init(EditState *s, EditBuffer *b, int flags)
         s->indent_tabs_mode = 0;
         /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_WORD;
-        s->mode->colorize_flags = mkd_add_lang("coffee");
+        s->mode->colorize_flags = mkd_add_lang("coffee", 0);
     }
     return 0;
 }
