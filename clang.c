@@ -64,6 +64,7 @@ enum {
     CLANG_PAWN,
     CLANG_CMINUS,
     CLANG_GMSCRIPT,
+    CLANG_WREN,
     CLANG_RUST,
     CLANG_SWIFT,
     CLANG_ICON,
@@ -73,14 +74,15 @@ enum {
 };
 
 /* C mode options */
-#define CLANG_LEX         0x0200
-#define CLANG_YACC        0x0400
-#define CLANG_REGEX       0x0800
-#define CLANG_WLITERALS   0x1000
-#define CLANG_PREPROC     0x2000
-#define CLANG_CAP_TYPE    0x4000  /* Mixed case initial cap is type */
-#define CLANG_STR3        0x8000  /* Support """strings""" */
-#define CLANG_CC          0x3100  /* all C language features */
+#define CLANG_LEX         0x00200
+#define CLANG_YACC        0x00400
+#define CLANG_REGEX       0x00800
+#define CLANG_WLITERALS   0x01000
+#define CLANG_PREPROC     0x02000
+#define CLANG_CAP_TYPE    0x04000  /* Mixed case initial cap is type */
+#define CLANG_STR3        0x08000  /* Support """strings""" */
+#define CLANG_LINECONT    0x10000  /* support \<newline> as line continuation */
+#define CLANG_CC          0x13100  /* all C language features */
 
 static const char c_keywords[] = {
     "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
@@ -561,7 +563,8 @@ static void c_colorize_line(QEColorizeContext *cp,
                  * ignores '_' between digits and accepts 'l' or 'L' suffixes */
                 /* scala ignores '_' in integers */
                 /* XXX: should parse decimal and hex floating point syntaxes */
-                while (qe_isalnum_(str[i]) || str[i] == '.') {
+                /* 2 dots in a row are a range operator, not a decimal point */
+                while (qe_isalnum_(str[i]) || (str[i] == '.' && str[i + 1] != '.')) {
                     i++;
                 }
                 SET_COLOR(str, start, i, C_STYLE_NUMBER);
@@ -648,9 +651,10 @@ static void c_colorize_line(QEColorizeContext *cp,
     }
 
     /* strip state if not overflowing from a comment */
-    if (!(state & IN_C_COMMENT) && n > 0 && ((str[n - 1] & CHAR_MASK) != '\\'))
+    if (!(state & IN_C_COMMENT) &&
+        !((mode_flags & CLANG_LINECONT) && (n <= 0 || ((str[n - 1] & CHAR_MASK) == '\\')))) {
         state &= ~(IN_C_COMMENT1 | IN_C_PREPROCESS);
-
+    }
     cp->colorize_state = state;
 }
 
@@ -1537,6 +1541,8 @@ static const char js_keywords[] = {
     "undefined|null|true|false|Infinity|NaN|"
     /* strict mode quasi keywords */
     "eval|arguments|"
+    /* ES6 extra keywords */
+    "await|"
 };
 
 static const char js_types[] = {
@@ -1595,6 +1601,8 @@ static void js_colorize_line(QEColorizeContext *cp,
             goto parse_string;
         if (state & IN_C_STRING_Q)
             goto parse_string_q;
+        if (state & IN_C_STRING_BQ)
+            goto parse_string_bq;
         if (state & IN_C_REGEX) {
             delim = '/';
             goto parse_regex;
@@ -1683,6 +1691,19 @@ static void js_colorize_line(QEColorizeContext *cp,
                 break;
             }
             continue;
+        case '`':       /* ECMA 6 template strings */
+        parse_string_bq:
+            state |= IN_C_STRING_BQ;
+            style = C_STYLE_STRING_BQ;
+            while (i < n) {
+                c = str[i++];
+                if (c == '`') {
+                    state &= ~IN_C_STRING_BQ;
+                    break;
+                }
+            }
+            break;
+
         case '\'':      /* character constant */
         parse_string_q:
             state |= IN_C_STRING_Q;
@@ -1727,9 +1748,11 @@ static void js_colorize_line(QEColorizeContext *cp,
         default:
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
+                /* decimal, binary, octal and hexadecimal literals:
+                 * 1 0b1 0o1 0x1, case insensitive. 01 is a syntax error */
                 /* maybe ignore '_' in integers */
                 /* XXX: should parse decimal and hex floating point syntaxes */
-                while (qe_isalnum_(str[i]) || str[i] == '.') {
+                while (qe_isalnum_(str[i]) || (str[i] == '.' && str[i + 1] != '.')) {
                     i++;
                 }
                 style = C_STYLE_NUMBER;
@@ -2855,6 +2878,36 @@ static ModeDef gmscript_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Wren embeddable scripting language ----------------*/
+
+/* Simple C like syntax with some extensions:
+
+   XXX: block comments **do** nest!
+
+ */
+
+static const char wren_keywords[] = {
+    "break|class|construct|else|false|for|foreign|if|import|"
+    "in|is|null|return|static|super|this|true|while|"
+};
+
+static const char wren_types[] = {
+    "var|"
+};
+
+static ModeDef wren_mode = {
+    .name = "Wren",
+    .extensions = "wren",
+    .shell_handlers = "wren",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_WREN | CLANG_CAP_TYPE,
+    .keywords = wren_keywords,
+    .types = wren_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 /*---------------- Other C based syntax modes ----------------*/
 
 #include "rust.c"
@@ -2919,6 +2972,7 @@ static int c_init(void)
     qe_register_mode(&pawn_mode, MODEF_SYNTAX);
     qe_register_mode(&cminus_mode, MODEF_SYNTAX);
     qe_register_mode(&gmscript_mode, MODEF_SYNTAX);
+    qe_register_mode(&wren_mode, MODEF_SYNTAX);
     rust_init();
     swift_init();
     icon_init();
