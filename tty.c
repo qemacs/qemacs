@@ -39,6 +39,8 @@ typedef uint64_t TTYChar;
 #define TTY_STYLE_BITS        32
 #define TTY_FG_COLORS         7936
 #define TTY_BG_COLORS         7936
+#define TTY_RGB_FG(r,g,b)     (0x1000 | (((r) & 0xF0) << 4) | ((g) & 0xF0) | ((b) >> 4))
+#define TTY_RGB_BG(r,g,b)     (0x1000 | (((r) & 0xF0) << 4) | ((g) & 0xF0) | ((b) >> 4))
 #define TTY_CHAR(ch,fg,bg)    ((uint32_t)(ch) | ((uint64_t)((fg) | ((bg) << 17)) << 32))
 #define TTY_CHAR2(ch,col)     ((uint32_t)(ch) | ((uint64_t)(col) << 32))
 #define TTY_CHAR_GET_CH(cc)   ((uint32_t)(cc))
@@ -61,6 +63,8 @@ typedef uint32_t TTYChar;
 #define TTY_STYLE_BITS        16
 #define TTY_FG_COLORS         256
 #define TTY_BG_COLORS         16
+#define TTY_RGB_FG(r,g,b)     (16 + ((r) / 51 * 36) + ((g) / 51 * 6) | ((b) / 51))
+#define TTY_RGB_BG(r,g,b)     qe_map_color(QERGB(r, g, b), xterm_colors, 16, NULL)
 #define TTY_CHAR(ch,fg,bg)    ((uint32_t)(ch) | ((uint32_t)((fg) | ((bg) << 12)) << 16))
 #define TTY_CHAR2(ch,col)     ((uint32_t)(ch) | ((uint32_t)(col) << 16))
 #define TTY_CHAR_GET_CH(cc)   ((cc) & 0xFFFF)
@@ -1430,13 +1434,91 @@ static void tty_dpy_bmp_draw(QEditScreen *s, QEBitmap *bp,
     }
 }
 
+#ifdef CONFIG_TINY
+#define tty_dpy_draw_picture   NULL
+#else
+static int tty_dpy_draw_picture(QEditScreen *s,
+                                int dst_x, int dst_y, int dst_w, int dst_h,
+                                const QEPicture *ip0,
+                                int src_x, int src_y, int src_w, int src_h,
+                                int flags)
+{
+    TTYState *ts = s->priv_data;
+    TTYChar *ptr;
+    int x, y;
+    const QEPicture *ip = ip0;
+    QEPicture *ip1 = NULL;
+
+    if ((src_w == dst_w && src_h == 2 * dst_h)
+    &&  ip->format == QEBITMAP_FORMAT_8BIT
+    &&  ip->palette
+    &&  ip->palette_size == 256
+    &&  !memcmp(ip->palette, xterm_colors, 256 * sizeof(*ip->palette))) {
+        /* Handle 8-bit picture with direct terminal colors */
+        ptr = ts->screen + dst_y * s->width + dst_x;
+        for (y = 0; y < dst_h; y++) {
+            unsigned char *p1 = ip->data[0] + (src_y + y * 2) * ip->linesize[0] + src_x;
+            unsigned char *p2 = p1 + ip->linesize[0];
+            ts->line_updated[dst_y + y] = 1;
+            for (x = 0; x < dst_w; x++) {
+                int bg = p1[x];
+                int fg = p2[x];
+                if (fg == bg)
+                    ptr[x] = TTY_CHAR(' ', fg, bg);
+                else
+                    ptr[x] = TTY_CHAR(0x2584, fg, bg);
+            }
+            ptr += s->width;
+        }
+    } else {
+        /* Convert picture to true color bitmap */
+        if (ip->format != QEBITMAP_FORMAT_RGBA32
+        ||  !(src_w == dst_w && src_h == 2 * dst_h)) {
+            ip1 = qe_create_picture(dst_w, 2 * dst_h, QEBITMAP_FORMAT_RGBA32, 0);
+            if (!ip1)
+                return -1;
+            if (qe_picture_copy(ip1, 0, 0, ip1->width, ip1->height,
+                                ip0, src_x, src_y, src_w, src_h, flags)) {
+                /* unsupported conversion or scaling */
+                qe_free_picture(&ip1);
+                return -1;
+            }
+            ip = ip1;
+            src_x = src_y = 0;
+            src_w = ip1->width;
+            src_h = ip1->height;
+        }
+        /* Use terminal true color emulation */
+        ptr = ts->screen + dst_y * s->width + dst_x;
+        for (y = 0; y < dst_h; y++) {
+            uint32_t *p1 = (uint32_t*)(void*)(ip->data[0] + (src_y + y * 2) * ip->linesize[0]) + src_x;
+            uint32_t *p2 = p1 + (ip->linesize[0] >> 2);
+            ts->line_updated[dst_y + y] = 1;
+            for (x = 0; x < dst_w; x++) {
+                int bg = p1[x];
+                int fg = p2[x];
+                bg = TTY_RGB_BG(QERGB_RED(bg), QERGB_GREEN(bg), QERGB_BLUE(bg));
+                fg = TTY_RGB_FG(QERGB_RED(fg), QERGB_GREEN(fg), QERGB_BLUE(fg));
+                if (fg == bg)
+                    ptr[x] = TTY_CHAR(' ', fg, bg);
+                else
+                    ptr[x] = TTY_CHAR(0x2584, fg, bg);
+            }
+            ptr += s->width;
+        }
+        qe_free_picture(&ip1);
+    }
+    return 0;
+}
+#endif
+
 static void tty_dpy_describe(QEditScreen *s, EditBuffer *b)
 {
     comb_cache_describe(s, b);
 }
 
 static QEDisplay tty_dpy = {
-    "vt100",
+    "vt100", 1, 2,
     tty_dpy_probe,
     tty_dpy_init,
     tty_dpy_close,
@@ -1458,6 +1540,7 @@ static QEDisplay tty_dpy = {
     tty_dpy_bmp_draw,
     tty_dpy_bmp_lock,
     tty_dpy_bmp_unlock,
+    tty_dpy_draw_picture,
     NULL, /* dpy_full_screen */
     tty_dpy_describe,
     NULL, /* next */

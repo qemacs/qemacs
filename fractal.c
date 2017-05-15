@@ -309,7 +309,8 @@ static ModeDef fractint_mode = {
 
 /*---------------- Interactive fractal explorer ----------------*/
 
-#define USE_BITMAP_API  1   /* Using device bitmap API */
+#define USE_BITMAP_API    0   /* Using device bitmap API */
+#define USE_DRAW_PICTURE  1   /* Using qe_draw_picture() */
 
 static ModeDef fractal_mode;
 
@@ -328,7 +329,7 @@ typedef struct FractalState FractalState;
 struct FractalState {
     QEModeData base;
 
-    int cols, rows;     /* fractal size in pixels */
+    int width, height;  /* fractal size in pixels */
     int type;           /* fractal type 0..8 */
     int maxiter;        /* maximum iteration number */
     int cb, nc;         /* color palette base and length */
@@ -338,11 +339,13 @@ struct FractalState {
     fnum_t bailout;     /* maximum squared module (default 4.0) */
     fnum_t x, y;        /* center position */
     fnum_t m0, m1, m2, m3; /* rotation matrix */
-    int hfactor;        /* vertical pixel granularity */
     int shift;          /* color animation base */
     QEColor colors[256]; /* color palette */
     QEditScreen *screen;    /* for bmp_free() */
     QEBitmap *disp_bmp;     /* device image */
+#if USE_DRAW_PICTURE
+    QEPicture *ip;
+#endif
 };
 
 const char fractal_default_parameters[] = {
@@ -508,7 +511,7 @@ static void fractal_invalidate(FractalState *ms) {
     /* This will force fractal image recomputation */
     /* XXX: color changes should not cause recomputation
        if the fractal is computed as a paletted image */
-    ms->cols = ms->rows = 0;
+    ms->width = ms->height = 0;
 }
 
 static void fractal_set_rotation(FractalState *ms, int rot) {
@@ -566,11 +569,11 @@ static int fractal_set_colors(FractalState *ms, const char *p, const char **pp) 
     if (p) {
         if (strmatchword(p, "gray256", pp)) {
             int c;
-            for (c = 0; c < 256; c++) {
-                ms->colors[c] = QERGB(c, c, c);
+            for (c = 1; c < 256; c++) {
+                ms->colors[256 - c] = QERGB(c, c, c);
             }
-            ms->cb = 0;
-            ms->nc = 256;
+            ms->cb = 1;
+            ms->nc = 255;
         } else
         if (strmatchword(p, "gray", pp)) {
             ms->cb = 232;
@@ -619,7 +622,7 @@ static void fractal_set_parameters(EditState *s, FractalState *ms, const char *p
 {
     const char *p;
 
-    ms->cols = ms->rows = 0;    /* force refresh */
+    ms->width = ms->height = 0;    /* force redraw */
 
     for (p = parms;;) {
         p += strspn(p, ";, \t\r\n");
@@ -670,7 +673,7 @@ static void fractal_set_parameters(EditState *s, FractalState *ms, const char *p
 static void do_fractal_draw(EditState *s, FractalState *ms)
 {
 #if USE_BITMAP_API
-    int cols = ms->cols, rows = ms->rows;
+    int width = ms->width, height = ms->height;
     int maxiter = ms->maxiter + ms->zoom, nc = ms->nc;
     int i, nx, ny, shift;
     fnum_t x, y, dx, dy;
@@ -680,33 +683,29 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
     uint32_t *palette32 = NULL;
     QEPicture pict;
 
-    if (s->height == 0 || s->width == 0 || rows == 0 || cols == 0 || nc == 0)
+    if (s->width == 0 || s->height == 0 || width == 0 || height == 0 || nc == 0)
         return;
 
     if (s->width == s->cols) {
-        /* character based, assume 80x25 4/3 aspect ratio */
-        /* XXX: get subsampling and aspect ratio from window or screen */
-        ms->hfactor = 2;
-        rows *= ms->hfactor;
-        dx = 3.2 * ms->scale / cols;
+        /* character based, assume 80x25 4/3 aspect ratio, 2 pixels per char */
+        dx = 3.2 * ms->scale / width;
         dy = dx * 1.2;
     } else {
         /* pixel based, assume 100% pixel aspect ratio */
-        ms->hfactor = 1;
-        cols = s->width;
-        rows = s->height;
-        dy = dx = 3.2 * ms->scale / cols;
+        dy = dx = 3.2 * ms->scale / width;
     }
-    if (ms->disp_bmp == NULL || ms->disp_bmp->width != cols || ms->disp_bmp->height != rows) {
+    if (ms->disp_bmp == NULL
+    ||  ms->disp_bmp->width != width
+    ||  ms->disp_bmp->height != height) {
         bmp_free(ms->screen, &ms->disp_bmp);
         /* create the displayed bitmap and put the image in it */
         ms->screen = s->screen;
-        ms->disp_bmp = bmp_alloc(ms->screen, cols, rows, 0);
+        ms->disp_bmp = bmp_alloc(ms->screen, width, height, 0);
     }
     if (!ms->disp_bmp)
         return;
 
-    bmp_lock(ms->screen, ms->disp_bmp, &pict, 0, 0, cols, rows);
+    bmp_lock(ms->screen, ms->disp_bmp, &pict, 0, 0, width, height);
 
     /* Compute shifted palette */
     shift = nc + ms->shift % nc; /* 0 < shift < 2 * nc */
@@ -724,10 +723,10 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
     }
 
     /* Compute fractal bitmap */
-    for (ny = 0, y = -dy * rows / 2; ny < rows; ny++, y += dy) {
+    for (ny = 0, y = -dy * height / 2; ny < height; ny++, y += dy) {
         if (pict.format == QEBITMAP_FORMAT_8BIT) {
             unsigned char *pb = pict.data[0] + ny * pict.linesize[0];
-            for (nx = 0, x = -dx * cols / 2; nx < cols; nx++, x += dx) {
+            for (nx = 0, x = -dx * width / 2; nx < width; nx++, x += dx) {
                 fnum_t xr = ms->x + x * ms->m0 + y * ms->m1;
                 fnum_t yr = ms->y + x * ms->m2 + y * ms->m3;
                 pb[nx] = palette8[(*func)(xr, yr, ms->bailout, maxiter)];
@@ -735,7 +734,7 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
         } else
         if (pict.format == QEBITMAP_FORMAT_RGBA32) {
             uint32_t *pb = (uint32_t *)(void*)(pict.data[0] + ny * pict.linesize[0]);
-            for (nx = 0, x = -dx * cols / 2; nx < cols; nx++, x += dx) {
+            for (nx = 0, x = -dx * width / 2; nx < width; nx++, x += dx) {
                 fnum_t xr = ms->x + x * ms->m0 + y * ms->m1;
                 fnum_t yr = ms->y + x * ms->m2 + y * ms->m3;
                 pb[nx] = palette32[(*func)(xr, yr, ms->bailout, maxiter)];
@@ -746,8 +745,46 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
     qe_free(&palette8);
     qe_free(&palette32);
     edit_invalidate(s, 1);
+#elif USE_DRAW_PICTURE
+    int width = ms->width, height = ms->height, zoom = ms->zoom;
+    int maxiter = ms->maxiter + zoom, cb = ms->cb, nc = ms->nc;
+    int i, nx, ny;
+    fnum_t xc = ms->x, yc = ms->y, scale = ms->scale;
+    fnum_t bailout = ms->bailout;
+    fnum_t x, y, dx, dy, xr, yr;
+    int (*func)(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) =
+        fractal_type[ms->type].func;
+
+    if (s->width == 0 || s->height == 0 || width == 0 || height == 0 || nc == 0)
+        return;
+
+    if (s->width == s->cols) {
+        /* character based, assume 80x25 4/3 aspect ratio, 2 pixels per char */
+        dx = 3.2 * scale / width;
+        dy = dx * 1.2;
+    } else {
+        /* pixel based, assume 100% pixel aspect ratio */
+        dy = dx = 3.2 * scale / width;
+    }
+    if (ms->ip == NULL || ms->ip->width != width || ms->ip->height != height) {
+        qe_free_picture(&ms->ip);
+        ms->ip = qe_create_picture(width, height, QEBITMAP_FORMAT_8BIT, 0);
+    }
+    if (!ms->ip)
+        return;
+
+    for (ny = 0, y = -dy * height / 2; ny < height; ny++, y += dy) {
+        unsigned char *pb = ms->ip->data[0] + ny * ms->ip->linesize[0];
+        for (nx = 0, x = -dx * width / 2; nx < width; nx++, x += dx) {
+            xr = xc + x * ms->m0 + y * ms->m1;
+            yr = yc + x * ms->m2 + y * ms->m3;
+            i = (*func)(xr, yr, bailout, maxiter);
+            pb[nx] = (i >= maxiter) ? 0 : cb + i % nc;
+        }
+    }
+    edit_invalidate(s, 1);
 #else
-    int cols = ms->cols, rows = ms->rows;
+    int width = ms->width, height = ms->height / 2;
     int maxiter = ms->maxiter + ms->zoom, nc = ms->nc;
     int i, nx, ny, fg, bg, shift;
     fnum_t x, y, dx, dy;
@@ -755,17 +792,16 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
         fractal_type[ms->type].func;
     unsigned char *palette8 = NULL;
 
-    if (s->height == 0 || s->width == 0 || rows == 0 || cols == 0 || nc == 0)
+    if (s->width == 0 || s->height == 0 || width == 0 || height == 0 || nc == 0)
         return;
 
-    ms->hfactor = 2;
-    dx = 3.2 * ms->scale / cols;
+    dx = 3.2 * ms->scale / width;
     if (s->width == s->cols) {
-        /* character based, assume 80x25 4/3 aspect ratio */
+        /* character based, assume 80x25 4/3 aspect ratio, 2 pixels per char */
         dy = dx * 2.4;
     } else {
         /* pixel based, assume 100% pixel aspect ratio */
-        dy = dx * cols / s->width * s->height / rows;
+        dy = dx * width / s->width * s->height / height;
     }
 
     /* Compute shifted palette */
@@ -779,8 +815,8 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
 
     eb_delete_range(s->b, 0, s->b->total_size);
 
-    for (ny = 0, y = -dy * rows / 2; ny < rows; ny++, y += dy) {
-        for (nx = 0, x = -dx * cols / 2; nx < cols; nx++, x += dx) {
+    for (ny = 0, y = -dy * height / 2; ny < height; ny++, y += dy) {
+        for (nx = 0, x = -dx * width / 2; nx < width; nx++, x += dx) {
             fnum_t xr = ms->x + x * ms->m0 + y * ms->m1;
             fnum_t yr = ms->y + x * ms->m2 + y * ms->m3;
             bg = palette8[(*func)(xr, yr, ms->bailout, maxiter)];
@@ -801,18 +837,64 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
 #if USE_BITMAP_API
 static void fractal_display(EditState *s) {
     FractalState *ms = fractal_get_state(s, 0);
-    int col = QERGB(0, 0, 0);
+    QEColor col = qe_styles[QE_STYLE_GUTTER].bg_color;
 
     if (s->display_invalid) {
-        if (ms && ms->disp_bmp && ms->hfactor) {
+        if (ms && ms->disp_bmp) {
             int w = min(s->width, ms->disp_bmp->width);
-            int h = min(s->height, ms->disp_bmp->height / ms->hfactor);
+            int h = min(s->height, ms->disp_bmp->height / s->screen->dpy.yfactor);
             int x = (s->width - w) / 2;
             int y = (s->height - h) / 2;
 
             bmp_draw(s->screen, ms->disp_bmp,
                      s->xleft + x, s->ytop + y, w, h, 0, 0, 0);
             fill_border(s, x, y, w, h, col);
+        } else {
+            fill_rectangle(s->screen, s->xleft, s->ytop, s->width, s->height, col);
+        }
+        s->display_invalid = 0;
+    }
+    if (s->qe_state->active_window == s) {
+        /* Update cursor */
+        int xc = s->xleft;
+        int yc = s->ytop;
+        int w = s->char_width;
+        int h = s->line_height;
+        if (s->screen->dpy.dpy_cursor_at) {
+            /* hardware cursor */
+            s->screen->dpy.dpy_cursor_at(s->screen, xc, yc, w, h);
+        } else {
+            xor_rectangle(s->screen, xc, yc, w, h, QERGB(0xFF, 0xFF, 0xFF));
+        }
+    }
+}
+#endif
+
+#if USE_DRAW_PICTURE
+static void fractal_display(EditState *s) {
+    FractalState *ms = fractal_get_state(s, 0);
+    QEColor col = qe_styles[QE_STYLE_GUTTER].bg_color;
+
+    if (s->display_invalid) {
+        if (ms && ms->ip) {
+            int w = min(s->width, ms->ip->width);
+            int h = min(s->height, ms->ip->height / s->screen->dpy.yfactor);
+            int x0 = (s->width - w) / 2;
+            int y0 = (s->height - h) / 2;
+            uint32_t palette[256];
+            int c;
+
+            palette[0] = ms->colors[0];
+            for (c = 1; c < 256; c++) {
+                palette[c] = ms->colors[(c + ms->shift) & 255];
+            }
+            ms->ip->palette = palette;
+            ms->ip->palette_size = 256;
+            qe_draw_picture(s->screen, s->xleft + x0, s->ytop + y0, w, h,
+                            ms->ip, 0, 0, w, h * s->screen->dpy.yfactor,
+                            0, QERGB(128, 128, 128));
+            ms->ip->palette = NULL;
+            fill_border(s, x0, y0, w, h, col);
         } else {
             fill_rectangle(s->screen, s->xleft, s->ytop, s->width, s->height, col);
         }
@@ -871,7 +953,11 @@ static void do_fractal_shift_colors(EditState *s, int delta) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
         ms->shift += delta;
+#if USE_BITMAP_API
         fractal_invalidate(ms);
+#else
+        edit_invalidate(s, 1);
+#endif
     }
 }
 
@@ -885,7 +971,11 @@ static void do_fractal_set_colors(EditState *s, int type) {
         if (type == 1) {
             fractal_set_colors(ms, "gray", NULL);
         }
+#if USE_BITMAP_API
         fractal_invalidate(ms);
+#else
+        edit_invalidate(s, 1);
+#endif
     }
 }
 
@@ -942,7 +1032,7 @@ static void do_fractal_help(EditState *s)
     eb_printf(b, "%*s: %s\n", w, "formula", fractal_type[ms->type].formula);
     eb_printf(b, "%*s: "MFT"\n", w, "x", ms->x);
     eb_printf(b, "%*s: "MFT"\n", w, "y", ms->y);
-    eb_printf(b, "%*s: %dx%d\n", w, "size", ms->cols, ms->rows * ms->hfactor);
+    eb_printf(b, "%*s: %dx%d\n", w, "size", ms->width, ms->height);
     eb_printf(b, "%*s: %d\n", w, "zoom", ms->zoom);
     eb_printf(b, "%*s: %.6g\n", w, "scale", (double)ms->scale);
     eb_printf(b, "%*s: %d\n", w, "rot", ms->rot);
@@ -975,12 +1065,19 @@ static void do_fractal_help(EditState *s)
 static void fractal_display_hook(EditState *s) {
     FractalState *ms = fractal_get_state(s, 0);
     if (ms) {
+#if USE_BITMAP_API || USE_DRAW_PICTURE
+        int width = s->width;
+        int height = s->height * s->screen->dpy.yfactor;
+#else
+        int width = s->cols;
+        int height = s->rows * 2;
+#endif
         if (s->xleft == 0 && s->ytop == 0
-        &&  (s->rows != ms->rows || s->cols != ms->cols)) {
+        &&  (ms->height != height || ms->width != width)) {
             /* XXX: should use a separate thread for this */
             /* XXX: should use a different bitmap for each window */
-            ms->cols = s->cols;
-            ms->rows = s->rows;
+            ms->width = width;
+            ms->height = height;
             do_fractal_draw(s, ms);
         }
     }
@@ -1059,6 +1156,12 @@ static void fractal_mode_free(EditBuffer *b, void *state) {
 
     bmp_free(ms->screen, &ms->disp_bmp);
 #endif
+#if USE_DRAW_PICTURE
+    FractalState *ms = state;
+
+    /* free bitmap and palette */
+    qe_free_picture(&ms->ip);
+#endif
 }
 
 static void do_mandelbrot_test(EditState *s) {
@@ -1075,7 +1178,7 @@ static void do_mandelbrot_test(EditState *s) {
         fractal_mode.mode_free = fractal_mode_free;
         fractal_mode.display_hook = fractal_display_hook;
         fractal_mode.default_wrap = WRAP_TRUNCATE;
-#if USE_BITMAP_API
+#if USE_BITMAP_API || USE_DRAW_PICTURE
         fractal_mode.display = fractal_display;
 #endif
         qe_register_mode(&fractal_mode, MODEF_NOCMD | MODEF_VIEW);

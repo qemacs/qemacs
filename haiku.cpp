@@ -864,7 +864,7 @@ static void haiku_full_screen(QEditScreen *s, int full_screen)
 }
 
 static QEDisplay haiku_dpy = {
-    "haiku",
+    "haiku", 1, 1,
     haiku_probe,
     haiku_init,
     haiku_close,
@@ -886,6 +886,7 @@ static QEDisplay haiku_dpy = {
     NULL, /* dpy_bmp_draw */
     NULL, /* dpy_bmp_lock */
     NULL, /* dpy_bmp_unlock */
+    NULL, /* dpy_draw_picture */
     haiku_full_screen,
     NULL, /* dpy_describe */
     NULL, /* next */

@@ -108,7 +108,7 @@ static int ppm_init(QEditScreen *s, int w, int h);
 static void ppm_close(QEditScreen *s);
 
 static QEDisplay ppm_dpy = {
-    "ppm",
+    "ppm", 1, 1,
     NULL,
     ppm_init,
     ppm_close,
@@ -130,6 +130,7 @@ static QEDisplay ppm_dpy = {
     NULL, /* dpy_bmp_draw */
     NULL, /* dpy_bmp_lock */
     NULL, /* dpy_bmp_unlock */
+    NULL, /* dpy_draw_picture */
     NULL, /* dpy_full_screen */
     NULL, /* dpy_describe */
     NULL, /* next */

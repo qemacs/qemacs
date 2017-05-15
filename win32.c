@@ -511,7 +511,7 @@ static void win_set_clip(QEditScreen *s,
 }
 
 static QEDisplay win32_dpy = {
-    "win32",
+    "win32", 1, 1,
     win_probe,
     win_init,
     win_close,
@@ -533,6 +533,7 @@ static QEDisplay win32_dpy = {
     NULL, /* dpy_bmp_draw */
     NULL, /* dpy_bmp_lock */
     NULL, /* dpy_bmp_unlock */
+    NULL, /* dpy_draw_picture */
     NULL, /* dpy_full_screen */
     NULL, /* dpy_describe */
     NULL, /* next */

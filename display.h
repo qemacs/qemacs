@@ -64,11 +64,14 @@ typedef struct QECharMetrics {
 
 typedef enum QEBitmapFormat {
     QEBITMAP_FORMAT_1BIT = 0,
+    QEBITMAP_FORMAT_4BIT,
     QEBITMAP_FORMAT_8BIT,
     QEBITMAP_FORMAT_RGB565,
     QEBITMAP_FORMAT_RGB555,
     QEBITMAP_FORMAT_RGB24,
+    QEBITMAP_FORMAT_BGR24,
     QEBITMAP_FORMAT_RGBA32,
+    QEBITMAP_FORMAT_BGRA32,
     QEBITMAP_FORMAT_YUV420P,
 } QEBitmapFormat;
 
@@ -93,6 +96,9 @@ typedef struct QEPicture {
     QEBitmapFormat format;
     unsigned char *data[4];
     int linesize[4];
+    QEColor *palette;
+    int palette_size;
+    int tcolor;
 } QEPicture;
 
 typedef struct QEditScreen QEditScreen;
@@ -100,6 +106,7 @@ typedef struct QEDisplay QEDisplay;
 
 struct QEDisplay {
     const char *name;
+    int xfactor, yfactor;
     int (*dpy_probe)(void);
     int (*dpy_init)(QEditScreen *s, int w, int h);
     void (*dpy_close)(QEditScreen *s);
@@ -135,6 +142,11 @@ struct QEDisplay {
     void (*dpy_bmp_lock)(QEditScreen *s, QEBitmap *bitmap, QEPicture *pict,
                          int x1, int y1, int w1, int h1);
     void (*dpy_bmp_unlock)(QEditScreen *s, QEBitmap *b);
+    int (*dpy_draw_picture)(QEditScreen *s,
+                            int dst_x, int dst_y, int dst_w, int dst_h,
+                            const QEPicture *ip,
+                            int src_x, int src_y, int src_w, int src_h,
+                            int flags);
     void (*dpy_full_screen)(QEditScreen *s, int full_screen);
     void (*dpy_describe)(QEditScreen *s, EditBuffer *b);
     QEDisplay *next;
@@ -285,4 +297,27 @@ static inline void release_font(qe__unused__ QEditScreen *s, QEFont *font) {
         font->refcount--;
 }
 
+QEPicture *qe_create_picture(int width, int height,
+                             QEBitmapFormat format, int flags);
+static inline int qe_picture_lock(QEPicture *ip) { return ip == NULL; }
+static inline void qe_picture_unlock(QEPicture *ip) {}
+void qe_free_picture(QEPicture **ipp);
+
+#define QE_PAL_MODE(r, g, b, incr)  (((r) << 12) | ((g) << 8) | ((b) << 4) | (incr))
+#define QE_PAL_RGB3     QE_PAL_MODE(0, 1, 2, 3)
+#define QE_PAL_RGB4     QE_PAL_MODE(0, 1, 2, 4)
+#define QE_PAL_BGR3     QE_PAL_MODE(2, 1, 0, 3)
+#define QE_PAL_BGR4     QE_PAL_MODE(2, 1, 0, 4)
+#define QE_PAL_QECOLOR  QE_PAL_MODE(2, 1, 0, 4)   /* XXX: depends on endianness */
+int qe_picture_set_palette(QEPicture *ip, int mode,
+                           unsigned char *p, int count, int tcolor);
+
+int qe_picture_copy(QEPicture *dst, int dst_x, int dst_y, int dst_w, int dst_h,
+                    const QEPicture *src, int src_x, int src_y, int src_w, int src_h,
+                    int flags);
+
+int qe_draw_picture(QEditScreen *s, int dst_x, int dst_y, int dst_w, int dst_h,
+                    const QEPicture *ip,
+                    int src_x, int src_y, int src_w, int src_h,
+                    int flags, QEColor col);
 #endif

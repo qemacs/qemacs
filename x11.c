@@ -1059,6 +1059,7 @@ static void x11_dpy_flush(QEditScreen *s)
         r++;
     }
 #endif
+    /* XXX: update cursor? */
     XFlush(xs->display);
 #ifdef CONFIG_DOUBLE_BUFFER
     update_reset(xs);
@@ -1895,8 +1896,72 @@ static void x11_dpy_bmp_unlock(QEditScreen *s, QEBitmap *b)
     }
 }
 
+static int x11_dpy_draw_picture(QEditScreen *s,
+                                int dst_x, int dst_y, int dst_w, int dst_h,
+                                const QEPicture *ip0,
+                                int src_x, int src_y, int src_w, int src_h,
+                                int flags)
+{
+    X11State *xs = s->priv_data;
+    XImage *im;
+    int status = 0, depth;
+    const QEPicture *ip = ip0;
+    QEPicture *ip1 = NULL;
+
+    /* Only support 32-bit true color X11 displays */
+    /* XXX: should enumerate visuals? */
+    depth = DefaultDepth(xs->display, xs->xscreen);
+    if (depth != 24)
+        return 1;
+
+    if (ip->format != QEBITMAP_FORMAT_RGBA32
+    ||  !(src_w == dst_w && src_h == dst_h)) {
+        ip1 = qe_create_picture(dst_w, dst_h, QEBITMAP_FORMAT_RGBA32, 0);
+        if (!ip1)
+            return 2;
+        /* Convert and/or resize picture */
+        if (qe_picture_copy(ip1, 0, 0, dst_w, dst_h,
+                            ip0, src_x, src_y, src_w, src_h, flags)) {
+            qe_free_picture(&ip1);
+            return 3;
+        }
+        ip = ip1;
+        src_x = src_y = 0;
+        src_w = dst_w;
+        src_h = dst_h;
+    }
+
+    im = XCreateImage(xs->display, xs->attr.visual, depth, ZPixmap, 0,
+                      NULL, dst_w, dst_h, 32, ip->linesize[0] / 4);
+    if (im == NULL) {
+        qe_free_picture(&ip1);
+        return 4;
+    }
+    if (im->bits_per_pixel != 32) {
+        XDestroyImage(im);
+        qe_free_picture(&ip1);
+        return 5;
+    }
+
+    if (ip->format == QEBITMAP_FORMAT_RGBA32) {
+        im->data = (char *)(ip->data[0] + src_y * ip->linesize[0] + src_x * 4);
+        im->bytes_per_line = ip->linesize[0];
+        update_rect(xs, dst_x, dst_y, dst_x + dst_w, dst_y + dst_h);
+        status = XPutImage(xs->display, xs->dbuffer, xs->gc, im,
+                           0, 0, dst_x, dst_y, dst_w, dst_h);
+        XFlush(xs->display);
+    } else {
+        status = 6;
+    }
+
+    im->data = NULL;
+    XDestroyImage(im);
+    qe_free_picture(&ip1);
+    return status;
+}
+
 static QEDisplay x11_dpy = {
-    "x11",
+    "x11", 1, 1,
     x11_dpy_probe,
     x11_dpy_init,
     x11_dpy_close,
@@ -1918,6 +1983,7 @@ static QEDisplay x11_dpy = {
     x11_dpy_bmp_draw,
     x11_dpy_bmp_lock,
     x11_dpy_bmp_unlock,
+    x11_dpy_draw_picture,
     x11_dpy_full_screen,
     NULL, /* dpy_describe */
     NULL, /* next */
