@@ -4727,6 +4727,237 @@ static int scad_init(void)
     return 0;
 }
 
+/*---------------- Magpie coloring ----------------*/
+
+static char const magpie_keywords[] = {
+    "and|as|async|break|case|catch|defclass|def|do|else|end|fn|for|if|"
+    "import|in|is|let|match|or|return|then|throw|var|val|while|with|"
+    "not|native|namespace|class|struct|using|new|interface|"
+    "get|set|shared|done|"
+    "false|true|nothing|it|"
+};
+
+enum {
+    IN_MAGPIE_COMMENT   = 0x01,
+    IN_MAGPIE_STRING2   = 0x02,      /* double quote */
+};
+
+enum {
+    MAGPIE_STYLE_TEXT =     QE_STYLE_DEFAULT,
+    MAGPIE_STYLE_SHBANG =   QE_STYLE_PREPROCESS,
+    MAGPIE_STYLE_COMMENT =  QE_STYLE_COMMENT,
+    MAGPIE_STYLE_STRING2 =  QE_STYLE_STRING,
+    MAGPIE_STYLE_NUMBER =   QE_STYLE_NUMBER,
+    MAGPIE_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
+    MAGPIE_STYLE_TYPE =     QE_STYLE_TYPE,
+    MAGPIE_STYLE_FUNCTION = QE_STYLE_FUNCTION,
+    MAGPIE_STYLE_SYMBOL =   QE_STYLE_VARIABLE,
+};
+
+static int magpie_get_name(char *buf, int size, unsigned int *str)
+{
+    int len, i = 0, j;
+
+    for (len = 0, j = i; qe_isalnum_(str[j]); j++) {
+        if (len < size - 1)
+            buf[len++] = str[j];
+    }
+    if (len < size) {
+        buf[len] = '\0';
+    }
+    return j - i;
+}
+
+static void magpie_colorize_line(QEColorizeContext *cp,
+                                 unsigned int *str, int n, ModeDef *syn)
+{
+    int i = 0, start = i, c, style = 0, indent;
+    int state = cp->colorize_state;
+    char kbuf[64];
+
+    for (indent = 0; qe_isblank(str[indent]); indent++)
+        continue;
+
+    if (state & IN_MAGPIE_COMMENT)
+        goto parse_comment;
+
+    if (state & IN_MAGPIE_STRING2)
+        goto parse_string2;
+
+    while (i < n && qe_isblank(str[i]))
+        i++;
+
+    indent = i;
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '/':
+            if (str[i] == '*') {
+                /* C comment */
+                i++;
+            parse_comment:
+                state = IN_MAGPIE_COMMENT;
+                for (; i < n; i++) {
+                    if (str[i] == '*' && str[i + 1] == '/') {
+                        i += 2;
+                        state &= ~IN_MAGPIE_COMMENT;
+                        break;
+                    }
+                }
+                style = MAGPIE_STYLE_COMMENT;
+                break;
+            }
+            if (str[i] == '/') {
+                i = n;
+                style = MAGPIE_STYLE_COMMENT;
+                break;
+            }            
+            continue;
+
+        case '#':
+            if (str[i] == '!') {
+                i = n;
+                style = MAGPIE_STYLE_SHBANG;
+                break;
+            }
+            i = n;
+            style = MAGPIE_STYLE_COMMENT;   /* probably incorrect */
+            break;
+
+        case '\'':
+            /* parse symbol quoted string const */
+            i += magpie_get_name(kbuf, countof(kbuf), str + i);
+            style = MAGPIE_STYLE_SYMBOL;
+            break;
+
+        case '\"':
+            /* parse double quoted string const */
+        parse_string2:
+            c = '\0';
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\') {
+                    if (i < n) {
+                        i += 1;
+                    }
+                } else
+                if (c == '#' && str[i] == '{') {
+                    /* should parse full syntax */
+                    while (i < n && str[i++] != '}')
+                        continue;
+                } else
+                if (c == '\"') {
+                    break;
+                }
+            }
+            if (c == '\"') {
+                if (state == IN_MAGPIE_STRING2)
+                    state = 0;
+            } else {
+                if (state == 0)
+                    state = IN_MAGPIE_STRING2;
+            }
+            style = MAGPIE_STYLE_STRING2;
+            break;
+
+        case '.':
+            if (qe_isdigit_(str[i]))
+                goto parse_decimal;
+            continue;
+
+        default:
+            if (qe_isdigit(c)) {
+                if (c == '0' && qe_tolower(str[i]) == 'b') {
+                    /* binary numbers */
+                    for (i += 1; qe_isbindigit_(str[i]); i++)
+                        continue;
+                } else
+                if (c == '0' && qe_tolower(str[i]) == 'o') {
+                    /* octal numbers */
+                    for (i += 1; qe_isoctdigit_(str[i]); i++)
+                        continue;
+                } else
+                if (c == '0' && qe_tolower(str[i]) == 'x') {
+                    /* hexadecimal numbers */
+                    for (i += 1; qe_isxdigit_(str[i]); i++)
+                        continue;
+                } else
+                if (c == '0' && qe_tolower(str[i]) == 'd') {
+                    /* hexadecimal numbers */
+                    for (i += 1; qe_isdigit_(str[i]); i++)
+                        continue;
+                } else {
+                    /* decimal numbers */
+                    for (; qe_isdigit_(str[i]); i++)
+                        continue;
+                    if (str[i] == '.') {
+                        i++;
+                    parse_decimal:
+                        for (; qe_isdigit_(str[i]); i++)
+                            continue;
+                    }
+                    if (qe_tolower(str[i]) == 'e') {
+                        int k = i + 1;
+                        if (str[k] == '+' || str[k] == '-')
+                            k++;
+                        if (qe_isdigit_(str[k])) {
+                            for (i = k + 1; qe_isdigit_(str[i]); i++)
+                                continue;
+                        }
+                    }
+                }
+                /* XXX: should detect malformed number constants */
+                style = MAGPIE_STYLE_NUMBER;
+                break;
+            }
+            if (qe_isalpha_(c)) {
+                i--;
+                i += magpie_get_name(kbuf, countof(kbuf), str + i);
+
+                if (strfind(syn->keywords, kbuf)) {
+                    style = MAGPIE_STYLE_KEYWORD;
+                    break;
+                }
+                if (qe_isblank(str[i]))
+                    i++;
+                if (str[i] == '(' || str[i] == '{') {
+                    style = MAGPIE_STYLE_FUNCTION;
+                    break;
+                }
+                if (qe_isupper(kbuf[0]) && (start == 0 || str[start-1] != '.')) {
+                    /* Types are capitalized */
+                    style = MAGPIE_STYLE_TYPE;
+                    break;
+                }
+                continue;
+            }
+            continue;
+        }
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
+        }
+    }
+    cp->colorize_state = state;
+}
+
+static ModeDef magpie_mode = {
+    .name = "Magpie",
+    .extensions = "mag",
+    .shell_handlers = "magpie",
+    .keywords = magpie_keywords,
+    .colorize_func = magpie_colorize_line,
+};
+
+static int magpie_init(void)
+{
+    qe_register_mode(&magpie_mode, MODEF_SYNTAX);
+
+    return 0;
+}
+
 /*----------------*/
 
 static int extra_modes_init(void)
@@ -4754,6 +4985,7 @@ static int extra_modes_init(void)
     agena_init();
     smalltalk_init();
     scad_init();
+    magpie_init();
     return 0;
 }
 
