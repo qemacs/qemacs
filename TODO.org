@@ -1,7 +1,7 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-05-10
+; Updated: 2017-05-15
 
 * Recent bugs and ideas
 
@@ -643,3 +643,10 @@ ssh: should use the host name and get files via scp syntax
 charset: set-eol-type should take a string: auto/binary/dos/unix/mac/0/1/2...
 archive: use window/buffer caption for output description
 files: handle files with embedded spaces
+dired: group symbolic links to directories with directories
+images: filtered scaling
+images: zoom, pan, rotate, describe, peek-color, histogram...
+images: multiview, wallpaper...
+images: use screen aspect-ratio...
+images: display info on modeline
+images: prevent display if not invalid

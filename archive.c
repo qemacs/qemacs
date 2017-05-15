@@ -231,8 +231,8 @@ static CompressType compress_type_array[] = {
     { "sqlite", "SQLite format 3\0", 16, NULL, "sqlite3 $1 .dump", NULL },
     { "bplist", "bplist00", 8, "plist", "plutil -p $1", NULL },
 //    { "bplist", "bplist00", 8, "plist", "plutil -convert xml1 -o - $1", NULL },
-    { "jpeg", NULL, 0, "jpg", "jp2a --height=35 --background=dark $1", NULL, SF_COLOR },
-    { "image", NULL, 0, "bmp", "img2txt -f utf8 $1", NULL, SF_COLOR  },
+//    { "jpeg", NULL, 0, "jpg", "jp2a --height=35 --background=dark $1", NULL, SF_COLOR },
+//    { "image", NULL, 0, "bmp", "img2txt -f utf8 $1", NULL, SF_COLOR  },
     { "pdf", NULL, 0, "pdf", "pstotext $1", NULL },
 };
 

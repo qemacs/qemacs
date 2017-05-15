@@ -155,6 +155,8 @@ ifdef CONFIG_FFMPEG
   LIBS+= -L$(FFMPEG_LIBDIR)/libavcodec -L$(FFMPEG_LIBDIR)/libavformat -lavformat -lavcodec -lz -lpthread
   DEFINES+= -I$(FFMPEG_SRCDIR)/libavcodec -I$(FFMPEG_SRCDIR)/libavformat
   TARGETS+= ffplay$(EXE)
+else
+  OBJS+= stb.o
 endif
 
 ifdef CONFIG_X11
@@ -308,6 +310,7 @@ $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(OBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 $(OBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
+$(OBJS_DIR)/stb.o: stb.c stb_image.h
 
 $(XOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(XOBJS_DIR)/charset.o: charset.c unicode_width.h
@@ -316,6 +319,7 @@ $(XOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(XOBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
 $(XOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 $(XOBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
+$(XOBJS_DIR)/stb.o: stb.c stb_image.h
 
 $(TOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(TOBJS_DIR)/charset.o: charset.c unicode_width.h
