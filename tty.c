@@ -1145,7 +1145,7 @@ static void tty_dpy_flush(QEditScreen *s)
                                         (rgb >> 16) & 255, (rgb >> 8) & 255, (rgb >> 0) & 255);
                         } else
 #endif
-                        if (ts->term_bg_colors_count > 16) {
+                        if (ts->term_bg_colors_count > 16 && bgcolor >= 16) {
                             TTY_FPRINTF(s->STDOUT, "\033[48;5;%dm", bgcolor);
                         } else
                         if (ts->term_flags & USE_BLINK_AS_BRIGHT_BG) {
@@ -1177,7 +1177,7 @@ static void tty_dpy_flush(QEditScreen *s)
                                         (rgb >> 16) & 255, (rgb >> 8) & 255, (rgb >> 0) & 255);
                         } else
 #endif
-                        if (ts->term_fg_colors_count > 16) {
+                        if (ts->term_fg_colors_count > 16 && fgcolor >= 16) {
                             TTY_FPRINTF(s->STDOUT, "\033[38;5;%dm", fgcolor);
                         } else
                         if (ts->term_flags & USE_BOLD_AS_BRIGHT_FG) {

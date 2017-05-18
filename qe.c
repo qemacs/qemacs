@@ -2880,16 +2880,21 @@ static void apply_style(QEStyleDef *stp, QETermStyle style)
     QEStyleDef *s;
 
     if (style & QE_TERM_COMPOSITE) {
-        stp->fg_color = qe_unmap_color(QE_TERM_GET_FG(style), QE_TERM_FG_COLORS);
-        stp->bg_color = qe_unmap_color(QE_TERM_GET_BG(style), QE_TERM_BG_COLORS);
+        int fg = QE_TERM_GET_FG(style);
+        int bg = QE_TERM_GET_BG(style);
+        if (style & QE_TERM_BOLD) {
+            stp->font_style |= QE_FONT_STYLE_BOLD;
+            if (fg < 8)
+                fg |= 8;
+        }
         if (style & QE_TERM_UNDERLINE)
             stp->font_style |= QE_FONT_STYLE_UNDERLINE;
-        if (style & QE_TERM_BOLD)
-            stp->font_style |= QE_FONT_STYLE_BOLD;
         if (style & QE_TERM_ITALIC)
             stp->font_style |= QE_FONT_STYLE_ITALIC;
         if (style & QE_TERM_BLINK)
             stp->font_style |= QE_FONT_STYLE_BLINK;
+        stp->fg_color = qe_unmap_color(fg, QE_TERM_FG_COLORS);
+        stp->bg_color = qe_unmap_color(bg, QE_TERM_BG_COLORS);
     } else {
         s = &qe_styles[style & QE_STYLE_NUM];
         if (s->fg_color != COLOR_TRANSPARENT)
@@ -5377,6 +5382,11 @@ static void qe_key_process(int key)
 
     c->keys[c->nb_keys++] = key;
     s = qs->active_window;
+    if (s == NULL) {
+        s = qs->active_window = qs->first_window;
+        if (s == NULL)
+            return;
+    }
     put_status(s, " ");     /* Erase pending keystrokes and message */
     dpy_flush(&global_screen);
 
