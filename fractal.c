@@ -581,7 +581,7 @@ static int fractal_set_colors(FractalState *ms, const char *p, const char **pp) 
         } else
         if (!strmatchword(p, "default", pp)) {
             int i, j, n;
-            int last[3], dac[3];
+            int last[3] = { 0, 0, 0 }, dac[3] = { 0, 0, 0 };
 
             /* parse a color fractint colors spec */
             for (i = 0; i < 256; i++) {
@@ -604,8 +604,8 @@ static int fractal_set_colors(FractalState *ms, const char *p, const char **pp) 
                 p += 3;
                 for (j = 1, ++n; j < n; j++) {
                     ms->colors[i - j] = QERGB((last[0] * j + dac[0] * (n - j)) / n,
-                                               (last[1] * j + dac[1] * (n - j)) / n,
-                                               (last[2] * j + dac[2] * (n - j)) / n);
+                                              (last[1] * j + dac[1] * (n - j)) / n,
+                                              (last[2] * j + dac[2] * (n - j)) / n);
                 }
                 ms->colors[i] = QERGB(dac[0], dac[1], dac[2]);
             }
