@@ -652,7 +652,7 @@ static void c_colorize_line(QEColorizeContext *cp,
 
     /* strip state if not overflowing from a comment */
     if (!(state & IN_C_COMMENT) &&
-        !((mode_flags & CLANG_LINECONT) && (n <= 0 || ((str[n - 1] & CHAR_MASK) == '\\')))) {
+        (!(mode_flags & CLANG_LINECONT) || n <= 0 || (str[n - 1] & CHAR_MASK) != '\\')) {
         state &= ~(IN_C_COMMENT1 | IN_C_PREPROCESS);
     }
     cp->colorize_state = state;
