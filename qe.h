@@ -2354,6 +2354,7 @@ void shell_colorize_line(QEColorizeContext *cp,
 #define SF_BUFED_MODE    0x20
 EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
                              const char *bufname, const char *caption,
+                             const char *path,
                              const char *cmd, int shell_flags);
 
 #define QASSERT(e)      do { if (!(e)) fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #e); } while (0)

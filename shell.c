@@ -182,7 +182,8 @@ const char *get_shell(void)
 #define QE_TERM_YSIZE_INFINITE  10000
 
 static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
-                       int cols, int rows, int shell_flags)
+                       int cols, int rows, const char *path,
+                       int shell_flags)
 {
     int pty_fd, pid, i, nb_fds;
     char tty_name[MAX_FILENAME_SIZE];
@@ -257,6 +258,8 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
         setenv("TERM", "xterm-256color", 1);
         unsetenv("PAGER");
         //setenv("QELEVEL", "1", 1);
+
+        if (path) chdir(path);
 
         execv(argv[0], (char * const*)argv);
         exit(1);
@@ -2044,6 +2047,7 @@ static void shell_pid_cb(void *opaque, int status)
 
 EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
                              const char *bufname, const char *caption,
+                             const char *path,
                              const char *cmd, int shell_flags)
 {
     QEmacsState *qs = &qe_state;
@@ -2105,7 +2109,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
     s->cols = cols;
     s->rows = rows;
 
-    if (run_process(cmd, &s->pty_fd, &s->pid, cols, rows, shell_flags) < 0) {
+    if (run_process(cmd, &s->pty_fd, &s->pid, cols, rows, path, shell_flags) < 0) {
         if (!b0)
             eb_free(&b);
         return NULL;
@@ -2140,10 +2144,14 @@ static EditBuffer *try_show_buffer(EditState **sp, const char *bufname)
 
 static void do_shell(EditState *e, int force)
 {
+    char curpath[MAX_FILENAME_SIZE];
     EditBuffer *b = NULL;
 
     if (e->flags & (WF_POPUP | WF_MINIBUF))
         return;
+
+    /* Start the shell in the default directory of the current window */
+    get_default_path(e->b, e->offset, curpath, sizeof curpath);
 
     /* avoid messing with the dired pane */
     e = qe_find_target_window(e, 1);
@@ -2175,11 +2183,13 @@ static void do_shell(EditState *e, int force)
             }
             /* otherwise, restart the process here */
             e->offset = b->total_size;
+            /* restart the shell in the same directory */
+            get_default_path(e->b, e->offset, curpath, sizeof curpath);
         }
     }
 
     /* create new shell buffer or restart shell in current buffer */
-    b = new_shell_buffer(b, e, "*shell*", "Shell process", NULL,
+    b = new_shell_buffer(b, e, "*shell*", "Shell process", curpath, NULL,
                          SF_COLOR | SF_INTERACTIVE);
     if (!b)
         return;
@@ -2215,7 +2225,8 @@ static void do_man(EditState *s, const char *arg)
         return;
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, s, bufname, NULL, cmd, SF_COLOR | SF_INFINITE);
+    b = new_shell_buffer(NULL, s, bufname, NULL, NULL, cmd,
+                         SF_COLOR | SF_INFINITE);
     if (!b)
         return;
 
@@ -2245,7 +2256,7 @@ static void do_ssh(EditState *s, const char *arg)
     snprintf(bufname, sizeof(bufname), "*ssh-%s*", arg);
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, s, bufname, "ssh", cmd,
+    b = new_shell_buffer(NULL, s, bufname, "ssh", NULL, cmd,
                          SF_COLOR | SF_INTERACTIVE);
     if (!b)
         return;
@@ -2775,7 +2786,10 @@ static char *shell_get_default_path(EditBuffer *b, int offset,
 
 static void do_shell_command(EditState *e, const char *cmd)
 {
+    char curpath[MAX_FILENAME_SIZE];
     EditBuffer *b;
+
+    get_default_path(e->b, e->offset, curpath, sizeof curpath);
 
     /* if the buffer already exists, kill it */
     b = eb_find("*shell command output*");
@@ -2784,7 +2798,7 @@ static void do_shell_command(EditState *e, const char *cmd)
     }
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, e, "*shell command output*", NULL, cmd,
+    b = new_shell_buffer(NULL, e, "*shell command output*", NULL, curpath, cmd,
                          SF_COLOR | SF_INFINITE);
     if (!b)
         return;
@@ -2796,10 +2810,13 @@ static void do_shell_command(EditState *e, const char *cmd)
 
 static void do_compile(EditState *s, const char *cmd)
 {
+    char curpath[MAX_FILENAME_SIZE];
     EditBuffer *b;
 
     if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
+
+    get_default_path(s->b, s->offset, curpath, sizeof curpath);
 
     if (s->flags & WF_POPLEFT) {
         /* avoid messing with the dired pane */
@@ -2817,7 +2834,7 @@ static void do_compile(EditState *s, const char *cmd)
         cmd = "make";
 
     /* create new buffer */
-    b = new_shell_buffer(NULL, s, "*compilation*", "Compilation", cmd,
+    b = new_shell_buffer(NULL, s, "*compilation*", "Compilation", curpath, cmd,
                          SF_COLOR | SF_INFINITE);
     if (!b)
         return;

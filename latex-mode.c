@@ -235,26 +235,19 @@ static struct latex_function *find_latex_func(const char *name)
 static void latex_cmd_run(void *opaque, char *cmd)
 {
     struct latex_function *func = (struct latex_function *)opaque;
-    char cwd[MAX_FILENAME_SIZE];
     char dir[MAX_FILENAME_SIZE];
-    char *p;
-    int len;
+    const char *path = NULL;
 
     if (cmd == NULL) {
         put_status(func->es, "Aborted");
         return;
     }
 
-    getcwd(cwd, sizeof(cwd));
-
-    /* get the directory of the open file and change into it
-     */
-    p = strrchr(func->es->b->filename, '/');
-    if (p == func->es->b->filename)
-        p++;
-    len = p - func->es->b->filename;
-    pstrncpy(dir, sizeof(dir), func->es->b->filename, len);
-    chdir(dir);
+    /* get the directory of the open file and change into it */
+    if (func->es->b) {
+        path = get_default_path(func->es->b, func->es->b->total_size,
+                                dir, sizeof dir);
+    }
 
     if (func->output_to_buffer) {
         /* if the buffer already exists, kill it */
@@ -265,7 +258,7 @@ static void latex_cmd_run(void *opaque, char *cmd)
         }
 
         /* create new buffer */
-        b = new_shell_buffer(NULL, NULL, "*LaTeX output*", NULL, cmd,
+        b = new_shell_buffer(NULL, NULL, "*LaTeX output*", NULL, path, cmd,
                              SF_COLOR | SF_INFINITE);
         if (b) {
             /* XXX: try to split window if necessary */
@@ -275,6 +268,8 @@ static void latex_cmd_run(void *opaque, char *cmd)
         int pid = fork();
         if (pid == 0) {
             const char *argv[4];
+
+            if (path) chdir(path);
 
             /* child process */
             setsid();
@@ -288,7 +283,6 @@ static void latex_cmd_run(void *opaque, char *cmd)
             exit(1);
         }
     }
-    chdir(cwd);
 }
 
 static void do_latex(EditState *e, const char *cmd)

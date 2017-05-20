@@ -144,7 +144,7 @@ static int archive_buffer_load(EditBuffer *b, FILE *f)
         eb_printf(b, "  Directory of %s archive %s\n",
                   atp->name, b->filename);
         qe_shell_subst(cmd, sizeof(cmd), atp->list_cmd, b->filename, NULL);
-        new_shell_buffer(b, NULL, get_basename(b->filename), NULL, cmd,
+        new_shell_buffer(b, NULL, get_basename(b->filename), NULL, NULL, cmd,
                          atp->sf_flags | SF_INFINITE | SF_BUFED_MODE);
 
         /* XXX: should check for archiver error */
@@ -287,7 +287,7 @@ static int compress_buffer_load(EditBuffer *b, FILE *f)
         b->data_type_name = ctp->name;
         eb_clear(b);
         qe_shell_subst(cmd, sizeof(cmd), ctp->load_cmd, b->filename, NULL);
-        new_shell_buffer(b, NULL, get_basename(b->filename), NULL, cmd,
+        new_shell_buffer(b, NULL, get_basename(b->filename), NULL, NULL, cmd,
                          ctp->sf_flags | SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
         /* XXX: should check for archiver error */
         /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
@@ -375,7 +375,7 @@ static int wget_buffer_load(EditBuffer *b, FILE *f)
 
     eb_clear(b);
     qe_shell_subst(cmd, sizeof(cmd), "wget -q -O - $1", b->filename, NULL);
-    new_shell_buffer(b, NULL, get_basename(b->filename), NULL, cmd,
+    new_shell_buffer(b, NULL, get_basename(b->filename), NULL, NULL, cmd,
                      SF_INFINITE | SF_AUTO_CODING | SF_AUTO_MODE);
     /* XXX: should refilter by content type */
     /* XXX: should have a way to keep http headers --save-headers */
@@ -465,7 +465,7 @@ static int man_buffer_load(EditBuffer *b, FILE *f)
 
     eb_clear(b);
     qe_shell_subst(cmd, sizeof(cmd), "man $1", b->filename, NULL);
-    new_shell_buffer(b, NULL, get_basename(b->filename), NULL, cmd,
+    new_shell_buffer(b, NULL, get_basename(b->filename), NULL, NULL, cmd,
                      SF_COLOR | SF_INFINITE);
     /* XXX: should check for man error */
     /* XXX: should delay BF_SAVELOG until buffer is fully loaded */
