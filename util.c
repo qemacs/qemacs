@@ -908,6 +908,41 @@ int umemcmp(const unsigned int *s1, const unsigned int *s2, int count)
     return 0;
 }
 
+int ustr_get_identifier(char *buf, int buf_size,
+                        const unsigned int *str, int i, int n)
+{
+    int len = 0, j;
+
+    for (j = i; j < n; j++) {
+        int c = str[j];
+        if (!qe_isalnum_(c))
+            break;
+        if (len < buf_size - 1)
+            buf[len++] = str[j];
+    }
+    if (len < buf_size) {
+        buf[len] = '\0';
+    }
+    return j - i;
+}
+
+int ustr_get_word(char *buf, int buf_size,
+                  const unsigned int *str, int i, int n)
+{
+    buf_t outbuf, *out;
+    int j;
+
+    out = buf_init(&outbuf, buf, buf_size);
+
+    for (j = i; j < n; j++) {
+        int c = str[j];
+        if (!qe_isword(c))
+            break;
+        buf_putc_utf8(out, c);
+    }
+    return j - i;
+}
+
 /* Read a token from a string, stop on a set of characters.
  * Skip spaces before and after token.
  */
