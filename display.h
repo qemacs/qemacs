@@ -256,12 +256,6 @@ static inline void bmp_unlock(QEditScreen *s, QEBitmap *bitmap)
         s->dpy.dpy_bmp_unlock(s, bitmap);
 }
 
-static inline void dpy_full_screen(QEditScreen *s, int full_screen)
-{
-    if (s->dpy.dpy_full_screen)
-        s->dpy.dpy_full_screen(s, full_screen);
-}
-
 static inline void dpy_describe(QEditScreen *s, EditBuffer *b)
 {
     if (s->dpy.dpy_describe)

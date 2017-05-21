@@ -1074,7 +1074,7 @@ static void x11_dpy_full_screen(QEditScreen *s, int full_screen)
 
     XGetWindowAttributes(xs->display, xs->window, &attr1);
     if (full_screen) {
-        if ((attr1.width != xs->screen_width || attr1.height != xs->screen_height)) {
+        if (attr1.width != xs->screen_width || attr1.height != xs->screen_height) {
             /* store current window position and size */
             XTranslateCoordinates(xs->display, xs->window, attr1.root, 0, 0,
                                   &xs->last_window_x, &xs->last_window_y, &win);
@@ -1083,8 +1083,8 @@ static void x11_dpy_full_screen(QEditScreen *s, int full_screen)
             XMoveResizeWindow(xs->display, xs->window,
                               0, 0, xs->screen_width, xs->screen_height);
         }
-    } else if (!full_screen) {
-        if (attr1.width == xs->screen_width && attr1.height == xs->screen_height) {
+    } else {
+        if (xs->last_window_width) {
             XMoveResizeWindow(xs->display, xs->window,
                               xs->last_window_x, xs->last_window_y,
                               xs->last_window_width, xs->last_window_height);

@@ -3097,16 +3097,20 @@ void do_set_display_size(qe__unused__ EditState *s, int w, int h)
     }
 }
 
-/* NOTE: toggle-full-screen also hide the modeline of the current
-   window and the status line */
+/* NOTE: toggle-full-screen zooms the current pane to the whole screen if
+   possible. It does not hide the modeline not the status line */
 void do_toggle_full_screen(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
     QEditScreen *screen = s->screen;
 
-    qs->is_full_screen = !qs->is_full_screen;
-    dpy_full_screen(screen, qs->is_full_screen);
-    do_refresh(s);
+    if (screen->dpy.dpy_full_screen) {
+        qs->is_full_screen = !qs->is_full_screen;
+        screen->dpy.dpy_full_screen(screen, qs->is_full_screen);
+        do_refresh(s);
+    } else {
+        put_status(s, "full screen unsupported on this device");
+    }
 }
 
 void do_toggle_mode_line(EditState *s)
