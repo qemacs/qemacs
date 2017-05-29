@@ -64,7 +64,6 @@ dllibs="-ldl"
 extralibs=""
 simpleidct="yes"
 bigendian="no"
-mpegaudio_hp="yes"
 
 tiny="no"
 x11="no"
@@ -305,9 +304,6 @@ for opt do
       --enable-shared | --disable-shared)
         lshared="$value"
         ;;
-      --enable-mpegaudio-hp | --disable-mpegaudio-hp)
-        mpegaudio_hp="$value"
-        ;;
       --enable-tiny | --disable-tiny)
         tiny="$value"
         ;;
@@ -531,7 +527,7 @@ echo "libpng support      $png"
 echo "FFMPEG support      $ffmpeg"
 echo "Graphical HTML      $html"
 echo "Memory mapped files $mmap"
-echo "Unlocked I/O        $initcalls"
+echo "Unlocked I/O        $unlockio"
 echo "Initcall support    $initcalls"
 echo "Plugins support     $plugins"
 echo "Bidir support       $bidir"
