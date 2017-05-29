@@ -908,17 +908,21 @@ int umemcmp(const unsigned int *s1, const unsigned int *s2, int count)
     return 0;
 }
 
-int ustr_get_identifier(char *buf, int buf_size,
+int ustr_get_identifier(char *buf, int buf_size, int c,
                         const unsigned int *str, int i, int n)
 {
     int len = 0, j;
 
+    if (len < buf_size) {
+        /* c is assumed to be an ASCII character */
+        buf[len++] = c;
+    }
     for (j = i; j < n; j++) {
-        int c = str[j];
+        c = str[j];
         if (!qe_isalnum_(c))
             break;
         if (len < buf_size - 1)
-            buf[len++] = str[j];
+            buf[len++] = c;
     }
     if (len < buf_size) {
         buf[len] = '\0';
@@ -926,7 +930,29 @@ int ustr_get_identifier(char *buf, int buf_size,
     return j - i;
 }
 
-int ustr_get_word(char *buf, int buf_size,
+int ustr_get_identifier_lc(char *buf, int buf_size, int c,
+                           const unsigned int *str, int i, int n)
+{
+    int len = 0, j;
+
+    if (len < buf_size) {
+        /* c is assumed to be an ASCII character */
+        buf[len++] = qe_tolower(c);
+    }
+    for (j = i; j < n; j++) {
+        c = str[j];
+        if (!qe_isalnum_(c))
+            break;
+        if (len < buf_size - 1)
+            buf[len++] = qe_tolower(c);
+    }
+    if (len < buf_size) {
+        buf[len] = '\0';
+    }
+    return j - i;
+}
+
+int ustr_get_word(char *buf, int buf_size, int c,
                   const unsigned int *str, int i, int n)
 {
     buf_t outbuf, *out;
@@ -934,8 +960,9 @@ int ustr_get_word(char *buf, int buf_size,
 
     out = buf_init(&outbuf, buf, buf_size);
 
+    buf_putc_utf8(out, c);
     for (j = i; j < n; j++) {
-        int c = str[j];
+        c = str[j];
         if (!qe_isword(c))
             break;
         buf_putc_utf8(out, c);

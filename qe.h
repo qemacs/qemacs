@@ -435,9 +435,11 @@ static inline int check_fcall(const unsigned int *str, int i) {
     return str[i] == '(';
 }
 
-int ustr_get_identifier(char *buf, int buf_size,
+int ustr_get_identifier(char *buf, int buf_size, int c,
                         const unsigned int *str, int i, int n);
-int ustr_get_word(char *buf, int buf_size,
+int ustr_get_identifier_lc(char *buf, int buf_size, int c,
+                           const unsigned int *str, int i, int n);
+int ustr_get_word(char *buf, int buf_size, int c,
                   const unsigned int *str, int i, int n);
 
 int qe_strcollate(const char *s1, const char *s2);

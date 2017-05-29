@@ -208,8 +208,8 @@ enum {
 static void basic_colorize_line(QEColorizeContext *cp,
                                 unsigned int *str, int n, ModeDef *syn)
 {
-    char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start, c, style, len;
+    char kbuf[MAX_KEYWORD_SIZE];
+    int i = 0, start, c, style;
 
     while (i < n) {
         start = i;
@@ -244,24 +244,15 @@ static void basic_colorize_line(QEColorizeContext *cp,
         }
         /* parse identifiers and keywords */
         if (qe_isalpha_(c)) {
-            len = 0;
-            keyword[len++] = qe_tolower(c);
-            for (; i < n; i++) {
-                if (qe_isalnum_(str[i])) {
-                    if (len < countof(keyword) - 1)
-                        keyword[len++] = qe_tolower(str[i]);
-                } else {
-                    if (qe_findchar("$&!@%#", str[i]))
-                        i++;
-                    break;
-                }
-            }
-            keyword[len] = '\0';
-            if (strfind(syn->keywords, keyword)) {
+            i += ustr_get_identifier_lc(kbuf, countof(kbuf), c, str, i, n);
+            if (i < n && qe_findchar("$&!@%#", str[i]))
+                i++;
+
+            if (strfind(syn->keywords, kbuf)) {
                 SET_COLOR(str, start, i, BASIC_STYLE_KEYWORD);
                 continue;
             }
-            if (strfind(syn->types, keyword)) {
+            if (strfind(syn->types, kbuf)) {
                 SET_COLOR(str, start, i, BASIC_STYLE_TYPE);
                 continue;
             }
@@ -575,8 +566,8 @@ enum {
 static void pascal_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
-    char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = i, c, k, style = 0, len;
+    char kbuf[MAX_KEYWORD_SIZE];
+    int i = 0, start = i, c, k, style = 0;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_PASCAL_COMMENT)
@@ -666,17 +657,11 @@ static void pascal_colorize_line(QEColorizeContext *cp,
             }
             /* parse identifiers and keywords */
             if (qe_isalpha_(c)) {
-                len = 0;
-                keyword[len++] = qe_tolower(c);
-                for (; qe_isalnum_(str[i]); i++) {
-                    if (len < countof(keyword) - 1)
-                        keyword[len++] = qe_tolower(str[i]);
-                }
-                keyword[len] = '\0';
-                if (strfind(syn->keywords, keyword)) {
+                i += ustr_get_identifier_lc(kbuf, countof(kbuf), c, str, i, n);
+                if (strfind(syn->keywords, kbuf)) {
                     style = PASCAL_STYLE_KEYWORD;
                 } else
-                if (strfind(syn->types, keyword)) {
+                if (strfind(syn->types, kbuf)) {
                     style = PASCAL_STYLE_TYPE;
                 } else {
                     k = i;
@@ -755,8 +740,8 @@ enum {
 static void ada_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
-    char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = i, c, k, style, len;
+    char kbuf[MAX_KEYWORD_SIZE];
+    int i = 0, start = i, c, k, style;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_ADA_COMMENT1)
@@ -849,17 +834,11 @@ static void ada_colorize_line(QEColorizeContext *cp,
         }
         /* parse identifiers and keywords */
         if (qe_isalpha_(c)) {
-            len = 0;
-            keyword[len++] = qe_tolower(c);
-            for (; qe_isalnum_(str[i]); i++) {
-                if (len < countof(keyword) - 1)
-                    keyword[len++] = qe_tolower(str[i]);
-            }
-            keyword[len] = '\0';
-            if (strfind(syn->keywords, keyword)) {
+            i += ustr_get_identifier_lc(kbuf, countof(kbuf), c, str, i, n);
+            if (strfind(syn->keywords, kbuf)) {
                 style = ADA_STYLE_KEYWORD;
             } else
-            if (strfind(syn->types, keyword)) {
+            if (strfind(syn->types, kbuf)) {
                 style = ADA_STYLE_TYPE;
             } else
             if (check_fcall(str, i))
@@ -1430,8 +1409,8 @@ static char const sql_types[] = {
 static void sql_colorize_line(QEColorizeContext *cp,
                               unsigned int *str, int n, ModeDef *syn)
 {
-    char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = i, c, style, len;
+    char kbuf[MAX_KEYWORD_SIZE];
+    int i = 0, start = i, c, style;
     int state = cp->colorize_state;
 
     if (state & IN_SQL_COMMENT)
@@ -1494,22 +1473,12 @@ static void sql_colorize_line(QEColorizeContext *cp,
         }
         /* parse identifiers and keywords */
         if (qe_isalpha_(c)) {
-            len = 0;
-            keyword[len++] = qe_tolower(c);
-            for (; i < n; i++) {
-                if (qe_isalnum_(str[i])) {
-                    if (len < countof(keyword) - 1)
-                        keyword[len++] = qe_tolower(str[i]);
-                } else {
-                    break;
-                }
-            }
-            keyword[len] = '\0';
-            if (strfind(syn->keywords, keyword)) {
+            i += ustr_get_identifier_lc(kbuf, countof(kbuf), c, str, i, n);
+            if (strfind(syn->keywords, kbuf)) {
                 SET_COLOR(str, start, i, SQL_STYLE_KEYWORD);
                 continue;
             }
-            if (strfind(syn->types, keyword)) {
+            if (strfind(syn->types, kbuf)) {
                 SET_COLOR(str, start, i, SQL_STYLE_TYPE);
                 continue;
             }
@@ -1600,7 +1569,7 @@ static int lua_long_bracket(unsigned int *str, int *level)
 static void lua_colorize_line(QEColorizeContext *cp,
                               unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, sep = 0, level = 0, level1, klen, style;
+    int i = 0, start = i, c, sep = 0, level = 0, level1, style;
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -1694,12 +1663,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
                 continue;
             }
             if (qe_isalpha_(c)) {
-                for (klen = 0, i--; qe_isalnum_(str[i]); i++) {
-                    if (klen < countof(kbuf) - 1)
-                        kbuf[klen++] = str[i];
-                }
-                kbuf[klen] = '\0';
-
+                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
                 if (strfind(syn->keywords, kbuf)) {
                     SET_COLOR(str, start, i, LUA_STYLE_KEYWORD);
                     continue;
@@ -2276,7 +2240,7 @@ enum {
 static void coffee_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, style = 0, sep, klen, prev, i1;
+    int i = 0, start = i, c, style = 0, sep, prev, i1;
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -2539,12 +2503,7 @@ static void coffee_colorize_line(QEColorizeContext *cp,
                 break;
             }
             if (qe_isalpha_(c)) {
-                for (klen = 0, i--; qe_isalnum_(str[i]); i++) {
-                    if (klen < countof(kbuf) - 1)
-                        kbuf[klen++] = str[i];
-                }
-                kbuf[klen] = '\0';
-
+                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
                 if (strfind(syn->keywords, kbuf)) {
                     style = COFFEE_STYLE_KEYWORD;
                     break;
@@ -2623,7 +2582,7 @@ enum {
 static void python_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, style = 0, sep, klen, i1, tag = 0;
+    int i = 0, start = i, c, style = 0, sep, i1, tag = 0;
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -2780,12 +2739,7 @@ static void python_colorize_line(QEColorizeContext *cp,
             }
         has_alpha:
             if (qe_isalpha_(c)) {
-                for (klen = 0, i--; qe_isalnum_(str[i]); i++) {
-                    if (klen < countof(kbuf) - 1)
-                        kbuf[klen++] = str[i];
-                }
-                kbuf[klen] = '\0';
-
+                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
                 if (strfind(syn->keywords, kbuf)) {
                     tag = strequal(kbuf, "def");
                     style = PYTHON_STYLE_KEYWORD;
@@ -4252,8 +4206,8 @@ static char const agena_types[] = {
 static void agena_colorize_line(QEColorizeContext *cp,
                                 unsigned int *str, int n, ModeDef *syn)
 {
-    char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = i, c, style = 0, sep = 0, len;
+    char kbuf[MAX_KEYWORD_SIZE];
+    int i = 0, start = i, c, style = 0, sep = 0;
     int state = cp->colorize_state;
 
     if (state & IN_AGENA_COMMENT)
@@ -4317,17 +4271,11 @@ static void agena_colorize_line(QEColorizeContext *cp,
         default:
             /* parse identifiers and keywords */
             if (qe_isalpha_(c)) {
-                len = 0;
-                keyword[len++] = c;
-                for (; i < n && qe_isalnum_(str[i]); i++) {
-                    if (len < countof(keyword) - 1)
-                        keyword[len++] = str[i];
-                }
-                keyword[len] = '\0';
-                if (strfind(syn->keywords, keyword))
+                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
+                if (strfind(syn->keywords, kbuf))
                     style = AGENA_STYLE_KEYWORD;
                 else
-                if (strfind(syn->types, keyword))
+                if (strfind(syn->types, kbuf))
                     style = AGENA_STYLE_TYPE;
                 else
                 if (check_fcall(str, i))
@@ -4871,9 +4819,7 @@ static void magpie_colorize_line(QEColorizeContext *cp,
                 break;
             }
             if (qe_isalpha_(c)) {
-                i--;
-                i += ustr_get_identifier(kbuf, countof(kbuf), str, i, n);
-
+                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
                 if (strfind(syn->keywords, kbuf)) {
                     style = MAGPIE_STYLE_KEYWORD;
                     break;
@@ -5080,9 +5026,7 @@ static void falcon_colorize_line(QEColorizeContext *cp,
                 break;
             }
             if (qe_isalpha_(c) || c > 0xA0) {
-                i--;
-                i += ustr_get_word(kbuf, countof(kbuf), str, i, n);
-
+                i += ustr_get_word(kbuf, countof(kbuf), c, str, i, n);
                 if (strfind(syn->keywords, kbuf)) {
                     style = FALCON_STYLE_KEYWORD;
                     break;

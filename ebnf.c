@@ -60,8 +60,8 @@ enum {
 static void ebnf_colorize_line(QEColorizeContext *cp,
                                unsigned int *str, int n, ModeDef *syn)
 {
-    char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = 0, c, style, len;
+    char kbuf[MAX_KEYWORD_SIZE];
+    int i = 0, start = 0, c, style;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_EBNF_COMMENT1)
@@ -164,22 +164,12 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
             }
             /* parse identifiers and keywords */
             if (qe_isalpha_(c) || c == U_HORIZONTAL_ELLIPSIS) {
-                len = 0;
-                keyword[len++] = c;
-                for (; i < n; i++) {
-                    if (qe_isalnum_(str[i])) {
-                        if (len < countof(keyword) - 1)
-                            keyword[len++] = c;
-                    } else {
-                        break;
-                    }
-                }
-                keyword[len] = '\0';
-                if (strfind(syn->keywords, keyword)) {
+                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
+                if (strfind(syn->keywords, kbuf)) {
                     style = EBNF_STYLE_KEYWORD;
                     break;
                 }
-                if (strfind(syn->types, keyword)) {
+                if (strfind(syn->types, kbuf)) {
                     style = EBNF_STYLE_TYPE;
                     break;
                 }

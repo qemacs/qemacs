@@ -198,8 +198,8 @@ static void lst_colorize_line(QEColorizeContext *cp,
     /* Combined assembly / C source / filename listing:
      * determine line type by looking at line start
      */
-    char keyword[16];
-    int i, w, start, c, len, colstate = cp->colorize_state;
+    char kbuf[16];
+    int i, w, start, c, colstate = cp->colorize_state;
 
     for (w = 0; qe_isblank(str[w]); w++)
         continue;
@@ -260,13 +260,8 @@ static void lst_colorize_line(QEColorizeContext *cp,
                     continue;
                 }
                 if (qe_isalpha_(c)) {
-                    keyword[0] = c;
-                    for (len = 1; qe_isalnum_(str[i]); i++) {
-                        if (len < countof(keyword) - 1)
-                            keyword[len++] = str[i];
-                    }
-                    keyword[len] = '\0';
-                    if (strfind(syn->keywords, keyword))
+                    i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
+                    if (strfind(syn->keywords, kbuf))
                         SET_COLOR(str, start, i, LST_STYLE_KEYWORD);
                     continue;
                 }

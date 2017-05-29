@@ -1549,32 +1549,11 @@ static const char js_types[] = {
     "void|var|"
 };
 
-static int get_js_identifier(char *buf, int buf_size, unsigned int *p)
-{
-    unsigned int c;
-    int i, j;
-
-    i = j = 0;
-    c = p[i];
-    if (qe_isalpha_(c) || c == '$') {
-        for (;;) {
-            if (j < buf_size - 1)
-                buf[j++] = (c < 0xFF) ? c : 0xFF;
-            i++;
-            c = p[i];
-            if (!qe_isalnum_(c))
-                break;
-        }
-    }
-    buf[j] = '\0';
-    return i;
-}
-
 static void js_colorize_line(QEColorizeContext *cp,
                              unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start, i1, indent;
-    int c, style, klen, delim, prev, tag;
+    int c, style, delim, prev, tag;
     char kbuf[64];
     int mode_flags = syn->colorize_flags;
     int flavor = (mode_flags & CLANG_FLAVOR);
@@ -1759,9 +1738,7 @@ static void js_colorize_line(QEColorizeContext *cp,
                 break;
             }
             if (qe_isalpha_(c) || c == '$') {
-                klen = get_js_identifier(kbuf, countof(kbuf), str + start);
-                i = start + klen;
-
+                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
                 if (cp->state_only && !tag)
                     continue;
 

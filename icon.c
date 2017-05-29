@@ -154,14 +154,7 @@ static void icon_colorize_line(QEColorizeContext *cp,
                 break;
             }
             if (qe_isalpha_(c) || (c == '$' && qe_isalnum_(str[i]))) {
-                klen = 0;
-                kbuf[klen++] = c;
-                while (qe_isalnum_(c = str[i])) {
-                    if (klen < countof(kbuf) - 1)
-                        kbuf[klen++] = c;
-                    i++;
-                }
-                kbuf[klen] = '\0';
+                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
 
                 if (start == indent && kbuf[0] == '$'
                 &&  strfind(icon_directives, kbuf + 1)) {

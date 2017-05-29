@@ -22,28 +22,6 @@
 
 /*---------------- Makefile colors ----------------*/
 
-/* grab an identifier from a uint buf, stripping color.
- * return char count.
- */
-static int get_word_lc(char *buf, int buf_size, unsigned int *p)
-{
-    unsigned int c;
-    int i, j;
-
-    i = j = 0;
-    c = p[i];
-    if (qe_isalpha_(c)) {
-        do {
-            if (j < buf_size - 1)
-                buf[j++] = qe_tolower(c);
-            i++;
-            c = p[i];
-        } while (qe_isalnum_(c));
-    }
-    buf[j] = '\0';
-    return i;
-}
-
 enum {
     MAKEFILE_STYLE_TEXT       = QE_STYLE_DEFAULT,
     MAKEFILE_STYLE_COMMENT    = QE_STYLE_COMMENT,
@@ -63,7 +41,7 @@ static void makefile_colorize_line(QEColorizeContext *cp,
     unsigned int c;
 
     if (qe_isalpha_(str[i])) {
-        get_word_lc(buf, countof(buf), str);
+        ustr_get_identifier_lc(buf, countof(buf), str[i], str, i + 1, n);
         if (strfind("ifeq|ifneq|ifdef|ifndef|include|else|endif", buf))
             goto preprocess;
     }
@@ -245,8 +223,7 @@ static void cmake_colorize_line(QEColorizeContext *cp,
             continue;
         default:
             if (qe_isalpha_(c)) {
-                i -= 1;
-                i += get_word_lc(buf, countof(buf), str + i);
+                i += ustr_get_identifier_lc(buf, countof(buf), c, str, i, n);
                 if (strfind("if|else|endif|set|true|false|include", buf)) {
                     SET_COLOR(str, start, i, CMAKE_STYLE_KEYWORD);
                 } else
