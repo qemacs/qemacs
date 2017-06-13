@@ -1523,7 +1523,7 @@ static int sql_init(void)
 
 static char const lua_keywords[] = {
     "|and|break|do|else|elseif|end|false|for|function|goto|if|in"
-    "|local|nil|not|or|repeat|require|return|then|true|until|while"
+    "|local|nil|not|or|repeat|return|then|true|until|while"
     "|self"
     "|"
 };
@@ -1569,7 +1569,7 @@ static int lua_long_bracket(unsigned int *str, int *level)
 static void lua_colorize_line(QEColorizeContext *cp,
                               unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, sep = 0, level = 0, level1, style;
+    int i = 0, j, start = i, c, sep = 0, level = 0, level1, style;
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -1656,7 +1656,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
                 for (; i < n; i++) {
-                    if (!qe_isalnum(str[i] && str[i] != '.'))
+                    if (!qe_isalnum(str[i]) && str[i] != '.')
                         break;
                 }
                 SET_COLOR(str, start, i, LUA_STYLE_NUMBER);
@@ -1668,7 +1668,11 @@ static void lua_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, start, i, LUA_STYLE_KEYWORD);
                     continue;
                 }
-                if (check_fcall(str, i)) {
+                for (j = i; j < n && qe_isspace(str[j]); j++)
+                    continue;
+                /* function calls use parenthesized argument list or
+                   single string or table literal */
+                if (qe_findchar("('\"{", str[j])) {
                     SET_COLOR(str, start, i, LUA_STYLE_FUNCTION);
                     continue;
                 }
