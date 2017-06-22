@@ -78,6 +78,7 @@ static VarDef var_table[] = {
 
     G_VAR( "use-session-file", use_session_file, VAR_NUMBER, VAR_RW )
     G_VAR( "force-tty", force_tty, VAR_NUMBER, VAR_RW )
+    G_VAR( "use-html", use_html, VAR_NUMBER, VAR_RW )
 
     /* more buffer fields: modified, readonly, binary, charset */
 

@@ -864,6 +864,9 @@ static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
 
     score = 0;
 
+    if (!use_html)
+        return 0;
+
     while (qe_isspace(*p))
         p++;
     if (*p != '<')

@@ -73,6 +73,7 @@ static int no_init_file;
 static int single_window;
 int force_tty;
 int use_session_file;
+int use_html = 1;
 #ifndef CONFIG_TINY
 static int free_everything;
 #endif
