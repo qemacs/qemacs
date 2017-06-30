@@ -290,7 +290,8 @@ static int shell_script_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 /* XXX: should have shell specific variations */
 static ModeDef sh_mode = {
-    .name = "sh",
+    .name = "Shell",
+    .alt_name = "sh",
     .extensions = "sh",
     .shell_handlers = "sh",
     .mode_probe = shell_script_mode_probe,
