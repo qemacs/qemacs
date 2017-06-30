@@ -32,6 +32,9 @@ enum {
     CLANG_CSS,
     CLANG_JSON,
     CLANG_JS,
+    CLANG_TS,
+    CLANG_JSPP,
+    CLANG_KOKA,
     CLANG_AS,
     CLANG_JAVA,
     CLANG_SCALA,
@@ -1413,7 +1416,8 @@ static int objc_mode_probe(ModeDef *mode, ModeProbeData *mp)
 }
 
 static ModeDef objc_mode = {
-    .name = "ObjC", /* Objective C */
+    .name = "Objective C",
+    .alt_name = "objc",
     .extensions = "m|mm",
     .mode_probe = objc_mode_probe,
     .colorize_func = c_colorize_line,
@@ -1776,6 +1780,12 @@ static void js_colorize_line(QEColorizeContext *cp,
                     style = C_STYLE_TYPE;
                     break;
                 }
+                if (qe_isupper((unsigned char)kbuf[0])
+                &&  (start >= 2 && str[start - 1] == ' ' && str[start - 2] == ':')) {
+                    /* if type annotation and capitalized assume type name */
+                    style = C_STYLE_TYPE;
+                    break;
+                }
                 continue;
             }
             continue;
@@ -1801,12 +1811,160 @@ static void js_colorize_line(QEColorizeContext *cp,
 
 ModeDef js_mode = {
     .name = "Javascript",
+    .alt_name = "js",
     .extensions = "js",
     .shell_handlers = "node",
     .colorize_func = js_colorize_line,
     .colorize_flags = CLANG_JS | CLANG_REGEX,
     .keywords = js_keywords,
     .types = js_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+/*---------------- Typescript programming language ----------------*/
+
+static const char ts_keywords[] = {
+    /* keywords */
+    "break|case|catch|class|const|continue|debugger|default|"
+    "delete|do|else|enum|export|extends|false|finally|"
+    "for|function|if|import|in|instanceof|new|null|"
+    "return|super|switch|this|throw|true|try|typeof|"
+    "var|void|while|with|"
+    /* keywords in strict mode */
+    "implements|interface|let|package|"
+    "private|protected|public|static|yield|"
+    /* special names */
+    "abstract|as|async|await|constructor|declare|from|"
+    "get|is|module|namespace|of|require|set|type|"
+    /* other names? */
+    "readonly|"
+    /* constants */
+    "undefined|Infinity|NaN|"
+    /* strict mode quasi keywords */
+    "eval|arguments|"
+};
+
+static const char ts_types[] = {
+    "any|boolean|number|string|symbol|"
+};
+
+ModeDef ts_mode = {
+    .name = "TypeScript",
+    .alt_name = "ts",
+    .extensions = "ts|tsx",
+    //.shell_handlers = "ts",
+    .colorize_func = js_colorize_line,
+    .colorize_flags = CLANG_TS | CLANG_REGEX,
+    .keywords = ts_keywords,
+    .types = ts_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+/*---------------- Onux JS++ programming language ----------------*/
+
+/* triple quoted strings
+   '''
+   """
+   numeric: /0[Xx][A-Fa-f\d]+|[-+]?(?:\.\d+|\d+\.?\d*)(?:[Ee][-+]?\d+|[FfDdL]|UL)?/
+ */
+
+static const char jspp_keywords[] = {
+    // JavaScript keywords
+    "if|in|do|for|new|try|this|else|case|with|while|"
+    "break|catch|throw|return|typeof|delete|switch|"
+    "default|finally|continue|debugger|instanceof|"
+    "true|false|null|"
+    // JS++ warning keywords
+    "let|const|yield|export|extends|implements|package|"
+    // JS++ basic keywords
+    "import|external|module|foreach|typeid|enum|interface|class|"
+    "super|implicit|explicit|undefined|"
+    // JS++ modifiers
+    "private|protected|public|static|final|inline|property|abstract|"
+    "optional|virtual|override|"
+    // type keywords
+    "var|void|function|"
+    // JS++ operators
+    //"; [ ] ( ) . , : === == = !== != ! <<= << <= < >>>= >>> >>= >> >= > "
+    //"+= ++ + -= -- - *= * /= / %= % &&= && &= & ||= || |= | ^= ^ ~ ?=|"
+    /* constants */
+    "Infinity|NaN|"
+    /* strict mode quasi keywords */
+    "eval|arguments|"
+};
+
+static const char jspp_types[] = {
+    "bool|string|byte|char|double|float|int|"
+    "long|short|unsigned|signed|"
+    //"var|void|function|"
+};
+
+ModeDef jspp_mode = {
+    .name = "JS++",
+    .alt_name = "jspp",
+    .extensions = "jspp|jpp",
+    .shell_handlers = "js++",
+    .colorize_func = js_colorize_line,
+    .colorize_flags = CLANG_JSPP | CLANG_REGEX,
+    .keywords = jspp_keywords,
+    .types = jspp_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+
+/*---------------- Microsoft Koka programming language ----------------*/
+
+/* triple quoted strings
+   '''
+   """
+   numeric: /0[Xx][A-Fa-f\d]+|[-+]?(?:\.\d+|\d+\.?\d*)(?:[Ee][-+]?\d+|[FfDdL]|UL)?/
+   - in identifiers
+   ' is not a string delimiter, but a name modifier?
+   digits.string -> unit literal
+   hex escapes: \x## \u#### \U######
+   raw string: @" ... "" ... "
+   string: " ... escapes ... "
+   char: ' ... escapes ... '
+   line comment: // ...
+   block comment: / * ... * / (nested)
+   line directive: # ...
+   identifier: [a-zA-Z][a-zA-Z0-9_]+ embedded -, trailing [?]? and [']*
+ */
+
+static const char koka_keywords[] = {
+    "fun|function|"
+    "infix|infixr|infixl|prefix|type|cotype|rectype|alias|"
+    "forall|exists|some|fun|function|val|var|con|"
+    "if|then|else|elif|match|return|import|as|"
+    "public|private|abstract|interface|instance|with|"
+    "external|inline|include|effect|handle|handler|linear|"
+    "yield|qualified|hiding|"
+
+    "interleaved|catch|raise|resume|amb|for|foreach|"
+    "module|not|open|extend|struct|linear|extern|"
+
+    "False|True|Nothing|Nil|"
+};
+
+static const char koka_types[] = {
+    "bool|int|double|string|"
+    //"byte|char|float|long|short|unsigned|signed|"
+};
+
+ModeDef koka_mode = {
+    .name = "Koka",
+    .extensions = "kk",
+    //.shell_handlers = "koka",
+    .colorize_func = js_colorize_line,
+    .colorize_flags = CLANG_KOKA | CLANG_REGEX,
+    .keywords = koka_keywords,
+    .types = koka_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
@@ -1874,6 +2032,7 @@ static const char as_types[] = {
 
 static ModeDef as_mode = {
     .name = "Actionscript",
+    .alt_name = "as",
     .extensions = "as",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_AS | CLANG_REGEX,
@@ -2413,6 +2572,7 @@ static int qs_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 static ModeDef qscript_mode = {
     .name = "QScript",
+    .alt_name = "qs",
     .extensions = "qe|qs",
     .shell_handlers = "qscript|qs",
     .mode_probe = qs_mode_probe,
@@ -2441,6 +2601,7 @@ static const char ec_types[] = {
 
 static ModeDef ec_mode = {
     .name = "elastiC",
+    .alt_name = "ec",
     .extensions = "ec",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_ELASTIC,
@@ -2917,6 +3078,9 @@ static int c_init(void)
     qe_register_mode(&less_mode, MODEF_SYNTAX);
     qe_register_mode(&json_mode, MODEF_SYNTAX);
     qe_register_mode(&js_mode, MODEF_SYNTAX);
+    qe_register_mode(&ts_mode, MODEF_SYNTAX);
+    qe_register_mode(&jspp_mode, MODEF_SYNTAX);
+    qe_register_mode(&koka_mode, MODEF_SYNTAX);
     qe_register_mode(&as_mode, MODEF_SYNTAX);
     qe_register_mode(&java_mode, MODEF_SYNTAX);
     qe_register_mode(&scala_mode, MODEF_SYNTAX);
