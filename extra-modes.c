@@ -4037,6 +4037,41 @@ static int ocaml_init(void)
     return 0;
 }
 
+/*---------------- Eff language coloring ----------------*/
+
+static char const eff_keywords[] = {
+    // eff-keywords
+    "and|as|begin|check|do|done|downto|else|end|effect|external|finally|for|"
+    "fun|function|handle|handler|if|in|match|let|new|of|operation|rec|val|"
+    "while|to|type|then|with|"
+    // eff-constants
+    "asr|false|mod|land|lor|lsl|lsr|lxor|or|true|"
+    // other
+    "ref|try|raise|"
+    // directives
+    "help|reset|quit|use|"
+};
+
+static char const eff_types[] = {
+    "empty|bool|float|double|int|exception|string|map|range|unit|"
+};
+
+static ModeDef eff_mode = {
+    .name = "Eff",
+    .extensions = "eff",
+    .shell_handlers = "eff",
+    .keywords = eff_keywords,
+    .types = eff_types,
+    .colorize_func = ocaml_colorize_line,
+};
+
+static int eff_init(void)
+{
+    qe_register_mode(&eff_mode, MODEF_SYNTAX);
+
+    return 0;
+}
+
 /*---------------- EMF (JASSPA microemacs macro files) ----------------*/
 
 static char const emf_keywords[] = {
@@ -5094,6 +5129,7 @@ static int extra_modes_init(void)
     erlang_init();
     elixir_init();
     ocaml_init();
+    eff_init();
     emf_init();
     agena_init();
     smalltalk_init();
