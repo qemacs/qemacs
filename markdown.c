@@ -40,6 +40,7 @@ enum {
     MKD_STYLE_CODE        = QE_STYLE_STRING,
     MKD_STYLE_IMAGE_LINK  = QE_STYLE_KEYWORD,
     MKD_STYLE_REF_LINK    = QE_STYLE_KEYWORD,
+    MKD_STYLE_REF_HREF    = QE_STYLE_COMMENT,
     MKD_STYLE_DLIST       = QE_STYLE_NUMBER,
     MKD_STYLE_LIST        = QE_STYLE_NUMBER,
 };
@@ -76,17 +77,22 @@ static int mkd_scan_chunk(const unsigned int *str,
         if (str[i] != begin[i])
             return 0;
     }
+    if (qe_isspace(str[i]))
+        return 0;
+
     for (j = 0; j < min_width; j++) {
         if (str[i + j] == '\0')
             return 0;
     }
     for (i += j; str[i] != '\0'; i++) {
-        for (j = 0; end[j]; j++) {
-            if (str[i + j] != end[j])
-                break;
+        if (!qe_isspace(str[i - 1])) {
+            for (j = 0; end[j]; j++) {
+                if (str[i + j] != end[j])
+                    break;
+            }
+            if (!end[j])
+                return i + j;
         }
-        if (!end[j])
-            return i + j;
     }
     return 0;
 }
@@ -355,34 +361,36 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         case '#':
             break;
         case '*':  /* bold */
-            if (str[i + 1] == '*') {
-                chunk_style = MKD_STYLE_STRONG2;
-                chunk = mkd_scan_chunk(str + i, "**", "**", 1);
-            } else {
-                chunk_style = MKD_STYLE_STRONG1;
-                chunk = mkd_scan_chunk(str + i, "*", "*", 1);
-            }
+            chunk_style = MKD_STYLE_STRONG2;
+            chunk = mkd_scan_chunk(str + i, "**", "**", 1);
+            if (chunk)
+                break;
+            chunk_style = MKD_STYLE_STRONG1;
+            chunk = mkd_scan_chunk(str + i, "*", "*", 1);
+            if (chunk)
+                break;
             break;
         case '_':  /* emphasis */
-            if (str[i + 1] == '_') {
-                chunk_style = MKD_STYLE_EMPHASIS2;
-                chunk = mkd_scan_chunk(str + i, "__", "__", 1);
-            } else {
-                chunk_style = MKD_STYLE_EMPHASIS1;
-                chunk = mkd_scan_chunk(str + i, "_", "_", 1);
-            }
+            chunk_style = MKD_STYLE_EMPHASIS2;
+            chunk = mkd_scan_chunk(str + i, "__", "__", 1);
+            if (chunk)
+                break;
+            chunk_style = MKD_STYLE_EMPHASIS1;
+            chunk = mkd_scan_chunk(str + i, "_", "_", 1);
+            if (chunk)
+                break;
             break;
         case '`':  /* code */
             chunk_style = MKD_STYLE_CODE;
-            if (str[i + 1] == '`') {
-                if (str[i + 2] == ' ') {
-                    chunk = mkd_scan_chunk(str + i, "`` ", " ``", 1);
-                } else {
-                    chunk = mkd_scan_chunk(str + i, "``", "``", 1);
-                }
-            } else {
-                chunk = mkd_scan_chunk(str + i, "`", "`", 1);
-            }
+            chunk = mkd_scan_chunk(str + i, "`` ", " ``", 1);
+            if (chunk)
+                break;
+            chunk = mkd_scan_chunk(str + i, "``", "``", 1);
+            if (chunk)
+                break;
+            chunk = mkd_scan_chunk(str + i, "`", "`", 1);
+            if (chunk)
+                break;
             break;
         case '!':  /* image link ^[...: <...>] */
             chunk_style = MKD_STYLE_IMAGE_LINK;
@@ -391,30 +399,35 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         case '[':  /* link ^[...: <...>] */
             chunk_style = MKD_STYLE_REF_LINK;
             chunk = mkd_scan_chunk(str + i, "[", "]", 1);
+            if (chunk && str[i + chunk] == '(') {
+                i += chunk;
+                SET_COLOR(str, start, i, chunk_style);
+                chunk_style = MKD_STYLE_REF_HREF;
+                chunk = mkd_scan_chunk(str + i, "(", ")", 1);
+            }
             break;
         case '<':  /* automatic link <http://address> */
             chunk_style = MKD_STYLE_REF_LINK;
             chunk = mkd_scan_chunk(str + i, "<http", ">", 1);
             if (chunk)
                 break;
+            /* match an email address */
             for (flags = 0, j = i + 1; j < n;) {
-                if (str[j] == '@')
-                    flags |= 1;
-                if (str[j++] == '>') {
-                    flags |= 2;
+                int d = str[j++];
+                if (d == '@')
+                    flags++;
+                if (d == '>') {
+                    if (flags == 1) {
+                        chunk = j - i;
+                    }
                     break;
                 }
-            }
-            if (flags == 3) {
-                chunk = j;
-                break;
             }
             break;
         case '\\':  /* escape */
             if (strchr("\\`*_{}[]()#+-.!", str[i + 1])) {
-                i += 2;
-                SET_COLOR(str, start, i, base_style);
-                continue;
+                chunk = 2;
+                break;
             }
             break;
         }
