@@ -5,6 +5,7 @@
 
 * Recent bugs and ideas
 
+** shell: C-c C-c should abort make process
 ** basic: backspace delete hacking tabs
 ** charset: use unichar typedef
 ** charset: limit number of combining marks to 20

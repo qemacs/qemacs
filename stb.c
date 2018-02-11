@@ -54,8 +54,9 @@ static void image_display(EditState *s) {
 
     if (s->display_invalid) {
         if (ms && ms->stb_image) {
-            int x0, y0, w, h;
 #if 0
+            int x0, y0, w, h;
+
             /* No scaling */
             w = min(s->width, ms->pic.width);
             h = min(s->height, ms->pic.height / s->screen->dpy.yfactor);
@@ -68,22 +69,26 @@ static void image_display(EditState *s) {
             put_status(s, "%dx%dx%d",
                        ms->pic.width, ms->pic.height, ms->stb_channels * 8);
 #else
+            int x0 = 0;
+            int y0 = 0;
+            int w = ms->pic.width;
+            int h = (ms->pic.height + s->screen->dpy.yfactor - 1) / s->screen->dpy.yfactor;
             int factor = 1024;
 
-            w = ms->pic.width;
-            h = ms->pic.height / s->screen->dpy.yfactor;
-            /* compute scaling factor for scale up or down */
-            factor = min(4 * 1024, min(s->width * 1024 / w, s->height * 1024 / h));
-            /* Do not scale up on text display */
-            if (factor < 1024 || s->width != s->cols) {
-                w = ((w * factor) + 512) / 1024;
-                h = ((h * factor) + 512) / 1024;
+            if (w > 0 && h > 0) {
+                /* compute scaling factor for scale up or down */
+                factor = min(4 * 1024, min(s->width * 1024 / w, s->height * 1024 / h));
+                /* Do not scale up on text display */
+                if (factor < 1024 || s->width != s->cols) {
+                    w = ((w * factor) + 512) / 1024;
+                    h = ((h * factor) + 512) / 1024;
+                }
+                x0 = (s->width - w) / 2;
+                y0 = (s->height - h) / 2;
+                qe_draw_picture(s->screen, s->xleft + x0, s->ytop + y0, w, h,
+                                &ms->pic, 0, 0, ms->pic.width, ms->pic.height,
+                                0, QERGB(128, 128, 128));
             }
-            x0 = (s->width - w) / 2;
-            y0 = (s->height - h) / 2;
-            qe_draw_picture(s->screen, s->xleft + x0, s->ytop + y0, w, h,
-                            &ms->pic, 0, 0, ms->pic.width, ms->pic.height,
-                            0, QERGB(128, 128, 128));
             fill_border(s, x0, y0, w, h, col);
             put_status(s, "%dx%dx%d",
                        ms->pic.width, ms->pic.height, ms->stb_channels * 8);

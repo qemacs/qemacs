@@ -1540,7 +1540,6 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
         p2 = vp1;
     }
 
-    // XXX: should support SF_NUMBER
     pos1 = p1->start;
     pos2 = p2->start;
     for (;;) {
@@ -1549,11 +1548,37 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
             c1 = eb_nextc(cp->b, pos1, &pos1);
             if (!(cp->flags & SF_DICT) || qe_isalpha(c1))
                 break;
+            c1 = 0;
         }
         while (pos2 < p2->end) {
             c2 = eb_nextc(cp->b, pos2, &pos2);
             if (!(cp->flags & SF_DICT) || qe_isalpha(c2))
                 break;
+            c2 = 0;
+        }
+        if ((cp->flags & SF_NUMBER) && qe_isdigit(c1) && qe_isdigit(c2)) {
+            unsigned long long n1 = c1 - '0';
+            unsigned long long n2 = c2 - '0';
+            c1 = 0;
+            while (pos1 < p1->end) {
+                c1 = eb_nextc(cp->b, pos1, &pos1);
+                if (!qe_isdigit(c1))
+                    break;
+                n1 = n1 * 10 + c1 - '0';
+                c1 = 0;
+            }
+            c2 = 0;
+            while (pos2 < p2->end) {
+                c2 = eb_nextc(cp->b, pos2, &pos2);
+                if (!qe_isdigit(c2))
+                    break;
+                n2 = n2 * 10 + c2 - '0';
+                c2 = 0;
+            }
+            if (n1 < n2)
+                return -1;
+            if (n1 > n2)
+                return +1;
         }
         if (cp->flags & SF_FOLD) {
             // XXX: should support unicode case folding

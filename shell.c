@@ -1238,6 +1238,9 @@ static void qe_term_emulate(ShellState *s, int c)
         case '8':   // Restore Cursor (DECRC). [rc]
             qe_term_goto_xy(s, s->save_x, s->save_y, 0);
             break;
+        case 'c':   // Full Reset (RIS). [rs1, reset_1string]
+            s->shifted = s->charset[s->cset = 0];
+            break;
         case '9':   // Forward Index (DECFI), VT420 and up.
         case '=':   // Application Keypad (DECKPAM). [smkx]
         case '>':   // Normal Keypad (DECKPNM). [rmkx, is2, rs2]
@@ -1255,7 +1258,6 @@ static void qe_term_emulate(ShellState *s, int c)
         case 'X':   // Start of String (SOS  is 0x98).
         case 'Z':   // Return Terminal ID (DECID is 0x9a).
                     // Obsolete form of CSI c  (DA).
-        case 'c':   // Full Reset (RIS). [rs1, reset_1string]
         case 'l':   // Memory Lock (per HP terminals).  Locks memory above the cursor.
         case 'm':   // Memory Unlock (per HP terminals).
         case 'n':   // Invoke the G2 Character Set as GL (LS2).
@@ -1451,51 +1453,39 @@ static void qe_term_emulate(ShellState *s, int c)
             /* XXX: should just force top of window to in infinite scroll mode */
             {   /*     0: Below (default), 1: Above, 2: All, 3: Saved Lines (xterm) */
                 /* XXX: should handle eol style */
-                int cur_line, col_num1, col_num2, nc1, nc2, n1, n2;
-                int cur_offset = offset;
+                int offset0, offset1, bos, eos, col, row;
 
-                n1 = n2 = nc1 = nc2 = 0;
-                qe_term_get_pos(s, offset, NULL, &cur_line, &col_num1);
-                offset1 = eb_goto_bol(s->b, offset);
-                offset2 = eb_goto_eol(s->b, offset);
-                qe_term_get_pos(s, offset2, NULL, &cur_line, &col_num2);
+                bos = eos = 0;
                 // default param is 0
                 if (s->params[0] <= 0) {
                     /* Erase to end of screen */
-                    nc2 = col_num2 - col_num1;
-                    n2 = s->rows - cur_line - 1;
+                    eos = 1;
                 } else
                 if (s->params[0] == 1) {
                     /* Erase from beginning of screen */
-                    offset = offset1;
-                    nc1 = col_num1;
-                    n1 = cur_line - 1;
+                    bos = 1;
                 } else
-                if (s->params[0] == 2) {
+                if (s->params[0] == 2 || s->params[0] == 3) {
                     /* Erase complete screen */
-                    offset = offset1;
-                    nc1 = col_num1;
-                    nc2 = col_num2 - col_num1;
-                    n1 = cur_line - 1;
-                    n2 = s->rows - cur_line - 1;
+                    bos = eos = 1;
                 }
                 /* update cursor as overwriting characters may change offsets */
-                qe_term_set_style(s);
-                if (n1) {
-                    qe_term_goto_xy(s, 0, 0, 0);
-                    offset = s->cur_offset;
-                    offset = qe_term_delete_lines(s, offset, n1);
-                    offset = qe_term_insert_lines(s, offset, n1);
+                if (bos) {
+                    qe_term_get_pos(s, offset, &offset0, &col, &row);
+                    offset1 = eb_goto_bol(s->b, offset);
+                    qe_term_set_style(s);
+                    if (row > 0) {
+                        offset = qe_term_delete_lines(s, offset0, row);
+                        offset = qe_term_insert_lines(s, offset, row);
+                    } else {
+                        offset = eb_goto_bol(s->b, offset);
+                    }
+                    offset = qe_term_erase_chars(s, offset, col);
                 }
-                cur_offset = offset = qe_term_erase_chars(s, offset, nc1);
-                qe_term_erase_chars(s, offset, nc2);
-                if (n2) {
-                    offset = qe_term_skip_lines(s, offset, 1);
-                    offset = qe_term_delete_lines(s, offset, n2);
-                    offset = qe_term_insert_lines(s, offset, n2);
+                if (eos) {
+                    eb_delete(s->b, offset, s->b->total_size - offset);
                 }
-                /* update cur_offset that may have been changed by callback */ 
-                s->cur_offset = cur_offset;
+                s->cur_offset = offset;
             }
             break;
         case 'K':  /* EL: Erase in Line. */
@@ -1535,9 +1525,9 @@ static void qe_term_emulate(ShellState *s, int c)
         case 'L':  /* IL: Insert Ps Line(s) (default = 1). */
             //TRACE_MSG(s, "insert lines");
             {
-                int col, row, zone;
+                int row, zone;
                 offset = eb_goto_bol(s->b, offset);
-                qe_term_get_pos(s, offset, NULL, &col, &row);
+                qe_term_get_pos(s, offset, NULL, NULL, &row);
                 zone = max(0, s->scroll_bottom - row);
                 param1 = min(param1, zone);
                 qe_term_set_style(s);
@@ -1550,9 +1540,9 @@ static void qe_term_emulate(ShellState *s, int c)
         case 'M':  /* DL: Delete Ps Line(s) (default = 1). */
             //TRACE_MSG(s, "delete lines");
             {
-                int col, row, zone;
+                int row, zone;
                 offset = eb_goto_bol(s->b, offset);
-                qe_term_get_pos(s, offset, NULL, &col, &row);
+                qe_term_get_pos(s, offset, NULL, NULL, &row);
                 zone = max(0, s->scroll_bottom - row);
                 param1 = min(param1, zone);
                 qe_term_set_style(s);
@@ -2846,7 +2836,7 @@ static void do_compile(EditState *s, const char *cmd)
     set_error_offset(b, 0);
 }
 
-static void do_compile_error(EditState *s, int dir)
+static void do_compile_error(EditState *s, int arg, int dir)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e;
@@ -2857,6 +2847,11 @@ static void do_compile_error(EditState *s, int dir)
     buf_t fnamebuf, *fname;
     int c, line_num, col_num, len;
     char error_message[128];
+
+    if (arg != NO_ARG) {
+        /* called with a prefix: set the error source to the current buffer */
+        set_error_offset(s->b, s->offset);
+    }
 
     /* CG: should have a buffer flag for error source.
      * first check if current buffer is an error source.
@@ -3115,10 +3110,10 @@ static CmdDef shell_global_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
           "man", do_man, ESs,
           "s{Show man page for: }|man|")
-    CMD1( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE,
-          "previous-error", do_compile_error, -1) /* u */
-    CMD1( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'),
-          "next-error", do_compile_error, 1) /* u */
+    CMD3( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE,
+          "previous-error", do_compile_error, ESii, -1, "uiv")
+    CMD3( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'),
+          "next-error", do_compile_error, ESii, 1, "uiv")
     CMD_DEF_END,
 };
 
