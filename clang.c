@@ -1746,7 +1746,9 @@ static void js_colorize_line(QEColorizeContext *cp,
                 if (cp->state_only && !tag)
                     continue;
 
-                if (strfind(syn->keywords, kbuf)) {
+                /* keywords used as object property tags are regular identifiers */
+                if (strfind(syn->keywords, kbuf) &&
+                    str[i] != ':' && (start == 0 || str[start - 1] != '.')) {
                     style = C_STYLE_KEYWORD;
                     break;
                 }
