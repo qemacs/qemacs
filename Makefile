@@ -561,9 +561,12 @@ FILES:= .cvsignore COPYING Changelog Makefile README TODO.org VERSION \
         kmaptoqe.c latex-mode.c libfbf.c libfbf.h ligtoqe.c lisp.c list.c \
         makemode.c markdown.c mpeg.c orgmode.c parser.c perl.c qe-doc.html \
         qe-doc.texi qe.1 qe.c qe.h qe.tcc qeconfig.h qeend.c qemacs.spec \
-        qestyles.h qfribidi.c qfribidi.h rlang.c rust.c script.c shell.c \
-        search.c swift.c tty.c unicode_join.c unifont.lig unihex.c unix.c \
+        qestyles.h qfribidi.c qfribidi.h rlang.c rust.c script.c search.c \
+        shell.c swift.c tty.c unicode_join.c unifont.lig unihex.c unix.c \
         util.c variables.c variables.h video.c win32.c x11.c xml.c
+
+FILES+= ats.c cflags.mk elm.c fractal.c jai.c nim.c qemacs.rdef quirrel.c \
+        rebol.c stb.c stb_image.h tqe.c txl.c unicode_width.h virgil.c
 
 FILES+=plugins/Makefile  plugins/my_plugin.c
 
