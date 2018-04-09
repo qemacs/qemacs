@@ -530,8 +530,10 @@ void do_cd(EditState *s, const char *path)
     if (chdir(buf)) {
         put_status(s, "Cannot change directory to '%s'", buf);
     } else {
-        getcwd(buf, sizeof(buf));
-        put_status(s, "Current directory: %s", buf);
+        if (!getcwd(buf, sizeof(buf)))
+            put_status(s, "Cannot get current directory");
+        else
+            put_status(s, "Current directory: %s", buf);
     }
 }
 
@@ -6792,7 +6794,8 @@ void canonicalize_absolute_buffer_path(EditBuffer *b, int offset, char *buf, int
         } else {
             /* CG: not sufficient for windows drives */
             if (!b || !get_default_path(b, offset, cwd, sizeof(cwd))) {
-                getcwd(cwd, sizeof(cwd));
+                if (!getcwd(cwd, sizeof(cwd)))
+                    strcpy(cwd, ".");
 #ifdef CONFIG_WIN32
                 path_win_to_unix(cwd);
 #endif

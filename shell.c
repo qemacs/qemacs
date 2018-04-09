@@ -215,6 +215,7 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
         /* child process */
         const char *argv[4];
         int argc = 0;
+        int fd0, fd1, fd2;
 
         argv[argc++] = get_shell();
         if (cmd) {
@@ -235,14 +236,17 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
         /* open pseudo tty for standard I/O */
         if (shell_flags & SF_INTERACTIVE) {
             /* interactive shell: input from / output to pseudo terminal */
-            open(tty_name, O_RDWR);
-            dup(0);
-            dup(0);
+            fd0 = open(tty_name, O_RDWR);
+            fd1 = dup(0);
+            fd2 = dup(0);
         } else {
             /* collect output from non interactive process: no input */
-            open("/dev/null", O_RDONLY);
-            open(tty_name, O_RDWR);
-            dup(1);
+            fd0 = open("/dev/null", O_RDONLY);
+            fd1 = open(tty_name, O_RDWR);
+            fd2 = dup(1);
+        }
+        if (fd0 != 0 || fd1 != 1 || fd2 != 2) {
+            setenv("QE-STATUS", "invalid handles", 1);
         }
 #ifdef CONFIG_DARWIN
         setsid();
@@ -259,7 +263,11 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
         unsetenv("PAGER");
         //setenv("QELEVEL", "1", 1);
 
-        if (path) chdir(path);
+        if (path) {
+            if (chdir(path)) {
+                setenv("QE-STATUS", "cannot chdir", 1);
+            }
+        }
 
         execv(argv[0], (char * const*)argv);
         exit(1);
@@ -1453,7 +1461,7 @@ static void qe_term_emulate(ShellState *s, int c)
             /* XXX: should just force top of window to in infinite scroll mode */
             {   /*     0: Below (default), 1: Above, 2: All, 3: Saved Lines (xterm) */
                 /* XXX: should handle eol style */
-                int offset0, offset1, bos, eos, col, row;
+                int offset0, bos, eos, col, row;
 
                 bos = eos = 0;
                 // default param is 0
@@ -1472,7 +1480,7 @@ static void qe_term_emulate(ShellState *s, int c)
                 /* update cursor as overwriting characters may change offsets */
                 if (bos) {
                     qe_term_get_pos(s, offset, &offset0, &col, &row);
-                    offset1 = eb_goto_bol(s->b, offset);
+                    eb_goto_bol(s->b, offset);
                     qe_term_set_style(s);
                     if (row > 0) {
                         offset = qe_term_delete_lines(s, offset0, row);
