@@ -602,6 +602,14 @@ tar: $(FILES)
 	( cd /tmp ; tar cfz $(HOME)/$(FILE).tar.gz $(FILE) )
 	rm -rf /tmp/$(FILE)
 
+archive: filelist
+	rm -f $(HOME)/$(FILE).tar.gz
+	rm -rf /tmp/$(FILE)
+	mkdir -p /tmp/$(FILE)
+	tar cf - -T filelist | (cd /tmp/$(FILE) ; tar xf - )
+	( cd /tmp ; tar cfz $(HOME)/$(FILE).tar.gz $(FILE) )
+	rm -rf /tmp/$(FILE)
+
 SPLINTOPTS := -DSPLINT +posixlib -nestcomment +boolint +charintliteral -mayaliasunique
 SPLINTOPTS += -nullstate -unqualifiedtrans +charint
 # extra options that will be removed later
