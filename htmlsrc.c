@@ -58,20 +58,17 @@ static int get_html_entity(unsigned int *p)
 
 /* colorization states */
 enum {
-    IN_HTML_COMMENT    = 0x001,      /* <!-- ... --> */
-    IN_HTML_COMMENT1   = 0x002,      /* <! ... > */
-    IN_HTML_STRING     = 0x004,      /* " ... " */
-    IN_HTML_STRING1    = 0x008,      /* ' ... ' */
-    IN_HTML_ENTITY     = 0x010,      /* &name[;] / &#123[;] */
-    IN_HTML_TAG        = 0x020,      /* <tag ... > */
-    IN_HTML_SCRIPT_TAG = 0x040,      /* <script ... > */
-    IN_HTML_SCRIPT     = 0x080,      /* <script> [...] </script> */
-    IN_HTML_STYLE_TAG  = 0x100,      /* <style ... > */
-    IN_HTML_STYLE      = 0x200,      /* <style> [...] </style> */
-    IN_HTML_PHP_TAG    = 0x400,      /* <?php ... ?> */
-    IN_HTML_PHP_STRING = 0x800,      /* "<?php ... ?>" */
-    IN_HTML_ASP_TAG    = 0x1000,      /* <% ... %> */
-    IN_HTML_ASP_STRING = 0x2000,      /* "<% ... %>" */
+    IN_HTML_COMMENT    = 0x0001,      /* <!-- ... --> */
+    IN_HTML_COMMENT1   = 0x0002,      /* <! ... > */
+    IN_HTML_ENTITY     = 0x0004,      /* &name[;] / &#123[;] */
+    IN_HTML_EMBEDDED   = 0x00ff,      /* flags for embedded php, js, css, c# */
+    IN_HTML_TAG        = 0x0100,      /* <tag ... > */
+    IN_HTML_STRING     = 0x0200,      /* <tag " ... " > */
+    IN_HTML_STRING1    = 0x0400,      /* <tag ' ... ' > */
+    IN_HTML_SCRIPT     = 0x1000,      /* <script> [...] </script> */
+    IN_HTML_STYLE      = 0x2000,      /* <style> [...] </style> */
+    IN_HTML_PHP        = 0x4000,      /* <?php ... ?> */
+    IN_HTML_ASP        = 0x8000,      /* <% ... %> */
 };
 
 enum {
@@ -102,71 +99,53 @@ static int htmlsrc_tag_match(const unsigned int *buf, int i, const char *str,
 static void htmlsrc_colorize_line(QEColorizeContext *cp,
                                   unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, len;
+    int i = 0, start, c, len;
     int state = cp->colorize_state;
-
-    /* Kludge for preprocessed html */
-    if (str[i] == '#') {
-        i = n;
-        SET_COLOR(str, start, i, HTML_STYLE_PREPROCESS);
-        goto the_end;
-    }
 
     while (i < n) {
         start = i;
-        c = str[i];
 
-        if (state & (IN_HTML_PHP_TAG | IN_HTML_PHP_STRING)) {
+        if (state & IN_HTML_PHP) {
             for (; i < n; i++) {
                 if (str[i] == '?' && str[i + 1] == '>')
                     break;
             }
             c = str[i];     /* save char to set '\0' delimiter */
             str[i] = '\0';
-            cp->colorize_state = state & ~(IN_HTML_PHP_TAG | IN_HTML_PHP_STRING);
+            cp->colorize_state = state & IN_HTML_EMBEDDED;
             php_mode.colorize_func(cp, str + start, i - start, &php_mode);
-            state = cp->colorize_state |
-                    (state & (IN_HTML_PHP_TAG | IN_HTML_PHP_STRING));
+            state &= ~IN_HTML_EMBEDDED;
+            state |= cp->colorize_state & IN_HTML_EMBEDDED;
             str[i] = c;
             if (c) {
+                state &= ~(IN_HTML_EMBEDDED | IN_HTML_PHP);
                 start = i;
                 i += 2;
                 SET_COLOR(str, start, i, HTML_STYLE_PREPROCESS);
-                if (state & IN_HTML_PHP_TAG) {
-                    state = 0;
-                } else {
-                    /* XXX: should set these bits higher */
-                    state = IN_HTML_STRING | IN_HTML_TAG;
-                }
             }
             continue;
         }
-        if (state & (IN_HTML_ASP_TAG | IN_HTML_ASP_STRING)) {
+        if (state & IN_HTML_ASP) {
             for (; i < n; i++) {
                 if (str[i] == '%' && str[i + 1] == '>')
                     break;
             }
             c = str[i];     /* save char to set '\0' delimiter */
             str[i] = '\0';
-            cp->colorize_state = state & ~(IN_HTML_ASP_TAG | IN_HTML_ASP_STRING);
+            cp->colorize_state = state & IN_HTML_EMBEDDED;
             csharp_mode.colorize_func(cp, str + start, i - start, &csharp_mode);
-            state = cp->colorize_state |
-                    (state & (IN_HTML_ASP_TAG | IN_HTML_ASP_STRING));
+            state &= ~IN_HTML_EMBEDDED;
+            state |= cp->colorize_state & IN_HTML_EMBEDDED;
             str[i] = c;
             if (c) {
+                state &= ~(IN_HTML_EMBEDDED | IN_HTML_ASP);
                 start = i;
                 i += 2;
                 SET_COLOR(str, start, i, HTML_STYLE_PREPROCESS);
-                if (state & IN_HTML_ASP_TAG) {
-                    state = 0;
-                } else {
-                    /* XXX: should set these bits higher */
-                    state = IN_HTML_STRING | IN_HTML_TAG;
-                }
             }
             continue;
         }
-        if (state & IN_HTML_SCRIPT) {
+        if ((state & (IN_HTML_SCRIPT | IN_HTML_TAG)) == IN_HTML_SCRIPT) {
             for (; i < n; i++) {
                 if (str[i] == '<'
                 &&  htmlsrc_tag_match(str, i + 1, "/script", NULL)) {
@@ -175,18 +154,17 @@ static void htmlsrc_colorize_line(QEColorizeContext *cp,
             }
             c = str[i];     /* save char to set '\0' delimiter */
             str[i] = '\0';
-            state &= ~IN_HTML_SCRIPT;
-            cp->colorize_state = state;
+            cp->colorize_state = state & IN_HTML_EMBEDDED;
             js_mode.colorize_func(cp, str + start, i - start, &js_mode);
-            state = cp->colorize_state;
-            state |= IN_HTML_SCRIPT;
+            state &= ~IN_HTML_EMBEDDED;
+            state |= cp->colorize_state & IN_HTML_EMBEDDED;
             str[i] = c;
             if (c) {
-                state = 0;
+                state &= ~(IN_HTML_EMBEDDED | IN_HTML_SCRIPT);
             }
             continue;
         }
-        if (state & IN_HTML_STYLE) {
+        if ((state & (IN_HTML_STYLE | IN_HTML_TAG)) == IN_HTML_STYLE) {
             for (; i < n; i++) {
                 if (str[i] == '<'
                 &&  htmlsrc_tag_match(str, i + 1, "/style", NULL)) {
@@ -195,14 +173,13 @@ static void htmlsrc_colorize_line(QEColorizeContext *cp,
             }
             c = str[i];     /* save char to set '\0' delimiter */
             str[i] = '\0';
-            state &= ~IN_HTML_STYLE;
-            cp->colorize_state = state;
+            cp->colorize_state = state & IN_HTML_EMBEDDED;
             css_mode.colorize_func(cp, str + start, i - start, &css_mode);
-            state = cp->colorize_state;
-            state |= IN_HTML_STYLE;
+            state &= ~IN_HTML_EMBEDDED;
+            state |= cp->colorize_state & IN_HTML_EMBEDDED;
             str[i] = c;
             if (c) {
-                state = 0;
+                state &= ~(IN_HTML_EMBEDDED | IN_HTML_STYLE);
             }
             continue;
         }
@@ -256,7 +233,7 @@ static void htmlsrc_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, i, i + 5, HTML_STYLE_PREPROCESS);
                     i += 5;
                     start = i;
-                    state = IN_HTML_PHP_STRING;
+                    state |= IN_HTML_PHP;
                     break;
                 } else
                 if (str[i] == '<' && str[i + 1] == '%') {
@@ -264,7 +241,7 @@ static void htmlsrc_colorize_line(QEColorizeContext *cp,
                     SET_COLOR(str, i, i + 2, HTML_STYLE_PREPROCESS);
                     i += 2;
                     start = i;
-                    state = IN_HTML_ASP_STRING;
+                    state |= IN_HTML_ASP;
                     break;
                 } else
                 if (str[i] == '?' && str[i + 1] == '>') {
@@ -284,7 +261,7 @@ static void htmlsrc_colorize_line(QEColorizeContext *cp,
             SET_COLOR(str, start, i, HTML_STYLE_STRING);
             continue;
         }
-        if (state & (IN_HTML_TAG | IN_HTML_SCRIPT_TAG | IN_HTML_STYLE_TAG)) {
+        if (state & IN_HTML_TAG) {
             for (; i < n; i++) {
                 c = str[i];
                 if (c == '&' && get_html_entity(str + i)) {
@@ -306,13 +283,7 @@ static void htmlsrc_colorize_line(QEColorizeContext *cp,
                 }
                 if (c == '>') {
                     i++;
-                    if (state & IN_HTML_SCRIPT_TAG)
-                        state = IN_HTML_SCRIPT;
-                    else
-                    if (state & IN_HTML_STYLE_TAG)
-                        state = IN_HTML_STYLE;
-                    else
-                        state &= ~IN_HTML_TAG;
+                    state &= ~IN_HTML_TAG;
                     break;
                 }
             }
@@ -325,43 +296,47 @@ static void htmlsrc_colorize_line(QEColorizeContext *cp,
         }
         /* Plain text stream */
         for (; i < n; i++) {
-            if (str[i] == '<'
+            start = i;
+            c = str[i];
+
+            /* Kludge for preprocessed html */
+            if (c == '#' && i == 0) {
+                i = n;
+                SET_COLOR(str, start, i, HTML_STYLE_PREPROCESS);
+                break;
+            }
+            if (c == '<'
             &&  htmlsrc_tag_match(str, i, "<?php", &i)) {
                 SET_COLOR(str, start, i, HTML_STYLE_PREPROCESS);
-                state = IN_HTML_PHP_TAG;
+                state |= IN_HTML_PHP;
                 break;
             }
-            if (str[i] == '<' && str[i + 1] == '%') {
+            if (c == '<' && str[i + 1] == '%') {
                 i += 2;
                 SET_COLOR(str, start, i, HTML_STYLE_PREPROCESS);
-                state = IN_HTML_ASP_TAG;
+                state |= IN_HTML_ASP;
                 break;
             }
-            if (str[i] == '<'
+            if (c == '<'
             &&  (qe_isalpha(str[i + 1]) || str[i + 1] == '!'
             ||   str[i + 1] == '/' || str[i + 1] == '?')) {
-                //SET_COLOR(str, start, i, HTML_STYLE_TEXT);
-                start = i;
+                state |= IN_HTML_TAG;
                 if (htmlsrc_tag_match(str, i, "<script", NULL)) {
-                    state |= IN_HTML_SCRIPT_TAG;
+                    state |= IN_HTML_SCRIPT;
                     break;
                 }
                 if (htmlsrc_tag_match(str, i, "<style", NULL)) {
-                    state |= IN_HTML_STYLE_TAG;
+                    state |= IN_HTML_STYLE;
                     break;
                 }
                 if (str[i + 1] == '!') {
-                    state |= IN_HTML_COMMENT1;
+                    state ^= IN_HTML_TAG ^ IN_HTML_COMMENT1;
                     i += 2;
                     if (str[i] == '-' && str[i + 1] == '-') {
                         i += 2;
-                        state &= ~IN_HTML_COMMENT1;
-                        state |= IN_HTML_COMMENT;
+                        state ^= IN_HTML_COMMENT ^ IN_HTML_COMMENT1;
                     }
                     SET_COLOR(str, start, i, HTML_STYLE_COMMENT);
-                    start = i;
-                } else {
-                    state |= IN_HTML_TAG;
                 }
                 break;
             }
@@ -370,9 +345,7 @@ static void htmlsrc_colorize_line(QEColorizeContext *cp,
                 break;
             }
         }
-        //SET_COLOR(str, start, i, HTML_STYLE_TEXT);
     }
- the_end:
     cp->colorize_state = state;
 }
 

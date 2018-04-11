@@ -2123,6 +2123,7 @@ static const char php_types[] = {
 
 ModeDef php_mode = {
     .name = "PHP",
+    .extensions = "php|php3|php4",
     .colorize_func = c_colorize_line,
     .colorize_flags = CLANG_PHP | CLANG_REGEX,
     .keywords = php_keywords,
