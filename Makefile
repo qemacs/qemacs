@@ -602,11 +602,11 @@ tar: $(FILES)
 	( cd /tmp ; tar cfz $(HOME)/$(FILE).tar.gz $(FILE) )
 	rm -rf /tmp/$(FILE)
 
-archive: filelist
+archive: .filelist
 	rm -f $(HOME)/$(FILE).tar.gz
 	rm -rf /tmp/$(FILE)
 	mkdir -p /tmp/$(FILE)
-	tar cf - -T filelist | (cd /tmp/$(FILE) ; tar xf - )
+	tar cf - -T .filelist | (cd /tmp/$(FILE) ; tar xf - )
 	( cd /tmp ; tar cfz $(HOME)/$(FILE).tar.gz $(FILE) )
 	rm -rf /tmp/$(FILE)
 
