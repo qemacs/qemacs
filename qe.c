@@ -8551,7 +8551,7 @@ void qe_register_cmd_line_options(CmdLineOptionDef *table)
 
 const char str_version[] = "QEmacs version " QE_VERSION;
 const char str_credits[] = "Copyright (c) 2000-2003 Fabrice Bellard\n"
-                           "Copyright (c) 2000-2017 Charlie Gordon\n";
+                           "Copyright (c) 2000-2018 Charlie Gordon\n";
 
 static void show_version(void)
 {
