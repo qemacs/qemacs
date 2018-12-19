@@ -5,6 +5,7 @@
 
 * Recent bugs and ideas
 
+** basic: add property lists in buffer and window for default directory and similar properties (override)
 ** shell: C-c C-c should abort make process
 ** basic: backspace delete hacking tabs
 ** charset: use unichar typedef
@@ -23,6 +24,7 @@
 ** display: colorize extra ^M and ^Z as preproc at end of line prior to calling the syntax highlighter (same as BOM)
 ** display: display bug on ~/comp/projects/fractal/fractint/ORGFORM/BAILOUT.FRM (double ^M)
 ** display: colorizer bug on /comp/projects/fractal/fractint/ORGFORM/NOEL-2.FRM (triple ^M)
+** display: use a prefix to explore file in a popup window
 ** files: actually load file in find-file-noselect
 ** files: ignore .DS_Store in completion
 ** files: fix SPC / TAB distinct behaviors on ~/comp/project/gnachman/
@@ -87,7 +89,8 @@
 ** extras: do_transpose should take argval and swap distant fragments
 ** completion: minibuffer completion: bad return on C-x C-f . SPC qe SPC RET
 ** config: reparse .qerc upon change
-** dired: display directory links as directories and links
+** dired: use window/buffer caption for directory and sizes description
+** dired: display directory links as directories and links, group with directories
 ** dired: fork process and use asynchronous function to:
    - list directory contents
    - track directory contents file stats
@@ -644,7 +647,6 @@ ssh: should use the host name and get files via scp syntax
 charset: set-eol-type should take a string: auto/binary/dos/unix/mac/0/1/2...
 archive: use window/buffer caption for output description
 files: handle files with embedded spaces
-dired: group symbolic links to directories with directories
 images: filtered scaling
 images: zoom, pan, rotate, describe, peek-color, histogram...
 images: multiview, wallpaper...

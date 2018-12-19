@@ -991,7 +991,7 @@ typedef void (*ColorizeFunc)(QEColorizeContext *cp,
 /* buffer.c */
 
 /* begin to mmap files from this size */
-#define MIN_MMAP_SIZE  (1024*1024)
+#define MIN_MMAP_SIZE  (2*1024*1024)
 #define MAX_LOAD_SIZE  (512*1024*1024)
 
 #define MAX_PAGE_SIZE  4096
@@ -1462,6 +1462,7 @@ struct EditState {
 #define WF_FILELIST   0x1000 /* window is interactive file list */
 
     OWNED char *prompt;  /* optional window prompt, utf8 */
+    OWNED char *caption;  /* optional window caption or title, utf8 */
     //const char *mode_line;
     //const char *title;
     struct QEmacsState *qe_state;
@@ -2001,7 +2002,7 @@ void register_completion(const char *name, CompletionFunc completion_func);
 void put_status(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void put_error(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void minibuffer_edit(EditState *e, const char *input, const char *prompt,
-                     StringArray *hist, CompletionFunc completion_func,
+                     StringArray *hist, const char *completion_name,
                      void (*cb)(void *opaque, char *buf), void *opaque);
 void command_completion(CompleteState *cp);
 void file_completion(CompleteState *cp);
@@ -2040,7 +2041,7 @@ void do_load_qerc(EditState *e, const char *file);
 void do_add_resource_path(EditState *s, const char *path);
 
 /* popup / low level window handling */
-EditState *show_popup(EditState *s, EditBuffer *b);
+EditState *show_popup(EditState *s, EditBuffer *b, const char *caption);
 int check_read_only(EditState *s);
 EditState *insert_window_left(EditBuffer *b, int width, int flags);
 EditState *find_window(EditState *s, int key, EditState *def);

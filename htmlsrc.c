@@ -368,10 +368,12 @@ static int html_tagcmp(const char *s1, const char *s2)
 static int htmlsrc_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     const char *buf = cs8(p->buf);
+    static const unsigned char scores[3] = { 1, 80, 85 };
+    const unsigned char *pscore = scores;
 
     /* first check file extension */
     if (match_extension(p->filename, mode->extensions))
-        return 85;
+        pscore++;
 
     /* then try buffer contents */
     if (buf[0] == '<'
@@ -380,10 +382,10 @@ static int htmlsrc_mode_probe(ModeDef *mode, ModeProbeData *p)
          !html_tagcmp(buf, "<?XML") ||
          !html_tagcmp(buf, "<PLIST") ||
          !html_tagcmp(buf, "<!DOCTYPE"))) {
-        return 85;
+         pscore++;
     }
 
-    return 1;
+    return *pscore;
 }
 
 /* specific htmlsrc commands */

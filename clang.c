@@ -105,6 +105,7 @@ static const char c_extensions[] = {
     "ecp|"              /* Informix embedded C */
     "pgc|"              /* Postgres embedded C */
     "pcc|"              /* Oracle C++ */
+    "h.in|c.in|"        /* preprocessed C input (should use more generic approach) */
 };
 
 /* grab a C identifier from a uint buf, stripping color.
@@ -1193,7 +1194,7 @@ static void do_c_list_conditionals(EditState *s)
         }
     }
     if (b->total_size > 0) {
-        show_popup(s, b);
+        show_popup(s, b, "Preprocessor conditionals");
     } else {
         eb_free(&b);
         put_status(s, "Not in a #if conditional");
@@ -1237,6 +1238,8 @@ static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
         /* same for files starting with a preprocessor directive */
         if (strstart(cs8(p->buf), "#include", NULL)
         ||  strstart(cs8(p->buf), "#ifndef", NULL)
+        ||  strstart(cs8(p->buf), "#ifdef", NULL)
+        ||  strstart(cs8(p->buf), "#if ", NULL)
         ||  strstart(cs8(p->buf), "#define", NULL)
         ||  strstart(cs8(p->buf), "#pragma", NULL)) {
             return 50;
@@ -1748,6 +1751,7 @@ static void js_colorize_line(QEColorizeContext *cp,
 
                 /* keywords used as object property tags are regular identifiers */
                 if (strfind(syn->keywords, kbuf) &&
+                    // XXX: this is incorrect for `default` inside a switch statement */
                     str[i] != ':' && (start == 0 || str[start - 1] != '.')) {
                     style = C_STYLE_KEYWORD;
                     break;

@@ -2010,7 +2010,7 @@ static void x11_list_fonts(EditState *s, int argval)
     }
     list = XListFonts(xs->display, buf, 20000, &count);
 
-    eb_printf(b, "X11 Font list: %d entries\n\n", count);
+    eb_printf(b, "\n%d entries\n\n", count);
 
     for (i = 0; i < count; i++) {
         eb_printf(b, "%d: %s\n", i, list[i]);
@@ -2018,7 +2018,7 @@ static void x11_list_fonts(EditState *s, int argval)
     XFreeFontNames(list);
 
     b->flags |= BF_READONLY;
-    show_popup(s, b);
+    show_popup(s, b, "X11 Font list");
 }
 
 static CmdDef x11_commands[] = {

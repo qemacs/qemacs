@@ -418,8 +418,7 @@ void do_save_session(EditState *s, int popup)
         b->offset = 0;
         b->flags |= BF_READONLY;
 
-        /* Should show window caption "qemacs session" */
-        show_popup(s, b);
+        show_popup(s, b, "QEmacs session");
     } else {
         eb_write_buffer(b, 0, b->total_size, ".qesession");
         eb_free(&b);

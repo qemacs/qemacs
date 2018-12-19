@@ -2846,23 +2846,49 @@ void display_window_borders(EditState *e)
             int y = e->y1;
             int width = e->x2 - e->x1;
             int height = e->y2 - e->y1;
-            int bw = qs->border_width;
-            int bh = qs->border_width;
 
             rect.x1 = 0;
             rect.y1 = 0;
             rect.x2 = qs->width;
             rect.y2 = qs->height;
+            /* XXX: should use popup size? */
             set_clip_rectangle(qs->screen, &rect);
             color = qe_styles[QE_STYLE_WINDOW_BORDER].bg_color;
             if (e->flags & WF_POPUP) {
-                fill_rectangle(qs->screen, x, y, width, bh, color);
-                fill_rectangle(qs->screen,
-                               x, y + bh, bw, height - bh - bh, color);
-                fill_rectangle(qs->screen,
-                               x + width - bw, y + bh, bw, height - bh - bh, color);
-                fill_rectangle(qs->screen,
-                               x, y + height - bh, width, bh, color);
+                /* XXX: should use client area instead of recomputing it */
+                int top_h = e->caption ? qs->mode_line_height : qs->border_width;
+                int bottom_h = qs->border_width;
+                int left_w = qs->border_width;
+                int right_w = qs->border_width;
+
+                fill_rectangle(qs->screen, x, y, width, top_h, color);
+                fill_rectangle(qs->screen, x, y + bottom_h,
+                               left_w, height - top_h - bottom_h, color);
+                fill_rectangle(qs->screen, x + width - right_w, y + top_h,
+                               right_w, height - top_h - bottom_h, color);
+                fill_rectangle(qs->screen, x, y + height - bottom_h,
+                               width, bottom_h, color);
+                /* display caption */
+                if (e->caption) {
+                    QEStyleDef styledef;
+                    QECharMetrics metrics;
+                    QEFont *font;
+                    unsigned int buf[256];
+                    int len;
+
+                    /* XXX: Should convert from UTF-8? */
+                    for (len = 0; len < 256 && e->caption[len]; len++) {
+                        buf[len] = e->caption[len];
+                    }
+                    get_style(e, &styledef, QE_STYLE_WINDOW_BORDER);
+                    font = select_font(qs->screen,
+                                       styledef.font_style, styledef.font_size);
+                    text_metrics(qs->screen, font, &metrics, buf, len);
+                    draw_text(qs->screen, font,
+                              x + width / 2 - metrics.width / 2, y + metrics.font_ascent,
+                              buf, len, styledef.fg_color);
+                    release_font(qs->screen, font);
+                }
             }
             if (e->flags & WF_RSEPARATOR) {
                 fill_rectangle(qs->screen,
@@ -4864,10 +4890,8 @@ static void parse_args(ExecCmdState *es)
                 pstrcat(prompt, sizeof(prompt), es->default_input);
                 pstrcat(prompt, sizeof(prompt), ") ");
             }
-            minibuffer_edit(s, def_input, prompt,
-                            get_history(history),
-                            find_completion(completion_name),
-                            arg_edit_cb, es);
+            minibuffer_edit(s, def_input, prompt, get_history(history),
+                            completion_name, arg_edit_cb, es);
             return;
         }
     }
@@ -5796,7 +5820,7 @@ static void compute_client_area(EditState *s)
     if (s->flags & WF_POPUP) {
         x1 += qs->border_width;
         x2 -= qs->border_width;
-        y1 += qs->border_width;
+        y1 += s->caption ? qs->mode_line_height : qs->border_width;
         y2 -= qs->border_width;
     }
     if (s->flags & WF_RSEPARATOR)
@@ -5869,6 +5893,7 @@ void edit_close(EditState **sp)
         /* closing the window mode should have freed it already */
         qe_free_mode_data(s->mode_data);
         qe_free(&s->prompt);
+        qe_free(&s->caption);
         qe_free(&s->line_shadow);
         s->shadow_nb_lines = 0;
         qe_free(sp);
@@ -6024,6 +6049,7 @@ typedef struct MinibufState {
     void *opaque;
 
     EditState *completion_popup_window;  /* XXX: should have a popup_window member */
+    OWNED char *completion_name;
     CompletionFunc completion_function;
 
     StringArray *history;
@@ -6118,6 +6144,8 @@ void do_minibuffer_complete(EditState *s, int type)
             /* if more than one match, then display them in a new popup
                buffer */
             if (!mb->completion_popup_window) {
+                char buf[60];
+
                 b = eb_new("*completion*", 
                            BF_SYSTEM | BF_UTF8 | BF_TRANSIENT | BF_STYLE1);
                 b->default_mode = &list_mode;
@@ -6126,6 +6154,8 @@ void do_minibuffer_complete(EditState *s, int type)
                 w = (w1 * 3) / 4;
                 h = (h1 * 3) / 4;
                 e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
+                snprintf(buf, sizeof buf, "Select a %s:", mb->completion_name);
+                e->caption = qe_strdup(buf);
                 e->target_window = s;
                 mb->completion_popup_window = e;
                 do_refresh(e);
@@ -6371,6 +6401,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     target = s->target_window;
     mb->cb = NULL;
     mb->opaque = NULL;
+    qe_free(&mb->completion_name);
 
     /* Close the minibuffer window */
     s->b->flags |= BF_TRANSIENT;
@@ -6391,7 +6422,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
    called with an allocated string. If the string is null, it means
    editing was aborted. */
 void minibuffer_edit(EditState *e, const char *input, const char *prompt,
-                     StringArray *hist, CompletionFunc completion_func,
+                     StringArray *hist, const char *completion_name,
                      void (*cb)(void *opaque, char *buf), void *opaque)
 {
     QEmacsState *qs = &qe_state;
@@ -6430,7 +6461,12 @@ void minibuffer_edit(EditState *e, const char *input, const char *prompt,
     mb = minibuffer_get_state(s, 0);
     if (mb) {
         mb->completion_popup_window = NULL;
-        mb->completion_function = completion_func;
+        mb->completion_name = NULL;
+        mb->completion_function = NULL;
+        if (completion_name) {
+            mb->completion_name = qe_strdup(completion_name);
+            mb->completion_function = find_completion(completion_name);
+        }
         mb->history = hist;
         mb->history_saved_offset = 0;
         if (hist) {
@@ -6513,7 +6549,7 @@ void do_popup_exit(EditState *s)
 }
 
 /* show a popup on a readonly buffer */
-EditState *show_popup(EditState *s, EditBuffer *b)
+EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e;
@@ -6531,6 +6567,8 @@ EditState *show_popup(EditState *s, EditBuffer *b)
 
     b->default_mode = &popup_mode;
     e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
+    if (caption)
+        e->caption = qe_strdup(caption);
     /* XXX: should come from mode.default_wrap */
     e->wrap = WRAP_TRUNCATE;
     e->target_window = s;
@@ -7993,7 +8031,7 @@ void do_help_for_help(EditState *s)
               "C-h c     Describe key briefly\n"
               );
     b->flags |= BF_READONLY;
-    show_popup(s, b);
+    show_popup(s, b, "QEmacs help for help - Press q to quit:");
 }
 
 #ifdef CONFIG_WIN32
@@ -9089,7 +9127,7 @@ static void qe_init(void *opaque)
 
     b = eb_find("*errors*");
     if (b != NULL) {
-        show_popup(s, b);
+        show_popup(s, b, "Errors");
         edit_display(qs);
         dpy_flush(&global_screen);
     }

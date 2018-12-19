@@ -909,8 +909,7 @@ void do_show_bindings(EditState *s, const char *cmd_name)
     }
 }
 
-static void print_bindings(EditBuffer *b, const char *title,
-                           qe__unused__ int type, ModeDef *mode)
+static void print_bindings(EditBuffer *b, ModeDef *mode)
 {
     char buf[256];
     CmdDef *d;
@@ -922,10 +921,10 @@ static void print_bindings(EditBuffer *b, const char *title,
         while (d->name != NULL) {
             if (qe_list_bindings(buf, sizeof(buf), d, mode, 0)) {
                 if (!gfound) {
-                    if (title) {
-                        eb_printf(b, "%s:\n\n", title);
-                    } else {
+                    if (mode) {
                         eb_printf(b, "\n%s mode bindings:\n\n", mode->name);
+                    } else {
+                        eb_printf(b, "\nGlobal bindings:\n\n");
                     }
                     gfound = 1;
                 }
@@ -945,11 +944,11 @@ void do_describe_bindings(EditState *s)
     if (!b)
         return;
 
-    print_bindings(b, NULL, 0, s->mode);
-    print_bindings(b, "\nGlobal bindings", 0, NULL);
+    print_bindings(b, s->mode);
+    print_bindings(b, NULL);
 
     b->flags |= BF_READONLY;
-    show_popup(s, b);
+    show_popup(s, b, "Bindings");
 }
 
 void do_apropos(EditState *s, const char *str)
@@ -965,7 +964,7 @@ void do_apropos(EditState *s, const char *str)
     if (!b)
         return;
 
-    eb_printf(b, "apropos '%s':\n\n", str);
+    eb_printf(b, "\n");
 
     found = 0;
     d = qs->first_cmd;
@@ -999,7 +998,8 @@ void do_apropos(EditState *s, const char *str)
     }
     if (found) {
         b->flags |= BF_READONLY;
-        show_popup(s, b);
+        snprintf(buf, sizeof buf, "Apropos '%s'", str);
+        show_popup(s, b, buf);
     } else {
         eb_free(&b);
         put_status(s, "No apropos matches for `%s'", str);
@@ -1022,13 +1022,13 @@ static void do_about_qemacs(EditState *s)
     eb_printf(b, "\n  %s\n\n%s\n", str_version, str_credits);
 
     /* list commands */
-    print_bindings(b, NULL, 0, s->mode);
-    print_bindings(b, "\nGlobal bindings", 0, NULL);
+    print_bindings(b, s->mode);
+    print_bindings(b, NULL);
 
     /* other mode bindings */
     for (m = qs->first_mode; m; m = m->next) {
         if (m != s->mode)
-            print_bindings(b, NULL, 0, m);
+            print_bindings(b, m);
     }
 
     /* list commands */
@@ -1057,8 +1057,7 @@ static void do_about_qemacs(EditState *s)
     b->offset = 0;
     b->flags |= BF_READONLY;
 
-    /* Should show window caption "About QEmacs" */
-    show_popup(s, b);
+    show_popup(s, b, "About QEmacs");
 }
 
 /* extract the next word from the string. ignore spaces, stop on '/' */
@@ -1225,7 +1224,7 @@ static void do_describe_buffer(EditState *s, int argval)
     if (!b1)
         return;
 
-    eb_printf(b1, "Buffer Description\n\n");
+    eb_printf(b1, "\n");
 
     eb_printf(b1, "        name: %s\n", b->name);
     eb_printf(b1, "    filename: %s\n", b->filename);
@@ -1412,7 +1411,7 @@ static void do_describe_buffer(EditState *s, int argval)
     }
 
     b1->flags |= BF_READONLY;
-    show_popup(s, b1);
+    show_popup(s, b1, "Buffer Description");
 }
 
 static void do_describe_window(EditState *s, int argval)
@@ -1424,7 +1423,7 @@ static void do_describe_window(EditState *s, int argval)
     if (!b1)
         return;
 
-    eb_printf(b1, "Window Description\n\n");
+    eb_printf(b1, "\n");
 
     w = 28;
     eb_printf(b1, "%*s: %d, %d\n", w, "xleft, ytop", s->xleft, s->ytop);
@@ -1481,7 +1480,7 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "\n");
 
     b1->flags |= BF_READONLY;
-    show_popup(s, b1);
+    show_popup(s, b1, "Window Description");
 }
 
 static void do_describe_screen(EditState *e, int argval)
@@ -1494,7 +1493,7 @@ static void do_describe_screen(EditState *e, int argval)
     if (!b1)
         return;
 
-    eb_printf(b1, "Screen Description\n\n");
+    eb_printf(b1, "\n");
 
     w = 16;
     eb_printf(b1, "%*s: %s\n", w, "dpy.name", s->dpy.name);
@@ -1511,7 +1510,7 @@ static void do_describe_screen(EditState *e, int argval)
     dpy_describe(s, b1);
 
     b1->flags |= BF_READONLY;
-    show_popup(e, b1);
+    show_popup(e, b1, "Screen Description");
 }
 
 /*---------------- buffer contents sorting ----------------*/
@@ -1714,6 +1713,7 @@ static void do_goto_tag(EditState *s) {
 /* XXX: should have next-tag and previous-tag */
 
 static void do_list_tags(EditState *s) {
+    char buf[256];
     EditBuffer *b;
     QEProperty *p;
 
@@ -1723,7 +1723,7 @@ static void do_list_tags(EditState *s) {
 
     tag_buffer(s);
 
-    eb_printf(b, "\nTags in file %s:\n\n", s->b->filename);
+    snprintf(buf, sizeof buf, "Tags in file %s", s->b->filename);
     for (p = s->b->property_list; p; p = p->next) {
         if (p->type == QE_PROP_TAG) {
             eb_printf(b, "%12d  %s\n", p->offset, (char*)p->data);
@@ -1731,7 +1731,7 @@ static void do_list_tags(EditState *s) {
     }
 
     b->flags |= BF_READONLY;
-    show_popup(s, b);
+    show_popup(s, b, buf);
 }
 
 static CmdDef extra_commands[] = {
