@@ -1,0 +1,12 @@
+VT100 alternate character set using VT100 ^[(B^[)0^N and ^o escapes sequences
+(B)0ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+
+lqqqqqqqqqqpoopqrssrqqqqqqqqqqwqqqqqqqqqqpoopqrssrqqqqqqqqqqk
+x                             x                             x
+x      ooh, swirly!           x       top right corner      x
+x                             x                             x
+tqqqqqqqqqqpoopqrssrqqqqqqqqqqnqqqqqqqqqqpoopqrssrqqqqqqqqqqu
+x                             x                             x
+x     stuff down here         x       is quite inane        x
+x                             x                             x
+mqqqqqqqqqqpoopqrssrqqqqqqqqqqvqqqqqqqqqqpoopqrssrqqqqqqqqqqj
