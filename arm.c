@@ -320,15 +320,15 @@ static void intel_hex_colorize_line(QEColorizeContext *cp,
         /* Hex Load format: `:SSOOOOTTxx...xxCC` */
         int i, sh, sum = 0, chksum = 0;
         for (i = 1, sh = 4; i < n - 2; i++) {
-            int x = to_hex(str[i]);
-            if (x >= 0) {
+            int x = qe_digit_value(str[i]);
+            if (x < 16) {
                 sum += x << sh;
                 sh ^= 4;
             }
         }
         sum = (-sum & 0xFF);
-        chksum = to_hex(str[i]) << 4;
-        chksum += to_hex(str[i + 1]);
+        chksum = qe_digit_value(str[i]) << 4;
+        chksum += qe_digit_value(str[i + 1]);
 
         SET_COLOR(str, 0, 1, INTEL_HEX_STYLE_LEAD);
         SET_COLOR(str, 1, 3, INTEL_HEX_STYLE_SIZE);

@@ -45,8 +45,8 @@ static int unicode_input(int *match_buf,
     if (len > 5)
         len = 5;
     for (i = 1; i < len; i++) {
-        h = to_hex(buf[i]);
-        if (h == -1)
+        h = qe_digit_value(buf[i]);
+        if (h >= 16)
             return INPUTMETHOD_NOMATCH;
         c = (c << 4) | h;
     }

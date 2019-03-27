@@ -341,9 +341,14 @@ char *makepath(char *buf, int buf_size, const char *path, const char *filename);
 void splitpath(char *dirname, int dirname_size,
                char *filename, int filename_size, const char *pathname);
 
-static inline int qe_inrange(int c, int a, int b) {
-    return c >= a && c <= b;
+extern unsigned char const qe_digit_value__[128];
+static inline int qe_digit_value(int c) {
+    return (unsigned int)c < 128 ? qe_digit_value__[c] : 255;
 }
+static inline int qe_inrange(int c, int a, int b) {
+    return (unsigned int)(c - a) <= (unsigned int)(b - a);
+}
+/* character classification tests assume ASCII superset */
 static inline int qe_isspace(int c) {
     /* CG: what about \v and \f */
     return (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == 160);
@@ -388,21 +393,16 @@ static inline int qe_isbindigit_(int c) {
     return qe_inrange(c, '0', '1') || (c == '_');
 }
 static inline int qe_isxdigit(int c) {
-    return (qe_inrange(c, '0', '9') ||
-            qe_inrange(c | ('a' - 'A'), 'a', 'f'));
+    return qe_digit_value(c) < 16;
 }
 static inline int qe_isxdigit_(int c) {
-    return (qe_inrange(c, '0', '9') ||
-            qe_inrange(c | ('a' - 'A'), 'a', 'f') || (c == '_'));
+    return (qe_digit_value(c) < 16) || (c == '_');
 }
 static inline int qe_isalnum(int c) {
-    return (qe_inrange(c, '0', '9') ||
-            qe_inrange(c | ('a' - 'A'), 'a', 'z'));
+    return qe_digit_value(c) < 36;
 }
 static inline int qe_isalnum_(int c) {
-    return (qe_inrange(c, '0', '9') ||
-            qe_inrange(c | ('a' - 'A'), 'a', 'z') ||
-            c == '_');
+    return (qe_digit_value(c) < 36) || (c == '_');
 }
 static inline int qe_isword(int c) {
     /* XXX: any unicode char >= 128 is considered as word. */
@@ -484,7 +484,6 @@ int strunquote(char *dest, int size, const char *str, int len);
 
 void get_str(const char **pp, char *buf, int buf_size, const char *stop);
 int css_get_enum(const char *str, const char *enum_str);
-int to_hex(int key);
 
 extern QEColor const xterm_colors[];
 /* XXX: should have a more generic API with precomputed mapping scales */

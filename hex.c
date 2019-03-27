@@ -264,8 +264,8 @@ void hex_write_char(EditState *s, int key)
             hsize = s->unihex_mode;
         else
             hsize = 2;
-        h = to_hex(key);
-        if (h < 0)
+        h = qe_digit_value(key);
+        if (h >= 16)
             return;
         if ((s->insert || offset >= s->b->total_size) && s->hex_nibble == 0) {
             ch = h << ((hsize - 1) * 4);

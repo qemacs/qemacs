@@ -2,16 +2,18 @@
                      Compiling
 ----------------------------------------------------------
 
-* If you want image, audio and video support, download FFmpeg at
-  http://ffmpeg.org and install it in the qemacs/ directory (it should
-  be in qemacs/ffmpeg).
-
-* Launch the configure tool './configure'. You can look at the
+* Launch the configure tool './configure'. You can list the
   possible options by typing './configure --help'.
 
 * Type 'make' to compile qemacs and its associated tools.
 
-* type 'make install' as root to install it in /usr/local.
+* Type 'make install' as root to install it in /usr/local.
+
+* Image support is provided via the public domain stb_image
+  package. Source: http://nothings.org/stb_image.h
+
+* FFmpeg image, audio and video support is currently broken
+  and disabled
 
 ----------------------------------------------------------
                      Documentation
@@ -23,7 +25,8 @@ Read the file qe-doc.html.
                      Licensing
 ----------------------------------------------------------
 
-QEmacs is released under the GNU Lesser General Public License (read
-the accompagning COPYING file).
+QEmacs is released under the GNU Lesser General Public License
+(read the accompagning COPYING file).
 
 Fabrice Bellard.
+Charlie Gordon.

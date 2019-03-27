@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2017 Charlie Gordon.
+ * Copyright (c) 2000-2019 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -263,8 +263,8 @@ static void isearch_run(ISearchState *is)
         c = v;
         if (len < countof(is->search_u32)) {
             if (max_nibble) {
-                h = to_hex(c);
-                if (h >= 0) {
+                h = qe_digit_value(c);
+                if (h < 16) {
                     hc = (hc << 4) | h;
                     if (++hex_nibble == max_nibble) {
                         is->search_u32[len++] = hc;
@@ -622,8 +622,8 @@ static int search_to_u32(unsigned int *buf, int size,
                 }
                 break;
             }
-            h = to_hex(c);
-            if (h >= 0) {
+            h = qe_digit_value(c);
+            if (h < 16) {
                 hc = (hc << 4) | h;
                 if (++hex_nibble == max_nibble) {
                     buf[len++] = hc;

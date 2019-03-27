@@ -1205,17 +1205,15 @@ int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys)
     return out->len - start;
 }
 
-int to_hex(int c)
-{
-    /* Only ASCII supported */
-    if (c >= '0' && c <= '9')
-        return c - '0';
-    if (c >= 'a' && c <= 'f')
-        return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F')
-        return c - 'A' + 10;
-    return -1;
-}
+unsigned char const qe_digit_value__[128] = {
+#define REPEAT16(x)  x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x
+    REPEAT16(255), REPEAT16(255), REPEAT16(255),
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 255, 255, 255, 255, 255, 255,
+    255, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 255, 255, 255, 255, 255,
+    255, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 255, 255, 255, 255, 255,
+};
 
 #if 1
 /* Should move all this to a separate source file color.c */
@@ -1915,14 +1913,14 @@ int css_get_color(QEColor *color_ptr, const char *p)
         switch (len) {
         case 3:
             for (i = 0; i < 3; i++) {
-                v = to_hex(*p++);
+                v = qe_digit_value(*p++);
                 rgba[i] = v | (v << 4);
             }
             break;
         case 6:
             for (i = 0; i < 3; i++) {
-                v = to_hex(*p++) << 4;
-                v |= to_hex(*p++);
+                v = qe_digit_value(*p++) << 4;
+                v |= qe_digit_value(*p++);
                 rgba[i] = v;
             }
             break;

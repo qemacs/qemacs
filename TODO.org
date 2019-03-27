@@ -1,14 +1,14 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2017-05-15
+; Updated: 2019-03-14
 
 * Recent bugs and ideas
 
+** markdown: recognise ~~~ {.c} language tags
 ** basic: add property lists in buffer and window for default directory and similar properties (override)
-** shell: C-c C-c should abort make process
 ** basic: backspace delete hacking tabs
-** charset: use unichar typedef
+** charset: use unichar typedef?
 ** charset: limit number of combining marks to 20
 ** clang: colorizing bug: static int (*qe__initcall_first)(void) qe__init_call = NULL;
 ** clang: missed tag: static int (*qe__initcall_first)(void) qe__init_call = NULL;
@@ -29,11 +29,14 @@
 ** files: ignore .DS_Store in completion
 ** files: fix SPC / TAB distinct behaviors on ~/comp/project/gnachman/
 ** modes: next-mode should include buffer default_mode in list
+** preview: add auto skip feature at top and bottom of file to skip to the previous and/or next file in the dired window
 ** shell: support ':' as alternate escape sequence argument separator
 ** shell: use target window for man and similar commands
+** shell: C-c C-c should abort make process
 ** tags: remove tags for modified line
 ** undo: undo some cursor movements
 ** xml: merge xml and htmlsrc modes, add submodes for plist and other config files
+** extra: grep, grep-buffer, grep-sources, grep-tree...
 
 * Priority 0
 
