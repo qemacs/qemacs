@@ -11,6 +11,7 @@ fbffonts.c
 *.dSYM
 qe
 qe_g
+qe_debug
 tqe
 tqe_g
 xqe
