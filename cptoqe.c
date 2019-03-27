@@ -194,7 +194,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
            filename, iso_name, name, name_id);
 
     if (max_code != -1) {
-        printf("static const unsigned short table_%s[%d] = {\n",
+        printf("static unsigned short const table_%s[%d] = {\n",
                name_id, max_code - min_code + 1);
         j = 0;
         for (i = min_code; i <= max_code; i++) {

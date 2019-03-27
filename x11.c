@@ -96,7 +96,7 @@ static const char *display_str;
 static const char *geometry_str;
 static int font_ptsize;
 
-static const char *default_x11_fonts[NB_FONT_FAMILIES] = {
+static const char * const default_x11_fonts[NB_FONT_FAMILIES] = {
 #ifdef CONFIG_XFT
     "mono",
 #else
