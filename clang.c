@@ -2,7 +2,7 @@
  * C mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2018 Charlie Gordon.
+ * Copyright (c) 2002-2019 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -68,6 +68,8 @@ enum {
     CLANG_CMINUS,
     CLANG_GMSCRIPT,
     CLANG_WREN,
+    CLANG_JACK,
+    CLANG_SMAC,
     CLANG_RUST,
     CLANG_SWIFT,
     CLANG_ICON,
@@ -3053,6 +3055,65 @@ static ModeDef wren_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Jack language from nand2tetris ----------------*/
+
+/* Simple object oriented language with C like syntax
+   see https://www.nand2tetris.org/ for details
+ */
+
+static const char jack_keywords[] = {
+    "class|constructor|method|function|"
+    "var|static|field|"
+    "let|do|if|else|while|return|"
+    "true|false|null|this"
+};
+
+static const char jack_types[] = {
+    "int|boolean|char|void"
+};
+
+static ModeDef jack_mode = {
+    .name = "Jack",
+    .extensions = "jack",
+    .shell_handlers = "jack",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_JACK | CLANG_CAP_TYPE,
+    .keywords = jack_keywords,
+    .types = jack_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+/*---------------- Smac language by Bruno Pagès ----------------*/
+
+/* Simple C-like language used in XCoral. */
+
+static const char smac_keywords[] = {
+    // recognized and used:
+    "break|case|continue|default|do|else|for|if|return|sizeof|switch|while|"
+    // reserved and discarded:
+    "auto|const|double|enum|extern|float|goto|long|register|short|signed|"
+    "static|struct|typedef|union|unsigned|volatile"
+};
+
+static const char smac_types[] = {
+    "void|char|int"
+};
+
+static ModeDef smac_mode = {
+    .name = "Smac",
+    .extensions = "smac",
+    .shell_handlers = "smac",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_SMAC,
+    .keywords = smac_keywords,
+    .types = smac_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 /*---------------- Other C based syntax modes ----------------*/
 
 #include "rust.c"
@@ -3121,6 +3182,8 @@ static int c_init(void)
     qe_register_mode(&cminus_mode, MODEF_SYNTAX);
     qe_register_mode(&gmscript_mode, MODEF_SYNTAX);
     qe_register_mode(&wren_mode, MODEF_SYNTAX);
+    qe_register_mode(&jack_mode, MODEF_SYNTAX);
+    qe_register_mode(&smac_mode, MODEF_SYNTAX);
     rust_init();
     swift_init();
     icon_init();
