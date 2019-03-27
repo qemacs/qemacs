@@ -200,6 +200,10 @@ XSRCS:= $(XOBJS:.o=.c)
 DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
+DBG_OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)-DBG/qe
+DBG_CFLAGS:= $(CFLAGS) -I$(DBG_OBJS_DIR) -g -O0
+DBG_OBJS:= $(addprefix $(DBG_OBJS_DIR)/, $(OBJS))
+
 OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/qe
 CFLAGS+= -I$(OBJS_DIR)
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
@@ -212,7 +216,7 @@ TOBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/tqe
 TCFLAGS+= -I$(TOBJS_DIR)
 TOBJS:= $(addprefix $(TOBJS_DIR)/, $(TOBJS))
 
-$(shell mkdir -p $(OBJS_DIR) $(TOBJS_DIR) $(XOBJS_DIR))
+$(shell mkdir -p $(OBJS_DIR) $(DBG_OBJS_DIR) $(TOBJS_DIR) $(XOBJS_DIR))
 
 #
 # Dependencies
@@ -221,6 +225,10 @@ all: $(TARGETLIBS) $(TARGETS)
 
 libqhtml: force
 	$(MAKE) -C libqhtml all
+
+qe_debug$(EXE): $(DBG_OBJS) $(DEP_LIBS)
+	$(echo) LD $@
+	$(cmd)  $(CC) $(LDFLAGS) -g -o $@ $^ $(LIBS)
 
 qe_g$(EXE): $(OBJS) $(DEP_LIBS)
 	$(echo) LD $@
@@ -281,11 +289,18 @@ ffplay$(EXE): qe$(EXE) Makefile
 
 ifndef CONFIG_INIT_CALLS
 $(OBJS_DIR)/qe.o: $(OBJS_DIR)/modules.txt
+$(DBG_OBJS_DIR)/qe.o: $(DBG_OBJS_DIR)/modules.txt
 $(XOBJS_DIR)/qe.o: $(XOBJS_DIR)/modules.txt
 $(TOBJS_DIR)/qe.o: $(TOBJS_DIR)/modules.txt
 endif
 
 $(OBJS_DIR)/modules.txt: $(SRCS) Makefile
+	@echo creating $@
+	@echo '/* This file was generated automatically */' > $@
+	@grep -h ^qe_module_init $(SRCS) | \
+            sed s/qe_module_init/qe_module_declare/ >> $@
+
+$(DBG_OBJS_DIR)/modules.txt: $(SRCS) Makefile
 	@echo creating $@
 	@echo '/* This file was generated automatically */' > $@
 	@grep -h ^qe_module_init $(SRCS) | \
@@ -312,6 +327,15 @@ $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 $(OBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
 $(OBJS_DIR)/stb.o: stb.c stb_image.h
 
+$(DBG_OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
+$(DBG_OBJS_DIR)/charset.o: charset.c unicode_width.h
+$(DBG_OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
+$(DBG_OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
+$(DBG_OBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
+$(DBG_OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
+$(DBG_OBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
+$(DBG_OBJS_DIR)/stb.o: stb.c stb_image.h
+
 $(XOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(XOBJS_DIR)/charset.o: charset.c unicode_width.h
 $(XOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
@@ -334,6 +358,11 @@ $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
+$(DBG_OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
+	$(echo) CC -c $<
+	$(cmd)  mkdir -p $(dir $@)
+	$(cmd)  $(CC) $(DEFINES) $(DBG_CFLAGS) -o $@ -c $<
+
 $(XOBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(echo) CC -DCONFIG_X11 -c $<
 	$(cmd)  mkdir -p $(dir $@)
@@ -348,6 +377,11 @@ $(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 	$(echo) CPP -c $<
 	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -c $<
+
+$(DBG_OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
+	$(echo) CPP -c $<
+	$(cmd)  mkdir -p $(dir $@)
+	$(cmd)  g++ $(DEFINES) $(DBG_CFLAGS) -Wno-multichar -o $@ -c $<
 
 $(XOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 	$(echo) CPP -c -DCONFIG_X11 $<
@@ -498,7 +532,7 @@ qe-doc.html: qe-doc.texi Makefile
 #
 clean:
 	$(MAKE) -C libqhtml clean
-	rm -rf *.dSYM .objs* .tobjs* .xobjs*
+	rm -rf *.dSYM .objs* .tobjs* .xobjs* qe_debug
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump   \
            qe tqe t1qe xqe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
            cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9]
