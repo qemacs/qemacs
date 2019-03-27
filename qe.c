@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2017 Charlie Gordon.
+ * Copyright (c) 2000-2019 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -8589,7 +8589,7 @@ void qe_register_cmd_line_options(CmdLineOptionDef *table)
 
 const char str_version[] = "QEmacs version " QE_VERSION;
 const char str_credits[] = "Copyright (c) 2000-2003 Fabrice Bellard\n"
-                           "Copyright (c) 2000-2018 Charlie Gordon\n";
+                           "Copyright (c) 2000-2019 Charlie Gordon\n";
 
 static void show_version(void)
 {

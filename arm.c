@@ -1,7 +1,7 @@
 /*
  * Miscellaneous QEmacs modes for arm development related file formats
  *
- * Copyright (c) 2014-2017 Charlie Gordon.
+ * Copyright (c) 2014-2019 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
