@@ -1,7 +1,7 @@
 /*
  * Mode for viewing archive files for QEmacs.
  *
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2019 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -234,6 +234,7 @@ static CompressType compress_type_array[] = {
 //    { "jpeg", NULL, 0, "jpg", "jp2a --height=35 --background=dark $1", NULL, SF_COLOR },
 //    { "image", NULL, 0, "bmp", "img2txt -f utf8 $1", NULL, SF_COLOR  },
     { "pdf", NULL, 0, "pdf", "pstotext $1", NULL },
+    { "zdump", "TZif\0\0\0\0", 8, NULL, "zdump -v $1", NULL },
 };
 
 static CompressType *compress_types;
