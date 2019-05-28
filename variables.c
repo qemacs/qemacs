@@ -1,7 +1,7 @@
 /*
  * Module for handling variables in QEmacs
  *
- * Copyright (c) 2000-2017 Charlie Gordon.
+ * Copyright (c) 2000-2019 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,6 +50,7 @@ static VarDef var_table[] = {
     S_VAR( "default-fill-column", default_fill_column, VAR_NUMBER, VAR_RW_SAVE )
     S_VAR( "backup-inhibited", backup_inhibited, VAR_NUMBER, VAR_RW_SAVE )
     S_VAR( "fuzzy-search", fuzzy_search, VAR_NUMBER, VAR_RW_SAVE )
+    S_VAR( "c-label-indent", c_label_indent, VAR_NUMBER, VAR_RW_SAVE )
 
     //B_VAR( "screen-charset", charset, VAR_NUMBER, VAR_RW )
 

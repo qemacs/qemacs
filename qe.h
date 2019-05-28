@@ -1716,6 +1716,7 @@ struct QEmacsState {
     int backspace_is_control_h;
     int backup_inhibited;  /* prevent qemacs from backing up files */
     int fuzzy_search;    /* use fuzzy search for completion matcher */
+    int c_label_indent;
     const char *user_option;
 };
 
