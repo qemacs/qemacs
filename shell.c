@@ -2733,52 +2733,56 @@ static char *shell_get_curpath(EditBuffer *b, int offset,
 {
     char line[1024];
     char curpath[MAX_FILENAME_SIZE];
-    int start, last_blank, stop, i, len;
+    int start, stop0, stop, i, len, offset1;
     
-    len = eb_fgets(b, line, sizeof(line), eb_goto_bol(b, offset), &offset);
+    offset = eb_goto_bol(b, offset);
+again:
+    len = eb_fgets(b, line, sizeof(line), offset, &offset1);
     line[len] = '\0';   /* strip the trailing newline if any */
 
-    start = 0;
-    last_blank = 0;
-    for (i = 0;; i++) {
-        int c = line[i];
-        if (c == '\0')
-            return NULL;
-        if (c == '#' || c == '$' || c == '>')
+    start = stop = stop0 = 0;
+    for (i = 0; i < len;) {
+        int c = line[i++];
+        if (c == '#' || c == '$' || c == '>') {
+            stop = stop0;
             break;
-        if (c == ':' && !start)
-            start = i + 1;
+        }
+        if (c == ':' && line[i] != '\\')
+            start = i;
         if (c == ' ') {
-            if (!start)
-                start = i + 1;
-            last_blank = i;
+            if (!start || start == i - 1)
+                start = i;
+        } else {
+            stop0 = i;
         }
     }
-    stop = i;
-    if (last_blank == i - 1)
-        stop = last_blank;
-
-    line[stop] = '\0';
-
-    if (start == stop)
-        return NULL;
-
-    /* XXX: should use a lower level function to avoid potential recursion */
-    canonicalize_absolute_path(NULL, curpath, sizeof curpath, line + start);
-    if (!is_directory(curpath))
-        return NULL;
-    append_slash(curpath, sizeof curpath);
-    return pstrcpy(buf, buf_size, curpath);
+    if (stop > start) {
+        line[stop] = '\0';
+        /* XXX: should use a lower level function to avoid potential recursion */
+        canonicalize_absolute_path(NULL, curpath, sizeof curpath, line + start);
+        if (is_directory(curpath)) {
+            append_slash(curpath, sizeof curpath);
+            return pstrcpy(buf, buf_size, curpath);
+        }
+    }
+    /* XXX: limit backlook? */
+    if (offset > 0) {
+        offset = eb_prev_line(b, offset);
+        goto again;
+    }
+    return NULL;
 }
 
 static char *shell_get_default_path(EditBuffer *b, int offset,
                                     char *buf, int buf_size)
 {
+#if 0
     ShellState *s = qe_get_buffer_mode_data(b, &shell_mode, NULL);
 
     if (s && (s->curpath[0] || shell_get_curpath(b, offset, s->curpath, sizeof(s->curpath)))) {
         return pstrcpy(buf, buf_size, s->curpath);
     }
+#endif
     return shell_get_curpath(b, offset, buf, buf_size);
 }
 
@@ -2910,6 +2914,7 @@ static void do_compile_error(EditState *s, int arg, int dir)
             buf_putc_utf8(fname, c);
         }
 
+        /* XXX: should find directory backward from error offset */
         canonicalize_absolute_buffer_path(b, found_offset, 
                                           fullpath, sizeof(fullpath), filename);
 
