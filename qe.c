@@ -5901,8 +5901,17 @@ void edit_close(EditState **sp)
 }
 
 static const char *file_completion_ignore_extensions = {
-    "|bak|bin|obj|dll|exe|o|so|a|gz|tgz|bz2|bzip2|xz"
+    "|bak"
+    "|pdf|jpg|gif|png|swf" /* binary formats */
+    "|bmp|xls|xlsx|ppt|pptx"
+    "|apk"
+    "|bin|obj|dll|exe" /* DOS binaries */
+    "||o|so|a" /* Unix binaries */
+    "|dylib|dSYM|DS_Store" /* OS/X */
+    "|gz|tgz|taz|bz2|bzip2|xz|zip|rar|z|tar" /* archives */
     "|cma|cmi|cmo|cmt|cmti|cmx"
+    "|class|jar" /* java */
+    "|b|"
     "|"
 };
 
@@ -5934,19 +5943,24 @@ void file_completion(CompleteState *cp)
          * single entry in directory */
         if (strequal(base, ".") || strequal(base, ".."))
             continue;
-        /* ignore known backup files */
+        /* ignore known backup files (hardcoded test for *~) */
         len = strlen(base);
         if (!len || base[len - 1] == '~')
             continue;
-        /* ignore known output file extensions */
+        /* ignore known binary file extensions */
         if (match_extension(base, file_completion_ignore_extensions))
             continue;
 
         /* stat the file to find out if it's a directory.
-         * In that case add a slash to speed up typing long paths
+         * In this case add a slash to speed up typing long paths
          */
         if (!stat(filename, &sb) && S_ISDIR(sb.st_mode))
             pstrcat(filename, sizeof(filename), "/");
+        if (sb.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) {
+            /* XXX: if the file has no extension and is executable,
+             * should check and ignore binary executable files.
+             */
+        }
         add_string(&cp->cs, filename, 0);
     }
 
