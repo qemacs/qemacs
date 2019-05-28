@@ -2,7 +2,7 @@
  * Directory editor mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2019 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -87,6 +87,7 @@ struct DiredState {
 
 /* opaque structure for sorting DiredState.items StringArray */
 struct DiredItem {
+    char    *fullname;
     mode_t  mode;   /* inode protection mode */
     nlink_t nlink;  /* number of hard links to the file */
     uid_t   uid;    /* user-id of owner */
@@ -149,6 +150,8 @@ static void dired_free(DiredState *ds)
         int i;
 
         for (i = 0; i < ds->items.nb_items; i++) {
+            DiredItem *dip = ds->items.items[i]->opaque;
+            qe_free(&dip->fullname);
             qe_free(&ds->items.items[i]->opaque);
         }
 
@@ -985,6 +988,7 @@ static void dired_build_list(DiredState *ds, const char *path,
             int plen = strlen(p);
 
             dip = qe_malloc_hack(DiredItem, plen);
+            dip->fullname = qe_strdup(filename);
             dip->mode = st.st_mode;
             dip->nlink = st.st_nlink;
             dip->uid = st.st_uid;
@@ -1007,7 +1011,7 @@ static void dired_build_list(DiredState *ds, const char *path,
 }
 
 /* select current item */
-static void dired_select(EditState *s)
+static void dired_select(EditState *s, int exit_preview)
 {
     char filename[MAX_FILENAME_SIZE];
     DiredState *ds;
@@ -1037,6 +1041,10 @@ static void dired_select(EditState *s)
         if (e) {
 #if 1
             s->qe_state->active_window = e;
+            if (exit_preview) {
+                /* XXX: should keep BF_PREVIEW flag and set pager-mode */
+                e->b->flags &= ~BF_PREVIEW;
+            }
 #else
             /* delete dired window */
             do_delete_window(s, 1);
@@ -1302,8 +1310,10 @@ void do_dired(EditState *s, int argval)
 
 /* specific dired commands */
 static CmdDef dired_commands[] = {
-    CMD0( KEY_RET, KEY_RIGHT,
-          "dired-select", dired_select)
+    CMD1( KEY_RET, KEY_NONE,
+          "dired-enter", dired_select, 1)
+    CMD1( KEY_RIGHT, KEY_NONE,
+          "dired-right", dired_select, 0)
     CMD0( KEY_TAB, KEY_NONE,
           "dired-tab", do_other_window)
     /* dired-abort should restore previous buffer in right-window */
