@@ -5,38 +5,43 @@
 
 * Recent bugs and ideas
 
-** markdown: recognise ~~~ {.c} language tags
+** basic: update default settings to indent_tabs_mode = 0, indent_width = 4, my-colors
 ** basic: add property lists in buffer and window for default directory and similar properties (override)
 ** basic: backspace delete hacking tabs
-** charset: use unichar typedef?
 ** charset: limit number of combining marks to 20
+** charset: use unichar typedef?
+** clang: allman and other styles
+** clang: auto remove trailing spaces and add final newline
 ** clang: colorizing bug: static int (*qe__initcall_first)(void) qe__init_call = NULL;
+** clang: epita tyle
 ** clang: missed tag: static int (*qe__initcall_first)(void) qe__init_call = NULL;
-** display: minibuffer and popup windows should be in a separate lists
-** display: save display-width in binary and hex modes upon window change
-** display: default display-width of 0 is automatic, other values are shared between binary and hex modes
-** display: hex-mode should optionally display chunks of 2, 4 or 8 bytes in big or little endian order
-** display: hex-mode and binary-mode should have an initial skip value to align the display on any boundary
-** display: optimize display for very large display-width in binary and hex modes
 ** display: add screen dump command and format
-** display: toggle-full-screen should work on popups
-** display: toggle-full-screen should not put modeline on popup
 ** display: colorize extra ^M and ^Z as preproc at end of line prior to calling the syntax highlighter (same as BOM)
-** display: display bug on ~/comp/projects/fractal/fractint/ORGFORM/BAILOUT.FRM (double ^M)
 ** display: colorizer bug on /comp/projects/fractal/fractint/ORGFORM/NOEL-2.FRM (triple ^M)
+** display: default display-width of 0 is automatic, other values are shared between binary and hex modes
+** display: display bug on ~/comp/projects/fractal/fractint/ORGFORM/BAILOUT.FRM (double ^M)
+** display: hex-mode and binary-mode should have an initial skip value to align the display on any boundary
+** display: hex-mode should optionally display chunks of 2, 4 or 8 bytes in big or little endian order
+** display: minibuffer and popup windows should be in a separate lists
+** display: optimize display for very large display-width in binary and hex modes
+** display: save display-width in binary and hex modes upon window change
+** display: toggle-full-screen should not put modeline on popup
+** display: toggle-full-screen should work on popups
 ** display: use a prefix to explore file in a popup window
+** extra: grep, grep-buffer, grep-sources, grep-tree...
 ** files: actually load file in find-file-noselect
-** files: ignore .DS_Store in completion
 ** files: fix SPC / TAB distinct behaviors on ~/comp/project/gnachman/
+** files: ignore .DS_Store in completion
+** files: should update symbolic links times when saving files
+** markdown: recognise ~~~ {.c} language tags
 ** modes: next-mode should include buffer default_mode in list
 ** preview: add auto skip feature at top and bottom of file to skip to the previous and/or next file in the dired window
+** shell: C-c C-c should abort make process
 ** shell: support ':' as alternate escape sequence argument separator
 ** shell: use target window for man and similar commands
-** shell: C-c C-c should abort make process
 ** tags: remove tags for modified line
 ** undo: undo some cursor movements
 ** xml: merge xml and htmlsrc modes, add submodes for plist and other config files
-** extra: grep, grep-buffer, grep-sources, grep-tree...
 
 * Priority 0
 
