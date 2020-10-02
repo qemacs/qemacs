@@ -145,7 +145,7 @@ static void image_mode_free(EditBuffer *b, void *state) {
 static ModeDef stb_mode = {
     .name = "Image file",
     .alt_name = "stb",
-    .extensions = "bmp|jpg|jpeg|png|tga|psd|gif|hdr|pic|pnm|ppm|pgm",
+    .extensions = "bmp|ico|jpg|jpeg|png|tga|psd|gif|hdr|pic|pnm|ppm|pgm",
     .buffer_instance_size = sizeof(ImageState),
     .mode_free = image_mode_free,
     .display_hook = image_display_hook,
