@@ -2708,22 +2708,24 @@ static void do_shell_toggle_input(EditState *e)
 {
     ShellState *s;
 
-    if (!(s = shell_get_state(e, 1)))
-        return;
-
-    if (e->interactive) {
-        e->interactive = 0;
-    } else
-    if (s->shell_flags & SF_INTERACTIVE) {
-        e->interactive = 1;
-        if (s->grab_keys)
-            qe_grab_keys(shell_key, s);
-    }
+    if ((s = shell_get_state(e, 1)) != NULL) {
+        if (e->interactive) {
+            e->interactive = 0;
+            return;
+        }
+        if ((s->shell_flags & SF_INTERACTIVE) && e->offset >= e->b->total_size) {
+            e->interactive = 1;
+            if (s->grab_keys)
+                qe_grab_keys(shell_key, s);
 #if 0
-    if (e->interactive) {
-        qe_term_update_cursor(s);
-    }
+            if (e->interactive) {
+                qe_term_update_cursor(s);
+            }
 #endif
+            return;
+        }
+    }
+    do_return(e, 0);
 }
 
 /* get current directory from prompt on current line */
@@ -2747,7 +2749,9 @@ again:
             stop = stop0;
             break;
         }
-        if (c == ':' && line[i] != '\\')
+        if (c == ':' && line[i] != '\\'
+        &&  !(line[i] == '/' && line[i + 1] == '/')
+        &&  !(line[i] == '/' && line[i + 1] == '*'))
             start = i;
         if (c == ' ') {
             if (!start || start == i - 1)
