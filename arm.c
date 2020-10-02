@@ -38,7 +38,8 @@ enum {
 };
 
 enum {
-    IN_ASM_TRAIL = 1,   /* beyond .end directive */
+    IN_ASM_TRAIL = 1,       /* beyond .end directive */
+    IN_HAS_SEMI_COMMENT = 2,   /* use semi colons to introduce comments */
 };
 
 static int arm_asm_match_keyword(const unsigned int *buf, const char *str)
@@ -56,7 +57,8 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
                                   unsigned int *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = 0, c, style, klen, w = 0, wn = 0;
+    int i = 0, start = 0, c, style = 0, klen, w = 0, wn = 0;
+    unsigned int sep;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_ASM_TRAIL)
@@ -65,20 +67,17 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
     for (; qe_isblank(str[i]); i++)
         continue;
 
-    style = 0;
-    w = i;
-    while (i < n) {
+    for (w = i; i < n;) {
         start = i;
         c = str[i++];
         switch (c) {
         case '#':
-            if (start == 0)
+            if (start == 0 || !(colstate & IN_HAS_SEMI_COMMENT))
                 goto comment;
             break;
         case '.':
             if (start > w)
                 break;
-            /* scan for comment */
             if (arm_asm_match_keyword(str + i, "end")) {
                 colstate |= IN_ASM_TRAIL;
             }
@@ -87,8 +86,18 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
             ||  arm_asm_match_keyword(str + i, "long")) {
                 goto opcode;
             }
+            /* scan for comment, skipping strings */
+            sep = 0;
             for (; i < n; i++) {
-                if (str[i] == '@')
+                if (str[i] == '\'' || str[i] == '"') {
+                    if (sep == 0) {
+                        sep = str[i];
+                    } else if (sep == str[i]) {
+                        sep = 0;
+                    }
+                    continue;
+                }
+                if (sep == 0 && (str[i] == '@' || str[i] == '#'))
                     break;
             }
             style = ASM_STYLE_PREPROCESS;
@@ -101,15 +110,19 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
         case '\'':
         case '\"':
             /* parse string const */
-            for (; i < n; i++) {
-                if (str[i] == (unsigned int)c) {
-                    i++;
+            while (i < n) {
+                if (str[i++] == (unsigned int)c)
                     break;
-                }
             }
             style = ASM_STYLE_STRING;
             break;
         case ';':       /* instruction separator */
+            if (start == 0)
+                colstate |= IN_HAS_SEMI_COMMENT;
+
+            if (colstate & IN_HAS_SEMI_COMMENT)
+                goto comment;
+            w = i;
             wn = 0;
             continue;
         default:
