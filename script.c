@@ -35,7 +35,7 @@ enum {
 
 static const char shell_script_keywords[] = {
     /* reserved words */
-    "if|then|elif|else|fi|case|esac|for|while|until|do|done|shift|"
+    "if|then|elif|else|fi|case|esac|for|while|until|do|done|shift|break|"
     "function|return|export|alias|in|select|time|"
     /* internal commands */
     //"cd|echo|umask|"
