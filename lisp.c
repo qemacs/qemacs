@@ -445,7 +445,7 @@ static int elisp_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 ModeDef lisp_mode = {
     .name = "Lisp",
-    .extensions = "ll|li|lh|lo|lm|lisp",
+    .extensions = "ll|li|lh|lo|lm|lisp|ls9",
     .keywords = NULL,
     .shell_handlers = "lisp",
     .types = lisp_types,
