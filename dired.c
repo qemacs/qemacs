@@ -1416,7 +1416,7 @@ static void filelist_display_hook(EditState *s)
 
     offset = eb_goto_bol(s->b, s->offset);
     len = eb_fgets(s->b, buf, sizeof(buf), offset, &offset);
-    buf[len] = '\0';
+    buf[len] = '\0';   /* strip the trailing newline if any */
 
     if (s->x1 == 0 && s->y1 == 0 && s->width != qs->width
     &&  *buf && !strequal(buf, filelist_last_buf)) {
@@ -1427,15 +1427,23 @@ static void filelist_display_hook(EditState *s)
         makepath(filename, sizeof(filename), dir, buf);
         target_line = 0;
         if (access(filename, R_OK)) {
-            for (i = 0; i < len; i++) {
-                if (buf[i] == ':' || buf[i] == *"()") {
-                    buf[i] = '\0';
-                    target_line = strtol(buf + i + 1, NULL, 10);
-                    break;
-                }
-            }
-            if (*buf) {
+            /* try parsing an error message: `:` or `(` a linenumber */
+            i = strcspn(buf, ":(");
+            if (i < len) {
+                char c = buf[i];
+                buf[i] = '\0';
                 makepath(filename, sizeof(filename), dir, buf);
+                buf[i] = c;
+                target_line = strtol(buf + i + 1, NULL, 10);
+            }
+            i = 0;
+            while (access(filename, R_OK)) {
+                /* try skipping initial words */
+                i += strcspn(buf + i, " ");
+                i += strspn(buf + i, " ");
+                if (i == len)
+                    break;
+                makepath(filename, sizeof(filename), dir, buf + i);
             }
         }
         if (!access(filename, R_OK)) {
