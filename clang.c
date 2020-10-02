@@ -75,6 +75,7 @@ enum {
     CLANG_ICON,
     CLANG_GROOVY,
     CLANG_VIRGIL,
+    CLANG_V,
     CLANG_FLAVOR = 0x3F,
 };
 
@@ -93,6 +94,8 @@ static const char c_keywords[] = {
     "auto|break|case|const|continue|default|do|else|enum|extern|for|goto|"
     "if|inline|register|restrict|return|sizeof|static|struct|switch|"
     "typedef|union|volatile|while|"
+    /* C99 and C11 keywords */
+    "_Alignas|_Alignof|_Atomic|_Generic|_Noreturn|_Static_assert|_Thread_local|"
 };
 
 static const char c_types[] = {
@@ -110,10 +113,8 @@ static const char c_extensions[] = {
     "h.in|c.in|"        /* preprocessed C input (should use more generic approach) */
 };
 
-/* grab a C identifier from a uint buf, stripping color.
- * return char count.
- */
-static int get_c_identifier(char *buf, int buf_size, unsigned int *p,
+/* grab a C identifier from a uint buf, return char count. */
+static int get_c_identifier(char *buf, int buf_size, const unsigned int *p,
                             int flavor)
 {
     unsigned int c;
@@ -309,6 +310,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                     break;
             }
             if ((mode_flags & CLANG_REGEX)
+            &&  !qe_findchar("])", prev)
             &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
             ||   (str[i1] >> STYLE_SHIFT) == C_STYLE_KEYWORD
             ||   (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
@@ -682,6 +684,8 @@ static int find_indent1(EditState *s, unsigned int *buf)
             pos += tw - (pos % tw);
         else if (c == ' ')
             pos++;
+        else if (c == '\f')
+            pos = 0;
         else
             break;
     }
@@ -711,73 +715,103 @@ enum {
     INDENT_FIND_EQ,
 };
 
-/* Check if indentation is already what it should be */
-static int check_indent(EditState *s, int offset, int i, int *offset_ptr)
+/* Normalize indentation at <offset>, return offset past indentation */
+static int normalize_indent(EditState *s, int offset, int indent)
 {
-    int tw, col, ntabs, nspaces, bad;
-    int offset1;
+    int ntabs, nspaces, update, offset0, offset1;
 
-    tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
-    col = ntabs = nspaces = bad = 0;
-
-    for (;;) {
-        int c = eb_nextc(s->b, offset1 = offset, &offset);
-        if (c == '\t') {
-            col += tw - col % tw;
-            bad |= nspaces;
-            ntabs += 1;
-        } else
-        if (c == ' ') {
-            col += 1;
-            nspaces += 1;
-        } else {
-            break;
-        }
-    }
-
-    *offset_ptr = offset1;
-
-    if (col != i || bad)
-        return 0;
-
-    /* check tabs */
-    if (s->indent_tabs_mode) {
-        return (nspaces >= tw) ? 0 : 1;
-    } else {
-        return (ntabs > 0) ? 0 : 1;
-    }
-}
-
-/* Insert n spaces at beginning of line at <offset>.
- * Store new offset after indentation to <*offset_ptr>.
- * Tabs are inserted if s->indent_tabs_mode is true.
- */
-static void insert_indent(EditState *s, int offset, int i, int *offset_ptr)
-{
-    /* insert tabs */
+    if (indent < 0)
+        indent = 0;
+    ntabs = 0;
+    nspaces = indent;
     if (s->indent_tabs_mode) {
         int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
-        while (i >= tw) {
-            offset += eb_insert_uchar(s->b, offset, '\t');
-            i -= tw;
-        }
+        ntabs = nspaces / tw;
+        nspaces = nspaces % tw;
     }
+    offset0 = offset;
+    for (update = 0;;) {
+        int c = eb_nextc(s->b, offset1 = offset, &offset);
+        if (c == '\t') {
+            if (!update && ntabs > 0) {
+                ntabs--;
+                offset0 = offset;
+            } else {
+                update = 1;
+            }
+            continue;
+        }
+        if (c == ' ') {
+            if (!update && ntabs == 0 && nspaces > 0) {
+                nspaces--;
+                offset0 = offset;
+            } else {
+                update = 1;
+            }
+            continue;
+        }
+        break;
+    }
+    if (offset1 > offset0)
+        eb_delete_range(s->b, offset0, offset1);
+    if (ntabs)
+        offset0 += eb_insert_uchars(s->b, offset0, '\t', ntabs);
+    if (nspaces)
+        offset0 += eb_insert_spaces(s->b, offset0, nspaces);
 
-    /* insert needed spaces */
-    offset += eb_insert_spaces(s->b, offset, i);
+    return offset0;
+}
 
-    *offset_ptr = offset;
+/* Check if line starts with a label or a switch case */
+static int c_line_has_label(EditState *s, const unsigned int *buf, int len,
+                            const QETermStyle *sbuf)
+{
+    char kbuf[64];
+    int i, j, style;
+
+    for (i = 0; i < len && qe_isblank(buf[i]); i++)
+        continue;
+
+    style = sbuf[i];
+    if (style == C_STYLE_COMMENT
+    ||  style == C_STYLE_STRING
+    ||  style == C_STYLE_STRING_Q
+    ||  style == C_STYLE_PREPROCESS)
+        return 0;
+
+    j = get_c_identifier(kbuf, countof(kbuf), buf + i, CLANG_C);
+    if (style == C_STYLE_KEYWORD && strfind("case|default", kbuf))
+        return 1;
+    for (i += j; i < len && qe_isblank(buf[i]); i++)
+        continue;
+    return (buf[i] == ':');
 }
 
 /* indent a line of C code starting at <offset> */
+/* Rationale:
+   - determine the current line indentation from the current expression or
+     the indentation of the previous complete statement.
+   - scan backwards previous lines, ignoring blank and comment lines.
+   - scan backwards for a block start, skipping fully bracketed code fragments
+     or a previous statement end and the ne before that.
+   - if the block start char is a `(`, try and align the line at the same offset
+     as the code fragment following the `(`.
+   - if the block start char is a `{` or a `[`, indent the line one level down from
+     the line where the block starts
+   - if the previous statement is an `if|else|do|for|while|switch`, indent the line one level
+   - if the line starts with a label, unindent by one level + c_label_offset
+   - if the previous line starts with a label, increment the previous indent by one level - c_label_offset
+   - by default, indent the line like the previous code line,
+*/
 static void c_indent_line(EditState *s, int offset0)
 {
     int offset, offset1, offsetl, c, pos, line_num, col_num;
-    int i, j, eoi_found, len, pos1, lpos, style, line_num1, state;
-    unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
+    int i, eoi_found, len, pos1, lpos, style, line_num1, state;
+    int off, found_semi, found_comma, has_else;
+    unsigned int buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     unsigned char stack[MAX_STACK_SIZE];
-    char buf1[64], *q;
+    char kbuf[64], *q;
     int stack_ptr;
 
     /* find start of line */
@@ -789,6 +823,7 @@ static void c_indent_line(EditState *s, int offset0)
     lpos = -1; /* position of the last instruction start */
     offsetl = offset;
     eoi_found = 0;
+    found_semi = found_comma = has_else = 0;
     stack_ptr = 0;
     state = INDENT_NORM;
     for (;;) {
@@ -800,39 +835,79 @@ static void c_indent_line(EditState *s, int offset0)
         /* XXX: should only query the syntax colorizer */
         len = s->get_colorized_line(s, buf, countof(buf), sbuf,
                                     offsetl, &offset1, line_num);
-        /* store indent position */
+        /* get current indentation of this line, adjust if it has a label */
         pos1 = find_indent1(s, buf);
-        p = buf + len;
-        while (p > buf) {
-            p--;
-            c = *p;
-            style = sbuf[p - buf];
+        /* ignore empty and preprocessor lines */
+        if (pos1 == len || sbuf[0] == C_STYLE_PREPROCESS)
+            continue;
+        if (c_line_has_label(s, buf, len, sbuf)) {
+            pos1 = pos1 - s->qe_state->c_label_indent + s->indent_size;
+        }
+        /* scan the line from end to start */
+        for (off = len; off-- > 0;) {
+            c = buf[off];
+            style = sbuf[off];
             /* skip strings or comments */
             if (style == C_STYLE_COMMENT
             ||  style == C_STYLE_STRING
+            ||  style == C_STYLE_STRING_Q
             ||  style == C_STYLE_PREPROCESS) {
                 continue;
             }
             if (state == INDENT_FIND_EQ) {
                 /* special case to search '=' or ; before { to know if
                    we are in data definition */
+                /* XXX: why do we need this special case? */
                 if (c == '=') {
                     /* data definition case */
                     pos = lpos;
                     goto end_parse;
-                } else if (c == ';') {
+                }
+                if (c == ';') {
                     /* normal instruction case */
                     goto check_instr;
                 }
+                continue;
+            }
+            if (style == C_STYLE_KEYWORD) {
+                int off0, off1;
+                /* special case for if/for/while */
+                off1 = off;
+                while (off > 0 && sbuf[off - 1] == C_STYLE_KEYWORD)
+                    off--;
+                off0 = off;
+                if (stack_ptr == 0) {
+                    q = kbuf;
+                    while (q < kbuf + countof(kbuf) - 1 && off0 <= off1) {
+                        *q++ = buf[off0++];
+                    }
+                    *q = '\0';
+
+                    if (!eoi_found && strfind("if|for|while|do|switch|foreach", kbuf)) {
+                        pos = pos1 + s->indent_size;
+                        goto end_parse;
+                    }
+                    if (has_else == 0)
+                        has_else = strequal(kbuf, "else") ? 1 : -1;
+                    lpos = pos1;
+                }
             } else {
+                if (has_else == 0)
+                    has_else = -1;
                 switch (c) {
                 case '}':
-                    if (stack_ptr >= MAX_STACK_SIZE)
-                        return;
-                    stack[stack_ptr++] = c;
+                    if (stack_ptr < MAX_STACK_SIZE)
+                        stack[stack_ptr] = c;
+                    stack_ptr++;
                     goto check_instr;
                 case '{':
                     if (stack_ptr == 0) {
+                        /* start of a block: check if object definition or code block */
+                        if (found_comma) {
+                            pos = pos1;
+                            eoi_found = 1;
+                            goto end_parse;
+                        }
                         if (lpos == -1) {
                             pos = pos1 + s->indent_size;
                             eoi_found = 1;
@@ -841,7 +916,8 @@ static void c_indent_line(EditState *s, int offset0)
                             state = INDENT_FIND_EQ;
                         }
                     } else {
-                        if (stack[--stack_ptr] != '}') {
+                        --stack_ptr;
+                        if (stack_ptr < MAX_STACK_SIZE && stack[stack_ptr] != '}') {
                             /* XXX: syntax check ? */
                             /* XXX: should set mark and complain */
                             goto check_instr;
@@ -851,29 +927,46 @@ static void c_indent_line(EditState *s, int offset0)
                     break;
                 case ')':
                 case ']':
-                    if (stack_ptr >= MAX_STACK_SIZE)
-                        return;
-                    stack[stack_ptr++] = c;
+                    if (stack_ptr < MAX_STACK_SIZE)
+                        stack[stack_ptr] = c;
+                    stack_ptr++;
                     break;
                 case '(':
                 case '[':
                     if (stack_ptr == 0) {
-                        pos = find_pos(s, buf, p - buf) + 1;
+                        pos = find_pos(s, buf, off) + 1;
                         goto end_parse;
                     } else {
-                        if (stack[--stack_ptr] != (c == '(' ? ')' : ']')) {
+                        int matchc = (c == '(') ? ')' : ']';
+                        --stack_ptr;
+                        if (stack_ptr < MAX_STACK_SIZE && stack[stack_ptr] != matchc) {
                             /* XXX: syntax check ? */
                             /* XXX: should set mark and complain */
+                            pos = pos1;
+                            goto end_parse;
                         }
                     }
                     break;
                 case ' ':
+                case '\f':
                 case '\t':
                 case '\n':
                     break;
+                case ',':
+                    if (stack_ptr == 0) {
+                        found_comma = 1;
+                    }
+                    break;
+                //case '=':
+                    // if (p[1] == ' ' && !eoi_found && stack_ptr == 0) {
+                    //    pos = find_pos(s, buf, p - buf) + 2;
+                    //    goto end_parse;
+                    //}
+                    //break;
                 case ';':
                     /* level test needed for 'for(;;)' */
                     if (stack_ptr == 0) {
+                        found_semi = 1;
                         /* ; { or } are found before an instruction */
                     check_instr:
                         if (lpos >= 0) {
@@ -890,38 +983,30 @@ static void c_indent_line(EditState *s, int offset0)
                     /* a label line is ignored: regular, case and default labels
                      * are assumed to have no preceding space
                      */
+                    /* XXX: should handle labels differently:
+                       measure the indent and adjust by label_indent */
                     if (style == C_STYLE_DEFAULT
-                    &&  (p == buf || !qe_isspace(p[-1])))
-                        goto prev_line;
+                    &&  (off == 0 || !qe_isspace(buf[off - 1]))) {
+                        off = 0;
+                    }
                     break;
                 default:
-                    if (stack_ptr == 0) {
-                        if (style == C_STYLE_KEYWORD) {
-                            unsigned int *p1, *p2;
-                            /* special case for if/for/while */
-                            p1 = p;
-                            while (p > buf && sbuf[p - buf - 1] == C_STYLE_KEYWORD)
-                                p--;
-                            p2 = p;
-                            q = buf1;
-                            while (q < buf1 + countof(buf1) - 1 && p2 <= p1) {
-                                *q++ = *p2++;
-                            }
-                            *q = '\0';
-
-                            if (!eoi_found && strfind("if|for|while", buf1)) {
-                                /* XXX: do/while? switch? foreach? */
-                                pos = pos1 + s->indent_size;
-                                goto end_parse;
-                            }
-                        }
+                    if (stack_ptr == 0)
                         lpos = pos1;
-                    }
                     break;
                 }
             }
         }
-    prev_line: ;
+        if (pos1 == 0 && len > 0) {
+            style = sbuf[0];
+            if (style != C_STYLE_COMMENT
+            ||  style != C_STYLE_STRING
+            ||  style != C_STYLE_STRING_Q
+            ||  style != C_STYLE_PREPROCESS) {
+                pos = 0;
+                break;
+            }
+        }
     }
   end_parse:
     /* compute special cases which depend on the chars on the current line */
@@ -929,6 +1014,8 @@ static void c_indent_line(EditState *s, int offset0)
     /* XXX: should only query the syntax colorizer */
     len = s->get_colorized_line(s, buf, countof(buf), sbuf,
                                 offset, &offset1, line_num1);
+    if (sbuf[0] == C_STYLE_PREPROCESS)
+        return;
 
     if (stack_ptr == 0) {
         if (!pos && lpos >= 0) {
@@ -941,9 +1028,12 @@ static void c_indent_line(EditState *s, int offset0)
 
     for (i = 0; i < len; i++) {
         c = buf[i];
-        style = sbuf[i];
         if (qe_isblank(c))
             continue;
+        /* no looping from here down */
+        style = sbuf[i];
+        if (style == C_STYLE_STRING || style == C_STYLE_STRING_Q)
+            break;
         /* if preprocess, no indent */
         /* XXX: should indent macro definitions and align continuation marks */
         if (style == C_STYLE_PREPROCESS) {
@@ -963,33 +1053,50 @@ static void c_indent_line(EditState *s, int offset0)
             break;
         }
         if (qe_isalpha_(c)) {
-            j = get_c_identifier(buf1, countof(buf1), buf + i, CLANG_C);
-
-            if (style == C_STYLE_KEYWORD) {
-                if (strfind("case|default", buf1))
-                    goto unindent;
+            if (has_else == 1 && buf[i] == 'i' && buf[i + 1] == 'f' && !qe_isalnum_(buf[i + 2])) {
+                /* unindent if after naked else */
+                pos -= s->indent_size;
+                break;
             }
-            for (j += i; qe_isblank(buf[j]); j++)
-                continue;
-            if (buf[j] == ':')
-                goto unindent;
+            if (c_line_has_label(s, buf + i, len - i, sbuf + i)) {
+                pos -= s->indent_size + s->qe_state->c_label_indent;
+                break;
+            }
+            break;
         }
         /* NOTE: strings & comments are correctly ignored there */
-        if ((c == '&' || c == '|') && buf[i + 1] == (unsigned int)c)
-            goto unindent;
-
         if (c == '}') {
-        unindent:
             pos -= s->indent_size;
-            if (pos < 0)
-                pos = 0;
             break;
         }
-        if (c == '{' && pos == s->indent_size && !eoi_found) {
-            pos = 0;
+        if ((c == '&' || c == '|') && buf[i + 1] == (unsigned int)c) {
+#if 0
+            int j;
+            // XXX: should try and indent according to boolean expression depth
+            for (j = i + 2; buf[j] == ' '; j++)
+                continue;
+            if (j == len) {
+                pos -= s->indent_size;
+            } else {
+                pos -= j - i + 2;
+            }
+#else
+            pos -= s->indent_size;
+#endif
             break;
+        }
+        if (c == '{') {
+            if (pos == s->indent_size && !eoi_found) {
+                pos = 0;
+                break;
+            }
+            // XXX: need fix for GNU style
+            pos -= s->indent_size;
         }
         break;
+    }
+    if (pos < 0) {
+        pos = 0;
     }
     // if (i == len && state is IN_COMMENT) {
     //     /* XXX: should indent comment paragraphs */
@@ -1002,12 +1109,8 @@ static void c_indent_line(EditState *s, int offset0)
     &&  !(s->offset >= offset && s->offset <= eb_goto_eol(s->b, offset))) {
         pos = 0;
     }
-    /* Do not modify buffer if indentation in correct */
-    if (!check_indent(s, offset, pos, &offset1)) {
-        /* simple approach to normalization of indentation */
-        eb_delete_range(s->b, offset, offset1);
-        insert_indent(s, offset, pos, &offset1);
-    }
+    /* Normalize indentation, minimize buffer modifications */
+    offset1 = normalize_indent(s, offset, pos);
 #if 0
     if (s->mode->auto_indent > 1) {  /* auto format */
         /* recompute colorization of the current line (after re-indentation) */
@@ -1209,9 +1312,9 @@ static CmdDef c_commands[] = {
           "c-indent-command", do_c_indent, ES, "*")
             /* should map to KEY_META + KEY_CTRL_LEFT ? */
     CMD3( KEY_META('['), KEY_NONE,
-          "c-backward-conditional", do_c_forward_conditional, ESi, -1, "*v")
+          "c-backward-conditional", do_c_forward_conditional, ESi, -1, "v")
     CMD3( KEY_META(']'), KEY_NONE,
-          "c-forward-conditional", do_c_forward_conditional, ESi, 1, "*v")
+          "c-forward-conditional", do_c_forward_conditional, ESi, 1, "v")
     CMD2( KEY_META('i'), KEY_NONE,
           "c-list-conditionals", do_c_list_conditionals, ES, "")
     CMD2( '{', '}',
@@ -1558,6 +1661,48 @@ static const char js_types[] = {
     "void|var|"
 };
 
+static int is_js_identifier_start(int c) {
+    // should accept unicode escape sequence, UnicodeIDStart
+    return (qe_isalpha_(c) || c == '$' || c >= 128);
+}
+
+static int is_js_identifier_part(int c) {
+    // should accept unicode escape sequence, UnicodeIDContinue, ZWJ or ZWNJ
+    return (qe_isalnum_(c) || c == '$' || c >= 128);
+}
+
+static int get_js_identifier(char *dest, int size, int c,
+                             const unsigned int *str, int i, int n)
+{
+    int pos = 0, j;
+
+    for (j = i;; j++) {
+        if (c < 128) {
+            if (pos < size - 1) {
+                dest[pos++] = c;
+            }
+        } else {
+            char buf[6];
+            int i, len = utf8_encode(buf, c);
+            for (i = 0; i < len; i++) {
+                if (pos < size - 1) {
+                    dest[pos++] = buf[i];
+                }
+            }
+        }
+        if (j >= n)
+            break;
+        c = str[j];
+        // should use unicode_alpha test
+        if (!is_js_identifier_part(c))
+            break;
+    }
+    if (pos < size) {
+        dest[pos] = '\0';
+    }
+    return j - i;
+}
+
 static void js_colorize_line(QEColorizeContext *cp,
                              unsigned int *str, int n, ModeDef *syn)
 {
@@ -1634,6 +1779,7 @@ static void js_colorize_line(QEColorizeContext *cp,
                     break;
             }
             if ((mode_flags & CLANG_REGEX)
+            &&  !qe_findchar("])", prev)
             &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
             ||   (str[i1] >> STYLE_SHIFT) == C_STYLE_KEYWORD
             ||   (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
@@ -1746,8 +1892,8 @@ static void js_colorize_line(QEColorizeContext *cp,
                 style = C_STYLE_NUMBER;
                 break;
             }
-            if (qe_isalpha_(c) || c == '$') {
-                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
+            if (is_js_identifier_start(c)) {
+                i += get_js_identifier(kbuf, countof(kbuf), c, str, i, n);
                 if (cp->state_only && !tag)
                     continue;
 
@@ -3114,6 +3260,48 @@ static ModeDef smac_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- V programming language ----------------*/
+
+// XXX: handle nesting comments
+// strings enclosed in '' or "", utf-8 encoded
+// interpolate strings with 'Hello $var.name', 'Hello ${1+2}'
+// char constants use `c`, with embedded \ sequences
+
+static const char v_keywords[] = {
+    /* keywords */
+    "fn|mut|in|map|pub|struct|const|module|import|interface|enum|asm|type|"
+    "as|atomic|embed|__global|sizeof|union|static|"
+    "if|else|for|break|continue|match|return|or|assert|defer|$if|go|goto|"
+    "switch|case|default|"
+    ///* builtins */
+    //"append|cap|close|complex|copy|delete|imag|len|make|new|panic|"
+    //"print|println|real|recover|"
+    /* Constants */
+    "true|false|none|err|"
+};
+
+static const char v_types[] = {
+    "bool|string|i8|i16|i32|i64|i128|u8|u16|u32|u64|u128|"
+    "byte|" // alias for u8
+    "int|"  // alias for i32
+    "rune|" // alias for i32, represents a Unicode code point
+    "f32|f64|byteptr|voidptr|"
+};
+
+/* Go identifiers start with a Unicode letter or _ */
+
+static ModeDef v_mode = {
+    .name = "V",
+    .extensions = "v",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_GO | CLANG_PREPROC | CLANG_CAP_TYPE,
+    .keywords = v_keywords,
+    .types = v_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 /*---------------- Other C based syntax modes ----------------*/
 
 #include "rust.c"
@@ -3184,6 +3372,7 @@ static int c_init(void)
     qe_register_mode(&wren_mode, MODEF_SYNTAX);
     qe_register_mode(&jack_mode, MODEF_SYNTAX);
     qe_register_mode(&smac_mode, MODEF_SYNTAX);
+    qe_register_mode(&v_mode, MODEF_SYNTAX);
     rust_init();
     swift_init();
     icon_init();
