@@ -62,25 +62,16 @@ static void asm_colorize_line(QEColorizeContext *cp,
                               unsigned int *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = 0, c, w, len, wn = 0; /* word number on line */
+    int i = 0, start = 0, c, style = 0, len, wn = 0; /* word number on line */
     int colstate = cp->colorize_state;
 
-    if (colstate) {
-        /* skip characters upto and including separator */
-    comment:
-        for (start = i; i < n; i++) {
-            if (str[i] == (char)colstate) {
-                i++;
-                colstate = 0;
-                break;
-            }
-        }
-        SET_COLOR(str, start, i, ASM_STYLE_COMMENT);
-    }
+    if (colstate)
+        goto in_comment;
+
     for (; i < n && qe_isblank(str[i]); i++)
         continue;
 
-    for (w = i; i < n;) {
+    while (i < n) {
         start = i;
         c = str[i++];
         switch (c) {
@@ -95,62 +86,71 @@ static void asm_colorize_line(QEColorizeContext *cp,
                 if (str[i] == ';')
                     break;
             }
-            SET_COLOR(str, start, i, ASM_STYLE_PREPROCESS);
-            continue;
+            style = ASM_STYLE_PREPROCESS;
+            break;
         case ';':
             i = n;
-            SET_COLOR(str, start, i, ASM_STYLE_COMMENT);
-            continue;
+            style = ASM_STYLE_COMMENT;
+            break;
         case '\'':
         case '\"':
             /* parse string const */
-            for (; i < n; i++) {
-                if (str[i] == (unsigned int)c) {
-                    i++;
-                    break;
-                }
-            }
-            SET_COLOR(str, start, i, ASM_STYLE_STRING);
-            continue;
-        default:
-            break;
-        }
-        /* parse numbers */
-        if (qe_isdigit(c)) {
-            for (; qe_isalnum(str[i]); i++)
+            while (i < n && str[i++] != (unsigned int)c)
                 continue;
-            SET_COLOR(str, start, i, ASM_STYLE_NUMBER);
+            style = ASM_STYLE_STRING;
+            break;
+        default:
+            /* parse numbers */
+            if (qe_isdigit(c)) {
+                for (; qe_isalnum(str[i]); i++)
+                    continue;
+                style = ASM_STYLE_NUMBER;
+                break;
+            }
+            /* parse identifiers and keywords */
+            if (qe_isalpha_(c) || qe_findchar("@.$%?", c)) {
+                len = 0;
+                keyword[len++] = qe_tolower(c);
+                for (; qe_isalnum_(str[i]) || qe_findchar("@$%?", str[i]); i++) {
+                    if (len < countof(keyword) - 1)
+                        keyword[len++] = qe_tolower(str[i]);
+                }
+                keyword[len] = '\0';
+                if (++wn == 1) {
+                    if (!strcmp(keyword, "comment") && n > i) {
+                        SET_COLOR(str, start, i, ASM_STYLE_PREPROCESS);
+                        for (; i < n && qe_isblank(str[i]); i++)
+                            continue;
+                        start = i;
+                        colstate = str[i++];  /* end of comment character */
+                        /* skip characters upto and including separator */
+                    in_comment:
+                        while (i < n) {
+                            if ((char)str[i++] == (char)colstate) {
+                                colstate = 0;
+                                break;
+                            }
+                        }
+                        style = ASM_STYLE_COMMENT;
+                        break;
+                    }
+                    if (strfind(asm_prepkeywords1, keyword))
+                        goto prep;
+                } else
+                if (wn == 2) {
+                    if (strfind(asm_prepkeywords2, keyword)) {
+                        style = ASM_STYLE_PREPROCESS;
+                        break;
+                    }
+                }
+                //SET_COLOR(str, start, i, ASM_STYLE_IDENTIFIER);
+                continue;
+            }
             continue;
         }
-        /* parse identifiers and keywords */
-        if (qe_isalpha_(c) || qe_findchar("@.$%?", c)) {
-            len = 0;
-            keyword[len++] = qe_tolower(c);
-            for (; qe_isalnum_(str[i]) || qe_findchar("@$%?", str[i]); i++) {
-                if (len < countof(keyword) - 1)
-                    keyword[len++] = qe_tolower(str[i]);
-            }
-            keyword[len] = '\0';
-            if (++wn == 1) {
-                if (!strcmp(keyword, "comment") && n - i >= 2) {
-                    for (w = i; qe_isblank(str[w]); w++)
-                        continue;
-                    colstate = str[w];  /* end of comment character */
-                    SET_COLOR(str, start, w, ASM_STYLE_PREPROCESS);
-                    i = w + 1;
-                    goto comment;
-                }
-                if (strfind(asm_prepkeywords1, keyword))
-                    goto prep;
-            } else
-            if (wn == 2) {
-                if (strfind(asm_prepkeywords2, keyword)) {
-                    SET_COLOR(str, start, i, ASM_STYLE_PREPROCESS);
-                    continue;
-                }
-            }
-            SET_COLOR(str, start, i, ASM_STYLE_IDENTIFIER);
-            continue;
+        if (style) {
+            SET_COLOR(str, start, i, style);
+            style = 0;
         }
     }
     cp->colorize_state = colstate;
@@ -2567,6 +2567,11 @@ static char const python_keywords[] = {
     "|"
 };
 
+// XXX: should add RapydScript keywords:
+//    new, undefined, this, to, til, get, set, super
+// XXX: colorize annotations
+// XXX: parse unicode identifiers
+
 enum {
     IN_PYTHON_COMMENT      = 0x80,
     IN_PYTHON_STRING       = 0x40,
@@ -2574,6 +2579,7 @@ enum {
     IN_PYTHON_LONG_STRING  = 0x10,
     IN_PYTHON_LONG_STRING2 = 0x08,
     IN_PYTHON_RAW_STRING   = 0x04,
+    IN_PYTHON_REGEX1       = 0x02,
 };
 
 enum {
@@ -2583,12 +2589,19 @@ enum {
     PYTHON_STYLE_NUMBER =   QE_STYLE_NUMBER,
     PYTHON_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
     PYTHON_STYLE_FUNCTION = QE_STYLE_FUNCTION,
+    PYTHON_STYLE_REGEX    = QE_STYLE_STRING,
+};
+
+enum {  // Python flavors
+    PYTHON_PYTHON = 0,
+    PYTHON_RAPYDSCRIPT,
 };
 
 static void python_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start = i, c, style = 0, sep, i1, tag = 0;
+    int mode_flags = syn->colorize_flags;
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -2667,6 +2680,51 @@ static void python_colorize_line(QEColorizeContext *cp,
         case '.':
             if (qe_isdigit(str[i]))
                 goto parse_decimal;
+            continue;
+
+        case '/':
+            /* XXX: should test for regular expression in PYTHON_RAPYDSCRIPT flavor */
+            if (str[i] != '/' && mode_flags == PYTHON_RAPYDSCRIPT) {
+                /* XXX: should use more context to tell regex from divide */
+                int i1, prev = ' ';
+                for (i1 = start; i1 > 0; ) {
+                    prev = str[--i1] & CHAR_MASK;
+                    if (!qe_isblank(prev))
+                        break;
+                }
+                if (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
+                 || (str[i1] >> STYLE_SHIFT) == PYTHON_STYLE_KEYWORD
+                 || (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ') && !(qe_isalnum(prev) || prev == ')'))) {
+                     /* parse regex */
+                     int in_charclass = 0;
+                     while (i < n) {
+                         c = str[i++];
+                         if (c == '\\') {
+                             if (i < n) {
+                                 i += 1;
+                             }
+                         } else
+                         if (in_charclass) {
+                             if (c == ']') {
+                                 in_charclass = 0;
+                             }
+                             /* ignore '/' inside char classes */
+                         } else {
+                             if (c == '[') {
+                                 in_charclass = 1;
+                             } else
+                             if (c == '/') {
+                                 while (qe_isalnum_(str[i])) {
+                                     i++;
+                                 }
+                                 break;
+                             }
+                         }
+                     }
+                     style = PYTHON_STYLE_REGEX;
+                     break;
+                 }
+            }
             continue;
 
         case 'b':
@@ -2789,11 +2847,22 @@ static ModeDef python_mode = {
     .shell_handlers = "python|python2.6|python2.7",
     .keywords = python_keywords,
     .colorize_func = python_colorize_line,
+    .colorize_flags = PYTHON_PYTHON,
+};
+
+static ModeDef rapydscript_mode = {
+    .name = "RapydScript",
+    .extensions = "pyj",
+    .shell_handlers = "rapydscript",
+    .keywords = python_keywords,
+    .colorize_func = python_colorize_line,
+    .colorize_flags = PYTHON_RAPYDSCRIPT,
 };
 
 static int python_init(void)
 {
     qe_register_mode(&python_mode, MODEF_SYNTAX);
+    qe_register_mode(&rapydscript_mode, MODEF_SYNTAX);
 
     return 0;
 }
@@ -5334,6 +5403,169 @@ static int wolfram_init(void)
     return 0;
 }
 
+/*---------------- Tiger script coloring ----------------*/
+
+static char const tiger_keywords[] = {
+    "|array|break|do|else|end|for|function|if|in|let|nil|of|then|to|type|var|while"
+    "|"
+};
+
+static char const tiger_types[] = {
+    "|int|string"
+    "|"
+};
+
+#if 0
+static char const tiger_tokens[] = {
+    "(|)|[|]|{|}|:|:=|.|,|;|*|/|+|-|=|<>|>|<|>=|<=|&||."
+};
+#endif
+
+enum {
+    IN_TIGER_COMMENT = 0x01,
+    IN_TIGER_COMMENT_MASK = 0x0F,
+    IN_TIGER_STRING  = 0x10,
+    IN_TIGER_STRING2 = 0x20,
+};
+
+enum {
+    TIGER_STYLE_TEXT =     QE_STYLE_DEFAULT,
+    TIGER_STYLE_COMMENT =  QE_STYLE_COMMENT,
+    TIGER_STYLE_STRING =   QE_STYLE_STRING,
+    TIGER_STYLE_NUMBER =   QE_STYLE_NUMBER,
+    TIGER_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
+    TIGER_STYLE_TYPE =     QE_STYLE_TYPE,
+    TIGER_STYLE_FUNCTION = QE_STYLE_FUNCTION,
+};
+
+static void tiger_colorize_line(QEColorizeContext *cp,
+                                unsigned int *str, int n, ModeDef *syn)
+{
+    int i = 0, j, start = i, c, sep = 0;
+    int state = cp->colorize_state;
+    char kbuf[64];
+
+    if (state & IN_TIGER_COMMENT_MASK) {
+        goto parse_comment;
+    }
+    if (state & IN_TIGER_STRING2) {
+        goto parse_string2;
+    }
+    if (state & IN_TIGER_STRING) {
+        goto parse_string;
+    }
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+        switch (c) {
+        case '/':
+            if (str[i] == '*') {
+                /* normal comment */
+                i++;
+                state |= IN_TIGER_COMMENT;
+            parse_comment:
+                for (; i < n; i++) {
+                    if (str[i] == '*' && str[i + 1] == '/') {
+                        i += 2;
+                        state -= IN_TIGER_COMMENT;
+                        if (!(state & IN_TIGER_COMMENT_MASK))
+                            break;
+                    } else
+                    if (str[i] == '/' && str[i + 1] == '*') {
+                        i += 2;
+                        if ((state & IN_TIGER_COMMENT_MASK) != IN_TIGER_COMMENT_MASK)
+                            state += IN_TIGER_COMMENT;
+                    }
+                }
+                SET_COLOR(str, start, i, TIGER_STYLE_COMMENT);
+                continue;
+            }
+            break;
+        case '\"':
+            /* parse string const */
+            sep = c;
+            state |= IN_TIGER_STRING;
+        parse_string:
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\') {
+                    if (i == n) {
+                        state |= IN_TIGER_STRING2;
+                        break;
+                    }
+                    if (str[i] == ' ') {
+                        state |= IN_TIGER_STRING2;
+                    parse_string2:
+                        while (i < n && str[i] == ' ')
+                            i++;
+                        if (i == n)
+                            break;
+                        if (str[i] == '\\')
+                            i++;
+                        state &= ~IN_TIGER_STRING2;
+                    } else {
+                        i += 1;
+                    }
+                } else
+                if (c == sep) {
+                    state &= ~IN_TIGER_STRING;
+                    break;
+                }
+            }
+            SET_COLOR(str, start, i, TIGER_STYLE_STRING);
+            continue;
+        default:
+            if (qe_isdigit(c)) {
+                for (; i < n; i++) {
+                    if (!qe_isdigit(str[i]))
+                        break;
+                }
+                SET_COLOR(str, start, i, TIGER_STYLE_NUMBER);
+                continue;
+            }
+            if (qe_isalpha(c)) {
+                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
+                if (strfind(syn->keywords, kbuf)) {
+                    SET_COLOR(str, start, i, TIGER_STYLE_KEYWORD);
+                    continue;
+                }
+                if (strfind(syn->types, kbuf)) {
+                    SET_COLOR(str, start, i, TIGER_STYLE_TYPE);
+                    continue;
+                }
+                for (j = i; j < n && qe_isspace(str[j]); j++)
+                    continue;
+                /* function calls use parenthesized argument list or
+                   single string or table literal */
+                if (str[j] == '(') {
+                    SET_COLOR(str, start, i, TIGER_STYLE_FUNCTION);
+                    continue;
+                }
+                continue;
+            }
+            break;
+        }
+    }
+    cp->colorize_state = state;
+}
+
+static ModeDef tiger_mode = {
+    .name = "Tiger",
+    .extensions = "tiger|tig",
+    .shell_handlers = "tiger",
+    .keywords = tiger_keywords,
+    .types = tiger_types,
+    .colorize_func = tiger_colorize_line,
+};
+
+static int tiger_init(void)
+{
+    qe_register_mode(&tiger_mode, MODEF_SYNTAX);
+
+    return 0;
+}
+
 /*----------------*/
 
 static int extra_modes_init(void)
@@ -5365,6 +5597,7 @@ static int extra_modes_init(void)
     magpie_init();
     falcon_init();
     wolfram_init();
+    tiger_init();
     return 0;
 }
 
