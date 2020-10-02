@@ -913,7 +913,7 @@ int ustr_get_identifier(char *buf, int buf_size, int c,
 {
     int len = 0, j;
 
-    if (len < buf_size) {
+    if (len < buf_size - 1) {
         /* c is assumed to be an ASCII character */
         buf[len++] = c;
     }
@@ -2322,7 +2322,7 @@ bstr_t bstr_token(const char *s, int sep, const char **pp) {
 
     if (s) {
         /* XXX: should special case spaces? */
-        for (; s != '\0' && *s != sep; s++)
+        for (; *s != '\0' && *s != sep; s++)
             continue;
 
         bs.len = s - bs.s;
