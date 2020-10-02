@@ -82,6 +82,8 @@ static void compare_resync(EditState *s1, EditState *s2,
         continue;
     while (qe_isblank(ch2 = eb_nextc(s2->b, pos2 = off2, &off2)))
         continue;
+    /* XXX: should try and detect a simple insertion first
+       by comparing from the end of both lines */
     if (ch1 != ch2) {
         /* try skipping current words and subsequent blanks */
         off1 = pos1;
@@ -1518,21 +1520,34 @@ static void do_describe_screen(EditState *e, int argval)
 struct chunk_ctx {
     EditBuffer *b;
     int flags;
+    int col;
 #define SF_REVERSE  1
 #define SF_FOLD     2
 #define SF_DICT     4
 #define SF_NUMBER   8
+#define SF_COLUMN   16
+#define SF_BASENAME 32
 };
 
 struct chunk {
     int start, end;
 };
 
+static int eb_skip_to_basename(EditBuffer *b, int pos) {
+    int base = pos;
+    int c;
+    while ((c = eb_nextc(b, pos, &pos)) != EOF && c != '\n') {
+        if (c == '/' || c == '\\')
+            base = pos;
+    }
+    return base;
+}
+
 static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
     const struct chunk_ctx *cp = vp0;
     const struct chunk *p1 = vp1;
     const struct chunk *p2 = vp2;
-    int pos1, pos2;
+    int pos1, pos2, col;
 
     if (cp->flags & SF_REVERSE) {
         p1 = vp2;
@@ -1541,6 +1556,16 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
 
     pos1 = p1->start;
     pos2 = p2->start;
+    if (cp->flags & SF_BASENAME) {
+        pos1 = eb_skip_to_basename(cp->b, pos1);
+        pos2 = eb_skip_to_basename(cp->b, pos2);
+    }
+    if (cp->col) {
+        for (col = cp->col; col-- > 0 && pos1 < p1->end;)
+            eb_nextc(cp->b, pos1, &pos1);
+        for (col = cp->col; col-- > 0 && pos2 < p2->end;)
+            eb_nextc(cp->b, pos2, &pos2);
+    }
     for (;;) {
         int c1 = 0, c2 = 0;
         while (pos1 < p1->end) {
@@ -1598,7 +1623,7 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
 static void do_sort_span(EditState *s, int p1, int p2, int flags, int argval) {
     struct chunk_ctx ctx;
     EditBuffer *b;
-    int i, offset, line1, line2, col1, col2, lines;
+    int i, offset, line1, line2, col1, col2, line, col, lines;
     struct chunk *chunk_array;
 
     s->region_style = 0;
@@ -1612,15 +1637,28 @@ static void do_sort_span(EditState *s, int p1, int p2, int flags, int argval) {
     if (argval != NO_ARG)
         flags |= argval;
     ctx.flags = flags;
+    ctx.col = 0;
     eb_get_pos(s->b, &line1, &col1, p1); /* line1 is included */
     eb_get_pos(s->b, &line2, &col2, p2); /* line2 is excluded */
+    if (col1 > 0) {
+        p1 = eb_goto_bol(s->b, p1);
+    }
+    if (col2 > 0) { /* include incomplete end line */
+        line2++;
+        p2 = eb_next_line(s->b, p2);
+    }
+    /* XXX: should also support rectangular selection */
+    if (flags & SF_COLUMN) {
+        eb_get_pos(s->b, &line, &col, s->offset);
+        ctx.col = col ? col : col1;
+    }
     lines = line2 - line1;
     chunk_array = qe_malloc_array(struct chunk, lines);
     if (!chunk_array) {
         put_status(s, "Out of memory");
         return;
     }
-    offset = eb_goto_bol(s->b, p1);
+    offset = p1;
     for (i = 0; i < lines; i++) {
         chunk_array[i].start = offset;
         chunk_array[i].end = offset = eb_goto_eol(s->b, offset);
@@ -1632,6 +1670,7 @@ static void do_sort_span(EditState *s, int p1, int p2, int flags, int argval) {
     eb_set_charset(b, s->b->charset, s->b->eol_type);
 
     for (i = 0; i < lines; i++) {
+        /* XXX: should keep track of point if sorting full buffer */
         eb_insert_buffer(b, b->total_size, s->b, chunk_array[i].start,
                          chunk_array[i].end - chunk_array[i].start);
         eb_putc(b, '\n');
