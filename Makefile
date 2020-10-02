@@ -32,12 +32,18 @@ endif
 ifeq ($(CC),gcc)
   CFLAGS  += -Wall -g -O2 -funsigned-char
   # do not warn about zero-length formats.
-  CFLAGS   += -Wno-format-zero-length
-  LDFLAGS  += -g
+  CFLAGS  += -Wno-format-zero-length
+  LDFLAGS += -g
 endif
 
 #include local compiler configuration file
 -include $(DEPTH)/cflags.mk
+
+ifdef CONFIG_DARWIN
+  CFLAGS += -Wno-string-plus-int
+else
+  CFLAGS += -Wno-unused-result
+endif
 
 ifdef TARGET_GPROF
   CFLAGS  += -p
@@ -125,7 +131,8 @@ OBJS+= charsetjis.o charsetmore.o
 ifdef CONFIG_ALL_MODES
   OBJS+= unihex.o bufed.o clang.o xml.o htmlsrc.o forth.o arm.o \
          lisp.o makemode.o markdown.o orgmode.o perl.o script.o \
-         ebnf.o cobol.o rlang.o $(EXTRA_MODES) extra-modes.o
+         ebnf.o cobol.o rlang.o txl.o nim.o rebol.o elm.o jai.o ats.o \
+         $(EXTRA_MODES) extra-modes.o
   ifndef CONFIG_WIN32
     OBJS+= shell.o dired.o latex-mode.o archive.o
   endif
