@@ -25,6 +25,8 @@
 #undef malloc
 #undef realloc
 #undef free
+/* git commit d90462ef3124a9d019f7759edb2ba9256209f257 */
+/* merged from 9d7a768 and b42009b */
 #include "stb_image.h"
 
 /*----------------------------------------------------------------*/
