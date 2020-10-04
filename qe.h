@@ -41,6 +41,16 @@
 #include "config.h"
 #endif
 
+#ifndef DEFAULT_TAB_WIDTH
+#define DEFAULT_TAB_WIDTH  4 /* used to be 8 */
+#endif
+#ifndef DEFAULT_INDENT_WIDTH
+#define DEFAULT_INDENT_WIDTH  4 /* used to be 8 */
+#endif
+#ifndef DEFAULT_FILL_COLUMN
+#define DEFAULT_FILL_COLUMN  70
+#endif
+
 /* OS specific defines */
 
 #ifdef CONFIG_WIN32
@@ -1708,8 +1718,8 @@ struct QEmacsState {
     int hilite_region;  /* hilite the current region when selecting */
     int mmap_threshold; /* minimum file size for mmap */
     int max_load_size;  /* maximum file size for loading in memory */
-    int default_tab_width;      /* 8 */
-    int default_fill_column;    /* 70 */
+    int default_tab_width;      /* DEFAULT_TAB_WIDTH */
+    int default_fill_column;    /* DEFAULT_FILL_COLUMN */
     EOLType default_eol_type;  /* EOL_UNIX */
     int flag_split_window_change_focus;
     int emulation_flags;

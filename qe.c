@@ -1741,7 +1741,7 @@ void do_tab(EditState *s, int argval)
         int offset = s->offset;
         int offset0 = eb_goto_bol(s->b, offset);
         int col = 0;
-        int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
+        int tw = s->b->tab_width > 0 ? s->b->tab_width : DEFAULT_TAB_WIDTH;
         int indent = s->indent_size > 0 ? s->indent_size : tw;
 
         while (offset0 < offset) {
@@ -8973,8 +8973,8 @@ static void qe_init(void *opaque)
     qs->argv = argv;
 
     qs->hilite_region = 1;
-    qs->default_tab_width = 8;
-    qs->default_fill_column = 70;
+    qs->default_tab_width = DEFAULT_TAB_WIDTH;
+    qs->default_fill_column = DEFAULT_FILL_COLUMN;
     qs->mmap_threshold = MIN_MMAP_SIZE;
     qs->max_load_size = MAX_LOAD_SIZE;
 
