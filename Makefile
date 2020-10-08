@@ -329,7 +329,7 @@ $(OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(OBJS_DIR)/charset.o: charset.c unicode_width.h
 $(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-$(OBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
+$(OBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 $(OBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
 $(OBJS_DIR)/stb.o: stb.c stb_image.h
@@ -338,7 +338,7 @@ $(DBG_OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(DBG_OBJS_DIR)/charset.o: charset.c unicode_width.h
 $(DBG_OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(DBG_OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-$(DBG_OBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
+$(DBG_OBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(DBG_OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 $(DBG_OBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
 $(DBG_OBJS_DIR)/stb.o: stb.c stb_image.h
@@ -347,7 +347,7 @@ $(XOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(XOBJS_DIR)/charset.o: charset.c unicode_width.h
 $(XOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(XOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-$(XOBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
+$(XOBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(XOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 $(XOBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
 $(XOBJS_DIR)/stb.o: stb.c stb_image.h
@@ -356,7 +356,7 @@ $(TOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(TOBJS_DIR)/charset.o: charset.c unicode_width.h
 $(TOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(TOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-$(TOBJS_DIR)/qe.o: qe.c parser.c qeconfig.h qfribidi.h variables.h
+$(TOBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(TOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 $(TOBJS_DIR)/clang.o: clang.c swift.c
 
