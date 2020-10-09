@@ -53,10 +53,4 @@ itoa.c
 strtools.c
 lang-discuss.md
 rationale.md
-txl.c
-nim.c
-rebol.c
-elm.c
-jai.c
-ats.c
 quirrel.c
