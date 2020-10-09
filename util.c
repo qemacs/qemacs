@@ -493,14 +493,16 @@ void qe_strtolower(char *buf, int size, const char *str)
     }
 }
 
-void skip_spaces(const char **pp)
+int skip_spaces(const char **pp)
 {
     const char *p;
+    int c;
 
     p = *pp;
-    while (qe_isspace(*p))
+    while (qe_isspace(c = *p))
         p++;
     *pp = p;
+    return c;
 }
 
 int memfind(const char *list, const char *s, int len)
@@ -1292,19 +1294,19 @@ static int nb_qe_colors = nb_default_colors;
 
 #if 0
 static QEColor const tty_full_colors[8] = {
-    QERGB(0x00, 0x00, 0x00),
-    QERGB(0xff, 0x00, 0x00),
-    QERGB(0x00, 0xff, 0x00),
-    QERGB(0xff, 0xff, 0x00),
-    QERGB(0x00, 0x00, 0xff),
-    QERGB(0xff, 0x00, 0xff),
-    QERGB(0x00, 0xff, 0xff),
-    QERGB(0xff, 0xff, 0xff),
+    QERGB(0x00, 0x00, 0x00),  /* black */
+    QERGB(0xff, 0x00, 0x00),  /* red */
+    QERGB(0x00, 0xff, 0x00),  /* lime */
+    QERGB(0xff, 0xff, 0x00),  /* yellow */
+    QERGB(0x00, 0x00, 0xff),  /* blue */
+    QERGB(0xff, 0x00, 0xff),  /* fuchsia */
+    QERGB(0x00, 0xff, 0xff),  /* aqua */
+    QERGB(0xff, 0xff, 0xff),  /* white */
 };
 #endif
 
 QEColor const xterm_colors[256] = {
-    QERGB(0x00, 0x00, 0x00),
+    QERGB(0x00, 0x00, 0x00), /*	black */
     QERGB(0xbb, 0x00, 0x00),
     QERGB(0x00, 0xbb, 0x00),
     QERGB(0xbb, 0xbb, 0x00),
@@ -1320,7 +1322,7 @@ QEColor const xterm_colors[256] = {
     QERGB(0x55, 0x55, 0xff),
     QERGB(0xff, 0x55, 0xff),
     QERGB(0x55, 0xff, 0xff),
-    QERGB(0xff, 0xff, 0xff),
+    QERGB(0xff, 0xff, 0xff), /*	white */
 #if 1
     /* Extended color palette for xterm 256 color mode */
 

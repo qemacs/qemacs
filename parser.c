@@ -30,10 +30,8 @@
 
 static int expect_token(const char **pp, int tok)
 {
-    skip_spaces(pp);
-    if (**pp == tok) {
+    if (skip_spaces(pp) == tok) {
         ++*pp;
-        skip_spaces(pp);
         return 1;
     } else {
         put_status(NULL, "'%c' expected", tok);
@@ -129,12 +127,12 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
     const char *p, *r;
     int line_num;
     CmdDef *d;
-    int nb_args, sep, i, skip;
+    int nb_args, sep, i, skip, incomment;
     CmdArg args[MAX_CMD_ARGS];
     unsigned char args_type[MAX_CMD_ARGS];
 
     ec = qs->ec;
-    skip = 0;
+    incomment = skip = 0;
     line_num = ds->line_num;
     /* Should parse whole config file in a single read, or load it via
      * a buffer */
@@ -146,9 +144,31 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         qs->ec.function = NULL;
         qs->ec.lineno = line_num;
 
-        /* XXX: line based parser does not handle multiline comments */
         p = line;
-        skip_spaces(&p);
+    again:
+        if (incomment)
+            goto comment;
+        if (skip_spaces(&p) == '\0')
+            continue;
+        if (*p == '/') {
+            if (p[1] == '/')  /* line comment */
+                continue;
+            if (p[1] == '*') { /* multiline comment */
+                p += 2;
+                incomment = 1;
+            comment:
+                while (*p) {
+                    if (*p++ == '*' && *p == '/') {
+                        p++;
+                        incomment = 0;
+                        break;
+                    }
+                }
+                if (incomment)
+                    continue;
+                goto again;
+            }
+        }
         if (p[0] == '}') {
             /* simplistic 1 level if block skip feature */
             p++;
@@ -158,22 +178,10 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         if (skip)
             continue;
 
-        /* skip comments */
-        while (p[0] == '/' && p[1] == '*') {
-            for (p += 2; *p; p++) {
-                if (p[0] == '*' && p[1] == '/') {
-                    p += 2;
-                    break;
-                }
-            }
-            skip_spaces(&p);
-            /* XXX: unfinished comments silently unsupported */
-        }
-        if (p[0] == '/' && p[1] == '/')
-            continue;
         if (p[0] == '\0')
             continue;
 
+        /* XXX: should parse numbers, strings and symbols */
         get_str(&p, cmd, sizeof(cmd), "{}();=/");
         if (*cmd == '\0') {
             put_status(s, "Syntax error");
@@ -280,7 +288,6 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 continue;
             }
 
-            skip_spaces(&p);
             if (sep) {
                 /* CG: Should test for arg list too short. */
                 /* CG: Could supply default arguments. */
@@ -288,6 +295,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                     goto fail;
             }
             sep = ',';
+            skip_spaces(&p);
 
             switch (args_type[i]) {
             case CMD_ARG_INT:
@@ -314,8 +322,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 break;
             }
         }
-        skip_spaces(&p);
-        if (*p != ')') {
+        if (skip_spaces(&p) != ')') {
             put_status(s, "Too many arguments for %s", d->name);
             goto fail;
         }
