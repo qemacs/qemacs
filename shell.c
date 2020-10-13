@@ -2852,7 +2852,7 @@ static void do_compile(EditState *s, const char *cmd)
     set_error_offset(b, 0);
 }
 
-static void do_compile_error(EditState *s, int arg, int dir)
+static void do_compile_error(EditState *s, int dir, int arg)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e;
@@ -3128,9 +3128,9 @@ static CmdDef shell_global_commands[] = {
           "man", do_man, ESs,
           "s{Show man page for: }|man|")
     CMD3( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE,
-          "previous-error", do_compile_error, ESii, -1, "uiv")
+          "previous-error", do_compile_error, ESii, -1, "vui")
     CMD3( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'),
-          "next-error", do_compile_error, ESii, 1, "uiv")
+          "next-error", do_compile_error, ESii, 1, "vui")
     CMD_DEF_END,
 };
 

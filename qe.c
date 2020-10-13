@@ -3109,6 +3109,7 @@ void do_set_style(EditState *e, const char *stylestr,
         }
         break;
     }
+    //s->qe_state->complete_refresh = 1;
 }
 
 void do_define_color(EditState *e, const char *name, const char *value)
@@ -3162,6 +3163,7 @@ void do_set_window_style(EditState *s, const char *stylestr)
 void do_set_system_font(EditState *s, const char *qe_font_name,
                         const char *system_fonts)
 {
+    QEmacsState *qs = s->qe_state;
     int font_type;
 
     font_type = css_get_enum(qe_font_name, "fixed,serif,sans");
@@ -3169,9 +3171,9 @@ void do_set_system_font(EditState *s, const char *qe_font_name,
         put_status(s, "Invalid qemacs font");
         return;
     }
-    pstrcpy(s->qe_state->system_fonts[font_type],
-            sizeof(s->qe_state->system_fonts[0]),
+    pstrcpy(qs->system_fonts[font_type], sizeof(qs->system_fonts[0]),
             system_fonts);
+    //qs->complete_refresh = 1;
 }
 
 static void display_bol_bidir(DisplayState *ds, DirType base,
@@ -9099,7 +9101,7 @@ static void qe_init(void *opaque)
 
         if (*arg == '+' && i < argc) {
             if (strequal(arg, "+eval")) {
-                do_eval_expression(s, argv[i++]);
+                do_eval_expression(s, argv[i++], NO_ARG);
                 s = qs->active_window;
                 continue;
             }

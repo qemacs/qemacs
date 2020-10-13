@@ -28,6 +28,16 @@
  * displayed as a popup upon start.
  */
 
+typedef struct QEmacsDataSource {
+    const char *filename;
+    FILE *f;
+    EditBuffer *b;
+    const char *str;
+    int line_num;
+    int pos, len;
+    int offset, stop;
+} QEmacsDataSource;
+
 static int expect_token(const char **pp, int tok)
 {
     if (skip_spaces(pp) == tok) {
@@ -43,14 +53,14 @@ static int qe_cfg_parse_string(EditState *s, const char **pp,
                                char *dest, int size)
 {
     const char *p = *pp;
-    int c, delim = *p++;
+    int delim = *p++;
     int res = 0;
     int pos = 0;
 
     for (;;) {
-        /* encoding issues delibarately ignored */
-        c = *p;
-        if (c == '\0') {
+        /* encoding issues deliberately ignored */
+        int c = *p;
+        if (c == '\n' || c == '\0') {
             put_status(s, "Unterminated string");
             res = -1;
             break;
@@ -72,6 +82,7 @@ static int qe_cfg_parse_string(EditState *s, const char **pp,
                 break;
             }
         }
+        /* XXX: silently truncate overlong string constants */
         if (pos < size - 1)
             dest[pos++] = c;
     }
@@ -80,16 +91,6 @@ static int qe_cfg_parse_string(EditState *s, const char **pp,
     *pp = p;
     return res;
 }
-
-typedef struct QEmacsDataSource {
-    const char *filename;
-    FILE *f;
-    EditBuffer *b;
-    const char *str;
-    int line_num;
-    int pos, len;
-    int offset, stop;
-} QEmacsDataSource;
 
 static char *data_gets(QEmacsDataSource *ds, char *buf, int size)
 {
@@ -344,21 +345,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
     return 0;
 }
 
-int parse_config_file(EditState *s, const char *filename)
-{
-    QEmacsDataSource ds = { 0 };
-    int res;
-
-    ds.filename = filename;
-    ds.f = fopen(filename, "r");
-    if (!ds.f)
-        return -1;
-    res = qe_parse_script(s, &ds);
-    fclose(ds.f);
-    return res;
-}
-
-void do_eval_expression(EditState *s, const char *expression)
+void do_eval_expression(EditState *s, const char *expression, int argval)
 {
     QEmacsDataSource ds = { 0 };
 
@@ -390,15 +377,28 @@ static int do_eval_buffer_region(EditState *s, int start, int stop)
 
 void do_eval_region(EditState *s)
 {
-    /* deactivate region hilite */
-    s->region_style = 0;
+    s->region_style = 0;  /* deactivate region hilite */
 
     do_eval_buffer_region(s, s->b->mark, s->offset);
 }
 
 void do_eval_buffer(EditState *s)
 {
-    do_eval_buffer_region(s, 0, -1);
+    do_eval_buffer_region(s, 0, s->b->total_size);
+}
+
+int parse_config_file(EditState *s, const char *filename)
+{
+    QEmacsDataSource ds = { 0 };
+    int res;
+
+    ds.filename = filename;
+    ds.f = fopen(filename, "r");
+    if (!ds.f)
+        return -1;
+    res = qe_parse_script(s, &ds);
+    fclose(ds.f);
+    return res;
 }
 
 #ifndef CONFIG_TINY
@@ -424,7 +424,6 @@ void do_save_session(EditState *s, int popup)
     if (popup) {
         b->offset = 0;
         b->flags |= BF_READONLY;
-
         show_popup(s, b, "QEmacs session");
     } else {
         eb_write_buffer(b, 0, b->total_size, ".qesession");
@@ -436,8 +435,8 @@ void do_save_session(EditState *s, int popup)
 static CmdDef parser_commands[] = {
 
     CMD2( KEY_META(':'), KEY_NONE,
-          "eval-expression", do_eval_expression, ESs,
-          "s{Eval: }|expression|")
+          "eval-expression", do_eval_expression, ESsi,
+          "s{Eval: }|expression|ui")
     CMD0( KEY_NONE, KEY_NONE,
           "eval-region", do_eval_region)
     CMD0( KEY_NONE, KEY_NONE,

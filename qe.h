@@ -2293,7 +2293,7 @@ void set_tty_charset(const char *name);
 /* parser.c */
 
 int parse_config_file(EditState *s, const char *filename);
-void do_eval_expression(EditState *s, const char *expression);
+void do_eval_expression(EditState *s, const char *expression, int argval);
 void do_eval_region(EditState *s); /* should pass actual offsets */
 void do_eval_buffer(EditState *s);
 extern int use_session_file;
