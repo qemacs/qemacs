@@ -135,6 +135,16 @@ char *pstrncpy(char *buf, int buf_size, const char *s, int len)
     return buf;
 }
 
+/* strcat and truncate. */
+char *pstrncat(char *buf, int buf_size, const char *s, int slen)
+{
+    int len = strlen(buf);
+
+    if (len < buf_size)
+        pstrncpy(buf + len, buf_size - len, s, slen);
+    return buf;
+}
+
 /* Get the filename portion of a path */
 const char *get_basename(const char *filename)
 {

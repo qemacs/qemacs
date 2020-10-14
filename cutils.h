@@ -31,6 +31,7 @@
 #define pstrcpy(buf, sz, str)      qe_pstrcpy(buf, sz, str)
 #define pstrcat(buf, sz, str)      qe_pstrcat(buf, sz, str)
 #define pstrncpy(buf, sz, str, n)  qe_pstrncpy(buf, sz, str, n)
+#define pstrncat(buf, sz, str, n)  qe_pstrncat(buf, sz, str, n)
 
 #undef strncpy
 #define strncpy(d,s)      do_not_use_strncpy!!(d,s)
@@ -42,6 +43,7 @@ int strend(const char *str, const char *val, const char **ptr);
 char *pstrcpy(char *buf, int buf_size, const char *str);
 char *pstrcat(char *buf, int buf_size, const char *s);
 char *pstrncpy(char *buf, int buf_size, const char *s, int len);
+char *pstrncat(char *buf, int buf_size, const char *s, int len);
 const char *get_basename(const char *filename);
 static inline char *get_basename_nc(char *filename) {
     return (char *)get_basename(filename);
