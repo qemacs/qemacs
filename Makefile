@@ -72,10 +72,10 @@ DEFINES=-DHAVE_QE_CONFIG_H
 TARGETLIBS:=
 TARGETS+= qe$(EXE) kmaps ligatures
 
-OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o parser.o input.o display.o hex.o \
-       list.o
-TOBJS:= $(OBJS)
-OBJS+= extras.o variables.o fractal.o
+OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o input.o display.o \
+       hex.o list.o
+TOBJS:= $(OBJS) parser.o
+OBJS+= qscript.o extras.o variables.o fractal.o
 
 ifdef CONFIG_DARWIN
   LDFLAGS += -L/opt/local/lib/
