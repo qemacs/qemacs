@@ -211,7 +211,7 @@ static struct latex_function {
 #undef INIT_TAIL
 };
 
-static void latex_completion(CompleteState *cp)
+static void latex_complete(CompleteState *cp)
 {
     struct latex_function *func;
 
@@ -344,12 +344,16 @@ static ModeDef texinfo_mode = {
     .colorize_flags = TEX_TEXINFO,
 };
 
+static CompletionDef latex_completion = {
+    "latex", latex_complete,
+};
+
 static int latex_init(void)
 {
     qe_register_mode(&latex_mode, MODEF_SYNTAX);
     qe_register_mode(&texinfo_mode, MODEF_SYNTAX);
     qe_register_cmd_table(latex_commands, &latex_mode);
-    register_completion("latex", latex_completion);
+    qe_register_completion(&latex_completion);
 
     return 0;
 }

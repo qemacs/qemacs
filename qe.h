@@ -194,7 +194,7 @@ typedef struct CompleteState {
     StringArray cs;
     struct EditState *s;
     struct EditState *target;
-    int len;
+    int start, end, len;
     char current[MAX_FILENAME_SIZE];
 } CompleteState;
 
@@ -502,7 +502,7 @@ unsigned int qe_map_color(QEColor color, QEColor const *colors, int count, int *
 /* Convert a composite color to an RGB triplet */
 QEColor qe_unmap_color(int color, int count);
 
-void color_completion(CompleteState *cp);
+void color_complete(CompleteState *cp);
 int css_define_color(const char *name, const char *value);
 int css_get_color(QEColor *color_ptr, const char *p);
 void css_free_colors(void);
@@ -810,7 +810,7 @@ int utf8_decode(const char **pp);
 char *utf8_char_to_string(char *buf, int c);
 int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str);
 
-void charset_completion(CompleteState *cp);
+void charset_complete(CompleteState *cp);
 QECharset *find_charset(const char *str);
 void charset_decode_init(CharsetDecodeState *s, QECharset *charset,
                          EOLType eol_type);
@@ -1637,7 +1637,7 @@ struct QEmacsState {
     struct ModeDef *first_mode;
     struct KeyDef *first_key;
     struct CmdDef *first_cmd;
-    struct CompletionEntry *first_completion;
+    struct CompletionDef *first_completion;
     struct HistoryEntry *first_history;
     //struct QECharset *first_charset;
     //struct QETimer *first_timer;
@@ -1819,11 +1819,12 @@ typedef struct CmdDef {
 ModeDef *qe_find_mode(const char *name, int flags);
 ModeDef *qe_find_mode_filename(const char *filename, int flags);
 void qe_register_mode(ModeDef *m, int flags);
-void mode_completion(CompleteState *cp);
+void mode_complete(CompleteState *cp);
 void qe_register_cmd_table(CmdDef *cmds, ModeDef *m);
 int qe_register_binding(int key, const char *cmd_name, ModeDef *m);
 CmdDef *qe_find_cmd(const char *cmd_name);
 int qe_get_prototype(CmdDef *d, char *buf, int size);
+int qe_list_bindings(CmdDef *d, ModeDef *mode, int inherit, char *buf, int size);
 
 /* text display system */
 
@@ -1998,25 +1999,29 @@ void minibuffer_init(void);
 extern CmdDef minibuffer_commands[];
 extern CmdDef popup_commands[];
 
-typedef void (*CompletionFunc)(CompleteState *cp);
-
-typedef struct CompletionEntry {
+typedef struct CompletionDef {
     const char *name;
-    CompletionFunc completion_func;
-    struct CompletionEntry *next;
-} CompletionEntry;
+    void (*enumerate)(CompleteState *cp);
+    int (*print_entry)(EditState *s, const char *name);
+    int (*get_entry)(EditState *s, char *dest, int size, int offset);
+    int flags;
+    struct CompletionDef *next;
+} CompletionDef;
+
+void qe_register_completion(CompletionDef *cp);
 
 void complete_test(CompleteState *cp, const char *str);
 
-void register_completion(const char *name, CompletionFunc completion_func);
 void put_status(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void put_error(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void minibuffer_edit(EditState *e, const char *input, const char *prompt,
                      StringArray *hist, const char *completion_name,
                      void (*cb)(void *opaque, char *buf), void *opaque);
-void command_completion(CompleteState *cp);
-void file_completion(CompleteState *cp);
-void buffer_completion(CompleteState *cp);
+void command_complete(CompleteState *cp);
+int command_print_entry(EditState *s, const char *name);
+int command_get_entry(EditState *s, char *dest, int size, int offset);
+void file_complete(CompleteState *cp);
+void buffer_complete(CompleteState *cp);
 
 #ifdef CONFIG_WIN32
 static inline int is_user_input_pending(void) {
@@ -2223,9 +2228,9 @@ void do_set_indent_tabs_mode(EditState *s, int val);
 void display_window_borders(EditState *e);
 int find_style_index(const char *name);
 QEStyleDef *find_style(const char *name);
-void style_completion(CompleteState *cp);
+void style_complete(CompleteState *cp);
 void get_style(EditState *e, QEStyleDef *stp, QETermStyle style);
-void style_property_completion(CompleteState *cp);
+void style_property_complete(CompleteState *cp);
 int find_style_property(const char *name);
 void do_define_color(EditState *e, const char *name, const char *value);
 void do_set_style(EditState *e, const char *stylestr,

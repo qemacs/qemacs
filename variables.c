@@ -115,7 +115,7 @@ VarDef *qe_find_variable(const char *name)
     return NULL;
 }
 
-void qe_complete_variable(CompleteState *cp)
+void variable_complete(CompleteState *cp)
 {
     QEmacsState *qs = cp->s->qe_state;
     const VarDef *vp;
@@ -369,6 +369,7 @@ void qe_list_variables(EditState *s, EditBuffer *b)
 
     eb_puts(b, "\n  variables:\n\n");
     for (vp = qs->first_variable; vp; vp = vp->next) {
+        /* XXX: merge with variable_print_entry() */
         switch (vp->type) {
         case VAR_NUMBER:
             type = "int";
@@ -415,15 +416,67 @@ void qe_save_variables(EditState *s, EditBuffer *b)
     eb_putc(b, '\n');
 }
 
+int variable_print_entry(EditState *s, const char *name)
+{
+    char buf[256];
+    char typebuf[32];
+    const char *type = typebuf;
+    int len;
+    VarDef *vp = qe_find_variable(name);
+    EditBuffer *b = s->b;
+
+    len = eb_puts(b, name);
+    if (!vp)
+        return len;
+
+    switch (vp->type) {
+    case VAR_NUMBER:
+        type = "int";
+        break;
+    case VAR_STRING:
+        type = "string";
+        break;
+    case VAR_CHARS:
+        snprintf(typebuf, sizeof(typebuf), "char[%d]", vp->size);
+        break;
+    default:
+        type = "var";
+        break;
+    }
+    len += eb_printf(b, " = ");
+    qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
+    if (*buf == '\"')
+        b->cur_style = QE_STYLE_STRING;
+    else
+        b->cur_style = QE_STYLE_NUMBER;
+    len += eb_puts(b, buf);
+    b->cur_style = QE_STYLE_COMMENT;
+    if (2 + len < 40) {
+        b->tab_width = max(2 + len, b->tab_width);
+        len += eb_putc(b, '\t');
+    } else {
+        b->tab_width = 40;
+    }
+    len += eb_printf(b, "  %s%s %s",
+                     vp->rw ? "" : "read-only ",
+                     var_domain[vp->domain], type);
+    b->cur_style = QE_STYLE_DEFAULT;
+    return len;
+}
+
+static CompletionDef variable_completion = {
+    "variable", variable_complete, variable_print_entry, command_get_entry
+};
+
 /*---------------- commands ----------------*/
 
 static CmdDef var_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
           "show-variable", do_show_variable, ESs,
-          "s{Show variable: }[var]|var|")
+          "s{Show variable: }[variable]|variable|")
     CMD2( KEY_F8, KEY_NONE,
           "set-variable", do_set_variable, ESss,
-          "s{Set variable: }[var]|var|s{to value: }|value|")
+          "s{Set variable: }[variable]|variable|s{to value: }|value|")
 
     CMD_DEF_END,
 };
@@ -432,7 +485,7 @@ static int vars_init(void)
 {
     qe_register_variables(var_table, countof(var_table));
     qe_register_cmd_table(var_commands, NULL);
-    register_completion("var", qe_complete_variable);
+    qe_register_completion(&variable_completion);
     return 0;
 }
 

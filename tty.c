@@ -906,7 +906,7 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
     eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "virtual tty colors",
               ts->tty_fg_colors_count, ts->tty_bg_colors_count);
     
-    eb_printf(b, "\n");
+    eb_putc(b, '\n');
     eb_printf(b, "Unicode combination cache:\n\n");
     
     for (ip = ts->comb_cache; *ip != 0; ip += *ip & 0xFFFF) {
@@ -919,7 +919,7 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
             for (i = 1; i < (*ip & 0xFFFF); i++) {
                 eb_printf(b, " %04X", ip[i]);
             }
-            eb_printf(b, "\n");
+            eb_putc(b, '\n');
         }
     }
 }

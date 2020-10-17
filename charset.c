@@ -1130,7 +1130,7 @@ void qe_register_charset(struct QECharset *charset)
     *pp = charset;
 }
 
-void charset_completion(CompleteState *cp)
+void charset_complete(CompleteState *cp)
 {
     QECharset *charset;
     char name[32];

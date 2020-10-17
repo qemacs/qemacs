@@ -1811,7 +1811,7 @@ QEColor qe_unmap_color(int color, int count) {
     return color & 0xFFFFFF;
 }
 
-void color_completion(CompleteState *cp)
+void color_complete(CompleteState *cp)
 {
     ColorDef const *def;
     int count;

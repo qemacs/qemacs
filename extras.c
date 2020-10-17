@@ -123,20 +123,23 @@ void do_compare_windows(EditState *s, int argval)
 
     s1 = s;
     /* Should use same internal function as for next_window */
-    if (s1->next_window)
-        s2 = s1->next_window;
-    else
-        s2 = qs->first_window;
-
+    for (s2 = s1;;) {
+        s2 = s2->next_window;
+        if (s2 == NULL)
+            s2 = qs->first_window;
+        if (s2 == s1) {
+            /* single window: bail out */
+            return;
+        }
+        if (s2->b->flags & BF_DIRED)
+            continue;
+        break;
+    }
     if (argval != NO_ARG) {
         if (argval & 4)
             qs->ignore_spaces ^= 1;
         if (argval & 16)
             qs->ignore_comments ^= 1;
-    }
-    if (s1 == s2) {
-        /* single window: bail out */
-        return;
     }
 
     size1 = s1->b->total_size;
@@ -867,8 +870,7 @@ static void do_unset_key(EditState *s, const char *keystr, int local)
 
 /*---------------- help ----------------*/
 
-static int qe_list_bindings(char *buf, int size, CmdDef *d,
-                            ModeDef *mode, int inherit)
+int qe_list_bindings(CmdDef *d, ModeDef *mode, int inherit, char *buf, int size)
 {
     int pos;
     buf_t outbuf, *out;
@@ -904,7 +906,7 @@ void do_show_bindings(EditState *s, const char *cmd_name)
         put_status(s, "No command %s", cmd_name);
         return;
     }
-    if (qe_list_bindings(buf, sizeof(buf), d, s->mode, 1)) {
+    if (qe_list_bindings(d, s->mode, 1, buf, sizeof(buf))) {
         put_status(s, "%s is bound to %s", cmd_name, buf);
     } else {
         put_status(s, "%s is not bound to any key", cmd_name);
@@ -916,18 +918,21 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
     char buf[256];
     CmdDef *d;
     int gfound;
+    //int start = b->total_size;
 
+    /* XXX: should sort matches */
     gfound = 0;
     d = qe_state.first_cmd;
     while (d != NULL) {
         while (d->name != NULL) {
-            if (qe_list_bindings(buf, sizeof(buf), d, mode, 0)) {
+            if (qe_list_bindings(d, mode, 0, buf, sizeof(buf))) {
                 if (!gfound) {
                     if (mode) {
                         eb_printf(b, "\n%s mode bindings:\n\n", mode->name);
                     } else {
                         eb_printf(b, "\nGlobal bindings:\n\n");
                     }
+                    //start = b->total_size;
                     gfound = 1;
                 }
                 eb_printf(b, "%24s : %s\n", d->name, buf);
@@ -936,6 +941,7 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
         }
         d = d->action.next;
     }
+    //do_sort_span(b, start, b->total_size, 0, NO_ARG);
 }
 
 void do_describe_bindings(EditState *s)
@@ -966,7 +972,10 @@ void do_apropos(EditState *s, const char *str)
     if (!b)
         return;
 
-    eb_printf(b, "\n");
+    eb_putc(b, '\n');
+
+    /* XXX: should sort matches */
+    /* XXX: should print description */
 
     found = 0;
     d = qs->first_cmd;
@@ -975,12 +984,12 @@ void do_apropos(EditState *s, const char *str)
             if (strstr(d->name, str)) {
                 /* print name and prototype */
                 qe_get_prototype(d, buf, sizeof(buf));
-                eb_printf(b, "command: %s(%s)", d->name, buf);
-                if (qe_list_bindings(buf, sizeof(buf), d, s->mode, 1))
+                eb_printf(b, "command: %s%s", d->name, buf);
+                if (qe_list_bindings(d, s->mode, 1, buf, sizeof(buf)))
                     eb_printf(b, " bound to %s", buf);
-                eb_printf(b, "\n");
+                eb_putc(b, '\n');
                 /* TODO: print short description */
-                eb_printf(b, "\n");
+                eb_putc(b, '\n');
                 found = 1;
             }
             d++;
@@ -994,7 +1003,7 @@ void do_apropos(EditState *s, const char *str)
             eb_printf(b, "%s variable: %s -> %s\n",
                       var_domain[vp->domain], vp->name, buf);
             /* TODO: print short description */
-            eb_printf(b, "\n");
+            eb_putc(b, '\n');
             found = 1;
         }
     }
@@ -1023,7 +1032,7 @@ static void do_about_qemacs(EditState *s)
     b = eb_scratch("*About QEmacs*", BF_UTF8);
     eb_printf(b, "\n  %s\n\n%s\n", str_version, str_credits);
 
-    /* list commands */
+    /* list current bindings */
     print_bindings(b, s->mode);
     print_bindings(b, NULL);
 
@@ -1035,11 +1044,13 @@ static void do_about_qemacs(EditState *s)
 
     /* list commands */
     eb_printf(b, "\nCommands:\n\n");
+
+    /* XXX: should sort commands */
     d = qs->first_cmd;
     while (d != NULL) {
         while (d->name != NULL) {
             qe_get_prototype(d, buf, sizeof(buf));
-            eb_printf(b, "    %s(%s);\n", d->name, buf);
+            eb_printf(b, "    %s%s\n", d->name, buf);
             d++;
         }
         d = d->action.next;
@@ -1052,6 +1063,7 @@ static void do_about_qemacs(EditState *s)
         char **envp;
 
         eb_printf(b, "\nEnvironment:\n\n");
+        /* XXX: should sort environment variables */
         for (envp = environ; *envp; envp++) {
             eb_printf(b, "    %s\n", *envp);
         }
@@ -1226,7 +1238,7 @@ static void do_describe_buffer(EditState *s, int argval)
     if (!b1)
         return;
 
-    eb_printf(b1, "\n");
+    eb_putc(b1, '\n');
 
     eb_printf(b1, "        name: %s\n", b->name);
     eb_printf(b1, "    filename: %s\n", b->filename);
@@ -1370,12 +1382,12 @@ static void do_describe_buffer(EditState *s, int argval)
                 col += eb_printf(b1, "  0x%02x", i);
 
             if (col >= 60) {
-                eb_printf(b1, "\n");
+                eb_putc(b1, '\n');
                 col = 0;
             }
         }
         if (col) {
-            eb_printf(b1, "\n");
+            eb_putc(b1, '\n');
         }
     }
 
@@ -1402,14 +1414,14 @@ static void do_describe_buffer(EditState *s, int argval)
                     if (c < 32 || c >= 127)
                         eb_printf(b1, "\\%03o", c);
                     else
-                        eb_printf(b1, "%c", c);
+                        eb_putc(b1, c);
                     continue;
                 }
                 eb_printf(b1, "\\%c", c);
             }
             eb_printf(b1, "|%s\n", p->size > 16 ? "..." : "");
         }
-        eb_printf(b1, "\n");
+        eb_putc(b1, '\n');
     }
 
     b1->flags |= BF_READONLY;
@@ -1425,7 +1437,7 @@ static void do_describe_window(EditState *s, int argval)
     if (!b1)
         return;
 
-    eb_printf(b1, "\n");
+    eb_putc(b1, '\n');
 
     w = 28;
     eb_printf(b1, "%*s: %d, %d\n", w, "xleft, ytop", s->xleft, s->ytop);
@@ -1479,7 +1491,7 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d\n", w, "show_selection", s->show_selection);
     eb_printf(b1, "%*s: %d\n", w, "region_style", s->region_style);
     eb_printf(b1, "%*s: %d\n", w, "curline_style", s->curline_style);
-    eb_printf(b1, "\n");
+    eb_putc(b1, '\n');
 
     b1->flags |= BF_READONLY;
     show_popup(s, b1, "Window Description");
@@ -1495,7 +1507,7 @@ static void do_describe_screen(EditState *e, int argval)
     if (!b1)
         return;
 
-    eb_printf(b1, "\n");
+    eb_putc(b1, '\n');
 
     w = 16;
     eb_printf(b1, "%*s: %s\n", w, "dpy.name", s->dpy.name);
@@ -1627,6 +1639,8 @@ static void do_sort_span(EditState *s, int p1, int p2, int flags, int argval) {
     struct chunk *chunk_array;
 
     s->region_style = 0;
+    if (argval != NO_ARG)
+        flags |= argval;
 
     if (p1 > p2) {
         int tmp = p1;
@@ -1634,8 +1648,6 @@ static void do_sort_span(EditState *s, int p1, int p2, int flags, int argval) {
         p2 = tmp;
     }
     ctx.b = s->b;
-    if (argval != NO_ARG)
-        flags |= argval;
     ctx.flags = flags;
     ctx.col = 0;
     eb_get_pos(s->b, &line1, &col1, p1); /* line1 is included */
@@ -1703,7 +1715,7 @@ static void tag_buffer(EditState *s) {
     }
 }
 
-static void tag_completion(CompleteState *cp) {
+static void tag_complete(CompleteState *cp) {
     /* XXX: only support current buffer */
     QEProperty *p;
 
@@ -1876,6 +1888,10 @@ static CmdDef extra_commands[] = {
     CMD_DEF_END,
 };
 
+static CompletionDef tag_completion = {
+    "tag", tag_complete,
+};
+
 static int extras_init(void)
 {
     int key;
@@ -1884,7 +1900,7 @@ static int extras_init(void)
     for (key = KEY_META('0'); key <= KEY_META('9'); key++) {
         qe_register_binding(key, "numeric-argument", NULL);
     }
-    register_completion("tag", tag_completion);
+    qe_register_completion(&tag_completion);
 
     return 0;
 }

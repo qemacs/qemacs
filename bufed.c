@@ -152,11 +152,10 @@ static void build_bufed_list(BufedState *bs, EditState *s)
                 b->cur_style = BUFED_STYLE_DIRECTORY;
             else
                 b->cur_style = BUFED_STYLE_FILENAME;
-            eb_printf(b, "%s",
-                      make_user_path(path, sizeof(path), b1->filename));
+            eb_puts(b, make_user_path(path, sizeof(path), b1->filename));
             b->cur_style = style0;
         }
-        eb_printf(b, "\n");
+        eb_putc(b, '\n');
     }
     b->modified = 0;
     b->flags |= BF_READONLY;

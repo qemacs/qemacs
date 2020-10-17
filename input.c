@@ -80,7 +80,7 @@ void register_input_method(InputMethod *m)
     *p = m;
 }
 
-static void input_completion(CompleteState *cp)
+static void input_complete(CompleteState *cp)
 {
     QEmacsState *qs = cp->s->qe_state;
     InputMethod *m;
@@ -122,9 +122,13 @@ void do_switch_input_method(EditState *s)
         s->input_method = s->selected_input_method;
 }
 
+static CompletionDef input_completion = {
+    "input", input_complete,
+};
+
 void init_input_methods(void)
 {
     register_input_method(&default_input_method);
     register_input_method(&unicode_input_method);
-    register_completion("input", input_completion);
+    qe_register_completion(&input_completion);
 }

@@ -683,11 +683,11 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
     if (DIRED_HEADER) {
         int seq = ' ';
         b->cur_style = DIRED_STYLE_HEADER;
-        eb_printf(b, "  Directory of ");
+        eb_puts(b, "  Directory of ");
         b->cur_style = DIRED_STYLE_DIRECTORY;
-        eb_printf(b, "%s", ds->path);
+        eb_puts(b, ds->path);
         b->cur_style = DIRED_STYLE_HEADER;
-        eb_printf(b, "\n  ");
+        eb_puts(b, "\n  ");
         if (ds->ndirs) {
             eb_printf(b, "%c %d %s", seq, ds->ndirs,
                       inflect(ds->ndirs, "directory", "directories"));
@@ -717,7 +717,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         if (ds->ndirs + ds->ndirs_hidden + ds->nfiles + ds->nfiles_hidden == 0) {
             eb_printf(b, "%c empty", seq);
         }
-        eb_printf(b, "\n");
+        eb_putc(b, '\n');
     }
     b->cur_style = DIRED_STYLE_NORMAL;
 
@@ -767,12 +767,12 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         else
             b->cur_style = DIRED_STYLE_FILENAME;
 
-        eb_printf(b, "%s", dip->name);
+        eb_puts(b, dip->name);
 
         if (1) {
             int trailchar = get_trailchar(dip->mode);
             if (trailchar) {
-                eb_printf(b, "%c", trailchar);
+                eb_putc(b, trailchar);
             }
         }
         if (S_ISLNK(dip->mode)
@@ -780,7 +780,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
             eb_printf(b, " -> %s", buf);
         }
         b->cur_style = DIRED_STYLE_NORMAL;
-        eb_printf(b, "\n");
+        eb_putc(b, '\n');
     }
     b->modified = 0;
     b->flags |= BF_READONLY;

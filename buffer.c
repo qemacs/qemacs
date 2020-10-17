@@ -1531,16 +1531,7 @@ int eb_delete_uchar(EditBuffer *b, int offset)
  */
 int eb_delete_chars(EditBuffer *b, int offset, int n)
 {
-    int offset1 = eb_skip_chars(b, offset, n);
-    int size = offset1 - offset;
-
-    if (size < 0) {
-        offset += size;
-        offset1 -= size;
-        size = -size;
-    }
-
-    return eb_delete(b, offset, size);
+    return eb_delete_range(b, offset, eb_skip_chars(b, offset, n));
 }
 
 /* XXX: only stateless charsets are supported */

@@ -112,6 +112,7 @@ static inline void qe_cfg_set_str(QEValue *sp, const char *str, int len) {
     sp->u.str = qe_malloc_array(char, len + 1);
     memcpy(sp->u.str, str, len);
     sp->u.str[len] = '\0';
+    sp->len = len;
     sp->type = TOK_STRING;
 }
 
@@ -1163,11 +1164,29 @@ void do_save_session(EditState *s, int popup)
 }
 #endif
 
+void script_complete(CompleteState *cp) {
+    command_complete(cp);
+    variable_complete(cp);
+}
+
+int script_print_entry(EditState *s, const char *name) {
+    CmdDef *d = qe_find_cmd(name);
+    if (d) {
+        return command_print_entry(s, name);
+    } else {
+        return variable_print_entry(s, name);
+    }        
+}
+
+static CompletionDef script_completion = {
+    "script", script_complete, script_print_entry, command_get_entry
+};
+
 static CmdDef parser_commands[] = {
 
     CMD2( KEY_META(':'), KEY_NONE,
           "eval-expression", do_eval_expression, ESsi,
-          "s{Eval: }|expression|ui")
+          "s{Eval: }[.script]|expression|ui")
     CMD0( KEY_NONE, KEY_NONE,
           "eval-region", do_eval_region)
     CMD0( KEY_NONE, KEY_NONE,
@@ -1182,6 +1201,7 @@ static CmdDef parser_commands[] = {
 static int parser_init(void)
 {
     qe_register_cmd_table(parser_commands, NULL);
+    qe_register_completion(&script_completion);
     return 0;
 }
 

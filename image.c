@@ -846,7 +846,7 @@ void image_mode_line(EditState *s, buf_t *out)
                ib->interleaved ? 'I' : ' ');
 }
 
-static void pixel_format_completion(CompleteState *cp)
+static void pixel_format_complete(CompleteState *cp)
 {
     int i;
     const char *name;
@@ -863,7 +863,7 @@ static CmdDef image_commands[] = {
           "image-rotate", image_rotate)
     CMD2( 'c', KEY_NONE,
           "image-convert", image_convert, ESs,
-          "s{New pixel format: }[pixel_format]|pixel_format|")
+          "s{New pixel format: }[pixel-format]|pixel-format|")
     CMD2( 'b', KEY_NONE,
           "image-set-background-color", image_set_background_color, ESs,
           "s{Background color (use 'transparent' for tiling): }")
@@ -909,13 +909,17 @@ static ModeDef image_mode = {
     .get_mode_line = image_mode_line,
 };
 
+static CompletionDef pixel_format_completion = {
+    "pixel-format", pixel_format_complete
+};
+
 static int image_init(void)
 {
     av_register_all();
     eb_register_data_type(&image_data_type);
     qe_register_mode(&image_mode, MODEF_DATATYPE | MODEF_VIEW);
     qe_register_cmd_table(image_commands, &image_mode);
-    register_completion("pixel_format", pixel_format_completion);
+    qe_register_completion(&pixel_format_completion);
     /* additional mode specific keys */
     qe_register_binding('f', "toggle-full-screen", &image_mode);
     return 0;
