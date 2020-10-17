@@ -1,7 +1,7 @@
 /*
  * QEmacs graphics mode for image files
  *
- * Copyright (c) 2017 Charlie Gordon.
+ * Copyright (c) 2017-2020 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

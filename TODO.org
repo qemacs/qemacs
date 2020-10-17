@@ -1,7 +1,7 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2019-03-14
+; Updated: 2020-10-17
 
 * Recent bugs and ideas
 

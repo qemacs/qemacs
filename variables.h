@@ -1,7 +1,7 @@
 /*
  * Module for handling variables in QEmacs
  *
- * Copyright (c) 2000-2017 Charlie Gordon.
+ * Copyright (c) 2000-2020 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

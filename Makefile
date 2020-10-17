@@ -1,7 +1,7 @@
 # QEmacs, tiny but powerful multimode editor
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2018 Charlie Gordon.
+# Copyright (c) 2000-2020 Charlie Gordon.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -604,7 +604,7 @@ FILES:= .cvsignore COPYING Changelog Makefile README TODO.org VERSION \
         qe-doc.texi qe.1 qe.c qe.h qe.tcc qeconfig.h qeend.c qemacs.spec \
         qestyles.h qfribidi.c qfribidi.h rlang.c rust.c script.c search.c \
         shell.c swift.c tty.c unicode_join.c unifont.lig unihex.c unix.c \
-        util.c variables.c variables.h video.c win32.c x11.c xml.c
+        util.c variables.c variables.h video.c win32.c x11.c xml.c qscript.c
 
 FILES+= ats.c cflags.mk elm.c fractal.c jai.c nim.c qemacs.rdef quirrel.c \
         rebol.c stb.c stb_image.h tqe.c txl.c unicode_width.h virgil.c
