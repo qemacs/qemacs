@@ -255,7 +255,7 @@ void command_complete(CompleteState *cp)
     }
 }
 
-int command_print_entry(EditState *s, const char *name)
+int command_print_entry(CompleteState *cp, EditState *s, const char *name)
 {
     EditBuffer *b = s->b;
     CmdDef *d = qe_find_cmd(name);
@@ -2267,7 +2267,7 @@ int edit_set_mode(EditState *s, ModeDef *m)
         generic_mode_close(s);
         qe_free_mode_data(s->mode_data);
         s->mode = NULL;  /* XXX: should instead use fundamental_mode */
-        set_colorize_func(s, NULL);
+        set_colorize_func(s, NULL, NULL);
 
         /* XXX: this code makes no sense, if must be reworked! */
 #if 0
@@ -2359,7 +2359,7 @@ int edit_set_mode(EditState *s, ModeDef *m)
         s->wrap = m->default_wrap;
         m->mode_init(s, s->b, MODEF_VIEW | mode_flags);
         if (m->colorize_func)
-            set_colorize_func(s, m->colorize_func);
+            set_colorize_func(s, m->colorize_func, m);
         /* modify offset_top so that its value is correct */
         if (s->mode->backward_offset)
             s->offset_top = s->mode->backward_offset(s, s->offset_top);
@@ -4165,7 +4165,7 @@ static int syntax_get_colorized_line(EditState *s,
             if (bom) {
                 cctx.offset = eb_next(b, cctx.offset);
             }
-            s->colorize_func(&cctx, buf + bom, len - bom, s->mode);
+            s->colorize_func(&cctx, buf + bom, len - bom, s->colorize_mode);
             s->colorize_states[line] = cctx.colorize_state;
         }
     }
@@ -4188,7 +4188,7 @@ static int syntax_get_colorized_line(EditState *s,
         cctx.offset = eb_next(b, cctx.offset);
     }
     cctx.combine_stop = len - bom;
-    s->colorize_func(&cctx, buf + bom, len - bom, s->mode);
+    s->colorize_func(&cctx, buf + bom, len - bom, s->colorize_mode);
     /* buf[len] has char '\0' but may hold style, force buf ending */
     buf[len + 1] = 0;
 
@@ -4235,9 +4235,8 @@ static void colorize_callback(qe__unused__ EditBuffer *b,
 
 #endif /* CONFIG_TINY */
 
-void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
+void set_colorize_func(EditState *s, ColorizeFunc colorize_func, ModeDef *colorize_mode)
 {
-    s->get_colorized_line = generic_get_colorized_line;
     s->colorize_func = NULL;
 
 #ifndef CONFIG_TINY
@@ -4248,28 +4247,27 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func)
     s->colorize_nb_valid_lines = 0;
     s->colorize_max_valid_offset = INT_MAX;
     s->colorize_func = colorize_func;
+    s->colorize_mode = colorize_mode;
     if (colorize_func)
         eb_add_callback(s->b, colorize_callback, s, 0);
 #endif
 }
 
-int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                               QETermStyle *sbuf,
-                               int offset, int *offsetp, int line_num)
+int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                       QETermStyle *sbuf,
+                       int offset, int *offsetp, int line_num)
 {
-    int len;
-
 #ifndef CONFIG_TINY
     if (s->colorize_func) {
-        len = syntax_get_colorized_line(s, buf, buf_size, sbuf,
-                                        offset, offsetp, line_num);
+        return syntax_get_colorized_line(s, buf, buf_size, sbuf,
+                                         offset, offsetp, line_num);
     } else
 #endif
     if (s->b->b_styles) {
-        len = get_staticly_colorized_line(s, buf, buf_size, sbuf,
-                                          offset, offsetp, line_num);
+        return get_staticly_colorized_line(s, buf, buf_size, sbuf,
+                                           offset, offsetp, line_num);
     } else {
-        len = eb_get_line(s->b, buf, buf_size, offset, offsetp);
+        int len = eb_get_line(s->b, buf, buf_size, offset, offsetp);
         if (buf[len] != '\n') {
             /* line was truncated */
             /* XXX: should use reallocatable buffer */
@@ -4277,10 +4275,10 @@ int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
         }
         buf[len] = '\0';
         if (sbuf) {
-            memset(sbuf, 0, len * sizeof(*sbuf));
+            memset(sbuf, 0, (len + 1) * sizeof(*sbuf));
         }
+        return len;
     }
-    return len;
 }
 
 #define RLE_EMBEDDINGS_SIZE    128
@@ -4351,8 +4349,27 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     ||  s->curline_style || s->region_style
     ||  s->isearch_state) {
         /* XXX: deal with truncation */
-        colored_nb_chars = s->get_colorized_line(s, buf, countof(buf), sbuf,
-                                                 offset, &offset0, line_num);
+        colored_nb_chars = get_colorized_line(s, buf, countof(buf), sbuf,
+                                              offset, &offset0, line_num);
+        if (s->mode == &list_mode) {
+            QEmacsState *qs = s->qe_state;
+            int i;
+
+            if ((qs->active_window == s || s->force_highlight) &&
+                s->offset >= offset && s->offset < offset0)
+            {
+                /* highlight the current line */
+                for (i = 0; i <= colored_nb_chars; i++) {
+                    sbuf[i] = QE_STYLE_HIGHLIGHT;
+                }
+            } else
+            if (buf[0] == '*') {
+                /* selection */
+                for (i = 0; i <= colored_nb_chars; i++) {
+                    sbuf[i] |= QE_STYLE_SEL;
+                }
+            }
+        }
         if (s->isearch_state) {
             isearch_colorize_matches(s, buf, colored_nb_chars, sbuf, offset);
         }
@@ -6049,7 +6066,7 @@ static CompletionDef buffer_completion = {
     "buffer", buffer_complete
 };
 
-static int default_completion_window_print_entry(EditState *s, const char *name) {
+static int default_completion_window_print_entry(CompleteState *cp, EditState *s, const char *name) {
     return eb_puts(s->b, name);
 }
 
@@ -6299,9 +6316,8 @@ void do_minibuffer_complete(EditState *s, int type)
         b->tab_width = 4;
         for (i = 0; i < count; i++) {
             eb_putc(b, ' ');    /* XXX: should use window margins */
-            mb->completion->print_entry(e, outputs[i]->str);
-            if (i != count - 1)
-                eb_putc(b, '\n');
+            mb->completion->print_entry(&cs, e, outputs[i]->str);
+            eb_putc(b, '\n');
         }
         b->flags |= BF_READONLY;
         e->mouse_force_highlight = 1;
@@ -8134,7 +8150,7 @@ EditBuffer *new_help_buffer(void)
     if (b) {
         eb_clear(b);
     } else {
-        b = eb_new("*Help*", BF_UTF8);
+        b = eb_new("*Help*", BF_SYSTEM | BF_UTF8 | BF_STYLE1);
     }
     return b;
 }
@@ -8571,7 +8587,7 @@ static int generic_mode_init(EditState *s)
     s->offset_top = min(s->offset_top, s->b->total_size);
     eb_add_callback(s->b, eb_offset_callback, &s->offset, 0);
     eb_add_callback(s->b, eb_offset_callback, &s->offset_top, 0);
-    set_colorize_func(s, NULL);
+    set_colorize_func(s, NULL, NULL);
     return 0;
 }
 
@@ -8598,7 +8614,7 @@ static void generic_mode_close(EditState *s)
     s->wrap = WRAP_AUTO;
 
     /* free all callbacks or associated buffer data */
-    set_colorize_func(s, NULL);
+    set_colorize_func(s, NULL, NULL);
     eb_free_callback(s->b, eb_offset_callback, &s->offset);
     eb_free_callback(s->b, eb_offset_callback, &s->offset_top);
 

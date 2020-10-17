@@ -1414,8 +1414,8 @@ struct EditState {
     int up_down_last_x; /* last x offset for vertical movement */
 
     /* low level colorization function */
-    GetColorizedLineFunc get_colorized_line;
-    ColorizeFunc colorize_func; /* colorization function */
+    ColorizeFunc colorize_func; /* colorization function and mode */
+    ModeDef *colorize_mode;
 
     QETermStyle default_style;  /* default text style */
 
@@ -2002,7 +2002,7 @@ extern CmdDef popup_commands[];
 typedef struct CompletionDef {
     const char *name;
     void (*enumerate)(CompleteState *cp);
-    int (*print_entry)(EditState *s, const char *name);
+    int (*print_entry)(CompleteState *cp, EditState *s, const char *name);
     int (*get_entry)(EditState *s, char *dest, int size, int offset);
     int flags;
     struct CompletionDef *next;
@@ -2018,7 +2018,7 @@ void minibuffer_edit(EditState *e, const char *input, const char *prompt,
                      StringArray *hist, const char *completion_name,
                      void (*cb)(void *opaque, char *buf), void *opaque);
 void command_complete(CompleteState *cp);
-int command_print_entry(EditState *s, const char *name);
+int command_print_entry(CompleteState *cp, EditState *s, const char *name);
 int command_get_entry(EditState *s, char *dest, int size, int offset);
 void file_complete(CompleteState *cp);
 void buffer_complete(CompleteState *cp);
@@ -2124,10 +2124,10 @@ extern ModeDef text_mode;
 int text_backward_offset(EditState *s, int offset);
 int text_display_line(EditState *s, DisplayState *ds, int offset);
 
-void set_colorize_func(EditState *s, ColorizeFunc colorize_func);
-int generic_get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
-                               QETermStyle *sbuf,
-                               int offset, int *offsetp, int line_num);
+void set_colorize_func(EditState *s, ColorizeFunc colorize_func, ModeDef *mode);
+int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+                       QETermStyle *sbuf,
+                       int offset, int *offsetp, int line_num);
 
 int do_delete_selection(EditState *s);
 void do_char(EditState *s, int key, int argval);

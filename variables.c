@@ -416,7 +416,7 @@ void qe_save_variables(EditState *s, EditBuffer *b)
     eb_putc(b, '\n');
 }
 
-int variable_print_entry(EditState *s, const char *name)
+int variable_print_entry(CompleteState *cp, EditState *s, const char *name)
 {
     char buf[256];
     char typebuf[32];

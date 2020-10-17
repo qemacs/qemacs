@@ -2611,8 +2611,11 @@ void eb_add_property(EditBuffer *b, int offset, int type, void *data) {
             if (p->offset == offset) {
                 if (p->type == type && type == QE_PROP_TAG) {
                     /* prevent tag duplicates */
-                    if (strequal(p->data, data))
+                    if (strequal(p->data, data)) {
+                        if (type & QE_PROP_FREE)
+                            qe_free(&data);
                         return;
+                    }
                 }
                 continue;
             }

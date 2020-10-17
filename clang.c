@@ -832,9 +832,8 @@ static void c_indent_line(EditState *s, int offset0)
         line_num--;
         offsetl = eb_prev_line(s->b, offsetl);
         /* XXX: deal with truncation */
-        /* XXX: should only query the syntax colorizer */
-        len = s->get_colorized_line(s, buf, countof(buf), sbuf,
-                                    offsetl, &offset1, line_num);
+        len = get_colorized_line(s, buf, countof(buf), sbuf,
+                                 offsetl, &offset1, line_num);
         /* get current indentation of this line, adjust if it has a label */
         pos1 = find_indent1(s, buf);
         /* ignore empty and preprocessor lines */
@@ -1011,9 +1010,8 @@ static void c_indent_line(EditState *s, int offset0)
   end_parse:
     /* compute special cases which depend on the chars on the current line */
     /* XXX: deal with truncation */
-    /* XXX: should only query the syntax colorizer */
-    len = s->get_colorized_line(s, buf, countof(buf), sbuf,
-                                offset, &offset1, line_num1);
+    len = get_colorized_line(s, buf, countof(buf), sbuf,
+                             offset, &offset1, line_num1);
     if (sbuf[0] == C_STYLE_PREPROCESS)
         return;
 
@@ -1114,8 +1112,8 @@ static void c_indent_line(EditState *s, int offset0)
 #if 0
     if (s->mode->auto_indent > 1) {  /* auto format */
         /* recompute colorization of the current line (after re-indentation) */
-        len = s->get_colorized_line(s, buf, countof(buf), sbuf,
-                                    offset, &offset1, line_num1);
+        len = get_colorized_line(s, buf, countof(buf), sbuf,
+                                 offset, &offset1, line_num1);
         /* skip indentation */
         for (pos = 0; qe_isblank(buf[pos]); pos++)
             continue;
@@ -1198,9 +1196,8 @@ static void do_c_forward_conditional(EditState *s, int dir)
     eb_get_pos(s->b, &line_num, &col_num, offset);
     level = 0;
     for (;;) {
-        /* XXX: should only query the syntax colorizer */
-        s->get_colorized_line(s, buf, countof(buf), sbuf,
-                              offset, &offset1, line_num);
+        get_colorized_line(s, buf, countof(buf), sbuf,
+                           offset, &offset1, line_num);
         sharp = 0;
         for (p = buf; *p; p++) {
             int c = *p;
@@ -1266,9 +1263,8 @@ static void do_c_list_conditionals(EditState *s)
     while (offset > 0) {
         line_num--;
         offset = eb_prev_line(s->b, offset);
-        /* XXX: should only query the syntax colorizer */
-        s->get_colorized_line(s, buf, countof(buf), sbuf,
-                              offset, &offset1, line_num);
+        get_colorized_line(s, buf, countof(buf), sbuf,
+                           offset, &offset1, line_num);
         sharp = 0;
         for (p = buf; *p; p++) {
             int c = *p;

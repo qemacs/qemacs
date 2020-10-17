@@ -1169,12 +1169,12 @@ void script_complete(CompleteState *cp) {
     variable_complete(cp);
 }
 
-int script_print_entry(EditState *s, const char *name) {
+int script_print_entry(CompleteState *cp, EditState *s, const char *name) {
     CmdDef *d = qe_find_cmd(name);
     if (d) {
-        return command_print_entry(s, name);
+        return command_print_entry(cp, s, name);
     } else {
-        return variable_print_entry(s, name);
+        return variable_print_entry(cp, s, name);
     }        
 }
 

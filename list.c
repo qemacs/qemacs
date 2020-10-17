@@ -23,37 +23,6 @@
 
 ModeDef list_mode;
 
-static int list_get_colorized_line(EditState *s,
-                                   unsigned int *buf, int buf_size,
-                                   QETermStyle *sbuf,
-                                   int offset, int *offsetp, int line_num)
-{
-    QEmacsState *qs = s->qe_state;
-    int i, len;
-
-    /* Get line contents including static buffer styles */
-    /* XXX: deal with truncation */
-    /* XXX: should just use s->cur_line style */
-    len = generic_get_colorized_line(s, buf, buf_size, sbuf,
-                                     offset, offsetp, line_num);
-
-    if (((qs->active_window == s) || s->force_highlight) &&
-          s->offset >= offset && s->offset < *offsetp)
-    {
-        /* highlight the line if the cursor is inside */
-        for (i = 0; i <= len; i++) {
-            sbuf[i] = QE_STYLE_HIGHLIGHT;
-        }
-    } else
-    if (buf[0] == '*') {
-        /* selection */
-        for (i = 0; i <= len; i++) {
-            sbuf[i] |= QE_STYLE_SEL;
-        }
-    }
-    return len;
-}
-
 /* get current position (index) in list */
 int list_get_pos(EditState *s)
 {
@@ -97,9 +66,16 @@ static int list_mode_init(EditState *s, EditBuffer *b, int flags)
     if (s) {
         /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_TRUNCATE;
-        s->get_colorized_line = list_get_colorized_line;
     }
     return 0;
+}
+
+static void list_display_hook(EditState *s)
+{
+    /* Keep point at the beginning of a non empty line */
+    if (s->offset && s->offset == s->b->total_size)
+        s->offset -= 1;
+    s->offset = eb_goto_bol(s->b, s->offset);
 }
 
 static int list_init(void)
@@ -108,9 +84,8 @@ static int list_init(void)
     list_mode.name = "list";
     list_mode.mode_probe = NULL;
     list_mode.mode_init = list_mode_init;
-
+    list_mode.display_hook = list_display_hook;
     qe_register_mode(&list_mode, MODEF_NOCMD | MODEF_VIEW);
-
     return 0;
 }
 

@@ -36,9 +36,8 @@ static int qe_skip_comments(EditState *s, int offset, int *offsetp)
 
     eb_get_pos(s->b, &line_num, &col_num, offset);
     offset0 = eb_goto_bol2(s->b, offset, &pos);
-    /* XXX: should only query the syntax colorizer */
-    len = s->get_colorized_line(s, buf, countof(buf), sbuf,
-                                offset0, &offset1, line_num);
+    len = get_colorized_line(s, buf, countof(buf), sbuf,
+                             offset0, &offset1, line_num);
     if (len > countof(buf))
         len = countof(buf);
     if (pos >= len)
@@ -535,9 +534,8 @@ static void do_forward_block(EditState *s, int dir)
     style0 = 0;
     len = 0;
     if (use_colors) {
-        /* XXX: should only query the syntax colorizer */
-        len = s->get_colorized_line(s, buf, countof(buf), sbuf,
-                                    offset1, &offset1, line_num);
+        len = get_colorized_line(s, buf, countof(buf), sbuf,
+                                 offset1, &offset1, line_num);
         if (len < countof(buf) - 2) {
             if (pos > 0
             &&  ((c = buf[pos - 1]) == ']' || c == '}' || c == ')')) {
@@ -564,9 +562,8 @@ static void do_forward_block(EditState *s, int dir)
                 offset1 = offset0 = eb_goto_bol2(s->b, offset, &pos);
                 len = 0;
                 if (use_colors) {
-                    /* XXX: should only query the syntax colorizer */
-                    len = s->get_colorized_line(s, buf, countof(buf), sbuf,
-                                                offset1, &offset1, line_num);
+                    len = get_colorized_line(s, buf, countof(buf), sbuf,
+                                             offset1, &offset1, line_num);
                     if (len >= countof(buf) - 2) {
                         /* very long line detected, use fallback version */
                         use_colors = 0;
@@ -641,9 +638,8 @@ static void do_forward_block(EditState *s, int dir)
                 offset1 = offset0 = offset;
                 len = 0;
                 if (use_colors) {
-                    /* XXX: should only query the syntax colorizer */
-                    len = s->get_colorized_line(s, buf, countof(buf), sbuf,
-                                                offset1, &offset1, line_num);
+                    len = get_colorized_line(s, buf, countof(buf), sbuf,
+                                             offset1, &offset1, line_num);
                     if (len >= countof(buf) - 2) {
                         /* very long line detected, use fallback version */
                         use_colors = 0;
@@ -1475,7 +1471,6 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d\n", w, "interactive", s->interactive);
     eb_printf(b1, "%*s: %d\n", w, "force_highlight", s->force_highlight);
     eb_printf(b1, "%*s: %d\n", w, "mouse_force_highlight", s->mouse_force_highlight);
-    eb_printf(b1, "%*s: %p\n", w, "get_colorized_line", (void*)s->get_colorized_line);
     eb_printf(b1, "%*s: %p\n", w, "colorize_func", (void*)s->colorize_func);
     eb_printf(b1, "%*s: %lld\n", w, "default_style", (long long)s->default_style);
     eb_printf(b1, "%*s: %s\n", w, "buffer", s->b->name);
@@ -1708,10 +1703,10 @@ static void tag_buffer(EditState *s) {
     int offset, line_num, col_num;
 
     if (s->colorize_func || s->b->b_styles) {
-        /* force complete buffer colorizarion */
+        /* force complete buffer colorization */
         eb_get_pos(s->b, &line_num, &col_num, s->b->total_size);
-        s->get_colorized_line(s, buf, countof(buf), sbuf,
-                              s->b->total_size, &offset, line_num);
+        get_colorized_line(s, buf, countof(buf), sbuf,
+                           s->b->total_size, &offset, line_num);
     }
 }
 
@@ -1728,6 +1723,40 @@ static void tag_complete(CompleteState *cp) {
             }
         }
     }
+}
+
+static int tag_print_entry(CompleteState *cp, EditState *s, const char *name) {
+    if (cp->target) {
+        EditBuffer *b = cp->target->b;
+        QEProperty *p;
+        if (!s->colorize_func && cp->target->colorize_func) {
+            set_colorize_func(s, cp->target->colorize_func, cp->target->colorize_mode);
+        }
+        for (p = b->property_list; p; p = p->next) {
+            if (p->type == QE_PROP_TAG && strequal(p->data, name)) {
+                int offset = eb_goto_bol(b, p->offset);
+                int offset1 = eb_goto_eol(b, p->offset);
+                return eb_insert_buffer_convert(s->b, s->b->total_size,
+                                                b, offset, offset1 - offset);
+            }
+        }
+    }
+    return eb_puts(s->b, name);
+}
+
+static int tag_get_entry(EditState *s, char *dest, int size, int offset)
+{
+    int len = eb_fgets(s->b, dest, size, offset, &offset);
+    int p2 = strcspn(dest, "=[{(,;");
+    int p1;
+    while (p2 > 0 && !qe_isalnum_(dest[p2 - 1]))
+        p2--;
+    p1 = p2;
+    while (p1 > 0 && (qe_isalnum_(dest[p1 - 1]) || dest[p1 - 1] == '-'))
+        p1--;
+    memmove(dest, dest + p1, len = p2 - p1);
+    dest[len] = '\0';   /* strip the prototype or trailing newline if any */
+    return len;
 }
 
 static void do_find_tag(EditState *s, const char *str) {
@@ -1767,6 +1796,7 @@ static void do_list_tags(EditState *s) {
     char buf[256];
     EditBuffer *b;
     QEProperty *p;
+    EditState *e1;
 
     b = new_help_buffer();
     if (!b)
@@ -1777,13 +1807,24 @@ static void do_list_tags(EditState *s) {
     snprintf(buf, sizeof buf, "Tags in file %s", s->b->filename);
     for (p = s->b->property_list; p; p = p->next) {
         if (p->type == QE_PROP_TAG) {
-            eb_printf(b, "%12d  %s\n", p->offset, (char*)p->data);
+            //eb_printf(b, "%12d  %s\n", p->offset, (char*)p->data);
+            int offset = eb_goto_bol(s->b, p->offset);
+            int offset1 = eb_goto_eol(s->b, p->offset);
+            eb_insert_buffer_convert(b, b->total_size, s->b, offset, offset1 - offset);
+            eb_putc(b, '\n');
         }
     }
 
     b->flags |= BF_READONLY;
-    show_popup(s, b, buf);
+    e1 = show_popup(s, b, buf);
+    if (s->colorize_func) {
+        set_colorize_func(e1, s->colorize_func, s->colorize_mode);
+    }
 }
+
+static CompletionDef tag_completion = {
+    "tag", tag_complete, tag_print_entry, tag_get_entry
+};
 
 static CmdDef extra_commands[] = {
     CMD2( KEY_META('='), KEY_NONE,
@@ -1886,10 +1927,6 @@ static CmdDef extra_commands[] = {
           "s{Find tag: }[tag]|tag|")
 
     CMD_DEF_END,
-};
-
-static CompletionDef tag_completion = {
-    "tag", tag_complete,
 };
 
 static int extras_init(void)

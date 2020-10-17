@@ -96,7 +96,7 @@ struct VarDef {
 void qe_register_variables(VarDef *vars, int count);
 VarDef *qe_find_variable(const char *name);
 void variable_complete(CompleteState *cp);
-int variable_print_entry(EditState *s, const char *name);
+int variable_print_entry(CompleteState *cp, EditState *s, const char *name);
 
 QVarType qe_get_variable(EditState *s, const char *name,
                          char *buf, int size, int *pnum, int as_source);
