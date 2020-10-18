@@ -5,6 +5,8 @@
 
 * Recent bugs and ideas
 
+** extras: move sorting code to eb_sort()
+** extras: use eb_sort in help windows
 ** style: add color themes
 ** style: add style recent changes (highlight-recent-changes)
 ** style: add style for trailing blanks
@@ -17,7 +19,7 @@
 ** clang: allman and other styles
 ** clang: auto remove trailing spaces and add final newline
 ** clang: colorizing bug: static int (*qe__initcall_first)(void) qe__init_call = NULL;
-** clang: epita tyle
+** clang: epita style
 ** clang: missed tag: static int (*qe__initcall_first)(void) qe__init_call = NULL;
 ** display: add screen dump command and format
 ** display: colorize extra ^M and ^Z as preproc at end of line prior to calling the syntax highlighter (same as BOM)

@@ -1698,8 +1698,8 @@ static void do_sort_buffer(EditState *s, int flags, int argval) {
 }
 
 static void tag_buffer(EditState *s) {
-    unsigned int buf[100];
-    QETermStyle sbuf[100];
+    unsigned int buf[COLORED_MAX_LINE_SIZE];
+    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     int offset, line_num, col_num;
 
     if (s->colorize_func || s->b->b_styles) {
