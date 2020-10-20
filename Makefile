@@ -75,7 +75,7 @@ TARGETS+= qe$(EXE) kmaps ligatures
 OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o input.o display.o \
        hex.o list.o
 TOBJS:= $(OBJS) parser.o
-OBJS+= qscript.o extras.o variables.o fractal.o
+OBJS+= qescript.o extras.o variables.o fractal.o
 
 ifdef CONFIG_DARWIN
   LDFLAGS += -L/opt/local/lib/
@@ -604,7 +604,7 @@ FILES:= .cvsignore COPYING Changelog Makefile README TODO.org VERSION \
         qe-doc.texi qe.1 qe.c qe.h qe.tcc qeconfig.h qeend.c qemacs.spec \
         qestyles.h qfribidi.c qfribidi.h rlang.c rust.c script.c search.c \
         shell.c swift.c tty.c unicode_join.c unifont.lig unihex.c unix.c \
-        util.c variables.c variables.h video.c win32.c x11.c xml.c qscript.c
+        util.c variables.c variables.h video.c win32.c x11.c xml.c qsscript.c
 
 FILES+= ats.c cflags.mk elm.c fractal.c jai.c nim.c qemacs.rdef quirrel.c \
         rebol.c stb.c stb_image.h tqe.c txl.c unicode_width.h virgil.c
