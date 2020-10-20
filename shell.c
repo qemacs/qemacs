@@ -524,7 +524,7 @@ static void qe_term_goto_xy(ShellState *s, int destx, int desty, int relative)
 {
     int x, y, w, start_offset, offset, offset1, c;
 
-    if (relative) {
+    if (relative & 3) {
         qe_term_get_pos(s, s->cur_offset, &start_offset, &x, &y);
         if (relative & 1)
             destx += x;
@@ -646,12 +646,14 @@ static int qe_term_skip_lines(ShellState *s, int offset, int n)
 
 static int qe_term_delete_lines(ShellState *s, int offset, int n)
 {
-    int i, offset1;
+    int i, offset1, offset2;
 
     if (n > 0) {
         for (offset1 = offset, i = 0; i < n; i++) {
             offset1 = eb_next_line(s->b, offset1);
         }
+        if (eb_prevc(s->b, offset1, &offset2) != '\n')
+            eb_prevc(s->b, offset, &offset);
         eb_delete_range(s->b, offset, offset1);
     }
     return offset;
@@ -1254,11 +1256,44 @@ static void qe_term_emulate(ShellState *s, int c)
         case '>':   // Normal Keypad (DECKPNM). [rmkx, is2, rs2]
             break;
         case 'D':   // Index (IND  is 0x84).
+                    // move cursor down, scroll if at bottom
         case 'E':   // Next Line (NEL  is 0x85).
+                    // move cursor to beginning of next line, scroll if at bottom
+            {
+                int start, col, row;
+                qe_term_get_pos(s, s->cur_offset, &start, &col, &row);
+                if (c == 'E')
+                    col = 0;
+                if (++row >= s->rows) {
+                    //eb_insert_uchar(s->b, s->b->total_size, '\n');
+                    //row--;
+                    qe_term_delete_lines(s, start, 1);
+                    offset = qe_term_skip_lines(s, start, s->rows - 1);
+                    qe_term_insert_lines(s, offset, 1);
+                    row = s->rows - 1;
+                }
+                qe_term_goto_xy(s, col, row, 0);
+            }
+            break;
+        case 'M':   // Reverse Index (RI  is 0x8d). [ri]
+                    // move cursor up, scroll if at top line
+            {
+                int start, offset, col, row;
+                qe_term_get_pos(s, s->cur_offset, &start, &col, &row);
+                if (--row < 0) {
+                    if (1 || start == 0) {
+                        qe_term_insert_lines(s, start, 1);
+                    }
+                    offset = qe_term_skip_lines(s, start, s->rows - 1);
+                    qe_term_delete_lines(s, offset, 1);
+                    row = 0;
+                }
+                qe_term_goto_xy(s, col, row, 0);
+            }
+            break;
         case 'F':   // Cursor to lower left corner of screen.
                     // This is enabled by the hpLowerleftBugCompat resource.
         case 'H':   // Tab Set (HTS  is 0x88). [set_tab]
-        case 'M':   // Reverse Index (RI  is 0x8d). [ri]
         case 'O':   // Single Shift Select of G3 Character Set (SS3  is 0x8f).
                     // This affects next character only.
         case 'V':   // Start of Guarded Area (SPA  is 0x96).
