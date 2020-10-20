@@ -807,7 +807,7 @@ static void c_indent_line(EditState *s, int offset0)
 {
     int offset, offset1, offsetl, c, pos, line_num, col_num;
     int i, eoi_found, len, pos1, lpos, style, line_num1, state;
-    int off, found_semi, found_comma, has_else;
+    int off, qe__unused__ found_semi, found_comma, has_else;
     unsigned int buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     unsigned char stack[MAX_STACK_SIZE];

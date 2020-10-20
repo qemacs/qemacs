@@ -4159,8 +4159,8 @@ static int stbi__zexpand(stbi__zbuf *z, char *zout, int n)  // need to make room
       if(limit > UINT_MAX / 2) return stbi__err("outofmem", "Out of memory");
       limit *= 2;
    }
-   q = (char *) STBI_REALLOC_SIZED(z->zout_start, old_limit, limit);
    STBI_NOTUSED(old_limit);
+   q = (char *) STBI_REALLOC_SIZED(z->zout_start, old_limit, limit);
    if (q == NULL) return stbi__err("outofmem", "Out of memory");
    z->zout_start = q;
    z->zout       = q + cur;
@@ -5041,7 +5041,8 @@ static int stbi__parse_png_file(stbi__png *z, int scan, int req_comp)
                while (ioff + c.length > idata_limit)
                   idata_limit *= 2;
                STBI_NOTUSED(idata_limit_old);
-               p = (stbi_uc *) STBI_REALLOC_SIZED(z->idata, idata_limit_old, idata_limit); if (p == NULL) return stbi__err("outofmem", "Out of memory");
+               p = (stbi_uc *) STBI_REALLOC_SIZED(z->idata, idata_limit_old, idata_limit);
+               if (p == NULL) return stbi__err("outofmem", "Out of memory");
                z->idata = p;
             }
             if (!stbi__getn(s, z->idata+ioff,c.length)) return stbi__err("outofdata","Corrupt PNG");
@@ -6801,20 +6802,21 @@ static void *stbi__load_gif_main(stbi__context *s, int **delays, int *x, int *y,
                   return stbi__errpuc("outofmem", "Out of memory");
                }
                else {
-                   out = (stbi_uc*) tmp;
-                   out_size = layers * stride;
+                  out = (stbi_uc*) tmp;
+                  out_size = layers * stride;
                }
 
                if (delays) {
+                  // XXX: potential memory leak
                   *delays = (int*) STBI_REALLOC_SIZED( *delays, delays_size, sizeof(int) * layers );
                   delays_size = layers * sizeof(int);
                }
             } else {
-               out = (stbi_uc*)stbi__malloc( layers * stride );
                out_size = layers * stride;
+               out = (stbi_uc*)stbi__malloc( out_size );
                if (delays) {
-                  *delays = (int*) stbi__malloc( layers * sizeof(int) );
                   delays_size = layers * sizeof(int);
+                  *delays = (int*) stbi__malloc( delays_size );
                }
             }
             memcpy( out + ((layers - 1) * stride), u, stride );
