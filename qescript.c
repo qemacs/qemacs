@@ -1164,12 +1164,12 @@ void do_save_session(EditState *s, int popup)
 }
 #endif
 
-void script_complete(CompleteState *cp) {
+static void script_complete(CompleteState *cp) {
     command_complete(cp);
     variable_complete(cp);
 }
 
-int script_print_entry(CompleteState *cp, EditState *s, const char *name) {
+static int script_print_entry(CompleteState *cp, EditState *s, const char *name) {
     CmdDef *d = qe_find_cmd(name);
     if (d) {
         return command_print_entry(cp, s, name);

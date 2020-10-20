@@ -586,7 +586,7 @@ static int qe_picture_scale(QEPicture *to, int dst_x, int dst_y, int dst_w, int 
     if (from->format != QEBITMAP_FORMAT_RGBA32
     &&  from->format != QEBITMAP_FORMAT_BGRA32)
         return 1;
-    
+    {  // prevent -Wdeclaration-after-statement warning
 #if 0
     /* Bilinear interpolation */
     uint32_t w = src_w, h = src_h, w2 = dst_w, h2 = dst_h;
@@ -650,6 +650,7 @@ static int qe_picture_scale(QEPicture *to, int dst_x, int dst_y, int dst_w, int 
         }
     }
 #endif
+    }
     return 0;
 }
 
