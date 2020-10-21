@@ -57,6 +57,8 @@
               QERGB(0x00, 0x00, 0x00), QERGB(0x00, 0x80, 0x80), 0, 0)
     STYLE_DEF(QE_STYLE_SEARCH_MATCH, "search-match", /* grey88 on #f000f0 */
               QERGB(0xe0, 0xe0, 0xe0), QERGB(0xf0, 0x00, 0xf0), 0, 0)
+    STYLE_DEF(QE_STYLE_BLANK_HILITE, "blank-hilite", /* black on red */
+              QERGB(0x00, 0x00, 0x00), QERGB(0xff, 0x00, 0x00), 0, 0)
 
     /* HTML coloring styles */
     STYLE_DEF(QE_STYLE_HTML_COMMENT, "html-comment", /* #f84400 */

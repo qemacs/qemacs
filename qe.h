@@ -1364,6 +1364,8 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2);
 
 /* qe.c */
 
+extern int disable_crc;      /* Prevent CRC based display cacheing */
+
 /* contains all the information necessary to uniquely identify a line,
    to avoid displaying it */
 typedef struct QELineShadow {
@@ -1531,6 +1533,7 @@ struct ModeDef {
 #define MODEF_DATATYPE     0x10
 #define MODEF_SHELLPROC    0x20
 #define MODEF_NEWINSTANCE  0x100
+#define MODEF_NO_TRAILING_BLANKS  0x200
     int buffer_instance_size;   /* size of malloced buffer state  */
     int window_instance_size;   /* size of malloced window state */
 

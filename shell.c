@@ -3092,6 +3092,14 @@ void shell_colorize_line(QEColorizeContext *cp,
             cp->colorize_state = 0;
             m->colorize_func(cp, str + i, n - i, m);
             cp->combine_stop = i;
+            if (!(m->flags & MODEF_NO_TRAILING_BLANKS)) {
+                /* Mark trailing blanks as errors if cursor is not on same line */
+                int j;
+                for (j = n; j > i && qe_isblank(str[j - 1] & CHAR_MASK); j--) {
+                    str[j - 1] &= CHAR_MASK;
+                    SET_COLOR1(str, j - 1, QE_STYLE_BLANK_HILITE);
+                }
+            }
         }
         cp->colorize_state = 0;
     }
@@ -3212,6 +3220,7 @@ static int shell_init(void)
     /* populate and register shell mode and commands */
     memcpy(&shell_mode, &text_mode, sizeof(ModeDef));
     shell_mode.name = "shell";
+    shell_mode.flags |= MODEF_NO_TRAILING_BLANKS;
     shell_mode.mode_probe = shell_mode_probe;
     shell_mode.colorize_func = shell_colorize_line,
     shell_mode.buffer_instance_size = sizeof(ShellState);

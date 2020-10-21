@@ -71,6 +71,7 @@ static int screen_height = 0;
 static int no_init_file;
 static int single_window;
 int force_tty;
+int disable_crc;
 int use_session_file;
 int use_html = 1;
 #ifndef CONFIG_TINY
@@ -3440,7 +3441,7 @@ static void flush_line(DisplayState *ds,
                     e->shadow_nb_lines = n;
                 }
             }
-            if (ds->line_num < e->shadow_nb_lines) {
+            if (ds->line_num < e->shadow_nb_lines && !disable_crc) {
                 QELineShadow *ls;
                 uint64_t crc;
 
@@ -4215,6 +4216,14 @@ static int syntax_get_colorized_line(EditState *s,
                 sbuf[i] = style;
             }
             offset = eb_next(b, offset);
+        }
+    }
+    if (!(s->colorize_mode->flags & MODEF_NO_TRAILING_BLANKS)) {
+        /* Mark trailing blanks as errors if cursor is not on same line */
+        if (!(s->offset >= offset && s->offset < *offsetp)) {
+            for (i = len; i > 0 && qe_isblank(buf[i - 1]); i--) {
+                sbuf[i - 1] = QE_STYLE_BLANK_HILITE;
+            }
         }
     }
     return len;
@@ -8925,6 +8934,8 @@ static CmdLineOptionDef cmd_options[] = {
     CMD_LINE_FVOID("?", "", show_usage, ""),
     CMD_LINE_BOOL("q", "no-init-file", &no_init_file,
                   "do not load config files"),
+    CMD_LINE_BOOL("nc", "no-crc", &disable_crc,
+                  "do not use crc based display cacheing"),
     CMD_LINE_BOOL("1", "single-window", &single_window,
                   "keep a single window when loading multiple files"),
     CMD_LINE_BOOL("nw", "no-windows", &force_tty,

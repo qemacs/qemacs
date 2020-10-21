@@ -276,14 +276,22 @@ static int tty_dpy_init(QEditScreen *s,
     tcgetattr(fileno(s->STDIN), &tty);
     ts->oldtty = tty;
 
+    /* input modes: no break, no CR to NL, no parity check, no strip char,
+     * no start/stop output control. */
     tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP |
                      INLCR | IGNCR | ICRNL | IXON);
-    tty.c_oflag |= OPOST;
+    /* output modes - disable post processing */
+    tty.c_oflag &= ~(OPOST);
+    /* local modes - echoing off, canonical off, no extended functions,
+     * no signal chars (^Z,^C) */
     tty.c_lflag &= ~(ECHO | ECHONL | ICANON | IEXTEN | ISIG);
+    /* control modes - set 8 bit chars, disable parity handling */
     tty.c_cflag &= ~(CSIZE | PARENB);
     tty.c_cflag |= CS8;
-    tty.c_cc[VMIN] = 1;
-    tty.c_cc[VTIME] = 0;
+    /* control chars - set return condition: min number of bytes and timer.
+     * We want read to return every single byte, without timeout. */
+    tty.c_cc[VMIN] = 1;   /* 1 byte */
+    tty.c_cc[VTIME] = 0;  /* no timer */
 
     tcsetattr(fileno(s->STDIN), TCSANOW, &tty);
 
