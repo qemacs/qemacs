@@ -26,7 +26,7 @@ ifeq (,$(V)$(VERBOSE))
     cmd   := @
 else
     echo  := @:
-    cmd   := 
+    cmd   :=
 endif
 
 ifeq ($(CC),gcc)

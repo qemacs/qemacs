@@ -57,7 +57,7 @@ for ($fgbg = 38; $fgbg <= 48; $fgbg +=10) {
         }
         print "\n";
     }
-    
+
     # now the grayscale ramp
     print "Grayscale ramp:\n";
     print "\x1b[${fgbg};2;0;0;0m::";
@@ -112,7 +112,7 @@ for ($fgbg = 48; $fgbg <= 48; $fgbg +=10) {
         }
         print "\n";
     }
-    
+
     # the grayscale ramp
     print "Grayscale ramp:\n";
     print "    RGB: ";

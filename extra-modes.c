@@ -4871,7 +4871,7 @@ static void magpie_colorize_line(QEColorizeContext *cp,
                 i = n;
                 style = MAGPIE_STYLE_COMMENT;
                 break;
-            }            
+            }
             continue;
 
         case '\'':
@@ -5059,7 +5059,7 @@ static void falcon_colorize_line(QEColorizeContext *cp,
                 i = n;
                 style = FALCON_STYLE_COMMENT;
                 break;
-            }            
+            }
             continue;
 
         case '\'':

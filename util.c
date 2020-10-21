@@ -139,7 +139,7 @@ int is_directory(const char *path)
         return 0;
 }
 
-int is_filepattern(const char *filespec) 
+int is_filepattern(const char *filespec)
 {
     // XXX: should also accept character ranges and {} comprehensions
     int pos = strcspn(filespec, "*?");
@@ -1593,8 +1593,8 @@ static unsigned char const scale_grey[256] = {
     /* 232..255: 24 entry grey scale 8,18..238 */
     16, 16, 16, 16,
     REP10(232), REP10(233), REP10(234), REP10(235),
-    REP10(236), REP10(237), REP10(238), REP10(239), 
-    REP10(240), REP10(241), REP10(242), REP10(243), 
+    REP10(236), REP10(237), REP10(238), REP10(239),
+    REP10(240), REP10(241), REP10(242), REP10(243),
     REP10(244), REP10(245), REP10(246), REP10(247),
     REP10(248), REP10(249), REP10(250), REP10(251),
     REP10(252), REP10(253), REP10(254), REP10(255),

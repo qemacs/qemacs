@@ -338,8 +338,8 @@ int is_directory(const char *path);
 int is_filepattern(const char *filespec);
 void canonicalize_path(char *buf, int buf_size, const char *path);
 void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const char *path1);
-void canonicalize_absolute_buffer_path(EditBuffer *b, int offset, 
-                                       char *buf, int buf_size, 
+void canonicalize_absolute_buffer_path(EditBuffer *b, int offset,
+                                       char *buf, int buf_size,
                                        const char *path1);
 char *make_user_path(char *buf, int buf_size, const char *path);
 char *reduce_filename(char *dest, int size, const char *filename);
@@ -972,9 +972,9 @@ KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m);
 #define COLORED_MAX_LINE_SIZE  4096
 
 /* colorize & transform a line, lower level then ColorizeFunc */
-/* XXX: should return `len`, the number of valid codepoints copied to 
+/* XXX: should return `len`, the number of valid codepoints copied to
  * destination excluding the null terminator and newline if present.
- * Truncation can be detected by testing if a newline is present 
+ * Truncation can be detected by testing if a newline is present
  * at this offset.
  */
 typedef int (*GetColorizedLineFunc)(EditState *s,
@@ -1283,7 +1283,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
                              int size);
 int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
                 int offset, int *offset_ptr);
-int eb_fgets(EditBuffer *b, char *buf, int buf_size, 
+int eb_fgets(EditBuffer *b, char *buf, int buf_size,
              int offset, int *offset_ptr);
 int eb_prev_line(EditBuffer *b, int offset);
 int eb_goto_bol(EditBuffer *b, int offset);
@@ -1578,7 +1578,7 @@ struct ModeDef {
     void (*get_mode_line)(EditState *s, buf_t *out);
     void (*indent_func)(EditState *s, int offset);
     /* Get the current directory for the window, return NULL if none */
-    char *(*get_default_path)(EditBuffer *s, int offset, 
+    char *(*get_default_path)(EditBuffer *s, int offset,
                               char *buf, int buf_size);
 
     /* mode specific key bindings */

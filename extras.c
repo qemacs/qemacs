@@ -1462,8 +1462,8 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d  %s\n", w, "wrap", s->wrap,
               s->wrap == WRAP_AUTO ? "AUTO" :
               s->wrap == WRAP_TRUNCATE ? "TRUNCATE" :
-              s->wrap == WRAP_LINE ? "LINE" : 
-              s->wrap == WRAP_TERM ? "TERM" : 
+              s->wrap == WRAP_LINE ? "LINE" :
+              s->wrap == WRAP_TERM ? "TERM" :
               s->wrap == WRAP_WORD ? "WORD" : "???");
     eb_printf(b1, "%*s: %d\n", w, "line_numbers", s->line_numbers);
     eb_printf(b1, "%*s: %d\n", w, "indent_size", s->indent_size);
@@ -1672,7 +1672,7 @@ static void do_sort_span(EditState *s, int p1, int p2, int flags, int argval) {
         offset = eb_next(s->b, offset);
     }
     qe_qsort_r(chunk_array, lines, sizeof(*chunk_array), &ctx, chunk_cmp);
-        
+
     b = eb_new("*sorted*", BF_SYSTEM);
     eb_set_charset(b, s->b->charset, s->b->eol_type);
 

@@ -1,5 +1,5 @@
 ## JIS X 0213:2004 vs Unicode mapping table
-## 
+##
 ## Date: 22 May 2006
 ## License:
 ## 	Copyright (C) 2001 earthian@tama.or.jp, All Rights Reserved.
@@ -19,7 +19,7 @@
 ## 	Windows 	Windows (CP932) mapping
 ## 	Some 0213 character can't represent by one UCS character.
 ## 	In this table, such characters are described as 'U+xxxx+xxxx'.
-## 
+##
 ## JIS	Unicode	Name	Note
 3-2121	U+3000	# IDEOGRAPHIC SPACE
 3-2122	U+3001	# IDEOGRAPHIC COMMA

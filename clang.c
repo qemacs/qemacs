@@ -1125,7 +1125,7 @@ static void c_indent_line(EditState *s, int offset0)
         /* XXX: unary prefix operators: ! ~ - + & * ++ -- */
         /* XXX: postfix operators: ++ -- -> . [ */
         /* XXX: grouping operators: ( ) [ ] */
-        /* XXX: binary operators: = == === != !== < > <= >= && || 
+        /* XXX: binary operators: = == === != !== < > <= >= && ||
         ^ & | + - * / % << >> ^= &= |= += -= *= /= %= <<= >>= ? : */
         /* XXX: sequence operators: , ; */
     }
@@ -1178,7 +1178,7 @@ static void do_c_return(EditState *s)
             from = offset;
         eb_delete_range(s->b, from, to);
         offset = from;
-            
+
         (s->mode->indent_func)(s, eb_goto_bol(s->b, offset));
         (s->mode->indent_func)(s, s->offset);
     }

@@ -1,5 +1,5 @@
 ## Shift_JIS-2004 (JIS X 0213:2004 Appendix 1) vs Unicode mapping table
-## 
+##
 ## Date: 13 May 2006
 ## License:
 ## 	Copyright (C) 2001 earthian@tama.or.jp, All Rights Reserved.
@@ -17,7 +17,7 @@
 ## 	Windows 	Windows (CP932) mapping
 ## 	Some 0213 character can't represent by one UCS character.
 ## 	In this table, such characters are described as 'U+xxxx+xxxx'.
-## 
+##
 ## JIS	Unicode	Name	Note
 0x00	U+0000	# <control>
 0x01	U+0001	# <control>
@@ -241,8 +241,8 @@
 0xDB	U+FF9B	# HALFWIDTH KATAKANA LETTER RO
 0xDC	U+FF9C	# HALFWIDTH KATAKANA LETTER WA
 0xDD	U+FF9D	# HALFWIDTH KATAKANA LETTER N
-0xDE	U+FF9E	# HALFWIDTH KATAKANA VOICED SOUND MARK 
-0xDF	U+FF9F	# HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK 
+0xDE	U+FF9E	# HALFWIDTH KATAKANA VOICED SOUND MARK
+0xDF	U+FF9F	# HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK
 0xE0		# <doublebytes>
 0xE1		# <doublebytes>
 0xE2		# <doublebytes>
@@ -291,7 +291,7 @@
 0x814D	U+FF40	# FULLWIDTH GRAVE ACCENT
 0x814E	U+00A8	# DIAERESIS
 0x814F	U+FF3E	# FULLWIDTH CIRCUMFLEX ACCENT
-0x8150	U+FFE3	# FULLWIDTH MACRON 
+0x8150	U+FFE3	# FULLWIDTH MACRON
 0x8151	U+FF3F	# FULLWIDTH LOW LINE
 0x8152	U+30FD	# KATAKANA ITERATION MARK
 0x8153	U+30FE	# KATAKANA VOICED ITERATION MARK

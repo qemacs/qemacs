@@ -22,7 +22,7 @@ resetColor() {
 # Echoes "$red $green $blue" where
 # $red $green and $blue are integers
 # ranging between 0 and 255 inclusive
-rainbowColor() { 
+rainbowColor() {
     let h=$1/43
     let f=$1-43*$h
     let t=$f*255/43
@@ -61,7 +61,7 @@ colorRamp2() {
         if   [ $i -lt  64 ] ; then let v=$i ;
         elif [ $i -lt 128 ] ; then let v=192-$i ;
         elif [ $i -lt 192 ] ; then let v=$i ;
-        else                       let v=255+192-$i ; 
+        else                       let v=255+192-$i ;
         fi
         let r="($v*$4+(255-$v)*$1)/255"
         let g="($v*$5+(255-$v)*$2)/255"

@@ -190,7 +190,7 @@ static int dired_find_target(DiredState *ds, const char *target)
         row = DIRED_HEADER;
         for (i = 0; i < ds->items.nb_items; i++) {
             DiredItem *dip = ds->items.items[i]->opaque;
-    
+
             if (dired_get_filename(ds, dip, filename, sizeof(filename))
             &&  strequal(filename, target)) {
                 return row;
@@ -567,7 +567,7 @@ static void dired_compute_columns(DiredState *ds)
 
     for (i = 0; i < ds->items.nb_items; i++) {
         DiredItem *dip = ds->items.items[i]->opaque;
-    
+
         len = strlen(dip->name);
         if (ds->namelen < len)
             ds->namelen = len;
@@ -1193,7 +1193,7 @@ static void dired_display_hook(EditState *s)
     }
 }
 
-static char *dired_get_default_path(EditBuffer *b, int offset, 
+static char *dired_get_default_path(EditBuffer *b, int offset,
                                     char *buf, int buf_size)
 {
     if (is_directory(b->filename)) {

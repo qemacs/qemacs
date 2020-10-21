@@ -1175,7 +1175,7 @@ static int script_print_entry(CompleteState *cp, EditState *s, const char *name)
         return command_print_entry(cp, s, name);
     } else {
         return variable_print_entry(cp, s, name);
-    }        
+    }
 }
 
 static CompletionDef script_completion = {

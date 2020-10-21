@@ -2571,7 +2571,7 @@ static void eb_plist_callback(EditBuffer *b, void *opaque, int edge,
 {
     QEProperty **pp;
     QEProperty *p;
-                                 
+
     /* update properties */
     if (op == LOGOP_INSERT) {
         for (p = b->property_list; p; p = p->next) {

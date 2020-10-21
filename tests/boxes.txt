@@ -65,14 +65,14 @@ Double width, mixed fill (double vertical, single horizontal).
 Double horizontal, single vertical.
 ┍┑
 ┕┙
-╒╕ 
-╘╛ 
+╒╕
+╘╛
 
 Double vertical, single horizontal.
 ┎┒
 ┖┚
-╓╖ 
-╙╜ 
+╓╖
+╙╜
 
 Single width, double, triple and quadruple dash.
 ┌╌╌┐  ┌┄┄┐  ┌┈┈┐
@@ -123,7 +123,7 @@ Diagonals.
    ╳       ╳          ╳     ╳     ╳      ╳   ╳   ╳   ╳    ╳ ╳ ╳ ╳ ╳    ╳╳╳╳╳╳╳
   ╱ ╲     ╱ ╲        ╱ ╲   ╱ ╲   ╱ ╲      ╲ ╱ ╲ ╱ ╲ ╱      ╳ ╳ ╳ ╳     ╳╳╳╳╳╳╳
  ╱   ╲   ╱   ╲      ╱   ╲ ╱   ╲ ╱   ╲      ╳   ╳   ╳      ╳ ╳ ╳ ╳ ╳
-╱     ╲ ╱     ╲          ╳     ╳          ╱ ╲ ╱ ╲ ╱ ╲      ╳ ╳ ╳ ╳ 
+╱     ╲ ╱     ╲          ╳     ╳          ╱ ╲ ╱ ╲ ╱ ╲      ╳ ╳ ╳ ╳
 
 Block elements.
 

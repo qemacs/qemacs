@@ -3419,7 +3419,7 @@ static void flush_line(DisplayState *ds,
     }
 
     /* draw everything if line is visible in window */
-    if (ds->do_disp == DISP_PRINT 
+    if (ds->do_disp == DISP_PRINT
     &&  ds->y + line_height >= 0
     &&  ds->y < e->ytop + e->height) {
         QEStyleDef styledef, default_style;
@@ -3479,7 +3479,7 @@ static void flush_line(DisplayState *ds,
             for (i = 0; i < nb_fragments && x < x1; i++) {
                 frag = &fragments[i];
                 get_style(e, &styledef, frag->style);
-                fill_rectangle(screen, e->xleft + x, e->ytop + y, 
+                fill_rectangle(screen, e->xleft + x, e->ytop + y,
                                frag->width, line_height, styledef.bg_color);
                 x += frag->width;
             }
@@ -3506,7 +3506,7 @@ static void flush_line(DisplayState *ds,
                     get_style(e, &styledef, frag->style);
                     font = select_font(screen,
                                        styledef.font_style, styledef.font_size);
-                    draw_text(screen, font, 
+                    draw_text(screen, font,
                               e->xleft + x - frag->width, e->ytop + y,
                               ds->line_chars + frag->line_index,
                               frag->len, styledef.fg_color);
@@ -3566,7 +3566,7 @@ static void flush_line(DisplayState *ds,
                         if (ds->cursor_func(ds, _offset1, _offset2, ds->line_num,
                                            x, y, -w, line_height, hex_mode))
                             ds->eod = 1;
-                    } else 
+                    } else
 #endif
                     {
                         if (ds->cursor_func(ds, _offset1, _offset2, ds->line_num,
@@ -4103,8 +4103,8 @@ static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_
 
 #define COLORIZED_LINE_PREALLOC_SIZE 64
 
-static int syntax_get_colorized_line(EditState *s, 
-                                     unsigned int *buf, int buf_size, 
+static int syntax_get_colorized_line(EditState *s,
+                                     unsigned int *buf, int buf_size,
                                      QETermStyle *sbuf,
                                      int offset, int *offsetp, int line_num)
 {
@@ -4425,7 +4425,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     for (;;) {
         offset0 = offset;
         if (offset >= s->b->total_size) {
-            /* the offset passed here is for cursor positioning 
+            /* the offset passed here is for cursor positioning
                when s->offset == s->b->total_size.
             */
             display_eol(ds, offset0, offset0 + 1);
@@ -6294,7 +6294,7 @@ void do_minibuffer_complete(EditState *s, int type)
             if (!mb->completion_popup_window) {
                 char buf[60];
 
-                b = eb_new("*completion*", 
+                b = eb_new("*completion*",
                            BF_SYSTEM | BF_UTF8 | BF_TRANSIENT | BF_STYLE1);
                 b->default_mode = &list_mode;
                 w1 = qs->screen->width;
@@ -6939,7 +6939,7 @@ static int is_abs_path(const char *path)
     prefix = strcspn(path, "/:");
     if (path[prefix] == ':' && path[prefix + 1] == '/')
         return 1;
-    
+
     return 0;
 }
 
@@ -8768,7 +8768,7 @@ static void show_usage(void)
             bstr_t argname = bstr_token(s, '|', &s);
             bstr_t help = bstr_make(s);
             int pos = printf(" ");
-            
+
             if (shortname.len)
                 pos += printf(" -%.*s", shortname.len, shortname.s);
             if (name.len)

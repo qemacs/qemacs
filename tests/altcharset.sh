@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # '<' '%%' '>' are VT220 only
-for x in '0' ; do  
+for x in '0' ; do
   if [ "$1" == "--ascii" ] ; then
     # ASCII version
     printf "+-----------------------------------------------------------------------------+\n"

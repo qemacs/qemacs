@@ -36,13 +36,13 @@ Middle Near East/Africa:
 
   Amharic (አማርኛ)		ሠላም
   Arabic			ﺍﻟﺴﻼﻡ ﻋﻠﻴﻜﻢ
-  Arabic (Pango)		السَّلام عليكُم 
+  Arabic (Pango)		السَّلام عليكُم
   Arabic (اَلْعَرَبِيَّةُ)‎	اَلسَّلَامُ عَلَيْكُم
   Georgian (ქართველი)		გამარჯობა
   Hebrew			שלום
   Hebrew (עִבְרִית)‎		שָׁלוֹם
   Persian (فارسی)‎		سلام عليکم
-  Yiddish (ײַדישע)‎		דאָס הײַזעלע 
+  Yiddish (ײַדישע)‎		דאָס הײַזעלע
 
 South/South-East Asia:
 

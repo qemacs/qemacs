@@ -153,8 +153,8 @@
 ** screen: check coordinate system to 1000 based with optional sidebars
 ** search: improve speed finally
 ** search: add low-level accelerator function
-** search: use do_isearch or similar to input string and options 
-   for other search commands: do_search_string, do_query_replace, 
+** search: use do_isearch or similar to input string and options
+   for other search commands: do_search_string, do_query_replace,
    count-matches, delete-matching-lines (might need recursive edit)
 ** search: add regex support
 ** search: hex-mode search strings should mix hex ut8 strings and ASCII control char names
@@ -603,7 +603,7 @@ CP862.TXT CP863.TXT CP864.TXT CP865.TXT CP869.TXT CP874.TXT CP932.TXT
 JIS0201.TXT SHIFTJIS.TXT
 euc-jis-2004-std.txt iso-2022-jp-2004-std.txt jisx0213-2004-std.txt
 sjis-0213-2004-std.txt
-MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT 
+MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT
 cpdata.txt
 koi8_ru.cp
 

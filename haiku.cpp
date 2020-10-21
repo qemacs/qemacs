@@ -127,7 +127,7 @@ void QEWindow::DispatchMessage(BMessage *message, BHandler *handler)
         }
         break;
     case B_KEY_DOWN:
-        if ((message->FindInt32("modifiers", (int32 *)&mods) == B_OK) && 
+        if ((message->FindInt32("modifiers", (int32 *)&mods) == B_OK) &&
               (mods & B_COMMAND_KEY)) {
             /* BWindow swallows KEY_DOWN when ALT is down...
              * so this hack is needed.
@@ -320,7 +320,7 @@ static int haiku_init(QEditScreen *s, int w, int h)
     ctx->v->SetDrawingMode(B_OP_OVER);
 
     ctx->w->Show();
-    
+
     return 0;
 }
 
@@ -406,7 +406,7 @@ static void haiku_handle_event(void *opaque)
 
             s->width = width;
             s->height = height;
-            
+
             ctx->v->UnlockLooper();
 
             //ev->expose_event.type = QE_EXPOSE_EVENT;
@@ -725,7 +725,7 @@ static void haiku_close_font(QEditScreen *s, QEFont **fontp)
     }
 }
 
-static void haiku_text_metrics(QEditScreen *s, QEFont *font, 
+static void haiku_text_metrics(QEditScreen *s, QEFont *font,
                                QECharMetrics *metrics,
                                const unsigned int *str, int len)
 {

@@ -71,7 +71,7 @@ static int shell_script_string(unsigned int *str, int i, int n,
             i++;
         } else
         if (c == '$' && dollar && i < n) {
-            /* XXX: should highlight variable substitutions */ 
+            /* XXX: should highlight variable substitutions */
             i++;
         } else
         if (c == sep) {

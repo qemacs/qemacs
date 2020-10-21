@@ -780,7 +780,7 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
         // Set the foreground color to red=255, green=128, blue=64 with a tolerance of
         // 5 in the CIELAB color space. The 0 at the 6th position has no meaning and
         // is just a filler.
-        // 
+        //
         // For 256-color mode (indexed) use this for the foreground:
         // CSI 38;5;N m
         // where N is a value between 0 and 255. See the colors described in screen_char_t
@@ -1383,10 +1383,10 @@ static void qe_term_emulate(ShellState *s, int c)
             /* 16    Change colors starting with Tek background to Pt */
             /* 17    Change colors starting with highlight to Pt */
             /* 46    Change Log File to Pt (normally disabled by a compile-time option) */
-            /* 50    Set Font to Pt If Pt begins with a "#", index in the font 
+            /* 50    Set Font to Pt If Pt begins with a "#", index in the font
                      menu, relative (if the next character is a plus or minus
                      sign) or absolute. A number is expected but not required
-                     after the sign (the default is the current entry for 
+                     after the sign (the default is the current entry for
                      relative, zero for absolute indexing).
             */
         case ESC2(']','W'):     /* word-set (define char wordness) */
@@ -1455,7 +1455,7 @@ static void qe_term_emulate(ShellState *s, int c)
         switch (ESC2(s->esc1,c)) {
         case '@':  /* ICH: Insert Ps (Blank) Character(s) (default = 1) */
             qe_term_set_style(s);
-            /* XXX: should delete extra characters at the end of the line */ 
+            /* XXX: should delete extra characters at the end of the line */
             eb_insert_uchars(s->b, offset, ' ', min(param1, s->cols));
             /* cur_offset may have been updated by callback */
             s->cur_offset = offset;
@@ -2651,7 +2651,7 @@ static void do_shell_yank(EditState *e)
         EditBuffer *b = qs->yank_buffers[qs->yank_current];
 
         e->b->mark = e->offset;
-        
+
         if (b) {
             if (b->total_size > 1024) {
                 put_status(e, "too much data to yank at shell prompt");
@@ -2771,7 +2771,7 @@ static char *shell_get_curpath(EditBuffer *b, int offset,
     char line[1024];
     char curpath[MAX_FILENAME_SIZE];
     int start, stop0, stop, i, len, offset1;
-    
+
     offset = eb_goto_bol(b, offset);
 again:
     len = eb_fgets(b, line, sizeof(line), offset, &offset1);
@@ -2954,7 +2954,7 @@ static void do_compile_error(EditState *s, int dir, int arg)
         }
 
         /* XXX: should find directory backward from error offset */
-        canonicalize_absolute_buffer_path(b, found_offset, 
+        canonicalize_absolute_buffer_path(b, found_offset,
                                           fullpath, sizeof(fullpath), filename);
 
         /* extract line number */

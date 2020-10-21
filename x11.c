@@ -1470,7 +1470,7 @@ static void x11_handle_event(void *opaque)
             if (shift) {
                 switch (keysym) {
                 case XK_ISO_Left_Tab:
-                    key = KEY_SHIFT_TAB; 
+                    key = KEY_SHIFT_TAB;
                     goto got_key;
                 default:
                     if (len > 0) {

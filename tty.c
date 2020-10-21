@@ -227,7 +227,7 @@ static int tty_dpy_init(QEditScreen *s,
     if ((p = getenv("TERM_PROGRAM")) && strequal(p, "iTerm.app")) {
         /* iTerm and iTerm2 support true colors */
         ts->term_flags |= USE_TRUE_COLORS | USE_256_COLORS;
-    }        
+    }
     /* actual color mode can be forced via environment variables */
     /* XXX: should have qemacs variables too */
     if ((p = getenv("COLORTERM")) != NULL) {
@@ -913,9 +913,9 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
               ts->term_fg_colors_count, ts->term_bg_colors_count);
     eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "virtual tty colors",
               ts->tty_fg_colors_count, ts->tty_bg_colors_count);
-    
+
     eb_printf(b, "\nUnicode combination cache:\n\n");
-    
+
     for (ip = ts->comb_cache; *ip != 0; ip += *ip & 0xFFFF) {
         if (*ip & 0x10000) {
             eb_printf(b, "   FREE   %d\n", (*ip & 0xFFFF) - 1);
