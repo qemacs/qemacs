@@ -989,6 +989,7 @@ struct QEColorizeContext {
     int colorize_state;
     int state_only;
     int combine_start, combine_stop; /* region for combine_static_colorized_line() */
+    int cur_pos;   /* position of cursor in line or -1 if outside line */
 };
 
 /* colorize a line: this function modifies buf to set the char

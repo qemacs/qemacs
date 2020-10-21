@@ -4179,9 +4179,15 @@ static int syntax_get_colorized_line(EditState *s,
     if (buf[len] != '\n') {
         /* line was truncated */
         /* XXX: should use reallocatable buffer */
-        *offsetp = eb_goto_pos(b, line_num + 1, 0);
+        *offsetp = eb_next_line(b, offset);
     }
     buf[len] = '\0';
+    if (s->offset >= offset && s->offset < *offsetp) {
+        /* compute cursor position */
+        int offset1 = offset;
+        for (cctx.cur_pos = 0; offset1 < s->offset; cctx.cur_pos++)
+            offset1 = eb_next(b, offset1);
+    }
 
     bom = (buf[0] == 0xFEFF);
     if (bom) {
@@ -4189,7 +4195,9 @@ static int syntax_get_colorized_line(EditState *s,
         cctx.offset = eb_next(b, cctx.offset);
     }
     cctx.combine_stop = len - bom;
+    cctx.cur_pos -= bom;
     s->colorize_func(&cctx, buf + bom, len - bom, s->colorize_mode);
+    cctx.cur_pos += bom;
     /* buf[len] has char '\0' but may hold style, force buf ending */
     buf[len + 1] = 0;
 
@@ -4219,11 +4227,9 @@ static int syntax_get_colorized_line(EditState *s,
         }
     }
     if (!(s->colorize_mode->flags & MODEF_NO_TRAILING_BLANKS)) {
-        /* Mark trailing blanks as errors if cursor is not on same line */
-        if (!(s->offset >= offset && s->offset < *offsetp)) {
-            for (i = len; i > 0 && qe_isblank(buf[i - 1]); i--) {
-                sbuf[i - 1] = QE_STYLE_BLANK_HILITE;
-            }
+        /* Mark trailing blanks as errors if cursor is not at end of line */
+        for (i = len; i > 0 && qe_isblank(buf[i - 1]) && i != cctx.cur_pos; i--) {
+            sbuf[i - 1] = QE_STYLE_BLANK_HILITE;
         }
     }
     return len;
