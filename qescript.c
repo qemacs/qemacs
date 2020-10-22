@@ -116,6 +116,14 @@ static inline void qe_cfg_set_str(QEValue *sp, const char *str, int len) {
     sp->type = TOK_STRING;
 }
 
+static inline void qe_cfg_set_pstr(QEValue *sp, char *str, int len) {
+    if (sp->type & TOK_ALLOC)
+        qe_free(&sp->u.str);
+    sp->u.str = str;
+    sp->len = len;
+    sp->type = TOK_STRING;
+}
+
 static void qe_cfg_init(QEmacsDataSource *ds) {
     memset(ds, 0, sizeof(*ds));
     ds->sp_max = ds->stack;
@@ -144,6 +152,7 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
     const char *p = *pp;
     int res = 0;
     int pos = 0;
+    int end = size - 1;
     int i, len;
 
     for (;;) {
@@ -187,16 +196,16 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
                     c = (c << 4) | qe_digit_value(*p);
                 }
                 len = utf8_encode(cbuf, c);
-                for (i = 0; i < len && pos < size; i++)
+                for (i = 0; i < len && pos < end; i++)
                     dest[pos++] = cbuf[i];
                 continue;
             }
         }
         /* XXX: silently truncate overlong string constants */
-        if (pos < size - 1)
+        if (pos < end)
             dest[pos++] = c;
     }
-    if (pos < size)
+    if (pos <= end)
         dest[pos] = '\0';
     *pp = p;
     *plen = pos;
@@ -407,12 +416,13 @@ static int qe_cfg_append(QEmacsDataSource *ds, QEValue *sp, const char *p, size_
 
     if (qe_cfg_tostr(ds, sp))
         return 1;
+    /* XXX: should cap length and check for malloc failure */
     new_len = sp->len + len;
     new_p = qe_malloc_array(char, new_len + 1);
     memcpy(new_p, sp->u.str, sp->len);
     memcpy(new_p + sp->len, p, len);
     new_p[new_len] = '\0';
-    qe_cfg_set_str(sp, new_p, new_len);
+    qe_cfg_set_pstr(sp, new_p, new_len);
     return 0;
 }
 
@@ -428,6 +438,7 @@ static int qe_cfg_format(QEmacsDataSource *ds, QEValue *sp) {
         return 1;
     len = 0;
 
+    /* XXX: should use buf_xxx */
     for (start = p = sp->u.str;;) {
         p += strcspn(p, "%");
         len += strlen(pstrncpy(buf + len, sizeof(buf) - len, start, p - start));
