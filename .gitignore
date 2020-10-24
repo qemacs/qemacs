@@ -47,10 +47,3 @@ DONE
 IDEAS
 .qerc
 cflags.mk
-fnmatch.c
-parser-new.c
-itoa.c
-strtools.c
-lang-discuss.md
-rationale.md
-quirrel.c

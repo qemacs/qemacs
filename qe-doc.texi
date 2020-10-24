@@ -10,7 +10,7 @@
 
 @chapter Introduction
 QEmacs (for Quick Emacs) is a very small but powerful
-UNIX editor. It has features that even big editors lack :
+UNIX editor. It has features that even big editors lack:
 @itemize
 
 @item Full screen editor with an Emacs look and feel with all Emacs common
