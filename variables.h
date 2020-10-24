@@ -50,6 +50,7 @@ extern const char * const var_domain[];
 typedef struct VarDef VarDef;
 struct VarDef {
     const char *name;
+    const char *desc;
     unsigned int modified : 1;
     enum QVarDomain domain : 4;
     enum QVarType type : 4;
@@ -68,30 +69,30 @@ struct VarDef {
     VarDef *next;
 };
 
-#define U_VAR_F(name, type, fun) \
-    { (name), 0, VAR_SELF, type, VAR_RW, 0, { .num = 0 }, fun, NULL },
-#define G_VAR_F(name, var, type, rw, fun) \
-    { (name), 0, VAR_GLOBAL, type, rw, 0, \
+#define U_VAR_F(name, type, fun, desc) \
+    { (name), desc, 0, VAR_SELF, type, VAR_RW, 0, { .num = 0 }, fun, NULL },
+#define G_VAR_F(name, var, type, rw, fun, desc) \
+    { (name), desc, 0, VAR_GLOBAL, type, rw, 0, \
       { .ptr = (void*)&(var) }, fun, NULL },
-#define S_VAR_F(name, fld, type, rw, fun) \
-    { (name), 0, VAR_STATE, type, rw, sizeof(((QEmacsState*)0)->fld), \
+#define S_VAR_F(name, fld, type, rw, fun, desc) \
+    { (name), desc, 0, VAR_STATE, type, rw, sizeof(((QEmacsState*)0)->fld), \
       { .offset = offsetof(QEmacsState, fld) }, fun, NULL },
-#define B_VAR_F(name, fld, type, rw, fun) \
-    { (name), 0, VAR_BUFFER, type, rw, sizeof(((EditBuffer*)0)->fld), \
+#define B_VAR_F(name, fld, type, rw, fun, desc) \
+    { (name), desc, 0, VAR_BUFFER, type, rw, sizeof(((EditBuffer*)0)->fld), \
       { .offset = offsetof(EditBuffer, fld) }, fun, NULL },
-#define W_VAR_F(name, fld, type, rw, fun) \
-    { (name), 0, VAR_WINDOW, type, rw, sizeof(((EditState*)0)->fld), \
+#define W_VAR_F(name, fld, type, rw, fun, desc) \
+    { (name), desc, 0, VAR_WINDOW, type, rw, sizeof(((EditState*)0)->fld), \
       { .offset = offsetof(EditState, fld) }, fun, NULL },
-#define M_VAR_F(name, fld, type, rw, fun) \
-    { (name), 0, VAR_MODE, type, rw, sizeof(((ModeDef*)0)->fld), \
+#define M_VAR_F(name, fld, type, rw, fun, desc) \
+    { (name), desc, 0, VAR_MODE, type, rw, sizeof(((ModeDef*)0)->fld), \
       { .offset = offsetof(ModeDef, fld) }, fun, NULL },
 
-#define U_VAR(name,type)         U_VAR_F(name, type, NULL)
-#define G_VAR(name,var,type,rw)  G_VAR_F(name, var, type, rw, NULL)
-#define S_VAR(name,fld,type,rw)  S_VAR_F(name, fld, type, rw, NULL)
-#define B_VAR(name,fld,type,rw)  B_VAR_F(name, fld, type, rw, NULL)
-#define W_VAR(name,fld,type,rw)  W_VAR_F(name, fld, type, rw, NULL)
-#define M_VAR(name,fld,type,rw)  M_VAR_F(name, fld, type, rw, NULL)
+#define U_VAR(name,type,desc)         U_VAR_F(name, type, NULL, desc)
+#define G_VAR(name,var,type,rw,desc)  G_VAR_F(name, var, type, rw, NULL, desc)
+#define S_VAR(name,fld,type,rw,desc)  S_VAR_F(name, fld, type, rw, NULL, desc)
+#define B_VAR(name,fld,type,rw,desc)  B_VAR_F(name, fld, type, rw, NULL, desc)
+#define W_VAR(name,fld,type,rw,desc)  W_VAR_F(name, fld, type, rw, NULL, desc)
+#define M_VAR(name,fld,type,rw,desc)  M_VAR_F(name, fld, type, rw, NULL, desc)
 
 void qe_register_variables(VarDef *vars, int count);
 VarDef *qe_find_variable(const char *name);

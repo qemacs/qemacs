@@ -194,7 +194,7 @@ typedef struct CompleteState {
     StringArray cs;
     struct EditState *s;
     struct EditState *target;
-    int start, end, len;
+    int start, end, len, fuzzy;
     char current[MAX_FILENAME_SIZE];
 } CompleteState;
 
@@ -1729,7 +1729,6 @@ struct QEmacsState {
     int emulation_flags;
     int backspace_is_control_h;
     int backup_inhibited;  /* prevent qemacs from backing up files */
-    int fuzzy_search;    /* use fuzzy search for completion matcher */
     int c_label_indent;
     const char *user_option;
 };
@@ -1798,27 +1797,28 @@ typedef union CmdProto {
 } CmdProto;
 
 typedef struct CmdDef {
+    const char *name;
+    const char *desc;
     unsigned short key;       /* normal key */
     unsigned short alt_key;   /* alternate key */
-    const char *name;
-    CmdProto action;
     CmdSig sig : 8;
     signed int val : 24;
+    CmdProto action;
 } CmdDef;
 
 /* new command macros */
 #define CMD2(key, key_alt, name, func, sig, args) \
-    { key, key_alt, name "\0" args, { .sig = func }, CMD_ ## sig, 0 },
+    { name "\0" args, NULL, key, key_alt, CMD_ ## sig, 0, { .sig = func } },
 #define CMD3(key, key_alt, name, func, sig, val, args) \
-    { key, key_alt, name "\0" args, { .sig = func }, CMD_ ## sig, val },
+    { name "\0" args, NULL, key, key_alt, CMD_ ## sig, val, { .sig = func } },
 
 /* old macros for compatibility */
 #define CMD0(key, key_alt, name, func) \
-    { key, key_alt, name "\0", { .ES = func }, CMD_ES, 0 },
+    { name "\0", NULL, key, key_alt, CMD_ES, 0, { .ES = func } },
 #define CMD1(key, key_alt, name, func, val) \
-    { key, key_alt, name "\0" "v", { .ESi = func }, CMD_ESi, val },
+    { name "\0" "v", NULL, key, key_alt, CMD_ESi, val, { .ESi = func } },
 #define CMD_DEF_END \
-    { 0, 0, NULL, { NULL }, CMD_void, 0 }
+    { NULL, NULL, 0, 0, CMD_void, 0, { NULL } }
 
 ModeDef *qe_find_mode(const char *name, int flags);
 ModeDef *qe_find_mode_filename(const char *filename, int flags);
@@ -2008,6 +2008,10 @@ typedef struct CompletionDef {
     void (*enumerate)(CompleteState *cp);
     int (*print_entry)(CompleteState *cp, EditState *s, const char *name);
     int (*get_entry)(EditState *s, char *dest, int size, int offset);
+#define CF_FILENAME        1
+#define CF_NO_FUZZY        2
+#define CF_SPACE_OK        4
+#define CF_NO_AUTO_SUBMIT  8
     int flags;
     struct CompletionDef *next;
 } CompletionDef;

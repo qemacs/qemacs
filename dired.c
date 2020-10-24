@@ -119,11 +119,15 @@ static QVarType dired_time_format_set_value(EditState *s, VarDef *vp,
 
 static VarDef dired_variables[] = {
     G_VAR_F( "dired-sort-mode", dired_sort_mode, VAR_NUMBER, VAR_RW_SAVE,
-            dired_sort_mode_set_value )
+            dired_sort_mode_set_value,
+            "Sort order for dired display: any combination of `nesdgur+-`" )
     G_VAR_F( "dired-time-format", dired_time_format, VAR_NUMBER, VAR_RW_SAVE,
-            dired_time_format_set_value )
-    G_VAR( "dired-show-dot-files", dired_show_dot_files, VAR_NUMBER, VAR_RW_SAVE )
-    G_VAR( "dired-show-ds-store", dired_show_ds_store, VAR_NUMBER, VAR_RW_SAVE )
+            dired_time_format_set_value,
+            "Format used for file times (default, compact, dos, dos-long, touch, touch-long, full, seconds)" )
+    G_VAR( "dired-show-dot-files", dired_show_dot_files, VAR_NUMBER, VAR_RW_SAVE,
+          "Set to show hidden files (starting with a `.`)" )
+    G_VAR( "dired-show-ds-store", dired_show_ds_store, VAR_NUMBER, VAR_RW_SAVE,
+          "Set to show OS/X system file .DS_Store" )
 };
 
 static inline DiredState *dired_get_state(EditState *e, int status)

@@ -586,7 +586,7 @@ static int qe_cfg_expr(QEmacsDataSource *ds, QEValue *sp, int prec0) {
                 return 1;
             case TOK_INC: /* post increment */
             case TOK_DEC: /* post decrement */
-                qe_cfg_set_num(sp, 1);
+                qe_cfg_set_num(sp + 1, 1);
                 if (qe_cfg_assign(ds, sp, op))
                     return 1;
                 sp->u.value -= (op == TOK_INC) ? 1 : -1;
@@ -1175,12 +1175,12 @@ void do_save_session(EditState *s, int popup)
 }
 #endif
 
-static void script_complete(CompleteState *cp) {
+static void symbol_complete(CompleteState *cp) {
     command_complete(cp);
     variable_complete(cp);
 }
 
-static int script_print_entry(CompleteState *cp, EditState *s, const char *name) {
+static int symbol_print_entry(CompleteState *cp, EditState *s, const char *name) {
     CmdDef *d = qe_find_cmd(name);
     if (d) {
         return command_print_entry(cp, s, name);
@@ -1189,15 +1189,16 @@ static int script_print_entry(CompleteState *cp, EditState *s, const char *name)
     }
 }
 
-static CompletionDef script_completion = {
-    "script", script_complete, script_print_entry, command_get_entry
+static CompletionDef symbol_completion = {
+    "symbol", symbol_complete, symbol_print_entry, command_get_entry,
+    CF_SPACE_OK | CF_NO_AUTO_SUBMIT
 };
 
 static CmdDef parser_commands[] = {
 
     CMD2( KEY_META(':'), KEY_NONE,
           "eval-expression", do_eval_expression, ESsi,
-          "s{Eval: }[.script]|expression|ui")
+          "s{Eval: }[.symbol]|expression|ui")
     CMD0( KEY_NONE, KEY_NONE,
           "eval-region", do_eval_region)
     CMD0( KEY_NONE, KEY_NONE,
@@ -1212,7 +1213,7 @@ static CmdDef parser_commands[] = {
 static int parser_init(void)
 {
     qe_register_cmd_table(parser_commands, NULL);
-    qe_register_completion(&script_completion);
+    qe_register_completion(&symbol_completion);
     return 0;
 }
 

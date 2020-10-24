@@ -994,7 +994,10 @@ void do_apropos(EditState *s, const char *str)
                 if (qe_list_bindings(d, s->mode, 1, buf, sizeof(buf)))
                     eb_printf(b, " bound to %s", buf);
                 eb_putc(b, '\n');
-                /* TODO: print short description */
+                if (d->desc && *d->desc) {
+                    /* print short description */
+                    eb_printf(b, "  %s", d->desc);
+                }
                 eb_putc(b, '\n');
                 found = 1;
             }
@@ -1012,7 +1015,10 @@ void do_apropos(EditState *s, const char *str)
             qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
             eb_printf(b, "%s variable: %s -> %s\n",
                       var_domain[vp->domain], vp->name, buf);
-            /* TODO: print short description */
+            if (vp->desc && *vp->desc) {
+                /* print short description */
+                eb_printf(b, "  %s", vp->desc);
+            }
             eb_putc(b, '\n');
             found = 1;
         }
@@ -1918,7 +1924,7 @@ static CmdDef extra_commands[] = {
           "about-qemacs", do_about_qemacs)
     CMD2( KEY_CTRLH('a'), KEY_CTRLH(KEY_CTRL('A')),
           "apropos", do_apropos, ESs,
-          "s{Apropos: }|apropos|")
+          "s{Apropos: }[symbol]|apropos|")
     CMD0( KEY_CTRLH('b'), KEY_NONE,
           "describe-bindings", do_describe_bindings)
     CMD2( KEY_CTRLH('B'), KEY_NONE,

@@ -6063,7 +6063,7 @@ void file_complete(CompleteState *cp)
 }
 
 static CompletionDef file_completion = {
-    "file", file_complete
+    "file", file_complete, NULL, NULL, CF_FILENAME | CF_NO_FUZZY
 };
 
 void buffer_complete(CompleteState *cp)
@@ -6145,14 +6145,13 @@ static void complete_start(CompleteState *cp, EditState *s, int start, int end,
 /* XXX: should have a globbing option */
 void complete_test(CompleteState *cp, const char *str)
 {
-    QEmacsState *qs = &qe_state;
     int fuzzy = 0;
 
     if (memcmp(str, cp->current, cp->len)) {
         if (!qe_memicmp(str, cp->current, cp->len))
             fuzzy = 1;
         else
-        if (qs->fuzzy_search && strmem(str, cp->current, cp->len))
+        if (cp->fuzzy && strmem(str, cp->current, cp->len))
             fuzzy = 2;
         else
             return;
@@ -6186,6 +6185,7 @@ typedef struct MinibufState {
     void *opaque;
 
     EditState *completion_popup_window;  /* XXX: should have a popup_window member */
+    int completion_stage;
     int completion_flags;
     int completion_start;
     int completion_end;
@@ -6229,12 +6229,20 @@ void do_minibuffer_complete(EditState *s, int type)
      * completion_popup_window or close it.
      */
 
+    if (type == COMPLETION_TAB && qs->last_cmd_func == qs->this_cmd_func) {
+        mb->completion_stage++;
+        if (mb->completion->flags & CF_NO_FUZZY)
+            mb->completion_stage = 2;
+    } else {
+        mb->completion_stage = 0;
+    }
+
     /* check completion window */
     check_window(&mb->completion_popup_window);
-    if (mb->completion_popup_window
-    &&  type == COMPLETION_TAB
-    &&  qs->last_cmd_func == qs->this_cmd_func) {
-        /* toggle cpmpletion popup on TAB */
+    if (mb->completion_popup_window && mb->completion_stage > 1) {
+        /* toggle completion popup on TAB */
+        mb->completion_stage = 0;
+        qs->this_cmd_func = 0;
         edit_close(&mb->completion_popup_window);
         do_refresh(s);
         return;
@@ -6254,6 +6262,8 @@ void do_minibuffer_complete(EditState *s, int type)
     mb->completion_start = start;
     mb->completion_end = end;
     complete_start(&cs, s, start, end, s->target_window);
+    if (!(mb->completion->flags & CF_NO_FUZZY))
+        cs.fuzzy = mb->completion_stage;
     (*mb->completion->enumerate)(&cs);
     count = cs.cs.nb_items;
     outputs = cs.cs.items;
@@ -6360,7 +6370,7 @@ void do_minibuffer_electric(EditState *s, int key)
     int c, offset, stop;
     MinibufState *mb = minibuffer_get_state(s, 0);
 
-    if (mb && mb->completion == &file_completion) {
+    if (mb && mb->completion && (mb->completion->flags & CF_FILENAME)) {
         stop = s->offset;
         c = eb_prevc(s->b, s->offset, &offset);
         if (c == '/') {
@@ -6381,7 +6391,7 @@ void do_minibuffer_complete_space(EditState *s)
     QEmacsState *qs = s->qe_state;
     MinibufState *mb = minibuffer_get_state(s, 0);
 
-    if (!mb || !mb->completion) {
+    if (!mb || !mb->completion || (mb->completion->flags & CF_SPACE_OK)) {
         do_char(s, ' ', 1);
     } else
     if (check_window(&mb->completion_popup_window)
@@ -6525,8 +6535,14 @@ void do_minibuffer_exit(EditState *s, int do_abort)
             int len;
             len = mb->completion->get_entry(cw, buf, sizeof(buf), list_get_offset(cw) + 1);
             if (len > 0) {
-                eb_delete_range(s->b, s->b->mark, s->offset);     // delete highlighted completion
+                // delete highlighted completion
+                if (s->b->mark > s->offset)
+                    eb_delete_range(s->b, s->b->mark, s->offset);
                 minibuf_set_str(s, mb->completion_start, mb->completion_end, buf);
+            }
+            if (mb->completion->flags & CF_NO_AUTO_SUBMIT) {
+                edit_close(&mb->completion_popup_window);
+                return;
             }
         }
 
@@ -8744,7 +8760,7 @@ void qe_register_cmd_line_options(CmdLineOptionDef *table)
 
 const char str_version[] = "QEmacs version " QE_VERSION;
 const char str_credits[] = "Copyright (c) 2000-2003 Fabrice Bellard\n"
-                           "Copyright (c) 2000-2019 Charlie Gordon\n";
+                           "Copyright (c) 2000-2020 Charlie Gordon\n";
 
 static void show_version(void)
 {
@@ -9363,11 +9379,6 @@ int main(int argc, char **argv)
                 m->first_key = p->next;
                 qe_free(&p);
             }
-        }
-        while (qs->first_completion) {
-            CompletionDef *cp = qs->first_completion;
-            qs->first_completion = cp->next;
-            qe_free(&cp);
         }
         css_free_colors();
         free_font_cache(&global_screen);
