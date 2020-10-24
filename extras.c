@@ -909,14 +909,23 @@ void do_show_bindings(EditState *s, const char *cmd_name)
     }
 }
 
+#define SF_REVERSE  1
+#define SF_FOLD     2
+#define SF_DICT     4
+#define SF_NUMBER   8
+#define SF_COLUMN   16
+#define SF_BASENAME 32
+#define SF_PARAGRAPH 64
+static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int flags);
+
 static void print_bindings(EditBuffer *b, ModeDef *mode)
 {
     char buf[256];
     CmdDef *d;
     int gfound;
-    //int start = b->total_size;
+    int start = b->total_size;
+    int stop;
 
-    /* XXX: should sort matches */
     gfound = 0;
     d = qe_state.first_cmd;
     while (d != NULL) {
@@ -928,7 +937,7 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
                     } else {
                         eb_printf(b, "\nGlobal bindings:\n\n");
                     }
-                    //start = b->total_size;
+                    start = b->total_size;
                     gfound = 1;
                 }
                 eb_printf(b, "%24s : %s\n", d->name, buf);
@@ -937,7 +946,10 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
         }
         d = d->action.next;
     }
-    //do_sort_span(b, start, b->total_size, 0, NO_ARG);
+    if (gfound) {
+        stop = b->total_size;
+        eb_sort_span(b, &start, &stop, stop, SF_DICT);
+    }
 }
 
 void do_describe_bindings(EditState *s)
@@ -962,7 +974,7 @@ void do_apropos(EditState *s, const char *str)
     EditBuffer *b;
     CmdDef *d;
     VarDef *vp;
-    int found;
+    int found, start, stop;
 
     b = new_help_buffer();
     if (!b)
@@ -970,9 +982,7 @@ void do_apropos(EditState *s, const char *str)
 
     eb_putc(b, '\n');
 
-    /* XXX: should sort matches */
-    /* XXX: should print description */
-
+    start = b->total_size;
     found = 0;
     d = qs->first_cmd;
     while (d != NULL) {
@@ -992,6 +1002,10 @@ void do_apropos(EditState *s, const char *str)
         }
         d = d->action.next;
     }
+    stop = b->total_size;
+    eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH);
+
+    start = b->total_size;
     for (vp = qs->first_variable; vp; vp = vp->next) {
         if (strstr(vp->name, str)) {
             /* print class, name and current value */
@@ -1003,6 +1017,9 @@ void do_apropos(EditState *s, const char *str)
             found = 1;
         }
     }
+    stop = b->total_size;
+    eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH);
+
     if (found) {
         b->flags |= BF_READONLY;
         snprintf(buf, sizeof buf, "Apropos '%s'", str);
@@ -1024,6 +1041,7 @@ static void do_about_qemacs(EditState *s)
     EditBuffer *b;
     ModeDef *m;
     CmdDef *d;
+    int start, stop;
 
     b = eb_scratch("*About QEmacs*", BF_UTF8);
     eb_printf(b, "\n  %s\n\n%s\n", str_version, str_credits);
@@ -1041,7 +1059,7 @@ static void do_about_qemacs(EditState *s)
     /* list commands */
     eb_printf(b, "\nCommands:\n\n");
 
-    /* XXX: should sort commands */
+    start = b->total_size;
     d = qs->first_cmd;
     while (d != NULL) {
         while (d->name != NULL) {
@@ -1051,6 +1069,8 @@ static void do_about_qemacs(EditState *s)
         }
         d = d->action.next;
     }
+    stop = b->total_size;
+    eb_sort_span(b, &start, &stop, stop, SF_DICT);
 
     qe_list_variables(s, b);
 
@@ -1059,10 +1079,12 @@ static void do_about_qemacs(EditState *s)
         char **envp;
 
         eb_printf(b, "\nEnvironment:\n\n");
-        /* XXX: should sort environment variables */
+        start = b->total_size;
         for (envp = environ; *envp; envp++) {
             eb_printf(b, "    %s\n", *envp);
         }
+        stop = b->total_size;
+        eb_sort_span(b, &start, &stop, stop, SF_DICT);
     }
     b->offset = 0;
     b->flags |= BF_READONLY;
@@ -1528,12 +1550,6 @@ struct chunk_ctx {
     EditBuffer *b;
     int flags;
     int col;
-#define SF_REVERSE  1
-#define SF_FOLD     2
-#define SF_DICT     4
-#define SF_NUMBER   8
-#define SF_COLUMN   16
-#define SF_BASENAME 32
 };
 
 struct chunk {
@@ -1627,66 +1643,85 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
     return (p1->start > p2->start) - (p1->start < p2->start);
 }
 
-static void do_sort_span(EditState *s, int p1, int p2, int flags, int argval) {
+static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int flags) {
     struct chunk_ctx ctx;
-    EditBuffer *b;
+    EditBuffer *b1;
+    int p1 = *pp1, p2 = *pp2;
     int i, offset, line1, line2, col1, col2, line, col, lines;
     struct chunk *chunk_array;
-
-    s->region_style = 0;
-    if (argval != NO_ARG)
-        flags |= argval;
 
     if (p1 > p2) {
         int tmp = p1;
         p1 = p2;
         p2 = tmp;
     }
-    ctx.b = s->b;
+    ctx.b = b;
     ctx.flags = flags;
     ctx.col = 0;
-    eb_get_pos(s->b, &line1, &col1, p1); /* line1 is included */
-    eb_get_pos(s->b, &line2, &col2, p2); /* line2 is excluded */
+    eb_get_pos(b, &line1, &col1, p1); /* line1 is included */
+    eb_get_pos(b, &line2, &col2, p2); /* line2 is excluded */
     if (col1 > 0) {
-        p1 = eb_goto_bol(s->b, p1);
+        p1 = eb_goto_bol(b, p1);
     }
     if (col2 > 0) { /* include incomplete end line */
         line2++;
-        p2 = eb_next_line(s->b, p2);
+        p2 = eb_next_line(b, p2);
     }
     /* XXX: should also support rectangular selection */
     if (flags & SF_COLUMN) {
-        eb_get_pos(s->b, &line, &col, s->offset);
+        eb_get_pos(b, &line, &col, cur_offset);
         ctx.col = col ? col : col1;
     }
     lines = line2 - line1;
     chunk_array = qe_malloc_array(struct chunk, lines);
     if (!chunk_array) {
-        put_status(s, "Out of memory");
-        return;
+        return -1;
     }
     offset = p1;
-    for (i = 0; i < lines; i++) {
+    for (i = 0; i < lines && offset < p2; i++) {
         chunk_array[i].start = offset;
-        chunk_array[i].end = offset = eb_goto_eol(s->b, offset);
-        offset = eb_next(s->b, offset);
+        chunk_array[i].end = offset = eb_goto_eol(b, offset);
+        offset = eb_next(b, offset);
+        if (flags & SF_PARAGRAPH) {
+            int offset1;
+            /* paragraph sorting: skip continuation lines */
+            while (offset < p2 && qe_isspace(eb_nextc(b, offset, &offset1))) {
+                chunk_array[i].end = offset = eb_goto_eol(b, offset);
+                offset = eb_next(b, offset);
+            }
+        }
     }
+    lines = i;
     qe_qsort_r(chunk_array, lines, sizeof(*chunk_array), &ctx, chunk_cmp);
 
-    b = eb_new("*sorted*", BF_SYSTEM);
-    eb_set_charset(b, s->b->charset, s->b->eol_type);
+    b1 = eb_new("*sorted*", BF_SYSTEM);
+    eb_set_charset(b1, b->charset, b->eol_type);
 
     for (i = 0; i < lines; i++) {
         /* XXX: should keep track of point if sorting full buffer */
-        eb_insert_buffer(b, b->total_size, s->b, chunk_array[i].start,
+        eb_insert_buffer(b1, b1->total_size, b, chunk_array[i].start,
                          chunk_array[i].end - chunk_array[i].start);
-        eb_putc(b, '\n');
+        eb_putc(b1, '\n');
     }
-    eb_delete_range(s->b, p1, p2);
-    s->b->mark = p1;
-    s->offset = p1 + eb_insert_buffer(s->b, p1, b, 0, b->total_size);
-    eb_free(&b);
+    eb_delete_range(b, p1, p2);
+    *pp1 = p1;
+    *pp2 = p1 + eb_insert_buffer(b, p1, b1, 0, b1->total_size);
+    eb_free(&b1);
     qe_free(&chunk_array);
+    return 0;
+}
+
+static void do_sort_span(EditState *s, int p1, int p2, int flags, int argval) {
+    s->region_style = 0;
+    if (argval != NO_ARG)
+        flags |= argval;
+
+    if (eb_sort_span(s->b, &p1, &p2, s->offset, flags) < 0) {
+        put_status(s, "Out of memory");
+        return;
+    }
+    s->b->mark = p1;
+    s->offset = p2;
 }
 
 static void do_sort_region(EditState *s, int flags, int argval) {

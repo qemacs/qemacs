@@ -5,8 +5,6 @@
 
 * Recent bugs and ideas
 
-** extras: move sorting code to eb_sort()
-** extras: use eb_sort in help windows
 ** style: add color themes
 ** style: add style recent changes (highlight-recent-changes)
 ** style: add style for trailing blanks
