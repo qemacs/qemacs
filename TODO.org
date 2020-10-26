@@ -10,6 +10,7 @@
 ** move this file to markdown
 ** clean up ancillary files
 ** move language files to lang/ directory
+** fix completion bug with highlighted region
 
 * Recent bugs and ideas
 
@@ -23,9 +24,9 @@
 ** charset: limit number of combining marks to 20
 ** charset: use unichar typedef?
 ** clang: allman and other styles
+** clang: epita style
 ** clang: auto remove trailing spaces and add final newline
 ** clang: colorizing bug: static int (*qe__initcall_first)(void) qe__init_call = NULL;
-** clang: epita style
 ** clang: missed tag: static int (*qe__initcall_first)(void) qe__init_call = NULL;
 ** display: add screen dump command and format
 ** display: colorize extra ^M and ^Z as preproc at end of line prior to calling the syntax highlighter (same as BOM)

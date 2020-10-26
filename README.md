@@ -1,13 +1,13 @@
 Quick Emacs (QEmacs)
 ===============================
 
-Welcome to QEmacs! A very small but powerful
-UNIX editor with many features that even big editors lack.
+Welcome to QEmacs! A small but powerful UNIX editor with many features
+that even big editors lack.
 
 Quick Description
 ----------------
 
-QEmacs is a small editor targetted at embedded systems or debugging.
+QEmacs is a small text editor targetted at embedded systems or debugging.
 Although it is very small, it has some very interesting features that
 even big editors lack:
 
@@ -17,7 +17,7 @@ keyboard macros, config file with C like syntax, minibuffer with com-
 pletion and history.
 
 - Can edit huge files (hundreds of megabytes) without delay, using a
-highly optimized internal representation and by mmapping large file.
+highly optimized internal representation and memory mapping for large files.
 
 - Full Unicode support, including multi charset handling
   (8859-x, UTF8, SJIS, EUC-JP, ...) and bidirectional editing respecting
@@ -46,6 +46,11 @@ included with double width glyphs.
 (as XEmacs). X Input methods supported. Xft extension supported for
 anti aliased font display.
 
+- Bitmap images are displayed on graphics displays and as ASCII colored text
+on terminals, which is handy when browing files over an ssh terminal connection.
+(QEmacs use the public domain `stb_image` package for image conversions.
+Source: https://github.com/nothings/stb/blob/master/stb_image.h )
+
 Building QEmacs
 ------------------
 
@@ -55,12 +60,6 @@ Building QEmacs
 * Type `make` to compile qemacs and its associated tools.
 
 * Type `make install` as root to install it in /usr/local.
-
-* Image support is provided via the public domain stb_image
- package. Source: http://nothings.org/stb_image.h
-
-* FFmpeg image, audio and video support is currently broken
- and disabled
 
 QEmacs Documentation
 ------------------
@@ -84,5 +83,5 @@ Authors
 -------
 
 QEmacs was started in 2000. The initial version was developped by
-Fabrice Bellard and Charlie Gordon, who since then, it has been maintaining
+Fabrice Bellard and Charlie Gordon, who since then, has been maintaining
 and extending it.
