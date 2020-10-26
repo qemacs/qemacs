@@ -2556,6 +2556,15 @@ static void do_shell_backspace(EditState *e)
     }
 }
 
+static void do_shell_search(EditState *e, int dir)
+{
+    if (e->interactive) {
+        shell_write_char(e, dir < 0 ? ('r' & 31) : ('s' & 31));
+    } else {
+        do_isearch(e, dir, NO_ARG);
+    }
+}
+
 static void do_shell_kill_word(EditState *e, int dir)
 {
     ShellState *s = shell_get_state(e, 1);
@@ -3132,6 +3141,10 @@ static CmdDef shell_commands[] = {
           "shell-tabulate", do_shell_tabulate, ES, "*")
     CMD0( KEY_CTRL('l'), KEY_NONE,
           "shell-refresh", do_shell_refresh)
+    CMD1( KEY_CTRL('r'), KEY_NONE,
+          "shell-search-backward", do_shell_search, -1)
+    CMD1( KEY_CTRL('s'), KEY_NONE,
+          "shell-search-forward", do_shell_search, 1)
     CMD2( KEY_CTRL('k'), KEY_NONE,
           "shell-kill-line", do_shell_kill_line, ESi, "ui")
     CMD2( KEY_META('k'), KEY_NONE,
