@@ -1403,6 +1403,24 @@ static int dired_init(void)
     return 0;
 }
 
+int file_print_entry(CompleteState *cp, EditState *s, const char *name) {
+    struct stat st;
+    EditBuffer *b = s->b;
+    int len;
+
+    if (!stat(name, &st)) {
+        b->cur_style = S_ISDIR(st.st_mode) ? DIRED_STYLE_DIRECTORY : DIRED_STYLE_FILENAME;
+        len = eb_puts(b, name);
+        b->tab_width = max3(16, 2 + len, b->tab_width);
+        len += eb_putc(b, '\t');
+        b->cur_style = DIRED_STYLE_NORMAL;
+        len += eb_printf(b, "%10lld", (long long)st.st_size);
+    } else {
+        return eb_puts(b, name);
+    }
+    return len;
+}
+
 /*---------------- filelist mode ----------------*/
 
 static char filelist_last_buf[MAX_FILENAME_SIZE];

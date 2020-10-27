@@ -2029,6 +2029,7 @@ void command_complete(CompleteState *cp);
 int command_print_entry(CompleteState *cp, EditState *s, const char *name);
 int command_get_entry(EditState *s, char *dest, int size, int offset);
 void file_complete(CompleteState *cp);
+int file_print_entry(CompleteState *cp, EditState *s, const char *name);
 void buffer_complete(CompleteState *cp);
 
 #ifdef CONFIG_WIN32

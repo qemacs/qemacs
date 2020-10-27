@@ -6001,12 +6001,12 @@ static const char *file_completion_ignore_extensions = {
     "|bmp|xls|xlsx|ppt|pptx"
     "|apk"
     "|bin|obj|dll|exe" /* DOS binaries */
-    "||o|so|a" /* Unix binaries */
+    "|o|so|a" /* Unix binaries */
     "|dylib|dSYM|DS_Store" /* OS/X */
     "|gz|tgz|taz|bz2|bzip2|xz|zip|rar|z|tar" /* archives */
     "|cma|cmi|cmo|cmt|cmti|cmx"
     "|class|jar" /* java */
-    "|b|"
+    "|b"
     "|"
 };
 
@@ -6063,7 +6063,13 @@ void file_complete(CompleteState *cp)
 }
 
 static CompletionDef file_completion = {
-    "file", file_complete, NULL, NULL, CF_FILENAME | CF_NO_FUZZY
+    "file", file_complete,
+#ifndef CONFIG_TINY
+    file_print_entry,
+#else
+    NULL,
+#endif
+    NULL, CF_FILENAME | CF_NO_FUZZY
 };
 
 void buffer_complete(CompleteState *cp)
@@ -6077,8 +6083,30 @@ void buffer_complete(CompleteState *cp)
     }
 }
 
+int buffer_print_entry(CompleteState *cp, EditState *s, const char *name)
+{
+    EditBuffer *b = s->b;
+    EditBuffer *b1 = eb_find(name);
+    int len;
+
+    if (b1) {
+        b->cur_style = QE_STYLE_KEYWORD;
+        len = eb_puts(b, b1->name);
+        b->tab_width = max3(16, 2 + len, b->tab_width);
+        len += eb_putc(b, '\t');
+        if (*b1->filename) {
+            b->cur_style = QE_STYLE_COMMENT;
+            len += eb_puts(b, b1->filename);
+        }
+        b->cur_style = QE_STYLE_DEFAULT;
+    } else {
+        return eb_puts(b, name);
+    }
+    return len;
+}
+
 static CompletionDef buffer_completion = {
-    "buffer", buffer_complete
+    "buffer", buffer_complete, buffer_print_entry
 };
 
 static int default_completion_window_print_entry(CompleteState *cp, EditState *s, const char *name) {
@@ -6298,10 +6326,13 @@ void do_minibuffer_complete(EditState *s, int type)
         // XXX: potential utf-8 issue?
         // XXX: replace the completed part, not necessarily at the start (use mark?)
         // XXX: should delete region and insert as utf-8
+        // XXX: should not replace if fuzzy match?
         eb_replace(s->b, cs.start, cs.end - cs.start, outputs[0]->str, match_len);
         s->offset = cs.start + match_len;
+        mb->completion_end = s->offset;
         if (type == COMPLETION_OTHER) {
-            do_mark_region(s, cs.start + match_len, cs.start + cs.len);  // XXX: ???
+            /* mark the region with extra common characters */
+            do_mark_region(s, cs.start + match_len, cs.start + cs.len);
         }
     } else {
         if (count > 1) {
@@ -6535,9 +6566,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
             int len;
             len = mb->completion->get_entry(cw, buf, sizeof(buf), list_get_offset(cw) + 1);
             if (len > 0) {
-                // delete highlighted completion
-                if (s->b->mark > s->offset)
-                    eb_delete_range(s->b, s->b->mark, s->offset);
+                // insert completion string (delete highlighted part)
                 minibuf_set_str(s, mb->completion_start, mb->completion_end, buf);
             }
             if (mb->completion->flags & CF_NO_AUTO_SUBMIT) {
