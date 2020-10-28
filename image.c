@@ -579,7 +579,7 @@ static void update_pos(EditState *s, int dx, int dy)
     edit_invalidate(s, 0);
 }
 
-static void image_move_left_right(EditState *s, int dir)
+static void image_move_left_right(EditState *s, int disp)
 {
     int d;
 
@@ -587,10 +587,10 @@ static void image_move_left_right(EditState *s, int dir)
     d = s->width / 10;
     if (d < 1)
         d = 1;
-    update_pos(s, -dir * d, 0);
+    update_pos(s, -disp * d, 0);
 }
 
-static void image_move_up_down(EditState *s, int dir)
+static void image_move_up_down(EditState *s, int disp)
 {
     int d;
 
@@ -598,7 +598,7 @@ static void image_move_up_down(EditState *s, int dir)
     d = s->height / 10;
     if (d < 1)
         d = 1;
-    update_pos(s, 0, -dir * d);
+    update_pos(s, 0, -disp * d);
 }
 
 static void image_scroll_up_down(EditState *s, int dir)

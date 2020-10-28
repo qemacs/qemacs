@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2017 Charlie Gordon.
+ * Copyright (c) 2000-2020 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,11 +39,11 @@ static CmdDef basic_commands[] = {
           "tabulate", do_tab, ESi, "ui")
     //CMD2( KEY_SPC, KEY_NONE, "space", do_space, "*ui")
     CMD2( KEY_CTRL('q'), KEY_NONE,
-          "quoted-insert", do_quote, ESi, "*ui")
-    CMD3( KEY_CTRL('j'), KEY_RET,
-          "newline", do_return, ESi, 1, "*v")
-    CMD3( KEY_CTRL('o'), KEY_NONE,
-          "open-line", do_return, ESi, 0, "*v")
+          "quoted-insert", do_quoted_insert, ESi, "*ui")
+    CMD2( KEY_CTRL('j'), KEY_RET,
+          "newline", do_newline, ES, "*")
+    CMD2( KEY_CTRL('o'), KEY_NONE,
+          "open-line", do_open_line, ES, "*")
 
     CMD2( KEY_INSERT, KEY_NONE,
           "overwrite-mode", do_overwrite_mode, ESi, "ui")
@@ -119,6 +119,7 @@ static CmdDef basic_commands[] = {
           "backward-kill-word", do_kill_word, ESi, -1, "v" )
     CMD3( KEY_META('d'), KEY_NONE,
           "kill-word", do_kill_word, ESi, 1, "v" )
+    /* XXX: should take region as argument, implicit from keyboard */
     CMD1( KEY_CTRL('w'), KEY_NONE,
           "kill-region", do_kill_region, 0 )
     CMD1( KEY_META('w'), KEY_NONE,
@@ -154,6 +155,7 @@ static CmdDef basic_commands[] = {
     CMD2( KEY_CTRLX(KEY_CTRL('w')), KEY_NONE,
           "write-file", do_write_file, ESs,
           "s{Write file: }[file]|file|") /* u? */
+    /* XXX: should take region as argument, implicit from keyboard */
     CMD2( KEY_CTRLX('w'), KEY_NONE,
           "write-region", do_write_region, ESs,
           "s{Write region to file: }[file]|file|") /* u? */
@@ -177,6 +179,7 @@ static CmdDef basic_commands[] = {
 
     CMD0( KEY_META('h'), KEY_NONE,
           "mark-paragraph", do_mark_paragraph)
+    /* XXX: should use same C function */
     CMD0( KEY_META('{'), KEY_CTRL_UP,  /* KEY_META('[') */
           "backward-paragraph", do_backward_paragraph)
     CMD0( KEY_META('}'), KEY_CTRL_DOWN, /* KEY_META(']') */
@@ -192,6 +195,7 @@ static CmdDef basic_commands[] = {
           "downcase-word", do_changecase_word, ESi, -1, "*v")
     CMD3( KEY_META('u'), KEY_NONE,
           "upcase-word", do_changecase_word, ESi, 1, "*v")
+    /* XXX: should take region as argument, implicit from keyboard */
     CMD3( KEY_META(KEY_CTRL('c')), KEY_NONE,
           "capitalize-region", do_changecase_region, ESi, 2, "*v")
     CMD3( KEY_CTRLX(KEY_CTRL('l')), KEY_NONE,
@@ -208,14 +212,15 @@ static CmdDef basic_commands[] = {
     /* M-0 thru M-9 also start numeric argument */
     CMD0( KEY_CTRL('u'), KEY_META('-'),
           "numeric-argument", do_numeric_argument)
+    /* XXX: emacs name is keyboard-quit */
     CMD0( KEY_CTRL('g'), KEY_CTRLX(KEY_CTRL('g')),
           "abort", do_break)
     CMD0( KEY_CTRLX('('), KEY_NONE,
-          "start-kbd-macro", do_start_macro)
+          "start-kbd-macro", do_start_kbd_macro)
     CMD0( KEY_CTRLX(')'), KEY_NONE,
-          "end-kbd-macro", do_end_macro)
+          "end-kbd-macro", do_end_kbd_macro)
     CMD0( KEY_CTRLX('e'), KEY_CTRL('\\'),
-          "call-last-kbd-macro", do_call_macro)
+          "call-last-kbd-macro", do_call_last_kbd_macro)
     CMD2( KEY_NONE, KEY_NONE,
           "define-kbd-macro", do_define_kbd_macro, ESsss,
           "s{Macro name: }[command]"

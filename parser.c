@@ -437,6 +437,7 @@ static CmdDef parser_commands[] = {
     CMD2( KEY_META(':'), KEY_NONE,
           "eval-expression", do_eval_expression, ESsi,
           "s{Eval: }|expression|ui")
+    /* XXX: should take region as argument, implicit from keyboard */
     CMD0( KEY_NONE, KEY_NONE,
           "eval-region", do_eval_region)
     CMD0( KEY_NONE, KEY_NONE,

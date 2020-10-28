@@ -1159,13 +1159,13 @@ static void do_c_electric(EditState *s, int key)
         (s->mode->indent_func)(s, eb_goto_bol(s->b, offset));
 }
 
-static void do_c_return(EditState *s)
+static void do_c_newline(EditState *s)
 {
     int offset = s->offset;
     int was_preview = s->b->flags & BF_PREVIEW;
 
     /* XXX: should also remove trailing spaces on current line */
-    do_return(s, 1);
+    do_newline(s);
     if (was_preview)
         return;
 
@@ -1316,7 +1316,7 @@ static CmdDef c_commands[] = {
     CMD2( '{', '}',
           "c-electric-key", do_c_electric, ESi, "*ki")
     CMD2( KEY_RET, KEY_NONE,
-          "c-newline", do_c_return, ES, "*v")
+          "c-newline", do_c_newline, ES, "*v")
     CMD_DEF_END,
 };
 

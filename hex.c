@@ -2,7 +2,7 @@
  * Hexadecimal modes for QEmacs.
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2002-2019 Charlie Gordon.
+ * Copyright (c) 2002-2020 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -124,7 +124,7 @@ static void do_set_width(EditState *s, int w)
     }
 }
 
-static void do_incr_width(EditState *s, int incr)
+static void do_increase_width(EditState *s, int incr)
 {
     int w;
     w = s->dump_width + incr;
@@ -140,9 +140,9 @@ static void do_toggle_hex(EditState *s)
 /* specific hex commands */
 static CmdDef hex_commands[] = {
     CMD1( KEY_CTRL_LEFT, KEY_NONE,
-          "decrease-width", do_incr_width, -1)
+          "decrease-width", do_increase_width, -1)
     CMD1( KEY_CTRL_RIGHT, KEY_NONE,
-          "increase-width", do_incr_width, 1)
+          "increase-width", do_increase_width, 1)
     CMD2( KEY_NONE, KEY_NONE,
           "set-width", do_set_width, ESi,
           "ui{Width: }")
@@ -150,6 +150,7 @@ static CmdDef hex_commands[] = {
           "goto-byte", do_goto, ESsi, 'b',
           "us{Goto byte: }"
           "v")
+    /* XXX: bind to TAB and S-TAB */
     CMD0( KEY_NONE, KEY_NONE,
           "toggle-hex", do_toggle_hex)
     CMD_DEF_END,
@@ -226,30 +227,18 @@ static void hex_move_bol(EditState *s)
 
 static void hex_move_eol(EditState *s)
 {
-    int offset = align(s->offset, s->dump_width) + s->dump_width - 1;
-    if (offset > s->b->total_size)
-        offset = s->b->total_size;
-    s->offset = offset;
+    s->offset = min(align(s->offset, s->dump_width) + s->dump_width - 1,
+                    s->b->total_size);
 }
 
 static void hex_move_left_right(EditState *s, int dir)
 {
-    s->offset += dir;
-    if (s->offset < 0)
-        s->offset = 0;
-    else
-    if (s->offset > s->b->total_size)
-        s->offset = s->b->total_size;
+    s->offset = clamp(s->offset + dir, 0, s->b->total_size);
 }
 
 static void hex_move_up_down(EditState *s, int dir)
 {
-    s->offset += dir * s->dump_width;
-    if (s->offset < 0)
-        s->offset = 0;
-    else
-    if (s->offset > s->b->total_size)
-        s->offset = s->b->total_size;
+    s->offset = clamp(s->offset + dir * s->dump_width, 0, s->b->total_size);
 }
 
 void hex_write_char(EditState *s, int key)

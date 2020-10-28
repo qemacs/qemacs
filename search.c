@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2019 Charlie Gordon.
+ * Copyright (c) 2000-2020 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -926,7 +926,7 @@ static CmdDef search_commands[] = {
           "v")
     CMD3( KEY_NONE, KEY_NONE,
           "delete-matching-lines", do_search_string, ESsi, 2,
-          "s{Delete lines containing: }|search|"
+          "*" "s{Delete lines containing: }|search|"
           "v")
     /* passing argument should switch to regex incremental search */
     CMD3( KEY_CTRL('r'), KEY_NONE,

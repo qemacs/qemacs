@@ -2507,7 +2507,7 @@ static void shell_delete_bytes(EditState *e, int offset, int size)
     }
 }
 
-static void do_shell_enter(EditState *e)
+static void do_shell_newline(EditState *e)
 {
     struct timespec ts;
 
@@ -2523,7 +2523,7 @@ static void do_shell_enter(EditState *e)
         ts.tv_nsec = 1000000;  /* 1 ms */
         nanosleep(&ts, NULL);
     } else {
-        do_return(e, 1);
+        do_newline(e);
     }
     /* reset offset to scan errors and matches from */
     set_error_offset(e->b, e->offset);
@@ -2669,7 +2669,7 @@ static void do_shell_yank(EditState *e)
             for (offset = 0; offset < b->total_size;) {
                 int c = eb_nextc(b, offset, &offset);
                 if (c == '\n')
-                    do_shell_enter(e);
+                    do_shell_newline(e);
                 else
                     shell_write_char(e, c);
             }
@@ -2769,7 +2769,7 @@ static void do_shell_toggle_input(EditState *e)
             return;
         }
     }
-    do_return(e, 0);
+    do_open_line(e);
 }
 
 /* get current directory from prompt on current line */
@@ -2896,7 +2896,7 @@ static void do_compile(EditState *s, const char *cmd)
     set_error_offset(b, 0);
 }
 
-static void do_compile_error(EditState *s, int dir, int arg)
+static void do_next_error(EditState *s, int dir, int arg)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e;
@@ -3118,8 +3118,9 @@ void shell_colorize_line(QEColorizeContext *cp,
 static CmdDef shell_commands[] = {
     CMD0( KEY_CTRL('o'), KEY_NONE,
           "shell-toggle-input", do_shell_toggle_input)
+    /* XXX: should have shell-execute-line on M-RET */
     CMD2( '\r', KEY_NONE,
-          "shell-enter", do_shell_enter, ES, "*")
+          "shell-enter", do_shell_newline, ES, "*")
     /* CG: should send s->kbs */
     CMD2( KEY_DEL, KEY_NONE,
           "shell-backward-delete-char", do_shell_backspace, ES, "*")
@@ -3184,9 +3185,9 @@ static CmdDef shell_global_commands[] = {
           "man", do_man, ESs,
           "s{Show man page for: }|man|")
     CMD3( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE,
-          "previous-error", do_compile_error, ESii, -1, "vui")
+          "previous-error", do_next_error, ESii, -1, "vui")
     CMD3( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'),
-          "next-error", do_compile_error, ESii, 1, "vui")
+          "next-error", do_next_error, ESii, 1, "vui")
     CMD_DEF_END,
 };
 

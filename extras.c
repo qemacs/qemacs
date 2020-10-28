@@ -1878,14 +1878,16 @@ static CmdDef extra_commands[] = {
           "delete-horizontal-space", do_delete_horizontal_space, ES, "*")
     CMD2( KEY_CTRLX(KEY_CTRL('o')), KEY_NONE,
           "delete-blank-lines", do_delete_blank_lines, ES, "*")
+    /* XXX: should take region as argument, implicit from keyboard */
     CMD2( KEY_NONE, KEY_NONE,
           "tabify-region", do_tabify_region, ES, "*")
     CMD2( KEY_NONE, KEY_NONE,
-          "tabify-buffer", do_tabify_buffer, ES, "*")
-    CMD2( KEY_NONE, KEY_NONE,
           "untabify-region", do_untabify_region, ES, "*")
     CMD2( KEY_NONE, KEY_NONE,
+          "tabify-buffer", do_tabify_buffer, ES, "*")
+    CMD2( KEY_NONE, KEY_NONE,
           "untabify-buffer", do_untabify_buffer, ES, "*")
+    /* XXX: should take region as argument, implicit from keyboard */
     CMD2( KEY_META(KEY_CTRL('\\')), KEY_NONE,
           "indent-region", do_indent_region, ES, "*")
 
@@ -1937,6 +1939,7 @@ static CmdDef extra_commands[] = {
     CMD2( KEY_CTRLH('s'), KEY_CTRLH(KEY_CTRL('S')),
           "describe-screen", do_describe_screen, ESi, "ui")
 
+    /* XXX: should take region as argument, implicit from keyboard */
     CMD2( KEY_CTRLC('c'), KEY_NONE,
           "set-region-color", do_set_region_color, ESs,
           "s{Select color: }[color]|color|")
@@ -1953,9 +1956,12 @@ static CmdDef extra_commands[] = {
     CMD3( KEY_NONE, KEY_NONE,
           "sort-buffer", do_sort_buffer, ESii, 0, "*vui")
     CMD3( KEY_NONE, KEY_NONE,
-          "sort-region", do_sort_region, ESii, 0, "*vui")
-    CMD3( KEY_NONE, KEY_NONE,
           "reverse-sort-buffer", do_sort_buffer, ESii, SF_REVERSE, "*vui")
+    /* XXX: should take region as argument, implicit from keyboard */
+    /* XXX: should have sort-lines, sort-numeric-fields, sort-paragraphs */
+    /* XXX: numeric argument means reverse sort */
+    CMD3( KEY_NONE, KEY_NONE,
+          "sort-region", do_sort_region, ESii, 0, "*vui")
     CMD3( KEY_NONE, KEY_NONE,
           "reverse-sort-region", do_sort_region, ESii, SF_REVERSE, "*vui")
 

@@ -1762,7 +1762,7 @@ static void quote_key(void *opaque, int key)
     qe_ungrab_keys();
 }
 
-void do_quote(EditState *s, int argval)
+void do_quoted_insert(EditState *s, int argval)
 {
     struct QuoteKeyArgument *qa = qe_mallocz(struct QuoteKeyArgument);
 
@@ -1778,7 +1778,7 @@ void do_overwrite_mode(EditState *s, int argval)
     if (argval == NO_ARG)
         s->insert = !s->insert;
     else
-        s->insert = !argval;
+        s->insert = !(argval > 0);
 }
 
 void do_tab(EditState *s, int argval)
@@ -1830,10 +1830,8 @@ void do_preview_mode(EditState *s, int set)
 }
 #endif
 
-void do_return(EditState *s, int move)
+void do_newline(EditState *s)
 {
-    int len;
-
 #ifndef CONFIG_TINY
     if (s->b->flags & BF_PREVIEW) {
         do_preview_mode(s, -1);
@@ -1844,9 +1842,16 @@ void do_return(EditState *s, int move)
         return;
 
     /* CG: in overwrite mode, should just go to beginning of next line */
-    len = eb_insert_uchar(s->b, s->offset, '\n');
-    if (move)
-        s->offset += len;
+    s->offset += eb_insert_uchar(s->b, s->offset, '\n');
+}
+
+void do_open_line(EditState *s)
+{
+    if (s->b->flags & (BF_PREVIEW | BF_READONLY))
+        return;
+
+    /* XXX: should preserve s->offset */
+    eb_insert_uchar(s->b, s->offset, '\n');
 }
 
 #if 0
@@ -5209,7 +5214,7 @@ void edit_display(QEmacsState *qs)
 
 /* macros */
 
-void do_start_macro(EditState *s)
+void do_start_kbd_macro(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
 
@@ -5225,7 +5230,7 @@ void do_start_macro(EditState *s)
     put_status(s, "Defining kbd macro...");
 }
 
-void do_end_macro(EditState *s)
+void do_end_kbd_macro(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
 
@@ -5242,7 +5247,7 @@ void do_end_macro(EditState *s)
     put_status(s, "Keyboard macro defined");
 }
 
-void do_call_macro(EditState *s)
+void do_call_last_kbd_macro(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
     int key;
@@ -5544,7 +5549,7 @@ static void qe_key_process(int key)
                         c->nb_keys = 0;
                         goto next;
                     } else
-                    if (key == '-') {
+                    if (key == '-' && c->argval == NO_ARG) {
                         c->sign = -c->sign;
                         c->nb_keys = 0;
                         goto next;
@@ -5578,14 +5583,17 @@ static void qe_key_process(int key)
         if (d->action.ES == do_numeric_argument && !c->describe_key) {
             /* special handling for numeric argument */
             /* CG: XXX: should display value of numeric argument */
-            c->is_numeric_arg = 1;
             if (key == KEY_META('-')) {
                 c->sign = -c->sign;
-                if (c->noargval == 1)
-                    c->noargval = 4;
-            } else {
+            } else
+            if (key >= KEY_META('0') && key <= KEY_META('9')) {
+                if (c->is_numeric_arg == 0)
+                    c->argval = 0;
+                c->argval = c->argval * 10 + key - KEY_META('0');
+            } else {  /* KEY_CTRL('u') */
                 c->noargval = c->noargval * 4;
             }
+            c->is_numeric_arg = 1;
             c->nb_keys = 0;
         } else {
             if (c->is_numeric_arg) {
@@ -6448,7 +6456,7 @@ static void do_minibuffer_char(EditState *s, int key, int argval)
 }
 
 /* scroll in completion popup */
-void minibuf_complete_scroll_up_down(qe__unused__ EditState *s, int dir)
+void do_minibuffer_scroll_up_down(EditState *s, int dir)
 {
     MinibufState *mb = minibuffer_get_state(s, 0);
 
@@ -6458,7 +6466,7 @@ void minibuf_complete_scroll_up_down(qe__unused__ EditState *s, int dir)
     }
 }
 
-static void minibuf_set_str(EditState *s, int start, int end, const char *str)
+static void minibuffer_set_str(EditState *s, int start, int end, const char *str)
 {
     int len;
 
@@ -6527,7 +6535,7 @@ void do_minibuffer_history(EditState *s, int dir)
     /* insert history text */
     mb->history_index = index;
     str = hist->items[index]->str;
-    minibuf_set_str(s, 0, s->b->total_size, str);
+    minibuffer_set_str(s, 0, s->b->total_size, str);
     if (index == hist->nb_items - 1) {
         s->offset = mb->history_saved_offset;
     }
@@ -6567,7 +6575,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
             len = mb->completion->get_entry(cw, buf, sizeof(buf), list_get_offset(cw) + 1);
             if (len > 0) {
                 // insert completion string (delete highlighted part)
-                minibuf_set_str(s, mb->completion_start, mb->completion_end, buf);
+                minibuffer_set_str(s, mb->completion_start, mb->completion_end, buf);
             }
             if (mb->completion->flags & CF_NO_AUTO_SUBMIT) {
                 edit_close(&mb->completion_popup_window);
@@ -6711,7 +6719,7 @@ void minibuffer_init(void)
     minibuffer_mode.mode_probe = NULL;
     minibuffer_mode.buffer_instance_size = sizeof(MinibufState);
     minibuffer_mode.mode_free = minibuffer_mode_free;
-    minibuffer_mode.scroll_up_down = minibuf_complete_scroll_up_down;
+    minibuffer_mode.scroll_up_down = do_minibuffer_scroll_up_down;
     qe_register_mode(&minibuffer_mode, MODEF_NOCMD | MODEF_VIEW);
     qe_register_cmd_table(minibuffer_commands, &minibuffer_mode);
 }
