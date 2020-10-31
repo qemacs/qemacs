@@ -817,19 +817,20 @@ done:
 }
 
 static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, CmdDef *d) {
-    char str[1024], prompt[64];
+    char str[1024];
     char *strp;
     const char *r;
-    int nb_args, sep, i;
+    int nb_args, sep, i, ret;
     CmdArg args[MAX_CMD_ARGS];
     unsigned char args_type[MAX_CMD_ARGS];
     EditState *s = ds->s;
     QEmacsState *qs = s->qe_state;
+    CmdArgSpec cas;
 
     nb_args = 0;
 
     /* construct argument type list */
-    r = d->name + strlen(d->name) + 1;
+    r = d->spec;
     if (*r == '*') {
         r++;
         if (s->b->flags & BF_READONLY) {
@@ -841,23 +842,13 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, CmdDef *d) {
     /* first argument is always the window */
     args_type[nb_args++] = CMD_ARG_WINDOW;
 
-    for (;;) {
-        unsigned char arg_type;
-        int ret;
-
-        ret = parse_arg(&r, &arg_type, prompt, countof(prompt),
-                        NULL, 0, NULL, 0);
-        if (ret < 0)
-            goto badcmd;
-        if (ret == 0)
-            break;
-        if (nb_args >= MAX_CMD_ARGS) {
-        badcmd:
+    while ((ret = parse_arg(&r, &cas)) != 0) {
+        if (ret < 0 || nb_args >= MAX_CMD_ARGS) {
             put_status(s, "Badly defined command '%s'", d->name);
             return -1;
         }
         args[nb_args].p = NULL;
-        args_type[nb_args++] = arg_type & (CMD_ARG_TYPE_MASK | CMD_ARG_USE_ARGVAL);
+        args_type[nb_args++] = cas.arg_type;
     }
 
     sep = '\0';
@@ -873,15 +864,39 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, CmdDef *d) {
             args[i].n = (int)(intptr_t)d->val;
             continue;
         case CMD_ARG_STRINGVAL:
-            /* CG: kludge for xxx-mode functions and named kbd macros */
-            args[i].p = prompt;
+            /* CG: kludge for xxx-mode functions and named kbd macros,
+               must be last argument */
+            args[i].p = cas.prompt;
             continue;
-        case CMD_ARG_INT | CMD_ARG_USE_ARGVAL:  /* XXX: ui should always be last */
+        case CMD_ARG_INT | CMD_ARG_USE_ARGVAL:
             if (ds->tok == ')') {
                 args[i].n = NO_ARG;
                 continue;
             }
-            args_type[i] &= ~CMD_ARG_USE_ARGVAL;
+            break;
+        case CMD_ARG_INT | CMD_ARG_USE_MARK:
+            if (ds->tok == ')') {
+                args[i].n = s->b->mark;
+                continue;
+            }
+            break;
+        case CMD_ARG_INT | CMD_ARG_USE_POINT:
+            if (ds->tok == ')') {
+                args[i].n = s->offset;
+                continue;
+            }
+            break;
+        case CMD_ARG_INT | CMD_ARG_USE_ZERO:
+            if (ds->tok == ')') {
+                args[i].n = 0;
+                continue;
+            }
+            break;
+        case CMD_ARG_INT | CMD_ARG_USE_BSIZE:
+            if (ds->tok == ')') {
+                args[i].n = s->b->total_size;
+                continue;
+            }
             break;
         }
 
@@ -901,7 +916,7 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, CmdDef *d) {
             return -1;
         }
 
-        switch (args_type[i]) {
+        switch (args_type[i] & CMD_ARG_TYPE_MASK) {
         case CMD_ARG_INT:
             qe_cfg_tonum(ds, sp); // XXX: should complain about type mismatch?
             args[i].n = sp->u.value;

@@ -183,20 +183,23 @@ void qe_register_mode(ModeDef *m, int flags)
 
     /* add a new command to switch to that mode */
     if (!(m->flags & MODEF_NOCMD)) {
-        char buf[64];
-        int size;
+        char name[64];
+        char spec[64];
+        int spec_len;
         CmdDef *def;
         const char *mode_name = m->alt_name ? m->alt_name : m->name;
 
         /* lower case convert for C mode, Perl... */
-        qe_strtolower(buf, sizeof(buf) - 10, mode_name);
-        pstrcat(buf, sizeof(buf), "-mode");
-        size = strlen(buf) + 1;
+        qe_strtolower(name, sizeof(name) - 10, mode_name);
+        pstrcat(name, sizeof(name), "-mode");
+
         /* constant immediate string parameter */
-        size += snprintf(buf + size, sizeof(buf) - size,
-                         "S{%s}", mode_name) + 1;
+        spec_len = snprintf(spec, sizeof(spec),
+                            "S{%s}%cselect the %s mode for the current buffer",
+                            mode_name, 0, mode_name);
         def = qe_mallocz_array(CmdDef, 2);
-        def->name = qe_malloc_dup(buf, size);
+        def->name = qe_strdup(name);
+        def->spec = qe_malloc_dup(spec, spec_len + 1);
         def->key = def->alt_key = KEY_NONE;
         def->sig = CMD_ESs;
         def->val = 0;
@@ -4761,30 +4764,45 @@ static void get_param(const char **pp, char *param, int param_size, int osep, in
 }
 
 /* return -1 if error, 0 if no more args, 1 if one arg parsed */
-int parse_arg(const char **pp, unsigned char *argtype,
-              char *prompt, int prompt_size,
-              char *completion, int completion_size,
-              char *history, int history_size)
+int parse_arg(const char **pp, CmdArgSpec *ap)
 {
     int tc, type;
     const char *p;
 
     p = *pp;
     type = 0;
-    if (*p == 'k') {
-        p++;
+    switch (*p) {
+    case 'k':
         type = CMD_ARG_USE_KEY;
-    }
-    if (*p == 'u') {
         p++;
+        break;
+    case 'u':
         type = CMD_ARG_USE_ARGVAL;
+        p++;
+        break;
+    case 'm':
+        type = CMD_ARG_USE_MARK;
+        p++;
+        break;
+    case 'p':
+        type = CMD_ARG_USE_POINT;
+        p++;
+        break;
+    case 'z':
+        type = CMD_ARG_USE_ZERO;
+        p++;
+        break;
+    case 'e':
+        type = CMD_ARG_USE_BSIZE;
+        p++;
+        break;
     }
     if (*p == '\0')
         return 0;
     tc = *p++;
-    get_param(&p, prompt, prompt_size, '{', '}');
-    get_param(&p, completion, completion_size, '[', ']');
-    get_param(&p, history, history_size, '|', '|');
+    get_param(&p, ap->prompt, sizeof(ap->prompt), '{', '}');
+    get_param(&p, ap->completion, sizeof(ap->completion), '[', ']');
+    get_param(&p, ap->history, sizeof(ap->history), '|', '|');
     switch (tc) {
     case 'i':
         type |= CMD_ARG_INT;
@@ -4796,13 +4814,14 @@ int parse_arg(const char **pp, unsigned char *argtype,
         type |= CMD_ARG_STRING;
         break;
     case 'S':   /* used in define_kbd_macro, and mode selection */
+        /* actual string is in prompt buffer */
         type |= CMD_ARG_STRINGVAL;
         break;
     default:
         return -1;
     }
     *pp = p;
-    *argtype = type;
+    ap->arg_type = type;
     return 1;
 }
 
@@ -4811,31 +4830,20 @@ int qe_get_prototype(CmdDef *d, char *buf, int size)
     buf_t outbuf, *out;
     const char *r;
     const char *sep = "";
+    CmdArgSpec cas;
 
     out = buf_init(&outbuf, buf, size);
 
     buf_put_byte(out, '(');
 
     /* construct argument type list */
-    r = d->name + strlen(d->name) + 1;
+    r = d->spec;
     if (*r == '*') {
         r++;    /* buffer modification indicator */
     }
 
-    for (;;) {
-        unsigned char arg_type;
-        char completion[32];
-        char history[32];
-        int ret;
-
-        ret = parse_arg(&r, &arg_type, NULL, 0,
-                        completion, sizeof(completion),
-                        history, sizeof(history));
-        if (ret <= 0)
-            break;
-
-        /* pseudo arguments: skip them */
-        switch (arg_type & CMD_ARG_TYPE_MASK) {
+    while (parse_arg(&r, &cas) > 0) {
+        switch (cas.arg_type & CMD_ARG_TYPE_MASK) {
         case CMD_ARG_INT:
             buf_printf(out, "%sint ", sep);
             break;
@@ -4849,13 +4857,28 @@ int qe_get_prototype(CmdDef *d, char *buf, int size)
             continue;
         }
         sep = ", ";
-        if (arg_type & CMD_ARG_USE_KEY) {
-            buf_puts(out, "key");
-        } else
-        if (arg_type & CMD_ARG_USE_ARGVAL) {
-            buf_puts(out, "argval");
-        } else {
-            buf_puts(out, *history ? history : completion);
+        switch (cas.arg_type & ~CMD_ARG_TYPE_MASK) {
+        case CMD_ARG_USE_ARGVAL:
+            buf_puts(out, "= argval");
+            break;
+        case CMD_ARG_USE_KEY:
+            buf_puts(out, "= key");
+            break;
+        case CMD_ARG_USE_MARK:
+            buf_puts(out, "= mark");
+            break;
+        case CMD_ARG_USE_POINT:
+            buf_puts(out, "= point");
+            break;
+        case CMD_ARG_USE_ZERO:
+            buf_puts(out, "= 0");
+            break;
+        case CMD_ARG_USE_BSIZE:
+            buf_puts(out, "= bufsize");
+            break;
+        default:
+            buf_puts(out, *cas.history ? cas.history : cas.completion);
+            break;
         }
     }
     buf_put_byte(out, ')');
@@ -4863,7 +4886,7 @@ int qe_get_prototype(CmdDef *d, char *buf, int size)
 }
 
 static void arg_edit_cb(void *opaque, char *str);
-static void parse_args(ExecCmdState *es);
+static void parse_arguments(ExecCmdState *es);
 static void free_cmd(ExecCmdState **esp);
 
 void exec_command(EditState *s, CmdDef *d, int argval, int key)
@@ -4874,7 +4897,7 @@ void exec_command(EditState *s, CmdDef *d, int argval, int key)
     if (qe_state.trace_buffer && qe_state.trace_buffer != s->b)
         eb_trace_bytes(d->name, -1, EB_TRACE_COMMAND);
 
-    argdesc = d->name + strlen(d->name) + 1;
+    argdesc = d->spec;
     if (*argdesc == '*') {
         argdesc++;
         if (s->b->flags & BF_READONLY) {
@@ -4899,37 +4922,25 @@ void exec_command(EditState *s, CmdDef *d, int argval, int key)
     es->nb_args++;
     es->ptype = argdesc;
 
-    parse_args(es);
+    parse_arguments(es);
 }
 
 /* parse as much arguments as possible. ask value to user if possible */
-static void parse_args(ExecCmdState *es)
+static void parse_arguments(ExecCmdState *es)
 {
     EditState *s = es->s;
     QEmacsState *qs = s->qe_state;
     QErrorContext ec;
     CmdDef *d = es->d;
-    char prompt[256];
-    char completion_name[64];
-    char history[32];
-    unsigned char arg_type;
-    int ret, rep_count, get_arg, type, use_argval, use_key;
+    CmdArgSpec cas;
+    int ret, rep_count, get_arg, type, use_flag;
     int elapsed_time;
 
-    for (;;) {
-        ret = parse_arg(&es->ptype, &arg_type,
-                        prompt, sizeof(prompt),
-                        completion_name, sizeof(completion_name),
-                        history, sizeof(history));
-        if (ret < 0)
+    while ((ret = parse_arg(&es->ptype, &cas)) != 0) {
+        if (ret < 0 || es->nb_args >= MAX_CMD_ARGS)
             goto fail;
-        if (ret == 0)
-            break;
-        if (es->nb_args >= MAX_CMD_ARGS)
-            goto fail;
-        use_argval = arg_type & CMD_ARG_USE_ARGVAL;
-        use_key = arg_type & CMD_ARG_USE_KEY;
-        type = arg_type & CMD_ARG_TYPE_MASK;
+        use_flag = cas.arg_type & ~CMD_ARG_TYPE_MASK;
+        type = cas.arg_type & CMD_ARG_TYPE_MASK;
         es->args_type[es->nb_args] = type;
         get_arg = 0;
         switch (type) {
@@ -4937,13 +4948,27 @@ static void parse_args(ExecCmdState *es)
             es->args[es->nb_args].n = d->val;
             break;
         case CMD_ARG_STRINGVAL:
-            es->args[es->nb_args].p = prompt;
+            /* CG: kludge for xxx-mode functions and named kbd macros,
+               must be last argument */
+            es->args[es->nb_args].p = cas.prompt;
             break;
         case CMD_ARG_INT:
-            if (use_key) {
+            if (use_flag == CMD_ARG_USE_KEY) {
                 es->args[es->nb_args].n = es->key;
             } else
-            if (use_argval && es->argval != NO_ARG) {
+            if (use_flag == CMD_ARG_USE_MARK) {
+                es->args[es->nb_args].n = s->b->mark;
+            } else
+            if (use_flag == CMD_ARG_USE_POINT) {
+                es->args[es->nb_args].n = s->offset;
+            } else
+            if (use_flag == CMD_ARG_USE_ZERO) {
+                es->args[es->nb_args].n = 0;
+            } else
+            if (use_flag == CMD_ARG_USE_BSIZE) {
+                es->args[es->nb_args].n = s->b->total_size;
+            } else
+            if (use_flag == CMD_ARG_USE_ARGVAL && es->argval != NO_ARG) {
                 es->args[es->nb_args].n = es->argval;
                 es->argval = NO_ARG;
             } else {
@@ -4953,12 +4978,15 @@ static void parse_args(ExecCmdState *es)
             }
             break;
         case CMD_ARG_STRING:
-            if (use_argval && es->argval != NO_ARG) {
+#if 0
+            if (use_flag == CMD_ARG_USE_ARGVAL && es->argval != NO_ARG) {
                 char buf[32];
                 snprintf(buf, sizeof(buf), "%d", es->argval);
-                es->args[es->nb_args].p = qe_strdup(buf);
+                es->args[es->nb_args].p = qe_strdup(buf);  // XXX: memory leak?
                 es->argval = NO_ARG;
-            } else {
+            } else
+#endif
+            {
                 es->args[es->nb_args].p = NULL;
                 get_arg = 1;
                 break;
@@ -4966,17 +4994,17 @@ static void parse_args(ExecCmdState *es)
         }
         es->nb_args++;
         /* if no argument specified, try to ask it to the user */
-        if (get_arg && prompt[0] != '\0') {
+        if (get_arg && cas.prompt[0] != '\0') {
             char def_input[1024];
 
             /* XXX: currently, default input is handled non generically */
             /* XXX: should use completion function for default input? */
             def_input[0] = '\0';
             es->default_input[0] = '\0';
-            if (strequal(completion_name, "file")) {
+            if (strequal(cas.completion, "file")) {
                 get_default_path(s->b, s->offset, def_input, sizeof(def_input));
             } else
-            if (strequal(completion_name, "buffer")) {
+            if (strequal(cas.completion, "buffer")) {
                 EditBuffer *b;
                 if (d->action.ESs == do_switch_to_buffer)
                     b = predict_switch_to_buffer(s);
@@ -4985,12 +5013,12 @@ static void parse_args(ExecCmdState *es)
                 pstrcpy(es->default_input, sizeof(es->default_input), b->name);
             }
             if (es->default_input[0] != '\0') {
-                pstrcat(prompt, sizeof(prompt), "(default ");
-                pstrcat(prompt, sizeof(prompt), es->default_input);
-                pstrcat(prompt, sizeof(prompt), ") ");
+                pstrcat(cas.prompt, sizeof(cas.prompt), "(default ");
+                pstrcat(cas.prompt, sizeof(cas.prompt), es->default_input);
+                pstrcat(cas.prompt, sizeof(cas.prompt), ") ");
             }
-            minibuffer_edit(s, def_input, prompt, get_history(history),
-                            completion_name, arg_edit_cb, es);
+            minibuffer_edit(s, def_input, cas.prompt, get_history(cas.history),
+                            cas.completion, arg_edit_cb, es);
             return;
         }
     }
@@ -5007,6 +5035,7 @@ static void parse_args(ExecCmdState *es)
 
     qs->cmd_start_time = get_clock_ms();
 
+    // XXX: should use while (rep_count-- > 0)
     do {
         /* special case for hex mode */
         if (d->action.ESii != do_char) {
@@ -5090,7 +5119,7 @@ static void arg_edit_cb(void *opaque, char *str)
         break;
     }
     /* now we can parse the following arguments */
-    parse_args(es);
+    parse_arguments(es);
 }
 
 int check_read_only(EditState *s)
@@ -5297,11 +5326,10 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
                          const char *key_bind)
 {
     CmdDef *def;
-    int namelen, size;
+    int size;
     char *buf;
 
-    namelen = strlen(name);
-    size = namelen + 1 + 2 + strlen(keys) + 2;
+    size = 2 + strlen(keys) + 3;
     buf = qe_malloc_array(char, size);
 
     // XXX: should special case "last-kbd-macro"
@@ -5309,7 +5337,7 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
     /* CG: should parse macro keys to an array and pass index
      * to do_execute_macro.
      */
-    snprintf(buf, size, "%s%cS{%s}", name, 0, keys);
+    snprintf(buf, size, "S{%s}%c", keys, 0);
 
     def = qe_find_cmd(name);
     if (def && def->action.ESs == do_execute_macro_keys) {
@@ -5317,12 +5345,13 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
         /* XXX: freeing the current macro definition may cause a crash if it
          * is currently executing.
          */
-        qe_free((char **)&def->name);
-        def->name = buf;
+        qe_free((char **)&def->spec);
+        def->spec = buf;
     } else {
         def = qe_mallocz_array(CmdDef, 2);
         def->key = def->alt_key = KEY_NONE;
-        def->name = buf;
+        def->name = qe_strdup(name);
+        def->spec = buf;
         def->sig = CMD_ESs;
         def->val = 0;
         def->action.ESs = do_execute_macro_keys;
@@ -5348,9 +5377,8 @@ static void qe_save_macro(EditState *s, CmdDef *def, EditBuffer *b)
     eb_printf(b, "define_kbd_macro(\"%s\", \"", name);
 
     if (def) {
-        const char *keys = def->name;
-        keys += strlen(keys) + 1 + 2;
-        while (keys[1]) {
+        const char *keys = def->spec + 2;   /* skip S{ */
+        while (keys[1]) {                   /* stop at } */
             eb_putc(b, utf8_decode(&keys));
         }
     } else {
@@ -9397,8 +9425,10 @@ int main(int argc, char **argv)
                 d1++;
             qs->first_cmd = d1->action.next;
             /* free xxx-mode commands and macros */
+            /* XXX: should use CmdDef flag */
             if (d->name && !d[1].name && d[1].val) {
                 qe_free((char **)&d->name);
+                qe_free((char **)&d->spec);
                 qe_free(&d);
             }
         }

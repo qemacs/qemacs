@@ -1758,9 +1758,13 @@ enum CmdArgType {
     CMD_ARG_STRING,
     CMD_ARG_STRINGVAL,
     CMD_ARG_WINDOW,
-    CMD_ARG_TYPE_MASK = 0x3f,
-    CMD_ARG_USE_KEY = 0x40,
-    CMD_ARG_USE_ARGVAL = 0x80,
+    CMD_ARG_TYPE_MASK  = 0x0f,
+    CMD_ARG_USE_ARGVAL = 0x10,
+    CMD_ARG_USE_KEY    = 0x20,
+    CMD_ARG_USE_MARK   = 0x30,
+    CMD_ARG_USE_POINT  = 0x40,
+    CMD_ARG_USE_ZERO   = 0x50,
+    CMD_ARG_USE_BSIZE  = 0x60,
 };
 
 typedef enum CmdSig {
@@ -1783,6 +1787,13 @@ typedef union CmdArg {
     int n;
 } CmdArg;
 
+typedef struct CmdArgSpec {
+    int arg_type;
+    char completion[32];
+    char history[32];
+    char prompt[1024];   /* used for keyboard macros */
+} CmdArgSpec;
+
 typedef union CmdProto {
     void (*func)(void);
     void (*ES)(EditState *);
@@ -1798,7 +1809,7 @@ typedef union CmdProto {
 
 typedef struct CmdDef {
     const char *name;
-    const char *desc;
+    const char *spec;
     unsigned short key;       /* normal key */
     unsigned short alt_key;   /* alternate key */
     CmdSig sig : 8;
@@ -1806,17 +1817,19 @@ typedef struct CmdDef {
     CmdProto action;
 } CmdDef;
 
-/* new command macros */
-#define CMD2(key, key_alt, name, func, sig, args) \
-    { name "\0" args, NULL, key, key_alt, CMD_ ## sig, 0, { .sig = func } },
-#define CMD3(key, key_alt, name, func, sig, val, args) \
-    { name "\0" args, NULL, key, key_alt, CMD_ ## sig, val, { .sig = func } },
-
-/* old macros for compatibility */
+/* command without arguments, no buffer modification */
 #define CMD0(key, key_alt, name, func) \
-    { name "\0", NULL, key, key_alt, CMD_ES, 0, { .ES = func } },
+    { name, "" "\0" "", key, key_alt, CMD_ES, 0, { .ES = func } },
+/* command with a single implicit int argument */
 #define CMD1(key, key_alt, name, func, val) \
-    { name "\0" "v", NULL, key, key_alt, CMD_ESi, val, { .ESi = func } },
+    { name, "v" "\0" "", key, key_alt, CMD_ESi, val, { .ESi = func } },
+/* command with a an argument description string */
+#define CMD2(key, key_alt, name, func, sig, spec) \
+    { name, spec "\0" "", key, key_alt, CMD_ ## sig, 0, { .sig = func } },
+/* command with a an argument description string and an int agument */
+#define CMD3(key, key_alt, name, func, sig, val, spec) \
+    { name, spec "\0" "", key, key_alt, CMD_ ## sig, val, { .sig = func } },
+/* end of command definitions */
 #define CMD_DEF_END \
     { NULL, NULL, 0, 0, CMD_void, 0, { NULL } }
 
@@ -2252,10 +2265,7 @@ void do_set_system_font(EditState *s, const char *qe_font_name,
 void do_set_window_style(EditState *s, const char *stylestr);
 void call_func(CmdSig sig, CmdProto func, int nb_args, CmdArg *args,
                unsigned char *args_type);
-int parse_arg(const char **pp, unsigned char *argtype,
-              char *prompt, int prompt_size,
-              char *completion, int completion_size,
-              char *history, int history_size);
+int parse_arg(const char **pp, CmdArgSpec *ap);
 void exec_command(EditState *s, CmdDef *d, int argval, int key);
 void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);

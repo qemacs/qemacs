@@ -124,11 +124,12 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
     QEmacsState *qs = s->qe_state;
     QErrorContext ec;
     char line[1024], str[1024];
-    char prompt[64], cmd[128], *q, *strp;
+    char cmd[128], *q, *strp;
+    CmdArgSpec cas;
     const char *p, *r;
     int line_num;
     CmdDef *d;
-    int nb_args, sep, i, skip, incomment;
+    int nb_args, sep, i, skip, incomment, ret;
     CmdArg args[MAX_CMD_ARGS];
     unsigned char args_type[MAX_CMD_ARGS];
 
@@ -240,7 +241,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         nb_args = 0;
 
         /* construct argument type list */
-        r = d->name + strlen(d->name) + 1;
+        r = d->spec;
         if (*r == '*') {
             r++;
             if (s->b->flags & BF_READONLY) {
@@ -252,23 +253,13 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         /* first argument is always the window */
         args_type[nb_args++] = CMD_ARG_WINDOW;
 
-        for (;;) {
-            unsigned char arg_type;
-            int ret;
-
-            ret = parse_arg(&r, &arg_type, prompt, countof(prompt),
-                            NULL, 0, NULL, 0);
-            if (ret < 0)
-                goto badcmd;
-            if (ret == 0)
-                break;
-            if (nb_args >= MAX_CMD_ARGS) {
-            badcmd:
+        while ((ret = parse_arg(&r, &cas)) != 0) {
+            if (ret < 0 || nb_args >= MAX_CMD_ARGS) {
                 put_status(s, "Badly defined command '%s'", cmd);
                 goto fail;
             }
             args[nb_args].p = NULL;
-            args_type[nb_args++] = arg_type & CMD_ARG_TYPE_MASK;
+            args_type[nb_args++] = cas.arg_type & CMD_ARG_TYPE_MASK;
         }
 
         sep = '\0';
@@ -284,8 +275,9 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 args[i].n = (int)(intptr_t)d->val;
                 continue;
             case CMD_ARG_STRINGVAL:
-                /* CG: kludge for xxx-mode functions and named kbd macros */
-                args[i].p = prompt;
+                /* CG: kludge for xxx-mode functions and named kbd macros,
+                   must be last argument */
+                args[i].p = cas.prompt;
                 continue;
             }
 
@@ -298,7 +290,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
             sep = ',';
             skip_spaces(&p);
 
-            switch (args_type[i]) {
+            switch (args_type[i] & CMD_ARG_TYPE_MASK) {
             case CMD_ARG_INT:
                 r = p;
                 args[i].n = strtol(p, (char**)&p, 0);

@@ -1316,7 +1316,7 @@ static CmdDef c_commands[] = {
     CMD2( '{', '}',
           "c-electric-key", do_c_electric, ESi, "*ki")
     CMD2( KEY_RET, KEY_NONE,
-          "c-newline", do_c_newline, ES, "*v")
+          "c-newline", do_c_newline, ES, "*")
     CMD_DEF_END,
 };
 

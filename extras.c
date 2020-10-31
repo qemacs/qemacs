@@ -324,7 +324,7 @@ static void do_delete_blank_lines(EditState *s)
     eb_delete_range(b, from, offset);
 }
 
-static void eb_tabify(EditBuffer *b, int p1, int p2)
+static void do_tabify(EditState *s, int p1, int p2)
 {
     /* We implement a complete analysis of the region instead of
      * scanning for certain space patterns (such as / [ \t]/).  It is
@@ -338,11 +338,15 @@ static void eb_tabify(EditBuffer *b, int p1, int p2)
      * new buffer reader eb_nextc_style() using colorizer and a
      * one line cache.
      */
+    EditBuffer *b = s->b;
     int tw = b->tab_width > 0 ? b->tab_width : 8;
     int start = max(0, min(p1, p2));
     int stop = min(b->total_size, max(p1, p2));
     int col;
     int offset, offset1, offset2, delta;
+
+    /* deactivate region hilite */
+    s->region_style = 0;
 
     col = 0;
     offset = eb_goto_bol(b, start);
@@ -385,7 +389,7 @@ static void eb_tabify(EditBuffer *b, int p1, int p2)
         }
     }
 }
-
+#if 0
 static void do_tabify_buffer(EditState *s)
 {
     /* deactivate region hilite */
@@ -401,18 +405,22 @@ static void do_tabify_region(EditState *s)
 
     eb_tabify(s->b, s->b->mark, s->offset);
 }
-
-static void eb_untabify(EditBuffer *b, int p1, int p2)
+#endif
+static void do_untabify(EditState *s, int p1, int p2)
 {
     /* We implement a complete analysis of the region instead of
      * potentially faster scan for '\t'.  It is fast enough and even
      * faster if there are lots of tabs.
      */
+    EditBuffer *b = s->b;
     int tw = b->tab_width > 0 ? b->tab_width : 8;
     int start = max(0, min(p1, p2));
     int stop = min(b->total_size, max(p1, p2));
     int col, col0;
     int offset, offset1, offset2, delta;
+
+    /* deactivate region hilite */
+    s->region_style = 0;
 
     col = 0;
     offset = eb_goto_bol(b, start);
@@ -441,7 +449,7 @@ static void eb_untabify(EditBuffer *b, int p1, int p2)
         stop += delta;
     }
 }
-
+#if 0
 static void do_untabify_buffer(EditState *s)
 {
     /* deactivate region hilite */
@@ -457,7 +465,7 @@ static void do_untabify_region(EditState *s)
 
     eb_untabify(s->b, s->b->mark, s->offset);
 }
-
+#endif
 static void do_indent_region(EditState *s)
 {
     int col_num, line1, line2;
@@ -988,15 +996,16 @@ void do_apropos(EditState *s, const char *str)
     while (d != NULL) {
         while (d->name != NULL) {
             if (strstr(d->name, str)) {
+                const char *desc;
                 /* print name and prototype */
                 qe_get_prototype(d, buf, sizeof(buf));
                 eb_printf(b, "command: %s%s", d->name, buf);
                 if (qe_list_bindings(d, s->mode, 1, buf, sizeof(buf)))
                     eb_printf(b, " bound to %s", buf);
                 eb_putc(b, '\n');
-                if (d->desc && *d->desc) {
+                if (*(desc = d->spec + strlen(d->spec) + 1)) {
                     /* print short description */
-                    eb_printf(b, "  %s", d->desc);
+                    eb_printf(b, "  %s", desc);
                 }
                 eb_putc(b, '\n');
                 found = 1;
@@ -1878,15 +1887,18 @@ static CmdDef extra_commands[] = {
           "delete-horizontal-space", do_delete_horizontal_space, ES, "*")
     CMD2( KEY_CTRLX(KEY_CTRL('o')), KEY_NONE,
           "delete-blank-lines", do_delete_blank_lines, ES, "*")
-    /* XXX: should take region as argument, implicit from keyboard */
-    CMD2( KEY_NONE, KEY_NONE,
-          "tabify-region", do_tabify_region, ES, "*")
-    CMD2( KEY_NONE, KEY_NONE,
-          "untabify-region", do_untabify_region, ES, "*")
-    CMD2( KEY_NONE, KEY_NONE,
-          "tabify-buffer", do_tabify_buffer, ES, "*")
-    CMD2( KEY_NONE, KEY_NONE,
-          "untabify-buffer", do_untabify_buffer, ES, "*")
+    CMD3( KEY_NONE, KEY_NONE,
+          "tabify-region", do_tabify, ESii, 0, "*" "mipi"
+          "\0" "Convert multiple spaces in region to tabs when possible")
+    CMD3( KEY_NONE, KEY_NONE,
+          "untabify-region", do_untabify, ESii, 0, "*" "mipi"
+          "\0" "Convert all tabs in region to multiple spaces, preserving columns")
+    CMD3( KEY_NONE, KEY_NONE,
+          "tabify-buffer", do_tabify, ESii, 0, "*" "ziei"
+          "\0" "Convert multiple spaces in buffer to tabs when possible")
+    CMD3( KEY_NONE, KEY_NONE,
+          "untabify-buffer", do_untabify, ESii, 0, "*" "ziei"
+          "\0" "Convert all tabs in buffer to multiple spaces, preserving columns")
     /* XXX: should take region as argument, implicit from keyboard */
     CMD2( KEY_META(KEY_CTRL('\\')), KEY_NONE,
           "indent-region", do_indent_region, ES, "*")
