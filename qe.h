@@ -1760,11 +1760,12 @@ enum CmdArgType {
     CMD_ARG_WINDOW,
     CMD_ARG_TYPE_MASK  = 0x0f,
     CMD_ARG_USE_ARGVAL = 0x10,
-    CMD_ARG_USE_KEY    = 0x20,
-    CMD_ARG_USE_MARK   = 0x30,
-    CMD_ARG_USE_POINT  = 0x40,
-    CMD_ARG_USE_ZERO   = 0x50,
-    CMD_ARG_USE_BSIZE  = 0x60,
+    CMD_ARG_MUL_ARGVAL = 0x20,
+    CMD_ARG_USE_KEY    = 0x30,
+    CMD_ARG_USE_MARK   = 0x40,
+    CMD_ARG_USE_POINT  = 0x50,
+    CMD_ARG_USE_ZERO   = 0x60,
+    CMD_ARG_USE_BSIZE  = 0x70,
 };
 
 typedef enum CmdSig {
@@ -1817,18 +1818,26 @@ typedef struct CmdDef {
     CmdProto action;
 } CmdDef;
 
-/* command without arguments, no buffer modification */
-#define CMD0(key, key_alt, name, func) \
-    { name, "" "\0" "", key, key_alt, CMD_ES, 0, { .ES = func } },
-/* command with a single implicit int argument */
-#define CMD1(key, key_alt, name, func, val) \
-    { name, "v" "\0" "", key, key_alt, CMD_ESi, val, { .ESi = func } },
-/* command with a an argument description string */
-#define CMD2(key, key_alt, name, func, sig, spec) \
-    { name, spec "\0" "", key, key_alt, CMD_ ## sig, 0, { .sig = func } },
-/* command with a an argument description string and an int agument */
-#define CMD3(key, key_alt, name, func, sig, val, spec) \
+#ifdef CONFIG_TINY
+/* omit command descriptions in Tiny build */
+#define CMD(key, key_alt, name, func, sig, val, spec, desc) \
     { name, spec "\0" "", key, key_alt, CMD_ ## sig, val, { .sig = func } },
+#else
+#define CMD(key, key_alt, name, func, sig, val, spec, desc) \
+    { name, spec "\0" desc, key, key_alt, CMD_ ## sig, val, { .sig = func } },
+#endif
+/* command without arguments, no buffer modification */
+#define CMD0(key, key_alt, name, func, desc) \
+    CMD(key, key_alt, name, func, ES, 0, "", desc)
+/* command with a single implicit int argument */
+#define CMD1(key, key_alt, name, func, val, desc) \
+    CMD(key, key_alt, name, func, ESi, val, "v", desc)
+/* command with a an argument description string */
+#define CMD2(key, key_alt, name, func, sig, spec, desc) \
+    CMD(key, key_alt, name, func, sig, 0, spec, desc)
+/* command with a an argument description string and an int argument */
+#define CMD3(key, key_alt, name, func, sig, val, spec, desc) \
+    CMD(key, key_alt, name, func, sig, val, spec, desc)
 /* end of command definitions */
 #define CMD_DEF_END \
     { NULL, NULL, 0, 0, CMD_void, 0, { NULL } }
@@ -2100,8 +2109,8 @@ void do_previous_window(EditState *s);
 void do_delete_window(EditState *s, int force);
 #define SW_STACKED       0
 #define SW_SIDE_BY_SIDE  1
-EditState *qe_split_window(EditState *s, int prop, int side_by_side);
-void do_split_window(EditState *s, int prop, int side_by_side);
+EditState *qe_split_window(EditState *s, int side_by_side, int prop);
+void do_split_window(EditState *s, int side_by_side, int prop);
 void do_create_window(EditState *s, const char *filename, const char *layout);
 void qe_save_window_layout(EditState *s, EditBuffer *b);
 
@@ -2171,7 +2180,7 @@ void do_kill(EditState *s, int p1, int p2, int dir, int keep);
 void do_kill_region(EditState *s, int keep);
 void do_kill_line(EditState *s, int argval);
 void do_kill_beginning_of_line(EditState *s, int argval);
-void do_kill_word(EditState *s, int dir);
+void do_kill_word(EditState *s, int n);
 void text_move_bol(EditState *s);
 void text_move_eol(EditState *s);
 void text_move_bof(EditState *s);
@@ -2182,8 +2191,8 @@ int qe_get_word(EditState *s, char *buf, int buf_size,
                 int offset, int *offset_ptr);
 void do_goto(EditState *s, const char *str, int unit);
 void do_goto_line(EditState *s, int line, int column);
-void do_up_down(EditState *s, int dir);
-void do_left_right(EditState *s, int dir);
+void do_up_down(EditState *s, int n);
+void do_left_right(EditState *s, int n);
 void text_mouse_goto(EditState *s, int x, int y);
 void basic_mode_line(EditState *s, buf_t *out, int c1);
 void text_mode_line(EditState *s, buf_t *out);
@@ -2204,14 +2213,14 @@ void do_bof(EditState *s);
 void do_eof(EditState *s);
 void do_bol(EditState *s);
 void do_eol(EditState *s);
-void do_word_right(EditState *s, int dir);
+void do_word_right(EditState *s, int n);
 void do_mark_region(EditState *s, int mark, int offset);
 int eb_next_paragraph(EditBuffer *b, int offset);
+int eb_prev_paragraph(EditBuffer *b, int offset);
 int eb_start_paragraph(EditBuffer *b, int offset);
 void do_mark_paragraph(EditState *s);
-void do_backward_paragraph(EditState *s);
-void do_forward_paragraph(EditState *s);
-void do_kill_paragraph(EditState *s, int dir);
+void do_forward_paragraph(EditState *s, int n);
+void do_kill_paragraph(EditState *s, int n);
 void do_fill_paragraph(EditState *s);
 void do_changecase_word(EditState *s, int up);
 void do_changecase_region(EditState *s, int up);

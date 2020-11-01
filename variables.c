@@ -510,10 +510,10 @@ static CompletionDef variable_completion = {
 static CmdDef var_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
           "show-variable", do_show_variable, ESs,
-          "s{Show variable: }[variable]|variable|")
+          "s{Show variable: }[variable]|variable|", "")
     CMD2( KEY_F8, KEY_NONE,
           "set-variable", do_set_variable, ESss,
-          "s{Set variable: }[variable]|variable|s{to value: }|value|")
+          "s{Set variable: }[variable]|variable|s{to value: }|value|", "")
 
     CMD_DEF_END,
 };

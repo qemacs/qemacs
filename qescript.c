@@ -874,6 +874,12 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, CmdDef *d) {
                 continue;
             }
             break;
+        case CMD_ARG_INT | CMD_ARG_MUL_ARGVAL:
+            if (ds->tok == ')') {
+                args[i].n = d->val;
+                continue;
+            }
+            break;
         case CMD_ARG_INT | CMD_ARG_USE_MARK:
             if (ds->tok == ')') {
                 args[i].n = s->b->mark;
@@ -920,6 +926,8 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, CmdDef *d) {
         case CMD_ARG_INT:
             qe_cfg_tonum(ds, sp); // XXX: should complain about type mismatch?
             args[i].n = sp->u.value;
+            if (args_type[i] == (CMD_ARG_INT | CMD_ARG_MUL_ARGVAL))
+                args[i].n *= d->val;
             break;
         case CMD_ARG_STRING:
             qe_cfg_tostr(ds, sp); // XXX: should complain about type mismatch?
@@ -1213,14 +1221,15 @@ static CmdDef parser_commands[] = {
 
     CMD2( KEY_META(':'), KEY_NONE,
           "eval-expression", do_eval_expression, ESsi,
-          "s{Eval: }[.symbol]|expression|ui")
+          "s{Eval: }[.symbol]|expression|"
+          "p", "")
     CMD0( KEY_NONE, KEY_NONE,
-          "eval-region", do_eval_region)
+          "eval-region", do_eval_region, "")
     CMD0( KEY_NONE, KEY_NONE,
-          "eval-buffer", do_eval_buffer)
+          "eval-buffer", do_eval_buffer, "")
 #ifndef CONFIG_TINY
     CMD1( KEY_NONE, KEY_NONE,
-          "save-session", do_save_session, 1)
+          "save-session", do_save_session, 1, "")
 #endif
     CMD_DEF_END,
 };

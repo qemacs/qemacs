@@ -546,7 +546,7 @@ void do_set_trace_options(EditState *s, const char *options)
             qs->trace_buffer = eb_new("*trace*", BF_SYSTEM);
         }
         if (!last_flags) {
-            EditState *e = qe_split_window(s, 75, SW_STACKED);
+            EditState *e = qe_split_window(s, SW_STACKED, 75);
             if (e) {
                 do_switch_to_buffer(e, "*trace*");
             }
@@ -615,10 +615,14 @@ void do_eol(EditState *s)
         s->mode->move_eol(s);
 }
 
-void do_word_right(EditState *s, int dir)
+void do_word_right(EditState *s, int n)
 {
-    if (s->mode->move_word_left_right)
-        s->mode->move_word_left_right(s, dir);
+    int dir = n < 0 ? -1 : 1;
+
+    for (; n != 0; n -= dir) {
+        if (s->mode->move_word_left_right)
+            s->mode->move_word_left_right(s, dir);
+    }
 }
 
 void text_move_bof(EditState *s)
@@ -769,45 +773,41 @@ void do_mark_paragraph(EditState *s)
     do_mark_region(s, start, end);
 }
 
-void do_backward_paragraph(EditState *s)
+int eb_prev_paragraph(EditBuffer *b, int offset)
 {
-    int offset;
-
-    offset = s->offset;
     /* skip empty lines */
-    for (;;) {
-        if (offset <= 0)
-            break;
-        offset = eb_goto_bol(s->b, offset);
-        if (!eb_is_blank_line(s->b, offset, NULL))
+    while (offset > 0) {
+        offset = eb_goto_bol(b, offset);
+        if (!eb_is_blank_line(b, offset, NULL))
             break;
         /* line just before */
-        offset = eb_prev(s->b, offset);
+        offset = eb_prev(b, offset);
     }
 
-    offset = eb_start_paragraph(s->b, offset);
+    offset = eb_start_paragraph(b, offset);
 
     /* line just before */
-    offset = eb_prev_line(s->b, offset);
-
-    s->offset = offset;
+    return eb_prev_line(b, offset);
 }
 
-void do_forward_paragraph(EditState *s)
+void do_forward_paragraph(EditState *s, int n)
 {
-    s->offset = eb_next_paragraph(s->b, s->offset);
+    for (; n < 0 && s->offset > 0; n++) {
+        s->offset = eb_prev_paragraph(s->b, s->offset);
+    }
+    for (; n > 0 && s->offset < s->b->total_size; n--) {
+        s->offset = eb_next_paragraph(s->b, s->offset);
+    }
 }
 
-void do_kill_paragraph(EditState *s, int dir)
+void do_kill_paragraph(EditState *s, int n)
 {
     int start = s->offset;
 
-    if (dir < 0)
-        do_backward_paragraph(s);
-    else
-        do_forward_paragraph(s);
-
-    do_kill(s, start, s->offset, dir, 0);
+    if (n != 0) {
+        do_forward_paragraph(s, n);
+        do_kill(s, start, s->offset, n, 0);
+    }
 }
 
 void do_fill_paragraph(EditState *s)
@@ -1135,37 +1135,45 @@ static int down_cursor_func(DisplayState *ds,
     }
 }
 
-void do_up_down(EditState *s, int dir)
+void do_up_down(EditState *s, int n)
 {
+    int dir = n < 0 ? -1 : 1;
+
+    for (; n != 0; n -= dir) {
 #ifndef CONFIG_TINY
-    if (s->b->flags & BF_PREVIEW) {
-        if (s->mode->scroll_up_down
-        &&  (dir > 0 || s->offset_top > 0)
-        &&  eb_at_bol(s->b, s->offset)) {
-            s->mode->scroll_up_down(s, dir);
-            return;
+        if (s->b->flags & BF_PREVIEW) {
+            if (s->mode->scroll_up_down
+            &&  (dir > 0 || s->offset_top > 0)
+            &&  eb_at_bol(s->b, s->offset)) {
+                s->mode->scroll_up_down(s, dir);
+                return;
+            }
         }
-    }
 #endif
-    if (s->mode->move_up_down)
-        s->mode->move_up_down(s, dir);
+        if (s->mode->move_up_down)
+            s->mode->move_up_down(s, dir);
+    }
 }
 
-void do_left_right(EditState *s, int dir)
+void do_left_right(EditState *s, int n)
 {
+    int dir = n < 0 ? -1 : 1;
+
+    for (; n != 0; n -= dir) {
 #ifndef CONFIG_TINY
-    if (s->b->flags & BF_PREVIEW) {
-        EditState *e = find_window(s, KEY_LEFT, NULL);
-        if (e && (e->flags & WF_FILELIST)
-        &&  s->qe_state->active_window == s
-        &&  dir < 0 && eb_at_bol(s->b, s->offset)) {
-            s->qe_state->active_window = e;
-            return;
+        if (s->b->flags & BF_PREVIEW) {
+            EditState *e = find_window(s, KEY_LEFT, NULL);
+            if (e && (e->flags & WF_FILELIST)
+            &&  s->qe_state->active_window == s
+            &&  dir < 0 && eb_at_bol(s->b, s->offset)) {
+                s->qe_state->active_window = e;
+                return;
+            }
         }
-    }
 #endif
-    if (s->mode->move_left_right)
-        s->mode->move_left_right(s, dir);
+        if (s->mode->move_left_right)
+            s->mode->move_left_right(s, dir);
+    }
 }
 
 void text_move_up_down(EditState *s, int dir)
@@ -2025,12 +2033,14 @@ void do_kill_beginning_of_line(EditState *s, int argval)
     do_kill_line(s, argval == NO_ARG ? 0 : -argval);
 }
 
-void do_kill_word(EditState *s, int dir)
+void do_kill_word(EditState *s, int n)
 {
     int start = s->offset;
 
-    do_word_right(s, dir);
-    do_kill(s, start, s->offset, dir, 0);
+    if (n != 0) {
+        do_word_right(s, n);
+        do_kill(s, start, s->offset, n, 0);
+    }
 }
 
 void do_yank(EditState *s)
@@ -4770,52 +4780,47 @@ int parse_arg(const char **pp, CmdArgSpec *ap)
     const char *p;
 
     p = *pp;
-    type = 0;
-    switch (*p) {
-    case 'k':
-        type = CMD_ARG_USE_KEY;
-        p++;
-        break;
-    case 'u':
-        type = CMD_ARG_USE_ARGVAL;
-        p++;
-        break;
-    case 'm':
-        type = CMD_ARG_USE_MARK;
-        p++;
-        break;
-    case 'p':
-        type = CMD_ARG_USE_POINT;
-        p++;
-        break;
-    case 'z':
-        type = CMD_ARG_USE_ZERO;
-        p++;
-        break;
-    case 'e':
-        type = CMD_ARG_USE_BSIZE;
-        p++;
-        break;
-    }
     if (*p == '\0')
         return 0;
     tc = *p++;
     get_param(&p, ap->prompt, sizeof(ap->prompt), '{', '}');
     get_param(&p, ap->completion, sizeof(ap->completion), '[', ']');
     get_param(&p, ap->history, sizeof(ap->history), '|', '|');
+    type = 0;
     switch (tc) {
-    case 'i':
-        type |= CMD_ARG_INT;
+    case 'k':
+        type = CMD_ARG_USE_KEY | CMD_ARG_INT;
+        break;
+    case 'p':
+        type = CMD_ARG_USE_ARGVAL | CMD_ARG_INT;
+        break;
+    case 'P':
+        type = CMD_ARG_MUL_ARGVAL | CMD_ARG_INT;
+        break;
+    case 'm':
+        type = CMD_ARG_USE_MARK | CMD_ARG_INT;
+        break;
+    case 'd':
+        type = CMD_ARG_USE_POINT | CMD_ARG_INT;
+        break;
+    case 'z':
+        type = CMD_ARG_USE_ZERO | CMD_ARG_INT;
+        break;
+    case 'e':
+        type = CMD_ARG_USE_BSIZE | CMD_ARG_INT;
+        break;
+    case 'n':
+        type = CMD_ARG_INT;
         break;
     case 'v':
-        type |= CMD_ARG_INTVAL;
+        type = CMD_ARG_INTVAL;
         break;
     case 's':
-        type |= CMD_ARG_STRING;
+        type = CMD_ARG_STRING;
         break;
     case 'S':   /* used in define_kbd_macro, and mode selection */
         /* actual string is in prompt buffer */
-        type |= CMD_ARG_STRINGVAL;
+        type = CMD_ARG_STRINGVAL;
         break;
     default:
         return -1;
@@ -4859,6 +4864,7 @@ int qe_get_prototype(CmdDef *d, char *buf, int size)
         sep = ", ";
         switch (cas.arg_type & ~CMD_ARG_TYPE_MASK) {
         case CMD_ARG_USE_ARGVAL:
+        case CMD_ARG_MUL_ARGVAL:
             buf_puts(out, "= argval");
             break;
         case CMD_ARG_USE_KEY:
@@ -4971,6 +4977,10 @@ static void parse_arguments(ExecCmdState *es)
             if (use_flag == CMD_ARG_USE_ARGVAL && es->argval != NO_ARG) {
                 es->args[es->nb_args].n = es->argval;
                 es->argval = NO_ARG;
+            } else
+            if (use_flag == CMD_ARG_MUL_ARGVAL) {
+                es->args[es->nb_args].n = d->val * ((es->argval == NO_ARG) ? 1 : es->argval);
+                es->argval = NO_ARG;
             } else {
                 /* CG: Should add syntax for default value if no prompt */
                 es->args[es->nb_args].n = NO_ARG;
@@ -5032,11 +5042,9 @@ static void parse_arguments(ExecCmdState *es)
     }
 
     qs->this_cmd_func = d->action.func;
-
     qs->cmd_start_time = get_clock_ms();
 
-    // XXX: should use while (rep_count-- > 0)
-    do {
+    while (rep_count--) {
         /* special case for hex mode */
         if (d->action.ESii != do_char) {
             s->hex_nibble = 0;
@@ -5055,7 +5063,7 @@ static void parse_arguments(ExecCmdState *es)
         /* CG: This doesn't work if the function needs input */
         /* CG: Should test for abort condition */
         /* CG: Should follow qs->active_window ? */
-    } while (--rep_count > 0);
+    }
 
     elapsed_time = get_clock_ms() - qs->cmd_start_time;
     qs->cmd_start_time += elapsed_time;
@@ -7345,7 +7353,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         /* Split window if window large enough and not empty */
         /* XXX: should check s->height units */
         if (s->height > 10 && s->b->total_size > 0) {
-            EditState *e = qe_split_window(s, 50, SW_STACKED);
+            EditState *e = qe_split_window(s, SW_STACKED, 50);
             if (e) {
                 qs->active_window = s = e;
             }
@@ -8075,7 +8083,7 @@ void do_delete_hidden_windows(EditState *s)
 }
 
 /* XXX: add minimum size test and refuse to split if reached */
-EditState *qe_split_window(EditState *s, int prop, int side_by_side)
+EditState *qe_split_window(EditState *s, int side_by_side, int prop)
 {
     EditState *e;
     int w, h, w1, h1;
@@ -8116,10 +8124,10 @@ EditState *qe_split_window(EditState *s, int prop, int side_by_side)
     return e;
 }
 
-void do_split_window(EditState *s, int prop, int side_by_side)
+void do_split_window(EditState *s, int side_by_side, int prop)
 {
     QEmacsState *qs = s->qe_state;
-    EditState *e = qe_split_window(s, prop == NO_ARG ? 50 : prop, side_by_side);
+    EditState *e = qe_split_window(s, side_by_side, prop == NO_ARG ? 50 : prop);
 
     if (e && qs->flag_split_window_change_focus)
         qs->active_window = e;

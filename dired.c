@@ -1315,48 +1315,48 @@ void do_dired(EditState *s, int argval)
 /* specific dired commands */
 static CmdDef dired_commands[] = {
     CMD1( KEY_RET, KEY_NONE,
-          "dired-enter", dired_select, 1)
+          "dired-enter", dired_select, 1, "")
     CMD1( KEY_RIGHT, KEY_NONE,
-          "dired-right", dired_select, 0)
+          "dired-right", dired_select, 0, "")
     CMD0( KEY_TAB, KEY_NONE,
-          "dired-tab", do_other_window)
+          "dired-tab", do_other_window, "")
     /* dired-abort should restore previous buffer in right-window */
     CMD1( KEY_CTRL('g'), KEY_NONE,
-          "dired-abort", do_delete_window, 0)
+          "dired-abort", do_delete_window, 0, "")
     /* XXX: merge with other dired-next-line */
     CMD1( ' ', KEY_DOWN,
-          "dired-next-line", dired_up_down, 1)
+          "dired-next-line", dired_up_down, 1, "")
     CMD1( KEY_DEL, KEY_NONE,
-          "dired-unmark-backward", dired_mark, -1)
+          "dired-unmark-backward", dired_mark, -1, "")
     CMD2( 's', KEY_NONE,
           "dired-sort", dired_sort, ESs,
-          "s{Sort order [nesdug+-r]: }|sortkey|")
+          "s{Sort order [nesdug+-r]: }|sortkey|", "")
     CMD2( 't', KEY_NONE,
           "dired-set-time-format", dired_set_time_format, ESi,
-          "i{Time format: }[timeformat]")
+          "n{Time format: }[timeformat]", "")
     /* s -> should also change switches */
     CMD1( 'd', KEY_NONE,
-          "dired-delete", dired_mark, 'D')
+          "dired-delete", dired_mark, 'D', "")
     CMD1( 'c', KEY_NONE,
-          "dired-copy", dired_mark, 'C')
+          "dired-copy", dired_mark, 'C', "")
     CMD1( 'm', KEY_NONE,
-          "dired-move", dired_mark, 'M')
+          "dired-move", dired_mark, 'M', "")
     CMD1( 'u', KEY_NONE,
-          "dired-unmark", dired_mark, ' ')
+          "dired-unmark", dired_mark, ' ', "")
     CMD0( 'x', KEY_NONE,
-          "dired-execute", dired_execute)
+          "dired-execute", dired_execute, "")
     CMD1( 'n', KEY_CTRL('n'),
-          "dired-next-line", dired_up_down, 1)
+          "dired-next-line", dired_up_down, 1, "")
     CMD1( 'p', KEY_CTRL('p'), /* KEY_UP */
-          "dired-previous-line", dired_up_down, -1)
+          "dired-previous-line", dired_up_down, -1, "")
     CMD0( 'r', KEY_NONE,
-          "dired-refresh", dired_refresh)
+          "dired-refresh", dired_refresh, "")
     CMD1( '.', KEY_NONE,
-          "dired-toggle-dot-files", dired_toggle_dot_files, -1)
+          "dired-toggle-dot-files", dired_toggle_dot_files, -1, "")
     /* g -> refresh all expanded dirs ? */
     /* l -> relist single directory or marked files ? */
     CMD0( '^', KEY_LEFT,
-          "dired-parent", dired_parent)
+          "dired-parent", dired_parent, "")
     /* need commands for splitting, unsplitting, zooming, making subdirs */
     /* h -> info */
     /* i, + -> create subdirectory */
@@ -1365,15 +1365,15 @@ static CmdDef dired_commands[] = {
     /* C -> copy files */
     /* mark files globally */
     CMD0( 'H', KEY_NONE,
-          "dired-toggle-human", dired_toggle_human)
+          "dired-toggle-human", dired_toggle_human, "")
     CMD0( 'N', KEY_NONE,
-          "dired-toggle-nflag", dired_toggle_nflag)
+          "dired-toggle-nflag", dired_toggle_nflag, "")
     CMD_DEF_END,
 };
 
 static CmdDef dired_global_commands[] = {
     CMD2( KEY_CTRLX(KEY_CTRL('d')), KEY_NONE,
-          "dired", do_dired, ESi, "ui")
+          "dired", do_dired, ESi, "p", "")
     CMD_DEF_END,
 };
 
@@ -1507,19 +1507,19 @@ static int filelist_mode_init(EditState *s, EditBuffer *b, int flags)
 
 static CmdDef filelist_commands[] = {
     CMD0( KEY_RET, KEY_RIGHT,
-          "filelist-select", do_other_window)
+          "filelist-select", do_other_window, "")
     CMD0( KEY_TAB, KEY_NONE,
-          "filelist-tab", do_other_window)
+          "filelist-tab", do_other_window, "")
     /* filelist-abort should restore previous buffer in right-window
      * or at least exit preview mode */
     CMD1( KEY_CTRL('g'), KEY_NONE,
-          "filelist-abort", do_delete_window, 0)
+          "filelist-abort", do_delete_window, 0, "")
     CMD_DEF_END,
 };
 
 static CmdDef filelist_global_commands[] = {
     CMD2( KEY_NONE, KEY_NONE,
-          "filelist", do_filelist, ESi, "ui")
+          "filelist", do_filelist, ESi, "p", "")
     CMD_DEF_END,
 };
 

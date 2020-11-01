@@ -2,7 +2,7 @@
  * Org mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2020 Charlie Gordon.
  * Copyright (c) 2014 Francois Revol.
  *
  * This library is free software; you can redistribute it and/or
@@ -676,55 +676,79 @@ static void do_org_metaup(EditState *s)
 static CmdDef org_commands[] = {
     /* Motion */
     CMD2( KEY_CTRLC(KEY_CTRL('n')), KEY_NONE,   /* C-c C-n */
-          "outline-next-visible-heading", do_outline_next_vsible_heading, ES, "")
+          "outline-next-visible-heading", do_outline_next_vsible_heading, ES, "",
+          "")
     CMD2( KEY_CTRLC(KEY_CTRL('p')), KEY_NONE,   /* C-c C-p */
-          "outline-previous-visible-heading", do_outline_previous_vsible_heading, ES, "")
+          "outline-previous-visible-heading", do_outline_previous_vsible_heading, ES, "",
+          "")
     CMD2( KEY_CTRLC(KEY_CTRL('u')), KEY_NONE,   /* C-c C-u */
-          "outline-up-heading", do_outline_up_heading, ES, "")
+          "outline-up-heading", do_outline_up_heading, ES, "",
+          "")
     CMD2( KEY_CTRLC(KEY_CTRL('b')), KEY_NONE,   /* C-c C-b */
-          "org-backward-same-level", do_org_backward_same_level, ES, "")
+          "org-backward-same-level", do_org_backward_same_level, ES, "",
+          "")
     CMD2( KEY_CTRLC(KEY_CTRL('f')), KEY_NONE,   /* C-c C-f */
-          "org-forward-same-level", do_org_forward_same_level, ES, "")
+          "org-forward-same-level", do_org_forward_same_level, ES, "",
+          "")
     CMD2( KEY_CTRLC(KEY_CTRL('j')), KEY_NONE,   /* C-c C-j */
           "org-goto", do_org_goto, ESs,
-          "s{select location to jump to: }[orgjump]|orgjump|")
+          "s{select location to jump to: }[orgjump]|orgjump|",
+          "")
     CMD3( KEY_META('h'), KEY_NONE,   /* M-h */
-          "org-mark-element", do_org_mark_element, ESi, 0, "v")
+          "org-mark-element", do_org_mark_element, ESi, 0, "v",
+          "")
     CMD3( KEY_CTRLC('@'), KEY_NONE,   /* C-c @ */
-          "org-mark-subtree", do_org_mark_element, ESi, 1, "v")
+          "org-mark-subtree", do_org_mark_element, ESi, 1, "v",
+          "")
     /* Editing */
     CMD2( KEY_CTRLC(KEY_CTRL('t')), KEY_NONE,   /* C-c C-t */
-          "org-todo", do_org_todo, ES, "*")
+          "org-todo", do_org_todo, ES, "*",
+          "")
     CMD3( KEY_NONE, KEY_NONE,    /* indirect through M-RET */
-          "org-insert-heading", do_org_insert_heading, ESi, 0, "*v")
+          "org-insert-heading", do_org_insert_heading, ESi, 0, "*v",
+          "")
     CMD3( KEY_NONE, KEY_NONE,    /* actually M-S-RET and C-c C-x M */
-          "org-insert-todo-heading", do_org_insert_heading, ESi, 1, "*v")
+          "org-insert-todo-heading", do_org_insert_heading, ESi, 1, "*v",
+          "")
     CMD3( KEY_CTRL('j'), KEY_NONE,    /* actually C-RET */
-          "org-insert-heading-respect-content", do_org_insert_heading, ESi, 2, "*v")
+          "org-insert-heading-respect-content", do_org_insert_heading, ESi, 2, "*v",
+          "")
     CMD3( KEY_NONE, KEY_NONE,    /* actually C-S-RET */
-          "org-insert-todo-heading-respect-content", do_org_insert_heading, ESi, 3, "*v")
+          "org-insert-todo-heading-respect-content", do_org_insert_heading, ESi, 3, "*v",
+          "")
     CMD3( KEY_NONE, KEY_NONE,
-          "org-do-demote", do_org_promote, ESi, -1, "*v")
+          "org-do-demote", do_org_promote, ESi, -1, "*v",
+          "")
     CMD3( KEY_NONE, KEY_NONE,
-          "org-do-promote", do_org_promote, ESi, +1, "*v")
+          "org-do-promote", do_org_promote, ESi, +1, "*v",
+          "")
     CMD3( KEY_CTRLX('>'), KEY_NONE,    /* actually M-S-right | C-c C-x R */
-          "org-demote-subtree", do_org_promote_subtree, ESi, -1, "*v")
+          "org-demote-subtree", do_org_promote_subtree, ESi, -1, "*v",
+          "")
     CMD3( KEY_CTRLX('<'), KEY_NONE,    /* actually M-S-left | C-c C-x L */
-          "org-promote-subtree", do_org_promote_subtree, ESi, +1, "*v")
+          "org-promote-subtree", do_org_promote_subtree, ESi, +1, "*v",
+          "")
     CMD3( KEY_NONE, KEY_NONE,
-          "org-move-subtree-down", do_org_move_subtree, ESi, +1, "*v")
+          "org-move-subtree-down", do_org_move_subtree, ESi, +1, "*v",
+          "")
     CMD3( KEY_NONE, KEY_NONE,
-          "org-move-subtree-up", do_org_move_subtree, ESi, -1, "*v")
+          "org-move-subtree-up", do_org_move_subtree, ESi, -1, "*v",
+          "")
     CMD2( KEY_META(KEY_RET), KEY_NONE,    /* Actually M-RET | C-c C-x m */
-          "org-meta-return", do_org_meta_return, ES, "*")
+          "org-meta-return", do_org_meta_return, ES, "*",
+          "")
     CMD2( KEY_ESC, KEY_LEFT,    /* actually M-left | C-c C-x l */
-          "org-metaleft", do_org_metaleft, ES, "")
+          "org-metaleft", do_org_metaleft, ES, "",
+          "")
     CMD2( KEY_ESC, KEY_RIGHT,    /* actually M-right | C-c C-x r */
-          "org-metaright", do_org_metaright, ES, "")
+          "org-metaright", do_org_metaright, ES, "",
+          "")
     CMD2( KEY_ESC, KEY_DOWN,    /* actually M-down | C-c C-x d */
-          "org-metadown", do_org_metadown, ES, "")
+          "org-metadown", do_org_metadown, ES, "",
+          "")
     CMD2( KEY_ESC, KEY_UP,    /* actually M-up | C-c C-x u */
-          "org-metaup", do_org_metaup, ES, "")
+          "org-metaup", do_org_metaup, ES, "",
+          "")
     CMD_DEF_END,
 };
 

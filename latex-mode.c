@@ -322,10 +322,12 @@ static void do_latex(EditState *e, const char *cmd)
 /* specific LaTeX commands */
 static CmdDef latex_commands[] = {
     CMD2( '\"', KEY_NONE,
-          "tex-insert-quote", do_tex_insert_quote, ES, "*")
+          "tex-insert-quote", do_tex_insert_quote, ES, "*",
+          "")
     CMD2( KEY_CTRLC(KEY_CTRL('c')), KEY_NONE,   /* C-c C-c */
           "TeX-command-master", do_latex, ESs,
-          "s{Command: (default LaTeX) }[latex]|latex|")
+          "s{Command: (default LaTeX) }[latex]|latex|",
+          "")
     CMD_DEF_END,
 };
 

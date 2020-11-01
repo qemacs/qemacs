@@ -140,19 +140,19 @@ static void do_toggle_hex(EditState *s)
 /* specific hex commands */
 static CmdDef hex_commands[] = {
     CMD1( KEY_CTRL_LEFT, KEY_NONE,
-          "decrease-width", do_increase_width, -1)
+          "decrease-width", do_increase_width, -1, "")
     CMD1( KEY_CTRL_RIGHT, KEY_NONE,
-          "increase-width", do_increase_width, 1)
+          "increase-width", do_increase_width, 1, "")
     CMD2( KEY_NONE, KEY_NONE,
           "set-width", do_set_width, ESi,
-          "ui{Width: }")
+          "p{Width: }", "")
     CMD3( KEY_META('g'), KEY_NONE,
           "goto-byte", do_goto, ESsi, 'b',
-          "us{Goto byte: }"
-          "v")
+          "s{Goto byte: }"
+          "v", "")
     /* XXX: bind to TAB and S-TAB */
     CMD0( KEY_NONE, KEY_NONE,
-          "toggle-hex", do_toggle_hex)
+          "toggle-hex", do_toggle_hex, "")
     CMD_DEF_END,
 };
 

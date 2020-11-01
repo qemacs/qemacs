@@ -3117,77 +3117,77 @@ void shell_colorize_line(QEColorizeContext *cp,
 /* shell mode specific commands */
 static CmdDef shell_commands[] = {
     CMD0( KEY_CTRL('o'), KEY_NONE,
-          "shell-toggle-input", do_shell_toggle_input)
+          "shell-toggle-input", do_shell_toggle_input, "")
     /* XXX: should have shell-execute-line on M-RET */
     CMD2( '\r', KEY_NONE,
-          "shell-enter", do_shell_newline, ES, "*")
+          "shell-enter", do_shell_newline, ES, "*", "")
     /* CG: should send s->kbs */
     CMD2( KEY_DEL, KEY_NONE,
-          "shell-backward-delete-char", do_shell_backspace, ES, "*")
+          "shell-backward-delete-char", do_shell_backspace, ES, "*", "")
     CMD0( KEY_CTRLC(KEY_CTRL('c')), KEY_NONE,   /* C-c C-c */
-          "shell-intr", do_shell_intr)
+          "shell-intr", do_shell_intr, "")
     CMD2( KEY_CTRL('d'), KEY_DELETE,
-          "shell-delete-char", do_shell_delete_char, ES, "*")
+          "shell-delete-char", do_shell_delete_char, ES, "*", "")
     CMD3( KEY_META('d'), KEY_NONE,
-          "shell-kill-word", do_shell_kill_word, ESi, 1, "v")
+          "shell-kill-word", do_shell_kill_word, ESi, 1, "v", "")
     CMD3( KEY_META(KEY_DEL), KEY_META(KEY_BS) ,
-          "shell-backward-kill-word", do_shell_kill_word, ESi, -1, "v")
+          "shell-backward-kill-word", do_shell_kill_word, ESi, -1, "v", "")
     CMD1( KEY_META('p'), KEY_NONE,
-          "shell-previous", shell_previous_next, -1)
+          "shell-previous", shell_previous_next, -1, "")
     CMD1( KEY_META('n'), KEY_NONE,
-          "shell-next", shell_previous_next, 1)
+          "shell-next", shell_previous_next, 1, "")
     CMD0( KEY_CTRLX(KEY_CTRL('x')), KEY_NONE,
-          "shell-exchange-point-and-mark", shell_exchange_point_and_mark)
+          "shell-exchange-point-and-mark", shell_exchange_point_and_mark, "")
     CMD2( KEY_CTRL('i'), KEY_NONE,
-          "shell-tabulate", do_shell_tabulate, ES, "*")
+          "shell-tabulate", do_shell_tabulate, ES, "*", "")
     CMD0( KEY_CTRL('l'), KEY_NONE,
-          "shell-refresh", do_shell_refresh)
+          "shell-refresh", do_shell_refresh, "")
     CMD1( KEY_CTRL('r'), KEY_NONE,
-          "shell-search-backward", do_shell_search, -1)
+          "shell-search-backward", do_shell_search, -1, "")
     CMD1( KEY_CTRL('s'), KEY_NONE,
-          "shell-search-forward", do_shell_search, 1)
+          "shell-search-forward", do_shell_search, 1, "")
     CMD2( KEY_CTRL('k'), KEY_NONE,
-          "shell-kill-line", do_shell_kill_line, ESi, "ui")
+          "shell-kill-line", do_shell_kill_line, ESi, "p", "")
     CMD2( KEY_META('k'), KEY_NONE,
-          "shell-kill-beginning-of-line", do_shell_kill_beginning_of_line, ESi, "ui")
+          "shell-kill-beginning-of-line", do_shell_kill_beginning_of_line, ESi, "p", "")
     CMD2( KEY_CTRL('y'), KEY_NONE,
-          "shell-yank", do_shell_yank, ES, "*")
+          "shell-yank", do_shell_yank, ES, "*", "")
     CMD3( KEY_META('c'), KEY_NONE,
-          "shell-capitalize-word", do_shell_changecase_word, ESi, 2, "*v")
+          "shell-capitalize-word", do_shell_changecase_word, ESi, 2, "*v", "")
     CMD3( KEY_META('l'), KEY_NONE,
-          "shell-downcase-word", do_shell_changecase_word, ESi, -1, "*v")
+          "shell-downcase-word", do_shell_changecase_word, ESi, -1, "*v", "")
     CMD3( KEY_META('u'), KEY_NONE,
-          "shell-upcase-word", do_shell_changecase_word, ESi, 1, "*v")
+          "shell-upcase-word", do_shell_changecase_word, ESi, 1, "*v", "")
     CMD3( KEY_CTRL('t'), KEY_NONE,
-          "shell-transpose-chars", do_shell_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v")
+          "shell-transpose-chars", do_shell_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v", "")
     CMD3( KEY_META('t'), KEY_NONE,
-          "shell-transpose-words", do_shell_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v")
+          "shell-transpose-words", do_shell_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v", "")
     CMD_DEF_END,
 };
 
 /* shell global commands */
 static CmdDef shell_global_commands[] = {
     CMD2( KEY_CTRLXRET('\r'), KEY_NONE,
-          "shell", do_shell, ESi, "ui")
+          "shell", do_shell, ESi, "p", "")
     CMD2( KEY_META('!'), KEY_NONE,
           "shell-command", do_shell_command, ESs,
-          "s{Shell command: }|shell-command|")
+          "s{Shell command: }|shell-command|", "")
     CMD2( KEY_NONE, KEY_NONE,
           "ssh", do_ssh, ESs,
-          "s{Open connection to (host or user@host: }|ssh|")
+          "s{Open connection to (host or user@host: }|ssh|", "")
     CMD2( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE,
           "compile", do_compile, ESs,
-          "s{Compile command: }|compile|")
+          "s{Compile command: }|compile|", "")
     CMD2( KEY_CTRLX('m'), KEY_NONE,
           "make", do_compile, ESs,
-          "S{make}")
+          "S{make}", "")
     CMD2( KEY_NONE, KEY_NONE,
           "man", do_man, ESs,
-          "s{Show man page for: }|man|")
+          "s{Show man page for: }|man|", "")
     CMD3( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE,
-          "previous-error", do_next_error, ESii, -1, "vui")
+          "previous-error", do_next_error, ESii, -1, "vp", "")
     CMD3( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'),
-          "next-error", do_next_error, ESii, 1, "vui")
+          "next-error", do_next_error, ESii, 1, "vp", "")
     CMD_DEF_END,
 };
 

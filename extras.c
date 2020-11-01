@@ -257,7 +257,7 @@ void do_compare_files(EditState *s, const char *filename, int bflags)
 
     do_find_file(s, filename, bflags);
     do_delete_other_windows(s, 0);
-    e = qe_split_window(s, 50, SW_STACKED);
+    e = qe_split_window(s, SW_STACKED, 50);
     if (e) {
         s->qe_state->active_window = e;
         do_find_file(e, buf, bflags);
@@ -522,7 +522,7 @@ static int matching_delimiter(int c) {
     return c;
 }
 
-static void do_forward_block(EditState *s, int dir)
+static void forward_block(EditState *s, int dir)
 {
     unsigned int buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
@@ -729,12 +729,23 @@ static void do_forward_block(EditState *s, int dir)
     }
 }
 
-static void do_kill_block(EditState *s, int dir)
+static void do_forward_block(EditState *s, int n)
+{
+    int dir = n < 0 ? -1 : 1;
+
+    for (; n != 0; n -= dir) {
+        forward_block(s, dir);
+    }
+}
+
+static void do_kill_block(EditState *s, int n)
 {
     int start = s->offset;
 
-    do_forward_block(s, dir);
-    do_kill(s, start, s->offset, dir, 0);
+    if (n != 0) {
+        do_forward_block(s, n);
+        do_kill(s, start, s->offset, n, 0);
+    }
 }
 
 void do_transpose(EditState *s, int cmd)
@@ -1878,112 +1889,112 @@ static CompletionDef tag_completion = {
 
 static CmdDef extra_commands[] = {
     CMD2( KEY_META('='), KEY_NONE,
-          "compare-windows", do_compare_windows, ESi, "ui" )
+          "compare-windows", do_compare_windows, ESi, "p" , "")
     CMD3( KEY_CTRLX(KEY_CTRL('l')), KEY_NONE,
           "compare-files", do_compare_files, ESsi, 0,
           "s{Compare file: }[file]|file|"
-          "v") /* u? */
+          "v", "") /* u? */
     CMD2( KEY_META('\\'), KEY_NONE,
-          "delete-horizontal-space", do_delete_horizontal_space, ES, "*")
+          "delete-horizontal-space", do_delete_horizontal_space, ES, "*", "")
     CMD2( KEY_CTRLX(KEY_CTRL('o')), KEY_NONE,
-          "delete-blank-lines", do_delete_blank_lines, ES, "*")
+          "delete-blank-lines", do_delete_blank_lines, ES, "*", "")
     CMD3( KEY_NONE, KEY_NONE,
-          "tabify-region", do_tabify, ESii, 0, "*" "mipi"
-          "\0" "Convert multiple spaces in region to tabs when possible")
+          "tabify-region", do_tabify, ESii, 0, "*" "md",
+          "Convert multiple spaces in region to tabs when possible")
     CMD3( KEY_NONE, KEY_NONE,
-          "untabify-region", do_untabify, ESii, 0, "*" "mipi"
-          "\0" "Convert all tabs in region to multiple spaces, preserving columns")
+          "untabify-region", do_untabify, ESii, 0, "*" "md",
+          "Convert all tabs in region to multiple spaces, preserving columns")
     CMD3( KEY_NONE, KEY_NONE,
-          "tabify-buffer", do_tabify, ESii, 0, "*" "ziei"
-          "\0" "Convert multiple spaces in buffer to tabs when possible")
+          "tabify-buffer", do_tabify, ESii, 0, "*" "ze",
+          "Convert multiple spaces in buffer to tabs when possible")
     CMD3( KEY_NONE, KEY_NONE,
-          "untabify-buffer", do_untabify, ESii, 0, "*" "ziei"
-          "\0" "Convert all tabs in buffer to multiple spaces, preserving columns")
+          "untabify-buffer", do_untabify, ESii, 0, "*" "ze",
+          "Convert all tabs in buffer to multiple spaces, preserving columns")
     /* XXX: should take region as argument, implicit from keyboard */
     CMD2( KEY_META(KEY_CTRL('\\')), KEY_NONE,
-          "indent-region", do_indent_region, ES, "*")
+          "indent-region", do_indent_region, ES, "*", "")
 
     CMD2( KEY_CTRLX('t'), KEY_NONE,
-          "show-date-and-time", do_show_date_and_time, ESi, "ui")
+          "show-date-and-time", do_show_date_and_time, ESi, "p", "")
 
           /* Should map to KEY_META + KEY_CTRL_LEFT */
     CMD3( KEY_META(KEY_CTRL('b')), KEY_NONE,
-          "backward-block", do_forward_block, ESi, -1, "v")
+          "backward-block", do_forward_block, ESi, -1, "P", "")
           /* Should map to KEY_META + KEY_CTRL_RIGHT */
     CMD3( KEY_META(KEY_CTRL('f')), KEY_NONE,
-          "forward-block", do_forward_block, ESi, 1, "v")
+          "forward-block", do_forward_block, ESi, +1, "P", "")
     CMD3( KEY_ESC, KEY_DELETE,
-          "backward-kill-block", do_kill_block, ESi, -1, "v")
+          "backward-kill-block", do_kill_block, ESi, -1, "P", "")
     CMD3( KEY_META(KEY_CTRL('k')), KEY_NONE,
-          "kill-block", do_kill_block, ESi, 1, "v")
+          "kill-block", do_kill_block, ESi, +1, "P", "")
           /* Should also have mark-block on C-M-@ */
 
     CMD3( KEY_CTRL('t'), KEY_NONE,
-          "transpose-chars", do_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v")
+          "transpose-chars", do_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v", "")
     CMD3( KEY_CTRLX(KEY_CTRL('t')), KEY_NONE,
-          "transpose-lines", do_transpose, ESi, CMD_TRANSPOSE_LINES, "*v")
+          "transpose-lines", do_transpose, ESi, CMD_TRANSPOSE_LINES, "*v", "")
     CMD3( KEY_META('t'), KEY_NONE,
-          "transpose-words", do_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v")
+          "transpose-words", do_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v", "")
 
     CMD3( KEY_NONE, KEY_NONE,
           "global-unset-key", do_unset_key, ESsi, 0,
           "s{Unset key globally: }[key]"
-          "v")
+          "v", "")
     CMD3( KEY_NONE, KEY_NONE,
           "local-unset-key", do_unset_key, ESsi, 1,
           "s{Unset key locally: }[key]"
-          "v")
+          "v", "")
 
     CMD0( KEY_CTRLH('?'), KEY_F1,
-          "about-qemacs", do_about_qemacs)
+          "about-qemacs", do_about_qemacs, "")
     CMD2( KEY_CTRLH('a'), KEY_CTRLH(KEY_CTRL('A')),
           "apropos", do_apropos, ESs,
-          "s{Apropos: }[symbol]|apropos|")
+          "s{Apropos: }[symbol]|apropos|", "")
     CMD0( KEY_CTRLH('b'), KEY_NONE,
-          "describe-bindings", do_describe_bindings)
+          "describe-bindings", do_describe_bindings, "")
     CMD2( KEY_CTRLH('B'), KEY_NONE,
           "show-bindings", do_show_bindings, ESs,
-          "s{Show bindings of command: }[command]|command|")
+          "s{Show bindings of command: }[command]|command|", "")
     CMD2( KEY_CTRLH(KEY_CTRL('B')), KEY_NONE,
-          "describe-buffer", do_describe_buffer, ESi, "ui")
+          "describe-buffer", do_describe_buffer, ESi, "p", "")
     CMD2( KEY_CTRLH('w'), KEY_CTRLH(KEY_CTRL('W')),
-          "describe-window", do_describe_window, ESi, "ui")
+          "describe-window", do_describe_window, ESi, "p", "")
     CMD2( KEY_CTRLH('s'), KEY_CTRLH(KEY_CTRL('S')),
-          "describe-screen", do_describe_screen, ESi, "ui")
+          "describe-screen", do_describe_screen, ESi, "p", "")
 
     /* XXX: should take region as argument, implicit from keyboard */
     CMD2( KEY_CTRLC('c'), KEY_NONE,
           "set-region-color", do_set_region_color, ESs,
-          "s{Select color: }[color]|color|")
+          "s{Select color: }[color]|color|", "")
     CMD2( KEY_CTRLC('s'), KEY_NONE,
           "set-region-style", do_set_region_style, ESs,
-          "s{Select style: }[style]|style|")
+          "s{Select style: }[style]|style|", "")
     CMD0( KEY_NONE, KEY_NONE,
-          "drop-styles", do_drop_styles)
+          "drop-styles", do_drop_styles, "")
 
     CMD2( KEY_NONE, KEY_NONE,
           "set-eol-type", do_set_eol_type, ESi,
-          "ui{EOL Type [0=Unix, 1=Dos, 2=Mac]: }")
+          "p{EOL Type [0=Unix, 1=Dos, 2=Mac]: }", "")
 
     CMD3( KEY_NONE, KEY_NONE,
-          "sort-buffer", do_sort_buffer, ESii, 0, "*vui")
+          "sort-buffer", do_sort_buffer, ESii, 0, "*vp", "")
     CMD3( KEY_NONE, KEY_NONE,
-          "reverse-sort-buffer", do_sort_buffer, ESii, SF_REVERSE, "*vui")
+          "reverse-sort-buffer", do_sort_buffer, ESii, SF_REVERSE, "*vp", "")
     /* XXX: should take region as argument, implicit from keyboard */
     /* XXX: should have sort-lines, sort-numeric-fields, sort-paragraphs */
     /* XXX: numeric argument means reverse sort */
     CMD3( KEY_NONE, KEY_NONE,
-          "sort-region", do_sort_region, ESii, 0, "*vui")
+          "sort-region", do_sort_region, ESii, 0, "*vp", "")
     CMD3( KEY_NONE, KEY_NONE,
-          "reverse-sort-region", do_sort_region, ESii, SF_REVERSE, "*vui")
+          "reverse-sort-region", do_sort_region, ESii, SF_REVERSE, "*vp", "")
 
     CMD0( KEY_NONE, KEY_NONE,
-          "list-tags", do_list_tags)
+          "list-tags", do_list_tags, "")
     CMD0( KEY_CTRLX(','), KEY_META(KEY_F1),
-          "goto-tag", do_goto_tag)
+          "goto-tag", do_goto_tag, "")
     CMD2( KEY_CTRLX('.'), KEY_NONE,
           "find-tag", do_find_tag, ESs,
-          "s{Find tag: }[tag]|tag|")
+          "s{Find tag: }[tag]|tag|", "")
 
     CMD_DEF_END,
 };

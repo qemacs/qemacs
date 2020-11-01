@@ -1,16 +1,17 @@
 ; TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2020-10-24
+; Updated: 2020-11-01
 
 * Changes for Github publication
 
+** files: check file date to detect asynchronous modifications on disk
+** files: reload modified file upon change if untouched since load
 ** improve README.md
 ** move documentation to markdown
 ** move this file to markdown
 ** clean up ancillary files
 ** move language files to lang/ directory
-** fix completion bug with highlighted region
 
 * Recent bugs and ideas
 
@@ -66,8 +67,6 @@
 ** basic: share mmapped pages correctly
 ** completion: fix electric behavior
 ** completion: add completion function to get the default value
-** files: check file date to detect asynchronous modifications on disk
-** files: reload modified file upon change if untouched since load
 ** layout: kill buffer should delete popup and popleft window
 ** minibuf: spurious recursive edit cases.
 ** shell: start-shell should kill popup window

@@ -860,28 +860,28 @@ static void pixel_format_complete(CompleteState *cp)
 /* specific image commands */
 static CmdDef image_commands[] = {
     CMD0( 't', KEY_NONE,
-          "image-rotate", image_rotate)
+          "image-rotate", image_rotate, "")
     CMD2( 'c', KEY_NONE,
           "image-convert", image_convert, ESs,
-          "s{New pixel format: }[pixel-format]|pixel-format|")
+          "s{New pixel format: }[pixel-format]|pixel-format|", "")
     CMD2( 'b', KEY_NONE,
           "image-set-background-color", image_set_background_color, ESs,
-          "s{Background color (use 'transparent' for tiling): }")
+          "s{Background color (use 'transparent' for tiling): }", "")
 #if 1
     CMD0( 'n', KEY_NONE,
-          "image-normal-size", image_normal_size)
+          "image-normal-size", image_normal_size, "")
     CMD1( '>', KEY_NONE,
-          "image-double-size", image_mult_size, 100)
+          "image-double-size", image_mult_size, 100, "")
     CMD1( '<', KEY_NONE,
-          "image-halve-size", image_mult_size, -50)
+          "image-halve-size", image_mult_size, -50, "")
     CMD1( '.', KEY_NONE,
-          "image-larger-10", image_mult_size, 10)
+          "image-larger-10", image_mult_size, 10, "")
     CMD1( ',', KEY_NONE,
-          "image-smaller-10", image_mult_size, -10)
+          "image-smaller-10", image_mult_size, -10, "")
     CMD2( 'S', KEY_NONE,
           "image-set-display-size", image_set_size, ESii,
-          "i{Displayed width: }"
-          "i{Displayed height: }")
+          "n{Displayed width: }"
+          "n{Displayed height: }", "")
 #endif
     CMD_DEF_END,
 };

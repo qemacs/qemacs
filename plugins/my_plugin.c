@@ -11,7 +11,8 @@ static void insert_hello(EditState *s)
 
 static CmdDef my_commands[] = {
     CMD2( KEY_CTRLC('h'), KEY_NONE,     /* C-c h */
-          "insert-hello", insert_hello, ES, "*")
+          "insert-hello", insert_hello, ES, "*",
+          "")
     CMD_DEF_END,
 };
 

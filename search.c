@@ -913,37 +913,37 @@ static CmdDef search_commands[] = {
     CMD3( KEY_META('S'), KEY_NONE,
           "search-forward", do_search_string, ESsi, 1,
           "s{Search forward: }|search|"
-          "v")
+          "v", "")
     /* M-C-r should be bound to isearch-backward-regex */
     /* mg binds search-forward to M-r */
     CMD3( KEY_META('R'), KEY_NONE,
           "search-backward", do_search_string, ESsi, -1,
           "s{Search backward: }|search|"
-          "v")
+          "v", "")
     CMD3( KEY_META('C'), KEY_NONE,
           "count-matches", do_search_string, ESsi, 0,
           "s{Count Matches: }|search|"
-          "v")
+          "v", "")
     CMD3( KEY_NONE, KEY_NONE,
           "delete-matching-lines", do_search_string, ESsi, 2,
           "*" "s{Delete lines containing: }|search|"
-          "v")
+          "v", "")
     /* passing argument should switch to regex incremental search */
     CMD3( KEY_CTRL('r'), KEY_NONE,
-          "isearch-backward", do_isearch, ESii, -1, "vui" )
+          "isearch-backward", do_isearch, ESii, -1, "vp" , "")
     CMD3( KEY_CTRL('s'), KEY_NONE,
-          "isearch-forward", do_isearch, ESii, 1, "vui" )
+          "isearch-forward", do_isearch, ESii, 1, "vp" , "")
     CMD2( KEY_META('%'), KEY_NONE,
           "query-replace", do_query_replace, ESss,
           "*" "s{Query replace: }|search|"
-          "s{With: }|replace|")
+          "s{With: }|replace|", "")
     /* passing argument restricts replace to word matches */
     /* XXX: non standard binding */
     CMD2( KEY_META('r'), KEY_NONE,
           "replace-string", do_replace_string, ESssi,
           "*" "s{Replace String: }|search|"
           "s{With: }|replace|"
-          "ui")
+          "p", "")
 
     CMD_DEF_END,
 };

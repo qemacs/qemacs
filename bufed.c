@@ -399,35 +399,35 @@ static void bufed_mode_free(EditBuffer *b, void *state)
 /* specific bufed commands */
 static CmdDef bufed_commands[] = {
     CMD1( KEY_RET, KEY_NONE,
-          "bufed-select", bufed_select, 0)
+          "bufed-select", bufed_select, 0, "")
     /* bufed-abort should restore previous buffer in right-window */
     CMD1( KEY_CTRL('g'), KEY_CTRLX(KEY_CTRL('g')),
-          "bufed-abort", bufed_select, -1)
+          "bufed-abort", bufed_select, -1, "")
     CMD1( ' ', KEY_CTRL('t'),
-          "bufed-toggle-selection", list_toggle_selection, 1)
+          "bufed-toggle-selection", list_toggle_selection, 1, "")
     CMD1( KEY_DEL, KEY_NONE,
-          "bufed-unmark-backward", list_toggle_selection, -1)
-    //CMD1( 'u', KEY_NONE, "bufed-unmark", bufed_mark, ' ')
+          "bufed-unmark-backward", list_toggle_selection, -1, "")
+    //CMD1( 'u', KEY_NONE, "bufed-unmark", bufed_mark, ' ', "")
     CMD0( '~', KEY_NONE,
-          "bufed-clear-modified", bufed_clear_modified)
+          "bufed-clear-modified", bufed_clear_modified, "")
     CMD0( '%', KEY_NONE,
-          "bufed-toggle-read-only", bufed_toggle_read_only)
+          "bufed-toggle-read-only", bufed_toggle_read_only, "")
     CMD1( 'a', '.',
-          "bufed-toggle-all-visible", bufed_refresh, 1)
-    CMD1( 'n', KEY_CTRL('n'), /* KEY_DOWN */
-          "bufed-next-line", do_up_down, 1)
-    CMD1( 'p', KEY_CTRL('p'), /* KEY_UP */
-          "bufed-previous-line", do_up_down, -1)
+          "bufed-toggle-all-visible", bufed_refresh, 1, "")
+    CMD3( 'n', KEY_CTRL('n'), /* KEY_DOWN inherited from text-mode */
+          "bufed-next-line", do_up_down, ESi, 1, "P", "")
+    CMD3( 'p', KEY_CTRL('p'), /* KEY_UP inherited from text-mode */
+          "bufed-previous-line", do_up_down, ESi, -1, "P", "")
     CMD1( 'r', 'g',
-          "bufed-refresh", bufed_refresh, 0)
+          "bufed-refresh", bufed_refresh, 0, "")
     CMD0( 'k', 'd',
-          "bufed-kill-buffer", bufed_kill_buffer)
+          "bufed-kill-buffer", bufed_kill_buffer, "")
     CMD_DEF_END,
 };
 
 static CmdDef bufed_global_commands[] = {
     CMD2( KEY_CTRLX(KEY_CTRL('b')), KEY_NONE,
-          "list-buffers", do_list_buffers, ESi, "ui")
+          "list-buffers", do_list_buffers, ESi, "p", "")
     CMD_DEF_END,
 };
 

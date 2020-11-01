@@ -1185,7 +1185,7 @@ static void do_c_newline(EditState *s)
 }
 
 /* forward / backward preprocessor */
-static void do_c_forward_conditional(EditState *s, int dir)
+static void c_forward_conditional(EditState *s, int dir)
 {
     unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
@@ -1243,6 +1243,14 @@ static void do_c_forward_conditional(EditState *s, int dir)
         }
     }
     s->offset = offset;
+}
+
+static void do_c_forward_conditional(EditState *s, int n)
+{
+    int dir = n < 0 ? -1 : 1;
+    for (; n != 0; n -= dir) {
+        c_forward_conditional(s, dir);
+    }
 }
 
 static void do_c_list_conditionals(EditState *s)
@@ -1305,18 +1313,18 @@ static void do_c_list_conditionals(EditState *s)
 /* C mode specific commands */
 static CmdDef c_commands[] = {
     CMD2( KEY_CTRL('i'), KEY_NONE,
-          "c-indent-command", do_c_indent, ES, "*")
+          "c-indent-command", do_c_indent, ES, "*", "")
             /* should map to KEY_META + KEY_CTRL_LEFT ? */
     CMD3( KEY_META('['), KEY_NONE,
-          "c-backward-conditional", do_c_forward_conditional, ESi, -1, "v")
+          "c-backward-conditional", do_c_forward_conditional, ESi, -1, "P", "")
     CMD3( KEY_META(']'), KEY_NONE,
-          "c-forward-conditional", do_c_forward_conditional, ESi, 1, "v")
-    CMD2( KEY_META('i'), KEY_NONE,
-          "c-list-conditionals", do_c_list_conditionals, ES, "")
+          "c-forward-conditional", do_c_forward_conditional, ESi, 1, "P", "")
+    CMD0( KEY_META('i'), KEY_NONE,
+          "c-list-conditionals", do_c_list_conditionals, "")
     CMD2( '{', '}',
-          "c-electric-key", do_c_electric, ESi, "*ki")
+          "c-electric-key", do_c_electric, ESi, "*k", "")
     CMD2( KEY_RET, KEY_NONE,
-          "c-newline", do_c_newline, ES, "*")
+          "c-newline", do_c_newline, ES, "*", "")
     CMD_DEF_END,
 };
 

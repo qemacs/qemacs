@@ -138,9 +138,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
     line_num = ds->line_num;
     /* Should parse whole config file in a single read, or load it via
      * a buffer */
-    for (;;) {
-        if (data_gets(ds, line, sizeof(line)) == NULL)
-            break;
+    while (data_gets(ds, line, sizeof(line))) {
         line_num++;
         qs->ec.filename = ds->filename;
         qs->ec.function = NULL;
@@ -272,6 +270,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 args[i].s = s;
                 continue;
             case CMD_ARG_INTVAL:
+            case CMD_ARG_MUL_ARGVAL | CMD_ARG_INT:
                 args[i].n = (int)(intptr_t)d->val;
                 continue;
             case CMD_ARG_STRINGVAL:
@@ -428,15 +427,16 @@ static CmdDef parser_commands[] = {
 
     CMD2( KEY_META(':'), KEY_NONE,
           "eval-expression", do_eval_expression, ESsi,
-          "s{Eval: }|expression|ui")
+          "s{Eval: }|expression|"
+          "p", "")
     /* XXX: should take region as argument, implicit from keyboard */
     CMD0( KEY_NONE, KEY_NONE,
-          "eval-region", do_eval_region)
+          "eval-region", do_eval_region, "")
     CMD0( KEY_NONE, KEY_NONE,
-          "eval-buffer", do_eval_buffer)
+          "eval-buffer", do_eval_buffer, "")
 #ifndef CONFIG_TINY
     CMD1( KEY_NONE, KEY_NONE,
-          "save-session", do_save_session, 1)
+          "save-session", do_save_session, 1, "")
 #endif
     CMD_DEF_END,
 };
