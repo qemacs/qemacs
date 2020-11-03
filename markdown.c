@@ -162,7 +162,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     if (colstate & IN_MKD_BLOCK) {
         int lang = (colstate & IN_MKD_BLOCK) >> MKD_LANG_SHIFT;
 
-        /* Should count number of ~ to detect end of block */
+        /* XXX: closing fence should match opening fence, same character and number */
         if (ustrstart(str + j, "~~~", NULL)
         ||  ustrstart(str + j, "```", NULL)
         ||  (indent < 4 && mkd_lang_char[lang] == ':')) {
@@ -243,19 +243,22 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     if (ustrstart(str + j, "~~~", NULL)
     ||  ustrstart(str + j, "```", NULL)
     ||  ustrstart(str + j, ":::", NULL)) {
-        /* verbatim block */
+        /* opening fence: verbatim block */
+        /* XXX: should count the number of ~ or ` to match a closing fence */
         char lang_name[16];
         int lang = syn->colorize_flags, len;  // was MKD_LANG_MAX
 
         colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG_STATE);
         for (i = j + 3; qe_isblank(str[i]); i++)
             continue;
+        /* extract info-string */
         for (len = 0; i < n && !qe_isblank(str[i]); i++) {
             if (len < countof(lang_name) - 1)
                 lang_name[len++] = str[i];
         }
         lang_name[len] = '\0';
         if (len) {
+            /* XXX: unrecognised info-string should select text-mode */
             lang = mkd_add_lang(lang_name, str[j]);
         }
         colstate |= lang << MKD_LANG_SHIFT;
