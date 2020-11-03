@@ -76,6 +76,7 @@ enum {
     CLANG_GROOVY,
     CLANG_VIRGIL,
     CLANG_V,
+    CLANG_PROTOBUF,
     CLANG_FLAVOR = 0x3F,
 };
 
@@ -3298,9 +3299,46 @@ static ModeDef v_mode = {
     .name = "V",
     .extensions = "v",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_GO | CLANG_PREPROC | CLANG_CAP_TYPE,
+    .colorize_flags = CLANG_V | CLANG_PREPROC | CLANG_CAP_TYPE,
     .keywords = v_keywords,
     .types = v_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+/*---------------- Google Protocol Buffers ----------------*/
+
+// strings enclosed in '' or "", utf-8 encoded
+
+static const char protobuf_keywords[] = {
+    /* keywords */
+    "required|optional|repeated|package|import|default|"
+    "message|enum|service|extensions|reserved|extend|rpc|"
+    "option|returns|group|to|max|oneof|"
+
+    /* builtins */
+
+    /* constants */
+    "true|false|"
+};
+
+static const char protobuf_types[] = {
+    "double|float|int32|int64|uint32|uint64|sint32|"
+    "sint64|fixed32|fixed64|sfixed32|sfixed64|bool|"
+    "string|bytes|"
+};
+
+/* Go identifiers start with a Unicode letter or _ */
+
+static ModeDef protobuf_mode = {
+    .name = "protobuf",
+    .desc = "Major mode for editing Protocol Buffers description language",
+    .extensions = "proto",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_PROTOBUF | CLANG_CAP_TYPE,
+    .keywords = protobuf_keywords,
+    .types = protobuf_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
@@ -3377,6 +3415,7 @@ static int c_init(void)
     qe_register_mode(&jack_mode, MODEF_SYNTAX);
     qe_register_mode(&smac_mode, MODEF_SYNTAX);
     qe_register_mode(&v_mode, MODEF_SYNTAX);
+    qe_register_mode(&protobuf_mode, MODEF_SYNTAX);
     rust_init();
     swift_init();
     icon_init();

@@ -2595,6 +2595,7 @@ enum {
 enum {  // Python flavors
     PYTHON_PYTHON = 0,
     PYTHON_RAPYDSCRIPT,
+    PYTHON_BAZEL,
 };
 
 static void python_colorize_line(QEColorizeContext *cp,
@@ -2859,10 +2860,41 @@ static ModeDef rapydscript_mode = {
     .colorize_flags = PYTHON_RAPYDSCRIPT,
 };
 
+static int bazel_mode_probe(ModeDef *mode, ModeProbeData *p)
+{
+    /* check file name or extension */
+    if (match_extension(p->filename, mode->extensions)
+    ||  strstart(p->filename, "WORKSPACE", NULL))
+        return 70;
+
+    return 1;
+}
+
+static int bazel_mode_init(EditState *s, EditBuffer *b, int flags)
+{
+    if (s) {
+        /* XXX: should use the default values from mode variables */
+        s->indent_tabs_mode = 0;
+        s->indent_size = 2;
+    }
+    return 0;
+}
+
+static ModeDef bazel_mode = {
+    .name = "Bazel",
+    .extensions = "bzl|bazel",
+    .keywords = python_keywords,
+    .mode_probe = bazel_mode_probe,
+    .mode_init = bazel_mode_init,
+    .colorize_func = python_colorize_line,
+    .colorize_flags = PYTHON_BAZEL,
+};
+
 static int python_init(void)
 {
     qe_register_mode(&python_mode, MODEF_SYNTAX);
     qe_register_mode(&rapydscript_mode, MODEF_SYNTAX);
+    qe_register_mode(&bazel_mode, MODEF_SYNTAX);
 
     return 0;
 }

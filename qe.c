@@ -99,7 +99,8 @@ ModeDef *qe_find_mode(const char *name, int flags)
     for (m = qs->first_mode; m; m = m->next) {
         if ((m->flags & flags) == flags) {
             if ((m->name && !strcasecmp(m->name, name))
-            ||  (m->alt_name && !strcasecmp(m->alt_name, name)))
+            ||  (m->alt_name && !strcasecmp(m->alt_name, name))
+            ||  strfind(m->extensions, name))
                 break;
         }
     }

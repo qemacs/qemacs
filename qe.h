@@ -1521,6 +1521,7 @@ struct QEModeData {
 struct ModeDef {
     const char *name;           /* pretty name for the mode */
     const char *alt_name;       /* alternate name, for the mode setting cmd */
+    const char *desc;           /* description of the mode */
     const char *extensions;
     const char *shell_handlers;
     const char *keywords;

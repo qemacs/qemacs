@@ -1,11 +1,9 @@
-Quick Emacs (QEmacs)
-===============================
+# Quick Emacs (QEmacs)
 
 Welcome to QEmacs! A small but powerful UNIX editor with many features
 that even big editors lack.
 
-Quick Description
-----------------
+## Quick Description
 
 QEmacs is a small text editor targetted at embedded systems or debugging.
 Although it is very small, it has some very interesting features that
@@ -51,8 +49,7 @@ on terminals, which is handy when browing files over an ssh terminal connection.
 (QEmacs use the public domain `stb_image` package for image conversions.
 Source: https://github.com/nothings/stb/blob/master/stb_image.h )
 
-Building QEmacs
-------------------
+## Building QEmacs
 
 * Launch the configure tool `./configure`. You can list the
  possible options by typing `./configure --help`.
@@ -61,26 +58,22 @@ Building QEmacs
 
 * Type `make install` as root to install it in /usr/local.
 
-QEmacs Documentation
-------------------
+## QEmacs Documentation
 
 Read the file [qe-doc.html](qe-doc.html).
 
-Licensing
-------------------
+## Licensing
 
 QEmacs is released under the GNU Lesser General Public License
 (read the accompagning [COPYING](COPYING) file).
 
 QEmacs is not a GNU project, it does not use code from GNU Emacs.
 
-Contributing to QEmacs
--------------------------
+## Contributing to QEmacs
 
 Please contact the qemacs-devel mailing list.
 
-Authors
--------
+## Authors
 
 QEmacs was started in 2000. The initial version was developped by
 Fabrice Bellard and Charlie Gordon, who since then, has been maintaining
