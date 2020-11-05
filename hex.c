@@ -137,8 +137,8 @@ static void do_toggle_hex(EditState *s)
     s->hex_mode = !s->hex_mode;
 }
 
-/* specific hex commands */
-static CmdDef hex_commands[] = {
+/* common binary and hex commands */
+static CmdDef binary_commands[] = {
     CMD1( KEY_CTRL_LEFT, KEY_NONE,
           "decrease-width", do_increase_width, -1, "")
     CMD1( KEY_CTRL_RIGHT, KEY_NONE,
@@ -150,8 +150,12 @@ static CmdDef hex_commands[] = {
           "goto-byte", do_goto, ESsi, 'b',
           "s{Goto byte: }"
           "v", "")
-    /* XXX: bind to TAB and S-TAB */
-    CMD0( KEY_NONE, KEY_NONE,
+    CMD_DEF_END,
+};
+
+/* specific hex commands and bindings */
+static CmdDef hex_commands[] = {
+    CMD0( KEY_TAB, KEY_SHIFT_TAB,
           "toggle-hex", do_toggle_hex, "")
     CMD_DEF_END,
 };
@@ -330,6 +334,7 @@ static ModeDef binary_mode = {
     .move_eol = hex_move_eol,
     .move_bof = text_move_bof,
     .move_eof = text_move_eof,
+    .move_word_left_right = text_move_word_left_right,
     .scroll_up_down = text_scroll_up_down,
     .mouse_goto = text_mouse_goto,
     .write_char = text_write_char,
@@ -348,10 +353,12 @@ static ModeDef hex_mode = {
     .move_eol = hex_move_eol,
     .move_bof = text_move_bof,
     .move_eof = text_move_eof,
+    .move_word_left_right = text_move_word_left_right,
     .scroll_up_down = text_scroll_up_down,
     .mouse_goto = text_mouse_goto,
     .write_char = hex_write_char,
     .get_mode_line = hex_mode_line,
+    .fallback = &binary_mode,
 };
 
 static int hex_init(void)
@@ -361,12 +368,8 @@ static int hex_init(void)
     qe_register_mode(&hex_mode, MODEF_VIEW);
 
     /* commands and default keys */
+    qe_register_cmd_table(binary_commands, &binary_mode);
     qe_register_cmd_table(hex_commands, &hex_mode);
-    qe_register_cmd_table(hex_commands, &binary_mode);
-
-    /* additional mode specific keys */
-    qe_register_binding(KEY_TAB, "toggle-hex", &hex_mode);
-    qe_register_binding(KEY_SHIFT_TAB, "toggle-hex", &hex_mode);
 
     return 0;
 }

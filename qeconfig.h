@@ -69,9 +69,9 @@ static CmdDef basic_commands[] = {
     /* Moving around */
 
     CMD3( KEY_CTRL('p'), KEY_UP,
-          "previous-line", do_up_down, ESi, -1, "P", "")
+          "previous-line", do_up_down, ESi, -1, "P", "Move to previous line")
     CMD3( KEY_CTRL('n'), KEY_DOWN,
-          "next-line", do_up_down, ESi, +1, "P", "")
+          "next-line", do_up_down, ESi, +1, "P", "Move to next line")
     CMD3( KEY_CTRL('b'), KEY_LEFT,
           "backward-char", do_left_right, ESi, -1, "P", "")
     CMD3( KEY_CTRL('f'), KEY_RIGHT,

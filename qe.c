@@ -143,6 +143,7 @@ void qe_register_mode(ModeDef *m, int flags)
 
     if (m->flags & MODEF_SYNTAX) {
         /* default to text handling */
+        /* should follow the fallback chain */
         if (!m->display_line)
             m->display_line = text_display_line;
         if (!m->backward_offset)

@@ -1160,6 +1160,7 @@ struct EditBuffer {
 
     OWNED EditBuffer *next; /* next editbuffer in qe_state buffer list */
 
+    time_t mtime;                       /* buffer last modification time */
     int st_mode;                        /* unix file mode */
     const char name[MAX_BUFFERNAME_SIZE];     /* buffer name */
     const char filename[MAX_FILENAME_SIZE];   /* file name */

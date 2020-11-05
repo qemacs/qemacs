@@ -163,6 +163,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         int lang = (colstate & IN_MKD_BLOCK) >> MKD_LANG_SHIFT;
 
         /* XXX: closing fence should match opening fence, same character and number */
+        /* XXX: closing fence cannot have info-string */
         if (ustrstart(str + j, "~~~", NULL)
         ||  ustrstart(str + j, "```", NULL)
         ||  (indent < 4 && mkd_lang_char[lang] == ':')) {

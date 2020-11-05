@@ -12,7 +12,6 @@
 * files: reload modified file upon change if untouched since load
 * improve **README.md**
 * move documentation to markdown
-* move this file to markdown
 * clean up ancillary files
 * move language files to lang/ directory
 
@@ -38,7 +37,7 @@
 * display: default `display-width` of 0 is automatic, other values are shared between binary and hex modes
 * display: display bug on **~/comp/projects/fractal/fractint/ORGFORM/BAILOUT.FRM** (double `^M`)
 * display: `hex-mode` and `binary-mode` should have an initial skip value to align the display on any boundary
-* display: hex-mode should optionally display chunks of 2, 4 or 8 bytes in big or little endian order
+* display: `hex-mode` should optionally display chunks of 2, 4 or 8 bytes in big or little endian order
 * display: minibuffer and popup windows should be in a separate lists
 * display: optimize display for very large `display-width` in binary and hex modes
 * display: save `display-width` in binary and hex modes upon window change
@@ -48,17 +47,18 @@
 * extra: `grep`, `grep-buffer,` `grep-sources,` `grep-tree`...
 * files: actually load file in `find-file-noselect`
 * files: fix `SPC` / `TAB` distinct behaviors on **~/comp/project/gnachman/**
-* files: ignore `.DS_Store` in completion
+* files: ignore **.DS_Store** in completion
 * files: should update symbolic links times when saving files
 * markdown: recognise `~~~ {.c}` language tags
 * modes: `next-mode` should include buffer `default_mode` in list
-* preview: add auto skip feature at top and bottom of file to skip to the previous and/or next file in the dired window
+* preview: add auto skip feature at top and bottom of file to skip to the previous and/or next file in the preview mode
 * shell: `C-c C-c` should abort make process
 * shell: support ':' as alternate escape sequence argument separator
 * shell: use target window for man and similar commands
 * tags: remove tags for modified line
 * undo: undo some cursor movements
 * xml: merge xml and htmlsrc modes, add submodes for plist and other config files
+* basic: `ESC ESC ESC` should abort mode
 
 ## Priority 0
 
@@ -99,8 +99,8 @@
 * basic: optional 64-bit offsets on 64-bit systems, use typedef for buffer offsets
 * basic: fix behaviour on overlong lines
 * basic: fix offset when exiting `s->hex_mode`
-* charset: detect bad encoding and use errno to tell caller
-* charset: use rune and u8 types
+* charset: detect bad encoding and use `errno` to tell caller
+* charset: use `rune` and `u8` types
 * charset: auto/mixed eol mode
 * charset: display `^L` as horizontal line and consider as linebreak character
 * charset: `\u200c` -> zero width
@@ -463,23 +463,18 @@ insert_window_left()  deletes some left-most windows
 * `set-gosmacs-bindings`
 * wikipedia mode
 * `info-mode`: unix info mode
-
 * improve `latex-mode`
-
   * mode for tek style sheets
   * mode for texi intermediary files
   * latex-mode: LaTeX documents.
   * bibtex-mode
   * tex-mode: TeX or LaTeX documents.
-
 * vim mode.
 * minor modes with key override such as "preview" mode
 * merge `hex-mode` and `binary-mode`
 * mode for undo buffers
 * `visual-diff-mode`: Use color-coding to compare two buffers.
-
 * improve existing language modes:
-
   * `ada-mode`
   * `asm-mode`: handle various assembly styles
   * `calc-mode`: fix syntax, disable C++ comments
@@ -512,7 +507,6 @@ insert_window_left()  deletes some left-most windows
   * `sh-mode`: shell script files
   * `sql-mode`
   * `vbasic-mode`: more restrictive matcher because .cls files may be latex
-
 * missing languages:
   * `asp-mode`:
   * `automake-mode`:
@@ -586,7 +580,6 @@ insert_window_left()  deletes some left-most windows
   * `verilog-mode`
   * `vhdl-mode`: VHDL files.
   * `xslt-mode`
-
 * syntax: look at qmake, cmake, scons, ant, maven...
 * syntax: look at typescript, bitC
 
@@ -604,10 +597,8 @@ insert_window_left()  deletes some left-most windows
 * completion with fuzzy matching
 * find-file: gist:snippet
 * new flavor for GoogleClosureCompiler
-
 * use Unicode file hierarchy for code page files
 * handle or remove extra code page files:
-
   APL-ISO-IR-68.TXT GSM0338.TXT SGML.TXT
   CP1006.TXT CP1253.TXT CP1254.TXT CP1255.TXT CP1258.TXT
   CP775.TXT CP855.TXT CP856.TXT CP857.TXT CP860.TXT CP861.TXT
@@ -618,13 +609,11 @@ insert_window_left()  deletes some left-most windows
   MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT
   cpdata.txt
   koi8_ru.cp
-
 * emacs-22 bindings:
   * ``C-x ` `` for `next-error`
   * `M-g M-g` `goto-line` (with prefix argument)
   * `M-g M-p` `previous-error`
   * `M-g M-n` `next-error`
-
 * create tags in other languages:
   * **ats.c**:201:                        `style = ATS_STYLE_FUNCTION;`
   * **elm.c**:233:                    `style = ELM_STYLE_FUNCTION;`
@@ -655,9 +644,7 @@ insert_window_left()  deletes some left-most windows
   * **rust.c**:249:                    `style = RUST_STYLE_FUNCTION;`
   * **swift.c**:284:                    `style = C_STYLE_FUNCTION;`
   * **virgil.c**:426:                    `style = VIRGIL_STYLE_FUNCTION;`
-
 * Missing commands:
-
   * `find-file-existing`
   * `find-other-frame` on `C-x 5 f`, `C-x 5 C-f`
   * `find-other-window` on `C-x 4 f`, `C-x 4 C-f`
