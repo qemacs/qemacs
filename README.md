@@ -68,7 +68,7 @@ QEmacs is released under the GNU Lesser General Public License
 
 ## Contributing to QEmacs
 
-Please contact the qemacs-devel mailing list.
+Please contact the [qemacs-devel](https://lists.nongnu.org/mailman/listinfo/qemacs-devel) mailing list.
 
 ## Authors
 
