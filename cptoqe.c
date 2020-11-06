@@ -2,7 +2,7 @@
  * Convert Unicode 8-bit code page files to QEmacs format
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2007-2017 Charlie Gordon.
+ * Copyright (c) 2007-2020 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -30,8 +30,8 @@ static char module_init[4096];
 static char *module_init_p = module_init;
 
 #define add_init(s)  (module_init_p += snprintf(module_init_p, \
-                     module_init + sizeof(module_init) - module_init_p, \
-                     "%s", s))
+                      module_init + sizeof(module_init) - module_init_p, \
+                      "%s", s))
 
 static inline char *skipspaces(char *p) {
     while (isspace((unsigned char)*p))
@@ -50,7 +50,7 @@ static char *getline(char *buf, int buf_size, FILE *f, int strip_comments)
             return NULL;
         len = strlen(buf);
         if (len > 0 && buf[len - 1] == '\n') {
-            buf[len - 1] = '\0';
+            buf[--len] = '\0';
         }
         p = skipspaces(buf);
         if (*p == 26) {
@@ -64,7 +64,7 @@ static char *getline(char *buf, int buf_size, FILE *f, int strip_comments)
     }
 }
 
-static void handle_cp(FILE *f0, const char *name, const char *fname)
+static void handle_cp(FILE *f0, const char *name, const char *fname, int lineno)
 {
     char line[1024];
     char *p, *q;
@@ -78,7 +78,10 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
     int eol_char = 10;
     int base;
     FILE *f = f0;
+    FILE *f1;
+    int saveline = lineno;
     const char *filename = fname;
+    const char *sourcename = fname;
 
     /* name_id is name with - changed into _ */
     pstrcpy(name_id, sizeof(name_id), name);
@@ -97,6 +100,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
 
     nb = 0;
     for (;;) {
+        lineno++;
         if (!(p = getline(line, sizeof(line), f, 0))
         ||  *p == '['
         ||  !strcasecmp(p, "# compatibility")) {
@@ -105,21 +109,29 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
             fclose(f);
             f = f0;
             filename = fname;
+            lineno = saveline;
             continue;
         }
         if (*p == '\0' || p[0] == '#')
             continue;
         if (!memcmp(p, "include ", 8)) {
+            if (filename != fname) {
+                fprintf(stderr, "%s:%d: cannot include recursively %s\n",
+                        filename, lineno, includename);
+                continue;
+            }
             pstrcpy(includename, sizeof(includename), filename);
             base = get_basename_offset(includename);
             pstrcpy(includename + base, sizeof(includename) - base,
                     skipspaces(p + 8));
-            filename = includename;
-            f = fopen(includename, "r");
-            if (f == NULL) {
-                fprintf(stderr, "%s: cannot open %s\n", name, includename);
-                f = f0;
-                filename = fname;
+            f1 = fopen(includename, "r");
+            if (f1 == NULL) {
+                fprintf(stderr, "%s:%d: cannot open %s\n", name, lineno, includename);
+            } else {
+                f = f1;
+                sourcename = filename = includename;
+                saveline = lineno;
+                lineno = 0;
             }
             continue;
         }
@@ -139,7 +151,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
                 continue;
 
             if (!isdigit((unsigned char)*p)) {
-                fprintf(stderr, "%s: ignoring line: %s\n", filename, p);
+                fprintf(stderr, "%s:%d: ignoring line: %s\n", filename, lineno, p);
                 continue;
             }
         }
@@ -156,7 +168,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
         }
         c2 = strtol(p, (char **)&p, 16);
         if (c1 >= 256) {
-            fprintf(stderr, "%s: ERROR %d %d\n", filename, c1, c2);
+            fprintf(stderr, "%s:%d: ERROR %d %d\n", filename, lineno, c1, c2);
             continue;
         }
         table[c1] = c2;
@@ -168,8 +180,8 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
             /* EBCDIC file */
             eol_char = 0x25;
         } else {
-            fprintf(stderr, "%s: warning: newline is not preserved\n",
-                    filename);
+            fprintf(stderr, "%s:%d: warning: newline is not preserved\n",
+                    filename, lineno);
         }
     }
 
@@ -191,10 +203,10 @@ static void handle_cp(FILE *f0, const char *name, const char *fname)
            " *     name: %s\n"
            " *       id: %s\n"
            " */\n\n",
-           filename, iso_name, name, name_id);
+           sourcename, iso_name, name, name_id);
 
     if (max_code != -1) {
-        printf("static unsigned short const table_%s[%d] = {\n",
+        printf("static const unsigned short table_%s[%d] = {\n",
                name_id, max_code - min_code + 1);
         j = 0;
         for (i = min_code; i <= max_code; i++) {
@@ -272,17 +284,20 @@ static int namecmp(const char *p1, const char *p2, size_t len)
     return 0;
 }
 
-static FILE *open_index(const char *indexname, const char *name)
+static FILE *open_index(const char *indexname, const char *name, int *linep)
 {
     char line[1024];
     FILE *f;
     int len = strlen(name);
+    int lineno = 0;
 
     f = fopen(indexname, "r");
     if (f != NULL) {
         while (getline(line, sizeof(line), f, 1)) {
+            lineno++;
             if (*line == '[' && line[1 + len] == ']'
             &&  !namecmp(line + 1, name, len)) {
+                *linep = lineno;
                 return f;
             }
         }
@@ -293,7 +308,7 @@ static FILE *open_index(const char *indexname, const char *name)
 
 int main(int argc, char **argv)
 {
-    int i;
+    int i, lineno;
     const char *filename;
     const char *indexname = NULL;
     char name[256], *p;
@@ -348,17 +363,17 @@ int main(int argc, char **argv)
                 *p = tolower((unsigned char)*p);
         }
 
-        f = open_index(indexname, name);
-        if (!f) {
+        f = open_index(indexname, name, &lineno);
+        if (f) {
+            handle_cp(f, name, indexname, lineno);
+        } else {
             f = fopen(filename, "r");
             if (!f) {
                 perror(filename);
                 exit(1);
             }
+            handle_cp(f, name, filename, 0);
         }
-
-        handle_cp(f, name, filename);
-
         fclose(f);
     }
 

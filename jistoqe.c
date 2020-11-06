@@ -100,7 +100,7 @@ static void handle_jis(FILE *f, const char *name, const char *filename)
         table[b1 * 94 + b2] = c2;
         nb++;
     }
-    printf("/* max row = %d. The following rows are excluded:\n   ", b1_max);
+    printf("\n/* max row = %d. The following rows are excluded:\n   ", b1_max);
     n = 0;
     for (i = 0; i <= b1_max; i++) {
         if (table_b2_max[i] == 0) {
@@ -127,7 +127,7 @@ static void handle_jis(FILE *f, const char *name, const char *filename)
     }
     if ((n & 7) != 0)
         printf("\n");
-    printf("};\n\n");
+    printf("};\n");
 }
 
 int main(int argc, char **argv)
@@ -158,7 +158,6 @@ int main(int argc, char **argv)
            "\n" " * License along with this library; if not, write to the Free Software"
            "\n" " * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA"
            "\n" " */"
-           "\n" ""
            "\n");
 
     for (i = 1; i < argc; i++) {
