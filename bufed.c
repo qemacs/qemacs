@@ -119,7 +119,7 @@ static void build_bufed_list(BufedState *bs, EditState *s)
     QEmacsState *qs = s->qe_state;
     EditBuffer *b, *b1;
     StringItem *item;
-    int i;
+    int i, line, topline, col, vpos;
 
     free_strings(&bs->items);
     for (b1 = qs->first_buffer; b1 != NULL; b1 = b1->next) {
@@ -128,7 +128,6 @@ static void build_bufed_list(BufedState *bs, EditState *s)
             item->opaque = b1;
         }
     }
-    bs->last_index = -1;
     bs->sort_mode = bufed_sort_order;
 
     if (bufed_sort_order) {
@@ -138,8 +137,16 @@ static void build_bufed_list(BufedState *bs, EditState *s)
 
     /* build buffer */
     b = s->b;
+    vpos = -1;
+    if (b->total_size > 0) {
+        /* try and preserve current line in window */
+        eb_get_pos(b, &line, &col, s->offset);
+        eb_get_pos(b, &topline, &col, s->offset_top);
+        vpos = line - topline;
+    }
     eb_clear(b);
 
+    line = 0;
     for (i = 0; i < bs->items.nb_items; i++) {
         char flags[4];
         char *flagp = flags;
@@ -149,7 +156,9 @@ static void build_bufed_list(BufedState *bs, EditState *s)
         b1 = check_buffer((EditBuffer**)&item->opaque);
         style0 = (b1->flags & BF_SYSTEM) ? BUFED_STYLE_SYSTEM : 0;
 
-        if (b1 == bs->cur_buffer) {
+        if ((bs->last_index == -1 && b1 == bs->cur_buffer)
+        ||  bs->last_index >= i) {
+            line = i;
             s->offset = b->total_size;
         }
         if (b1) {
@@ -223,8 +232,13 @@ static void build_bufed_list(BufedState *bs, EditState *s)
         }
         eb_putc(b, '\n');
     }
+    bs->last_index = -1;
     b->modified = 0;
     b->flags |= BF_READONLY;
+    if (vpos >= 0 && line > vpos) {
+        /* scroll window contents to preserve current line position */
+        s->offset_top = eb_goto_pos(b, line - vpos, 0);
+    }
 }
 
 static EditBuffer *bufed_get_buffer(BufedState *bs, EditState *s)
@@ -282,7 +296,7 @@ static void bufed_select(EditState *s, int temp)
    use current item */
 static void string_selection_iterate(StringArray *cs,
                                      int current_index,
-                                     void (*func_item)(void *, StringItem *),
+                                     void (*func_item)(void *, StringItem *, int),
                                      void *opaque)
 {
     StringItem *item;
@@ -292,7 +306,7 @@ static void string_selection_iterate(StringArray *cs,
     for (i = 0; i < cs->nb_items; i++) {
         item = cs->items[i];
         if (item->selected) {
-            func_item(opaque, item);
+            func_item(opaque, item, i);
             count++;
         }
     }
@@ -301,19 +315,26 @@ static void string_selection_iterate(StringArray *cs,
     if (count == 0 &&
         current_index >=0 && current_index < cs->nb_items) {
         item = cs->items[current_index];
-        func_item(opaque, item);
+        func_item(opaque, item, current_index);
     }
 }
 
-static void bufed_kill_item(void *opaque, StringItem *item)
+static void bufed_kill_item(void *opaque, StringItem *item, int index)
 {
+    BufedState *bs;
     EditState *s = opaque;
     EditBuffer *b = check_buffer((EditBuffer**)&item->opaque);
+
+    if (!(bs = bufed_get_state(s, 1)))
+        return;
 
     /* XXX: avoid killing buffer list by mistake */
     if (b && b != s->b) {
         /* Give the user a chance to confirm if buffer is modified */
         do_kill_buffer(s, item->str, 0);
+        item->opaque = NULL;
+        if (bs->cur_buffer == b)
+            bs->cur_buffer = NULL;
     }
 }
 
@@ -327,6 +348,7 @@ static void bufed_kill_buffer(EditState *s)
     /* XXX: should just kill current line */
     string_selection_iterate(&bs->items, list_get_pos(s),
                              bufed_kill_item, s);
+    bufed_select(s, 1);
     build_bufed_list(bs, s);
 }
 
@@ -440,6 +462,7 @@ static void bufed_set_sort(EditState *s, int order)
     else
         bufed_sort_order = order;
 
+    bs->last_index = -1;
     build_bufed_list(bs, s);
 }
 
