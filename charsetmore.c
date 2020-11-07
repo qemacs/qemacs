@@ -1281,7 +1281,7 @@ static const unsigned short table_koi8_r[128] = {
 
 static struct QECharset charset_koi8_r = {
     "koi8-r",
-    "",
+    "RFC1489",
     NULL,
     decode_8bit_init,
     decode_8bit,
@@ -1301,8 +1301,8 @@ static struct QECharset charset_koi8_r = {
 
 
 /*----------------------------------------------------------------
- * filename: cp/koi8_u.cp
- * iso_name: KOI8-U
+ * filename: cp/KOI8-U.TXT
+ * iso_name: KOI8-U (Ukrainian, Byelorussian and Bulgarian)
  *     name: koi8-u
  *       id: koi8_u
  */
@@ -1328,7 +1328,7 @@ static const unsigned short table_koi8_u[128] = {
 
 static struct QECharset charset_koi8_u = {
     "koi8-u",
-    "",
+    "RFC2319|cp878|878",
     NULL,
     decode_8bit_init,
     decode_8bit,

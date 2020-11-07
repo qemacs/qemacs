@@ -607,7 +607,6 @@ insert_window_left()  deletes some left-most windows
   euc-jis-2004-std.txt iso-2022-jp-2004-std.txt jisx0213-2004-std.txt
   sjis-0213-2004-std.txt
   MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT
-  cpdata.txt
   koi8_ru.cp
 * emacs-22 bindings:
   * ``C-x ` `` for `next-error`
@@ -615,35 +614,35 @@ insert_window_left()  deletes some left-most windows
   * `M-g M-p` `previous-error`
   * `M-g M-n` `next-error`
 * create tags in other languages:
-  * **ats.c**:201:                        `style = ATS_STYLE_FUNCTION;`
-  * **elm.c**:233:                    `style = ELM_STYLE_FUNCTION;`
-  * **extra-modes.c**:515:                    `style = VIM_STYLE_FUNCTION;`
-  * **extra-modes.c**:686:                        `style = PASCAL_STYLE_FUNCTION;`
-  * **extra-modes.c**:866:                `style = ADA_STYLE_FUNCTION;`
-  * **extra-modes.c**:1017:                `style = FORTRAN_STYLE_FUNCTION;`
-  * **extra-modes.c**:1086:                `style = INI_STYLE_FUNCTION;`
-  * **extra-modes.c**:1706:                    `SET_COLOR(str, start, i, LUA_STYLE_FUNCTION);`
-  * **extra-modes.c**:1973:                    `SET_COLOR(str, start, i, JULIA_STYLE_FUNCTION);`
-  * **extra-modes.c**:2194:                    `style = HASKELL_STYLE_FUNCTION;`
-  * **extra-modes.c**:2551:                    `style = COFFEE_STYLE_FUNCTION;`
-  * **extra-modes.c**:2793:                    `style = PYTHON_STYLE_FUNCTION;`
-  * **extra-modes.c**:3285:                    `style = RUBY_STYLE_FUNCTION;`
-  * **extra-modes.c**:3540:                `style = ERLANG_STYLE_FUNCTION;`
-  * **extra-modes.c**:3829:                    `style = ELIXIR_STYLE_FUNCTION;`
-  * **extra-modes.c**:4054:                    `style = OCAML_STYLE_FUNCTION;`
-  * **extra-modes.c**:4165:                `style = EMF_STYLE_FUNCTION;`
-  * **extra-modes.c**:4331:                    `style = AGENA_STYLE_FUNCTION;`
-  * **extra-modes.c**:4693:                        `style = SCAD_STYLE_FUNCTION;`
-  * **groovy.c**:425:                    `style = GROOVY_STYLE_FUNCTION;`
-  * **icon.c**:177:                    `style = ICON_STYLE_FUNCTION;`
-  * **jai.c**:215:                    `style = JAI_STYLE_FUNCTION;`
-  * **latex-mode.c**:94:            `SET_COLOR(str, start, i, LATEX_STYLE_FUNCTION);`
-  * **makemode.c**:253:                    `SET_COLOR(str, start, i, CMAKE_STYLE_FUNCTION);`
-  * **nim.c**:306:                    `style = NIM_STYLE_FUNCTION;`
-  * **rlang.c**:169:                    `style = R_STYLE_FUNCTION;`
-  * **rust.c**:249:                    `style = RUST_STYLE_FUNCTION;`
-  * **swift.c**:284:                    `style = C_STYLE_FUNCTION;`
-  * **virgil.c**:426:                    `style = VIRGIL_STYLE_FUNCTION;`
+  * **ats.c**:201:           `style = ATS_STYLE_FUNCTION;`
+  * **elm.c**:233:           `style = ELM_STYLE_FUNCTION;`
+  * **extra-modes.c**:515:   `style = VIM_STYLE_FUNCTION;`
+  * **extra-modes.c**:686:   `style = PASCAL_STYLE_FUNCTION;`
+  * **extra-modes.c**:866:   `style = ADA_STYLE_FUNCTION;`
+  * **extra-modes.c**:1017:  `style = FORTRAN_STYLE_FUNCTION;`
+  * **extra-modes.c**:1086:  `style = INI_STYLE_FUNCTION;`
+  * **extra-modes.c**:1706:  `SET_COLOR(str, start, i, LUA_STYLE_FUNCTION);`
+  * **extra-modes.c**:1973:  `SET_COLOR(str, start, i, JULIA_STYLE_FUNCTION);`
+  * **extra-modes.c**:2194:  `style = HASKELL_STYLE_FUNCTION;`
+  * **extra-modes.c**:2551:  `style = COFFEE_STYLE_FUNCTION;`
+  * **extra-modes.c**:2793:  `style = PYTHON_STYLE_FUNCTION;`
+  * **extra-modes.c**:3285:  `style = RUBY_STYLE_FUNCTION;`
+  * **extra-modes.c**:3540:  `style = ERLANG_STYLE_FUNCTION;`
+  * **extra-modes.c**:3829:  `style = ELIXIR_STYLE_FUNCTION;`
+  * **extra-modes.c**:4054:  `style = OCAML_STYLE_FUNCTION;`
+  * **extra-modes.c**:4165:  `style = EMF_STYLE_FUNCTION;`
+  * **extra-modes.c**:4331:  `style = AGENA_STYLE_FUNCTION;`
+  * **extra-modes.c**:4693:  `style = SCAD_STYLE_FUNCTION;`
+  * **groovy.c**:425:        `style = GROOVY_STYLE_FUNCTION;`
+  * **icon.c**:177:          `style = ICON_STYLE_FUNCTION;`
+  * **jai.c**:215:           `style = JAI_STYLE_FUNCTION;`
+  * **latex-mode.c**:94:     `SET_COLOR(str, start, i, LATEX_STYLE_FUNCTION);`
+  * **makemode.c**:253:      `SET_COLOR(str, start, i, CMAKE_STYLE_FUNCTION);`
+  * **nim.c**:306:           `style = NIM_STYLE_FUNCTION;`
+  * **rlang.c**:169:         `style = R_STYLE_FUNCTION;`
+  * **rust.c**:249:          `style = RUST_STYLE_FUNCTION;`
+  * **swift.c**:284:         `style = C_STYLE_FUNCTION;`
+  * **virgil.c**:426:        `style = VIRGIL_STYLE_FUNCTION;`
 * Missing commands:
   * `find-file-existing`
   * `find-other-frame` on `C-x 5 f`, `C-x 5 C-f`

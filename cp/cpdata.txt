@@ -289,20 +289,20 @@ include GSM0338.TXT
 
 [koi8-r]
 KOI8-R
-"koi8-r"
+"koi8-r", "RFC1489"
 include KOI8-R.TXT
 #0x95 0x2022 # BULLET (yudit-1.6)
 0x95 0x2219 # BULLET OPERATOR (unicode 3.0)
 
+[koi8-u]
+KOI8-U (Ukrainian, Byelorussian and Bulgarian)
+"koi8-u", "RFC2319", "cp878", "878"
+include KOI8-U.TXT
+
 [koi8-ru]
-KOI8-RU
+KOI8-RU (Belarusian)
 "koi8-ru"
 include koi8_ru.cp
-
-[koi8-u]
-KOI8-U
-"koi8-u"
-include koi8_u.cp
 
 [tcvn5712]
 TCVN-5712 (Vietnamese)

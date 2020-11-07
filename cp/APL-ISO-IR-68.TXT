@@ -1,26 +1,14 @@
+# APL-ISO-IR-68.TXT
+# Date: 2020-07-17 22:58:00 GMT
+# © 2020 Unicode®, Inc.
+# For terms of use, see http://www.unicode.org/terms_of_use.html
 #
 #	Name:             ISO-IR-68 to Unicode
 #	Unicode version:  4.0
-#	Table version:    1.0.1
+#	Table version:    2.0
 #	Table format:     Format A
-#	Date:             2004 June 29
+#	Date:             2020 July 17
 #	Authors:          John Cowan <cowan@ccil.org>
-#
-#	Copyright (c) 1991-2004 Unicode, Inc.  All Rights reserved.
-#
-#	This file is provided as-is by Unicode, Inc. (The Unicode Consortium).
-#	No claims are made as to fitness for any particular purpose.  No
-#	warranties of any kind are expressed or implied.  The recipient
-#	agrees to determine applicability of information provided.  If this
-#	file has been provided on optical media by Unicode, Inc., the sole
-#	remedy for any claim will be exchange of defective media within 90
-#	days of receipt.
-#
-#	Unicode, Inc. hereby grants the right to freely use the information
-#	supplied in this file in the creation of products supporting the
-#	Unicode Standard, and to make copies of this file in any form for
-#	internal or external distribution as long as this notice remains
-#	attached.
 #
 #	General notes:
 #
@@ -29,7 +17,7 @@
 #	      interchange) characters map into Unicode.
 #
 #	Format:  Three tab-separated columns
-#		       Column #1 is the ISO-IR-68 code (in hex as XX), or
+#		 Column #1 is the ISO-IR-68 code (in hex as XX), or
 #			       sequence of three codes (in hex as XXYYZZ).
 #			       In all cases, YY = 08, or backspace.
 #		 Column #2 is the Unicode (in hex as 0xXXXX)
@@ -38,14 +26,14 @@
 #	The entries are in ISO-IR-68 order.
 #
 #	Version history
-#	      None.
+#	    2.0 version: Updated to correct swapped values of 0x28 and 0x29;
+#            updates to copyright notice and terms of use.
 #
 #	Updated versions of this file may be found in:
-#		<ftp://ftp.unicode.org/Public/MAPPINGS/>
+#		https://www.unicode.org/Public/MAPPINGS/
 #
-#       For any comments or problems, please use the Unicode
-#       web contact form at:
-#               http://www.unicode.org/unicode/reporting.html
+#   For any comments or problems contact us at:
+#       https://www.unicode.org/reporting.html
 #
 0x20	0x0020	#	SPACE
 0x21	0x00A8	#	DIAERESIS
@@ -67,10 +55,10 @@
 0x26084C	0x2344	#	APL FUNCTIONAL SYMBOL QUAD GREATER-THAN
 0x27	0x005D	#	RIGHT SQUARE BRACKET
 0x27083B	0x2337	#	APL FUNCTIONAL SYMBOL SQUISH QUAD
-0x28	0x2227	#	LOGICAL AND
+0x28	0x2228	#	LOGICAL OR
 0x28084C	0x234C	#	APL FUNCTIONAL SYMBOL QUAD DOWN CARET
 0x280854	0x2371	#	APL FUNCTIONAL SYMBOL DOWN CARET TILDE
-0x29	0x2228	#	LOGICAL OR
+0x29	0x2227	#	LOGICAL AND
 0x29084C	0x2353	#	APL FUNCTIONAL SYMBOL QUAD UP CARET
 0x290854	0x2372	#	APL FUNCTIONAL SYMBOL UP CARET TILDE
 0x2A	0x2260	#	NOT EQUAL TO

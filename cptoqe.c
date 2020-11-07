@@ -354,7 +354,12 @@ int main(int argc, char **argv)
             continue;
         }
 
-        pstrcpy(name, sizeof(name), get_basename(filename));
+        if (strstr(filename, "APPLE/")) {
+            strcpy(name, "MAC-");
+            pstrcat(name, sizeof(name), get_basename(filename));
+        } else {
+            pstrcpy(name, sizeof(name), get_basename(filename));
+        }
         strip_extension(name);
         for (p = name; *p; p++) {
             if (*p == '_')
