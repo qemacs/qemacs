@@ -2131,7 +2131,7 @@ void do_load_from_path(EditState *s, const char *filename, int bflags);
 void do_find_file_other_window(EditState *s, const char *filename, int bflags);
 void do_switch_to_buffer(EditState *s, const char *bufname);
 void do_preview_mode(EditState *s, int set);
-void do_break(EditState *s);
+void do_keyboard_quit(EditState *s);
 void do_insert_file(EditState *s, const char *filename);
 // should take argument?
 void do_save_buffer(EditState *s);
@@ -2164,7 +2164,7 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 
 int do_delete_selection(EditState *s);
 void do_char(EditState *s, int key, int argval);
-void do_combine_char(EditState *s, int accent);
+void do_combine_accent(EditState *s, int accent);
 void do_set_mode(EditState *s, const char *name);
 void text_move_left_right_visual(EditState *s, int dir);
 void text_move_word_left_right(EditState *s, int dir);
@@ -2215,7 +2215,7 @@ void do_bof(EditState *s);
 void do_eof(EditState *s);
 void do_bol(EditState *s);
 void do_eol(EditState *s);
-void do_word_right(EditState *s, int n);
+void do_word_left_right(EditState *s, int n);
 void do_mark_region(EditState *s, int mark, int offset);
 int eb_next_paragraph(EditBuffer *b, int offset);
 int eb_prev_paragraph(EditBuffer *b, int offset);
@@ -2231,7 +2231,7 @@ int cursor_func(DisplayState *ds,
                 int offset1, int offset2, int line_num,
                 int x, int y, int w, int h, int hex_mode);
 // should take argval
-void do_scroll_left_right(EditState *s, int dir);
+void do_scroll_left_right(EditState *s, int n);
 void do_scroll_up_down(EditState *s, int dir);
 void perform_scroll_up_down(EditState *s, int h);
 void do_center_cursor(EditState *s, int force);
@@ -2296,7 +2296,7 @@ void do_minibuffer_complete(EditState *s, int type);
 void do_minibuffer_complete_space(EditState *s);
 void do_minibuffer_electric(EditState *s, int key);
 void do_minibuffer_scroll_up_down(EditState *s, int dir);
-void do_minibuffer_history(EditState *s, int dir);
+void do_minibuffer_history(EditState *s, int n);
 void do_minibuffer_get_binary(EditState *s);
 void do_minibuffer_exit(EditState *s, int fabort);
 void do_popup_exit(EditState *s);

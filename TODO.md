@@ -58,7 +58,6 @@
 * tags: remove tags for modified line
 * undo: undo some cursor movements
 * xml: merge xml and htmlsrc modes, add submodes for plist and other config files
-* basic: `ESC ESC ESC` should abort mode
 
 ## Priority 0
 
@@ -609,7 +608,6 @@ insert_window_left()  deletes some left-most windows
   MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT
   koi8_ru.cp
 * emacs-22 bindings:
-  * ``C-x ` `` for `next-error`
   * `M-g M-g` `goto-line` (with prefix argument)
   * `M-g M-p` `previous-error`
   * `M-g M-n` `next-error`

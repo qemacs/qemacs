@@ -434,7 +434,7 @@ static void isearch_key(void *opaque, int ch)
         if (emacs_behaviour) {
             /* grab word at cursor */
             offset0 = s->offset;
-            do_word_right(s, 1);
+            do_word_left_right(s, 1);
             offset1 = s->offset;
             s->offset = offset0;
             isearch_grab(is, s->b, offset0, offset1);

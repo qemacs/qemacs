@@ -651,7 +651,7 @@ static void do_org_metaleft(EditState *s)
     if (org_is_header_line(s, s->offset))
         do_org_promote(s, +1);
     else
-        do_word_right(s, -1);
+        do_word_left_right(s, -1);
 }
 
 static void do_org_metaright(EditState *s)
@@ -659,7 +659,7 @@ static void do_org_metaright(EditState *s)
     if (org_is_header_line(s, s->offset))
         do_org_promote(s, -1);
     else
-        do_word_right(s, +1);
+        do_word_left_right(s, +1);
 }
 
 static void do_org_metadown(EditState *s)

@@ -30,22 +30,25 @@ static CmdDef basic_commands[] = {
 
     CMD2( KEY_DEFAULT, KEY_NONE,
           "self-insert-command", do_char, ESii,
-          "*" "kp", "")
+          "*" "kp", "Insert the character you type")
     CMD2( KEY_META('#'), KEY_NONE,
           "insert-char", do_char, ESii,
           "*"
           "n{Insert char: }|charvalue|"
-          "p", "")
+          "p", "Insert the character with a specific code")
     /* do_tab will not change read only buffer */
     CMD2( KEY_CTRL('i'), KEY_NONE,
           "tabulate", do_tab, ESi, "p", "")
     //CMD2( KEY_SPC, KEY_NONE, "space", do_space, "*p", "")
     CMD2( KEY_CTRL('q'), KEY_NONE,
-          "quoted-insert", do_quoted_insert, ESi, "*p", "")
+          "quoted-insert", do_quoted_insert, ESi, "*p",
+          "Read next input character and insert it")
     CMD2( KEY_CTRL('j'), KEY_RET,
-          "newline", do_newline, ES, "*", "")
+          "newline", do_newline, ES, "*",
+          "Insert a newline, and move to left margin of the new line")
     CMD2( KEY_CTRL('o'), KEY_NONE,
-          "open-line", do_open_line, ES, "*", "")
+          "open-line", do_open_line, ES, "*",
+          "Insert a newline and leave point before it")
 
     CMD2( KEY_INSERT, KEY_NONE,
           "overwrite-mode", do_overwrite_mode, ESi, "p", "")
@@ -55,15 +58,15 @@ static CmdDef basic_commands[] = {
 #ifdef CONFIG_UNICODE_JOIN
     /* Insert combining accent: combine with letter if possible */
     CMD3( KEY_META('`'), KEY_NONE,
-          "combine-grave-accent", do_combine_char, ESi, 0x300, "*v", "")
+          "combine-grave-accent", do_combine_accent, ESi, 0x300, "*v", "")
     CMD3( KEY_META('\''), KEY_NONE,
-          "combine-acute-accent", do_combine_char, ESi, 0x301, "*v", "")
+          "combine-acute-accent", do_combine_accent, ESi, 0x301, "*v", "")
     CMD3( KEY_META('^'), KEY_NONE,
-          "combine-circumflex-accent", do_combine_char, ESi, 0x302, "*v", "")
+          "combine-circumflex-accent", do_combine_accent, ESi, 0x302, "*v", "")
     CMD3( KEY_META('"'), KEY_NONE,
-          "combine-diaeresis", do_combine_char, ESi, 0x308, "*v", "")
+          "combine-diaeresis", do_combine_accent, ESi, 0x308, "*v", "")
     CMD3( KEY_META('~'), KEY_NONE,
-          "combine-tilde", do_combine_char, ESi, 0x303, "*v", "")
+          "combine-tilde", do_combine_accent, ESi, 0x303, "*v", "")
 #endif
 
     /* Moving around */
@@ -77,9 +80,9 @@ static CmdDef basic_commands[] = {
     CMD3( KEY_CTRL('f'), KEY_RIGHT,
           "forward-char", do_left_right, ESi, +1, "P", "")
     CMD3( KEY_META('b'), KEY_CTRL_LEFT,
-          "backward-word", do_word_right, ESi, -1, "P", "")
+          "backward-word", do_word_left_right, ESi, -1, "P", "")
     CMD3( KEY_META('f'), KEY_CTRL_RIGHT,
-          "forward-word", do_word_right, ESi, 1, "P", "")
+          "forward-word", do_word_left_right, ESi, 1, "P", "")
     CMD1( KEY_META('v'), KEY_PAGEUP,
           "scroll-down", do_scroll_up_down, -2 , "") /* u? */
     CMD1( KEY_CTRL('v'), KEY_PAGEDOWN,
@@ -214,9 +217,8 @@ static CmdDef basic_commands[] = {
     /* M-0 thru M-9 also start numeric argument */
     CMD0( KEY_CTRL('u'), KEY_META('-'),
           "numeric-argument", do_numeric_argument, "")
-    /* XXX: emacs name is keyboard-quit */
     CMD0( KEY_CTRL('g'), KEY_CTRLX(KEY_CTRL('g')),
-          "abort", do_break, "")
+          "keyboard-quit", do_keyboard_quit, "")
     CMD0( KEY_CTRLX('('), KEY_NONE,
           "start-kbd-macro", do_start_kbd_macro, "")
     CMD0( KEY_CTRLX(')'), KEY_NONE,
@@ -244,11 +246,11 @@ static CmdDef basic_commands[] = {
 
     /* should merge these functions */
     CMD0( KEY_CTRLX('o'), KEY_NONE,
-          "other-window", do_other_window, "")
+         "other-window", do_other_window, "") /* "p"? */
     CMD0( KEY_CTRLX('n'), KEY_NONE,
-          "next-window", do_other_window, "")
+          "next-window", do_other_window, "") /* "P"? */
     CMD0( KEY_CTRLX('p'), KEY_NONE,
-          "previous-window", do_previous_window, "")
+          "previous-window", do_previous_window, "") /* "P"? */
 #ifndef CONFIG_TINY
     CMD1( KEY_META(KEY_CTRL('l')), KEY_NONE,
           "center-cursor", do_center_cursor, 1, "")
@@ -260,10 +262,10 @@ static CmdDef basic_commands[] = {
           "find-window-left", do_find_window, KEY_LEFT, "")
     CMD1( KEY_CTRL('x'), KEY_RIGHT,
           "find-window-right", do_find_window, KEY_RIGHT, "")
-    CMD1( KEY_META('('), KEY_NONE,
-          "scroll-left", do_scroll_left_right, -1, "")
-    CMD1( KEY_META(')'), KEY_NONE,
-          "scroll-right", do_scroll_left_right, 1, "")
+    CMD3( KEY_META('('), KEY_NONE,
+          "scroll-left", do_scroll_left_right, ESi, -1, "P", "")
+    CMD3( KEY_META(')'), KEY_NONE,
+          "scroll-right", do_scroll_left_right, ESi, +1, "P", "")
     CMD1( KEY_NONE, KEY_NONE,
           "preview-mode", do_preview_mode, 1, "")
 #endif
@@ -388,10 +390,10 @@ static CmdDef basic_commands[] = {
           "set-auto-coding", do_set_auto_coding, 1, "")
     CMD1( KEY_NONE, KEY_NONE,
           "set-auto-mode", do_set_next_mode, 0, "")
-    CMD1( KEY_META('m'), KEY_NONE,
-          "set-next-mode", do_set_next_mode, 1, "")
-    CMD1( KEY_NONE, KEY_NONE,
-          "set-previous-mode", do_set_next_mode, -1, "")
+    CMD3( KEY_META('m'), KEY_NONE,
+          "set-next-mode", do_set_next_mode, ESi, +1, "P", "")
+    CMD3( KEY_NONE, KEY_NONE,
+          "set-previous-mode", do_set_next_mode, ESi, -1, "P", "")
 
     /* tab & indent */
     CMD2( KEY_NONE, KEY_NONE,
@@ -440,10 +442,10 @@ CmdDef minibuffer_commands[] = {
           "minibuffer-get-binary", do_minibuffer_get_binary, "")
     CMD0( ' ', KEY_NONE,
           "minibuffer-complete-space", do_minibuffer_complete_space, "")
-    CMD1( KEY_CTRL('p'), KEY_UP,
-          "minibuffer-previous-history-element", do_minibuffer_history, -1, "")
-    CMD1( KEY_CTRL('n'), KEY_DOWN,
-          "minibuffer-next-history-element", do_minibuffer_history, 1, "")
+    CMD3( KEY_CTRL('p'), KEY_UP,
+          "minibuffer-previous-history-element", do_minibuffer_history, ESi, -1, "P", "")
+    CMD3( KEY_CTRL('n'), KEY_DOWN,
+          "minibuffer-next-history-element", do_minibuffer_history, ESi, +1, "P", "")
     CMD3( '/', KEY_NONE,
           "minibuffer-electric-slash", do_minibuffer_electric, ESi, '/', "*v", "")
     CMD3( '~', KEY_NONE,

@@ -1068,7 +1068,7 @@ int compose_keys(unsigned int *keys, int *nb_keys)
     /* compose KEY_ESC as META prefix */
     keyp = keys + *nb_keys - 2;
     if (keyp[0] == KEY_ESC) {
-        if (keyp[1] <= 0xff) {
+        if (keyp[1] != KEY_ESC && keyp[1] <= 0xff) {
             keyp[0] = KEY_META(keyp[1]);
             --*nb_keys;
             return 1;

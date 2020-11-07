@@ -780,7 +780,7 @@ static void do_mkd_metaleft(EditState *s)
     if (mkd_is_header_line(s, s->offset))
         do_mkd_promote(s, +1);
     else
-        do_word_right(s, -1);
+        do_word_left_right(s, -1);
 }
 
 static void do_mkd_metaright(EditState *s)
@@ -788,7 +788,7 @@ static void do_mkd_metaright(EditState *s)
     if (mkd_is_header_line(s, s->offset))
         do_mkd_promote(s, -1);
     else
-        do_word_right(s, +1);
+        do_word_left_right(s, +1);
 }
 
 static void do_mkd_metadown(EditState *s)

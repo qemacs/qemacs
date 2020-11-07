@@ -1912,7 +1912,8 @@ static CmdDef extra_commands[] = {
           "Convert all tabs in buffer to multiple spaces, preserving columns")
     /* XXX: should take region as argument, implicit from keyboard */
     CMD2( KEY_META(KEY_CTRL('\\')), KEY_NONE,
-          "indent-region", do_indent_region, ES, "*", "")
+          "indent-region", do_indent_region, ES, "*",
+          "Indent each nonblank line in the region")
 
     CMD2( KEY_CTRLX('t'), KEY_NONE,
           "show-date-and-time", do_show_date_and_time, ESi, "p", "")

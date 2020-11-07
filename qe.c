@@ -617,7 +617,7 @@ void do_eol(EditState *s)
         s->mode->move_eol(s);
 }
 
-void do_word_right(EditState *s, int n)
+void do_word_left_right(EditState *s, int n)
 {
     int dir = n < 0 ? -1 : 1;
 
@@ -1270,7 +1270,7 @@ static int scroll_cursor_func(DisplayState *ds,
     return 0;
 }
 
-void do_scroll_left_right(EditState *s, int dir)
+void do_scroll_left_right(EditState *s, int n)
 {
     DisplayState ds1, *ds = &ds1;
     int adjust;
@@ -1280,10 +1280,10 @@ void do_scroll_left_right(EditState *s, int dir)
 
     /* compute space_width */
     display_init(ds, s, DISP_NONE, NULL, NULL);
-    adjust = dir * ds->space_width;
+    adjust = n * ds->space_width;
     display_close(ds);
 
-    if (dir > 0) {
+    if (n > 0) {
         if (s->wrap == WRAP_TRUNCATE) {
             if (s->x_disp[0] == 0) {
                 s->wrap = WRAP_LINE;
@@ -1643,7 +1643,7 @@ void do_char(EditState *s, int key, int argval)
 }
 
 #ifdef CONFIG_UNICODE_JOIN
-void do_combine_char(EditState *s, int accent)
+void do_combine_accent(EditState *s, int accent)
 {
     int offset0, len, c;
     unsigned int g[2];
@@ -1878,7 +1878,7 @@ void do_space(EditState *s, int key, int argval)
 }
 #endif
 
-void do_break(EditState *s)
+void do_keyboard_quit(EditState *s)
 {
 #ifndef CONFIG_TINY
     if (s->b->flags & BF_PREVIEW) {
@@ -2040,7 +2040,7 @@ void do_kill_word(EditState *s, int n)
     int start = s->offset;
 
     if (n != 0) {
-        do_word_right(s, n);
+        do_word_left_right(s, n);
         do_kill(s, start, s->offset, n, 0);
     }
 }
@@ -5561,7 +5561,7 @@ static void qe_key_process(int key)
 
     /* Special case for escape: we transform it as meta so
        that unix users are happy ! */
-    if (key == KEY_ESC) {
+    if (key == KEY_ESC && c->nb_keys == 1) {
         c->is_escape = 1;
         goto next;
     } else
@@ -5606,7 +5606,6 @@ static void qe_key_process(int key)
         if (!c->describe_key) {
             /* CG: should beep */;
         }
-
         out = buf_init(&outbuf, buf1, sizeof(buf1));
         buf_put_keys(out, c->keys, c->nb_keys);
         put_status(s, "No command on %s", buf1);
@@ -6537,7 +6536,7 @@ static StringArray *get_history(const char *name)
     return &p->history;
 }
 
-void do_minibuffer_history(EditState *s, int dir)
+void do_minibuffer_history(EditState *s, int n)
 {
     QEmacsState *qs = s->qe_state;
     MinibufState *mb;
@@ -6552,7 +6551,7 @@ void do_minibuffer_history(EditState *s, int dir)
     /* if completion visible, move in it */
     if (check_window(&mb->completion_popup_window)) {
         mb->completion_popup_window->force_highlight = 1;
-        do_up_down(mb->completion_popup_window, dir);
+        do_up_down(mb->completion_popup_window, n);
         return;
     }
 
@@ -6560,7 +6559,7 @@ void do_minibuffer_history(EditState *s, int dir)
     if (!hist)
         return;
 
-    index = mb->history_index + dir;
+    index = mb->history_index + n;
     if (index < 0 || index >= hist->nb_items)
         return;
 
@@ -7304,7 +7303,9 @@ void qe_set_next_mode(EditState *s, int dir, int status)
     if (dir && nb > 0) {
         for (i = 0; i < nb; i++) {
             if (s->mode == modes[i]) {
-                found = (i + nb + dir) % nb;
+                found = (i + dir) % nb;
+                if (found < 0)
+                    found += nb;
                 break;
             }
         }
@@ -9236,6 +9237,7 @@ static void qe_init(void *opaque)
     /* init basic modules */
     qe_register_mode(&text_mode, MODEF_VIEW);
     qe_register_cmd_table(basic_commands, NULL);
+    qe_mode_set_key(NULL, "ESC ESC ESC", "keyboard-quit");
     qe_register_cmd_line_options(cmd_options);
 
     qe_register_completion(&command_completion);
