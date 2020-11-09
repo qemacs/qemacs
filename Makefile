@@ -587,45 +587,6 @@ rebuild:
 TAGS: force
 	etags *.[ch]
 
-force:
-
-#
-# tar archive for distribution
-#
-FILES:= .cvsignore COPYING Changelog Makefile README TODO.org VERSION \
-        arabic.c archive.c arm.c bufed.c buffer.c cfb.c cfb.h charset.c \
-        charsetjis.c charsetjis.def charsetmore.c clang.c cobol.c config.eg \
-        configure cptoqe.c cutils.c cutils.h dired.c display.c display.h \
-        docbook.c ebnf.c extra-modes.c extras.c fbfrender.c fbfrender.h \
-        fbftoqe.c forth.c groovy.c haiku-pe2qe.sh haiku.cpp hex.c html.c \
-        html2png.c htmlsrc.c icon.c image.c indic.c input.c jistoqe.c kmap.c \
-        kmaptoqe.c latex-mode.c libfbf.c libfbf.h ligtoqe.c lisp.c list.c \
-        makemode.c markdown.c mpeg.c orgmode.c parser.c perl.c qe-doc.html \
-        qe-doc.texi qe.1 qe.c qe.h qe.tcc qeconfig.h qeend.c qemacs.spec \
-        qestyles.h qfribidi.c qfribidi.h rlang.c rust.c script.c search.c \
-        shell.c swift.c tty.c unicode_join.c unifont.lig unihex.c unix.c \
-        util.c variables.c variables.h video.c win32.c x11.c xml.c qsscript.c
-
-FILES+= ats.c cflags.mk elm.c fractal.c jai.c nim.c qemacs.rdef quirrel.c \
-        rebol.c stb.c stb_image.h tqe.c txl.c unicode_width.h virgil.c
-
-FILES+=plugins/Makefile  plugins/my_plugin.c
-
-TESTS= HELLO.txt TestPage.txt colours.txt lattrs.txt scocols.txt    \
-       test-capital-rtl test-capital-rtl.ref test-hebrew testbidi.html \
-       utf8.txt vt100.txt
-TESTS:=$(addprefix tests/,$(TESTS))
-
-# qhtml library
-FILES+=libqhtml/Makefile libqhtml/css.c libqhtml/css.h libqhtml/cssid.h \
-       libqhtml/cssparse.c libqhtml/csstoqe.c libqhtml/docbook.css      \
-       libqhtml/html.css libqhtml/htmlent.h libqhtml/xmlparse.c
-
-# keyboard maps, code pages, fonts
-FILES+=unifont.lig ligatures kmaps $(KMAPS) $(CP) $(JIS) $(FONTS) $(TESTS)
-
-FILE=qemacs-$(shell cat VERSION)
-
 colortest:
 	tests/16colors.pl
 	tests/256colors2.pl
@@ -635,21 +596,23 @@ colortest:
 	tests/xterm-colour-chart.py
 	tests/7936-colors.sh
 
+force:
+
+#
+# tar archive for distribution
+#
+FILES:= $(shell git ls-files)
+FILE=qemacs-$(shell cat VERSION)
+
 tar: $(FILES)
-	rm -f $(HOME)/$(FILE).tar.gz
 	rm -rf /tmp/$(FILE)
 	mkdir -p /tmp/$(FILE)
 	tar cf - $(FILES) | (cd /tmp/$(FILE) ; tar xf - )
-	( cd /tmp ; tar cfz $(HOME)/$(FILE).tar.gz $(FILE) )
+	( cd /tmp ; tar cfz - $(FILE) ) > ../$(FILE).tar.gz
 	rm -rf /tmp/$(FILE)
 
-archive: .filelist
-	rm -f $(HOME)/$(FILE).tar.gz
-	rm -rf /tmp/$(FILE)
-	mkdir -p /tmp/$(FILE)
-	tar cf - -T .filelist | (cd /tmp/$(FILE) ; tar xf - )
-	( cd /tmp ; tar cfz $(HOME)/$(FILE).tar.gz $(FILE) )
-	rm -rf /tmp/$(FILE)
+archive:
+	git archive --prefix=$(FILE)/ HEAD | gzip > ../$(FILE).tar.gz
 
 SPLINTOPTS := -DSPLINT +posixlib -nestcomment +boolint +charintliteral -mayaliasunique
 SPLINTOPTS += -nullstate -unqualifiedtrans +charint
