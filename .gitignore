@@ -6,6 +6,7 @@ fbffonts.c
 .objs*
 .tobjs*
 .xobjs*
+bin
 # target-files
 *.exe
 *.dSYM

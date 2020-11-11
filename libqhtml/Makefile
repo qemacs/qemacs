@@ -22,18 +22,18 @@ DEPTH=..
 include $(DEPTH)/config.mak
 
 ifeq (,$(V)$(VERBOSE))
-    echo  := @echo
-    cmd   := @
+    echo := @echo
+    cmd  := @
 else
-    echo  := @:
-    cmd   :=
+    echo := @:
+    cmd  :=
 endif
 
 ifeq ($(CC),gcc)
-  CFLAGS   += -Wall -g -O2 -funsigned-char
+  CFLAGS  += -g -O2 -funsigned-char -Wall
   # do not warn about zero-length formats.
-  CFLAGS   += -Wno-format-zero-length
-  LDFLAGS  := -g
+  CFLAGS  += -Wno-format-zero-length
+  LDFLAGS += -g
 endif
 
 #include local compiler configuration file
@@ -47,9 +47,9 @@ endif
 ifdef TARGET_ARCH_X86
   #CFLAGS+=-fomit-frame-pointer
   ifeq ($(GCC_MAJOR),2)
-    CFLAGS+=-m386 -malign-functions=0
+    CFLAGS += -m386 -malign-functions=0
   else
-    CFLAGS+=-march=i386 -falign-functions=0
+    CFLAGS += -march=i386 -falign-functions=0
   endif
 endif
 

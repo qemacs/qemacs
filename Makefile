@@ -30,7 +30,7 @@ else
 endif
 
 ifeq ($(CC),gcc)
-  CFLAGS  += -Wall -g -O2 -funsigned-char
+  CFLAGS  += -g -O2 -funsigned-char -Wall
   # do not warn about zero-length formats.
   CFLAGS  += -Wno-format-zero-length
   LDFLAGS += -g
@@ -49,6 +49,8 @@ ifdef TARGET_GPROF
   CFLAGS  += -p
   LDFLAGS += -p
 endif
+
+CFLAGS+=-I$(DEPTH)
 
 #TCFLAGS := -DCONFIG_TINY -m32 $(CFLAGS) -Os
 #TLDFLAGS := -m32 $(LDFLAGS)
@@ -73,9 +75,9 @@ TARGETLIBS:=
 TARGETS+= qe$(EXE) kmaps ligatures
 
 OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o input.o display.o \
-       hex.o list.o
+       modes/hex.o modes/list.o
 TOBJS:= $(OBJS) parser.o
-OBJS+= qescript.o extras.o variables.o fractal.o
+OBJS+= qescript.o extras.o variables.o
 
 ifdef CONFIG_DARWIN
   LDFLAGS += -L/opt/local/lib/
@@ -129,12 +131,12 @@ endif
 OBJS+= charsetjis.o charsetmore.o
 
 ifdef CONFIG_ALL_MODES
-  OBJS+= unihex.o bufed.o clang.o xml.o htmlsrc.o forth.o arm.o \
-         lisp.o makemode.o markdown.o orgmode.o perl.o script.o \
-         ebnf.o cobol.o rlang.o txl.o nim.o rebol.o elm.o jai.o ats.o \
-         $(EXTRA_MODES) extra-modes.o
+  OBJS+= modes/unihex.o modes/bufed.o lang/clang.o lang/xml.o lang/htmlsrc.o lang/forth.o lang/arm.o \
+         lang/lisp.o lang/makemode.o modes/markdown.o modes/orgmode.o lang/perl.o lang/script.o \
+         lang/ebnf.o lang/cobol.o lang/rlang.o lang/txl.o lang/nim.o lang/rebol.o lang/elm.o lang/jai.o lang/ats.o \
+         $(EXTRA_MODES) lang/extra-modes.o modes/fractal.o
   ifndef CONFIG_WIN32
-    OBJS+= shell.o dired.o latex-mode.o archive.o
+    OBJS+= modes/shell.o modes/dired.o modes/latex-mode.o modes/archive.o
   endif
 endif
 
@@ -149,7 +151,7 @@ ifdef CONFIG_HTML
   CFLAGS+= -I./libqhtml
   DEP_LIBS+= $(QHTML_DEPS)
   LIBS+= $(QHTML_LIBS)
-  OBJS+= html.o docbook.o
+  OBJS+= modes/html.o modes/docbook.o
   ifndef CONFIG_WIN32
     TARGETLIBS+= libqhtml
     TARGETS+= html2png$(EXE)
@@ -157,13 +159,13 @@ ifdef CONFIG_HTML
 endif
 
 ifdef CONFIG_FFMPEG
-  OBJS+= video.o image.o
+  OBJS+= modes/video.o modes/image.o
   DEP_LIBS+= $(FFMPEG_LIBDIR)/libavcodec/libavcodec.a $(FFMPEG_LIBDIR)/libavformat/libavformat.a
   LIBS+= -L$(FFMPEG_LIBDIR)/libavcodec -L$(FFMPEG_LIBDIR)/libavformat -lavformat -lavcodec -lz -lpthread
   DEFINES+= -I$(FFMPEG_SRCDIR)/libavcodec -I$(FFMPEG_SRCDIR)/libavformat
   TARGETS+= ffplay$(EXE)
 else
-  OBJS+= stb.o
+  OBJS+= modes/stb.o
 endif
 
 ifdef CONFIG_X11
@@ -207,6 +209,8 @@ XSRCS:= $(XOBJS:.o=.c)
 DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
+BINDIR:=bin
+
 DBG_OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)-DBG/qe
 DBG_CFLAGS:= $(CFLAGS) -I$(DBG_OBJS_DIR) -g -O0
 DBG_OBJS:= $(addprefix $(DBG_OBJS_DIR)/, $(OBJS))
@@ -223,7 +227,7 @@ TOBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/tqe
 TCFLAGS+= -I$(TOBJS_DIR)
 TOBJS:= $(addprefix $(TOBJS_DIR)/, $(TOBJS))
 
-$(shell mkdir -p $(OBJS_DIR) $(DBG_OBJS_DIR) $(TOBJS_DIR) $(XOBJS_DIR))
+$(shell mkdir -p $(OBJS_DIR) $(DBG_OBJS_DIR) $(TOBJS_DIR) $(XOBJS_DIR) $(BINDIR))
 
 #
 # Dependencies
@@ -331,8 +335,8 @@ $(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(OBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(OBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
-$(OBJS_DIR)/stb.o: stb.c stb_image.h
+$(OBJS_DIR)/lang/clang.o: lang/clang.c lang/rust.c lang/swift.c lang/icon.c lang/groovy.c lang/virgil.c
+$(OBJS_DIR)/modes/stb.o: modes/stb.c modes/stb_image.h
 
 $(DBG_OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(DBG_OBJS_DIR)/charset.o: charset.c unicode_width.h
@@ -340,8 +344,8 @@ $(DBG_OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(DBG_OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(DBG_OBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(DBG_OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(DBG_OBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
-$(DBG_OBJS_DIR)/stb.o: stb.c stb_image.h
+$(DBG_OBJS_DIR)/lang/clang.o: lang/clang.c lang/rust.c lang/swift.c lang/icon.c lang/groovy.c lang/virgil.c
+$(DBG_OBJS_DIR)/stb.o: modes/stb.c modes/stb_image.h
 
 $(XOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(XOBJS_DIR)/charset.o: charset.c unicode_width.h
@@ -349,8 +353,8 @@ $(XOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(XOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(XOBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(XOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(XOBJS_DIR)/clang.o: clang.c rust.c swift.c icon.c groovy.c virgil.c
-$(XOBJS_DIR)/stb.o: stb.c stb_image.h
+$(XOBJS_DIR)/lang/clang.o: lang/clang.c lang/rust.c lang/swift.c lang/icon.c lang/groovy.c lang/virgil.c
+$(XOBJS_DIR)/stb.o: modes/stb.c modes/stb_image.h
 
 $(TOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(TOBJS_DIR)/charset.o: charset.c unicode_width.h
@@ -358,7 +362,7 @@ $(TOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(TOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(TOBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(TOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(TOBJS_DIR)/clang.o: clang.c swift.c
+$(TOBJS_DIR)/lang/clang.o: lang/clang.c lang/rust.c lang/swift.c lang/icon.c lang/groovy.c lang/virgil.c
 
 $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(echo) CC -c $<
@@ -407,7 +411,7 @@ $(TOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 %.s: %.cpp $(DEPENDS) Makefile
 	g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -S $<
 
-%$(EXE): %.c
+$(BINDIR)/%$(EXE): tools/%.c
 	$(echo) CC -o $@ $^
 	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
 
@@ -421,13 +425,13 @@ qfribidi$(EXE): qfribidi.c cutils.c
 #
 # build ligature table
 #
-ligtoqe$(EXE): ligtoqe.c cutils.c
+$(BINDIR)/ligtoqe$(EXE): tools/ligtoqe.c cutils.c
 	$(echo) CC -o $@ $^
 	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
-ligatures: ligtoqe$(EXE) unifont.lig
-	./ligtoqe unifont.lig $@
+ligatures: $(BINDIR)/ligtoqe$(EXE) unifont.lig
+	$(BINDIR)/ligtoqe unifont.lig $@
 endif
 
 #
@@ -449,13 +453,13 @@ KMAPS=Arabic.kmap ArmenianEast.kmap ArmenianWest.kmap Chinese-CJ.kmap       \
 KMAPS_DIR=kmap
 KMAPS:=$(addprefix $(KMAPS_DIR)/, $(KMAPS))
 
-kmaptoqe$(EXE): kmaptoqe.c cutils.c
+$(BINDIR)/kmaptoqe$(EXE): tools/kmaptoqe.c cutils.c
 	$(echo) CC -o $@ $^
 	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
-kmaps: kmaptoqe$(EXE) $(KMAPS) Makefile
-	./kmaptoqe $@ $(KMAPS)
+kmaps: $(BINDIR)/kmaptoqe$(EXE) $(KMAPS) Makefile
+	$(BINDIR)//kmaptoqe $@ $(KMAPS)
 endif
 
 #
@@ -476,20 +480,20 @@ CP:=$(addprefix cp/,$(CP))
 JIS= JIS0208.TXT JIS0212.TXT
 JIS:=$(addprefix cp/,$(JIS))
 
-cptoqe$(EXE): cptoqe.c cutils.c
+$(BINDIR)/cptoqe$(EXE): tools/cptoqe.c cutils.c
 	$(echo) CC $^
 	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
 
-jistoqe$(EXE): jistoqe.c cutils.c
+$(BINDIR)/jistoqe$(EXE): tools/jistoqe.c cutils.c
 	$(echo) CC $^
 	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
-charsetmore.c: cp/cpdata.txt $(CP) cptoqe$(EXE) Makefile
-	./cptoqe -i cp/cpdata.txt $(CP) > $@
+charsetmore.c: cp/cpdata.txt $(CP) $(BINDIR)/cptoqe$(EXE) Makefile
+	$(BINDIR)/cptoqe -i cp/cpdata.txt $(CP) > $@
 
-charsetjis.def: $(JIS) jistoqe$(EXE) Makefile
-	./jistoqe $(JIS) > $@
+charsetjis.def: $(JIS) $(BINDIR)/jistoqe$(EXE) Makefile
+	$(BINDIR)/jistoqe $(JIS) > $@
 endif
 
 #
@@ -501,12 +505,12 @@ FONTS=fixed10.fbf fixed12.fbf fixed13.fbf fixed14.fbf \
       unifont.fbf
 FONTS:=$(addprefix fonts/,$(FONTS))
 
-fbftoqe$(EXE): fbftoqe.c cutils.c
+$(BINDIR)/fbftoqe$(EXE): tools/fbftoqe.c cutils.c
 	$(echo) CC -o $@ $^
 	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
 
-fbffonts.c: fbftoqe$(EXE) $(FONTS)
-	./fbftoqe $(FONTS) > $@
+fbffonts.c: $(BINDIR)/fbftoqe$(EXE) $(FONTS)
+	$(BINDIR)/fbftoqe $(FONTS) > $@
 
 #
 # html2png tool (XML/HTML/CSS2 renderer test tool)
@@ -539,14 +543,14 @@ qe-doc.html: qe-doc.texi Makefile
 #
 clean:
 	$(MAKE) -C libqhtml clean
-	rm -rf *.dSYM .objs* .tobjs* .xobjs* qe_debug
+	rm -rf *.dSYM .objs* .tobjs* .xobjs* bin
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump   \
-           qe tqe t1qe xqe qfribidi kmaptoqe ligtoqe html2png fbftoqe fbffonts.c \
-           cptoqe jistoqe allmodules.txt basemodules.txt '.#'*[0-9]
+           qe qe_debug tqe t1qe xqe qfribidi kmaptoqe ligtoqe html2png  \
+           fbftoqe fbffonts.c cptoqe jistoqe \
+           allmodules.txt basemodules.txt '.#'*[0-9]
 
 distclean: clean
 	$(MAKE) -C libqhtml distclean
-	rm -rf .objs* .tobjs* .xobjs*
 	rm -rf config.h config.mak
 
 install: $(TARGETS) qe.1
@@ -575,6 +579,8 @@ endif
 uninstall:
 	rm -f $(DESTDIR)$(prefix)/bin/qemacs$(EXE)   \
 	      $(DESTDIR)$(prefix)/bin/qe$(EXE)       \
+	      $(DESTDIR)$(prefix)/bin/tqe$(EXE)      \
+	      $(DESTDIR)$(prefix)/bin/xqe$(EXE)      \
 	      $(DESTDIR)$(prefix)/bin/ffplay$(EXE)   \
 	      $(DESTDIR)$(mandir)/man1/qe.1          \
 	      $(DESTDIR)$(datadir)/qe/kmaps          \

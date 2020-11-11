@@ -228,7 +228,7 @@ C-x 3                   : split-window-horizontally
 C-x f                   : toggle-full-screen
 @end example
 
-@section Help
+@section Help functions
 
 @example
 C-h C-h, f1             : help-for-help
@@ -852,7 +852,7 @@ are highly compressed in the @dfn{FBF} font format.
 
 @chapter Html2png Tool
 
-@section Introduction
+@section Description
 
 Html2png is a standalone HTML/XML/CSS2 renderer based on the QEmacs
 internal renderer. It takes an HTML or XHTML file as input and produce a
@@ -871,7 +871,7 @@ Unifont fonts are embedded in the executable. It means that HTML2PNG can
 view documents in any languages, including Arabic, Hebrew, Japanese and
 Hangul.
 
-@section Invocation
+@section Synopsis
 
 @example
 usage: html2png [-h] [-x] [-w width] [-o outfile] [-f charset] infile
@@ -892,7 +892,7 @@ set the output filename (default='a.png')
 
 @chapter Developper's Guide
 
-@section Plugins
+@section QEmacs Plugins
 
 You can use the example in @file{plugins/} to develop dynamically
 linked qemacs plugins (aka modules).
