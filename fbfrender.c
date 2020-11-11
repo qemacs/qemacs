@@ -359,7 +359,7 @@ int fbf_render_init(const char *font_path)
     glyph_cache_init();
     first_font = NULL;
 
-    ffs = find_file_open(font_path, "*.fbf");
+    ffs = find_file_open(font_path, "*.fbf", FF_PATH | FF_NODIR);
     if (!ffs)
         return -1;
 

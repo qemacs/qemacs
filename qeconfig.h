@@ -382,7 +382,7 @@ static CmdDef basic_commands[] = {
           "s{Emulation mode: }|emulation|", "")
     CMD2( KEY_NONE, KEY_NONE,
           "cd", do_cd, ESs,
-          "s{Change default directory: }[file]|file|", "")
+          "s{Change default directory: }[dir]|file|", "")
     CMD2( KEY_NONE, KEY_NONE,
           "set-mode", do_set_mode, ESs,
           "s{Set mode: }[mode]", "")
@@ -412,17 +412,17 @@ static CmdDef basic_commands[] = {
     /* other stuff */
     CMD3( KEY_CTRLC(KEY_CTRL('f')), KEY_NONE,
           "load-file-from-path", do_load_file_from_path, ESsi, 0,
-          "s{Load file from path: }|file|"
+          "s{Load file from path: }[resource]|file|"
           "v", "")
     CMD2( KEY_NONE, KEY_NONE,
           "load-config-file", do_load_config_file, ESs,
-          "s{Configuration file: }[file]|file|", "")
+          "s{Configuration file: }[resource]|file|", "")
     CMD2( KEY_NONE, KEY_NONE,
           "load-qerc", do_load_qerc, ESs,
           "s{path: }[file]|file|", "")
     CMD2( KEY_NONE, KEY_NONE,
           "add-resource-path", do_add_resource_path, ESs,
-          "s{resource path: }[file]|file|", "")
+          "s{resource path: }[dir]|file|", "")
 
     CMD_DEF_END,
 };

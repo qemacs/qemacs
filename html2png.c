@@ -2,7 +2,7 @@
  * HTML to PPM converter using the qHTML library
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2020 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -92,14 +92,6 @@ int eb_nextc(qe__unused__ EditBuffer *b,
              qe__unused__ int offset, qe__unused__ int *next_ptr)
 {
     return 0;
-}
-
-/* find a resource file */
-/* XXX: suppress that */
-int find_resource_file(qe__unused__ char *path, qe__unused__ int path_size,
-                       qe__unused__ const char *pattern)
-{
-    return -1;
 }
 
 /* display driver based on cfb driver */

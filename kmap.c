@@ -2,7 +2,7 @@
  * Kmap file based input method handling for QEmacs.
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2020 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -167,18 +167,14 @@ static size_t input_method_size;
 #endif
 static void *input_method_ptr;
 
-int load_input_methods(void)
+int load_input_methods(const char *filename)
 {
-    char buf[MAX_FILENAME_SIZE];
     ssize_t file_size;
     int fd, offset;
     const unsigned char *file_ptr = NULL, *p;
     InputMethod *m;
 
-    if (find_resource_file(buf, sizeof(buf), "kmaps") < 0)
-        return -1;
-
-    fd = open(buf, O_RDONLY);
+    fd = open(filename, O_RDONLY);
     if (fd < 0)
         return -1;
 

@@ -5013,7 +5013,7 @@ static void parse_arguments(ExecCmdState *es)
             /* XXX: should use completion function for default input? */
             def_input[0] = '\0';
             es->default_input[0] = '\0';
-            if (strequal(cas.completion, "file")) {
+            if (strequal(cas.completion, "file") || strequal(cas.completion, "dir")) {
                 get_default_path(s->b, s->offset, def_input, sizeof(def_input));
             } else
             if (strequal(cas.completion, "buffer")) {
@@ -6074,15 +6074,20 @@ void file_complete(CompleteState *cp)
     splitpath(path, sizeof(path), file, sizeof(file), current);
     pstrcat(file, sizeof(file), "*");
 
-    ffst = find_file_open(*path ? path : ".", file);
+    if (cp->completion->flags & CF_RESOURCE) {
+        ffst = find_file_open(qe_state.res_path, file, FF_PATH | FF_NOXXDIR);
+    } else {
+        int flags = FF_NOXXDIR;
+        if (cp->completion->flags & CF_DIRNAME)
+            flags |= FF_ONLYDIR;
+        if (cp->fuzzy)
+            flags |= 1;  // recursion level
+        ffst = find_file_open(*path ? path : ".", file, flags);
+    }
     while (find_file_next(ffst, filename, sizeof(filename)) == 0) {
         struct stat sb;
 
         base = get_basename(filename);
-        /* ignore . and .. to force direct match if
-         * single entry in directory */
-        if (strequal(base, ".") || strequal(base, ".."))
-            continue;
         /* ignore known backup files (hardcoded test for *~) */
         len = strlen(base);
         if (!len || base[len - 1] == '~')
@@ -6114,8 +6119,22 @@ static CompletionDef file_completion = {
 #else
     NULL,
 #endif
-    NULL, CF_FILENAME | CF_NO_FUZZY
+    NULL, CF_FILENAME
 };
+
+#ifndef CONFIG_TINY
+static CompletionDef dir_completion = {
+    "dir", file_complete,
+    file_print_entry,
+    NULL, CF_DIRNAME | CF_NO_FUZZY
+};
+
+static CompletionDef resource_completion = {
+    "resource", file_complete,
+    file_print_entry,
+    NULL, CF_RESOURCE | CF_NO_FUZZY
+};
+#endif
 
 void buffer_complete(CompleteState *cp)
 {
@@ -6335,6 +6354,7 @@ void do_minibuffer_complete(EditState *s, int type)
     mb->completion_start = start;
     mb->completion_end = end;
     complete_start(&cs, s, start, end, s->target_window);
+    cs.completion = mb->completion;
     if (!(mb->completion->flags & CF_NO_FUZZY))
         cs.fuzzy = mb->completion_stage;
     (*mb->completion->enumerate)(&cs);
@@ -7363,7 +7383,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         }
     }
 
-    if (lflags & LF_LOAD_RESOURCE) {
+    if ((lflags & LF_LOAD_RESOURCE) && !strchr(filename1, '/')) {
         if (find_resource_file(filename, sizeof(filename), filename1)) {
             put_status(s, "Cannot find resource file '%s'", filename1);
             return -1;
@@ -8756,7 +8776,7 @@ int find_resource_file(char *path, int path_size, const char *pattern)
     FindFileState *ffst;
     int ret;
 
-    ffst = find_file_open(qs->res_path, pattern);
+    ffst = find_file_open(qs->res_path, pattern, FF_PATH);
     if (!ffst)
         return -1;
     ret = find_file_next(ffst, path, path_size);
@@ -8776,18 +8796,17 @@ void do_load_config_file(EditState *e, const char *file)
 
     if (file && *file) {
         parse_config_file(e, file);
+        do_refresh(e);
         return;
     }
 
-    ffst = find_file_open(qs->res_path, "config");
+    ffst = find_file_open(qs->res_path, "config", FF_PATH | FF_NODIR);
     if (!ffst)
         return;
     while (find_file_next(ffst, filename, sizeof(filename)) == 0) {
         parse_config_file(e, filename);
     }
     find_file_close(&ffst);
-    if (file)
-        do_refresh(e);
 }
 
 /* Load .qerc files in all parent directories of filename */
@@ -9134,7 +9153,7 @@ static void load_all_modules(QEmacsState *qs)
     ec = qs->ec;
     qs->ec.function = "load-all-modules";
 
-    ffst = find_file_open(qs->res_path, "*.so");
+    ffst = find_file_open(qs->res_path, "*.so", FF_PATH | FF_NODIR);
     if (!ffst)
         goto done;
 
@@ -9228,10 +9247,18 @@ static void qe_init(void *opaque)
     charset_init();
     init_input_methods();
 #ifdef CONFIG_ALL_KMAPS
-    load_input_methods();
+    {
+        char filename[MAX_FILENAME_SIZE];
+        if (find_resource_file(filename, sizeof(filename), "kmaps") >= 0)
+            load_input_methods(filename);
+    }
 #endif
 #ifdef CONFIG_UNICODE_JOIN
-    load_ligatures();
+    {
+        char filename[MAX_FILENAME_SIZE];
+        if (find_resource_file(filename, sizeof(filename), "ligatures") >= 0)
+            load_ligatures(filename);
+    }
 #endif
 
     /* init basic modules */
@@ -9246,6 +9273,10 @@ static void qe_init(void *opaque)
     qe_register_completion(&style_completion);
     qe_register_completion(&style_property_completion);
     qe_register_completion(&file_completion);
+#ifndef CONFIG_TINY
+    qe_register_completion(&dir_completion);
+    qe_register_completion(&resource_completion);
+#endif
     qe_register_completion(&buffer_completion);
     qe_register_completion(&color_completion);
 

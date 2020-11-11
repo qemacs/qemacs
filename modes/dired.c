@@ -180,8 +180,7 @@ static char *dired_get_filename(DiredState *ds, const DiredItem *dip,
         return makepath(buf, buf_size, ds->path, dip->name);
     } else {
         get_dirname(buf, buf_size, ds->path);
-        append_slash(buf, buf_size);
-        return pstrcat(buf, buf_size, dip->name);
+        return makepath(buf, buf_size, buf, dip->name);
     }
 }
 
@@ -971,7 +970,7 @@ static void dired_build_list(DiredState *ds, const char *path,
      * XXX: should compute recursive size data.
      * XXX: should track file creation, deletion and modifications.
      */
-    ffst = find_file_open(dir, pattern);
+    ffst = find_file_open(dir, pattern, FF_NOXXDIR);
     /* Should scan directory/filespec before computing lines to adjust
      * filename gutter width.
      */
@@ -979,12 +978,6 @@ static void dired_build_list(DiredState *ds, const char *path,
         if (lstat(filename, &st) < 0)
             continue;
         p = get_basename(filename);
-
-#if 1   /* CG: bad idea, but causes spurious bugs */
-        /* exclude redundant '.' and '..' */
-        if (strequal(p, ".") || strequal(p, ".."))
-            continue;
-#endif
         pstrcpy(line, sizeof(line), p);
         item = add_string(&ds->items, line, 0);
         if (item) {

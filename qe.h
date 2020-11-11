@@ -194,6 +194,7 @@ typedef struct CompleteState {
     StringArray cs;
     struct EditState *s;
     struct EditState *target;
+    struct CompletionDef *completion;
     int start, end, len, fuzzy;
     char current[MAX_FILENAME_SIZE];
 } CompleteState;
@@ -331,7 +332,13 @@ typedef uint16_t QETermStyle;
 
 typedef struct FindFileState FindFileState;
 
-FindFileState *find_file_open(const char *path, const char *pattern);
+#define FF_PATH     0x010  /* enumerate path argument */
+#define FF_NODIR    0x020  /* only match regular files */
+#define FF_NOXXDIR  0x040  /* do not match . or .. */
+#define FF_ONLYDIR  0x080  /* do not match non directories */
+#define FF_DEPTH    0x00f  /* max recursion depth */
+
+FindFileState *find_file_open(const char *path, const char *pattern, int flags);
 int find_file_next(FindFileState *s, char *filename, int filename_size_max);
 void find_file_close(FindFileState **sp);
 int is_directory(const char *path);
@@ -845,7 +852,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
                       int reverse);
 int combine_accent(unsigned int *buf, int c, int accent);
 int expand_ligature(unsigned int *buf, int c);
-int load_ligatures(void);
+int load_ligatures(const char *filename);
 void unload_ligatures(void);
 
 /* qe event handling */
@@ -2006,7 +2013,7 @@ void register_input_method(InputMethod *m);
 void do_set_input_method(EditState *s, const char *method);
 void do_switch_input_method(EditState *s);
 void init_input_methods(void);
-int load_input_methods(void);
+int load_input_methods(const char *filename);
 void unload_input_methods(void);
 
 /* the following will be suppressed */
@@ -2036,6 +2043,8 @@ typedef struct CompletionDef {
 #define CF_NO_FUZZY        2
 #define CF_SPACE_OK        4
 #define CF_NO_AUTO_SUBMIT  8
+#define CF_DIRNAME         16
+#define CF_RESOURCE        32
     int flags;
     struct CompletionDef *next;
 } CompletionDef;

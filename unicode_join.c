@@ -52,15 +52,11 @@ static unsigned short *read_array_be16(FILE *f, int n)
     return tab;
 }
 
-int load_ligatures(void)
+int load_ligatures(const char *filename)
 {
     FILE *f;
-    char filename[MAX_FILENAME_SIZE];
     unsigned char sig[4];
     int long_count;
-
-    if (find_resource_file(filename, sizeof(filename), "ligatures") < 0)
-        return -1;
 
     f = fopen(filename, "r");
     if (!f)

@@ -43,10 +43,14 @@ struct FindFileState {
     char dirpath[MAX_FILENAME_SIZE]; /* current dir path */
     char pattern[MAX_FILENAME_SIZE]; /* search pattern */
     const char *bufptr;
+    int flags;
+    int depth;
     DIR *dir;
+    DIR *parent_dir[FF_DEPTH];
+    size_t parent_len[FF_DEPTH];
 };
 
-FindFileState *find_file_open(const char *path, const char *pattern)
+FindFileState *find_file_open(const char *path, const char *pattern, int flags)
 {
     FindFileState *s;
 
@@ -56,8 +60,8 @@ FindFileState *find_file_open(const char *path, const char *pattern)
     pstrcpy(s->path, sizeof(s->path), path);
     pstrcpy(s->pattern, sizeof(s->pattern), pattern);
     s->bufptr = s->path;
-    s->dirpath[0] = '\0';
     s->dir = NULL;
+    s->flags = flags;
     return s;
 }
 
@@ -65,37 +69,54 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max)
 {
     struct dirent *dirent;
     const char *p;
-    char *q;
-
-    if (s->dir == NULL)
-        goto redo;
 
     for (;;) {
-        dirent = readdir(s->dir);
-        if (dirent == NULL) {
-        redo:
+        if (!s->dir || (dirent = readdir(s->dir)) == NULL) {
             if (s->dir) {
                 closedir(s->dir);
                 s->dir = NULL;
             }
+            if (s->depth) {
+                s->depth--;
+                s->dir = s->parent_dir[s->depth];
+                s->parent_dir[s->depth] = NULL;
+                s->dirpath[s->parent_len[s->depth]] = '\0';
+                continue;
+            }
             p = s->bufptr;
             if (*p == '\0')
                 return -1;
-            /* CG: get_str(&p, s->dirpath, sizeof(s->dirpath), ":") */
-            q = s->dirpath;
-            while (*p != ':' && *p != '\0') {
-                if ((q - s->dirpath) < ssizeof(s->dirpath) - 1)
-                    *q++ = *p;
-                p++;
-            }
-            *q = '\0';
+            if (s->flags & FF_PATH)
+                p += strcspn(p, ":");
+            else
+                p += strlen(p);
+            pstrncpy(s->dirpath, sizeof(s->dirpath), s->bufptr, p - s->bufptr);
             if (*p == ':')
                 p++;
             s->bufptr = p;
             s->dir = opendir(s->dirpath);
-            if (!s->dir)
-                goto redo;
         } else {
+            if (dirent->d_type == DT_DIR) {
+                if (*dirent->d_name == '.'
+                &&  (strcmp(dirent->d_name, ".") || strcmp(dirent->d_name, ".."))) {
+                    if (s->flags & FF_NOXXDIR)
+                        continue;
+                } else {
+                    if (s->depth < (s->flags & FF_DEPTH)) {
+                        s->parent_dir[s->depth] = s->dir;
+                        s->parent_len[s->depth] = strlen(s->dirpath);
+                        s->depth++;
+                        makepath(s->dirpath, sizeof(s->dirpath), s->dirpath, dirent->d_name);
+                        s->dir = opendir(s->dirpath);
+                        continue;
+                    }
+                }
+                if (s->flags & FF_NODIR)
+                    continue;
+            } else {
+                if (s->flags & FF_ONLYDIR)
+                    continue;
+            }
             if (fnmatch(s->pattern, dirent->d_name, 0) == 0) {
                 makepath(filename, filename_size_max,
                          s->dirpath, dirent->d_name);
@@ -110,6 +131,9 @@ void find_file_close(FindFileState **sp)
     if (*sp) {
         FindFileState *s = *sp;
 
+        while (s->depth) {
+            closedir(s->parent_dir[--s->depth]);
+        }
         if (s->dir)
             closedir(s->dir);
         qe_free(sp);
@@ -410,7 +434,8 @@ int append_slash(char *buf, int buf_size)
 char *makepath(char *buf, int buf_size, const char *path,
                const char *filename)
 {
-    pstrcpy(buf, buf_size, path);
+    if (buf != path)
+        pstrcpy(buf, buf_size, path);
     append_slash(buf, buf_size);
     return pstrcat(buf, buf_size, filename);
 }
