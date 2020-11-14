@@ -117,7 +117,7 @@ static void asm_colorize_line(QEColorizeContext *cp,
                 }
                 keyword[len] = '\0';
                 if (++wn == 1) {
-                    if (!strcmp(keyword, "comment") && n > i) {
+                    if (strequal(keyword, "comment") && n > i) {
                         SET_COLOR(str, start, i, ASM_STYLE_PREPROCESS);
                         for (; i < n && qe_isblank(str[i]); i++)
                             continue;

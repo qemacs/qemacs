@@ -1,7 +1,7 @@
 /*
  * Miscellaneous QEmacs modes for Forth variants
  *
- * Copyright (c) 2014-2017 Charlie Gordon.
+ * Copyright (c) 2014-2020 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -261,7 +261,7 @@ static void ff_colorize_line(QEColorizeContext *cp,
                 word[len++] = str[i];
         }
         word[len] = '\0';
-        if (!strcmp("EOF", word) || !strcmp("EOF`", word)) {
+        if (strequal("EOF", word) || strequal("EOF`", word)) {
             SET_COLOR(str, start, i, FF_STYLE_KEYWORD);
             colstate |= IN_FF_TRAIL;
             start = i;
@@ -270,14 +270,14 @@ static void ff_colorize_line(QEColorizeContext *cp,
         if (word[len - 1] == '\"')
             goto has_string;
 
-        if (!strcmp("|`", word) || strfind(syn->keywords, word)) {
+        if (strequal("|`", word) || strfind(syn->keywords, word)) {
             SET_COLOR(str, start, i, FF_STYLE_KEYWORD);
             continue;
         }
         if (len < countof(word) - 1 && word[len - 1] != '`') {
             word[len] = '`';
             word[len + 1] = '\0';
-            if (!strcmp("|`", word) || strfind(syn->keywords, word)) {
+            if (strequal("|`", word) || strfind(syn->keywords, word)) {
                 SET_COLOR(str, start, i, FF_STYLE_KEYWORD);
                 continue;
             }

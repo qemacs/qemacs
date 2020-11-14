@@ -1,7 +1,7 @@
 /*
  * Rust mode for QEmacs.
  *
- * Copyright (c) 2015-2017 Charlie Gordon.
+ * Copyright (c) 2015-2020 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -218,7 +218,7 @@ static void rust_colorize_line(QEColorizeContext *cp,
                 i = start + klen;
 
                 if (str[i] == '!'
-                &&  (str[i + 1] == '(' || !strcmp(kbuf, "macro_rules"))) {
+                &&  (str[i + 1] == '(' || strequal(kbuf, "macro_rules"))) {
                     /* macro definition or invokation */
                     i += 1;
                     style = RUST_STYLE_PREPROCESS;

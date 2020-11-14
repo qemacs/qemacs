@@ -1,7 +1,7 @@
 /*
  * Lisp Source mode for QEmacs.
  *
- * Copyright (c) 2000-2017 Charlie Gordon.
+ * Copyright (c) 2000-2020 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -41,8 +41,8 @@ static const char lisp_keywords[] = {
     "caar|cadr|cdar|cddr|caddr|cadddr|"
     "lambda|"
     "\xCE\xBB|"  /* greek character lambda in utf-8 */
-    "mod|abs|max|min|log|logand|logior|logxor|ash|"
-    "1+|1-|<|>|<=|>=|-|+|*|/|=|<>|/=|"
+    "mod|abs|max|min|log|logand|logior|logxor|ash|in|"
+    "0+|1+|1-|<|>|<=|>=|-|+|*|/|=|<>|/=|"
 };
 
 static const char elisp_keywords[] = {
@@ -112,6 +112,21 @@ static const char elisp_keywords[] = {
     "overlay-buffer|overlay-properties|"
     "define-abbrev|abbrev-get|abbrev-put|"
     "defface|make-face|set-face-property|facep|"
+    "call-process|make-directory|delete-file|find-file|user-error|"
+    "set-version-in-file|rx|submatch|read-directory-name|read-number|"
+    "save-buffer|display-warning|file-readable-p|file-exists-p|"
+    "file-directory-p|file-relative-name|make-text-button|"
+    "string-prefix-p|sort-lines|write-file|pop-to-buffer|"
+    "directory-files|default-directory|match-string|file-name-nondirectory|"
+    "process-lines|emacs-major-version|emacs-minor-version|"
+    "ignore-errors|define-button-type|button-get|find-file-noselect|"
+    "eval-after-load|register-input-method|propertize|get-buffer|"
+    "set-buffer-multibyte|current-time|read-event|noninteractive|"
+    "frame-live-p|buffer-live-p|make-frame|selected-frame|select-frame|"
+    "select-window|save-window-excursion|get-buffer-window|interactive-p|"
+    "point-at-bol|load-file|locate-library|temp-directory|overlay|reparse-symbol|"
+    "toggle-read-only|font-lock-mode|defimage|deftheme|defclass|defstruct|"
+    "autoload|"
 };
 
 static const char scheme_keywords[] = {
@@ -300,17 +315,17 @@ static void lisp_colorize_line(QEColorizeContext *cp,
             if (qe_isalpha_(str[i])) {
                 len = lisp_get_symbol(kbuf, sizeof(kbuf), str + i);
                 i += len;
-                if (!strcmp(kbuf, "t") || !strcmp(kbuf, "f")) {
+                if (strequal(kbuf, "t") || strequal(kbuf, "f")) {
                     /* #f -> false, #t -> true */
                     goto has_qsymbol;
                 }
                 if (mode_flags & LISP_LANG_RACKET) {
-                    if (start == 0 && !strcmp(kbuf, "lang")) {
+                    if (start == 0 && strequal(kbuf, "lang")) {
                         i = n;
                         style = LISP_STYLE_PREPROCESS;
                         break;
                     }
-                    if (!strcmp(kbuf, "rx") || !strcmp(kbuf, "px")) {
+                    if (strequal(kbuf, "rx") || strequal(kbuf, "px")) {
                         if (str[i] == '"') {
                             /* #rx"regex" */
                             i += 1;

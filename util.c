@@ -98,7 +98,7 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max)
         } else {
             if (dirent->d_type == DT_DIR) {
                 if (*dirent->d_name == '.'
-                &&  (strcmp(dirent->d_name, ".") || strcmp(dirent->d_name, ".."))) {
+                &&  (strequal(dirent->d_name, ".") || strequal(dirent->d_name, ".."))) {
                     if (s->flags & FF_NOXXDIR)
                         continue;
                 } else {

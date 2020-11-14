@@ -13,13 +13,11 @@
 * improve **README.md**
 * move documentation to markdown
 * clean up ancillary files
-* move language files to lang/ directory
 
 ## Recent bugs and ideas
 
 * style: add color themes
 * style: add style recent changes (`highlight-recent-changes`)
-* style: add style for trailing blanks
 * basic: use minor mode keymap to exit preview mode with `KEY_RET`
 * basic: update default settings to `indent_tabs_mode = 0`, `indent_width = 4`, my-colors
 * basic: add property lists in buffer and window for default directory and similar properties (override)

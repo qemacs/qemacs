@@ -264,9 +264,9 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
             }
             ds->str[len] = '\0';
             ds->len = len;
-            if (!strcmp(ds->str, "if"))
+            if (strequal(ds->str, "if"))
                 return ds->tok = TOK_IF;
-            if (!strcmp(ds->str, "else"))
+            if (strequal(ds->str, "else"))
                 return ds->tok = TOK_ELSE;
             return ds->tok = TOK_ID;
         }
@@ -604,7 +604,7 @@ static int qe_cfg_expr(QEmacsDataSource *ds, QEValue *sp, int prec0) {
                 }
                 if (qe_cfg_getvalue(ds, sp))
                     return 1;
-                if (sp->type == TOK_STRING && !strcmp(ds->str, "length")) {
+                if (sp->type == TOK_STRING && strequal(ds->str, "length")) {
                     qe_cfg_set_num(sp, strlen(sp->u.str));  // utf8?
                     qe_cfg_next_token(ds);
                     continue;

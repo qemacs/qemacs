@@ -373,7 +373,8 @@ static void c_colorize_line(QEColorizeContext *cp,
                 state |= IN_C_PREPROCESS;
                 style = style0 = C_STYLE_PREPROCESS;
             }
-            if (flavor == CLANG_PHP || flavor == CLANG_LIMBO || flavor == CLANG_SQUIRREL) {
+            if (flavor == CLANG_AWK || flavor == CLANG_PHP
+            ||  flavor == CLANG_LIMBO || flavor == CLANG_SQUIRREL) {
                 goto parse_comment1;
             }
             if (flavor == CLANG_ICI) {
@@ -2723,7 +2724,7 @@ static int qs_mode_probe(ModeDef *mode, ModeProbeData *p)
     ||  match_shell_handler(cs8(p->buf), mode->shell_handlers)) {
         return 80;
     }
-    if (!strcmp(p->filename, ".qerc")
+    if (strequal(p->filename, ".qerc")
     ||  strstr(p->real_filename, "/.qe/config"))
         return 80;
 
