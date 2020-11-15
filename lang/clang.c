@@ -20,65 +20,7 @@
  */
 
 #include "qe.h"
-
-/* C mode flavors */
-enum {
-    CLANG_C,
-    CLANG_CPP,
-    CLANG_C2,
-    CLANG_OBJC,
-    CLANG_CSHARP,
-    CLANG_AWK,
-    CLANG_CSS,
-    CLANG_JSON,
-    CLANG_JS,
-    CLANG_TS,
-    CLANG_JSPP,
-    CLANG_KOKA,
-    CLANG_AS,
-    CLANG_JAVA,
-    CLANG_SCALA,
-    CLANG_PHP,
-    CLANG_GO,
-    CLANG_D,
-    CLANG_LIMBO,
-    CLANG_CYCLONE,
-    CLANG_CH,
-    CLANG_SQUIRREL,
-    CLANG_ICI,
-    CLANG_JSX,
-    CLANG_HAXE,
-    CLANG_DART,
-    CLANG_PIKE,
-    CLANG_IDL,
-    CLANG_CALC,
-    CLANG_ENSCRIPT,
-    CLANG_QSCRIPT,
-    CLANG_ELASTIC,
-    CLANG_JED,
-    CLANG_CSL,
-    CLANG_NEKO,
-    CLANG_NML,
-    CLANG_ALLOY,
-    CLANG_SCILAB,
-    CLANG_KOTLIN,
-    CLANG_CBANG,
-    CLANG_VALA,
-    CLANG_PAWN,
-    CLANG_CMINUS,
-    CLANG_GMSCRIPT,
-    CLANG_WREN,
-    CLANG_JACK,
-    CLANG_SMAC,
-    CLANG_RUST,
-    CLANG_SWIFT,
-    CLANG_ICON,
-    CLANG_GROOVY,
-    CLANG_VIRGIL,
-    CLANG_V,
-    CLANG_PROTOBUF,
-    CLANG_FLAVOR = 0x3F,
-};
+#include "clang.h"
 
 /* C mode options */
 #define CLANG_LEX         0x00200
@@ -89,6 +31,7 @@ enum {
 #define CLANG_CAP_TYPE    0x04000  /* Mixed case initial cap is type */
 #define CLANG_STR3        0x08000  /* Support """strings""" */
 #define CLANG_LINECONT    0x10000  /* support \<newline> as line continuation */
+#define CLANG_NEST_COMMENTS  0x20000  /* block comments are nested */
 #define CLANG_CC          0x13100  /* all C language features */
 
 static const char c_keywords[] = {
@@ -115,8 +58,7 @@ static const char c_extensions[] = {
 };
 
 /* grab a C identifier from a uint buf, return char count. */
-static int get_c_identifier(char *buf, int buf_size, const unsigned int *p,
-                            int flavor)
+int get_c_identifier(char *buf, int buf_size, const unsigned int *p, int flavor)
 {
     unsigned int c;
     int i, j;
@@ -182,8 +124,10 @@ enum {
 
 /* c-mode colorization states */
 enum {
-    IN_C_COMMENT    = 0x01,  /* multiline comment */
-    IN_C_COMMENT1   = 0x02,  /* single line comment with \ at EOL */
+    IN_C_COMMENT    = 0x03,  /* one of the comment styles */
+    IN_C_COMMENT1   = 0x01,  /* single line comment with \ at EOL */
+    IN_C_COMMENT2   = 0x02,  /* multiline C comment */
+    IN_C_COMMENT3   = 0x03,  /* multiline D comment */
     IN_C_STRING     = 0x04,  /* double-quoted string */
     IN_C_STRING_Q   = 0x08,  /* single-quoted string */
     IN_C_STRING_BQ  = 0x10,  /* back-quoted string (go's multi-line string) */
@@ -191,8 +135,8 @@ enum {
     IN_C_PREPROCESS = 0x20,  /* preprocessor directive with \ at EOL */
     IN_C_REGEX      = 0x40,  /* regex */
     IN_C_CHARCLASS  = 0x80,  /* regex char class */
-    IN_C_COMMENT_D  = 0x700, /* nesting D comment level (max 7 deep) */
-    IN_C_COMMENT_D_SHIFT = 8,
+    IN_C_COMMENT_SHIFT = 8,  /* shift for block comment nesting level */
+    IN_C_COMMENT_LEVEL = 0x700, /* mask for block comment nesting level */
 };
 
 static void c_colorize_line(QEColorizeContext *cp,
@@ -221,12 +165,15 @@ static void c_colorize_line(QEColorizeContext *cp,
         /* if already in a state, go directly in the code parsing it */
         if (state & IN_C_PREPROCESS)
             style0 = style = C_STYLE_PREPROCESS;
-        if (state & IN_C_COMMENT)
-            goto parse_comment;
-        if (state & IN_C_COMMENT1)
-            goto parse_comment1;
-        if (state & IN_C_COMMENT_D)
-            goto parse_comment_d;
+        if (state & IN_C_COMMENT) {
+            if ((state & IN_C_COMMENT) == IN_C_COMMENT1)
+                goto parse_comment1;
+            else
+            if ((state & IN_C_COMMENT) == IN_C_COMMENT2)
+                goto parse_comment2;
+            else
+                goto parse_comment3;
+        }
         if (state & IN_C_STRING)
             goto parse_string;
         if (state & IN_C_STRING_Q)
@@ -249,28 +196,41 @@ static void c_colorize_line(QEColorizeContext *cp,
         switch (c) {
         case '/':
             if (str[i] == '*') {
-                /* normal comment */
-                /* XXX: support nested comments for Scala */
+                /* C style multi-line comment */
                 i++;
-            parse_comment:
+                state |= IN_C_COMMENT2;
+            parse_comment2:
                 style = C_STYLE_COMMENT;
-                state |= IN_C_COMMENT;
-                for (; i < n; i++) {
+                level = (state & IN_C_COMMENT_LEVEL) >> IN_C_COMMENT_SHIFT;
+                while (i < n) {
+                    if (str[i] == '/' && str[i + 1] == '*' && (mode_flags & CLANG_NEST_COMMENTS)) {
+                        i += 2;
+                        level++;
+                    } else
                     if (str[i] == '*' && str[i + 1] == '/') {
                         i += 2;
-                        state &= ~IN_C_COMMENT;
-                        style = style0;
-                        break;
+                        if (level == 0) {
+                            state &= ~IN_C_COMMENT2;
+                            style = style0;
+                            break;
+                        }
+                        level--;
+                    } else {
+                        i++;
                     }
                 }
+                state = (state & ~IN_C_COMMENT_LEVEL) |
+                        (min(level, 7) << IN_C_COMMENT_SHIFT);
                 SET_COLOR(str, start, i, C_STYLE_COMMENT);
                 continue;
             } else
             if (str[i] == '/') {
                 /* line comment */
             parse_comment1:
-                style = C_STYLE_COMMENT;
                 state |= IN_C_COMMENT1;
+                style = C_STYLE_COMMENT;
+                if (str[n - 1] != '\\')
+                    state &= ~IN_C_COMMENT1;
                 i = n;
                 SET_COLOR(str, start, i, C_STYLE_COMMENT);
                 continue;
@@ -278,10 +238,10 @@ static void c_colorize_line(QEColorizeContext *cp,
             if (flavor == CLANG_D && (str[i] == '+')) {
                 /* D language nesting long comment */
                 i++;
-                state |= (1 << IN_C_COMMENT_D_SHIFT);
-            parse_comment_d:
+                state |= IN_C_COMMENT3;
+            parse_comment3:
                 style = C_STYLE_COMMENT;
-                level = (state & IN_C_COMMENT_D) >> IN_C_COMMENT_D_SHIFT;
+                level = (state & IN_C_COMMENT_LEVEL) >> IN_C_COMMENT_SHIFT;
                 while (i < n) {
                     if (str[i] == '/' && str[i + 1] == '+') {
                         i += 2;
@@ -289,17 +249,18 @@ static void c_colorize_line(QEColorizeContext *cp,
                     } else
                     if (str[i] == '+' && str[i + 1] == '/') {
                         i += 2;
-                        level--;
                         if (level == 0) {
+                            state &= ~IN_C_COMMENT3;
                             style = style0;
                             break;
                         }
+                        level--;
                     } else {
                         i++;
                     }
                 }
-                state = (state & ~IN_C_COMMENT_D) |
-                        (min(level, 7) << IN_C_COMMENT_D_SHIFT);
+                state = (state & ~IN_C_COMMENT_LEVEL) |
+                        (min(level, 7) << IN_C_COMMENT_SHIFT);
                 SET_COLOR(str, start, i, C_STYLE_COMMENT);
                 continue;
             }
@@ -653,8 +614,7 @@ static void c_colorize_line(QEColorizeContext *cp,
         SET_COLOR1(str, start, style);
     }
  the_end:
-    if (state & (IN_C_COMMENT | IN_C_COMMENT1 | IN_C_COMMENT_D |
-                 IN_C_PREPROCESS |
+    if (state & (IN_C_COMMENT | IN_C_PREPROCESS |
                  IN_C_STRING | IN_C_STRING_Q | IN_C_STRING_BQ)) {
         /* set style on eol char */
         SET_COLOR1(str, n, style);
@@ -663,7 +623,7 @@ static void c_colorize_line(QEColorizeContext *cp,
     /* strip state if not overflowing from a comment */
     if (!(state & IN_C_COMMENT) &&
         (!(mode_flags & CLANG_LINECONT) || n <= 0 || (str[n - 1] & CHAR_MASK) != '\\')) {
-        state &= ~(IN_C_COMMENT1 | IN_C_PREPROCESS);
+        state &= ~IN_C_PREPROCESS;
     }
     cp->colorize_state = state;
 }
@@ -805,7 +765,7 @@ static int c_line_has_label(EditState *s, const unsigned int *buf, int len,
    - if the previous line starts with a label, increment the previous indent by one level - c_label_offset
    - by default, indent the line like the previous code line,
 */
-static void c_indent_line(EditState *s, int offset0)
+void c_indent_line(EditState *s, int offset0)
 {
     int offset, offset1, offsetl, c, pos, line_num, col_num;
     int i, eoi_found, len, pos1, lpos, style, line_num1, state;
@@ -1713,7 +1673,7 @@ static void js_colorize_line(QEColorizeContext *cp,
                              unsigned int *str, int n, ModeDef *syn)
 {
     int i = 0, start, i1, indent;
-    int c, style, delim, prev, tag;
+    int c, style, delim, prev, tag, level;
     char kbuf[64];
     int mode_flags = syn->colorize_flags;
     int flavor = (mode_flags & CLANG_FLAVOR);
@@ -1734,8 +1694,8 @@ static void js_colorize_line(QEColorizeContext *cp,
 
     if (state) {
         /* if already in a state, go directly in the code parsing it */
-        if (state & IN_C_COMMENT)
-            goto parse_comment;
+        if (state & IN_C_COMMENT2)
+            goto parse_comment2;
         if (state & IN_C_STRING)
             goto parse_string;
         if (state & IN_C_STRING_Q)
@@ -1757,23 +1717,35 @@ static void js_colorize_line(QEColorizeContext *cp,
             if (str[i] == '*') {
                 /* C style multi-line comment */
                 i++;
-            parse_comment:
+                state |= IN_C_COMMENT2;
+            parse_comment2:
                 style = C_STYLE_COMMENT;
-                state |= IN_C_COMMENT;
-                for (; i < n; i++) {
+                level = (state & IN_C_COMMENT_LEVEL) >> IN_C_COMMENT_SHIFT;
+                while (i < n) {
+                    if (str[i] == '/' && str[i + 1] == '*' && (mode_flags & CLANG_NEST_COMMENTS)) {
+                        i += 2;
+                        level++;
+                    } else
                     if (str[i] == '*' && str[i + 1] == '/') {
                         i += 2;
-                        state &= ~IN_C_COMMENT;
-                        break;
+                        if (level == 0) {
+                            state &= ~IN_C_COMMENT2;
+                            break;
+                        }
+                        level--;
+                    } else {
+                        i++;
                     }
                 }
+                state = (state & ~IN_C_COMMENT_LEVEL) |
+                        (min(level, 7) << IN_C_COMMENT_SHIFT);
                 break;
             } else
             if (str[i] == '/') {
                 /* line comment */
             parse_comment1:
-                style = C_STYLE_COMMENT;
                 state |= IN_C_COMMENT1;
+                style = C_STYLE_COMMENT;
                 i = n;
                 break;
             }
@@ -1958,14 +1930,12 @@ static void js_colorize_line(QEColorizeContext *cp,
         }
     }
  the_end:
-    if (state & (IN_C_COMMENT | IN_C_COMMENT1 | IN_C_STRING | IN_C_STRING_Q)) {
+    if (state & (IN_C_COMMENT | IN_C_STRING | IN_C_STRING_Q)) {
         /* set style on eol char */
         SET_COLOR1(str, n, style);
+        if ((state & IN_C_COMMENT) == IN_C_COMMENT1)
+            state &= ~IN_C_COMMENT1;
     }
-
-    /* strip state if not overflowing from a comment */
-    state &= ~IN_C_COMMENT1;
-
     cp->colorize_state = state;
 }
 
@@ -2122,7 +2092,7 @@ ModeDef koka_mode = {
     .extensions = "kk",
     //.shell_handlers = "koka",
     .colorize_func = js_colorize_line,
-    .colorize_flags = CLANG_KOKA | CLANG_REGEX,
+    .colorize_flags = CLANG_KOKA | CLANG_REGEX | CLANG_NEST_COMMENTS,
     .keywords = koka_keywords,
     .types = koka_types,
     .indent_func = c_indent_line,
@@ -2253,7 +2223,8 @@ static ModeDef scala_mode = {
     .name = "Scala",
     .extensions = "scala|sbt",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_SCALA | CLANG_CAP_TYPE | CLANG_STR3,
+    .colorize_flags = (CLANG_SCALA | CLANG_CAP_TYPE | CLANG_STR3 |
+                       CLANG_NEST_COMMENTS),
     .keywords = scala_keywords,
     .types = scala_types,
     .indent_func = c_indent_line,
@@ -3179,11 +3150,7 @@ static ModeDef gmscript_mode = {
 
 /*---------------- Wren embeddable scripting language ----------------*/
 
-/* Simple C like syntax with some extensions:
-
-   XXX: block comments **do** nest!
-
- */
+/* Simple C like syntax with some extensions */
 
 static const char wren_keywords[] = {
     "break|class|construct|else|false|for|foreign|if|import|"
@@ -3199,7 +3166,7 @@ static ModeDef wren_mode = {
     .extensions = "wren",
     .shell_handlers = "wren",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_WREN | CLANG_CAP_TYPE,
+    .colorize_flags = CLANG_WREN | CLANG_CAP_TYPE | CLANG_NEST_COMMENTS,
     .keywords = wren_keywords,
     .types = wren_types,
     .indent_func = c_indent_line,
@@ -3268,7 +3235,6 @@ static ModeDef smac_mode = {
 
 /*---------------- V programming language ----------------*/
 
-// XXX: handle nesting comments
 // strings enclosed in '' or "", utf-8 encoded
 // interpolate strings with 'Hello $var.name', 'Hello ${1+2}'
 // char constants use `c`, with embedded \ sequences
@@ -3294,13 +3260,13 @@ static const char v_types[] = {
     "f32|f64|byteptr|voidptr|"
 };
 
-/* Go identifiers start with a Unicode letter or _ */
+/* V identifiers start with a Unicode letter or _ */
 
 static ModeDef v_mode = {
     .name = "V",
     .extensions = "v",
     .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_V | CLANG_PREPROC | CLANG_CAP_TYPE,
+    .colorize_flags = CLANG_V | CLANG_PREPROC | CLANG_CAP_TYPE | CLANG_NEST_COMMENTS,
     .keywords = v_keywords,
     .types = v_types,
     .indent_func = c_indent_line,
@@ -3330,7 +3296,7 @@ static const char protobuf_types[] = {
     "string|bytes|"
 };
 
-/* Go identifiers start with a Unicode letter or _ */
+/* protobuf identifiers start with a Unicode letter or _ */
 
 static ModeDef protobuf_mode = {
     .name = "protobuf",
@@ -3345,13 +3311,49 @@ static ModeDef protobuf_mode = {
     .fallback = &c_mode,
 };
 
-/*---------------- Other C based syntax modes ----------------*/
+/*---------------- Odin programming language ----------------*/
 
-#include "rust.c"
-#include "swift.c"
-#include "icon.c"
-#include "groovy.c"
-#include "virgil.c"
+// string literals enclosed in "", utf-8 encoded
+// raw string literals enclosed in ``, utf-8 encoded
+// runes enclosed in ''
+
+static const char odin_keywords[] = {
+    /* keywords */
+    "align_of|auto_cast|bit_field|bit_set|break|case|cast|const|context|"
+    "continue|defer|distinct|do|dynamic|else|enum|fallthrough|for|foreign|"
+    "if|import|in|inline|macro|map|no_inline|notin|offset_of|opaque|"
+    "package|proc|return|size_of|struct|switch|transmute|type_of|typeid|"
+    "union|using|when|"
+
+    /* predeclared identifiers */
+    "len|cap|complex|real|imag|conj|swizzle|expand_to_tuple|min|max|abs|clamp|"
+
+    /* constants */
+    "true|false|nil|_|"
+};
+
+static const char odin_types[] = {
+    "bool|b8|b16|b32|b64|i8|i16|i32|i64|i128|u8|u16|u32|u64|u128|"
+    "i16le|i32le|i64le|i128le|u16le|u32le|u64le|u128le|"
+    "i16be|i32be|i64be|i128be|u16be|u32be|u64be|u128be|"
+    "f32|f64|complex64|complex128|byte|rune|"
+    "uintptr|uint|int|string|cstring|any|rawptr|"
+};
+
+/* Odin identifiers start with a Unicode letter or _ */
+
+static ModeDef odin_mode = {
+    .name = "Odin",
+    .desc = "Major mode for editing Odin programs",
+    .extensions = "odin",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_ODIN | CLANG_CAP_TYPE | CLANG_NEST_COMMENTS,
+    .keywords = odin_keywords,
+    .types = odin_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
 
 /*---------------- Common initialization code ----------------*/
 
@@ -3417,11 +3419,7 @@ static int c_init(void)
     qe_register_mode(&smac_mode, MODEF_SYNTAX);
     qe_register_mode(&v_mode, MODEF_SYNTAX);
     qe_register_mode(&protobuf_mode, MODEF_SYNTAX);
-    rust_init();
-    swift_init();
-    icon_init();
-    groovy_init();
-    virgil_init();
+    qe_register_mode(&odin_mode, MODEF_SYNTAX);
 
     return 0;
 }

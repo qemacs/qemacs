@@ -134,6 +134,7 @@ ifdef CONFIG_ALL_MODES
   OBJS+= modes/unihex.o modes/bufed.o lang/clang.o lang/xml.o lang/htmlsrc.o lang/forth.o lang/arm.o \
          lang/lisp.o lang/makemode.o modes/markdown.o modes/orgmode.o lang/perl.o lang/script.o \
          lang/ebnf.o lang/cobol.o lang/rlang.o lang/txl.o lang/nim.o lang/rebol.o lang/elm.o lang/jai.o lang/ats.o \
+         lang/rust.o lang/swift.o lang/icon.o lang/groovy.o lang/virgil.o \
          $(EXTRA_MODES) lang/extra-modes.o modes/fractal.o
   ifndef CONFIG_WIN32
     OBJS+= modes/shell.o modes/dired.o modes/latex-mode.o modes/archive.o
@@ -206,7 +207,7 @@ SRCS:= $(OBJS:.o=.c)
 TSRCS:= $(TOBJS:.o=.c)
 XSRCS:= $(XOBJS:.o=.c)
 
-DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak
+DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak lang/clang.h
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
 BINDIR:=bin
@@ -335,7 +336,6 @@ $(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(OBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(OBJS_DIR)/lang/clang.o: lang/clang.c lang/rust.c lang/swift.c lang/icon.c lang/groovy.c lang/virgil.c
 $(OBJS_DIR)/modes/stb.o: modes/stb.c modes/stb_image.h
 
 $(DBG_OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
@@ -344,7 +344,6 @@ $(DBG_OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(DBG_OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(DBG_OBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(DBG_OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(DBG_OBJS_DIR)/lang/clang.o: lang/clang.c lang/rust.c lang/swift.c lang/icon.c lang/groovy.c lang/virgil.c
 $(DBG_OBJS_DIR)/stb.o: modes/stb.c modes/stb_image.h
 
 $(XOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
@@ -353,7 +352,6 @@ $(XOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(XOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(XOBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(XOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(XOBJS_DIR)/lang/clang.o: lang/clang.c lang/rust.c lang/swift.c lang/icon.c lang/groovy.c lang/virgil.c
 $(XOBJS_DIR)/stb.o: modes/stb.c modes/stb_image.h
 
 $(TOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
@@ -362,7 +360,6 @@ $(TOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(TOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(TOBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(TOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(TOBJS_DIR)/lang/clang.o: lang/clang.c lang/rust.c lang/swift.c lang/icon.c lang/groovy.c lang/virgil.c
 
 $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
 	$(echo) CC -c $<

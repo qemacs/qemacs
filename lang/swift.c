@@ -18,6 +18,29 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "qe.h"
+#include "clang.h"
+
+enum {
+    SWIFT_STYLE_DEFAULT    = 0,
+    SWIFT_STYLE_COMMENT    = QE_STYLE_COMMENT,
+    SWIFT_STYLE_REGEX      = QE_STYLE_STRING_Q,
+    SWIFT_STYLE_STRING     = QE_STYLE_STRING,
+    SWIFT_STYLE_NUMBER     = QE_STYLE_NUMBER,
+    SWIFT_STYLE_KEYWORD    = QE_STYLE_KEYWORD,
+    SWIFT_STYLE_TYPE       = QE_STYLE_TYPE,
+    SWIFT_STYLE_FUNCTION   = QE_STYLE_FUNCTION,
+};
+
+/* c-mode colorization states */
+enum {
+    IN_SWIFT_COMMENT    = 0x03,  /* one of the comment styles */
+    IN_SWIFT_COMMENT1   = 0x01,  /* single line comment with \ at EOL */
+    IN_SWIFT_COMMENT2   = 0x02,  /* multiline swift comment (nested) */
+    IN_SWIFT_COMMENT_SHIFT = 4,  /* shift for block comment nesting level */
+    IN_SWIFT_COMMENT_LEVEL = 0x70, /* mask for block comment nesting level */
+};
+
 #define R(a, b)  a, b
 #define S(a)     a, a
 #define E()      0x110000, 0
@@ -185,8 +208,8 @@ static void swift_colorize_line(QEColorizeContext *cp,
 
     if (state) {
         /* if already in a state, go directly in the code parsing it */
-        if (state & IN_C_COMMENT_D)
-            goto parse_comment_d;
+        if (state & IN_SWIFT_COMMENT2)
+            goto parse_comment2;
     }
 
     style = 0;
@@ -198,9 +221,9 @@ static void swift_colorize_line(QEColorizeContext *cp,
             if (str[i] == '*') {
                 /* Swift multi-line comments can nest */
                 i++;
-                state |= (1 << IN_C_COMMENT_D_SHIFT);
-            parse_comment_d:
-                level = (state & IN_C_COMMENT_D) >> IN_C_COMMENT_D_SHIFT;
+                state |= IN_SWIFT_COMMENT2;
+            parse_comment2:
+                level = (state & IN_SWIFT_COMMENT_LEVEL) >> IN_SWIFT_COMMENT_SHIFT;
                 while (i < n) {
                     if (str[i] == '/' && str[i + 1] == '*') {
                         i += 2;
@@ -208,30 +231,30 @@ static void swift_colorize_line(QEColorizeContext *cp,
                     } else
                     if (str[i] == '*' && str[i + 1] == '/') {
                         i += 2;
-                        level--;
                         if (level == 0) {
-                            state &= ~IN_C_COMMENT_D;
+                            state &= ~IN_SWIFT_COMMENT2;
                             break;
                         }
+                        level--;
                     } else {
                         i++;
                     }
                 }
-                state = (state & ~IN_C_COMMENT_D) |
-                        (min(level, 7) << IN_C_COMMENT_D_SHIFT);
-                if (level) {
+                state = (state & ~IN_SWIFT_COMMENT_LEVEL) |
+                        (min(level, 7) << IN_SWIFT_COMMENT_SHIFT);
+                if (state & IN_SWIFT_COMMENT2) {
                     /* set style on eol char to allow skip block from
                      * end of comment line.
                      */
                     i++;
                 }
-                style = C_STYLE_COMMENT;
+                style = SWIFT_STYLE_COMMENT;
                 break;
             }
             if (str[i] == '/') {
                 /* end of line comment (include eol char, see above) */
                 i = n + 1;
-                style = C_STYLE_COMMENT;
+                style = SWIFT_STYLE_COMMENT;
                 break;
             }
             continue;
@@ -253,14 +276,14 @@ static void swift_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            style = C_STYLE_STRING;
+            style = SWIFT_STYLE_STRING;
             break;
 
         default:
             if (qe_isdigit(c)) {
                 i -= 1;
                 i += swift_parse_number(str + i);
-                style = C_STYLE_NUMBER;
+                style = SWIFT_STYLE_NUMBER;
                 break;
             }
             if (is_swift_identifier_head(c)) {
@@ -269,19 +292,19 @@ static void swift_colorize_line(QEColorizeContext *cp,
                 i = start + klen;
 
                 if (strfind(syn->keywords, kbuf)) {
-                    style = C_STYLE_KEYWORD;
+                    style = SWIFT_STYLE_KEYWORD;
                     break;
                 }
                 if (strfind(syn->types, kbuf)) {
-                    style = C_STYLE_TYPE;
+                    style = SWIFT_STYLE_TYPE;
                     if (check_fcall(str, i)) {
                         /* function style cast */
-                        style = C_STYLE_KEYWORD;
+                        style = SWIFT_STYLE_KEYWORD;
                     }
                     break;
                 }
                 if (check_fcall(str, i)) {
-                    style = C_STYLE_FUNCTION;
+                    style = SWIFT_STYLE_FUNCTION;
                     break;
                 }
                 continue;
@@ -337,3 +360,5 @@ static int swift_init(void)
 
     return 0;
 }
+
+qe_module_init(swift_init);

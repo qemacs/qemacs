@@ -1,7 +1,7 @@
 /*
  * Groovy mode for QEmacs.
  *
- * Copyright (c) 2015-2017 Charlie Gordon.
+ * Copyright (c) 2015-2020 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,6 +17,9 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+
+#include "qe.h"
+#include "clang.h"
 
 static const char groovy_keywords[] = {
     /* language specific keywords */
@@ -459,3 +462,5 @@ static int groovy_init(void)
 
     return 0;
 }
+
+qe_module_init(groovy_init);

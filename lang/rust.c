@@ -18,6 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "qe.h"
+#include "clang.h"
+
 /* XXX: should handle :: */
 
 static const char rust_keywords[] = {
@@ -284,3 +287,5 @@ static int rust_init(void)
 
     return 0;
 }
+
+qe_module_init(rust_init);
