@@ -417,7 +417,7 @@ insert_window_left()  deletes some left-most windows
 ### Shell
 
 * fix bof/eof shell mode
-* allow quoting of special keys: let do_char insert xterm/vt100
+* allow quoting of special keys: let `do_char` insert xterm/vt100
   key sequence to allow typing special keys into shell process
 * fix terminal size inside shell window ?
 * cmdline arg to force lines and columns to test shell.
