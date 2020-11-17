@@ -135,7 +135,8 @@ ifdef CONFIG_ALL_MODES
          lang/lisp.o lang/makemode.o modes/markdown.o modes/orgmode.o lang/perl.o lang/script.o \
          lang/ebnf.o lang/cobol.o lang/rlang.o lang/txl.o lang/nim.o lang/rebol.o lang/elm.o lang/jai.o lang/ats.o \
          lang/rust.o lang/swift.o lang/icon.o lang/groovy.o lang/virgil.o \
-         $(EXTRA_MODES) lang/extra-modes.o modes/fractal.o
+         lang/scad.o lang/magpie.o lang/falcon.o lang/wolfram.o lang/tiger.o \
+         lang/extra-modes.o $(EXTRA_MODES) modes/fractal.o
   ifndef CONFIG_WIN32
     OBJS+= modes/shell.o modes/dired.o modes/latex-mode.o modes/archive.o
   endif
