@@ -131,10 +131,14 @@ endif
 OBJS+= charsetjis.o charsetmore.o
 
 ifdef CONFIG_ALL_MODES
-  OBJS+= modes/unihex.o modes/bufed.o lang/clang.o lang/xml.o lang/htmlsrc.o lang/forth.o lang/arm.o \
-         lang/lisp.o lang/makemode.o modes/markdown.o modes/orgmode.o lang/perl.o lang/script.o \
-         lang/ebnf.o lang/cobol.o lang/rlang.o lang/txl.o lang/nim.o lang/rebol.o lang/elm.o lang/jai.o lang/ats.o \
-         lang/rust.o lang/swift.o lang/icon.o lang/groovy.o lang/virgil.o \
+  OBJS+= modes/unihex.o modes/bufed.o lang/clang.o lang/xml.o lang/htmlsrc.o \
+         lang/forth.o lang/arm.o lang/lisp.o lang/makemode.o modes/markdown.o \
+         modes/orgmode.o lang/perl.o lang/script.o lang/ebnf.o lang/cobol.o \
+         lang/rlang.o lang/txl.o lang/nim.o lang/rebol.o lang/elm.o \
+         lang/jai.o lang/ats.o lang/rust.o lang/swift.o lang/icon.o \
+         lang/groovy.o lang/virgil.o lang/ada.o lang/basic.o lang/vimscript.o \
+         lang/pascal.o lang/fortran.o lang/haskell.o lang/lua.o lang/python.o \
+         lang/ruby.o lang/smalltalk.o lang/sql.o \
          lang/scad.o lang/magpie.o lang/falcon.o lang/wolfram.o lang/tiger.o \
          lang/extra-modes.o $(EXTRA_MODES) modes/fractal.o
   ifndef CONFIG_WIN32
