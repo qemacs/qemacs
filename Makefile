@@ -141,6 +141,7 @@ ifdef CONFIG_ALL_MODES
          lang/ruby.o lang/smalltalk.o lang/sql.o lang/elixir.o \
          lang/agena.o lang/coffee.o lang/erlang.o lang/julia.o lang/ocaml.o \
          lang/scad.o lang/magpie.o lang/falcon.o lang/wolfram.o lang/tiger.o \
+         lang/asm.o lang/inifile.o lang/postscript.o \
          lang/extra-modes.o $(EXTRA_MODES) modes/fractal.o
   ifndef CONFIG_WIN32
     OBJS+= modes/shell.o modes/dired.o modes/latex-mode.o modes/archive.o
