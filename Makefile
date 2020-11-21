@@ -291,9 +291,9 @@ tqe$(EXE): tqe_g$(EXE) Makefile
 	@echo `$(SIZE) $@` `wc -c $@` tqe $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
 
-t1qe_g$(EXE): tqe.c $(TSRCS) Makefile
+t1qe_g$(EXE): tqe.c $(TSRCS) Makefile $(TOBJS_DIR)/modules.txt
 	$(echo) CC -o $@ $<
-	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) $(TLDFLAGS) -o $@ $< $(TLIBS)
+	$(cmd)  $(CC) $(DEFINES) $(TCFLAGS) $(TLDFLAGS) -o $@ $< $(TLIBS)
 
 t1qe$(EXE): t1qe_g$(EXE) Makefile
 	@rm -f $@
