@@ -629,5 +629,5 @@ SPLINTOPTS += -nullstate -unqualifiedtrans +charint
 # extra options that will be removed later
 SPLINTOPTS += -mustfreeonly -temptrans -kepttrans
 
-splint: allmodules.txt basemodules.txt
-	splint $(SPLINTOPTS) -I. -Ilibqhtml $(SRCS)
+splint: $(OBJS_DIR)/modules.txt
+	splint $(SPLINTOPTS) -I. -Ilibqhtml -I$(OBJS_DIR) $(SRCS)
