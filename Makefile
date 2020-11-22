@@ -627,7 +627,7 @@ archive:
 SPLINTOPTS := -DSPLINT +posixlib -nestcomment +boolint +charintliteral -mayaliasunique
 SPLINTOPTS += -nullstate -unqualifiedtrans +charint
 # extra options that will be removed later
-SPLINTOPTS += -mustfreeonly -temptrans -kepttrans
+SPLINTOPTS += -mustfreeonly -temptrans -kepttrans -DSTBI_NO_SIMD
 
 splint: $(OBJS_DIR)/modules.txt
 	splint $(SPLINTOPTS) -I. -Ilibqhtml -I$(OBJS_DIR) $(SRCS)
