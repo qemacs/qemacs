@@ -2,7 +2,7 @@
  * Convert Yudit kmap files to QEmacs binary internal format
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2007-2017 Charlie Gordon.
+ * Copyright (c) 2007-2020 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -493,7 +493,7 @@ static int getcp(char *p, char **pp)
 int main(int argc, char **argv)
 {
     char *filename;
-    int i, j, k, col, line_num, len;
+    int i, j, k, line_num, len;
     FILE *f;
     char line[1024], *p;
     unsigned char *q;
@@ -549,7 +549,6 @@ int main(int argc, char **argv)
                     !strcmp(name, "Troff") ||
                     !strcmp(name, "SGML");
 
-        col = 0;
         nb_inputs = 0;
         ip = inputs;
         line_num = 0;
