@@ -518,7 +518,7 @@ void qe_strtolower(char *buf, int size, const char *str)
     }
 }
 
-int skip_spaces(const char **pp)
+int qe_skip_spaces(const char **pp)
 {
     const char *p;
     int c;
@@ -1006,7 +1006,7 @@ void get_str(const char **pp, char *buf, int buf_size, const char *stop)
     const char *p;
     int c;
 
-    skip_spaces(pp);
+    qe_skip_spaces(pp);
     p = *pp;
     q = buf;
     for (;;) {
@@ -1020,7 +1020,7 @@ void get_str(const char **pp, char *buf, int buf_size, const char *stop)
     }
     *q = '\0';
     *pp = p;
-    skip_spaces(pp);
+    qe_skip_spaces(pp);
 }
 
 /* scans a comma separated list of entries, return index of match or -1 */
@@ -1179,10 +1179,7 @@ int strtokeys(const char *kstr, unsigned int *keys, int max_keys)
     p = kstr;
     nb_keys = 0;
 
-    for (;;) {
-        skip_spaces(&p);
-        if (*p == '\0')
-            break;
+    while (qe_skip_spaces(&p)) {
         key = strtokey(&p);
         keys[nb_keys++] = key;
         compose_keys(keys, &nb_keys);
@@ -1966,15 +1963,14 @@ int css_get_color(QEColor *color_ptr, const char *p)
     parse_rgba:
         for (i = 0; i < n; i++) {
             /* XXX: floats ? */
-            skip_spaces(&p);
+            qe_skip_spaces(&p);
             v = strtol(p, (char **)&p, 0);
             if (*p == '%') {
                 v = (v * 255) / 100;
                 p++;
             }
             rgba[i] = v;
-            skip_spaces(&p);
-            if (*p == ',')
+            if (qe_skip_spaces(&p) == ',')
                 p++;
         }
     } else {

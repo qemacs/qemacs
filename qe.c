@@ -5322,10 +5322,7 @@ void do_execute_macro_keys(qe__unused__ EditState *s, const char *keys)
      */
 
     p = keys;
-    for (;;) {
-        skip_spaces(&p);
-        if (*p == '\0')
-            break;
+    while (qe_skip_spaces(&p)) {
         key = strtokey(&p);
         qe_key_process(key);
     }
@@ -5803,7 +5800,7 @@ void put_status(EditState *s, const char *fmt, ...)
                 pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), p);
             }
         }
-        skip_spaces(&p);
+        qe_skip_spaces(&p);
         if (!silent && *p)
             eb_format_message(qs, "*messages*", buf);
     }

@@ -266,7 +266,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
             break;
         if (*p == ':')
             p++;
-        skip_spaces(&p);
+        qe_skip_spaces(&p);
         /* find the property */
         def = css_properties;
         for (;;) {
@@ -287,7 +287,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
         nb_args = 0;
         for (;;) {
             /* get argument */
-            skip_spaces(&p);
+            qe_skip_spaces(&p);
             if (*p == ';' || *p == '\0')
                 break;
             /* more than 1 argument only if wanted */
@@ -521,7 +521,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
             css_add_prop(&last_prop, property_index, &args[0]);
         }
     next:
-        skip_spaces(&p);
+        qe_skip_spaces(&p);
         if (*p != ';')
             break;
         p++;

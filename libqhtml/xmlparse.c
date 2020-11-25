@@ -870,7 +870,7 @@ static int parse_tag(XMLState *s, const char *buf)
     first_attr = NULL;
     pattr = &first_attr;
     for (;;) {
-        skip_spaces(&p);
+        qe_skip_spaces(&p);
         if (*p == '\0' || *p == '/')
             break;
         get_str(&p, attr_name, sizeof(attr_name), "=/");
@@ -879,7 +879,7 @@ static int parse_tag(XMLState *s, const char *buf)
         if (*p == '=') {
             int och, ch;
             p++;
-            skip_spaces(&p);
+            qe_skip_spaces(&p);
             och = *p;
             /* in html, we can put non string values */
             if (och != '\'' && och != '\"') {

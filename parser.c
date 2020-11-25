@@ -40,7 +40,7 @@ typedef struct QEmacsDataSource {
 
 static int expect_token(const char **pp, int tok)
 {
-    if (skip_spaces(pp) == tok) {
+    if (qe_skip_spaces(pp) == tok) {
         ++*pp;
         return 1;
     } else {
@@ -148,7 +148,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
     again:
         if (incomment)
             goto comment;
-        if (skip_spaces(&p) == '\0')
+        if (qe_skip_spaces(&p) == '\0')
             continue;
         if (*p == '/') {
             if (p[1] == '/')  /* line comment */
@@ -172,7 +172,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         if (p[0] == '}') {
             /* simplistic 1 level if block skip feature */
             p++;
-            skip_spaces(&p);
+            qe_skip_spaces(&p);
             skip = 0;
         }
         if (skip)
@@ -212,7 +212,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
             if (vp) {
                 if (!expect_token(&p, '='))
                     goto fail;
-                skip_spaces(&p);
+                qe_skip_spaces(&p);
                 if (*p == '\"' || *p == '\'') {
                     if (qe_cfg_parse_string(s, &p, str, countof(str)))
                         goto fail;
@@ -220,7 +220,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 } else {
                     qe_set_variable(s, cmd, NULL, strtol(p, (char**)&p, 0));
                 }
-                skip_spaces(&p);
+                qe_skip_spaces(&p);
                 if (*p != ';' && *p != '\0')
                     put_status(s, "Syntax error '%s'", cmd);
                 continue;
@@ -287,7 +287,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                     goto fail;
             }
             sep = ',';
-            skip_spaces(&p);
+            qe_skip_spaces(&p);
 
             switch (args_type[i] & CMD_ARG_TYPE_MASK) {
             case CMD_ARG_INT:
@@ -314,7 +314,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 break;
             }
         }
-        if (skip_spaces(&p) != ')') {
+        if (qe_skip_spaces(&p) != ')') {
             put_status(s, "Too many arguments for %s", d->name);
             goto fail;
         }

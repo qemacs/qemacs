@@ -52,12 +52,12 @@ static int qe_skip_comments(EditState *s, int offset, int *offsetp)
     return 1;
 }
 
-static int qe_skip_spaces(EditState *s, int offset, int *offsetp)
+static int eb_skip_spaces(EditBuffer *b, int offset, int *offsetp)
 {
     int offset0 = offset, offset1;
 
-    while (offset < s->b->total_size
-        && qe_isspace(eb_nextc(s->b, offset, &offset1))) {
+    while (offset < b->total_size
+        && qe_isspace(eb_nextc(b, offset, &offset1))) {
         offset = offset1;
     }
     if (offset != offset0) {
@@ -172,8 +172,8 @@ void do_compare_windows(EditState *s, int argval)
             if (qs->ignore_spaces) {
                 /* UTF-8 issue */
                 if (qe_isspace(ch1) || qe_isspace(ch2)) {
-                    qe_skip_spaces(s1, s1->offset, &s1->offset);
-                    qe_skip_spaces(s2, s2->offset, &s2->offset);
+                    eb_skip_spaces(s1->b, s1->offset, &s1->offset);
+                    eb_skip_spaces(s2->b, s2->offset, &s2->offset);
                     if (!*comment)
                         comment = "Skipped spaces, ";
                     continue;
