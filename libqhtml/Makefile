@@ -1,7 +1,7 @@
 # Libqhtml tiny HTML/CSS rendering library for QEmacs
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2017 Charlie Gordon.
+# Copyright (c) 2000-2021 Charlie Gordon.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -39,6 +39,12 @@ endif
 #include local compiler configuration file
 -include $(DEPTH)/cflags.mk
 
+ifdef CONFIG_DARWIN
+  CFLAGS += -Wno-string-plus-int
+else
+  CFLAGS += -Wno-unused-result
+endif
+
 ifdef TARGET_GPROF
   CFLAGS  += -p
   LDFLAGS += -p
@@ -55,16 +61,27 @@ endif
 
 CFLAGS+=-I$(DEPTH)
 
-LIB= $(DEPTH)/.objs/libqhtml-$(TARGET_OS)-$(TARGET_ARCH)-$(CC).a
+HOST_CFLAGS:=$(CFLAGS)
+
+ifdef DEBUG
+DEBUG_SUFFIX:=_debug
+ECHO_CFLAGS += -DCONFIG_DEBUG
+CFLAGS += -g -O0
+LDFLAGS += -g -O0
+else
+DEBUG_SUFFIX:=
+endif
+
+LIB= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/libqhtml$(DEBUG_SUFFIX).a
 OBJS= css.o xmlparse.o cssparse.o html_style.o docbook_style.o
 
 DEPENDS:= qe.h config.h cutils.h display.h qestyles.h config.mak
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
-OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/libqhtml
-OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
+BINDIR:=$(DEPTH)/bin
 
-$(shell mkdir -p $(OBJS_DIR))
+OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/libqhtml$(DEBUG_SUFFIX)
+OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
 
 #
 # Dependencies
@@ -76,21 +93,23 @@ $(LIB): $(OBJS) Makefile
 	$(AR) rc $@ $(OBJS)
 
 $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
-	$(echo) CC -c $<
+	$(echo) CC $(ECHO_CFLAGS) -c $<
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
 #
 # build default style sheet file
 #
-csstoqe$(EXE): csstoqe.c Makefile
+$(BINDIR)/csstoqe$(EXE): csstoqe.c Makefile
 	$(echo) CC -o $@ $<
-	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $<
+	$(cmd)  mkdir -p $(dir $@)
+	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $<
 
-html_style.c: html.css csstoqe$(EXE) Makefile
-	./csstoqe html_style < $< > $@
+html_style.c: html.css $(BINDIR)/csstoqe$(EXE) Makefile
+	$(BINDIR)/csstoqe html_style < $< > $@
 
-docbook_style.c: docbook.css csstoqe$(EXE) Makefile
-	./csstoqe docbook_style < $< > $@
+docbook_style.c: docbook.css $(BINDIR)/csstoqe$(EXE) Makefile
+	$(BINDIR)/csstoqe docbook_style < $< > $@
 
 clean:
 	rm -rf *.dSYM $(OBJS_DIR)
@@ -98,3 +117,4 @@ clean:
           csstoqe html_style.c docbook_style.c
 
 distclean: clean
+	rm -f $(LIB)

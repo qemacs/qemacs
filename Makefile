@@ -1,7 +1,7 @@
 # QEmacs, tiny but powerful multimode editor
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2020 Charlie Gordon.
+# Copyright (c) 2000-2021 Charlie Gordon.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -52,11 +52,6 @@ endif
 
 CFLAGS+=-I$(DEPTH)
 
-#TCFLAGS := -DCONFIG_TINY -m32 $(CFLAGS) -Os
-#TLDFLAGS := -m32 $(LDFLAGS)
-TCFLAGS := -DCONFIG_TINY $(CFLAGS) -Os
-TLDFLAGS := $(LDFLAGS)
-
 ifdef TARGET_ARCH_X86
   #CFLAGS+=-fomit-frame-pointer
   ifeq ($(GCC_MAJOR),2)
@@ -66,18 +61,43 @@ ifdef TARGET_ARCH_X86
   endif
 endif
 
+HOST_CFLAGS:=$(CFLAGS)
+
 DEFINES=-DHAVE_QE_CONFIG_H
 
 ########################################################
 # do not modify after this
 
+ifdef DEBUG
+DEBUG_SUFFIX:=_debug
+ECHO_CFLAGS += -DCONFIG_DEBUG
+CFLAGS += -g -O0
+LDFLAGS += -g -O0
+else
+DEBUG_SUFFIX:=
+endif
+
 TARGETLIBS:=
-TARGETS+= qe$(EXE) kmaps ligatures
+
+ifeq (,$(TARGET))
+TARGET:=qe
+TARGETS:=kmaps ligatures tqe
+TOP:=1
+else
+TOP:=0
+endif
 
 OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o input.o display.o \
        modes/hex.o modes/list.o
-TOBJS:= $(OBJS) parser.o
+
+ifdef TARGET_TINY
+ECHO_CFLAGS=-DCONFIG_TINY
+#CFLAGS += -DCONFIG_TINY -m32 -Os
+CFLAGS += -DCONFIG_TINY -Os
+OBJS+= parser.o
+else
 OBJS+= qescript.o extras.o variables.o
+endif
 
 ifdef CONFIG_DARWIN
   LDFLAGS += -L/opt/local/lib/
@@ -104,17 +124,14 @@ endif
 
 ifdef CONFIG_WIN32
   OBJS+= unix.o win32.o
-  TOBJS+= unix.o win32.o
 #  OBJS+= printf.o
-#  TOBJS+= printf.o
   LIBS+= -lmsvcrt -lgdi32 -lwsock32
-  TLIBS+= -lmsvcrt -lgdi32 -lwsock32
 else
   OBJS+= unix.o tty.o
-  TOBJS+= unix.o tty.o
   LIBS+= $(EXTRALIBS)
 endif
 
+ifndef TARGET_TINY
 ifdef CONFIG_QSCRIPT
   OBJS+= qscript.o eval.o
 endif
@@ -156,10 +173,11 @@ ifdef CONFIG_CFB
 endif
 
 ifdef CONFIG_HTML
-  QHTML_DEPS:= $(DEPTH)/.objs/libqhtml-$(TARGET_OS)-$(TARGET_ARCH)-$(CC).a
-  QHTML_LIBS:= -L$(DEPTH)/.objs -lqhtml-$(TARGET_OS)-$(TARGET_ARCH)-$(CC)
+  LIBQHTML:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/libqhtml$(DEBUG_SUFFIX).a
+  QHTML_LIBS:= -L$(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/ -lqhtml$(DEBUG_SUFFIX)
   CFLAGS+= -I./libqhtml
-  DEP_LIBS+= $(QHTML_DEPS)
+  HOST_CFLAGS+= -I./libqhtml
+  DEP_LIBS+= $(LIBQHTML)
   LIBS+= $(QHTML_LIBS)
   OBJS+= modes/html.o modes/docbook.o
   ifndef CONFIG_WIN32
@@ -179,164 +197,120 @@ else
 endif
 
 ifdef CONFIG_X11
-  XCFLAGS:= -DCONFIG_X11 $(CFLAGS)
-  TARGETS += xqe$(EXE)
-  XOBJS := x11.o
-  XLIBS :=
+  TARGETS += xqe
+endif
+
+ifdef TARGET_X11
+  OBJS+= x11.o
+  ECHO_CFLAGS=-DCONFIG_X11
+  DEFINES += -DCONFIG_X11
+  CFLAGS += $(XCFLAGS)
+  LDFLAGS += $(XLDFLAGS)
+  LIBS += $(XLIBS)
   ifdef CONFIG_XRENDER
-    XLIBS += -lXrender
+    LIBS += -lXrender
   endif
   ifdef CONFIG_XV
-    XLIBS += -lXv
+    LIBS += -lXv
   endif
   ifdef CONFIG_XSHM
-    XLIBS += -lXext
+    LIBS += -lXext
   endif
-  XLIBS += -lX11 $(DLLIBS)
-  XLDFLAGS := $(LDFLAGS)
-  ifdef CONFIG_DARWIN
-    XLDFLAGS += -L/opt/X11/lib/
-  endif
+  LIBS += -lX11 $(DLLIBS)
 endif
-
-ifndef CONFIG_TINY
-  TARGETS += tqe$(EXE)
 endif
-
-XOBJS:= $(OBJS) $(XOBJS)
 
 ifdef CONFIG_INIT_CALLS
   # must be the last object
   OBJS+= qeend.o
-  TOBJS+= qeend.o
-  XOBJS+= qeend.o
 endif
 
 SRCS:= $(OBJS:.o=.c)
-TSRCS:= $(TOBJS:.o=.c)
-XSRCS:= $(XOBJS:.o=.c)
 
 DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak lang/clang.h
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
-BINDIR:=bin
+BINDIR:=$(DEPTH)/bin
 
-DBG_OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)-DBG/qe
-DBG_CFLAGS:= $(CFLAGS) -I$(DBG_OBJS_DIR) -g -O0
-DBG_OBJS:= $(addprefix $(DBG_OBJS_DIR)/, $(OBJS))
-
-OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/qe
+OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/$(TARGET)$(DEBUG_SUFFIX)
 CFLAGS+= -I$(OBJS_DIR)
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
 
-XOBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/xqe
-XCFLAGS+= -I$(XOBJS_DIR)
-XOBJS:= $(addprefix $(XOBJS_DIR)/, $(XOBJS))
-
-TOBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/tqe
-TCFLAGS+= -I$(TOBJS_DIR)
-TOBJS:= $(addprefix $(TOBJS_DIR)/, $(TOBJS))
-
-$(shell mkdir -p $(OBJS_DIR) $(DBG_OBJS_DIR) $(TOBJS_DIR) $(XOBJS_DIR) $(BINDIR))
+$(shell mkdir -p $(OBJS_DIR) $(BINDIR))
 
 #
 # Dependencies
 #
-all: $(TARGETLIBS) $(TARGETS)
+ifeq (1,$(TOP))
+all: $(TARGETLIBS) $(TARGET)$(DEBUG_SUFFIX)$(EXE) $(TARGETS)
+else
+all: $(TARGETLIBS) $(TARGET)$(DEBUG_SUFFIX)$(EXE)
+endif
 
 libqhtml: force
 	$(MAKE) -C libqhtml all
 
-qe_debug$(EXE): $(DBG_OBJS) $(DEP_LIBS)
+ifdef DEBUG
+$(TARGET)$(DEBUG_SUFFIX)$(EXE): $(OBJS) $(DEP_LIBS)
 	$(echo) LD $@
-	$(cmd)  $(CC) $(LDFLAGS) -g -o $@ $^ $(LIBS)
-
-qe_g$(EXE): $(OBJS) $(DEP_LIBS)
+	$(cmd)  $(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
+else
+$(TARGET)_g$(EXE): $(OBJS) $(DEP_LIBS)
 	$(echo) LD $@
 	$(cmd)  $(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-qe$(EXE): qe_g$(EXE) Makefile
+$(TARGET)$(EXE): $(TARGET)_g$(EXE) Makefile
 	@rm -f $@
 	cp $< $@
 	-$(STRIP) $@
 	@ls -l $@
-	@echo `$(SIZE) $@` `wc -c $@` qe $(OPTIONS) \
+	@echo `$(SIZE) $@` `wc -c $@` $(TARGET) $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
+endif
 
-#
-# X11 version of QEmacs
-#
-xqe_g$(EXE): $(XOBJS) $(DEP_LIBS)
-	$(echo) LD $@
-	$(cmd)  $(CC) $(XLDFLAGS) -o $@ $^ $(XLIBS)
+ifeq (1,$(TOP))
 
-xqe$(EXE): xqe_g$(EXE) Makefile
+# targets that require recursion
+xqe:       force;	$(MAKE) TARGET=xqe TARGET_X11=1
+tqe:       force;	$(MAKE) TARGET=tqe TARGET_TINY=1
+debug:     force;	$(MAKE) TARGET=qe DEBUG=1
+qe_debug:  force;	$(MAKE) TARGET=qe DEBUG=1
+xqe_debug: force;	$(MAKE) TARGET=xqe TARGET_X11=1 DEBUG=1
+tqe_debug: force;	$(MAKE) TARGET=tqe TARGET_TINY=1 DEBUG=1
+tqe1:      force;	$(MAKE) TARGET=tqe TARGET_TINY=1 tqe1$(EXE)
+
+else
+
+# Amalgation mode produces a larger executable
+TSRCS:=qe.c util.c cutils.c charset.c buffer.c search.c input.c display.c \
+       modes/hex.c modes/list.c parser.c unix.c tty.c win32.c qeend.c
+
+tqe1_g$(EXE): tqe.c $(TSRCS) Makefile $(OBJS_DIR)/modules.txt
+	$(echo) CC $(ECHO_CFLAGS) -o $@ $<
+	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
+
+tqe1$(EXE): tqe1_g$(EXE) Makefile
 	@rm -f $@
 	cp $< $@
 	-$(STRIP) $@
 	@ls -l $@
-	@echo `$(SIZE) $@` `wc -c $@` xqe $(OPTIONS) \
+	@echo `$(SIZE) $@` `wc -c $@` tqe1 $(OPTIONS) \
 		| cut -d ' ' -f 7-10,13,15-40 >> STATS
+endif
 
-#
-# Tiny version of QEmacs
-#
-tqe_g$(EXE): $(TOBJS)
-	$(echo) LD $@
-	$(cmd)  $(CC) $(TLDFLAGS) -o $@ $^ $(TLIBS)
-
-tqe$(EXE): tqe_g$(EXE) Makefile
-	@rm -f $@
-	cp $< $@
-	-$(STRIP) $@
-	@ls -l $@
-	@echo `$(SIZE) $@` `wc -c $@` tqe $(OPTIONS) \
-		| cut -d ' ' -f 7-10,13,15-40 >> STATS
-
-t1qe_g$(EXE): tqe.c $(TSRCS) Makefile $(TOBJS_DIR)/modules.txt
-	$(echo) CC -o $@ $<
-	$(cmd)  $(CC) $(DEFINES) $(TCFLAGS) $(TLDFLAGS) -o $@ $< $(TLIBS)
-
-t1qe$(EXE): t1qe_g$(EXE) Makefile
-	@rm -f $@
-	cp $< $@
-	-$(STRIP) $@
-	@ls -l $@
-	@echo `$(SIZE) $@` `wc -c $@` t1qe $(OPTIONS) \
-		| cut -d ' ' -f 7-10,13,15-40 >> STATS
-
+ifdef CONFIG_FFMPEG
 ffplay$(EXE): qe$(EXE) Makefile
 	ln -sf $< $@
+endif
 
 ifndef CONFIG_INIT_CALLS
 $(OBJS_DIR)/qe.o: $(OBJS_DIR)/modules.txt
-$(DBG_OBJS_DIR)/qe.o: $(DBG_OBJS_DIR)/modules.txt
-$(XOBJS_DIR)/qe.o: $(XOBJS_DIR)/modules.txt
-$(TOBJS_DIR)/qe.o: $(TOBJS_DIR)/modules.txt
 endif
 
 $(OBJS_DIR)/modules.txt: $(SRCS) Makefile
 	@echo creating $@
 	@echo '/* This file was generated automatically */' > $@
 	@grep -h ^qe_module_init $(SRCS) | \
-            sed s/qe_module_init/qe_module_declare/ >> $@
-
-$(DBG_OBJS_DIR)/modules.txt: $(SRCS) Makefile
-	@echo creating $@
-	@echo '/* This file was generated automatically */' > $@
-	@grep -h ^qe_module_init $(SRCS) | \
-            sed s/qe_module_init/qe_module_declare/ >> $@
-
-$(XOBJS_DIR)/modules.txt: $(XSRCS) Makefile
-	@echo creating $@
-	@echo '/* This file was generated automatically */' > $@
-	@grep -h ^qe_module_init $(XSRCS) | \
-            sed s/qe_module_init/qe_module_declare/ >> $@
-
-$(TOBJS_DIR)/modules.txt: $(TSRCS) Makefile
-	@echo creating $@
-	@echo '/* This file was generated automatically */' > $@
-	@grep -h ^qe_module_init $(TSRCS) | \
             sed s/qe_module_init/qe_module_declare/ >> $@
 
 $(OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
@@ -347,93 +321,43 @@ $(OBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
 $(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
 $(OBJS_DIR)/modes/stb.o: modes/stb.c modes/stb_image.h
 
-$(DBG_OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
-$(DBG_OBJS_DIR)/charset.o: charset.c unicode_width.h
-$(DBG_OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
-$(DBG_OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-$(DBG_OBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
-$(DBG_OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(DBG_OBJS_DIR)/stb.o: modes/stb.c modes/stb_image.h
-
-$(XOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
-$(XOBJS_DIR)/charset.o: charset.c unicode_width.h
-$(XOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
-$(XOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-$(XOBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
-$(XOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-$(XOBJS_DIR)/stb.o: modes/stb.c modes/stb_image.h
-
-$(TOBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
-$(TOBJS_DIR)/charset.o: charset.c unicode_width.h
-$(TOBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
-$(TOBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-$(TOBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
-$(TOBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
-
 $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
-	$(echo) CC -c $<
+	$(echo) CC $(ECHO_CFLAGS) -c $<
 	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
-$(DBG_OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
-	$(echo) CC -c $<
-	$(cmd)  mkdir -p $(dir $@)
-	$(cmd)  $(CC) $(DEFINES) $(DBG_CFLAGS) -o $@ -c $<
-
-$(XOBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
-	$(echo) CC -DCONFIG_X11 -c $<
-	$(cmd)  mkdir -p $(dir $@)
-	$(cmd)  $(CC) $(DEFINES) $(XCFLAGS) -o $@ -c $<
-
-$(TOBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
-	$(echo) CC -DCONFIG_TINY -c $<
-	$(cmd)  mkdir -p $(dir $@)
-	$(cmd)  $(CC) $(DEFINES) $(TCFLAGS) -o $@ -c $<
-
 $(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
-	$(echo) CPP -c $<
+	$(echo) CPP $(ECHO_CFLAGS) -c $<
 	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -c $<
 
-$(DBG_OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
-	$(echo) CPP -c $<
-	$(cmd)  mkdir -p $(dir $@)
-	$(cmd)  g++ $(DEFINES) $(DBG_CFLAGS) -Wno-multichar -o $@ -c $<
-
-$(XOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
-	$(echo) CPP -c -DCONFIG_X11 $<
-	$(cmd)  mkdir -p $(dir $@)
-	$(cmd)  g++ $(DEFINES) $(XCFLAGS) -Wno-multichar -o $@ -c $<
-
-$(TOBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
-	$(echo) CPP -DCONFIG_TINY -c $<
-	$(cmd)  mkdir -p $(dir $@)
-	$(cmd)  g++ $(DEFINES) $(TCFLAGS) -Wno-multichar -o $@ -c $<
-
-#debugging targets
+# debugging targets
 %.s: %.c $(DEPENDS) Makefile
 	$(CC) $(DEFINES) $(CFLAGS) -o $@ -S $<
 
 %.s: %.cpp $(DEPENDS) Makefile
 	g++ $(DEFINES) $(CFLAGS) -Wno-multichar -o $@ -S $<
 
+#
+# Host utilities
+#
 $(BINDIR)/%$(EXE): tools/%.c
 	$(echo) CC -o $@ $^
-	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
+	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 #
 # Test for bidir algorithm
 #
-qfribidi$(EXE): qfribidi.c cutils.c
+$(BINDIR)/qfribidi$(EXE): qfribidi.c cutils.c
 	$(echo) CC -o $@ $^
-	$(cmd)  $(HOST_CC) $(CFLAGS) -DTEST -o $@ $^
+	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -DTEST -o $@ $^
 
 #
 # build ligature table
 #
 $(BINDIR)/ligtoqe$(EXE): tools/ligtoqe.c cutils.c
 	$(echo) CC -o $@ $^
-	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
+	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
 ligatures: $(BINDIR)/ligtoqe$(EXE) unifont.lig
@@ -461,11 +385,11 @@ KMAPS:=$(addprefix $(KMAPS_DIR)/, $(KMAPS))
 
 $(BINDIR)/kmaptoqe$(EXE): tools/kmaptoqe.c cutils.c
 	$(echo) CC -o $@ $^
-	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
+	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
 kmaps: $(BINDIR)/kmaptoqe$(EXE) $(KMAPS) Makefile
-	$(BINDIR)//kmaptoqe $@ $(KMAPS)
+	$(BINDIR)/kmaptoqe $@ $(KMAPS)
 endif
 
 #
@@ -488,11 +412,11 @@ JIS:=$(addprefix cp/,$(JIS))
 
 $(BINDIR)/cptoqe$(EXE): tools/cptoqe.c cutils.c
 	$(echo) CC $^
-	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
+	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 $(BINDIR)/jistoqe$(EXE): tools/jistoqe.c cutils.c
 	$(echo) CC $^
-	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
+	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
 charsetmore.c: cp/cpdata.txt $(CP) $(BINDIR)/cptoqe$(EXE) Makefile
@@ -513,7 +437,7 @@ FONTS:=$(addprefix fonts/,$(FONTS))
 
 $(BINDIR)/fbftoqe$(EXE): tools/fbftoqe.c cutils.c
 	$(echo) CC -o $@ $^
-	$(cmd)  $(HOST_CC) $(CFLAGS) -o $@ $^
+	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 fbffonts.c: $(BINDIR)/fbftoqe$(EXE) $(FONTS)
 	$(BINDIR)/fbftoqe $(FONTS) > $@
@@ -528,7 +452,7 @@ OBJS1=html2png.o util.o cutils.o \
 
 OBJS1:=$(addprefix $(OBJS_DIR)/, $(OBJS1))
 
-html2png$(EXE): $(OBJS1) $(QHTML_DEPS)
+html2png$(EXE): $(OBJS1) $(LIBQHTML)
 	$(echo) LD $@
 	$(cmd)  $(CC) $(LDFLAGS) -o $@ $(OBJS1) $(QHTML_LIBS) $(HTMLTOPPM_LIBS)
 
@@ -550,10 +474,9 @@ qe-doc.html: qe-doc.texi Makefile
 clean:
 	$(MAKE) -C libqhtml clean
 	rm -rf *.dSYM .objs* .tobjs* .xobjs* bin
-	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump   \
-           qe qe_debug tqe t1qe xqe qfribidi kmaptoqe ligtoqe html2png  \
-           fbftoqe fbffonts.c cptoqe jistoqe \
-           allmodules.txt basemodules.txt '.#'*[0-9]
+	rm -f *~ *.o *.a *.exe *_g *_debug TAGS gmon.out core *.exe.stackdump \
+           qe tqe tqe1 xqe qfribidi kmaptoqe ligtoqe html2png cptoqe jistoqe \
+           fbftoqe fbffonts.c allmodules.txt basemodules.txt '.#'*[0-9]
 
 distclean: clean
 	$(MAKE) -C libqhtml distclean
@@ -607,6 +530,19 @@ colortest:
 	tests/mandelbrot.sh
 	tests/xterm-colour-chart.py
 	tests/7936-colors.sh
+
+help:
+	@echo "Usage: make [targets] [BUILD_ALL=1] [DEBUG=1] [VERBOSE=1]"
+	@echo "targets:"
+	@echo "  all [default]: build the distribution files for all configured versions"
+	@echo "  qe: build the terminal version qe"
+	@echo "  xqe: build the X11 version xqe"
+	@echo "  tqe: build the tiny version tqe"
+	@echo "  debug: build an unoptimized debug version of qe named qe_debug"
+	@echo "  xxx_debug: build an unoptimized debug version of the xxx target"
+	@echo "flags:"
+	@echo "  BUILD_ALL=1  rebuild some distribution files: ligatures kmaps charsets"
+	@echo "  VERBOSE=1    show complete commands instead of abbreviated ones"
 
 force:
 

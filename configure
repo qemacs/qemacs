@@ -176,7 +176,6 @@ for x11path in /usr /opt/X11 /usr/X11R6; do
         x11="yes"
         x11_libdir="$x11path/lib"
         x11_includedir="$x11path/include"
-        LDFLAGS="$LDFLAGS -L$x11path/lib"
         html="yes"
         if test -f "$x11path/include/X11/extensions/Xv.h" ; then
             xv="yes"
@@ -506,10 +505,10 @@ fi
 
 if test "$x11" = "yes" ; then
     if test ! -z "$x11_libdir" ; then
-        LIBS="$LIBS -L$x11_libdir"
+        XLDFLAGS="$XLDFLAGS -L$x11_libdir"
     fi
     if test ! -z "$x11_includedir" ; then
-        CFLAGS="$CFLAGS -I$x11_includedir"
+        XCFLAGS="$XCFLAGS -I$x11_includedir"
     fi
 fi
 
@@ -557,6 +556,9 @@ echo "INSTALL=install" >> $TMPMAK
 echo "CFLAGS=$CFLAGS" >> $TMPMAK
 echo "LIBS=$LIBS" >> $TMPMAK
 echo "LDFLAGS=$LDFLAGS" >> $TMPMAK
+echo "XCFLAGS=$XCFLAGS" >> $TMPMAK
+echo "XLIBS=$XLIBS" >> $TMPMAK
+echo "XLDFLAGS=$XLDFLAGS" >> $TMPMAK
 echo "EXE=$exe" >> $TMPMAK
 echo "TARGET_OS=$targetos" >> $TMPMAK
 echo "TARGET_ARCH=$cpu" >> $TMPMAK

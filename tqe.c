@@ -5,11 +5,11 @@
 #include "charset.c"
 #include "buffer.c"
 #include "search.c"
-#include "parser.c"
 #include "input.c"
 #include "display.c"
 #include "modes/hex.c"
 #include "modes/list.c"
+#include "parser.c"
 
 #ifdef CONFIG_WIN32
 #include "unix.c"

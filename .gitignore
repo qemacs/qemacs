@@ -10,21 +10,13 @@ bin
 # target-files
 *.exe
 *.dSYM
-qe
-qe_g
-qe_debug
-t1qe
-t1qe_g
-tqe
-tqe_g
-xqe
-xqe_g
-fbftoqe
+*_g
+*_debug
 html2png
-cptoqe
-kmaptoqe
-ligtoqe
-jistoqe
+qe
+tqe
+tqe1
+xqe
 # temp-directories
 doc
 junk
