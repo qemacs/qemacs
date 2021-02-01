@@ -91,7 +91,7 @@ OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o input.o display.o \
        modes/hex.o modes/list.o
 
 ifdef TARGET_TINY
-ECHO_CFLAGS=-DCONFIG_TINY
+ECHO_CFLAGS += -DCONFIG_TINY
 #CFLAGS += -DCONFIG_TINY -m32 -Os
 CFLAGS += -DCONFIG_TINY -Os
 OBJS+= parser.o
@@ -202,7 +202,7 @@ endif
 
 ifdef TARGET_X11
   OBJS+= x11.o
-  ECHO_CFLAGS=-DCONFIG_X11
+  ECHO_CFLAGS += -DCONFIG_X11
   DEFINES += -DCONFIG_X11
   CFLAGS += $(XCFLAGS)
   LDFLAGS += $(XLDFLAGS)
