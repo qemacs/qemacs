@@ -20,9 +20,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <ctype.h>
+#include <string.h>
 
 static int peekc(FILE *f)
 {
@@ -30,6 +31,26 @@ static int peekc(FILE *f)
     if (c != EOF)
         ungetc(c, f);
     return c;
+}
+
+static int compat_char(int c1, int c2)
+{
+    if ((isalnum(c1) || c1 == '_' || c1 == '$')
+    &&  (isalnum(c2) || c2 == '_' || c2 == '$'))
+        return 0;
+
+    if ((c1 == c2 && strchr("+-<>&|=", c1))
+    ||  (c2 == '=' && strchr("<>!+-*/&|^%", c1))
+    ||  (c1 == '-' && c2 == '>')
+    ||  (c1 == '/' && c2 == '/')
+    ||  (c1 == '/' && c2 == '*')
+    ||  (c1 == '*' && c2 == '/')
+    ||  (c1 == '<' && c2 == '/')
+    ||  (c1 == '.' && isdigit(c2))
+    ||  (isdigit(c1) && c2 == '.'))
+        return 0;
+
+    return 1;
 }
 
 int main(int argc, char **argv)
@@ -95,18 +116,20 @@ int main(int argc, char **argv)
             printf("    \"");
         }
         /* add separator if needed */
-        if (!in_string && got_space && isalnum(c) && isalnum(last_c)) {
-            putchar(' ');
-            n++;
+        if (!in_string && got_space) {
+            if (!compat_char(last_c, c)) {
+                putchar(' ');
+                n++;
+            }
         }
         if (c == '\"' || c == '\'' || c == '\\') {
             putchar('\\');
             n++;
         }
         putchar(c);
-        if (c == '\"') {
-            /* CG: does not work for ' ' */
-            in_string ^= 1;
+        if (c == '\"' || c == '\'') {
+            if (in_string == c || in_string == 0)
+                in_string ^= c;
         }
         last_c = c;
         got_space = 0;

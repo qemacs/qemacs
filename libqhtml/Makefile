@@ -77,6 +77,7 @@ OBJS= css.o xmlparse.o cssparse.o html_style.o docbook_style.o
 
 DEPENDS:= qe.h config.h cutils.h display.h qestyles.h config.mak
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
+DEPENDS+= css.h cssid.h htmlent.h
 
 BINDIR:=$(DEPTH)/bin
 
