@@ -4202,7 +4202,7 @@ static int syntax_get_colorized_line(EditState *s,
         *offsetp = eb_next_line(b, offset);
     }
     buf[len] = '\0';
-    if (s->offset >= offset && s->offset < *offsetp) {
+    if (s->offset >= offset && s->offset < *offsetp + (s->offset == s->b->total_size)) {
         /* compute cursor position */
         int offset1 = offset;
         for (cctx.cur_pos = 0; offset1 < s->offset; cctx.cur_pos++)

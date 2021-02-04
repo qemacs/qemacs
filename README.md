@@ -24,9 +24,9 @@ highly optimized internal representation and memory mapping for large files.
 
 - C mode: coloring with immediate update, auto-indent, automatic tags.
 
-- Shell mode: full color VT100 emulation so that your shell works exactly
+- Shell mode: full color VT100 terminal emulation so your shell works exactly
 as you expect. Compile mode with colorized error messages, automatic
-error message parser jumps to next/prev error, works with grep too.
+error message parser jumps to next/previous error, works with grep too.
 The shell buffer is a fully functional terminal: you can run qemacs,
 vim or even emacs recursively!
 
@@ -45,7 +45,7 @@ included with double width glyphs.
 anti-aliased font display.
 
 - Bitmap images are displayed on graphics displays and as ASCII colored text
-on terminals, which is handy when browsing files over an ssh terminal connection.
+on text terminals, which is handy when browsing files over an ssh connection.
 (QEmacs uses the public domain [`stb_image`](https://github.com/nothings/stb/blob/master/stb_image.h) package for image conversions.
 
 ## Building QEmacs

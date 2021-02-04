@@ -12,6 +12,10 @@
 * files: reload modified file upon change if untouched since load
 * improve **README.md**
 * move documentation to markdown
+* tack library of ancillary files at the end of the binary:
+  - add protocol to read from library (lib:xxx)
+  - add html.min.css and docbook.min.css to library
+  - append lib: to default QE_PATH
 * clean up ancillary files
 
 ## Recent bugs and ideas
@@ -56,10 +60,6 @@
 * tags: remove tags for modified line
 * undo: undo some cursor movements
 * xml: merge xml and htmlsrc modes, add submodes for plist and other config files
-* tack library of ancillary files at the end of the binary:
-  - add protocol to read from library (lib:xxx)
-  - add html.min.css and docbook.min.css to library
-  - append lib: to default QE_PATH
 
 ## Priority 0
 
