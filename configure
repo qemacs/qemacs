@@ -120,6 +120,7 @@ case $targetos in
     unlockio="no"
     plugins="no"
     ptsname="no"
+    cc="clang"
     ;;
   CYGWIN*)
     cygwin="yes"
@@ -132,6 +133,7 @@ case $targetos in
     plugins="no"
     extralibs="-lm"
     strip_args="-x -S"
+    cc="clang"
     ;;
   Haiku)
     prefix="`finddir B_COMMON_DIRECTORY`"
@@ -152,7 +154,7 @@ case $targetos in
 esac
 
 # find source path
-# XXX: we assume an absolute path is given when launching configure, 
+# XXX: we assume an absolute path is given when launching configure,
 # except in './configure' case.
 source_path=${0%configure}
 source_path=${source_path%/}
