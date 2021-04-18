@@ -125,9 +125,8 @@ static int get_pty(char *tty_str, int size)
     /* First try Unix98 pseudo tty master */
 
     /* CG: should check if posix_openpt is more appropriate than /dev/ptmx */
-    //fd = posix_openpt(O_RDWR | O_NOCTTY);
-
-    fd = open("/dev/ptmx", O_RDWR);
+    fd = posix_openpt(O_RDWR | O_NOCTTY);
+    //fd = open("/dev/ptmx", O_RDWR);
     if (fd >= 0) {
 #if 0
         /* ptsname_r is a sensible renentrant version of ptsname, but
