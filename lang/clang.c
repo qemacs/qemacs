@@ -961,9 +961,9 @@ void c_indent_line(EditState *s, int offset0)
         if (pos1 == 0 && len > 0) {
             style = sbuf[0];
             if (style != C_STYLE_COMMENT
-            ||  style != C_STYLE_STRING
-            ||  style != C_STYLE_STRING_Q
-            ||  style != C_STYLE_PREPROCESS) {
+            &&  style != C_STYLE_STRING
+            &&  style != C_STYLE_STRING_Q
+            &&  style != C_STYLE_PREPROCESS) {
                 pos = 0;
                 break;
             }
