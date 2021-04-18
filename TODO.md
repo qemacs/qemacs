@@ -8,6 +8,11 @@
 
 ## Changes for Github publication
 
+* fix filename completion bug at directory start
+* show current directory for shell buffers in buffer list view
+* full ls display in file completion window
+* incremental search: increase max repeat count
+* undo: allow file save when undo clears file modified flag
 * files: check file date to detect asynchronous modifications on disk
 * files: reload modified file upon change if untouched since load
 * improve **README.md**

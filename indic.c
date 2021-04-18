@@ -36,18 +36,18 @@
 #define RA_DEAD (RA + DEAD_CONSONANT_OFFSET)
 
 #if 0
-static int is_vowel_sign (unsigned int i)
+static int is_vowel_sign(unsigned int i)
 {
   return (i >= 0x93E && i <= 0x94c) || (i >= 0x962 && i <= 0x963);
 }
 #endif
 
-static int is_consonant (unsigned int i)
+static int is_consonant(unsigned int i)
 {
   return (i >= 0x915 && i <= 0x939) || (i >= 0x958 && i <= 0x95f);
 }
 
-static int is_ind_vowel (unsigned int i)
+static int is_ind_vowel(unsigned int i)
 {
   return (i >= 0x905 && i <= 0x914);
 }

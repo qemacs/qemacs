@@ -3355,6 +3355,302 @@ static ModeDef odin_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Salmon programming language ----------------*/
+
+static const char salmon_keywords[] = {
+    "single|routine|function|procedure|class|variable|"
+    "immutable|tagalong|lepton|quark|lock|static|"
+    "virtual|pure|construct|type|arguments|this|break"
+    "continue|forall|exists|"
+};
+
+static const char salmon_types[] = {
+    "|"
+};
+
+static int get_salmon_identifier(char *dest, int size, int c,
+                                 const unsigned int *str, int i, int n)
+{
+    int pos = 0, j;
+
+    for (j = i;; j++) {
+        if (pos < size - 1) {
+            dest[pos++] = c;
+        }
+        if (j >= n)
+            break;
+        c = str[j];
+        if (!qe_isalnum_(c))
+            break;
+    }
+    if (pos < size) {
+        dest[pos] = '\0';
+    }
+    return j - i;
+}
+
+static void salmon_colorize_line(QEColorizeContext *cp,
+                                 unsigned int *str, int n, ModeDef *syn)
+{
+    int i = 0, start, i1, indent;
+    int c, style, delim, tag, level;
+    char kbuf[64];
+    int mode_flags = syn->colorize_flags;
+    int state = cp->colorize_state;
+    //int type_decl;  /* unused */
+
+    indent = 0;
+    //for (; qe_isblank(str[indent]); indent++) continue;
+    tag = !qe_isblank(str[0]) && (cp->s->mode == syn || cp->s->mode == &htmlsrc_mode);
+
+    start = i;
+    //type_decl = 0;
+    c = 0;
+    style = 0;
+
+    if (i >= n)
+        goto the_end;
+
+    if (state) {
+        /* if already in a state, go directly in the code parsing it */
+        if (state & IN_C_COMMENT2)
+            goto parse_comment2;
+        if (state & IN_C_STRING)
+            goto parse_string;
+        if (state & IN_C_STRING_Q)
+            goto parse_string_q;
+        if (state & IN_C_STRING_BQ)
+            goto parse_string_bq;
+        if (state & IN_C_REGEX) {
+            goto parse_regex;
+        }
+    }
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+
+        switch (c) {
+        case '/':
+            if (str[i] == '*') {
+                /* C style multi-line comment */
+                i++;
+                state |= IN_C_COMMENT2;
+            parse_comment2:
+                style = C_STYLE_COMMENT;
+                level = (state & IN_C_COMMENT_LEVEL) >> IN_C_COMMENT_SHIFT;
+                while (i < n) {
+                    if (str[i] == '/' && str[i + 1] == '*' && (mode_flags & CLANG_NEST_COMMENTS)) {
+                        i += 2;
+                        level++;
+                    } else
+                    if (str[i] == '*' && str[i + 1] == '/') {
+                        i += 2;
+                        if (level == 0) {
+                            state &= ~IN_C_COMMENT2;
+                            break;
+                        }
+                        level--;
+                    } else {
+                        i++;
+                    }
+                }
+                state = (state & ~IN_C_COMMENT_LEVEL) |
+                        (min(level, 7) << IN_C_COMMENT_SHIFT);
+                break;
+            } else
+            if (str[i] == '/') {
+                /* line comment */
+                state |= IN_C_COMMENT1;
+                style = C_STYLE_COMMENT;
+                i = n;
+                break;
+            }
+            continue;
+        case '#':       /* preprocessor */
+            if (start == 0 && str[i] == '!') {
+                /* recognize a shebang comment line */
+                style = C_STYLE_PREPROCESS;
+                i = n;
+                break;
+            }
+            style = C_STYLE_COMMENT;
+            i = n;
+            break;
+        case '`':       /* ECMA 6 template strings */
+        parse_string_bq:
+            state |= IN_C_STRING_BQ;
+            style = C_STYLE_STRING_BQ;
+            while (i < n) {
+                c = str[i++];
+                if (c == '`') {
+                    state &= ~IN_C_STRING_BQ;
+                    break;
+                }
+            }
+            break;
+
+        case '@':      /* regular expression literal */
+        parse_regex:
+            state |= IN_C_REGEX;
+            style = C_STYLE_REGEX;
+            delim = '@';
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\') {
+                    if (i < n) {
+                        i += 1;
+                    }
+                } else
+                if (state & IN_C_CHARCLASS) {
+                    if (c == ']') {
+                        state &= ~IN_C_CHARCLASS;
+                    }
+                } else {
+                    if (c == '[') {
+                        state |= IN_C_CHARCLASS;
+                    } else
+                    if (c == delim) {
+                        while (qe_isalnum_(str[i])) {
+                            i++;
+                        }
+                        state &= ~IN_C_REGEX;
+                        break;
+                    }
+                }
+            }
+            break;
+        case '\'':      /* character constant */
+        parse_string_q:
+            state |= IN_C_STRING_Q;
+            style = C_STYLE_STRING_Q;
+            delim = '\'';
+            goto string;
+
+        case '\"':      /* string literal */
+        parse_string:
+            state |= IN_C_STRING;
+            style = C_STYLE_STRING;
+            delim = '\"';
+        string:
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\') {
+                    if (i >= n)
+                        break;
+                    i++;
+                } else
+                if (c == delim) {
+                    state &= ~(IN_C_STRING | IN_C_STRING_Q | IN_C_REGEX);
+                    break;
+                }
+            }
+            break;
+        case '=':
+            /* exit type declaration */
+            /* does not handle this: int i = 1, j = 2; */
+            //type_decl = 0;
+            continue;
+        case '(':
+        case '{':
+            tag = 0;
+            continue;
+        default:
+            if (qe_isdigit(c)) {
+                /* XXX: should parse actual number syntax */
+                /* decimal, binary, octal and hexadecimal literals:
+                 * 1 0b1 0o1 0x1, case insensitive. 01 is a syntax error */
+                /* maybe ignore '_' in integers */
+                /* XXX: should parse decimal and hex floating point syntaxes */
+                while (qe_isalnum_(str[i]) || (str[i] == '.' && str[i + 1] != '.')) {
+                    i++;
+                }
+                style = C_STYLE_NUMBER;
+                break;
+            }
+            if (qe_isalpha_(c)) {
+                i += get_salmon_identifier(kbuf, countof(kbuf), c, str, i, n);
+                if (cp->state_only && !tag)
+                    continue;
+
+                /* keywords used as object property tags are regular identifiers */
+                if (strfind(syn->keywords, kbuf) &&
+                    // XXX: this is incorrect for `default` inside a switch statement */
+                    str[i] != ':' && (start == 0 || str[start - 1] != '.')) {
+                    style = C_STYLE_KEYWORD;
+                    break;
+                }
+
+                i1 = i;
+                while (qe_isblank(str[i1]))
+                    i1++;
+
+                if (str[i1] == '(') {
+                    /* function call or definition */
+                    style = C_STYLE_FUNCTION;
+                    if (tag) {
+                        /* tag function definition */
+                        eb_add_property(cp->b, cp->offset + start,
+                                        QE_PROP_TAG, qe_strdup(kbuf));
+                        tag = 0;
+                    }
+                    break;
+                } else
+                if (tag && qe_findchar("(,;=", str[i1])) {
+                    /* tag variable definition */
+                    eb_add_property(cp->b, cp->offset + start,
+                                    QE_PROP_TAG, qe_strdup(kbuf));
+                }
+
+                if ((start == 0 || str[start - 1] != '.')
+                &&  !qe_findchar(".(:", str[i])
+                &&  strfind(syn->types, kbuf)) {
+                    /* if not cast, assume type declaration */
+                    //type_decl = 1;
+                    style = C_STYLE_TYPE;
+                    break;
+                }
+                if (qe_isupper((unsigned char)kbuf[0])
+                &&  (start >= 2 && str[start - 1] == ' ' && str[start - 2] == ':')) {
+                    /* if type annotation and capitalized assume type name */
+                    style = C_STYLE_TYPE;
+                    break;
+                }
+                continue;
+            }
+            continue;
+        }
+        if (style) {
+            if (!cp->state_only) {
+                SET_COLOR(str, start, i, style);
+            }
+            style = 0;
+        }
+    }
+ the_end:
+    if (state & (IN_C_COMMENT | IN_C_STRING | IN_C_STRING_Q)) {
+        /* set style on eol char */
+        SET_COLOR1(str, n, style);
+        if ((state & IN_C_COMMENT) == IN_C_COMMENT1)
+            state &= ~IN_C_COMMENT1;
+    }
+    cp->colorize_state = state;
+}
+
+ModeDef salmon_mode = {
+    .name = "Salmon",
+    //.alt_name = "js",
+    .extensions = "salm",
+    .shell_handlers = "salmoneye",
+    .colorize_func = salmon_colorize_line,
+    .colorize_flags = CLANG_SALMON | CLANG_REGEX | CLANG_NEST_COMMENTS,
+    .keywords = salmon_keywords,
+    .types = salmon_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 /*---------------- Common initialization code ----------------*/
 
 static int c_init(void)
@@ -3420,6 +3716,7 @@ static int c_init(void)
     qe_register_mode(&v_mode, MODEF_SYNTAX);
     qe_register_mode(&protobuf_mode, MODEF_SYNTAX);
     qe_register_mode(&odin_mode, MODEF_SYNTAX);
+    qe_register_mode(&salmon_mode, MODEF_SYNTAX);
 
     return 0;
 }

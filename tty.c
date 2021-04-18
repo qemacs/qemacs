@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include <unistd.h>
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>

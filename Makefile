@@ -18,6 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 DEPTH=.
+OSNAME:=$(shell uname -s)
 
 include $(DEPTH)/config.mak
 
@@ -42,7 +43,9 @@ endif
 ifdef CONFIG_DARWIN
   CFLAGS += -Wno-string-plus-int
 else
+ifneq ($(OSNAME),OpenBSD)
   CFLAGS += -Wno-unused-result
+endif
 endif
 
 ifdef TARGET_GPROF

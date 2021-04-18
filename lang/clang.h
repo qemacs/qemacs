@@ -78,6 +78,7 @@ enum {
     CLANG_V,
     CLANG_PROTOBUF,
     CLANG_ODIN,
+    CLANG_SALMON,
     CLANG_FLAVOR = 0x3F,
 };
 
