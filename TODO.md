@@ -22,6 +22,7 @@
   - add html.min.css and docbook.min.css to library
   - append lib: to default QE_PATH
 * clean up ancillary files
+* ^C does not work on OpenBSD
 
 ## Recent bugs and ideas
 
