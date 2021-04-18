@@ -22,6 +22,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ASSERT(x)
+#define STBI_NO_THREAD_LOCALS
 #undef malloc
 #undef realloc
 #undef free
