@@ -3392,14 +3392,13 @@ static int get_salmon_identifier(char *dest, int size, int c,
 static void salmon_colorize_line(QEColorizeContext *cp,
                                  unsigned int *str, int n, ModeDef *syn)
 {
-    int i = 0, start, i1, indent;
+    int i = 0, start, i1;
     int c, style, delim, tag, level;
     char kbuf[64];
     int mode_flags = syn->colorize_flags;
     int state = cp->colorize_state;
     //int type_decl;  /* unused */
 
-    indent = 0;
     //for (; qe_isblank(str[indent]); indent++) continue;
     tag = !qe_isblank(str[0]) && (cp->s->mode == syn || cp->s->mode == &htmlsrc_mode);
 
