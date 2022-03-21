@@ -1,7 +1,7 @@
 /*
  * QEmacs, extra commands non full version
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1576,10 +1576,14 @@ struct chunk_ctx {
     EditBuffer *b;
     int flags;
     int col;
+    int nlines;
+    long ncmp;
+    long total_cmp;
 };
 
 struct chunk {
-    int start, end;
+    int start, end, offset;
+    unsigned short c[2];
 };
 
 static int eb_skip_to_basename(EditBuffer *b, int pos) {
@@ -1593,29 +1597,31 @@ static int eb_skip_to_basename(EditBuffer *b, int pos) {
 }
 
 static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
-    const struct chunk_ctx *cp = vp0;
+    struct chunk_ctx *cp = vp0;
     const struct chunk *p1 = vp1;
     const struct chunk *p2 = vp2;
-    int pos1, pos2, col;
+    int pos1, pos2;
 
+    if ((++cp->ncmp & 8191) == 8191) {
+        QEmacsState *qs = &qe_state;
+        put_status(NULL, "Sorting: %d%%", (int)((cp->ncmp * 90LL) / cp->total_cmp));
+        dpy_flush(qs->screen);
+    }
     if (cp->flags & SF_REVERSE) {
         p1 = vp2;
         p2 = vp1;
     }
 
-    pos1 = p1->start;
-    pos2 = p2->start;
-    if (cp->flags & SF_BASENAME) {
-        pos1 = eb_skip_to_basename(cp->b, pos1);
-        pos2 = eb_skip_to_basename(cp->b, pos2);
+    if (p1->c[0] != p2->c[0]) {
+        return p1->c[0] < p2->c[0] ? -1 : 1;
     }
-    if (cp->col) {
-        for (col = cp->col; col-- > 0 && pos1 < p1->end;)
-            eb_nextc(cp->b, pos1, &pos1);
-        for (col = cp->col; col-- > 0 && pos2 < p2->end;)
-            eb_nextc(cp->b, pos2, &pos2);
+    if (p1->c[1] != p2->c[1]) {
+        return p1->c[1] < p2->c[1] ? -1 : 1;
     }
+    pos1 = p1->start + p1->offset;
+    pos2 = p2->start + p2->offset;
     for (;;) {
+        // XXX: should compute offset to first significant character in the setup phase
         int c1 = 0, c2 = 0;
         while (pos1 < p1->end) {
             c1 = eb_nextc(cp->b, pos1, &pos1);
@@ -1629,6 +1635,7 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
                 break;
             c2 = 0;
         }
+        // XXX: number conversion should not occur after decimal point
         if ((cp->flags & SF_NUMBER) && qe_isdigit(c1) && qe_isdigit(c2)) {
             unsigned long long n1 = c1 - '0';
             unsigned long long n2 = c2 - '0';
@@ -1673,7 +1680,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
     struct chunk_ctx ctx;
     EditBuffer *b1;
     int p1 = *pp1, p2 = *pp2;
-    int i, offset, line1, line2, col1, col2, line, col, lines;
+    int i, j, c, offset, line1, line2, col1, col2, line, col, lines;
     struct chunk *chunk_array;
 
     if (p1 > p2) {
@@ -1705,8 +1712,51 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
     }
     offset = p1;
     for (i = 0; i < lines && offset < p2; i++) {
+        int pos, pos1;
+        pos = offset;
+        if (flags & SF_COLUMN) {
+            for (col = ctx.col; col-- > 0;) {
+                c = eb_nextc(b, pos, &pos1);
+                if (c == '\n')
+                    break;
+                pos = pos1;
+            }
+        }
+        if (flags & SF_BASENAME) {
+            pos = eb_skip_to_basename(b, pos);
+        }
+        /* read first 2 significant characters into cp->c,
+           skipping according to SF_DICT.
+         */
+        for (j = 0; j < countof(chunk_array[i].c); j++) {
+            for (;;) {
+                c = eb_nextc(b, pos, &pos1);
+                if (c == '\n') {
+                    c = 0;
+                    break;
+                }
+                if ((flags & SF_DICT) && !qe_isalpha(c)) {
+                    pos = pos1;
+                    continue;
+                }
+                if ((flags & SF_NUMBER) && qe_isdigit(c)) {
+                    c = '0';
+                    break;
+                }
+                if (flags & SF_FOLD) {
+                    c = qe_toupper(c);
+                }
+                if (c > 0xFFFF)
+                    c = 0xFFFF;
+                else
+                    pos = pos1;
+                break;
+            }
+            chunk_array[i].c[j] = c;
+        }
         chunk_array[i].start = offset;
-        chunk_array[i].end = offset = eb_goto_eol(b, offset);
+        chunk_array[i].offset = pos - offset;
+        chunk_array[i].end = offset = eb_goto_eol(b, pos);
         offset = eb_next(b, offset);
         if (flags & SF_PARAGRAPH) {
             int offset1;
@@ -1717,7 +1767,13 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
             }
         }
     }
-    lines = i;
+    /* for progress meter: n.log n comparisons + n insertions */
+    ctx.nlines = lines = i;
+    ctx.ncmp = 0;
+    /* evaluate the total number of comparisons: n.log2(n) */
+    for (ctx.total_cmp = 0; i > 0; i >>= 1) {
+        ctx.total_cmp += lines;
+    }
     qe_qsort_r(chunk_array, lines, sizeof(*chunk_array), &ctx, chunk_cmp);
 
     b1 = eb_new("*sorted*", BF_SYSTEM);
@@ -1728,12 +1784,18 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
         eb_insert_buffer(b1, b1->total_size, b, chunk_array[i].start,
                          chunk_array[i].end - chunk_array[i].start);
         eb_putc(b1, '\n');
+        if ((i & 8191) == 8191) {
+            QEmacsState *qs = &qe_state;
+            put_status(NULL, "Sorting: %d%%", (int)(90 + i * 10LL / lines));
+            dpy_flush(qs->screen);
+        }
     }
     eb_delete_range(b, p1, p2);
     *pp1 = p1;
     *pp2 = p1 + eb_insert_buffer(b, p1, b1, 0, b1->total_size);
     eb_free(&b1);
     qe_free(&chunk_array);
+    put_status(NULL, "%d lines sorted", lines);
     return 0;
 }
 

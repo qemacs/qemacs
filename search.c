@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -849,14 +849,15 @@ void do_replace_string(EditState *s, const char *search_str,
     query_replace(s, search_str, replace_str, 1, flags);
 }
 
-/* dir = 0, -1, 1, 2 -> count matches, reverse, forward, delete-matching-lines */
+/* dir = 0, -1, 1, 2, 3 -> count-matches, reverse, forward,
+   delete-matching-lines, filter-matching-lines */
 void do_search_string(EditState *s, const char *search_str, int dir)
 {
     unsigned int search_u32[SEARCH_LENGTH];
     int search_u32_len;
     int found_offset, found_end;
     int flags = SEARCH_FLAG_SMARTCASE;
-    int offset, count = 0;
+    int offset, offset1, count = 0;
 
     if (s->hex_mode) {
         if (s->unihex_mode)
@@ -870,37 +871,54 @@ void do_search_string(EditState *s, const char *search_str, int dir)
     if (search_u32_len <= 0)
         return;
 
-    for (offset = s->offset;;) {
-        if (eb_search(s->b, dir, flags,
-                      offset, s->b->total_size,
-                      search_u32, search_u32_len,
-                      NULL, NULL, &found_offset, &found_end) > 0) {
-            count++;
-            if (dir == 0) {
-                offset = found_end;
-                continue;
-            } else
-            if (dir == 2) {
-                offset = eb_goto_bol(s->b, found_offset);
-                eb_delete_range(s->b, offset,
-                                eb_next_line(s->b, found_offset));
-                continue;
-            } else {
-                s->offset = (dir < 0) ? found_offset : found_end;
-                do_center_cursor(s, 0);
-                return;
-            }
-        } else {
-            if (dir == 0) {
-                put_status(s, "%d matches", count);
-            } else
-            if (dir == 2) {
-                put_status(s, "deleted %d lines", count);
-            } else {
-                put_status(s, "Search failed: \"%s\"", search_str);
-            }
+    offset = s->offset;
+    if (dir == 2 || dir == 3)
+        offset = eb_goto_bol(s->b, offset);
+
+    while (eb_search(s->b, dir, flags,
+                     offset, s->b->total_size,
+                     search_u32, search_u32_len,
+                     NULL, NULL, &found_offset, &found_end) > 0)
+    {
+        count++;
+        switch (dir) {
+        case 0:
+            offset = found_end;
+            continue;
+        case -1:
+            s->offset = found_offset;
+            do_center_cursor(s, 0);
             return;
+        case 1:
+            s->offset = found_end;
+            do_center_cursor(s, 0);
+            return;
+        case 2:
+            offset = eb_goto_bol(s->b, found_offset);
+            eb_delete_range(s->b, offset, eb_next_line(s->b, found_offset));
+            continue;
+        case 3:
+            offset1 = eb_goto_bol(s->b, found_offset);
+            eb_delete_range(s->b, offset, offset1);
+            offset = eb_next_line(s->b, offset);
+            continue;
         }
+    }
+    switch (dir) {
+    case 0:
+        put_status(s, "%d matches", count);
+        break;
+    case 2:
+        put_status(s, "deleted %d lines", count);
+        break;
+    case 3:
+        eb_delete_range(s->b, offset, s->b->total_size);
+        put_status(s, "filtered %d lines", count);
+        break;
+    case -1:
+    case 1:
+        put_status(s, "Search failed: \"%s\"", search_str);
+        break;
     }
 }
 
@@ -927,6 +945,10 @@ static CmdDef search_commands[] = {
     CMD3( KEY_NONE, KEY_NONE,
           "delete-matching-lines", do_search_string, ESsi, 2,
           "*" "s{Delete lines containing: }|search|"
+          "v", "")
+    CMD3( KEY_NONE, KEY_NONE,
+          "filter-matching-lines", do_search_string, ESsi, 3,
+          "*" "s{Filter lines containing: }|search|"
           "v", "")
     /* passing argument should switch to regex incremental search */
     CMD3( KEY_CTRL('r'), KEY_NONE,

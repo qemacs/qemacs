@@ -1,7 +1,7 @@
 /*
  * Mode for viewing archive files for QEmacs.
  *
- * Copyright (c) 2002-2019 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -446,6 +446,9 @@ static int man_mode_probe(ModeDef *mode, ModeProbeData *p)
          !memcmp(p->buf, "'''", 3) ||
          !memcmp(p->buf, "\\\"", 2))) {
     has_man:
+        if (match_extension(p->real_filename, "doc"))
+            return 0;
+
         if (p->b && p->b->data_type == mode->data_type) {
             /* buffer loaded, re-selecting mode causes buffer reload */
             return 9;
