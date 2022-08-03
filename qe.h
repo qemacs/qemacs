@@ -363,6 +363,8 @@ static inline int qe_digit_value(int c) {
     return (unsigned int)c < 128 ? qe_digit_value__[c] : 255;
 }
 static inline int qe_inrange(int c, int a, int b) {
+    //return c >= a && c <= b;
+    //CG: assuming a <= b and wrap around semantics for (c - a) and (b - a)
     return (unsigned int)(c - a) <= (unsigned int)(b - a);
 }
 /* character classification tests assume ASCII superset */
@@ -1738,6 +1740,7 @@ struct QEmacsState {
     int emulation_flags;
     int backspace_is_control_h;
     int backup_inhibited;  /* prevent qemacs from backing up files */
+    //int fuzzy_search;    /* use fuzzy search for completion matcher */
     int c_label_indent;
     const char *user_option;
 };
@@ -1919,6 +1922,11 @@ struct DisplayState {
     int eol_reached;
     EditState *edit_state;
     QETermStyle style;   /* current style for display_printf... */
+
+#if 0
+    QEFont *font;
+    QEStyleDef style_cache;
+#endif
 
     /* fragment buffers */
     TextFragment fragments[MAX_SCREEN_WIDTH];

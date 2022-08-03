@@ -437,13 +437,15 @@ static int get_trailchar(mode_t mode)
 static char *getentryslink(char *path, int size,
                            const char *dir, const char *name)
 {
-    char filename[MAX_FILENAME_SIZE];
-    int len;
+    char filename[MAX_FILENAME_SIZE + MAX_FILENAME_SIZE + 1];
+    int len = 0;
 
-    snprintf(filename, sizeof(filename), "%s/%s", dir, name);
-    len = readlink(filename, path, size - 1);
-    if (len < 0)
-        len = 0;
+    if (snprintf(filename, sizeof(filename), "%s/%s", dir, name) < (int)sizeof(filename)) {
+        /* Warning: readlink does not append a null byte! */
+        len = readlink(filename, path, size - 1);
+        if (len < 0)
+            len = 0;
+    }
     path[len] = '\0';
     if (len)
         return path;

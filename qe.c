@@ -7361,8 +7361,8 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
      * file pattern into the same pane, but load a regular file into the view pane
      */
     if ((s->flags & WF_POPUP)
-    ||  (!is_directory(filename) &&
-         ((lflags & LF_NOWILDCARD) || !is_filepattern(filename)))) {
+    ||  (!is_directory(filename1) &&
+         ((lflags & LF_NOWILDCARD) || !is_filepattern(filename1)))) {
         s = qe_find_target_window(s, 1);
     }
 #endif

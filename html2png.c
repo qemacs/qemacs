@@ -62,10 +62,12 @@ int css_read(CSSFile *f1, char *buf, int size)
     return fread(buf, 1, size, f);
 }
 
-void css_close(CSSFile *f1)
+void css_close(CSSFile **f2)
 {
-    FILE *f = (FILE *)f1;
-    fclose(f);
+    FILE *f = (FILE *)*f2;
+    *f2 = NULL;
+    if (f)
+        fclose(f);
 }
 
 /* error display */
@@ -366,7 +368,7 @@ static int draw_html(QEditScreen *scr,
         xml_parse(xml, buf, len);
     }
 
-    css_close(f);
+    css_close(&f);
 
     top_box = xml_end(&xml);
 
@@ -394,8 +396,7 @@ static int draw_html(QEditScreen *scr,
     css_delete_document(&s);
     return 0;
  fail:
-    if (f)
-        css_close(f);
+    css_close(&f);
     css_delete_box(&top_box);
     css_delete_document(&s);
     return -1;

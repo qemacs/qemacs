@@ -3399,6 +3399,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
     int state = cp->colorize_state;
     //int type_decl;  /* unused */
 
+    //int indent = 0;
     //for (; qe_isblank(str[indent]); indent++) continue;
     tag = !qe_isblank(str[0]) && (cp->s->mode == syn || cp->s->mode == &htmlsrc_mode);
 
