@@ -2,7 +2,7 @@
  * Shell mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2020 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -549,7 +549,8 @@ static void qe_term_goto_xy(ShellState *s, int destx, int desty, int relative)
         if (offset >= s->b->total_size) {
             offset = s->b->total_size;
             /* XXX: color may be wrong */
-            qe_term_set_style(s);
+            s->b->cur_style = QE_STYLE_DEFAULT;
+            //qe_term_set_style(s);
             if (y < desty) {
                 offset += eb_insert_uchars(s->b, offset, '\n', desty - y);
                 y = desty;
@@ -567,6 +568,7 @@ static void qe_term_goto_xy(ShellState *s, int destx, int desty, int relative)
                     x = 0;
                     offset = offset1;
                 } else {
+                    s->b->cur_style = QE_STYLE_DEFAULT;
                     offset += eb_insert_uchars(s->b, offset, ' ', destx - x);
                     x = destx;
                 }
@@ -2968,13 +2970,13 @@ static void do_next_error(EditState *s, int dir, int arg)
         /* extract line number */
         for (line_num = col_num = 0;;) {
             c = eb_nextc(b, offset, &offset);
-            if (c == ':' || c == ',' || c == ')')
+            if (c == ':' || c == ',' || c == '.' || c == ')')
                 break;
             if (!qe_isdigit(c))
                 goto next_line;
             line_num = line_num * 10 + c - '0';
         }
-        if (c == ',' || c == ':') {
+        if (c == ':' || c == ',' || c == '.') {
             int offset0 = offset;
             int c0 = c;
             for (;;) {

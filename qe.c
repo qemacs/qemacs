@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -4312,6 +4312,7 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
         if (sbuf) {
             memset(sbuf, 0, (len + 1) * sizeof(*sbuf));
         }
+        // XXX: should test MODEF_NO_TRAILING_BLANKS and mark trailing blanks
         return len;
     }
 }

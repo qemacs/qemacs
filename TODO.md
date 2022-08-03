@@ -1,13 +1,16 @@
 <!-- TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2020-11-04
+; Updated: 2022-03-21
 -->
 
 # QEmacs TODO list
 
 ## Changes for Github publication
 
+* C-x Enter should find another shell buffer if `*shell*` has been killed. Should enumerate all buffers.
+* terminal emulation: when move inserts spaces, they should have default attributes
+* add ignore-case for compare-windows
 * fix filename completion bug at directory start
 * show current directory for shell buffers in buffer list view
 * full ls display in file completion window
