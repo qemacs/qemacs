@@ -1,7 +1,7 @@
 /*
  * Elixir language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,8 +19,6 @@
  */
 
 #include "qe.h"
-
-extern int erlang_match_char(unsigned int *str, int i);
 
 /*---------------- Elixir coloring ----------------*/
 

@@ -2371,6 +2371,10 @@ void do_transpose(EditState *s, int cmd);
 
 void hex_write_char(EditState *s, int key);
 
+/* erlang.c / elixir.c */
+
+int erlang_match_char(unsigned int *str, int i);
+
 /* lisp.c */
 
 extern ModeDef lisp_mode;  /* used for org_mode */

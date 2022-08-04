@@ -6145,7 +6145,7 @@ void buffer_complete(CompleteState *cp)
     }
 }
 
-int buffer_print_entry(CompleteState *cp, EditState *s, const char *name)
+static int buffer_print_entry(CompleteState *cp, EditState *s, const char *name)
 {
     EditBuffer *b = s->b;
     EditBuffer *b1 = eb_find(name);
