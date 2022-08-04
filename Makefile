@@ -1,7 +1,7 @@
 # QEmacs, tiny but powerful multimode editor
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2021 Charlie Gordon.
+# Copyright (c) 2000-2022 Charlie Gordon.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -552,15 +552,7 @@ force:
 #
 # tar archive for distribution
 #
-FILES:= $(shell git ls-files)
 FILE=qemacs-$(shell cat VERSION)
-
-tar: $(FILES)
-	rm -rf /tmp/$(FILE)
-	mkdir -p /tmp/$(FILE)
-	tar cf - $(FILES) | (cd /tmp/$(FILE) ; tar xf - )
-	( cd /tmp ; tar cfz - $(FILE) ) > ../$(FILE).tar.gz
-	rm -rf /tmp/$(FILE)
 
 archive:
 	git archive --prefix=$(FILE)/ HEAD | gzip > ../$(FILE).tar.gz
