@@ -1316,7 +1316,7 @@ static CmdDef dired_commands[] = {
     CMD0( KEY_TAB, KEY_NONE,
           "dired-tab", do_other_window, "")
     /* dired-abort should restore previous buffer in right-window */
-    CMD1( KEY_CTRL('g'), KEY_NONE,
+    CMD1( KEY_CTRL('g'), 'q',
           "dired-abort", do_delete_window, 0, "")
     /* XXX: merge with other dired-next-line */
     CMD1( ' ', KEY_DOWN,
