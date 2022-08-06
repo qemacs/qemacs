@@ -1988,6 +1988,8 @@ void do_kill_line(EditState *s, int argval)
 {
     int p1, p2, offset1, dir = 1;
 
+    // XXX: should handle kill_whole_line variable
+    // XXX: can there be a variable and a function with the same name?
     p1 = s->offset;
     if (argval == NO_ARG) {
         if (s->region_style && s->b->mark != s->offset) {
@@ -2033,6 +2035,33 @@ void do_kill_line(EditState *s, int argval)
 void do_kill_beginning_of_line(EditState *s, int argval)
 {
     do_kill_line(s, argval == NO_ARG ? 0 : -argval);
+}
+
+void do_kill_whole_line(EditState *s, int n)
+{
+    // XXX: should not modify s->offset
+    // XXX: should fix behavior for binary and hex modes
+    int p1 = 0, p2 = 0, dir = n;
+    if (n < 0) {
+        do_eol(s);
+        p1 = s->offset;
+        while (n++ < 0 && s->offset > 0) {
+            do_bol(s);
+            s->offset = eb_prev(s->b, s->offset);
+        }
+        p2 = s->offset;
+    } else
+    if (n > 0) {
+        do_bol(s);
+        p1 = s->offset;
+        while (n-- > 0 && s->offset < s->b->total_size) {
+            do_eol(s);
+            s->offset = eb_next(s->b, s->offset);
+        }
+        p2 = s->offset;
+    }
+    if (p1 != p2)
+        do_kill(s, p1, p2, dir, 0);
 }
 
 void do_kill_word(EditState *s, int n)

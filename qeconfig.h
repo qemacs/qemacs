@@ -118,6 +118,8 @@ static CmdDef basic_commands[] = {
           "append-next-kill", do_append_next_kill, "")
     CMD2( KEY_CTRL('k'), KEY_NONE,
           "kill-line", do_kill_line, ESi, "p" , "")
+    CMD3( KEY_META('K'), KEY_NONE,  // should be C-S-Backspace
+          "kill-whole-line", do_kill_whole_line, ESi, 1, "P", "")
     CMD2( KEY_NONE, KEY_NONE,
           "kill-beginning-of-line", do_kill_beginning_of_line, ESi, "p" , "")
     CMD3( KEY_META(KEY_DEL), KEY_META(KEY_BS),
