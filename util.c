@@ -392,7 +392,7 @@ int match_shell_handler(const char *p, const char *list)
         if (memfind(list, base, p - base))
             return 1;
         if (p - base == 3 && !memcmp(base, "env", 3)) {
-            while (*p != '\0' && *p != '\n') {
+            while (*p && *p != '\n') {
                 for (; qe_isblank(*p); p++)
                     continue;
                 base = p;
@@ -530,115 +530,37 @@ int qe_skip_spaces(const char **pp)
     return c;
 }
 
-int memfind(const char *list, const char *s, int len)
-{
-    const char *q = list;
+int memfind(const char *list, const char *s, int len) {
+    const char *q = list, *start;
+    int i, j;
 
-    if (!q)
-        return 0;
-
-    for (;;) {
-        int i = 0;
-        for (;;) {
-            int c2 = q[i];
-            if (c2 == '|') {
-                if (i == len)
+    if (q) {
+        if (!len) {
+            /* match the empty string against || only */
+            while (*q) {
+                if (*q++ == '|' && *q == '|')
                     return 1;
-                break;
             }
-            if (c2 == '\0') {
-                /* match the empty string against || only */
-                return (len > 0 && i == len);
-            }
-            if (c2 == s[i++] && i <= len)
-                continue;
-            for (q += i;;) {
-                c2 = *q++;
-                if (c2 == '\0')
-                    return 0;
-                if (c2 == '|')
-                    break;
-            }
-            break;
-        }
-    }
-}
-
-#if 0
-/* find a word in a list using '|' as separator */
-int strfind(const char *keytable, const char *str)
-{
-    int c, len;
-    const char *p;
-
-    if (!keytable)
-        return 0;
-
-    c = *str;
-    len = strlen(str);
-    /* need to special case the empty string */
-    if (len == 0)
-        return strstr(keytable, "||") != NULL;
-
-    /* initial and trailing | are optional */
-    /* they do not cause the empty string to match */
-    for (p = keytable;;) {
-        if (!memcmp(p, str, len) && (p[len] == '|' || p[len] == '\0'))
-            return 1;
-        for (;;) {
-            p = strchr(p + 1, c);
-            if (!p)
-                return 0;
-            if (p[-1] == '|')
-                break;
-        }
-    }
-}
-#else
-/* Search for the string s in '|' delimited list of strings */
-int strfind(const char *list, const char *s)
-{
-    const char *p, *q;
-    int c1, c2;
-
-    q = list;
-    if (!q)
-        return 0;
-
-    if (*s == '\0') {
-        /* special case the empty string: must match || in list */
-        while (*q) {
-            if (q[0] == '|' && q[1] == '|')
-                return 1;
-            q++;
-        }
-        return 0;
-    } else {
-    scan:
-        p = s;
-        for (;;) {
-            c1 = *p++;
-            c2 = *q++;
-            if (c1 == '\0') {
-                if (c2 == '\0' || c2 == '|')
-                    return 1;
-                goto skip;
-            }
-            if (c1 != c2) {
-                for (;;) {
-                    if (c2 == '|')
-                        goto scan;
-
-                    if (c2 == '\0')
-                        return 0;
-                skip:
-                    c2 = *q++;
+        } else {
+            while (*q) {
+                for (start = q, i = 0; *q && *q++ != '|'; i++)
+                    continue;
+                if (i == len) {
+                    for (j = 0; j < i && start[j] == s[j]; j++)
+                        continue;
+                    if (j == i)
+                        return 1;
                 }
             }
         }
     }
+    return 0;
 }
-#endif
+
+/* find a word in a list using '|' as separator */
+int strfind(const char *keytable, const char *str) {
+    return memfind(keytable, str, strlen(str));
+}
 
 /* find a word in a list using '|' as separator, ignore case and "-_ ". */
 int strxfind(const char *list, const char *s)
