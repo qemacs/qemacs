@@ -2199,6 +2199,7 @@ void do_kill(EditState *s, int p1, int p2, int dir, int keep);
 void do_kill_region(EditState *s, int keep);
 void do_kill_line(EditState *s, int argval);
 void do_kill_beginning_of_line(EditState *s, int argval);
+void do_kill_whole_line(EditState *s, int n);
 void do_kill_word(EditState *s, int n);
 void text_move_bol(EditState *s);
 void text_move_eol(EditState *s);
