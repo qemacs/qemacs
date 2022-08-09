@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
-if name == 'main':
-print('It worked!')
-exit(0)
+if __name__ == '__main__':
+    print('It worked!')
+    exit(0)
