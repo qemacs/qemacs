@@ -23,6 +23,7 @@
 #define CUTILS_H
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #define unconst(t)  (t)(uintptr_t)
 
