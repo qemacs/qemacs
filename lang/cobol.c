@@ -190,11 +190,11 @@ static void cobol_colorize_line(QEColorizeContext *cp,
                 len = 0;
                 keyword[len++] = qe_tolower(c);
                 for (; i < n; i++) {
-                    int c = str[i];
-                    if (!qe_isalnum_(c) && !qe_findchar("-$", c))
+                    int c1 = str[i];
+                    if (!qe_isalnum_(c1) && !qe_findchar("-$", c1))
                         break;
                     if (len < countof(keyword) - 1)
-                        keyword[len++] = qe_tolower(c);
+                        keyword[len++] = qe_tolower(c1);
                 }
                 keyword[len] = '\0';
                 if (strfind(syn->keywords, keyword)) {

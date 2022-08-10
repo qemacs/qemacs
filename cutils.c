@@ -2,7 +2,7 @@
  * Various simple C utilities
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -146,21 +146,18 @@ char *pstrncat(char *buf, int buf_size, const char *s, int slen)
 }
 
 /* Get the filename portion of a path */
-const char *get_basename(const char *filename)
-{
-    const char *p;
-    const char *base;
+size_t get_basename_offset(const char *p) {
+    size_t i, base = 0;
 
-    base = filename;
-    if (base) {
-        for (p = base; *p; p++) {
+    if (p) {
+        for (i = 0; p[i]; i++) {
 #ifdef CONFIG_WIN32
             /* Simplistic DOS/Windows filename support */
-            if (*p == '/' || *p == '\\' || (*p == ':' && p == filename + 1))
-                base = p + 1;
+            if (p[i] == '/' || p[i] == '\\' || (p[i] == ':' && i == 1))
+                base = i + 1;
 #else
-            if (*p == '/')
-                base = p + 1;
+            if (p[i] == '/')
+                base = i + 1;
 #endif
         }
     }
@@ -168,21 +165,19 @@ const char *get_basename(const char *filename)
 }
 
 /* Return the last extension in a path, ignoring leading dots */
-const char *get_extension(const char *filename)
-{
-    const char *p, *ext;
+size_t get_extension_offset(const char *p) {
+    size_t ext = 0;
 
-    p = get_basename(filename);
-    ext = NULL;
     if (p) {
-        while (*p == '.')
-            p++;
-        for (; *p; p++) {
-            if (*p == '.')
-                ext = p;
+        size_t i = get_basename_offset(p);
+        while (p[i] == '.')
+            i++;
+        for (; p[i]; i++) {
+            if (p[i] == '.')
+                ext = i;
         }
         if (!ext)
-            ext = p;
+            ext = i;
     }
     return ext;
 }

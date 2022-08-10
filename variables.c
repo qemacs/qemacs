@@ -1,7 +1,7 @@
 /*
  * Module for handling variables in QEmacs
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -209,7 +209,7 @@ QVarType qe_get_variable(EditState *s, const char *name,
 
     switch (vp->type) {
     case VAR_STRING:
-        str = *(const char**)ptr;
+        str = *(const char * const*)ptr;
         if (as_source)
             strquote(buf, size, str, -1);
         else
@@ -344,8 +344,8 @@ QVarType qe_set_variable(EditState *s, const char *name,
             return VAR_UNKNOWN;
         }
         if (vp->type == VAR_NUMBER && value) {
-            char *p;
-            num = strtol(value, &p, 0);
+            const char *p;
+            num = strtol_c(value, &p, 0);
             if (!*p)
                 value = NULL;
         }

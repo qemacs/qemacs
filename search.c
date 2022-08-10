@@ -53,7 +53,7 @@ struct ISearchState {
 };
 
 /* XXX: should store to screen */
-ISearchState isearch_state;
+static ISearchState global_isearch_state;
 
 /* last searched string */
 /* XXX: should store in a buffer as a list */
@@ -525,7 +525,7 @@ static void isearch_key(void *opaque, int ch)
 /* XXX: handle busy */
 void do_isearch(EditState *s, int dir, int argval)
 {
-    ISearchState *is = &isearch_state;
+    ISearchState *is = &global_isearch_state;
     EditState *e;
     int flags = SEARCH_FLAG_SMARTCASE;
 
@@ -539,7 +539,7 @@ void do_isearch(EditState *s, int dir, int argval)
         e->isearch_state = NULL;
     }
 
-    memset(is, 0, sizeof(isearch_state));
+    memset(is, 0, sizeof(*is));
     s->isearch_state = is;
     is->s = s;
     is->saved_mark = s->b->mark;

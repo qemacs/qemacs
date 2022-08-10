@@ -35,7 +35,7 @@ typedef struct GlyphCache {
     unsigned short data_size;
     short xincr;  /* glyph x increment */
     unsigned char is_fallback; /* true if fallback glyph */
-    unsigned char data[0];
+    unsigned char data[0];  /* CG: C99 flexible array */
 } GlyphCache;
 
 void fbf_text_metrics(QEditScreen *s, QEFont *font,

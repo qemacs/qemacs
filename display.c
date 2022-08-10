@@ -2,7 +2,7 @@
  * Display system for QEmacs
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -74,7 +74,7 @@ static void dummy_dpy_text_metrics(qe__unused__ QEditScreen *s,
                                    qe__unused__ QEFont *font,
                                    QECharMetrics *metrics,
                                    qe__unused__ const unsigned int *str,
-                                   qe__unused__ int len)
+                                   int len)
 {
     metrics->font_ascent = 1;
     metrics->font_descent = 0;

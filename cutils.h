@@ -2,7 +2,7 @@
  * Various simple C utilities
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -24,6 +24,8 @@
 
 #include <stdlib.h>
 
+#define unconst(t)  (t)(uintptr_t)
+
 /* These definitions prevent a clash with ffmpeg's cutil module. */
 
 #define strstart(str, val, ptr)    qe_strstart(str, val, ptr)
@@ -44,24 +46,33 @@ char *pstrcpy(char *buf, int buf_size, const char *str);
 char *pstrcat(char *buf, int buf_size, const char *s);
 char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 char *pstrncat(char *buf, int buf_size, const char *s, int len);
-const char *get_basename(const char *filename);
+size_t get_basename_offset(const char *filename);
+static inline const char *get_basename(const char *filename) {
+    return filename + get_basename_offset(filename);
+}
 static inline char *get_basename_nc(char *filename) {
-    return (char *)get_basename(filename);
+    return filename + get_basename_offset(filename);
 }
-static inline int get_basename_offset(const char *filename) {
-    return get_basename(filename) - filename;
+size_t get_extension_offset(const char *filename);
+static inline const char *get_extension(const char *filename) {
+    return filename + get_extension_offset(filename);
 }
-const char *get_extension(const char *filename);
 static inline char *get_extension_nc(char *filename) {
-    return (char *)get_extension(filename);
-}
-static inline int get_extension_offset(const char *filename) {
-    return get_extension(filename) - filename;
+    return filename + get_extension_offset(filename);
 }
 static inline void strip_extension(char *filename) {
-    filename[get_extension(filename) - filename] = '\0';
+    filename[get_extension_offset(filename)] = '\0';
 }
 char *get_dirname(char *dest, int size, const char *file);
+static inline long strtol_c(const char *str, const char **endptr, int base) {
+    return strtol(str, unconst(char **)endptr, base);
+}
+static inline long strtoll_c(const char *str, const char **endptr, int base) {
+    return strtoll(str, unconst(char **)endptr, base);
+}
+static inline long double strtold_c(const char *str, const char **endptr) {
+    return strtold(str, unconst(char **)endptr);
+}
 
 /* Double linked lists. Same API as the linux kernel */
 

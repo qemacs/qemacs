@@ -2,7 +2,7 @@
  * Basic Charset functions for QEmacs
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2002-2020 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1199,7 +1199,7 @@ void charset_decode_close(CharsetDecodeState *s)
 {
     if (s->charset->table_alloc) {
         /* remove the const qualifier */
-        qe_free((unsigned short **)&s->table);
+        qe_free(unconst(unsigned short **)&s->table);
     }
     /* safety */
     memset(s, 0, sizeof(CharsetDecodeState));
@@ -1554,7 +1554,7 @@ void decode_8bit_init(CharsetDecodeState *s)
     unsigned short *table;
     int i, n;
 
-    table = (unsigned short *)s->table;     /* remove const qualifier */
+    table = unconst(unsigned short *)s->table;     /* remove const qualifier */
     for (i = 0; i < charset->min_char; i++)
         *table++ = i;
     n = charset->max_char - charset->min_char + 1;

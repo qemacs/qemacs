@@ -189,7 +189,7 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
                             continue;
                     }
                     if (qe_tolower(str[i]) == 'e') {
-                        int k = i + 1;
+                        k = i + 1;
                         if (str[k] == '+' || str[k] == '-')
                             k++;
                         if (qe_isdigit(str[k])) {

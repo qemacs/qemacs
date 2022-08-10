@@ -177,7 +177,7 @@ start_cmd:
                 } else {
                     SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
                 }
-                continue;
+                break;
             }
 			continue;
 		case ' ':

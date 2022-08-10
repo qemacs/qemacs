@@ -37,7 +37,7 @@
 #include <inttypes.h>
 #include <time.h>
 
-#ifdef HAVE_QE_CONFIG_H
+#if 1 //ifdef HAVE_QE_CONFIG_H
 #include "config.h"
 #endif
 
@@ -106,11 +106,13 @@ void *qe_realloc(void *pp, size_t size);
 #define qe_mallocz_array(t, n)  ((t *)qe_mallocz_bytes((n) * sizeof(t)))
 #define qe_malloc_hack(t, n)    ((t *)qe_malloc_bytes(sizeof(t) + (n)))
 #define qe_mallocz_hack(t, n)   ((t *)qe_mallocz_bytes(sizeof(t) + (n)))
-#ifdef CONFIG_HAS_TYPEOF
+
+#if 1  // to test clang -Weverything
+#define qe_free(pp)    do  { void *_ = (pp); (free)(*(void **)_); *(void **)_ = NULL; } while (0)
+#elif defined CONFIG_HAS_TYPEOF
 #define qe_free(pp)    do { typeof(**(pp)) **__ = (pp); (free)(*__); *__ = NULL; } while (0)
 #else
-#define qe_free(pp)    \
-    do if (sizeof(**(pp)) >= 0) { void *_ = (pp); (free)(*(void **)_); *(void **)_ = NULL; } while (0)
+#define qe_free(pp)    do if (sizeof(**(pp)) >= 0) { void *_ = (pp); (free)(*(void **)_); *(void **)_ = NULL; } while (0)
 #endif
 
 #ifndef free
@@ -213,7 +215,7 @@ typedef struct CSSRect {
 } CSSRect;
 
 typedef unsigned int QEColor;
-#define QEARGB(a,r,g,b)    (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
+#define QEARGB(a,r,g,b)    (((unsigned int)(a) << 24) | ((r) << 16) | ((g) << 8) | (b))
 #define QERGB(r,g,b)       QEARGB(0xff, r, g, b)
 #define QERGB25(r,g,b)     QEARGB(1, r, g, b)
 #define COLOR_TRANSPARENT  0
@@ -439,7 +441,7 @@ static inline int qe_findchar(const char *str, int c) {
 static inline int qe_indexof(const char *str, int c) {
     if (qe_inrange(c, 1, 255)) {
         const char *p = strchr(str, c);
-        if (p) return p - str;
+        if (p) return (int)(p - str);
     }
     return -1;
 }
@@ -485,15 +487,15 @@ int ustristart(const unsigned int *str, const char *val, int *lenp);
 const unsigned int *ustrstr(const unsigned int *str, const char *val);
 const unsigned int *ustristr(const unsigned int *str, const char *val);
 static inline unsigned int *umemmove(unsigned int *dest,
-                                     const unsigned int *src, int count) {
+                                     const unsigned int *src, size_t count) {
     return (unsigned int *)memmove(dest, src, count * sizeof(unsigned int));
 }
 static inline unsigned int *umemcpy(unsigned int *dest,
-                                    const unsigned int *src, int count) {
+                                    const unsigned int *src, size_t count) {
     return (unsigned int *)memcpy(dest, src, count * sizeof(unsigned int));
 }
-int umemcmp(const unsigned int *s1, const unsigned int *s2, int count);
-int qe_memicmp(const void *p1, const void *p2, int count);
+int umemcmp(const unsigned int *s1, const unsigned int *s2, size_t count);
+int qe_memicmp(const void *p1, const void *p2, size_t count);
 const char *qe_stristr(const char *s1, const char *s2);
 
 int strsubst(char *buf, int buf_size, const char *from,

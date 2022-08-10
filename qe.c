@@ -1109,7 +1109,7 @@ typedef struct {
 static int down_cursor_func(DisplayState *ds,
                             int offset1, qe__unused__ int offset2, int line_num,
                             int x, qe__unused__ int y,
-                            qe__unused__ int w, qe__unused__ int h,
+                            int w, qe__unused__ int h,
                             qe__unused__ int hex_mode)
 {
     int d;
@@ -1423,7 +1423,7 @@ static int left_right_cursor_func(DisplayState *ds,
                                   int offset1, qe__unused__ int offset2,
                                   int line_num,
                                   int x, qe__unused__ int y,
-                                  qe__unused__ int w, qe__unused__ int h,
+                                  int w, qe__unused__ int h,
                                   qe__unused__ int hex_mode)
 {
     int d;
@@ -2628,7 +2628,7 @@ void do_goto(EditState *s, const char *str, int unit)
      * CG: XXX: resulting offset may fall inside a character.
      */
     rel = (*str == '+' || *str == '-');
-    pos = strtol(str, (char**)&p, 0);
+    pos = strtol_c(str, &p, 0);
 
     /* skip space required to separate hex offset from b or c suffix */
     if (*p == ' ')
@@ -2697,7 +2697,7 @@ void do_goto(EditState *s, const char *str, int unit)
     getcol:
         col = 0;
         if (*p == ':' || *p == '.') {
-            col = strtol(p + 1, (char**)&p, 0);
+            col = strtol_c(p + 1, &p, 0);
         }
         if (*p)
             goto error;
@@ -4265,8 +4265,8 @@ static int syntax_get_colorized_line(EditState *s,
 
     /* Combine with buffer styles on restricted range */
     if (s->b->b_styles) {
-        int i, start = bom + cctx.combine_start, stop = bom + cctx.combine_stop;
-        int offset = cctx.offset;
+        int start = bom + cctx.combine_start, stop = bom + cctx.combine_stop;
+        offset = cctx.offset;
         for (i = bom; i < stop; i++) {
             QETermStyle style = eb_get_style(b, offset);
             if (style && i >= start) {
@@ -4358,7 +4358,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     FriBidiCharType base;
     unsigned int buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
-    int i, char_index, colored_nb_chars;
+    int char_index, colored_nb_chars;
 
     line_num = 0;
     /* XXX: should test a flag, to avoid this call in hex/binary */
@@ -4470,6 +4470,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
         } else
         if (s->curline_style && s->offset >= offset && s->offset <= offset0) {
             /* XXX: only if qs->active_window == s ? */
+            int i;
             for (i = 0; i < colored_nb_chars; i++)
                 sbuf[i] = s->curline_style;
         }
@@ -5117,7 +5118,7 @@ static void free_cmd(ExecCmdState **esp)
         for (i = 0; i < es->nb_args; i++) {
             switch (es->args_type[i]) {
             case CMD_ARG_STRING:
-                qe_free((char **)&es->args[i].p);
+                qe_free(unconst(char **)&es->args[i].p);
                 break;
             }
         }
@@ -5339,7 +5340,7 @@ void do_call_last_kbd_macro(EditState *s)
     }
 }
 
-void do_execute_macro_keys(qe__unused__ EditState *s, const char *keys)
+void do_execute_macro_keys(EditState *s, const char *keys)
 {
     QEmacsState *qs = s->qe_state;
     const char *p;
@@ -5382,7 +5383,7 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
         /* XXX: freeing the current macro definition may cause a crash if it
          * is currently executing.
          */
-        qe_free((char **)&def->spec);
+        qe_free(unconst(char **)&def->spec);
         def->spec = buf;
     } else {
         def = qe_mallocz_array(CmdDef, 2);
@@ -6280,8 +6281,8 @@ void complete_test(CompleteState *cp, const char *str)
 
 static int completion_sort_func(const void *p1, const void *p2)
 {
-    StringItem *item1 = *(StringItem **)p1;
-    StringItem *item2 = *(StringItem **)p2;
+    const StringItem *item1 = *(const StringItem * const *)p1;
+    const StringItem *item2 = *(const StringItem * const *)p2;
 
     /* Group items by group order */
     if (item1->group != item2->group)
@@ -6324,7 +6325,7 @@ static inline MinibufState *minibuffer_get_state(EditState *e, int status) {
 void do_minibuffer_complete(EditState *s, int type)
 {
     QEmacsState *qs = s->qe_state;
-    int count, i, match_len, c, start, end;
+    int count, i, match_len, start, end;
     CompleteState cs;
     StringItem **outputs;
     EditState *e;
@@ -6396,6 +6397,7 @@ void do_minibuffer_complete(EditState *s, int type)
     match_len = cs.len;
 
     if (count > 0) {
+        int c;
         for (; (c = outputs[0]->str[match_len]) != '\0'; match_len++) {
             for (i = 1; i < count; i++) {
                 if (outputs[i]->str[match_len] != c)
@@ -6744,7 +6746,7 @@ void minibuffer_edit(EditState *e, const char *input, const char *prompt,
     if (input) {
         /* Default input should already be encoded as utf-8 */
         len = strlen(input);
-        eb_write(b, 0, (u8 *)input, len);
+        eb_write(b, 0, (const u8 *)input, len);
         s->offset = len;
     }
 
@@ -7089,7 +7091,7 @@ static int is_abs_path(const char *path)
 /* canonicalize the path for a given window and make it absolute */
 void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const char *path1)
 {
-    return canonicalize_absolute_buffer_path(s ? s->b : NULL, s ? s->offset : 0, buf, buf_size, path1);
+    canonicalize_absolute_buffer_path(s ? s->b : NULL, s ? s->offset : 0, buf, buf_size, path1);
 }
 
 void canonicalize_absolute_buffer_path(EditBuffer *b, int offset, char *buf, int buf_size, const char *path1)
@@ -8220,7 +8222,7 @@ void do_create_window(EditState *s, const char *filename, const char *layout)
         if (n >= countof(args))
             break;
 
-        args[n] = strtol(p, (char **)&p, 0);
+        args[n] = strtol_c(p, &p, 0);
         while (qe_isblank(*p))
             p++;
         if (*p == ',')
@@ -8717,8 +8719,7 @@ int detect_binary(const u8 *buf, int size)
 }
 #endif
 
-static int text_mode_probe(qe__unused__ ModeDef *mode,
-                           qe__unused__ ModeProbeData *p)
+static int text_mode_probe(ModeDef *mode, ModeProbeData *p)
 {
     if (mode->extensions) {
         if (match_extension(p->filename, mode->extensions))
@@ -9497,8 +9498,8 @@ int main(int argc, char **argv)
             /* free xxx-mode commands and macros */
             /* XXX: should use CmdDef flag */
             if (d->name && !d[1].name && d[1].val) {
-                qe_free((char **)&d->name);
-                qe_free((char **)&d->spec);
+                qe_free(unconst(char **)&d->name);
+                qe_free(unconst(char **)&d->spec);
                 qe_free(&d);
             }
         }

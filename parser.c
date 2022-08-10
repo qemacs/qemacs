@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -198,7 +198,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         if (strequal(cmd, "if")) {
             if (!expect_token(&p, '('))
                 goto fail;
-            skip = !strtol(p, (char**)&p, 0);
+            skip = !strtol_c(p, &p, 0);
             if (!expect_token(&p, ')') || !expect_token(&p, '{'))
                 goto fail;
             continue;
@@ -218,7 +218,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                         goto fail;
                     qe_set_variable(s, cmd, str, 0);
                 } else {
-                    qe_set_variable(s, cmd, NULL, strtol(p, (char**)&p, 0));
+                    qe_set_variable(s, cmd, NULL, strtol_c(p, &p, 0));
                 }
                 qe_skip_spaces(&p);
                 if (*p != ';' && *p != '\0')
@@ -292,7 +292,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
             switch (args_type[i] & CMD_ARG_TYPE_MASK) {
             case CMD_ARG_INT:
                 r = p;
-                args[i].n = strtol(p, (char**)&p, 0);
+                args[i].n = strtol_c(p, &p, 0);
                 if (p == r) {
                     put_status(s, "Number expected for arg %d", i);
                     goto fail;

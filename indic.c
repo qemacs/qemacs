@@ -61,6 +61,7 @@ static int is_dead_consonant(unsigned int i)
 int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len)
 {
     int i, len1, cc, j, k, c;
+    /* CG: C99 variable-length arrays may be too large */
     unsigned int *q, buf[len];
 
     /* Rule 1 : dead consonant rule */

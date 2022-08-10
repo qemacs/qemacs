@@ -2,7 +2,7 @@
  * Convert Unicode 8-bit code page files to QEmacs format
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2007-2020 Charlie Gordon.
+ * Copyright (c) 2007-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -156,7 +156,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname, int lineno)
             }
         }
 
-        c1 = strtol(p, (char **)&p, 16);
+        c1 = strtol_c(p, &p, 16);
         if (!isspace((unsigned char)*p)) {
             /* ignore ranges such as "0x20-0x7e       idem" */
             continue;
@@ -166,7 +166,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname, int lineno)
             /* unknown */
             /* continue; */
         }
-        c2 = strtol(p, (char **)&p, 16);
+        c2 = strtol_c(p, &p, 16);
         if (c1 >= 256) {
             fprintf(stderr, "%s:%d: ERROR %d %d\n", filename, lineno, c1, c2);
             continue;

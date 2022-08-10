@@ -26,7 +26,7 @@
 
 /*---------------- Free Forth language coloring ----------------*/
 
-char const ff_keywords[] = {
+static char const ff_keywords[] = {
     "|rst|>SC|SC|>S1|>S0|>C1|>C0|c04|s09|s08|s01|s1|,3`|,4`|,2`|,1`"
     "|here`|allot`|align`|,`|w,`|c,`|swap`|2dup`|dup`|nipdup`|tuck`"
     "|over`|under`|pick`|2drop`|drop`|nip`|rot`|-rot`|>rswapr>`|depth"

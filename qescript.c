@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -67,7 +67,7 @@ enum {
 static const char ops2[] = "*= /= %= += -= <<= >>= &= ^= |= == != << >> <= >= ++ -- || && ";
 static const char ops1[] = "=<>?:|^&+-*/%,;.!~()[]{}";
 
-static const char prec[] = {
+static const char precs[] = {
     '(', '[', '.', TOK_INC, TOK_DEC, 14,
     '*', '/', '%', 13,
     '+', '-', 12,
@@ -136,7 +136,7 @@ static void qe_cfg_release(QEmacsDataSource *ds) {
 }
 
 static int qe_cfg_get_prec(int tok) {
-    char *p = strchr(prec, tok);
+    char *p = strchr(precs, tok);
     if (p) {
         while (*++p >= ' ')
             continue;
@@ -171,7 +171,7 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
             switch (c) {
             case 'a': c = '\a'; break;
             case 'b': c = '\b'; break;
-            case 'e': c = '\e'; break;
+            case 'e': c = '\033'; break;
             case 'f': c = '\f'; break;
             case 'n': c = '\n'; break;
             case 'r': c = '\r'; break;
@@ -271,7 +271,7 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
             return ds->tok = TOK_ID;
         }
         if (qe_isdigit(c)) {
-            strtoll(ds->start_p, (char **)&ds->p, 0);
+            strtoll_c(ds->start_p, &ds->p, 0);
             if (qe_isalnum_(*ds->p)) {
                 put_status(ds->s, "invalid number");
                 return ds->tok = TOK_ERR;
@@ -975,23 +975,23 @@ static int qe_cfg_stmt(QEmacsDataSource *ds, QEValue *sp) {
 
     if (ds->tok == TOK_IF) {
         int skip;
-        QEValue *sp = &ds->stack[0];
+        QEValue *sp1 = &ds->stack[0];
 
         qe_cfg_next_token(ds);
-        sp->type = TOK_VOID;
-        if (qe_cfg_expr(ds, sp, PREC_COMMA) || qe_cfg_getvalue(ds, sp))
+        sp1->type = TOK_VOID;
+        if (qe_cfg_expr(ds, sp1, PREC_COMMA) || qe_cfg_getvalue(ds, sp1))
             goto fail;
-        skip = (sp->type == TOK_STRING) ? 0 : sp->u.value == 0;
+        skip = (sp1->type == TOK_STRING) ? 0 : sp1->u.value == 0;
         if (skip) {
             qe_cfg_skip(ds);
         } else {
-            qe_cfg_stmt(ds, sp);
+            qe_cfg_stmt(ds, sp1);
         }
         if (ds->tok == TOK_ELSE) {
             if (!skip) {
                 qe_cfg_skip(ds);
             } else {
-                qe_cfg_stmt(ds, sp);
+                qe_cfg_stmt(ds, sp1);
             }
         }
         return res;

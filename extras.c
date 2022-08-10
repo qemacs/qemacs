@@ -1362,7 +1362,7 @@ static void do_describe_buffer(EditState *s, int argval)
               b->style_bytes, b->style_shift);
 
     if (b->total_size > 0) {
-        u8 buf[4096];
+        u8 iobuf[4096];
         int count[256];
         int total_size = b->total_size;
         int offset, c, i, col, max_count, count_width;
@@ -1375,11 +1375,11 @@ static void do_describe_buffer(EditState *s, int argval)
         word_count = 0;
         word_char = 0;
         for (offset = 0; offset < total_size;) {
-            int size = eb_read(b, offset, buf, countof(buf));
+            int size = eb_read(b, offset, iobuf, countof(iobuf));
             if (size == 0)
                 break;
             for (i = 0; i < size; i++) {
-                c = buf[i];
+                c = iobuf[i];
                 count[c] += 1;
                 if (c <= 32) {
                     word_count += word_char;
@@ -1445,7 +1445,8 @@ static void do_describe_buffer(EditState *s, int argval)
         eb_printf(b1, "    page  size  flags  lines   col  chars  addr\n");
         for (i = 0, p = b->page_table; i < b->nb_pages && i < 100; i++, p++) {
             eb_printf(b1, "    %4d  %4d  %5x  %5d  %4d  %5d  %p  |",
-                      i, p->size, p->flags, p->nb_lines, p->col, p->nb_chars, p->data);
+                      i, p->size, p->flags, p->nb_lines, p->col, p->nb_chars,
+                      (void *)p->data);
             pc = p->data;
             n = min(p->size, 16);
             while (n-- > 0) {

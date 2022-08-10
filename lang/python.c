@@ -150,7 +150,7 @@ static void python_colorize_line(QEColorizeContext *cp,
             /* XXX: should test for regular expression in PYTHON_RAPYDSCRIPT flavor */
             if (str[i] != '/' && mode_flags == PYTHON_RAPYDSCRIPT) {
                 /* XXX: should use more context to tell regex from divide */
-                int i1, prev = ' ';
+                int prev = ' ';
                 for (i1 = start; i1 > 0; ) {
                     prev = str[--i1] & CHAR_MASK;
                     if (!qe_isblank(prev))

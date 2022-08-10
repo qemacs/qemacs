@@ -2,7 +2,7 @@
  * Utilities for qemacs.
  *
  * Copyright (c) 2001 Fabrice Bellard.
- * Copyright (c) 2002-2020 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -660,7 +660,7 @@ const void *memstr(const void *buf, int size, const char *str)
     return NULL;
 }
 
-int qe_memicmp(const void *p1, const void *p2, int count)
+int qe_memicmp(const void *p1, const void *p2, size_t count)
 {
     const u8 *s1 = (const u8 *)p1;
     const u8 *s2 = (const u8 *)p2;
@@ -847,9 +847,9 @@ const unsigned int *ustristr(const unsigned int *str, const char *val)
     return NULL;
 }
 
-int umemcmp(const unsigned int *s1, const unsigned int *s2, int count)
+int umemcmp(const unsigned int *s1, const unsigned int *s2, size_t count)
 {
-    for (; count > 0; count--, s1++, s2++) {
+    for (; count-- > 0; s1++, s2++) {
         if (*s1 != *s2) {
             return *s1 < *s2 ? -1 : 1;
         }
@@ -1233,7 +1233,7 @@ static ColorDef const default_colors[] = {
 };
 #define nb_default_colors  countof(default_colors)
 
-static ColorDef *qe_colors = (ColorDef *)default_colors;
+static ColorDef *qe_colors = unconst(ColorDef *)default_colors;
 static int nb_qe_colors = nb_default_colors;
 
 #if 0
@@ -1824,10 +1824,10 @@ void css_free_colors(void)
     if (qe_colors != default_colors) {
         while (nb_qe_colors > nb_default_colors) {
             nb_qe_colors--;
-            qe_free((char **)&qe_colors[nb_qe_colors].name);
+            qe_free(unconst(char **)&qe_colors[nb_qe_colors].name);
         }
         qe_free(&qe_colors);
-        qe_colors = (ColorDef *)default_colors;
+        qe_colors = unconst(ColorDef *)default_colors;
     }
 }
 
@@ -1886,7 +1886,7 @@ int css_get_color(QEColor *color_ptr, const char *p)
         for (i = 0; i < n; i++) {
             /* XXX: floats ? */
             qe_skip_spaces(&p);
-            v = strtol(p, (char **)&p, 0);
+            v = strtol_c(p, &p, 0);
             if (*p == '%') {
                 v = (v * 255) / 100;
                 p++;
@@ -2072,7 +2072,7 @@ int qmemcat(QString *q, const unsigned char *data1, int len1)
  */
 int qstrcat(QString *q, const char *str)
 {
-    return qmemcat(q, (unsigned char *)str, strlen(str));
+    return qmemcat(q, (const unsigned char *)str, strlen(str));
 }
 
 /* XXX: we use a fixed size buffer */
@@ -2097,7 +2097,7 @@ int buf_write(buf_t *bp, const void *src, int size)
     int n = 0;
 
     if (bp->pos < bp->size) {
-        int n = bp->size - bp->pos - 1;
+        n = bp->size - bp->pos - 1;
         if (n > size)
             n = size;
         memcpy(bp->buf + bp->len, src, n);

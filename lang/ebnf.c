@@ -135,8 +135,8 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
         case U_LEFT_SINGLE_QUOTATION_MARK:
             /* parse quoted token */
             while (i < n) {
-                int c = str[i++];
-                if (c == '\'' || c == U_RIGHT_SINGLE_QUOTATION_MARK)
+                int c1 = str[i++];
+                if (c1 == '\'' || c1 == U_RIGHT_SINGLE_QUOTATION_MARK)
                     break;
             }
             style = EBNF_STYLE_CHARCONST;
@@ -145,8 +145,8 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
         case '\"':
             /* parse quoted token */
             while (i < n) {
-                int c = str[i++];
-                if (c == '\"')
+                int c1 = str[i++];
+                if (c1 == '\"')
                     break;
             }
             style = EBNF_STYLE_STRING;

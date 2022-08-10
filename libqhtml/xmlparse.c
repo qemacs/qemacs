@@ -357,7 +357,7 @@ static int css_attr_int(CSSBox *box, CSSIdent attr_id, int def_val)
     str = css_attr_str(box, attr_id);
     if (!str)
         return def_val;
-    val = strtol(str, (char **)&p, 10);
+    val = strtol_c(str, &p, 10);
     /* exclude non numeric inputs (for example percentages) */
     if (*p != '\0')
         return def_val;

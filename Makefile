@@ -471,11 +471,18 @@ qe-doc.html: qe-doc.texi Makefile
 		sed "s/<!-- Created on .* by/<!-- Created by/" > $@
 	@rm $@.tmp
 
+qe-doc.info: qe-doc.texi Makefile
+	LANGUAGE=en_US LC_ALL=en_US.UTF-8 makeinfo -o $@ $<
+
+qe-doc.pdf: qe-doc.texi Makefile
+	LANGUAGE=en_US LC_ALL=en_US.UTF-8 texi2pdf -o $@ $<
+
 #
 # Maintenance targets
 #
 clean:
 	$(MAKE) -C libqhtml clean
+	rm -f qe-doc.aux qe-doc.info qe-doc.log qe-doc.pdf qe-doc.toc
 	rm -rf *.dSYM .objs* .tobjs* .xobjs* bin
 	rm -f *~ *.o *.a *.exe *_g *_debug TAGS gmon.out core *.exe.stackdump \
            qe tqe tqe1 xqe qfribidi kmaptoqe ligtoqe html2png cptoqe jistoqe \

@@ -35,6 +35,7 @@ static const char scad_preprocessor_keywords[] = {
 };
 
 static const char scad_types[] = {
+    ""
     //"void|"
     //"bool|string|int|uint|uchar|nt8|short|ushort|long|ulong|size_t|ssize_t|"
     //"double|va_list|unichar|"

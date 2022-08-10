@@ -2,7 +2,7 @@
  * Convert Unicode JIS tables to QEmacs format
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -81,9 +81,9 @@ static void handle_jis(FILE *f, const char *name, const char *filename)
     while (getline(line, sizeof(line), f, 1)) {
         p = line;
         if (is_jis208)
-            c1 = strtol(p, (char **)&p, 0);
-        c1 = strtol(p, (char **)&p, 0);
-        c2 = strtol(p, (char **)&p, 0);
+            c1 = strtol_c(p, &p, 0);
+        c1 = strtol_c(p, &p, 0);
+        c2 = strtol_c(p, &p, 0);
 
         b1 = (c1 >> 8) & 0xff;
         b2 = (c1) & 0xff;

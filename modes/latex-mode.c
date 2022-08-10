@@ -279,7 +279,7 @@ static void latex_cmd_run(void *opaque, char *cmd)
             argv[2] = cmd;
             argv[3] = NULL;
 
-            execv(argv[0], (char * const*)argv);
+            execv(argv[0], unconst(char * const*)argv);
             exit(1);
         }
     }

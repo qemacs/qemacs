@@ -1,7 +1,7 @@
 /*
  * Nim mode for QEmacs.
  *
- * Copyright (c) 2015-2017 Charlie Gordon.
+ * Copyright (c) 2015-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -195,8 +195,6 @@ static void nim_colorize_line(QEColorizeContext *cp,
             }
             continue;
 
-            break;
-
             // Handle ( ) { } [ ] (. .) {. .} [. .] : :: .. `
 
         case '{':
@@ -248,11 +246,12 @@ static void nim_colorize_line(QEColorizeContext *cp,
                             continue;
                     }
                     if (qe_match2(str[i], 'e', 'E')) {
-                        int k = i + 1;
-                        if (qe_match2(str[i], '+', '-'))
-                            k++;
-                        if (qe_isdigit(str[k])) {
-                            for (i = k + 1; qe_isdigit_(str[i]); i++)
+                        /* skip exponent: potential sign and decimal number if present */
+                        int k1 = i + 1;
+                        if (qe_match2(str[k1], '+', '-'))
+                            k1++;
+                        if (qe_isdigit(str[k1])) {
+                            for (i = k1 + 1; qe_isdigit_(str[i]); i++)
                                 continue;
                         }
                     }

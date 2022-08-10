@@ -2,7 +2,7 @@
  * Buffer editor mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2020 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -30,7 +30,7 @@ enum {
     BUFED_SORT_DESCENDING = 0xAAAA,
 };
 
-int bufed_sort_order;
+static int bufed_sort_order;  // XXX: should be a variable
 
 enum {
     BUFED_HIDE_SYSTEM = 0,
@@ -66,8 +66,8 @@ static inline BufedState *bufed_get_state(EditState *e, int status)
 
 static int bufed_sort_func(void *opaque, const void *p1, const void *p2)
 {
-    const StringItem *item1 = *(const StringItem **)p1;
-    const StringItem *item2 = *(const StringItem **)p2;
+    const StringItem *item1 = *(const StringItem * const*)p1;
+    const StringItem *item2 = *(const StringItem * const*)p2;
     const EditBuffer *b1 = item1->opaque;
     const EditBuffer *b2 = item2->opaque;
     BufedState *bs = opaque;

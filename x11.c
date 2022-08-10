@@ -2,7 +2,7 @@
  * X11 handling for QEmacs
  *
  * Copyright (c) 2000-2003 Fabrice Bellard.
- * Copyright (c) 2002-2020 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -242,10 +242,10 @@ static int x11_dpy_init(QEditScreen *s, int w, int h)
 
         if (geometry_str) {
             p = geometry_str;
-            xsize = strtol(p, (char **)&p, 0);
+            xsize = strtol_c(p, &p, 0);
             if (*p == 'x')
                 p++;
-            ysize = strtol(p, (char **)&p, 0);
+            ysize = strtol_c(p, &p, 0);
 
             if (xsize <= 0 || ysize <=0) {
                 fprintf(stderr, "Invalid geometry '%s'\n", geometry_str);
@@ -940,6 +940,7 @@ static void x11_dpy_draw_text(QEditScreen *s, QEFont *font,
     QEFont *font1, *last_font;
     XCharStruct *cs;
 #ifdef __GNUC__
+    /* CG: C99 variable-length arrays may be too large */
     XChar2b x11_str[len];
 #else
     XChar2b x11_str[LINE_MAX_SIZE];

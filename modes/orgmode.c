@@ -2,7 +2,7 @@
  * Org mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2020 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  * Copyright (c) 2014 Francois Revol.
  *
  * This library is free software; you can redistribute it and/or
@@ -436,7 +436,7 @@ static void do_org_goto(EditState *s, const char *dest)
 
     /* Jump to numbered destination. */
     for (offset = 0, level = 0; qe_isdigit(*p); ) {
-        nb = strtol(p, (char **)&p, 10);
+        nb = strtol_c(p, &p, 10);
         if (*p == '.')
             p++;
         level++;

@@ -769,7 +769,8 @@ void c_indent_line(EditState *s, int offset0)
 {
     int offset, offset1, offsetl, c, pos, line_num, col_num;
     int i, eoi_found, len, pos1, lpos, style, line_num1, state;
-    int off, qe__unused__ found_semi, found_comma, has_else;
+    int off, found_comma, has_else;
+    //int found_semi = 0;
     unsigned int buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     unsigned char stack[MAX_STACK_SIZE];
@@ -785,7 +786,7 @@ void c_indent_line(EditState *s, int offset0)
     lpos = -1; /* position of the last instruction start */
     offsetl = offset;
     eoi_found = 0;
-    found_semi = found_comma = has_else = 0;
+    found_comma = has_else = 0;
     stack_ptr = 0;
     state = INDENT_NORM;
     for (;;) {
@@ -927,7 +928,7 @@ void c_indent_line(EditState *s, int offset0)
                 case ';':
                     /* level test needed for 'for(;;)' */
                     if (stack_ptr == 0) {
-                        found_semi = 1;
+                        //found_semi = 1;
                         /* ; { or } are found before an instruction */
                     check_instr:
                         if (lpos >= 0) {
@@ -1649,10 +1650,10 @@ static int get_js_identifier(char *dest, int size, int c,
             }
         } else {
             char buf[6];
-            int i, len = utf8_encode(buf, c);
-            for (i = 0; i < len; i++) {
+            int i1, len = utf8_encode(buf, c);
+            for (i1 = 0; i1 < len; i1++) {
                 if (pos < size - 1) {
-                    dest[pos++] = buf[i];
+                    dest[pos++] = buf[i1];
                 }
             }
         }
@@ -1980,7 +1981,7 @@ static const char ts_types[] = {
     "any|boolean|number|string|symbol|"
 };
 
-ModeDef ts_mode = {
+static ModeDef ts_mode = {
     .name = "TypeScript",
     .alt_name = "ts",
     .extensions = "ts|tsx",
@@ -2033,7 +2034,7 @@ static const char jspp_types[] = {
     //"var|void|function|"
 };
 
-ModeDef jspp_mode = {
+static ModeDef jspp_mode = {
     .name = "JS++",
     .alt_name = "jspp",
     .extensions = "jspp|jpp",
@@ -2087,7 +2088,7 @@ static const char koka_types[] = {
     //"byte|char|float|long|short|unsigned|signed|"
 };
 
-ModeDef koka_mode = {
+static ModeDef koka_mode = {
     .name = "Koka",
     .extensions = "kk",
     //.shell_handlers = "koka",
@@ -2217,6 +2218,7 @@ static const char scala_keywords[] = {
 
 static const char scala_types[] = {
     /* all mixed case identifiers starting with an uppercase letter are types */
+    ""
 };
 
 static ModeDef scala_mode = {
@@ -2877,6 +2879,7 @@ static const char scilab_keywords[] = {
 };
 
 static const char scilab_types[] = {
+    ""
 };
 
 static int scilab_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -3025,6 +3028,7 @@ static const char pawn_keywords[] = {
 //};
 
 static const char pawn_types[] = {
+    ""
     //"void|"
     //"bool|string|int|uint|uchar|nt8|short|ushort|long|ulong|size_t|ssize_t|"
     //"double|va_list|unichar|"
@@ -3637,7 +3641,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-ModeDef salmon_mode = {
+static ModeDef salmon_mode = {
     .name = "Salmon",
     //.alt_name = "js",
     .extensions = "salm",

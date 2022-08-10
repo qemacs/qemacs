@@ -87,7 +87,7 @@ static GlyphCache *add_cached_glyph(QEFont *font, int index, int data_size)
     cache_size += sizeof(GlyphCache) + data_size + 4;
 
     while (cache_size > MAX_CACHE_SIZE) {
-        /* supress oldest entry */
+        /* suppress oldest entry */
         p = first_cache_entry.prev;
         cache_size -= sizeof(GlyphCache) + p->data_size + 4;
         p->next->prev = p->prev;
@@ -144,7 +144,7 @@ static GlyphCache *fbf_decode_glyph1(QEFont *font, int code)
     size = src_width * src_height;
     glyph_cache = add_cached_glyph(font, code, size);
     if (!glyph_cache)
-            return NULL;
+        return NULL;
     /* convert to bitmap */
     {
         int x, y, bit, pitch;
@@ -155,9 +155,9 @@ static GlyphCache *fbf_decode_glyph1(QEFont *font, int code)
         for (y = 0; y < src_height; y++) {
             for (x = 0; x < src_width; x++) {
                 bit = (bitmap[pitch * y + (x >> 3)] >>
-                           (7 - (x & 7))) & 1;
+                       (7 - (x & 7))) & 1;
                 glyph_cache->data[src_width * y + x] = -bit;
-                }
+            }
         }
     }
 

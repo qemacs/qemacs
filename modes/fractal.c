@@ -1,7 +1,7 @@
 /*
  * QEmacs, character based fractal rendering
  *
- * Copyright (c) 2017-2020 Charlie Gordon.
+ * Copyright (c) 2017-2022 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -348,7 +348,7 @@ struct FractalState {
 #endif
 };
 
-const char fractal_default_parameters[] = {
+static const char fractal_default_parameters[] = {
     " type=0"
     " maxiter=215"
     " rot=0"
@@ -517,8 +517,8 @@ static void fractal_invalidate(FractalState *ms) {
 static void fractal_set_rotation(FractalState *ms, int rot) {
     ms->rot = rot;
     /* compute rotation matrix */
-    ms->m0 = cos(-ms->rot * M_PI / 180.0);
-    ms->m1 = sin(-ms->rot * M_PI / 180.0);
+    ms->m0 = (fnum_t)cos(-ms->rot * M_PI / 180.0);
+    ms->m1 = (fnum_t)sin(-ms->rot * M_PI / 180.0);
     ms->m2 = -ms->m1;
     ms->m3 = ms->m0;
     fractal_invalidate(ms);
@@ -526,7 +526,7 @@ static void fractal_set_rotation(FractalState *ms, int rot) {
 
 static void fractal_set_zoom(FractalState *ms, int level) {
     ms->zoom = level;
-    ms->scale = pow(10.0, -ms->zoom / 10.0);
+    ms->scale = (fnum_t)pow(10.0, -ms->zoom / 10.0);
     fractal_invalidate(ms);
 }
 
@@ -591,7 +591,7 @@ static int fractal_set_colors(FractalState *ms, const char *p, const char **pp) 
                 if (*p == '<') {
                     if (i == 0)
                         return 0;
-                    n = clamp(strtol(p + 1, (char **)&p, 10), 1, 255 - i);
+                    n = clamp(strtol_c(p + 1, &p, 10), 1, 255 - i);
                     if (*p != '>')
                         return 0;
                     p++;
@@ -629,10 +629,10 @@ static void fractal_set_parameters(EditState *s, FractalState *ms, const char *p
         if (*p == '\0')
             break;
         if (strstart(p, "type=", &p)) {
-            ms->type = clamp(strtol(p, (char **)&p, 0), 0, countof(fractal_type));
+            ms->type = clamp(strtol_c(p, &p, 0), 0, countof(fractal_type));
         } else
         if (strstart(p, "maxiter=", &p)) {
-            ms->maxiter = strtol(p, (char **)&p, 0);
+            ms->maxiter = strtol_c(p, &p, 0);
         } else
         if (strstart(p, "colors=", &p)) {
             if (!fractal_set_colors(ms, p, &p)) {
@@ -641,28 +641,28 @@ static void fractal_set_parameters(EditState *s, FractalState *ms, const char *p
             }
         } else
         if (strstart(p, "cb=", &p)) {
-            ms->cb = strtol(p, (char **)&p, 0);
+            ms->cb = strtol_c(p, &p, 0);
         } else
         if (strstart(p, "nc=", &p)) {
-            ms->nc = strtol(p, (char **)&p, 0);
+            ms->nc = strtol_c(p, &p, 0);
         } else
         if (strstart(p, "shift=", &p)) {
-            ms->shift = strtol(p, (char **)&p, 0);
+            ms->shift = strtol_c(p, &p, 0);
         } else
         if (strstart(p, "rot=", &p)) {
-            fractal_set_rotation(ms, strtol(p, (char **)&p, 0));
+            fractal_set_rotation(ms, strtol_c(p, &p, 0));
         } else
         if (strstart(p, "zoom=", &p)) {
-            fractal_set_zoom(ms, strtol(p, (char **)&p, 0));
+            fractal_set_zoom(ms, strtol_c(p, &p, 0));
         } else
         if (strstart(p, "bailout=", &p)) {
-            ms->bailout = strtold(p, (char **)&p);
+            ms->bailout = strtold_c(p, &p);
         } else
         if (strstart(p, "x=", &p)) {
-            ms->x = strtold(p, (char **)&p);
+            ms->x = strtold_c(p, &p);
         } else
         if (strstart(p, "y=", &p)) {
-            ms->y = strtold(p, (char **)&p);
+            ms->y = strtold_c(p, &p);
         } else {
             put_status(s, "invalid parameter: %s", p);
             break;
@@ -760,11 +760,11 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
 
     if (s->width == s->cols) {
         /* character based, assume 80x25 4/3 aspect ratio, 2 pixels per char */
-        dx = 3.2 * scale / width;
-        dy = dx * 1.2;
+        dx = 32 * scale / width / 10;
+        dy = dx * 12 / 10;
     } else {
         /* pixel based, assume 100% pixel aspect ratio */
-        dy = dx = 3.2 * scale / width;
+        dy = dx = 32 * scale / width / 10;
     }
     if (ms->ip == NULL || ms->ip->width != width || ms->ip->height != height) {
         qe_free_picture(&ms->ip);

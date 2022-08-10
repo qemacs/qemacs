@@ -268,7 +268,7 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
             }
         }
 
-        execv(argv[0], (char * const*)argv);
+        execv(argv[0], unconst(char * const *)argv);
         exit(1);
     }
     /* return file info */
@@ -668,6 +668,17 @@ static int qe_term_insert_lines(ShellState *s, int offset, int n)
     return offset;
 }
 
+#if QE_TERM_FG_COLORS < 256
+#define MAP_FG_COLOR(color)  qe_map_color(xterm_colors[color], xterm_colors, QE_TERM_FG_COLORS, NULL)
+#else
+#define MAP_FG_COLOR(color)  (color)
+#endif
+#if QE_TERM_BG_COLORS < 256
+#define MAP_BG_COLOR(color)  qe_map_color(xterm_colors[color], xterm_colors, QE_TERM_BG_COLORS, NULL)
+#else
+#define MAP_BG_COLOR(color)  (color)
+#endif
+
 static int qe_term_csi_m(ShellState *s, const int *params, int count)
 {
     int c = *params;
@@ -756,11 +767,7 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
         /* set foreground color */
         /* 0:black 1:red 2:green 3:yellow 4:blue 5:magenta 6:cyan 7:white */
         /* XXX: should distinguish system colors and palette colors */
-        s->fgcolor = c - 30;
-        if (QE_TERM_FG_COLORS < 256) {
-            s->fgcolor = qe_map_color(xterm_colors[c - 30], xterm_colors,
-                                      QE_TERM_FG_COLORS, NULL);
-        }
+        s->fgcolor = MAP_FG_COLOR(c - 30);
         break;
     case 38:    /* set extended foreground color (ISO-8613-3) */
         // First subparam means:   # additional subparams:  Accepts optional params:
@@ -791,12 +798,9 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
             /* set foreground color to third esc_param */
             /* complete syntax is \033[38;5;Nm where N is in range 0..255 */
             int color = clamp(params[2], 0, 255);
-            QEColor rgb = xterm_colors[color];
 
             /* map color to qe-term palette */
-            s->fgcolor = color;
-            if (QE_TERM_FG_COLORS < 256)
-                s->fgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_FG_COLORS, NULL);
+            s->fgcolor = MAP_FG_COLOR(color);
             return 3;
         }
         if (count >= 5 && params[1] == 2) {
@@ -818,23 +822,16 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
     case 44: case 45: case 46: case 47:
         /* set background color */
         /* XXX: should distinguish system colors and palette colors */
-        s->bgcolor = c - 40;
-        if (QE_TERM_BG_COLORS < 256) {
-            s->bgcolor = qe_map_color(xterm_colors[c - 40], xterm_colors,
-                                      QE_TERM_BG_COLORS, NULL);
-        }
+        s->bgcolor = MAP_BG_COLOR(c - 40);
         break;
     case 48:    /* set extended background color (ISO-8613-3) */
         if (count >= 3 && params[1] == 5) {
             /* set background color to third esc_param */
             /* complete syntax is \033[48;5;Nm where N is in range 0..255 */
             int color = clamp(params[2], 0, 255);
-            QEColor rgb = xterm_colors[color];
 
             /* map color to qe-term palette */
-            s->bgcolor = color;
-            if (QE_TERM_BG_COLORS < 256)
-                s->bgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_BG_COLORS, NULL);
+            s->bgcolor = MAP_BG_COLOR(color);
             return 3;
         }
         if (count >= 5 && params[1] == 2) {
@@ -876,21 +873,13 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
     case 94: case 95: case 96: case 97:
         /* Set foreground text color, high intensity, aixterm (not in standard) */
         /* XXX: should distinguish system colors and palette colors */
-        s->fgcolor = c - 90 + 8;
-        if (QE_TERM_FG_COLORS < 256) {
-            s->fgcolor = qe_map_color(xterm_colors[c - 90 + 8], xterm_colors,
-                                      QE_TERM_FG_COLORS, NULL);
-        }
+        s->fgcolor = MAP_FG_COLOR(c - 90 + 8);
         break;
     case 100: case 101: case 102: case 103:
     case 104: case 105: case 106: case 107:
         /* Set background color, high intensity, aixterm (not in standard) */
         /* XXX: should distinguish system colors and palette colors */
-        s->bgcolor = c - 100 + 8;
-        if (QE_TERM_BG_COLORS < 256) {
-            s->bgcolor = qe_map_color(xterm_colors[c - 100 + 8], xterm_colors,
-                                      QE_TERM_BG_COLORS, NULL);
-        }
+        s->bgcolor = MAP_BG_COLOR(c - 100 + 8);
         break;
     default:
     unhandled:
@@ -1279,14 +1268,14 @@ static void qe_term_emulate(ShellState *s, int c)
         case 'M':   // Reverse Index (RI  is 0x8d). [ri]
                     // move cursor up, scroll if at top line
             {
-                int start, offset, col, row;
+                int start, offset3, col, row;
                 qe_term_get_pos(s, s->cur_offset, &start, &col, &row);
                 if (--row < 0) {
-                    if (1 || start == 0) {
+                    /* if (start == 0) */ {
                         qe_term_insert_lines(s, start, 1);
                     }
-                    offset = qe_term_skip_lines(s, start, s->rows - 1);
-                    qe_term_delete_lines(s, offset, 1);
+                    offset3 = qe_term_skip_lines(s, start, s->rows - 1);
+                    qe_term_delete_lines(s, offset3, 1);
                     row = 0;
                 }
                 qe_term_goto_xy(s, col, row, 0);
@@ -2467,11 +2456,11 @@ static void shell_delete_bytes(EditState *e, int offset, int size)
     // XXX: should deal with regions spanning current input line and
     // previous buffer contents
     if (s && !s->grab_keys && end > s->cur_prompt) {
-        int start_char, cur_char, end_char, size;
+        int start_char, cur_char, end_char, size1;
         if (start < s->cur_prompt) {
             /* delete part before the interactive input */
-            size = eb_delete_range(e->b, start, s->cur_prompt);
-            end -= size;
+            size1 = eb_delete_range(e->b, start, s->cur_prompt);
+            end -= size1;
             start = s->cur_prompt;
         }
         start_char = eb_get_char_offset(e->b, start);
@@ -3237,7 +3226,7 @@ static int shell_init(void)
     shell_mode.name = "shell";
     shell_mode.flags |= MODEF_NO_TRAILING_BLANKS;
     shell_mode.mode_probe = shell_mode_probe;
-    shell_mode.colorize_func = shell_colorize_line,
+    shell_mode.colorize_func = shell_colorize_line;
     shell_mode.buffer_instance_size = sizeof(ShellState);
     shell_mode.mode_init = shell_mode_init;
     shell_mode.mode_free = shell_mode_free;

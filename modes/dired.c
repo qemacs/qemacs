@@ -2,7 +2,7 @@
  * Directory editor mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2020 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -208,8 +208,8 @@ static int dired_find_target(DiredState *ds, const char *target)
 /* sort alphabetically with directories first */
 static int dired_sort_func(void *opaque, const void *p1, const void *p2)
 {
-    const StringItem *item1 = *(const StringItem **)p1;
-    const StringItem *item2 = *(const StringItem **)p2;
+    const StringItem *item1 = *(const StringItem * const *)p1;
+    const StringItem *item2 = *(const StringItem * const *)p2;
     const DiredItem *dip1 = item1->opaque;
     const DiredItem *dip2 = item2->opaque;
     DiredState *ds = opaque;

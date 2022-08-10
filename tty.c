@@ -2,7 +2,7 @@
  * TTY Terminal handling for QEmacs
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2002-2020 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -806,7 +806,7 @@ static inline int tty_term_glyph_width(qe__unused__ QEditScreen *s, unsigned int
     return unicode_tty_glyph_width(ucs);
 }
 
-static void tty_dpy_text_metrics(QEditScreen *s, qe__unused__ QEFont *font,
+static void tty_dpy_text_metrics(QEditScreen *s, QEFont *font,
                                  QECharMetrics *metrics,
                                  const unsigned int *str, int len)
 {

@@ -67,7 +67,7 @@ static int css_get_length(int *length_ptr, int *unit_ptr, const char *p)
     int num, len, unit;
     const char *p1;
     char buf[32];
-    float f;
+    double f;
 
     p1 = p;
     if (*p == '+' || *p == '-')
@@ -367,7 +367,7 @@ CSSProperty *css_parse_properties(CSSParseState *b, const char *props_str)
             }
             if (type & CSS_TYPE_INTEGER) {
                 const char *p1;
-                val = strtol(buf, (char **)&p1, 0);
+                val = strtol_c(buf, &p1, 0);
                 if (*p1 == '\0') {
                     unit = CSS_VALUE_INTEGER;
                     goto got_val;

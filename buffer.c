@@ -676,7 +676,7 @@ int eb_set_buffer_name(EditBuffer *b, const char *name1)
     }
     /* This is the only place where b->name is modified */
     eb_cache_remove(b);
-    pstrcpy((char *)b->name, sizeof(b->name), name);
+    pstrcpy(unconst(char *)b->name, sizeof(b->name), name);
     /* eb_cache_insert may fail only for a newly created buffer */
     return eb_cache_insert(b);
 }
@@ -934,12 +934,12 @@ void eb_trace_bytes(const void *buf, int size, int state)
                 continue;
             }
             if (p < endp) {
-                if ((c = 'n', *p == '\n')
-                ||  (c = 'r', *p == '\r')
-                ||  (c = 't', *p == '\t')
-                ||  (c = 'b', *p == '\010')
-                ||  (c = 'E', *p == '\033')
-                ||  (c = '\\', *p == '\\')) {
+                if (((void)(c = 'n'), *p == '\n')
+                ||  ((void)(c = 'r'), *p == '\r')
+                ||  ((void)(c = 't'), *p == '\t')
+                ||  ((void)(c = 'b'), *p == '\010')
+                ||  ((void)(c = 'E'), *p == '\033')
+                ||  ((void)(c = '\\'), *p == '\\')) {
                     col += eb_printf(b, "\\%c", c);
                 } else
                 if (*p < 32) {
@@ -2066,7 +2066,7 @@ static void raw_buffer_close(qe__unused__ EditBuffer *b)
    filename. Find a unique buffer name */
 void eb_set_filename(EditBuffer *b, const char *filename)
 {
-    pstrcpy((char *)b->filename, sizeof(b->filename), filename);
+    pstrcpy(unconst(char *)b->filename, sizeof(b->filename), filename);
     eb_set_buffer_name(b, get_basename(filename));
 }
 
