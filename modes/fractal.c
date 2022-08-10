@@ -319,7 +319,7 @@ typedef long double fnum_t;
 #define MFT  "%.21Lg"
 #else
 typedef double fnum_t;
-#define MFT  "%.16Lg"
+#define MFT  "%.16g"
 #endif
 
 typedef struct { fnum_t a, b; } cnum_t;
@@ -688,11 +688,11 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
 
     if (s->width == s->cols) {
         /* character based, assume 80x25 4/3 aspect ratio, 2 pixels per char */
-        dx = 3.2 * ms->scale / width;
-        dy = dx * 1.2;
+        dx = 32 * ms->scale / width / 10;
+        dy = dx * 12 / 10;
     } else {
         /* pixel based, assume 100% pixel aspect ratio */
-        dy = dx = 3.2 * ms->scale / width;
+        dy = dx = 32 * ms->scale / width / 10;
     }
     if (ms->disp_bmp == NULL
     ||  ms->disp_bmp->width != width

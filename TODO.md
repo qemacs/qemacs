@@ -1,13 +1,16 @@
 <!-- TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2022-03-21
+; Updated: 2022-08-10
 -->
 
 # QEmacs TODO list
 
 ## Changes for Github publication
 
+* rework documentation:
+ - document existing features
+ - make documentation available inside qemacs
 * C-x Enter should find another shell buffer if `*shell*` has been killed. Should enumerate all buffers.
 * terminal emulation: when move inserts spaces, they should have default attributes
 * add ignore-case for compare-windows
