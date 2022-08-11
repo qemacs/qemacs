@@ -89,6 +89,9 @@ TOP:=1
 else
 TOP:=0
 endif
+ifeq (,$(TARGET_OBJ))
+TARGET_OBJ:=$(TARGET)
+endif
 
 OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o input.o display.o \
        modes/hex.o modes/list.o
@@ -235,11 +238,9 @@ DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
 BINDIR:=$(DEPTH)/bin
 
-OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/$(TARGET)$(DEBUG_SUFFIX)
+OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/$(TARGET_OBJ)$(DEBUG_SUFFIX)
 CFLAGS+= -I$(OBJS_DIR)
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
-
-$(shell mkdir -p $(OBJS_DIR) $(BINDIR))
 
 #
 # Dependencies
@@ -312,6 +313,7 @@ endif
 
 $(OBJS_DIR)/modules.txt: $(SRCS) Makefile
 	@echo creating $@
+	$(cmd)  mkdir -p $(dir $@)
 	@echo '/* This file was generated automatically */' > $@
 	@grep -h ^qe_module_init $(SRCS) | \
             sed s/qe_module_init/qe_module_declare/ >> $@
@@ -346,6 +348,7 @@ $(OBJS_DIR)/haiku.o: haiku.cpp $(DEPENDS) Makefile
 #
 $(BINDIR)/%$(EXE): tools/%.c
 	$(echo) CC -o $@ $^
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 #
@@ -353,6 +356,7 @@ $(BINDIR)/%$(EXE): tools/%.c
 #
 $(BINDIR)/qfribidi$(EXE): qfribidi.c cutils.c
 	$(echo) CC -o $@ $^
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -DTEST -o $@ $^
 
 #
@@ -360,6 +364,7 @@ $(BINDIR)/qfribidi$(EXE): qfribidi.c cutils.c
 #
 $(BINDIR)/ligtoqe$(EXE): tools/ligtoqe.c cutils.c
 	$(echo) CC -o $@ $^
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
@@ -388,6 +393,7 @@ KMAPS:=$(addprefix $(KMAPS_DIR)/, $(KMAPS))
 
 $(BINDIR)/kmaptoqe$(EXE): tools/kmaptoqe.c cutils.c
 	$(echo) CC -o $@ $^
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
@@ -415,10 +421,12 @@ JIS:=$(addprefix cp/,$(JIS))
 
 $(BINDIR)/cptoqe$(EXE): tools/cptoqe.c cutils.c
 	$(echo) CC $^
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 $(BINDIR)/jistoqe$(EXE): tools/jistoqe.c cutils.c
 	$(echo) CC $^
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 ifdef BUILD_ALL
@@ -440,6 +448,7 @@ FONTS:=$(addprefix fonts/,$(FONTS))
 
 $(BINDIR)/fbftoqe$(EXE): tools/fbftoqe.c cutils.c
 	$(echo) CC -o $@ $^
+	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 fbffonts.c: $(BINDIR)/fbftoqe$(EXE) $(FONTS)
