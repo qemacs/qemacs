@@ -2209,8 +2209,8 @@ void text_move_bol(EditState *s);
 void text_move_eol(EditState *s);
 void text_move_bof(EditState *s);
 void text_move_eof(EditState *s);
-void word_right(EditState *s, int w);
-void word_left(EditState *s, int w);
+int word_right(EditState *s, int w);
+int word_left(EditState *s, int w);
 int qe_get_word(EditState *s, char *buf, int buf_size,
                 int offset, int *offset_ptr);
 void do_goto(EditState *s, const char *str, int unit);

@@ -786,14 +786,10 @@ void do_transpose(EditState *s, int cmd)
         break;
     case CMD_TRANSPOSE_WORDS:
         word_right(s, 1);
-        word_right(s, 0);
-        offset3 = s->offset;
-        word_left(s, 0);
-        offset2 = s->offset;
-        word_left(s, 1);
-        offset1 = s->offset;
-        word_left(s, 0);
-        offset0 = s->offset;
+        offset3 = word_right(s, 0);
+        offset2 = word_left(s, 0);
+        offset1 = word_left(s, 1);
+        offset0 = word_left(s, 0);
         if (qs->emulation_flags == 1) {
             /* set position to end of first word */
             end_offset = offset0 + offset3 - offset2;

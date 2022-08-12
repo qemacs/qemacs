@@ -647,32 +647,38 @@ void text_move_eol(EditState *s)
     s->offset = eb_goto_eol(s->b, s->offset);
 }
 
-void word_right(EditState *s, int w)
+static int eb_word_right(EditBuffer *b, int w, int offset)
 {
     int c, offset1;
 
-    for (;;) {
-        if (s->offset >= s->b->total_size)
-            break;
-        c = eb_nextc(s->b, s->offset, &offset1);
+    while (offset < b->total_size) {
+        c = eb_nextc(b, offset, &offset1);
         if (qe_isword(c) == w)
             break;
-        s->offset = offset1;
+        offset = offset1;
     }
+    return offset;
 }
 
-void word_left(EditState *s, int w)
+static int eb_word_left(EditBuffer *b, int w, int offset)
 {
     int c, offset1;
 
-    for (;;) {
-        if (s->offset == 0)
-            break;
-        c = eb_prevc(s->b, s->offset, &offset1);
+    while (offset > 0) {
+        c = eb_prevc(b, offset, &offset1);
         if (qe_isword(c) == w)
             break;
-        s->offset = offset1;
+        offset = offset1;
     }
+    return offset;
+}
+
+int word_right(EditState *s, int w) {
+    return s->offset = eb_word_right(s->b, w, s->offset);
+}
+
+int word_left(EditState *s, int w) {
+    return s->offset = eb_word_left(s->b, w, s->offset);
 }
 
 void text_move_word_left_right(EditState *s, int dir)
@@ -812,14 +818,56 @@ void do_kill_paragraph(EditState *s, int n)
     }
 }
 
+/* replace the contents between p1 and p2 with a specified number
+   of newlines and spaces */
+static int eb_respace(EditBuffer *b, int p1, int p2, int newlines, int spaces) {
+    int adjust = 0, nb, offset1, c;
+    while (newlines > 0 && p1 < p2) {
+        c = eb_nextc(b, p1, &offset1);
+        if (c != '\n')
+            break;
+        p1 = offset1;
+        newlines--;
+    }
+    if (newlines > 0) {
+        nb = eb_insert_uchars(b, p1, '\n', newlines);
+        adjust += nb;
+        p1 += nb;
+        p2 += nb;
+    }
+    while (spaces > 0 && p1 < p2) {
+        c = eb_nextc(b, p1, &offset1);
+        if (c == ' ') {
+            p1 = offset1;
+            spaces--;
+        } else {
+            nb = eb_delete(b, p1, offset1 - p1);
+            adjust -= nb;
+            p2 -= nb;
+        }
+    }
+    if (p1 < p2) {
+        nb = eb_delete(b, p1, p2 - p1);
+        adjust -= nb;
+        p2 -= nb;
+    }
+    if (spaces) {
+        nb = eb_insert_uchars(b, p1, ' ', spaces);
+        adjust += nb;
+        p1 += nb;
+        p2 += nb;
+    }
+    return adjust;
+}
+
 void do_fill_paragraph(EditState *s)
 {
     /* buffer offsets, byte counts */
     int par_start, par_end, offset, offset1, chunk_start, word_start;
-    /* number of characters */
+    /* number of characters / screen positions */
     int col, indent_size, word_size, space_size;
     /* other counts */
-    int n, word_count;
+    int word_count;
     /* character */
     int c;
 
@@ -862,6 +910,7 @@ void do_fill_paragraph(EditState *s)
             if (qe_isspace(c))
                 break;
             offset = offset1;
+            /* XXX: should handle variable width and combining glyphs */
             word_size++;
         }
 
@@ -869,34 +918,23 @@ void do_fill_paragraph(EditState *s)
             /* first word: preserve spaces */
             col += space_size + word_size;
         } else {
-            /* insert space single space the word */
-            if (offset == par_end
-            ||  (col + 1 + word_size > s->b->fill_column)) {
-                /* XXX: should check if separator is a newline */
-                eb_delete_uchar(s->b, chunk_start);
-                chunk_start += eb_insert_uchar(s->b, chunk_start, '\n');
-                if (offset < par_end) {
-                    /* indent */
-                    int nb = eb_insert_spaces(s->b, offset, indent_size);
-                    chunk_start += nb;
-                    word_start += nb;
-                    offset += nb;
-                    par_end += nb;
-                }
-                col = word_size + indent_size;
-            } else {
-                /* XXX: should check if separator is a space */
-                eb_delete_uchar(s->b, chunk_start);
-                chunk_start += eb_insert_uchar(s->b, chunk_start, ' ');
-                col += 1 + word_size;
+            if (word_size == 0) {
+                /* end of paragraph: append a newline */
+                eb_respace(s->b, chunk_start, word_start, 1, 0);
+                break;
             }
-
-            /* remove all other spaces if needed */
-            n = word_start - chunk_start;
-            if (n > 0) {
-                eb_delete(s->b, chunk_start, n);
-                offset -= n;
-                par_end -= n;
+            if (col + 1 + word_size > s->b->fill_column) {
+                /* insert newline and indentation */
+                int nb = eb_respace(s->b, chunk_start, word_start, 1, indent_size);
+                offset += nb;
+                par_end += nb;
+                col = indent_size + word_size;
+            } else {
+                /* single space the word */
+                int nb = eb_respace(s->b, chunk_start, word_start, 0, 1);
+                offset += nb;
+                par_end += nb;
+                col += 1 + word_size;
             }
         }
         word_count++;
@@ -905,13 +943,12 @@ void do_fill_paragraph(EditState *s)
 
 /* Upper / lower / capital case functions. Update offset, return isword */
 /* arg: -1=lower-case, +1=upper-case, +2=capital-case */
-static int eb_changecase(EditBuffer *b, int *offsetp, int arg)
+static int eb_changecase(EditBuffer *b, int offset, int *offsetp, int arg)
 {
-    int offset0, ch, ch1, len;
+    int ch, ch1, len;
     char buf[MAX_CHAR_BYTES];
 
-    offset0 = *offsetp;
-    ch = eb_nextc(b, offset0, offsetp);
+    ch = eb_nextc(b, offset, offsetp);
     if (!qe_isword(ch))
         return 0;
 
@@ -924,26 +961,25 @@ static int eb_changecase(EditBuffer *b, int *offsetp, int arg)
         len = eb_encode_uchar(b, buf, ch1);
         /* replaced char may have a different encoding len from
          * original char, such as dotless i in Turkish. */
-        eb_replace(b, offset0, *offsetp - offset0, buf, len);
-        *offsetp = offset0 + len;
+        eb_replace(b, offset, *offsetp - offset, buf, len);
+        *offsetp = offset + len;
     }
     return 1;
 }
 
 void do_changecase_word(EditState *s, int arg)
 {
-    int offset;
+    int offset, offset1;
 
-    word_right(s, 1);
-    for (offset = s->offset;;) {
-        if (offset >= s->b->total_size)
+    offset = word_right(s, 1);
+    while (offset < s->b->total_size) {
+        if (!eb_changecase(s->b, offset, &offset1, arg))
             break;
-        if (!eb_changecase(s->b, &offset, arg))
-            break;
-        s->offset = offset;
+        offset = offset1;
         if (arg == 2)
             arg = -2;
     }
+    s->offset = offset;
 }
 
 void do_changecase_region(EditState *s, int arg)
@@ -960,7 +996,7 @@ void do_changecase_region(EditState *s, int arg)
     for (;;) {
         if (offset >= max(s->offset, s->b->mark))
               break;
-        if (eb_changecase(s->b, &offset, arg)) {
+        if (eb_changecase(s->b, offset, &offset, arg)) {
             if (arg == 2)
                 arg = -arg;
         } else {
