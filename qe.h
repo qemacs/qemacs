@@ -1340,6 +1340,8 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2);
 
 #else /* QE_MODULE */
 
+void init_all_modules(void);
+
 #if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
 #if __GNUC__ < 3 || (__GNUC__ == 3 && __GNUC_MINOR__ < 3)
 /* same method as the linux kernel... */
@@ -1366,8 +1368,6 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2);
         int module_ ## fn (void) { return fn(); }
 
 #define qe_module_exit(fn)
-
-void init_all_modules(void);
 
 #endif
 

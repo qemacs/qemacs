@@ -429,8 +429,9 @@ static int qe_cfg_append(QEmacsDataSource *ds, QEValue *sp, const char *p, size_
 static int qe_cfg_format(QEmacsDataSource *ds, QEValue *sp) {
     char buf[256];
     char fmt[16];
-    /* prevent warning on variable format */
-    int (*fun)(char *buf, size_t size, const char *fmt, ...) = snprintf;
+    /* Use function pointer and cast to prevent warning on variable format */
+    int (*fun)(char *buf, size_t size, const char *fmt, ...) =
+        (int (*)(char *buf, size_t size, const char *fmt, ...))snprintf;
     char *start, *p;
     int c, len;
 
