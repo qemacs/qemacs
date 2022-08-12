@@ -6075,7 +6075,7 @@ static const char *file_completion_ignore_extensions = {
     "|apk"
     "|bin|obj|dll|exe" /* DOS binaries */
     "|o|so|a" /* Unix binaries */
-    "|dylib|dSYM|DS_Store" /* OS/X */
+    "|dylib|dSYM" /* OS/X */
     "|gz|tgz|taz|bz2|bzip2|xz|zip|rar|z|tar" /* archives */
     "|cma|cmi|cmo|cmt|cmti|cmx"
     "|class|jar" /* java */
@@ -6123,7 +6123,10 @@ void file_complete(CompleteState *cp)
         /* ignore known binary file extensions */
         if (match_extension(base, file_completion_ignore_extensions))
             continue;
-
+        if (*base == '.') {
+            if (strequal(base, ".DS_Store"))
+                continue;
+        }
         /* stat the file to find out if it's a directory.
          * In this case add a slash to speed up typing long paths
          */
@@ -6309,6 +6312,7 @@ typedef struct MinibufState {
     int completion_flags;
     int completion_start;
     int completion_end;
+    int completion_count;
     CompletionDef *completion;
 
     StringArray *history;
@@ -6388,6 +6392,7 @@ void do_minibuffer_complete(EditState *s, int type)
     (*mb->completion->enumerate)(&cs);
     count = cs.cs.nb_items;
     outputs = cs.cs.items;
+    mb->completion_count = count;
 #if 0
     printf("count=%d\n", count);
     for (i = 0; i < count; i++)
@@ -6520,7 +6525,8 @@ void do_minibuffer_complete_space(EditState *s)
         do_char(s, ' ', 1);
     } else
     if (check_window(&mb->completion_popup_window)
-    &&  qs->last_cmd_func == qs->this_cmd_func) {
+    &&  qs->last_cmd_func == qs->this_cmd_func
+    &&  mb->completion_count > 1) {
         /* page through the list */
         // XXX: should close the popup at the bottom of the list
         do_scroll_up_down(mb->completion_popup_window, 2);

@@ -311,14 +311,15 @@ static int format_uid(char *buf, int size, int nflag, uid_t uid)
         return snprintf(buf, size, "%d", (int)uid);
 }
 
-static int format_size(char *buf, int size, int human, const DiredItem *fp)
+static int format_size(char *buf, int size, int human,
+                       mode_t st_mode, dev_t st_rdev, off_t st_size)
 {
-    if (S_ISCHR(fp->mode) || S_ISBLK(fp->mode)) {
-        int major = fp->rdev >> ((sizeof(dev_t) == 2) ? 8 : 24);
-        int minor = fp->rdev & ((sizeof(dev_t) == 2) ? 0xff : 0xffffff);
+    if (S_ISCHR(st_mode) || S_ISBLK(st_mode)) {
+        int major = st_rdev >> ((sizeof(dev_t) == 2) ? 8 : 24);
+        int minor = st_rdev & ((sizeof(dev_t) == 2) ? 0xff : 0xffffff);
         return snprintf(buf, size, "%3d, %3d", major, minor);
     } else {
-        return format_number(buf, size, human, fp->size);
+        return format_number(buf, size, human, st_size);
     }
 }
 
@@ -597,7 +598,7 @@ static void dired_compute_columns(DiredState *ds)
         if (ds->gidlen < len)
             ds->gidlen = len;
 
-        len = format_size(buf, sizeof(buf), ds->hflag, dip);
+        len = format_size(buf, sizeof(buf), ds->hflag, dip->mode, dip->rdev, dip->size);
         if (ds->sizelen < len)
             ds->sizelen = len;
 
@@ -743,8 +744,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
                                     ds->blocksize));
         }
         if (!ds->no_mode) {
-            compute_attr(buf, dip->mode);
-            col += eb_printf(b, "%s ", buf);
+            col += eb_printf(b, "%s ", compute_attr(buf, dip->mode));
         }
         if (!ds->no_link) {
             col += eb_printf(b, "%*d ", ds->linklen, (int)dip->nlink);
@@ -758,7 +758,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
             col += eb_printf(b, "%-*s ", ds->gidlen, buf);
         }
         if (!ds->no_size) {
-            format_size(buf, sizeof(buf), ds->hflag, dip);
+            format_size(buf, sizeof(buf), ds->hflag, dip->mode, dip->rdev, dip->size);
             col += eb_printf(b, " %*s  ", ds->sizelen, buf);
         }
         if (!ds->no_date) {
@@ -1401,15 +1401,25 @@ static int dired_init(void)
 int file_print_entry(CompleteState *cp, EditState *s, const char *name) {
     struct stat st;
     EditBuffer *b = s->b;
-    int len;
+    char buf[20];
+    int len, sizelen = 10, linklen = 2, uidlen = 8, gidlen = 8;
 
     if (!stat(name, &st)) {
         b->cur_style = S_ISDIR(st.st_mode) ? DIRED_STYLE_DIRECTORY : DIRED_STYLE_FILENAME;
         len = eb_puts(b, name);
         b->tab_width = max3(16, 2 + len, b->tab_width);
-        len += eb_putc(b, '\t');
         b->cur_style = DIRED_STYLE_NORMAL;
-        len += eb_printf(b, "%10lld", (long long)st.st_size);
+        format_size(buf, sizeof(buf), dired_hflag, st.st_mode, st.st_dev, st.st_size);
+        len += eb_printf(b, "\t%*s", sizelen, buf);
+        //len += eb_printf(b, "\t%10lld", (long long)st.st_size);
+        format_date(buf, sizeof(buf), st.st_mtime, dired_time_format);
+        len += eb_printf(b, "  %s", buf);
+        len += eb_printf(b, "  %s", compute_attr(buf, st.st_mode));
+        format_uid(buf, sizeof(buf), dired_nflag, st.st_uid);
+        len += eb_printf(b, "  %-*s", uidlen, buf);
+        format_gid(buf, sizeof(buf), dired_nflag, st.st_gid);
+        len += eb_printf(b, "  %-*s", gidlen, buf);
+        len += eb_printf(b, "  %*d", linklen, (int)st.st_nlink);
     } else {
         return eb_puts(b, name);
     }

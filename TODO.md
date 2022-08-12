@@ -14,9 +14,7 @@
 * C-x Enter should find another shell buffer if `*shell*` has been killed. Should enumerate all buffers.
 * terminal emulation: when move inserts spaces, they should have default attributes
 * add ignore-case for compare-windows
-* fix filename completion bug at directory start
 * show current directory for shell buffers in buffer list view
-* full ls display in file completion window
 * incremental search: increase max repeat count
 * undo: allow file save when undo clears file modified flag
 * files: check file date to detect asynchronous modifications on disk
@@ -61,7 +59,6 @@
 * extra: `grep`, `grep-buffer,` `grep-sources,` `grep-tree`...
 * files: actually load file in `find-file-noselect`
 * files: fix `SPC` / `TAB` distinct behaviors on **~/comp/project/gnachman/**
-* files: ignore **.DS_Store** in completion
 * files: should update symbolic links times when saving files
 * markdown: recognise `~~~ {.c}` language tags
 * modes: `next-mode` should include buffer `default_mode` in list
