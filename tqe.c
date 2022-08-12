@@ -21,4 +21,6 @@
 
 #ifdef CONFIG_INIT_CALLS
 #include "qeend.c"
+#else
+#include "tqe_modules.c"
 #endif

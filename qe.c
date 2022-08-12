@@ -9112,7 +9112,7 @@ static CmdLineOptionDef cmd_options[] = {
 
 #if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
 
-static void init_all_modules(void)
+void init_all_modules(void)
 {
     int (*initcall)(void);
     int (**ptr)(void);
@@ -9154,23 +9154,6 @@ static void exit_all_modules(void)
     }
 }
 #endif
-
-#else
-
-#ifndef SPLINT
-#define qe_module_declare(fn)  extern int module_ ## fn(void)
-#include "modules.txt"
-#undef qe_module_declare
-#endif
-
-static void init_all_modules(void)
-{
-#ifndef SPLINT
-#define qe_module_declare(fn)  module_ ## fn()
-#include "modules.txt"
-#undef qe_module_declare
-#endif
-}
 #endif
 
 #ifdef CONFIG_DLL

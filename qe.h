@@ -1367,6 +1367,8 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2);
 
 #define qe_module_exit(fn)
 
+void init_all_modules(void);
+
 #endif
 
 #endif /* QE_MODULE */

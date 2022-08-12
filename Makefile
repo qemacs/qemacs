@@ -241,6 +241,9 @@ BINDIR:=$(DEPTH)/bin
 OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/$(TARGET_OBJ)$(DEBUG_SUFFIX)
 CFLAGS+= -I$(OBJS_DIR)
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
+ifndef CONFIG_INIT_CALLS
+OBJS+= $(OBJS_DIR)/$(TARGET)_modules.o
+endif
 
 #
 # Dependencies
@@ -275,11 +278,11 @@ endif
 ifeq (1,$(TOP))
 
 # targets that require recursion
-xqe:       force;	$(MAKE) TARGET=xqe TARGET_X11=1
+xqe:       force;	$(MAKE) TARGET=xqe TARGET_OBJ=qe TARGET_X11=1
 tqe:       force;	$(MAKE) TARGET=tqe TARGET_TINY=1
 debug:     force;	$(MAKE) TARGET=qe DEBUG=1
 qe_debug:  force;	$(MAKE) TARGET=qe DEBUG=1
-xqe_debug: force;	$(MAKE) TARGET=xqe TARGET_X11=1 DEBUG=1
+xqe_debug: force;	$(MAKE) TARGET=xqe TARGET_OBJ=qe TARGET_X11=1 DEBUG=1
 tqe_debug: force;	$(MAKE) TARGET=tqe TARGET_TINY=1 DEBUG=1
 tqe1:      force;	$(MAKE) TARGET=tqe TARGET_TINY=1 tqe1$(EXE)
 
@@ -288,8 +291,11 @@ else
 # Amalgation mode produces a larger executable
 TSRCS:=qe.c util.c cutils.c charset.c buffer.c search.c input.c display.c \
        modes/hex.c modes/list.c parser.c unix.c tty.c win32.c qeend.c
+ifndef CONFIG_INIT_CALLS
+TSRCS+= $(OBJS_DIR)/tqe_modules.c
+endif
 
-tqe1_g$(EXE): tqe.c $(TSRCS) Makefile $(OBJS_DIR)/modules.txt
+tqe1_g$(EXE): tqe.c $(TSRCS) Makefile
 	$(echo) CC $(ECHO_CFLAGS) -o $@ $<
 	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LIBS)
 
@@ -307,16 +313,24 @@ ffplay$(EXE): qe$(EXE) Makefile
 	ln -sf $< $@
 endif
 
-ifndef CONFIG_INIT_CALLS
-$(OBJS_DIR)/qe.o: $(OBJS_DIR)/modules.txt
-endif
+$(OBJS_DIR)/$(TARGET)_modules.o: $(OBJS_DIR)/$(TARGET)_modules.c Makefile
+	$(echo) CC $(ECHO_CFLAGS) -c $<
+	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
-$(OBJS_DIR)/modules.txt: $(SRCS) Makefile
+$(OBJS_DIR)/$(TARGET)_modules.c: $(SRCS) Makefile
 	@echo creating $@
 	$(cmd)  mkdir -p $(dir $@)
 	@echo '/* This file was generated automatically */' > $@
-	@grep -h ^qe_module_init $(SRCS) | \
-            sed s/qe_module_init/qe_module_declare/ >> $@
+	@echo '#include "qe.h"'                             >> $@
+	@echo '#undef qe_module_init'                       >> $@
+	@echo '#define qe_module_init(fn)  extern int module_##fn(void)' >> $@
+	@grep -h ^qe_module_init $(SRCS)                    >> $@
+	@echo '#undef qe_module_init'                       >> $@
+	@echo 'void init_all_modules(void) {'               >> $@
+	@echo '#define qe_module_init(fn)  module_##fn()'   >> $@
+	@grep -h ^qe_module_init $(SRCS)                    >> $@
+	@echo '#undef qe_module_init'                       >> $@
+	@echo '}'                                           >> $@
 
 $(OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(OBJS_DIR)/charset.o: charset.c unicode_width.h
@@ -578,5 +592,5 @@ SPLINTOPTS += -nullstate -unqualifiedtrans +charint
 # extra options that will be removed later
 SPLINTOPTS += -mustfreeonly -temptrans -kepttrans -DSTBI_NO_SIMD
 
-splint: $(OBJS_DIR)/modules.txt
+splint:
 	splint $(SPLINTOPTS) -I. -Ilibqhtml -I$(OBJS_DIR) $(SRCS)
