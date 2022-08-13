@@ -2513,8 +2513,7 @@ int eb_goto_bol2(EditBuffer *b, int offset, int *countp)
  * return 0 if not blank.
  * return 1 if blank and store start of next line in <*offset1>.
  */
-int eb_is_blank_line(EditBuffer *b, int offset, int *offset1)
-{
+int eb_is_blank_line(EditBuffer *b, int offset, int *offset1) {
     int c;
 
     while ((c = eb_nextc(b, offset, &offset)) != '\n') {

@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -182,19 +182,21 @@ static CmdDef basic_commands[] = {
           "s{Set visited file name: }[file]|file|"
           "s{Rename file? }|newname|", "")
 
-    /*---------------- Paragraph / case handling ----------------*/
+    /*---------------- Paragraph handling ----------------*/
 
-    CMD0( KEY_META('h'), KEY_NONE,
-          "mark-paragraph", do_mark_paragraph, "")
-    /* XXX: should use same C function */
-    CMD3( KEY_META('{'), KEY_CTRL_UP,  /* KEY_META('[') */
+    CMD3( KEY_META('h'), KEY_NONE,
+          "mark-paragraph", do_mark_paragraph, ESi, +1, "P", "")
+    CMD3( KEY_META('{'), KEY_CTRL_UP,
           "backward-paragraph", do_forward_paragraph, ESi, -1, "P", "")
-    CMD3( KEY_META('}'), KEY_CTRL_DOWN, /* KEY_META(']') */
+    CMD3( KEY_META('}'), KEY_CTRL_DOWN,
           "forward-paragraph", do_forward_paragraph, ESi, +1, "P", "")
     CMD2( KEY_META('q'), KEY_NONE,
           "fill-paragraph", do_fill_paragraph, ES, "*", "")
+    /* should have fill-region */
     CMD3( KEY_NONE, KEY_NONE,
           "kill-paragraph", do_kill_paragraph, ESi, 1, "P", "")
+
+    /*---------------- Case handling ----------------*/
 
     CMD3( KEY_META('c'), KEY_NONE,
           "capitalize-word", do_changecase_word, ESi, 2, "*v", "")

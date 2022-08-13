@@ -281,47 +281,39 @@ void do_delete_horizontal_space(EditState *s)
     eb_delete_range(s->b, from, to);
 }
 
-static void do_delete_blank_lines(EditState *s)
-{
+static void do_delete_blank_lines(EditState *s) {
     /* Delete blank lines:
      * On blank line, delete all surrounding blank lines, leaving just one.
      * On isolated blank line, delete that one.
      * On nonblank line, delete any immediately following blank lines.
      */
-    /* XXX: should simplify */
-    int from, offset, offset0, offset1, all = 0;
+    int p0, p1, p2, p3;
     EditBuffer *b = s->b;
 
-    offset = eb_goto_bol(b, s->offset);
-    if (eb_is_blank_line(b, offset, &offset1)) {
-        if ((offset == 0 || !eb_is_blank_line(b,
-                             eb_prev_line(b, offset), NULL))
-        &&  (offset1 >= b->total_size || !eb_is_blank_line(b,
-                            offset1, NULL))) {
-            all = 1;
+    p0 = p1 = eb_goto_bol(b, s->offset);
+    if (eb_is_blank_line(b, p1, &p2)) {
+        while (p0 > 0) {
+            int offset0 = eb_prev_line(b, p0);
+            if (!eb_is_blank_line(b, offset0, NULL))
+                break;
+            p0 = offset0;
         }
     } else {
-        offset = eb_next_paragraph(b, offset);
-        all = 1;
+        p0 = p1 = p2 = eb_next_line(b, s->offset);
     }
 
-    from = offset;
-    while (from > 0) {
-        offset0 = eb_prev_line(b, from);
-        if (!eb_is_blank_line(b, offset0, NULL))
-            break;
-        from = offset0;
-    }
-    if (!all) {
-        eb_delete_range(b, from, offset);
-        /* Keep current blank line */
-        from = offset = eb_next_line(b, from);
-    }
-    while (offset < s->b->total_size) {
-        if (!eb_is_blank_line(b, offset, &offset))
+    p3 = p2;
+    while (p3 < s->b->total_size) {
+        if (!eb_is_blank_line(b, p3, &p3))
             break;
     }
-    eb_delete_range(b, from, offset);
+    if (p0 < p1 || p2 < p3) {
+        /* delete the second block first so p0 and p1 stay correct */
+        eb_delete_range(b, p2, p3);
+        eb_delete_range(b, p0, p1);
+    } else {
+        eb_delete_range(b, p1, p2);
+    }
 }
 
 static void do_tabify(EditState *s, int p1, int p2)

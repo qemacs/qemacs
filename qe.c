@@ -737,16 +737,14 @@ void do_mark_region(EditState *s, int mark, int offset)
 
 /* paragraph handling */
 
-int eb_next_paragraph(EditBuffer *b, int offset)
-{
-    int text_found;
-
+int eb_next_paragraph(EditBuffer *b, int offset) {
+    /* find end of paragraph around or after point:
+       skip blank lines, if any, then skip non blank lines
+       and return start of blank line before text.
+     */
+    int text_found = 0;
     offset = eb_goto_bol(b, offset);
-    /* find end of paragraph */
-    text_found = 0;
-    for (;;) {
-        if (offset >= b->total_size)
-            break;
+    while (offset < b->total_size) {
         if (eb_is_blank_line(b, offset, NULL)) {
             if (text_found)
                 break;
@@ -758,48 +756,65 @@ int eb_next_paragraph(EditBuffer *b, int offset)
     return offset;
 }
 
-int eb_start_paragraph(EditBuffer *b, int offset)
-{
-    for (;;) {
-        offset = eb_goto_bol(b, offset);
-        if (offset <= 0)
-            break;
-        /* check if only spaces */
-        if (eb_is_blank_line(b, offset, &offset)) {
-            break;
+void do_mark_paragraph(EditState *s, int n) {
+    /* mark-paragraph (bound to M-h):
+
+       mark_paragraph(n = arg_val)
+
+       Put point at beginning of this paragraph, mark at end.
+       The paragraph marked is the one that contains point or follows point.
+
+       With argument ARG, puts mark at end of a following paragraph, so that
+       the number of paragraphs marked equals ARG.
+
+       If ARG is negative, point is put at end of this paragraph, mark is put
+       at beginning of this or a previous paragraph.
+       The paragraph marked is the one that contains point or precedes point.
+
+       Interactively if the current region is highlighted, it marks
+       the next ARG paragraphs after the ones already marked.
+     */
+    int start = s->offset;
+    int end = s->region_style ? s->b->mark : s->offset;
+    if (n < 0) {
+        end = eb_prev_paragraph(s->b, end);
+        if (!s->region_style)
+            start = eb_next_paragraph(s->b, end);
+        while (++n < 0 && end > 0) {
+            end = eb_prev_paragraph(s->b, end);
         }
-        offset = eb_prev(b, offset);
+    } else
+    if (n > 0) {
+        end = eb_next_paragraph(s->b, end);
+        if (!s->region_style)
+            start = eb_prev_paragraph(s->b, end);
+        while (--n > 0 && end < s->b->total_size) {
+            end = eb_next_paragraph(s->b, end);
+        }
+    }
+    do_mark_region(s, end, start);
+}
+
+int eb_prev_paragraph(EditBuffer *b, int offset) {
+    /* find start of paragraph around or before point:
+       skip blank lines, if any, then skip non blank lines
+       and return start of blank line after end of text.
+     */
+    int text_found = 0;
+    offset = eb_goto_bol(b, offset);
+    while (offset > 0) {
+        if (eb_is_blank_line(b, offset, NULL)) {
+            if (text_found)
+                break;
+        } else {
+            text_found = 1;
+        }
+        offset = eb_prev_line(b, offset);
     }
     return offset;
 }
 
-void do_mark_paragraph(EditState *s)
-{
-    int start = eb_start_paragraph(s->b, s->offset);
-    int end = eb_next_paragraph(s->b, s->offset);
-
-    do_mark_region(s, start, end);
-}
-
-int eb_prev_paragraph(EditBuffer *b, int offset)
-{
-    /* skip empty lines */
-    while (offset > 0) {
-        offset = eb_goto_bol(b, offset);
-        if (!eb_is_blank_line(b, offset, NULL))
-            break;
-        /* line just before */
-        offset = eb_prev(b, offset);
-    }
-
-    offset = eb_start_paragraph(b, offset);
-
-    /* line just before */
-    return eb_prev_line(b, offset);
-}
-
-void do_forward_paragraph(EditState *s, int n)
-{
+void do_forward_paragraph(EditState *s, int n) {
     for (; n < 0 && s->offset > 0; n++) {
         s->offset = eb_prev_paragraph(s->b, s->offset);
     }
@@ -808,11 +823,16 @@ void do_forward_paragraph(EditState *s, int n)
     }
 }
 
-void do_kill_paragraph(EditState *s, int n)
-{
-    int start = s->offset;
+void do_kill_paragraph(EditState *s, int n) {
+    /*
+       kill_paragraph(n = ARG)
 
+       Kill forward to end of paragraph.
+       With arg N, kill forward to Nth end of paragraph;
+       negative arg -N means kill backward to Nth start of paragraph.
+     */
     if (n != 0) {
+        int start = s->offset;
         do_forward_paragraph(s, n);
         do_kill(s, start, s->offset, n, 0);
     }
@@ -860,66 +880,70 @@ static int eb_respace(EditBuffer *b, int p1, int p2, int newlines, int spaces) {
     return adjust;
 }
 
+static int get_indent_size(EditState *s, int p1, int p2) {
+    int indent_size = 0;
+    while (p1 < p2) {
+        int c = eb_nextc(s->b, p1, &p1);
+        if (!qe_isblank(c))
+            break;
+        if (c == '\t') {
+            int tw = s->b->tab_width > 0 ? s->b->tab_width : DEFAULT_TAB_WIDTH;
+            indent_size += tw - indent_size % tw;
+        } else {
+            indent_size++;
+        }
+    }
+    return indent_size;
+}
+
 void do_fill_paragraph(EditState *s)
 {
     /* buffer offsets, byte counts */
     int par_start, par_end, offset, offset1, chunk_start, word_start;
     /* number of characters / screen positions */
-    int col, indent_size, word_size, space_size;
-    /* other counts */
-    int word_count;
-    /* character */
-    int c;
+    int col, indent0_size, indent_size, word_size;
 
     /* find start & end of paragraph */
-    par_start = eb_start_paragraph(s->b, s->offset);
-    par_end = eb_next_paragraph(s->b, par_start);
+    par_end = eb_next_paragraph(s->b, s->offset);
+    par_start = eb_prev_paragraph(s->b, par_end);
+    /* skip the blank line if any */
+    eb_is_blank_line(s->b, par_start, &par_start);
 
-    /* compute indent size */
-    indent_size = 0;
+    /* compute indent sizes for first and second lines */
+    indent0_size = get_indent_size(s, par_start, par_end);
     offset = eb_next_line(s->b, par_start);
-    if (!eb_is_blank_line(s->b, offset, NULL)) {
-        while (offset < par_end) {
-            c = eb_nextc(s->b, offset, &offset);
-            if (!qe_isblank(c))
-                break;
-            indent_size++;
-        }
-    }
+    indent_size = get_indent_size(s, offset, par_end);
 
-    /* suppress any spaces in between */
+    /* reflow words to fill lines */
     col = 0;
     offset = par_start;
-    word_count = 0;
     while (offset < par_end) {
         /* skip spaces */
         chunk_start = offset;
-        space_size = 0;
         while (offset < par_end) {
-            c = eb_nextc(s->b, offset, &offset1);
+            int c = eb_nextc(s->b, offset, &offset1);
             if (!qe_isspace(c))
                 break;
             offset = offset1;
-            space_size++;
         }
         /* skip word */
         word_start = offset;
         word_size = 0;
         while (offset < par_end) {
-            c = eb_nextc(s->b, offset, &offset1);
+            int c = eb_nextc(s->b, offset, &offset1);
             if (qe_isspace(c))
                 break;
             offset = offset1;
-            /* XXX: should handle variable width and combining glyphs */
-            word_size++;
+            /* handle variable width and combining glyphs */
+            word_size += unicode_tty_glyph_width(c);
         }
 
-        if (word_count == 0) {
-            /* first word: preserve spaces */
-            col += space_size + word_size;
+        if (chunk_start == par_start) {
+            /* preserve spaces at paragraph start */
+            col += indent0_size + word_size;
         } else {
-            if (word_size == 0) {
-                /* end of paragraph: append a newline */
+            if (word_start == offset) {
+                /* space at end of paragraph: append a newline */
                 eb_respace(s->b, chunk_start, word_start, 1, 0);
                 break;
             }
@@ -937,7 +961,6 @@ void do_fill_paragraph(EditState *s)
                 col += 1 + word_size;
             }
         }
-        word_count++;
     }
 }
 
