@@ -735,234 +735,7 @@ void do_mark_region(EditState *s, int mark, int offset)
         s->region_style = QE_STYLE_REGION_HILITE;
 }
 
-/* paragraph handling */
-
-int eb_next_paragraph(EditBuffer *b, int offset) {
-    /* find end of paragraph around or after point:
-       skip blank lines, if any, then skip non blank lines
-       and return start of blank line before text.
-     */
-    int text_found = 0;
-    offset = eb_goto_bol(b, offset);
-    while (offset < b->total_size) {
-        if (eb_is_blank_line(b, offset, NULL)) {
-            if (text_found)
-                break;
-        } else {
-            text_found = 1;
-        }
-        offset = eb_next_line(b, offset);
-    }
-    return offset;
-}
-
-void do_mark_paragraph(EditState *s, int n) {
-    /* mark-paragraph (bound to M-h):
-
-       mark_paragraph(n = arg_val)
-
-       Put point at beginning of this paragraph, mark at end.
-       The paragraph marked is the one that contains point or follows point.
-
-       With argument ARG, puts mark at end of a following paragraph, so that
-       the number of paragraphs marked equals ARG.
-
-       If ARG is negative, point is put at end of this paragraph, mark is put
-       at beginning of this or a previous paragraph.
-       The paragraph marked is the one that contains point or precedes point.
-
-       Interactively if the current region is highlighted, it marks
-       the next ARG paragraphs after the ones already marked.
-     */
-    int start = s->offset;
-    int end = s->region_style ? s->b->mark : s->offset;
-    if (n < 0) {
-        end = eb_prev_paragraph(s->b, end);
-        if (!s->region_style)
-            start = eb_next_paragraph(s->b, end);
-        while (++n < 0 && end > 0) {
-            end = eb_prev_paragraph(s->b, end);
-        }
-    } else
-    if (n > 0) {
-        end = eb_next_paragraph(s->b, end);
-        if (!s->region_style)
-            start = eb_prev_paragraph(s->b, end);
-        while (--n > 0 && end < s->b->total_size) {
-            end = eb_next_paragraph(s->b, end);
-        }
-    }
-    do_mark_region(s, end, start);
-}
-
-int eb_prev_paragraph(EditBuffer *b, int offset) {
-    /* find start of paragraph around or before point:
-       skip blank lines, if any, then skip non blank lines
-       and return start of blank line after end of text.
-     */
-    int text_found = 0;
-    offset = eb_goto_bol(b, offset);
-    while (offset > 0) {
-        if (eb_is_blank_line(b, offset, NULL)) {
-            if (text_found)
-                break;
-        } else {
-            text_found = 1;
-        }
-        offset = eb_prev_line(b, offset);
-    }
-    return offset;
-}
-
-void do_forward_paragraph(EditState *s, int n) {
-    for (; n < 0 && s->offset > 0; n++) {
-        s->offset = eb_prev_paragraph(s->b, s->offset);
-    }
-    for (; n > 0 && s->offset < s->b->total_size; n--) {
-        s->offset = eb_next_paragraph(s->b, s->offset);
-    }
-}
-
-void do_kill_paragraph(EditState *s, int n) {
-    /*
-       kill_paragraph(n = ARG)
-
-       Kill forward to end of paragraph.
-       With arg N, kill forward to Nth end of paragraph;
-       negative arg -N means kill backward to Nth start of paragraph.
-     */
-    if (n != 0) {
-        int start = s->offset;
-        do_forward_paragraph(s, n);
-        do_kill(s, start, s->offset, n, 0);
-    }
-}
-
-/* replace the contents between p1 and p2 with a specified number
-   of newlines and spaces */
-static int eb_respace(EditBuffer *b, int p1, int p2, int newlines, int spaces) {
-    int adjust = 0, nb, offset1, c;
-    while (newlines > 0 && p1 < p2) {
-        c = eb_nextc(b, p1, &offset1);
-        if (c != '\n')
-            break;
-        p1 = offset1;
-        newlines--;
-    }
-    if (newlines > 0) {
-        nb = eb_insert_uchars(b, p1, '\n', newlines);
-        adjust += nb;
-        p1 += nb;
-        p2 += nb;
-    }
-    while (spaces > 0 && p1 < p2) {
-        c = eb_nextc(b, p1, &offset1);
-        if (c == ' ') {
-            p1 = offset1;
-            spaces--;
-        } else {
-            nb = eb_delete(b, p1, offset1 - p1);
-            adjust -= nb;
-            p2 -= nb;
-        }
-    }
-    if (p1 < p2) {
-        nb = eb_delete(b, p1, p2 - p1);
-        adjust -= nb;
-        p2 -= nb;
-    }
-    if (spaces) {
-        nb = eb_insert_uchars(b, p1, ' ', spaces);
-        adjust += nb;
-        p1 += nb;
-        p2 += nb;
-    }
-    return adjust;
-}
-
-static int get_indent_size(EditState *s, int p1, int p2) {
-    int indent_size = 0;
-    while (p1 < p2) {
-        int c = eb_nextc(s->b, p1, &p1);
-        if (!qe_isblank(c))
-            break;
-        if (c == '\t') {
-            int tw = s->b->tab_width > 0 ? s->b->tab_width : DEFAULT_TAB_WIDTH;
-            indent_size += tw - indent_size % tw;
-        } else {
-            indent_size++;
-        }
-    }
-    return indent_size;
-}
-
-void do_fill_paragraph(EditState *s)
-{
-    /* buffer offsets, byte counts */
-    int par_start, par_end, offset, offset1, chunk_start, word_start;
-    /* number of characters / screen positions */
-    int col, indent0_size, indent_size, word_size;
-
-    /* find start & end of paragraph */
-    par_end = eb_next_paragraph(s->b, s->offset);
-    par_start = eb_prev_paragraph(s->b, par_end);
-    /* skip the blank line if any */
-    eb_is_blank_line(s->b, par_start, &par_start);
-
-    /* compute indent sizes for first and second lines */
-    indent0_size = get_indent_size(s, par_start, par_end);
-    offset = eb_next_line(s->b, par_start);
-    indent_size = get_indent_size(s, offset, par_end);
-
-    /* reflow words to fill lines */
-    col = 0;
-    offset = par_start;
-    while (offset < par_end) {
-        /* skip spaces */
-        chunk_start = offset;
-        while (offset < par_end) {
-            int c = eb_nextc(s->b, offset, &offset1);
-            if (!qe_isspace(c))
-                break;
-            offset = offset1;
-        }
-        /* skip word */
-        word_start = offset;
-        word_size = 0;
-        while (offset < par_end) {
-            int c = eb_nextc(s->b, offset, &offset1);
-            if (qe_isspace(c))
-                break;
-            offset = offset1;
-            /* handle variable width and combining glyphs */
-            word_size += unicode_tty_glyph_width(c);
-        }
-
-        if (chunk_start == par_start) {
-            /* preserve spaces at paragraph start */
-            col += indent0_size + word_size;
-        } else {
-            if (word_start == offset) {
-                /* space at end of paragraph: append a newline */
-                eb_respace(s->b, chunk_start, word_start, 1, 0);
-                break;
-            }
-            if (col + 1 + word_size > s->b->fill_column) {
-                /* insert newline and indentation */
-                int nb = eb_respace(s->b, chunk_start, word_start, 1, indent_size);
-                offset += nb;
-                par_end += nb;
-                col = indent_size + word_size;
-            } else {
-                /* single space the word */
-                int nb = eb_respace(s->b, chunk_start, word_start, 0, 1);
-                offset += nb;
-                par_end += nb;
-                col += 1 + word_size;
-            }
-        }
-    }
-}
+/*---------------- Case handling ----------------*/
 
 /* Upper / lower / capital case functions. Update offset, return isword */
 /* arg: -1=lower-case, +1=upper-case, +2=capital-case */
@@ -7370,21 +7143,21 @@ EditState *qe_find_target_window(EditState *s, int activate) {
 }
 
 /* Select appropriate mode for buffer:
- * iff dir == 0, select best mode
- * iff dir > 0, select next mode
- * iff dir < 0, select previous mode
+ * if n == 0, select best mode
+ * if n > 0, select n-th next mode
+ * if n < 0, select n-th previous mode
  */
-void do_set_next_mode(EditState *s, int dir)
+void do_set_next_mode(EditState *s, int n)
 {
     if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
 
     /* next-mode from the dired window applies to the target window */
     s = qe_find_target_window(s, 0);
-    qe_set_next_mode(s, dir, 1);
+    qe_set_next_mode(s, n, 1);
 }
 
-void qe_set_next_mode(EditState *s, int dir, int status)
+void qe_set_next_mode(EditState *s, int n, int status)
 {
     u8 buf[4097];
     int size;
@@ -7414,10 +7187,10 @@ void qe_set_next_mode(EditState *s, int dir, int status)
                     b->filename, 0, b->st_mode, b->total_size,
                     buf, size, b->charset, b->eol_type);
     found = 0;
-    if (dir && nb > 0) {
+    if (n && nb > 0) {
         for (i = 0; i < nb; i++) {
             if (s->mode == modes[i]) {
-                found = (i + dir) % nb;
+                found = (i + n) % nb;
                 if (found < 0)
                     found += nb;
                 break;

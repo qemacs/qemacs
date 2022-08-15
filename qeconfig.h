@@ -182,20 +182,6 @@ static CmdDef basic_commands[] = {
           "s{Set visited file name: }[file]|file|"
           "s{Rename file? }|newname|", "")
 
-    /*---------------- Paragraph handling ----------------*/
-
-    CMD3( KEY_META('h'), KEY_NONE,
-          "mark-paragraph", do_mark_paragraph, ESi, +1, "P", "")
-    CMD3( KEY_META('{'), KEY_CTRL_UP,
-          "backward-paragraph", do_forward_paragraph, ESi, -1, "P", "")
-    CMD3( KEY_META('}'), KEY_CTRL_DOWN,
-          "forward-paragraph", do_forward_paragraph, ESi, +1, "P", "")
-    CMD2( KEY_META('q'), KEY_NONE,
-          "fill-paragraph", do_fill_paragraph, ES, "*", "")
-    /* should have fill-region */
-    CMD3( KEY_NONE, KEY_NONE,
-          "kill-paragraph", do_kill_paragraph, ESi, 1, "P", "")
-
     /*---------------- Case handling ----------------*/
 
     CMD3( KEY_META('c'), KEY_NONE,
@@ -250,11 +236,11 @@ static CmdDef basic_commands[] = {
 
     /* should merge these functions */
     CMD0( KEY_CTRLX('o'), KEY_NONE,
-         "other-window", do_other_window, "") /* "p"? */
+         "other-window", do_other_window, "")
     CMD0( KEY_CTRLX('n'), KEY_NONE,
-          "next-window", do_other_window, "") /* "P"? */
+          "next-window", do_other_window, "")
     CMD0( KEY_CTRLX('p'), KEY_NONE,
-          "previous-window", do_previous_window, "") /* "P"? */
+          "previous-window", do_previous_window, "")
 #ifndef CONFIG_TINY
     CMD1( KEY_META(KEY_CTRL('l')), KEY_NONE,
           "center-cursor", do_center_cursor, 1, "")

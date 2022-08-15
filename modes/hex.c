@@ -124,12 +124,9 @@ static void do_set_width(EditState *s, int w)
     }
 }
 
-static void do_increase_width(EditState *s, int incr)
+static void do_increase_width(EditState *s, int n)
 {
-    int w;
-    w = s->dump_width + incr;
-    if (w >= 1)
-        do_set_width(s, w);
+    do_set_width(s, s->dump_width + n);
 }
 
 static void do_toggle_hex(EditState *s)
@@ -139,10 +136,10 @@ static void do_toggle_hex(EditState *s)
 
 /* common binary and hex commands */
 static CmdDef binary_commands[] = {
-    CMD1( KEY_CTRL_LEFT, KEY_NONE,
-          "decrease-width", do_increase_width, -1, "")
-    CMD1( KEY_CTRL_RIGHT, KEY_NONE,
-          "increase-width", do_increase_width, 1, "")
+    CMD3( KEY_CTRL_LEFT, KEY_NONE,
+          "decrease-width", do_increase_width, ESi, -1, "P", "")
+    CMD3( KEY_CTRL_RIGHT, KEY_NONE,
+          "increase-width", do_increase_width, ESi, +1, "P", "")
     CMD2( KEY_NONE, KEY_NONE,
           "set-width", do_set_width, ESi,
           "p{Width: }", "")

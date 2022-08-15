@@ -1372,6 +1372,34 @@ static CmdDef dired_global_commands[] = {
     CMD_DEF_END,
 };
 
+#if 0
+static int dired_buffer_load(EditBuffer *b, FILE *f)
+{
+    /* XXX: launch subprocess to list dired contents */
+    return -1;
+}
+
+static int dired_buffer_save(EditBuffer *b, int start, int end,
+                               const char *filename)
+{
+    /* XXX: prevent saving parsed contents to dired file */
+    return -1;
+}
+
+static void dired_buffer_close(EditBuffer *b)
+{
+    /* XXX: free dired structures? */
+}
+
+static EditBufferDataType dired_data_type = {
+    "dired",
+    dired_buffer_load,
+    dired_buffer_save,
+    dired_buffer_close,
+    NULL, /* next */
+};
+#endif
+
 static int filelist_init(void);
 
 static int dired_init(void)
@@ -1388,6 +1416,7 @@ static int dired_init(void)
     dired_mode.display_hook = dired_display_hook;
     dired_mode.get_default_path = dired_get_default_path;
 
+    //eb_register_data_type(&dired_data_type);
     qe_register_mode(&dired_mode, /* MODEF_DATATYPE | */ MODEF_MAJOR | MODEF_VIEW);
     qe_register_variables(dired_variables, countof(dired_variables));
     qe_register_cmd_table(dired_commands, &dired_mode);

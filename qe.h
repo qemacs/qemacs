@@ -2141,8 +2141,8 @@ void edit_display(QEmacsState *qs);
 void edit_invalidate(EditState *s, int all);
 void display_mode_line(EditState *s);
 int edit_set_mode(EditState *s, ModeDef *m);
-void qe_set_next_mode(EditState *s, int dir, int status);
-void do_set_next_mode(EditState *s, int dir);
+void qe_set_next_mode(EditState *s, int n, int status);
+void do_set_next_mode(EditState *s, int n);
 
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);
@@ -2337,7 +2337,7 @@ void do_describe_key_briefly(EditState *s);
 void do_show_bindings(EditState *s, const char *cmd_name);
 void do_apropos(EditState *s, const char *str);
 EditBuffer *new_help_buffer(void);
-void do_describe_bindings(EditState *s);
+void do_describe_bindings(EditState *s, int argval);
 void do_help_for_help(EditState *s);
 void qe_event_init(void);
 void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr);

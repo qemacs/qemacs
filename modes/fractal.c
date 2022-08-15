@@ -927,32 +927,32 @@ static void do_fractal_move(EditState *s, int deltax, int deltay) {
     }
 }
 
-static void do_fractal_move_x(EditState *s, int delta) {
-    do_fractal_move(s, delta, 0);
+static void do_fractal_move_x(EditState *s, int n) {
+    do_fractal_move(s, n, 0);
 }
 
-static void do_fractal_move_y(EditState *s, int delta) {
-    do_fractal_move(s, 0, delta);
+static void do_fractal_move_y(EditState *s, int n) {
+    do_fractal_move(s, 0, n);
 }
 
-static void do_fractal_zoom(EditState *s, int delta) {
+static void do_fractal_zoom(EditState *s, int n) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
-        fractal_set_zoom(ms, ms->zoom + delta);
+        fractal_set_zoom(ms, ms->zoom + n);
     }
 }
 
-static void do_fractal_rotate(EditState *s, int delta) {
+static void do_fractal_rotate(EditState *s, int n) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
-        fractal_set_rotation(ms, delta ? ms->rot + delta : 0);
+        fractal_set_rotation(ms, n ? ms->rot + n : 0);
     }
 }
 
-static void do_fractal_shift_colors(EditState *s, int delta) {
+static void do_fractal_shift_colors(EditState *s, int n) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
-        ms->shift += delta;
+        ms->shift += n;
 #if USE_BITMAP_API
         fractal_invalidate(ms);
 #else
@@ -979,18 +979,18 @@ static void do_fractal_set_colors(EditState *s, int type) {
     }
 }
 
-static void do_fractal_iter(EditState *s, int delta) {
+static void do_fractal_iter(EditState *s, int n) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
-        ms->maxiter += delta;
+        ms->maxiter += n;
         fractal_invalidate(ms);
     }
 }
 
-static void do_fractal_bailout(EditState *s, int delta) {
+static void do_fractal_bailout(EditState *s, int n) {
     FractalState *ms = fractal_get_state(s, 1);
     if (ms) {
-        ms->bailout += delta;
+        ms->bailout += n;
         fractal_invalidate(ms);
     }
 }
@@ -1084,40 +1084,40 @@ static void fractal_display_hook(EditState *s) {
 }
 
 static CmdDef fractal_commands[] = {
-    CMD1( KEY_LEFT, KEY_NONE,
-          "fractal-left", do_fractal_move_x, -1, "")
-    CMD1( KEY_RIGHT, KEY_NONE,
-          "fractal-right", do_fractal_move_x, +1, "")
-    CMD1( KEY_UP, KEY_NONE,
-          "fractal-up", do_fractal_move_y, -1, "")
-    CMD1( KEY_DOWN, KEY_NONE,
-          "fractal-down", do_fractal_move_y, +1, "")
-    CMD1( '+', ' ',
-          "fractal-zoom-in", do_fractal_zoom, +1, "")
-    CMD1( '-', '_',
-          "fractal-zoom-out", do_fractal_zoom, -1, "")
-    CMD1( '\\', '.',
-          "fractal-rotate-left", do_fractal_rotate, +1, "")
-    CMD1( '/', KEY_NONE,
-          "fractal-rotate-right", do_fractal_rotate, -1, "")
-    CMD1( '|', KEY_NONE,
-          "fractal-rotate-none", do_fractal_rotate, 0, "")
-    CMD1( 'c', KEY_NONE,
-          "fractal-set-colors-default", do_fractal_set_colors, 0, "")
-    CMD1( 'g', KEY_NONE,
-          "fractal-set-colors-gray", do_fractal_set_colors, 1, "")
-    CMD1( '[', KEY_NONE,
-          "fractal-shift-colors-left", do_fractal_shift_colors, -1, "")
-    CMD1( ']', KEY_NONE,
-          "fractal-shift-colors-right", do_fractal_shift_colors, +1, "")
-    CMD1( '{', KEY_NONE,
-          "fractal-iter-less", do_fractal_iter, -1, "")
-    CMD1( '}', KEY_NONE,
-          "fractal-iter-more", do_fractal_iter, +1, "")
-    CMD1( '<', KEY_NONE,
-          "fractal-bailout-less", do_fractal_bailout, -1, "")
-    CMD1( '>', KEY_NONE,
-          "fractal-bailout-more", do_fractal_bailout, +1, "")
+    CMD3( KEY_LEFT, KEY_NONE,
+          "fractal-left", do_fractal_move_x, ESi, -1, "P", "")
+    CMD3( KEY_RIGHT, KEY_NONE,
+          "fractal-right", do_fractal_move_x, ESi, +1, "P", "")
+    CMD3( KEY_UP, KEY_NONE,
+          "fractal-up", do_fractal_move_y, ESi, -1, "P", "")
+    CMD3( KEY_DOWN, KEY_NONE,
+          "fractal-down", do_fractal_move_y, ESi, +1, "P", "")
+    CMD3( '+', ' ',
+          "fractal-zoom-in", do_fractal_zoom, ESi, +1, "P", "")
+    CMD3( '-', '_',
+          "fractal-zoom-out", do_fractal_zoom, ESi, -1, "P", "")
+    CMD3( '\\', '.',
+          "fractal-rotate-left", do_fractal_rotate, ESi, +1, "P", "")
+    CMD3( '/', KEY_NONE,
+          "fractal-rotate-right", do_fractal_rotate, ESi, -1, "P", "")
+    CMD3( '|', KEY_NONE,
+          "fractal-rotate-none", do_fractal_rotate, ESi, 0, "v", "")
+    CMD3( 'c', KEY_NONE,
+          "fractal-set-colors-default", do_fractal_set_colors, ESi, 0, "v", "")
+    CMD3( 'g', KEY_NONE,
+          "fractal-set-colors-gray", do_fractal_set_colors, ESi, 1, "v", "")
+    CMD3( '[', KEY_NONE,
+          "fractal-shift-colors-left", do_fractal_shift_colors, ESi, -1, "P", "")
+    CMD3( ']', KEY_NONE,
+          "fractal-shift-colors-right", do_fractal_shift_colors, ESi, +1, "P", "")
+    CMD3( '{', KEY_NONE,
+          "fractal-iter-less", do_fractal_iter, ESi, -1, "P", "")
+    CMD3( '}', KEY_NONE,
+          "fractal-iter-more", do_fractal_iter, ESi, +1, "P", "")
+    CMD3( '<', KEY_NONE,
+          "fractal-bailout-less", do_fractal_bailout, ESi, -1, "P", "")
+    CMD3( '>', KEY_NONE,
+          "fractal-bailout-more", do_fractal_bailout, ESi, +1, "P", "")
     CMD2( '1', '2',
           "fractal-set-type", do_fractal_set_type, ESi, "k", "")
     CMD2( '=', KEY_NONE,
