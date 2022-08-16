@@ -1083,49 +1083,48 @@ static void fractal_display_hook(EditState *s) {
     }
 }
 
-static CmdDef fractal_commands[] = {
-    CMD3( KEY_LEFT, KEY_NONE,
-          "fractal-left", do_fractal_move_x, ESi, -1, "P", "")
-    CMD3( KEY_RIGHT, KEY_NONE,
-          "fractal-right", do_fractal_move_x, ESi, +1, "P", "")
-    CMD3( KEY_UP, KEY_NONE,
-          "fractal-up", do_fractal_move_y, ESi, -1, "P", "")
-    CMD3( KEY_DOWN, KEY_NONE,
-          "fractal-down", do_fractal_move_y, ESi, +1, "P", "")
-    CMD3( '+', ' ',
-          "fractal-zoom-in", do_fractal_zoom, ESi, +1, "P", "")
-    CMD3( '-', '_',
-          "fractal-zoom-out", do_fractal_zoom, ESi, -1, "P", "")
-    CMD3( '\\', '.',
-          "fractal-rotate-left", do_fractal_rotate, ESi, +1, "P", "")
-    CMD3( '/', KEY_NONE,
-          "fractal-rotate-right", do_fractal_rotate, ESi, -1, "P", "")
-    CMD3( '|', KEY_NONE,
-          "fractal-rotate-none", do_fractal_rotate, ESi, 0, "v", "")
-    CMD3( 'c', KEY_NONE,
-          "fractal-set-colors-default", do_fractal_set_colors, ESi, 0, "v", "")
-    CMD3( 'g', KEY_NONE,
-          "fractal-set-colors-gray", do_fractal_set_colors, ESi, 1, "v", "")
-    CMD3( '[', KEY_NONE,
-          "fractal-shift-colors-left", do_fractal_shift_colors, ESi, -1, "P", "")
-    CMD3( ']', KEY_NONE,
-          "fractal-shift-colors-right", do_fractal_shift_colors, ESi, +1, "P", "")
-    CMD3( '{', KEY_NONE,
-          "fractal-iter-less", do_fractal_iter, ESi, -1, "P", "")
-    CMD3( '}', KEY_NONE,
-          "fractal-iter-more", do_fractal_iter, ESi, +1, "P", "")
-    CMD3( '<', KEY_NONE,
-          "fractal-bailout-less", do_fractal_bailout, ESi, -1, "P", "")
-    CMD3( '>', KEY_NONE,
-          "fractal-bailout-more", do_fractal_bailout, ESi, +1, "P", "")
-    CMD2( '1', '2',
-          "fractal-set-type", do_fractal_set_type, ESi, "k", "")
-    CMD2( '=', KEY_NONE,
-          "fractal-set-parameters", do_fractal_set_parameters, ESs,
+static const CmdDef fractal_commands[] = {
+    CMD3( "fractal-left", "left",
+          do_fractal_move_x, ESi, -1, "P", "")
+    CMD3( "fractal-right", "right",
+          do_fractal_move_x, ESi, +1, "P", "")
+    CMD3( "fractal-up", "up",
+          do_fractal_move_y, ESi, -1, "P", "")
+    CMD3( "fractal-down", "down",
+          do_fractal_move_y, ESi, +1, "P", "")
+    CMD3( "fractal-zoom-in", "+, SPC",
+          do_fractal_zoom, ESi, +1, "P", "")
+    CMD3( "fractal-zoom-out", "-, _",
+          do_fractal_zoom, ESi, -1, "P", "")
+    CMD3( "fractal-rotate-left", "\\, .",
+          do_fractal_rotate, ESi, +1, "P", "")
+    CMD3( "fractal-rotate-right", "/",
+          do_fractal_rotate, ESi, -1, "P", "")
+    CMD3( "fractal-rotate-none", "|",
+          do_fractal_rotate, ESi, 0, "v", "")
+    CMD3( "fractal-set-colors-default", "c",
+          do_fractal_set_colors, ESi, 0, "v", "")
+    CMD3( "fractal-set-colors-gray", "g",
+          do_fractal_set_colors, ESi, 1, "v", "")
+    CMD3( "fractal-shift-colors-left", "[",
+          do_fractal_shift_colors, ESi, -1, "P", "")
+    CMD3( "fractal-shift-colors-right", "]",
+          do_fractal_shift_colors, ESi, +1, "P", "")
+    CMD3( "fractal-iter-less", "{",
+          do_fractal_iter, ESi, -1, "P", "")
+    CMD3( "fractal-iter-more", "}",
+          do_fractal_iter, ESi, +1, "P", "")
+    CMD3( "fractal-bailout-less", "<",
+          do_fractal_bailout, ESi, -1, "P", "")
+    CMD3( "fractal-bailout-more", ">",
+          do_fractal_bailout, ESi, +1, "P", "")
+    CMD2( "fractal-set-type", "1, 2, 3, 4, 5, 6, 7, 8, 9",
+          do_fractal_set_type, ESi, "k", "")
+    CMD2( "fractal-set-parameters", "=",
+          do_fractal_set_parameters, ESs,
           "s{Fractal parameters: }[mparm]|mparm|", "")
-    CMD0( '?', KEY_F1,
-          "fractal-help", do_fractal_help, "")
-    CMD_DEF_END,
+    CMD0( "fractal-help", "?, f1",
+          do_fractal_help, "")
 };
 
 static int fractal_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -1166,7 +1165,6 @@ static void fractal_mode_free(EditBuffer *b, void *state) {
 
 static void do_mandelbrot_test(EditState *s) {
     EditBuffer *b;
-    const char *p;
 
     if (!fractal_mode.name) {
         /* populate and register shell mode and commands */
@@ -1182,10 +1180,7 @@ static void do_mandelbrot_test(EditState *s) {
         fractal_mode.display = fractal_display;
 #endif
         qe_register_mode(&fractal_mode, MODEF_NOCMD | MODEF_VIEW);
-        qe_register_cmd_table(fractal_commands, &fractal_mode);
-        for (p = "23456789"; *p; p++) {
-            qe_register_binding(*p, "fractal-set-type", &fractal_mode);
-        }
+        qe_register_cmd_table(fractal_commands, countof(fractal_commands), &fractal_mode);
     }
 
     b = eb_find("*Mandelbrot*");
@@ -1203,16 +1198,15 @@ static void do_mandelbrot_test(EditState *s) {
     switch_to_buffer(s, b);
 }
 
-static CmdDef fractal_global_commands[] = {
-    CMD0( KEY_CTRLH('m'), KEY_NONE,
-          "mandelbrot-test", do_mandelbrot_test, "")
-    CMD_DEF_END,
+static const CmdDef fractal_global_commands[] = {
+    CMD0( "mandelbrot-test", "C-h m",
+          do_mandelbrot_test, "")
 };
 
 static int fractal_init(void)
 {
     qe_register_mode(&fractint_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(fractal_global_commands, NULL);
+    qe_register_cmd_table(fractal_global_commands, countof(fractal_global_commands), NULL);
     return 0;
 }
 

@@ -802,76 +802,73 @@ static void do_mkd_metaup(EditState *s)
 }
 
 /* Mkd mode specific commands */
-static CmdDef mkd_commands[] = {
+static const CmdDef mkd_commands[] = {
     /* Motion */
-    CMD2( KEY_CTRLC(KEY_CTRL('n')), KEY_NONE,   /* C-c C-n */
-          "mkd-next-visible-heading",
+    CMD2( "mkd-next-visible-heading", "C-c C-n",
           do_outline_next_vsible_heading, ES, "",
           "")
-    CMD2( KEY_CTRLC(KEY_CTRL('p')), KEY_NONE,   /* C-c C-p */
-          "mkd-previous-visible-heading",
+    CMD2( "mkd-previous-visible-heading", "C-c C-p",
           do_outline_previous_vsible_heading, ES, "",
           "")
-    CMD2( KEY_CTRLC(KEY_CTRL('u')), KEY_NONE,   /* C-c C-u */
-          "mkd-up-heading", do_outline_up_heading, ES, "",
+    CMD2( "mkd-up-heading", "C-c C-u",
+          do_outline_up_heading, ES, "",
           "")
-    CMD2( KEY_CTRLC(KEY_CTRL('b')), KEY_NONE,   /* C-c C-b */
-          "mkd-backward-same-level", do_mkd_backward_same_level, ES, "",
+    CMD2( "mkd-backward-same-level", "C-c C-b",
+          do_mkd_backward_same_level, ES, "",
           "")
-    CMD2( KEY_CTRLC(KEY_CTRL('f')), KEY_NONE,   /* C-c C-f */
-          "mkd-forward-same-level", do_mkd_forward_same_level, ES, "",
+    CMD2( "mkd-forward-same-level", "C-c C-f",
+          do_mkd_forward_same_level, ES, "",
           "")
-    CMD2( KEY_CTRLC(KEY_CTRL('j')), KEY_NONE,   /* C-c C-j */
-          "mkd-goto", do_mkd_goto, ESs,
+    CMD2( "mkd-goto", "C-c C-j",
+          do_mkd_goto, ESs,
           "s{select location to jump to: }[mkdjump]|mkdjump|",
           "")
-    CMD3( KEY_META('h'), KEY_NONE,   /* M-h */
-          "mkd-mark-element", do_mkd_mark_element, ESi, 0, "v",
+    CMD3( "mkd-mark-element", "M-h",
+          do_mkd_mark_element, ESi, 0, "v",
           "")
-    CMD3( KEY_CTRLC('@'), KEY_NONE,   /* C-c @ */
-          "mkd-mark-subtree", do_mkd_mark_element, ESi, 1, "v",
+    CMD3( "mkd-mark-subtree", "C-c @",
+          do_mkd_mark_element, ESi, 1, "v",
           "")
     /* Editing */
-    CMD3( KEY_NONE, KEY_NONE,    /* indirect through M-RET */
-          "mkd-insert-heading", do_mkd_insert_heading, ESi, 0, "*v",
+    CMD3( "mkd-insert-heading", "", /* indirect through M-RET */
+          do_mkd_insert_heading, ESi, 0, "*v",
           "")
-    CMD3( KEY_CTRL('j'), KEY_NONE,    /* actually C-RET */
-          "mkd-insert-heading-respect-content", do_mkd_insert_heading, ESi, 2, "*v",
+    CMD3( "mkd-insert-heading-respect-content", "C-j", /* actually C-RET */
+          do_mkd_insert_heading, ESi, 2, "*v",
           "")
-    CMD3( KEY_NONE, KEY_NONE,
-          "mkd-do-demote", do_mkd_promote, ESi, -1, "*v",
+    CMD3( "mkd-do-demote", "",
+          do_mkd_promote, ESi, -1, "*v",
           "")
-    CMD3( KEY_NONE, KEY_NONE,
-          "mkd-do-promote", do_mkd_promote, ESi, +1, "*v",
+    CMD3( "mkd-do-promote", "",
+          do_mkd_promote, ESi, +1, "*v",
           "")
-    CMD3( KEY_CTRLX('>'), KEY_NONE,    /* actually M-S-right | C-c C-x R */
-          "mkd-demote-subtree", do_mkd_promote_subtree, ESi, -1, "*v",
+    CMD3( "mkd-demote-subtree", "C-x >", /* actually M-S-right | C-c C-x R */
+          do_mkd_promote_subtree, ESi, -1, "*v",
           "")
-    CMD3( KEY_CTRLX('<'), KEY_NONE,    /* actually M-S-left | C-c C-x L */
-          "mkd-promote-subtree", do_mkd_promote_subtree, ESi, +1, "*v",
+    CMD3( "mkd-promote-subtree", "C-x <", /* actually M-S-left | C-c C-x L */
+          do_mkd_promote_subtree, ESi, +1, "*v",
           "")
-    CMD3( KEY_NONE, KEY_NONE,
-          "mkd-move-subtree-down", do_mkd_move_subtree, ESi, +1, "*v",
+    CMD3( "mkd-move-subtree-down", "",
+          do_mkd_move_subtree, ESi, +1, "*v",
           "")
-    CMD3( KEY_NONE, KEY_NONE,
-          "mkd-move-subtree-up", do_mkd_move_subtree, ESi, -1, "*v",
+    CMD3( "mkd-move-subtree-up", "",
+          do_mkd_move_subtree, ESi, -1, "*v",
           "")
-    CMD2( KEY_META(KEY_RET), KEY_NONE,    /* Actually M-RET | C-c C-x m */
-          "mkd-meta-return", do_mkd_meta_return, ES, "*",
+    CMD2( "mkd-meta-return", "M-RET", /* Actually M-RET | C-c C-x m */
+          do_mkd_meta_return, ES, "*",
           "")
-    CMD2( KEY_ESC, KEY_LEFT,    /* actually M-left | C-c C-x l */
-          "mkd-metaleft", do_mkd_metaleft, ES, "",
+    CMD2( "mkd-metaleft", "ESC left", /* actually M-left | C-c C-x l */
+          do_mkd_metaleft, ES, "",
           "")
-    CMD2( KEY_ESC, KEY_RIGHT,    /* actually M-right | C-c C-x r */
-          "mkd-metaright", do_mkd_metaright, ES, "",
+    CMD2( "mkd-metaright", "ESC right", /* actually M-right | C-c C-x r */
+          do_mkd_metaright, ES, "",
           "")
-    CMD2( KEY_ESC, KEY_DOWN,    /* actually M-down | C-c C-x d */
-          "mkd-metadown", do_mkd_metadown, ES, "",
+    CMD2( "mkd-metadown", "ESC down", /* actually M-down | C-c C-x d */
+          do_mkd_metadown, ES, "",
           "")
-    CMD2( KEY_ESC, KEY_UP,    /* actually M-up | C-c C-x u */
-          "mkd-metaup", do_mkd_metaup, ES, "",
+    CMD2( "mkd-metaup", "ESC up", /* actually M-up | C-c C-x u */
+          do_mkd_metaup, ES, "",
           "")
-    CMD_DEF_END,
 };
 
 static int mkd_mode_init(EditState *s, EditBuffer *b, int flags)
@@ -909,14 +906,15 @@ static ModeDef litcoffee_mode = {
     .extensions = "litcoffee",
     .mode_init = litcoffee_mode_init,
     .colorize_func = mkd_colorize_line,
+    // XXX: should use fallback for key bindings
 };
 
 static int mkd_init(void)
 {
     qe_register_mode(&mkd_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(mkd_commands, &mkd_mode);
+    qe_register_cmd_table(mkd_commands, countof(mkd_commands), &mkd_mode);
     qe_register_mode(&litcoffee_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(mkd_commands, &litcoffee_mode);
+    qe_register_cmd_table(mkd_commands, countof(mkd_commands), &litcoffee_mode);
 
     return 0;
 }

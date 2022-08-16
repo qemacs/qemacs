@@ -135,26 +135,24 @@ static void do_toggle_hex(EditState *s)
 }
 
 /* common binary and hex commands */
-static CmdDef binary_commands[] = {
-    CMD3( KEY_CTRL_LEFT, KEY_NONE,
-          "decrease-width", do_increase_width, ESi, -1, "P", "")
-    CMD3( KEY_CTRL_RIGHT, KEY_NONE,
-          "increase-width", do_increase_width, ESi, +1, "P", "")
-    CMD2( KEY_NONE, KEY_NONE,
-          "set-width", do_set_width, ESi,
+static const CmdDef binary_commands[] = {
+    CMD3( "decrease-width", "c-left",
+          do_increase_width, ESi, -1, "P", "")
+    CMD3( "increase-width", "c-right",
+          do_increase_width, ESi, +1, "P", "")
+    CMD2( "set-width", "",
+          do_set_width, ESi,
           "p{Width: }", "")
-    CMD3( KEY_META('g'), KEY_NONE,
-          "goto-byte", do_goto, ESsi, 'b',
+    CMD3( "goto-byte", "M-g",
+          do_goto, ESsi, 'b',
           "s{Goto byte: }"
           "v", "")
-    CMD_DEF_END,
 };
 
 /* specific hex commands and bindings */
-static CmdDef hex_commands[] = {
-    CMD0( KEY_TAB, KEY_SHIFT_TAB,
-          "toggle-hex", do_toggle_hex, "")
-    CMD_DEF_END,
+static const CmdDef hex_commands[] = {
+    CMD0( "toggle-hex", "TAB, S-TAB",
+          do_toggle_hex, "")
 };
 
 static int binary_mode_init(EditState *s, EditBuffer *b, int flags)
@@ -365,8 +363,8 @@ static int hex_init(void)
     qe_register_mode(&hex_mode, MODEF_VIEW);
 
     /* commands and default keys */
-    qe_register_cmd_table(binary_commands, &binary_mode);
-    qe_register_cmd_table(hex_commands, &hex_mode);
+    qe_register_cmd_table(binary_commands, countof(binary_commands), &binary_mode);
+    qe_register_cmd_table(hex_commands, countof(hex_commands), &hex_mode);
 
     return 0;
 }

@@ -839,7 +839,7 @@ void do_transpose(EditState *s, int cmd)
 }
 
 /* remove a key binding from mode or globally */
-static int qe_unregister_binding1(unsigned int *keys, int nb_keys, ModeDef *m)
+static int qe_unregister_binding(unsigned int *keys, int nb_keys, ModeDef *m)
 {
     QEmacsState *qs = &qe_state;
     KeyDef **lp, *p;
@@ -864,16 +864,17 @@ static void do_unset_key(EditState *s, const char *keystr, int local)
     unsigned int keys[MAX_KEYS];
     int nb_keys;
 
-    nb_keys = strtokeys(keystr, keys, MAX_KEYS);
+    /* XXX: should handle multiple bindings? */
+    nb_keys = strtokeys(keystr, keys, MAX_KEYS, NULL);
     if (!nb_keys)
         return;
 
-    qe_unregister_binding1(keys, nb_keys, local ? s->mode : NULL);
+    qe_unregister_binding(keys, nb_keys, local ? s->mode : NULL);
 }
 
 /*---------------- help ----------------*/
 
-int qe_list_bindings(CmdDef *d, ModeDef *mode, int inherit, char *buf, int size)
+int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size)
 {
     int pos;
     buf_t outbuf, *out;
@@ -903,7 +904,7 @@ int qe_list_bindings(CmdDef *d, ModeDef *mode, int inherit, char *buf, int size)
 void do_show_bindings(EditState *s, const char *cmd_name)
 {
     char buf[256];
-    CmdDef *d;
+    const CmdDef *d;
 
     if ((d = qe_find_cmd(cmd_name)) == NULL) {
         put_status(s, "No command %s", cmd_name);
@@ -927,16 +928,15 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
 
 static void print_bindings(EditBuffer *b, ModeDef *mode)
 {
+    struct QEmacsState *qs = &qe_state;
     char buf[256];
-    CmdDef *d;
-    int gfound;
-    int start = b->total_size;
-    int stop;
+    const CmdDef *d;
+    int gfound, start, stop, i, j;
 
+    start = b->total_size;
     gfound = 0;
-    d = qe_state.first_cmd;
-    while (d != NULL) {
-        while (d->name != NULL) {
+    for (i = 0; i < qs->cmd_array_count; i++) {
+        for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
             if (qe_list_bindings(d, mode, 0, buf, sizeof(buf))) {
                 if (!gfound) {
                     if (mode) {
@@ -949,9 +949,7 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
                 }
                 eb_printf(b, "%24s : %s\n", d->name, buf);
             }
-            d++;
         }
-        d = d->action.next;
     }
     if (gfound) {
         stop = b->total_size;
@@ -979,9 +977,9 @@ void do_apropos(EditState *s, const char *str)
     QEmacsState *qs = s->qe_state;
     char buf[256];
     EditBuffer *b;
-    CmdDef *d;
+    const CmdDef *d;
     VarDef *vp;
-    int found, start, stop;
+    int found, start, stop, i, j;
 
     b = new_help_buffer();
     if (!b)
@@ -991,9 +989,8 @@ void do_apropos(EditState *s, const char *str)
 
     start = b->total_size;
     found = 0;
-    d = qs->first_cmd;
-    while (d != NULL) {
-        while (d->name != NULL) {
+    for (i = 0; i < qs->cmd_array_count; i++) {
+        for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
             if (strstr(d->name, str)) {
                 const char *desc;
                 /* print name and prototype */
@@ -1009,9 +1006,7 @@ void do_apropos(EditState *s, const char *str)
                 eb_putc(b, '\n');
                 found = 1;
             }
-            d++;
         }
-        d = d->action.next;
     }
     stop = b->total_size;
     eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH);
@@ -1054,8 +1049,8 @@ static void do_about_qemacs(EditState *s)
     char buf[256];
     EditBuffer *b;
     ModeDef *m;
-    CmdDef *d;
-    int start, stop;
+    const CmdDef *d;
+    int start, stop, i, j;
 
     b = eb_scratch("*About QEmacs*", BF_UTF8);
     eb_printf(b, "\n  %s\n\n%s\n", str_version, str_credits);
@@ -1074,14 +1069,11 @@ static void do_about_qemacs(EditState *s)
     eb_printf(b, "\nCommands:\n\n");
 
     start = b->total_size;
-    d = qs->first_cmd;
-    while (d != NULL) {
-        while (d->name != NULL) {
+    for (i = 0; i < qs->cmd_array_count; i++) {
+        for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
             qe_get_prototype(d, buf, sizeof(buf));
             eb_printf(b, "    %s%s\n", d->name, buf);
-            d++;
         }
-        d = d->action.next;
     }
     stop = b->total_size;
     eb_sort_span(b, &start, &stop, stop, SF_DICT);
@@ -2171,141 +2163,134 @@ void do_fill_paragraph(EditState *s)
 
 /*---------------- command and binding definitions ----------------*/
 
-static CmdDef extra_commands[] = {
-    CMD2( KEY_META('='), KEY_NONE,
-          "compare-windows", do_compare_windows, ESi, "p" , "")
-    CMD3( KEY_CTRLX(KEY_CTRL('l')), KEY_NONE,
-          "compare-files", do_compare_files, ESsi, 0,
+static const CmdDef extra_commands[] = {
+    CMD2( "compare-windows", "M-=",
+          do_compare_windows, ESi, "p" , "")
+    CMD3( "compare-files", "C-x C-l",
+          do_compare_files, ESsi, 0,
           "s{Compare file: }[file]|file|"
           "v", "") /* u? */
-    CMD2( KEY_META('\\'), KEY_NONE,
-          "delete-horizontal-space", do_delete_horizontal_space, ES, "*", "")
-    CMD2( KEY_CTRLX(KEY_CTRL('o')), KEY_NONE,
-          "delete-blank-lines", do_delete_blank_lines, ES, "*", "")
-    CMD3( KEY_NONE, KEY_NONE,
-          "tabify-region", do_tabify, ESii, 0, "*" "md",
+    CMD2( "delete-horizontal-space", "M-\\",
+          do_delete_horizontal_space, ES, "*", "")
+    CMD2( "delete-blank-lines", "C-x C-o",
+          do_delete_blank_lines, ES, "*", "")
+    CMD3( "tabify-region", "",
+          do_tabify, ESii, 0, "*" "md",
           "Convert multiple spaces in region to tabs when possible")
-    CMD3( KEY_NONE, KEY_NONE,
-          "untabify-region", do_untabify, ESii, 0, "*" "md",
+    CMD3( "untabify-region", "",
+          do_untabify, ESii, 0, "*" "md",
           "Convert all tabs in region to multiple spaces, preserving columns")
-    CMD3( KEY_NONE, KEY_NONE,
-          "tabify-buffer", do_tabify, ESii, 0, "*" "ze",
+    CMD3( "tabify-buffer", "",
+          do_tabify, ESii, 0, "*" "ze",
           "Convert multiple spaces in buffer to tabs when possible")
-    CMD3( KEY_NONE, KEY_NONE,
-          "untabify-buffer", do_untabify, ESii, 0, "*" "ze",
+    CMD3( "untabify-buffer", "",
+          do_untabify, ESii, 0, "*" "ze",
           "Convert all tabs in buffer to multiple spaces, preserving columns")
     /* XXX: should take region as argument, implicit from keyboard */
-    CMD2( KEY_META(KEY_CTRL('\\')), KEY_NONE,
-          "indent-region", do_indent_region, ES, "*",
+    CMD2( "indent-region", "M-C-\\",
+          do_indent_region, ES, "*",
           "Indent each nonblank line in the region")
 
-    CMD2( KEY_CTRLX('t'), KEY_NONE,
-          "show-date-and-time", do_show_date_and_time, ESi, "p", "")
+    CMD2( "show-date-and-time", "C-x t",
+          do_show_date_and_time, ESi, "p", "")
 
           /* Should map to KEY_META + KEY_CTRL_LEFT */
-    CMD3( KEY_META(KEY_CTRL('b')), KEY_NONE,
-          "backward-block", do_forward_block, ESi, -1, "P", "")
+    CMD3( "backward-block", "M-C-b",
+          do_forward_block, ESi, -1, "P", "")
           /* Should map to KEY_META + KEY_CTRL_RIGHT */
-    CMD3( KEY_META(KEY_CTRL('f')), KEY_NONE,
-          "forward-block", do_forward_block, ESi, +1, "P", "")
-    CMD3( KEY_ESC, KEY_DELETE,
-          "backward-kill-block", do_kill_block, ESi, -1, "P", "")
-    CMD3( KEY_META(KEY_CTRL('k')), KEY_NONE,
-          "kill-block", do_kill_block, ESi, +1, "P", "")
+    CMD3( "forward-block", "M-C-f",
+          do_forward_block, ESi, +1, "P", "")
+    CMD3( "backward-kill-block", "ESC delete",
+          do_kill_block, ESi, -1, "P", "")
+    CMD3( "kill-block", "M-C-k",
+          do_kill_block, ESi, +1, "P", "")
           /* Should also have mark-block on C-M-@ */
 
-    CMD3( KEY_CTRL('t'), KEY_NONE,
-          "transpose-chars", do_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v", "")
-    CMD3( KEY_CTRLX(KEY_CTRL('t')), KEY_NONE,
-          "transpose-lines", do_transpose, ESi, CMD_TRANSPOSE_LINES, "*v", "")
-    CMD3( KEY_META('t'), KEY_NONE,
-          "transpose-words", do_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v", "")
+    CMD3( "transpose-chars", "C-t",
+          do_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v", "")
+    CMD3( "transpose-lines", "C-x C-t",
+          do_transpose, ESi, CMD_TRANSPOSE_LINES, "*v", "")
+    CMD3( "transpose-words", "M-t",
+          do_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v", "")
 
-    CMD3( KEY_NONE, KEY_NONE,
-          "global-unset-key", do_unset_key, ESsi, 0,
+    CMD3( "global-unset-key", "",
+          do_unset_key, ESsi, 0,
           "s{Unset key globally: }[key]"
           "v", "")
-    CMD3( KEY_NONE, KEY_NONE,
-          "local-unset-key", do_unset_key, ESsi, 1,
+    CMD3( "local-unset-key", "",
+          do_unset_key, ESsi, 1,
           "s{Unset key locally: }[key]"
           "v", "")
 
-    CMD0( KEY_CTRLH('?'), KEY_F1,
-          "about-qemacs", do_about_qemacs, "")
-    CMD2( KEY_CTRLH('a'), KEY_CTRLH(KEY_CTRL('A')),
-          "apropos", do_apropos, ESs,
+    CMD0( "about-qemacs", "C-h ?, f1",
+          do_about_qemacs, "")
+    CMD2( "apropos", "C-h a, C-h C-a",
+          do_apropos, ESs,
           "s{Apropos: }[symbol]|apropos|", "")
-    CMD2( KEY_CTRLH('b'), KEY_NONE,
-          "describe-bindings", do_describe_bindings, ESi, "p", "")
-    CMD2( KEY_CTRLH('B'), KEY_NONE,
-          "show-bindings", do_show_bindings, ESs,
+    CMD2( "describe-bindings", "C-h b",
+          do_describe_bindings, ESi, "p", "")
+    CMD2( "show-bindings", "C-h B",
+          do_show_bindings, ESs,
           "s{Show bindings of command: }[command]|command|", "")
-    CMD2( KEY_CTRLH(KEY_CTRL('B')), KEY_NONE,
-          "describe-buffer", do_describe_buffer, ESi, "p", "")
-    CMD2( KEY_CTRLH('w'), KEY_CTRLH(KEY_CTRL('W')),
-          "describe-window", do_describe_window, ESi, "p", "")
-    CMD2( KEY_CTRLH('s'), KEY_CTRLH(KEY_CTRL('S')),
-          "describe-screen", do_describe_screen, ESi, "p", "")
+    CMD2( "describe-buffer", "C-h C-b",
+          do_describe_buffer, ESi, "p", "")
+    CMD2( "describe-window", "C-h w, C-h C-w",
+          do_describe_window, ESi, "p", "")
+    CMD2( "describe-screen", "C-h s, C-h C-s",
+          do_describe_screen, ESi, "p", "")
 
     /* XXX: should take region as argument, implicit from keyboard */
-    CMD2( KEY_CTRLC('c'), KEY_NONE,
-          "set-region-color", do_set_region_color, ESs,
+    CMD2( "set-region-color", "C-c c",
+          do_set_region_color, ESs,
           "s{Select color: }[color]|color|", "")
-    CMD2( KEY_CTRLC('s'), KEY_NONE,
-          "set-region-style", do_set_region_style, ESs,
+    CMD2( "set-region-style", "C-c s",
+          do_set_region_style, ESs,
           "s{Select style: }[style]|style|", "")
-    CMD0( KEY_NONE, KEY_NONE,
-          "drop-styles", do_drop_styles, "")
+    CMD0( "drop-styles", "",
+          do_drop_styles, "")
 
-    CMD2( KEY_NONE, KEY_NONE,
-          "set-eol-type", do_set_eol_type, ESi,
+    CMD2( "set-eol-type", "",
+          do_set_eol_type, ESi,
           "p{EOL Type [0=Unix, 1=Dos, 2=Mac]: }", "")
 
-    CMD3( KEY_NONE, KEY_NONE,
-          "sort-buffer", do_sort_buffer, ESii, 0, "*vp", "")
-    CMD3( KEY_NONE, KEY_NONE,
-          "reverse-sort-buffer", do_sort_buffer, ESii, SF_REVERSE, "*vp", "")
+    CMD3( "sort-buffer", "",
+          do_sort_buffer, ESii, 0, "*vp", "")
+    CMD3( "reverse-sort-buffer", "",
+          do_sort_buffer, ESii, SF_REVERSE, "*vp", "")
     /* XXX: should take region as argument, implicit from keyboard */
     /* XXX: should have sort-lines, sort-numeric-fields, sort-paragraphs */
     /* XXX: numeric argument means reverse sort */
-    CMD3( KEY_NONE, KEY_NONE,
-          "sort-region", do_sort_region, ESii, 0, "*vp", "")
-    CMD3( KEY_NONE, KEY_NONE,
-          "reverse-sort-region", do_sort_region, ESii, SF_REVERSE, "*vp", "")
+    CMD3( "sort-region", "",
+          do_sort_region, ESii, 0, "*vp", "")
+    CMD3( "reverse-sort-region", "",
+          do_sort_region, ESii, SF_REVERSE, "*vp", "")
 
-    CMD2( KEY_NONE, KEY_NONE,
-          "list-tags", do_list_tags, ESi, "p", "")
-    CMD0( KEY_CTRLX(','), KEY_META(KEY_F1),
-          "goto-tag", do_goto_tag, "")
-    CMD2( KEY_CTRLX('.'), KEY_NONE,
-          "find-tag", do_find_tag, ESs,
+    CMD2( "list-tags", "",
+          do_list_tags, ESi, "p", "")
+    CMD0( "goto-tag", "C-x ,, M-f1",
+          do_goto_tag, "")
+    CMD2( "find-tag", "C-x .",
+          do_find_tag, ESs,
           "s{Find tag: }[tag]|tag|", "")
 
     /*---------------- Paragraph handling ----------------*/
 
-    CMD3( KEY_META('h'), KEY_NONE,
-          "mark-paragraph", do_mark_paragraph, ESi, +1, "P", "")
-    CMD3( KEY_META('{'), KEY_CTRL_UP,
-          "backward-paragraph", do_forward_paragraph, ESi, -1, "P", "")
-    CMD3( KEY_META('}'), KEY_CTRL_DOWN,
-          "forward-paragraph", do_forward_paragraph, ESi, +1, "P", "")
-    CMD2( KEY_META('q'), KEY_NONE,
-          "fill-paragraph", do_fill_paragraph, ES, "*", "")
+    CMD3( "mark-paragraph", "M-h",
+          do_mark_paragraph, ESi, +1, "P", "")
+    CMD3( "backward-paragraph", "M-{, C-up",
+          do_forward_paragraph, ESi, -1, "P", "")
+    CMD3( "forward-paragraph", "M-}, C-down",
+          do_forward_paragraph, ESi, +1, "P", "")
+    CMD2( "fill-paragraph", "M-q",
+          do_fill_paragraph, ES, "*", "")
     /* should have fill-region */
-    CMD3( KEY_NONE, KEY_NONE,
-          "kill-paragraph", do_kill_paragraph, ESi, 1, "P", "")
-
-    CMD_DEF_END,
+    CMD3( "kill-paragraph", "",
+          do_kill_paragraph, ESi, 1, "P", "")
 };
 
 static int extras_init(void)
 {
-    int key;
-
-    qe_register_cmd_table(extra_commands, NULL);
-    for (key = KEY_META('0'); key <= KEY_META('9'); key++) {
-        qe_register_binding(key, "numeric-argument", NULL);
-    }
+    qe_register_cmd_table(extra_commands, countof(extra_commands), NULL);
     qe_register_completion(&tag_completion);
 
     return 0;

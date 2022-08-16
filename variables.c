@@ -507,21 +507,19 @@ static CompletionDef variable_completion = {
 
 /*---------------- commands ----------------*/
 
-static CmdDef var_commands[] = {
-    CMD2( KEY_NONE, KEY_NONE,
-          "show-variable", do_show_variable, ESs,
+static const CmdDef var_commands[] = {
+    CMD2( "show-variable", "",
+          do_show_variable, ESs,
           "s{Show variable: }[variable]|variable|", "")
-    CMD2( KEY_F8, KEY_NONE,
-          "set-variable", do_set_variable, ESss,
+    CMD2( "set-variable", "f8",
+          do_set_variable, ESss,
           "s{Set variable: }[variable]|variable|s{to value: }|value|", "")
-
-    CMD_DEF_END,
 };
 
 static int vars_init(void)
 {
     qe_register_variables(var_table, countof(var_table));
-    qe_register_cmd_table(var_commands, NULL);
+    qe_register_cmd_table(var_commands, countof(var_commands), NULL);
     qe_register_completion(&variable_completion);
     return 0;
 }

@@ -187,27 +187,30 @@ void qe_register_mode(ModeDef *m, int flags)
     if (!(m->flags & MODEF_NOCMD)) {
         char name[64];
         char spec[64];
-        int spec_len;
+        int name_len, spec_len;
         CmdDef *def;
         const char *mode_name = m->alt_name ? m->alt_name : m->name;
 
+        /* constuct command name and specification */
         /* lower case convert for C mode, Perl... */
         qe_strtolower(name, sizeof(name) - 10, mode_name);
         pstrcat(name, sizeof(name), "-mode");
+        name_len = strlen(name);
+        name[name_len + 1] = '\0'; /* empty default bindings string */
 
-        /* constant immediate string parameter */
+        /* Achtung: embedded null bytes */
         spec_len = snprintf(spec, sizeof(spec),
                             "S{%s}%cselect the %s mode for the current buffer",
                             mode_name, 0, mode_name);
-        def = qe_mallocz_array(CmdDef, 2);
-        def->name = qe_strdup(name);
+        def = qe_mallocz(CmdDef);
+        /* allocate space for name and spec with embedded null bytes */
+        def->name = qe_malloc_dup(name, name_len + 2);
         def->spec = qe_malloc_dup(spec, spec_len + 1);
-        def->key = def->alt_key = KEY_NONE;
         def->sig = CMD_ESs;
         def->val = 0;
         def->action.ESs = do_set_mode;
-        def[1].val = 1;  /* flag as allocated for free-all */
-        qe_register_cmd_table(def, NULL);
+        /* register allocated command */
+        qe_register_cmd_table(def, -1, NULL);
     }
 }
 
@@ -229,19 +232,17 @@ static CompletionDef mode_completion = {
 
 /* commands handling */
 
-CmdDef *qe_find_cmd(const char *cmd_name)
+const CmdDef *qe_find_cmd(const char *cmd_name)
 {
     QEmacsState *qs = &qe_state;
-    CmdDef *d;
+    const CmdDef *d;
+    int i, j;
 
-    d = qs->first_cmd;
-    while (d != NULL) {
-        while (d->name != NULL) {
+    for (i = 0; i < qs->cmd_array_count; i++) {
+        for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
             if (strequal(cmd_name, d->name))
                 return d;
-            d++;
         }
-        d = d->action.next;
     }
     return NULL;
 }
@@ -249,22 +250,20 @@ CmdDef *qe_find_cmd(const char *cmd_name)
 void command_complete(CompleteState *cp)
 {
     QEmacsState *qs = cp->s->qe_state;
-    CmdDef *d;
+    const CmdDef *d;
+    int i, j;
 
-    d = qs->first_cmd;
-    while (d != NULL) {
-        while (d->name != NULL) {
+    for (i = 0; i < qs->cmd_array_count; i++) {
+        for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
             complete_test(cp, d->name);
-            d++;
         }
-        d = d->action.next;
     }
 }
 
 int command_print_entry(CompleteState *cp, EditState *s, const char *name)
 {
     EditBuffer *b = s->b;
-    CmdDef *d = qe_find_cmd(name);
+    const CmdDef *d = qe_find_cmd(name);
     if (d) {
         char buf[256];
         int len;
@@ -307,12 +306,14 @@ static CompletionDef command_completion = {
 };
 
 static int qe_register_binding1(unsigned int *keys, int nb_keys,
-                                CmdDef *d, ModeDef *m)
+                                const CmdDef *d, ModeDef *m)
 {
     QEmacsState *qs = &qe_state;
     KeyDef **lp, *p;
     int i;
 
+    if (!nb_keys)
+        return -2;
     if (!d)
         return -1;
 
@@ -326,114 +327,83 @@ static int qe_register_binding1(unsigned int *keys, int nb_keys,
         p->keys[i] = keys[i];
     }
     lp = m ? &m->first_key : &qs->first_key;
-    /* Bindings must be prepended to override previous bindings */
-    /* XXX: should avoid multiple redundant bindings */
-#if 0
-    while (*lp != NULL && (*lp)->mode != NULL)
+    /* Bindings must be prepended to override previous bindings
+     * skip bindings to the same command for consistency */
+    while (*lp != NULL && (*lp)->cmd == d)
         lp = &(*lp)->next;
-#endif
     p->next = *lp;
     *lp = p;
     return 0;
 }
 
-/* convert compressed mappings to real ones */
-static int qe_register_binding2(int key, CmdDef *d, ModeDef *m)
-{
-    int nb_keys;
-    unsigned int keys[3];
-
-    nb_keys = 0;
-    if (key >= KEY_CTRLX(0) && key <= KEY_CTRLX(0xff)) {
-        keys[nb_keys++] = KEY_CTRL('x');
-        keys[nb_keys++] = key & 0xff;
-    } else
-    if (key >= KEY_CTRLXRET(0) && key <= KEY_CTRLXRET(0xff)) {
-        keys[nb_keys++] = KEY_CTRL('x');
-        keys[nb_keys++] = KEY_RET;
-        keys[nb_keys++] = key & 0xff;
-    } else
-    if (key >= KEY_CTRLH(0) && key <= KEY_CTRLH(0xff)) {
-        keys[nb_keys++] = KEY_CTRL('h');
-        keys[nb_keys++] = key & 0xff;
-    } else
-    if (key >= KEY_CTRLC(0) && key <= KEY_CTRLC(0xff)) {
-        keys[nb_keys++] = KEY_CTRL('c');
-        keys[nb_keys++] = key & 0xff;
-    } else {
-        keys[nb_keys++] = key;
-    }
-    return qe_register_binding1(keys, nb_keys, d, m);
-}
-
 /* if mode is non NULL, the defined keys are only active in this mode */
-void qe_register_cmd_table(CmdDef *cmds, ModeDef *m)
+int qe_register_cmd_table(const CmdDef *cmds, int len, ModeDef *m)
 {
     QEmacsState *qs = &qe_state;
-    CmdDef **ld, *d;
+    const CmdDef *d;
+    int i, allocated = 0;
 
-    /* find last command table */
-    for (ld = &qs->first_cmd;;) {
-        d = *ld;
-        if (d == NULL) {
-            /* link new command table */
-            *ld = cmds;
-            break;
-        }
-        if (d == cmds) {
+    if (len < 0) {
+        allocated = 1;
+        len = -len;
+    }
+
+    for (i = 0; i < qs->cmd_array_count; i++) {
+        if (qs->cmd_array[i].array == cmds) {
             /* Command table already registered, still do the binding
              * phase to allow multiple mode bindings.
              */
-            break;
-        }
-        while (d->name != NULL) {
-            d++;
-        }
-        ld = &d->action.next;
-    }
-
-    /* add default bindings */
-    for (d = cmds; d->name != NULL; d++) {
-        if (d->key == KEY_CTRL('x') || d->key == KEY_CTRL('c')
-        ||  d->key == KEY_ESC) {
-            unsigned int keys[2];
-            keys[0] = d->key;
-            keys[1] = d->alt_key;
-            qe_register_binding1(keys, 2, d, m);
-        } else {
-            if (d->key != KEY_NONE)
-                qe_register_binding2(d->key, d, m);
-            if (d->alt_key != KEY_NONE)
-                qe_register_binding2(d->alt_key, d, m);
         }
     }
+    if (i >= qs->cmd_array_count) {
+        if (i >= qs->cmd_array_size) {
+            int n = max(i + 16, 32);
+            if (!qe_realloc(&qs->cmd_array, n * sizeof(*qs->cmd_array))) {
+                put_status(NULL, "Out of memory");
+                return -1;
+            }
+            qs->cmd_array_size = n;
+        }
+        qs->cmd_array[i].array = cmds;
+        qs->cmd_array[i].count = len;
+        qs->cmd_array[i].allocated = allocated;
+        qs->cmd_array_count++;
+    }
+    /* register default bindings */
+    for (d = cmds, i = len; i-- > 0; d++) {
+        const char *p = d->name + strlen(d->name) + 1;
+        if (*p)
+            qe_mode_set_key(p, d, m);
+    }
+    return 0;
 }
 
 /* key binding handling */
 
-int qe_register_binding(int key, const char *cmd_name, ModeDef *m)
+int qe_register_binding(unsigned int key, const char *cmd_name, ModeDef *m)
 {
-    return qe_register_binding2(key, qe_find_cmd(cmd_name), m);
+    return qe_register_binding1(&key, 1, qe_find_cmd(cmd_name), m);
 }
 
-int qe_mode_set_key(ModeDef *m, const char *keystr, const char *cmd_name)
+int qe_mode_set_key(const char *keystr, const CmdDef *d, ModeDef *m)
 {
     unsigned int keys[MAX_KEYS];
-    int nb_keys;
+    const char *p = keystr;
+    int nb_keys, res = -2;
 
-    nb_keys = strtokeys(keystr, keys, MAX_KEYS);
-    if (!nb_keys)
-        return -2;
-
-    return qe_register_binding1(keys, nb_keys, qe_find_cmd(cmd_name), m);
+    while (p && *p) {
+        nb_keys = strtokeys(p, keys, MAX_KEYS, &p);
+        res = qe_register_binding1(keys, nb_keys, d, m);
+    }
+    return res;
 }
 
 void do_set_key(EditState *s, const char *keystr,
                 const char *cmd_name, int local)
 {
     ModeDef *m = local ? s->mode : NULL;
-    int res = qe_mode_set_key(m, keystr, cmd_name);
-
+    const CmdDef *d = qe_find_cmd(cmd_name);
+    int res = qe_mode_set_key(keystr, d, m);
     if (res == -2)
         put_status(s, "Invalid keys: %s", keystr);
     if (res == -1)
@@ -4553,7 +4523,7 @@ static void generic_text_display(EditState *s)
 
 typedef struct ExecCmdState {
     EditState *s;
-    CmdDef *d;
+    const CmdDef *d;
     int nb_args;
     int argval;
     int key;
@@ -4695,7 +4665,7 @@ int parse_arg(const char **pp, CmdArgSpec *ap)
     return 1;
 }
 
-int qe_get_prototype(CmdDef *d, char *buf, int size)
+int qe_get_prototype(const CmdDef *d, char *buf, int size)
 {
     buf_t outbuf, *out;
     const char *r;
@@ -4760,7 +4730,7 @@ static void arg_edit_cb(void *opaque, char *str);
 static void parse_arguments(ExecCmdState *es);
 static void free_cmd(ExecCmdState **esp);
 
-void exec_command(EditState *s, CmdDef *d, int argval, int key)
+void exec_command(EditState *s, const CmdDef *d, int argval, int key)
 {
     ExecCmdState *es;
     const char *argdesc;
@@ -4802,7 +4772,7 @@ static void parse_arguments(ExecCmdState *es)
     EditState *s = es->s;
     QEmacsState *qs = s->qe_state;
     QErrorContext ec;
-    CmdDef *d = es->d;
+    const CmdDef *d = es->d;
     CmdArgSpec cas;
     int ret, rep_count, get_arg, type, use_flag;
     int elapsed_time;
@@ -5007,7 +4977,7 @@ int check_read_only(EditState *s)
 
 void do_execute_command(EditState *s, const char *cmd, int argval)
 {
-    CmdDef *d;
+    const CmdDef *d;
 
     /* XXX: should test for '(' and '=' and evaluate script instead */
     d = qe_find_cmd(cmd);
@@ -5195,8 +5165,9 @@ void do_execute_macro_keys(EditState *s, const char *keys)
 void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
                          const char *key_bind)
 {
+    const CmdDef *d;
     CmdDef *def;
-    int size;
+    int size, name_len;
     char *buf;
 
     size = 2 + strlen(keys) + 3;
@@ -5209,31 +5180,33 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
      */
     snprintf(buf, size, "S{%s}%c", keys, 0);
 
-    def = qe_find_cmd(name);
-    if (def && def->action.ESs == do_execute_macro_keys) {
+    d = qe_find_cmd(name);
+    if (d && d->action.ESs == do_execute_macro_keys) {
         /* redefininig a macro */
         /* XXX: freeing the current macro definition may cause a crash if it
          * is currently executing.
          */
+        def = unconst(CmdDef *)d;
         qe_free(unconst(char **)&def->spec);
         def->spec = buf;
     } else {
-        def = qe_mallocz_array(CmdDef, 2);
-        def->key = def->alt_key = KEY_NONE;
-        def->name = qe_strdup(name);
+        def = qe_mallocz(CmdDef);
+        name_len = strlen(name);
+        /* allocate space for name and extra NUL for no bindings */
+        def->name = memcpy(qe_mallocz_bytes(name_len + 2), name, name_len);
         def->spec = buf;
         def->sig = CMD_ESs;
         def->val = 0;
         def->action.ESs = do_execute_macro_keys;
-        def[1].val = 1;  /* flag as allocated for free-all */
-        qe_register_cmd_table(def, NULL);
+        /* register allocated command */
+        qe_register_cmd_table(def, -1, NULL);
     }
     if (key_bind && *key_bind) {
         do_set_key(s, key_bind, name, 0);
     }
 }
 
-static void qe_save_macro(EditState *s, CmdDef *def, EditBuffer *b)
+static void qe_save_macro(EditState *s, const CmdDef *def, EditBuffer *b)
 {
     QEmacsState *qs = s->qe_state;
     char buf[32];
@@ -5264,14 +5237,15 @@ static void qe_save_macro(EditState *s, CmdDef *def, EditBuffer *b)
 void qe_save_macros(EditState *s, EditBuffer *b)
 {
     QEmacsState *qs = &qe_state;
-    CmdDef *d;
+    const CmdDef *d;
+    int i, j;
 
     eb_puts(b, "// macros:\n");
     qe_save_macro(s, NULL, b);
 
     /* Enumerate defined macros */
-    for (d = qs->first_cmd; d != NULL; d = d->action.next) {
-        for (; d->name != NULL; d++) {
+    for (i = 0; i < qs->cmd_array_count; i++) {
+        for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
             if (d->action.ESs == do_execute_macro_keys)
                 qe_save_macro(s, d, b);
         }
@@ -5382,7 +5356,7 @@ static void qe_key_process(int key)
     QEKeyContext *c = &key_ctx;
     EditState *s;
     KeyDef *kd;
-    CmdDef *d;
+    const CmdDef *d;
     char buf1[128];
     buf_t outbuf, *out;
     int len;
@@ -5454,13 +5428,8 @@ static void qe_key_process(int key)
                     }
                 }
                 kd = qe_find_current_binding(&key_default, 1, s->mode);
-                if (kd) {
-                    /* horrible kludge to pass key as intrinsic argument */
-                    /* CG: should have an argument type for key */
-                    /* CG: should be no longer necessary */
-                    kd->cmd->val = key;
+                if (kd)
                     goto exec_cmd;
-                }
             }
         }
         if (!c->describe_key) {
@@ -6327,15 +6296,18 @@ static int eb_match_string_reverse(EditBuffer *b, int offset, const char *str,
     return 1;
 }
 
-void do_minibuffer_electric(EditState *s, int key)
+static void do_minibuffer_electric_key(EditState *s, int key)
 {
     int c, offset, stop;
     MinibufState *mb = minibuffer_get_state(s, 0);
 
-    if (mb && mb->completion && (mb->completion->flags & CF_FILENAME)) {
+    /* erase beginning of line if typing / or ~ in certain places */
+    if (mb && mb->completion && (mb->completion->flags & CF_FILENAME)
+    &&  eb_nextc(s->b, 0, &offset) == '/') {
         stop = s->offset;
         c = eb_prevc(s->b, s->offset, &offset);
         if (c == '/') {
+            /* kill leading part if typing a URL */
             if (eb_match_string_reverse(s->b, offset, "http:", &stop)
             ||  eb_match_string_reverse(s->b, offset, "https:", &stop)
             ||  eb_match_string_reverse(s->b, offset, "ftp:", &stop)) {
@@ -6635,6 +6607,29 @@ static void minibuffer_mode_free(EditBuffer *b, void *state)
     }
 }
 
+static const CmdDef minibuffer_commands[] = {
+    CMD2( "minibuffer-insert", "default",
+          do_minibuffer_char, ESii,
+          "*" "kp", "")
+    CMD1( "minibuffer-exit", "RET",
+          do_minibuffer_exit, 0, "")
+    CMD1( "minibuffer-abort", "C-g, C-x C-g",
+          do_minibuffer_exit, 1, "")
+    CMD1( "minibuffer-complete", "TAB",
+          do_minibuffer_complete, COMPLETION_TAB, "")
+    /* should take numeric prefix to specify word size */
+    CMD0( "minibuffer-get-binary", "M-=",
+          do_minibuffer_get_binary, "")
+    CMD0( "minibuffer-complete-space", "SPC",
+          do_minibuffer_complete_space, "")
+    CMD3( "minibuffer-previous-history-element", "C-p, up",
+          do_minibuffer_history, ESi, -1, "P", "")
+    CMD3( "minibuffer-next-history-element", "C-n, down",
+          do_minibuffer_history, ESi, +1, "P", "")
+    CMD2( "minibuffer-electric-key", "/, ~",
+          do_minibuffer_electric_key, ESi, "*k", "")
+};
+
 void minibuffer_init(void)
 {
     /* populate and register minibuffer mode and commands */
@@ -6645,7 +6640,7 @@ void minibuffer_init(void)
     minibuffer_mode.mode_free = minibuffer_mode_free;
     minibuffer_mode.scroll_up_down = do_minibuffer_scroll_up_down;
     qe_register_mode(&minibuffer_mode, MODEF_NOCMD | MODEF_VIEW);
-    qe_register_cmd_table(minibuffer_commands, &minibuffer_mode);
+    qe_register_cmd_table(minibuffer_commands, countof(minibuffer_commands), &minibuffer_mode);
 }
 
 /* popup paging mode */
@@ -6709,6 +6704,13 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
     return e;
 }
 
+static const CmdDef popup_commands[] = {
+    CMD0( "popup-exit", "q, C-g",
+          do_popup_exit, "")
+    CMD3( "popup-isearch", "/",
+          do_isearch, ESii, 1, "vp" , "")
+};
+
 static void popup_init(void)
 {
     /* popup mode inherits from text mode */
@@ -6716,7 +6718,7 @@ static void popup_init(void)
     popup_mode.name = "popup";
     popup_mode.mode_probe = NULL;
     qe_register_mode(&popup_mode, MODEF_VIEW);
-    qe_register_cmd_table(popup_commands, &popup_mode);
+    qe_register_cmd_table(popup_commands, countof(popup_commands), &popup_mode);
 }
 
 #ifndef CONFIG_TINY
@@ -8942,6 +8944,17 @@ static CmdLineOptionDef cmd_options[] = {
 
 #include "qeconfig.h"
 
+QEStyleDef qe_styles[QE_STYLE_NB] = {
+
+#define STYLE_DEF(constant, name, fg_color, bg_color, \
+                  font_style, font_size) \
+{ name, fg_color, bg_color, font_style, font_size },
+
+#include "qestyles.h"
+
+#undef STYLE_DEF
+};
+
 #if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
 
 void init_all_modules(void)
@@ -9112,8 +9125,7 @@ static void qe_init(void *opaque)
 
     /* init basic modules */
     qe_register_mode(&text_mode, MODEF_VIEW);
-    qe_register_cmd_table(basic_commands, NULL);
-    qe_mode_set_key(NULL, "ESC ESC ESC", "keyboard-quit");
+    qe_register_cmd_table(basic_commands, countof(basic_commands), NULL);
     qe_register_cmd_line_options(cmd_options);
 
     qe_register_completion(&command_completion);
@@ -9310,19 +9322,20 @@ int main(int argc, char **argv)
             EditBuffer *b = qs->first_buffer;
             eb_free(&b);
         }
-        while (qs->first_cmd) {
-            CmdDef *d = qs->first_cmd;
-            CmdDef *d1 = d;
-            while (d1->name)
-                d1++;
-            qs->first_cmd = d1->action.next;
-            /* free xxx-mode commands and macros */
-            /* XXX: should use CmdDef flag */
-            if (d->name && !d[1].name && d[1].val) {
-                qe_free(unconst(char **)&d->name);
-                qe_free(unconst(char **)&d->spec);
-                qe_free(&d);
+        if (qs->cmd_array) {
+            int i, j;
+            for (i = 0; i < qs->cmd_array_count; i++) {
+                if (qs->cmd_array[i].allocated) {
+                    const CmdDef *d = qs->cmd_array[i].array;
+                    for (j = qs->cmd_array[i].count; j-- > 0; d++) {
+                        /* free named macros and xxx-mode commands */
+                        qe_free(unconst(char **)&d->name);
+                        qe_free(unconst(char **)&d->spec);
+                    }
+                }
+                qe_free(unconst(CmdDef **)&qs->cmd_array[i].array);
             }
+            qe_free(&qs->cmd_array);
         }
         while (qs->first_key) {
             KeyDef *p = qs->first_key;

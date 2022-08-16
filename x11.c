@@ -2022,12 +2022,9 @@ static void x11_list_fonts(EditState *s, int argval)
     show_popup(s, b, "X11 Font list");
 }
 
-static CmdDef x11_commands[] = {
-
-    CMD2( KEY_CTRLH('f'), KEY_CTRLH(KEY_CTRL('F')),
-          "x11-list-fonts", x11_list_fonts, ESi, "p", "")
-
-    CMD_DEF_END,
+static const CmdDef x11_commands[] = {
+    CMD2( "x11-list-fonts", "C-h f, C-h C-f",
+          x11_list_fonts, ESi, "p", "")
 };
 
 static CmdLineOptionDef cmd_options[] = {
@@ -2043,7 +2040,7 @@ static CmdLineOptionDef cmd_options[] = {
 static int x11_init(void)
 {
     qe_register_cmd_line_options(cmd_options);
-    qe_register_cmd_table(x11_commands, NULL);
+    qe_register_cmd_table(x11_commands, countof(x11_commands), NULL);
     if (force_tty)
         return 0;
     return qe_register_display(&x11_dpy);

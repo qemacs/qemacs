@@ -3105,80 +3105,78 @@ void shell_colorize_line(QEColorizeContext *cp,
 }
 
 /* shell mode specific commands */
-static CmdDef shell_commands[] = {
-    CMD0( KEY_CTRL('o'), KEY_NONE,
-          "shell-toggle-input", do_shell_toggle_input, "")
+static const CmdDef shell_commands[] = {
+    CMD0( "shell-toggle-input", "C-o",
+          do_shell_toggle_input, "")
     /* XXX: should have shell-execute-line on M-RET */
-    CMD2( '\r', KEY_NONE,
-          "shell-enter", do_shell_newline, ES, "*", "")
+    CMD2( "shell-enter", "RET",
+          do_shell_newline, ES, "*", "")
     /* CG: should send s->kbs */
-    CMD2( KEY_DEL, KEY_NONE,
-          "shell-backward-delete-char", do_shell_backspace, ES, "*", "")
-    CMD0( KEY_CTRLC(KEY_CTRL('c')), KEY_NONE,   /* C-c C-c */
-          "shell-intr", do_shell_intr, "")
-    CMD2( KEY_CTRL('d'), KEY_DELETE,
-          "shell-delete-char", do_shell_delete_char, ES, "*", "")
-    CMD3( KEY_META('d'), KEY_NONE,
-          "shell-kill-word", do_shell_kill_word, ESi, 1, "v", "")
-    CMD3( KEY_META(KEY_DEL), KEY_META(KEY_BS) ,
-          "shell-backward-kill-word", do_shell_kill_word, ESi, -1, "v", "")
-    CMD1( KEY_META('p'), KEY_NONE,
-          "shell-previous", shell_previous_next, -1, "")
-    CMD1( KEY_META('n'), KEY_NONE,
-          "shell-next", shell_previous_next, 1, "")
-    CMD0( KEY_CTRLX(KEY_CTRL('x')), KEY_NONE,
-          "shell-exchange-point-and-mark", shell_exchange_point_and_mark, "")
-    CMD2( KEY_CTRL('i'), KEY_NONE,
-          "shell-tabulate", do_shell_tabulate, ES, "*", "")
-    CMD0( KEY_CTRL('l'), KEY_NONE,
-          "shell-refresh", do_shell_refresh, "")
-    CMD1( KEY_CTRL('r'), KEY_NONE,
-          "shell-search-backward", do_shell_search, -1, "")
-    CMD1( KEY_CTRL('s'), KEY_NONE,
-          "shell-search-forward", do_shell_search, 1, "")
-    CMD2( KEY_CTRL('k'), KEY_NONE,
-          "shell-kill-line", do_shell_kill_line, ESi, "p", "")
-    CMD2( KEY_META('k'), KEY_NONE,
-          "shell-kill-beginning-of-line", do_shell_kill_beginning_of_line, ESi, "p", "")
-    CMD2( KEY_CTRL('y'), KEY_NONE,
-          "shell-yank", do_shell_yank, ES, "*", "")
-    CMD3( KEY_META('c'), KEY_NONE,
-          "shell-capitalize-word", do_shell_changecase_word, ESi, 2, "*v", "")
-    CMD3( KEY_META('l'), KEY_NONE,
-          "shell-downcase-word", do_shell_changecase_word, ESi, -1, "*v", "")
-    CMD3( KEY_META('u'), KEY_NONE,
-          "shell-upcase-word", do_shell_changecase_word, ESi, 1, "*v", "")
-    CMD3( KEY_CTRL('t'), KEY_NONE,
-          "shell-transpose-chars", do_shell_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v", "")
-    CMD3( KEY_META('t'), KEY_NONE,
-          "shell-transpose-words", do_shell_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v", "")
-    CMD_DEF_END,
+    CMD2( "shell-backward-delete-char", "DEL",
+          do_shell_backspace, ES, "*", "")
+    CMD0( "shell-intr", "C-c C-c",
+          do_shell_intr, "")
+    CMD2( "shell-delete-char", "C-d, delete",
+          do_shell_delete_char, ES, "*", "")
+    CMD3( "shell-kill-word", "M-d",
+          do_shell_kill_word, ESi, 1, "v", "")
+    CMD3( "shell-backward-kill-word", "M-DEL, M-C-h",
+          do_shell_kill_word, ESi, -1, "v", "")
+    CMD1( "shell-previous", "M-p",
+          shell_previous_next, -1, "")
+    CMD1( "shell-next", "M-n",
+          shell_previous_next, 1, "")
+    CMD0( "shell-exchange-point-and-mark", "C-x C-x",
+          shell_exchange_point_and_mark, "")
+    CMD2( "shell-tabulate", "TAB",
+          do_shell_tabulate, ES, "*", "")
+    CMD0( "shell-refresh", "C-l",
+          do_shell_refresh, "")
+    CMD1( "shell-search-backward", "C-r",
+          do_shell_search, -1, "")
+    CMD1( "shell-search-forward", "C-s",
+          do_shell_search, 1, "")
+    CMD2( "shell-kill-line", "C-k",
+          do_shell_kill_line, ESi, "p", "")
+    CMD2( "shell-kill-beginning-of-line", "M-k",
+          do_shell_kill_beginning_of_line, ESi, "p", "")
+    CMD2( "shell-yank", "C-y",
+          do_shell_yank, ES, "*", "")
+    CMD3( "shell-capitalize-word", "M-c",
+          do_shell_changecase_word, ESi, 2, "*v", "")
+    CMD3( "shell-downcase-word", "M-l",
+          do_shell_changecase_word, ESi, -1, "*v", "")
+    CMD3( "shell-upcase-word", "M-u",
+          do_shell_changecase_word, ESi, 1, "*v", "")
+    CMD3( "shell-transpose-chars", "C-t",
+          do_shell_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v", "")
+    CMD3( "shell-transpose-words", "M-t",
+          do_shell_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v", "")
 };
 
 /* shell global commands */
-static CmdDef shell_global_commands[] = {
-    CMD2( KEY_CTRLXRET('\r'), KEY_NONE,
-          "shell", do_shell, ESi, "p", "")
-    CMD2( KEY_META('!'), KEY_NONE,
-          "shell-command", do_shell_command, ESs,
+static const CmdDef shell_global_commands[] = {
+    CMD2( "shell", "C-x RET RET",
+          do_shell, ESi, "p", "")
+    CMD2( "shell-command", "M-!",
+          do_shell_command, ESs,
           "s{Shell command: }|shell-command|", "")
-    CMD2( KEY_NONE, KEY_NONE,
-          "ssh", do_ssh, ESs,
+    CMD2( "ssh", "",
+          do_ssh, ESs,
           "s{Open connection to (host or user@host: }|ssh|", "")
-    CMD2( KEY_CTRLX(KEY_CTRL('e')), KEY_NONE,
-          "compile", do_compile, ESs,
+    CMD2( "compile", "C-x C-e",
+          do_compile, ESs,
           "s{Compile command: }|compile|", "")
-    CMD2( KEY_CTRLX('m'), KEY_NONE,
-          "make", do_compile, ESs,
+    CMD2( "make", "C-x m",
+          do_compile, ESs,
           "S{make}", "")
-    CMD2( KEY_NONE, KEY_NONE,
-          "man", do_man, ESs,
+    CMD2( "man", "",
+          do_man, ESs,
           "s{Show man page for: }|man|", "")
-    CMD3( KEY_CTRLX(KEY_CTRL('p')), KEY_NONE,
-          "previous-error", do_next_error, ESii, -1, "vp", "")
-    CMD3( KEY_CTRLX(KEY_CTRL('n')), KEY_CTRLX('`'),
-          "next-error", do_next_error, ESii, 1, "vp", "")
-    CMD_DEF_END,
+    CMD3( "previous-error", "C-x C-p",
+          do_next_error, ESii, -1, "vp", "")
+    CMD3( "next-error", "C-x C-n, C-x `",
+          do_next_error, ESii, 1, "vp", "")
 };
 
 static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -3244,10 +3242,10 @@ static int shell_init(void)
     shell_mode.get_default_path = shell_get_default_path;
 
     qe_register_mode(&shell_mode, MODEF_NOCMD | MODEF_VIEW);
-    qe_register_cmd_table(shell_commands, &shell_mode);
+    qe_register_cmd_table(shell_commands, countof(shell_commands), &shell_mode);
 
     /* global shell related commands and default keys */
-    qe_register_cmd_table(shell_global_commands, NULL);
+    qe_register_cmd_table(shell_global_commands, countof(shell_global_commands), NULL);
 
     /* populate and register pager mode and commands */
     memcpy(&pager_mode, &text_mode, sizeof(ModeDef));
@@ -3257,9 +3255,9 @@ static int shell_init(void)
 
     qe_register_mode(&pager_mode, MODEF_NOCMD | MODEF_VIEW);
 
-    qe_mode_set_key(&pager_mode, "DEL", "scroll-down");
-    qe_mode_set_key(&pager_mode, "SPC", "scroll-up");
-    qe_mode_set_key(&pager_mode, "/", "search-forward");
+    qe_register_binding(KEY_DEL, "scroll-down", &pager_mode);
+    qe_register_binding(' ', "scroll-up", &pager_mode);
+    qe_register_binding('/', "search-forward", &pager_mode);
 
     return 0;
 }

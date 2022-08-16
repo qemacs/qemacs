@@ -987,17 +987,13 @@ static void av_cycle_stream(EditState *s, int codec_type)
 }
 
 /* specific image commands */
-static CmdDef video_commands[] = {
-    CMD0( ' ', 'p',
-          "av-pause", video_pause,
-          "")
-    CMD1( 'v', KEY_NONE,
-          "av-cycle-video", av_cycle_stream, CODEC_TYPE_VIDEO,
-          "")
-    CMD1( 'a', KEY_NONE,
-          "av-cycle-audio", av_cycle_stream, CODEC_TYPE_AUDIO,
-          "")
-    CMD_DEF_END,
+static const CmdDef video_commands[] = {
+    CMD0( "av-pause", "SPC, p",
+          video_pause, "")
+    CMD1( "av-cycle-video", "v",
+          av_cycle_stream, CODEC_TYPE_VIDEO, "")
+    CMD1( "av-cycle-audio", "a",
+          av_cycle_stream, CODEC_TYPE_AUDIO, "")
 };
 
 static ModeDef video_mode = {
@@ -1022,7 +1018,7 @@ int video_init(void)
 {
     eb_register_data_type(&video_data_type);
     qe_register_mode(&video_mode, MODEF_DATATYPE | MODEF_VIEW);
-    qe_register_cmd_table(video_commands, &video_mode);
+    qe_register_cmd_table(video_commands, countof(video_commands), &video_mode);
     /* additional mode specific keys */
     qe_register_binding('f', "toggle-full-screen", &video_mode);
     return 0;

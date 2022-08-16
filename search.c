@@ -922,56 +922,52 @@ void do_search_string(EditState *s, const char *search_str, int dir)
     }
 }
 
-static CmdDef search_commands[] = {
-
-    /*---------------- Search and replace ----------------*/
+static const CmdDef search_commands[] = {
 
     /* M-C-s should be bound to isearch-forward-regex */
     /* mg binds search-forward to M-s */
-    CMD3( KEY_META('S'), KEY_NONE,
-          "search-forward", do_search_string, ESsi, 1,
+    CMD3( "search-forward", "M-S",
+          do_search_string, ESsi, 1,
           "s{Search forward: }|search|"
           "v", "")
     /* M-C-r should be bound to isearch-backward-regex */
     /* mg binds search-forward to M-r */
-    CMD3( KEY_META('R'), KEY_NONE,
-          "search-backward", do_search_string, ESsi, -1,
+    CMD3( "search-backward", "M-R",
+          do_search_string, ESsi, -1,
           "s{Search backward: }|search|"
           "v", "")
-    CMD3( KEY_META('C'), KEY_NONE,
-          "count-matches", do_search_string, ESsi, 0,
+    CMD3( "count-matches", "M-C",
+          do_search_string, ESsi, 0,
           "s{Count Matches: }|search|"
           "v", "")
-    CMD3( KEY_NONE, KEY_NONE,
-          "delete-matching-lines", do_search_string, ESsi, 2,
+    CMD3( "delete-matching-lines", "",
+          do_search_string, ESsi, 2,
           "*" "s{Delete lines containing: }|search|"
           "v", "")
-    CMD3( KEY_NONE, KEY_NONE,
-          "filter-matching-lines", do_search_string, ESsi, 3,
+    CMD3( "filter-matching-lines", "",
+          do_search_string, ESsi, 3,
           "*" "s{Filter lines containing: }|search|"
           "v", "")
     /* passing argument should switch to regex incremental search */
-    CMD3( KEY_CTRL('r'), KEY_NONE,
-          "isearch-backward", do_isearch, ESii, -1, "vp" , "")
-    CMD3( KEY_CTRL('s'), KEY_NONE,
-          "isearch-forward", do_isearch, ESii, 1, "vp" , "")
-    CMD2( KEY_META('%'), KEY_NONE,
-          "query-replace", do_query_replace, ESss,
+    CMD3( "isearch-backward", "C-r",
+          do_isearch, ESii, -1, "vp" , "")
+    CMD3( "isearch-forward", "C-s",
+          do_isearch, ESii, 1, "vp" , "")
+    CMD2( "query-replace", "M-%",
+          do_query_replace, ESss,
           "*" "s{Query replace: }|search|"
           "s{With: }|replace|", "")
     /* passing argument restricts replace to word matches */
     /* XXX: non standard binding */
-    CMD2( KEY_META('r'), KEY_NONE,
-          "replace-string", do_replace_string, ESssi,
+    CMD2( "replace-string", "M-r",
+          do_replace_string, ESssi,
           "*" "s{Replace String: }|search|"
           "s{With: }|replace|"
           "p", "")
-
-    CMD_DEF_END,
 };
 
 static int search_init(void) {
-    qe_register_cmd_table(search_commands, NULL);
+    qe_register_cmd_table(search_commands, countof(search_commands), NULL);
     return 0;
 }
 

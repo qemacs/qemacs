@@ -1308,50 +1308,50 @@ void do_dired(EditState *s, int argval)
 }
 
 /* specific dired commands */
-static CmdDef dired_commands[] = {
-    CMD1( KEY_RET, KEY_NONE,
-          "dired-enter", dired_select, 1, "")
-    CMD1( KEY_RIGHT, KEY_NONE,
-          "dired-right", dired_select, 0, "")
-    CMD0( KEY_TAB, KEY_NONE,
-          "dired-tab", do_other_window, "")
+static const CmdDef dired_commands[] = {
+    CMD1( "dired-enter", "RET",
+          dired_select, 1, "")
+    CMD1( "dired-right", "right",
+          dired_select, 0, "")
+    CMD0( "dired-tab", "TAB",
+          do_other_window, "")
     /* dired-abort should restore previous buffer in right-window */
-    CMD1( KEY_CTRL('g'), 'q',
-          "dired-abort", do_delete_window, 0, "")
+    CMD1( "dired-abort", "C-g, q",
+          do_delete_window, 0, "")
     /* XXX: merge with other dired-next-line */
-    CMD1( ' ', KEY_DOWN,
-          "dired-next-line", dired_up_down, 1, "")
-    CMD1( KEY_DEL, KEY_NONE,
-          "dired-unmark-backward", dired_mark, -1, "")
-    CMD2( 's', KEY_NONE,
-          "dired-sort", dired_sort, ESs,
+    CMD1( "dired-next-line", "SPC, down",
+          dired_up_down, 1, "")
+    CMD1( "dired-unmark-backward", "DEL",
+          dired_mark, -1, "")
+    CMD2( "dired-sort", "s",
+          dired_sort, ESs,
           "s{Sort order [nesdug+-r]: }|sortkey|", "")
-    CMD2( 't', KEY_NONE,
-          "dired-set-time-format", dired_set_time_format, ESi,
+    CMD2( "dired-set-time-format", "t",
+          dired_set_time_format, ESi,
           "n{Time format: }[timeformat]", "")
     /* s -> should also change switches */
-    CMD1( 'd', KEY_NONE,
-          "dired-delete", dired_mark, 'D', "")
-    CMD1( 'c', KEY_NONE,
-          "dired-copy", dired_mark, 'C', "")
-    CMD1( 'm', KEY_NONE,
-          "dired-move", dired_mark, 'M', "")
-    CMD1( 'u', KEY_NONE,
-          "dired-unmark", dired_mark, ' ', "")
-    CMD0( 'x', KEY_NONE,
-          "dired-execute", dired_execute, "")
-    CMD1( 'n', KEY_CTRL('n'),
-          "dired-next-line", dired_up_down, 1, "")
-    CMD1( 'p', KEY_CTRL('p'), /* KEY_UP */
-          "dired-previous-line", dired_up_down, -1, "")
-    CMD0( 'r', KEY_NONE,
-          "dired-refresh", dired_refresh, "")
-    CMD1( '.', KEY_NONE,
-          "dired-toggle-dot-files", dired_toggle_dot_files, -1, "")
+    CMD1( "dired-delete", "d",
+          dired_mark, 'D', "")
+    CMD1( "dired-copy", "c",
+          dired_mark, 'C', "")
+    CMD1( "dired-move", "m",
+          dired_mark, 'M', "")
+    CMD1( "dired-unmark", "u",
+          dired_mark, ' ', "")
+    CMD0( "dired-execute", "x",
+          dired_execute, "")
+    CMD1( "dired-next-line", "n, C-n, down",
+          dired_up_down, 1, "")
+    CMD1( "dired-previous-line", "p, C-p, up",
+          dired_up_down, -1, "")
+    CMD0( "dired-refresh", "r",
+          dired_refresh, "")
+    CMD1( "dired-toggle-dot-files", ".",
+          dired_toggle_dot_files, -1, "")
     /* g -> refresh all expanded dirs ? */
     /* l -> relist single directory or marked files ? */
-    CMD0( '^', KEY_LEFT,
-          "dired-parent", dired_parent, "")
+    CMD0( "dired-parent", "^, left",
+          dired_parent, "")
     /* need commands for splitting, unsplitting, zooming, making subdirs */
     /* h -> info */
     /* i, + -> create subdirectory */
@@ -1359,17 +1359,15 @@ static CmdDef dired_commands[] = {
     /* R -> rename a file or move selection to another directory */
     /* C -> copy files */
     /* mark files globally */
-    CMD0( 'H', KEY_NONE,
-          "dired-toggle-human", dired_toggle_human, "")
-    CMD0( 'N', KEY_NONE,
-          "dired-toggle-nflag", dired_toggle_nflag, "")
-    CMD_DEF_END,
+    CMD0( "dired-toggle-human", "H",
+          dired_toggle_human, "")
+    CMD0( "dired-toggle-nflag", "N",
+          dired_toggle_nflag, "")
 };
 
-static CmdDef dired_global_commands[] = {
-    CMD2( KEY_CTRLX(KEY_CTRL('d')), KEY_NONE,
-          "dired", do_dired, ESi, "p", "")
-    CMD_DEF_END,
+static const CmdDef dired_global_commands[] = {
+    CMD2( "dired", "C-x C-d",
+          do_dired, ESi, "p", "")
 };
 
 #if 0
@@ -1419,8 +1417,8 @@ static int dired_init(void)
     //eb_register_data_type(&dired_data_type);
     qe_register_mode(&dired_mode, /* MODEF_DATATYPE | */ MODEF_MAJOR | MODEF_VIEW);
     qe_register_variables(dired_variables, countof(dired_variables));
-    qe_register_cmd_table(dired_commands, &dired_mode);
-    qe_register_cmd_table(dired_global_commands, NULL);
+    qe_register_cmd_table(dired_commands, countof(dired_commands), &dired_mode);
+    qe_register_cmd_table(dired_global_commands, countof(dired_global_commands), NULL);
 
     filelist_init();
 
@@ -1539,22 +1537,20 @@ static int filelist_mode_init(EditState *s, EditBuffer *b, int flags)
     return 0;
 }
 
-static CmdDef filelist_commands[] = {
-    CMD0( KEY_RET, KEY_RIGHT,
-          "filelist-select", do_other_window, "")
-    CMD0( KEY_TAB, KEY_NONE,
-          "filelist-tab", do_other_window, "")
+static const CmdDef filelist_commands[] = {
+    CMD0( "filelist-select", "RET, right",
+          do_other_window, "")
+    CMD0( "filelist-tab", "TAB",
+          do_other_window, "")
     /* filelist-abort should restore previous buffer in right-window
      * or at least exit preview mode */
-    CMD1( KEY_CTRL('g'), KEY_NONE,
-          "filelist-abort", do_delete_window, 0, "")
-    CMD_DEF_END,
+    CMD1( "filelist-abort", "C-g",
+          do_delete_window, 0, "")
 };
 
-static CmdDef filelist_global_commands[] = {
-    CMD2( KEY_NONE, KEY_NONE,
-          "filelist", do_filelist, ESi, "p", "")
-    CMD_DEF_END,
+static const CmdDef filelist_global_commands[] = {
+    CMD2( "filelist", "",
+          do_filelist, ESi, "p", "")
 };
 
 static int filelist_init(void)
@@ -1566,8 +1562,8 @@ static int filelist_init(void)
     filelist_mode.display_hook = filelist_display_hook;
 
     qe_register_mode(&filelist_mode, MODEF_VIEW);
-    qe_register_cmd_table(filelist_commands, &filelist_mode);
-    qe_register_cmd_table(filelist_global_commands, NULL);
+    qe_register_cmd_table(filelist_commands, countof(filelist_commands), &filelist_mode);
+    qe_register_cmd_table(filelist_global_commands, countof(filelist_global_commands), NULL);
     return 0;
 }
 

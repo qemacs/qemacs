@@ -320,15 +320,14 @@ static void do_latex(EditState *e, const char *cmd)
 }
 
 /* specific LaTeX commands */
-static CmdDef latex_commands[] = {
-    CMD2( '\"', KEY_NONE,
-          "tex-insert-quote", do_tex_insert_quote, ES, "*",
+static const CmdDef latex_commands[] = {
+    CMD2( "tex-insert-quote", "\"",
+          do_tex_insert_quote, ES, "*",
           "")
-    CMD2( KEY_CTRLC(KEY_CTRL('c')), KEY_NONE,   /* C-c C-c */
-          "TeX-command-master", do_latex, ESs,
+    CMD2( "TeX-command-master", "C-c C-c",
+          do_latex, ESs,
           "s{Command: (default LaTeX) }[latex]|latex|",
           "")
-    CMD_DEF_END,
 };
 
 static ModeDef latex_mode = {
@@ -354,7 +353,7 @@ static int latex_init(void)
 {
     qe_register_mode(&latex_mode, MODEF_SYNTAX);
     qe_register_mode(&texinfo_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(latex_commands, &latex_mode);
+    qe_register_cmd_table(latex_commands, countof(latex_commands), &latex_mode);
     qe_register_completion(&latex_completion);
 
     return 0;

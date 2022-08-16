@@ -2,7 +2,7 @@
  * Graphical HTML mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2003-2020 Charlie Gordon.
+ * Copyright (c) 2003-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -892,7 +892,7 @@ static int html_mode_probe(ModeDef *mode, ModeProbeData *p1)
 }
 
 /* XXX: only works in insert mode */
-static void do_html_electric(EditState *s, int key)
+static void do_html_electric_key(EditState *s, int key)
 {
     const char *str;
     str = find_entity_str(key);
@@ -907,15 +907,10 @@ static void do_html_electric(EditState *s, int key)
 
 
 /* specific html commands */
-static CmdDef html_commands[] = {
+static const CmdDef html_commands[] = {
     /* should use 'k' intrinsic argument */
-    CMD3( '<', KEY_NONE,
-          "html-electric-lt", do_html_electric, ESi, '<', "*v", "")
-    CMD3( '>', KEY_NONE,
-          "html-electric-gt", do_html_electric, ESi, '>', "*v", "")
-    CMD3( '&', KEY_NONE,
-          "html-electric-amp", do_html_electric, ESi, '&', "*v", "")
-    CMD_DEF_END,
+    CMD2( "html-electric-key", "<, >, &",
+          do_html_electric_key, ESi, "*k", "")
 };
 
 ModeDef html_mode = {
@@ -943,7 +938,7 @@ static int html_init(void)
     css_init();
 
     qe_register_mode(&html_mode, MODEF_VIEW);
-    qe_register_cmd_table(html_commands, &html_mode);
+    qe_register_cmd_table(html_commands, countof(html_commands), &html_mode);
 
     return 0;
 }

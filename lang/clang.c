@@ -1109,7 +1109,7 @@ static void do_c_indent(EditState *s)
     }
 }
 
-static void do_c_electric(EditState *s, int key)
+static void do_c_electric_key(EditState *s, int key)
 {
     int offset = s->offset;
     int was_preview = s->b->flags & BF_PREVIEW;
@@ -1274,21 +1274,20 @@ static void do_c_list_conditionals(EditState *s)
 }
 
 /* C mode specific commands */
-static CmdDef c_commands[] = {
-    CMD2( KEY_CTRL('i'), KEY_NONE,
-          "c-indent-command", do_c_indent, ES, "*", "")
+static const CmdDef c_commands[] = {
+    CMD2( "c-indent-command", "TAB",
+          do_c_indent, ES, "*", "")
             /* should map to KEY_META + KEY_CTRL_LEFT ? */
-    CMD3( KEY_META('['), KEY_NONE,
-          "c-backward-conditional", do_c_forward_conditional, ESi, -1, "P", "")
-    CMD3( KEY_META(']'), KEY_NONE,
-          "c-forward-conditional", do_c_forward_conditional, ESi, 1, "P", "")
-    CMD0( KEY_META('i'), KEY_NONE,
-          "c-list-conditionals", do_c_list_conditionals, "")
-    CMD2( '{', '}',
-          "c-electric-key", do_c_electric, ESi, "*k", "")
-    CMD2( KEY_RET, KEY_NONE,
-          "c-newline", do_c_newline, ES, "*", "")
-    CMD_DEF_END,
+    CMD3( "c-backward-conditional", "M-[",
+          do_c_forward_conditional, ESi, -1, "P", "")
+    CMD3( "c-forward-conditional", "M-]",
+          do_c_forward_conditional, ESi, 1, "P", "")
+    CMD0( "c-list-conditionals", "M-i",
+          do_c_list_conditionals, "")
+    CMD2( "c-electric-key", "{, }, ;, :, #, &, |, *",
+          do_c_electric_key, ESi, "*k", "")
+    CMD2( "c-newline", "RET",
+          do_c_newline, ES, "*", "")
 };
 
 static int c_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -3659,13 +3658,8 @@ static ModeDef salmon_mode = {
 
 static int c_init(void)
 {
-    const char *p;
-
     qe_register_mode(&c_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(c_commands, &c_mode);
-    for (p = ";:#&|*"; *p; p++) {
-        qe_register_binding(*p, "c-electric-key", &c_mode);
-    }
+    qe_register_cmd_table(c_commands, countof(c_commands), &c_mode);
 
     qe_register_mode(&idl_mode, MODEF_SYNTAX);
     qe_register_mode(&yacc_mode, MODEF_SYNTAX);

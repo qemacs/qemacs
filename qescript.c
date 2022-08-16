@@ -480,7 +480,7 @@ static int qe_cfg_format(QEmacsDataSource *ds, QEValue *sp) {
     return 0;
 }
 
-static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, CmdDef *d);
+static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d);
 static int qe_cfg_assign(QEmacsDataSource *ds, QEValue *sp, int op);
 static int qe_cfg_op(QEmacsDataSource *ds, QEValue *sp, int op);
 
@@ -574,7 +574,7 @@ static int qe_cfg_expr(QEmacsDataSource *ds, QEValue *sp, int prec0) {
             switch (op) {
             case '(': /* function call */
                 if (sp->type == TOK_ID) {
-                    CmdDef *d = qe_find_cmd(sp->u.str);
+                    const CmdDef *d = qe_find_cmd(sp->u.str);
                     if (!d) {
                         put_status(ds->s, "unknown command '%s'", sp->u.str);
                         return 1;
@@ -817,7 +817,7 @@ done:
     return qe_cfg_next_token(ds);
 }
 
-static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, CmdDef *d) {
+static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
     char str[1024];
     char *strp;
     const char *r;
@@ -1205,7 +1205,7 @@ static void symbol_complete(CompleteState *cp) {
 }
 
 static int symbol_print_entry(CompleteState *cp, EditState *s, const char *name) {
-    CmdDef *d = qe_find_cmd(name);
+    const CmdDef *d = qe_find_cmd(name);
     if (d) {
         return command_print_entry(cp, s, name);
     } else {
@@ -1218,26 +1218,24 @@ static CompletionDef symbol_completion = {
     CF_SPACE_OK | CF_NO_AUTO_SUBMIT
 };
 
-static CmdDef parser_commands[] = {
-
-    CMD2( KEY_META(':'), KEY_NONE,
-          "eval-expression", do_eval_expression, ESsi,
+static const CmdDef parser_commands[] = {
+    CMD2( "eval-expression", "M-:",
+          do_eval_expression, ESsi,
           "s{Eval: }[.symbol]|expression|"
           "p", "")
-    CMD0( KEY_NONE, KEY_NONE,
-          "eval-region", do_eval_region, "")
-    CMD0( KEY_NONE, KEY_NONE,
-          "eval-buffer", do_eval_buffer, "")
+    CMD0( "eval-region", "",
+          do_eval_region, "")
+    CMD0( "eval-buffer", "",
+          do_eval_buffer, "")
 #ifndef CONFIG_TINY
-    CMD1( KEY_NONE, KEY_NONE,
-          "save-session", do_save_session, 1, "")
+    CMD1( "save-session", "",
+          do_save_session, 1, "")
 #endif
-    CMD_DEF_END,
 };
 
 static int parser_init(void)
 {
-    qe_register_cmd_table(parser_commands, NULL);
+    qe_register_cmd_table(parser_commands, countof(parser_commands), NULL);
     qe_register_completion(&symbol_completion);
     return 0;
 }

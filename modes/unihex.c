@@ -2,7 +2,7 @@
  * Unicode Hexadecimal mode for QEmacs.
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -247,6 +247,8 @@ static ModeDef unihex_mode = {
     .mouse_goto = text_mouse_goto,
     .write_char = hex_write_char,
     .get_mode_line = unihex_mode_line,
+    // XXX: Should use fallback mode for other bindings
+    //.fallback = &binary_mode,
 };
 
 
@@ -256,6 +258,7 @@ static int unihex_init(void)
     qe_register_mode(&unihex_mode, MODEF_VIEW);
 
     /* additional mode specific keys */
+    // XXX: Should use fallback mode for these bindings
     qe_register_binding(KEY_CTRL_LEFT, "decrease-width", &unihex_mode);
     qe_register_binding(KEY_CTRL_RIGHT, "increase-width", &unihex_mode);
     qe_register_binding(KEY_TAB, "toggle-hex", &unihex_mode);

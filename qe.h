@@ -734,7 +734,7 @@ static inline int compute_percent(int a, int b) {
 
 int compose_keys(unsigned int *keys, int *nb_keys);
 int strtokey(const char **pp);
-int strtokeys(const char *keystr, unsigned int *keys, int max_keys);
+int strtokeys(const char *keystr, unsigned int *keys, int max_keys, const char **endp);
 int buf_put_key(buf_t *out, int key);
 int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);
 
@@ -874,10 +874,6 @@ enum QEEventType {
 #define KEY_CTRL(c)     ((c) & 0x001f)
 #define KEY_META(c)     ((c) | 0xe000)
 #define KEY_ESC1(c)     ((c) | 0xe100)
-#define KEY_CTRLX(c)    ((c) | 0xe200)
-#define KEY_CTRLXRET(c) ((c) | 0xe300)
-#define KEY_CTRLH(c)    ((c) | 0xe500)
-#define KEY_CTRLC(c)    ((c) | 0xe600)
 #define KEY_IS_SPECIAL(c)  ((c) >= 0xe000 && (c) < 0xf000)
 #define KEY_IS_CONTROL(c)  (((c) >= 0 && (c) < 32) || (c) == 127)
 
@@ -1650,12 +1646,20 @@ typedef struct QErrorContext {
 
 typedef void (*CmdFunc)(void);
 
+struct CmdDefArray {
+    const struct CmdDef *array;
+    int count;
+    int allocated;
+};
+
 struct QEmacsState {
     QEditScreen *screen;
     //struct QEDisplay *first_dpy;
     struct ModeDef *first_mode;
     struct KeyDef *first_key;
-    struct CmdDef *first_cmd;
+    struct CmdDefArray *cmd_array;
+    int cmd_array_count;
+    int cmd_array_size;
     struct CompletionDef *first_completion;
     struct HistoryEntry *first_history;
     //struct QECharset *first_charset;
@@ -1759,7 +1763,7 @@ extern QEmacsState qe_state;
 
 struct KeyDef {
     struct KeyDef *next;
-    struct CmdDef *cmd;
+    const struct CmdDef *cmd;
     int nb_keys;
     unsigned int keys[1];
 };
@@ -1821,14 +1825,11 @@ typedef union CmdProto {
     void (*ESss)(EditState *, const char *, const char *);
     void (*ESssi)(EditState *, const char *, const char *, int);
     void (*ESsss)(EditState *, const char *, const char *, const char *);
-    struct CmdDef *next;
 } CmdProto;
 
 typedef struct CmdDef {
     const char *name;
     const char *spec;
-    unsigned short key;       /* normal key */
-    unsigned short alt_key;   /* alternate key */
     CmdSig sig : 8;
     signed int val : 24;
     CmdProto action;
@@ -1836,37 +1837,34 @@ typedef struct CmdDef {
 
 #ifdef CONFIG_TINY
 /* omit command descriptions in Tiny build */
-#define CMD(key, key_alt, name, func, sig, val, spec, desc) \
-    { name, spec "\0" "", key, key_alt, CMD_ ## sig, val, { .sig = func } },
+#define CMD(name, bindings, func, sig, val, spec, desc) \
+    { name "\0" bindings, spec "\0" desc, CMD_ ## sig, val, { .sig = func } },
 #else
-#define CMD(key, key_alt, name, func, sig, val, spec, desc) \
-    { name, spec "\0" desc, key, key_alt, CMD_ ## sig, val, { .sig = func } },
+#define CMD(name, bindings, func, sig, val, spec, desc) \
+    { name "\0" bindings, spec "\0" desc, CMD_ ## sig, val, { .sig = func } },
 #endif
 /* command without arguments, no buffer modification */
-#define CMD0(key, key_alt, name, func, desc) \
-    CMD(key, key_alt, name, func, ES, 0, "", desc)
+#define CMD0(name, bindings, func, desc) \
+    CMD(name, bindings, func, ES, 0, "", desc)
 /* command with a single implicit int argument */
-#define CMD1(key, key_alt, name, func, val, desc) \
-    CMD(key, key_alt, name, func, ESi, val, "v", desc)
-/* command with a an argument description string */
-#define CMD2(key, key_alt, name, func, sig, spec, desc) \
-    CMD(key, key_alt, name, func, sig, 0, spec, desc)
+#define CMD1(name, bindings, func, val, desc) \
+    CMD(name, bindings, func, ESi, val, "v", desc)
+/* command with a signature and an argument description string */
+#define CMD2(name, bindings, func, sig, spec, desc) \
+    CMD(name, bindings, func, sig, 0, spec, desc)
 /* command with a an argument description string and an int argument */
-#define CMD3(key, key_alt, name, func, sig, val, spec, desc) \
-    CMD(key, key_alt, name, func, sig, val, spec, desc)
-/* end of command definitions */
-#define CMD_DEF_END \
-    { NULL, NULL, 0, 0, CMD_void, 0, { NULL } }
+#define CMD3(name, bindings, func, sig, val, spec, desc) \
+    CMD(name, bindings, func, sig, val, spec, desc)
 
 ModeDef *qe_find_mode(const char *name, int flags);
 ModeDef *qe_find_mode_filename(const char *filename, int flags);
 void qe_register_mode(ModeDef *m, int flags);
 void mode_complete(CompleteState *cp);
-void qe_register_cmd_table(CmdDef *cmds, ModeDef *m);
-int qe_register_binding(int key, const char *cmd_name, ModeDef *m);
-CmdDef *qe_find_cmd(const char *cmd_name);
-int qe_get_prototype(CmdDef *d, char *buf, int size);
-int qe_list_bindings(CmdDef *d, ModeDef *mode, int inherit, char *buf, int size);
+int qe_register_cmd_table(const CmdDef *cmds, int len, ModeDef *m);
+int qe_register_binding(unsigned int key, const char *cmd_name, ModeDef *m);
+const CmdDef *qe_find_cmd(const char *cmd_name);
+int qe_get_prototype(const CmdDef *d, char *buf, int size);
+int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size);
 
 /* text display system */
 
@@ -2042,9 +2040,6 @@ static inline int scale(int a, int b, int c) {
 /* minibuffer & status */
 
 void minibuffer_init(void);
-
-extern CmdDef minibuffer_commands[];
-extern CmdDef popup_commands[];
 
 typedef struct CompletionDef {
     const char *name;
@@ -2229,7 +2224,7 @@ void do_set_emulation(EditState *s, const char *name);
 void do_start_trace_mode(EditState *s);
 void do_set_trace_options(EditState *s, const char *options);
 void do_cd(EditState *s, const char *name);
-int qe_mode_set_key(ModeDef *m, const char *keystr, const char *cmd_name);
+int qe_mode_set_key(const char *keystr, const CmdDef *d, ModeDef *m);
 void do_set_key(EditState *s, const char *keystr, const char *cmd_name,
                 int local);
 //void do_unset_key(EditState *s, const char *keystr, int local);
@@ -2298,7 +2293,7 @@ void do_set_window_style(EditState *s, const char *stylestr);
 void call_func(CmdSig sig, CmdProto func, int nb_args, CmdArg *args,
                unsigned char *args_type);
 int parse_arg(const char **pp, CmdArgSpec *ap);
-void exec_command(EditState *s, CmdDef *d, int argval, int key);
+void exec_command(EditState *s, const CmdDef *d, int argval, int key);
 void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);
 void do_numeric_argument(EditState *s);
@@ -2315,11 +2310,11 @@ void qe_save_macros(EditState *s, EditBuffer *b);
 #define COMPLETION_OTHER  2
 void do_minibuffer_complete(EditState *s, int type);
 void do_minibuffer_complete_space(EditState *s);
-void do_minibuffer_electric(EditState *s, int key);
 void do_minibuffer_scroll_up_down(EditState *s, int dir);
 void do_minibuffer_history(EditState *s, int n);
 void do_minibuffer_get_binary(EditState *s);
 void do_minibuffer_exit(EditState *s, int fabort);
+
 void do_popup_exit(EditState *s);
 void do_toggle_read_only(EditState *s);
 void do_not_modified(EditState *s, int argval);

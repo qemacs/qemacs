@@ -974,7 +974,7 @@ int css_get_enum(const char *str, const char *enum_str)
 
 static unsigned short const keycodes[] = {
     KEY_SPC, KEY_DEL, KEY_RET, KEY_ESC, KEY_TAB, KEY_SHIFT_TAB,
-    KEY_CTRL(' '), KEY_DEL, KEY_CTRL('\\'),
+    KEY_CTRL(' '), KEY_CTRL('@'), KEY_DEL, KEY_CTRL('\\'),
     KEY_CTRL(']'), KEY_CTRL('^'), KEY_CTRL('_'), KEY_CTRL('_'),
     KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN,
     KEY_HOME, KEY_END, KEY_PAGEUP, KEY_PAGEDOWN,
@@ -990,19 +990,17 @@ static unsigned short const keycodes[] = {
 };
 
 static const char * const keystr[] = {
-    "SPC",    "DEL",      "RET",      "ESC",    "TAB", "S-TAB",
-    "C-SPC",  "C-?",      "C-\\",     "C-]",    "C-^", "C-_", "C-/",
-    "left",   "right",    "up",       "down",
-    "home",   "end",      "prior",    "next",
-    "C-left", "C-right",  "C-up",     "C-down",
-    "C-home", "C-end",    "C-prior",  "C-next",
+    "SPC", "DEL", "RET", "ESC", "TAB", "S-TAB",
+    "C-SPC", "C-@", "C-?", "C-\\", "C-]", "C-^", "C-_", "C-/",
+    "left", "right", "up", "down",
+    "home", "end", "prior", "next",
+    "C-left", "C-right", "C-up", "C-down",
+    "C-home", "C-end", "C-prior", "C-next",
     "pageup", "pagedown", "C-pageup", "C-pagedown",
-    "insert", "delete",   "default",
-    "f1",     "f2",       "f3",       "f4",    "f5",
-    "f6",     "f7",       "f8",       "f9",    "f10",
-    "f11",    "f12",      "f13",      "f14",   "f15",
-    "f16",    "f17",      "f18",      "f19",   "f20",
-    "LB",     "RB",       "VB",
+    "insert", "delete", "default",
+    "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10",
+    "f11", "f12", "f13", "f14", "f15", "f16", "f17", "f18", "f19", "f20",
+    "LB", "RB", "VB",
 };
 
 int compose_keys(unsigned int *keys, int *nb_keys)
@@ -1034,7 +1032,7 @@ static int strtokey1(const char **pp)
     p = *pp;
 
     /* scan for separator */
-    for (p1 = p; *p1 && *p1 != ' '; p1++)
+    for (p1 = p; *p1 && *p1 != ' ' && !(*p1 == ',' && p1[1] == ' '); p1++)
         continue;
 
     for (i = 0; i < countof(keycodes); i++) {
@@ -1067,7 +1065,6 @@ static int strtokey1(const char **pp)
         key = utf8_decode(&p);
         *pp = p;
     }
-
     return key;
 }
 
@@ -1093,21 +1090,27 @@ int strtokey(const char **pp)
     return key;
 }
 
-int strtokeys(const char *kstr, unsigned int *keys, int max_keys)
-{
+int strtokeys(const char *str, unsigned int *keys,
+              int max_keys, const char **endp) {
     int key, nb_keys;
     const char *p;
 
-    p = kstr;
+    p = str;
     nb_keys = 0;
 
     while (qe_skip_spaces(&p)) {
         key = strtokey(&p);
         keys[nb_keys++] = key;
         compose_keys(keys, &nb_keys);
+        if (*p == ',' && p[1] == ' ') {
+            p += 2;
+            break;
+        }
         if (nb_keys >= max_keys)
             break;
     }
+    if (endp)
+        *endp = p;
     return nb_keys;
 }
 

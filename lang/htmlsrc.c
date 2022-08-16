@@ -390,9 +390,10 @@ static int htmlsrc_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 /* specific htmlsrc commands */
 /* CG: need move / kill by tag level */
-static CmdDef htmlsrc_commands[] = {
-    CMD_DEF_END,
+#if 0
+static const CmdDef htmlsrc_commands[] = {
 };
+#endif
 
 ModeDef htmlsrc_mode = {
     .name = "html-src",
@@ -405,7 +406,7 @@ ModeDef htmlsrc_mode = {
 static int htmlsrc_init(void)
 {
     qe_register_mode(&htmlsrc_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(htmlsrc_commands, &htmlsrc_mode);
+    //qe_register_cmd_table(htmlsrc_commands, countof(htmlsrc_commands), &htmlsrc_mode);
 
     return 0;
 }

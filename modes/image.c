@@ -2,7 +2,7 @@
  * Image mode for QEmacs.
  *
  * Copyright (c) 2002-2003 Fabrice Bellard.
- * Copyright (c) 2003-2020 Charlie Gordon.
+ * Copyright (c) 2003-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -858,32 +858,31 @@ static void pixel_format_complete(CompleteState *cp)
 }
 
 /* specific image commands */
-static CmdDef image_commands[] = {
-    CMD0( 't', KEY_NONE,
-          "image-rotate", image_rotate, "")
-    CMD2( 'c', KEY_NONE,
-          "image-convert", image_convert, ESs,
+static const CmdDef image_commands[] = {
+    CMD0( "image-rotate", "t",
+          image_rotate, "")
+    CMD2( "image-convert", "c",
+          image_convert, ESs,
           "s{New pixel format: }[pixel-format]|pixel-format|", "")
-    CMD2( 'b', KEY_NONE,
-          "image-set-background-color", image_set_background_color, ESs,
+    CMD2( "image-set-background-color", "b",
+          image_set_background_color, ESs,
           "s{Background color (use 'transparent' for tiling): }", "")
 #if 1
-    CMD0( 'n', KEY_NONE,
-          "image-normal-size", image_normal_size, "")
-    CMD1( '>', KEY_NONE,
-          "image-double-size", image_mult_size, 100, "")
-    CMD1( '<', KEY_NONE,
-          "image-halve-size", image_mult_size, -50, "")
-    CMD1( '.', KEY_NONE,
-          "image-larger-10", image_mult_size, 10, "")
-    CMD1( ',', KEY_NONE,
-          "image-smaller-10", image_mult_size, -10, "")
-    CMD2( 'S', KEY_NONE,
-          "image-set-display-size", image_set_size, ESii,
+    CMD0( "image-normal-size", "n",
+          image_normal_size, "")
+    CMD1( "image-double-size", ">",
+          image_mult_size, 100, "")
+    CMD1( "image-halve-size", "<",
+          image_mult_size, -50, "")
+    CMD1( "image-larger-10", ".",
+          image_mult_size, 10, "")
+    CMD1( "image-smaller-10", ",",
+          image_mult_size, -10, "")
+    CMD2( "image-set-display-size", "S",
+          image_set_size, ESii,
           "n{Displayed width: }"
           "n{Displayed height: }", "")
 #endif
-    CMD_DEF_END,
 };
 
 static EditBufferDataType image_data_type = {
@@ -918,7 +917,7 @@ static int image_init(void)
     av_register_all();
     eb_register_data_type(&image_data_type);
     qe_register_mode(&image_mode, MODEF_DATATYPE | MODEF_VIEW);
-    qe_register_cmd_table(image_commands, &image_mode);
+    qe_register_cmd_table(image_commands, countof(image_commands), &image_mode);
     qe_register_completion(&pixel_format_completion);
     /* additional mode specific keys */
     qe_register_binding('f', "toggle-full-screen", &image_mode);

@@ -165,7 +165,6 @@
 * markdown: `a_bb_c` should not detect `bb` as underlined
 * minibuf: use more mode specific bindings
 * minibuf: `minibuffer-electric-yank` in minibuffer to fix pathname
-* minibuf: minibuffer input `~` should not kill `http:` prefix
 * php: improve coloring
 * preview-mode: typing text should `auto-search`
 * screen: check coordinate system to 1000 based with optional sidebars

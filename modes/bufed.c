@@ -502,56 +502,53 @@ static void bufed_mode_free(EditBuffer *b, void *state)
 }
 
 /* specific bufed commands */
-static CmdDef bufed_commands[] = {
-    CMD1( KEY_RET, KEY_SPC,
-          "bufed-select", bufed_select, 0,
+static const CmdDef bufed_commands[] = {
+    CMD1( "bufed-select", "RET, SPC",
+          bufed_select, 0,
           "Select buffer from current line and close bufed popup window")
-    CMD1( KEY_CTRL('g'), KEY_CTRLX(KEY_CTRL('g')),
-          "bufed-abort", bufed_select, -1,
+    CMD1( "bufed-abort", "C-g, C-x C-g",
+          bufed_select, -1,
           "Abort and close bufed popup window")
-    //CMD0( '?', KEY_NONE, "bufed-help", bufed_help, "")
-    //CMD0( 's', KEY_NONE, "bufed-save-buffer", bufed_save_buffer, "")
-    CMD0( '~', KEY_NONE,
-          "bufed-clear-modified", bufed_clear_modified,
+    //CMD0( "bufed-help", "?", bufed_help, "")
+    //CMD0( "bufed-save-buffer", "s", bufed_save_buffer, "")
+    CMD0( "bufed-clear-modified", "~",
+          bufed_clear_modified,
           "Clear buffer modified indicator")
-    CMD0( '%', KEY_NONE,
-          "bufed-toggle-read-only", bufed_toggle_read_only,
+    CMD0( "bufed-toggle-read-only", "%",
+          bufed_toggle_read_only,
           "Toggle buffer read-only flag")
-    CMD1( 'a', '.',
-          "bufed-toggle-all-visible", bufed_refresh, 1,
+    CMD1( "bufed-toggle-all-visible", "a, .",
+          bufed_refresh, 1,
           "Show all buffers including system buffers")
-    CMD1( 'r', 'g',
-          "bufed-refresh", bufed_refresh, 0,
+    CMD1( "bufed-refresh", "r, g",
+          bufed_refresh, 0,
           "Refreh buffer list")
-    CMD0( 'k', 'd',
-          "bufed-kill-buffer", bufed_kill_buffer,
+    CMD0( "bufed-kill-buffer", "k, d",
+          bufed_kill_buffer,
           "Kill buffer at current line in bufed window")
-    CMD1( 'u', KEY_NONE,
-          "bufed-unsorted", bufed_set_sort, 0,
+    CMD1( "bufed-unsorted", "u",
+          bufed_set_sort, 0,
           "Sort the buffer list by creation time")
-    CMD1( 'b', 'B',
-          "bufed-sort-name", bufed_set_sort, BUFED_SORT_NAME,
+    CMD1( "bufed-sort-name", "b, B",
+          bufed_set_sort, BUFED_SORT_NAME,
           "Sort the buffer list by buffer name")
-    CMD1( 'f', 'F',
-          "bufed-sort-filename", bufed_set_sort, BUFED_SORT_FILENAME,
+    CMD1( "bufed-sort-filename", "f, F",
+          bufed_set_sort, BUFED_SORT_FILENAME,
           "Sort the buffer list by buffer file name")
-    CMD1( 'z', 'Z',
-          "bufed-sort-size", bufed_set_sort, BUFED_SORT_SIZE,
+    CMD1( "bufed-sort-size", "z, Z",
+          bufed_set_sort, BUFED_SORT_SIZE,
           "Sort the buffer list by buffer size")
-    CMD1( 't', 'T',
-          "bufed-sort-time", bufed_set_sort, BUFED_SORT_TIME,
+    CMD1( "bufed-sort-time", "t, T",
+          bufed_set_sort, BUFED_SORT_TIME,
           "Sort the buffer list by buffer modification time")
-    CMD1( 'm', 'M',
-          "bufed-sort-modified", bufed_set_sort, BUFED_SORT_MODIFIED,
+    CMD1( "bufed-sort-modified", "m, M",
+          bufed_set_sort, BUFED_SORT_MODIFIED,
           "Sort the buffer list with modified buffers first")
-
-    CMD_DEF_END,
 };
 
-static CmdDef bufed_global_commands[] = {
-    CMD2( KEY_CTRLX(KEY_CTRL('b')), KEY_NONE,
-          "buffer-list", do_buffer_list, ESi, "p", "")
-    CMD_DEF_END,
+static const CmdDef bufed_global_commands[] = {
+    CMD2( "buffer-list", "C-x C-b",
+          do_buffer_list, ESi, "p", "")
 };
 
 static int bufed_init(void)
@@ -567,8 +564,8 @@ static int bufed_init(void)
     bufed_mode.display_hook = bufed_display_hook;
 
     qe_register_mode(&bufed_mode, MODEF_VIEW);
-    qe_register_cmd_table(bufed_commands, &bufed_mode);
-    qe_register_cmd_table(bufed_global_commands, NULL);
+    qe_register_cmd_table(bufed_commands, countof(bufed_commands), &bufed_mode);
+    qe_register_cmd_table(bufed_global_commands, countof(bufed_global_commands), NULL);
 
     /* register extra bindings */
     qe_register_binding('n', "next-line", &bufed_mode);

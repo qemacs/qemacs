@@ -128,7 +128,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
     CmdArgSpec cas;
     const char *p, *r;
     int line_num;
-    CmdDef *d;
+    const CmdDef *d;
     int nb_args, sep, i, skip, incomment, ret;
     CmdArg args[MAX_CMD_ARGS];
     unsigned char args_type[MAX_CMD_ARGS];
@@ -423,27 +423,25 @@ void do_save_session(EditState *s, int popup)
 }
 #endif
 
-static CmdDef parser_commands[] = {
-
-    CMD2( KEY_META(':'), KEY_NONE,
-          "eval-expression", do_eval_expression, ESsi,
+static const CmdDef parser_commands[] = {
+    CMD2( "eval-expression", "M-:",
+          do_eval_expression, ESsi,
           "s{Eval: }|expression|"
           "p", "")
     /* XXX: should take region as argument, implicit from keyboard */
-    CMD0( KEY_NONE, KEY_NONE,
-          "eval-region", do_eval_region, "")
-    CMD0( KEY_NONE, KEY_NONE,
-          "eval-buffer", do_eval_buffer, "")
+    CMD0( "eval-region", "",
+          do_eval_region, "")
+    CMD0( "eval-buffer", "",
+          do_eval_buffer, "")
 #ifndef CONFIG_TINY
-    CMD1( KEY_NONE, KEY_NONE,
-          "save-session", do_save_session, 1, "")
+    CMD1( "save-session", "",
+          do_save_session, 1, "")
 #endif
-    CMD_DEF_END,
 };
 
 static int parser_init(void)
 {
-    qe_register_cmd_table(parser_commands, NULL);
+    qe_register_cmd_table(parser_commands, countof(parser_commands), NULL);
     return 0;
 }
 
