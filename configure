@@ -509,7 +509,7 @@ if test "$x11" = "yes" ; then
     fi
 fi
 
-echo "VERSION             $version"
+echo "VERSION            " `head $source_path/VERSION`
 echo "Install prefix      $prefix"
 echo "Shared data dir     $datadir"
 echo "Manpages dir        $mandir"
