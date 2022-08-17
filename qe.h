@@ -1338,34 +1338,11 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2);
 
 void init_all_modules(void);
 
-#if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
-#if __GNUC__ < 3 || (__GNUC__ == 3 && __GNUC_MINOR__ < 3)
-/* same method as the linux kernel... */
-#define qe__init_call   __attribute__((unused, __section__ (".initcall.init")))
-#define qe__exit_call   __attribute__((unused, __section__ (".exitcall.exit")))
-#else
-#define qe__attr_used   __attribute__((__used__))
-#define qe__init_call   qe__attr_used __attribute__((__section__ (".initcall.init")))
-#define qe__exit_call   qe__attr_used __attribute__((__section__ (".exitcall.exit")))
-#endif
-
 #define qe_module_init(fn) \
-        static int (*qe__initcall_##fn)(void) qe__init_call = fn
-
-#define qe_module_exit(fn) \
-        static void (*qe__exitcall_##fn)(void) qe__exit_call = fn
-#else
-
-#define qe__init_call
-#define qe__exit_call
-
-#define qe_module_init(fn) \
-        extern int module_ ## fn (void); \
-        int module_ ## fn (void) { return fn(); }
+        extern int module_##fn(void); \
+        int module_##fn(void) { return fn(); }
 
 #define qe_module_exit(fn)
-
-#endif
 
 #endif /* QE_MODULE */
 

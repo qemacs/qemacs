@@ -226,11 +226,6 @@ ifdef TARGET_X11
 endif
 endif
 
-ifdef CONFIG_INIT_CALLS
-  # must be the last object
-  OBJS+= qeend.o
-endif
-
 SRCS:= $(OBJS:.o=.c)
 
 DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak lang/clang.h
@@ -241,9 +236,7 @@ BINDIR:=$(DEPTH)/bin
 OBJS_DIR:= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/$(TARGET_OBJ)$(DEBUG_SUFFIX)
 CFLAGS+= -I$(OBJS_DIR)
 OBJS:= $(addprefix $(OBJS_DIR)/, $(OBJS))
-ifndef CONFIG_INIT_CALLS
 OBJS+= $(OBJS_DIR)/$(TARGET)_modules.o
-endif
 
 #
 # Dependencies
@@ -291,9 +284,7 @@ else
 # Amalgation mode produces a larger executable
 TSRCS:=qe.c util.c cutils.c charset.c buffer.c search.c input.c display.c \
        modes/hex.c modes/list.c parser.c unix.c tty.c win32.c qeend.c
-ifndef CONFIG_INIT_CALLS
 TSRCS+= $(OBJS_DIR)/tqe_modules.c
-endif
 
 tqe1_g$(EXE): tqe.c $(TSRCS) Makefile
 	$(echo) CC $(ECHO_CFLAGS) -o $@ $<

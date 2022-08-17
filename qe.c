@@ -42,11 +42,6 @@ typedef struct HistoryEntry {
     char name[32];
 } HistoryEntry;
 
-#ifdef CONFIG_INIT_CALLS
-static int (*qe__initcall_first)(void) qe__init_call = NULL;
-static void (*qe__exitcall_first)(void) qe__exit_call = NULL;
-#endif
-
 void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
                    const char *str, QETermStyle style);
@@ -8954,52 +8949,6 @@ QEStyleDef qe_styles[QE_STYLE_NB] = {
 
 #undef STYLE_DEF
 };
-
-#if (defined(__GNUC__) || defined(__TINYC__)) && defined(CONFIG_INIT_CALLS)
-
-void init_all_modules(void)
-{
-    int (*initcall)(void);
-    int (**ptr)(void);
-
-    ptr = (int (**)(void))(void *)&qe__initcall_first;
-    for (;;) {
-#if defined(__BOUNDS_CHECKING_ON)
-        /* NOTE: if bound checking is on, a NULL is inserted between
-           each initialized 'void *' */
-        ptr++;
-#endif
-        ptr++;
-        initcall = *ptr;
-        if (initcall == NULL)
-            break;
-        (*initcall)();
-    }
-}
-
-#if 0
-static void exit_all_modules(void)
-{
-    /* CG: Should call in reverse order! */
-    int (*exitcall)(void);
-    int (**ptr)(void);
-
-    ptr = (int (**)(void))(void *)&qe__exitcall_first;
-    for (;;) {
-#if defined(__BOUNDS_CHECKING_ON)
-        /* NOTE: if bound checking is on, a NULL is inserted between
-           each initialized 'void *' */
-        ptr++;
-#endif
-        ptr++;
-        exitcall = *ptr;
-        if (exitcall == NULL)
-            break;
-        (*exitcall)();
-    }
-}
-#endif
-#endif
 
 #ifdef CONFIG_DLL
 

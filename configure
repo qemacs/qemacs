@@ -75,7 +75,6 @@ ffmpeg="no"
 html="no"
 doc="yes"
 plugins="yes"
-initcalls="yes"
 mmap="yes"
 kmaps="yes"
 modes="yes"
@@ -128,7 +127,6 @@ case $targetos in
   Darwin)
     darwin="yes"
     CFLAGS=""
-    initcalls="no"
     unlockio="yes"
     plugins="no"
     extralibs="-lm"
@@ -365,7 +363,6 @@ if test "$atari" = "yes" ; then
     network="no"
     doc="no"
     plugins="no"
-    initcalls="no"
     x11="no"
     mmap="no"
     cygwin="no"
@@ -386,7 +383,6 @@ if test "$win32" = "yes" ; then
     network="no"
     doc="no"
     plugins="no"
-    initcalls="no"
     x11="no"
     mmap="no"
     cygwin="no"
@@ -400,7 +396,6 @@ if test "$cygwin" = "yes" ; then
     ffmpeg="no"
     html="no"
     plugins="no"
-    initcalls="no"
     exe=".exe"
 fi
 
@@ -514,11 +509,13 @@ if test "$x11" = "yes" ; then
     fi
 fi
 
+echo "VERSION             $version"
 echo "Install prefix      $prefix"
 echo "Shared data dir     $datadir"
 echo "Manpages dir        $mandir"
 echo "Source path         $source_path"
 echo "C compiler          $cc"
+echo "  version          " `$cc --version | head -n 1`
 echo "Tiny build          $tiny"
 echo "X11 support         $x11"
 echo "Xvideo support      $xv"
@@ -529,7 +526,6 @@ echo "FFMPEG support      $ffmpeg"
 echo "Graphical HTML      $html"
 echo "Memory mapped files $mmap"
 echo "Unlocked I/O        $unlockio"
-echo "Initcall support    $initcalls"
 echo "Plugins support     $plugins"
 echo "Bidir support       $bidir"
 echo "All kmaps           $kmaps"
@@ -674,11 +670,6 @@ fi
 if test "$plugins" = "yes" ; then
   echo "#define CONFIG_DLL 1" >> $TMPH
   echo "CONFIG_DLL=yes" >> $TMPMAK
-fi
-
-if test "$initcalls" = "yes" ; then
-  echo "#define CONFIG_INIT_CALLS 1" >> $TMPH
-  echo "CONFIG_INIT_CALLS=yes" >> $TMPMAK
 fi
 
 if test "$png" = "yes" ; then

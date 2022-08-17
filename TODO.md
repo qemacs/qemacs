@@ -26,7 +26,6 @@
   - append lib: to default QE_PATH
 * clean up ancillary files
 * ^C does not work on OpenBSD
-* remove qeend hack
 
 ## Recent bugs and ideas
 
