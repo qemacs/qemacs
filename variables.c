@@ -33,89 +33,91 @@ const char * const var_domain[] = {
 static VarDef var_table[] = {
 
     S_VAR( "screen-width", width, VAR_NUMBER, VAR_RO,
-          "Number of columns available for display on screen." )
+           "Number of columns available for display on screen." )
     S_VAR( "screen-height", height, VAR_NUMBER, VAR_RO,
-          "Number of lines available for display on screen." )
+           "Number of lines available for display on screen." )
     S_VAR( "is-full-screen", is_full_screen, VAR_NUMBER, VAR_RO,
-          "Set if this window is displayed in full screen (without borders)." )
+           "Set if this window is displayed in full screen (without borders)." )
     S_VAR( "flag-split-window-change-focus", flag_split_window_change_focus, VAR_NUMBER, VAR_RW_SAVE,
-          "Set if `split-window` should set focus to the new window." )
+           "Set if `split-window` should set focus to the new window." )
     S_VAR( "backspace-is-control-h", backspace_is_control_h, VAR_NUMBER, VAR_RW_SAVE,
-          "Set if the Delete key sends a control-H." )
+           "Set if the Delete key sends a control-H." )
     S_VAR( "ungot-key", ungot_key, VAR_NUMBER, VAR_RW, NULL )
     S_VAR( "QEPATH", res_path, VAR_CHARS, VAR_RO,
-          "List of directories to search for standard files to load." )
+           "List of directories to search for standard files to load." )
     //S_VAR( "it", it, VAR_NUMBER, VAR_RW, NULL )
     S_VAR( "ignore-spaces", ignore_spaces, VAR_NUMBER, VAR_RW_SAVE,
-          "Set to ignore spaces in compare-windows." )
+           "Set to ignore spaces in compare-windows." )
     S_VAR( "ignore-comments", ignore_comments, VAR_NUMBER, VAR_RW_SAVE,
-          "Set to ignore comments in compare-windows." )
+           "Set to ignore comments in compare-windows." )
+    S_VAR( "ignore-case", ignore_case, VAR_NUMBER, VAR_RW_SAVE,
+           "Set to ignore case in compare-windows." )
     S_VAR( "hilite-region", hilite_region, VAR_NUMBER, VAR_RW_SAVE,
-          "Set to highlight the region after setting the mark." )
+           "Set to highlight the region after setting the mark." )
     S_VAR( "mmap-threshold", mmap_threshold, VAR_NUMBER, VAR_RW_SAVE,
-          "Size from which files are mmapped instead of loaded in memory." )
+           "Size from which files are mmapped instead of loaded in memory." )
     S_VAR( "max-load-size", max_load_size, VAR_NUMBER, VAR_RW_SAVE,
-          "Maximum size for files to be loaded or mmapped into a buffer." )
+           "Maximum size for files to be loaded or mmapped into a buffer." )
     S_VAR( "show-unicode", show_unicode, VAR_NUMBER, VAR_RW_SAVE,
-          "Set to show non-ASCII characters as unicode escape sequences." )
+           "Set to show non-ASCII characters as unicode escape sequences." )
     S_VAR( "default-tab-width", default_tab_width, VAR_NUMBER, VAR_RW_SAVE,
-          "Default value of `tab-width` for buffers that do not override it." )
+           "Default value of `tab-width` for buffers that do not override it." )
     S_VAR( "default-fill-column", default_fill_column, VAR_NUMBER, VAR_RW_SAVE,
-          "Default value of `fill-column` for buffers that do not override it" )
+           "Default value of `fill-column` for buffers that do not override it" )
     S_VAR( "backup-inhibited", backup_inhibited, VAR_NUMBER, VAR_RW_SAVE,
-          "Set to prevent automatic backups of modified files" )
+           "Set to prevent automatic backups of modified files" )
     S_VAR( "c-label-indent", c_label_indent, VAR_NUMBER, VAR_RW_SAVE,
-          "Number of columns to adjust indentation of C labels." )
+           "Number of columns to adjust indentation of C labels." )
 
     //B_VAR( "screen-charset", charset, VAR_NUMBER, VAR_RW, NULL )
 
     B_VAR( "mark", mark, VAR_NUMBER, VAR_RW,
-          "The position of the beginning of the current region." )
+           "The position of the beginning of the current region." )
     B_VAR( "bufsize", total_size, VAR_NUMBER, VAR_RO,
-          "The number of bytes in the current buffer." )
+           "The number of bytes in the current buffer." )
     B_VAR( "bufname", name, VAR_CHARS, VAR_RO,
-          "The name of the current buffer." )
+           "The name of the current buffer." )
     B_VAR( "filename", filename, VAR_CHARS, VAR_RO,
-          "The name of the file associated with the current buffer." )
+           "The name of the file associated with the current buffer." )
     B_VAR( "tab-width", tab_width, VAR_NUMBER, VAR_RW,
-          "Distance between tab stops (for display of tab characters), in columns." )
+           "Distance between tab stops (for display of tab characters), in columns." )
     B_VAR( "fill-column", fill_column, VAR_NUMBER, VAR_RW,
-          "Column beyond which automatic line-wrapping should happen." )
+           "Column beyond which automatic line-wrapping should happen." )
 
     W_VAR( "point", offset, VAR_NUMBER, VAR_RW,     /* should be window-point */
-          "Current value of point in this window." )
+           "Current value of point in this window." )
     W_VAR( "indent-width", indent_size, VAR_NUMBER, VAR_RW,
-          "Number of columns to indent by for a syntactic level." )
+           "Number of columns to indent by for a syntactic level." )
     W_VAR( "indent-tabs-mode", indent_tabs_mode, VAR_NUMBER, VAR_RW,
-          "Set if indentation can insert tabs." )
+           "Set if indentation can insert tabs." )
     W_VAR( "default-style", default_style, VAR_NUMBER, VAR_RW,
-          "Default text style for this window." )
+           "Default text style for this window." )
     W_VAR( "region-style", region_style, VAR_NUMBER, VAR_RW,
-          "Text style for the current region in this window." )
+           "Text style for the current region in this window." )
     W_VAR( "curline-style", curline_style, VAR_NUMBER, VAR_RW,
-          "Text style for the current line in this window." )
+           "Text style for the current line in this window." )
     W_VAR( "window-width", width, VAR_NUMBER, VAR_RW,
-          "Number of display columns in this window." )
+           "Number of display columns in this window." )
     W_VAR( "window-height", height, VAR_NUMBER, VAR_RW,
-          "Number of display lines in this window." )
+           "Number of display lines in this window." )
     W_VAR( "window-left", xleft, VAR_NUMBER, VAR_RW,
-          "Display column of the left edge of this window." )
+           "Display column of the left edge of this window." )
     W_VAR( "window-top", ytop, VAR_NUMBER, VAR_RW,
-          "Display line of the top edge of this window." )
+           "Display line of the top edge of this window." )
     W_VAR( "window-prompt", prompt, VAR_STRING, VAR_RW,
-          "Prompt string to show for this window." )
+           "Prompt string to show for this window." )
     W_VAR( "dump-width", dump_width, VAR_NUMBER, VAR_RW, NULL )
 
     M_VAR( "mode-name", name, VAR_STRING, VAR_RO,
-          "Name of the current major mode." )
+           "Name of the current major mode." )
     M_VAR( "auto-indent", auto_indent, VAR_NUMBER, VAR_RW,
-          "Set for automatic indentation on new lines." )
+           "Set for automatic indentation on new lines." )
 
     G_VAR( "use-session-file", use_session_file, VAR_NUMBER, VAR_RW, NULL )
     G_VAR( "force-tty", force_tty, VAR_NUMBER, VAR_RW,
-          "Set to prevent graphics display." )
+           "Set to prevent graphics display." )
     G_VAR( "disable-crc", disable_crc, VAR_NUMBER, VAR_RW_SAVE,
-          "Set to prevent CRC based display cache." )
+           "Set to prevent CRC based display cache." )
     G_VAR( "use-html", use_html, VAR_NUMBER, VAR_RW, NULL )
 
     /* more buffer fields: modified, readonly, binary, charset */

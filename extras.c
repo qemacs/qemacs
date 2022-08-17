@@ -139,6 +139,8 @@ void do_compare_windows(EditState *s, int argval)
             qs->ignore_spaces ^= 1;
         if (argval & 16)
             qs->ignore_comments ^= 1;
+        if (argval & 64)
+            qs->ignore_case ^= 1;
     }
 
     size1 = s1->b->total_size;
@@ -189,6 +191,13 @@ void do_compare_windows(EditState *s, int argval)
             if (ch1 == EOF || ch2 == EOF) {
                 put_status(s, "%sExtra characters", comment);
                 break;
+            }
+            if (qs->ignore_case) {
+                if (qe_tolower(ch1) == qe_tolower(ch2)) {
+                    s1->offset = offset1;
+                    s2->offset = offset2;
+                    continue;
+                }
             }
             if (resync) {
                 int save1 = s1->offset, save2 = s2->offset;
@@ -458,7 +467,7 @@ static void do_untabify_region(EditState *s)
     eb_untabify(s->b, s->b->mark, s->offset);
 }
 #endif
-static void do_indent_region(EditState *s)
+static void do_indent_region(EditState *s, int start, int end)
 {
     int col_num, line1, line2;
 
@@ -466,19 +475,20 @@ static void do_indent_region(EditState *s)
     s->region_style = 0;
 
     /* Swap point and mark so mark <= point */
-    if (s->offset < s->b->mark) {
-        int tmp = s->b->mark;
-        s->b->mark = s->offset;
-        s->offset = tmp;
+    if (end < start) {
+        int tmp = start;
+        end = start;
+        start = tmp;
     }
     /* We do it with lines to avoid offset variations during indenting */
-    eb_get_pos(s->b, &line1, &col_num, s->b->mark);
-    eb_get_pos(s->b, &line2, &col_num, s->offset);
+    eb_get_pos(s->b, &line1, &col_num, start);
+    eb_get_pos(s->b, &line2, &col_num, end);
 
     if (col_num == 0)
         line2--;
 
     /* Iterate over all lines inside block */
+    s->b->mark = eb_goto_bol(s->b, start);
     for (; line1 <= line2; line1++) {
         if (s->mode->indent_func) {
             (s->mode->indent_func)(s, eb_goto_pos(s->b, line1, 0));
@@ -487,6 +497,7 @@ static void do_indent_region(EditState *s)
             do_tab(s, 1);
         }
     }
+    s->offset = eb_goto_eol(s->b, s->offset);
 }
 
 void do_show_date_and_time(EditState *s, int argval)
@@ -2165,127 +2176,164 @@ void do_fill_paragraph(EditState *s)
 
 static const CmdDef extra_commands[] = {
     CMD2( "compare-windows", "M-=",
-          do_compare_windows, ESi, "p" , "")
+          do_compare_windows, ESi, "p",
+          "Compare windows, optionally ignoring white space, comments and case")
     CMD3( "compare-files", "C-x C-l",
           do_compare_files, ESsi, 0,
-          "s{Compare file: }[file]|file|"
-          "v", "") /* u? */
+          "s{Compare file: }[file]|file|" "v", /* u? */
+          "Compare file and other version in parent directory")
     CMD2( "delete-horizontal-space", "M-\\",
-          do_delete_horizontal_space, ES, "*", "")
+          do_delete_horizontal_space, ES, "*",
+          "Delete blanks around point")
     CMD2( "delete-blank-lines", "C-x C-o",
-          do_delete_blank_lines, ES, "*", "")
+          do_delete_blank_lines, ES, "*",
+          "Delete blank lines on and/or around point")
     CMD3( "tabify-region", "",
           do_tabify, ESii, 0, "*" "md",
           "Convert multiple spaces in region to tabs when possible")
     CMD3( "untabify-region", "",
           do_untabify, ESii, 0, "*" "md",
-          "Convert all tabs in region to multiple spaces, preserving columns")
+          "Convert all tabs in region to spaces, preserving columns")
     CMD3( "tabify-buffer", "",
           do_tabify, ESii, 0, "*" "ze",
           "Convert multiple spaces in buffer to tabs when possible")
     CMD3( "untabify-buffer", "",
           do_untabify, ESii, 0, "*" "ze",
           "Convert all tabs in buffer to multiple spaces, preserving columns")
-    /* XXX: should take region as argument, implicit from keyboard */
+
     CMD2( "indent-region", "M-C-\\",
-          do_indent_region, ES, "*",
+          do_indent_region, ESii, "*" "md",
           "Indent each nonblank line in the region")
+    CMD2( "indent-buffer", "",
+          do_indent_region, ESii, "*" "ze",
+          "Indent each nonblank line in the buffer")
 
     CMD2( "show-date-and-time", "C-x t",
-          do_show_date_and_time, ESi, "p", "")
+          do_show_date_and_time, ESi, "p",
+          "Show current date and time")
 
           /* Should map to KEY_META + KEY_CTRL_LEFT */
     CMD3( "backward-block", "M-C-b",
-          do_forward_block, ESi, -1, "P", "")
+          do_forward_block, ESi, -1, "P",
+          "Move backwards past parenthesized expression, ignoring comments and strings")
           /* Should map to KEY_META + KEY_CTRL_RIGHT */
     CMD3( "forward-block", "M-C-f",
-          do_forward_block, ESi, +1, "P", "")
+          do_forward_block, ESi, +1, "P",
+          "Move past parenthesized expression, ignoring comments and strings")
     CMD3( "backward-kill-block", "ESC delete",
-          do_kill_block, ESi, -1, "P", "")
+          do_kill_block, ESi, -1, "P",
+          "Kill from point to the beginning of the previous block")
     CMD3( "kill-block", "M-C-k",
-          do_kill_block, ESi, +1, "P", "")
+          do_kill_block, ESi, +1, "P",
+          "Kill from point to the end of the next block")
           /* Should also have mark-block on C-M-@ */
 
     CMD3( "transpose-chars", "C-t",
-          do_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v", "")
+          do_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v",
+          "Swap character at point and before it")
     CMD3( "transpose-lines", "C-x C-t",
-          do_transpose, ESi, CMD_TRANSPOSE_LINES, "*v", "")
+          do_transpose, ESi, CMD_TRANSPOSE_LINES, "*v",
+          "Swap line at point and previous line")
     CMD3( "transpose-words", "M-t",
-          do_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v", "")
+          do_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v",
+          "Swap words before and after point")
 
     CMD3( "global-unset-key", "",
           do_unset_key, ESsi, 0,
-          "s{Unset key globally: }[key]"
-          "v", "")
+          "s{Unset key globally: }[key]" "v",
+          "Remove global key binding")
     CMD3( "local-unset-key", "",
           do_unset_key, ESsi, 1,
-          "s{Unset key locally: }[key]"
-          "v", "")
+          "s{Unset key locally: }[key]" "v",
+          "Remove local (mode specific) key binding")
 
     CMD0( "about-qemacs", "C-h ?, f1",
-          do_about_qemacs, "")
+          do_about_qemacs,
+          "Display information about Quick Emacs")
     CMD2( "apropos", "C-h a, C-h C-a",
           do_apropos, ESs,
-          "s{Apropos: }[symbol]|apropos|", "")
+          "s{Apropos: }[symbol]|apropos|",
+          "List commands and variables matching a topic")
     CMD2( "describe-bindings", "C-h b",
-          do_describe_bindings, ESi, "p", "")
+          do_describe_bindings, ESi, "p",
+          "List local and global key bindings")
     CMD2( "show-bindings", "C-h B",
           do_show_bindings, ESs,
-          "s{Show bindings of command: }[command]|command|", "")
+          "s{Show bindings of command: }[command]|command|",
+          "Show current bindings for a given command")
     CMD2( "describe-buffer", "C-h C-b",
-          do_describe_buffer, ESi, "p", "")
+          do_describe_buffer, ESi, "p",
+          "Show information about the current buffer")
     CMD2( "describe-window", "C-h w, C-h C-w",
-          do_describe_window, ESi, "p", "")
+          do_describe_window, ESi, "p",
+          "Show information about the current window")
     CMD2( "describe-screen", "C-h s, C-h C-s",
-          do_describe_screen, ESi, "p", "")
+          do_describe_screen, ESi, "p",
+          "Show information about the current screen")
 
     /* XXX: should take region as argument, implicit from keyboard */
     CMD2( "set-region-color", "C-c c",
           do_set_region_color, ESs,
-          "s{Select color: }[color]|color|", "")
+          "s{Select color: }[color]|color|",
+          "Set the color for the current region")
     CMD2( "set-region-style", "C-c s",
           do_set_region_style, ESs,
-          "s{Select style: }[style]|style|", "")
+          "s{Select style: }[style]|style|",
+          "Set the style for the current region")
     CMD0( "drop-styles", "",
-          do_drop_styles, "")
+          do_drop_styles,
+          "Remove all styles for the current buffer")
 
     CMD2( "set-eol-type", "",
           do_set_eol_type, ESi,
-          "p{EOL Type [0=Unix, 1=Dos, 2=Mac]: }", "")
+          "p{EOL Type [0=Unix, 1=Dos, 2=Mac]: }",
+          "Set the end of line style: [0=Unix, 1=Dos, 2=Mac]")
 
-    CMD3( "sort-buffer", "",
-          do_sort_buffer, ESii, 0, "*vp", "")
-    CMD3( "reverse-sort-buffer", "",
-          do_sort_buffer, ESii, SF_REVERSE, "*vp", "")
     /* XXX: should take region as argument, implicit from keyboard */
     /* XXX: should have sort-lines, sort-numeric-fields, sort-paragraphs */
     /* XXX: numeric argument means reverse sort */
+    CMD3( "sort-buffer", "",
+          do_sort_buffer, ESii, 0, "*vp",
+          "Sort the buffer contents according to sorting options")
+    CMD3( "reverse-sort-buffer", "",
+          do_sort_buffer, ESii, SF_REVERSE, "*vp",
+          "Sort the buffer contents in reverse order according to sorting options")
     CMD3( "sort-region", "",
-          do_sort_region, ESii, 0, "*vp", "")
+          do_sort_region, ESii, 0, "*vp",
+          "Sort the region according to sorting options")
     CMD3( "reverse-sort-region", "",
-          do_sort_region, ESii, SF_REVERSE, "*vp", "")
+          do_sort_region, ESii, SF_REVERSE, "*vp",
+          "Sort the region in reverse order according to sorting options")
 
     CMD2( "list-tags", "",
-          do_list_tags, ESi, "p", "")
+          do_list_tags, ESi, "p",
+          "List the buffer tags detected automatically")
     CMD0( "goto-tag", "C-x ,, M-f1",
-          do_goto_tag, "")
+          do_goto_tag,
+          "Move point to the tag for the word at point")
     CMD2( "find-tag", "C-x .",
           do_find_tag, ESs,
-          "s{Find tag: }[tag]|tag|", "")
+          "s{Find tag: }[tag]|tag|",
+          "Move point to a given tag")
 
     /*---------------- Paragraph handling ----------------*/
 
     CMD3( "mark-paragraph", "M-h",
-          do_mark_paragraph, ESi, +1, "P", "")
+          do_mark_paragraph, ESi, +1, "P",
+          "Mark the paragraph at or after point")
     CMD3( "backward-paragraph", "M-{, C-up",
-          do_forward_paragraph, ESi, -1, "P", "")
+          do_forward_paragraph, ESi, -1, "P",
+          "Move point to the beginning of the paragraph at or before point")
     CMD3( "forward-paragraph", "M-}, C-down",
-          do_forward_paragraph, ESi, +1, "P", "")
+          do_forward_paragraph, ESi, +1, "P",
+          "Move point to the end of the paragraph at or before point")
     CMD2( "fill-paragraph", "M-q",
-          do_fill_paragraph, ES, "*", "")
-    /* should have fill-region */
+          do_fill_paragraph, ES, "*",
+          "Fill the current paragraph, preserving indentation of the first 2 lines")
+    /* should have fill-region, fill-buffer */
     CMD3( "kill-paragraph", "",
-          do_kill_paragraph, ESi, 1, "P", "")
+          do_kill_paragraph, ESi, 1, "P",
+          "Kill the paragraph at or after point")
 };
 
 static int extras_init(void)

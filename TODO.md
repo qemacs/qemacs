@@ -13,7 +13,6 @@
  - make documentation available inside qemacs
 * C-x Enter should find another shell buffer if `*shell*` has been killed. Should enumerate all buffers.
 * terminal emulation: when move inserts spaces, they should have default attributes
-* add ignore-case for compare-windows
 * show current directory for shell buffers in buffer list view
 * incremental search: increase max repeat count
 * undo: allow file save when undo clears file modified flag
@@ -27,6 +26,7 @@
   - append lib: to default QE_PATH
 * clean up ancillary files
 * ^C does not work on OpenBSD
+* remove qeend hack
 
 ## Recent bugs and ideas
 
@@ -56,7 +56,7 @@
 * display: `toggle-full-screen` should not put modeline on popup
 * display: `toggle-full-screen` should work on popups
 * display: use a prefix to explore file in a popup window
-* extra: `grep`, `grep-buffer,` `grep-sources,` `grep-tree`...
+* extra: `grep`, `grep-buffer`, `grep-sources`, `grep-tree`...
 * files: actually load file in `find-file-noselect`
 * files: fix `SPC` / `TAB` distinct behaviors on **~/comp/project/gnachman/**
 * files: should update symbolic links times when saving files
@@ -68,10 +68,12 @@
 * shell: use target window for man and similar commands
 * tags: remove tags for modified line
 * undo: undo some cursor movements
+* undo: group undo entries to match command and or macro boundaries
 * xml: merge xml and htmlsrc modes, add submodes for plist and other config files
 
 ## Priority 0
 
+* basic: always save window buffer properties to buffer upon detaching
 * basic: fix current position when changing buffer attached to window
 * basic: enter should optionally remove whitespace at end of line
 * basic: reset last command when executing macro
@@ -461,7 +463,7 @@ insert_window_left()  deletes some left-most windows
 * `auto-compression-mode`
 * rethink mode specific commands -> add inheritance for all commands ?
 * mode inheritance
-* calculator / spreadsheet mode
+* calculator / spreadsheet mode (based on SC)
 * calendar mode
 * email reader mode: mail / rmail
 * news reader mode
