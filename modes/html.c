@@ -910,7 +910,8 @@ static void do_html_electric_key(EditState *s, int key)
 static const CmdDef html_commands[] = {
     /* should use 'k' intrinsic argument */
     CMD2( "html-electric-key", "<, >, &",
-          do_html_electric_key, ESi, "*k", "")
+          do_html_electric_key, ESi, "*k",
+          "Insert the entity for special character")
 };
 
 ModeDef html_mode = {

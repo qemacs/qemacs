@@ -6605,24 +6605,33 @@ static void minibuffer_mode_free(EditBuffer *b, void *state)
 static const CmdDef minibuffer_commands[] = {
     CMD2( "minibuffer-insert", "default",
           do_minibuffer_char, ESii,
-          "*" "kp", "")
+          "*" "kp",
+          "Insert a character into the minibuffer")
     CMD1( "minibuffer-exit", "RET",
-          do_minibuffer_exit, 0, "")
+          do_minibuffer_exit, 0,
+          "End the minibuffer input")
     CMD1( "minibuffer-abort", "C-g, C-x C-g",
-          do_minibuffer_exit, 1, "")
+          do_minibuffer_exit, 1,
+          "Abort the minibuffer input")
     CMD1( "minibuffer-complete", "TAB",
-          do_minibuffer_complete, COMPLETION_TAB, "")
+          do_minibuffer_complete, COMPLETION_TAB,
+          "Try and complete the minibuffer input")
     /* should take numeric prefix to specify word size */
     CMD0( "minibuffer-get-binary", "M-=",
-          do_minibuffer_get_binary, "")
+          do_minibuffer_get_binary,
+          "Insert the byte value at point in the current buffer into the minibuffer")
     CMD0( "minibuffer-complete-space", "SPC",
-          do_minibuffer_complete_space, "")
+          do_minibuffer_complete_space,
+          "Try and complete the minibuffer input")
     CMD3( "minibuffer-previous-history-element", "C-p, up",
-          do_minibuffer_history, ESi, -1, "P", "")
+          do_minibuffer_history, ESi, -1, "P",
+          "Replace contents of the minibuffer with the previous historical entry")
     CMD3( "minibuffer-next-history-element", "C-n, down",
-          do_minibuffer_history, ESi, +1, "P", "")
+          do_minibuffer_history, ESi, +1, "P",
+          "Replace contents of the minibuffer with the next historical entry")
     CMD2( "minibuffer-electric-key", "/, ~",
-          do_minibuffer_electric_key, ESi, "*k", "")
+          do_minibuffer_electric_key, ESi, "*k",
+          "Insert a character into the minibuffer with side effects")
 };
 
 void minibuffer_init(void)
@@ -6701,9 +6710,11 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
 
 static const CmdDef popup_commands[] = {
     CMD0( "popup-exit", "q, C-g",
-          do_popup_exit, "")
+          do_popup_exit,
+          "Close the popup window")
     CMD3( "popup-isearch", "/",
-          do_isearch, ESii, 1, "vp" , "")
+          do_isearch, ESii, 1, "vp",
+          "Search for contents")
 };
 
 static void popup_init(void)

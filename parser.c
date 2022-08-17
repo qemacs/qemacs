@@ -427,15 +427,19 @@ static const CmdDef parser_commands[] = {
     CMD2( "eval-expression", "M-:",
           do_eval_expression, ESsi,
           "s{Eval: }|expression|"
-          "p", "")
+          "p",
+          "Evaluate a qemacs expression")
     /* XXX: should take region as argument, implicit from keyboard */
     CMD0( "eval-region", "",
-          do_eval_region, "")
+          do_eval_region,
+          "Evaluate qemacs expressions in a region")
     CMD0( "eval-buffer", "",
-          do_eval_buffer, "")
+          do_eval_buffer,
+          "Evaluate qemacs expressions in the buffer")
 #ifndef CONFIG_TINY
     CMD1( "save-session", "",
-          do_save_session, 1, "")
+          do_save_session, 1,
+          "Save the current session in a .qesession file")
 #endif
 };
 

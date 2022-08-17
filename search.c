@@ -929,41 +929,50 @@ static const CmdDef search_commands[] = {
     CMD3( "search-forward", "M-S",
           do_search_string, ESsi, 1,
           "s{Search forward: }|search|"
-          "v", "")
+          "v",
+          "Search for a string in the current buffer")
     /* M-C-r should be bound to isearch-backward-regex */
     /* mg binds search-forward to M-r */
     CMD3( "search-backward", "M-R",
           do_search_string, ESsi, -1,
           "s{Search backward: }|search|"
-          "v", "")
+          "v",
+          "Search backwards for a string in the current buffer")
     CMD3( "count-matches", "M-C",
           do_search_string, ESsi, 0,
           "s{Count Matches: }|search|"
-          "v", "")
+          "v",
+          "Count string matches from point to the end of the current buffer")
     CMD3( "delete-matching-lines", "",
           do_search_string, ESsi, 2,
           "*" "s{Delete lines containing: }|search|"
-          "v", "")
+          "v",
+          "Delete lines containing a string from point to the end of the current buffer")
     CMD3( "filter-matching-lines", "",
           do_search_string, ESsi, 3,
           "*" "s{Filter lines containing: }|search|"
-          "v", "")
+          "v",
+          "Delete lines NOT containing a string from point to the end of the current buffer")
     /* passing argument should switch to regex incremental search */
     CMD3( "isearch-backward", "C-r",
-          do_isearch, ESii, -1, "vp" , "")
+          do_isearch, ESii, -1, "vp",
+          "Search backward incrementally")
     CMD3( "isearch-forward", "C-s",
-          do_isearch, ESii, 1, "vp" , "")
+          do_isearch, ESii, 1, "vp",
+          "Search forward incrementally")
     CMD2( "query-replace", "M-%",
           do_query_replace, ESss,
           "*" "s{Query replace: }|search|"
-          "s{With: }|replace|", "")
+          "s{With: }|replace|",
+          "Replace a string with another interactively")
     /* passing argument restricts replace to word matches */
     /* XXX: non standard binding */
     CMD2( "replace-string", "M-r",
           do_replace_string, ESssi,
           "*" "s{Replace String: }|search|"
           "s{With: }|replace|"
-          "p", "")
+          "p",
+          "Replace a string with another till the end of the buffer")
 };
 
 static int search_init(void) {

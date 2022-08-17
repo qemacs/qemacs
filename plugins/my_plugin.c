@@ -11,7 +11,8 @@ static void insert_hello(EditState *s)
 
 static const CmdDef my_commands[] = {
     CMD2( "insert-hello", "C-c h",
-          insert_hello, ES, "*", "")
+          insert_hello, ES, "*",
+          "Insert the string Hello world\\n")
 };
 
 static int my_plugin_init(void)

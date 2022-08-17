@@ -137,7 +137,7 @@ static int win_init(QEditScreen *s, int w, int h)
     s->priv_data = NULL;
     s->media = CSS_MEDIA_SCREEN;
 
-    win_ctx.font = CreateFont(-12, 0, 0, 0, 0 , 0, 0, 0, 0, 0, 0, 0,
+    win_ctx.font = CreateFont(-12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                               FIXED_PITCH, "fixed");
 
     /* get font metric for window size */

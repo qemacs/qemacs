@@ -1276,18 +1276,23 @@ static void do_c_list_conditionals(EditState *s)
 /* C mode specific commands */
 static const CmdDef c_commands[] = {
     CMD2( "c-indent-command", "TAB",
-          do_c_indent, ES, "*", "")
-            /* should map to KEY_META + KEY_CTRL_LEFT ? */
+          do_c_indent, ES, "*",
+          "Indent the current line")
     CMD3( "c-backward-conditional", "M-[",
-          do_c_forward_conditional, ESi, -1, "P", "")
+          do_c_forward_conditional, ESi, -1, "P",
+          "Move to the beginning of the previous #if preprocessing directive")
     CMD3( "c-forward-conditional", "M-]",
-          do_c_forward_conditional, ESi, 1, "P", "")
+          do_c_forward_conditional, ESi, 1, "P",
+          "Move to the end of the next #if preprocessing directive")
     CMD0( "c-list-conditionals", "M-i",
-          do_c_list_conditionals, "")
+          do_c_list_conditionals,
+          "List the preprocessing directive controlling the current line")
     CMD2( "c-electric-key", "{, }, ;, :, #, &, |, *",
-          do_c_electric_key, ESi, "*k", "")
+          do_c_electric_key, ESi, "*k",
+          "Insert a character with side effects")
     CMD2( "c-newline", "RET",
-          do_c_newline, ES, "*", "")
+          do_c_newline, ES, "*",
+          "Insert a newline, removing trailing whitespace and autoindent")
 };
 
 static int c_mode_probe(ModeDef *mode, ModeProbeData *p)

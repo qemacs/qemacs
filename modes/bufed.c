@@ -509,8 +509,8 @@ static const CmdDef bufed_commands[] = {
     CMD1( "bufed-abort", "C-g, C-x C-g",
           bufed_select, -1,
           "Abort and close bufed popup window")
-    //CMD0( "bufed-help", "?", bufed_help, "")
-    //CMD0( "bufed-save-buffer", "s", bufed_save_buffer, "")
+    //CMD0( "bufed-help", "?", bufed_help, "Show help window about the bufed mode")
+    //CMD0( "bufed-save-buffer", "s", bufed_save_buffer, "Save the buffer to its associated file")
     CMD0( "bufed-clear-modified", "~",
           bufed_clear_modified,
           "Clear buffer modified indicator")
@@ -548,7 +548,8 @@ static const CmdDef bufed_commands[] = {
 
 static const CmdDef bufed_global_commands[] = {
     CMD2( "buffer-list", "C-x C-b",
-          do_buffer_list, ESi, "p", "")
+          do_buffer_list, ESi, "p",
+          "Show the buffer list in a popup window")
 };
 
 static int bufed_init(void)

@@ -1085,46 +1085,66 @@ static void fractal_display_hook(EditState *s) {
 
 static const CmdDef fractal_commands[] = {
     CMD3( "fractal-left", "left",
-          do_fractal_move_x, ESi, -1, "P", "")
+          do_fractal_move_x, ESi, -1, "P",
+          "Move fractal origin left")
     CMD3( "fractal-right", "right",
-          do_fractal_move_x, ESi, +1, "P", "")
+          do_fractal_move_x, ESi, +1, "P",
+          "Move fractal origin right")
     CMD3( "fractal-up", "up",
-          do_fractal_move_y, ESi, -1, "P", "")
+          do_fractal_move_y, ESi, -1, "P",
+          "Move fractal origin up")
     CMD3( "fractal-down", "down",
-          do_fractal_move_y, ESi, +1, "P", "")
+          do_fractal_move_y, ESi, +1, "P",
+          "Move fractal origin down")
     CMD3( "fractal-zoom-in", "+, SPC",
-          do_fractal_zoom, ESi, +1, "P", "")
+          do_fractal_zoom, ESi, +1, "P",
+          "Increase fractal zoom level")
     CMD3( "fractal-zoom-out", "-, _",
-          do_fractal_zoom, ESi, -1, "P", "")
+          do_fractal_zoom, ESi, -1, "P",
+          "Decrease fractal zoom level")
     CMD3( "fractal-rotate-left", "\\, .",
-          do_fractal_rotate, ESi, +1, "P", "")
+          do_fractal_rotate, ESi, +1, "P",
+          "Rotate fractal figure counterclockwise")
     CMD3( "fractal-rotate-right", "/",
-          do_fractal_rotate, ESi, -1, "P", "")
+          do_fractal_rotate, ESi, -1, "P",
+          "Rotate fractal figure clockwise")
     CMD3( "fractal-rotate-none", "|",
-          do_fractal_rotate, ESi, 0, "v", "")
+          do_fractal_rotate, ESi, 0, "v",
+          "Reset fractal rotation")
     CMD3( "fractal-set-colors-default", "c",
-          do_fractal_set_colors, ESi, 0, "v", "")
+          do_fractal_set_colors, ESi, 0, "v",
+          "Reset fractal colors to default")
     CMD3( "fractal-set-colors-gray", "g",
-          do_fractal_set_colors, ESi, 1, "v", "")
+          do_fractal_set_colors, ESi, 1, "v",
+          "Set fractal colors to gray scale")
     CMD3( "fractal-shift-colors-left", "[",
-          do_fractal_shift_colors, ESi, -1, "P", "")
+          do_fractal_shift_colors, ESi, -1, "P",
+          "Shift fractal color palette left")
     CMD3( "fractal-shift-colors-right", "]",
-          do_fractal_shift_colors, ESi, +1, "P", "")
+          do_fractal_shift_colors, ESi, +1, "P",
+          "Shift fractal color palette right")
     CMD3( "fractal-iter-less", "{",
-          do_fractal_iter, ESi, -1, "P", "")
+          do_fractal_iter, ESi, -1, "P",
+          "Decrease the fractal iteration count")
     CMD3( "fractal-iter-more", "}",
-          do_fractal_iter, ESi, +1, "P", "")
+          do_fractal_iter, ESi, +1, "P",
+          "Increase the fractal iteration count")
     CMD3( "fractal-bailout-less", "<",
-          do_fractal_bailout, ESi, -1, "P", "")
+          do_fractal_bailout, ESi, -1, "P",
+          "Decrease the fractal bailout value")
     CMD3( "fractal-bailout-more", ">",
-          do_fractal_bailout, ESi, +1, "P", "")
+          do_fractal_bailout, ESi, +1, "P",
+          "Increase the fractal bailout value")
     CMD2( "fractal-set-type", "1, 2, 3, 4, 5, 6, 7, 8, 9",
-          do_fractal_set_type, ESi, "k", "")
+          do_fractal_set_type, ESi, "k",
+          "Select the fractal type (1-9)")
     CMD2( "fractal-set-parameters", "=",
           do_fractal_set_parameters, ESs,
-          "s{Fractal parameters: }[mparm]|mparm|", "")
+          "s{Fractal parameters: }[mparm]|mparm|",
+          "Set the fractal parameters")
     CMD0( "fractal-help", "?, f1",
-          do_fractal_help, "")
+          do_fractal_help,
+          "Show the fractal information and help window")
 };
 
 static int fractal_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -1200,7 +1220,8 @@ static void do_mandelbrot_test(EditState *s) {
 
 static const CmdDef fractal_global_commands[] = {
     CMD0( "mandelbrot-test", "C-h m",
-          do_mandelbrot_test, "")
+          do_mandelbrot_test,
+          "Explore the Mandelbrot set in fractal-mode")
 };
 
 static int fractal_init(void)

@@ -1,7 +1,7 @@
 <!-- TODO list for qemacs
 ;
 ; Author: Charles Gordon
-; Updated: 2022-08-10
+; Updated: 2022-08-18
 -->
 
 # QEmacs TODO list
@@ -69,6 +69,8 @@
 * undo: undo some cursor movements
 * undo: group undo entries to match command and or macro boundaries
 * xml: merge xml and htmlsrc modes, add submodes for plist and other config files
+* help: match descriptions for apropos
+* help: colorize apropos window contents
 
 ## Priority 0
 
@@ -405,7 +407,7 @@ insert_window_left()  deletes some left-most windows
   * `csharp-mode`: C#
   * `d-mode`
   * `java-mode`
-  * `javascript-mode` , `js-mode` -> javascript files
+  * `javascript-mode`, `js-mode` -> javascript files
   * `json-mode`
   * `scala-mode`
   * `yacc-mode`

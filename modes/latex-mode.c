@@ -323,11 +323,11 @@ static void do_latex(EditState *e, const char *cmd)
 static const CmdDef latex_commands[] = {
     CMD2( "tex-insert-quote", "\"",
           do_tex_insert_quote, ES, "*",
-          "")
+          "Insert the TeX encoding for special character")
     CMD2( "TeX-command-master", "C-c C-c",
           do_latex, ESs,
           "s{Command: (default LaTeX) }[latex]|latex|",
-          "")
+          "Run the latex process")
 };
 
 static ModeDef latex_mode = {

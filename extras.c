@@ -2212,12 +2212,10 @@ static const CmdDef extra_commands[] = {
           do_show_date_and_time, ESi, "p",
           "Show current date and time")
 
-          /* Should map to KEY_META + KEY_CTRL_LEFT */
-    CMD3( "backward-block", "M-C-b",
+    CMD3( "backward-block", "M-C-b, ESC C-left",
           do_forward_block, ESi, -1, "P",
           "Move backwards past parenthesized expression, ignoring comments and strings")
-          /* Should map to KEY_META + KEY_CTRL_RIGHT */
-    CMD3( "forward-block", "M-C-f",
+    CMD3( "forward-block", "M-C-f, ESC C-right",
           do_forward_block, ESi, +1, "P",
           "Move past parenthesized expression, ignoring comments and strings")
     CMD3( "backward-kill-block", "ESC delete",

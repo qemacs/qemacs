@@ -2024,7 +2024,8 @@ static void x11_list_fonts(EditState *s, int argval)
 
 static const CmdDef x11_commands[] = {
     CMD2( "x11-list-fonts", "C-h f, C-h C-f",
-          x11_list_fonts, ESi, "p", "")
+          x11_list_fonts, ESi, "p",
+          "List the X11 fonts in a popup window")
 };
 
 static CmdLineOptionDef cmd_options[] = {
