@@ -498,7 +498,7 @@ static const CmdDef basic_commands[] = {
           "")
     CMD1( "set-auto-mode", "",
           do_set_next_mode, 0,
-          "Select the best mode for the current buffer")
+          "Select the best mode")
     CMD3( "set-next-mode", "M-m",
           do_set_next_mode, ESi, +1, "P",
           "Select the next mode appropriate for the current buffer")

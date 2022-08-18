@@ -195,7 +195,7 @@ void qe_register_mode(ModeDef *m, int flags)
 
         /* Achtung: embedded null bytes */
         spec_len = snprintf(spec, sizeof(spec),
-                            "S{%s}%cselect the %s mode for the current buffer",
+                            "S{%s}%cselect the %s mode",
                             mode_name, 0, mode_name);
         def = qe_mallocz(CmdDef);
         /* allocate space for name and spec with embedded null bytes */
@@ -255,14 +255,11 @@ void command_complete(CompleteState *cp)
     }
 }
 
-int command_print_entry(CompleteState *cp, EditState *s, const char *name)
-{
-    EditBuffer *b = s->b;
-    const CmdDef *d = qe_find_cmd(name);
-    if (d) {
-        char buf[256];
-        int len;
+int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s) {
+    char buf[256];
+    int len = 0;
 
+    if (d) {
         b->cur_style = QE_STYLE_FUNCTION;
         len = eb_puts(b, d->name);
         b->cur_style = QE_STYLE_DEFAULT;
@@ -281,9 +278,17 @@ int command_print_entry(CompleteState *cp, EditState *s, const char *name)
             b->cur_style = QE_STYLE_DEFAULT;
         }
 #endif
-        return len;
+    }
+    return len;
+}
+
+int command_print_entry(CompleteState *cp, EditState *s, const char *name) {
+    const CmdDef *d = qe_find_cmd(name);
+    if (d) {
+        // XXX: should pass the target window
+        return eb_command_print_entry(s->b, d, s);
     } else {
-        return eb_puts(b, name);
+        return eb_puts(s->b, name);
     }
 }
 
@@ -2334,6 +2339,7 @@ void do_convert_buffer_file_coding_system(EditState *s,
         }
     }
 
+    // XXX: should use eb_insert_buffer_convert()
     /* slow, but simple iterative method */
     for (offset = 0; offset < b->total_size;) {
         QETermStyle style = eb_get_style(b, offset);
@@ -2348,6 +2354,8 @@ void do_convert_buffer_file_coding_system(EditState *s,
     eb_free(&b->b_styles);
     eb_delete(b, 0, b->total_size);
     eb_set_charset(b, charset, eol_type);
+    // XXX: this does not transfer styles
+    //      should use eb_insert_buffer_convert()
     eb_insert_buffer(b, 0, b1, 0, b1->total_size);
     b->b_styles = b1->b_styles;
     b1->b_styles = NULL;

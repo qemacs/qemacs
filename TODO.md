@@ -29,6 +29,8 @@
 
 ## Recent bugs and ideas
 
+* preserve static styles in do_convert_buffer_file_coding_system()
+* optimize style transfer in eb_insert_buffer_convert()
 * style: add color themes
 * style: add style recent changes (`highlight-recent-changes`)
 * basic: use minor mode keymap to exit preview mode with `KEY_RET`
@@ -69,8 +71,6 @@
 * undo: undo some cursor movements
 * undo: group undo entries to match command and or macro boundaries
 * xml: merge xml and htmlsrc modes, add submodes for plist and other config files
-* help: match descriptions for apropos
-* help: colorize apropos window contents
 * basic: add method pointers in windows initialized from fallback chain
 * basic: check binding lookup along fallback chain
 * basic: make ModeDef structures read-only

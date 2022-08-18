@@ -1002,19 +1002,15 @@ void do_apropos(EditState *s, const char *str)
     found = 0;
     for (i = 0; i < qs->cmd_array_count; i++) {
         for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
-            if (strstr(d->name, str)) {
-                const char *desc;
-                /* print name and prototype */
-                qe_get_prototype(d, buf, sizeof(buf));
-                eb_printf(b, "command: %s%s", d->name, buf);
-                if (qe_list_bindings(d, s->mode, 1, buf, sizeof(buf)))
-                    eb_printf(b, " bound to %s", buf);
+            const char *desc = d->spec + strlen(d->spec) + 1;
+            if (strstr(d->name, str) || strstr(desc, str)) {
+                /* print name, prototype, bindings */
+                eb_command_print_entry(b, d, s);
                 eb_putc(b, '\n');
-                if (*(desc = d->spec + strlen(d->spec) + 1)) {
+                if (*desc) {
                     /* print short description */
-                    eb_printf(b, "  %s", desc);
+                    eb_printf(b, "  %s\n", desc);
                 }
-                eb_putc(b, '\n');
                 found = 1;
             }
         }
@@ -1026,14 +1022,12 @@ void do_apropos(EditState *s, const char *str)
     for (vp = qs->first_variable; vp; vp = vp->next) {
         if (strstr(vp->name, str)) {
             /* print class, name and current value */
-            qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
-            eb_printf(b, "%s variable: %s -> %s\n",
-                      var_domain[vp->domain], vp->name, buf);
+            eb_variable_print_entry(b, vp, s);
+            eb_putc(b, '\n');
             if (vp->desc && *vp->desc) {
                 /* print short description */
-                eb_printf(b, "  %s", vp->desc);
+                eb_printf(b, "  %s\n", vp->desc);
             }
-            eb_putc(b, '\n');
             found = 1;
         }
     }
@@ -1768,13 +1762,14 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
     }
     qe_qsort_r(chunk_array, lines, sizeof(*chunk_array), &ctx, chunk_cmp);
 
-    b1 = eb_new("*sorted*", BF_SYSTEM);
+    b1 = eb_new("*sorted*", BF_SYSTEM | (b->flags & BF_STYLES));
     eb_set_charset(b1, b->charset, b->eol_type);
 
     for (i = 0; i < lines; i++) {
         /* XXX: should keep track of point if sorting full buffer */
-        eb_insert_buffer(b1, b1->total_size, b, chunk_array[i].start,
-                         chunk_array[i].end - chunk_array[i].start);
+        eb_insert_buffer_convert(b1, b1->total_size, b, chunk_array[i].start,
+                                 chunk_array[i].end - chunk_array[i].start);
+        // XXX: style issue. Should include newline from source buffer
         eb_putc(b1, '\n');
         if ((i & 8191) == 8191) {
             QEmacsState *qs = &qe_state;
@@ -1784,7 +1779,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
     }
     eb_delete_range(b, p1, p2);
     *pp1 = p1;
-    *pp2 = p1 + eb_insert_buffer(b, p1, b1, 0, b1->total_size);
+    *pp2 = p1 + eb_insert_buffer_convert(b, p1, b1, 0, b1->total_size);
     eb_free(&b1);
     qe_free(&chunk_array);
     put_status(NULL, "%d lines sorted", lines);

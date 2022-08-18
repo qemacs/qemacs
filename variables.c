@@ -455,18 +455,16 @@ void qe_save_variables(EditState *s, EditBuffer *b)
     eb_putc(b, '\n');
 }
 
-int variable_print_entry(CompleteState *cp, EditState *s, const char *name)
-{
+int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
     char buf[256];
     char typebuf[32];
     const char *type = typebuf;
     int len;
-    VarDef *vp = qe_find_variable(name);
-    EditBuffer *b = s->b;
 
-    len = eb_puts(b, name);
     if (!vp)
-        return len;
+        return 0;
+
+    len = eb_puts(b, vp->name);
 
     switch (vp->type) {
     case VAR_NUMBER:
@@ -501,6 +499,16 @@ int variable_print_entry(CompleteState *cp, EditState *s, const char *name)
                      var_domain[vp->domain], type);
     b->cur_style = QE_STYLE_DEFAULT;
     return len;
+}
+
+int variable_print_entry(CompleteState *cp, EditState *s, const char *name) {
+    VarDef *vp = qe_find_variable(name);
+    if (vp) {
+        // XXX: should pass the target window
+        return eb_variable_print_entry(s->b, vp, s);
+    } else {
+        return eb_puts(s->b, name);
+    }
 }
 
 static CompletionDef variable_completion = {

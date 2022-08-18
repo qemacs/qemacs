@@ -2384,6 +2384,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
 
         /* well, not very fast, but simple */
         /* XXX: should optimize save_log system for insert sequences */
+        // XXX: should optimize styles transfer
         offset_max = min(src->total_size, src_offset + size);
         size = 0;
         for (offset = src_offset; offset < offset_max;) {
