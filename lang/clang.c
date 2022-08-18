@@ -1416,6 +1416,59 @@ ModeDef cpp_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Carbon programming language ----------------*/
+
+static const char carbon_keywords[] = {
+    "abstract|addr|alias|and|api|as|auto|base|break|"
+    "case|class|constraint|continue|default|else|extends|external|"
+    "final|fn|for|forall|friend|if|impl|import|in|interface|is|"
+    "let|library|like|match|namespace|not|observe|or|override|"
+    "package|partial|private|protected|return|returned|then|"
+    "var|virtual|where|while|"
+
+    /* literals */
+    "false|true|_|"
+
+    /* keyword candidates? */
+    "choice|const|destructor|dyn|me|public|sizeof|static|template|"
+
+    /* builtins */
+    "Optional|Assert|Self|"
+
+    /* operator interfaces */
+    "Negate|Add|AddWith|Sub|SubWith|Mul|MulWith|Div|DivWith|Mod|ModWith|"
+    "BitComplement|BitAnd|BitAndWith|BitOr|BitOrWith|BitXor|BitXorWith|"
+    "LeftShift|LeftShiftWith|RightShift|RightShiftWith|"
+    "Eq|EqWith|Ordered|OrderedWith|As|ImplicitAs|CommonTypeWith|"
+};
+
+static const char carbon_types[] = {
+    "bool|i8|i16|i32|i64|i128|u8|u16|u32|u64|u128|"
+    "f16|f32|f64|f128|auto|"
+    "Type|Array|Stack|String|StringView|Bfloat16|"
+};
+
+// identifiers: unicode based
+// integer literals: case sensitive, `0x`, `0b`, uppercase hex,
+//                    `_` digit separator, no suffix
+// floating point literals: case sensitive, `0x`, `e`, `p` optional exponent sign,
+//                    digit on both sides of `.`, no suffix
+// string blocks: """ with optional type indicator and line position constraints
+// raw strings: #"\ is a backslash, " is a quote, \#n is a newline"#
+// hex digits must be uppercase (what a strange idea)
+
+static ModeDef carbon_mode = {
+    .name = "Carbon",
+    .extensions = "carbon",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CARBON | CLANG_STR3,
+    .keywords = carbon_keywords,
+    .types = carbon_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 /*---------------- C2 language ----------------*/
 
 static const char c2_keywords[] = {
@@ -3670,6 +3723,7 @@ static int c_init(void)
     qe_register_mode(&yacc_mode, MODEF_SYNTAX);
     qe_register_mode(&lex_mode, MODEF_SYNTAX);
     qe_register_mode(&cpp_mode, MODEF_SYNTAX);
+    qe_register_mode(&carbon_mode, MODEF_SYNTAX);
     qe_register_mode(&c2_mode, MODEF_SYNTAX);
     qe_register_mode(&objc_mode, MODEF_SYNTAX);
     qe_register_mode(&csharp_mode, MODEF_SYNTAX);

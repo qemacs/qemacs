@@ -1,7 +1,7 @@
 /*
  * C mode definitions for QEmacs.
  *
- * Copyright (c) 2002-2020 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -79,6 +79,7 @@ enum {
     CLANG_PROTOBUF,
     CLANG_ODIN,
     CLANG_SALMON,
+    CLANG_CARBON,
     CLANG_FLAVOR = 0x3F,
 };
 

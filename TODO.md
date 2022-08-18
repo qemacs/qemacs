@@ -71,6 +71,16 @@
 * xml: merge xml and htmlsrc modes, add submodes for plist and other config files
 * help: match descriptions for apropos
 * help: colorize apropos window contents
+* basic: add method pointers in windows initialized from fallback chain
+* basic: check binding lookup along fallback chain
+* basic: make ModeDef structures read-only
+* basic: add default bindings in ModeDef
+* basic: register modes recursively along fallback chain
+* modes: add language word lists: literals and builtins
+* modes: cooked markdown mode for documentation
+* help: use cooked markdown mode for help system
+* modes: bazel mode for build system (*.bzl, BUILD...)
+* modes: text based language modes: token patterns, word lists, indentation spec
 
 ## Priority 0
 
