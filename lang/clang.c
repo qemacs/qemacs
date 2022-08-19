@@ -1416,6 +1416,7 @@ ModeDef cpp_mode = {
     .fallback = &c_mode,
 };
 
+#ifndef CONFIG_TINY
 /*---------------- Carbon programming language ----------------*/
 
 static const char carbon_keywords[] = {
@@ -1561,41 +1562,6 @@ static ModeDef objc_mode = {
     .fallback = &c_mode,
 };
 
-/*---------------- C# programming language ----------------*/
-
-static const char csharp_keywords[] = {
-    "abstract|as|base|break|case|catch|checked|class|const|continue|"
-    "default|delegate|do|else|enum|event|explicit|extern|false|finally|"
-    "fixed|for|foreach|goto|if|implicit|in|interface|internal|is|lock|"
-    "namespace|new|null|operator|out|override|params|private|protected|"
-    "public|readonly|ref|return|sealed|sizeof|stackalloc|static|"
-    "struct|switch|template|this|throw|true|try|typeof|unchecked|unsafe|"
-    "using|virtual|volatile|while|"
-
-    /* contextual keywords */
-    "add|remove|yield|partial|get|set|where|"
-};
-
-static const char csharp_types[] = {
-    "bool|byte|char|decimal|double|float|int|long|object|sbyte|short|"
-    "string|uint|ulong|ushort|void|"
-    "Boolean|Byte|DateTime|Exception|Int32|Int64|Object|String|Thread|"
-    "UInt32|UInt64|"
-};
-
-ModeDef csharp_mode = {
-    .name = "C#",   /* C Sharp */
-    .alt_name = "csharp",
-    .extensions = "cs",
-    .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_CSHARP | CLANG_PREPROC,
-    .keywords = csharp_keywords,
-    .types = csharp_types,
-    .indent_func = c_indent_line,
-    .auto_indent = 1,
-    .fallback = &c_mode,
-};
-
 /*---------------- AWK programming language ----------------*/
 
 static const char awk_keywords[] = {
@@ -1619,27 +1585,6 @@ static ModeDef awk_mode = {
     .fallback = &c_mode,
 };
 
-/*---------------- CSS syntax ----------------*/
-
-static const char css_keywords[] = {
-    "|"
-};
-
-static const char css_types[] = {
-    "|"
-};
-
-ModeDef css_mode = {
-    .name = "CSS",
-    .extensions = "css",
-    .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_CSS,
-    .keywords = css_keywords,
-    .types = css_types,
-    .indent_func = c_indent_line,
-    .fallback = &c_mode,
-};
-
 /*---------------- less css preprocessor ----------------*/
 
 static const char less_keywords[] = {
@@ -1660,6 +1605,7 @@ static ModeDef less_mode = {
     .indent_func = c_indent_line,
     .fallback = &c_mode,
 };
+#endif  /* CONFIG_TINY */
 
 /*---------------- Javascript programming language ----------------*/
 
@@ -2011,6 +1957,28 @@ ModeDef js_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- CSS syntax ----------------*/
+
+static const char css_keywords[] = {
+    "|"
+};
+
+static const char css_types[] = {
+    "|"
+};
+
+ModeDef css_mode = {
+    .name = "CSS",
+    .extensions = "css",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_CSS,
+    .keywords = css_keywords,
+    .types = css_types,
+    .indent_func = c_indent_line,
+    .fallback = &c_mode,
+};
+
+#ifndef CONFIG_TINY
 /*---------------- Typescript programming language ----------------*/
 
 static const char ts_keywords[] = {
@@ -2230,6 +2198,7 @@ static ModeDef as_mode = {
     .auto_indent = 1,
     .fallback = &c_mode,
 };
+#endif  /* CONFIG_TINY */
 
 /*---------------- Java programming language ----------------*/
 
@@ -2261,31 +2230,36 @@ static ModeDef java_mode = {
     .fallback = &c_mode,
 };
 
-/*---------------- Scala programming language ----------------*/
+/*---------------- C# programming language ----------------*/
 
-static const char scala_keywords[] = {
-    /* language keywords */
-    "abstract|case|catch|class|def|do|else|extends|final|"
-    "finally|for|forSome|if|implicit|import|lazy|match|new|"
-    "object|override|package|private|protected|return|sealed|super|this|throw|"
-    "trait|try|type|val|var|while|with|yield|"
-    /* boolean and null literals */
-    "false|null|true|_|"
+static const char csharp_keywords[] = {
+    "abstract|as|base|break|case|catch|checked|class|const|continue|"
+    "default|delegate|do|else|enum|event|explicit|extern|false|finally|"
+    "fixed|for|foreach|goto|if|implicit|in|interface|internal|is|lock|"
+    "namespace|new|null|operator|out|override|params|private|protected|"
+    "public|readonly|ref|return|sealed|sizeof|stackalloc|static|"
+    "struct|switch|template|this|throw|true|try|typeof|unchecked|unsafe|"
+    "using|virtual|volatile|while|"
+
+    /* contextual keywords */
+    "add|remove|yield|partial|get|set|where|"
 };
 
-static const char scala_types[] = {
-    /* all mixed case identifiers starting with an uppercase letter are types */
-    ""
+static const char csharp_types[] = {
+    "bool|byte|char|decimal|double|float|int|long|object|sbyte|short|"
+    "string|uint|ulong|ushort|void|"
+    "Boolean|Byte|DateTime|Exception|Int32|Int64|Object|String|Thread|"
+    "UInt32|UInt64|"
 };
 
-static ModeDef scala_mode = {
-    .name = "Scala",
-    .extensions = "scala|sbt",
+ModeDef csharp_mode = {
+    .name = "C#",   /* C Sharp */
+    .alt_name = "csharp",
+    .extensions = "cs",
     .colorize_func = c_colorize_line,
-    .colorize_flags = (CLANG_SCALA | CLANG_CAP_TYPE | CLANG_STR3 |
-                       CLANG_NEST_COMMENTS),
-    .keywords = scala_keywords,
-    .types = scala_types,
+    .colorize_flags = CLANG_CSHARP | CLANG_PREPROC,
+    .keywords = csharp_keywords,
+    .types = csharp_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
@@ -2348,6 +2322,37 @@ static ModeDef go_mode = {
     .colorize_flags = CLANG_GO,
     .keywords = go_keywords,
     .types = go_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+#ifndef CONFIG_TINY
+/*---------------- Scala programming language ----------------*/
+
+static const char scala_keywords[] = {
+    /* language keywords */
+    "abstract|case|catch|class|def|do|else|extends|final|"
+    "finally|for|forSome|if|implicit|import|lazy|match|new|"
+    "object|override|package|private|protected|return|sealed|super|this|throw|"
+    "trait|try|type|val|var|while|with|yield|"
+    /* boolean and null literals */
+    "false|null|true|_|"
+};
+
+static const char scala_types[] = {
+    /* all mixed case identifiers starting with an uppercase letter are types */
+    ""
+};
+
+static ModeDef scala_mode = {
+    .name = "Scala",
+    .extensions = "scala|sbt",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = (CLANG_SCALA | CLANG_CAP_TYPE | CLANG_STR3 |
+                       CLANG_NEST_COMMENTS),
+    .keywords = scala_keywords,
+    .types = scala_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
@@ -3711,6 +3716,7 @@ static ModeDef salmon_mode = {
     .auto_indent = 1,
     .fallback = &c_mode,
 };
+#endif  /* CONFIG_TINY */
 
 /*---------------- Common initialization code ----------------*/
 
@@ -3718,11 +3724,15 @@ static int c_init(void)
 {
     qe_register_mode(&c_mode, MODEF_SYNTAX);
     qe_register_cmd_table(c_commands, countof(c_commands), &c_mode);
-
-    qe_register_mode(&idl_mode, MODEF_SYNTAX);
+    qe_register_mode(&cpp_mode, MODEF_SYNTAX);
+    qe_register_mode(&js_mode, MODEF_SYNTAX);
+    qe_register_mode(&java_mode, MODEF_SYNTAX);
+    qe_register_mode(&php_mode, MODEF_SYNTAX);
+    qe_register_mode(&go_mode, MODEF_SYNTAX);
     qe_register_mode(&yacc_mode, MODEF_SYNTAX);
     qe_register_mode(&lex_mode, MODEF_SYNTAX);
-    qe_register_mode(&cpp_mode, MODEF_SYNTAX);
+#ifndef CONFIG_TINY
+    qe_register_mode(&idl_mode, MODEF_SYNTAX);
     qe_register_mode(&carbon_mode, MODEF_SYNTAX);
     qe_register_mode(&c2_mode, MODEF_SYNTAX);
     qe_register_mode(&objc_mode, MODEF_SYNTAX);
@@ -3731,15 +3741,11 @@ static int c_init(void)
     qe_register_mode(&css_mode, MODEF_SYNTAX);
     qe_register_mode(&less_mode, MODEF_SYNTAX);
     qe_register_mode(&json_mode, MODEF_SYNTAX);
-    qe_register_mode(&js_mode, MODEF_SYNTAX);
     qe_register_mode(&ts_mode, MODEF_SYNTAX);
     qe_register_mode(&jspp_mode, MODEF_SYNTAX);
     qe_register_mode(&koka_mode, MODEF_SYNTAX);
     qe_register_mode(&as_mode, MODEF_SYNTAX);
-    qe_register_mode(&java_mode, MODEF_SYNTAX);
     qe_register_mode(&scala_mode, MODEF_SYNTAX);
-    qe_register_mode(&php_mode, MODEF_SYNTAX);
-    qe_register_mode(&go_mode, MODEF_SYNTAX);
     qe_register_mode(&d_mode, MODEF_SYNTAX);
     qe_register_mode(&limbo_mode, MODEF_SYNTAX);
     qe_register_mode(&cyclone_mode, MODEF_SYNTAX);
@@ -3774,7 +3780,7 @@ static int c_init(void)
     qe_register_mode(&protobuf_mode, MODEF_SYNTAX);
     qe_register_mode(&odin_mode, MODEF_SYNTAX);
     qe_register_mode(&salmon_mode, MODEF_SYNTAX);
-
+#endif
     return 0;
 }
 

@@ -541,7 +541,7 @@ insert_window_left()  deletes some left-most windows
 
 ### Images / Video / Bitmaps
 
-* disable libpng and ffmpeg detection
+* fix ffmpeg support
 * filtered scaling
 * zoom, pan, rotate, describe, peek-color, histogram...
 * multiview, wallpaper...

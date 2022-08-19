@@ -138,6 +138,7 @@ else
 endif
 
 ifndef TARGET_TINY
+
 ifdef CONFIG_QSCRIPT
   OBJS+= qscript.o eval.o
 endif
@@ -224,7 +225,7 @@ ifdef TARGET_X11
   endif
   LIBS += -lX11 $(DLLIBS)
 endif
-endif
+endif	# TARGET_TINY
 
 SRCS:= $(OBJS:.o=.c)
 

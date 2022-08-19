@@ -518,9 +518,11 @@ echo "C compiler          $cc"
 echo "  version          " `$cc --version | head -n 1`
 echo "Tiny build          $tiny"
 echo "X11 support         $x11"
-echo "Xvideo support      $xv"
-echo "XShm support        $xshm"
-#echo "Xrender support     $xrender"
+if test "$x11" = "yes" ; then
+  echo "Xvideo support      $xv"
+  echo "XShm support        $xshm"
+  #echo "Xrender support     $xrender"
+fi
 echo "libpng support      $png"
 echo "FFMPEG support      $ffmpeg"
 echo "Graphical HTML      $html"

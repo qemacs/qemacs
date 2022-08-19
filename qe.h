@@ -1817,7 +1817,7 @@ typedef struct CmdDef {
 #ifdef CONFIG_TINY
 /* omit command descriptions in Tiny build */
 #define CMD(name, bindings, desc, func, sig, val, spec) \
-    { name "\0" bindings, spec "\0" desc, CMD_ ## sig, val, { .sig = func } },
+    { name "\0" bindings, spec "\0", CMD_ ## sig, val, { .sig = func } },
 #else
 #define CMD(name, bindings, desc, func, sig, val, spec) \
     { name "\0" bindings, spec "\0" desc, CMD_ ## sig, val, { .sig = func } },
