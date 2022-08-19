@@ -2018,7 +2018,6 @@ static void x11_list_fonts(EditState *s, int argval)
     }
     XFreeFontNames(list);
 
-    b->flags |= BF_READONLY;
     show_popup(s, b, "X11 Font list");
 }
 

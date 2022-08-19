@@ -6710,6 +6710,7 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
     h = (h1 * 3) / 4;
 
     b->default_mode = &popup_mode;
+    b->flags |= BF_READONLY;
     e = edit_new(b, (w1 - w) / 2, (h1 - h) / 2, w, h, WF_POPUP);
     if (caption)
         e->caption = qe_strdup(caption);
@@ -8185,7 +8186,6 @@ void do_help_for_help(EditState *s)
             "C-h b     Display table of all key bindings\n"
             "C-h c     Describe key briefly\n"
             );
-    b->flags |= BF_READONLY;
     show_popup(s, b, "QEmacs help for help - Press q to quit:");
 }
 

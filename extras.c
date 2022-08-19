@@ -885,18 +885,18 @@ static void do_unset_key(EditState *s, const char *keystr, int local)
 
 int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size)
 {
-    int pos;
     buf_t outbuf, *out;
+    ModeDef *mode0 = mode;
 
     out = buf_init(&outbuf, buf, size);
-    pos = 0;
     for (;;) {
         KeyDef *kd = mode ? mode->first_key : qe_state.first_key;
 
         for (; kd != NULL; kd = kd->next) {
+            /* do not list overridden bindings */
             if (kd->cmd == d
-            &&  qe_find_current_binding(kd->keys, kd->nb_keys, mode) == kd) {
-                if (out->len > pos)
+            &&  qe_find_current_binding(kd->keys, kd->nb_keys, mode0) == kd) {
+                if (out->len > 0)
                     buf_puts(out, ", ");
 
                 buf_put_keys(out, kd->keys, kd->nb_keys);
@@ -949,7 +949,30 @@ static void do_describe_function(EditState *s, const char *cmd_name) {
         eb_printf(b, "  %s\n", desc);
     }
     // XXX: should look up markdown documentation
-    b->flags |= BF_READONLY;
+    show_popup(s, b, "Help");
+}
+
+static void do_describe_variable(EditState *s, const char *name) {
+    EditBuffer *b;
+    VarDef *vp;
+
+    if ((vp = qe_find_variable(name)) == NULL) {
+        put_status(s, "No variable %s", name);
+        return;
+    }
+    b = new_help_buffer();
+    if (!b)
+        return;
+
+    eb_putc(b, '\n');
+    /* print name, class, current value and description */
+    eb_variable_print_entry(b, vp, s);
+    eb_putc(b, '\n');
+    if (vp->desc && *vp->desc) {
+        /* print short description */
+        eb_printf(b, "  %s\n", vp->desc);
+    }
+    // XXX: should look up markdown documentation
     show_popup(s, b, "Help");
 }
 
@@ -1006,7 +1029,6 @@ void do_describe_bindings(EditState *s, int argval)
     print_bindings(b, s->mode);
     print_bindings(b, NULL);
 
-    b->flags |= BF_READONLY;
     show_popup(s, b, "Bindings");
 }
 
@@ -1062,7 +1084,6 @@ void do_apropos(EditState *s, const char *str)
     eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH | SF_SILENT);
 
     if (found) {
-        b->flags |= BF_READONLY;
         snprintf(buf, sizeof buf, "Apropos '%s'", str);
         show_popup(s, b, buf);
     } else {
@@ -1125,7 +1146,6 @@ static void do_about_qemacs(EditState *s)
         eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_SILENT);
     }
     b->offset = 0;
-    b->flags |= BF_READONLY;
 
     show_popup(s, b, "About QEmacs");
 }
@@ -1481,7 +1501,6 @@ static void do_describe_buffer(EditState *s, int argval)
         eb_putc(b1, '\n');
     }
 
-    b1->flags |= BF_READONLY;
     show_popup(s, b1, "Buffer Description");
 }
 
@@ -1549,7 +1568,6 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d\n", w, "curline_style", s->curline_style);
     eb_putc(b1, '\n');
 
-    b1->flags |= BF_READONLY;
     show_popup(s, b1, "Window Description");
 }
 
@@ -1579,7 +1597,6 @@ static void do_describe_screen(EditState *e, int argval)
 
     dpy_describe(s, b1);
 
-    b1->flags |= BF_READONLY;
     show_popup(e, b1, "Screen Description");
 }
 
@@ -1953,7 +1970,6 @@ static void do_list_tags(EditState *s, int argval) {
         }
     }
 
-    b->flags |= BF_READONLY;
     e1 = show_popup(s, b, buf);
     if (s->colorize_func) {
         set_colorize_func(e1, s->colorize_func, s->colorize_mode);
@@ -2277,7 +2293,6 @@ static const CmdDef extra_commands[] = {
     // XXX: should have `qemacs-manual` on `C-h m`
     // XXX: should have `qemacs-faq` on `C-h C-f`
     //      use do_load_file_from_path() to load the above
-    // XXX: should have `describe-variable` with documentation on `C-h v`
     CMD0( "about-qemacs", "C-h ?, f1",
           "Display information about Quick Emacs",
           do_about_qemacs)
@@ -2288,19 +2303,23 @@ static const CmdDef extra_commands[] = {
     CMD2( "describe-bindings", "C-h b",
           "List local and global key bindings",
           do_describe_bindings, ESi, "p")
-    CMD2( "describe-function", "C-h f",
-          "Show information and bindings for a given command",
-          do_describe_function, ESs,
-          "s{Describe function: }[command]|command|")
     CMD2( "describe-buffer", "C-h C-b",
           "Show information about the current buffer",
           do_describe_buffer, ESi, "p")
-    CMD2( "describe-window", "C-h w, C-h C-w",
-          "Show information about the current window",
-          do_describe_window, ESi, "p")
+    CMD2( "describe-function", "C-h f",
+          "Show information and bindings for a command",
+          do_describe_function, ESs,
+          "s{Describe function: }[command]|command|")
     CMD2( "describe-screen", "C-h s, C-h C-s",
           "Show information about the current screen",
           do_describe_screen, ESi, "p")
+    CMD2( "describe-variable", "C-h v",
+          "Show information for a variable",
+          do_describe_variable, ESs,
+          "s{Describe variable: }[variable]|variable|")
+    CMD2( "describe-window", "C-h w, C-h C-w",
+          "Show information about the current window",
+          do_describe_window, ESi, "p")
 
     /* XXX: should take region as argument, implicit from keyboard */
     CMD2( "set-region-color", "C-c c",

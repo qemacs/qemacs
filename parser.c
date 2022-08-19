@@ -240,10 +240,8 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         r = d->spec;
         if (*r == '*') {
             r++;
-            if (s->b->flags & BF_READONLY) {
-                put_status(s, "Buffer is read only");
+            if (check_read_only(s))
                 continue;
-            }
         }
 
         /* first argument is always the window */
@@ -438,7 +436,6 @@ void do_save_session(EditState *s, int popup)
 
     if (popup) {
         b->offset = 0;
-        b->flags |= BF_READONLY;
         show_popup(s, b, "QEmacs session");
     } else {
         eb_write_buffer(b, 0, b->total_size, ".qesession");

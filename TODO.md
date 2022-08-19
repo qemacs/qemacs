@@ -11,28 +11,30 @@
  - document existing features
  - make documentation available inside qemacs
 * move documentation to markdown
-* doc: rewrite **TODO.md** file with more sections and explanations
-* doc: migrate **coding-rules.html** to markdown
-* help: use cooked markdown mode for help
-* help: `qemacs-faq` on `C-h C-f`
-* help: `qemacs-manual` on `C-h m`
-* help: `data-directory`, `data-path`...
-* help: add command documentation in `describe-function` on `C-h f`
-* help: `describe-variable` with documentation on `C-h v`
-* basic: show memory stats in `describe-buffer` and `about-qemacs`
-* extra: add function to add entry in **TODO.md**
+* rewrite **TODO.md** file with more sections and explanations
+* migrate **coding-rules.html** to markdown
+* use cooked markdown mode for help
+* add command `qemacs-hello` on `C-h h` : load hello file for charset tests
+* add command `qemacs-faq` on `C-h C-f`
+* add command `qemacs-manual` on `C-h m`
+* help: `data-directory`, `data-path` ?
+* add command documentation in `describe-function`
+* add command documentation in `describe-variable`
+* show memory stats in `describe-buffer` and `about-qemacs`
+* add function to add entry in **TODO.md**
 
 ### Core / Buffer / Input
 
 * [BUG] ^C does not work on OpenBSD
 * tiny: remove extra features
-* basic: add method pointers in windows initialized from fallback chain
-* basic: check binding lookup along fallback chain
-* basic: share mmapped pages correctly
-* basic: check abort during long operations: bufferize input and check for `^G`
-* basic: optional 64-bit offsets on 64-bit systems, use typedef for buffer offsets
-* basic: disable messages from commands if non-interactive (eg: `set-variable`)
+* add method pointers in windows initialized from fallback chain
+* remove redundant bindings along fallback chains
+* share mmapped pages correctly
+* check abort during long operations: bufferize input and check for `^G`
+* optional 64-bit offsets on 64-bit systems, use typedef for buffer offsets
+* disable messages from commands if non-interactive (eg: `set-variable`)
 * add custom memory handling functions.
+* `qe_realloc`: typed and clear reallocated area
 * use failsafe memory allocator and `longjmp` recover.
 * redefine `KEY_Fx` to make them sequential
 * move `ungot_key` to `key_context`
@@ -45,36 +47,35 @@
 * bfs: built in file system for embedded extensions and files
    Jasspa bfs is way too complicated, make simpler system
 * notes
-* `qe_realloc`: typed and clear reallocated area
 
 ### Charsets / Unicode / Bidir
 
-* charset: better display of invalid utf-8 encodings
-* charset: change character detection API to handle cross page spanning
-* charset: fix `eb_prev_char` to handle non self-synchronizing charsets
-* charset: handle chinese encodings
-* charset: handle euc-kr
-* charset: autodetect sjis, euc-jp...
-* charset: update cp directory from more recent unicode tables
-* charset: UTF-8 variants: CESU-8, Modified UTF-8, UTF-16
-* charset: UTF-1 obsolete standard encoding for Unicode
-* charset: handle `tty-width` to compute alignement in dired, bufed...
-* charset: limit number of combining marks to 20
-* charset: use `unichar`, `rune` and/or `u8` types
-* charset: detect bad encoding and use `errno` to tell caller
-* charset: auto/mixed eol mode
-* charset: `set-eol-type` should take a string: auto/binary/dos/unix/mac/0/1/2...
-* charset: display `^L` as horizontal line and consider as linebreak character
-* charset: handle zero width codepoints:
+* better display of invalid utf-8 encodings
+* change character detection API to handle cross page spanning
+* fix `eb_prev_char` to handle non self-synchronizing charsets
+* handle chinese encodings
+* handle euc-kr
+* add JIS missing encoding functions
+* add JIS charset probing functions
+* autodetect sjis, euc-jp...
+* fix kana input method
+* update cp directory from more recent unicode tables
+* UTF-8 variants: CESU-8, Modified UTF-8, UTF-16
+* UTF-1 obsolete standard encoding for Unicode
+* handle `tty-width` to compute alignement in dired, bufed...
+* limit number of combining marks to 20
+* use `unichar`, `rune` and/or `u8` types
+* detect bad encoding and use `errno` to tell caller
+* auto/mixed eol mode
+* `set-eol-type` should take a string: auto/binary/dos/unix/mac/0/1/2...
+* display `^L` as horizontal line and consider as linebreak character
+* handle zero width codepoints:
   cp="200B" na="ZERO WIDTH SPACE" alias="ZWSP"
   cp="200C" na="ZERO WIDTH NON-JOINER" alias="ZWNJ"
   cp="200D" na="ZERO WIDTH JOINER" alias="ZWJ"
   cp="200E" na="LEFT-TO-RIGHT MARK" alias="LRM"
   cp="200F" na="RIGHT-TO-LEFT MARK" alias="RLM"
 * `set_input_method()` and `set_buffer_file_coding_system()` in config file.
-* fix kana input method
-* charset: add JIS missing encoding functions
-* add JIS charset probing functions
 * test Hebrew keymap support.
 * rewrite fribidi
 * use Unicode file hierarchy for code page files
@@ -96,19 +97,19 @@
 
 ### Windowing / Display
 
-* basic: always save window buffer properties to buffer upon detaching
-* basic: fix current position when changing buffer attached to window
+* always save window buffer properties to buffer upon detaching
+* fix current position when changing buffer attached to window
+* fix default wrap setting mess
 * display: add screen dump command and format
-* display: colorize extra `^M` and `^Z` as preproc at end of line prior to calling the syntax highlighter (same as BOM)
-* display: colorizer bug on **/comp/projects/fractal/fractint/ORGFORM/NOEL-2.FRM** (triple `^M`)
-* display: default `display-width` of 0 is automatic, other values are shared between binary and hex modes
-* display: display bug on **~/comp/projects/fractal/fractint/ORGFORM/BAILOUT.FRM** (double `^M`)
-* display: minibuffer and popup windows should be in a separate lists
-* display: `toggle-full-screen` should not put modeline on popup
-* display: `toggle-full-screen` should work on popups
-* layout: kill buffer should delete popup and popleft window
-* basic: fix default wrap setting mess
-* screen: check coordinate system to 1000 based with optional sidebars
+* colorize extra `^M` and `^Z` as preproc at end of line prior to calling the syntax highlighter (same as BOM)
+* colorizer bug on **/comp/projects/fractal/fractint/ORGFORM/NOEL-2.FRM** (triple `^M`)
+* display bug on **~/comp/projects/fractal/fractint/ORGFORM/BAILOUT.FRM** (double `^M`)
+* default `display-width` of 0 is automatic, other values are shared between binary and hex modes
+* minibuffer and popup windows should be in a separate lists
+* `toggle-full-screen` should not put modeline on popup
+* `toggle-full-screen` should work on popups
+* kill buffer should delete popup and popleft window
+* layout: check coordinate system to 1000 based with optional sidebars
 * improve layout scheme for better scalability.
 * display: API: use style cache in `DisplayState`
 * display: API: remove screen argument in `release_font`, `glyph_width`
@@ -119,7 +120,7 @@
 * basic: `delete-selection-mode` to delete the highlighted region on DEL and typing text
 * modes: `header-line` format
 * modes: `mode-line` format
-* modes: display filename relative to current directory instead of buffer name on `mode-line`
+* display filename relative to current directory instead of buffer name on `mode-line`
 * window scrolling not emulated in tty (check `^Z` in recursive eps)
 * multiple frames
 * lingering windows
@@ -154,13 +155,13 @@ insert_window_left()  deletes some left-most windows
   do_dired()
 ```
 
-* display: wrap long lines past line numbers column
+* wrap long lines past line numbers column
 * fix column computation based on display properties:
   (variable pitch, tabs, ^x and \uxxxx stuff -- emacs behaviour) ?
 
 ### X11 display / graphics
 
-* x11: handle X11 window manager close window event and exit cleanly
+* handle X11 window manager close window event and exit cleanly
 * clip display by popup size
 * move `-nw` cmd line option to **tty.c** and make `term_probe` return better score
 * remember X11 window positions and restore layout?
@@ -173,19 +174,19 @@ insert_window_left()  deletes some left-most windows
 
 ### Files
 
-* [BUG] files: check file date to detect asynchronous modifications on disk
-* files: reload modified file upon change if untouched since load
-* files: add hook on file change
-* files: handle files starting with re:
-* files: check file permissions.
-* files: use trick for entering spaces in filename prompts without completion
-* files: fix `s->offset` reset to 0 upon `C-x C-f newfile ENT C-x 2 C-x b ENT`
-* files: insert-file: load via separate buffer with charset conversion
-* files: `reload-file` on `C-x C-r`
-* files: `qe_load_file` should split screen evenly for `LF_SPLIT_SCREEN` flag
+* [BUG] check file date to detect asynchronous modifications on disk
+* reload modified file upon change if untouched since load
+* add hook on file change
+* handle files starting with re:
+* check file permissions.
+* use trick for entering spaces in filename prompts without completion
+* fix `s->offset` reset to 0 upon `C-x C-f newfile ENT C-x 2 C-x b ENT`
+* insert-file: load via separate buffer with charset conversion
+* `qe_load_file` should split screen evenly for `LF_SPLIT_SCREEN` flag
 * [Idea] save file to non existent path -> create path.
 * [Idea] find-file: gist:snippet
 * Missing commands:
+  * `reload-file` on `C-x C-r`
   * `find-file-existing`
   * `find-other-frame` on `C-x 5 f`, `C-x 5 C-f`
   * `find-other-window` on `C-x 4 f`, `C-x 4 C-f`
@@ -194,17 +195,17 @@ insert_window_left()  deletes some left-most windows
   * `find-file-read-only-other-window` on `C-x 4 r`
   * `save-modified-buffers` on `C-x s`
   * `find-file`: should support scp syntax for remote loading
-* files: handle files with embedded spaces
+* handle filenames with embedded spaces
 * avoid error in new file
-* files: actually load file in `find-file-noselect`
-* files: should update symbolic links times when saving files
-* basic: improve speed: `C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET` -> 96s
-* basic: improve speed: `C-x C-f ~/x2m RET C-u 1000 C-n` -> 4s
-* display: use a prefix to explore file in a popup window
+* actually load file in `find-file-noselect`
+* should update symbolic links times when saving files
+* improve speed: `C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET` -> 96s
+* improve speed: `C-x C-f ~/x2m RET C-u 1000 C-n` -> 4s
+* use a prefix to explore file in a popup window
 
 ### Moving / Editing / Navigation
 
-* basic: pass argval and pagewise to `do_scroll_up_down()` or split command
+* pass argval and pagewise to `do_scroll_up_down()` or split command
 * files: fix `SPC` / `TAB` distinct behaviors on **~/comp/project/gnachman/**
 * basic: update default settings to `indent_tabs_mode = 0`, `indent_width = 4`, my-colors
 * basic: add property lists in buffer and window for default directory and similar properties (override)
@@ -214,46 +215,45 @@ insert_window_left()  deletes some left-most windows
 * basic: make `do_word_right`, `do_word_left`, `do_bol`, `do_eol`... return new offset
 * basic: use visual movement for left, right, up, down and character based for `C-b C-f C-n C-p`
 * basic: fix offset when exiting `s->hex_mode`
-* extras: `do_transpose` should take argval and swap distant fragments
-* basic: `elastic-tabs`
-* basic: `indent-rigidly`
+* `do_transpose` should take argval and swap distant fragments
 * new flavor for GoogleClosureCompiler
 * emacs-22 bindings:
   * `M-g M-g` `goto-line` (with prefix argument)
   * `M-g M-p` `previous-error`
   * `M-g M-n` `next-error`
 * Missing commands:
+  * `elastic-tabs`
+  * `indent-rigidly`
   * `show-matching-delimiters`
   * blink-and-insert on `) } ] >`
-  * `toggle-full-screen`-> unsupported if `screen->dpy_full_screen` is `NULL`
-* `set-gosmacs-bindings` -> `set_emulation("gosmacs")`
+  * `set-gosmacs-bindings` -> `set_emulation("gosmacs")`
+  * `auto-fill-mode`
+  * `auto-revert-mode`, `global-auto-revert-mode`, `auto-revert-tail-mode`
+  * `next-buffer` on `C-x C-right, C-x >, f12` Move to the next buffer.
+  * `previous-buffer` on `C-x C-left, C-x <, f11` Move to the next buffer.
+* `toggle-full-screen`-> unsupported if `screen->dpy_full_screen` is `NULL`
 * remote editing
 * fix scroll up/down to move point if already at end
 * move by paragraph on `M-[` and `M-]`
 * scroll horizontally on `M-{` and `M-}`
 * scroll up/down with argument should scroll by screen row.
 * simplify `C-z A-z` accordingly
-* `auto-fill-mode`
-* `auto-revert-mode`, `global-auto-revert-mode`, `auto-revert-tail-mode`
 * rectangular regions, cut/paste
 * multi-line editing
-* `next-buffer` on `C-x C-right, C-x >, f12` Move to the next buffer.
-* `previous-buffer` on `C-x C-left, C-x <, f11` Move to the next buffer.
 
 ### Macros
 
-* macros: allow redefining the keyboard macro embedding itself
-* macros: `show-macro`, `dump-macro` to ease macro debugging and timing
-* macros: fix macro slowliness in 6000 line buffer **junk/dirs/x**
-* macros: do not use visual movement inside macros (definition and execution)
-* macros: do not redisplay during macro execution, esp with prefix
-* macros: check for abort during repeated command execution
-* macros: check for failure during repeated command execution
-* macros: improve `dump-macro` to convert macro to string
-* macros: fix `dump-macro` to save/restore `last-kbd-macro` to/from session
-* macros: do not store messages during repeated macro execution or limit buffer size
-* macros: `name-last-kbd-macro`
-* macros: fix source syntax issues
+* allow redefining the keyboard macro embedding itself
+* `show-macro`, `dump-macro` to ease macro debugging and timing
+* fix macro slowliness in 6000 line buffer **junk/dirs/x**
+* do not use visual movement inside macros (definition and execution)
+* do not redisplay during macro execution, esp with prefix
+* check for abort/failure during repeated command execution and macros
+* improve `dump-macro` to convert macro to string
+* fix `dump-macro` to save/restore `last-kbd-macro` to/from session
+* do not store messages during repeated macro execution or limit buffer size
+* `name-last-kbd-macro`
+* fix source syntax issues
 ```lisp
    (define-macro "last-kbd-macro" "A-fA-fC-FC-FC-@C-EA-wC-AC-NC-XnC-YC-MC-Xp")
    (define-macro "last-kbd-macro" "A\-f")
@@ -281,36 +281,35 @@ insert_window_left()  deletes some left-most windows
 ### Searching
 
 * incremental search: increase max repeat count
-* search: improve speed finally
-* search: add low-level accelerator function
-* search: use `do_isearch` or similar to input string and options
+* improve search speed finally
+* add low-level search accelerator function
+* use `do_isearch` or similar to input string and options
    for other search commands: `do_search_string`, `do_query_replace`,
    `count-matches`, `delete-matching-lines` (might need recursive edit)
-* search: add regex support
-* search: `hex-mode` search strings should mix hex ut8 strings and ASCII control char names
-* search: handle word and case toggles matches in `query-replace`
-* search: `count-words`, `wc`
-* search: stats command for word count and mode specific stats
-* search: regex search/replace
-* search: query replace across multiple files
-* search: query replace options: u -> undo last change
+* `hex-mode` search strings should mix hex ut8 strings and ASCII control char names
+* handle word and case toggles matches in `query-replace`
+* regex search/replace
+* query replace across multiple files
+* query replace options: u -> undo last change
 * extra: `grep`, `grep-buffer`, `grep-sources`, `grep-tree`...
+* search: `count-words`, `wc`, `count-sloc`
+* search: stats command for word count and mode specific stats
 
 ### Undo
 
-* undo: allow file save when undo clears file modified flag
-* undo: undo some cursor movements
-* undo: group undo entries to match command and or macro boundaries
-* undo: saving the file kills the redo stack!
-* undo: when undo resets the modified buffer flag, this prevents file save
-* undo: store cursor movements in undo records
-* undo: kill redo list when forking after undo
-* undo: undo should handle sequence of undo records upto tagged start.
-* undo: add disable-undo for tests and benchmarking
-* undo: limit size of undo buffers (`undo-outer-limit`, default 3000000)
-* undo: add undo records for styles, modes...
-* undo: disable undo for archive parse and uncompress phases
-* undo: compress logs and limit size
+* allow file save when undo clears file modified flag
+* undo some cursor movements
+* group undo entries to match command and or macro boundaries
+* saving the file kills the redo stack!
+* when undo resets the modified buffer flag, this prevents file save
+* store cursor movements in undo records
+* kill redo list when forking after undo
+* undo should handle sequence of undo records upto tagged start.
+* add disable-undo for tests and benchmarking
+* limit size of undo buffers (`undo-outer-limit`, default 3000000)
+* add undo records for styles, modes...
+* disable undo for archive parse and uncompress phases
+* compress logs and limit size
 * mode for undo buffers
 
 ### Config / Sessions
@@ -335,12 +334,12 @@ insert_window_left()  deletes some left-most windows
 
 * [BUG] preserve static styles in `do_convert_buffer_file_coding_system()`
 * optimize style transfer in `eb_insert_buffer_convert()`
-* style: add color themes
-* style: add style recent changes (`highlight-recent-changes`)
-* basic: make styles and log buffers read-only and display as binary
-* syntax: fix overlong line coloring
-* basic: make `style-buffer-mode` and `log-buffer-mode`
-* basic: fix colors, default schemes...
+* add color themes
+* fix colors, default schemes...
+* add style recent changes (`highlight-recent-changes`)
+* make styles and log buffers read-only and display as binary
+* fix overlong line coloring
+* make `style-buffer-mode` and `log-buffer-mode`
 
 ## Modes
 
@@ -359,31 +358,31 @@ insert_window_left()  deletes some left-most windows
 
 ### C mode
 
-* clang: allman and other styles
-* clang: epita style
-* clang: auto remove trailing spaces and add final newline
-* clang: colorizing bug: `static int (*qe__initcall_first)(void) qe__init_call = NULL;`
-* clang: missed tag: `static int (*qe__initcall_first)(void) qe__init_call = NULL;`
-* clang: align multi line comments leading * one space to the right
-* clang: fix C indentation inside comments
-* clang: fix C indentation inside struct, array and enum initializers
+* allman and other styles
+* epita style
+* auto remove trailing spaces and add final newline
+* colorizing bug: `static int (*qe__initcall_first)(void) qe__init_call = NULL;`
+* align multi line comments leading * one space to the right
+* fix C indentation inside comments
+* fix C indentation inside struct, array and enum initializers
+* automatic indentation detection
 * `c-indent`
 * `indent-with-tabs`
 * stats command for `slcc`
 * improve tag support:
+  * missed tag: `static int (*qe__initcall_first)(void) qe__init_call = NULL;`
   * tag multiple files and buffers
   * tag project files recursively
-  * save tags to QTAGS or .qetags file
   * handle multiple tag files
+  * save tags to QTAGS or .qetags file
   * update tag files automatically
   * `list-definitions` with hot load function
   * `show-definition` in popup
   * handle standard libraries with tag system
   * generate #include lines automatically
-* see if java/javascript/c++ is OK.
 * autocomplete keyword, function, variable, member names
-* automatic indentation detection
 * `c-mode` descendants:
+  * see if java/javascript/c++ is OK.
   * `as-mode`: ActionStript files
   * `awk-mode`
   * C++ mode
@@ -405,10 +404,10 @@ insert_window_left()  deletes some left-most windows
 
 ### Markdown modes
 
-* markdown: recognise `~~~ {.c}` language tags
-* modes: cooked markdown mode for documentation
-* help: use cooked markdown mode for help system
-* markdown: `a_bb_c` should not detect `bb` as underlined
+* recognise `~~~ {.c}` language tags
+* cooked markdown mode for documentation
+* use cooked markdown mode for help system
+* `a_bb_c` should not detect `bb` as underlined
 * `markdown-mode`: syntax modes for toml, bash (bash output), sh, text, txt
 
 ### Outline / Org mode
@@ -418,34 +417,35 @@ insert_window_left()  deletes some left-most windows
 
 ### Preview mode
 
-* basic: use minor mode keymap to exit preview mode with `KEY_RET`
-* preview: add auto skip feature at top and bottom of file to skip to the previous and/or next file in the preview mode
-* preview-mode: typing text should `auto-search`
+* use minor mode keymap to exit preview mode with `KEY_RET`
+* add auto skip feature at top and bottom of file to skip to the previous and/or next file in the preview mode
+* typing text should `auto-search`
+* typing text could ask for exiting preview-mode
 * prevent edit in browse mode (currently called `preview-mode`)
 
 ### Shell mode
 
 * C-x Enter should find another shell buffer if `*shell*` has been killed. Should enumerate all buffers.
 * terminal emulation: when move inserts spaces, they should have default attributes
-* shell: `C-c C-c` should abort make process
-* shell: support `:` as alternate escape sequence argument separator
-* shell: use target window for man and similar commands
-* shell: `start-shell` should kill popup window
-* shell: `A-x kill-buffer RET` -> hang
-* shell: turn on interactive mode on commands that move the cursor to EOB
-* shell: asynchronous input buffer
-* shell: give commands a chance to execute for macros to behave correctly
-* shell: `A-y` at process prompt
-* shell: fix very long lines in shell buffer
-* shell: `C-x RET` should switch to last process buffer selected and move to the end of buffer
-* shell: fix screen size notifications, `SIGWINCH` signals and ioctl
-* shell: fix crash bug when invoking qemacs recursively in the terminal
-* shell: set current directory of new shell buffer to that of current window
-* shell: use auxiliary buffer to make process input asynchronous
-* shell: other buffer modification functions in shell input region
-* shell: `tty_put_char` should convert charsets
-* shell: current path in compile set to current buffer path
-* shell: current path retrieved from shell prompt backwards from point
+* `C-c C-c` should abort make process
+* support `:` as alternate escape sequence argument separator
+* use target window for man and similar commands
+* `start-shell` should kill popup window
+* `A-x kill-buffer RET` -> hang
+* turn on interactive mode on commands that move the cursor to EOB
+* asynchronous input buffer
+* give commands a chance to execute for macros to behave correctly
+* `A-y` at process prompt
+* fix very long lines in shell buffer
+* `C-x RET` should switch to last process buffer selected and move to the end of buffer
+* fix screen size notifications, `SIGWINCH` signals and ioctl
+* fix crash bug when invoking qemacs recursively in the terminal
+* set current directory of new shell buffer to that of current window
+* use auxiliary buffer to make process input asynchronous
+* other buffer modification functions in shell input region
+* `tty_put_char` should convert charsets
+* current path in compile set to current buffer path
+* current path retrieved from shell prompt backwards from point
 * fix bof/eof shell mode
 * allow quoting of special keys: let `do_char` insert xterm/vt100
   key sequence to allow typing special keys into shell process
@@ -471,8 +471,7 @@ insert_window_left()  deletes some left-most windows
    - list directory contents
    - track directory contents file stats
    - compute subdirectory sizes
-* dired: keep dired current file upon: `RET C-x C-k RET`
-* dired: fork for directory scan, background inode tracking, dir size scan
+* keep dired current file upon: `RET C-x C-k RET`
 * use buffer specific load functions
 * separate buffer for each directory
 * adjust dired gutter width for max name length
@@ -486,17 +485,17 @@ insert_window_left()  deletes some left-most windows
 ### Bufed
 
 * show current directory for shell buffers in buffer list view
+* dired: use window/buffer caption for headings and sizes description
 
 ### XML / HTML
 
 * [Idea] http request with headings
-* xml: merge xml and htmlsrc modes, add submodes for plist and other config files
+* merge xml and htmlsrc modes, add submodes for plist and other config files
 * xml/htmlsrc: scan for `</script>` beyond end of very long line
-* html: `&#x200c;` -> zero width causes missing chars at end of line
-* html: `mode_probe` fails on **junk/Books/881256329.epub/OEBPS/Attributes.xhtml** when cycling
+* `&#x200c;` -> zero width causes missing chars at end of line
+* html `mode_probe` fails on **junk/Books/881256329.epub/OEBPS/Attributes.xhtml** when cycling
 * html: preview mode does not work
 * html: checksum stuff does not work
-* html/xml: merge xml / htmlsrc modes
 * html/xml: fix colorizer for multi-line tags and attributes
 * [BUG] xml: crash bug on **johnmacfarlane.net/texmath.xhtml**
 * `html-mode`: support hex entities
@@ -525,12 +524,11 @@ insert_window_left()  deletes some left-most windows
 
 ### Hex mode
 
-* display: `hex-mode` and `binary-mode` should have an initial skip value to align the display on any boundary
-* display: `hex-mode` should optionally display chunks of 2, 4 or 8 bytes in big or little endian order
-* display: optimize display for very large `display-width` in binary and hex modes
-* display: save `display-width` in binary and hex modes upon window change
-* hex: extend hex mode to support 16,32,64 bit words as little and big endian
 * merge `hex-mode` and `binary-mode`
+* `hex-mode` and `binary-mode` should have an initial skip value to align the display on any boundary
+* extend `hex-mode` to support 16,32,64 bit words as little and big endian
+* optimize display for very large `display-width` in binary and hex modes
+* save `display-width` in binary and hex modes upon window change
 * display alternate cursor in non active column in hex mode.
 
 ### Archive mode
@@ -543,18 +541,19 @@ insert_window_left()  deletes some left-most windows
 
 ### Images / Video / Bitmaps
 
-* images: filtered scaling
-* images: zoom, pan, rotate, describe, peek-color, histogram...
-* images: multiview, wallpaper...
-* images: use screen aspect-ratio...
-* images: display info on modeline
-* images: prevent display if not invalid
+* disable libpng and ffmpeg detection
+* filtered scaling
+* zoom, pan, rotate, describe, peek-color, histogram...
+* multiview, wallpaper...
+* use screen aspect-ratio...
+* display info on modeline
+* prevent display if not invalid
 * improve image viewer on X11.
 
 ### Syntax modes
 
 * modes: add language word lists: literals and builtins
-* modes: text based language modes: token patterns, word lists, indentation spec
+* text based language modes: token patterns, word lists, indentation spec
 * create tags in other languages: fds `_STYLE_FUNCTION`
 * improve existing language modes:
   * `ada-mode`: create tags
@@ -673,7 +672,7 @@ insert_window_left()  deletes some left-most windows
   * `verilog-mode`
   * `vhdl-mode`: VHDL files.
   * `xslt-mode`
-  * look at qmake, cmake, scons, ant, maven, bitC
+  * qmake, cmake, scons, ant, maven, bitC
 
 ### New modes
 

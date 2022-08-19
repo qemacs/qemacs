@@ -1058,7 +1058,6 @@ static void do_fractal_help(EditState *s)
     eb_printf(b, "%*s: %s\n", w, "g", "set gray colors");
     eb_printf(b, "%*s: %s\n", w, "c", "set default colors");
 
-    b->flags |= BF_READONLY;
     show_popup(s, b, "About Fractal");
 }
 

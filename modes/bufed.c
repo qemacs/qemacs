@@ -370,7 +370,7 @@ static void do_buffer_list(EditState *s, int argval)
         s->qe_state->active_window = s;
     }
 
-    b = eb_scratch("*bufed*", BF_READONLY | BF_SYSTEM | BF_UTF8 | BF_STYLE1);
+    b = eb_scratch("*bufed*", BF_SYSTEM | BF_UTF8 | BF_STYLE1);
     if (!b)
         return;
 
