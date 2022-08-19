@@ -2165,7 +2165,7 @@ static EditBuffer *try_show_buffer(EditState **sp, const char *bufname)
     return b;
 }
 
-static void do_shell(EditState *e, int force)
+static void do_shell(EditState *e, int argval)
 {
     char curpath[MAX_FILENAME_SIZE];
     EditBuffer *b = NULL;
@@ -2180,7 +2180,7 @@ static void do_shell(EditState *e, int force)
     e = qe_find_target_window(e, 1);
 
     /* find shell buffer if any */
-    if (!force || force == NO_ARG) {
+    if (argval == 1) {
         if (strstart(e->b->name, "*shell", NULL)) {
             /* If the current buffer is a shell buffer, use it */
             b = e->b;
@@ -2900,6 +2900,7 @@ static void do_next_error(EditState *s, int arg, int dir)
 
     if (arg != NO_ARG) {
         /* called with a prefix: set the error source to the current buffer */
+        // XXX: has_arg should scan for errors from the next file
         set_error_offset(s->b, s->offset);
     }
 
@@ -3152,10 +3153,10 @@ static const CmdDef shell_commands[] = {
           do_shell_search, 1)
     CMD2( "shell-kill-line", "C-k",
           "Shell buffer kill line",
-          do_shell_kill_line, ESi, "a")
+          do_shell_kill_line, ESi, "P")
     CMD2( "shell-kill-beginning-of-line", "M-k",
           "Shell buffer kill beginning of line",
-          do_shell_kill_beginning_of_line, ESi, "a")
+          do_shell_kill_beginning_of_line, ESi, "P")
     CMD2( "shell-yank", "C-y",
           "Shell buffer yank",
           do_shell_yank, ES, "*")
@@ -3180,7 +3181,7 @@ static const CmdDef shell_commands[] = {
 static const CmdDef shell_global_commands[] = {
     CMD2( "shell", "C-x RET RET",
           "Start a shell buffer or move to the last shell buffer used",
-          do_shell, ESi, "a")
+          do_shell, ESi, "p")
     CMD2( "shell-command", "M-!",
           "Run a shell command and display a new buffer with its collected output",
           do_shell_command, ESs,
@@ -3202,11 +3203,11 @@ static const CmdDef shell_global_commands[] = {
           do_man, ESs,
           "s{Show man page for: }|man|")
     CMD3( "previous-error", "C-x C-p",
-          "Move the the previous error from the last command output",
-          do_next_error, ESii, "a" "v", -1)
+          "Move to the previous error from the last shell command output",
+          do_next_error, ESii, "P" "v", -1)
     CMD3( "next-error", "C-x C-n, C-x `",
-          "Move the the next error from the last command output",
-          do_next_error, ESii, "a" "v", +1)
+          "Move to the next error from the last shell command output",
+          do_next_error, ESii, "P" "v", +1)
 };
 
 static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)

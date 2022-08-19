@@ -1384,7 +1384,7 @@ static const CmdDef dired_commands[] = {
 static const CmdDef dired_global_commands[] = {
     CMD2( "dired", "C-x C-d",
           "Display the directory window and start dired mode",
-          do_dired, ESi, "a")
+          do_dired, ESi, "P")
 };
 
 #if 0
@@ -1571,7 +1571,7 @@ static const CmdDef filelist_commands[] = {
 static const CmdDef filelist_global_commands[] = {
     CMD2( "filelist", "",
           "Run the filelist-mode on the current region",
-          do_filelist, ESi, "a")
+          do_filelist, ESi, "p")
 };
 
 static int filelist_init(void)

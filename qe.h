@@ -1757,13 +1757,14 @@ enum CmdArgType {
     CMD_ARG_STRINGVAL,
     CMD_ARG_WINDOW,
     CMD_ARG_TYPE_MASK  = 0x0f,
-    CMD_ARG_USE_ARGVAL = 0x10,
-    CMD_ARG_MUL_ARGVAL = 0x20,
-    CMD_ARG_USE_KEY    = 0x30,
-    CMD_ARG_USE_MARK   = 0x40,
-    CMD_ARG_USE_POINT  = 0x50,
-    CMD_ARG_USE_ZERO   = 0x60,
-    CMD_ARG_USE_BSIZE  = 0x70,
+    CMD_ARG_RAW_ARGVAL = 0x10,
+    CMD_ARG_NUM_ARGVAL = 0x20,
+    CMD_ARG_NEG_ARGVAL = 0x30,
+    CMD_ARG_USE_KEY    = 0x40,
+    CMD_ARG_USE_MARK   = 0x50,
+    CMD_ARG_USE_POINT  = 0x60,
+    CMD_ARG_USE_ZERO   = 0x70,
+    CMD_ARG_USE_BSIZE  = 0x80,
 };
 
 typedef enum CmdSig {

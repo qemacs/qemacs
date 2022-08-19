@@ -146,10 +146,10 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
 
         p = line;
     again:
-        if (incomment)
-            goto comment;
         if (qe_skip_spaces(&p) == '\0')
             continue;
+        if (incomment)
+            goto comment;
         if (*p == '/') {
             if (p[1] == '/')  /* line comment */
                 continue;
@@ -164,8 +164,6 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                         break;
                     }
                 }
-                if (incomment)
-                    continue;
                 goto again;
             }
         }
@@ -262,7 +260,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
 
         sep = '\0';
         strp = str;
-
+        /* p points past the '(' */
         for (i = 0; i < nb_args; i++) {
             /* pseudo arguments: skip them */
             switch (args_type[i]) {
@@ -270,23 +268,48 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 args[i].s = s;
                 continue;
             case CMD_ARG_INTVAL:
-            case CMD_ARG_MUL_ARGVAL | CMD_ARG_INT:
                 args[i].n = d->val;
                 continue;
             case CMD_ARG_STRINGVAL:
-                /* CG: kludge for xxx-mode functions and named kbd macros,
-                   must be last argument */
+                /* kludge for xxx-mode functions and named kbd macros,
+                   should be the last argument */
                 args[i].p = cas.prompt;
                 continue;
             }
 
-            if (sep) {
-                /* CG: Should test for arg list too short. */
-                /* CG: Could supply default arguments. */
-                if (!expect_token(&p, sep))
+            qe_skip_spaces(&p);
+            if (*p == ')') {
+                /* no more arguments: handle default values */
+                switch (args_type[i]) {
+                case CMD_ARG_INT | CMD_ARG_RAW_ARGVAL:
+                    args[i].n = NO_ARG;
+                    continue;
+                case CMD_ARG_INT | CMD_ARG_NUM_ARGVAL:
+                    args[i].n = 1;
+                    continue;
+                case CMD_ARG_INT | CMD_ARG_NEG_ARGVAL:
+                    args[i].n = -1;
+                    continue;
+                case CMD_ARG_INT | CMD_ARG_USE_MARK:
+                    args[i].n = s->b->mark;
+                    continue;
+                case CMD_ARG_INT | CMD_ARG_USE_POINT:
+                    args[i].n = s->offset;
+                    continue;
+                case CMD_ARG_INT | CMD_ARG_USE_ZERO:
+                    args[i].n = 0;
+                    continue;
+                case CMD_ARG_INT | CMD_ARG_USE_BSIZE:
+                    args[i].n = s->b->total_size;
+                    continue;
+                }
+                /* p stays in front of the ')'. */
+                /* Let the argument matcher complain about the missing argument */
+            } else {
+                if (sep && !expect_token(&p, sep))
                     goto fail;
+                sep = ',';
             }
-            sep = ',';
             qe_skip_spaces(&p);
 
             switch (args_type[i] & CMD_ARG_TYPE_MASK) {
@@ -297,10 +320,11 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                     put_status(s, "Number expected for arg %d", i);
                     goto fail;
                 }
+                if (args_type[i] == (CMD_ARG_INT | CMD_ARG_NEG_ARGVAL))
+                    args[i].n *= -1;
                 break;
             case CMD_ARG_STRING:
                 if (*p != '\"' && *p != '\'') {
-                    /* XXX: should convert number to string */
                     put_status(s, "String expected for arg %d", i);
                     goto fail;
                 }
@@ -428,7 +452,7 @@ static const CmdDef parser_commands[] = {
           "Evaluate a qemacs expression",
           do_eval_expression, ESsi,
           "s{Eval: }|expression|"
-          "a")
+          "P")
     /* XXX: should take region as argument, implicit from keyboard */
     CMD0( "eval-region", "",
           "Evaluate qemacs expressions in a region",

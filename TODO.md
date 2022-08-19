@@ -13,15 +13,14 @@
 * move documentation to markdown
 * doc: rewrite **TODO.md** file with more sections and explanations
 * doc: migrate **coding-rules.html** to markdown
-* help: info-mode
+* help: use cooked markdown mode for help
 * help: `qemacs-faq` on `C-h C-f`
 * help: `qemacs-manual` on `C-h m`
-* help: add inline documentation for commands on `C-h C-f`
 * help: `data-directory`, `data-path`...
+* help: add command documentation in `describe-function` on `C-h f`
+* help: `describe-variable` with documentation on `C-h v`
 * basic: show memory stats in `describe-buffer` and `about-qemacs`
 * extra: add function to add entry in **TODO.md**
-* add command help/description in declarations
-* make command declaration macros standalone
 
 ### Core / Buffer / Input
 
@@ -46,7 +45,6 @@
 * bfs: built in file system for embedded extensions and files
    Jasspa bfs is way too complicated, make simpler system
 * notes
-* `C-x x next-buffer` ??? Move to the next buffer.
 * `qe_realloc`: typed and clear reallocated area
 
 ### Charsets / Unicode / Bidir
@@ -111,6 +109,7 @@
 * layout: kill buffer should delete popup and popleft window
 * basic: fix default wrap setting mess
 * screen: check coordinate system to 1000 based with optional sidebars
+* improve layout scheme for better scalability.
 * display: API: use style cache in `DisplayState`
 * display: API: remove screen argument in `release_font`, `glyph_width`
 * display: API: add `create-style(name, properties)`
@@ -135,7 +134,6 @@
 * fix crash bug on fragments longer than `MAX_SCREEN_WIDTH`.
 * vertical scroll bar
 * menu / context-menu / toolbars / dialogs
-* improve layout scheme for better scalability.
 * scrolling by window size should position cursor differently
 * emulation mode to use line-drawing characters for window borders
 * Clean window deletion mess:
@@ -202,6 +200,7 @@ insert_window_left()  deletes some left-most windows
 * files: should update symbolic links times when saving files
 * basic: improve speed: `C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET` -> 96s
 * basic: improve speed: `C-x C-f ~/x2m RET C-u 1000 C-n` -> 4s
+* display: use a prefix to explore file in a popup window
 
 ### Moving / Editing / Navigation
 
@@ -210,7 +209,6 @@ insert_window_left()  deletes some left-most windows
 * basic: update default settings to `indent_tabs_mode = 0`, `indent_width = 4`, my-colors
 * basic: add property lists in buffer and window for default directory and similar properties (override)
 * basic: backspace delete hacking tabs
-* display: use a prefix to explore file in a popup window
 * basic: enter should optionally remove whitespace at end of line
 * basic: reset last command when executing macro
 * basic: make `do_word_right`, `do_word_left`, `do_bol`, `do_eol`... return new offset
@@ -219,7 +217,6 @@ insert_window_left()  deletes some left-most windows
 * extras: `do_transpose` should take argval and swap distant fragments
 * basic: `elastic-tabs`
 * basic: `indent-rigidly`
-* [Idea] dynamic project based settings, include, exclude patterns...
 * new flavor for GoogleClosureCompiler
 * emacs-22 bindings:
   * `M-g M-g` `goto-line` (with prefix argument)
@@ -227,10 +224,10 @@ insert_window_left()  deletes some left-most windows
   * `M-g M-n` `next-error`
 * Missing commands:
   * `show-matching-delimiters`
+  * blink-and-insert on `) } ] >`
   * `toggle-full-screen`-> unsupported if `screen->dpy_full_screen` is `NULL`
-* `set-gosmacs-bindings`
+* `set-gosmacs-bindings` -> `set_emulation("gosmacs")`
 * remote editing
-* blink-and-insert on `) } ] >`
 * fix scroll up/down to move point if already at end
 * move by paragraph on `M-[` and `M-]`
 * scroll horizontally on `M-{` and `M-}`
@@ -240,6 +237,8 @@ insert_window_left()  deletes some left-most windows
 * `auto-revert-mode`, `global-auto-revert-mode`, `auto-revert-tail-mode`
 * rectangular regions, cut/paste
 * multi-line editing
+* `next-buffer` on `C-x C-right, C-x >, f12` Move to the next buffer.
+* `previous-buffer` on `C-x C-left, C-x <, f11` Move to the next buffer.
 
 ### Macros
 
@@ -330,6 +329,7 @@ insert_window_left()  deletes some left-most windows
   - add html.min.css and docbook.min.css to library
   - append lib: to default QE_PATH
 * clean up ancillary files
+* [Idea] dynamic project based settings, include, exclude patterns...
 
 ### Colors and styles
 

@@ -1084,30 +1084,30 @@ static void fractal_display_hook(EditState *s) {
 }
 
 static const CmdDef fractal_commands[] = {
-    CMD3( "fractal-left", "left",
+    CMD2( "fractal-left", "left",
           "Move fractal origin left",
-          do_fractal_move_x, ESi, "A", -1)
-    CMD3( "fractal-right", "right",
+          do_fractal_move_x, ESi, "q")
+    CMD2( "fractal-right", "right",
           "Move fractal origin right",
-          do_fractal_move_x, ESi, "A", +1)
-    CMD3( "fractal-up", "up",
+          do_fractal_move_x, ESi, "p")
+    CMD2( "fractal-up", "up",
           "Move fractal origin up",
-          do_fractal_move_y, ESi, "A", -1)
-    CMD3( "fractal-down", "down",
+          do_fractal_move_y, ESi, "q")
+    CMD2( "fractal-down", "down",
           "Move fractal origin down",
-          do_fractal_move_y, ESi, "A", +1)
-    CMD3( "fractal-zoom-in", "+, SPC",
+          do_fractal_move_y, ESi, "p")
+    CMD2( "fractal-zoom-in", "+, SPC",
           "Increase fractal zoom level",
-          do_fractal_zoom, ESi, "A", +1)
-    CMD3( "fractal-zoom-out", "-, _",
+          do_fractal_zoom, ESi, "p")
+    CMD2( "fractal-zoom-out", "-, _",
           "Decrease fractal zoom level",
-          do_fractal_zoom, ESi, "A", -1)
-    CMD3( "fractal-rotate-left", "\\, .",
+          do_fractal_zoom, ESi, "q")
+    CMD2( "fractal-rotate-left", "\\, .",
           "Rotate fractal figure counterclockwise",
-          do_fractal_rotate, ESi, "A", +1)
-    CMD3( "fractal-rotate-right", "/",
+          do_fractal_rotate, ESi, "p")
+    CMD2( "fractal-rotate-right", "/",
           "Rotate fractal figure clockwise",
-          do_fractal_rotate, ESi, "A", -1)
+          do_fractal_rotate, ESi, "q")
     CMD3( "fractal-rotate-none", "|",
           "Reset fractal rotation",
           do_fractal_rotate, ESi, "v", 0)
@@ -1117,24 +1117,24 @@ static const CmdDef fractal_commands[] = {
     CMD3( "fractal-set-colors-gray", "g",
           "Set fractal colors to gray scale",
           do_fractal_set_colors, ESi, "v", 1)
-    CMD3( "fractal-shift-colors-left", "[",
+    CMD2( "fractal-shift-colors-left", "[",
           "Shift fractal color palette left",
-          do_fractal_shift_colors, ESi, "A", -1)
-    CMD3( "fractal-shift-colors-right", "]",
+          do_fractal_shift_colors, ESi, "q")
+    CMD2( "fractal-shift-colors-right", "]",
           "Shift fractal color palette right",
-          do_fractal_shift_colors, ESi, "A", +1)
-    CMD3( "fractal-iter-less", "{",
+          do_fractal_shift_colors, ESi, "p")
+    CMD2( "fractal-iter-less", "{",
           "Decrease the fractal iteration count",
-          do_fractal_iter, ESi, "A", -1)
-    CMD3( "fractal-iter-more", "}",
+          do_fractal_iter, ESi, "q")
+    CMD2( "fractal-iter-more", "}",
           "Increase the fractal iteration count",
-          do_fractal_iter, ESi, "A", +1)
-    CMD3( "fractal-bailout-less", "<",
+          do_fractal_iter, ESi, "p")
+    CMD2( "fractal-bailout-less", "<",
           "Decrease the fractal bailout value",
-          do_fractal_bailout, ESi, "A", -1)
-    CMD3( "fractal-bailout-more", ">",
+          do_fractal_bailout, ESi, "q")
+    CMD2( "fractal-bailout-more", ">",
           "Increase the fractal bailout value",
-          do_fractal_bailout, ESi, "A", +1)
+          do_fractal_bailout, ESi, "p")
     CMD2( "fractal-set-type", "1, 2, 3, 4, 5, 6, 7, 8, 9",
           "Select the fractal type (1-9)",
           do_fractal_set_type, ESi, "k")

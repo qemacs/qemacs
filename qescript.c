@@ -869,15 +869,21 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
                must be last argument */
             args[i].p = cas.prompt;
             continue;
-        case CMD_ARG_INT | CMD_ARG_USE_ARGVAL:
+        case CMD_ARG_INT | CMD_ARG_RAW_ARGVAL:
             if (ds->tok == ')') {
                 args[i].n = NO_ARG;
                 continue;
             }
             break;
-        case CMD_ARG_INT | CMD_ARG_MUL_ARGVAL:
+        case CMD_ARG_INT | CMD_ARG_NUM_ARGVAL:
             if (ds->tok == ')') {
-                args[i].n = d->val;
+                args[i].n = 1;
+                continue;
+            }
+            break;
+        case CMD_ARG_INT | CMD_ARG_NEG_ARGVAL:
+            if (ds->tok == ')') {
+                args[i].n = -1;
                 continue;
             }
             break;
@@ -927,8 +933,10 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
         case CMD_ARG_INT:
             qe_cfg_tonum(ds, sp); // XXX: should complain about type mismatch?
             args[i].n = sp->u.value;
-            if (args_type[i] == (CMD_ARG_INT | CMD_ARG_MUL_ARGVAL))
-                args[i].n *= d->val;
+            //if (args_type[i] == (CMD_ARG_INT | CMD_ARG_NUL_ARGVAL))
+            //    args[i].n *= d->val;
+            if (args_type[i] == (CMD_ARG_INT | CMD_ARG_NEG_ARGVAL))
+                args[i].n *= -1;
             break;
         case CMD_ARG_STRING:
             qe_cfg_tostr(ds, sp); // XXX: should complain about type mismatch?
@@ -1223,7 +1231,7 @@ static const CmdDef parser_commands[] = {
           "Evaluate a qemacs expression",
           do_eval_expression, ESsi,
           "s{Eval: }[.symbol]|expression|"
-          "a")
+          "P")
     CMD0( "eval-region", "",
           "Evaluate qemacs expressions in a region",
           do_eval_region)

@@ -1278,12 +1278,12 @@ static const CmdDef c_commands[] = {
     CMD2( "c-indent-command", "TAB",
           "Indent the current line",
           do_c_indent, ES, "*")
-    CMD3( "c-backward-conditional", "M-[",
+    CMD2( "c-backward-conditional", "M-[",
           "Move to the beginning of the previous #if preprocessing directive",
-          do_c_forward_conditional, ESi, "A", -1)
-    CMD3( "c-forward-conditional", "M-]",
+          do_c_forward_conditional, ESi, "q")
+    CMD2( "c-forward-conditional", "M-]",
           "Move to the end of the next #if preprocessing directive",
-          do_c_forward_conditional, ESi, "A", 1)
+          do_c_forward_conditional, ESi, "p")
     CMD0( "c-list-conditionals", "M-i",
           "List the preprocessing directive controlling the current line",
           do_c_list_conditionals)

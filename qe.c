@@ -1616,7 +1616,7 @@ void do_tab(EditState *s, int argval)
                 col += unicode_tty_glyph_width(c);
             }
         }
-        if (argval == NO_ARG)
+        if (argval < 1)
             argval = 1;
 
         s->offset += eb_insert_spaces(s->b, s->offset,
@@ -4625,39 +4625,44 @@ int parse_arg(const char **pp, CmdArgSpec *ap)
     get_param(&p, '[', ']', ap->completion, sizeof(ap->completion));
     get_param(&p, '|', '|', ap->history, sizeof(ap->history));
     type = 0;
+    /* code letters modeled after emacs (interactive) function */
     switch (tc) {
-    case 'k':
-        type = CMD_ARG_USE_KEY | CMD_ARG_INT;
+    case 'k':  /* last key typed */
+        type = CMD_ARG_INT | CMD_ARG_USE_KEY;
         break;
-    case 'a':
-        type = CMD_ARG_USE_ARGVAL | CMD_ARG_INT;
+    case 'P':  /* raw prefix argument */
+        type = CMD_ARG_INT | CMD_ARG_RAW_ARGVAL;
         break;
-    case 'A':
-        type = CMD_ARG_MUL_ARGVAL | CMD_ARG_INT;
+    case 'p':  /* number: converted prefix argument */
+        type = CMD_ARG_INT | CMD_ARG_NUM_ARGVAL;
         break;
-    case 'm':
-        type = CMD_ARG_USE_MARK | CMD_ARG_INT;
+    case 'q':  /* number: negated converted prefix argument */
+        type = CMD_ARG_INT | CMD_ARG_NEG_ARGVAL;
         break;
-    case 'p':
-        type = CMD_ARG_USE_POINT | CMD_ARG_INT;
+    case 'm':  /* buffer mark as a number */
+        type = CMD_ARG_INT | CMD_ARG_USE_MARK;
         break;
-    case 'z':
-        type = CMD_ARG_USE_ZERO | CMD_ARG_INT;
+    case 'd':  /* point as a number */
+        type = CMD_ARG_INT | CMD_ARG_USE_POINT;
         break;
-    case 'e':
-        type = CMD_ARG_USE_BSIZE | CMD_ARG_INT;
+    case 'z':  /* the number 0, used to select full buffer contents */
+        type = CMD_ARG_INT | CMD_ARG_USE_ZERO;
         break;
-    case 'n':
+    case 'e':  /* the buffer size, used to select full buffer contents */
+        type = CMD_ARG_INT | CMD_ARG_USE_BSIZE;
+        break;
+    case 'n':  /* number read from minibuffer */
         type = CMD_ARG_INT;
         break;
-    case 'v':
+    case 'v':  /* the immediate value from CmdDef val field */
         type = CMD_ARG_INTVAL;
         break;
-    case 's':
+    case 's':  /* string read from minibuffer */
         type = CMD_ARG_STRING;
         break;
-    case 'S':   /* used in define_kbd_macro, and mode selection */
-        /* actual string is in prompt buffer */
+    case 'S':  /* immediate string from CmdDef prompt string */
+        /* used in define_kbd_macro, and mode selection */
+        /* must be the last argument */
         type = CMD_ARG_STRINGVAL;
         break;
     default:
@@ -4701,8 +4706,9 @@ int qe_get_prototype(const CmdDef *d, char *buf, int size)
         }
         sep = ", ";
         switch (cas.arg_type & ~CMD_ARG_TYPE_MASK) {
-        case CMD_ARG_USE_ARGVAL:
-        case CMD_ARG_MUL_ARGVAL:
+        case CMD_ARG_RAW_ARGVAL:
+        case CMD_ARG_NUM_ARGVAL:
+        case CMD_ARG_NEG_ARGVAL:
             buf_puts(out, "= argval");
             break;
         case CMD_ARG_USE_KEY:
@@ -4814,12 +4820,16 @@ static void parse_arguments(ExecCmdState *es)
             if (use_flag == CMD_ARG_USE_BSIZE) {
                 argp->n = s->b->total_size;
             } else
-            if (use_flag == CMD_ARG_USE_ARGVAL && es->argval != NO_ARG) {
+            if (use_flag == CMD_ARG_RAW_ARGVAL && es->argval != NO_ARG) {
                 argp->n = es->argval;
                 es->argval = NO_ARG;
             } else
-            if (use_flag == CMD_ARG_MUL_ARGVAL) {
-                argp->n = d->val * ((es->argval == NO_ARG) ? 1 : es->argval);
+            if (use_flag == CMD_ARG_NUM_ARGVAL) {
+                argp->n = ((es->argval == NO_ARG) ? 1 : es->argval);
+                es->argval = NO_ARG;
+            } else
+            if (use_flag == CMD_ARG_NEG_ARGVAL) {
+                argp->n = -((es->argval == NO_ARG) ? 1 : es->argval);
                 es->argval = NO_ARG;
             } else {
                 /* CG: Should add syntax for default value if no prompt */
@@ -4828,14 +4838,6 @@ static void parse_arguments(ExecCmdState *es)
             }
             break;
         case CMD_ARG_STRING:
-#if 0
-            if (use_flag == CMD_ARG_USE_ARGVAL && es->argval != NO_ARG) {
-                char buf[32];
-                snprintf(buf, sizeof(buf), "%d", es->argval);
-                argp->p = qe_strdup(buf);  // XXX: memory leak?
-                es->argval = NO_ARG;
-            } else
-#endif
             {
                 argp->p = NULL;
                 get_arg = 1;
@@ -6616,7 +6618,7 @@ static const CmdDef minibuffer_commands[] = {
     CMD2( "minibuffer-insert", "default",
           "Insert a character into the minibuffer",
           do_minibuffer_char, ESii,
-          "*" "k" "a")
+          "*" "k" "p")
     CMD1( "minibuffer-exit", "RET",
           "End the minibuffer input",
           do_minibuffer_exit, 0)
@@ -6633,12 +6635,12 @@ static const CmdDef minibuffer_commands[] = {
     CMD0( "minibuffer-complete-space", "SPC",
           "Try and complete the minibuffer input",
           do_minibuffer_complete_space)
-    CMD3( "minibuffer-previous-history-element", "C-p, up",
+    CMD2( "minibuffer-previous-history-element", "C-p, up",
           "Replace contents of the minibuffer with the previous historical entry",
-          do_minibuffer_history, ESi, "A", -1)
-    CMD3( "minibuffer-next-history-element", "C-n, down",
+          do_minibuffer_history, ESi, "q")
+    CMD2( "minibuffer-next-history-element", "C-n, down",
           "Replace contents of the minibuffer with the next historical entry",
-          do_minibuffer_history, ESi, "A", +1)
+          do_minibuffer_history, ESi, "p")
     CMD2( "minibuffer-electric-key", "/, ~",
           "Insert a character into the minibuffer with side effects",
           do_minibuffer_electric_key, ESi, "*" "k")
@@ -6724,7 +6726,7 @@ static const CmdDef popup_commands[] = {
           do_popup_exit)
     CMD3( "popup-isearch", "/",
           "Search for contents",
-          do_isearch, ESii, "a" "v", 1)
+          do_isearch, ESii, "p" "v", 1)
 };
 
 static void popup_init(void)

@@ -551,7 +551,7 @@ void do_isearch(EditState *s, int argval, int dir)
         else
             flags |= SEARCH_FLAG_HEX;
     }
-    if (argval != NO_ARG)
+    if (argval != 1)
         flags |= SEARCH_FLAG_REGEX;
 
     is->search_flags = flags;
@@ -844,7 +844,7 @@ void do_replace_string(EditState *s, const char *search_str,
                        const char *replace_str, int argval)
 {
     int flags = SEARCH_FLAG_SMARTCASE;
-    if (argval != NO_ARG)
+    if (argval != 1)
         flags |= SEARCH_FLAG_WORD;
     query_replace(s, search_str, replace_str, 1, flags);
 }
@@ -956,10 +956,10 @@ static const CmdDef search_commands[] = {
     /* passing argument should switch to regex incremental search */
     CMD3( "isearch-backward", "C-r",
           "Search backward incrementally",
-          do_isearch, ESii, "a" "v", -1)
+          do_isearch, ESii, "p" "v", -1)
     CMD3( "isearch-forward", "C-s",
           "Search forward incrementally",
-          do_isearch, ESii, "a" "v", 1)
+          do_isearch, ESii, "p" "v", 1)
     CMD2( "query-replace", "M-%",
           "Replace a string with another interactively",
           do_query_replace, ESss, "*"
@@ -972,7 +972,7 @@ static const CmdDef search_commands[] = {
           do_replace_string, ESssi, "*"
           "s{Replace String: }|search|"
           "s{With: }|replace|"
-          "a")
+          "p")
 };
 
 static int search_init(void) {

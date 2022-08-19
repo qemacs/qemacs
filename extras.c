@@ -134,14 +134,12 @@ void do_compare_windows(EditState *s, int argval)
             continue;
         break;
     }
-    if (argval != NO_ARG) {
-        if (argval & 4)
-            qs->ignore_spaces ^= 1;
-        if (argval & 16)
-            qs->ignore_comments ^= 1;
-        if (argval & 64)
-            qs->ignore_case ^= 1;
-    }
+    if (argval & 4)
+        qs->ignore_spaces ^= 1;
+    if (argval & 16)
+        qs->ignore_comments ^= 1;
+    if (argval & 64)
+        qs->ignore_case ^= 1;
 
     size1 = s1->b->total_size;
     size2 = s2->b->total_size;
@@ -928,14 +926,42 @@ void do_show_bindings(EditState *s, const char *cmd_name)
     }
 }
 
-#define SF_REVERSE    0x01
+static void do_describe_function(EditState *s, const char *cmd_name) {
+    EditBuffer *b;
+    const CmdDef *d;
+    const char *desc;
+
+    if ((d = qe_find_cmd(cmd_name)) == NULL) {
+        put_status(s, "No command %s", cmd_name);
+        return;
+    }
+    b = new_help_buffer();
+    if (!b)
+        return;
+
+    eb_putc(b, '\n');
+    desc = d->spec + strlen(d->spec) + 1;
+    /* print name, prototype, bindings and description */
+    eb_command_print_entry(b, d, s);
+    eb_putc(b, '\n');
+    if (*desc) {
+        /* print short description */
+        eb_printf(b, "  %s\n", desc);
+    }
+    // XXX: should look up markdown documentation
+    b->flags |= BF_READONLY;
+    show_popup(s, b, "Help");
+}
+
+// Sort Flags: do not use 1 for argval compatibility
 #define SF_FOLD       0x02
-#define SF_DICT       0x04
-#define SF_NUMBER     0x08
-#define SF_COLUMN     0x10
-#define SF_BASENAME   0x20
-#define SF_PARAGRAPH  0x40
-#define SF_SILENT     0x80
+#define SF_REVERSE    0x04
+#define SF_DICT       0x08
+#define SF_NUMBER     0x10
+#define SF_COLUMN     0x20
+#define SF_BASENAME   0x40
+#define SF_PARAGRAPH  0x80
+#define SF_SILENT     0x100
 static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int flags);
 
 static void print_bindings(EditBuffer *b, ModeDef *mode)
@@ -1688,6 +1714,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
         p2 = eb_next_line(b, p2);
     }
     /* XXX: should also support rectangular selection */
+    // columns of the mark and point should determine the column range
     if (flags & SF_COLUMN) {
         eb_get_pos(b, &line, &col, cur_offset);
         ctx.col = col ? col : col1;
@@ -1790,10 +1817,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
 
 static void do_sort_span(EditState *s, int p1, int p2, int argval, int flags) {
     s->region_style = 0;
-    if (argval != NO_ARG)
-        flags |= argval;
-
-    if (eb_sort_span(s->b, &p1, &p2, s->offset, flags) < 0) {
+    if (eb_sort_span(s->b, &p1, &p2, s->offset, flags | argval) < 0) {
         put_status(s, "Out of memory");
         return;
     }
@@ -2174,12 +2198,12 @@ void do_fill_paragraph(EditState *s)
 static const CmdDef extra_commands[] = {
     CMD2( "compare-windows", "M-=",
           "Compare windows, optionally ignoring white space, comments and case",
-          do_compare_windows, ESi, "a")
+          do_compare_windows, ESi, "p")
     CMD3( "compare-files", "C-x C-l",
           "Compare file and other version in parent directory",
           do_compare_files, ESsi,
           "s{Compare file: }[file]|file|"
-          "v", 0) /* u? */
+          "v", 0) /* p? */
     CMD2( "delete-horizontal-space", "M-\\",
           "Delete blanks around point",
           do_delete_horizontal_space, ES, "*")
@@ -2188,10 +2212,10 @@ static const CmdDef extra_commands[] = {
           do_delete_blank_lines, ES, "*")
     CMD2( "tabify-region", "",
           "Convert multiple spaces in region to tabs when possible",
-          do_tabify, ESii, "*" "mp")
+          do_tabify, ESii, "*" "md")
     CMD2( "untabify-region", "",
           "Convert all tabs in region to spaces, preserving columns",
-          do_untabify, ESii, "*" "mp")
+          do_untabify, ESii, "*" "md")
     CMD2( "tabify-buffer", "",
           "Convert multiple spaces in buffer to tabs when possible",
           do_tabify, ESii, "*" "ze")
@@ -2201,27 +2225,27 @@ static const CmdDef extra_commands[] = {
 
     CMD2( "indent-region", "M-C-\\",
           "Indent each nonblank line in the region",
-          do_indent_region, ESii, "*" "mp")
+          do_indent_region, ESii, "*" "md")
     CMD2( "indent-buffer", "",
           "Indent each nonblank line in the buffer",
           do_indent_region, ESii, "*" "ze")
 
     CMD2( "show-date-and-time", "C-x t",
           "Show current date and time",
-          do_show_date_and_time, ESi, "a")
+          do_show_date_and_time, ESi, "P")
 
-    CMD3( "backward-block", "M-C-b, ESC C-left",
+    CMD2( "backward-block", "M-C-b, ESC C-left",
           "Move backwards past parenthesized expression, ignoring comments and strings",
-          do_forward_block, ESi, "A", -1)
-    CMD3( "forward-block", "M-C-f, ESC C-right",
+          do_forward_block, ESi, "q")
+    CMD2( "forward-block", "M-C-f, ESC C-right",
           "Move past parenthesized expression, ignoring comments and strings",
-          do_forward_block, ESi, "A", +1)
-    CMD3( "backward-kill-block", "ESC delete",
+          do_forward_block, ESi, "p")
+    CMD2( "backward-kill-block", "ESC delete",
           "Kill from point to the beginning of the previous block",
-          do_kill_block, ESi, "A", -1)
-    CMD3( "kill-block", "M-C-k",
+          do_kill_block, ESi, "q")
+    CMD2( "kill-block", "M-C-k",
           "Kill from point to the end of the next block",
-          do_kill_block, ESi, "A", +1)
+          do_kill_block, ESi, "p")
           /* Should also have mark-block on C-M-@ */
 
     CMD3( "transpose-chars", "C-t",
@@ -2234,6 +2258,10 @@ static const CmdDef extra_commands[] = {
           "Swap words before and after point",
           do_transpose, ESi, "*" "v", CMD_TRANSPOSE_WORDS)
 
+    CMD2( "show-bindings", "C-h B, f5",
+          "Show current bindings for a given command",
+          do_show_bindings, ESs,
+          "s{Show bindings of command: }[command]|command|")
     CMD3( "global-unset-key", "",
           "Remove global key binding",
           do_unset_key, ESsi,
@@ -2245,6 +2273,9 @@ static const CmdDef extra_commands[] = {
           "s{Unset key locally: }[key]"
           "v", 1)
 
+    // XXX: should have `qemacs-faq` on `C-h C-f`
+    // XXX: should have `qemacs-manual` on `C-h m`
+    // XXX: should have `describe-variable` with documentation on `C-h v`
     CMD0( "about-qemacs", "C-h ?, f1",
           "Display information about Quick Emacs",
           do_about_qemacs)
@@ -2254,20 +2285,20 @@ static const CmdDef extra_commands[] = {
           "s{Apropos: }[symbol]|apropos|")
     CMD2( "describe-bindings", "C-h b",
           "List local and global key bindings",
-          do_describe_bindings, ESi, "a")
-    CMD2( "show-bindings", "C-h B",
-          "Show current bindings for a given command",
-          do_show_bindings, ESs,
-          "s{Show bindings of command: }[command]|command|")
+          do_describe_bindings, ESi, "p")
+    CMD2( "describe-function", "C-h f",
+          "Show information and bindings for a given command",
+          do_describe_function, ESs,
+          "s{Describe function: }[command]|command|")
     CMD2( "describe-buffer", "C-h C-b",
           "Show information about the current buffer",
-          do_describe_buffer, ESi, "a")
+          do_describe_buffer, ESi, "p")
     CMD2( "describe-window", "C-h w, C-h C-w",
           "Show information about the current window",
-          do_describe_window, ESi, "a")
+          do_describe_window, ESi, "p")
     CMD2( "describe-screen", "C-h s, C-h C-s",
           "Show information about the current screen",
-          do_describe_screen, ESi, "a")
+          do_describe_screen, ESi, "p")
 
     /* XXX: should take region as argument, implicit from keyboard */
     CMD2( "set-region-color", "C-c c",
@@ -2287,25 +2318,27 @@ static const CmdDef extra_commands[] = {
           do_set_eol_type, ESi,
           "a{EOL Type [0=Unix, 1=Dos, 2=Mac]: }")
 
-    /* XXX: should take region as argument, implicit from keyboard */
-    /* XXX: should have sort-lines, sort-numeric-fields, sort-paragraphs */
-    /* XXX: numeric argument means reverse sort */
+    // XXX: should take region as argument, implicit from keyboard
+    // XXX: should have sort-fields and sort-numeric-fields
     CMD3( "sort-buffer", "",
           "Sort the buffer contents according to sorting options",
-          do_sort_buffer, ESii, "*" "a" "v", 0)
-    CMD3( "reverse-sort-buffer", "",
-          "Sort the buffer contents in reverse order according to sorting options",
-          do_sort_buffer, ESii, "*" "a" "v", SF_REVERSE)
-    CMD3( "sort-region", "",
-          "Sort the region according to sorting options",
-          do_sort_region, ESii, "*" "a" "v", 0)
-    CMD3( "reverse-sort-region", "",
-          "Sort the region in reverse order according to sorting options",
-          do_sort_region, ESii, "*" "a" "v", SF_REVERSE)
+          do_sort_buffer, ESii, "*" "p" "v", 0)
+    CMD3( "sort-columns", "",
+          "Sort the lines in the region from the current column",
+          do_sort_region, ESii, "*" "p" "v", SF_COLUMN)
+    CMD3( "sort-lines", "",
+          "Sort the lines in the region according to sorting options",
+          do_sort_region, ESii, "*" "p" "v", 0)
+    CMD3( "sort-numbers", "",
+          "Sort the lines in the region as numbers",
+          do_sort_region, ESii, "*" "p" "v", SF_NUMBER)
+    CMD3( "sort-paragraphs", "",
+          "Sort the paragraphs in the region as numbers",
+          do_sort_region, ESii, "*" "p" "v", SF_PARAGRAPH)
 
     CMD2( "list-tags", "",
           "List the buffer tags detected automatically",
-          do_list_tags, ESi, "a")
+          do_list_tags, ESi, "p")
     CMD0( "goto-tag", "C-x ,, M-f1",
           "Move point to the tag for the word at point",
           do_goto_tag)
@@ -2316,22 +2349,22 @@ static const CmdDef extra_commands[] = {
 
     /*---------------- Paragraph handling ----------------*/
 
-    CMD3( "mark-paragraph", "M-h",
+    CMD2( "mark-paragraph", "M-h",
           "Mark the paragraph at or after point",
-          do_mark_paragraph, ESi, "A", +1)
-    CMD3( "backward-paragraph", "M-{, C-up",
+          do_mark_paragraph, ESi, "p")
+    CMD2( "backward-paragraph", "M-{, C-up",
           "Move point to the beginning of the paragraph at or before point",
-          do_forward_paragraph, ESi, "A", -1)
-    CMD3( "forward-paragraph", "M-}, C-down",
+          do_forward_paragraph, ESi, "q")
+    CMD2( "forward-paragraph", "M-}, C-down",
           "Move point to the end of the paragraph at or before point",
-          do_forward_paragraph, ESi, "A", +1)
+          do_forward_paragraph, ESi, "p")
     CMD2( "fill-paragraph", "M-q",
           "Fill the current paragraph, preserving indentation of the first 2 lines",
           do_fill_paragraph, ES, "*")
     /* should have fill-region, fill-buffer */
-    CMD3( "kill-paragraph", "",
+    CMD2( "kill-paragraph", "",
           "Kill the paragraph at or after point",
-          do_kill_paragraph, ESi, "A", 1)
+          do_kill_paragraph, ESi, "p")
 };
 
 static int extras_init(void)

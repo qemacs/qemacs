@@ -30,20 +30,20 @@ static const CmdDef basic_commands[] = {
 
     CMD2( "self-insert-command", "default",
           "Insert the character you type",
-          do_char, ESii, "*" "k" "a")
+          do_char, ESii, "*" "k" "p")
     CMD2( "insert-char", "M-#",
           "Insert the character with a specific code",
           do_char, ESii, "*"
           "n{Insert char: }|charvalue|"
-          "a")
+          "p")
     /* do_tab will not change read only buffer */
     CMD2( "tabulate", "TAB",
           "Insert a TAB or spaces according to indent-tabs-mode",
-          do_tab, ESi, "a")
-    //CMD2( "space", "SPC", "Insert a space", do_space, "*" "a")
+          do_tab, ESi, "p")
+    //CMD2( "space", "SPC", "Insert a space", do_space, "*" "P")
     CMD2( "quoted-insert", "C-q",
           "Read next input character and insert it",
-          do_quoted_insert, ESi, "*" "a")
+          do_quoted_insert, ESi, "*" "p")
     CMD2( "newline", "C-j, RET",
           "Insert a newline, and move to left margin of the new line",
           do_newline, ES, "*")
@@ -53,7 +53,7 @@ static const CmdDef basic_commands[] = {
 
     CMD2( "overwrite-mode", "insert",
           "Toggle between overwrite mode and insert mode",
-          do_overwrite_mode, ESi, "a")
+          do_overwrite_mode, ESi, "P")
     CMD3( "insert-mode", "",
           "Select insert mode",
           do_overwrite_mode, ESi, "v", 0)
@@ -79,24 +79,24 @@ static const CmdDef basic_commands[] = {
 
     /* Moving around */
 
-    CMD3( "previous-line", "C-p, up",
+    CMD2( "previous-line", "C-p, up",
           "Move to previous line",
-          do_up_down, ESi, "A", -1)
-    CMD3( "next-line", "C-n, down",
+          do_up_down, ESi, "q")
+    CMD2( "next-line", "C-n, down",
           "Move to next line",
-          do_up_down, ESi, "A", +1)
-    CMD3( "backward-char", "C-b, left",
+          do_up_down, ESi, "p")
+    CMD2( "backward-char", "C-b, left",
           "Move to the previous character",
-          do_left_right, ESi, "A", -1)
-    CMD3( "forward-char", "C-f, right",
+          do_left_right, ESi, "q")
+    CMD2( "forward-char", "C-f, right",
           "Move to the next character",
-          do_left_right, ESi, "A", +1)
-    CMD3( "backward-word", "M-b, C-left",
+          do_left_right, ESi, "p")
+    CMD2( "backward-word", "M-b, C-left",
           "Move to the beginning of the word on or before point",
-          do_word_left_right, ESi, "A", -1)
-    CMD3( "forward-word", "M-f, C-right",
+          do_word_left_right, ESi, "q")
+    CMD2( "forward-word", "M-f, C-right",
           "Move to the end of the word on or after point",
-          do_word_left_right, ESi, "A", +1)
+          do_word_left_right, ESi, "p")
     CMD1( "scroll-down", "M-v, pageup",
           "Display the previous page",
           do_scroll_up_down, -2) /* u? */
@@ -128,10 +128,10 @@ static const CmdDef basic_commands[] = {
      * they should merely copy the data to the kill ring */
     CMD2( "delete-char", "C-d, delete",
           "Delete the character at point",
-          do_delete_char, ESi, "*" "a")
+          do_delete_char, ESi, "*" "P")
     CMD2( "backward-delete-char", "DEL",
           "Delete the character before point",
-          do_backspace, ESi, "*" "a")
+          do_backspace, ESi, "*" "P")
     CMD0( "set-mark-command", "C-@",
           "Set the buffer mark",
           do_set_mark)
@@ -146,19 +146,19 @@ static const CmdDef basic_commands[] = {
           do_append_next_kill)
     CMD2( "kill-line", "C-k",
           "Kill to the end of line",
-          do_kill_line, ESi, "a")
-    CMD3( "kill-whole-line", "M-k", // should be C-S-Backspace
+          do_kill_line, ESi, "P")
+    CMD2( "kill-whole-line", "M-k", // should be C-S-Backspace
           "Kill the line at point",
-          do_kill_whole_line, ESi, "A", 1)
+          do_kill_whole_line, ESi, "p")
     CMD2( "kill-beginning-of-line", "",
           "Kill to the beginning of the line",
-          do_kill_beginning_of_line, ESi, "a")
-    CMD3( "backward-kill-word", "M-DEL, M-C-h",
+          do_kill_beginning_of_line, ESi, "P")
+    CMD2( "backward-kill-word", "M-DEL, M-C-h",
           "Kill to the beginning of the word at or before point",
-          do_kill_word, ESi, "A", -1)
-    CMD3( "kill-word", "M-d",
+          do_kill_word, ESi, "q")
+    CMD2( "kill-word", "M-d",
           "Kill to the end of the word at or after point",
-          do_kill_word, ESi, "A", +1)
+          do_kill_word, ESi, "p")
     /* XXX: should take region as argument, implicit from keyboard */
     CMD1( "kill-region", "C-w",
           "Kill the current region",
@@ -225,7 +225,7 @@ static const CmdDef basic_commands[] = {
           do_toggle_read_only)
     CMD2( "not-modified", "M-~",
           "Toggle the modified flag of the current buffer",
-          do_not_modified, ESi, "a")
+          do_not_modified, ESi, "P")
     CMD2( "set-visited-file-name", "",
           "",
           do_set_visited_file_name, ESss,
@@ -256,11 +256,11 @@ static const CmdDef basic_commands[] = {
 
     /*---------------- Command handling ----------------*/
 
-    CMD2( "execute-command", "M-x",
+    CMD2( "execute-command", "M-x, f2",
           "Run a named command",
           do_execute_command, ESsi,
           "s{Command: }[command]|command|"
-          "a")
+          "P")
     /* M-0 thru M-9 also start numeric argument */
     CMD0( "numeric-argument",
           "C-u, M--, M-0, M-1, M-2, M-3, M-4, M-5, M-6, M-7, M-8, M-9",
@@ -286,7 +286,7 @@ static const CmdDef basic_commands[] = {
           "s{Macro keys: }|macrokeys|"
           "s{Bind to key: }[key]")
     /* set/unset key? */
-    CMD3( "global-set-key", "",
+    CMD3( "global-set-key", "f4",
           "Register a global key binding",
           do_set_key, ESssi,
           "s{Set key globally: }[key]"
@@ -327,12 +327,12 @@ static const CmdDef basic_commands[] = {
     CMD1( "find-window-right", "C-x right",
           "Move the focus to the window to the right of the current one",
           do_find_window, KEY_RIGHT)
-    CMD3( "scroll-left", "M-(",
+    CMD2( "scroll-left", "M-(",
           "Shift the window contents to the left",
-          do_scroll_left_right, ESi, "A", -1)
-    CMD3( "scroll-right", "M-)",
+          do_scroll_left_right, ESi, "q")
+    CMD2( "scroll-right", "M-)",
           "Shift the window contents to the right",
-          do_scroll_left_right, ESi, "A", +1)
+          do_scroll_left_right, ESi, "p")
     CMD1( "preview-mode", "",
           "Enter preview mode: cursor movement keys cause window scrolling",
           do_preview_mode, 1)
@@ -354,10 +354,10 @@ static const CmdDef basic_commands[] = {
           do_delete_hidden_windows)
     CMD3( "split-window-vertically", "C-x 2",
           "Split the current window top and bottom",
-          do_split_window, ESii, "a" "v", SW_STACKED)
+          do_split_window, ESii, "P" "v", SW_STACKED)
     CMD3( "split-window-horizontally", "C-x 3",
           "Split the current window side by side",
-          do_split_window, ESii, "a" "v", SW_SIDE_BY_SIDE)
+          do_split_window, ESii, "P" "v", SW_SIDE_BY_SIDE)
     CMD0( "toggle-full-screen", "C-c f",
           "Toggle full screen display (on graphics displays)",
           do_toggle_full_screen)
@@ -379,7 +379,7 @@ static const CmdDef basic_commands[] = {
           "Set the trace options",
           do_set_trace_options, ESs,
           "s{Trace options: }|trace|")
-    CMD0( "describe-key-briefly", "C-h c, C-h k",
+    CMD0( "describe-key-briefly", "C-h c, C-h k, f6",
           "Describe a key binding",
           do_describe_key_briefly)
     CMD0( "help-for-help", "C-h C-h, f1",
@@ -439,14 +439,14 @@ static const CmdDef basic_commands[] = {
 
     CMD2( "exit-qemacs", "C-x C-c",
           "Exit Quick Emacs",
-          do_exit_qemacs, ESi, "a")
+          do_exit_qemacs, ESi, "P")
     CMD0( "refresh", "C-l",
           "Refresh the display, center the window contents at point",
           do_refresh_complete)
-    CMD0( "undo", "C-x u, C-_",
+    CMD0( "undo", "C-x u, C-_, f9",
           "Undo the last change",
           do_undo)
-    CMD0( "redo", "C-x r, C-x C-_",
+    CMD0( "redo", "C-x r, C-x C-_, f10",
           "Redo the last change undone",
           do_redo)
     CMD3( "goto-line", "M-g",
@@ -483,7 +483,7 @@ static const CmdDef basic_commands[] = {
           "Select emacs flavor emulation",
           do_set_emulation, ESs,
           "s{Emulation mode: }|emulation|")
-    CMD2( "cd", "",
+    CMD2( "cd", "f7",
           "Change the current directory of the qemacs process",
           do_cd, ESs,
           "s{Change default directory: }[dir]|file|")
@@ -497,12 +497,12 @@ static const CmdDef basic_commands[] = {
     CMD1( "set-auto-mode", "",
           "Select the best mode",
           do_set_next_mode, 0)
-    CMD3( "set-next-mode", "M-m",
+    CMD2( "set-next-mode", "M-m",
           "Select the next mode appropriate for the current buffer",
-          do_set_next_mode, ESi, "A", +1)
-    CMD3( "set-previous-mode", "",
+          do_set_next_mode, ESi, "p")
+    CMD2( "set-previous-mode", "",
           "Select the previous mode appropriate for the current buffer",
-          do_set_next_mode, ESi, "A", -1)
+          do_set_next_mode, ESi, "q")
 
     /* tab & indent */
     CMD2( "set-tab-width", "",

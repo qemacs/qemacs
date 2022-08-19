@@ -503,7 +503,7 @@ static void bufed_mode_free(EditBuffer *b, void *state)
 
 /* specific bufed commands */
 static const CmdDef bufed_commands[] = {
-    CMD1( "bufed-select", "RET, SPC",
+    CMD1( "bufed-select", "RET, SPC, e, q",
           "Select buffer from current line and close bufed popup window",
           bufed_select, 0)
     CMD1( "bufed-abort", "C-g, C-x C-g",
@@ -523,7 +523,7 @@ static const CmdDef bufed_commands[] = {
     CMD1( "bufed-refresh", "r, g",
           "Refreh buffer list",
           bufed_refresh, 0)
-    CMD0( "bufed-kill-buffer", "k, d",
+    CMD0( "bufed-kill-buffer", "k, d, DEL, delete",
           "Kill buffer at current line in bufed window",
           bufed_kill_buffer)
     CMD1( "bufed-unsorted", "u",
@@ -549,7 +549,7 @@ static const CmdDef bufed_commands[] = {
 static const CmdDef bufed_global_commands[] = {
     CMD2( "buffer-list", "C-x C-b",
           "Show the buffer list in a popup window",
-          do_buffer_list, ESi, "a")
+          do_buffer_list, ESi, "P")
 };
 
 static int bufed_init(void)
@@ -571,10 +571,6 @@ static int bufed_init(void)
     /* register extra bindings */
     qe_register_binding('n', "next-line", &bufed_mode);
     qe_register_binding('p', "previous-line", &bufed_mode);
-    qe_register_binding('e', "bufed-select", &bufed_mode);
-    qe_register_binding('q', "bufed-select", &bufed_mode);
-    qe_register_binding(KEY_DEL, "bufed-kill-buffer", &bufed_mode);
-    qe_register_binding(KEY_BS, "bufed-kill-buffer", &bufed_mode);
 
     return 0;
 }
