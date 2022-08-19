@@ -203,8 +203,9 @@ insert_window_left()  deletes some left-most windows
 * basic: improve speed: `C-x C-f ~/x2m RET A-r 20140101 RET 20140101 RET` -> 96s
 * basic: improve speed: `C-x C-f ~/x2m RET C-u 1000 C-n` -> 4s
 
-### Moving / Editing
+### Moving / Editing / Navigation
 
+* basic: pass argval and pagewise to `do_scroll_up_down()` or split command
 * files: fix `SPC` / `TAB` distinct behaviors on **~/comp/project/gnachman/**
 * basic: update default settings to `indent_tabs_mode = 0`, `indent_width = 4`, my-colors
 * basic: add property lists in buffer and window for default directory and similar properties (override)

@@ -859,29 +859,29 @@ static void pixel_format_complete(CompleteState *cp)
 
 /* specific image commands */
 static const CmdDef image_commands[] = {
-    CMD0( "image-rotate", "t",
-          image_rotate, "")
-    CMD2( "image-convert", "c",
+    CMD0( "image-rotate", "t", "",
+          image_rotate)
+    CMD2( "image-convert", "c", "",
           image_convert, ESs,
-          "s{New pixel format: }[pixel-format]|pixel-format|", "")
-    CMD2( "image-set-background-color", "b",
+          "s{New pixel format: }[pixel-format]|pixel-format|")
+    CMD2( "image-set-background-color", "b", "",
           image_set_background_color, ESs,
-          "s{Background color (use 'transparent' for tiling): }", "")
+          "s{Background color (use 'transparent' for tiling): }")
 #if 1
-    CMD0( "image-normal-size", "n",
-          image_normal_size, "")
-    CMD1( "image-double-size", ">",
-          image_mult_size, 100, "")
-    CMD1( "image-halve-size", "<",
-          image_mult_size, -50, "")
-    CMD1( "image-larger-10", ".",
-          image_mult_size, 10, "")
-    CMD1( "image-smaller-10", ",",
-          image_mult_size, -10, "")
-    CMD2( "image-set-display-size", "S",
+    CMD0( "image-normal-size", "n", "",
+          image_normal_size)
+    CMD1( "image-double-size", ">", "",
+          image_mult_size, 100)
+    CMD1( "image-halve-size", "<", "",
+          image_mult_size, -50)
+    CMD1( "image-larger-10", ".", "",
+          image_mult_size, 10)
+    CMD1( "image-smaller-10", ",", "",
+          image_mult_size, -10)
+    CMD2( "image-set-display-size", "S", "",
           image_set_size, ESii,
           "n{Displayed width: }"
-          "n{Displayed height: }", "")
+          "n{Displayed height: }")
 #endif
 };
 

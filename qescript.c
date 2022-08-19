@@ -862,7 +862,7 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
             args[i].s = s;
             continue;
         case CMD_ARG_INTVAL:
-            args[i].n = (int)(intptr_t)d->val;
+            args[i].n = d->val;
             continue;
         case CMD_ARG_STRINGVAL:
             /* CG: kludge for xxx-mode functions and named kbd macros,
@@ -1220,20 +1220,20 @@ static CompletionDef symbol_completion = {
 
 static const CmdDef parser_commands[] = {
     CMD2( "eval-expression", "M-:",
+          "Evaluate a qemacs expression",
           do_eval_expression, ESsi,
           "s{Eval: }[.symbol]|expression|"
-          "p",
-          "Evaluate a qemacs expression")
+          "a")
     CMD0( "eval-region", "",
-          do_eval_region,
-          "Evaluate qemacs expressions in a region")
+          "Evaluate qemacs expressions in a region",
+          do_eval_region)
     CMD0( "eval-buffer", "",
-          do_eval_buffer,
-          "Evaluate qemacs expressions in the buffer")
+          "Evaluate qemacs expressions in the buffer",
+          do_eval_buffer)
 #ifndef CONFIG_TINY
     CMD1( "save-session", "",
-          do_save_session, 1,
-          "Save the current session in a .qesession file")
+          "Save the current session in a .qesession file",
+          do_save_session, 1)
 #endif
 };
 

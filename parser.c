@@ -271,7 +271,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 continue;
             case CMD_ARG_INTVAL:
             case CMD_ARG_MUL_ARGVAL | CMD_ARG_INT:
-                args[i].n = (int)(intptr_t)d->val;
+                args[i].n = d->val;
                 continue;
             case CMD_ARG_STRINGVAL:
                 /* CG: kludge for xxx-mode functions and named kbd macros,
@@ -425,21 +425,21 @@ void do_save_session(EditState *s, int popup)
 
 static const CmdDef parser_commands[] = {
     CMD2( "eval-expression", "M-:",
+          "Evaluate a qemacs expression",
           do_eval_expression, ESsi,
           "s{Eval: }|expression|"
-          "p",
-          "Evaluate a qemacs expression")
+          "a")
     /* XXX: should take region as argument, implicit from keyboard */
     CMD0( "eval-region", "",
-          do_eval_region,
-          "Evaluate qemacs expressions in a region")
+          "Evaluate qemacs expressions in a region",
+          do_eval_region)
     CMD0( "eval-buffer", "",
-          do_eval_buffer,
-          "Evaluate qemacs expressions in the buffer")
+          "Evaluate qemacs expressions in the buffer",
+          do_eval_buffer)
 #ifndef CONFIG_TINY
     CMD1( "save-session", "",
-          do_save_session, 1,
-          "Save the current session in a .qesession file")
+          "Save the current session in a .qesession file",
+          do_save_session, 1)
 #endif
 };
 

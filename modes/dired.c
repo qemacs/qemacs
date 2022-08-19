@@ -1310,62 +1310,62 @@ void do_dired(EditState *s, int argval)
 /* specific dired commands */
 static const CmdDef dired_commands[] = {
     CMD1( "dired-enter", "RET",
-          dired_select, 1,
-          "Select the current entry")
+          "Select the current entry",
+          dired_select, 1)
     CMD1( "dired-right", "right",
-          dired_select, 0,
-          "Select the current entry in preview mode")
+          "Select the current entry in preview mode",
+          dired_select, 0)
     CMD0( "dired-tab", "TAB",
-          do_other_window,
-          "Move focus to the current file")
+          "Move focus to the current file",
+          do_other_window)
     /* dired-abort should restore previous buffer in right-window */
     CMD1( "dired-abort", "C-g, q",
-          do_delete_window, 0,
-          "Quit the dired mode")
+          "Quit the dired mode",
+          do_delete_window, 0)
     CMD1( "dired-unmark-backward", "DEL",
-          dired_mark, -1,
-          "Move to the previous entry and unmark it")
+          "Move to the previous entry and unmark it",
+          dired_mark, -1)
     CMD2( "dired-sort", "s",
+          "Sort entries using option string",
           dired_sort, ESs,
-          "s{Sort order [nesdug+-r]: }|sortkey|",
-          "Sort entries using option string")
+          "s{Sort order [nesdug+-r]: }|sortkey|")
     CMD2( "dired-set-time-format", "t",
+          "Select the format for file times",
           dired_set_time_format, ESi,
-          "n{Time format: }[timeformat]",
-          "Select the format for file times")
+          "n{Time format: }[timeformat]")
     /* s -> should also change switches */
     CMD1( "dired-delete", "d",
-          dired_mark, 'D',
-          "Mark the entry for deletion")
+          "Mark the entry for deletion",
+          dired_mark, 'D')
     CMD1( "dired-copy", "c",
-          dired_mark, 'C',
-          "Mark the entry for copying")
+          "Mark the entry for copying",
+          dired_mark, 'C')
     CMD1( "dired-move", "m",
-          dired_mark, 'M',
-          "Mark the entry for moving")
+          "Mark the entry for moving",
+          dired_mark, 'M')
     CMD1( "dired-unmark", "u",
-          dired_mark, ' ',
-          "Unmark the current entry")
+          "Unmark the current entry",
+          dired_mark, ' ')
     CMD0( "dired-execute", "x",
-          dired_execute,
-          "Execute the pending operations on marked entries (not implemented yet)")
+          "Execute the pending operations on marked entries (not implemented yet)",
+          dired_execute)
     CMD1( "dired-next-line", "n, C-n, down, SPC",
-          dired_up_down, 1,
-          "Move to the next entry")
+          "Move to the next entry",
+          dired_up_down, 1)
     CMD1( "dired-previous-line", "p, C-p, up",
-          dired_up_down, -1,
-          "Move to the previous entry")
+          "Move to the previous entry",
+          dired_up_down, -1)
     CMD0( "dired-refresh", "r",
-          dired_refresh,
-          "Refresh directory contents")
+          "Refresh directory contents",
+          dired_refresh)
     CMD1( "dired-toggle-dot-files", ".",
-          dired_toggle_dot_files, -1,
-          "Display or hide entries starting with .")
+          "Display or hide entries starting with .",
+          dired_toggle_dot_files, -1)
     /* g -> refresh all expanded dirs ? */
     /* l -> relist single directory or marked files ? */
     CMD0( "dired-parent", "^, left",
-          dired_parent,
-          "Select the parent directory")
+          "Select the parent directory",
+          dired_parent)
     /* need commands for splitting, unsplitting, zooming, making subdirs */
     /* h -> info */
     /* i, + -> create subdirectory */
@@ -1374,17 +1374,17 @@ static const CmdDef dired_commands[] = {
     /* C -> copy files */
     /* mark files globally */
     CMD0( "dired-toggle-human", "H",
-          dired_toggle_human,
-          "Change the format for file sizes (human readable vs: actual byte count)")
+          "Change the format for file sizes (human readable vs: actual byte count)",
+          dired_toggle_human)
     CMD0( "dired-toggle-nflag", "N",
-          dired_toggle_nflag,
-          "Change the format for uid and gid (name vs: number)")
+          "Change the format for uid and gid (name vs: number)",
+          dired_toggle_nflag)
 };
 
 static const CmdDef dired_global_commands[] = {
     CMD2( "dired", "C-x C-d",
-          do_dired, ESi, "p",
-          "Display the directory window and start dired mode")
+          "Display the directory window and start dired mode",
+          do_dired, ESi, "a")
 };
 
 #if 0
@@ -1556,22 +1556,22 @@ static int filelist_mode_init(EditState *s, EditBuffer *b, int flags)
 
 static const CmdDef filelist_commands[] = {
     CMD0( "filelist-select", "RET, right",
-          do_other_window,
-          "Select the current entry")
+          "Select the current entry",
+          do_other_window)
     CMD0( "filelist-tab", "TAB",
-          do_other_window,
-          "Select the current entry")
+          "Select the current entry",
+          do_other_window)
     /* filelist-abort should restore previous buffer in right-window
      * or at least exit preview mode */
     CMD1( "filelist-abort", "C-g",
-          do_delete_window, 0,
-          "Quit the filelist mode")
+          "Quit the filelist mode",
+          do_delete_window, 0)
 };
 
 static const CmdDef filelist_global_commands[] = {
     CMD2( "filelist", "",
-          do_filelist, ESi, "p",
-          "Run the filelist-mode on the current region")
+          "Run the filelist-mode on the current region",
+          do_filelist, ESi, "a")
 };
 
 static int filelist_init(void)

@@ -137,27 +137,27 @@ static void do_toggle_hex(EditState *s)
 /* common binary and hex commands */
 static const CmdDef binary_commands[] = {
     CMD3( "decrease-width", "c-left",
-          do_increase_width, ESi, -1, "P",
-          "Decrease the number of bytes displayed on each row")
+          "Decrease the number of bytes displayed on each row",
+          do_increase_width, ESi, "A", -1)
     CMD3( "increase-width", "c-right",
-          do_increase_width, ESi, +1, "P",
-          "Increase the number of bytes displayed on each row")
+          "Increase the number of bytes displayed on each row",
+          do_increase_width, ESi, "A", +1)
     CMD2( "set-width", "",
+          "Set the number of bytes displayed on each row",
           do_set_width, ESi,
-          "p{Width: }",
-          "Set the number of bytes displayed on each row")
+          "a{Width: }")
     CMD3( "goto-byte", "M-g",
-          do_goto, ESsi, 'b',
+          "Move point to a specified location",
+          do_goto, ESsi,
           "s{Goto byte: }"
-          "v",
-          "Move point to a specified location")
+          "v", 'b')
 };
 
 /* specific hex commands and bindings */
 static const CmdDef hex_commands[] = {
     CMD0( "toggle-hex", "TAB, S-TAB",
-          do_toggle_hex,
-          "Switch between the hex side and binary side")
+          "Switch between the hex side and binary side",
+          do_toggle_hex)
 };
 
 static int binary_mode_init(EditState *s, EditBuffer *b, int flags)

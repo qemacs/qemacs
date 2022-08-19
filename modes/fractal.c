@@ -1085,66 +1085,66 @@ static void fractal_display_hook(EditState *s) {
 
 static const CmdDef fractal_commands[] = {
     CMD3( "fractal-left", "left",
-          do_fractal_move_x, ESi, -1, "P",
-          "Move fractal origin left")
+          "Move fractal origin left",
+          do_fractal_move_x, ESi, "A", -1)
     CMD3( "fractal-right", "right",
-          do_fractal_move_x, ESi, +1, "P",
-          "Move fractal origin right")
+          "Move fractal origin right",
+          do_fractal_move_x, ESi, "A", +1)
     CMD3( "fractal-up", "up",
-          do_fractal_move_y, ESi, -1, "P",
-          "Move fractal origin up")
+          "Move fractal origin up",
+          do_fractal_move_y, ESi, "A", -1)
     CMD3( "fractal-down", "down",
-          do_fractal_move_y, ESi, +1, "P",
-          "Move fractal origin down")
+          "Move fractal origin down",
+          do_fractal_move_y, ESi, "A", +1)
     CMD3( "fractal-zoom-in", "+, SPC",
-          do_fractal_zoom, ESi, +1, "P",
-          "Increase fractal zoom level")
+          "Increase fractal zoom level",
+          do_fractal_zoom, ESi, "A", +1)
     CMD3( "fractal-zoom-out", "-, _",
-          do_fractal_zoom, ESi, -1, "P",
-          "Decrease fractal zoom level")
+          "Decrease fractal zoom level",
+          do_fractal_zoom, ESi, "A", -1)
     CMD3( "fractal-rotate-left", "\\, .",
-          do_fractal_rotate, ESi, +1, "P",
-          "Rotate fractal figure counterclockwise")
+          "Rotate fractal figure counterclockwise",
+          do_fractal_rotate, ESi, "A", +1)
     CMD3( "fractal-rotate-right", "/",
-          do_fractal_rotate, ESi, -1, "P",
-          "Rotate fractal figure clockwise")
+          "Rotate fractal figure clockwise",
+          do_fractal_rotate, ESi, "A", -1)
     CMD3( "fractal-rotate-none", "|",
-          do_fractal_rotate, ESi, 0, "v",
-          "Reset fractal rotation")
+          "Reset fractal rotation",
+          do_fractal_rotate, ESi, "v", 0)
     CMD3( "fractal-set-colors-default", "c",
-          do_fractal_set_colors, ESi, 0, "v",
-          "Reset fractal colors to default")
+          "Reset fractal colors to default",
+          do_fractal_set_colors, ESi, "v", 0)
     CMD3( "fractal-set-colors-gray", "g",
-          do_fractal_set_colors, ESi, 1, "v",
-          "Set fractal colors to gray scale")
+          "Set fractal colors to gray scale",
+          do_fractal_set_colors, ESi, "v", 1)
     CMD3( "fractal-shift-colors-left", "[",
-          do_fractal_shift_colors, ESi, -1, "P",
-          "Shift fractal color palette left")
+          "Shift fractal color palette left",
+          do_fractal_shift_colors, ESi, "A", -1)
     CMD3( "fractal-shift-colors-right", "]",
-          do_fractal_shift_colors, ESi, +1, "P",
-          "Shift fractal color palette right")
+          "Shift fractal color palette right",
+          do_fractal_shift_colors, ESi, "A", +1)
     CMD3( "fractal-iter-less", "{",
-          do_fractal_iter, ESi, -1, "P",
-          "Decrease the fractal iteration count")
+          "Decrease the fractal iteration count",
+          do_fractal_iter, ESi, "A", -1)
     CMD3( "fractal-iter-more", "}",
-          do_fractal_iter, ESi, +1, "P",
-          "Increase the fractal iteration count")
+          "Increase the fractal iteration count",
+          do_fractal_iter, ESi, "A", +1)
     CMD3( "fractal-bailout-less", "<",
-          do_fractal_bailout, ESi, -1, "P",
-          "Decrease the fractal bailout value")
+          "Decrease the fractal bailout value",
+          do_fractal_bailout, ESi, "A", -1)
     CMD3( "fractal-bailout-more", ">",
-          do_fractal_bailout, ESi, +1, "P",
-          "Increase the fractal bailout value")
+          "Increase the fractal bailout value",
+          do_fractal_bailout, ESi, "A", +1)
     CMD2( "fractal-set-type", "1, 2, 3, 4, 5, 6, 7, 8, 9",
-          do_fractal_set_type, ESi, "k",
-          "Select the fractal type (1-9)")
+          "Select the fractal type (1-9)",
+          do_fractal_set_type, ESi, "k")
     CMD2( "fractal-set-parameters", "=",
+          "Set the fractal parameters",
           do_fractal_set_parameters, ESs,
-          "s{Fractal parameters: }[mparm]|mparm|",
-          "Set the fractal parameters")
+          "s{Fractal parameters: }[mparm]|mparm|")
     CMD0( "fractal-help", "?, f1",
-          do_fractal_help,
-          "Show the fractal information and help window")
+          "Show the fractal information and help window",
+          do_fractal_help)
 };
 
 static int fractal_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -1220,8 +1220,8 @@ static void do_mandelbrot_test(EditState *s) {
 
 static const CmdDef fractal_global_commands[] = {
     CMD0( "mandelbrot-test", "C-h m",
-          do_mandelbrot_test,
-          "Explore the Mandelbrot set in fractal-mode")
+          "Explore the Mandelbrot set in fractal-mode",
+          do_mandelbrot_test)
 };
 
 static int fractal_init(void)

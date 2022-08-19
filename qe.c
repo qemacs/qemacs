@@ -4531,8 +4531,8 @@ typedef struct ExecCmdState {
     int argval;
     int key;
     const char *ptype;
-    CmdArg args[MAX_CMD_ARGS];
     unsigned char args_type[MAX_CMD_ARGS];
+    CmdArg args[MAX_CMD_ARGS];
     char default_input[512]; /* default input if none given */
 } ExecCmdState;
 
@@ -4581,7 +4581,7 @@ void call_func(CmdSig sig, CmdProto func, qe__unused__ int nb_args,
     }
 }
 
-static void get_param(const char **pp, char *param, int param_size, int osep, int sep)
+static void get_param(const char **pp, int osep, int sep, char *param, int param_size)
 {
     const char *p;
     char *q;
@@ -4621,24 +4621,24 @@ int parse_arg(const char **pp, CmdArgSpec *ap)
     if (*p == '\0')
         return 0;
     tc = *p++;
-    get_param(&p, ap->prompt, sizeof(ap->prompt), '{', '}');
-    get_param(&p, ap->completion, sizeof(ap->completion), '[', ']');
-    get_param(&p, ap->history, sizeof(ap->history), '|', '|');
+    get_param(&p, '{', '}', ap->prompt, sizeof(ap->prompt));
+    get_param(&p, '[', ']', ap->completion, sizeof(ap->completion));
+    get_param(&p, '|', '|', ap->history, sizeof(ap->history));
     type = 0;
     switch (tc) {
     case 'k':
         type = CMD_ARG_USE_KEY | CMD_ARG_INT;
         break;
-    case 'p':
+    case 'a':
         type = CMD_ARG_USE_ARGVAL | CMD_ARG_INT;
         break;
-    case 'P':
+    case 'A':
         type = CMD_ARG_MUL_ARGVAL | CMD_ARG_INT;
         break;
     case 'm':
         type = CMD_ARG_USE_MARK | CMD_ARG_INT;
         break;
-    case 'd':
+    case 'p':
         type = CMD_ARG_USE_POINT | CMD_ARG_INT;
         break;
     case 'z':
@@ -4776,6 +4776,7 @@ static void parse_arguments(ExecCmdState *es)
     QEmacsState *qs = s->qe_state;
     QErrorContext ec;
     const CmdDef *d = es->d;
+    CmdArg *argp;
     CmdArgSpec cas;
     int ret, rep_count, get_arg, type, use_flag;
     int elapsed_time;
@@ -4785,43 +4786,44 @@ static void parse_arguments(ExecCmdState *es)
             goto fail;
         use_flag = cas.arg_type & ~CMD_ARG_TYPE_MASK;
         type = cas.arg_type & CMD_ARG_TYPE_MASK;
+        argp = &es->args[es->nb_args];
         es->args_type[es->nb_args] = type;
         get_arg = 0;
         switch (type) {
         case CMD_ARG_INTVAL:
-            es->args[es->nb_args].n = d->val;
+            argp->n = d->val;
             break;
         case CMD_ARG_STRINGVAL:
             /* CG: kludge for xxx-mode functions and named kbd macros,
                must be last argument */
-            es->args[es->nb_args].p = cas.prompt;
+            argp->p = cas.prompt;
             break;
         case CMD_ARG_INT:
             if (use_flag == CMD_ARG_USE_KEY) {
-                es->args[es->nb_args].n = es->key;
+                argp->n = es->key;
             } else
             if (use_flag == CMD_ARG_USE_MARK) {
-                es->args[es->nb_args].n = s->b->mark;
+                argp->n = s->b->mark;
             } else
             if (use_flag == CMD_ARG_USE_POINT) {
-                es->args[es->nb_args].n = s->offset;
+                argp->n = s->offset;
             } else
             if (use_flag == CMD_ARG_USE_ZERO) {
-                es->args[es->nb_args].n = 0;
+                argp->n = 0;
             } else
             if (use_flag == CMD_ARG_USE_BSIZE) {
-                es->args[es->nb_args].n = s->b->total_size;
+                argp->n = s->b->total_size;
             } else
             if (use_flag == CMD_ARG_USE_ARGVAL && es->argval != NO_ARG) {
-                es->args[es->nb_args].n = es->argval;
+                argp->n = es->argval;
                 es->argval = NO_ARG;
             } else
             if (use_flag == CMD_ARG_MUL_ARGVAL) {
-                es->args[es->nb_args].n = d->val * ((es->argval == NO_ARG) ? 1 : es->argval);
+                argp->n = d->val * ((es->argval == NO_ARG) ? 1 : es->argval);
                 es->argval = NO_ARG;
             } else {
                 /* CG: Should add syntax for default value if no prompt */
-                es->args[es->nb_args].n = NO_ARG;
+                argp->n = NO_ARG;
                 get_arg = 1;
             }
             break;
@@ -4830,12 +4832,12 @@ static void parse_arguments(ExecCmdState *es)
             if (use_flag == CMD_ARG_USE_ARGVAL && es->argval != NO_ARG) {
                 char buf[32];
                 snprintf(buf, sizeof(buf), "%d", es->argval);
-                es->args[es->nb_args].p = qe_strdup(buf);  // XXX: memory leak?
+                argp->p = qe_strdup(buf);  // XXX: memory leak?
                 es->argval = NO_ARG;
             } else
 #endif
             {
-                es->args[es->nb_args].p = NULL;
+                argp->p = NULL;
                 get_arg = 1;
                 break;
             }
@@ -6612,34 +6614,34 @@ static void minibuffer_mode_free(EditBuffer *b, void *state)
 
 static const CmdDef minibuffer_commands[] = {
     CMD2( "minibuffer-insert", "default",
+          "Insert a character into the minibuffer",
           do_minibuffer_char, ESii,
-          "*" "kp",
-          "Insert a character into the minibuffer")
+          "*" "k" "a")
     CMD1( "minibuffer-exit", "RET",
-          do_minibuffer_exit, 0,
-          "End the minibuffer input")
+          "End the minibuffer input",
+          do_minibuffer_exit, 0)
     CMD1( "minibuffer-abort", "C-g, C-x C-g",
-          do_minibuffer_exit, 1,
-          "Abort the minibuffer input")
+          "Abort the minibuffer input",
+          do_minibuffer_exit, 1)
     CMD1( "minibuffer-complete", "TAB",
-          do_minibuffer_complete, COMPLETION_TAB,
-          "Try and complete the minibuffer input")
+          "Try and complete the minibuffer input",
+          do_minibuffer_complete, COMPLETION_TAB)
     /* should take numeric prefix to specify word size */
     CMD0( "minibuffer-get-binary", "M-=",
-          do_minibuffer_get_binary,
-          "Insert the byte value at point in the current buffer into the minibuffer")
+          "Insert the byte value at point in the current buffer into the minibuffer",
+          do_minibuffer_get_binary)
     CMD0( "minibuffer-complete-space", "SPC",
-          do_minibuffer_complete_space,
-          "Try and complete the minibuffer input")
+          "Try and complete the minibuffer input",
+          do_minibuffer_complete_space)
     CMD3( "minibuffer-previous-history-element", "C-p, up",
-          do_minibuffer_history, ESi, -1, "P",
-          "Replace contents of the minibuffer with the previous historical entry")
+          "Replace contents of the minibuffer with the previous historical entry",
+          do_minibuffer_history, ESi, "A", -1)
     CMD3( "minibuffer-next-history-element", "C-n, down",
-          do_minibuffer_history, ESi, +1, "P",
-          "Replace contents of the minibuffer with the next historical entry")
+          "Replace contents of the minibuffer with the next historical entry",
+          do_minibuffer_history, ESi, "A", +1)
     CMD2( "minibuffer-electric-key", "/, ~",
-          do_minibuffer_electric_key, ESi, "*k",
-          "Insert a character into the minibuffer with side effects")
+          "Insert a character into the minibuffer with side effects",
+          do_minibuffer_electric_key, ESi, "*" "k")
 };
 
 void minibuffer_init(void)
@@ -6718,11 +6720,11 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
 
 static const CmdDef popup_commands[] = {
     CMD0( "popup-exit", "q, C-g",
-          do_popup_exit,
-          "Close the popup window")
+          "Close the popup window",
+          do_popup_exit)
     CMD3( "popup-isearch", "/",
-          do_isearch, ESii, 1, "vp",
-          "Search for contents")
+          "Search for contents",
+          do_isearch, ESii, "a" "v", 1)
 };
 
 static void popup_init(void)
@@ -8030,7 +8032,7 @@ EditState *qe_split_window(EditState *s, int side_by_side, int prop)
     return e;
 }
 
-void do_split_window(EditState *s, int side_by_side, int prop)
+void do_split_window(EditState *s, int prop, int side_by_side)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e = qe_split_window(s, side_by_side, prop == NO_ARG ? 50 : prop);

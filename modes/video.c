@@ -988,12 +988,12 @@ static void av_cycle_stream(EditState *s, int codec_type)
 
 /* specific image commands */
 static const CmdDef video_commands[] = {
-    CMD0( "av-pause", "SPC, p",
-          video_pause, "")
-    CMD1( "av-cycle-video", "v",
-          av_cycle_stream, CODEC_TYPE_VIDEO, "")
-    CMD1( "av-cycle-audio", "a",
-          av_cycle_stream, CODEC_TYPE_AUDIO, "")
+    CMD0( "av-pause", "SPC, p", "",
+          video_pause)
+    CMD1( "av-cycle-video", "v", "",
+          av_cycle_stream, CODEC_TYPE_VIDEO)
+    CMD1( "av-cycle-audio", "a", "",
+          av_cycle_stream, CODEC_TYPE_AUDIO)
 };
 
 static ModeDef video_mode = {

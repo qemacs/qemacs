@@ -2551,7 +2551,7 @@ static void do_shell_search(EditState *e, int dir)
     if (e->interactive) {
         shell_write_char(e, dir < 0 ? ('r' & 31) : ('s' & 31));
     } else {
-        do_isearch(e, dir, NO_ARG);
+        do_isearch(e, NO_ARG, dir);
     }
 }
 
@@ -2886,7 +2886,7 @@ static void do_compile(EditState *s, const char *cmd)
     set_error_offset(b, 0);
 }
 
-static void do_next_error(EditState *s, int dir, int arg)
+static void do_next_error(EditState *s, int arg, int dir)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e;
@@ -3107,106 +3107,106 @@ void shell_colorize_line(QEColorizeContext *cp,
 /* shell mode specific commands */
 static const CmdDef shell_commands[] = {
     CMD0( "shell-toggle-input", "C-o",
-          do_shell_toggle_input,
-          "Toggle between shell input and buffer navigation")
+          "Toggle between shell input and buffer navigation",
+          do_shell_toggle_input)
     /* XXX: should have shell-execute-line on M-RET */
     CMD2( "shell-enter", "RET",
-          do_shell_newline, ES, "*",
-          "Shell buffer RET key")
+          "Shell buffer RET key",
+          do_shell_newline, ES, "*")
     /* CG: should send s->kbs */
     CMD2( "shell-backward-delete-char", "DEL",
-          do_shell_backspace, ES, "*",
-          "Shell buffer DEL key")
+          "Shell buffer DEL key",
+          do_shell_backspace, ES, "*")
     CMD0( "shell-intr", "C-c C-c",
-          do_shell_intr,
-          "Shell buffer ^C key")
+          "Shell buffer ^C key",
+          do_shell_intr)
     CMD2( "shell-delete-char", "C-d, delete",
-          do_shell_delete_char, ES, "*",
-          "Shell buffer delete char")
+          "Shell buffer delete char",
+          do_shell_delete_char, ES, "*")
     CMD3( "shell-kill-word", "M-d",
-          do_shell_kill_word, ESi, 1, "v",
-          "Shell buffer delete word")
+          "Shell buffer delete word",
+          do_shell_kill_word, ESi, "v", 1)
     CMD3( "shell-backward-kill-word", "M-DEL, M-C-h",
-          do_shell_kill_word, ESi, -1, "v",
-          "Shell buffer delete word backward")
+          "Shell buffer delete word backward",
+          do_shell_kill_word, ESi, "v", -1)
     CMD1( "shell-previous", "M-p",
-          shell_previous_next, -1,
-          "Shell buffer previous command")
+          "Shell buffer previous command",
+          shell_previous_next, -1)
     CMD1( "shell-next", "M-n",
-          shell_previous_next, 1,
-          "Shell buffer next command")
+          "Shell buffer next command",
+          shell_previous_next, 1)
     CMD0( "shell-exchange-point-and-mark", "C-x C-x",
-          shell_exchange_point_and_mark,
-          "Shell buffer ^X^X")
+          "Shell buffer ^X^X",
+          shell_exchange_point_and_mark)
     CMD2( "shell-tabulate", "TAB",
-          do_shell_tabulate, ES, "*",
-          "Shell buffer TAB key")
+          "Shell buffer TAB key",
+          do_shell_tabulate, ES, "*")
     CMD0( "shell-refresh", "C-l",
-          do_shell_refresh,
-          "Shell buffer ^L key")
+          "Shell buffer ^L key",
+          do_shell_refresh)
     CMD1( "shell-search-backward", "C-r",
-          do_shell_search, -1,
-          "Shell buffer ^R key")
+          "Shell buffer ^R key",
+          do_shell_search, -1)
     CMD1( "shell-search-forward", "C-s",
-          do_shell_search, 1,
-          "Shell buffer ^S key")
+          "Shell buffer ^S key",
+          do_shell_search, 1)
     CMD2( "shell-kill-line", "C-k",
-          do_shell_kill_line, ESi, "p",
-          "Shell buffer kill line")
+          "Shell buffer kill line",
+          do_shell_kill_line, ESi, "a")
     CMD2( "shell-kill-beginning-of-line", "M-k",
-          do_shell_kill_beginning_of_line, ESi, "p",
-          "Shell buffer kill beginning of line")
+          "Shell buffer kill beginning of line",
+          do_shell_kill_beginning_of_line, ESi, "a")
     CMD2( "shell-yank", "C-y",
-          do_shell_yank, ES, "*",
-          "Shell buffer yank")
+          "Shell buffer yank",
+          do_shell_yank, ES, "*")
     CMD3( "shell-capitalize-word", "M-c",
-          do_shell_changecase_word, ESi, 2, "*v",
-          "Shell buffer capitalize word")
+          "Shell buffer capitalize word",
+          do_shell_changecase_word, ESi, "*" "v", 2)
     CMD3( "shell-downcase-word", "M-l",
-          do_shell_changecase_word, ESi, -1, "*v",
-          "Shell buffer downcase word")
+          "Shell buffer downcase word",
+          do_shell_changecase_word, ESi, "*" "v", -1)
     CMD3( "shell-upcase-word", "M-u",
-          do_shell_changecase_word, ESi, 1, "*v",
-          "Shell buffer upcase")
+          "Shell buffer upcase",
+          do_shell_changecase_word, ESi, "*" "v", 1)
     CMD3( "shell-transpose-chars", "C-t",
-          do_shell_transpose, ESi, CMD_TRANSPOSE_CHARS, "*v",
-          "Shell buffer ^T key")
+          "Shell buffer ^T key",
+          do_shell_transpose, ESi, "*" "v", CMD_TRANSPOSE_CHARS)
     CMD3( "shell-transpose-words", "M-t",
-          do_shell_transpose, ESi, CMD_TRANSPOSE_WORDS, "*v",
-          "Shell buffer transpose words")
+          "Shell buffer transpose words",
+          do_shell_transpose, ESi, "*" "v", CMD_TRANSPOSE_WORDS)
 };
 
 /* shell global commands */
 static const CmdDef shell_global_commands[] = {
     CMD2( "shell", "C-x RET RET",
-          do_shell, ESi, "p",
-          "Start a shell buffer or move to the last shell buffer used")
+          "Start a shell buffer or move to the last shell buffer used",
+          do_shell, ESi, "a")
     CMD2( "shell-command", "M-!",
+          "Run a shell command and display a new buffer with its collected output",
           do_shell_command, ESs,
-          "s{Shell command: }|shell-command|",
-          "Run a shell command and display a new buffer with its collected output")
+          "s{Shell command: }|shell-command|")
     CMD2( "ssh", "",
+          "Start a shell buffer with a new remote shell connection",
           do_ssh, ESs,
-          "s{Open connection to (host or user@host: }|ssh|",
-          "Start a shell buffer with a new remote shell connection")
+          "s{Open connection to (host or user@host: }|ssh|")
     CMD2( "compile", "C-x C-e",
+          "Run a compiler command and display a new buffer with its collected output",
           do_compile, ESs,
-          "s{Compile command: }|compile|",
-          "Run a compiler command and display a new buffer with its collected output")
+          "s{Compile command: }|compile|")
     CMD2( "make", "C-x m",
+          "Run make and display a new buffer with its collected output",
           do_compile, ESs,
-          "S{make}",
-          "Run make and display a new buffer with its collected output")
+          "S{make}")
     CMD2( "man", "",
+          "Run man for a command and display a new buffer with its collected output",
           do_man, ESs,
-          "s{Show man page for: }|man|",
-          "Run man for a command and display a new buffer with its collected output")
+          "s{Show man page for: }|man|")
     CMD3( "previous-error", "C-x C-p",
-          do_next_error, ESii, -1, "vp",
-          "Move the the previous error from the last command output")
+          "Move the the previous error from the last command output",
+          do_next_error, ESii, "a" "v", -1)
     CMD3( "next-error", "C-x C-n, C-x `",
-          do_next_error, ESii, 1, "vp",
-          "Move the the next error from the last command output")
+          "Move the the next error from the last command output",
+          do_next_error, ESii, "a" "v", +1)
 };
 
 static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)

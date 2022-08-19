@@ -523,7 +523,7 @@ static void isearch_key(void *opaque, int ch)
 }
 
 /* XXX: handle busy */
-void do_isearch(EditState *s, int dir, int argval)
+void do_isearch(EditState *s, int argval, int dir)
 {
     ISearchState *is = &global_isearch_state;
     EditState *e;
@@ -927,52 +927,52 @@ static const CmdDef search_commands[] = {
     /* M-C-s should be bound to isearch-forward-regex */
     /* mg binds search-forward to M-s */
     CMD3( "search-forward", "M-S",
-          do_search_string, ESsi, 1,
+          "Search for a string in the current buffer",
+          do_search_string, ESsi,
           "s{Search forward: }|search|"
-          "v",
-          "Search for a string in the current buffer")
+          "v", 1)
     /* M-C-r should be bound to isearch-backward-regex */
     /* mg binds search-forward to M-r */
     CMD3( "search-backward", "M-R",
-          do_search_string, ESsi, -1,
+          "Search backwards for a string in the current buffer",
+          do_search_string, ESsi,
           "s{Search backward: }|search|"
-          "v",
-          "Search backwards for a string in the current buffer")
+          "v", -1)
     CMD3( "count-matches", "M-C",
-          do_search_string, ESsi, 0,
+          "Count string matches from point to the end of the current buffer",
+          do_search_string, ESsi,
           "s{Count Matches: }|search|"
-          "v",
-          "Count string matches from point to the end of the current buffer")
+          "v", 0)
     CMD3( "delete-matching-lines", "",
-          do_search_string, ESsi, 2,
-          "*" "s{Delete lines containing: }|search|"
-          "v",
-          "Delete lines containing a string from point to the end of the current buffer")
+          "Delete lines containing a string from point to the end of the current buffer",
+          do_search_string, ESsi, "*"
+          "s{Delete lines containing: }|search|"
+          "v", 2)
     CMD3( "filter-matching-lines", "",
-          do_search_string, ESsi, 3,
-          "*" "s{Filter lines containing: }|search|"
-          "v",
-          "Delete lines NOT containing a string from point to the end of the current buffer")
+          "Delete lines NOT containing a string from point to the end of the current buffer",
+          do_search_string, ESsi, "*"
+          "s{Filter lines containing: }|search|"
+          "v", 3)
     /* passing argument should switch to regex incremental search */
     CMD3( "isearch-backward", "C-r",
-          do_isearch, ESii, -1, "vp",
-          "Search backward incrementally")
+          "Search backward incrementally",
+          do_isearch, ESii, "a" "v", -1)
     CMD3( "isearch-forward", "C-s",
-          do_isearch, ESii, 1, "vp",
-          "Search forward incrementally")
+          "Search forward incrementally",
+          do_isearch, ESii, "a" "v", 1)
     CMD2( "query-replace", "M-%",
-          do_query_replace, ESss,
-          "*" "s{Query replace: }|search|"
-          "s{With: }|replace|",
-          "Replace a string with another interactively")
+          "Replace a string with another interactively",
+          do_query_replace, ESss, "*"
+          "s{Query replace: }|search|"
+          "s{With: }|replace|")
     /* passing argument restricts replace to word matches */
     /* XXX: non standard binding */
     CMD2( "replace-string", "M-r",
-          do_replace_string, ESssi,
-          "*" "s{Replace String: }|search|"
+          "Replace a string with another till the end of the buffer",
+          do_replace_string, ESssi, "*"
+          "s{Replace String: }|search|"
           "s{With: }|replace|"
-          "p",
-          "Replace a string with another till the end of the buffer")
+          "a")
 };
 
 static int search_init(void) {

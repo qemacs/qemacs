@@ -675,80 +675,80 @@ static void do_org_metaup(EditState *s)
 /* Org mode specific commands */
 static const CmdDef org_commands[] = {
     /* Motion */
-    CMD2( "outline-next-visible-heading", "C-c C-n",
-          do_outline_next_vsible_heading, ES, "",
-          "")
-    CMD2( "outline-previous-visible-heading", "C-c C-p",
-          do_outline_previous_vsible_heading, ES, "",
-          "")
-    CMD2( "outline-up-heading", "C-c C-u",
-          do_outline_up_heading, ES, "",
-          "")
-    CMD2( "org-backward-same-level", "C-c C-b",
-          do_org_backward_same_level, ES, "",
-          "")
-    CMD2( "org-forward-same-level", "C-c C-f",
-          do_org_forward_same_level, ES, "",
-          "")
+    CMD0( "outline-next-visible-heading", "C-c C-n",
+          "",
+          do_outline_next_vsible_heading)
+    CMD0( "outline-previous-visible-heading", "C-c C-p",
+          "",
+          do_outline_previous_vsible_heading)
+    CMD0( "outline-up-heading", "C-c C-u",
+          "",
+          do_outline_up_heading)
+    CMD0( "org-backward-same-level", "C-c C-b",
+          "",
+          do_org_backward_same_level)
+    CMD0( "org-forward-same-level", "C-c C-f",
+          "",
+          do_org_forward_same_level)
     CMD2( "org-goto", "C-c C-j",
+          "",
           do_org_goto, ESs,
-          "s{select location to jump to: }[orgjump]|orgjump|",
-          "")
+          "s{select location to jump to: }[orgjump]|orgjump|")
     CMD3( "org-mark-element", "M-h",
-          do_org_mark_element, ESi, 0, "v",
-          "")
+          "",
+          do_org_mark_element, ESi, "v", 0)
     CMD3( "org-mark-subtree", "C-c @",
-          do_org_mark_element, ESi, 1, "v",
-          "")
+          "",
+          do_org_mark_element, ESi, "v", 1)
     /* Editing */
     CMD2( "org-todo", "C-c C-t",
-          do_org_todo, ES, "*",
-          "")
+          "",
+          do_org_todo, ES, "*")
     CMD3( "org-insert-heading", "", /* indirect through M-RET */
-          do_org_insert_heading, ESi, 0, "*v",
-          "")
+          "",
+          do_org_insert_heading, ESi, "*" "v", 0)
     CMD3( "org-insert-todo-heading", "", /* actually M-S-RET and C-c C-x M */
-          do_org_insert_heading, ESi, 1, "*v",
-          "")
+          "",
+          do_org_insert_heading, ESi, "*" "v", 1)
     CMD3( "org-insert-heading-respect-content", "C-j", /* actually C-RET */
-          do_org_insert_heading, ESi, 2, "*v",
-          "")
+          "",
+          do_org_insert_heading, ESi, "*" "v", 2)
     CMD3( "org-insert-todo-heading-respect-content", "", /* actually C-S-RET */
-          do_org_insert_heading, ESi, 3, "*v",
-          "")
+          "",
+          do_org_insert_heading, ESi, "*" "v", 3)
     CMD3( "org-do-demote", "",
-          do_org_promote, ESi, -1, "*v",
-          "")
+          "",
+          do_org_promote, ESi, "*" "v", -1)
     CMD3( "org-do-promote", "",
-          do_org_promote, ESi, +1, "*v",
-          "")
+          "",
+          do_org_promote, ESi, "*" "v", +1)
     CMD3( "org-demote-subtree", "C-x >", /* actually M-S-right | C-c C-x R */
-          do_org_promote_subtree, ESi, -1, "*v",
-          "")
+          "",
+          do_org_promote_subtree, ESi, "*" "v", -1)
     CMD3( "org-promote-subtree", "C-x <", /* actually M-S-left | C-c C-x L */
-          do_org_promote_subtree, ESi, +1, "*v",
-          "")
+          "",
+          do_org_promote_subtree, ESi, "*" "v", +1)
     CMD3( "org-move-subtree-down", "",
-          do_org_move_subtree, ESi, +1, "*v",
-          "")
+          "",
+          do_org_move_subtree, ESi, "*" "v", +1)
     CMD3( "org-move-subtree-up", "",
-          do_org_move_subtree, ESi, -1, "*v",
-          "")
+          "",
+          do_org_move_subtree, ESi, "*" "v", -1)
     CMD2( "org-meta-return", "M-RET", /* Actually M-RET | C-c C-x m */
-          do_org_meta_return, ES, "*",
-          "")
-    CMD2( "org-metaleft", "ESC left", /* actually M-left | C-c C-x l */
-          do_org_metaleft, ES, "",
-          "")
-    CMD2( "org-metaright", "ESC right", /* actually M-right | C-c C-x r */
-          do_org_metaright, ES, "",
-          "")
-    CMD2( "org-metadown", "ESC down", /* actually M-down | C-c C-x d */
-          do_org_metadown, ES, "",
-          "")
-    CMD2( "org-metaup", "ESC up", /* actually M-up | C-c C-x u */
-          do_org_metaup, ES, "",
-          "")
+          "",
+          do_org_meta_return, ES, "*")
+    CMD0( "org-metaleft", "ESC left", /* actually M-left | C-c C-x l */
+          "",
+          do_org_metaleft)
+    CMD0( "org-metaright", "ESC right", /* actually M-right | C-c C-x r */
+          "",
+          do_org_metaright)
+    CMD0( "org-metadown", "ESC down", /* actually M-down | C-c C-x d */
+          "",
+          do_org_metadown)
+    CMD0( "org-metaup", "ESC up", /* actually M-up | C-c C-x u */
+          "",
+          do_org_metaup)
 };
 
 static ModeDef org_mode = {

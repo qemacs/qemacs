@@ -1815,24 +1815,24 @@ typedef struct CmdDef {
 
 #ifdef CONFIG_TINY
 /* omit command descriptions in Tiny build */
-#define CMD(name, bindings, func, sig, val, spec, desc) \
+#define CMD(name, bindings, desc, func, sig, val, spec) \
     { name "\0" bindings, spec "\0" desc, CMD_ ## sig, val, { .sig = func } },
 #else
-#define CMD(name, bindings, func, sig, val, spec, desc) \
+#define CMD(name, bindings, desc, func, sig, val, spec) \
     { name "\0" bindings, spec "\0" desc, CMD_ ## sig, val, { .sig = func } },
 #endif
 /* command without arguments, no buffer modification */
-#define CMD0(name, bindings, func, desc) \
-    CMD(name, bindings, func, ES, 0, "", desc)
+#define CMD0(name, bindings, desc, func) \
+    CMD(name, bindings, desc, func, ES, 0, "")
 /* command with a single implicit int argument */
-#define CMD1(name, bindings, func, val, desc) \
-    CMD(name, bindings, func, ESi, val, "v", desc)
+#define CMD1(name, bindings, desc, func, val) \
+    CMD(name, bindings, desc, func, ESi, val, "v")
 /* command with a signature and an argument description string */
-#define CMD2(name, bindings, func, sig, spec, desc) \
-    CMD(name, bindings, func, sig, 0, spec, desc)
+#define CMD2(name, bindings, desc, func, sig, spec) \
+    CMD(name, bindings, desc, func, sig, 0, spec)
 /* command with a an argument description string and an int argument */
-#define CMD3(name, bindings, func, sig, val, spec, desc) \
-    CMD(name, bindings, func, sig, val, spec, desc)
+#define CMD3(name, bindings, desc, func, sig, spec, val) \
+    CMD(name, bindings, desc, func, sig, val, spec)
 
 ModeDef *qe_find_mode(const char *name, int flags);
 ModeDef *qe_find_mode_filename(const char *filename, int flags);
@@ -2107,7 +2107,7 @@ void do_delete_window(EditState *s, int force);
 #define SW_STACKED       0
 #define SW_SIDE_BY_SIDE  1
 EditState *qe_split_window(EditState *s, int side_by_side, int prop);
-void do_split_window(EditState *s, int side_by_side, int prop);
+void do_split_window(EditState *s, int prop, int side_by_side);
 void do_create_window(EditState *s, const char *filename, const char *layout);
 void qe_save_window_layout(EditState *s, EditBuffer *b);
 
@@ -2134,7 +2134,7 @@ void do_write_file(EditState *s, const char *filename);
 void do_write_region(EditState *s, const char *filename);
 void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
                               QETermStyle *sbuf, int offset);
-void do_isearch(EditState *s, int dir, int argval);
+void do_isearch(EditState *s, int argval, int dir);
 void do_query_replace(EditState *s, const char *search_str,
                       const char *replace_str);
 void do_replace_string(EditState *s, const char *search_str,

@@ -519,13 +519,13 @@ static CompletionDef variable_completion = {
 
 static const CmdDef var_commands[] = {
     CMD2( "show-variable", "",
+          "Show the value of a given variable",
           do_show_variable, ESs,
-          "s{Show variable: }[variable]|variable|",
-          "Show the value of a given variable")
+          "s{Show variable: }[variable]|variable|")
     CMD2( "set-variable", "f8",
+          "Set the value of a variable",
           do_set_variable, ESss,
-          "s{Set variable: }[variable]|variable|s{to value: }|value|",
-          "Set the value of a variable")
+          "s{Set variable: }[variable]|variable|s{to value: }|value|")
 };
 
 static int vars_init(void)
