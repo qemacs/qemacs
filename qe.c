@@ -4631,6 +4631,7 @@ int parse_arg(const char **pp, CmdArgSpec *ap)
         type = CMD_ARG_INT | CMD_ARG_USE_KEY;
         break;
     case 'P':  /* raw prefix argument */
+    case 'N':  /* numeric prefix argument else get from minibuffer */
         type = CMD_ARG_INT | CMD_ARG_RAW_ARGVAL;
         break;
     case 'p':  /* number: converted prefix argument */

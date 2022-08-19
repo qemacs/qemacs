@@ -145,7 +145,7 @@ static const CmdDef binary_commands[] = {
     CMD2( "set-width", "",
           "Set the number of bytes displayed on each row",
           do_set_width, ESi,
-          "a{Width: }")
+          "N{Width: }")
     CMD3( "goto-byte", "M-g",
           "Move point to a specified location",
           do_goto, ESsi,

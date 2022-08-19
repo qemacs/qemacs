@@ -2273,8 +2273,10 @@ static const CmdDef extra_commands[] = {
           "s{Unset key locally: }[key]"
           "v", 1)
 
-    // XXX: should have `qemacs-faq` on `C-h C-f`
+    // XXX: should have `qemacs-hello` on `C-h h` testing charsets
     // XXX: should have `qemacs-manual` on `C-h m`
+    // XXX: should have `qemacs-faq` on `C-h C-f`
+    //      use do_load_file_from_path() to load the above
     // XXX: should have `describe-variable` with documentation on `C-h v`
     CMD0( "about-qemacs", "C-h ?, f1",
           "Display information about Quick Emacs",
@@ -2316,7 +2318,7 @@ static const CmdDef extra_commands[] = {
     CMD2( "set-eol-type", "",
           "Set the end of line style: [0=Unix, 1=Dos, 2=Mac]",
           do_set_eol_type, ESi,
-          "a{EOL Type [0=Unix, 1=Dos, 2=Mac]: }")
+          "N{EOL Type [0=Unix, 1=Dos, 2=Mac]: }")
 
     // XXX: should take region as argument, implicit from keyboard
     // XXX: should have sort-fields and sort-numeric-fields

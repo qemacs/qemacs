@@ -508,19 +508,19 @@ static const CmdDef basic_commands[] = {
     CMD2( "set-tab-width", "",
           "Set the TAB width for the current buffer",
           do_set_tab_width, ESi,
-          "a{Tab width: }")
+          "N{Tab width: }")
     CMD2( "set-indent-width", "",
           "Set the indentation width for the current window",
           do_set_indent_width, ESi,
-          "a{Indent width: }")
+          "N{Indent width: }")
     CMD2( "set-indent-tabs-mode", "",
           "Select whether to use TABs or spaces for indentation",
           do_set_indent_tabs_mode, ESi,
-          "a{Indent tabs mode (0 or 1): }")
+          "N{Indent tabs mode (0 or 1): }")
     CMD2( "set-fill-column", "",
           "Set the width for paragraph filling",
           do_set_fill_column, ESi,
-          "a{Fill column: }")
+          "N{Fill column: }")
 
     /* other stuff */
     CMD3( "load-file-from-path", "C-c C-f",
