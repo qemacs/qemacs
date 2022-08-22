@@ -530,15 +530,6 @@ static void fractal_set_zoom(FractalState *ms, int level) {
     fractal_invalidate(ms);
 }
 
-static int strmatchword(const char *str, const char *val, const char **ptr) {
-    if (strstart(str, val, &str) && !qe_isword(*str)) {
-        if (ptr)
-            *ptr = str;
-        return 1;
-    }
-    return 0;
-}
-
 static int fractal_get_color(const char *p, int *dac) {
     /* convert a fractint 3 character color spec: 0-9A-Z_-z -> 0..63 */
     int i;
@@ -1199,7 +1190,7 @@ static void do_mandelbrot_test(EditState *s) {
         fractal_mode.display = fractal_display;
 #endif
         qe_register_mode(&fractal_mode, MODEF_NOCMD | MODEF_VIEW);
-        qe_register_cmd_table(fractal_commands, countof(fractal_commands), &fractal_mode);
+        qe_register_commands(&fractal_mode, fractal_commands, countof(fractal_commands));
     }
 
     b = eb_find("*Mandelbrot*");
@@ -1226,7 +1217,7 @@ static const CmdDef fractal_global_commands[] = {
 static int fractal_init(void)
 {
     qe_register_mode(&fractint_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(fractal_global_commands, countof(fractal_global_commands), NULL);
+    qe_register_commands(NULL, fractal_global_commands, countof(fractal_global_commands));
     return 0;
 }
 

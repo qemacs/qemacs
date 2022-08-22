@@ -368,8 +368,8 @@ static int hex_init(void)
     qe_register_mode(&hex_mode, MODEF_VIEW);
 
     /* commands and default keys */
-    qe_register_cmd_table(binary_commands, countof(binary_commands), &binary_mode);
-    qe_register_cmd_table(hex_commands, countof(hex_commands), &hex_mode);
+    qe_register_commands(&binary_mode, binary_commands, countof(binary_commands));
+    qe_register_commands(&hex_mode, hex_commands, countof(hex_commands));
 
     return 0;
 }

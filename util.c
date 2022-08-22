@@ -263,18 +263,22 @@ void canonicalize_path(char *buf, int buf_size, const char *path)
 /* reduce path relative to homedir */
 char *make_user_path(char *buf, int buf_size, const char *path)
 {
-    char *homedir;
-
-    homedir = getenv("HOME");
+    char *homedir = getenv("HOME");
     if (homedir) {
         int len = strlen(homedir);
 
         if (len && homedir[len - 1] == '/')
             len--;
 
-        if (!memcmp(path, homedir, len) && path[len] == '/') {
-            pstrcpy(buf, buf_size, "~");
-            return pstrcat(buf, buf_size, path + len);
+        if (!memcmp(path, homedir, len) && (path[len] == '/' || path[len] == '\0')) {
+            if (buf_size > 1) {
+                *buf = '~';
+                pstrcpy(buf + 1, buf_size - 1, path + len);
+            } else {
+                if (buf_size > 0)
+                    *buf = '\0';
+            }
+            return buf;
         }
     }
     return pstrcpy(buf, buf_size, path);
@@ -797,13 +801,23 @@ int strxcmp(const char *str1, const char *str2)
     return 0;
 }
 
+/* like strstart but checks that prefix is a full word */
+int strmatchword(const char *str, const char *val, const char **ptr) {
+    if (strstart(str, val, &str) && !qe_isword(*str)) {
+        if (ptr)
+            *ptr = str;
+        return 1;
+    }
+    return 0;
+}
+
 int ustrstart(const unsigned int *str0, const char *val, int *lenp)
 {
     const unsigned int *str = str0;
 
     for (; *val != '\0'; val++, str++) {
         /* assuming val is ASCII or Latin1 */
-        if (*str != *val)
+        if (*str != (u8)*val)
             return 0;
     }
     if (lenp)

@@ -996,6 +996,12 @@ static const CmdDef video_commands[] = {
           av_cycle_stream, CODEC_TYPE_AUDIO)
 };
 
+/* additional mode specific bindings */
+static const char * const video_bindings[] = {
+    "toggle-full-screen", "f",
+    NULL
+};
+
 static ModeDef video_mode = {
     .name = "av",
     .window_instance_size = sizeof(VideoState),
@@ -1005,6 +1011,7 @@ static ModeDef video_mode = {
     .display = video_display,
     .data_type = &video_data_type,
     .get_mode_line = video_mode_line,
+    .bindings = video_bindings,
 };
 
 static EditBufferDataType video_data_type = {
@@ -1014,13 +1021,10 @@ static EditBufferDataType video_data_type = {
     video_buffer_close,
 };
 
-int video_init(void)
-{
+static int video_init(void) {
     eb_register_data_type(&video_data_type);
     qe_register_mode(&video_mode, MODEF_DATATYPE | MODEF_VIEW);
-    qe_register_cmd_table(video_commands, countof(video_commands), &video_mode);
-    /* additional mode specific keys */
-    qe_register_binding('f', "toggle-full-screen", &video_mode);
+    qe_register_commands(&video_mode, video_commands, countof(video_commands));
     return 0;
 }
 

@@ -74,7 +74,7 @@ static int mkd_scan_chunk(const unsigned int *str,
     int i, j;
 
     for (i = 0; begin[i]; i++) {
-        if (str[i] != begin[i])
+        if (str[i] != (u8)begin[i])
             return 0;
     }
     if (qe_isspace(str[i]))
@@ -87,7 +87,7 @@ static int mkd_scan_chunk(const unsigned int *str,
     for (i += j; str[i] != '\0'; i++) {
         if (!qe_isspace(str[i - 1])) {
             for (j = 0; end[j]; j++) {
-                if (str[i + j] != end[j])
+                if (str[i + j] != (u8)end[j])
                     break;
             }
             if (!end[j])
@@ -912,9 +912,9 @@ static ModeDef litcoffee_mode = {
 static int mkd_init(void)
 {
     qe_register_mode(&mkd_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(mkd_commands, countof(mkd_commands), &mkd_mode);
+    qe_register_commands(&mkd_mode, mkd_commands, countof(mkd_commands));
     qe_register_mode(&litcoffee_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(mkd_commands, countof(mkd_commands), &litcoffee_mode);
+    qe_register_commands(&litcoffee_mode, mkd_commands, countof(mkd_commands));
 
     return 0;
 }

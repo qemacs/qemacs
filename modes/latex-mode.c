@@ -353,7 +353,7 @@ static int latex_init(void)
 {
     qe_register_mode(&latex_mode, MODEF_SYNTAX);
     qe_register_mode(&texinfo_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(latex_commands, countof(latex_commands), &latex_mode);
+    qe_register_commands(&latex_mode, latex_commands, countof(latex_commands));
     qe_register_completion(&latex_completion);
 
     return 0;

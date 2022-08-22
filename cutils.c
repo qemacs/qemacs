@@ -37,19 +37,14 @@
  * @param ptr updated after the prefix in str in there is a match
  * @return TRUE if there is a match
  */
-int strstart(const char *str, const char *val, const char **ptr)
-{
-    const char *p, *q;
-    p = str;
-    q = val;
-    while (*q != '\0') {
-        if (*p != *q)
+int strstart(const char *str, const char *val, const char **ptr) {
+    size_t i;
+    for (i = 0; val[i] != '\0'; i++) {
+        if (str[i] != val[i])
             return 0;
-        p++;
-        q++;
     }
     if (ptr)
-        *ptr = p;
+        *ptr = &str[i];
     return 1;
 }
 
@@ -62,17 +57,17 @@ int strstart(const char *str, const char *val, const char **ptr)
  * @param ptr updated to the suffix in str in there is a match
  * @return TRUE if there is a match
  */
-int strend(const char *str, const char *val, const char **ptr)
-{
-    int len1 = strlen(str);
-    int len2 = strlen(val);
+int strend(const char *str, const char *val, const char **ptr) {
+    size_t len1 = strlen(str);
+    size_t len2 = strlen(val);
 
-    if (len1 < len2 || memcmp(str + len1 - len2, val, len2)) {
+    if (len1 >= len2 && !memcmp(str += len1 - len2, val, len2)) {
+        if (ptr)
+            *ptr = str;
+        return 1;
+    } else {
         return 0;
     }
-    if (ptr)
-        *ptr = str + len1 - len2;
-    return 1;
 }
 
 /**
@@ -85,63 +80,42 @@ int strend(const char *str, const char *val, const char **ptr)
  * @param buf_size size of destination buffer
  * @param str source string
  */
-char *pstrcpy(char *buf, int buf_size, const char *str)
-{
-    int c;
-    char *q = buf;
-
-    if (buf_size <= 0)
-        return buf;
-
-    for (;;) {
-        c = *str++;
-        if (c == '\0' || q >= buf + buf_size - 1)
-            break;
-        *q++ = c;
+char *pstrcpy(char *buf, int size, const char *str) {
+    if (size > 0) {
+        int i;
+        for (i = 0; i < size - 1 && (buf[i] = str[i]) != '\0'; i++)
+            continue;
+        buf[i] = '\0';
     }
-    *q = '\0';
     return buf;
 }
 
 /* strcat and truncate. */
-char *pstrcat(char *buf, int buf_size, const char *s)
-{
+char *pstrcat(char *buf, int size, const char *s) {
     int len = strlen(buf);
-
-    if (len < buf_size)
-        pstrcpy(buf + len, buf_size - len, s);
+    if (size > len)
+        pstrcpy(buf + len, size - len, s);
     return buf;
 }
 
 /* copy the n first char of a string and truncate it. */
-char *pstrncpy(char *buf, int buf_size, const char *s, int len)
-{
-    char *q;
-    int c;
-
-    if (buf_size > 0) {
-        q = buf;
-        if (len >= buf_size)
-            len = buf_size - 1;
-        while (len > 0) {
-            c = *s++;
-            if (c == '\0')
-                break;
-            *q++ = c;
-            len--;
-        }
-        *q = '\0';
+char *pstrncpy(char *buf, int size, const char *s, int len) {
+    if (size > 0) {
+        int i;
+        if (len >= size)
+            len = size - 1;
+        for (i = 0; i < len && (buf[i] = s[i]) != '\0'; i++)
+            continue;
+        buf[i] = '\0';
     }
     return buf;
 }
 
 /* strcat and truncate. */
-char *pstrncat(char *buf, int buf_size, const char *s, int slen)
-{
+char *pstrncat(char *buf, int size, const char *s, int slen) {
     int len = strlen(buf);
-
-    if (len < buf_size)
-        pstrncpy(buf + len, buf_size - len, s, slen);
+    if (size > len)
+        pstrncpy(buf + len, size - len, s, slen);
     return buf;
 }
 
@@ -187,22 +161,20 @@ size_t get_extension_offset(const char *p) {
  * obtained by catenating dirname + '/' + basename.
  * if the original path doesn't contain anything dirname is just "."
  */
-char *get_dirname(char *dest, int size, const char *file)
-{
-    char *p;
-
-    if (dest) {
-        p = dest;
+char *get_dirname(char *dest, int size, const char *file) {
+    if (dest && size > 0) {
+        size_t i = 0;
         if (file) {
             pstrcpy(dest, size, file);
-            p = get_basename_nc(dest);
-            if (p > dest + 1 && p[-1] != ':' && p[-2] != ':')
-                p--;
-
-            if (p == dest)
-                *p++ = '.';
+            i = get_basename_offset(dest);
+            /* remove the trailing slash unless root dir or
+               preceded by a drive spec or protocol prefix (eg: http:) */
+            if (i > 1 && dest[i - 1] != ':' && dest[i - 2] != ':')
+                i--;
+            if (i == 0)
+                dest[i++] = '.';
         }
-        *p = '\0';
+        dest[i] = '\0';
     }
     return dest;
 }

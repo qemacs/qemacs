@@ -2388,9 +2388,8 @@ static const CmdDef extra_commands[] = {
           do_kill_paragraph, ESi, "p")
 };
 
-static int extras_init(void)
-{
-    qe_register_cmd_table(extra_commands, countof(extra_commands), NULL);
+static int extras_init(void) {
+    qe_register_commands(NULL, extra_commands, countof(extra_commands));
     qe_register_completion(&tag_completion);
 
     return 0;

@@ -3723,7 +3723,7 @@ static ModeDef salmon_mode = {
 static int c_init(void)
 {
     qe_register_mode(&c_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(c_commands, countof(c_commands), &c_mode);
+    qe_register_commands(&c_mode, c_commands, countof(c_commands));
     qe_register_mode(&cpp_mode, MODEF_SYNTAX);
     qe_register_mode(&js_mode, MODEF_SYNTAX);
     qe_register_mode(&java_mode, MODEF_SYNTAX);

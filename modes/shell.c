@@ -98,6 +98,10 @@ static int error_line_num = -1;
 static int error_col_num = -1;
 static char error_filename[MAX_FILENAME_SIZE];
 
+#define SR_UPDATE_SIZE  1
+#define SR_REFRESH      2
+#define SR_SILENT       4
+static void do_shell_refresh(EditState *e, int flags);
 static char *shell_get_curpath(EditBuffer *b, int offset,
                                char *buf, int buf_size);
 
@@ -2081,7 +2085,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
 
     b = b0;
     if (!b) {
-        b = eb_new(bufname, BF_SAVELOG);
+        b = eb_new(bufname, BF_SAVELOG | BF_SHELL);
         if (!b)
             return NULL;
     }
@@ -2221,6 +2225,8 @@ static void do_shell(EditState *e, int argval)
     switch_to_buffer(e, b);
     /* force interactive mode if restarting */
     shell_mode.mode_init(e, b, 0);
+    // XXX: should update the terminal size and notify the process
+    //do_shell_refresh(e, 0);
     set_error_offset(b, 0);
     put_status(e, "Press C-o to toggle between shell/edit mode");
 }
@@ -2705,7 +2711,7 @@ static void do_shell_tabulate(EditState *e)
     }
 }
 
-static void do_shell_refresh(EditState *e)
+static void do_shell_refresh(EditState *e, int flags)
 {
     ShellState *s;
 
@@ -2723,7 +2729,7 @@ static void do_shell_refresh(EditState *e)
             }
         }
 
-        if (s->pty_fd > 0) {
+        if (s->pty_fd > 0 && (flags & SR_UPDATE_SIZE)) {
             struct winsize ws;
             ws.ws_col = s->cols;
             ws.ws_row = s->rows;
@@ -2732,8 +2738,9 @@ static void do_shell_refresh(EditState *e)
             ioctl(s->pty_fd, TIOCSWINSZ, &ws);
         }
     }
-    do_refresh_complete(e);
-    if (s) {
+    if (flags & SR_REFRESH)
+        do_refresh_complete(e);
+    if (s && !(flags & SR_SILENT)) {
         put_status(e, "terminal size set to %d by %d", s->cols, s->rows);
     }
 }
@@ -3033,7 +3040,7 @@ static int match_digits(unsigned int *buf, int n, unsigned int sep) {
 
 static int match_string(unsigned int *buf, int n, const char *str) {
     int i;
-    for (i = 0; i < n && str[i] && buf[i] == str[i]; i++)
+    for (i = 0; i < n && str[i] && buf[i] == (u8)str[i]; i++)
         continue;
     return (str[i] == '\0') ? i : 0;
 }
@@ -3142,9 +3149,9 @@ static const CmdDef shell_commands[] = {
     CMD2( "shell-tabulate", "TAB",
           "Shell buffer TAB key",
           do_shell_tabulate, ES, "*")
-    CMD0( "shell-refresh", "C-l",
-          "Shell buffer ^L key",
-          do_shell_refresh)
+    CMD1( "shell-refresh", "C-l",
+          "Refresh shell buffer window and update terminal size",
+         do_shell_refresh, SR_UPDATE_SIZE | SR_REFRESH)
     CMD1( "shell-search-backward", "C-r",
           "Shell buffer ^R key",
           do_shell_search, -1)
@@ -3248,6 +3255,14 @@ static int pager_mode_init(EditState *e, EditBuffer *b, int flags)
     return 0;
 }
 
+/* additional mode specific bindings */
+static const char * const pager_bindings[] = {
+    "scroll-down", "DEL",
+    "scroll-up", "SPC",
+    "search-forward", "/",
+    NULL
+};
+
 static int shell_init(void)
 {
     /* populate and register shell mode and commands */
@@ -3273,22 +3288,17 @@ static int shell_init(void)
     shell_mode.get_default_path = shell_get_default_path;
 
     qe_register_mode(&shell_mode, MODEF_NOCMD | MODEF_VIEW);
-    qe_register_cmd_table(shell_commands, countof(shell_commands), &shell_mode);
-
-    /* global shell related commands and default keys */
-    qe_register_cmd_table(shell_global_commands, countof(shell_global_commands), NULL);
+    qe_register_commands(&shell_mode, shell_commands, countof(shell_commands));
+    qe_register_commands(NULL, shell_global_commands, countof(shell_global_commands));
 
     /* populate and register pager mode and commands */
     memcpy(&pager_mode, &text_mode, sizeof(ModeDef));
     pager_mode.name = "pager";
     pager_mode.mode_probe = NULL;
     pager_mode.mode_init = pager_mode_init;
+    pager_mode.bindings = pager_bindings;
 
     qe_register_mode(&pager_mode, MODEF_NOCMD | MODEF_VIEW);
-
-    qe_register_binding(KEY_DEL, "scroll-down", &pager_mode);
-    qe_register_binding(' ', "scroll-up", &pager_mode);
-    qe_register_binding('/', "search-forward", &pager_mode);
 
     return 0;
 }

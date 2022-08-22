@@ -73,13 +73,22 @@ struct DiredState {
     int show_dot_files;
     int show_ds_store;
     int hflag, nflag;
+    int details_flag, last_details_flag;
     int sort_mode;
     DiredItem *last_cur;
     long long total_bytes;
     int ndirs, nfiles, ndirs_hidden, nfiles_hidden;
     int blocksize;
     int last_width;
-    int no_blocks, no_mode, no_link, no_uid, no_gid, no_size, no_date;
+    int details_mask;
+#define DIRED_SHOW_BLOCKS 0x01
+#define DIRED_SHOW_MODE   0x02
+#define DIRED_SHOW_LINKS  0x04
+#define DIRED_SHOW_UID    0x08
+#define DIRED_SHOW_GID    0x10
+#define DIRED_SHOW_SIZE   0x20
+#define DIRED_SHOW_DATE   0x40
+#define DIRED_SHOW_ALL    0x7F
     int blockslen, modelen, linklen, uidlen, gidlen, sizelen, datelen, namelen;
     int fnamecol;
     char path[MAX_FILENAME_SIZE]; /* current path */
@@ -110,6 +119,9 @@ static int dired_show_dot_files = 1;
 static int dired_show_ds_store = 0;
 static int dired_nflag = 0; /* 0=name, 1=numeric, 2=hidden */
 static int dired_hflag = 0; /* 0=exact, 1=human-decimal, 2=human-binary */
+#define DIRED_DETAILS_AUTO  0
+#define DIRED_DETAILS_HIDE  1
+#define DIRED_DETAILS_SHOW  2
 static int dired_sort_mode = DIRED_SORT_GROUP | DIRED_SORT_NAME;
 
 static QVarType dired_sort_mode_set_value(EditState *s, VarDef *vp,
@@ -127,7 +139,7 @@ static VarDef dired_variables[] = {
     G_VAR( "dired-show-dot-files", dired_show_dot_files, VAR_NUMBER, VAR_RW_SAVE,
           "Set to show hidden files (starting with a `.`)" )
     G_VAR( "dired-show-ds-store", dired_show_ds_store, VAR_NUMBER, VAR_RW_SAVE,
-          "Set to show OS/X system file .DS_Store" )
+          "Set to show infamous macOS .DS_Store system files" )
 };
 
 static inline DiredState *dired_get_state(EditState *e, int status)
@@ -578,6 +590,9 @@ static void dired_compute_columns(DiredState *ds)
         if (ds->namelen < len)
             ds->namelen = len;
 
+        if (ds->details_flag == DIRED_DETAILS_HIDE)
+            continue;
+
         len = snprintf(buf, sizeof(buf), "%ld",
                        (long)(((long long)dip->size + ds->blocksize - 1) /
                               ds->blocksize));
@@ -658,7 +673,8 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
 
     if (ds->time_format != dired_time_format
     ||  ds->nflag != dired_nflag
-    ||  ds->hflag != dired_hflag) {
+    ||  ds->hflag != dired_hflag
+    ||  ds->details_flag != ds->last_details_flag) {
         flags |= DIRED_UPDATE_COLUMNS;
     }
 
@@ -670,17 +686,30 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
     if (!(flags & DIRED_UPDATE_REBUILD))
         return;
 
+    ds->last_details_flag = ds->details_flag;
     ds->last_width = window_width;
     ds->last_cur = NULL;
     width -= clamp(ds->namelen, 16, 40);
-    ds->no_size = ((width -= ds->sizelen + 2) < 0);
-    ds->no_date = ((width -= ds->datelen + 2) < 0);
-    ds->no_mode = ((width -= ds->modelen + 1) < 0);
-    ds->no_uid = (ds->nflag == 2) || ((width -= ds->uidlen + 1) < 0);
-    ds->no_gid = (ds->nflag == 2) || ((width -= ds->gidlen + 1) < 0);
-    ds->no_link = ((width -= ds->linklen + 1) < 0);
-    ds->no_blocks = ((width -= ds->blockslen + 1) < 0);
-    ds->no_blocks = 1;  // disable blocks display to avoid confusing output
+    ds->details_mask = DIRED_SHOW_ALL;
+    if (ds->details_flag == DIRED_DETAILS_HIDE) {
+        ds->details_mask = 0;
+    } else
+    if (ds->details_flag == DIRED_DETAILS_AUTO) {
+        if ((width -= ds->sizelen + 2) < 0)
+            ds->details_mask ^= DIRED_SHOW_SIZE;
+        if ((width -= ds->datelen + 2) < 0)
+            ds->details_mask ^= DIRED_SHOW_DATE;
+        if ((width -= ds->modelen + 1) < 0)
+            ds->details_mask ^= DIRED_SHOW_MODE;
+        if ((ds->nflag == 2) || ((width -= ds->uidlen + 1) < 0))
+            ds->details_mask ^= DIRED_SHOW_UID;
+        if ((ds->nflag == 2) || ((width -= ds->gidlen + 1) < 0))
+            ds->details_mask ^= DIRED_SHOW_GID;
+        if ((width -= ds->linklen + 1) < 0)
+            ds->details_mask ^= DIRED_SHOW_LINKS;
+        // disable blocks display to avoid confusing output
+        ds->details_mask ^= DIRED_SHOW_BLOCKS;
+    }
 
     /* construct list buffer */
     /* deleting buffer contents resets s->offset and s->offset_top */
@@ -738,30 +767,30 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
         if (dip->hidden)
             continue;
         col = eb_printf(b, "%c ", dip->mark);
-        if (!ds->no_blocks) {
+        if (ds->details_mask & DIRED_SHOW_BLOCKS) {
             col += eb_printf(b, "%*ld ", ds->blockslen,
                              (long)(((long long)dip->size + ds->blocksize - 1) /
                                     ds->blocksize));
         }
-        if (!ds->no_mode) {
+        if (ds->details_mask & DIRED_SHOW_MODE) {
             col += eb_printf(b, "%s ", compute_attr(buf, dip->mode));
         }
-        if (!ds->no_link) {
+        if (ds->details_mask & DIRED_SHOW_LINKS) {
             col += eb_printf(b, "%*d ", ds->linklen, (int)dip->nlink);
         }
-        if (!ds->no_uid) {
+        if (ds->details_mask & DIRED_SHOW_UID) {
             format_uid(buf, sizeof(buf), ds->nflag, dip->uid);
             col += eb_printf(b, "%-*s ", ds->uidlen, buf);
         }
-        if (!ds->no_gid) {
+        if (ds->details_mask & DIRED_SHOW_GID) {
             format_gid(buf, sizeof(buf), ds->nflag, dip->gid);
             col += eb_printf(b, "%-*s ", ds->gidlen, buf);
         }
-        if (!ds->no_size) {
+        if (ds->details_mask & DIRED_SHOW_SIZE) {
             format_size(buf, sizeof(buf), ds->hflag, dip->mode, dip->rdev, dip->size);
             col += eb_printf(b, " %*s  ", ds->sizelen, buf);
         }
-        if (!ds->no_date) {
+        if (ds->details_mask & DIRED_SHOW_DATE) {
             format_date(buf, sizeof(buf), dip->mtime, dired_time_format);
             col += eb_printf(b, "%s  ", buf);
         }
@@ -1128,6 +1157,15 @@ static void dired_toggle_nflag(EditState *s)
     dired_nflag = (dired_nflag + 1) % 3;
 }
 
+static void dired_hide_details_mode(EditState *s)
+{
+    DiredState *ds;
+    if (!(ds = dired_get_state(s, 1)))
+        return;
+
+    ds->details_flag = (ds->details_flag + 1) % 3;
+}
+
 static void dired_refresh(EditState *s)
 {
     DiredState *ds;
@@ -1309,6 +1347,80 @@ void do_dired(EditState *s, int argval)
 
 /* specific dired commands */
 static const CmdDef dired_commands[] = {
+    /* Emacs bindings:
+       e .. f      dired-find-file
+       !           dired-do-shell-command
+       $           dired-hide-subdir
+       +           dired-create-directory
+       -           negative-argument
+       0 .. 9      digit-argument
+       <           dired-prev-dirline
+       =           dired-diff
+       >           dired-next-dirline
+       ?           dired-summary
+       A           dired-do-search
+       B           dired-do-byte-compile
+       C           dired-do-copy
+       D           dired-do-delete
+       G           dired-do-chgrp
+       H           dired-do-hardlink
+       L           dired-do-load
+       M           dired-do-chmod
+       O           dired-do-chown
+       P           dired-do-print
+       Q           dired-do-query-replace-regexp
+       R           dired-do-rename
+                     rename a file or move selection to another directory
+       S           dired-do-symlink
+       T           dired-do-touch
+       U           dired-unmark-all-marks
+       X           dired-do-shell-command
+       Z           dired-do-compress
+       ^           dired-up-directory
+       a           dired-find-alternate-file
+       h           describe-mode
+       i, +        dired-maybe-insert-subdir
+       j           dired-goto-file
+       g           revert-buffer
+                     read all currently expanded directories aGain.
+       k           dired-do-kill-lines
+       l           dired-do-redisplay
+                     relist single directory or marked files?
+       o           dired-find-file-other-window
+       q           quit-window
+       s           dired-sort-toggle-or-edit
+                     toggle sorting by name and by date
+                     with prefix: set the ls command line options
+       t           dired-toggle-marks
+       v           dired-view-file
+       w           dired-copy-filename-as-kill
+       x           dired-do-flagged-delete
+       y           dired-show-file-type
+       ~           dired-flag-backup-files
+       C-M-d       dired-tree-down
+       C-M-n       dired-next-subdir
+       C-M-p       dired-prev-subdir
+       C-M-u       dired-tree-up
+       M-$         dired-hide-all
+       M-{         dired-prev-marked-file
+       M-}         dired-next-marked-file
+       M-DEL       dired-unmark-all-files
+     * C-n         dired-next-marked-file
+     * C-p         dired-prev-marked-file
+     * !           dired-unmark-all-marks
+     * %           dired-mark-files-regexp
+     * *           dired-mark-executables
+     * /           dired-mark-directories
+     * ?           dired-unmark-all-files
+     * @           dired-mark-symlinks
+     * c           dired-change-marks
+     * m           dired-mark
+     * s           dired-mark-subdir-files
+     * t           dired-toggle-marks
+     * u           dired-unmark
+     * need commands for splitting, unsplitting, zooming,
+       marking files globally.
+     */
     CMD1( "dired-enter", "RET",
           "Select the current entry",
           dired_select, 1)
@@ -1333,23 +1445,22 @@ static const CmdDef dired_commands[] = {
           "Select the format for file times",
           dired_set_time_format, ESi,
           "n{Time format: }[timeformat]")
-    /* s -> should also change switches */
     CMD1( "dired-delete", "d",
           "Mark the entry for deletion",
           dired_mark, 'D')
     CMD1( "dired-copy", "c",
           "Mark the entry for copying",
           dired_mark, 'C')
-    CMD1( "dired-move", "m",
-          "Mark the entry for moving",
-          dired_mark, 'M')
+    CMD1( "dired-mark", "m",
+          "Mark the entry for something",
+          dired_mark, '*')
     CMD1( "dired-unmark", "u",
           "Unmark the current entry",
           dired_mark, ' ')
     CMD0( "dired-execute", "x",
           "Execute the pending operations on marked entries (not implemented yet)",
           dired_execute)
-    CMD1( "dired-next-line", "n, C-n, down, SPC",
+    CMD1( "dired-next-line", "SPC, n, C-n, down",
           "Move to the next entry",
           dired_up_down, 1)
     CMD1( "dired-previous-line", "p, C-p, up",
@@ -1361,24 +1472,18 @@ static const CmdDef dired_commands[] = {
     CMD1( "dired-toggle-dot-files", ".",
           "Display or hide entries starting with .",
           dired_toggle_dot_files, -1)
-    /* g -> refresh all expanded dirs ? */
-    /* l -> relist single directory or marked files ? */
     CMD0( "dired-parent", "^, left",
           "Select the parent directory",
           dired_parent)
-    /* need commands for splitting, unsplitting, zooming, making subdirs */
-    /* h -> info */
-    /* i, + -> create subdirectory */
-    /* o -> explore in other window */
-    /* R -> rename a file or move selection to another directory */
-    /* C -> copy files */
-    /* mark files globally */
     CMD0( "dired-toggle-human", "H",
           "Change the format for file sizes (human readable vs: actual byte count)",
           dired_toggle_human)
     CMD0( "dired-toggle-nflag", "N",
           "Change the format for uid and gid (name vs: number)",
           dired_toggle_nflag)
+    CMD0( "dired-hide-details-mode", "(",
+          "Toggle visibility of detailed information in current Dired buffer)",
+          dired_hide_details_mode)
 };
 
 static const CmdDef dired_global_commands[] = {
@@ -1434,8 +1539,8 @@ static int dired_init(void)
     //eb_register_data_type(&dired_data_type);
     qe_register_mode(&dired_mode, /* MODEF_DATATYPE | */ MODEF_MAJOR | MODEF_VIEW);
     qe_register_variables(dired_variables, countof(dired_variables));
-    qe_register_cmd_table(dired_commands, countof(dired_commands), &dired_mode);
-    qe_register_cmd_table(dired_global_commands, countof(dired_global_commands), NULL);
+    qe_register_commands(&dired_mode, dired_commands, countof(dired_commands));
+    qe_register_commands(NULL, dired_global_commands, countof(dired_global_commands));
 
     filelist_init();
 
@@ -1583,8 +1688,8 @@ static int filelist_init(void)
     filelist_mode.display_hook = filelist_display_hook;
 
     qe_register_mode(&filelist_mode, MODEF_VIEW);
-    qe_register_cmd_table(filelist_commands, countof(filelist_commands), &filelist_mode);
-    qe_register_cmd_table(filelist_global_commands, countof(filelist_global_commands), NULL);
+    qe_register_commands(&filelist_mode, filelist_commands, countof(filelist_commands));
+    qe_register_commands(NULL, filelist_global_commands, countof(filelist_global_commands));
     return 0;
 }
 

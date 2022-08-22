@@ -80,7 +80,7 @@ static int org_scan_chunk(const unsigned int *str,
     int i, j;
 
     for (i = 0; begin[i]; i++) {
-        if (str[i] != begin[i])
+        if (str[i] != (u8)begin[i])
             return 0;
     }
     for (j = 0; j < min_width; j++) {
@@ -89,7 +89,7 @@ static int org_scan_chunk(const unsigned int *str,
     }
     for (i += j; str[i] != '\0'; i++) {
         for (j = 0; end[j]; j++) {
-            if (str[i + j] != end[j])
+            if (str[i + j] != (u8)end[j])
                 break;
         }
         if (!end[j])
@@ -760,7 +760,7 @@ static ModeDef org_mode = {
 static int org_init(void)
 {
     qe_register_mode(&org_mode, MODEF_SYNTAX);
-    qe_register_cmd_table(org_commands, countof(org_commands), &org_mode);
+    qe_register_commands(&org_mode, org_commands, countof(org_commands));
 
     return 0;
 }

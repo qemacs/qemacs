@@ -2037,10 +2037,9 @@ static CmdLineOptionDef cmd_options[] = {
     CMD_LINE_LINK()
 };
 
-static int x11_init(void)
-{
+static int x11_init(void) {
     qe_register_cmd_line_options(cmd_options);
-    qe_register_cmd_table(x11_commands, countof(x11_commands), NULL);
+    qe_register_commands(NULL, x11_commands, countof(x11_commands));
     if (force_tty)
         return 0;
     return qe_register_display(&x11_dpy);

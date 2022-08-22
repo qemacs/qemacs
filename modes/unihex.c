@@ -231,6 +231,16 @@ static int unihex_mode_probe(ModeDef *mode, ModeProbeData *p)
     return 1;
 }
 
+/* additional mode specific bindings */
+static const char * const unihex_bindings[] = {
+    // XXX: Should use fallback mode for these bindings
+    "decrease-width", "C-left",
+    "increase-width", "C-right",
+    "toggle-hex", "TAB",
+    "toggle-hex", "S-TAB",
+    NULL
+};
+
 static ModeDef unihex_mode = {
     .name = "unihex",
     .mode_probe = unihex_mode_probe,
@@ -247,22 +257,13 @@ static ModeDef unihex_mode = {
     .mouse_goto = text_mouse_goto,
     .write_char = hex_write_char,
     .get_mode_line = unihex_mode_line,
+    .bindings = unihex_bindings,
     // XXX: Should use fallback mode for other bindings
     //.fallback = &binary_mode,
 };
 
-
-static int unihex_init(void)
-{
-    /* first register mode(s) */
+static int unihex_init(void) {
     qe_register_mode(&unihex_mode, MODEF_VIEW);
-
-    /* additional mode specific keys */
-    // XXX: Should use fallback mode for these bindings
-    qe_register_binding(KEY_CTRL_LEFT, "decrease-width", &unihex_mode);
-    qe_register_binding(KEY_CTRL_RIGHT, "increase-width", &unihex_mode);
-    qe_register_binding(KEY_TAB, "toggle-hex", &unihex_mode);
-    qe_register_binding(KEY_SHIFT_TAB, "toggle-hex", &unihex_mode);
     return 0;
 }
 

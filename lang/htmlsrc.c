@@ -406,7 +406,7 @@ ModeDef htmlsrc_mode = {
 static int htmlsrc_init(void)
 {
     qe_register_mode(&htmlsrc_mode, MODEF_SYNTAX);
-    //qe_register_cmd_table(htmlsrc_commands, countof(htmlsrc_commands), &htmlsrc_mode);
+    //qe_register_commands(&htmlsrc_mode, htmlsrc_commands, countof(htmlsrc_commands));
 
     return 0;
 }

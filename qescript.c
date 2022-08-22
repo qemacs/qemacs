@@ -1243,8 +1243,7 @@ static const CmdDef parser_commands[] = {
 };
 
 static int parser_init(void) {
-{
-    qe_register_cmd_table(parser_commands, countof(parser_commands), NULL);
+    qe_register_commands(NULL, parser_commands, countof(parser_commands));
     qe_register_completion(&symbol_completion);
     return 0;
 }

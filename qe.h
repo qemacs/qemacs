@@ -482,6 +482,7 @@ const void *memstr(const void *buf, int size, const char *str);
 int stristart(const char *str, const char *val, const char **ptr);
 int strxstart(const char *str, const char *val, const char **ptr);
 int strxcmp(const char *str1, const char *str2);
+int strmatchword(const char *str, const char *val, const char **ptr);
 int ustrstart(const unsigned int *str, const char *val, int *lenp);
 int ustristart(const unsigned int *str, const char *val, int *lenp);
 const unsigned int *ustrstr(const unsigned int *str, const char *val);
@@ -1082,6 +1083,7 @@ typedef struct EditBufferDataType {
 #define BF_STYLE8    0x4000  /* buffer has 8 byte styles */
 #define BF_IS_STYLE  0x8000  /* buffer is a styles buffer */
 #define BF_IS_LOG    0x10000  /* buffer is a log buffer */
+#define BF_SHELL     0x20000  /* buffer is a shell buffer */
 
 struct EditBuffer {
     OWNED Page *page_table;
@@ -1572,6 +1574,7 @@ struct ModeDef {
 
     /* mode specific key bindings */
     struct KeyDef *first_key;
+    const char * const *bindings;
 
     ModeDef *fallback;  /* use bindings from fallback mode */
 
@@ -1661,7 +1664,8 @@ struct QEmacsState {
 #define EB_TRACE_PTY      0x04
 #define EB_TRACE_EMULATE  0x08
 #define EB_TRACE_COMMAND  0x10
-#define EB_TRACE_ALL      0x1F
+#define EB_TRACE_DEBUG    0x20
+#define EB_TRACE_ALL      0x2F
 #define EB_TRACE_FLUSH    0x100
 
     /* global layout info : DO NOT modify these directly. do_refresh
@@ -1839,8 +1843,8 @@ ModeDef *qe_find_mode(const char *name, int flags);
 ModeDef *qe_find_mode_filename(const char *filename, int flags);
 void qe_register_mode(ModeDef *m, int flags);
 void mode_complete(CompleteState *cp);
-int qe_register_cmd_table(const CmdDef *cmds, int len, ModeDef *m);
-int qe_register_binding(unsigned int key, const char *cmd_name, ModeDef *m);
+int qe_register_commands(ModeDef *m, const CmdDef *cmds, int len);
+int qe_register_bindings(ModeDef *m, const char *cmd_name, const char *keys);
 const CmdDef *qe_find_cmd(const char *cmd_name);
 int qe_get_prototype(const CmdDef *d, char *buf, int size);
 int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size);
@@ -2201,12 +2205,12 @@ void do_toggle_control_h(EditState *s, int set);
 /* misc */
 
 void do_set_emulation(EditState *s, const char *name);
-void do_start_trace_mode(EditState *s);
+void do_set_trace_flags(EditState *s, int flags);
+void do_toggle_trace_mode(EditState *s, int argval);
 void do_set_trace_options(EditState *s, const char *options);
 void do_cd(EditState *s, const char *name);
-int qe_mode_set_key(const char *keystr, const CmdDef *d, ModeDef *m);
-void do_set_key(EditState *s, const char *keystr, const char *cmd_name,
-                int local);
+int qe_register_command_binding(ModeDef *m, const CmdDef *d, const char *keystr);
+void do_set_key(EditState *s, const char *keystr, const char *cmd_name, int local);
 //void do_unset_key(EditState *s, const char *keystr, int local);
 void do_bof(EditState *s);
 void do_eof(EditState *s);
@@ -2276,7 +2280,7 @@ int parse_arg(const char **pp, CmdArgSpec *ap);
 void exec_command(EditState *s, const CmdDef *d, int argval, int key);
 void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);
-void do_numeric_argument(EditState *s);
+void do_prefix_argument(EditState *s);
 void do_start_kbd_macro(EditState *s);
 void do_end_kbd_macro(EditState *s);
 void do_call_last_kbd_macro(EditState *s);

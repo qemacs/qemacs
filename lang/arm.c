@@ -45,7 +45,7 @@ enum {
 static int arm_asm_match_keyword(const unsigned int *buf, const char *str)
 {
     while (*str) {
-        if (*buf++ != *str++)
+        if (*buf++ != (u8)*str++)
             return 0;
     }
     return !qe_isalnum_(*buf);

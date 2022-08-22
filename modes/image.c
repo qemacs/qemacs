@@ -892,6 +892,12 @@ static EditBufferDataType image_data_type = {
     image_buffer_close,
 };
 
+/* additional mode specific bindings */
+static const char * const image_bindings[] = {
+    "toggle-full-screen", "f",
+    NULL
+};
+
 static ModeDef image_mode = {
     .name = "image",
     .buffer_instance_size = sizeof(ImageBufferState),
@@ -906,21 +912,19 @@ static ModeDef image_mode = {
     .scroll_up_down = image_scroll_up_down,
     .data_type = &image_data_type,
     .get_mode_line = image_mode_line,
+    .bindings = image_bindings,
 };
 
 static CompletionDef pixel_format_completion = {
     "pixel-format", pixel_format_complete
 };
 
-static int image_init(void)
-{
+static int image_init(void) {
     av_register_all();
     eb_register_data_type(&image_data_type);
     qe_register_mode(&image_mode, MODEF_DATATYPE | MODEF_VIEW);
-    qe_register_cmd_table(image_commands, countof(image_commands), &image_mode);
+    qe_register_commands(&image_mode, image_commands, countof(image_commands));
     qe_register_completion(&pixel_format_completion);
-    /* additional mode specific keys */
-    qe_register_binding('f', "toggle-full-screen", &image_mode);
     return 0;
 }
 

@@ -223,11 +223,18 @@ static void build_bufed_list(BufedState *bs, EditState *s)
             eb_printf(b, " %10d %1.0d %-8.8s %-11s ",
                       b1->total_size, b1->style_bytes & 7,
                       b1->charset->name, mode_buf);
-            if (b1->flags & BF_DIRED)
+            if (b1->flags & (BF_DIRED | BF_SHELL))
                 b->cur_style = BUFED_STYLE_DIRECTORY;
             else
                 b->cur_style = BUFED_STYLE_FILENAME;
-            eb_puts(b, make_user_path(path, sizeof(path), b1->filename));
+            if (b1->flags & BF_SHELL) {
+                get_default_path(b1, b1->offset, path, sizeof(path));
+                make_user_path(path, sizeof(path), path);
+                get_dirname(path, sizeof(path), path);
+            } else {
+                make_user_path(path, sizeof(path), b1->filename);
+            }
+            eb_puts(b, path);
             b->cur_style = style0;
         }
         eb_putc(b, '\n');
@@ -552,6 +559,13 @@ static const CmdDef bufed_global_commands[] = {
           do_buffer_list, ESi, "P")
 };
 
+/* additional mode specific bindings */
+static const char * const bufed_bindings[] = {
+    "next-line", "n",
+    "previous-line", "p",
+    NULL
+};
+
 static int bufed_init(void)
 {
     /* inherit from list mode */
@@ -563,14 +577,11 @@ static int bufed_init(void)
     bufed_mode.mode_init = bufed_mode_init;
     bufed_mode.mode_free = bufed_mode_free;
     bufed_mode.display_hook = bufed_display_hook;
+    bufed_mode.bindings = bufed_bindings;
 
     qe_register_mode(&bufed_mode, MODEF_VIEW);
-    qe_register_cmd_table(bufed_commands, countof(bufed_commands), &bufed_mode);
-    qe_register_cmd_table(bufed_global_commands, countof(bufed_global_commands), NULL);
-
-    /* register extra bindings */
-    qe_register_binding('n', "next-line", &bufed_mode);
-    qe_register_binding('p', "previous-line", &bufed_mode);
+    qe_register_commands(&bufed_mode, bufed_commands, countof(bufed_commands));
+    qe_register_commands(NULL, bufed_global_commands, countof(bufed_global_commands));
 
     return 0;
 }

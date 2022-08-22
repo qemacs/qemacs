@@ -26,7 +26,6 @@
 ### Core / Buffer / Input
 
 * [BUG] ^C does not work on OpenBSD
-* tiny: remove extra features
 * add method pointers in windows initialized from fallback chain
 * remove redundant bindings along fallback chains
 * share mmapped pages correctly
@@ -47,6 +46,8 @@
 * bfs: built in file system for embedded extensions and files
    Jasspa bfs is way too complicated, make simpler system
 * notes
+* tiny: remove extra features
+* tiny: make a really small version
 
 ### Charsets / Unicode / Bidir
 
@@ -87,12 +88,12 @@
   jisx0213-2004-std.txt sjis-0213-2004-std.txt
   MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT
   koi8_ru.cp APL-ISO-IR-68.TXT GSM0338.TXT SGML.TXT
-* accented letters on OS/X
+* accented letters on macOS
 * combining unicode glyphs produce bogus cursor positions
    example: `V M-'` this problem occurs if no combined glyph exists.
    qemacs does not take into account combination performed by the terminal.
    Terminal glyph width of 0 should be supported.
-* deal with accents in filenames (OS/X uses combining accents encoded as UTF-8)
+* deal with accents in filenames (macOS uses combining accents encoded as UTF-8)
 * fix backspace on combining glyphs
 
 ### Windowing / Display
@@ -345,8 +346,6 @@ insert_window_left()  deletes some left-most windows
 
 ### Generic mode stuff
 
-* basic: make ModeDef structures read-only
-* basic: add default bindings in ModeDef
 * basic: register modes recursively along fallback chain
 * modes: `next-mode` should include buffer `default_mode` in list
 * tags: remove tags for modified line
@@ -354,6 +353,7 @@ insert_window_left()  deletes some left-most windows
 * modes: split modes into colorizers, interaction, io, charset, eoltype
 * modes: major and minor modes
 * rethink mode specific commands -> add inheritance for all commands ?
+* add mode_commands and global_commands tables in ModeDef structure
 * mode inheritance
 
 ### C mode
@@ -460,6 +460,7 @@ insert_window_left()  deletes some left-most windows
 * use colorized buffer for *trace* buffer to flag tty input, shell output, supported and unsupported escapes.
 * `telnet-mode`: Connect to a remote computer using telnet
 * ssh: should use the host name and get files via scp syntax
+* fix tty emulation to run kilo inside the process window
 
 ### Dired
 

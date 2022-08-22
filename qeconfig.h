@@ -40,7 +40,7 @@ static const CmdDef basic_commands[] = {
     CMD2( "tabulate", "TAB",
           "Insert a TAB or spaces according to indent-tabs-mode",
           do_tab, ESi, "p")
-    //CMD2( "space", "SPC", "Insert a space", do_space, "*" "P")
+    //CMD2( "space", "SPC", "Insert a space", do_space, ESi, "*" "P")
     CMD2( "quoted-insert", "C-q",
           "Read next input character and insert it",
           do_quoted_insert, ESi, "*" "p")
@@ -262,10 +262,18 @@ static const CmdDef basic_commands[] = {
           "s{Command: }[command]|command|"
           "P")
     /* M-0 thru M-9 also start numeric argument */
-    CMD0( "numeric-argument",
-          "C-u, M--, M-0, M-1, M-2, M-3, M-4, M-5, M-6, M-7, M-8, M-9",
-          "Set the numeric argument for the next command",
-          do_numeric_argument)
+    CMD0( "universal-argument",
+          "C-u",
+          "Set or multiply the numeric argument by 4",
+          do_prefix_argument)
+    CMD0( "negative-argument",
+          "M--",
+          "Negate or set the numeric argument to -1",
+          do_prefix_argument)
+    CMD0( "digit-argument",
+          "M-0, M-1, M-2, M-3, M-4, M-5, M-6, M-7, M-8, M-9",
+          "Set the numeric prefix argument",
+          do_prefix_argument)
     CMD0( "keyboard-quit",
           "C-g, C-x C-g, C-c C-g, C-h C-g, ESC ESC ESC",
           "Abort the current command",
@@ -372,11 +380,11 @@ static const CmdDef basic_commands[] = {
 
     /*---------------- Help ----------------*/
 
-    CMD0( "start-trace-mode", "C-h d",
-          "Start trace mode: show the *Trace* buffer with debugging info",
-          do_start_trace_mode)
+    CMD2( "toggle-trace-mode", "C-h d",
+          "Enable or disable trace mode: show the *Trace* buffer with debugging info",
+          do_toggle_trace_mode, ESi, "P")
     CMD2( "set-trace-options", "C-h t",
-          "Set the trace options",
+         "Select the trace options: all, none, command, debug, emulate, shell, tty, pty",
           do_set_trace_options, ESs,
           "s{Trace options: }|trace|")
     CMD0( "describe-key-briefly", "C-h c, C-h k, f6",

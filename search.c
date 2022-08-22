@@ -976,7 +976,7 @@ static const CmdDef search_commands[] = {
 };
 
 static int search_init(void) {
-    qe_register_cmd_table(search_commands, countof(search_commands), NULL);
+    qe_register_commands(NULL, search_commands, countof(search_commands));
     return 0;
 }
 

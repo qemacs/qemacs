@@ -205,7 +205,13 @@ void qe_register_mode(ModeDef *m, int flags)
         def->val = 0;
         def->action.ESs = do_set_mode;
         /* register allocated command */
-        qe_register_cmd_table(def, -1, NULL);
+        qe_register_commands(NULL, def, -1);
+    }
+    if (m->bindings) {
+        int i;
+        for (i = 0; m->bindings[i]; i += 2) {
+            qe_register_bindings(m, m->bindings[i], m->bindings[i + 1]);
+        }
     }
 }
 
@@ -305,8 +311,9 @@ static CompletionDef command_completion = {
     "command", command_complete, command_print_entry, command_get_entry
 };
 
-static int qe_register_binding1(unsigned int *keys, int nb_keys,
-                                const CmdDef *d, ModeDef *m)
+/* key binding handling */
+
+static int qe_register_binding(ModeDef *m, const CmdDef *d, unsigned int *keys, int nb_keys)
 {
     QEmacsState *qs = &qe_state;
     KeyDef **lp, *p;
@@ -326,6 +333,7 @@ static int qe_register_binding1(unsigned int *keys, int nb_keys,
     for (i = 0; i < nb_keys; i++) {
         p->keys[i] = keys[i];
     }
+    // XXX: should use fundamental_mode
     lp = m ? &m->first_key : &qs->first_key;
     /* Bindings must be prepended to override previous bindings
      * skip bindings to the same command for consistency */
@@ -337,7 +345,25 @@ static int qe_register_binding1(unsigned int *keys, int nb_keys,
 }
 
 /* if mode is non NULL, the defined keys are only active in this mode */
-int qe_register_cmd_table(const CmdDef *cmds, int len, ModeDef *m)
+static int qe_register_command_bindings(ModeDef *m, const CmdDef *d, const char *keystr)
+{
+    unsigned int keys[MAX_KEYS];
+    int nb_keys, res = -2;
+    const char *p = keystr;
+
+    while (p && *p) {
+        nb_keys = strtokeys(p, keys, MAX_KEYS, &p);
+        res = qe_register_binding(m, d, keys, nb_keys);
+    }
+    return res;
+}
+
+int qe_register_bindings(ModeDef *m, const char *cmd_name, const char *keys) {
+    return qe_register_command_bindings(m, qe_find_cmd(cmd_name), keys);
+}
+
+/* if mode is non NULL, the defined keys are only active in this mode */
+int qe_register_commands(ModeDef *m, const CmdDef *cmds, int len)
 {
     QEmacsState *qs = &qe_state;
     const CmdDef *d;
@@ -373,37 +399,16 @@ int qe_register_cmd_table(const CmdDef *cmds, int len, ModeDef *m)
     for (d = cmds, i = len; i-- > 0; d++) {
         const char *p = d->name + strlen(d->name) + 1;
         if (*p)
-            qe_mode_set_key(p, d, m);
+            qe_register_command_bindings(m, d, p);
     }
     return 0;
-}
-
-/* key binding handling */
-
-int qe_register_binding(unsigned int key, const char *cmd_name, ModeDef *m)
-{
-    return qe_register_binding1(&key, 1, qe_find_cmd(cmd_name), m);
-}
-
-int qe_mode_set_key(const char *keystr, const CmdDef *d, ModeDef *m)
-{
-    unsigned int keys[MAX_KEYS];
-    const char *p = keystr;
-    int nb_keys, res = -2;
-
-    while (p && *p) {
-        nb_keys = strtokeys(p, keys, MAX_KEYS, &p);
-        res = qe_register_binding1(keys, nb_keys, d, m);
-    }
-    return res;
 }
 
 void do_set_key(EditState *s, const char *keystr,
                 const char *cmd_name, int local)
 {
     ModeDef *m = local ? s->mode : NULL;
-    const CmdDef *d = qe_find_cmd(cmd_name);
-    int res = qe_mode_set_key(keystr, d, m);
+    int res = qe_register_bindings(m, cmd_name, keystr);
     if (res == -2)
         put_status(s, "Invalid keys: %s", keystr);
     if (res == -1)
@@ -475,49 +480,16 @@ void do_set_emulation(EditState *s, const char *name)
     }
 }
 
-void do_start_trace_mode(EditState *s)
-{
-    do_set_trace_options(s, "all");
-}
-
-void do_set_trace_options(EditState *s, const char *options)
-{
-    char buf[80];
-    const char *p = options;
+void do_set_trace_flags(EditState *s, int flags) {
     QEmacsState *qs = s->qe_state;
-    int last_flags = qs->trace_flags;
 
-    while (*p) {
-        p += strspn(p, " \t,");
-        if (strstart(p, "none", &p) || strstart(p, "off", &p))
-            qs->trace_flags = 0;
-        else
-        if (strstart(p, "all", &p) || strstart(p, "on", &p))
-            qs->trace_flags = EB_TRACE_ALL;
-        else
-        if (strstart(p, "tty", &p)) {
-            qs->trace_flags |= EB_TRACE_TTY;
-        } else
-        if (strstart(p, "shell", &p)) {
-            qs->trace_flags |= EB_TRACE_SHELL;
-        } else
-        if (strstart(p, "pty", &p)) {
-            qs->trace_flags |= EB_TRACE_PTY;
-        } else
-        if (strstart(p, "emulate", &p)) {
-            qs->trace_flags |= EB_TRACE_EMULATE;
-        } else
-        if (strstart(p, "command", &p)) {
-            qs->trace_flags |= EB_TRACE_COMMAND;
-        } else {
-            break;
-        }
-    }
+    qs->trace_flags = flags;
     if (qs->trace_flags) {
+        char buf[80];
         if (!qs->trace_buffer) {
             qs->trace_buffer = eb_new("*trace*", BF_SYSTEM);
         }
-        if (!last_flags) {
+        if (!eb_find_window(qs->trace_buffer, NULL)) {
             EditState *e = qe_split_window(s, SW_STACKED, 75);
             if (e) {
                 do_switch_to_buffer(e, "*trace*");
@@ -543,6 +515,55 @@ void do_set_trace_options(EditState *s, const char *options)
     } else {
         put_status(s, "Tracing disabled");
     }
+}
+
+void do_toggle_trace_mode(EditState *s, int argval) {
+    QEmacsState *qs = s->qe_state;
+    if (argval == NO_ARG) {
+        /* toggle trace mode */
+        do_set_trace_flags(s, qs->trace_flags ? 0 : EB_TRACE_ALL);
+    } else {
+        do_set_trace_flags(s, argval);
+    }
+}
+
+void do_set_trace_options(EditState *s, const char *options) {
+    const char *p = options;
+    QEmacsState *qs = s->qe_state;
+    int flags = qs->trace_flags;
+
+    for (;;) {
+        p += strspn(p, " \t,");
+        if (!*p)
+            break;
+        if (strmatchword(p, "none", &p) || strmatchword(p, "off", &p))
+            flags = 0;
+        else
+        if (strmatchword(p, "all", &p) || strmatchword(p, "on", &p))
+            flags = EB_TRACE_ALL;
+        else
+        if (strmatchword(p, "tty", &p)) {
+            flags |= EB_TRACE_TTY;
+        } else
+        if (strmatchword(p, "shell", &p)) {
+            flags |= EB_TRACE_SHELL;
+        } else
+        if (strmatchword(p, "pty", &p)) {
+            flags |= EB_TRACE_PTY;
+        } else
+        if (strmatchword(p, "emulate", &p)) {
+            flags |= EB_TRACE_EMULATE;
+        } else
+        if (strmatchword(p, "command", &p)) {
+            flags |= EB_TRACE_COMMAND;
+        } else
+        if (strmatchword(p, "debug", &p)) {
+            flags |= EB_TRACE_DEBUG;
+        } else {
+            break;
+        }
+    }
+    do_set_trace_flags(s, flags);
 }
 
 void do_cd(EditState *s, const char *path)
@@ -5207,7 +5228,7 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
         def->val = 0;
         def->action.ESs = do_execute_macro_keys;
         /* register allocated command */
-        qe_register_cmd_table(def, -1, NULL);
+        qe_register_commands(NULL, def, -1);
     }
     if (key_bind && *key_bind) {
         do_set_key(s, key_bind, name, 0);
@@ -5277,7 +5298,7 @@ static void macro_add_key(int key)
     qs->macro_keys[qs->nb_macro_keys++] = key;
 }
 
-void do_numeric_argument(qe__unused__ EditState *s)
+void do_prefix_argument(qe__unused__ EditState *s)
 {
     /* nothing is done there (see qe_key_process()) */
 }
@@ -5454,16 +5475,17 @@ static void qe_key_process(int key)
     if (c->nb_keys == kd->nb_keys) {
     exec_cmd:
         d = kd->cmd;
-        if (d->action.ES == do_numeric_argument && !c->describe_key) {
+        if (d->action.ES == do_prefix_argument && !c->describe_key) {
             /* special handling for numeric argument */
             /* CG: XXX: should display value of numeric argument */
-            if (key == KEY_META('-')) {
+            if (key == '-' || key == KEY_META('-')) {
                 c->sign = -c->sign;
             } else
-            if (key >= KEY_META('0') && key <= KEY_META('9')) {
+            if ((key >= '0' && key <= '9')
+            ||  (key >= KEY_META('0') && key <= KEY_META('9'))) {
                 if (c->is_numeric_arg == 0)
                     c->argval = 0;
-                c->argval = c->argval * 10 + key - KEY_META('0');
+                c->argval = c->argval * 10 + (key & 15);
             } else {  /* KEY_CTRL('u') */
                 c->noargval = c->noargval * 4;
             }
@@ -5884,7 +5906,7 @@ static const char *file_completion_ignore_extensions = {
     "|apk"
     "|bin|obj|dll|exe" /* DOS binaries */
     "|o|so|a" /* Unix binaries */
-    "|dylib|dSYM" /* OS/X */
+    "|dylib|dSYM" /* macOS */
     "|gz|tgz|taz|bz2|bzip2|xz|zip|rar|z|tar" /* archives */
     "|cma|cmi|cmo|cmt|cmti|cmx"
     "|class|jar" /* java */
@@ -6657,7 +6679,7 @@ void minibuffer_init(void)
     minibuffer_mode.mode_free = minibuffer_mode_free;
     minibuffer_mode.scroll_up_down = do_minibuffer_scroll_up_down;
     qe_register_mode(&minibuffer_mode, MODEF_NOCMD | MODEF_VIEW);
-    qe_register_cmd_table(minibuffer_commands, countof(minibuffer_commands), &minibuffer_mode);
+    qe_register_commands(&minibuffer_mode, minibuffer_commands, countof(minibuffer_commands));
 }
 
 /* popup paging mode */
@@ -6738,7 +6760,7 @@ static void popup_init(void)
     popup_mode.name = "popup";
     popup_mode.mode_probe = NULL;
     qe_register_mode(&popup_mode, MODEF_VIEW);
-    qe_register_cmd_table(popup_commands, countof(popup_commands), &popup_mode);
+    qe_register_commands(&popup_mode, popup_commands, countof(popup_commands));
 }
 
 #ifndef CONFIG_TINY
@@ -9098,7 +9120,7 @@ static void qe_init(void *opaque)
 
     /* init basic modules */
     qe_register_mode(&text_mode, MODEF_VIEW);
-    qe_register_cmd_table(basic_commands, countof(basic_commands), NULL);
+    qe_register_commands(NULL, basic_commands, countof(basic_commands));
     qe_register_cmd_line_options(cmd_options);
 
     qe_register_completion(&command_completion);
