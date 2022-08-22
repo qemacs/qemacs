@@ -67,7 +67,7 @@ enum {
 static const char ops2[] = "*= /= %= += -= <<= >>= &= ^= |= == != << >> <= >= ++ -- || && ";
 static const char ops1[] = "=<>?:|^&+-*/%,;.!~()[]{}";
 
-static const char precs[] = {
+static const u8 precs[] = {
     '(', '[', '.', TOK_INC, TOK_DEC, 14,
     '*', '/', '%', 13,
     '+', '-', 12,
@@ -136,7 +136,7 @@ static void qe_cfg_release(QEmacsDataSource *ds) {
 }
 
 static int qe_cfg_get_prec(int tok) {
-    char *p = strchr(precs, tok);
+    const u8 *p = memchr(precs, tok, sizeof precs);
     if (p) {
         while (*++p >= ' ')
             continue;
@@ -1242,7 +1242,7 @@ static const CmdDef parser_commands[] = {
 #endif
 };
 
-static int parser_init(void)
+static int parser_init(void) {
 {
     qe_register_cmd_table(parser_commands, countof(parser_commands), NULL);
     qe_register_completion(&symbol_completion);
