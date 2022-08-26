@@ -304,7 +304,7 @@ static int tty_dpy_init(QEditScreen *s,
                 "\033[?1049h"       /* enter_ca_mode */
                 "\033[m\033(B"      /* exit_attribute_mode */
                 "\033[4l"           /* exit_insert_mode */
-                "\033[?7h"          /* enter_am_mode */
+                "\033[?7h"          /* enter_am_mode (autowrap on) */
                 "\033[39;49m"       /* orig_pair */
                 "\033[?1h\033="     /* keypad_xmit */
                );

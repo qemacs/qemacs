@@ -295,6 +295,7 @@ insert_window_left()  deletes some left-most windows
 * extra: `grep`, `grep-buffer`, `grep-sources`, `grep-tree`...
 * search: `count-words`, `wc`, `count-sloc`
 * search: stats command for word count and mode specific stats
+* C-p and C-n should select previous and next search pattern in history
 
 ### Undo
 
@@ -425,33 +426,32 @@ insert_window_left()  deletes some left-most windows
 
 ### Shell mode
 
-* C-x Enter should find another shell buffer if `*shell*` has been killed. Should enumerate all buffers.
-* terminal emulation: when move inserts spaces, they should have default attributes
+* `C-x RET RET` should switch to last process buffer selected and move to the end of buffer
+* `C-x RET RET` should find another shell buffer if `*shell*` has been killed. Should enumerate all buffers.
+* terminal emulation: when move inserts spaces, they should have default attributes:  add test cases
 * `C-c C-c` should abort make process
 * support `:` as alternate escape sequence argument separator
-* use target window for man and similar commands
 * `start-shell` should kill popup window
 * `A-x kill-buffer RET` -> hang
 * turn on interactive mode on commands that move the cursor to EOB
-* asynchronous input buffer
+* use auxiliary buffer to make process input asynchronous
 * give commands a chance to execute for macros to behave correctly
 * `A-y` at process prompt
-* fix very long lines in shell buffer
-* `C-x RET` should switch to last process buffer selected and move to the end of buffer
+* fix very long lines in shell buffer (not finished)
 * fix screen size notifications, `SIGWINCH` signals and ioctl
-* fix crash bug when invoking qemacs recursively in the terminal
-* set current directory of new shell buffer to that of current window
-* use auxiliary buffer to make process input asynchronous
+* fix terminal size inside shell window ?
 * other buffer modification functions in shell input region
 * `tty_put_char` should convert charsets
+* set current directory of new shell buffer to that of current window
 * current path in compile set to current buffer path
 * current path retrieved from shell prompt backwards from point
 * fix bof/eof shell mode
 * allow quoting of special keys: let `do_char` insert xterm/vt100
   key sequence to allow typing special keys into shell process
-* fix terminal size inside shell window ?
 * cmdline arg to force lines and columns to test shell.
 * toggling interactive shell mode is not automatic enough
+* use target window for man and similar commands
+* fix infinite scroll for man command
 * man output bug on linux
 * man pager -> more bindings, such as `RET` -> `push-button` (jump to map page)
 * accented letter input in shell mode

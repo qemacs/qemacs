@@ -510,7 +510,7 @@ static void bufed_mode_free(EditBuffer *b, void *state)
 
 /* specific bufed commands */
 static const CmdDef bufed_commands[] = {
-    CMD1( "bufed-select", "RET, SPC, e, q",
+    CMD1( "bufed-select", "RET, LF, SPC, e, q",
           "Select buffer from current line and close bufed popup window",
           bufed_select, 0)
     CMD1( "bufed-abort", "C-g, C-x C-g",

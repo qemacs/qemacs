@@ -6642,7 +6642,7 @@ static const CmdDef minibuffer_commands[] = {
           "Insert a character into the minibuffer",
           do_minibuffer_char, ESii,
           "*" "k" "p")
-    CMD1( "minibuffer-exit", "RET",
+    CMD1( "minibuffer-exit", "RET, LF",
           "End the minibuffer input",
           do_minibuffer_exit, 0)
     CMD1( "minibuffer-abort", "C-g, C-x C-g",
@@ -7673,6 +7673,7 @@ static void quit_key(void *opaque, int ch)
         break;
     case 'q':
     case KEY_RET:
+    case KEY_LF:
         is->state = QS_NOSAVE;
         is->modified = 1;
         break;

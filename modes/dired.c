@@ -1421,7 +1421,7 @@ static const CmdDef dired_commands[] = {
      * need commands for splitting, unsplitting, zooming,
        marking files globally.
      */
-    CMD1( "dired-enter", "RET",
+    CMD1( "dired-enter", "RET, LF",
           "Select the current entry",
           dired_select, 1)
     CMD1( "dired-right", "right",
@@ -1660,7 +1660,7 @@ static int filelist_mode_init(EditState *s, EditBuffer *b, int flags)
 }
 
 static const CmdDef filelist_commands[] = {
-    CMD0( "filelist-select", "RET, right",
+    CMD0( "filelist-select", "RET, LF, right",
           "Select the current entry",
           do_other_window)
     CMD0( "filelist-tab", "TAB",

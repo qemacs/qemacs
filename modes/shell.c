@@ -56,7 +56,7 @@ typedef struct ShellState {
     /* buffer state */
     int cols, rows;
     int use_alternate_screen;
-    int alternate_screen_top;
+    int screen_top, alternate_screen_top;
     int scroll_top, scroll_bottom;  /* scroll region (top included, bottom excluded) */
     int pty_fd;
     int pid; /* -1 if not launched */
@@ -70,7 +70,7 @@ typedef struct ShellState {
     int esc1, esc2, lastc;
     int shifted;
     int cset, charset[2];
-    int grab_keys;
+    int grab_keys;      // XXX: should detect raw mode instead of relying on alternate_screen
     unsigned char term_buf[256];
     int term_len, term_pos;
     int utf8_len;
@@ -260,6 +260,14 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
         snprintf(lines_string, sizeof lines_string, "%d", rows);
         snprintf(columns_string, sizeof columns_string, "%d", cols);
 
+        // XXX: should prevent less from paging:
+        //      update the terminal size because
+        //         ioctl TIOCGWINSZ or WIOCGETD take precedence
+        //         over LINES and COLUMNS in linux
+        //      MANWIDTH overrides COLUMNS and ioctl stuff?
+        //      MAN_KEEP_FORMATING count be used
+        //      "PAGER=less -E -z1000" does not seem to work
+        //      "LESS=-E -z1000" does not work either
         setenv("LINES", lines_string, 1);
         setenv("COLUMNS", columns_string, 1);
         setenv("TERM", "xterm-256color", 1);
@@ -480,26 +488,54 @@ static inline void qe_term_set_style(ShellState *s) {
     s->b->cur_style = QE_TERM_COMPOSITE | s->attr | composite_color;
 }
 
-static void qe_term_get_pos(ShellState *s, int destoffset,
-                            int *start, int *px, int *py)
-{
-    int total_lines, col_num, offset, offset1, c;
-    int x, y, w, start_line, start_offset;
+/* return offset of the n-th terminal line from a given offset */
+static int qe_term_skip_lines(ShellState *s, int offset, int n) {
+    int x, y, w, offset1, offset2;
+    x = y = 0;
+    while (y < n && offset < s->b->total_size) {
+        int c = eb_nextc(s->b, offset, &offset1);
+        if (c == '\n') {
+            y++;
+            x = 0;
+        } else
+        if (c == '\t') {
+            w = (x + 8) & ~7;
+            /* TAB at EOL do not move the cursor */
+            x = min(x + w, s->cols - 1);
+        } else {
+            /* if destination x is in the middle of a wide character,
+               actual x will be too far */
+            w = unicode_tty_glyph_width(c);
+            x += w;
+            if (x >= s->cols) {
+                /* handle line wrapping */
+                if (x > s->cols) {
+                    /* wide character at EOL actually wraps to next line */
+                    if (y == n - 1)
+                        break;
+                    y++;
+                    x = w;
+                } else
+                if (eb_nextc(s->b, offset1, &offset2) != '\n') {
+                    /* character is at end of line, next character wraps to next line */
+                    y++;
+                    x = 0;
+                }
+            }
+        }
+        offset = offset1;
+    }
+    return offset;
+}
+
+static int qe_term_get_pos(ShellState *s, int destoffset, int *px, int *py) {
+    int offset, offset1, c;
+    int x, y, w, start_offset;
 
     if (s->use_alternate_screen) {
         start_offset = minp(&s->alternate_screen_top, s->b->total_size);
     } else {
-        eb_get_pos(s->b, &total_lines, &col_num, s->b->total_size);
-        if (s->cur_offset >= s->b->total_size
-        ||  eb_prevc(s->b, s->b->total_size, &offset1) != '\n')
-            total_lines++;
-
-        /* XXX: this is incorrect for overlong lines */
-        start_line = max(0, total_lines - s->rows);
-        start_offset = eb_goto_pos(s->b, start_line, 0);
-    }
-    if (start) {
-        *start = start_offset;
+        start_offset = minp(&s->screen_top, s->b->total_size);
     }
     if (px || py) {
         destoffset = clamp(destoffset, 0, s->b->total_size);
@@ -509,42 +545,72 @@ static void qe_term_get_pos(ShellState *s, int destoffset,
             if (c == '\n') {
                 y++;
                 x = 0;
+            } else
+            if (c == '\t') {
+                w = (x + 8) & ~7;
+                x = min(x + w, s->cols - 1);
             } else {
                 w = unicode_tty_glyph_width(c);
                 x += w;
+                if (x >= s->cols) {
+                    if (x > s->cols) {
+                        y++;
+                        x = w;
+                    } else
+                    if (eb_nextc(s->b, offset, &offset1) != '\n') {
+                        y++;
+                        x = 0;
+                    }
+                }
             }
+        }
+        if (y >= s->rows) {
+            // XXX: should take a flag to make this optional
+            /* adjust start if row is too far */
+            start_offset = qe_term_skip_lines(s, start_offset, y - s->rows + 1);
+            y = s->rows - 1;
+            /* update screen_top */
+            if (s->use_alternate_screen)
+                s->alternate_screen_top = start_offset;
+            else
+                s->screen_top = start_offset;
         }
         if (px) *px = x;
         if (py) *py = y;
     }
+    return start_offset;
 }
 
 /* Compute offset of the char at column x and row y (0 based).
  * Can insert spaces or newlines if needed.
  * x and y may each be relative to the current position.
  */
-static void qe_term_goto_xy(ShellState *s, int destx, int desty, int relative)
-{
-    int x, y, w, start_offset, offset, offset1, c;
+#define TG_RELATIVE_COL  0x01
+#define TG_RELATIVE_ROW  0x02
+#define TG_RELATIVE      0x03
+#define TG_NOCLIP        0x04
+#define TG_NOEXTEND      0x08
+static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int flags) {
+    int x, y, w, start_offset, offset1, offset2, c;
 
-    if (relative & 3) {
-        qe_term_get_pos(s, s->cur_offset, &start_offset, &x, &y);
-        if (relative & 1)
+    if (flags & TG_RELATIVE) {
+        start_offset = qe_term_get_pos(s, offset, &x, &y);
+        if (flags & TG_RELATIVE_COL)
             destx += x;
-        if (relative & 2)
+        if (flags & TG_RELATIVE_ROW)
             desty += y;
     } else {
-        qe_term_get_pos(s, s->cur_offset, &start_offset, NULL, NULL);
+        start_offset = qe_term_get_pos(s, offset, NULL, NULL);
     }
     if (desty < 0 || desty >= QE_TERM_YSIZE_INFINITE - 1)
         desty = 0;
     else
-    if (desty >= s->rows)
+    if (desty >= s->rows && !(flags & TG_NOCLIP))
         desty = s->rows - 1;
     if (destx < 0)
         destx = 0;
     else
-    if (destx >= s->cols)
+    if (destx >= s->cols && !(flags & TG_NOCLIP))
         destx = s->cols;
 
     x = y = 0;
@@ -552,18 +618,25 @@ static void qe_term_goto_xy(ShellState *s, int destx, int desty, int relative)
     while (y < desty || x < destx) {
         if (offset >= s->b->total_size) {
             offset = s->b->total_size;
+            if (flags & TG_NOEXTEND)
+                break;
             /* XXX: color may be wrong */
             s->b->cur_style = QE_STYLE_DEFAULT;
             //qe_term_set_style(s);
             if (y < desty) {
+                // XXX: potential problem if previous line has s->cols characters
+                int x1, y1;
                 offset += eb_insert_uchars(s->b, offset, '\n', desty - y);
                 y = desty;
                 x = 0;
+                /* update current screen_top */
+                qe_term_get_pos(s, offset, &x1, &y1);
             }
             if (x < destx) {
                 offset += eb_insert_uchars(s->b, offset, ' ', destx - x);
                 x = destx;
             }
+            break;
         } else {
             c = eb_nextc(s->b, offset, &offset1);
             if (c == '\n') {
@@ -572,37 +645,105 @@ static void qe_term_goto_xy(ShellState *s, int destx, int desty, int relative)
                     x = 0;
                     offset = offset1;
                 } else {
+                    if (flags & TG_NOEXTEND)
+                        break;
                     s->b->cur_style = QE_STYLE_DEFAULT;
                     offset += eb_insert_uchars(s->b, offset, ' ', destx - x);
                     x = destx;
                 }
+            } else
+            if (c == '\t') {
+                // XXX: should expand TABs if destination falls in the middle
+                //      of a TAB expansion
+                w = (x + 8) & ~7;
+                x = min(x + w, s->cols - 1);
+                offset = offset1;
             } else {
                 /* if destination x is in the middle of a wide character,
                    actual x will be too far */
                 w = unicode_tty_glyph_width(c);
                 x += w;
+                if (x >= s->cols) {
+                    /* handle line wrapping */
+                    if (y == desty) {
+                        if (x == destx) {
+                            offset = offset1;
+                            break;
+                        }
+                        break;
+                    }
+                    if (x > s->cols) {
+                        x = w;
+                        y++;
+                    } else
+                    if (eb_nextc(s->b, offset1, &offset2) != '\n') {
+                        x = 0;
+                        y++;
+                    }
+                }
                 offset = offset1;
             }
         }
     }
-    s->cur_offset = offset;
+    return offset;
 }
 
-static void qe_term_goto_tab(ShellState *s, int n)
-{
-    int col_num, cur_line;
-    eb_get_pos(s->b, &cur_line, &col_num, s->cur_offset);
+static void qe_term_goto_xy(ShellState *s, int destx, int desty, int flags) {
+    s->cur_offset = qe_term_goto_pos(s, s->cur_offset, destx, desty, flags);
+}
+
+static int qe_term_fix_wrap(ShellState *s, int offset) {
+    int x, y, offset1, offset2, offset3;
+
+    qe_term_get_pos(s, offset, &x, &y);
+    offset1 = qe_term_goto_pos(s, offset, 0, y, TG_NOCLIP | TG_NOEXTEND);
+    offset2 = qe_term_goto_pos(s, offset, s->cols, y, TG_NOCLIP | TG_NOEXTEND);
+    if (eb_nextc(s->b, offset2, &offset3) != '\n') {
+        /* break the line at right border */
+        eb_insert_uchars(s->b, offset2, '\n', 1);
+    }
+    if (eb_prevc(s->b, offset1, &offset3) != '\n') {
+        /* break the line at left border */
+        return eb_insert_uchars(s->b, offset1, '\n', 1);
+    }
+    return 0;
+}
+
+static void qe_term_goto_tab(ShellState *s, int n) {
     /* assuming tab stops every 8 positions */
-    qe_term_goto_xy(s, max(0, col_num + n * 8) & ~7, 0, 2);
+    int x, y, col_num;
+    qe_term_get_pos(s, s->cur_offset, &x, &y);
+    col_num = max(0, x + n * 8) & ~7;
+    if (col_num >= s->cols) {
+        /* handle wrapping lines */
+        if (x < s->cols)
+            col_num = s->cols - 1;
+        else
+            col_num = s->cols;
+    }
+    qe_term_goto_xy(s, col_num, y, 0);
 }
 
 static int qe_term_overwrite(ShellState *s, int offset,
                              const char *buf, int len)
 {
+    // XXX: charset is purposely ignored by the caller qe_term_put_char()
+    // XXX: this policy is obsolete, should deal with encoding and widths
     int offset1;
     int c1;
 
+    // XXX: bypass all these tests if at end of buffer?
     c1 = eb_nextc(s->b, offset, &offset1);
+    if (c1 == '\n' && offset1 > offset) {
+        int x, y;
+        qe_term_get_pos(s, offset, &x, &y);
+        // XXX: should handle wide characters here
+        if (x >= s->cols) {
+            /* at the right border: glue the current line and the next line */
+            eb_delete(s->b, offset, offset1 - offset);
+            c1 = eb_nextc(s->b, offset, &offset1);
+        }
+    }
     qe_term_set_style(s);
     if (c1 == '\n') {
         /* insert */
@@ -611,6 +752,8 @@ static int qe_term_overwrite(ShellState *s, int offset,
         /* check for buffer content change is not an advisable optimisation
          * because re-writing the same character may cause color changes.
          */
+        // XXX: this is incorrect if there are combining marks
+        //      and it does not handle partial overwrites (wide char or TAB)
         int cur_len = offset1 - offset;
         if (cur_len == len) {
             eb_write(s->b, offset, buf, len);
@@ -625,6 +768,7 @@ static int qe_term_overwrite(ShellState *s, int offset,
 static int qe_term_put_char(ShellState *s, int offset, int c, int n)
 {
     /* qe_term_put_char purposely ignores charset when writing chars */
+    // XXX: this policy is obsolete, should deal with encoding and widths
     char buf[1];
     int i;
 
@@ -635,24 +779,13 @@ static int qe_term_put_char(ShellState *s, int offset, int c, int n)
     return offset;
 }
 
-static int qe_term_erase_chars(ShellState *s, int offset, int n)
-{
-    return qe_term_put_char(s, offset, ' ', n);
-}
-
-static int qe_term_skip_lines(ShellState *s, int offset, int n)
-{
-    int i;
-    for (i = 0; i < n; i++) {
-        offset = eb_next_line(s->b, offset);
-    }
-    return offset;
-}
-
 static int qe_term_delete_lines(ShellState *s, int offset, int n)
 {
     int i, offset1, offset2;
 
+    // XXX: should scan buffer contents to handle line wrapping
+    // XXX: should insert a newline if offset is inside a wrapping line
+    // XXX: should update screen_top if on row 0
     if (n > 0) {
         for (offset1 = offset, i = 0; i < n; i++) {
             offset1 = eb_next_line(s->b, offset1);
@@ -667,6 +800,7 @@ static int qe_term_delete_lines(ShellState *s, int offset, int n)
 static int qe_term_insert_lines(ShellState *s, int offset, int n)
 {
     if (n > 0) {
+        // XXX: tricky if offset is in the middle of a wrapping line
         offset += eb_insert_uchars(s->b, offset, '\n', n);
     }
     return offset;
@@ -1013,8 +1147,7 @@ static unsigned char const sco_color[16] = {
 
 static void qe_term_emulate(ShellState *s, int c)
 {
-    int i, n, param1, param2, len;
-    int offset, offset1, offset2;
+    int i, param1, param2, len, offset, offset1, offset2;
     char buf1[10];
 
     offset = clampp(&s->cur_offset, 0, s->b->total_size);
@@ -1023,6 +1156,7 @@ static void qe_term_emulate(ShellState *s, int c)
         s->term_pos = 0;
     }
     if (s->term_pos < countof(s->term_buf)) {
+        /* UTF-8 bytes are appended here (among other uses of the buffer) */
         s->term_buf[s->term_pos++] = c;
         s->term_len = s->term_pos;
     }
@@ -1038,7 +1172,7 @@ static void qe_term_emulate(ShellState *s, int c)
         s->state = QE_TERM_STATE_ESC;
         return;
 #if 0
-    case 0x9B:
+    case 0x9B:  /* incompatible with UTF-8 */
         goto csi_entry;
 #endif
     }
@@ -1052,58 +1186,57 @@ static void qe_term_emulate(ShellState *s, int c)
              */
             break;
         case 7:     /* BEL  Bell (Ctrl-G). */
+            // XXX: should check for visible-bell
             put_status(NULL, "Ding!");
             break;
         case 8:     /* BS   Backspace (Ctrl-H). */
             if (s->use_alternate_screen) {
-                qe_term_goto_xy(s, -1, 0, 3);
+                // XXX: should check for special characters (virtual space?)
+                qe_term_goto_xy(s, -1, 0, TG_RELATIVE);
             } else {
                 int c1;
                 /* XXX: potentially incorrect for combining glyphs */
+                /* XXX: potentially incorrect for TABs */
+                /* XXX: correct for wrapping lines on macOS iTerm2 */
                 c1 = eb_prevc(s->b, offset, &offset1);
                 if (c1 != '\n') {
                     s->cur_offset = offset1;
                 }
             }
             break;
-        case 9:     /* TAB  Horizontal Tab (HT) (Ctrl-I). */
+        case 9:     /* HT   Horizontal Tab (TAB) (Ctrl-I). */
             qe_term_goto_tab(s, 1);
             break;
-        case 10:    /* Line Feed or New Line (NL).  (LF  is Ctrl-J). */
+        case 10:    /* LF   Line Feed (Ctrl-J) or New Line (NL). */
         case 11:    /* VT   Vertical Tab (Ctrl-K).
-                     * This is treated the same as LF. */
-        case 12:    /* FF   Form Feed or New Page (NP) (Ctrl-L).
-                     * FF  is treated the same as LF. */
+                     *      VT treated the same as LF. */
+        case 12:    /* FF   Form Feed (Ctrl-L) or New Page (NP).
+                     *      FF is treated the same as LF. */
             if (s->use_alternate_screen) {
-                int col, row;
-                qe_term_get_pos(s, offset, &offset1, &col, &row);
-                if (row >= s->rows - 1) {
-                    /* if on the last row, scroll the screen */
-                    s->alternate_screen_top = eb_next_line(s->b, offset1);
-                }
-                qe_term_goto_xy(s, 0, 1, 3);
+                qe_term_goto_xy(s, 0, 1, TG_RELATIVE | TG_NOCLIP);
             } else {
                 /* go to next line */
                 /* CG: should check if column should be kept in cooked mode */
-                for (;;) {
-                    if (offset >= s->b->total_size) {
-                        /* add a new line */
-                        /* CG: XXX: ignoring charset */
-                        qe_term_set_style(s);
-                        offset += eb_insert_uchar(s->b, offset, '\n');
-                        break;
-                    }
-                    c = eb_nextc(s->b, offset, &offset);
-                    if (c == '\n')
-                        break;
+                if (offset >= s->b->total_size) {
+                    int x, y;
+                    /* add a new line */
+                    /* CG: XXX: ignoring charset */
+                    qe_term_set_style(s);
+                    offset += eb_insert_uchar(s->b, offset, '\n');
+                    s->cur_offset = offset;
+                    /* update current screen_top */
+                    qe_term_get_pos(s, offset, &x, &y);
+                } else {
+                    // XXX: test if cursor is on last row and append a newline
+                    // XXX: potential style issue if appending a newline
+                    qe_term_goto_xy(s, 0, 1, TG_RELATIVE | TG_NOCLIP);
                 }
-                s->cur_offset = offset;
             }
             s->b->last_log = 0; /* close undo record */
             break;
         case 13:    /* CR   Carriage Return (Ctrl-M). */
-            /* move to bol */
-            s->cur_offset = eb_goto_bol(s->b, offset);
+            /* move to visual beginning of line */
+            qe_term_goto_xy(s, 0, 0, TG_RELATIVE_ROW);
             break;
         case 14:    /* SO   Shift Out (Ctrl-N) ->
              * Switch to Alternate Character Set.  This
@@ -1170,9 +1303,6 @@ static void qe_term_emulate(ShellState *s, int c)
                     buf1[0] = s->lastc = c;
                     len = 1;
                 }
-                /* XXX: incorrect if overwritten character has different width
-                   than character present in buffer, especially in case of
-                   combining marks */
                 s->cur_offset = qe_term_overwrite(s, offset, buf1, len);
             } else {
                 TRACE_MSG(s, "control");
@@ -1183,6 +1313,8 @@ static void qe_term_emulate(ShellState *s, int c)
     case QE_TERM_STATE_UTF8:
         /* XXX: should check that c is a utf-8 continuation byte */
         if (s->term_pos >= s->utf8_len) {
+            const char *p = cs8(s->term_buf);
+            s->lastc = utf8_decode(&p);
             s->cur_offset = qe_term_overwrite(s, offset,
                                               cs8(s->term_buf), s->utf8_len);
             s->state = QE_TERM_STATE_NORM;
@@ -1237,7 +1369,7 @@ static void qe_term_emulate(ShellState *s, int c)
         case '6':   // Back Index (DECBI), VT420 and up.
             break;
         case '7':   // Save Cursor (DECSC). [sc]
-            qe_term_get_pos(s, offset, NULL, &s->save_x, &s->save_y);
+            qe_term_get_pos(s, offset, &s->save_x, &s->save_y);
             break;
         case '8':   // Restore Cursor (DECRC). [rc]
             qe_term_goto_xy(s, s->save_x, s->save_y, 0);
@@ -1254,26 +1386,18 @@ static void qe_term_emulate(ShellState *s, int c)
         case 'E':   // Next Line (NEL  is 0x85).
                     // move cursor to beginning of next line, scroll if at bottom
             {
-                int start, col, row;
-                qe_term_get_pos(s, s->cur_offset, &start, &col, &row);
+                int col, row;
+                qe_term_get_pos(s, offset, &col, &row);
                 if (c == 'E')
                     col = 0;
-                if (++row >= s->rows) {
-                    //eb_insert_uchar(s->b, s->b->total_size, '\n');
-                    //row--;
-                    qe_term_delete_lines(s, start, 1);
-                    offset = qe_term_skip_lines(s, start, s->rows - 1);
-                    qe_term_insert_lines(s, offset, 1);
-                    row = s->rows - 1;
-                }
-                qe_term_goto_xy(s, col, row, 0);
+                qe_term_goto_xy(s, col, row + 1, TG_NOCLIP);
             }
             break;
         case 'M':   // Reverse Index (RI  is 0x8d). [ri]
                     // move cursor up, scroll if at top line
             {
                 int start, offset3, col, row;
-                qe_term_get_pos(s, s->cur_offset, &start, &col, &row);
+                start = qe_term_get_pos(s, offset, &col, &row);
                 if (--row < 0) {
                     /* if (start == 0) */ {
                         qe_term_insert_lines(s, start, 1);
@@ -1448,35 +1572,55 @@ static void qe_term_emulate(ShellState *s, int c)
         param2 = s->params[1] >= 0 ? s->params[1] : 1;
         switch (ESC2(s->esc1,c)) {
         case '@':  /* ICH: Insert Ps (Blank) Character(s) (default = 1) */
-            qe_term_set_style(s);
-            /* XXX: should delete extra characters at the end of the line */
-            eb_insert_uchars(s->b, offset, ' ', min(param1, s->cols));
-            /* cur_offset may have been updated by callback */
-            s->cur_offset = offset;
+            {
+                int x, y, x1, y1, offset3;
+                // XXX: should simplify this mess
+                offset1 = offset;
+                while (param1-- > 0) {
+                    qe_term_get_pos(s, offset1, &x, &y);
+                    if (x >= s->cols)
+                        break;
+                    offset2 = qe_term_goto_pos(s, offset1, s->cols, y, TG_NOCLIP | TG_NOEXTEND);
+                    if (offset2 > offset) {
+                        qe_term_get_pos(s, offset2, &x1, &y1);
+                        if (y1 > y || x1 >= s->cols) {
+                            /* full line: must delete last glyph */
+                            // XXX: should handle accents
+                            eb_prevc(s->b, offset2, &offset3);
+                            if (offset3 < offset2)
+                                eb_delete(s->b, offset3, offset2 - offset3);
+                        }
+                    }
+                    qe_term_set_style(s);
+                    offset1 += eb_insert_uchars(s->b, offset1, ' ', 1);
+                }
+                /* cur_offset may have been updated by callback */
+                s->cur_offset = offset;
+            }
             break;
         case 'A':  /* CUU: Cursor Up Ps Times (default = 1) */
-            qe_term_goto_xy(s, 0, -param1, 3);
+            qe_term_goto_xy(s, 0, -param1, TG_RELATIVE);
             break;
         case 'B':  /* CUD: Cursor Down Ps Times (default = 1) */
         case 'e':  /* VPR: Line Position Relative [rows] (default = 1) */
-            qe_term_goto_xy(s, 0, param1, 3);
+            qe_term_goto_xy(s, 0, param1, TG_RELATIVE);
             break;
         case 'C':  /* CUF: Cursor Forward Ps Times (default = 1) */
         case 'a':  /* HPR: Character Position Relative [columns] (default = 1) */
-            qe_term_goto_xy(s, param1, 0, 3);
+            qe_term_goto_xy(s, param1, 0, TG_RELATIVE);
             break;
         case 'D':  /* CUB: Cursor Backward Ps Times (default = 1) */
-            qe_term_goto_xy(s, -param1, 0, 3);
+            qe_term_goto_xy(s, -param1, 0, TG_RELATIVE);
             break;
         case 'E':  /* CNL: Cursor Next Line Ps Times (default = 1) and CR. */
-            qe_term_goto_xy(s, 0, param1, 2);
+            qe_term_goto_xy(s, 0, param1, TG_RELATIVE_ROW);
             break;
         case 'F':  /* CPL: Cursor Preceding Line Ps Times (default = 1) and CR. */
-            qe_term_goto_xy(s, 0, -param1, 2);
+            qe_term_goto_xy(s, 0, -param1, TG_RELATIVE_ROW);
             break;
         case 'G':  /* CHA: Cursor Character Absolute [column]. */
         case '`':  /* HPA: Character Position Absolute [column] (default = 1) */
-            qe_term_goto_xy(s, param1 - 1, 0, 2);
+            qe_term_goto_xy(s, param1 - 1, 0, TG_RELATIVE_ROW);
             break;
         case 'H':  /* CUP: Cursor Position [row;column] (default = [1,1]). */
         case 'f':  /* HVP: Horizontal and Vertical Position [row;column] (default = [1,1]) */
@@ -1508,16 +1652,19 @@ static void qe_term_emulate(ShellState *s, int c)
                 }
                 /* update cursor as overwriting characters may change offsets */
                 if (bos) {
-                    qe_term_get_pos(s, offset, &offset0, &col, &row);
-                    eb_goto_bol(s->b, offset);
+                    offset0 = qe_term_get_pos(s, offset, &col, &row);
                     qe_term_set_style(s);
                     if (row > 0) {
                         offset = qe_term_delete_lines(s, offset0, row);
                         offset = qe_term_insert_lines(s, offset, row);
                     } else {
-                        offset = eb_goto_bol(s->b, offset);
+                        /* goto to beginning of line */
+                        offset = qe_term_goto_pos(s, offset, 0, 0, TG_RELATIVE_ROW);
                     }
-                    offset = qe_term_erase_chars(s, offset, col);
+                    //offset = qe_term_erase_chars(s, offset, col);
+                    offset1 = qe_term_goto_pos(s, offset, col, 0, TG_RELATIVE_ROW | TG_NOEXTEND);
+                    eb_delete(s->b, offset, offset1 - offset);
+                    offset += eb_insert_uchars(s->b, offset, ' ', col);
                 }
                 if (eos) {
                     eb_delete(s->b, offset, s->b->total_size - offset);
@@ -1529,32 +1676,47 @@ static void qe_term_emulate(ShellState *s, int c)
         case ESC2('?','K'):  /* DECSEL: Selective Erase in Line. */
             {   /*     0: to Right (default), 1: to Left, 2: All */
                 /* XXX: should handle eol style */
-                int cur_line, col_num, n1, n2;
+                int col, row, col2, row2, n1, n2, offset3;
 
-                /* XXX: potentially incorrect for combining marks */
+                qe_term_get_pos(s, offset, &col, &row);
+                offset1 = qe_term_goto_pos(s, offset, 0, row, TG_NOCLIP | TG_NOEXTEND);
+                offset2 = qe_term_goto_pos(s, offset, s->cols, row, TG_NOCLIP | TG_NOEXTEND);
+                qe_term_get_pos(s, offset2, &col2, &row2);
+                if (row2 > row)
+                    col2 = s->cols;
+
                 n1 = n2 = 0;
-                eb_get_pos(s->b, &cur_line, &col_num, offset);
-                offset1 = eb_goto_bol(s->b, offset);
-                offset2 = eb_goto_eol(s->b, offset);
                 // default param is 0
                 if (s->params[0] <= 0) {
                     n2 = offset2 - offset;
                 } else
                 if (s->params[0] == 1) {
-                    n1 = col_num;
+                    n1 = col;
                 } else
                 if (s->params[0] == 2) {
-                    n1 = col_num;
+                    n1 = col;
                     n2 = offset2 - offset;
+                }
+                qe_term_set_style(s);
+                if (n2) {
+                    if (eb_nextc(s->b, offset2, &offset3) == '\n') {
+                        if (col == 0 && eb_prevc(s->b, offset1, &offset3) != '\n') {
+                            /* keep a space to prevent line fusion */
+                            eb_insert_uchars(s->b, offset2, ' ', 1);
+                        }
+                    } else {
+                        eb_insert_uchars(s->b, offset2, ' ', col2 - col);
+                    }
+                    eb_delete(s->b, offset, n2);
                 }
                 if (n1) {
                     /* update offset as overwriting characters may change offsets */
-                    qe_term_set_style(s);
-                    offset = qe_term_erase_chars(s, offset1, n1);
+                    //offset = qe_term_erase_chars(s, offset1, n1);
+                    offset -= eb_delete(s->b, offset1, n1);
+                    offset += eb_insert_uchars(s->b, offset1, ' ', col);
                 }
-                if (n2) {
-                    eb_delete(s->b, offset, n2);
-                }
+                // XXX: could scan end of buffer for spaces with default style
+                //      and shrink it.
                 /* update cursor as callback may have changed it */
                 s->cur_offset = offset;
             }
@@ -1563,8 +1725,9 @@ static void qe_term_emulate(ShellState *s, int c)
             //TRACE_MSG(s, "insert lines");
             {
                 int row, zone;
+                // XXX: should use qe_term_get_pos() and qe_term_goto_xy()
                 offset = eb_goto_bol(s->b, offset);
-                qe_term_get_pos(s, offset, NULL, NULL, &row);
+                qe_term_get_pos(s, offset, NULL, &row);
                 zone = max(0, s->scroll_bottom - row);
                 param1 = min(param1, zone);
                 qe_term_set_style(s);
@@ -1578,8 +1741,9 @@ static void qe_term_emulate(ShellState *s, int c)
             //TRACE_MSG(s, "delete lines");
             {
                 int row, zone;
+                // XXX: should use qe_term_get_pos() and qe_term_goto_xy()
                 offset = eb_goto_bol(s->b, offset);
-                qe_term_get_pos(s, offset, NULL, NULL, &row);
+                qe_term_get_pos(s, offset, NULL, &row);
                 zone = max(0, s->scroll_bottom - row);
                 param1 = min(param1, zone);
                 qe_term_set_style(s);
@@ -1590,15 +1754,15 @@ static void qe_term_emulate(ShellState *s, int c)
             }
             break;
         case 'P':  /* DCH: Delete Ps Character(s) (default = 1). */
-            param1 = min(param1, s->cols);
-            offset1 = offset;
-            for (n = param1; n > 0; n--) {
-                c = eb_nextc(s->b, offset1, &offset2);
-                if (c == '\n')
-                    break;
-                offset1 = offset2;
+            {
+                // XXX: should avoid fixing, use loop and delete/insert like '@'
+                offset += qe_term_fix_wrap(s, offset);
+                offset1 = qe_term_goto_pos(s, offset, param1, 0,
+                                           TG_RELATIVE | TG_NOEXTEND);
+                eb_delete_range(s->b, offset, offset1);
+                // XXX: should check about updating cur_offset
+                //s->cur_offset = offset;
             }
-            eb_delete_range(s->b, offset, offset1);
             break;
         case 'S':  /* SU: Scroll up Ps lines (default = 1). */
             /* scroll the whole page up */
@@ -1609,6 +1773,8 @@ static void qe_term_emulate(ShellState *s, int c)
             TRACE_MSG(s, "scroll down");
             break;
         case 'X':  /* ECH: Erase Ps Character(s) (default = 1). */
+            // XXX: this clipping is vain as current col may be > 0.
+            //      should clip better
             param1 = min(param1, s->cols);
             qe_term_put_char(s, offset, ' ', param1);
             break;
@@ -1616,7 +1782,7 @@ static void qe_term_emulate(ShellState *s, int c)
             qe_term_goto_tab(s, -param1);
             break;
         case 'b':  /* REP: Repeat the preceding graphic character Ps times. */
-            /* XXX: utf-8 issue for non ASCII characters */
+            /* XXX: utf-8 issues: qe_term_put_char should encode s->lastc */
             param1 = min(param1, s->cols);
             s->cur_offset = qe_term_put_char(s, offset, s->lastc, param1);
             break;
@@ -1636,7 +1802,7 @@ static void qe_term_emulate(ShellState *s, int c)
             break;
         case 'd':  /* VPA: Line Position Absolute [row] (default = 1). */
             param1 = min(param1, s->rows);
-            qe_term_goto_xy(s, 0, param1 - 1, 1);
+            qe_term_goto_xy(s, 0, param1 - 1, TG_RELATIVE_COL);
             break;
         case 'g':  /* TBC: Tab Clear. */
             // 0 (default) -> Clear Current Column, 3 -> Clear All */
@@ -1694,6 +1860,7 @@ static void qe_term_emulate(ShellState *s, int c)
                         }
                         s->use_alternate_screen = 1;
                         s->cur_offset = s->alternate_screen_top = offset;
+                        // XXX: should update window top?
                     }
                     break;
                 default:
@@ -1771,6 +1938,7 @@ static void qe_term_emulate(ShellState *s, int c)
                         s->grab_keys = 0;
                     }
                     if (s->use_alternate_screen) {
+                        // XXX: this will actually go to row s->rows-1
                         qe_term_goto_xy(s, 0, s->rows, 0);
                         eb_delete_range(s->b, s->cur_offset, s->b->total_size);
                         s->use_alternate_screen = 0;
@@ -1796,11 +1964,12 @@ static void qe_term_emulate(ShellState *s, int c)
             if (param1 == 6) {
                 /* Report Cursor Position (CPR) [row;column]. */
                 char buf2[20];
-                int col_num, cur_line;
-                eb_get_pos(s->b, &cur_line, &col_num, offset);
-                /* XXX: actually send position of point in window */
-                snprintf(buf2, sizeof(buf2), "\033[%d;%dR",
-                         1, col_num + 1);
+                int col_num, cur_line,x, y;
+                /* actually send position of point in window */
+                qe_term_get_pos(s, offset, &x, &y);
+                col_num = x + (x < s->cols);
+                cur_line = y + (y < s->rows);
+                snprintf(buf2, sizeof(buf2), "\033[%d;%dR", cur_line, col_num);
                 qe_term_write(s, buf2, -1);
             }
             break;
@@ -1831,7 +2000,7 @@ static void qe_term_emulate(ShellState *s, int c)
                       DECLRMM is disabled. */
             /* DECSLRM: Set left and right margins, available only when
                DECLRMM is enabled (VT420 and up). */
-            qe_term_get_pos(s, offset, NULL, &s->save_x, &s->save_y);
+            qe_term_get_pos(s, offset, &s->save_x, &s->save_y);
             break;
         case 't':  /* DECSLPP: set page size - ie window height */
             /* also used for window changing and reports */
@@ -1968,6 +2137,7 @@ static void shell_mode_free(EditBuffer *b, void *state)
     eb_free_callback(b, eb_offset_callback, &s->cur_offset);
     eb_free_callback(b, eb_offset_callback, &s->cur_prompt);
     eb_free_callback(b, eb_offset_callback, &s->alternate_screen_top);
+    eb_free_callback(b, eb_offset_callback, &s->screen_top);
 
     if (s->pid != -1) {
         kill(s->pid, SIGINT);
@@ -2115,6 +2285,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
         eb_add_callback(b, eb_offset_callback, &s->cur_offset, 1);
         eb_add_callback(b, eb_offset_callback, &s->cur_prompt, 0);
         eb_add_callback(b, eb_offset_callback, &s->alternate_screen_top, 0);
+        eb_add_callback(b, eb_offset_callback, &s->screen_top, 0);
     }
     s->b = b;
     s->pty_fd = -1;
@@ -2488,9 +2659,10 @@ static void shell_delete_bytes(EditState *e, int offset, int size)
             /* kill to end of line with control-k */
             qe_term_write(s, "\013", 1);
         } else {
+            /* Do not use C-d to delete characters because C-d may exit shell */
             while (cur_char < end_char) {
-                qe_term_write(s, "\004", 1);  /* C-d */
-                end_char--;
+                qe_term_write(s, "\006", 1);  /* C-f */
+                cur_char++;
             }
             while (start_char < cur_char) {
                 qe_term_write(s, "\010", 1);  /* backspace */
@@ -2569,6 +2741,7 @@ static void do_shell_kill_word(EditState *e, int dir)
         /* copy word to the kill ring */
         int start = e->offset;
 
+        // XXX: word pattern is different for shell line editor?
         text_move_word_left_right(e, dir);
         if (e->offset < s->cur_prompt) {
             e->offset = s->cur_prompt;
@@ -3118,7 +3291,7 @@ static const CmdDef shell_commands[] = {
           "Toggle between shell input and buffer navigation",
           do_shell_toggle_input)
     /* XXX: should have shell-execute-line on M-RET */
-    CMD2( "shell-enter", "RET",
+    CMD2( "shell-enter", "RET, LF",
           "Shell buffer RET key",
           do_shell_newline, ES, "*")
     /* CG: should send s->kbs */
@@ -3186,7 +3359,7 @@ static const CmdDef shell_commands[] = {
 
 /* shell global commands */
 static const CmdDef shell_global_commands[] = {
-    CMD2( "shell", "C-x RET RET",
+    CMD2( "shell", "C-x RET RET, C-x LF LF",
           "Start a shell buffer or move to the last shell buffer used",
           do_shell, ESi, "p")
     CMD2( "shell-command", "M-!",

@@ -489,6 +489,7 @@ static void isearch_key(void *opaque, int ch)
         do_center_cursor(s, 1);
         break;
     default:
+        // XXX: should test KEY_RET and KEY_LF?
         if ((KEY_IS_SPECIAL(ch) || KEY_IS_CONTROL(ch)) &&
             ch != '\t' && ch != KEY_CTRL('j')) {
             /* exit search mode */

@@ -1290,7 +1290,7 @@ static const CmdDef c_commands[] = {
     CMD2( "c-electric-key", "{, }, ;, :, #, &, |, *",
           "Insert a character with side effects",
           do_c_electric_key, ESi, "*" "k")
-    CMD2( "c-newline", "RET",
+    CMD2( "c-newline", "RET, LF",
           "Insert a newline, removing trailing whitespace and autoindent",
           do_c_newline, ES, "*")
 };

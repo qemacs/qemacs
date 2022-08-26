@@ -882,6 +882,7 @@ enum QEEventType {
 #define KEY_DEFAULT     0xe401 /* to handle all non special keys */
 
 #define KEY_TAB         KEY_CTRL('i')
+#define KEY_LF          KEY_CTRL('j')
 #define KEY_RET         KEY_CTRL('m')
 #define KEY_ESC         KEY_CTRL('[')
 #define KEY_SPC         0x0020
