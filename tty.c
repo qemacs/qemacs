@@ -125,6 +125,7 @@ typedef struct TTYState {
     int cursor_x, cursor_y;
     /* input handling */
     enum InputState input_state;
+    int has_meta;
     int input_param, input_param2;
     int utf8_index;
     unsigned char buf[8];
@@ -505,41 +506,41 @@ static int tty_dpy_is_user_input_pending(QEditScreen *s)
 }
 
 static int const csi_lookup[] = {
-    KEY_NONE,   /* 0 */
-    KEY_HOME,   /* 1 */
-    KEY_INSERT, /* 2 */
-    KEY_DELETE, /* 3 */
-    KEY_END,    /* 4 */
-    KEY_PAGEUP, /* 5 */
+    KEY_UNKNOWN,  /* 0 */
+    KEY_HOME,     /* 1 */
+    KEY_INSERT,   /* 2 */
+    KEY_DELETE,   /* 3 */
+    KEY_END,      /* 4 */
+    KEY_PAGEUP,   /* 5 */
     KEY_PAGEDOWN, /* 6 */
-    KEY_NONE,   /* 7 */
-    KEY_NONE,   /* 8 */
-    KEY_NONE,   /* 9 */
-    KEY_NONE,   /* 10 */
-    KEY_F1,     /* 11 */
-    KEY_F2,     /* 12 */
-    KEY_F3,     /* 13 */
-    KEY_F4,     /* 14 */
-    KEY_F5,     /* 15 */
-    KEY_NONE,   /* 16 */
-    KEY_F6,     /* 17 */
-    KEY_F7,     /* 18 */
-    KEY_F8,     /* 19 */
-    KEY_F9,     /* 20 */
-    KEY_F10,    /* 21 */
-    KEY_NONE,   /* 22 */
-    KEY_F11,    /* 23 */
-    KEY_F12,    /* 24 */
-    KEY_F13,    /* 25 */
-    KEY_F14,    /* 26 */
-    KEY_NONE,   /* 27 */
-    KEY_F15,    /* 28 */
-    KEY_F16,    /* 29 */
-    KEY_NONE,   /* 30 */
-    KEY_F17,    /* 31 */
-    KEY_F18,    /* 32 */
-    KEY_F19,    /* 33 */
-    KEY_F20,    /* 34 */
+    KEY_UNKNOWN,  /* 7 */
+    KEY_UNKNOWN,  /* 8 */
+    KEY_UNKNOWN,  /* 9 */
+    KEY_UNKNOWN,  /* 10 */
+    KEY_F1,       /* 11 */
+    KEY_F2,       /* 12 */
+    KEY_F3,       /* 13 */
+    KEY_F4,       /* 14 */
+    KEY_F5,       /* 15 */
+    KEY_UNKNOWN,  /* 16 */
+    KEY_F6,       /* 17 */
+    KEY_F7,       /* 18 */
+    KEY_F8,       /* 19 */
+    KEY_F9,       /* 20 */
+    KEY_F10,      /* 21 */
+    KEY_UNKNOWN,  /* 22 */
+    KEY_F11,      /* 23 */
+    KEY_F12,      /* 24 */
+    KEY_F13,      /* 25 */
+    KEY_F14,      /* 26 */
+    KEY_UNKNOWN,  /* 27 */
+    KEY_F15,      /* 28 */
+    KEY_F16,      /* 29 */
+    KEY_UNKNOWN,  /* 30 */
+    KEY_F17,      /* 31 */
+    KEY_F18,      /* 32 */
+    KEY_F19,      /* 33 */
+    KEY_F20,      /* 34 */
 };
 
 static void tty_read_handler(void *opaque)
@@ -549,21 +550,23 @@ static void tty_read_handler(void *opaque)
     TTYState *ts = s->priv_data;
     QEEvent ev1, *ev = &ev1;
     u8 buf[1];
-    int ch, len;
+    int ch, len, n1;
 
     if (read(fileno(s->STDIN), buf, 1) != 1)
         return;
 
-    if (qs->trace_buffer &&
-        qs->active_window &&
-        qs->active_window->b != qs->trace_buffer) {
+    if (qs->trace_buffer)
         eb_trace_bytes(buf, 1, EB_TRACE_TTY);
-    }
 
     ch = buf[0];
+    /* keep TTY bytes for error messages */
+    if (qs->input_len < countof(qs->input_buf))
+        qs->input_buf[qs->input_len++] = ch;
 
     switch (ts->input_state) {
     case IS_NORM:
+        qs->input_len = 1;
+        qs->input_buf[0] = ch;
         /* charset handling */
         if (s->charset == &charset_utf8) {
             if (ts->utf8_index && !(ch > 0x80 && ch < 0xc0)) {
@@ -598,8 +601,15 @@ static void tty_read_handler(void *opaque)
         break;
     case IS_ESC:
         if (ch == '\033') {
+            if (!tty_dpy_is_user_input_pending(s)) {
+                /* Distinguish alt-ESC from ESC prefix applied to other keys */
+                ch = KEY_META(KEY_ESC);
+                ts->input_state = IS_NORM;
+                goto the_end;
+            }
             /* cygwin A-right transmit ESC ESC[C ... */
-            goto the_end;
+            ts->has_meta = 8;
+            break;
         }
         if (ch == '[') {
             if (!tty_dpy_is_user_input_pending(s)) {
@@ -639,39 +649,83 @@ static void tty_read_handler(void *opaque)
             ts->input_state = IS_CSI2;
             break;
         case '~':
-            if (ts->input_param < countof(csi_lookup)) {
-                ch = csi_lookup[ts->input_param];
+            /* If there is a second param, it tells the shift state,
+             * ex: S-f5 = ^[[15;2~ */
+            n1 = ts->input_param;
+            if (ts->input_param2) {
+                // XXX: should handle shift function keys
+                ch = KEY_UNKNOWN;
+                ts->has_meta = 0;
+                goto the_end;
+            }
+            if (n1 < countof(csi_lookup)) {
+                ch = csi_lookup[n1];
                 goto the_end;
             }
             break;
             /* All these for ansi|cygwin */
         default:
-            if (ts->input_param == 5) {
+            /* input_param contains the shift status:
+             * bit 2 is SHIFT
+             * bit 4 is CTRL
+             * bit 8 is ALT
+             */
+            if (ts->input_param & 8) {
+                ts->has_meta = 8;
+            }
+            if ((ts->input_param & 6) == 6) {
+                /* iterm2 CTRL-SHIFT-arrows */
+                switch (ch) {
+                case 'A': ch = KEY_CTRL_SHIFT_UP;        goto the_end;
+                case 'B': ch = KEY_CTRL_SHIFT_DOWN;      goto the_end;
+                case 'C': ch = KEY_CTRL_SHIFT_RIGHT;     goto the_end;
+                case 'D': ch = KEY_CTRL_SHIFT_LEFT;      goto the_end;
+                case 'F': ch = KEY_CTRL_SHIFT_END;       goto the_end;
+                case 'H': ch = KEY_CTRL_SHIFT_HOME;      goto the_end;
+                }
+            } else
+            if ((ts->input_param & 6) == 4) {
                 /* xterm CTRL-arrows */
                 /* iterm2 CTRL-arrows:
                  * C-up    = ^[[1;5A
                  * C-down  = ^[[1;5B
-                 * C-left  = ^[[1;5D
                  * C-right = ^[[1;5C
+                 * C-left  = ^[[1;5D
+                 * C-end   = ^[[1;5F
+                 * C-home  = ^[[1;5H
                  */
                 switch (ch) {
                 case 'A': ch = KEY_CTRL_UP;    goto the_end;
                 case 'B': ch = KEY_CTRL_DOWN;  goto the_end;
                 case 'C': ch = KEY_CTRL_RIGHT; goto the_end;
                 case 'D': ch = KEY_CTRL_LEFT;  goto the_end;
+                case 'F': ch = KEY_CTRL_END;   goto the_end;
+                case 'H': ch = KEY_CTRL_HOME;  goto the_end;
                 }
             } else
-            if (ts->input_param == 2) {
+            if ((ts->input_param & 6) == 2) {
                 /* iterm2 SHIFT-arrows:
-                 * S-left  = ^[[1;2D
+                 * S-up    = ^[[1;2A
+                 * S-down  = ^[[1;2B
                  * S-right = ^[[1;2C
+                 * S-left  = ^[[1;2D
+                 * S-f1 = ^[[1;2P
+                 * S-f2 = ^[[1;2Q
+                 * S-f3 = ^[[1;2R
+                 * S-f4 = ^[[1;2S
                  * should set-mark if region not visible
                  */
                 switch (ch) {
-                case 'A': ch = KEY_UP;    goto the_end;
-                case 'B': ch = KEY_DOWN;  goto the_end;
-                case 'C': ch = KEY_RIGHT; goto the_end;
-                case 'D': ch = KEY_LEFT;  goto the_end;
+                case 'A': ch = KEY_SHIFT_UP;    goto the_end;
+                case 'B': ch = KEY_SHIFT_DOWN;  goto the_end;
+                case 'C': ch = KEY_SHIFT_RIGHT; goto the_end;
+                case 'D': ch = KEY_SHIFT_LEFT;  goto the_end;
+                case 'F': ch = KEY_SHIFT_END;   goto the_end;
+                case 'H': ch = KEY_SHIFT_HOME;  goto the_end;
+                //case 'P': ch = KEY_SHIFT_F1;    goto the_end;
+                //case 'Q': ch = KEY_SHIFT_F2;    goto the_end;
+                //case 'R': ch = KEY_SHIFT_F3;    goto the_end;
+                //case 'S': ch = KEY_SHIFT_F4;    goto the_end;
                 }
             } else {
                 switch (ch) {
@@ -687,7 +741,9 @@ static void tty_read_handler(void *opaque)
                 case 'Z': ch = KEY_SHIFT_TAB; goto the_end; // kcbt
                 }
             }
-            break;
+            ch = KEY_UNKNOWN;
+            ts->has_meta = 0;
+            goto the_end;
         }
         break;
     case IS_CSI2:
@@ -700,7 +756,9 @@ static void tty_read_handler(void *opaque)
         case 'D': ch = KEY_F4; goto the_end;
         case 'E': ch = KEY_F5; goto the_end;
         }
-        break;
+        ch = KEY_UNKNOWN;
+        goto the_end;
+
     case IS_ESC2:       // "\EO"
         /* xterm/vt100 fn */
         ts->input_state = IS_NORM;
@@ -709,8 +767,8 @@ static void tty_read_handler(void *opaque)
         case 'B': ch = KEY_DOWN;       goto the_end;
         case 'C': ch = KEY_RIGHT;      goto the_end;
         case 'D': ch = KEY_LEFT;       goto the_end;
-        case 'F': ch = KEY_CTRL_RIGHT; goto the_end; /* iterm2 F-right */
-        case 'H': ch = KEY_CTRL_LEFT;  goto the_end; /* iterm2 F-left */
+        case 'F': ch = KEY_END;        goto the_end; /* iterm2 F-right */
+        case 'H': ch = KEY_HOME;       goto the_end; /* iterm2 F-left */
         case 'P': ch = KEY_F1;         goto the_end;
         case 'Q': ch = KEY_F2;         goto the_end;
         case 'R': ch = KEY_F3;         goto the_end;
@@ -722,8 +780,15 @@ static void tty_read_handler(void *opaque)
         case 'w': ch = KEY_F9;         goto the_end;
         case 'x': ch = KEY_F10;        goto the_end;
         }
-        break;
+        ch = KEY_UNKNOWN;
+        goto the_end;
+
     the_end:
+        if (ts->has_meta) {
+            ts->has_meta = 0;
+            ch = KEY_META(ch);
+        }
+        // XXX: should add custom key conversions, especially for KEY_UNKNOWN
         ev->key_event.type = QE_KEY_EVENT;
         ev->key_event.key = ch;
         qe_handle_event(ev);

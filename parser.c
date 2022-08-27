@@ -38,10 +38,18 @@ typedef struct QEmacsDataSource {
     int offset, stop;
 } QEmacsDataSource;
 
-static int expect_token(const char **pp, int tok)
-{
+static int has_token(const char **pp, int tok) {
     if (qe_skip_spaces(pp) == tok) {
         ++*pp;
+        qe_skip_spaces(pp);
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+static int expect_token(const char **pp, int tok) {
+    if (has_token(pp, tok)) {
         return 1;
     } else {
         put_status(NULL, "'%c' expected", tok);
@@ -92,6 +100,17 @@ static int qe_cfg_parse_string(EditState *s, const char **pp,
     return res;
 }
 
+static int get_cmd(const char **pp, char *buf, int buf_size, const char *stop) {
+    char *q;
+    int len = get_str(pp, buf, buf_size, stop);
+    /* convert '_' to '-' */
+    for (q = buf; *q; q++) {
+        if (*q == '_')
+            *q = '-';
+    }
+    return len;
+}
+
 static char *data_gets(QEmacsDataSource *ds, char *buf, int size)
 {
     if (ds->f) {
@@ -124,7 +143,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
     QEmacsState *qs = s->qe_state;
     QErrorContext ec;
     char line[1024], str[1024];
-    char cmd[128], *q, *strp;
+    char cmd[128], arg[128], *strp;
     CmdArgSpec cas;
     const char *p, *r;
     int line_num;
@@ -148,55 +167,44 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
     again:
         if (qe_skip_spaces(&p) == '\0')
             continue;
-        if (incomment)
-            goto comment;
+        if (incomment) {
+            while (*p) {
+                if (*p++ == '*' && *p == '/') {
+                    p++;
+                    incomment = 0;
+                    break;
+                }
+            }
+            goto again;
+        }
         if (*p == '/') {
             if (p[1] == '/')  /* line comment */
                 continue;
             if (p[1] == '*') { /* multiline comment */
                 p += 2;
                 incomment = 1;
-            comment:
-                while (*p) {
-                    if (*p++ == '*' && *p == '/') {
-                        p++;
-                        incomment = 0;
-                        break;
-                    }
-                }
                 goto again;
             }
         }
-        if (p[0] == '}') {
+        if (has_token(&p, '}')) {
             /* simplistic 1 level if block skip feature */
-            p++;
-            qe_skip_spaces(&p);
             skip = 0;
+            goto again;
         }
         if (skip)
             continue;
 
-        if (p[0] == '\0')
-            continue;
-
         /* XXX: should parse numbers, strings and symbols */
-        get_str(&p, cmd, sizeof(cmd), "{}();=/");
-        if (*cmd == '\0') {
-            put_status(s, "Syntax error");
-            continue;
-        }
-        /* transform '_' to '-' */
-        q = cmd;
-        while (*q) {
-            if (*q == '_')
-                *q = '-';
-            q++;
-        }
+        if (!get_cmd(&p, cmd, sizeof(cmd), "{}();=/"))
+            goto syntax;
+
         /* simplistic 1 level if block skip feature */
         if (strequal(cmd, "if")) {
             if (!expect_token(&p, '('))
                 goto fail;
-            skip = !strtol_c(p, &p, 0);
+            if (!get_cmd(&p, arg, sizeof(arg), ")"))
+                goto syntax;
+            skip = !strtol_c(arg, NULL, 0);
             if (!expect_token(&p, ')') || !expect_token(&p, '{'))
                 goto fail;
             continue;
@@ -218,11 +226,31 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 } else {
                     qe_set_variable(s, cmd, NULL, strtol_c(p, &p, 0));
                 }
-                qe_skip_spaces(&p);
-                if (*p != ';' && *p != '\0')
-                    put_status(s, "Syntax error '%s'", cmd);
-                continue;
+                goto next;
             }
+        }
+#else
+        if (has_token(&p, '=')) {
+            int value = strtol_c(p, &p, 0);
+            if (strequal(cmd, "tab-width")) {
+                s->b->tab_width = value;
+                goto next;
+            }
+            if (strequal(cmd, "default-tab-width")) {
+                qs->default_tab_width = value;
+                goto next;
+            }
+            if (strequal(cmd, "indent-tabs-mode")) {
+                s->indent_tabs_mode = value;
+                goto next;
+            }
+            if (strequal(cmd, "indent-width")) {
+                s->indent_size = value;
+                goto next;
+            }
+            /* ignore other variables without a warning */
+            put_status(s, "Unsupported variable %s", cmd);
+            continue;
         }
 #endif
         if (!expect_token(&p, '('))
@@ -336,9 +364,9 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 break;
             }
         }
-        if (qe_skip_spaces(&p) != ')') {
+        if (!has_token(&p, ')')) {
             put_status(s, "Too many arguments for %s", d->name);
-            goto fail;
+            continue;
         }
 
         qs->this_cmd_func = d->action.func;
@@ -348,10 +376,17 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         if (qs->active_window)
             s = qs->active_window;
         check_window(&s);
+    next:
+        if (has_token(&p, ';'))
+            goto again;
+        if (*p != '\0')
+            put_status(s, "Missing ';' at '%s'", p);
         continue;
-
+    syntax:
+        put_status(s, "Syntax error at '%s'", p);
+        continue;
     fail:
-        ;
+        continue;
     }
     qs->ec = ec;
 

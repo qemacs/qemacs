@@ -934,10 +934,9 @@ int ustr_get_word(char *buf, int buf_size, int c,
 }
 
 /* Read a token from a string, stop on a set of characters.
- * Skip spaces before and after token.
+ * Skip spaces before and after token. Return the token length.
  */
-void get_str(const char **pp, char *buf, int buf_size, const char *stop)
-{
+int get_str(const char **pp, char *buf, int buf_size, const char *stop) {
     char *q;
     const char *p;
     int c;
@@ -957,6 +956,7 @@ void get_str(const char **pp, char *buf, int buf_size, const char *stop)
     *q = '\0';
     *pp = p;
     qe_skip_spaces(pp);
+    return q - buf;
 }
 
 /* scans a comma separated list of entries, return index of match or -1 */
@@ -994,8 +994,12 @@ static unsigned short const keycodes[] = {
     KEY_HOME, KEY_END, KEY_PAGEUP, KEY_PAGEDOWN,
     KEY_CTRL_LEFT, KEY_CTRL_RIGHT, KEY_CTRL_UP, KEY_CTRL_DOWN,
     KEY_CTRL_HOME, KEY_CTRL_END, KEY_CTRL_PAGEUP, KEY_CTRL_PAGEDOWN,
-    KEY_PAGEUP, KEY_PAGEDOWN, KEY_CTRL_PAGEUP, KEY_CTRL_PAGEDOWN,
-    KEY_INSERT, KEY_DELETE, KEY_DEFAULT,
+    KEY_SHIFT_LEFT, KEY_SHIFT_RIGHT, KEY_SHIFT_UP, KEY_SHIFT_DOWN,
+    KEY_SHIFT_HOME, KEY_SHIFT_END, KEY_SHIFT_PAGEUP, KEY_SHIFT_PAGEDOWN,
+    KEY_CTRL_SHIFT_LEFT, KEY_CTRL_SHIFT_RIGHT, KEY_CTRL_SHIFT_UP, KEY_CTRL_SHIFT_DOWN,
+    KEY_CTRL_SHIFT_HOME, KEY_CTRL_SHIFT_END, KEY_CTRL_SHIFT_PAGEUP, KEY_CTRL_SHIFT_PAGEDOWN,
+    KEY_PAGEUP, KEY_PAGEDOWN, KEY_INSERT, KEY_DELETE,
+    KEY_DEFAULT, KEY_NONE, KEY_UNKNOWN,
     KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5,
     KEY_F6, KEY_F7, KEY_F8, KEY_F9, KEY_F10,
     KEY_F11, KEY_F12, KEY_F13, KEY_F14, KEY_F15,
@@ -1003,15 +1007,19 @@ static unsigned short const keycodes[] = {
     '{', '}', '|',
 };
 
-static const char * const keystr[] = {
+static const char * const keystr[countof(keycodes)] = {
     "SPC", "DEL", "RET", "LF", "ESC", "TAB", "S-TAB",
     "C-SPC", "C-@", "C-?", "C-\\", "C-]", "C-^", "C-_", "C-/",
     "left", "right", "up", "down",
-    "home", "end", "prior", "next",
+    "home", "end", "pageup", "pagedown",
     "C-left", "C-right", "C-up", "C-down",
-    "C-home", "C-end", "C-prior", "C-next",
-    "pageup", "pagedown", "C-pageup", "C-pagedown",
-    "insert", "delete", "default",
+    "C-home", "C-end", "C-pageup", "C-pagedown",
+    "S-left", "S-right", "S-up", "S-down",
+    "S-home", "S-end", "S-pageup", "S-pagedown",
+    "C-S-left", "C-S-right", "C-S-up", "C-S-down",
+    "C-S-home", "C-S-end", "C-S-pageup", "C-S-pagedown",
+    "prior", "next", "insert", "delete",
+    "default", "none", "unknown",
     "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10",
     "f11", "f12", "f13", "f14", "f15", "f16", "f17", "f18", "f19", "f20",
     "LB", "RB", "VB",
@@ -1026,8 +1034,8 @@ int compose_keys(unsigned int *keys, int *nb_keys)
 
     /* compose KEY_ESC as META prefix */
     keyp = keys + *nb_keys - 2;
-    if (keyp[0] == KEY_ESC) {
-        if (keyp[1] != KEY_ESC && keyp[1] <= 0xff) {
+    if (keyp[0] == KEY_ESC && keyp[1] != KEY_ESC) {
+        if (keyp[1] <= 0xff || KEY_IS_ESC1(keyp[1])) {
             keyp[0] = KEY_META(keyp[1]);
             --*nb_keys;
             return 1;
@@ -1128,6 +1136,7 @@ int strtokeys(const char *str, unsigned int *keys,
     return nb_keys;
 }
 
+/* Convert a key to a string representation. Recurse at most once */
 int buf_put_key(buf_t *out, int key)
 {
     int i, start = out->len;
@@ -1141,16 +1150,13 @@ int buf_put_key(buf_t *out, int key)
         buf_puts(out, "M-");
         buf_put_key(out, key & 0xff);
     } else
+    if (key >= KEY_META(KEY_ESC1(0)) && key <= KEY_META(KEY_ESC1(0xff))) {
+        buf_puts(out, "M-");
+        buf_put_key(out, KEY_ESC1(key & 0xff));
+    } else
     if (key >= KEY_CTRL('a') && key <= KEY_CTRL('z')) {
         buf_printf(out, "C-%c", key + 'a' - 1);
-    } else
-#if 0
-    /* Cannot do this because KEY_F1..KEY_F20 are not consecutive */
-    if (key >= KEY_F1 && key <= KEY_F20) {
-        buf_printf(out, "f%d", key - KEY_F1 + 1);
-    } else
-#endif
-    {
+    } else {
         buf_putc_utf8(out, key);
     }
     return out->len - start;
@@ -2212,6 +2218,30 @@ int strunquote(char *dest, int size, const char *str, int len)
 {
 }
 #endif
+
+int buf_encode_byte(buf_t *out, int ch) {
+    int c;
+    if (((void)(c = 'n'), ch == '\n')
+    ||  ((void)(c = 'r'), ch == '\r')
+    ||  ((void)(c = 't'), ch == '\t')
+    ||  ((void)(c = 'b'), ch == '\010')
+    ||  ((void)(c = 'E'), ch == '\033')
+    ||  ((void)(c = '\\'), ch == '\\')) {
+        return buf_printf(out, "\\%c", c);
+    } else
+    if (ch < 32) {
+        //if (*p == '\e' && col > 9) {
+        //    eb_write(b, b->total_size, "\n         ", 10);
+        //    col = 9;
+        //}
+        return buf_printf(out, "\\^%c", (ch + '@') & 127);
+    } else
+    if (ch < 127) {
+        return buf_put_byte(out, ch);
+    } else {
+        return buf_printf(out, "\\%03o", ch);
+    }
+}
 
 /*---------------- allocation routines ----------------*/
 

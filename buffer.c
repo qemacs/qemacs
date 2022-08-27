@@ -875,9 +875,12 @@ void eb_trace_bytes(const void *buf, int size, int state)
     EditState *e;
     const char *str = NULL;
     const u8 *p0, *endp, *p;
-    int c, line, col, len, point;
+    int line, col, len, point, flush;
+    int prev_state = qs->trace_buffer_state;
 
-    if (!b || !(qs->trace_flags & state))
+    /* prevent tracing if nagivating the *trace* buffer */
+    if (!b || !(qs->trace_flags & state)
+    ||  (qs->active_window && qs->active_window->b == b))
         return;
 
     point = b->total_size;
@@ -885,36 +888,50 @@ void eb_trace_bytes(const void *buf, int size, int state)
         size = strlen(buf);
 
     eb_get_pos(b, &line, &col, point);
-    if (col == 0 || qs->trace_buffer_state != state) {
-        if (col) {
-            eb_insert_uchar(b, b->total_size, '\n');
-            col = 0;
-        }
-        state &= ~EB_TRACE_FLUSH;
+    flush = state & EB_TRACE_FLUSH;
+    state &= ~EB_TRACE_FLUSH;
+    if (prev_state == state) {
+        if (state == EB_TRACE_COMMAND)
+            flush = 1;
+    } else {
+        if (!(state <= EB_TRACE_COMMAND && prev_state <= state)
+        &&  !(state == EB_TRACE_EMULATE && prev_state == EB_TRACE_PTY))
+            flush = 1;
+    }
+    if (flush && col) {
+        eb_insert_uchar(b, b->total_size, '\n');
+        col = 0;
+    }
+    if (col == 0 || prev_state != state) {
         qs->trace_buffer_state = state;
         switch (state) {
         case EB_TRACE_TTY:
-            str = "    tty: ";
+            str = "tty";
+            break;
+        case EB_TRACE_KEY:
+            str = "key";
             break;
         case EB_TRACE_PTY:
-            str = "    pty: ";
+            str = "pty";
             break;
         case EB_TRACE_SHELL:
-            str = "  shell: ";
+            str = "shell";
             break;
         case EB_TRACE_EMULATE:
-            str = "emulate: ";
+            str = "emulate";
             break;
         case EB_TRACE_DEBUG:
-            str = "  debug: ";
+            str = "debug";
             break;
         case EB_TRACE_COMMAND:
-            eb_printf(b, "command: %s\n", cs8(buf));
-            size = 0;
+            str = "command";
             break;
         }
         if (str) {
-            col += eb_write(b, b->total_size, str, strlen(str));
+            int width = (col == 0 ? 7 :
+                         col <= 20 ? 27 - col :
+                         col <= 40 ? 47 - col : strlen(str) + 2);
+            col += eb_printf(b, "%*s: ", width, str);
         }
     }
     p0 = buf;
@@ -937,32 +954,20 @@ void eb_trace_bytes(const void *buf, int size, int state)
                 continue;
             }
             if (p < endp) {
-                if (((void)(c = 'n'), *p == '\n')
-                ||  ((void)(c = 'r'), *p == '\r')
-                ||  ((void)(c = 't'), *p == '\t')
-                ||  ((void)(c = 'b'), *p == '\010')
-                ||  ((void)(c = 'E'), *p == '\033')
-                ||  ((void)(c = '\\'), *p == '\\')) {
-                    col += eb_printf(b, "\\%c", c);
-                } else
-                if (*p < 32) {
-                    //if (*p == '\e' && col > 9) {
-                    //    eb_write(b, b->total_size, "\n         ", 10);
-                    //    col = 9;
-                    //}
-                    col += eb_printf(b, "\\^%c", (*p + '@') & 127);
-                } else {
-                    col += eb_printf(b, "\\%03o", *p);
-                }
+                char buf1[80];
+                buf_t out[1];
+                buf_init(out, buf1, sizeof buf1);
+                len = buf_encode_byte(out, *p);
+                eb_write(b, b->total_size, out->buf, out->len);
                 p0 = p + 1;
             }
             break;
         }
     }
-    /* If point is visible in window, should keep it so */
+    /* Make output visible in window */
     /* XXX: proper tracking should do this automatically */
     e = eb_find_window(b, NULL);
-    if (e && e->offset == point)
+    if (e)
         e->offset = b->total_size;
 }
 

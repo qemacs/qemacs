@@ -493,11 +493,15 @@ void do_set_trace_flags(EditState *s, int flags) {
             EditState *e = qe_split_window(s, SW_STACKED, 75);
             if (e) {
                 do_switch_to_buffer(e, "*trace*");
+                e->offset = e->b->total_size;
             }
         }
         *buf = '\0';
         if (qs->trace_flags & EB_TRACE_TTY) {
             strcat(buf, ", tty");
+        }
+        if (qs->trace_flags & EB_TRACE_KEY) {
+            strcat(buf, ", key");
         }
         if (qs->trace_flags & EB_TRACE_SHELL) {
             strcat(buf, ", shell");
@@ -510,6 +514,9 @@ void do_set_trace_flags(EditState *s, int flags) {
         }
         if (qs->trace_flags & EB_TRACE_COMMAND) {
             strcat(buf, ", command");
+        }
+        if (qs->trace_flags & EB_TRACE_DEBUG) {
+            strcat(buf, ", debug");
         }
         put_status(s, "Tracing enabled for %s", buf + 2);
     } else {
@@ -544,6 +551,9 @@ void do_set_trace_options(EditState *s, const char *options) {
         else
         if (strmatchword(p, "tty", &p)) {
             flags |= EB_TRACE_TTY;
+        } else
+        if (strmatchword(p, "key", &p)) {
+            flags |= EB_TRACE_KEY;
         } else
         if (strmatchword(p, "shell", &p)) {
             flags |= EB_TRACE_SHELL;
@@ -1700,6 +1710,18 @@ void do_space(EditState *s, int key, int argval)
     do_char(s, key, argval);
 }
 #endif
+
+static void do_unknown_key(EditState *s) {
+    QEmacsState *qs = s ? s->qe_state : &qe_state;
+    char buf[80];
+    buf_t out[1];
+    int i;
+
+    buf_init(out, buf, sizeof buf);
+    for (i = 0; i < qs->input_len; i++)
+        buf_encode_byte(out, qs->input_buf[i]);
+    put_status(s, "Unknown key: %s", buf);
+}
 
 void do_keyboard_quit(EditState *s)
 {
@@ -4766,7 +4788,7 @@ void exec_command(EditState *s, const CmdDef *d, int argval, int key)
     ExecCmdState *es;
     const char *argdesc;
 
-    if (qe_state.trace_buffer && qe_state.trace_buffer != s->b)
+    if (qe_state.trace_buffer)
         eb_trace_bytes(d->name, -1, EB_TRACE_COMMAND);
 
     argdesc = d->spec;
@@ -5465,10 +5487,15 @@ static void qe_key_process(int key)
             /* CG: should beep */;
         }
         out = buf_init(&outbuf, buf1, sizeof(buf1));
+        buf_puts(out, "No command on ");
         buf_put_keys(out, c->keys, c->nb_keys);
-        put_status(s, "No command on %s", buf1);
+        if (qs->trace_buffer)
+            eb_trace_bytes(buf1, -1, EB_TRACE_COMMAND);
+        put_status(s, "%s", buf1);
         c->describe_key = 0;
         qe_key_init(c);
+        if (qs->trace_buffer)
+            edit_display(qs);
         dpy_flush(&global_screen);
         return;
     } else
@@ -5534,6 +5561,8 @@ static void qe_key_process(int key)
     buf_put_key(out, key);
     buf_put_byte(out, '-');
     put_status(s, "~%s", c->buf);
+    if (qs->trace_buffer)
+        edit_display(qs);
     dpy_flush(&global_screen);
 }
 
@@ -8552,6 +8581,14 @@ void qe_handle_event(QEEvent *ev)
 
     switch (ev->type) {
     case QE_KEY_EVENT:
+        if (qs->trace_buffer) {
+            char buf[16];
+            buf_t out[1];
+            buf_init(out, buf, sizeof buf);
+            buf_put_key(out, ev->key_event.key);
+            buf_put_byte(out, ' ');
+            eb_trace_bytes(buf, -1, EB_TRACE_KEY);
+        }
         qe_key_process(ev->key_event.key);
         break;
     case QE_EXPOSE_EVENT:
@@ -9265,18 +9302,17 @@ static void qe_init(void *opaque)
         s = qs->active_window;
     }
 #endif
-
+#ifdef CONFIG_TINY
+    put_status(s, "Tiny QEmacs %s - Press F1 for help", QE_VERSION);
+#else
     put_status(s, "QEmacs %s - Press F1 for help", QE_VERSION);
-
-    edit_display(qs);
-    dpy_flush(&global_screen);
-
     b = eb_find("*errors*");
     if (b != NULL) {
         show_popup(s, b, "Errors");
-        edit_display(qs);
-        dpy_flush(&global_screen);
     }
+#endif
+    edit_display(qs);
+    dpy_flush(&global_screen);
     qs->ec.function = NULL;
 }
 

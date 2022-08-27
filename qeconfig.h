@@ -91,10 +91,10 @@ static const CmdDef basic_commands[] = {
     CMD2( "forward-char", "C-f, right",
           "Move to the next character",
           do_left_right, ESi, "p")
-    CMD2( "backward-word", "M-b, C-left",
+    CMD2( "backward-word", "M-b, C-left, M-left",
           "Move to the beginning of the word on or before point",
           do_word_left_right, ESi, "q")
-    CMD2( "forward-word", "M-f, C-right",
+    CMD2( "forward-word", "M-f, C-right, M-right",
           "Move to the end of the word on or after point",
           do_word_left_right, ESi, "p")
     CMD1( "scroll-down", "M-v, pageup",
@@ -278,6 +278,10 @@ static const CmdDef basic_commands[] = {
           "C-g, C-x C-g, C-c C-g, C-h C-g, ESC ESC ESC",
           "Abort the current command",
           do_keyboard_quit)
+    CMD0( "unknown-key",
+          "none",
+          "An unknown key was pressed",
+          do_unknown_key)
     CMD0( "start-kbd-macro", "C-x (",
           "Start recording a keyboard macro",
           do_start_kbd_macro)

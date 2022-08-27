@@ -1461,6 +1461,8 @@ static void x11_handle_event(void *opaque)
                         key = KEY_META(buf[0] & 0xff);
                         goto got_key;
                     }
+                    // XXX: should support CTRL/SHIFT/META modifiers
+                    //      on cursor and function keys
                     if (keysym >= ' ' && keysym <= '~') {
                         key = KEY_META(' ') + keysym - ' ';
                         goto got_key;

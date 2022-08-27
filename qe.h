@@ -504,7 +504,7 @@ int strsubst(char *buf, int buf_size, const char *from,
 int strquote(char *dest, int size, const char *str, int len);
 int strunquote(char *dest, int size, const char *str, int len);
 
-void get_str(const char **pp, char *buf, int buf_size, const char *stop);
+int get_str(const char **pp, char *buf, int buf_size, const char *stop);
 int css_get_enum(const char *str, const char *enum_str);
 
 extern QEColor const xterm_colors[];
@@ -738,6 +738,7 @@ int strtokey(const char **pp);
 int strtokeys(const char *keystr, unsigned int *keys, int max_keys, const char **endp);
 int buf_put_key(buf_t *out, int key);
 int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);
+int buf_encode_byte(buf_t *out, int ch);
 
 /* charset.c */
 
@@ -873,11 +874,14 @@ enum QEEventType {
 };
 
 #define KEY_CTRL(c)     ((c) & 0x001f)
-#define KEY_META(c)     ((c) | 0xe000)
-#define KEY_ESC1(c)     ((c) | 0xe100)
+/* allow combinations such as KEY_META(KEY_LEFT) */
+#define KEY_META(c)     ((c) | 0xe100)
+#define KEY_ESC1(c)     ((c) | 0xe200)
+#define KEY_IS_ESC1(c)     ((c) >= KEY_ESC1(0) && (c) <= KEY_ESC1(0xff))
 #define KEY_IS_SPECIAL(c)  ((c) >= 0xe000 && (c) < 0xf000)
 #define KEY_IS_CONTROL(c)  (((c) >= 0 && (c) < 32) || (c) == 127)
 
+#define KEY_UNKNOWN     0xfffe
 #define KEY_NONE        0xffff
 #define KEY_DEFAULT     0xe401 /* to handle all non special keys */
 
@@ -901,6 +905,22 @@ enum QEEventType {
 #define KEY_CTRL_HOME   KEY_ESC1('h')
 #define KEY_CTRL_PAGEUP KEY_ESC1('i')
 #define KEY_CTRL_PAGEDOWN KEY_ESC1('j')
+#define KEY_SHIFT_UP     KEY_ESC1('a'+128)
+#define KEY_SHIFT_DOWN   KEY_ESC1('b'+128)
+#define KEY_SHIFT_RIGHT  KEY_ESC1('c'+128)
+#define KEY_SHIFT_LEFT   KEY_ESC1('d'+128)
+#define KEY_SHIFT_END    KEY_ESC1('f'+128)
+#define KEY_SHIFT_HOME   KEY_ESC1('h'+128)
+#define KEY_SHIFT_PAGEUP KEY_ESC1('i'+128)
+#define KEY_SHIFT_PAGEDOWN KEY_ESC1('j'+128)
+#define KEY_CTRL_SHIFT_UP     KEY_ESC1('a'+64)
+#define KEY_CTRL_SHIFT_DOWN   KEY_ESC1('b'+64)
+#define KEY_CTRL_SHIFT_RIGHT  KEY_ESC1('c'+64)
+#define KEY_CTRL_SHIFT_LEFT   KEY_ESC1('d'+64)
+#define KEY_CTRL_SHIFT_END    KEY_ESC1('f'+64)
+#define KEY_CTRL_SHIFT_HOME   KEY_ESC1('h'+64)
+#define KEY_CTRL_SHIFT_PAGEUP KEY_ESC1('i'+64)
+#define KEY_CTRL_SHIFT_PAGEDOWN KEY_ESC1('j'+64)
 #define KEY_SHIFT_TAB   KEY_ESC1('Z')   // kcbt
 #define KEY_HOME        KEY_ESC1(1)     // khome
 #define KEY_INSERT      KEY_ESC1(2)     // kich1
@@ -1661,12 +1681,13 @@ struct QEmacsState {
     int trace_flags;
     int trace_buffer_state;
 #define EB_TRACE_TTY      0x01
-#define EB_TRACE_SHELL    0x02
-#define EB_TRACE_PTY      0x04
-#define EB_TRACE_EMULATE  0x08
-#define EB_TRACE_COMMAND  0x10
-#define EB_TRACE_DEBUG    0x20
-#define EB_TRACE_ALL      0x2F
+#define EB_TRACE_KEY      0x02
+#define EB_TRACE_COMMAND  0x04
+#define EB_TRACE_SHELL    0x08
+#define EB_TRACE_PTY      0x10
+#define EB_TRACE_EMULATE  0x20
+#define EB_TRACE_DEBUG    0x30
+#define EB_TRACE_ALL      0x7F
 #define EB_TRACE_FLUSH    0x100
 
     /* global layout info : DO NOT modify these directly. do_refresh
@@ -1734,6 +1755,8 @@ struct QEmacsState {
     //int fuzzy_search;    /* use fuzzy search for completion matcher */
     int c_label_indent;
     const char *user_option;
+    int input_len;
+    u8 input_buf[32];
 };
 
 extern QEmacsState qe_state;

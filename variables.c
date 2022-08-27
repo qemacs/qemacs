@@ -30,6 +30,8 @@ const char * const var_domain[] = {
     "self",     /* VAR_SELF */
 };
 
+static int use_full_version = 1;
+
 static VarDef var_table[] = {
 
     S_VAR( "screen-width", width, VAR_NUMBER, VAR_RO,
@@ -119,6 +121,7 @@ static VarDef var_table[] = {
     G_VAR( "disable-crc", disable_crc, VAR_NUMBER, VAR_RW_SAVE,
            "Set to prevent CRC based display cache." )
     G_VAR( "use-html", use_html, VAR_NUMBER, VAR_RW, NULL )
+    G_VAR( "full-version", use_full_version, VAR_NUMBER, VAR_RW, NULL )
 
     /* more buffer fields: modified, readonly, binary, charset */
 
