@@ -528,6 +528,120 @@ static int qe_term_skip_lines(ShellState *s, int offset, int n) {
     return offset;
 }
 
+typedef struct ShellPos {
+    int screen_start;
+    int line_start;
+    int offset;
+    int line_end;
+    int row;
+    int col;
+    int end_col;
+    int flags;
+#define SP_SCREEN_START_WRAP  1
+#define SP_LINE_START_WRAP1   2
+#define SP_LINE_START_WRAP2   4
+#define SP_LINE_START_WRAP    6
+#define SP_LINE_END_WRAP1     8
+#define SP_LINE_END_WRAP2     16
+#define SP_LINE_END_WRAP      24
+} ShellPos;
+
+#define SP_NO_UPDATE  1
+static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int flags) {
+    int offset, offset0, offset1, start_offset, line_offset;
+    int c, x, y, w, gpflags;
+
+    if (s->use_alternate_screen) {
+        start_offset = minp(&s->alternate_screen_top, s->b->total_size);
+    } else {
+        start_offset = minp(&s->screen_top, s->b->total_size);
+    }
+    if (spp) {
+        gpflags = 0;
+        destoffset = clamp(destoffset, 0, s->b->total_size);
+        offset = offset0 = line_offset = start_offset;
+        for (x = y = 0; offset < destoffset;) {
+            offset0 = offset;
+            c = eb_nextc(s->b, offset, &offset);
+            if (c == '\n') {
+                y++;
+                x = 0;
+                gpflags &= ~SP_LINE_START_WRAP;
+                line_offset = offset;
+            } else
+            if (c == '\t') {
+                w = (x + 8) & ~7;
+                x = min(x + w, s->cols - 1);
+            } else {
+                // XXX: should handle combining glyphs
+                w = unicode_tty_glyph_width(c);
+                x += w;
+                if (x >= s->cols) {
+                    if (x > s->cols) {
+                        y++;
+                        x = w;
+                        gpflags |= SP_LINE_START_WRAP2;
+                        line_offset = offset;
+                    } else
+                    if (eb_nextc(s->b, offset, &offset1) != '\n') {
+                        y++;
+                        x = 0;
+                        gpflags |= SP_LINE_START_WRAP1;
+                        line_offset = offset;
+                    }
+                }
+            }
+        }
+        if (y >= s->rows && !(flags & SP_NO_UPDATE)) {
+            // XXX: should take a flag to make this optional
+            /* adjust start if row is too far */
+            start_offset = qe_term_skip_lines(s, start_offset, y - s->rows + 1);
+            y = s->rows - 1;
+            /* update screen_top */
+            if (s->use_alternate_screen)
+                s->alternate_screen_top = start_offset;
+            else
+                s->screen_top = start_offset;
+        }
+        if (eb_prevc(s->b, start_offset, &offset1) != '\n')
+            gpflags |= SP_SCREEN_START_WRAP;
+        spp->col = x;
+        spp->row = y;
+        spp->line_start = line_offset;
+        spp->screen_start = start_offset;
+        spp->offset = offset;
+        for (offset0 = offset; x < s->cols;) {
+            offset0 = offset;
+            c = eb_nextc(s->b, offset, &offset);
+            if (c == '\n')
+                break;
+            if (c == '\t') {
+                w = (x + 8) & ~7;
+                x = min(x + w, s->cols - 1);
+            } else {
+                // XXX: should handle combining glyphs
+                w = unicode_tty_glyph_width(c);
+                x += w;
+                if (x >= s->cols) {
+                    if (x > s->cols) {
+                        x -= w;
+                        gpflags |= SP_LINE_END_WRAP2;
+                        break;
+                    }
+                    if (eb_nextc(s->b, offset, &offset1) != '\n') {
+                        gpflags |= SP_LINE_END_WRAP1;
+                        break;
+                    }
+                }
+            }
+        }
+        spp->flags = gpflags;
+        spp->end_col = x;
+        spp->line_end = offset0;
+    }
+    return start_offset;
+}
+
 static int qe_term_get_pos(ShellState *s, int destoffset, int *px, int *py) {
     int offset, offset1, c;
     int x, y, w, start_offset;
@@ -690,23 +804,6 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
 
 static void qe_term_goto_xy(ShellState *s, int destx, int desty, int flags) {
     s->cur_offset = qe_term_goto_pos(s, s->cur_offset, destx, desty, flags);
-}
-
-static int qe_term_fix_wrap(ShellState *s, int offset) {
-    int x, y, offset1, offset2, offset3;
-
-    qe_term_get_pos(s, offset, &x, &y);
-    offset1 = qe_term_goto_pos(s, offset, 0, y, TG_NOCLIP | TG_NOEXTEND);
-    offset2 = qe_term_goto_pos(s, offset, s->cols, y, TG_NOCLIP | TG_NOEXTEND);
-    if (eb_nextc(s->b, offset2, &offset3) != '\n') {
-        /* break the line at right border */
-        eb_insert_uchars(s->b, offset2, '\n', 1);
-    }
-    if (eb_prevc(s->b, offset1, &offset3) != '\n') {
-        /* break the line at left border */
-        return eb_insert_uchars(s->b, offset1, '\n', 1);
-    }
-    return 0;
 }
 
 static void qe_term_goto_tab(ShellState *s, int n) {
@@ -1148,6 +1245,7 @@ static unsigned char const sco_color[16] = {
 static void qe_term_emulate(ShellState *s, int c)
 {
     int i, param1, param2, len, offset, offset1, offset2;
+    ShellPos pos;
     char buf1[10];
 
     offset = clampp(&s->cur_offset, 0, s->b->total_size);
@@ -1678,6 +1776,7 @@ static void qe_term_emulate(ShellState *s, int c)
                 /* XXX: should handle eol style */
                 int col, row, col2, row2, n1, n2, offset3;
 
+                // XXX: should use qe_term_get_pos2()
                 qe_term_get_pos(s, offset, &col, &row);
                 offset1 = qe_term_goto_pos(s, offset, 0, row, TG_NOCLIP | TG_NOEXTEND);
                 offset2 = qe_term_goto_pos(s, offset, s->cols, row, TG_NOCLIP | TG_NOEXTEND);
@@ -1754,14 +1853,37 @@ static void qe_term_emulate(ShellState *s, int c)
             }
             break;
         case 'P':  /* DCH: Delete Ps Character(s) (default = 1). */
-            {
-                // XXX: should avoid fixing, use loop and delete/insert like '@'
-                offset += qe_term_fix_wrap(s, offset);
-                offset1 = qe_term_goto_pos(s, offset, param1, 0,
-                                           TG_RELATIVE | TG_NOEXTEND);
-                eb_delete_range(s->b, offset, offset1);
-                // XXX: should check about updating cur_offset
-                //s->cur_offset = offset;
+            qe_term_get_pos2(s, offset, &pos, 0);
+            qe_term_set_style(s);
+            if (!(pos.flags & SP_LINE_END_WRAP)) {
+                /* no need to pad end of line */
+                if (param1 >= pos.end_col - pos.col) {
+                    eb_delete_range(s->b, offset, pos.line_end);
+                    if (pos.col == 0 && (pos.flags & SP_LINE_START_WRAP)) {
+                        /* if removed wrapped wide glyph, pad previous line */
+                        if (pos.flags & SP_LINE_START_WRAP2)
+                            s->cur_offset = offset += eb_insert_uchars(s->b, offset, ' ', 1);
+                        /* we removed the wrapped glyph, must insert a space */
+                        eb_insert_uchars(s->b, offset, ' ', 1);
+                    }
+                } else {
+                    offset1 = qe_term_goto_pos(s, offset, param1, 0, TG_RELATIVE | TG_NOEXTEND);
+                    eb_delete_range(s->b, offset, offset1);
+                    /* if removed wrapped wide glyph, pad previous line */
+                    if (pos.col == 0 && (pos.flags & SP_LINE_START_WRAP2)) {
+                        s->cur_offset = offset += eb_insert_uchars(s->b, offset, ' ', 1);
+                    }
+                }
+            } else {
+                if (param1 >= pos.end_col - pos.col) {
+                    eb_delete_range(s->b, offset, pos.line_end);
+                    eb_insert_uchars(s->b, offset, ' ', s->cols - pos.col);
+                } else {
+                    // XXX: should untabify rest of line
+                    offset1 = qe_term_goto_pos(s, offset, param1, 0, TG_RELATIVE | TG_NOEXTEND);
+                    pos.line_end -= eb_delete_range(s->b, offset, offset1);
+                    eb_insert_uchars(s->b, pos.line_end, ' ', param1);
+                }
             }
             break;
         case 'S':  /* SU: Scroll up Ps lines (default = 1). */
@@ -2071,9 +2193,8 @@ static void shell_read_cb(void *opaque)
 
     b = s->b;
     qs = s->qe_state;
-    if (qs->trace_buffer) {
+    if (qs->trace_buffer)
         eb_trace_bytes(buf, len, EB_TRACE_SHELL);
-    }
 
     /* Suspend BF_READONLY flag to allow shell output to readonly buffer */
     save_readonly = b->flags & BF_READONLY;
