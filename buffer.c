@@ -928,9 +928,10 @@ void eb_trace_bytes(const void *buf, int size, int state)
             break;
         }
         if (str) {
+            int len1 = (int)strlen(str);
             int width = (col == 0 ? 7 :
                          col <= 20 ? 27 - col :
-                         col <= 40 ? 47 - col : strlen(str) + 2);
+                         col <= 40 ? 47 - col : len1 + 2);
             col += eb_printf(b, "%*s: ", width, str);
         }
     }
