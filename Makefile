@@ -95,7 +95,7 @@ TARGET_OBJ:=$(TARGET)
 endif
 
 OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o input.o display.o \
-       modes/hex.o modes/list.o
+       modes/hex.o
 
 ifdef TARGET_TINY
 ECHO_CFLAGS += -DCONFIG_TINY
@@ -285,7 +285,7 @@ else
 
 # Amalgation mode produces a larger executable
 TSRCS:=qe.c util.c cutils.c charset.c buffer.c search.c input.c display.c \
-       modes/hex.c modes/list.c parser.c unix.c tty.c win32.c qeend.c
+       modes/hex.c parser.c unix.c tty.c win32.c qeend.c
 TSRCS+= $(OBJS_DIR)/tqe_modules.c
 
 tqe1_g$(EXE): tqe.c $(TSRCS) Makefile

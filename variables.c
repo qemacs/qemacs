@@ -121,6 +121,7 @@ static VarDef var_table[] = {
     G_VAR( "disable-crc", disable_crc, VAR_NUMBER, VAR_RW_SAVE,
            "Set to prevent CRC based display cache." )
     G_VAR( "use-html", use_html, VAR_NUMBER, VAR_RW, NULL )
+    G_VAR( "is-player", is_player, VAR_NUMBER, VAR_RW, NULL )
     G_VAR( "full-version", use_full_version, VAR_NUMBER, VAR_RW, NULL )
 
     /* more buffer fields: modified, readonly, binary, charset */

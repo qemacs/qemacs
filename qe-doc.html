@@ -81,12 +81,11 @@ ul.no-bullet {list-style: none}
 <p>QEmacs (for Quick Emacs) is a very small but powerful
 UNIX editor. It has features that even big editors lack:
 </p><ul>
-<li> Full screen editor with an Emacs look and feel with all Emacs common
+<li> Full screen editor with an Emacs look and feel with many common Emacs
   features: multi-buffer, multi-window, command mode, numeric
-  argument, keyboard macros, config file with C like syntax, minibuffer
-  with completion and history.
+  argument, keyboard macros, minibuffer with completion and history.
 
-</li><li> Can edit files of hundreds of Megabytes without being slow by using
+</li><li> Can edit files hundreds of Megabytes long without being slow by using
   a highly optimized internal representation and by mmaping the file.
 
 </li><li> Full <em>Unicode</em> support, including multi charset handling
@@ -95,13 +94,13 @@ UNIX editor. It has features that even big editors lack:
   progress).
 
 </li><li> WYSIWYG <em>HTML/XML/CSS2</em> mode graphical editing. Also supports lynx like
-rendering on VT100 terminals.
+  rendering on VT100 terminals.
 
 </li><li> WYSIWYG <em>DocBook</em> mode based on XML/CSS2 renderer.
 
 </li><li> C mode: coloring with immediate update. Emacs like auto-indent.
 
-</li><li> Shell mode: colorized VT100 emulation so that your shell work
+</li><li> Shell mode: custom full color VT100 emulation so your shell works
   exactly as you expect. Compile mode with next/prev error.
 
 </li><li> Input methods for most languages, including Chinese (input methods
@@ -110,17 +109,16 @@ rendering on VT100 terminals.
 </li><li> <em>Hexadecimal editing</em> mode with insertion and block commands. Unicode
   hexa editing is also supported.
 
-</li><li> Works on any VT100 terminals without termcap. UTF8 VT100 support
+</li><li> Works on any VT100 terminals without termcap. UTF-8 VT100 support
   included with double width glyphs.
 
-</li><li> X11 support. Support multiple proportional fonts at the same time
-  (as XEmacs). X Input methods supported. Xft extension supported for
-  anti aliased font display.
+</li><li> X11 support. Support multiple proportional fonts at the same time. X Input
+  methods supported. Xft extension supported for anti aliased font display.
 
 </li><li>
-  Small! Full version (including HTML/XML/CSS2/DocBook rendering and all
-  charsets): 270KB big. Basic version (without bidir/unicode
-  scripts/input/X11/C/Shell/HTML/dired): 88KB.
+  Small! Full version (including HTML/XML/CSS2/DocBook rendering with all
+  charsets and image parsers) is less than 1MB. Basic version (without bidir/unicode
+  scripts/input/X11/C/Shell/HTML/dired) optimized for size in 32-bit: 176KB.
 
 </li></ul>
 
@@ -149,36 +147,57 @@ rendering on VT100 terminals.
 </pre></div>
 
 <dl compact="compact">
-<dt>&lsquo;<samp>-h</samp>&rsquo;</dt>
+<dt>&lsquo;<samp>-h -help</samp>&rsquo;</dt>
 <dd><p>show help
 </p>
 </dd>
-<dt>&lsquo;<samp>-nw</samp>&rsquo;</dt>
+<dt>&lsquo;<samp>-V -version</samp>&rsquo;</dt>
+<dd><p>display version information and exit
+</p>
+</dd>
+<dt>&lsquo;<samp>-q -no-init-file</samp>&rsquo;</dt>
+<dd><p>do not load config files
+</p>
+</dd>
+<dt>&lsquo;<samp>-u USER -user USER</samp>&rsquo;</dt>
+<dd><p>load ~USER/.qe/config instead of ~/.qe/config
+</p>
+</dd>
+<dt>&lsquo;<samp>-c CHARSET -charset CHARSET</samp>&rsquo;</dt>
+<dd><p>specify tty charset
+</p>
+</dd>
+<dt>&lsquo;<samp>-free-all</samp>&rsquo;</dt>
+<dd><p>free all structures upon exit: used for debugging memory allocation
+</p>
+</dd>
+<dt>&lsquo;<samp>-nc -no-crc</samp>&rsquo;</dt>
+<dd><p>do not use CRC based display cacheing
+</p>
+</dd>
+<dt>&lsquo;<samp>-s -use-session</samp>&rsquo;</dt>
+<dd><p>load and save session files (disabled)
+</p>
+</dd>
+<dt>&lsquo;<samp>-nw -no-windows</samp>&rsquo;</dt>
 <dd><p>force tty terminal usage
 </p>
 </dd>
-<dt>&lsquo;<samp>-display display</samp>&rsquo;</dt>
-<dd><p>set X11 display to &rsquo;display&rsquo;
+<dt>&lsquo;<samp>-display DISPLAY</samp>&rsquo;</dt>
+<dd><p>set the X11 display to &rsquo;DISPLAY&rsquo;
 </p>
 </dd>
 <dt>&lsquo;<samp>-geometry WxH</samp>&rsquo;</dt>
-<dd><p>set X11 display size
+<dd><p>set the X11 display size
 </p>
 </dd>
-<dt>&lsquo;<samp>-fs ptsize</samp>&rsquo;</dt>
-<dd><p>set default font size
+<dt>&lsquo;<samp>-fs PTSIZE -font-size PTSIZE</samp>&rsquo;</dt>
+<dd><p>set the X11 default font size
 </p>
 </dd>
 </dl>
 
-<p>When invoked as
-</p><div class="example">
-<pre class="example">usage: ffplay
-</pre></div>
 
-<p>QEmacs goes to <code>dired</code> mode automatically so that you can browse your
-files easily (same as <kbd>C-x C-d</kbd> key).
-</p>
 <hr>
 <a name="Common-editing-commands"></a>
 <table class="header" cellpadding="1" cellspacing="1" border="0">
@@ -217,22 +236,22 @@ files easily (same as <kbd>C-x C-d</kbd> key).
 </tr></table>
 <h2 class="section">3.1 Concepts</h2>
 
-<p>QEmacs store file content in <em>buffers</em>. Buffers can be seen as big
+<p>QEmacs stores file contents in <em>buffers</em>. Buffers can be seen as simple
 arrays of bytes.
 </p>
 <p>An <em>editing mode</em> tells how to display the content of a buffer and
 how to interact with the user to modify its content.
 </p>
 <p>Multiple <em>Windows</em> can be shown on the screen at the same time. Each
-windows show the content of a buffer with an editing mode. It means that
-you can open several windows which show the same buffer in different
-modes (for example, both text and hexadecimal).
+window shows the content of a buffer with an editing mode. The same buffer
+can be shown in different windows in different modes (for example, both text
+and hexadecimal).
 </p>
-<p>Each key binding activates a <em>command</em>. You can directly execute a
-command by typing <kbd>M-x command RET</kbd>.
+<p>Each key binding activates a <em>command</em>. You can execute a
+command directly by typing <kbd>M-x command RET</kbd>.
 </p>
 <p>Commands can take arguments. The key binding <kbd>C-u N</kbd> where N is an
-optional number is used to give a numeric argument to the commands which
+optional number is used to provide a numeric argument to the commands which
 can handle them. If the command cannot handle a numerical argument, it
 is simply repeated <code>N</code> times.
 </p>
@@ -485,6 +504,7 @@ C-x 1                   : delete-other-windows
 C-x 2                   : split-window-vertically
 C-x 3                   : split-window-horizontally
 C-x f                   : toggle-full-screen
+A-=                     : compare-windows
 </pre></div>
 
 <hr>
@@ -1412,7 +1432,7 @@ activated automatically when an HTML file is loaded.
 <tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
 <td valign="middle" align="left">[<a href="#CSS-property-support" title="Previous section in reading order"> &lt; </a>]</td>
 <td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#Image-mode" title="Next section in reading order"> &gt; </a>]</td>
+<td valign="middle" align="left">[<a href="#fonts" title="Next section in reading order"> &gt; </a>]</td>
 <td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
 <td valign="middle" align="left"> &nbsp; </td>
 <td valign="middle" align="left"> &nbsp; </td>
@@ -1428,119 +1448,12 @@ activated automatically when an HTML file is loaded.
 <p>This mode simply uses a different default style sheet from the HTML/CSS2
 mode. It is activated by &lsquo;<samp>M-x docbook-mode</samp>&rsquo;.
 </p>
-<hr>
-<a name="Image-mode"></a>
-<table class="header" cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#Graphical-DocBook-mode" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#Audio_002fVideo-mode" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
-<td valign="middle" align="left">[Contents]</td>
-<td valign="middle" align="left">[Index]</td>
-<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
-</tr></table>
-<h2 class="section">6.9 Image mode</h2>
-
-<p>When compiling qemacs with FFmpeg support (<a href="http://ffmpeg.org">http://ffmpeg.org</a>),
-images can be viewed. The current implementation handles PNM, PAM, PNG,
-JPEG and GIF images (animated GIF images are handled as video
-data). <kbd>C-x C-d</kbd> can be used to have an interactive file viewer.
-</p>
-<p>Available commands:
-</p>
-<dl compact="compact">
-<dt><kbd>t</kbd></dt>
-<dd><p>(&lsquo;<samp>M-x image-rotate</samp>&rsquo;) Rotate right image by 90 degrees.
-</p></dd>
-<dt><kbd>f</kbd></dt>
-<dd><p>(&lsquo;<samp>M-x toggle-full-screen</samp>&rsquo;) Toggle full screen mode
-</p></dd>
-<dt><kbd>c</kbd></dt>
-<dd><p>(&lsquo;<samp>M-x image-convert</samp>&rsquo;) Change the pixel format of the image (press tab
-to have a complete list). The data loss implied by the pixel format
-change is displayed.
-</p></dd>
-<dt><kbd>b</kbd></dt>
-<dd><p>(&lsquo;<samp>M-x image-set-background-color</samp>&rsquo;) Set the image background
-color. The background is only visible if the image contains transparent
-pixels. The &lsquo;<samp>transparent</samp>&rsquo; color displayed a &lsquo;<samp>gimp</samp>&rsquo; like grid.
-</p></dd>
-</dl>
-
-<p>Status information:
-</p>
-<ul>
-<li> The image resolution is displayed as &lsquo;<samp>NxM</samp>&rsquo;.
-
-</li><li> The FFmpeg pixel format is displayed.
-
-</li><li> &lsquo;<samp>I</samp>&rsquo; is displayed is the image is interleaved.
-
-</li><li> &lsquo;<samp>T</samp>&rsquo; is displayed if the image contains transparent
-pixels. &lsquo;<samp>A</samp>&rsquo; is displayed if the image contains semi-transparent
-pixels.
-
-</li></ul>
-
-<hr>
-<a name="Audio_002fVideo-mode"></a>
-<table class="header" cellpadding="1" cellspacing="1" border="0">
-<tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#Image-mode" title="Previous section in reading order"> &lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#Editing-Modes" title="Up section"> Up </a>]</td>
-<td valign="middle" align="left">[<a href="#fonts" title="Next section in reading order"> &gt; </a>]</td>
-<td valign="middle" align="left">[<a href="#fonts" title="Next chapter"> &gt;&gt; </a>]</td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left"> &nbsp; </td>
-<td valign="middle" align="left">[<a href="#Introduction" title="Cover (top) of document">Top</a>]</td>
-<td valign="middle" align="left">[Contents]</td>
-<td valign="middle" align="left">[Index]</td>
-<td valign="middle" align="left">[<a href="#SEC_About" title="About (help)"> ? </a>]</td>
-</tr></table>
-<h2 class="section">6.10 Audio/Video mode</h2>
-
-<p>When compiling qemacs with FFmpeg support (<a href="http://ffmpeg.org">http://ffmpeg.org</a>),
-video and audio files can be viewed. The X11 Xvideo extension is used
-if available for faster YUV rendering. <kbd>C-x C-d</kbd> can be used to
-have an interactive file viewer.
-</p>
-<p>Audio only files are also rendered. The waveform is displayed at the
-same time.
-</p>
-<p>No editing commands will be supported in that mode. Saving is
-currently not possible.
-</p>
-<p>Available commands:
-</p>
-<dl compact="compact">
-<dt><kbd>SPC</kbd></dt>
-<dt><kbd>p</kbd></dt>
-<dd><p>Pause/Resume
-</p></dd>
-<dt><kbd>f</kbd></dt>
-<dd><p>(&lsquo;<samp>M-x toggle-full-screen</samp>&rsquo;) Toggle full screen mode
-</p></dd>
-<dt><kbd>v</kbd></dt>
-<dd><p>(&lsquo;<samp>M-x av-cycle-video</samp>&rsquo;) Cycle through available video channels.
-</p></dd>
-<dt><kbd>a</kbd></dt>
-<dd><p>(&lsquo;<samp>M-x av-cycle-audio</samp>&rsquo;) Cycle through available audio channels.
-</p></dd>
-</dl>
 
 <hr>
 <a name="fonts"></a>
 <table class="header" cellpadding="1" cellspacing="1" border="0">
 <tr><td valign="middle" align="left">[<a href="#Editing-Modes" title="Beginning of this chapter or previous chapter"> &lt;&lt; </a>]</td>
-<td valign="middle" align="left">[<a href="#Audio_002fVideo-mode" title="Previous section in reading order"> &lt; </a>]</td>
+<td valign="middle" align="left">[<a href="#Graphical-DocBook-mode" title="Previous section in reading order"> &lt; </a>]</td>
 <td valign="middle" align="left">[ Up ]</td>
 <td valign="middle" align="left">[<a href="#VT100-display" title="Next section in reading order"> &gt; </a>]</td>
 <td valign="middle" align="left">[<a href="#Html2png-Tool" title="Next chapter"> &gt;&gt; </a>]</td>

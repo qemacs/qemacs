@@ -13,12 +13,11 @@ QEmacs (for Quick Emacs) is a very small but powerful
 UNIX editor. It has features that even big editors lack:
 @itemize
 
-@item Full screen editor with an Emacs look and feel with all Emacs common
+@item Full screen editor with an Emacs look and feel with many common Emacs
   features: multi-buffer, multi-window, command mode, numeric
-  argument, keyboard macros, config file with C like syntax, minibuffer
-  with completion and history.
+  argument, keyboard macros, minibuffer with completion and history.
 
-@item Can edit files of hundreds of Megabytes without being slow by using
+@item Can edit files hundreds of Megabytes long without being slow by using
   a highly optimized internal representation and by mmaping the file.
 
 @item Full @emph{Unicode} support, including multi charset handling
@@ -27,13 +26,13 @@ UNIX editor. It has features that even big editors lack:
   progress).
 
 @item WYSIWYG @emph{HTML/XML/CSS2} mode graphical editing. Also supports lynx like
-rendering on VT100 terminals.
+  rendering on VT100 terminals.
 
 @item WYSIWYG @emph{DocBook} mode based on XML/CSS2 renderer.
 
 @item C mode: coloring with immediate update. Emacs like auto-indent.
 
-@item Shell mode: colorized VT100 emulation so that your shell work
+@item Shell mode: custom full color VT100 emulation so your shell works
   exactly as you expect. Compile mode with next/prev error.
 
 @item Input methods for most languages, including Chinese (input methods
@@ -42,17 +41,16 @@ rendering on VT100 terminals.
 @item @emph{Hexadecimal editing} mode with insertion and block commands. Unicode
   hexa editing is also supported.
 
-@item Works on any VT100 terminals without termcap. UTF8 VT100 support
+@item Works on any VT100 terminals without termcap. UTF-8 VT100 support
   included with double width glyphs.
 
-@item X11 support. Support multiple proportional fonts at the same time
-  (as XEmacs). X Input methods supported. Xft extension supported for
-  anti aliased font display.
+@item X11 support. Support multiple proportional fonts at the same time. X Input
+  methods supported. Xft extension supported for anti aliased font display.
 
 @item
-  Small! Full version (including HTML/XML/CSS2/DocBook rendering and all
-  charsets): 270KB big. Basic version (without bidir/unicode
-  scripts/input/X11/C/Shell/HTML/dired): 88KB.
+  Small! Full version (including HTML/XML/CSS2/DocBook rendering with all
+  charsets and image parsers) is less than 1MB. Basic version (without bidir/unicode
+  scripts/input/X11/C/Shell/HTML/dired) optimized for size in 32-bit: 176KB.
 
 @end itemize
 
@@ -65,51 +63,72 @@ usage: qe [-h] [-nw] [-display display] [-geometry WxH]
 
 @table @samp
 
-@item -h
+@item -h -help
 show help
 
-@item -nw
+@item -V -version
+display version information and exit
+
+@item -q -no-init-file
+do not load config files
+
+@item -u USER -user USER
+load ~USER/.qe/config instead of ~/.qe/config
+
+@item -c CHARSET -charset CHARSET
+specify tty charset
+
+@item -free-all
+free all structures upon exit: used for debugging memory allocation
+
+@item -nc -no-crc
+do not use CRC based display cacheing
+
+@item -s -use-session
+load and save session files (disabled)
+
+@item -nw -no-windows
 force tty terminal usage
 
-@item -display display
-set X11 display to 'display'
+@item -display DISPLAY
+set the X11 display to 'DISPLAY'
 
 @item -geometry WxH
-set X11 display size
+set the X11 display size
 
-@item -fs ptsize
-set default font size
+@item -fs PTSIZE -font-size PTSIZE
+set the X11 default font size
 
 @end table
 
-When invoked as
-@example
-usage: ffplay
-@end example
-
-QEmacs goes to @code{dired} mode automatically so that you can browse your
-files easily (same as @kbd{C-x C-d} key).
+@c When invoked as
+@c @example
+@c usage: ffplay
+@c @end example
+@c
+@c QEmacs goes to @code{dired} mode automatically so that you can browse your
+@c files easily (same as @kbd{C-x C-d} key).
 
 @chapter Common editing commands
 
 @section Concepts
 
-QEmacs store file content in @dfn{buffers}. Buffers can be seen as big
+QEmacs stores file contents in @dfn{buffers}. Buffers can be seen as simple
 arrays of bytes.
 
 An @dfn{editing mode} tells how to display the content of a buffer and
 how to interact with the user to modify its content.
 
 Multiple @dfn{Windows} can be shown on the screen at the same time. Each
-windows show the content of a buffer with an editing mode. It means that
-you can open several windows which show the same buffer in different
-modes (for example, both text and hexadecimal).
+window shows the content of a buffer with an editing mode. The same buffer
+can be shown in different windows in different modes (for example, both text
+and hexadecimal).
 
-Each key binding activates a @dfn{command}. You can directly execute a
-command by typing @kbd{M-x command RET}.
+Each key binding activates a @dfn{command}. You can execute a
+command directly by typing @kbd{M-x command RET}.
 
 Commands can take arguments. The key binding @kbd{C-u N} where N is an
-optional number is used to give a numeric argument to the commands which
+optional number is used to provide a numeric argument to the commands which
 can handle them. If the command cannot handle a numerical argument, it
 is simply repeated @code{N} times.
 
@@ -226,6 +245,7 @@ C-x 1                   : delete-other-windows
 C-x 2                   : split-window-vertically
 C-x 3                   : split-window-horizontally
 C-x f                   : toggle-full-screen
+A-=                     : compare-windows
 @end example
 
 @section Help functions
@@ -724,71 +744,71 @@ The following properties are completely unsupported:
 This mode simply uses a different default style sheet from the HTML/CSS2
 mode. It is activated by @samp{M-x docbook-mode}.
 
-@section Image mode
-
-When compiling qemacs with FFmpeg support (@url{http://ffmpeg.org}),
-images can be viewed. The current implementation handles PNM, PAM, PNG,
-JPEG and GIF images (animated GIF images are handled as video
-data). @kbd{C-x C-d} can be used to have an interactive file viewer.
-
-Available commands:
-
-@table @kbd
-@item t
-(@samp{M-x image-rotate}) Rotate right image by 90 degrees.
-@item f
-(@samp{M-x toggle-full-screen}) Toggle full screen mode
-@item c
-(@samp{M-x image-convert}) Change the pixel format of the image (press tab
-to have a complete list). The data loss implied by the pixel format
-change is displayed.
-@item b
-(@samp{M-x image-set-background-color}) Set the image background
-color. The background is only visible if the image contains transparent
-pixels. The @samp{transparent} color displayed a @samp{gimp} like grid.
-@end table
-
-Status information:
-
-@itemize
-@item The image resolution is displayed as @samp{NxM}.
-
-@item The FFmpeg pixel format is displayed.
-
-@item @samp{I} is displayed is the image is interleaved.
-
-@item @samp{T} is displayed if the image contains transparent
-pixels. @samp{A} is displayed if the image contains semi-transparent
-pixels.
-
-@end itemize
-
-@section Audio/Video mode
-
-When compiling qemacs with FFmpeg support (@url{http://ffmpeg.org}),
-video and audio files can be viewed. The X11 Xvideo extension is used
-if available for faster YUV rendering. @kbd{C-x C-d} can be used to
-have an interactive file viewer.
-
-Audio only files are also rendered. The waveform is displayed at the
-same time.
-
-No editing commands will be supported in that mode. Saving is
-currently not possible.
-
-Available commands:
-
-@table @kbd
-@item SPC
-@item p
-Pause/Resume
-@item f
-(@samp{M-x toggle-full-screen}) Toggle full screen mode
-@item v
-(@samp{M-x av-cycle-video}) Cycle through available video channels.
-@item a
-(@samp{M-x av-cycle-audio}) Cycle through available audio channels.
-@end table
+@c @section Image mode
+@c
+@c When compiling qemacs with FFmpeg support (@url{http://ffmpeg.org}),
+@c images can be viewed. The current implementation handles PNM, PAM, PNG,
+@c JPEG and GIF images (animated GIF images are handled as video
+@c data). @kbd{C-x C-d} can be used to have an interactive file viewer.
+@c
+@c Available commands:
+@c
+@c @table @kbd
+@c @item t
+@c (@samp{M-x image-rotate}) Rotate right image by 90 degrees.
+@c @item f
+@c (@samp{M-x toggle-full-screen}) Toggle full screen mode
+@c @item c
+@c (@samp{M-x image-convert}) Change the pixel format of the image (press tab
+@c to have a complete list). The data loss implied by the pixel format
+@c change is displayed.
+@c @item b
+@c (@samp{M-x image-set-background-color}) Set the image background
+@c color. The background is only visible if the image contains transparent
+@c pixels. The @samp{transparent} color displayed a @samp{gimp} like grid.
+@c @end table
+@c
+@c Status information:
+@c
+@c @itemize
+@c @item The image resolution is displayed as @samp{NxM}.
+@c
+@c @item The FFmpeg pixel format is displayed.
+@c
+@c @item @samp{I} is displayed is the image is interleaved.
+@c
+@c @item @samp{T} is displayed if the image contains transparent
+@c pixels. @samp{A} is displayed if the image contains semi-transparent
+@c pixels.
+@c
+@c @end itemize
+@c
+@c @section Audio/Video mode
+@c
+@c When compiling qemacs with FFmpeg support (@url{http://ffmpeg.org}),
+@c video and audio files can be viewed. The X11 Xvideo extension is used
+@c if available for faster YUV rendering. @kbd{C-x C-d} can be used to
+@c have an interactive file viewer.
+@c
+@c Audio only files are also rendered. The waveform is displayed at the
+@c same time.
+@c
+@c No editing commands will be supported in that mode. Saving is
+@c currently not possible.
+@c
+@c Available commands:
+@c
+@c @table @kbd
+@c @item SPC
+@c @item p
+@c Pause/Resume
+@c @item f
+@c (@samp{M-x toggle-full-screen}) Toggle full screen mode
+@c @item v
+@c (@samp{M-x av-cycle-video}) Cycle through available video channels.
+@c @item a
+@c (@samp{M-x av-cycle-audio}) Cycle through available audio channels.
+@c @end table
 
 @node fonts
 @chapter Fonts

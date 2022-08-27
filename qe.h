@@ -2414,6 +2414,7 @@ extern ModeDef htmlsrc_mode;
 
 extern ModeDef html_mode;  /* used in docbook_mode */
 extern int use_html;
+extern int is_player;
 
 /* flags from libqhtml/css.h */
 int gxml_mode_init(EditBuffer *b, int flags, const char *default_stylesheet);

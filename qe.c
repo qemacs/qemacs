@@ -69,6 +69,7 @@ int force_tty;
 int disable_crc;
 int use_session_file;
 int use_html = 1;
+int is_player = 1;    /* Start in dired mode when invoked with no arguments */
 #ifndef CONFIG_TINY
 static int free_everything;
 #endif
@@ -6711,6 +6712,76 @@ void minibuffer_init(void)
     qe_register_commands(&minibuffer_mode, minibuffer_commands, countof(minibuffer_commands));
 }
 
+/* list paging mode */
+
+ModeDef list_mode;
+
+/* get current position (index) in list */
+int list_get_pos(EditState *s)
+{
+    int line, col;
+    eb_get_pos(s->b, &line, &col, s->offset);
+    return line;
+}
+
+/* get current offset of the line in list */
+int list_get_offset(EditState *s)
+{
+    return eb_goto_bol(s->b, s->offset);
+}
+
+void list_toggle_selection(EditState *s, int dir)
+{
+    int offset, offset1;
+    int ch, flags;
+
+    if (dir < 0)
+        text_move_up_down(s, -1);
+
+    offset = list_get_offset(s);
+
+    ch = eb_nextc(s->b, offset, &offset1);
+    if (ch == ' ')
+        ch = '*';
+    else
+        ch = ' ';
+    flags = s->b->flags & BF_READONLY;
+    s->b->flags ^= flags;
+    eb_replace_uchar(s->b, offset, ch);
+    s->b->flags ^= flags;
+
+    if (dir > 0)
+        text_move_up_down(s, 1);
+}
+
+static int list_mode_init(EditState *s, EditBuffer *b, int flags)
+{
+    if (s) {
+        /* XXX: should come from mode.default_wrap */
+        s->wrap = WRAP_TRUNCATE;
+    }
+    return 0;
+}
+
+static void list_display_hook(EditState *s)
+{
+    /* Keep point at the beginning of a non empty line */
+    if (s->offset && s->offset == s->b->total_size)
+        s->offset -= 1;
+    s->offset = eb_goto_bol(s->b, s->offset);
+}
+
+static int list_init(void)
+{
+    memcpy(&list_mode, &text_mode, sizeof(ModeDef));
+    list_mode.name = "list";
+    list_mode.mode_probe = NULL;
+    list_mode.mode_init = list_mode_init;
+    list_mode.display_hook = list_display_hook;
+    qe_register_mode(&list_mode, MODEF_NOCMD | MODEF_VIEW);
+    return 0;
+}
+
 /* popup paging mode */
 
 static ModeDef popup_mode;
@@ -9119,7 +9190,7 @@ static void qe_init(void *opaque)
     QEDisplay *dpy;
     int i, _optind;
 #if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
-    int is_player, session_loaded = 0;
+    int session_loaded = 0;
 #endif
 
     qs->ec.function = "qe-init";
@@ -9175,6 +9246,7 @@ static void qe_init(void *opaque)
     qe_register_completion(&color_completion);
 
     minibuffer_init();
+    list_init();
     popup_init();
 
     /* init all external modules in link order */
@@ -9183,24 +9255,6 @@ static void qe_init(void *opaque)
 #ifdef CONFIG_DLL
     /* load all dynamic modules */
     load_all_modules(qs);
-#endif
-
-#if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
-#if 0
-    /* see if invoked as player */
-    {
-        const char *p;
-
-        p = get_basename(argv[0]);
-        if (strequal(p, "ffplay"))
-            is_player = 1;
-        else
-            is_player = 0;
-    }
-#else
-    /* Start in dired mode when invoked with no arguments */
-    is_player = 1;
-#endif
 #endif
 
     /* init of the editor state */
@@ -9296,6 +9350,11 @@ static void qe_init(void *opaque)
     }
 
 #if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
+#if defined(CONFIG_FFMPEG)
+    /* Force is_player if invoked as ffplay */
+    if (strequal(get_basename(argv[0]), "ffplay"))
+        is_player = 1;
+#endif
     if (is_player && !session_loaded && (_optind >= argc || S_ISDIR(s->b->st_mode))) {
         /* if player, go to directory mode by default if no file selected */
         do_dired(s, NO_ARG);

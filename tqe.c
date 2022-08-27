@@ -8,7 +8,6 @@
 #include "input.c"
 #include "display.c"
 #include "modes/hex.c"
-#include "modes/list.c"
 #include "parser.c"
 
 #ifdef CONFIG_WIN32
