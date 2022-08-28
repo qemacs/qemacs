@@ -819,20 +819,21 @@ void do_delete_char(EditState *s, int argval)
 
     if (argval == NO_ARG) {
         if (s->qe_state->last_cmd_func != (CmdFunc)do_append_next_kill) {
-            eb_delete_uchar(s->b, s->offset);
+            /* delete character with its combining glyphs */
+            eb_delete_glyphs(s->b, s->offset, 1);
             return;
         }
         argval = 1;
     }
 
     /* save kill if numeric argument given */
-    endpos = eb_skip_chars(s->b, s->offset, argval);
+    endpos = eb_skip_glyphs(s->b, s->offset, argval);
     do_kill(s, s->offset, endpos, argval, 0);
 }
 
 void do_backspace(EditState *s, int argval)
 {
-    int offset1;
+    int endpos;
 
 #ifndef CONFIG_TINY
     if (s->b->flags & BF_PREVIEW) {
@@ -846,6 +847,9 @@ void do_backspace(EditState *s, int argval)
         return;
     }
 
+    // XXX: in overwrite mode, backspace should averwrite
+    //      previous glyphs with spaces and expand TABs
+
     /* Delete hilighted region, if any.
      * do_append_next_kill silently ignored.
      */
@@ -853,6 +857,8 @@ void do_backspace(EditState *s, int argval)
         return;
 
     if (argval == NO_ARG) {
+        // XXX: this does not work for c-mode
+        // XXX: should implement backward-delete-char-untabify instead
         if (s->qe_state->last_cmd_func == (CmdFunc)do_tab
         &&  !s->indent_tabs_mode) {
             /* Delete tab or indentation? */
@@ -860,9 +866,8 @@ void do_backspace(EditState *s, int argval)
             return;
         }
         if (s->qe_state->last_cmd_func != (CmdFunc)do_append_next_kill) {
-            offset1 = eb_prev(s->b, s->offset);
-            if (offset1 < s->offset) {
-                eb_delete_range(s->b, offset1, s->offset);
+            /* backspace without prefix argument deletes combining accents */
+            if (eb_delete_chars(s->b, s->offset, -1)) {
                 /* special case for composing */
                 if (s->compose_len > 0)
                     s->compose_len--;
@@ -871,8 +876,9 @@ void do_backspace(EditState *s, int argval)
         }
         argval = 1;
     }
-    /* save kill if numeric argument given */
-    do_delete_char(s, -argval);
+    /* save kill if numeric argument given, delete full glyphs (including combining accents) */
+    endpos = eb_skip_glyphs(s->b, s->offset, -argval);
+    do_kill(s, s->offset, endpos, -argval, 0);
 }
 
 /* return the cursor position relative to the screen. Note that xc is
@@ -1316,7 +1322,14 @@ void text_move_left_right_visual(EditState *s, int dir)
         display_close(ds);
         if (m->offsetd >= 0) {
             /* position found : update and exit */
-            s->offset = m->offsetd;
+            /* adjust for accents */
+            int offset = m->offsetd;
+            int offset1, offset2;
+            while (qe_isaccent(eb_nextc(s->b, offset, &offset1)) &&
+                   eb_prevc(s->b, offset, &offset2) != '\n') {
+                offset = offset1;
+            }
+            s->offset = offset;
             break;
         } else {
             if (dir > 0) {
@@ -1518,7 +1531,7 @@ void text_write_char(EditState *s, int key)
     cur_ch = eb_nextc(s->b, s->offset, &offset1);
     cur_len = offset1 - s->offset;
     len = eb_encode_uchar(s->b, buf, key);
-    insert = (s->insert || cur_ch == '\n');
+    insert = (s->insert || cur_ch == '\n' || qe_isaccent(key));
 
     if (insert) {
         const InputMethod *m;
@@ -1535,8 +1548,7 @@ void text_write_char(EditState *s, int key)
         s->b->last_log_char = key;
 
         /* insert char */
-        eb_insert(s->b, s->offset, buf, len);
-        s->offset += len;
+        s->offset += eb_insert(s->b, s->offset, buf, len);
 
         s->compose_buf[s->compose_len++] = key;
         m = s->input_method;
@@ -1578,6 +1590,13 @@ void text_write_char(EditState *s, int key)
             }
         }
     } else {
+        if (cur_ch == '\t') {
+            // XXX: should expand TAB
+        } else {
+            cur_len = eb_skip_glyphs(s->b, s->offset, 1) - offset1;
+        }
+        // XXX: should handle wide characters
+        // XXX: behavior on callbacks is incorrect
         eb_replace(s->b, s->offset, cur_len, buf, len);
         /* adjust offset because in inserting at point */
         s->offset += len;
@@ -1688,7 +1707,6 @@ void do_newline(EditState *s)
     if (s->b->flags & BF_READONLY)
         return;
 
-    /* CG: in overwrite mode, should just go to beginning of next line */
     s->offset += eb_insert_uchar(s->b, s->offset, '\n');
 }
 
@@ -1697,7 +1715,7 @@ void do_open_line(EditState *s)
     if (s->b->flags & (BF_PREVIEW | BF_READONLY))
         return;
 
-    /* XXX: should preserve s->offset */
+    /* preserve s->offset */
     eb_insert_uchar(s->b, s->offset, '\n');
 }
 
@@ -6767,7 +6785,7 @@ static void list_display_hook(EditState *s)
 {
     /* Keep point at the beginning of a non empty line */
     if (s->offset && s->offset == s->b->total_size)
-        s->offset -= 1;
+        s->offset = eb_prev(s->b, s->offset);
     s->offset = eb_goto_bol(s->b, s->offset);
 }
 
@@ -8730,6 +8748,7 @@ static int generic_mode_init(EditState *s)
 {
     s->offset = min(s->offset, s->b->total_size);
     s->offset_top = min(s->offset_top, s->b->total_size);
+    // XXX: should track insertions at s->offset?
     eb_add_callback(s->b, eb_offset_callback, &s->offset, 0);
     eb_add_callback(s->b, eb_offset_callback, &s->offset_top, 0);
     set_colorize_func(s, NULL, NULL);

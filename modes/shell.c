@@ -298,6 +298,14 @@ static void qe_trace_term(ShellState *s, const char *msg) {
 }
 
 #define TRACE_MSG(s, m)  qe_trace_term(s, m)
+#define TRACE_PRINTF(s, ...)  do { \
+    if (s->qe_state->trace_buffer) { \
+        if (s->qe_state->trace_buffer_state) \
+            eb_putc(s->qe_state->trace_buffer, '\n'); \
+        eb_printf(s->qe_state->trace_buffer, __VA_ARGS__); \
+        s->qe_state->trace_buffer_state = 0; \
+    } \
+} while(0)
 
 static void qe_term_init(ShellState *s)
 {
@@ -500,26 +508,28 @@ static int qe_term_skip_lines(ShellState *s, int offset, int n) {
         } else
         if (c == '\t') {
             w = (x + 8) & ~7;
-            /* TAB at EOL do not move the cursor */
+            /* TAB at EOL does not move the cursor */
             x = min(x + w, s->cols - 1);
         } else {
-            /* if destination x is in the middle of a wide character,
-               actual x will be too far */
             w = unicode_tty_glyph_width(c);
             x += w;
             if (x >= s->cols) {
                 /* handle line wrapping */
                 if (x > s->cols) {
                     /* wide character at EOL actually wraps to next line */
-                    if (y == n - 1)
+                    y++;
+                    if (y == n)
                         break;
-                    y++;
                     x = w;
-                } else
-                if (eb_nextc(s->b, offset1, &offset2) != '\n') {
-                    /* character is at end of line, next character wraps to next line */
-                    y++;
-                    x = 0;
+                } else {
+                    /* aggregate all accents */
+                    while (qe_isaccent(c = eb_nextc(s->b, offset1, &offset2)))
+                        offset1 = offset2;
+                    if (c != '\n') {
+                        /* character is at end of line, next character wraps to next line */
+                        y++;
+                        x = 0;
+                    }
                 }
             }
         }
@@ -529,13 +539,13 @@ static int qe_term_skip_lines(ShellState *s, int offset, int n) {
 }
 
 typedef struct ShellPos {
-    int screen_start;
-    int line_start;
-    int offset;
-    int line_end;
-    int row;
-    int col;
-    int end_col;
+    int screen_start; /* offset of the start of row 0 */
+    int line_start; /* offset of the start of current row */
+    int offset;     /* offset of the glyph */
+    int line_end;   /* offset of the newline or the first character that wraps */
+    int row;        /* row of the target offset */
+    int col;        /* column of the target (0 based, newline may have col == s->cols) */
+    int end_col;    /* column of the end of line_end */
     int flags;
 #define SP_SCREEN_START_WRAP  1
 #define SP_LINE_START_WRAP1   2
@@ -571,29 +581,44 @@ static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int fl
             } else
             if (c == '\t') {
                 w = (x + 8) & ~7;
+                /* TAB at EOL does not move the cursor */
                 x = min(x + w, s->cols - 1);
             } else {
-                // XXX: should handle combining glyphs
                 w = unicode_tty_glyph_width(c);
                 x += w;
                 if (x >= s->cols) {
+                    /* handle line wrapping */
                     if (x > s->cols) {
+                        /* wide character at EOL actually wraps to next line */
                         y++;
                         x = w;
                         gpflags |= SP_LINE_START_WRAP2;
                         line_offset = offset;
-                    } else
-                    if (eb_nextc(s->b, offset, &offset1) != '\n') {
-                        y++;
-                        x = 0;
-                        gpflags |= SP_LINE_START_WRAP1;
-                        line_offset = offset;
+                    } else {
+                        /* aggregate all accents */
+                        while (qe_isaccent(c = eb_nextc(s->b, offset, &offset1)))
+                            offset = offset1;
+                        if (c != '\n') {
+                            y++;
+                            x = 0;
+                            gpflags |= SP_LINE_START_WRAP1;
+                            line_offset = offset;
+                        }
                     }
                 }
             }
         }
+        if (x >= s->cols - 1 && offset == destoffset) {
+            /* check if current glyph causes line wrap */
+            c = eb_nextc(s->b, offset, &offset1);
+            if (c != '\n' && x + unicode_tty_glyph_width(c) > s->cols) {
+                y++;
+                x = 0;
+                gpflags |= SP_LINE_START_WRAP1;
+                line_offset = offset;
+            }
+        }
         if (y >= s->rows && !(flags & SP_NO_UPDATE)) {
-            // XXX: should take a flag to make this optional
             /* adjust start if row is too far */
             start_offset = qe_term_skip_lines(s, start_offset, y - s->rows + 1);
             y = s->rows - 1;
@@ -610,7 +635,8 @@ static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int fl
         spp->line_start = line_offset;
         spp->screen_start = start_offset;
         spp->offset = offset;
-        for (offset0 = offset; x < s->cols;) {
+        //TRACE_PRINTF(s, "qe_term_get_pos2 -> x=%d, y=%d\n", x, y);
+        for (;;) {
             offset0 = offset;
             c = eb_nextc(s->b, offset, &offset);
             if (c == '\n')
@@ -619,7 +645,6 @@ static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int fl
                 w = (x + 8) & ~7;
                 x = min(x + w, s->cols - 1);
             } else {
-                // XXX: should handle combining glyphs
                 w = unicode_tty_glyph_width(c);
                 x += w;
                 if (x >= s->cols) {
@@ -628,7 +653,11 @@ static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int fl
                         gpflags |= SP_LINE_END_WRAP2;
                         break;
                     }
-                    if (eb_nextc(s->b, offset, &offset1) != '\n') {
+                    /* aggregate all accents */
+                    while (qe_isaccent(c = eb_nextc(s->b, offset, &offset1)))
+                        offset = offset1;
+                    if (c != '\n') {
+                        offset0 = offset;
                         gpflags |= SP_LINE_END_WRAP1;
                         break;
                     }
@@ -662,20 +691,35 @@ static int qe_term_get_pos(ShellState *s, int destoffset, int *px, int *py) {
             } else
             if (c == '\t') {
                 w = (x + 8) & ~7;
+                /* TAB at EOL does not move the cursor */
                 x = min(x + w, s->cols - 1);
             } else {
                 w = unicode_tty_glyph_width(c);
                 x += w;
                 if (x >= s->cols) {
+                    /* handle line wrapping */
                     if (x > s->cols) {
+                        /* wide character at EOL actually wraps to next line */
                         y++;
                         x = w;
-                    } else
-                    if (eb_nextc(s->b, offset, &offset1) != '\n') {
-                        y++;
-                        x = 0;
+                    } else {
+                        /* aggregate all accents */
+                        while (qe_isaccent(c = eb_nextc(s->b, offset, &offset1)))
+                            offset = offset1;
+                        if (c != '\n') {
+                            y++;
+                            x = 0;
+                        }
                     }
                 }
+            }
+        }
+        if (x >= s->cols - 1 && offset == destoffset) {
+            /* check if current glyph causes line wrap */
+            c = eb_nextc(s->b, offset, &offset1);
+            if (c != '\n' && x + unicode_tty_glyph_width(c) > s->cols) {
+                y++;
+                x = 0;
             }
         }
         if (y >= s->rows) {
@@ -691,6 +735,7 @@ static int qe_term_get_pos(ShellState *s, int destoffset, int *px, int *py) {
         }
         if (px) *px = x;
         if (py) *py = y;
+        //TRACE_PRINTF(s, "qe_term_get_pos -> x=%d, y=%d\n", x, y);
     }
     return start_offset;
 }
@@ -705,7 +750,7 @@ static int qe_term_get_pos(ShellState *s, int destoffset, int *px, int *py) {
 #define TG_NOCLIP        0x04
 #define TG_NOEXTEND      0x08
 static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int flags) {
-    int x, y, w, start_offset, offset1, offset2, c;
+    int x, y, w, x1, y1, start_offset, offset1, offset2, c;
 
     if (flags & TG_RELATIVE) {
         start_offset = qe_term_get_pos(s, offset, &x, &y);
@@ -727,10 +772,13 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
     if (destx >= s->cols && !(flags & TG_NOCLIP))
         destx = s->cols;
 
+    //TRACE_PRINTF(s, "goto col=%d row=%d flags=%d\n", destx, desty, flags);
+
     x = y = 0;
     offset = start_offset;
     while (y < desty || x < destx) {
         if (offset >= s->b->total_size) {
+            // XXX: inefficient: should only test if '\n'
             offset = s->b->total_size;
             if (flags & TG_NOEXTEND)
                 break;
@@ -739,7 +787,6 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
             //qe_term_set_style(s);
             if (y < desty) {
                 // XXX: potential problem if previous line has s->cols characters
-                int x1, y1;
                 offset += eb_insert_uchars(s->b, offset, '\n', desty - y);
                 y = desty;
                 x = 0;
@@ -767,15 +814,29 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
                 }
             } else
             if (c == '\t') {
-                // XXX: should expand TABs if destination falls in the middle
-                //      of a TAB expansion
                 w = (x + 8) & ~7;
-                x = min(x + w, s->cols - 1);
+                /* TAB at EOL does not move the cursor */
+                x1 = min(x + w, s->cols - 1);
+                if (y == desty && x1 > destx) {
+                    /* expand TAB if destination falls in the middle */
+                    if (flags & TG_NOEXTEND)
+                        break;
+                    eb_delete_range(s->b, offset, offset1);
+                    eb_insert_uchars(s->b, offset, ' ', x1 - x);
+                    continue;
+                }
+                x = x1;
                 offset = offset1;
             } else {
                 /* if destination x is in the middle of a wide character,
                    actual x will be too far */
                 w = unicode_tty_glyph_width(c);
+                if (w > 1 && y == desty && x + w > destx) {
+                    /* positioning request in the middle of a wide character */
+                    // XXX: this is inefficient, should first skip desty rows
+                    //      then skip destx columns
+                    break;
+                }
                 x += w;
                 if (x >= s->cols) {
                     /* handle line wrapping */
@@ -787,10 +848,14 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
                         break;
                     }
                     if (x > s->cols) {
-                        x = w;
+                        x = 0;
                         y++;
-                    } else
-                    if (eb_nextc(s->b, offset1, &offset2) != '\n') {
+                        continue;
+                    }
+                    /* aggregate all accents */
+                    while (qe_isaccent(c = eb_nextc(s->b, offset1, &offset2)))
+                        offset1 = offset2;
+                    if (c != '\n') {
                         x = 0;
                         y++;
                     }
@@ -799,7 +864,7 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
             }
         }
     }
-    return offset;
+    return eb_skip_accents(s->b, offset);
 }
 
 static void qe_term_goto_xy(ShellState *s, int destx, int desty, int flags) {
@@ -851,7 +916,7 @@ static int qe_term_overwrite(ShellState *s, int offset,
          */
         // XXX: this is incorrect if there are combining marks
         //      and it does not handle partial overwrites (wide char or TAB)
-        int cur_len = offset1 - offset;
+        int cur_len = eb_skip_accents(s->b, offset1) - offset;
         if (cur_len == len) {
             eb_write(s->b, offset, buf, len);
         } else {
@@ -1288,18 +1353,17 @@ static void qe_term_emulate(ShellState *s, int c)
             put_status(NULL, "Ding!");
             break;
         case 8:     /* BS   Backspace (Ctrl-H). */
-            if (s->use_alternate_screen) {
-                // XXX: should check for special characters (virtual space?)
-                qe_term_goto_xy(s, -1, 0, TG_RELATIVE);
-            } else {
-                int c1;
-                /* XXX: potentially incorrect for combining glyphs */
-                /* XXX: potentially incorrect for TABs */
-                /* XXX: correct for wrapping lines on macOS iTerm2 */
-                c1 = eb_prevc(s->b, offset, &offset1);
-                if (c1 != '\n') {
-                    s->cur_offset = offset1;
+            //TRACE_PRINTF(s, "BS: ");
+            qe_term_get_pos2(s, offset, &pos, 0);
+            if (pos.col == 0) {
+                if (pos.row > 0 && (pos.flags & SP_LINE_START_WRAP)) {
+                    // XXX: potentially incorrect if glyph is wide
+                    s->cur_offset = eb_skip_glyphs(s->b, offset, -1);
                 }
+            } else {
+                /* This is iTerm2's behavior */
+                pos.col -= (pos.col >= s->cols);
+                qe_term_goto_xy(s, pos.col - 1, pos.row, 0);
             }
             break;
         case 9:     /* HT   Horizontal Tab (TAB) (Ctrl-I). */
@@ -1310,6 +1374,7 @@ static void qe_term_emulate(ShellState *s, int c)
                      *      VT treated the same as LF. */
         case 12:    /* FF   Form Feed (Ctrl-L) or New Page (NP).
                      *      FF is treated the same as LF. */
+            //TRACE_PRINTF(s, "LF: ");
             if (s->use_alternate_screen) {
                 qe_term_goto_xy(s, 0, 1, TG_RELATIVE | TG_NOCLIP);
             } else {
@@ -1334,6 +1399,7 @@ static void qe_term_emulate(ShellState *s, int c)
             break;
         case 13:    /* CR   Carriage Return (Ctrl-M). */
             /* move to visual beginning of line */
+            //TRACE_PRINTF(s, "CR: ");
             qe_term_goto_xy(s, 0, 0, TG_RELATIVE_ROW);
             break;
         case 14:    /* SO   Shift Out (Ctrl-N) ->
@@ -1413,8 +1479,13 @@ static void qe_term_emulate(ShellState *s, int c)
         if (s->term_pos >= s->utf8_len) {
             const char *p = cs8(s->term_buf);
             s->lastc = utf8_decode(&p);
-            s->cur_offset = qe_term_overwrite(s, offset,
-                                              cs8(s->term_buf), s->utf8_len);
+            if (qe_isaccent(s->lastc)) {
+                /* accents are always inserted */
+                s->cur_offset += eb_insert(s->b, offset, s->term_buf, s->utf8_len);
+            } else {
+                s->cur_offset = qe_term_overwrite(s, offset,
+                                                  cs8(s->term_buf), s->utf8_len);
+            }
             s->state = QE_TERM_STATE_NORM;
         }
         break;
@@ -1906,7 +1977,10 @@ static void qe_term_emulate(ShellState *s, int c)
         case 'b':  /* REP: Repeat the preceding graphic character Ps times. */
             /* XXX: utf-8 issues: qe_term_put_char should encode s->lastc */
             param1 = min(param1, s->cols);
-            s->cur_offset = qe_term_put_char(s, offset, s->lastc, param1);
+            len = eb_encode_uchar(s->b, buf1, s->lastc);
+            while (param1 --> 0) {
+                s->cur_offset = qe_term_overwrite(s, s->cur_offset, buf1, len);
+            }
             break;
         case 'c':  /* DA: Send Device Attributes (Primary DA) */
             // default param is 0

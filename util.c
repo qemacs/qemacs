@@ -2239,7 +2239,7 @@ int buf_encode_byte(buf_t *out, int ch) {
     if (ch < 127) {
         return buf_put_byte(out, ch);
     } else {
-        return buf_printf(out, "\\%03o", ch);
+        return buf_printf(out, "\\0x%02X", ch);
     }
 }
 

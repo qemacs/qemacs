@@ -944,7 +944,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
             if (p0 >= endp)
                 break;
             if (col >= MAX_TRACE_WIDTH) {
-                eb_write(b, b->total_size, "\n         ", 10);
+                eb_write(b, b->total_size, "\n       | ", 10);
                 col = 9;
             }
             if (p0 < p) {
@@ -961,6 +961,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
                 len = buf_encode_byte(out, *p);
                 eb_write(b, b->total_size, out->buf, out->len);
                 p0 = p + 1;
+                col += len;
             }
             break;
         }
@@ -1523,16 +1524,40 @@ int eb_skip_chars(EditBuffer *b, int offset, int n)
 }
 
 /* delete one character at offset 'offset', return number of bytes removed */
-int eb_delete_uchar(EditBuffer *b, int offset)
-{
-    int offset1;
+int eb_delete_uchar(EditBuffer *b, int offset) {
+    return eb_delete_range(b, offset, eb_next(b, offset));
+}
 
-    offset1 = eb_next(b, offset);
-    if (offset < offset1) {
-        return eb_delete(b, offset, offset1 - offset);
+/* return the offset past any pending combining glyphs */
+int eb_skip_accents(EditBuffer *b, int offset) {
+    int offset1;
+    while (qe_isaccent(eb_nextc(b, offset, &offset1)))
+        offset = offset1;
+    return offset;
+}
+
+/* compute offset after moving 'n' glyphs from 'offset'.
+ * 'n' can be negative,
+ * combining accents are skipped as part of the previous character.
+ */
+int eb_skip_glyphs(EditBuffer *b, int offset, int n) {
+    int c, offset1;
+    if (n < 0) {
+        while (offset > 0) {
+            c = eb_prevc(b, offset, &offset);
+            n += !qe_isaccent(c);
+            if (n >= 0)
+                break;
+        }
     } else {
-        return 0;
+        while (offset < b->total_size) {
+            c = eb_nextc(b, offset, &offset1);
+            if (!qe_isaccent(c) && n-- <= 0)
+                break;
+            offset = offset1;
+        }
     }
+    return offset;
 }
 
 /* return number of bytes deleted. n can be negative to delete
@@ -1543,8 +1568,16 @@ int eb_delete_chars(EditBuffer *b, int offset, int n)
     return eb_delete_range(b, offset, eb_skip_chars(b, offset, n));
 }
 
+/* return number of bytes deleted. n can be negative to delete
+ * characters before offset
+ */
+int eb_delete_glyphs(EditBuffer *b, int offset, int n)
+{
+    return eb_delete_range(b, offset, eb_skip_glyphs(b, offset, n));
+}
+
 /* XXX: only stateless charsets are supported */
-/* XXX: suppress that */
+/* XXX: suppress that? */
 int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
 {
     int ch, char_size;
@@ -1797,6 +1830,7 @@ void eb_replace(EditBuffer *b, int offset, int size,
     /* CG: behaviour is not exactly identical: mark, point and other
      * callback based offsets will be updated differently.  should
      * write portion that fits and insert or delete remainder?
+     * or should simulate callbacks?
      */
     if (size == size1) {
         eb_write(b, offset, buf, size1);
@@ -1895,8 +1929,7 @@ static void load_read_cb(void *opaque, int size)
         /* end of file */
         eb_io_stop(b, 0);
     } else {
-        eb_insert(b, s->offset, s->buffer, size);
-        s->offset += size;
+        s->offset += eb_insert(b, s->offset, s->buffer, size);
         /* launch next read request */
         url_read_async(s->handle, s->buffer, IOBUF_SIZE, load_read_cb, b);
     }

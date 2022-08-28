@@ -289,6 +289,7 @@ void hex_write_char(EditState *s, int key)
                 buf[0] = ch;
             }
 #if 1
+            // XXX: offset and mark may be udated differently
             eb_replace(s->b, offset, cur_len, buf, len);
 #else
             if (cur_len == len) {
@@ -306,6 +307,7 @@ void hex_write_char(EditState *s, int key)
                 s->offset += len;
         }
     } else {
+        // XXX: should use overwrite mode?
         text_write_char(s, key);
     }
 }

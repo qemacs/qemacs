@@ -166,6 +166,7 @@ static int latex_mode_probe(ModeDef *mode, ModeProbeData *mp)
     return 1;
 }
 
+// XXX: With prefix argument, should always insert " characters.
 static void do_tex_insert_quote(EditState *s)
 {
     EditBuffer *b = s->b;
@@ -173,11 +174,12 @@ static void do_tex_insert_quote(EditState *s)
     int c1 = eb_prevc(b, offset, &offset);
     int c2 = eb_prevc(b, offset, &offset);
 
+    // XXX: need more than 2 character backtrack
     if (c1 == '\"') {
         s->offset += eb_insert_uchar(b, s->offset, '\"');
     } else
     if ((c1 == '`' || c1 == '\'') && c1 == c2) {
-        eb_delete_chars(b, s->offset, -2);
+        eb_delete_range(b, offset, s->offset);
         s->offset += eb_insert_uchar(b, s->offset, '\"');
     } else {
         if (c1 == '\n' || c1 == ' ') {
@@ -322,7 +324,7 @@ static void do_latex(EditState *e, const char *cmd)
 /* specific LaTeX commands */
 static const CmdDef latex_commands[] = {
     CMD2( "tex-insert-quote", "\"",
-          "Insert the TeX encoding for special character",
+          "Insert the appropriate quote marks for TeX",
           do_tex_insert_quote, ES, "*")
     CMD2( "TeX-command-master", "C-c C-c",
           "Run the latex process",

@@ -1238,8 +1238,11 @@ qe__attr_nonnull((3))
 int eb_nextc(EditBuffer *b, int offset, int *next_ptr);
 qe__attr_nonnull((3))
 int eb_prevc(EditBuffer *b, int offset, int *prev_ptr);
+int eb_skip_accents(EditBuffer *b, int offset);
+int eb_skip_glyphs(EditBuffer *b, int offset, int n);
 int eb_skip_chars(EditBuffer *b, int offset, int n);
 int eb_delete_chars(EditBuffer *b, int offset, int n);
+int eb_delete_glyphs(EditBuffer *b, int offset, int n);
 int eb_goto_pos(EditBuffer *b, int line1, int col1);
 int eb_get_pos(EditBuffer *b, int *line_ptr, int *col_ptr, int offset);
 int eb_goto_char(EditBuffer *b, int pos);

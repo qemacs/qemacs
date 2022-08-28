@@ -25,6 +25,10 @@
 
 ### Core / Buffer / Input
 
+* [BUG] in overwrite mode, overwriting buffer contents should expand TABs
+* [BUG] in overwrite mode, quote insert should still insert
+* [BUG] in overwrite mode, backspace should expand TABS
+* [BUG] in overwrite mode, backspace should overwrite previous glyphs with spaces except at EOL
 * [BUG] ^C does not work on OpenBSD
 * add method pointers in windows initialized from fallback chain
 * remove redundant bindings along fallback chains
