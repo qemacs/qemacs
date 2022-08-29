@@ -834,7 +834,7 @@ static int video_mode_init(EditState *s, EditBuffer *b, int flags)
             return -1;
 
         /* XXX: avoid annoying Overwrite in mode line */
-        s->insert = 1;
+        s->overwrite = 0;
 
         /* start video display */
         is->edit_state = s;

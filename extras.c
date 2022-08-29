@@ -441,8 +441,8 @@ static void do_untabify(EditState *s, int p1, int p2)
             col += tw;
             offset1 = offset2;
         }
-        delta = eb_delete_range(b, offset, offset1);
-        delta = eb_insert_spaces(b, offset, col - col0) - delta;
+        delta = -eb_delete_range(b, offset, offset1);
+        delta += eb_insert_spaces(b, offset, col - col0);
         offset1 += delta;
         stop += delta;
     }
@@ -1535,7 +1535,7 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d\n", w, "hex_mode", s->hex_mode);
     eb_printf(b1, "%*s: %d\n", w, "unihex_mode", s->unihex_mode);
     eb_printf(b1, "%*s: %d\n", w, "hex_nibble", s->hex_nibble);
-    eb_printf(b1, "%*s: %d\n", w, "insert", s->insert);
+    eb_printf(b1, "%*s: %d\n", w, "overwrite", s->overwrite);
     eb_printf(b1, "%*s: %d\n", w, "bidir", s->bidir);
     eb_printf(b1, "%*s: %d\n", w, "cur_rtl", s->cur_rtl);
     eb_printf(b1, "%*s: %d  %s\n", w, "wrap", s->wrap,
@@ -2116,7 +2116,7 @@ static int eb_respace(EditBuffer *b, int p1, int p2, int newlines, int spaces) {
         p2 -= nb;
     }
     if (spaces) {
-        nb = eb_insert_uchars(b, p1, ' ', spaces);
+        nb = eb_insert_spaces(b, p1, spaces);
         adjust += nb;
         p1 += nb;
         p2 += nb;

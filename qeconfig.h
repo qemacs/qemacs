@@ -51,10 +51,10 @@ static const CmdDef basic_commands[] = {
           "Insert a newline and leave point before it",
           do_open_line, ES, "*")
 
-    CMD2( "overwrite-mode", "insert",
+    CMD2( "overwrite-mode", "insert, C-c o",
           "Toggle between overwrite mode and insert mode",
           do_overwrite_mode, ESi, "P")
-    CMD3( "insert-mode", "",
+    CMD3( "insert-mode", "C-c i",
           "Select insert mode",
           do_overwrite_mode, ESi, "v", 0)
 
@@ -72,7 +72,7 @@ static const CmdDef basic_commands[] = {
     CMD3( "combine-diaeresis", "M-\"",
           "Combine the previous letter with a diaeresis (aka trema or umlaut)",
           do_combine_accent, ESi, "*" "v", 0x308)
-    CMD3( "combine-tilde", "M-~",
+    CMD3( "combine-tilde", "M-~",  // binding conflicts with not-modified
           "Combine the previous letter with a tilde",
           do_combine_accent, ESi, "*" "v", 0x303)
 #endif
@@ -220,14 +220,14 @@ static const CmdDef basic_commands[] = {
           do_kill_buffer, ESsi,
           "s{Kill buffer: }[buffer]|buffer|"
           "v", 0)
-    CMD0( "toggle-read-only", "C-x C-q, C-c ~",
+    CMD0( "toggle-read-only", "C-x C-q, C-c %",
           "Toggle the read-only flag of the current buffer",
           do_toggle_read_only)
-    CMD2( "not-modified", "M-~",
+    CMD2( "not-modified", "M-~, C-c ~",
           "Toggle the modified flag of the current buffer",
           do_not_modified, ESi, "P")
     CMD2( "set-visited-file-name", "",
-          "",
+          "Change the name of file visited in current buffer",
           do_set_visited_file_name, ESss,
           "s{Set visited file name: }[file]|file|"
           "s{Rename file? }|newname|")

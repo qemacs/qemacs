@@ -1844,9 +1844,11 @@ int eb_delete_range(EditBuffer *b, int p1, int p2)
     return eb_delete(b, p1, p2 - p1);
 }
 
-/* replace 'size' bytes at offset 'offset' with 'size1' bytes from 'buf' */
-void eb_replace(EditBuffer *b, int offset, int size,
-                const void *buf, int size1)
+/* replace 'size' bytes at offset 'offset' with 'size1' bytes from 'buf'
+ * return the number of bytes written
+ */
+int eb_replace(EditBuffer *b, int offset, int size,
+               const void *buf, int size1)
 {
     /* CG: behaviour is not exactly identical: mark, point and other
      * callback based offsets will be updated differently.  should
@@ -1854,10 +1856,10 @@ void eb_replace(EditBuffer *b, int offset, int size,
      * or should simulate callbacks?
      */
     if (size == size1) {
-        eb_write(b, offset, buf, size1);
+        return eb_write(b, offset, buf, size1);
     } else {
         eb_delete(b, offset, size);
-        eb_insert(b, offset, buf, size1);
+        return eb_insert(b, offset, buf, size1);
     }
 }
 
@@ -2181,22 +2183,19 @@ int eb_replace_uchar(EditBuffer *b, int offset, int c)
 
     len = eb_encode_uchar(b, buf, c);
     eb_nextc(b, offset, &offset1);
-    eb_replace(b, offset, offset1 - offset, buf, len);
-    return len;
+    return eb_replace(b, offset, offset1 - offset, buf, len);
 }
 
-int eb_insert_uchars(EditBuffer *b, int offset, int c, int n)
-{
-    char buf1[1024];
-    int size, pos1;
+int eb_insert_uchars(EditBuffer *b, int offset, int c, int n) {
+    char buf[1024];
+    int size, pos;
 
-    size = pos1 = 0;
-    while (n-- > 0) {
-        int clen = eb_encode_uchar(b, buf1 + pos1, c);
-        pos1 += clen;
-        if (pos1 > ssizeof(buf1) - MAX_CHAR_BYTES || n == 0) {
-            size += eb_insert(b, offset + size, buf1, pos1);
-            pos1 = 0;
+    size = pos = 0;
+    while (n --> 0) {
+        pos += eb_encode_uchar(b, buf + pos, c);
+        if (pos > ssizeof(buf) - MAX_CHAR_BYTES || n == 0) {
+            size += eb_insert(b, offset + size, buf, pos);
+            pos = 0;
         }
     }
     return size;

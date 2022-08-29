@@ -1,4 +1,4 @@
-<!-- TODO list for qemacs -- Author: Charles Gordon -- Updated: 2022-08-18 -->
+<!-- TODO list for qemacs -- Author: Charles Gordon -- Updated: 2022-08-29 -->
 
 # QEmacs TODO list
 
@@ -25,11 +25,9 @@
 
 ### Core / Buffer / Input
 
-* [BUG] in overwrite mode, overwriting buffer contents should expand TABs
-* [BUG] in overwrite mode, quote insert should still insert
-* [BUG] in overwrite mode, backspace should expand TABS
-* [BUG] in overwrite mode, backspace should overwrite previous glyphs with spaces except at EOL
 * [BUG] ^C does not work on OpenBSD
+* use tabulation context for `text_screen_width`
+* pass raw prefix argument `P` as combination of has_arg (flags) and argval (number)
 * add method pointers in windows initialized from fallback chain
 * remove redundant bindings along fallback chains
 * share mmapped pages correctly
@@ -52,6 +50,19 @@
 * notes
 * tiny: remove extra features
 * tiny: make a really small version
+* use Cursors cursors in command dispatchers:
+    ```c
+        struct QECursor {
+            QEmacsState *qs;
+            EditState *s;   /* points to the parent window */
+            EditBuffer *b;
+            int offset;
+            // optional navigation data to accelerate buffer access:
+            // getc(), peekc(), prevc()... etc.
+        };
+    ```
+  an EditState as an embedded QECursor that contains the buffer and offset
+  an EditBuffer could also have an embedded QECursor with no EditState
 
 ### Charsets / Unicode / Bidir
 
@@ -240,6 +251,8 @@ insert_window_left()  deletes some left-most windows
 * remote editing
 * fix scroll up/down to move point if already at end
 * move by paragraph on `M-[` and `M-]`
+* `fill-paragraph` should default indentation for the second and subsequent
+    lines to that of the first line
 * scroll horizontally on `M-{` and `M-}`
 * scroll up/down with argument should scroll by screen row.
 * simplify `C-z A-z` accordingly
@@ -299,7 +312,9 @@ insert_window_left()  deletes some left-most windows
 * extra: `grep`, `grep-buffer`, `grep-sources`, `grep-tree`...
 * search: `count-words`, `wc`, `count-sloc`
 * search: stats command for word count and mode specific stats
-* C-p and C-n should select previous and next search pattern in history
+* isearch: M-p and M-n should select previous and next search pattern in history
+* add non selectable isearch-mode for key bindings, cmd description and documentation
+* searching failure should abort macros
 
 ### Undo
 

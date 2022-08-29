@@ -759,8 +759,9 @@ static int eb_changecase(EditBuffer *b, int offset, int *offsetp, int arg)
         len = eb_encode_uchar(b, buf, ch1);
         /* replaced char may have a different encoding len from
          * original char, such as dotless i in Turkish. */
-        eb_replace(b, offset, *offsetp - offset, buf, len);
-        *offsetp = offset + len;
+        // XXX: make special case for Turkish locale
+        offset += eb_replace(b, offset, *offsetp - offset, buf, len);
+        *offsetp = offset;
     }
     return 1;
 }
@@ -847,15 +848,63 @@ void do_backspace(EditState *s, int argval)
         return;
     }
 
-    // XXX: in overwrite mode, backspace should averwrite
-    //      previous glyphs with spaces and expand TABs
-
     /* Delete hilighted region, if any.
      * do_append_next_kill silently ignored.
      */
     if (do_delete_selection(s))
         return;
 
+    if (s->overwrite) {
+        /* In overwrite mode, backspace overwrites the previous glyphs
+           with spaces and deletes TABs and newlines. if argument is
+           provided, prepend the ARG characters to the kill buffer and,
+           if this block spans a line boundary, just remove it.
+           Characters at the end of a line are removed, not replaced
+           with spaces.
+         */
+        int offset1;
+        int spaces = 0;
+        int newlines = 0;
+        int count = (argval == NO_ARG) ? 1 : argval;
+        int c1 = eb_nextc(s->b, s->offset, &offset1);
+        endpos = s->offset;
+        while (count > 0) {
+            int c = eb_prev_glyph(s->b, endpos, &endpos);
+            if (c == '\n') {
+                newlines++;
+            } else
+            if (c >= ' ') {
+                spaces += unicode_tty_glyph_width(c);
+            }
+            count--;
+        }
+        if (newlines || c1 == '\n') {
+            /* if removing the span or at end of line do not insert spaces */
+            spaces = 0;
+        } else
+        if (c1 == '\t') {
+            /* unfill the TAB: only insert spaces to preserve layout */
+            int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
+            int col = text_screen_width(s->b, eb_goto_bol(s->b, s->offset), s->offset, tw);
+            spaces -= min(spaces, col % tw);
+        }
+        if (argval > 0) {
+            do_kill(s, s->offset, endpos, -argval, 0);
+        } else {
+            int len;
+            char buf[MAX_CHAR_BYTES];
+            len = eb_encode_uchar(s->b, buf, ' ');
+            if (spaces == 1 && endpos + len == s->offset) {
+                eb_write(s->b, endpos, buf, len);
+                spaces = 0;
+            } else {
+                eb_delete_range(s->b, endpos, s->offset);
+            }
+        }
+        eb_insert_spaces(s->b, endpos, spaces);
+        s->offset = endpos;
+        return;
+    }
     if (argval == NO_ARG) {
         // XXX: this does not work for c-mode
         // XXX: should implement backward-delete-char-untabify instead
@@ -876,7 +925,8 @@ void do_backspace(EditState *s, int argval)
         }
         argval = 1;
     }
-    /* save kill if numeric argument given, delete full glyphs (including combining accents) */
+    /* save kill if numeric argument given,
+       delete full glyphs (including combining accents) */
     endpos = eb_skip_glyphs(s->b, s->offset, -argval);
     do_kill(s, s->offset, endpos, -argval, 0);
 }
@@ -1490,8 +1540,7 @@ void do_char(EditState *s, int key, int argval)
 }
 
 #ifdef CONFIG_UNICODE_JOIN
-void do_combine_accent(EditState *s, int accent)
-{
+void do_combine_accent(EditState *s, int accent) {
     int offset0, len, c;
     unsigned int g[2];
     char buf[MAX_CHAR_BYTES];
@@ -1501,37 +1550,64 @@ void do_combine_accent(EditState *s, int accent)
 
     c = eb_prevc(s->b, s->offset, &offset0);
     if (c == accent) {
+        /* inserting twice the same accent removes it */
         eb_delete_range(s->b, offset0, s->offset);
     } else
-    if (((expand_ligature(g, c) && g[1] == (unsigned int)accent)
-    ||   (c != '\n' && combine_accent(g, c, accent)))
+    if (c != '\n'
+    &&  ((expand_ligature(g, c) && g[1] == (unsigned int)accent)
+     ||  (combine_accent(g, c, accent)))
     &&  (len = eb_encode_uchar(s->b, buf, g[0])) > 0) {
-        /* XXX: should bypass eb_encode_uchar to detect encoding failure */
-        eb_replace(s->b, offset0, s->offset - offset0, buf, len);
-        s->offset = offset0 + len;
+        /* if accent can be removed from previous ligature
+           or if previous character can be combined with accent into a
+           ligature, encode the single character and replace the
+           previous character.
+           XXX: should bypass eb_encode_uchar to detect encoding failure
+         */
+        offset0 += eb_replace(s->b, offset0, s->offset - offset0, buf, len);
+        s->offset = offset0;
     } else {
         do_char(s, accent, 1);
     }
 }
 #endif
 
+/* compute the number of screen positions between start and stop
+   assuming a TAB width of tw and a fixed fitch font with single or
+   double width glyphs and zero width accents.
+ */
+int text_screen_width(EditBuffer *b, int start, int stop, int tw) {
+    int col = 0, offset = start;
+
+    while (offset < stop) {
+        int c = eb_nextc(b, offset, &offset);
+        if (c == '\r' || c == '\n') {
+            col = 0;
+        } else
+        if (c == '\t') {
+            col += tw - col % tw;
+        } else {
+            col += unicode_tty_glyph_width(c);
+        }
+    }
+    return col;
+}
+
 void text_write_char(EditState *s, int key)
 {
-    int cur_ch, len, cur_len, offset1, ret, insert;
+    int cur_ch, len, endpos, ret, insert;
     char buf[MAX_CHAR_BYTES];
 
     if (check_read_only(s))
         return;
 
-    /* XXX: Should delete hilighted region */
-
+    /* Highlighted region was deleted by caller */
     /* deactivate region hilite */
     s->region_style = 0;
 
-    cur_ch = eb_nextc(s->b, s->offset, &offset1);
-    cur_len = offset1 - s->offset;
+    cur_ch = eb_nextc(s->b, s->offset, &endpos);
     len = eb_encode_uchar(s->b, buf, key);
-    insert = (s->insert || cur_ch == '\n' || qe_isaccent(key));
+    insert = (!s->overwrite || cur_ch == '\n' ||
+              key == '\t' ||  key == '\n' || qe_isaccent(key));
 
     if (insert) {
         const InputMethod *m;
@@ -1590,16 +1666,35 @@ void text_write_char(EditState *s, int key)
             }
         }
     } else {
+        int w, w1, c2, offset2;
+
+        w = unicode_tty_glyph_width(key);
         if (cur_ch == '\t') {
-            // XXX: should expand TAB
+            int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
+            int col = text_screen_width(s->b, eb_goto_bol(s->b, s->offset), s->offset, tw);
+            w1 = tw - col % tw;
+            if (w < w1) {
+                s->offset += eb_insert(s->b, s->offset, buf, len);
+                return;
+            }
         } else {
-            cur_len = eb_skip_glyphs(s->b, s->offset, 1) - offset1;
+            w1 = unicode_tty_glyph_width(cur_ch);
+            endpos = eb_skip_accents(s->b, endpos);
         }
-        // XXX: should handle wide characters
-        // XXX: behavior on callbacks is incorrect
-        eb_replace(s->b, s->offset, cur_len, buf, len);
-        /* adjust offset because in inserting at point */
-        s->offset += len;
+        if (w > w1) {
+            c2 = eb_next_glyph(s->b, endpos, &offset2);
+            // XXX: potential issue if c2 is a TAB
+            if (c2 >= ' ') {
+                endpos = offset2;
+                w1 += unicode_tty_glyph_width(c2);
+            }
+        }
+        s->offset += eb_replace(s->b, s->offset, endpos - s->offset, buf, len);
+        if (w1 > w) {
+            c2 = eb_nextc(s->b, s->offset, &offset2);
+            if (c2 >= ' ')
+                eb_insert_spaces(s->b, s->offset, w1 - w);
+        }
     }
 }
 
@@ -1615,17 +1710,40 @@ static void quote_key(void *opaque, int key)
     EditState *s = qa->s;
 
     put_status(s, "");  /* erase "Quote: " message */
+    qe_ungrab_keys();
 
     if (!s)
         return;
 
-    /* CG: why not insert special keys as well? */
-    if (!KEY_IS_SPECIAL(key)) {
-        do_char(s, key, qa->argval);
+    if (s->b->flags & BF_READONLY)
+        return;
+
+    /* Delete hilighted region */
+    do_delete_selection(s);
+
+    if (s->mode->write_char) {
+        QEmacsState *qs = s->qe_state;
+        int argval = qa->argval;
+
+        int save_overwrite = s->overwrite;
+        /* quoted-insert always inserts characters */
+        s->overwrite = 0;
+        for (;;) {
+            if (KEY_IS_SPECIAL(key)) {
+                /* Insert the byte sequence received from the terminal */
+                int i;
+                for (i = 0; i < qs->input_len; i++)
+                    s->mode->write_char(s, qs->input_buf[i]);
+            } else {
+                s->mode->write_char(s, key);
+            }
+            if (argval-- <= 1)
+                break;
+        }
+        s->overwrite = save_overwrite;
         edit_display(s->qe_state);
         dpy_flush(&global_screen);
     }
-    qe_ungrab_keys();
 }
 
 void do_quoted_insert(EditState *s, int argval)
@@ -1639,12 +1757,28 @@ void do_quoted_insert(EditState *s, int argval)
     put_status(s, "Quote: ");
 }
 
-void do_overwrite_mode(EditState *s, int argval)
-{
+void do_overwrite_mode(EditState *s, int argval) {
+    /*@
+       Toggle overwrite mode.
+
+       With a prefix argument, turn overwrite mode on if the argument
+       is positive, otherwise select insert mode.
+       In overwrite mode, characters entered into a buffer replace
+       existing text without moving the rest of the line, rather than
+       shifting it to the right.  Characters typed before a newline
+       extend the line.  Space created by TAB characters is filled until
+       the tabulation stop is reached as.
+       Backspace erases the previous character and sets point to it.
+       C-q still inserts characters in overwrite mode for convenience to
+       insert characters when necessary.
+     */
+
     if (argval == NO_ARG)
-        s->insert = !s->insert;
+        s->overwrite = !s->overwrite;
     else
-        s->insert = !(argval > 0);
+        s->overwrite = (argval > 0);
+
+    put_status(s, "Overwrite mode is %s", s->overwrite ? "on" : "off");
 }
 
 void do_tab(EditState *s, int argval)
@@ -2705,7 +2839,7 @@ static char *qe_get_mode_name(EditState *s, char *buf, int size, int full)
     buf_puts(out, s->mode ? s->mode->name : "raw");
 
     if (full) {
-        if (!s->insert)
+        if (s->overwrite)
             buf_puts(out, " Ovwrt");
         if (s->interactive)
             buf_puts(out, " Interactive");
@@ -5780,7 +5914,6 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
                 memset(s, 0, SAVED_DATA_SIZE);
                 mode = b->default_mode;
                 /* <default> default values */
-                s->insert = 1;
                 s->indent_size = s->qe_state->default_tab_width;
                 s->default_style = QE_STYLE_DEFAULT;
                 s->wrap = mode ? mode->default_wrap : WRAP_AUTO;
@@ -6442,13 +6575,10 @@ void do_minibuffer_scroll_up_down(EditState *s, int dir)
 
 static void minibuffer_set_str(EditState *s, int start, int end, const char *str)
 {
-    int len;
-
     /* Replace the completion trigger zone */
     /* XXX: should insert utf-8? */
-    len = strlen(str);
-    eb_replace(s->b, start, end - start, str, len);
-    s->offset = start + len;
+    start += eb_replace(s->b, start, end - start, str, strlen(str));
+    s->offset = start;
 }
 
 /* CG: should use buffer of responses */
@@ -7641,12 +7771,30 @@ void do_insert_file(EditState *s, const char *filename)
 void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile)
 {
+    /*@
+       set_visited_file_name(string FILENAME, string RENAMEFILE)
+
+       Change the name of file visited in current buffer to FILENAME.
+       This also renames the buffer to correspond to the new file. The
+       next time the buffer is saved it will go in the newly specified
+       file. If FILENAME is an empty string, mark the buffer as not
+       visiting any file.
+
+       If the RENAMEFILE argument is not null and starts with 'y', an
+       attempt is made to rename the old visited file to the new name
+       FILENAME.
+
+     */
     char path[MAX_FILENAME_SIZE];
 
-    canonicalize_absolute_path(s, path, sizeof(path), filename);
-    if (*renamefile == 'y' && *s->b->filename) {
-        if (rename(s->b->filename, path))
-            put_status(s, "Cannot rename file to %s", path);
+    *path = '\0';
+    if (!filename || *filename) {
+        canonicalize_absolute_path(s, path, sizeof(path), filename);
+        // XXX: should search for another buffer with the same file
+        if (renamefile && *renamefile == 'y' && *s->b->filename) {
+            if (rename(s->b->filename, path))
+                put_status(s, "Cannot rename file to %s", path);
+        }
     }
     eb_set_filename(s->b, path);
 }
@@ -8774,7 +8922,7 @@ static void generic_mode_close(EditState *s)
     s->hex_mode = 0;
     s->hex_nibble = 0;
     s->unihex_mode = 0;
-    s->insert = 1;
+    s->overwrite = 0;
     s->wrap = WRAP_AUTO;
 
     /* free all callbacks or associated buffer data */

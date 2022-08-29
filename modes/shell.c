@@ -807,7 +807,7 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
                 qe_term_get_pos(s, offset, &x1, &y1);
             }
             if (x < destx) {
-                offset += eb_insert_uchars(s->b, offset, ' ', destx - x);
+                offset += eb_insert_spaces(s->b, offset, destx - x);
                 x = destx;
             }
             break;
@@ -822,7 +822,7 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
                     if (flags & TG_NOEXTEND)
                         break;
                     s->b->cur_style = QE_STYLE_DEFAULT;
-                    offset += eb_insert_uchars(s->b, offset, ' ', destx - x);
+                    offset += eb_insert_spaces(s->b, offset, destx - x);
                     x = destx;
                 }
             } else
@@ -835,7 +835,7 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
                     if (flags & TG_NOEXTEND)
                         break;
                     eb_delete_range(s->b, offset, offset1);
-                    eb_insert_uchars(s->b, offset, ' ', x1 - x);
+                    eb_insert_spaces(s->b, offset, x1 - x);
                     continue;
                 }
                 x = x1;
@@ -934,7 +934,7 @@ static int qe_term_overwrite(ShellState *s, int offset, int w,
             w1 = (x + 8) & ~7;
             x1 = min(x + w, s->cols - 1);
             if (x1 > x) {
-                eb_insert_uchars(s->b, offset, ' ', x1 - x);
+                eb_insert_spaces(s->b, offset, x1 - x);
                 c1 = eb_nextc(s->b, offset, &offset1);
             }
         }
@@ -1889,7 +1889,7 @@ static void qe_term_emulate(ShellState *s, int c)
                     //offset = qe_term_erase_chars(s, offset, col);
                     offset1 = qe_term_goto_pos(s, offset, col, 0, TG_RELATIVE_ROW | TG_NOEXTEND);
                     eb_delete(s->b, offset, offset1 - offset);
-                    offset += eb_insert_uchars(s->b, offset, ' ', col);
+                    offset += eb_insert_spaces(s->b, offset, col);
                 }
                 if (eos) {
                     eb_delete(s->b, offset, s->b->total_size - offset);
@@ -1928,10 +1928,10 @@ static void qe_term_emulate(ShellState *s, int c)
                     if (eb_nextc(s->b, offset2, &offset3) == '\n') {
                         if (col == 0 && eb_prevc(s->b, offset1, &offset3) != '\n') {
                             /* keep a space to prevent line fusion */
-                            eb_insert_uchars(s->b, offset2, ' ', 1);
+                            eb_insert_spaces(s->b, offset2, 1);
                         }
                     } else {
-                        eb_insert_uchars(s->b, offset2, ' ', col2 - col);
+                        eb_insert_spaces(s->b, offset2, col2 - col);
                     }
                     eb_delete(s->b, offset, n2);
                 }
@@ -1939,7 +1939,7 @@ static void qe_term_emulate(ShellState *s, int c)
                     /* update offset as overwriting characters may change offsets */
                     //offset = qe_term_erase_chars(s, offset1, n1);
                     offset -= eb_delete(s->b, offset1, n1);
-                    offset += eb_insert_uchars(s->b, offset1, ' ', col);
+                    offset += eb_insert_spaces(s->b, offset1, col);
                 }
                 // XXX: could scan end of buffer for spaces with default style
                 //      and shrink it.
@@ -1989,27 +1989,27 @@ static void qe_term_emulate(ShellState *s, int c)
                     if (pos.col == 0 && (pos.flags & SP_LINE_START_WRAP)) {
                         /* if removed wrapped wide glyph, pad previous line */
                         if (pos.flags & SP_LINE_START_WRAP2)
-                            s->cur_offset = offset += eb_insert_uchars(s->b, offset, ' ', 1);
+                            s->cur_offset = offset += eb_insert_uchar(s->b, offset, ' ');
                         /* we removed the wrapped glyph, must insert a space */
-                        eb_insert_uchars(s->b, offset, ' ', 1);
+                        eb_insert_uchar(s->b, offset, ' ');
                     }
                 } else {
                     offset1 = qe_term_goto_pos(s, offset, param1, 0, TG_RELATIVE | TG_NOEXTEND);
                     eb_delete_range(s->b, offset, offset1);
                     /* if removed wrapped wide glyph, pad previous line */
                     if (pos.col == 0 && (pos.flags & SP_LINE_START_WRAP2)) {
-                        s->cur_offset = offset += eb_insert_uchars(s->b, offset, ' ', 1);
+                        s->cur_offset = offset += eb_insert_uchar(s->b, offset, ' ');
                     }
                 }
             } else {
                 if (param1 >= pos.end_col - pos.col) {
                     eb_delete_range(s->b, offset, pos.line_end);
-                    eb_insert_uchars(s->b, offset, ' ', s->cols - pos.col);
+                    eb_insert_spaces(s->b, offset, s->cols - pos.col);
                 } else {
                     // XXX: should untabify rest of line
                     offset1 = qe_term_goto_pos(s, offset, param1, 0, TG_RELATIVE | TG_NOEXTEND);
                     pos.line_end -= eb_delete_range(s->b, offset, offset1);
-                    eb_insert_uchars(s->b, pos.line_end, ' ', param1);
+                    eb_insert_spaces(s->b, pos.line_end, param1);
                 }
             }
             break;

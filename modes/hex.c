@@ -179,7 +179,7 @@ static int binary_mode_init(EditState *s, EditBuffer *b, int flags)
             s->dump_width = 16;
         s->hex_mode = 0;
         s->unihex_mode = 0;
-        s->insert = 0;
+        s->overwrite = 1;
         /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_TRUNCATE;
     }
@@ -193,7 +193,7 @@ static int hex_mode_init(EditState *s, EditBuffer *b, int flags)
         s->hex_mode = 1;
         s->hex_nibble = 0;
         s->unihex_mode = 0;
-        s->insert = 0;
+        s->overwrite = 1;
         /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_TRUNCATE;
     }
@@ -260,7 +260,7 @@ void hex_write_char(EditState *s, int key)
         h = qe_digit_value(key);
         if (h >= 16)
             return;
-        if ((s->insert || offset >= s->b->total_size) && s->hex_nibble == 0) {
+        if ((!s->overwrite || offset >= s->b->total_size) && s->hex_nibble == 0) {
             ch = h << ((hsize - 1) * 4);
             if (s->unihex_mode || s->b->charset->char_size > 1) {
                 len = eb_encode_uchar(s->b, buf, ch);

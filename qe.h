@@ -885,9 +885,9 @@ enum QEEventType {
 #define KEY_IS_SPECIAL(c)  ((c) >= 0xe000 && (c) < 0xf000)
 #define KEY_IS_CONTROL(c)  (((c) >= 0 && (c) < 32) || (c) == 127)
 
-#define KEY_UNKNOWN     0xfffe
-#define KEY_NONE        0xffff
-#define KEY_DEFAULT     0xe401 /* to handle all non special keys */
+#define KEY_NONE        0xE000
+#define KEY_DEFAULT     0xE001 /* to handle all non special keys */
+#define KEY_UNKNOWN     0xE002
 
 #define KEY_TAB         KEY_CTRL('i')
 #define KEY_LF          KEY_CTRL('j')
@@ -1225,8 +1225,7 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
                      int size);
 int eb_insert(EditBuffer *b, int offset, const void *buf, int size);
 int eb_delete(EditBuffer *b, int offset, int size);
-void eb_replace(EditBuffer *b, int offset, int size,
-                const void *buf, int size1);
+int eb_replace(EditBuffer *b, int offset, int size, const void *buf, int size1);
 void eb_free_log_buffer(EditBuffer *b);
 EditBuffer *eb_new(const char *name, int flags);
 EditBuffer *eb_scratch(const char *name, int flags);
@@ -1420,7 +1419,7 @@ struct EditState {
     int hex_mode;    /* true if we are currently editing hexa */
     int unihex_mode; /* true if unihex editing (width of hex char dump) */
     int hex_nibble;  /* current hexa nibble */
-    int insert;      /* insert/overtype mode */
+    int overwrite;   /* insert/overtype mode */
     int bidir;
     int cur_rtl;     /* TRUE if the cursor on over RTL chars */
     enum WrapType wrap;
@@ -2205,6 +2204,7 @@ void text_move_left_right_visual(EditState *s, int dir);
 void text_move_word_left_right(EditState *s, int dir);
 void text_move_up_down(EditState *s, int dir);
 void text_scroll_up_down(EditState *s, int dir);
+int text_screen_width(EditBuffer *b, int start, int stop, int tw);
 void text_write_char(EditState *s, int key);
 void do_newline(EditState *s);
 void do_open_line(EditState *s);
