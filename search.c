@@ -31,6 +31,7 @@
 #define SEARCH_FLAG_HEX        0x0010
 #define SEARCH_FLAG_UNIHEX     0x0020
 #define SEARCH_FLAG_REGEX      0x0040
+#define SEARCH_FLAG_ACTIVE     0x1000
 
 /* should separate search string length and number of match positions */
 #define SEARCH_LENGTH  256
@@ -238,16 +239,21 @@ static void isearch_run(ISearchState *is)
     buf_t outbuf, *out;
     int c, i, len, hex_nibble, max_nibble, h, hc;
     unsigned int v;
-    int search_offset, flags, dir = is->start_dir;
+    int search_offset, flags, dir;
     int start_time, elapsed_time;
+
+    flags = is->search_flags;
+    if (!(flags & SEARCH_FLAG_ACTIVE))
+        return;
 
     start_time = get_clock_ms();
 
     /* prepare the search bytes */
     len = 0;
+    dir = is->start_dir;
     search_offset = is->start_offset;
     max_nibble = hex_nibble = hc = 0;
-    flags = is->search_flags;
+
     if (flags & SEARCH_FLAG_UNIHEX)
         max_nibble = 6;
     if (flags & SEARCH_FLAG_HEX)
@@ -354,77 +360,182 @@ static int isearch_grab(ISearchState *is, EditBuffer *b, int from, int to)
     return is->pos - last;
 }
 
-static void isearch_key(void *opaque, int ch)
-{
-    ISearchState *is = opaque;
+static int isearch_yank_word(ISearchState *is) {
     EditState *s = is->s;
-    QEmacsState *qs = &qe_state;
-    int offset0, offset1, curdir = is->dir;
-    int emacs_behaviour = !qs->emulation_flags;
+    int offset0, offset1;
+    offset0 = s->offset;
+    do_word_left_right(s, 1);
+    offset1 = s->offset;
+    s->offset = offset0;
+    return isearch_grab(is, s->b, offset0, offset1);
+}
+
+static int isearch_yank_line(ISearchState *is) {
+    EditState *s = is->s;
+    int offset0, offset1;
+    offset0 = s->offset;
+    if (eb_nextc(s->b, offset0, &offset1) == '\n')
+        offset0 = offset1;
+    do_eol(s);
+    offset1 = s->offset;
+    s->offset = offset0;
+    return isearch_grab(is, s->b, offset0, offset1);
+}
+
+static int isearch_yank_kill(ISearchState *is) {
+    QEmacsState *qs = is->s->qe_state;
+    return isearch_grab(is, qs->yank_buffers[qs->yank_current], 0, -1);
+}
+
+static void isearch_addpos(ISearchState *is, int dir) {
+    /* use last searched string if no input */
+    int curdir = is->dir;
+    is->dir = dir;
+    if (is->search_u32_len == 0 && is->dir == curdir) {
+        int len = min(last_search_u32_len, SEARCH_LENGTH - is->pos);
+        memcpy(is->search_u32_flags + is->pos, last_search_u32,
+               len * sizeof(*is->search_u32_flags));
+        is->pos += len;
+        is->search_flags = last_search_u32_flags;
+    } else
+    if (is->pos < SEARCH_LENGTH) {
+        /* add the match position, if any */
+        unsigned long v = (is->dir >= 0) ? FOUND_TAG : FOUND_TAG | FOUND_REV;
+        if (is->found_offset < 0 && is->search_u32_len > 0) {
+            is->search_flags |= SEARCH_FLAG_WRAPPED;
+            if (is->dir < 0)
+                v |= is->s->b->total_size;
+        } else {
+            v |= is->s->offset;
+        }
+        is->search_u32_flags[is->pos++] = v;
+    }
+}
+
+static void isearch_printing_char(ISearchState *is, int key) {
+    if (is->pos < SEARCH_LENGTH)
+        is->search_u32_flags[is->pos++] = key;
+}
+
+static void isearch_delete_char(ISearchState *is) {
+    if (is->pos > 0)
+        is->pos--;
+}
+
+static void isearch_cycle_flags(ISearchState *is, int f1, int f2) {
+    /* cycle search flags through 2 or 3 possibilities */
+    if (is->search_flags & f1) {
+        is->search_flags &= ~f1;
+        is->search_flags |= f2;
+    } else
+    if (is->search_flags & f2) {
+        is->search_flags &= ~f2;
+    } else {
+        is->search_flags |= f1;
+    }
+}
+
+static void isearch_end(ISearchState *is) {
+    EditState *s = is->s;
+    /* save current searched string */
+    // XXX: should save search strings to a history buffer
+    if (is->search_u32_len > 0) {
+        memcpy(last_search_u32, is->search_u32,
+               is->search_u32_len * sizeof(*is->search_u32));
+        last_search_u32_len = is->search_u32_len;
+        last_search_u32_flags = is->search_flags;
+    }
+    is->search_flags &= ~SEARCH_FLAG_ACTIVE;
+    qe_ungrab_keys();
+    edit_display(s->qe_state);
+    dpy_flush(s->screen);
+}
+
+static void isearch_abort(ISearchState *is) {
+    EditState *s = is->s;
+    /* XXX: when search has failed should cancel input back to what has been
+     * found successfully.
+     * when search is successful aborts and moves point to starting point.
+     */
+    s->b->mark = is->saved_mark;
+    s->offset = is->start_offset;
+    s->region_style = 0;
+    s->isearch_state = NULL;
+    put_status(s, "Quit");
+    isearch_end(is);
+}
+
+static void isearch_cancel(ISearchState *is, int key) {
+    EditState *s = is->s;
+    /* exit search mode */
+#if 0
+    // FIXME: behaviour from qemacs-0.3pre13
+    if (is->found_offset >= 0) {
+        s->b->mark = is->found_offset;
+    } else {
+        s->b->mark = is->start_offset;
+    }
+    put_status(s, "Marked");
+#endif
+    s->b->mark = is->start_offset;
+    s->region_style = 0;
+    put_status(s, "Mark saved where search started");
+    /* repost key */
+    /* do not keep search matches lingering */
+    s->isearch_state = NULL;
+    if (key != KEY_RET) {
+        unget_key(key);
+    }
+    isearch_end(is);
+}
+
+static void isearch_exit(ISearchState *is) {
+    isearch_cancel(is, 0);
+}
+
+static void isearch_key(void *opaque, int key) {
+    ISearchState *is = opaque;
+    int emacs_behaviour = !is->s->qe_state->emulation_flags;
 
     if (is->quoting) {
         is->quoting = 0;
-        if (!KEY_IS_SPECIAL(ch))
-            goto addch;
+        if (!KEY_IS_SPECIAL(key)) {
+            isearch_printing_char(is, key);
+            isearch_run(is);
+            return;
+        }
     }
     /* XXX: all these should be isearch-mode bindings */
-    switch (ch) {
+    // XXX: split this switch statement into isearch_xxx commands */
+    switch (key) {
+#if 0
+    case KEY_F1:    /* isearch-mode-help */
+    case KEY_CTRL('h'):  // KEY_BS?
+        // XXX: should display help on searching and ungrab keys temporarily
+        isearch_mode_help(is);
+        break;
+    case KEY_META('p'): /* isearch-previous-string */
+        isearch_previous_string(is);
+        break;
+    case KEY_META('n'): /* isearch-next-string */
+        isearch_next_string(is);
+        break;
+#endif
     case KEY_DEL:
     case KEY_BS:
-        /* cancel last input item from search string */
-        if (is->pos > 0)
-            is->pos--;
+        /* isearch-delete-char: cancel last input item from search string */
+        isearch_delete_char(is);
         break;
-    case KEY_CTRL('g'):
-        /* XXX: when search has failed should cancel input back to what has been
-         * found successfully.
-         * when search is successful aborts and moves point to starting point.
-         */
-        s->b->mark = is->saved_mark;
-        s->offset = is->start_offset;
-        s->region_style = 0;
-        s->isearch_state = NULL;
-        put_status(s, "Quit");
-    the_end:
-        /* save current searched string */
-        if (is->search_u32_len > 0) {
-            memcpy(last_search_u32, is->search_u32,
-                   is->search_u32_len * sizeof(*is->search_u32));
-            last_search_u32_len = is->search_u32_len;
-            last_search_u32_flags = is->search_flags;
-        }
-        qe_ungrab_keys();
-        edit_display(s->qe_state);
-        dpy_flush(s->screen);
+    case KEY_CTRL('g'):  /* isearch-abort */
+        isearch_abort(is);
         return;
     case KEY_CTRL('s'):         /* next match */
-        is->dir = 1;
-        goto addpos;
-    case KEY_CTRL('r'):         /* previous match */
-        is->dir = -1;
-    addpos:
-        /* use last searched string if no input */
-        if (is->search_u32_len == 0 && is->dir == curdir) {
-            int len = min(last_search_u32_len, SEARCH_LENGTH - is->pos);
-            memcpy(is->search_u32_flags + is->pos, last_search_u32,
-                   len * sizeof(*is->search_u32_flags));
-            is->pos += len;
-            is->search_flags = last_search_u32_flags;
-        } else
-        if (is->pos < SEARCH_LENGTH) {
-            /* add the match position, if any */
-            unsigned long v = (is->dir >= 0) ? FOUND_TAG : FOUND_TAG | FOUND_REV;
-            if (is->found_offset < 0 && is->search_u32_len > 0) {
-                is->search_flags |= SEARCH_FLAG_WRAPPED;
-                if (is->dir < 0)
-                    v |= s->b->total_size;
-            } else {
-                v |= s->offset;
-            }
-            is->search_u32_flags[is->pos++] = v;
-        }
+        isearch_addpos(is, 1);
         break;
-    case KEY_CTRL('q'):
+    case KEY_CTRL('r'):         /* previous match */
+        isearch_addpos(is, -1);
+        break;
+    case KEY_CTRL('q'):     /* isearch-quote-char */
         is->quoting = 1;
         break;
     case KEY_META('w'):
@@ -432,15 +543,11 @@ static void isearch_key(void *opaque, int ch)
         /* fall thru */
     case KEY_CTRL('w'):
         if (emacs_behaviour) {
-            /* grab word at cursor */
-            offset0 = s->offset;
-            do_word_left_right(s, 1);
-            offset1 = s->offset;
-            s->offset = offset0;
-            isearch_grab(is, s->b, offset0, offset1);
+            /* isearch-yank-word: grab word at cursor */
+            isearch_yank_word(is);
         } else {
-            /* toggle word match */
-            is->search_flags ^= SEARCH_FLAG_WORD;
+            /* isearch-toggle-word-match */
+            isearch_cycle_flags(is, SEARCH_FLAG_WORD, 0);
         }
         break;
     case KEY_META('y'):
@@ -448,75 +555,44 @@ static void isearch_key(void *opaque, int ch)
         /* fall thru */
     case KEY_CTRL('y'):
         if (emacs_behaviour) {
-            /* grab line at cursor */
-            offset0 = s->offset;
-            if (eb_nextc(s->b, offset0, &offset1) == '\n')
-                offset0 = offset1;
-            do_eol(s);
-            offset1 = s->offset;
-            s->offset = offset0;
-            isearch_grab(is, s->b, offset0, offset1);
+            /* isearch-yank-line: grab line at cursor */
+            isearch_yank_line(is);
         } else {
-            /* yank into search string */
-            isearch_grab(is, qs->yank_buffers[qs->yank_current], 0, -1);
+            /* isearch-yank-kill: grap from kill buffer */
+            isearch_yank_kill(is);
         }
         break;
     case KEY_META(KEY_CTRL('b')):
-        /* cycle unihex, hex, normal search */
-        if (is->search_flags & SEARCH_FLAG_UNIHEX)
-            is->search_flags ^= SEARCH_FLAG_HEX | SEARCH_FLAG_UNIHEX;
-        else
-        if (is->search_flags & SEARCH_FLAG_HEX)
-            is->search_flags ^= SEARCH_FLAG_HEX;
-        else
-            is->search_flags ^= SEARCH_FLAG_UNIHEX;
+        /* isearch-toggle-hex: cycle hex, unihex, normal search */
+        isearch_cycle_flags(is, SEARCH_FLAG_HEX, SEARCH_FLAG_UNIHEX);
         break;
     case KEY_META('c'):
     case KEY_CTRL('c'):
-        /* toggle case sensitivity */
-        if (is->search_flags & (SEARCH_FLAG_IGNORECASE | SEARCH_FLAG_SMARTCASE)) {
-            is->search_flags &= ~SEARCH_FLAG_IGNORECASE;
-        } else {
-            is->search_flags |= SEARCH_FLAG_IGNORECASE;
-        }
-        is->search_flags &= ~SEARCH_FLAG_SMARTCASE;
+        /* isearch-toggle-case-fold: toggle case sensitivity */
+        isearch_cycle_flags(is, SEARCH_FLAG_IGNORECASE, SEARCH_FLAG_SMARTCASE);
         break;
     case KEY_META('r'):
     case KEY_CTRL('t'):
-        is->search_flags ^= ~SEARCH_FLAG_REGEX;
+        /* isearch-toggle-regexp */
+        isearch_cycle_flags(is, SEARCH_FLAG_REGEX, 0);
         break;
     case KEY_CTRL('l'):
-        do_center_cursor(s, 1);
+        do_center_cursor(is->s, 1);
+        break;
+    case KEY_TAB:
+    case KEY_CTRL('j'):  // XXX: pb with KEY_RET under lldb
+        /* make it easy to search for TABs and newlines */
+        isearch_printing_char(is, key);
+        break;
+    case KEY_RET:   /* isearch-exit */
+        isearch_exit(is);
         break;
     default:
-        // XXX: should test KEY_RET and KEY_LF?
-        if ((KEY_IS_SPECIAL(ch) || KEY_IS_CONTROL(ch)) &&
-            ch != '\t' && ch != KEY_CTRL('j')) {
-            /* exit search mode */
-#if 0
-            // FIXME: behaviour from qemacs-0.3pre13
-            if (is->found_offset >= 0) {
-                s->b->mark = is->found_offset;
-            } else {
-                s->b->mark = is->start_offset;
-            }
-            put_status(s, "Marked");
-#endif
-            s->b->mark = is->start_offset;
-            s->region_style = 0;
-            put_status(s, "Mark saved where search started");
-            /* repost key */
-            /* do not keep search matches lingering */
-            s->isearch_state = NULL;
-            if (ch != KEY_RET) {
-                unget_key(ch);
-            }
-            goto the_end;
+        if (KEY_IS_SPECIAL(key) || KEY_IS_CONTROL(key)) {
+            /* isearch-cancel */
+            isearch_cancel(is, key);
         } else {
-        addch:
-            if (is->pos < SEARCH_LENGTH) {
-                is->search_u32_flags[is->pos++] = ch;
-            }
+            isearch_printing_char(is, key);
         }
         break;
     }
@@ -528,7 +604,7 @@ void do_isearch(EditState *s, int argval, int dir)
 {
     ISearchState *is = &global_isearch_state;
     EditState *e;
-    int flags = SEARCH_FLAG_SMARTCASE;
+    int flags = SEARCH_FLAG_SMARTCASE | SEARCH_FLAG_ACTIVE;
 
     /* prevent search from minibuffer */
     if (s->flags & WF_MINIBUF)
