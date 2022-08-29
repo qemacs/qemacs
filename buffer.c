@@ -1536,6 +1536,27 @@ int eb_skip_accents(EditBuffer *b, int offset) {
     return offset;
 }
 
+/* return the main character for the next glyph, update offset to next_ptr */
+int eb_next_glyph(EditBuffer *b, int offset, int *next_ptr) {
+    int c = eb_nextc(b, offset, &offset);
+    if (c >= ' ') {
+        offset += eb_skip_accents(b, offset);
+    }
+    *next_ptr = offset;
+    return c;
+}
+
+/* return the main character for the previous glyph, update offset to next_ptr */
+int eb_prev_glyph(EditBuffer *b, int offset, int *next_ptr) {
+    for (;;) {
+        int c = eb_prevc(b, offset, &offset);
+        if (!qe_isaccent(c)) {
+            *next_ptr = offset;
+            return c;
+        }
+    }
+}
+
 /* compute offset after moving 'n' glyphs from 'offset'.
  * 'n' can be negative,
  * combining accents are skipped as part of the previous character.

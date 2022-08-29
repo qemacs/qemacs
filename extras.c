@@ -366,11 +366,11 @@ static void do_tabify(EditState *s, int p1, int p2)
         while (offset1 < stop) {
             c = eb_nextc(b, offset1, &offset2);
             if (c == ' ') {
-                col += unicode_tty_glyph_width(c);
+                col += 1;
                 offset1 = offset2;
                 if (col % tw == 0) {
-                    delta = eb_delete_range(b, offset, offset1);
-                    delta = eb_insert_uchar(b, offset, '\t') - delta;
+                    delta = -eb_delete_range(b, offset, offset1);
+                    delta += eb_insert_uchar(b, offset, '\t');
                     offset1 += delta;
                     stop += delta;
                     break;
@@ -380,8 +380,7 @@ static void do_tabify(EditState *s, int p1, int p2)
             if (c == '\t') {
                 col += tw - col % tw;
                 delta = -eb_delete_range(b, offset, offset1);
-                offset1 = offset2;
-                offset1 += delta;
+                offset1 = offset2 + delta;
                 stop += delta;
             }
             break;

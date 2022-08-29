@@ -76,7 +76,7 @@ static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
 {
     int j, len, ateof, dump_width;
     int offset1, offset2;
-    int c, maxc;
+    int c, w, maxc;
     unsigned int b;
     /* CG: array size is incorrect, should be smaller */
     unsigned int buf[LINE_MAX_SIZE];
@@ -154,7 +154,8 @@ static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
                 offset2 = offset1 = -1;
             }
         }
-        if (qe_isaccent(b)) {
+        w = unicode_tty_glyph_width(b);
+        if (w == 0) {
             /* insert space to make accent stand on its own */
             display_char(ds, offset1, offset2, ' ');
             display_char(ds, -1, -1, b);
@@ -162,7 +163,7 @@ static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
             display_char(ds, offset1, offset2, b);
         }
         /* spacing out single width glyphs may be less readable */
-        if (unicode_tty_glyph_width(b) < 2) {
+        if (w < 2) {
             display_char(ds, -1, -1, ' ');
         }
     }

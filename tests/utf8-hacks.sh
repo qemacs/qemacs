@@ -7,6 +7,10 @@ printf '\xE4\xB8\xAD\xE6\x96\x87\tx\b\by\t\xE4\xB8\xAD\xE6\x96\x87   yx\n'
 printf "x <- left%91s\n" "x at right -> x"
 printf "x <- left%91s\by\n" "yx at right ->  x"
 printf "x <- left%91sx\b\b\byy\n\n" "yy at right, x next row -> xx"
+# iTerm2 leaves the cursor below the x, whereas QE skips one more line
+# we can only fix this by changing the cursor bookkeeping strategy:
+# add s->cur_row and s->cur_col and track buffer changes with a callback to
+# reset s->cur_row and s->cur_col unless inside qe_term_emulate
 printf "x <- left%78sright -> \xE4\xB8\xAD\xE6\x96\x87\n" ""
 printf "x <- left%78sright -> \xE4\xB8\xAD\xE6\x96\x87\bx\n" ""
 printf "x <- left%78sright -> \xE4\xB8\xAD\xE6\x96\x87\b\bx\n" ""

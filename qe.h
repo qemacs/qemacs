@@ -846,6 +846,10 @@ static inline int qe_isaccent(int c) {
     return c >= 0x300 && unicode_tty_glyph_width(c) == 0;
 }
 
+static inline int qe_iswide(int c) {
+    return c >= 0x01000 && unicode_tty_glyph_width(c) > 1;
+}
+
 /* arabic.c */
 int arab_join(unsigned int *line, unsigned int *ctog, int len);
 
@@ -1238,6 +1242,10 @@ qe__attr_nonnull((3))
 int eb_nextc(EditBuffer *b, int offset, int *next_ptr);
 qe__attr_nonnull((3))
 int eb_prevc(EditBuffer *b, int offset, int *prev_ptr);
+qe__attr_nonnull((3))
+int eb_next_glyph(EditBuffer *b, int offset, int *next_ptr);
+qe__attr_nonnull((3))
+int eb_prev_glyph(EditBuffer *b, int offset, int *prev_ptr);
 int eb_skip_accents(EditBuffer *b, int offset);
 int eb_skip_glyphs(EditBuffer *b, int offset, int n);
 int eb_skip_chars(EditBuffer *b, int offset, int n);

@@ -35,13 +35,15 @@ static unsigned int const unicode_glyph_ranges[] = {
 #include "unicode_width.h"
 };
 
-static const unsigned int *unicode_glyph_range_index[0x20];
+#define GLYPH_RANGE_SHIFT 8
+static const unsigned int *unicode_glyph_range_index[0x20000 >> GLYPH_RANGE_SHIFT];
 
 int unicode_tty_glyph_width(unsigned int ucs)
 {
     /* Iterative lookup with fast initial jump, no boundary test needed */
     /* Very efficient for BMP and SMP code-points */
-    unsigned int const *ip = unicode_glyph_range_index[(ucs >> 12) & 0x1F];
+    unsigned int idx = (ucs >> GLYPH_RANGE_SHIFT) & (0x1FFFF >> GLYPH_RANGE_SHIFT);
+    unsigned int const *ip = unicode_glyph_range_index[idx];
 
     while (ucs > ip[0]) {
         ip += 2;
@@ -1713,10 +1715,10 @@ void charset_init(void)
     unsigned int const *ip = unicode_glyph_ranges;
     unsigned int ucs;
 
-    for (ucs = 0; ucs < 0x20000; ucs += 0x1000) {
+    for (ucs = 0; ucs < 0x20000; ucs += 1 << GLYPH_RANGE_SHIFT) {
         while (ucs > ip[0])
             ip += 2;
-        unicode_glyph_range_index[ucs >> 12] = ip;
+        unicode_glyph_range_index[ucs >> GLYPH_RANGE_SHIFT] = ip;
     }
 
     qe_register_charset(&charset_raw);
