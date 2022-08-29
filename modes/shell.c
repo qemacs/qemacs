@@ -932,7 +932,7 @@ static int qe_term_overwrite(ShellState *s, int offset, int w,
             qe_term_get_pos(s, offset, &x, &y);
             eb_delete_range(s->b, offset, offset1);
             w1 = (x + 8) & ~7;
-            x1 = min(x + w, s->cols - 1);
+            x1 = min(x + w1, s->cols - 1);
             if (x1 > x) {
                 eb_insert_spaces(s->b, offset, x1 - x);
                 c1 = eb_nextc(s->b, offset, &offset1);
