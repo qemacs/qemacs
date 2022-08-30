@@ -524,7 +524,31 @@ static void isearch_exit(ISearchState *is) {
 }
 
 static void isearch_key(void *opaque, int key) {
+#if 1
     ISearchState *is = opaque;
+    unsigned int keys[1] = { key };
+
+    if (is->quoting) {
+        is->quoting = 0;
+        if (!KEY_IS_SPECIAL(key)) {
+            isearch_printing_char(is, key);
+        }
+    } else {
+        KeyDef *kd = qe_find_binding(keys, 1, isearch_mode.first_key, 1);
+        if (kd && kd->cmd->sig >= CMD_ISS) {
+            exec_command(is->s, kd->cmd, NO_ARG, key, is);
+        } else {
+            if (KEY_IS_SPECIAL(key) || KEY_IS_CONTROL(key)) {
+                isearch_cancel(is, key);
+            } else {
+                isearch_printing_char(is, key);
+            }
+        }
+    }
+    isearch_run(is);
+#else
+    ISearchState *is = opaque;
+    int emacs_behaviour = !is->s->qe_state->emulation_flags;
 
     if (is->quoting) {
         is->quoting = 0;
@@ -534,21 +558,6 @@ static void isearch_key(void *opaque, int key) {
             return;
         }
     }
-#if 1
-    unsigned int keys[1] = { key };
-    KeyDef *kd = qe_find_binding(keys, 1, isearch_mode.first_key, 1);
-    if (kd && kd->cmd->sig >= CMD_ISS) {
-        exec_command(is->s, kd->cmd, NO_ARG, key, is);
-    } else {
-        if (KEY_IS_SPECIAL(key) || KEY_IS_CONTROL(key)) {
-            isearch_cancel(is, key);
-        } else {
-            isearch_printing_char(is, key);
-        }
-    }
-    isearch_run(is);
-#else
-    int emacs_behaviour = !is->s->qe_state->emulation_flags;
     /* XXX: all these should be isearch-mode bindings */
     switch (key) {
 #if 0
