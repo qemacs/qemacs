@@ -561,8 +561,8 @@ static const CmdDef bufed_global_commands[] = {
 
 /* additional mode specific bindings */
 static const char * const bufed_bindings[] = {
-    "next-line", "n",
-    "previous-line", "p",
+    "n", "next-line",
+    "p", "previous-line",
     NULL
 };
 

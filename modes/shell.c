@@ -3686,9 +3686,9 @@ static int pager_mode_init(EditState *e, EditBuffer *b, int flags)
 
 /* additional mode specific bindings */
 static const char * const pager_bindings[] = {
-    "scroll-down", "DEL",
-    "scroll-up", "SPC",
-    "search-forward", "/",
+    "DEL", "scroll-down",
+    "SPC", "scroll-up",
+    "/", "search-forward",
     NULL
 };
 

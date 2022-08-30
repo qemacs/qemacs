@@ -999,8 +999,8 @@ void qe_handle_event(QEEvent *ev);
 /* CG: Should deal with opaque object life cycle */
 void qe_grab_keys(void (*cb)(void *opaque, int key), void *opaque);
 void qe_ungrab_keys(void);
-KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd);
-KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m);
+KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd, int exact);
+KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m, int exact);
 
 #define COLORED_MAX_LINE_SIZE  4096
 
@@ -1544,8 +1544,8 @@ struct ModeDef {
     const char *desc;           /* description of the mode */
     const char *extensions;
     const char *shell_handlers;
-    const char *keywords;
-    const char *types;
+    const char *keywords;       /* list of keywords for a language mode */
+    const char *types;          /* list of types for a language mode */
 
     int flags;
 #define MODEF_NOCMD        0x8000 /* do not register xxx-mode command automatically */
@@ -1604,11 +1604,13 @@ struct ModeDef {
                               char *buf, int buf_size);
 
     /* mode specific key bindings */
-    struct KeyDef *first_key;
     const char * const *bindings;
+    // XXX: should also have local and global command definitions
 
     ModeDef *fallback;  /* use bindings from fallback mode */
 
+    // XXX: should have a separate list to allow for contant data
+    struct KeyDef *first_key;
     ModeDef *next;
 };
 
@@ -1794,6 +1796,7 @@ enum CmdArgType {
     CMD_ARG_STRING,
     CMD_ARG_STRINGVAL,
     CMD_ARG_WINDOW,
+    CMD_ARG_OPAQUE,
     CMD_ARG_TYPE_MASK  = 0x0f,
     CMD_ARG_RAW_ARGVAL = 0x10,
     CMD_ARG_NUM_ARGVAL = 0x20,
@@ -1815,12 +1818,15 @@ typedef enum CmdSig {
     CMD_ESss,   /* (ES*, string, string) -> void */
     CMD_ESssi,  /* (ES*, string, string, int) -> void */
     CMD_ESsss,  /* (ES*, string, string, string) -> void */
+    CMD_ISS,    /* (ISearchState*) -> void */
+    CMD_ISSi,   /* (ISearchState*) -> void */
 } CmdSig;
 
 #define MAX_CMD_ARGS 5
 
 typedef union CmdArg {
     EditState *s;
+    void *vp;
     const char *p;
     int n;
 } CmdArg;
@@ -1842,6 +1848,8 @@ typedef union CmdProto {
     void (*ESss)(EditState *, const char *, const char *);
     void (*ESssi)(EditState *, const char *, const char *, int);
     void (*ESsss)(EditState *, const char *, const char *, const char *);
+    void (*ISS)(ISearchState *);
+    void (*ISSi)(ISearchState *, int);
 } CmdProto;
 
 typedef struct CmdDef {
@@ -1872,6 +1880,8 @@ typedef struct CmdDef {
 /* command with a an argument description string and an int argument */
 #define CMD3(name, bindings, desc, func, sig, spec, val) \
     CMD(name, bindings, desc, func, sig, val, spec)
+/* command not implemented yet */
+#define CMDx(name, bindings, desc, func, ...)
 
 ModeDef *qe_find_mode(const char *name, int flags);
 ModeDef *qe_find_mode_filename(const char *filename, int flags);
@@ -2246,7 +2256,7 @@ void do_set_trace_options(EditState *s, const char *options);
 void do_cd(EditState *s, const char *name);
 int qe_register_command_binding(ModeDef *m, const CmdDef *d, const char *keystr);
 void do_set_key(EditState *s, const char *keystr, const char *cmd_name, int local);
-//void do_unset_key(EditState *s, const char *keystr, int local);
+void do_unset_key(EditState *s, const char *keystr, int local);
 void do_bof(EditState *s);
 void do_eof(EditState *s);
 void do_bol(EditState *s);
@@ -2312,7 +2322,7 @@ void do_set_window_style(EditState *s, const char *stylestr);
 void call_func(CmdSig sig, CmdProto func, int nb_args, CmdArg *args,
                unsigned char *args_type);
 int parse_arg(const char **pp, CmdArgSpec *ap);
-void exec_command(EditState *s, const CmdDef *d, int argval, int key);
+void exec_command(EditState *s, const CmdDef *d, int argval, int key, void *opaque);
 void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);
 void do_prefix_argument(EditState *s);

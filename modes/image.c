@@ -894,7 +894,7 @@ static EditBufferDataType image_data_type = {
 
 /* additional mode specific bindings */
 static const char * const image_bindings[] = {
-    "toggle-full-screen", "f",
+    "f", "toggle-full-screen",
     NULL
 };
 

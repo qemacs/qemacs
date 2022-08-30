@@ -258,7 +258,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
 
         /* search for command */
         d = qe_find_cmd(cmd);
-        if (!d) {
+        if (!d || d->sig >= CMD_ISS) {
             put_status(s, "Unknown command '%s'", cmd);
             continue;
         }

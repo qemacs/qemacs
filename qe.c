@@ -96,7 +96,7 @@ ModeDef *qe_find_mode(const char *name, int flags)
         if ((m->flags & flags) == flags) {
             if ((m->name && !strcasecmp(m->name, name))
             ||  (m->alt_name && !strcasecmp(m->alt_name, name))
-            ||  strfind(m->extensions, name))
+            ||  (m->extensions && strfind(m->extensions, name)))  // XXX: really?
                 break;
         }
     }
@@ -211,7 +211,7 @@ void qe_register_mode(ModeDef *m, int flags)
     if (m->bindings) {
         int i;
         for (i = 0; m->bindings[i]; i += 2) {
-            qe_register_bindings(m, m->bindings[i], m->bindings[i + 1]);
+            qe_register_bindings(m, m->bindings[i + 1], m->bindings[i]);
         }
     }
 }
@@ -345,6 +345,29 @@ static int qe_register_binding(ModeDef *m, const CmdDef *d, unsigned int *keys, 
     return 0;
 }
 
+/* remove a key binding from mode or globally */
+static int qe_unregister_binding(ModeDef *m, unsigned int *keys, int nb_keys) {
+    QEmacsState *qs = &qe_state;
+    KeyDef **lp, *p;
+
+    if (!nb_keys)
+        return -2;
+
+    lp = m ? &m->first_key : &qs->first_key;
+    while (*lp) {
+        if ((*lp)->nb_keys == nb_keys
+        &&  !memcmp((*lp)->keys, keys, nb_keys * sizeof(*keys)))
+        {
+            p = *lp;
+            *lp = (*lp)->next;
+            qe_free(&p);
+            return 1;
+        }
+        lp = &(*lp)->next;
+    }
+    return 0;
+}
+
 /* if mode is non NULL, the defined keys are only active in this mode */
 static int qe_register_command_bindings(ModeDef *m, const CmdDef *d, const char *keystr)
 {
@@ -361,6 +384,17 @@ static int qe_register_command_bindings(ModeDef *m, const CmdDef *d, const char 
 
 int qe_register_bindings(ModeDef *m, const char *cmd_name, const char *keys) {
     return qe_register_command_bindings(m, qe_find_cmd(cmd_name), keys);
+}
+
+static void qe_unregister_bindings(ModeDef *m, const char *keystr) {
+    unsigned int keys[MAX_KEYS];
+    int nb_keys;
+    const char *p = keystr;
+
+    while (p && *p) {
+        nb_keys = strtokeys(p, keys, MAX_KEYS, &p);
+        qe_unregister_binding(m, keys, nb_keys);
+    }
 }
 
 /* if mode is non NULL, the defined keys are only active in this mode */
@@ -416,6 +450,10 @@ void do_set_key(EditState *s, const char *keystr,
         put_status(s, "Invalid command: %s", cmd_name);
 }
 
+void do_unset_key(EditState *s, const char *keystr, int local) {
+    qe_unregister_bindings(local ? s->mode : NULL, keystr);
+}
+
 void do_toggle_control_h(EditState *s, int set)
 {
     /* Achtung Minen! do_toggle_control_h can be called from tty_init
@@ -462,17 +500,81 @@ void do_toggle_control_h(EditState *s, int set)
     }
 }
 
-void do_set_emulation(EditState *s, const char *name)
-{
+static const char * const epsilon_bindings[] = {
+    "C-w", "isearch-toggle-word-match", "isearch",
+    "M-w", "isearch-yank-word", "isearch",
+    "C-y", "isearch-yank-kill", "isearch",
+    "M-y", "isearch-yank-line", "isearch",
+    "C-\\", "call-last-kbd-macro", NULL,
+    "C-x C-l", "compare-windows", NULL,
+    "C-x RET", "shell", NULL,
+    "C-x d", "delete-window", NULL,
+    "M-SPC", "set-mark-command", NULL,
+    "M-[", "backward-paragraph", NULL,
+    "M-]", "forward-paragraph", NULL,
+    "M-j", "fill-paragraph", NULL,
+    "M-k", "kill-beginning-of-line", NULL,
+    "M-q", "query-replace", NULL,
+    "M-{", "scroll-left", NULL,
+    "M-}", "scroll-right", NULL,
+    NULL
+};
+
+static const char * const emacs_bindings[] = {
+    "C-w", "isearch-yank-word", "isearch",
+    "M-w", "isearch-toggle-word-match", "isearch",
+    "C-y", "isearch-yank-line", "isearch",
+    "M-y", "isearch-yank-kill", "isearch",
+    "C-\\", "toggle-input-method", NULL,
+    "C-x C-l", "downcase-region", NULL,
+    "C-x RET", NULL, NULL,
+    "C-x d", "dired", NULL,
+    "M-SPC", "just-one-space", NULL,
+    "M-[", NULL, NULL,
+    "M-]", NULL, NULL,
+    "M-j", "indent-new-comment-line", NULL,
+    "M-k", "kill-sentence", NULL,
+    "M-q", "fill-paragraph", NULL,
+    "M-{", "backward-paragraph", NULL,
+    "M-}", "forward-paragraph", NULL,
+    NULL
+};
+
+static const char * const gosmacs_bindings[] = {
+    NULL
+};
+
+static void register_emulation_bindings(QEmacsState *qs, const char * const *pp) {
+    int i;
+    for (i = 0; pp[i]; i += 3) {
+        ModeDef *mode = NULL;
+        if (pp[i + 2]) {
+            mode = qe_find_mode(pp[i + 2], 0);
+            if (!mode)
+                continue;
+        }
+        qe_unregister_bindings(mode, pp[i]);
+        if (pp[i])
+            qe_register_bindings(mode, pp[i + 1], pp[i]);
+    }
+}
+
+void do_set_emulation(EditState *s, const char *name) {
     QEmacsState *qs = s->qe_state;
 
     if (strequal(name, "epsilon")) {
+        register_emulation_bindings(qs, epsilon_bindings);
         qs->emulation_flags = 1;
         qs->flag_split_window_change_focus = 1;
     } else
     if (strequal(name, "emacs") || strequal(name, "xemacs")) {
+        register_emulation_bindings(qs, emacs_bindings);
         qs->emulation_flags = 0;
         qs->flag_split_window_change_focus = 0;
+    } else
+    if (strequal(name, "gosmacs")) {
+        register_emulation_bindings(qs, gosmacs_bindings);
+        qs->emulation_flags = 2;
     } else
     if (strequal(name, "vi") || strequal(name, "vim")) {
         put_status(s, "Emulation '%s' not available yet", name);
@@ -4722,6 +4824,7 @@ static void generic_text_display(EditState *s)
 
 typedef struct ExecCmdState {
     EditState *s;
+    void *opaque;
     const CmdDef *d;
     int nb_args;
     int argval;
@@ -4742,6 +4845,8 @@ typedef struct ExecCmdState {
    - void (*)(EditState *, const char *, const char *); (6)
    - void (*)(EditState *, const char *, const char *, const char *); (2)
    - void (*)(EditState *, const char *, const char *, int); (2)
+   - void (*)(ISearchState *); (?)
+   - void (*)(ISearchState *, int); (?)
 */
 void call_func(CmdSig sig, CmdProto func, qe__unused__ int nb_args,
                CmdArg *args, qe__unused__ unsigned char *args_type)
@@ -4773,6 +4878,14 @@ void call_func(CmdSig sig, CmdProto func, qe__unused__ int nb_args,
         break;
     case CMD_ESsss:  /* ES + string + string + string */
         (*func.ESsss)(args[0].s, args[1].p, args[2].p, args[3].p);
+        break;
+    case CMD_ISS:    /* ISS, no other arguments */
+        // XXX: Must test for actual argument type
+        (*func.ISS)(args[0].vp);
+        break;
+    case CMD_ISSi:   /* ISS + integer */
+        // XXX: Must test for actual argument type
+        (*func.ISSi)(args[0].vp, args[1].n);
         break;
     }
 }
@@ -4896,6 +5009,7 @@ int qe_get_prototype(const CmdDef *d, char *buf, int size)
             buf_printf(out, "%sstring ", sep);
             break;
         case CMD_ARG_WINDOW:
+        case CMD_ARG_OPAQUE:
         case CMD_ARG_INTVAL:
         case CMD_ARG_STRINGVAL:
         default:
@@ -4936,7 +5050,7 @@ static void arg_edit_cb(void *opaque, char *str);
 static void parse_arguments(ExecCmdState *es);
 static void free_cmd(ExecCmdState **esp);
 
-void exec_command(EditState *s, const CmdDef *d, int argval, int key)
+void exec_command(EditState *s, const CmdDef *d, int argval, int key, void *opaque)
 {
     ExecCmdState *es;
     const char *argdesc;
@@ -4958,14 +5072,20 @@ void exec_command(EditState *s, const CmdDef *d, int argval, int key)
         return;
 
     es->s = s;
+    es->opaque = opaque;
     es->d = d;
     es->argval = argval;
     es->key = key;
     es->nb_args = 0;
 
     /* first argument is always the window */
-    es->args[0].s = s;
-    es->args_type[0] = CMD_ARG_WINDOW;
+    if (opaque) {
+        es->args[0].vp = opaque;
+        es->args_type[0] = CMD_ARG_OPAQUE;
+    } else {
+        es->args[0].s = s;
+        es->args_type[0] = CMD_ARG_WINDOW;
+    }
     es->nb_args++;
     es->ptype = argdesc;
 
@@ -5186,7 +5306,7 @@ void do_execute_command(EditState *s, const char *cmd, int argval)
     /* XXX: should test for '(' and '=' and evaluate script instead */
     d = qe_find_cmd(cmd);
     if (d) {
-        exec_command(s, d, argval, 0);
+        exec_command(s, d, argval, 0, NULL);
     } else {
         put_status(s, "No command %s", cmd);
     }
@@ -5531,27 +5651,28 @@ static void qe_key_init(QEKeyContext *c)
     c->buf[0] = '\0';
 }
 
-KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd)
+KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd, int exact)
 {
     for (; kd != NULL; kd = kd->next) {
         if (kd->nb_keys >= nb_keys
-        &&  !memcmp(kd->keys, keys, nb_keys * sizeof(keys[0]))) {
+        &&  !memcmp(kd->keys, keys, nb_keys * sizeof(keys[0]))
+        &&  (!exact || kd->nb_keys == nb_keys)) {
             break;
         }
     }
     return kd;
 }
 
-KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m)
+KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m, int exact)
 {
     QEmacsState *qs = &qe_state;
 
     for (; m; m = m->fallback) {
-        KeyDef *kd = qe_find_binding(keys, nb_keys, m->first_key);
+        KeyDef *kd = qe_find_binding(keys, nb_keys, m->first_key, exact);
         if (kd != NULL)
             return kd;
     }
-    return qe_find_binding(keys, nb_keys, qs->first_key);
+    return qe_find_binding(keys, nb_keys, qs->first_key, exact);
 }
 
 static void qe_key_process(int key)
@@ -5610,7 +5731,7 @@ static void qe_key_process(int key)
     }
 
     /* see if one command is found */
-    kd = qe_find_current_binding(c->keys, c->nb_keys, s->mode);
+    kd = qe_find_current_binding(c->keys, c->nb_keys, s->mode, 0);
     if (!kd) {
         /* no key found */
         unsigned int key_default = KEY_DEFAULT;
@@ -5631,7 +5752,7 @@ static void qe_key_process(int key)
                         goto next;
                     }
                 }
-                kd = qe_find_current_binding(&key_default, 1, s->mode);
+                kd = qe_find_current_binding(&key_default, 1, s->mode, 1);
                 if (kd)
                     goto exec_cmd;
             }
@@ -5690,7 +5811,7 @@ static void qe_key_process(int key)
                  * dispatching the command
                  */
                 qe_key_init(c);
-                exec_command(s, d, argval, key);
+                exec_command(s, d, argval, key, NULL);
             }
             qe_key_init(c);
             edit_display(qs);

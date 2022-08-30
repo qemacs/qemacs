@@ -235,10 +235,9 @@ static int unihex_mode_probe(ModeDef *mode, ModeProbeData *p)
 /* additional mode specific bindings */
 static const char * const unihex_bindings[] = {
     // XXX: Should use fallback mode for these bindings
-    "decrease-width", "C-left",
-    "increase-width", "C-right",
-    "toggle-hex", "TAB",
-    "toggle-hex", "S-TAB",
+    "C-left", "decrease-width",
+    "C-right", "increase-width",
+    "TAB, S-TAB", "toggle-hex",
     NULL
 };
 

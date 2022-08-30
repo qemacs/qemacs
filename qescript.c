@@ -575,7 +575,7 @@ static int qe_cfg_expr(QEmacsDataSource *ds, QEValue *sp, int prec0) {
             case '(': /* function call */
                 if (sp->type == TOK_ID) {
                     const CmdDef *d = qe_find_cmd(sp->u.str);
-                    if (!d) {
+                    if (!d || d->sig >= CMD_ISS) {
                         put_status(ds->s, "unknown command '%s'", sp->u.str);
                         return 1;
                     }

@@ -846,40 +846,6 @@ void do_transpose(EditState *s, int cmd)
     s->offset = end_offset;
 }
 
-/* remove a key binding from mode or globally */
-static int qe_unregister_binding(unsigned int *keys, int nb_keys, ModeDef *m)
-{
-    QEmacsState *qs = &qe_state;
-    KeyDef **lp, *p;
-
-    lp = m ? &m->first_key : &qs->first_key;
-    while (*lp) {
-        if ((*lp)->nb_keys == nb_keys
-        &&  !memcmp((*lp)->keys, keys, nb_keys * sizeof(*keys)))
-        {
-            p = *lp;
-            *lp = (*lp)->next;
-            qe_free(&p);
-            return 1;
-        }
-        lp = &(*lp)->next;
-    }
-    return 0;
-}
-
-static void do_unset_key(EditState *s, const char *keystr, int local)
-{
-    unsigned int keys[MAX_KEYS];
-    int nb_keys;
-
-    /* XXX: should handle multiple bindings? */
-    nb_keys = strtokeys(keystr, keys, MAX_KEYS, NULL);
-    if (!nb_keys)
-        return;
-
-    qe_unregister_binding(keys, nb_keys, local ? s->mode : NULL);
-}
-
 /*---------------- help ----------------*/
 
 int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size)
@@ -894,7 +860,7 @@ int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int
         for (; kd != NULL; kd = kd->next) {
             /* do not list overridden bindings */
             if (kd->cmd == d
-            &&  qe_find_current_binding(kd->keys, kd->nb_keys, mode0) == kd) {
+            &&  qe_find_current_binding(kd->keys, kd->nb_keys, mode0, 1) == kd) {
                 if (out->len > 0)
                     buf_puts(out, ", ");
 
@@ -1791,6 +1757,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
         if (flags & SF_PARAGRAPH) {
             int offset1;
             /* paragraph sorting: skip continuation lines */
+            // XXX: Should ignore initial indent
             while (offset < p2 && qe_isspace(eb_nextc(b, offset, &offset1))) {
                 chunk_array[i].end = offset = eb_goto_eol(b, offset);
                 offset = eb_next(b, offset);
@@ -2347,6 +2314,9 @@ static const CmdDef extra_commands[] = {
           "Sort the lines in the region from the current column",
           do_sort_region, ESii, "*" "p" "v", SF_COLUMN)
     CMD3( "sort-lines", "",
+          "Sort the lines in the region according to sorting options",
+          do_sort_region, ESii, "*" "p" "v", 0)
+    CMD3( "sort-region", "",
           "Sort the lines in the region according to sorting options",
           do_sort_region, ESii, "*" "p" "v", 0)
     CMD3( "sort-numbers", "",

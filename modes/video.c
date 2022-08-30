@@ -998,7 +998,7 @@ static const CmdDef video_commands[] = {
 
 /* additional mode specific bindings */
 static const char * const video_bindings[] = {
-    "toggle-full-screen", "f",
+    "f", "toggle-full-screen",
     NULL
 };
 
