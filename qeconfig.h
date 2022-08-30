@@ -261,19 +261,18 @@ static const CmdDef basic_commands[] = {
           do_execute_command, ESsi,
           "s{Command: }[command]|command|"
           "P")
-    /* M-0 thru M-9 also start numeric argument */
-    CMD0( "universal-argument",
+    CMD2( "universal-argument",
           "C-u",
           "Set or multiply the numeric argument by 4",
-          do_prefix_argument)
-    CMD0( "negative-argument",
+          do_prefix_argument, ESi, "k")
+    CMD2( "negative-argument",
           "M--",
           "Negate or set the numeric argument to -1",
-          do_prefix_argument)
-    CMD0( "digit-argument",
+          do_prefix_argument, ESi, "k")
+    CMD2( "digit-argument",
           "M-0, M-1, M-2, M-3, M-4, M-5, M-6, M-7, M-8, M-9",
           "Set the numeric prefix argument",
-          do_prefix_argument)
+          do_prefix_argument, ESi, "k")
     CMD0( "keyboard-quit",
           "C-g, C-x C-g, C-c C-g, C-h C-g, ESC ESC ESC",
           "Abort the current command",

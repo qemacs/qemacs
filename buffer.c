@@ -2330,6 +2330,7 @@ int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap)
      * buf may contain \0 characters via the %c modifer.
      * XXX: %c does not encode non ASCII characters as utf8.
      */
+    // XXX: should insert at b->offset
     written = eb_insert_utf8_buf(b, b->total_size, buf, len);
 #ifdef CONFIG_WIN32
     if (buf != buf0)

@@ -843,7 +843,7 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
 
     while ((ret = parse_arg(&r, &cas)) != 0) {
         if (ret < 0 || nb_args >= MAX_CMD_ARGS) {
-            put_status(s, "Badly defined command '%s'", d->name);
+            put_status(s, "Invalid command definition '%s'", d->name);
             return -1;
         }
         args[nb_args].p = NULL;

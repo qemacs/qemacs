@@ -476,7 +476,6 @@ static void isearch_end(ISearchState *is) {
         last_search_u32_flags = is->search_flags;
     }
     is->search_flags &= ~SEARCH_FLAG_ACTIVE;
-    qe_ungrab_keys();
     edit_display(s->qe_state);
     dpy_flush(s->screen);
 }
@@ -545,7 +544,12 @@ static void isearch_key(void *opaque, int key) {
             }
         }
     }
-    isearch_run(is);
+    if (is->search_flags & SEARCH_FLAG_ACTIVE) {
+        isearch_run(is);
+    } else {
+        /* This should free the ISearchState grab data if allocated */
+        qe_ungrab_keys();
+    }
 #else
     ISearchState *is = opaque;
     int emacs_behaviour = !is->s->qe_state->emulation_flags;
@@ -648,7 +652,12 @@ static void isearch_key(void *opaque, int key) {
         }
         break;
     }
-    isearch_run(is);
+    if (flags & SEARCH_FLAG_ACTIVE) {
+        isearch_run(is);
+    } else {
+        /* This should free the ISearchState grab data if allocated */
+        qe_ungrab_keys();
+    }
 #endif
 }
 
@@ -793,10 +802,11 @@ static void query_replace_abort(QueryReplaceState *is)
 {
     EditState *s = is->s;
 
-    qe_ungrab_keys();
     s->b->mark = is->start_offset;
     s->region_style = 0;
     put_status(NULL, "Replaced %d occurrences", is->nb_reps);
+    /* Achtung: should free the grab data */
+    qe_ungrab_keys();
     qe_free(&is);
     edit_display(s->qe_state);
     dpy_flush(s->screen);

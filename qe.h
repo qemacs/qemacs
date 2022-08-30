@@ -152,6 +152,10 @@ static inline const char *cs8(const u8 *p) { return (const char*)p; }
 #define INT_MIN  (-0x7fffffff-1)
 #endif
 #define NO_ARG  INT_MIN
+#define HAS_ARG_NUMERIC  0x100
+#define HAS_ARG_SIGN     0x200
+#define HAS_ARG_NEGATIVE 0x400
+
 #define MAX_FILENAME_SIZE    1024       /* Size for a filename buffer */
 #define MAX_BUFFERNAME_SIZE  256        /* Size for a buffer name buffer */
 #define MAX_CMDNAME_SIZE     32         /* Size for a command name buffer */
@@ -1833,6 +1837,7 @@ typedef union CmdArg {
 
 typedef struct CmdArgSpec {
     int arg_type;
+    int code_letter;
     char completion[32];
     char history[32];
     char prompt[1024];   /* used for keyboard macros */
@@ -2325,7 +2330,7 @@ int parse_arg(const char **pp, CmdArgSpec *ap);
 void exec_command(EditState *s, const CmdDef *d, int argval, int key, void *opaque);
 void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);
-void do_prefix_argument(EditState *s);
+void do_prefix_argument(EditState *s, int key);
 void do_start_kbd_macro(EditState *s);
 void do_end_kbd_macro(EditState *s);
 void do_call_last_kbd_macro(EditState *s);

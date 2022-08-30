@@ -25,6 +25,10 @@
 
 ### Core / Buffer / Input
 
+* `parse_arg()` should handle default argument values
+* `eb_printf()` and friends should output to `b->offset` instead of `b->total_size`
+* in command specs, distinguish between interactive commands and non
+  interactive functions, such as the isearch-xxx functions
 * [BUG] ^C does not work on OpenBSD
 * use tabulation context for `text_screen_width`
 * pass raw prefix argument `P` as combination of has_arg (flags) and argval (number)

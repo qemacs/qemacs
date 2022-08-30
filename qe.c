@@ -1614,8 +1614,9 @@ int do_delete_selection(EditState *s)
     return res;
 }
 
-void do_char(EditState *s, int key, int argval)
-{
+void do_char(EditState *s, int key, int argval) {
+    int repeat = (argval == NO_ARG) ? 1 : max(0, argval);
+
 #ifndef CONFIG_TINY
     if (s->b->flags & BF_PREVIEW) {
         if (key == KEY_SPC) {
@@ -1633,11 +1634,9 @@ void do_char(EditState *s, int key, int argval)
     /* Delete hilighted region */
     do_delete_selection(s);
 
-    for (;;) {
-        if (s->mode->write_char)
+    if (s->mode->write_char) {
+        while (repeat --> 0)
             s->mode->write_char(s, key);
-        if (argval-- <= 1)
-            break;
     }
 }
 
@@ -1802,6 +1801,7 @@ void text_write_char(EditState *s, int key)
 
 struct QuoteKeyArgument {
     EditState *s;
+    int has_arg;
     int argval;
 };
 
@@ -1810,8 +1810,10 @@ static void quote_key(void *opaque, int key)
 {
     struct QuoteKeyArgument *qa = opaque;
     EditState *s = qa->s;
+    int repeat = qa->argval;
 
     put_status(s, "");  /* erase "Quote: " message */
+    /* Achtung! this should free the grab data */
     qe_ungrab_keys();
 
     if (!s)
@@ -1825,12 +1827,10 @@ static void quote_key(void *opaque, int key)
 
     if (s->mode->write_char) {
         QEmacsState *qs = s->qe_state;
-        int argval = qa->argval;
-
         int save_overwrite = s->overwrite;
         /* quoted-insert always inserts characters */
         s->overwrite = 0;
-        for (;;) {
+        while (repeat --> 0) {
             if (KEY_IS_SPECIAL(key)) {
                 /* Insert the byte sequence received from the terminal */
                 int i;
@@ -1839,8 +1839,6 @@ static void quote_key(void *opaque, int key)
             } else {
                 s->mode->write_char(s, key);
             }
-            if (argval-- <= 1)
-                break;
         }
         s->overwrite = save_overwrite;
         edit_display(s->qe_state);
@@ -1848,12 +1846,12 @@ static void quote_key(void *opaque, int key)
     }
 }
 
-void do_quoted_insert(EditState *s, int argval)
-{
+void do_quoted_insert(EditState *s, int argval) {
     struct QuoteKeyArgument *qa = qe_mallocz(struct QuoteKeyArgument);
 
     qa->s = s;
-    qa->argval = argval;
+    qa->has_arg = (argval != NO_ARG);
+    qa->argval = qa->has_arg ? argval : 1;
 
     qe_grab_keys(quote_key, qa);
     put_status(s, "Quote: ");
@@ -2174,8 +2172,13 @@ void do_kill_word(EditState *s, int n)
     }
 }
 
-void do_yank(EditState *s)
-{
+void do_yank(EditState *s) {
+    /* The behavior is different from emacs:
+       emacs: with a C-u prefix, set mark at the end and point at the
+         beginning of the yanked block. With a numeric prefix, yank
+         the n-th element of the kill-ring
+       qemacs: with a C-u prefix, yank n copies of the last killed block
+     */
     int size;
     QEmacsState *qs = s->qe_state;
     EditBuffer *b;
@@ -4827,6 +4830,7 @@ typedef struct ExecCmdState {
     void *opaque;
     const CmdDef *d;
     int nb_args;
+    int has_arg;
     int argval;
     int key;
     const char *ptype;
@@ -4934,38 +4938,34 @@ int parse_arg(const char **pp, CmdArgSpec *ap)
     get_param(&p, '[', ']', ap->completion, sizeof(ap->completion));
     get_param(&p, '|', '|', ap->history, sizeof(ap->history));
     type = 0;
-    /* code letters modeled after emacs (interactive) function */
-    switch (tc) {
+    /* code letters modeled after emacs (interactive) function code letters */
+    switch (ap->code_letter = tc) {
+    case 'd':  /* point as a number */
+        type = CMD_ARG_INT | CMD_ARG_USE_POINT;
+        break;
+    case 'e':  /* the buffer size, used to select full buffer contents */
+        type = CMD_ARG_INT | CMD_ARG_USE_BSIZE;
+        break;
     case 'k':  /* last key typed */
         type = CMD_ARG_INT | CMD_ARG_USE_KEY;
         break;
-    case 'P':  /* raw prefix argument */
+    case 'm':  /* buffer mark as a number */
+        type = CMD_ARG_INT | CMD_ARG_USE_MARK;
+        break;
+    case 'n':  /* number read from minibuffer */
+        type = CMD_ARG_INT;
+        break;
     case 'N':  /* numeric prefix argument else get from minibuffer */
         type = CMD_ARG_INT | CMD_ARG_RAW_ARGVAL;
         break;
     case 'p':  /* number: converted prefix argument */
         type = CMD_ARG_INT | CMD_ARG_NUM_ARGVAL;
         break;
+    case 'P':  /* raw prefix argument */
+        type = CMD_ARG_INT | CMD_ARG_RAW_ARGVAL;  /* kludge! */
+        break;
     case 'q':  /* number: negated converted prefix argument */
         type = CMD_ARG_INT | CMD_ARG_NEG_ARGVAL;
-        break;
-    case 'm':  /* buffer mark as a number */
-        type = CMD_ARG_INT | CMD_ARG_USE_MARK;
-        break;
-    case 'd':  /* point as a number */
-        type = CMD_ARG_INT | CMD_ARG_USE_POINT;
-        break;
-    case 'z':  /* the number 0, used to select full buffer contents */
-        type = CMD_ARG_INT | CMD_ARG_USE_ZERO;
-        break;
-    case 'e':  /* the buffer size, used to select full buffer contents */
-        type = CMD_ARG_INT | CMD_ARG_USE_BSIZE;
-        break;
-    case 'n':  /* number read from minibuffer */
-        type = CMD_ARG_INT;
-        break;
-    case 'v':  /* the immediate value from CmdDef val field */
-        type = CMD_ARG_INTVAL;
         break;
     case 's':  /* string read from minibuffer */
         type = CMD_ARG_STRING;
@@ -4975,6 +4975,12 @@ int parse_arg(const char **pp, CmdArgSpec *ap)
         /* must be the last argument */
         type = CMD_ARG_STRINGVAL;
         break;
+    case 'v':  /* the immediate value from CmdDef val field */
+        type = CMD_ARG_INTVAL;
+        break;
+    case 'z':  /* the number 0, used to select full buffer contents */
+        type = CMD_ARG_INT | CMD_ARG_USE_ZERO;
+        break;
     default:
         return -1;
     }
@@ -4983,8 +4989,7 @@ int parse_arg(const char **pp, CmdArgSpec *ap)
     return 1;
 }
 
-int qe_get_prototype(const CmdDef *d, char *buf, int size)
-{
+int qe_get_prototype(const CmdDef *d, char *buf, int size) {
     buf_t outbuf, *out;
     const char *r;
     const char *sep = "";
@@ -5016,26 +5021,27 @@ int qe_get_prototype(const CmdDef *d, char *buf, int size)
             continue;
         }
         sep = ", ";
-        switch (cas.arg_type & ~CMD_ARG_TYPE_MASK) {
-        case CMD_ARG_RAW_ARGVAL:
-        case CMD_ARG_NUM_ARGVAL:
-        case CMD_ARG_NEG_ARGVAL:
-            buf_puts(out, "= argval");
-            break;
-        case CMD_ARG_USE_KEY:
-            buf_puts(out, "= key");
-            break;
-        case CMD_ARG_USE_MARK:
-            buf_puts(out, "= mark");
-            break;
-        case CMD_ARG_USE_POINT:
+        switch (cas.code_letter) {
+        case 'd':
             buf_puts(out, "= point");
             break;
-        case CMD_ARG_USE_ZERO:
-            buf_puts(out, "= 0");
-            break;
-        case CMD_ARG_USE_BSIZE:
+        case 'e':
             buf_puts(out, "= bufsize");
+            break;
+        case 'k':
+            buf_puts(out, "= key");
+            break;
+        case 'm':
+            buf_puts(out, "= mark");
+            break;
+        case 'N':
+        case 'p':
+        case 'P':
+        case 'q':
+            buf_puts(out, "= argval");
+            break;
+        case 'z':
+            buf_puts(out, "= 0");
             break;
         default:
             buf_puts(out, *cas.history ? cas.history : cas.completion);
@@ -5074,7 +5080,13 @@ void exec_command(EditState *s, const CmdDef *d, int argval, int key, void *opaq
     es->s = s;
     es->opaque = opaque;
     es->d = d;
-    es->argval = argval;
+    if (argval == NO_ARG) {
+        es->has_arg = 0;
+        es->argval = 1;
+    } else {
+        es->has_arg = 1;
+        es->argval = argval;
+    }
     es->key = key;
     es->nb_args = 0;
 
@@ -5122,36 +5134,23 @@ static void parse_arguments(ExecCmdState *es)
             argp->p = cas.prompt;
             break;
         case CMD_ARG_INT:
-            if (use_flag == CMD_ARG_USE_KEY) {
-                argp->n = es->key;
-            } else
-            if (use_flag == CMD_ARG_USE_MARK) {
-                argp->n = s->b->mark;
-            } else
-            if (use_flag == CMD_ARG_USE_POINT) {
-                argp->n = s->offset;
-            } else
-            if (use_flag == CMD_ARG_USE_ZERO) {
-                argp->n = 0;
-            } else
-            if (use_flag == CMD_ARG_USE_BSIZE) {
-                argp->n = s->b->total_size;
-            } else
-            if (use_flag == CMD_ARG_RAW_ARGVAL && es->argval != NO_ARG) {
-                argp->n = es->argval;
-                es->argval = NO_ARG;
-            } else
-            if (use_flag == CMD_ARG_NUM_ARGVAL) {
-                argp->n = ((es->argval == NO_ARG) ? 1 : es->argval);
-                es->argval = NO_ARG;
-            } else
-            if (use_flag == CMD_ARG_NEG_ARGVAL) {
-                argp->n = -((es->argval == NO_ARG) ? 1 : es->argval);
-                es->argval = NO_ARG;
-            } else {
+            switch (cas.code_letter) {
+            case 'd':   argp->n = s->offset;    break;
+            case 'e':   argp->n = s->b->total_size; break;
+            case 'k':   argp->n = es->key;      break;
+            case 'm':   argp->n = s->b->mark;   break;
+            case 'n':   argp->n = 0; get_arg = 1; break;
+            case 'N':   argp->n = es->argval; get_arg = !es->has_arg; goto consume_arg;
+            case 'p':   argp->n = es->argval;   goto consume_arg;
+            case 'P':   argp->n = es->has_arg ? es->argval : NO_ARG; goto consume_arg;
+            case 'q':   argp->n = -es->argval;  goto consume_arg;
+            case 'z':
                 /* CG: Should add syntax for default value if no prompt */
-                argp->n = NO_ARG;
-                get_arg = 1;
+            default:    argp->n = 0;            break; /* invalid */
+            consume_arg:
+                es->has_arg = 0;
+                es->argval = 1;
+                break;
             }
             break;
         case CMD_ARG_STRING:
@@ -5193,17 +5192,20 @@ static void parse_arguments(ExecCmdState *es)
     }
 
     /* all arguments are parsed: we can now execute the command */
-    /* argval is handled as repetition count if not taken as argument */
-    if (es->argval != NO_ARG && es->argval > 1) {
+    /* if not taken as argument, argval is handled as repetition count.
+       A negative or zero count prevents executing the command, unless it
+       takes the prefix argument explicitly */
+    if (es->has_arg && es->argval >= 0) {
         rep_count = es->argval;
     } else {
         rep_count = 1;
     }
+    // XXX: reset es->argval?
 
     qs->this_cmd_func = d->action.func;
     qs->cmd_start_time = get_clock_ms();
 
-    while (rep_count--) {
+    while (rep_count --> 0) {
         /* special case for hex mode */
         if (d->action.ESii != do_char) {
             s->hex_nibble = 0;
@@ -5593,16 +5595,9 @@ static void macro_add_key(int key)
     qs->macro_keys[qs->nb_macro_keys++] = key;
 }
 
-void do_prefix_argument(qe__unused__ EditState *s)
-{
-    /* nothing is done there (see qe_key_process()) */
-}
-
 typedef struct QEKeyContext {
+    int has_arg;
     int argval;
-    int noargval;
-    int sign;
-    int is_numeric_arg;
     int is_escape;
     int nb_keys;
     int describe_key; /* if true, the following command is only displayed */
@@ -5612,7 +5607,49 @@ typedef struct QEKeyContext {
     char buf[128];
 } QEKeyContext;
 
+// XXX: Should be accessible via qe_state
 static QEKeyContext key_ctx;
+
+void do_prefix_argument(qe__unused__ EditState *s, int key) {
+    /* Behavior of prefix-argument keys:
+       C-u:
+       increment c->has_arg
+       if !c->is_numeric_arg: multiply the c->argval by 4
+       '-':
+       if !c->is_numeric_arg: negate c->sign and set c->has_arg
+       else: normal key
+       A--: negate c->sign and set c->has_arg
+       0-9 and A-0 to A-9:
+       if !c->is_numeric_arg: set c->arval and c->is_numeric_arg
+       else: multiply c->argval and add digit
+     */
+    /* XXX: should get key_ctx from s->qe_state */
+    QEKeyContext *c = &key_ctx;
+
+    if (key == KEY_CTRL('u')) {
+        /* increment has_arg and multiply argval unless already numeric */
+        if (!(c->has_arg & HAS_ARG_NUMERIC))
+            c->argval *= 4;
+        c->has_arg++;
+        c->nb_keys = 0;
+    } else
+    if ((key >= '0' && key <= '9')
+    ||  (key >= KEY_META('0') && key <= KEY_META('9'))) {
+        if (!(c->has_arg & HAS_ARG_NUMERIC)) {
+            c->has_arg |= HAS_ARG_NUMERIC;
+            c->argval = 0;
+        }
+        c->argval = c->argval * 10 + (key & 15);
+        c->nb_keys = 0;
+    } else
+    if ((key == '-' && !(c->has_arg & HAS_ARG_NUMERIC))
+    ||  (key == KEY_META('-'))) {
+        /* negate argument sign and set has_arg */
+        c->has_arg ^= HAS_ARG_NEGATIVE;
+        c->has_arg |= HAS_ARG_SIGN;
+        c->nb_keys = 0;
+    }
+}
 
 /*
  * All typed keys are sent to the callback. Previous grab is aborted
@@ -5634,19 +5671,16 @@ void qe_ungrab_keys(void)
 {
     QEKeyContext *c = &key_ctx;
 
-    /* CG: Should free previous grab? */
+    /* CG: Should have an indicator to free previous grab */
     c->grab_key_cb = NULL;
     c->grab_key_opaque = NULL;
 }
 
 /* init qe key handling context */
-static void qe_key_init(QEKeyContext *c)
-{
-    c->is_numeric_arg = 0;
+static void qe_key_init(QEKeyContext *c) {
+    c->has_arg = 0;
+    c->argval = 1;
     c->is_escape = 0;
-    c->noargval = 1;
-    c->argval = NO_ARG;
-    c->sign = 1;
     c->nb_keys = 0;
     c->buf[0] = '\0';
 }
@@ -5691,6 +5725,7 @@ static void qe_key_process(int key)
     }
 
   again:
+    // XXX: shound test for help-popup
     if (c->grab_key_cb) {
         /* grabber should return codes for quit / fall thru / ungrab */
         c->grab_key_cb(c->grab_key_opaque, key);
@@ -5738,19 +5773,11 @@ static void qe_key_process(int key)
 
         if (c->nb_keys == 1) {
             if (!KEY_IS_SPECIAL(key) && !KEY_IS_CONTROL(key)) {
-                if (c->is_numeric_arg) {
-                    if (qe_isdigit(key)) {
-                        if (c->argval == NO_ARG)
-                            c->argval = 0;
-                        c->argval = c->argval * 10 + (key - '0');
-                        c->nb_keys = 0;
+                if (c->has_arg) {
+                    do_prefix_argument(s, key);
+                    /* check if key was consumed by do_prefix_argument */
+                    if (!c->nb_keys)
                         goto next;
-                    } else
-                    if (key == '-' && c->argval == NO_ARG) {
-                        c->sign = -c->sign;
-                        c->nb_keys = 0;
-                        goto next;
-                    }
                 }
                 kd = qe_find_current_binding(&key_default, 1, s->mode, 1);
                 if (kd)
@@ -5776,36 +5803,32 @@ static void qe_key_process(int key)
     if (c->nb_keys == kd->nb_keys) {
     exec_cmd:
         d = kd->cmd;
-        if (d->action.ES == do_prefix_argument && !c->describe_key) {
-            /* special handling for numeric argument */
-            /* CG: XXX: should display value of numeric argument */
-            if (key == '-' || key == KEY_META('-')) {
-                c->sign = -c->sign;
-            } else
-            if ((key >= '0' && key <= '9')
-            ||  (key >= KEY_META('0') && key <= KEY_META('9'))) {
-                if (c->is_numeric_arg == 0)
-                    c->argval = 0;
-                c->argval = c->argval * 10 + (key & 15);
-            } else {  /* KEY_CTRL('u') */
-                c->noargval = c->noargval * 4;
-            }
-            c->is_numeric_arg = 1;
+        if (d->action.ESi == do_prefix_argument && !c->describe_key) {
+            do_prefix_argument(s, key);
+            /* always consume the key */
             c->nb_keys = 0;
+            goto next;
         } else {
-            if (c->is_numeric_arg) {
-                if (c->argval == NO_ARG)
-                    c->argval = c->noargval;
-                c->argval *= c->sign;
-            }
+            if (c->has_arg & HAS_ARG_NEGATIVE)
+                c->argval = -c->argval;
             if (c->describe_key) {
                 out = buf_init(&outbuf, buf1, sizeof(buf1));
                 buf_put_keys(out, c->keys, c->nb_keys);
-                put_status(s, "%s runs the command %s", buf1, d->name);
+                if (c->has_arg) {
+                    int save_offset = s->b->offset;
+                    s->b->offset = s->offset;
+                    eb_printf(s->b, "%s runs the command %s", buf1, d->name);
+                    s->b->offset = save_offset;
+                } else {
+                    put_status(s, "%s runs the command %s", buf1, d->name);
+                }
                 c->describe_key = 0;
             } else {
                 int argval = c->argval;
-
+                if (!c->has_arg) {
+                    // XXX: temporary hack
+                    argval = NO_ARG;
+                }
                 /* To allow recursive calls to qe_key_process, especially
                  * from macros, we reset the QEKeyContext before
                  * dispatching the command
