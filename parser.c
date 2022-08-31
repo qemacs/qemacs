@@ -22,18 +22,20 @@
 #include "qe.h"
 #include "variables.h"
 
-/* config file parsing */
+/* minimalist config file parsing */
 
 /* CG: error messages should go to the *error* buffer.
  * displayed as a popup upon start.
  */
 
 typedef struct QEmacsDataSource {
-    const char *filename;
+    EditState *s;
+    const char *filename;   // source filename
+    const char *p;
     FILE *f;
     EditBuffer *b;
     const char *str;
-    int line_num;
+    int line_num;           // source line number
     int pos, len;
     int offset, stop;
 } QEmacsDataSource;
@@ -57,6 +59,7 @@ static int expect_token(const char **pp, int tok) {
     }
 }
 
+// XXX: Should use strunquote parser from util.c
 static int qe_cfg_parse_string(EditState *s, const char **pp,
                                char *dest, int size)
 {
@@ -64,12 +67,14 @@ static int qe_cfg_parse_string(EditState *s, const char **pp,
     int delim = *p++;
     int res = 0;
     int pos = 0;
+    int end = size - 1;
 
+    /* should check for delim at *p and return -1 if no string */
     for (;;) {
         /* encoding issues deliberately ignored */
         int c = *p;
         if (c == '\n' || c == '\0') {
-            put_status(s, "Unterminated string");
+            put_status(s, "unterminated string");
             res = -1;
             break;
         }
@@ -79,22 +84,17 @@ static int qe_cfg_parse_string(EditState *s, const char **pp,
         if (c == '\\') {
             c = *p++;
             switch (c) {
-            case 'n':
-                c = '\n';
-                break;
-            case 'r':
-                c = '\r';
-                break;
-            case 't':
-                c = '\t';
-                break;
+            case 'n': c = '\n'; break;
+            case 'r': c = '\r'; break;
+            case 't': c = '\t'; break;
+                // ignore other escapes, including octal and hex */
             }
         }
         /* XXX: silently truncate overlong string constants */
-        if (pos < size - 1)
+        if (pos < end)
             dest[pos++] = c;
     }
-    if (pos < size)
+    if (pos <= end)
         dest[pos] = '\0';
     *pp = p;
     return res;
@@ -138,30 +138,29 @@ static char *data_gets(QEmacsDataSource *ds, char *buf, int size)
     return NULL;
 }
 
+static int qe_cfg_call(QEmacsDataSource *ds, const CmdDef *d);
+
 static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
 {
     QEmacsState *qs = s->qe_state;
-    QErrorContext ec;
-    char line[1024], str[1024];
-    char cmd[128], arg[128], *strp;
-    CmdArgSpec cas;
-    const char *p, *r;
-    int line_num;
+    QErrorContext ec = qs->ec;
+    char line[1024];
+    char cmd[128], arg[128];
+    const char *p;
     const CmdDef *d;
-    int nb_args, sep, i, skip, incomment, ret;
-    CmdArg args[MAX_CMD_ARGS];
-    unsigned char args_type[MAX_CMD_ARGS];
+    int skip, incomment;
 
-    ec = qs->ec;
+    ds->s = s;
+
+    qs->ec.filename = ds->filename;
+    qs->ec.function = NULL;
+    qs->ec.lineno = ds->line_num = 1;
+
     incomment = skip = 0;
-    line_num = ds->line_num;
     /* Should parse whole config file in a single read, or load it via
      * a buffer */
     while (data_gets(ds, line, sizeof(line))) {
-        line_num++;
-        qs->ec.filename = ds->filename;
-        qs->ec.function = NULL;
-        qs->ec.lineno = line_num;
+        qs->ec.lineno = ds->line_num++;
 
         p = line;
     again:
@@ -218,7 +217,6 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
             if (vp) {
                 if (!expect_token(&p, '='))
                     goto fail;
-                qe_skip_spaces(&p);
                 if (*p == '\"' || *p == '\'') {
                     if (qe_cfg_parse_string(s, &p, str, countof(str)))
                         goto fail;
@@ -249,7 +247,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
                 goto next;
             }
             /* ignore other variables without a warning */
-            put_status(s, "Unsupported variable %s", cmd);
+            put_status(s, "unsupported variable %s", cmd);
             continue;
         }
 #endif
@@ -259,137 +257,158 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         /* search for command */
         d = qe_find_cmd(cmd);
         if (!d || d->sig >= CMD_ISS) {
-            put_status(s, "Unknown command '%s'", cmd);
+            put_status(s, "unknown command '%s'", cmd);
             continue;
         }
-        nb_args = 0;
-
-        /* construct argument type list */
-        r = d->spec;
-        if (*r == '*') {
-            r++;
-            if (check_read_only(s))
-                continue;
-        }
-
-        /* first argument is always the window */
-        args_type[nb_args++] = CMD_ARG_WINDOW;
-
-        while ((ret = parse_arg(&r, &cas)) != 0) {
-            if (ret < 0 || nb_args >= MAX_CMD_ARGS) {
-                put_status(s, "Badly defined command '%s'", cmd);
-                goto fail;
-            }
-            args[nb_args].p = NULL;
-            args_type[nb_args++] = cas.arg_type & CMD_ARG_TYPE_MASK;
-        }
-
-        sep = '\0';
-        strp = str;
-        /* p points past the '(' */
-        for (i = 0; i < nb_args; i++) {
-            /* pseudo arguments: skip them */
-            switch (args_type[i]) {
-            case CMD_ARG_WINDOW:
-                args[i].s = s;
-                continue;
-            case CMD_ARG_INTVAL:
-                args[i].n = d->val;
-                continue;
-            case CMD_ARG_STRINGVAL:
-                /* kludge for xxx-mode functions and named kbd macros,
-                   should be the last argument */
-                args[i].p = cas.prompt;
-                continue;
-            }
-
-            qe_skip_spaces(&p);
-            if (*p == ')') {
-                /* no more arguments: handle default values */
-                switch (args_type[i]) {
-                case CMD_ARG_INT | CMD_ARG_RAW_ARGVAL:
-                    args[i].n = NO_ARG;
-                    continue;
-                case CMD_ARG_INT | CMD_ARG_NUM_ARGVAL:
-                    args[i].n = 1;
-                    continue;
-                case CMD_ARG_INT | CMD_ARG_NEG_ARGVAL:
-                    args[i].n = -1;
-                    continue;
-                case CMD_ARG_INT | CMD_ARG_USE_MARK:
-                    args[i].n = s->b->mark;
-                    continue;
-                case CMD_ARG_INT | CMD_ARG_USE_POINT:
-                    args[i].n = s->offset;
-                    continue;
-                case CMD_ARG_INT | CMD_ARG_USE_ZERO:
-                    args[i].n = 0;
-                    continue;
-                case CMD_ARG_INT | CMD_ARG_USE_BSIZE:
-                    args[i].n = s->b->total_size;
-                    continue;
-                }
-                /* p stays in front of the ')'. */
-                /* Let the argument matcher complain about the missing argument */
-            } else {
-                if (sep && !expect_token(&p, sep))
-                    goto fail;
-                sep = ',';
-            }
-            qe_skip_spaces(&p);
-
-            switch (args_type[i] & CMD_ARG_TYPE_MASK) {
-            case CMD_ARG_INT:
-                r = p;
-                args[i].n = strtol_c(p, &p, 0);
-                if (p == r) {
-                    put_status(s, "Number expected for arg %d", i);
-                    goto fail;
-                }
-                if (args_type[i] == (CMD_ARG_INT | CMD_ARG_NEG_ARGVAL))
-                    args[i].n *= -1;
-                break;
-            case CMD_ARG_STRING:
-                if (*p != '\"' && *p != '\'') {
-                    put_status(s, "String expected for arg %d", i);
-                    goto fail;
-                }
-                if (qe_cfg_parse_string(s, &p, strp,
-                                        str + countof(str) - strp) < 0)
-                {
-                    goto fail;
-                }
-                args[i].p = strp;
-                strp += strlen(strp) + 1;
-                break;
-            }
-        }
-        if (!has_token(&p, ')')) {
-            put_status(s, "Too many arguments for %s", d->name);
+        ds->p = p;
+        if (qe_cfg_call(ds, d))
             continue;
-        }
-
-        qs->this_cmd_func = d->action.func;
-        qs->ec.function = d->name;
-        call_func(d->sig, d->action, nb_args, args, args_type);
-        qs->last_cmd_func = qs->this_cmd_func;
-        if (qs->active_window)
-            s = qs->active_window;
-        check_window(&s);
+        s = ds->s;
+        p = ds->p;
     next:
         if (has_token(&p, ';'))
             goto again;
         if (*p != '\0')
-            put_status(s, "Missing ';' at '%s'", p);
+            put_status(s, "missing ';' at '%s'", p);
         continue;
     syntax:
-        put_status(s, "Syntax error at '%s'", p);
+        put_status(s, "syntax error at '%s'", p);
         continue;
     fail:
         continue;
     }
     qs->ec = ec;
+    return 0;
+}
 
+static int qe_cfg_call(QEmacsDataSource *ds, const CmdDef *d) {
+    EditState *s = ds->s;
+    QEmacsState *qs = s->qe_state;
+    const char *p = ds->p;
+    char str[1024];
+    char *strp;
+    const char *r;
+    int nb_args, sep, i, ret;
+    CmdArgSpec cas;
+    CmdArg args[MAX_CMD_ARGS];
+    unsigned char args_type[MAX_CMD_ARGS];
+
+    nb_args = 0;
+
+    /* construct argument type list */
+    r = d->spec;
+    if (*r == '*') {
+        r++;
+        if (check_read_only(s))
+            return -1;
+    }
+
+    /* This argument is always the window */
+    args_type[nb_args++] = CMD_ARG_WINDOW;
+
+    while ((ret = parse_arg(&r, &cas)) != 0) {
+        if (ret < 0 || nb_args >= MAX_CMD_ARGS) {
+            put_status(s, "invalid command definition '%s'", d->name);
+            return -1;
+        }
+        args[nb_args].p = NULL;
+        args_type[nb_args++] = cas.arg_type;
+    }
+
+    sep = '\0';
+    strp = str;
+
+    for (i = 0; i < nb_args; i++) {
+        /* pseudo arguments: skip them */
+        switch (args_type[i]) {
+        case CMD_ARG_WINDOW:
+            args[i].s = s;
+            continue;
+        case CMD_ARG_INTVAL:
+            args[i].n = d->val;
+            continue;
+        case CMD_ARG_STRINGVAL:
+            /* kludge for xxx-mode functions and named kbd macros,
+               must be the last argument */
+            args[i].p = cas.prompt;
+            continue;
+        }
+
+        qe_skip_spaces(&p);
+        if (*p == ')') {
+            /* no more arguments: handle default values */
+            switch (args_type[i]) {
+            case CMD_ARG_INT | CMD_ARG_RAW_ARGVAL:
+                args[i].n = NO_ARG;
+                continue;
+            case CMD_ARG_INT | CMD_ARG_NUM_ARGVAL:
+                args[i].n = 1;
+                continue;
+            case CMD_ARG_INT | CMD_ARG_NEG_ARGVAL:
+                args[i].n = -1;
+                continue;
+            case CMD_ARG_INT | CMD_ARG_USE_MARK:
+                args[i].n = s->b->mark;
+                continue;
+            case CMD_ARG_INT | CMD_ARG_USE_POINT:
+                args[i].n = s->offset;
+                continue;
+            case CMD_ARG_INT | CMD_ARG_USE_ZERO:
+                args[i].n = 0;
+                continue;
+            case CMD_ARG_INT | CMD_ARG_USE_BSIZE:
+                args[i].n = s->b->total_size;
+                continue;
+            }
+            /* source stays in front of the ')'. */
+            /* Let the argument matcher complain about the missing argument */
+        } else {
+            if (sep && !expect_token(&p, sep))
+                return -1;
+            sep = ',';
+        }
+
+        /* XXX: should parse and evaluate argument */
+
+        switch (args_type[i] & CMD_ARG_TYPE_MASK) {
+        case CMD_ARG_INT:
+            args[i].n = strtol_c(p, &r, 0);
+            if (p == r) {
+                put_status(s, "number expected for arg %d", i);
+                return -1;
+            }
+            p = r;
+            if (args_type[i] == (CMD_ARG_INT | CMD_ARG_NEG_ARGVAL))
+                args[i].n *= -1;
+            break;
+        case CMD_ARG_STRING:
+            if (*p != '\"' && *p != '\'') {
+                put_status(s, "string expected for arg %d", i);
+                return -1;
+            }
+            if (qe_cfg_parse_string(s, &p, strp, str + countof(str) - strp) < 0)
+                return -1;
+            args[i].p = strp;
+            if (strp < str + countof(str) - 1)
+                strp += strlen(strp) + 1;
+            break;
+        }
+    }
+    if (!has_token(&p, ')')) {
+        put_status(s, "too many arguments for %s", d->name);
+        return -1;
+    }
+
+    qs->this_cmd_func = d->action.func;
+    qs->ec.function = d->name;
+    call_func(d->sig, d->action, nb_args, args, args_type);
+    qs->ec.function = NULL;
+    qs->last_cmd_func = qs->this_cmd_func;
+    if (qs->active_window)
+        s = qs->active_window;
+    check_window(&s);
+    ds->s = s;
+    ds->p = p;
     return 0;
 }
 

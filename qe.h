@@ -505,6 +505,7 @@ const char *qe_stristr(const char *s1, const char *s2);
 
 int strsubst(char *buf, int buf_size, const char *from,
              const char *s1, const char *s2);
+int byte_quote(char *dest, int size, unsigned char c);
 int strquote(char *dest, int size, const char *str, int len);
 int strunquote(char *dest, int size, const char *str, int len);
 
@@ -591,6 +592,7 @@ static inline buf_t *buf_init(buf_t *bp, char *buf, int size) {
 }
 static inline buf_t *buf_attach(buf_t *bp, char *buf, int size, int pos) {
     /* assuming 0 <= pos < size */
+    // XXX: Does not set a null byte?
     bp->buf = buf;
     bp->size = size;
     bp->len = bp->pos = pos;
@@ -742,7 +744,7 @@ int strtokey(const char **pp);
 int strtokeys(const char *keystr, unsigned int *keys, int max_keys, const char **endp);
 int buf_put_key(buf_t *out, int key);
 int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);
-int buf_encode_byte(buf_t *out, int ch);
+int buf_encode_byte(buf_t *out, unsigned char ch);
 
 /* charset.c */
 

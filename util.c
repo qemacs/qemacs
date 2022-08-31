@@ -2200,15 +2200,26 @@ int strsubst(char *buf, int buf_size, const char *from,
     return out->pos;
 }
 
-int strquote(char *dest, int size, const char *str, int len)
-{
+int byte_quote(char *dest, int size, unsigned char c) {
+    buf_t buf[1];
+    buf_init(buf, dest, size);
+    return buf_encode_byte(buf, c);
+}
+
+int strquote(char *dest, int size, const char *str, int len) {
+    buf_t out[1];
+    buf_init(out, dest, size);
     if (str) {
+        int i;
         if (len < 0)
             len = strlen(str);
-        /* TODO: quote special chars */
-        return snprintf(dest, size, "\"%.*s\"", len, str);
+        buf_put_byte(out, '"');
+        for (i = 0; i < len; i++)
+            buf_encode_byte(out, str[i]);
+        buf_put_byte(out, '"');
+        return out->pos;
     } else {
-        return snprintf(dest, size, "null");
+        return buf_puts(out, "null");
     }
 }
 
@@ -2219,13 +2230,16 @@ int strunquote(char *dest, int size, const char *str, int len)
 }
 #endif
 
-int buf_encode_byte(buf_t *out, int ch) {
+int buf_encode_byte(buf_t *out, unsigned char ch) {
     int c;
     if (((void)(c = 'n'), ch == '\n')
     ||  ((void)(c = 'r'), ch == '\r')
     ||  ((void)(c = 't'), ch == '\t')
+    ||  ((void)(c = 'f'), ch == '\f')
     ||  ((void)(c = 'b'), ch == '\010')
     ||  ((void)(c = 'E'), ch == '\033')
+    ||  ((void)(c = '\''), ch == '\'')      // XXX: need flag to make this optional
+    ||  ((void)(c = '\"'), ch == '\"')      // XXX: need flag to make this optional
     ||  ((void)(c = '\\'), ch == '\\')) {
         return buf_printf(out, "\\%c", c);
     } else
@@ -2234,12 +2248,12 @@ int buf_encode_byte(buf_t *out, int ch) {
         //    eb_write(b, b->total_size, "\n         ", 10);
         //    col = 9;
         //}
-        return buf_printf(out, "\\^%c", (ch + '@') & 127);
+        return buf_printf(out, "\\^%c", (ch + '@') & 127);      // XXX: need flag to make this optional
     } else
     if (ch < 127) {
         return buf_put_byte(out, ch);
     } else {
-        return buf_printf(out, "\\0x%02X", ch);
+        return buf_printf(out, "\\0x%02X", ch);      // XXX: need flag to make this optional
     }
 }
 

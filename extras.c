@@ -1402,6 +1402,7 @@ static void do_describe_buffer(EditState *s, int argval)
         for (col = i = 0; i < 256; i++) {
             if (count[i] == 0)
                 continue;
+            // XXX: should use function to encode string byte byte_quote()?
             switch (i) {
             case '\b':  c = 'b'; break;
             case '\f':  c = 'f'; break;

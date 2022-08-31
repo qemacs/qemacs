@@ -939,6 +939,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
     endp = p0 + size;
 
 #define MAX_TRACE_WIDTH  76
+    // XXX: should encode into a local buffer by chunks
     for (p = p0; p0 < endp; p++) {
         while (p >= endp || *p < 32 || *p >= 127 || *p == '\\') {
             if (p0 >= endp)
@@ -955,11 +956,9 @@ void eb_trace_bytes(const void *buf, int size, int state)
                 continue;
             }
             if (p < endp) {
-                char buf1[80];
-                buf_t out[1];
-                buf_init(out, buf1, sizeof buf1);
-                len = buf_encode_byte(out, *p);
-                eb_write(b, b->total_size, out->buf, out->len);
+                char buf1[16];
+                len = byte_quote(buf1, sizeof buf1, *p);
+                eb_write(b, b->total_size, buf1, len);
                 p0 = p + 1;
                 col += len;
             }

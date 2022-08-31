@@ -39,11 +39,11 @@ typedef struct QEValue {
 
 typedef struct QEmacsDataSource {
     EditState *s;
+    const char *filename;   // source filename
     char *allocated_buf;
     const char *buf;
     const char *p;
     const char *start_p;
-    const char *filename;   // source filename
     int line_num;           // source line number
     int tok;                // token type
     int len;                // length of TOK_STRING and TOK_ID string
@@ -130,6 +130,7 @@ static void qe_cfg_init(QEmacsDataSource *ds) {
 }
 
 static void qe_cfg_release(QEmacsDataSource *ds) {
+    // XXX: should free ds->allocated_buf ?
     QEValue *sp;
     for (sp = ds->stack; sp < ds->sp_max; sp++)
         qe_cfg_set_void(sp);
@@ -145,6 +146,7 @@ static int qe_cfg_get_prec(int tok) {
     return 0;
 }
 
+// XXX: Should use strunquote parser from util.c
 static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
                                char *dest, int size, int *plen)
 {
@@ -155,7 +157,9 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
     int end = size - 1;
     int i, len;
 
+    /* should check for delim at *p and return -1 if no string */
     for (;;) {
+        /* encoding issues deliberately ignored */
         int c = *p;
         if (c == '\n' || c == '\0') {
             put_status(s, "unterminated string");
@@ -188,14 +192,15 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
                 }
                 break;
             case 'U':
-                maxc += 4;
+                maxc += 4;  /* maxc will be 8 */
             case 'u':
-                maxc += 5;
+                maxc += 5;  /* maxc will be 4 */
             case 'x':
                 for (c = 0; qe_isxdigit(*p) && maxc-- != 0; p++) {
                     c = (c << 4) | qe_digit_value(*p);
                 }
                 len = utf8_encode(cbuf, c);
+                // XXX: should not clip in the middle of an encoding
                 for (i = 0; i < len && pos < end; i++)
                     dest[pos++] = cbuf[i];
                 continue;
@@ -309,10 +314,17 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
     }
 }
 
-static int expect_token(QEmacsDataSource *ds, int tok)
-{
+static int has_token(QEmacsDataSource *ds, int tok) {
     if (ds->tok == tok) {
         qe_cfg_next_token(ds);
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+static int expect_token(QEmacsDataSource *ds, int tok) {
+    if (has_token(ds, tok)) {
         return 1;
     } else {
         /* XXX: pretty print token name */
@@ -818,15 +830,15 @@ done:
 }
 
 static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
+    EditState *s = ds->s;
+    QEmacsState *qs = s->qe_state;
     char str[1024];
     char *strp;
     const char *r;
     int nb_args, sep, i, ret;
+    CmdArgSpec cas;
     CmdArg args[MAX_CMD_ARGS];
     unsigned char args_type[MAX_CMD_ARGS];
-    EditState *s = ds->s;
-    QEmacsState *qs = s->qe_state;
-    CmdArgSpec cas;
 
     nb_args = 0;
 
@@ -838,12 +850,12 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
             return -1;
     }
 
-    /* first argument is always the window */
+    /* This argument is always the window */
     args_type[nb_args++] = CMD_ARG_WINDOW;
 
     while ((ret = parse_arg(&r, &cas)) != 0) {
         if (ret < 0 || nb_args >= MAX_CMD_ARGS) {
-            put_status(s, "Invalid command definition '%s'", d->name);
+            put_status(s, "invalid command definition '%s'", d->name);
             return -1;
         }
         args[nb_args].p = NULL;
@@ -863,64 +875,44 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
             args[i].n = d->val;
             continue;
         case CMD_ARG_STRINGVAL:
-            /* CG: kludge for xxx-mode functions and named kbd macros,
-               must be last argument */
+            /* kludge for xxx-mode functions and named kbd macros,
+               must be the last argument */
             args[i].p = cas.prompt;
             continue;
-        case CMD_ARG_INT | CMD_ARG_RAW_ARGVAL:
-            if (ds->tok == ')') {
+        }
+        if (ds->tok == ')') {
+            /* no more arguments: handle default values */
+            switch (args_type[i]) {
+            case CMD_ARG_INT | CMD_ARG_RAW_ARGVAL:
                 args[i].n = NO_ARG;
                 continue;
-            }
-            break;
-        case CMD_ARG_INT | CMD_ARG_NUM_ARGVAL:
-            if (ds->tok == ')') {
+            case CMD_ARG_INT | CMD_ARG_NUM_ARGVAL:
                 args[i].n = 1;
                 continue;
-            }
-            break;
-        case CMD_ARG_INT | CMD_ARG_NEG_ARGVAL:
-            if (ds->tok == ')') {
+            case CMD_ARG_INT | CMD_ARG_NEG_ARGVAL:
                 args[i].n = -1;
                 continue;
-            }
-            break;
-        case CMD_ARG_INT | CMD_ARG_USE_MARK:
-            if (ds->tok == ')') {
+            case CMD_ARG_INT | CMD_ARG_USE_MARK:
                 args[i].n = s->b->mark;
                 continue;
-            }
-            break;
-        case CMD_ARG_INT | CMD_ARG_USE_POINT:
-            if (ds->tok == ')') {
+            case CMD_ARG_INT | CMD_ARG_USE_POINT:
                 args[i].n = s->offset;
                 continue;
-            }
-            break;
-        case CMD_ARG_INT | CMD_ARG_USE_ZERO:
-            if (ds->tok == ')') {
+            case CMD_ARG_INT | CMD_ARG_USE_ZERO:
                 args[i].n = 0;
                 continue;
-            }
-            break;
-        case CMD_ARG_INT | CMD_ARG_USE_BSIZE:
-            if (ds->tok == ')') {
+            case CMD_ARG_INT | CMD_ARG_USE_BSIZE:
                 args[i].n = s->b->total_size;
                 continue;
             }
-            break;
-        }
-
-        if (sep) {
-            /* CG: Should test for arg list too short. */
             /* CG: Could supply default arguments. */
-            if (ds->tok != sep) {
-                put_status(s, "missing arguments for %s", d->name);
+            /* source stays in front of the ')'. */
+            /* Let the expression parser complain about the missing argument */
+        } else {
+            if (sep && !expect_token(ds, sep))
                 return -1;
-            }
-            qe_cfg_next_token(ds);
+            sep = ',';
         }
-        sep = ',';
 
         if (qe_cfg_expr(ds, sp, PREC_ASSIGN)) {
             put_status(s, "missing arguments for %s", d->name);
@@ -931,8 +923,6 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
         case CMD_ARG_INT:
             qe_cfg_tonum(ds, sp); // XXX: should complain about type mismatch?
             args[i].n = sp->u.value;
-            //if (args_type[i] == (CMD_ARG_INT | CMD_ARG_NUL_ARGVAL))
-            //    args[i].n *= d->val;
             if (args_type[i] == (CMD_ARG_INT | CMD_ARG_NEG_ARGVAL))
                 args[i].n *= -1;
             break;
@@ -945,15 +935,15 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
             break;
         }
     }
-    if (ds->tok != ')') {
+    if (!has_token(ds, ')')) {
         put_status(s, "too many arguments for %s", d->name);
         return -1;
     }
-    qe_cfg_next_token(ds);
 
     qs->this_cmd_func = d->action.func;
     qs->ec.function = d->name;
     call_func(d->sig, d->action, nb_args, args, args_type);
+    qs->ec.function = NULL;
     qs->last_cmd_func = qs->this_cmd_func;
     if (qs->active_window)
         s = qs->active_window;
@@ -967,24 +957,21 @@ static int qe_cfg_stmt(QEmacsDataSource *ds, QEValue *sp) {
     const char *start = ds->p;
     int res = 0;
 
-    if (ds->tok == '{') {
-        qe_cfg_next_token(ds);
-        while (ds->tok != '}') {
+    if (has_token(ds, '{')) {
+        while (!has_token(ds, '}')) {
             if (ds->tok == TOK_EOF) {
                 put_status(ds->s, "missing '}'");
                 return 1;
             }
             res |= qe_cfg_stmt(ds, sp);
         }
-        qe_cfg_next_token(ds);
         return res;
     }
 
-    if (ds->tok == TOK_IF) {
+    if (has_token(ds, TOK_IF)) {
         int skip;
         QEValue *sp1 = &ds->stack[0];
 
-        qe_cfg_next_token(ds);
         sp1->type = TOK_VOID;
         if (qe_cfg_expr(ds, sp1, PREC_COMMA) || qe_cfg_getvalue(ds, sp1))
             goto fail;
@@ -1005,9 +992,7 @@ static int qe_cfg_stmt(QEmacsDataSource *ds, QEValue *sp) {
     }
     if (qe_cfg_expr(ds, sp, PREC_COMMA) || qe_cfg_getvalue(ds, sp))
         goto fail;
-    if (ds->tok == ';') {
-        qe_cfg_next_token(ds);
-    }
+    has_token(ds, ';'); /* consume `;` if any (should check for newline?) */
     if (ds->tok != '}' && ds->tok != TOK_EOF) {
         // XXX: should check for implicit semicolon at end of line
     }
@@ -1118,6 +1103,7 @@ static int do_eval_buffer_region(EditState *s, int start, int stop)
         put_status(s, "Buffer too large");
         return -1;
     }
+    /* assuming compatible encoding */
     length = eb_read(s->b, start, buf, length);
     buf[length] = '\0';
     ds.buf = ds.allocated_buf = buf;
@@ -1150,6 +1136,7 @@ int parse_config_file(EditState *s, const char *filename)
 
     qe_cfg_init(&ds);
 
+    // XXX: should use binary mode
     fp = fopen(filename, "r");
     if (!fp)
         return -1;
@@ -1229,6 +1216,7 @@ static const CmdDef parser_commands[] = {
           do_eval_expression, ESsi,
           "s{Eval: }[.symbol]|expression|"
           "P")
+    /* XXX: should take region as argument, implicit from keyboard */
     CMD0( "eval-region", "",
           "Evaluate qemacs expressions in a region",
           do_eval_region)
