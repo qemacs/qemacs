@@ -67,6 +67,8 @@
     ```
   an EditState as an embedded QECursor that contains the buffer and offset
   an EditBuffer could also have an embedded QECursor with no EditState
+* `qe_get_variable` should populate a QEValue
+* `qe_set_variable` should take a QEValue pointer
 
 ### Charsets / Unicode / Bidir
 

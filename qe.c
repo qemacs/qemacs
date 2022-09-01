@@ -7799,6 +7799,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         if (access(b->filename, W_OK)) {
             b->flags |= BF_READONLY;
         }
+        // XXX: problem if buffer is not attached to window
         do_load_qerc(s, s->b->filename);
 
         /* XXX: invalid place */

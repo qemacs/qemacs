@@ -28,15 +28,6 @@
  * displayed as a popup upon start.
  */
 
-typedef struct QEValue {
-    int type;               // value type
-    int len;                // string length
-    union {
-        long long value;    // number value
-        char *str;          // string value
-    } u;
-} QEValue;
-
 typedef struct QEmacsDataSource {
     EditState *s;
     const char *filename;   // source filename
@@ -48,13 +39,13 @@ typedef struct QEmacsDataSource {
     int tok;                // token type
     int len;                // length of TOK_STRING and TOK_ID string
     QEValue *sp_max;
-    char str[256];          // token source (XXX: should use source code)
     QEValue stack[16];
+    char str[256];          // token source (XXX: should use source code)
 } QEmacsDataSource;
 
 enum {
-    TOK_EOF = -1, TOK_ERR = -2, TOK_VOID = 0, TOK_ALLOC = 1,
-    TOK_NUMBER = 128, TOK_STRING, TOK_CHAR, TOK_ID, TOK_IF, TOK_ELSE,
+    TOK_EOF = -1, TOK_ERR = -2, TOK_VOID__ = 0,
+    TOK_NUMBER__ = 128, TOK_STRING__, TOK_CHAR__, TOK_ID__, TOK_IF, TOK_ELSE,
     TOK_MUL_EQ, TOK_DIV_EQ, TOK_MOD_EQ, TOK_ADD_EQ, TOK_SUB_EQ, TOK_SHL_EQ, TOK_SHR_EQ,
     TOK_AND_EQ, TOK_XOR_EQ, TOK_OR_EQ,
     TOK_EQ, TOK_NE, TOK_SHL, TOK_SHR, TOK_LE, TOK_GE, TOK_INC, TOK_DEC, TOK_LOR, TOK_LAND,
@@ -85,44 +76,6 @@ static const u8 precs[] = {
     ',', 1,
     ')', ']', '{', '}', ';', '!', '~', 0,
 };
-
-static inline void qe_cfg_set_void(QEValue *sp) {
-    if (sp->type & TOK_ALLOC)
-        qe_free(&sp->u.str);
-    sp->type = TOK_VOID;
-}
-
-static inline void qe_cfg_set_num(QEValue *sp, long long value) {
-    if (sp->type & TOK_ALLOC)
-        qe_free(&sp->u.str);
-    sp->u.value = value;
-    sp->type = TOK_NUMBER;
-}
-
-static inline void qe_cfg_set_char(QEValue *sp, int c) {
-    if (sp->type & TOK_ALLOC)
-        qe_free(&sp->u.str);
-    sp->u.value = c;
-    sp->type = TOK_CHAR;
-}
-
-static inline void qe_cfg_set_str(QEValue *sp, const char *str, int len) {
-    if (sp->type & TOK_ALLOC)
-        qe_free(&sp->u.str);
-    sp->u.str = qe_malloc_array(char, len + 1);
-    memcpy(sp->u.str, str, len);
-    sp->u.str[len] = '\0';
-    sp->len = len;
-    sp->type = TOK_STRING;
-}
-
-static inline void qe_cfg_set_pstr(QEValue *sp, char *str, int len) {
-    if (sp->type & TOK_ALLOC)
-        qe_free(&sp->u.str);
-    sp->u.str = str;
-    sp->len = len;
-    sp->type = TOK_STRING;
-}
 
 static void qe_cfg_init(QEmacsDataSource *ds) {
     memset(ds, 0, sizeof(*ds));
@@ -155,7 +108,7 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
     int res = 0;
     int pos = 0;
     int end = size - 1;
-    int i, len;
+    int len;
 
     /* should check for delim at *p and return -1 if no string */
     for (;;) {
@@ -200,9 +153,11 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
                     c = (c << 4) | qe_digit_value(*p);
                 }
                 len = utf8_encode(cbuf, c);
-                // XXX: should not clip in the middle of an encoding
-                for (i = 0; i < len && pos < end; i++)
-                    dest[pos++] = cbuf[i];
+                if (pos + len < end) {
+                    int i;
+                    for (i = 0; i < len; i++)
+                        dest[pos++] = cbuf[i];
+                }
                 continue;
             }
         }
@@ -219,16 +174,19 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
 
 static int qe_cfg_next_token(QEmacsDataSource *ds)
 {
+    const char *p = ds->p;
     for (;;) {
         int tok, len;
         char c;
         const char *op;
 
-        ds->start_p = ds->p;
-        c = *ds->p;
-        if (c == '\0')
+        ds->start_p = p;
+        c = *p;
+        if (c == '\0') {
+            ds->p = p;
             return ds->tok = TOK_EOF;
-        ds->p++;
+        }
+        p++;
         if (c == '\n') {
             ds->s->qe_state->ec.lineno = ++ds->line_num;
             continue;
@@ -236,46 +194,52 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
         if (qe_isspace(c))
             continue;
         if (c == '/') {
-            if (*ds->p == '/') {  /* line comment */
-                while ((c = *ds->p) != '\0' && c != '\n') {
-                    ds->p++;
+            if (*p == '/') {  /* line comment */
+                while ((c = *p) != '\0' && c != '\n') {
+                    p++;
                 }
                 continue;
             }
-            if (*ds->p == '*') { /* multiline comment */
-                ds->p++;
-                while ((c = *ds->p) != '\0') {
-                    if (c == '*' && ds->p[1] == '/') {
-                        ds->p += 2;
+            if (*p == '*') { /* multiline comment */
+                p++;
+                while ((c = *p) != '\0') {
+                    if (c == '*' && p[1] == '/') {
+                        p += 2;
                         break;
                     }
                     if (c == '\n')
                         ds->s->qe_state->ec.lineno = ++ds->line_num;
-                    ds->p++;
+                    p++;
                 }
                 continue;
             }
-            return ds->tok = '/';
         }
-        if (qe_isalpha_(c)) {
+        if (qe_isalpha_(c)) {   /* parse an identifier */
+            // XXX: should have a list of symbols with command and
+            //      variable names with transparent dash translation
+            //      and use a hashtable in qecore to register symbol
+            //      bindings commands, global variables, local variables
+            //      and qscript keywords.
             len = 0;
             ds->str[len++] = c;
-            while (qe_isalnum_(c = *ds->p) || (c == '-' && qe_isalpha(ds->p[1]))) {
+            while (qe_isalnum_(c = *p) || (c == '-' && qe_isalpha(p[1]))) {
                 if (c == '_')
                     c = '-';
                 if (len < (int)sizeof(ds->str) - 1)
                     ds->str[len++] = c;
-                ds->p++;
+                p++;
             }
             ds->str[len] = '\0';
             ds->len = len;
-            if (strequal(ds->str, "if"))
+            ds->p = p;
+            if (len == 2 && !memcmp(ds->str, "if", 2))
                 return ds->tok = TOK_IF;
-            if (strequal(ds->str, "else"))
+            if (len == 4 && !memcmp(ds->str, "else", 4))
                 return ds->tok = TOK_ELSE;
             return ds->tok = TOK_ID;
         }
-        if (qe_isdigit(c)) {
+        if (qe_isdigit(c)) {   /* parse a number */
+            ds->p = p;
             strtoll_c(ds->start_p, &ds->p, 0);
             if (qe_isalnum_(*ds->p)) {
                 put_status(ds->s, "invalid number");
@@ -284,8 +248,12 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
             return ds->tok = TOK_NUMBER;
         }
         if (c == '\'' || c == '\"') {
-            if (qe_cfg_parse_string(ds->s, &ds->p, c, ds->str, sizeof(ds->str), &ds->len))
+            ds->p = p;
+            if (qe_cfg_parse_string(ds->s, &ds->p, c,
+                                    ds->str, sizeof(ds->str), &ds->len) < 0)
+            {
                 return ds->tok = TOK_ERR;
+            }
             if (c == '\'') {
                 return ds->tok = TOK_CHAR;
             }
@@ -293,10 +261,10 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
         }
         for (tok = TOK_MUL_EQ, op = ops2; *op; tok++) {
             if (*op++ == c) {
-                const char *p1 = ds->p;
+                const char *p1 = p;
                 for (;;) {
                     if (*op == ' ') {
-                        ds->p = p1;
+                        p = p1;
                         return ds->tok = tok;
                     }
                     if (*p1++ != *op++)
@@ -306,6 +274,7 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
             while (*op++ != ' ')
                 continue;
         }
+        ds->p = p;
         if (strchr(ops1, c)) {
             return ds->tok = c;
         }
@@ -327,7 +296,7 @@ static int expect_token(QEmacsDataSource *ds, int tok) {
     if (has_token(ds, tok)) {
         return 1;
     } else {
-        /* XXX: pretty print token name */
+        /* tok is a single byte token, no need to pretty print */
         put_status(ds->s, "'%c' expected", tok);
         return 0;
     }
@@ -492,6 +461,7 @@ static int qe_cfg_format(QEmacsDataSource *ds, QEValue *sp) {
     return 0;
 }
 
+static int qe_cfg_get_args(QEmacsDataSource *ds, QEValue *sp, int n1, int n2);
 static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d);
 static int qe_cfg_assign(QEmacsDataSource *ds, QEValue *sp, int op);
 static int qe_cfg_op(QEmacsDataSource *ds, QEValue *sp, int op);
@@ -588,8 +558,27 @@ static int qe_cfg_expr(QEmacsDataSource *ds, QEValue *sp, int prec0) {
                 if (sp->type == TOK_ID) {
                     const CmdDef *d = qe_find_cmd(sp->u.str);
                     if (!d || d->sig >= CMD_ISS) {
-                        put_status(ds->s, "unknown command '%s'", sp->u.str);
-                        return 1;
+                        if (strequal(sp->u.str, "char")) {
+                            if (qe_cfg_get_args(ds, sp, 1, 1) < 0)
+                                return 1;
+                            qe_cfg_tochar(ds, sp);
+                            continue;
+                        } else
+                        if (strequal(sp->u.str, "int")) {
+                            if (qe_cfg_get_args(ds, sp, 1, 1) < 0)
+                                return -1;
+                            qe_cfg_tonum(ds, sp);
+                            continue;
+                        } else
+                        if (strequal(sp->u.str, "string")) {
+                            if (qe_cfg_get_args(ds, sp, 1, 1) < 0)
+                                return -1;
+                            qe_cfg_tostr(ds, sp);
+                            continue;
+                        } else {
+                            put_status(ds->s, "unknown command '%s'", sp->u.str);
+                            return 1;
+                        }
                     }
                     if (qe_cfg_call(ds, sp, d))
                         return 1;
@@ -695,6 +684,7 @@ static int qe_cfg_op(QEmacsDataSource *ds, QEValue *sp, int op) {
         case TOK_DIV_EQ:
         case TOK_MOD_EQ:
             if (sp[1].u.value == 0 || (sp->u.value == LLONG_MIN && sp[1].u.value == -1)) {
+                // XXX: should pretty print op for `/=` and `%=`
                 put_status(ds->s, "'%c': division overflow", op);
                 return 1;
             }
@@ -829,6 +819,29 @@ done:
     return qe_cfg_next_token(ds);
 }
 
+static int qe_cfg_get_args(QEmacsDataSource *ds, QEValue *sp, int n1, int n2) {
+    int nargs = 0;
+    int sep = 0;
+    for (nargs = 0; !has_token(ds, ')'); nargs++) {
+        if (sep && !expect_token(ds, sep))
+            return -1;
+        sep = ',';
+        if (qe_cfg_expr(ds, sp + nargs, PREC_ASSIGN)) {
+            put_status(ds->s, "invalid argument");     // need function name
+            return -1;
+        }
+    }
+    if (nargs < n1) {
+        put_status(ds->s, "missing arguments");     // need function name
+        return -1;
+    }
+    if (nargs > n2) {
+        put_status(ds->s, "extra arguments");     // need function name
+        return -1;
+    }
+    return nargs;
+}
+
 static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
     EditState *s = ds->s;
     QEmacsState *qs = s->qe_state;
@@ -913,6 +926,9 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
                 return -1;
             sep = ',';
         }
+
+        /* XXX: should parse and evaluate all arguments and
+           then match actual command arguments */
 
         if (qe_cfg_expr(ds, sp, PREC_ASSIGN)) {
             put_status(s, "missing arguments for %s", d->name);
@@ -1023,7 +1039,10 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
         if (qe_cfg_stmt(ds, sp))
             sp->type = TOK_VOID;
     }
-    qe_free(&ds->allocated_buf);
+    if (ds->allocated_buf) {
+        qe_free(&ds->allocated_buf);
+        ds->p = ds->buf = NULL;
+    }
     qs->ec = ec;
     return sp->type;
 }
@@ -1079,8 +1098,7 @@ void do_eval_expression(EditState *s, const char *expression, int argval)
 
 #define MAX_SCRIPT_LENGTH  (128 * 1024 - 1)
 
-static int do_eval_buffer_region(EditState *s, int start, int stop)
-{
+static int do_eval_buffer_region(EditState *s, int start, int stop) {
     QEmacsDataSource ds;
     char *buf;
     int length, res;
@@ -1092,12 +1110,7 @@ static int do_eval_buffer_region(EditState *s, int start, int stop)
         start = stop;
         stop = tmp;
     }
-    if (start < 0)
-        start = 0;
-    if (stop < start)
-        stop = start;
-    if (stop > s->b->total_size)
-        stop = s->b->total_size;
+    stop = clamp(stop, maxp(&start, 0), s->b->total_size);
     length = stop - start;
     if (length > MAX_SCRIPT_LENGTH || !(buf = qe_malloc_array(char, length + 1))) {
         put_status(s, "Buffer too large");
@@ -1109,53 +1122,37 @@ static int do_eval_buffer_region(EditState *s, int start, int stop)
     ds.buf = ds.allocated_buf = buf;
     ds.filename = s->b->name;
     res = qe_parse_script(s, &ds);
-    do_refresh(s);
     qe_cfg_release(&ds);
+    do_refresh(s);
     return res;
 }
 
-void do_eval_region(EditState *s)
-{
+void do_eval_region(EditState *s) {
     s->region_style = 0;  /* deactivate region hilite */
 
     do_eval_buffer_region(s, s->b->mark, s->offset);
 }
 
-void do_eval_buffer(EditState *s)
-{
+void do_eval_buffer(EditState *s) {
     do_eval_buffer_region(s, 0, s->b->total_size);
 }
 
-int parse_config_file(EditState *s, const char *filename)
-{
+int parse_config_file(EditState *s, const char *filename) {
     QEmacsDataSource ds;
-    FILE *fp;
-    char *buf;
-    long length;
     int res;
 
     qe_cfg_init(&ds);
 
-    // XXX: should use binary mode
-    fp = fopen(filename, "r");
-    if (!fp)
-        return -1;
-
-    fseek(fp, 0, SEEK_END);
-    length = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-
-    if (length > MAX_SCRIPT_LENGTH || !(buf = qe_malloc_array(char, length + 1))) {
-        fclose(fp);
-        put_status(s, "File too large");
+    ds.allocated_buf = file_load(filename, MAX_SCRIPT_LENGTH + 1, NULL);
+    if (!ds.allocated_buf) {
+        if (errno == ERANGE || errno == ENOMEM) {
+            put_status(s, "File too large");
+        }
         return -1;
     }
 
-    length = fread(buf, 1, length, fp);
-    fclose(fp);
-    buf[length] = '\0';
-    ds.buf = ds.allocated_buf = buf;
     ds.filename = filename;
+    ds.buf = ds.allocated_buf;
     res = qe_parse_script(s, &ds);
     qe_cfg_release(&ds);
     return res;

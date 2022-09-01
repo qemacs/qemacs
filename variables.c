@@ -73,6 +73,7 @@ static VarDef var_table[] = {
 
     //B_VAR( "screen-charset", charset, VAR_NUMBER, VAR_RW, NULL )
 
+    // XXX: need functions to set values of buffer and window properties
     B_VAR( "mark", mark, VAR_NUMBER, VAR_RW,
            "The position of the beginning of the current region." )
     B_VAR( "bufsize", total_size, VAR_NUMBER, VAR_RO,

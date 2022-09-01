@@ -356,6 +356,7 @@ void canonicalize_absolute_buffer_path(EditBuffer *b, int offset,
                                        const char *path1);
 char *make_user_path(char *buf, int buf_size, const char *path);
 char *reduce_filename(char *dest, int size, const char *filename);
+char *file_load(const char *filename, int max_size, int *sizep);
 int match_extension(const char *filename, const char *extlist);
 int match_shell_handler(const char *p, const char *list);
 int remove_slash(char *buf);
@@ -2377,6 +2378,76 @@ void wheel_scroll_up_down(EditState *s, int dir);
 void qe_mouse_event(QEEvent *ev);
 void set_user_option(const char *user);
 void set_tty_charset(const char *name);
+
+/* values */
+
+typedef struct QEValue {
+    unsigned int type : 16; // value type: TOK_VOID, TOK_NUMBER, TOK_CHAR, TOK_STRING
+                            // should also have TOK_WINDOW, TOK_BUFFER, TOK_MODE...
+    unsigned int alloc : 1; // u.str should be freed
+    unsigned short flags : 15;
+    // XXX: could have flags for owning allocated block pointed to by `str`
+    // XXX: should have token precedence for operator tokens
+    int len;                // string length
+    union {
+        long long value;    // number value
+        char *str;          // string value
+        // XXX: should have other object pointer types
+        // XXX: could have floating point values with type double
+        // XXX: should have short inline strings (7 bytes)
+    } u;
+} QEValue;
+
+enum {
+    TOK_VOID = 0, TOK_NUMBER = 128, TOK_STRING, TOK_CHAR, TOK_ID,
+};
+
+static inline void qe_cfg_set_void(QEValue *sp) {
+    if (sp->alloc) {
+        qe_free(&sp->u.str);
+        sp->alloc = 1;
+    }
+    sp->type = TOK_VOID;
+}
+
+static inline void qe_cfg_set_num(QEValue *sp, long long value) {
+    if (sp->alloc) {
+        qe_free(&sp->u.str);
+        sp->alloc = 1;
+    }
+    sp->u.value = value;
+    sp->type = TOK_NUMBER;
+}
+
+static inline void qe_cfg_set_char(QEValue *sp, int c) {
+    if (sp->alloc) {
+        qe_free(&sp->u.str);
+        sp->alloc = 1;
+    }
+    sp->u.value = c;
+    sp->type = TOK_CHAR;
+}
+
+static inline void qe_cfg_set_str(QEValue *sp, const char *str, int len) {
+    if (sp->alloc)
+        qe_free(&sp->u.str);
+    sp->u.str = qe_malloc_array(char, len + 1);
+    memcpy(sp->u.str, str, len);
+    sp->u.str[len] = '\0';
+    sp->len = len;
+    sp->type = TOK_STRING;      // TOK_ALLOC??
+    sp->alloc = 1;
+}
+
+static inline void qe_cfg_set_pstr(QEValue *sp, char *str, int len) {
+    if (sp->alloc) {
+        qe_free(&sp->u.str);
+        sp->alloc = 1;
+    }
+    sp->u.str = str;
+    sp->len = len;
+    sp->type = TOK_STRING;
+}
 
 /* parser.c */
 
