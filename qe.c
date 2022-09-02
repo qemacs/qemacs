@@ -5113,13 +5113,12 @@ static void parse_arguments(ExecCmdState *es)
     const CmdDef *d = es->d;
     CmdArg *argp;
     CmdArgSpec cas;
-    int ret, rep_count, get_arg, type, use_flag;
+    int ret, rep_count, get_arg, type;
     int elapsed_time;
 
     while ((ret = parse_arg(&es->ptype, &cas)) != 0) {
         if (ret < 0 || es->nb_args >= MAX_CMD_ARGS)
             goto fail;
-        use_flag = cas.arg_type & ~CMD_ARG_TYPE_MASK;
         type = cas.arg_type & CMD_ARG_TYPE_MASK;
         argp = &es->args[es->nb_args];
         es->args_type[es->nb_args] = type;
@@ -9735,8 +9734,8 @@ int main(int argc, char **argv)
                         qe_free(unconst(char **)&d->name);
                         qe_free(unconst(char **)&d->spec);
                     }
+                    qe_free(unconst(CmdDef **)&qs->cmd_array[i].array);
                 }
-                qe_free(unconst(CmdDef **)&qs->cmd_array[i].array);
             }
             qe_free(&qs->cmd_array);
         }

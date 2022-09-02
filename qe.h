@@ -2413,7 +2413,7 @@ static inline void qe_cfg_set_void(QEValue *sp) {
 static inline void qe_cfg_set_num(QEValue *sp, long long value) {
     if (sp->alloc) {
         qe_free(&sp->u.str);
-        sp->alloc = 1;
+        sp->alloc = 0;
     }
     sp->u.value = value;
     sp->type = TOK_NUMBER;
@@ -2422,7 +2422,7 @@ static inline void qe_cfg_set_num(QEValue *sp, long long value) {
 static inline void qe_cfg_set_char(QEValue *sp, int c) {
     if (sp->alloc) {
         qe_free(&sp->u.str);
-        sp->alloc = 1;
+        sp->alloc = 0;
     }
     sp->u.value = c;
     sp->type = TOK_CHAR;
@@ -2442,7 +2442,7 @@ static inline void qe_cfg_set_str(QEValue *sp, const char *str, int len) {
 static inline void qe_cfg_set_pstr(QEValue *sp, char *str, int len) {
     if (sp->alloc) {
         qe_free(&sp->u.str);
-        sp->alloc = 1;
+        sp->alloc = 0;
     }
     sp->u.str = str;
     sp->len = len;
