@@ -2384,8 +2384,8 @@ void set_tty_charset(const char *name);
 typedef struct QEValue {
     unsigned int type : 16; // value type: TOK_VOID, TOK_NUMBER, TOK_CHAR, TOK_STRING
                             // should also have TOK_WINDOW, TOK_BUFFER, TOK_MODE...
-    unsigned int alloc : 1; // u.str should be freed
-    unsigned short flags : 15;
+    unsigned int alloc : 8; // u.str should be freed
+    unsigned int flags : 8;
     // XXX: could have flags for owning allocated block pointed to by `str`
     // XXX: should have token precedence for operator tokens
     int len;                // string length
@@ -2405,7 +2405,7 @@ enum {
 static inline void qe_cfg_set_void(QEValue *sp) {
     if (sp->alloc) {
         qe_free(&sp->u.str);
-        sp->alloc = 1;
+        sp->alloc = 0;
     }
     sp->type = TOK_VOID;
 }
