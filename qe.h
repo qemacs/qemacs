@@ -2449,6 +2449,22 @@ static inline void qe_cfg_set_pstr(QEValue *sp, char *str, int len) {
     sp->type = TOK_STRING;
 }
 
+static inline void qe_cfg_move(QEValue *sp, QEValue *sp1) {
+    if (sp != sp1) {
+        if (sp->alloc)
+            qe_free(&sp->u.str);
+        *sp = *sp1;
+        sp1->alloc = 0;
+        sp1->type = TOK_VOID;
+    }
+}
+
+static inline void qe_cfg_swap(QEValue *sp, QEValue *sp1) {
+    QEValue tmp = *sp;
+    *sp = *sp1;
+    *sp1 = tmp;
+}
+
 /* parser.c */
 
 int parse_config_file(EditState *s, const char *filename);

@@ -32,34 +32,39 @@ typedef struct QEmacsDataSource {
     EditState *s;
     const char *filename;   // source filename
     char *allocated_buf;
-    const char *buf;
-    const char *p;
-    const char *start_p;
-    int line_num;           // source line number
+    const char *buf;        // start of source block
+    const char *p;          // pointer past current token
+    const char *start_p;    // start of token in source block
+    int line_num;           // source line number at ds->p
+    int start_line;         // the source line number of ds->start_p
+    int newline_seen;       // current token is first on line
     int tok;                // token type
     int len;                // length of TOK_STRING and TOK_ID string
     QEValue *sp_max;
     QEValue stack[16];
-    char str[256];          // token source (XXX: should use source code)
+    char str[256];          // token string (XXX: should use local buffer?)
 } QEmacsDataSource;
 
 enum {
     TOK_EOF = -1, TOK_ERR = -2, TOK_VOID__ = 0,
     TOK_NUMBER__ = 128, TOK_STRING__, TOK_CHAR__, TOK_ID__, TOK_IF, TOK_ELSE,
+#ifndef CONFIG_TINY
     TOK_MUL_EQ, TOK_DIV_EQ, TOK_MOD_EQ, TOK_ADD_EQ, TOK_SUB_EQ, TOK_SHL_EQ, TOK_SHR_EQ,
     TOK_AND_EQ, TOK_XOR_EQ, TOK_OR_EQ,
     TOK_EQ, TOK_NE, TOK_SHL, TOK_SHR, TOK_LE, TOK_GE, TOK_INC, TOK_DEC, TOK_LOR, TOK_LAND,
+#endif
 };
 
 enum {
-    PREC_SUFFIX = 14, PREC_COMMA = 1, PREC_ASSIGN = 2, PREC_QUESTION = 3,
+    PREC_EXPRESSION = 1, PREC_ASSIGN = 2, PREC_CONDITIONAL = 3,
+    PREC_SUFFIX = 14,
 };
 
-static const char ops2[] = "*= /= %= += -= <<= >>= &= ^= |= == != << >> <= >= ++ -- || && ";
 static const char ops1[] = "=<>?:|^&+-*/%,;.!~()[]{}";
-
+#ifndef CONFIG_TINY
+static const char ops2[] = "*= /= %= += -= <<= >>= &= ^= |= == != << >> <= >= ++ -- || && ";
 static const u8 precs[] = {
-    '(', '[', '.', TOK_INC, TOK_DEC, 14,
+    '(', '[', '.', TOK_INC, TOK_DEC, PREC_SUFFIX,
     '*', '/', '%', 13,
     '+', '-', 12,
     TOK_SHL, TOK_SHR, 11,
@@ -70,12 +75,13 @@ static const u8 precs[] = {
     '|', 6,
     TOK_LAND, 5,
     TOK_LOR, 4,
-    '?', ':', 3,
-    TOK_MUL_EQ, TOK_DIV_EQ, TOK_MOD_EQ, TOK_ADD_EQ, TOK_SUB_EQ, TOK_SHL_EQ, TOK_SHR_EQ,
-    TOK_AND_EQ, TOK_OR_EQ, TOK_XOR_EQ, '=', 2,
-    ',', 1,
-    ')', ']', '{', '}', ';', '!', '~', 0,
+    '?', PREC_CONDITIONAL,
+    '=', TOK_MUL_EQ, TOK_DIV_EQ, TOK_MOD_EQ, TOK_ADD_EQ, TOK_SUB_EQ, TOK_SHL_EQ, TOK_SHR_EQ,
+    TOK_AND_EQ, TOK_OR_EQ, TOK_XOR_EQ, PREC_ASSIGN,
+    ',', PREC_EXPRESSION,
+    ')', ']', '{', '}', ';', '!', '~', ':', 0,
 };
+#endif
 
 static void qe_cfg_init(QEmacsDataSource *ds) {
     memset(ds, 0, sizeof(*ds));
@@ -103,11 +109,11 @@ static int qe_cfg_get_prec(int tok) {
 static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
                                char *dest, int size, int *plen)
 {
-    char cbuf[8];
     const char *p = *pp;
     int res = 0;
     int pos = 0;
     int end = size - 1;
+    char cbuf[8];
     int len;
 
     /* should check for delim at *p and return -1 if no string */
@@ -174,20 +180,24 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
 
 static int qe_cfg_next_token(QEmacsDataSource *ds)
 {
-    const char *p = ds->p;
+    const u8 *p = (const u8 *)ds->p;
+    ds->newline_seen = 0;
     for (;;) {
         int tok, len;
-        char c;
+        u8 c;
         const char *op;
 
-        ds->start_p = p;
+        ds->start_p = cs8(p);
+        ds->start_line = ds->line_num;
         c = *p;
         if (c == '\0') {
-            ds->p = p;
+            ds->p = cs8(p);
             return ds->tok = TOK_EOF;
         }
         p++;
         if (c == '\n') {
+            /* set has_seen_newline for automatic semicolon insertion */
+            ds->newline_seen = 1;
             ds->s->qe_state->ec.lineno = ++ds->line_num;
             continue;
         }
@@ -195,21 +205,22 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
             continue;
         if (c == '/') {
             if (*p == '/') {  /* line comment */
-                while ((c = *p) != '\0' && c != '\n') {
+                while ((c = *p) != '\0' && c != '\n')
                     p++;
-                }
                 continue;
             }
             if (*p == '*') { /* multiline comment */
-                p++;
-                while ((c = *p) != '\0') {
+                for (;;) {
+                    if ((c = *++p) == '\0') {
+                        // XXX: should complain about unfinished comment
+                        break;
+                    }
                     if (c == '*' && p[1] == '/') {
                         p += 2;
                         break;
                     }
                     if (c == '\n')
                         ds->s->qe_state->ec.lineno = ++ds->line_num;
-                    p++;
                 }
                 continue;
             }
@@ -231,24 +242,25 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
             }
             ds->str[len] = '\0';
             ds->len = len;
-            ds->p = p;
-            if (len == 2 && !memcmp(ds->str, "if", 2))
+            ds->p = cs8(p);
+            if (len == 2 && !memcmp(ds->start_p, "if", 2))
                 return ds->tok = TOK_IF;
-            if (len == 4 && !memcmp(ds->str, "else", 4))
+            if (len == 4 && !memcmp(ds->start_p, "else", 4))
                 return ds->tok = TOK_ELSE;
             return ds->tok = TOK_ID;
         }
         if (qe_isdigit(c)) {   /* parse a number */
-            ds->p = p;
+            ds->p = cs8(p);
             strtoll_c(ds->start_p, &ds->p, 0);
             if (qe_isalnum_(*ds->p)) {
+                /* type suffixes not supported */
                 put_status(ds->s, "invalid number");
                 return ds->tok = TOK_ERR;
             }
             return ds->tok = TOK_NUMBER;
         }
         if (c == '\'' || c == '\"') {
-            ds->p = p;
+            ds->p = cs8(p);
             if (qe_cfg_parse_string(ds->s, &ds->p, c,
                                     ds->str, sizeof(ds->str), &ds->len) < 0)
             {
@@ -259,12 +271,13 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
             }
             return ds->tok = TOK_STRING;
         }
+#ifndef CONFIG_TINY
         for (tok = TOK_MUL_EQ, op = ops2; *op; tok++) {
             if (*op++ == c) {
-                const char *p1 = p;
+                const u8 *p1 = p;
                 for (;;) {
                     if (*op == ' ') {
-                        p = p1;
+                        ds->p = cs8(p1);
                         return ds->tok = tok;
                     }
                     if (*p1++ != *op++)
@@ -274,12 +287,13 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
             while (*op++ != ' ')
                 continue;
         }
-        ds->p = p;
+#endif
+        ds->p = cs8(p);
         if (strchr(ops1, c)) {
             return ds->tok = c;
         }
         put_status(ds->s, "unsupported operator: %c", c);
-        return ds->tok = TOK_ERR;
+        return ds->tok = c;
     }
 }
 
@@ -303,8 +317,8 @@ static int expect_token(QEmacsDataSource *ds, int tok) {
 }
 
 static int qe_cfg_getvalue(QEmacsDataSource *ds, QEValue *sp) {
-#ifndef CONFIG_TINY
     if (sp->type == TOK_ID) {
+#ifndef CONFIG_TINY
         char buf[256];
         int num;
         switch (qe_get_variable(ds->s, ds->str, buf, sizeof(buf), &num, 0)) {
@@ -321,8 +335,10 @@ static int qe_cfg_getvalue(QEmacsDataSource *ds, QEValue *sp) {
             qe_cfg_set_void(sp);
             return 1;
         }
-    }
+#else
+        put_status(ds->s, "no variable %s", ds->str);
 #endif
+    }
     return 0;
 }
 
@@ -370,6 +386,7 @@ static int qe_cfg_tostr(QEmacsDataSource *ds, QEValue *sp) {
     return 0;
 }
 
+#ifndef CONFIG_TINY
 static int qe_cfg_tochar(QEmacsDataSource *ds, QEValue *sp) {
     const char *p;
 
@@ -462,73 +479,95 @@ static int qe_cfg_format(QEmacsDataSource *ds, QEValue *sp) {
 }
 
 static int qe_cfg_get_args(QEmacsDataSource *ds, QEValue *sp, int n1, int n2);
+static int qe_cfg_op(QEmacsDataSource *ds, QEValue *sp, int op);
+#endif
+
 static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d);
 static int qe_cfg_assign(QEmacsDataSource *ds, QEValue *sp, int op);
-static int qe_cfg_op(QEmacsDataSource *ds, QEValue *sp, int op);
+static int qe_cfg_skip_expr(QEmacsDataSource *ds);
 
-static int qe_cfg_expr(QEmacsDataSource *ds, QEValue *sp, int prec0) {
+static int qe_cfg_check_lvalue(QEmacsDataSource *ds, QEValue *sp) {
+    if (sp->type != TOK_ID) {
+        put_status(ds->s, "not a variable");
+        return 1;
+    }
+    return 0;
+}
+
+static int qe_cfg_expr(QEmacsDataSource *ds, QEValue *sp, int prec0, int skip) {
+    /* Parse and evaluate an expression upto and including operators with
+       precedence prec0.
+     */
+    /* in CONFIG_TINY, only support function calls and setting variables */
+    const char *start_p = ds->start_p;
+    int start_line = ds->line_num;
     int tok = ds->tok;
+
+    if (skip)
+        return qe_cfg_skip_expr(ds);
 
     if (sp >= ds->sp_max) {
         if (sp >= ds->stack + countof(ds->stack)) {
             put_status(ds->s, "stack overflow");
-            return 1;
+            return qe_cfg_skip_expr(ds);
         }
         ds->sp_max = sp + 1;
     }
+again:
     /* handle prefix operators */
     switch (tok) {
-    case '(':
+    case '(':   /* parenthesized expression, including if expression */
         qe_cfg_next_token(ds);
-        if (qe_cfg_expr(ds, sp, PREC_COMMA) || !expect_token(ds, ')'))
-            return 1;
+        if (qe_cfg_expr(ds, sp, PREC_EXPRESSION, 0) || !expect_token(ds, ')'))
+            goto fail;
+        break;
+#ifndef CONFIG_TINY
+    case '-':
+        qe_cfg_next_token(ds);
+        if (qe_cfg_expr(ds, sp, PREC_SUFFIX, 0) || qe_cfg_tonum(ds, sp))
+            goto fail;
+        sp->u.value = -sp->u.value;
         break;
     case '+':
         qe_cfg_next_token(ds);
-        if (qe_cfg_expr(ds, sp, PREC_SUFFIX) || qe_cfg_tonum(ds, sp))
-            return 1;
-        break;
-    case '-':
-        qe_cfg_next_token(ds);
-        if (qe_cfg_expr(ds, sp, PREC_SUFFIX) || qe_cfg_tonum(ds, sp))
-            return 1;
-        sp->u.value = -sp->u.value;
+        if (qe_cfg_expr(ds, sp, PREC_SUFFIX, 0) || qe_cfg_tonum(ds, sp))
+            goto fail;
         break;
     case '~':
         qe_cfg_next_token(ds);
-        if (qe_cfg_expr(ds, sp, PREC_SUFFIX) || qe_cfg_tonum(ds, sp))
-            return 1;
+        if (qe_cfg_expr(ds, sp, PREC_SUFFIX, 0) || qe_cfg_tonum(ds, sp))
+            goto fail;
         sp->u.value = ~sp->u.value;
         break;
     case '!':
         qe_cfg_next_token(ds);
-        if (qe_cfg_expr(ds, sp, PREC_SUFFIX) || qe_cfg_getvalue(ds, sp))
-            return 1;
+        if (qe_cfg_expr(ds, sp, PREC_SUFFIX, 0) || qe_cfg_getvalue(ds, sp))
+            goto fail;
         qe_cfg_set_num(sp, (sp->type == TOK_STRING) ? 0 : !sp->u.value);
         break;
-    case TOK_INC:
-    case TOK_DEC:
+    case TOK_INC: /* convert to x += 1 */
+    case TOK_DEC: /* convert to x -= 1 */
         qe_cfg_next_token(ds);
-        if (qe_cfg_expr(ds, sp, PREC_SUFFIX))
-            return 1;
-        if (sp->type != TOK_ID) {
-            put_status(ds->s, "invalid increment");
-            return 1;
-        }
+        if (qe_cfg_expr(ds, sp, PREC_SUFFIX, 0))
+            goto fail;
+        if (qe_cfg_check_lvalue(ds, sp))
+            goto fail;
         qe_cfg_set_num(sp + 1, 1);
         if (qe_cfg_assign(ds, sp, tok))
-            return 1;
+            goto fail;
+        if (qe_cfg_getvalue(ds, sp))
+            goto fail;
         break;
     // case TOK_SIZEOF:
+#endif
     case TOK_NUMBER:
         qe_cfg_set_num(sp, strtoll(ds->start_p, NULL, 0));
         qe_cfg_next_token(ds);
         break;
     case TOK_STRING:
-#ifndef CONFIG_TINY
     case TOK_ID:
-#endif
-        qe_cfg_set_str(sp, ds->str, ds->len);   /* XXX: should parse string */
+        /* XXX: could either parse here or delay parse till qe_cfg_getvalue() */
+        qe_cfg_set_str(sp, ds->str, ds->len);
         sp->type = tok;
         qe_cfg_next_token(ds);
         break;
@@ -542,7 +581,7 @@ static int qe_cfg_expr(QEmacsDataSource *ds, QEValue *sp, int prec0) {
     default:
         qe_cfg_set_void(sp);
         put_status(ds->s, "invalid expression");
-        return 1;
+        goto fail;
     }
 
     for (;;) {
@@ -552,57 +591,82 @@ static int qe_cfg_expr(QEmacsDataSource *ds, QEValue *sp, int prec0) {
         if (prec < prec0)
             return 0;
         qe_cfg_next_token(ds);
+        if (op == ',')
+            goto again;
+#ifndef CONFIG_TINY
+        if (op == '?') {
+            int truth;
+            if (qe_cfg_getvalue(ds, sp))
+                goto again;
+            truth = (sp->type == TOK_STRING) || (sp->u.value != 0);
+            if (qe_cfg_expr(ds, sp, PREC_EXPRESSION, !truth) != !truth)
+                goto again;
+            if (!has_token(ds, ':'))
+                goto again;
+            if (qe_cfg_expr(ds, sp, PREC_CONDITIONAL, truth) != truth)
+                goto again;
+            continue;
+        }
+#endif
         if (prec == PREC_SUFFIX) {
             switch (op) {
             case '(': /* function call */
+                /* XXX: should move this code to qe_cfg_call() */
                 if (sp->type == TOK_ID) {
                     const CmdDef *d = qe_find_cmd(sp->u.str);
                     if (!d || d->sig >= CMD_ISS) {
                         if (strequal(sp->u.str, "char")) {
                             if (qe_cfg_get_args(ds, sp, 1, 1) < 0)
-                                return 1;
+                                goto fail;
                             qe_cfg_tochar(ds, sp);
                             continue;
                         } else
                         if (strequal(sp->u.str, "int")) {
                             if (qe_cfg_get_args(ds, sp, 1, 1) < 0)
-                                return -1;
+                                goto fail;
                             qe_cfg_tonum(ds, sp);
                             continue;
                         } else
                         if (strequal(sp->u.str, "string")) {
                             if (qe_cfg_get_args(ds, sp, 1, 1) < 0)
-                                return -1;
+                                goto fail;
                             qe_cfg_tostr(ds, sp);
                             continue;
                         } else {
                             put_status(ds->s, "unknown command '%s'", sp->u.str);
-                            return 1;
+                            goto fail;
                         }
                     }
                     if (qe_cfg_call(ds, sp, d))
-                        return 1;
+                        goto fail;
                     continue;
                 }
                 put_status(ds->s, "invalid function call");
-                return 1;
-            case TOK_INC: /* post increment */
-            case TOK_DEC: /* post decrement */
-                qe_cfg_set_num(sp + 1, 1);
-                if (qe_cfg_assign(ds, sp, op))
-                    return 1;
-                sp->u.value -= (op == TOK_INC) ? 1 : -1;
+                goto fail;
+#ifndef CONFIG_TINY
+            case TOK_INC: /* post increment: convert to first(x, x += 1) */
+            case TOK_DEC: /* post decrement: convert to first(x, x -= 1) */
+                if (qe_cfg_check_lvalue(ds, sp))
+                    goto fail;
+                qe_cfg_set_void(sp + 1);
+                sp[1] = sp[0];
+                sp->alloc = 0;
+                if (qe_cfg_getvalue(ds, sp))
+                    goto fail;
+                qe_cfg_set_num(sp + 2, 1);
+                if (qe_cfg_assign(ds, sp + 1, op))
+                    goto fail;
                 continue;
             case '[': /* subscripting */
-                if (qe_cfg_expr(ds, sp + 1, PREC_COMMA) || !expect_token(ds, ']'))
-                    return 1;
+                if (qe_cfg_expr(ds, sp + 1, PREC_EXPRESSION, 0) || !expect_token(ds, ']'))
+                    goto fail;
                 if (qe_cfg_op(ds, sp, op))
                     return 1;
                 continue;
             case '.': /* property / method accessor */
                 if (ds->tok != TOK_ID) {
                     put_status(ds->s, "expected property name");
-                    return 1;
+                    goto fail;
                 }
                 if (qe_cfg_getvalue(ds, sp))
                     return 1;
@@ -612,26 +676,45 @@ static int qe_cfg_expr(QEmacsDataSource *ds, QEValue *sp, int prec0) {
                     continue;
                 }
                 put_status(ds->s, "no such property '%s'", ds->str);
-                return 1;
+                goto fail;
+#endif
             default:
                 put_status(ds->s, "unsupported operator '%c'", op);
-                return 1;
+                goto fail;
             }
+            //continue; // never reached
         }
         if (prec == PREC_ASSIGN) {
-            if (qe_cfg_expr(ds, sp + 1, prec))
-                return 1;
-            return qe_cfg_assign(ds, sp, op);
+            /* assignments are right associative */
+            if (qe_cfg_expr(ds, sp + 1, PREC_ASSIGN, 0))
+                goto fail;
+            if (qe_cfg_assign(ds, sp, op))
+                goto fail;
+            continue;
         }
-        if (qe_cfg_expr(ds, sp + 1, prec + 1))
-            return 1;
+#ifndef CONFIG_TINY
+        // XXX: should implement shortcut evaluation for || and &&
+        /* other operators are left associative */
+        if (qe_cfg_expr(ds, sp + 1, prec + 1, 0))
+            goto fail;
+        // XXX: may need to delay for qe_cfg_op() to decide if qe_cfg_getvalue is OK
         if (qe_cfg_getvalue(ds, sp))
-            return 1;
+            goto fail;
         if (qe_cfg_op(ds, sp, op))
-            return 1;
+            goto fail;
+#else
+        put_status(ds->s, "unsupported operator '%c'", op);
+        goto fail;
+#endif
     }
+fail:
+    ds->p = start_p;
+    ds->line_num = start_line;
+    qe_cfg_next_token(ds);
+    return qe_cfg_skip_expr(ds);
 }
 
+#ifndef CONFIG_TINY
 static int qe_cfg_op(QEmacsDataSource *ds, QEValue *sp, int op) {
     if (sp->type == TOK_STRING) {
         switch (op) {
@@ -663,6 +746,7 @@ static int qe_cfg_op(QEmacsDataSource *ds, QEValue *sp, int op) {
             }
             break;
         case '%':
+            // XXX: should pass format a tuple?
             if (qe_cfg_format(ds, sp))
                 return 1;
             break;
@@ -742,13 +826,15 @@ static int qe_cfg_op(QEmacsDataSource *ds, QEValue *sp, int op) {
             sp->u.value |= sp[1].u.value;
             break;
         case TOK_LAND:
+            // XXX: should use shortcut evaluation
             sp->u.value = sp->u.value && sp[1].u.value;
             break;
         case TOK_LOR:
+            // XXX: should use shortcut evaluation
             sp->u.value = sp->u.value || sp[1].u.value;
             break;
-            //case '?':
-        case ',':
+        case '?':       // Should not get here
+        case ',':       // Should not get here
             sp->u.value = sp[1].u.value;
             break;
         default:
@@ -758,67 +844,69 @@ static int qe_cfg_op(QEmacsDataSource *ds, QEValue *sp, int op) {
     }
     return 0;
 }
+#endif
 
 static int qe_cfg_assign(QEmacsDataSource *ds, QEValue *sp, int op) {
-    if (sp->type != TOK_ID) {
-        put_status(ds->s, "invalid assignment");
+    if (qe_cfg_check_lvalue(ds, sp))
         return 1;
-    }
-#ifndef CONFIG_TINY
-    {
-        char cmd[128];
-        pstrcpy(cmd, sizeof cmd, sp->u.str);
-        if (qe_cfg_getvalue(ds, sp + 1))
+    if (qe_cfg_getvalue(ds, sp + 1))
+        return 1;
+    if (op != '=') {
+        QEValue val = *sp;
+        sp->alloc = 0;
+        if (qe_cfg_getvalue(ds, sp) || qe_cfg_op(ds, sp, op)) {
+            qe_cfg_set_void(&val);
             return 1;
-        if (op == '=') {
-            qe_cfg_set_void(sp);
-            sp[0] = sp[1];
-            qe_cfg_set_void(sp + 1);
-        } else {
-            if (qe_cfg_getvalue(ds, sp))
-                return 1;
-            if (qe_cfg_op(ds, sp, op))
-                return 1;
         }
-        if (sp->type == TOK_STRING) {
-            qe_set_variable(ds->s, cmd, sp->u.str, 0);
-        } else {
-            qe_set_variable(ds->s, cmd, NULL, sp->u.value);
-        }
+        qe_cfg_move(sp + 1, sp);
+        *sp = val;
     }
-#endif
+    // XXX: should pass QEValue pointer to qe_set_variable()
+    if (sp[1].type == TOK_STRING) {
+        qe_set_variable(ds->s, sp->u.str, sp[1].u.str, 0);
+    } else {
+        qe_set_variable(ds->s, sp->u.str, NULL, sp[1].u.value);
+    }
+    // XXX: should detect and report read-only variables and invalid assignments
     return 0;
 }
 
-static int qe_cfg_skip(QEmacsDataSource *ds) {
+static int qe_cfg_skip_expr(QEmacsDataSource *ds) {
+    /* skip an expression: consume all tokens until prec <= 0.
+       parentheses are skipped in pairs but not balanced.
+     */
     int level = 0;
 
+    // XXX: should match bracket types
     for (;;) {
         switch (ds->tok) {
         case TOK_EOF:
-            return ds->tok;
-        case ';':
-            if (!level)
-                goto done;
-            break;
+            // XXX: should potentially complain about missing )]} */
+            return 1;
+        case '?':
         case '{':
         case '[':
         case '(':
             level++;
             break;
+        case ':':
         case '}':
         case ']':
         case ')':
-            if (!--level)
-                goto done;
+            if (!level)
+                return 1;
+            level--;
+            break;
+        case ';':
+            if (!level)
+                return 1;
             break;
         }
         qe_cfg_next_token(ds);
     }
-done:
-    return qe_cfg_next_token(ds);
 }
 
+#ifndef CONFIG_TINY
 static int qe_cfg_get_args(QEmacsDataSource *ds, QEValue *sp, int n1, int n2) {
     int nargs = 0;
     int sep = 0;
@@ -826,7 +914,7 @@ static int qe_cfg_get_args(QEmacsDataSource *ds, QEValue *sp, int n1, int n2) {
         if (sep && !expect_token(ds, sep))
             return -1;
         sep = ',';
-        if (qe_cfg_expr(ds, sp + nargs, PREC_ASSIGN)) {
+        if (qe_cfg_expr(ds, sp + nargs, PREC_ASSIGN, 0)) {
             put_status(ds->s, "invalid argument");     // need function name
             return -1;
         }
@@ -841,6 +929,7 @@ static int qe_cfg_get_args(QEmacsDataSource *ds, QEValue *sp, int n1, int n2) {
     }
     return nargs;
 }
+#endif
 
 static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
     EditState *s = ds->s;
@@ -930,7 +1019,7 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
         /* XXX: should parse and evaluate all arguments and
            then match actual command arguments */
 
-        if (qe_cfg_expr(ds, sp, PREC_ASSIGN)) {
+        if (qe_cfg_expr(ds, sp, PREC_ASSIGN, 0)) {
             put_status(s, "missing arguments for %s", d->name);
             return -1;
         }
@@ -969,59 +1058,49 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
     return 0;
 }
 
-static int qe_cfg_stmt(QEmacsDataSource *ds, QEValue *sp) {
-    const char *start = ds->p;
+static int qe_cfg_stmt(QEmacsDataSource *ds, QEValue *sp, int skip) {
     int res = 0;
 
     if (has_token(ds, '{')) {
+        /* handle blocks */
         while (!has_token(ds, '}')) {
             if (ds->tok == TOK_EOF) {
                 put_status(ds->s, "missing '}'");
                 return 1;
             }
-            res |= qe_cfg_stmt(ds, sp);
+            res |= qe_cfg_stmt(ds, sp, skip);
         }
         return res;
     }
 
+    // XXX: should also parse do / while?
     if (has_token(ds, TOK_IF)) {
-        int skip;
-        QEValue *sp1 = &ds->stack[0];
+        int truth = 0;
 
-        sp1->type = TOK_VOID;
-        if (qe_cfg_expr(ds, sp1, PREC_COMMA) || qe_cfg_getvalue(ds, sp1))
-            goto fail;
-        skip = (sp1->type == TOK_STRING) ? 0 : sp1->u.value == 0;
-        if (skip) {
-            qe_cfg_skip(ds);
+        if (qe_cfg_expr(ds, sp, PREC_EXPRESSION, skip) || qe_cfg_getvalue(ds, sp)) {
+            res = skip = 1;
         } else {
-            qe_cfg_stmt(ds, sp1);
+            truth = (sp->type == TOK_STRING) || (sp->u.value != 0);
         }
-        if (ds->tok == TOK_ELSE) {
-            if (!skip) {
-                qe_cfg_skip(ds);
-            } else {
-                qe_cfg_stmt(ds, sp1);
-            }
-        }
+        res |= qe_cfg_stmt(ds, sp, skip | !truth);
+        if (has_token(ds, TOK_ELSE))
+            res |= qe_cfg_stmt(ds, sp, skip | truth);
         return res;
     }
-    if (qe_cfg_expr(ds, sp, PREC_COMMA) || qe_cfg_getvalue(ds, sp))
-        goto fail;
-    has_token(ds, ';'); /* consume `;` if any (should check for newline?) */
-    if (ds->tok != '}' && ds->tok != TOK_EOF) {
-        // XXX: should check for implicit semicolon at end of line
+    if (ds->tok != ';') {   /* test for empty statement */
+        /*  accept comma expressions */
+        if (qe_cfg_expr(ds, sp, PREC_EXPRESSION, skip) || qe_cfg_getvalue(ds, sp))
+            res = 1;
     }
-    return 0;
-
-fail:
-    ds->p = start;
-    qe_cfg_skip(ds);
-    return 1;
+    /* consume `;` if any or is current token first on line */
+    if (!has_token(ds, ';') && ds->tok != TOK_EOF && ds->tok != '}' && !ds->newline_seen) {
+        //if (!res)
+            put_status(ds->s, "missing ';'");
+    }
+    return res;
 }
 
-static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
-{
+static int qe_parse_script(EditState *s, QEmacsDataSource *ds) {
     QEmacsState *qs = s->qe_state;
     QErrorContext ec = qs->ec;
     QEValue *sp = &ds->stack[0];
@@ -1036,7 +1115,7 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
 
     qe_cfg_next_token(ds);
     while (ds->tok != TOK_EOF && ds->tok != TOK_ERR) {
-        if (qe_cfg_stmt(ds, sp))
+        if (qe_cfg_stmt(ds, sp, 0))
             sp->type = TOK_VOID;
     }
     if (ds->allocated_buf) {
@@ -1050,47 +1129,54 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds)
 void do_eval_expression(EditState *s, const char *expression, int argval)
 {
     QEmacsDataSource ds;
-    QEValue *sp = &ds.stack[0];
-    char buf[64];
-    int len;
 
-    if (argval != NO_ARG && (s->b->flags & BF_READONLY))
+    if (argval != NO_ARG && check_read_only(s))
         return;
 
     qe_cfg_init(&ds);
     ds.buf = expression;
     ds.filename = "<string>";
-    switch (qe_parse_script(s, &ds)) {
-    case TOK_VOID:
-        break;
-    case TOK_NUMBER:
-        len = snprintf(buf, sizeof buf, "%lld", sp->u.value);
-        if (argval == NO_ARG) {
-            put_status(s, "-> %s", buf);
-        } else {
-            s->offset += eb_insert_utf8_buf(s->b, s->offset, buf, len);
+    if (qe_parse_script(s, &ds) == TOK_ERR) {
+        put_status(s, "evaluation error");
+    } else {
+        QEValue *sp = &ds.stack[0];
+        char buf[64];
+        int len;
+
+        if (!qe_cfg_getvalue(&ds, sp)) {
+            switch (sp->type) {
+            case TOK_VOID:
+                break;
+            case TOK_NUMBER:
+                if (argval == NO_ARG) {
+                    put_status(s, "-> %lld", sp->u.value);
+                } else {
+                    len = snprintf(buf, sizeof buf, "%lld", sp->u.value);
+                    s->offset += eb_insert_utf8_buf(s->b, s->offset, buf, len);
+                }
+                break;
+            case TOK_STRING:
+                if (argval == NO_ARG) {
+                    /* XXX: should optionally unparse string */
+                    put_status(s, "-> \"%s\"", sp->u.str);
+                } else {
+                    s->offset += eb_insert_utf8_buf(s->b, s->offset, sp->u.str, sp->len);
+                }
+                break;
+            case TOK_CHAR:
+                len = utf8_encode(buf, (int)sp->u.value);
+                if (argval == NO_ARG) {
+                    /* XXX: should optionally unparse character */
+                    put_status(s, "-> '%.*s'", len, buf);
+                } else {
+                    s->offset += eb_insert_utf8_buf(s->b, s->offset, buf, len);
+                }
+                break;
+            default:
+                put_status(s, "unexpected value type: %d", sp->type);
+                break;
+            }
         }
-        break;
-    case TOK_STRING:
-        if (argval == NO_ARG) {
-            /* XXX: should unparse string */
-            put_status(s, "-> \"%s\"", sp->u.str);
-        } else {
-            s->offset += eb_insert_utf8_buf(s->b, s->offset, sp->u.str, sp->len);
-        }
-        break;
-    case TOK_CHAR:
-        len = utf8_encode(buf, (int)sp->u.value);
-        if (argval == NO_ARG) {
-            /* XXX: should unparse character */
-            put_status(s, "-> '%.*s'", len, buf);
-        } else {
-            s->offset += eb_insert_utf8_buf(s->b, s->offset, buf, len);
-        }
-        break;
-    default:
-        put_status(s, "unexpected value type: %d", sp->type);
-        break;
     }
     qe_cfg_release(&ds);
     do_refresh(s);
@@ -1186,7 +1272,6 @@ void do_save_session(EditState *s, int popup)
         eb_free(&b);
     }
 }
-#endif
 
 static void symbol_complete(CompleteState *cp) {
     command_complete(cp);
@@ -1206,6 +1291,7 @@ static CompletionDef symbol_completion = {
     "symbol", symbol_complete, symbol_print_entry, command_get_entry,
     CF_SPACE_OK | CF_NO_AUTO_SUBMIT
 };
+#endif
 
 static const CmdDef parser_commands[] = {
     CMD2( "eval-expression", "M-:",
@@ -1229,7 +1315,9 @@ static const CmdDef parser_commands[] = {
 
 static int parser_init(void) {
     qe_register_commands(NULL, parser_commands, countof(parser_commands));
+#ifndef CONFIG_TINY
     qe_register_completion(&symbol_completion);
+#endif
     return 0;
 }
 

@@ -21,6 +21,11 @@
 #include "qe.h"
 #include "variables.h"
 
+static QVarType qe_set_variable_offset(EditState *s, VarDef *vp, void *ptr,
+                                       const char *value, int num);
+static QVarType qe_set_variable_generic(EditState *s, VarDef *vp, void *ptr,
+                                        const char *value, int num);
+
 const char * const var_domain[] = {
     "global",   /* VAR_GLOBAL */
     "state",    /* VAR_STATE */
@@ -42,9 +47,10 @@ static VarDef var_table[] = {
            "Set if this window is displayed in full screen (without borders)." )
     S_VAR( "flag-split-window-change-focus", flag_split_window_change_focus, VAR_NUMBER, VAR_RW_SAVE,
            "Set if `split-window` should set focus to the new window." )
+    // XXX: need set_variable function to perform side effect
     S_VAR( "backspace-is-control-h", backspace_is_control_h, VAR_NUMBER, VAR_RW_SAVE,
            "Set if the Delete key sends a control-H." )
-    S_VAR( "ungot-key", ungot_key, VAR_NUMBER, VAR_RW, NULL )
+    S_VAR( "ungot-key", ungot_key, VAR_NUMBER, VAR_RW, NULL )   // XXX: need set_variable function
     S_VAR( "QEPATH", res_path, VAR_CHARS, VAR_RO,
            "List of directories to search for standard files to load." )
     //S_VAR( "it", it, VAR_NUMBER, VAR_RW, NULL )
@@ -56,15 +62,15 @@ static VarDef var_table[] = {
            "Set to ignore case in compare-windows." )
     S_VAR( "hilite-region", hilite_region, VAR_NUMBER, VAR_RW_SAVE,
            "Set to highlight the region after setting the mark." )
-    S_VAR( "mmap-threshold", mmap_threshold, VAR_NUMBER, VAR_RW_SAVE,
+    S_VAR( "mmap-threshold", mmap_threshold, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_variable function
            "Size from which files are mmapped instead of loaded in memory." )
-    S_VAR( "max-load-size", max_load_size, VAR_NUMBER, VAR_RW_SAVE,
+    S_VAR( "max-load-size", max_load_size, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_variable function
            "Maximum size for files to be loaded or mmapped into a buffer." )
-    S_VAR( "show-unicode", show_unicode, VAR_NUMBER, VAR_RW_SAVE,
+    S_VAR( "show-unicode", show_unicode, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_variable function
            "Set to show non-ASCII characters as unicode escape sequences." )
-    S_VAR( "default-tab-width", default_tab_width, VAR_NUMBER, VAR_RW_SAVE,
+    S_VAR( "default-tab-width", default_tab_width, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_variable function
            "Default value of `tab-width` for buffers that do not override it." )
-    S_VAR( "default-fill-column", default_fill_column, VAR_NUMBER, VAR_RW_SAVE,
+    S_VAR( "default-fill-column", default_fill_column, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_variable function
            "Default value of `fill-column` for buffers that do not override it" )
     S_VAR( "backup-inhibited", backup_inhibited, VAR_NUMBER, VAR_RW_SAVE,
            "Set to prevent automatic backups of modified files" )
@@ -73,8 +79,7 @@ static VarDef var_table[] = {
 
     //B_VAR( "screen-charset", charset, VAR_NUMBER, VAR_RW, NULL )
 
-    // XXX: need functions to set values of buffer and window properties
-    B_VAR( "mark", mark, VAR_NUMBER, VAR_RW,
+    B_VAR_F( "mark", mark, VAR_NUMBER, VAR_RW, qe_set_variable_offset,
            "The position of the beginning of the current region." )
     B_VAR( "bufsize", total_size, VAR_NUMBER, VAR_RO,
            "The number of bytes in the current buffer." )
@@ -82,34 +87,34 @@ static VarDef var_table[] = {
            "The name of the current buffer." )
     B_VAR( "filename", filename, VAR_CHARS, VAR_RO,
            "The name of the file associated with the current buffer." )
-    B_VAR( "tab-width", tab_width, VAR_NUMBER, VAR_RW,
+    B_VAR( "tab-width", tab_width, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
            "Distance between tab stops (for display of tab characters), in columns." )
-    B_VAR( "fill-column", fill_column, VAR_NUMBER, VAR_RW,
+    B_VAR( "fill-column", fill_column, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
            "Column beyond which automatic line-wrapping should happen." )
 
-    W_VAR( "point", offset, VAR_NUMBER, VAR_RW,     /* should be window-point */
+    W_VAR_F( "point", offset, VAR_NUMBER, VAR_RW, qe_set_variable_offset,    /* should be window-point */
            "Current value of point in this window." )
-    W_VAR( "indent-width", indent_size, VAR_NUMBER, VAR_RW,
+    W_VAR( "indent-width", indent_size, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
            "Number of columns to indent by for a syntactic level." )
     W_VAR( "indent-tabs-mode", indent_tabs_mode, VAR_NUMBER, VAR_RW,
            "Set if indentation can insert tabs." )
-    W_VAR( "default-style", default_style, VAR_NUMBER, VAR_RW,
+    W_VAR( "default-style", default_style, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
            "Default text style for this window." )
-    W_VAR( "region-style", region_style, VAR_NUMBER, VAR_RW,
+    W_VAR( "region-style", region_style, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
            "Text style for the current region in this window." )
-    W_VAR( "curline-style", curline_style, VAR_NUMBER, VAR_RW,
+    W_VAR( "curline-style", curline_style, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
            "Text style for the current line in this window." )
-    W_VAR( "window-width", width, VAR_NUMBER, VAR_RW,
+    W_VAR( "window-width", width, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
            "Number of display columns in this window." )
-    W_VAR( "window-height", height, VAR_NUMBER, VAR_RW,
+    W_VAR( "window-height", height, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
            "Number of display lines in this window." )
-    W_VAR( "window-left", xleft, VAR_NUMBER, VAR_RW,
+    W_VAR( "window-left", xleft, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
            "Display column of the left edge of this window." )
-    W_VAR( "window-top", ytop, VAR_NUMBER, VAR_RW,
+    W_VAR( "window-top", ytop, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
            "Display line of the top edge of this window." )
     W_VAR( "window-prompt", prompt, VAR_STRING, VAR_RW,
            "Prompt string to show for this window." )
-    W_VAR( "dump-width", dump_width, VAR_NUMBER, VAR_RW, NULL )
+    W_VAR( "dump-width", dump_width, VAR_NUMBER, VAR_RW, NULL )   // XXX: need set_variable function
 
     M_VAR( "mode-name", name, VAR_STRING, VAR_RO,
            "Name of the current major mode." )
@@ -254,7 +259,19 @@ extern u8 end[];
 u8 end[8];
 #endif
 
-static QVarType qe_generic_set_variable(EditState *s, VarDef *vp, void *ptr,
+static QVarType qe_set_variable_offset(EditState *s, VarDef *vp, void *ptr,
+                                       const char *value, int num)
+{
+    if (value) {
+        /* XXX: should have default, min and max values */
+        return VAR_INVALID;
+    } else {
+        *(int*)ptr = clamp(num, 0, s->b->total_size);
+        return VAR_NUMBER;
+    }
+}
+
+static QVarType qe_set_variable_generic(EditState *s, VarDef *vp, void *ptr,
                                         const char *value, int num)
 {
     char buf[32];
@@ -268,6 +285,7 @@ static QVarType qe_generic_set_variable(EditState *s, VarDef *vp, void *ptr,
         }
         if (!strequal(ptr, value)) {
             pstr = (char **)ptr;
+            // XXX: need alloc indicator
             if ((u8 *)*pstr > end)
                 qe_free(pstr);
             *pstr = qe_strdup(value);
@@ -395,7 +413,7 @@ void qe_register_variables(VarDef *vars, int count)
 
     for (vp = vars; vp < vars + count; vp++) {
         if (!vp->set_value)
-            vp->set_value = qe_generic_set_variable;
+            vp->set_value = qe_set_variable_generic;
         vp->next = vp + 1;
     }
     vp[-1].next = qs->first_variable;
