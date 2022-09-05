@@ -917,30 +917,6 @@ static void do_describe_function(EditState *s, const char *cmd_name) {
     show_popup(s, b, "Help");
 }
 
-static void do_describe_variable(EditState *s, const char *name) {
-    EditBuffer *b;
-    VarDef *vp;
-
-    if ((vp = qe_find_variable(name)) == NULL) {
-        put_status(s, "No variable %s", name);
-        return;
-    }
-    b = new_help_buffer();
-    if (!b)
-        return;
-
-    eb_putc(b, '\n');
-    /* print name, class, current value and description */
-    eb_variable_print_entry(b, vp, s);
-    eb_putc(b, '\n');
-    if (vp->desc && *vp->desc) {
-        /* print short description */
-        eb_printf(b, "  %s\n", vp->desc);
-    }
-    // XXX: should look up markdown documentation
-    show_popup(s, b, "Help");
-}
-
 // Sort Flags: do not use 1 for argval compatibility
 #define SF_FOLD       0x02
 #define SF_REVERSE    0x04
@@ -2280,10 +2256,6 @@ static const CmdDef extra_commands[] = {
     CMD2( "describe-screen", "C-h s, C-h C-s",
           "Show information about the current screen",
           do_describe_screen, ESi, "p")
-    CMD2( "describe-variable", "C-h v",
-          "Show information for a variable",
-          do_describe_variable, ESs,
-          "s{Describe variable: }[variable]|variable|")
     CMD2( "describe-window", "C-h w, C-h C-w",
           "Show information about the current window",
           do_describe_window, ESi, "p")

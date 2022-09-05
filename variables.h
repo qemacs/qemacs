@@ -51,6 +51,8 @@ typedef struct VarDef VarDef;
 struct VarDef {
     const char *name;
     const char *desc;
+    unsigned int var_alloc : 1;
+    unsigned int str_alloc : 1;
     unsigned int modified : 1;
     enum QVarDomain domain : 4;
     enum QVarType type : 4;
@@ -70,21 +72,21 @@ struct VarDef {
 };
 
 #define U_VAR_F(name, type, fun, desc) \
-    { (name), desc, 0, VAR_SELF, type, VAR_RW, 0, { .num = 0 }, fun, NULL },
+    { (name), desc, 0, 0, 0, VAR_SELF, type, VAR_RW, 0, { .num = 0 }, fun, NULL },
 #define G_VAR_F(name, var, type, rw, fun, desc) \
-    { (name), desc, 0, VAR_GLOBAL, type, rw, 0, \
+    { (name), desc, 0, 0, 0, VAR_GLOBAL, type, rw, 0, \
       { .ptr = (void*)&(var) }, fun, NULL },
 #define S_VAR_F(name, fld, type, rw, fun, desc) \
-    { (name), desc, 0, VAR_STATE, type, rw, sizeof(((QEmacsState*)0)->fld), \
+    { (name), desc, 0, 0, 0, VAR_STATE, type, rw, sizeof(((QEmacsState*)0)->fld), \
       { .offset = offsetof(QEmacsState, fld) }, fun, NULL },
 #define B_VAR_F(name, fld, type, rw, fun, desc) \
-    { (name), desc, 0, VAR_BUFFER, type, rw, sizeof(((EditBuffer*)0)->fld), \
+    { (name), desc, 0, 0, 0, VAR_BUFFER, type, rw, sizeof(((EditBuffer*)0)->fld), \
       { .offset = offsetof(EditBuffer, fld) }, fun, NULL },
 #define W_VAR_F(name, fld, type, rw, fun, desc) \
-    { (name), desc, 0, VAR_WINDOW, type, rw, sizeof(((EditState*)0)->fld), \
+    { (name), desc, 0, 0, 0, VAR_WINDOW, type, rw, sizeof(((EditState*)0)->fld), \
       { .offset = offsetof(EditState, fld) }, fun, NULL },
 #define M_VAR_F(name, fld, type, rw, fun, desc) \
-    { (name), desc, 0, VAR_MODE, type, rw, sizeof(((ModeDef*)0)->fld), \
+    { (name), desc, 0, 0, 0, VAR_MODE, type, rw, sizeof(((ModeDef*)0)->fld), \
       { .offset = offsetof(ModeDef, fld) }, fun, NULL },
 
 #define U_VAR(name,type,desc)         U_VAR_F(name, type, NULL, desc)
@@ -95,7 +97,6 @@ struct VarDef {
 #define M_VAR(name,fld,type,rw,desc)  M_VAR_F(name, fld, type, rw, NULL, desc)
 
 void qe_register_variables(VarDef *vars, int count);
-VarDef *qe_find_variable(const char *name);
 void variable_complete(CompleteState *cp);
 int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s);
 int variable_print_entry(CompleteState *cp, EditState *s, const char *name);

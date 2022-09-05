@@ -95,15 +95,14 @@ TARGET_OBJ:=$(TARGET)
 endif
 
 OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o input.o display.o \
-       modes/hex.o
+       qescript.o modes/hex.o
 
 ifdef TARGET_TINY
 ECHO_CFLAGS += -DCONFIG_TINY
 #CFLAGS += -DCONFIG_TINY -m32 -Os
 CFLAGS += -DCONFIG_TINY -Os
-OBJS+= parser.o
 else
-OBJS+= qescript.o extras.o variables.o
+OBJS+= extras.o variables.o
 endif
 
 ifdef CONFIG_DARWIN

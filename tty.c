@@ -170,7 +170,7 @@ static int tty_dpy_init(QEditScreen *s,
     struct sigaction sig;
     const char *p;
 
-    ts = calloc(1, sizeof(*ts));
+    ts = qe_mallocz(TTYState);
     if (ts == NULL) {
         return 1;
     }
@@ -395,9 +395,11 @@ static void tty_dpy_close(QEditScreen *s)
                );
 #endif
     fflush(s->STDOUT);
+    tcsetattr(fileno(s->STDIN), TCSANOW, &ts->oldtty);
 
     qe_free(&ts->screen);
     qe_free(&ts->line_updated);
+    qe_free(&s->priv_data);
 }
 
 static void tty_term_exit(void)

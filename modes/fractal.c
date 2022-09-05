@@ -1178,7 +1178,7 @@ static void do_mandelbrot_test(EditState *s) {
 
     if (!fractal_mode.name) {
         /* populate and register shell mode and commands */
-        memcpy(&fractal_mode, &text_mode, sizeof(ModeDef));
+        memcpy(&fractal_mode, &text_mode, offsetof(ModeDef, first_key));
         fractal_mode.name = "fractal";
         fractal_mode.mode_probe = fractal_mode_probe;
         fractal_mode.buffer_instance_size = sizeof(FractalState);

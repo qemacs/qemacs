@@ -189,7 +189,7 @@ static int archive_init(void)
     int i;
 
     /* copy and patch text_mode */
-    memcpy(&archive_mode, &text_mode, sizeof(ModeDef));
+    memcpy(&archive_mode, &text_mode, offsetof(ModeDef, first_key));
     archive_mode.name = "archive";
     archive_mode.mode_probe = archive_mode_probe;
     archive_mode.data_type = &archive_data_type;
@@ -335,7 +335,7 @@ static int compress_init(void)
     int i;
 
     /* copy and patch text_mode */
-    memcpy(&compress_mode, &text_mode, sizeof(ModeDef));
+    memcpy(&compress_mode, &text_mode, offsetof(ModeDef, first_key));
     compress_mode.name = "compress";
     compress_mode.mode_probe = compress_mode_probe;
     compress_mode.data_type = &compress_data_type;
@@ -413,7 +413,7 @@ static EditBufferDataType wget_data_type = {
 static int wget_init(void)
 {
     /* copy and patch text_mode */
-    memcpy(&wget_mode, &text_mode, sizeof(ModeDef));
+    memcpy(&wget_mode, &text_mode, offsetof(ModeDef, first_key));
     wget_mode.name = "wget";
     wget_mode.mode_probe = wget_mode_probe;
     wget_mode.data_type = &wget_data_type;
@@ -504,7 +504,7 @@ static EditBufferDataType man_data_type = {
 static int man_init(void)
 {
     /* copy and patch text_mode */
-    memcpy(&man_mode, &text_mode, sizeof(ModeDef));
+    memcpy(&man_mode, &text_mode, offsetof(ModeDef, first_key));
     man_mode.name = "man";
     man_mode.mode_probe = man_mode_probe;
     man_mode.data_type = &man_data_type;

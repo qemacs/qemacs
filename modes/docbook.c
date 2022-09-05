@@ -48,7 +48,9 @@ static ModeDef docbook_mode;
 static int docbook_init(void)
 {
     /* inherit from html mode */
-    memcpy(&docbook_mode, &html_mode, sizeof(ModeDef));
+    // XXX: should just inherit with fallback
+    memcpy(&docbook_mode, &html_mode, offsetof(ModeDef, first_key));
+    docbook_mode.fallback = &html_mode;
     docbook_mode.name = "docbook";
     docbook_mode.extensions = NULL;
     /* buffer_instance_size must be non 0 for docbook_mode_init() to

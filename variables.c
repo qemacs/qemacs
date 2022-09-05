@@ -21,10 +21,10 @@
 #include "qe.h"
 #include "variables.h"
 
-static QVarType qe_set_variable_offset(EditState *s, VarDef *vp, void *ptr,
-                                       const char *value, int num);
-static QVarType qe_set_variable_generic(EditState *s, VarDef *vp, void *ptr,
-                                        const char *value, int num);
+static QVarType qe_variable_set_value_offset(EditState *s, VarDef *vp, void *ptr,
+                                             const char *value, int num);
+static QVarType qe_variable_set_value_generic(EditState *s, VarDef *vp, void *ptr,
+                                              const char *value, int num);
 
 const char * const var_domain[] = {
     "global",   /* VAR_GLOBAL */
@@ -47,10 +47,10 @@ static VarDef var_table[] = {
            "Set if this window is displayed in full screen (without borders)." )
     S_VAR( "flag-split-window-change-focus", flag_split_window_change_focus, VAR_NUMBER, VAR_RW_SAVE,
            "Set if `split-window` should set focus to the new window." )
-    // XXX: need set_variable function to perform side effect
+    // XXX: need set_value function to perform side effect
     S_VAR( "backspace-is-control-h", backspace_is_control_h, VAR_NUMBER, VAR_RW_SAVE,
            "Set if the Delete key sends a control-H." )
-    S_VAR( "ungot-key", ungot_key, VAR_NUMBER, VAR_RW, NULL )   // XXX: need set_variable function
+    S_VAR( "ungot-key", ungot_key, VAR_NUMBER, VAR_RW, NULL )   // XXX: need set_value function
     S_VAR( "QEPATH", res_path, VAR_CHARS, VAR_RO,
            "List of directories to search for standard files to load." )
     //S_VAR( "it", it, VAR_NUMBER, VAR_RW, NULL )
@@ -62,15 +62,15 @@ static VarDef var_table[] = {
            "Set to ignore case in compare-windows." )
     S_VAR( "hilite-region", hilite_region, VAR_NUMBER, VAR_RW_SAVE,
            "Set to highlight the region after setting the mark." )
-    S_VAR( "mmap-threshold", mmap_threshold, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_variable function
+    S_VAR( "mmap-threshold", mmap_threshold, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_value function
            "Size from which files are mmapped instead of loaded in memory." )
-    S_VAR( "max-load-size", max_load_size, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_variable function
+    S_VAR( "max-load-size", max_load_size, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_value function
            "Maximum size for files to be loaded or mmapped into a buffer." )
-    S_VAR( "show-unicode", show_unicode, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_variable function
+    S_VAR( "show-unicode", show_unicode, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_value function
            "Set to show non-ASCII characters as unicode escape sequences." )
-    S_VAR( "default-tab-width", default_tab_width, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_variable function
+    S_VAR( "default-tab-width", default_tab_width, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_value function
            "Default value of `tab-width` for buffers that do not override it." )
-    S_VAR( "default-fill-column", default_fill_column, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_variable function
+    S_VAR( "default-fill-column", default_fill_column, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_value function
            "Default value of `fill-column` for buffers that do not override it" )
     S_VAR( "backup-inhibited", backup_inhibited, VAR_NUMBER, VAR_RW_SAVE,
            "Set to prevent automatic backups of modified files" )
@@ -79,7 +79,7 @@ static VarDef var_table[] = {
 
     //B_VAR( "screen-charset", charset, VAR_NUMBER, VAR_RW, NULL )
 
-    B_VAR_F( "mark", mark, VAR_NUMBER, VAR_RW, qe_set_variable_offset,
+    B_VAR_F( "mark", mark, VAR_NUMBER, VAR_RW, qe_variable_set_value_offset,
            "The position of the beginning of the current region." )
     B_VAR( "bufsize", total_size, VAR_NUMBER, VAR_RO,
            "The number of bytes in the current buffer." )
@@ -87,34 +87,34 @@ static VarDef var_table[] = {
            "The name of the current buffer." )
     B_VAR( "filename", filename, VAR_CHARS, VAR_RO,
            "The name of the file associated with the current buffer." )
-    B_VAR( "tab-width", tab_width, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
+    B_VAR( "tab-width", tab_width, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Distance between tab stops (for display of tab characters), in columns." )
-    B_VAR( "fill-column", fill_column, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
+    B_VAR( "fill-column", fill_column, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Column beyond which automatic line-wrapping should happen." )
 
-    W_VAR_F( "point", offset, VAR_NUMBER, VAR_RW, qe_set_variable_offset,    /* should be window-point */
+    W_VAR_F( "point", offset, VAR_NUMBER, VAR_RW, qe_variable_set_value_offset,    /* should be window-point */
            "Current value of point in this window." )
-    W_VAR( "indent-width", indent_size, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
+    W_VAR( "indent-width", indent_size, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Number of columns to indent by for a syntactic level." )
     W_VAR( "indent-tabs-mode", indent_tabs_mode, VAR_NUMBER, VAR_RW,
            "Set if indentation can insert tabs." )
-    W_VAR( "default-style", default_style, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
+    W_VAR( "default-style", default_style, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Default text style for this window." )
-    W_VAR( "region-style", region_style, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
+    W_VAR( "region-style", region_style, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Text style for the current region in this window." )
-    W_VAR( "curline-style", curline_style, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
+    W_VAR( "curline-style", curline_style, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Text style for the current line in this window." )
-    W_VAR( "window-width", width, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
+    W_VAR( "window-width", width, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Number of display columns in this window." )
-    W_VAR( "window-height", height, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
+    W_VAR( "window-height", height, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Number of display lines in this window." )
-    W_VAR( "window-left", xleft, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
+    W_VAR( "window-left", xleft, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Display column of the left edge of this window." )
-    W_VAR( "window-top", ytop, VAR_NUMBER, VAR_RW,   // XXX: need set_variable function
+    W_VAR( "window-top", ytop, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Display line of the top edge of this window." )
     W_VAR( "window-prompt", prompt, VAR_STRING, VAR_RW,
            "Prompt string to show for this window." )
-    W_VAR( "dump-width", dump_width, VAR_NUMBER, VAR_RW, NULL )   // XXX: need set_variable function
+    W_VAR( "dump-width", dump_width, VAR_NUMBER, VAR_RW, NULL )   // XXX: need set_value function
 
     M_VAR( "mode-name", name, VAR_STRING, VAR_RO,
            "Name of the current major mode." )
@@ -149,7 +149,7 @@ static VarDef var_table[] = {
     //G_VAR( "perl-mode-extensions", perl_mode.extensions, VAR_STRING, VAR_RW, NULL )
 };
 
-VarDef *qe_find_variable(const char *name)
+static VarDef *qe_find_variable(const char *name)
 {
     QEmacsState *qs = &qe_state;
     VarDef *vp;
@@ -181,18 +181,29 @@ QVarType qe_get_variable(EditState *s, const char *name,
     int num = 0;
     const char *str = NULL;
     const void *ptr;
+    const char *endp;
 
+    /* find standard variable and user variables */
+    // XXX: should also have window, buffer, mode properties?
     vp = qe_find_variable(name);
     if (!vp) {
-        /* Should enumerate user variables ? */
-
         /* Try environment */
         str = getenv(name);
+        if (!str) {
+            if (size > 0)
+                *buf = '\0';
+            return VAR_UNKNOWN;
+        }
+        num = strtol_c(str, &endp, 0);
+        if (pnum && endp != str && *endp == '\0') {
+            *pnum = num;
+            return VAR_NUMBER;
+        }
         if (as_source)
             strquote(buf, size, str, -1);
         else
-            pstrcpy(buf, size, str ? str : "");
-        return str ? VAR_STRING : VAR_UNKNOWN;
+            pstrcpy(buf, size, str);
+        return VAR_STRING;
     }
     switch (vp->domain) {
     case VAR_SELF:
@@ -249,18 +260,8 @@ QVarType qe_get_variable(EditState *s, const char *name,
     return vp->type;
 }
 
-/* Ugly kludge to check for allocated data: pointers above end are
- * assumed to be allocated with qe_malloc
- */
-extern u8 end[];
-#ifdef CONFIG_DARWIN
-/* XXX: not really at the end, but should be beyond initialized data */
-/* XXX: should remove this hack */
-u8 end[8];
-#endif
-
-static QVarType qe_set_variable_offset(EditState *s, VarDef *vp, void *ptr,
-                                       const char *value, int num)
+static QVarType qe_variable_set_value_offset(EditState *s, VarDef *vp, void *ptr,
+                                             const char *value, int num)
 {
     if (value) {
         /* XXX: should have default, min and max values */
@@ -271,8 +272,8 @@ static QVarType qe_set_variable_offset(EditState *s, VarDef *vp, void *ptr,
     }
 }
 
-static QVarType qe_set_variable_generic(EditState *s, VarDef *vp, void *ptr,
-                                        const char *value, int num)
+static QVarType qe_variable_set_value_generic(EditState *s, VarDef *vp, void *ptr,
+                                              const char *value, int num)
 {
     char buf[32];
     char **pstr;
@@ -283,12 +284,12 @@ static QVarType qe_set_variable_generic(EditState *s, VarDef *vp, void *ptr,
             snprintf(buf, sizeof(buf), "%d", num);
             value = buf;
         }
-        if (!strequal(ptr, value)) {
-            pstr = (char **)ptr;
-            // XXX: need alloc indicator
-            if ((u8 *)*pstr > end)
+        pstr = (char **)ptr;
+        if (!strequal(*pstr, value)) {
+            if (vp->str_alloc)
                 qe_free(pstr);
             *pstr = qe_strdup(value);
+            vp->str_alloc = 1;
             vp->modified = 1;
         }
         break;
@@ -330,10 +331,12 @@ QVarType qe_set_variable(EditState *s, const char *name,
         /* Create user variable (global/buffer/window/mode?) */
         vp = qe_mallocz(VarDef);
         vp->name = qe_strdup(name);
+        vp->var_alloc = 1;
         vp->modified = 1;
         vp->domain = VAR_SELF;
         vp->rw = VAR_RW_SAVE;
         if (value) {
+            vp->str_alloc = 1;
             vp->value.str = qe_strdup(value);
             vp->type = VAR_STRING;
         } else {
@@ -406,6 +409,30 @@ void do_set_variable(EditState *s, const char *name, const char *value)
     }
 }
 
+static void do_describe_variable(EditState *s, const char *name) {
+    EditBuffer *b;
+    VarDef *vp;
+
+    if ((vp = qe_find_variable(name)) == NULL) {
+        put_status(s, "No variable %s", name);
+        return;
+    }
+    b = new_help_buffer();
+    if (!b)
+        return;
+
+    eb_putc(b, '\n');
+    /* print name, class, current value and description */
+    eb_variable_print_entry(b, vp, s);
+    eb_putc(b, '\n');
+    if (vp->desc && *vp->desc) {
+        /* print short description */
+        eb_printf(b, "  %s\n", vp->desc);
+    }
+    // XXX: should look up markdown documentation
+    show_popup(s, b, "Help");
+}
+
 void qe_register_variables(VarDef *vars, int count)
 {
     QEmacsState *qs = &qe_state;
@@ -413,7 +440,7 @@ void qe_register_variables(VarDef *vars, int count)
 
     for (vp = vars; vp < vars + count; vp++) {
         if (!vp->set_value)
-            vp->set_value = qe_set_variable_generic;
+            vp->set_value = qe_variable_set_value_generic;
         vp->next = vp + 1;
     }
     vp[-1].next = qs->first_variable;
@@ -549,6 +576,10 @@ static const CmdDef var_commands[] = {
           "Set the value of a variable",
           do_set_variable, ESss,
           "s{Set variable: }[variable]|variable|s{to value: }|value|")
+    CMD2( "describe-variable", "C-h v",
+          "Show information for a variable",
+          do_describe_variable, ESs,
+          "s{Describe variable: }[variable]|variable|")
 };
 
 static int vars_init(void) {

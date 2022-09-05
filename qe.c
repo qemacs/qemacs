@@ -359,7 +359,7 @@ static int qe_unregister_binding(ModeDef *m, unsigned int *keys, int nb_keys) {
         &&  !memcmp((*lp)->keys, keys, nb_keys * sizeof(*keys)))
         {
             p = *lp;
-            *lp = (*lp)->next;
+            *lp = p->next;
             qe_free(&p);
             return 1;
         }
@@ -6993,7 +6993,7 @@ static const CmdDef minibuffer_commands[] = {
 void minibuffer_init(void)
 {
     /* populate and register minibuffer mode and commands */
-    memcpy(&minibuffer_mode, &text_mode, sizeof(ModeDef));
+    memcpy(&minibuffer_mode, &text_mode, offsetof(ModeDef, first_key));
     minibuffer_mode.name = "minibuffer";
     minibuffer_mode.mode_probe = NULL;
     minibuffer_mode.buffer_instance_size = sizeof(MinibufState);
@@ -7064,7 +7064,7 @@ static void list_display_hook(EditState *s)
 
 static int list_init(void)
 {
-    memcpy(&list_mode, &text_mode, sizeof(ModeDef));
+    memcpy(&list_mode, &text_mode, offsetof(ModeDef, first_key));
     list_mode.name = "list";
     list_mode.mode_probe = NULL;
     list_mode.mode_init = list_mode_init;
@@ -7147,7 +7147,7 @@ static const CmdDef popup_commands[] = {
 static void popup_init(void)
 {
     /* popup mode inherits from text mode */
-    memcpy(&popup_mode, &text_mode, sizeof(ModeDef));
+    memcpy(&popup_mode, &text_mode, offsetof(ModeDef, first_key));
     popup_mode.name = "popup";
     popup_mode.mode_probe = NULL;
     qe_register_mode(&popup_mode, MODEF_VIEW);
@@ -9700,11 +9700,15 @@ int main(int argc, char **argv)
     url_main_loop(qe_init, &args);
 
 #ifdef CONFIG_ALL_KMAPS
+    /* unmap/free input methods file */
     unload_input_methods();
 #endif
 #ifdef CONFIG_UNICODE_JOIN
+    /* free ligature arrays */
     unload_ligatures();
 #endif
+    dpy_close(&global_screen);
+
 #ifndef CONFIG_TINY
     if (free_everything) {
         /* free all structures for valgrind */
@@ -9753,6 +9757,17 @@ int main(int argc, char **argv)
                 m->first_key = p->next;
                 qe_free(&p);
             }
+            // XXX: should free allocated ModeDef structures
+        }
+        while (qs->first_variable) {
+            struct VarDef *vp = qs->first_variable;
+            qs->first_variable = vp->next;
+            if (vp->str_alloc)
+                qe_free(&vp->value.str);
+            if (vp->var_alloc) {
+                qe_free(&vp->name);
+                qe_free(&vp);
+            }
         }
         css_free_colors();
         free_font_cache(&global_screen);
@@ -9760,7 +9775,5 @@ int main(int argc, char **argv)
         qs->buffer_cache_size = qs->buffer_cache_len = 0;
     }
 #endif
-    dpy_close(&global_screen);
-
     return 0;
 }
