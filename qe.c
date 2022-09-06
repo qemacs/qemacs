@@ -2700,7 +2700,7 @@ static void do_global_linum_mode(EditState *s, int argval) {
 }
 
 static int has_linum_mode(EditState *s) {
-    return ((s->b->linum_mode_set && s->b->linum_mode) ||
+    return (s->b->linum_mode_set ? s->b->linum_mode :
             (s->qe_state->global_linum_mode &&
              !(s->b->flags & (BF_DIRED | BF_SHELL)) &&
              !(s->flags & (WF_POPUP | WF_MINIBUF))));
@@ -5946,9 +5946,9 @@ static void eb_format_message(QEmacsState *qs, const char *bufname,
     }
 }
 
-void put_error(qe__unused__ EditState *s, const char *fmt, ...)
+void put_error(EditState *s, const char *fmt, ...)
 {
-    /* CG: s is not used and may be NULL! */
+    /* CG: s may be NULL! */
     QEmacsState *qs = &qe_state;
     char buf[MAX_SCREEN_WIDTH];
     va_list ap;
@@ -5958,6 +5958,7 @@ void put_error(qe__unused__ EditState *s, const char *fmt, ...)
     va_end(ap);
 
     eb_format_message(qs, "*errors*", buf);
+    put_status(s, "!%s", buf);
 }
 
 void put_status(EditState *s, const char *fmt, ...)
@@ -5994,9 +5995,7 @@ void put_status(EditState *s, const char *fmt, ...)
         }
     }
 
-    if (!qs->screen->dpy.dpy_probe) {
-        eb_format_message(qs, "*errors*", p);
-    } else {
+    if (qs->screen->dpy.dpy_probe) {
         int width = qs->screen->width;
         int height = qs->status_height;
         int x = 0, y = qs->screen->height - height;
@@ -6019,10 +6018,9 @@ void put_status(EditState *s, const char *fmt, ...)
                 pstrcpy(qs->status_shadow, sizeof(qs->status_shadow), p);
             }
         }
-        qe_skip_spaces(&p);
-        if (!silent && *p)
-            eb_format_message(qs, "*messages*", buf);
     }
+    if (!silent && qe_skip_spaces(&p))
+        eb_format_message(qs, "*messages*", p);
 }
 
 #if 0
@@ -9509,6 +9507,7 @@ static void load_all_modules(QEmacsState *qs)
 #endif
 
 typedef struct QEArgs {
+    QEmacsState *qs;
     int argc;
     char **argv;
 } QEArgs;
@@ -9524,8 +9523,8 @@ static CompletionDef color_completion = {
 /* init function */
 static void qe_init(void *opaque)
 {
-    QEmacsState *qs = &qe_state;
     QEArgs *args = opaque;
+    QEmacsState *qs = args->qs;
     int argc = args->argc;
     char **argv = args->argv;
     EditState *s;
@@ -9727,8 +9726,10 @@ int main1(int argc, char **argv)
 int main(int argc, char **argv)
 #endif
 {
+    QEmacsState *qs = &qe_state;
     QEArgs args;
 
+    args.qs = qs;
     args.argc = argc;
     args.argv = argv;
 
@@ -9742,19 +9743,13 @@ int main(int argc, char **argv)
     /* free ligature arrays */
     unload_ligatures();
 #endif
+
+    /* restore TTY so console is clean for error messages */
     dpy_close(&global_screen);
 
 #ifndef CONFIG_TINY
     if (free_everything) {
         /* free all structures for valgrind */
-        QEmacsState *qs = &qe_state;
-
-        while (qs->input_methods) {
-            InputMethod *p = qs->input_methods;
-            qs->input_methods = p->next;
-            if (p->data)
-                qe_free(&p);
-        }
         while (qs->first_window) {
             EditState *e = qs->first_window;
             edit_close(&e);
@@ -9762,6 +9757,12 @@ int main(int argc, char **argv)
         while (qs->first_buffer) {
             EditBuffer *b = qs->first_buffer;
             eb_free(&b);
+        }
+        while (qs->input_methods) {
+            InputMethod *p = qs->input_methods;
+            qs->input_methods = p->next;
+            if (p->data)
+                qe_free(&p);
         }
         if (qs->cmd_array) {
             int i, j;
@@ -9805,7 +9806,7 @@ int main(int argc, char **argv)
             }
         }
         css_free_colors();
-        free_font_cache(&global_screen);
+        free_font_cache(&global_screen);  // before dpy_close()?
         qe_free(&qs->buffer_cache);
         qs->buffer_cache_size = qs->buffer_cache_len = 0;
     }

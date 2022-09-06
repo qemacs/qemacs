@@ -2388,7 +2388,7 @@ static void shell_read_cb(void *opaque)
 static void shell_mode_free(EditBuffer *b, void *state)
 {
     ShellState *s = state;
-    int status;
+    int tries = 5, sig, rc, status;
 
     eb_free_callback(b, eb_offset_callback, &s->cur_offset);
     eb_free_callback(b, eb_offset_callback, &s->cur_prompt);
@@ -2396,16 +2396,22 @@ static void shell_mode_free(EditBuffer *b, void *state)
     eb_free_callback(b, eb_offset_callback, &s->screen_top);
 
     if (s->pid != -1) {
-        kill(s->pid, SIGINT);
-        /* wait first 100 ms */
-        usleep(100 * 1000);
-        if (waitpid(s->pid, &status, WNOHANG) != s->pid) {
-            /* if still not killed, then try harder (useful for
-               shells) */
-            kill(s->pid, SIGKILL);
-            /* CG: should add timeout facility and error message */
-            while (waitpid(s->pid, &status, 0) != s->pid)
-                continue;
+        sig = SIGINT;
+        while (tries --> 0) {
+            /* try and kill the child process */
+            kill(s->pid, sig);
+            /* wait first 100 ms */
+            usleep(100 * 1000);
+            rc = waitpid(s->pid, &status, WNOHANG);
+            if (rc < 0 && errno == ECHILD)
+                break;
+            if (rc == s->pid) {
+                /* if process exited or was killed, all good */
+                if (WIFEXITED(status) || WIFSIGNALED(status))
+                    break;
+            }
+            /* if still not killed, then try harder (useful for shells) */
+            sig = SIGKILL;
         }
         set_pid_handler(s->pid, NULL, NULL);
         s->pid = -1;

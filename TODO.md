@@ -488,6 +488,11 @@ insert_window_left()  deletes some left-most windows
 * `telnet-mode`: Connect to a remote computer using telnet
 * ssh: should use the host name and get files via scp syntax
 * fix tty emulation to run kilo inside the process window
+* `shell-command-on-region` on `M-|`
+   mg: Pipe text from current region to external command.
+   emacs: Execute string COMMAND in inferior shell with region as input.
+   Normally display output (if any) in temp buffer `*Shell Command Output*`;
+   Prefix arg means replace the region with it.  Return the exit code of COMMAND.
 
 ### Dired
 
