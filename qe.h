@@ -1123,6 +1123,8 @@ struct EditBuffer {
     int mark;       /* current mark (moved with text) */
     int total_size; /* total size of the buffer */
     int modified;
+    int linum_mode;   /* display line numbers in left gutter */
+    int linum_mode_set;   /* linum_mode was set, ignore global_linum_mode */
 
     /* page cache */
     Page *cur_page;
@@ -1426,14 +1428,13 @@ struct EditState {
     int hex_mode;    /* true if we are currently editing hexa */
     int unihex_mode; /* true if unihex editing (width of hex char dump) */
     int hex_nibble;  /* current hexa nibble */
-    int overwrite;   /* insert/overtype mode */
     int bidir;
     int cur_rtl;     /* TRUE if the cursor on over RTL chars */
     enum WrapType wrap;
-    int wrap_cols;   /* number of columns in terminal emulator */
-    int line_numbers;
     /* XXX: these should be buffer specific rather than window specific */
-    int indent_size;
+    int wrap_cols;   /* number of columns in terminal emulator */
+    int overwrite;   /* insert/overtype mode */
+    int indent_size;    /* amount of whitespace for block indentation */
     int indent_tabs_mode; /* if true, use tabs to indent */
     int interactive; /* true if interaction is done instead of editing
                         (e.g. for shell mode or HTML) */
@@ -1758,6 +1759,9 @@ struct QEmacsState {
     //int force_tty;      /* prevent graphics display (X11...) */
     //int no_config;      /* prevent config file eval */
     //int force_refresh;  /* force a complete screen refresh */
+    int line_number_mode;   /* display line number in mode line */
+    int column_number_mode;   /* display column number in mode line */
+    int global_linum_mode;   /* display line numbers in left gutter */
     int ignore_spaces;  /* ignore spaces when comparing windows */
     int ignore_comments;  /* ignore comments when comparing windows */
     int ignore_case;    /* ignore case when comparing windows */

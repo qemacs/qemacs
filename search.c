@@ -995,7 +995,7 @@ void do_replace_string(EditState *s, const char *search_str,
 }
 
 /* dir = 0, -1, 1, 2, 3 -> count-matches, reverse, forward,
-   delete-matching-lines, filter-matching-lines */
+   delete-matching-lines, delete-non-matching-lines */
 void do_search_string(EditState *s, const char *search_str, int dir)
 {
     unsigned int search_u32[SEARCH_LENGTH];
@@ -1171,10 +1171,10 @@ static const CmdDef search_commands[] = {
           do_search_string, ESsi, "*"
           "s{Delete lines containing: }|search|"
           "v", 2)
-    CMD3( "filter-matching-lines", "",
+    CMD3( "delete-non-matching-lines", "",
           "Delete lines NOT containing a string from point to the end of the current buffer",
           do_search_string, ESsi, "*"
-          "s{Filter lines containing: }|search|"
+          "s{Keep lines containing: }|search|"
           "v", 3)
     /* passing argument should switch to regex incremental search */
     CMD3( "isearch-backward", "C-r",

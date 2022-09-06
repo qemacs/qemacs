@@ -174,6 +174,7 @@ int load_input_methods(const char *filename)
     const unsigned char *file_ptr = NULL, *p;
     InputMethod *m;
 
+    // O_BINARY? should just use fopen()
     fd = open(filename, O_RDONLY);
     if (fd < 0)
         return -1;

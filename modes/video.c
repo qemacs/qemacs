@@ -914,10 +914,10 @@ static void video_mode_line(EditState *s, buf_t *out)
         return;
 
     if (is->paused)
-        buf_printf(out, "[paused]--");
+        buf_printf(out, "--[paused]");
 
     if (is->ic)
-        buf_printf(out, "%s", is->ic->iformat->name);
+        buf_printf(out, "--%s", is->ic->iformat->name);
 
     if (is->video_st) {
         name = "???";

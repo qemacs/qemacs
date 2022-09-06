@@ -1267,6 +1267,9 @@ static void do_describe_buffer(EditState *s, int argval)
 
     eb_printf(b1, "   tab_width: %d\n", b->tab_width);
     eb_printf(b1, " fill_column: %d\n", b->fill_column);
+    if (b->linum_mode_set) {
+        eb_printf(b1, "  linum_mode: %d\n", b->linum_mode);
+    }
 
     desc = buf_init(&descbuf, buf, countof(buf));
     if (b->eol_type == EOL_UNIX)
@@ -1487,7 +1490,6 @@ static void do_describe_window(EditState *s, int argval)
               s->wrap == WRAP_LINE ? "LINE" :
               s->wrap == WRAP_TERM ? "TERM" :
               s->wrap == WRAP_WORD ? "WORD" : "???");
-    eb_printf(b1, "%*s: %d\n", w, "line_numbers", s->line_numbers);
     eb_printf(b1, "%*s: %d\n", w, "indent_size", s->indent_size);
     eb_printf(b1, "%*s: %d\n", w, "indent_tabs_mode", s->indent_tabs_mode);
     eb_printf(b1, "%*s: %d\n", w, "interactive", s->interactive);
@@ -2155,6 +2157,7 @@ void do_fill_paragraph(EditState *s)
 /*---------------- command and binding definitions ----------------*/
 
 static const CmdDef extra_commands[] = {
+
     CMD2( "compare-windows", "M-=",
           "Compare windows, optionally ignoring white space, comments and case",
           do_compare_windows, ESi, "p")
@@ -2163,6 +2166,9 @@ static const CmdDef extra_commands[] = {
           do_compare_files, ESsi,
           "s{Compare file: }[file]|file|"
           "v", 0) /* p? */
+    // XXX: delete-leading-space (mg) Delete any leading whitespace on the current line
+    // XXX: delete-trailing-space (mg) Delete any trailing whitespace on the current line
+    // XXX: delete-trailing-whitespace (emacs) Delete all the trailing whitespace across the current buffer.
     CMD2( "delete-horizontal-space", "M-\\",
           "Delete blanks around point",
           do_delete_horizontal_space, ES, "*")

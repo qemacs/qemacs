@@ -1,4 +1,4 @@
-<!-- TODO list for qemacs -- Author: Charles Gordon -- Updated: 2022-08-29 -->
+<!-- TODO list for qemacs -- Author: Charles Gordon -- Updated: 2022-09-06 -->
 
 # QEmacs TODO list
 
@@ -25,13 +25,11 @@
 
 ### Core / Buffer / Input
 
-* `parse_arg()` should handle default argument values
 * `eb_printf()` and friends should output to `b->offset` instead of `b->total_size`
 * in command specs, distinguish between interactive commands and non
   interactive functions, such as the isearch-xxx functions
 * [BUG] ^C does not work on OpenBSD
 * use tabulation context for `text_screen_width`
-* pass raw prefix argument `P` as combination of has_arg (flags) and argval (number)
 * add method pointers in windows initialized from fallback chain
 * remove redundant bindings along fallback chains
 * share mmapped pages correctly
@@ -44,7 +42,6 @@
 * redefine `KEY_Fx` to make them sequential
 * move `ungot_key` to `key_context`
 * splitting pages should fall on 32 bit boundaries (difficult)
-* add default charset for new buffer creation, set that to utf8
 * handle broken charset sequences across page boundaries
 * allow recursive main loop, and remove input callbacks
 * synced virtual buffers with restricted range
@@ -67,11 +64,10 @@
     ```
   an EditState as an embedded QECursor that contains the buffer and offset
   an EditBuffer could also have an embedded QECursor with no EditState
-* `qe_get_variable` should populate a QEValue
-* `qe_set_variable` should take a QEValue pointer
 
 ### Charsets / Unicode / Bidir
 
+* add default charset for new buffer creation, set that to utf8
 * better display of invalid utf-8 encodings
 * change character detection API to handle cross page spanning
 * fix `eb_prev_char` to handle non self-synchronizing charsets
@@ -120,6 +116,7 @@
 ### Windowing / Display
 
 * always save window buffer properties to buffer upon detaching
+* add global system to select default values for some window states
 * fix current position when changing buffer attached to window
 * fix default wrap setting mess
 * display: add screen dump command and format
@@ -267,6 +264,7 @@ insert_window_left()  deletes some left-most windows
 
 ### Macros
 
+* `start-keyboard-macro` should clear current macro if called recursively
 * allow redefining the keyboard macro embedding itself
 * `show-macro`, `dump-macro` to ease macro debugging and timing
 * fix macro slowliness in 6000 line buffer **junk/dirs/x**
@@ -315,11 +313,11 @@ insert_window_left()  deletes some left-most windows
 * regex search/replace
 * query replace across multiple files
 * query replace options: u -> undo last change
+* add non selectable query-replace-mode for key bindings, cmd description and documentation
 * extra: `grep`, `grep-buffer`, `grep-sources`, `grep-tree`...
 * search: `count-words`, `wc`, `count-sloc`
 * search: stats command for word count and mode specific stats
 * isearch: M-p and M-n should select previous and next search pattern in history
-* add non selectable isearch-mode for key bindings, cmd description and documentation
 * searching failure should abort macros
 
 ### Undo
@@ -339,23 +337,26 @@ insert_window_left()  deletes some left-most windows
 * compress logs and limit size
 * mode for undo buffers
 
-### Config / Sessions
+### Config / Sessions / Scripting
 
 * config: reparse **.qerc** upon change
 * session: register session store functions
 * session: save previous answers, ...
 * session: save preview mode, buffer modes and properties
 * session: save process buffers?  non file-based buffers?  dired buffers?
-* basic: scripting
-* script: expression evaluator
+* `qe_get_variable` should populate a QEValue
+* `qe_set_variable` should take a QEValue pointer
+* variables: add minimal version in tqe
 * variables: set variable values via function pointer
-* variables: add boolean variables
+* variables: add boolean and char types
 * tack library of ancillary files at the end of the binary:
   - add protocol to read from library (lib:xxx)
   - add html.min.css and docbook.min.css to library
   - append lib: to default QE_PATH
 * clean up ancillary files
 * [Idea] dynamic project based settings, include, exclude patterns...
+* commands: `parse_arg()` should handle default argument values
+* commands: pass raw prefix argument `P` as combination of has_arg (flags) and argval (number)
 
 ### Colors and styles
 
@@ -375,12 +376,13 @@ insert_window_left()  deletes some left-most windows
 * basic: register modes recursively along fallback chain
 * modes: `next-mode` should include buffer `default_mode` in list
 * tags: remove tags for modified line
+* mode inheritance
+* basic: stop copying `ModeDef` structures to implement *inheritance*
 * basic: fix mode setting mess
 * modes: split modes into colorizers, interaction, io, charset, eoltype
 * modes: major and minor modes
 * rethink mode specific commands -> add inheritance for all commands ?
-* add mode_commands and global_commands tables in ModeDef structure
-* mode inheritance
+* add `mode_commands` and `global_commands` tables in `ModeDef` structure
 
 ### C mode
 

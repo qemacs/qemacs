@@ -839,7 +839,7 @@ void image_mode_line(EditState *s, buf_t *out)
     else
         alpha_mode = ' ';
 
-    buf_printf(out, "%dx%d %s %c%c",
+    buf_printf(out, "--%dx%d %s %c%c",
                ib->width, ib->height,
                avcodec_get_pix_fmt_name(ib->pix_fmt),
                alpha_mode,

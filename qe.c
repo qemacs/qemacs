@@ -2681,9 +2681,35 @@ void do_toggle_bidir(EditState *s)
     s->bidir = !s->bidir;
 }
 
-void do_toggle_line_numbers(EditState *s)
-{
-    s->line_numbers = !s->line_numbers;
+static void update_setting(EditState *s, const char *name, int *pval, int argval) {
+    *pval = (argval == NO_ARG) ? !*pval : (argval > 0);
+    s->qe_state->complete_refresh = 1;
+    put_status(s, "%s %s", name, *pval ? "enabled" : "disabled");
+}
+
+static void do_line_number_mode(EditState *s, int argval) {
+    update_setting(s, "line-number-mode", &s->qe_state->line_number_mode, argval);
+}
+
+static void do_column_number_mode(EditState *s, int argval) {
+    update_setting(s, "column-number-mode", &s->qe_state->column_number_mode, argval);
+}
+
+static void do_global_linum_mode(EditState *s, int argval) {
+    update_setting(s, "global-linum-mode", &s->qe_state->global_linum_mode, argval);
+}
+
+static int has_linum_mode(EditState *s) {
+    return ((s->b->linum_mode_set && s->b->linum_mode) ||
+            (s->qe_state->global_linum_mode &&
+             !(s->b->flags & (BF_DIRED | BF_SHELL)) &&
+             !(s->flags & (WF_POPUP | WF_MINIBUF))));
+}
+
+static void do_linum_mode(EditState *s, int argval) {
+    s->b->linum_mode = has_linum_mode(s);
+    s->b->linum_mode_set = 1;
+    update_setting(s, "linum-mode", &s->b->linum_mode, argval);
 }
 
 void do_toggle_truncate_lines(EditState *s)
@@ -2976,7 +3002,7 @@ void basic_mode_line(EditState *s, buf_t *out, int c1)
     /* Strip text mode name if another mode is also active */
     strstart(mode_name, "text ", &mode_name);
 
-    buf_printf(out, "%c%c:%c%c  %-20s  (%s)--",
+    buf_printf(out, "%c%c:%c%c  %-20s  (%s)",
                c1, state, s->b->flags & BF_READONLY ? '%' : mod,
                mod, s->b->name, mode_name);
 }
@@ -2996,8 +3022,11 @@ void text_mode_line(EditState *s, buf_t *out)
     basic_mode_line(s, out, wrap_mode);
 
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
-    buf_printf(out, "L%d--C%d--%s",
-               line_num + 1, col_num, s->b->charset->name);
+    if (s->qe_state->line_number_mode)
+        buf_printf(out, "--L%d", line_num + 1);
+    if (s->qe_state->column_number_mode)
+        buf_printf(out, "--C%d", col_num);
+    buf_printf(out, "--%s", s->b->charset->name);
     if (s->b->eol_type == EOL_DOS)
         buf_puts(out, "-dos");
     if (s->b->eol_type == EOL_MAC)
@@ -3429,6 +3458,7 @@ void display_init(DisplayState *ds, EditState *e, enum DisplayType do_disp,
     QEFont *font;
     QEStyleDef styledef;
 
+    memset(ds, 0, sizeof(*ds));
     ds->edit_state = e;
     ds->do_disp = do_disp;
     ds->cursor_func = cursor_func;
@@ -3452,14 +3482,17 @@ void display_init(DisplayState *ds, EditState *e, enum DisplayType do_disp,
     ds->tab_width = ds->space_width * e->b->tab_width;
     ds->height = e->height;
     ds->hex_mode = e->hex_mode;
-    ds->cur_hex_mode = 0;
     ds->y = e->y_disp;
-    ds->line_num = 0;
-    ds->line_numbers = e->line_numbers * ds->space_width * 8;
-    if (ds->line_numbers > e->width / 2)
-        ds->line_numbers = 0;
+    /* display line numbers if linum-mode was selected explicitly
+       or if global-linum-mode was selected and buffer is not special
+     */
+    if (has_linum_mode(e)) {
+        // XXX: gutter width should depend on number of digits in line numbers
+        ds->line_numbers = ds->space_width * 8;
+        if (ds->line_numbers > e->width / 2)
+            ds->line_numbers = 0;
+    }
     if (ds->wrap == WRAP_TERM) {
-        ds->eol_width = 0;
         ds->width = ds->line_numbers +
             e->wrap_cols * glyph_width(e->screen, font, '0');
     } else {
@@ -3468,8 +3501,6 @@ void display_init(DisplayState *ds, EditState *e, enum DisplayType do_disp,
                              glyph_width(e->screen, font, '$'));
         ds->width = e->width - ds->eol_width;
     }
-    ds->eol_reached = 0;
-    ds->eod = 0;
     display_bol(ds);
     release_font(e->screen, font);
 }
@@ -4468,7 +4499,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
 
     line_num = 0;
     /* XXX: should test a flag, to avoid this call in hex/binary */
-    if (s->line_numbers || s->colorize_func) {
+    if (ds->line_numbers || s->colorize_func) {
         eb_get_pos(s->b, &line_num, &col_num, offset);
     }
 
@@ -4499,6 +4530,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
 
     /* line numbers */
     if (ds->line_numbers) {
+        // XXX: line_numbers should be the number of characters to use
         ds->style = QE_STYLE_GUTTER;
         display_printf(ds, -1, -1, "%6d  ", line_num + 1);
         ds->style = 0;
@@ -9512,6 +9544,9 @@ static void qe_init(void *opaque)
     qs->argv = argv;
 
     qs->hilite_region = 1;
+    qs->line_number_mode = 1;
+    qs->column_number_mode = 1;
+
     qs->default_tab_width = DEFAULT_TAB_WIDTH;
     qs->default_fill_column = DEFAULT_FILL_COLUMN;
     qs->mmap_threshold = MIN_MMAP_SIZE;

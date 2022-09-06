@@ -478,9 +478,21 @@ static const CmdDef basic_commands[] = {
           do_what_cursor_position)
 
     /* non standard mappings */
-    CMD0( "toggle-line-numbers", "C-x RET l, C-c l",
+    CMD2( "line-number-mode", "",
+          "Control the display of line numbers in mode lines",
+          do_line_number_mode, ESi, "P")
+    CMD2( "column-number-mode", "",
+          "Control the display of column numbers in mode lines",
+          do_column_number_mode, ESi, "P")
+    CMD2( "global-linum-mode", "",
+          "Control the display of line numbers in the left gutter for all buffers",
+          do_global_linum_mode, ESi, "P")
+    CMD2( "linum-mode", "C-x RET l, C-c l",
+          "Control the display of line numbers in the left gutter for the current buffer",
+          do_linum_mode, ESi, "P")
+    CMD2( "toggle-line-numbers", "",    /* for compatibility with previous versions */
           "Toggle the line number display",
-          do_toggle_line_numbers)
+          do_linum_mode, ESi, "P")
     CMD0( "toggle-truncate-lines", "C-x RET t, C-c t",
           "Toggle displaying long lines on multiple screen rows",
           do_toggle_truncate_lines)
