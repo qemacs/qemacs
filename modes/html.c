@@ -114,6 +114,7 @@ void css_error(const char *filename, int line_num, const char *msg)
     if (!b)
         return;
     b->flags &= ~BF_READONLY;
+    b->offset = b->total_size;
     eb_printf(b, "%s:%d: %s\n", get_basename(filename), line_num, msg);
     b->flags |= ~BF_READONLY;
 }

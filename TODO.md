@@ -25,9 +25,8 @@
 
 ### Core / Buffer / Input
 
-* `eb_printf()` and friends should output to `b->offset` instead of `b->total_size`
-* in command specs, distinguish between interactive commands and non
-  interactive functions, such as the isearch-xxx functions
+* `describe-key-briefly`, `local-set-key`, etc should use a special input mode to read a string of keys via the minibuffer to remove the `qe_key_process` hack and use the same input behavior as emacs.
+* in command specs, distinguish between interactive commands and non interactive functions, such as the isearch-xxx functions
 * [BUG] ^C does not work on OpenBSD
 * use tabulation context for `text_screen_width`
 * add method pointers in windows initialized from fallback chain
@@ -62,7 +61,7 @@
             // getc(), peekc(), prevc()... etc.
         };
     ```
-  an EditState as an embedded QECursor that contains the buffer and offset
+  an EditState would have an embedded QECursor that contains the buffer and offset
   an EditBuffer could also have an embedded QECursor with no EditState
 
 ### Charsets / Unicode / Bidir

@@ -875,7 +875,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
     EditState *e;
     const char *str = NULL;
     const u8 *p0, *endp, *p;
-    int line, col, len, point, flush;
+    int line, col, len, flush;
     int prev_state = qs->trace_buffer_state;
 
     /* prevent tracing if nagivating the *trace* buffer */
@@ -883,11 +883,12 @@ void eb_trace_bytes(const void *buf, int size, int state)
     ||  (qs->active_window && qs->active_window->b == b))
         return;
 
-    point = b->total_size;
+    /* output at end of trace buffer */
+    b->offset = b->total_size;
     if (size < 0)
         size = strlen(buf);
 
-    eb_get_pos(b, &line, &col, point);
+    eb_get_pos(b, &line, &col, b->offset);
     flush = state & EB_TRACE_FLUSH;
     state &= ~EB_TRACE_FLUSH;
     if (prev_state == state) {
@@ -899,7 +900,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
             flush = 1;
     }
     if (flush && col) {
-        eb_insert_uchar(b, b->total_size, '\n');
+        eb_putc(b, '\n');
         col = 0;
     }
     if (col == 0 || prev_state != state) {
@@ -945,12 +946,12 @@ void eb_trace_bytes(const void *buf, int size, int state)
             if (p0 >= endp)
                 break;
             if (col >= MAX_TRACE_WIDTH) {
-                eb_write(b, b->total_size, "\n       | ", 10);
+                eb_puts(b, "\n       | ");
                 col = 9;
             }
             if (p0 < p) {
                 len = min(p - p0, MAX_TRACE_WIDTH - col);
-                eb_write(b, b->total_size, p0, len);
+                eb_printf(b, "%.*s", len, p0);
                 p0 += len;
                 col += len;
                 continue;
@@ -958,7 +959,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
             if (p < endp) {
                 char buf1[16];
                 len = byte_quote(buf1, sizeof buf1, *p);
-                eb_write(b, b->total_size, buf1, len);
+                eb_puts(b, buf1);
                 p0 = p + 1;
                 col += len;
             }
@@ -969,7 +970,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
     /* XXX: proper tracking should do this automatically */
     e = eb_find_window(b, NULL);
     if (e)
-        e->offset = b->total_size;
+        e->offset = b->offset;
 }
 
 /************************************************************/
@@ -2287,21 +2288,18 @@ int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp)
     return 1;
 }
 
-int eb_putc(EditBuffer *b, int c)
-{
+int eb_putc(EditBuffer *b, int c) {
     char buf[8];
     int len = eb_encode_uchar(b, buf, c);
 
-    return eb_insert(b, b->total_size, buf, len);
+    return eb_insert(b, b->offset, buf, len);
 }
 
-int eb_puts(EditBuffer *b, const char *s)
-{
-    return eb_insert_utf8_buf(b, b->total_size, s, strlen(s));
+int eb_puts(EditBuffer *b, const char *s) {
+    return eb_insert_utf8_buf(b, b->offset, s, strlen(s));
 }
 
-int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap)
-{
+int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) {
     char buf0[1024];
     char *buf;
     int len, size, written;
@@ -2329,8 +2327,7 @@ int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap)
      * buf may contain \0 characters via the %c modifer.
      * XXX: %c does not encode non ASCII characters as utf8.
      */
-    // XXX: should insert at b->offset
-    written = eb_insert_utf8_buf(b, b->total_size, buf, len);
+    written = eb_insert_utf8_buf(b, b->offset, buf, len);
 #ifdef CONFIG_WIN32
     if (buf != buf0)
         qe_free(&buf);
@@ -2338,8 +2335,7 @@ int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap)
     return written;
 }
 
-int eb_printf(EditBuffer *b, const char *fmt, ...)
-{
+int eb_printf(EditBuffer *b, const char *fmt, ...) {
     va_list ap;
     int written;
 
@@ -2351,18 +2347,12 @@ int eb_printf(EditBuffer *b, const char *fmt, ...)
 
 #if 0
 /* pad current line with spaces so that it reaches column n */
-void eb_line_pad(EditBuffer *b, int n)
-{
-    int offset, i;
-
-    i = 0;
-    offset = b->total_size;
-    for (;;) {
-        if (eb_prevc(b, offset, &offset) == '\n')
-            break;
-        i++;
-    }
-    eb_insert_spaces(b, b->total_size, n - i);
+void eb_line_pad(EditBuffer *b, int offset, int n) {
+    /* Compute visual column visual column */
+    int tw = b->tab_width > 0 ? b->tab_width : 8;
+    int col = text_screen_width(b, eb_goto_bol(b, offset), offset, tw);
+    if (n > col)
+        eb_insert_spaces(b, offset, n - col);
 }
 #endif
 

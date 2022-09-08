@@ -141,6 +141,7 @@ static int archive_buffer_load(EditBuffer *b, FILE *f)
     if (atp) {
         b->data_type_name = atp->name;
         eb_clear(b);
+        // XXX: should use window caption
         eb_printf(b, "  Directory of %s archive %s\n",
                   atp->name, b->filename);
         qe_shell_subst(cmd, sizeof(cmd), atp->list_cmd, b->filename, NULL);

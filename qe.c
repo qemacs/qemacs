@@ -4978,7 +4978,7 @@ int parse_arg(const char **pp, CmdArgSpec *ap)
     case 'e':  /* the buffer size, used to select full buffer contents */
         type = CMD_ARG_INT | CMD_ARG_USE_BSIZE;
         break;
-    case 'k':  /* last key typed */
+    case 'k':  /* last key typed: should pass string with encoded keys */
         type = CMD_ARG_INT | CMD_ARG_USE_KEY;
         break;
     case 'm':  /* buffer mark as a number */
@@ -5563,6 +5563,7 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
     }
 }
 
+#ifndef CONFIG_TINY
 static void qe_save_macro(EditState *s, const CmdDef *def, EditBuffer *b)
 {
     QEmacsState *qs = s->qe_state;
@@ -5609,6 +5610,7 @@ void qe_save_macros(EditState *s, EditBuffer *b)
     }
     eb_putc(b, '\n');
 }
+#endif
 
 #define MACRO_KEY_INCR 64
 
@@ -5804,7 +5806,7 @@ static void qe_key_process(int key)
 
         if (c->nb_keys == 1) {
             if (!KEY_IS_SPECIAL(key) && !KEY_IS_CONTROL(key)) {
-                if (c->has_arg) {
+                if (c->has_arg && !c->describe_key) {
                     do_prefix_argument(s, key);
                     /* check if key was consumed by do_prefix_argument */
                     if (!c->nb_keys)
@@ -5834,60 +5836,70 @@ static void qe_key_process(int key)
     if (c->nb_keys == kd->nb_keys) {
     exec_cmd:
         d = kd->cmd;
-        if (d->action.ESi == do_prefix_argument && !c->describe_key) {
+        if (c->describe_key) {
+            out = buf_init(&outbuf, buf1, sizeof(buf1));
+            buf_put_keys(out, c->keys, c->nb_keys);
+            if (c->describe_key > 1) {
+                int save_offset = s->b->offset;
+                s->b->offset = s->offset;
+                s->offset += eb_printf(s->b, "%s runs the command %s", buf1, d->name);
+                s->b->offset = save_offset;
+            } else {
+                put_status(s, "%s runs the command %s", buf1, d->name);
+            }
+            c->describe_key = 0;
+        } else
+        if (d->action.ESsi == do_describe_key_briefly) {
+            c->describe_key = 1 + (c->has_arg != 0);
+            qe_key_init(c);
+            strcpy(c->buf, "Describe key: ");
+            key = -1;
+            goto next;
+        } else
+        if (d->action.ESi == do_prefix_argument) {
             do_prefix_argument(s, key);
             /* always consume the key */
             c->nb_keys = 0;
             goto next;
         } else {
+            int argval = c->argval;
             if (c->has_arg & HAS_ARG_NEGATIVE)
-                c->argval = -c->argval;
-            if (c->describe_key) {
-                out = buf_init(&outbuf, buf1, sizeof(buf1));
-                buf_put_keys(out, c->keys, c->nb_keys);
-                if (c->has_arg) {
-                    int save_offset = s->b->offset;
-                    s->b->offset = s->offset;
-                    eb_printf(s->b, "%s runs the command %s", buf1, d->name);
-                    s->b->offset = save_offset;
-                } else {
-                    put_status(s, "%s runs the command %s", buf1, d->name);
-                }
-                c->describe_key = 0;
-            } else {
-                int argval = c->argval;
-                if (!c->has_arg) {
-                    // XXX: temporary hack
-                    argval = NO_ARG;
-                }
-                /* To allow recursive calls to qe_key_process, especially
-                 * from macros, we reset the QEKeyContext before
-                 * dispatching the command
-                 */
-                qe_key_init(c);
-                exec_command(s, d, argval, key, NULL);
+                argval = -argval;
+            else
+            if (!c->has_arg) {
+                // XXX: temporary hack
+                argval = NO_ARG;
             }
+            /* To allow recursive calls to qe_key_process, especially
+             * from macros, we reset the QEKeyContext before
+             * dispatching the command
+             */
             qe_key_init(c);
-            edit_display(qs);
-            dpy_flush(&global_screen);
-            /* CG: should move ungot key handling to generic event dispatch */
-            if (qs->ungot_key != -1) {
-                key = qs->ungot_key;
-                qs->ungot_key = -1;
-                goto again;
-            }
-            return;
+            exec_command(s, d, argval, key, NULL);
         }
+        qe_key_init(c);
+        // XXX: should delay until after macro execution
+        edit_display(qs);
+        dpy_flush(&global_screen);
+        /* CG: should move ungot key handling to generic event dispatch */
+        if (qs->ungot_key != -1) {
+            key = qs->ungot_key;
+            qs->ungot_key = -1;
+            goto again;
+        }
+        return;
     }
  next:
-    /* display key pressed */
-    len = strlen(c->buf);
-    if (len > 0)
-        c->buf[len-1] = ' ';
-    /* Should print argument if any in a more readable way */
-    out = buf_attach(&outbuf, c->buf, sizeof(c->buf), len);
-    buf_put_key(out, key);
-    buf_put_byte(out, '-');
+    /* display prefix key pressed */
+    if (key >= 0) {
+        len = strlen(c->buf);
+        if (len > 0 && c->buf[len-1] == '-')
+            c->buf[len-1] = ' ';
+        /* Should print argument if any in a more readable way */
+        out = buf_attach(&outbuf, c->buf, sizeof(c->buf), len);
+        buf_put_key(out, key);
+        buf_put_byte(out, '-');
+    }
     put_status(s, "~%s", c->buf);
     if (qs->trace_buffer)
         edit_display(qs);
@@ -6825,6 +6837,7 @@ void do_minibuffer_get_binary(EditState *s)
     if (s->target_window) {
         eb_read(s->target_window->b, s->target_window->offset,
                 &offset, sizeof(offset));
+        s->b->offset = s->offset;
         eb_printf(s->b, "%lu", offset);
     }
 }
@@ -7844,6 +7857,7 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
     return -1;
 }
 
+#ifndef CONFIG_TINY
 void qe_save_open_files(EditState *s, EditBuffer *b)
 {
     QEmacsState *qs = &qe_state;
@@ -7856,6 +7870,7 @@ void qe_save_open_files(EditState *s, EditBuffer *b)
     }
     eb_putc(b, '\n');
 }
+#endif
 
 #if 0
 static void load_progress_cb(void *opaque, int size)
@@ -8508,6 +8523,7 @@ void do_split_window(EditState *s, int prop, int side_by_side)
         qs->active_window = e;
 }
 
+#ifndef CONFIG_TINY
 void do_create_window(EditState *s, const char *filename, const char *layout)
 {
     QEmacsState *qs = s->qe_state;
@@ -8613,12 +8629,74 @@ void qe_save_window_layout(EditState *s, EditBuffer *b)
     eb_putc(b, '\n');
 }
 
+int qe_load_session(EditState *s)
+{
+    return parse_config_file(s, ".qesession");
+}
+
+void do_save_session(EditState *s, int popup)
+{
+    EditBuffer *b = eb_scratch("*session*", BF_UTF8);
+    time_t now;
+
+    eb_printf(b, "// qemacs version: %s\n", QE_VERSION);
+    now = time(NULL);
+    eb_printf(b, "// session saved: %s\n", ctime(&now));
+
+    qe_save_variables(s, b);
+    qe_save_macros(s, b);
+    qe_save_open_files(s, b);
+    qe_save_window_layout(s, b);
+
+    if (popup) {
+        b->offset = 0;
+        show_popup(s, b, "QEmacs session");
+    } else {
+        eb_write_buffer(b, 0, b->total_size, ".qesession");
+        eb_free(&b);
+    }
+}
+#endif
+
 /* help */
 
-void do_describe_key_briefly(EditState *s)
-{
-    put_status(s, "Describe key: ");
-    key_ctx.describe_key = 1;
+void do_describe_key_briefly(EditState *s, const char *keystr, int argval) {
+#ifndef CONFIG_TINY
+    /* This code is only called from a script.
+     * The interactive implementation is handled in qe_key_process()
+     */
+    char buf[128];
+    unsigned int keys[MAX_KEYS];
+    unsigned int key_default = KEY_DEFAULT;
+    int nb_keys, len;
+    const char *p = keystr;
+    KeyDef *kd;
+
+    nb_keys = strtokeys(p, keys, MAX_KEYS, &p);
+    kd = qe_find_current_binding(keys, nb_keys, s->mode, 0);
+    if (*p) {
+        put_status(s, "%s is not a valid key sequence", keystr);
+        return;
+    }
+    if (!kd && nb_keys == 1 && !KEY_IS_SPECIAL(keys[0]) && !KEY_IS_CONTROL(keys[0])) {
+        kd = qe_find_current_binding(&key_default, 1, s->mode, 1);
+    }
+    if (kd) {
+        if (kd->nb_keys == nb_keys) {
+            len = snprintf(buf, sizeof buf, "%s runs the command %s", keystr, kd->cmd->name);
+        } else {
+            len = snprintf(buf, sizeof buf, "%s is a prefix", keystr);
+        }
+    } else {
+        len = snprintf(buf, sizeof buf, "%s is not bound to a command", keystr);
+    }
+    if (argval != NO_ARG) {
+        if (!check_read_only(s))
+            eb_insert_utf8_buf(s->b, s->offset, buf, len);
+    } else {
+        put_status(s, "%s", buf);
+    }
+#endif
 }
 
 EditBuffer *new_help_buffer(void)

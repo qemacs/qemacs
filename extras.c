@@ -935,7 +935,7 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
     const CmdDef *d;
     int gfound, start, stop, i, j;
 
-    start = b->total_size;
+    start = 0;
     gfound = 0;
     for (i = 0; i < qs->cmd_array_count; i++) {
         for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
@@ -946,7 +946,7 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
                     } else {
                         eb_printf(b, "\nGlobal bindings:\n\n");
                     }
-                    start = b->total_size;
+                    start = b->offset;
                     gfound = 1;
                 }
                 eb_printf(b, "%24s : %s\n", d->name, buf);
@@ -954,7 +954,7 @@ static void print_bindings(EditBuffer *b, ModeDef *mode)
         }
     }
     if (gfound) {
-        stop = b->total_size;
+        stop = b->offset;
         eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_SILENT);
     }
 }
@@ -980,7 +980,7 @@ void do_apropos(EditState *s, const char *str)
     EditBuffer *b;
     const CmdDef *d;
     VarDef *vp;
-    int found, start, stop, i, j;
+    int found_command, found_variable, start, stop, i, j;
 
     b = new_help_buffer();
     if (!b)
@@ -988,8 +988,8 @@ void do_apropos(EditState *s, const char *str)
 
     eb_putc(b, '\n');
 
-    start = b->total_size;
-    found = 0;
+    start = b->offset;
+    found_command = 0;
     for (i = 0; i < qs->cmd_array_count; i++) {
         for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
             const char *desc = d->spec + strlen(d->spec) + 1;
@@ -1001,14 +1001,17 @@ void do_apropos(EditState *s, const char *str)
                     /* print short description */
                     eb_printf(b, "  %s\n", desc);
                 }
-                found = 1;
+                found_command = 1;
             }
         }
     }
-    stop = b->total_size;
-    eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH | SF_SILENT);
+    if (found_command) {
+        stop = b->offset;
+        eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH | SF_SILENT);
+    }
 
-    start = b->total_size;
+    start = b->offset;
+    found_variable = 0;
     for (vp = qs->first_variable; vp; vp = vp->next) {
         if (strstr(vp->name, str)) {
             /* print class, name and current value */
@@ -1018,13 +1021,15 @@ void do_apropos(EditState *s, const char *str)
                 /* print short description */
                 eb_printf(b, "  %s\n", vp->desc);
             }
-            found = 1;
+            found_variable = 1;
         }
     }
-    stop = b->total_size;
-    eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH | SF_SILENT);
+    if (found_variable) {
+        stop = b->offset;
+        eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH | SF_SILENT);
+    }
 
-    if (found) {
+    if (found_command + found_variable) {
         snprintf(buf, sizeof buf, "Apropos '%s'", str);
         show_popup(s, b, buf);
     } else {
@@ -1062,14 +1067,14 @@ static void do_about_qemacs(EditState *s)
     /* list commands */
     eb_printf(b, "\nCommands:\n\n");
 
-    start = b->total_size;
+    start = b->offset;
     for (i = 0; i < qs->cmd_array_count; i++) {
         for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
             qe_get_prototype(d, buf, sizeof(buf));
             eb_printf(b, "    %s%s\n", d->name, buf);
         }
     }
-    stop = b->total_size;
+    stop = b->offset;
     eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_SILENT);
 
     qe_list_variables(s, b);
@@ -1079,14 +1084,13 @@ static void do_about_qemacs(EditState *s)
         char **envp;
 
         eb_printf(b, "\nEnvironment:\n\n");
-        start = b->total_size;
+        start = b->offset;
         for (envp = environ; *envp; envp++) {
             eb_printf(b, "    %s\n", *envp);
         }
-        stop = b->total_size;
+        stop = b->offset;
         eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_SILENT);
     }
-    b->offset = 0;
 
     show_popup(s, b, "About QEmacs");
 }
@@ -1381,41 +1385,28 @@ static void do_describe_buffer(EditState *s, int argval)
         for (col = i = 0; i < 256; i++) {
             if (count[i] == 0)
                 continue;
-            // XXX: should use function to encode string byte byte_quote()?
-            switch (i) {
-            case '\b':  c = 'b'; break;
-            case '\f':  c = 'f'; break;
-            case '\t':  c = 't'; break;
-            case '\r':  c = 'r'; break;
-            case '\n':  c = 'n'; break;
-            case '\\':  c = '\\'; break;
-            case '\'':  c = '\''; break;
-            default: c = 0; break;
+
+            col += eb_printf(b1, "   %*d  ", count_width, count[i]);
+            if (i > 0 && i < 0x7f) {
+                char cbuf[8];
+                byte_quote(cbuf, sizeof cbuf, i);
+                col += eb_printf(b1, "'%s'", cbuf);
+            } else {
+                col += eb_printf(b1, "0x%02x", i);
             }
-            col += eb_printf(b1, "   %*d", count_width, count[i]);
-
-            if (c != 0)
-                col += eb_printf(b1, "  '\\%c'", c);
-            else
-            if (i >= ' ' && i < 0x7f)
-                col += eb_printf(b1, "  '%c' ", i);
-            else
-                col += eb_printf(b1, "  0x%02x", i);
-
             if (col >= 60) {
                 eb_putc(b1, '\n');
                 col = 0;
             }
         }
-        if (col) {
+        if (col)
             eb_putc(b1, '\n');
-        }
     }
 
     if (b->nb_pages) {
         Page *p;
         const u8 *pc;
-        int i, c, n;
+        int i, n;
 
         eb_printf(b1, "\nBuffer page layout:\n");
 
@@ -1427,19 +1418,9 @@ static void do_describe_buffer(EditState *s, int argval)
             pc = p->data;
             n = min(p->size, 16);
             while (n-- > 0) {
-                switch (c = *pc++) {
-                case '\r': c = 'r'; break;
-                case '\n': c = 'n'; break;
-                case '\t': c = 't'; break;
-                case '\\': break;
-                default:
-                    if (c < 32 || c >= 127)
-                        eb_printf(b1, "\\%03o", c);
-                    else
-                        eb_putc(b1, c);
-                    continue;
-                }
-                eb_printf(b1, "\\%c", c);
+                char cbuf[8];
+                byte_quote(cbuf, sizeof cbuf, *pc++);
+                eb_puts(b1, cbuf);
             }
             eb_printf(b1, "|%s\n", p->size > 16 ? "..." : "");
         }
@@ -1681,6 +1662,11 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
         ctx.col = col ? col : col1;
     }
     lines = line2 - line1;
+    if (lines <= 1) {
+        *pp1 = p2;
+        *pp2 = p2;
+        goto done;
+    }
     chunk_array = qe_malloc_array(struct chunk, lines);
     if (!chunk_array) {
         return -1;
@@ -1772,6 +1758,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
     *pp2 = p1 + eb_insert_buffer_convert(b, p1, b1, 0, b1->total_size);
     eb_free(&b1);
     qe_free(&chunk_array);
+done:
     if (!(flags & SF_SILENT))
         put_status(NULL, "%d lines sorted", lines);
     return 0;
@@ -1910,7 +1897,7 @@ static void do_list_tags(EditState *s, int argval) {
             //eb_printf(b, "%12d  %s\n", p->offset, (char*)p->data);
             int offset = eb_goto_bol(s->b, p->offset);
             int offset1 = eb_goto_eol(s->b, p->offset);
-            eb_insert_buffer_convert(b, b->total_size, s->b, offset, offset1 - offset);
+            eb_insert_buffer_convert(b, b->offset, s->b, offset, offset1 - offset);
             eb_putc(b, '\n');
         }
     }

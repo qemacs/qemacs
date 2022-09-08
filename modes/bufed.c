@@ -159,7 +159,7 @@ static void build_bufed_list(BufedState *bs, EditState *s)
         if ((bs->last_index == -1 && b1 == bs->cur_buffer)
         ||  bs->last_index >= i) {
             line = i;
-            s->offset = b->total_size;
+            s->offset = b->offset;
         }
         if (b1) {
             if (b1->flags & BF_SYSTEM)

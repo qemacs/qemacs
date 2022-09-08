@@ -758,11 +758,11 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
 
     for (i = 0; i < ds->items.nb_items; i++) {
         dip = ds->items.items[i]->opaque;
-        dip->offset = b->total_size;
+        dip->offset = b->offset;
         if (dip == cur_item) {
             ds->last_cur = dip;
             if (s)
-                s->offset = b->total_size;
+                s->offset = b->offset;
         }
         if (dip->hidden)
             continue;

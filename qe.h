@@ -1315,11 +1315,13 @@ int eb_insert_str(EditBuffer *b, int offset, const char *str);
 int eb_match_uchar(EditBuffer *b, int offset, int c, int *offsetp);
 int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp);
 int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp);
+/* These functions insert contents at b->offset */
 int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) qe__attr_printf(2,0);
 int eb_printf(EditBuffer *b, const char *fmt, ...) qe__attr_printf(2,3);
 int eb_puts(EditBuffer *b, const char *s);
 int eb_putc(EditBuffer *b, int c);
-void eb_line_pad(EditBuffer *b, int n);
+
+void eb_line_pad(EditBuffer *b, int offset, int n);
 int eb_get_region_content_size(EditBuffer *b, int start, int stop);
 static inline int eb_get_content_size(EditBuffer *b) {
     return eb_get_region_content_size(b, 0, b->total_size);
@@ -2369,7 +2371,7 @@ void qe_save_open_files(EditState *s, EditBuffer *b);
 void do_delete_other_windows(EditState *s, int all);
 void do_hide_window(EditState *s, int set);
 void do_delete_hidden_windows(EditState *s);
-void do_describe_key_briefly(EditState *s);
+void do_describe_key_briefly(EditState *s, const char *keystr, int argval);
 void do_show_bindings(EditState *s, const char *cmd_name);
 void do_apropos(EditState *s, const char *str);
 EditBuffer *new_help_buffer(void);

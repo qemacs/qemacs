@@ -375,11 +375,16 @@ static const CmdDef basic_commands[] = {
     CMD0( "toggle-mode-line", "C-c m",
           "Toggle mode-line display",
           do_toggle_mode_line)
+#ifndef CONFIG_TINY
     CMD2( "create-window", "",
           "Create a new window with a specified layout",
           do_create_window, ESss,
           "s{Filename: }[file]|file|"
           "s{Layout: }|layout|")
+    CMD1( "save-session", "",
+          "Save the current session in a .qesession file",
+          do_save_session, 1)
+#endif
 
     /*---------------- Help ----------------*/
 
@@ -390,9 +395,11 @@ static const CmdDef basic_commands[] = {
          "Select the trace options: all, none, command, debug, emulate, shell, tty, pty",
           do_set_trace_options, ESs,
           "s{Trace options: }|trace|")
-    CMD0( "describe-key-briefly", "C-h c, C-h k, f6",
+    CMD2( "describe-key-briefly", "C-h c, C-h k, f6",
           "Describe a key binding",
-          do_describe_key_briefly)
+          do_describe_key_briefly, ESsi,
+          "s{Describe key: }|keys|"
+          "P")
     CMD0( "help-for-help", "C-h C-h, f1",
           "Show the qemacs help window",
           do_help_for_help)

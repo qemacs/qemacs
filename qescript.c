@@ -1305,34 +1305,6 @@ int parse_config_file(EditState *s, const char *filename) {
 }
 
 #ifndef CONFIG_TINY
-int qe_load_session(EditState *s)
-{
-    return parse_config_file(s, ".qesession");
-}
-
-void do_save_session(EditState *s, int popup)
-{
-    EditBuffer *b = eb_scratch("*session*", BF_UTF8);
-    time_t now;
-
-    eb_printf(b, "// qemacs version: %s\n", QE_VERSION);
-    now = time(NULL);
-    eb_printf(b, "// session saved: %s\n", ctime(&now));
-
-    qe_save_variables(s, b);
-    qe_save_macros(s, b);
-    qe_save_open_files(s, b);
-    qe_save_window_layout(s, b);
-
-    if (popup) {
-        b->offset = 0;
-        show_popup(s, b, "QEmacs session");
-    } else {
-        eb_write_buffer(b, 0, b->total_size, ".qesession");
-        eb_free(&b);
-    }
-}
-
 static void symbol_complete(CompleteState *cp) {
     command_complete(cp);
     variable_complete(cp);
@@ -1366,11 +1338,6 @@ static const CmdDef parser_commands[] = {
     CMD0( "eval-buffer", "",
           "Evaluate qemacs expressions in the buffer",
           do_eval_buffer)
-#ifndef CONFIG_TINY
-    CMD1( "save-session", "",
-          "Save the current session in a .qesession file",
-          do_save_session, 1)
-#endif
 };
 
 static int parser_init(void) {
