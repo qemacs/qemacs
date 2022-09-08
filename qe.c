@@ -8673,12 +8673,12 @@ void do_describe_key_briefly(EditState *s, const char *keystr, int argval) {
     KeyDef *kd;
 
     nb_keys = strtokeys(p, keys, MAX_KEYS, &p);
-    kd = qe_find_current_binding(keys, nb_keys, s->mode, 0);
-    if (*p) {
+    if (!nb_keys || *p) {
         put_status(s, "%s is not a valid key sequence", keystr);
         return;
     }
-    if (!kd && nb_keys == 1 && !KEY_IS_SPECIAL(keys[0]) && !KEY_IS_CONTROL(keys[0])) {
+    kd = qe_find_current_binding(keys, nb_keys, s->mode, 0);
+    if (!kd && nb_keys == 1 && !KEY_IS_SPECIAL(keys[0]) && !KEY_IS_CONTROL((int)keys[0])) {
         kd = qe_find_current_binding(&key_default, 1, s->mode, 1);
     }
     if (kd) {
