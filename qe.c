@@ -4859,7 +4859,6 @@ static void generic_text_display(EditState *s)
 
 typedef struct ExecCmdState {
     EditState *s;
-    void *opaque;
     const CmdDef *d;
     int nb_args;
     int has_arg;
@@ -4914,14 +4913,6 @@ void call_func(CmdSig sig, CmdProto func, qe__unused__ int nb_args,
         break;
     case CMD_ESsss:  /* ES + string + string + string */
         (*func.ESsss)(args[0].s, args[1].p, args[2].p, args[3].p);
-        break;
-    case CMD_ISS:    /* ISS, no other arguments */
-        // XXX: Must test for actual argument type
-        (*func.ISS)(args[0].vp);
-        break;
-    case CMD_ISSi:   /* ISS + integer */
-        // XXX: Must test for actual argument type
-        (*func.ISSi)(args[0].vp, args[1].n);
         break;
     }
 }
@@ -5088,7 +5079,7 @@ static void arg_edit_cb(void *opaque, char *str);
 static void parse_arguments(ExecCmdState *es);
 static void free_cmd(ExecCmdState **esp);
 
-void exec_command(EditState *s, const CmdDef *d, int argval, int key, void *opaque)
+void exec_command(EditState *s, const CmdDef *d, int argval, int key)
 {
     ExecCmdState *es;
     const char *argdesc;
@@ -5110,7 +5101,6 @@ void exec_command(EditState *s, const CmdDef *d, int argval, int key, void *opaq
         return;
 
     es->s = s;
-    es->opaque = opaque;
     es->d = d;
     if (argval == NO_ARG) {
         es->has_arg = 0;
@@ -5123,13 +5113,8 @@ void exec_command(EditState *s, const CmdDef *d, int argval, int key, void *opaq
     es->nb_args = 0;
 
     /* first argument is always the window */
-    if (opaque) {
-        es->args[0].vp = opaque;
-        es->args_type[0] = CMD_ARG_OPAQUE;
-    } else {
-        es->args[0].s = s;
-        es->args_type[0] = CMD_ARG_WINDOW;
-    }
+    es->args[0].s = s;
+    es->args_type[0] = CMD_ARG_WINDOW;
     es->nb_args++;
     es->ptype = argdesc;
 
@@ -5339,7 +5324,7 @@ void do_execute_command(EditState *s, const char *cmd, int argval)
     /* XXX: should test for '(' and '=' and evaluate script instead */
     d = qe_find_cmd(cmd);
     if (d) {
-        exec_command(s, d, argval, 0, NULL);
+        exec_command(s, d, argval, 0);
     } else {
         put_status(s, "No command %s", cmd);
     }
@@ -5875,7 +5860,7 @@ static void qe_key_process(int key)
              * dispatching the command
              */
             qe_key_init(c);
-            exec_command(s, d, argval, key, NULL);
+            exec_command(s, d, argval, key);
         }
         qe_key_init(c);
         // XXX: should delay until after macro execution
@@ -8363,7 +8348,9 @@ void do_delete_window(EditState *s, int force)
     if (((s->flags & WF_MINIBUF) || count <= 1) && !force)
         return;
 
-    if (!(s->flags & WF_POPUP)) {
+    if (s->flags & WF_POPUP) {
+        e1 = check_window(&s->target_window);
+    } else {
         /* Try to merge the window with adjacent windows.
          * If this cannot be done, just leave a hole and force full
          * redisplay.

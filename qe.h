@@ -1831,8 +1831,6 @@ typedef enum CmdSig {
     CMD_ESss,   /* (ES*, string, string) -> void */
     CMD_ESssi,  /* (ES*, string, string, int) -> void */
     CMD_ESsss,  /* (ES*, string, string, string) -> void */
-    CMD_ISS,    /* (ISearchState*) -> void */
-    CMD_ISSi,   /* (ISearchState*) -> void */
 } CmdSig;
 
 #define MAX_CMD_ARGS 5
@@ -1862,8 +1860,6 @@ typedef union CmdProto {
     void (*ESss)(EditState *, const char *, const char *);
     void (*ESssi)(EditState *, const char *, const char *, int);
     void (*ESsss)(EditState *, const char *, const char *, const char *);
-    void (*ISS)(ISearchState *);
-    void (*ISSi)(ISearchState *, int);
 } CmdProto;
 
 typedef struct CmdDef {
@@ -2199,7 +2195,7 @@ void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
                               QETermStyle *sbuf, int offset);
 void do_isearch(EditState *s, int argval, int dir);
 void do_query_replace(EditState *s, const char *search_str,
-                      const char *replace_str);
+                      const char *replace_str, int argval);
 void do_replace_string(EditState *s, const char *search_str,
                        const char *replace_str, int argval);
 void do_search_string(EditState *s, const char *search_str, int dir);
@@ -2336,7 +2332,7 @@ void do_set_window_style(EditState *s, const char *stylestr);
 void call_func(CmdSig sig, CmdProto func, int nb_args, CmdArg *args,
                unsigned char *args_type);
 int parse_arg(const char **pp, CmdArgSpec *ap);
-void exec_command(EditState *s, const CmdDef *d, int argval, int key, void *opaque);
+void exec_command(EditState *s, const CmdDef *d, int argval, int key);
 void do_execute_command(EditState *s, const char *cmd, int argval);
 void window_display(EditState *s);
 void do_prefix_argument(EditState *s, int key);

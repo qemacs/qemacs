@@ -643,7 +643,7 @@ again:
                 /* XXX: should move this code to qe_cfg_call() */
                 if (sp->type == TOK_ID) {
                     const CmdDef *d = qe_find_cmd(sp->u.str);
-                    if (!d || d->sig >= CMD_ISS) {
+                    if (!d) {
 #ifndef CONFIG_TINY
                         if (strequal(sp->u.str, "char")) {
                             if (qe_cfg_get_args(ds, sp, 1, 1) < 0)
