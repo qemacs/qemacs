@@ -341,16 +341,18 @@ char *reduce_filename(char *dest, int size, const char *filename)
 
 char *file_load(const char *filename, int max_size, int *sizep) {
     /*@API
-       load a file in memory, return allocated block and size.
+       ### `char *file_load(const char *filename, int max_size, int *sizep);`
 
-       fail if file cannot be opened for reading
-       fail if file size is greater or equal to `max_size` (errno = ERANGE)
-       fail if memory cannot be allocated
-       otherwise load the file contents into a block of memory,
+       Load a file in memory, return allocated block and size.
+
+       * fail if file cannot be opened for reading,
+       * fail if file size is greater or equal to `max_size` (`errno` = `ERANGE`),
+       * fail if memory cannot be allocated,
+       * otherwise load the file contents into a block of memory,
          null terminate the block and return a pointer to allocated
          memory along with the number of bytes read
        error codes are returned in `errno`.
-       memory should be freed with qe_free().
+       memory should be freed with `qe_free()`.
      */
     FILE *fp;
     long length;

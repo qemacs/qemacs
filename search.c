@@ -812,11 +812,12 @@ static void query_replace_key(void *opaque, int key)
 {
     QueryReplaceState *is = opaque;
     EditState *s = is->s;
-    QEmacsState *qs = &qe_state;
+    QEmacsState *qs = s->qe_state;
 
     if (is->help_window) {
         do_delete_window(is->help_window, 0);
         is->help_window = NULL;
+        qs->active_window = s;
         edit_display(is->s->qe_state);
         dpy_flush(is->s->screen);
         return;
@@ -935,30 +936,32 @@ static void query_replace(EditState *s, const char *search_str,
 void do_query_replace(EditState *s, const char *search_str,
                       const char *replace_str, int argval)
 {
-    /*@
-       query-replace(FROM-STRING, TO-STRING, DELIMITED=argval, START=point, END=end)
+    /*@CMD
+       ### `query-replace(string FROM-STRING, string TO-STRING,
+                      int DELIMITED=argval, int START=point, int END=end)`
 
        Replace some occurrences of FROM-STRING with TO-STRING.
        As each match is found, the user must type a character saying
-       what to do with it.  For directions, type C-h at that time.
+       what to do with it.  For directions, type '?' at that time.
 
-       In Transient Mark mode, if the mark is active, operate on the contents
-       of the region.  Otherwise, operate from point to the end of the buffer.
-
-       Matching is independent of case if `case-fold-search' is non-nil and
+       Matching is independent of case if `case-fold-search` is non-zero and
        FROM-STRING has no uppercase letters.  Replacement transfers the case
-       pattern of the old text to the new text, if `case-replace' and
-       `case-fold-search' are non-nil and FROM-STRING has no uppercase
+       pattern of the old text to the new text, if `case-replace` and
+       `case-fold-search` are non-zero and FROM-STRING has no uppercase
        letters.  (Transferring the case pattern means that if the old text
        matched is all caps, or capitalized, then its replacement is upcased
        or capitalized.)
 
-       Third arg DELIMITED (prefix arg if interactive), if non-nil, means replace
-       only matches surrounded by word boundaries.
+       Third arg DELIMITED (prefix arg if interactive), if non-zero, means
+       replace only matches surrounded by word boundaries.
 
-       Fourth and fifth arg START and END specify the region to operate on.
+       Fourth and fifth arg START and END specify the region to operate on:
+       if these arguments are not provided, if the current region is
+       highlighted, operate on the contents of the region, otherwise,
+       operate from point to the end of the buffer.
 
-       To customize possible responses, change the "bindings" in `query-replace-map'.
+       To customize possible responses, change the "bindings" in
+       `query-replace-mode`.
      */
     // TODO: region restriction
     int flags = SEARCH_FLAG_SMARTCASE;
@@ -970,21 +973,23 @@ void do_query_replace(EditState *s, const char *search_str,
 void do_replace_string(EditState *s, const char *search_str,
                        const char *replace_str, int argval)
 {
-    /*@
-       replace_string(FROM-STRING, TO-STRING, DELIMITED=argval, START=point, END=end)
+    /*@CMD
+       ### `replace-string(string FROM-STRING, string TO-STRING,
+                       int DELIMITED=argval, int START=point, int END=end)`
 
        Replace occurrences of FROM-STRING with TO-STRING.
        Preserve case in each match if `case-replace' and `case-fold-search'
        are non-zero and FROM-STRING has no uppercase letters.
-       (Preserving case means that if the string matched is all caps, or capitalized,
-       then its replacement is upcased or capitalized.)
+       (Preserving case means that if the string matched is all caps, or
+       capitalized, then its replacement is upcased or capitalized.)
 
-       In Transient Mark mode, if the mark is active, operate on the contents
-       of the region.  Otherwise, operate from point to the end of the buffer.
+       Third arg DELIMITED (prefix arg if interactive), if non-zero, means
+       replace only matches surrounded by word boundaries.
 
-       Third arg DELIMITED (prefix arg if interactive), if non-nil, means replace
-       only matches surrounded by word boundaries.
-       Fourth and fifth arg START and END specify the region to operate on.
+       Fourth and fifth arg START and END specify the region to operate on:
+       if these arguments are not provided, if the current region is
+       highlighted, operate on the contents of the region, otherwise,
+       operate from point to the end of the buffer.
 
        This function is usually the wrong thing to use in a qscript program.
        What you probably want is a loop like this:

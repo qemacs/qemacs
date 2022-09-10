@@ -1858,7 +1858,9 @@ void do_quoted_insert(EditState *s, int argval) {
 }
 
 void do_overwrite_mode(EditState *s, int argval) {
-    /*@
+    /*@CMD
+       ### `overwrite-mode(argval)`
+
        Toggle overwrite mode.
 
        With a prefix argument, turn overwrite mode on if the argument
@@ -1867,10 +1869,10 @@ void do_overwrite_mode(EditState *s, int argval) {
        existing text without moving the rest of the line, rather than
        shifting it to the right.  Characters typed before a newline
        extend the line.  Space created by TAB characters is filled until
-       the tabulation stop is reached as.
+       the tabulation stop is reached.
        Backspace erases the previous character and sets point to it.
-       C-q still inserts characters in overwrite mode for convenience to
-       insert characters when necessary.
+       C-q still inserts characters in overwrite mode as a convenient way
+       to insert characters when necessary.
      */
 
     if (argval == NO_ARG)
@@ -7945,8 +7947,8 @@ void do_insert_file(EditState *s, const char *filename)
 void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile)
 {
-    /*@
-       set_visited_file_name(string FILENAME, string RENAMEFILE)
+    /*@CMD
+       ### `set-visited-file-name(string FILENAME, string RENAMEFILE)`
 
        Change the name of file visited in current buffer to FILENAME.
        This also renames the buffer to correspond to the new file. The
@@ -8349,7 +8351,8 @@ void do_delete_window(EditState *s, int force)
         return;
 
     if (s->flags & WF_POPUP) {
-        e1 = check_window(&s->target_window);
+        // XXX: this causes a crash on C-g from bufed
+        //e1 = check_window(&s->target_window);
     } else {
         /* Try to merge the window with adjacent windows.
          * If this cannot be done, just leave a hole and force full
