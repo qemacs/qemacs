@@ -936,7 +936,7 @@ static void query_replace(EditState *s, const char *search_str,
 void do_query_replace(EditState *s, const char *search_str,
                       const char *replace_str, int argval)
 {
-    /*@CMD
+    /*@CMD query-replace
        ### `query-replace(string FROM-STRING, string TO-STRING,
                       int DELIMITED=argval, int START=point, int END=end)`
 
@@ -973,7 +973,7 @@ void do_query_replace(EditState *s, const char *search_str,
 void do_replace_string(EditState *s, const char *search_str,
                        const char *replace_str, int argval)
 {
-    /*@CMD
+    /*@CMD replace-string
        ### `replace-string(string FROM-STRING, string TO-STRING,
                        int DELIMITED=argval, int START=point, int END=end)`
 

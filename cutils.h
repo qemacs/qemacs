@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+/* this cast prevents compiler warnings when removing the const qualifier */
 #define unconst(t)  (t)(uintptr_t)
 
 /* These definitions prevent a clash with ffmpeg's cutil module. */
@@ -36,6 +37,7 @@
 #define pstrncpy(buf, sz, str, n)  qe_pstrncpy(buf, sz, str, n)
 #define pstrncat(buf, sz, str, n)  qe_pstrncat(buf, sz, str, n)
 
+/* make sure neither strncpy not strtok are used */
 #undef strncpy
 #define strncpy(d,s)      do_not_use_strncpy!!(d,s)
 #undef strtok
@@ -49,29 +51,82 @@ char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 char *pstrncat(char *buf, int buf_size, const char *s, int len);
 size_t get_basename_offset(const char *filename);
 static inline const char *get_basename(const char *filename) {
+    /*@API utils
+       Get the filename portion of a path.
+       Return a pointer to the first character of the filename part of
+       the path pointed to by string argument `path`.
+       @note call this function for a constant string.
+     */
     return filename + get_basename_offset(filename);
 }
 static inline char *get_basename_nc(char *filename) {
+    /*@API utils
+       Get the filename portion of a path.
+       Return a pointer to the first character of the filename part of
+       the path pointed to by string argument `path`.
+       @note call this function for a modifiable string.
+     */
     return filename + get_basename_offset(filename);
 }
 size_t get_extension_offset(const char *filename);
 static inline const char *get_extension(const char *filename) {
+    /*@API utils
+       Get the filename extension portion of a path.
+       Return a pointer to the first character of the last extension of
+       the filename part of the path pointed to by string argument `path`.
+       If there is no extension, return a pointer to the null terminator
+       and the end of path.
+       Leading dots are skipped, they are not considered part of an extension.
+       @note call this function for a constant string.
+     */
     return filename + get_extension_offset(filename);
 }
 static inline char *get_extension_nc(char *filename) {
+    /*@API utils
+       Get the filename extension portion of a path.
+       Return a pointer to the first character of the last extension of
+       the filename part of the path pointed to by string argument `path`.
+       If there is no extension, return a pointer to the null terminator
+       and the end of path.
+       Leading dots are skipped, they are not considered part of an extension.
+       @note call this function for a modifiable string.
+     */
     return filename + get_extension_offset(filename);
 }
 static inline void strip_extension(char *filename) {
+    /*@API utils
+       Strip the filename extension portion of a path.
+       Leading dots are skipped, they are not considered part of an extension.
+     */
     filename[get_extension_offset(filename)] = '\0';
 }
 char *get_dirname(char *dest, int size, const char *file);
 static inline long strtol_c(const char *str, const char **endptr, int base) {
+    /*@API utils
+       Convert the number in the string pointed to by `str` as a `long`.
+       Call this function with a constant string and the address of a `const char *`.
+     */
     return strtol(str, unconst(char **)endptr, base);
 }
 static inline long strtoll_c(const char *str, const char **endptr, int base) {
+    /*@API utils
+       Convert the number in the string pointed to by `str` as a `long long`.
+       Call this function with a constant string and the address of a `const char *`.
+     */
     return strtoll(str, unconst(char **)endptr, base);
 }
+static inline double strtod_c(const char *str, const char **endptr) {
+    /*@API utils
+       Convert the number in the string pointed to by `str` as a `double`.
+       Call this function with a constant string and the address of a `const char *`.
+     */
+    return strtold(str, unconst(char **)endptr);
+}
 static inline long double strtold_c(const char *str, const char **endptr) {
+    /*@API utils
+       Convert the number in the string pointed to by `str` as a `long double`.
+       Call this function with a constant string and the address of a `const char *`.
+     */
     return strtold(str, unconst(char **)endptr);
 }
 

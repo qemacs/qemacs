@@ -28,16 +28,20 @@
  * conflict is resolved by redefining the symbols in cutils.h
  */
 
-/**
- * Return TRUE if val is a prefix of str. If it returns TRUE, ptr is
- * set to the next character in 'str' after the prefix.
- *
- * @param str input string
- * @param val prefix to test
- * @param ptr updated after the prefix in str in there is a match
- * @return TRUE if there is a match
- */
 int strstart(const char *str, const char *val, const char **ptr) {
+    /*@API utils
+       Check if `val` is a prefix of `str`. In this case, a
+       pointer to the first character after the prefix in `str` is
+       stored into `ptr` provided `ptr` is not a null pointer.
+
+       If `val` is not a prefix of `str`, return `0` and leave `*ptr`
+       unchanged.
+
+       @param `str` input string, must be a valid pointer.
+       @param `val` prefix to test, must be a valid pointer.
+       @param `ptr` updated with a pointer past the prefix if found.
+       @return `true` if there is a match, `false` otherwise.
+     */
     size_t i;
     for (i = 0; val[i] != '\0'; i++) {
         if (str[i] != val[i])
@@ -48,16 +52,17 @@ int strstart(const char *str, const char *val, const char **ptr) {
     return 1;
 }
 
-/**
- * Return TRUE if val is a suffix of str. If it returns TRUE, ptr is
- * set to the first character of the suffix in 'str'.
- *
- * @param str input string
- * @param val suffix to test
- * @param ptr updated to the suffix in str in there is a match
- * @return TRUE if there is a match
- */
 int strend(const char *str, const char *val, const char **ptr) {
+    /*@API utils
+       Check if `val` is a suffix of `str`. In this case, a
+       pointer to the first character of the suffix in `str` is stored
+       into `ptr` provided `ptr` is not a null pointer.
+
+       @param `str` input string, must be a valid pointer.
+       @param `val` suffix to test, must be a valid pointer.
+       @param `ptr` updated to the suffix in `str` if there is a match.
+       @return `true` if there is a match, `false` otherwise.
+     */
     size_t len1 = strlen(str);
     size_t len2 = strlen(val);
 
@@ -70,17 +75,19 @@ int strend(const char *str, const char *val, const char **ptr) {
     }
 }
 
-/**
- * Copy the string str to buf. If str length is bigger than buf_size -
- * 1 then it is clamped to buf_size - 1.
- * NOTE: this function does what strncpy should have done to be
- * useful. NEVER use strncpy.
- *
- * @param buf destination buffer
- * @param buf_size size of destination buffer
- * @param str source string
- */
 char *pstrcpy(char *buf, int size, const char *str) {
+    /*@API utils
+       Copy the string pointed by `str` to the destination array `buf`,
+       of length `size` bytes, truncating excess bytes.
+
+       @param `buf` destination array, must be a valid pointer.
+       @param `size` length of destination array.
+       @param `str` pointer to a source string, must be a valid pointer.
+       @return a pointer to the destination array.
+       @note truncation cannot be detected reliably.
+       @note this function does what `strncpy` should have done to be
+       useful. **NEVER use `strncpy`**.
+     */
     if (size > 0) {
         int i;
         for (i = 0; i < size - 1 && (buf[i] = str[i]) != '\0'; i++)
@@ -90,16 +97,28 @@ char *pstrcpy(char *buf, int size, const char *str) {
     return buf;
 }
 
-/* strcat and truncate. */
 char *pstrcat(char *buf, int size, const char *s) {
+    /*@API utils
+       Copy the string pointed by `s` at the end of the string contained
+       in the destination array `buf`, of length `size` bytes,
+       truncating excess bytes.
+       @return a pointer to the destination array.
+       @note truncation cannot be detected reliably.
+     */
     int len = strlen(buf);
     if (size > len)
         pstrcpy(buf + len, size - len, s);
     return buf;
 }
 
-/* copy the n first char of a string and truncate it. */
 char *pstrncpy(char *buf, int size, const char *s, int len) {
+    /*@API utils
+       Copy at most `len` bytes from the string pointed by `s` to the
+       destination array `buf`, of length `size` bytes, truncating
+       excess bytes.
+       @return a pointer to the destination array.
+       @note truncation cannot be detected reliably.
+     */
     if (size > 0) {
         int i;
         if (len >= size)
@@ -111,17 +130,29 @@ char *pstrncpy(char *buf, int size, const char *s, int len) {
     return buf;
 }
 
-/* strcat and truncate. */
 char *pstrncat(char *buf, int size, const char *s, int slen) {
+    /*@API utils
+       Copy at most `len` bytes from the string pointed by `s` at the end
+       of the string contained in the destination array `buf`, of length
+       `size` bytes, truncating excess bytes.
+       @return a pointer to the destination array.
+       @note truncation cannot be detected reliably.
+     */
+    // XXX: should use strnlen() to avoid reading beyond size
     int len = strlen(buf);
     if (size > len)
         pstrncpy(buf + len, size - len, s, slen);
     return buf;
 }
 
-/* Get the filename portion of a path */
-size_t get_basename_offset(const char *p) {
+size_t get_basename_offset(const char *path) {
+    /*@API utils
+       Get the filename portion of a path.
+       Return the offset to the first character of the filename part of
+       the path pointed to by string argument `path`.
+     */
     size_t i, base = 0;
+    const char *p = path;
 
     if (p) {
         for (i = 0; p[i]; i++) {
@@ -138,9 +169,17 @@ size_t get_basename_offset(const char *p) {
     return base;
 }
 
-/* Return the last extension in a path, ignoring leading dots */
-size_t get_extension_offset(const char *p) {
+size_t get_extension_offset(const char *path) {
+    /*@API utils
+       Get the filename extension portion of a path.
+       Return the offset to the first character of the last extension of
+       the filename part of the path pointed to by string argument `path`.
+       If there is no extension, return a pointer to the null terminator
+       and the end of path.
+       Leading dots are skipped, they are not considered part of an extension.
+     */
     size_t ext = 0;
+    const char *p = path;
 
     if (p) {
         size_t i = get_basename_offset(p);
@@ -156,12 +195,19 @@ size_t get_extension_offset(const char *p) {
     return ext;
 }
 
-/* Extract the directory portion of a path:
- * This leaves out the trailing slash if any.  The complete path is
- * obtained by catenating dirname + '/' + basename.
- * if the original path doesn't contain anything dirname is just "."
- */
 char *get_dirname(char *dest, int size, const char *file) {
+    /*@API utils
+       Extract the directory portion of a path.
+       This leaves out the trailing slash if any.  The complete path is
+       obtained by catenating `dirname` + `"/"` + `basename`.
+       If the original path doesn't contain a directory name, `"."` is
+       copied to `dest`.
+       @return a pointer to the destination array.
+       @note truncation cannot be detected reliably.
+       @note the trailing slash is not removed if the directory is the
+       root directory: this make the behavior somewhat inconsistent,
+       requiring more tests when reconstructing the full path.
+     */
     if (dest && size > 0) {
         size_t i = 0;
         if (file) {

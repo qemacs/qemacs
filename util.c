@@ -26,12 +26,28 @@
 #include <sys/timeb.h>
 
 /* XXX: not sufficient, but OK for basic operations */
-int fnmatch(const char *pattern, const char *string, int flags)
-{
-    if (pattern[0] == '*' && pattern[1] == '\0')
-        return 0;
-    else
-        return !strequal(pattern, string);
+int fnmatch(const char *pattern, const char *string, int flags) {
+    char c;
+    while ((c = *pattern++) != '\0') {
+        if (c == '*') {
+            if (*pattern == '\0')
+                return 0;
+            while (*string) {
+                if (!fnmatch(pattern, string))
+                    return 0;
+                string++;
+            }
+            return FNM_NOMATCH;
+        } else
+        if (c == '?') {
+            if (*string++ == '\0')
+                return FNM_NOMATCH;
+        } else
+        if (c != *string++) {
+            return FNM_NOMATCH;
+        }
+    }
+    return *string ? FNM_NOMATCH : 0;
 }
 
 #else
@@ -50,8 +66,14 @@ struct FindFileState {
     size_t parent_len[FF_DEPTH];
 };
 
-FindFileState *find_file_open(const char *path, const char *pattern, int flags)
-{
+FindFileState *find_file_open(const char *path, const char *pattern, int flags) {
+    /*@API utils
+       Start a directory enumeration.
+       @argument `path` the initial directory for the enumeration.
+       @argument `pattern` a file pattern using `?` and `*` with the classic
+       semantics used by unix shells
+       @return a pointer to an opaque FindFileState structure.
+     */
     FindFileState *s;
 
     s = qe_mallocz(FindFileState);
@@ -65,8 +87,14 @@ FindFileState *find_file_open(const char *path, const char *pattern, int flags)
     return s;
 }
 
-int find_file_next(FindFileState *s, char *filename, int filename_size_max)
-{
+int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
+    /*@API utils
+       Get the next match in a directory enumeration.
+       @argument `filename` a valid pointer to an array for the file name.
+       @argument `filename_size_max` the length if the `filename` destination
+       array in bytes.
+       @return `0` if there is a match, `-1` if no more files matche the pattern.
+     */
     struct dirent *dirent;
     const char *p;
 
@@ -126,8 +154,14 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max)
     }
 }
 
-void find_file_close(FindFileState **sp)
-{
+void find_file_close(FindFileState **sp) {
+    /*@API utils
+       Close a directory enumeration state `FindFileState`.
+       @argument `sp` a valid pointer to a `FindFileState` pointer that
+       will be closed.
+       @note `FindFileState` state structures must be freed to avoid memory
+       and resource leakage.
+     */
     if (*sp) {
         FindFileState *s = *sp;
 
@@ -153,27 +187,33 @@ static void path_win_to_unix(char *buf)
 }
 #endif
 
-int is_directory(const char *path)
-{
+int is_directory(const char *path) {
+    /*@API utils
+       Check if the string pointed to by `path` is the name of a
+       directory.
+       @argument `path` a valid pointer to a string.
+       @return `true` if `path` is the name of a directory, `false` otherwise.
+       @note this function uses `stat`, so it will return `true` for
+       directories and symbolic links pointing to existing directories.
+     */
     struct stat st;
-
-    if (!stat(path, &st) && S_ISDIR(st.st_mode))
-        return 1;
-    else
-        return 0;
+    return (!stat(path, &st) && S_ISDIR(st.st_mode));
 }
 
-int is_filepattern(const char *filespec)
-{
+int is_filepattern(const char *filespec) {
+    /*@API utils
+       Check if the string pointed to by `filespec` is a file pattern.
+       @argument `filespec` a valid pointer to a string.
+       @return `true` if `filespec` contains wildcard characters.
+       @note this function only recognises `?` and `*` wildcard characters
+     */
     // XXX: should also accept character ranges and {} comprehensions
     int pos = strcspn(filespec, "*?");
     return filespec[pos] != '\0';
 }
 
-/* suppress redundant ".", ".." and "/" from paths */
-/* XXX: make it better */
-static void canonicalize_path1(char *buf, int buf_size, const char *path)
-{
+static void canonicalize_path1(char *buf, int buf_size, const char *path) {
+    /* XXX: make it better */
     const char *p;
     char *q, *q1;
     int c, abs_path;
@@ -235,8 +275,16 @@ static void canonicalize_path1(char *buf, int buf_size, const char *path)
     }
 }
 
-void canonicalize_path(char *buf, int buf_size, const char *path)
-{
+void canonicalize_path(char *buf, int buf_size, const char *path) {
+    /*@API utils
+       Normalize a path, removing redundant `.`, `..` and `/` parts.
+       @argument `buf` a pointer to the destination array
+       @argument `buf_size` the length of the destination array in bytes
+       @argument `path` a valid pointer to a string.
+       @note this function accepts drive and protocol specifications.
+       @note removing `..` may have adverse side effects if the parent
+       directory specified is a symbolic link.
+     */
     const char *p;
 
     /* check for URL protocol or windows drive */
@@ -260,9 +308,17 @@ void canonicalize_path(char *buf, int buf_size, const char *path)
     }
 }
 
-/* reduce path relative to homedir */
-char *make_user_path(char *buf, int buf_size, const char *path)
-{
+char *make_user_path(char *buf, int buf_size, const char *path) {
+    /*@API utils
+       Reduce a path relative to the user's homedir, using the `~`
+       shell syntax.
+       @argument `buf` a pointer to the destination array
+       @argument `buf_size` the length of the destination array in bytes
+       @argument `path` a valid pointer to a string.
+       @return a pointer to the destination array.
+       @note this function uses the `HOME` environment variable to
+       determine the user's home directory
+     */
     char *homedir = getenv("HOME");
     if (homedir) {
         int len = strlen(homedir);
@@ -340,9 +396,7 @@ char *reduce_filename(char *dest, int size, const char *filename)
 }
 
 char *file_load(const char *filename, int max_size, int *sizep) {
-    /*@API
-       ### `char *file_load(const char *filename, int max_size, int *sizep);`
-
+    /*@API utils
        Load a file in memory, return allocated block and size.
 
        * fail if file cannot be opened for reading,
@@ -350,9 +404,9 @@ char *file_load(const char *filename, int max_size, int *sizep) {
        * fail if memory cannot be allocated,
        * otherwise load the file contents into a block of memory,
          null terminate the block and return a pointer to allocated
-         memory along with the number of bytes read
-       error codes are returned in `errno`.
-       memory should be freed with `qe_free()`.
+         memory along with the number of bytes read.
+       Error codes are returned in `errno`.
+       Memory should be freed with `qe_free()`.
      */
     FILE *fp;
     long length;
@@ -385,14 +439,15 @@ char *file_load(const char *filename, int max_size, int *sizep) {
     return buf;
 }
 
-/* Return 1 iff filename extension appears in | separated list extlist.
- * Initial and final | do not match an empty extension, but || does.
- * Multiple tacked extensions may appear un extlist eg. |tar.gz|
- * Initial dots do not account as extension delimiters.
- * . and .. do not have an empty extension, nor do they match ||
- */
-int match_extension(const char *filename, const char *extlist)
-{
+int match_extension(const char *filename, const char *extlist) {
+    /*@API utils
+       Return `true` iff the filename extension appears in `|` separated
+       list pointed to by `extlist`.
+     * Initial and final `|` do not match an empty extension, but `||` does.
+     * Multiple tacked extensions may appear un extlist eg. `|tar.gz|`
+     * Initial dots do not account as extension delimiters.
+     * `.` and `..` do not have an empty extension, nor do they match `||`
+     */
     const char *base, *p, *q;
     int len;
 
@@ -425,8 +480,12 @@ int match_extension(const char *filename, const char *extlist)
     return 0;
 }
 
-int match_shell_handler(const char *p, const char *list)
-{
+int match_shell_handler(const char *p, const char *list) {
+    /*@API utils
+       Return `true` iff the command name invoked by the `#!` line pointed to by `p`
+       matches one of the commands in `|` separated list pointed to by `list`.
+     * both `#!/bin/perl` and `#!/bin/env perl` styles match list `"perl"`
+     */
     const char *base;
 
     if (!list)
@@ -456,24 +515,24 @@ int match_shell_handler(const char *p, const char *list)
     return 0;
 }
 
-/* Remove trailing slash from path, except for / directory */
-int remove_slash(char *buf)
-{
-    int len;
-
-    len = strlen(buf);
+int remove_slash(char *buf) {
+    /*@API utils
+       Remove the trailing slash from path, except for / directory.
+       @return the updated path length.
+     */
+    int len = strlen(buf);
     if (len > 1 && buf[len - 1] == '/') {
         buf[--len] = '\0';
     }
     return len;
 }
 
-/* Append trailing slash to path if none there already */
-int append_slash(char *buf, int buf_size)
-{
-    int len;
-
-    len = strlen(buf);
+int append_slash(char *buf, int buf_size) {
+    /*@API utils
+       Append a trailing slash to a path if none there already.
+       @return the updated path length.
+     */
+    int len = strlen(buf);
     if (len > 0 && buf[len - 1] != '/' && len + 1 < buf_size) {
         buf[len++] = '/';
         buf[len] = '\0';
@@ -481,9 +540,12 @@ int append_slash(char *buf, int buf_size)
     return len;
 }
 
-char *makepath(char *buf, int buf_size, const char *path,
-               const char *filename)
-{
+char *makepath(char *buf, int buf_size, const char *path, const char *filename) {
+    /*@API utils
+       Construct a path from a directory name and a filename into the
+       array pointed to by `buf` of length `buf_size` bytes.
+       @return a pointer to the destination array.
+     */
     if (buf != path)
         pstrcpy(buf, buf_size, path);
     append_slash(buf, buf_size);
@@ -493,6 +555,12 @@ char *makepath(char *buf, int buf_size, const char *path,
 void splitpath(char *dirname, int dirname_size,
                char *filename, int filename_size, const char *pathname)
 {
+    /*@API utils
+       Split the path pointed to by `pathname` into a directory part and a
+       filename part.
+       @note `dirname` will receive an empty string if `pathname` constains
+       just a filename.
+     */
     const char *base;
 
     base = get_basename(pathname);
@@ -502,10 +570,14 @@ void splitpath(char *dirname, int dirname_size,
         pstrcpy(filename, filename_size, base);
 }
 
-/* smart compare strings, lexicographical order, but collate numbers in
- * numeric order, and push * at end */
 int qe_strcollate(const char *s1, const char *s2)
 {
+    /*@API utils
+       Compare 2 strings using special rules:
+     * use lexicographical order
+     * collate sequences of digits in numerical order.
+     * push `*` at the end.
+     */
     int last, c1, c2, res, flags;
 
     last = '\0';
@@ -546,6 +618,14 @@ int qe_strcollate(const char *s1, const char *s2)
 /* CG: need a local version of strcasecmp: qe_strcasecmp() */
 
 int qe_strtobool(const char *s, int def) {
+    /*@API utils
+       Determine the boolean value of a response string.
+       @argument `s` a possibly null pointer to a string,
+       @argument `def` the default value if `s` is null or an empty string,
+       @return `true` for `y`, `yes`, `t`, `true` and `1`, case independenty,
+       return `false` for other non empty contents and return the default
+       value `def` otherwise.
+     */
     if (s && *s) {
         return strxfind("1|y|yes|t|true", s) ? 1 : 0;
     } else {
@@ -553,12 +633,18 @@ int qe_strtobool(const char *s, int def) {
     }
 }
 
-/* Should return int, length of converted string? */
-void qe_strtolower(char *buf, int size, const char *str)
-{
-    int c;
+void qe_strtolower(char *buf, int size, const char *str) {
+    /*@API utils
+       Convert a string to lowercase using `qe_tolower` for each byte.
+       @argument `buf` a valid pointer to a destination array.
+       @argument `size` the length of the destination array in bytes,
+       @argument `str` a valid pointer to a string to convert.
+       @note this version only handles ASCII.
+     */
+    // XXX:  Should handle utf-8 encoding and Unicode case conversion.
+    // XXX: should return int, length of converted string?
+    unsigned char c;
 
-    /* This version only handles ASCII */
     if (size > 0) {
         while ((c = (unsigned char)*str++) != '\0' && size > 1) {
             *buf++ = qe_tolower(c);
@@ -568,10 +654,15 @@ void qe_strtolower(char *buf, int size, const char *str)
     }
 }
 
-int qe_skip_spaces(const char **pp)
-{
+int qe_skip_spaces(const char **pp) {
+    /*@API utils
+       Skip white space at the beginning of the string pointed to by `*pp`.
+       @argument `pp` the address of a valid string pointer. The pointer will
+       be updated to point after any initial white space.
+       @return the character value after the white space as an `unsigned char`.
+     */
     const char *p;
-    int c;
+    unsigned char c;
 
     p = *pp;
     while (qe_isspace(c = *p))
@@ -581,6 +672,14 @@ int qe_skip_spaces(const char **pp)
 }
 
 int memfind(const char *list, const char *s, int len) {
+    /*@API utils
+       Find a string fragment in a list of words separated by `|`.
+       An initial or trailing `|` do not match the empty string, but `||` does.
+       @argument `list` a string of words separated by `|` characters.
+       @argument `s` a valid string pointer.
+       @argument `len` the number of bytes to consider in `s`.
+       @return 1 if there is a match, 0 otherwise.
+     */
     const char *q = list, *start;
     int i, j;
 
@@ -607,14 +706,26 @@ int memfind(const char *list, const char *s, int len) {
     return 0;
 }
 
-/* find a word in a list using '|' as separator */
 int strfind(const char *keytable, const char *str) {
+    /*@API utils
+       Find a string in a list of words separated by `|`.
+       An initial or trailing `|` do not match the empty string, but `||` does.
+       @argument `list` a string of words separated by `|` characters.
+       @argument `str` a valid string pointer.
+       @return 1 if there is a match, 0 otherwise.
+     */
     return memfind(keytable, str, strlen(str));
 }
 
-/* find a word in a list using '|' as separator, ignore case and "-_ ". */
-int strxfind(const char *list, const char *s)
-{
+int strxfind(const char *list, const char *s) {
+    /*@API utils
+       Find a string in a list of words separated by `|`, ignoring case
+       and skipping `-` , `_` and spaces.
+       An initial or trailing `|` do not match the empty string, but `||` does.
+       @argument `list` a string of words separated by `|` characters.
+       @argument `s` a valid string pointer for the string to search.
+       @return 1 if there is a match, 0 otherwise.
+     */
     const char *p, *q;
     int c1, c2;
 
@@ -660,8 +771,15 @@ int strxfind(const char *list, const char *s)
     }
 }
 
-const char *strmem(const char *str, const void *mem, int size)
-{
+const char *strmem(const char *str, const void *mem, int size) {
+    /*@API utils
+       Find a chunk of characters inside a string.
+       @argument `str` a valid string pointer in which to search for matches.
+       @argument `mem` a pointer to a chunk of bytes to search.
+       @argument `size` the length in bytes of the chuck to search.
+       @return a pointer to the first character of the match if found,
+       `NULL` otherwise.
+     */
     int c, len;
     const char *p, *str_max, *p1 = mem;
 
@@ -675,6 +793,7 @@ const char *strmem(const char *str, const void *mem, int size)
         return NULL;
     }
 
+    // XXX: problem if match is a suffix
     len = strlen(str);
     if (size >= len)
         return NULL;
@@ -687,8 +806,16 @@ const char *strmem(const char *str, const void *mem, int size)
     return NULL;
 }
 
-const void *memstr(const void *buf, int size, const char *str)
-{
+const void *memstr(const void *buf, int size, const char *str) {
+    /*@API utils
+       Find a string in a chunk of memory.
+       @argument `buf` a valid pointer to the block of memory in which to
+       search for matches.
+       @argument `size` the length in bytes of the memory block.
+       @argument `str` a valid string pointer for the string to search.
+       @return a pointer to the first character of the match if found,
+       `NULL` otherwise.
+     */
     int c, len;
     const u8 *p, *buf_max;
 
@@ -698,6 +825,7 @@ const void *memstr(const void *buf, int size, const char *str)
         return buf;
     }
 
+    // XXX: problem if match is a suffix
     len = strlen(str);
     if (len >= size)
         return NULL;
@@ -710,8 +838,17 @@ const void *memstr(const void *buf, int size, const char *str)
     return NULL;
 }
 
-int qe_memicmp(const void *p1, const void *p2, size_t count)
-{
+int qe_memicmp(const void *p1, const void *p2, size_t count) {
+    /*@API utils
+       Perform a case independent comparison of blocks of memory.
+       @argument `p1` a valid pointer to the first block.
+       @argument `p2` a valid pointer to the second block.
+       @argument `count` the length in bytes of the blocks to compare.
+       @return `0` is the blocks compare equal, ignoring case,
+       @return a negative value if the first block compares below the second,
+       @return a positive value if the first block compares above the second.
+       @note this version only handles ASCII.
+     */
     const u8 *s1 = (const u8 *)p1;
     const u8 *s2 = (const u8 *)p2;
 
@@ -726,8 +863,16 @@ int qe_memicmp(const void *p1, const void *p2, size_t count)
     return 0;
 }
 
-const char *qe_stristr(const char *s1, const char *s2)
-{
+const char *qe_stristr(const char *s1, const char *s2) {
+    /*@API utils
+       Find a string in another string, ignoring case.
+       @argument `s1` a valid pointer to the string in which to
+       search for matches.
+       @argument `s2` a valid string pointer for the string to search.
+       @return a pointer to the first character of the match if found,
+       `NULL` otherwise.
+       @note this version only handles ASCII.
+     */
     int c, c1, c2, len;
 
     len = strlen(s2);
@@ -748,17 +893,17 @@ const char *qe_stristr(const char *s1, const char *s2)
     return NULL;
 }
 
-/**
- * Return TRUE if val is a prefix of str (case independent). If it
- * returns TRUE, ptr is set to the next character in 'str' after the
- * prefix.
- *
- * @param str input string
- * @param val prefix to test
- * @param ptr updated after the prefix in str in there is a match
- * @return TRUE if there is a match */
-int stristart(const char *str, const char *val, const char **ptr)
-{
+int stristart(const char *str, const char *val, const char **ptr) {
+    /*@API utils
+       Test if `val` is a prefix of `str` (case independent).
+       If there is a match, a pointer to the next character after the
+       match in `str` is stored into `ptr` provided `ptr` is not null.
+       @param `str` valid string pointer,
+       @param `val` valid string pointer to the prefix to test,
+       @param `ptr` a possibly null pointer to a `const char *` to set
+       to point after the prefix in `str` in there is a match.
+       @return `true` if there is a match, `false` otherwise.
+     */
     const char *p, *q;
 
     p = str;
@@ -775,19 +920,18 @@ int stristart(const char *str, const char *val, const char **ptr)
     return 1;
 }
 
-/**
- * Return TRUE if val is a prefix of str (case independent). If it
- * returns TRUE, ptr is set to the next character in 'str' after the
- * prefix.
- *
- * Spaces, dashes and underscores are also ignored in this comparison.
- *
- * @param str input string
- * @param val prefix to test
- * @param ptr updated after the prefix in str in there is a match
- * @return TRUE if there is a match */
-int strxstart(const char *str, const char *val, const char **ptr)
-{
+int strxstart(const char *str, const char *val, const char **ptr) {
+    /*@API utils
+       Test if `val` is a prefix of `str` (case independent and ignoring
+       `-`, `_` and spaces). If there is a match, a pointer to the next
+       character after the match in `str` is stored into `ptr`, provided
+       `ptr` is not null.
+       @param `str` valid string pointer,
+       @param `val` valid string pointer to the prefix to test,
+       @param `ptr` a possibly null pointer to a `const char *` to set
+       to point after the prefix in `str` in there is a match.
+       @return `true` if there is a match, `false` otherwise.
+     */
     const char *p, *q;
     p = str;
     q = val;
@@ -811,44 +955,52 @@ int strxstart(const char *str, const char *val, const char **ptr)
     return 1;
 }
 
-/**
- * Compare strings str1 and str2 case independently.
- * Spaces, dashes and underscores are also ignored in this comparison.
- *
- * @param str1 input string 1 (left operand)
- * @param str2 input string 2 (right operand)
- * @return -1, 0, +1 reflecting the sign of str1 <=> str2
- */
-int strxcmp(const char *str1, const char *str2)
-{
-    const char *p, *q;
-    int d;
-
-    p = str1;
-    q = str2;
+int strxcmp(const char *str1, const char *str2) {
+    /*@API utils
+       Compare strings case independently, also ignoring spaces, dashes
+       and underscores.
+       @param `str1` a valid string pointer for the left operand.
+       @param `str2` a valid string pointer for the right operand.
+       @return a negative, 0 or positive value reflecting the sign
+       of `str1 <=> str2`
+     */
     for (;;) {
-        d = qe_toupper((unsigned char)*p) - qe_toupper((unsigned char)*q);
+        unsigned char c1 = *str1;
+        unsigned char c2 = *str2;
+        int d = qe_toupper(c1) - qe_toupper(c2);
         if (d) {
-            if (*q == '-' || *q == '_' || *q == ' ') {
-                q++;
+            if (c2 == '-' || c2 == '_' || c2 == ' ') {
+                str2++;
                 continue;
             }
-            if (*p == '-' || *p == '_' || *p == ' ') {
-                p++;
+            if (c1 == '-' || c1 == '_' || c1 == ' ') {
+                str1++;
                 continue;
             }
             return d < 0 ? -1 : +1;
         }
-        if (!*p)
+        if (!c1)
             break;
-        p++;
-        q++;
+        str1++;
+        str2++;
     }
     return 0;
 }
 
-/* like strstart but checks that prefix is a full word */
 int strmatchword(const char *str, const char *val, const char **ptr) {
+    /*@API utils
+       Check if `val` is a word prefix of `str`. In this case, return
+       `true` and store a pointer to the first character after the prefix
+       in `str` into `ptr` provided `ptr` is not a null pointer.
+
+       If `val` is not a word prefix of `str`, return `false` and leave `*ptr`
+       unchanged.
+
+       @param `str` a valid string pointer.
+       @param `val` a valid string pointer for the prefix to test.
+       @param `ptr` updated with a pointer past the prefix in `str` if found.
+       @return `true` if there is a match, `false` otherwise.
+     */
     if (strstart(str, val, &str) && !qe_isword(*str)) {
         if (ptr)
             *ptr = str;

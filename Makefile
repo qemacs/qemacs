@@ -479,6 +479,9 @@ test:
 	$(MAKE) -C tests test
 
 # documentation
+qe-manual.md: $(BINDIR)/scandoc$(EXE) qe-manual.c $(SRCS) $(DEPENDS) Makefile
+	$(BINDIR)/scandoc qe-manual.c $(SRCS) $(DEPENDS) > $@
+
 qe-doc.html: qe-doc.texi Makefile
 	LANGUAGE=en_US LC_ALL=en_US.UTF-8 texi2html -monolithic $<
 	@mv $@ $@.tmp

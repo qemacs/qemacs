@@ -1858,7 +1858,7 @@ void do_quoted_insert(EditState *s, int argval) {
 }
 
 void do_overwrite_mode(EditState *s, int argval) {
-    /*@CMD
+    /*@CMD overwrite-mode
        ### `overwrite-mode(argval)`
 
        Toggle overwrite mode.
@@ -7947,7 +7947,7 @@ void do_insert_file(EditState *s, const char *filename)
 void do_set_visited_file_name(EditState *s, const char *filename,
                               const char *renamefile)
 {
-    /*@CMD
+    /*@CMD set-visited-file-name
        ### `set-visited-file-name(string FILENAME, string RENAMEFILE)`
 
        Change the name of file visited in current buffer to FILENAME.
@@ -7959,7 +7959,6 @@ void do_set_visited_file_name(EditState *s, const char *filename,
        If the RENAMEFILE argument is not null and starts with 'y', an
        attempt is made to rename the old visited file to the new name
        FILENAME.
-
      */
     char path[MAX_FILENAME_SIZE];
 
