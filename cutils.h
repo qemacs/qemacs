@@ -22,8 +22,9 @@
 #ifndef CUTILS_H
 #define CUTILS_H
 
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* this cast prevents compiler warnings when removing the const qualifier */
 #define unconst(t)  (t)(uintptr_t)

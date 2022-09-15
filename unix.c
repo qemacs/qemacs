@@ -23,6 +23,7 @@
 
 #ifdef CONFIG_WIN32
 #include <winsock.h>
+#include <sys/timeb.h>
 /* Use a conditional typedef to avoid compilation warning */
 typedef u_int fdesc_t;
 #else
@@ -343,3 +344,42 @@ void url_redisplay(void)
 {
     url_display_request = 1;
 }
+
+int get_clock_ms(void) {
+#ifdef CONFIG_WIN32
+    struct _timeb tb;
+
+    _ftime(&tb);
+    return tb.time * 1000 + tb.millitm;
+#else
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec * 1000 + (tv.tv_usec / 1000);
+#endif
+}
+
+int get_clock_usec(void) {
+#ifdef CONFIG_WIN32
+    struct _timeb tb;
+
+    _ftime(&tb);
+    return tb.time * 1000000 + tb.millitm * 1000;
+#else
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec * 1000000 + tv.tv_usec;
+#endif
+}
+
+#ifdef __TINYC__
+
+/* the glibc folks use wrappers, but forgot to put a compatibility
+   function for non GCC compilers ! */
+int stat(__const char *__path,
+         struct stat *__statbuf)
+{
+    return __xstat(_STAT_VER, __path, __statbuf);
+}
+#endif

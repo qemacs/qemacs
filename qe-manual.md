@@ -79,6 +79,137 @@ If the RENAMEFILE argument is not null and starts with 'y', an
 attempt is made to rename the old visited file to the new name
 FILENAME.
 
+### `void qe_free(T **pp);`
+
+Free the allocated memory pointed to by a pointer whose address is passed.
+
+* argument `pp` the address of a possibly null pointer. This pointer is set
+to `NULL` after freeing the memory. If the pointer memory is null,
+nothing happens.
+
+* argument `n` the number of bytes to allocate in addition to the size of type `T`.
+
+Note: this function is implemented as a macro.
+
+### `T *qe_malloc(type T);`
+
+Allocate memory for an object of type `T`.
+
+* argument `T` the type of the object to allocate.
+
+Note: this function is implemented as a macro.
+
+### `T *qe_malloc_array(type T, size_t n);`
+
+Allocate memory for an array of objects of type `T`.
+
+* argument `T` the type of the object to allocate.
+
+* argument `n` the number of elements to allocate.
+
+Note: this function is implemented as a macro.
+
+### `void *qe_malloc_bytes(size_t size);`
+
+Allocate an uninitialized block of memory of a given size in
+bytes.
+
+* argument `size` the number of bytes to allocate.
+
+Return a pointer to allocated memory, aligned on the maximum
+alignment size.
+
+### `void *qe_malloc_dup(const void *src, size_t size);`
+
+Allocate a block of memory of a given size in bytes initialized
+as a copy of an existing object.
+
+* argument `src` a valid pointer to the object to duplicate.
+
+* argument `size` the number of bytes to allocate.
+
+Return a pointer to allocated memory, aligned on the maximum
+alignment size.
+
+### `T *qe_malloc_hack(type T, size_t n);`
+
+Allocate memory for an object of type `T` with `n` extra bytes.
+
+* argument `T` the type of the object to allocate.
+
+* argument `n` the number of bytes to allocate in addition to the size of type `T`.
+
+Note: this function is implemented as a macro.
+
+### `T *qe_mallocz(type T);`
+
+Allocate memory for an object of type `T`.
+The object is initialized to all bits zero.
+
+* argument `T` the type of the object to allocate.
+
+Note: this function is implemented as a macro.
+
+### `T *qe_mallocz_array(type T, size_t n);`
+
+Allocate memory for an array of objects of type `T`.
+The objects are initialized to all bits zero.
+
+* argument `T` the type of the object to allocate.
+
+* argument `n` the number of elements to allocate.
+
+Note: this function is implemented as a macro.
+
+### `T *qe_mallocz_array(type T, size_t n);`
+
+Allocate memory for an object of type `T` with `n` extra bytes.
+The object and the extra space is initialized to all bits zero.
+
+* argument `T` the type of the object to allocate.
+
+* argument `n` the number of bytes to allocate in addition to the size of type `T`.
+
+Note: this function is implemented as a macro.
+
+### `void *qe_mallocz_bytes(size_t size);`
+
+Allocate a block of memory of a given size in bytes initialized
+to all bits zero.
+
+* argument `size` the number of bytes to allocate.
+
+Return a pointer to allocated memory, aligned on the maximum
+alignment size.
+
+### `void *qe_realloc(void *pp, size_t size);`
+
+reallocate a block of memory to a different size.
+
+* argument `pp` the address of a possibly null pointer to a
+block to reallocate. `pp` is updated with the new pointer
+if reallocation is successful.
+
+* argument `size` the new size for the object.
+
+Return a pointer to allocated memory, aligned on the maximum
+alignment size.
+
+Note: this API makes it easier to check for success separately
+from modifying the existing pointer, which is unchanged if
+reallocation fails. This approach is not strictly conforming,
+it assumes all pointers have the same size and representation,
+which is mandated by POSIX.
+
+### `char *qe_strdup(const char *str);`
+
+Allocate a copy of a string.
+
+* argument `src` a valid pointer to a string to duplicate.
+
+Return a pointer to allocated memory, aligned on the maximum
+alignment size.
+
 ### `int append_slash(char *buf, int buf_size);`
 
 Append a trailing slash to a path if none there already.
@@ -316,9 +447,12 @@ Note: truncation cannot be detected reliably.
 Copy the string pointed by `str` to the destination array `buf`,
 of length `size` bytes, truncating excess bytes.
 
-@param `buf` destination array, must be a valid pointer.
-@param `size` length of destination array.
-@param `str` pointer to a source string, must be a valid pointer.
+
+* argument `buf` destination array, must be a valid pointer.
+
+* argument `size` length of destination array.
+
+* argument `str` pointer to a source string, must be a valid pointer.
 
 Return a pointer to the destination array.
 
@@ -364,6 +498,31 @@ Return a negative value if the first block compares below the second,
 Return a positive value if the first block compares above the second.
 
 Note: this version only handles ASCII.
+
+### `void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk, int (*compare)(void *, const void *, const void *));`
+
+Sort an array using a comparison function with an extra opaque
+argument.
+
+* argument `base` a valid pointer to an array of objects,
+
+* argument `nmemb` the number of elements in the array,
+
+* argument `size` the object size in bytes,
+
+* argument `thunk` the generic argument to pass to the comparison
+function,
+
+* argument `compare` a function pointer for a comparison function
+taking 3 arguments: the `thunk` argument and pointers to 2
+objects from the array, returning an integer whose sign indicates
+their relative position according to the sort order.
+
+Note: this function behaves like OpenBSD's `qsort_r()`, the
+implementation is non recursive using a combination of quicksort
+and insertion sort for small chunks. The GNU lib C on linux also
+has a function `qsort_r()` with similar semantics but a different
+calling convention.
 
 ### `int qe_skip_spaces(const char **pp);`
 
@@ -439,9 +598,12 @@ Check if `val` is a suffix of `str`. In this case, a
 pointer to the first character of the suffix in `str` is stored
 into `ptr` provided `ptr` is not a null pointer.
 
-@param `str` input string, must be a valid pointer.
-@param `val` suffix to test, must be a valid pointer.
-@param `ptr` updated to the suffix in `str` if there is a match.
+
+* argument `str` input string, must be a valid pointer.
+
+* argument `val` suffix to test, must be a valid pointer.
+
+* argument `ptr` updated to the suffix in `str` if there is a match.
 
 Return `true` if there is a match, `false` otherwise.
 
@@ -466,9 +628,12 @@ Leading dots are skipped, they are not considered part of an extension.
 Test if `val` is a prefix of `str` (case independent).
 If there is a match, a pointer to the next character after the
 match in `str` is stored into `ptr` provided `ptr` is not null.
-@param `str` valid string pointer,
-@param `val` valid string pointer to the prefix to test,
-@param `ptr` a possibly null pointer to a `const char *` to set
+
+* argument `str` valid string pointer,
+
+* argument `val` valid string pointer to the prefix to test,
+
+* argument `ptr` a possibly null pointer to a `const char *` to set
 to point after the prefix in `str` in there is a match.
 
 Return `true` if there is a match, `false` otherwise.
@@ -482,9 +647,12 @@ in `str` into `ptr` provided `ptr` is not a null pointer.
 If `val` is not a word prefix of `str`, return `false` and leave `*ptr`
 unchanged.
 
-@param `str` a valid string pointer.
-@param `val` a valid string pointer for the prefix to test.
-@param `ptr` updated with a pointer past the prefix in `str` if found.
+
+* argument `str` a valid string pointer.
+
+* argument `val` a valid string pointer for the prefix to test.
+
+* argument `ptr` updated with a pointer past the prefix in `str` if found.
 
 Return `true` if there is a match, `false` otherwise.
 
@@ -510,9 +678,12 @@ stored into `ptr` provided `ptr` is not a null pointer.
 If `val` is not a prefix of `str`, return `0` and leave `*ptr`
 unchanged.
 
-@param `str` input string, must be a valid pointer.
-@param `val` prefix to test, must be a valid pointer.
-@param `ptr` updated with a pointer past the prefix if found.
+
+* argument `str` input string, must be a valid pointer.
+
+* argument `val` prefix to test, must be a valid pointer.
+
+* argument `ptr` updated with a pointer past the prefix if found.
 
 Return `true` if there is a match, `false` otherwise.
 
@@ -540,8 +711,10 @@ Call this function with a constant string and the address of a `const char *`.
 
 Compare strings case independently, also ignoring spaces, dashes
 and underscores.
-@param `str1` a valid string pointer for the left operand.
-@param `str2` a valid string pointer for the right operand.
+
+* argument `str1` a valid string pointer for the left operand.
+
+* argument `str2` a valid string pointer for the right operand.
 
 Return a negative, 0 or positive value reflecting the sign
 of `str1 <=> str2`
@@ -564,9 +737,12 @@ Test if `val` is a prefix of `str` (case independent and ignoring
 `-`, `_` and spaces). If there is a match, a pointer to the next
 character after the match in `str` is stored into `ptr`, provided
 `ptr` is not null.
-@param `str` valid string pointer,
-@param `val` valid string pointer to the prefix to test,
-@param `ptr` a possibly null pointer to a `const char *` to set
+
+* argument `str` valid string pointer,
+
+* argument `val` valid string pointer to the prefix to test,
+
+* argument `ptr` a possibly null pointer to a `const char *` to set
 to point after the prefix in `str` in there is a match.
 
 Return `true` if there is a match, `false` otherwise.

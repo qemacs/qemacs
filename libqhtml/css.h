@@ -22,6 +22,9 @@
 #ifndef CSS_H
 #define CSS_H
 
+#include <stdarg.h>
+#include "color.h"
+
 struct CSSBox;
 
 typedef struct CSSBox CSSBox;
@@ -564,7 +567,7 @@ typedef struct CSSCounterValue {
 
 typedef struct CSSContext {
     CSSStyleSheet *style_sheet;
-    QEditScreen *screen;
+    struct QEditScreen *screen;
     /* various default settings */
     /* XXX: use style sheet ? */
     int selection_bgcolor;
@@ -572,7 +575,7 @@ typedef struct CSSContext {
     int default_bgcolor;
 
     /* edit buffer */
-    EditBuffer *b;
+    struct EditBuffer *b;
     /* selection handling */
     int selection_start, selection_end;
     /* private content */
@@ -597,8 +600,8 @@ typedef struct CSSContext {
 
 void css_init(void);
 
-CSSContext *css_new_document(QEditScreen *screen,
-                             EditBuffer *b);
+CSSContext *css_new_document(struct QEditScreen *screen,
+                             struct EditBuffer *b);
 void css_delete_document(CSSContext **sp);
 
 int css_compute(CSSContext *s, CSSBox *box);
@@ -626,7 +629,7 @@ int css_box_iterate(CSSContext *s, CSSBox *box, void *opaque,
 CSSBox *css_new_box(CSSIdent tag, CSSAttribute *attrs);
 CSSBox *css_add_box(CSSBox *parent_box, CSSBox *box);
 void css_delete_box(CSSBox **boxp);
-void css_set_text_buffer(CSSBox *box, EditBuffer *b,
+void css_set_text_buffer(CSSBox *box, struct EditBuffer *b,
                          int offset1, int offset2, int eol);
 void css_set_text_string(CSSBox *box, const char *string);
 void css_make_child_box(CSSBox *box);
@@ -639,6 +642,7 @@ void css_dump(CSSBox *box);
 /* XML parser */
 struct XMLState;
 typedef struct XMLState XMLState;
+typedef const struct QECharset QECharset;
 
 #define XML_HTML        0x0001 /* enable html tag interpretation which cannot
                                   be specified in a stylesheet */
@@ -652,7 +656,7 @@ XMLState *xml_begin(CSSStyleSheet *style_sheet, int flags,
 int xml_parse(XMLState *s, char *buf, int buf_len);
 CSSBox *xml_end(XMLState **sp);
 
-CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end,
+CSSBox *xml_parse_buffer(struct EditBuffer *b, int offset_start, int offset_end,
                          CSSStyleSheet *style_sheet, int flags,
                          CSSAbortFunc *abort_func, void *abort_opaque);
 int find_entity(const char *str);

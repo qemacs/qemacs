@@ -695,6 +695,24 @@ void do_cd(EditState *s, const char *path)
     }
 }
 
+static void color_complete(CompleteState *cp) {
+    ColorDef const *def;
+    int count;
+
+    def = qe_colors;
+    count = nb_qe_colors;
+    while (count > 0) {
+        if (strxstart(def->name, cp->current, NULL))
+            add_string(&cp->cs, def->name, 0);
+        def++;
+        count--;
+    }
+}
+
+static CompletionDef color_completion = {
+    "color", color_complete
+};
+
 /* basic editing functions */
 
 void do_bof(EditState *s)
@@ -7391,6 +7409,18 @@ static int is_abs_path(const char *path)
     return 0;
 }
 
+#ifdef CONFIG_WIN32
+/* convert '\' to '/' */
+static void path_win_to_unix(char *buf) {
+    char *p;
+
+    for (p = buf; *p; p++) {
+        if (*p == '\\')
+            *p = '/';
+    }
+}
+#endif
+
 /* canonicalize the path for a given window and make it absolute */
 void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const char *path1)
 {
@@ -9583,10 +9613,6 @@ static CompletionDef charset_completion = {
     "charset", charset_complete
 };
 
-static CompletionDef color_completion = {
-    "color", color_complete
-};
-
 /* init function */
 static void qe_init(void *opaque)
 {
@@ -9598,8 +9624,11 @@ static void qe_init(void *opaque)
     EditBuffer *b;
     QEDisplay *dpy;
     int i, _optind;
-#if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
+#if !defined(CONFIG_TINY)
     int session_loaded = 0;
+#endif
+#if defined(CONFIG_ALL_KMAPS) || defined(CONFIG_UNICODE_JOIN)
+    char filename[MAX_FILENAME_SIZE];
 #endif
 
     qs->ec.function = "qe-init";
@@ -9624,19 +9653,14 @@ static void qe_init(void *opaque)
     eb_init();
     charset_init();
     init_input_methods();
+
 #ifdef CONFIG_ALL_KMAPS
-    {
-        char filename[MAX_FILENAME_SIZE];
-        if (find_resource_file(filename, sizeof(filename), "kmaps") >= 0)
-            load_input_methods(filename);
-    }
+    if (find_resource_file(filename, sizeof(filename), "kmaps") >= 0)
+        load_input_methods(filename);
 #endif
 #ifdef CONFIG_UNICODE_JOIN
-    {
-        char filename[MAX_FILENAME_SIZE];
-        if (find_resource_file(filename, sizeof(filename), "ligatures") >= 0)
-            load_ligatures(filename);
-    }
+    if (find_resource_file(filename, sizeof(filename), "ligatures") >= 0)
+        load_ligatures(filename);
 #endif
 
     /* init basic modules */
@@ -9644,18 +9668,18 @@ static void qe_init(void *opaque)
     qe_register_commands(NULL, basic_commands, countof(basic_commands));
     qe_register_cmd_line_options(cmd_options);
 
-    qe_register_completion(&command_completion);
+    qe_register_completion(&buffer_completion);
     qe_register_completion(&charset_completion);
+    qe_register_completion(&color_completion);
+    qe_register_completion(&command_completion);
+    qe_register_completion(&file_completion);
     qe_register_completion(&mode_completion);
     qe_register_completion(&style_completion);
     qe_register_completion(&style_property_completion);
-    qe_register_completion(&file_completion);
 #ifndef CONFIG_TINY
     qe_register_completion(&dir_completion);
     qe_register_completion(&resource_completion);
 #endif
-    qe_register_completion(&buffer_completion);
-    qe_register_completion(&color_completion);
 
     minibuffer_init();
     list_init();
@@ -9761,7 +9785,7 @@ static void qe_init(void *opaque)
             do_goto_line(s, line_num, col_num);
     }
 
-#if !defined(CONFIG_TINY) && !defined(CONFIG_WIN32)
+#if !defined(CONFIG_TINY)
 #if defined(CONFIG_FFMPEG)
     /* Force is_player if invoked as ffplay */
     if (strequal(get_basename(argv[0]), "ffplay"))

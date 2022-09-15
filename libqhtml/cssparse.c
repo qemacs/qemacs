@@ -18,8 +18,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "qe.h"
-#include "qfribidi.h"
+#include <stdio.h>
+
+#include "cutils.h"
+#include "util.h"
 #include "css.h"
 
 //#define DEBUG

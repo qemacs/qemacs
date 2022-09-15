@@ -22,19 +22,19 @@
 #ifndef QE_H
 #define QE_H
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <stddef.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <limits.h>
 #include <stdarg.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <sys/stat.h>
 #include <sys/time.h>
-#include <errno.h>
-#include <limits.h>
-#include <inttypes.h>
+#include <sys/stat.h>
 #include <time.h>
 
 #if 1 //ifdef HAVE_QE_CONFIG_H
@@ -51,83 +51,13 @@
 #define DEFAULT_FILL_COLUMN  70
 #endif
 
-/* OS specific defines */
-
-#ifdef CONFIG_WIN32
-#define snprintf   _snprintf
-#define vsnprintf  _vsnprintf
-#endif
-
-#if (defined(__GNUC__) || defined(__TINYC__))
-/* make sure that the keyword is not disabled by glibc (TINYC case) */
-#define qe__attr_printf(a, b)  __attribute__((format(printf, a, b)))
-#else
-#define qe__attr_printf(a, b)
-#endif
-
-#if defined(__GNUC__) && __GNUC__ > 2
-#define qe__attr_nonnull(l)   __attribute__((nonnull l))
-#define qe__unused__          __attribute__((unused))
-#else
-#define qe__attr_nonnull(l)
-#define qe__unused__
-#endif
-
-#ifndef offsetof
-#define offsetof(s,m)  ((size_t)(&((s *)0)->m))
-#endif
-#ifndef countof
-#define countof(a)  ((int)(sizeof(a) / sizeof((a)[0])))
-#endif
-#ifndef ssizeof
-#define ssizeof(a)  ((int)(sizeof(a)))
-#endif
-
-#define OWNED     /* ptr attribute for allocated data owned by a structure */
-
-/* prevent gcc warning about shadowing a global declaration */
-#define index  index__
-
 /************************/
 
 #include "cutils.h"
+#include "util.h"
 
 /************************/
 
-/* allocation wrappers and utilities */
-void *qe_malloc_bytes(size_t size);
-void *qe_mallocz_bytes(size_t size);
-void *qe_malloc_dup(const void *src, size_t size);
-char *qe_strdup(const char *str);
-void *qe_realloc(void *pp, size_t size);
-#define qe_malloc(t)            ((t *)qe_malloc_bytes(sizeof(t)))
-#define qe_mallocz(t)           ((t *)qe_mallocz_bytes(sizeof(t)))
-#define qe_malloc_array(t, n)   ((t *)qe_malloc_bytes((n) * sizeof(t)))
-#define qe_mallocz_array(t, n)  ((t *)qe_mallocz_bytes((n) * sizeof(t)))
-#define qe_malloc_hack(t, n)    ((t *)qe_malloc_bytes(sizeof(t) + (n)))
-#define qe_mallocz_hack(t, n)   ((t *)qe_mallocz_bytes(sizeof(t) + (n)))
-
-#if 1  // to test clang -Weverything
-#define qe_free(pp)    do  { void *_ = (pp); (free)(*(void **)_); *(void **)_ = NULL; } while (0)
-#elif defined CONFIG_HAS_TYPEOF
-#define qe_free(pp)    do { typeof(**(pp)) **__ = (pp); (free)(*__); *__ = NULL; } while (0)
-#else
-#define qe_free(pp)    do if (sizeof(**(pp)) >= 0) { void *_ = (pp); (free)(*(void **)_); *(void **)_ = NULL; } while (0)
-#endif
-
-#ifndef free
-#define free(p)       do_not_use_free!!(p)
-#endif
-#ifndef malloc
-#define malloc(s)     do_not_use_malloc!!(s)
-#endif
-#ifndef realloc
-#define realloc(p,s)  do_not_use_realloc!!(p,s)
-#endif
-
-/************************/
-
-typedef unsigned char u8;
 typedef struct EditState EditState;
 typedef struct EditBuffer EditBuffer;
 typedef struct QEmacsState QEmacsState;
@@ -142,15 +72,13 @@ typedef struct InputMethod InputMethod;
 typedef struct ISearchState ISearchState;
 typedef struct QEProperty QEProperty;
 
-static inline char *s8(u8 *p) { return (char*)p; }
-static inline const char *cs8(const u8 *p) { return (const char*)p; }
-
 #ifndef INT_MAX
 #define INT_MAX  0x7fffffff
 #endif
 #ifndef INT_MIN
 #define INT_MIN  (-0x7fffffff-1)
 #endif
+
 #define NO_ARG  INT_MIN
 #define HAS_ARG_NUMERIC  0x100
 #define HAS_ARG_SIGN     0x200
@@ -179,23 +107,10 @@ void qe_kill_timer(QETimer **tip);
 /* main loop for Unix programs using liburlio */
 void url_main_loop(void (*init)(void *opaque), void *opaque);
 
-/* util.c */
+int get_clock_ms(void);
+int get_clock_usec(void);
 
-/* string arrays */
-typedef struct StringItem {
-    void *opaque;  /* opaque data that the user can use */
-    char selected; /* true if selected */
-    char group;    /* used to group sorted items */
-    char str[1];
-} StringItem;
-
-typedef struct StringArray {
-    int nb_allocated;
-    int nb_items;
-    StringItem **items;
-} StringArray;
-#define NULL_STRINGARRAY  { 0, 0, NULL }
-
+/* extendable completion system */
 typedef struct CompleteState {
     StringArray cs;
     struct EditState *s;
@@ -205,440 +120,12 @@ typedef struct CompleteState {
     char current[MAX_FILENAME_SIZE];
 } CompleteState;
 
-/* media definitions */
-#define CSS_MEDIA_TTY     0x0001
-#define CSS_MEDIA_SCREEN  0x0002
-#define CSS_MEDIA_PRINT   0x0004
-#define CSS_MEDIA_TV      0x0008
-#define CSS_MEDIA_SPEECH  0x0010
-
-#define CSS_MEDIA_ALL     0xffff
-
-typedef struct CSSRect {
-    int x1, y1, x2, y2;
-} CSSRect;
-
-typedef unsigned int QEColor;
-#define QEARGB(a,r,g,b)    (((unsigned int)(a) << 24) | ((r) << 16) | ((g) << 8) | (b))
-#define QERGB(r,g,b)       QEARGB(0xff, r, g, b)
-#define QERGB25(r,g,b)     QEARGB(1, r, g, b)
-#define COLOR_TRANSPARENT  0
-#define QERGB_ALPHA(c)     (((c) >> 24) & 255)
-#define QERGB_RED(c)       (((c) >> 16) & 255)
-#define QERGB_GREEN(c)     (((c) >>  8) & 255)
-#define QERGB_BLUE(c)      (((c) >>  0) & 255)
-
-/* A qemacs style is a named set of attributes including:
- * - colors for foreground and background
- * - font style bits
- * - font style size
- *
- * Styles are applied to text in successive phases:
- * - the current syntax mode computes style numbers for each character
- *   on the line. These nubers are stored into the high bits of the
- *   32-bit code point.
- * - these style numbers are then extracted into an array of 32-bit composite
- *   style values.
- * - the styles from the optional style buffer are combined into these style
- *   values.
- * - search matches and selection styles are applied if relevant.
- * - the bidirectional algorithm is applied to compute the display order
- * - sequences of code-point with the same compsite style are formed into
- *   display units, ligatures are applied.
- * - the composite style is expanded and converted into display attributes
- *   to trace the display unit on the device surface
- */
-
-/* Style numbers are limited to 8 bits, the default set has 27 entries */
-/* Composite styles are 32-bit values that specify
- * - a style number
- * - display attributes for underline, bold, blink
- * - text and background colors as either palette numbers or 4096 rgb values
- */
-
-#if 0   /* 25-bit color for FG and BG */
-
-#define QE_TERM_STYLE_BITS  64
-typedef uint64_t QETermStyle;
-#define QE_STYLE_NUM        0x00FF
-#define QE_STYLE_SEL        0x02000000  /* special selection style (cumulative with another style) */
-#define QE_TERM_COMPOSITE   0x04000000  /* special bit to indicate qe-term composite style */
-/* XXX: reversed as attribute? */
-/* XXX: faint? */
-#define QE_TERM_UNDERLINE   0x08000000
-#define QE_TERM_BOLD        0x10000000
-#define QE_TERM_ITALIC      0x20000000
-#define QE_TERM_BLINK       0x40000000
-#define QE_TERM_BG_BITS     25
-#define QE_TERM_BG_SHIFT    32
-#define QE_TERM_FG_BITS     25
-#define QE_TERM_FG_SHIFT    0
-
-#elif 1   /* 8K colors for FG and BG */
-
-#define QE_TERM_STYLE_BITS  32
-typedef uint32_t QETermStyle;
-#define QE_STYLE_NUM        0x00FF
-#define QE_STYLE_SEL        0x02000  /* special selection style (cumulative with another style) */
-#define QE_TERM_COMPOSITE   0x04000  /* special bit to indicate qe-term composite style */
-#define QE_TERM_UNDERLINE   0x08000
-#define QE_TERM_BOLD        0x10000
-#define QE_TERM_ITALIC      0x20000
-#define QE_TERM_BLINK       0x40000
-#define QE_TERM_BG_BITS     13
-#define QE_TERM_BG_SHIFT    19
-#define QE_TERM_FG_BITS     13
-#define QE_TERM_FG_SHIFT    0
-
-#elif 1   /* 256 colors for FG and BG */
-
-#define QE_TERM_STYLE_BITS  32
-typedef uint32_t QETermStyle;
-#define QE_STYLE_NUM        0x00FF
-#define QE_STYLE_SEL        0x0100  /* special selection style (cumulative with another style) */
-#define QE_TERM_COMPOSITE   0x0200  /* special bit to indicate qe-term composite style */
-#define QE_TERM_UNDERLINE   0x0400
-#define QE_TERM_BOLD        0x0800
-#define QE_TERM_ITALIC      0x1000
-#define QE_TERM_BLINK       0x2000
-#define QE_TERM_BG_BITS     8
-#define QE_TERM_BG_SHIFT    16
-#define QE_TERM_FG_BITS     8
-#define QE_TERM_FG_SHIFT    0
-
-#else   /* 16 colors for FG and 16 color BG */
-
-#define QE_TERM_STYLE_BITS  16
-typedef uint16_t QETermStyle;
-#define QE_STYLE_NUM        0x00FF
-#define QE_STYLE_SEL        0x0100  /* special selection style (cumulative with another style) */
-#define QE_TERM_COMPOSITE   0x0200  /* special bit to indicate qe-term composite style */
-#define QE_TERM_UNDERLINE   0x0400
-#define QE_TERM_BOLD        0x0800
-#define QE_TERM_ITALIC      0x1000
-#define QE_TERM_BLINK       0x2000
-#define QE_TERM_BG_BITS     4
-#define QE_TERM_BG_SHIFT    0
-#define QE_TERM_FG_BITS     4
-#define QE_TERM_FG_SHIFT    4
-
-#endif
-
-#define QE_TERM_DEF_FG      7
-#define QE_TERM_DEF_BG      0
-#define QE_TERM_BG_COLORS   (1 << QE_TERM_BG_BITS)
-#define QE_TERM_FG_COLORS   (1 << QE_TERM_FG_BITS)
-#define QE_TERM_BG_MASK     ((QETermStyle)(QE_TERM_BG_COLORS - 1) << QE_TERM_BG_SHIFT)
-#define QE_TERM_FG_MASK     ((QETermStyle)(QE_TERM_FG_COLORS - 1) << QE_TERM_FG_SHIFT)
-#define QE_TERM_MAKE_COLOR(fg, bg)  (((QETermStyle)(fg) << QE_TERM_FG_SHIFT) | ((QETermStyle)(bg) << QE_TERM_BG_SHIFT))
-#define QE_TERM_SET_FG(col, fg)  ((col) = ((col) & ~QE_TERM_FG_MASK) | ((QETermStyle)(fg) << QE_TERM_FG_SHIFT))
-#define QE_TERM_SET_BG(col, bg)  ((col) = ((col) & ~QE_TERM_BG_MASK) | ((QETermStyle)(bg) << QE_TERM_BG_SHIFT))
-#define QE_TERM_GET_FG(color)  (((color) & QE_TERM_FG_MASK) >> QE_TERM_FG_SHIFT)
-#define QE_TERM_GET_BG(color)  (((color) & QE_TERM_BG_MASK) >> QE_TERM_BG_SHIFT)
-
-typedef struct FindFileState FindFileState;
-
-#define FF_PATH     0x010  /* enumerate path argument */
-#define FF_NODIR    0x020  /* only match regular files */
-#define FF_NOXXDIR  0x040  /* do not match . or .. */
-#define FF_ONLYDIR  0x080  /* do not match non directories */
-#define FF_DEPTH    0x00f  /* max recursion depth */
-
-FindFileState *find_file_open(const char *path, const char *pattern, int flags);
-int find_file_next(FindFileState *s, char *filename, int filename_size_max);
-void find_file_close(FindFileState **sp);
-int is_directory(const char *path);
-int is_filepattern(const char *filespec);
-void canonicalize_path(char *buf, int buf_size, const char *path);
 void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const char *path1);
 void canonicalize_absolute_buffer_path(EditBuffer *b, int offset,
                                        char *buf, int buf_size,
                                        const char *path1);
-char *make_user_path(char *buf, int buf_size, const char *path);
-char *reduce_filename(char *dest, int size, const char *filename);
-char *file_load(const char *filename, int max_size, int *sizep);
-int match_extension(const char *filename, const char *extlist);
-int match_shell_handler(const char *p, const char *list);
-int remove_slash(char *buf);
-int append_slash(char *buf, int buf_size);
-char *makepath(char *buf, int buf_size, const char *path, const char *filename);
-void splitpath(char *dirname, int dirname_size,
-               char *filename, int filename_size, const char *pathname);
 
-extern unsigned char const qe_digit_value__[128];
-static inline int qe_digit_value(int c) {
-    return (unsigned int)c < 128 ? qe_digit_value__[c] : 255;
-}
-static inline int qe_inrange(int c, int a, int b) {
-    //return c >= a && c <= b;
-    //CG: assuming a <= b and wrap around semantics for (c - a) and (b - a)
-    return (unsigned int)(c - a) <= (unsigned int)(b - a);
-}
-/* character classification tests assume ASCII superset */
-static inline int qe_isspace(int c) {
-    /* CG: what about \v and \f */
-    return (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == 160);
-}
-static inline int qe_isblank(int c) {
-    return (c == ' ' || c == '\t' || c == 160);
-}
-static inline int qe_isdigit(int c) {
-    return qe_inrange(c, '0', '9');
-}
-static inline int qe_isdigit_(int c) {
-    return (qe_inrange(c, '0', '9') || c == '_');
-}
-static inline int qe_isupper(int c) {
-    return qe_inrange(c, 'A', 'Z');
-}
-static inline int qe_isupper_(int c) {
-    return (qe_inrange(c, 'A', 'Z') || c == '_');
-}
-static inline int qe_islower(int c) {
-    return qe_inrange(c, 'a', 'z');
-}
-static inline int qe_islower_(int c) {
-    return (qe_inrange(c, 'a', 'z') || (c == '_'));
-}
-static inline int qe_isalpha(int c) {
-    return qe_inrange(c | ('a' - 'A'), 'a', 'z');
-}
-static inline int qe_isalpha_(int c) {
-    return (qe_inrange(c | ('a' - 'A'), 'a', 'z') || c == '_');
-}
-static inline int qe_isoctdigit(int c) {
-    return qe_inrange(c, '0', '7');
-}
-static inline int qe_isoctdigit_(int c) {
-    return qe_inrange(c, '0', '7') || (c == '_');
-}
-static inline int qe_isbindigit(int c) {
-    return qe_inrange(c, '0', '1');
-}
-static inline int qe_isbindigit_(int c) {
-    return qe_inrange(c, '0', '1') || (c == '_');
-}
-static inline int qe_isxdigit(int c) {
-    return qe_digit_value(c) < 16;
-}
-static inline int qe_isxdigit_(int c) {
-    return (qe_digit_value(c) < 16) || (c == '_');
-}
-static inline int qe_isalnum(int c) {
-    return qe_digit_value(c) < 36;
-}
-static inline int qe_isalnum_(int c) {
-    return (qe_digit_value(c) < 36) || (c == '_');
-}
-static inline int qe_isword(int c) {
-    /* XXX: any unicode char >= 128 is considered as word. */
-    return qe_isalnum_(c) || (c >= 128);
-}
-static inline int qe_toupper(int c) {
-    return (qe_inrange(c, 'a', 'z') ? c + 'A' - 'a' : c);
-}
-static inline int qe_tolower(int c) {
-    return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
-}
-static inline int qe_findchar(const char *str, int c) {
-    return qe_inrange(c, 1, 255) && strchr(str, c) != NULL;
-}
-static inline int qe_indexof(const char *str, int c) {
-    if (qe_inrange(c, 1, 255)) {
-        const char *p = strchr(str, c);
-        if (p) return (int)(p - str);
-    }
-    return -1;
-}
-
-static inline int qe_match2(int c, int c1, int c2) {
-    return c == c1 || c == c2;
-}
-
-static inline int check_fcall(const unsigned int *str, int i) {
-    while (str[i] == ' ')
-        i++;
-    return str[i] == '(';
-}
-
-int ustr_get_identifier(char *buf, int buf_size, int c,
-                        const unsigned int *str, int i, int n);
-int ustr_get_identifier_lc(char *buf, int buf_size, int c,
-                           const unsigned int *str, int i, int n);
-int ustr_get_word(char *buf, int buf_size, int c,
-                  const unsigned int *str, int i, int n);
-
-int qe_strcollate(const char *s1, const char *s2);
-int qe_strtobool(const char *s, int def);
-void qe_strtolower(char *buf, int buf_size, const char *str);
-int qe_skip_spaces(const char **pp);
-
-static inline int strequal(const char *s1, const char *s2) {
-    return !strcmp(s1, s2);
-}
-
-int memfind(const char *list, const char *p, int len);
-int strfind(const char *list, const char *s);
-int strxfind(const char *list, const char *s);
-const char *strmem(const char *str, const void *mem, int size);
-const void *memstr(const void *buf, int size, const char *str);
-
-#define stristart(str, val, ptr)   qe_stristart(str, val, ptr)
-int stristart(const char *str, const char *val, const char **ptr);
-int strxstart(const char *str, const char *val, const char **ptr);
-int strxcmp(const char *str1, const char *str2);
-int strmatchword(const char *str, const char *val, const char **ptr);
-int ustrstart(const unsigned int *str, const char *val, int *lenp);
-int ustristart(const unsigned int *str, const char *val, int *lenp);
-const unsigned int *ustrstr(const unsigned int *str, const char *val);
-const unsigned int *ustristr(const unsigned int *str, const char *val);
-static inline unsigned int *umemmove(unsigned int *dest,
-                                     const unsigned int *src, size_t count) {
-    return (unsigned int *)memmove(dest, src, count * sizeof(unsigned int));
-}
-static inline unsigned int *umemcpy(unsigned int *dest,
-                                    const unsigned int *src, size_t count) {
-    return (unsigned int *)memcpy(dest, src, count * sizeof(unsigned int));
-}
-int umemcmp(const unsigned int *s1, const unsigned int *s2, size_t count);
-int qe_memicmp(const void *p1, const void *p2, size_t count);
-const char *qe_stristr(const char *s1, const char *s2);
-
-int strsubst(char *buf, int buf_size, const char *from,
-             const char *s1, const char *s2);
-int byte_quote(char *dest, int size, unsigned char c);
-int strquote(char *dest, int size, const char *str, int len);
-int strunquote(char *dest, int size, const char *str, int len);
-
-int get_str(const char **pp, char *buf, int buf_size, const char *stop);
-int css_get_enum(const char *str, const char *enum_str);
-
-extern QEColor const xterm_colors[];
-/* XXX: should have a more generic API with precomputed mapping scales */
-/* Convert RGB triplet to a composite color */
-unsigned int qe_map_color(QEColor color, QEColor const *colors, int count, int *dist);
-/* Convert a composite color to an RGB triplet */
-QEColor qe_unmap_color(int color, int count);
-
-void color_complete(CompleteState *cp);
-int css_define_color(const char *name, const char *value);
-int css_get_color(QEColor *color_ptr, const char *p);
-void css_free_colors(void);
-int css_get_font_family(const char *str);
-void css_union_rect(CSSRect *a, const CSSRect *b);
-static inline int css_is_null_rect(const CSSRect *a) {
-    return (a->x2 <= a->x1 || a->y2 <= a->y1);
-}
-static inline void css_set_rect(CSSRect *a, int x1, int y1, int x2, int y2) {
-    a->x1 = x1;
-    a->y1 = y1;
-    a->x2 = x2;
-    a->y2 = y2;
-}
-/* return true if a and b intersect */
-static inline int css_is_inter_rect(const CSSRect *a, const CSSRect *b) {
-    return (!(a->x2 <= b->x1 ||
-              a->x1 >= b->x2 ||
-              a->y2 <= b->y1 ||
-              a->y1 >= b->y2));
-}
-
-int get_clock_ms(void);
-int get_clock_usec(void);
-
-/* Various string packages: should unify these but keep API simple */
-
-StringItem *set_string(StringArray *cs, int index, const char *str, int group);
-StringItem *add_string(StringArray *cs, const char *str, int group);
-void free_strings(StringArray *cs);
-
-/* simple dynamic strings wrappers. The strings are always terminated
-   by zero except if they are empty. */
-typedef struct QString {
-    u8 *data;
-    int len; /* string length excluding trailing '\0' */
-} QString;
-
-static inline void qstrinit(QString *q) {
-    q->data = NULL;
-    q->len = 0;
-}
-
-static inline void qstrfree(QString *q) {
-    qe_free(&q->data);
-}
-
-int qmemcat(QString *q, const u8 *data1, int len1);
-int qstrcat(QString *q, const char *str);
-int qprintf(QString *q, const char *fmt, ...) qe__attr_printf(2,3);
-
-/* Dynamic buffers with static allocation */
-typedef struct buf_t buf_t;
-struct buf_t {
-    char *buf;
-    int size, len, pos;
-};
-
-static inline buf_t *buf_init(buf_t *bp, char *buf, int size) {
-    if (size > 0) {
-        bp->buf = buf;
-        bp->size = size;
-        *buf = '\0';
-    } else {
-        bp->buf = NULL;
-        bp->size = 0;
-    }
-    bp->len = bp->pos = 0;
-    return bp;
-}
-static inline buf_t *buf_attach(buf_t *bp, char *buf, int size, int pos) {
-    /* assuming 0 <= pos < size */
-    // XXX: Does not set a null byte?
-    bp->buf = buf;
-    bp->size = size;
-    bp->len = bp->pos = pos;
-    return bp;
-}
-static inline int buf_avail(buf_t *bp) {
-    return bp->size - bp->pos - 1;
-}
-static inline int buf_put_byte(buf_t *bp, int c) {
-    if (bp->len < bp->size - 1) {
-        bp->buf[bp->len++] = c;
-        bp->buf[bp->len] = '\0';
-    }
-    return bp->pos++;
-}
-int buf_write(buf_t *bp, const void *src, int size);
-static inline int buf_puts(buf_t *bp, const char *str) {
-    return buf_write(bp, str, strlen(str));
-}
-
-int buf_printf(buf_t *bp, const char *fmt, ...) qe__attr_printf(2,3);
-int buf_putc_utf8(buf_t *bp, int c);
-
-/* Bounded constant strings used in various parse functions */
-typedef struct bstr_t {
-    const char *s;
-    int len;
-} bstr_t;
-
-static inline bstr_t bstr_make(const char *s) {
-    bstr_t bs = { s, s ? strlen(s) : 0 };
-    return bs;
-}
-
-bstr_t bstr_token(const char *s, int sep, const char **pp);
-bstr_t bstr_get_nth(const char *s, int n);
-
-static inline int bstr_equal(bstr_t s1, bstr_t s2) {
-    /* NULL and empty strings are equivalent */
-    return s1.len == s2.len && !memcmp(s1.s, s2.s, s1.len);
-}
-
-/* our own implementation of qsort_r() */
-void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
-                int (*compar)(void *, const void *, const void *));
+#include "color.h"
 
 /* Command line options */
 enum CmdLineOptionType {
@@ -674,78 +161,6 @@ typedef struct CmdLineOptionDef {
 void qe_register_cmd_line_options(CmdLineOptionDef *table);
 
 int find_resource_file(char *path, int path_size, const char *pattern);
-
-typedef int (CSSAbortFunc)(void *);
-
-static inline int max(int a, int b) {
-    if (a > b)
-        return a;
-    else
-        return b;
-}
-
-static inline int maxp(int *pa, int b) {
-    int a = *pa;
-    if (a > b)
-        return a;
-    else
-        return *pa = b;
-}
-
-static inline int max3(int a, int b, int c) {
-    return max(max(a, b), c);
-}
-
-static inline int min(int a, int b) {
-    if (a < b)
-        return a;
-    else
-        return b;
-}
-
-static inline int minp(int *pa, int b) {
-    int a = *pa;
-    if (a < b)
-        return a;
-    else
-        return *pa = b;
-}
-
-static inline int min3(int a, int b, int c) {
-    return min(min(a, b), c);
-}
-
-static inline int clamp(int a, int b, int c) {
-    if (a < b)
-        return b;
-    else
-    if (a > c)
-        return c;
-    else
-        return a;
-}
-
-static inline int clampp(int *pa, int b, int c) {
-    int a = *pa;
-    if (a < b)
-        return *pa = b;
-    else
-    if (a > c)
-        return *pa = c;
-    else
-        return a;
-}
-
-static inline int compute_percent(int a, int b) {
-    return b <= 0 ? 0 : (int)((long long)a * 100 / b);
-}
-
-int compose_keys(unsigned int *keys, int *nb_keys);
-int strtokey(const char **pp);
-int strtokeys(const char *keystr, unsigned int *keys, int max_keys, const char **endp);
-int buf_put_key(buf_t *out, int key);
-int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);
-int buf_encode_byte(buf_t *out, unsigned char ch);
 
 /* charset.c */
 
@@ -823,13 +238,6 @@ int charset_jis_init(void);
 
 void qe_register_charset(struct QECharset *charset);
 
-extern unsigned char const utf8_length[256];
-static inline int utf8_is_trailing_byte(int c) { return (c & 0xC0) == 0x80; }
-int utf8_encode(char *q, int c);
-int utf8_decode(const char **pp);
-char *utf8_char_to_string(char *buf, int c);
-int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str);
-
 void charset_complete(CompleteState *cp);
 QECharset *find_charset(const char *str);
 void charset_decode_init(CharsetDecodeState *s, QECharset *charset,
@@ -846,16 +254,6 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep);
 void decode_8bit_init(CharsetDecodeState *s);
 int decode_8bit(CharsetDecodeState *s);
 u8 *encode_8bit(QECharset *charset, u8 *q, int c);
-
-int unicode_tty_glyph_width(unsigned int ucs);
-
-static inline int qe_isaccent(int c) {
-    return c >= 0x300 && unicode_tty_glyph_width(c) == 0;
-}
-
-static inline int qe_iswide(int c) {
-    return c >= 0x01000 && unicode_tty_glyph_width(c) > 1;
-}
 
 /* arabic.c */
 int arab_join(unsigned int *line, unsigned int *ctog, int len);
@@ -883,82 +281,6 @@ enum QEEventType {
     QE_MOTION_EVENT, /* mouse motion event */
     QE_SELECTION_CLEAR_EVENT, /* request selection clear (X11 type selection) */
 };
-
-#define KEY_CTRL(c)     ((c) & 0x001f)
-/* allow combinations such as KEY_META(KEY_LEFT) */
-#define KEY_META(c)     ((c) | 0xe100)
-#define KEY_ESC1(c)     ((c) | 0xe200)
-#define KEY_IS_ESC1(c)     ((c) >= KEY_ESC1(0) && (c) <= KEY_ESC1(0xff))
-#define KEY_IS_SPECIAL(c)  ((c) >= 0xe000 && (c) < 0xf000)
-#define KEY_IS_CONTROL(c)  (((c) >= 0 && (c) < 32) || (c) == 127)
-
-#define KEY_NONE        0xE000
-#define KEY_DEFAULT     0xE001 /* to handle all non special keys */
-#define KEY_UNKNOWN     0xE002
-
-#define KEY_TAB         KEY_CTRL('i')
-#define KEY_LF          KEY_CTRL('j')
-#define KEY_RET         KEY_CTRL('m')
-#define KEY_ESC         KEY_CTRL('[')
-#define KEY_SPC         0x0020
-#define KEY_DEL         127             // kbs
-#define KEY_BS          KEY_CTRL('h')   // kbs
-
-#define KEY_UP          KEY_ESC1('A')   // kcuu1
-#define KEY_DOWN        KEY_ESC1('B')   // kcud1
-#define KEY_RIGHT       KEY_ESC1('C')   // kcuf1
-#define KEY_LEFT        KEY_ESC1('D')   // kcub1
-#define KEY_CTRL_UP     KEY_ESC1('a')
-#define KEY_CTRL_DOWN   KEY_ESC1('b')
-#define KEY_CTRL_RIGHT  KEY_ESC1('c')
-#define KEY_CTRL_LEFT   KEY_ESC1('d')
-#define KEY_CTRL_END    KEY_ESC1('f')
-#define KEY_CTRL_HOME   KEY_ESC1('h')
-#define KEY_CTRL_PAGEUP KEY_ESC1('i')
-#define KEY_CTRL_PAGEDOWN KEY_ESC1('j')
-#define KEY_SHIFT_UP     KEY_ESC1('a'+128)
-#define KEY_SHIFT_DOWN   KEY_ESC1('b'+128)
-#define KEY_SHIFT_RIGHT  KEY_ESC1('c'+128)
-#define KEY_SHIFT_LEFT   KEY_ESC1('d'+128)
-#define KEY_SHIFT_END    KEY_ESC1('f'+128)
-#define KEY_SHIFT_HOME   KEY_ESC1('h'+128)
-#define KEY_SHIFT_PAGEUP KEY_ESC1('i'+128)
-#define KEY_SHIFT_PAGEDOWN KEY_ESC1('j'+128)
-#define KEY_CTRL_SHIFT_UP     KEY_ESC1('a'+64)
-#define KEY_CTRL_SHIFT_DOWN   KEY_ESC1('b'+64)
-#define KEY_CTRL_SHIFT_RIGHT  KEY_ESC1('c'+64)
-#define KEY_CTRL_SHIFT_LEFT   KEY_ESC1('d'+64)
-#define KEY_CTRL_SHIFT_END    KEY_ESC1('f'+64)
-#define KEY_CTRL_SHIFT_HOME   KEY_ESC1('h'+64)
-#define KEY_CTRL_SHIFT_PAGEUP KEY_ESC1('i'+64)
-#define KEY_CTRL_SHIFT_PAGEDOWN KEY_ESC1('j'+64)
-#define KEY_SHIFT_TAB   KEY_ESC1('Z')   // kcbt
-#define KEY_HOME        KEY_ESC1(1)     // khome
-#define KEY_INSERT      KEY_ESC1(2)     // kich1
-#define KEY_DELETE      KEY_ESC1(3)     // kdch1
-#define KEY_END         KEY_ESC1(4)     // kend
-#define KEY_PAGEUP      KEY_ESC1(5)     // kpp
-#define KEY_PAGEDOWN    KEY_ESC1(6)     // knp
-#define KEY_F1          KEY_ESC1(11)
-#define KEY_F2          KEY_ESC1(12)
-#define KEY_F3          KEY_ESC1(13)
-#define KEY_F4          KEY_ESC1(14)
-#define KEY_F5          KEY_ESC1(15)
-#define KEY_F6          KEY_ESC1(17)
-#define KEY_F7          KEY_ESC1(18)
-#define KEY_F8          KEY_ESC1(19)
-#define KEY_F9          KEY_ESC1(20)
-#define KEY_F10         KEY_ESC1(21)
-#define KEY_F11         KEY_ESC1(23)
-#define KEY_F12         KEY_ESC1(24)
-#define KEY_F13         KEY_ESC1(25)
-#define KEY_F14         KEY_ESC1(26)
-#define KEY_F15         KEY_ESC1(28)
-#define KEY_F16         KEY_ESC1(29)
-#define KEY_F17         KEY_ESC1(31)
-#define KEY_F18         KEY_ESC1(32)
-#define KEY_F19         KEY_ESC1(33)
-#define KEY_F20         KEY_ESC1(34)
 
 typedef struct QEKeyEvent {
     enum QEEventType type;
@@ -2066,14 +1388,6 @@ void unload_input_methods(void);
 /* the following will be suppressed */
 #define LINE_MAX_SIZE 256
 
-static inline int align(int a, int n) {
-    return (a / n) * n;
-}
-
-static inline int scale(int a, int b, int c) {
-    return (a * b + c / 2) / c;
-}
-
 /* minibuffer & status */
 
 void minibuffer_init(void);
@@ -2467,7 +1781,7 @@ static inline void qe_cfg_swap(QEValue *sp, QEValue *sp1) {
     *sp1 = tmp;
 }
 
-/* parser.c */
+/* qescript.c */
 
 int parse_config_file(EditState *s, const char *filename);
 void do_eval_expression(EditState *s, const char *expression, int argval);

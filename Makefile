@@ -94,7 +94,7 @@ ifeq (,$(TARGET_OBJ))
 TARGET_OBJ:=$(TARGET)
 endif
 
-OBJS:= qe.o util.o cutils.o charset.o buffer.o search.o input.o display.o \
+OBJS:= qe.o cutils.o util.o color.o charset.o buffer.o search.o input.o display.o \
        qescript.o modes/hex.o
 
 ifdef TARGET_TINY
@@ -229,7 +229,7 @@ endif	# TARGET_TINY
 
 SRCS:= $(OBJS:.o=.c)
 
-DEPENDS:= qe.h config.h cutils.h display.h qestyles.h variables.h config.mak lang/clang.h
+DEPENDS:= qe.h config.h cutils.h util.h display.h qestyles.h variables.h config.mak lang/clang.h
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
 BINDIR:=$(DEPTH)/bin
@@ -283,7 +283,7 @@ tqe1:      force;	$(MAKE) TARGET=tqe TARGET_TINY=1 tqe1$(EXE)
 else
 
 # Amalgation mode produces a larger executable
-TSRCS:=qe.c util.c cutils.c charset.c buffer.c search.c input.c display.c \
+TSRCS:=qe.c cutils.c util.c color.c charset.c buffer.c search.c input.c display.c \
        modes/hex.c parser.c unix.c tty.c win32.c qeend.c
 TSRCS+= $(OBJS_DIR)/tqe_modules.c
 
@@ -463,7 +463,7 @@ fbffonts.c: $(BINDIR)/fbftoqe$(EXE) $(FONTS)
 #
 # html2png tool (XML/HTML/CSS2 renderer test tool)
 #
-OBJS1=html2png.o util.o cutils.o \
+OBJS1=html2png.o cutils.o util.o color.o \
       arabic.o indic.o qfribidi.o display.o unicode_join.o \
       charset.o charsetmore.o charsetjis.o \
       libfbf.o fbfrender.o cfb.o fbffonts.o
@@ -501,7 +501,7 @@ qe-doc.pdf: qe-doc.texi Makefile
 clean:
 	$(MAKE) -C libqhtml clean
 	rm -f qe-doc.aux qe-doc.info qe-doc.log qe-doc.pdf qe-doc.toc
-	rm -rf *.dSYM .objs* .tobjs* .xobjs* bin
+	rm -rf *.dSYM *.gch .objs* .tobjs* .xobjs* bin
 	rm -f *~ *.o *.a *.exe *_g *_debug TAGS gmon.out core *.exe.stackdump \
            qe tqe tqe1 xqe qfribidi kmaptoqe ligtoqe html2png cptoqe jistoqe \
            fbftoqe fbffonts.c allmodules.txt basemodules.txt '.#'*[0-9]

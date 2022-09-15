@@ -25,43 +25,6 @@
 #define MAX_SCREEN_WIDTH  1024  /* in chars */
 #define MAX_SCREEN_LINES   256  /* in text lines */
 
-#define QE_FONT_STYLE_NORM         0x0001
-#define QE_FONT_STYLE_BOLD         0x0002
-#define QE_FONT_STYLE_ITALIC       0x0004
-#define QE_FONT_STYLE_UNDERLINE    0x0008
-#define QE_FONT_STYLE_LINE_THROUGH 0x0010
-#define QE_FONT_STYLE_BLINK        0x0020
-#define QE_FONT_STYLE_MASK         0x00ff
-
-#define NB_FONT_FAMILIES           3
-#define QE_FONT_FAMILY_SHIFT       8
-#define QE_FONT_FAMILY_MASK        0xff00
-#define QE_FONT_FAMILY_FIXED       0x0100
-#define QE_FONT_FAMILY_SERIF       0x0200
-#define QE_FONT_FAMILY_SANS        0x0300 /* sans serif */
-
-/* fallback font handling */
-#define QE_FONT_FAMILY_FALLBACK_SHIFT  16
-#define QE_FONT_FAMILY_FALLBACK_MASK   0xff0000
-
-typedef struct QEFont {
-    int refcount;
-    int ascent;
-    int descent;
-    void *priv_data;
-    int system_font; /* TRUE if system font */
-    /* cache data */
-    int style;
-    int size;
-    int timestamp;
-} QEFont;
-
-typedef struct QECharMetrics {
-    int font_ascent;    /* maximum font->ascent */
-    int font_descent;   /* maximum font->descent */
-    int width;          /* sum of glyph widths */
-} QECharMetrics;
-
 typedef enum QEBitmapFormat {
     QEBITMAP_FORMAT_1BIT = 0,
     QEBITMAP_FORMAT_4BIT,

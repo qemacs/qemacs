@@ -1,7 +1,7 @@
 # Libqhtml tiny HTML/CSS rendering library for QEmacs
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2021 Charlie Gordon.
+# Copyright (c) 2000-2022 Charlie Gordon.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -113,7 +113,7 @@ docbook_style.c: docbook.css $(BINDIR)/csstoqe$(EXE) Makefile
 	$(BINDIR)/csstoqe docbook_style < $< > $@
 
 clean:
-	rm -rf *.dSYM $(OBJS_DIR)
+	rm -rf *.dSYM *.gch $(OBJS_DIR)
 	rm -f *~ *.o *.a *.exe *_g TAGS gmon.out core *.exe.stackdump \
           csstoqe html_style.c docbook_style.c
 
