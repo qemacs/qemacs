@@ -298,7 +298,7 @@ static void video_image_display(EditState *s)
         y = (s->height - height) / 2;
         if (!is->no_background) {
             /* fill the background */
-            fill_border(s, x, y, width, height, QERGB(0x00, 0x00, 0x00));
+            fill_window_slack(s, x, y, width, height, QERGB(0x00, 0x00, 0x00));
         } else {
             is->no_background = 0;
         }

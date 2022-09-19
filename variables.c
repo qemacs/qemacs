@@ -120,8 +120,9 @@ static VarDef var_table[] = {
            "Name of the current major mode." )
     M_VAR( "auto-indent", auto_indent, VAR_NUMBER, VAR_RW,
            "Set for automatic indentation on new lines." )
-
+#ifdef CONFIG_SESSION
     G_VAR( "use-session-file", use_session_file, VAR_NUMBER, VAR_RW, NULL )
+#endif
     G_VAR( "force-tty", force_tty, VAR_NUMBER, VAR_RW,
            "Set to prevent graphics display." )
     G_VAR( "disable-crc", disable_crc, VAR_NUMBER, VAR_RW_SAVE,
@@ -164,13 +165,12 @@ static VarDef *qe_find_variable(const char *name)
     return NULL;
 }
 
-void variable_complete(CompleteState *cp)
-{
+void variable_complete(CompleteState *cp, CompleteFunc enumerate) {
     QEmacsState *qs = cp->s->qe_state;
     const VarDef *vp;
 
     for (vp = qs->first_variable; vp; vp = vp->next) {
-        complete_test(cp, vp->name);
+        enumerate(cp, vp->name, CT_TEST);
     }
 }
 

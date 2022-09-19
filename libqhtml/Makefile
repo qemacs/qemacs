@@ -75,7 +75,8 @@ endif
 LIB= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/libqhtml$(DEBUG_SUFFIX).a
 OBJS= css.o xmlparse.o cssparse.o html_style.o docbook_style.o
 
-DEPENDS:= qe.h config.h cutils.h display.h qestyles.h config.mak
+DEPENDS:= qe.h config.h config.mak charset.h color.h cutils.h display.h \
+		qestyles.h qfribidi.h util.h
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 DEPENDS+= css.h cssid.h htmlent.h
 

@@ -18,28 +18,31 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <stdio.h>
+#include "util.h"
 #include "qfribidi.h"
-#include "qe.h"
 
 /* ligature tables */
 static unsigned short *subst1;
 static unsigned short *ligature2;
 static unsigned short *ligature_long;
 
-static int subst1_count;
-static int ligature2_count;
+static unsigned short subst1_count;
+static unsigned short ligature2_count;
 
-/* XXX: eof ? */
-static int uni_get_be16(FILE *f)
-{
-    int v;
-    v = fgetc(f) << 8;
-    v |= fgetc(f);
-    return v;
+static int uni_get_be16(FILE *f, unsigned short *pv) {
+    /* read a big-endiann unsigned 16-bit value from `f` into `*pv` */
+    /* return -1 if end of file */
+    int c1, c2;
+    if ((c1 = fgetc(f)) != EOF && (c2 = fgetc(f)) != EOF) {
+        *pv = (c1 << 8) | c2;
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
-static unsigned short *read_array_be16(FILE *f, int n)
-{
+static unsigned short *read_array_be16(FILE *f, int n) {
     unsigned short *tab;
     int i;
 
@@ -47,53 +50,46 @@ static unsigned short *read_array_be16(FILE *f, int n)
     if (!tab)
         return NULL;
     for (i = 0; i < n; i++) {
-        tab[i] = uni_get_be16(f);
+        if (uni_get_be16(f, &tab[i])) {
+            qe_free(&tab);
+            return NULL;
+        }
     }
     return tab;
 }
 
-int load_ligatures(const char *filename)
-{
+int load_ligatures(const char *filename) {
     FILE *f;
     unsigned char sig[4];
-    int long_count;
+    unsigned short long_count;
 
     f = fopen(filename, "r");
     if (!f)
         return -1;
-    if (fread(sig, 1, 4, f) != 4 || memcmp(sig, "liga", 4) != 0)
-        goto fail;
 
-    subst1_count = uni_get_be16(f);
-    ligature2_count = uni_get_be16(f);
-    long_count = uni_get_be16(f);
+    if (fread(sig, 1, 4, f) != 4
+    ||  memcmp(sig, "liga", 4) != 0
+    ||  uni_get_be16(f, &subst1_count)
+    ||  uni_get_be16(f, &ligature2_count)
+    ||  uni_get_be16(f, &long_count)
+    ||  !(subst1 = read_array_be16(f, subst1_count * 2))
+    ||  !(ligature2 = read_array_be16(f, ligature2_count * 3))
+    ||  !(ligature_long = read_array_be16(f, long_count))) {
+        unload_ligatures();
+        fclose(f);
+        return -1;
+    } else {
+        fclose(f);
+        return 0;
+    }
+}
 
-    subst1 = read_array_be16(f, subst1_count * 2);
-    if (!subst1)
-        goto fail;
-    ligature2 = read_array_be16(f, ligature2_count * 3);
-    if (!ligature2)
-        goto fail;
-    ligature_long = read_array_be16(f, long_count);
-    if (!ligature_long)
-        goto fail;
-    fclose(f);
-    return 0;
- fail:
+void unload_ligatures(void) {
     qe_free(&subst1);
     qe_free(&ligature2);
     qe_free(&ligature_long);
     subst1_count = 0;
     ligature2_count = 0;
-    fclose(f);
-    return -1;
-}
-
-void unload_ligatures(void)
-{
-    qe_free(&subst1);
-    qe_free(&ligature2);
-    qe_free(&ligature_long);
 }
 
 static int find_ligature(int l1, int l2)

@@ -21,7 +21,6 @@
 #include <time.h>
 
 #include "qe.h"
-#include "qfribidi.h"
 #include "variables.h"
 
 static int qe_skip_comments(EditState *s, int offset, int *offsetp)
@@ -1797,7 +1796,7 @@ static void tag_buffer(EditState *s) {
     }
 }
 
-static void tag_complete(CompleteState *cp) {
+static void tag_complete(CompleteState *cp, CompleteFunc enumerate) {
     /* XXX: only support current buffer */
     QEProperty *p;
 
@@ -1806,7 +1805,7 @@ static void tag_complete(CompleteState *cp) {
 
         for (p = cp->target->b->property_list; p; p = p->next) {
             if (p->type == QE_PROP_TAG) {
-                complete_test(cp, p->data);
+                enumerate(cp, p->data, CT_TEST);
             }
         }
     }

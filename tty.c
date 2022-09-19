@@ -992,7 +992,7 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
             for (i = 1; i < (*ip & 0xFFFF); i++) {
                 eb_printf(b, " %04X", ip[i]);
             }
-            eb_putc(b, '\n');
+            eb_printf(b, "\n");
         }
     }
 }

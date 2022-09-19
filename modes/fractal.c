@@ -21,7 +21,6 @@
 #include <math.h>
 
 #include "qe.h"
-#include "qfribidi.h"
 #include "variables.h"
 
 /*---------------- Fractint formula syntax ----------------*/
@@ -839,7 +838,7 @@ static void fractal_display(EditState *s) {
 
             bmp_draw(s->screen, ms->disp_bmp,
                      s->xleft + x, s->ytop + y, w, h, 0, 0, 0);
-            fill_border(s, x, y, w, h, col);
+            fill_window_slack(s, x, y, w, h, col);
         } else {
             fill_rectangle(s->screen, s->xleft, s->ytop, s->width, s->height, col);
         }
@@ -885,7 +884,7 @@ static void fractal_display(EditState *s) {
                             ms->ip, 0, 0, w, h * s->screen->dpy.yfactor,
                             0, QERGB(128, 128, 128));
             ms->ip->palette = NULL;
-            fill_border(s, x0, y0, w, h, col);
+            fill_window_slack(s, x0, y0, w, h, col);
         } else {
             fill_rectangle(s->screen, s->xleft, s->ytop, s->width, s->height, col);
         }

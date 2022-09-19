@@ -2,7 +2,7 @@
  * Display system for QEmacs
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,6 +21,11 @@
 
 #ifndef QE_DISPLAY_H
 #define QE_DISPLAY_H
+
+#include <stdio.h>  /* FILE, NULL */
+#include "util.h"   /* qe__unused__ */
+#include "color.h"
+#include "charset.h"
 
 #define MAX_SCREEN_WIDTH  1024  /* in chars */
 #define MAX_SCREEN_LINES   256  /* in text lines */
@@ -66,6 +71,7 @@ typedef struct QEPicture {
 
 typedef struct QEditScreen QEditScreen;
 typedef struct QEDisplay QEDisplay;
+struct EditBuffer;
 
 struct QEDisplay {
     const char *name;
@@ -111,7 +117,7 @@ struct QEDisplay {
                             int src_x, int src_y, int src_w, int src_h,
                             int flags);
     void (*dpy_full_screen)(QEditScreen *s, int full_screen);
-    void (*dpy_describe)(QEditScreen *s, EditBuffer *b);
+    void (*dpy_describe)(QEditScreen *s, struct EditBuffer *b);
     QEDisplay *next;
 };
 
@@ -219,7 +225,7 @@ static inline void bmp_unlock(QEditScreen *s, QEBitmap *bitmap)
         s->dpy.dpy_bmp_unlock(s, bitmap);
 }
 
-static inline void dpy_describe(QEditScreen *s, EditBuffer *b)
+static inline void dpy_describe(QEditScreen *s, struct EditBuffer *b)
 {
     if (s->dpy.dpy_describe)
         s->dpy.dpy_describe(s, b);

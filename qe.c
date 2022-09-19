@@ -20,15 +20,7 @@
  */
 
 #include "qe.h"
-
-#ifdef CONFIG_TINY
-#undef CONFIG_DLL
-#undef CONFIG_ALL_KMAPS
-#undef CONFIG_UNICODE_JOIN
-#endif
-
 #include "qfribidi.h"
-
 #include "variables.h"
 
 #ifdef CONFIG_DLL
@@ -67,7 +59,9 @@ static int no_init_file;
 static int single_window;
 int force_tty;
 int disable_crc;
+#ifdef CONFIG_SESSION
 int use_session_file;
+#endif
 int use_html = 1;
 int is_player = 1;    /* Start in dired mode when invoked with no arguments */
 #ifndef CONFIG_TINY
@@ -216,15 +210,14 @@ void qe_register_mode(ModeDef *m, int flags)
     }
 }
 
-void mode_complete(CompleteState *cp)
-{
+void mode_complete(CompleteState *cp, CompleteFunc enumerate) {
     QEmacsState *qs = cp->s->qe_state;
     ModeDef *m;
 
     for (m = qs->first_mode; m != NULL; m = m->next) {
-        complete_test(cp, m->name);
+        enumerate(cp, m->name, CT_TEST);
         if (m->alt_name && !strequal(m->name, m->alt_name))
-            complete_test(cp, m->alt_name);
+            enumerate(cp, m->alt_name, CT_TEST);
     }
 }
 
@@ -249,15 +242,14 @@ const CmdDef *qe_find_cmd(const char *cmd_name)
     return NULL;
 }
 
-void command_complete(CompleteState *cp)
-{
+void command_complete(CompleteState *cp, CompleteFunc enumerate) {
     QEmacsState *qs = cp->s->qe_state;
     const CmdDef *d;
     int i, j;
 
     for (i = 0; i < qs->cmd_array_count; i++) {
         for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
-            complete_test(cp, d->name);
+            enumerate(cp, d->name, CT_TEST);
         }
     }
 }
@@ -695,15 +687,14 @@ void do_cd(EditState *s, const char *path)
     }
 }
 
-static void color_complete(CompleteState *cp) {
+static void color_complete(CompleteState *cp, CompleteFunc enumerate) {
     ColorDef const *def;
     int count;
 
     def = qe_colors;
     count = nb_qe_colors;
     while (count > 0) {
-        if (strxstart(def->name, cp->current, NULL))
-            add_string(&cp->cs, def->name, 0);
+        enumerate(cp, def->name, CT_STRX);
         def++;
         count--;
     }
@@ -3153,6 +3144,27 @@ void display_window_borders(EditState *e)
     }
 }
 
+void fill_window_slack(EditState *s, int x, int y, int w, int h, int color)
+{
+    /* fill the window space outside a given rectangle */
+    int x0, y0, w0, h0, w1, w2, h1, h2;
+
+    /* fill the background */
+    x0 = s->xleft;
+    y0 = s->ytop;
+    w0 = s->width;
+    h0 = s->height;
+    w1 = max(0, x);
+    w2 = max(0, w0 - (x + w));
+    h1 = max(0, y);
+    h2 = max(0, h0 - (y + h));
+
+    if (w1) fill_rectangle(s->screen, x0, y0, w1, h0, color);
+    if (w2) fill_rectangle(s->screen, x0 + w0 - w2, y0, w2, h0, color);
+    if (h1) fill_rectangle(s->screen, x0 + w1, y0, w0 - w1 - w2, h1, color);
+    if (h2) fill_rectangle(s->screen, x0 + w1, y0 + h0 - h2, w0 - w1 - w2, h2, color);
+}
+
 #if 1
 /* Should move all this to display.c */
 
@@ -3211,14 +3223,13 @@ void get_style(EditState *e, QEStyleDef *stp, QETermStyle style)
         apply_style(stp, style);
 }
 
-void style_complete(CompleteState *cp)
-{
+void style_complete(CompleteState *cp, CompleteFunc enumerate) {
     int i;
     QEStyleDef *stp;
 
     stp = qe_styles;
     for (i = 0; i < QE_STYLE_NB; i++, stp++) {
-        complete_test(cp, stp->name);
+        enumerate(cp, stp->name, CT_TEST);
     }
 }
 
@@ -3272,12 +3283,11 @@ static const char * const qe_style_properties[] = {
     "text-decoration",  /* text_decoration: none / underline */
 };
 
-void style_property_complete(CompleteState *cp)
-{
+void style_property_complete(CompleteState *cp, CompleteFunc enumerate) {
     int i;
 
     for (i = 0; i < countof(qe_style_properties); i++) {
-        complete_test(cp, qe_style_properties[i]);
+        enumerate(cp, qe_style_properties[i], CT_TEST);
     }
 }
 
@@ -6285,7 +6295,7 @@ static const char *file_completion_ignore_extensions = {
     "|"
 };
 
-void file_complete(CompleteState *cp)
+void file_complete(CompleteState *cp, CompleteFunc enumerate)
 {
     char path[MAX_FILENAME_SIZE];
     char file[MAX_FILENAME_SIZE];
@@ -6339,9 +6349,8 @@ void file_complete(CompleteState *cp)
              * should check and ignore binary executable files.
              */
         }
-        add_string(&cp->cs, filename, 0);
+        enumerate(cp, filename, CT_SET);
     }
-
     find_file_close(&ffst);
 }
 
@@ -6369,14 +6378,13 @@ static CompletionDef resource_completion = {
 };
 #endif
 
-void buffer_complete(CompleteState *cp)
-{
+void buffer_complete(CompleteState *cp, CompleteFunc enumerate) {
     QEmacsState *qs = cp->s->qe_state;
     EditBuffer *b;
 
     for (b = qs->first_buffer; b != NULL; b = b->next) {
         if (!(b->flags & BF_SYSTEM))
-            complete_test(cp, b->name);
+            enumerate(cp, b->name, CT_TEST);
     }
 }
 
@@ -6468,18 +6476,25 @@ static void complete_start(CompleteState *cp, EditState *s, int start, int end,
 }
 
 /* XXX: should have a globbing option */
-void complete_test(CompleteState *cp, const char *str)
-{
+void complete_test(CompleteState *cp, const char *str, int mode) {
     int fuzzy = 0;
 
-    if (memcmp(str, cp->current, cp->len)) {
-        if (!qe_memicmp(str, cp->current, cp->len))
-            fuzzy = 1;
-        else
-        if (cp->fuzzy && strmem(str, cp->current, cp->len))
-            fuzzy = 2;
-        else
+    switch (mode) {
+    case CT_STRX:
+        if (!strxstart(str, cp->current, NULL))
             return;
+        break;
+    case CT_TEST:
+        if (memcmp(str, cp->current, cp->len)) {
+            if (!qe_memicmp(str, cp->current, cp->len))
+                fuzzy = 1;
+            else
+            if (cp->fuzzy && strmem(str, cp->current, cp->len))
+                fuzzy = 2;
+            else
+                return;
+        }
+        break;
     }
     add_string(&cp->cs, str, fuzzy);
 }
@@ -6591,7 +6606,7 @@ void do_minibuffer_complete(EditState *s, int type)
     cs.completion = mb->completion;
     if (!(mb->completion->flags & CF_NO_FUZZY))
         cs.fuzzy = mb->completion_stage;
-    (*mb->completion->enumerate)(&cs);
+    (*mb->completion->enumerate)(&cs, complete_test);
     count = cs.cs.nb_items;
     outputs = cs.cs.items;
     mb->completion_count = count;
@@ -8119,7 +8134,7 @@ static void quit_examine_buffers(QuitState *is)
         edit_display(&qe_state);
         dpy_flush(&global_screen);
     } else {
-#ifndef CONFIG_TINY
+#ifdef CONFIG_SESSION
         if (use_session_file)
             do_save_session(qs->active_window, 0);
 #endif
@@ -8647,7 +8662,9 @@ void qe_save_window_layout(EditState *s, EditBuffer *b)
     eb_puts(b, "delete_hidden_windows();\n");
     eb_putc(b, '\n');
 }
+#endif  /* !CONFIG_TINY */
 
+#ifdef CONFIG_SESSION
 int qe_load_session(EditState *s)
 {
     return parse_config_file(s, ".qesession");
@@ -8675,7 +8692,7 @@ void do_save_session(EditState *s, int popup)
         eb_free(&b);
     }
 }
-#endif
+#endif /* CONFIG_SESSION */
 
 /* help */
 
@@ -9515,8 +9532,10 @@ static CmdLineOptionDef cmd_options[] = {
                   "force tty terminal usage"),
     CMD_LINE_FARG("c", "charset", "CHARSET", set_tty_charset,
                   "specify tty charset"),
+#ifdef CONFIG_SESSION
     CMD_LINE_BOOL("s", "use-session", &use_session_file,
                   "load and save session files"),
+#endif
     CMD_LINE_FARG("u", "user", "USER", set_user_option,
                   "load ~USER/.qe/config instead of your own"),
     CMD_LINE_FVOID("V", "version", show_version,
@@ -9741,7 +9760,7 @@ static void qe_init(void *opaque)
 
     qe_event_init();
 
-#ifndef CONFIG_TINY
+#ifdef CONFIG_SESSION
     if (use_session_file) {
         session_loaded = !qe_load_session(s);
         s = qs->active_window;

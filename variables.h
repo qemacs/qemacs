@@ -97,7 +97,7 @@ struct VarDef {
 #define M_VAR(name,fld,type,rw,desc)  M_VAR_F(name, fld, type, rw, NULL, desc)
 
 void qe_register_variables(VarDef *vars, int count);
-void variable_complete(CompleteState *cp);
+void variable_complete(CompleteState *cp, CompleteFunc enumerate);
 int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s);
 int variable_print_entry(CompleteState *cp, EditState *s, const char *name);
 

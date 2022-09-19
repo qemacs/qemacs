@@ -19,7 +19,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "qe.h"
+#include "cutils.h"
 #include "qfribidi.h"
 
 /* define it if your font handle more ligatures than the minimum

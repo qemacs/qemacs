@@ -68,7 +68,7 @@ static void image_display(EditState *s) {
             qe_draw_picture(s->screen, s->xleft + x0, s->ytop + y0, w, h,
                             &ms->pic, 0, 0, w, h * s->screen->dpy.yfactor,
                             0, QERGB(128, 128, 128));
-            fill_border(s, x0, y0, w, h, col);
+            fill_window_slack(s, x0, y0, w, h, col);
             put_status(s, "%dx%dx%d",
                        ms->pic.width, ms->pic.height, ms->stb_channels * 8);
 #else
@@ -92,7 +92,7 @@ static void image_display(EditState *s) {
                                 &ms->pic, 0, 0, ms->pic.width, ms->pic.height,
                                 0, QERGB(128, 128, 128));
             }
-            fill_border(s, x0, y0, w, h, col);
+            fill_window_slack(s, x0, y0, w, h, col);
             put_status(s, "%dx%dx%d",
                        ms->pic.width, ms->pic.height, ms->stb_channels * 8);
 #endif

@@ -120,7 +120,7 @@ static void image_display(EditState *s)
             x = is->x + (s->width - is->w) / 2;
             y = is->y + (s->height - is->h) / 2;
 
-            fill_border(s, x, y, is->w, is->h, QERGB(0x00, 0x00, 0x00));
+            fill_window_slack(s, x, y, is->w, is->h, QERGB(0x00, 0x00, 0x00));
 
             bmp_draw(s->screen, is->disp_bmp,
                      s->xleft + x, s->ytop + y,
@@ -846,14 +846,13 @@ void image_mode_line(EditState *s, buf_t *out)
                ib->interleaved ? 'I' : ' ');
 }
 
-static void pixel_format_complete(CompleteState *cp)
-{
+static void pixel_format_complete(CompleteState *cp, CompleteFunc enumerate) {
     int i;
     const char *name;
 
     for (i = 0; i < PIX_FMT_NB; i++) {
         name = avcodec_get_pix_fmt_name(i);
-        complete_test(cp, name);
+        enumerate(cp, name, CT_TEST);
     }
 }
 

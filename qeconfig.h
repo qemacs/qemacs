@@ -375,7 +375,7 @@ static const CmdDef basic_commands[] = {
     CMD0( "toggle-mode-line", "C-c m",
           "Toggle mode-line display",
           do_toggle_mode_line)
-#ifndef CONFIG_TINY
+#ifdef CONFIG_SESSION
     CMD2( "create-window", "",
           "Create a new window with a specified layout",
           do_create_window, ESss,

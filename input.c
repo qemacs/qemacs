@@ -80,13 +80,12 @@ void register_input_method(InputMethod *m)
     *p = m;
 }
 
-static void input_complete(CompleteState *cp)
-{
+static void input_complete(CompleteState *cp, CompleteFunc enumerate) {
     QEmacsState *qs = cp->s->qe_state;
     InputMethod *m;
 
     for (m = qs->input_methods; m != NULL; m = m->next) {
-        complete_test(cp, m->name);
+        enumerate(cp, m->name, CT_TEST);
     }
 }
 

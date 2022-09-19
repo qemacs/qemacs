@@ -1132,22 +1132,19 @@ void qe_register_charset(struct QECharset *charset)
     *pp = charset;
 }
 
-void charset_complete(CompleteState *cp)
-{
+void charset_complete(CompleteState *cp, CompleteFunc enumerate) {
     QECharset *charset;
     char name[32];
     const char *p, *q;
 
     for (charset = first_charset; charset != NULL; charset = charset->next) {
-        if (strxstart(charset->name, cp->current, NULL))
-            add_string(&cp->cs, charset->name, 0);
+        enumerate(cp, charset->name, CT_STRX);
         if (charset->aliases) {
             for (q = p = charset->aliases;; q++) {
                 if (*q == '\0' || *q == '|') {
                     if (q > p) {
                         pstrncpy(name, sizeof(name), p, q - p);
-                        if (strxstart(name, cp->current, NULL))
-                            add_string(&cp->cs, name, 0);
+                        enumerate(cp, name, CT_STRX);
                     }
                     if (*q == '\0')
                         break;

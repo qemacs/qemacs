@@ -37,8 +37,14 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#if 1 //ifdef HAVE_QE_CONFIG_H
 #include "config.h"
+
+#ifdef CONFIG_TINY
+#undef CONFIG_DLL
+#undef CONFIG_ALL_KMAPS
+#undef CONFIG_UNICODE_JOIN
+#else
+#define CONFIG_SESSION  1
 #endif
 
 #ifndef DEFAULT_TAB_WIDTH
@@ -120,6 +126,8 @@ typedef struct CompleteState {
     char current[MAX_FILENAME_SIZE];
 } CompleteState;
 
+typedef void (*CompleteFunc)(CompleteState *cp, const char *str, int mode);
+
 void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const char *path1);
 void canonicalize_absolute_buffer_path(EditBuffer *b, int offset,
                                        char *buf, int buf_size,
@@ -163,112 +171,9 @@ void qe_register_cmd_line_options(CmdLineOptionDef *table);
 int find_resource_file(char *path, int path_size, const char *pattern);
 
 /* charset.c */
+#include "charset.h"
 
-/* maximum number of bytes for a character in all the supported charsets */
-#define MAX_CHAR_BYTES 6
-
-typedef struct CharsetDecodeState CharsetDecodeState;
-#if defined(__cplusplus)
-typedef struct QECharset QECharset;
-#else
-typedef const struct QECharset QECharset;
-#endif
-
-struct QECharset {
-    const char *name;
-    const char *aliases;
-    int (*probe_func)(QECharset *charset, const u8 *buf, int size);
-    void (*decode_init)(CharsetDecodeState *s);
-    int (*decode_func)(CharsetDecodeState *s);
-    /* return NULL if cannot encode. Currently no state since speed is
-       not critical yet */
-    u8 *(*encode_func)(QECharset *charset, u8 *buf, int size);
-    void (*get_pos_func)(CharsetDecodeState *s, const u8 *buf, int size,
-                         int *line_ptr, int *col_ptr);
-    int (*get_chars_func)(CharsetDecodeState *s, const u8 *buf, int size);
-    int (*goto_char_func)(CharsetDecodeState *s, const u8 *buf, int size, int pos);
-    int (*goto_line_func)(CharsetDecodeState *s, const u8 *buf, int size, int lines);
-    unsigned int char_size : 3;
-    unsigned int variable_size : 1;
-    unsigned int table_alloc : 1; /* true if CharsetDecodeState.table must be malloced */
-    /* private data for some charsets */
-    u8 eol_char; /* 0x0A for ASCII, 0x25 for EBCDIC */
-    u8 min_char, max_char;
-    const unsigned short *encode_table;
-    const unsigned short *private_table;
-    struct QECharset *next;
-};
-
-extern struct QECharset *first_charset;
-/* predefined charsets */
-extern struct QECharset charset_raw;
-extern struct QECharset charset_8859_1;
-extern struct QECharset charset_utf8;
-extern struct QECharset charset_vt100; /* used for the tty output */
-extern struct QECharset charset_mac_roman;
-extern struct QECharset charset_ucs2le, charset_ucs2be;
-extern struct QECharset charset_ucs4le, charset_ucs4be;
-
-typedef enum EOLType {
-    EOL_UNIX = 0,
-    EOL_DOS,
-    EOL_MAC,
-} EOLType;
-
-struct CharsetDecodeState {
-    /* 256 ushort table for hyper fast decoding */
-    const unsigned short *table;
-    int char_size;
-    EOLType eol_type;
-    int eol_char;
-    const u8 *p;
-    /* slower decode function for complicated cases */
-    int (*decode_func)(CharsetDecodeState *s);
-    void (*get_pos_func)(CharsetDecodeState *s, const u8 *buf, int size,
-                         int *line_ptr, int *col_ptr);
-    QECharset *charset;
-};
-
-#define INVALID_CHAR 0xfffd
-#define ESCAPE_CHAR  0xffff
-
-void charset_init(void);
-int charset_more_init(void);
-int charset_jis_init(void);
-
-void qe_register_charset(struct QECharset *charset);
-
-void charset_complete(CompleteState *cp);
-QECharset *find_charset(const char *str);
-void charset_decode_init(CharsetDecodeState *s, QECharset *charset,
-                         EOLType eol_type);
-void charset_decode_close(CharsetDecodeState *s);
-void charset_get_pos_8bit(CharsetDecodeState *s, const u8 *buf, int size,
-                          int *line_ptr, int *col_ptr);
-int charset_get_chars_8bit(CharsetDecodeState *s, const u8 *buf, int size);
-int charset_goto_char_8bit(CharsetDecodeState *s, const u8 *buf, int size, int pos);
-int charset_goto_line_8bit(CharsetDecodeState *s, const u8 *buf, int size, int nlines);
-
-QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep);
-
-void decode_8bit_init(CharsetDecodeState *s);
-int decode_8bit(CharsetDecodeState *s);
-u8 *encode_8bit(QECharset *charset, u8 *q, int c);
-
-/* arabic.c */
-int arab_join(unsigned int *line, unsigned int *ctog, int len);
-
-/* indic.c */
-int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len);
-
-/* unicode_join.c */
-int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
-                      int dst_size, unsigned int *src, int src_size,
-                      int reverse);
-int combine_accent(unsigned int *buf, int c, int accent);
-int expand_ligature(unsigned int *buf, int c);
-int load_ligatures(const char *filename);
-void unload_ligatures(void);
+void charset_complete(CompleteState *cp, CompleteFunc enumerate);
 
 /* qe event handling */
 
@@ -1218,7 +1123,7 @@ typedef struct CmdDef {
 ModeDef *qe_find_mode(const char *name, int flags);
 ModeDef *qe_find_mode_filename(const char *filename, int flags);
 void qe_register_mode(ModeDef *m, int flags);
-void mode_complete(CompleteState *cp);
+void mode_complete(CompleteState *cp, CompleteFunc enumerate);
 int qe_register_commands(ModeDef *m, const CmdDef *cmds, int len);
 int qe_register_bindings(ModeDef *m, const char *cmd_name, const char *keys);
 const CmdDef *qe_find_cmd(const char *cmd_name);
@@ -1394,7 +1299,7 @@ void minibuffer_init(void);
 
 typedef struct CompletionDef {
     const char *name;
-    void (*enumerate)(CompleteState *cp);
+    void (*enumerate)(CompleteState *cp, CompleteFunc enumerate);
     int (*print_entry)(CompleteState *cp, EditState *s, const char *name);
     int (*get_entry)(EditState *s, char *dest, int size, int offset);
 #define CF_FILENAME        1
@@ -1409,20 +1314,24 @@ typedef struct CompletionDef {
 
 void qe_register_completion(CompletionDef *cp);
 
-void complete_test(CompleteState *cp, const char *str);
+/* default CompleteFunc passed to complete_xxx() functions */
+#define CT_TEST  0
+#define CT_STRX  1
+#define CT_SET   2
+void complete_test(CompleteState *cp, const char *str, int mode);
 
 void put_status(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void put_error(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void minibuffer_edit(EditState *e, const char *input, const char *prompt,
                      StringArray *hist, const char *completion_name,
                      void (*cb)(void *opaque, char *buf), void *opaque);
-void command_complete(CompleteState *cp);
+void command_complete(CompleteState *cp, CompleteFunc enumerate);
 int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s);
 int command_print_entry(CompleteState *cp, EditState *s, const char *name);
 int command_get_entry(EditState *s, char *dest, int size, int offset);
-void file_complete(CompleteState *cp);
+void file_complete(CompleteState *cp, CompleteFunc enumerate);
 int file_print_entry(CompleteState *cp, EditState *s, const char *name);
-void buffer_complete(CompleteState *cp);
+void buffer_complete(CompleteState *cp, CompleteFunc enumerate);
 
 #ifdef CONFIG_WIN32
 static inline int is_user_input_pending(void) {
@@ -1629,11 +1538,12 @@ void do_set_tab_width(EditState *s, int tab_width);
 void do_set_indent_width(EditState *s, int indent_width);
 void do_set_indent_tabs_mode(EditState *s, int val);
 void display_window_borders(EditState *e);
+void fill_window_slack(EditState *s, int x, int y, int w, int h, int color);
 int find_style_index(const char *name);
 QEStyleDef *find_style(const char *name);
-void style_complete(CompleteState *cp);
+void style_complete(CompleteState *cp, CompleteFunc enumerate);
 void get_style(EditState *e, QEStyleDef *stp, QETermStyle style);
-void style_property_complete(CompleteState *cp);
+void style_property_complete(CompleteState *cp, CompleteFunc enumerate);
 int find_style_property(const char *name);
 void do_define_color(EditState *e, const char *name, const char *value);
 void do_set_style(EditState *e, const char *stylestr,
@@ -1787,9 +1697,11 @@ int parse_config_file(EditState *s, const char *filename);
 void do_eval_expression(EditState *s, const char *expression, int argval);
 void do_eval_region(EditState *s); /* should pass actual offsets */
 void do_eval_buffer(EditState *s);
+#ifdef CONFIG_SESSION
 extern int use_session_file;
 int qe_load_session(EditState *s);
 void do_save_session(EditState *s, int popup);
+#endif
 
 /* extras.c */
 
@@ -1852,7 +1764,6 @@ int gxml_mode_init(EditBuffer *b, int flags, const char *default_stylesheet);
 
 /* image.c */
 
-void fill_border(EditState *s, int x, int y, int w, int h, int color);
 int qe_bitmap_format_to_pix_fmt(int format);
 
 /* shell.c */

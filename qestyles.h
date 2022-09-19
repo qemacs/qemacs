@@ -1,3 +1,5 @@
+#ifdef STYLE_DEF
+
     /* root style, must be complete */
     STYLE_DEF(QE_STYLE_DEFAULT, "default", /* #f8d8b0 on black */
               QERGB(0xf8, 0xd8, 0xb0), QERGB(0x00, 0x00, 0x00), QE_FONT_FAMILY_FIXED, 12)
@@ -69,3 +71,5 @@
               QERGB(0xe8, 0xdc, 0x80), COLOR_TRANSPARENT, 0, 0)
     STYLE_DEF(QE_STYLE_HTML_TAG, "html-tag", /* #80ccf0 */
               QERGB(0x80, 0xcc, 0xf0), COLOR_TRANSPARENT, 0, 0)
+
+#endif

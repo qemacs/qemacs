@@ -432,8 +432,6 @@ static int get_counter(CSSContext *s, CSSIdent counter_id)
     return 0; /* default value is zero */
 }
 
-static QEFont *css_select_font(QEditScreen *screen, CSSState *props);
-
 static void css_eval_property(CSSContext *s,
                               CSSState *state,
                               CSSProperty *p,

@@ -22,6 +22,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifndef QFRIBIDI_H
+#define QFRIBIDI_H
+
 typedef int FriBidiChar;
 
 typedef enum {
@@ -79,3 +82,11 @@ FriBidiChar fribidi_get_mirror_char(FriBidiChar ch);
 void fribidi_analyse_string(TypeLink *type_rl_list,
                             FriBidiCharType *pbase_dir,
                             int *pmax_level);
+
+/* arabic.c */
+int arab_join(unsigned int *line, unsigned int *ctog, int len);
+
+/* indic.c */
+int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len);
+
+#endif /* QFRIBIDI_H */

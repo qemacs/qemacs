@@ -22,8 +22,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include <stdlib.h>
-#include <string.h>
+#include "cutils.h"
 
 /* OS specific defines */
 
@@ -32,40 +31,10 @@
 #define vsnprintf  _vsnprintf
 #endif
 
-#if (defined(__GNUC__) || defined(__TINYC__))
-/* make sure that the keyword is not disabled by glibc (TINYC case) */
-#define qe__attr_printf(a, b)  __attribute__((format(printf, a, b)))
-#else
-#define qe__attr_printf(a, b)
-#endif
-
-#if defined(__GNUC__) && __GNUC__ > 2
-#define qe__attr_nonnull(l)   __attribute__((nonnull l))
-#define qe__unused__          __attribute__((unused))
-#else
-#define qe__attr_nonnull(l)
-#define qe__unused__
-#endif
-
-#ifndef offsetof
-#define offsetof(s,m)  ((size_t)(&((s *)0)->m))
-#endif
-#ifndef countof
-#define countof(a)  ((int)(sizeof(a) / sizeof((a)[0])))
-#endif
-#ifndef ssizeof
-#define ssizeof(a)  ((int)(sizeof(a)))
-#endif
-
 #define OWNED     /* ptr attribute for allocated data owned by a structure */
 
 /* prevent gcc warning about shadowing a global declaration */
 #define index  index__
-
-typedef unsigned char u8;
-
-static inline char *s8(u8 *p) { return (char*)p; }
-static inline const char *cs8(const u8 *p) { return (const char*)p; }
 
 /* string arrays */
 typedef struct StringItem {
@@ -417,78 +386,6 @@ static inline int bstr_equal(bstr_t s1, bstr_t s2) {
 void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
                 int (*compar)(void *, const void *, const void *));
 
-/* various arithmetic functions */
-static inline int max(int a, int b) {
-    if (a > b)
-        return a;
-    else
-        return b;
-}
-
-static inline int maxp(int *pa, int b) {
-    int a = *pa;
-    if (a > b)
-        return a;
-    else
-        return *pa = b;
-}
-
-static inline int max3(int a, int b, int c) {
-    return max(max(a, b), c);
-}
-
-static inline int min(int a, int b) {
-    if (a < b)
-        return a;
-    else
-        return b;
-}
-
-static inline int minp(int *pa, int b) {
-    int a = *pa;
-    if (a < b)
-        return a;
-    else
-        return *pa = b;
-}
-
-static inline int min3(int a, int b, int c) {
-    return min(min(a, b), c);
-}
-
-static inline int clamp(int a, int b, int c) {
-    if (a < b)
-        return b;
-    else
-    if (a > c)
-        return c;
-    else
-        return a;
-}
-
-static inline int clampp(int *pa, int b, int c) {
-    int a = *pa;
-    if (a < b)
-        return *pa = b;
-    else
-    if (a > c)
-        return *pa = c;
-    else
-        return a;
-}
-
-static inline int compute_percent(int a, int b) {
-    return b <= 0 ? 0 : (int)((long long)a * 100 / b);
-}
-
-static inline int align(int a, int n) {
-    return (a / n) * n;
-}
-
-static inline int scale(int a, int b, int c) {
-    return (a * b + c / 2) / c;
-}
-
 /*---------------- key definitions ----------------*/
 
 int compose_keys(unsigned int *keys, int *nb_keys);
@@ -582,6 +479,13 @@ char *utf8_char_to_string(char *buf, int c);
 int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str);
 
 int unicode_tty_glyph_width(unsigned int ucs);
+int load_ligatures(const char *filename);
+void unload_ligatures(void);
+int combine_accent(unsigned int *buf, int c, int accent);
+int expand_ligature(unsigned int *buf, int c);
+int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
+                      int dst_size, unsigned int *src, int src_size,
+                      int reverse);
 
 static inline int qe_isaccent(int c) {
     return c >= 0x300 && unicode_tty_glyph_width(c) == 0;

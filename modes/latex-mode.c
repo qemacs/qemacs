@@ -213,13 +213,11 @@ static struct latex_function {
 #undef INIT_TAIL
 };
 
-static void latex_complete(CompleteState *cp)
-{
+static void latex_complete(CompleteState *cp, CompleteFunc enumerate) {
     struct latex_function *func;
 
     for (func = latex_funcs; func->name; func++) {
-        if (strxstart(func->name, cp->current, NULL))
-            add_string(&cp->cs, func->name, 0);
+        enumerate(cp, func->name, CT_STRX);
     }
 }
 

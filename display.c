@@ -402,27 +402,6 @@ void cbmp_close(QEditScreen *cbmp)
 }
 #endif
 
-/* draw only the border of a rectangle */
-void fill_border(EditState *s, int x, int y, int w, int h, int color)
-{
-    int x0, y0, w0, h0, w1, w2, h1, h2;
-
-    /* fill the background */
-    x0 = s->xleft;
-    y0 = s->ytop;
-    w0 = s->width;
-    h0 = s->height;
-    w1 = max(0, x);
-    w2 = max(0, w0 - (x + w));
-    h1 = max(0, y);
-    h2 = max(0, h0 - (y + h));
-
-    if (w1) fill_rectangle(s->screen, x0, y0, w1, h0, color);
-    if (w2) fill_rectangle(s->screen, x0 + w0 - w2, y0, w2, h0, color);
-    if (h1) fill_rectangle(s->screen, x0 + w1, y0, w0 - w1 - w2, h1, color);
-    if (h2) fill_rectangle(s->screen, x0 + w1, y0 + h0 - h2, w0 - w1 - w2, h2, color);
-}
-
 /*---------------- QEPicture handling functions ----------------*/
 
 int qe_draw_picture(QEditScreen *s, int dst_x, int dst_y, int dst_w, int dst_h,

@@ -26,6 +26,39 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if (defined(__GNUC__) || defined(__TINYC__))
+/* make sure that the keyword is not disabled by glibc (TINYC case) */
+#define qe__attr_printf(a, b)  __attribute__((format(printf, a, b)))
+#else
+#define qe__attr_printf(a, b)
+#endif
+
+#if defined(__GNUC__) && __GNUC__ > 2
+#define qe__attr_nonnull(l)   __attribute__((nonnull l))
+#define qe__unused__          __attribute__((unused))
+#else
+#define qe__attr_nonnull(l)
+#define qe__unused__
+#endif
+
+#ifndef offsetof
+#define offsetof(s,m)  ((size_t)(&((s *)0)->m))
+#endif
+#ifndef countof
+#define countof(a)  ((int)(sizeof(a) / sizeof((a)[0])))
+#endif
+#ifndef ssizeof
+#define ssizeof(a)  ((int)(sizeof(a)))
+#endif
+
+#ifndef U8_DEFINED
+typedef unsigned char u8;
+#define U8_DEFINED  1
+#endif
+
+static inline char *s8(u8 *p) { return (char*)p; }
+static inline const char *cs8(const u8 *p) { return (const char*)p; }
+
 /* this cast prevents compiler warnings when removing the const qualifier */
 #define unconst(t)  (t)(uintptr_t)
 
@@ -44,12 +77,13 @@
 #undef strtok
 #define strtok(str,sep)   do_not_use_strtok!!(str,sep)
 
-int strstart(const char *str, const char *val, const char **ptr);
-int strend(const char *str, const char *val, const char **ptr);
 char *pstrcpy(char *buf, int buf_size, const char *str);
 char *pstrcat(char *buf, int buf_size, const char *s);
 char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 char *pstrncat(char *buf, int buf_size, const char *s, int len);
+int strstart(const char *str, const char *val, const char **ptr);
+int strend(const char *str, const char *val, const char **ptr);
+
 size_t get_basename_offset(const char *filename);
 static inline const char *get_basename(const char *filename) {
     /*@API utils
@@ -129,6 +163,78 @@ static inline long double strtold_c(const char *str, const char **endptr) {
        Call this function with a constant string and the address of a `const char *`.
      */
     return strtold(str, unconst(char **)endptr);
+}
+
+/* various arithmetic functions */
+static inline int max(int a, int b) {
+    if (a > b)
+        return a;
+    else
+        return b;
+}
+
+static inline int maxp(int *pa, int b) {
+    int a = *pa;
+    if (a > b)
+        return a;
+    else
+        return *pa = b;
+}
+
+static inline int max3(int a, int b, int c) {
+    return max(max(a, b), c);
+}
+
+static inline int min(int a, int b) {
+    if (a < b)
+        return a;
+    else
+        return b;
+}
+
+static inline int minp(int *pa, int b) {
+    int a = *pa;
+    if (a < b)
+        return a;
+    else
+        return *pa = b;
+}
+
+static inline int min3(int a, int b, int c) {
+    return min(min(a, b), c);
+}
+
+static inline int clamp(int a, int b, int c) {
+    if (a < b)
+        return b;
+    else
+    if (a > c)
+        return c;
+    else
+        return a;
+}
+
+static inline int clampp(int *pa, int b, int c) {
+    int a = *pa;
+    if (a < b)
+        return *pa = b;
+    else
+    if (a > c)
+        return *pa = c;
+    else
+        return a;
+}
+
+static inline int compute_percent(int a, int b) {
+    return b <= 0 ? 0 : (int)((long long)a * 100 / b);
+}
+
+static inline int align(int a, int n) {
+    return (a / n) * n;
+}
+
+static inline int scale(int a, int b, int c) {
+    return (a * b + c / 2) / c;
 }
 
 /* Double linked lists. Same API as the linux kernel */

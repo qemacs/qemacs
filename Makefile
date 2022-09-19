@@ -229,7 +229,8 @@ endif	# TARGET_TINY
 
 SRCS:= $(OBJS:.o=.c)
 
-DEPENDS:= qe.h config.h cutils.h util.h display.h qestyles.h variables.h config.mak lang/clang.h
+DEPENDS:= qe.h config.h config.mak charset.h color.h cutils.h display.h \
+		qestyles.h qfribidi.h util.h variables.h lang/clang.h
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
 BINDIR:=$(DEPTH)/bin
@@ -328,8 +329,7 @@ $(OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
 $(OBJS_DIR)/charset.o: charset.c unicode_width.h
 $(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
-$(OBJS_DIR)/qe.o: qe.c qeconfig.h qfribidi.h variables.h
-$(OBJS_DIR)/qfribidi.o: qfribidi.c qfribidi.h
+$(OBJS_DIR)/qe.o: qe.c qeconfig.h
 $(OBJS_DIR)/modes/stb.o: modes/stb.c modes/stb_image.h
 
 $(OBJS_DIR)/%.o: %.c $(DEPENDS) Makefile
@@ -444,6 +444,27 @@ charsetjis.def: $(JIS) $(BINDIR)/jistoqe$(EXE) Makefile
 endif
 
 #
+# Unicode tables
+#
+
+UNICODE_VER=15.0.0
+
+doc/EastAsianWidth-$(UNICODE_VER).txt:
+	$(cmd)  mkdir -p $(dir $@)
+	wget -q ftp://ftp.unicode.org/Public/$(UNICODE_VER)/ucd/EastAsianWidth.txt -O $@
+
+doc/Blocks-$(UNICODE_VER).txt:
+	$(cmd)  mkdir -p $(dir $@)
+	wget -q ftp://ftp.unicode.org/Public/$(UNICODE_VER)/ucd/Blocks.txt -O $@
+
+unicode1: $(BINDIR)/unicode_gen$(EXE) doc/EastAsianWidth-$(UNICODE_VER).txt Makefile
+	$(BINDIR)/unicode_gen -w doc/EastAsianWidth-$(UNICODE_VER).txt > unicode_width-1.h
+
+unicode: $(BINDIR)/unitable$(EXE) doc/Blocks-$(UNICODE_VER).txt Makefile
+	@if [ ! -z $(QELEVEL) ]; then echo error: do not make unicode from the shell buffer; exit 1; fi
+	$(BINDIR)/unitable -a -w doc/Blocks-$(UNICODE_VER).txt > unicode_width.h
+
+#
 # fonts (only needed for html2png)
 #
 FONTS=fixed10.fbf fixed12.fbf fixed13.fbf fixed14.fbf \
@@ -463,8 +484,8 @@ fbffonts.c: $(BINDIR)/fbftoqe$(EXE) $(FONTS)
 #
 # html2png tool (XML/HTML/CSS2 renderer test tool)
 #
-OBJS1=html2png.o cutils.o util.o color.o \
-      arabic.o indic.o qfribidi.o display.o unicode_join.o \
+OBJS1=html2png.o cutils.o util.o color.o display.o \
+      arabic.o indic.o qfribidi.o unicode_join.o \
       charset.o charsetmore.o charsetjis.o \
       libfbf.o fbfrender.o cfb.o fbffonts.o
 

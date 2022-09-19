@@ -218,6 +218,8 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
     if (pid == 0) {
         /* child process */
         const char *argv[4];
+        char qelevel[8];
+        char *vp;
         int argc = 0;
         int fd0, fd1, fd2;
 
@@ -250,7 +252,7 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
             fd2 = dup(1);
         }
         if (fd0 != 0 || fd1 != 1 || fd2 != 2) {
-            setenv("QE-STATUS", "invalid handles", 1);
+            setenv("QESTATUS", "invalid handles", 1);
         }
 #ifdef CONFIG_DARWIN
         setsid();
@@ -273,11 +275,13 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
         setenv("COLUMNS", columns_string, 1);
         setenv("TERM", "xterm-256color", 1);
         unsetenv("PAGER");
-        //setenv("QELEVEL", "1", 1);
+        vp = getenv("QELEVEL");
+        snprintf(qelevel, sizeof qelevel, "%d", 1 + (vp ? atoi(vp) : 0));
+        setenv("QELEVEL", qelevel, 1);
 
         if (path) {
             if (chdir(path)) {
-                setenv("QE-STATUS", "cannot chdir", 1);
+                setenv("QESTATUS", "cannot chdir", 1);
             }
         }
 

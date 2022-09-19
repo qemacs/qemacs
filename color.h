@@ -35,10 +35,6 @@ typedef int (CSSAbortFunc)(void *);
 
 #define CSS_MEDIA_ALL     0xffff
 
-typedef struct CSSRect {
-    int x1, y1, x2, y2;
-} CSSRect;
-
 typedef unsigned int QEColor;
 #define QEARGB(a,r,g,b)    (((unsigned int)(a) << 24) | ((r) << 16) | ((g) << 8) | (b))
 #define QERGB(r,g,b)       QEARGB(0xff, r, g, b)
@@ -177,6 +173,11 @@ int css_get_color(QEColor *color_ptr, const char *p);
 void css_free_colors(void);
 int css_get_font_family(const char *str);
 int css_get_enum(const char *str, const char *enum_str);
+
+typedef struct CSSRect {
+    int x1, y1, x2, y2;
+} CSSRect;
+
 void css_union_rect(CSSRect *a, const CSSRect *b);
 static inline int css_is_null_rect(const CSSRect *a) {
     return (a->x2 <= a->x1 || a->y2 <= a->y1);

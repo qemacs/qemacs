@@ -345,6 +345,12 @@ typedef struct CSSAttribute {
     char value[1];
 } CSSAttribute;
 
+#if 0
+typedef struct CSSRect {
+    int x1, y1, x2, y2;
+} CSSRect;
+#endif
+
 /* css box definition (most important data structure) */
 
 struct CSSBox {
@@ -610,6 +616,26 @@ int css_layout(CSSContext *s, CSSBox *box, int width,
 void css_display(CSSContext *s, CSSBox *box,
                  CSSRect *clip_box, int dx, int dy);
 
+#if 0
+/* rectangle handling */
+void css_union_rect(CSSRect *a, const CSSRect *b);
+static inline int css_is_null_rect(const CSSRect *a) {
+    return (a->x2 <= a->x1 || a->y2 <= a->y1);
+}
+static inline void css_set_rect(CSSRect *a, int x1, int y1, int x2, int y2) {
+    a->x1 = x1;
+    a->y1 = y1;
+    a->x2 = x2;
+    a->y2 = y2;
+}
+/* return true if a and b intersect */
+static inline int css_is_inter_rect(const CSSRect *a, const CSSRect *b) {
+    return (!(a->x2 <= b->x1 ||
+              a->x1 >= b->x2 ||
+              a->y2 <= b->y1 ||
+              a->y1 >= b->y2));
+}
+#endif
 /* cursor/edition handling */
 int box_get_text(CSSContext *s,
                  unsigned int *line_buf, int max_size,

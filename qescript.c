@@ -1305,9 +1305,9 @@ int parse_config_file(EditState *s, const char *filename) {
 }
 
 #ifndef CONFIG_TINY
-static void symbol_complete(CompleteState *cp) {
-    command_complete(cp);
-    variable_complete(cp);
+static void symbol_complete(CompleteState *cp, CompleteFunc enumerate) {
+    command_complete(cp, enumerate);
+    variable_complete(cp, enumerate);
 }
 
 static int symbol_print_entry(CompleteState *cp, EditState *s, const char *name) {
