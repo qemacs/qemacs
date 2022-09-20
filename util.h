@@ -184,10 +184,6 @@ int qe_strtobool(const char *s, int def);
 void qe_strtolower(char *buf, int buf_size, const char *str);
 int qe_skip_spaces(const char **pp);
 
-static inline int strequal(const char *s1, const char *s2) {
-    return !strcmp(s1, s2);
-}
-
 int memfind(const char *list, const char *p, int len);
 int strfind(const char *list, const char *s);
 int strxfind(const char *list, const char *s);

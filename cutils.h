@@ -83,6 +83,9 @@ char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 char *pstrncat(char *buf, int buf_size, const char *s, int len);
 int strstart(const char *str, const char *val, const char **ptr);
 int strend(const char *str, const char *val, const char **ptr);
+static inline int strequal(const char *s1, const char *s2) {
+    return !strcmp(s1, s2);
+}
 
 size_t get_basename_offset(const char *filename);
 static inline const char *get_basename(const char *filename) {
