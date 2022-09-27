@@ -570,6 +570,7 @@ static int bufed_init(void)
 {
     /* inherit from list mode */
     /* CG: assuming list_mode already initialized ? */
+    // XXX: remove this mess
     memcpy(&bufed_mode, &list_mode, offsetof(ModeDef, first_key));
     bufed_mode.name = "bufed";
     bufed_mode.mode_probe = bufed_mode_probe;

@@ -154,7 +154,7 @@ static int unicode_ligature(unsigned int *buf_out,
     /* CG: C99 variable-length arrays may be too large */
     unsigned int buf[len];
 
-    memcpy(buf, buf_out, len * sizeof(unsigned int));
+    blockcpy(buf, buf_out, len);
 
     q = buf_out;
     for (i = 0; i < len;) {
@@ -287,7 +287,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
         len = src_size;
         if (len > dst_size)
             len = dst_size;
-        memcpy(dst, src, len * sizeof(unsigned int));
+        blockcpy(dst, src, len);
         if (char_to_glyph_pos) {
             for (i = 0; i < len; i++)
                 char_to_glyph_pos[i] = i;
@@ -300,7 +300,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
         len = src_size;
         for (i = 0; i < len; i++)
             ctog[i] = i;
-        memcpy(buf, src, len * sizeof(int));
+        blockcpy(buf, src, len);
 
         /* apply each filter */
 
@@ -327,10 +327,10 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
 
         if (len > dst_size)
             len = dst_size;
-        memcpy(dst, buf, len * sizeof(unsigned int));
+        blockcpy(dst, buf, len);
 
         if (char_to_glyph_pos) {
-            memcpy(char_to_glyph_pos, ctog, src_size * sizeof(unsigned int));
+            blockcpy(char_to_glyph_pos, ctog, src_size);
         }
     }
     return len;

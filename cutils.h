@@ -87,6 +87,15 @@ static inline int strequal(const char *s1, const char *s2) {
     return !strcmp(s1, s2);
 }
 
+/* Use these macros to avoid stupid size mistakes:
+ * n it a number of items
+ * p1 and p2 should have the same type
+ * the macro checks that the types pointed to by p1 and p2 have the same size
+ */
+#define blockcmp(p1, p2, n)   memcmp(p1, p2, (n) * sizeof *(p1) / (sizeof *(p1) == sizeof *(p2)))
+#define blockcpy(p1, p2, n)   memcpy(p1, p2, (n) * sizeof *(p1) / (sizeof *(p1) == sizeof *(p2)))
+#define blockmove(p1, p2, n) memmove(p1, p2, (n) * sizeof *(p1) / (sizeof *(p1) == sizeof *(p2)))
+
 size_t get_basename_offset(const char *filename);
 static inline const char *get_basename(const char *filename) {
     /*@API utils
@@ -226,6 +235,20 @@ static inline int clampp(int *pa, int b, int c) {
         return *pa = c;
     else
         return a;
+}
+
+static inline int max_uint(unsigned int a, unsigned int b) {
+    if (a > b)
+        return a;
+    else
+        return b;
+}
+
+static inline int min_uint(unsigned int a, unsigned int b) {
+    if (a < b)
+        return a;
+    else
+        return b;
 }
 
 static inline int compute_percent(int a, int b) {

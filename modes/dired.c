@@ -1526,6 +1526,7 @@ static int dired_init(void)
 {
     /* inherit from list mode */
     /* CG: assuming list_mode already initialized ? */
+    // XXX: remove this mess
     memcpy(&dired_mode, &list_mode, offsetof(ModeDef, first_key));
     dired_mode.name = "dired";
     dired_mode.mode_probe = dired_mode_probe;
@@ -1681,6 +1682,7 @@ static const CmdDef filelist_global_commands[] = {
 
 static int filelist_init(void)
 {
+    // XXX: remove this mess
     memcpy(&filelist_mode, &text_mode, offsetof(ModeDef, first_key));
     filelist_mode.name = "filelist";
     filelist_mode.mode_probe = NULL;

@@ -551,7 +551,7 @@ static int fractal_get_color(const char *p, int *dac) {
 
 static int fractal_set_colors(FractalState *ms, const char *p, const char **pp) {
     /* Set the default colors */
-    memcpy(ms->colors, xterm_colors, 256 * sizeof(*ms->colors));
+    blockcpy(ms->colors, xterm_colors, 256);
     ms->cb = 16;
     ms->nc = 216;
     fractal_invalidate(ms);
@@ -1177,6 +1177,7 @@ static void do_mandelbrot_test(EditState *s) {
 
     if (!fractal_mode.name) {
         /* populate and register shell mode and commands */
+        // XXX: remove this mess
         memcpy(&fractal_mode, &text_mode, offsetof(ModeDef, first_key));
         fractal_mode.name = "fractal";
         fractal_mode.mode_probe = fractal_mode_probe;

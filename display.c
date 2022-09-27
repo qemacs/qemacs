@@ -545,7 +545,7 @@ int qe_picture_set_palette(QEPicture *ip, int mode,
             return -1;
         }
         /* Default colors to standard palette */
-        memcpy(ip->palette, xterm_colors, 256 * sizeof(*ip->palette));
+        blockcpy(ip->palette, xterm_colors, 256);
     }
     count = min(count, 256);
     for (i = 0; i < count; i++) {

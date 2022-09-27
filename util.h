@@ -199,13 +199,11 @@ int ustrstart(const unsigned int *str, const char *val, int *lenp);
 int ustristart(const unsigned int *str, const char *val, int *lenp);
 const unsigned int *ustrstr(const unsigned int *str, const char *val);
 const unsigned int *ustristr(const unsigned int *str, const char *val);
-static inline unsigned int *umemmove(unsigned int *dest,
-                                     const unsigned int *src, size_t count) {
-    return (unsigned int *)memmove(dest, src, count * sizeof(unsigned int));
+static inline unsigned int *umemmove(unsigned int *dest, const unsigned int *src, size_t count) {
+    return blockmove(dest, src, count);
 }
-static inline unsigned int *umemcpy(unsigned int *dest,
-                                    const unsigned int *src, size_t count) {
-    return (unsigned int *)memcpy(dest, src, count * sizeof(unsigned int));
+static inline unsigned int *umemcpy(unsigned int *dest, const unsigned int *src, size_t count) {
+    return blockcpy(dest, src, count);
 }
 int umemcmp(const unsigned int *s1, const unsigned int *s2, size_t count);
 int qe_memicmp(const void *p1, const void *p2, size_t count);

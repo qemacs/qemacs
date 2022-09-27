@@ -893,7 +893,7 @@ static void tty_dpy_text_metrics(QEditScreen *s, QEFont *font,
 static unsigned int comb_cache_add(TTYState *ts, const unsigned int *seq, int len) {
     unsigned int *ip;
     for (ip = ts->comb_cache; *ip; ip += *ip & 0xFFFF) {
-        if (*ip == len + 1U && !memcmp(ip + 1, seq, len * sizeof(*ip))) {
+        if (*ip == len + 1U && !blockcmp(ip + 1, seq, len)) {
             return TTY_CHAR_COMB + (ip - ts->comb_cache);
         }
     }
@@ -914,7 +914,7 @@ static unsigned int comb_cache_add(TTYState *ts, const unsigned int *seq, int le
         ip[len + 1] = 0;
     }
     *ip = len + 1;
-    memcpy(ip + 1, seq, len * sizeof(*ip));
+    blockcpy(ip + 1, seq, len);
     return TTY_CHAR_COMB + (ip - ts->comb_cache);
 }
 
@@ -1526,7 +1526,7 @@ static int tty_dpy_draw_picture(QEditScreen *s,
     &&  ip->format == QEBITMAP_FORMAT_8BIT
     &&  ip->palette
     &&  ip->palette_size == 256
-    &&  !memcmp(ip->palette, xterm_colors, 256 * sizeof(*ip->palette))) {
+    &&  !blockcmp(ip->palette, xterm_colors, 256)) {
         /* Handle 8-bit picture with direct terminal colors */
         ptr = ts->screen + dst_y * s->width + dst_x;
         for (y = 0; y < dst_h; y++) {

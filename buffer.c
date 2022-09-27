@@ -190,7 +190,7 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
         b->nb_pages += n;
         qe_realloc(&b->page_table, b->nb_pages * sizeof(Page));
         p = &b->page_table[page_index];
-        memmove(p + n, p, sizeof(Page) * (b->nb_pages - n - page_index));
+        blockmove(p + n, p, b->nb_pages - n - page_index);
         while (size > 0) {
             len = size;
             if (len > MAX_PAGE_SIZE)
@@ -244,8 +244,7 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
                     /* if page was completely fused with previous one */
                     b->nb_pages -= 1;
                     qe_free(&p->data);
-                    memmove(p, p + 1,
-                            (b->nb_pages - page_index) * sizeof(Page));
+                    blockmove(p, p + 1, b->nb_pages - page_index);
                     qe_realloc(&b->page_table, b->nb_pages * sizeof(Page));
                     p = b->page_table + page_index - 1;
                     offset = p->size;
@@ -402,7 +401,7 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
         dest->nb_pages += n;
         qe_realloc(&dest->page_table, dest->nb_pages * sizeof(Page));
         q = dest->page_table + page_index;
-        memmove(q + n, q, sizeof(Page) * (dest->nb_pages - n - page_index));
+        blockmove(q + n, q, dest->nb_pages - n - page_index);
         p = p_start;
         while (n > 0) {
             len = p->size;
@@ -517,8 +516,8 @@ int eb_delete(EditBuffer *b, int offset, int size)
     /* now delete the requested pages */
     if (n > 0) {
         b->nb_pages -= n;
-        memmove(del_start, del_start + n,
-                (b->page_table + b->nb_pages - del_start) * sizeof(Page));
+        blockmove(del_start, del_start + n,
+                  b->page_table + b->nb_pages - del_start);
         qe_realloc(&b->page_table, b->nb_pages * sizeof(Page));
     }
 
@@ -595,7 +594,7 @@ static int eb_cache_remove(EditBuffer *b)
     if (cache[pos] != b)
         return -2;
 
-    memmove(cache + pos, cache + pos + 1, (len - pos - 1) * sizeof(*cache));
+    blockmove(cache + pos, cache + pos + 1, len - pos - 1);
     len -= 1;
     qs->buffer_cache_len = len;
     return 0;
@@ -619,7 +618,7 @@ static int eb_cache_insert(EditBuffer *b)
         qs->buffer_cache_size = size;
     }
     pos = -pos - 1;
-    memmove(cache + pos + 1, cache + pos, (len - pos) * sizeof(*cache));
+    blockmove(cache + pos + 1, cache + pos, len - pos);
     cache[pos] = b;
     len += 1;
     qs->buffer_cache_len = len;

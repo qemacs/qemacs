@@ -3705,6 +3705,7 @@ static const char * const pager_bindings[] = {
 static int shell_init(void)
 {
     /* populate and register shell mode and commands */
+    // XXX: remove this mess: should just inherit with fallback
     memcpy(&shell_mode, &text_mode, offsetof(ModeDef, first_key));
     shell_mode.name = "shell";
     shell_mode.flags |= MODEF_NO_TRAILING_BLANKS;
@@ -3731,6 +3732,7 @@ static int shell_init(void)
     qe_register_commands(NULL, shell_global_commands, countof(shell_global_commands));
 
     /* populate and register pager mode and commands */
+    // XXX: remove this mess: should just inherit with fallback
     memcpy(&pager_mode, &text_mode, offsetof(ModeDef, first_key));
     pager_mode.name = "pager";
     pager_mode.mode_probe = NULL;

@@ -211,7 +211,7 @@ void css_add_prop_values(CSSProperty ***last_prop,
     prop->property = property_index;
     prop->next = NULL;
     prop->nb_values = nb_values;
-    memcpy(&prop->value, val_ptr, nb_values * sizeof(CSSPropertyValue));
+    blockcpy(&prop->value, val_ptr, nb_values);
 
     **last_prop = prop;
     *last_prop = &prop->next;
@@ -818,7 +818,7 @@ static void dup_selector(CSSSimpleSelector *dest, CSSSimpleSelector *src)
     for (attr = src->attrs; attr != NULL; attr = attr->next)
         add_attribute(&plast_attr, attr->attr,
                       attr->op, attr->value);
-    memcpy(dest, src, sizeof(CSSSimpleSelector));
+    *dest = *src;
     dest->attrs = first_attr;
 }
 

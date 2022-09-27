@@ -407,8 +407,7 @@ static void isearch_addpos(EditState *s, int dir) {
     is->dir = dir;
     if (is->search_u32_len == 0 && is->dir == curdir) {
         int len = min(last_search_u32_len, SEARCH_LENGTH - is->pos);
-        memcpy(is->search_u32_flags + is->pos, last_search_u32,
-               len * sizeof(*is->search_u32_flags));
+        blockcpy(is->search_u32_flags + is->pos, last_search_u32, len);
         is->pos += len;
         is->search_flags = last_search_u32_flags;
     } else
@@ -488,8 +487,7 @@ static void isearch_end(ISearchState *is) {
     /* save current searched string */
     // XXX: should save search strings to a history buffer
     if (is->search_u32_len > 0) {
-        memcpy(last_search_u32, is->search_u32,
-               is->search_u32_len * sizeof(*is->search_u32));
+        blockcpy(last_search_u32, is->search_u32, is->search_u32_len);
         last_search_u32_len = is->search_u32_len;
         last_search_u32_flags = is->search_flags;
     }

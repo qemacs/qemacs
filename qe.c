@@ -347,9 +347,7 @@ static int qe_unregister_binding(ModeDef *m, unsigned int *keys, int nb_keys) {
 
     lp = m ? &m->first_key : &qs->first_key;
     while (*lp) {
-        if ((*lp)->nb_keys == nb_keys
-        &&  !memcmp((*lp)->keys, keys, nb_keys * sizeof(*keys)))
-        {
+        if ((*lp)->nb_keys == nb_keys && !blockcmp((*lp)->keys, keys, nb_keys)) {
             p = *lp;
             *lp = p->next;
             qe_free(&p);
@@ -3820,9 +3818,9 @@ static void keep_line_chars(DisplayState *ds, int n)
     int index;
 
     index = ds->line_index - n;
-    memmove(ds->line_chars, ds->line_chars + index, n * sizeof(unsigned int));
-    memmove(ds->line_offsets, ds->line_offsets + index, n * 2 * sizeof(unsigned int));
-    memmove(ds->line_char_widths, ds->line_char_widths + index, n * sizeof(short));
+    blockmove(ds->line_chars, ds->line_chars + index, n);
+    blockmove(ds->line_offsets, ds->line_offsets + index, n);
+    blockmove(ds->line_char_widths, ds->line_char_widths + index, n);
     ds->line_index = n;
 }
 
@@ -3838,7 +3836,7 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
     len = src_size;
     if (len > dst_size)
         len = dst_size;
-    memcpy(dst, src, len * sizeof(unsigned int));
+    blockcpy(dst, src, len);
     if (char_to_glyph_pos) {
         for (i = 0; i < len; i++)
             char_to_glyph_pos[i] = i;
@@ -4003,7 +4001,7 @@ static void flush_fragment(DisplayState *ds)
             /* move the remaining fragment to next line */
             ds->nb_fragments = 0;
             if (len1 > 0) {
-                memmove(ds->fragments, frag, sizeof(TextFragment));
+                blockmove(ds->fragments, frag, 1);
                 frag = ds->fragments;
                 frag->width = w1;
                 frag->line_index = 0;
@@ -4027,8 +4025,8 @@ static void flush_fragment(DisplayState *ds)
 
             /* put words on next line */
             index = ds->fragments[ds->word_index].line_index;
-            memmove(ds->fragments, ds->fragments + ds->word_index,
-                    (ds->nb_fragments - ds->word_index) * sizeof(TextFragment));
+            blockmove(ds->fragments, ds->fragments + ds->word_index,
+                      (ds->nb_fragments - ds->word_index));
             ds->nb_fragments -= ds->word_index;
 
             for (i = 0; i < ds->nb_fragments; i++) {
@@ -5737,7 +5735,7 @@ KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd, int exact)
 {
     for (; kd != NULL; kd = kd->next) {
         if (kd->nb_keys >= nb_keys
-        &&  !memcmp(kd->keys, keys, nb_keys * sizeof(keys[0]))
+        &&  !blockcmp(kd->keys, keys, nb_keys)
         &&  (!exact || kd->nb_keys == nb_keys)) {
             break;
         }
@@ -7056,6 +7054,7 @@ static const CmdDef minibuffer_commands[] = {
 void minibuffer_init(void)
 {
     /* populate and register minibuffer mode and commands */
+    // XXX: remove this mess: should just inherit with fallback
     memcpy(&minibuffer_mode, &text_mode, offsetof(ModeDef, first_key));
     minibuffer_mode.name = "minibuffer";
     minibuffer_mode.mode_probe = NULL;
@@ -7127,6 +7126,7 @@ static void list_display_hook(EditState *s)
 
 static int list_init(void)
 {
+    // XXX: remove this mess: should just inherit with fallback
     memcpy(&list_mode, &text_mode, offsetof(ModeDef, first_key));
     list_mode.name = "list";
     list_mode.mode_probe = NULL;
@@ -7210,6 +7210,7 @@ static const CmdDef popup_commands[] = {
 static void popup_init(void)
 {
     /* popup mode inherits from text mode */
+    // XXX: remove this mess: should just inherit with fallback
     memcpy(&popup_mode, &text_mode, offsetof(ModeDef, first_key));
     popup_mode.name = "popup";
     popup_mode.mode_probe = NULL;
@@ -7608,10 +7609,8 @@ static int probe_mode(EditState *s, EditBuffer *b,
                     if (found_modes >= nb_modes)
                         found_modes = nb_modes - 1;
                     if (i < found_modes) {
-                        memmove(modes + i + 1, modes + i,
-                                (found_modes - i) * sizeof(*modes));
-                        memmove(scores + i + 1, scores + i,
-                                (found_modes - i) * sizeof(*scores));
+                        blockmove(modes + i + 1, modes + i, found_modes - i);
+                        blockmove(scores + i + 1, scores + i, found_modes - i);
                     }
                     modes[i] = m;
                     scores[i] = score;

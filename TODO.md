@@ -409,6 +409,8 @@ insert_window_left()  deletes some left-most windows
   * generate #include lines automatically
 * autocomplete keyword, function, variable, member names
 * `c-mode` descendants:
+  * TAB at end of line or in space before \ should align on \ from previous line
+  * preserve macro \ alignment when editing
   * see if java/javascript/c++ is OK.
   * `as-mode`: ActionStript files
   * `awk-mode`
