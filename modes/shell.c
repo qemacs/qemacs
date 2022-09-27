@@ -516,7 +516,7 @@ static int qe_term_skip_lines(ShellState *s, int offset, int n) {
             /* TAB at EOL does not move the cursor */
             x = min(x + w, s->cols - 1);
         } else {
-            w = unicode_tty_glyph_width(c);
+            w = qe_wcwidth(c);
             x += w;
             if (x >= s->cols) {
                 /* handle line wrapping */
@@ -589,7 +589,7 @@ static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int fl
                 /* TAB at EOL does not move the cursor */
                 x = min(x + w, s->cols - 1);
             } else {
-                w = unicode_tty_glyph_width(c);
+                w = qe_wcwidth(c);
                 x += w;
                 if (x >= s->cols) {
                     /* handle line wrapping */
@@ -616,7 +616,7 @@ static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int fl
         if (x >= s->cols - 1 && offset == destoffset) {
             /* check if current glyph causes line wrap */
             c = eb_nextc(s->b, offset, &offset1);
-            if (c != '\n' && x + unicode_tty_glyph_width(c) > s->cols) {
+            if (c != '\n' && x + qe_wcwidth(c) > s->cols) {
                 y++;
                 x = 0;
                 gpflags |= SP_LINE_START_WRAP1;
@@ -655,7 +655,7 @@ static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int fl
                 w = (x + 8) & ~7;
                 x = min(x + w, s->cols - 1);
             } else {
-                w = unicode_tty_glyph_width(c);
+                w = qe_wcwidth(c);
                 x += w;
                 if (x >= s->cols) {
                     if (x > s->cols) {
@@ -704,7 +704,7 @@ static int qe_term_get_pos(ShellState *s, int destoffset, int *px, int *py) {
                 /* TAB at EOL does not move the cursor */
                 x = min(x + w, s->cols - 1);
             } else {
-                w = unicode_tty_glyph_width(c);
+                w = qe_wcwidth(c);
                 x += w;
                 if (x >= s->cols) {
                     /* handle line wrapping */
@@ -727,7 +727,7 @@ static int qe_term_get_pos(ShellState *s, int destoffset, int *px, int *py) {
         if (x >= s->cols - 1 && offset == destoffset) {
             /* check if current glyph causes line wrap */
             c = eb_nextc(s->b, offset, &offset1);
-            if (c != '\n' && x + unicode_tty_glyph_width(c) > s->cols) {
+            if (c != '\n' && x + qe_wcwidth(c) > s->cols) {
                 y++;
                 x = 0;
             }
@@ -847,7 +847,7 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
             } else {
                 /* if destination x is in the middle of a wide character,
                    actual x will be too far */
-                w = unicode_tty_glyph_width(c);
+                w = qe_wcwidth(c);
                 // XXX: this test is inefficient, should first skip desty rows
                 //      then skip destx columns
                 if (w > 1 && y == desty && x + w > destx) {
@@ -1536,7 +1536,7 @@ static void qe_term_emulate(ShellState *s, int c)
         if (s->term_pos >= s->utf8_len) {
             const char *p = cs8(s->term_buf);
             int ch = s->lastc = utf8_decode(&p);
-            int w = unicode_tty_glyph_width(ch);
+            int w = qe_wcwidth(ch);
             if (w == 0) {
                 /* accents are always inserted */
                 // XXX: what if s->cur_offset_hack is not 0?
@@ -2040,7 +2040,7 @@ static void qe_term_emulate(ShellState *s, int c)
         case 'b':  /* REP: Repeat the preceding graphic character Ps times. */
             {
                 int rep = min(param1, s->cols);
-                int w = unicode_tty_glyph_width(s->lastc);
+                int w = qe_wcwidth(s->lastc);
                 len = eb_encode_uchar(s->b, buf1, s->lastc);
                 while (rep --> 0) {
                     s->cur_offset = qe_term_overwrite(s, s->cur_offset, w, buf1, len);

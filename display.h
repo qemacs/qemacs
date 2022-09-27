@@ -127,6 +127,7 @@ struct QEditScreen {
     int width, height;
     QECharset *charset; /* the charset of the TTY, XXX: suppress that,
                           use a system in fonts instead */
+    int unicode_version;
     int media; /* media type (see CSS_MEDIA_xxx) */
     QEBitmapFormat bitmap_format; /* supported bitmap format */
     QEBitmapFormat video_format; /* supported video format */

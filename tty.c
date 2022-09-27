@@ -146,6 +146,8 @@ typedef struct TTYState {
     const QEColor *tty_colors;
     int tty_fg_colors_count;
     int tty_bg_colors_count;
+    /* cache for glyph combinations */
+    // XXX: should keep track of max_comb and max_max_comb
     unsigned int comb_cache[COMB_CACHE_SIZE];
 } TTYState;
 
@@ -339,13 +341,55 @@ static int tty_dpy_init(QEditScreen *s,
         //printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
         /* Just print utf-8 encoding for eacute and check cursor position */
         TTY_FPRINTF(s->STDOUT, "%s",
-                    "\030\032" "\r\xC3\xA9" "\033[6n\033D");
+                    "\030\032"
+                    "\r\xC3\xA9"
+                    "\033[6n"
+                    /* "\033D" */);
         fflush(s->STDOUT);
         /* XXX: should have a timeout to avoid locking on unsupported terminals */
-        n = fscanf(s->STDIN, "\033[%d;%d", &y, &x);  /* get cursor position */
+        n = fscanf(s->STDIN, "\033[%d;%dR", &y, &x);  /* get cursor position */
         TTY_FPRINTF(s->STDOUT, "\r   \r");        /* go back, erase 3 chars */
         if (n == 2 && x == 2) {
+            /* determine the unicode version supported */
+            static char const wide_by_version[][6] = {
+                /*  4.1.0: default, 5.0.0: same wide characters */
+                {  41, 0x00 },
+                /*  5.1.0:  40892 U+9FBC  */
+                {  51, 0xE9, 0xBE, 0xBC },
+                /*  5.2.0: 127535 U+1F22F */
+                {  52, 0xF0, 0x9F, 0x88, 0xAF },
+                /*  6.0.0: 127489 U+1F201 SQUARED KATAKANA KOKO */
+                {  60, 0xF0, 0x9F, 0x88, 0x81 },
+                /*  8.0.0: 127568 U+1F250 CIRCLED IDEOGRAPH ADVANTAGE */
+                {  80, 0xF0, 0x9F, 0x89, 0x90 },
+                /*  9.0.0: 128057 U+1F439 HAMSTER FACE */
+                {  90, 0xF0, 0x9F, 0x90, 0xB9 },
+                /* 10.0.0: 129430 U+1F996 T-REX */
+                { 100, 0xF0, 0x9F, 0xA6, 0x96 },
+                /* 11.0.0: 129514 U+1F9EA TEST TUBE */
+                { 110, 0xF0, 0x9F, 0xA7, 0xAA },
+                /* 12.0.0: 129680 U+1FA90 RINGED PLANET */
+                { 120, 0xF0, 0x9F, 0xAA, 0x90 },
+                /* 12.1.0:  13055 U+32FF  SQUARE ERA NAME REIWA */
+                { 121, 0xE3, 0x8B, 0xBF },
+                /* 13.0.0: 129749 U+1FAD5 FONDUE */
+                { 130, 0xF0, 0x9F, 0xAB, 0x95 },
+                /* 14.0.0: 128733 U+1F6DD PLAYGROUND SLIDE */
+                { 140, 0xF0, 0x9F, 0x9B, 0x9D },
+                /* 15.0.0: 128732 U+1F6DC WIRELESS */
+                { 150, 0xF0, 0x9F, 0x9B, 0x9C },
+            };
+            int i;
             s->charset = &charset_utf8;
+            for (i = 1; i < countof(wide_by_version); i++) {
+                TTY_FPRINTF(s->STDOUT, "\r%s\033[6n", wide_by_version[i] + 1);
+                fflush(s->STDOUT);
+                n = fscanf(s->STDIN, "\033[%d;%dR", &y, &x);  /* get cursor position */
+                TTY_FPRINTF(s->STDOUT, "\r    \r");          /* go back, erase 4 chars */
+                if (n != 2 || x != 3)
+                    break;
+            }
+            s->unicode_version = (unsigned char)wide_by_version[i - 1][0];
         }
     }
     put_status(NULL, "tty charset: %s", s->charset->name);
@@ -870,7 +914,7 @@ static inline int tty_term_glyph_width(qe__unused__ QEditScreen *s, unsigned int
     if (ucs < 0x300)
         return 1;
 
-    return unicode_tty_glyph_width(ucs);
+    return qe_wcwidth(ucs);
 }
 
 static void tty_dpy_text_metrics(QEditScreen *s, QEFont *font,
@@ -922,19 +966,24 @@ static void comb_cache_clean(TTYState *ts, const TTYChar *screen, int len) {
     unsigned int *ip;
     int i;
 
+    /* quick exit if cache is empty */
     if (ts->comb_cache[0] == 0)
         return;
 
+    /* mark all entries as free */
     for (ip = ts->comb_cache; *ip != 0; ip += *ip & 0xFFFF) {
         *ip |= 0x10000;
     }
     ip = ts->comb_cache;
+    /* scan the actual screen for combining glyphs */
     for (i = 0; i < len; i++) {
         int ch = TTY_CHAR_GET_CH(screen[i]);
         if (ch >= TTY_CHAR_COMB && ch < TTY_CHAR_COMB + countof(ts->comb_cache) - 1) {
+            /* mark the cache entry as used */
             ip[ch - TTY_CHAR_COMB] &= ~0x10000;
         }
     }
+    /* scan the cache to coalesce free entries */
     for (; *ip != 0; ip += *ip & 0xFFFF) {
         if (*ip & 0x10000) {
             while (ip[*ip & 0xFFFF] & 0x10000) {
@@ -1105,7 +1154,11 @@ static void tty_dpy_flush(QEditScreen *s)
 {
     TTYState *ts = s->priv_data;
     TTYChar *ptr, *ptr1, *ptr2, *ptr3, *ptr4, cc, blankcc;
-    int y, shadow, ch, bgcolor, fgcolor, shifted, attr;
+    int y, shadow, ch, bgcolor, fgcolor, shifted, gotopos, attr;
+
+    /* CG: Should optimize output by computing it in a temporary buffer
+     * and flushing it in one call to fwrite()
+     */
 
     /* Hide cursor, goto home, reset attributes */
     TTY_FPUTS("\033[?25l\033[H\033[0m", s->STDOUT);
@@ -1118,10 +1171,7 @@ static void tty_dpy_flush(QEditScreen *s)
     fgcolor = -1;
     attr = 0;
     shifted = 0;
-
-    /* CG: Should optimize output by computing it in a temporary buffer
-     * and flushing it in one call to fwrite()
-     */
+    gotopos = 0;
 
     shadow = ts->screen_size;
     /* We cannot print anything on the bottom right screen cell,
@@ -1197,186 +1247,210 @@ static void tty_dpy_flush(QEditScreen *s)
              * double-width glyphs on the row in front of this
              * difference (actually it should)
              */
-            TTY_FPRINTF(s->STDOUT, "\033[%d;%dH",
-                        y + 1, (int)(ptr1 - ptr + 1));
-
+            gotopos = 1;
             while (ptr1 < ptr4) {
                 cc = *ptr1;
                 ptr1[shadow] = cc;
                 ptr1++;
                 ch = TTY_CHAR_GET_CH(cc);
-                if ((unsigned int)ch != TTY_CHAR_NONE) {
-                    /* output attributes */
-                    if (bgcolor != (int)TTY_CHAR_GET_BG(cc)) {
-                        int lastbg = bgcolor;
-                        bgcolor = TTY_CHAR_GET_BG(cc);
+                if ((unsigned int)ch == TTY_CHAR_NONE)
+                    continue;
+                if (gotopos) {
+                    /* Move the cursor: row and col are 1 based
+                       but ptr1 has already been incremented */
+                    gotopos = 0;
+                    TTY_FPRINTF(s->STDOUT, "\033[%d;%dH",
+                                y + 1, (int)(ptr1 - ptr));
+                }
+                /* output attributes */
+                if (bgcolor != (int)TTY_CHAR_GET_BG(cc)) {
+                    int lastbg = bgcolor;
+                    bgcolor = TTY_CHAR_GET_BG(cc);
 #if TTY_STYLE_BITS == 32
-                        if (ts->term_bg_colors_count > 256 && bgcolor >= 256) {
-                            /* XXX: should special case dynamic palette */
-                            QEColor rgb = qe_unmap_color(bgcolor, ts->tty_bg_colors_count);
-                            TTY_FPRINTF(s->STDOUT, "\033[48;2;%d;%d;%dm",
-                                        (rgb >> 16) & 255, (rgb >> 8) & 255, (rgb >> 0) & 255);
-                        } else
+                    if (ts->term_bg_colors_count > 256 && bgcolor >= 256) {
+                        /* XXX: should special case dynamic palette */
+                        QEColor rgb = qe_unmap_color(bgcolor, ts->tty_bg_colors_count);
+                        TTY_FPRINTF(s->STDOUT, "\033[48;2;%d;%d;%dm",
+                                    (rgb >> 16) & 255, (rgb >> 8) & 255, (rgb >> 0) & 255);
+                    } else
 #endif
-                        if (ts->term_bg_colors_count > 16 && bgcolor >= 16) {
-                            TTY_FPRINTF(s->STDOUT, "\033[48;5;%dm", bgcolor);
-                        } else
-                        if (ts->term_flags & USE_BLINK_AS_BRIGHT_BG) {
-                            if (bgcolor > 7) {
-                                if (lastbg <= 7) {
-                                    TTY_FPUTS("\033[5m", s->STDOUT);
-                                }
-                            } else {
-                                if (lastbg > 7) {
-                                    TTY_FPUTS("\033[25m", s->STDOUT);
-                                }
-                            }
-                            TTY_FPRINTF(s->STDOUT, "\033[%dm", 40 + (bgcolor & 7));
-                        } else {
-                            TTY_FPRINTF(s->STDOUT, "\033[%dm",
-                                        bgcolor > 7 ? 100 + bgcolor - 8 :
-                                        40 + bgcolor);
-                        }
-                    }
-                    /* do not special case SPC on fg color change
-                    * because of combining marks */
-                    if (fgcolor != (int)TTY_CHAR_GET_FG(cc)) {
-                        int lastfg = fgcolor;
-                        fgcolor = TTY_CHAR_GET_FG(cc);
-#if TTY_STYLE_BITS == 32
-                        if (ts->term_fg_colors_count > 256 && fgcolor >= 256) {
-                            QEColor rgb = qe_unmap_color(fgcolor, ts->tty_fg_colors_count);
-                            TTY_FPRINTF(s->STDOUT, "\033[38;2;%d;%d;%dm",
-                                        (rgb >> 16) & 255, (rgb >> 8) & 255, (rgb >> 0) & 255);
-                        } else
-#endif
-                        if (ts->term_fg_colors_count > 16 && fgcolor >= 16) {
-                            TTY_FPRINTF(s->STDOUT, "\033[38;5;%dm", fgcolor);
-                        } else
-                        if (ts->term_flags & USE_BOLD_AS_BRIGHT_FG) {
-                            if (fgcolor > 7) {
-                                if (lastfg <= 7) {
-                                    TTY_FPUTS("\033[1m", s->STDOUT);
-                                }
-                            } else {
-                                if (lastfg > 7) {
-                                    TTY_FPUTS("\033[22m", s->STDOUT);
-                                }
-                            }
-                            TTY_FPRINTF(s->STDOUT, "\033[%dm", 30 + (fgcolor & 7));
-                        } else {
-                            TTY_FPRINTF(s->STDOUT, "\033[%dm",
-                                        fgcolor > 8 ? 90 + fgcolor - 8 :
-                                        30 + fgcolor);
-                        }
-                    }
-                    if (attr != (int)TTY_CHAR_GET_COL(cc)) {
-                        int lastattr = attr;
-                        attr = TTY_CHAR_GET_COL(cc);
-
-                        if ((attr ^ lastattr) & TTY_BOLD) {
-                            if (attr & TTY_BOLD) {
-                                TTY_FPUTS("\033[1m", s->STDOUT);
-                            } else {
-                                TTY_FPUTS("\033[22m", s->STDOUT);
-                            }
-                        }
-                        if ((attr ^ lastattr) & TTY_UNDERLINE) {
-                            if (attr & TTY_UNDERLINE) {
-                                TTY_FPUTS("\033[4m", s->STDOUT);
-                            } else {
-                                TTY_FPUTS("\033[24m", s->STDOUT);
-                            }
-                        }
-                        if ((attr ^ lastattr) & TTY_BLINK) {
-                            if (attr & TTY_BLINK) {
+                    if (ts->term_bg_colors_count > 16 && bgcolor >= 16) {
+                        TTY_FPRINTF(s->STDOUT, "\033[48;5;%dm", bgcolor);
+                    } else
+                    if (ts->term_flags & USE_BLINK_AS_BRIGHT_BG) {
+                        if (bgcolor > 7) {
+                            if (lastbg <= 7) {
                                 TTY_FPUTS("\033[5m", s->STDOUT);
-                            } else {
+                            }
+                        } else {
+                            if (lastbg > 7) {
                                 TTY_FPUTS("\033[25m", s->STDOUT);
                             }
                         }
-                        if ((attr ^ lastattr) & TTY_ITALIC) {
-                            if (attr & TTY_ITALIC) {
-                                TTY_FPUTS("\033[3m", s->STDOUT);
-                            } else {
-                                TTY_FPUTS("\033[23m", s->STDOUT);
-                            }
-                        }
+                        TTY_FPRINTF(s->STDOUT, "\033[%dm", 40 + (bgcolor & 7));
+                    } else {
+                        TTY_FPRINTF(s->STDOUT, "\033[%dm",
+                                    bgcolor > 7 ? 100 + bgcolor - 8 :
+                                    40 + bgcolor);
                     }
-                    if (shifted) {
-                        /* Kludge for linedrawing chars */
-                        if (ch < 128 || ch >= 128 + 32) {
-                            TTY_FPUTS("\033(B", s->STDOUT);
-                            shifted = 0;
-                        }
-                    }
-
-                    /* do not display escape codes or invalid codes */
-                    if (ch < 32 || ch == 127) {
-                        TTY_PUTC('.', s->STDOUT);
-                    } else
-                    if (ch < 127) {
-                        TTY_PUTC(ch, s->STDOUT);
-                    } else
-                    if (ch < 128 + 32) {
-                        /* Kludges for linedrawing chars */
-                        if (ts->term_code == TERM_CYGWIN) {
-                            static const char unitab_xterm_poorman[32] =
-                                "*#****o~**+++++-----++++|****L. ";
-                            TTY_PUTC(unitab_xterm_poorman[ch - 128],
-                                     s->STDOUT);
-                        } else {
-                            if (!shifted) {
-                                TTY_FPUTS("\033(0", s->STDOUT);
-                                shifted = 1;
-                            }
-                            TTY_PUTC(ch - 32, s->STDOUT);
-                        }
-                    } else
-#if COMB_CACHE_SIZE > 1
-                    if (ch >= TTY_CHAR_COMB && ch < TTY_CHAR_COMB + COMB_CACHE_SIZE - 1) {
-                        u8 buf[10], *q;
-                        unsigned int *ip = ts->comb_cache + (ch - TTY_CHAR_COMB);
-                        int ncc = *ip++;
-
-                        if (ncc < 0x300) {
-                            while (ncc-- > 1) {
-                                q = s->charset->encode_func(s->charset, buf, *ip++);
-                                if (q) {
-                                    TTY_FWRITE(buf, 1, q - buf, s->STDOUT);
-                                }
-                            }
-                        }
+                }
+                /* do not special case SPC on fg color change
+                 * because of combining marks */
+                if (fgcolor != (int)TTY_CHAR_GET_FG(cc)) {
+                    int lastfg = fgcolor;
+                    fgcolor = TTY_CHAR_GET_FG(cc);
+#if TTY_STYLE_BITS == 32
+                    if (ts->term_fg_colors_count > 256 && fgcolor >= 256) {
+                        QEColor rgb = qe_unmap_color(fgcolor, ts->tty_fg_colors_count);
+                        TTY_FPRINTF(s->STDOUT, "\033[38;2;%d;%d;%dm",
+                                    (rgb >> 16) & 255, (rgb >> 8) & 255, (rgb >> 0) & 255);
                     } else
 #endif
-                    {
-                        u8 buf[10], *q;
-                        int nc;
-
-                        // was in qemacs-0.3.1.g2.gw/tty.c:
-                        // if (cc == 0x2500)
-                        //    printf("\016x\017");
-                        /* s->charset is either latin1 or utf-8 */
-                        q = s->charset->encode_func(s->charset, buf, ch);
-                        if (!q) {
-                            if (s->charset == &charset_8859_1) {
-                                /* upside down question mark */
-                                buf[0] = 0xBF;
-                            } else {
-                                buf[0] = '?';
+                    if (ts->term_fg_colors_count > 16 && fgcolor >= 16) {
+                        TTY_FPRINTF(s->STDOUT, "\033[38;5;%dm", fgcolor);
+                    } else
+                    if (ts->term_flags & USE_BOLD_AS_BRIGHT_FG) {
+                        if (fgcolor > 7) {
+                            if (lastfg <= 7) {
+                                TTY_FPUTS("\033[1m", s->STDOUT);
                             }
-                            q = buf + 1;
-                            if (tty_term_glyph_width(s, ch) == 2) {
-                                *q++ = '?';
-                            }
-                        }
-
-                        nc = q - buf;
-                        if (nc == 1) {
-                            TTY_PUTC(*buf, s->STDOUT);
                         } else {
-                            TTY_FWRITE(buf, 1, nc, s->STDOUT);
+                            if (lastfg > 7) {
+                                TTY_FPUTS("\033[22m", s->STDOUT);
+                            }
                         }
+                        TTY_FPRINTF(s->STDOUT, "\033[%dm", 30 + (fgcolor & 7));
+                    } else {
+                        TTY_FPRINTF(s->STDOUT, "\033[%dm",
+                                    fgcolor > 8 ? 90 + fgcolor - 8 :
+                                    30 + fgcolor);
+                    }
+                }
+                if (attr != (int)TTY_CHAR_GET_COL(cc)) {
+                    int lastattr = attr;
+                    attr = TTY_CHAR_GET_COL(cc);
+
+                    if ((attr ^ lastattr) & TTY_BOLD) {
+                        if (attr & TTY_BOLD) {
+                            TTY_FPUTS("\033[1m", s->STDOUT);
+                        } else {
+                            TTY_FPUTS("\033[22m", s->STDOUT);
+                        }
+                    }
+                    if ((attr ^ lastattr) & TTY_UNDERLINE) {
+                        if (attr & TTY_UNDERLINE) {
+                            TTY_FPUTS("\033[4m", s->STDOUT);
+                        } else {
+                            TTY_FPUTS("\033[24m", s->STDOUT);
+                        }
+                    }
+                    if ((attr ^ lastattr) & TTY_BLINK) {
+                        if (attr & TTY_BLINK) {
+                            TTY_FPUTS("\033[5m", s->STDOUT);
+                        } else {
+                            TTY_FPUTS("\033[25m", s->STDOUT);
+                        }
+                    }
+                    if ((attr ^ lastattr) & TTY_ITALIC) {
+                        if (attr & TTY_ITALIC) {
+                            TTY_FPUTS("\033[3m", s->STDOUT);
+                        } else {
+                            TTY_FPUTS("\033[23m", s->STDOUT);
+                        }
+                    }
+                }
+                if (shifted) {
+                    /* Kludge for linedrawing chars */
+                    if (ch < 128 || ch >= 128 + 32) {
+                        TTY_FPUTS("\033(B", s->STDOUT);
+                        shifted = 0;
+                    }
+                }
+
+                /* do not display escape codes or invalid codes */
+                if (ch < 32 || ch == 127) {
+                    TTY_PUTC('.', s->STDOUT);
+                } else
+                if (ch < 127) {
+                    TTY_PUTC(ch, s->STDOUT);
+                } else
+                if (ch < 128 + 32) {
+                    /* Kludges for linedrawing chars */
+                    if (ts->term_code == TERM_CYGWIN) {
+                        static const char unitab_xterm_poorman[32] =
+                        "*#****o~**+++++-----++++|****L. ";
+                        TTY_PUTC(unitab_xterm_poorman[ch - 128],
+                                 s->STDOUT);
+                    } else {
+                        if (!shifted) {
+                            TTY_FPUTS("\033(0", s->STDOUT);
+                            shifted = 1;
+                        }
+                        TTY_PUTC(ch - 32, s->STDOUT);
+                    }
+                } else
+#if COMB_CACHE_SIZE > 1
+                if (ch >= TTY_CHAR_COMB && ch < TTY_CHAR_COMB + COMB_CACHE_SIZE - 1) {
+                    u8 buf[10], *q;
+                    unsigned int *ip = ts->comb_cache + (ch - TTY_CHAR_COMB);
+                    int ncc = *ip++;
+
+                    /* this is a sanity test: check that we have a valid combination
+                       offset: should actually test against some maximum number of
+                       combining glyphs which should likely be below 32.
+                     */
+                    if (ncc < 0x300) {
+                        while (ncc-- > 1) {
+                            q = s->charset->encode_func(s->charset, buf, *ip++);
+                            if (q) {
+                                TTY_FWRITE(buf, 1, q - buf, s->STDOUT);
+                                // XXX: should check s->unicode_version for
+                                //      terminal support of non ASCII codepoint
+                                //      and force GOTOPOS if unsupported
+                                /* force cursor repositioning if glyph may have variants */
+                                gotopos |= qe_wcwidth_variant(ip[-1]);
+                            } else {
+                                gotopos = 1;
+                            }
+                        }
+                    } else {
+                        /* invalid comb cache offset: must issue gotopos */
+                        gotopos = 1;
+                    }
+                } else
+#endif
+                {
+                    u8 buf[10], *q;
+                    int nc;
+
+                    // was in qemacs-0.3.1.g2.gw/tty.c:
+                    // if (cc == 0x2500)
+                    //    printf("\016x\017");
+                    /* s->charset is either latin1 or utf-8 */
+                    q = s->charset->encode_func(s->charset, buf, ch);
+                    if (!q) {
+                        if (s->charset == &charset_8859_1) {
+                            /* upside down question mark */
+                            buf[0] = 0xBF;
+                        } else {
+                            buf[0] = '?';
+                        }
+                        q = buf + 1;
+                        if (tty_term_glyph_width(s, ch) == 2) {
+                            *q++ = '?';
+                        }
+                    } else {
+                        // XXX: check s->unicode_version for
+                        //      terminal support of non ASCII codepoint
+                        //      and force GOTOPOS if unsupported
+                        /* force cursor repositioning if glyph may have variants */
+                        gotopos |= qe_wcwidth_variant(ch);
+                    }
+                    nc = q - buf;
+                    if (nc == 1) {
+                        TTY_PUTC(*buf, s->STDOUT);
+                    } else {
+                        TTY_FWRITE(buf, 1, nc, s->STDOUT);
                     }
                 }
             }
@@ -1387,6 +1461,13 @@ static void tty_dpy_flush(QEditScreen *s)
             if (ptr1 < ptr2) {
                 /* More differences to synch in shadow, erase eol */
                 cc = *ptr1;
+                if (gotopos) {
+                    /* Move the cursor: row and col are 1 based
+                       but ptr1 has already been incremented */
+                    gotopos = 0;
+                    TTY_FPRINTF(s->STDOUT, "\033[%d;%dH",
+                                y + 1, (int)(ptr1 - ptr));
+                }
                 /* the current attribute is already set correctly */
                 TTY_FPUTS("\033[K", s->STDOUT);
                 while (ptr1 < ptr2) {
@@ -1394,7 +1475,8 @@ static void tty_dpy_flush(QEditScreen *s)
                     ptr1++;
                 }
             }
-//            if (ts->term_flags & USE_BLINK_AS_BRIGHT_BG)
+            // XXX: should check if needed
+            //if (ts->term_flags & USE_BLINK_AS_BRIGHT_BG)
             {
                 if (bgcolor > 7) {
                     TTY_FPUTS("\033[0m", s->STDOUT);
@@ -1405,6 +1487,7 @@ static void tty_dpy_flush(QEditScreen *s)
         }
     }
 
+    // XXX: should check if needed
     TTY_FPUTS("\033[0m", s->STDOUT);
     if (ts->cursor_y + 1 >= 0 && ts->cursor_x + 1 >= 0) {
         TTY_FPRINTF(s->STDOUT, "\033[?25h\033[%d;%dH",
@@ -1412,7 +1495,10 @@ static void tty_dpy_flush(QEditScreen *s)
     }
     fflush(s->STDOUT);
 
-    /* Update combination cache from screen. Should do this before redisplay */
+    /* Update combination cache from screen.
+     * Shadow is identical to screen so no need to scan it.
+     * Should do this before redisplay?
+     */
     comb_cache_clean(ts, ts->screen, ts->screen_size);
 }
 

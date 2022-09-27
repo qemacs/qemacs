@@ -22,6 +22,8 @@
 #ifndef CHARSET_H
 #define CHARSET_H
 
+#include "wcwidth.h"
+
 /* maximum number of bytes for a character in all the supported charsets */
 #define MAX_CHAR_BYTES 6
 

@@ -230,7 +230,8 @@ endif	# TARGET_TINY
 SRCS:= $(OBJS:.o=.c)
 
 DEPENDS:= qe.h config.h config.mak charset.h color.h cutils.h display.h \
-		qestyles.h qfribidi.h util.h variables.h lang/clang.h
+		qestyles.h qfribidi.h util.h variables.h lang/clang.h \
+		wcwidth.h
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
 BINDIR:=$(DEPTH)/bin
@@ -326,7 +327,7 @@ $(OBJS_DIR)/$(TARGET)_modules.c: $(SRCS) Makefile
 	@echo '}'                                           >> $@
 
 $(OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h
-$(OBJS_DIR)/charset.o: charset.c unicode_width.h
+$(OBJS_DIR)/charset.o: charset.c wcwidth.c
 $(OBJS_DIR)/charsetjis.o: charsetjis.c charsetjis.def
 $(OBJS_DIR)/fbfrender.o: fbfrender.c fbfrender.h libfbf.h
 $(OBJS_DIR)/qe.o: qe.c qeconfig.h
@@ -449,21 +450,28 @@ endif
 
 UNICODE_VER=15.0.0
 
-doc/EastAsianWidth-$(UNICODE_VER).txt:
+$(BINDIR)/unitable$(EXE): tools/unitable.c wcwidth.h wcwidth.c
+	$(echo) CC tools/unitable.c
 	$(cmd)  mkdir -p $(dir $@)
-	wget -q ftp://ftp.unicode.org/Public/$(UNICODE_VER)/ucd/EastAsianWidth.txt -O $@
+	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ tools/unitable.c
 
-doc/Blocks-$(UNICODE_VER).txt:
-	$(cmd)  mkdir -p $(dir $@)
-	wget -q ftp://ftp.unicode.org/Public/$(UNICODE_VER)/ucd/Blocks.txt -O $@
+bidir_tables: $(BINDIR)/unicode_gen$(EXE) Makefile
+	$(BINDIR)/unicode_gen -V $(UNICODE_VER) -i bidir_tables.h -c bidir_tables.c -b -a
 
-unicode1: $(BINDIR)/unicode_gen$(EXE) doc/EastAsianWidth-$(UNICODE_VER).txt Makefile
-	$(BINDIR)/unicode_gen -w doc/EastAsianWidth-$(UNICODE_VER).txt > unicode_width-1.h
+wcwidth: $(BINDIR)/unicode_gen$(EXE) Makefile
+	$(BINDIR)/unicode_gen -V $(UNICODE_VER) -i wcwidth.h -c wcwidth.c -3 -w -S
 
-unicode: $(BINDIR)/unitable$(EXE) doc/Blocks-$(UNICODE_VER).txt Makefile
-	@if [ ! -z $(QELEVEL) ]; then echo error: do not make unicode from the shell buffer; exit 1; fi
-	$(BINDIR)/unitable -a -w doc/Blocks-$(UNICODE_VER).txt > unicode_width.h
+wcwidth_1: $(BINDIR)/unicode_gen$(EXE) Makefile
+	$(BINDIR)/unicode_gen -V $(UNICODE_VER) -i wcwidth_1.h -c wcwidth_1.c -W
 
+check_width: $(BINDIR)/unitable$(EXE) Makefile
+	$(BINDIR)/unitable -V $(UNICODE_VER) -C -a > check_width.txt
+
+unitable.txt: $(BINDIR)/unitable$(EXE) Makefile
+	$(BINDIR)/unitable -V $(UNICODE_VER) > unitable.txt
+
+unicode_width: $(BINDIR)/unitable$(EXE) Makefile
+	$(BINDIR)/unitable -V $(UNICODE_VER) -W -a > unicode_width.h
 #
 # fonts (only needed for html2png)
 #

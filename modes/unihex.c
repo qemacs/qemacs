@@ -154,7 +154,7 @@ static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
                 offset2 = offset1 = -1;
             }
         }
-        w = unicode_tty_glyph_width(b);
+        w = qe_wcwidth(b);
         if (w == 0) {
             /* insert space to make accent stand on its own */
             display_char(ds, offset1, offset2, ' ');

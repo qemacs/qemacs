@@ -359,7 +359,7 @@ static void do_tabify(EditState *s, int p1, int p2)
             col += tw - col % tw;
             continue;
         }
-        col += unicode_tty_glyph_width(c);
+        col += qe_wcwidth(c);
         if (c != ' ' || offset < start || col % tw == 0)
             continue;
         while (offset1 < stop) {
@@ -429,7 +429,7 @@ static void do_untabify(EditState *s, int p1, int p2)
             continue;
         }
         if (c != '\t') {
-            col += unicode_tty_glyph_width(c);
+            col += qe_wcwidth(c);
             continue;
         }
         col0 = col;
@@ -1511,6 +1511,10 @@ static void do_describe_screen(EditState *e, int argval)
     eb_printf(b1, "%*s: %s\n", w, "dpy.name", s->dpy.name);
     eb_printf(b1, "%*s: %d, %d\n", w, "width, height", s->width, s->height);
     eb_printf(b1, "%*s: %s\n", w, "charset", s->charset->name);
+    if (s->unicode_version) {
+        eb_printf(b1, "%*s: %d.%d.0\n", w, "Unicode version",
+                  s->unicode_version / 10, s->unicode_version % 10);
+    }
     eb_printf(b1, "%*s: %d\n", w, "media", s->media);
     eb_printf(b1, "%*s: %d\n", w, "bitmap_format", s->bitmap_format);
     eb_printf(b1, "%*s: %d\n\n", w, "video_format", s->video_format);
@@ -2111,7 +2115,7 @@ void do_fill_paragraph(EditState *s)
                 break;
             offset = offset1;
             /* handle variable width and combining glyphs */
-            word_size += unicode_tty_glyph_width(c);
+            word_size += qe_wcwidth(c);
         }
 
         if (chunk_start == par_start) {

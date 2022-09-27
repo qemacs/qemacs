@@ -472,7 +472,6 @@ int utf8_decode(const char **pp);
 char *utf8_char_to_string(char *buf, int c);
 int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str);
 
-int unicode_tty_glyph_width(unsigned int ucs);
 int load_ligatures(const char *filename);
 void unload_ligatures(void);
 int combine_accent(unsigned int *buf, int c, int accent);
@@ -481,12 +480,14 @@ int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
                       int dst_size, unsigned int *src, int src_size,
                       int reverse);
 
+#include "wcwidth.h"
+
 static inline int qe_isaccent(int c) {
-    return c >= 0x300 && unicode_tty_glyph_width(c) == 0;
+    return c >= 0x300 && qe_wcwidth(c) == 0;
 }
 
 static inline int qe_iswide(int c) {
-    return c >= 0x01000 && unicode_tty_glyph_width(c) > 1;
+    return c >= 0x01000 && qe_wcwidth(c) > 1;
 }
 
 #endif  /* UTIL_H */

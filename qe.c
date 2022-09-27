@@ -983,7 +983,7 @@ void do_backspace(EditState *s, int argval)
                 newlines++;
             } else
             if (c >= ' ') {
-                spaces += unicode_tty_glyph_width(c);
+                spaces += qe_wcwidth(c);
             }
             count--;
         }
@@ -1694,7 +1694,7 @@ int text_screen_width(EditBuffer *b, int start, int stop, int tw) {
         if (c == '\t') {
             col += tw - col % tw;
         } else {
-            col += unicode_tty_glyph_width(c);
+            col += qe_wcwidth(c);
         }
     }
     return col;
@@ -1776,7 +1776,7 @@ void text_write_char(EditState *s, int key)
     } else {
         int w, w1, c2, offset2;
 
-        w = unicode_tty_glyph_width(key);
+        w = qe_wcwidth(key);
         if (cur_ch == '\t') {
             int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
             int col = text_screen_width(s->b, eb_goto_bol(s->b, s->offset), s->offset, tw);
@@ -1786,7 +1786,7 @@ void text_write_char(EditState *s, int key)
                 return;
             }
         } else {
-            w1 = unicode_tty_glyph_width(cur_ch);
+            w1 = qe_wcwidth(cur_ch);
             endpos = eb_skip_accents(s->b, endpos);
         }
         if (w > w1) {
@@ -1794,7 +1794,7 @@ void text_write_char(EditState *s, int key)
             // XXX: potential issue if c2 is a TAB
             if (c2 >= ' ') {
                 endpos = offset2;
-                w1 += unicode_tty_glyph_width(c2);
+                w1 += qe_wcwidth(c2);
             }
         }
         s->offset += eb_replace(s->b, s->offset, endpos - s->offset, buf, len);
@@ -1907,7 +1907,7 @@ void do_tab(EditState *s, int argval)
             if (c == '\t') {
                 col += tw - col % tw;
             } else {
-                col += unicode_tty_glyph_width(c);
+                col += qe_wcwidth(c);
             }
         }
         if (argval < 1)
@@ -2874,7 +2874,7 @@ void do_what_cursor_position(EditState *s)
     buf_t outbuf, *out;
     int line_num, col_num;
     int offset1, off;
-    int c, cc;
+    int c, cc, w, v;
     int i, n;
 
     out = buf_init(&outbuf, buf, sizeof(buf));
@@ -2934,6 +2934,12 @@ void do_what_cursor_position(EditState *s)
             }
             buf_put_byte(out, ']');
         }
+        w = qe_wcwidth(c);
+        if (w != 1)
+            buf_printf(out, " w=%d", w);
+        v = qe_wcwidth_variant(c);
+        if (v)
+            buf_printf(out, " v=%d", v);
         if (s->b->style_bytes) {
             buf_printf(out, " {%0*llX}", s->b->style_bytes * 2,
                        (unsigned long long)eb_get_style(s->b, s->offset));
