@@ -1400,10 +1400,28 @@ int main(int argc, char *argv[]) {
         }
     }
     if (tasks) {
+        char header_guard[32];
+        int i, j;
+        unsigned char uc;
+
         if (gp->include_file) {
             if (!(gp->fi = fopen_verbose(gp->include_file, "w")))
                 return 1;
             fprintf(gp->fi, "/* This file was generated automatically by %s */\n\n", NAME);
+            j = 0;
+            header_guard[j++] = 'Q';
+            header_guard[j++] = 'E';
+            header_guard[j++] = '_';
+            for (i = 0; (uc = gp->include_file[i]) != '\0'; i++) {
+                if (uc == '.' || uc == '-')
+                    uc = '_';
+                else
+                    uc = toupper(uc);
+                header_guard[j++] = uc;
+            }
+            header_guard[j] = '\0';
+            fprintf(gp->fi, "#ifndef %s\n", header_guard);
+            fprintf(gp->fi, "#define %s\n\n", header_guard);
         }
         if (gp->source_file) {
             if (!(gp->fc = fopen_verbose(gp->source_file, "w")))
@@ -1429,6 +1447,9 @@ int main(int argc, char *argv[]) {
         if (tasks & MAKE_BIDIR_TABLE) {
             if (make_bidir_table(gp))
                 return 1;
+        }
+        if (gp->include_file) {
+            fprintf(gp->fi, "\n#endif /* %s */\n", header_guard);
         }
         return 0;
     } else {
