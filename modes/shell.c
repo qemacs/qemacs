@@ -218,7 +218,7 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
     if (pid == 0) {
         /* child process */
         const char *argv[4];
-        char qelevel[8];
+        char qelevel[16];
         char *vp;
         int argc = 0;
         int fd0, fd1, fd2;
