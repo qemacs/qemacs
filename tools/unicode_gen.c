@@ -1119,7 +1119,7 @@ static int make_bidir_table(genstate_t *gp) {
     char line[1024];
     FILE *fp;
     unsigned char *bidir_type;
-    int c, lineno, pos, count, count1, count2, last_bidir;
+    int c, lineno, pos, count, count2, last_bidir;
     unsigned long code, code1, code2;
 
     if (!(fp = open_unicode_file(gp->unicode_dir, gp->unicode_version,
@@ -1190,7 +1190,7 @@ static int make_bidir_table(genstate_t *gp) {
     fail:
         fprintf(stderr, "%s:%d:invalid line\n%s", filename, lineno, line);
     }
-
+#if 0
     last_bidir = -1;
     count1 = 0;
     for (code = 0; code <= 255; code++) {
@@ -1199,6 +1199,7 @@ static int make_bidir_table(genstate_t *gp) {
             last_bidir = bidir_type[code];
         }
     }
+#endif
     last_bidir = -1;
     count2 = 0;
     for (code = 256; code <= CHARCODE_MAX; code++) {
@@ -1207,9 +1208,9 @@ static int make_bidir_table(genstate_t *gp) {
             last_bidir = bidir_type[code];
         }
     }
-    count = count1 + count2 - 1;
+    count = 256 + count2 * 4;
 
-    fprintf(gp->fc, "\n" "/* Tables generated from %s: %d bytes\n", filename, count);
+    fprintf(gp->fc, "\n" "/* Tables generated from %s: %d bytes */\n", filename, count);
 
     /* output the enum values */
     /* public type with package name prefixes */
