@@ -22,6 +22,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "cutils.h"
 
@@ -169,6 +171,7 @@ static FILE *open_unicode_file(const char *dir, const char *version,
     int pos = 0;
 
     if (dir && *dir) {
+        mkdir(dir, 0777);
         pos = snprintf(filename, size, "%s", dir);
         if (pos < 0 || pos + 1 >= size) {
             fprintf(stderr, "%s: Unicode directory too long: %s\n", NAME, dir);
@@ -852,7 +855,6 @@ static unsigned short *load_east_easian_width(genstate_t *gp, const char *versio
     lineno = 0;
     while (fgets(line, sizeof line, fp)) {
         char wclass[3];
-        char cclass[3];
         char *p;
 
         lineno++;
@@ -872,40 +874,6 @@ static unsigned short *load_east_easian_width(genstate_t *gp, const char *versio
             wclass[1] = *p++;
             wclass[2] = 0;
         }
-        cclass[0] = '\0';
-#if 0
-        p = skip_space(p);
-        if (*p != '#' || p[1] != ' ')
-            goto fail;
-        p += 2;
-        if (!isalpha((unsigned char)p[0]) || !(isalpha((unsigned char)p[1]) || p[1] == '&'))
-            goto fail;
-        cclass[0] = *p++;
-        cclass[1] = *p++;
-        cclass[2] = 0;
-        p = skip_space(p);
-        if (*p == '[') {
-            strtol(p + 1, &p, 10);
-            if (*p != ']')
-                goto fail;
-            p = skip_space(p + 1);
-        }
-        name1 = p;
-        name2 = NULL;
-        while (*p && *p != '\n') {
-            if (p[0] == '.' && p[1] == '.') {
-                *p = '\0';
-                name2 = p += 2;
-            } else {
-                p++;
-            }
-        }
-        *p = '\0';
-        if (name1 && *name1)
-            names[code1] = strdup(name1);
-        if (code2 != code1 && name2 && *name2)
-            names[code2] = strdup(name2);
-#endif
         if (code2 > CHARCODE_MAX)
             code2 = CHARCODE_MAX;
         for (code = code1; code <= code2; code++) {
@@ -926,7 +894,6 @@ static unsigned short *load_east_easian_width(genstate_t *gp, const char *versio
     lineno = 0;
     while (fgets(line, sizeof line, fp)) {
         char *p;
-        const char *name;
         const char *cclass;
 
         lineno++;
@@ -940,7 +907,7 @@ static unsigned short *load_east_easian_width(genstate_t *gp, const char *versio
         if (*p++ != ';')
             goto fail2;
 
-        name = get_field(&p);   /* skip name */
+        get_field(&p);   /* skip name */
         cclass = get_field(&p);
         if (*cclass == 'M') {
             if (code2 > CHARCODE_MAX)
@@ -1183,7 +1150,6 @@ static int make_bidir_table(genstate_t *gp) {
     lineno = 0;
     while (fgets(line, sizeof line, fp)) {
         char *p;
-        const char *name;
         const char *bidir_class_name;
         int bidir_class_type;
 
@@ -1198,7 +1164,7 @@ static int make_bidir_table(genstate_t *gp) {
         if (*p++ != ';')
             goto fail;
 
-        name = get_field(&p);   /* skip name */
+        get_field(&p);   /* skip name */
         get_field(&p);   /* skip cclass */
         get_field(&p);   /* skip num value */
         bidir_class_name = get_field(&p);
@@ -1225,8 +1191,6 @@ static int make_bidir_table(genstate_t *gp) {
         fprintf(stderr, "%s:%d:invalid line\n%s", filename, lineno, line);
     }
 
-    fprintf(gp->fc, "\n/* This table was generated from %s */\n", filename);
-
     last_bidir = -1;
     count1 = 0;
     for (code = 0; code <= 255; code++) {
@@ -1244,6 +1208,8 @@ static int make_bidir_table(genstate_t *gp) {
         }
     }
     count = count1 + count2 - 1;
+
+    fprintf(gp->fc, "\n" "/* Tables generated from %s: %d bytes\n", filename, count);
 
     /* output the enum values */
     /* public type with package name prefixes */
