@@ -156,7 +156,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname, int lineno)
             }
         }
 
-        c1 = strtol_c(p, &p, 16);
+        c1 = strtol(p, &p, 16);
         if (!isspace((unsigned char)*p)) {
             /* ignore ranges such as "0x20-0x7e       idem" */
             continue;
@@ -166,7 +166,7 @@ static void handle_cp(FILE *f0, const char *name, const char *fname, int lineno)
             /* unknown */
             /* continue; */
         }
-        c2 = strtol_c(p, &p, 16);
+        c2 = strtol(p, &p, 16);
         if (c1 >= 256) {
             fprintf(stderr, "%s:%d: ERROR %d %d\n", filename, lineno, c1, c2);
             continue;

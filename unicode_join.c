@@ -143,7 +143,7 @@ int expand_ligature(unsigned int *buf, int c)
 }
 
 /* apply all the ligature rules in logical order. Always return a
-   smaller buffer */
+   smaller or equal buffer */
 static int unicode_ligature(unsigned int *buf_out,
                             unsigned int *pos_L_to_V,
                             int len)
@@ -152,6 +152,7 @@ static int unicode_ligature(unsigned int *buf_out,
     unsigned int *q;
     const unsigned short *lig;
     /* CG: C99 variable-length arrays may be too large */
+    // XXX: why do we need a local copy?
     unsigned int buf[len];
 
     blockcpy(buf, buf_out, len);
@@ -167,7 +168,7 @@ static int unicode_ligature(unsigned int *buf_out,
             goto found;
         }
         /* fast test to eliminate common cases */
-        if (i == (len - 1))
+        if (i == len - 1)
             goto nolig;
         l2 = buf[i + 1];
         if (l1 <= 0x7f && l2 <= 0x7f)
@@ -224,20 +225,21 @@ static int unicode_ligature(unsigned int *buf_out,
 
 static int unicode_classify(unsigned int *buf, int len)
 {
-    int i, mask, c;
+    int i, mask;
 
     mask = 0;
     for (i = 0; i < len; i++) {
-        c = buf[i];
+        unsigned int c = buf[i];
         if (c <= 0x7f) /* latin1 fast handling */
             continue;
         mask |= UNICODE_NONASCII;
-        if (c >= 0x2000) /* fast test for non handled scripts */
-            continue;
-        if (c >= 0x600 && c <= 0x6ff)
-            mask |= UNICODE_ARABIC;
-        else if (c >= 0x900 && c <= 0x97f)
-            mask |= UNICODE_INDIC;
+        if (c < 0xA00) {
+            if ((c & ~0xff) == 0x600)   /* 0600..06FF */
+                mask |= UNICODE_ARABIC;
+            else
+            if ((c & ~0x7f) == 0x900)   /* 0900..097F */
+                mask |= UNICODE_INDIC;
+        }
     }
     return mask;
 }
@@ -265,8 +267,8 @@ static void bidi_reverse_buf(unsigned int *str, int len)
 }
 
 /* Convert a string of unicode characters to a string of glyphs. We
-   suppose that the font implements a minimum number of standard
-   ligatures chars. The string is reversed if 'reversed' is set to
+   assume that the font implements a minimum number of standard
+   ligature chars. The string is reversed if 'reversed' is set to
    deal with the bidir case. 'char_to_glyph_pos' gives the index of
    the first glyph associated to a given character of the source
    buffer. */

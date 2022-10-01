@@ -455,8 +455,7 @@ static inline char *skipspaces(char *p) {
     return p;
 }
 
-static int getcp(char *p, char **pp)
-{
+static int getcp(char *p, char **pp) {
     if (*p == '\0') {
         return -1;
     } else
@@ -477,16 +476,17 @@ static int getcp(char *p, char **pp)
                     ((p[2] - '0') << 0);
         } else {
             *pp = p + 1;
-            return *p;
+            return (unsigned char)*p;
         }
     } else
     if ((*p & 0xe0) == 0xc0 && (p[1] & 0xc0) == 0x80) {
-        /* UTF-8 character */
+        /* 2 byte UTF-8 encoded glyph */
         *pp = p + 2;
-        return ((*p - 0xc0) << 6) | ((p[1] - 0x80) << 0);
+        return ((*p & 0x1f) << 6) | ((p[1] & 0x3f) << 0);
     } else {
+        /* single byte */
         *pp = p + 1;
-        return *p;
+        return (unsigned char)*p;
     }
 }
 

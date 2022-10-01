@@ -108,7 +108,7 @@ static void help(void)
     printf("usage: ligtoqe [-u] sourcefile.lig output_ligature_file\n"
            "Build a ligature resource file for qemacs\n"
            "\n"
-           "-u : output an UTF8 encode summy on stdout\n");
+           "-u : output a UTF8 encoded summary on stdout\n");
     exit(1);
 }
 

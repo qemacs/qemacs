@@ -63,6 +63,8 @@
     ```
   an EditState would have an embedded QECursor that contains the buffer and offset
   an EditBuffer could also have an embedded QECursor with no EditState
+* use hash tables for command and variable names
+* sort key binding tables?
 
 ### Charsets / Unicode / Bidir
 
@@ -104,13 +106,7 @@
   jisx0213-2004-std.txt sjis-0213-2004-std.txt
   MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT
   koi8_ru.cp APL-ISO-IR-68.TXT GSM0338.TXT SGML.TXT
-* accented letters on macOS
-* combining unicode glyphs produce bogus cursor positions
-   example: `V M-'` this problem occurs if no combined glyph exists.
-   qemacs does not take into account combination performed by the terminal.
-   Terminal glyph width of 0 should be supported.
 * deal with accents in filenames (macOS uses combining accents encoded as UTF-8)
-* fix backspace on combining glyphs
 
 ### Windowing / Display
 
@@ -197,6 +193,7 @@ insert_window_left()  deletes some left-most windows
 * add hook on file change
 * handle files starting with re:
 * check file permissions.
+* handle filenames with embedded spaces
 * use trick for entering spaces in filename prompts without completion
 * fix `s->offset` reset to 0 upon `C-x C-f newfile ENT C-x 2 C-x b ENT`
 * insert-file: load via separate buffer with charset conversion
@@ -213,7 +210,6 @@ insert_window_left()  deletes some left-most windows
   * `find-file-read-only-other-window` on `C-x 4 r`
   * `save-modified-buffers` on `C-x s`
   * `find-file`: should support scp syntax for remote loading
-* handle filenames with embedded spaces
 * avoid error in new file
 * actually load file in `find-file-noselect`
 * should update symbolic links times when saving files
@@ -533,6 +529,7 @@ insert_window_left()  deletes some left-most windows
 * html/xml: fix colorizer for multi-line tags and attributes
 * [BUG] xml: crash bug on **johnmacfarlane.net/texmath.xhtml**
 * `html-mode`: support hex entities
+* add syntax based wrapping mode for very long lines
 
 * distribute libqhtml as a separate project
 * OPTIMIZE `eb_nextc` et al or always duplicate box content (big speed improvement).

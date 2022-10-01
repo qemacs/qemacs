@@ -152,6 +152,8 @@ typedef struct genstate_t {
     FILE *fc;
     int ind, argc;
     char **argv;
+    int use_names;
+    unsigned int filter_start, filter_end;
 } genstate_t;
 
 #define has_arg(gp)   ((gp)->ind < (gp)->argc)
@@ -625,30 +627,13 @@ static void set_raw_tty(void) {
 }
 
 static int make_tty_width_table(genstate_t *gp) {
-    unsigned int filter_start = 0x20, filter_end = CHARCODE_MAX;
     unsigned int code;
     unsigned char *width;
-    int narg = 0;
 
     if (getenv("QELEVEL")) {
         fprintf(stderr, "cannot run in quick emacs shell buffer\n");
         return 1;
     }
-    for (; has_arg(gp); next_arg(gp)) {
-        char *arg = peek_arg(gp);
-        if (isdigit((unsigned char)*arg)) {
-            switch (narg++) {
-            case 0:
-                filter_start = strtoul(arg, NULL, 16);
-                continue;
-            case 1:
-                filter_end = strtoul(arg, NULL, 16);
-                continue;
-            }
-        }
-        break;
-    }
-
     width = calloc(sizeof(*width), CHARCODE_MAX + 1);
     /* set default widths */
     set_range(width, 0, CHARCODE_MAX, 1);
@@ -663,7 +648,7 @@ static int make_tty_width_table(genstate_t *gp) {
     setvbuf(stdin, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 
-    for (code = filter_start; code <= filter_end; code++) {
+    for (code = gp->filter_start; code <= gp->filter_end; code++) {
         char buf[10];
         char line[32];
         int len, c, n, y, x;
@@ -1106,7 +1091,7 @@ static int make_wcwidth_variant_table(genstate_t *gp) {
     X(CS,   "Common Separator")          \
     X(BS,   "Block Separator")           \
     X(SS,   "Segment Separator")         \
-    X(WS,   "WhiteSpace")                \
+    X(WS,   "Whitespace")                \
     X(AL,   "Arabic Letter")             \
     X(NSM,  "Non Spacing Mark")          \
     X(BN,   "Boundary Neutral")          \
@@ -1167,14 +1152,8 @@ static int make_bidir_table(genstate_t *gp) {
     char line[1024];
     FILE *fp;
     unsigned char *bidir_type;
-    int use_names = 0;
     int c, lineno, pos, count, count1, count2, last_bidir;
     unsigned long code, code1, code2;
-
-    if (has_arg(gp) && !strcmp(peek_arg(gp), "-a")) {
-        use_names = 1;
-        next_arg(gp);
-    }
 
     if (!(fp = open_unicode_file(gp->unicode_dir, gp->unicode_version,
                                  "UnicodeData.txt",
@@ -1267,11 +1246,19 @@ static int make_bidir_table(genstate_t *gp) {
     count = count1 + count2 - 1;
 
     /* output the enum values */
-    fprintf(gp->fc, "\n" "enum bidir_class {\n");
-#define X(e,s)  fprintf(gp->fc, "    %s, /* %s */\n", #e, s);
+    /* public type with package name prefixes */
+#define X(e,s)  fprintf(gp->fi, "    QE_BIDIR_%s, /* %s */\n", #e, s);
+    fprintf(gp->fi, "enum qe_bidir_class {\n");
     BIDIR_CLASSES(X);
+    fprintf(gp->fi, "};\n");
 #undef X
+
+    /* private type with shorter aliases */
+#define X(e,s)  fprintf(gp->fc, "    %s = QE_BIDIR_%s, /* %s */\n", #e, #e, s);
+    fprintf(gp->fc, "\n" "enum bidir_class {\n");
+    BIDIR_CLASSES(X);
     fprintf(gp->fc, "};\n");
+#undef X
 
     /* output a direct table for single byte code points */
     pos = 0;
@@ -1279,7 +1266,7 @@ static int make_bidir_table(genstate_t *gp) {
     fprintf(gp->fc, "\n" "static const unsigned char bidir_table_00[%d] = {", 256);
     for (code = 0; code <= 255; code++) {
         if (!(pos++ % 8)) fprintf(gp->fc, "\n   ");
-        if (use_names) {
+        if (gp->use_names) {
             fprintf(gp->fc, " %3s,", bidir_class_names[bidir_type[code]]);
         } else {
             fprintf(gp->fc, " 0x%02x,", bidir_type[code]);
@@ -1289,7 +1276,7 @@ static int make_bidir_table(genstate_t *gp) {
 
     /* output a composite table for other code points */
     fprintf(gp->fc, "\n" "static const unsigned int bidir_table[%d] = {", count2);
-    if (use_names)
+    if (gp->use_names)
         fprintf(gp->fc, "\n" "#define X(c,v)  (((c) << 8) | (v))");
     pos = 0;
     last_bidir = -1;
@@ -1297,7 +1284,7 @@ static int make_bidir_table(genstate_t *gp) {
         if (last_bidir != bidir_type[code]) {
             /* output combined table */
             if (!(pos++ % 4)) fprintf(gp->fc, "\n   ");
-            if (use_names) {
+            if (gp->use_names) {
                 fprintf(gp->fc, " X(0x%06lx, %3s),", code, bidir_class_names[bidir_type[code]]);
             } else {
                 fprintf(gp->fc, " 0x%08lx,", (code << 8) | bidir_type[code]);
@@ -1305,7 +1292,7 @@ static int make_bidir_table(genstate_t *gp) {
             last_bidir = bidir_type[code];
         }
     }
-    if (use_names)
+    if (gp->use_names)
         fprintf(gp->fc, "\n" "#undef X");
     fprintf(gp->fc, "\n};\n");
 #if 0
@@ -1327,7 +1314,7 @@ static int make_bidir_table(genstate_t *gp) {
     for (code = 0; code <= CHARCODE_MAX; code++) {
         if (last_bidir != bidir_type[code]) {
             if (!(pos++ % 8)) fprintf(gp->fc, "\n   ");
-            if (use_names) {
+            if (gp->use_names) {
                 fprintf(gp->fc, " %3s,", bidir_class_names[bidir_type[code]]);
             } else {
                 fprintf(gp->fc, " 0x%02x,", bidir_type[code]);
@@ -1336,6 +1323,67 @@ static int make_bidir_table(genstate_t *gp) {
         }
     }
     fprintf(gp->fc, "\n};\n");
+#endif
+    /* use a binary lookup loop */
+    // XXX: this is inefficient and slow
+    //      should use multi-level indirect tables
+#if 00
+    enum qe_bidir_class qe_bidir_get_type(unsigned int ch) {
+        int a, b;
+        if (ch < 256)
+            return bidir_table_00[ch];
+        if (ch > CHARCODE_MAX)
+            return LTR;
+        a = 0;
+        b = countof(bidir_table) - 1;
+        while (a < b) {
+            int m = (a + b) >> 1;
+            if (ch < bidir_table[m] >> 8)
+                b = m;
+            else
+                a = m;
+        }
+        return bidir_table[a] & 0xFF;
+    }
+
+    /* version for test with ASCII chars */
+    static inline enum qe_bidir_class qe_bidir_get_type_test(unsigned int ch) {
+        if (ch >= 'A' && ch <= 'Z')
+            return QE_BIDIR_RTL;
+        else
+            return qe_bidir_get_type(ch);
+    }
+#else
+    /* function implementation */
+    fprintf(gp->fc, "\n");
+    fprintf(gp->fc, "enum qe_bidir_class qe_bidir_get_type(unsigned int ch) {\n");
+    fprintf(gp->fc, "    int a, b;\n");
+    fprintf(gp->fc, "    if (ch < 256)\n");
+    fprintf(gp->fc, "        return bidir_table_00[ch];\n");
+    fprintf(gp->fc, "    if (ch > CHARCODE_MAX)\n");
+    fprintf(gp->fc, "        return LTR;\n");
+    fprintf(gp->fc, "    a = 0;\n");
+    fprintf(gp->fc, "    b = countof(bidir_table) - 1;\n");
+    fprintf(gp->fc, "    while (a < b) {\n");
+    fprintf(gp->fc, "        int m = (a + b) >> 1;\n");
+    fprintf(gp->fc, "        if (ch < bidir_table[m] >> 8)\n");
+    fprintf(gp->fc, "            b = m;\n");
+    fprintf(gp->fc, "        else\n");
+    fprintf(gp->fc, "            a = m;\n");
+    fprintf(gp->fc, "    }\n");
+    fprintf(gp->fc, "    return bidir_table[a] & 0xFF;\n");
+    fprintf(gp->fc, "}\n");
+    /* function prototypes */
+    fprintf(gp->fi, "\n");
+    fprintf(gp->fi, "enum qe_bidir_class qe_bidir_get_type(unsigned int ch);\n");
+    fprintf(gp->fi, "\n");
+    fprintf(gp->fi, "/* version for test with ASCII chars */\n");
+    fprintf(gp->fi, "static inline enum qe_bidir_class qe_bidir_get_type_test(unsigned int ch) {\n");
+    fprintf(gp->fi, "    if (ch >= 'A' && ch <= 'Z')\n");
+    fprintf(gp->fi, "        return QE_BIDIR_RTL;\n");
+    fprintf(gp->fi, "    else\n");
+    fprintf(gp->fi, "        return qe_bidir_get_type(ch);\n");
+    fprintf(gp->fi, "}\n");
 #endif
     free(bidir_type);
     return 0;
@@ -1360,7 +1408,11 @@ static int usage(const char *name) {
 }
 
 int main(int argc, char *argv[]) {
-    genstate_t gp[1] = {{ NULL, "unidata", NULL, NULL, 0, stdout, stdout, 1, argc, argv }};
+    genstate_t gp[1] = {{
+        NULL, "unidata", NULL, NULL, 0,
+        stdout, stdout, 1, argc, argv,
+        0, 0x20, CHARCODE_MAX
+    }};
     int tasks = 0;
 #define MAKE_WCWIDTH_TABLE          (1 << 0)
 #define MAKE_TTY_WIDTH_TABLE        (1 << 1)
@@ -1386,6 +1438,10 @@ int main(int argc, char *argv[]) {
         } else
         if (strequal(arg, "-b")) {
             tasks |= MAKE_BIDIR_TABLE;
+            if (has_arg(gp) && !strcmp(peek_arg(gp), "-a")) {
+                gp->use_names = 1;
+                next_arg(gp);
+            }
         } else
         if (strequal(arg, "-w")) {
             tasks |= MAKE_WCWIDTH_TABLE;
@@ -1395,7 +1451,12 @@ int main(int argc, char *argv[]) {
         } else
         if (strequal(arg, "-W")) {
             tasks |= MAKE_TTY_WIDTH_TABLE;
+            if (has_arg(gp) && isdigit((unsigned char)*peek_arg(gp)))
+                gp->filter_start = strtoul(get_arg(gp), NULL, 16);
+            if (has_arg(gp) && isdigit((unsigned char)*peek_arg(gp)))
+                gp->filter_end = strtoul(get_arg(gp), NULL, 16);
         } else {
+            fprintf(stderr, "%s: unknown option %s\n", NAME, arg);
             return usage(NAME);
         }
     }
