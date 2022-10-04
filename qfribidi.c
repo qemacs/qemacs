@@ -160,12 +160,13 @@ static const unsigned char property_val[366] = {
 };
 
 FriBidiCharType fribidi_get_type(FriBidiChar ch) {
+#if 1   // XXX: This caused an infinite loop in doc/DevCodingRules.html
     /* use a binary lookup loop */
     // XXX: this is inefficient and slow
     //      should use multi-level indirect tables
     int a = 0;
-    int b = countof(property_start) - 1;
-    while (a < b) {
+    int b = countof(property_start);
+    while (b - a > 1) {
         int m = (a + b) >> 1;
         if (ch < property_start[m])
             b = m;
@@ -173,6 +174,34 @@ FriBidiCharType fribidi_get_type(FriBidiChar ch) {
             a = m;
     }
     return property_val[a];
+#else
+    int a, b, m, ch1;
+
+#if defined(TEST) || 0
+    /* for testing only */
+    if (ch >= 'A' && ch <= 'Z')
+        return FRIBIDI_TYPE_RTL;
+#endif
+
+    a = 0;
+    b = (sizeof(property_start) / 2) - 1;
+    while (a <= b) {
+        m = (a + b) >> 1;
+        ch1 = property_start[m];
+        if (ch1 == ch)
+            goto found;
+        else if (ch1 > ch) {
+            b = m - 1;
+        } else {
+            a = m + 1;
+        }
+    }
+    m = a;
+    if (m > 0)
+        m--;
+ found:
+    return property_val[m];
+#endif
 }
 
 /* version for test with ASCII chars */
