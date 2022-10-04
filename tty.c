@@ -322,6 +322,7 @@ static int tty_dpy_init(QEditScreen *s,
     if (ts->term_code == TERM_TW100)
         s->charset = find_charset("atarist");
 
+    // XXX: default charset for non tty invocations should be UTF-8
     if (!s->charset && !isatty(fileno(s->STDOUT)))
         s->charset = &charset_8859_1;
 
@@ -339,7 +340,7 @@ static int tty_dpy_init(QEditScreen *s,
 
         /*               ^X  ^Z    ^M   \170101  */
         //printf("%s", "\030\032" "\r\xEF\x81\x81" "\033[6n\033D");
-        /* Just print utf-8 encoding for eacute and check cursor position */
+        /* Just print UTF-8 encoding for eacute and check cursor position */
         TTY_FPRINTF(s->STDOUT, "%s",
                     "\030\032"
                     "\r\xC3\xA9"
@@ -350,6 +351,7 @@ static int tty_dpy_init(QEditScreen *s,
         n = fscanf(s->STDIN, "\033[%d;%dR", &y, &x);  /* get cursor position */
         TTY_FPRINTF(s->STDOUT, "\r   \r");        /* go back, erase 3 chars */
         if (n == 2 && x == 2) {
+#if 0
             /* determine the unicode version supported */
             static char const wide_by_version[][6] = {
                 /*  4.1.0: default, 5.0.0: same wide characters */
@@ -380,16 +382,20 @@ static int tty_dpy_init(QEditScreen *s,
                 { 150, 0xF0, 0x9F, 0x9B, 0x9C },
             };
             int i;
-            s->charset = &charset_utf8;
-            for (i = 1; i < countof(wide_by_version); i++) {
+            for (i = countof(wide_by_version); i --> 1;) {
                 TTY_FPRINTF(s->STDOUT, "\r%s\033[6n", wide_by_version[i] + 1);
                 fflush(s->STDOUT);
                 n = fscanf(s->STDIN, "\033[%d;%dR", &y, &x);  /* get cursor position */
                 TTY_FPRINTF(s->STDOUT, "\r    \r");          /* go back, erase 4 chars */
-                if (n != 2 || x != 3)
+                if (n != 2)
                     break;
+                if (x == 3) {
+                    s->unicode_version = (unsigned char)wide_by_version[i][0];
+                    break;
+                }
             }
-            s->unicode_version = (unsigned char)wide_by_version[i - 1][0];
+#endif
+            s->charset = &charset_utf8;
         }
     }
     put_status(NULL, "tty charset: %s", s->charset->name);
@@ -1426,7 +1432,7 @@ static void tty_dpy_flush(QEditScreen *s)
                     // was in qemacs-0.3.1.g2.gw/tty.c:
                     // if (cc == 0x2500)
                     //    printf("\016x\017");
-                    /* s->charset is either latin1 or utf-8 */
+                    /* s->charset is either Latin1 or UTF-8 */
                     q = s->charset->encode_func(s->charset, buf, ch);
                     if (!q) {
                         if (s->charset == &charset_8859_1) {
