@@ -40,7 +40,7 @@ static const char lisp_keywords[] = {
     "reverse|sort|"
     "caar|cadr|cdar|cddr|caddr|cadddr|"
     "lambda|"
-    "\xCE\xBB|"  /* greek character lambda in utf-8 */
+    "\xCE\xBB|"  /* greek character lambda in UTF-8 */
     "mod|abs|max|min|log|logand|logior|logxor|ash|in|"
     "0+|1+|1-|<|>|<=|>=|-|+|*|/|=|<>|/=|"
 };

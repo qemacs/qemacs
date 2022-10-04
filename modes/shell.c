@@ -1532,7 +1532,7 @@ static void qe_term_emulate(ShellState *s, int c)
         }
         break;
     case QE_TERM_STATE_UTF8:
-        /* XXX: should check that c is a utf-8 continuation byte */
+        /* XXX: should check that c is a UTF-8 continuation byte */
         if (s->term_pos >= s->utf8_len) {
             const char *p = cs8(s->term_buf);
             int ch = s->lastc = utf8_decode(&p);

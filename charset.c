@@ -35,7 +35,7 @@ struct QECharset *first_charset;
  */
 #include "wcwidth.c"
 
-/* utf-8 specific tables */
+/* UTF-8 specific tables */
 
 #define REP2(x)    x, x
 #define REP4(x)    x, x, x, x
@@ -491,11 +491,11 @@ static int charset_get_chars_utf8(CharsetDecodeState *s,
             nb_chars++;
     }
     /* CG: nb_chars is the number of character boundaries, trailing
-     * utf-8 sequence at start of buffer is ignored in count while
-     * incomplete utf-8 sequence at end of buffer is counted.  This may
+     * UTF-8 sequence at start of buffer is ignored in count while
+     * incomplete UTF-8 sequence at end of buffer is counted.  This may
      * cause problems when counting characters with eb_get_pos with an
-     * offset falling inside a utf-8 sequence, and will produce
-     * incorrect counts on broken utf-8 sequences spanning page
+     * offset falling inside a UTF-8 sequence, and will produce
+     * incorrect counts on broken UTF-8 sequences spanning page
      * boundaries.
      */
     return nb_chars;

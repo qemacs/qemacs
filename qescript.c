@@ -773,7 +773,7 @@ static int qe_cfg_op(QEmacsDataSource *ds, QEValue *sp, int op) {
             if (qe_cfg_tonum(ds, sp + 1))
                 return 1;
             if (sp[1].u.value >= 0 && sp[1].u.value < sp->len) {
-                qe_cfg_set_char(sp, sp->u.str[sp[1].u.value]);  // XXX: utf-8 ?
+                qe_cfg_set_char(sp, sp->u.str[sp[1].u.value]);  // XXX: UTF-8 ?
             } else {
                 qe_cfg_set_void(sp);
             }

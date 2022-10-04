@@ -71,7 +71,7 @@ int get_c_identifier(char *buf, int buf_size, const unsigned int *p, int flavor)
     ||  (flavor == CLANG_RUST && c >= 128)) {
         for (;;) {
             if (j < buf_size - 1) {
-                /* XXX: utf-8 bug */
+                /* XXX: UTF-8 bug */
                 buf[j++] = (c < 0xFF) ? c : 0xFF;
             }
             i++;
@@ -3301,7 +3301,7 @@ static ModeDef smac_mode = {
 
 /*---------------- V programming language ----------------*/
 
-// strings enclosed in '' or "", utf-8 encoded
+// strings enclosed in '' or "", UTF-8 encoded
 // interpolate strings with 'Hello $var.name', 'Hello ${1+2}'
 // char constants use `c`, with embedded \ sequences
 
@@ -3342,7 +3342,7 @@ static ModeDef v_mode = {
 
 /*---------------- Google Protocol Buffers ----------------*/
 
-// strings enclosed in '' or "", utf-8 encoded
+// strings enclosed in '' or "", UTF-8 encoded
 
 static const char protobuf_keywords[] = {
     /* keywords */
@@ -3379,8 +3379,8 @@ static ModeDef protobuf_mode = {
 
 /*---------------- Odin programming language ----------------*/
 
-// string literals enclosed in "", utf-8 encoded
-// raw string literals enclosed in ``, utf-8 encoded
+// string literals enclosed in "", UTF-8 encoded
+// raw string literals enclosed in ``, UTF-8 encoded
 // runes enclosed in ''
 
 static const char odin_keywords[] = {

@@ -4168,7 +4168,7 @@ void display_printf(DisplayState *ds, int offset1, int offset2,
 
     p = buf;
     if (*p) {
-        /* XXX: utf-8 unsupported, not needed at this point */
+        /* XXX: UTF-8 unsupported, not needed at this point */
         display_char(ds, offset1, offset2, *p++);
         while (*p) {
             /* XXX: Should make these display character mouse selectable */
@@ -5925,7 +5925,7 @@ static void qe_key_process(int key)
     dpy_flush(&global_screen);
 }
 
-/* Print a utf-8 encoded buffer as unicode */
+/* Print a UTF-8 encoded buffer as unicode */
 void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
                    const char *str, QETermStyle style)
@@ -6643,9 +6643,9 @@ void do_minibuffer_complete(EditState *s, int type)
     }
     if (match_len > cs.len) {
         /* add the possible chars */
-        // XXX: potential utf-8 issue?
+        // XXX: potential UTF-8 issue?
         // XXX: replace the completed part, not necessarily at the start (use mark?)
-        // XXX: should delete region and insert as utf-8
+        // XXX: should delete region and insert as UTF-8
         // XXX: should not replace if fuzzy match?
         eb_replace(s->b, cs.start, cs.end - cs.start, outputs[0]->str, match_len);
         s->offset = cs.start + match_len;
@@ -6785,7 +6785,7 @@ void do_minibuffer_scroll_up_down(EditState *s, int dir)
 static void minibuffer_set_str(EditState *s, int start, int end, const char *str)
 {
     /* Replace the completion trigger zone */
-    /* XXX: should insert utf-8? */
+    /* XXX: should insert UTF-8? */
     start += eb_replace(s->b, start, end - start, str, strlen(str));
     s->offset = start;
 }
@@ -6972,7 +6972,7 @@ void minibuffer_edit(EditState *e, const char *input, const char *prompt,
 
     /* add default input */
     if (input) {
-        /* Default input should already be encoded as utf-8 */
+        /* Default input should already be encoded as UTF-8 */
         len = strlen(input);
         eb_write(b, 0, (const u8 *)input, len);
         s->offset = len;

@@ -69,7 +69,7 @@
 ### Charsets / Unicode / Bidir
 
 * add default charset for new buffer creation, set that to utf8
-* better display of invalid utf-8 encodings
+* better display of invalid UTF-8 encodings
 * change character detection API to handle cross page spanning
 * fix `eb_prev_char` to handle non self-synchronizing charsets
 * handle chinese encodings

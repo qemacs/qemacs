@@ -640,7 +640,7 @@ void qe_strtolower(char *buf, int size, const char *str) {
        @argument `str` a valid pointer to a string to convert.
        @note this version only handles ASCII.
      */
-    // XXX:  Should handle utf-8 encoding and Unicode case conversion.
+    // XXX:  Should handle UTF-8 encoding and Unicode case conversion.
     // XXX: should return int, length of converted string?
     unsigned char c;
 
