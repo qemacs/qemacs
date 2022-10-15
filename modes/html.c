@@ -202,7 +202,7 @@ static void html_display(EditState *s)
         hs->css_ctx->default_bgcolor = qe_styles[QE_STYLE_CSS_DEFAULT].bg_color;
 
         timer_start();
-        hs->top_box = xml_parse_buffer(s->b, 0, s->b->total_size,
+        hs->top_box = xml_parse_buffer(s->b, s->b->name, 0, s->b->total_size,
                                        hs->css_ctx->style_sheet,
                                        hs->parse_flags,
                                        html_test_abort, NULL);

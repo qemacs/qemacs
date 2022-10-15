@@ -18,11 +18,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include <stdio.h>
 #include "util.h"
-#include "qfribidi.h"
+#include "unicode_join.h"
 
-/* ligature tables */
+/*---- ligature tables ----*/
+
 static unsigned short *subst1;
 static unsigned short *ligature2;
 static unsigned short *ligature_long;

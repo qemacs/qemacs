@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "cutils.h"
-#include "qfribidi.h"
+#include "unicode_join.h"
 
 //#define TEST
 //#define DEBUG
@@ -257,9 +257,9 @@ fribidi_get_mirror_char(FriBidiChar ch)
 #define RL_POS(list) (list)->pos
 #define RL_LEVEL(list) (list)->level
 
-static void compact_list(TypeLink * list_tab)
+static void compact_list(BidirTypeLink * list_tab)
 {
-    TypeLink *p, *lp, *q;
+    BidirTypeLink *p, *lp, *q;
     int len;
     FriBidiCharType type;
 
@@ -360,9 +360,9 @@ static int type_to_char(int type)
     return ch;
 }
 
-static void print_types_re(TypeLink * pp_tab, int level)
+static void print_types_re(BidirTypeLink * pp_tab, int level)
 {
-    TypeLink *pp;
+    BidirTypeLink *pp;
 
     for (pp = pp_tab + 1; pp->type != FRIBIDI_TYPE_EOT; pp++) {
         printf("%d:%c(%d)[%d] ", RL_POS(pp), type_to_char(RL_TYPE(pp)), RL_LEN(pp), level ? RL_LEVEL(pp) : 0);
@@ -379,14 +379,14 @@ static void print_types_re(TypeLink * pp_tab, int level)
 //
 //  It is still lacking the support for <RLO> and <LRO>.
 //----------------------------------------------------------------------*/
-void fribidi_analyse_string(TypeLink * type_rl_list,
+void fribidi_analyse_string(BidirTypeLink * type_rl_list,
                             FriBidiCharType * pbase_dir,
                             int *pmax_level)
 {
     int base_level, base_dir;
     int max_level, level, override;
     int last_strong;
-    TypeLink *pp;
+    BidirTypeLink *pp;
     unsigned char stack_level[STACK_SIZE];
     unsigned char stack_override[STACK_SIZE];
     int stack_index;

@@ -18,8 +18,13 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "qe.h"
+#include "util.h"
+#include "charset.h"
 #include "css.h"
+
+// XXX: need fix for this: should use read function with opaque argument
+struct EditBuffer;
+int eb_nextc(struct EditBuffer *b, int offset, int *next_ptr);
 
 //#define DEBUG
 
@@ -1006,6 +1011,7 @@ static int parse_tag(XMLState *s, const char *buf)
     return XML_STATE_TEXT;
 }
 
+// XXX: should take length?
 static void flush_text(XMLState *s, const char *buf)
 {
     CSSBox *box, *box1;
@@ -1027,10 +1033,11 @@ static void flush_text(XMLState *s, const char *buf)
     } else {
         box1 = box;
     }
+    // XXX: should pass length?
     css_set_text_string(box1, buf);
 }
 
-static void flush_text_buffer(XMLState *s, EditBuffer *b,
+static void flush_text_buffer(XMLState *s, struct EditBuffer *b,
                               int offset0, int offset1)
 {
     CSSBox *box, *box1;
@@ -1072,7 +1079,7 @@ static int xml_tagcmp(const char *s1, const char *s2)
 
 
 static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
-                              EditBuffer *b, int offset_start)
+                              struct EditBuffer *b, int offset_start)
 {
     int ch, offset, offset0, text_offset_start, ret, offset_end;
     const char *buf_end, *buf;
@@ -1307,8 +1314,11 @@ CSSBox *xml_end(XMLState **sp)
     return root_box;
 }
 
+// XXX: move to qe source tree
+// XXX: should pass pass function to read a code point to xml_parse_internal, using an opaque
 /* XML in edit buffer parsing */
-CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end,
+CSSBox *xml_parse_buffer(struct EditBuffer *b, const char *name,
+                         int offset_start, int offset_end,
                          CSSStyleSheet *style_sheet, int flags,
                          CSSAbortFunc *abort_func, void *abort_opaque)
 {
@@ -1316,9 +1326,8 @@ CSSBox *xml_parse_buffer(EditBuffer *b, int offset_start, int offset_end,
     CSSBox *box;
     int ret;
 
-    s = xml_begin(style_sheet, flags, abort_func, abort_opaque, b->name, NULL);
-    ret = xml_parse_internal(s, NULL, offset_end - offset_start,
-                             b, offset_start);
+    s = xml_begin(style_sheet, flags, abort_func, abort_opaque, name, NULL);
+    ret = xml_parse_internal(s, NULL, offset_end - offset_start, b, offset_start);
     box = xml_end(&s);
     if (ret < 0) {
         css_delete_box(&box);

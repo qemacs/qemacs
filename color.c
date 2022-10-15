@@ -21,7 +21,6 @@
 
 #include <limits.h>
 
-#include "cutils.h"
 #include "util.h"
 #include "color.h"
 

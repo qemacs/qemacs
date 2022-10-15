@@ -19,9 +19,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "qe.h"
-#include "qfribidi.h"
+#include <limits.h>
+#include "display.h"
+#include "unicode_join.h"
 #include "css.h"
+
+// XXX: need fix for this: should use read function with opaque argument
+struct EditBuffer;
+int eb_nextc(struct EditBuffer *b, int offset, int *next_ptr);
 
 //#define DEBUG
 
@@ -213,7 +218,7 @@ typedef int (*NextCharFunc)(CSSBox *box, int *offset);
 
 static int eb_nextc1(CSSBox *box, int *offset_ptr)
 {
-    EditBuffer *b = box->content_data;
+    struct EditBuffer *b = box->content_data;
     int offset, offset1;
     int ch, ch1;
     char name[16], *q;
@@ -1288,8 +1293,8 @@ static int css_layout_block_min_max(CSSContext *s,
 
 typedef struct BidirAttrState {
     CSSContext *ctx;
-    TypeLink *list_end;
-    TypeLink *list_ptr; /* current type pointer */
+    BidirTypeLink *list_end;
+    BidirTypeLink *list_ptr; /* current type pointer */
     FriBidiCharType ltype; /* last type */
     int pos; /* current char position */
 } BidirAttrState;
@@ -1298,7 +1303,7 @@ static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
 {
     CSSState *props = box->props;
     int c, pos, offset;
-    TypeLink *p;
+    BidirTypeLink *p;
     FriBidiCharType type, ltype;
     NextCharFunc nextc = get_nextc(box);
     int bidi_mode;
@@ -1393,11 +1398,11 @@ static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
 
 /* max_size should be >= 2 */
 /* XXX: add CSS unicode-bidi property handling */
-static int bidir_compute_attributes(CSSContext *ctx, TypeLink *list_tab, int max_size,
+static int bidir_compute_attributes(CSSContext *ctx, BidirTypeLink *list_tab, int max_size,
                                     CSSBox *first_box)
 {
     CSSBox *box;
-    TypeLink *p;
+    BidirTypeLink *p;
     BidirAttrState bidir_state, *s = &bidir_state;
 
     p = list_tab;
@@ -1432,14 +1437,14 @@ static int bidir_compute_attributes(CSSContext *ctx, TypeLink *list_tab, int max
 
 typedef struct BidirSplitState {
     CSSContext *ctx;
-    TypeLink *l;
+    BidirTypeLink *l;
     int pos;
 } BidirSplitState;
 
 static void css_bidir_split_box(BidirSplitState *s,  CSSBox *box)
 {
     CSSState *props = box->props;
-    TypeLink *l;
+    BidirTypeLink *l;
     int /* c, */ pos, offset;
     NextCharFunc nextc;
 
@@ -1479,7 +1484,7 @@ static void css_bidir_split_box(BidirSplitState *s,  CSSBox *box)
 }
 
 
-static void css_bidir_split(CSSContext *s, CSSBox *first_box, TypeLink *l)
+static void css_bidir_split(CSSContext *s, CSSBox *first_box, BidirTypeLink *l)
 {
     CSSBox *box;
     BidirSplitState bidir_split;
@@ -1510,7 +1515,7 @@ static void bidir_start_inline(BidirComputeState *s)
 
 static void bidir_end_inline(BidirComputeState *s)
 {
-    TypeLink embeds[RLE_EMBEDDINGS_SIZE];
+    BidirTypeLink embeds[RLE_EMBEDDINGS_SIZE];
     int embedding_max_level;
     FriBidiCharType base;
 
@@ -1524,7 +1529,7 @@ static void bidir_end_inline(BidirComputeState *s)
         fribidi_analyse_string(embeds, &base, &embedding_max_level);
 #if 0
         {
-            TypeLink *p;
+            BidirTypeLink *p;
             p = embeds;
             printf("bidi_start:\n");
             for (;;) {
@@ -4502,7 +4507,7 @@ void css_delete_box(CSSBox **bp)
     }
 }
 
-void css_set_text_buffer(CSSBox *box, EditBuffer *b,
+void css_set_text_buffer(CSSBox *box, struct EditBuffer *b,
                          int offset1, int offset2, int eol)
 {
     box->content_type = CSS_CONTENT_TYPE_BUFFER;
@@ -4517,6 +4522,7 @@ void css_set_text_string(CSSBox *box, const char *string)
 {
     box->content_type = CSS_CONTENT_TYPE_STRING;
     box->content_data = qe_strdup(string);
+    //box->content_eol = eol; // ???
     box->u.buffer.start = 0;
     box->u.buffer.end = strlen(string);
 }
@@ -4550,7 +4556,7 @@ void css_make_child_box(CSSBox *box)
     }
 }
 
-CSSContext *css_new_document(QEditScreen *screen, EditBuffer *b)
+CSSContext *css_new_document(QEditScreen *screen, struct EditBuffer *b)
 {
     CSSContext *s;
 

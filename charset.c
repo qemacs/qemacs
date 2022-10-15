@@ -19,7 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "qe.h"
+#include "util.h"
+#include "charset.h"
 
 /* XXX: Should move this to QEmacsState, and find a way for html2png */
 struct QECharset *first_charset;

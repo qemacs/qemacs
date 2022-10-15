@@ -230,8 +230,9 @@ endif	# TARGET_TINY
 SRCS:= $(OBJS:.o=.c)
 
 DEPENDS:= qe.h config.h config.mak charset.h color.h cutils.h display.h \
-		qestyles.h qfribidi.h util.h variables.h lang/clang.h \
-		wcwidth.h
+	qestyles.h qfribidi.h unicode_join.h util.h variables.h \
+	wcwidth.h lang/clang.h
+
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 
 BINDIR:=$(DEPTH)/bin

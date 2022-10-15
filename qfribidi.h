@@ -68,25 +68,18 @@ typedef enum {
 /*======================================================================
 // Typedef for the run-length list.
 //----------------------------------------------------------------------*/
-typedef struct TypeLink {
+typedef struct BidirTypeLink {
     FriBidiCharType type;
     int pos;
     int len;
     int level;
-} TypeLink;
+} BidirTypeLink;
 
 FriBidiCharType fribidi_get_type(FriBidiChar ch);
 FriBidiCharType fribidi_get_type_test(FriBidiChar ch);
 FriBidiChar fribidi_get_mirror_char(FriBidiChar ch);
 
-void fribidi_analyse_string(TypeLink *type_rl_list,
+void fribidi_analyse_string(BidirTypeLink *type_rl_list,
                             FriBidiCharType *pbase_dir,
                             int *pmax_level);
-
-/* arabic.c */
-int arab_join(unsigned int *line, unsigned int *ctog, int len);
-
-/* indic.c */
-int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len);
-
 #endif /* QFRIBIDI_H */

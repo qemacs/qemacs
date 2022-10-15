@@ -29,12 +29,12 @@
 #include <sys/stat.h>
 
 #include "config.h"     /* for CONFIG_WIN32 */
-#include "cutils.h"
 #include "util.h"
 
 #ifdef CONFIG_WIN32
 
 /* XXX: not sufficient, but OK for basic operations */
+// XXX: should use own own function in all cases
 int fnmatch(const char *pattern, const char *string, int flags) {
     char c;
     while ((c = *pattern++) != '\0') {
@@ -341,6 +341,7 @@ char *make_user_path(char *buf, int buf_size, const char *path) {
 
 char *reduce_filename(char *dest, int size, const char *filename)
 {
+    // XXX: Document this function
     const char *base = get_basename(filename);
     char *dbase, *ext, *p;
 
@@ -519,6 +520,8 @@ int remove_slash(char *buf) {
        Remove the trailing slash from path, except for / directory.
        @return the updated path length.
      */
+    // XXX: should we have windows specific behavior?
+    // XXX: should we handle protocol prefixes specifically?
     int len = strlen(buf);
     if (len > 1 && buf[len - 1] == '/') {
         buf[--len] = '\0';
@@ -530,8 +533,10 @@ int append_slash(char *buf, int buf_size) {
     /*@API utils
        Append a trailing slash to a path if none there already.
        @return the updated path length.
+       @note: truncation cannot be detected reliably
      */
-    int len = strlen(buf);
+    // XXX: should we have windows specific behavior?
+    int len = strnlen(buf, buf_size);
     if (len > 0 && buf[len - 1] != '/' && len + 1 < buf_size) {
         buf[len++] = '/';
         buf[len] = '\0';
@@ -544,6 +549,7 @@ char *makepath(char *buf, int buf_size, const char *path, const char *filename) 
        Construct a path from a directory name and a filename into the
        array pointed to by `buf` of length `buf_size` bytes.
        @return a pointer to the destination array.
+       @note: truncation cannot be detected reliably
      */
     if (buf != path)
         pstrcpy(buf, buf_size, path);
@@ -557,20 +563,46 @@ void splitpath(char *dirname, int dirname_size,
     /*@API utils
        Split the path pointed to by `pathname` into a directory part and a
        filename part.
-       @note `dirname` will receive an empty string if `pathname` constains
+       @note `dirname` will receive an empty string if `pathname` contains
        just a filename.
      */
-    const char *base;
-
-    base = get_basename(pathname);
+    size_t offset = get_basename_offset(pathname);
     if (dirname)
-        pstrncpy(dirname, dirname_size, pathname, base - pathname);
+        pstrncpy(dirname, dirname_size, pathname, offset);
     if (filename)
-        pstrcpy(filename, filename_size, base);
+        pstrcpy(filename, filename_size, pathname + offset);
 }
 
-int qe_strcollate(const char *s1, const char *s2)
-{
+/*---------------- Character classification functions ----------------*/
+
+unsigned char const qe_digit_value__[128] = {
+#define REPEAT16(x)  x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x
+    REPEAT16(255), REPEAT16(255), REPEAT16(255),
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 255, 255, 255, 255, 255, 255,
+    255, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 255, 255, 255, 255, 255,
+    255, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 255, 255, 255, 255, 255,
+};
+
+int qe_skip_spaces(const char **pp) {
+    /*@API utils
+       Skip white space at the beginning of the string pointed to by `*pp`.
+       @argument `pp` the address of a valid string pointer. The pointer will
+       be updated to point after any initial white space.
+       @return the character value after the white space as an `unsigned char`.
+     */
+    const char *p;
+    unsigned char c;
+
+    p = *pp;
+    while (qe_isspace(c = *p))
+        p++;
+    *pp = p;
+    return c;
+}
+
+int qe_strcollate(const char *s1, const char *s2) {
     /*@API utils
        Compare 2 strings using special rules:
      * use lexicographical order
@@ -651,23 +683,6 @@ void qe_strtolower(char *buf, int size, const char *str) {
         }
         *buf = '\0';
     }
-}
-
-int qe_skip_spaces(const char **pp) {
-    /*@API utils
-       Skip white space at the beginning of the string pointed to by `*pp`.
-       @argument `pp` the address of a valid string pointer. The pointer will
-       be updated to point after any initial white space.
-       @return the character value after the white space as an `unsigned char`.
-     */
-    const char *p;
-    unsigned char c;
-
-    p = *pp;
-    while (qe_isspace(c = *p))
-        p++;
-    *pp = p;
-    return c;
 }
 
 int memfind(const char *list, const char *s, int len) {
@@ -1008,8 +1023,37 @@ int strmatchword(const char *str, const char *val, const char **ptr) {
     return 0;
 }
 
+/* Read a token from a string, stop on a set of characters.
+ * Skip spaces before and after token. Return the token length.
+ */
+int get_str(const char **pp, char *buf, int buf_size, const char *stop) {
+    // XXX: Document this function
+    char *q;
+    const char *p;
+
+    qe_skip_spaces(pp);
+    p = *pp;
+    q = buf;
+    for (;;) {
+        u8 c = *p;
+        /* Stop on spaces and eat them */
+        if (c == '\0' || qe_isspace(c) || strchr(stop, c))
+            break;
+        if ((q - buf) < buf_size - 1)
+            *q++ = c;
+        p++;
+    }
+    *q = '\0';
+    *pp = p;
+    qe_skip_spaces(pp);
+    return q - buf;
+}
+
+/*---- Unicode string functions: null terminated arrays of code points ----*/
+
 int ustrstart(const unsigned int *str0, const char *val, int *lenp)
 {
+    // XXX: Document this function
     const unsigned int *str = str0;
 
     for (; *val != '\0'; val++, str++) {
@@ -1024,6 +1068,7 @@ int ustrstart(const unsigned int *str0, const char *val, int *lenp)
 
 const unsigned int *ustrstr(const unsigned int *str, const char *val)
 {
+    // XXX: Document this function
     int c = val[0];
 
     for (; *str != '\0'; str++) {
@@ -1035,6 +1080,7 @@ const unsigned int *ustrstr(const unsigned int *str, const char *val)
 
 int ustristart(const unsigned int *str0, const char *val, int *lenp)
 {
+    // XXX: Document this function
     const unsigned int *str = str0;
 
     for (; *val != '\0'; val++, str++) {
@@ -1049,6 +1095,7 @@ int ustristart(const unsigned int *str0, const char *val, int *lenp)
 
 const unsigned int *ustristr(const unsigned int *str, const char *val)
 {
+    // XXX: Document this function
     int c = qe_toupper(val[0]);
 
     for (; *str != '\0'; str++) {
@@ -1060,6 +1107,7 @@ const unsigned int *ustristr(const unsigned int *str, const char *val)
 
 int umemcmp(const unsigned int *s1, const unsigned int *s2, size_t count)
 {
+    // XXX: Document this function
     for (; count-- > 0; s1++, s2++) {
         if (*s1 != *s2) {
             return *s1 < *s2 ? -1 : 1;
@@ -1071,6 +1119,7 @@ int umemcmp(const unsigned int *s1, const unsigned int *s2, size_t count)
 int ustr_get_identifier(char *buf, int buf_size, int c,
                         const unsigned int *str, int i, int n)
 {
+    // XXX: Document this function
     int len = 0, j;
 
     if (len < buf_size - 1) {
@@ -1093,6 +1142,7 @@ int ustr_get_identifier(char *buf, int buf_size, int c,
 int ustr_get_identifier_lc(char *buf, int buf_size, int c,
                            const unsigned int *str, int i, int n)
 {
+    // XXX: Document this function
     int len = 0, j;
 
     if (len < buf_size) {
@@ -1115,6 +1165,7 @@ int ustr_get_identifier_lc(char *buf, int buf_size, int c,
 int ustr_get_word(char *buf, int buf_size, int c,
                   const unsigned int *str, int i, int n)
 {
+    // XXX: Document this function
     buf_t outbuf, *out;
     int j;
 
@@ -1130,30 +1181,7 @@ int ustr_get_word(char *buf, int buf_size, int c,
     return j - i;
 }
 
-/* Read a token from a string, stop on a set of characters.
- * Skip spaces before and after token. Return the token length.
- */
-int get_str(const char **pp, char *buf, int buf_size, const char *stop) {
-    char *q;
-    const char *p;
-
-    qe_skip_spaces(pp);
-    p = *pp;
-    q = buf;
-    for (;;) {
-        u8 c = *p;
-        /* Stop on spaces and eat them */
-        if (c == '\0' || qe_isspace(c) || strchr(stop, c))
-            break;
-        if ((q - buf) < buf_size - 1)
-            *q++ = c;
-        p++;
-    }
-    *q = '\0';
-    *pp = p;
-    qe_skip_spaces(pp);
-    return q - buf;
-}
+/*---------------- Functions for handling keys ----------------*/
 
 /* should move to a separate module */
 static unsigned short const keycodes[] = {
@@ -1344,15 +1372,7 @@ int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys)
     return out->len - start;
 }
 
-unsigned char const qe_digit_value__[128] = {
-#define REPEAT16(x)  x,x,x,x,x,x,x,x,x,x,x,x,x,x,x,x
-    REPEAT16(255), REPEAT16(255), REPEAT16(255),
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 255, 255, 255, 255, 255, 255,
-    255, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 255, 255, 255, 255, 255,
-    255, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 255, 255, 255, 255, 255,
-};
+/*---- StringArray functions ----*/
 
 /* set one string. */
 StringItem *set_string(StringArray *cs, int index, const char *str, int group)

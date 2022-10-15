@@ -59,7 +59,6 @@
 
 /************************/
 
-#include "cutils.h"
 #include "util.h"
 
 /************************/
@@ -117,16 +116,14 @@ int get_clock_ms(void);
 int get_clock_usec(void);
 
 /* extendable completion system */
-typedef struct CompleteState {
+struct CompleteState {
     StringArray cs;
     struct EditState *s;
     struct EditState *target;
     struct CompletionDef *completion;
     int start, end, len, fuzzy;
     char current[MAX_FILENAME_SIZE];
-} CompleteState;
-
-typedef void (*CompleteFunc)(CompleteState *cp, const char *str, int mode);
+};
 
 void canonicalize_absolute_path(EditState *s, char *buf, int buf_size, const char *path1);
 void canonicalize_absolute_buffer_path(EditBuffer *b, int offset,
@@ -172,8 +169,6 @@ int find_resource_file(char *path, int path_size, const char *pattern);
 
 /* charset.c */
 #include "charset.h"
-
-void charset_complete(CompleteState *cp, CompleteFunc enumerate);
 
 /* qe event handling */
 
@@ -1314,12 +1309,6 @@ typedef struct CompletionDef {
 
 void qe_register_completion(CompletionDef *cp);
 
-/* default CompleteFunc passed to complete_xxx() functions */
-#define CT_TEST  0
-#define CT_STRX  1
-#define CT_SET   2
-void complete_test(CompleteState *cp, const char *str, int mode);
-
 void put_status(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void put_error(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void minibuffer_edit(EditState *e, const char *input, const char *prompt,
@@ -1782,7 +1771,5 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
                              const char *bufname, const char *caption,
                              const char *path,
                              const char *cmd, int shell_flags);
-
-#define QASSERT(e)      do { if (!(e)) fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #e); } while (0)
 
 #endif

@@ -23,6 +23,7 @@
 #define CUTILS_H
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -77,15 +78,16 @@ static inline const char *cs8(const u8 *p) { return (const char*)p; }
 #undef strtok
 #define strtok(str,sep)   do_not_use_strtok!!(str,sep)
 
+static inline int strequal(const char *s1, const char *s2) {
+    return !strcmp(s1, s2);
+}
+
+int strstart(const char *str, const char *val, const char **ptr);
+int strend(const char *str, const char *val, const char **ptr);
 char *pstrcpy(char *buf, int buf_size, const char *str);
 char *pstrcat(char *buf, int buf_size, const char *s);
 char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 char *pstrncat(char *buf, int buf_size, const char *s, int len);
-int strstart(const char *str, const char *val, const char **ptr);
-int strend(const char *str, const char *val, const char **ptr);
-static inline int strequal(const char *s1, const char *s2) {
-    return !strcmp(s1, s2);
-}
 
 /* Use these macros to avoid stupid size mistakes:
  * n it a number of items
@@ -97,6 +99,7 @@ static inline int strequal(const char *s1, const char *s2) {
 #define blockmove(p1, p2, n) memmove(p1, p2, (n) * sizeof *(p1) / (sizeof *(p1) == sizeof *(p2)))
 
 size_t get_basename_offset(const char *filename);
+
 static inline const char *get_basename(const char *filename) {
     /*@API utils
        Get the filename portion of a path.
@@ -106,6 +109,7 @@ static inline const char *get_basename(const char *filename) {
      */
     return filename + get_basename_offset(filename);
 }
+
 static inline char *get_basename_nc(char *filename) {
     /*@API utils
        Get the filename portion of a path.
@@ -115,7 +119,9 @@ static inline char *get_basename_nc(char *filename) {
      */
     return filename + get_basename_offset(filename);
 }
+
 size_t get_extension_offset(const char *filename);
+
 static inline const char *get_extension(const char *filename) {
     /*@API utils
        Get the filename extension portion of a path.
@@ -128,6 +134,7 @@ static inline const char *get_extension(const char *filename) {
      */
     return filename + get_extension_offset(filename);
 }
+
 static inline char *get_extension_nc(char *filename) {
     /*@API utils
        Get the filename extension portion of a path.
@@ -140,6 +147,7 @@ static inline char *get_extension_nc(char *filename) {
      */
     return filename + get_extension_offset(filename);
 }
+
 static inline void strip_extension(char *filename) {
     /*@API utils
        Strip the filename extension portion of a path.
@@ -147,7 +155,9 @@ static inline void strip_extension(char *filename) {
      */
     filename[get_extension_offset(filename)] = '\0';
 }
+
 char *get_dirname(char *dest, int size, const char *file);
+
 static inline long strtol_c(const char *str, const char **endptr, int base) {
     /*@API utils
        Convert the number in the string pointed to by `str` as a `long`.
@@ -155,6 +165,7 @@ static inline long strtol_c(const char *str, const char **endptr, int base) {
      */
     return strtol(str, unconst(char **)endptr, base);
 }
+
 static inline long strtoll_c(const char *str, const char **endptr, int base) {
     /*@API utils
        Convert the number in the string pointed to by `str` as a `long long`.
@@ -162,6 +173,7 @@ static inline long strtoll_c(const char *str, const char **endptr, int base) {
      */
     return strtoll(str, unconst(char **)endptr, base);
 }
+
 static inline double strtod_c(const char *str, const char **endptr) {
     /*@API utils
        Convert the number in the string pointed to by `str` as a `double`.
@@ -169,6 +181,7 @@ static inline double strtod_c(const char *str, const char **endptr) {
      */
     return strtold(str, unconst(char **)endptr);
 }
+
 static inline long double strtold_c(const char *str, const char **endptr) {
     /*@API utils
        Convert the number in the string pointed to by `str` as a `long double`.

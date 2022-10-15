@@ -20,7 +20,7 @@
  */
 
 #include "cutils.h"
-#include "qfribidi.h"
+#include "unicode_join.h"
 
 /* define it if your font handle more ligatures than the minimum
    required by unicode */

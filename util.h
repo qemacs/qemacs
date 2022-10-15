@@ -26,6 +26,8 @@
 
 /* OS specific defines */
 
+// XXX: should include config.h for CONFIG_WIN32 and CONFIG_HAS_TYPEOF
+
 #ifdef CONFIG_WIN32
 #define snprintf   _snprintf
 #define vsnprintf  _vsnprintf
@@ -33,8 +35,13 @@
 
 #define OWNED     /* ptr attribute for allocated data owned by a structure */
 
+#define QASSERT(e)   do { if (!(e)) fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #e); } while (0)
+
 /* prevent gcc warning about shadowing a global declaration */
 #define index  index__
+
+#define MAX_WORD_SIZE  128
+#define MAX_FILENAME_SIZE 1024
 
 /* string arrays */
 typedef struct StringItem {
@@ -70,90 +77,119 @@ char *reduce_filename(char *dest, int size, const char *filename);
 char *file_load(const char *filename, int max_size, int *sizep);
 int match_extension(const char *filename, const char *extlist);
 int match_shell_handler(const char *p, const char *list);
+// XXX: should move these to cutils?
 int remove_slash(char *buf);
 int append_slash(char *buf, int buf_size);
 char *makepath(char *buf, int buf_size, const char *path, const char *filename);
 void splitpath(char *dirname, int dirname_size,
                char *filename, int filename_size, const char *pathname);
 
+/*---- Character classification functions ----*/
+
+/* Character classification tests work for ASCII, Latin1 and Unicode */
+
 extern unsigned char const qe_digit_value__[128];
+
 static inline int qe_digit_value(int c) {
     return (unsigned int)c < 128 ? qe_digit_value__[c] : 255;
 }
+
 static inline int qe_inrange(int c, int a, int b) {
     //return c >= a && c <= b;
     //CG: assuming a <= b and wrap around semantics for (c - a) and (b - a)
     return (unsigned int)(c - a) <= (unsigned int)(b - a);
 }
-/* character classification tests assume ASCII superset */
+
 static inline int qe_isspace(int c) {
     /* CG: what about \v and \f */
     return (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == 160);
 }
+
 static inline int qe_isblank(int c) {
     return (c == ' ' || c == '\t' || c == 160);
 }
+
 static inline int qe_isdigit(int c) {
     return qe_inrange(c, '0', '9');
 }
+
 static inline int qe_isdigit_(int c) {
     return (qe_inrange(c, '0', '9') || c == '_');
 }
+
 static inline int qe_isupper(int c) {
     return qe_inrange(c, 'A', 'Z');
 }
+
 static inline int qe_isupper_(int c) {
     return (qe_inrange(c, 'A', 'Z') || c == '_');
 }
+
 static inline int qe_islower(int c) {
     return qe_inrange(c, 'a', 'z');
 }
+
 static inline int qe_islower_(int c) {
     return (qe_inrange(c, 'a', 'z') || (c == '_'));
 }
+
 static inline int qe_isalpha(int c) {
     return qe_inrange(c | ('a' - 'A'), 'a', 'z');
 }
+
 static inline int qe_isalpha_(int c) {
     return (qe_inrange(c | ('a' - 'A'), 'a', 'z') || c == '_');
 }
+
 static inline int qe_isoctdigit(int c) {
     return qe_inrange(c, '0', '7');
 }
+
 static inline int qe_isoctdigit_(int c) {
     return qe_inrange(c, '0', '7') || (c == '_');
 }
+
 static inline int qe_isbindigit(int c) {
     return qe_inrange(c, '0', '1');
 }
+
 static inline int qe_isbindigit_(int c) {
     return qe_inrange(c, '0', '1') || (c == '_');
 }
+
 static inline int qe_isxdigit(int c) {
     return qe_digit_value(c) < 16;
 }
+
 static inline int qe_isxdigit_(int c) {
     return (qe_digit_value(c) < 16) || (c == '_');
 }
+
 static inline int qe_isalnum(int c) {
     return qe_digit_value(c) < 36;
 }
+
 static inline int qe_isalnum_(int c) {
     return (qe_digit_value(c) < 36) || (c == '_');
 }
+
 static inline int qe_isword(int c) {
     /* XXX: any unicode char >= 128 is considered as word. */
     return qe_isalnum_(c) || (c >= 128);
 }
+
 static inline int qe_toupper(int c) {
     return (qe_inrange(c, 'a', 'z') ? c + 'A' - 'a' : c);
 }
+
 static inline int qe_tolower(int c) {
     return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
 }
+
 static inline int qe_findchar(const char *str, int c) {
     return qe_inrange(c, 1, 255) && strchr(str, c) != NULL;
 }
+
 static inline int qe_indexof(const char *str, int c) {
     if (qe_inrange(c, 1, 255)) {
         const char *p = strchr(str, c);
@@ -166,10 +202,44 @@ static inline int qe_match2(int c, int c1, int c2) {
     return c == c1 || c == c2;
 }
 
-static inline int check_fcall(const unsigned int *str, int i) {
-    while (str[i] == ' ')
-        i++;
-    return str[i] == '(';
+int qe_skip_spaces(const char **pp);
+int qe_strcollate(const char *s1, const char *s2);
+int qe_strtobool(const char *s, int def);
+void qe_strtolower(char *buf, int buf_size, const char *str);
+int memfind(const char *list, const char *p, int len);
+int strfind(const char *list, const char *s);
+int strxfind(const char *list, const char *s);
+const char *strmem(const char *str, const void *mem, int size);
+const void *memstr(const void *buf, int size, const char *str);
+int qe_memicmp(const void *p1, const void *p2, size_t count);
+const char *qe_stristr(const char *s1, const char *s2);
+#define stristart(str, val, ptr)   qe_stristart(str, val, ptr)
+int stristart(const char *str, const char *val, const char **ptr);
+int strxstart(const char *str, const char *val, const char **ptr);
+int strxcmp(const char *str1, const char *str2);
+int strmatchword(const char *str, const char *val, const char **ptr);
+int get_str(const char **pp, char *buf, int buf_size, const char *stop);
+
+int strsubst(char *buf, int buf_size, const char *from,
+             const char *s1, const char *s2);
+int byte_quote(char *dest, int size, unsigned char c);
+int strquote(char *dest, int size, const char *str, int len);
+int strunquote(char *dest, int size, const char *str, int len);
+
+/*---- Unicode string functions ----*/
+
+int ustrstart(const unsigned int *str, const char *val, int *lenp);
+const unsigned int *ustrstr(const unsigned int *str, const char *val);
+int ustristart(const unsigned int *str, const char *val, int *lenp);
+const unsigned int *ustristr(const unsigned int *str, const char *val);
+int umemcmp(const unsigned int *s1, const unsigned int *s2, size_t count);
+
+static inline unsigned int *umemcpy(unsigned int *dest, const unsigned int *src, size_t count) {
+    return blockcpy(dest, src, count);
+}
+
+static inline unsigned int *umemmove(unsigned int *dest, const unsigned int *src, size_t count) {
+    return blockmove(dest, src, count);
 }
 
 int ustr_get_identifier(char *buf, int buf_size, int c,
@@ -179,58 +249,29 @@ int ustr_get_identifier_lc(char *buf, int buf_size, int c,
 int ustr_get_word(char *buf, int buf_size, int c,
                   const unsigned int *str, int i, int n);
 
-int qe_strcollate(const char *s1, const char *s2);
-int qe_strtobool(const char *s, int def);
-void qe_strtolower(char *buf, int buf_size, const char *str);
-int qe_skip_spaces(const char **pp);
-
-int memfind(const char *list, const char *p, int len);
-int strfind(const char *list, const char *s);
-int strxfind(const char *list, const char *s);
-const char *strmem(const char *str, const void *mem, int size);
-const void *memstr(const void *buf, int size, const char *str);
-
-#define stristart(str, val, ptr)   qe_stristart(str, val, ptr)
-int stristart(const char *str, const char *val, const char **ptr);
-int strxstart(const char *str, const char *val, const char **ptr);
-int strxcmp(const char *str1, const char *str2);
-int strmatchword(const char *str, const char *val, const char **ptr);
-int ustrstart(const unsigned int *str, const char *val, int *lenp);
-int ustristart(const unsigned int *str, const char *val, int *lenp);
-const unsigned int *ustrstr(const unsigned int *str, const char *val);
-const unsigned int *ustristr(const unsigned int *str, const char *val);
-static inline unsigned int *umemmove(unsigned int *dest, const unsigned int *src, size_t count) {
-    return blockmove(dest, src, count);
+static inline int check_fcall(const unsigned int *str, int i) {
+    while (str[i] == ' ')
+        i++;
+    return str[i] == '(';
 }
-static inline unsigned int *umemcpy(unsigned int *dest, const unsigned int *src, size_t count) {
-    return blockcpy(dest, src, count);
-}
-int umemcmp(const unsigned int *s1, const unsigned int *s2, size_t count);
-int qe_memicmp(const void *p1, const void *p2, size_t count);
-const char *qe_stristr(const char *s1, const char *s2);
 
-int strsubst(char *buf, int buf_size, const char *from,
-             const char *s1, const char *s2);
-int byte_quote(char *dest, int size, unsigned char c);
-int strquote(char *dest, int size, const char *str, int len);
-int strunquote(char *dest, int size, const char *str, int len);
-int get_str(const char **pp, char *buf, int buf_size, const char *stop);
+/*---- Allocation wrappers and utilities ----*/
 
-/* allocation wrappers and utilities */
 void *qe_malloc_bytes(size_t size);
 void *qe_mallocz_bytes(size_t size);
 void *qe_malloc_dup(const void *src, size_t size);
 char *qe_strdup(const char *str);
 void *qe_realloc(void *pp, size_t size);
 
-#if 0
-/* Documentation prototypes */
+#if 0  /* Documentation prototypes */
+
 T *qe_malloc(type T);
 /*@API memory
    Allocate memory for an object of type `T`.
    @argument `T` the type of the object to allocate.
    @note this function is implemented as a macro.
  */
+
 T *qe_mallocz(type T);
 /*@API memory
    Allocate memory for an object of type `T`.
@@ -238,6 +279,7 @@ T *qe_mallocz(type T);
    @argument `T` the type of the object to allocate.
    @note this function is implemented as a macro.
  */
+
 T *qe_malloc_array(type T, size_t n);
 /*@API memory
    Allocate memory for an array of objects of type `T`.
@@ -245,6 +287,7 @@ T *qe_malloc_array(type T, size_t n);
    @argument `n` the number of elements to allocate.
    @note this function is implemented as a macro.
  */
+
 T *qe_mallocz_array(type T, size_t n);
 /*@API memory
    Allocate memory for an array of objects of type `T`.
@@ -253,6 +296,7 @@ T *qe_mallocz_array(type T, size_t n);
    @argument `n` the number of elements to allocate.
    @note this function is implemented as a macro.
  */
+
 T *qe_malloc_hack(type T, size_t n);
 /*@API memory
    Allocate memory for an object of type `T` with `n` extra bytes.
@@ -260,6 +304,7 @@ T *qe_malloc_hack(type T, size_t n);
    @argument `n` the number of bytes to allocate in addition to the size of type `T`.
    @note this function is implemented as a macro.
  */
+
 T *qe_mallocz_array(type T, size_t n);
 /*@API memory
    Allocate memory for an object of type `T` with `n` extra bytes.
@@ -268,6 +313,7 @@ T *qe_mallocz_array(type T, size_t n);
    @argument `n` the number of bytes to allocate in addition to the size of type `T`.
    @note this function is implemented as a macro.
  */
+
 void qe_free(T **pp);
 /*@API memory
    Free the allocated memory pointed to by a pointer whose address is passed.
@@ -278,6 +324,7 @@ void qe_free(T **pp);
    @note this function is implemented as a macro.
  */
 #endif
+
 #define qe_malloc(t)            ((t *)qe_malloc_bytes(sizeof(t)))
 #define qe_mallocz(t)           ((t *)qe_mallocz_bytes(sizeof(t)))
 #define qe_malloc_array(t, n)   ((t *)qe_malloc_bytes((n) * sizeof(t)))
@@ -304,7 +351,9 @@ void qe_free(T **pp);
 #define realloc(p,s)  do_not_use_realloc!!(p,s)
 #endif
 
-/*---- Various string packages: should unify these but keep API simple ----*/
+/*---- StringArray functions ----*/
+
+// XXX: Should unify these string packages but keep API simple
 
 StringItem *set_string(StringArray *cs, int index, const char *str, int group);
 StringItem *add_string(StringArray *cs, const char *str, int group);
@@ -339,9 +388,11 @@ static inline buf_t *buf_attach(buf_t *bp, char *buf, int size, int pos) {
     bp->len = bp->pos = pos;
     return bp;
 }
+
 static inline int buf_avail(buf_t *bp) {
     return bp->size - bp->pos - 1;
 }
+
 static inline int buf_put_byte(buf_t *bp, int c) {
     if (bp->len < bp->size - 1) {
         bp->buf[bp->len++] = c;
@@ -349,7 +400,9 @@ static inline int buf_put_byte(buf_t *bp, int c) {
     }
     return bp->pos++;
 }
+
 int buf_write(buf_t *bp, const void *src, int size);
+
 static inline int buf_puts(buf_t *bp, const char *str) {
     return buf_write(bp, str, strlen(str));
 }
@@ -376,11 +429,12 @@ static inline int bstr_equal(bstr_t s1, bstr_t s2) {
     return s1.len == s2.len && !memcmp(s1.s, s2.s, s1.len);
 }
 
-/* our own implementation of qsort_r() */
+/*---- our own implementation of qsort_r() ----*/
+
 void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
                 int (*compar)(void *, const void *, const void *));
 
-/*---------------- key definitions ----------------*/
+/*---- key definitions and functions ----*/
 
 int compose_keys(unsigned int *keys, int *nb_keys);
 int strtokey(const char **pp);
@@ -465,20 +519,17 @@ int buf_encode_byte(buf_t *out, unsigned char ch);
 #define KEY_F19         KEY_ESC1(33)
 #define KEY_F20         KEY_ESC1(34)
 
-extern unsigned char const utf8_length[256];
-static inline int utf8_is_trailing_byte(int c) { return (c & 0xC0) == 0x80; }
+/*---- Unicode and UTF-8 support ----*/
+
+// XXX: not in util.c
+
+static inline int utf8_is_trailing_byte(int c) {
+    return (c & 0xC0) == 0x80;
+}
 int utf8_encode(char *q, int c);
 int utf8_decode(const char **pp);
 char *utf8_char_to_string(char *buf, int c);
 int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str);
-
-int load_ligatures(const char *filename);
-void unload_ligatures(void);
-int combine_accent(unsigned int *buf, int c, int accent);
-int expand_ligature(unsigned int *buf, int c);
-int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
-                      int dst_size, unsigned int *src, int src_size,
-                      int reverse);
 
 #include "wcwidth.h"
 
@@ -489,5 +540,14 @@ static inline int qe_isaccent(int c) {
 static inline int qe_iswide(int c) {
     return c >= 0x01000 && qe_wcwidth(c) > 1;
 }
+
+/*---- Completion types used for enumerations ----*/
+
+typedef struct CompleteState CompleteState;
+typedef void (*CompleteFunc)(CompleteState *cp, const char *str, int mode);
+/* mode values for default CompleteFunc passed to complete_xxx() functions */
+#define CT_TEST  0
+#define CT_STRX  1
+#define CT_SET   2
 
 #endif  /* UTIL_H */

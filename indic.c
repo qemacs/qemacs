@@ -19,7 +19,7 @@
  */
 
 #include "cutils.h"
-#include "qfribidi.h"
+#include "unicode_join.h"
 
 #define VIRAMA  0x94d
 #define RA      0x930

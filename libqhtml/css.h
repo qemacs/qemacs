@@ -682,7 +682,8 @@ XMLState *xml_begin(CSSStyleSheet *style_sheet, int flags,
 int xml_parse(XMLState *s, char *buf, int buf_len);
 CSSBox *xml_end(XMLState **sp);
 
-CSSBox *xml_parse_buffer(struct EditBuffer *b, int offset_start, int offset_end,
+CSSBox *xml_parse_buffer(struct EditBuffer *b, const char *name,
+                         int offset_start, int offset_end,
                          CSSStyleSheet *style_sheet, int flags,
                          CSSAbortFunc *abort_func, void *abort_opaque);
 int find_entity(const char *str);

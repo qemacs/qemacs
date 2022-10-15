@@ -20,7 +20,7 @@
  */
 
 #include "qe.h"
-#include "qfribidi.h"
+#include "unicode_join.h"
 #include "variables.h"
 
 #ifdef CONFIG_DLL
@@ -4237,10 +4237,10 @@ int text_backward_offset(EditState *s, int offset)
 
 #ifdef CONFIG_UNICODE_JOIN
 /* max_size should be >= 2 */
-static int bidir_compute_attributes(TypeLink *list_tab, int max_size,
+static int bidir_compute_attributes(BidirTypeLink *list_tab, int max_size,
                                     EditBuffer *b, int offset)
 {
-    TypeLink *p;
+    BidirTypeLink *p;
     FriBidiCharType type, ltype;
     int left, offset1;
     unsigned int c;
@@ -4524,7 +4524,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
 {
     int c;
     int offset0, offset1, line_num, col_num;
-    TypeLink embeds[RLE_EMBEDDINGS_SIZE], *bd;
+    BidirTypeLink embeds[RLE_EMBEDDINGS_SIZE], *bd;
     int embedding_level, embedding_max_level;
     FriBidiCharType base;
     unsigned int buf[COLORED_MAX_LINE_SIZE];
@@ -6480,7 +6480,7 @@ static void complete_start(CompleteState *cp, EditState *s, int start, int end,
 }
 
 /* XXX: should have a globbing option */
-void complete_test(CompleteState *cp, const char *str, int mode) {
+static void complete_test(CompleteState *cp, const char *str, int mode) {
     int fuzzy = 0;
 
     switch (mode) {

@@ -22,7 +22,6 @@
 #ifndef QE_DISPLAY_H
 #define QE_DISPLAY_H
 
-#include <stdio.h>  /* FILE, NULL */
 #include "util.h"   /* qe__unused__ */
 #include "color.h"
 #include "charset.h"

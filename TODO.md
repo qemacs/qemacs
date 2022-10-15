@@ -2,9 +2,7 @@
 
 # QEmacs TODO list
 
-## Changes for Core modules
-
-### Documentation
+## Documentation
 
 * improve **README.md**
 * rework documentation:
@@ -23,7 +21,7 @@
 * show memory stats in `describe-buffer` and `about-qemacs`
 * add function to add entry in **TODO.md**
 
-### Core / Buffer / Input
+## Core / Buffer / Input
 
 * `describe-key-briefly`, `local-set-key`, etc should use a special input mode to read a string of keys via the minibuffer to remove the `qe_key_process` hack and use the same input behavior as emacs.
 * in command specs, distinguish between interactive commands and non interactive functions, such as the isearch-xxx functions
@@ -65,8 +63,11 @@
   an EditBuffer could also have an embedded QECursor with no EditState
 * use hash tables for command and variable names
 * sort key binding tables?
+* `next-buffer` command on C-x C-right
+* `previous-buffer` command on C-x C-left
+* `save-modified-buffer` command on C-x s
 
-### Charsets / Unicode / Bidir
+## Charsets / Unicode / Bidir
 
 * add default charset for new buffer creation, set that to utf8
 * better display of invalid UTF-8 encodings
@@ -108,7 +109,7 @@
   koi8_ru.cp APL-ISO-IR-68.TXT GSM0338.TXT SGML.TXT
 * deal with accents in filenames (macOS uses combining accents encoded as UTF-8)
 
-### Windowing / Display
+## Windowing / Display
 
 * always save window buffer properties to buffer upon detaching
 * add global system to select default values for some window states
@@ -173,7 +174,7 @@ insert_window_left()  deletes some left-most windows
 * fix column computation based on display properties:
   (variable pitch, tabs, ^x and \uxxxx stuff -- emacs behaviour) ?
 
-### X11 display / graphics
+## X11 display / graphics
 
 * handle X11 window manager close window event and exit cleanly
 * clip display by popup size
@@ -186,7 +187,7 @@ insert_window_left()  deletes some left-most windows
 * add `configure --disable-graphics`
 * `dpy_open_font` should never return `NULL`, must have a system font.
 
-### Files
+## Files
 
 * [BUG] check file date to detect asynchronous modifications on disk
 * reload modified file upon change if untouched since load
@@ -217,7 +218,7 @@ insert_window_left()  deletes some left-most windows
 * improve speed: `C-x C-f ~/x2m RET C-u 1000 C-n` -> 4s
 * use a prefix to explore file in a popup window
 
-### Moving / Editing / Navigation
+## Moving / Editing / Navigation
 
 * pass argval and pagewise to `do_scroll_up_down()` or split command
 * files: fix `SPC` / `TAB` distinct behaviors on **~/comp/project/gnachman/**
@@ -257,7 +258,7 @@ insert_window_left()  deletes some left-most windows
 * rectangular regions, cut/paste
 * multi-line editing
 
-### Macros
+## Macros
 
 * `start-keyboard-macro` should clear current macro if called recursively
 * allow redefining the keyboard macro embedding itself
@@ -280,7 +281,7 @@ insert_window_left()  deletes some left-most windows
    <><>(define-macro "last-kbd-macro" "\<>\<>")
 ```
 
-### Minibuffer / Completion
+## Minibuffer / Completion
 
 * minibuf: spurious recursive edit cases.
 * completion: fix electric behavior
@@ -295,7 +296,7 @@ insert_window_left()  deletes some left-most windows
 * execute command with fuzzy completion
 * completion with fuzzy matching
 
-### Searching
+## Searching
 
 * incremental search: increase max repeat count
 * improve search speed finally
@@ -315,7 +316,7 @@ insert_window_left()  deletes some left-most windows
 * isearch: M-p and M-n should select previous and next search pattern in history
 * searching failure should abort macros
 
-### Undo
+## Undo
 
 * allow file save when undo clears file modified flag
 * undo some cursor movements
@@ -332,7 +333,7 @@ insert_window_left()  deletes some left-most windows
 * compress logs and limit size
 * mode for undo buffers
 
-### Config / Sessions / Scripting
+## Config / Sessions / Scripting
 
 * config: reparse **.qerc** upon change
 * session: register session store functions
@@ -353,7 +354,7 @@ insert_window_left()  deletes some left-most windows
 * commands: `parse_arg()` should handle default argument values
 * commands: pass raw prefix argument `P` as combination of has_arg (flags) and argval (number)
 
-### Colors and styles
+## Colors and styles
 
 * [BUG] preserve static styles in `do_convert_buffer_file_coding_system()`
 * optimize style transfer in `eb_insert_buffer_convert()`

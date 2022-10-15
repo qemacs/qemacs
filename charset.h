@@ -102,6 +102,7 @@ int charset_more_init(void);
 int charset_jis_init(void);
 
 void qe_register_charset(struct QECharset *charset);
+void charset_complete(CompleteState *cp, CompleteFunc enumerate);
 
 QECharset *find_charset(const char *str);
 void charset_decode_init(CharsetDecodeState *s, QECharset *charset,
@@ -118,5 +119,7 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep);
 void decode_8bit_init(CharsetDecodeState *s);
 int decode_8bit(CharsetDecodeState *s);
 u8 *encode_8bit(QECharset *charset, u8 *q, int c);
+
+extern unsigned char const utf8_length[256];
 
 #endif /* CHARSET_H */
