@@ -521,17 +521,18 @@ int buf_encode_byte(buf_t *out, unsigned char ch);
 
 /*---- Unicode and UTF-8 support ----*/
 
-// XXX: not in util.c
+#include "wcwidth.h"
+
+extern unsigned char const utf8_length[256];
 
 static inline int utf8_is_trailing_byte(int c) {
     return (c & 0xC0) == 0x80;
 }
+
 int utf8_encode(char *q, int c);
 int utf8_decode(const char **pp);
 char *utf8_char_to_string(char *buf, int c);
 int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str);
-
-#include "wcwidth.h"
 
 static inline int qe_isaccent(int c) {
     return c >= 0x300 && qe_wcwidth(c) == 0;

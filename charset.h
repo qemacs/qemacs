@@ -22,7 +22,7 @@
 #ifndef CHARSET_H
 #define CHARSET_H
 
-#include "wcwidth.h"
+#include "util.h"   /* CompleteState */
 
 /* maximum number of bytes for a character in all the supported charsets */
 #define MAX_CHAR_BYTES 6
@@ -119,7 +119,5 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep);
 void decode_8bit_init(CharsetDecodeState *s);
 int decode_8bit(CharsetDecodeState *s);
 u8 *encode_8bit(QECharset *charset, u8 *q, int c);
-
-extern unsigned char const utf8_length[256];
 
 #endif /* CHARSET_H */

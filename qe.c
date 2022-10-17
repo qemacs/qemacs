@@ -6623,22 +6623,20 @@ void do_minibuffer_complete(EditState *s, int type)
     match_len = cs.len;
 
     if (count > 0) {
-        int c;
-        for (; (c = outputs[0]->str[match_len]) != '\0'; match_len++) {
+        /* find the longest common prefix */
+        int c, pos;
+
+        match_len = 0;
+        for (pos = 0; (c = outputs[0]->str[pos]) != '\0'; pos++) {
             for (i = 1; i < count; i++) {
-                if (outputs[i]->str[match_len] != c)
+                if (outputs[i]->str[pos] != c)
                     break;
             }
             if (i < count)
                 break;
-        }
-        /* Clip incomplete UTF-8 character before match_len */
-        for (i = cs.len; i < match_len; ) {
-            int clen = utf8_length[(unsigned char)outputs[0]->str[i]];
-            if (i + clen > match_len)
-                match_len = i;
-            else
-                i += clen;
+            /* only count complete UTF-8 sequences in prefix */
+            if (!utf8_is_trailing_byte(outputs[0]->str[pos + 1]))
+                match_len = pos + 1;
         }
     }
     if (match_len > cs.len) {

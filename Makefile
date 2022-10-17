@@ -451,7 +451,7 @@ endif
 
 UNICODE_VER=15.0.0
 
-$(BINDIR)/unitable$(EXE): tools/unitable.c wcwidth.h wcwidth.c
+$(BINDIR)/unitable$(EXE): tools/unitable.c cutils.h wcwidth.h wcwidth.c
 	$(echo) CC tools/unitable.c
 	$(cmd)  mkdir -p $(dir $@)
 	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ tools/unitable.c

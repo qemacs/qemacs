@@ -20,6 +20,7 @@
  */
 
 #include <limits.h>
+#include "util.h"
 #include "display.h"
 #include "unicode_join.h"
 #include "css.h"

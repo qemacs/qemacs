@@ -22,9 +22,8 @@
 #ifndef QE_DISPLAY_H
 #define QE_DISPLAY_H
 
-#include "util.h"   /* qe__unused__ */
+#include "cutils.h"   /* qe__unused__ */
 #include "color.h"
-#include "charset.h"
 
 #define MAX_SCREEN_WIDTH  1024  /* in chars */
 #define MAX_SCREEN_LINES   256  /* in text lines */
@@ -71,6 +70,7 @@ typedef struct QEPicture {
 typedef struct QEditScreen QEditScreen;
 typedef struct QEDisplay QEDisplay;
 struct EditBuffer;
+struct QECharset;
 
 struct QEDisplay {
     const char *name;
@@ -124,7 +124,7 @@ struct QEditScreen {
     QEDisplay dpy;
     FILE *STDIN, *STDOUT;
     int width, height;
-    QECharset *charset; /* the charset of the TTY, XXX: suppress that,
+    const struct QECharset *charset; /* the charset of the TTY, XXX: suppress that,
                           use a system in fonts instead */
     int unicode_version;
     int media; /* media type (see CSS_MEDIA_xxx) */

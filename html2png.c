@@ -309,7 +309,7 @@ void test_display(QEditScreen *screen)
 
     fill_rectangle(screen, 0, 0, screen->width, screen->height,
                    QERGB(0xff, 0x00, 0x00));
-    len = utf8_to_unicode(buf, sizeof(buf), "Hello World !");
+    len = utf8_to_unicode(buf, countof(buf), "Hello World !");
 
     font = select_font(screen, QE_FONT_FAMILY_FIXED | QE_FONT_STYLE_NORM, 12);
 

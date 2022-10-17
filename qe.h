@@ -60,6 +60,9 @@
 /************************/
 
 #include "util.h"
+#include "charset.h"
+#include "color.h"
+#include "display.h"
 
 /************************/
 
@@ -130,8 +133,6 @@ void canonicalize_absolute_buffer_path(EditBuffer *b, int offset,
                                        char *buf, int buf_size,
                                        const char *path1);
 
-#include "color.h"
-
 /* Command line options */
 enum CmdLineOptionType {
     CMD_LINE_TYPE_NONE   = 0,  /* nothing */
@@ -166,9 +167,6 @@ typedef struct CmdLineOptionDef {
 void qe_register_cmd_line_options(CmdLineOptionDef *table);
 
 int find_resource_file(char *path, int path_size, const char *pattern);
-
-/* charset.c */
-#include "charset.h"
 
 /* qe event handling */
 
@@ -611,10 +609,6 @@ void init_all_modules(void);
 #define qe_module_exit(fn)
 
 #endif /* QE_MODULE */
-
-/* display.c */
-
-#include "display.h"
 
 /* qe.c */
 
