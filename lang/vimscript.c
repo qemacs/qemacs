@@ -1,7 +1,7 @@
 /*
  * Vim script mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -64,14 +64,15 @@ enum {
     VIM_STATE_SYN,
 };
 
-static int is_vim_keyword(unsigned int *str, int from, int to,
+static int is_vim_keyword(const char32_t *str, int from, int to,
                           const char *list)
 {
     char keyword[16];
     const char *p;
-    int c, i, len = to - from;
+    int i, len = to - from;
+    char32_t c;
 
-    if (len >= (int)sizeof(keyword))
+    if (len >= ssizeof(keyword))
         return 0;
 
     for (i = 0; i < len; i++) {
@@ -102,9 +103,10 @@ static int is_vim_keyword(unsigned int *str, int from, int to,
 }
 
 static void vim_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, j, start, c, state, comm, level, style;
+    int i = 0, j, start, state, comm, level, style;
+    char32_t c;
 
     while (qe_isblank(str[i])) {
         i++;
@@ -128,7 +130,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
             comm = 0;
             /* parse string const */
             while (i < n) {
-                if (str[i++] == (unsigned int)c)
+                if (str[i++] == c)
                     break;
             }
             SET_COLOR(str, start, i, VIM_STYLE_STRING);
@@ -141,7 +143,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
                     if (str[i] == '\\' && i + 1 < n) {
                         i += 2;
                     } else
-                    if (str[i++] == (unsigned int)c)
+                    if (str[i++] == c)
                         break;
                 }
                 SET_COLOR(str, start, i, VIM_STYLE_REGEX);
@@ -153,7 +155,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
             &&  (qe_isblank(str[i - 2]) || str[i - 2] == '=')) {
                 /* parse string const */
                 for (j = i; j < n;) {
-                    if (str[j++] == (unsigned int)c) {
+                    if (str[j++] == c) {
                         i = j;
                         SET_COLOR(str, start, i, VIM_STYLE_STRING);
                         break;
@@ -174,7 +176,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
                 if (str[i] == '\\' && i + 1 < n) {
                     i += 2;
                 } else
-                if (str[i++] == (unsigned int)c) {
+                if (str[i++] == c) {
                     style = VIM_STYLE_STRING;
                     break;
                 }

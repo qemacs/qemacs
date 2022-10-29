@@ -90,107 +90,107 @@ void splitpath(char *dirname, int dirname_size,
 
 extern unsigned char const qe_digit_value__[128];
 
-static inline int qe_digit_value(int c) {
-    return (unsigned int)c < 128 ? qe_digit_value__[c] : 255;
+static inline int qe_digit_value(char32_t c) {
+    return c < 128 ? qe_digit_value__[c] : 255;
 }
 
-static inline int qe_inrange(int c, int a, int b) {
+static inline int qe_inrange(char32_t c, char32_t a, char32_t b) {
     //return c >= a && c <= b;
     //CG: assuming a <= b and wrap around semantics for (c - a) and (b - a)
     return (unsigned int)(c - a) <= (unsigned int)(b - a);
 }
 
-static inline int qe_isspace(int c) {
+static inline int qe_isspace(char32_t c) {
     /* CG: what about \v and \f */
     return (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == 160);
 }
 
-static inline int qe_isblank(int c) {
+static inline int qe_isblank(char32_t c) {
     return (c == ' ' || c == '\t' || c == 160);
 }
 
-static inline int qe_isdigit(int c) {
+static inline int qe_isdigit(char32_t c) {
     return qe_inrange(c, '0', '9');
 }
 
-static inline int qe_isdigit_(int c) {
+static inline int qe_isdigit_(char32_t c) {
     return (qe_inrange(c, '0', '9') || c == '_');
 }
 
-static inline int qe_isupper(int c) {
+static inline int qe_isupper(char32_t c) {
     return qe_inrange(c, 'A', 'Z');
 }
 
-static inline int qe_isupper_(int c) {
+static inline int qe_isupper_(char32_t c) {
     return (qe_inrange(c, 'A', 'Z') || c == '_');
 }
 
-static inline int qe_islower(int c) {
+static inline int qe_islower(char32_t c) {
     return qe_inrange(c, 'a', 'z');
 }
 
-static inline int qe_islower_(int c) {
+static inline int qe_islower_(char32_t c) {
     return (qe_inrange(c, 'a', 'z') || (c == '_'));
 }
 
-static inline int qe_isalpha(int c) {
+static inline int qe_isalpha(char32_t c) {
     return qe_inrange(c | ('a' - 'A'), 'a', 'z');
 }
 
-static inline int qe_isalpha_(int c) {
+static inline int qe_isalpha_(char32_t c) {
     return (qe_inrange(c | ('a' - 'A'), 'a', 'z') || c == '_');
 }
 
-static inline int qe_isoctdigit(int c) {
+static inline int qe_isoctdigit(char32_t c) {
     return qe_inrange(c, '0', '7');
 }
 
-static inline int qe_isoctdigit_(int c) {
+static inline int qe_isoctdigit_(char32_t c) {
     return qe_inrange(c, '0', '7') || (c == '_');
 }
 
-static inline int qe_isbindigit(int c) {
+static inline int qe_isbindigit(char32_t c) {
     return qe_inrange(c, '0', '1');
 }
 
-static inline int qe_isbindigit_(int c) {
+static inline int qe_isbindigit_(char32_t c) {
     return qe_inrange(c, '0', '1') || (c == '_');
 }
 
-static inline int qe_isxdigit(int c) {
+static inline int qe_isxdigit(char32_t c) {
     return qe_digit_value(c) < 16;
 }
 
-static inline int qe_isxdigit_(int c) {
+static inline int qe_isxdigit_(char32_t c) {
     return (qe_digit_value(c) < 16) || (c == '_');
 }
 
-static inline int qe_isalnum(int c) {
+static inline int qe_isalnum(char32_t c) {
     return qe_digit_value(c) < 36;
 }
 
-static inline int qe_isalnum_(int c) {
+static inline int qe_isalnum_(char32_t c) {
     return (qe_digit_value(c) < 36) || (c == '_');
 }
 
-static inline int qe_isword(int c) {
+static inline int qe_isword(char32_t c) {
     /* XXX: any unicode char >= 128 is considered as word. */
     return qe_isalnum_(c) || (c >= 128);
 }
 
-static inline int qe_toupper(int c) {
+static inline char32_t qe_toupper(char32_t c) {
     return (qe_inrange(c, 'a', 'z') ? c + 'A' - 'a' : c);
 }
 
-static inline int qe_tolower(int c) {
+static inline char32_t qe_tolower(char32_t c) {
     return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
 }
 
-static inline int qe_findchar(const char *str, int c) {
+static inline int qe_findchar(const char *str, char32_t c) {
     return qe_inrange(c, 1, 255) && strchr(str, c) != NULL;
 }
 
-static inline int qe_indexof(const char *str, int c) {
+static inline int qe_indexof(const char *str, char32_t c) {
     if (qe_inrange(c, 1, 255)) {
         const char *p = strchr(str, c);
         if (p) return (int)(p - str);
@@ -198,7 +198,7 @@ static inline int qe_indexof(const char *str, int c) {
     return -1;
 }
 
-static inline int qe_match2(int c, int c1, int c2) {
+static inline int qe_match2(char32_t c, char32_t c1, char32_t c2) {
     return c == c1 || c == c2;
 }
 
@@ -228,28 +228,29 @@ int strunquote(char *dest, int size, const char *str, int len);
 
 /*---- Unicode string functions ----*/
 
-int ustrstart(const unsigned int *str, const char *val, int *lenp);
-const unsigned int *ustrstr(const unsigned int *str, const char *val);
-int ustristart(const unsigned int *str, const char *val, int *lenp);
-const unsigned int *ustristr(const unsigned int *str, const char *val);
-int umemcmp(const unsigned int *s1, const unsigned int *s2, size_t count);
+int ustrstart(const char32_t *str, const char *val, int *lenp);
+const char32_t *ustrstr(const char32_t *str, const char *val);
+int ustristart(const char32_t *str, const char *val, int *lenp);
+const char32_t *ustristr(const char32_t *str, const char *val);
+int umemcmp(const char32_t *s1, const char32_t *s2, size_t count);
 
-static inline unsigned int *umemcpy(unsigned int *dest, const unsigned int *src, size_t count) {
+static inline char32_t *umemcpy(char32_t *dest, const char32_t *src, size_t count) {
     return blockcpy(dest, src, count);
 }
 
-static inline unsigned int *umemmove(unsigned int *dest, const unsigned int *src, size_t count) {
+static inline char32_t *umemmove(char32_t *dest, const char32_t *src, size_t count) {
     return blockmove(dest, src, count);
 }
 
-int ustr_get_identifier(char *buf, int buf_size, int c,
-                        const unsigned int *str, int i, int n);
-int ustr_get_identifier_lc(char *buf, int buf_size, int c,
-                           const unsigned int *str, int i, int n);
-int ustr_get_word(char *buf, int buf_size, int c,
-                  const unsigned int *str, int i, int n);
+int ustr_get_identifier(char *buf, int buf_size, char32_t c,
+                        const char32_t *str, int i, int n);
+int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c,
+                           const char32_t *str, int i, int n);
+int ustr_get_word(char *buf, int buf_size, char32_t c,
+                  const char32_t *str, int i, int n);
+int ustr_match_keyword(const char32_t *buf, const char *str, int *lenp);
 
-static inline int check_fcall(const unsigned int *str, int i) {
+static inline int check_fcall(const char32_t *str, int i) {
     while (str[i] == ' ')
         i++;
     return str[i] == '(';
@@ -363,8 +364,10 @@ void free_strings(StringArray *cs);
 
 typedef struct buf_t buf_t;
 struct buf_t {
-    char *buf;
-    int size, len, pos;
+    char *buf;  /* pointer to the array holding the dynamic string */
+    int size;   /* size of the array pointed to by buf */
+    int len;    /* length of output in buf. buf is null terminated */
+    int pos;    /* output position into or beyond the end of buf */
 };
 
 static inline buf_t *buf_init(buf_t *bp, char *buf, int size) {
@@ -393,9 +396,9 @@ static inline int buf_avail(buf_t *bp) {
     return bp->size - bp->pos - 1;
 }
 
-static inline int buf_put_byte(buf_t *bp, int c) {
+static inline int buf_put_byte(buf_t *bp, unsigned char ch) {
     if (bp->len < bp->size - 1) {
-        bp->buf[bp->len++] = c;
+        bp->buf[bp->len++] = ch;
         bp->buf[bp->len] = '\0';
     }
     return bp->pos++;
@@ -408,7 +411,7 @@ static inline int buf_puts(buf_t *bp, const char *str) {
 }
 
 int buf_printf(buf_t *bp, const char *fmt, ...) qe__attr_printf(2,3);
-int buf_putc_utf8(buf_t *bp, int c);
+int buf_putc_utf8(buf_t *bp, char32_t c);
 
 /*---- Bounded constant strings used in various parse functions ----*/
 typedef struct bstr_t {
@@ -449,7 +452,7 @@ int buf_encode_byte(buf_t *out, unsigned char ch);
 #define KEY_ESC1(c)     ((c) | 0xe200)
 #define KEY_IS_ESC1(c)     ((c) >= KEY_ESC1(0) && (c) <= KEY_ESC1(0xff))
 #define KEY_IS_SPECIAL(c)  ((c) >= 0xe000 && (c) < 0xf000)
-#define KEY_IS_CONTROL(c)  (((c) >= 0 && (c) < 32) || (c) == 127)
+#define KEY_IS_CONTROL(c)  ((unsigned int)(c) < 32 || (c) == 127)
 
 #define KEY_NONE        0xE000
 #define KEY_DEFAULT     0xE001 /* to handle all non special keys */
@@ -525,20 +528,20 @@ int buf_encode_byte(buf_t *out, unsigned char ch);
 
 extern unsigned char const utf8_length[256];
 
-static inline int utf8_is_trailing_byte(int c) {
+static inline int utf8_is_trailing_byte(unsigned char c) {
     return (c & 0xC0) == 0x80;
 }
 
-int utf8_encode(char *q, int c);
-int utf8_decode(const char **pp);
-char *utf8_char_to_string(char *buf, int c);
-int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str);
+int utf8_encode(char *q, char32_t c);
+char32_t utf8_decode_strict(const char **pp);
+char32_t utf8_decode(const char **pp);
+int utf8_to_char32(char32_t *dest, int dest_length, const char *str);
 
-static inline int qe_isaccent(int c) {
+static inline int qe_isaccent(char32_t c) {
     return c >= 0x300 && qe_wcwidth(c) == 0;
 }
 
-static inline int qe_iswide(int c) {
+static inline int qe_iswide(char32_t c) {
     return c >= 0x01000 && qe_wcwidth(c) > 1;
 }
 

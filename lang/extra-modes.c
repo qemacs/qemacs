@@ -1,7 +1,7 @@
 /*
  * Miscellaneous language modes for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -32,9 +32,10 @@ enum {
 };
 
 static void sharp_colorize_line(QEColorizeContext *cp,
-                               unsigned int *str, int n, ModeDef *syn)
+                               char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start, c;
+    int i = 0, start;
+    char32_t c;
 
     while (i < n) {
         start = i;
@@ -104,10 +105,11 @@ enum {
 };
 
 static void emf_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start, c, nw = 1, len, style;
+    int i = 0, start, nw = 1, len, style;
+    char32_t c;
 
     while (i < n) {
         start = i;

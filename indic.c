@@ -36,33 +36,29 @@
 #define RA_DEAD (RA + DEAD_CONSONANT_OFFSET)
 
 #if 0
-static int is_vowel_sign(unsigned int i)
-{
-  return (i >= 0x93E && i <= 0x94c) || (i >= 0x962 && i <= 0x963);
+static int is_vowel_sign(char32_t i) {
+    return (i >= 0x93E && i <= 0x94c) || (i >= 0x962 && i <= 0x963);
 }
 #endif
 
-static int is_consonant(unsigned int i)
-{
-  return (i >= 0x915 && i <= 0x939) || (i >= 0x958 && i <= 0x95f);
+static int is_consonant(char32_t i) {
+    return (i >= 0x915 && i <= 0x939) || (i >= 0x958 && i <= 0x95f);
 }
 
-static int is_ind_vowel(unsigned int i)
-{
-  return (i >= 0x905 && i <= 0x914);
+static int is_ind_vowel(char32_t i) {
+    return (i >= 0x905 && i <= 0x914);
 }
 
-static int is_dead_consonant(unsigned int i)
-{
+static int is_dead_consonant(char32_t i) {
     return (i >= DEAD_CONSONANT_OFFSET && i <= DEAD_CONSONANT_OFFSET + 0x7f);
 }
 
 /* always returns a smaller buffer */
-int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len)
-{
-    int i, len1, cc, j, k, c;
+int devanagari_log2vis(char32_t *str, unsigned int *ctog, int len) {
+    char32_t cc, c;
+    int i, len1, j, k;
     /* CG: C99 variable-length arrays may be too large */
-    unsigned int *q, buf[len];
+    char32_t *q, buf[len];
 
     /* Rule 1 : dead consonant rule */
     q = buf;

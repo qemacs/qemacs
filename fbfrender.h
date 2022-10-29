@@ -40,7 +40,7 @@ typedef struct GlyphCache {
 
 void fbf_text_metrics(QEditScreen *s, QEFont *font,
                       QECharMetrics *metrics,
-                      const unsigned int *str, int len);
+                      const char32_t *str, int len);
 GlyphCache *decode_cached_glyph(QEditScreen *s, QEFont *font, int code);
 QEFont *fbf_open_font(QEditScreen *s, int style, int size);
 void fbf_close_font(QEditScreen *s, QEFont **fontp);

@@ -1,7 +1,7 @@
 /*
  * Swift mode for QEmacs.
  *
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -45,7 +45,7 @@ enum {
 #define S(a)     a, a
 #define E()      0x110000, 0
 
-static int const swift_identifier_head[] = {
+static char32_t const swift_identifier_head[] = {
     R('A', 'Z'), R('a', 'z'),
     S(0x00A8), S(0x00AA), S(0x00AD), S(0x00AF),
     R(0x00B2, 0x00B5), R(0x00B7, 0x00BA),
@@ -73,7 +73,7 @@ static int const swift_identifier_head[] = {
     R(0xE0000, 0xEFFFD), E(),
 };
 
-static int const swift_identifier_other_chars[] = {
+static char32_t const swift_identifier_other_chars[] = {
     R(0x0300, 0x036F), R(0x1DC0, 0x1DFF),
     R(0x20D0, 0x20FF), R(0xFE20, 0xFE2F),
     E(),
@@ -83,8 +83,7 @@ static int const swift_identifier_other_chars[] = {
 #undef S
 #undef E
 
-static int qe_find_range(int c, const int *rangep)
-{
+static int qe_find_range(char32_t c, const char32_t *rangep) {
     if (c > 0x10FFFF)
         return 0;
 
@@ -96,12 +95,12 @@ static int qe_find_range(int c, const int *rangep)
     }
 }
 
-static int is_swift_identifier_head(int c)
+static int is_swift_identifier_head(char32_t c)
 {
     return qe_find_range(c, swift_identifier_head);
 }
 
-static int is_swift_identifier_char(int c)
+static int is_swift_identifier_char(char32_t c)
 {
     if (qe_isalnum_(c)) {
         return 1;
@@ -111,7 +110,7 @@ static int is_swift_identifier_char(int c)
     }
 }
 
-static int swift_parse_identifier(char *buf, int buf_size, unsigned int *p)
+static int swift_parse_identifier(char *buf, int buf_size, const char32_t *p)
 {
     buf_t outbuf, *out;
     int i = 0;
@@ -128,7 +127,7 @@ static int swift_parse_identifier(char *buf, int buf_size, unsigned int *p)
     return i;
 }
 
-static int swift_parse_number(unsigned int *p)
+static int swift_parse_number(const char32_t *p)
 {
     int i = 0, j;
 
@@ -200,9 +199,10 @@ static int swift_parse_number(unsigned int *p)
 }
 
 static void swift_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, ModeDef *syn)
+                                char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = 0, c, style, klen, level;
+    int i = 0, start = 0, style, klen, level;
+    char32_t c;
     int state = cp->colorize_state;
     char kbuf[64];
 

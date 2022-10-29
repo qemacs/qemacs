@@ -1,7 +1,7 @@
 /*
  * Haskell language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -54,15 +54,16 @@ enum {
     IN_HASKELL_STRING  = 0x20,
 };
 
-static inline int haskell_is_symbol(int c)
+static inline int haskell_is_symbol(char32_t c)
 {
     return qe_findchar("!#$%&+./<=>?@\\^|-~:", c);
 }
 
 static void haskell_colorize_line(QEColorizeContext *cp,
-                                  unsigned int *str, int n, ModeDef *syn)
+                                  char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, style = 0, sep = 0, level = 0, klen;
+    int i = 0, start = i, style = 0, level = 0, klen;
+    char32_t c, sep = 0;
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -151,7 +152,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
                             state |= IN_HASKELL_STRING;
                         }
                     } else
-                    if (str[i] == '^' && i + 1 < n && str[i + 1] != (unsigned int)sep) {
+                    if (str[i] == '^' && i + 1 < n && str[i + 1] != sep) {
                         i += 2;
                     } else {
                         i += 1;

@@ -68,7 +68,8 @@ typedef struct ShellState {
     int nb_params;
     int params[MAX_CSI_PARAMS + 1];
     int state;
-    int esc1, esc2, lastc;
+    int esc1, esc2;
+    char32_t lastc;
     int shifted;
     int cset, charset[2];
     int grab_keys;      // XXX: should detect raw mode instead of relying on alternate_screen
@@ -506,7 +507,7 @@ static int qe_term_skip_lines(ShellState *s, int offset, int n) {
     int x, y, w, offset1, offset2;
     x = y = 0;
     while (y < n && offset < s->b->total_size) {
-        int c = eb_nextc(s->b, offset, &offset1);
+        char32_t c = eb_nextc(s->b, offset, &offset1);
         if (c == '\n') {
             y++;
             x = 0;
@@ -564,7 +565,8 @@ typedef struct ShellPos {
 #define SP_NO_UPDATE  1
 static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int flags) {
     int offset, offset0, offset1, start_offset, line_offset;
-    int c, x, y, w, gpflags;
+    int x, y, w, gpflags;
+    char32_t c;
 
     if (s->use_alternate_screen) {
         start_offset = minp(&s->alternate_screen_top, s->b->total_size);
@@ -682,8 +684,9 @@ static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int fl
 }
 
 static int qe_term_get_pos(ShellState *s, int destoffset, int *px, int *py) {
-    int offset, offset1, c;
+    int offset, offset1;
     int x, y, w, start_offset;
+    char32_t c;
 
     if (s->use_alternate_screen) {
         start_offset = minp(&s->alternate_screen_top, s->b->total_size);
@@ -765,7 +768,8 @@ static int qe_term_get_pos(ShellState *s, int destoffset, int *px, int *py) {
 #define TG_NOCLIP        0x04
 #define TG_NOEXTEND      0x08
 static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int flags) {
-    int x, y, w, x1, y1, start_offset, offset1, offset2, c;
+    int x, y, w, x1, y1, start_offset, offset1, offset2;
+    char32_t c;
 
     s->cur_offset_hack = 0;
 
@@ -804,7 +808,7 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
             //qe_term_set_style(s);
             if (y < desty) {
                 // XXX: potential problem if previous line has s->cols characters
-                offset += eb_insert_uchars(s->b, offset, '\n', desty - y);
+                offset += eb_insert_char32_n(s->b, offset, '\n', desty - y);
                 y = desty;
                 x = 0;
                 /* update current screen_top */
@@ -912,7 +916,8 @@ static int qe_term_overwrite(ShellState *s, int offset, int w,
                              const char *buf, int len)
 {
     int offset1, offset2;
-    int c1, c2, w1, x, y, x1;
+    int w1, x, y, x1;
+    char32_t c1, c2;
 
     // XXX: bypass all these tests if at end of buffer?
     c1 = eb_nextc(s->b, offset, &offset1);
@@ -950,10 +955,10 @@ static int qe_term_overwrite(ShellState *s, int offset, int w,
             offset1 = offset;
             c2 = eb_nextc(s->b, offset, &offset2);
             if (c2 != '\n' || has_hack) {
-                offset1 += eb_insert_uchar(s->b, offset1, ' ');
+                offset1 += eb_insert_char32(s->b, offset1, ' ');
                 offset2 = offset1;
                 if (c2 != '\n')
-                    offset2 += eb_insert_uchar(s->b, offset2, ' ');
+                    offset2 += eb_insert_char32(s->b, offset2, ' ');
                 if (has_hack) {
                     s->cur_offset_hack = 0;
                     offset = offset1;
@@ -974,8 +979,8 @@ static int qe_term_overwrite(ShellState *s, int offset, int w,
                 if (qe_iswide(c2)) {
                     eb_delete_range(s->b, offset1, offset2);
                     if (eb_nextc(s->b, offset1, &offset2) != '\n') {
-                        offset1 += eb_insert_uchar(s->b, offset1, ' ');
-                        eb_insert_uchar(s->b, offset1, ' ');
+                        offset1 += eb_insert_char32(s->b, offset1, ' ');
+                        eb_insert_char32(s->b, offset1, ' ');
                     }
                 } else {
                     offset1 = offset2;
@@ -1017,7 +1022,7 @@ static int qe_term_insert_lines(ShellState *s, int offset, int n)
 {
     if (n > 0) {
         // XXX: tricky if offset is in the middle of a wrapping line
-        offset += eb_insert_uchars(s->b, offset, '\n', n);
+        offset += eb_insert_char32_n(s->b, offset, '\n', n);
     }
     return offset;
 }
@@ -1411,7 +1416,7 @@ static void qe_term_emulate(ShellState *s, int c)
             qe_term_get_pos2(s, offset, &pos, 0);
             if (pos.col == 0) {
                 if (pos.row > 0 && (pos.flags & SP_LINE_START_WRAP)) {
-                    //int c2 =
+                    //char32_t c2 =
                     eb_prev_glyph(s->b, offset, &offset);
                     //if (qe_iswide(c2))
                     //    s->cur_offset_hack = 1;
@@ -1442,7 +1447,7 @@ static void qe_term_emulate(ShellState *s, int c)
                     /* add a new line */
                     /* CG: XXX: ignoring charset */
                     qe_term_set_style(s);
-                    offset += eb_insert_uchar(s->b, offset, '\n');
+                    offset += eb_insert_char32(s->b, offset, '\n');
                     s->cur_offset = offset;
                     /* update current screen_top */
                     qe_term_get_pos(s, offset, &x, &y);
@@ -1520,7 +1525,7 @@ static void qe_term_emulate(ShellState *s, int c)
                             break;
                         }
                     }
-                    //len = eb_encode_uchar(s->b, buf1, c);
+                    //len = eb_encode_char32(s->b, buf1, c);
                     buf1[0] = s->lastc = c;
                     len = 1;
                 }
@@ -1535,7 +1540,7 @@ static void qe_term_emulate(ShellState *s, int c)
         /* XXX: should check that c is a UTF-8 continuation byte */
         if (s->term_pos >= s->utf8_len) {
             const char *p = cs8(s->term_buf);
-            int ch = s->lastc = utf8_decode(&p);
+            char32_t ch = s->lastc = utf8_decode(&p);
             int w = qe_wcwidth(ch);
             if (w == 0) {
                 /* accents are always inserted */
@@ -1801,7 +1806,9 @@ static void qe_term_emulate(ShellState *s, int c)
         switch (ESC2(s->esc1,c)) {
         case '@':  /* ICH: Insert Ps (Blank) Character(s) (default = 1) */
             {
-                int x, y, x1, y1, c2, offset3;
+                char32_t c2;
+                int x, y, x1, y1, offset3;
+
                 // XXX: should simplify this mess
                 offset1 = offset;
                 while (param1-- > 0) {
@@ -1817,11 +1824,11 @@ static void qe_term_emulate(ShellState *s, int c)
                             eb_delete_range(s->b, offset3, offset2);
                             /* if last glyph was wide, pad with a space */
                             if (qe_iswide(c2) && eb_nextc(s->b, offset3, &offset2) != '\n')
-                                eb_insert_uchar(s->b, offset3, ' ');
+                                eb_insert_char32(s->b, offset3, ' ');
                         }
                     }
                     qe_term_set_style(s);
-                    offset1 += eb_insert_uchar(s->b, offset1, ' ');
+                    offset1 += eb_insert_char32(s->b, offset1, ' ');
                 }
                 /* cur_offset may have been updated by callback */
                 s->cur_offset = offset;
@@ -1993,16 +2000,16 @@ static void qe_term_emulate(ShellState *s, int c)
                     if (pos.col == 0 && (pos.flags & SP_LINE_START_WRAP)) {
                         /* if removed wrapped wide glyph, pad previous line */
                         if (pos.flags & SP_LINE_START_WRAP2)
-                            s->cur_offset = offset += eb_insert_uchar(s->b, offset, ' ');
+                            s->cur_offset = offset += eb_insert_char32(s->b, offset, ' ');
                         /* we removed the wrapped glyph, must insert a space */
-                        eb_insert_uchar(s->b, offset, ' ');
+                        eb_insert_char32(s->b, offset, ' ');
                     }
                 } else {
                     offset1 = qe_term_goto_pos(s, offset, param1, 0, TG_RELATIVE | TG_NOEXTEND);
                     eb_delete_range(s->b, offset, offset1);
                     /* if removed wrapped wide glyph, pad previous line */
                     if (pos.col == 0 && (pos.flags & SP_LINE_START_WRAP2)) {
-                        s->cur_offset = offset += eb_insert_uchar(s->b, offset, ' ');
+                        s->cur_offset = offset += eb_insert_char32(s->b, offset, ' ');
                     }
                 }
             } else {
@@ -2029,7 +2036,7 @@ static void qe_term_emulate(ShellState *s, int c)
             // XXX: this clipping is vain as current col may be > 0.
             //      should clip better
             param1 = min(param1, s->cols);
-            len = eb_encode_uchar(s->b, buf1, ' ');
+            len = eb_encode_char32(s->b, buf1, ' ');
             while (param1 --> 0) {
                 offset = qe_term_overwrite(s, offset, 1, buf1, len);
             }
@@ -2041,7 +2048,7 @@ static void qe_term_emulate(ShellState *s, int c)
             {
                 int rep = min(param1, s->cols);
                 int w = qe_wcwidth(s->lastc);
-                len = eb_encode_uchar(s->b, buf1, s->lastc);
+                len = eb_encode_char32(s->b, buf1, s->lastc);
                 while (rep --> 0) {
                     s->cur_offset = qe_term_overwrite(s, s->cur_offset, w, buf1, len);
                 }
@@ -2117,7 +2124,7 @@ static void qe_term_emulate(ShellState *s, int c)
                         offset = s->b->total_size;
                         if (eb_prevc(s->b, offset, &offset1) != '\n') {
                             qe_term_set_style(s);
-                            offset += eb_insert_uchar(s->b, offset, '\n');
+                            offset += eb_insert_char32(s->b, offset, '\n');
                         }
                         s->use_alternate_screen = 1;
                         s->cur_offset = s->alternate_screen_top = offset;
@@ -2225,7 +2232,7 @@ static void qe_term_emulate(ShellState *s, int c)
             if (param1 == 6) {
                 /* Report Cursor Position (CPR) [row;column]. */
                 char buf2[20];
-                int col_num, cur_line,x, y;
+                int col_num, cur_line, x, y;
                 /* actually send position of point in window */
                 qe_term_get_pos(s, offset, &x, &y);
                 col_num = x + (x < s->cols);
@@ -2882,7 +2889,7 @@ static void shell_write_char(EditState *e, int c)
             buf[1] = c - KEY_META(0);
             len = 2;
         } else {
-            len = eb_encode_uchar(e->b, buf, c);
+            len = eb_encode_char32(e->b, buf, c);
         }
         qe_term_write(s, buf, len);
     } else {
@@ -3102,7 +3109,7 @@ static void do_shell_yank(EditState *e)
                 return;
             }
             for (offset = 0; offset < b->total_size;) {
-                int c = eb_nextc(b, offset, &offset);
+                char32_t c = eb_nextc(b, offset, &offset);
                 if (c == '\n')
                     do_shell_newline(e);
                 else
@@ -3224,7 +3231,7 @@ again:
 
     start = stop = stop0 = 0;
     for (i = 0; i < len;) {
-        int c = line[i++];
+        char c = line[i++];
         if (c == '#' || c == '$' || c == '>') {
             stop = stop0;
             break;
@@ -3341,7 +3348,8 @@ static void do_next_error(EditState *s, int arg, int dir)
     char filename[MAX_FILENAME_SIZE];
     char fullpath[MAX_FILENAME_SIZE];
     buf_t fnamebuf, *fname;
-    int c, line_num, col_num, len;
+    int line_num, col_num, len;
+    char32_t c;
     char error_message[128];
 
     if (arg != NO_ARG) {
@@ -3414,7 +3422,7 @@ static void do_next_error(EditState *s, int arg, int dir)
         }
         if (c == ':' || c == ',' || c == '.') {
             int offset0 = offset;
-            int c0 = c;
+            char32_t c0 = c;
             for (;;) {
                 c = eb_nextc(b, offset, &offset);
                 if (c == ' ') continue;
@@ -3465,7 +3473,7 @@ static void do_next_error(EditState *s, int arg, int dir)
     put_status(s, "=> %s", error_message);
 }
 
-static int match_digits(unsigned int *buf, int n, unsigned int sep) {
+static int match_digits(char32_t *buf, int n, char32_t sep) {
     if (n >= 2 && qe_isdigit(buf[0])) {
         int i = 1;
         while (i < n && qe_isdigit(buf[i]))
@@ -3477,7 +3485,7 @@ static int match_digits(unsigned int *buf, int n, unsigned int sep) {
     return 0;
 }
 
-static int match_string(unsigned int *buf, int n, const char *str) {
+static int match_string(char32_t *buf, int n, const char *str) {
     int i;
     for (i = 0; i < n && str[i] && buf[i] == (u8)str[i]; i++)
         continue;
@@ -3485,7 +3493,7 @@ static int match_string(unsigned int *buf, int n, const char *str) {
 }
 
 void shell_colorize_line(QEColorizeContext *cp,
-                         unsigned int *str, int n, ModeDef *syn)
+                         char32_t *str, int n, ModeDef *syn)
 {
     /* detect match lines for known languages and colorize accordingly */
     static char filename[MAX_FILENAME_SIZE];
@@ -3498,7 +3506,7 @@ void shell_colorize_line(QEColorizeContext *cp,
         len = 0;
         if (!qe_isspace(str[0])) {
             while (i < n) {
-                int c = str[i++];
+                char32_t c = str[i++];
                 if (c == "()"[0]) {
                     i += match_digits(str + i, n - i, "()"[1]); /* old style */
                     i += (str[i] == ':');

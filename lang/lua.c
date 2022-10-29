@@ -1,7 +1,7 @@
 /*
  * Lua language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -53,8 +53,7 @@ enum {
     LUA_STYLE_FUNCTION = QE_STYLE_FUNCTION,
 };
 
-static int lua_long_bracket(unsigned int *str, int *level)
-{
+static int lua_long_bracket(const char32_t *str, int *level) {
     int i;
 
     for (i = 1; str[i] == '='; i++)
@@ -68,9 +67,10 @@ static int lua_long_bracket(unsigned int *str, int *level)
 }
 
 static void lua_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, j, start = i, c, sep = 0, level = 0, level1, style;
+    int i = 0, j, start = i, level = 0, level1, style;
+    char32_t c, sep = 0;
     int state = cp->colorize_state;
     char kbuf[64];
 

@@ -1,7 +1,7 @@
 /*
  * ATS (Applied Type System) mode for QEmacs.
  *
- * Copyright (c) 2016-2017 Charlie Gordon.
+ * Copyright (c) 2016-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -63,10 +63,11 @@ enum {
 };
 
 static void ats_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
     char keyword[32];
-    int i = 0, start = i, c, k, style = 0, len, level;
+    int i = 0, start = i, k, style = 0, len, level;
+    char32_t c;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_ATS_CBLOCK) {

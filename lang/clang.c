@@ -58,9 +58,8 @@ static const char c_extensions[] = {
 };
 
 /* grab a C identifier from a uint buf, return char count. */
-int get_c_identifier(char *buf, int buf_size, const unsigned int *p, int flavor)
-{
-    unsigned int c;
+int get_c_identifier(char *buf, int buf_size, const char32_t *p, int flavor) {
+    char32_t c;
     int i, j;
 
     i = j = 0;
@@ -140,10 +139,11 @@ enum {
 };
 
 static void c_colorize_line(QEColorizeContext *cp,
-                            unsigned int *str, int n, ModeDef *syn)
+                            char32_t *str, int n, ModeDef *syn)
 {
     int i = 0, start, i1, i2, indent, level;
-    int c, style, style0, style1, type_decl, klen, delim, prev, tag;
+    int style, style0, style1, type_decl, klen, tag;
+    char32_t c, prev, delim;
     char kbuf[64];
     int mode_flags = syn->colorize_flags;
     int flavor = (mode_flags & CLANG_FLAVOR);
@@ -430,7 +430,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                     for (i++; i < n;) {
                         c = str[i++];
                         if (c == delim) {
-                            if (str[i] == (unsigned int)c) {
+                            if (str[i] == c) {
                                 i++;
                                 continue;
                             }
@@ -490,7 +490,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                     i++;
                 } else
                 if (c == delim) {
-                    if (flavor == CLANG_SCILAB && (int)str[i] == delim) {
+                    if (flavor == CLANG_SCILAB && str[i] == delim) {
                         i++;
                         continue;
                     }
@@ -632,10 +632,10 @@ static void c_colorize_line(QEColorizeContext *cp,
 
 /* gives the position of the first non white space character in
    buf. TABs are counted correctly */
-static int find_indent1(EditState *s, unsigned int *buf)
-{
-    unsigned int *p;
-    int pos, c, tw;
+static int find_indent1(EditState *s, const char32_t *buf) {
+    const char32_t *p;
+    char32_t c;
+    int pos, tw;
 
     tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
     p = buf;
@@ -654,9 +654,9 @@ static int find_indent1(EditState *s, unsigned int *buf)
     return pos;
 }
 
-static int find_pos(EditState *s, unsigned int *buf, int size)
-{
-    int pos, c, tw, i;
+static int find_pos(EditState *s, char32_t *buf, int size) {
+    int pos, tw, i;
+    char32_t c;
 
     tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
     pos = 0;
@@ -693,7 +693,7 @@ static int normalize_indent(EditState *s, int offset, int indent)
     }
     offset0 = offset;
     for (update = 0;;) {
-        int c = eb_nextc(s->b, offset1 = offset, &offset);
+        char32_t c = eb_nextc(s->b, offset1 = offset, &offset);
         if (c == '\t') {
             if (!update && ntabs > 0) {
                 ntabs--;
@@ -717,7 +717,7 @@ static int normalize_indent(EditState *s, int offset, int indent)
     if (offset1 > offset0)
         eb_delete_range(s->b, offset0, offset1);
     if (ntabs)
-        offset0 += eb_insert_uchars(s->b, offset0, '\t', ntabs);
+        offset0 += eb_insert_char32_n(s->b, offset0, '\t', ntabs);
     if (nspaces)
         offset0 += eb_insert_spaces(s->b, offset0, nspaces);
 
@@ -725,7 +725,7 @@ static int normalize_indent(EditState *s, int offset, int indent)
 }
 
 /* Check if line starts with a label or a switch case */
-static int c_line_has_label(EditState *s, const unsigned int *buf, int len,
+static int c_line_has_label(EditState *s, const char32_t *buf, int len,
                             const QETermStyle *sbuf)
 {
     char kbuf[64];
@@ -767,13 +767,14 @@ static int c_line_has_label(EditState *s, const unsigned int *buf, int len,
 */
 void c_indent_line(EditState *s, int offset0)
 {
-    int offset, offset1, offsetl, c, pos, line_num, col_num;
+    int offset, offset1, offsetl, pos, line_num, col_num;
     int i, eoi_found, len, pos1, lpos, style, line_num1, state;
     int off, found_comma, has_else;
+    char32_t c;
     //int found_semi = 0;
-    unsigned int buf[COLORED_MAX_LINE_SIZE];
+    char32_t buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
-    unsigned char stack[MAX_STACK_SIZE];
+    char32_t stack[MAX_STACK_SIZE];
     char kbuf[64], *q;
     int stack_ptr;
 
@@ -899,7 +900,7 @@ void c_indent_line(EditState *s, int offset0)
                         pos = find_pos(s, buf, off) + 1;
                         goto end_parse;
                     } else {
-                        int matchc = (c == '(') ? ')' : ']';
+                        char32_t matchc = (c == '(') ? ')' : ']';
                         --stack_ptr;
                         if (stack_ptr < MAX_STACK_SIZE && stack[stack_ptr] != matchc) {
                             /* XXX: syntax check ? */
@@ -1030,7 +1031,7 @@ void c_indent_line(EditState *s, int offset0)
             pos -= s->indent_size;
             break;
         }
-        if ((c == '&' || c == '|') && buf[i + 1] == (unsigned int)c) {
+        if ((c == '&' || c == '|') && buf[i + 1] == c) {
 #if 0
             int j;
             // XXX: should try and indent according to boolean expression depth
@@ -1150,7 +1151,7 @@ static void do_c_newline(EditState *s)
 /* forward / backward preprocessor */
 static void c_forward_conditional(EditState *s, int dir)
 {
-    unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
+    char32_t buf[COLORED_MAX_LINE_SIZE], *p;
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     int line_num, col_num, sharp, level;
     int offset, offset0, offset1;
@@ -1163,7 +1164,7 @@ static void c_forward_conditional(EditState *s, int dir)
                            offset, &offset1, line_num);
         sharp = 0;
         for (p = buf; *p; p++) {
-            int c = *p;
+            char32_t c = *p;
             int style = sbuf[p - buf];
             if (qe_isblank(c))
                 continue;
@@ -1218,7 +1219,7 @@ static void do_c_forward_conditional(EditState *s, int n)
 
 static void do_c_list_conditionals(EditState *s)
 {
-    unsigned int buf[COLORED_MAX_LINE_SIZE], *p;
+    char32_t buf[COLORED_MAX_LINE_SIZE], *p;
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     int line_num, col_num, sharp, level;
     int offset, offset1;
@@ -1238,7 +1239,7 @@ static void do_c_list_conditionals(EditState *s)
                            offset, &offset1, line_num);
         sharp = 0;
         for (p = buf; *p; p++) {
-            int c = *p;
+            char32_t c = *p;
             int style = sbuf[p - buf];
             if (qe_isblank(c))
                 continue;
@@ -1631,18 +1632,18 @@ static const char js_types[] = {
     "void|var|"
 };
 
-static int is_js_identifier_start(int c) {
+static int is_js_identifier_start(char32_t c) {
     // should accept unicode escape sequence, UnicodeIDStart
     return (qe_isalpha_(c) || c == '$' || c >= 128);
 }
 
-static int is_js_identifier_part(int c) {
+static int is_js_identifier_part(char32_t c) {
     // should accept unicode escape sequence, UnicodeIDContinue, ZWJ or ZWNJ
     return (qe_isalnum_(c) || c == '$' || c >= 128);
 }
 
-static int get_js_identifier(char *dest, int size, int c,
-                             const unsigned int *str, int i, int n)
+static int get_js_identifier(char *dest, int size, char32_t c,
+                             const char32_t *str, int i, int n)
 {
     int pos = 0, j;
 
@@ -1674,10 +1675,11 @@ static int get_js_identifier(char *dest, int size, int c,
 }
 
 static void js_colorize_line(QEColorizeContext *cp,
-                             unsigned int *str, int n, ModeDef *syn)
+                             char32_t *str, int n, ModeDef *syn)
 {
     int i = 0, start, i1, indent;
-    int c, style, delim, prev, tag, level;
+    int style, tag, level;
+    char32_t c, prev, delim;
     char kbuf[64];
     int mode_flags = syn->colorize_flags;
     int flavor = (mode_flags & CLANG_FLAVOR);
@@ -3434,8 +3436,8 @@ static const char salmon_types[] = {
     "|"
 };
 
-static int get_salmon_identifier(char *dest, int size, int c,
-                                 const unsigned int *str, int i, int n)
+static int get_salmon_identifier(char *dest, int size, char32_t c,
+                                 const char32_t *str, int i, int n)
 {
     int pos = 0, j;
 
@@ -3456,10 +3458,11 @@ static int get_salmon_identifier(char *dest, int size, int c,
 }
 
 static void salmon_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, ModeDef *syn)
+                                 char32_t *str, int n, ModeDef *syn)
 {
     int i = 0, start, i1;
-    int c, style, delim, tag, level;
+    int style, tag, level;
+    char32_t c, delim;
     char kbuf[64];
     int mode_flags = syn->colorize_flags;
     int state = cp->colorize_state;

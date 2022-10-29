@@ -1,7 +1,7 @@
 /*
  * asm language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -57,11 +57,12 @@ enum {
 };
 
 static void asm_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
     char keyword[16];
-    int i = 0, start = 0, c, style = 0, len, wn = 0; /* word number on line */
+    int i = 0, start = 0, style = 0, len, wn = 0; /* word number on line */
     int colstate = cp->colorize_state;
+    char32_t c;
 
     if (colstate)
         goto in_comment;
@@ -93,7 +94,7 @@ static void asm_colorize_line(QEColorizeContext *cp,
         case '\'':
         case '\"':
             /* parse string const */
-            while (i < n && str[i++] != (unsigned int)c)
+            while (i < n && str[i++] != c)
                 continue;
             style = ASM_STYLE_STRING;
             break;

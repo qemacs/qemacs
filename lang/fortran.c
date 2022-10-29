@@ -1,7 +1,7 @@
 /*
  * Fortran language modes for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -55,10 +55,11 @@ enum {
 };
 
 static void fortran_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, ModeDef *syn)
+                                 char32_t *str, int n, ModeDef *syn)
 {
     char keyword[16];
-    int i = 0, start = i, c, style, len, w;
+    int i = 0, start = i, style, len, w;
+    char32_t c;
     int colstate = cp->colorize_state;
 
     for (w = 0; qe_isblank(str[w]); w++)
@@ -96,7 +97,7 @@ static void fortran_colorize_line(QEColorizeContext *cp,
             /* parse string or char const */
             while (i < n) {
                 /* XXX: escape sequences? */
-                if (str[i++] == (unsigned int)c)
+                if (str[i++] == c)
                     break;
             }
             SET_COLOR(str, start, i, FORTRAN_STYLE_STRING);

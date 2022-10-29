@@ -1,7 +1,7 @@
 /*
  * TXL language mode for QEmacs.
  *
- * Copyright (c) 2015-2017 Charlie Gordon.
+ * Copyright (c) 2015-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -52,10 +52,11 @@ enum {
 };
 
 static void txl_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = 0, c, style, klen;
+    int i = 0, start = 0, style, klen;
+    char32_t c;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_TXL_COMMENT1)

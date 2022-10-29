@@ -52,6 +52,8 @@
 #define ssizeof(a)  ((int)(sizeof(a)))
 #endif
 
+typedef unsigned int char32_t;  // possible conflict with <uchar.h>
+
 #ifndef U8_DEFINED
 typedef unsigned char u8;
 #define U8_DEFINED  1

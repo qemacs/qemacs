@@ -1,7 +1,7 @@
 /*
  * Miscellaneous QEmacs modes for Forth variants
  *
- * Copyright (c) 2014-2020 Charlie Gordon.
+ * Copyright (c) 2014-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -110,7 +110,8 @@ static int ff_convert_date(int year, int month, int day)
 
 static int ff_match_number(const char *str, int *pnum)
 {
-    int i = 0, base = 10, c, digit;
+    int i = 0, base = 10, digit;
+    char32_t c;
     int year = -1, month = -1;
     long long num = 0, stash = 0;
 
@@ -195,10 +196,11 @@ static int ff_match_number(const char *str, int *pnum)
 }
 
 static void ff_colorize_line(QEColorizeContext *cp,
-                             unsigned int *str, int n, ModeDef *syn)
+                             char32_t *str, int n, ModeDef *syn)
 {
     char word[64];
-    int i = 0, start = 0, c, num = 0, len, numlen, colstate = cp->colorize_state;
+    int i = 0, start = 0, num = 0, len, numlen, colstate = cp->colorize_state;
+    char32_t c;
 
     if (colstate & IN_FF_TRAIL)
         goto comment;

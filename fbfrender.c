@@ -201,11 +201,11 @@ GlyphCache *decode_cached_glyph(QEditScreen *s, QEFont *font, int code)
 
 void fbf_text_metrics(QEditScreen *s, QEFont *font,
                       QECharMetrics *metrics,
-                      const unsigned int *str, int len)
+                      const char32_t *str, int len)
 {
     GlyphCache *g;
     int i, x;
-    unsigned int cc;
+    char32_t cc;
 
     metrics->font_ascent = font->ascent;
     metrics->font_descent = font->descent;

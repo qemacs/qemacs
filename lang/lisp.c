@@ -1,7 +1,7 @@
 /*
  * Lisp Source mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -174,10 +174,10 @@ enum {
     LISP_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
 };
 
-static int lisp_get_symbol(char *buf, int buf_size, unsigned int *p)
+static int lisp_get_symbol(char *buf, int buf_size, const char32_t *p)
 {
     buf_t outbuf, *out;
-    unsigned int c;
+    char32_t c;
     int i;
 
     out = buf_init(&outbuf, buf, buf_size);
@@ -230,7 +230,7 @@ static int lisp_is_number(const char *str)
 }
 
 static void lisp_colorize_line(QEColorizeContext *cp,
-                               unsigned int *str, int n, ModeDef *syn)
+                               char32_t *str, int n, ModeDef *syn)
 {
     int colstate = cp->colorize_state;
     int i = 0, start = i, len, level, style, style1, has_expr;

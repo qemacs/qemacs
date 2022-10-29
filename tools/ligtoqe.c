@@ -34,8 +34,7 @@ static inline char *skipspaces(char *p) {
     return p;
 }
 
-static int unicode_to_utf8(char *buf, unsigned int c)
-{
+static int utf8_encode(char *buf, char32_t c) {
     char *q;
 
     q = buf;
@@ -197,12 +196,12 @@ int main(int argc, char **argv)
         if (to_utf8) {
             printf("%s // ", buf);
             for (i = 0; i < l->buf_in_size; i++) {
-                unicode_to_utf8(buf1, l->buf_in[i]);
+                utf8_encode(buf1, l->buf_in[i]);
                 printf("%s ", buf1);
             }
             printf("=");
             for (i = 0; i < l->buf_out_size; i++) {
-                unicode_to_utf8(buf1, l->buf_out[i]);
+                utf8_encode(buf1, l->buf_out[i]);
                 printf(" %s", buf1);
             }
             printf("\n");

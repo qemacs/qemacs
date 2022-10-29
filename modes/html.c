@@ -61,7 +61,7 @@ static int recompute_offset_func(void *opaque, CSSBox *box,
 {
     RecomputeOffsetData *data = opaque;
     int offsets[MAX_LINE_SIZE+1];
-    unsigned int line_buf[MAX_LINE_SIZE];
+    char32_t line_buf[MAX_LINE_SIZE];
     int len, d, i, offset;
 
     /* XXX: we do not accept empty boxes with spaces. need further

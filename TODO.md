@@ -237,6 +237,10 @@ insert_window_left()  deletes some left-most windows
   * `M-g M-p` `previous-error`
   * `M-g M-n` `next-error`
 * Missing commands:
+  * `insert-char` on `C-x 8 RET`
+  * `insert-char` should accept a Unicode code-point name with completion
+  * `what-cursor-position` with universal prefix: show popup with long description
+  * `compare-windows` should resync from the end of line.
   * `elastic-tabs`
   * `indent-rigidly`
   * `show-matching-delimiters`

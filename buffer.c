@@ -1434,14 +1434,15 @@ void eb_set_charset(EditBuffer *b, QECharset *charset, EOLType eol_type)
 }
 
 /* XXX: change API to go faster */
-int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
+char32_t eb_nextc(EditBuffer *b, int offset, int *next_ptr)
 {
     u8 buf[MAX_CHAR_BYTES];
-    int ch;
+    char32_t ch;
+    int c;
 
     /* XXX: should inline this */
-    ch = eb_read_one_byte(b, offset);
-    if (ch < 0) {
+    c = eb_read_one_byte(b, offset);
+    if (c < 0) {
         /* to simplify calling code, return '\n' at buffer boundaries */
         ch = '\n';
         if (offset < 0)
@@ -1451,8 +1452,10 @@ int eb_nextc(EditBuffer *b, int offset, int *next_ptr)
     } else {
         /* we use the charset conversion table directly to go faster */
         offset++;
-        ch = b->charset_state.table[ch];
+        ch = b->charset_state.table[c];
         if (ch == ESCAPE_CHAR) {
+            /* clear decode buffer to avoid undefined behavior at EOB */
+            memset(buf, 0, MAX_CHAR_BYTES);
             eb_read(b, offset - 1, buf, MAX_CHAR_BYTES);
             b->charset_state.p = buf;
             /* XXX: incorrect behaviour on ill encoded utf8 sequences */
@@ -1523,7 +1526,7 @@ int eb_skip_chars(EditBuffer *b, int offset, int n)
 }
 
 /* delete one character at offset 'offset', return number of bytes removed */
-int eb_delete_uchar(EditBuffer *b, int offset) {
+int eb_delete_char32(EditBuffer *b, int offset) {
     return eb_delete_range(b, offset, eb_next(b, offset));
 }
 
@@ -1536,8 +1539,8 @@ int eb_skip_accents(EditBuffer *b, int offset) {
 }
 
 /* return the main character for the next glyph, update offset to next_ptr */
-int eb_next_glyph(EditBuffer *b, int offset, int *next_ptr) {
-    int c = eb_nextc(b, offset, &offset);
+char32_t eb_next_glyph(EditBuffer *b, int offset, int *next_ptr) {
+    char32_t c = eb_nextc(b, offset, &offset);
     if (c >= ' ') {
         offset += eb_skip_accents(b, offset);
     }
@@ -1546,9 +1549,9 @@ int eb_next_glyph(EditBuffer *b, int offset, int *next_ptr) {
 }
 
 /* return the main character for the previous glyph, update offset to next_ptr */
-int eb_prev_glyph(EditBuffer *b, int offset, int *next_ptr) {
+char32_t eb_prev_glyph(EditBuffer *b, int offset, int *next_ptr) {
     for (;;) {
-        int c = eb_prevc(b, offset, &offset);
+        char32_t c = eb_prevc(b, offset, &offset);
         if (!qe_isaccent(c)) {
             *next_ptr = offset;
             return c;
@@ -1561,17 +1564,18 @@ int eb_prev_glyph(EditBuffer *b, int offset, int *next_ptr) {
  * combining accents are skipped as part of the previous character.
  */
 int eb_skip_glyphs(EditBuffer *b, int offset, int n) {
-    int c, offset1;
+    int offset1;
+
     if (n < 0) {
         while (offset > 0) {
-            c = eb_prevc(b, offset, &offset);
+            char32_t c = eb_prevc(b, offset, &offset);
             n += !qe_isaccent(c);
             if (n >= 0)
                 break;
         }
     } else {
         while (offset < b->total_size) {
-            c = eb_nextc(b, offset, &offset1);
+            char32_t c = eb_nextc(b, offset, &offset1);
             if (!qe_isaccent(c) && n-- <= 0)
                 break;
             offset = offset1;
@@ -1598,9 +1602,10 @@ int eb_delete_glyphs(EditBuffer *b, int offset, int n)
 
 /* XXX: only stateless charsets are supported */
 /* XXX: suppress that? */
-int eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
+char32_t eb_prevc(EditBuffer *b, int offset, int *prev_ptr)
 {
-    int ch, char_size;
+    char32_t ch;
+    int char_size;
     u8 buf[MAX_CHAR_BYTES + 1], *q;
 
     if (offset <= 0) {
@@ -2138,8 +2143,7 @@ void eb_set_filename(EditBuffer *b, const char *filename)
 /* Return number of bytes of conversion */
 /* the function uses '?' to indicate that no match could be found in
    buffer charset */
-int eb_encode_uchar(EditBuffer *b, char *buf, unsigned int c)
-{
+int eb_encode_char32(EditBuffer *b, char *buf, char32_t c) {
     QECharset *charset = b->charset;
     u8 *q = (u8 *)buf;
 
@@ -2162,36 +2166,34 @@ int eb_encode_uchar(EditBuffer *b, char *buf, unsigned int c)
 
 /* Insert unicode character according to buffer encoding */
 /* Return number of bytes inserted */
-int eb_insert_uchar(EditBuffer *b, int offset, int c)
-{
+int eb_insert_char32(EditBuffer *b, int offset, char32_t c) {
     char buf[MAX_CHAR_BYTES];
     int len;
 
-    len = eb_encode_uchar(b, buf, c);
+    len = eb_encode_char32(b, buf, c);
     return eb_insert(b, offset, buf, len);
 }
 
 /* Replace the character at `offset` with `c`,
  * return number of bytes to move past `c`.
  */
-int eb_replace_uchar(EditBuffer *b, int offset, int c)
-{
+int eb_replace_char32(EditBuffer *b, int offset, char32_t c) {
     char buf[MAX_CHAR_BYTES];
     int len;
     int offset1;
 
-    len = eb_encode_uchar(b, buf, c);
+    len = eb_encode_char32(b, buf, c);
     eb_nextc(b, offset, &offset1);
     return eb_replace(b, offset, offset1 - offset, buf, len);
 }
 
-int eb_insert_uchars(EditBuffer *b, int offset, int c, int n) {
+int eb_insert_char32_n(EditBuffer *b, int offset, char32_t c, int n) {
     char buf[1024];
     int size, pos;
 
     size = pos = 0;
     while (n --> 0) {
-        pos += eb_encode_uchar(b, buf + pos, c);
+        pos += eb_encode_char32(b, buf + pos, c);
         if (pos > ssizeof(buf) - MAX_CHAR_BYTES || n == 0) {
             size += eb_insert(b, offset + size, buf, pos);
             pos = 0;
@@ -2213,8 +2215,8 @@ int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
 
         size = size1 = 0;
         while (buf < bufend) {
-            int c = utf8_decode(&buf);
-            int clen = eb_encode_uchar(b, buf1 + size1, c);
+            char32_t c = utf8_decode(&buf);
+            int clen = eb_encode_char32(b, buf1 + size1, c);
             size1 += clen;
             if (size1 > ssizeof(buf) - MAX_CHAR_BYTES || buf >= bufend) {
                 size += eb_insert(b, offset + size, buf1, size1);
@@ -2225,17 +2227,17 @@ int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
     }
 }
 
-/* Insert chars from u32 array according to buffer encoding */
+/* Insert chars from char32 array according to buffer encoding */
 /* Return number of bytes inserted */
-int eb_insert_u32_buf(EditBuffer *b, int offset, const unsigned int *buf, int len)
+int eb_insert_char32_buf(EditBuffer *b, int offset, const char32_t *buf, int len)
 {
     char buf1[1024];
     int pos, size, pos1;
 
     pos = size = pos1 = 0;
     while (pos < len) {
-        int c = buf[pos++];
-        int clen = eb_encode_uchar(b, buf1 + pos1, c);
+        char32_t c = buf[pos++];
+        int clen = eb_encode_char32(b, buf1 + pos1, c);
         pos1 += clen;
         if (pos1 > ssizeof(buf) - MAX_CHAR_BYTES || pos >= len) {
             size += eb_insert(b, offset + size, buf1, pos1);
@@ -2250,7 +2252,7 @@ int eb_insert_str(EditBuffer *b, int offset, const char *str)
     return eb_insert_utf8_buf(b, offset, str, strlen(str));
 }
 
-int eb_match_uchar(EditBuffer *b, int offset, int c, int *offsetp)
+int eb_match_char32(EditBuffer *b, int offset, char32_t c, int *offsetp)
 {
     if (eb_nextc(b, offset, &offset) != c)
         return 0;
@@ -2264,7 +2266,7 @@ int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp)
     const char *p = str;
 
     while (*p) {
-        int c = utf8_decode((const char **)(void *)&p);
+        char32_t c = utf8_decode((const char **)(void *)&p);
         if (eb_nextc(b, offset, &offset) != c)
             return 0;
     }
@@ -2278,7 +2280,7 @@ int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp)
     const char *p = str;
 
     while (*p) {
-        int c = utf8_decode((const char **)(void *)&p);
+        char32_t c = utf8_decode((const char **)(void *)&p);
         if (qe_toupper(eb_nextc(b, offset, &offset)) != qe_toupper(c))
             return 0;
     }
@@ -2287,9 +2289,9 @@ int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp)
     return 1;
 }
 
-int eb_putc(EditBuffer *b, int c) {
+int eb_putc(EditBuffer *b, char32_t c) {
     char buf[8];
-    int len = eb_encode_uchar(b, buf, c);
+    int len = eb_encode_char32(b, buf, c);
 
     return eb_insert(b, b->offset, buf, len);
 }
@@ -2373,11 +2375,11 @@ int eb_get_region_contents(EditBuffer *b, int start, int stop,
         return size;
     } else {
         buf_t outbuf, *out;
-        int c, offset;
+        int offset;
 
         out = buf_init(&outbuf, buf, buf_size);
         for (offset = start; offset < stop;) {
-            c = eb_nextc(b, offset, &offset);
+            char32_t c = eb_nextc(b, offset, &offset);
             buf_putc_utf8(out, c);
         }
         return out->len;
@@ -2394,11 +2396,11 @@ int eb_get_region_content_size(EditBuffer *b, int start, int stop)
     if (b->charset == &charset_utf8 && b->eol_type == EOL_UNIX) {
         return stop - start;
     } else {
-        int c, offset, size;
+        int offset, size;
         char buf[MAX_CHAR_BYTES];
 
         for (size = 0, offset = start; offset < stop;) {
-            c = eb_nextc(b, offset, &offset);
+            char32_t c = eb_nextc(b, offset, &offset);
             size += utf8_encode(buf, c);
         }
         return size;
@@ -2441,8 +2443,8 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
         for (offset = src_offset; offset < offset_max;) {
             char buf[MAX_CHAR_BYTES];
             QETermStyle style = eb_get_style(src, offset);
-            int c = eb_nextc(src, offset, &offset);
-            int len = eb_encode_uchar(b, buf, c);
+            char32_t c = eb_nextc(src, offset, &offset);
+            int len = eb_encode_char32(b, buf, c);
             b->cur_style = style;
             size += eb_insert(b, offset1 + size, buf, len);
         }
@@ -2461,10 +2463,11 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
  * of the end of the line, either the '\n' or the final '\0'.
  * Truncation can be detected by checking if buf[len] is '\n'.
  */
-int eb_get_line(EditBuffer *b, unsigned int *buf, int size,
+int eb_get_line(EditBuffer *b, char32_t *buf, int size,
                 int offset, int *offset_ptr)
 {
-    int c, len = 0;
+    int len = 0;
+    char32_t c;
 
     if (size > 0) {
         for (;;) {
@@ -2501,7 +2504,7 @@ int eb_fgets(EditBuffer *b, char *buf, int buf_size,
     out = buf_init(&outbuf, buf, buf_size);
     for (;;) {
         int next;
-        int c = eb_nextc(b, offset, &next);
+        char32_t c = eb_nextc(b, offset, &next);
         if (!buf_putc_utf8(out, c)) {
             /* truncation: offset points to the first unread character */
             break;
@@ -2566,7 +2569,7 @@ int eb_goto_bol2(EditBuffer *b, int offset, int *countp)
  * return 1 if blank and store start of next line in <*offset1>.
  */
 int eb_is_blank_line(EditBuffer *b, int offset, int *offset1) {
-    int c;
+    char32_t c;
 
     while ((c = eb_nextc(b, offset, &offset)) != '\n') {
         if (!qe_isblank(c))
@@ -2578,9 +2581,8 @@ int eb_is_blank_line(EditBuffer *b, int offset, int *offset1) {
 }
 
 /* check if <offset> is within indentation. */
-int eb_is_in_indentation(EditBuffer *b, int offset)
-{
-    int c;
+int eb_is_in_indentation(EditBuffer *b, int offset) {
+    char32_t c;
 
     while ((c = eb_prevc(b, offset, &offset)) != '\n') {
         if (!qe_isblank(c))
@@ -2590,29 +2592,21 @@ int eb_is_in_indentation(EditBuffer *b, int offset)
 }
 
 /* return offset of the end of the line containing offset */
-int eb_goto_eol(EditBuffer *b, int offset1)
-{
-    int c, offset;
-
+int eb_goto_eol(EditBuffer *b, int offset1) {
     for (;;) {
-        offset = offset1;
-        c = eb_nextc(b, offset, &offset1);
+        int offset = offset1;
+        char32_t c = eb_nextc(b, offset, &offset1);
         if (c == '\n')
-            break;
+            return offset;
     }
-    return offset;
 }
 
-int eb_next_line(EditBuffer *b, int offset)
-{
-    int c;
-
+int eb_next_line(EditBuffer *b, int offset) {
     for (;;) {
-        c = eb_nextc(b, offset, &offset);
+        char32_t c = eb_nextc(b, offset, &offset);
         if (c == '\n')
-            break;
+            return offset;
     }
-    return offset;
 }
 
 /* buffer property handling */

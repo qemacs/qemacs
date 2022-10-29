@@ -1,7 +1,7 @@
 /*
  * Groovy mode for QEmacs.
  *
- * Copyright (c) 2015-2020 Charlie Gordon.
+ * Copyright (c) 2015-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -64,15 +64,15 @@ enum {
     GROOVY_STYLE_ERROR =      QE_STYLE_ERROR,
 };
 
-static int qe_is_groovy_letter(int c) {
+static int qe_is_groovy_letter(char32_t c) {
     return qe_isalpha_(c) ||
             (qe_inrange(c, 0x00C0, 0xFFFE) && c != 0x00D7 && c != 0x00F7);
 }
 
-static int java_scan_number(unsigned int *str0, int flavor)
+static int java_scan_number(const char32_t *str0, int flavor)
 {
-    unsigned int *str = str0;
-    int c = *str++;
+    const char32_t *str = str0;
+    char32_t c = *str++;
     int octal = 0, nonoctal = 0, isfloat = 0;
 
     /* Number types:
@@ -214,9 +214,10 @@ error:
 }
 
 static void groovy_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, ModeDef *syn)
+                                 char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, style, sep = 0, klen, haslower;
+    int i = 0, start = i, style, klen, haslower;
+    char32_t c, sep = 0;
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -300,7 +301,7 @@ static void groovy_colorize_line(QEColorizeContext *cp,
             i--;
             sep = str[i++];
             /* XXX: should colorize interpolated strings */
-            if (str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
+            if (str[i] == sep && str[i + 1] == sep) {
                 /* long string */
                 state |= (sep == '\"') ? IN_GROOVY_LONG_STRING2 :
                         IN_GROOVY_LONG_STRING;
@@ -313,7 +314,7 @@ static void groovy_colorize_line(QEColorizeContext *cp,
                             i += 1;
                         }
                     } else
-                    if (c == sep && str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
+                    if (c == sep && str[i] == sep && str[i + 1] == sep) {
                         i += 2;
                         state &= (sep == '\"') ? ~IN_GROOVY_LONG_STRING2 :
                                  ~IN_GROOVY_LONG_STRING;

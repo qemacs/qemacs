@@ -1,7 +1,7 @@
 /*
  * Agena language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -80,11 +80,12 @@ static char const agena_types[] = {
 };
 
 static void agena_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, ModeDef *syn)
+                                char32_t *str, int n, ModeDef *syn)
 {
     char kbuf[16];
-    int i = 0, start = i, c, style = 0, sep = 0;
+    int i = 0, start = i, style = 0;
     int state = cp->colorize_state;
+    char32_t c, sep = 0;
 
     if (state & IN_AGENA_COMMENT)
         goto parse_block_comment;
@@ -131,7 +132,7 @@ static void agena_colorize_line(QEColorizeContext *cp,
                     i++;
                     continue;
                 }
-                if (str[i] == (unsigned int)sep) {
+                if (str[i] == sep) {
                     state = 0;
                     i++;
                     break;

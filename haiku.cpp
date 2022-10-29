@@ -727,7 +727,7 @@ static void haiku_close_font(QEditScreen *s, QEFont **fontp)
 
 static void haiku_text_metrics(QEditScreen *s, QEFont *font,
                                QECharMetrics *metrics,
-                               const unsigned int *str, int len)
+                               const char32_t *str, int len)
 {
     //TODO: use BFont::GetEscapements() or StringWidth()
     int i, x;
@@ -741,7 +741,7 @@ static void haiku_text_metrics(QEditScreen *s, QEFont *font,
 }
 
 static void haiku_draw_text(QEditScreen *s, QEFont *font,
-                            int x1, int y, const unsigned int *str, int len,
+                            int x1, int y, const char32_t *str, int len,
                             QEColor color)
 {
     WindowState *ctx = (WindowState *)s->priv_data;
@@ -759,7 +759,7 @@ static void haiku_draw_text(QEditScreen *s, QEFont *font,
     ctx->v->MovePenTo(x1, y - 1);
 
     char buf[10];
-    unsigned int cc;
+    char32_t cc;
 
     BString text;
     for (i = 0; i < len; i++) {

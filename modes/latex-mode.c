@@ -40,9 +40,10 @@ enum {
  * than one line (eg, multi-line functions and strings)
  */
 static void latex_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, ModeDef *syn)
+                                char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start, c;
+    int i = 0, start;
+    char32_t c;
     int state = cp->colorize_state;
 
     for (i = 0; i < n;) {
@@ -171,16 +172,16 @@ static void do_tex_insert_quote(EditState *s)
 {
     EditBuffer *b = s->b;
     int offset = s->offset;
-    int c1 = eb_prevc(b, offset, &offset);
-    int c2 = eb_prevc(b, offset, &offset);
+    char32_t c1 = eb_prevc(b, offset, &offset);
+    char32_t c2 = eb_prevc(b, offset, &offset);
 
     // XXX: need more than 2 character backtrack
     if (c1 == '\"') {
-        s->offset += eb_insert_uchar(b, s->offset, '\"');
+        s->offset += eb_insert_char32(b, s->offset, '\"');
     } else
     if ((c1 == '`' || c1 == '\'') && c1 == c2) {
         eb_delete_range(b, offset, s->offset);
-        s->offset += eb_insert_uchar(b, s->offset, '\"');
+        s->offset += eb_insert_char32(b, s->offset, '\"');
     } else {
         if (c1 == '\n' || c1 == ' ') {
             s->offset += eb_insert_str(b, s->offset, "``");

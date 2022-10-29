@@ -1,7 +1,7 @@
 /*
  * REBOL language mode for QEmacs.
  *
- * Copyright (c) 2015-2020 Charlie Gordon.
+ * Copyright (c) 2015-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -92,10 +92,11 @@ enum {
 };
 
 static void rebol_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                                char32_t *str, int n, ModeDef *syn)
 {
     char keyword[64];
-    int i = 0, start = 0, c, style, style0 = 0, k, klen, level;
+    int i = 0, start = 0, style, style0 = 0, k, klen, level;
+    char32_t c;
     int colstate = cp->colorize_state;
 
     level = colstate & IN_REBOL_STRING1;

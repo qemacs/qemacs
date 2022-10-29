@@ -67,12 +67,13 @@ static int last_search_u32_flags = 0;
 
 static int eb_search(EditBuffer *b, int dir, int flags,
                      int start_offset, int end_offset,
-                     const unsigned int *buf, int len,
+                     const char32_t *buf, int len,
                      CSSAbortFunc *abort_func, void *abort_opaque,
                      int *found_offset, int *found_end)
 {
     int total_size = b->total_size;
-    int c, c2, offset = start_offset, offset1, offset2, offset3, pos;
+    int offset = start_offset, offset1, offset2, offset3, pos;
+    char32_t c, c2;
 
     if (len == 0)
         return 0;
@@ -189,12 +190,12 @@ static int search_abort_func(qe__unused__ void *opaque)
     return is_user_input_pending();
 }
 
-static void buf_encode_search_u32(buf_t *out, const unsigned int *str, int len)
+static void buf_encode_search_u32(buf_t *out, const char32_t *str, int len)
 {
     int i;
 
     for (i = 0; i < len; i++) {
-        unsigned int v = str[i];
+        char32_t v = str[i];
         if (v < 32 || v == 127) {
             buf_printf(out, "^%c", (v + '@') & 127);
         } else {
@@ -208,7 +209,7 @@ static void buf_encode_search_u32(buf_t *out, const unsigned int *str, int len)
 static void buf_encode_search_str(buf_t *out, const char *str)
 {
     while (*str) {
-        int c = utf8_decode(&str);
+        char32_t c = utf8_decode(&str);
         if (c < 32 || c == 127) {
             buf_printf(out, "^%c", (c + '@') & 127);
         } else {
@@ -238,7 +239,8 @@ static void buf_disp_search_flags(buf_t *out, int search_flags) {
 static void isearch_run(ISearchState *is) {
     char ubuf[256];
     buf_t outbuf, *out;
-    int c, i, len, hex_nibble, max_nibble, h, hc;
+    int i, len, hex_nibble, max_nibble, h;
+    char32_t c, hc;
     unsigned int v;
     int search_offset, flags, dir;
     int start_time, elapsed_time;
@@ -350,12 +352,12 @@ static void isearch_run(ISearchState *is) {
 
 static int isearch_grab(ISearchState *is, EditBuffer *b, int from, int to)
 {
-    int offset, c, last = is->pos;
+    int offset, last = is->pos;
     if (b) {
         if (to < 0 || to > b->total_size)
             to = b->total_size;
         for (offset = from; is->pos < SEARCH_LENGTH && offset < to;) {
-            c = eb_nextc(b, offset, &offset);
+            char32_t c = eb_nextc(b, offset, &offset);
             is->search_u32_flags[is->pos++] = c;
         }
     }
@@ -601,7 +603,7 @@ void do_isearch(EditState *s, int argval, int dir)
     isearch_run(is);
 }
 
-void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
+void isearch_colorize_matches(EditState *s, char32_t *buf, int len,
                               QETermStyle *sbuf, int offset_start)
 {
     ISearchState *is = s->isearch_state;
@@ -643,16 +645,17 @@ void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
     }
 }
 
-static int search_to_u32(unsigned int *buf, int size,
+static int search_to_u32(char32_t *buf, int size,
                          const char *str, int flags)
 {
     if (flags & (SEARCH_FLAG_HEX | SEARCH_FLAG_UNIHEX)) {
         /* CG: XXX: Should mix utf8 and hex syntax in hex modes */
-        const char *s;
-        int c, hex_nibble, max_nibble, h, hc, len;
+        const u8 *s;
+        char32_t c;
+        int hex_nibble, max_nibble, h, hc, len;
 
         max_nibble = (flags & SEARCH_FLAG_UNIHEX) ? 6 : 2;
-        s = str;
+        s = (const u8 *)str;
         hex_nibble = hc = 0;
         for (len = 0; len < size;) {
             c = *s++;
@@ -679,7 +682,7 @@ static int search_to_u32(unsigned int *buf, int size,
         }
         return len;
     } else {
-        return utf8_to_unicode(buf, size, str);
+        return utf8_to_char32(buf, size, str);
     }
 }
 
@@ -697,8 +700,8 @@ typedef struct QueryReplaceState {
     int last_offset;
     char search_str[SEARCH_LENGTH];     /* may be in hex */
     char replace_str[SEARCH_LENGTH];    /* may be in hex */
-    unsigned int search_u32[SEARCH_LENGTH];   /* code points */
-    unsigned int replace_u32[SEARCH_LENGTH];  /* code points */
+    char32_t search_u32[SEARCH_LENGTH];   /* code points */
+    char32_t replace_u32[SEARCH_LENGTH];  /* code points */
 } QueryReplaceState;
 
 static void query_replace_help(QueryReplaceState *is) {
@@ -756,8 +759,8 @@ static void query_replace_replace(QueryReplaceState *is)
     /* XXX: handle smart case replacement */
     is->nb_reps++;
     eb_delete_range(s->b, is->found_offset, is->found_end);
-    is->found_offset += eb_insert_u32_buf(s->b, is->found_offset,
-        is->replace_u32, is->replace_u32_len);
+    is->found_offset += eb_insert_char32_buf(s->b, is->found_offset,
+                                             is->replace_u32, is->replace_u32_len);
 }
 
 static void query_replace_run(QueryReplaceState *is)
@@ -1010,7 +1013,7 @@ void do_replace_string(EditState *s, const char *search_str,
    delete-matching-lines, delete-non-matching-lines */
 void do_search_string(EditState *s, const char *search_str, int dir)
 {
-    unsigned int search_u32[SEARCH_LENGTH];
+    char32_t search_u32[SEARCH_LENGTH];
     int search_u32_len;
     int found_offset, found_end;
     int flags = SEARCH_FLAG_SMARTCASE;

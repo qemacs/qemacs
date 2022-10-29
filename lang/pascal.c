@@ -1,7 +1,7 @@
 /*
  * Pascal language modes for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -59,10 +59,11 @@ enum {
 };
 
 static void pascal_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, ModeDef *syn)
+                                 char32_t *str, int n, ModeDef *syn)
 {
     char kbuf[16];
-    int i = 0, start = i, c, k, style = 0;
+    int i = 0, start = i, k, style = 0;
+    char32_t c;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_PASCAL_COMMENT)
@@ -129,7 +130,7 @@ static void pascal_colorize_line(QEColorizeContext *cp,
             /* parse string or char const */
             while (i < n) {
                 /* XXX: escape sequences? */
-                if (str[i++] == (unsigned int)c)
+                if (str[i++] == c)
                     break;
             }
             style = PASCAL_STYLE_STRING;

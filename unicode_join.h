@@ -24,18 +24,18 @@
 
 int load_ligatures(const char *filename);
 void unload_ligatures(void);
-int combine_accent(unsigned int *buf, int c, int accent);
-int expand_ligature(unsigned int *buf, int c);
+int combine_accent(char32_t *buf, char32_t c, char32_t accent);
+int expand_ligature(char32_t *buf, char32_t c);
 
-int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
-                      int dst_size, unsigned int *src, int src_size,
+int unicode_to_glyphs(char32_t *dst, unsigned int *char_to_glyph_pos,
+                      int dst_size, char32_t *src, int src_size,
                       int reverse);
 
 /* arabic.c */
-int arab_join(unsigned int *line, unsigned int *ctog, int len);
+int arab_join(char32_t *line, unsigned int *ctog, int len);
 
 /* indic.c */
-int devanagari_log2vis(unsigned int *str, unsigned int *ctog, int len);
+int devanagari_log2vis(char32_t *str, unsigned int *ctog, int len);
 
 // XXX: should rewrite this part
 #include "qfribidi.h"

@@ -31,7 +31,7 @@ static const char NAME[] = "unicode_gen";
 
 #define CHARCODE_MAX 0x10ffff
 
-static int encode_utf8(char *dest, int c) {
+static int encode_utf8(char *dest, char32_t c) {
     char *q = dest;
 
     if (c < 0x80) {

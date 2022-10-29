@@ -1,7 +1,7 @@
 /*
  * ini file mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -33,9 +33,10 @@ enum {
 };
 
 static void ini_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start, c, style = 0, indent;
+    int i = 0, start, style = 0, indent;
+    char32_t c;
 
     while (qe_isblank(str[i]))
         i++;

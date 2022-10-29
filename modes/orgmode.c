@@ -63,7 +63,7 @@ static int OrgBulletStyles[BULLET_STYLES] = {
     ORG_STYLE_BULLET4,
 };
 
-static int org_todo_keyword(const unsigned int *str)
+static int org_todo_keyword(const char32_t *str)
 {
     int kw, len;
 
@@ -74,7 +74,7 @@ static int org_todo_keyword(const unsigned int *str)
     return -1;
 }
 
-static int org_scan_chunk(const unsigned int *str,
+static int org_scan_chunk(const char32_t *str,
                           const char *begin, const char *end, int min_width)
 {
     int i, j;
@@ -99,7 +99,7 @@ static int org_scan_chunk(const unsigned int *str,
 }
 
 static void org_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
     int colstate = cp->colorize_state;
     int i = 0, j = 0, kw, base_style = 0, has_space;
@@ -188,7 +188,7 @@ static void org_colorize_line(QEColorizeContext *cp,
 
     for (;;) {
         int chunk = 0;
-        int c = str[i];
+        char32_t c = str[i];
 
         if (c == '\0')
             break;
@@ -295,7 +295,8 @@ static int org_is_header_line(EditState *s, int offset)
 
 static int org_find_heading(EditState *s, int offset, int *level, int silent)
 {
-    int offset1, nb, c;
+    int offset1, nb;
+    char32_t c;
 
     offset = eb_goto_bol(s->b, offset);
     for (;;) {
@@ -321,7 +322,8 @@ static int org_find_heading(EditState *s, int offset, int *level, int silent)
 
 static int org_next_heading(EditState *s, int offset, int target, int *level)
 {
-    int offset1, nb, c;
+    int offset1, nb;
+    char32_t c;
 
     for (;;) {
         offset = eb_next_line(s->b, offset);
@@ -345,7 +347,8 @@ static int org_next_heading(EditState *s, int offset, int target, int *level)
 
 static int org_prev_heading(EditState *s, int offset, int target, int *level)
 {
-    int offset1, nb, c;
+    int offset1, nb;
+    char32_t c;
 
     for (;;) {
         if (offset == 0) {
@@ -487,7 +490,7 @@ static void do_org_todo(EditState *s)
     offset = eb_skip_chars(s->b, offset, bullets + 1);
     for (kw = 0; kw < countof(OrgTodoKeywords); kw++) {
         if (eb_match_str(s->b, offset, OrgTodoKeywords[kw].keyword, &offset1)
-        &&  eb_match_uchar(s->b, offset1, ' ', &offset1)) {
+        &&  eb_match_char32(s->b, offset1, ' ', &offset1)) {
             eb_delete_range(s->b, offset, offset1);
             break;
         }
@@ -499,7 +502,7 @@ static void do_org_todo(EditState *s)
 
     if (kw < countof(OrgTodoKeywords)) {
         offset += eb_insert_str(s->b, offset, OrgTodoKeywords[kw].keyword);
-        eb_insert_uchar(s->b, offset, ' ');
+        eb_insert_char32(s->b, offset, ' ');
     }
 }
 
@@ -521,24 +524,24 @@ static void do_org_insert_heading(EditState *s, int flags)
     if (flags & 2) {
         /* respect-content: insert heading at end of subtree */
         offset = org_next_heading(s, offset, level, NULL);
-        eb_insert_uchars(s->b, offset, '\n', 2);
+        eb_insert_char32_n(s->b, offset, '\n', 2);
     } else
     if (s->offset <= offset + level + 1) {
-        eb_insert_uchar(s->b, offset, '\n');
+        eb_insert_char32(s->b, offset, '\n');
     } else
     if (offset == offset0 || offset == offset1) {
         offset = s->offset;
-        offset += eb_insert_uchar(s->b, offset, '\n');
+        offset += eb_insert_char32(s->b, offset, '\n');
     } else {
         offset = offset0;
     }
     offset1 = offset;
-    while (eb_match_uchar(s->b, offset1, ' ', &offset1))
+    while (eb_match_char32(s->b, offset1, ' ', &offset1))
         continue;
     eb_delete(s->b, offset, offset1 - offset);
 
-    offset += eb_insert_uchars(s->b, offset, '*', level);
-    offset += eb_insert_uchar(s->b, offset, ' ');
+    offset += eb_insert_char32_n(s->b, offset, '*', level);
+    offset += eb_insert_char32(s->b, offset, ' ');
     s->offset = eb_goto_eol(s->b, offset);
     if (flags & 1) {
         /* insert-todo-heading */
@@ -558,11 +561,11 @@ static void do_org_promote(EditState *s, int dir)
         return;
 
     if (dir < 0) {
-        eb_insert_uchar(s->b, offset, '*');
+        eb_insert_char32(s->b, offset, '*');
     } else
     if (dir > 0) {
         if (level > 1)
-            eb_delete_uchar(s->b, offset);
+            eb_delete_char32(s->b, offset);
         else
             put_status(s, "Cannot promote to level 0");
     }
@@ -581,11 +584,11 @@ static void do_org_promote_subtree(EditState *s, int dir)
 
     for (;;) {
         if (dir < 0) {
-            eb_insert_uchar(s->b, offset, '*');
+            eb_insert_char32(s->b, offset, '*');
         } else
         if (dir > 0) {
             if (level > 1) {
-                eb_delete_uchar(s->b, offset);
+                eb_delete_char32(s->b, offset);
             } else {
                 put_status(s, "Cannot promote to level 0");
                 return;

@@ -29,7 +29,8 @@ enum {
 static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
 {
     if (s) {
-        int c, maxc, offset, max_offset, w;
+        int offset, max_offset, w;
+        char32_t c, maxc;
 
         /* unihex mode is incompatible with EOL_DOS eol type */
         eb_set_charset(s->b, s->b->charset, EOL_UNIX);
@@ -39,7 +40,8 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
         max_offset = min(65536, s->b->total_size);
         for (offset = 0; offset < max_offset;) {
             c = eb_nextc(s->b, offset, &offset);
-            maxc = max(maxc, c);
+            if (maxc < c)
+                maxc = c;
         }
 
         s->hex_mode = 1;
@@ -53,8 +55,7 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
     return 0;
 }
 
-static int unihex_to_disp(int c)
-{
+static int unihex_to_disp(char32_t c) {
     /* Prevent display of C0 and C1 control codes and invalid code points */
     if (c < ' ' || c == 127 || (c >= 128 && c < 160)
     ||  (c >= 0xD800 && c <= 0xDFFF) || c > 0x10FFFF)
@@ -74,13 +75,12 @@ static int unihex_backward_offset(EditState *s, int offset)
 
 static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
 {
-    int j, len, ateof, dump_width;
+    int j, len, ateof, dump_width, w;
     int offset1, offset2;
-    int c, w, maxc;
-    unsigned int b;
+    char32_t c, maxc, b;
     /* CG: array size is incorrect, should be smaller */
-    unsigned int buf[LINE_MAX_SIZE];
-    unsigned int pos[LINE_MAX_SIZE];
+    char32_t buf[LINE_MAX_SIZE];
+    char32_t pos[LINE_MAX_SIZE];
 
     display_bol(ds);
 

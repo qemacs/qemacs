@@ -1,7 +1,7 @@
 /*
  * Coffee script language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -63,9 +63,10 @@ enum {
 };
 
 static void coffee_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, ModeDef *syn)
+                                 char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, style = 0, sep, prev, i1;
+    int i = 0, start = i, style = 0, i1;
+    char32_t c, sep, prev;
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -126,7 +127,7 @@ static void coffee_colorize_line(QEColorizeContext *cp,
             /* parse string constant */
             i--;
             sep = str[i++];
-            if (str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
+            if (str[i] == sep && str[i + 1] == sep) {
                 /* long string */
                 state = (sep == '\"') ? IN_COFFEE_LONG_STRING2 :
                         IN_COFFEE_LONG_STRING;
@@ -139,7 +140,7 @@ static void coffee_colorize_line(QEColorizeContext *cp,
                             i += 1;
                         }
                     } else
-                    if (c == sep && str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
+                    if (c == sep && str[i] == sep && str[i + 1] == sep) {
                         i += 2;
                         state = 0;
                         break;

@@ -1,7 +1,7 @@
 /*
  * Basic language modes for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -57,10 +57,11 @@ enum {
 };
 
 static void basic_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, ModeDef *syn)
+                                char32_t *str, int n, ModeDef *syn)
 {
     char kbuf[16];
-    int i = 0, start, c, style;
+    int i = 0, start, style;
+    char32_t c;
 
     while (i < n) {
         start = i;
@@ -76,7 +77,7 @@ static void basic_colorize_line(QEColorizeContext *cp,
         case '\"':
             /* parse string const */
             while (i < n) {
-                if (str[i++] == (unsigned int)c)
+                if (str[i++] == c)
                     break;
             }
             SET_COLOR(str, start, i, BASIC_STYLE_STRING);

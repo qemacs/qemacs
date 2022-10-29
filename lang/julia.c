@@ -1,7 +1,7 @@
 /*
  * Julia language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -74,15 +74,15 @@ enum {
     JULIA_STYLE_SYMBOL =   QE_STYLE_NUMBER,
 };
 
-static inline int julia_is_name(int c) {
+static inline int julia_is_name(char32_t c) {
     return qe_isalpha_(c) || c > 0xA0;
 }
 
-static inline int julia_is_name1(int c) {
+static inline int julia_is_name1(char32_t c) {
     return qe_isalnum_(c) || c == '!' || c > 0xA0;
 }
 
-static int julia_get_name(char *buf, int buf_size, const unsigned int *p)
+static int julia_get_name(char *buf, int buf_size, const char32_t *p)
 {
     buf_t outbuf, *out;
     int i = 0;
@@ -98,10 +98,10 @@ static int julia_get_name(char *buf, int buf_size, const unsigned int *p)
     return i;
 }
 
-static int julia_get_number(const unsigned int *p)
+static int julia_get_number(const char32_t *p)
 {
-    const unsigned int *p0 = p;
-    int c;
+    const char32_t *p0 = p;
+    char32_t c;
 
     c = *p++;
     if (c == '0' && qe_tolower(*p) == 'o' && qe_isoctdigit(p[1])) {
@@ -152,9 +152,10 @@ static int julia_get_number(const unsigned int *p)
 }
 
 static void julia_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, ModeDef *syn)
+                                char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, sep = 0, klen;
+    int i = 0, start = i, klen;
+    char32_t c, sep = 0;
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -196,7 +197,7 @@ static void julia_colorize_line(QEColorizeContext *cp,
             /* parse string or character const */
             sep = c;
             state = IN_JULIA_STRING;
-            if (str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
+            if (str[i] == sep && str[i + 1] == sep) {
                 /* multi-line string """ ... """ */
                 state = IN_JULIA_LONG_STRING;
                 i += 2;
@@ -208,7 +209,7 @@ static void julia_colorize_line(QEColorizeContext *cp,
                             i += 1;
                         }
                     } else
-                    if (c == sep && str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
+                    if (c == sep && str[i] == sep && str[i + 1] == sep) {
                         i += 2;
                         state = 0;
                         break;

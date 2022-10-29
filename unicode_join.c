@@ -92,9 +92,9 @@ void unload_ligatures(void) {
     ligature2_count = 0;
 }
 
-static int find_ligature(int l1, int l2)
-{
-    int a, b, m, v1, v2;
+static char32_t find_ligature(char32_t l1, char32_t l2) {
+    int a, b, m;
+    char32_t v1, v2;
 
     a = 0;
     b = ligature2_count - 1;
@@ -111,13 +111,12 @@ static int find_ligature(int l1, int l2)
             a = m + 1;
         }
     }
-    return -1;
+    return 0xffffffff;
 }
 
-int combine_accent(unsigned int *buf, int c, int accent)
-{
-    int lig = find_ligature(c, accent);
-    if (lig >= 0) {
+int combine_accent(char32_t *buf, char32_t c, char32_t accent) {
+    char32_t lig = find_ligature(c, accent);
+    if (lig != 0xffffffff) {
         *buf = lig;
         return 1;
     } else {
@@ -126,8 +125,7 @@ int combine_accent(unsigned int *buf, int c, int accent)
 }
 
 /* No need for efficiency */
-int expand_ligature(unsigned int *buf, int c)
-{
+int expand_ligature(char32_t *buf, char32_t c) {
     unsigned short *a, *b;
 
     if (c > 0x7f) {
@@ -144,16 +142,17 @@ int expand_ligature(unsigned int *buf, int c)
 
 /* apply all the ligature rules in logical order. Always return a
    smaller or equal buffer */
-static int unicode_ligature(unsigned int *buf_out,
+static int unicode_ligature(char32_t *buf_out,
                             unsigned int *pos_L_to_V,
                             int len)
 {
-    int l, l1, l2, len1, len2, i, j;
-    unsigned int *q;
+    int len1, len2, i, j;
+    char32_t l, l1, l2;
+    char32_t *q;
     const unsigned short *lig;
     /* CG: C99 variable-length arrays may be too large */
     // XXX: why do we need a local copy?
-    unsigned int buf[len];
+    char32_t buf[len];
 
     blockcpy(buf, buf_out, len);
 
@@ -174,7 +173,7 @@ static int unicode_ligature(unsigned int *buf_out,
         if (l1 <= 0x7f && l2 <= 0x7f)
             goto nolig;
         l = find_ligature(l1, l2);
-        if (l < 0)
+        if (l == 0xffffffff)
             goto nolig;
         if (l > 0) {
             /* ligature of length 2 found */
@@ -223,13 +222,12 @@ static int unicode_ligature(unsigned int *buf_out,
 #define UNICODE_INDIC    0x00000002
 #define UNICODE_NONASCII 0x00000004
 
-static int unicode_classify(unsigned int *buf, int len)
-{
+static int unicode_classify(char32_t *buf, int len) {
     int i, mask;
 
     mask = 0;
     for (i = 0; i < len; i++) {
-        unsigned int c = buf[i];
+        char32_t c = buf[i];
         if (c <= 0x7f) /* latin1 fast handling */
             continue;
         mask |= UNICODE_NONASCII;
@@ -244,19 +242,19 @@ static int unicode_classify(unsigned int *buf, int len)
     return mask;
 }
 
-static void compose_char_to_glyph(unsigned int *ctog, int len, unsigned *ctog1)
+static void compose_char_to_glyph(unsigned int *ctog, int len, unsigned int *ctog1)
 {
     int i;
     for (i = 0; i < len; i++)
         ctog[i] = ctog1[ctog[i]];
 }
 
-static void bidi_reverse_buf(unsigned int *str, int len)
+static void bidi_reverse_buf(char32_t *str, int len)
 {
     int i, len2 = len / 2;
 
     for (i = 0; i < len2; i++) {
-        unsigned int tmp = str[i];
+        char32_t tmp = str[i];
         str[i] = fribidi_get_mirror_char(str[len - 1 - i]);
         str[len - 1 - i] = fribidi_get_mirror_char(tmp);
     }
@@ -272,15 +270,15 @@ static void bidi_reverse_buf(unsigned int *str, int len)
    deal with the bidir case. 'char_to_glyph_pos' gives the index of
    the first glyph associated to a given character of the source
    buffer. */
-int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
-                      int dst_size, unsigned int *src, int src_size,
+int unicode_to_glyphs(char32_t *dst, unsigned int *char_to_glyph_pos,
+                      int dst_size, char32_t *src, int src_size,
                       int reverse)
 {
     int len, i;
     /* CG: C99 variable-length arrays may be too large */
     unsigned int ctog[src_size];
     unsigned int ctog1[src_size];
-    unsigned int buf[src_size];
+    char32_t buf[src_size];
     int unicode_class;
 
     unicode_class = unicode_classify(src, src_size);

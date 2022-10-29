@@ -2,7 +2,7 @@
  * XML text mode for QEmacs.
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2014-2017 Charlie Gordon.
+ * Copyright (c) 2014-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -37,7 +37,7 @@ enum {
     XML_STYLE_CSS     = QE_STYLE_CSS,
 };
 
-static int xml_tag_match(const unsigned int *buf, int i, const char *str,
+static int xml_tag_match(const char32_t *buf, int i, const char *str,
                          int *iend)
 {
     int len;
@@ -53,9 +53,10 @@ static int xml_tag_match(const unsigned int *buf, int i, const char *str,
 }
 
 static void xml_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c;
+    int i = 0, start = i;
+    char32_t c;
     int state = cp->colorize_state;
 
     /* XXX: should recognize and colorize entities, attribute strings */

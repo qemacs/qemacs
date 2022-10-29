@@ -2,7 +2,7 @@
  * Arabic algorithms for QEmacs.
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -195,8 +195,7 @@ static const unsigned short transparent[] = {
 };
 
 /* XXX: optimize tables, use binary search */
-static int is_transparent(int ch)
-{
+static int is_transparent(char32_t ch) {
     int i;
 
     for (i = 0; i < countof(transparent); i++) {
@@ -206,8 +205,7 @@ static int is_transparent(int ch)
     return 0;
 }
 
-static const ArabicChar *find_char(int ch)
-{
+static const ArabicChar *find_char(char32_t ch) {
     const ArabicChar *c;
 
     c = arabic_table;
@@ -219,7 +217,8 @@ static const ArabicChar *find_char(int ch)
 /* ctog is NOT filled because it is not needed. We put it for homogoneity */
 int arab_join(unsigned int *line, qe__unused__ unsigned int *ctog, int len)
 {
-    int a, b, c, i, j, res;
+    char32_t a, b, c, res;
+    int i, j;
     //const ArabicChar *aa;
     const ArabicChar *bb, *cc;
 

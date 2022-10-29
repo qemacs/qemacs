@@ -247,7 +247,7 @@ static void hex_move_up_down(EditState *s, int dir)
 
 void hex_write_char(EditState *s, int key)
 {
-    unsigned int cur_ch, ch;
+    char32_t cur_ch, ch;
     int hsize, shift, cur_len, len, h;
     int offset = s->offset;
     char buf[10];
@@ -263,7 +263,7 @@ void hex_write_char(EditState *s, int key)
         if ((!s->overwrite || offset >= s->b->total_size) && s->hex_nibble == 0) {
             ch = h << ((hsize - 1) * 4);
             if (s->unihex_mode || s->b->charset->char_size > 1) {
-                len = eb_encode_uchar(s->b, buf, ch);
+                len = eb_encode_char32(s->b, buf, ch);
             } else {
                 len = 1;
                 buf[0] = ch;
@@ -275,7 +275,7 @@ void hex_write_char(EditState *s, int key)
                 cur_len -= offset;
             } else {
                 eb_read(s->b, offset, buf, 1);
-                cur_ch = buf[0];
+                cur_ch = (u8)buf[0];
                 cur_len = 1;
             }
 
@@ -283,7 +283,7 @@ void hex_write_char(EditState *s, int key)
             ch = (cur_ch & ~(0xf << shift)) | (h << shift);
 
             if (s->unihex_mode) {
-                len = eb_encode_uchar(s->b, buf, ch);
+                len = eb_encode_char32(s->b, buf, ch);
             } else {
                 len = 1;
                 buf[0] = ch;

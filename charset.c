@@ -49,8 +49,7 @@ static unsigned short const table_none[256] = { REP256(ESCAPE_CHAR) };
 /********************************************************/
 /* raw */
 
-static u8 *encode_raw(qe__unused__ QECharset *charset, u8 *p, int c)
-{
+static u8 *encode_raw(qe__unused__ QECharset *charset, u8 *p, char32_t c) {
     if (c <= 0xff) {
         *p++ = c;
         return p;
@@ -117,7 +116,7 @@ static int probe_8859_1(qe__unused__ QECharset *charset, const u8 *buf, int size
         return 0;
 }
 
-static u8 *encode_8859_1(qe__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_8859_1(qe__unused__ QECharset *charset, u8 *p, char32_t c)
 {
     if (c <= 0xff) {
         *p++ = c;
@@ -144,7 +143,7 @@ struct QECharset charset_8859_1 = {
 /********************************************************/
 /* vt100 */
 
-static u8 *encode_vt100(qe__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_vt100(qe__unused__ QECharset *charset, u8 *p, char32_t c)
 {
     if (c <= 0xff) {
         *p++ = c;
@@ -171,7 +170,7 @@ struct QECharset charset_vt100 = {
 /********************************************************/
 /* 7 bit */
 
-static u8 *encode_7bit(qe__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_7bit(qe__unused__ QECharset *charset, u8 *p, char32_t c)
 {
     if (c <= 0x7f) {
         *p++ = c;
@@ -196,22 +195,26 @@ static struct QECharset charset_7bit = {
 };
 
 /********************************************************/
-/* UTF8 */
+/* UTF-8 */
 
 static unsigned short const table_utf8[256] = {
-    RUN128(0),              /* [0x00...0x80] are self-encoding ASCII bytes */
-    REP64(INVALID_CHAR),    /* [0x80...0xC0] are invalid prefix bytes */
-    REP32(ESCAPE_CHAR),     /* [0xC0...0xE0] leading bytes of 2 byte sequences */
-    REP16(ESCAPE_CHAR),     /* [0xE0...0xF0] leading bytes of 3 byte sequences */
-    REP8(ESCAPE_CHAR),      /* [0xF0...0xF8] leading bytes of 4 byte sequences */
-    REP4(ESCAPE_CHAR),      /* [0xF8...0xFC] leading bytes of 5 byte sequences */
-    REP2(ESCAPE_CHAR),      /* [0xFC...0xFE] leading bytes of  byte sequences */
-    INVALID_CHAR,           /* 0xFE is invalid in UTF-8 encoding */
-    INVALID_CHAR,           /* 0xFF is invalid in UTF-8 encoding */
+    RUN128(0),              /* [0x00...0x7F] are self-encoding ASCII bytes */
+    REP64(INVALID_CHAR),    /* [0x80...0xBF] are invalid prefix bytes */
+    /* 0xC0 and 0xC1 are invalid prefix bytes because they encode 7-bit codes */
+    REP32(ESCAPE_CHAR),     /* [0xC0...0xDF] leading bytes of 2 byte sequences */
+    REP16(ESCAPE_CHAR),     /* [0xE0...0xEF] leading bytes of 3 byte sequences */
+    REP8(ESCAPE_CHAR),      /* [0xF0...0xF7] leading bytes of 4 byte sequences */
+    REP4(ESCAPE_CHAR),      /* [0xF8...0xFB] leading bytes of 5 byte sequences */
+    REP2(ESCAPE_CHAR),      /* [0xFC...0xFD] leading bytes of 6 byte sequences */
+    /* allow for utf8x encoding */
+    ESCAPE_CHAR,//INVALID_CHAR,           /* 0xFE is invalid in UTF-8 encoding */
+    ESCAPE_CHAR,//INVALID_CHAR,           /* 0xFF is invalid in UTF-8 encoding */
 };
 
 static int probe_utf8(qe__unused__ QECharset *charset, const u8 *buf, int size)
 {
+    /* probe initial file block for UTF-8 encoding:
+       scan buffer contents for valid ASCII and UTF-8 contents */
     const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
                            (1U << '\n') | (1U << '\r') | (1U << '\033') |
                            (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1a) |
@@ -224,8 +227,7 @@ static int probe_utf8(qe__unused__ QECharset *charset, const u8 *buf, int size)
     count_spaces = count_lines = count_utf8 = 0;
 
     while (p < p_end) {
-        c = p[0];
-        p += 1;
+        c = *p++;
         if (c <= 32) {
             if (c == ' ')
                 count_spaces++;
@@ -236,46 +238,31 @@ static int probe_utf8(qe__unused__ QECharset *charset, const u8 *buf, int size)
             if (!(magic & (1U << c)))
                 return 0;
         } else
-        if (c < 0x7F) {
+        if (c < 0x7F) { /* ASCII subset */
             continue;
         } else
-        if (c < 0xc0) {
+        if (c < 0xc2) { /* UTF-8 trailing bytes and invalid prefix bytes */
             return 0;
         } else
-        if (c < 0xe0) {
-            if (p[0] < 0x80 || p[0] > 0xbf)
+        if (c < 0xe0) { /* 2 byte UTF-8 encoding for U+0080..U+07FF */
+            if ((p[0] ^ 0x80) > 0x3f)
                 return 0;
             count_utf8++;
             p += 1;
         } else
-        if (c < 0xf0) {
-            if (p[0] < 0x80 || p[0] > 0xbf || p[1] < 0x80 || p[1] > 0xbf)
+        if (c < 0xf0) { /* 3 byte UTF-8 encoding for U+0800..U+FFFF */
+            if ((p[0] ^ 0x80) > 0x3f || (p[1] ^ 0x80) > 0x3f)
                 return 0;
             count_utf8++;
             p += 2;
         } else
-        if (c < 0xf8) {
-            if (p[0] < 0x80 || p[0] > 0xbf || p[1] < 0x80 || p[1] > 0xbf
-            ||  p[2] < 0x80 || p[2] > 0xbf)
+        if (c < 0xf8) { /* 4 byte UTF-8 encoding for U+10000..U+10FFFF */
+            if ((p[0] ^ 0x80) > 0x3f || (p[1] ^ 0x80) > 0x3f
+            ||  (p[2] ^ 0x80) > 0x3f)
                 return 0;
             count_utf8++;
             p += 3;
-        } else
-        if (c < 0xfc) {
-            if (p[0] < 0x80 || p[0] > 0xbf || p[1] < 0x80 || p[1] > 0xbf
-            ||  p[2] < 0x80 || p[2] > 0xbf || p[3] < 0x80 || p[3] > 0xbf)
-                return 0;
-            count_utf8++;
-            p += 4;
-        } else
-        if (c < 0xfe) {
-            if (p[0] < 0x80 || p[0] > 0xbf || p[1] < 0x80 || p[1] > 0xbf
-            ||  p[2] < 0x80 || p[2] > 0xbf || p[3] < 0x80 || p[3] > 0xbf
-            ||  p[4] < 0x80 || p[4] > 0xbf)
-                return 0;
-            count_utf8++;
-            p += 5;
-        } else {
+        } else { /* overlong encodings and invalid lead bytes */
             return 0;
         }
     }
@@ -285,12 +272,12 @@ static int probe_utf8(qe__unused__ QECharset *charset, const u8 *buf, int size)
         return 0;
 }
 
-static int decode_utf8_func(CharsetDecodeState *s)
+static char32_t decode_utf8_func(CharsetDecodeState *s)
 {
     return utf8_decode((const char **)(void *)&s->p);
 }
 
-static u8 *encode_utf8(qe__unused__ QECharset *charset, u8 *q, int c)
+static u8 *encode_utf8(qe__unused__ QECharset *charset, u8 *q, char32_t c)
 {
     return q + utf8_encode((char*)q, c);
 }
@@ -354,8 +341,7 @@ static int charset_get_chars_utf8(CharsetDecodeState *s,
          * count on isolated and trailing bytes and overlong
          * sequences.
          */
-        if (c < 0x80 || c >= 0xc0)
-            nb_chars++;
+        nb_chars += ((c ^ 0x80) > 0x3f);
     }
     /* CG: nb_chars is the number of character boundaries, trailing
      * UTF-8 sequence at start of buffer is ignored in count while
@@ -379,7 +365,7 @@ static int charset_goto_char_utf8(CharsetDecodeState *s,
     buf_end = buf_ptr + size;
     for (; buf_ptr < buf_end; buf_ptr++) {
         c = *buf_ptr;
-        if (c >= 0x80 && c < 0xc0) {
+        if ((c ^ 0x80) <= 0x3f) {
             /* Test done here to skip initial trailing bytes if any */
             continue;
         }
@@ -397,8 +383,27 @@ static int charset_goto_char_utf8(CharsetDecodeState *s,
 }
 
 struct QECharset charset_utf8 = {
-    "utf-8",
-    "utf8|al32utf8",
+    "utf8",
+    "utf-8|al32utf8",
+    probe_utf8,
+    NULL,
+    decode_utf8_func,
+    encode_utf8,
+    charset_get_pos_utf8,
+    charset_get_chars_utf8,
+    charset_goto_char_utf8,
+    charset_goto_line_8bit,
+    1, 1, 0, 10, 0, 0, table_utf8, NULL, NULL,
+};
+
+/* Extended UTF-8 encoding: accept any 32-bit value from 0 to 0xffffffff
+   All combinations are accepted.
+ */
+// XXX: should also have CESU-8 where non-BMP1 glyphs are encoded as
+//      surrogate pairs, themselves encoded in UTF-8.
+static struct QECharset charset_utf8x = {
+    "utf8x",
+    "utf-8x",
     probe_utf8,
     NULL,
     decode_utf8_func,
@@ -452,17 +457,16 @@ static int probe_ucs2le(qe__unused__ QECharset *charset, const u8 *buf, int size
         return 0;
 }
 
-static int decode_ucs2le(CharsetDecodeState *s)
-{
+static char32_t decode_ucs2le(CharsetDecodeState *s) {
     /* XXX: should handle surrogates */
     const u8 *p;
 
     p = s->p;
     s->p += 2;
-    return p[0] + (p[1] << 8);
+    return p[0] + ((char32_t)p[1] << 8);
 }
 
-static u8 *encode_ucs2le(qe__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_ucs2le(qe__unused__ QECharset *charset, u8 *p, char32_t c)
 {
     /* XXX: should handle surrogates */
     p[0] = c;
@@ -584,17 +588,16 @@ static int probe_ucs2be(qe__unused__ QECharset *charset, const u8 *buf, int size
         return 0;
 }
 
-static int decode_ucs2be(CharsetDecodeState *s)
-{
+static char32_t decode_ucs2be(CharsetDecodeState *s) {
     /* XXX: should handle surrogates */
     const u8 *p;
 
     p = s->p;
     s->p += 2;
-    return (p[0] << 8) + p[1];
+    return ((char32_t)p[0] << 8) + p[1];
 }
 
-static u8 *encode_ucs2be(qe__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_ucs2be(qe__unused__ QECharset *charset, u8 *p, char32_t c)
 {
     /* XXX: should handle surrogates */
     p[0] = c >> 8;
@@ -729,16 +732,16 @@ static int probe_ucs4le(qe__unused__ QECharset *charset, const u8 *buf, int size
         return 0;
 }
 
-static int decode_ucs4le(CharsetDecodeState *s)
-{
+static char32_t decode_ucs4le(CharsetDecodeState *s) {
     const u8 *p;
 
     p = s->p;
     s->p += 4;
-    return p[0] + (p[1] << 8) + (p[2] << 16) + (p[3] << 24);
+    return (((char32_t)p[0] <<  0) + ((char32_t)p[1] <<  8) +
+            ((char32_t)p[2] << 16) + ((char32_t)p[3] << 24));
 }
 
-static u8 *encode_ucs4le(qe__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_ucs4le(qe__unused__ QECharset *charset, u8 *p, char32_t c)
 {
     p[0] = c;
     p[1] = c >> 8;
@@ -860,16 +863,16 @@ static int probe_ucs4be(qe__unused__ QECharset *charset, const u8 *buf, int size
         return 0;
 }
 
-static int decode_ucs4be(CharsetDecodeState *s)
-{
+static char32_t decode_ucs4be(CharsetDecodeState *s) {
     const u8 *p;
 
     p = s->p;
     s->p += 4;
-    return (p[0] << 24) + (p[1] << 16) + (p[2] << 8) + p[3];
+    return (((char32_t)p[0] << 24) + ((char32_t)p[1] << 16) +
+            ((char32_t)p[2] <<  8) + ((char32_t)p[3] <<  0));
 }
 
-static u8 *encode_ucs4be(qe__unused__ QECharset *charset, u8 *p, int c)
+static u8 *encode_ucs4be(qe__unused__ QECharset *charset, u8 *p, char32_t c)
 {
     p[0] = c >> 24;
     p[1] = c >> 16;
@@ -971,9 +974,6 @@ void qe_register_charset(struct QECharset *charset)
 {
     struct QECharset **pp;
 
-    if (!charset->aliases)
-        charset->aliases = "";
-
     pp = &first_charset;
     while (*pp != NULL) {
         if (*pp == charset)
@@ -1015,7 +1015,7 @@ QECharset *find_charset(const char *name)
 
     for (charset = first_charset; charset != NULL; charset = charset->next) {
         if (!strxcmp(charset->name, name)
-        ||  strxfind(charset->aliases, name)) {
+        ||  (charset->aliases && strxfind(charset->aliases, name))) {
             return charset;
         }
     }
@@ -1092,22 +1092,22 @@ static void detect_eol_type_8bit(const u8 *buf, int size,
         }
     }
     switch (eol_bits) {
-        case 0:
-            /* no change, keep default value */
-            break;
-        case 1 << EOL_UNIX:
-            eol_type = EOL_UNIX;
-            break;
-        case 1 << EOL_DOS:
-            eol_type = EOL_DOS;
-            break;
-        case 1 << EOL_MAC:
-            eol_type = EOL_MAC;
-            break;
-        default:
-            /* A mixture of different styles, binary / unix */
-            eol_type = EOL_UNIX;
-            break;
+    case 0:
+        /* no change, keep default value */
+        break;
+    case 1 << EOL_UNIX:
+        eol_type = EOL_UNIX;
+        break;
+    case 1 << EOL_DOS:
+        eol_type = EOL_DOS;
+        break;
+    case 1 << EOL_MAC:
+        eol_type = EOL_MAC;
+        break;
+    default:
+        /* A mixture of different styles, binary / unix */
+        eol_type = EOL_UNIX;
+        break;
     }
     *eol_typep = eol_type;
 }
@@ -1116,23 +1116,22 @@ static void detect_eol_type_16bit(const u8 *buf, int size,
                                   QECharset *charset, EOLType *eol_typep)
 {
     const uint16_t *p, *p1;
-    uint16_t cr, lf;
+    uint16_t c, cr, lf;
     union { uint16_t n; char c[2]; } u;
-    int c, eol_bits;
+    int eol_bits;
     EOLType eol_type;
 
     if (!eol_typep)
         return;
 
-    eol_type = *eol_typep;
-
-    p = (const uint16_t *)(const void *)buf;
-    p1 = p + (size >> 1) - 1;
     u.n = 0;
     u.c[charset == &charset_ucs2be] = '\r';
     cr = u.n;
     u.c[charset == &charset_ucs2be] = '\n';
     lf = u.n;
+
+    p = (const uint16_t *)(const void *)buf;
+    p1 = p + (size >> 1) - 1;
 
     eol_bits = 0;
     while (p < p1) {
@@ -1150,22 +1149,23 @@ static void detect_eol_type_16bit(const u8 *buf, int size,
         }
     }
     switch (eol_bits) {
-        case 0:
-            /* no change, keep default value */
-            break;
-        case 1 << EOL_UNIX:
-            eol_type = EOL_UNIX;
-            break;
-        case 1 << EOL_DOS:
-            eol_type = EOL_DOS;
-            break;
-        case 1 << EOL_MAC:
-            eol_type = EOL_MAC;
-            break;
-        default:
-            /* A mixture of different styles, binary / unix */
-            eol_type = EOL_UNIX;
-            break;
+    case 0:
+        /* no change, keep default value */
+        eol_type = *eol_typep;
+        break;
+    case 1 << EOL_UNIX:
+        eol_type = EOL_UNIX;
+        break;
+    case 1 << EOL_DOS:
+        eol_type = EOL_DOS;
+        break;
+    case 1 << EOL_MAC:
+        eol_type = EOL_MAC;
+        break;
+    default:
+        /* A mixture of different styles, binary / unix */
+        eol_type = EOL_UNIX;
+        break;
     }
     *eol_typep = eol_type;
 }
@@ -1174,23 +1174,22 @@ static void detect_eol_type_32bit(const u8 *buf, int size,
                                   QECharset *charset, EOLType *eol_typep)
 {
     const uint32_t *p, *p1;
-    uint16_t cr, lf;
+    uint32_t c, cr, lf;
     union { uint32_t n; char c[4]; } u;
-    int c, eol_bits;
+    int eol_bits;
     EOLType eol_type;
 
     if (!eol_typep)
         return;
 
-    eol_type = *eol_typep;
-
-    p = (const uint32_t *)(const void *)buf;
-    p1 = p + (size >> 2) - 1;
     u.n = 0;
     u.c[(charset == &charset_ucs4be) * 3] = '\r';
     cr = u.n;
     u.c[(charset == &charset_ucs4be) * 3] = '\n';
     lf = u.n;
+
+    p = (const uint32_t *)(const void *)buf;
+    p1 = p + (size >> 2) - 1;
 
     eol_bits = 0;
     while (p < p1) {
@@ -1208,22 +1207,23 @@ static void detect_eol_type_32bit(const u8 *buf, int size,
         }
     }
     switch (eol_bits) {
-        case 0:
-            /* no change, keep default value */
-            break;
-        case 1 << EOL_UNIX:
-            eol_type = EOL_UNIX;
-            break;
-        case 1 << EOL_DOS:
-            eol_type = EOL_DOS;
-            break;
-        case 1 << EOL_MAC:
-            eol_type = EOL_MAC;
-            break;
-        default:
-            /* A mixture of different styles, binary / unix */
-            eol_type = EOL_UNIX;
-            break;
+    case 0:
+        /* no change, keep default value */
+        eol_type = *eol_typep;
+        break;
+    case 1 << EOL_UNIX:
+        eol_type = EOL_UNIX;
+        break;
+    case 1 << EOL_DOS:
+        eol_type = EOL_DOS;
+        break;
+    case 1 << EOL_MAC:
+        eol_type = EOL_MAC;
+        break;
+    default:
+        /* A mixture of different styles, binary / unix */
+        eol_type = EOL_UNIX;
+        break;
     }
     *eol_typep = eol_type;
 }
@@ -1272,40 +1272,97 @@ QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep)
     }
     return charset;
 #else
-    /* detect the charset. Actually only UTF8 is detected */
-    int i, len, c, has_utf8, has_binary;
+    /* Detect the charset:
+       UTF-8, UTF-16, UTF-32, Latin1, binary are detected */
+    int i, j, trail, bits;
+    char32_t c, min_code;
+    enum {
+        HAS_BINARY = 1, HAS_UTF8 = 2, TRAILING_BYTES = 4,
+        INVALID_PREFIX = 8, INVALID_SEQUENCE = 16, OVERLONG_ENCODING = 32,
+        HAS_SURROGATE = 64, INVALID_CODE = 128,
+        UTF8_MASK = 255,
+    };
+    const uint32_t magic = ((1U << '\b') | (1U << '\t') | (1U << '\f') |
+                            (1U << '\n') | (1U << '\r') | (1U << '\033') |
+                            (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1a) |
+                            (1U << 0x1f));
 
-    has_utf8 = 0;
+    bits = 0;
+
     for (i = 0; i < size;) {
         c = buf[i++];
-        if ((c >= 0x80 && c < 0xc0) || c >= 0xfe) {
-            has_utf8 = -1;
-            goto done_utf8;
-        }
-        // XXX: this test will match UTF-8 encoded contents but does not
-        //      detect invalid encodings such as overlong sequences and
-        //      surrogate code points.
-        len = utf8_length[c];
-        while (len > 1) {
-            has_utf8 = 1;
-            if (i >= size)
-                break;
-            c = buf[i++];
-            if (!(c >= 0x80 && c < 0xc0)) {
-                has_utf8 = -1;
-                goto done_utf8;
+        if (c < 32) {
+            if (!(magic & (1U << c)))
+                bits |= HAS_BINARY;
+        } else
+        if (c < 0x80) {
+            /* 0x7F should trigger HAS_BINARY? */
+            continue;
+        } else
+        if (c < 0xC0) {
+            bits |= TRAILING_BYTES;
+        } else {
+            bits |= HAS_UTF8;
+            if (c < 0xE0) {
+                trail = 1;
+                min_code = 0x80;
+                c &= 0x1f;
+            } else
+            if (c < 0xF0) {
+                trail = 2;
+                min_code = 0x800;
+                c &= 0x0f;
+            } else
+            if (c < 0xF8) {
+                trail = 3;
+                min_code = 0x10000;
+                c &= 0x07;
+            } else
+            if (c < 0xFC) {
+                trail = 4;
+                min_code = 0x00200000;
+                c &= 0x03;
+            } else {
+                trail = 5;
+                min_code = 0x04000000;
+                c &= 0x03;
             }
-            len--;
+            if (i + trail > size)
+                break;
+            for (j = 0; j < trail; j++) {
+                char32_t c1 = buf[i + j] ^ 0x80;
+                if (c1 > 0x3f)
+                    break;
+                c = (c << 6) + c1;
+            }
+            i += j;
+            if (j < trail) {
+                bits |= INVALID_SEQUENCE;
+            } else {
+                if (c < min_code)
+                    bits |= OVERLONG_ENCODING;
+                if (c >= 0xd800 && c <= 0xdfff) {
+                    // XXX: should detect CESU-8 encoding
+                    bits |= HAS_SURROGATE;
+                }
+                if (c == 0xfffe || c == 0xffff || c > 0x10ffff)
+                    bits |= INVALID_CODE;
+            }
         }
     }
-done_utf8:
-    if (has_utf8 > 0) {
-        return detect_eol_type(buf, size, &charset_utf8, eol_typep);
+    if ((bits & (HAS_UTF8 | HAS_BINARY | TRAILING_BYTES | INVALID_SEQUENCE)) == HAS_UTF8) {
+        if (bits == HAS_UTF8) {
+            /* strict UTF-8 encoding */
+            return detect_eol_type(buf, size, &charset_utf8, eol_typep);
+        } else {
+            /* relax extended UTF-8 encoding */
+            return detect_eol_type(buf, size, &charset_utf8x, eol_typep);
+        }
     }
 
-    /* Check for zwnbsp BOM: files starting with zero-width
+    /* Check for ZWNBSP as BOM: files starting with zero-width
      * no-break space as a byte-order mark (BOM) will be detected
-     * as ucs2 or ucs4 encoded.
+     * as ucs2/UTF-16 or ucs4/UTF-32 encoded.
      */
     if (size >= 2 && buf[0] == 0xff && buf[1] == 0xfe) {
         if (size >= 4 && buf[2] == 0 && buf[3] == 0) {
@@ -1362,20 +1419,7 @@ done_utf8:
      * XXX: should use charset probe functions.
      */
 
-    has_binary = 0;
-    {
-        const uint32_t magic = (1U << '\b') | (1U << '\t') | (1U << '\f') |
-                               (1U << '\n') | (1U << '\r') | (1U << '\033') |
-                               (1U << 0x0e) | (1U << 0x0f) | (1U << 0x1a) |
-                               (1U << 0x1f);
-
-        for (i = 0; i < size; i++) {
-            c = buf[i];
-            if (c < 32 && !(magic & (1U << c)))
-                has_binary += 1;
-        }
-    }
-    if (has_binary) {
+    if (bits & HAS_BINARY) {
         *eol_typep = EOL_UNIX;
         return &charset_raw;
     }
@@ -1389,7 +1433,8 @@ done_utf8:
         return &charset_mac_roman;
     }
 #endif
-    if (*eol_typep == EOL_DOS || has_utf8 < 0) {
+    if (*eol_typep == EOL_DOS
+    ||  (bits & (TRAILING_BYTES | INVALID_PREFIX | INVALID_SEQUENCE))) {
         /* XXX: default DOS files to Latin1, should be selectable */
         return &charset_8859_1;
     }
@@ -1417,13 +1462,13 @@ void decode_8bit_init(CharsetDecodeState *s)
         *table++ = i;
 }
 
-int decode_8bit(CharsetDecodeState *s)
+char32_t decode_8bit(CharsetDecodeState *s)
 {
     return s->table[*(s->p)++];
 }
 
 /* not very fast, but not critical yet */
-u8 *encode_8bit(QECharset *charset, u8 *q, int c)
+u8 *encode_8bit(QECharset *charset, u8 *q, char32_t c)
 {
     int i, n;
     const unsigned short *table;
@@ -1566,6 +1611,7 @@ void charset_init(void) {
     qe_register_charset(&charset_vt100);
     qe_register_charset(&charset_7bit);
     qe_register_charset(&charset_utf8);
+    qe_register_charset(&charset_utf8x);
     qe_register_charset(&charset_ucs2le);
     qe_register_charset(&charset_ucs2be);
     qe_register_charset(&charset_ucs4le);

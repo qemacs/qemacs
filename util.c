@@ -231,7 +231,7 @@ static void canonicalize_path1(char *buf, int buf_size, const char *path) {
             p++;
             if (c == '/')
                 break;
-            if ((q - file) < (int)sizeof(file) - 1)
+            if ((q - file) < ssizeof(file) - 1)
                 *q++ = c;
         }
         *q = '\0';
@@ -740,10 +740,10 @@ int strxfind(const char *list, const char *s) {
        @argument `s` a valid string pointer for the string to search.
        @return 1 if there is a match, 0 otherwise.
      */
-    const char *p, *q;
-    int c1, c2;
+    const u8 *p, *q;
+    char32_t c1, c2;
 
-    q = list;
+    q = (const u8*)list;
     if (!q)
         return 0;
 
@@ -757,13 +757,13 @@ int strxfind(const char *list, const char *s) {
         return 0;
     } else {
     scan:
-        p = s;
+        p = (const u8*)s;
         for (;;) {
             do {
-                c1 = qe_toupper((unsigned char)*p++);
+                c1 = qe_toupper(*p++);
             } while (c1 == '-' || c1 == '_' || c1 == ' ');
             do {
-                c2 = qe_toupper((unsigned char)*q++);
+                c2 = qe_toupper(*q++);
             } while (c2 == '-' || c2 == '_' || c2 == ' ');
             if (c1 == '\0') {
                 if (c2 == '\0' || c2 == '|')
@@ -794,7 +794,8 @@ const char *strmem(const char *str, const void *mem, int size) {
        @return a pointer to the first character of the match if found,
        `NULL` otherwise.
      */
-    int c, len;
+    char c;
+    int len;
     const char *p, *str_max, *p1 = mem;
 
     if (size <= 0)
@@ -830,7 +831,8 @@ const void *memstr(const void *buf, int size, const char *str) {
        @return a pointer to the first character of the match if found,
        `NULL` otherwise.
      */
-    int c, len;
+    u8 c;
+    int len;
     const u8 *p, *buf_max;
 
     c = *str++;
@@ -868,8 +870,8 @@ int qe_memicmp(const void *p1, const void *p2, size_t count) {
 
     for (; count-- > 0; s1++, s2++) {
         if (*s1 != *s2) {
-            int c1 = qe_toupper(*s1);
-            int c2 = qe_toupper(*s2);
+            char32_t c1 = qe_toupper(*s1);
+            char32_t c2 = qe_toupper(*s2);
             if (c1 != c2)
                 return (c2 < c1) - (c1 < c2);
         }
@@ -887,19 +889,21 @@ const char *qe_stristr(const char *s1, const char *s2) {
        `NULL` otherwise.
        @note this version only handles ASCII.
      */
-    int c, c1, c2, len;
+    char32_t c, c1, c2;
+    int len;
 
     len = strlen(s2);
     if (!len)
         return s1;
 
-    c = *s2++;
+    c = (u8)*s2++;
     len--;
     c1 = qe_toupper(c);
     c2 = qe_tolower(c);
 
-    while ((c = *s1++) != '\0') {
+    while ((c = (u8)*s1++) != '\0') {
         if (c == c1 || c == c2) {
+            // XXX: not strictly correct as s2 might be shorter than len
             if (!qe_memicmp(s1, s2, len))
                 return s1 - 1;
         }
@@ -923,7 +927,7 @@ int stristart(const char *str, const char *val, const char **ptr) {
     p = str;
     q = val;
     while (*q != '\0') {
-        if (qe_toupper((unsigned char)*p) != qe_toupper((unsigned char)*q)) {
+        if (qe_toupper((u8)*p) != qe_toupper((u8)*q)) {
             return 0;
         }
         p++;
@@ -950,7 +954,7 @@ int strxstart(const char *str, const char *val, const char **ptr) {
     p = str;
     q = val;
     while (*q != '\0') {
-        if (qe_toupper((unsigned char)*p) != qe_toupper((unsigned char)*q)) {
+        if (qe_toupper((u8)*p) != qe_toupper((u8)*q)) {
             if (*q == '-' || *q == '_' || *q == ' ') {
                 q++;
                 continue;
@@ -979,8 +983,8 @@ int strxcmp(const char *str1, const char *str2) {
        of `str1 <=> str2`
      */
     for (;;) {
-        unsigned char c1 = *str1;
-        unsigned char c2 = *str2;
+        u8 c1 = *str1;
+        u8 c2 = *str2;
         int d = qe_toupper(c1) - qe_toupper(c2);
         if (d) {
             if (c2 == '-' || c2 == '_' || c2 == ' ') {
@@ -1023,38 +1027,59 @@ int strmatchword(const char *str, const char *val, const char **ptr) {
     return 0;
 }
 
-/* Read a token from a string, stop on a set of characters.
- * Skip spaces before and after token. Return the token length.
- */
+/* used in libqhtml */
 int get_str(const char **pp, char *buf, int buf_size, const char *stop) {
-    // XXX: Document this function
-    char *q;
+    /*@API utils
+       Get a token from a string, stop on a set of characters and white-space.
+       Skip spaces before and after the token. Return the token length.
+
+       @param `pp` the address of a valid pointer to the current position
+       in the source string
+       @param `buf` a pointer to a destination array.
+       @param `buf_size` the length of the destination array.
+       @param `stop` a valid string pointer containing separator characters.
+       @return the length of the token stored into buf.
+       @note: token truncation cannot be easily detected.
+     */
     const char *p;
+    int i;
 
     qe_skip_spaces(pp);
     p = *pp;
-    q = buf;
-    for (;;) {
+    for (i = 0;;) {
         u8 c = *p;
         /* Stop on spaces and eat them */
-        if (c == '\0' || qe_isspace(c) || strchr(stop, c))
+        if (qe_isspace(c) || strchr(stop, c))
             break;
-        if ((q - buf) < buf_size - 1)
-            *q++ = c;
+        if (i + 1 < buf_size)
+            buf[i++] = c;
         p++;
     }
-    *q = '\0';
+    if (i < buf_size)
+        buf[i] = '\0';
     *pp = p;
     qe_skip_spaces(pp);
-    return q - buf;
+    return i;
 }
 
 /*---- Unicode string functions: null terminated arrays of code points ----*/
 
-int ustrstart(const unsigned int *str0, const char *val, int *lenp)
-{
-    // XXX: Document this function
-    const unsigned int *str = str0;
+int ustrstart(const char32_t *str0, const char *val, int *lenp) {
+    /*@API utils
+       Test if `val` is a prefix of `str0`.
+
+       If `val` is a prefix of `str`, the length of the prefix is stored into
+       `*lenp`, provided `lenp` is not a null pointer, and return `1`.
+
+       If `val` is not a prefix of `str`, return `0` and leave `*lenp`
+       unchanged.
+
+       @param `str0` input string, must be a valid pointer to a null terminated code point array.
+       @param `val` prefix string, must be a valid string pointer.
+       @param `lenp` updated with the length of the prefix if found.
+       @return `true` if there is a match, `false` otherwise.
+     */
+    const char32_t *str = str0;
 
     for (; *val != '\0'; val++, str++) {
         /* assuming val is ASCII or Latin1 */
@@ -1066,22 +1091,39 @@ int ustrstart(const unsigned int *str0, const char *val, int *lenp)
     return 1;
 }
 
-const unsigned int *ustrstr(const unsigned int *str, const char *val)
-{
-    // XXX: Document this function
-    int c = val[0];
+const char32_t *ustrstr(const char32_t *str, const char *val) {
+    /*@API utils
+       Find a string of characters inside a string of code points.
+       @argument `str` a valid wide string pointer in which to search for matches.
+       @argument `val` a valid string pointer to a subtring to search for.
+       @return a pointer to the first code point of the match if found,
+       `NULL` otherwise.
+     */
+    char32_t c = val[0];
 
     for (; *str != '\0'; str++) {
-        if (*str == (unsigned int)c && ustrstart(str, val, NULL))
+        if (*str == c && ustrstart(str, val, NULL))
             return str;
     }
     return NULL;
 }
 
-int ustristart(const unsigned int *str0, const char *val, int *lenp)
-{
-    // XXX: Document this function
-    const unsigned int *str = str0;
+int ustristart(const char32_t *str0, const char *val, int *lenp) {
+    /*@API utils
+       Test if `val` is a prefix of `str0`. Comparison is perform ignoring case.
+
+       If `val` is a prefix of `str`, the length of the prefix is stored into
+       `*lenp`, provided `lenp` is not a null pointer, and return `1`.
+
+       If `val` is not a prefix of `str`, return `0` and leave `*lenp`
+       unchanged.
+
+       @param `str0` input string, must be a valid pointer to a null terminated code point array.
+       @param `val` prefix string, must be a valid string pointer.
+       @param `lenp` updated with the length of the prefix if found.
+       @return `true` if there is a match, `false` otherwise.
+     */
+    const char32_t *str = str0;
 
     for (; *val != '\0'; val++, str++) {
         /* assuming val is ASCII or Latin1 */
@@ -1093,10 +1135,15 @@ int ustristart(const unsigned int *str0, const char *val, int *lenp)
     return 1;
 }
 
-const unsigned int *ustristr(const unsigned int *str, const char *val)
-{
-    // XXX: Document this function
-    int c = qe_toupper(val[0]);
+const char32_t *ustristr(const char32_t *str, const char *val) {
+    /*@API utils
+       Find a string of characters inside a string of code points ignoring case.
+       @argument `str` a valid wide string pointer in which to search for matches.
+       @argument `val` a valid string pointer to a subtring to search for.
+       @return a pointer to the first code point of the match if found,
+       `NULL` otherwise.
+     */
+    char32_t c = qe_toupper((u8)val[0]);
 
     for (; *str != '\0'; str++) {
         if (qe_toupper(*str) == c && ustristart(str, val, NULL))
@@ -1105,9 +1152,16 @@ const unsigned int *ustristr(const unsigned int *str, const char *val)
     return NULL;
 }
 
-int umemcmp(const unsigned int *s1, const unsigned int *s2, size_t count)
-{
-    // XXX: Document this function
+int umemcmp(const char32_t *s1, const char32_t *s2, size_t count) {
+    /*@API utils
+       Compare two blocks of code points and return an integer indicative of
+       their relative order.
+       @argument `s1` a valid wide string pointer.
+       @argument `s2` a valid wide string pointer.
+       @argument `count` the maximum number of code points to compare.
+       @return `0` if the strings compare equal, a negative value if `s1` is
+       lexicographically before `s2` and a positive number otherwise.
+     */
     for (; count-- > 0; s1++, s2++) {
         if (*s1 != *s2) {
             return *s1 < *s2 ? -1 : 1;
@@ -1116,13 +1170,25 @@ int umemcmp(const unsigned int *s1, const unsigned int *s2, size_t count)
     return 0;
 }
 
-int ustr_get_identifier(char *buf, int buf_size, int c,
-                        const unsigned int *str, int i, int n)
+int ustr_get_identifier(char *buf, int buf_size, char32_t c,
+                        const char32_t *str, int i, int n)
 {
-    // XXX: Document this function
+    /*@API utils
+       Extract an ASCII identifier from a wide string into a char array.
+       @argument `buf` a valid pointer to a destination array.
+       @argument `buf_size` the length of the destination array.
+       @argument `c` the first code point to copy.
+       @argument `str` a valid wide string pointer.
+       @argument `i` the offset of the first code point to copy.
+       @argument `n` the offset to the end of the wide string.
+       @return the length of the identifier present in the source string.
+       @note: the return value can be larger than the destination array length.
+       In this case, the destination array contains a truncated string, null
+       terminated unless buf_size is <= 0.
+     */
     int len = 0, j;
 
-    if (len < buf_size - 1) {
+    if (len + 1 < buf_size) {
         /* c is assumed to be an ASCII character */
         buf[len++] = c;
     }
@@ -1130,7 +1196,7 @@ int ustr_get_identifier(char *buf, int buf_size, int c,
         c = str[j];
         if (!qe_isalnum_(c))
             break;
-        if (len < buf_size - 1)
+        if (len + 1 < buf_size)
             buf[len++] = c;
     }
     if (len < buf_size) {
@@ -1139,10 +1205,23 @@ int ustr_get_identifier(char *buf, int buf_size, int c,
     return j - i;
 }
 
-int ustr_get_identifier_lc(char *buf, int buf_size, int c,
-                           const unsigned int *str, int i, int n)
+int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c,
+                           const char32_t *str, int i, int n)
 {
-    // XXX: Document this function
+    /*@API utils
+       Extract an ASCII identifier from a wide string into a char array and
+       convert it to lowecase.
+       @argument `buf` a valid pointer to a destination array.
+       @argument `buf_size` the length of the destination array.
+       @argument `c` the first code point to copy.
+       @argument `str` a valid wide string pointer.
+       @argument `i` the offset of the first code point to copy.
+       @argument `n` the offset to the end of the wide string.
+       @return the length of the identifier present in the source string.
+       @note: the return value can be larger than the destination array length.
+       In this case, the destination array contains a truncated string, null
+       terminated unless buf_size is <= 0.
+     */
     int len = 0, j;
 
     if (len < buf_size) {
@@ -1162,10 +1241,23 @@ int ustr_get_identifier_lc(char *buf, int buf_size, int c,
     return j - i;
 }
 
-int ustr_get_word(char *buf, int buf_size, int c,
-                  const unsigned int *str, int i, int n)
+int ustr_get_word(char *buf, int buf_size, char32_t c,
+                  const char32_t *str, int i, int n)
 {
-    // XXX: Document this function
+    /*@API utils
+       Extract a word from a wide string into a char array.
+       Non ASCII code points are UTF-8 encoded.
+       @argument `buf` a valid pointer to a destination array.
+       @argument `buf_size` the length of the destination array.
+       @argument `c` the first code point to copy.
+       @argument `str` a valid wide string pointer.
+       @argument `i` the offset of the first code point to copy.
+       @argument `n` the offset to the end of the wide string.
+       @return the length of the identifier present in the source string.
+       @note: the return value can be larger than the destination array length.
+       In this case, the destination array contains a truncated string, null
+       terminated unless buf_size is <= 0.
+     */
     buf_t outbuf, *out;
     int j;
 
@@ -1179,6 +1271,19 @@ int ustr_get_word(char *buf, int buf_size, int c,
         buf_putc_utf8(out, c);
     }
     return j - i;
+}
+
+int ustr_match_keyword(const char32_t *buf, const char *str, int *lenp) {
+    int i = 0;
+    while (str[i]) {
+        if (*buf++ != (u8)str[i++])
+            return 0;
+    }
+    if (qe_isalnum_(*buf))
+        return 0;
+    if (lenp)
+        *lenp = i;
+    return 1;
 }
 
 /*---------------- Functions for handling keys ----------------*/
@@ -1456,11 +1561,10 @@ int buf_printf(buf_t *bp, const char *fmt, ...)
         if (bp->len < 0)
             bp->len = 0;
     }
-
     return len;
 }
 
-int buf_putc_utf8(buf_t *bp, int c)
+int buf_putc_utf8(buf_t *bp, char32_t c)
 {
     if (c < 0x80) {
         bp->pos++;
@@ -1476,7 +1580,7 @@ int buf_putc_utf8(buf_t *bp, int c)
         int len;
 
         len = utf8_encode(buf, c);
-
+        /* avoid appending a partial UTF-8 sequence */
         if (bp->pos + len < bp->size) {
             memcpy(bp->buf + bp->len, buf, len);
             bp->pos += len;
@@ -1875,8 +1979,8 @@ void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
  * implementation of wcwidth() from Markus Kuhn. We handle most
  * non spacing and enclosing combining characters.
  * file generated by unicode_gen.c, defines:
- * int qe_wcwidth(unsigned int ucs);
- * int qe_wcwidth_variant(unsigned int ucs);
+ * int qe_wcwidth(char32_t ucs);
+ * int qe_wcwidth_variant(char32_t ucs);
  */
 #include "wcwidth.c"
 
@@ -1892,26 +1996,34 @@ void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
 #define REP256(x)  REP64(x), REP64(x), REP64(x), REP64(x)
 
 unsigned char const utf8_length[256] = {
-    REP128(1),  /* [0x00...0x80] are self-encoding ASCII bytes */
-    REP64(1),   /* [0x80...0xC0] are invalid prefix bytes, could use 0 */
-    REP32(2),   /* [0xC0...0xE0] leading bytes of 2 byte sequences */
-    REP16(3),   /* [0xE0...0xF0] leading bytes of 3 byte sequences */
-    REP8(4),    /* [0xF0...0xF8] leading bytes of 4 byte sequences */
-    REP4(5),    /* [0xF8...0xFC] leading bytes of 5 byte sequences */
-    REP2(6),    /* [0xFC...0xFE] leading bytes of 6 byte sequences */
+    REP128(1),  /* [0x00...0x7F] are self-encoding ASCII bytes */
+    REP64(1),   /* [0x80...0xBF] are invalid prefix bytes, could use 0 */
+    /* 0xC0 and 0xC1 are invalid leading bytes for strict parsing */
+    REP32(2),   /* [0xC0...0xDF] leading bytes of 2 byte sequences */
+    REP16(3),   /* [0xE0...0xEF] leading bytes of 3 byte sequences */
+    REP8(4),    /* [0xF0...0xF7] leading bytes of 4 byte sequences */
+    REP4(5),    /* [0xF8...0xFB] leading bytes of 5 byte sequences */
+    REP2(6),    /* [0xFC...0xFD] leading bytes of 6 byte sequences */
     1,          /* 0xFE is invalid in UTF-8 encoding */
     1,          /* 0xFF is invalid in UTF-8 encoding */
 };
 
-static unsigned int const utf8_min_code[7] = {
+static char32_t const utf8_min_code[7] = {
     0, 0, 0x80, 0x800, 0x10000, 0x00200000, 0x04000000,
 };
 
-/* return the utf8 char and increment 'p' of at least one char. strict
-   decoding is done (refuse non canonical UTF8) */
-int utf8_decode(const char **pp)
-{
-    unsigned int c, c1;
+char32_t utf8_decode_strict(const char **pp) {
+    /*@API utils
+       Return the UTF-8 encoded code point at `*pp` and increment `*pp`
+       to point to the next code point.
+       Strict decoding is performed, any encoding error returns INVALID_CHAR:
+       - invalid lead bytes 0x80..0xC1, 0xF8..0xFF
+       - overlong encodings
+       - low and high surrogate codes
+       - special codes 0xfffe and 0xffff
+       - code points beyond CHARCODE_MAX
+     */
+    char32_t c, c1;
     const u8 *p;
 
     p = *(const u8 **)pp;
@@ -1953,10 +2065,67 @@ int utf8_decode(const char **pp)
     return INVALID_CHAR;
 }
 
-/* NOTE: the buffer must be at least 6 bytes long. Return number of
- * bytes copied. */
-int utf8_encode(char *q0, int c)
-{
+static unsigned char const utf8x_length[0x100 - 0xC0] = {
+    REP32(2),   /* [0xC0...0xDF] leading bytes of 2 byte sequences */
+    REP16(3),   /* [0xE0...0xEF] leading bytes of 3 byte sequences */
+    REP8(4),    /* [0xF0...0xF7] leading bytes of 4 byte sequences */
+    REP4(5),    /* [0xF8...0xFB] leading bytes of 5 byte sequences */
+    REP2(6),    /* [0xFC...0xFD] leading bytes of 6 byte sequences */
+    REP2(6),    /* [0xFE...0xFF] leading bytes of 6 byte sequences */
+};
+
+#define RUN2(x)    (x)+0, (x)+1
+#define RUN4(x)    (x)+0, (x)+1, (x)+2, (x)+3
+#define RUN8(x)    RUN4(x), RUN4((x)+4)
+#define RUN16(x)   RUN4(x), RUN4((x)+4), RUN4((x)+8), RUN4((x)+12)
+#define RUN32(x)   RUN16(x), RUN16((x)+16)
+
+static unsigned char const utf8x_bits[0x100 - 0xC0] = {
+    RUN32(0),   /* [0xC0...0xDF] leading bytes of 2 byte sequences */
+    RUN16(0),   /* [0xE0...0xEF] leading bytes of 3 byte sequences */
+    RUN8(0),    /* [0xF0...0xF7] leading bytes of 4 byte sequences */
+    RUN4(0),    /* [0xF8...0xFB] leading bytes of 5 byte sequences */
+    RUN2(0),    /* [0xFC...0xFD] leading bytes of 6 byte sequences */
+    RUN2(2),    /* [0xFE...0xFF] leading bytes of 6 byte sequences */
+};
+
+char32_t utf8_decode(const char **pp) {
+    /*@API utils
+       Return the UTF-8 encoded code point at `*pp` and increment `*pp`
+       to point to the next code point.
+       Lax decoding is performed:
+       - stray trailing bytes 0x80..0xBF return a single byte
+       - overlong encodings, surrogates and special codes are accepted
+       - 32-bit codes are produced by 0xFE and 0xFF lead bytes if followed
+       by 5 trailing bytes
+     */
+    const u8 *p = *(const u8 **)pp;
+    char32_t c = *p++;
+    if (c < 0xC0) {
+        /* fast case for ASCII and trailing bytes */
+    } else {
+        int i = 1;
+        int len = utf8x_length[c - 0xC0];
+        c = utf8x_bits[c - 0xC0];
+        for (;;) {
+            char32_t c1 = *p++ ^ 0x80;
+            if (c1 > 0x3f) {
+                p -= i;
+                c = p[-1];
+                break;
+            }
+            c = (c << 6) + c1;
+            if (++i == len)
+                break;
+        }
+    }
+    *(const u8 **)pp = p;
+    return c;
+}
+
+int utf8_encode(char *q0, char32_t c) {
+    /* note: the buffer must be at least 6 bytes long. Return number of
+     * bytes copied. */
     char *q = q0;
 
     if (c < 0x80) {
@@ -1988,18 +2157,10 @@ int utf8_encode(char *q0, int c)
     return q - q0;
 }
 
-char *utf8_char_to_string(char *buf, int c) {
-    char *p = buf;
-    if (qe_isaccent(c))
-        *p++ = ' ';
-    p[utf8_encode(p, c)] = '\0';
-    return buf;
-}
-
-int utf8_to_unicode(unsigned int *dest, int dest_length, const char *str)
+int utf8_to_char32(char32_t *dest, int dest_length, const char *str)
 {
     const char *p;
-    unsigned int *uq, *uq_end, c;
+    char32_t *uq, *uq_end, c;
 
     if (dest_length <= 0)
         return 0;

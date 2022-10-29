@@ -73,7 +73,7 @@ static void dummy_dpy_close_font(qe__unused__ QEditScreen *s,
 static void dummy_dpy_text_metrics(qe__unused__ QEditScreen *s,
                                    qe__unused__ QEFont *font,
                                    QECharMetrics *metrics,
-                                   qe__unused__ const unsigned int *str,
+                                   qe__unused__ const char32_t *str,
                                    int len)
 {
     metrics->font_ascent = 1;
@@ -84,7 +84,7 @@ static void dummy_dpy_text_metrics(qe__unused__ QEditScreen *s,
 static void dummy_dpy_draw_text(qe__unused__ QEditScreen *s,
                                 qe__unused__ QEFont *font,
                                 qe__unused__ int x, qe__unused__ int y,
-                                qe__unused__ const unsigned int *str,
+                                qe__unused__ const char32_t *str,
                                 qe__unused__ int len,
                                 qe__unused__ QEColor color)
 {

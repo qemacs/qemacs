@@ -1,7 +1,7 @@
 /*
  * Smalltalk language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -49,10 +49,11 @@ static char const smalltalk_types[] = {
 };
 
 static void smalltalk_colorize_line(QEColorizeContext *cp,
-                                    unsigned int *str, int n, ModeDef *syn)
+                                    char32_t *str, int n, ModeDef *syn)
 {
     char keyword[16];
-    int i = 0, start = i, c, style = 0, len;
+    int i = 0, start = i, style = 0, len;
+    char32_t c;
     int state = cp->colorize_state;
 
     if (state & IN_SMALLTALK_COMMENT)
@@ -68,7 +69,7 @@ static void smalltalk_colorize_line(QEColorizeContext *cp,
             state = IN_SMALLTALK_COMMENT;
         parse_comment:
             for (; i < n; i++) {
-                if (str[i] == (unsigned int)'\"') {
+                if (str[i] == '\"') {
                     state = 0;
                     i++;
                     break;
@@ -81,7 +82,7 @@ static void smalltalk_colorize_line(QEColorizeContext *cp,
             state = IN_SMALLTALK_STRING;
         parse_string:
             for (; i < n; i++) {
-                if (str[i] == (unsigned int)'\'') {
+                if (str[i] == '\'') {
                     state = 0;
                     i++;
                     break;

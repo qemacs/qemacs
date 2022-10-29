@@ -148,7 +148,7 @@ typedef struct TTYState {
     int tty_bg_colors_count;
     /* cache for glyph combinations */
     // XXX: should keep track of max_comb and max_max_comb
-    unsigned int comb_cache[COMB_CACHE_SIZE];
+    char32_t comb_cache[COMB_CACHE_SIZE];
 } TTYState;
 
 static QEditScreen *tty_screen;   /* for tty_term_exit and tty_term_resize */
@@ -621,7 +621,7 @@ static void tty_read_handler(void *opaque)
         qs->input_buf[0] = ch;
         /* charset handling */
         if (s->charset == &charset_utf8) {
-            if (ts->utf8_index && !(ch > 0x80 && ch < 0xc0)) {
+            if (ts->utf8_index && (ch ^ 0x80) > 0x3f) {
                 /* not a valid continuation byte */
                 /* flush stored prefix, restart from current byte */
                 /* XXX: maybe should consume prefix byte as binary */
@@ -703,6 +703,7 @@ static void tty_read_handler(void *opaque)
         case '~':
             /* If there is a second param, it tells the shift state,
              * ex: S-f5 = ^[[15;2~ */
+            // XXX: should use extensible lookup table
             n1 = ts->input_param;
             if (ts->input_param2) {
                 // XXX: should handle shift function keys
@@ -914,7 +915,7 @@ static void tty_dpy_close_font(qe__unused__ QEditScreen *s, QEFont **fontp)
     qe_free(fontp);
 }
 
-static inline int tty_term_glyph_width(qe__unused__ QEditScreen *s, unsigned int ucs)
+static inline int tty_term_glyph_width(qe__unused__ QEditScreen *s, char32_t ucs)
 {
     /* fast test for majority of non-wide scripts */
     if (ucs < 0x300)
@@ -925,7 +926,7 @@ static inline int tty_term_glyph_width(qe__unused__ QEditScreen *s, unsigned int
 
 static void tty_dpy_text_metrics(QEditScreen *s, QEFont *font,
                                  QECharMetrics *metrics,
-                                 const unsigned int *str, int len)
+                                 const char32_t *str, int len)
 {
     int i, x;
 
@@ -940,8 +941,8 @@ static void tty_dpy_text_metrics(QEditScreen *s, QEFont *font,
 
 #if MAX_UNICODE_DISPLAY > 0xFFFF
 
-static unsigned int comb_cache_add(TTYState *ts, const unsigned int *seq, int len) {
-    unsigned int *ip;
+static char32_t comb_cache_add(TTYState *ts, const char32_t *seq, int len) {
+    char32_t *ip;
     for (ip = ts->comb_cache; *ip; ip += *ip & 0xFFFF) {
         if (*ip == len + 1U && !blockcmp(ip + 1, seq, len)) {
             return TTY_CHAR_COMB + (ip - ts->comb_cache);
@@ -969,7 +970,7 @@ static unsigned int comb_cache_add(TTYState *ts, const unsigned int *seq, int le
 }
 
 static void comb_cache_clean(TTYState *ts, const TTYChar *screen, int len) {
-    unsigned int *ip;
+    char32_t *ip;
     int i;
 
     /* quick exit if cache is empty */
@@ -983,7 +984,7 @@ static void comb_cache_clean(TTYState *ts, const TTYChar *screen, int len) {
     ip = ts->comb_cache;
     /* scan the actual screen for combining glyphs */
     for (i = 0; i < len; i++) {
-        int ch = TTY_CHAR_GET_CH(screen[i]);
+        char32_t ch = TTY_CHAR_GET_CH(screen[i]);
         if (ch >= TTY_CHAR_COMB && ch < TTY_CHAR_COMB + countof(ts->comb_cache) - 1) {
             /* mark the cache entry as used */
             ip[ch - TTY_CHAR_COMB] &= ~0x10000;
@@ -1007,7 +1008,7 @@ static void comb_cache_clean(TTYState *ts, const TTYChar *screen, int len) {
 
 static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
     TTYState *ts = s->priv_data;
-    unsigned int *ip;
+    char32_t *ip;
     unsigned int i;
     int w = 16;
 
@@ -1058,14 +1059,14 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
 #endif
 
 static void tty_dpy_draw_text(QEditScreen *s, QEFont *font,
-                              int x, int y, const unsigned int *str0, int len,
+                              int x, int y, const char32_t *str0, int len,
                               QEColor color)
 {
     TTYState *ts = s->priv_data;
     TTYChar *ptr;
     int fgcolor, w, n;
-    unsigned int cc;
-    const unsigned int *str = str0;
+    char32_t cc;
+    const char32_t *str = str0;
 
     if (y < s->clip_y1 || y >= s->clip_y2 || x >= s->clip_x2)
         return;
@@ -1259,7 +1260,7 @@ static void tty_dpy_flush(QEditScreen *s)
                 ptr1[shadow] = cc;
                 ptr1++;
                 ch = TTY_CHAR_GET_CH(cc);
-                if ((unsigned int)ch == TTY_CHAR_NONE)
+                if ((char32_t)ch == TTY_CHAR_NONE)
                     continue;
                 if (gotopos) {
                     /* Move the cursor: row and col are 1 based
@@ -1398,7 +1399,7 @@ static void tty_dpy_flush(QEditScreen *s)
 #if COMB_CACHE_SIZE > 1
                 if (ch >= TTY_CHAR_COMB && ch < TTY_CHAR_COMB + COMB_CACHE_SIZE - 1) {
                     u8 buf[10], *q;
-                    unsigned int *ip = ts->comb_cache + (ch - TTY_CHAR_COMB);
+                    char32_t *ip = ts->comb_cache + (ch - TTY_CHAR_COMB);
                     int ncc = *ip++;
 
                     /* this is a sanity test: check that we have a valid combination

@@ -453,7 +453,7 @@ static char *getentryslink(char *path, int size,
     char filename[MAX_FILENAME_SIZE + MAX_FILENAME_SIZE + 1];
     int len = 0;
 
-    if (snprintf(filename, sizeof(filename), "%s/%s", dir, name) < (int)sizeof(filename)) {
+    if (snprintf(filename, sizeof(filename), "%s/%s", dir, name) < ssizeof(filename)) {
         /* Warning: readlink does not append a null byte! */
         len = readlink(filename, path, size - 1);
         if (len < 0)
@@ -847,7 +847,8 @@ static void dired_mark(EditState *s, int mark)
 {
     DiredState *ds;
     DiredItem *dip;
-    int ch, dir = 1, flags;
+    int dir = 1, flags;
+    char32_t ch;
 
     if (!(ds = dired_get_state(s, 1)))
         return;
@@ -865,7 +866,7 @@ static void dired_mark(EditState *s, int mark)
         do_bol(s);
         flags = s->b->flags & BF_READONLY;
         s->b->flags ^= flags;
-        eb_replace_uchar(s->b, s->offset, ch);
+        eb_replace_char32(s->b, s->offset, ch);
         s->b->flags ^= flags;
     }
     if (dir > 0)

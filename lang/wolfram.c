@@ -1,7 +1,7 @@
 /*
  * Wolfram language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -51,8 +51,8 @@ enum {
     WOLFRAM_STYLE_FUNCTION =   QE_STYLE_FUNCTION,
 };
 
-static int wolfram_get_identifier(char *buf, int buf_size, int c,
-                                  const unsigned int *str, int i, int n)
+static int wolfram_get_identifier(char *buf, int buf_size, char32_t c,
+                                  const char32_t *str, int i, int n)
 {
     int len = 0, j;
 
@@ -73,10 +73,11 @@ static int wolfram_get_identifier(char *buf, int buf_size, int c,
 }
 
 static void wolfram_colorize_line(QEColorizeContext *cp,
-                                  unsigned int *str, int n, ModeDef *syn)
+                                  char32_t *str, int n, ModeDef *syn)
 {
     char kbuf[16];
-    int i = 0, start = i, c, c1 = 0, k, style = 0, comment_level, base;
+    int i = 0, start = i, k, style = 0, comment_level, base;
+    char32_t c, c1 = 0;
     int colstate = cp->colorize_state;
 
     switch (colstate) {

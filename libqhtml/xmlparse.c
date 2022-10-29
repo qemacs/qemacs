@@ -24,7 +24,7 @@
 
 // XXX: need fix for this: should use read function with opaque argument
 struct EditBuffer;
-int eb_nextc(struct EditBuffer *b, int offset, int *next_ptr);
+char32_t eb_nextc(struct EditBuffer *b, int offset, int *next_ptr);
 
 //#define DEBUG
 
@@ -113,12 +113,12 @@ static int parse_entity(const char **pp)
     int ch, ch1;
 
     p = *pp;
-    ch = *p++;
+    ch = (u8)*p++;
     if (ch == '&') {
         p1 = p;
         q = name;
         for (;;) {
-            ch1 = *p;
+            ch1 = (u8)*p;
             if (ch1 == '\0')
                 break;
             p++;
@@ -178,7 +178,7 @@ static inline void strbuf_reset(StringBuffer *b)
     strbuf_init(b);
 }
 
-static void strbuf_addch1(StringBuffer *b, int ch)
+static void strbuf_addch1(StringBuffer *b, char32_t ch)
 {
     int size1;
     unsigned char *ptr;
@@ -197,7 +197,7 @@ static void strbuf_addch1(StringBuffer *b, int ch)
     }
 }
 
-static inline void strbuf_addch(StringBuffer *b, int ch)
+static inline void strbuf_addch(StringBuffer *b, char32_t ch)
 {
     if (b->size < b->allocated_size) {
         /* fast case */
@@ -1081,8 +1081,9 @@ static int xml_tagcmp(const char *s1, const char *s2)
 static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
                               struct EditBuffer *b, int offset_start)
 {
-    int ch, offset, offset0, text_offset_start, ret, offset_end;
+    int offset, offset0, text_offset_start, ret, offset_end;
     const char *buf_end, *buf;
+    char32_t ch;
 
     buf = buf_start;
     buf_end = buf + buf_len;

@@ -60,8 +60,7 @@ enum {
     ERLANG_STYLE_FUNCTION   = QE_STYLE_FUNCTION,
 };
 
-int erlang_match_char(unsigned int *str, int i)
-{
+int erlang_match_char(const char32_t *str, int i) {
     /* erlang character constant */
     if (str[i++] == '\\') {
         switch (str[i++]) {
@@ -106,10 +105,11 @@ int erlang_match_char(unsigned int *str, int i)
 }
 
 static void erlang_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, ModeDef *syn)
+                                char32_t *str, int n, ModeDef *syn)
 {
     char keyword[16];
-    int i = 0, start = i, c, style, len, base;
+    int i = 0, start = i, style, len, base;
+    char32_t c;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_ERLANG_STRING)

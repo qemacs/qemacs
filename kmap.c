@@ -2,7 +2,7 @@
  * Kmap file based input method handling for QEmacs.
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2002-2020 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -29,10 +29,11 @@
 /* parse the internal compressed input method format */
 static int kmap_input(int *match_buf, int match_buf_size,
                       int *match_len_ptr, const u8 *data,
-                      const unsigned int *buf, int len)
+                      const char32_t *buf, int len)
 {
     const u8 *p, *p1, *match_extra;
-    int c, flag, i, l, l1, match_len, match_char, match_count, match_real_len;
+    int flag, i, l, l1, match_len, match_char, match_count, match_real_len;
+    char32_t c;
     int match_olen;
     int nb_prefixes, last_outputc, match, prefix_len, trailing_space, olen;
 
@@ -109,7 +110,7 @@ static int kmap_input(int *match_buf, int match_buf_size,
                 c = (p[0] << 8) | p[1];
                 p += 2;
             }
-            if (l1 < len && c != (int)buf[l1])
+            if (l1 < len && c != buf[l1])
                 match = 0;
             l1++;
             if (flag) {

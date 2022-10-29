@@ -8,6 +8,8 @@ fbffonts.c
 .xobjs*
 bin
 # target-files
+*.o
+*.so
 *.exe
 *.dSYM
 *_g

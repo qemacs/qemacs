@@ -1,7 +1,7 @@
 /*
  * Makefile mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -34,11 +34,11 @@ enum {
 };
 
 static void makefile_colorize_line(QEColorizeContext *cp,
-                                   unsigned int *str, int n, ModeDef *syn)
+                                   char32_t *str, int n, ModeDef *syn)
 {
     char buf[32];
     int i = 0, start = i, bol = 1, from = 0, level, style;
-    unsigned int c;
+    char32_t c;
 
     if (qe_isalpha_(str[i])) {
         ustr_get_identifier_lc(buf, countof(buf), str[i], str, i + 1, n);
@@ -173,11 +173,11 @@ enum {
 };
 
 static void cmake_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, ModeDef *syn)
+                                char32_t *str, int n, ModeDef *syn)
 {
     char buf[32];
     int i = 0, start = i, style;
-    unsigned int c;
+    char32_t c;
 
     while (i < n) {
         start = i;
@@ -205,7 +205,7 @@ static void cmake_colorize_line(QEColorizeContext *cp,
         case '"':
             /* parse string const */
             while (i < n) {
-                unsigned int cc = str[i++];
+                char32_t cc = str[i++];
 
                 if (cc == c)
                     break;

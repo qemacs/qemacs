@@ -1,7 +1,7 @@
 /*
  * Perl Source mode for QEmacs.
  *
- * Copyright (c) 2000-2017 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -68,10 +68,10 @@ enum {
 
 /* CG: bogus if multiple regions are colorized, should use signature */
 /* XXX: should move this to mode data */
-static unsigned int perl_eos[100];
+static char32_t perl_eos[100];
 static int perl_eos_len;
 
-static int perl_var(const unsigned int *str, int j, int n)
+static int perl_var(const char32_t *str, int j, int n)
 {
     if (qe_isdigit_(str[j]))
         return j;
@@ -86,7 +86,7 @@ static int perl_var(const unsigned int *str, int j, int n)
     return j;
 }
 
-static int perl_number(const unsigned int *str, int j, qe__unused__ int n)
+static int perl_number(const char32_t *str, int j, qe__unused__ int n)
 {
     if (str[j] == '0') {
         j++;
@@ -126,9 +126,7 @@ static int perl_number(const unsigned int *str, int j, qe__unused__ int n)
 }
 
 /* return offset of matching delimiter or end of string */
-static int perl_string(const unsigned int *str, unsigned int delim,
-                       int j, int n)
-{
+static int perl_string(const char32_t *str, char32_t delim, int j, int n) {
     for (; j < n; j++) {
         if (str[j] == '\\')
             j++;
@@ -140,9 +138,10 @@ static int perl_string(const unsigned int *str, unsigned int delim,
 }
 
 static void perl_colorize_line(QEColorizeContext *cp,
-                               unsigned int *str, int n, ModeDef *syn)
+                               char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, c, c1, c2, j = i, s1, s2, delim = 0;
+    int i = 0, j = i, s1, s2, delim = 0;
+    char32_t c, c1, c2;
     int colstate = cp->colorize_state;
 
     if (colstate & (IN_PERL_STRING1 | IN_PERL_STRING2)) {

@@ -1,7 +1,7 @@
 /*
  * OpenSCAD language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -58,10 +58,11 @@ enum {
 };
 
 static void scad_colorize_line(QEColorizeContext *cp,
-                               unsigned int *str, int n, ModeDef *syn)
+                               char32_t *str, int n, ModeDef *syn)
 {
     char keyword[16];
-    int i = 0, start = i, c, style = 0, k, len, laststyle = 0, isnum;
+    int i = 0, start = i, style = 0, k, len, laststyle = 0, isnum;
+    char32_t c;
     int colstate = cp->colorize_state;
     int level = colstate >> 1;
 
@@ -123,7 +124,7 @@ static void scad_colorize_line(QEColorizeContext *cp,
                     i++;
                     continue;
                 }
-                if (str[i++] == (unsigned int)c)
+                if (str[i++] == c)
                     break;
             }
             style = SCAD_STYLE_STRING;

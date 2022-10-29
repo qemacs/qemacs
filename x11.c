@@ -599,18 +599,18 @@ static void x11_dpy_close_font(QEditScreen *s, QEFont **fontp)
     }
 }
 
-static int x11_term_glyph_width(QEditScreen *s, QEFont *font, unsigned int cc)
-{
+static int x11_term_glyph_width(QEditScreen *s, QEFont *font, char32_t cc) {
     X11State *xs = s->priv_data;
     XftFont *renderFont = font->priv_data;
+    unsigned int uc = cc;
     XGlyphInfo gi;
 
-    XftTextExtents32(xs->display, renderFont, &cc, 1, &gi);
+    XftTextExtents32(xs->display, renderFont, &uc, 1, &gi);
     return gi.xOff;
 }
 
 static void x11_dpy_draw_text(QEditScreen *s, QEFont *font,
-                              int x, int y, const unsigned int *str, int len,
+                              int x, int y, const char32_t *str, int len,
                               QEColor color)
 {
     X11State *xs = s->priv_data;
@@ -824,34 +824,29 @@ static void x11_dpy_close_font(QEditScreen *s, QEFont **fontp)
 
 /* get a char struct associated to a char. Return NULL if no glyph
    associated. */
-static XCharStruct *get_char_struct(QEFont *font, int cc)
-{
+static XCharStruct *get_char_struct(QEFont *font, char32_t cc) {
     XFontStruct *xfont = font->priv_data;
-    int b1, b2;
+    unsigned int b1, b2;
     XCharStruct *cs;
 
     if (!xfont)
         return NULL;
 
     if (xfont->min_byte1 == 0 && xfont->max_byte1 == 0) {
-        if (cc > (int)xfont->max_char_or_byte2)
+        if (cc < xfont->min_char_or_byte2
+        ||  cc > xfont->max_char_or_byte2)
             return NULL;
         cc -= xfont->min_char_or_byte2;
-        if (cc < 0)
-            return NULL;
     } else {
         b1 = (cc >> 8) & 0xff;
         b2 = cc & 0xff;
-        if (b1 > (int)xfont->max_byte1)
+        if (b1 < xfont->min_byte1
+        ||  b1 > xfont->max_byte1
+        ||  b2 < xfont->min_char_or_byte2
+        ||  b2 > xfont->max_char_or_byte2)
             return NULL;
         b1 -= xfont->min_byte1;
-        if (b1 < 0)
-            return NULL;
-        if (b2 > (int)xfont->max_char_or_byte2)
-            return NULL;
         b2 -= xfont->min_char_or_byte2;
-        if (b2 < 0)
-            return NULL;
         cc = b1 * (xfont->max_char_or_byte2 -
                    xfont->min_char_or_byte2 + 1) + b2;
     }
@@ -859,7 +854,7 @@ static XCharStruct *get_char_struct(QEFont *font, int cc)
     if (!cs)
         return &xfont->min_bounds; /* all char have same metrics */
     cs += cc;
-    /* fast test for non existant char */
+    /* fast test for non existent char */
     if (cs->width == 0 &&
         (cs->ascent | cs->descent | cs->rbearing | cs->lbearing) == 0) {
         return NULL;
@@ -869,7 +864,7 @@ static XCharStruct *get_char_struct(QEFont *font, int cc)
 }
 
 static XCharStruct *handle_fallback(QEditScreen *s, QEFont **out_font,
-                                    QEFont *font, unsigned int cc)
+                                    QEFont *font, char32_t cc)
 {
     XFontStruct *xfont;
     XCharStruct *cs;
@@ -901,12 +896,12 @@ static XCharStruct *handle_fallback(QEditScreen *s, QEFont **out_font,
 
 static void x11_dpy_text_metrics(QEditScreen *s, QEFont *font,
                                  QECharMetrics *metrics,
-                                 const unsigned int *str, int len)
+                                 const char32_t *str, int len)
 {
     QEFont *font1;
     XCharStruct *cs;
     int i, x;
-    unsigned int cc;
+    char32_t cc;
 
     metrics->font_ascent = font->ascent;
     metrics->font_descent = font->descent;
@@ -932,7 +927,7 @@ static void x11_dpy_text_metrics(QEditScreen *s, QEFont *font,
 }
 
 static void x11_dpy_draw_text(QEditScreen *s, QEFont *font,
-                              int x1, int y, const unsigned int *str, int len,
+                              int x1, int y, const char32_t *str, int len,
                               QEColor color)
 {
     X11State *xs = s->priv_data;
@@ -947,7 +942,7 @@ static void x11_dpy_draw_text(QEditScreen *s, QEFont *font,
 #endif
     XChar2b *q;
     int i, l, x, x_start;
-    unsigned int cc;
+    char32_t cc;
     unsigned long xcolor;
 
     xcolor = get_x11_color(xs, color);

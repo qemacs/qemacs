@@ -88,9 +88,9 @@ struct QEDisplay {
     void (*dpy_close_font)(QEditScreen *s, QEFont **fontp);
     void (*dpy_text_metrics)(QEditScreen *s, QEFont *font,
                              QECharMetrics *metrics,
-                             const unsigned int *str, int len);
+                             const char32_t *str, int len);
     void (*dpy_draw_text)(QEditScreen *s, QEFont *font,
-                          int x, int y, const unsigned int *str, int len,
+                          int x, int y, const char32_t *str, int len,
                           QEColor color);
     void (*dpy_set_clip)(QEditScreen *s,
                          int x, int y, int w, int h);
@@ -167,13 +167,13 @@ static inline void close_font(QEditScreen *s, QEFont **fontp)
 
 static inline void text_metrics(QEditScreen *s, QEFont *font,
                                 QECharMetrics *metrics,
-                                const unsigned int *str, int len)
+                                const char32_t *str, int len)
 {
     s->dpy.dpy_text_metrics(s, font, metrics, str, len);
 }
 
 static inline void draw_text(QEditScreen *s, QEFont *font,
-                             int x, int y, const unsigned int *str, int len,
+                             int x, int y, const char32_t *str, int len,
                              QEColor color)
 {
     s->dpy.dpy_draw_text(s, font, x, y, str, len, color);
@@ -232,9 +232,8 @@ static inline void dpy_describe(QEditScreen *s, struct EditBuffer *b)
 }
 
 /* XXX: only needed for backward compatibility */
-static inline int glyph_width(QEditScreen *s, QEFont *font, int ch)
-{
-    unsigned int buf[1];
+static inline int glyph_width(QEditScreen *s, QEFont *font, char32_t ch) {
+    char32_t buf[1];
     QECharMetrics metrics;
     buf[0] = ch;
     text_metrics(s, font, &metrics, buf, 1);

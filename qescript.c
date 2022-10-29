@@ -147,6 +147,7 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
 #ifndef CONFIG_TINY
     char cbuf[8];
     int len;
+    char32_t ch;
 #endif
     /* should check for delim at *p and return -1 if no string */
     for (;;) {
@@ -190,10 +191,10 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
             case 'u':
                 maxc += 5;  /* maxc will be 4 */
             case 'x':
-                for (c = 0; qe_isxdigit(*p) && maxc-- != 0; p++) {
-                    c = (c << 4) | qe_digit_value(*p);
+                for (ch = 0; qe_isxdigit(*p) && maxc-- != 0; p++) {
+                    ch = (ch << 4) | qe_digit_value(*p);
                 }
-                len = utf8_encode(cbuf, c);
+                len = utf8_encode(cbuf, ch);
                 if (pos + len < end) {
                     int i;
                     for (i = 0; i < len; i++)
@@ -273,7 +274,7 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
             while (qe_isalnum_(c = *p) || (c == '-' && qe_isalpha(p[1]))) {
                 if (c == '_')
                     c = '-';
-                if (len < (int)sizeof(ds->str) - 1)
+                if (len < ssizeof(ds->str) - 1)
                     ds->str[len++] = c;
                 p++;
             }
@@ -405,7 +406,7 @@ static int qe_cfg_tostr(QEmacsDataSource *ds, QEValue *sp) {
         qe_cfg_set_str(sp, buf, len);
         break;
     case TOK_CHAR:
-        len = utf8_encode(buf, (int)sp->u.value);
+        len = utf8_encode(buf, (char32_t)sp->u.value);
         qe_cfg_set_str(sp, buf, len);
         break;
     default:
@@ -602,7 +603,7 @@ again:
         break;
     case TOK_CHAR: {
             const char *p = ds->str;
-            int c = utf8_decode(&p);  // XXX: should check for extra characters
+            char32_t c = utf8_decode(&p);  // XXX: should check for extra characters
             qe_cfg_set_char(sp, c);
             qe_cfg_next_token(ds);
             break;
@@ -1209,9 +1210,12 @@ void do_eval_expression(EditState *s, const char *expression, int argval)
                 break;
             case TOK_NUMBER:
                 if (argval == NO_ARG) {
-                    put_status(s, "-> %lld", sp->u.value);
+                    put_status(s, "-> %lld  %llx", sp->u.value, sp->u.value);
                 } else {
-                    len = snprintf(buf, sizeof buf, "%lld", sp->u.value);
+                    if (argval == 16)
+                        len = snprintf(buf, sizeof buf, "%llx", sp->u.value);
+                    else
+                        len = snprintf(buf, sizeof buf, "%lld", sp->u.value);
                     s->offset += eb_insert_utf8_buf(s->b, s->offset, buf, len);
                 }
                 break;
@@ -1224,7 +1228,7 @@ void do_eval_expression(EditState *s, const char *expression, int argval)
                 }
                 break;
             case TOK_CHAR:
-                len = utf8_encode(buf, (int)sp->u.value);
+                len = utf8_encode(buf, (char32_t)sp->u.value);
                 if (argval == NO_ARG) {
                     /* XXX: should optionally unparse character */
                     put_status(s, "-> '%.*s'", len, buf);

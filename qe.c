@@ -758,12 +758,11 @@ void text_move_eol(EditState *s)
     s->offset = eb_goto_eol(s->b, s->offset);
 }
 
-static int eb_word_right(EditBuffer *b, int w, int offset)
-{
-    int c, offset1;
+static int eb_word_right(EditBuffer *b, int w, int offset) {
+    int offset1;
 
     while (offset < b->total_size) {
-        c = eb_nextc(b, offset, &offset1);
+        char32_t c = eb_nextc(b, offset, &offset1);
         if (qe_isword(c) == w)
             break;
         offset = offset1;
@@ -771,12 +770,11 @@ static int eb_word_right(EditBuffer *b, int w, int offset)
     return offset;
 }
 
-static int eb_word_left(EditBuffer *b, int w, int offset)
-{
-    int c, offset1;
+static int eb_word_left(EditBuffer *b, int w, int offset) {
+    int offset1;
 
     while (offset > 0) {
-        c = eb_prevc(b, offset, &offset1);
+        char32_t c = eb_prevc(b, offset, &offset1);
         if (qe_isword(c) == w)
             break;
         offset = offset1;
@@ -809,7 +807,7 @@ int qe_get_word(EditState *s, char *buf, int buf_size,
     EditBuffer *b = s->b;
     buf_t outbuf, *out;
     int offset1;
-    int c;
+    char32_t c;
 
     out = buf_init(&outbuf, buf, buf_size);
 
@@ -852,8 +850,9 @@ void do_mark_region(EditState *s, int mark, int offset)
 /* arg: -1=lower-case, +1=upper-case, +2=capital-case */
 static int eb_changecase(EditBuffer *b, int offset, int *offsetp, int arg)
 {
-    int ch, ch1, len;
     char buf[MAX_CHAR_BYTES];
+    int len;
+    char32_t ch, ch1;
 
     ch = eb_nextc(b, offset, offsetp);
     if (!qe_isword(ch))
@@ -865,7 +864,7 @@ static int eb_changecase(EditBuffer *b, int offset, int *offsetp, int arg)
         ch1 = qe_tolower(ch);
 
     if (ch != ch1) {
-        len = eb_encode_uchar(b, buf, ch1);
+        len = eb_encode_char32(b, buf, ch1);
         /* replaced char may have a different encoding len from
          * original char, such as dotless i in Turkish. */
         // XXX: make special case for Turkish locale
@@ -975,10 +974,10 @@ void do_backspace(EditState *s, int argval)
         int spaces = 0;
         int newlines = 0;
         int count = (argval == NO_ARG) ? 1 : argval;
-        int c1 = eb_nextc(s->b, s->offset, &offset1);
+        char32_t c1 = eb_nextc(s->b, s->offset, &offset1);
         endpos = s->offset;
         while (count > 0) {
-            int c = eb_prev_glyph(s->b, endpos, &endpos);
+            char32_t c = eb_prev_glyph(s->b, endpos, &endpos);
             if (c == '\n') {
                 newlines++;
             } else
@@ -1002,7 +1001,7 @@ void do_backspace(EditState *s, int argval)
         } else {
             int len;
             char buf[MAX_CHAR_BYTES];
-            len = eb_encode_uchar(s->b, buf, ' ');
+            len = eb_encode_char32(s->b, buf, ' ');
             if (spaces == 1 && endpos + len == s->offset) {
                 eb_write(s->b, endpos, buf, len);
                 spaces = 0;
@@ -1484,8 +1483,8 @@ void text_move_left_right_visual(EditState *s, int dir)
             /* adjust for accents */
             int offset = m->offsetd;
             int offset1, offset2;
-            while (qe_isaccent(eb_nextc(s->b, offset, &offset1)) &&
-                   eb_prevc(s->b, offset, &offset2) != '\n') {
+            while (qe_isaccent(eb_nextc(s->b, offset, &offset1))
+            &&     eb_prevc(s->b, offset, &offset2) != '\n') {
                 offset = offset1;
             }
             s->offset = offset;
@@ -1648,10 +1647,11 @@ void do_char(EditState *s, int key, int argval) {
 }
 
 #ifdef CONFIG_UNICODE_JOIN
-void do_combine_accent(EditState *s, int accent) {
-    int offset0, len, c;
-    unsigned int g[2];
+void do_combine_accent(EditState *s, int accent_arg) {
+    int offset0, len;
+    char32_t g[2];
     char buf[MAX_CHAR_BYTES];
+    char32_t c, accent = accent_arg;
 
     if (s->b->flags & BF_READONLY)
         return;
@@ -1662,14 +1662,14 @@ void do_combine_accent(EditState *s, int accent) {
         eb_delete_range(s->b, offset0, s->offset);
     } else
     if (c != '\n'
-    &&  ((expand_ligature(g, c) && g[1] == (unsigned int)accent)
+    &&  ((expand_ligature(g, c) && g[1] == accent)
      ||  (combine_accent(g, c, accent)))
-    &&  (len = eb_encode_uchar(s->b, buf, g[0])) > 0) {
+    &&  (len = eb_encode_char32(s->b, buf, g[0])) > 0) {
         /* if accent can be removed from previous ligature
            or if previous character can be combined with accent into a
            ligature, encode the single character and replace the
            previous character.
-           XXX: should bypass eb_encode_uchar to detect encoding failure
+           XXX: should bypass eb_encode_char32 to detect encoding failure
          */
         offset0 += eb_replace(s->b, offset0, s->offset - offset0, buf, len);
         s->offset = offset0;
@@ -1687,7 +1687,7 @@ int text_screen_width(EditBuffer *b, int start, int stop, int tw) {
     int col = 0, offset = start;
 
     while (offset < stop) {
-        int c = eb_nextc(b, offset, &offset);
+        char32_t c = eb_nextc(b, offset, &offset);
         if (c == '\r' || c == '\n') {
             col = 0;
         } else
@@ -1702,8 +1702,9 @@ int text_screen_width(EditBuffer *b, int start, int stop, int tw) {
 
 void text_write_char(EditState *s, int key)
 {
-    int cur_ch, len, endpos, ret, insert;
+    int len, endpos, ret, insert;
     char buf[MAX_CHAR_BYTES];
+    char32_t cur_ch, c2;
 
     if (check_read_only(s))
         return;
@@ -1713,7 +1714,7 @@ void text_write_char(EditState *s, int key)
     s->region_style = 0;
 
     cur_ch = eb_nextc(s->b, s->offset, &endpos);
-    len = eb_encode_uchar(s->b, buf, key);
+    len = eb_encode_char32(s->b, buf, key);
     insert = (!s->overwrite || cur_ch == '\n' ||
               key == '\t' ||  key == '\n' || qe_isaccent(key));
 
@@ -1762,7 +1763,7 @@ void text_write_char(EditState *s, int key)
                 /* then insert match */
                 for (i = 0; i < ret; i++) {
                     key = match_buf[i];
-                    len = eb_encode_uchar(s->b, buf, key);
+                    len = eb_encode_char32(s->b, buf, key);
                     eb_insert(s->b, s->compose_start_offset, buf, len);
                     s->compose_start_offset += len;
                     /* should only bump s->offset if at insert point */
@@ -1774,7 +1775,7 @@ void text_write_char(EditState *s, int key)
             }
         }
     } else {
-        int w, w1, c2, offset2;
+        int w, w1, offset2;
 
         w = qe_wcwidth(key);
         if (cur_ch == '\t') {
@@ -1903,7 +1904,7 @@ void do_tab(EditState *s, int argval)
         int indent = s->indent_size > 0 ? s->indent_size : tw;
 
         while (offset0 < offset) {
-            int c = eb_nextc(s->b, offset0, &offset0);
+            char32_t c = eb_nextc(s->b, offset0, &offset0);
             if (c == '\t') {
                 col += tw - col % tw;
             } else {
@@ -1950,7 +1951,7 @@ void do_newline(EditState *s)
     if (s->b->flags & BF_READONLY)
         return;
 
-    s->offset += eb_insert_uchar(s->b, s->offset, '\n');
+    s->offset += eb_insert_char32(s->b, s->offset, '\n');
 }
 
 void do_open_line(EditState *s)
@@ -1959,7 +1960,7 @@ void do_open_line(EditState *s)
         return;
 
     /* preserve s->offset */
-    eb_insert_uchar(s->b, s->offset, '\n');
+    eb_insert_char32(s->b, s->offset, '\n');
 }
 
 #if 0
@@ -2653,9 +2654,9 @@ void do_convert_buffer_file_coding_system(EditState *s,
     /* slow, but simple iterative method */
     for (offset = 0; offset < b->total_size;) {
         QETermStyle style = eb_get_style(b, offset);
-        int c = eb_nextc(b, offset, &offset);
+        char32_t c = eb_nextc(b, offset, &offset);
         b1->cur_style = style;
-        len = eb_encode_uchar(b1, buf, c);
+        len = eb_encode_char32(b1, buf, c);
         eb_insert(b1, b1->total_size, buf, len);
     }
 
@@ -2870,23 +2871,23 @@ void do_count_lines(EditState *s)
 void do_what_cursor_position(EditState *s)
 {
     char buf[256];
-    int accents[6];
+    char32_t accents[6];
     buf_t outbuf, *out;
     int line_num, col_num;
     int offset1, off;
-    int c, cc, w, v;
+    int w, v;
     int i, n;
+    char32_t c, cc;
 
     out = buf_init(&outbuf, buf, sizeof(buf));
     if (s->offset < s->b->total_size) {
         c = eb_nextc(s->b, s->offset, &offset1);
         n = 0;
         if (c != '\n' && !s->unihex_mode) {
-            while (n < countof(accents)
-               &&  qe_isaccent(cc = eb_nextc(s->b, offset1, &off))) {
-                   accents[n++] = cc;
-                   offset1 = off;
-               }
+            while (n < countof(accents) && qe_isaccent(cc = eb_nextc(s->b, offset1, &off))) {
+                accents[n++] = cc;
+                offset1 = off;
+            }
         }
         if (s->b->eol_type == EOL_MAC) {
             /* CR and LF are swapped in old style Mac buffers */
@@ -2897,7 +2898,7 @@ void do_what_cursor_position(EditState *s)
         if (c < 32 || c == 127) {
             buf_printf(out, " ^%c", (c + '@') & 127);
         } else
-        if (c < 127 || c >= 160) {
+        if (c < 127 || (c >= 160 && c <= MAX_UNICODE_DISPLAY)) {
             buf_put_byte(out, ' ');
             buf_put_byte(out, '\'');
             if (c == '\\' || c == '\'') {
@@ -2917,14 +2918,14 @@ void do_what_cursor_position(EditState *s)
             if (c < 0x100) {
                 buf_printf(out, " \\%03o", c);
             }
-            buf_printf(out, " %d", c);
+            buf_printf(out, " %u", c);
         }
         buf_printf(out, " 0x%02x", c);
         for (i = 0; i < n; i++) {
             buf_printf(out, "/0x%02x", accents[i]);
         }
         /* Display buffer bytes if char is encoded */
-        if (offset1 != s->offset + 1) {
+        if (offset1 != s->offset + 1 || c != (u8)eb_read_one_byte(s->b, s->offset)) {
             int sep = '[';
             buf_put_byte(out, ' ');
             for (off = s->offset; off < offset1; off++) {
@@ -3121,7 +3122,7 @@ void display_window_borders(EditState *e)
                     QEStyleDef styledef;
                     QECharMetrics metrics;
                     QEFont *font;
-                    unsigned int buf[256];
+                    char32_t buf[256];
                     int len;
 
                     /* XXX: Should convert from UTF-8? */
@@ -3559,7 +3560,7 @@ static uint64_t compute_crc(const void *p, int size, uint64_t sum)
     const u8 *data = (const u8 *)p;
 
     /* Rotating sum necessary to prevent trivial collisions on
-     * line_chars because it is an array of code points stored as u32.
+     * line_chars because it is an array of code points stored as char32_t.
      */
     /* XXX: We still have a bug when transposing two 31 byte words as in
      * B123456789012345678901234567890 A123456789012345678901234567890
@@ -3736,7 +3737,7 @@ static void flush_line(DisplayState *ds,
 
             if (last == 0 && ds->eol_width != 0) {
                 /* draw eol mark */
-                unsigned int markbuf[1];
+                char32_t markbuf[1];
 
                 markbuf[0] = '/';        /* RTL eol mark */
                 x = 0;                   /* displayed at the left border */
@@ -3834,8 +3835,8 @@ static void keep_line_chars(DisplayState *ds, int n)
 
 /* fallback unicode functions */
 
-int unicode_to_glyphs(unsigned int *dst, unsigned int *char_to_glyph_pos,
-                      int dst_size, unsigned int *src, int src_size, int reverse)
+int unicode_to_glyphs(char32_t *dst, unsigned int *char_to_glyph_pos,
+                      int dst_size, char32_t *src, int src_size, int reverse)
 {
     int len, i;
 
@@ -4048,7 +4049,7 @@ static void flush_fragment(DisplayState *ds)
 }
 
 int display_char_bidir(DisplayState *ds, int offset1, int offset2,
-                       int embedding_level, int ch)
+                       int embedding_level, char32_t ch)
 {
     int space, istab, isaccent;
     QETermStyle style;
@@ -4134,7 +4135,7 @@ int display_char_bidir(DisplayState *ds, int offset1, int offset2,
 }
 
 void display_printhex(DisplayState *ds, int offset1, int offset2,
-                      unsigned int h, int n)
+                      char32_t h, int n)
 {
     int i, v;
     EditState *e = ds->edit_state;
@@ -4243,7 +4244,7 @@ static int bidir_compute_attributes(BidirTypeLink *list_tab, int max_size,
     BidirTypeLink *p;
     FriBidiCharType type, ltype;
     int left, offset1;
-    unsigned int c;
+    char32_t c;
 
     p = list_tab;
     /* Add the starting link */
@@ -4289,18 +4290,18 @@ static int bidir_compute_attributes(BidirTypeLink *list_tab, int max_size,
 /* NOTE: only one colorization mode can be selected at a time for a
    buffer */
 
-static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+static int get_staticly_colorized_line(EditState *s, char32_t *buf, int buf_size,
                                        QETermStyle *sbuf,
                                        int offset, int *offset_ptr, int line_num)
 {
     EditBuffer *b = s->b;
-    unsigned int *buf_ptr, *buf_end;
+    char32_t *buf_ptr, *buf_end;
 
     buf_ptr = buf;
     buf_end = buf + buf_size - 1;
     for (;;) {
         QETermStyle style = eb_get_style(b, offset);
-        int c = eb_nextc(b, offset, &offset);
+        char32_t c = eb_nextc(b, offset, &offset);
         if (c == '\n') {
             /* XXX: set style for end of line? */
             break;
@@ -4324,7 +4325,7 @@ static int get_staticly_colorized_line(EditState *s, unsigned int *buf, int buf_
 #define COLORIZED_LINE_PREALLOC_SIZE 64
 
 static int syntax_get_colorized_line(EditState *s,
-                                     unsigned int *buf, int buf_size,
+                                     char32_t *buf, int buf_size,
                                      QETermStyle *sbuf,
                                      int offset, int *offsetp, int line_num)
 {
@@ -4488,7 +4489,7 @@ void set_colorize_func(EditState *s, ColorizeFunc colorize_func, ModeDef *colori
 #endif
 }
 
-int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+int get_colorized_line(EditState *s, char32_t *buf, int buf_size,
                        QETermStyle *sbuf,
                        int offset, int *offsetp, int line_num)
 {
@@ -4522,12 +4523,12 @@ int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
 /* Display one line in the window */
 int text_display_line(EditState *s, DisplayState *ds, int offset)
 {
-    int c;
+    char32_t c;
     int offset0, offset1, line_num, col_num;
     BidirTypeLink embeds[RLE_EMBEDDINGS_SIZE], *bd;
     int embedding_level, embedding_max_level;
     FriBidiCharType base;
-    unsigned int buf[COLORED_MAX_LINE_SIZE];
+    char32_t buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     int char_index, colored_nb_chars;
 
@@ -4677,6 +4678,10 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             /* XXX: use embedding level for all cases ? */
             /* CG: should query screen or window about display methods */
             if ((c < ' ' && (c != '\t' || (s->flags & WF_MINIBUF))) || c == 127) {
+                /* EOL_MAC encoding swaps \r and \n to simplify end of line
+                   handling in many places. We must handle '\r' explicitly for
+                   it to be displayed as ^J
+                 */
                 if (c == '\r' && s->b->eol_type == EOL_MAC)
                     c = '\n';
                 display_printf(ds, offset0, offset, "^%c", ('@' + c) & 127);
@@ -5837,7 +5842,7 @@ static void qe_key_process(int key)
             }
         }
         if (!c->describe_key) {
-            /* CG: should beep */;
+            /* CG: should beep */
         }
         out = buf_init(&outbuf, buf1, sizeof(buf1));
         buf_puts(out, "No command on ");
@@ -5930,13 +5935,13 @@ void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
                    const char *str, QETermStyle style)
 {
-    unsigned int ubuf[MAX_SCREEN_WIDTH];
+    char32_t ubuf[MAX_SCREEN_WIDTH];
     int len;
     QEStyleDef styledef;
     QEFont *font;
     CSSRect rect;
 
-    len = utf8_to_unicode(ubuf, countof(ubuf), str);
+    len = utf8_to_char32(ubuf, countof(ubuf), str);
     get_style(NULL, &styledef, style);
 
     /* clip rectangle */
@@ -6547,6 +6552,28 @@ static inline MinibufState *minibuffer_get_state(EditState *e, int status) {
     return qe_get_buffer_mode_data(e->b, &minibuffer_mode, status ? e : NULL);
 }
 
+static int match_strings(const char *s1, const char *s2, int len) {
+    /*@API utils
+       Find the length of the common prefix, only count complete UTF-8
+       sequences.
+       @argument `s1` a valid string pointer
+       @argument `s2` a valid string pointer
+       @argument `len` the maximum number of bytes to compare. This count
+       is assumed to only include complete UTF-8 sequences.
+       @return the length of the common prefix, between `0` and `len`.
+     */
+    int pos, i;
+
+    for (i = pos = 0; i < len; i++) {
+        u8 c = s1[i];
+        if (!utf8_is_trailing_byte(c))
+            pos = i;
+        if (c != s2[i])
+            return pos;
+    }
+    return len;
+}
+
 void do_minibuffer_complete(EditState *s, int type)
 {
     QEmacsState *qs = s->qe_state;
@@ -6599,7 +6626,7 @@ void do_minibuffer_complete(EditState *s, int type)
         /* XXX: completion select? */
         int offset = end;
         while ((start = offset) > 0) {
-            int c = eb_prevc(s->b, offset, &offset);
+            char32_t c = eb_prevc(s->b, offset, &offset);
             if (!qe_isalnum_(c) && c != '-')
                 break;
         }
@@ -6624,19 +6651,10 @@ void do_minibuffer_complete(EditState *s, int type)
 
     if (count > 0) {
         /* find the longest common prefix */
-        int c, pos;
-
-        match_len = 0;
-        for (pos = 0; (c = outputs[0]->str[pos]) != '\0'; pos++) {
-            for (i = 1; i < count; i++) {
-                if (outputs[i]->str[pos] != c)
-                    break;
-            }
-            if (i < count)
-                break;
-            /* only count complete UTF-8 sequences in prefix */
-            if (!utf8_is_trailing_byte(outputs[0]->str[pos + 1]))
-                match_len = pos + 1;
+        match_len = strlen(outputs[0]->str);
+        for (i = 1; i < count; i++) {
+            match_len = match_strings(outputs[0]->str, outputs[i]->str,
+                                      match_len);
         }
     }
     if (match_len > cs.len) {
@@ -6707,7 +6725,7 @@ static int eb_match_string_reverse(EditBuffer *b, int offset, const char *str,
     int len = strlen(str);
 
     while (len > 0) {
-        if (offset <= 0 || eb_prevc(b, offset, &offset) != str[--len])
+        if (offset <= 0 || eb_prevc(b, offset, &offset) != (u8)str[--len])
             return 0;
     }
     *offsetp = offset;
@@ -6716,7 +6734,8 @@ static int eb_match_string_reverse(EditBuffer *b, int offset, const char *str,
 
 static void do_minibuffer_electric_key(EditState *s, int key)
 {
-    int c, offset, stop;
+    char32_t c;
+    int offset, stop;
     MinibufState *mb = minibuffer_get_state(s, 0);
 
     /* erase beginning of line if typing / or ~ in certain places */
@@ -7089,8 +7108,8 @@ int list_get_offset(EditState *s)
 
 void list_toggle_selection(EditState *s, int dir)
 {
-    int offset, offset1;
-    int ch, flags;
+    int offset, offset1, flags;
+    char32_t ch;
 
     if (dir < 0)
         text_move_up_down(s, -1);
@@ -7104,7 +7123,7 @@ void list_toggle_selection(EditState *s, int dir)
         ch = ' ';
     flags = s->b->flags & BF_READONLY;
     s->b->flags ^= flags;
-    eb_replace_uchar(s->b, offset, ch);
+    eb_replace_char32(s->b, offset, ch);
     s->b->flags ^= flags;
 
     if (dir > 0)
@@ -7569,7 +7588,7 @@ static int probe_mode(EditState *s, EditBuffer *b,
         u8 *bufp = buf;
 
         while (offset < len) {
-            int ch = probe_data.charset_state.table[rawbuf[offset]];
+            char32_t ch = probe_data.charset_state.table[rawbuf[offset]];
             offset++;
             if (ch == ESCAPE_CHAR) {
                 probe_data.charset_state.p = rawbuf + offset - 1;
@@ -8202,7 +8221,7 @@ static void quit_confirm_cb(qe__unused__ void *opaque, char *reply)
 
 /*----------------*/
 
-int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, int c)
+int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, char32_t c)
 {
     QEStyleDef styledef;
     QEFont *font;
@@ -8717,7 +8736,7 @@ void do_describe_key_briefly(EditState *s, const char *keystr, int argval) {
         return;
     }
     kd = qe_find_current_binding(keys, nb_keys, s->mode, 0);
-    if (!kd && nb_keys == 1 && !KEY_IS_SPECIAL(keys[0]) && !KEY_IS_CONTROL((int)keys[0])) {
+    if (!kd && nb_keys == 1 && !KEY_IS_SPECIAL(keys[0]) && !KEY_IS_CONTROL(keys[0])) {
         kd = qe_find_current_binding(&key_default, 1, s->mode, 1);
     }
     if (kd) {

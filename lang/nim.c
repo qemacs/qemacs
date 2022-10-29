@@ -70,9 +70,10 @@ enum {
 };
 
 static void nim_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, style = 0, c, sep = 0, klen;
+    int i = 0, start = i, style = 0, klen;
+    char32_t c, sep = 0;
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -143,7 +144,7 @@ static void nim_colorize_line(QEColorizeContext *cp,
             i--;
         has_quote:
             sep = str[i++];
-            if (str[i] == (unsigned int)sep && str[i + 1] == (unsigned int)sep) {
+            if (str[i] == sep && str[i + 1] == sep) {
                 /* long string */
                 state |= IN_NIM_LONG_STRING | IN_NIM_RAW_STRING;
                 i += 2;
@@ -155,8 +156,8 @@ static void nim_colorize_line(QEColorizeContext *cp,
                             i += 1;
                         }
                     } else
-                    if (c == sep && str[i] == (unsigned int)sep
-                    &&  str[i + 1] == (unsigned int)sep && str[i + 2] != (unsigned int)sep) {
+                    if (c == sep && str[i] == sep
+                    &&  str[i + 1] == sep && str[i + 2] != sep) {
                         i += 2;
                         state &= ~(IN_NIM_LONG_STRING | IN_NIM_RAW_STRING);
                         break;
@@ -262,8 +263,8 @@ static void nim_colorize_line(QEColorizeContext *cp,
                     j++;
                 if (qe_isalpha(str[j])) {
                     for (k = 0; k < countof(suffixes); k++) {
-                        if (ustrstart(str + j, suffixes[k], &klen)
-                        &&  !qe_isalnum_(str[j + klen])) {
+                        /* match keyword, not just prefix */
+                        if (ustr_match_keyword(str + j, suffixes[k], &klen)) {
                             i = j + klen;
                             break;
                         }

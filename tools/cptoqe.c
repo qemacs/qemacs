@@ -268,11 +268,10 @@ static void handle_cp(FILE *f0, const char *name, const char *fname, int lineno)
     add_init(");\n");
 }
 
-static int namecmp(const char *p1, const char *p2, size_t len)
-{
+static int namecmp(const char *p1, const char *p2, size_t len) {
     while (len--) {
-        int c = (unsigned char)*p1++;
-        int d = (unsigned char)*p2++;
+        unsigned char c = *p1++;
+        unsigned char d = *p2++;
         if (c == d)
             continue;
         if ((c == '-' || c == '_') && (d == '-' || d == '_'))

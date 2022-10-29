@@ -44,10 +44,10 @@ struct QECharset {
     const char *aliases;
     int (*probe_func)(QECharset *charset, const u8 *buf, int size);
     void (*decode_init)(CharsetDecodeState *s);
-    int (*decode_func)(CharsetDecodeState *s);
+    char32_t (*decode_func)(CharsetDecodeState *s);
     /* return NULL if cannot encode. Currently no state since speed is
        not critical yet */
-    u8 *(*encode_func)(QECharset *charset, u8 *buf, int size);
+    u8 *(*encode_func)(QECharset *charset, u8 *buf, char32_t c);
     void (*get_pos_func)(CharsetDecodeState *s, const u8 *buf, int size,
                          int *line_ptr, int *col_ptr);
     int (*get_chars_func)(CharsetDecodeState *s, const u8 *buf, int size);
@@ -88,7 +88,7 @@ struct CharsetDecodeState {
     int eol_char;
     const u8 *p;
     /* slower decode function for complicated cases */
-    int (*decode_func)(CharsetDecodeState *s);
+    char32_t (*decode_func)(CharsetDecodeState *s);
     void (*get_pos_func)(CharsetDecodeState *s, const u8 *buf, int size,
                          int *line_ptr, int *col_ptr);
     QECharset *charset;
@@ -117,7 +117,7 @@ int charset_goto_line_8bit(CharsetDecodeState *s, const u8 *buf, int size, int n
 QECharset *detect_charset(const u8 *buf, int size, EOLType *eol_typep);
 
 void decode_8bit_init(CharsetDecodeState *s);
-int decode_8bit(CharsetDecodeState *s);
-u8 *encode_8bit(QECharset *charset, u8 *q, int c);
+char32_t decode_8bit(CharsetDecodeState *s);
+u8 *encode_8bit(QECharset *charset, u8 *q, char32_t c);
 
 #endif /* CHARSET_H */

@@ -1,7 +1,7 @@
 /*
  * EBNF and AntLR language mode for QEmacs.
  *
- * Copyright (c) 2015-2017 Charlie Gordon.
+ * Copyright (c) 2015-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -58,10 +58,11 @@ enum {
 #define U_RIGHT_SINGLE_QUOTATION_MARK  0x2019
 
 static void ebnf_colorize_line(QEColorizeContext *cp,
-                               unsigned int *str, int n, ModeDef *syn)
+                               char32_t *str, int n, ModeDef *syn)
 {
     char kbuf[MAX_KEYWORD_SIZE];
-    int i = 0, start = 0, c, style;
+    int i = 0, start = 0, style;
+    char32_t c;
     int colstate = cp->colorize_state;
 
     if (colstate & IN_EBNF_COMMENT1)
@@ -135,7 +136,7 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
         case U_LEFT_SINGLE_QUOTATION_MARK:
             /* parse quoted token */
             while (i < n) {
-                int c1 = str[i++];
+                char32_t c1 = str[i++];
                 if (c1 == '\'' || c1 == U_RIGHT_SINGLE_QUOTATION_MARK)
                     break;
             }
@@ -145,7 +146,7 @@ static void ebnf_colorize_line(QEColorizeContext *cp,
         case '\"':
             /* parse quoted token */
             while (i < n) {
-                int c1 = str[i++];
+                char32_t c1 = str[i++];
                 if (c1 == '\"')
                     break;
             }

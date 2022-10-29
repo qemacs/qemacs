@@ -1,7 +1,7 @@
 /*
  * Miscellaneous QEmacs modes for arm development related file formats
  *
- * Copyright (c) 2014-2019 Charlie Gordon.
+ * Copyright (c) 2014-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -42,24 +42,15 @@ enum {
     IN_HAS_SEMI_COMMENT = 2,   /* use semi colons to introduce comments */
 };
 
-static int arm_asm_match_keyword(const unsigned int *buf, const char *str)
-{
-    while (*str) {
-        if (*buf++ != (u8)*str++)
-            return 0;
-    }
-    return !qe_isalnum_(*buf);
-}
-
 #define MAX_KEYWORD_SIZE  16
 
 static void arm_asm_colorize_line(QEColorizeContext *cp,
-                                  unsigned int *str, int n, ModeDef *syn)
+                                  char32_t *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, start = 0, c, style = 0, klen, w = 0, wn = 0;
-    unsigned int sep;
+    int i = 0, start = 0, style = 0, klen, w = 0, wn = 0;
     int colstate = cp->colorize_state;
+    char32_t c, sep;
 
     if (colstate & IN_ASM_TRAIL)
         goto comment;
@@ -78,12 +69,12 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
         case '.':
             if (start > w)
                 break;
-            if (arm_asm_match_keyword(str + i, "end")) {
+            if (ustr_match_keyword(str + i, "end", NULL)) {
                 colstate |= IN_ASM_TRAIL;
             }
-            if (arm_asm_match_keyword(str + i, "byte")
-            ||  arm_asm_match_keyword(str + i, "word")
-            ||  arm_asm_match_keyword(str + i, "long")) {
+            if (ustr_match_keyword(str + i, "byte", NULL)
+            ||  ustr_match_keyword(str + i, "word", NULL)
+            ||  ustr_match_keyword(str + i, "long", NULL)) {
                 goto opcode;
             }
             /* scan for comment, skipping strings */
@@ -111,7 +102,7 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
         case '\"':
             /* parse string const */
             while (i < n) {
-                if (str[i++] == (unsigned int)c)
+                if (str[i++] == c)
                     break;
             }
             style = ASM_STYLE_STRING;
@@ -206,13 +197,14 @@ enum {
 };
 
 static void lst_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
     /* Combined assembly / C source / filename listing:
      * determine line type by looking at line start
      */
     char kbuf[16];
-    int i, w, start, c, colstate = cp->colorize_state;
+    int i, w, start, colstate = cp->colorize_state;
+    char32_t c;
 
     for (w = 0; qe_isblank(str[w]); w++)
         continue;
@@ -327,7 +319,7 @@ enum {
 };
 
 static void intel_hex_colorize_line(QEColorizeContext *cp,
-                                    unsigned int *str, int n, ModeDef *syn)
+                                    char32_t *str, int n, ModeDef *syn)
 {
     if (n > 10 && str[0] == ':') {
         /* Hex Load format: `:SSOOOOTTxx...xxCC` */

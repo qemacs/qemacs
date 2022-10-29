@@ -1,7 +1,7 @@
 /*
  * Ada language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -59,11 +59,12 @@ enum {
 };
 
 static void ada_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
     char kbuf[16];
-    int i = 0, start = i, c, k, style;
+    int i = 0, start = i, k, style;
     int colstate = cp->colorize_state;
+    char32_t c;
 
     if (colstate & IN_ADA_COMMENT1)
         goto in_comment1;
@@ -77,7 +78,7 @@ static void ada_colorize_line(QEColorizeContext *cp,
         switch (c) {
         case '-':
         case '/':
-            if (str[i] == (unsigned int)c) {  /* // or -- comments */
+            if (str[i] == c) {  /* // or -- comments */
                 i = n;
                 SET_COLOR(str, start, i, ADA_STYLE_COMMENT);
                 continue;
@@ -103,7 +104,7 @@ static void ada_colorize_line(QEColorizeContext *cp,
             colstate = IN_ADA_COMMENT2;
             i++;
         in_comment2:
-            for (; i < n; i++) {
+            for (; i + 1 < n; i++) {
                 if (str[i] == '*' && str[i + 1] == ')') {
                     i += 2;
                     colstate = 0;
@@ -123,7 +124,7 @@ static void ada_colorize_line(QEColorizeContext *cp,
             /* parse string or char const */
             while (i < n) {
                 /* XXX: escape sequences? */
-                if (str[i++] == (unsigned int)c)
+                if (str[i++] == c)
                     break;
             }
             SET_COLOR(str, start, i, ADA_STYLE_STRING);
@@ -133,21 +134,31 @@ static void ada_colorize_line(QEColorizeContext *cp,
         }
         /* parse numbers */
         if (qe_isdigit(c)) {
-            for (; qe_isdigit_(str[i]) || str[i] == '.'; i++)
+            for (; qe_isdigit_(str[i]); i++)
                 continue;
             if (str[i] == '#') {
-                for (k = 1; qe_isalnum_(str[k]) || str[i] == '.'; k++)
+                /* binary, octal and hex literals */
+                for (k = i + 1; qe_isalnum_(str[k]); k++)
                     continue;
-                if (k > 1 && str[k] == '#')
+                if (k == n)
+                    i = k;
+                else
+                if (str[k] == '#')
                     i = k + 1;
-            }
-            if (qe_tolower(str[i]) == 'e') {
-                k = i + 1;
-                if (str[k] == '+' || str[k] == '-')
-                    k++;
-                if (qe_isdigit(str[k])) {
-                    for (i = k + 1; qe_isdigit_(str[i]); i++)
+            } else {
+                if (str[i] == '.') {
+                    i++;
+                    for (; qe_isdigit_(str[i]); i++)
                         continue;
+                }
+                if (str[i] == 'e' || str[i] == 'E') {
+                    k = i + 1;
+                    if (str[k] == '+' || str[k] == '-')
+                        k++;
+                    if (qe_isdigit(str[k])) {
+                        for (i = k + 1; qe_isdigit_(str[i]); i++)
+                            continue;
+                    }
                 }
             }
             SET_COLOR(str, start, i, ADA_STYLE_NUMBER);
@@ -182,10 +193,8 @@ static ModeDef ada_mode = {
     .colorize_func = ada_colorize_line,
 };
 
-static int ada_init(void)
-{
+static int ada_init(void) {
     qe_register_mode(&ada_mode, MODEF_SYNTAX);
-
     return 0;
 }
 

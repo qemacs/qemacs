@@ -153,7 +153,7 @@ static void build_bufed_list(BufedState *bs, EditState *s)
         int len, style0;
 
         item = bs->items.items[i];
-        b1 = check_buffer((EditBuffer**)&item->opaque);
+        b1 = check_buffer((EditBuffer**)(void *)&item->opaque);
         style0 = (b1->flags & BF_SYSTEM) ? BUFED_STYLE_SYSTEM : 0;
 
         if ((bs->last_index == -1 && b1 == bs->cur_buffer)
@@ -256,7 +256,7 @@ static EditBuffer *bufed_get_buffer(BufedState *bs, EditState *s)
     if (index < 0 || index >= bs->items.nb_items)
         return NULL;
 
-    return check_buffer((EditBuffer**)&bs->items.items[index]->opaque);
+    return check_buffer((EditBuffer**)(void *)&bs->items.items[index]->opaque);
 }
 
 static void bufed_select(EditState *s, int temp)
@@ -280,7 +280,7 @@ static void bufed_select(EditState *s, int temp)
         if (temp > 0 && index == bs->last_index)
             return;
 
-        b = check_buffer((EditBuffer**)&bs->items.items[index]->opaque);
+        b = check_buffer((EditBuffer**)(void *)&bs->items.items[index]->opaque);
         last_buffer = bs->cur_buffer;
     }
     e = check_window(&bs->cur_window);
@@ -330,7 +330,7 @@ static void bufed_kill_item(void *opaque, StringItem *item, int index)
 {
     BufedState *bs;
     EditState *s = opaque;
-    EditBuffer *b = check_buffer((EditBuffer**)&item->opaque);
+    EditBuffer *b = check_buffer((EditBuffer**)(void *)&item->opaque);
 
     if (!(bs = bufed_get_state(s, 1)))
         return;

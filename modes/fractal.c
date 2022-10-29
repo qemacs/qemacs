@@ -57,9 +57,10 @@ enum {
 };
 
 static void fractint_colorize_line(QEColorizeContext *cp,
-                               unsigned int *str, int n, ModeDef *syn)
+                                   char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start, indent, c, state, state1, style, klen, delim;
+    int i = 0, start, indent, state, state1, style, klen;
+    char32_t c, delim;
     char kbuf[64];
 
     for (indent = 0; qe_isblank(str[indent]); indent++)
@@ -814,10 +815,10 @@ static void do_fractal_draw(EditState *s, FractalState *ms)
             yr += dy / 2 * ms->m3;
             fg = palette8[(*func)(xr, yr, ms->bailout, maxiter)];
             s->b->cur_style = QE_TERM_COMPOSITE | QE_TERM_MAKE_COLOR(fg, bg);
-            eb_insert_uchar(s->b, s->b->total_size, fg == bg ? ' ' : 0x2584);
+            eb_insert_char32(s->b, s->b->total_size, fg == bg ? ' ' : 0x2584);
         }
         s->b->cur_style = QE_STYLE_DEFAULT;
-        eb_insert_uchar(s->b, s->b->total_size, '\n');
+        eb_insert_char32(s->b, s->b->total_size, '\n');
     }
     s->b->flags |= BF_READONLY;
     qe_free(&palette8);

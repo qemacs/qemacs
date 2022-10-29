@@ -27,7 +27,7 @@
 
 // XXX: need fix for this: should use read function with opaque argument
 struct EditBuffer;
-int eb_nextc(struct EditBuffer *b, int offset, int *next_ptr);
+char32_t eb_nextc(struct EditBuffer *b, int offset, int *next_ptr);
 
 //#define DEBUG
 
@@ -215,13 +215,13 @@ const CSSPropertyDef css_properties[NB_PROPERTIES] = {
 /* the following will be moved to other files */
 
 /* XXX: use unicode */
-typedef int (*NextCharFunc)(CSSBox *box, int *offset);
+typedef char32_t (*NextCharFunc)(CSSBox *box, int *offset);
 
-static int eb_nextc1(CSSBox *box, int *offset_ptr)
+static char32_t eb_nextc1(CSSBox *box, int *offset_ptr)
 {
     struct EditBuffer *b = box->content_data;
-    int offset, offset1;
-    int ch, ch1;
+    int offset, offset1, ch1;
+    char32_t ch;
     char name[16], *q;
 
     offset = *offset_ptr;
@@ -251,11 +251,11 @@ static int eb_nextc1(CSSBox *box, int *offset_ptr)
     return ch;
 }
 
-static int str_nextc(CSSBox *box, int *offset_ptr)
+static char32_t str_nextc(CSSBox *box, int *offset_ptr)
 {
     const char *str = box->content_data;
     const char *ptr;
-    int ch;
+    char32_t ch;
 
     ptr = str + *offset_ptr;
     ch = (unsigned char)*ptr;
@@ -1303,7 +1303,7 @@ typedef struct BidirAttrState {
 static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
 {
     CSSState *props = box->props;
-    int c, pos, offset;
+    int pos, offset;
     BidirTypeLink *p;
     FriBidiCharType type, ltype;
     NextCharFunc nextc = get_nextc(box);
@@ -1359,7 +1359,7 @@ static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
         offset = box->u.buffer.start;
         bidi_mode = props->bidi_mode;
         while (offset < box->u.buffer.end) {
-            c = nextc(box, &offset);
+            char32_t c = nextc(box, &offset);
             pos++;
             if (bidi_mode == CSS_BIDI_MODE_TEST)
                 type = fribidi_get_type_test(c);
@@ -1446,7 +1446,8 @@ static void css_bidir_split_box(BidirSplitState *s,  CSSBox *box)
 {
     CSSState *props = box->props;
     BidirTypeLink *l;
-    int /* c, */ pos, offset;
+    int pos, offset;
+    /* char32_t c; */
     NextCharFunc nextc;
 
     l = s->l;
@@ -1706,7 +1707,7 @@ typedef struct InlineLayout {
 
     InlineBox line_boxes[NB_LINE_BOXES_MAX];
     /* fragment layout = part of line */
-    unsigned int word_buf[MAX_WORD_SIZE];
+    char32_t word_buf[MAX_WORD_SIZE];
     int word_offsets[MAX_WORD_SIZE];
     /* the box stack contains the boxes which where after the last
        word of the current line and which must be layouted on the next
@@ -2198,7 +2199,8 @@ static int css_layout_inline_box(InlineLayout *s,
 {
     CSSState *props = box->props;
     int offset, offset0;
-    int ch, space, ret, box_stack_base, i;
+    char32_t ch;
+    int space, ret, box_stack_base, i;
     QEFont *font;
     NextCharFunc nextc;
 
@@ -3783,13 +3785,14 @@ int css_layout(CSSContext *s, CSSBox *box, int width,
 #define MAX_LINE_SIZE 256
 
 int box_get_text(qe__unused__ CSSContext *s,
-                 unsigned int *line_buf, int max_size,
+                 char32_t *line_buf, int max_size,
                  int *offsets, CSSBox *box)
 {
     /* final box with text inside */
     int offset, offset0;
-    unsigned int *q;
-    int c, space_collapse, last_space, space;
+    char32_t *q;
+    char32_t c;
+    int space_collapse, last_space, space;
     NextCharFunc nextc;
     CSSState *props = box->props;
 
@@ -3942,8 +3945,8 @@ static void box_display_text(CSSContext *s, CSSBox *box, int x0, int y0)
 {
     CSSState *props = box->props;
     QEditScreen *scr = s->screen;
-    unsigned int line_buf[MAX_LINE_SIZE];
-    unsigned int glyphs[MAX_LINE_SIZE];
+    char32_t line_buf[MAX_LINE_SIZE];
+    char32_t glyphs[MAX_LINE_SIZE];
     int offsets[MAX_LINE_SIZE + 1], *offsets_ptr;
     unsigned int char_to_glyph_pos[MAX_LINE_SIZE], *ctg_ptr;
     int len, x, i, p, offset0, len1, w;
@@ -4024,7 +4027,7 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
     CSSState img_props;
     QEFont *font;
     int i, len;
-    unsigned int ubuf[256];
+    char32_t ubuf[256];
 
     if (s->media != CSS_MEDIA_TTY) {
         /* draw something inside the image content box, but
@@ -4045,8 +4048,8 @@ static void box_display_image(CSSContext *s, CSSBox *box, int x0, int y0)
             /* display the optional alt text */
             if (box->u.image.content_alt) {
                 font = css_select_font(scr, props);
-                len = utf8_to_unicode(ubuf, countof(ubuf),
-                                      box->u.image.content_alt);
+                len = utf8_to_char32(ubuf, countof(ubuf),
+                                     box->u.image.content_alt);
                 /* XXX: unicode, etc... */
                 draw_text(scr, font,
                           x0 + ALT_TEXT_PADDING,
@@ -4196,8 +4199,8 @@ static int css_get_cursor_func(void *opaque,
                                CSSBox *box, int x0, int y0)
 {
     CSSCursorState *s = opaque;
-    unsigned int line_buf[MAX_LINE_SIZE];
-    unsigned int glyphs[MAX_LINE_SIZE];
+    char32_t line_buf[MAX_LINE_SIZE];
+    char32_t glyphs[MAX_LINE_SIZE];
     int offsets[MAX_LINE_SIZE+1];
     unsigned int char_to_glyph_pos[MAX_LINE_SIZE];
     int posc, x, i, len, w, eol;
@@ -4315,8 +4318,8 @@ int css_box_iterate(CSSContext *s,
 /* return the offset of the closest char of x position.  */
 int css_get_offset_pos(CSSContext *s, CSSBox *box, int xc, int dir)
 {
-    unsigned int line_buf[MAX_LINE_SIZE];
-    unsigned int glyphs[MAX_LINE_SIZE];
+    char32_t line_buf[MAX_LINE_SIZE];
+    char32_t glyphs[MAX_LINE_SIZE];
     int offsets[MAX_LINE_SIZE];
     unsigned int char_to_glyph_pos[MAX_LINE_SIZE];
     int x, d, dmin, posc, len, i, w;

@@ -2,7 +2,7 @@
  * MS Windows driver for QEmacs
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2002-2017 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -471,7 +471,7 @@ static void win_close_font(QEditScreen *s, QEFont **fontp)
 
 static void win_text_metrics(QEditScreen *s, QEFont *font,
                              QECharMetrics *metrics,
-                             const unsigned int *str, int len)
+                             const char32_t *str, int len)
 {
     int i, x;
     metrics->font_ascent = font->ascent;
@@ -483,7 +483,7 @@ static void win_text_metrics(QEditScreen *s, QEFont *font,
 }
 
 static void win_draw_text(QEditScreen *s, QEFont *font,
-                          int x1, int y, const unsigned int *str, int len,
+                          int x1, int y, const char32_t *str, int len,
                           QEColor color)
 {
     int i;

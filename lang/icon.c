@@ -1,7 +1,7 @@
 /*
  * Icon mode for QEmacs.
  *
- * Copyright (c) 2015-2020 Charlie Gordon.
+ * Copyright (c) 2015-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -55,9 +55,10 @@ enum {
 };
 
 static void icon_colorize_line(QEColorizeContext *cp,
-                               unsigned int *str, int n, ModeDef *syn)
+                               char32_t *str, int n, ModeDef *syn)
 {
-    int i, start, indent, c, state, style, klen, delim;
+    int i, start, indent, state, style, klen;
+    char32_t c, delim;
     char kbuf[64];
 
     for (i = 0; qe_isblank(str[i]); i++)
@@ -87,7 +88,7 @@ static void icon_colorize_line(QEColorizeContext *cp,
         switch (c) {
         case '#':       /* preprocessor */
             if ((i == 1 && str[i] == '!')
-            ||  ustrstart(str + i, "line", &klen)) {
+            ||  ustr_match_keyword(str + i, "line", &klen)) {
                 i = n;
                 style = ICON_STYLE_PREPROCESS;
                 break;

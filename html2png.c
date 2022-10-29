@@ -90,8 +90,8 @@ void put_error(qe__unused__ EditState *s, const char *fmt, ...)
 
 
 /* dummy functions */
-int eb_nextc(qe__unused__ EditBuffer *b,
-             qe__unused__ int offset, qe__unused__ int *next_ptr)
+char32_t eb_nextc(qe__unused__ EditBuffer *b,
+                  qe__unused__ int offset, qe__unused__ int *next_ptr)
 {
     return 0;
 }
@@ -304,12 +304,12 @@ static int png_save(QEditScreen *s, const char *filename)
 void test_display(QEditScreen *screen)
 {
     QEFont *font;
-    unsigned int buf[256];
+    char32_t buf[256];
     int len;
 
     fill_rectangle(screen, 0, 0, screen->width, screen->height,
                    QERGB(0xff, 0x00, 0x00));
-    len = utf8_to_unicode(buf, countof(buf), "Hello World !");
+    len = utf8_to_char32(buf, countof(buf), "Hello World !");
 
     font = select_font(screen, QE_FONT_FAMILY_FIXED | QE_FONT_STYLE_NORM, 12);
 

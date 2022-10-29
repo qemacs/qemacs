@@ -238,7 +238,7 @@ KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m, int
  * at this offset.
  */
 typedef int (*GetColorizedLineFunc)(EditState *s,
-                                    unsigned int *buf, int buf_size,
+                                    char32_t *buf, int buf_size,
                                     QETermStyle *sbuf,
                                     int offset, int *offsetp, int line_num);
 
@@ -256,7 +256,7 @@ struct QEColorizeContext {
  * styles. 'buf' is guaranted to have one more '\0' char after its len.
  */
 typedef void (*ColorizeFunc)(QEColorizeContext *cp,
-                             unsigned int *buf, int n, ModeDef *syn);
+                             char32_t *buf, int n, ModeDef *syn);
 
 /* buffer.c */
 
@@ -467,13 +467,13 @@ EditState *eb_find_window(EditBuffer *b, EditState *e);
 
 void eb_set_charset(EditBuffer *b, QECharset *charset, EOLType eol_type);
 qe__attr_nonnull((3))
-int eb_nextc(EditBuffer *b, int offset, int *next_ptr);
+char32_t eb_nextc(EditBuffer *b, int offset, int *next_ptr);
 qe__attr_nonnull((3))
-int eb_prevc(EditBuffer *b, int offset, int *prev_ptr);
+char32_t eb_prevc(EditBuffer *b, int offset, int *prev_ptr);
 qe__attr_nonnull((3))
-int eb_next_glyph(EditBuffer *b, int offset, int *next_ptr);
+char32_t eb_next_glyph(EditBuffer *b, int offset, int *next_ptr);
 qe__attr_nonnull((3))
-int eb_prev_glyph(EditBuffer *b, int offset, int *prev_ptr);
+char32_t eb_prev_glyph(EditBuffer *b, int offset, int *prev_ptr);
 int eb_skip_accents(EditBuffer *b, int offset);
 int eb_skip_glyphs(EditBuffer *b, int offset, int n);
 int eb_skip_chars(EditBuffer *b, int offset, int n);
@@ -520,26 +520,26 @@ void eb_set_style(EditBuffer *b, QETermStyle style, enum LogOperation op,
                   int offset, int size);
 void eb_style_callback(EditBuffer *b, void *opaque, int arg,
                        enum LogOperation op, int offset, int size);
-int eb_delete_uchar(EditBuffer *b, int offset);
-int eb_encode_uchar(EditBuffer *b, char *buf, unsigned int c);
-int eb_insert_uchar(EditBuffer *b, int offset, int c);
-int eb_replace_uchar(EditBuffer *b, int offset, int c);
-int eb_insert_uchars(EditBuffer *b, int offset, int c, int n);
+int eb_delete_char32(EditBuffer *b, int offset);
+int eb_encode_char32(EditBuffer *b, char *buf, char32_t c);
+int eb_insert_char32(EditBuffer *b, int offset, char32_t c);
+int eb_replace_char32(EditBuffer *b, int offset, char32_t c);
+int eb_insert_char32_n(EditBuffer *b, int offset, char32_t c, int n);
 static inline int eb_insert_spaces(EditBuffer *b, int offset, int n) {
-    return eb_insert_uchars(b, offset, ' ', n);
+    return eb_insert_char32_n(b, offset, ' ', n);
 }
 
 int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len);
-int eb_insert_u32_buf(EditBuffer *b, int offset, const unsigned int *buf, int len);
+int eb_insert_char32_buf(EditBuffer *b, int offset, const char32_t *buf, int len);
 int eb_insert_str(EditBuffer *b, int offset, const char *str);
-int eb_match_uchar(EditBuffer *b, int offset, int c, int *offsetp);
+int eb_match_char32(EditBuffer *b, int offset, char32_t c, int *offsetp);
 int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp);
 int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp);
 /* These functions insert contents at b->offset */
 int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) qe__attr_printf(2,0);
 int eb_printf(EditBuffer *b, const char *fmt, ...) qe__attr_printf(2,3);
 int eb_puts(EditBuffer *b, const char *s);
-int eb_putc(EditBuffer *b, int c);
+int eb_putc(EditBuffer *b, char32_t c);
 
 void eb_line_pad(EditBuffer *b, int offset, int n);
 int eb_get_region_content_size(EditBuffer *b, int start, int stop);
@@ -554,7 +554,7 @@ static inline int eb_get_contents(EditBuffer *b, char *buf, int buf_size) {
 int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
                              EditBuffer *src, int src_offset,
                              int size);
-int eb_get_line(EditBuffer *b, unsigned int *buf, int buf_size,
+int eb_get_line(EditBuffer *b, char32_t *buf, int buf_size,
                 int offset, int *offset_ptr);
 int eb_fgets(EditBuffer *b, char *buf, int buf_size,
              int offset, int *offset_ptr);
@@ -734,7 +734,7 @@ struct EditState {
     InputMethod *selected_input_method; /* selected input method (used to switch) */
     int compose_len;
     int compose_start_offset;
-    unsigned int compose_buf[20];
+    char32_t compose_buf[20];
     OWNED EditState *next_window;
 };
 
@@ -1190,14 +1190,14 @@ struct DisplayState {
     int word_index;     /* fragment index of the start of the current word */
 
     /* line char (in fact glyph) buffer */
-    unsigned int line_chars[MAX_SCREEN_WIDTH];
+    char32_t line_chars[MAX_SCREEN_WIDTH];
     short line_char_widths[MAX_SCREEN_WIDTH];
     int line_offsets[MAX_SCREEN_WIDTH][2];
     unsigned char line_hex_mode[MAX_SCREEN_WIDTH];
     int line_index;
 
     /* fragment temporary buffer */
-    unsigned int fragment_chars[MAX_WORD_SIZE];
+    char32_t fragment_chars[MAX_WORD_SIZE];
     int fragment_offsets[MAX_WORD_SIZE][2];
     unsigned char fragment_hex_mode[MAX_WORD_SIZE];
     int fragment_index;
@@ -1222,16 +1222,16 @@ void display_close(DisplayState *s);
 void display_bol(DisplayState *s);
 void display_setcursor(DisplayState *s, DirType dir);
 int display_char_bidir(DisplayState *s, int offset1, int offset2,
-                       int embedding_level, int ch);
+                       int embedding_level, char32_t ch);
 void display_eol(DisplayState *s, int offset1, int offset2);
 
 void display_printf(DisplayState *ds, int offset1, int offset2,
                     const char *fmt, ...) qe__attr_printf(4,5);
 void display_printhex(DisplayState *s, int offset1, int offset2,
-                      unsigned int h, int n);
+                      char32_t h, int n);
 
 static inline int display_char(DisplayState *s, int offset1, int offset2,
-                               int ch)
+                               char32_t ch)
 {
     return display_char_bidir(s, offset1, offset2, 0, ch);
 }
@@ -1267,7 +1267,7 @@ struct InputMethod {
      */
     int (*input_match)(int *match_buf, int match_buf_size,
                        int *match_len_ptr, const u8 *data,
-                       const unsigned int *buf, int len);
+                       const char32_t *buf, int len);
     const u8 *data;
     InputMethod *next;
 };
@@ -1362,7 +1362,7 @@ EditState *edit_new(EditBuffer *b,
                     int x1, int y1, int width, int height, int flags);
 EditBuffer *check_buffer(EditBuffer **sp);
 EditState *check_window(EditState **sp);
-int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, int c);
+int get_glyph_width(QEditScreen *screen, EditState *s, QETermStyle style, char32_t c);
 int get_line_height(QEditScreen *screen, EditState *s, QETermStyle style);
 void do_refresh(EditState *s);
 // should take direction argument
@@ -1397,7 +1397,7 @@ void do_insert_file(EditState *s, const char *filename);
 void do_save_buffer(EditState *s);
 void do_write_file(EditState *s, const char *filename);
 void do_write_region(EditState *s, const char *filename);
-void isearch_colorize_matches(EditState *s, unsigned int *buf, int len,
+void isearch_colorize_matches(EditState *s, char32_t *buf, int len,
                               QETermStyle *sbuf, int offset);
 void do_isearch(EditState *s, int argval, int dir);
 void do_query_replace(EditState *s, const char *search_str,
@@ -1418,7 +1418,7 @@ int text_backward_offset(EditState *s, int offset);
 int text_display_line(EditState *s, DisplayState *ds, int offset);
 
 void set_colorize_func(EditState *s, ColorizeFunc colorize_func, ModeDef *mode);
-int get_colorized_line(EditState *s, unsigned int *buf, int buf_size,
+int get_colorized_line(EditState *s, char32_t *buf, int buf_size,
                        QETermStyle *sbuf,
                        int offset, int *offsetp, int line_num);
 
@@ -1628,7 +1628,7 @@ static inline void qe_cfg_set_num(QEValue *sp, long long value) {
     sp->type = TOK_NUMBER;
 }
 
-static inline void qe_cfg_set_char(QEValue *sp, int c) {
+static inline void qe_cfg_set_char(QEValue *sp, char32_t c) {
     if (sp->alloc) {
         qe_free(&sp->u.str);
         sp->alloc = 0;
@@ -1706,7 +1706,7 @@ void hex_write_char(EditState *s, int key);
 
 /* erlang.c / elixir.c */
 
-int erlang_match_char(unsigned int *str, int i);
+int erlang_match_char(const char32_t *str, int i);
 
 /* lisp.c */
 
@@ -1753,7 +1753,7 @@ int qe_bitmap_format_to_pix_fmt(int format);
 
 const char *get_shell(void);
 void shell_colorize_line(QEColorizeContext *cp,
-                         unsigned int *str, int n, ModeDef *syn);
+                         char32_t *str, int n, ModeDef *syn);
 
 #define SF_INTERACTIVE   0x01
 #define SF_COLOR         0x02

@@ -1,7 +1,7 @@
 /*
  * HTML Source mode for QEmacs.
  *
- * Copyright (c) 2000-2018 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,9 +20,9 @@
 
 #include "qe.h"
 
-static int get_html_entity(unsigned int *p)
-{
-    unsigned int *p_start, c;
+static int get_html_entity(const char32_t *p) {
+    const char32_t *p_start;
+    char32_t c;
 
     p_start = p;
     c = *p;
@@ -81,7 +81,7 @@ enum {
     HTML_STYLE_CSS        = QE_STYLE_CSS,
 };
 
-static int htmlsrc_tag_match(const unsigned int *buf, int i, const char *str,
+static int htmlsrc_tag_match(const char32_t *buf, int i, const char *str,
                              int *iend)
 {
     int len;
@@ -97,9 +97,10 @@ static int htmlsrc_tag_match(const unsigned int *buf, int i, const char *str,
 }
 
 static void htmlsrc_colorize_line(QEColorizeContext *cp,
-                                  unsigned int *str, int n, ModeDef *syn)
+                                  char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start, c, len;
+    int i = 0, start, len;
+    char32_t c;
     int state = cp->colorize_state;
 
     while (i < n) {
@@ -215,14 +216,14 @@ static void htmlsrc_colorize_line(QEColorizeContext *cp,
             continue;
         }
         if (state & (IN_HTML_STRING | IN_HTML_STRING1)) {
-            int delim = (state & IN_HTML_STRING1) ? '\'' : '\"';
+            char32_t delim = (state & IN_HTML_STRING1) ? '\'' : '\"';
 
             for (; i < n; i++) {
                 if (str[i] == '&' && get_html_entity(str + i)) {
                     state |= IN_HTML_ENTITY;
                     break;
                 }
-                if (str[i] == (unsigned int)delim) {
+                if (str[i] == delim) {
                     i++;
                     state &= ~(IN_HTML_STRING | IN_HTML_STRING1);
                     break;

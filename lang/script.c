@@ -1,7 +1,7 @@
 /*
  * Shell script mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -42,9 +42,10 @@ static const char shell_script_keywords[] = {
 };
 
 static int shell_script_get_var(char *buf, int buf_size,
-                                unsigned int *str, int j, int n)
+                                const char32_t *str, int j, int n)
 {
-    int i = 0, c;
+    int i = 0;
+    char32_t c;
 
     while (j < n && qe_isalnum_(c = str[j])) {
         if (i < buf_size - 1) {
@@ -58,15 +59,15 @@ static int shell_script_get_var(char *buf, int buf_size,
     return j;
 }
 
-static int shell_script_has_sep(unsigned int *str, int i, int n) {
+static int shell_script_has_sep(const char32_t *str, int i, int n) {
     return i >= n || qe_findchar(" \t<>|&;()", str[i]);
 }
 
-static int shell_script_string(unsigned int *str, int i, int n,
-                               int sep, int escape, int dollar)
+static int shell_script_string(const char32_t *str, int i, int n,
+                               char32_t sep, int escape, int dollar)
 {
     while (i < n) {
-        int c = str[i++];
+        char32_t c = str[i++];
         if (c == '\\' && escape && i < n) {
             i++;
         } else
@@ -82,9 +83,10 @@ static int shell_script_string(unsigned int *str, int i, int n,
 }
 
 static void shell_script_colorize_line(QEColorizeContext *cp,
-                                       unsigned int *str, int n, ModeDef *syn)
+                                       char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, j, c, start, style, bits = 0;
+    int i = 0, j, start, style, bits = 0;
+    char32_t c;
 
     /* special case sh-bang line */
     if (n >= 2 && str[0] == '#' && str[1] == '!') {
@@ -196,7 +198,7 @@ start_cmd:
         case '>':
         case '<':
             // XXX: Should support other punctuation syntaxes
-            if (str[i] == (unsigned int)c) {  /* handle >> and << */
+            if (str[i] == c) {  /* handle >> and << */
                 i++;
             }
             SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_OP);
@@ -205,7 +207,7 @@ start_cmd:
             continue;
         case '|':
         case '&':
-            if (str[i] == (unsigned int)c) {  /* handle || and && */
+            if (str[i] == c) {  /* handle || and && */
                 i++;
             }
             SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_OP);

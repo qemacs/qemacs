@@ -1,7 +1,7 @@
 /*
  * R language mode for QEmacs.
  *
- * Copyright (c) 2015-2017 Charlie Gordon.
+ * Copyright (c) 2015-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -58,10 +58,11 @@ enum {
 };
 
 static void r_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                            char32_t *str, int n, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
-    int i = 0, j, start, c, delim, style, len, level, funclevel;
+    int i = 0, j, start, style, len, level, funclevel;
+    char32_t c, delim;
     int colstate = cp->colorize_state;
 
     level = colstate & IN_R_LEVEL;
@@ -72,7 +73,7 @@ static void r_colorize_line(QEColorizeContext *cp,
         c = str[i++];
         switch (c) {
         case '#':
-            if (ustrstart(str + i, "line", NULL) && !qe_isalnum(str[i + 4]))
+            if (ustr_match_keyword(str + i, "line", NULL))
                 style = R_STYLE_PREPROCESS;
             else
                 style = R_STYLE_COMMENT;

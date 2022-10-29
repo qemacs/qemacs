@@ -1,7 +1,7 @@
 /*
  * SQL language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -94,10 +94,11 @@ static char const sql_types[] = {
 };
 
 static void sql_colorize_line(QEColorizeContext *cp,
-                              unsigned int *str, int n, ModeDef *syn)
+                              char32_t *str, int n, ModeDef *syn)
 {
     char kbuf[16];
-    int i = 0, start = i, c, style;
+    int i = 0, start = i, style;
+    char32_t c;
     int state = cp->colorize_state;
 
     if (state & IN_SQL_COMMENT)
@@ -145,7 +146,7 @@ static void sql_colorize_line(QEColorizeContext *cp,
                     i++;
                     continue;
                 }
-                if (str[i] == (unsigned int)c) {
+                if (str[i] == c) {
                     i++;
                     break;
                 }

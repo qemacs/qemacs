@@ -1,7 +1,7 @@
 /*
  * Ruby language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -68,8 +68,7 @@ enum {
     RUBY_STYLE_HEREDOC =  QE_STYLE_PREPROCESS,
 };
 
-static int ruby_get_name(char *buf, int size, unsigned int *str)
-{
+static int ruby_get_name(char *buf, int size, const char32_t *str) {
     int len, i = 0, j;
 
     for (len = 0, j = i; qe_isalnum_(str[j]); j++) {
@@ -88,10 +87,12 @@ static int ruby_get_name(char *buf, int size, unsigned int *str)
 }
 
 static void ruby_colorize_line(QEColorizeContext *cp,
-                               unsigned int *str, int n, ModeDef *syn)
+                               char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, j, start = i, c, style = 0, indent, sig;
-    static int sep, sep0, level;        /* XXX: ugly patch */
+    int i = 0, j, start = i, style = 0, indent, sig;
+    char32_t c;
+    static char32_t sep, sep0;      /* XXX: ugly patch */
+    static int level;               /* XXX: ugly patch */
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -355,7 +356,7 @@ static void ruby_colorize_line(QEColorizeContext *cp,
                     for (; qe_isalnum_(str[j]); j++) {
                         sig = ((sig << 6) + str[j]) % 61;
                     }
-                    if (str[j++] != (unsigned int)sep)
+                    if (str[j++] != sep)
                         break;
                 } else
                 if (qe_isalpha_(str[j])) {

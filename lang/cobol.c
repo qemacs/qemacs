@@ -1,7 +1,7 @@
 /*
  * Cobol language mode for QEmacs.
  *
- * Copyright (c) 2015-2017 Charlie Gordon.
+ * Copyright (c) 2015-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -82,10 +82,11 @@ enum {
 };
 
 static void cobol_colorize_line(QEColorizeContext *cp,
-                                unsigned int *str, int n, ModeDef *syn)
+                                char32_t *str, int n, ModeDef *syn)
 {
     char keyword[COBOL_KEYWORD_SIZE];
-    int i = 0, start = i, j, c, style, len, indent, heading = 0, preproc = 0, comment = -1;
+    int i = 0, start = i, j, style, len, indent, heading = 0, preproc = 0, comment = -1;
+    char32_t c;
     int state = cp->colorize_state;
 
     for (; i < n && qe_isblank(str[i]); i++)
@@ -152,7 +153,7 @@ static void cobol_colorize_line(QEColorizeContext *cp,
             continue;
         case '\"':
         case '\'':
-            while (i < n && str[i++] != (unsigned int)c)
+            while (i < n && str[i++] != c)
                 continue;
             style = COBOL_STYLE_STRING;
             break;
@@ -190,7 +191,7 @@ static void cobol_colorize_line(QEColorizeContext *cp,
                 len = 0;
                 keyword[len++] = qe_tolower(c);
                 for (; i < n; i++) {
-                    int c1 = str[i];
+                    char32_t c1 = str[i];
                     if (!qe_isalnum_(c1) && !qe_findchar("-$", c1))
                         break;
                     if (len < countof(keyword) - 1)

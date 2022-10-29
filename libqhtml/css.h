@@ -23,6 +23,7 @@
 #define CSS_H
 
 #include <stdarg.h>
+#include "cutils.h"
 #include "color.h"
 
 struct CSSBox;
@@ -638,7 +639,7 @@ static inline int css_is_inter_rect(const CSSRect *a, const CSSRect *b) {
 #endif
 /* cursor/edition handling */
 int box_get_text(CSSContext *s,
-                 unsigned int *line_buf, int max_size,
+                 char32_t *line_buf, int max_size,
                  int *offsets, CSSBox *box);
 int css_get_cursor_pos(CSSContext *s, CSSBox *box,
                        CSSBox **box_ptr, int *x0_ptr, int *y0_ptr,

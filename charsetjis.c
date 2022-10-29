@@ -23,15 +23,15 @@
 
 #include "charsetjis.def"
 
-static int jis0208_decode(int b1, int b2)
-{
+static char32_t jis0208_decode(int b1, int b2) {
     b1 -= 0x21;
     b2 -= 0x21;
     if (b1 > 83)
         return 0;
     if (b1 < 8) {
         /* do nothing */
-    } else if (b1 <= 14) {
+    } else
+    if (b1 <= 14) {
         return 0;
     } else {
         b1 -= 7;
@@ -39,8 +39,7 @@ static int jis0208_decode(int b1, int b2)
     return table_jis208[b1 * 94 + b2];
 }
 
-static int jis0212_decode(int b1, int b2)
-{
+static char32_t jis0212_decode(int b1, int b2) {
     b1 -= 0x21;
     b2 -= 0x21;
 
@@ -92,22 +91,24 @@ static void decode_euc_jp_init(CharsetDecodeState *s)
 }
 
 /* XXX: add state */
-static int decode_euc_jp_func(CharsetDecodeState *s)
-{
+static char32_t decode_euc_jp_func(CharsetDecodeState *s) {
     const unsigned char *p;
-    int c, c2;
+    char32_t c, c2;
 
     p = s->p;
     c = *p++;
     if (c == 0x8e) {
         c = *p;
         if (c >= 0xa1 && c <= 0xdf) {
+            /* 2 byte sequence for HALFWIDTH KANA FF61..FF9F */
             c = c - 0xa1 + 0xff61;
             p++;
         }
-    } else if (c >= 0xa1) {
+    } else
+    if (c >= 0xa1) {
         c2 = *p;
         if (c2 >= 0xa1 && c2 <= 0xfe) {
+            /* 2 byte sequence for 77x94 KANJI block */
             c2 = jis0208_decode(c & 0x7f, c2 & 0x7f);
             if (c2) {
                 c = c2;
@@ -118,6 +119,7 @@ static int decode_euc_jp_func(CharsetDecodeState *s)
         /* 8f case */
         if (p[0] >= 0xa1 && p[0] <= 0xfe &&
             p[1] >= 0xa1 && p[1] <= 0xfe) {
+            /* 3 byte sequence for 68x94 KANJI block */
             c2 = jis0212_decode(p[0] & 0x7f, p[1] & 0x7f);
             if (c2) {
                 c = c2;
@@ -129,12 +131,11 @@ static int decode_euc_jp_func(CharsetDecodeState *s)
     return c;
 }
 
-static unsigned char *encode_euc_jp(qe__unused__ QECharset *s,
-                                    unsigned char *q, int c)
-{
+static unsigned char *encode_euc_jp(qe__unused__ QECharset *s, u8 *q, char32_t c) {
     if (c <= 0x7f) {
         *q++ = c;
-    } else if (c >= 0xff61 && c <= 0xff9f) {
+    } else
+    if (c >= 0xff61 && c <= 0xff9f) {
         *q++ = 0x8e;
         *q++ = c - 0xff61 + 0xa1;
     } else {
@@ -186,10 +187,9 @@ static void decode_sjis_init(CharsetDecodeState *s)
 }
 
 /* XXX: add state */
-static int decode_sjis_func(CharsetDecodeState *s)
-{
+static char32_t decode_sjis_func(CharsetDecodeState *s) {
     const unsigned char *p;
-    int c, c1, c2, adjust, row, col;
+    char32_t c, c1, c2, adjust, row, col;
 
     p = s->p;
     c = *p++;
@@ -197,8 +197,7 @@ static int decode_sjis_func(CharsetDecodeState *s)
         /* user data */
     } else {
         c1 = *p;
-        if ((c1 >= 0x40 && c1 <= 0x7e) ||
-            (c1 >= 0x80 && c1 <= 0xfc)) {
+        if ((c1 >= 0x40 && c1 <= 0x7e) || (c1 >= 0x80 && c1 <= 0xfc)) {
             row = c < 0xa0 ? 0x70 : 0xb0;
             adjust = (c1 < 0x9f);
             col = adjust ? (c1 >= 0x80 ? 32 : 31) : 0x7e;
@@ -213,9 +212,7 @@ static int decode_sjis_func(CharsetDecodeState *s)
     return c;
 }
 
-static unsigned char *encode_sjis(qe__unused__ QECharset *s,
-                                  unsigned char *q, int c)
-{
+static unsigned char *encode_sjis(qe__unused__ QECharset *s, u8 *q, char32_t c) {
     if (c <= 0x7f) {
         *q++ = c;
     } else {

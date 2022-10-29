@@ -59,9 +59,10 @@ enum {
 };
 
 static void elixir_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, ModeDef *syn)
+                                 char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, style = 0, sep, klen, nc, has_under;
+    int i = 0, start = i, style = 0, klen, nc, has_under;
+    char32_t c, sep;
     int state = cp->colorize_state;
     char kbuf[64];
 
@@ -91,8 +92,7 @@ static void elixir_colorize_line(QEColorizeContext *cp,
                     i += 2;
                     state = IN_ELIXIR_REGEX | nc;
                     if (nc < 2) { /* '\'' or '\"' */
-                        if (str[i + 0] == (unsigned int)c
-                        &&  str[i + 1] == (unsigned int)c) {
+                        if (str[i] == c && str[i + 1] == c) {
                             state |= IN_ELIXIR_TRIPLE;
                             i += 2;
                         }
@@ -111,8 +111,7 @@ static void elixir_colorize_line(QEColorizeContext *cp,
                                 state = 0;
                                 break;
                             }
-                            if (str[i] == (unsigned int)sep
-                            &&  str[i + 1] == (unsigned int)sep) {
+                            if (str[i] == sep && str[i + 1] == sep) {
                                 i += 2;
                                 state = 0;
                                 break;
@@ -133,8 +132,7 @@ static void elixir_colorize_line(QEColorizeContext *cp,
         case '\"':
             /* parse string constants and here documents */
             state = IN_ELIXIR_STRING | (c == '\"');
-            if (str[i + 0] == (unsigned int)c
-            &&  str[i + 1] == (unsigned int)c) {
+            if (str[i] == c && str[i + 1] == c) {
                 /* here documents */
                 state |= IN_ELIXIR_TRIPLE;
                 i += 2;
@@ -156,8 +154,7 @@ static void elixir_colorize_line(QEColorizeContext *cp,
                         state = 0;
                         break;
                     }
-                    if (str[i] == (unsigned int)sep
-                    &&  str[i + 1] == (unsigned int)sep) {
+                    if (str[i] == sep && str[i + 1] == sep) {
                         i += 2;
                         state = 0;
                         break;

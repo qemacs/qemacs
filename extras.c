@@ -25,7 +25,7 @@
 
 static int qe_skip_comments(EditState *s, int offset, int *offsetp)
 {
-    unsigned int buf[COLORED_MAX_LINE_SIZE];
+    char32_t buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     int line_num, col_num, len, pos;
     int offset0, offset1;
@@ -71,7 +71,7 @@ static void compare_resync(EditState *s1, EditState *s2,
                            int *offset1_ptr, int *offset2_ptr)
 {
     int pos1, off1, pos2, off2;
-    int ch1, ch2;
+    char32_t ch1, ch2;
 
     off1 = save1;
     off2 = save2;
@@ -109,15 +109,26 @@ static void compare_resync(EditState *s1, EditState *s2,
     *offset2_ptr = pos2;
 }
 
+static char *utf8_char32_to_string(char *buf, char32_t c) {
+    char *p = buf;
+    if (qe_isaccent(c))
+        *p++ = ' ';
+    p[utf8_encode(p, c)] = '\0';
+    return buf;
+}
+
 void do_compare_windows(EditState *s, int argval)
 {
     QEmacsState *qs = s->qe_state;
     EditState *s1;
     EditState *s2;
-    int offset1, offset2, size1, size2, ch1, ch2;
+    int offset1, offset2, size1, size2;
+    char32_t ch1, ch2;
     int tries, resync = 0;
     char buf1[MAX_CHAR_BYTES + 2], buf2[MAX_CHAR_BYTES + 2];
-    const char *comment = "";
+    const char *comment1 = "";
+    const char *comment2 = "";
+    const char *comment3 = "";
 
     s1 = s;
     /* Should use same internal function as for next_window */
@@ -156,65 +167,70 @@ void do_compare_windows(EditState *s, int argval)
         }
 
         if (s1->offset >= size1) {
+            if (s2->offset >= size2) {
+                put_status(s, "%s%s%sNo difference",
+                           comment1, comment2, comment3);
+                return;
+            }
             offset1 = s1->offset;
-            ch1 = EOF;
+            ch1 = 0;
+            ch2 = eb_nextc(s2->b, s2->offset, &offset2);
         } else {
             ch1 = eb_nextc(s1->b, s1->offset, &offset1);
-        }
-        if (s2->offset >= size2) {
-            offset2 = s2->offset;
-            ch2 = EOF;
-        } else {
-            ch2 = eb_nextc(s2->b, s2->offset, &offset2);
-        }
-        if (ch1 != ch2) {
-            if (qs->ignore_spaces) {
-                /* UTF-8 issue */
-                if (qe_isspace(ch1) || qe_isspace(ch2)) {
-                    eb_skip_spaces(s1->b, s1->offset, &s1->offset);
-                    eb_skip_spaces(s2->b, s2->offset, &s2->offset);
-                    if (!*comment)
-                        comment = "Skipped spaces, ";
-                    continue;
-                }
-            }
-            if (qs->ignore_comments) {
-                if (qe_skip_comments(s1, s1->offset, &s1->offset) |
-                    qe_skip_comments(s2, s2->offset, &s2->offset)) {
-                    comment = "Skipped comments, ";
-                    continue;
-                }
-            }
-            if (ch1 == EOF || ch2 == EOF) {
-                put_status(s, "%sExtra characters", comment);
-                break;
-            }
-            if (qs->ignore_case) {
-                if (qe_tolower(ch1) == qe_tolower(ch2)) {
+            if (s2->offset >= size2) {
+                offset2 = s2->offset;
+                ch2 = 0;
+            } else {
+                ch2 = eb_nextc(s2->b, s2->offset, &offset2);
+                if (ch1 == ch2) {
                     s1->offset = offset1;
                     s2->offset = offset2;
                     continue;
                 }
+                if (qs->ignore_case) {
+                    if (qe_tolower(ch1) == qe_tolower(ch2)) {
+                        s1->offset = offset1;
+                        s2->offset = offset2;
+                        comment3 = "Matched case, ";
+                        continue;
+                    }
+                }
             }
-            if (resync) {
-                int save1 = s1->offset, save2 = s2->offset;
-                compare_resync(s1, s2, save1, save2, &s1->offset, &s2->offset);
-                put_status(s, "Skipped %d and %d bytes",
-                           s1->offset - save1, s2->offset - save2);
-                break;
+        }
+        if (qs->ignore_spaces) {
+            /* UTF-8 issue for combining code points? */
+            if (eb_skip_spaces(s1->b, s1->offset, &s1->offset) |
+                eb_skip_spaces(s2->b, s2->offset, &s2->offset))
+            {
+                comment1 = "Skipped spaces, ";
+                continue;
             }
-            put_status(s, "%sDifference: '%s' [0x%02X] <-> '%s' [0x%02X]", comment,
-                       utf8_char_to_string(buf1, ch1), ch1,
-                       utf8_char_to_string(buf2, ch2), ch2);
+        }
+        if (qs->ignore_comments) {
+            if (qe_skip_comments(s1, s1->offset, &s1->offset) |
+                qe_skip_comments(s2, s2->offset, &s2->offset))
+            {
+                comment2 = "Skipped comments, ";
+                continue;
+            }
+        }
+        if (s1->offset >= size1 || s2->offset >= size2) {
+            put_status(s, "%s%s%sExtra characters",
+                       comment1, comment2, comment3);
             break;
         }
-        if (ch1 != EOF) {
-            s1->offset = offset1;
-            s2->offset = offset2;
-            continue;
+        if (resync) {
+            int save1 = s1->offset, save2 = s2->offset;
+            compare_resync(s1, s2, save1, save2, &s1->offset, &s2->offset);
+            put_status(s, "Skipped %d and %d bytes",
+                       s1->offset - save1, s2->offset - save2);
+        } else {
+            put_status(s, "%s%s%sDifference: '%s' [0x%02X] <-> '%s' [0x%02X]",
+                       comment1, comment2, comment3,
+                       utf8_char32_to_string(buf1, ch1), ch1,
+                       utf8_char32_to_string(buf2, ch2), ch2);
         }
-        put_status(s, "%sNo difference", comment);
-        break;
+        return;
     }
 }
 
@@ -350,7 +366,7 @@ static void do_tabify(EditState *s, int p1, int p2)
     offset = eb_goto_bol(b, start);
 
     for (; offset < stop; offset = offset1) {
-        int c = eb_nextc(b, offset, &offset1);
+        char32_t c = eb_nextc(b, offset, &offset1);
         if (c == '\r' || c == '\n') {
             col = 0;
             continue;
@@ -369,7 +385,7 @@ static void do_tabify(EditState *s, int p1, int p2)
                 offset1 = offset2;
                 if (col % tw == 0) {
                     delta = -eb_delete_range(b, offset, offset1);
-                    delta += eb_insert_uchar(b, offset, '\t');
+                    delta += eb_insert_char32(b, offset, '\t');
                     offset1 += delta;
                     stop += delta;
                     break;
@@ -423,7 +439,7 @@ static void do_untabify(EditState *s, int p1, int p2)
     offset = eb_goto_bol(b, start);
 
     for (; offset < stop; offset = offset1) {
-        int c = eb_nextc(b, offset, &offset1);
+        char32_t c = eb_nextc(b, offset, &offset1);
         if (c == '\r' || c == '\n') {
             col = 0;
             continue;
@@ -510,8 +526,8 @@ void do_show_date_and_time(EditState *s, int argval)
 #define MAX_LEVEL     32
 
 /* Return the matching delimiter for all pairs */
-static int matching_delimiter(int c) {
-    const char *pairs = "(){}[]<>";
+static char32_t matching_delimiter(char32_t c) {
+    const u8 *pairs = (const u8 *)"(){}[]<>";
     int i;
 
     for (i = 0; pairs[i]; i++) {
@@ -523,16 +539,17 @@ static int matching_delimiter(int c) {
 
 static void forward_block(EditState *s, int dir)
 {
-    unsigned int buf[COLORED_MAX_LINE_SIZE];
+    char32_t buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
-    char balance[MAX_LEVEL];
+    char32_t balance[MAX_LEVEL];
     int use_colors;
-    int line_num, col_num, style, style0, c, level;
+    int line_num, col_num, style, style0, level;
     int pos;      /* position of the current character on line */
     int len;      /* number of colorized positions */
     int offset;   /* offset of the current character */
     int offset0;  /* offset of the beginning of line */
     int offset1;  /* offset of the beginning of the next line */
+    char32_t c;
 
     offset = s->offset;
     eb_get_pos(s->b, &line_num, &col_num, offset);
@@ -597,7 +614,8 @@ static void forward_block(EditState *s, int dir)
             case '\'':
                 if (pos >= len) {
                     /* simplistic string skip with escape char */
-                    int c1, off;
+                    int off;
+                    char32_t c1;
                     while ((c1 = eb_prevc(s->b, offset, &off)) != '\n') {
                         offset = off;
                         pos--;
@@ -674,7 +692,8 @@ static void forward_block(EditState *s, int dir)
             case '\'':
                 if (pos >= len) {
                     /* simplistic string skip with escape char */
-                    int c1, off;
+                    int off;
+                    char32_t c1;
                     while ((c1 = eb_nextc(s->b, offset, &off)) != '\n') {
                         offset = off;
                         pos++;
@@ -1546,8 +1565,8 @@ struct chunk {
 
 static int eb_skip_to_basename(EditBuffer *b, int pos) {
     int base = pos;
-    int c;
-    while ((c = eb_nextc(b, pos, &pos)) != EOF && c != '\n') {
+    char32_t c;
+    while ((c = eb_nextc(b, pos, &pos)) != '\n') {
         if (c == '/' || c == '\\')
             base = pos;
     }
@@ -1580,7 +1599,7 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
     pos2 = p2->start + p2->offset;
     for (;;) {
         // XXX: should compute offset to first significant character in the setup phase
-        int c1 = 0, c2 = 0;
+        char32_t c1 = 0, c2 = 0;
         while (pos1 < p1->end) {
             c1 = eb_nextc(cp->b, pos1, &pos1);
             if (!(cp->flags & SF_DICT) || qe_isalpha(c1))
@@ -1638,7 +1657,8 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
     struct chunk_ctx ctx;
     EditBuffer *b1;
     int p1 = *pp1, p2 = *pp2;
-    int i, j, c, offset, line1, line2, col1, col2, line, col, lines;
+    int i, j, offset, line1, line2, col1, col2, line, col, lines;
+    char32_t c;
     struct chunk *chunk_array;
 
     if (p1 > p2) {
@@ -1788,7 +1808,7 @@ static void do_sort_buffer(EditState *s, int argval, int flags) {
 /*---------------- tag handling ----------------*/
 
 static void tag_buffer(EditState *s) {
-    unsigned int buf[COLORED_MAX_LINE_SIZE];
+    char32_t buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     int offset, line_num, col_num;
 
@@ -2021,7 +2041,8 @@ void do_kill_paragraph(EditState *s, int n) {
 /* replace the contents between p1 and p2 with a specified number
    of newlines and spaces */
 static int eb_respace(EditBuffer *b, int p1, int p2, int newlines, int spaces) {
-    int adjust = 0, nb, offset1, c;
+    int adjust = 0, nb, offset1;
+    char32_t c;
     while (newlines > 0 && p1 < p2) {
         c = eb_nextc(b, p1, &offset1);
         if (c != '\n')
@@ -2030,7 +2051,7 @@ static int eb_respace(EditBuffer *b, int p1, int p2, int newlines, int spaces) {
         newlines--;
     }
     if (newlines > 0) {
-        nb = eb_insert_uchars(b, p1, '\n', newlines);
+        nb = eb_insert_char32_n(b, p1, '\n', newlines);
         adjust += nb;
         p1 += nb;
         p2 += nb;
@@ -2063,7 +2084,7 @@ static int eb_respace(EditBuffer *b, int p1, int p2, int newlines, int spaces) {
 static int get_indent_size(EditState *s, int p1, int p2) {
     int indent_size = 0;
     while (p1 < p2) {
-        int c = eb_nextc(s->b, p1, &p1);
+        char32_t c = eb_nextc(s->b, p1, &p1);
         if (!qe_isblank(c))
             break;
         if (c == '\t') {
@@ -2101,7 +2122,7 @@ void do_fill_paragraph(EditState *s)
         /* skip spaces */
         chunk_start = offset;
         while (offset < par_end) {
-            int c = eb_nextc(s->b, offset, &offset1);
+            char32_t c = eb_nextc(s->b, offset, &offset1);
             if (!qe_isspace(c))
                 break;
             offset = offset1;
@@ -2110,7 +2131,7 @@ void do_fill_paragraph(EditState *s)
         word_start = offset;
         word_size = 0;
         while (offset < par_end) {
-            int c = eb_nextc(s->b, offset, &offset1);
+            char32_t c = eb_nextc(s->b, offset, &offset1);
             if (qe_isspace(c))
                 break;
             offset = offset1;

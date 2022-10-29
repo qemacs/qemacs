@@ -1,7 +1,7 @@
 /*
  * Magpie language mode for QEmacs.
  *
- * Copyright (c) 2000-2020 Charlie Gordon.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -48,9 +48,10 @@ enum {
 };
 
 static void magpie_colorize_line(QEColorizeContext *cp,
-                                 unsigned int *str, int n, ModeDef *syn)
+                                 char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, c, style = 0, level;
+    int i = 0, start = i, style = 0, level;
+    char32_t c;
     int state = cp->colorize_state;
     char kbuf[64];
 

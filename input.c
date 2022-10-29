@@ -2,7 +2,7 @@
  * Input method handling for QEmacs.
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2002-2020 Charlie Gordon.
+ * Copyright (c) 2002-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,7 +25,7 @@ static int default_input(qe__unused__ int *match_buf,
                          qe__unused__ int match_buf_size,
                          qe__unused__ int *match_len_ptr,
                          qe__unused__ const u8 *data,
-                         qe__unused__ const unsigned int *buf,
+                         qe__unused__ const char32_t *buf,
                          qe__unused__ int len)
 {
     return INPUTMETHOD_NOMATCH;
@@ -35,7 +35,7 @@ static int unicode_input(int *match_buf,
                          int match_buf_size,
                          int *match_len_ptr,
                          qe__unused__ const u8 *data,
-                         const unsigned int *buf, int len)
+                         const char32_t *buf, int len)
 {
     int i, h, c;
     if (buf[0] != 'x')
