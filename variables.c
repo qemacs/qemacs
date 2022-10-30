@@ -170,7 +170,7 @@ void variable_complete(CompleteState *cp, CompleteFunc enumerate) {
     const VarDef *vp;
 
     for (vp = qs->first_variable; vp; vp = vp->next) {
-        enumerate(cp, vp->name, CT_TEST);
+        enumerate(cp, vp->name, CT_STRX);
     }
 }
 

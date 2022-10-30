@@ -215,9 +215,9 @@ void mode_complete(CompleteState *cp, CompleteFunc enumerate) {
     ModeDef *m;
 
     for (m = qs->first_mode; m != NULL; m = m->next) {
-        enumerate(cp, m->name, CT_TEST);
+        enumerate(cp, m->name, CT_GLOB);
         if (m->alt_name && !strequal(m->name, m->alt_name))
-            enumerate(cp, m->alt_name, CT_TEST);
+            enumerate(cp, m->alt_name, CT_GLOB);
     }
 }
 
@@ -249,7 +249,7 @@ void command_complete(CompleteState *cp, CompleteFunc enumerate) {
 
     for (i = 0; i < qs->cmd_array_count; i++) {
         for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
-            enumerate(cp, d->name, CT_TEST);
+            enumerate(cp, d->name, CT_GLOB);
         }
     }
 }
@@ -3234,7 +3234,7 @@ void style_complete(CompleteState *cp, CompleteFunc enumerate) {
 
     stp = qe_styles;
     for (i = 0; i < QE_STYLE_NB; i++, stp++) {
-        enumerate(cp, stp->name, CT_TEST);
+        enumerate(cp, stp->name, CT_GLOB);
     }
 }
 
@@ -3292,7 +3292,7 @@ void style_property_complete(CompleteState *cp, CompleteFunc enumerate) {
     int i;
 
     for (i = 0; i < countof(qe_style_properties); i++) {
-        enumerate(cp, qe_style_properties[i], CT_TEST);
+        enumerate(cp, qe_style_properties[i], CT_STRX);
     }
 }
 
@@ -5329,7 +5329,7 @@ static void arg_edit_cb(void *opaque, char *str)
     case CMD_ARG_INT:
         val = strtol(str, &p, 0);
         if (*p != '\0') {
-            put_status(NULL, "Invalid number");
+            put_status(NULL, "Invalid number: %s", str);
             goto fail;
         }
         es->args[index].n = val;
@@ -6393,7 +6393,7 @@ void buffer_complete(CompleteState *cp, CompleteFunc enumerate) {
 
     for (b = qs->first_buffer; b != NULL; b = b->next) {
         if (!(b->flags & BF_SYSTEM))
-            enumerate(cp, b->name, CT_TEST);
+            enumerate(cp, b->name, CT_GLOB);
     }
 }
 
@@ -6484,11 +6484,18 @@ static void complete_start(CompleteState *cp, EditState *s, int start, int end,
                                      cp->current, sizeof(cp->current));
 }
 
-/* XXX: should have a globbing option */
 static void complete_test(CompleteState *cp, const char *str, int mode) {
     int fuzzy = 0;
 
     switch (mode) {
+    case CT_GLOB:
+        if (!strmatch_pat(str, cp->current, 1))
+            return;
+        break;
+    case CT_IGLOB:
+        if (!strimatch_pat(str, cp->current, 1))
+            return;
+        break;
     case CT_STRX:
         if (!strxstart(str, cp->current, NULL))
             return;
@@ -9281,6 +9288,14 @@ int find_resource_file(char *path, int path_size, const char *pattern)
     return ret;
 }
 
+FILE *open_resource_file(const char *name) {
+    char filename[MAX_FILENAME_SIZE];
+    if (find_resource_file(filename, sizeof(filename), name) >= 0)
+        return fopen(filename, "r");
+    else
+        return NULL;
+}
+
 /******************************************************/
 
 void do_load_config_file(EditState *e, const char *file)
@@ -9506,6 +9521,8 @@ void set_user_option(const char *user)
             strcpy(path, ".");
         pstrcat(qs->res_path, sizeof(qs->res_path), path);
         pstrcat(qs->res_path, sizeof(qs->res_path), ":");
+        pstrcat(qs->res_path, sizeof(qs->res_path), path);
+        pstrcat(qs->res_path, sizeof(qs->res_path), "/unidata:");
     }
 
     /* put user directory before standard list */

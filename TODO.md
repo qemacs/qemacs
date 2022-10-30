@@ -65,7 +65,11 @@
 * sort key binding tables?
 * `next-buffer` command on C-x C-right
 * `previous-buffer` command on C-x C-left
-* `save-modified-buffer` command on C-x s
+* `save-some-buffers` command on C-x s
+* add registrable escape sequences
+  ex: S-f5 = ^[[15;2~
+* add registrable key translations for NON ASCII input
+  ex: C-x 8 3 / 4	¾
 
 ## Charsets / Unicode / Bidir
 
@@ -237,8 +241,6 @@ insert_window_left()  deletes some left-most windows
   * `M-g M-p` `previous-error`
   * `M-g M-n` `next-error`
 * Missing commands:
-  * `insert-char` on `C-x 8 RET`
-  * `insert-char` should accept a Unicode code-point name with completion
   * `what-cursor-position` with universal prefix: show popup with long description
   * `compare-windows` should resync from the end of line.
   * `elastic-tabs`

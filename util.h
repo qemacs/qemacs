@@ -218,6 +218,8 @@ int stristart(const char *str, const char *val, const char **ptr);
 int strxstart(const char *str, const char *val, const char **ptr);
 int strxcmp(const char *str1, const char *str2);
 int strmatchword(const char *str, const char *val, const char **ptr);
+int strmatch_pat(const char *str, const char *pat, int start);
+int strimatch_pat(const char *str, const char *pat, int start);
 int get_str(const char **pp, char *buf, int buf_size, const char *stop);
 
 int strsubst(char *buf, int buf_size, const char *from,
@@ -550,8 +552,6 @@ static inline int qe_iswide(char32_t c) {
 typedef struct CompleteState CompleteState;
 typedef void (*CompleteFunc)(CompleteState *cp, const char *str, int mode);
 /* mode values for default CompleteFunc passed to complete_xxx() functions */
-#define CT_TEST  0
-#define CT_STRX  1
-#define CT_SET   2
+enum { CT_TEST, CT_GLOB, CT_IGLOB, CT_STRX, CT_SET };
 
 #endif  /* UTIL_H */

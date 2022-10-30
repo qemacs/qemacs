@@ -1829,7 +1829,7 @@ static void tag_complete(CompleteState *cp, CompleteFunc enumerate) {
 
         for (p = cp->target->b->property_list; p; p = p->next) {
             if (p->type == QE_PROP_TAG) {
-                enumerate(cp, p->data, CT_TEST);
+                enumerate(cp, p->data, CT_GLOB);
             }
         }
     }
@@ -1933,6 +1933,85 @@ static void do_list_tags(EditState *s, int argval) {
 
 static CompletionDef tag_completion = {
     "tag", tag_complete, tag_print_entry, tag_get_entry
+};
+
+/*---------------- Unicode character name completion ----------------*/
+
+static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
+    char buf[256];
+    char entry[256];
+    FILE *fp;
+
+    /* enumerate Unicode character names from Unicode consortium data */
+    if ((fp = open_resource_file("DerivedName-15.0.0.txt")) != NULL
+    ||  (fp = open_resource_file("DerivedName.txt")) != NULL
+    ||  (fp = open_resource_file("extracted/DerivedName.txt")) != NULL) {
+        while (fgets(buf, sizeof buf, fp)) {
+            char *p1, *p2, *p3;
+            if ((p1 = strchr(buf, ';')) != NULL
+            &&  p1[1] == ' '
+            &&  !strchr(p1 + 2, '*')
+            &&  (p2 = strchr(p1 + 2, '\n')) != NULL) {
+                *p1 = '\0';
+                p1 += 2;
+                *p2 = '\0';
+                p3 = strchr(buf, ' ');
+                if (p3)
+                    *p3 = '\0';
+                snprintf(entry, sizeof entry, "%s\t%s", p1, buf);
+                enumerate(cp, entry, CT_IGLOB);
+            }
+        }
+        fclose(fp);
+    } else
+    if ((fp = open_resource_file("UnicodeData-15.0.0.txt")) != NULL
+    ||  (fp = open_resource_file("UnicodeData.txt")) != NULL) {
+        while (fgets(buf, sizeof buf, fp)) {
+            char *p1, *p2;
+            if ((p1 = strchr(buf, ';')) != NULL
+            &&  p1[1] != ';'
+            &&  p1[1] != '<'
+            &&  (p2 = strchr(p1 + 1, ';')) != NULL) {
+                *p1++ = '\0';
+                *p2 = '\0';
+                snprintf(entry, sizeof entry, "%s\t%s", p1, buf);
+                enumerate(cp, entry, CT_IGLOB);
+            }
+        }
+        fclose(fp);
+    }
+}
+
+static int charname_print_entry(CompleteState *cp, EditState *s, const char *name) {
+    char *p = strchr(name, '\t');
+    if (p != NULL) {
+        char cbuf[MAX_CHAR_BYTES + 1];
+        char32_t code = strtol(p + 1, NULL, 16);
+        return eb_printf(s->b, "%s\t[%s]", name,
+                         utf8_char32_to_string(cbuf, code));
+    } else {
+        return eb_puts(s->b, name);
+    }
+}
+
+static int charname_get_entry(EditState *s, char *dest, int size, int offset) {
+    char entry[256];
+    char *p;
+
+    eb_fgets(s->b, entry, sizeof entry, offset, &offset);
+    p = strchr(entry, '\t');
+    if (p) {
+        int len = strcspn(p + 1, "\t\n");
+        return snprintf(dest, size, "0x%.*s", len, p + 1);
+    } else {
+        if (size > 0)
+            *dest = '\0';
+        return 0;
+    }
+}
+
+static CompletionDef charname_completion = {
+    "charname", charname_complete, charname_print_entry, charname_get_entry
 };
 
 /*---------------- paragraph handling ----------------*/
@@ -2350,6 +2429,7 @@ static const CmdDef extra_commands[] = {
 static int extras_init(void) {
     qe_register_commands(NULL, extra_commands, countof(extra_commands));
     qe_register_completion(&tag_completion);
+    qe_register_completion(&charname_completion);
 
     return 0;
 }

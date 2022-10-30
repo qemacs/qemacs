@@ -31,10 +31,10 @@ static const CmdDef basic_commands[] = {
     CMD2( "self-insert-command", "default",
           "Insert the character you type",
           do_char, ESii, "*" "k" "p")
-    CMD2( "insert-char", "M-#",
-          "Insert the character with a specific code",
+    CMD2( "insert-char", "M-#, C-x 8 RET",
+          "Insert the character with a specific code or Unicode name",
           do_char, ESii, "*"
-          "n{Insert char: }|charvalue|"
+          "n{Insert char: }[charname]|charvalue|"
           "p")
     /* do_tab will not change read only buffer */
     CMD2( "tabulate", "TAB",

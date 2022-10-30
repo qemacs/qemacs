@@ -167,6 +167,7 @@ typedef struct CmdLineOptionDef {
 void qe_register_cmd_line_options(CmdLineOptionDef *table);
 
 int find_resource_file(char *path, int path_size, const char *pattern);
+FILE *open_resource_file(const char *name);
 
 /* qe event handling */
 

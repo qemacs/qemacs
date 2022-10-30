@@ -852,7 +852,7 @@ static void pixel_format_complete(CompleteState *cp, CompleteFunc enumerate) {
 
     for (i = 0; i < PIX_FMT_NB; i++) {
         name = avcodec_get_pix_fmt_name(i);
-        enumerate(cp, name, CT_TEST);
+        enumerate(cp, name, CT_IGLOB);
     }
 }
 

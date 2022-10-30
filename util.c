@@ -1027,6 +1027,54 @@ int strmatchword(const char *str, const char *val, const char **ptr) {
     return 0;
 }
 
+int strmatch_pat(const char *str, const char *pat, int start) {
+    // XXX: Document this function
+    u8 c1, c2;
+    while (*pat) {
+        c1 = *pat++;
+        if (c1 == '*') {
+            c1 = *pat++;
+            if (c1 == '\0')
+                return 1;
+            while ((c2 = *str++) != '\0') {
+                if (c1 == c2 && strmatch_pat(str, pat, start))
+                    return 1;
+            }
+            return 0;
+        } else {
+            c2 = *str++;
+            if (c1 != c2)
+                return 0;
+        }
+    }
+    return start || *str == '\0';
+}
+
+int strimatch_pat(const char *str, const char *pat, int start) {
+    // XXX: Document this function
+    // XXX: should handle UTF-8 case conversion
+    u8 c1, c2;
+    while (*pat) {
+        c1 = *pat++;
+        if (c1 == '*') {
+            c1 = *pat++;
+            if (c1 == '\0')
+                return 1;
+            while ((c2 = *str++) != '\0') {
+                if ((c1 == c2 || qe_toupper(c1) == qe_toupper(c2))
+                &&  strimatch_pat(str, pat, start))
+                    return 1;
+            }
+            return 0;
+        } else {
+            c2 = *str++;
+            if (c1 != c2 && qe_toupper(c1) != qe_toupper(c2))
+                return 0;
+        }
+    }
+    return start || *str == '\0';
+}
+
 /* used in libqhtml */
 int get_str(const char **pp, char *buf, int buf_size, const char *stop) {
     /*@API utils
