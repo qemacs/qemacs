@@ -1325,7 +1325,7 @@ static int symbol_print_entry(CompleteState *cp, EditState *s, const char *name)
 
 static CompletionDef symbol_completion = {
     "symbol", symbol_complete, symbol_print_entry, command_get_entry,
-    CF_SPACE_OK | CF_NO_AUTO_SUBMIT
+    NULL, CF_SPACE_OK | CF_NO_AUTO_SUBMIT
 };
 #endif
 

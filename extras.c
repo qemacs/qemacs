@@ -1602,12 +1602,14 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
         char32_t c1 = 0, c2 = 0;
         while (pos1 < p1->end) {
             c1 = eb_nextc(cp->b, pos1, &pos1);
+            /* XXX: incorrect for non ASCII contents */
             if (!(cp->flags & SF_DICT) || qe_isalpha(c1))
                 break;
             c1 = 0;
         }
         while (pos2 < p2->end) {
             c2 = eb_nextc(cp->b, pos2, &pos2);
+            /* XXX: incorrect for non ASCII contents */
             if (!(cp->flags & SF_DICT) || qe_isalpha(c2))
                 break;
             c2 = 0;
@@ -1638,7 +1640,7 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
                 return +1;
         }
         if (cp->flags & SF_FOLD) {
-            // XXX: should support unicode case folding
+            // XXX: should also ignore accents
             c1 = qe_toupper(c1);
             c2 = qe_toupper(c2);
         }
@@ -1958,7 +1960,7 @@ static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
                 p3 = strchr(buf, ' ');
                 if (p3)
                     *p3 = '\0';
-                snprintf(entry, sizeof entry, "%s\t%s", p1, buf);
+                snprintf(entry, sizeof entry, "%s\t%5s", p1, buf);
                 enumerate(cp, entry, CT_IGLOB);
             }
         }
@@ -1974,7 +1976,7 @@ static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
             &&  (p2 = strchr(p1 + 1, ';')) != NULL) {
                 *p1++ = '\0';
                 *p2 = '\0';
-                snprintf(entry, sizeof entry, "%s\t%s", p1, buf);
+                snprintf(entry, sizeof entry, "%s\t%5s", p1, buf);
                 enumerate(cp, entry, CT_IGLOB);
             }
         }
@@ -1982,12 +1984,56 @@ static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
     }
 }
 
+static long charname_convert_entry(const char *str, const char **endp) {
+    char buf[256];
+    FILE *fp;
+    long code = strtol_c(str, endp, 0);
+    if (**endp == '\0')
+        return code;
+
+    /* enumerate Unicode character names from Unicode consortium data */
+    if ((fp = open_resource_file("DerivedName-15.0.0.txt")) != NULL
+    ||  (fp = open_resource_file("DerivedName.txt")) != NULL
+    ||  (fp = open_resource_file("extracted/DerivedName.txt")) != NULL) {
+        while (fgets(buf, sizeof buf, fp)) {
+            char *p1, *p2;
+            if ((p1 = strchr(buf, ';')) != NULL
+            &&  p1[1] == ' '
+            &&  !strchr(p1 + 2, '*')
+            &&  (p2 = strchr(p1 + 2, '\n')) != NULL) {
+                *p2 = '\0';
+                if (stristart(str, p1 + 2, endp) && !**endp)
+                    return strtol(buf, NULL, 16);
+            }
+        }
+        fclose(fp);
+    } else
+    if ((fp = open_resource_file("UnicodeData-15.0.0.txt")) != NULL
+    ||  (fp = open_resource_file("UnicodeData.txt")) != NULL) {
+        while (fgets(buf, sizeof buf, fp)) {
+            char *p1, *p2;
+            if ((p1 = strchr(buf, ';')) != NULL
+            &&  p1[1] != ';'
+            &&  p1[1] != '<'
+            &&  (p2 = strchr(p1 + 1, ';')) != NULL) {
+                *p2 = '\0';
+                if (stristart(str, p1 + 1, endp) && !**endp)
+                    return strtol(buf, NULL, 16);
+            }
+        }
+        fclose(fp);
+    }
+    *endp = str;
+    return 0;
+}
+
 static int charname_print_entry(CompleteState *cp, EditState *s, const char *name) {
     char *p = strchr(name, '\t');
     if (p != NULL) {
         char cbuf[MAX_CHAR_BYTES + 1];
         char32_t code = strtol(p + 1, NULL, 16);
-        return eb_printf(s->b, "%s\t[%s]", name,
+        maxp(&s->b->tab_width, min(60, 2 + (p - name)));
+        return eb_printf(s->b, "%s  %s", name,
                          utf8_char32_to_string(cbuf, code));
     } else {
         return eb_puts(s->b, name);
@@ -2001,8 +2047,9 @@ static int charname_get_entry(EditState *s, char *dest, int size, int offset) {
     eb_fgets(s->b, entry, sizeof entry, offset, &offset);
     p = strchr(entry, '\t');
     if (p) {
-        int len = strcspn(p + 1, "\t\n");
-        return snprintf(dest, size, "0x%.*s", len, p + 1);
+        p += strspn(p, " \t");
+        int len = strcspn(p, " \t\n");
+        return snprintf(dest, size, "0x%.*s", len, p);
     } else {
         if (size > 0)
             *dest = '\0';
@@ -2011,7 +2058,8 @@ static int charname_get_entry(EditState *s, char *dest, int size, int offset) {
 }
 
 static CompletionDef charname_completion = {
-    "charname", charname_complete, charname_print_entry, charname_get_entry
+    "charname", charname_complete, charname_print_entry, charname_get_entry,
+    charname_convert_entry
 };
 
 /*---------------- paragraph handling ----------------*/

@@ -1028,7 +1028,16 @@ int strmatchword(const char *str, const char *val, const char **ptr) {
 }
 
 int strmatch_pat(const char *str, const char *pat, int start) {
-    // XXX: Document this function
+    /*@API utils
+       Check if the pattern `pat` matches `str` or a prefix of `str`.
+       Patterns use only `*` as a wildcard, to match any sequence of
+       characters.
+       @param `str` a valid string pointer.
+       @param `pat` a valid string pointer for the pattern to test.
+       @param `start` a non zero integer if the function should return
+       `1` for a partial match at the start of `str.
+       @return `1` if there is a match, `0` otherwise.
+     */
     u8 c1, c2;
     while (*pat) {
         c1 = *pat++;
@@ -1051,16 +1060,46 @@ int strmatch_pat(const char *str, const char *pat, int start) {
 }
 
 int strimatch_pat(const char *str, const char *pat, int start) {
-    // XXX: Document this function
-    // XXX: should handle UTF-8 case conversion
-    u8 c1, c2;
+    /*@API utils
+       Check if the pattern `pat` matches `str` or a prefix of `str`,
+       using a case insensitive comparison.  Patterns use only `*` as
+       a wildcard, to match any sequence of characters.
+       Accents are also ignored by this function.
+       @param `str` a valid string pointer.
+       @param `pat` a valid string pointer for the pattern to test.
+       @param `start` a non zero integer if the function should return
+       `1` for a partial match at the start of `str.
+       @return `1` if there is a match, `0` otherwise.
+     */
+    char32_t c1, c2;
     while (*pat) {
         c1 = *pat++;
+        if (c1 & 0x80) {
+            pat--;
+            do {
+                c1 = utf8_decode(&pat);
+            } while (qe_isaccent(c1));
+            c1 = qe_unaccent(c1);
+        }
         if (c1 == '*') {
             c1 = *pat++;
+            if (c1 & 0x80) {
+                pat--;
+                do {
+                    c1 = utf8_decode(&pat);
+                } while (qe_isaccent(c1));
+                c1 = qe_unaccent(c1);
+            }
             if (c1 == '\0')
                 return 1;
             while ((c2 = *str++) != '\0') {
+                if (c2 & 0x80) {
+                    str--;
+                    do {
+                        c2 = utf8_decode(&str);
+                    } while (qe_isaccent(c2));
+                    c2 = qe_unaccent(c2);
+                }
                 if ((c1 == c2 || qe_toupper(c1) == qe_toupper(c2))
                 &&  strimatch_pat(str, pat, start))
                     return 1;
@@ -1068,6 +1107,13 @@ int strimatch_pat(const char *str, const char *pat, int start) {
             return 0;
         } else {
             c2 = *str++;
+            if (c2 & 0x80) {
+                str--;
+                do {
+                    c2 = utf8_decode(&str);
+                } while (qe_isaccent(c2));
+                c2 = qe_unaccent(c2);
+            }
             if (c1 != c2 && qe_toupper(c1) != qe_toupper(c2))
                 return 0;
         }
@@ -2031,6 +2077,12 @@ void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
  * int qe_wcwidth_variant(char32_t ucs);
  */
 #include "wcwidth.c"
+
+#ifdef CONFIG_TINY
+char32_t qe_unaccent(char32_t c) { return c; }
+char32_t wctoupper(char32_t c) { return c; }
+char32_t wctolower(char32_t c) { return c; }
+#endif
 
 /* UTF-8 specific tables */
 

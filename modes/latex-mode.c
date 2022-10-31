@@ -233,7 +233,8 @@ static struct latex_function *find_latex_func(const char *name)
     return NULL;
 }
 
-static void latex_cmd_run(void *opaque, char *cmd)
+static void latex_cmd_run(void *opaque, char *cmd,
+                          qe__unused__ CompletionDef *completion)
 {
     struct latex_function *func = (struct latex_function *)opaque;
     char dir[MAX_FILENAME_SIZE];
@@ -313,7 +314,7 @@ static void do_latex(EditState *e, const char *cmd)
                             NULL /* completion */,
                             latex_cmd_run, func);
         } else {
-            latex_cmd_run(func, buf);
+            latex_cmd_run(func, buf, NULL);
         }
     } else {
         put_status(e, "%s: No match", buf);

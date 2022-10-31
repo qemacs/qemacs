@@ -5114,7 +5114,7 @@ int qe_get_prototype(const CmdDef *d, char *buf, int size) {
     return out->len;
 }
 
-static void arg_edit_cb(void *opaque, char *str);
+static void arg_edit_cb(void *opaque, char *str, CompletionDef *completion);
 static void parse_arguments(ExecCmdState *es);
 static void free_cmd(ExecCmdState **esp);
 
@@ -5311,11 +5311,11 @@ static void free_cmd(ExecCmdState **esp)
 
 /* when the argument has been typed by the user, this callback is
    called */
-static void arg_edit_cb(void *opaque, char *str)
+static void arg_edit_cb(void *opaque, char *str, CompletionDef *completion)
 {
     ExecCmdState *es = opaque;
     int index, val;
-    char *p;
+    const char *p;
 
     if (!str) {
         /* command aborted */
@@ -5327,7 +5327,11 @@ static void arg_edit_cb(void *opaque, char *str)
     index = es->nb_args - 1;
     switch (es->args_type[index]) {
     case CMD_ARG_INT:
-        val = strtol(str, &p, 0);
+        if (completion && completion->convert_entry) {
+            val = completion->convert_entry(str, &p);
+        } else {
+            val = strtol_c(str, &p, 0);
+        }
         if (*p != '\0') {
             put_status(NULL, "Invalid number: %s", str);
             goto fail;
@@ -5339,7 +5343,7 @@ static void arg_edit_cb(void *opaque, char *str)
             qe_free(&str);
             str = qe_strdup(es->default_input);
         }
-        es->args[index].p = str; /* will be freed at the of the command */
+        es->args[index].p = str; /* will be freed at end of the command */
         break;
     }
     /* now we can parse the following arguments */
@@ -6370,20 +6374,20 @@ static CompletionDef file_completion = {
 #else
     NULL,
 #endif
-    NULL, CF_FILENAME
+    NULL, NULL, CF_FILENAME
 };
 
 #ifndef CONFIG_TINY
 static CompletionDef dir_completion = {
     "dir", file_complete,
     file_print_entry,
-    NULL, CF_DIRNAME | CF_NO_FUZZY
+    NULL, NULL, CF_DIRNAME | CF_NO_FUZZY
 };
 
 static CompletionDef resource_completion = {
     "resource", file_complete,
     file_print_entry,
-    NULL, CF_RESOURCE | CF_NO_FUZZY
+    NULL, NULL, CF_RESOURCE | CF_NO_FUZZY
 };
 #endif
 
@@ -6537,7 +6541,7 @@ static void complete_end(CompleteState *cp)
 typedef struct MinibufState {
     QEModeData base;
 
-    void (*cb)(void *opaque, char *buf);
+    void (*cb)(void *opaque, char *buf, CompletionDef *completion);
     void *opaque;
 
     EditState *completion_popup_window;  /* XXX: should have a popup_window member */
@@ -6591,6 +6595,7 @@ void do_minibuffer_complete(EditState *s, int type)
     EditBuffer *b;
     int w, h, h1, w1;
     MinibufState *mb;
+    const char *p;
 
     if ((mb = minibuffer_get_state(s, 1)) == NULL)
         return;
@@ -6663,6 +6668,10 @@ void do_minibuffer_complete(EditState *s, int type)
             match_len = match_strings(outputs[0]->str, outputs[i]->str,
                                       match_len);
         }
+        /* strip extra data */
+        p = memchr(outputs[0]->str, '\t', match_len);
+        if (p)
+            match_len = p - outputs[0]->str;
     }
     if (match_len > cs.len) {
         /* add the possible chars */
@@ -6894,10 +6903,11 @@ void do_minibuffer_exit(EditState *s, int do_abort)
 {
     char buf[4096], *retstr;
     MinibufState *mb;
+    CompletionDef *completion;
     StringArray *hist;
     EditState *cw;
     EditState *target;
-    void (*cb)(void *opaque, char *buf);
+    void (*cb)(void *opaque, char *buf, CompletionDef *completion);
     void *opaque;
 
     if ((mb = minibuffer_get_state(s, 1)) == NULL)
@@ -6942,6 +6952,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     }
 
     cb = mb->cb;
+    completion = mb->completion;
     opaque = mb->opaque;
     target = s->target_window;
     mb->cb = NULL;
@@ -6954,11 +6965,11 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     /* Force status update and call the callback */
     if (do_abort) {
         put_status(target, "!Canceled.");
-        (*cb)(opaque, NULL);
+        (*cb)(opaque, NULL, NULL);
     } else {
         put_status(target, "!");
         retstr = qe_strdup(buf);
-        (*cb)(opaque, retstr);
+        (*cb)(opaque, retstr, completion);
     }
 }
 
@@ -6967,7 +6978,8 @@ void do_minibuffer_exit(EditState *s, int do_abort)
    editing was aborted. */
 void minibuffer_edit(EditState *e, const char *input, const char *prompt,
                      StringArray *hist, const char *completion_name,
-                     void (*cb)(void *opaque, char *buf), void *opaque)
+                     void (*cb)(void *opaque, char *buf, CompletionDef *completion),
+                     void *opaque)
 {
     QEmacsState *qs = &qe_state;
     MinibufState *mb;
@@ -6978,7 +6990,7 @@ void minibuffer_edit(EditState *e, const char *input, const char *prompt,
     /* check if already in minibuffer editing */
     if (e->flags & WF_MINIBUF) {
         put_status(NULL, "|Already editing in minibuffer");
-        cb(opaque, NULL);
+        cb(opaque, NULL, NULL);
         return;
     }
 
@@ -7029,7 +7041,7 @@ static void minibuffer_mode_free(EditBuffer *b, void *state)
 {
     /* If minibuffer is destroyed, call callback with NULL pointer */
     MinibufState *mb = state;
-    void (*cb)(void *opaque, char *buf);
+    void (*cb)(void *opaque, char *buf, CompletionDef *completion);
     void *opaque;
 
     if (!mb)
@@ -7045,7 +7057,7 @@ static void minibuffer_mode_free(EditBuffer *b, void *state)
 
     if (cb) {
         put_status(NULL, "!Abort.");
-        (*cb)(opaque, NULL);
+        (*cb)(opaque, NULL, NULL);
     }
 }
 
@@ -7357,7 +7369,7 @@ void do_not_modified(EditState *s, int argval)
     s->b->modified = (argval != NO_ARG);
 }
 
-static void kill_buffer_confirm_cb(void *opaque, char *reply)
+static void kill_buffer_confirm_cb(void *opaque, char *reply, CompletionDef *completion)
 {
     int yes_replied;
 
@@ -8101,7 +8113,7 @@ typedef struct QuitState {
 
 static void quit_examine_buffers(QuitState *is);
 static void quit_key(void *opaque, int ch);
-static void quit_confirm_cb(void *opaque, char *reply);
+static void quit_confirm_cb(void *opaque, char *reply, CompletionDef *completion);
 
 void do_exit_qemacs(EditState *s, int argval)
 {
@@ -8217,7 +8229,9 @@ static void quit_key(void *opaque, int ch)
     quit_examine_buffers(is);
 }
 
-static void quit_confirm_cb(qe__unused__ void *opaque, char *reply)
+static void quit_confirm_cb(qe__unused__ void *opaque,
+                            char *reply,
+                            qe__unused__ CompletionDef *completion)
 {
     if (!reply)
         return;

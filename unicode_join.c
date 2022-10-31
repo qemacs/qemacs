@@ -2,6 +2,7 @@
  * Unicode joining algorithms for QEmacs.
  *
  * Copyright (c) 2000 Fabrice Bellard.
+ * Copyright (c) 2000-2022 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -138,6 +139,34 @@ int expand_ligature(char32_t *buf, char32_t c) {
         }
     }
     return 0;
+}
+
+char32_t qe_unaccent(char32_t c) {
+    char32_t buf[2];
+    if (expand_ligature(buf, c) && qe_isaccent(buf[1]))
+        return buf[0];
+    else
+        return c;
+}
+
+char32_t wctoupper(char32_t c) {
+    char32_t buf[2];
+    if (expand_ligature(buf, c) && qe_isaccent(buf[1])){
+        char32_t c2 = find_ligature(qe_toupper(buf[0]), buf[1]);
+        if (c2 != 0xffffffff)
+            return c2;
+    }
+    return c;
+}
+
+char32_t wctolower(char32_t c) {
+    char32_t buf[2];
+    if (expand_ligature(buf, c) && qe_isaccent(buf[1])) {
+        char32_t c2 = find_ligature(qe_tolower(buf[0]), buf[1]);
+        if (c2 != 0xffffffff)
+            return c2;
+    }
+    return c;
 }
 
 /* apply all the ligature rules in logical order. Always return a

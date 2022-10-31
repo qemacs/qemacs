@@ -1292,6 +1292,7 @@ typedef struct CompletionDef {
     void (*enumerate)(CompleteState *cp, CompleteFunc enumerate);
     int (*print_entry)(CompleteState *cp, EditState *s, const char *name);
     int (*get_entry)(EditState *s, char *dest, int size, int offset);
+    long (*convert_entry)(const char *s, const char **endp);
 #define CF_FILENAME        1
 #define CF_NO_FUZZY        2
 #define CF_SPACE_OK        4
@@ -1308,7 +1309,8 @@ void put_status(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void put_error(EditState *s, const char *fmt, ...) qe__attr_printf(2,3);
 void minibuffer_edit(EditState *e, const char *input, const char *prompt,
                      StringArray *hist, const char *completion_name,
-                     void (*cb)(void *opaque, char *buf), void *opaque);
+                     void (*cb)(void *opaque, char *buf, CompletionDef *completion),
+                     void *opaque);
 void command_complete(CompleteState *cp, CompleteFunc enumerate);
 int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s);
 int command_print_entry(CompleteState *cp, EditState *s, const char *name);
