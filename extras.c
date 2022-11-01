@@ -188,7 +188,8 @@ void do_compare_windows(EditState *s, int argval)
                     continue;
                 }
                 if (qs->ignore_case) {
-                    if (qe_tolower(ch1) == qe_tolower(ch2)) {
+                    // XXX: should also ignore accents
+                    if (qe_wtolower(ch1) == qe_wtolower(ch2)) {
                         s1->offset = offset1;
                         s2->offset = offset2;
                         comment3 = "Matched case, ";
@@ -1113,8 +1114,8 @@ static void do_about_qemacs(EditState *s)
     show_popup(s, b, "About QEmacs");
 }
 
-/* extract the next word from the string. ignore spaces, stop on '/' */
-static int str_get_word(char *buf, int size, const char *p, const char **pp)
+/* extract the next word from the ASCII string. ignore spaces, stop on '/' */
+static int str_get_word7(char *buf, int size, const char *p, const char **pp)
 {
     int len = 0;
 
@@ -1131,7 +1132,7 @@ static int str_get_word(char *buf, int size, const char *p, const char **pp)
     } else {
         for (; *p != '\0' && *p != ' ' && *p != '/'; p++, len++) {
             if (len + 1 < size) {
-                buf[len] = qe_tolower((unsigned char)*p);
+                buf[len] = qe_tolower((u8)*p);
             }
         }
     }
@@ -1161,7 +1162,7 @@ static int qe_term_get_style(const char *str, QETermStyle *style)
 
     attr = 0;
     for (;;) {
-        len = str_get_word(buf, sizeof(buf), p, &p);
+        len = str_get_word7(buf, sizeof(buf), p, &p);
 
         if (strfind("bold|strong", buf)) {
             attr |= QE_TERM_BOLD;
@@ -1186,9 +1187,9 @@ static int qe_term_get_style(const char *str, QETermStyle *style)
     if (len > 0) {
         if (css_get_color(&fg_color, buf))
             return 1;
-        len = str_get_word(buf, sizeof(buf), p, &p);
+        len = str_get_word7(buf, sizeof(buf), p, &p);
         if (strfind("/|on", buf)) {
-            str_get_word(buf, sizeof(buf), p, &p);
+            str_get_word7(buf, sizeof(buf), p, &p);
             if (css_get_color(&bg_color, buf))
                 return 2;
         }
@@ -1603,14 +1604,14 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
         while (pos1 < p1->end) {
             c1 = eb_nextc(cp->b, pos1, &pos1);
             /* XXX: incorrect for non ASCII contents */
-            if (!(cp->flags & SF_DICT) || qe_isalpha(c1))
+            if (!(cp->flags & SF_DICT) || qe_iswalpha(c1))
                 break;
             c1 = 0;
         }
         while (pos2 < p2->end) {
             c2 = eb_nextc(cp->b, pos2, &pos2);
             /* XXX: incorrect for non ASCII contents */
-            if (!(cp->flags & SF_DICT) || qe_isalpha(c2))
+            if (!(cp->flags & SF_DICT) || qe_iswalpha(c2))
                 break;
             c2 = 0;
         }
@@ -1641,8 +1642,8 @@ static int chunk_cmp(void *vp0, const void *vp1, const void *vp2) {
         }
         if (cp->flags & SF_FOLD) {
             // XXX: should also ignore accents
-            c1 = qe_toupper(c1);
-            c2 = qe_toupper(c2);
+            c1 = qe_wtoupper(c1);
+            c2 = qe_wtoupper(c2);
         }
         if (c1 < c2)
             return -1;
@@ -1721,7 +1722,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
                     c = 0;
                     break;
                 }
-                if ((flags & SF_DICT) && !qe_isalpha(c)) {
+                if ((flags & SF_DICT) && !qe_iswalpha(c)) {
                     pos = pos1;
                     continue;
                 }
@@ -1730,7 +1731,7 @@ static int eb_sort_span(EditBuffer *b, int *pp1, int *pp2, int cur_offset, int f
                     break;
                 }
                 if (flags & SF_FOLD) {
-                    c = qe_toupper(c);
+                    c = qe_wtoupper(c);
                 }
                 if (c > 0xFFFF)
                     c = 0xFFFF;
@@ -2002,8 +2003,10 @@ static long charname_convert_entry(const char *str, const char **endp) {
             &&  !strchr(p1 + 2, '*')
             &&  (p2 = strchr(p1 + 2, '\n')) != NULL) {
                 *p2 = '\0';
-                if (stristart(str, p1 + 2, endp) && !**endp)
+                if (utf8_strimatch_pat(p1 + 2, str, 0)) {
+                    *endp = strchr(str, '\0');
                     return strtol(buf, NULL, 16);
+                }
             }
         }
         fclose(fp);
@@ -2017,8 +2020,10 @@ static long charname_convert_entry(const char *str, const char **endp) {
             &&  p1[1] != '<'
             &&  (p2 = strchr(p1 + 1, ';')) != NULL) {
                 *p2 = '\0';
-                if (stristart(str, p1 + 1, endp) && !**endp)
+                if (utf8_strimatch_pat(p1 + 1, str, 0)) {
+                    *endp = strchr(str, '\0');
                     return strtol(buf, NULL, 16);
+                }
             }
         }
         fclose(fp);

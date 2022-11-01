@@ -2261,12 +2261,11 @@ int eb_match_char32(EditBuffer *b, int offset, char32_t c, int *offsetp)
     return 1;
 }
 
-int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp)
-{
+int eb_match_str_utf8(EditBuffer *b, int offset, const char *str, int *offsetp) {
     const char *p = str;
 
     while (*p) {
-        char32_t c = utf8_decode((const char **)(void *)&p);
+        char32_t c = utf8_decode(&p);
         if (eb_nextc(b, offset, &offset) != c)
             return 0;
     }
@@ -2275,13 +2274,13 @@ int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp)
     return 1;
 }
 
-int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp)
-{
+int eb_match_istr_utf8(EditBuffer *b, int offset, const char *str, int *offsetp) {
     const char *p = str;
 
     while (*p) {
-        char32_t c = utf8_decode((const char **)(void *)&p);
-        if (qe_toupper(eb_nextc(b, offset, &offset)) != qe_toupper(c))
+        char32_t c = utf8_decode(&p);
+        // XXX: should ignore accents?
+        if (qe_wtoupper(eb_nextc(b, offset, &offset)) != qe_wtoupper(c))
             return 0;
     }
     if (offsetp)

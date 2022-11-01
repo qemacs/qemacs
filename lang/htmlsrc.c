@@ -350,16 +350,13 @@ static void htmlsrc_colorize_line(QEColorizeContext *cp,
     cp->colorize_state = state;
 }
 
-static int html_tagcmp(const char *s1, const char *s2)
-{
-    int d;
-
+static int html_tagcmp(const char *s1, const char *s2) {
     while (*s2) {
-        d = *s2 - qe_toupper(*s1);
+        u8 uc1 = *s1++;
+        u8 uc2 = *s2++;
+        int d = uc2 - qe_toupper(uc1);
         if (d)
             return d;
-        s2++;
-        s1++;
     }
     if (qe_isalnum_(*s1))
         return -1;

@@ -489,7 +489,7 @@ static void do_org_todo(EditState *s)
 
     offset = eb_skip_chars(s->b, offset, bullets + 1);
     for (kw = 0; kw < countof(OrgTodoKeywords); kw++) {
-        if (eb_match_str(s->b, offset, OrgTodoKeywords[kw].keyword, &offset1)
+        if (eb_match_str_utf8(s->b, offset, OrgTodoKeywords[kw].keyword, &offset1)
         &&  eb_match_char32(s->b, offset1, ' ', &offset1)) {
             eb_delete_range(s->b, offset, offset1);
             break;

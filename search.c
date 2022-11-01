@@ -89,8 +89,8 @@ static int eb_search(EditBuffer *b, int dir, int flags,
         int upper_count = 0;
         int lower_count = 0;
         for (pos = 0; pos < len; pos++) {
-            lower_count += qe_islower(buf[pos]);
-            upper_count += qe_isupper(buf[pos]);
+            lower_count += qe_iswlower(buf[pos]);
+            upper_count += qe_iswupper(buf[pos]);
         }
         if (lower_count > 0 && upper_count == 0)
             flags |= SEARCH_FLAG_IGNORECASE;
@@ -159,7 +159,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
         for (offset2 = offset1;;) {
             c2 = buf[pos++];
             if (flags & SEARCH_FLAG_IGNORECASE) {
-                if (qe_toupper(c) != qe_toupper(c2))
+                if (qe_wtoupper(c) != qe_wtoupper(c2))
                     break;
             } else {
                 if (c != c2)

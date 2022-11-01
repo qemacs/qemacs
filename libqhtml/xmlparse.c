@@ -1062,21 +1062,17 @@ static void flush_text_buffer(XMLState *s, struct EditBuffer *b,
     css_set_text_buffer(box1, b, offset0, offset1, 1);
 }
 
-static int xml_tagcmp(const char *s1, const char *s2)
-{
-    int d;
-
+static int xml_tagcmp(const char *s1, const char *s2) {
     while (*s2) {
-        d = (unsigned char)*s2 - qe_tolower((unsigned char)*s1);
+        unsigned char uc1 = *s1++;
+        unsigned char uc2 = *s2++;
+        int d = uc2 - qe_tolower(uc1);
         if (d)
             return d;
-        s2++;
-        s1++;
     }
     /* XXX: Should only return 0 if (*s1) is separator */
     return 0;
 }
-
 
 static int xml_parse_internal(XMLState *s, const char *buf_start, int buf_len,
                               struct EditBuffer *b, int offset_start)

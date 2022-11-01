@@ -175,15 +175,24 @@ static inline int qe_isalnum_(char32_t c) {
 
 static inline int qe_isword(char32_t c) {
     /* XXX: any unicode char >= 128 is considered as word. */
+    // XXX: should use wc version with tables
     return qe_isalnum_(c) || (c >= 128);
 }
 
+static inline char32_t qe_tolower(char32_t c) {
+    return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
+}
+
+static inline char32_t qe_toupper(char32_t c) {
+    return (qe_inrange(c, 'a', 'z') ? c + 'A' - 'a' : c);
+}
+
 static inline int qe_findchar(const char *str, char32_t c) {
-    return qe_inrange(c, 1, 255) && strchr(str, c) != NULL;
+    return qe_inrange(c, 1, 127) && strchr(str, c) != NULL;
 }
 
 static inline int qe_indexof(const char *str, char32_t c) {
-    if (qe_inrange(c, 1, 255)) {
+    if (qe_inrange(c, 1, 127)) {
         const char *p = strchr(str, c);
         if (p) return (int)(p - str);
     }
@@ -211,7 +220,7 @@ int strxstart(const char *str, const char *val, const char **ptr);
 int strxcmp(const char *str1, const char *str2);
 int strmatchword(const char *str, const char *val, const char **ptr);
 int strmatch_pat(const char *str, const char *pat, int start);
-int strimatch_pat(const char *str, const char *pat, int start);
+int utf8_strimatch_pat(const char *str, const char *pat, int start);
 int get_str(const char **pp, char *buf, int buf_size, const char *stop);
 
 int strsubst(char *buf, int buf_size, const char *from,
@@ -240,9 +249,9 @@ int ustr_get_identifier(char *buf, int buf_size, char32_t c,
                         const char32_t *str, int i, int n);
 int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c,
                            const char32_t *str, int i, int n);
-int ustr_get_word(char *buf, int buf_size, char32_t c,
-                  const char32_t *str, int i, int n);
 int ustr_match_keyword(const char32_t *buf, const char *str, int *lenp);
+int utf8_get_word(char *buf, int buf_size, char32_t c,
+                  const char32_t *str, int i, int n);
 
 static inline int check_fcall(const char32_t *str, int i) {
     while (str[i] == ' ')
@@ -520,8 +529,8 @@ int buf_encode_byte(buf_t *out, unsigned char ch);
 
 #include "wcwidth.h"
 
-extern char32_t wctoupper(char32_t c);
-extern char32_t wctolower(char32_t c);
+extern char32_t qe_wctoupper(char32_t c);
+extern char32_t qe_wctolower(char32_t c);
 
 extern unsigned char const utf8_length[256];
 
@@ -544,14 +553,26 @@ static inline int qe_iswide(char32_t c) {
     return c >= 0x01000 && qe_wcwidth(c) > 1;
 }
 
-static inline char32_t qe_toupper(char32_t c) {
-    return (qe_inrange(c, 'a', 'z') ? c + 'A' - 'a' :
-            c >= 0x80 ? wctoupper(c) : c);
+static inline int qe_iswalpha(char32_t c) {
+    return qe_isalpha(qe_unaccent(c));
 }
 
-static inline char32_t qe_tolower(char32_t c) {
+static inline char32_t qe_iswlower(char32_t c) {
+    return qe_islower(qe_unaccent(c));
+}
+
+static inline char32_t qe_iswupper(char32_t c) {
+    return qe_isupper(qe_unaccent(c));
+}
+
+static inline char32_t qe_wtolower(char32_t c) {
     return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' :
-            c >= 0x80 ? wctolower(c) : c);
+            c >= 0x80 ? qe_wctolower(c) : c);
+}
+
+static inline char32_t qe_wtoupper(char32_t c) {
+    return (qe_inrange(c, 'a', 'z') ? c + 'A' - 'a' :
+            c >= 0x80 ? qe_wctoupper(c) : c);
 }
 
 /*---- Completion types used for enumerations ----*/

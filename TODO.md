@@ -112,6 +112,7 @@
   MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT
   koi8_ru.cp APL-ISO-IR-68.TXT GSM0338.TXT SGML.TXT
 * deal with accents in filenames (macOS uses combining accents encoded as UTF-8)
+* rename `eb_putc` as it handles the full char32_t range
 
 ## Windowing / Display
 

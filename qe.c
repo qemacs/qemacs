@@ -859,9 +859,9 @@ static int eb_changecase(EditBuffer *b, int offset, int *offsetp, int arg)
         return 0;
 
     if (arg > 0)
-        ch1 = qe_toupper(ch);
+        ch1 = qe_wtoupper(ch);
     else
-        ch1 = qe_tolower(ch);
+        ch1 = qe_wtolower(ch);
 
     if (ch != ch1) {
         len = eb_encode_char32(b, buf, ch1);
@@ -6497,7 +6497,7 @@ static void complete_test(CompleteState *cp, const char *str, int mode) {
             return;
         break;
     case CT_IGLOB:
-        if (!strimatch_pat(str, cp->current, 1))
+        if (!utf8_strimatch_pat(str, cp->current, 1))
             return;
         break;
     case CT_STRX:

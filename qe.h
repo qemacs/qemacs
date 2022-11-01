@@ -534,8 +534,8 @@ int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len);
 int eb_insert_char32_buf(EditBuffer *b, int offset, const char32_t *buf, int len);
 int eb_insert_str(EditBuffer *b, int offset, const char *str);
 int eb_match_char32(EditBuffer *b, int offset, char32_t c, int *offsetp);
-int eb_match_str(EditBuffer *b, int offset, const char *str, int *offsetp);
-int eb_match_istr(EditBuffer *b, int offset, const char *str, int *offsetp);
+int eb_match_str_utf8(EditBuffer *b, int offset, const char *str, int *offsetp);
+int eb_match_istr_utf8(EditBuffer *b, int offset, const char *str, int *offsetp);
 /* These functions insert contents at b->offset */
 int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) qe__attr_printf(2,0);
 int eb_printf(EditBuffer *b, const char *fmt, ...) qe__attr_printf(2,3);

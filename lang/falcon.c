@@ -185,7 +185,7 @@ static void falcon_colorize_line(QEColorizeContext *cp,
                 break;
             }
             if (qe_isalpha_(c) || c > 0xA0) {
-                i += ustr_get_word(kbuf, countof(kbuf), c, str, i, n);
+                i += utf8_get_word(kbuf, countof(kbuf), c, str, i, n);
                 if (strfind(syn->keywords, kbuf)) {
                     style = FALCON_STYLE_KEYWORD;
                     break;
@@ -194,7 +194,7 @@ static void falcon_colorize_line(QEColorizeContext *cp,
                     style = FALCON_STYLE_FUNCTION;
                     break;
                 }
-                if (qe_isupper(kbuf[0]) && (start == 0 || str[start-1] != '.')) {
+                if (qe_isupper(c) && (start == 0 || str[start-1] != '.')) {
                     /* Types are capitalized */
                     style = FALCON_STYLE_TYPE;
                     break;

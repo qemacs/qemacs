@@ -149,20 +149,20 @@ char32_t qe_unaccent(char32_t c) {
         return c;
 }
 
-char32_t wctoupper(char32_t c) {
+char32_t qe_wctoupper(char32_t c) {
     char32_t buf[2];
     if (expand_ligature(buf, c) && qe_isaccent(buf[1])){
-        char32_t c2 = find_ligature(qe_toupper(buf[0]), buf[1]);
+        char32_t c2 = find_ligature(qe_wtoupper(buf[0]), buf[1]);
         if (c2 != 0xffffffff)
             return c2;
     }
     return c;
 }
 
-char32_t wctolower(char32_t c) {
+char32_t qe_wctolower(char32_t c) {
     char32_t buf[2];
     if (expand_ligature(buf, c) && qe_isaccent(buf[1])) {
-        char32_t c2 = find_ligature(qe_tolower(buf[0]), buf[1]);
+        char32_t c2 = find_ligature(qe_wtolower(buf[0]), buf[1]);
         if (c2 != 0xffffffff)
             return c2;
     }

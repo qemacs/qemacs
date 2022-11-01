@@ -375,14 +375,15 @@ char *reduce_filename(char *dest, int size, const char *filename)
         *ext = '\0';
     }
 
-    if (*ext == '.') {
-        /* Convert all upper case filenames with extension to lower
-         * case */
+    if (*ext == '.' && *dbase != '.' && (ext - dbase) <= 8) {
+        /* This is an old KLUDGE for MS/DOS 8.3 filenames:
+           Convert all upper case MS/DOS filenames with extension
+           to lower case */
         for (p = dbase; *p; p++) {
-            if (qe_islower(*p))
+            if ((*p & 0x80) || qe_islower(*p))
                 break;
         }
-        if (!*p) {
+        if (!*p && (p - dbase) <= 12) {
             qe_strtolower(dbase, dest + size - dbase, dbase);
         }
     }
@@ -666,18 +667,19 @@ int qe_strtobool(const char *s, int def) {
 
 void qe_strtolower(char *buf, int size, const char *str) {
     /*@API utils
-       Convert a string to lowercase using `qe_tolower` for each byte.
-       @argument `buf` a valid pointer to a destination array.
+       Convert an ASCII string to lowercase using `qe_tolower7` for
+       each byte.
+       @argument `buf` a valid pointer to a destination char array.
        @argument `size` the length of the destination array in bytes,
        @argument `str` a valid pointer to a string to convert.
        @note this version only handles ASCII.
      */
-    // XXX:  Should handle UTF-8 encoding and Unicode case conversion.
+    // XXX: Should have a UTF-8 version that handles Unicode case conversion.
     // XXX: should return int, length of converted string?
     unsigned char c;
 
     if (size > 0) {
-        while ((c = (unsigned char)*str++) != '\0' && size > 1) {
+        while ((c = *str++) != '\0' && size > 1) {
             *buf++ = qe_tolower(c);
             size--;
         }
@@ -734,14 +736,15 @@ int strfind(const char *keytable, const char *str) {
 int strxfind(const char *list, const char *s) {
     /*@API utils
        Find a string in a list of words separated by `|`, ignoring case
-       and skipping `-` , `_` and spaces.
+       for ASCII and skipping `-` , `_` and spaces.
        An initial or trailing `|` do not match the empty string, but `||` does.
        @argument `list` a string of words separated by `|` characters.
        @argument `s` a valid string pointer for the string to search.
        @return 1 if there is a match, 0 otherwise.
+       @note: this function only handles case insensitive matching for ASCII.
      */
     const u8 *p, *q;
-    char32_t c1, c2;
+    u8 c1, c2;
 
     q = (const u8*)list;
     if (!q)
@@ -870,8 +873,8 @@ int qe_memicmp(const void *p1, const void *p2, size_t count) {
 
     for (; count-- > 0; s1++, s2++) {
         if (*s1 != *s2) {
-            char32_t c1 = qe_toupper(*s1);
-            char32_t c2 = qe_toupper(*s2);
+            u8 c1 = qe_toupper(*s1);
+            u8 c2 = qe_toupper(*s2);
             if (c1 != c2)
                 return (c2 < c1) - (c1 < c2);
         }
@@ -881,7 +884,7 @@ int qe_memicmp(const void *p1, const void *p2, size_t count) {
 
 const char *qe_stristr(const char *s1, const char *s2) {
     /*@API utils
-       Find a string in another string, ignoring case.
+       Find an ASCII string in another ASCII string, ignoring case.
        @argument `s1` a valid pointer to the string in which to
        search for matches.
        @argument `s2` a valid string pointer for the string to search.
@@ -889,19 +892,19 @@ const char *qe_stristr(const char *s1, const char *s2) {
        `NULL` otherwise.
        @note this version only handles ASCII.
      */
-    char32_t c, c1, c2;
+    u8 c, c1, c2;
     int len;
 
     len = strlen(s2);
     if (!len)
         return s1;
 
-    c = (u8)*s2++;
+    c = *s2++;
     len--;
     c1 = qe_toupper(c);
     c2 = qe_tolower(c);
 
-    while ((c = (u8)*s1++) != '\0') {
+    while ((c = *s1++) != '\0') {
         if (c == c1 || c == c2) {
             // XXX: not strictly correct as s2 might be shorter than len
             if (!qe_memicmp(s1, s2, len))
@@ -913,7 +916,7 @@ const char *qe_stristr(const char *s1, const char *s2) {
 
 int stristart(const char *str, const char *val, const char **ptr) {
     /*@API utils
-       Test if `val` is a prefix of `str` (case independent).
+       Test if `val` is a prefix of `str` (case independent for ASCII).
        If there is a match, a pointer to the next character after the
        match in `str` is stored into `ptr` provided `ptr` is not null.
        @param `str` valid string pointer,
@@ -940,10 +943,10 @@ int stristart(const char *str, const char *val, const char **ptr) {
 
 int strxstart(const char *str, const char *val, const char **ptr) {
     /*@API utils
-       Test if `val` is a prefix of `str` (case independent and ignoring
-       `-`, `_` and spaces). If there is a match, a pointer to the next
-       character after the match in `str` is stored into `ptr`, provided
-       `ptr` is not null.
+       Test if `val` is a prefix of `str` (case independent for ASCII
+       and ignoring `-`, `_` and spaces).  If there is a match, a pointer
+       to the next character after the match in `str` is stored into `ptr`,
+       provided `ptr` is not null.
        @param `str` valid string pointer,
        @param `val` valid string pointer to the prefix to test,
        @param `ptr` a possibly null pointer to a `const char *` to set
@@ -975,8 +978,8 @@ int strxstart(const char *str, const char *val, const char **ptr) {
 
 int strxcmp(const char *str1, const char *str2) {
     /*@API utils
-       Compare strings case independently, also ignoring spaces, dashes
-       and underscores.
+       Compare strings case independently (for ASCII), also ignoring
+       spaces, dashes and underscores.
        @param `str1` a valid string pointer for the left operand.
        @param `str2` a valid string pointer for the right operand.
        @return a negative, 0 or positive value reflecting the sign
@@ -1019,7 +1022,7 @@ int strmatchword(const char *str, const char *val, const char **ptr) {
        @param `ptr` updated with a pointer past the prefix in `str` if found.
        @return `true` if there is a match, `false` otherwise.
      */
-    if (strstart(str, val, &str) && !qe_isword(*str)) {
+    if (strstart(str, val, &str) && !qe_isword((u8)*str)) {
         if (ptr)
             *ptr = str;
         return 1;
@@ -1059,7 +1062,7 @@ int strmatch_pat(const char *str, const char *pat, int start) {
     return start || *str == '\0';
 }
 
-int strimatch_pat(const char *str, const char *pat, int start) {
+int utf8_strimatch_pat(const char *str, const char *pat, int start) {
     /*@API utils
        Check if the pattern `pat` matches `str` or a prefix of `str`,
        using a case insensitive comparison.  Patterns use only `*` as
@@ -1100,8 +1103,8 @@ int strimatch_pat(const char *str, const char *pat, int start) {
                     } while (qe_isaccent(c2));
                     c2 = qe_unaccent(c2);
                 }
-                if ((c1 == c2 || qe_toupper(c1) == qe_toupper(c2))
-                &&  strimatch_pat(str, pat, start))
+                if ((c1 == c2 || qe_wtoupper(c1) == qe_wtoupper(c2))
+                &&  utf8_strimatch_pat(str, pat, start))
                     return 1;
             }
             return 0;
@@ -1114,7 +1117,7 @@ int strimatch_pat(const char *str, const char *pat, int start) {
                 } while (qe_isaccent(c2));
                 c2 = qe_unaccent(c2);
             }
-            if (c1 != c2 && qe_toupper(c1) != qe_toupper(c2))
+            if (c1 != c2 && qe_wtoupper(c1) != qe_wtoupper(c2))
                 return 0;
         }
     }
@@ -1216,12 +1219,13 @@ int ustristart(const char32_t *str0, const char *val, int *lenp) {
        @param `val` prefix string, must be a valid string pointer.
        @param `lenp` updated with the length of the prefix if found.
        @return `true` if there is a match, `false` otherwise.
+       @note: val is assumed to be contain ASCII only.
      */
     const char32_t *str = str0;
 
     for (; *val != '\0'; val++, str++) {
         /* assuming val is ASCII or Latin1 */
-        if (qe_toupper(*str) != qe_toupper(*val))
+        if (qe_toupper(*str) != qe_toupper((u8)*val))
             return 0;
     }
     if (lenp)
@@ -1236,6 +1240,7 @@ const char32_t *ustristr(const char32_t *str, const char *val) {
        @argument `val` a valid string pointer to a subtring to search for.
        @return a pointer to the first code point of the match if found,
        `NULL` otherwise.
+       @note: val is assumed to be contain ASCII only.
      */
     char32_t c = qe_toupper((u8)val[0]);
 
@@ -1304,7 +1309,7 @@ int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c,
 {
     /*@API utils
        Extract an ASCII identifier from a wide string into a char array and
-       convert it to lowecase.
+       convert it to lowercase.
        @argument `buf` a valid pointer to a destination array.
        @argument `buf_size` the length of the destination array.
        @argument `c` the first code point to copy.
@@ -1335,7 +1340,7 @@ int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c,
     return j - i;
 }
 
-int ustr_get_word(char *buf, int buf_size, char32_t c,
+int utf8_get_word(char *buf, int buf_size, char32_t c,
                   const char32_t *str, int i, int n)
 {
     /*@API utils
@@ -2080,8 +2085,8 @@ void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
 
 #ifdef CONFIG_TINY
 char32_t qe_unaccent(char32_t c) { return c; }
-char32_t wctoupper(char32_t c) { return c; }
-char32_t wctolower(char32_t c) { return c; }
+char32_t qe_wctolower(char32_t c) { return qe_tolower(c); }
+char32_t qe_wctoupper(char32_t c) { return qe_toupper(c); }
 #endif
 
 /* UTF-8 specific tables */
