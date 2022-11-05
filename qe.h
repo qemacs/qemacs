@@ -1046,6 +1046,8 @@ typedef enum CmdSig {
     CMD_ESii,   /* (ES*, int, int) -> void */
     CMD_ESsi,   /* (ES*, string, int) -> void */
     CMD_ESss,   /* (ES*, string, string) -> void */
+    CMD_ESiii,  /* (ES*, int, int, int) -> void */
+    CMD_ESsii,  /* (ES*, string, int, int) -> void */
     CMD_ESssi,  /* (ES*, string, string, int) -> void */
     CMD_ESsss,  /* (ES*, string, string, string) -> void */
 } CmdSig;
@@ -1075,6 +1077,8 @@ typedef union CmdProto {
     void (*ESii)(EditState *, int, int);
     void (*ESsi)(EditState *, const char *, int);
     void (*ESss)(EditState *, const char *, const char *);
+    void (*ESiii)(EditState *, int, int, int);
+    void (*ESsii)(EditState *, const char *, int, int);
     void (*ESssi)(EditState *, const char *, const char *, int);
     void (*ESsss)(EditState *, const char *, const char *, const char *);
 } CmdProto;
@@ -1289,9 +1293,13 @@ void minibuffer_init(void);
 
 typedef struct CompletionDef {
     const char *name;
+    /* function to enumerate match candidates */
     void (*enumerate)(CompleteState *cp, CompleteFunc enumerate);
+    /* custom display for the completion string in the popup window */
     int (*print_entry)(CompleteState *cp, EditState *s, const char *name);
+    /* get the entry string from the line in the popup window */
     int (*get_entry)(EditState *s, char *dest, int size, int offset);
+    /* convert final string to a number */
     long (*convert_entry)(const char *s, const char **endp);
 #define CF_FILENAME        1
 #define CF_NO_FUZZY        2
@@ -1300,6 +1308,9 @@ typedef struct CompletionDef {
 #define CF_DIRNAME         16
 #define CF_RESOURCE        32
     int flags;
+    /* custom handlers to start and end minibuffer edit session */
+    void (*start_edit)(EditState *s);
+    void (*end_edit)(EditState *s, char *dest, int size);
     struct CompletionDef *next;
 } CompletionDef;
 
@@ -1400,6 +1411,10 @@ void do_insert_file(EditState *s, const char *filename);
 void do_save_buffer(EditState *s);
 void do_write_file(EditState *s, const char *filename);
 void do_write_region(EditState *s, const char *filename);
+void isearch_toggle_case_fold(EditState *s);
+void isearch_toggle_hex(EditState *s);
+void isearch_toggle_regexp(EditState *s);
+void isearch_toggle_word_match(EditState *s);
 void isearch_colorize_matches(EditState *s, char32_t *buf, int len,
                               QETermStyle *sbuf, int offset);
 void do_isearch(EditState *s, int argval, int dir);
@@ -1443,7 +1458,8 @@ void do_tab(EditState *s, int argval);
 EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base);
 void do_append_next_kill(EditState *s);
 void do_kill(EditState *s, int p1, int p2, int dir, int keep);
-void do_kill_region(EditState *s, int keep);
+void do_kill_region(EditState *s);
+void do_copy_region(EditState *s);
 void do_kill_line(EditState *s, int argval);
 void do_kill_beginning_of_line(EditState *s, int argval);
 void do_kill_whole_line(EditState *s, int n);
@@ -1557,8 +1573,8 @@ void qe_save_macros(EditState *s, EditBuffer *b);
 #define COMPLETION_TAB    0
 #define COMPLETION_SPACE  1
 #define COMPLETION_OTHER  2
-void do_minibuffer_complete(EditState *s, int type);
-void do_minibuffer_complete_space(EditState *s);
+void do_minibuffer_complete(EditState *s, int type, int key, int argval);
+void do_minibuffer_complete_space(EditState *s, int key, int argval);
 void do_minibuffer_scroll_up_down(EditState *s, int dir);
 void do_minibuffer_history(EditState *s, int n);
 void do_minibuffer_get_binary(EditState *s);
@@ -1768,5 +1784,4 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
                              const char *bufname, const char *caption,
                              const char *path,
                              const char *cmd, int shell_flags);
-
 #endif

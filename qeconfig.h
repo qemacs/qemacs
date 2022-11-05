@@ -160,12 +160,12 @@ static const CmdDef basic_commands[] = {
           "Kill to the end of the word at or after point",
           do_kill_word, ESi, "p")
     /* XXX: should take region as argument, implicit from keyboard */
-    CMD1( "kill-region", "C-w",
+    CMD0( "kill-region", "C-w",
           "Kill the current region",
-          do_kill_region, 0)
-    CMD1( "copy-region", "M-w",
+          do_kill_region)
+    CMD0( "copy-region", "M-w",
           "Copy the current region to the kill ring",
-          do_kill_region, 1)
+          do_copy_region)
     CMD2( "yank", "C-y",
           "Insert the contents of the current entry in the kill ring",
           do_yank, ES, "*")
@@ -467,12 +467,13 @@ static const CmdDef basic_commands[] = {
     CMD0( "redo", "C-x r, C-x C-_, f10",
           "Redo the last change undone",
           do_redo)
-    CMD3( "goto-line", "M-g",
+
+    CMD3( "goto-line", "M-g g, M-g M-g, C-x g",
           "Go to a line number",
           do_goto, ESsi,
           "s{Goto line: }"
           "v", 'l')
-    CMD3( "goto-char", "C-x g",
+    CMD3( "goto-char", "M-g c",
           "Go to a character number",
           do_goto, ESsi,
           "s{Goto char: }"

@@ -1982,6 +1982,8 @@ static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
             }
         }
         fclose(fp);
+    } else {
+        put_status(cp->s, "cannot find DerivedName.txt or UnicodeData.txt in QEPATH");
     }
 }
 
@@ -2048,12 +2050,13 @@ static int charname_print_entry(CompleteState *cp, EditState *s, const char *nam
 static int charname_get_entry(EditState *s, char *dest, int size, int offset) {
     char entry[256];
     char *p;
+    int len;
 
     eb_fgets(s->b, entry, sizeof entry, offset, &offset);
     p = strchr(entry, '\t');
     if (p) {
         p += strspn(p, " \t");
-        int len = strcspn(p, " \t\n");
+        len = strcspn(p, " \t\n");
         return snprintf(dest, size, "0x%.*s", len, p);
     } else {
         if (size > 0)

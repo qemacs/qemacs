@@ -236,11 +236,11 @@ insert_window_left()  deletes some left-most windows
 * basic: use visual movement for left, right, up, down and character based for `C-b C-f C-n C-p`
 * basic: fix offset when exiting `s->hex_mode`
 * `do_transpose` should take argval and swap distant fragments
+* `do_transpose` has invalid behavior if left or right chunk is empty
 * new flavor for GoogleClosureCompiler
-* emacs-22 bindings:
+* emacs bindings:
   * `M-g M-g` `goto-line` (with prefix argument)
-  * `M-g M-p` `previous-error`
-  * `M-g M-n` `next-error`
+  * `M-g TAB` `move-to-column` (with prefix argument)
 * Missing commands:
   * `what-cursor-position` with universal prefix: show popup with long description
   * `compare-windows` should resync from the end of line.
@@ -261,7 +261,7 @@ insert_window_left()  deletes some left-most windows
     lines to that of the first line
 * scroll horizontally on `M-{` and `M-}`
 * scroll up/down with argument should scroll by screen row.
-* simplify `C-z A-z` accordingly
+* simplify `C-z` and `A-z` accordingly
 * rectangular regions, cut/paste
 * multi-line editing
 
@@ -305,14 +305,13 @@ insert_window_left()  deletes some left-most windows
 
 ## Searching
 
+* store incremental search strings in search history list
 * incremental search: increase max repeat count
 * improve search speed finally
 * add low-level search accelerator function
-* use `do_isearch` or similar to input string and options
-   for other search commands: `do_search_string`, `do_query_replace`,
-   `count-matches`, `delete-matching-lines` (might need recursive edit)
 * `hex-mode` search strings should mix hex ut8 strings and ASCII control char names
-* handle word and case toggles matches in `query-replace`
+* isearch in hex should display search string in hex
+* transfer case in `query-replace`
 * regex search/replace
 * query replace across multiple files
 * query replace options: u -> undo last change
@@ -320,7 +319,7 @@ insert_window_left()  deletes some left-most windows
 * extra: `grep`, `grep-buffer`, `grep-sources`, `grep-tree`...
 * search: `count-words`, `wc`, `count-sloc`
 * search: stats command for word count and mode specific stats
-* isearch: M-p and M-n should select previous and next search pattern in history
+* isearch: `M-p` and `M-n` should select previous and next search pattern in history
 * searching failure should abort macros
 
 ## Undo
@@ -407,6 +406,8 @@ insert_window_left()  deletes some left-most windows
   * handle multiple tag files
   * save tags to QTAGS or .qetags file
   * update tag files automatically
+  * `list-tags` and `list-matching-lines` popups should be clickable and go to the match
+    use locus properties?
   * `list-definitions` with hot load function
   * `show-definition` in popup
   * handle standard libraries with tag system

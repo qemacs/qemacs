@@ -190,7 +190,7 @@ void qe_register_mode(ModeDef *m, int flags)
 
         /* Achtung: embedded null bytes */
         spec_len = snprintf(spec, sizeof(spec),
-                            "S{%s}%cselect the %s mode",
+                            "@{%s}%cselect the %s mode",
                             mode_name, 0, mode_name);
         def = qe_mallocz(CmdDef);
         /* allocate space for name and spec with embedded null bytes */
@@ -1895,7 +1895,7 @@ void do_tab(EditState *s, int argval)
 {
     /* CG: should do smart complete, smart indent, insert tab */
     if (s->indent_tabs_mode) {
-        do_char(s, 9, argval);
+        do_char(s, '\t', argval);
     } else {
         int offset = s->offset;
         int offset0 = eb_goto_bol(s->b, offset);
@@ -1988,6 +1988,10 @@ static void do_unknown_key(EditState *s) {
 
 void do_keyboard_quit(EditState *s)
 {
+    if (s->flags & WF_POPUP) {
+        do_popup_exit(s);
+        return;
+    }
 #ifndef CONFIG_TINY
     if (s->b->flags & BF_PREVIEW) {
         do_preview_mode(s, -1);
@@ -2000,7 +2004,7 @@ void do_keyboard_quit(EditState *s)
     s->isearch_state = NULL;
 
     /* well, currently nothing needs to be aborted in global context */
-    /* CG: Should remove popups, sidepanes, helppanes... */
+    /* CG: Should remove sidepanes, helppanes... */
     put_status(s, "|");
     put_status(s, "Quit");
 }
@@ -2087,9 +2091,12 @@ void do_kill(EditState *s, int p1, int p2, int dir, int keep)
     selection_activate(qs->screen);
 }
 
-void do_kill_region(EditState *s, int keep)
-{
-    do_kill(s, s->b->mark, s->offset, 0, keep);
+void do_kill_region(EditState *s) {
+    do_kill(s, s->b->mark, s->offset, 1, 0);
+}
+
+void do_copy_region(EditState *s) {
+    do_kill(s, s->b->mark, s->offset, 0, 1);
 }
 
 void do_kill_line(EditState *s, int argval)
@@ -2843,6 +2850,7 @@ void do_goto(EditState *s, const char *str, int unit)
         }
         if (*p)
             goto error;
+        // XXX: col should be a display column, not a character number
         s->offset = eb_goto_pos(s->b, max(0, line), col);
         return;
     }
@@ -4917,8 +4925,10 @@ typedef struct ExecCmdState {
    - void (*)(EditState *, int, int); (2)
    - void (*)(EditState *, const char *, int); (2)
    - void (*)(EditState *, const char *, const char *); (6)
-   - void (*)(EditState *, const char *, const char *, const char *); (2)
+   - void (*)(EditState *, int, int, int); (1)
+   - void (*)(EditState *, const char *, int, int); (0)
    - void (*)(EditState *, const char *, const char *, int); (2)
+   - void (*)(EditState *, const char *, const char *, const char *); (2)
    - void (*)(ISearchState *); (?)
    - void (*)(ISearchState *, int); (?)
 */
@@ -4938,14 +4948,20 @@ void call_func(CmdSig sig, CmdProto func, qe__unused__ int nb_args,
     case CMD_ESs:    /* ES + string */
         (*func.ESs)(args[0].s, args[1].p);
         break;
-    case CMD_ESss:   /* ES + string + string */
-        (*func.ESss)(args[0].s, args[1].p, args[2].p);
+    case CMD_ESii:   /* ES + integer + integer */
+        (*func.ESii)(args[0].s, args[1].n, args[2].n);
         break;
     case CMD_ESsi:   /* ES + string + integer */
         (*func.ESsi)(args[0].s, args[1].p, args[2].n);
         break;
-    case CMD_ESii:   /* ES + integer + integer */
-        (*func.ESii)(args[0].s, args[1].n, args[2].n);
+    case CMD_ESss:   /* ES + string + string */
+        (*func.ESss)(args[0].s, args[1].p, args[2].p);
+        break;
+    case CMD_ESiii:  /* ES + integer + integer + integer */
+        (*func.ESiii)(args[0].s, args[1].n, args[2].n, args[3].n);
+        break;
+    case CMD_ESsii:  /* ES + string + integer + integer */
+        (*func.ESsii)(args[0].s, args[1].p, args[2].n, args[3].n);
         break;
     case CMD_ESssi:  /* ES + string + string + integer */
         (*func.ESssi)(args[0].s, args[1].p, args[2].p, args[3].n);
@@ -5032,7 +5048,7 @@ int parse_arg(const char **pp, CmdArgSpec *ap)
     case 's':  /* string read from minibuffer */
         type = CMD_ARG_STRING;
         break;
-    case 'S':  /* immediate string from CmdDef prompt string */
+    case '@':  /* immediate string from CmdDef prompt string */
         /* used in define_kbd_macro, and mode selection */
         /* must be the last argument */
         type = CMD_ARG_STRINGVAL;
@@ -5563,7 +5579,7 @@ void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
     /* CG: should parse macro keys to an array and pass index
      * to do_execute_macro.
      */
-    snprintf(buf, size, "S{%s}%c", keys, 0);
+    snprintf(buf, size, "@{%s}%c", keys, 0);
 
     d = qe_find_cmd(name);
     if (d && d->action.ESs == do_execute_macro_keys) {
@@ -5606,7 +5622,7 @@ static void qe_save_macro(EditState *s, const CmdDef *def, EditBuffer *b)
     eb_printf(b, "define_kbd_macro(\"%s\", \"", name);
 
     if (def) {
-        const char *keys = def->spec + 2;   /* skip S{ */
+        const char *keys = def->spec + 2;   /* skip @{ */
         while (keys[1]) {                   /* stop at } */
             eb_putc(b, utf8_decode(&keys));
         }
@@ -6585,8 +6601,7 @@ static int match_strings(const char *s1, const char *s2, int len) {
     return len;
 }
 
-void do_minibuffer_complete(EditState *s, int type)
-{
+void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
     QEmacsState *qs = s->qe_state;
     int count, i, match_len, start, end;
     CompleteState cs;
@@ -6600,9 +6615,11 @@ void do_minibuffer_complete(EditState *s, int type)
     if ((mb = minibuffer_get_state(s, 1)) == NULL)
         return;
 
-    if (!mb->completion)
+    if (!mb->completion || !mb->completion->enumerate) {
+        if (type != COMPLETION_OTHER)
+            do_char(s, key, argval);
         return;
-
+    }
     /* Remove highlighted selection. */
     // XXX: Should complete based on point position,
     //      not necessarily full minibuffer contents
@@ -6748,13 +6765,13 @@ static int eb_match_string_reverse(EditBuffer *b, int offset, const char *str,
     return 1;
 }
 
-static void do_minibuffer_electric_key(EditState *s, int key)
-{
+static void do_minibuffer_electric_key(EditState *s, int key, int argval) {
     char32_t c;
     int offset, stop;
     MinibufState *mb = minibuffer_get_state(s, 0);
 
     /* erase beginning of line if typing / or ~ in certain places */
+    // XXX: behavior on yank should be customized too
     if (mb && mb->completion && (mb->completion->flags & CF_FILENAME)
     &&  eb_nextc(s->b, 0, &offset) == '/') {
         stop = s->offset;
@@ -6769,17 +6786,17 @@ static void do_minibuffer_electric_key(EditState *s, int key)
             eb_delete(s->b, 0, stop);
         }
     }
-    do_char(s, key, 1);
+    do_char(s, key, argval);
 }
 
 /* space does completion only if a completion method is defined */
-void do_minibuffer_complete_space(EditState *s)
-{
+void do_minibuffer_complete_space(EditState *s, int key, int argval) {
     QEmacsState *qs = s->qe_state;
     MinibufState *mb = minibuffer_get_state(s, 0);
 
-    if (!mb || !mb->completion || (mb->completion->flags & CF_SPACE_OK)) {
-        do_char(s, ' ', 1);
+    if (!mb || !mb->completion || !mb->completion->enumerate
+    ||  (mb->completion->flags & CF_SPACE_OK)) {
+        do_char(s, key, argval);
     } else
     if (check_window(&mb->completion_popup_window)
     &&  qs->last_cmd_func == qs->this_cmd_func
@@ -6788,7 +6805,7 @@ void do_minibuffer_complete_space(EditState *s)
         // XXX: should close the popup at the bottom of the list
         do_scroll_up_down(mb->completion_popup_window, 2);
     } else {
-        do_minibuffer_complete(s, COMPLETION_SPACE);
+        do_minibuffer_complete(s, COMPLETION_SPACE, key, argval);
     }
 }
 
@@ -6797,10 +6814,11 @@ static void do_minibuffer_char(EditState *s, int key, int argval)
     MinibufState *mb = minibuffer_get_state(s, 0);
 
     do_char(s, key, argval);
+    // XXX: this should be triggered by any minibuffer modification
     if (mb && check_window(&mb->completion_popup_window)) {
         /* automatic filtering of completion list */
         // XXX: should prevent auto-completion
-        do_minibuffer_complete(s, COMPLETION_OTHER);
+        do_minibuffer_complete(s, COMPLETION_OTHER, key, argval);
     }
 }
 
@@ -6958,6 +6976,13 @@ void do_minibuffer_exit(EditState *s, int do_abort)
     mb->cb = NULL;
     mb->opaque = NULL;
 
+    if (completion && completion->end_edit) {
+        if (do_abort)
+            completion->end_edit(s, NULL, 0);
+        else
+            completion->end_edit(s, buf, countof(buf));
+    }
+
     /* Close the minibuffer window */
     s->b->flags |= BF_TRANSIENT;
     edit_close(&s);
@@ -7006,14 +7031,6 @@ void minibuffer_edit(EditState *e, const char *input, const char *prompt,
     /* XXX: should come from mode.default_wrap */
     s->wrap = WRAP_TRUNCATE;
 
-    /* add default input */
-    if (input) {
-        /* Default input should already be encoded as UTF-8 */
-        len = strlen(input);
-        eb_write(b, 0, (const u8 *)input, len);
-        s->offset = len;
-    }
-
     mb = minibuffer_get_state(s, 0);
     if (mb) {
         mb->completion_popup_window = NULL;
@@ -7034,6 +7051,16 @@ void minibuffer_edit(EditState *e, const char *input, const char *prompt,
         mb->cb = cb;
         mb->opaque = opaque;
         qs->active_window = s;
+    }
+    /* add default input */
+    if (input) {
+        /* Default input should already be encoded as UTF-8 */
+        len = strlen(input);
+        eb_write(b, 0, (const u8 *)input, len);
+        s->offset = len;
+    }
+    if (mb->completion && mb->completion->start_edit) {
+        mb->completion->start_edit(s);
     }
 }
 
@@ -7072,25 +7099,41 @@ static const CmdDef minibuffer_commands[] = {
     CMD1( "minibuffer-abort", "C-g, C-x C-g",
           "Abort the minibuffer input",
           do_minibuffer_exit, 1)
-    CMD1( "minibuffer-complete", "TAB",
+    CMD3( "minibuffer-complete", "TAB",
           "Try and complete the minibuffer input",
-          do_minibuffer_complete, COMPLETION_TAB)
+          do_minibuffer_complete, ESiii,
+          "*" "v" "k" "p", COMPLETION_TAB)
     /* should take numeric prefix to specify word size */
     CMD0( "minibuffer-get-binary", "M-=",
           "Insert the byte value at point in the current buffer into the minibuffer",
           do_minibuffer_get_binary)
-    CMD0( "minibuffer-complete-space", "SPC",
+    CMD2( "minibuffer-complete-space", "SPC",
           "Try and complete the minibuffer input",
-          do_minibuffer_complete_space)
-    CMD2( "minibuffer-previous-history-element", "C-p, up",
+          do_minibuffer_complete_space, ESii,
+          "*" "k" "p")
+    CMD2( "minibuffer-previous-history-element", "C-p, up, M-p",
           "Replace contents of the minibuffer with the previous historical entry",
           do_minibuffer_history, ESi, "q")
-    CMD2( "minibuffer-next-history-element", "C-n, down",
+    CMD2( "minibuffer-next-history-element", "C-n, down, M-n",
           "Replace contents of the minibuffer with the next historical entry",
           do_minibuffer_history, ESi, "p")
     CMD2( "minibuffer-electric-key", "/, ~",
           "Insert a character into the minibuffer with side effects",
-          do_minibuffer_electric_key, ESi, "*" "k")
+          do_minibuffer_electric_key, ESii,
+          "*" "k" "p")
+    /* commands used to configure search flags */
+    CMD0( "minibuffer-toggle-case-fold", "M-c, C-c",
+          "toggle search case-sensitivity",
+          isearch_toggle_case_fold)
+    CMD0( "minibuffer-toggle-hex", "M-h, M-C-b",
+          "toggle normal/hex/unihex searching",
+          isearch_toggle_hex)
+    CMD0( "minibuffer-toggle-regexp", "M-r, C-t",
+          "toggle regular-expression mode",
+          isearch_toggle_regexp)
+    CMD0( "minibuffer-toggle-word-match", "M-w",
+          "toggle word match",
+          isearch_toggle_word_match)
 };
 
 void minibuffer_init(void)
@@ -7203,9 +7246,10 @@ void do_popup_exit(EditState *s)
 
     if (s->flags & WF_POPUP) {
         /* only do this for a popup? */
-        s->b->flags |= BF_TRANSIENT;
+        // XXX: BF_TRANSIENT flag should be set at buffer creation time
+        if (s->b->flags & BF_SYSTEM)
+            s->b->flags |= BF_TRANSIENT;
         edit_close(&s);
-
         do_refresh(qs->active_window);
     }
 }
@@ -7240,10 +7284,8 @@ EditState *show_popup(EditState *s, EditBuffer *b, const char *caption)
     return e;
 }
 
+// XXX: this should be a minor mode
 static const CmdDef popup_commands[] = {
-    CMD0( "popup-exit", "q, C-g",
-          "Close the popup window",
-          do_popup_exit)
     CMD3( "popup-isearch", "/",
           "Search for contents",
           do_isearch, ESii, "p" "v", 1)
@@ -8976,7 +9018,7 @@ static void save_selection(void)
         e = motion_target;
         if (!check_motion_target(e))
             return;
-        do_kill_region(e, 1);
+        do_copy_region(e);
     }
 }
 
@@ -9261,7 +9303,7 @@ static void generic_mode_close(EditState *s)
     eb_free_callback(s->b, eb_offset_callback, &s->offset);
     eb_free_callback(s->b, eb_offset_callback, &s->offset_top);
 
-    /* Free crcs should when switching display modes */
+    /* Should free CRCs when switching display modes */
     qe_free(&s->line_shadow);
     s->shadow_nb_lines = 0;
 }

@@ -3651,17 +3651,17 @@ static const CmdDef shell_global_commands[] = {
     CMD2( "make", "C-x m",
           "Run make and display a new buffer with its collected output",
           do_compile, ESs,
-          "S{make}")
+          "@{make}")
     CMD2( "man", "",
           "Run man for a command and display a new buffer with its collected output",
           do_man, ESs,
           "s{Show man page for: }|man|")
-    CMD3( "previous-error", "C-x C-p",
-          "Move to the previous error from the last shell command output",
-          do_next_error, ESii, "P" "v", -1)
-    CMD3( "next-error", "C-x C-n, C-x `",
+    CMD3( "next-error", "C-x C-n, C-x `, M-g n, M-g M-n",
           "Move to the next error from the last shell command output",
           do_next_error, ESii, "P" "v", +1)
+    CMD3( "previous-error", "C-x C-p, M-g p, M-g M-p",
+          "Move to the previous error from the last shell command output",
+          do_next_error, ESii, "P" "v", -1)
 };
 
 static int shell_mode_probe(ModeDef *mode, ModeProbeData *p)
