@@ -1853,10 +1853,14 @@ void *qe_realloc(void *pp, size_t size) {
        reallocation fails. This approach is not strictly conforming,
        it assumes all pointers have the same size and representation,
        which is mandated by POSIX.
+       We use memcpy to avoid compiler optimisation issues with the
+       syntax `*(void **)pp = p;` that violates the strict aliasing rule.
      */
-    void *p = (realloc)(*(void **)pp, size);
+    void *p;
+    memcpy(&p, pp, sizeof(p));
+    p = (realloc)(p, size);
     if (p || !size)
-        *(void **)pp = p;
+        memcpy(pp, &p, sizeof(p));
     return p;
 }
 
@@ -2145,7 +2149,7 @@ char32_t utf8_decode_strict(const char **pp) {
     char32_t c, c1;
     const u8 *p;
 
-    p = *(const u8 **)pp;
+    p = (const u8 *)*pp;
     c = *p++;
     if (c < 128) {
         /* fast case for ASCII */
@@ -2176,10 +2180,10 @@ char32_t utf8_decode_strict(const char **pp) {
         if (c == 0xfffe || c == 0xffff || c > 0x10ffff)
             goto fail;
     }
-    *(const u8 **)pp = p;
+    *pp = (const char *)p;
     return c;
  fail:
-    *(const u8 **)pp = p;
+    *pp = (const char *)p;
 #define INVALID_CHAR 0xfffd
     return INVALID_CHAR;
 }
@@ -2218,7 +2222,7 @@ char32_t utf8_decode(const char **pp) {
        - 32-bit codes are produced by 0xFE and 0xFF lead bytes if followed
        by 5 trailing bytes
      */
-    const u8 *p = *(const u8 **)pp;
+    const u8 *p = (const u8 *)*pp;
     char32_t c = *p++;
     if (c < 0xC0) {
         /* fast case for ASCII and trailing bytes */
@@ -2238,7 +2242,7 @@ char32_t utf8_decode(const char **pp) {
                 break;
         }
     }
-    *(const u8 **)pp = p;
+    *pp = (const char *)p;
     return c;
 }
 

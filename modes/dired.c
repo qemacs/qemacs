@@ -220,8 +220,10 @@ static int dired_find_target(DiredState *ds, const char *target)
 /* sort alphabetically with directories first */
 static int dired_sort_func(void *opaque, const void *p1, const void *p2)
 {
-    const StringItem *item1 = *(const StringItem * const *)p1;
-    const StringItem *item2 = *(const StringItem * const *)p2;
+    const StringItem * const *pp1 = (const StringItem * const *)p1;
+    const StringItem * const *pp2 = (const StringItem * const *)p2;
+    const StringItem *item1 = *pp1;
+    const StringItem *item2 = *pp2;
     const DiredItem *dip1 = item1->opaque;
     const DiredItem *dip2 = item2->opaque;
     DiredState *ds = opaque;

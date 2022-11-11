@@ -178,7 +178,9 @@ for x11path in /usr /opt/X11 /usr/X11R6; do
         x11_includedir="$x11path/include"
         html="yes"
         if test -f "$x11path/include/X11/extensions/Xv.h" ; then
+          if test -f "$x11path/include/X11/extensions/Xvlib.h" ; then
             xv="yes"
+          fi
         fi
         if test -f "$x11path/include/X11/extensions/Xshm.h" ; then
             xshm="yes"

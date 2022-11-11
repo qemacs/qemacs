@@ -2652,7 +2652,8 @@ void do_convert_buffer_file_coding_system(EditState *s,
     cb = b->first_callback;
     for (i = 0; i < countof(pos) && cb; cb = cb->next) {
         if (cb->callback == eb_offset_callback) {
-            pos[i] = eb_get_char_offset(b, *(int*)cb->opaque);
+            int *offsetp = (int *)cb->opaque;
+            pos[i] = eb_get_char_offset(b, *offsetp);
             i++;
         }
     }
@@ -2682,7 +2683,8 @@ void do_convert_buffer_file_coding_system(EditState *s,
     cb = b->first_callback;
     for (i = 0; i < countof(pos) && cb; cb = cb->next) {
         if (cb->callback == eb_offset_callback) {
-            *(int*)cb->opaque = eb_goto_char(b, pos[i]);
+            int *offsetp = (int *)cb->opaque;
+            *offsetp = eb_goto_char(b, pos[i]);
             i++;
         }
     }
@@ -3561,6 +3563,11 @@ static void reverse_fragments(TextFragment *str, int len)
 
 #define LINE_SHADOW_INCR 10
 
+static uint32_t get_uint32(const void *p) {
+    const uint32_t *p32 = p;
+    return *p32;
+}
+
 /* CRC to optimize redraw. */
 /* XXX: is it safe enough ? */
 static uint64_t compute_crc(const void *p, int size, uint64_t sum)
@@ -3584,9 +3591,9 @@ static uint64_t compute_crc(const void *p, int size, uint64_t sum)
         size--;
     }
     while (size >= 4) {
-        //sum += ((sum >> 31) & 1) + sum + *(const uint32_t *)(const void *)data;
-        //sum += sum + *(const uint32_t *)(const void *)data + (sum >> 32);
-        sum = (sum << 3) + *(const uint32_t *)(const void *)data + (sum >> 32);
+        //sum += ((sum >> 31) & 1) + sum + get_uint32(data);
+        //sum += sum + get_uint32(data) + (sum >> 32);
+        sum = (sum << 3) + get_uint32(data) + (sum >> 32);
         data += 4;
         size -= 4;
     }
@@ -6537,8 +6544,10 @@ static void complete_test(CompleteState *cp, const char *str, int mode) {
 
 static int completion_sort_func(const void *p1, const void *p2)
 {
-    const StringItem *item1 = *(const StringItem * const *)p1;
-    const StringItem *item2 = *(const StringItem * const *)p2;
+    const StringItem * const *pp1 = (const StringItem * const *)p1;
+    const StringItem * const *pp2 = (const StringItem * const *)p2;
+    const StringItem *item1 = *pp1;
+    const StringItem *item2 = *pp2;
 
     /* Group items by group order */
     if (item1->group != item2->group)
@@ -9689,11 +9698,17 @@ static void load_all_modules(QEmacsState *qs)
          * The assignment used below is the POSIX.1-2003 (Technical
          * Corrigendum 1) workaround; see the Rationale for the
          * POSIX specification of dlsym().
+         * XXX: this violates the strict aliasing rule. This syntax
+         * is known to cause incorrect code generation in gcc 12.2
+         * with optimizations enabled in other contexts.
          */
         *(void **)&init_func = dlsym(h, "__qe_module_init");
         //init_func = (int (*)(void))dlsym(h, "__qe_module_init");
 #else
-        /* This kludge gets rid of compile and lint warnings */
+        /* This kludge gets rid of compile and lint warnings.
+           The implicit assumption is that code and function pointers
+           have the same size and representation, which is a requirement
+           ofor POSIX targets */
         sym = dlsym(h, "__qe_module_init");
         memcpy(&init_func, &sym, sizeof(sym));
 #endif

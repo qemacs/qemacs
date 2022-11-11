@@ -232,7 +232,7 @@ QVarType qe_get_variable(EditState *s, const char *name,
 
     switch (vp->type) {
     case VAR_STRING:
-        str = *(const char * const*)ptr;
+        memcpy(&str, ptr, sizeof(str));
         if (as_source)
             strquote(buf, size, str, -1);
         else
@@ -246,7 +246,7 @@ QVarType qe_get_variable(EditState *s, const char *name,
             pstrcpy(buf, size, str);
         break;
     case VAR_NUMBER:
-        num = *(const int*)ptr;
+        memcpy(&num, ptr, sizeof(num));
         if (pnum)
             *pnum = num;
         else
@@ -267,7 +267,8 @@ static QVarType qe_variable_set_value_offset(EditState *s, VarDef *vp, void *ptr
         /* XXX: should have default, min and max values */
         return VAR_INVALID;
     } else {
-        *(int*)ptr = clamp(num, 0, s->b->total_size);
+        int *pnum = (int *)ptr;
+        *pnum = clamp(num, 0, s->b->total_size);
         return VAR_NUMBER;
     }
 }
@@ -277,6 +278,7 @@ static QVarType qe_variable_set_value_generic(EditState *s, VarDef *vp, void *pt
 {
     char buf[32];
     char **pstr;
+    int *pnum;
 
     switch (vp->type) {
     case VAR_STRING:
@@ -305,8 +307,9 @@ static QVarType qe_variable_set_value_generic(EditState *s, VarDef *vp, void *pt
         break;
     case VAR_NUMBER:
         if (!value) {
-            if (*(int*)ptr != num) {
-                *(int*)ptr = num;
+            pnum = (int *)ptr;
+            if (*pnum != num) {
+                *pnum = num;
                 vp->modified = 1;
             }
         } else {

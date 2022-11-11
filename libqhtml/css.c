@@ -303,10 +303,11 @@ static char const css_idents[] =
 
 static unsigned int hash_str(const char *str, unsigned int hash_size)
 {
+    const unsigned char *p = (const unsigned char *)str;
     unsigned int h, ch;
     h = 1;
-    while (*str) {
-        ch = *(const unsigned char *)str++;
+    while (*p) {
+        ch = *p++;
         h = ((h << 8) + ch) % hash_size;
     }
     return h;

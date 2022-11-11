@@ -66,8 +66,10 @@ static inline BufedState *bufed_get_state(EditState *e, int status)
 
 static int bufed_sort_func(void *opaque, const void *p1, const void *p2)
 {
-    const StringItem *item1 = *(const StringItem * const*)p1;
-    const StringItem *item2 = *(const StringItem * const*)p2;
+    const StringItem * const *pp1 = (const StringItem * const *)p1;
+    const StringItem * const *pp2 = (const StringItem * const *)p2;
+    const StringItem *item1 = *pp1;
+    const StringItem *item2 = *pp2;
     const EditBuffer *b1 = item1->opaque;
     const EditBuffer *b2 = item2->opaque;
     BufedState *bs = opaque;

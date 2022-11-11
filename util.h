@@ -337,11 +337,11 @@ void qe_free(T **pp);
 #define qe_mallocz_hack(t, n)   ((t *)qe_mallocz_bytes(sizeof(t) + (n)))
 
 #if 1  // to test clang -Weverything
-#define qe_free(pp)    do  { void *_ = (pp); (free)(*(void **)_); *(void **)_ = NULL; } while (0)
+#define qe_free(pp)    do { void *_ = (pp), **__ = _; (free)(*__); *__ = NULL; } while (0)
 #elif defined CONFIG_HAS_TYPEOF
 #define qe_free(pp)    do { typeof(**(pp)) **__ = (pp); (free)(*__); *__ = NULL; } while (0)
 #else
-#define qe_free(pp)    do if (sizeof(**(pp)) >= 0) { void *_ = (pp); (free)(*(void **)_); *(void **)_ = NULL; } while (0)
+#define qe_free(pp)    do if (sizeof(**(pp)) >= 0) { void *_ = (pp), **__ = _; (free)(*__); *__ = NULL; } while (0)
 #endif
 
 /* prevent the use of regular malloc and free functions */
