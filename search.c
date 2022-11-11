@@ -40,36 +40,33 @@
 
 /* should separate search string length and number of match positions */
 #define SEARCH_LENGTH  256
+#define SEARCH_STEPS   512
 #define FOUND_TAG      0x80000000
 #define FOUND_REV      0x40000000
 
 struct ISearchState {
     EditState *s;
-    EditState *minibuffer;     /* set if delegated from minibuffer */
     int search_flags;
     int start_offset;
     int found_offset, found_end;
     int search_u32_len;
     /* isearch */
+    EditState *minibuffer;     /* set if delegated from minibuffer */
     int saved_mark;
     int start_dir;
     int quoting;
     int dir;
-    int pos;  /* position in search_u32_flags */
-    unsigned int search_u32_flags[SEARCH_LENGTH];
-    unsigned int search_u32[SEARCH_LENGTH];
+    int pos;  /* position in search_u32_steps */
+    unsigned int search_u32_steps[SEARCH_STEPS];
+    /* common */
+    char search_str[SEARCH_LENGTH * 3];     /* may be in hex */
+    char32_t search_u32[SEARCH_LENGTH];
 };
 
 static ModeDef isearch_mode;
 
 /* XXX: should store to screen */
 static ISearchState global_isearch_state;
-
-/* last searched string */
-/* XXX: should store as a tagged string in the search history */
-static unsigned int last_search_u32[SEARCH_LENGTH];
-static int last_search_u32_len = 0;
-static int last_search_u32_flags = 0;
 
 static int eb_search(EditBuffer *b, int dir, int flags,
                      int start_offset, int end_offset,
@@ -91,7 +88,7 @@ static int eb_search(EditBuffer *b, int dir, int flags,
     *found_end = -1;
 
     /* analyze buffer if smart case */
-    if (flags & SEARCH_FLAG_SMARTCASE) {
+    if ((flags & SEARCH_FLAG_CASE_MASK) == SEARCH_FLAG_SMARTCASE) {
         int upper_count = 0;
         int lower_count = 0;
         for (pos = 0; pos < len; pos++) {
@@ -164,11 +161,9 @@ static int eb_search(EditBuffer *b, int dir, int flags,
         pos = 0;
         for (offset2 = offset1;;) {
             c2 = buf[pos++];
-            if (flags & SEARCH_FLAG_IGNORECASE) {
-                if (qe_wtoupper(c) != qe_wtoupper(c2))
-                    break;
-            } else {
-                if (c != c2)
+            if (c != c2) {
+                if (!(flags & SEARCH_FLAG_IGNORECASE)
+                ||  qe_wtoupper(c) != qe_wtoupper(c2))
                     break;
             }
             if (pos >= len) {
@@ -196,6 +191,7 @@ static int search_abort_func(qe__unused__ void *opaque)
     return is_user_input_pending();
 }
 
+#if 0
 static void buf_encode_search_u32(buf_t *out, const char32_t *str, int len)
 {
     int i;
@@ -211,6 +207,7 @@ static void buf_encode_search_u32(buf_t *out, const char32_t *str, int len)
             break;
     }
 }
+#endif
 
 static void buf_encode_search_str(buf_t *out, const char *str)
 {
@@ -260,7 +257,7 @@ static void buf_disp_search_flags(buf_t *out, int search_flags) {
 }
 
 static void isearch_run(ISearchState *is) {
-    char ubuf[256];
+    char ubuf[SEARCH_LENGTH * 3];
     buf_t outbuf, *out;
     int i, len, hex_nibble, max_nibble, h;
     char32_t c, hc;
@@ -286,14 +283,22 @@ static void isearch_run(ISearchState *is) {
     if (flags & SEARCH_FLAG_HEX)
         max_nibble = 2;
 
+    out = buf_init(&outbuf, ubuf, countof(ubuf));
+    // XXX: should have steps to update flags, and retrieve history strings too
     for (i = 0; i < is->pos; i++) {
-        v = is->search_u32_flags[i];
+        v = is->search_u32_steps[i];
         if (v & FOUND_TAG) {
             dir = (v & FOUND_REV) ? -1 : 1;
             search_offset = v & ~(FOUND_TAG | FOUND_REV);
             continue;
         }
         c = v;
+        if (c == 0) {
+            /* special case: use redundant utf8x encoding */
+            buf_write(out, "\xC0\x80", 2);
+        } else {
+            buf_putc_utf8(out, c);
+        }
         if (len < countof(is->search_u32)) {
             if (max_nibble) {
                 h = qe_digit_value(c);
@@ -344,6 +349,11 @@ static void isearch_run(ISearchState *is) {
         }
     }
 
+    /* construct search_str with search_flags prefix */
+    out = buf_init(&outbuf, is->search_str, countof(is->search_str));
+    buf_disp_search_flags(out, is->search_flags);
+    buf_puts(out, ubuf);
+
     /* display search string */
     out = buf_init(&outbuf, ubuf, sizeof(ubuf));
     if (is->found_offset < 0 && len > 0)
@@ -353,12 +363,12 @@ static void isearch_run(ISearchState *is) {
         buf_puts(out, "Wrapped ");
         is->search_flags &= ~SEARCH_FLAG_WRAPPED;
     }
-    buf_disp_search_flags(out, is->search_flags);
     buf_puts(out, "I-search");
     if (is->dir < 0)
         buf_puts(out, " backward");
     buf_puts(out, ": ");
-    buf_encode_search_u32(out, is->search_u32, is->search_u32_len);
+    /* display control characters as ^c */
+    buf_encode_search_str(out, is->search_str);
     if (is->quoting)
         buf_puts(out, "^Q-");
 
@@ -379,9 +389,9 @@ static int isearch_grab(ISearchState *is, EditBuffer *b, int from, int to)
     if (b) {
         if (to < 0 || to > b->total_size)
             to = b->total_size;
-        for (offset = from; is->pos < SEARCH_LENGTH && offset < to;) {
+        for (offset = from; is->pos < countof(is->search_u32_steps) && offset < to;) {
             char32_t c = eb_nextc(b, offset, &offset);
-            is->search_u32_flags[is->pos++] = c;
+            is->search_u32_steps[is->pos++] = c;
         }
     }
     return is->pos - last;
@@ -431,12 +441,21 @@ static void isearch_addpos(EditState *s, int dir) {
     curdir = is->dir;
     is->dir = dir;
     if (is->search_u32_len == 0 && is->dir == curdir) {
-        int len = min(last_search_u32_len, SEARCH_LENGTH - is->pos);
-        blockcpy(is->search_u32_flags + is->pos, last_search_u32, len);
-        is->pos += len;
-        is->search_flags = last_search_u32_flags;
+        /* retrieve last search string from search history list */
+        StringArray *hist = qe_get_history("search");
+        if (hist && hist->nb_items) {
+            const char *str = hist->items[hist->nb_items - 1]->str;
+            if (str) {
+                is->search_flags = SEARCH_FLAG_ACTIVE |
+                    search_string_get_flags(str, SEARCH_FLAG_DEFAULT, &str);
+                while (*str && is->pos < countof(is->search_u32_steps)) {
+                    char32_t c = utf8_decode(&str);
+                    is->search_u32_steps[is->pos++] = c;
+                }
+            }
+        }
     } else
-    if (is->pos < SEARCH_LENGTH) {
+    if (is->pos < countof(is->search_u32_steps)) {
         /* add the match position, if any */
         unsigned long v = (is->dir >= 0) ? FOUND_TAG : FOUND_TAG | FOUND_REV;
         if (is->found_offset < 0 && is->search_u32_len > 0) {
@@ -446,15 +465,15 @@ static void isearch_addpos(EditState *s, int dir) {
         } else {
             v |= is->s->offset;
         }
-        is->search_u32_flags[is->pos++] = v;
+        is->search_u32_steps[is->pos++] = v;
     }
 }
 
 static void isearch_printing_char(EditState *s, int key) {
     ISearchState *is = s->isearch_state;
     if (is) {
-        if (is->pos < SEARCH_LENGTH)
-            is->search_u32_flags[is->pos++] = key;
+        if (is->pos < countof(is->search_u32_steps))
+            is->search_u32_steps[is->pos++] = key;
     }
 }
 
@@ -473,6 +492,23 @@ static void isearch_delete_char(EditState *s) {
     }
 }
 
+static int search_flags_cycle(int flags, int f1) {
+    /* split the bits */
+    int f2 = f1 & (f1 - 1);
+    f1 &= ~f2;
+    /* cycle search flags through 2 or 3 possibilities */
+    if (flags & f1) {
+        flags &= ~f1;
+        flags |= f2;
+    } else
+    if (flags & f2) {
+        flags &= ~f2;
+    } else {
+        flags |= f1;
+    }
+    return flags;
+}
+
 static void isearch_cycle_flags(EditState *s, int f1) {
     ISearchState *is = s->isearch_state;
 
@@ -481,21 +517,7 @@ static void isearch_cycle_flags(EditState *s, int f1) {
             is = s->target_window->isearch_state;
     }
     if (is) {
-        /* split the bits */
-        int flags = is->search_flags;
-        int f2 = f1 & (f1 - 1);
-        f1 &= ~f2;
-        /* cycle search flags through 2 or 3 possibilities */
-        if (flags & f1) {
-            flags &= ~f1;
-            flags |= f2;
-        } else
-        if (flags & f2) {
-            flags &= ~f2;
-        } else {
-            flags |= f1;
-        }
-        is->search_flags = flags;
+        is->search_flags = search_flags_cycle(is->search_flags, f1);
 
         if (s->flags & WF_MINIBUF) {
             /* update minibuffer prompt from flags */
@@ -504,7 +526,7 @@ static void isearch_cycle_flags(EditState *s, int f1) {
             buf_t outbuf, *out;
             const char *str;
 
-            eb_get_contents(s->b, contents, sizeof(contents));
+            eb_get_contents(s->b, contents, sizeof(contents), 1);
             /* strip current prefixes */
             search_string_get_flags(contents, SEARCH_FLAG_DEFAULT, &str);
             out = buf_init(&outbuf, ubuf, sizeof(ubuf));
@@ -535,12 +557,11 @@ void isearch_toggle_word_match(EditState *s) {
 }
 
 static void isearch_end(ISearchState *is) {
-    /* save current searched string */
-    // XXX: should save search strings to the search history buffer
-    if (is->search_u32_len > 0) {
-        blockcpy(last_search_u32, is->search_u32, is->search_u32_len);
-        last_search_u32_len = is->search_u32_len;
-        last_search_u32_flags = is->search_flags;
+    /* save current search string to the search history buffer */
+    StringArray *hist = qe_get_history("search");
+    if (*is->search_str && hist) {
+        remove_string(hist, is->search_str);
+        add_string(hist, is->search_str, 0);
     }
     is->search_flags &= ~SEARCH_FLAG_ACTIVE;
     edit_display(is->s->qe_state);
@@ -617,7 +638,7 @@ static void isearch_key(void *opaque, int key) {
 static ISearchState *set_search_state(EditState *s, int argval, int dir) {
     ISearchState *is = &global_isearch_state;
     EditState *e;
-    int flags = SEARCH_FLAG_SMARTCASE | SEARCH_FLAG_ACTIVE;
+    int flags = SEARCH_FLAG_DEFAULT | SEARCH_FLAG_ACTIVE;
 
     /* stop displaying search matches on last window */
     e = check_window(&is->s);
@@ -721,10 +742,9 @@ void isearch_colorize_matches(EditState *s, char32_t *buf, int len,
         char contents[1024];
         const char *str;
 
-        eb_get_contents(is->minibuffer->b, contents, sizeof(contents));
+        eb_get_contents(is->minibuffer->b, contents, sizeof(contents), 1);
         search_flags = search_string_get_flags(contents, SEARCH_FLAG_DEFAULT, &str);
-        is->search_u32_len = search_to_u32(is->search_u32,
-                                           countof(is->search_u32),
+        is->search_u32_len = search_to_u32(is->search_u32, countof(is->search_u32),
                                            str, search_flags);
     }
 
@@ -765,19 +785,21 @@ void isearch_colorize_matches(EditState *s, char32_t *buf, int len,
 
 typedef struct QueryReplaceState {
     EditState *s;
-    EditState *help_window;
     int search_flags;
     int start_offset;
     int found_offset, found_end;
     int search_u32_len;
     /* query-replace */
+    EditState *help_window;
     int replace_all;
     int nb_reps;
     int replace_u32_len;
     int last_offset;
-    char search_str[SEARCH_LENGTH];     /* may be in hex */
-    char replace_str[SEARCH_LENGTH];    /* may be in hex */
+    /* common */
+    char search_str[SEARCH_LENGTH * 3];   /* may be in hex */
     char32_t search_u32[SEARCH_LENGTH];   /* code points */
+    /* query-replace */
+    char replace_str[SEARCH_LENGTH * 3];  /* may be in hex */
     char32_t replace_u32[SEARCH_LENGTH];  /* code points */
 } QueryReplaceState;
 
@@ -892,7 +914,7 @@ static void query_replace_key(void *opaque, int key)
     EditState *s = is->s;
     QEmacsState *qs = s->qe_state;
 
-    if (is->help_window) {
+    if (check_window(&is->help_window)) {
         do_delete_window(is->help_window, 0);
         is->help_window = NULL;
         qs->active_window = s;
@@ -932,25 +954,14 @@ static void query_replace_key(void *opaque, int key)
     case KEY_CTRL('b'):
         /* cycle unihex, hex, normal search */
         //isearch_toggle_hex(is);
-        if (is->search_flags & SEARCH_FLAG_UNIHEX)
-            is->search_flags ^= SEARCH_FLAG_HEX | SEARCH_FLAG_UNIHEX;
-        else
-        if (is->search_flags & SEARCH_FLAG_HEX)
-            is->search_flags ^= SEARCH_FLAG_HEX;
-        else
-            is->search_flags ^= SEARCH_FLAG_UNIHEX;
+        is->search_flags = search_flags_cycle(is->search_flags, SEARCH_FLAG_HEX_MASK);
         is->found_offset = is->last_offset;
         break;
     case KEY_META('c'):
     case KEY_CTRL('c'):
         /* toggle case sensitivity */
         //isearch_toggle_case_fold(is);
-        if (is->search_flags & (SEARCH_FLAG_IGNORECASE | SEARCH_FLAG_SMARTCASE)) {
-            is->search_flags &= ~SEARCH_FLAG_IGNORECASE;
-        } else {
-            is->search_flags |= SEARCH_FLAG_IGNORECASE;
-        }
-        is->search_flags &= ~SEARCH_FLAG_SMARTCASE;
+        is->search_flags = search_flags_cycle(is->search_flags, SEARCH_FLAG_CASE_MASK);
         is->found_offset = is->last_offset;
         break;
     case KEY_CTRL('g'):
@@ -981,6 +992,7 @@ static void query_replace(EditState *s, const char *search_str,
     /* search_str starts with encoded search flags */
     // TODO: merge QueryReplaceState and ISearchState
     // TODO: use pseudo mode bindings like isearch
+    // XXX: should restrict the search to the current region if highlighted
     QueryReplaceState *is;
 
     /* prevent replace from minibuffer */
@@ -1099,6 +1111,7 @@ void do_search_string(EditState *s, const char *search_str, int mode)
 {
     char32_t search_u32[SEARCH_LENGTH];
     int search_u32_len;
+    int min_offset, max_offset;
     int found_offset, found_end;
     int flags;
     int offset, count = 0, p1 = 0, p2 = 0, p3, last, start = 0;
@@ -1112,7 +1125,26 @@ void do_search_string(EditState *s, const char *search_str, int mode)
     if (search_u32_len <= 0)
         return;
 
-    last = offset = s->offset;
+    min_offset = 0;
+    max_offset = s->b->total_size;
+    offset = s->offset;
+
+    if (s->region_style) {
+        /* restrict the search to the current region */
+        s->region_style = 0;
+        min_offset = s->b->mark;
+        max_offset = s->offset;
+        if (min_offset > max_offset) {
+            min_offset = s->offset;
+            max_offset = s->b->mark;
+        }
+        if (mode == CMD_SEARCH_BACKWARD) {
+            offset = max_offset;
+        } else {
+            offset = min_offset;
+        }
+    }
+    last = offset;
     if (mode == CMD_DELETE_MATCHING_LINES
     ||  mode == CMD_DELETE_NON_MATCHING_LINES
     ||  mode == CMD_KILL_MATCHING_LINES) {
@@ -1127,9 +1159,10 @@ void do_search_string(EditState *s, const char *search_str, int mode)
     }
 
     while (eb_search(s->b, mode == CMD_SEARCH_BACKWARD ? -1 : 1,
-                     flags, offset, s->b->total_size,
+                     flags, offset, max_offset,
                      search_u32, search_u32_len,
-                     NULL, NULL, &found_offset, &found_end) > 0)
+                     NULL, NULL, &found_offset, &found_end) > 0
+       &&  found_offset >= min_offset)
     {
         count++;
         if (mode > CMD_SEARCH_FORWARD) {
@@ -1153,11 +1186,11 @@ void do_search_string(EditState *s, const char *search_str, int mode)
             do_center_cursor(s, 0);
             return;
         case CMD_DELETE_MATCHING_LINES:
-            eb_delete_range(s->b, p1, p2);
+            max_offset -= eb_delete_range(s->b, p1, p2);
             offset = p1;
             continue;
         case CMD_DELETE_NON_MATCHING_LINES:
-            eb_delete_range(s->b, last, p1);
+            max_offset -= eb_delete_range(s->b, last, p1);
             offset = last += p2 - p1;
             continue;
         case CMD_COPY_MATCHING_LINES:
@@ -1167,6 +1200,7 @@ void do_search_string(EditState *s, const char *search_str, int mode)
             continue;
         case CMD_KILL_MATCHING_LINES:
             do_kill(s, p1, p2, 1, 0);
+            max_offset -= p2 - p1;
             offset = p1;
             continue;
         case CMD_LIST_MATCHING_LINES:
@@ -1237,6 +1271,8 @@ static CompletionDef search_completion = {
 };
 
 static const CmdDef isearch_commands[] = {
+    // C-o could toggle incremental mode?
+    // M-<Up>, M-p and M-<Down>, M-n to select from the search history list
     CMD2( "isearch-abort", "C-g",
           "abort isearch and move point to starting point",
            isearch_abort, ES, "")
@@ -1262,7 +1298,7 @@ static const CmdDef isearch_commands[] = {
           "show the help page for isearch",
            isearch_mode_help, ES, "")
     CMD3( "isearch-next-match", "C-s",
-          "Search again forward",
+          "Find next match forward",
            isearch_addpos, ESi, "v", 1)
     CMDx( "isearch-next-string", "M-n",
           "get the next item from history",

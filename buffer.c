@@ -2358,9 +2358,10 @@ void eb_line_pad(EditBuffer *b, int offset, int n) {
 
 /* Read the contents of a buffer region encoded in a utf8 string */
 int eb_get_region_contents(EditBuffer *b, int start, int stop,
-                           char *buf, int buf_size)
+                           char *buf, int buf_size, int encode_zero)
 {
-    int size;
+    int size, offset;
+    buf_t outbuf, *out;
 
     stop = clamp(stop, 0, b->total_size);
     start = clamp(start, 0, stop);
@@ -2371,18 +2372,20 @@ int eb_get_region_contents(EditBuffer *b, int start, int stop,
     &&  size < buf_size) {
         eb_read(b, start, buf, size);
         buf[size] = '\0';
-        return size;
-    } else {
-        buf_t outbuf, *out;
-        int offset;
-
-        out = buf_init(&outbuf, buf, buf_size);
-        for (offset = start; offset < stop;) {
-            char32_t c = eb_nextc(b, offset, &offset);
+        if (!encode_zero || (int)strlen(buf) == size)
+            return size;
+    }
+    out = buf_init(&outbuf, buf, buf_size);
+    for (offset = start; offset < stop;) {
+        char32_t c = eb_nextc(b, offset, &offset);
+        if (c == 0 && encode_zero) {
+            /* special case: use redundant utf8x encoding */
+            buf_write(out, "\xC0\x80", 2);
+        } else {
             buf_putc_utf8(out, c);
         }
-        return out->len;
     }
+    return out->len;
 }
 
 /* Compute the size of the contents of a buffer region encoded in utf8 */

@@ -1236,7 +1236,7 @@ static void selection_send(X11State *xs, XSelectionRequestEvent *rq)
         buf = qe_malloc_array(unsigned char, size);
         if (!buf)
             return;
-        len = eb_get_contents(b, (char *)buf, size);
+        len = eb_get_contents(b, (char *)buf, size, 0);
 
         XChangeProperty(xs->display, rq->requestor, rq->property,
                         rq->target, 8, PropModeReplace,

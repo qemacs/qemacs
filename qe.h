@@ -548,9 +548,9 @@ static inline int eb_get_content_size(EditBuffer *b) {
     return eb_get_region_content_size(b, 0, b->total_size);
 }
 int eb_get_region_contents(EditBuffer *b, int start, int stop,
-                           char *buf, int buf_size);
-static inline int eb_get_contents(EditBuffer *b, char *buf, int buf_size) {
-    return eb_get_region_contents(b, 0, b->total_size, buf, buf_size);
+                           char *buf, int buf_size, int encode_zero);
+static inline int eb_get_contents(EditBuffer *b, char *buf, int buf_size, int encode_zero) {
+    return eb_get_region_contents(b, 0, b->total_size, buf, buf_size, encode_zero);
 }
 int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
                              EditBuffer *src, int src_offset,
@@ -1322,6 +1322,7 @@ void minibuffer_edit(EditState *e, const char *input, const char *prompt,
                      StringArray *hist, const char *completion_name,
                      void (*cb)(void *opaque, char *buf, CompletionDef *completion),
                      void *opaque);
+StringArray *qe_get_history(const char *name);
 void command_complete(CompleteState *cp, CompleteFunc enumerate);
 int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s);
 int command_print_entry(CompleteState *cp, EditState *s, const char *name);

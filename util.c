@@ -1584,7 +1584,8 @@ StringItem *set_string(StringArray *cs, int index, const char *str, int group)
     StringItem *v;
     int len;
 
-    if (index >= cs->nb_items)
+    // XXX: negative index from the end?
+    if (!cs || index < 0 || index >= cs->nb_items)
         return NULL;
 
     len = strlen(str);
@@ -1601,12 +1602,11 @@ StringItem *set_string(StringArray *cs, int index, const char *str, int group)
 }
 
 /* make a generic array alloc */
-StringItem *add_string(StringArray *cs, const char *str, int group)
-{
-    int n;
-
+StringItem *add_string(StringArray *cs, const char *str, int group) {
+    if (!cs)
+        return NULL;
     if (cs->nb_items >= cs->nb_allocated) {
-        n = cs->nb_allocated + 32;
+        int n = cs->nb_allocated + 32;
         if (!qe_realloc(&cs->items, n * sizeof(StringItem *)))
             return NULL;
         cs->nb_allocated = n;
@@ -1615,10 +1615,24 @@ StringItem *add_string(StringArray *cs, const char *str, int group)
     return set_string(cs, cs->nb_items - 1, str, group);
 }
 
-void free_strings(StringArray *cs)
-{
-    int i;
+int remove_string(StringArray *cs, const char *str) {
+    int i, j, count = 0;
+    if (cs) {
+        for (i = j = 0; i < cs->nb_items; i++) {
+            if (cs->items[i] && strcmp(cs->items[i]->str, str)) {
+                cs->items[j++] = cs->items[i];
+            } else {
+                qe_free(&cs->items[i]);
+                count++;
+            }
+        }
+        cs->nb_items = j;
+    }
+    return count;
+}
 
+void free_strings(StringArray *cs) {
+    int i;
     for (i = 0; i < cs->nb_items; i++)
         qe_free(&cs->items[i]);
     qe_free(&cs->items);

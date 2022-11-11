@@ -1942,7 +1942,7 @@ static CompletionDef tag_completion = {
 
 static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
     char buf[256];
-    char entry[256];
+    char entry[264]; // silence compiler warning on snprintf calls below
     FILE *fp;
 
     /* enumerate Unicode character names from Unicode consortium data */
@@ -1961,7 +1961,7 @@ static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
                 p3 = strchr(buf, ' ');
                 if (p3)
                     *p3 = '\0';
-                snprintf(entry, sizeof entry, "%s\t%5s", p1, buf);
+                snprintf(entry, sizeof entry, "%s\t%5.6s", p1, buf);
                 enumerate(cp, entry, CT_IGLOB);
             }
         }
@@ -1977,7 +1977,7 @@ static void charname_complete(CompleteState *cp, CompleteFunc enumerate) {
             &&  (p2 = strchr(p1 + 1, ';')) != NULL) {
                 *p1++ = '\0';
                 *p2 = '\0';
-                snprintf(entry, sizeof entry, "%s\t%5s", p1, buf);
+                snprintf(entry, sizeof entry, "%s\t%5.6s", p1, buf);
                 enumerate(cp, entry, CT_IGLOB);
             }
         }

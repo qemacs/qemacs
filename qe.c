@@ -38,7 +38,6 @@ void print_at_byte(QEditScreen *screen,
                    int x, int y, int width, int height,
                    const char *str, QETermStyle style);
 static EditBuffer *predict_switch_to_buffer(EditState *s);
-static StringArray *get_history(const char *name);
 static void qe_key_process(int key);
 
 static int generic_save_window_data(EditState *s);
@@ -404,6 +403,7 @@ int qe_register_commands(ModeDef *m, const CmdDef *cmds, int len)
             /* Command table already registered, still do the binding
              * phase to allow multiple mode bindings.
              */
+            break;
         }
     }
     if (i >= qs->cmd_array_count) {
@@ -5256,7 +5256,7 @@ static void parse_arguments(ExecCmdState *es)
                 pstrcat(cas.prompt, sizeof(cas.prompt), es->default_input);
                 pstrcat(cas.prompt, sizeof(cas.prompt), ") ");
             }
-            minibuffer_edit(s, def_input, cas.prompt, get_history(cas.history),
+            minibuffer_edit(s, def_input, cas.prompt, qe_get_history(cas.history),
                             cas.completion, arg_edit_cb, es);
             return;
         }
@@ -6501,7 +6501,7 @@ static void complete_start(CompleteState *cp, EditState *s, int start, int end,
     cp->start = start;
     cp->end = end;
     cp->len = eb_get_region_contents(s->b, cp->start, cp->end,
-                                     cp->current, sizeof(cp->current));
+                                     cp->current, sizeof(cp->current), 0);
 }
 
 static void complete_test(CompleteState *cp, const char *str, int mode) {
@@ -6842,8 +6842,7 @@ static void minibuffer_set_str(EditState *s, int start, int end, const char *str
 }
 
 /* CG: should use buffer of responses */
-static StringArray *get_history(const char *name)
-{
+StringArray *qe_get_history(const char *name) {
     QEmacsState *qs = &qe_state;
     HistoryEntry *p;
 
@@ -6891,8 +6890,8 @@ void do_minibuffer_history(EditState *s, int n)
         return;
 
     if (qs->last_cmd_func != (CmdFunc)do_minibuffer_history) {
-        /* save currently edited line */
-        eb_get_contents(s->b, buf, sizeof(buf));
+        /* save currently edited line (including embedded null bytes) */
+        eb_get_contents(s->b, buf, sizeof(buf), 1);
         set_string(hist, hist->nb_items - 1, buf, 0);
         mb->history_saved_offset = s->offset;
     }
@@ -6949,7 +6948,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
             }
         }
 
-        eb_get_contents(s->b, buf, sizeof(buf));
+        eb_get_contents(s->b, buf, sizeof(buf), 1);
 
         /* Append response to history list */
         hist = mb->history;

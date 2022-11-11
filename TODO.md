@@ -317,6 +317,7 @@ insert_window_left()  deletes some left-most windows
 * query replace options: u -> undo last change
 * add non selectable query-replace-mode for key bindings, cmd description and documentation
 * extra: `grep`, `grep-buffer`, `grep-sources`, `grep-tree`...
+* query_replace functions should be restricted to the highlighted region if any
 * search: `count-words`, `wc`, `count-sloc`
 * search: stats command for word count and mode specific stats
 * isearch: `M-p` and `M-n` should select previous and next search pattern in history

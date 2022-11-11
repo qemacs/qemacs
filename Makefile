@@ -312,7 +312,7 @@ $(OBJS_DIR)/$(TARGET)_modules.o: $(OBJS_DIR)/$(TARGET)_modules.c Makefile
 	$(echo) CC $(ECHO_CFLAGS) -c $<
 	$(cmd)  $(CC) $(DEFINES) $(CFLAGS) -o $@ -c $<
 
-$(OBJS_DIR)/$(TARGET)_modules.c: $(SRCS) Makefile
+$(OBJS_DIR)/$(TARGET)_modules.c: $(SRCS) Makefile config.mak
 	@echo creating $@
 	$(cmd)  mkdir -p $(dir $@)
 	@echo '/* This file was generated automatically */' > $@
