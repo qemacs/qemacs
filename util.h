@@ -84,6 +84,13 @@ char *makepath(char *buf, int buf_size, const char *path, const char *filename);
 void splitpath(char *dirname, int dirname_size,
                char *filename, int filename_size, const char *pathname);
 
+/*---- Buffer offset functions ----*/
+
+/* buffer offsets are 32-bit signed integers */
+#define min_offset(a, b)  min_int(a, b)
+#define max_offset(a, b)  max_int(a, b)
+#define clamp_offset(a, b, c)  clamp_int(a, b, c)
+
 /*---- Character classification functions ----*/
 
 /* Character classification tests work for ASCII, Latin1 and Unicode */
@@ -543,6 +550,7 @@ int utf8_encode(char *q, char32_t c);
 char32_t utf8_decode_strict(const char **pp);
 char32_t utf8_decode(const char **pp);
 int utf8_to_char32(char32_t *dest, int dest_length, const char *str);
+int char32_to_utf8(char *dest, int dest_length, const char32_t *src, int src_length);
 
 char32_t qe_unaccent(char32_t c);
 

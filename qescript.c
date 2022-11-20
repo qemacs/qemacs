@@ -1262,7 +1262,8 @@ static int do_eval_buffer_region(EditState *s, int start, int stop) {
         start = stop;
         stop = tmp;
     }
-    stop = clamp(stop, maxp(&start, 0), s->b->total_size);
+    start = max_offset(start, 0);
+    stop = clamp_offset(stop, start, s->b->total_size);
     length = stop - start;
     if (length > MAX_SCRIPT_LENGTH || !(buf = qe_malloc_array(char, length + 1))) {
         put_error(s, "buffer too large");

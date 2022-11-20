@@ -271,8 +271,8 @@ static int tty_dpy_init(QEditScreen *s,
     }
 #endif
 
-    ts->tty_bg_colors_count = min(ts->term_bg_colors_count, TTY_BG_COLORS);
-    ts->tty_fg_colors_count = min(ts->term_fg_colors_count, TTY_FG_COLORS);
+    ts->tty_bg_colors_count = min_int(ts->term_bg_colors_count, TTY_BG_COLORS);
+    ts->tty_fg_colors_count = min_int(ts->term_fg_colors_count, TTY_FG_COLORS);
     ts->tty_colors = xterm_colors;
 
     tcgetattr(fileno(s->STDIN), &tty);
@@ -1538,10 +1538,10 @@ static void tty_dpy_bmp_lock(QEditScreen *s, QEBitmap *bp, QEPicture *pict,
     if (bp->priv_data) {
         QEPicture *pp = bp->priv_data;
         *pict = *pp;
-        x1 = clamp(x1, 0, pp->width);
-        y1 = clamp(y1, 0, pp->height);
-        pict->width = clamp(w1, 0, pp->width - x1);
-        pict->height = clamp(h1, 0, pp->height - y1);
+        x1 = clamp_int(x1, 0, pp->width);
+        y1 = clamp_int(y1, 0, pp->height);
+        pict->width = clamp_int(w1, 0, pp->width - x1);
+        pict->height = clamp_int(h1, 0, pp->height - y1);
         pict->data[0] += y1 * pict->linesize[0] + x1;
     }
 }

@@ -181,7 +181,7 @@ static void r_colorize_line(QEColorizeContext *cp,
         }
     }
     colstate &= ~(IN_R_LEVEL | IN_R_FUNCLEVEL);
-    colstate |= clamp(level, 0, R_LEVEL_MAX);
+    colstate |= clamp_int(level, 0, R_LEVEL_MAX);
     colstate |= funclevel << R_FUNCLEVEL_SHIFT;
     cp->colorize_state = colstate;
 }

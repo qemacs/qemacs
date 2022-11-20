@@ -37,7 +37,7 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
 
         /* Compute max width of character in hex dump (limit to first 64K) */
         maxc = 0xFFFF;
-        max_offset = min(65536, s->b->total_size);
+        max_offset = min_offset(65536, s->b->total_size);
         for (offset = 0; offset < max_offset;) {
             c = eb_nextc(s->b, offset, &offset);
             if (maxc < c)
@@ -47,7 +47,7 @@ static int unihex_mode_init(EditState *s, EditBuffer *b, int flags)
         s->hex_mode = 1;
         s->hex_nibble = 0;
         s->unihex_mode = w = snprintf(NULL, 0, "%x", maxc);
-        s->dump_width = clamp((s->width - 8 - 2 - 2 - 1) / (w + 3), 8, 16);
+        s->dump_width = clamp_int((s->width - 8 - 2 - 2 - 1) / (w + 3), 8, 16);
         s->overwrite = 1;
         /* XXX: should come from mode.default_wrap */
         s->wrap = WRAP_TRUNCATE;
@@ -90,7 +90,7 @@ static int unihex_display_line(EditState *s, DisplayState *ds, int offset)
     //display_printf(ds, -1, -1, "%08x ", charpos);
     //display_printf(ds, -1, -1, "%08x %08x ", charpos, offset);
 
-    dump_width = min(LINE_MAX_SIZE - 1, s->dump_width);
+    dump_width = min_int(LINE_MAX_SIZE - 1, s->dump_width);
     ateof = 0;
     len = 0;
     maxc = 0;

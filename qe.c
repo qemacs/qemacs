@@ -267,7 +267,7 @@ int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s) {
         if (qe_list_bindings(d, s->mode, 1, buf, sizeof buf)) {
             b->cur_style = QE_STYLE_COMMENT;
             if (2 + len < 40) {
-                b->tab_width = max(2 + len, b->tab_width);
+                b->tab_width = max_int(2 + len, b->tab_width);
                 len += eb_putc(b, '\t');
             } else {
                 b->tab_width = 40;
@@ -408,7 +408,7 @@ int qe_register_commands(ModeDef *m, const CmdDef *cmds, int len)
     }
     if (i >= qs->cmd_array_count) {
         if (i >= qs->cmd_array_size) {
-            int n = max(i + 16, 32);
+            int n = max_int(i + 16, 32);
             if (!qe_realloc(&qs->cmd_array, n * sizeof(*qs->cmd_array))) {
                 put_status(NULL, "Out of memory");
                 return -1;
@@ -837,8 +837,8 @@ int qe_get_word(EditState *s, char *buf, int buf_size,
 void do_mark_region(EditState *s, int mark, int offset)
 {
     /* CG: Should have local and global mark rings */
-    s->b->mark = clamp(mark, 0, s->b->total_size);
-    s->offset = clamp(offset, 0, s->b->total_size);
+    s->b->mark = clamp_offset(mark, 0, s->b->total_size);
+    s->offset = clamp_offset(offset, 0, s->b->total_size);
     /* activate region hilite */
     if (s->qe_state->hilite_region)
         s->region_style = QE_STYLE_REGION_HILITE;
@@ -899,9 +899,9 @@ void do_changecase_region(EditState *s, int arg)
     /* WARNING: during case change, the region offsets can change, so
        it is not so simple ! */
     /* XXX: if last char of region changes width, offset will move */
-    offset = min(s->offset, s->b->mark);
+    offset = min_offset(s->offset, s->b->mark);
     for (;;) {
-        if (offset >= max(s->offset, s->b->mark))
+        if (offset >= max_offset(s->offset, s->b->mark))
               break;
         if (eb_changecase(s->b, offset, &offset, arg)) {
             if (arg == 2)
@@ -994,7 +994,7 @@ void do_backspace(EditState *s, int argval)
             /* unfill the TAB: only insert spaces to preserve layout */
             int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
             int col = text_screen_width(s->b, eb_goto_bol(s->b, s->offset), s->offset, tw);
-            spaces -= min(spaces, col % tw);
+            spaces -= min_int(spaces, col % tw);
         }
         if (argval > 0) {
             do_kill(s, s->offset, endpos, -argval, 0);
@@ -1286,7 +1286,7 @@ void do_scroll_left_right(EditState *s, int n)
             if (s->x_disp[0] == 0) {
                 s->wrap = WRAP_LINE;
             } else {
-                s->x_disp[0] = min(s->x_disp[0] + adjust, 0);
+                s->x_disp[0] = min_int(s->x_disp[0] + adjust, 0);
             }
         } else
         if (s->wrap == WRAP_LINE || s->wrap == WRAP_AUTO) {
@@ -1299,7 +1299,7 @@ void do_scroll_left_right(EditState *s, int n)
         if (s->wrap == WRAP_LINE || s->wrap == WRAP_AUTO) {
             s->wrap = WRAP_TRUNCATE;
         } else {
-            s->x_disp[0] = min(s->x_disp[0] + adjust, 0);
+            s->x_disp[0] = min_int(s->x_disp[0] + adjust, 0);
         }
     }
 }
@@ -1621,7 +1621,7 @@ int do_delete_selection(EditState *s)
 }
 
 void do_char(EditState *s, int key, int argval) {
-    int repeat = (argval == NO_ARG) ? 1 : max(0, argval);
+    int repeat = (argval == NO_ARG) ? 1 : max_int(0, argval);
 
 #ifndef CONFIG_TINY
     if (s->b->flags & BF_PREVIEW) {
@@ -1816,6 +1816,9 @@ struct QuoteKeyArgument {
 /* XXX: may be better to move it into qe_key_process() */
 static void quote_key(void *opaque, int key)
 {
+    // XXX: emacs supports octal input followed by RET
+    //      and f1 for context sensitive help
+    //      qemacs supports special keys and inserts the keyboard sequence
     struct QuoteKeyArgument *qa = opaque;
     EditState *s = qa->s;
     int repeat = qa->argval;
@@ -2821,21 +2824,21 @@ void do_goto(EditState *s, const char *str, int unit)
         /* XXX: should realign on character boundary?
          *      realignment probably better addressed in display module
          */
-        s->offset = clamp(pos, 0, s->b->total_size);
+        s->offset = clamp_offset(pos, 0, s->b->total_size);
         return;
     case 'c':
         if (*p)
             goto error;
         if (rel)
             pos += eb_get_char_offset(s->b, s->offset);
-        s->offset = eb_goto_char(s->b, max(0, pos));
+        s->offset = eb_goto_char(s->b, max_offset(0, pos));
         return;
     case '%':
         /* CG: should not require long long for this */
         pos = pos * (long long)s->b->total_size / 100;
         if (rel)
             pos += s->offset;
-        eb_get_pos(s->b, &line, &col, clamp(pos, 0, s->b->total_size));
+        eb_get_pos(s->b, &line, &col, clamp_offset(pos, 0, s->b->total_size));
         line += (col > 0);
         goto getcol;
 
@@ -2853,7 +2856,7 @@ void do_goto(EditState *s, const char *str, int unit)
         if (*p)
             goto error;
         // XXX: col should be a display column, not a character number
-        s->offset = eb_goto_pos(s->b, max(0, line), col);
+        s->offset = eb_goto_pos(s->b, max_offset(0, line), col);
         return;
     }
 error:
@@ -3169,10 +3172,10 @@ void fill_window_slack(EditState *s, int x, int y, int w, int h, int color)
     y0 = s->ytop;
     w0 = s->width;
     h0 = s->height;
-    w1 = max(0, x);
-    w2 = max(0, w0 - (x + w));
-    h1 = max(0, y);
-    h2 = max(0, h0 - (y + h));
+    w1 = max_int(0, x);
+    w2 = max_int(0, w0 - (x + w));
+    h1 = max_int(0, y);
+    h2 = max_int(0, h0 - (y + h));
 
     if (w1) fill_rectangle(s->screen, x0, y0, w1, h0, color);
     if (w2) fill_rectangle(s->screen, x0 + w0 - w2, y0, w2, h0, color);
@@ -3541,9 +3544,9 @@ void display_init(DisplayState *ds, EditState *e, enum DisplayType do_disp,
         ds->width = ds->line_numbers +
             e->wrap_cols * glyph_width(e->screen, font, '0');
     } else {
-        ds->eol_width = max3(glyph_width(e->screen, font, '/'),
-                             glyph_width(e->screen, font, '\\'),
-                             glyph_width(e->screen, font, '$'));
+        ds->eol_width = max3_int(glyph_width(e->screen, font, '/'),
+                                 glyph_width(e->screen, font, '\\'),
+                                 glyph_width(e->screen, font, '$'));
         ds->width = e->width - ds->eol_width;
     }
     display_bol(ds);
@@ -4363,7 +4366,7 @@ static int syntax_get_colorized_line(EditState *s,
         /* Reallocate colorization state buffer with pseudo-Fibonacci
          * geometric progression (ratio of 1.625)
          */
-        n = max(s->colorize_nb_lines, COLORIZED_LINE_PREALLOC_SIZE);
+        n = max_int(s->colorize_nb_lines, COLORIZED_LINE_PREALLOC_SIZE);
         while (n < (line_num + 2))
             n += (n >> 1) + (n >> 3);
         if (!qe_realloc(&s->colorize_states,
@@ -4637,11 +4640,11 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             int i, start_char, end_char;
 
             if (s->b->mark < s->offset) {
-                start_offset = max(offset, s->b->mark);
-                end_offset = min(offset0, s->offset);
+                start_offset = max_offset(offset, s->b->mark);
+                end_offset = min_offset(offset0, s->offset);
             } else {
-                start_offset = max(offset, s->offset);
-                end_offset = min(offset0, s->b->mark);
+                start_offset = max_offset(offset, s->offset);
+                end_offset = min_offset(offset0, s->b->mark);
             }
             if (start_offset < end_offset) {
                 /* Compute character positions */
@@ -4798,7 +4801,7 @@ static void generic_text_display(EditState *s)
         s->offset_top = offset;
         s->offset_bottom = bottom;
         /* adjust y_disp so that the cursor is at the bottom of the screen */
-        s->y_disp = min(s->height - ds->y, 0);
+        s->y_disp = min_int(s->height - ds->y, 0);
         display_close(ds);
     } else {
         yc = m->yc;
@@ -6137,8 +6140,8 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
         if (b->saved_data) {
             /* Restore window mode and data from buffer saved data */
             memcpy(s, b->saved_data, SAVED_DATA_SIZE);
-            s->offset = min(s->offset, b->total_size);
-            s->offset_top = min(s->offset_top, b->total_size);
+            s->offset = min_offset(s->offset, b->total_size);
+            s->offset_top = min_offset(s->offset_top, b->total_size);
             mode = b->saved_mode;
         } else {
             /* Try to get window mode and data from another window */
@@ -6250,12 +6253,12 @@ static void compute_client_area(EditState *s)
     s->line_height = s->char_width = 1;
     if (s->screen && s->screen->dpy.dpy_probe) {
         /* use window default style font except for dummy display */
-        s->line_height = max(1, get_line_height(s->screen, s, QE_STYLE_DEFAULT));
-        s->char_width = max(1, get_glyph_width(s->screen, s, QE_STYLE_DEFAULT, '0'));
+        s->line_height = max_int(1, get_line_height(s->screen, s, QE_STYLE_DEFAULT));
+        s->char_width = max_int(1, get_glyph_width(s->screen, s, QE_STYLE_DEFAULT, '0'));
     }
 
-    s->rows = max(1, s->height / s->line_height);
-    s->cols = max(1, s->width / s->char_width);
+    s->rows = max_int(1, s->height / s->line_height);
+    s->cols = max_int(1, s->width / s->char_width);
 }
 
 /* Create a new edit window, add it in the window list and sets it
@@ -6433,7 +6436,7 @@ static int buffer_print_entry(CompleteState *cp, EditState *s, const char *name)
     if (b1) {
         b->cur_style = QE_STYLE_KEYWORD;
         len = eb_puts(b, b1->name);
-        b->tab_width = max3(16, 2 + len, b->tab_width);
+        b->tab_width = max3_int(16, 2 + len, b->tab_width);
         len += eb_putc(b, '\t');
         if (*b1->filename) {
             b->cur_style = QE_STYLE_COMMENT;
@@ -7136,9 +7139,11 @@ static const CmdDef minibuffer_commands[] = {
     CMD0( "minibuffer-toggle-hex", "M-h, M-C-b",
           "toggle normal/hex/unihex searching",
           isearch_toggle_hex)
+#ifdef CONFIG_REGEX
     CMD0( "minibuffer-toggle-regexp", "M-r, C-t",
           "toggle regular-expression mode",
           isearch_toggle_regexp)
+#endif
     CMD0( "minibuffer-toggle-word-match", "M-w",
           "toggle word match",
           isearch_toggle_word_match)
@@ -8368,9 +8373,9 @@ void do_refresh(EditState *s1)
         content_height -= new_status_height;
 
     /* Prevent potential division overflow */
-    width = max(1, width);
-    height = max(1, height);
-    content_height = max(1, content_height);
+    width = max_int(1, width);
+    height = max_int(1, height);
+    content_height = max_int(1, content_height);
 
     resized = 0;
 
@@ -8617,7 +8622,7 @@ EditState *qe_split_window(EditState *s, int side_by_side, int prop)
     w = s->x2 - s->x1;
     h = s->y2 - s->y1;
     if (side_by_side) {
-        w1 = (w * min(prop, 100) + 50) / 100;
+        w1 = (w * min_int(prop, 100) + 50) / 100;
         e = edit_new(s->b, s->x1 + w1, s->y1,
                      w - w1, h, WF_MODELINE | (s->flags & WF_RSEPARATOR));
         if (!e)
@@ -8625,7 +8630,7 @@ EditState *qe_split_window(EditState *s, int side_by_side, int prop)
         s->x2 = s->x1 + w1;
         s->flags |= WF_RSEPARATOR;
     } else {
-        h1 = (h * min(prop, 100) + 50) / 100;
+        h1 = (h * min_int(prop, 100) + 50) / 100;
         e = edit_new(s->b, s->x1, s->y1 + h1,
                      w, h - h1, WF_MODELINE | (s->flags & WF_RSEPARATOR));
         if (!e)
@@ -8705,9 +8710,9 @@ void do_create_window(EditState *s, const char *filename, const char *layout)
     if (m)
         edit_set_mode(s, m);
     s->wrap = wrap;
-    s->offset = clamp(eb_goto_pos(b1, args[6], args[7]), 0, b1->total_size);
-    s->b->mark = clamp(eb_goto_pos(b1, args[8], args[9]), 0, b1->total_size);
-    s->offset_top = clamp(eb_goto_pos(b1, args[10], args[11]), 0, b1->total_size);
+    s->offset = clamp_offset(eb_goto_pos(b1, args[6], args[7]), 0, b1->total_size);
+    s->b->mark = clamp_offset(eb_goto_pos(b1, args[8], args[9]), 0, b1->total_size);
+    s->offset_top = clamp_offset(eb_goto_pos(b1, args[10], args[11]), 0, b1->total_size);
     if (args[12])
         qs->active_window = s;
 
@@ -9275,8 +9280,8 @@ static int text_mode_probe(ModeDef *mode, ModeProbeData *p)
 
 static int generic_mode_init(EditState *s)
 {
-    s->offset = min(s->offset, s->b->total_size);
-    s->offset_top = min(s->offset_top, s->b->total_size);
+    s->offset = min_offset(s->offset, s->b->total_size);
+    s->offset_top = min_offset(s->offset_top, s->b->total_size);
     // XXX: should track insertions at s->offset?
     eb_add_callback(s->b, eb_offset_callback, &s->offset, 0);
     eb_add_callback(s->b, eb_offset_callback, &s->offset_top, 0);

@@ -582,7 +582,7 @@ static int fractal_set_colors(FractalState *ms, const char *p, const char **pp) 
                 if (*p == '<') {
                     if (i == 0)
                         return 0;
-                    n = clamp(strtol_c(p + 1, &p, 10), 1, 255 - i);
+                    n = clamp_int(strtol_c(p + 1, &p, 10), 1, 255 - i);
                     if (*p != '>')
                         return 0;
                     p++;
@@ -620,7 +620,7 @@ static void fractal_set_parameters(EditState *s, FractalState *ms, const char *p
         if (*p == '\0')
             break;
         if (strstart(p, "type=", &p)) {
-            ms->type = clamp(strtol_c(p, &p, 0), 0, countof(fractal_type));
+            ms->type = clamp_int(strtol_c(p, &p, 0), 0, countof(fractal_type));
         } else
         if (strstart(p, "maxiter=", &p)) {
             ms->maxiter = strtol_c(p, &p, 0);
@@ -832,8 +832,8 @@ static void fractal_display(EditState *s) {
 
     if (s->display_invalid) {
         if (ms && ms->disp_bmp) {
-            int w = min(s->width, ms->disp_bmp->width);
-            int h = min(s->height, ms->disp_bmp->height / s->screen->dpy.yfactor);
+            int w = min_int(s->width, ms->disp_bmp->width);
+            int h = min_int(s->height, ms->disp_bmp->height / s->screen->dpy.yfactor);
             int x = (s->width - w) / 2;
             int y = (s->height - h) / 2;
 
@@ -868,8 +868,8 @@ static void fractal_display(EditState *s) {
 
     if (s->display_invalid) {
         if (ms && ms->ip) {
-            int w = min(s->width, ms->ip->width);
-            int h = min(s->height, ms->ip->height / s->screen->dpy.yfactor);
+            int w = min_int(s->width, ms->ip->width);
+            int h = min_int(s->height, ms->ip->height / s->screen->dpy.yfactor);
             int x0 = (s->width - w) / 2;
             int y0 = (s->height - h) / 2;
             uint32_t palette[256];

@@ -231,18 +231,18 @@ static void hex_move_bol(EditState *s)
 
 static void hex_move_eol(EditState *s)
 {
-    s->offset = min(align(s->offset, s->dump_width) + s->dump_width - 1,
-                    s->b->total_size);
+    s->offset = min_offset(align(s->offset, s->dump_width) + s->dump_width - 1,
+                           s->b->total_size);
 }
 
 static void hex_move_left_right(EditState *s, int dir)
 {
-    s->offset = clamp(s->offset + dir, 0, s->b->total_size);
+    s->offset = clamp_offset(s->offset + dir, 0, s->b->total_size);
 }
 
 static void hex_move_up_down(EditState *s, int dir)
 {
-    s->offset = clamp(s->offset + dir * s->dump_width, 0, s->b->total_size);
+    s->offset = clamp_offset(s->offset + dir * s->dump_width, 0, s->b->total_size);
 }
 
 void hex_write_char(EditState *s, int key)

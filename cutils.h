@@ -37,9 +37,15 @@
 #if defined(__GNUC__) && __GNUC__ > 2
 #define qe__attr_nonnull(l)   __attribute__((nonnull l))
 #define qe__unused__          __attribute__((unused))
+#define likely(x)             __builtin_expect(!!(x), 1)
+#define unlikely(x)           __builtin_expect(!!(x), 0)
+#define __maybe_unused        __attribute__((unused))
 #else
 #define qe__attr_nonnull(l)
 #define qe__unused__
+#define likely(x)       (x)
+#define unlikely(x)     (x)
+#define __maybe_unused
 #endif
 
 #ifndef offsetof
@@ -50,6 +56,15 @@
 #endif
 #ifndef ssizeof
 #define ssizeof(a)  ((int)(sizeof(a)))
+#endif
+
+typedef int BOOL;
+
+#ifndef FALSE
+enum {
+    FALSE = 0,
+    TRUE = 1,
+};
 #endif
 
 typedef unsigned int char32_t;  // possible conflict with <uchar.h>
@@ -67,12 +82,12 @@ static inline const char *cs8(const u8 *p) { return (const char*)p; }
 
 /* These definitions prevent a clash with ffmpeg's cutil module. */
 
-#define strstart(str, val, ptr)    qe_strstart(str, val, ptr)
-#define strend(str, val, ptr)      qe_strend(str, val, ptr)
 #define pstrcpy(buf, sz, str)      qe_pstrcpy(buf, sz, str)
 #define pstrcat(buf, sz, str)      qe_pstrcat(buf, sz, str)
 #define pstrncpy(buf, sz, str, n)  qe_pstrncpy(buf, sz, str, n)
 #define pstrncat(buf, sz, str, n)  qe_pstrncat(buf, sz, str, n)
+#define strstart(str, val, ptr)    qe_strstart(str, val, ptr)
+#define strend(str, val, ptr)      qe_strend(str, val, ptr)
 
 /* make sure neither strncpy not strtok are used */
 #undef strncpy
@@ -80,16 +95,16 @@ static inline const char *cs8(const u8 *p) { return (const char*)p; }
 #undef strtok
 #define strtok(str,sep)   do_not_use_strtok!!(str,sep)
 
-static inline int strequal(const char *s1, const char *s2) {
-    return !strcmp(s1, s2);
-}
-
-int strstart(const char *str, const char *val, const char **ptr);
-int strend(const char *str, const char *val, const char **ptr);
 char *pstrcpy(char *buf, int buf_size, const char *str);
 char *pstrcat(char *buf, int buf_size, const char *s);
 char *pstrncpy(char *buf, int buf_size, const char *s, int len);
 char *pstrncat(char *buf, int buf_size, const char *s, int len);
+int strstart(const char *str, const char *val, const char **ptr);
+int strend(const char *str, const char *val, const char **ptr);
+
+static inline int strequal(const char *s1, const char *s2) {
+    return !strcmp(s1, s2);
+}
 
 /* Use these macros to avoid stupid size mistakes:
  * n it a number of items
@@ -193,45 +208,7 @@ static inline long double strtold_c(const char *str, const char **endptr) {
 }
 
 /* various arithmetic functions */
-static inline int max(int a, int b) {
-    if (a > b)
-        return a;
-    else
-        return b;
-}
-
-static inline int maxp(int *pa, int b) {
-    int a = *pa;
-    if (a > b)
-        return a;
-    else
-        return *pa = b;
-}
-
-static inline int max3(int a, int b, int c) {
-    return max(max(a, b), c);
-}
-
-static inline int min(int a, int b) {
-    if (a < b)
-        return a;
-    else
-        return b;
-}
-
-static inline int minp(int *pa, int b) {
-    int a = *pa;
-    if (a < b)
-        return a;
-    else
-        return *pa = b;
-}
-
-static inline int min3(int a, int b, int c) {
-    return min(min(a, b), c);
-}
-
-static inline int clamp(int a, int b, int c) {
+static inline int clamp_int(int a, int b, int c) {
     if (a < b)
         return b;
     else
@@ -241,15 +218,38 @@ static inline int clamp(int a, int b, int c) {
         return a;
 }
 
-static inline int clampp(int *pa, int b, int c) {
-    int a = *pa;
-    if (a < b)
-        return *pa = b;
-    else
-    if (a > c)
-        return *pa = c;
-    else
+static inline int compute_percent(int a, int b) {
+    return b <= 0 ? 0 : (int)((long long)a * 100 / b);
+}
+
+static inline int align(int a, int n) {
+    return (a / n) * n;
+}
+
+static inline int scale(int a, int b, int c) {
+    return (a * b + c / 2) / c;
+}
+
+static inline int max_int(int a, int b) {
+    if (a > b)
         return a;
+    else
+        return b;
+}
+
+static inline int min_int(int a, int b) {
+    if (a < b)
+        return a;
+    else
+        return b;
+}
+
+static inline int max3_int(int a, int b, int c) {
+    return max_int(max_int(a, b), c);
+}
+
+static inline int min3_int(int a, int b, int c) {
+    return min_int(min_int(a, b), c);
 }
 
 static inline int max_uint(unsigned int a, unsigned int b) {
@@ -264,18 +264,6 @@ static inline int min_uint(unsigned int a, unsigned int b) {
         return a;
     else
         return b;
-}
-
-static inline int compute_percent(int a, int b) {
-    return b <= 0 ? 0 : (int)((long long)a * 100 / b);
-}
-
-static inline int align(int a, int n) {
-    return (a / n) * n;
-}
-
-static inline int scale(int a, int b, int c) {
-    return (a * b + c / 2) / c;
 }
 
 /* Double linked lists. Same API as the linux kernel */

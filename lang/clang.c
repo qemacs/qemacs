@@ -220,7 +220,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                     }
                 }
                 state = (state & ~IN_C_COMMENT_LEVEL) |
-                        (min(level, 7) << IN_C_COMMENT_SHIFT);
+                        (min_int(level, 7) << IN_C_COMMENT_SHIFT);
                 SET_COLOR(str, start, i, C_STYLE_COMMENT);
                 continue;
             } else
@@ -260,7 +260,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                     }
                 }
                 state = (state & ~IN_C_COMMENT_LEVEL) |
-                        (min(level, 7) << IN_C_COMMENT_SHIFT);
+                        (min_int(level, 7) << IN_C_COMMENT_SHIFT);
                 SET_COLOR(str, start, i, C_STYLE_COMMENT);
                 continue;
             }
@@ -1744,7 +1744,7 @@ static void js_colorize_line(QEColorizeContext *cp,
                     }
                 }
                 state = (state & ~IN_C_COMMENT_LEVEL) |
-                        (min(level, 7) << IN_C_COMMENT_SHIFT);
+                        (min_int(level, 7) << IN_C_COMMENT_SHIFT);
                 break;
             } else
             if (str[i] == '/') {
@@ -3525,7 +3525,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
                     }
                 }
                 state = (state & ~IN_C_COMMENT_LEVEL) |
-                        (min(level, 7) << IN_C_COMMENT_SHIFT);
+                        (min_int(level, 7) << IN_C_COMMENT_SHIFT);
                 break;
             } else
             if (str[i] == '/') {

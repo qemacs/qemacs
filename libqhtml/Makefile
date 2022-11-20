@@ -41,6 +41,7 @@ endif
 
 ifdef CONFIG_DARWIN
   CFLAGS += -Wno-string-plus-int
+  CFLAGS += -Wno-packed
 else
   CFLAGS += -Wno-unused-result
 endif

@@ -2302,3 +2302,15 @@ int utf8_to_char32(char32_t *dest, int dest_length, const char *str)
     *uq = 0;
     return uq - dest;
 }
+
+int char32_to_utf8(char *dest, int dest_length, const char32_t *src, int src_length)
+{
+    buf_t outbuf, *out;
+    int i;
+
+    out = buf_init(&outbuf, dest, dest_length);
+
+    for (i = 0; i < src_length; i++)
+        buf_putc_utf8(out, src[i]);
+    return out->pos;
+}

@@ -160,10 +160,10 @@ void xor_rectangle(QEditScreen *s,
                    int x, int y, int w, int h, QEColor color)
 {
     /* intersect with clip region */
-    int x1 = max(s->clip_x1, x);
-    int y1 = max(s->clip_y1, y);
-    int x2 = min(s->clip_x2, x1 + w);
-    int y2 = min(s->clip_y2, y1 + h);
+    int x1 = max_int(s->clip_x1, x);
+    int y1 = max_int(s->clip_y1, y);
+    int x2 = min_int(s->clip_x2, x1 + w);
+    int y2 = min_int(s->clip_y2, y1 + h);
 
     if (x1 < x2 && y1 < y2) {
         s->dpy.dpy_xor_rectangle(s, x1, y1, x2 - x1, y2 - y1, color);
@@ -438,14 +438,14 @@ int qe_draw_picture(QEditScreen *s, int dst_x, int dst_y, int dst_w, int dst_h,
         return 1;
 
     if (w1 != dst_w) {
-        int dx = min((x1 - dst_x) * src_w / dst_w, src_w - 1);
+        int dx = min_int((x1 - dst_x) * src_w / dst_w, src_w - 1);
         src_x += dx;
-        src_w = clamp(src_w * w1 / dst_w, 1, src_w - dx);
+        src_w = clamp_int(src_w * w1 / dst_w, 1, src_w - dx);
     }
     if (h1 != dst_h) {
-        int dy = min((y1 - dst_y) * src_h / dst_h, src_h - 1);
+        int dy = min_int((y1 - dst_y) * src_h / dst_h, src_h - 1);
         src_y += dy;
-        src_h = clamp(src_h * h1 / dst_h, 1, src_h - dy);
+        src_h = clamp_int(src_h * h1 / dst_h, 1, src_h - dy);
     }
 
     if (s->dpy.dpy_draw_picture &&
@@ -547,7 +547,7 @@ int qe_picture_set_palette(QEPicture *ip, int mode,
         /* Default colors to standard palette */
         blockcpy(ip->palette, xterm_colors, 256);
     }
-    count = min(count, 256);
+    count = min_int(count, 256);
     for (i = 0; i < count; i++) {
         ip->palette[i] = QERGB(p[r], p[g], p[b]);
         p += incr;

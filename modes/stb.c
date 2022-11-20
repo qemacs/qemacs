@@ -61,8 +61,8 @@ static void image_display(EditState *s) {
             int x0, y0, w, h;
 
             /* No scaling */
-            w = min(s->width, ms->pic.width);
-            h = min(s->height, ms->pic.height / s->screen->dpy.yfactor);
+            w = min_int(s->width, ms->pic.width);
+            h = min_int(s->height, ms->pic.height / s->screen->dpy.yfactor);
             x0 = (s->width - w) / 2;
             y0 = (s->height - h) / 2;
             qe_draw_picture(s->screen, s->xleft + x0, s->ytop + y0, w, h,
@@ -80,7 +80,7 @@ static void image_display(EditState *s) {
 
             if (w > 0 && h > 0) {
                 /* compute scaling factor for scale up or down */
-                factor = min(4 * 1024, min(s->width * 1024 / w, s->height * 1024 / h));
+                factor = min_int(4 * 1024, min_int(s->width * 1024 / w, s->height * 1024 / h));
                 /* Do not scale up on text display */
                 if (factor < 1024 || s->width != s->cols) {
                     w = ((w * factor) + 512) / 1024;

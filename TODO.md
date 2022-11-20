@@ -24,8 +24,7 @@
 ## Core / Buffer / Input
 
 * `describe-key-briefly`, `local-set-key`, etc should use a special input mode to read a string of keys via the minibuffer to remove the `qe_key_process` hack and use the same input behavior as emacs.
-* in command specs, distinguish between interactive commands and non interactive functions, such as the isearch-xxx functions
-* [BUG] ^C does not work on OpenBSD
+* in command specs, distinguish between interactive commands and non interactive functions
 * use tabulation context for `text_screen_width`
 * add method pointers in windows initialized from fallback chain
 * remove redundant bindings along fallback chains
@@ -36,7 +35,6 @@
 * add custom memory handling functions.
 * `qe_realloc`: typed and clear reallocated area
 * use failsafe memory allocator and `longjmp` recover.
-* redefine `KEY_Fx` to make them sequential
 * move `ungot_key` to `key_context`
 * splitting pages should fall on 32 bit boundaries (difficult)
 * handle broken charset sequences across page boundaries
@@ -66,7 +64,9 @@
 * `next-buffer` command on C-x C-right
 * `previous-buffer` command on C-x C-left
 * `save-some-buffers` command on C-x s
-* add registrable escape sequences
+* standardize key prefixes: C-, M-, S- and possibly others
+* redefine `KEY_Fx` to make them sequential
+* add registrable escape sequences and key names
   ex: S-f5 = ^[[15;2~
 * add registrable key translations for NON ASCII input
   ex: C-x 8 3 / 4	¾
@@ -88,7 +88,7 @@
 * UTF-1 obsolete standard encoding for Unicode
 * handle `tty-width` to compute alignement in dired, bufed...
 * limit number of combining marks to 20
-* use `unichar`, `rune` and/or `u8` types
+* use `unichar`, `rune` and/or `u8` types (using `char32_t` at the moment)
 * detect bad encoding and use `errno` to tell caller
 * auto/mixed eol mode
 * `set-eol-type` should take a string: auto/binary/dos/unix/mac/0/1/2...
@@ -116,6 +116,7 @@
 
 ## Windowing / Display
 
+* `set-display-size` unit issue: use extra argument or different function for pixels and characters
 * always save window buffer properties to buffer upon detaching
 * add global system to select default values for some window states
 * fix current position when changing buffer attached to window
@@ -460,10 +461,11 @@ insert_window_left()  deletes some left-most windows
 
 ### Shell mode
 
+* [BUG] ^C does not work on OpenBSD
 * `C-x RET RET` should switch to last process buffer selected and move to the end of buffer
 * `C-x RET RET` should find another shell buffer if `*shell*` has been killed. Should enumerate all buffers.
 * terminal emulation: when move inserts spaces, they should have default attributes:  add test cases
-* `C-c C-c` should abort make process
+* `C-c C-c` should abort make process and other shell buffers
 * support `:` as alternate escape sequence argument separator
 * `start-shell` should kill popup window
 * `A-x kill-buffer RET` -> hang

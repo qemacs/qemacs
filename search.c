@@ -74,6 +74,26 @@ static int eb_search(EditBuffer *b, int dir, int flags,
                      CSSAbortFunc *abort_func, void *abort_opaque,
                      int *found_offset, int *found_end)
 {
+    /*@API search
+       Search a buffer for contents. Return true if contents was found.
+       @argument `b` a valid EditBuffer pointer
+       @argument `dir` search direction: -1 for backward, 1 for forward
+       @argument `flags` a combination of SEARCH_FLAG_xxx values
+       @argument `start_offset` the starting offset in buffer
+       @argument `end_offset` the maximum offset in buffer
+       @argument `buf` a valid pointer to an array of `char32_t`
+       @argument `len` the length of the array `buf`
+       @argument `abort_func` a function pointer to test for abort request
+       @argument `abort_opaque` an opaque argument for `abort_func`
+       @argument `found_offset` a valid pointer to store the match
+         starting offset
+       @argument `found_end` a valid pointer to store the match
+         ending offset
+       @return non zero if the search was successful. Match starting and
+       ending offsets are stored to `start_offset` and `end_offset`.
+       Return `0` if search failed or `len` is zero.
+       Return `-1` if search was aborted.
+     */
     int total_size = b->total_size;
     int offset = start_offset, offset1, offset2, offset3, pos;
     char32_t c, c2;
@@ -81,6 +101,8 @@ static int eb_search(EditBuffer *b, int dir, int flags,
     if (len == 0)
         return 0;
 
+    if (dir < 0)
+        end_offset = offset;
     if (end_offset > total_size)
         end_offset = total_size;
 
@@ -211,6 +233,9 @@ static void buf_encode_search_u32(buf_t *out, const char32_t *str, int len)
 
 static void buf_encode_search_str(buf_t *out, const char *str)
 {
+    /* Encode the search string for display: control characters are
+       converted to ^X format.
+     */
     while (*str) {
         char32_t c = utf8_decode(&str);
         if (c < 32 || c == 127) {
@@ -224,18 +249,20 @@ static void buf_encode_search_str(buf_t *out, const char *str)
 }
 
 static struct search_tags {
-    unsigned char mask, bits;
+    /* List of tags for search options */
     char tag[14];
+    unsigned char bits, mask;
 } const search_tags[] = {
-    { SEARCH_FLAG_HEX_MASK, SEARCH_FLAG_UNIHEX, "[Unihex] " },
-    { SEARCH_FLAG_HEX_MASK, SEARCH_FLAG_HEX, "[Hex] " },
-    { SEARCH_FLAG_CASE_MASK, SEARCH_FLAG_IGNORECASE, "[Folding] " },
-    { SEARCH_FLAG_CASE_MASK, SEARCH_FLAG_EXACTCASE, "[Exact] " },
-    { SEARCH_FLAG_REGEX, SEARCH_FLAG_REGEX, "[Regex] " },
-    { SEARCH_FLAG_WORD, SEARCH_FLAG_WORD, "[Word] " },
+    { "[Unihex] ",  SEARCH_FLAG_UNIHEX,     SEARCH_FLAG_HEX_MASK  },
+    { "[Hex] ",     SEARCH_FLAG_HEX,        SEARCH_FLAG_HEX_MASK  },
+    { "[Folding] ", SEARCH_FLAG_IGNORECASE, SEARCH_FLAG_CASE_MASK },
+    { "[Exact] ",   SEARCH_FLAG_EXACTCASE,  SEARCH_FLAG_CASE_MASK },
+    { "[Regex] ",   SEARCH_FLAG_REGEX,      SEARCH_FLAG_REGEX     },
+    { "[Word] ",    SEARCH_FLAG_WORD,       SEARCH_FLAG_WORD      },
 };
 
 static int search_string_get_flags(const char *str, int flags, const char **endp) {
+    /* Parse search tags at the start of a search string */
     int i;
     for (i = 0; i < countof(search_tags); i++) {
         if (strstart(str, search_tags[i].tag, &str)) {
@@ -249,6 +276,7 @@ static int search_string_get_flags(const char *str, int flags, const char **endp
 }
 
 static void buf_disp_search_flags(buf_t *out, int search_flags) {
+    /* Encode search flags as a sequence of search tags */
     int i;
     for (i = 0; i < countof(search_tags); i++) {
         if ((search_flags & search_tags[i].mask) == search_tags[i].bits)
@@ -257,6 +285,19 @@ static void buf_disp_search_flags(buf_t *out, int search_flags) {
 }
 
 static void isearch_run(ISearchState *is) {
+    /* Incremental search engine: this function is run after all
+       incremental search commands. It updates the search flags
+       and search string and searches for the next match.
+       Fields updated:
+       - is->search_flags: the current search mode and matching options
+       - is->search_str: the string representation of the search string
+         and options.
+       - is->search_u32: the search string as an array of code points
+       - is->search_u32_len: the length of the is->search_u32 array
+       - is->dir: the search direction (>0 forward, <0 backward)
+       - is->found_offset / is->found_end: the new match found
+       - s->b->mark / s->offset: the new match found in the search direction
+     */
     char ubuf[SEARCH_LENGTH * 3];
     buf_t outbuf, *out;
     int i, len, hex_nibble, max_nibble, h;
@@ -327,6 +368,13 @@ static void isearch_run(ISearchState *is) {
     is->search_u32_len = len;
     is->dir = dir;
 
+    /* construct search_str with search_flags prefix */
+    out = buf_init(&outbuf, is->search_str, countof(is->search_str));
+    buf_disp_search_flags(out, is->search_flags);
+    buf_puts(out, ubuf);
+
+    // XXX: should test for SEARCH_FLAG_SUSPENDED
+
     if (len == 0) {
         s->b->mark = is->saved_mark;
         s->offset = is->start_offset;
@@ -348,11 +396,6 @@ static void isearch_run(ISearchState *is) {
             }
         }
     }
-
-    /* construct search_str with search_flags prefix */
-    out = buf_init(&outbuf, is->search_str, countof(is->search_str));
-    buf_disp_search_flags(out, is->search_flags);
-    buf_puts(out, ubuf);
 
     /* display search string */
     out = buf_init(&outbuf, ubuf, sizeof(ubuf));
@@ -383,8 +426,9 @@ static void isearch_run(ISearchState *is) {
     dpy_flush(s->screen);
 }
 
-static int isearch_grab(ISearchState *is, EditBuffer *b, int from, int to)
-{
+static int isearch_grab(ISearchState *is, EditBuffer *b, int from, int to) {
+    /* Retrieve search bytes from the buffer contents */
+    // XXX: should special case hex search modes
     int offset, last = is->pos;
     if (b) {
         if (to < 0 || to > b->total_size)
@@ -397,7 +441,13 @@ static int isearch_grab(ISearchState *is, EditBuffer *b, int from, int to)
     return is->pos - last;
 }
 
-static void isearch_yank_word(EditState *s) {
+static void isearch_yank_word_or_char(EditState *s) {
+    /*@CMD isearch-yank-word-or-char
+       ### `isearch-yank-word-or-char()`
+       Extract the current character or word from the buffer and append it
+       to the search string.
+     */
+    // XXX: does not work for hex search modes
     ISearchState *is = s->isearch_state;
     if (is) {
         int offset0, offset1;
@@ -409,7 +459,28 @@ static void isearch_yank_word(EditState *s) {
     }
 }
 
+static void isearch_yank_char(EditState *s) {
+    /*@CMD isearch-yank-char
+       ### `isearch-yank-char()`
+       Extract the current character from the buffer and append it
+       to the search string.
+     */
+    // XXX: does not work for hex search modes
+    ISearchState *is = s->isearch_state;
+    if (is) {
+        int offset0 = s->offset;
+        int offset1 = eb_next(s->b, offset0);
+        isearch_grab(is, s->b, offset0, offset1);
+    }
+}
+
 static void isearch_yank_line(EditState *s) {
+    /*@CMD isearch-yank-line
+       ### `isearch-yank-line()`
+       Extract the current line from the buffer and append it to the
+       search string.
+     */
+    // XXX: does not work for hex search modes
     ISearchState *is = s->isearch_state;
     if (is) {
         int offset0, offset1;
@@ -424,6 +495,11 @@ static void isearch_yank_line(EditState *s) {
 }
 
 static void isearch_yank_kill(EditState *s) {
+    /*@CMD isearch-yank-kill
+       ### `isearch-yank-kill()`
+       Append the contents of the last kill to the search string.
+     */
+    // XXX: does not work for hex search modes
     ISearchState *is = s->isearch_state;
     if (is) {
         QEmacsState *qs = is->s->qe_state;
@@ -432,7 +508,16 @@ static void isearch_yank_kill(EditState *s) {
 }
 
 static void isearch_addpos(EditState *s, int dir) {
-    /* use last searched string if no input */
+    /*@CMD isearch-repeat-forward
+       ### `isearch-repeat-forward()`
+       Search for the next match forward.
+       Retrieve the last search string if search string is empty.
+     */
+    /*@CMD isearch-repeat-backward
+       ### `isearch-repeat-backward()`
+       Search for the next match backward.
+       Retrieve the last search string if search string is empty.
+     */
     int curdir;
     ISearchState *is = s->isearch_state;
     if (!is)
@@ -548,9 +633,11 @@ void isearch_toggle_hex(EditState *s) {
     isearch_cycle_flags(s, SEARCH_FLAG_HEX_MASK);
 }
 
+#ifdef CONFIG_REGEX
 void isearch_toggle_regexp(EditState *s) {
     isearch_cycle_flags(s, SEARCH_FLAG_REGEX);
 }
+#endif
 
 void isearch_toggle_word_match(EditState *s) {
     isearch_cycle_flags(s, SEARCH_FLAG_WORD);
@@ -593,7 +680,7 @@ static void isearch_exit(EditState *s, int key) {
     ISearchState *is = s->isearch_state;
     if (is) {
         /* exit search mode */
-        s->b->mark = min(is->start_offset, s->b->total_size);
+        s->b->mark = min_offset(is->start_offset, s->b->total_size);
         s->region_style = 0;
         put_status(s, "Mark saved where search started");
         /* repost key */
@@ -661,9 +748,10 @@ static ISearchState *set_search_state(EditState *s, int argval, int dir) {
         else
             flags |= SEARCH_FLAG_HEX;
     }
+#ifdef CONFIG_REGEX
     if (argval != 1)
         flags |= SEARCH_FLAG_REGEX;
-
+#endif
     is->search_flags = flags;
     return is;
 }
@@ -1271,8 +1359,6 @@ static CompletionDef search_completion = {
 };
 
 static const CmdDef isearch_commands[] = {
-    // C-o could toggle incremental mode?
-    // M-<Up>, M-p and M-<Down>, M-n to select from the search history list
     CMD2( "isearch-abort", "C-g",
           "abort isearch and move point to starting point",
            isearch_abort, ES, "")
@@ -1280,7 +1366,7 @@ static const CmdDef isearch_commands[] = {
           "Exit isearch and run regular command",
            isearch_cancel, ES, "")
     CMDx( "isearch-complete", "M-TAB",
-          "complete the search string from the history buffer",
+          "complete the search string from the search ring",
            isearch_edit_string, ES, "")
     CMD1( "isearch-center", "C-l",
           "center the window around point",
@@ -1291,60 +1377,73 @@ static const CmdDef isearch_commands[] = {
     CMD2( "isearch-delete-char", "DEL",
           "Cancel last input item from end of search string",
            isearch_delete_char, ES, "")
+    CMDx( "isearch-edit-string", "M-e",
+          "show the help page for isearch",
+           isearch_edit_string, ES, "")
     CMD2( "isearch-exit", "RET",
           "Exit isearch, leave point at location found",
            isearch_exit, ESi, "k")
     CMDx( "isearch-mode-help", "f1, C-h",
           "show the help page for isearch",
            isearch_mode_help, ES, "")
-    CMD3( "isearch-next-match", "C-s",
-          "Find next match forward",
-           isearch_addpos, ESi, "v", 1)
-    CMDx( "isearch-next-string", "M-n",
-          "get the next item from history",
-           isearch_next_string, ES, "")
-    CMD3( "isearch-previous-match", "C-r",
-          "Search again backward",
-           isearch_addpos, ESi, "v", -1)
-    CMDx( "isearch-previous-string", "M-p",
-          "get the previous item from history.",
-           isearch_previous_string, ES, "")
     CMD2( "isearch-printing-char", "TAB, C-j",
           "append the character to the search string",
            isearch_printing_char, ESi, "k")
     CMDx( "isearch-query-replace", "M-%",
           "start 'query-replace' with current string to replace",
           isearch_query_replace, ES, "")
+#ifdef CONFIG_REGEX
     CMDx( "isearch-query-replace-regexp", "",  // C-M-% invalid tty binding?
           "start 'query-replace-regexp' with current string to replace"
            isearch_query_replace, ES, "")
+#endif
     CMD2( "isearch-quote-char", "C-q",
           "quote a control character and search for it",
            isearch_quote_char, ES, "")
+    CMD3( "isearch-repeat-forward", "C-s",
+          "Find next match forward",
+           isearch_addpos, ESi, "v", 1)
+    CMD3( "isearch-repeat-backward", "C-r",
+          "Search again backward",
+           isearch_addpos, ESi, "v", -1)
+    CMDx( "isearch-ring-advance", "M-n, M-down",
+          "get the next item from search ring",
+           isearch_next_string, ES, "")
+    CMDx( "isearch-ring-retreat", "M-p, M-up",
+          "get the previous item from search ring.",
+           isearch_previous_string, ES, "")
     CMD2( "isearch-toggle-case-fold", "M-c, C-c",
           "toggle search case-sensitivity",
            isearch_toggle_case_fold, ES, "")
     CMD2( "isearch-toggle-hex", "M-C-b",
           "toggle normal/hex/unihex searching",
            isearch_toggle_hex, ES, "")
+    CMDx( "isearch-toggle-incremental", "C-o",
+          "toggle incremental search",
+           isearch_toggle_incremental, ES, "")
+#ifdef CONFIG_REGEX
     CMD2( "isearch-toggle-regexp", "M-r, C-t",
           "toggle regular-expression mode",
            isearch_toggle_regexp, ES, "")
+#endif
     CMD2( "isearch-toggle-word-match", "M-w",
           "toggle word match",
            isearch_toggle_word_match, ES, "")
-    CMDx( "isearch-yank-char", "C-M-y",
+    CMD2( "isearch-yank-char", "M-C-y",
           "Yank char from buffer onto end of search string",
            isearch_yank_char, ES, "")
-    CMD2( "isearch-yank-kill", "M-y",
+    CMD2( "isearch-yank-kill", "M-y",  // XXX: should be C-y
           "yank the last string of killed text",
            isearch_yank_kill, ES, "")
     CMD2( "isearch-yank-line", "C-y",
           "yank rest of line onto end of search string",
            isearch_yank_line, ES, "")
-    CMD2( "isearch-yank-word", "C-w",
+    CMDx( "isearch-yank-pop-only", "M-y",
+          "Replace just-yanked search string with previously killed string",
+           isearch_yank_pop_only, ES, "")
+    CMD2( "isearch-yank-word-or-char", "C-w",
           "yank next word or character in buffer",
-           isearch_yank_word, ES, "")
+           isearch_yank_word_or_char, ES, "")
     CMDx( "isearch-edit-string", "M-e",
           "edit the search string in the minibuffer",
            isearch_edit_string, ES, "")
@@ -1391,6 +1490,12 @@ static const CmdDef search_commands[] = {
           "s{Kill lines containing: }[search]|search|"
           "v", CMD_COPY_MATCHING_LINES)
     CMD3( "list-matching-lines", "",
+          "List lines containing a string in popup window",
+          do_search_string, ESsi, "*"
+          "s{List lines containing: }[search]|search|"
+          "v", CMD_LIST_MATCHING_LINES)
+    /* list-matching-lines and occur are aliases */
+    CMD3( "occur", "",
           "List lines containing a string in popup window",
           do_search_string, ESsi, "*"
           "s{List lines containing: }[search]|search|"

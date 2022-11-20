@@ -1771,9 +1771,9 @@ static int css_layout_float(InlineLayout *s, FloatBlock *b)
                 y2 = b1->y + b1->height;
                 if (!(y + b->height <= b1->y || y >= y2)) {
                     if (b1->float_type == CSS_FLOAT_LEFT)
-                        x1 = max(x1, b1->x + b1->width);
+                        x1 = max_int(x1, b1->x + b1->width);
                     else
-                        x2 = min(x2, b1->x);
+                        x2 = min_int(x2, b1->x);
                     /* compute minimum next y */
                     if (y2 < y_next)
                         y_next = y2;
@@ -1857,7 +1857,7 @@ static void css_prepare_line(InlineLayout *s, int clear_type)
                         if (!(b->x + b->height <= x1 ||
                               b->x >= x2)) {
                             /* update y to go just after the cleared box */
-                            y = max(y, (*pb)->y + b->height);
+                            y = max_int(y, (*pb)->y + b->height);
                         }
                     }
                 }
@@ -1879,9 +1879,9 @@ static void css_prepare_line(InlineLayout *s, int clear_type)
         if (b->float_type != -1) {
             if (y >= b->y && y < b->y + b->height) {
                 if (b->float_type == CSS_FLOAT_LEFT) {
-                    x1 = max(x1, b->x + b->width);
+                    x1 = max_int(x1, b->x + b->width);
                 } else {
-                    x2 = min(x2, b->x);
+                    x2 = min_int(x2, b->x);
                 }
             }
             /* suppress from the float list if no longer active */
@@ -1911,7 +1911,7 @@ static void css_flush_line(InlineLayout *s,
     InlineBox *box_table, *box_table1, *ib;
 
     if (s->compute_min_max) {
-        s->max_width = max(s->max_width, s->x);
+        s->max_width = max_int(s->max_width, s->x);
         goto the_end;
     }
     available_width = s->avail_width;
@@ -2101,11 +2101,11 @@ static int css_flush_fragment(InlineLayout *s, CSSBox *box, CSSState *props,
         /* min/max computation */
         if (props->white_space == CSS_WHITE_SPACE_NORMAL) {
             /* XXX: not quite exact */
-            s->min_width = max(s->min_width, w);
+            s->min_width = max_int(s->min_width, w);
         }
         s->x += w;
         if (props->white_space != CSS_WHITE_SPACE_NORMAL)
-            s->min_width = max(s->min_width, s->x);
+            s->min_width = max_int(s->min_width, s->x);
         ret = 0;
     } else if (props->white_space == CSS_WHITE_SPACE_PRE ||
         props->white_space == CSS_WHITE_SPACE_NOWRAP ||
@@ -2272,7 +2272,7 @@ static int css_layout_inline_box(InlineLayout *s,
             w1 +
             props->padding.x2 + props->border.x2 + props->margin.x2;
         if (s->compute_min_max) {
-            s->min_width = max(s->min_width, w);
+            s->min_width = max_int(s->min_width, w);
             s->x += w;
         } else {
             box->width = w1;
@@ -2585,7 +2585,7 @@ static void layout_table_row_fixed(TableLayout *s, CSSBox *row)
                 for (i = 0; i < colspan; i++) {
                     s->cols[s->nb_cols - colspan + i].width_fixed = 1;
                     s->cols[s->nb_cols - colspan + i].width =
-                        max(w, s->cols[s->nb_cols - colspan + i].width);
+                        max_int(w, s->cols[s->nb_cols - colspan + i].width);
                 }
             }
         }
@@ -2622,8 +2622,8 @@ static int layout_table_fixed(TableLayout *s, CSSBox *parent_box)
             if (props->width != CSS_AUTO) {
                 /* XXX: margins ? */
                 s->cols[s->column_index - 1].width =
-                    max(s->cols[s->column_index - 1].width,
-                        props->width);
+                    max_int(s->cols[s->column_index - 1].width,
+                            props->width);
                 s->cols[s->column_index - 1].width_fixed = 1;
             }
             break;
@@ -2739,8 +2739,8 @@ static int layout_table_row_auto(TableLayout *s, CSSBox *row)
                 return -1;
             fixed = 1;
             if (props->width != CSS_AUTO) {
-                min_w = max(props->width, min_w);
-                max_w = max(props->width, max_w);
+                min_w = max_int(props->width, min_w);
+                max_w = max_int(props->width, max_w);
                 fixed = 1;
             }
             /* take into account the padding & borders */
@@ -2765,8 +2765,8 @@ static int layout_table_row_auto(TableLayout *s, CSSBox *row)
             /* XXX: margins ? */
             if (colspan == 1) {
                 /* simple case: just increase widths */
-                c->min_width = max(c->min_width, min_w);
-                c->max_width = max(c->max_width, max_w);
+                c->min_width = max_int(c->min_width, min_w);
+                c->max_width = max_int(c->max_width, max_w);
                 c->width_fixed = fixed;
             } else {
                 int min_w1, max_w1, delta, d, r;
@@ -2875,7 +2875,7 @@ static int layout_table_auto1(TableLayout *s, CSSBox *table_box)
             s->min_width = min_tw;
             s->max_width = max_tw;
         } else {
-            tw = max(min_tw, table_box->props->width);
+            tw = max_int(min_tw, table_box->props->width);
             s->min_width = tw;
             s->max_width = tw;
         }
@@ -2889,11 +2889,11 @@ static int layout_table_auto1(TableLayout *s, CSSBox *table_box)
         if (max_tw < table_box->width) {
             tw = max_tw;
         } else {
-            tw = max(min_tw, table_box->width);
+            tw = max_int(min_tw, table_box->width);
         }
     } else {
         /* fixed table width */
-        tw = max(min_tw, table_box->props->width);
+        tw = max_int(min_tw, table_box->props->width);
     }
 
     /* compute the cell widths from the computed table width */
@@ -3016,7 +3016,7 @@ static int render_table_row(TableLayout *s,
             /* compute baseline of the row */
             c->vertical_align = props->vertical_align;
             if (is_valign_baseline(c->vertical_align)) {
-                baseline = max(baseline, layout.baseline);
+                baseline = max_int(baseline, layout.baseline);
                 c->baseline = layout.baseline;
             }
         }
@@ -3044,13 +3044,13 @@ static int render_table_row(TableLayout *s,
                 cell->y += delta;
             }
             if (cell->props->height != CSS_AUTO)
-                h = max(h, cell->props->height);
-            row_height = max(h - c->prev_row_height, row_height);
+                h = max_int(h, cell->props->height);
+            row_height = max_int(h - c->prev_row_height, row_height);
         }
         col += colspan;
     }
     if (row->props->height != CSS_AUTO) {
-        row_height = max(row_height, row->props->height);
+        row_height = max_int(row_height, row->props->height);
     }
 
     /* we know row_height: definitive vertical positionning */
@@ -3183,7 +3183,7 @@ static int css_layout_table(CSSContext *s, LayoutOutput *table_layout,
     }
     tl->y += tl->border_v;
     /* compute total table height */
-    table_box->height = max(tl->y, table_box->height);
+    table_box->height = max_int(tl->y, table_box->height);
 
     qe_free(&tl->cols);
 
@@ -3389,10 +3389,10 @@ static int css_layout_block_recurse1(InlineLayout *il, CSSBox *box,
 
             /* compute the margin */
             if (il->is_first_box) {
-                il->margin_top = max(il->margin_top, layout.margin_top);
+                il->margin_top = max_int(il->margin_top, layout.margin_top);
                 ymargin = 0; /* the margin is taken into account by the parent block */
             } else {
-                ymargin = max(il->last_ymargin, layout.margin_top);
+                ymargin = max_int(il->last_ymargin, layout.margin_top);
             }
             il->last_ymargin = layout.margin_bottom;
             /* compute the box position */
@@ -3554,8 +3554,8 @@ static int css_layout_block_recurse(LayoutState *s, LayoutOutput *block_layout,
 
     /* update the bottom margin of the whole block */
     block_layout->margin_top = il->margin_top;
-    block_layout->margin_bottom = max(block_layout->margin_bottom,
-                                      il->last_ymargin);
+    block_layout->margin_bottom = max_int(block_layout->margin_bottom,
+                                          il->last_ymargin);
     block_layout->baseline = il->first_line_baseline;
     /* update the block height if necessary (XXX: incorrect if not
        auto) */
@@ -3605,9 +3605,9 @@ static int css_layout_box_min_max(InlineLayout *il, CSSBox *box)
             } else {
                 css_layout_block_min_max(il->ctx, &min_w1, &max_w1, box);
             }
-            il->min_width = max(il->min_width, min_w1);
+            il->min_width = max_int(il->min_width, min_w1);
             /* XXX: add to max width ? */
-            il->max_width = max(il->max_width, max_w1);
+            il->max_width = max_int(il->max_width, max_w1);
         }
     } else {
         switch (props->display) {
@@ -3631,8 +3631,8 @@ static int css_layout_box_min_max(InlineLayout *il, CSSBox *box)
                 w += props->margin.x1;
             if (props->margin.x2 != CSS_AUTO)
                 w += props->margin.x2;
-            il->min_width = max(il->min_width, min_w1 + w);
-            il->max_width = max(il->max_width, max_w1 + w);
+            il->min_width = max_int(il->min_width, min_w1 + w);
+            il->max_width = max_int(il->max_width, max_w1 + w);
             break;
         case CSS_DISPLAY_INLINE:
         case CSS_DISPLAY_INLINE_TABLE:
@@ -3851,9 +3851,9 @@ static void draw_borders(QEditScreen *scr,
             g = (color1 >> 8) & 0xff;
             b = (color1) & 0xff;
 
-            r = min(r + 128, 255);
-            g = min(g + 128, 255);
-            b = min(b + 128, 255);
+            r = min_int(r + 128, 255);
+            g = min_int(g + 128, 255);
+            b = min_int(b + 128, 255);
 
             color2 = (a << 24) | (r << 16) | (g << 8) | b;
             if ((style == CSS_BORDER_STYLE_INSET && dir >= 2) ||

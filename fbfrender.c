@@ -217,10 +217,10 @@ void fbf_text_metrics(QEditScreen *s, QEFont *font,
             x += g->xincr;
             if (g->is_fallback) {
                 /* if alternate font used, modify metrics */
-                metrics->font_ascent = max(metrics->font_ascent,
-                                           fallback_font->ascent);
-                metrics->font_descent = max(metrics->font_descent,
-                                            fallback_font->descent);
+                metrics->font_ascent = max_int(metrics->font_ascent,
+                                               fallback_font->ascent);
+                metrics->font_descent = max_int(metrics->font_descent,
+                                                fallback_font->descent);
             }
         }
     }

@@ -355,8 +355,8 @@ static void do_tabify(EditState *s, int p1, int p2)
      */
     EditBuffer *b = s->b;
     int tw = b->tab_width > 0 ? b->tab_width : 8;
-    int start = max(0, min(p1, p2));
-    int stop = min(b->total_size, max(p1, p2));
+    int start = max_offset(0, min_offset(p1, p2));
+    int stop = min_offset(b->total_size, max_offset(p1, p2));
     int col;
     int offset, offset1, offset2, delta;
 
@@ -428,8 +428,8 @@ static void do_untabify(EditState *s, int p1, int p2)
      */
     EditBuffer *b = s->b;
     int tw = b->tab_width > 0 ? b->tab_width : 8;
-    int start = max(0, min(p1, p2));
-    int stop = min(b->total_size, max(p1, p2));
+    int start = max_offset(0, min_offset(p1, p2));
+    int stop = min_offset(b->total_size, max_offset(p1, p2));
     int col, col0;
     int offset, offset1, offset2, delta;
 
@@ -1391,7 +1391,7 @@ static void do_describe_buffer(EditState *s, int argval)
         }
         max_count = 0;
         for (i = 0; i < 256; i++) {
-            max_count = max(max_count, count[i]);
+            max_count = max_offset(max_count, count[i]);
         }
         count_width = snprintf(NULL, 0, "%d", max_count);
 
@@ -1435,7 +1435,7 @@ static void do_describe_buffer(EditState *s, int argval)
                       i, p->size, p->flags, p->nb_lines, p->col, p->nb_chars,
                       (void *)p->data);
             pc = p->data;
-            n = min(p->size, 16);
+            n = min_offset(p->size, 16);
             while (n-- > 0) {
                 char cbuf[8];
                 byte_quote(cbuf, sizeof cbuf, *pc++);
@@ -2039,7 +2039,7 @@ static int charname_print_entry(CompleteState *cp, EditState *s, const char *nam
     if (p != NULL) {
         char cbuf[MAX_CHAR_BYTES + 1];
         char32_t code = strtol(p + 1, NULL, 16);
-        maxp(&s->b->tab_width, min(60, 2 + (p - name)));
+        s->b->tab_width = max_int(s->b->tab_width, min_int(60, 2 + (p - name)));
         return eb_printf(s->b, "%s  %s", name,
                          utf8_char32_to_string(cbuf, code));
     } else {

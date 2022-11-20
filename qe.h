@@ -45,6 +45,7 @@
 #undef CONFIG_UNICODE_JOIN
 #else
 #define CONFIG_SESSION  1
+#define CONFIG_REGEX    1
 #endif
 
 #ifndef DEFAULT_TAB_WIDTH

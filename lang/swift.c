@@ -241,7 +241,7 @@ static void swift_colorize_line(QEColorizeContext *cp,
                     }
                 }
                 state = (state & ~IN_SWIFT_COMMENT_LEVEL) |
-                        (min(level, 7) << IN_SWIFT_COMMENT_SHIFT);
+                        (min_int(level, 7) << IN_SWIFT_COMMENT_SHIFT);
                 if (state & IN_SWIFT_COMMENT2) {
                     /* set style on eol char to allow skip block from
                      * end of comment line.

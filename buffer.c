@@ -235,7 +235,7 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
                 int chunk;
                 update_page(p - 1);
                 update_page(p);
-                chunk = min(MAX_PAGE_SIZE - p[-1].size, offset);
+                chunk = min_offset(MAX_PAGE_SIZE - p[-1].size, offset);
                 qe_realloc(&p[-1].data, p[-1].size + chunk);
                 memcpy(p[-1].data + p[-1].size, p->data, chunk);
                 p[-1].size += chunk;
@@ -611,7 +611,7 @@ static int eb_cache_insert(EditBuffer *b)
         return (cache[pos] == b) ? -3 : -2;
 
     if (len >= qs->buffer_cache_size) {
-        int size = max(32, len + (len >> 1) + (len >> 3));
+        int size = max_int(32, len + (len >> 1) + (len >> 3));
         cache = qe_realloc(&qs->buffer_cache, size * sizeof(*cache));
         if (!cache)
             return -1;
@@ -949,7 +949,7 @@ void eb_trace_bytes(const void *buf, int size, int state)
                 col = 9;
             }
             if (p0 < p) {
-                len = min(p - p0, MAX_TRACE_WIDTH - col);
+                len = min_offset(p - p0, MAX_TRACE_WIDTH - col);
                 eb_printf(b, "%.*s", len, p0);
                 p0 += len;
                 col += len;
@@ -1082,7 +1082,7 @@ void eb_set_style(EditBuffer *b, QETermStyle style, enum LogOperation op,
         /* XXX: should use a single loop to initialize buf */
         /* XXX: should initialize buf just once */
         while (size > 0) {
-            len = min(size, ssizeof(s.buf));
+            len = min_offset(size, ssizeof(s.buf));
             if (b->style_shift == 3) {
                 for (i = 0; i < len >> 3; i++) {
                     s.buf8[i] = style;
@@ -1764,7 +1764,7 @@ int eb_goto_char(EditBuffer *b, int pos)
     Page *p, *p_end;
 
     if (!b->charset->variable_size && b->eol_type != EOL_DOS) {
-        offset = min(pos * b->charset->char_size, b->total_size);
+        offset = min_offset(pos * b->charset->char_size, b->total_size);
     } else {
         offset = 0;
         p = b->page_table;
@@ -1798,7 +1798,7 @@ int eb_get_char_offset(EditBuffer *b, int offset)
 
     if (!b->charset->variable_size && b->eol_type != EOL_DOS) {
         /* offset is round down to character boundary */
-        pos = min(offset, b->total_size) / b->charset->char_size;
+        pos = min_offset(offset, b->total_size) / b->charset->char_size;
     } else {
         /* XXX: should handle rounding if EOL_DOS */
         /* XXX: should fix buffer offset via charset specific method */
@@ -2363,8 +2363,8 @@ int eb_get_region_contents(EditBuffer *b, int start, int stop,
     int size, offset;
     buf_t outbuf, *out;
 
-    stop = clamp(stop, 0, b->total_size);
-    start = clamp(start, 0, stop);
+    stop = clamp_offset(stop, 0, b->total_size);
+    start = clamp_offset(start, 0, stop);
     size = stop - start;
 
     /* do not use eb_read if overflow to avoid partial characters */
@@ -2391,8 +2391,8 @@ int eb_get_region_contents(EditBuffer *b, int start, int stop,
 /* Compute the size of the contents of a buffer region encoded in utf8 */
 int eb_get_region_content_size(EditBuffer *b, int start, int stop)
 {
-    stop = clamp(stop, 0, b->total_size);
-    start = clamp(start, 0, stop);
+    stop = clamp_offset(stop, 0, b->total_size);
+    start = clamp_offset(start, 0, stop);
 
     /* assuming start and stop fall on character boundaries */
     if (b->charset == &charset_utf8 && b->eol_type == EOL_UNIX) {
@@ -2419,7 +2419,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
                              EditBuffer *src, int src_offset,
                              int size)
 {
-    int styles_flags = min((dest->flags & BF_STYLES), (src->flags & BF_STYLES));
+    int styles_flags = min_int((dest->flags & BF_STYLES), (src->flags & BF_STYLES));
 
     if (dest->charset == src->charset
     &&  dest->eol_type == src->eol_type
@@ -2440,7 +2440,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
         /* well, not very fast, but simple */
         /* XXX: should optimize save_log system for insert sequences */
         // XXX: should optimize styles transfer
-        offset_max = min(src->total_size, src_offset + size);
+        offset_max = min_offset(src->total_size, src_offset + size);
         size = 0;
         for (offset = src_offset; offset < offset_max;) {
             char buf[MAX_CHAR_BYTES];

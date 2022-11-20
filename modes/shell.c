@@ -515,7 +515,7 @@ static int qe_term_skip_lines(ShellState *s, int offset, int n) {
         if (c == '\t') {
             w = (x + 8) & ~7;
             /* TAB at EOL does not move the cursor */
-            x = min(x + w, s->cols - 1);
+            x = min_int(x + w, s->cols - 1);
         } else {
             w = qe_wcwidth(c);
             x += w;
@@ -569,13 +569,13 @@ static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int fl
     char32_t c;
 
     if (s->use_alternate_screen) {
-        start_offset = minp(&s->alternate_screen_top, s->b->total_size);
+        start_offset = s->alternate_screen_top = min_offset(s->alternate_screen_top, s->b->total_size);
     } else {
-        start_offset = minp(&s->screen_top, s->b->total_size);
+        start_offset = s->screen_top = min_offset(s->screen_top, s->b->total_size);
     }
     if (spp) {
         gpflags = 0;
-        destoffset = clamp(destoffset, 0, s->b->total_size);
+        destoffset = clamp_offset(destoffset, 0, s->b->total_size);
         offset = offset0 = line_offset = start_offset;
         for (x = y = 0; offset < destoffset;) {
             offset0 = offset;
@@ -589,7 +589,7 @@ static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int fl
             if (c == '\t') {
                 w = (x + 8) & ~7;
                 /* TAB at EOL does not move the cursor */
-                x = min(x + w, s->cols - 1);
+                x = min_int(x + w, s->cols - 1);
             } else {
                 w = qe_wcwidth(c);
                 x += w;
@@ -655,7 +655,7 @@ static int qe_term_get_pos2(ShellState *s, int destoffset, ShellPos *spp, int fl
                 break;
             if (c == '\t') {
                 w = (x + 8) & ~7;
-                x = min(x + w, s->cols - 1);
+                x = min_int(x + w, s->cols - 1);
             } else {
                 w = qe_wcwidth(c);
                 x += w;
@@ -689,12 +689,12 @@ static int qe_term_get_pos(ShellState *s, int destoffset, int *px, int *py) {
     char32_t c;
 
     if (s->use_alternate_screen) {
-        start_offset = minp(&s->alternate_screen_top, s->b->total_size);
+        start_offset = s->alternate_screen_top = min_offset(s->alternate_screen_top, s->b->total_size);
     } else {
-        start_offset = minp(&s->screen_top, s->b->total_size);
+        start_offset = s->screen_top = min_offset(s->screen_top, s->b->total_size);
     }
     if (px || py) {
-        destoffset = clamp(destoffset, 0, s->b->total_size);
+        destoffset = clamp_offset(destoffset, 0, s->b->total_size);
         offset = start_offset;
         for (x = y = 0; offset < destoffset;) {
             c = eb_nextc(s->b, offset, &offset);
@@ -705,7 +705,7 @@ static int qe_term_get_pos(ShellState *s, int destoffset, int *px, int *py) {
             if (c == '\t') {
                 w = (x + 8) & ~7;
                 /* TAB at EOL does not move the cursor */
-                x = min(x + w, s->cols - 1);
+                x = min_int(x + w, s->cols - 1);
             } else {
                 w = qe_wcwidth(c);
                 x += w;
@@ -837,7 +837,7 @@ static int qe_term_goto_pos(ShellState *s, int offset, int destx, int desty, int
             if (c == '\t') {
                 w = (x + 8) & ~7;
                 /* TAB at EOL does not move the cursor */
-                x1 = min(x + w, s->cols - 1);
+                x1 = min_int(x + w, s->cols - 1);
                 if (y == desty && x1 > destx) {
                     /* expand TAB if destination falls in the middle */
                     if (flags & TG_NOEXTEND)
@@ -897,7 +897,7 @@ static void qe_term_goto_tab(ShellState *s, int n) {
     /* assuming tab stops every 8 positions */
     int x, y, col_num;
     qe_term_get_pos(s, s->cur_offset, &x, &y);
-    col_num = max(0, x + n * 8) & ~7;
+    col_num = max_int(0, x + n * 8) & ~7;
     if (col_num >= s->cols) {
         /* handle wrapping lines */
         if (x < s->cols)
@@ -941,7 +941,7 @@ static int qe_term_overwrite(ShellState *s, int offset, int w,
             qe_term_get_pos(s, offset, &x, &y);
             eb_delete_range(s->b, offset, offset1);
             w1 = (x + 8) & ~7;
-            x1 = min(x + w1, s->cols - 1);
+            x1 = min_int(x + w1, s->cols - 1);
             if (x1 > x) {
                 eb_insert_spaces(s->b, offset, x1 - x);
                 c1 = eb_nextc(s->b, offset, &offset1);
@@ -1156,7 +1156,7 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
         if (count >= 3 && params[1] == 5) {
             /* set foreground color to third esc_param */
             /* complete syntax is \033[38;5;Nm where N is in range 0..255 */
-            int color = clamp(params[2], 0, 255);
+            int color = clamp_int(params[2], 0, 255);
 
             /* map color to qe-term palette */
             s->fgcolor = MAP_FG_COLOR(color);
@@ -1165,9 +1165,9 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
         if (count >= 5 && params[1] == 2) {
             /* set foreground color to 24-bit color */
             /* complete syntax is \033[38;2;r;g;bm where r,g,b are in 0..255 */
-            QEColor rgb = QERGB25(clamp(params[2], 0, 255),
-                                  clamp(params[3], 0, 255),
-                                  clamp(params[4], 0, 255));
+            QEColor rgb = QERGB25(clamp_int(params[2], 0, 255),
+                                  clamp_int(params[3], 0, 255),
+                                  clamp_int(params[4], 0, 255));
 
             /* map 24-bit colors to qe-term palette */
             s->fgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_FG_COLORS, NULL);
@@ -1187,7 +1187,7 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
         if (count >= 3 && params[1] == 5) {
             /* set background color to third esc_param */
             /* complete syntax is \033[48;5;Nm where N is in range 0..255 */
-            int color = clamp(params[2], 0, 255);
+            int color = clamp_int(params[2], 0, 255);
 
             /* map color to qe-term palette */
             s->bgcolor = MAP_BG_COLOR(color);
@@ -1196,9 +1196,9 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
         if (count >= 5 && params[1] == 2) {
             /* set background color to 24-bit color */
             /* complete syntax is \033[48;2;r;g;bm where r,g,b are in 0..255 */
-            QEColor rgb = QERGB25(clamp(params[2], 0, 255),
-                                  clamp(params[3], 0, 255),
-                                  clamp(params[4], 0, 255));
+            QEColor rgb = QERGB25(clamp_int(params[2], 0, 255),
+                                  clamp_int(params[3], 0, 255),
+                                  clamp_int(params[4], 0, 255));
 
             /* map 24-bit colors to qe-term palette */
             s->bgcolor = qe_map_color(rgb, xterm_colors, QE_TERM_BG_COLORS, NULL);
@@ -1372,7 +1372,7 @@ static void qe_term_emulate(ShellState *s, int c)
     ShellPos pos;
     char buf1[10];
 
-    offset = clampp(&s->cur_offset, 0, s->b->total_size);
+    offset = s->cur_offset = clamp_offset(s->cur_offset, 0, s->b->total_size);
 
     if (s->state == QE_TERM_STATE_NORM) {
         s->term_pos = 0;
@@ -1965,8 +1965,8 @@ static void qe_term_emulate(ShellState *s, int c)
                 // XXX: should use qe_term_get_pos() and qe_term_goto_xy()
                 offset = eb_goto_bol(s->b, offset);
                 qe_term_get_pos(s, offset, NULL, &row);
-                zone = max(0, s->scroll_bottom - row);
-                param1 = min(param1, zone);
+                zone = max_int(0, s->scroll_bottom - row);
+                param1 = min_int(param1, zone);
                 qe_term_set_style(s);
                 offset1 = qe_term_insert_lines(s, offset, param1);
                 offset1 = qe_term_skip_lines(s, offset1, zone - param1);
@@ -1981,8 +1981,8 @@ static void qe_term_emulate(ShellState *s, int c)
                 // XXX: should use qe_term_get_pos() and qe_term_goto_xy()
                 offset = eb_goto_bol(s->b, offset);
                 qe_term_get_pos(s, offset, NULL, &row);
-                zone = max(0, s->scroll_bottom - row);
-                param1 = min(param1, zone);
+                zone = max_int(0, s->scroll_bottom - row);
+                param1 = min_int(param1, zone);
                 qe_term_set_style(s);
                 offset1 = qe_term_delete_lines(s, offset, param1);
                 offset1 = qe_term_skip_lines(s, offset1, zone - param1);
@@ -2035,7 +2035,7 @@ static void qe_term_emulate(ShellState *s, int c)
         case 'X':  /* ECH: Erase Ps Character(s) (default = 1). */
             // XXX: this clipping is vain as current col may be > 0.
             //      should clip better
-            param1 = min(param1, s->cols);
+            param1 = min_int(param1, s->cols);
             len = eb_encode_char32(s->b, buf1, ' ');
             while (param1 --> 0) {
                 offset = qe_term_overwrite(s, offset, 1, buf1, len);
@@ -2046,7 +2046,7 @@ static void qe_term_emulate(ShellState *s, int c)
             break;
         case 'b':  /* REP: Repeat the preceding graphic character Ps times. */
             {
-                int rep = min(param1, s->cols);
+                int rep = min_int(param1, s->cols);
                 int w = qe_wcwidth(s->lastc);
                 len = eb_encode_char32(s->b, buf1, s->lastc);
                 while (rep --> 0) {
@@ -2069,7 +2069,7 @@ static void qe_term_emulate(ShellState *s, int c)
             }
             break;
         case 'd':  /* VPA: Line Position Absolute [row] (default = 1). */
-            param1 = min(param1, s->rows);
+            param1 = min_int(param1, s->rows);
             qe_term_goto_xy(s, 0, param1 - 1, TG_RELATIVE_COL);
             break;
         case 'g':  /* TBC: Tab Clear. */
@@ -2248,8 +2248,8 @@ static void qe_term_emulate(ShellState *s, int c)
         case 'r':  /* DECSTBM: Set Scrolling Region [top;bottom]
                       (default = full size of window) */
             /* XXX: the scrolling region should also affect LF operation */
-            s->scroll_top = clamp(s->params[0] - 1, 0, s->rows);
-            s->scroll_bottom = s->params[1] > 0 ? clamp(s->params[1], 1, s->rows) : s->rows;
+            s->scroll_top = clamp_int(s->params[0] - 1, 0, s->rows);
+            s->scroll_bottom = s->params[1] > 0 ? clamp_int(s->params[1], 1, s->rows) : s->rows;
             break;
         case ESC2('$','r'): /* DECCARA: Change Attributes in Rectangular
                                Area, VT400 and up. */
@@ -3037,7 +3037,7 @@ static void do_shell_kill_line(EditState *e, int argval)
         /* ignore count argument in interactive mode */
         if (dir < 0) {
             /* kill backwards upto prompt position */
-            p2 = max(eb_goto_bol(e->b, p1), s->cur_prompt);
+            p2 = max_offset(eb_goto_bol(e->b, p1), s->cur_prompt);
             do_kill(e, p1, p2, dir, 0);
             //shell_write_char(e, KEY_META('k'));
         } else {

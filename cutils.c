@@ -24,61 +24,6 @@
 #include "config.h"     /* for CONFIG_WIN32 */
 #include "cutils.h"
 
-/* these functions are duplicated from ffmpeg/libavformat/cutils.c
- * conflict is resolved by redefining the symbols in cutils.h
- */
-
-int strstart(const char *str, const char *val, const char **ptr) {
-    /*@API utils
-       Test if `val` is a prefix of `str`.
-
-       If `val` is a prefix of `str`, a pointer to the first character
-       after the prefix in `str` is stored into `ptr` provided `ptr`
-       is not a null pointer.
-
-       If `val` is not a prefix of `str`, return `0` and leave `*ptr`
-       unchanged.
-
-       @param `str` input string, must be a valid pointer.
-       @param `val` prefix string, must be a valid pointer.
-       @param `ptr` updated with a pointer past the prefix if found.
-       @return `true` if there is a match, `false` otherwise.
-     */
-    size_t i;
-    for (i = 0; val[i] != '\0'; i++) {
-        if (str[i] != val[i])
-            return 0;
-    }
-    if (ptr)
-        *ptr = &str[i];
-    return 1;
-}
-
-int strend(const char *str, const char *val, const char **ptr) {
-    /*@API utils
-       Test if `val` is a suffix of `str`.
-
-       if `val` is a suffix of `str`, a pointer to the first character
-       of the suffix in `str` is stored into `ptr` provided `ptr` is
-       not a null pointer.
-
-       @param `str` input string, must be a valid pointer.
-       @param `val` suffix string, must be a valid pointer.
-       @param `ptr` updated to the suffix in `str` if there is a match.
-       @return `true` if there is a match, `false` otherwise.
-     */
-    size_t len1 = strlen(str);
-    size_t len2 = strlen(val);
-
-    if (len1 >= len2 && !memcmp(str += len1 - len2, val, len2)) {
-        if (ptr)
-            *ptr = str;
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
 char *pstrcpy(char *buf, int size, const char *str) {
     /*@API utils
        Copy the string pointed by `str` to the destination array `buf`,
@@ -150,6 +95,61 @@ char *pstrncat(char *buf, int size, const char *s, int slen) {
     if (len < size)
         pstrncpy(buf + len, size - len, s, slen);
     return buf;
+}
+
+/* these functions are duplicated from ffmpeg/libavformat/cutils.c
+ * conflict is resolved by redefining the symbols in cutils.h
+ */
+
+int strstart(const char *str, const char *val, const char **ptr) {
+    /*@API utils
+       Test if `val` is a prefix of `str`.
+
+       If `val` is a prefix of `str`, a pointer to the first character
+       after the prefix in `str` is stored into `ptr` provided `ptr`
+       is not a null pointer.
+
+       If `val` is not a prefix of `str`, return `0` and leave `*ptr`
+       unchanged.
+
+       @param `str` input string, must be a valid pointer.
+       @param `val` prefix string, must be a valid pointer.
+       @param `ptr` updated with a pointer past the prefix if found.
+       @return `true` if there is a match, `false` otherwise.
+     */
+    size_t i;
+    for (i = 0; val[i] != '\0'; i++) {
+        if (str[i] != val[i])
+            return 0;
+    }
+    if (ptr)
+        *ptr = &str[i];
+    return 1;
+}
+
+int strend(const char *str, const char *val, const char **ptr) {
+    /*@API utils
+       Test if `val` is a suffix of `str`.
+
+       if `val` is a suffix of `str`, a pointer to the first character
+       of the suffix in `str` is stored into `ptr` provided `ptr` is
+       not a null pointer.
+
+       @param `str` input string, must be a valid pointer.
+       @param `val` suffix string, must be a valid pointer.
+       @param `ptr` updated to the suffix in `str` if there is a match.
+       @return `true` if there is a match, `false` otherwise.
+     */
+    size_t len1 = strlen(str);
+    size_t len2 = strlen(val);
+
+    if (len1 >= len2 && !memcmp(str += len1 - len2, val, len2)) {
+        if (ptr)
+            *ptr = str;
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 size_t get_basename_offset(const char *path) {

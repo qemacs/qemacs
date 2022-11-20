@@ -268,7 +268,7 @@ static QVarType qe_variable_set_value_offset(EditState *s, VarDef *vp, void *ptr
         return VAR_INVALID;
     } else {
         int *pnum = (int *)ptr;
-        *pnum = clamp(num, 0, s->b->total_size);
+        *pnum = clamp_offset(num, 0, s->b->total_size);
         return VAR_NUMBER;
     }
 }
@@ -542,7 +542,7 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
     len += eb_puts(b, buf);
     b->cur_style = QE_STYLE_COMMENT;
     if (2 + len < 40) {
-        b->tab_width = max(2 + len, b->tab_width);
+        b->tab_width = max_int(2 + len, b->tab_width);
         len += eb_putc(b, '\t');
     } else {
         b->tab_width = 40;

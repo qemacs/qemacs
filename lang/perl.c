@@ -242,7 +242,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
                     s2 = perl_var(str, s1, n);
                 }
                 if (s2 > s1) {
-                    perl_eos_len = min((int)(s2 - s1), countof(perl_eos) - 1);
+                    perl_eos_len = min_int((int)(s2 - s1), countof(perl_eos) - 1);
                     umemcpy(perl_eos, str + s1, perl_eos_len);
                     perl_eos[perl_eos_len] = '\0';
                     colstate |= IN_PERL_HEREDOC;

@@ -234,7 +234,7 @@ static void comments_output(int pos) {
     if (comments_count) {
         size_t i;
         for (i = 0; i < comments_count; i++) {
-            printf("%*s%s\n", max(1, 17 - pos), "", comments[i]);
+            printf("%*s%s\n", max_int(1, 17 - pos), "", comments[i]);
             pos = 0;
             free(comments[i]);
             comments[i] = NULL;

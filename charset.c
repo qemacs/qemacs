@@ -643,7 +643,7 @@ static int charset_goto_char_ucs2(CharsetDecodeState *s,
     union { uint16_t n; char c[2]; } u;
 
     if (s->eol_type != EOL_DOS)
-        return min(pos << 1, size);
+        return min_offset(pos << 1, size);
 
     nb_chars = 0;
     buf_ptr = (const uint16_t *)(const void *)buf;
@@ -917,7 +917,7 @@ static int charset_goto_char_ucs4(CharsetDecodeState *s,
     union { uint32_t n; char c[4]; } u;
 
     if (s->eol_type != EOL_DOS)
-        return min(pos << 2, size);
+        return min_offset(pos << 2, size);
 
     nb_chars = 0;
     buf_ptr = (const uint32_t *)(const void *)buf;
@@ -1586,7 +1586,7 @@ int charset_goto_char_8bit(CharsetDecodeState *s,
     const u8 *buf_ptr, *buf_end;
 
     if (s->eol_type != EOL_DOS)
-        return min(pos, size);
+        return min_offset(pos, size);
 
     nb_chars = 0;
     buf_ptr = buf;

@@ -43,6 +43,7 @@ endif
 ifdef CONFIG_DARWIN
   CFLAGS += -Wno-string-plus-int
   CFLAGS += -Wint-conversion
+  CFLAGS += -Wno-packed
 else
 ifneq ($(OSNAME),OpenBSD)
   CFLAGS += -Wno-unused-result

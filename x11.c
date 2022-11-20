@@ -917,8 +917,8 @@ static void x11_dpy_text_metrics(QEditScreen *s, QEFont *font,
             cs = handle_fallback(s, &font1, font, cc);
             if (cs) {
                 x += cs->width;
-                metrics->font_ascent = max(metrics->font_ascent, font1->ascent);
-                metrics->font_descent = max(metrics->font_descent, font1->descent);
+                metrics->font_ascent = max_int(metrics->font_ascent, font1->ascent);
+                metrics->font_descent = max_int(metrics->font_descent, font1->descent);
             }
             release_font(s, font1);
         }

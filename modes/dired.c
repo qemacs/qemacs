@@ -640,7 +640,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
 
     /* Try and preserve scroll position */
     if (s) {
-        w = max(1, get_glyph_width(s->screen, s, QE_STYLE_DEFAULT, '0'));
+        w = max_int(1, get_glyph_width(s->screen, s, QE_STYLE_DEFAULT, '0'));
         window_width = s->width;
         width = window_width / w;
 
@@ -691,7 +691,7 @@ static void dired_update_buffer(DiredState *ds, EditBuffer *b, EditState *s,
     ds->last_details_flag = ds->details_flag;
     ds->last_width = window_width;
     ds->last_cur = NULL;
-    width -= clamp(ds->namelen, 16, 40);
+    width -= clamp_int(ds->namelen, 16, 40);
     ds->details_mask = DIRED_SHOW_ALL;
     if (ds->details_flag == DIRED_DETAILS_HIDE) {
         ds->details_mask = 0;
@@ -1560,7 +1560,7 @@ int file_print_entry(CompleteState *cp, EditState *s, const char *name) {
     if (!stat(name, &st)) {
         b->cur_style = S_ISDIR(st.st_mode) ? DIRED_STYLE_DIRECTORY : DIRED_STYLE_FILENAME;
         len = eb_puts(b, name);
-        b->tab_width = max3(16, 2 + len, b->tab_width);
+        b->tab_width = max3_int(16, 2 + len, b->tab_width);
         b->cur_style = DIRED_STYLE_NORMAL;
         format_size(buf, sizeof(buf), dired_hflag, st.st_mode, st.st_dev, st.st_size);
         len += eb_printf(b, "\t%*s", sizelen, buf);
