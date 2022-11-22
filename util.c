@@ -2283,24 +2283,20 @@ int utf8_encode(char *q0, char32_t c) {
 int utf8_to_char32(char32_t *dest, int dest_length, const char *str)
 {
     const char *p;
-    char32_t *uq, *uq_end, c;
+    int pos;
 
     if (dest_length <= 0)
         return 0;
 
     p = str;
-    uq = dest;
-    uq_end = dest + dest_length - 1;
-    for (;;) {
-        if (uq >= uq_end)
-            break;
-        c = utf8_decode(&p);
+    for (pos = 0; pos + 1 < dest_length; pos++) {
+        char32_t c = utf8_decode(&p);
         if (c == '\0')
             break;
-        *uq++ = c;
+        dest[pos] = c;
     }
-    *uq = 0;
-    return uq - dest;
+    dest[pos] = 0;
+    return pos;
 }
 
 int char32_to_utf8(char *dest, int dest_length, const char32_t *src, int src_length)
@@ -2312,5 +2308,6 @@ int char32_to_utf8(char *dest, int dest_length, const char32_t *src, int src_len
 
     for (i = 0; i < src_length; i++)
         buf_putc_utf8(out, src[i]);
+
     return out->pos;
 }

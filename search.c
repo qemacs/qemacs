@@ -39,7 +39,7 @@
 #define SEARCH_FLAG_ACTIVE     0x1000
 
 /* should separate search string length and number of match positions */
-#define SEARCH_LENGTH  256
+#define SEARCH_LENGTH  2048
 #define SEARCH_STEPS   512
 #define FOUND_TAG      0x80000000
 #define FOUND_REV      0x40000000
@@ -888,7 +888,7 @@ typedef struct QueryReplaceState {
     char32_t search_u32[SEARCH_LENGTH];   /* code points */
     /* query-replace */
     char replace_str[SEARCH_LENGTH * 3];  /* may be in hex */
-    char32_t replace_u32[SEARCH_LENGTH];  /* code points */
+    char32_t replace_u32[SEARCH_LENGTH];  /* code points (useless?) */
 } QueryReplaceState;
 
 static void query_replace_help(QueryReplaceState *is) {
@@ -953,7 +953,7 @@ static void query_replace_replace(QueryReplaceState *is)
 static void query_replace_run(QueryReplaceState *is)
 {
     EditState *s = is->s;
-    char ubuf[256];
+    char ubuf[4096];
     buf_t outbuf, *out;
 
     is->last_offset = is->found_offset;
@@ -1488,7 +1488,7 @@ static const CmdDef search_commands[] = {
           "Kill lines containing a string to the kill buffer",
           do_search_string, ESsi, "*"
           "s{Kill lines containing: }[search]|search|"
-          "v", CMD_COPY_MATCHING_LINES)
+          "v", CMD_KILL_MATCHING_LINES)
     CMD3( "list-matching-lines", "",
           "List lines containing a string in popup window",
           do_search_string, ESsi, "*"

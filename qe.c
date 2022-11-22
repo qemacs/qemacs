@@ -6881,7 +6881,7 @@ void do_minibuffer_history(EditState *s, int n)
     StringArray *hist;
     int index;
     char *str;
-    char buf[1024];
+    char buf[2048];
 
     if ((mb = minibuffer_get_state(s, 0)) == NULL)
         return;

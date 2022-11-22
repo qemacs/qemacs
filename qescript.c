@@ -43,7 +43,7 @@ typedef struct QEmacsDataSource {
     int len;                // length of TOK_STRING and TOK_ID string
     QEValue *sp_max;
     QEValue stack[16];
-    char str[256];          // token string (XXX: should use local buffer?)
+    char str[2048];         // token string (XXX: should use local buffer?)
 } QEmacsDataSource;
 
 enum {
@@ -137,10 +137,13 @@ static void qe_cfg_release(QEmacsDataSource *ds) {
 }
 
 // XXX: Should use strunquote parser from util.c
-static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
+// XXX: Should remove string length limitation using allocation
+static int qe_cfg_parse_string(QEmacsDataSource *ds, const char **pp, int delim,
                                char *dest, int size, int *plen)
 {
+    EditState *s = ds->s;
     const char *p = *pp;
+    int triple = 0;
     int res = 0;
     int pos = 0;
     int end = size - 1;
@@ -149,24 +152,52 @@ static int qe_cfg_parse_string(EditState *s, const char **pp, int delim,
     int len;
     char32_t ch;
 #endif
-    /* should check for delim at *p and return -1 if no string */
+    /* check for triple delimiter */
+    if (p[0] == delim && p[1] == delim) {
+        triple = 1;
+        p += 2;
+        if (*p == '\n') {
+            /* ignore newline after """ */
+            // XXX: should ignore leading white space?
+            p++;
+        }
+    }
     for (;;) {
         /* encoding issues deliberately ignored */
         int c = *p;
-        if (c == '\n' || c == '\0') {
+        if (c == '\0') {
             put_error(s, "unterminated string");
             res = -1;
             break;
         }
+        if (c == '\n') {
+            if (!triple) {
+                put_error(s, "newline in simple string");
+                res = -1;
+                break;
+            }
+            ds->s->qe_state->ec.lineno = ++ds->line_num;
+        }
         p++;
-        if (c == delim)
-            break;
+        if (c == delim) {
+            if (!triple)
+                break;
+            if (p[0] == delim && p[1] == delim) {
+                p += 2;
+                break;
+            }
+        }
         if (c == '\\') {
 #ifndef CONFIG_TINY
             int maxc = -1;
 #endif
             c = *p++;
             switch (c) {
+            case '\n':
+                // escaped newlines contribute no character to the string
+                // XXX: should ignore leading white space?
+                ds->s->qe_state->ec.lineno = ++ds->line_num;
+                continue;
             case 'n': c = '\n'; break;
             case 'r': c = '\r'; break;
             case 't': c = '\t'; break;
@@ -301,7 +332,7 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
         }
         if (c == '\'' || c == '\"') {
             ds->p = cs8(p);
-            if (qe_cfg_parse_string(ds->s, &ds->p, c,
+            if (qe_cfg_parse_string(ds, &ds->p, c,
                                     ds->str, sizeof(ds->str), &ds->len) < 0)
             {
                 return ds->tok = TOK_ERR;
@@ -993,11 +1024,19 @@ static int qe_cfg_get_args(QEmacsDataSource *ds, QEValue *sp, int n1, int n2) {
 }
 #endif
 
+static void qe_cfg_free_args(QEmacsDataSource *ds, int nb_args,
+                             CmdArg *args, unsigned char *args_type)
+{
+    int i;
+    for (i = 0; i < nb_args; i++) {
+        if (args_type[i] == CMD_ARG_STRING)
+            qe_free(&args[i].p);
+    }
+}
+
 static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
     EditState *s = ds->s;
     QEmacsState *qs = s->qe_state;
-    char str[1024];
-    char *strp;
     const char *r;
     int nb_args, sep, i, ret;
     CmdArgSpec cas;
@@ -1027,7 +1066,6 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
     }
 
     sep = '\0';
-    strp = str;
 
     for (i = 0; i < nb_args; i++) {
         /* pseudo arguments: skip them */
@@ -1073,8 +1111,10 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
             /* source stays in front of the ')'. */
             /* Let the expression parser complain about the missing argument */
         } else {
-            if (sep && !expect_token(ds, sep))
+            if (sep && !expect_token(ds, sep)) {
+                qe_cfg_free_args(ds, i, args, args_type);
                 return -1;
+            }
             sep = ',';
         }
 
@@ -1083,6 +1123,7 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
 
         if (qe_cfg_expr(ds, sp, PREC_ASSIGNMENT, 0)) {
             put_error(s, "missing arguments for %s", d->name);
+            qe_cfg_free_args(ds, i, args, args_type);
             return -1;
         }
 
@@ -1095,15 +1136,20 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
             break;
         case CMD_ARG_STRING:
             qe_cfg_tostr(ds, sp); // XXX: should complain about type mismatch?
-            pstrcpy(strp, str + countof(str) - strp, sp->u.str);
-            args[i].p = strp;
-            if (strp < str + countof(str) - 1)
-                strp += strlen(strp) + 1;
+            /* use allocated string pointer or duplicate it */
+            if (sp->alloc) {
+                args[i].p = sp->u.str;
+                sp->alloc = 0;
+                sp->type = TOK_VOID;
+            } else {
+                args[i].p = qe_strdup(sp->u.str);
+            }
             break;
         }
     }
     if (!has_token(ds, ')')) {
         put_error(s, "too many arguments for %s", d->name);
+        qe_cfg_free_args(ds, nb_args, args, args_type);
         return -1;
     }
 
@@ -1117,6 +1163,7 @@ static int qe_cfg_call(QEmacsDataSource *ds, QEValue *sp, const CmdDef *d) {
     check_window(&s);
     ds->s = s;
     sp->type = TOK_VOID;
+    qe_cfg_free_args(ds, nb_args, args, args_type);
     return 0;
 }
 

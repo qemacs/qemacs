@@ -2204,23 +2204,24 @@ int eb_insert_char32_n(EditBuffer *b, int offset, char32_t c, int n) {
 
 /* Insert buffer with utf8 chars according to buffer encoding */
 /* Return number of bytes inserted */
-int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
+int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *str, int len)
 {
     if (b->charset == &charset_utf8 && b->eol_type == EOL_UNIX) {
-        return eb_insert(b, offset, buf, len);
+        return eb_insert(b, offset, str, len);
     } else {
-        char buf1[1024];
-        int size, size1;
-        const char *bufend = buf + len;
+        char buf[1024];
+        int size, pos;
+        const char *p = str;
+        const char *strend = str + len;
 
-        size = size1 = 0;
-        while (buf < bufend) {
-            char32_t c = utf8_decode(&buf);
-            int clen = eb_encode_char32(b, buf1 + size1, c);
-            size1 += clen;
-            if (size1 > ssizeof(buf) - MAX_CHAR_BYTES || buf >= bufend) {
-                size += eb_insert(b, offset + size, buf1, size1);
-                size1 = 0;
+        size = pos = 0;
+        while (p < strend) {
+            char32_t c = utf8_decode(&p);
+            int clen = eb_encode_char32(b, buf + pos, c);
+            pos += clen;
+            if (pos > countof(buf) - MAX_CHAR_BYTES || p >= strend) {
+                size += eb_insert(b, offset + size, buf, pos);
+                pos = 0;
             }
         }
         return size;
@@ -2229,19 +2230,19 @@ int eb_insert_utf8_buf(EditBuffer *b, int offset, const char *buf, int len)
 
 /* Insert chars from char32 array according to buffer encoding */
 /* Return number of bytes inserted */
-int eb_insert_char32_buf(EditBuffer *b, int offset, const char32_t *buf, int len)
+int eb_insert_char32_buf(EditBuffer *b, int offset, const char32_t *p, int len)
 {
-    char buf1[1024];
-    int pos, size, pos1;
+    char buf[1024];
+    int i, size, pos;
 
-    pos = size = pos1 = 0;
-    while (pos < len) {
-        char32_t c = buf[pos++];
-        int clen = eb_encode_char32(b, buf1 + pos1, c);
-        pos1 += clen;
-        if (pos1 > ssizeof(buf) - MAX_CHAR_BYTES || pos >= len) {
-            size += eb_insert(b, offset + size, buf1, pos1);
-            pos1 = 0;
+    i = size = pos = 0;
+    while (i < len) {
+        char32_t c = p[i++];
+        int clen = eb_encode_char32(b, buf + pos, c);
+        pos += clen;
+        if (pos > countof(buf) - MAX_CHAR_BYTES || i >= len) {
+            size += eb_insert(b, offset + size, buf, pos);
+            pos = 0;
         }
     }
     return size;

@@ -127,10 +127,13 @@ enum {
     IN_C_COMMENT1   = 0x01,  /* single line comment with \ at EOL */
     IN_C_COMMENT2   = 0x02,  /* multiline C comment */
     IN_C_COMMENT3   = 0x03,  /* multiline D comment */
-    IN_C_STRING     = 0x04,  /* double-quoted string */
+    IN_C_STRING     = 0x1C,  /* 3 bits for string styles */
+    IN_C_STRING_D   = 0x04,  /* double-quoted string */
     IN_C_STRING_Q   = 0x08,  /* single-quoted string */
-    IN_C_STRING_BQ  = 0x10,  /* back-quoted string (go's multi-line string) */
-                             /* """ multiline quoted string (dart, scala) */
+    IN_C_STRING_BQ  = 0x0C,  /* back-quoted string (go's multi-line string) */
+    IN_C_STRING_D3  = 0x14,  /* """ multiline quoted string */
+    IN_C_STRING_Q3  = 0x18,  /* ''' multiline quoted string */
+    IN_C_STRING_BQ3 = 0x1C,  /* ``` multiline quoted string */
     IN_C_PREPROCESS = 0x20,  /* preprocessor directive with \ at EOL */
     IN_C_REGEX      = 0x40,  /* regex */
     IN_C_CHARCLASS  = 0x80,  /* regex char class */
@@ -174,15 +177,12 @@ static void c_colorize_line(QEColorizeContext *cp,
             else
                 goto parse_comment3;
         }
-        if (state & IN_C_STRING)
-            goto parse_string;
-        if (state & IN_C_STRING_Q)
-            goto parse_string_q;
-        if ((state & IN_C_STRING_BQ)
-        &&  (flavor == CLANG_SCALA || flavor == CLANG_DART))
-            goto parse_string3;
-        if (state & IN_C_STRING_BQ)
-            goto parse_string_bq;
+        switch (state & IN_C_STRING) {
+        case IN_C_STRING_D: goto parse_string;
+        case IN_C_STRING_Q: goto parse_string_q;
+        case IN_C_STRING_BQ: goto parse_string_bq;
+        case IN_C_STRING_D3: goto parse_string3;
+        }
         if (state & IN_C_REGEX) {
             delim = '/';
             goto parse_regex;
@@ -404,7 +404,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 while (i < n) {
                     c = str[i++];
                     if (c == delim) {
-                        state &= ~IN_C_STRING_BQ;
+                        state &= ~IN_C_STRING;
                         break;
                     }
                 }
@@ -423,7 +423,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 if (str[i] == '\"') {
                     /* Csharp and Squirrel Verbatim strings */
                     /* ignore escape sequences and newlines */
-                    state |= IN_C_STRING;   // XXX: IN_RAW_STRING
+                    state |= IN_C_STRING_D;   // XXX: IN_RAW_STRING
                     style1 = C_STYLE_STRING;
                     delim = str[i];
                     style = style1;
@@ -434,7 +434,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                                 i++;
                                 continue;
                             }
-                            state &= ~(IN_C_STRING | IN_C_STRING_Q | IN_C_STRING_BQ);
+                            state &= ~IN_C_STRING;
                             style = style0;
                             break;
                         }
@@ -459,16 +459,18 @@ static void c_colorize_line(QEColorizeContext *cp,
                 /* multiline """ quoted string */
                 i += 2;
             parse_string3:
-                state |= IN_C_STRING_BQ;
+                state |= IN_C_STRING_D3;
                 style1 = C_STYLE_STRING;
+                delim = '\"';
                 while (i < n) {
                     c = str[i++];
                     if (c == '\\' && flavor != CLANG_KOTLIN) {
                         if (i < n)
                             i++;
                     } else
-                    if (c == '\"' && str[i] == '\"' && str[i + 1] == '\"') {
-                        state &= ~IN_C_STRING_BQ;
+                    if (c == delim && str[i] == delim && str[i + 1] == delim) {
+                        i += 2;
+                        state &= ~IN_C_STRING;
                         style = style0;
                         break;
                     }
@@ -477,7 +479,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 continue;
             }
         parse_string:
-            state |= IN_C_STRING;
+            state |= IN_C_STRING_D;
             style1 = C_STYLE_STRING;
             delim = '\"';
         string:
@@ -494,7 +496,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                         i++;
                         continue;
                     }
-                    state &= ~(IN_C_STRING | IN_C_STRING_Q | IN_C_STRING_BQ);
+                    state &= ~IN_C_STRING;
                     style = style0;
                     break;
                 }
@@ -614,8 +616,7 @@ static void c_colorize_line(QEColorizeContext *cp,
         SET_COLOR1(str, start, style);
     }
  the_end:
-    if (state & (IN_C_COMMENT | IN_C_PREPROCESS |
-                 IN_C_STRING | IN_C_STRING_Q | IN_C_STRING_BQ)) {
+    if (state & (IN_C_COMMENT | IN_C_PREPROCESS | IN_C_STRING)) {
         /* set style on eol char */
         SET_COLOR1(str, n, style);
     }
@@ -1702,12 +1703,13 @@ static void js_colorize_line(QEColorizeContext *cp,
         /* if already in a state, go directly in the code parsing it */
         if (state & IN_C_COMMENT2)
             goto parse_comment2;
-        if (state & IN_C_STRING)
-            goto parse_string;
-        if (state & IN_C_STRING_Q)
-            goto parse_string_q;
-        if (state & IN_C_STRING_BQ)
-            goto parse_string_bq;
+        switch (state & IN_C_STRING) {
+        case IN_C_STRING_D: goto parse_string;
+        case IN_C_STRING_Q: goto parse_string_q;
+        case IN_C_STRING_BQ: goto parse_string_bq;
+        case IN_C_STRING_D3: goto parse_string3;
+        case IN_C_STRING_Q3: goto parse_string_q3;
+        }
         if (state & IN_C_REGEX) {
             delim = '/';
             goto parse_regex;
@@ -1816,22 +1818,39 @@ static void js_colorize_line(QEColorizeContext *cp,
             while (i < n) {
                 c = str[i++];
                 if (c == '`') {
-                    state &= ~IN_C_STRING_BQ;
+                    state &= ~IN_C_STRING;
                     break;
                 }
             }
             break;
 
         case '\'':      /* character constant */
-        parse_string_q:
+            if ((mode_flags & CLANG_STR3)
+            &&  (str[i] == '\'' && str[i + 1] == '\'')) {
+                /* multiline ''' quoted string */
+                i += 2;
+                state |= IN_C_STRING_Q3;
+            parse_string_q3:
+                style = C_STYLE_STRING_Q;
+                delim = '\'';
+                goto string3;
+            }
             state |= IN_C_STRING_Q;
+        parse_string_q:
             style = C_STYLE_STRING_Q;
             delim = '\'';
             goto string;
 
         case '\"':      /* string literal */
+            if ((mode_flags & CLANG_STR3)
+            &&  (str[i] == '\"' && str[i + 1] == '\"')) {
+                /* multiline """ quoted string */
+                i += 2;
+                state |= IN_C_STRING_D3;
+                goto parse_string3;
+            }
+            state |= IN_C_STRING_D;
         parse_string:
-            state |= IN_C_STRING;
             style = C_STYLE_STRING;
             delim = '\"';
         string:
@@ -1843,7 +1862,25 @@ static void js_colorize_line(QEColorizeContext *cp,
                     i++;
                 } else
                 if (c == delim) {
-                    state &= ~(IN_C_STRING | IN_C_STRING_Q);
+                    state &= ~IN_C_STRING;
+                    break;
+                }
+            }
+            break;
+        parse_string3:
+            style = C_STYLE_STRING;
+            delim = '\"';
+        string3:
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\') {
+                    if (i >= n)
+                        break;
+                    i++;
+                } else
+                if (c == delim && str[i] == delim && str[i + 1] == delim) {
+                    i += 2;
+                    state &= ~IN_C_STRING;
                     break;
                 }
             }
@@ -1936,7 +1973,7 @@ static void js_colorize_line(QEColorizeContext *cp,
         }
     }
  the_end:
-    if (state & (IN_C_COMMENT | IN_C_STRING | IN_C_STRING_Q)) {
+    if (state & (IN_C_COMMENT | IN_C_STRING)) {
         /* set style on eol char */
         SET_COLOR1(str, n, style);
         if ((state & IN_C_COMMENT) == IN_C_COMMENT1)
@@ -2067,7 +2104,7 @@ static ModeDef jspp_mode = {
     .extensions = "jspp|jpp",
     .shell_handlers = "js++",
     .colorize_func = js_colorize_line,
-    .colorize_flags = CLANG_JSPP | CLANG_REGEX,
+    .colorize_flags = CLANG_JSPP | CLANG_STR3 | CLANG_REGEX,
     .keywords = jspp_keywords,
     .types = jspp_types,
     .indent_func = c_indent_line,
@@ -2774,8 +2811,8 @@ static ModeDef qscript_mode = {
     .extensions = "qe|qs",
     .shell_handlers = "qscript|qs",
     .mode_probe = qs_mode_probe,
-    .colorize_func = c_colorize_line,
-    .colorize_flags = CLANG_QSCRIPT | CLANG_REGEX,
+    .colorize_func = js_colorize_line,
+    .colorize_flags = CLANG_QSCRIPT | CLANG_STR3 | CLANG_REGEX,
     .keywords = qs_keywords,
     .types = qs_types,
     .indent_func = c_indent_line,
@@ -3484,12 +3521,11 @@ static void salmon_colorize_line(QEColorizeContext *cp,
         /* if already in a state, go directly in the code parsing it */
         if (state & IN_C_COMMENT2)
             goto parse_comment2;
-        if (state & IN_C_STRING)
-            goto parse_string;
-        if (state & IN_C_STRING_Q)
-            goto parse_string_q;
-        if (state & IN_C_STRING_BQ)
-            goto parse_string_bq;
+        switch (state & IN_C_STRING) {
+        case IN_C_STRING_D: goto parse_string;
+        case IN_C_STRING_Q: goto parse_string_q;
+        case IN_C_STRING_BQ: goto parse_string_bq;
+        }
         if (state & IN_C_REGEX) {
             goto parse_regex;
         }
@@ -3553,7 +3589,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
             while (i < n) {
                 c = str[i++];
                 if (c == '`') {
-                    state &= ~IN_C_STRING_BQ;
+                    state &= ~IN_C_STRING;
                     break;
                 }
             }
@@ -3598,7 +3634,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
 
         case '\"':      /* string literal */
         parse_string:
-            state |= IN_C_STRING;
+            state |= IN_C_STRING_D;
             style = C_STYLE_STRING;
             delim = '\"';
         string:
@@ -3610,7 +3646,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
                     i++;
                 } else
                 if (c == delim) {
-                    state &= ~(IN_C_STRING | IN_C_STRING_Q | IN_C_REGEX);
+                    state &= ~IN_C_STRING;
                     break;
                 }
             }
@@ -3697,7 +3733,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
         }
     }
  the_end:
-    if (state & (IN_C_COMMENT | IN_C_STRING | IN_C_STRING_Q)) {
+    if (state & (IN_C_COMMENT | IN_C_STRING)) {
         /* set style on eol char */
         SET_COLOR1(str, n, style);
         if ((state & IN_C_COMMENT) == IN_C_COMMENT1)
