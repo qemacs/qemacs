@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2022 Charlie Gordon.
+ * Copyright (c) 2000-2023 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1386,7 +1386,7 @@ static const CmdDef parser_commands[] = {
           "s{Eval: }[.symbol]|expression|"
           "P")
     /* XXX: should take region as argument, implicit from keyboard */
-    CMD0( "eval-region", "",
+    CMD0( "eval-region", "M-C-z",
           "Evaluate qemacs expressions in a region",
           do_eval_region)
     CMD0( "eval-buffer", "",

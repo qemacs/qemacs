@@ -1,7 +1,7 @@
 # QEmacs, tiny but powerful multimode editor
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2022 Charlie Gordon.
+# Copyright (c) 2000-2023 Charlie Gordon.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -100,8 +100,9 @@ OBJS:= qe.o cutils.o util.o color.o charset.o buffer.o search.o input.o display.
 
 ifdef TARGET_TINY
 ECHO_CFLAGS += -DCONFIG_TINY
-#CFLAGS += -DCONFIG_TINY -m32 -Os
 CFLAGS += -DCONFIG_TINY -Os
+#CFLAGS += -m32
+#LDFLAGS += -m32
 else
 OBJS+= extras.o variables.o
 endif

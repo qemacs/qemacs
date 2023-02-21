@@ -3,7 +3,7 @@
 # QEmacs configure script
 #
 # Copyright (c) 2002 Fabrice Bellard
-# Copyright (c) 2002-2013 Charlie Gordon
+# Copyright (c) 2002-2023 Charlie Gordon
 #
 
 # set temporary file name
@@ -38,6 +38,9 @@ case "$cpu" in
     ;;
   x86_64)
     cpu="x86_64"
+    ;;
+  arm64)
+    cpu="arm64"
     ;;
   armv4l)
     cpu="armv4l"
@@ -518,6 +521,7 @@ echo "Manpages dir        $mandir"
 echo "Source path         $source_path"
 echo "C compiler          $cc"
 echo "  version          " `$cc --version | head -n 1`
+echo "  target_arch       $cpu"
 echo "Tiny build          $tiny"
 echo "X11 support         $x11"
 if test "$x11" = "yes" ; then
@@ -571,6 +575,9 @@ if test "$cpu" = "x86" ; then
 elif test "$cpu" = "x86_64" ; then
   echo "TARGET_ARCH_X86_64=yes" >> $TMPMAK
   echo "#define ARCH_X86_64 1" >> $TMPH
+elif test "$cpu" = "arm64" ; then
+  echo "TARGET_ARCH_ARM64=yes" >> $TMPMAK
+  echo "#define ARCH_ARM64 1" >> $TMPH
 elif test "$cpu" = "armv4l" ; then
   echo "TARGET_ARCH_ARMV4L=yes" >> $TMPMAK
   echo "#define ARCH_ARMV4L 1" >> $TMPH

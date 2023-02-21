@@ -1,4 +1,4 @@
-<!-- TODO list for qemacs -- Author: Charles Gordon -- Updated: 2022-09-06 -->
+<!-- TODO list for qemacs -- Author: Charles Gordon -- Updated: 2023-02-21 -->
 
 # QEmacs TODO list
 
@@ -361,6 +361,7 @@ insert_window_left()  deletes some left-most windows
 * [Idea] dynamic project based settings, include, exclude patterns...
 * commands: `parse_arg()` should handle default argument values
 * commands: pass raw prefix argument `P` as combination of has_arg (flags) and argval (number)
+* `eval-expression` should evaluate region if highlighted?
 
 ## Colors and styles
 
