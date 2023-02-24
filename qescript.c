@@ -50,9 +50,10 @@ enum {
     TOK_EOF = -1, TOK_ERR = -2, TOK_VOID__ = 0,
     TOK_NUMBER__ = 128, TOK_STRING__, TOK_CHAR__, TOK_ID__, TOK_IF, TOK_ELSE,
 #ifndef CONFIG_TINY
-    TOK_MUL_EQ, TOK_DIV_EQ, TOK_MOD_EQ, TOK_ADD_EQ, TOK_SUB_EQ, TOK_SHL_EQ, TOK_SHR_EQ,
-    TOK_AND_EQ, TOK_XOR_EQ, TOK_OR_EQ,
-    TOK_EQ, TOK_NE, TOK_SHL, TOK_SHR, TOK_LE, TOK_GE, TOK_INC, TOK_DEC, TOK_LOR, TOK_LAND,
+    TOK_MUL_EQ, TOK_DIV_EQ, TOK_MOD_EQ, TOK_ADD_EQ, TOK_SUB_EQ,
+    TOK_SHL_EQ, TOK_SHR_EQ, TOK_AND_EQ, TOK_XOR_EQ, TOK_OR_EQ,
+    TOK_EQ, TOK_NE, TOK_SHL, TOK_SHR, TOK_LE, TOK_GE,
+    TOK_INC, TOK_DEC, TOK_LOR, TOK_LAND,
 #endif
 };
 
@@ -1235,6 +1236,58 @@ static int qe_parse_script(EditState *s, QEmacsDataSource *ds) {
     return sp->type;
 }
 
+static void qe_cfg_postprocess(EditState *s, QEmacsDataSource *ds, int argval) {
+#ifndef CONFIG_TINY
+    QEValue *sp = &ds->stack[0];
+    char buf[64];
+    int len;
+
+    if (argval == NO_ARG)
+        argval = 0;
+
+    if (argval > 0 && check_read_only(s))
+        return;
+
+    if (!qe_cfg_getvalue(ds, sp)) {
+        switch (sp->type) {
+        case TOK_VOID:
+            break;
+        case TOK_NUMBER:
+            if (argval <= 0) {
+                put_status(s, "-> %lld  %llx", sp->u.value, sp->u.value);
+            } else {
+                if (argval == 16)
+                    len = snprintf(buf, sizeof buf, "%llx", sp->u.value);
+                else
+                    len = snprintf(buf, sizeof buf, "%lld", sp->u.value);
+                s->offset += eb_insert_utf8_buf(s->b, s->offset, buf, len);
+            }
+            break;
+        case TOK_STRING:
+            if (argval <= 0) {
+                /* XXX: should optionally unparse string */
+                put_status(s, "-> \"%s\"", sp->u.str);
+            } else {
+                s->offset += eb_insert_utf8_buf(s->b, s->offset, sp->u.str, sp->len);
+            }
+            break;
+        case TOK_CHAR:
+            len = utf8_encode(buf, (char32_t)sp->u.value);
+            if (argval <= 0) {
+                /* XXX: should optionally unparse character */
+                put_status(s, "-> '%.*s'", len, buf);
+            } else {
+                s->offset += eb_insert_utf8_buf(s->b, s->offset, buf, len);
+            }
+            break;
+        default:
+            put_error(s, "unexpected value type: %d", sp->type);
+            break;
+        }
+    }
+#endif
+}
+
 void do_eval_expression(EditState *s, const char *expression, int argval)
 {
     QEmacsDataSource ds;
@@ -1245,62 +1298,17 @@ void do_eval_expression(EditState *s, const char *expression, int argval)
     if (qe_parse_script(s, &ds) == TOK_ERR) {
         put_error(s, "evaluation error");
     } else {
-#ifndef CONFIG_TINY
-        QEValue *sp = &ds.stack[0];
-        char buf[64];
-        int len;
-
-        if (argval != NO_ARG && check_read_only(s))
-            return;
-
-        if (!qe_cfg_getvalue(&ds, sp)) {
-            switch (sp->type) {
-            case TOK_VOID:
-                break;
-            case TOK_NUMBER:
-                if (argval == NO_ARG) {
-                    put_status(s, "-> %lld  %llx", sp->u.value, sp->u.value);
-                } else {
-                    if (argval == 16)
-                        len = snprintf(buf, sizeof buf, "%llx", sp->u.value);
-                    else
-                        len = snprintf(buf, sizeof buf, "%lld", sp->u.value);
-                    s->offset += eb_insert_utf8_buf(s->b, s->offset, buf, len);
-                }
-                break;
-            case TOK_STRING:
-                if (argval == NO_ARG) {
-                    /* XXX: should optionally unparse string */
-                    put_status(s, "-> \"%s\"", sp->u.str);
-                } else {
-                    s->offset += eb_insert_utf8_buf(s->b, s->offset, sp->u.str, sp->len);
-                }
-                break;
-            case TOK_CHAR:
-                len = utf8_encode(buf, (char32_t)sp->u.value);
-                if (argval == NO_ARG) {
-                    /* XXX: should optionally unparse character */
-                    put_status(s, "-> '%.*s'", len, buf);
-                } else {
-                    s->offset += eb_insert_utf8_buf(s->b, s->offset, buf, len);
-                }
-                break;
-            default:
-                put_error(s, "unexpected value type: %d", sp->type);
-                break;
-            }
-        }
-#endif
+        qe_cfg_postprocess(s, &ds, argval);
     }
     qe_cfg_release(&ds);
 }
 
 #define MAX_SCRIPT_LENGTH  (128 * 1024 - 1)
 
-static int do_eval_buffer_region(EditState *s, int start, int stop) {
+static int do_eval_buffer_region(EditState *s, int start, int stop, int argval) {
     QEmacsDataSource ds;
     char *buf;
-    int length, res;
+    int length, res = 0;
 
     qe_cfg_init(&ds);
 
@@ -1309,32 +1317,39 @@ static int do_eval_buffer_region(EditState *s, int start, int stop) {
         start = stop;
         stop = tmp;
     }
-    start = max_offset(start, 0);
-    stop = clamp_offset(stop, start, s->b->total_size);
-    length = stop - start;
+    /* extract region as UTF-8 with a size limit */
+    length = eb_get_region_content_size(s->b, start, stop);
     if (length > MAX_SCRIPT_LENGTH || !(buf = qe_malloc_array(char, length + 1))) {
         put_error(s, "buffer too large");
         return -1;
     }
-    /* assuming compatible encoding */
-    length = eb_read(s->b, start, buf, length);
-    buf[length] = '\0';
+    length = eb_get_region_contents(s->b, start, stop, buf, length + 1, 0);
     ds.buf = ds.allocated_buf = buf;
     ds.filename = s->b->name;
-    res = qe_parse_script(s, &ds);
+    if (qe_parse_script(s, &ds) == TOK_ERR) {
+        put_error(s, "evaluation error");
+        res = 1;
+    } else {
+        if (argval != NO_ARG && !check_read_only(s)) {
+            // replace region with script result
+            // assuming script did not move point, nor modify buffer
+            eb_delete_range(s->b, start, stop);
+        }
+        qe_cfg_postprocess(s, &ds, argval);
+    }
     qe_cfg_release(&ds);
-    do_refresh(s);
+    //do_refresh(s);
     return res;
 }
 
-void do_eval_region(EditState *s) {
+void do_eval_region(EditState *s, int argval) {
     s->region_style = 0;  /* deactivate region hilite */
 
-    do_eval_buffer_region(s, s->b->mark, s->offset);
+    do_eval_buffer_region(s, s->b->mark, s->offset, argval);
 }
 
-void do_eval_buffer(EditState *s) {
-    do_eval_buffer_region(s, 0, s->b->total_size);
+void do_eval_buffer(EditState *s, int argval) {
+    do_eval_buffer_region(s, 0, s->b->total_size, argval);
 }
 
 int parse_config_file(EditState *s, const char *filename) {
@@ -1386,12 +1401,12 @@ static const CmdDef parser_commands[] = {
           "s{Eval: }[.symbol]|expression|"
           "P")
     /* XXX: should take region as argument, implicit from keyboard */
-    CMD0( "eval-region", "M-C-z",
+    CMD2( "eval-region", "M-C-z",
           "Evaluate qemacs expressions in a region",
-          do_eval_region)
-    CMD0( "eval-buffer", "",
+          do_eval_region, ESi, "P")
+    CMD2( "eval-buffer", "",
           "Evaluate qemacs expressions in the buffer",
-          do_eval_buffer)
+          do_eval_buffer, ESi, "P")
 };
 
 static int parser_init(void) {

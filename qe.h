@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2022 Charlie Gordon.
+ * Copyright (c) 2000-2023 Charlie Gordon.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1612,8 +1612,9 @@ void set_tty_charset(const char *name);
 /* values */
 
 typedef struct QEValue {
-    unsigned int type : 16; // value type: TOK_VOID, TOK_NUMBER, TOK_CHAR, TOK_STRING
-                            // should also have TOK_WINDOW, TOK_BUFFER, TOK_MODE...
+    int type : 16;  // value type: TOK_VOID, TOK_NUMBER, TOK_CHAR, TOK_STRING
+                    // also errors: TOK_ERR?
+                    // should also have TOK_WINDOW, TOK_BUFFER, TOK_MODE...
     unsigned int alloc : 8; // u.str should be freed
     unsigned int flags : 8;
     // XXX: could have flags for owning allocated block pointed to by `str`
@@ -1699,8 +1700,8 @@ static inline void qe_cfg_swap(QEValue *sp, QEValue *sp1) {
 
 int parse_config_file(EditState *s, const char *filename);
 void do_eval_expression(EditState *s, const char *expression, int argval);
-void do_eval_region(EditState *s); /* should pass actual offsets */
-void do_eval_buffer(EditState *s);
+void do_eval_region(EditState *s, int argval); /* should pass actual offsets */
+void do_eval_buffer(EditState *s, int argval);
 #ifdef CONFIG_SESSION
 extern int use_session_file;
 int qe_load_session(EditState *s);
