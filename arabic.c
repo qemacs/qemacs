@@ -2,7 +2,7 @@
  * Arabic algorithms for QEmacs.
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2002-2022 Charlie Gordon.
+ * Copyright (c) 2002-2023 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -186,7 +186,7 @@ static const ArabicChar arabic_table[] = {
     { 0x0000, 0x0000, 0x0000, 0x0000, 0x0000 },
 };
 
-static const unsigned short transparent[] = {
+static const unsigned short arabic_transparent[] = {
     0x064b, 0x064c, 0x064d, 0x064e, 0x064f, 0x0650,
     0x0670,
     0x06d7, 0x06d8, 0x06d9, 0x06da, 0x06db, 0x06dc, 0x06df,
@@ -195,17 +195,17 @@ static const unsigned short transparent[] = {
 };
 
 /* XXX: optimize tables, use binary search */
-static int is_transparent(char32_t ch) {
+static int arabic_is_transparent(char32_t ch) {
     int i;
 
-    for (i = 0; i < countof(transparent); i++) {
-        if (transparent[i] == ch)
+    for (i = 0; i < countof(arabic_transparent); i++) {
+        if (arabic_transparent[i] == ch)
             return 1;
     }
     return 0;
 }
 
-static const ArabicChar *find_char(char32_t ch) {
+static const ArabicChar *arabic_find_char(char32_t ch) {
     const ArabicChar *c;
 
     c = arabic_table;
@@ -215,7 +215,7 @@ static const ArabicChar *find_char(char32_t ch) {
 }
 
 /* ctog is NOT filled because it is not needed. We put it for homogoneity */
-int arab_join(unsigned int *line, qe__unused__ unsigned int *ctog, int len)
+int arabic_join(char32_t *line, qe__unused__ unsigned int *ctog, int len)
 {
     char32_t a, b, c, res;
     int i, j;
@@ -230,14 +230,14 @@ int arab_join(unsigned int *line, qe__unused__ unsigned int *ctog, int len)
         c = 0;
         while (i < len) {
             c = line[i];
-            if (!is_transparent(c))
+            if (!arabic_is_transparent(c))
                 break;
             i++;
         }
         /* apply Unicode Arabic substitution rules */
-        //aa = find_char(a); /* previous */
-        bb = find_char(b); /* current */
-        cc = find_char(c); /* next */
+        //aa = arabic_find_char(a); /* previous */
+        bb = arabic_find_char(b); /* current */
+        cc = arabic_find_char(c); /* next */
 
         if (a && cc->final && bb->medial) {
             res = bb->medial;

@@ -36,20 +36,20 @@
 #define RA_DEAD (RA + DEAD_CONSONANT_OFFSET)
 
 #if 0
-static int is_vowel_sign(char32_t i) {
+static int devanagari_is_vowel_sign(char32_t i) {
     return (i >= 0x93E && i <= 0x94c) || (i >= 0x962 && i <= 0x963);
 }
 #endif
 
-static int is_consonant(char32_t i) {
+static int devanagari_is_consonant(char32_t i) {
     return (i >= 0x915 && i <= 0x939) || (i >= 0x958 && i <= 0x95f);
 }
 
-static int is_ind_vowel(char32_t i) {
+static int devanagari_is_vowel(char32_t i) {
     return (i >= 0x905 && i <= 0x914);
 }
 
-static int is_dead_consonant(char32_t i) {
+static int devanagari_is_dead_consonant(char32_t i) {
     return (i >= DEAD_CONSONANT_OFFSET && i <= DEAD_CONSONANT_OFFSET + 0x7f);
 }
 
@@ -60,12 +60,12 @@ int devanagari_log2vis(char32_t *str, unsigned int *ctog, int len) {
     /* CG: C99 variable-length arrays may be too large */
     char32_t *q, buf[len];
 
-    /* Rule 1 : dead consonant rule */
+    /* Rule 1: dead consonant rule */
     q = buf;
     len1 = len - 1;
     for (i = 0; i < len; i++) {
         cc = str[i];
-        if (is_consonant(cc) && i < len1 && str[i+1] == VIRAMA) {
+        if (devanagari_is_consonant(cc) && i < len1 && str[i+1] == VIRAMA) {
             *q++ = cc + DEAD_CONSONANT_OFFSET;
             i++;
         } else {
@@ -78,7 +78,7 @@ int devanagari_log2vis(char32_t *str, unsigned int *ctog, int len) {
     for (i = 0; i < len1; i++) {
         /* Rule 2 */
         if (buf[i] == RA_DEAD &&
-            (is_ind_vowel(buf[i+1]) || is_consonant(buf[i+1]))) {
+            (devanagari_is_vowel(buf[i+1]) || devanagari_is_consonant(buf[i+1]))) {
             buf[i] = buf[i+1];
             buf[i+1] = RA_SUP;
         } else
@@ -95,12 +95,12 @@ int devanagari_log2vis(char32_t *str, unsigned int *ctog, int len) {
             buf[i+1] = 0;
         } else
         /* Rule 6 */
-        if (is_dead_consonant(buf[i]) && buf[i+1] == RA) {
+        if (devanagari_is_dead_consonant(buf[i]) && buf[i+1] == RA) {
             buf[i] -= DEAD_CONSONANT_OFFSET;
             buf[i+1] = RA_SUB;
         } else
         /* Rule 8 */
-        if (is_dead_consonant(buf[i]) &&
+        if (devanagari_is_dead_consonant(buf[i]) &&
             buf[i+1] == RA_DEAD) {
             buf[i] -= DEAD_CONSONANT_OFFSET;
             buf[i+1] = RA_SUB;
@@ -110,11 +110,11 @@ int devanagari_log2vis(char32_t *str, unsigned int *ctog, int len) {
 
     /* convert dead consonant to half consonants */
     for (i = 0; i < len1; i++) {
-        if (is_dead_consonant(buf[i]) &&
+        if (devanagari_is_dead_consonant(buf[i]) &&
             (i == (len1 - 1) ||
              buf[i+1] == ZERO_WIDTH_JOINER ||
-             is_consonant(buf[i+1]) ||
-             is_dead_consonant(buf[i+1]))) {
+             devanagari_is_consonant(buf[i+1]) ||
+             devanagari_is_dead_consonant(buf[i+1]))) {
             buf[i] -= DEAD_CONSONANT_OFFSET + HALF_OFFSET;
         }
     }

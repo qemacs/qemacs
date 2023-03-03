@@ -2,7 +2,7 @@
  * Unicode joining algorithms for QEmacs.
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2000-2022 Charlie Gordon.
+ * Copyright (c) 2000-2023 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -98,8 +98,8 @@ static char32_t find_ligature(char32_t l1, char32_t l2) {
     char32_t v1, v2;
 
     a = 0;
-    b = ligature2_count - 1;
-    while (a <= b) {
+    b = ligature2_count;
+    while (a < b) {
         m = (a + b) >> 1;
         v1 = ligature2[3 * m];
         v2 = ligature2[3 * m + 1];
@@ -107,7 +107,7 @@ static char32_t find_ligature(char32_t l1, char32_t l2) {
             return ligature2[3 * m + 2];
         else
         if (v1 > l1 || (v1 == l1 && v2 > l2)) {
-            b = m - 1;
+            b = m;
         } else {
             a = m + 1;
         }
@@ -149,6 +149,7 @@ char32_t qe_unaccent(char32_t c) {
         return c;
 }
 
+/* simplistic case change for non ASCII glyphs: only support accents */
 char32_t qe_wctoupper(char32_t c) {
     char32_t buf[2];
     if (expand_ligature(buf, c) && qe_isaccent(buf[1])){
@@ -251,7 +252,7 @@ static int unicode_ligature(char32_t *buf_out,
 #define UNICODE_INDIC    0x00000002
 #define UNICODE_NONASCII 0x00000004
 
-static int unicode_classify(char32_t *buf, int len) {
+static int unicode_classify(const char32_t *buf, int len) {
     int i, mask;
 
     mask = 0;
@@ -271,7 +272,8 @@ static int unicode_classify(char32_t *buf, int len) {
     return mask;
 }
 
-static void compose_char_to_glyph(unsigned int *ctog, int len, unsigned int *ctog1)
+static void compose_char_to_glyph(unsigned int *ctog, int len,
+                                  const unsigned int *ctog1)
 {
     int i;
     for (i = 0; i < len; i++)
@@ -313,9 +315,7 @@ int unicode_to_glyphs(char32_t *dst, unsigned int *char_to_glyph_pos,
     unicode_class = unicode_classify(src, src_size);
     if (unicode_class == 0 && !reverse) {
         /* fast case: no special treatment */
-        len = src_size;
-        if (len > dst_size)
-            len = dst_size;
+        len = min_int(src_size, dst_size);
         blockcpy(dst, src, len);
         if (char_to_glyph_pos) {
             for (i = 0; i < len; i++)
@@ -334,8 +334,8 @@ int unicode_to_glyphs(char32_t *dst, unsigned int *char_to_glyph_pos,
         /* apply each filter */
 
         if (unicode_class & UNICODE_ARABIC) {
-            len = arab_join(buf, ctog1, len);
-            /* not needed for arabjoin */
+            len = arabic_join(buf, ctog1, len);
+            /* not needed for arabic_join */
             //compose_char_to_glyph(ctog, src_size, ctog1);
         }
 

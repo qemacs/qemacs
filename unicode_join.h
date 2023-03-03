@@ -2,7 +2,7 @@
  * Unicode joining algorithms for QEmacs.
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2000-2022 Charlie Gordon.
+ * Copyright (c) 2000-2023 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -32,7 +32,7 @@ int unicode_to_glyphs(char32_t *dst, unsigned int *char_to_glyph_pos,
                       int reverse);
 
 /* arabic.c */
-int arab_join(char32_t *line, unsigned int *ctog, int len);
+int arabic_join(char32_t *line, unsigned int *ctog, int len);
 
 /* indic.c */
 int devanagari_log2vis(char32_t *str, unsigned int *ctog, int len);
