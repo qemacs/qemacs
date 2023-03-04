@@ -382,7 +382,7 @@ static int expect_token(QEmacsDataSource *ds, int tok) {
 static int qe_cfg_getvalue(QEmacsDataSource *ds, QEValue *sp) {
     if (sp->type == TOK_ID) {
 #ifndef CONFIG_TINY
-        char buf[256];
+        char buf[2048];
         int num;
         // XXX: qe_get_variable should populate a QEValue
         switch (qe_get_variable(ds->s, sp->u.str, buf, sizeof(buf), &num, 0)) {
@@ -489,7 +489,7 @@ static int qe_cfg_append(QEmacsDataSource *ds, QEValue *sp, const char *p, size_
 }
 
 static int qe_cfg_format(QEmacsDataSource *ds, QEValue *sp) {
-    char buf[256];
+    char buf[2048];
     char fmt[16];
     /* Use function pointer and cast to prevent warning on variable format */
     int (*fun)(char *buf, size_t size, const char *fmt, ...) =
