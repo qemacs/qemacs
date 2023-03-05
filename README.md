@@ -63,8 +63,8 @@ Read the file [qe-doc.html](qe-doc.html).
 
 ## Licensing
 
-QEmacs is released under the GNU Lesser General Public License
-(read the accompagning [COPYING](COPYING) file).
+QEmacs is released under the MIT license.
+(read the accompagning [LICENCE](LICENCE) file).
 
 ## Contributing to QEmacs
 
