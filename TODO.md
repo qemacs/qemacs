@@ -554,6 +554,7 @@ insert_window_left()  deletes some left-most windows
 * <NOBR> is sometimes incorrect.
 * more font style synthesis in html2ppm.
 * add xml CDATA parsing
+* add auto-indent visual display for minified XML files
 
 ### TeX / latex
 
