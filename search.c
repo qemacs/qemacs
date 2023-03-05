@@ -26,6 +26,18 @@
 #include "qe.h"
 #include "variables.h"
 
+#ifdef CONFIG_REGEX
+#include "libregexp.h"
+
+BOOL lre_check_stack_overflow(void *opaque, size_t alloca_size) {
+    return FALSE;
+}
+
+void *lre_realloc(void *opaque, void *ptr, size_t size) {
+    return qe_realloc(&ptr, size);
+}
+#endif
+
 /* Search stuff */
 
 #define SEARCH_FLAG_DEFAULT    SEARCH_FLAG_SMARTCASE
@@ -163,6 +175,93 @@ static int eb_search(EditBuffer *b, int dir, int flags,
             }
         }
     }
+
+#ifdef CONFIG_REGEX
+    if (flags & SEARCH_FLAG_REGEX) {
+        char error_message[100];
+        char source[SEARCH_LENGTH];
+        int source_len;
+        uint8_t *regexp_bytes = NULL;
+        int regexp_len;
+        uint8_t **capture = NULL;
+        int capture_num;
+        int res = 0;
+        int re_flags = 0;
+        int found;
+
+        re_flags |= LRE_FLAG_MULTILINE;
+        if (flags & SEARCH_FLAG_IGNORECASE)
+            re_flags |= LRE_FLAG_IGNORECASE;
+        if (dir < 0)
+            re_flags |= LRE_FLAG_STICKY;
+
+        source_len = char32_to_utf8(source, countof(source), buf, len);
+        if (source_len >= countof(source))
+            return -1;
+        regexp_bytes = lre_compile(&regexp_len, error_message, sizeof(error_message),
+                                   source, source_len, re_flags, NULL);
+        if (regexp_bytes == NULL) {
+            //put_status(NULL, "regexp compile error: %s", error_message);
+            return -1;
+        }
+        capture_num = lre_get_capture_count(regexp_bytes);
+        capture = qe_malloc_array(uint8_t *, 2 * capture_num);
+        if (capture_num == 0 || capture == NULL) {
+            qe_free(&regexp_bytes);
+            qe_free(&capture);
+            //put_status(NULL, "cannot allocate capture array for %d entries", capture_num);
+            return -1;
+        }
+        for (offset1 = offset;;) {
+            if (dir < 0) {
+                if (offset == 0)
+                    break;
+                offset = eb_prev(b, offset);
+            } else {
+                offset = offset1;
+                if (offset >= end_offset)
+                    break;
+                offset1 = eb_next(b, offset);
+            }
+            if ((offset & 0xffff) == 0) {
+                /* check for search abort every 64K */
+                if (abort_func && abort_func(abort_opaque)) {
+                    res = -1;
+                    break;
+                }
+            }
+            /* Pass boundary characters to match $ and \b or \B */
+            found = lre_exec(capture, regexp_bytes,
+                             (const uint8_t *)b, offset, end_offset, 0, NULL,
+                             eb_prevc(b, offset, &offset3), eb_nextc(b, end_offset, &offset3),
+                             (unsigned int (*)(const uint8_t *bc_buf, int offset, int *offsetp))eb_nextc,
+                             (unsigned int (*)(const uint8_t *bc_buf, int offset, int *offsetp))eb_prevc);
+            if (found < 0) {
+                res = -1;
+                break;
+            }
+            if (found > 0) {
+                int start = capture[0] - (uint8_t *)(void *)b;
+                int end = capture[1] - (uint8_t *)(void *)b;
+                if ((dir >= 0 || end <= end_offset)
+                &&  (!(flags & SEARCH_FLAG_WORD) ||
+                     (qe_isword(eb_prevc(b, start, &offset3)) &&
+                      qe_isword(eb_nextc(b, end, &offset3)))))
+                {
+                    *found_offset = start;
+                    *found_end = end;
+                    res = 1;
+                    break;
+                }
+            }
+            if (dir >= 0)
+                break;
+        }
+        qe_free(&regexp_bytes);
+        qe_free(&capture);
+        return res;
+    }
+#endif
 
     for (offset1 = offset;;) {
         if (dir < 0) {
@@ -385,6 +484,12 @@ static void isearch_run(ISearchState *is) {
         s->region_style = 0;
         is->found_offset = -1;
     } else {
+        if (search_offset == is->found_offset
+        &&  search_offset == is->found_end) {
+            /* zero width match: skip one character */
+            if (is->dir > 0)
+                search_offset = eb_next(s->b, search_offset);
+        }
         if (eb_search(s->b, is->dir, flags,
                       search_offset, s->b->total_size,
                       is->search_u32, is->search_u32_len,
@@ -856,6 +961,14 @@ void isearch_colorize_matches(EditState *s, char32_t *buf, int len,
 
         if (found_offset >= offset_end)
             break;
+        if (found_end <= found_offset) {
+            /* zero width match: skip one character.
+             * for example `a*` finds matches everywhere but should highlight
+             * all sequences of letters a
+             */
+            offset = eb_next(b, found_end);
+            continue;
+        }
         if (found_end > offset_start) {
             /* Compute character positions */
             start = 0;
@@ -892,7 +1005,7 @@ typedef struct QueryReplaceState {
     char32_t search_u32[SEARCH_LENGTH];   /* code points */
     /* query-replace */
     char replace_str[SEARCH_LENGTH * 3];  /* may be in hex */
-    char32_t replace_u32[SEARCH_LENGTH];  /* code points (useless?) */
+    char32_t replace_u32[SEARCH_LENGTH];  /* code points */
 } QueryReplaceState;
 
 static void query_replace_help(QueryReplaceState *is) {

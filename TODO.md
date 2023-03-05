@@ -313,7 +313,7 @@ insert_window_left()  deletes some left-most windows
 * `hex-mode` search strings should mix hex ut8 strings and ASCII control char names
 * isearch in hex should display search string in hex
 * transfer case in `query-replace`
-* regex search/replace
+* regex replace with subexpressions
 * query replace across multiple files
 * query replace options: u -> undo last change
 * add non selectable query-replace-mode for key bindings, cmd description and documentation
