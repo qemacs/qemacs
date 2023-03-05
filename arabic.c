@@ -22,9 +22,6 @@
 #include "cutils.h"
 #include "unicode_join.h"
 
-/* define it if your font handle more ligatures than the minimum
-   required by unicode */
-
 typedef struct ArabicChar {
     unsigned short ch, isolated, final, medial, initial;
 } ArabicChar;
@@ -206,9 +203,7 @@ static int arabic_is_transparent(char32_t ch) {
 }
 
 static const ArabicChar *arabic_find_char(char32_t ch) {
-    const ArabicChar *c;
-
-    c = arabic_table;
+    const ArabicChar *c = arabic_table;
     while (c->ch != 0 && c->ch != ch)
         c++;
     return c;

@@ -1,7 +1,7 @@
 # Libqhtml tiny HTML/CSS rendering library for QEmacs
 #
 # Copyright (c) 2000-2002 Fabrice Bellard.
-# Copyright (c) 2000-2022 Charlie Gordon.
+# Copyright (c) 2000-2023 Charlie Gordon.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -77,7 +77,7 @@ LIB= $(DEPTH)/.objs/$(TARGET_OS)-$(TARGET_ARCH)-$(CC)/libqhtml$(DEBUG_SUFFIX).a
 OBJS= css.o xmlparse.o cssparse.o html_style.o docbook_style.o
 
 DEPENDS:= config.h config.mak charset.h color.h cutils.h display.h \
-		qfribidi.h unicode_join.h util.h
+		unicode_join.h util.h
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
 DEPENDS+= css.h cssid.h htmlent.h
 

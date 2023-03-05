@@ -150,7 +150,7 @@ ifdef CONFIG_ALL_KMAPS
 endif
 
 ifdef CONFIG_UNICODE_JOIN
-  OBJS+= unicode_join.o arabic.o indic.o qfribidi.o
+  OBJS+= unicode_join.o arabic.o indic.o
 endif
 
 # more charsets if needed
@@ -232,7 +232,7 @@ endif	# TARGET_TINY
 SRCS:= $(OBJS:.o=.c)
 
 DEPENDS:= qe.h config.h config.mak charset.h color.h cutils.h display.h \
-	qestyles.h qfribidi.h unicode_join.h util.h variables.h \
+	qestyles.h unicode_join.h util.h variables.h \
 	wcwidth.h lang/clang.h
 
 DEPENDS:= $(addprefix $(DEPTH)/, $(DEPENDS))
@@ -362,14 +362,6 @@ $(BINDIR)/%$(EXE): tools/%.c
 	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -o $@ $^
 
 #
-# Test for bidir algorithm
-#
-$(BINDIR)/qfribidi$(EXE): qfribidi.c cutils.c
-	$(echo) CC -o $@ $^
-	$(cmd)  mkdir -p $(dir $@)
-	$(cmd)  $(HOST_CC) $(HOST_CFLAGS) -DTEST -o $@ $^
-
-#
 # build ligature table
 #
 $(BINDIR)/ligtoqe$(EXE): tools/ligtoqe.c cutils.c
@@ -496,7 +488,7 @@ fbffonts.c: $(BINDIR)/fbftoqe$(EXE) $(FONTS)
 # html2png tool (XML/HTML/CSS2 renderer test tool)
 #
 OBJS1=html2png.o cutils.o util.o color.o display.o \
-      arabic.o indic.o qfribidi.o unicode_join.o \
+      arabic.o indic.o unicode_join.o \
       charset.o charsetmore.o charsetjis.o \
       libfbf.o fbfrender.o cfb.o fbffonts.o
 
@@ -535,7 +527,7 @@ clean:
 	rm -f qe-doc.aux qe-doc.info qe-doc.log qe-doc.pdf qe-doc.toc
 	rm -rf *.dSYM *.gch .objs* .tobjs* .xobjs* bin
 	rm -f *~ *.o *.a *.exe *_g *_debug TAGS gmon.out core *.exe.stackdump \
-           qe tqe tqe1 xqe qfribidi kmaptoqe ligtoqe html2png cptoqe jistoqe \
+           qe tqe tqe1 xqe kmaptoqe ligtoqe html2png cptoqe jistoqe \
            fbftoqe fbffonts.c allmodules.txt basemodules.txt '.#'*[0-9]
 
 distclean: clean

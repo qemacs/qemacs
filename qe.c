@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2022 Charlie Gordon.
+ * Copyright (c) 2000-2023 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -4260,26 +4260,26 @@ static int bidir_compute_attributes(BidirTypeLink *list_tab, int max_size,
                                     EditBuffer *b, int offset)
 {
     BidirTypeLink *p;
-    FriBidiCharType type, ltype;
+    BidirCharType type, ltype;
     int left, offset1;
     char32_t c;
 
     p = list_tab;
     /* Add the starting link */
-    p->type = FRIBIDI_TYPE_SOT;
+    p->type = BIDIR_TYPE_SOT;
     p->len = 0;
     p->pos = 0;
     p++;
     left = max_size - 2;
 
-    ltype = FRIBIDI_TYPE_SOT;
+    ltype = BIDIR_TYPE_SOT;
 
     for (;;) {
         offset1 = offset;
         c = eb_nextc(b, offset, &offset);
         if (c == '\n')
             break;
-        type = fribidi_get_type(c);
+        type = bidir_get_type(c);
         /* if not enough room, increment last link */
         if (type != ltype && left > 0) {
             p->type = type;
@@ -4294,7 +4294,7 @@ static int bidir_compute_attributes(BidirTypeLink *list_tab, int max_size,
     }
 
     /* Add the ending link */
-    p->type = FRIBIDI_TYPE_EOT;
+    p->type = BIDIR_TYPE_EOT;
     p->len = 0;
     p->pos = offset1;
     p++;
@@ -4545,7 +4545,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     int offset0, offset1, line_num, col_num;
     BidirTypeLink embeds[RLE_EMBEDDINGS_SIZE], *bd;
     int embedding_level, embedding_max_level;
-    FriBidiCharType base;
+    BidirCharType base;
     char32_t buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     int char_index, colored_nb_chars;
@@ -4564,11 +4564,11 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     &&  bidir_compute_attributes(embeds, RLE_EMBEDDINGS_SIZE,
                                  s->b, offset) > 2)
     {
-        base = FRIBIDI_TYPE_WL;
-        fribidi_analyse_string(embeds, &base, &embedding_max_level);
+        base = BIDIR_TYPE_WL;
+        bidir_analyze_string(embeds, &base, &embedding_max_level);
         /* assure that base has only two possible values */
-        if (base != FRIBIDI_TYPE_RTL)
-            base = FRIBIDI_TYPE_LTR;
+        if (base != BIDIR_TYPE_RTL)
+            base = BIDIR_TYPE_LTR;
     } else
 #endif
     {
@@ -4576,7 +4576,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
         embedding_max_level = 0;
         embeds[1].level = 0;
         embeds[2].pos = 0x7fffffff;
-        base = FRIBIDI_TYPE_LTR;
+        base = BIDIR_TYPE_LTR;
     }
 
     display_bol_bidir(ds, base, embedding_max_level);

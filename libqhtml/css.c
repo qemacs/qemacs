@@ -2,7 +2,7 @@
  * CSS core for qemacs.
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2007-2022 Charlie Gordon.
+ * Copyright (c) 2007-2023 Charlie Gordon.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -1297,7 +1297,7 @@ typedef struct BidirAttrState {
     CSSContext *ctx;
     BidirTypeLink *list_end;
     BidirTypeLink *list_ptr; /* current type pointer */
-    FriBidiCharType ltype; /* last type */
+    BidirCharType ltype; /* last type */
     int pos; /* current char position */
 } BidirAttrState;
 
@@ -1306,7 +1306,7 @@ static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
     CSSState *props = box->props;
     int pos, offset;
     BidirTypeLink *p;
-    FriBidiCharType type, ltype;
+    BidirCharType type, ltype;
     NextCharFunc nextc = get_nextc(box);
     int bidi_mode;
 
@@ -1322,14 +1322,14 @@ static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
     if (props->unicode_bidi != CSS_UNICODE_BIDI_NORMAL) {
         if (props->unicode_bidi == CSS_UNICODE_BIDI_EMBED) {
             if (props->direction == CSS_DIRECTION_LTR)
-                type = FRIBIDI_TYPE_LRE;
+                type = BIDIR_TYPE_LRE;
             else
-                type = FRIBIDI_TYPE_RLE;
+                type = BIDIR_TYPE_RLE;
         } else {
             if (props->direction == CSS_DIRECTION_LTR)
-                type = FRIBIDI_TYPE_LRO;
+                type = BIDIR_TYPE_LRO;
             else
-                type = FRIBIDI_TYPE_RLO;
+                type = BIDIR_TYPE_RLO;
         }
         if (type != ltype && p < s->list_end) {
             p->type = type;
@@ -1345,7 +1345,7 @@ static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
     if (props->display == CSS_DISPLAY_INLINE_TABLE ||
         props->display == CSS_DISPLAY_INLINE_BLOCK) {
         /* add a neutral type for images or inline tables */
-        type = FRIBIDI_TYPE_ON;
+        type = BIDIR_TYPE_ON;
         if (type != ltype && p < s->list_end) {
             p->type = type;
             p->pos = pos;
@@ -1363,9 +1363,9 @@ static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
             char32_t c = nextc(box, &offset);
             pos++;
             if (bidi_mode == CSS_BIDI_MODE_TEST)
-                type = fribidi_get_type_test(c);
+                type = bidir_get_type_test(c);
             else
-                type = fribidi_get_type(c);
+                type = bidir_get_type(c);
             /* if not enough room, increment last link */
             if (type != ltype && p < s->list_end) {
                 p->type = type;
@@ -1381,7 +1381,7 @@ static void bidir_compute_attributes_box(BidirAttrState *s, CSSBox *box)
 
     /* add end of bidi embed/override if needed */
     if (props->unicode_bidi != CSS_UNICODE_BIDI_NORMAL) {
-        type = FRIBIDI_TYPE_PDF;
+        type = BIDIR_TYPE_PDF;
         if (type != ltype && p < s->list_end) {
             p->type = type;
             p->pos = pos;
@@ -1409,7 +1409,7 @@ static int bidir_compute_attributes(CSSContext *ctx, BidirTypeLink *list_tab, in
 
     p = list_tab;
     /* Add the starting link */
-    p->type = FRIBIDI_TYPE_SOT;
+    p->type = BIDIR_TYPE_SOT;
     p->len = 0;
     p->pos = 0;
     p++;
@@ -1417,7 +1417,7 @@ static int bidir_compute_attributes(CSSContext *ctx, BidirTypeLink *list_tab, in
     s->ctx = ctx;
     s->list_end = list_tab + max_size - 1;
     s->list_ptr = p;
-    s->ltype = FRIBIDI_TYPE_SOT;
+    s->ltype = BIDIR_TYPE_SOT;
     s->pos = 0;
 
     for (box = first_box; box != NULL; box = box->next_inline) {
@@ -1426,7 +1426,7 @@ static int bidir_compute_attributes(CSSContext *ctx, BidirTypeLink *list_tab, in
 
     /* Add the ending link */
     p = s->list_ptr;
-    p->type = FRIBIDI_TYPE_EOT;
+    p->type = BIDIR_TYPE_EOT;
     p->len = 0;
     p->pos = s->pos;
     p++;
@@ -1520,7 +1520,7 @@ static void bidir_end_inline(BidirComputeState *s)
 {
     BidirTypeLink embeds[RLE_EMBEDDINGS_SIZE];
     int embedding_max_level;
-    FriBidiCharType base;
+    BidirCharType base;
 
     /* mark last box */
     *s->pbox = NULL;
@@ -1528,8 +1528,8 @@ static void bidir_end_inline(BidirComputeState *s)
     /* now we can do the bidir compute easily */
     if (bidir_compute_attributes(s->ctx, embeds, RLE_EMBEDDINGS_SIZE,
                                  s->first_inline) > 2) {
-        base = FRIBIDI_TYPE_WL;
-        fribidi_analyse_string(embeds, &base, &embedding_max_level);
+        base = BIDIR_TYPE_WL;
+        bidir_analyze_string(embeds, &base, &embedding_max_level);
 #if 0
         {
             BidirTypeLink *p;
@@ -1537,7 +1537,7 @@ static void bidir_end_inline(BidirComputeState *s)
             printf("bidi_start:\n");
             for (;;) {
                 printf("type=%d pos=%d len=%d level=%d\n", p->type, p->pos, p->len, p->level);
-                if (p->type == FRIBIDI_TYPE_EOT)
+                if (p->type == BIDIR_TYPE_EOT)
                     break;
                 p++;
             }
