@@ -89,7 +89,7 @@ int lre_case_conv(uint32_t *res, uint32_t c, int conv_type)
                 case RUN_TYPE_L:
                 case RUN_TYPE_UF:
                 case RUN_TYPE_LF:
-                    if (conv_type == (type & 1) ||
+                    if ((uint32_t)conv_type == (type & 1) ||
                         (type >= RUN_TYPE_UF && conv_type == 2)) {
                         c = c - code + (case_conv_table1[data] >> (32 - 17));
                     }
