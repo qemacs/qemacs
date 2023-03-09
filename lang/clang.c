@@ -533,15 +533,21 @@ static void c_colorize_line(QEColorizeContext *cp,
         normal:
             if (state & IN_C_PREPROCESS)
                 break;
-            if (qe_isdigit(c)) {
+            if (qe_isdigit(c) || (c == '.' && qe_isdigit(str[i + 1]))) {
+                /* XXX: parsing ppnumbers, which is OK for C and C++ */
                 /* XXX: should parse actual number syntax */
                 /* XXX: D ignores embedded '_' and accepts l,u,U,f,F,i suffixes */
                 /* XXX: Java accepts 0b prefix for binary literals,
                  * ignores '_' between digits and accepts 'l' or 'L' suffixes */
                 /* scala ignores '_' in integers */
                 /* XXX: should parse decimal and hex floating point syntaxes */
+                /* C23/C++ syntax:
+                   - accept ' between digits including hex and exponent part
+                   - new suffixes: wb, WB, df, dd, dl, DF, DD, DL */
                 /* 2 dots in a row are a range operator, not a decimal point */
-                while (qe_isalnum_(str[i]) || (str[i] == '.' && str[i + 1] != '.')) {
+                while (qe_isalnum_(str[i])
+                ||     (str[i] == '\'' && qe_isalnum(str[i + 1]))
+                ||     (str[i] == '.' && str[i + 1] != '.')) {
                     i++;
                 }
                 SET_COLOR(str, start, i, C_STYLE_NUMBER);

@@ -443,7 +443,6 @@ insert_window_left()  deletes some left-most windows
   * `cuda-mode`
 * `electric-c-mode`
 * parenthesis matching problems in comments and markdown and other modes
-* parse horrible C++ style number separators: 1'000
 
 ### Markdown modes
 
