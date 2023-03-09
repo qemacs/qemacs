@@ -309,7 +309,7 @@ static CompletionDef command_completion = {
 
 /* key binding handling */
 
-static int qe_register_binding(ModeDef *m, const CmdDef *d, unsigned int *keys, int nb_keys)
+static int qe_register_binding(ModeDef *m, const CmdDef *d, const unsigned int *keys, int nb_keys)
 {
     QEmacsState *qs = &qe_state;
     KeyDef **lp, *p;

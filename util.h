@@ -461,6 +461,49 @@ int buf_put_key(buf_t *out, int key);
 int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);
 int buf_encode_byte(buf_t *out, unsigned char ch);
 
+/* XXX: should use a more regular key mapping scheme:
+   - 0000..001F: standard control keys: KEY_CTRL('@') to KEY_CTRL('@') to KEY_CTRL('_')
+   - 0020: SPC
+   - 0021..007E: ASCII characters (self insert)
+   - 007F: DEL
+   - 0080..DFFF: Unicode code points
+   - E000..EFFF: surrogates used for function and modified keys
+   - E000..E0FF: special keys: KEY_NONE, KEY_DEFAULT, KEY_INVALID
+   - E100..E1FF: function keys: KEY_F1, KEY_UP ...
+   - E200: M- modifier
+   - E400: S- modifier (S- modified non function keys unavailable from terminal)
+   - E800: C- modifier (C- modified non function keys unavailable from terminal)
+   - F000..1FFFF: Unicode code points
+   If using 32-bit key codes, could use higher modifier bits:
+   Make these bits consistent X11 modifier keys.
+   - 010000: Shift (S-)     - ShiftMask      (1<<0)
+   - 020000: Lock (L-)      - LockMask       (1<<1)
+   - 040000: Ctrl (C-)      - ControlMask    (1<<2)
+   - 080000: Meta (M-)      - Mod1Mask       (1<<3)
+   - 100000: Alt (A-)       - Mod2Mask       (1<<4)
+   - 200000: Super (s-)     - Mod3Mask       (1<<5)
+   - 400000: Hyper (H-)     - Mod4Mask       (1<<6)
+   - 800000: Extra (E-)     - Mod5Mask       (1<<7)
+
+   X11 function keys are mapped in the range FF00..FFFF, including prefix keys
+
+   - XK_Shift_L     0xffe1  // Left shift
+   - XK_Shift_R     0xffe2  // Right shift
+   - XK_Control_L   0xffe3  // Left control
+   - XK_Control_R   0xffe4  // Right control
+   - XK_Caps_Lock   0xffe5  // Caps lock
+   - XK_Shift_Lock  0xffe6  // Shift lock
+
+   - XK_Meta_L      0xffe7  // Left meta
+   - XK_Meta_R      0xffe8  // Right meta
+   - XK_Alt_L       0xffe9  // Left alt
+   - XK_Alt_R       0xffea  // Right alt
+   - XK_Super_L     0xffeb  // Left super
+   - XK_Super_R     0xffec  // Right super
+   - XK_Hyper_L     0xffed  // Left hyper
+   - XK_Hyper_R     0xffee  // Right hyper
+ */
+
 #define KEY_CTRL(c)     ((c) & 0x001f)
 /* allow combinations such as KEY_META(KEY_LEFT) */
 #define KEY_META(c)     ((c) | 0xe100)

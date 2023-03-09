@@ -11,31 +11,33 @@ even big editors lack:
 
 - Full screen editor with an Emacs look and feel with all common Emacs
 features: multi-buffer, multi-window, command mode, universal argument,
-keyboard macros, config file with C like syntax, minibuffer with
+keyboard macros, config file with C-like syntax, minibuffer with
 completion and history.
 
 - Can edit huge files (hundreds of megabytes) without delay, using a
-highly optimized internal representation and memory mapping for large files.
+highly optimized internal representation and memory mapping for large
+files.
 
 - Full Unicode support, including multi charset handling
-  (8859-x, UTF8, SJIS, EUC-JP, ...) and bidirectional editing respecting
-  the Unicode bidi algorithm. Arabic and Indic scripts handling (in
-  progress). Automatic end of line detection.
+(8859-x, UTF8, SJIS, EUC-JP, ...) and bidirectional editing respecting
+the Unicode bidi algorithm. Arabic and Indic scripts handling (in
+progress). Automatic end of line detection.
 
 - C mode: coloring with immediate update, auto-indent, automatic tags.
 
-- Shell mode: full color VT100 terminal emulation so your shell works exactly
-as you expect. Compile mode with colorized error messages, automatic
-error message parser jumps to next/previous error, works with grep too.
-The shell buffer is a fully functional terminal: you can run qemacs,
-vim or even emacs recursively!
+- Shell mode: full color VT100 terminal emulation so your shell works
+exactly as you expect. Compile mode with colorized error messages,
+automatic error message parser jumps to next/previous error, works
+with grep too. The shell buffer is a fully functional terminal: you
+can run qemacs, vim or even emacs recursively!
 
 - Input methods for most languages, including Chinese (input methods
-come from the Yudit editor).
+descriptions come from the Yudit editor).
 
-- Binary and hexadecimal editing mode with insertion and block commands.
-Unicode hexa editing of UTF-8 files also supported. Can patch binary files,
-preserving every byte outside the modified areas.
+- Binary and hexadecimal in place editing mode with insertion and
+block commands. Unicode hexa editing of UTF-8 files also supported.
+Can patch binary files, preserving every byte outside the modified
+areas.
 
 - Works on any VT100 terminal without termcap. UTF-8 VT100 support
 included with double width glyphs.
@@ -46,12 +48,13 @@ anti-aliased font display.
 
 - Bitmap images are displayed on graphics displays and as ASCII colored text
 on text terminals, which is handy when browsing files over an ssh connection.
-(QEmacs uses the public domain [`stb_image`](https://github.com/nothings/stb/blob/master/stb_image.h) package for image conversions.
+(QEmacs uses the public domain [`stb_image`](https://github.com/nothings/stb/blob/master/stb_image.h)
+package for image parsing.
 
 ## Building QEmacs
 
 * Launch the custom configuration script `./configure`. You can list the
- possible options by typing `./configure --help`.
+available options by typing `./configure --help`.
 
 * Type `make` to compile qemacs and its associated tools.
 

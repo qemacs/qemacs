@@ -1491,6 +1491,7 @@ static int strtokey1(const char **pp)
         *pp = p1;
     } else {
         key = utf8_decode(&p);
+        // XXX: Should assume unknown function key if p != p1 */
         *pp = p;
     }
     return key;
@@ -1508,6 +1509,7 @@ int strtokey(const char **pp)
         key = KEY_META(strtokey1(&p));
     } else
     if (p[0] == 'C' && p[1] == '-' && p[2] == 'M' && p[3] == '-') {
+        // XXX: this only works for ASCII control keys, not for function keys
         /* Should pass buffer with C-xxx to strtokey1 */
         p += 4;
         key = KEY_META(KEY_CTRL(strtokey1(&p)));
