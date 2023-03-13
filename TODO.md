@@ -727,6 +727,33 @@ insert_window_left()  deletes some left-most windows
 
 ### New modes
 
+## `csv-mode`
+
+* CSV database functions
+  - `csv_find(string where)`
+  - `csv_select(string field_list, string where, string destination)`
+  - `csv_filter(string where)`
+  - `csv_update(string what_list, string where)`
+  - `csv_append_columns(string field_list)`
+  - `csv_insert_columns(string field_list)`
+  - `csv_delete_columns(string field_list)`
+  - `csv_delete_lines(string where)`
+  - `csv_append_lines(string field_list)`
+  - `csv_insert_lines(string field_list)`
+  - `csv_sort(string field_list)`
+
+## `json-mode`
+
+* auto-wrap and indent
+* JSON database functions
+
+## `xml-mode`
+
+* auto-wrap and indent
+* XML database functions
+
+## Other modes
+
 * `rst-mode`: support ReStructuredText (RST)
 * `auto-compression-mode`
 * minor modes with key override such as "preview" mode

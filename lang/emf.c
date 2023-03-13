@@ -1,5 +1,5 @@
 /*
- * Miscellaneous language modes for QEmacs.
+ * EMF colorizer mode for QEmacs.
  *
  * Copyright (c) 2000-2023 Charlie Gordon.
  *
@@ -25,64 +25,6 @@
 #include "qe.h"
 
 #define MAX_KEYWORD_SIZE  16
-
-/*---------------- sharp file coloring ----------------*/
-
-/* Very simple colorizer: # introduces comments, that's it! */
-
-enum {
-    SHARP_STYLE_TEXT =       QE_STYLE_DEFAULT,
-    SHARP_STYLE_COMMENT =    QE_STYLE_COMMENT,
-};
-
-static void sharp_colorize_line(QEColorizeContext *cp,
-                               char32_t *str, int n, ModeDef *syn)
-{
-    int i = 0, start;
-    char32_t c;
-
-    while (i < n) {
-        start = i;
-        c = str[i++];
-        switch (c) {
-        case '#':
-            i = n;
-            SET_COLOR(str, start, i, SHARP_STYLE_COMMENT);
-            continue;
-        default:
-            break;
-        }
-    }
-}
-
-static int sharp_mode_probe(ModeDef *mode, ModeProbeData *pd)
-{
-    const char *p = cs8(pd->buf);
-
-    while (qe_isspace(*p))
-        p++;
-
-    if (*p == '#') {
-        if (match_extension(pd->filename, mode->extensions))
-            return 60;
-        return 30;
-    }
-    return 1;
-}
-
-static ModeDef sharp_mode = {
-    .name = "sharp",
-    .extensions = "txt",
-    .mode_probe = sharp_mode_probe,
-    .colorize_func = sharp_colorize_line,
-};
-
-static int sharp_init(void)
-{
-    qe_register_mode(&sharp_mode, MODEF_SYNTAX);
-
-    return 0;
-}
 
 /*---------------- EMF (JASSPA microemacs macro files) ----------------*/
 
@@ -196,13 +138,4 @@ static int emf_init(void)
     return 0;
 }
 
-/*----------------*/
-
-static int extra_modes_init(void)
-{
-    sharp_init();
-    emf_init();
-    return 0;
-}
-
-qe_module_init(extra_modes_init);
+qe_module_init(emf_init);
