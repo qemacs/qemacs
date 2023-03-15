@@ -4346,6 +4346,8 @@ static int get_staticly_colorized_line(EditState *s, char32_t *buf, int buf_size
 
 #define COLORIZED_LINE_PREALLOC_SIZE 64
 
+// XXX: s->colorize_xxx fields should be mode data, potentially shared by
+//      multiple EditState upon splitting windows
 static int syntax_get_colorized_line(EditState *s,
                                      char32_t *buf, int buf_size,
                                      QETermStyle *sbuf,

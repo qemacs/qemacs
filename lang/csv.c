@@ -28,12 +28,13 @@
 
 #define CSV_SEP  ",;\t|"
 enum {
-    IN_CSV_SEMI   = 0x01,
-    IN_CSV_TAB    = 0x02,
-    IN_CSV_BAR    = 0x03,
-    IN_CSV_SEP    = 0x03,
-    IN_CSV_STRING = 0x04,
-    IN_CSV_HEADER = 0x08,
+    CSV_STATE_COMMA  = 0x00,
+    CSV_STATE_SEMI   = 0x01,
+    CSV_STATE_TAB    = 0x02,
+    CSV_STATE_BAR    = 0x03,
+    CSV_STATE_SEP    = 0x03,
+    CSV_STATE_STRING = 0x04,
+    CSV_STATE_HEADER = 0x08,
 };
 
 enum {
@@ -50,14 +51,15 @@ enum {
     MATCH_FAIL = 0,
     MATCH_PARTIAL = 1,
     MATCH_FULL = 2,
+    // XXX: could also have a prefix match like strtol and strtod
 
-    MATCH_NUMBER = 4,
-    MATCH_NUMBER_PARTIAL = 4+1,
-    MATCH_NUMBER_FULL = 4+2,
+    MATCH_NUMBER = 0x10,
+    MATCH_NUMBER_PARTIAL = 0x11,
+    MATCH_NUMBER_FULL = 0x12,
 
-    MATCH_DATE = 8,
-    MATCH_DATE_PARTIAL = 8+1,
-    MATCH_DATE_FULL = 8+2,
+    MATCH_DATE = 0x20,
+    MATCH_DATE_PARTIAL = 0x21,
+    MATCH_DATE_FULL = 0x22,
 };
 
 static int match_number(const char32_t *str, int start, int n, char32_t dot) {
@@ -78,6 +80,7 @@ static int match_number(const char32_t *str, int start, int n, char32_t dot) {
         digits++;
         c = str[i++];
     }
+    // could also accept both `,`, `.`, `_` and ` ` as digit separators
     if (c == dot) {
         if (i == n) {
             if (digits == 0)
@@ -94,8 +97,6 @@ static int match_number(const char32_t *str, int start, int n, char32_t dot) {
     }
     if (digits == 0)
         return MATCH_FAIL;
-    if (i == n)
-        return MATCH_NUMBER_FULL;
     if (c == 'e' || c == 'E') {
         if (i == n)
             return MATCH_NUMBER_PARTIAL;
@@ -116,21 +117,27 @@ static int match_number(const char32_t *str, int start, int n, char32_t dot) {
 
 static int match_date_time(const char32_t *str, int start, int n) {
     int i = start, digits = 0;
-    char32_t c;
+    char32_t sep = ' ', nsep = 0;
 
+    if (i == n)
+        return MATCH_FAIL;
     while (i < n) {
-        c = str[i++];
+        char32_t c = str[i++];
         if (c == '/' || c == ':' || c == '-' || c == '.' || c == ' ') {
             if (digits == 0 || digits == 3)
                 return MATCH_FAIL;
+            if (sep == ' ')
+                nsep = 1;
+            else
+            if (c != sep || ++nsep > 2)
+                return MATCH_FAIL;
+            sep = c;
             digits = 0;
         } else
         if (!qe_isdigit(c) || ++digits > 4)
             return MATCH_FAIL;
     }
-    if (digits == 0)
-        return MATCH_FAIL;
-    if (digits == 1 || digits == 3)
+    if (digits < 2 || digits == 3)
         return MATCH_DATE_PARTIAL;
     else
         return MATCH_DATE_FULL;
@@ -149,14 +156,14 @@ static void csv_colorize_line(QEColorizeContext *cp,
         while (i < n) {
             switch (str[i++]) {
             case ',':   break;
-            case '\t':  colstate |= IN_CSV_TAB; break;
-            case '|':   colstate |= IN_CSV_BAR; break;
-            case ';':   colstate |= IN_CSV_SEMI; break;
+            case '\t':  colstate |= CSV_STATE_TAB; break;
+            case '|':   colstate |= CSV_STATE_BAR; break;
+            case ';':   colstate |= CSV_STATE_SEMI; break;
             default:    continue;
             }
             break;
         }
-        sep = CSV_SEP[colstate & IN_CSV_SEP];
+        sep = CSV_SEP[colstate & CSV_STATE_SEP];
         start = i = 0;
         while (i < n) {
             c = str[i++];
@@ -170,16 +177,16 @@ static void csv_colorize_line(QEColorizeContext *cp,
             }
         }
         if (i == n) {
-            colstate |= IN_CSV_HEADER;
+            colstate |= CSV_STATE_HEADER;
         }
         i = 0;
     }
 
-    sep = CSV_SEP[colstate & IN_CSV_SEP];
+    sep = CSV_SEP[colstate & CSV_STATE_SEP];
     if (sep == ';')
         dot = ',';
 
-    if (colstate & IN_CSV_STRING)
+    if (colstate & CSV_STATE_STRING)
         goto in_string;
 
     while (i < n) {
@@ -190,14 +197,14 @@ static void csv_colorize_line(QEColorizeContext *cp,
             continue;
         if (c == '\"') {
             // XXX: should match numbers and dates inside strings
-            colstate |= IN_CSV_STRING;
+            colstate |= CSV_STATE_STRING;
         in_string:
             while (i < n) {
                 /* XXX: escape sequences? */
                 /* quotes are doubled for escaping */
                 if (str[i++] == '\"') {
                     if (i == n || str[i] != '\"') {
-                        colstate ^= IN_CSV_STRING;
+                        colstate ^= CSV_STATE_STRING;
                         break;
                     }
                     i++;
@@ -209,7 +216,7 @@ static void csv_colorize_line(QEColorizeContext *cp,
                 style = CSV_STYLE_ERROR;
                 goto next;
             }
-            if (colstate & IN_CSV_HEADER)
+            if (colstate & CSV_STATE_HEADER)
                 style = CSV_STYLE_HEADER;
             else
                 style = CSV_STYLE_STRING;
@@ -225,7 +232,7 @@ static void csv_colorize_line(QEColorizeContext *cp,
             if (match_date_time(str, start, j) & MATCH_FULL)
                 style = CSV_STYLE_DATE;
             else
-            if (colstate & IN_CSV_HEADER)
+            if (colstate & CSV_STATE_HEADER)
                 style = CSV_STYLE_HEADER;
             else
                 style = CSV_STYLE_TEXT;
@@ -235,8 +242,8 @@ static void csv_colorize_line(QEColorizeContext *cp,
             style = 0;
         }
     }
-    if (!(colstate & IN_CSV_STRING))
-        colstate &= ~IN_CSV_HEADER;
+    if (!(colstate & CSV_STATE_STRING))
+        colstate &= ~CSV_STATE_HEADER;
 
     cp->colorize_state = colstate;
 }
