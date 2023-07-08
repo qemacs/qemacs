@@ -495,6 +495,35 @@ static int mandelbrot10_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
     return maxiter - i;
 }
 
+static cnum_t newton_next(cnum_t z) {
+    fnum_t x2 = z.a * z.a;
+    fnum_t y2 = z.b * z.b;
+    fnum_t temp_deno = 3 * (x2 + y2) * (x2 + y2);
+    return (cnum_t){
+        z.a * 2 / 3 - (y2 - x2) / temp_deno,
+        z.b * 2 / 3 - (2 * z.a * z.b) / temp_deno
+    };
+}
+
+static int newton_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
+    cnum_t z = { x, y };
+#define COS_PI_6  0.866025403784439  // sqrt(3) / 2
+    static cnum_t const roots[3] = {{ 1, 0 }, { -0.5, COS_PI_6 }, { -0.5, -COS_PI_6 }};
+    fnum_t min_dist = 1e-11;
+    int i;
+    for (i = 0; i < maxiter; i++) {
+        z = newton_next(z);
+        if (fabs(z.a - roots[0].a) < min_dist
+        ||  fabs(z.b - roots[0].b) < min_dist
+        ||  fabs(z.a - roots[1].a) < min_dist
+        ||  fabs(z.b - roots[1].b) < min_dist
+        ||  fabs(z.a - roots[2].a) < min_dist
+        ||  fabs(z.b - roots[2].b) < min_dist)
+            break;
+    }
+    return i;
+}
+
 static struct FractalType {
     const char *name;
     const char *formula;
@@ -509,6 +538,7 @@ static struct FractalType {
     { "Mandelbrot8", "z=z^8+c", mandelbrot8_func },
     { "Mandelbrot9", "z=x^9+c", mandelbrot9_func },
     { "Mandelbrot10", "z=x^10+c", mandelbrot10_func },
+    { "Newton", "z=(z^3-1)/(3*z^2)", newton_func },
 };
 
 static void fractal_invalidate(FractalState *ms) {
@@ -624,7 +654,8 @@ static void fractal_set_parameters(EditState *s, FractalState *ms, const char *p
         if (*p == '\0')
             break;
         if (strstart(p, "type=", &p)) {
-            ms->type = clamp_int(strtol_c(p, &p, 0), 0, countof(fractal_type));
+            // XXX: should match type names
+            ms->type = clamp_int(strtol_c(p, &p, 0), 0, countof(fractal_type) - 1);
         } else
         if (strstart(p, "maxiter=", &p)) {
             ms->maxiter = strtol_c(p, &p, 0);
@@ -1177,7 +1208,7 @@ static void fractal_mode_free(EditBuffer *b, void *state) {
 #endif
 }
 
-static void do_mandelbrot_test(EditState *s) {
+static void do_mandelbrot_test(EditState *s, int argval) {
     EditBuffer *b;
 
     if (!fractal_mode.name) {
@@ -1211,12 +1242,19 @@ static void do_mandelbrot_test(EditState *s) {
     eb_set_charset(b, &charset_ucs2be, EOL_UNIX);
     do_delete_other_windows(s, 0);
     switch_to_buffer(s, b);
+    if (argval != 1) {
+        FractalState *ms = fractal_get_state(s, 1);
+        if (ms) {
+            ms->type = clamp_int(argval - 1, 0, countof(fractal_type) - 1);
+            fractal_invalidate(ms);
+        }
+    }
 }
 
 static const CmdDef fractal_global_commands[] = {
-    CMD0( "mandelbrot-test", "C-h m",
+    CMD2( "mandelbrot-test", "C-h m",
           "Explore the Mandelbrot set in fractal-mode",
-          do_mandelbrot_test)
+          do_mandelbrot_test, ESi, "p")
 };
 
 static int fractal_init(void)
