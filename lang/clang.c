@@ -1928,10 +1928,12 @@ static void js_colorize_line(QEColorizeContext *cp,
                 if (cp->state_only && !tag)
                     continue;
 
-                /* keywords used as object property tags are regular identifiers */
-                if (strfind(syn->keywords, kbuf) &&
-                    // XXX: this is incorrect for `default` inside a switch statement */
-                    str[i] != ':' && (start == 0 || str[start - 1] != '.')) {
+                /* keywords used as object property tags are regular identifiers.
+                 * `default` is always considered a keyword as the context cannot be
+                   determined precisely by this simplistic lexical parser */
+                if (strfind(syn->keywords, kbuf)
+                &&  (str[i] != ':' || strequal(kbuf, "default"))
+                &&  (start == 0 || str[start - 1] != '.')) {
                     style = C_STYLE_KEYWORD;
                     break;
                 }
@@ -2793,13 +2795,17 @@ static ModeDef enscript_mode = {
 /*---------------- QuickScript programming language ----------------*/
 
 static const char qs_keywords[] = {
-    "break|case|class|continue|def|default|del|delete|do|else|for|"
-    "function|if|module|new|return|self|string|struct|switch|this|"
-    "typeof|while|"
+    "break|case|catch|class|continue|default|delete|do|else|"
+    "finally|for|function|if|import|in|instanceof|module|new|"
+    "return|switch|this|throw|try|typeof|while|"
+    "true|false|null|void|"
+    "get|set|"
+    "struct|self|def|func|as|from|arguments|target|super|"
 };
 
 static const char qs_types[] = {
-    "var|const|let|char|int|void|Array|Char|Function|Number|Object|String|"
+    "const|let|var|bool|char|double|int|string|"
+    "Array|Boolean|Function|Number|Object|String|Date|"
 };
 
 static int qs_mode_probe(ModeDef *mode, ModeProbeData *p)
@@ -2819,7 +2825,7 @@ static ModeDef qscript_mode = {
     .name = "QScript",
     .alt_name = "qs",
     .extensions = "qe|qs",
-    .shell_handlers = "qscript|qs",
+    .shell_handlers = "qscript|qs|qsn",
     .mode_probe = qs_mode_probe,
     .colorize_func = js_colorize_line,
     .colorize_flags = CLANG_QSCRIPT | CLANG_STR3 | CLANG_REGEX,
@@ -3029,6 +3035,7 @@ static const char kotlin_keywords[] = {
     "class|object|interface|public|private|protected|internal|inner|"
     "constructor|this|super|open|override|final|abstract|enum|companion|"
     "vararg|inline|reified|annotation|data|"
+    "infix|operator|step|downTo|until|lazy|with|also|"
     //"get|set|"  // do not colorize as keyword because used as function
     //"case|def|extends|forSome|implicit|lazy|"  // unused java keywords
     //"match|new|sealed|trait|type|with|yield|"  // unused java keywords

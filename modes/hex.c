@@ -140,10 +140,10 @@ static void do_toggle_hex(EditState *s)
 
 /* common binary and hex commands */
 static const CmdDef binary_commands[] = {
-    CMD2( "decrease-width", "c-left",
+    CMD2( "decrease-width", "C-left",
           "Decrease the number of bytes displayed on each row",
           do_increase_width, ESi, "q")
-    CMD2( "increase-width", "c-right",
+    CMD2( "increase-width", "C-right",
           "Increase the number of bytes displayed on each row",
           do_increase_width, ESi, "p")
     CMD2( "set-width", "",

@@ -89,6 +89,7 @@ ModeDef *qe_find_mode(const char *name, int flags)
     QEmacsState *qs = &qe_state;
     ModeDef *m;
 
+    strstart(name, "lang-", &name);
     for (m = qs->first_mode; m; m = m->next) {
         if ((m->flags & flags) == flags) {
             if ((m->name && !strcasecmp(m->name, name))

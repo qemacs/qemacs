@@ -52,15 +52,17 @@ enum {
 enum {
     IN_MKD_LANG_STATE   = 0x00FF,
     IN_MKD_LEVEL        = 0x0700,
-    IN_MKD_BLOCK        = 0x7800,
+    MKD_LEVEL_SHIFT     = 8,
+    MKD_LEVEL_MAX       = (IN_MKD_LEVEL >> MKD_LEVEL_SHIFT),
+    IN_MKD_BLOCK        = 0x0800,
+    IN_MKD_LANG         = 0x7000,
+    MKD_LANG_SHIFT      = 12,
+    MKD_LANG_MAX        = (IN_MKD_LANG >> MKD_LANG_SHIFT),
     IN_MKD_HTML_BLOCK   = 0x8000,
     IN_MKD_HTML_COMMENT = 0xC000,
-    MKD_LANG_SHIFT      = 11,
-    MKD_LANG_MAX        = (IN_MKD_BLOCK >> MKD_LANG_SHIFT),
-    MKD_LEVEL_SHIFT     = 8,
-    MKD_LEVEL_MAX       = 7,
 };
 
+/* These should be window based mode data */
 static ModeDef *mkd_lang_def[MKD_LANG_MAX + 1];
 static char mkd_lang_char[MKD_LANG_MAX + 1];
 
@@ -164,7 +166,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     }
 
     if (colstate & IN_MKD_BLOCK) {
-        int lang = (colstate & IN_MKD_BLOCK) >> MKD_LANG_SHIFT;
+        int lang = (colstate & IN_MKD_LANG) >> MKD_LANG_SHIFT;
 
         /* XXX: closing fence should match opening fence, same character and number */
         /* XXX: closing fence cannot have info-string */
@@ -251,7 +253,8 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         /* opening fence: verbatim block */
         /* XXX: should count the number of ~ or ` to match a closing fence */
         char lang_name[16];
-        int lang = syn->colorize_flags, len;  // was MKD_LANG_MAX
+        int len;
+        int lang = (colstate & IN_MKD_LANG) >> MKD_LANG_SHIFT;
 
         colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG_STATE);
         for (i = j + 3; qe_isblank(str[i]); i++)
@@ -265,8 +268,14 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         if (len) {
             /* XXX: unrecognised info-string should select text-mode */
             lang = mkd_add_lang(lang_name, str[j]);
+        } else
+        if (lang == 0) {
+            // get default lang is from mode;
+            lang = syn->colorize_flags;  // was MKD_LANG_MAX
+        } else {
+            // use last specified lang for current buffer
         }
-        colstate |= lang << MKD_LANG_SHIFT;
+        colstate |= IN_MKD_BLOCK | (lang << MKD_LANG_SHIFT);
         i = n;
         SET_COLOR(str, start, i, MKD_STYLE_TILDE);
     }
@@ -391,14 +400,14 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         case '`':  /* code */
             chunk_style = MKD_STYLE_CODE;
             chunk = mkd_scan_chunk(str + i, "`` ", " ``", 1);
-            if (chunk)
+            if (!chunk)
+                chunk = mkd_scan_chunk(str + i, "``", "``", 1);
+            if (!chunk)
+                chunk = mkd_scan_chunk(str + i, "`", "`", 1);
+            if (chunk) {
+                // should use last lang colorizer
                 break;
-            chunk = mkd_scan_chunk(str + i, "``", "``", 1);
-            if (chunk)
-                break;
-            chunk = mkd_scan_chunk(str + i, "`", "`", 1);
-            if (chunk)
-                break;
+            }
             break;
         case '!':  /* image link ^[...: <...>] */
             chunk_style = MKD_STYLE_IMAGE_LINK;

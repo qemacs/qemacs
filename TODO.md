@@ -769,3 +769,8 @@ insert_window_left()  deletes some left-most windows
 * abbreviation mode
 * ispell / spell checker
 * printing support
+
+## Fly zone
+
+* kill eval result so it can be yanked where appropriate
+* integrate qscript

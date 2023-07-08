@@ -235,7 +235,7 @@ void qe_ungrab_keys(void);
 KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd, int exact);
 KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m, int exact);
 
-#define COLORED_MAX_LINE_SIZE  4096
+#define COLORED_MAX_LINE_SIZE  16384
 
 /* colorize & transform a line, lower level then ColorizeFunc */
 /* XXX: should return `len`, the number of valid codepoints copied to
@@ -1670,11 +1670,11 @@ static inline void qe_cfg_set_str(QEValue *sp, const char *str, int len) {
     memcpy(sp->u.str, str, len);
     sp->u.str[len] = '\0';
     sp->len = len;
-    sp->type = TOK_STRING;      // TOK_ALLOC??
+    sp->type = TOK_STRING;
     sp->alloc = 1;
 }
 
-static inline void qe_cfg_set_pstr(QEValue *sp, char *str, int len) {
+static inline void qe_cfg_set_pstr(QEValue *sp, char *str, int len, int alloc) {
     if (sp->alloc) {
         qe_free(&sp->u.str);
         sp->alloc = 0;
@@ -1682,6 +1682,7 @@ static inline void qe_cfg_set_pstr(QEValue *sp, char *str, int len) {
     sp->u.str = str;
     sp->len = len;
     sp->type = TOK_STRING;
+    sp->alloc = alloc;
 }
 
 static inline void qe_cfg_move(QEValue *sp, QEValue *sp1) {

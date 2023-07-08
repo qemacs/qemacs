@@ -1024,6 +1024,7 @@ static int type_to_char(int type) {
     case BIDIR_TYPE_EN: return 'n';
     case BIDIR_TYPE_N:  return 'N';
     default:            return '?';
+    }
 }
 
 static void print_types_re(const BidirTypeLink *pp, int level) {

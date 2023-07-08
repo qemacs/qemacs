@@ -45,15 +45,21 @@ typedef struct QEmacsDataSource {
     int tok;                // token type
     int prec;               // operator precedence
     int len;                // length of TOK_STRING and TOK_ID string
+    int str_size;
+    char *str;
     QEValue *sp_max;
     QEValue stack[16];
-    char str[2048];         // token string (XXX: should use local buffer?)
+    char str_buf[256];      // token string (XXX: should use local buffer?)
 } QEmacsDataSource;
 
 enum {
     TOK_EOF = -1, TOK_ERR = -2, TOK_VOID__ = 0,
-    TOK_NUMBER__ = 128, TOK_STRING__, TOK_CHAR__, TOK_ID__, TOK_IF, TOK_ELSE,
+    TOK_NUMBER__ = 128, TOK_STRING__, TOK_CHAR__, TOK_ID__,
+    TOK_IF, TOK_ELSE,
 #ifndef CONFIG_TINY
+    TOK_FOR, TOK_WHILE, TOK_BREAK, TOK_CONTINUE,
+    TOK_SWITCH, TOK_CASE, TOK_DEFAULT,
+    TOK_VAR, TOK_FUNCTION, TOK_RETURN,
     TOK_MUL_EQ, TOK_DIV_EQ, TOK_MOD_EQ, TOK_ADD_EQ, TOK_SUB_EQ,
     TOK_SHL_EQ, TOK_SHR_EQ, TOK_AND_EQ, TOK_XOR_EQ, TOK_OR_EQ,
     TOK_EQ, TOK_NE, TOK_SHL, TOK_SHR, TOK_LE, TOK_GE,
@@ -132,6 +138,8 @@ static const struct opdef ops[] = {
 static void qe_cfg_init(QEmacsDataSource *ds) {
     memset(ds, 0, sizeof(*ds));
     ds->sp_max = ds->stack;
+    ds->str = ds->str_buf;
+    ds->str_size = sizeof(ds->str_buf);
 }
 
 static void qe_cfg_release(QEmacsDataSource *ds) {
@@ -141,20 +149,47 @@ static void qe_cfg_release(QEmacsDataSource *ds) {
         qe_cfg_set_void(sp);
 }
 
+#ifndef CONFIG_TINY
+static int qe_cfg_append_str_char32(QEmacsDataSource *ds, char32_t ch) {
+    if (ds->len + MAX_CHAR_BYTES + 1 > ds->str_size) {
+        int size = ds->str_size + (ds->str_size >> 1);
+        char *str = qe_malloc_array(char, size);
+        if (str == NULL)
+            return 0;
+        memcpy(str, ds->str, ds->len);
+        if (ds->str != ds->str_buf)
+            qe_free(&ds->str);
+        ds->str = str;
+        ds->str_size = size;
+    }
+    return ds->len += utf8_encode(ds->str + ds->len, ch);
+}
+#endif
+
+static int qe_cfg_append_str_byte(QEmacsDataSource *ds, unsigned char c) {
+    if (ds->len + 1 + 1 > ds->str_size) {
+        int size = ds->str_size + (ds->str_size >> 1);
+        char *str = qe_malloc_array(char, size);
+        if (str == NULL)
+            return 0;
+        memcpy(str, ds->str, ds->len);
+        if (ds->str != ds->str_buf)
+            qe_free(&ds->str);
+        ds->str = str;
+        ds->str_size = size;
+    }
+    ds->str[ds->len++] = c;
+    return ds->len;
+}
+
 // XXX: Should use strunquote parser from util.c
 // XXX: Should remove string length limitation using allocation
-static int qe_cfg_parse_string(QEmacsDataSource *ds, const char **pp, int delim,
-                               char *dest, int size, int *plen)
-{
+static int qe_cfg_parse_string(QEmacsDataSource *ds, const char **pp, int delim) {
     EditState *s = ds->s;
     const char *p = *pp;
     int triple = 0;
     int res = 0;
-    int pos = 0;
-    int end = size - 1;
 #ifndef CONFIG_TINY
-    char cbuf[8];
-    int len;
     char32_t ch;
 #endif
     /* check for triple delimiter */
@@ -167,9 +202,10 @@ static int qe_cfg_parse_string(QEmacsDataSource *ds, const char **pp, int delim,
             p++;
         }
     }
+    ds->len = 0;
     for (;;) {
         /* encoding issues deliberately ignored */
-        int c = *p;
+        unsigned char c = *p;
         if (c == '\0') {
             put_error(s, "unterminated string");
             res = -1;
@@ -196,6 +232,11 @@ static int qe_cfg_parse_string(QEmacsDataSource *ds, const char **pp, int delim,
 #ifndef CONFIG_TINY
             int maxc = -1;
 #endif
+            if (*p == '\0') {
+                put_error(s, "unterminated string");
+                res = -1;
+                break;
+            }
             c = *p++;
             switch (c) {
             case '\n':
@@ -232,29 +273,20 @@ static int qe_cfg_parse_string(QEmacsDataSource *ds, const char **pp, int delim,
                 for (ch = 0; qe_isxdigit(*p) && maxc-- != 0; p++) {
                     ch = (ch << 4) | qe_digit_value(*p);
                 }
-                len = utf8_encode(cbuf, ch);
-                if (pos + len < end) {
-                    int i;
-                    for (i = 0; i < len; i++)
-                        dest[pos++] = cbuf[i];
-                }
+                qe_cfg_append_str_char32(ds, ch);
                 continue;
 #endif
             }
         }
-        /* XXX: silently truncate overlong string constants */
-        if (pos < end)
-            dest[pos++] = c;
+        qe_cfg_append_str_byte(ds, c);
     }
-    if (pos <= end)
-        dest[pos] = '\0';
+    if (ds->len < ds->str_size)
+        ds->str[ds->len] = '\0';
     *pp = p;
-    *plen = pos;
     return res;
 }
 
-static int qe_cfg_next_token(QEmacsDataSource *ds)
-{
+static int qe_cfg_next_token(QEmacsDataSource *ds) {
     const u8 *p = (const u8 *)ds->p;
     ds->newline_seen = 0;
     for (;;) {
@@ -301,6 +333,11 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
                 continue;
             }
         }
+        if (ds->str != ds->str_buf) {
+            qe_free(&ds->str);
+            ds->str = ds->str_buf;
+            ds->str_size = sizeof(ds->str_buf);
+        }
         if (qe_isalpha_(c)) {   /* parse an identifier */
             // XXX: should have a list of symbols with command and
             //      variable names with transparent dash translation
@@ -312,21 +349,57 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
             while (qe_isalnum_(c = *p) || (c == '-' && qe_isalpha(p[1]))) {
                 if (c == '_')
                     c = '-';
-                if (len < ssizeof(ds->str) - 1)
+                /* silently truncate overlong identifiers */
+                if (len < ssizeof(ds->str_buf) - 1)
                     ds->str[len++] = c;
                 p++;
             }
             ds->str[len] = '\0';
             ds->len = len;
             ds->p = cs8(p);
+#ifndef CONFIG_TINY
+            // XXX: should use hash table
+            switch (len) {
+            case 2:
+                if (!memcmp(ds->start_p, "if", 2)) return ds->tok = TOK_IF;
+                break;
+            case 3:
+                if (!memcmp(ds->start_p, "for", 3)) return ds->tok = TOK_FOR;
+                if (!memcmp(ds->start_p, "fun", 3)) return ds->tok = TOK_FUNCTION;
+                if (!memcmp(ds->start_p, "def", 3)) return ds->tok = TOK_FUNCTION;
+                if (!memcmp(ds->start_p, "var", 3)) return ds->tok = TOK_VAR;
+                break;
+            case 4:
+                if (!memcmp(ds->start_p, "else", 4)) return ds->tok = TOK_ELSE;
+                if (!memcmp(ds->start_p, "case", 4)) return ds->tok = TOK_CASE;
+                break;
+            case 5:
+                if (!memcmp(ds->start_p, "break", 5)) return ds->tok = TOK_BREAK;
+                if (!memcmp(ds->start_p, "while", 5)) return ds->tok = TOK_WHILE;
+                break;
+            case 6:
+                if (!memcmp(ds->start_p, "switch", 6)) return ds->tok = TOK_SWITCH;
+                if (!memcmp(ds->start_p, "return", 6)) return ds->tok = TOK_RETURN;
+                break;
+            case 7:
+                if (!memcmp(ds->start_p, "default", 7)) return ds->tok = TOK_DEFAULT;
+                break;
+            case 8:
+                if (!memcmp(ds->start_p, "continue", 8)) return ds->tok = TOK_CONTINUE;
+                if (!memcmp(ds->start_p, "function", 8)) return ds->tok = TOK_FUNCTION;
+                break;
+            }
+#else
             if (len == 2 && !memcmp(ds->start_p, "if", 2))
                 return ds->tok = TOK_IF;
             if (len == 4 && !memcmp(ds->start_p, "else", 4))
                 return ds->tok = TOK_ELSE;
+#endif
             return ds->tok = TOK_ID;
         }
         if (qe_isdigit(c)) {   /* parse a number */
             ds->p = cs8(p);
+            // XXX: should handle floating point and _ and ' digit separators
             strtoll_c(ds->start_p, &ds->p, 0);
             if (qe_isalnum_(*ds->p)) {
                 /* type suffixes not supported */
@@ -336,16 +409,12 @@ static int qe_cfg_next_token(QEmacsDataSource *ds)
             return ds->tok = TOK_NUMBER;
         }
         if (c == '\'' || c == '\"') {
+            ds->len = 0;
             ds->p = cs8(p);
-            if (qe_cfg_parse_string(ds, &ds->p, c,
-                                    ds->str, sizeof(ds->str), &ds->len) < 0)
-            {
+            if (qe_cfg_parse_string(ds, &ds->p, c) < 0) {
                 return ds->tok = TOK_ERR;
             }
-            if (c == '\'') {
-                return ds->tok = TOK_CHAR;
-            }
-            return ds->tok = TOK_STRING;
+            return ds->tok = (c == '\'') ? TOK_CHAR : TOK_STRING;
         }
         // XXX: use binary search?
         op = ops + countof(ops);
@@ -436,6 +505,7 @@ static int qe_cfg_tostr(QEmacsDataSource *ds, QEValue *sp) {
 
     if (qe_cfg_getvalue(ds, sp))
         return 1;
+
     switch (sp->type) {
     case TOK_STRING:
         return 0;
@@ -460,6 +530,7 @@ static int qe_cfg_tochar(QEmacsDataSource *ds, QEValue *sp) {
 
     if (qe_cfg_getvalue(ds, sp))
         return 1;
+
     switch (sp->type) {
     case TOK_STRING:
         p = sp->u.str;
@@ -482,13 +553,17 @@ static int qe_cfg_append(QEmacsDataSource *ds, QEValue *sp, const char *p, size_
 
     if (qe_cfg_tostr(ds, sp))
         return 1;
-    /* XXX: should cap length and check for malloc failure */
+
+    /* XXX: should cap length? */
     new_len = sp->len + len;
     new_p = qe_malloc_array(char, new_len + 1);
+    if (new_p == NULL)
+        return 1;
+
     memcpy(new_p, sp->u.str, sp->len);
     memcpy(new_p + sp->len, p, len);
     new_p[new_len] = '\0';
-    qe_cfg_set_pstr(sp, new_p, new_len);
+    qe_cfg_set_pstr(sp, new_p, new_len, 1);
     return 0;
 }
 
@@ -1258,10 +1333,10 @@ static void qe_cfg_postprocess(EditState *s, QEmacsDataSource *ds, int argval) {
             break;
         case TOK_NUMBER:
             if (argval <= 0) {
-                put_status(s, "-> %lld  %llx", sp->u.value, sp->u.value);
+                put_status(s, "-> %lld  0x%llx", sp->u.value, sp->u.value);
             } else {
                 if (argval == 16)
-                    len = snprintf(buf, sizeof buf, "%llx", sp->u.value);
+                    len = snprintf(buf, sizeof buf, "0x%llx", sp->u.value);
                 else
                     len = snprintf(buf, sizeof buf, "%lld", sp->u.value);
                 s->offset += eb_insert_utf8_buf(s->b, s->offset, buf, len);
