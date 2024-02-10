@@ -1,7 +1,7 @@
 /*
  * Markdown mode for QEmacs.
  *
- * Copyright (c) 2014-2023 Charlie Gordon.
+ * Copyright (c) 2014-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -74,10 +74,15 @@ static int MkdBulletStyles[MKD_BULLET_STYLES] = {
     MKD_STYLE_HEADING4,
 };
 
-static int mkd_scan_chunk(const char32_t *str,
+static int mkd_scan_chunk(const char32_t *str, int i0,
                           const char *begin, const char *end, int min_width)
 {
     int i, j;
+
+    if (i0 > 0 && qe_isalnum(str[i0 - 1]))
+        return 0;
+
+    str += i0;
 
     for (i = 0; begin[i]; i++) {
         if (str[i] != (u8)begin[i])
@@ -96,7 +101,7 @@ static int mkd_scan_chunk(const char32_t *str,
                 if (str[i + j] != (u8)end[j])
                     break;
             }
-            if (!end[j])
+            if (!end[j] && !qe_isalnum(str[i + j]))
                 return i + j;
         }
     }
@@ -379,31 +384,31 @@ static void mkd_colorize_line(QEColorizeContext *cp,
             break;
         case '*':  /* bold */
             chunk_style = MKD_STYLE_STRONG2;
-            chunk = mkd_scan_chunk(str + i, "**", "**", 1);
+            chunk = mkd_scan_chunk(str, i, "**", "**", 1);
             if (chunk)
                 break;
             chunk_style = MKD_STYLE_STRONG1;
-            chunk = mkd_scan_chunk(str + i, "*", "*", 1);
+            chunk = mkd_scan_chunk(str, i, "*", "*", 1);
             if (chunk)
                 break;
             break;
         case '_':  /* emphasis */
             chunk_style = MKD_STYLE_EMPHASIS2;
-            chunk = mkd_scan_chunk(str + i, "__", "__", 1);
+            chunk = mkd_scan_chunk(str, i, "__", "__", 1);
             if (chunk)
                 break;
             chunk_style = MKD_STYLE_EMPHASIS1;
-            chunk = mkd_scan_chunk(str + i, "_", "_", 1);
+            chunk = mkd_scan_chunk(str, i, "_", "_", 1);
             if (chunk)
                 break;
             break;
         case '`':  /* code */
             chunk_style = MKD_STYLE_CODE;
-            chunk = mkd_scan_chunk(str + i, "`` ", " ``", 1);
+            chunk = mkd_scan_chunk(str, i, "`` ", " ``", 1);
             if (!chunk)
-                chunk = mkd_scan_chunk(str + i, "``", "``", 1);
+                chunk = mkd_scan_chunk(str, i, "``", "``", 1);
             if (!chunk)
-                chunk = mkd_scan_chunk(str + i, "`", "`", 1);
+                chunk = mkd_scan_chunk(str, i, "`", "`", 1);
             if (chunk) {
                 // should use last lang colorizer
                 break;
@@ -411,21 +416,21 @@ static void mkd_colorize_line(QEColorizeContext *cp,
             break;
         case '!':  /* image link ^[...: <...>] */
             chunk_style = MKD_STYLE_IMAGE_LINK;
-            chunk = mkd_scan_chunk(str + i, "![", "]", 1);
+            chunk = mkd_scan_chunk(str, i, "![", "]", 1);
             break;
         case '[':  /* link ^[...: <...>] */
             chunk_style = MKD_STYLE_REF_LINK;
-            chunk = mkd_scan_chunk(str + i, "[", "]", 1);
+            chunk = mkd_scan_chunk(str, i, "[", "]", 1);
             if (chunk && str[i + chunk] == '(') {
                 i += chunk;
                 SET_COLOR(str, start, i, chunk_style);
                 chunk_style = MKD_STYLE_REF_HREF;
-                chunk = mkd_scan_chunk(str + i, "(", ")", 1);
+                chunk = mkd_scan_chunk(str, i, "(", ")", 1);
             }
             break;
         case '<':  /* automatic link <http://address> */
             chunk_style = MKD_STYLE_REF_LINK;
-            chunk = mkd_scan_chunk(str + i, "<http", ">", 1);
+            chunk = mkd_scan_chunk(str, i, "<http", ">", 1);
             if (chunk)
                 break;
             /* match an email address */
