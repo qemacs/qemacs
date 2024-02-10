@@ -64,6 +64,8 @@ static VarDef var_table[] = {
            "Set to ignore comments in compare-windows." )
     S_VAR( "ignore-case", ignore_case, VAR_NUMBER, VAR_RW_SAVE,
            "Set to ignore case in compare-windows." )
+    S_VAR( "ignore-preproc", ignore_preproc, VAR_NUMBER, VAR_RW_SAVE,
+           "Set to ignore preprocessing directives in compare-windows." )
     S_VAR( "hilite-region", hilite_region, VAR_NUMBER, VAR_RW_SAVE,
            "Set to highlight the region after setting the mark." )
     S_VAR( "mmap-threshold", mmap_threshold, VAR_NUMBER, VAR_RW_SAVE,   // XXX: need set_value function

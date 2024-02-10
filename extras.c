@@ -1,7 +1,7 @@
 /*
  * QEmacs, extra commands non full version
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
 #include "qe.h"
 #include "variables.h"
 
-static int qe_skip_comments(EditState *s, int offset, int *offsetp)
+static int qe_skip_style(EditState *s, int offset, int *offsetp, QETermStyle style)
 {
     char32_t buf[COLORED_MAX_LINE_SIZE];
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
@@ -45,9 +45,9 @@ static int qe_skip_comments(EditState *s, int offset, int *offsetp)
         len = countof(buf);
     if (pos >= len)
         return 0;
-    if (sbuf[pos] != QE_STYLE_COMMENT)
+    if (sbuf[pos] != style)
         return 0;
-    while (pos < len && sbuf[pos] == QE_STYLE_COMMENT) {
+    while (pos < len && sbuf[pos] == style) {
         offset = eb_next(s->b, offset);
         pos++;
     }
@@ -148,12 +148,20 @@ void do_compare_windows(EditState *s, int argval)
             continue;
         break;
     }
+    if (argval == 0) {
+        qs->ignore_spaces = 0;
+        qs->ignore_comments = 0;
+        qs->ignore_case = 0;
+        qs->ignore_preproc = 0;
+    }
     if (argval & 4)
         qs->ignore_spaces ^= 1;
     if (argval & 16)
         qs->ignore_comments ^= 1;
     if (argval & 64)
         qs->ignore_case ^= 1;
+    if (argval & 256)
+        qs->ignore_preproc ^= 1;
 
     size1 = s1->b->total_size;
     size2 = s2->b->total_size;
@@ -212,10 +220,18 @@ void do_compare_windows(EditState *s, int argval)
             }
         }
         if (qs->ignore_comments) {
-            if (qe_skip_comments(s1, s1->offset, &s1->offset) |
-                qe_skip_comments(s2, s2->offset, &s2->offset))
+            if (qe_skip_style(s1, s1->offset, &s1->offset, QE_STYLE_COMMENT) |
+                qe_skip_style(s2, s2->offset, &s2->offset, QE_STYLE_COMMENT))
             {
                 comment2 = "Skipped comments, ";
+                continue;
+            }
+        }
+        if (qs->ignore_preproc) {
+            if (qe_skip_style(s1, s1->offset, &s1->offset, QE_STYLE_PREPROCESS) |
+                qe_skip_style(s2, s2->offset, &s2->offset, QE_STYLE_PREPROCESS))
+            {
+                comment2 = "Skipped preproc, ";
                 continue;
             }
         }

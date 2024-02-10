@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -989,6 +989,7 @@ struct QEmacsState {
     int ignore_spaces;  /* ignore spaces when comparing windows */
     int ignore_comments;  /* ignore comments when comparing windows */
     int ignore_case;    /* ignore case when comparing windows */
+    int ignore_preproc;    /* ignore preprocessor directives when comparing windows */
     int hilite_region;  /* hilite the current region when selecting */
     int mmap_threshold; /* minimum file size for mmap */
     int max_load_size;  /* maximum file size for loading in memory */
