@@ -2,7 +2,7 @@
  * Incremental search and replace for QEmacs.
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1183,7 +1183,7 @@ static void query_replace_key(void *opaque, int key)
     case '.':
         query_replace_replace(is);
         s->offset = is->found_offset;
-        /* FALL THRU */
+        fallthrough;
     default:
         query_replace_abort(is);
         return;

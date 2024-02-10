@@ -2,7 +2,7 @@
  * CSS core for qemacs.
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2007-2023 Charlie Gordon.
+ * Copyright (c) 2007-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1036,14 +1036,14 @@ static void css_counter_str(char *text, int text_size,
         break;
     case CSS_LIST_STYLE_TYPE_LOWER_ALPHA:
         upper = 0;
-        /* FALL THRU */
+        fallthrough;
     case CSS_LIST_STYLE_TYPE_UPPER_ALPHA:
         if (num_to_alpha(buf, index, upper))
             goto decimal;
         break;
     case CSS_LIST_STYLE_TYPE_LOWER_ROMAN:
         upper = 0;
-        /* FALL THRU */
+        fallthrough;
     case CSS_LIST_STYLE_TYPE_UPPER_ROMAN:
         if (num_to_roman(buf, index, upper))
             goto decimal;

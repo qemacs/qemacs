@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -265,10 +265,10 @@ static int qe_cfg_parse_string(QEmacsDataSource *ds, const char **pp, int delim)
                 break;
             case 'U':
                 maxc += 4;  /* maxc will be 8 */
-                /* fallthrough */
+                fallthrough;
             case 'u':
                 maxc += 5;  /* maxc will be 4 */
-                /* fallthrough */
+                fallthrough;
             case 'x':
                 for (ch = 0; qe_isxdigit(*p) && maxc-- != 0; p++) {
                     ch = (ch << 4) | qe_digit_value(*p);

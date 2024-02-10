@@ -2,7 +2,7 @@
  * Utilities for qemacs.
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -348,11 +348,11 @@ void qe_free(T **pp);
 #define qe_mallocz_hack(t, n)   ((t *)qe_mallocz_bytes(sizeof(t) + (n)))
 
 #if 1  // to test clang -Weverything
-#define qe_free(pp)    do { void *_ = (pp), **__ = _; (free)(*__); *__ = NULL; } while (0)
+#define qe_free(pp)    do { void *_1 = (pp), **_2 = _1; (free)(*_2); *_2 = NULL; } while (0)
 #elif defined CONFIG_HAS_TYPEOF
-#define qe_free(pp)    do { typeof(**(pp)) **__ = (pp); (free)(*__); *__ = NULL; } while (0)
+#define qe_free(pp)    do { typeof(**(pp)) **_2 = (pp); (free)(*_2); *_2 = NULL; } while (0)
 #else
-#define qe_free(pp)    do if (sizeof(**(pp)) >= 0) { void *_ = (pp), **__ = _; (free)(*__); *__ = NULL; } while (0)
+#define qe_free(pp)    do if (sizeof(**(pp)) >= 0) { void *_1 = (pp), **_2 = _1; (free)(*_2); *_2 = NULL; } while (0)
 #endif
 
 /* prevent the use of regular malloc and free functions */

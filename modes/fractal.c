@@ -1,7 +1,7 @@
 /*
  * QEmacs, character based fractal rendering
  *
- * Copyright (c) 2017-2023 Charlie Gordon.
+ * Copyright (c) 2017-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -513,12 +513,12 @@ static int newton_func(fnum_t x, fnum_t y, fnum_t bailout, int maxiter) {
     int i;
     for (i = 0; i < maxiter; i++) {
         z = newton_next(z);
-        if (fabs(z.a - roots[0].a) < min_dist
-        ||  fabs(z.b - roots[0].b) < min_dist
-        ||  fabs(z.a - roots[1].a) < min_dist
-        ||  fabs(z.b - roots[1].b) < min_dist
-        ||  fabs(z.a - roots[2].a) < min_dist
-        ||  fabs(z.b - roots[2].b) < min_dist)
+        if (fabsl(z.a - roots[0].a) < min_dist
+        ||  fabsl(z.b - roots[0].b) < min_dist
+        ||  fabsl(z.a - roots[1].a) < min_dist
+        ||  fabsl(z.b - roots[1].b) < min_dist
+        ||  fabsl(z.a - roots[2].a) < min_dist
+        ||  fabsl(z.b - roots[2].b) < min_dist)
             break;
     }
     return i;

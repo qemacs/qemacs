@@ -1,7 +1,7 @@
 /*
  * Haskell language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -130,7 +130,8 @@ static void haskell_colorize_line(QEColorizeContext *cp,
                 state |= level << IN_HASKELL_COMMENT_SHIFT;
                 break;
             }
-            /* FALL THRU */
+            fallthrough;
+
         case '}':
         case '(':
         case ')':

@@ -2,7 +2,7 @@
  * Various simple C utilities
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,12 +44,14 @@
 #define likely(x)             __builtin_expect(!!(x), 1)
 #define unlikely(x)           __builtin_expect(!!(x), 0)
 #define __maybe_unused        __attribute__((unused))
+#define fallthrough           __attribute__((__fallthrough__))
 #else
 #define qe__attr_nonnull(l)
 #define qe__unused__
 #define likely(x)       (x)
 #define unlikely(x)     (x)
 #define __maybe_unused
+#define fallthrough           do {} while (0)
 #endif
 
 #ifndef offsetof
@@ -502,7 +504,7 @@ static inline void qe__list_del(struct list_head *prev, struct list_head *next)
 
 /* add at the head */
 #define list_add(elem, head) \
-   qe__list_add((struct list_head *)elem, head, (head)->next);
+   qe__list_add((struct list_head *)elem, head, (head)->next)
 
 /* add at tail */
 #define list_add_tail(elem, head) \

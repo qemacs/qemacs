@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -107,6 +107,7 @@ ModeDef *qe_find_mode_filename(const char *filename, int flags)
     ModeDef *m;
 
     for (m = qs->first_mode; m; m = m->next) {
+        // XXX: should have a filenames field to match basenames
         if ((m->flags & flags) == flags
         &&  match_extension(filename, m->extensions)) {
             break;
@@ -2797,20 +2798,20 @@ void do_goto(EditState *s, const char *str, int unit)
     switch (*p) {
     case 'g':
         pos *= 1000;
-        /* fall thru */
+        fallthrough;
     case 'm':
         pos *= 1000;
-        /* fall thru */
+        fallthrough;
     case 'k':
         pos *= 1000;
         p++;
         break;
     case 'G':
         pos *= 1024;
-        /* fall thru */
+        fallthrough;
     case 'M':
         pos *= 1024;
-        /* fall thru */
+        fallthrough;
     case 'K':
         pos *= 1024;
         p++;

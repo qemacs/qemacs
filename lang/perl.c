@@ -1,7 +1,7 @@
 /*
  * Perl Source mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -205,7 +205,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
                 j = i + 2;
                 goto keyword;
             }
-            /* FALL THRU */
+            fallthrough;
         case '*':
         case '@':       /* arrays */
         case '%':       /* associative arrays */

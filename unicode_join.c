@@ -2,7 +2,7 @@
  * Unicode joining algorithms for QEmacs.
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1197,9 +1197,9 @@ void bidir_analyze_string(BidirTypeLink *type_rl_list,
            changes to that type.
          */
         if (RL_LEN(pp) == 1 && prev_type == next_type) {
-            TYPE_RULE_C(EN, ES, EN, EN);
-            TYPE_RULE_C(EN, CS, EN, EN);
-            TYPE_RULE_C(AN, CS, AN, AN);
+            TYPE_RULE_C(EN, ES, EN, EN)
+            TYPE_RULE_C(EN, CS, EN, EN)
+            TYPE_RULE_C(AN, CS, AN, AN)
         }
         /* W5. A sequence of European terminators adjacent to European
            numbers changes to All European numbers.

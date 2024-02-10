@@ -772,7 +772,7 @@ static int get_class_atom(REParseState *s, CharRange *cr,
                 c = CLASS_RANGE_BASE;
                 break;
             }
-            /* fall thru */
+            fallthrough;
 #endif
         default:
             p--;
@@ -799,7 +799,7 @@ static int get_class_atom(REParseState *s, CharRange *cr,
         unexpected_end:
             return re_parse_error(s, "unexpected end");
         }
-        /* fall thru */
+        fallthrough;
     default:
     normal_char:
         /* normal char */
@@ -1263,7 +1263,7 @@ static int re_parse_term(REParseState *s, BOOL is_backward_dir)
                 goto parse_class_atom;
             }
         }
-        /* fall thru */
+        fallthrough;
     case '*':
     case '+':
     case '?':

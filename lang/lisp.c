@@ -1,7 +1,7 @@
 /*
  * Lisp Source mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -259,7 +259,7 @@ static void lisp_colorize_line(QEColorizeContext *cp,
         case ',':
             if (str[i] == '@')
                 i++;
-            /* FALL THRU */
+            fallthrough;
         case '`':
             style = LISP_STYLE_MACRO;
             break;
