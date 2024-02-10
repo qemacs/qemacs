@@ -1524,6 +1524,18 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d\n", w, "colorize_nb_lines", s->colorize_nb_lines);
     eb_printf(b1, "%*s: %d\n", w, "colorize_nb_valid_lines", s->colorize_nb_valid_lines);
     eb_printf(b1, "%*s: %d\n", w, "colorize_max_valid_offset", s->colorize_max_valid_offset);
+    if (s->colorize_nb_lines) {
+        int pos = eb_printf(b1, "%*s: {", w, "colorize_states");
+        int i;
+        for (i = 0; i < s->colorize_nb_lines; i++) {
+            if (s->colorize_states[i]) {
+                if (pos > 60)
+                    pos = eb_printf(b1, "\n%*s   ", w, "");
+                pos += eb_printf(b1, " %d: %x,", i, s->colorize_states[i]);
+            }
+        }
+        eb_printf(b1, "\n");
+    }
     eb_printf(b1, "%*s: %d\n", w, "busy", s->busy);
     eb_printf(b1, "%*s: %d\n", w, "display_invalid", s->display_invalid);
     eb_printf(b1, "%*s: %d\n", w, "borders_invalid", s->borders_invalid);

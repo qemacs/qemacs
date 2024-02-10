@@ -2,7 +2,7 @@
  * Shell mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -3496,69 +3496,190 @@ static int match_string(char32_t *buf, int n, const char *str) {
     return (str[i] == '\0') ? i : 0;
 }
 
+static int shell_grab_filename(const char32_t *buf, int n, char *dest, int size) {
+    int i, len = 0;
+    for (i = 0; i < n; i++) {
+        char32_t c = buf[i];
+        if (c == '(')
+            break;
+        if (c == ':' && i > 1)
+            break;
+        if (qe_isspace(c)) {
+            if (len)
+                break;
+            continue;
+        }
+        if (len + 1 < size) {
+            dest[len++] = c;
+        }
+    }
+    if (size)
+        dest[len] = '\0';
+    return i;
+}
+
+#define STATE_SHELL_SHIFT  7
+#define STATE_SHELL_MODE   0x001F
+#define STATE_SHELL_SKIP   0x0020
+#define STATE_SHELL_KEEP   0x0040
+#define STATE_SHELL_MASK   ((1 << STATE_SHELL_SHIFT) - 1)
+
+static ModeDef *mode_cache[STATE_SHELL_MODE + 1];
+static int mode_cache_len = 1;
+
+static int shell_find_mode(const char *filename) {
+    ModeDef *m = qe_find_mode_filename(filename, MODEF_SYNTAX);
+    int i;
+
+    for (i = 0; i < mode_cache_len; i++) {
+        if (m == mode_cache[i])
+            return i;
+    }
+    if (i == countof(mode_cache))
+        return 0;
+
+    mode_cache[i] = m;
+    mode_cache_len = i + 1;
+    return i;
+}
+
 void shell_colorize_line(QEColorizeContext *cp,
                          char32_t *str, int n, ModeDef *syn)
 {
     /* detect match lines for known languages and colorize accordingly */
-    static char filename[MAX_FILENAME_SIZE];
+    char filename[MAX_FILENAME_SIZE];
     ModeDef *m;
-    int i = 0, len;
+    int i = 0, start = 0;
 
-    if (cp->colorize_state) {
-        cp->colorize_state -= 1;
+    if (qe_isspace(str[0])) {
+        if (cp->colorize_state & STATE_SHELL_SKIP)
+            start = 1;
     } else {
-        len = 0;
-        if (!qe_isspace(str[0])) {
+        /* Detect patches and colorize according to filename */
+        if (str[0] == '+' || str[0] == '-') {
+            if (match_string(str, n, "+++ ") || match_string(str, n, "--- ")) {
+                shell_grab_filename(str + 4, n - 4, filename, countof(filename));
+                cp->colorize_state = shell_find_mode(filename);
+                cp->colorize_state |= STATE_SHELL_SKIP | STATE_SHELL_KEEP;
+                return;
+            } else
+            if (match_string(str, n, "+") || match_string(str, n, "-")) {
+                start = 1;
+            }
+        } else
+        if (str[0] == '<' || str[0] == '>') {
+            if (str[1] == ' ')
+                start = 2;
+            else
+                return;
+        } else
+        if (match_string(str, n, "@@")) {
+            /* patch diff location lines */
+            cp->colorize_state &= STATE_SHELL_MASK;  /* reset potential comment state */
+            return;
+        } else
+        if (match_string(str, n, "==> ")) {
+            /* head and tail file marker */
+            i = 4;
+            i += shell_grab_filename(str + i, n - i, filename, countof(filename));
+            if (match_string(str + i, n - i, " <==")) {
+                cp->colorize_state = shell_find_mode(filename);
+                cp->colorize_state |= STATE_SHELL_KEEP;
+                return;
+            }
+        } else {
+            /* Detect compiler messages and colorize according to filename */
             while (i < n) {
-                char32_t c = str[i++];
-                if (c == "()"[0]) {
-                    i += match_digits(str + i, n - i, "()"[1]); /* old style */
-                    i += (str[i] == ':');
-                    break;
-                }
-                if (c == ':') {
-                    i += match_digits(str + i, n - i, ':'); /* line number */
-                    i += match_digits(str + i, n - i, ':'); /* col number */
-                    if (match_string(str + i, n - i, " error:")
-                    ||  match_string(str + i, n - i, " note:")
-                    ||  match_string(str + i, n - i, " warning:")) {
-                        /* clang diagnostic, will colorize the next line */
-                        cp->colorize_state = 1;
-                        i = n;
-                    }
-                    break;
-                }
+                int w;
+                char32_t c = str[i];
                 if (qe_isspace(c)) {
-                    len = 0;
-                    break;
-                }
-                if (len < countof(filename) - 1) {
-                    /* capture filename extension */
-                    filename[len++] = c;
+                    i++;
+                    if (match_string(str + i, n - i, "> ")
+                    ||  match_string(str + i, n - i, "$ ")) {
+                        static const char * const commands[] = {
+                            "diff ", "head ", "tail ", "cat ", NULL
+                        };
+                        int k;
+                        /* Detect invocations of diff, grep, d... */
+                        i += 2;
+                        /* This looks like a prompt: reset the current mode */
+                        //cp->colorize_state = 0;
+                        for (k = 0; commands[k]; k++) {
+                            if ((w = match_string(str + i, n - i, commands[k])) != 0) {
+                                i += w;
+                                shell_grab_filename(str + i, n - i, filename, countof(filename));
+                                cp->colorize_state = shell_find_mode(filename);
+                                cp->colorize_state |= STATE_SHELL_KEEP;
+                                start = n;
+                                return;
+                            }
+                        }
+                    }
+                } else {
+                    int mc;
+                    w = shell_grab_filename(str + i, n - i, filename, countof(filename));
+                    if (i == 0) {
+                        char *p = strchr(filename, '@');
+                        if (p != NULL && p > filename && p[-1] != ' ') {
+                            /* This looks like a prompt: reset the current mode */
+                            cp->colorize_state = 0;
+                            return;
+                        }
+                    }
+                    if (w <= 0) {
+                        i++;
+                        continue;
+                    }
+                    i += w;
+                    mc = shell_find_mode(filename);
+                    if (!mc)
+                        continue;
+                    c = str[i];
+                    if (c == "()"[0]) {
+                        /* this is an old style filename position */
+                        i += match_digits(str + i, n - i, "()"[1]);
+                        i += (str[i] == ':');
+                        cp->colorize_state = mc;
+                        start = i;
+                        break;
+                    }
+                    if (c == ':') {
+                        /* this is a compiler message */
+                        i += match_digits(str + i, n - i, ':'); /* line number */
+                        i += match_digits(str + i, n - i, ':'); /* optional col number */
+                        start = i;
+                        cp->colorize_state = mc;
+                        if (match_string(str + i, n - i, " error:")
+                        ||  match_string(str + i, n - i, " note:")
+                        ||  match_string(str + i, n - i, " warning:")) {
+                            /* clang diagnostic, will colorize the next line */
+                            start = n;
+                            return;
+                        }
+                        break;
+                    }
                 }
             }
         }
-        filename[len] = '\0';
     }
-    if (cp->colorize_state == 0 && *filename) {
-        /* XXX: should verify if filename exists, but this is difficult
-         * if the current directory of the shell process changes and
-         * is not possible for remote shells.
-         */
-        /* XXX: filename based mode should be stored as a number into cp->colorize_state */
-        if (i < n && (m = qe_find_mode_filename(filename, MODEF_SYNTAX)) != NULL) {
+    if ((cp->colorize_state & STATE_SHELL_MODE)
+    &&  (m = mode_cache[cp->colorize_state & STATE_SHELL_MODE]) != NULL) {
+        int save_state = cp->colorize_state;
+        cp->colorize_state >>= STATE_SHELL_SHIFT;
+        m->colorize_func(cp, str + start, n - start, m);
+        if (save_state & STATE_SHELL_KEEP) {
+            cp->colorize_state <<= STATE_SHELL_SHIFT;
+            cp->colorize_state |= save_state & STATE_SHELL_MASK;
+        } else {
             cp->colorize_state = 0;
-            m->colorize_func(cp, str + i, n - i, m);
-            cp->combine_stop = i;
-            if (!(m->flags & MODEF_NO_TRAILING_BLANKS)) {
-                /* Mark trailing blanks as errors if cursor is not on same line */
-                int j;
-                for (j = n; j > i && qe_isblank(str[j - 1] & CHAR_MASK); j--) {
-                    str[j - 1] &= CHAR_MASK;
-                    SET_COLOR1(str, j - 1, QE_STYLE_BLANK_HILITE);
-                }
-            }
         }
+        cp->combine_stop = start;
+        /* Colorize trailing blanks if colorizing shell output */
+        for (i = n; i > start && qe_isblank(str[i - 1] & CHAR_MASK); i--) {
+            str[i - 1] &= CHAR_MASK;
+            SET_COLOR1(str, i - 1, QE_STYLE_BLANK_HILITE);
+        }
+    } else {
         cp->colorize_state = 0;
     }
 }
