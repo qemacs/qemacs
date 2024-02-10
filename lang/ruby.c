@@ -67,8 +67,9 @@ enum {
     RUBY_STYLE_REGEX =    QE_STYLE_STRING_Q,
     RUBY_STYLE_NUMBER =   QE_STYLE_NUMBER,
     RUBY_STYLE_KEYWORD =  QE_STYLE_KEYWORD,
+    RUBY_STYLE_TYPE =     QE_STYLE_TYPE,
     RUBY_STYLE_FUNCTION = QE_STYLE_FUNCTION,
-    RUBY_STYLE_MEMBER =   QE_STYLE_VARIABLE,
+    RUBY_STYLE_MEMBER =   QE_STYLE_DEFAULT,
     RUBY_STYLE_HEREDOC =  QE_STYLE_PREPROCESS,
 };
 
@@ -467,6 +468,10 @@ static void ruby_colorize_line(QEColorizeContext *cp,
 
                 if (strfind(syn->keywords, kbuf)) {
                     style = RUBY_STYLE_KEYWORD;
+                    break;
+                }
+                if (strfind(syn->types, kbuf)) {
+                    style = RUBY_STYLE_TYPE;
                     break;
                 }
                 if (qe_isblank(str[i]))

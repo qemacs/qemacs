@@ -2,7 +2,7 @@
  * C mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -2008,6 +2008,24 @@ ModeDef js_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Bee language syntax ----------------*/
+
+/* work in progress */
+
+static ModeDef bee_mode = {
+    .name = "Bee",
+    .alt_name = "bee",
+    .extensions = "bee",
+    .shell_handlers = "node",
+    .colorize_func = js_colorize_line,
+    .colorize_flags = CLANG_BEE | CLANG_REGEX,
+    .keywords = js_keywords,
+    .types = js_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 /*---------------- CSS syntax ----------------*/
 
 static const char css_keywords[] = {
@@ -3782,6 +3800,7 @@ static int c_init(void)
     qe_register_commands(&c_mode, c_commands, countof(c_commands));
     qe_register_mode(&cpp_mode, MODEF_SYNTAX);
     qe_register_mode(&js_mode, MODEF_SYNTAX);
+    qe_register_mode(&bee_mode, MODEF_SYNTAX);
     qe_register_mode(&java_mode, MODEF_SYNTAX);
     qe_register_mode(&php_mode, MODEF_SYNTAX);
     qe_register_mode(&go_mode, MODEF_SYNTAX);

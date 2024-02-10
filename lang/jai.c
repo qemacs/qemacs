@@ -1,7 +1,7 @@
 /*
  * Jai mode for QEmacs.
  *
- * Copyright (c) 2015-2023 Charlie Gordon.
+ * Copyright (c) 2015-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -242,9 +242,42 @@ static ModeDef jai_mode = {
     .fallback = &c_mode,
 };
 
+/*---------------- Vale coloring ----------------*/
+
+static char const vale_keywords[] = {
+    /* Vale control keywords */
+    "as|else|fn|for|if|imm|impl|infer-ret|inl|lock|mat|mut|nad|not|or|ret|yon|"
+    "foreach|in|while|set|_|"
+    /* Vale other keywords */
+    "abstract|destruct|drop|interface|rules|sealed|struct|this|virtual|weakable|"
+    /* Vale import keywords */
+    "export|extern|"
+    "exported|func|import|where|self|"
+    /* Vale constants */
+    "true|false|void|"
+    /* Vale operators */
+    "and|mod|"
+};
+
+static char const vale_types[] = {
+    "str|int|i64|bool|float|Opt|None|Ref|Array|List|Vec|HashMap"
+};
+
+static ModeDef vale_mode = {
+    .name = "Vale",
+    .extensions = "vale",
+    .keywords = vale_keywords,
+    .types = vale_types,
+    .colorize_func = jai_colorize_line,
+    //.indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
 static int jai_init(void)
 {
     qe_register_mode(&jai_mode, MODEF_SYNTAX);
+    qe_register_mode(&vale_mode, MODEF_SYNTAX);
 
     return 0;
 }
