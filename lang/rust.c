@@ -39,7 +39,7 @@ static const char rust_keywords[] = {
 
 static const char rust_types[] = {
     "bool|char|i8|i16|i32|i64|isize|u8|u16|u32|u64|usize|f32|f64|str|"
-    "String|PathBuf|None|Option|Vec|List|Box|Cons|"
+    "String|PathBuf|None|Option|Result|Vec|List|Box|Cons|"
 };
 
 enum {
