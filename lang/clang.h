@@ -85,6 +85,7 @@ enum {
     CLANG_SALMON,
     CLANG_CARBON,
     CLANG_BEE,
+    CLANG_V8,
     CLANG_FLAVOR = 0x3F,
 };
 

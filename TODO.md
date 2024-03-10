@@ -432,6 +432,8 @@ insert_window_left()  deletes some left-most windows
   * `d-mode`
   * `java-mode`
   * `javascript-mode`, `js-mode` -> javascript files
+    * support for v8 natives syntax %ddd()
+    * handle missing semicolons
   * `json-mode`
   * `scala-mode`
   * `yacc-mode`

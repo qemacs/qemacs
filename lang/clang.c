@@ -1814,13 +1814,22 @@ static void js_colorize_line(QEColorizeContext *cp,
             }
             continue;
         case '#':       /* preprocessor */
-            if (start == 0 && str[i] == '!') {
+            /* v8: #include */
+            if (start == 0 &&
+                (str[i] == '!' ||
+                 (flavor == CLANG_V8 &&
+                  ustrstart(str + i + 1, "include", NULL))))
+            {
                 /* recognize a shebang comment line */
                 style = C_STYLE_PREPROCESS;
                 i = n;
                 break;
             }
             continue;
+        case '@':       /* annotations */
+            i += get_js_identifier(kbuf, countof(kbuf), c, str, i, n);
+            style = C_STYLE_PREPROCESS;
+            break;
         case '`':       /* ECMA 6 template strings */
         parse_string_bq:
             state |= IN_C_STRING_BQ;
@@ -2003,6 +2012,42 @@ ModeDef js_mode = {
     .colorize_flags = CLANG_JS | CLANG_REGEX,
     .keywords = js_keywords,
     .types = js_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
+
+/*---------------- V8 Torque programming language ----------------*/
+
+static const char v8_keywords[] = {
+    /* constants */
+    "undefined|null|true|false|Infinity|NaN|"
+    /* classic keywords */
+    "import|let|const|return|if|else|break|continue|for|while|case|"
+    "class|extends|struct|constexpr|extern|namespace|goto|"
+    /* V8 specific */
+    "typeswitch|tail|debug|enum|"
+    "dcheck|check|static_assert|transitioning|operator|"
+    "transient|shape|bitfield|intrinsic|javascript|"
+    "macro|generates|otherwise|builtin|implicit|weak|"
+    "never|label|labels|unreachable|runtime|deferred|"
+};
+
+static const char v8_types[] = {
+    "void|var|type|bool|string|bit|"
+    "int8|int16|int31|int32|int64|uint8|uint16|uint31|uint32|uint64|"
+    "intptr|uintptr|bint|float16|float32|float64|"
+    "ByteArray|Object|Map|JSAny|JSFunction|JSObject|Smi|String|Number|"
+};
+
+static ModeDef v8_mode = {
+    .name = "V8 Torque",
+    .alt_name = "tq",
+    .extensions = "tq",
+    .colorize_func = js_colorize_line,
+    .colorize_flags = CLANG_V8 | CLANG_REGEX,
+    .keywords = v8_keywords,
+    .types = v8_types,
     .indent_func = c_indent_line,
     .auto_indent = 1,
     .fallback = &c_mode,
@@ -3800,6 +3845,7 @@ static int c_init(void)
     qe_register_commands(&c_mode, c_commands, countof(c_commands));
     qe_register_mode(&cpp_mode, MODEF_SYNTAX);
     qe_register_mode(&js_mode, MODEF_SYNTAX);
+    qe_register_mode(&v8_mode, MODEF_SYNTAX);
     qe_register_mode(&bee_mode, MODEF_SYNTAX);
     qe_register_mode(&java_mode, MODEF_SYNTAX);
     qe_register_mode(&php_mode, MODEF_SYNTAX);
