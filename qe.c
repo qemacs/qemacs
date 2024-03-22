@@ -7422,6 +7422,31 @@ void do_switch_to_buffer(EditState *s, const char *bufname)
         switch_to_buffer(s, b);
 }
 
+void do_next_buffer(EditState *s)
+{
+    EditBuffer *b = s->b->next;
+    if (b == NULL) {
+        b = s->qe_state->first_buffer;
+    }
+    switch_to_buffer(s, b);
+}
+
+void do_previous_buffer(EditState *s)
+{
+    EditBuffer *ob = s->b;
+    EditBuffer *nb = s->qe_state->first_buffer;
+    if (ob == nb) {
+        while (nb->next != NULL) {
+            nb = nb->next;
+        }
+    } else {
+        while (nb->next != ob) {
+            nb = nb->next;
+        }
+    }
+    switch_to_buffer(s, nb);
+}
+
 void do_toggle_read_only(EditState *s)
 {
     s->b->flags ^= BF_READONLY;

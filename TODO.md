@@ -62,8 +62,6 @@
   an EditBuffer could also have an embedded QECursor with no EditState
 * use hash tables for command and variable names
 * sort key binding tables?
-* `next-buffer` command on C-x C-right
-* `previous-buffer` command on C-x C-left
 * `save-some-buffers` command on C-x s
 * standardize key prefixes: C-, M-, S- and possibly others
 * use C-M- prefix instead of M-C- in source and documentation but support
