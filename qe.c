@@ -7422,29 +7422,51 @@ void do_switch_to_buffer(EditState *s, const char *bufname)
         switch_to_buffer(s, b);
 }
 
+/* Find next non-system buffer from the specified buffer. If the specified
+buffer is the last one, returns the first one. If only one non-system buffer
+exists currently, return itself. */
+EditBuffer *next_non_system_buffer(EditState *s, EditBuffer *b) {
+    EditBuffer *nb = b == NULL ? NULL : b->next;
+    if (nb == NULL) {
+        nb = s->qe_state->first_buffer;
+    }
+    /* qemacs gurantee at least one non-system buffer (i.e. `*scratch*`) exists */
+    while (nb->flags & BF_SYSTEM) {
+        nb = nb->next;
+        if (nb == NULL) {
+            nb = s->qe_state->first_buffer;
+        }
+    }
+    return nb;
+}
+
 void do_next_buffer(EditState *s)
 {
-    EditBuffer *b = s->b->next;
-    if (b == NULL) {
-        b = s->qe_state->first_buffer;
-    }
+    EditBuffer *b = next_non_system_buffer(s, s->b);
     switch_to_buffer(s, b);
 }
 
 void do_previous_buffer(EditState *s)
 {
-    EditBuffer *ob = s->b;
-    EditBuffer *nb = s->qe_state->first_buffer;
-    if (ob == nb) {
-        while (nb->next != NULL) {
-            nb = nb->next;
-        }
-    } else {
-        while (nb->next != ob) {
-            nb = nb->next;
-        }
+    /* what we want to compare & find are non-system buffers, so need to ignore
+    all non-system buffer; or it may fall into an infinite loop. */
+
+    /* original buffer is immutable */
+    EditBuffer *orig = s->b;
+    if (orig->flags & BF_SYSTEM) {
+        orig = next_non_system_buffer(s, orig);
     }
-    switch_to_buffer(s, nb);
+    /* find from first buffer*/
+    EditBuffer *curr = s->qe_state->first_buffer;
+    if (curr->flags & BF_SYSTEM) {
+        curr = next_non_system_buffer(s, curr);
+    }
+    EditBuffer *curr_next = next_non_system_buffer(s, curr);
+    while (curr_next != orig) {
+        curr = curr_next;
+        curr_next = next_non_system_buffer(s, curr_next);
+    }
+    switch_to_buffer(s, curr);
 }
 
 void do_toggle_read_only(EditState *s)
