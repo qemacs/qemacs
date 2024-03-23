@@ -7442,12 +7442,20 @@ EditBuffer *next_non_system_buffer(EditState *s, EditBuffer *b) {
 
 void do_next_buffer(EditState *s)
 {
+    /* ignore command from the minibuffer and popups */
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
+        return;
+
     EditBuffer *b = next_non_system_buffer(s, s->b);
     switch_to_buffer(s, b);
 }
 
 void do_previous_buffer(EditState *s)
 {
+    /* ignore command from the minibuffer and popups */
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
+        return;
+
     /* what we want to compare & find are non-system buffers, so need to ignore
     all non-system buffer; or it may fall into an infinite loop. */
 
