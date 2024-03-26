@@ -224,6 +224,12 @@ static const CmdDef basic_commands[] = {
           do_kill_buffer, ESsi,
           "s{Kill buffer: }[buffer]|buffer|"
           "v", 0)
+    CMD0( "next-buffer", "C-x C-right",
+          "Switch to the next buffer",
+          do_next_buffer)
+    CMD0( "previous-buffer", "C-x C-left",
+          "Switch to the previous buffer",
+          do_previous_buffer)
     CMD0( "toggle-read-only", "C-x C-q, C-c %",
           "Toggle the read-only flag of the current buffer",
           do_toggle_read_only)
