@@ -591,7 +591,7 @@ static const CmdDef var_commands[] = {
           "s{Describe variable: }[variable]|variable|")
 };
 
-static int vars_init(void) {
+static int vars_init(QEmacsState *qs) {
     qe_register_variables(var_table, countof(var_table));
     qe_register_commands(NULL, var_commands, countof(var_commands));
     qe_register_completion(&variable_completion);

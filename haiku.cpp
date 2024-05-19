@@ -896,7 +896,7 @@ static QEDisplay haiku_dpy = {
     NULL, /* next */
 };
 
-static int haiku_init(void)
+static int haiku_module_init(QEmacsState *qs)
 {
     QEmacsState *qs = &qe_state;
 
@@ -917,4 +917,4 @@ static int haiku_init(void)
     return qe_register_display(&haiku_dpy);
 }
 
-qe_module_init(haiku_init);
+qe_module_init(haiku_module_init);

@@ -1609,7 +1609,7 @@ int charset_goto_char_8bit(CharsetDecodeState *s,
 
 /********************************************************/
 
-void charset_init(void) {
+void charset_init(struct QEmacsState *qs) {
     qe_register_charset(&charset_raw);
     qe_register_charset(&charset_8859_1);
     qe_register_charset(&charset_vt100);

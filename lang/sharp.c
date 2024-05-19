@@ -75,7 +75,7 @@ static ModeDef sharp_mode = {
     .colorize_func = sharp_colorize_line,
 };
 
-static int sharp_init(void)
+static int sharp_init(QEmacsState *qs)
 {
     qe_register_mode(&sharp_mode, MODEF_SYNTAX);
 

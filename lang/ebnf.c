@@ -206,7 +206,7 @@ static ModeDef antlr_mode = {
     .colorize_func = ebnf_colorize_line,
 };
 
-static int ebnf_init(void)
+static int ebnf_init(QEmacsState *qs)
 {
     qe_register_mode(&antlr_mode, MODEF_SYNTAX);
     qe_register_mode(&ebnf_mode, MODEF_SYNTAX);

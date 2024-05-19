@@ -347,7 +347,7 @@ int main(int argc, char **argv)
            "\n" "#include \"qe.h\""
            "\n" "");
 
-    add_init("int charset_more_init(void)\n{\n");
+    add_init("int charset_more_init(QEmacsState *qs)\n{\n");
 
     for (i = 1; i < argc; i++) {
         filename = argv[i];

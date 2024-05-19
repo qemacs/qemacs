@@ -205,7 +205,7 @@ static ModeDef magpie_mode = {
     .colorize_func = magpie_colorize_line,
 };
 
-static int magpie_init(void)
+static int magpie_init(QEmacsState *qs)
 {
     qe_register_mode(&magpie_mode, MODEF_SYNTAX);
 

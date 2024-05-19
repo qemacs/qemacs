@@ -1488,7 +1488,7 @@ static const CmdDef parser_commands[] = {
           do_eval_buffer, ESi, "P")
 };
 
-static int parser_init(void) {
+static int parser_init(QEmacsState *qs) {
     qe_register_commands(NULL, parser_commands, countof(parser_commands));
 #ifndef CONFIG_TINY
     qe_register_completion(&symbol_completion);

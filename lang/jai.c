@@ -274,7 +274,7 @@ static ModeDef vale_mode = {
     .fallback = &c_mode,
 };
 
-static int jai_init(void)
+static int jai_init(QEmacsState *qs)
 {
     qe_register_mode(&jai_mode, MODEF_SYNTAX);
     qe_register_mode(&vale_mode, MODEF_SYNTAX);

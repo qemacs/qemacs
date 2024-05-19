@@ -223,7 +223,7 @@ static ModeDef falcon_mode = {
     .keywords = falcon_keywords,
 };
 
-static int falcon_init(void)
+static int falcon_init(QEmacsState *qs)
 {
     qe_register_mode(&falcon_mode, MODEF_SYNTAX);
 

@@ -267,7 +267,7 @@ static ModeDef vim_mode = {
     .colorize_func = vim_colorize_line,
 };
 
-static int vim_init(void)
+static int vim_init(QEmacsState *qs)
 {
     qe_register_mode(&vim_mode, MODEF_SYNTAX);
 

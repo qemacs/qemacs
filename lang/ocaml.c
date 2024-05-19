@@ -273,7 +273,7 @@ static ModeDef eff_mode = {
     .colorize_func = ocaml_colorize_line,
 };
 
-static int ocaml_init(void)
+static int ocaml_init(QEmacsState *qs)
 {
     qe_register_mode(&ocaml_mode, MODEF_SYNTAX);
     qe_register_mode(&eff_mode, MODEF_SYNTAX);

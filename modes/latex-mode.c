@@ -356,7 +356,7 @@ static CompletionDef latex_completion = {
     "latex", latex_complete,
 };
 
-static int latex_init(void)
+static int latex_init(QEmacsState *qs)
 {
     qe_register_mode(&latex_mode, MODEF_SYNTAX);
     qe_register_mode(&texinfo_mode, MODEF_SYNTAX);

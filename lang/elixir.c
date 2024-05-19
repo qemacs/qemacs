@@ -291,7 +291,7 @@ static ModeDef elixir_mode = {
     .colorize_func = elixir_colorize_line,
 };
 
-static int elixir_init(void)
+static int elixir_init(QEmacsState *qs)
 {
     qe_register_mode(&elixir_mode, MODEF_SYNTAX);
 

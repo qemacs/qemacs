@@ -209,7 +209,7 @@ static ModeDef r_mode = {
     .colorize_func = r_colorize_line,
 };
 
-static int r_init(void)
+static int r_init(QEmacsState *qs)
 {
     qe_register_mode(&r_mode, MODEF_SYNTAX);
 

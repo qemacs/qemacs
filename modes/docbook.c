@@ -49,7 +49,7 @@ static int docbook_mode_init(EditState *s, EditBuffer *b, int flags)
 
 static ModeDef docbook_mode;
 
-static int docbook_init(void)
+static int docbook_init(QEmacsState *qs)
 {
     /* inherit from html mode */
     // XXX: remove this mess: should just inherit with fallback

@@ -537,7 +537,7 @@ static ModeDef xaos_mode = {
     .fallback = &lisp_mode,
 };
 
-static int lisp_init(void)
+static int lisp_init(QEmacsState *qs)
 {
     qe_register_mode(&lisp_mode, MODEF_SYNTAX);
     qe_register_mode(&elisp_mode, MODEF_SYNTAX);

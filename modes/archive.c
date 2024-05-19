@@ -189,7 +189,7 @@ static ModeDef archive_mode = {
     .data_type = &archive_data_type,
 };
 
-static int archive_init(void)
+static int archive_init(QEmacsState *qs)
 {
     int i;
 
@@ -336,7 +336,7 @@ static ModeDef compress_mode = {
     .data_type = &compress_data_type,
 };
 
-static int compress_init(void)
+static int compress_init(QEmacsState *qs)
 {
     int i;
 
@@ -417,7 +417,7 @@ static EditBufferDataType wget_data_type = {
     NULL, /* next */
 };
 
-static int wget_init(void)
+static int wget_init(QEmacsState *qs)
 {
     /* copy and patch text_mode */
     // XXX: remove this mess
@@ -509,7 +509,7 @@ static EditBufferDataType man_data_type = {
     NULL, /* next */
 };
 
-static int man_init(void)
+static int man_init(QEmacsState *qs)
 {
     /* copy and patch text_mode */
     // XXX: remove this mess
@@ -526,12 +526,12 @@ static int man_init(void)
 
 /*---------------- Initialization ----------------*/
 
-static int archive_compress_init(void)
+static int archive_compress_init(QEmacsState *qs)
 {
-    return archive_init() ||
-            compress_init() ||
-            wget_init() ||
-            man_init();
+    return archive_init(qs) ||
+            compress_init(qs) ||
+            wget_init(qs) ||
+            man_init(qs);
 }
 
 qe_module_init(archive_compress_init);

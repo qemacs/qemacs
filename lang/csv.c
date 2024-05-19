@@ -254,7 +254,8 @@ static ModeDef csv_mode = {
     .colorize_func = csv_colorize_line,
 };
 
-static int csv_init(void) {
+static int csv_init(QEmacsState *qs)
+{
     qe_register_mode(&csv_mode, MODEF_SYNTAX);
     return 0;
 }

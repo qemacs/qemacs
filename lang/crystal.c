@@ -507,7 +507,7 @@ static ModeDef crystal_mode = {
     .colorize_func = crystal_colorize_line,
 };
 
-static int crystal_init(void)
+static int crystal_init(QEmacsState *qs)
 {
     qe_register_mode(&crystal_mode, MODEF_SYNTAX);
     return 0;

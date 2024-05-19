@@ -367,7 +367,7 @@ static ModeDef hex_mode = {
     .fallback = &binary_mode,
 };
 
-static int hex_init(void)
+static int hex_init(QEmacsState *qs)
 {
     /* first register mode(s) */
     qe_register_mode(&binary_mode, MODEF_VIEW);

@@ -131,7 +131,7 @@ static ModeDef emf_mode = {
     .colorize_func = emf_colorize_line,
 };
 
-static int emf_init(void)
+static int emf_init(QEmacsState *qs)
 {
     qe_register_mode(&emf_mode, MODEF_SYNTAX);
 

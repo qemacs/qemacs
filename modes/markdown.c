@@ -930,7 +930,7 @@ static ModeDef litcoffee_mode = {
     // XXX: should use fallback for key bindings
 };
 
-static int mkd_init(void)
+static int mkd_init(QEmacsState *qs)
 {
     qe_register_mode(&mkd_mode, MODEF_SYNTAX);
     qe_register_commands(&mkd_mode, mkd_commands, countof(mkd_commands));

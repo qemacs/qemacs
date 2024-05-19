@@ -451,7 +451,7 @@ typedef struct LogBuffer {
 
 void eb_trace_bytes(const void *buf, int size, int state);
 
-void eb_init(void);
+void eb_init(QEmacsState *qs);
 int eb_read_one_byte(EditBuffer *b, int offset);
 int eb_read(EditBuffer *b, int offset, void *buf, int size);
 int eb_write(EditBuffer *b, int offset, const void *buf, int size);
@@ -599,20 +599,23 @@ void eb_delete_properties(EditBuffer *b, int offset, int offset2);
 /* dynamic module case */
 
 #define qe_module_init(fn) \
-        int qe__module_init(void) { return fn(); }
+        int qe__module_init(QEmacsState *qs) { return fn(qs); }
 
 #define qe_module_exit(fn) \
-        void qe__module_exit(void) { fn(); }
+        void qe__module_exit(QEmacsState *qs) { fn(qs); }
 
 #else /* QE_MODULE */
 
-void init_all_modules(void);
+void init_all_modules(QEmacsState *qs);
+void exit_all_modules(QEmacsState *qs);
 
 #define qe_module_init(fn) \
-        extern int module_##fn(void); \
-        int module_##fn(void) { return fn(); }
+        extern int module_##fn(QEmacsState *qs); \
+        int module_##fn(QEmacsState *qs) { return fn(qs); }
 
-#define qe_module_exit(fn)
+#define qe_module_exit(fn) \
+        extern void module_##fn(QEmacsState *qs); \
+        void module_##fn(QEmacsState *qs) { fn(qs); }
 
 #endif /* QE_MODULE */
 
@@ -1286,7 +1289,7 @@ struct InputMethod {
 void register_input_method(InputMethod *m);
 void do_set_input_method(EditState *s, const char *method);
 void do_switch_input_method(EditState *s);
-void init_input_methods(void);
+void input_methods_init(QEmacsState *qs);
 int load_input_methods(const char *filename);
 void unload_input_methods(void);
 
@@ -1295,7 +1298,7 @@ void unload_input_methods(void);
 
 /* minibuffer & status */
 
-void minibuffer_init(void);
+void minibuffer_init(QEmacsState *qs);
 
 typedef struct CompletionDef {
     const char *name;
@@ -1608,7 +1611,7 @@ void do_apropos(EditState *s, const char *str);
 EditBuffer *new_help_buffer(void);
 void do_describe_bindings(EditState *s, int argval);
 void do_help_for_help(EditState *s);
-void qe_event_init(void);
+void qe_event_init(QEmacsState *qs);
 void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr);
 void window_resize(EditState *s, int target_w, int target_h);
 void wheel_scroll_up_down(EditState *s, int dir);

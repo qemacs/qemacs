@@ -537,7 +537,7 @@ static QEDisplay win32_dpy = {
     NULL, /* next */
 };
 
-static int win32_init(void)
+static int win32_init(QEmacsState *qs)
 {
     return qe_register_display(&win32_dpy);
 }

@@ -2514,7 +2514,7 @@ static const CmdDef extra_commands[] = {
           do_kill_paragraph, ESi, "p")
 };
 
-static int extras_init(void) {
+static int extras_init(QEmacsState *qs) {
     qe_register_commands(NULL, extra_commands, countof(extra_commands));
     qe_register_completion(&tag_completion);
     qe_register_completion(&charname_completion);

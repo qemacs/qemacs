@@ -197,7 +197,7 @@ static ModeDef lua_mode = {
     .colorize_func = lua_colorize_line,
 };
 
-static int lua_init(void)
+static int lua_init(QEmacsState *qs)
 {
     qe_register_mode(&lua_mode, MODEF_SYNTAX);
 

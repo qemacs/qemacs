@@ -1838,7 +1838,7 @@ static struct QECharset charset_atarist = {
     .private_table = table_atarist,
 };
 
-int charset_more_init(void)
+int charset_more_init(QEmacsState *qs)
 {
     qe_register_charset(&charset_8859_2);
     qe_register_charset(&charset_8859_3);

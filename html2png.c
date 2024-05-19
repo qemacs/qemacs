@@ -427,14 +427,17 @@ static void help(void)
 
 int main(int argc, char **argv)
 {
+    QEmacsState state, *qs;
     QEditScreen screen1, *screen = &screen1;
     int page_width, c, strict_xml, flags;
     const char *outfilename, *infilename;
     QECharset *charset;
 
-    charset_init();
-    charset_more_init();
-    charset_jis_init();
+    qs = memset(&state, 0, sizeof state);
+
+    charset_init(qs);
+    charset_more_init(qs);
+    charset_jis_init(qs);
     css_init();
 
     page_width = DEFAULT_WIDTH;

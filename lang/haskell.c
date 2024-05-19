@@ -252,7 +252,7 @@ static ModeDef haskell_mode = {
     .colorize_func = haskell_colorize_line,
 };
 
-static int haskell_init(void)
+static int haskell_init(QEmacsState *qs)
 {
     qe_register_mode(&haskell_mode, MODEF_SYNTAX);
 

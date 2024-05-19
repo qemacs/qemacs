@@ -243,7 +243,7 @@ static struct QECharset charset_sjis = {
     .eol_char = 10,
 };
 
-int charset_jis_init(void)
+int charset_jis_init(QEmacsState *qs)
 {
     qe_register_charset(&charset_sjis);
     qe_register_charset(&charset_euc_jp);

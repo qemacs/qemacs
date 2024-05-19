@@ -1716,7 +1716,7 @@ static QEDisplay tty_dpy = {
     NULL, /* next */
 };
 
-static int tty_init(void)
+static int tty_init(QEmacsState *qs)
 {
     return qe_register_display(&tty_dpy);
 }

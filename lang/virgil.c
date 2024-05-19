@@ -461,7 +461,7 @@ static ModeDef virgil_mode = {
     .fallback = &c_mode,
 };
 
-static int virgil_init(void)
+static int virgil_init(QEmacsState *qs)
 {
     qe_register_mode(&virgil_mode, MODEF_SYNTAX);
 
