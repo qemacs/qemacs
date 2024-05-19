@@ -922,7 +922,7 @@ static CompletionDef pixel_format_completion = {
     "pixel-format", pixel_format_complete
 };
 
-static int image_init(void) {
+static int image_init(QEmacsState *qs) {
     av_register_all();
     eb_register_data_type(&image_data_type);
     qe_register_mode(&image_mode, MODEF_DATATYPE | MODEF_VIEW);

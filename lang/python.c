@@ -359,7 +359,7 @@ static ModeDef bazel_mode = {
     .colorize_flags = PYTHON_BAZEL,
 };
 
-static int python_init(void)
+static int python_init(QEmacsState *qs)
 {
     qe_register_mode(&python_mode, MODEF_SYNTAX);
     qe_register_mode(&rapydscript_mode, MODEF_SYNTAX);

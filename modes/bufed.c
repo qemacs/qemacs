@@ -572,7 +572,7 @@ static const char * const bufed_bindings[] = {
     NULL
 };
 
-static int bufed_init(void)
+static int bufed_init(QEmacsState *qs)
 {
     /* inherit from list mode */
     /* CG: assuming list_mode already initialized ? */

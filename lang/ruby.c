@@ -511,7 +511,7 @@ static ModeDef ruby_mode = {
     .colorize_func = ruby_colorize_line,
 };
 
-static int ruby_init(void)
+static int ruby_init(QEmacsState *qs)
 {
     qe_register_mode(&ruby_mode, MODEF_SYNTAX);
 

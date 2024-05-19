@@ -1645,7 +1645,7 @@ static ModeDef isearch_mode = {
     //.desc = "";
 };
 
-static int search_init(void) {
+static int search_init(QEmacsState *qs) {
     qe_register_mode(&isearch_mode, MODEF_NOCMD);
     qe_register_commands(&isearch_mode, isearch_commands, countof(isearch_commands));
     qe_register_commands(NULL, search_commands, countof(search_commands));

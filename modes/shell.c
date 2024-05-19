@@ -3835,7 +3835,7 @@ static const char * const pager_bindings[] = {
     NULL
 };
 
-static int shell_init(void)
+static int shell_init(QEmacsState *qs)
 {
     /* populate and register shell mode and commands */
     // XXX: remove this mess: should just inherit with fallback

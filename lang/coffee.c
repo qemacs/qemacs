@@ -374,7 +374,7 @@ static ModeDef coffee_mode = {
     .colorize_func = coffee_colorize_line,
 };
 
-static int coffee_init(void)
+static int coffee_init(QEmacsState *qs)
 {
     qe_register_mode(&coffee_mode, MODEF_SYNTAX);
 

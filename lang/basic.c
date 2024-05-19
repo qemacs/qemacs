@@ -126,7 +126,7 @@ static ModeDef basic_mode = {
     .colorize_func = basic_colorize_line,
 };
 
-static int basic_init(void)
+static int basic_init(QEmacsState *qs)
 {
     qe_register_mode(&basic_mode, MODEF_SYNTAX);
 

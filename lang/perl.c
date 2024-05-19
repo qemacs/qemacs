@@ -385,7 +385,7 @@ static ModeDef perl_mode = {
     .types = perl_types,
 };
 
-static int perl_init(void)
+static int perl_init(QEmacsState *qs)
 {
     qe_register_mode(&perl_mode, MODEF_SYNTAX);
 

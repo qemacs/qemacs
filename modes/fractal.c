@@ -1257,7 +1257,7 @@ static const CmdDef fractal_global_commands[] = {
           do_mandelbrot_test, ESi, "p")
 };
 
-static int fractal_init(void)
+static int fractal_init(QEmacsState *qs)
 {
     qe_register_mode(&fractint_mode, MODEF_SYNTAX);
     qe_register_commands(NULL, fractal_global_commands, countof(fractal_global_commands));

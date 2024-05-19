@@ -207,7 +207,7 @@ static ModeDef icon_mode = {
     .fallback = &c_mode,
 };
 
-static int icon_init(void)
+static int icon_init(QEmacsState *qs)
 {
     qe_register_mode(&icon_mode, MODEF_SYNTAX);
 

@@ -238,7 +238,7 @@ static ModeDef wolfram_mode = {
     .colorize_func = wolfram_colorize_line,
 };
 
-static int wolfram_init(void)
+static int wolfram_init(QEmacsState *qs)
 {
     qe_register_mode(&wolfram_mode, MODEF_SYNTAX);
 

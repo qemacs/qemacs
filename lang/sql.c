@@ -204,7 +204,7 @@ static ModeDef sql_mode = {
     .colorize_func = sql_colorize_line,
 };
 
-static int sql_init(void)
+static int sql_init(QEmacsState *qs)
 {
     qe_register_mode(&sql_mode, MODEF_SYNTAX);
 

@@ -258,7 +258,7 @@ static ModeDef cmake_mode = {
     .colorize_func = cmake_colorize_line,
 };
 
-static int makefile_init(void)
+static int makefile_init(QEmacsState *qs)
 {
     qe_register_mode(&makefile_mode, MODEF_SYNTAX);
     qe_register_mode(&cmake_mode, MODEF_SYNTAX);

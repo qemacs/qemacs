@@ -194,7 +194,7 @@ static ModeDef pascal_mode = {
     .colorize_func = pascal_colorize_line,
 };
 
-static int pascal_init(void)
+static int pascal_init(QEmacsState *qs)
 {
     qe_register_mode(&pascal_mode, MODEF_SYNTAX);
 

@@ -939,7 +939,7 @@ ModeDef html_mode = {
     .write_char = text_write_char,
 };
 
-static int html_init(void)
+static int html_init(QEmacsState *qs)
 {
     css_init();
 

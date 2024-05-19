@@ -173,7 +173,7 @@ static ModeDef arm_asm_mode = {
     .colorize_func = arm_asm_colorize_line,
 };
 
-static int arm_asm_init(void)
+static int arm_asm_init(QEmacsState *qs)
 {
     qe_register_mode(&arm_asm_mode, MODEF_SYNTAX);
     return 0;
@@ -303,7 +303,7 @@ static ModeDef arm_lst_mode = {
     .keywords = arm_registers,
 };
 
-static int arm_lst_init(void)
+static int arm_lst_init(QEmacsState *qs)
 {
     qe_register_mode(&arm_lst_mode, MODEF_SYNTAX);
     return 0;
@@ -371,7 +371,7 @@ static ModeDef intel_hex_mode = {
     .colorize_func = intel_hex_colorize_line,
 };
 
-static int intel_hex_init(void)
+static int intel_hex_init(QEmacsState *qs)
 {
     qe_register_mode(&intel_hex_mode, MODEF_SYNTAX);
     return 0;
@@ -379,11 +379,11 @@ static int intel_hex_init(void)
 
 /*----------------*/
 
-static int arm_modes_init(void)
+static int arm_modes_init(QEmacsState *qs)
 {
-    arm_asm_init();
-    arm_lst_init();
-    intel_hex_init();
+    arm_asm_init(qs);
+    arm_lst_init(qs);
+    intel_hex_init(qs);
     return 0;
 }
 

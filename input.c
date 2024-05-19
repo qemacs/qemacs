@@ -129,7 +129,7 @@ static CompletionDef input_completion = {
     "input", input_complete,
 };
 
-void init_input_methods(void)
+void input_methods_init(QEmacsState *qs)
 {
     register_input_method(&default_input_method);
     register_input_method(&unicode_input_method);

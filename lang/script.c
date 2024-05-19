@@ -350,7 +350,7 @@ static ModeDef tcsh_mode = {
     .keywords = shell_script_keywords,
 };
 
-static int shell_script_init(void)
+static int shell_script_init(QEmacsState *qs)
 {
     qe_register_mode(&sh_mode, MODEF_SYNTAX);
     qe_register_mode(&bash_mode, MODEF_SYNTAX);

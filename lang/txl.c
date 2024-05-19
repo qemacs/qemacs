@@ -161,7 +161,7 @@ static ModeDef txl_mode = {
     .colorize_func = txl_colorize_line,
 };
 
-static int txl_init(void)
+static int txl_init(QEmacsState *qs)
 {
     qe_register_mode(&txl_mode, MODEF_SYNTAX);
 

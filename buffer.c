@@ -2806,7 +2806,7 @@ EditBufferDataType raw_data_type = {
 };
 
 /* init buffer handling */
-void eb_init(void)
+void eb_init(QEmacsState *qs)
 {
     eb_register_data_type(&raw_data_type);
 }

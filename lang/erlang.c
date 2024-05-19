@@ -264,7 +264,7 @@ static ModeDef erlang_mode = {
     .colorize_func = erlang_colorize_line,
 };
 
-static int erlang_init(void)
+static int erlang_init(QEmacsState *qs)
 {
     qe_register_mode(&erlang_mode, MODEF_SYNTAX);
 

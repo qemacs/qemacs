@@ -3839,7 +3839,7 @@ static ModeDef salmon_mode = {
 
 /*---------------- Common initialization code ----------------*/
 
-static int c_init(void)
+static int c_init(QEmacsState *qs)
 {
     qe_register_mode(&c_mode, MODEF_SYNTAX);
     qe_register_commands(&c_mode, c_commands, countof(c_commands));

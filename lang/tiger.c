@@ -181,7 +181,7 @@ static ModeDef tiger_mode = {
     .colorize_func = tiger_colorize_line,
 };
 
-static int tiger_init(void)
+static int tiger_init(QEmacsState *qs)
 {
     qe_register_mode(&tiger_mode, MODEF_SYNTAX);
 

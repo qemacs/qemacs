@@ -266,7 +266,7 @@ static ModeDef unihex_mode = {
     //.fallback = &binary_mode,
 };
 
-static int unihex_init(void) {
+static int unihex_init(QEmacsState *qs) {
     qe_register_mode(&unihex_mode, MODEF_VIEW);
     return 0;
 }

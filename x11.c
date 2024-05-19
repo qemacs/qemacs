@@ -2038,7 +2038,7 @@ static CmdLineOptionDef cmd_options[] = {
     CMD_LINE_LINK()
 };
 
-static int x11_init(void) {
+static int x11_init(QEmacsState *qs) {
     qe_register_cmd_line_options(cmd_options);
     qe_register_commands(NULL, x11_commands, countof(x11_commands));
     if (force_tty)

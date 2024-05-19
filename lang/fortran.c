@@ -169,7 +169,7 @@ static ModeDef fortran_mode = {
     .colorize_func = fortran_colorize_line,
 };
 
-static int fortran_init(void)
+static int fortran_init(QEmacsState *qs)
 {
     qe_register_mode(&fortran_mode, MODEF_SYNTAX);
 

@@ -327,12 +327,21 @@ $(OBJS_DIR)/$(TARGET)_modules.c: $(SRCS) Makefile config.mak
 	@echo '#include "qe.h"'                             >> $@
 	@echo '#undef qe_module_init'                       >> $@
 	@echo '#define qe_module_init(fn)  extern int module_##fn(void)' >> $@
-	@grep -h ^qe_module_init $(SRCS)                    >> $@
+	-@grep -h ^qe_module_init $(SRCS)                   >> $@
 	@echo '#undef qe_module_init'                       >> $@
-	@echo 'void init_all_modules(void) {'               >> $@
+	@echo 'void init_all_modules(QEmacsState *qs) {'    >> $@
 	@echo '#define qe_module_init(fn)  module_##fn()'   >> $@
-	@grep -h ^qe_module_init $(SRCS)                    >> $@
+	-@grep -h ^qe_module_init $(SRCS)                   >> $@
 	@echo '#undef qe_module_init'                       >> $@
+	@echo '}'                                           >> $@
+	@echo '#undef qe_module_exit'                       >> $@
+	@echo '#define qe_module_exit(fn)  extern void module_##fn(QEmacsState *qs)' >> $@
+	-@grep -h ^qe_module_exit $(SRCS)                   >> $@
+	@echo '#undef qe_module_exit'                       >> $@
+	@echo 'void exit_all_modules(QEmacsState *qs) {'    >> $@
+	@echo '#define qe_module_exit(fn)  module_##fn(qs)' >> $@
+	-@grep -h ^qe_module_exit $(SRCS)                   >> $@
+	@echo '#undef qe_module_exit'                       >> $@
 	@echo '}'                                           >> $@
 
 $(OBJS_DIR)/cfb.o: cfb.c cfb.h fbfrender.h

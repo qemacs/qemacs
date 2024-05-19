@@ -262,7 +262,7 @@ static ModeDef elm_mode = {
     .colorize_func = elm_colorize_line,
 };
 
-static int elm_init(void)
+static int elm_init(QEmacsState *qs)
 {
     qe_register_mode(&elm_mode, MODEF_SYNTAX);
 

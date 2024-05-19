@@ -1025,7 +1025,7 @@ static EditBufferDataType video_data_type = {
     video_buffer_close,
 };
 
-static int video_init(void) {
+static int video_init(QEmacsState *qs) {
     eb_register_data_type(&video_data_type);
     qe_register_mode(&video_mode, MODEF_DATATYPE | MODEF_VIEW);
     qe_register_commands(&video_mode, video_commands, countof(video_commands));

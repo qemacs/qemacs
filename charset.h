@@ -101,9 +101,10 @@ struct CharsetDecodeState {
 #define INVALID_CHAR 0xfffd
 #define ESCAPE_CHAR  0xffff
 
-void charset_init(void);
-int charset_more_init(void);
-int charset_jis_init(void);
+struct QEmacsState;
+void charset_init(struct QEmacsState *qs);
+int charset_more_init(struct QEmacsState *qs);
+int charset_jis_init(struct QEmacsState *qs);
 
 void qe_register_charset(struct QECharset *charset);
 void charset_complete(CompleteState *cp, CompleteFunc enumerate);

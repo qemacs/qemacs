@@ -196,7 +196,7 @@ static ModeDef agena_mode = {
     .colorize_func = agena_colorize_line,
 };
 
-static int agena_init(void)
+static int agena_init(QEmacsState *qs)
 {
     qe_register_mode(&agena_mode, MODEF_SYNTAX);
 

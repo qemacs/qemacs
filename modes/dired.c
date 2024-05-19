@@ -1527,9 +1527,9 @@ static EditBufferDataType dired_data_type = {
 };
 #endif
 
-static int filelist_init(void);
+static int filelist_init(QEmacsState *qs);
 
-static int dired_init(void)
+static int dired_init(QEmacsState *qs)
 {
     /* inherit from list mode */
     /* CG: assuming list_mode already initialized ? */
@@ -1550,7 +1550,7 @@ static int dired_init(void)
     qe_register_commands(&dired_mode, dired_commands, countof(dired_commands));
     qe_register_commands(NULL, dired_global_commands, countof(dired_global_commands));
 
-    filelist_init();
+    filelist_init(qs);
 
     return 0;
 }
@@ -1687,7 +1687,7 @@ static const CmdDef filelist_global_commands[] = {
           do_filelist, ESi, "p")
 };
 
-static int filelist_init(void)
+static int filelist_init(QEmacsState *qs)
 {
     // XXX: remove this mess
     memcpy(&filelist_mode, &text_mode, offsetof(ModeDef, first_key));

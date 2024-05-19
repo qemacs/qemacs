@@ -764,7 +764,7 @@ static ModeDef org_mode = {
     .colorize_func = org_colorize_line,
 };
 
-static int org_init(void)
+static int org_init(QEmacsState *qs)
 {
     qe_register_mode(&org_mode, MODEF_SYNTAX);
     qe_register_commands(&org_mode, org_commands, countof(org_commands));

@@ -7157,7 +7157,7 @@ static const CmdDef minibuffer_commands[] = {
           isearch_toggle_word_match)
 };
 
-void minibuffer_init(void)
+void minibuffer_init(QEmacsState *qs)
 {
     /* populate and register minibuffer mode and commands */
     // XXX: remove this mess: should just inherit with fallback
@@ -7230,7 +7230,7 @@ static void list_display_hook(EditState *s)
     s->offset = eb_goto_bol(s->b, s->offset);
 }
 
-static int list_init(void)
+static int list_init(QEmacsState *qs)
 {
     // XXX: remove this mess: should just inherit with fallback
     memcpy(&list_mode, &text_mode, offsetof(ModeDef, first_key));
@@ -7312,7 +7312,7 @@ static const CmdDef popup_commands[] = {
           do_isearch, ESii, "p" "v", 1)
 };
 
-static void popup_init(void)
+static void popup_init(QEmacsState *qs)
 {
     /* popup mode inherits from text mode */
     // XXX: remove this mess: should just inherit with fallback
@@ -8935,7 +8935,7 @@ void do_help_for_help(EditState *s)
 
 #ifdef CONFIG_WIN32
 
-void qe_event_init(void)
+void qe_event_init(QEmacsState *qs)
 {
 }
 
@@ -8952,7 +8952,7 @@ static void poll_action(qe__unused__ int sig)
 }
 
 /* init event system */
-void qe_event_init(void)
+void qe_event_init(QEmacsState *qs)
 {
     struct sigaction sigact;
     struct itimerval itimer;
@@ -9852,9 +9852,9 @@ static void qe_init(void *opaque)
     /* setup resource path */
     set_user_option(NULL);
 
-    eb_init();
-    charset_init();
-    init_input_methods();
+    eb_init(qs);
+    charset_init(qs);
+    input_methods_init(qs);
 
 #ifdef CONFIG_ALL_KMAPS
     if (find_resource_file(filename, sizeof(filename), "kmaps") >= 0)
@@ -9883,12 +9883,12 @@ static void qe_init(void *opaque)
     qe_register_completion(&resource_completion);
 #endif
 
-    minibuffer_init();
-    list_init();
-    popup_init();
+    minibuffer_init(qs);
+    list_init(qs);
+    popup_init(qs);
 
     /* init all external modules in link order */
-    init_all_modules();
+    init_all_modules(qs);
 
 #ifdef CONFIG_DLL
     /* load all dynamic modules */
@@ -9941,7 +9941,7 @@ static void qe_init(void *opaque)
     put_status(NULL, "%s display %dx%d",
                dpy->name, qs->screen->width, qs->screen->height);
 
-    qe_event_init();
+    qe_event_init(qs);
 
 #ifdef CONFIG_SESSION
     if (use_session_file) {
@@ -10041,6 +10041,9 @@ int main(int argc, char **argv)
     dpy_close(&global_screen);
 
 #ifndef CONFIG_TINY
+    /* exit all external modules in link order */
+    exit_all_modules(qs);
+
     if (free_everything) {
         /* free all structures for valgrind */
         while (qs->first_window) {
