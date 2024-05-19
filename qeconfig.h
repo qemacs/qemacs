@@ -332,6 +332,9 @@ static const CmdDef basic_commands[] = {
     CMD0( "previous-window", "C-x p",
           "Move the focus to the previous window",
           do_previous_window)
+    CMD0( "window-swap-states", "C-x /",
+          "Swap the states of the current and next windows",
+          do_window_swap_states)
 #ifndef CONFIG_TINY
     CMD1( "center-cursor", "M-C-l",
           "Center the window contents at point",

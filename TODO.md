@@ -2,6 +2,27 @@
 
 # QEmacs TODO list
 
+## Current work
+
+* S-TAB -> untabify
+* TAB and S-TAB with selected block -> indent, unindent block
+* `C-x (` should restart macro learning mode
+* should implement a maximum macro length and abort macro learning mode if reached
+* should keep modified status when undoing past a buffer save command
+* should swap buffer names in `compare-files`
+* check file time and length when selecting a different buffer or running any command on the current buffer:
+  - if a macro is running, stop it
+  - prompt the user for (r) read, (i) ignore, (k) keep, (c) compare
+  - if not modified since save, read in separate buffer and compare.
+     - if difference before window start, mark and/or point, try and resync
+  - if modified, modified version should be kept in a separate buffer.
+* add commands:
+  - `enlarge-window` on `C-x ^`
+  - `enlarge-window-horizontally` on `C-x }`
+  - `shrink-window` on `C-x &`
+  - `shrink-window-horizontally` on `C-x {`
+  - `resize-window` on `C-x +` (interactive resizing using `up`, `down`, `left` and `right`.)
+
 ## Documentation / Support
 
 * improve **README.md**
