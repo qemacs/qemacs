@@ -7422,6 +7422,67 @@ void do_switch_to_buffer(EditState *s, const char *bufname)
         switch_to_buffer(s, b);
 }
 
+/* Find next non-system buffer from the specified buffer. If the specified
+   buffer is the last one, returns the first one. If only one non-system buffer
+   exists currently, return itself. */
+static EditBuffer *next_non_system_buffer(EditState *s, EditBuffer *b) {
+    EditBuffer *nb = b == NULL ? NULL : b->next;
+    if (nb == NULL) {
+        nb = s->qe_state->first_buffer;
+    }
+    /* qemacs guarantees at least one non-system buffer (i.e. `*scratch*`) exists */
+    while (nb->flags & BF_SYSTEM) {
+        nb = nb->next;
+        if (nb == NULL) {
+            nb = s->qe_state->first_buffer;
+        }
+    }
+    return nb;
+}
+
+void do_next_buffer(EditState *s)
+{
+    EditBuffer *b;
+
+    /* ignore command from the minibuffer and popups */
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
+        return;
+
+    b = next_non_system_buffer(s, s->b);
+    switch_to_buffer(s, b);
+}
+
+void do_previous_buffer(EditState *s)
+{
+    // TODO(chqrlie): simplify this by counting non system buffers
+    //   also handle universal argument
+    EditBuffer *orig, *curr, *curr_next;
+
+    /* ignore command from the minibuffer and popups */
+    if (s->flags & (WF_POPUP | WF_MINIBUF))
+        return;
+
+    /* what we want to compare & find are non-system buffers, so need to ignore
+       all non-system buffers; or it may fall into an infinite loop. */
+
+    /* original buffer is immutable */
+    orig = s->b;
+    if (orig->flags & BF_SYSTEM) {
+        orig = next_non_system_buffer(s, orig);
+    }
+    /* find from first buffer*/
+    curr = s->qe_state->first_buffer;
+    if (curr->flags & BF_SYSTEM) {
+        curr = next_non_system_buffer(s, curr);
+    }
+    curr_next = next_non_system_buffer(s, curr);
+    while (curr_next != orig) {
+        curr = curr_next;
+        curr_next = next_non_system_buffer(s, curr_next);
+    }
+    switch_to_buffer(s, curr);
+}
+
 void do_toggle_read_only(EditState *s)
 {
     s->b->flags ^= BF_READONLY;
