@@ -44,13 +44,19 @@
 #define likely(x)             __builtin_expect(!!(x), 1)
 #define unlikely(x)           __builtin_expect(!!(x), 0)
 #define __maybe_unused        __attribute__((unused))
-#define fallthrough           __attribute__((__fallthrough__))
 #else
 #define qe__attr_nonnull(l)
 #define qe__unused__
 #define likely(x)       (x)
 #define unlikely(x)     (x)
 #define __maybe_unused
+#endif
+
+#if defined(__GNUC__) && __GNUC__ >= 7
+#define fallthrough           __attribute__((__fallthrough__))
+#elif defined(__clang__) && __clang_major__ >= 12
+#define fallthrough           __attribute__((__fallthrough__))
+#else
 #define fallthrough           do {} while (0)
 #endif
 
