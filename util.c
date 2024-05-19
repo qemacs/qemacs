@@ -1165,6 +1165,29 @@ int get_str(const char **pp, char *buf, int buf_size, const char *stop) {
 
 /*---- Unicode string functions: null terminated arrays of code points ----*/
 
+int utf8_prefix_len(const char *str1, const char *str2) {
+    /*@API utils
+       Return the length in bytes of an intial common prefix of `str1` and `str2`.
+
+       @param `str1` must be a valid UTF-8 string pointer.
+       @param `str2` must be a valid UTF-8 string pointer.
+     */
+    const char *start = str1;
+
+    while (*str1 && *str1 == *str2) {
+        if (*str1 & *str2 & 0x80) {
+            const char *p = str1;
+            if (utf8_decode(&p) != utf8_decode(&str2))
+                break;
+            str1 = p;
+        } else {
+            str1++;
+            str2++;
+        }
+    }
+    return str1 - start;
+}
+
 int ustrstart(const char32_t *str0, const char *val, int *lenp) {
     /*@API utils
        Test if `val` is a prefix of `str0`.
@@ -2250,6 +2273,14 @@ char32_t utf8_decode(const char **pp) {
     }
     *pp = (const char *)p;
     return c;
+}
+
+char32_t utf8_decode_prev(const char **pp, const char *start) {
+    const char *p = *pp;
+    while (p > start && (*--p & 0xC0) == 0x80)
+        continue;
+    *pp = p;
+    return utf8_decode(&p);
 }
 
 int utf8_encode(char *q0, char32_t c) {

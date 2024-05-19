@@ -6772,19 +6772,6 @@ void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
     complete_end(&cs);
 }
 
-static int eb_match_string_reverse(EditBuffer *b, int offset, const char *str,
-                                   int *offsetp)
-{
-    int len = strlen(str);
-
-    while (len > 0) {
-        if (offset <= 0 || eb_prevc(b, offset, &offset) != (u8)str[--len])
-            return 0;
-    }
-    *offsetp = offset;
-    return 1;
-}
-
 static void do_minibuffer_electric_key(EditState *s, int key, int argval) {
     char32_t c;
     int offset, stop;
@@ -6798,9 +6785,9 @@ static void do_minibuffer_electric_key(EditState *s, int key, int argval) {
         c = eb_prevc(s->b, s->offset, &offset);
         if (c == '/') {
             /* kill leading part if typing a URL */
-            if (eb_match_string_reverse(s->b, offset, "http:", &stop)
-            ||  eb_match_string_reverse(s->b, offset, "https:", &stop)
-            ||  eb_match_string_reverse(s->b, offset, "ftp:", &stop)) {
+            if (eb_match_str_utf8_reverse(s->b, offset, "http:", 5, &stop)
+            ||  eb_match_str_utf8_reverse(s->b, offset, "https:", 6, &stop)
+            ||  eb_match_str_utf8_reverse(s->b, offset, "ftp:", 4, &stop)) {
                 /* nothing, stop already updated */
             }
             eb_delete(s->b, 0, stop);

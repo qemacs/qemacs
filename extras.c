@@ -27,6 +27,112 @@
 #include "qe.h"
 #include "variables.h"
 
+typedef struct Equivalent {
+    struct Equivalent *next;
+    char *str1;
+    char *str2;
+    int prefix_len;
+} Equivalent;
+
+Equivalent *create_equivalent(const char *str1, const char *str2) {
+    Equivalent *ep;
+
+    ep = qe_mallocz(Equivalent);
+    ep->str1 = qe_strdup(str1);
+    ep->str2 = qe_strdup(str2);
+    ep->prefix_len = utf8_prefix_len(str1, str2);
+    ep->next = NULL;
+    return ep;
+}
+
+void delete_equivalent(Equivalent *ep) {
+    qe_free(ep->str1);
+    qe_free(ep->str2);
+    qe_free(ep);
+}
+
+static void do_define_equivalent(EditState *s, const char *str1, const char *str2)
+{
+    QEmacsState *qs = s->qe_state;
+    Equivalent **epp;
+
+    /* append the definition, ignore duplicates */
+    for (epp = &qs->first_equivalent; *epp; epp = &(*epp)->next) {
+        Equivalent *ep = *epp;
+        if (!strcmp(ep->str1, str1) && !strcmp(ep->str2, str2))
+            return;
+    }
+    *epp = create_equivalent(str1, str2);
+}
+
+static void do_delete_equivalent(EditState *s, const char *str)
+{
+    QEmacsState *qs = s->qe_state;
+    Equivalent **epp;
+
+    for (epp = &qs->first_equivalent; *epp; epp = &(*epp)->next) {
+        Equivalent *ep = *epp;
+        if (!strcmp(ep->str1, str) || !strcmp(ep->str2, str)) {
+            *epp = ep->next;
+            delete_equivalent(ep);
+        }
+    }
+}
+
+static void do_list_equivalents(EditState *s, int argval)
+{
+    QEmacsState *qs = s->qe_state;
+    EditBuffer *b;
+    Equivalent *ep;
+
+    b = new_help_buffer();
+    if (!b)
+        return;
+
+    for (ep = qs->first_equivalent; ep; ep = ep->next) {
+        eb_printf(b, "  \"%s\" <-> \"%s\"\n", ep->str1, ep->str2);
+    }
+
+    show_popup(s, b, "Equivalents");
+}
+
+static void qs_free_equivalent(QEmacsState *qs) {
+    while (qs->first_equivalent) {
+        Equivalent *ep = qs->first_equivalent;
+        qs->first_equivalent = ep->next;
+        delete_equivalent(ep);
+    }
+}
+
+static int qe_skip_equivalent(EditState *s,
+                              EditBuffer *b1, int offset1, int *offset1p,
+                              EditBuffer *b2, int offset2, int *offset2p)
+{
+    QEmacsState *qs = s->qe_state;
+    Equivalent *ep;
+    int end1, end2;
+
+    for (ep = qs->first_equivalent; ep; ep = ep->next) {
+        int pos = ep->prefix_len;
+        if (pos > 0) {
+            if (!(eb_match_str_utf8_reverse(b1, offset1, ep->str1, pos, NULL)
+              &&  eb_match_str_utf8_reverse(b2, offset2, ep->str2, pos, NULL))
+            &&  !(eb_match_str_utf8_reverse(b1, offset1, ep->str2, pos, NULL)
+              &&  eb_match_str_utf8_reverse(b2, offset2, ep->str1, pos, NULL)))
+                continue;
+        }
+        if ((eb_match_str_utf8(b1, offset1, ep->str1 + pos, &end1)
+         &&  eb_match_str_utf8(b2, offset2, ep->str2 + pos, &end2))
+        ||  (eb_match_str_utf8(b1, offset1, ep->str2 + pos, &end1)
+         &&  eb_match_str_utf8(b2, offset2, ep->str1 + pos, &end2))) {
+            *offset1p = end1;
+            *offset2p = end2;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static int qe_skip_style(EditState *s, int offset, int *offsetp, QETermStyle style)
 {
     char32_t buf[COLORED_MAX_LINE_SIZE];
@@ -153,6 +259,7 @@ void do_compare_windows(EditState *s, int argval)
         qs->ignore_comments = 0;
         qs->ignore_case = 0;
         qs->ignore_preproc = 0;
+        qs->ignore_equivalent = 0;
     }
     if (argval & 4)
         qs->ignore_spaces ^= 1;
@@ -162,6 +269,8 @@ void do_compare_windows(EditState *s, int argval)
         qs->ignore_case ^= 1;
     if (argval & 256)
         qs->ignore_preproc ^= 1;
+    if (argval & 1024)
+        qs->ignore_equivalent ^= 1;
 
     size1 = s1->b->total_size;
     size2 = s2->b->total_size;
@@ -208,6 +317,14 @@ void do_compare_windows(EditState *s, int argval)
                         continue;
                     }
                 }
+            }
+        }
+        if (qs->ignore_equivalent) {
+            if (qe_skip_equivalent(s1, s1->b, s1->offset, &s1->offset,
+                                   s2->b, s2->offset, &s2->offset))
+            {
+                comment1 = "Skipped equivalent strings, ";
+                continue;
             }
         }
         if (qs->ignore_spaces) {
@@ -2344,6 +2461,18 @@ static const CmdDef extra_commands[] = {
           do_compare_files, ESsi,
           "s{Compare file: }[file]|file|"
           "v", 0) /* p? */
+    CMD2( "define-equivalent", "",
+          "Define equivalent strings for compare-windows",
+          do_define_equivalent, ESss,
+          "s{Enter string: }|equivalent|s{Equivalent to: }|equivalent|")
+    CMD2( "delete-equivalent", "",
+          "Delete a pair of equivalent strings",
+          do_delete_equivalent, ESs,
+          "s{Enter string: }|equivalent|")
+    CMD2( "list-equivalents", "",
+          "List equivalent strings",
+          do_list_equivalents, ESi, "p")
+
     // XXX: delete-leading-space (mg) Delete any leading whitespace on the current line
     // XXX: delete-trailing-space (mg) Delete any trailing whitespace on the current line
     // XXX: delete-trailing-whitespace (emacs) Delete all the trailing whitespace across the current buffer.
@@ -2522,4 +2651,9 @@ static int extras_init(QEmacsState *qs) {
     return 0;
 }
 
+static void extras_exit(QEmacsState *qs) {
+    qs_free_equivalent(qs);
+}
+
 qe_module_init(extras_init);
+qe_module_exit(extras_exit);

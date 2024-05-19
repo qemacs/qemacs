@@ -540,6 +540,7 @@ int eb_insert_char32_buf(EditBuffer *b, int offset, const char32_t *buf, int len
 int eb_insert_str(EditBuffer *b, int offset, const char *str);
 int eb_match_char32(EditBuffer *b, int offset, char32_t c, int *offsetp);
 int eb_match_str_utf8(EditBuffer *b, int offset, const char *str, int *offsetp);
+int eb_match_str_utf8_reverse(EditBuffer *b, int offset, const char *str, int pos, int *offsetp);
 int eb_match_istr_utf8(EditBuffer *b, int offset, const char *str, int *offsetp);
 /* These functions insert contents at b->offset */
 int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) qe__attr_printf(2,0);
@@ -993,6 +994,7 @@ struct QEmacsState {
     int ignore_comments;  /* ignore comments when comparing windows */
     int ignore_case;    /* ignore case when comparing windows */
     int ignore_preproc;    /* ignore preprocessor directives when comparing windows */
+    int ignore_equivalent;  /* ignore equivalent strings defined by `define-equivalent` */
     int hilite_region;  /* hilite the current region when selecting */
     int mmap_threshold; /* minimum file size for mmap */
     int max_load_size;  /* maximum file size for loading in memory */
@@ -1008,6 +1010,7 @@ struct QEmacsState {
     const char *user_option;
     int input_len;
     u8 input_buf[32];
+    struct Equivalent *first_equivalent;
 };
 
 extern QEmacsState qe_state;
@@ -1439,6 +1442,9 @@ void do_refresh_complete(EditState *s);
 void do_kill_buffer(EditState *s, const char *bufname, int force);
 void switch_to_buffer(EditState *s, EditBuffer *b);
 void qe_kill_buffer(EditBuffer *b);
+
+struct Equivalent *create_equivalent(const char *str1, const char *str2);
+void delete_equivalent(struct Equivalent *ep);
 
 /* text mode */
 
