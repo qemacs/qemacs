@@ -1,0 +1,76 @@
+name: ci
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!.gitignore'
+      - '!LICENSE'
+      - '.github/workflows/ci.yml'
+  push:
+    branches:
+      - '*'
+
+jobs:
+  linux:
+    name: Linux (Ubuntu)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Build
+        run: |
+          ./configure
+          make -j$(getconf _NPROCESSORS_ONLN)
+
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          ./configure
+          make -j$(getconf _NPROCESSORS_ONLN)
+
+  freebsd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + test
+        uses: vmactions/freebsd-vm@v1
+        with:
+          usesh: true
+          prepare: |
+            pkg install -y gmake
+          run: |
+            ./configure
+            gmake
+
+  qemu-alpine:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - i386
+          - arm32v6
+          - arm32v7
+          - arm64v8
+          - s390x
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+            submodules: recursive
+      - name: Get qemu
+        run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+      - name: Run tests on ${{ matrix.platform }}
+        run: docker run --rm --interactive --mount type=bind,source=$(pwd),target=/host ${{ matrix.platform }}/alpine sh -c "apk add git patch make gcc libc-dev && cd /host && ./configure && make"
+
