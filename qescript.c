@@ -1333,7 +1333,10 @@ static void qe_cfg_postprocess(EditState *s, QEmacsDataSource *ds, int argval) {
             break;
         case TOK_NUMBER:
             if (argval <= 0) {
-                put_status(s, "-> %lld  0x%llx", sp->u.value, sp->u.value);
+                len = snprintf(buf, sizeof buf, "-> %lld  0x%llx", sp->u.value, sp->u.value);
+                if (sp->u.value >= 32 && sp->u.value < 128)
+                    len += snprintf(buf + len, sizeof(buf) - len, "  '%c'", (int)sp->u.value);
+                put_status(s, "%s", buf);
             } else {
                 if (argval == 16)
                     len = snprintf(buf, sizeof buf, "0x%llx", sp->u.value);

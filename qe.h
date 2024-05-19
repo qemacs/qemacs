@@ -267,7 +267,7 @@ typedef void (*ColorizeFunc)(QEColorizeContext *cp,
 /* buffer.c */
 
 /* begin to mmap files from this size */
-#define MIN_MMAP_SIZE  (2*1024*1024)
+#define MIN_MMAP_SIZE  (16*1024*1024)
 #define MAX_LOAD_SIZE  (512*1024*1024)
 
 #define MAX_PAGE_SIZE  4096
