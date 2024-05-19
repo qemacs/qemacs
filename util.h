@@ -263,6 +263,7 @@ int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c,
 int ustr_match_keyword(const char32_t *buf, const char *str, int *lenp);
 int utf8_get_word(char *buf, int buf_size, char32_t c,
                   const char32_t *str, int i, int n);
+int utf8_prefix_len(const char *str1, const char *str2);
 
 static inline int check_fcall(const char32_t *str, int i) {
     while (str[i] == ' ')
@@ -596,6 +597,7 @@ static inline int utf8_is_trailing_byte(unsigned char c) {
 int utf8_encode(char *q, char32_t c);
 char32_t utf8_decode_strict(const char **pp);
 char32_t utf8_decode(const char **pp);
+char32_t utf8_decode_prev(const char **pp, const char *start);
 int utf8_to_char32(char32_t *dest, int dest_length, const char *str);
 int char32_to_utf8(char *dest, int dest_length, const char32_t *src, int src_length);
 

@@ -2279,6 +2279,18 @@ int eb_match_str_utf8(EditBuffer *b, int offset, const char *str, int *offsetp) 
     return 1;
 }
 
+int eb_match_str_utf8_reverse(EditBuffer *b, int offset, const char *str, int pos, int *offsetp) {
+    const char *p = str + pos;
+    while (p > str) {
+        char32_t c = utf8_decode_prev(&p, str);
+        if (eb_prevc(b, offset, &offset) != c)
+            return 0;
+    }
+    if (offsetp)
+        *offsetp = offset;
+    return 1;
+}
+
 int eb_match_istr_utf8(EditBuffer *b, int offset, const char *str, int *offsetp) {
     const char *p = str;
 
