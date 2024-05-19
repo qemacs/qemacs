@@ -8507,27 +8507,52 @@ void do_refresh_complete(EditState *s)
     }
 }
 
-void do_other_window(EditState *s)
+static EditState *get_next_window(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+
+    if (s->next_window)
+        return s->next_window;
+    else
+        return qs->first_window;
+}
+
+static EditState *get_previous_window(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e;
 
-    e = s->next_window;
-    if (!e)
-        e = qs->first_window;
-    qs->active_window = e;
+    for (e = qs->first_window; e->next_window; e = e->next_window) {
+        if (e->next_window == s)
+            break;
+    }
+    return e;
+}
+
+static EditState **get_window_link(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+    EditState **ep = &qs->first_window;
+    for (;;) {
+        if (*ep == s)
+            return ep;
+        if (*ep == NULL)
+            break;
+        ep = &(*ep)->next_window;
+    }
+    return NULL;
+}
+
+void do_other_window(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+    qs->active_window = get_next_window(s);
 }
 
 void do_previous_window(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
-    EditState *e;
-
-    for (e = qs->first_window; e->next_window != NULL; e = e->next_window) {
-        if (e->next_window == s)
-            break;
-    }
-    qs->active_window = e;
+    qs->active_window = get_previous_window(s);
 }
 
 /* Delete a window and try to resize other windows so that it gets
@@ -8709,6 +8734,45 @@ void do_split_window(EditState *s, int prop, int side_by_side)
 
     if (e && qs->flag_split_window_change_focus)
         qs->active_window = e;
+}
+
+void do_window_swap_states(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+    uint8_t buffer[offsetof(EditState, flags) - offsetof(EditState, xleft)];
+    int mask = WF_POPUP | WF_MINIBUF | WF_HIDDEN | WF_POPLEFT | WF_FILELIST;
+    int flags;
+    EditState *e, *tmp, **elink, **slink;
+
+    if (s->flags & mask)
+        return;
+    /* find another suitable window */
+    for (e = s;;) {
+        e = get_previous_window(e);
+        if (e == s)
+            return;
+        if (!(e->flags & mask))
+            break;
+    }
+    /* swapping window positions and focus */
+    memcpy(buffer, &s->xleft, sizeof buffer);
+    memcpy(&s->xleft, &e->xleft, sizeof buffer);
+    memcpy(&e->xleft, buffer, sizeof buffer);
+    flags = (e->flags ^ s->flags) & (WF_RSEPARATOR | WF_MODELINE);
+    e->flags ^= flags;
+    s->flags ^= flags;
+    elink = get_window_link(e);
+    slink = get_window_link(s);
+    if (elink && slink) {
+        /* swap the windows in the list */
+        *elink = s;
+        *slink = e;
+        tmp = e->next_window;
+        e->next_window = s->next_window;
+        s->next_window = tmp;
+    }
+    do_refresh(s);
+    qs->active_window = e;
 }
 
 #ifndef CONFIG_TINY

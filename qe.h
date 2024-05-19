@@ -1395,6 +1395,7 @@ void do_refresh(EditState *s);
 // should take direction argument
 void do_other_window(EditState *s);
 void do_previous_window(EditState *s);
+void do_window_swap_states(EditState *s);
 void do_delete_window(EditState *s, int force);
 #define SW_STACKED       0
 #define SW_SIDE_BY_SIDE  1
