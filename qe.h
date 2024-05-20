@@ -1382,6 +1382,9 @@ EditState *insert_window_left(EditBuffer *b, int width, int flags);
 EditState *find_window(EditState *s, int key, EditState *def);
 EditState *qe_find_target_window(EditState *s, int activate);
 void do_find_window(EditState *s, int key);
+EditState *get_previous_window(EditState *s, int mask, int val);
+EditState *get_next_window(EditState *s, int mask, int val);
+void compute_client_area(EditState *s);
 
 /* window handling */
 void edit_close(EditState **sp);
