@@ -90,7 +90,7 @@ TARGETLIBS:=
 
 ifeq (,$(TARGET))
 TARGET:=qe
-TARGETS:=kmaps ligatures tqe
+TARGETS:=kmaps ligatures tqe qe-manual.md
 TOP:=1
 else
 TOP:=0
