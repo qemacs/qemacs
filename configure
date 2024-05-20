@@ -5,7 +5,7 @@
 # Copyright (c) 2002 Fabrice Bellard
 # Copyright (c) 2002-2023 Charlie Gordon
 #
-
+#
 # set temporary file name
 if test ! -z "$TMPDIR" ; then
    TMPDIR1="${TMPDIR}"
@@ -32,12 +32,16 @@ host_cc="cc"
 if test `which clang 2>/dev/null` ; then
   cc="clang"
   host_cc="clang"
-elif test `which gcc 2>/dev/null` ; then
-  cc="gcc"
-  host_cc="gcc"
-elif test `which tcc 2>/dev/null` ; then
-  cc="tcc"
-  host_cc="tcc"
+else
+  if test `which gcc 2>/dev/null` ; then
+    cc="gcc"
+    host_cc="gcc"
+  else
+    if test `which tcc 2>/dev/null` ; then
+      cc="tcc"
+      host_cc="tcc"
+    fi
+  fi
 fi
 
 ar="ar"
@@ -612,25 +616,32 @@ echo "EXE=$exe" >> $TMPMAK
 echo "TARGET_OS=$targetos" >> $TMPMAK
 echo "TARGET_ARCH=$cpu" >> $TMPMAK
 
-if test "$cpu" = "x86" ; then
-  echo "TARGET_ARCH_X86=yes" >> $TMPMAK
-  echo "#define ARCH_X86 1" >> $TMPH
-elif test "$cpu" = "x86_64" ; then
-  echo "TARGET_ARCH_X86_64=yes" >> $TMPMAK
-  echo "#define ARCH_X86_64 1" >> $TMPH
-elif test "$cpu" = "arm64" ; then
-  echo "TARGET_ARCH_ARM64=yes" >> $TMPMAK
-  echo "#define ARCH_ARM64 1" >> $TMPH
-elif test "$cpu" = "armv4l" ; then
-  echo "TARGET_ARCH_ARMV4L=yes" >> $TMPMAK
-  echo "#define ARCH_ARMV4L 1" >> $TMPH
-elif test "$cpu" = "alpha" ; then
-  echo "TARGET_ARCH_ALPHA=yes" >> $TMPMAK
-  echo "#define ARCH_ALPHA 1" >> $TMPH
-elif test "$cpu" = "powerpc" ; then
-  echo "TARGET_ARCH_POWERPC=yes" >> $TMPMAK
-  echo "#define ARCH_POWERPC 1" >> $TMPH
-fi
+case "$cpu" in
+  x86)
+    echo "TARGET_ARCH_X86=yes" >> $TMPMAK
+    echo "#define ARCH_X86 1" >> $TMPH
+    ;;
+  case x86_64)
+    echo "TARGET_ARCH_X86_64=yes" >> $TMPMAK
+    echo "#define ARCH_X86_64 1" >> $TMPH
+    ;;
+  case arm64)
+    echo "TARGET_ARCH_ARM64=yes" >> $TMPMAK
+    echo "#define ARCH_ARM64 1" >> $TMPH
+    ;;
+  case armv4l)
+    echo "TARGET_ARCH_ARMV4L=yes" >> $TMPMAK
+    echo "#define ARCH_ARMV4L 1" >> $TMPH
+    ;;
+  case alpha)
+    echo "TARGET_ARCH_ALPHA=yes" >> $TMPMAK
+    echo "#define ARCH_ALPHA 1" >> $TMPH
+    ;;
+  case powerpc)
+    echo "TARGET_ARCH_POWERPC=yes" >> $TMPMAK
+    echo "#define ARCH_POWERPC 1" >> $TMPH
+    ;;
+esac
 if test "$has_typeof" = "yes" ; then
   echo "CONFIG_HAS_TYPEOF=yes" >> $TMPMAK
   echo "#define CONFIG_HAS_TYPEOF 1" >> $TMPH
