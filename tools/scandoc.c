@@ -351,7 +351,7 @@ static void add_doc(const char *filename,
         /* macro definition */
         char *rep = sec + abbr_len + 1;
         /* store the expansion for the macro name */
-        ap = add_abbrev(sec, abbr_len, rep, SIZE_MAX);
+        ap = add_abbrev(sec, abbr_len, rep, strlen(rep));
         /* remove the macro name and equal sign from the section line */
         xprintf(&sec, "%s", rep);
     } else
