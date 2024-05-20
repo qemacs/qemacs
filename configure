@@ -123,6 +123,7 @@ case $targetos in
     plugins="no"
     ptsname="yes"
     cc="clang"
+    host_cc="clang"
     ;;
   CYGWIN*)
     cygwin="yes"
@@ -135,6 +136,7 @@ case $targetos in
     extralibs="-lm"
     strip_args="-x -S"
     cc="clang"
+    host_cc="clang"
     ;;
   Haiku)
     prefix="`finddir B_COMMON_DIRECTORY`"
@@ -226,6 +228,7 @@ echo "Advanced options (experts only):"
 echo "  --source-path=PATH       path of source code [$source_path]"
 echo "  --cross-prefix=PREFIX    use PREFIX for compile tools [$cross_prefix]"
 echo "  --cc=CC                  use C compiler CC [$cc]"
+echo "  --host-cc=CC             use C host compiler CC [$host_cc]"
 echo "  --make=MAKE              use specified make [$make]"
 echo "  --with-ffmpeglibdir=DIR  set ffmpeg object files directory"
 echo ""
@@ -253,6 +256,9 @@ for opt do
         ;;
       --cc=*)
         cc=`echo $opt | cut -d '=' -f 2`
+        ;;
+      --host-cc=*)
+        host_cc=`echo $opt | cut -d '=' -f 2`
         ;;
       --make=*)
         make=`echo $opt | cut -d '=' -f 2`
