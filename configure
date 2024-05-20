@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # QEmacs configure script
 #
@@ -24,8 +24,20 @@ TMPMAK="${TMPDIR1}/qemacs-conf-${RANDOM}-$$-${RANDOM}.mak"
 # default parameters
 prefix="/usr/local"
 cross_prefix=""
-cc="gcc"
-host_cc="gcc"
+
+cc="cc"
+host_cc="cc"
+if test -x `which clang 2>/dev/null` ; then
+  cc="clang"
+  host_cc="clang"
+elif test -x `which gcc 2>/dev/null` ; then
+  cc="gcc"
+  host_cc="gcc"
+elif test -x `which tcc 2>/dev/null` ; then
+  cc="tcc"
+  host_cc="tcc"
+fi
+
 ar="ar"
 make="make"
 size="size"
@@ -114,6 +126,8 @@ case $targetos in
     plugins="no"
     ptsname="no"
     dllibs=
+    cc="cc"
+    host_cc="cc"
     ;;
   FreeBSD)
     extralibs="-lm"
@@ -127,6 +141,7 @@ case $targetos in
     ;;
   CYGWIN*)
     cygwin="yes"
+    doc="no"
     ;;
   Darwin)
     darwin="yes"
@@ -194,7 +209,7 @@ for x11path in /usr /opt/X11 /usr/X11R6; do
     fi
 done
 
-if test -z `which texi2html` ; then
+if test -z `which texi2html 2>/dev/null` ; then
     doc="no"
 fi
 
@@ -527,7 +542,8 @@ echo "Manpages dir        $mandir"
 echo "Source path         $source_path"
 echo "C compiler          $cc"
 echo "  version          " `$cc --version | head -n 1`
-echo "  target_arch       $cpu"
+echo "  cpu               $cpu"
+echo "  targetos          $targetos"
 echo "Tiny build          $tiny"
 echo "X11 support         $x11"
 if test "$x11" = "yes" ; then
