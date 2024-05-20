@@ -1229,8 +1229,7 @@ void do_query_replace(EditState *s, const char *search_str,
                       const char *replace_str, int argval)
 {
     /*@CMD query-replace
-       ### `query-replace(string FROM-STRING, string TO-STRING,
-                      int DELIMITED=argval, int START=point, int END=end)`
+       ### `query-replace(string FROM-STRING, string TO-STRING, int DELIMITED=argval, int START=point, int END=end)`
 
        Replace some occurrences of FROM-STRING with TO-STRING.
        As each match is found, the user must type a character saying
@@ -1267,8 +1266,7 @@ void do_replace_string(EditState *s, const char *search_str,
                        const char *replace_str, int argval)
 {
     /*@CMD replace-string
-       ### `replace-string(string FROM-STRING, string TO-STRING,
-                       int DELIMITED=argval, int START=point, int END=end)`
+       ### `replace-string(string FROM-STRING, string TO-STRING, int DELIMITED=argval, int START=point, int END=end)`
 
        Replace occurrences of FROM-STRING with TO-STRING.
        Preserve case in each match if `case-replace' and `case-fold-search'

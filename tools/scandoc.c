@@ -1,10 +1,26 @@
-/****************************************************************
-;
-;       SCANDOC.C             (C) Copyright Charlie Gordon 2022
-;
-;       Extract documentation from C source files
-;
-;****************************************************************/
+/*
+ * SCANDOC, Extract documentation from C source files
+ *
+ * Copyright (c) 2022-2024 Charlie Gordon.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 
 /* A simple utility to preprocess C source code to extract
    documentation comments. These comments start with an @ just after
@@ -24,6 +40,7 @@
 #include <string.h>
 
 #define NAME "scandoc"
+#define VERSION  "2024-05-20"
 
 static int verbose;
 
@@ -334,7 +351,7 @@ static void add_doc(const char *filename,
         /* macro definition */
         char *rep = sec + abbr_len + 1;
         /* store the expansion for the macro name */
-        ap = add_abbrev(sec, abbr_len, rep, -1);
+        ap = add_abbrev(sec, abbr_len, rep, strlen(rep));
         /* remove the macro name and equal sign from the section line */
         xprintf(&sec, "%s", rep);
     } else
@@ -347,6 +364,7 @@ static void add_doc(const char *filename,
         if (!strcmp(ap->abbr, "API") && proto_arg) {
             int pos, epos, elen;
             char *proto;
+            const char *p;
 
             /* skip storage class from prototype */
             strstart(proto_arg, "static ", &proto_arg);
@@ -378,7 +396,7 @@ static void add_doc(const char *filename,
 
             /* should implement more elaborate text reformating */
             /* handle function macros */
-            const char *p = text;
+            p = text;
             while ((p = strchr(p, '@')) != NULL) {
                 int offset = p - text;
                 if (strstart(p, "@argument", &p) || strstart(p, "@param", &p)) {
@@ -434,6 +452,8 @@ static int scandoc(const char *filename, FILE *fp) {
         p = buf + skipwhite(buf);
         if (in_proto != 1) {
             char *p1 = buf;
+            int p1_len;
+
             if (!strncmp(p, "/*@", 3)) {
                 if (in_comment == 2) {
                     /* flush pending doc comment */
@@ -447,7 +467,7 @@ static int scandoc(const char *filename, FILE *fp) {
                 in_comment = 1;
                 p1 = p;
             }
-            int p1_len = strlen(p1);
+            p1_len = strlen(p1);
             if (in_comment == 1) {
                 char *e = strstr(p1, "*/");
                 if (e) {
@@ -492,15 +512,25 @@ int main(int argc, char *argv[]) {
     char *filename = NULL;
     char *outname = NULL;
     int i;
+    int args_done = 0;
 
     for (i = 1; i < argc; i++) {
         char *arg = argv[i];
-        if (*arg == '-') {
+        if (!args_done && *arg == '-') {
             if (arg[1] == '-') {
-                if (!strcmp(arg, "--help"))
+                if (!strcmp(arg, "--")) {
+                    args_done = 1;
+                } else
+                if (!strcmp(arg, "--help")) {
                     goto usage;
-                fprintf(stderr, "%s: bad option: -%s\n", NAME, arg);
-                return 1;
+                } else
+                if (!strcmp(arg, "--version")) {
+                    printf("%s version %s\n", NAME, VERSION);
+                    return 1;
+                } else {
+                    fprintf(stderr, "%s: bad option: -%s\n", NAME, arg);
+                    return 1;
+                }
             }
             while (*++arg) {
                 switch (*arg) {

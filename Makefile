@@ -90,7 +90,7 @@ TARGETLIBS:=
 
 ifeq (,$(TARGET))
 TARGET:=qe
-TARGETS:=kmaps ligatures tqe
+TARGETS:=kmaps ligatures tqe qe-manual.md
 TOP:=1
 else
 TOP:=0
@@ -101,6 +101,11 @@ endif
 
 OBJS:= qe.o cutils.o util.o color.o charset.o buffer.o search.o input.o display.o \
        qescript.o modes/hex.o
+
+ifdef CONFIG_32BIT
+CFLAGS += -m32
+LDFLAGS += -m32
+endif
 
 ifdef TARGET_TINY
 ECHO_CFLAGS += -DCONFIG_TINY

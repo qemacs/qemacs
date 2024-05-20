@@ -1,4 +1,90 @@
 
+# Introduction
+
+Welcome to QEmacs! A small but powerful UNIX editor with many features
+that even big editors lack.
+
+## Quick Description
+
+QEmacs is a small text editor targeted at embedded systems or debugging.
+Although it is very small, it has some very interesting features that
+even big editors lack:
+
+- Full screen editor with an Emacs look and feel with all common Emacs
+features: multi-buffer, multi-window, command mode, universal argument,
+keyboard macros, config file with C-like syntax, minibuffer with
+completion and history.
+
+- Can edit huge files (hundreds of megabytes) without delay, using a
+highly optimized internal representation and memory mapping for large
+files.
+
+- Full Unicode support, including multi charset handling
+(8859-x, UTF8, SJIS, EUC-JP, ...) and bidirectional editing respecting
+the Unicode bidi algorithm. Arabic and Indic scripts handling (in
+progress). Automatic end of line detection.
+
+- C mode: coloring with immediate update, auto-indent, automatic tags.
+
+- Shell mode: full color VT100 terminal emulation so your shell works
+exactly as you expect. Compile mode with colorized error messages,
+automatic error message parser jumps to next/previous error, works
+with grep too. The shell buffer is a fully functional terminal: you
+can run qemacs, vim or even emacs recursively!
+
+- Input methods for most languages, including Chinese (input methods
+descriptions come from the Yudit editor).
+
+- Binary and hexadecimal in place editing mode with insertion and
+block commands. Unicode hexa editing of UTF-8 files also supported.
+Can patch binary files, preserving every byte outside the modified
+areas.
+
+- Works on any VT100 terminal without termcap. UTF-8 VT100 support
+included with double width glyphs.
+
+- X11 support. Supports multiple proportional fonts at the same time
+(like XEmacs). X Input methods supported. Xft extension supported for
+anti-aliased font display.
+
+- Bitmap images are displayed on graphics displays and as ASCII colored text
+on text terminals, which is handy when browsing files over an ssh connection.
+(QEmacs uses the public domain [`stb_image`](https://github.com/nothings/stb/blob/master/stb_image.h)
+package for image parsing.
+
+# Concepts
+
+# Buffers
+
+# Windows
+
+# Modes
+
+# Commands
+
+### `isearch-repeat-backward()`
+Search for the next match backward.
+Retrieve the last search string if search string is empty.
+
+### `isearch-repeat-forward()`
+Search for the next match forward.
+Retrieve the last search string if search string is empty.
+
+### `isearch-yank-char()`
+Extract the current character from the buffer and append it
+to the search string.
+
+### `isearch-yank-kill()`
+Append the contents of the last kill to the search string.
+
+### `isearch-yank-line()`
+Extract the current line from the buffer and append it to the
+search string.
+
+### `isearch-yank-word-or-char()`
+Extract the current character or word from the buffer and append it
+to the search string.
+
 ### `overwrite-mode(argval)`
 
 Toggle overwrite mode.
@@ -14,20 +100,20 @@ Backspace erases the previous character and sets point to it.
 C-q still inserts characters in overwrite mode as a convenient way
 to insert characters when necessary.
 
-### `query-replace(string FROM-STRING, string TO-STRING,
-               int DELIMITED=argval, int START=point, int END=end)`
+### `query-replace(string FROM-STRING, string TO-STRING, int DELIMITED=argval, int START=point, int END=end)`
 
 Replace some occurrences of FROM-STRING with TO-STRING.
 As each match is found, the user must type a character saying
 what to do with it.  For directions, type '?' at that time.
 
-Matching is independent of case if `case-fold-search` is non-zero and
-FROM-STRING has no uppercase letters.  Replacement transfers the case
-pattern of the old text to the new text, if `case-replace` and
-`case-fold-search` are non-zero and FROM-STRING has no uppercase
-letters.  (Transferring the case pattern means that if the old text
-matched is all caps, or capitalized, then its replacement is upcased
-or capitalized.)
+FROM-STRING is analyzed for search flag names with determine how
+matches are found.  Supported flags are [UniHex], [Hex], [Folding],
+[Exact], [Regex] and [Word].
+
+If case matching is either Folding or Smart, replacement transfers
+the case pattern of the old text to the new text.  For example
+if the old text matched is all caps, or capitalized, then its
+replacement is upcased or capitalized.
 
 Third arg DELIMITED (prefix arg if interactive), if non-zero, means
 replace only matches surrounded by word boundaries.
@@ -40,8 +126,7 @@ operate from point to the end of the buffer.
 To customize possible responses, change the "bindings" in
 `query-replace-mode`.
 
-### `replace-string(string FROM-STRING, string TO-STRING,
-                int DELIMITED=argval, int START=point, int END=end)`
+### `replace-string(string FROM-STRING, string TO-STRING, int DELIMITED=argval, int START=point, int END=end)`
 
 Replace occurrences of FROM-STRING with TO-STRING.
 Preserve case in each match if `case-replace' and `case-fold-search'
@@ -78,6 +163,12 @@ visiting any file.
 If the RENAMEFILE argument is not null and starts with 'y', an
 attempt is made to rename the old visited file to the new name
 FILENAME.
+
+# Implementation
+
+# Structures
+
+# C functions
 
 ### `void qe_free(T **pp);`
 
@@ -200,6 +291,8 @@ from modifying the existing pointer, which is unchanged if
 reallocation fails. This approach is not strictly conforming,
 it assumes all pointers have the same size and representation,
 which is mandated by POSIX.
+We use memcpy to avoid compiler optimisation issues with the
+syntax `*(void **)pp = p;` that violates the strict aliasing rule.
 
 ### `char *qe_strdup(const char *str);`
 
@@ -210,11 +303,46 @@ Allocate a copy of a string.
 Return a pointer to allocated memory, aligned on the maximum
 alignment size.
 
+### `int eb_search(EditBuffer *b, int dir, int flags, int start_offset, int end_offset, const char32_t *buf, int len, CSSAbortFunc *abort_func, void *abort_opaque, int *found_offset, int *found_end);`
+
+Search a buffer for contents. Return true if contents was found.
+
+* argument `b` a valid EditBuffer pointer
+
+* argument `dir` search direction: -1 for backward, 1 for forward
+
+* argument `flags` a combination of SEARCH_FLAG_xxx values
+
+* argument `start_offset` the starting offset in buffer
+
+* argument `end_offset` the maximum offset in buffer
+
+* argument `buf` a valid pointer to an array of `char32_t`
+
+* argument `len` the length of the array `buf`
+
+* argument `abort_func` a function pointer to test for abort request
+
+* argument `abort_opaque` an opaque argument for `abort_func`
+
+* argument `found_offset` a valid pointer to store the match
+  starting offset
+
+* argument `found_end` a valid pointer to store the match
+  ending offset
+
+Return non zero if the search was successful. Match starting and
+ending offsets are stored to `start_offset` and `end_offset`.
+Return `0` if search failed or `len` is zero.
+Return `-1` if search was aborted.
+
 ### `int append_slash(char *buf, int buf_size);`
 
 Append a trailing slash to a path if none there already.
 
 Return the updated path length.
+
+Note: truncation cannot be detected reliably
 
 ### `void canonicalize_path(char *buf, int buf_size, const char *path);`
 
@@ -294,7 +422,7 @@ Note: call this function for a modifiable string.
 
 ### `size_t get_basename_offset(const char *path);`
 
-Get the filename portion of a path.
+Get the offset of the filename component of a path.
 Return the offset to the first character of the filename part of
 the path pointed to by string argument `path`.
 
@@ -302,7 +430,7 @@ the path pointed to by string argument `path`.
 
 Extract the directory portion of a path.
 This leaves out the trailing slash if any.  The complete path is
-obtained by catenating `dirname` + `"/"` + `basename`.
+obtained by concatenating `dirname` + `"/"` + `basename`.
 If the original path doesn't contain a directory name, `"."` is
 copied to `dest`.
 
@@ -311,7 +439,7 @@ Return a pointer to the destination array.
 Note: truncation cannot be detected reliably.
 
 Note: the trailing slash is not removed if the directory is the
-root directory: this make the behavior somewhat inconsistent,
+root directory: this makes the behavior somewhat inconsistent,
 requiring more tests when reconstructing the full path.
 
 ### `const char *get_extension(const char *filename);`
@@ -344,6 +472,25 @@ the filename part of the path pointed to by string argument `path`.
 If there is no extension, return a pointer to the null terminator
 and the end of path.
 Leading dots are skipped, they are not considered part of an extension.
+
+### `int get_str(const char **pp, char *buf, int buf_size, const char *stop);`
+
+Get a token from a string, stop on a set of characters and white-space.
+Skip spaces before and after the token. Return the token length.
+
+
+* argument `pp` the address of a valid pointer to the current position
+in the source string
+
+* argument `buf` a pointer to a destination array.
+
+* argument `buf_size` the length of the destination array.
+
+* argument `stop` a valid string pointer containing separator characters.
+
+Return the length of the token stored into buf.
+
+Note: token truncation cannot be easily detected.
 
 ### `int is_directory(const char *path);`
 
@@ -390,6 +537,8 @@ array pointed to by `buf` of length `buf_size` bytes.
 
 Return a pointer to the destination array.
 
+Note: truncation cannot be detected reliably
+
 ### `int match_extension(const char *filename, const char *extlist);`
 
 Return `true` iff the filename extension appears in `|` separated
@@ -404,6 +553,20 @@ list pointed to by `extlist`.
 Return `true` iff the command name invoked by the `#!` line pointed to by `p`
 matches one of the commands in `|` separated list pointed to by `list`.
 * both `#!/bin/perl` and `#!/bin/env perl` styles match list `"perl"`
+
+### `int match_strings(const char *s1, const char *s2, int len);`
+
+Find the length of the common prefix, only count complete UTF-8
+sequences.
+
+* argument `s1` a valid string pointer
+
+* argument `s2` a valid string pointer
+
+* argument `len` the maximum number of bytes to compare. This count
+is assumed to only include complete UTF-8 sequences.
+
+Return the length of the common prefix, between `0` and `len`.
 
 ### `int memfind(const char *list, const char *s, int len);`
 
@@ -442,6 +605,9 @@ Return a pointer to the destination array.
 
 Note: truncation cannot be detected reliably.
 
+Note: `strncat` has different semantics and does not check
+for potential overflow of the destination array.
+
 ### `char *pstrcpy(char *buf, int size, const char *str);`
 
 Copy the string pointed by `str` to the destination array `buf`,
@@ -450,7 +616,7 @@ of length `size` bytes, truncating excess bytes.
 
 * argument `buf` destination array, must be a valid pointer.
 
-* argument `size` length of destination array.
+* argument `size` length of destination array in bytes.
 
 * argument `str` pointer to a source string, must be a valid pointer.
 
@@ -458,8 +624,10 @@ Return a pointer to the destination array.
 
 Note: truncation cannot be detected reliably.
 
-Note: this function does what `strncpy` should have done to be
-useful. **NEVER use `strncpy`**.
+Note: this function does what many programmers wrongly expect
+`strncpy` to do. `strncpy` has different semantics and does not
+null terminate the destination array in case of excess bytes.
+**NEVER use `strncpy`**.
 
 ### `char *pstrncat(char *buf, int size, const char *s, int slen);`
 
@@ -542,7 +710,7 @@ Compare 2 strings using special rules:
 
 ### `const char *qe_stristr(const char *s1, const char *s2);`
 
-Find a string in another string, ignoring case.
+Find an ASCII string in another ASCII string, ignoring case.
 
 * argument `s1` a valid pointer to the string in which to
 search for matches.
@@ -568,9 +736,10 @@ value `def` otherwise.
 
 ### `void qe_strtolower(char *buf, int size, const char *str);`
 
-Convert a string to lowercase using `qe_tolower` for each byte.
+Convert an ASCII string to lowercase using `qe_tolower7` for
+each byte.
 
-* argument `buf` a valid pointer to a destination array.
+* argument `buf` a valid pointer to a destination char array.
 
 * argument `size` the length of the destination array in bytes,
 
@@ -589,19 +758,21 @@ Return the updated path length.
 Split the path pointed to by `pathname` into a directory part and a
 filename part.
 
-Note: `dirname` will receive an empty string if `pathname` constains
+Note: `dirname` will receive an empty string if `pathname` contains
 just a filename.
 
 ### `int strend(const char *str, const char *val, const char **ptr);`
 
-Check if `val` is a suffix of `str`. In this case, a
-pointer to the first character of the suffix in `str` is stored
-into `ptr` provided `ptr` is not a null pointer.
+Test if `val` is a suffix of `str`.
+
+if `val` is a suffix of `str`, a pointer to the first character
+of the suffix in `str` is stored into `ptr` provided `ptr` is
+not a null pointer.
 
 
 * argument `str` input string, must be a valid pointer.
 
-* argument `val` suffix to test, must be a valid pointer.
+* argument `val` suffix string, must be a valid pointer.
 
 * argument `ptr` updated to the suffix in `str` if there is a match.
 
@@ -625,7 +796,7 @@ Leading dots are skipped, they are not considered part of an extension.
 
 ### `int stristart(const char *str, const char *val, const char **ptr);`
 
-Test if `val` is a prefix of `str` (case independent).
+Test if `val` is a prefix of `str` (case independent for ASCII).
 If there is a match, a pointer to the next character after the
 match in `str` is stored into `ptr` provided `ptr` is not null.
 
@@ -637,6 +808,21 @@ match in `str` is stored into `ptr` provided `ptr` is not null.
 to point after the prefix in `str` in there is a match.
 
 Return `true` if there is a match, `false` otherwise.
+
+### `int strmatch_pat(const char *str, const char *pat, int start);`
+
+Check if the pattern `pat` matches `str` or a prefix of `str`.
+Patterns use only `*` as a wildcard, to match any sequence of
+characters.
+
+* argument `str` a valid string pointer.
+
+* argument `pat` a valid string pointer for the pattern to test.
+
+* argument `start` a non zero integer if the function should return
+`1` for a partial match at the start of `str.
+
+Return `1` if there is a match, `0` otherwise.
 
 ### `int strmatchword(const char *str, const char *val, const char **ptr);`
 
@@ -671,9 +857,11 @@ Return a pointer to the first character of the match if found,
 
 ### `int strstart(const char *str, const char *val, const char **ptr);`
 
-Check if `val` is a prefix of `str`. In this case, a
-pointer to the first character after the prefix in `str` is
-stored into `ptr` provided `ptr` is not a null pointer.
+Test if `val` is a prefix of `str`.
+
+If `val` is a prefix of `str`, a pointer to the first character
+after the prefix in `str` is stored into `ptr` provided `ptr`
+is not a null pointer.
 
 If `val` is not a prefix of `str`, return `0` and leave `*ptr`
 unchanged.
@@ -681,7 +869,7 @@ unchanged.
 
 * argument `str` input string, must be a valid pointer.
 
-* argument `val` prefix to test, must be a valid pointer.
+* argument `val` prefix string, must be a valid pointer.
 
 * argument `ptr` updated with a pointer past the prefix if found.
 
@@ -709,8 +897,8 @@ Call this function with a constant string and the address of a `const char *`.
 
 ### `int strxcmp(const char *str1, const char *str2);`
 
-Compare strings case independently, also ignoring spaces, dashes
-and underscores.
+Compare strings case independently (for ASCII), also ignoring
+spaces, dashes and underscores.
 
 * argument `str1` a valid string pointer for the left operand.
 
@@ -722,7 +910,7 @@ of `str1 <=> str2`
 ### `int strxfind(const char *list, const char *s);`
 
 Find a string in a list of words separated by `|`, ignoring case
-and skipping `-` , `_` and spaces.
+for ASCII and skipping `-` , `_` and spaces.
 An initial or trailing `|` do not match the empty string, but `||` does.
 
 * argument `list` a string of words separated by `|` characters.
@@ -731,12 +919,14 @@ An initial or trailing `|` do not match the empty string, but `||` does.
 
 Return 1 if there is a match, 0 otherwise.
 
+Note: this function only handles case insensitive matching for ASCII.
+
 ### `int strxstart(const char *str, const char *val, const char **ptr);`
 
-Test if `val` is a prefix of `str` (case independent and ignoring
-`-`, `_` and spaces). If there is a match, a pointer to the next
-character after the match in `str` is stored into `ptr`, provided
-`ptr` is not null.
+Test if `val` is a prefix of `str` (case independent for ASCII
+and ignoring `-`, `_` and spaces).  If there is a match, a pointer
+to the next character after the match in `str` is stored into `ptr`,
+provided `ptr` is not null.
 
 * argument `str` valid string pointer,
 
@@ -746,3 +936,219 @@ character after the match in `str` is stored into `ptr`, provided
 to point after the prefix in `str` in there is a match.
 
 Return `true` if there is a match, `false` otherwise.
+
+### `int umemcmp(const char32_t *s1, const char32_t *s2, size_t count);`
+
+Compare two blocks of code points and return an integer indicative of
+their relative order.
+
+* argument `s1` a valid wide string pointer.
+
+* argument `s2` a valid wide string pointer.
+
+* argument `count` the maximum number of code points to compare.
+
+Return `0` if the strings compare equal, a negative value if `s1` is
+lexicographically before `s2` and a positive number otherwise.
+
+### `int ustr_get_identifier(char *buf, int buf_size, char32_t c, const char32_t *str, int i, int n);`
+
+Extract an ASCII identifier from a wide string into a char array.
+
+* argument `buf` a valid pointer to a destination array.
+
+* argument `buf_size` the length of the destination array.
+
+* argument `c` the first code point to copy.
+
+* argument `str` a valid wide string pointer.
+
+* argument `i` the offset of the first code point to copy.
+
+* argument `n` the offset to the end of the wide string.
+
+Return the length of the identifier present in the source string.
+
+Note: the return value can be larger than the destination array length.
+In this case, the destination array contains a truncated string, null
+terminated unless buf_size is <= 0.
+
+### `int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c, const char32_t *str, int i, int n);`
+
+Extract an ASCII identifier from a wide string into a char array and
+convert it to lowercase.
+
+* argument `buf` a valid pointer to a destination array.
+
+* argument `buf_size` the length of the destination array.
+
+* argument `c` the first code point to copy.
+
+* argument `str` a valid wide string pointer.
+
+* argument `i` the offset of the first code point to copy.
+
+* argument `n` the offset to the end of the wide string.
+
+Return the length of the identifier present in the source string.
+
+Note: the return value can be larger than the destination array length.
+In this case, the destination array contains a truncated string, null
+terminated unless buf_size is <= 0.
+
+### `int ustristart(const char32_t *str0, const char *val, int *lenp);`
+
+Test if `val` is a prefix of `str0`. Comparison is perform ignoring case.
+
+If `val` is a prefix of `str`, the length of the prefix is stored into
+`*lenp`, provided `lenp` is not a null pointer, and return `1`.
+
+If `val` is not a prefix of `str`, return `0` and leave `*lenp`
+unchanged.
+
+
+* argument `str0` input string, must be a valid pointer to a null terminated code point array.
+
+* argument `val` prefix string, must be a valid string pointer.
+
+* argument `lenp` updated with the length of the prefix if found.
+
+Return `true` if there is a match, `false` otherwise.
+
+Note: val is assumed to be contain ASCII only.
+
+### `const char32_t *ustristr(const char32_t *str, const char *val);`
+
+Find a string of characters inside a string of code points ignoring case.
+
+* argument `str` a valid wide string pointer in which to search for matches.
+
+* argument `val` a valid string pointer to a subtring to search for.
+
+Return a pointer to the first code point of the match if found,
+`NULL` otherwise.
+
+Note: val is assumed to be contain ASCII only.
+
+### `int ustrstart(const char32_t *str0, const char *val, int *lenp);`
+
+Test if `val` is a prefix of `str0`.
+
+If `val` is a prefix of `str`, the length of the prefix is stored into
+`*lenp`, provided `lenp` is not a null pointer, and return `1`.
+
+If `val` is not a prefix of `str`, return `0` and leave `*lenp`
+unchanged.
+
+
+* argument `str0` input string, must be a valid pointer to a null terminated code point array.
+
+* argument `val` prefix string, must be a valid string pointer.
+
+* argument `lenp` updated with the length of the prefix if found.
+
+Return `true` if there is a match, `false` otherwise.
+
+### `const char32_t *ustrstr(const char32_t *str, const char *val);`
+
+Find a string of characters inside a string of code points.
+
+* argument `str` a valid wide string pointer in which to search for matches.
+
+* argument `val` a valid string pointer to a subtring to search for.
+
+Return a pointer to the first code point of the match if found,
+`NULL` otherwise.
+
+### `char32_t utf8_decode(const char **pp);`
+
+Return the UTF-8 encoded code point at `*pp` and increment `*pp`
+to point to the next code point.
+Lax decoding is performed:
+- stray trailing bytes 0x80..0xBF return a single byte
+- overlong encodings, surrogates and special codes are accepted
+- 32-bit codes are produced by 0xFE and 0xFF lead bytes if followed
+by 5 trailing bytes
+
+### `char32_t utf8_decode_strict(const char **pp);`
+
+Return the UTF-8 encoded code point at `*pp` and increment `*pp`
+to point to the next code point.
+Strict decoding is performed, any encoding error returns INVALID_CHAR:
+- invalid lead bytes 0x80..0xC1, 0xF8..0xFF
+- overlong encodings
+- low and high surrogate codes
+- special codes 0xfffe and 0xffff
+- code points beyond CHARCODE_MAX
+
+### `int utf8_get_word(char *buf, int buf_size, char32_t c, const char32_t *str, int i, int n);`
+
+Extract a word from a wide string into a char array.
+Non ASCII code points are UTF-8 encoded.
+
+* argument `buf` a valid pointer to a destination array.
+
+* argument `buf_size` the length of the destination array.
+
+* argument `c` the first code point to copy.
+
+* argument `str` a valid wide string pointer.
+
+* argument `i` the offset of the first code point to copy.
+
+* argument `n` the offset to the end of the wide string.
+
+Return the length of the identifier present in the source string.
+
+Note: the return value can be larger than the destination array length.
+In this case, the destination array contains a truncated string, null
+terminated unless buf_size is <= 0.
+
+### `int utf8_prefix_len(const char *str1, const char *str2);`
+
+Return the length in bytes of an intial common prefix of `str1` and `str2`.
+
+
+* argument `str1` must be a valid UTF-8 string pointer.
+
+* argument `str2` must be a valid UTF-8 string pointer.
+
+### `int utf8_strimatch_pat(const char *str, const char *pat, int start);`
+
+Check if the pattern `pat` matches `str` or a prefix of `str`,
+using a case insensitive comparison.  Patterns use only `*` as
+a wildcard, to match any sequence of characters.
+Accents are also ignored by this function.
+
+* argument `str` a valid string pointer.
+
+* argument `pat` a valid string pointer for the pattern to test.
+
+* argument `start` a non zero integer if the function should return
+`1` for a partial match at the start of `str.
+
+Return `1` if there is a match, `0` otherwise.
+
+## Building QEmacs
+
+* Get the source code from github or an archive.
+* Launch the custom configuration script `./configure`. You can list the
+available options by typing `./configure --help`.
+* Type `make` to compile qemacs and its associated tools.
+* Type `make install` as root to install it in ** /usr/local **.
+
+## Authors
+
+QEmacs was started in 2000. The initial version was developped by
+Fabrice Bellard and Charlie Gordon, who since then, has been maintaining
+and extending it.
+
+## Licensing
+
+QEmacs is released under the MIT license.
+(read the accompanying [LICENCE](LICENCE) file).
+
+## Contributing to QEmacs
+
+The QEmacs project is hosted on [github](https://github.com/qemacs/qemacs/)
+Please file an issue for any questions or feature requests. Patch requests are welcome.
