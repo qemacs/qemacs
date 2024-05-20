@@ -25,6 +25,7 @@ jobs:
           make -j$(getconf _NPROCESSORS_ONLN)
 
   linux-32bits:
+    name: Linux 32-bits
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,7 +39,7 @@ jobs:
       - name: build
         run: |
           ./configure
-          make
+          make CONFIG_32BIT=y
 
   linux-s390x:
     runs-on: ubuntu-latest
@@ -125,7 +126,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: build + test
+      - name: build
         uses: vmactions/openbsd-vm@v1
         with:
           usesh: true

@@ -102,6 +102,11 @@ endif
 OBJS:= qe.o cutils.o util.o color.o charset.o buffer.o search.o input.o display.o \
        qescript.o modes/hex.o
 
+ifdef CONFIG_32BIT
+CFLAGS += -m32
+LDFLAGS += -m32
+endif
+
 ifdef TARGET_TINY
 ECHO_CFLAGS += -DCONFIG_TINY
 CFLAGS += -DCONFIG_TINY -Os
