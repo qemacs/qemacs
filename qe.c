@@ -6233,7 +6233,7 @@ static void edit_attach(EditState *s, EditState *e)
 }
 
 /* compute the client area from the window position */
-static void compute_client_area(EditState *s)
+void compute_client_area(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
     int x1, y1, x2, y2;
@@ -8507,26 +8507,40 @@ void do_refresh_complete(EditState *s)
     }
 }
 
-static EditState *get_next_window(EditState *s)
+EditState *get_next_window(EditState *s, int mask, int val)
 {
     QEmacsState *qs = s->qe_state;
+    EditState *e, *s0 = s;
 
-    if (s->next_window)
-        return s->next_window;
-    else
-        return qs->first_window;
+    for (;;) {
+        if (s->next_window)
+            e = s->next_window;
+        else
+            e = qs->first_window;
+        if (e == s0)
+            return NULL;
+        if ((e->flags & mask) == val)
+            return e;
+        s = e;
+    }
 }
 
-static EditState *get_previous_window(EditState *s)
+EditState *get_previous_window(EditState *s, int mask, int val)
 {
     QEmacsState *qs = s->qe_state;
-    EditState *e;
+    EditState *e, *s0 = s;
 
-    for (e = qs->first_window; e->next_window; e = e->next_window) {
-        if (e->next_window == s)
-            break;
+    for (;;) {
+        for (e = qs->first_window; e->next_window; e = e->next_window) {
+            if (e->next_window == s)
+                break;
+        }
+        if (e == s0)
+            return NULL;
+        if ((e->flags & mask) == val)
+            return e;
+        s = e;
     }
-    return e;
 }
 
 static EditState **get_window_link(EditState *s)
@@ -8546,13 +8560,13 @@ static EditState **get_window_link(EditState *s)
 void do_other_window(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
-    qs->active_window = get_next_window(s);
+    qs->active_window = get_next_window(s, 0, 0);
 }
 
 void do_previous_window(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
-    qs->active_window = get_previous_window(s);
+    qs->active_window = get_previous_window(s, 0, 0);
 }
 
 /* Delete a window and try to resize other windows so that it gets
@@ -8747,13 +8761,9 @@ void do_window_swap_states(EditState *s)
     if (s->flags & mask)
         return;
     /* find another suitable window */
-    for (e = s;;) {
-        e = get_previous_window(e);
-        if (e == s)
-            return;
-        if (!(e->flags & mask))
-            break;
-    }
+    e = get_previous_window(s, mask, 0);
+    if (!e)
+        return;
     /* swapping window positions and focus */
     memcpy(buffer, &s->xleft, sizeof buffer);
     memcpy(&s->xleft, &e->xleft, sizeof buffer);

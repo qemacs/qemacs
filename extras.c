@@ -424,6 +424,104 @@ void do_compare_files(EditState *s, const char *filename, int bflags)
     }
 }
 
+#define QE_AW_ENLARGE     0
+#define QE_AW_SHRINK      1
+#define QE_AW_VERTICAL    0
+#define QE_AW_HORIZONTAL  2
+
+static void do_adjust_window(EditState *s, int flags, int argval)
+{
+    QEmacsState *qs = s->qe_state;
+    EditState *e;
+    int delta, x = -1, y = -1;
+
+    if (s->flags & WF_MINIBUF)
+        return;
+    if (argval == NO_ARG)
+        argval = 1;
+    if (argval < 0) {
+        flags ^= QE_AW_SHRINK;
+        argval = -argval;
+    }
+    if (flags & QE_AW_SHRINK)
+        argval = -argval;
+
+    if (flags & QE_AW_HORIZONTAL) {
+        delta = s->char_width * argval;
+        if ((delta > 0 && s->x1 > delta)
+        ||  (delta < 0 && s->x1 > 0 && s->x2 - s->x1 > -delta)) {
+            x = s->x1;  /* adjust s->x1 */
+            delta = -delta;
+        } else
+        if ((delta > 0 && s->x2 + delta < qs->width)
+        ||  (delta < 0 && s->x2 < qs->width && s->x2 - s->x1 > -delta)) {
+            x = s->x2;  /* adjust s->x2 */
+        } else {
+            return;
+        }
+    } else {
+        delta = s->line_height * argval;
+        if ((delta > 0 && s->y1 > delta)
+        ||  (delta < 0 && s->y1 > 0 && s->y2 - s->y1 > -delta)) {
+            y = s->y1;  /* adjust s->y1 */
+            delta = -delta;
+        } else
+        if ((delta > 0 && s->y2 + delta < qs->height - qs->status_height)
+        ||  (delta < 0 && s->y2 < qs->height - qs->status_height && s->y2 - s->y1 > -delta)) {
+            y = s->y2;  /* adjust s->y2 */
+        } else {
+            return;
+        }
+    }
+    for (e = qs->first_window; e != NULL; e = e->next_window) {
+        if (s == e || !(e->flags & (WF_POPUP | WF_MINIBUF))) {
+            if (e->x1 == x)
+                e->x1 += delta;
+            if (e->x2 == x)
+                e->x2 += delta;
+            if (e->y1 == y)
+                e->y1 += delta;
+            if (e->y2 == y)
+                e->y2 += delta;
+        }
+    }
+    qs->complete_refresh = 1;
+    do_refresh(s);
+}
+
+static void resize_window_key(void *opaque, int key) {
+    EditState *s = opaque;
+    switch (key) {
+    case KEY_LEFT:
+        do_adjust_window(s, QE_AW_ENLARGE | QE_AW_HORIZONTAL, 1);
+        break;
+    case KEY_RIGHT:
+        do_adjust_window(s, QE_AW_SHRINK | QE_AW_HORIZONTAL, 1);
+        break;
+    case KEY_UP:
+        do_adjust_window(s, QE_AW_ENLARGE | QE_AW_VERTICAL, 1);
+        break;
+    case KEY_DOWN:
+        do_adjust_window(s, QE_AW_SHRINK | QE_AW_VERTICAL, 1);
+        break;
+    default:
+        qe_ungrab_keys();
+        put_status(s, "Done resizing");
+        break;
+    }
+    edit_display(s->qe_state);
+    dpy_flush(s->screen);
+}
+
+static void do_resize_window(EditState *s) {
+    /* prevent resizing minibuffer */
+    if (s->flags & WF_MINIBUF)
+        return;
+
+    put_status(s, "Resize window interactively with {left}, {right}, {up}, {down}");
+    qe_grab_keys(resize_window_key, s);
+}
+
 void do_delete_horizontal_space(EditState *s)
 {
     int from, to, offset;
@@ -2472,6 +2570,22 @@ static const CmdDef extra_commands[] = {
     CMD2( "list-equivalents", "",
           "List equivalent strings",
           do_list_equivalents, ESi, "p")
+
+    CMD3( "enlarge-window", "C-x ^",
+          "Enlarge window vertically",
+         do_adjust_window, ESii, "vp", QE_AW_ENLARGE | QE_AW_VERTICAL)
+    CMD3( "shrink-window", "C-x v",
+          "Shrink window vertically",
+          do_adjust_window, ESii, "vp", QE_AW_SHRINK | QE_AW_VERTICAL)
+    CMD3( "enlarge-window-horizontally", "C-x }",
+          "Enlarge window horizontally",
+          do_adjust_window, ESii, "vp", QE_AW_ENLARGE | QE_AW_HORIZONTAL)
+    CMD3( "shrink-window-horizontally", "C-x {",
+          "Shrink window horizontally",
+          do_adjust_window, ESii, "vp", QE_AW_SHRINK | QE_AW_HORIZONTAL)
+    CMD0( "resize-window", "C-x +",
+          "Resize window interactively using the cursor keys",
+          do_resize_window)
 
     // XXX: delete-leading-space (mg) Delete any leading whitespace on the current line
     // XXX: delete-trailing-space (mg) Delete any trailing whitespace on the current line
