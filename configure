@@ -54,21 +54,6 @@ case "$cpu" in
   i386|i486|i586|i686|i86pc|BePC)
     cpu="x86"
     ;;
-#  x86_64)
-#    cpu="x86_64"
-#    ;;
-#  arm64)
-#    cpu="arm64"
-#    ;;
-#  armv4l)
-#    cpu="armv4l"
-#    ;;
-#  alpha)
-#    cpu="alpha"
-#    ;;
-#  *)
-#    cpu="unknown"
-#    ;;
 esac
 
 unlockio="no"
