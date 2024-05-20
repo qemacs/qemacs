@@ -27,13 +27,13 @@ cross_prefix=""
 
 cc="cc"
 host_cc="cc"
-if test -x `which clang 2>/dev/null` ; then
+if test `which clang 2>/dev/null` ; then
   cc="clang"
   host_cc="clang"
-elif test -x `which gcc 2>/dev/null` ; then
+elif test `which gcc 2>/dev/null` ; then
   cc="gcc"
   host_cc="gcc"
-elif test -x `which tcc 2>/dev/null` ; then
+elif test `which tcc 2>/dev/null` ; then
   cc="tcc"
   host_cc="tcc"
 fi
