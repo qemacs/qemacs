@@ -16,12 +16,6 @@
   - if not modified since save, read in separate buffer and compare.
      - if difference before window start, mark and/or point, try and resync
   - if modified, modified version should be kept in a separate buffer.
-* add commands:
-  - `enlarge-window` on `C-x ^`
-  - `enlarge-window-horizontally` on `C-x }`
-  - `shrink-window` on `C-x &`
-  - `shrink-window-horizontally` on `C-x {`
-  - `resize-window` on `C-x +` (interactive resizing using `up`, `down`, `left` and `right`.)
 
 ## Documentation / Support
 
@@ -169,9 +163,6 @@ both in `strtokey`
 * multiple frames
 * lingering windows
 * cursor not found on **doc/256colors.raw** if `truncate-lines=1`
-* `enlarge-window-interactively`
-* `enlarge-window-horizontally`
-* `enlarge-window`
 * tab cursor displayed size
 * improve speed of text renderer / improve truncate mode
 * merge some good parts with CSS renderer ?.
@@ -231,6 +222,7 @@ insert_window_left()  deletes some left-most windows
 * [Idea] save file to non existent path -> create path.
 * [Idea] find-file: gist:snippet
 * Missing commands:
+  * `revert-file` on `C-x C-r`
   * `reload-file` on `C-x C-r`
   * `find-file-existing`
   * `find-other-frame` on `C-x 5 f`, `C-x 5 C-f`
@@ -560,6 +552,7 @@ insert_window_left()  deletes some left-most windows
 ### XML / HTML
 
 * [Idea] http request with headings
+* auto hierarchical view
 * merge xml and htmlsrc modes, add submodes for plist and other config files
 * xml/htmlsrc: scan for `</script>` beyond end of very long line
 * `&#x200c;` -> zero width causes missing chars at end of line
@@ -570,7 +563,6 @@ insert_window_left()  deletes some left-most windows
 * [BUG] xml: crash bug on **johnmacfarlane.net/texmath.xhtml**
 * `html-mode`: support hex entities
 * add syntax based wrapping mode for very long lines
-
 * distribute libqhtml as a separate project
 * OPTIMIZE `eb_nextc` et al or always duplicate box content (big speed improvement).
 * polish end of line offset/cursor displacement support.
@@ -684,6 +676,7 @@ insert_window_left()  deletes some left-most windows
   * `cg-mode`
   * `changelog-mode`
   * `chdr-mode`
+  * `cmake-mode`
   * `cmd-mode`: Windows cmd.exe command files.
   * `conf-mode`: configuration files.
   * `DCL-mode`
@@ -744,7 +737,8 @@ insert_window_left()  deletes some left-most windows
   * `verilog-mode`
   * `vhdl-mode`: VHDL files.
   * `xslt-mode`
-  * qmake, cmake, scons, ant, maven, bitC
+  * `yaml-mode`
+  * qmake, scons, ant, maven, bitC
 
 ### New modes
 
@@ -767,6 +761,7 @@ insert_window_left()  deletes some left-most windows
 
 * auto-wrap and indent
 * JSON database functions
+* pretty view with auto indent hierarchival view
 
 ## `xml-mode`
 
@@ -777,7 +772,7 @@ insert_window_left()  deletes some left-most windows
 
 * `rst-mode`: support ReStructuredText (RST)
 * `auto-compression-mode`
-* minor modes with key override such as "preview" mode
+* minor modes with key override such as `preview` mode
 * `visual-diff-mode`: Use color-coding to compare two buffers.
 * calculator / spreadsheet mode (based on SC)
 * calendar mode
