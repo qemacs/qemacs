@@ -2858,6 +2858,7 @@ void do_goto(EditState *s, const char *str, int unit)
         col = 0;
         if (*p == ':' || *p == '.') {
             col = strtol_c(p + 1, &p, 0);
+            col -= (col > 0);  // user column numbers are 1-based
         }
         if (*p)
             goto error;
@@ -2968,7 +2969,7 @@ void do_what_cursor_position(EditState *s)
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
     put_status(s, "%s  point=%d mark=%d size=%d region=%d col=%d",
                out->buf, s->offset, s->b->mark, s->b->total_size,
-               abs(s->offset - s->b->mark), col_num);
+               abs(s->offset - s->b->mark), col_num + 1);
 }
 
 void do_set_tab_width(EditState *s, int tab_width)
@@ -3060,7 +3061,7 @@ void text_mode_line(EditState *s, buf_t *out)
     if (s->qe_state->line_number_mode)
         buf_printf(out, "--L%d", line_num + 1);
     if (s->qe_state->column_number_mode)
-        buf_printf(out, "--C%d", col_num);
+        buf_printf(out, "--C%d", col_num + 1);
     buf_printf(out, "--%s", s->b->charset->name);
     if (s->b->eol_type == EOL_DOS)
         buf_puts(out, "-dos");
@@ -10033,8 +10034,10 @@ static void qe_init(void *opaque)
             }
             /* Handle +linenumber[,column] before file */
             line_num = strtol(arg + 1, &p, 10);
-            if (*p == ',')
+            if (*p == ',' || *p == ':') {
                 col_num = strtol(p + 1, NULL, 10);
+                col_num -= (col_num > 0);  // user column numbers are 1-based
+            }
             arg = argv[i++];
         }
         /* load filename relative to qe current directory */
