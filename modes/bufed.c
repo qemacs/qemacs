@@ -293,12 +293,18 @@ static void bufed_select(EditState *s, int temp)
     if (e && b) {
         switch_to_buffer(e, b);
         e->last_buffer = last_buffer;
+    } else {
+        if (e == NULL) {
+            switch_to_buffer(s, b);
+        }
     }
     if (temp <= 0) {
-        /* delete bufed window */
-        do_delete_window(s, 1);
-        if (e)
-            e->qe_state->active_window = e;
+        if (s->flags & WF_POPUP) {
+            /* delete bufed window */
+            do_delete_window(s, 1);
+            if (e)
+                e->qe_state->active_window = e;
+        }
     } else {
         bs->last_index = index;
         do_refresh_complete(s);

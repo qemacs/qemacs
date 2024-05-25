@@ -210,7 +210,7 @@ void qe_register_mode(ModeDef *m, int flags)
     if (m->bindings) {
         int i;
         for (i = 0; m->bindings[i]; i += 2) {
-            qe_register_bindings(m, m->bindings[i + 1], m->bindings[i]);
+            qe_register_bindings(&m->first_key, m->bindings[i + 1], m->bindings[i]);
         }
     }
 }
@@ -311,10 +311,17 @@ static CompletionDef command_completion = {
 
 /* key binding handling */
 
-static int qe_register_binding(ModeDef *m, const CmdDef *d, const unsigned int *keys, int nb_keys)
+static void qe_free_bindings(KeyDef **lp) {
+    while (*lp) {
+        KeyDef *p = *lp;
+        *lp = p->next;
+        qe_free(&p);
+    }
+}
+
+static int qe_register_binding(KeyDef **lp, const CmdDef *d, const unsigned int *keys, int nb_keys)
 {
-    QEmacsState *qs = &qe_state;
-    KeyDef **lp, *p;
+    KeyDef *p;
     int i;
 
     if (!nb_keys)
@@ -331,8 +338,6 @@ static int qe_register_binding(ModeDef *m, const CmdDef *d, const unsigned int *
     for (i = 0; i < nb_keys; i++) {
         p->keys[i] = keys[i];
     }
-    // XXX: should use fundamental_mode
-    lp = m ? &m->first_key : &qs->first_key;
     /* Bindings must be prepended to override previous bindings
      * skip bindings to the same command for consistency */
     while (*lp != NULL && (*lp)->cmd == d)
@@ -343,14 +348,12 @@ static int qe_register_binding(ModeDef *m, const CmdDef *d, const unsigned int *
 }
 
 /* remove a key binding from mode or globally */
-static int qe_unregister_binding(ModeDef *m, unsigned int *keys, int nb_keys) {
-    QEmacsState *qs = &qe_state;
-    KeyDef **lp, *p;
+static int qe_unregister_binding(KeyDef **lp, unsigned int *keys, int nb_keys) {
+    KeyDef *p;
 
     if (!nb_keys)
         return -2;
 
-    lp = m ? &m->first_key : &qs->first_key;
     while (*lp) {
         if ((*lp)->nb_keys == nb_keys && !blockcmp((*lp)->keys, keys, nb_keys)) {
             p = *lp;
@@ -364,7 +367,7 @@ static int qe_unregister_binding(ModeDef *m, unsigned int *keys, int nb_keys) {
 }
 
 /* if mode is non NULL, the defined keys are only active in this mode */
-static int qe_register_command_bindings(ModeDef *m, const CmdDef *d, const char *keystr)
+static int qe_register_command_bindings(KeyDef **lp, const CmdDef *d, const char *keystr)
 {
     unsigned int keys[MAX_KEYS];
     int nb_keys, res = -2;
@@ -372,23 +375,27 @@ static int qe_register_command_bindings(ModeDef *m, const CmdDef *d, const char 
 
     while (p && *p) {
         nb_keys = strtokeys(p, keys, MAX_KEYS, &p);
-        res = qe_register_binding(m, d, keys, nb_keys);
+        res = qe_register_binding(lp, d, keys, nb_keys);
     }
     return res;
 }
 
-int qe_register_bindings(ModeDef *m, const char *cmd_name, const char *keys) {
-    return qe_register_command_bindings(m, qe_find_cmd(cmd_name), keys);
+int qe_register_bindings(KeyDef **lp, const char *cmd_name, const char *keys) {
+    return qe_register_command_bindings(lp, qe_find_cmd(cmd_name), keys);
 }
 
-static void qe_unregister_bindings(ModeDef *m, const char *keystr) {
+int qe_register_transient_binding(QEmacsState *qs, const char *cmd_name, const char *keys) {
+    return qe_register_command_bindings(&qs->first_transient_key, qe_find_cmd(cmd_name), keys);
+}
+
+static void qe_unregister_bindings(KeyDef **lp, const char *keystr) {
     unsigned int keys[MAX_KEYS];
     int nb_keys;
     const char *p = keystr;
 
     while (p && *p) {
         nb_keys = strtokeys(p, keys, MAX_KEYS, &p);
-        qe_unregister_binding(m, keys, nb_keys);
+        qe_unregister_binding(lp, keys, nb_keys);
     }
 }
 
@@ -396,6 +403,7 @@ static void qe_unregister_bindings(ModeDef *m, const char *keystr) {
 int qe_register_commands(ModeDef *m, const CmdDef *cmds, int len)
 {
     QEmacsState *qs = &qe_state;
+    KeyDef **lp = m ? &m->first_key : &qs->first_key;
     const CmdDef *d;
     int i, allocated = 0;
 
@@ -430,7 +438,7 @@ int qe_register_commands(ModeDef *m, const CmdDef *cmds, int len)
     for (d = cmds, i = len; i-- > 0; d++) {
         const char *p = d->name + strlen(d->name) + 1;
         if (*p)
-            qe_register_command_bindings(m, d, p);
+            qe_register_command_bindings(lp, d, p);
     }
     return 0;
 }
@@ -438,8 +446,8 @@ int qe_register_commands(ModeDef *m, const CmdDef *cmds, int len)
 void do_set_key(EditState *s, const char *keystr,
                 const char *cmd_name, int local)
 {
-    ModeDef *m = local ? s->mode : NULL;
-    int res = qe_register_bindings(m, cmd_name, keystr);
+    KeyDef **lp = local ? &s->mode->first_key : &s->qe_state->first_key;
+    int res = qe_register_bindings(lp, cmd_name, keystr);
     if (res == -2)
         put_status(s, "Invalid keys: %s", keystr);
     if (res == -1)
@@ -447,7 +455,8 @@ void do_set_key(EditState *s, const char *keystr,
 }
 
 void do_unset_key(EditState *s, const char *keystr, int local) {
-    qe_unregister_bindings(local ? s->mode : NULL, keystr);
+    KeyDef **lp = local ? &s->mode->first_key : &s->qe_state->first_key;
+    qe_unregister_bindings(lp, keystr);
 }
 
 void do_toggle_control_h(EditState *s, int set)
@@ -543,15 +552,16 @@ static const char * const gosmacs_bindings[] = {
 static void register_emulation_bindings(QEmacsState *qs, const char * const *pp) {
     int i;
     for (i = 0; pp[i]; i += 3) {
-        ModeDef *mode = NULL;
+        KeyDef **lp = &qs->first_key;
         if (pp[i + 2]) {
-            mode = qe_find_mode(pp[i + 2], 0);
+            ModeDef *mode = qe_find_mode(pp[i + 2], 0);
             if (!mode)
                 continue;
+            lp = &mode->first_key;
         }
-        qe_unregister_bindings(mode, pp[i]);
+        qe_unregister_bindings(lp, pp[i]);
         if (pp[i])
-            qe_register_bindings(mode, pp[i + 1], pp[i]);
+            qe_register_bindings(lp, pp[i + 1], pp[i]);
     }
 }
 
@@ -5542,7 +5552,7 @@ void do_end_kbd_macro(EditState *s)
 void do_call_last_kbd_macro(EditState *s)
 {
     QEmacsState *qs = s->qe_state;
-    int key;
+    int set_repeat = (qs->last_key == 'e');
 
     if (qs->defining_macro) {
         qs->defining_macro = 0;
@@ -5554,11 +5564,16 @@ void do_call_last_kbd_macro(EditState *s)
         /* CG: should share code with do_execute_macro */
         for (qs->macro_key_index = 0;
              qs->macro_key_index < qs->nb_macro_keys;
-             qs->macro_key_index++) {
-            key = qs->macro_keys[qs->macro_key_index];
+             qs->macro_key_index++)
+        {
+            int key = qs->macro_keys[qs->macro_key_index];
             qe_key_process(key);
         }
         qs->macro_key_index = -1;
+
+        qe_free_bindings(&qs->first_transient_key);
+        if (set_repeat)
+            qe_register_transient_binding(qs, "call-last-kbd-macro", "e");
     }
 }
 
@@ -5796,9 +5811,18 @@ KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd, int exact)
 KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m, int exact)
 {
     QEmacsState *qs = &qe_state;
+    KeyDef *kd;
+
+    if (qs->first_transient_key) {
+        /* first look up transient repeat mode */
+        kd = qe_find_binding(keys, nb_keys, qs->first_transient_key, exact);
+        if (kd)
+            return kd;
+        qe_free_bindings(&qs->first_transient_key);
+    }
 
     for (; m; m = m->fallback) {
-        KeyDef *kd = qe_find_binding(keys, nb_keys, m->first_key, exact);
+        kd = qe_find_binding(keys, nb_keys, m->first_key, exact);
         if (kd != NULL)
             return kd;
     }
@@ -5938,6 +5962,11 @@ static void qe_key_process(int key)
              * dispatching the command
              */
             qe_key_init(c);
+            if (d->action.ESi != do_repeat) {
+                qs->last_cmd = d;
+                qs->last_argval = argval;
+                qs->last_key = key;
+            }
             exec_command(s, d, argval, key);
         }
         qe_key_init(c);
@@ -7371,6 +7400,15 @@ EditState *find_window(EditState *s, int key, EditState *def)
 
 void do_find_window(EditState *s, int key)
 {
+    QEmacsState *qs = s->qe_state;
+
+    if (!qs->first_transient_key) {
+        put_status(s, "window navigation, repeat with <up>, <down>, <left>, <right>");
+        qe_register_transient_binding(qs, "find-window-down", "down");
+        qe_register_transient_binding(qs, "find-window-left", "left");
+        qe_register_transient_binding(qs, "find-window-right", "right");
+        qe_register_transient_binding(qs, "find-window-up", "up");
+    }
     s->qe_state->active_window = find_window(s, key, s);
 }
 #endif
@@ -7410,65 +7448,57 @@ void do_switch_to_buffer(EditState *s, const char *bufname)
         switch_to_buffer(s, b);
 }
 
-/* Find next non-system buffer from the specified buffer. If the specified
-   buffer is the last one, returns the first one. If only one non-system buffer
-   exists currently, return itself. */
-static EditBuffer *next_non_system_buffer(EditState *s, EditBuffer *b) {
-    EditBuffer *nb = b == NULL ? NULL : b->next;
-    if (nb == NULL) {
-        nb = s->qe_state->first_buffer;
+int eb_count_buffers(QEmacsState *qs, EditBuffer *b0, int *countp, int mask, int val) {
+    EditBuffer *b;
+    int index = 0, count = 0;
+    for (b = qs->first_buffer; b; b = b->next) {
+        if (b == b0)
+            index = count;
+        if ((b->flags & mask) == val)
+            count++;
     }
-    /* qemacs guarantees at least one non-system buffer (i.e. `*scratch*`) exists */
-    while (nb->flags & BF_SYSTEM) {
-        nb = nb->next;
-        if (nb == NULL) {
-            nb = s->qe_state->first_buffer;
-        }
-    }
-    return nb;
+    if (countp)
+        *countp = count;
+    return index;
 }
 
-void do_next_buffer(EditState *s)
+EditBuffer *eb_get_buffer_from_index(QEmacsState *qs, int index, int mask, int val) {
+    EditBuffer *b;
+    for (b = qs->first_buffer; b; b = b->next) {
+        if ((b->flags & mask) == val) {
+            if (index == 0)
+                return b;
+            index--;
+        }
+    }
+    return NULL;
+}
+
+/* Find the n-th non-system buffer from the specified buffer in a given
+   direction. Set up repeat map */
+void do_buffer_navigation(EditState *s, int argval, int dir)
 {
+    QEmacsState *qs = s->qe_state;
+    int buffer_index, buffer_count;
     EditBuffer *b;
 
     /* ignore command from the minibuffer and popups */
     if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
 
-    b = next_non_system_buffer(s, s->b);
-    switch_to_buffer(s, b);
-}
-
-void do_previous_buffer(EditState *s)
-{
-    // TODO(chqrlie): simplify this by counting non system buffers
-    //   also handle universal argument
-    EditBuffer *orig, *curr, *curr_next;
-
-    /* ignore command from the minibuffer and popups */
-    if (s->flags & (WF_POPUP | WF_MINIBUF))
+    buffer_index = eb_count_buffers(qs, s->b, &buffer_count, BF_SYSTEM, 0);
+    /* no action if single non system buffer */
+    if (buffer_count <= 1)
         return;
-
-    /* what we want to compare & find are non-system buffers, so need to ignore
-       all non-system buffers; or it may fall into an infinite loop. */
-
-    /* original buffer is immutable */
-    orig = s->b;
-    if (orig->flags & BF_SYSTEM) {
-        orig = next_non_system_buffer(s, orig);
+    if (!qs->first_transient_key) {
+        put_status(s, "buffer navigatiion, repeat with <left> and <right>");
+        qe_register_transient_binding(qs, "next-buffer", "right, C-right");
+        qe_register_transient_binding(qs, "previous-buffer", "left, C-left");
     }
-    /* find from first buffer*/
-    curr = s->qe_state->first_buffer;
-    if (curr->flags & BF_SYSTEM) {
-        curr = next_non_system_buffer(s, curr);
-    }
-    curr_next = next_non_system_buffer(s, curr);
-    while (curr_next != orig) {
-        curr = curr_next;
-        curr_next = next_non_system_buffer(s, curr_next);
-    }
-    switch_to_buffer(s, curr);
+    buffer_index = (buffer_index + argval * dir) % buffer_count;
+    b = eb_get_buffer_from_index(qs, buffer_index, BF_SYSTEM, 0);
+    if (b)
+        switch_to_buffer(s, b);
 }
 
 void do_toggle_read_only(EditState *s)
@@ -8492,6 +8522,21 @@ void do_refresh(EditState *s1)
         /* CG: should compute column count w/ default count */
         put_status(NULL, "Screen is now %d by %d (%d rows)",
                    width, height, height / new_status_height);
+    }
+}
+
+void do_repeat(EditState *s, int argval)
+{
+    QEmacsState *qs = s->qe_state;
+    int active = (s == qs->active_window);
+
+    if (!qs->first_transient_key)
+        qe_register_transient_binding(qs, "repeat", "z");
+
+    while (argval --> 0) {
+        exec_command(s, qs->last_cmd, qs->last_argval, qs->last_key);
+        if (active)
+            s = qs->active_window;
     }
 }
 
@@ -10139,20 +10184,12 @@ int main(int argc, char **argv)
             }
             qe_free(&qs->cmd_array);
         }
-        while (qs->first_key) {
-            KeyDef *p = qs->first_key;
-            qs->first_key = p->next;
-            qe_free(&p);
-        }
+        qe_free_bindings(&qs->first_key);
         while (qs->first_mode) {
             ModeDef *m = qs->first_mode;
             qs->first_mode = m->next;
 
-            while (m->first_key) {
-                KeyDef *p = m->first_key;
-                m->first_key = p->next;
-                qe_free(&p);
-            }
+            qe_free_bindings(&m->first_key);
             // XXX: should free allocated ModeDef structures
         }
         while (qs->first_variable) {
