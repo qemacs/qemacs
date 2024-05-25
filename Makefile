@@ -116,9 +116,9 @@ else
 OBJS+= extras.o variables.o
 endif
 
-ifdef CONFIG_DARWIN
-  LDFLAGS += -L/opt/local/lib/
-endif
+#ifdef CONFIG_DARWIN
+#  LDFLAGS += -L/opt/local/lib/
+#endif
 
 ifdef CONFIG_PNG_OUTPUT
   HTMLTOPPM_LIBS += -lpng

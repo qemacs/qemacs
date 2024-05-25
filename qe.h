@@ -503,6 +503,7 @@ static inline int eb_prev(EditBuffer *b, int offset) {
 }
 
 //int eb_clip_offset(EditBuffer *b, int offset);
+void do_repeat(EditState *s, int argval);
 void do_undo(EditState *s);
 void do_redo(EditState *s);
 
@@ -572,6 +573,9 @@ int eb_is_blank_line(EditBuffer *b, int offset, int *offset1);
 int eb_is_in_indentation(EditBuffer *b, int offset);
 int eb_goto_eol(EditBuffer *b, int offset);
 int eb_next_line(EditBuffer *b, int offset);
+
+int eb_count_buffers(QEmacsState *qs, EditBuffer *b0, int *totalp, int mask, int val);
+EditBuffer *eb_get_buffer_from_index(QEmacsState *qs, int index, int mask, int val);
 
 void eb_register_data_type(EditBufferDataType *bdt);
 EditBufferDataType *eb_probe_data_type(const char *filename, int st_mode,
@@ -845,7 +849,7 @@ struct ModeDef {
 
     ModeDef *fallback;  /* use bindings from fallback mode */
 
-    // XXX: should have a separate list to allow for contant data
+    // XXX: should have a separate list to allow for constant data
     struct KeyDef *first_key;
     ModeDef *next;
 };
@@ -906,6 +910,7 @@ struct QEmacsState {
     //struct QEDisplay *first_dpy;
     struct ModeDef *first_mode;
     struct KeyDef *first_key;
+    struct KeyDef *first_transient_key;
     struct CmdDefArray *cmd_array;
     int cmd_array_count;
     int cmd_array_size;
@@ -970,6 +975,9 @@ struct QEmacsState {
     int macro_keys_size;
     int macro_key_index; /* -1 means no macro is being executed */
     int ungot_key;
+    int last_key;
+    int last_argval;
+    const struct CmdDef *last_cmd; /* last dispatched command */
     /* yank buffers */
     EditBuffer *yank_buffers[NB_YANK_BUFFERS];
     int yank_current;
@@ -1131,7 +1139,8 @@ ModeDef *qe_find_mode_filename(const char *filename, int flags);
 void qe_register_mode(ModeDef *m, int flags);
 void mode_complete(CompleteState *cp, CompleteFunc enumerate);
 int qe_register_commands(ModeDef *m, const CmdDef *cmds, int len);
-int qe_register_bindings(ModeDef *m, const char *cmd_name, const char *keys);
+int qe_register_bindings(KeyDef **lp, const char *cmd_name, const char *keys);
+int qe_register_transient_binding(QEmacsState *qs, const char *cmd_name, const char *keys);
 const CmdDef *qe_find_cmd(const char *cmd_name);
 int qe_get_prototype(const CmdDef *d, char *buf, int size);
 int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size);
@@ -1413,8 +1422,7 @@ void display_mode_line(EditState *s);
 int edit_set_mode(EditState *s, ModeDef *m);
 void qe_set_next_mode(EditState *s, int n, int status);
 void do_set_next_mode(EditState *s, int n);
-void do_next_buffer(EditState *s);
-void do_previous_buffer(EditState *s);
+void do_buffer_navigation(EditState *s, int dir, int argval);
 
 /* loading files */
 void do_exit_qemacs(EditState *s, int argval);

@@ -1235,6 +1235,7 @@ static void eb_addlog(EditBuffer *b, enum LogOperation op,
 
 void do_undo(EditState *s)
 {
+    QEmacsState *qs = s->qe_state;
     EditBuffer *b = s->b;
     int log_index, size_trailer;
     LogBuffer lb;
@@ -1264,6 +1265,13 @@ void do_undo(EditState *s)
     } else {
         put_status(s, "Undo!");
     }
+    if (!qs->first_transient_key
+    &&  (qs->last_key == 'u' || qs->last_key == 'u')) {
+        put_status(s, "repeat with 'u', 'r'");
+        qe_register_transient_binding(qs, "undo", "u");
+        qe_register_transient_binding(qs, "redo", "r");
+    }
+
     /* go backward */
     log_index -= sizeof(int);
     eb_read(b->log_buffer, log_index, &size_trailer, sizeof(int));

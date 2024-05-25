@@ -429,7 +429,7 @@ void do_compare_files(EditState *s, const char *filename, int bflags)
 #define QE_AW_VERTICAL    0
 #define QE_AW_HORIZONTAL  2
 
-static void do_adjust_window(EditState *s, int flags, int argval)
+static void do_adjust_window(EditState *s, int argval, int flags)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e;
@@ -437,14 +437,20 @@ static void do_adjust_window(EditState *s, int flags, int argval)
 
     if (s->flags & WF_MINIBUF)
         return;
-    if (argval == NO_ARG)
-        argval = 1;
     if (argval < 0) {
         flags ^= QE_AW_SHRINK;
         argval = -argval;
     }
     if (flags & QE_AW_SHRINK)
         argval = -argval;
+
+    if (!qs->first_transient_key) {
+        put_status(s, "adjusting window, repeat with ^, }, {, v");
+        qe_register_transient_binding(qs, "enlarge-window", "^, up");
+        qe_register_transient_binding(qs, "shrink-window", "v, down");
+        qe_register_transient_binding(qs, "enlarge-window-horizontally", "}, right");
+        qe_register_transient_binding(qs, "shrink-window-horizontally", "{, left");
+    }
 
     if (flags & QE_AW_HORIZONTAL) {
         delta = s->char_width * argval;
@@ -489,37 +495,13 @@ static void do_adjust_window(EditState *s, int flags, int argval)
     do_refresh(s);
 }
 
-static void resize_window_key(void *opaque, int key) {
-    EditState *s = opaque;
-    switch (key) {
-    case KEY_LEFT:
-        do_adjust_window(s, QE_AW_ENLARGE | QE_AW_HORIZONTAL, 1);
-        break;
-    case KEY_RIGHT:
-        do_adjust_window(s, QE_AW_SHRINK | QE_AW_HORIZONTAL, 1);
-        break;
-    case KEY_UP:
-        do_adjust_window(s, QE_AW_ENLARGE | QE_AW_VERTICAL, 1);
-        break;
-    case KEY_DOWN:
-        do_adjust_window(s, QE_AW_SHRINK | QE_AW_VERTICAL, 1);
-        break;
-    default:
-        qe_ungrab_keys();
-        put_status(s, "Done resizing");
-        break;
-    }
-    edit_display(s->qe_state);
-    dpy_flush(s->screen);
-}
-
 static void do_resize_window(EditState *s) {
     /* prevent resizing minibuffer */
     if (s->flags & WF_MINIBUF)
         return;
 
     put_status(s, "Resize window interactively with {left}, {right}, {up}, {down}");
-    qe_grab_keys(resize_window_key, s);
+    do_adjust_window(s, 0, 0);
 }
 
 void do_delete_horizontal_space(EditState *s)
@@ -2120,15 +2102,29 @@ static int tag_get_entry(EditState *s, char *dest, int size, int offset)
 }
 
 static void do_find_tag(EditState *s, const char *str) {
+    QEmacsState *qs = s->qe_state;
     QEProperty *p;
+    int offset = -1;
 
     tag_buffer(s);
 
+    if (!qs->first_transient_key)
+        qe_register_transient_binding(qs, "goto-tag", ",, .");
+
     for (p = s->b->property_list; p; p = p->next) {
         if (p->type == QE_PROP_TAG && strequal(p->data, str)) {
-            s->offset = p->offset;
-            return;
+            if (offset < 0)
+                offset = p->offset;
+            if (s->offset < p->offset) {
+                s->offset = p->offset;
+                return;
+            }
         }
+    }
+    if (offset >= 0) {
+        /* target not found after point, use first match */
+        s->offset = offset;
+        return;
     }
     put_status(s, "Tag not found: %s", str);
 }
@@ -2573,16 +2569,16 @@ static const CmdDef extra_commands[] = {
 
     CMD3( "enlarge-window", "C-x ^",
           "Enlarge window vertically",
-         do_adjust_window, ESii, "vp", QE_AW_ENLARGE | QE_AW_VERTICAL)
+          do_adjust_window, ESii, "p" "v", QE_AW_ENLARGE | QE_AW_VERTICAL)
     CMD3( "shrink-window", "C-x v",
           "Shrink window vertically",
-          do_adjust_window, ESii, "vp", QE_AW_SHRINK | QE_AW_VERTICAL)
+          do_adjust_window, ESii, "p" "v", QE_AW_SHRINK | QE_AW_VERTICAL)
     CMD3( "enlarge-window-horizontally", "C-x }",
           "Enlarge window horizontally",
-          do_adjust_window, ESii, "vp", QE_AW_ENLARGE | QE_AW_HORIZONTAL)
+          do_adjust_window, ESii, "p" "v", QE_AW_ENLARGE | QE_AW_HORIZONTAL)
     CMD3( "shrink-window-horizontally", "C-x {",
           "Shrink window horizontally",
-          do_adjust_window, ESii, "vp", QE_AW_SHRINK | QE_AW_HORIZONTAL)
+          do_adjust_window, ESii, "p" "v", QE_AW_SHRINK | QE_AW_HORIZONTAL)
     CMD0( "resize-window", "C-x +",
           "Resize window interactively using the cursor keys",
           do_resize_window)
