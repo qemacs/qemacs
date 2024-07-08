@@ -393,6 +393,8 @@ if test "$atari" = "yes" ; then
     mmap="no"
     cygwin="no"
     exe=".tos"
+    cpu="m68k"
+    targetos="MiNT"
 fi
 
 if test "$win32" = "yes" ; then
@@ -448,7 +450,7 @@ if test "$x11" = "no" -a "$haiku" = "no" ; then
 fi
 
 # endianness: guess with cpu type. Should also use prefix
-if test "$cpu" = "powerpc"; then
+if test "$cpu" = "powerpc" -o "$cpu" = "m68k"; then
     bigendian="yes"
 fi
 
