@@ -139,7 +139,16 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max) {
             s->bufptr = p;
             s->dir = opendir(s->dirpath);
         } else {
-            if (dirent->d_type == DT_DIR) {
+            int isdir = 0;
+#ifdef __MINT__ // only glibc defines _DIRENT_HAVE_D_TYPE
+            // Work around missing d_type
+            char tmppath[MAX_FILENAME_SIZE];
+            makepath(tmppath, sizeof(tmppath), s->dirpath, dirent->d_name);
+            isdir = is_directory(tmppath);
+#else
+            isdir = (dirent->d_type == DT_DIR);
+#endif
+            if (isdir) {
                 if (*dirent->d_name == '.'
                 &&  (strequal(dirent->d_name, ".") || strequal(dirent->d_name, ".."))) {
                     if (s->flags & FF_NOXXDIR)
