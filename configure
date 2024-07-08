@@ -382,7 +382,8 @@ if test "$atari" = "yes" ; then
     if test "$cross_env" = ""; then
         cross_env="/opt/netsurf/${cross_prefix%-}/env"
     fi
-    CFLAGS="$CFLAGS -m68020-60 -I${cross_env}/include"
+    # LLONG_MIN needs C99, but other parts don't build with std=c99
+    CFLAGS="$CFLAGS -m68020-60 -I${cross_env}/include -std=gnu99"
     LDFLAGS="$LDFLAGS -Wl,--stack,256k -m68020-60 -L${cross_env}/lib"
     #extralibs="$extralibs -lgem"
     ptsname="no"
