@@ -610,22 +610,6 @@ case "$cpu" in
     echo "TARGET_ARCH_X86_64=yes" >> $TMPMAK
     echo "#define ARCH_X86_64 1" >> $TMPH
     ;;
-  arm64)
-    echo "TARGET_ARCH_ARM64=yes" >> $TMPMAK
-    echo "#define ARCH_ARM64 1" >> $TMPH
-    ;;
-  armv4l)
-    echo "TARGET_ARCH_ARMV4L=yes" >> $TMPMAK
-    echo "#define ARCH_ARMV4L 1" >> $TMPH
-    ;;
-  alpha)
-    echo "TARGET_ARCH_ALPHA=yes" >> $TMPMAK
-    echo "#define ARCH_ALPHA 1" >> $TMPH
-    ;;
-  powerpc)
-    echo "TARGET_ARCH_POWERPC=yes" >> $TMPMAK
-    echo "#define ARCH_POWERPC 1" >> $TMPH
-    ;;
 esac
 if test "$has_typeof" = "yes" ; then
   echo "CONFIG_HAS_TYPEOF=yes" >> $TMPMAK
