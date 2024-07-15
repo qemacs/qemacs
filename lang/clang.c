@@ -61,8 +61,30 @@ static const char c_extensions[] = {
     "h.in|c.in|"        /* preprocessed C input (should use more generic approach) */
 };
 
-/* grab a C identifier from a uint buf, return char count. */
+static int cp_skip_blanks(const char32_t *str, int i, int n) {
+    /*@API utils
+       Skip blank codepoints.
+       @argument `str` a valid pointer to an array of codepoints
+       @argument `i` the index to the next codepoint
+       @argument `n` the length of the codepoint array
+       @return the index to the next non blank codepoint or `n` if none are found.
+     */
+    while (i < n && qe_isblank(str[i]))
+        i++;
+    return i;
+}
+
 int get_c_identifier(char *buf, int buf_size, const char32_t *p, int flavor) {
+    /*@API utils
+       Grab a C ASCII identifier from a char32_t buffer for a given flavor.
+       @argument `buf` a pointer to the destination array
+       @argument `buf_size` the length of the destination array in bytes
+       @argument `p` a valid pointer to an array of codepoints
+       @argument `flavor` the language variant for identifier syntax
+       @return the number of codepoints used in the source array.
+       @note `dest` can be a null pointer if `size` is `0`.
+       @note non-ASCII codepoints are accepted for CLANG_RUST but are not UTF-8 encoded
+     */
     char32_t c;
     int i, j;
 
@@ -104,8 +126,15 @@ int get_c_identifier(char *buf, int buf_size, const char32_t *p, int flavor) {
 }
 
 static int qe_haslower(const char *str) {
+    /*@API utils
+       Check if a C string contains has ASCII lowercase letters.
+       @argument `str` a valid pointer to a C string
+       @return a boolean value, non zero if and only if the string contains
+       ASCII lowercase letters.
+     */
     while (*str) {
-        if (qe_islower(*str++)) return 1;
+        if (qe_islower((unsigned char)*str++))
+            return 1;
     }
     return 0;
 }
@@ -156,9 +185,7 @@ static void c_colorize_line(QEColorizeContext *cp,
     int flavor = (mode_flags & CLANG_FLAVOR);
     int state = cp->colorize_state;
 
-    for (indent = 0; qe_isblank(str[indent]); indent++)
-        continue;
-
+    indent = cp_skip_blanks(str, 0, n);
     tag = !indent && cp->s->mode == syn;
     start = i;
     type_decl = 0;
@@ -565,9 +592,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                     continue;
                 }
 
-                i1 = i;
-                while (qe_isblank(str[i1]))
-                    i1++;
+                i1 = cp_skip_blanks(str, i, n);
                 i2 = i1;
                 while (str[i2] == '*' || qe_isblank(str[i2]))
                     i2++;
@@ -742,8 +767,7 @@ static int c_line_has_label(EditState *s, const char32_t *buf, int len,
     char kbuf[64];
     int i, j, style;
 
-    for (i = 0; i < len && qe_isblank(buf[i]); i++)
-        continue;
+    i = cp_skip_blanks(buf, 0, len);
 
     style = sbuf[i];
     if (style == C_STYLE_COMMENT
@@ -755,8 +779,7 @@ static int c_line_has_label(EditState *s, const char32_t *buf, int len,
     j = get_c_identifier(kbuf, countof(kbuf), buf + i, CLANG_C);
     if (style == C_STYLE_KEYWORD && strfind("case|default", kbuf))
         return 1;
-    for (i += j; i < len && qe_isblank(buf[i]); i++)
-        continue;
+    i = cp_skip_blanks(buf, i + j, len);
     return (buf[i] == ':');
 }
 
@@ -1656,9 +1679,29 @@ static int is_js_identifier_part(char32_t c) {
 static int get_js_identifier(char *dest, int size, char32_t c,
                              const char32_t *str, int i, int n)
 {
-    int pos = 0, j;
+    /*@API utils
+       Grab an identifier from a char32_t buffer, accept non-ASCII identifiers
+       and encode in UTF-8.
+       @argument `dest` a pointer to the destination array
+       @argument `size` the length of the destination array in bytes
+       @argument `c` the initial code point or `0` if none
+       @argument `str` a valid pointer to an array of codepoints
+       @argument `i` the index to the next codepoint
+       @argument `n` the length of the codepoint array
+       @return the number of codepoints used in the source array.
+       @note `dest` can be a null pointer if `size` is `0`.
+     */
+    int pos = 0, j = i;
 
-    for (j = i;; j++) {
+    if (c == 0) {
+        if (!(i < n && is_js_identifier_start(c = str[i++]))) {
+            if (size > 0)
+                *dest = '\0';
+            return 0;
+        }
+    }
+
+    for (;; j++) {
         if (c < 128) {
             if (pos < size - 1) {
                 dest[pos++] = c;
@@ -1679,9 +1722,8 @@ static int get_js_identifier(char *dest, int size, char32_t c,
         if (!is_js_identifier_part(c))
             break;
     }
-    if (pos < size) {
+    if (pos < size)
         dest[pos] = '\0';
-    }
     return j - i;
 }
 
@@ -1947,9 +1989,7 @@ static void js_colorize_line(QEColorizeContext *cp,
                     break;
                 }
 
-                i1 = i;
-                while (qe_isblank(str[i1]))
-                    i1++;
+                i1 = cp_skip_blanks(str, i, n);
 
                 if (str[i1] == '(') {
                     /* function call or definition */
@@ -2332,7 +2372,7 @@ static const char java_types[] = {
     "boolean|byte|char|double|float|int|long|short|void|"
 };
 
-static ModeDef java_mode = {
+ModeDef java_mode = {
     .name = "Java",
     .extensions = "jav|java",
     .colorize_func = c_colorize_line,
@@ -3766,9 +3806,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
                     break;
                 }
 
-                i1 = i;
-                while (qe_isblank(str[i1]))
-                    i1++;
+                i1 = cp_skip_blanks(str, i, n);
 
                 if (str[i1] == '(') {
                     /* function call or definition */

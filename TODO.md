@@ -4,8 +4,10 @@
 
 ## Current work
 
-* S-TAB -> untabify
-* TAB and S-TAB with selected block -> indent, unindent block
+* `eb_add_property()` should duplicate and free string argument
+* add `cp_add_tag(cp, offset, kbuf)`?
+* `S-TAB` -> untabify
+* `TAB` and `S-TAB` with selected block -> indent, unindent block
 * `C-x (` should restart macro learning mode
 * should implement a maximum macro length and abort macro learning mode if reached
 * should keep modified status when undoing past a buffer save command

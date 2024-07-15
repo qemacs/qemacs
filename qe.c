@@ -7409,7 +7409,7 @@ void do_find_window(EditState *s, int key)
         qe_register_transient_binding(qs, "find-window-right", "right");
         qe_register_transient_binding(qs, "find-window-up", "up");
     }
-    s->qe_state->active_window = find_window(s, key, s);
+    qs->active_window = find_window(s, key, s);
 }
 #endif
 
