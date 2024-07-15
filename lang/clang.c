@@ -3873,6 +3873,413 @@ static ModeDef salmon_mode = {
     .auto_indent = 1,
     .fallback = &c_mode,
 };
+
+/*---------------- PPL: Christian Neumanns' Practical Programming Language ----------------*/
+
+static const char ppl_keywords[] = {
+    /* language keywords */
+    "factory|service|functions|function|command|script|template|param|"
+    "record|enum|throw|as|type|inherit|creator|"
+    "java|java_header|end|var|variable|redefine|"
+    "or|xor|is|not|may|be|out_check|assert|this|const|"
+    "on_error|throw_error|att|attribute|attributes|"
+    "return|if|then|else|"
+    "when|otherwise|repeat|times|to|try|catch_any|on|"
+    "tests|test|verify|verify_error|"
+    "private|public|"
+    /* boolean and null literals */
+    "yes|no|null|void|"
+};
+
+static const char ppl_phrases[] = {
+    "in|out|"
+    "repeat for each|repeat from|repeat while|repeat forever|"
+    "exit repeat|next repeat|"
+    "case type of|case enum of|case value of|case reference of|"
+};
+
+static const char ppl_types[] = {
+    "any|none|non_null|yes_no|character|string|regex|list|map|"
+    "signed_int_64|zero_neg_64|zero_pos_64|neg_64|pos_64|"
+    "signed_int_32|zero_neg_32|zero_pos_32|neg_32|pos_32|"
+    "signed_integer_64|zero_negative_64|zero_positive_64|negative_64|positive_64|"
+    "signed_integer_32|zero_negative_32|zero_positive_32|negative_32|positive_32|"
+    "float_64|float_32|number|"
+};
+
+enum {
+    PPL_STYLE_DEFAULT    = 0,
+    PPL_STYLE_PREPROCESS = QE_STYLE_PREPROCESS,
+    PPL_STYLE_COMMENT    = QE_STYLE_COMMENT,
+    PPL_STYLE_STRING     = QE_STYLE_STRING,
+    PPL_STYLE_STRING_Q   = QE_STYLE_STRING_Q,
+    PPL_STYLE_NUMBER     = QE_STYLE_NUMBER,
+    PPL_STYLE_KEYWORD    = QE_STYLE_KEYWORD,
+    PPL_STYLE_TYPE       = QE_STYLE_TYPE,
+    PPL_STYLE_FUNCTION   = QE_STYLE_FUNCTION,
+};
+
+enum {
+    IN_PPL_COMMENT    = 0x03,  /* one of the comment styles */
+    IN_PPL_COMMENT1   = 0x01,  /* single line comment // ... EOL */
+    IN_PPL_COMMENT2   = 0x02,  /* multiline PPL comment /// ... ./// */
+    IN_PPL_STRING     = 0x1C,  /* 3 bits for string styles */
+    IN_PPL_STRING_D   = 0x04,  /* double-quoted string */
+    IN_PPL_STRING_Q   = 0x08,  /* single-quoted string */
+    IN_PPL_STRING_D3  = 0x14,  /* """ multiline quoted string with interpolation */
+    IN_PPL_STRING_Q3  = 0x18,  /* ''' multiline quoted string */
+    IN_PPL_PREPROCESS = 0x20,  /* preprocessor directive */
+    IN_PPL_COMMENT_SHIFT = 8,  /* shift for block comment nesting level */
+    IN_PPL_COMMENT_LEVEL = 0x700, /* mask for block comment nesting level */
+    IN_PPL_JAVA = 0x800,
+};
+
+/* match a sequence of keywords from a | separated list */
+static int cp_match_keywords(const char32_t *str, int n, int start, const char *s, int *end) {
+    int i = start;
+    size_t j = 0;
+    for (;;) {
+        unsigned char cc = s[j++];
+        if (cc == '|' || cc == '\0') {
+            if (i == n || !qe_isalnum_(str[i])) {
+                *end = i;
+                return 1;
+            }
+            if (cc == '\0')
+                return 0;
+            i = start;
+        } else {
+            if (cc == ' ') {
+                int i1 = i;
+                i = cp_skip_blanks(str, i, n);
+                if (i > i1)
+                    continue;
+            } else {
+                if (i < n && cc == str[i++])
+                    continue;
+            }
+            for (;;) {
+                cc = s[j++];
+                if (cc == '\0')
+                    return 0;
+                if (cc == '|')
+                    break;
+            }
+            i = start;
+        }
+    }
+}
+
+static void ppl_colorize_line(QEColorizeContext *cp,
+                              char32_t *str, int n, ModeDef *syn)
+{
+    int i = 0, start, i1;
+    int indent = 0, style, level, type_decl;
+    char32_t c, delim, last;
+    char kbuf[64];
+    int state = cp->colorize_state;
+
+    indent = cp_skip_blanks(str, 0, n);
+    start = i;
+    type_decl = 0;
+    c = 0;
+    style = 0;
+    last = n > 0 ? str[n - 1] : 0;
+    kbuf[0] = '\0';
+
+    if (state) {
+        /* if already in a state, go directly in the code parsing it */
+        if (state & IN_PPL_JAVA) {
+            if (cp_match_keywords(str, n, 0, " end java", &i1)
+            ||  cp_match_keywords(str, n, 0, " end java_header", &i1)) {
+                state = 0;
+            } else {
+                state &= ~IN_PPL_JAVA;
+                cp->colorize_state = state;
+                java_mode.colorize_func(cp, str, n, &java_mode);
+                state = cp->colorize_state;
+                state |= IN_PPL_JAVA;
+                i = n;
+                goto done;
+            }
+        }
+        if (state & IN_PPL_COMMENT2)
+            goto parse_comment2;
+        switch (state & IN_PPL_STRING) {
+        case IN_PPL_STRING_D: goto parse_string;
+        case IN_PPL_STRING_Q: goto parse_string_q;
+        case IN_PPL_STRING_D3: goto parse_string3;
+        case IN_PPL_STRING_Q3: goto parse_string_q3;
+        }
+    }
+
+    while (i < n) {
+        start = i;
+        c = str[i++];
+
+        switch (c) {
+        case ' ':
+        case '\t':
+            continue;
+        case '/':
+            if (str[i] == '/') {
+                if (str[i + 1] == '/') {
+                    /* PPL multi-line comment */
+                    i += 2;
+                    state |= IN_PPL_COMMENT2;
+                parse_comment2:
+                    style = PPL_STYLE_COMMENT;
+                    level = (state & IN_PPL_COMMENT_LEVEL) >> IN_PPL_COMMENT_SHIFT;
+                    while (i < n) {
+                        if (str[i] == '/' && str[i + 1] == '/' && str[i + 2] == '/') {
+                            i += 3;
+                            level++;
+                        } else
+                        if (str[i] == '.' && str[i + 1] == '/' && str[i + 2] == '/' && str[i + 3] == '/') {
+                            i += 4;
+                            if (level == 0) {
+                                state &= ~IN_PPL_COMMENT2;
+                                break;
+                            }
+                            level--;
+                        } else {
+                            i++;
+                        }
+                    }
+                    state = (state & ~IN_PPL_COMMENT_LEVEL) |
+                        (min_int(level, 7) << IN_PPL_COMMENT_SHIFT);
+                    break;
+                } else {
+                    /* line comment */
+                    state |= IN_PPL_COMMENT1;
+                    style = PPL_STYLE_COMMENT;
+                    i = n;
+                    break;
+                }
+            }
+            type_decl = 0;  /* division operator */
+            continue;
+        case '%':       /* template instantiation */
+            if (is_js_identifier_start(str[i])) {
+                c = str[i++];
+                i += get_js_identifier(kbuf, countof(kbuf), c, str, i, n);
+                style = PPL_STYLE_PREPROCESS;
+            }
+            type_decl = 0;
+            break;
+        case '\'':      /* character constant */
+            if (str[i] == '\'' && str[i + 1] == '\'') {
+                /* multiline ''' quoted string */
+                i += 2;
+                state |= IN_PPL_STRING_Q3;
+            parse_string_q3:
+                style = PPL_STYLE_STRING_Q;
+                delim = '\'';
+                goto string3;
+            }
+            state |= IN_PPL_STRING_Q;
+        parse_string_q:
+            style = PPL_STYLE_STRING_Q;
+            delim = '\'';
+            goto string;
+
+        case '\"':      /* string literal */
+            if (str[i] == '\"' && str[i + 1] == '\"') {
+                /* multiline """ quoted string */
+                i += 2;
+                state |= IN_PPL_STRING_D3;
+                goto parse_string3;
+            }
+            state |= IN_PPL_STRING_D;
+        parse_string:
+            style = PPL_STYLE_STRING;
+            delim = '\"';
+        string:
+            while (i < n) {
+                c = str[i++];
+                if (c == '\\') {
+                    if (i >= n)
+                        break;
+                    i++;
+                } else
+                if (c == delim) {
+                    state &= ~IN_PPL_STRING;
+                    break;
+                }
+            }
+            type_decl = 0;
+            break;
+        parse_string3:
+            style = PPL_STYLE_STRING;
+            delim = '\"';
+        string3:
+            while (i < n) {
+                c = str[i++];
+                // XXX: should detect and colorize {{ expression }}
+                if (c == delim && str[i] == delim && str[i + 1] == delim) {
+                    i += 2;
+                    state &= ~IN_PPL_STRING;
+                    break;
+                }
+            }
+            type_decl = 0;
+            break;
+        case '-':
+            if (str[i] == '>') {  /* function return type */
+                i++;
+                type_decl = 1;
+                style = PPL_STYLE_KEYWORD;
+                break;
+            }
+            type_decl = 0;  /* subtraction operator */
+            continue;
+        case '<':
+            if (str[i] != '=' && type_decl == 2)
+                type_decl = 1;
+            else
+                type_decl = 0;
+            continue;
+        case '>':
+            if (!(str[i] != '=' && type_decl == 2))
+                type_decl = 0;
+            continue;
+        case '#':
+            if (start == 0 && str[i] == '!') {
+                /* recognize a shebang comment line */
+                style = PPL_STYLE_PREPROCESS;
+                i = n;
+                break;
+            }
+            /* fallthrough */
+        case '=':
+            if (str[i] == 'v' || str[i] == 'r')
+                i++;
+            type_decl = 0;
+            continue;
+        case ':':
+            if (!strcmp(kbuf, "type"))
+                type_decl = 1;
+            else
+                type_decl = 0;
+            continue;
+        case '.':
+            type_decl = 0;
+            if (start == indent && i == n) {
+                style = PPL_STYLE_KEYWORD;
+                break;
+            }
+            continue;
+        default:
+            if (qe_isdigit(c)) {
+                /* XXX: should parse actual number syntax */
+                i++;
+                while (qe_isalnum(str[i]) ||
+                       (str[i] == '.' && qe_isdigit(str[i + 1])) ||
+                       ((str[i] == '+' || str[i] == '-') &&
+                        qe_tolower(str[i - 1]) == 'e' &&
+                        qe_isdigit(str[i + 1])))
+                {
+                    i++;
+                }
+                style = PPL_STYLE_NUMBER;
+                break;
+            }
+            if (is_js_identifier_start(c)) {
+                if (start == indent && cp_match_keywords(str, n, i - 1, ppl_phrases, &i)) {
+                    style = PPL_STYLE_KEYWORD;
+                    break;
+                }
+                i += get_js_identifier(kbuf, countof(kbuf), c, str, i, n);
+                if (cp->state_only)
+                    continue;
+
+                if (strfind(syn->keywords, kbuf) || str[i] == ':') {
+                    if (!strcmp(kbuf, "null") && type_decl == 1) {
+                        // null as a type
+                    } else {
+                        style = PPL_STYLE_KEYWORD;
+                        if (start == indent
+                        &&  strfind("function|creator|command|template|service|factory|type", kbuf))
+                        {
+                            int fstart = cp_skip_blanks(str, i, n);
+                            if (get_js_identifier(kbuf, countof(kbuf), 0, str, fstart, n)) {
+                                eb_add_property(cp->b, cp->offset + fstart, QE_PROP_TAG, qe_strdup(kbuf));
+                            }
+                        } else
+                        if (start == indent && strfind("java|java_header", kbuf)) {
+                            state |= IN_PPL_JAVA;
+                        }
+                        if (strfind("on|factory|type|when|inherit", kbuf)) {
+                            type_decl = 1;
+                        } else
+                        if (!strcmp(kbuf, "or") && type_decl == 2) {
+                            type_decl = 1;
+                        } else {
+                            type_decl = 0;
+                        }
+                        break;
+                    }
+                }
+
+                type_decl++;
+
+                i1 = cp_skip_blanks(str, i, n);
+                if (str[i1] == '(') {
+                    /* function call or definition */
+                    style = PPL_STYLE_FUNCTION;
+                    type_decl = 0;
+                    break;
+                }
+
+                if (type_decl == 2) {
+                    style = PPL_STYLE_TYPE;
+                    break;
+                }
+
+                if (strfind(syn->types, kbuf)) {
+                    style = PPL_STYLE_TYPE;
+                    break;
+                }
+                continue;
+            }
+            type_decl = 0;
+            continue;
+        }
+        if (style) {
+            if (!cp->state_only) {
+                SET_COLOR(str, start, i, style);
+            }
+            style = 0;
+        }
+    }
+
+    if (state & (IN_PPL_COMMENT | IN_PPL_STRING)) {
+        /* set style on eol char */
+        SET_COLOR1(str, n, style);
+        if ((state & IN_PPL_COMMENT) == IN_PPL_COMMENT1)
+            state &= ~IN_PPL_COMMENT1;
+    } else {
+        if (last != '\\' && last != '&') {
+            // should line continuation extend single line comment?
+            state &= ~IN_PPL_PREPROCESS;
+        }
+    }
+ done:
+    cp->colorize_state = state;
+}
+
+static ModeDef ppl_mode = {
+    .name = "PPL",
+    .extensions = "ppl",
+    .shell_handlers = "ppl",
+    .colorize_func = ppl_colorize_line,
+    .colorize_flags = CLANG_PPL,
+    .keywords = ppl_keywords,
+    .types = ppl_types,
+    .indent_func = c_indent_line,   // not really appropriate
+    .auto_indent = 1,
+    .fallback = &c_mode,
+};
 #endif  /* CONFIG_TINY */
 
 /*---------------- Common initialization code ----------------*/
@@ -3939,6 +4346,7 @@ static int c_init(QEmacsState *qs)
     qe_register_mode(&protobuf_mode, MODEF_SYNTAX);
     qe_register_mode(&odin_mode, MODEF_SYNTAX);
     qe_register_mode(&salmon_mode, MODEF_SYNTAX);
+    qe_register_mode(&ppl_mode, MODEF_SYNTAX);
 #endif
     return 0;
 }
