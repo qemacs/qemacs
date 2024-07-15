@@ -359,6 +359,18 @@ Note: this function accepts drive and protocol specifications.
 Note: removing `..` may have adverse side effects if the parent
 directory specified is a symbolic link.
 
+### `int cp_skip_blanks(const char32_t *str, int i, int n);`
+
+Skip blank codepoints.
+
+* argument `str` a valid pointer to an array of codepoints
+
+* argument `i` the index to the next codepoint
+
+* argument `n` the length of the codepoint array
+
+Return the index to the next non blank codepoint or `n` if none are found.
+
 ### `char *file_load(const char *filename, int max_size, int *sizep);`
 
 Load a file in memory, return allocated block and size.
@@ -426,6 +438,24 @@ Get the offset of the filename component of a path.
 Return the offset to the first character of the filename part of
 the path pointed to by string argument `path`.
 
+### `int get_c_identifier(char *buf, int buf_size, const char32_t *p, int flavor);`
+
+Grab a C ASCII identifier from a char32_t buffer for a given flavor.
+
+* argument `buf` a pointer to the destination array
+
+* argument `buf_size` the length of the destination array in bytes
+
+* argument `p` a valid pointer to an array of codepoints
+
+* argument `flavor` the language variant for identifier syntax
+
+Return the number of codepoints used in the source array.
+
+Note: `dest` can be a null pointer if `size` is `0`.
+
+Note: non-ASCII codepoints are accepted for CLANG_RUST but are not UTF-8 encoded
+
 ### `char *get_dirname(char *dest, int size, const char *file);`
 
 Extract the directory portion of a path.
@@ -472,6 +502,27 @@ the filename part of the path pointed to by string argument `path`.
 If there is no extension, return a pointer to the null terminator
 and the end of path.
 Leading dots are skipped, they are not considered part of an extension.
+
+### `int get_js_identifier(char *dest, int size, char32_t c, const char32_t *str, int i, int n);`
+
+Grab an identifier from a char32_t buffer, accept non-ASCII identifiers
+and encode in UTF-8.
+
+* argument `dest` a pointer to the destination array
+
+* argument `size` the length of the destination array in bytes
+
+* argument `c` the initial code point or `0` if none
+
+* argument `str` a valid pointer to an array of codepoints
+
+* argument `i` the index to the next codepoint
+
+* argument `n` the length of the codepoint array
+
+Return the number of codepoints used in the source array.
+
+Note: `dest` can be a null pointer if `size` is `0`.
 
 ### `int get_str(const char **pp, char *buf, int buf_size, const char *stop);`
 
@@ -648,6 +699,15 @@ excess bytes.
 Return a pointer to the destination array.
 
 Note: truncation cannot be detected reliably.
+
+### `int qe_haslower(const char *str);`
+
+Check if a C string contains has ASCII lowercase letters.
+
+* argument `str` a valid pointer to a C string
+
+Return a boolean value, non zero if and only if the string contains
+ASCII lowercase letters.
 
 ### `int qe_memicmp(const void *p1, const void *p2, size_t count);`
 
