@@ -282,8 +282,7 @@ static void python_colorize_line(QEColorizeContext *cp,
                     style = PYTHON_STYLE_FUNCTION;
                     if (tag) {
                         /* tag function definition */
-                        eb_add_property(cp->b, cp->offset + start,
-                                        QE_PROP_TAG, qe_strdup(kbuf));
+                        eb_add_tag(cp->b, cp->offset + start, kbuf);
                         tag = 0;
                     }
                     break;
@@ -293,8 +292,7 @@ static void python_colorize_line(QEColorizeContext *cp,
                         continue;
                     if (qe_findchar(",=", str[i1])) {
                         /* tag variable definition */
-                        eb_add_property(cp->b, cp->offset + start,
-                                        QE_PROP_TAG, qe_strdup(kbuf));
+                        eb_add_tag(cp->b, cp->offset + start, kbuf);
                         /* XXX: should colorize variable definition */
                     }
                 }

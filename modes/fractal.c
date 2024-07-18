@@ -181,8 +181,7 @@ static void fractint_colorize_line(QEColorizeContext *cp,
                     }
                     style = FRACTINT_STYLE_COMMENT;
                 } else {
-                    eb_add_property(cp->b, cp->offset + start,
-                                    QE_PROP_TAG, qe_strdup(kbuf));
+                    eb_add_tag(cp->b, cp->offset + start, kbuf);
                     style = FRACTINT_STYLE_DEFINITION;
                 }
                 break;

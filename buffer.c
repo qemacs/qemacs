@@ -2,7 +2,7 @@
  * Buffer handling for QEmacs
  *
  * Copyright (c) 2000-2002 Fabrice Bellard.
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -2678,21 +2678,10 @@ void eb_add_property(EditBuffer *b, int offset, int type, void *data) {
         eb_add_callback(b, eb_plist_callback, NULL, 0);
     }
 
+    /* insert property in ascending order of offset */
     for (pp = &b->property_list; (p = *pp) != NULL; pp = &(*pp)->next) {
-        if (p->offset >= offset) {
-            if (p->offset == offset) {
-                if (p->type == type && type == QE_PROP_TAG) {
-                    /* prevent tag duplicates */
-                    if (strequal(p->data, data)) {
-                        if (type & QE_PROP_FREE)
-                            qe_free(&data);
-                        return;
-                    }
-                }
-                continue;
-            }
+        if (p->offset > offset)
             break;
-        }
     }
 
     p = qe_mallocz(QEProperty);
@@ -2701,6 +2690,17 @@ void eb_add_property(EditBuffer *b, int offset, int type, void *data) {
     p->data = data;
     p->next = *pp;
     *pp = p;
+}
+
+void eb_add_tag(EditBuffer *b, int offset, const char *s) {
+    QEProperty *p;
+
+    /* prevent tag duplicates */
+    for (p = b->property_list; p != NULL; p = p->next) {
+        if (p->offset == offset && p->type == QE_PROP_TAG && strequal(p->data, s))
+            return;
+    }
+    eb_add_property(b, offset, QE_PROP_TAG, qe_strdup(s));
 }
 
 QEProperty *eb_find_property(EditBuffer *b, int offset, int offset2, int type) {

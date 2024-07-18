@@ -598,8 +598,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                     i2++;
 
                 if (tag && qe_findchar("({[,;=", str[i1])) {
-                    eb_add_property(cp->b, cp->offset + start,
-                                    QE_PROP_TAG, qe_strdup(kbuf));
+                    eb_add_tag(cp->b, cp->offset + start, kbuf);
                 }
 
                 if ((start == 0 || str[start - 1] != '.')
@@ -1694,7 +1693,7 @@ static int get_js_identifier(char *dest, int size, char32_t c,
     int pos = 0, j = i;
 
     if (c == 0) {
-        if (!(i < n && is_js_identifier_start(c = str[i++]))) {
+        if (!(j < n && is_js_identifier_start(c = str[j++]))) {
             if (size > 0)
                 *dest = '\0';
             return 0;
@@ -1996,16 +1995,14 @@ static void js_colorize_line(QEColorizeContext *cp,
                     style = C_STYLE_FUNCTION;
                     if (tag) {
                         /* tag function definition */
-                        eb_add_property(cp->b, cp->offset + start,
-                                        QE_PROP_TAG, qe_strdup(kbuf));
+                        eb_add_tag(cp->b, cp->offset + start, kbuf);
                         tag = 0;
                     }
                     break;
                 } else
                 if (tag && qe_findchar("(,;=", str[i1])) {
                     /* tag variable definition */
-                    eb_add_property(cp->b, cp->offset + start,
-                                    QE_PROP_TAG, qe_strdup(kbuf));
+                    eb_add_tag(cp->b, cp->offset + start, kbuf);
                 }
 
                 if ((start == 0 || str[start - 1] != '.')
@@ -3813,16 +3810,14 @@ static void salmon_colorize_line(QEColorizeContext *cp,
                     style = C_STYLE_FUNCTION;
                     if (tag) {
                         /* tag function definition */
-                        eb_add_property(cp->b, cp->offset + start,
-                                        QE_PROP_TAG, qe_strdup(kbuf));
+                        eb_add_tag(cp->b, cp->offset + start, kbuf);
                         tag = 0;
                     }
                     break;
                 } else
                 if (tag && qe_findchar("(,;=", str[i1])) {
                     /* tag variable definition */
-                    eb_add_property(cp->b, cp->offset + start,
-                                    QE_PROP_TAG, qe_strdup(kbuf));
+                    eb_add_tag(cp->b, cp->offset + start, kbuf);
                 }
 
                 if ((start == 0 || str[start - 1] != '.')
@@ -4202,9 +4197,8 @@ static void ppl_colorize_line(QEColorizeContext *cp,
                         &&  strfind("function|creator|command|template|service|factory|type", kbuf))
                         {
                             int fstart = cp_skip_blanks(str, i, n);
-                            if (get_js_identifier(kbuf, countof(kbuf), 0, str, fstart, n)) {
-                                eb_add_property(cp->b, cp->offset + fstart, QE_PROP_TAG, qe_strdup(kbuf));
-                            }
+                            if (get_js_identifier(kbuf, countof(kbuf), 0, str, fstart, n))
+                                eb_add_tag(cp->b, cp->offset + start, kbuf);
                         } else
                         if (start == indent && strfind("java|java_header", kbuf)) {
                             state |= IN_PPL_JAVA;

@@ -4,8 +4,6 @@
 
 ## Current work
 
-* `eb_add_property()` should duplicate and free string argument
-* add `cp_add_tag(cp, offset, kbuf)`?
 * `S-TAB` -> untabify
 * `TAB` and `S-TAB` with selected block -> indent, unindent block
 * `C-x (` should restart macro learning mode
