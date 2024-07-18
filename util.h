@@ -380,13 +380,25 @@ void free_strings(StringArray *cs);
 
 typedef struct buf_t buf_t;
 struct buf_t {
-    char *buf;  /* pointer to the array holding the dynamic string */
+    /*@API buf
+       Fixed length character array handling
+       All output functions return the number of bytes actually written to the
+       output buffer and set a null terminator after any output.
+     */
+    char *buf;  /* pointer to the output array */
     int size;   /* size of the array pointed to by buf */
     int len;    /* length of output in buf. buf is null terminated */
     int pos;    /* output position into or beyond the end of buf */
 };
 
 static inline buf_t *buf_init(buf_t *bp, char *buf, int size) {
+    /*@API buf
+       Initialize a `buf_t` to output to a fixed length array.
+       @argument `bp` a valid pointer to fixed length buffer
+       @argument `buf` a valid pointer to a destination array of bytes
+       @argument `size` the length of the destination array
+       @return the `buf_t` argument.
+     */
     if (size > 0) {
         bp->buf = buf;
         bp->size = size;
@@ -400,8 +412,16 @@ static inline buf_t *buf_init(buf_t *bp, char *buf, int size) {
 }
 
 static inline buf_t *buf_attach(buf_t *bp, char *buf, int size, int pos) {
-    /* assuming 0 <= pos < size */
-    // XXX: Does not set a null byte?
+    /*@API buf
+       Initialize a `buf_t` to output to a fixed length array at a given position.
+       @argument `bp` a valid pointer to fixed length buffer
+       @argument `buf` a valid pointer to a destination array of bytes
+       @argument `size` the length of the destination array
+       @argument `pos` the initial position for output.
+       @return the `buf_t` argument.
+       @note `size` must be strictly positive and `pos` must be in range: `0 <= pos < size`
+       @note this function does not set a null terminator at offset `pos`.
+     */
     bp->buf = buf;
     bp->size = size;
     bp->len = bp->pos = pos;
@@ -409,11 +429,22 @@ static inline buf_t *buf_attach(buf_t *bp, char *buf, int size, int pos) {
 }
 
 static inline int buf_avail(buf_t *bp) {
-    return bp->size - bp->pos - 1;
+    /*@API buf
+       Compute the number of bytes available in the destination array
+       @argument `bp` a valid pointer to fixed length buffer
+       @return the number of bytes, or `0` if the buffer is full.
+     */
+    return (bp->pos < bp->size) ? bp->size - bp->pos - 1 : 0;
 }
 
 static inline int buf_put_byte(buf_t *bp, unsigned char ch) {
-    if (bp->len < bp->size - 1) {
+    /*@API buf
+       Append a byte to a fixed length buffer.
+       @argument `bp` a valid pointer to fixed length buffer
+       @argument `ch` a byte
+       @return the number of bytes actually written.
+     */
+    if (bp->pos + 1 < bp->size) {
         bp->buf[bp->len++] = ch;
         bp->buf[bp->len] = '\0';
     }
@@ -423,6 +454,12 @@ static inline int buf_put_byte(buf_t *bp, unsigned char ch) {
 int buf_write(buf_t *bp, const void *src, int size);
 
 static inline int buf_puts(buf_t *bp, const char *str) {
+    /*@API buf
+       Append a string to a fixed length buffer.
+       @argument `bp` a valid pointer to fixed length buffer
+       @argument `str` a valid pointer to a C string
+       @return the number of bytes actually written.
+     */
     return buf_write(bp, str, strlen(str));
 }
 
@@ -460,7 +497,7 @@ int strtokey(const char **pp);
 int strtokeys(const char *keystr, unsigned int *keys, int max_keys, const char **endp);
 int buf_put_key(buf_t *out, int key);
 int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);
-int buf_encode_byte(buf_t *out, unsigned char ch);
+int buf_quote_byte(buf_t *out, unsigned char ch);
 
 /* XXX: should use a more regular key mapping scheme:
    - 0000..001F: standard control keys: KEY_CTRL('@') to KEY_CTRL('@') to KEY_CTRL('_')

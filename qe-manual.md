@@ -170,6 +170,119 @@ FILENAME.
 
 # C functions
 
+### `struct buf_t;`
+
+Fixed length character array handling
+All output functions return the number of bytes actually written to the
+output buffer and set a null terminator after any output.
+
+### `buf_t *buf_attach(buf_t *bp, char *buf, int size, int pos);`
+
+Initialize a `buf_t` to output to a fixed length array at a given position.
+
+* argument `bp` a valid pointer to fixed length buffer
+
+* argument `buf` a valid pointer to a destination array of bytes
+
+* argument `size` the length of the destination array
+
+* argument `pos` the initial position for output.
+
+Return the `buf_t` argument.
+
+Note: `size` must be strictly positive and `pos` must be in range: `0 <= pos < size`
+
+Note: this function does not set a null terminator at offset `pos`.
+
+### `int buf_avail(buf_t *bp);`
+
+Compute the number of bytes available in the destination array
+
+* argument `bp` a valid pointer to fixed length buffer
+
+Return the number of bytes, or `0` if the buffer is full.
+
+### `buf_t *buf_init(buf_t *bp, char *buf, int size);`
+
+Initialize a `buf_t` to output to a fixed length array.
+
+* argument `bp` a valid pointer to fixed length buffer
+
+* argument `buf` a valid pointer to a destination array of bytes
+
+* argument `size` the length of the destination array
+
+Return the `buf_t` argument.
+
+### `int buf_printf(buf_t *bp, const char *fmt, ...);`
+
+Format contents at the end of a fixed length buffer.
+
+* argument `bp` a valid pointer to fixed length buffer
+
+* argument `fmt` a valid pointer to a format string
+
+Return the number of bytes actually written.
+
+### `int buf_put_byte(buf_t *bp, unsigned char ch);`
+
+Append a byte to a fixed length buffer.
+
+* argument `bp` a valid pointer to fixed length buffer
+
+* argument `ch` a byte
+
+Return the number of bytes actually written.
+
+### `int buf_putc_utf8(buf_t *bp, char32_t c);`
+
+Encode a codepoint in UTF-8 at the end of a fixed length buffer.
+
+* argument `bp` a valid pointer to fixed length buffer
+
+* argument `c` a valid codepoint to encode
+
+Return the number of bytes actually written.
+
+Note: if the conversion does not fit in the destination, the
+`len` field is not updated to avoid partial UTF-8 sequences.
+
+### `int buf_puts(buf_t *bp, const char *str);`
+
+Append a string to a fixed length buffer.
+
+* argument `bp` a valid pointer to fixed length buffer
+
+* argument `str` a valid pointer to a C string
+
+Return the number of bytes actually written.
+
+### `int buf_quote_byte(buf_t *bp, unsigned char ch);`
+
+Encode a byte as a source code escape sequence into a fixed length buffer
+
+* argument `bp` a valid pointer to fixed length buffer
+
+* argument `ch` a byte value to encode as source
+
+Return the number of bytes produced in the destination array,
+not counting the null terminator
+
+### `int buf_write(buf_t *bp, const void *src, int size);`
+
+Write an array of bytes to a fixed length buffer.
+
+* argument `bp` a valid pointer to fixed length buffer
+
+* argument `src` a valid pointer to an array of bytes
+
+* argument `size` the number of bytes to write.
+
+Return the number of bytes actually written.
+
+Note: content is truncated if it does not fit in the available
+space in the destination buffer.
+
 ### `void qe_free(T **pp);`
 
 Free the allocated memory pointed to by a pointer whose address is passed.
@@ -343,6 +456,19 @@ Append a trailing slash to a path if none there already.
 Return the updated path length.
 
 Note: truncation cannot be detected reliably
+
+### `int byte_quote(char *dest, int size, unsigned char c);`
+
+Encode a byte as a source code escape sequence
+
+* argument `dest` a valid pointer to an array of bytes
+
+* argument `size` the length of the destination array
+
+* argument `c` a byte value to encode as source
+
+Return the number of bytes produced in the destination array,
+not counting the null terminator
 
 ### `void canonicalize_path(char *buf, int buf_size, const char *path);`
 
@@ -914,6 +1040,21 @@ Find a chunk of characters inside a string.
 
 Return a pointer to the first character of the match if found,
 `NULL` otherwise.
+
+### `int strquote(char *dest, int size, const char *str, int len);`
+
+Encode a string using source code escape sequences
+
+* argument `dest` a valid pointer to an array of bytes
+
+* argument `size` the length of the destination array
+
+* argument `src` a valid pointer to a string to encode
+
+* argument `len` the number of bytes to encode
+
+Return the length of the converted string, not counting the null
+terminator, possibly longer than the destination array length.
 
 ### `int strstart(const char *str, const char *val, const char **ptr);`
 

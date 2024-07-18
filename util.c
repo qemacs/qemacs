@@ -1672,6 +1672,15 @@ void free_strings(StringArray *cs) {
 
 int buf_write(buf_t *bp, const void *src, int size)
 {
+    /*@API buf
+       Write an array of bytes to a fixed length buffer.
+       @argument `bp` a valid pointer to fixed length buffer
+       @argument `src` a valid pointer to an array of bytes
+       @argument `size` the number of bytes to write.
+       @return the number of bytes actually written.
+       @note content is truncated if it does not fit in the available
+       space in the destination buffer.
+     */
     int n = 0;
 
     if (bp->pos < bp->size) {
@@ -1688,26 +1697,44 @@ int buf_write(buf_t *bp, const void *src, int size)
 
 int buf_printf(buf_t *bp, const char *fmt, ...)
 {
+    /*@API buf
+       Format contents at the end of a fixed length buffer.
+       @argument `bp` a valid pointer to fixed length buffer
+       @argument `fmt` a valid pointer to a format string
+       @return the number of bytes actually written.
+     */
     va_list ap;
+    char *dest = NULL;
+    int size = 0;
+    int written = 0;
     int len;
 
+    if (bp->pos < bp->size) {
+        dest = bp->buf + bp->pos;
+        size = bp->size - bp->pos;
+    }
     va_start(ap, fmt);
-    len = vsnprintf(bp->buf + bp->len,
-                    (bp->pos < bp->size) ? bp->size - bp->pos : 1, fmt, ap);
+    len = vsnprintf(dest, size, fmt, ap);
     va_end(ap);
 
-    bp->pos += len;
-    bp->len += len;
-    if (bp->len >= bp->size) {
-        bp->len = bp->size - 1;
-        if (bp->len < 0)
-            bp->len = 0;
+    if (bp->pos < bp->size) {
+        written = (len < size) ? len : size - 1;
+        bp->len += written;
     }
-    return len;
+    bp->pos += len;
+    return written;
 }
 
 int buf_putc_utf8(buf_t *bp, char32_t c)
 {
+    /*@API buf
+       Encode a codepoint in UTF-8 at the end of a fixed length buffer.
+       @argument `bp` a valid pointer to fixed length buffer
+       @argument `c` a valid codepoint to encode
+       @return the number of bytes actually written.
+       @note: if the conversion does not fit in the destination, the
+       `len` field is not updated to avoid partial UTF-8 sequences.
+     */
     if (c < 0x80) {
         bp->pos++;
         if (bp->pos < bp->size) {
@@ -1755,12 +1782,29 @@ int strsubst(char *buf, int buf_size, const char *from,
 }
 
 int byte_quote(char *dest, int size, unsigned char c) {
+    /*@API utils
+       Encode a byte as a source code escape sequence
+       @argument `dest` a valid pointer to an array of bytes
+       @argument `size` the length of the destination array
+       @argument `c` a byte value to encode as source
+       @return the number of bytes produced in the destination array,
+       not counting the null terminator
+     */
     buf_t buf[1];
     buf_init(buf, dest, size);
-    return buf_encode_byte(buf, c);
+    return buf_quote_byte(buf, c);
 }
 
 int strquote(char *dest, int size, const char *str, int len) {
+    /*@API utils
+       Encode a string using source code escape sequences
+       @argument `dest` a valid pointer to an array of bytes
+       @argument `size` the length of the destination array
+       @argument `src` a valid pointer to a string to encode
+       @argument `len` the number of bytes to encode
+       @return the length of the converted string, not counting the null
+       terminator, possibly longer than the destination array length.
+     */
     buf_t out[1];
     buf_init(out, dest, size);
     if (str) {
@@ -1769,12 +1813,12 @@ int strquote(char *dest, int size, const char *str, int len) {
             len = strlen(str);
         buf_put_byte(out, '"');
         for (i = 0; i < len; i++)
-            buf_encode_byte(out, str[i]);
+            buf_quote_byte(out, str[i]);
         buf_put_byte(out, '"');
-        return out->pos;
     } else {
-        return buf_puts(out, "null");
+        buf_puts(out, "null");
     }
+    return out->pos;
 }
 
 #if 0
@@ -1784,7 +1828,14 @@ int strunquote(char *dest, int size, const char *str, int len)
 }
 #endif
 
-int buf_encode_byte(buf_t *out, unsigned char ch) {
+int buf_quote_byte(buf_t *bp, unsigned char ch) {
+    /*@API buf
+       Encode a byte as a source code escape sequence into a fixed length buffer
+       @argument `bp` a valid pointer to fixed length buffer
+       @argument `ch` a byte value to encode as source
+       @return the number of bytes produced in the destination array,
+       not counting the null terminator
+     */
     int c;
     if (((void)(c = 'n'), ch == '\n')
     ||  ((void)(c = 'r'), ch == '\r')
@@ -1795,19 +1846,19 @@ int buf_encode_byte(buf_t *out, unsigned char ch) {
     ||  ((void)(c = '\''), ch == '\'')      // XXX: need flag to make this optional
     ||  ((void)(c = '\"'), ch == '\"')      // XXX: need flag to make this optional
     ||  ((void)(c = '\\'), ch == '\\')) {
-        return buf_printf(out, "\\%c", c);
+        return buf_printf(bp, "\\%c", c);
     } else
     if (ch < 32) {
         //if (*p == '\e' && col > 9) {
         //    eb_write(b, b->total_size, "\n         ", 10);
         //    col = 9;
         //}
-        return buf_printf(out, "\\^%c", (ch + '@') & 127);      // XXX: need flag to make this optional
+        return buf_printf(bp, "\\^%c", (ch + '@') & 127);      // XXX: need flag to make this optional
     } else
     if (ch < 127) {
-        return buf_put_byte(out, ch);
+        return buf_put_byte(bp, ch);
     } else {
-        return buf_printf(out, "\\0x%02X", ch);      // XXX: need flag to make this optional
+        return buf_printf(bp, "\\0x%02X", ch);      // XXX: need flag to make this optional
     }
 }
 
