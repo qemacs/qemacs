@@ -485,6 +485,24 @@ Note: this function accepts drive and protocol specifications.
 Note: removing `..` may have adverse side effects if the parent
 directory specified is a symbolic link.
 
+### `int cp_match_keywords(const char32_t *str, int n, int start, const char *s, int *end);`
+
+Match a sequence of words from a | separated list of phrases.
+A space in the string matches a non empty white space sequence in the source array.
+Phrases are delimited by `|` characters.
+
+* argument `str` a valid pointer to an array of codepoints
+
+* argument `start` the index to the next codepoint
+
+* argument `n` the length of the codepoint array
+
+* argument `s` a valid pointer to a string containing phrases delimited by `|`.
+
+* argument `end` a valid pointer to store the index of the codepoint after the end of a match.
+
+Return a boolean success indicator.
+
 ### `int cp_skip_blanks(const char32_t *str, int i, int n);`
 
 Skip blank codepoints.

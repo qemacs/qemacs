@@ -3851,20 +3851,19 @@ static ModeDef salmon_mode = {
 static const char ppl_keywords[] = {
     /* language keywords */
     "factory|service|functions|function|command|script|template|param|"
-    "record|enum|throw|as|type|inherit|creator|"
+    "record|enum|throw|as|type|inherit|creator|default|"
     "java|java_header|end|var|variable|redefine|"
-    "or|xor|is|not|may|be|out_check|assert|this|const|"
+    "and|or|xor|is|not|may|be|out_check|assert|this|const|"
     "on_error|throw_error|att|attribute|attributes|"
     "return|if|then|else|"
     "when|otherwise|repeat|times|to|try|catch_any|on|"
-    "tests|test|verify|verify_error|"
-    "private|public|"
+    "check|and_check|attributes_check|tests|test|verify|verify_error|"
+    "private|public|get|set|in|out|in_out|in_all|"
     /* boolean and null literals */
     "yes|no|null|void|"
 };
 
 static const char ppl_phrases[] = {
-    "in|out|"
     "repeat for each|repeat from|repeat while|repeat forever|"
     "exit repeat|next repeat|"
     "case type of|case enum of|case value of|case reference of|"
@@ -3906,8 +3905,18 @@ enum {
     IN_PPL_JAVA = 0x800,
 };
 
-/* match a sequence of keywords from a | separated list */
 static int cp_match_keywords(const char32_t *str, int n, int start, const char *s, int *end) {
+    /*@API utils
+       Match a sequence of words from a | separated list of phrases.
+       A space in the string matches a non empty white space sequence in the source array.
+       Phrases are delimited by `|` characters.
+       @argument `str` a valid pointer to an array of codepoints
+       @argument `start` the index to the next codepoint
+       @argument `n` the length of the codepoint array
+       @argument `s` a valid pointer to a string containing phrases delimited by `|`.
+       @argument `end` a valid pointer to store the index of the codepoint after the end of a match.
+       @return a boolean success indicator.
+     */
     int i = start;
     size_t j = 0;
     for (;;) {
@@ -4090,6 +4099,8 @@ static void ppl_colorize_line(QEColorizeContext *cp,
                 // XXX: should detect and colorize {{ expression }}
                 if (c == delim && str[i] == delim && str[i + 1] == delim) {
                     i += 2;
+                    if (str[i] == delim)
+                        i++;
                     state &= ~IN_PPL_STRING;
                     break;
                 }
@@ -4129,7 +4140,7 @@ static void ppl_colorize_line(QEColorizeContext *cp,
             type_decl = 0;
             continue;
         case ':':
-            if (!strcmp(kbuf, "type"))
+            if (strequal(kbuf, "type"))
                 type_decl = 1;
             else
                 type_decl = 0;
@@ -4144,7 +4155,6 @@ static void ppl_colorize_line(QEColorizeContext *cp,
         default:
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
-                i++;
                 while (qe_isalnum(str[i]) ||
                        (str[i] == '.' && qe_isdigit(str[i + 1])) ||
                        ((str[i] == '+' || str[i] == '-') &&
@@ -4159,6 +4169,7 @@ static void ppl_colorize_line(QEColorizeContext *cp,
             if (is_js_identifier_start(c)) {
                 if (start == indent && cp_match_keywords(str, n, i - 1, ppl_phrases, &i)) {
                     style = PPL_STYLE_KEYWORD;
+                    type_decl = 0;
                     break;
                 }
                 i += get_js_identifier(kbuf, countof(kbuf), c, str, i, n);
@@ -4166,10 +4177,18 @@ static void ppl_colorize_line(QEColorizeContext *cp,
                     continue;
 
                 if (strfind(syn->keywords, kbuf) || str[i] == ':') {
-                    if (!strcmp(kbuf, "null") && type_decl == 1) {
+                    if (strequal(kbuf, "null") && type_decl == 1) {
                         // null as a type
                     } else {
                         style = PPL_STYLE_KEYWORD;
+                        if (strfind("on|factory|type|when|inherit", kbuf)) {
+                            type_decl = 1;
+                        } else
+                        if (strequal(kbuf, "or") && type_decl == 2) {
+                            type_decl = 1;
+                        } else {
+                            type_decl = 0;
+                        }
                         if (start == indent
                         &&  strfind("function|creator|command|template|service|factory|type", kbuf))
                         {
@@ -4179,14 +4198,6 @@ static void ppl_colorize_line(QEColorizeContext *cp,
                         } else
                         if (start == indent && strfind("java|java_header", kbuf)) {
                             state |= IN_PPL_JAVA;
-                        }
-                        if (strfind("on|factory|type|when|inherit", kbuf)) {
-                            type_decl = 1;
-                        } else
-                        if (!strcmp(kbuf, "or") && type_decl == 2) {
-                            type_decl = 1;
-                        } else {
-                            type_decl = 0;
                         }
                         break;
                     }
