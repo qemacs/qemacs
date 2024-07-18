@@ -2001,7 +2001,7 @@ static void do_unknown_key(EditState *s) {
 
     buf_init(out, buf, sizeof buf);
     for (i = 0; i < qs->input_len; i++)
-        buf_encode_byte(out, qs->input_buf[i]);
+        buf_quote_byte(out, qs->input_buf[i]);
     put_status(s, "Unknown key: %s", buf);
 }
 
