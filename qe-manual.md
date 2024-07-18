@@ -1011,19 +1011,19 @@ their relative order.
 Return `0` if the strings compare equal, a negative value if `s1` is
 lexicographically before `s2` and a positive number otherwise.
 
-### `int ustr_get_identifier(char *buf, int buf_size, char32_t c, const char32_t *str, int i, int n);`
+### `int ustr_get_identifier(char *dest, int size, char32_t c, const char32_t *str, int i, int n);`
 
 Extract an ASCII identifier from a wide string into a char array.
 
-* argument `buf` a valid pointer to a destination array.
+* argument `dest` a valid pointer to a destination array.
 
-* argument `buf_size` the length of the destination array.
+* argument `size` the length of the destination array.
 
-* argument `c` the first code point to copy.
+* argument `c` the first codepoint to copy.
 
 * argument `str` a valid wide string pointer.
 
-* argument `i` the offset of the first code point to copy.
+* argument `i` the offset of the first codepoint to copy.
 
 * argument `n` the offset to the end of the wide string.
 
@@ -1031,7 +1031,7 @@ Return the length of the identifier present in the source string.
 
 Note: the return value can be larger than the destination array length.
 In this case, the destination array contains a truncated string, null
-terminated unless buf_size is <= 0.
+terminated unless `size <= 0`.
 
 ### `int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c, const char32_t *str, int i, int n);`
 

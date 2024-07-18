@@ -178,7 +178,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                             char32_t *str, int n, ModeDef *syn)
 {
     int i = 0, start, i1, i2, indent, level;
-    int style, style0, style1, type_decl, klen, tag;
+    int style, style0, style1, type_decl, tag;
     char32_t c, prev, delim;
     char kbuf[64];
     int mode_flags = syn->colorize_flags;
@@ -582,9 +582,7 @@ static void c_colorize_line(QEColorizeContext *cp,
             }
             if (qe_isalpha_(c) || c == '$' || (c == '@' && flavor != CLANG_PIKE)) {
                 /* XXX: should support :: */
-                klen = get_c_identifier(kbuf, countof(kbuf), str + start, flavor);
-                i = start + klen;
-
+                i = start + get_c_identifier(kbuf, countof(kbuf), str + start, flavor);
                 if (strfind(syn->keywords, kbuf)
                 ||  ((mode_flags & CLANG_CC) && strfind(c_keywords, kbuf))
                 ||  ((flavor == CLANG_CSS) && str[i] == ':')) {
@@ -3590,27 +3588,6 @@ static const char salmon_types[] = {
     "|"
 };
 
-static int get_salmon_identifier(char *dest, int size, char32_t c,
-                                 const char32_t *str, int i, int n)
-{
-    int pos = 0, j;
-
-    for (j = i;; j++) {
-        if (pos < size - 1) {
-            dest[pos++] = c;
-        }
-        if (j >= n)
-            break;
-        c = str[j];
-        if (!qe_isalnum_(c))
-            break;
-    }
-    if (pos < size) {
-        dest[pos] = '\0';
-    }
-    return j - i;
-}
-
 static void salmon_colorize_line(QEColorizeContext *cp,
                                  char32_t *str, int n, ModeDef *syn)
 {
@@ -3791,7 +3768,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
                 break;
             }
             if (qe_isalpha_(c)) {
-                i += get_salmon_identifier(kbuf, countof(kbuf), c, str, i, n);
+                i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
                 if (cp->state_only && !tag)
                     continue;
 

@@ -1,7 +1,7 @@
 /*
  * Swift mode for QEmacs.
  *
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -114,18 +114,18 @@ static int is_swift_identifier_char(char32_t c)
     }
 }
 
-static int swift_parse_identifier(char *buf, int buf_size, const char32_t *p)
+static int swift_parse_identifier(char *dest, int size, char32_t c, const char32_t *p)
 {
     buf_t outbuf, *out;
     int i = 0;
 
-    out = buf_init(&outbuf, buf, buf_size);
+    out = buf_init(&outbuf, dest, size);
 
-    buf_putc_utf8(out, p[i++]);
+    buf_putc_utf8(out, c);
     for (; is_swift_identifier_char(p[i]); i++) {
         buf_putc_utf8(out, p[i]);
     }
-    if (p[i] == '`' && buf[0] == '`')
+    if (p[i] == '`' && dest[0] == '`')
         buf_put_byte(out, p[i++]);
 
     return i;
@@ -205,7 +205,7 @@ static int swift_parse_number(const char32_t *p)
 static void swift_colorize_line(QEColorizeContext *cp,
                                 char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = 0, style, klen, level;
+    int i = 0, start = 0, style, level;
     char32_t c;
     int state = cp->colorize_state;
     char kbuf[64];
@@ -292,9 +292,7 @@ static void swift_colorize_line(QEColorizeContext *cp,
             }
             if (is_swift_identifier_head(c)) {
             identifier:
-                klen = swift_parse_identifier(kbuf, countof(kbuf), str + start);
-                i = start + klen;
-
+                i += swift_parse_identifier(kbuf, countof(kbuf), c, str + start);
                 if (strfind(syn->keywords, kbuf)) {
                     style = SWIFT_STYLE_KEYWORD;
                     break;

@@ -1,7 +1,7 @@
 /*
  * Wolfram language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,23 +55,24 @@ enum {
     WOLFRAM_STYLE_FUNCTION =   QE_STYLE_FUNCTION,
 };
 
-static int wolfram_get_identifier(char *buf, int buf_size, char32_t c,
+static int wolfram_get_identifier(char *dest, int size, char32_t c,
                                   const char32_t *str, int i, int n)
 {
-    int len = 0, j;
+    int pos = 0, j;
 
-    if (len < buf_size) {
-        buf[len++] = c;
-    }
-    for (j = i; j < n; j++) {
+    for (j = i;; j++) {
+        if (pos + 1 < size) {
+            /* c is assumed to be an ASCII character */
+            dest[pos++] = (char)c;
+        }
+        if (j >= n)
+            break;
         c = str[j];
         if (!qe_isalnum_(c) && c != '$' && c != '`')
             break;
-        if (len < buf_size - 1)
-            buf[len++] = c;
     }
-    if (len < buf_size) {
-        buf[len] = '\0';
+    if (pos < size) {
+        dest[pos] = '\0';
     }
     return j - i;
 }
