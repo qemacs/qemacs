@@ -2,7 +2,7 @@
  * Utilities for qemacs.
  *
  * Copyright (c) 2001 Fabrice Bellard.
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1296,37 +1296,37 @@ int umemcmp(const char32_t *s1, const char32_t *s2, size_t count) {
     return 0;
 }
 
-int ustr_get_identifier(char *buf, int buf_size, char32_t c,
+int ustr_get_identifier(char *dest, int size, char32_t c,
                         const char32_t *str, int i, int n)
 {
     /*@API utils
        Extract an ASCII identifier from a wide string into a char array.
-       @argument `buf` a valid pointer to a destination array.
-       @argument `buf_size` the length of the destination array.
-       @argument `c` the first code point to copy.
+       @argument `dest` a valid pointer to a destination array.
+       @argument `size` the length of the destination array.
+       @argument `c` the first codepoint to copy.
        @argument `str` a valid wide string pointer.
-       @argument `i` the offset of the first code point to copy.
+       @argument `i` the offset of the first codepoint to copy.
        @argument `n` the offset to the end of the wide string.
        @return the length of the identifier present in the source string.
        @note: the return value can be larger than the destination array length.
        In this case, the destination array contains a truncated string, null
-       terminated unless buf_size is <= 0.
+       terminated unless `size <= 0`.
      */
-    int len = 0, j;
+    int pos = 0, j;
 
-    if (len + 1 < buf_size) {
-        /* c is assumed to be an ASCII character */
-        buf[len++] = c;
-    }
-    for (j = i; j < n; j++) {
+    for (j = i;; j++) {
+        if (pos + 1 < size) {
+            /* c is assumed to be an ASCII character */
+            dest[pos++] = (char)c;
+        }
+        if (j >= n)
+            break;
         c = str[j];
         if (!qe_isalnum_(c))
             break;
-        if (len + 1 < buf_size)
-            buf[len++] = c;
     }
-    if (len < buf_size) {
-        buf[len] = '\0';
+    if (pos < size) {
+        dest[pos] = '\0';
     }
     return j - i;
 }
