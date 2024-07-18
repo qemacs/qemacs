@@ -1399,13 +1399,23 @@ int utf8_get_word(char *buf, int buf_size, char32_t c,
     return j - i;
 }
 
-int ustr_match_keyword(const char32_t *buf, const char *str, int *lenp) {
-    int i = 0;
-    while (str[i]) {
-        if (*buf++ != (u8)str[i++])
+int ustr_match_keyword(const char32_t *str, const char *keyword, int *lenp) {
+    /*@API utils
+       Match a keyword in a wide string.
+       @argument `str` a valid wide string pointer.
+       @argument `keyword` a valid string pointer.
+       @argument `lenp` a pointer to store the length if matched.
+       @return a boolean success value.
+       @note: the keyword is assumed to contain only ASCII characters.
+       A match requires a string match not followed by a valid ASCII identifier
+       character.
+     */
+    int i;
+    for (i = 0; keyword[i]; i++) {
+        if (str[i] != (u8)keyword[i])
             return 0;
     }
-    if (qe_isalnum_(*buf))
+    if (qe_isalnum_(str[i]))
         return 0;
     if (lenp)
         *lenp = i;
@@ -1567,9 +1577,15 @@ int strtokeys(const char *str, unsigned int *keys,
     return nb_keys;
 }
 
-/* Convert a key to a string representation. Recurse at most once */
-int buf_put_key(buf_t *out, int key)
-{
+int buf_put_key(buf_t *out, int key) {
+    /*@API buf
+       Encode a key as a qemacs string into a fixed length buffer
+       @argument `bp` a valid pointer to fixed length buffer
+       @argument `key` a key value
+       @return the number of bytes produced in the destination array,
+       not counting the null terminator.
+       @note Recurse at most once for meta keys.
+     */
     int i, start = out->len;
 
     for (i = 0; i < countof(keycodes); i++) {
@@ -1595,6 +1611,14 @@ int buf_put_key(buf_t *out, int key)
 
 int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys)
 {
+    /*@API buf
+       Encode a sequence of keys as a qemacs strings into a fixed length buffer
+       @argument `bp` a valid pointer to fixed length buffer
+       @argument `keys` a valid pointer to an array of keys
+       @argument `nb_keys` the number of keys to encode.
+       @return the number of bytes produced in the destination array,
+       not counting the null terminator.
+     */
     int i, start = out->len;
 
     for (i = 0; i < nb_keys; i++) {
@@ -1781,18 +1805,46 @@ int strsubst(char *buf, int buf_size, const char *from,
     return out->pos;
 }
 
-int byte_quote(char *dest, int size, unsigned char c) {
+int byte_quote(char *dest, int size, unsigned char ch) {
     /*@API utils
        Encode a byte as a source code escape sequence
        @argument `dest` a valid pointer to an array of bytes
        @argument `size` the length of the destination array
-       @argument `c` a byte value to encode as source
+       @argument `ch` a byte value to encode as source
        @return the number of bytes produced in the destination array,
        not counting the null terminator
      */
-    buf_t buf[1];
-    buf_init(buf, dest, size);
-    return buf_quote_byte(buf, c);
+    int c;
+    if (((void)(c = 'n'), ch == '\n')
+    ||  ((void)(c = 'r'), ch == '\r')
+    ||  ((void)(c = 't'), ch == '\t')
+    ||  ((void)(c = 'f'), ch == '\f')
+    ||  ((void)(c = 'b'), ch == '\010')
+    ||  ((void)(c = 'E'), ch == '\033')
+    ||  ((void)(c = '\''), ch == '\'')      // XXX: need flag to make this optional
+    ||  ((void)(c = '\"'), ch == '\"')      // XXX: need flag to make this optional
+    ||  ((void)(c = '\\'), ch == '\\')) {
+        return snprintf(dest, size, "\\%c", c);
+    } else
+    if (ch < 32) {
+        //if (*p == '\e' && col > 9) {
+        //    eb_write(b, b->total_size, "\n         ", 10);
+        //    col = 9;
+        //}
+        return snprintf(dest, size, "\\^%c", (ch + '@') & 127);      // XXX: need flag to make this optional
+    } else
+    if (ch < 127) {
+        if (size > 1) {
+            dest[0] = ch;
+            dest[1] = '\0';
+        } else
+        if (size > 0) {
+            dest[0] = '\0';
+        }
+        return 1;
+    } else {
+        return snprintf(dest, size, "\\0x%02X", ch);      // XXX: need flag to make this optional
+    }
 }
 
 int strquote(char *dest, int size, const char *str, int len) {
@@ -1800,10 +1852,12 @@ int strquote(char *dest, int size, const char *str, int len) {
        Encode a string using source code escape sequences
        @argument `dest` a valid pointer to an array of bytes
        @argument `size` the length of the destination array
-       @argument `src` a valid pointer to a string to encode
+       @argument `src` a pointer to a string to encode
        @argument `len` the number of bytes to encode
        @return the length of the converted string, not counting the null
        terminator, possibly longer than the destination array length.
+       @note if `src` is a null pointer, the string `null` is output
+       otherwise a double quoted string is produced.
      */
     buf_t out[1];
     buf_init(out, dest, size);
@@ -1836,30 +1890,22 @@ int buf_quote_byte(buf_t *bp, unsigned char ch) {
        @return the number of bytes produced in the destination array,
        not counting the null terminator
      */
-    int c;
-    if (((void)(c = 'n'), ch == '\n')
-    ||  ((void)(c = 'r'), ch == '\r')
-    ||  ((void)(c = 't'), ch == '\t')
-    ||  ((void)(c = 'f'), ch == '\f')
-    ||  ((void)(c = 'b'), ch == '\010')
-    ||  ((void)(c = 'E'), ch == '\033')
-    ||  ((void)(c = '\''), ch == '\'')      // XXX: need flag to make this optional
-    ||  ((void)(c = '\"'), ch == '\"')      // XXX: need flag to make this optional
-    ||  ((void)(c = '\\'), ch == '\\')) {
-        return buf_printf(bp, "\\%c", c);
-    } else
-    if (ch < 32) {
-        //if (*p == '\e' && col > 9) {
-        //    eb_write(b, b->total_size, "\n         ", 10);
-        //    col = 9;
-        //}
-        return buf_printf(bp, "\\^%c", (ch + '@') & 127);      // XXX: need flag to make this optional
-    } else
-    if (ch < 127) {
-        return buf_put_byte(bp, ch);
-    } else {
-        return buf_printf(bp, "\\0x%02X", ch);      // XXX: need flag to make this optional
+    char *dest = NULL;
+    int size = 0;
+    int written = 0;
+    int len;
+
+    if (bp->pos < bp->size) {
+        dest = bp->buf + bp->pos;
+        size = bp->size - bp->pos;
     }
+    len = byte_quote(dest, size, ch);
+    if (bp->pos < bp->size) {
+        written = (len < size) ? len : size - 1;
+        bp->len += written;
+    }
+    bp->pos += len;
+    return written;
 }
 
 /*---------------- allocation routines ----------------*/

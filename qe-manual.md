@@ -234,6 +234,32 @@ Append a byte to a fixed length buffer.
 
 Return the number of bytes actually written.
 
+### `int buf_put_key(buf_t *out, int key);`
+
+Encode a key as a qemacs string into a fixed length buffer
+
+* argument `bp` a valid pointer to fixed length buffer
+
+* argument `key` a key value
+
+Return the number of bytes produced in the destination array,
+not counting the null terminator.
+
+Note: Recurse at most once for meta keys.
+
+### `int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);`
+
+Encode a sequence of keys as a qemacs strings into a fixed length buffer
+
+* argument `bp` a valid pointer to fixed length buffer
+
+* argument `keys` a valid pointer to an array of keys
+
+* argument `nb_keys` the number of keys to encode.
+
+Return the number of bytes produced in the destination array,
+not counting the null terminator.
+
 ### `int buf_putc_utf8(buf_t *bp, char32_t c);`
 
 Encode a codepoint in UTF-8 at the end of a fixed length buffer.
@@ -457,7 +483,7 @@ Return the updated path length.
 
 Note: truncation cannot be detected reliably
 
-### `int byte_quote(char *dest, int size, unsigned char c);`
+### `int byte_quote(char *dest, int size, unsigned char ch);`
 
 Encode a byte as a source code escape sequence
 
@@ -465,7 +491,7 @@ Encode a byte as a source code escape sequence
 
 * argument `size` the length of the destination array
 
-* argument `c` a byte value to encode as source
+* argument `ch` a byte value to encode as source
 
 Return the number of bytes produced in the destination array,
 not counting the null terminator
@@ -1067,12 +1093,15 @@ Encode a string using source code escape sequences
 
 * argument `size` the length of the destination array
 
-* argument `src` a valid pointer to a string to encode
+* argument `src` a pointer to a string to encode
 
 * argument `len` the number of bytes to encode
 
 Return the length of the converted string, not counting the null
 terminator, possibly longer than the destination array length.
+
+Note: if `src` is a null pointer, the string `null` is output
+otherwise a double quoted string is produced.
 
 ### `int strstart(const char *str, const char *val, const char **ptr);`
 
@@ -1214,6 +1243,22 @@ Return the length of the identifier present in the source string.
 Note: the return value can be larger than the destination array length.
 In this case, the destination array contains a truncated string, null
 terminated unless buf_size is <= 0.
+
+### `int ustr_match_keyword(const char32_t *str, const char *keyword, int *lenp);`
+
+Match a keyword in a wide string.
+
+* argument `str` a valid wide string pointer.
+
+* argument `keyword` a valid string pointer.
+
+* argument `lenp` a pointer to store the length if matched.
+
+Return a boolean success value.
+
+Note: the keyword is assumed to contain only ASCII characters.
+A match requires a string match not followed by a valid ASCII identifier
+character.
 
 ### `int ustristart(const char32_t *str0, const char *val, int *lenp);`
 
