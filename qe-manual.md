@@ -309,6 +309,279 @@ Return the number of bytes actually written.
 Note: content is truncated if it does not fit in the available
 space in the destination buffer.
 
+### `int qe_digit_value(char32_t c);`
+
+Get the numerical value associated with a codepoint
+
+* argument `c` a codepoint value
+
+Return the corresponding numerical value, or 255 for none
+ie: `'0'` -> `0`, `'1'` -> `1`, `'a'` -> 10, `'Z'` -> 35
+
+### `int qe_findchar(const char *str, char32_t c);`
+
+Test if a codepoint value is part of a set of ASCII characters
+
+* argument `str` a valid pointer to a C string
+
+* argument `c` a codepoint value
+
+Return a boolean success value: `1` if the codepoint was found in
+the string, `0` if `c` is `0` or non-ASCII or was not found in the set.
+
+Note: only ASCII characters are supported
+
+### `int qe_indexof(const char *str, char32_t c);`
+
+Find the index of a codepoint value in a set of ASCII characters
+
+* argument `str` a valid pointer to a C string
+
+* argument `c` a codepoint value
+
+Return the offset of `c` in `str` if found or `-1` if `c` is not
+an ASCII character or was not found in the set.
+
+Note: only non null ASCII characters are supported.
+Contrary to `strchr`, `'\0'` is never found in the set.
+
+### `int qe_inrange(char32_t c, char32_t a, char32_t b);`
+
+Range test for codepoint values
+
+* argument `c` a codepoint value
+
+* argument `a` the minimum codepoint value for the range
+
+* argument `b` the maximum codepoint value for the range
+
+Return a boolean value indicating if the codepoint is inside the range
+
+### `int qe_isalnum(char32_t c);`
+
+Test if a codepoint represents a letter or a digit
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII letters and digits are supported
+
+### `int qe_isalnum_(char32_t c);`
+
+Test if a codepoint represents a letter, a digit or an underscore
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII letters and digits are supported
+
+### `int qe_isalpha(char32_t c);`
+
+Test if a codepoint represents a letter
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII letters are supported
+
+### `int qe_isalpha_(char32_t c);`
+
+Test if a codepoint represents a letter or an underscore
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII letters are supported
+
+### `int qe_isbindigit(char32_t c);`
+
+Test if a codepoint represents a binary digit
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII digits are supported
+
+### `int qe_isbindigit_(char32_t c);`
+
+Test if a codepoint represents a binary digit or an underscore
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII digits are supported
+
+### `int qe_isblank(char32_t c);`
+
+Test if a codepoint represents blank space
+
+* argument `c` a codepoint value
+
+Return a boolean value indicating if the codepoint is blank space
+
+Note: only ASCII blanks and non-breaking-space are supported
+
+### `int qe_isdigit(char32_t c);`
+
+Test if a codepoint represents a digit
+
+* argument `c` a codepoint value
+
+Return a boolean value indicating if the codepoint is an ASCII digit
+
+Note: only ASCII digits are supported
+
+### `int qe_isdigit_(char32_t c);`
+
+Test if a codepoint represents a digit or an underscore
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII digits are supported
+
+### `int qe_islower(char32_t c);`
+
+Test if a codepoint represents a lowercase letter
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII lowercase letters are supported
+
+### `int qe_islower_(char32_t c);`
+
+Test if a codepoint represents a lowercase letter or an underscore
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII lowercase letters are supported
+
+### `int qe_isoctdigit(char32_t c);`
+
+Test if a codepoint represents an octal digit
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII digits are supported
+
+### `int qe_isoctdigit_(char32_t c);`
+
+Test if a codepoint represents an octal digit or an underscore
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII digits are supported
+
+### `int qe_isspace(char32_t c);`
+
+Test if a codepoint represents white space
+
+* argument `c` a codepoint value
+
+Return a boolean value indicating if the codepoint is white space
+
+Note: only ASCII whitespace and non-breaking-space are supported
+
+### `int qe_isupper(char32_t c);`
+
+Test if a codepoint represents an uppercase letter
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII uppercase letters are supported
+
+### `int qe_isupper_(char32_t c);`
+
+Test if a codepoint represents an uppercase letter or an underscore
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII uppercase letters are supported
+
+### `int qe_isword(char32_t c);`
+
+Test if a codepoint value is part of a _word_
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: _word_ characters are letters, digits, underscore and any
+non ASCII codepoints. This is oversimplistic, we should use tables for
+better Unicode support.  The definition of _word_ characters should
+depend on the current mode.
+
+### `int qe_isxdigit(char32_t c);`
+
+Test if a codepoint represents a hexadecimal digit
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII digits and letters are supported
+
+### `int qe_isxdigit_(char32_t c);`
+
+Test if a codepoint represents a hexadecimal digit or an underscore
+
+* argument `c` a codepoint value
+
+Return a boolean success value
+
+Note: only ASCII digits and letters are supported
+
+### `int qe_match2(char32_t c, char32_t c1, char32_t c2);`
+
+Test if a codepoint value is one of 2 specified values
+
+* argument `c` a codepoint value
+
+* argument `c1` a codepoint value
+
+* argument `c2` a codepoint value
+
+Return a boolean success value
+
+### `char32_t qe_tolower(char32_t c);`
+
+Convert an uppercase letter to the corresponding lowercase letter
+
+* argument `c` a codepoint value
+
+Return the converted letter or `c` if it is not an uppercase letter
+
+Note: only ASCII letters are supported
+
+### `char32_t qe_toupper(char32_t c);`
+
+Convert a lowercase letter to the corresponding uppercase letter
+
+* argument `c` a codepoint value
+
+Return the converted letter or `c` if it is not a lowercase letter
+
+Note: only ASCII letters are supported
+
 ### `void qe_free(T **pp);`
 
 Free the allocated memory pointed to by a pointer whose address is passed.
@@ -510,6 +783,16 @@ Note: this function accepts drive and protocol specifications.
 
 Note: removing `..` may have adverse side effects if the parent
 directory specified is a symbolic link.
+
+### `int check_fcall(const char32_t *str, int i);`
+
+Test if a parenthesis follows optional white space
+
+* argument `str` a valid pointer to an array of codepoints
+
+* argument `i` the index of the current codepoint
+
+Return a boolean success value
 
 ### `int cp_match_keywords(const char32_t *str, int n, int start, const char *s, int *end);`
 
@@ -1221,14 +1504,14 @@ Note: the return value can be larger than the destination array length.
 In this case, the destination array contains a truncated string, null
 terminated unless `size <= 0`.
 
-### `int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c, const char32_t *str, int i, int n);`
+### `int ustr_get_identifier_lc(char *dest, int size, char32_t c, const char32_t *str, int i, int n);`
 
 Extract an ASCII identifier from a wide string into a char array and
 convert it to lowercase.
 
-* argument `buf` a valid pointer to a destination array.
+* argument `dest` a valid pointer to a destination array.
 
-* argument `buf_size` the length of the destination array.
+* argument `size` the length of the destination array.
 
 * argument `c` the first code point to copy.
 
@@ -1242,7 +1525,31 @@ Return the length of the identifier present in the source string.
 
 Note: the return value can be larger than the destination array length.
 In this case, the destination array contains a truncated string, null
-terminated unless buf_size is <= 0.
+terminated unless `size <= 0`.
+
+### `int ustr_get_identifier_x(char *dest, int size, char32_t c, const char32_t *str, int i, int n, char32_t c1);`
+
+Extract an ASCII identifier from a wide string into a char array.
+
+* argument `dest` a valid pointer to a destination array.
+
+* argument `size` the length of the destination array.
+
+* argument `c` the first codepoint to copy.
+
+* argument `str` a valid wide string pointer.
+
+* argument `i` the offset of the first codepoint to copy.
+
+* argument `n` the offset to the end of the wide string.
+
+* argument `c1` a codepoint value to match in addition to `isalnum_`
+
+Return the length of the identifier present in the source string.
+
+Note: the return value can be larger than the destination array length.
+In this case, the destination array contains a truncated string, null
+terminated unless `size <= 0`.
 
 ### `int ustr_match_keyword(const char32_t *str, const char *keyword, int *lenp);`
 
@@ -1345,14 +1652,14 @@ Strict decoding is performed, any encoding error returns INVALID_CHAR:
 - special codes 0xfffe and 0xffff
 - code points beyond CHARCODE_MAX
 
-### `int utf8_get_word(char *buf, int buf_size, char32_t c, const char32_t *str, int i, int n);`
+### `int utf8_get_word(char *dest, int size, char32_t c, const char32_t *str, int i, int n);`
 
 Extract a word from a wide string into a char array.
 Non ASCII code points are UTF-8 encoded.
 
-* argument `buf` a valid pointer to a destination array.
+* argument `dest` a valid pointer to a destination array.
 
-* argument `buf_size` the length of the destination array.
+* argument `size` the length of the destination array.
 
 * argument `c` the first code point to copy.
 
@@ -1366,7 +1673,7 @@ Return the length of the identifier present in the source string.
 
 Note: the return value can be larger than the destination array length.
 In this case, the destination array contains a truncated string, null
-terminated unless buf_size is <= 0.
+terminated unless `size <= 0`.
 
 ### `int utf8_prefix_len(const char *str1, const char *str2);`
 

@@ -4,6 +4,7 @@
 
 ## Current work
 
+* pass `indent` and `style` array to `ColorizeFunc`.
 * `S-TAB` -> untabify
 * `TAB` and `S-TAB` with selected block -> indent, unindent block
 * `C-x (` should restart macro learning mode

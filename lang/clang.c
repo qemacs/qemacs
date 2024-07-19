@@ -61,19 +61,6 @@ static const char c_extensions[] = {
     "h.in|c.in|"        /* preprocessed C input (should use more generic approach) */
 };
 
-static int cp_skip_blanks(const char32_t *str, int i, int n) {
-    /*@API utils
-       Skip blank codepoints.
-       @argument `str` a valid pointer to an array of codepoints
-       @argument `i` the index to the next codepoint
-       @argument `n` the length of the codepoint array
-       @return the index to the next non blank codepoint or `n` if none are found.
-     */
-    while (i < n && qe_isblank(str[i]))
-        i++;
-    return i;
-}
-
 int get_c_identifier(char *buf, int buf_size, const char32_t *p, int flavor) {
     /*@API utils
        Grab a C ASCII identifier from a char32_t buffer for a given flavor.
@@ -1737,7 +1724,7 @@ static void js_colorize_line(QEColorizeContext *cp,
     //int type_decl;  /* unused */
 
     indent = 0;
-    //for (; qe_isblank(str[indent]); indent++) continue;
+    //indent = cp_skip_blanks(str, 0, n);
     tag = !qe_isblank(str[0]) && (cp->s->mode == syn || cp->s->mode == &htmlsrc_mode);
 
     start = i;
@@ -3599,8 +3586,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
     int state = cp->colorize_state;
     //int type_decl;  /* unused */
 
-    //int indent = 0;
-    //for (; qe_isblank(str[indent]); indent++) continue;
+    //int indent = cp_skip_blanks(str, 0, n);
     tag = !qe_isblank(str[0]) && (cp->s->mode == syn || cp->s->mode == &htmlsrc_mode);
 
     start = i;
