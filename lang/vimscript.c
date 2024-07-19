@@ -1,7 +1,7 @@
 /*
  * Vim script mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -112,9 +112,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
     int i = 0, j, start, state, comm, level, style;
     char32_t c;
 
-    while (qe_isblank(str[i])) {
-        i++;
-    }
+    i = cp_skip_blanks(str, i, n);
     if (str[i] == '\\') {
         i++;
         level = cp->colorize_state & 15;

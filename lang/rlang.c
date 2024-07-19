@@ -1,7 +1,7 @@
 /*
  * R language mode for QEmacs.
  *
- * Copyright (c) 2015-2023 Charlie Gordon.
+ * Copyright (c) 2015-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -150,8 +150,6 @@ static void r_colorize_line(QEColorizeContext *cp,
                     }
                 }
                 keyword[len] = '\0';
-                for (j = i; qe_isblank(str[j]); j++)
-                    continue;
                 if (strfind(syn->keywords, keyword)) {
                     if (strequal(keyword, "function"))
                         funclevel = level + 1;
@@ -166,6 +164,7 @@ static void r_colorize_line(QEColorizeContext *cp,
                     style = R_STYLE_ARGDEF;
                     break;
                 }
+                j = cp_skip_blanks(str, i, n);
                 if (str[j] == '=' && str[j + 1] != '=') {
                     style = R_STYLE_ARGNAME;
                     break;

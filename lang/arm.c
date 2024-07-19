@@ -1,7 +1,7 @@
 /*
  * Miscellaneous QEmacs modes for arm development related file formats
  *
- * Copyright (c) 2014-2023 Charlie Gordon.
+ * Copyright (c) 2014-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -59,8 +59,7 @@ static void arm_asm_colorize_line(QEColorizeContext *cp,
     if (colstate & IN_ASM_TRAIL)
         goto comment;
 
-    for (; qe_isblank(str[i]); i++)
-        continue;
+    i = cp_skip_blanks(str, i, n);
 
     for (w = i; i < n;) {
         start = i;
@@ -210,8 +209,7 @@ static void lst_colorize_line(QEColorizeContext *cp,
     int i, w, start, colstate = cp->colorize_state;
     char32_t c;
 
-    for (w = 0; qe_isblank(str[w]); w++)
-        continue;
+    w = cp_skip_blanks(str, 0, n);
 
     if (str[0] && str[1] == ':' && str[2] == '\\') {
         /* has full DOS/Windows pathname */
@@ -238,8 +236,7 @@ static void lst_colorize_line(QEColorizeContext *cp,
             i += 1;
             SET_COLOR(str, start, i, LST_STYLE_OFFSET);
 
-            for (; qe_isblank(str[i]); i++)
-                continue;
+            i = cp_skip_blanks(str, i, n);
             for (start = i; qe_isxdigit(str[i]); i++)
                 continue;
             if (str[i] == ' ' && qe_isxdigit(str[i + 1])) {
@@ -247,13 +244,11 @@ static void lst_colorize_line(QEColorizeContext *cp,
                     continue;
             }
             SET_COLOR(str, start, i, LST_STYLE_DUMP);
-            for (; qe_isblank(str[i]); i++)
-                continue;
+            i = cp_skip_blanks(str, i, n);
             for (start  = i; i < n && !qe_isblank(str[i]); i++)
                 continue;
             SET_COLOR(str, start, i, LST_STYLE_OPCODE);
-            for (; qe_isblank(str[i]); i++)
-                continue;
+            i = cp_skip_blanks(str, i, n);
             while (i < n) {
                 start = i;
                 c = str[i++];

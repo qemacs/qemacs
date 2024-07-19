@@ -67,11 +67,8 @@ static void fractint_colorize_line(QEColorizeContext *cp,
     char32_t c, delim;
     char kbuf[64];
 
-    for (indent = 0; qe_isblank(str[indent]); indent++)
-        continue;
-
+    indent = cp_skip_blanks(str, 0, n);
     state = cp->colorize_state;
-
     start = i;
     c = 0;
     style = FRACTINT_STYLE_DEFAULT;

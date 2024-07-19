@@ -1,7 +1,7 @@
 /*
  * Cobol language mode for QEmacs.
  *
- * Copyright (c) 2015-2023 Charlie Gordon.
+ * Copyright (c) 2015-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -93,8 +93,7 @@ static void cobol_colorize_line(QEColorizeContext *cp,
     char32_t c;
     int state = cp->colorize_state;
 
-    for (; i < n && qe_isblank(str[i]); i++)
-        continue;
+    i = cp_skip_blanks(str, i, n);
     indent = i;
 
     if (str[i] == '*' && str[i + 1] == '>')

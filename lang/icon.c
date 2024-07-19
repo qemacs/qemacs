@@ -65,11 +65,8 @@ static void icon_colorize_line(QEColorizeContext *cp,
     char32_t c, delim;
     char kbuf[64];
 
-    for (i = 0; qe_isblank(str[i]); i++)
-        continue;
-
+    i = cp_skip_blanks(str, 0, n);
     state = cp->colorize_state;
-
     indent = i;
     start = i;
     c = 0;

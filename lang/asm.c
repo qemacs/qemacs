@@ -1,7 +1,7 @@
 /*
  * asm language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -71,8 +71,7 @@ static void asm_colorize_line(QEColorizeContext *cp,
     if (colstate)
         goto in_comment;
 
-    for (; i < n && qe_isblank(str[i]); i++)
-        continue;
+    i = cp_skip_blanks(str, i, n);
 
     while (i < n) {
         start = i;
@@ -122,8 +121,7 @@ static void asm_colorize_line(QEColorizeContext *cp,
                 if (++wn == 1) {
                     if (strequal(keyword, "comment") && n > i) {
                         SET_COLOR(str, start, i, ASM_STYLE_PREPROCESS);
-                        for (; i < n && qe_isblank(str[i]); i++)
-                            continue;
+                        i = cp_skip_blanks(str, i, n);
                         start = i;
                         colstate = str[i++];  /* end of comment character */
                         /* skip characters upto and including separator */

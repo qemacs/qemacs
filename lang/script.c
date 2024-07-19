@@ -1,7 +1,7 @@
 /*
  * Shell script mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -100,9 +100,7 @@ static void shell_script_colorize_line(QEColorizeContext *cp,
 
 start_cmd:
     style = SHELL_SCRIPT_STYLE_COMMAND;
-    while (i < n  && qe_isblank(str[i])) {
-        i++;
-    }
+    i = cp_skip_blanks(str, i, n);
 
     while (i < n) {
         start = i;

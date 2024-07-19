@@ -1,7 +1,7 @@
 /*
  * Python language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -288,8 +288,7 @@ static void python_colorize_line(QEColorizeContext *cp,
                     break;
                 }
                 if (tag) {
-                    for (i1 = i; i1 < n && qe_isblank(str[i1]); i1++)
-                        continue;
+                    i1 = cp_skip_blanks(str, i, n);
                     if (qe_findchar(",=", str[i1])) {
                         /* tag variable definition */
                         eb_add_tag(cp->b, cp->offset + start, kbuf);

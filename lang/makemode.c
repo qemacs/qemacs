@@ -1,7 +1,7 @@
 /*
  * Makefile mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -232,7 +232,7 @@ static void cmake_colorize_line(QEColorizeContext *cp,
                 if (strfind("if|else|endif|set|true|false|include", buf)) {
                     SET_COLOR(str, start, i, CMAKE_STYLE_KEYWORD);
                 } else
-                if (str[i] == '(' || (str[i] == ' ' && str[i+1] == '(')) {
+                if (check_fcall(str, i)) {
                     SET_COLOR(str, start, i, CMAKE_STYLE_FUNCTION);
                 }
             }
