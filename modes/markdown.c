@@ -262,8 +262,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         int lang = (colstate & IN_MKD_LANG) >> MKD_LANG_SHIFT;
 
         colstate &= ~(IN_MKD_BLOCK | IN_MKD_LANG_STATE);
-        for (i = j + 3; qe_isblank(str[i]); i++)
-            continue;
+        i = cp_skip_blanks(str, j + 3, n);
         /* extract info-string */
         for (len = 0; i < n && !qe_isblank(str[i]); i++) {
             if (len < countof(lang_name) - 1)

@@ -98,9 +98,7 @@ static void latex_colorize_line(QEColorizeContext *cp,
                 }
             }
             SET_COLOR(str, start, i, LATEX_STYLE_FUNCTION);
-            while (qe_isblank(str[i])) {
-                i++;
-            }
+            i = cp_skip_blanks(str, i, n);
             while (str[i] == '{' || str[i] == '[') {
                 if (str[i++] == '[') {
                     /* handle [keyword] */
@@ -128,9 +126,7 @@ static void latex_colorize_line(QEColorizeContext *cp,
                     if (str[i] == '}')
                         i++;
                 }
-                while (qe_isblank(str[i])) {
-                    i++;
-                }
+                i = cp_skip_blanks(str, i, n);
             }
             break;
         case '%':

@@ -264,8 +264,7 @@ static void virgil_colorize_line(QEColorizeContext *cp,
             continue;
 
         case '~':
-            while (qe_isblank(str[i]))
-                i++;
+            i = cp_skip_blanks(str, i, n);
             if (str[i] == '/') {
                 /* parse slashy string as regex */
                 sep = '/';

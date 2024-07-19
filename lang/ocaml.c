@@ -1,7 +1,7 @@
 /*
  * ML/Ocaml language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -223,9 +223,7 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
                 style = OCAML_STYLE_KEYWORD;
             } else {
                 style = OCAML_STYLE_IDENTIFIER;
-                k = i;
-                if (qe_isblank(str[k]))
-                    k++;
+                k = cp_skip_blanks(str, i, n);
                 if (str[k] == '(' && str[k + 1] != '*')
                     style = OCAML_STYLE_FUNCTION;
             }

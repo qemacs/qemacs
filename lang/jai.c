@@ -65,7 +65,7 @@ enum {
 static void jai_colorize_line(QEColorizeContext *cp,
                               char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, style = 0, i1, i2, level;
+    int i = 0, start = i, style = 0, i1, level;
     char32_t c = 0, delim;
     int state = cp->colorize_state;
     char kbuf[64];
@@ -191,25 +191,17 @@ static void jai_colorize_line(QEColorizeContext *cp,
             }
             if (qe_isalpha_(c)) {
                 i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
-
                 if (strfind(syn->keywords, kbuf)) {
                     style = JAI_STYLE_KEYWORD;
                     break;
                 }
-
-                i1 = i;
-                while (qe_isblank(str[i1]))
-                    i1++;
-                i2 = i1;
-                while (qe_isblank(str[i2]))
-                    i2++;
-
                 if ((start == 0 || str[start - 1] != '.')
                 &&  !qe_findchar(".(:", str[i])
                 &&  strfind(syn->types, kbuf)) {
                     style = JAI_STYLE_TYPE;
                     break;
                 }
+                i1 = cp_skip_blanks(str, i, n);
                 if (str[i1] == '(') {
                     /* function call */
                     /* XXX: different styles for call and definition */

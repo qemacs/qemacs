@@ -1,7 +1,7 @@
 /*
  * Rust mode for QEmacs.
  *
- * Copyright (c) 2015-2023 Charlie Gordon.
+ * Copyright (c) 2015-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -66,12 +66,11 @@ enum {
 static void rust_colorize_line(QEColorizeContext *cp,
                                char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start, i1, i2, indent, state, style, klen;
+    int i = 0, start, i1, indent, state, style, klen;
     char32_t c, delim;
     char kbuf[64];
 
-    for (indent = 0; qe_isblank(str[indent]); indent++)
-        continue;
+    indent = cp_skip_blanks(str, 0, n);
 
     state = cp->colorize_state;
 
@@ -238,19 +237,13 @@ static void rust_colorize_line(QEColorizeContext *cp,
                     break;
                 }
 
-                i1 = i;
-                while (qe_isblank(str[i1]))
-                    i1++;
-                i2 = i1;
-                while (qe_isblank(str[i2]))
-                    i2++;
-
                 if ((start == 0 || str[start - 1] != '.')
                 &&  !qe_findchar(".(:", str[i])
                 &&  strfind(syn->types, kbuf)) {
                     style = RUST_STYLE_TYPE;
                     break;
                 }
+                i1 = cp_skip_blanks(str, i, n);
                 if (str[i1] == '(') {
                     /* function call */
                     /* XXX: different styles for call and definition */

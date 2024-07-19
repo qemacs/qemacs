@@ -144,10 +144,11 @@ static int perl_string(const char32_t *str, char32_t delim, int j, int n) {
 static void perl_colorize_line(QEColorizeContext *cp,
                                char32_t *str, int n, ModeDef *syn)
 {
-    int i = 0, start = i, j, s1, s2, delim = 0;
+    int i = 0, start = i, j, s1, s2, delim = 0, indent;
     char32_t c, c1, c2;
     int colstate = cp->colorize_state;
 
+    indent = cp_skip_blanks(str, 0, n);
     if (colstate & (IN_PERL_STRING1 | IN_PERL_STRING2)) {
         delim = (colstate & IN_PERL_STRING1) ? '\'' : '\"';
         i = perl_string(str, delim, start, n);
@@ -237,9 +238,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
         case '<':
             if (c1 == '<') {
                 /* Should check for unary context */
-                s1 = i + 1;
-                while (qe_isblank(str[s1]))
-                    s1++;
+                s1 = cp_skip_blanks(str, i + 1, n);
                 c2 = str[s1];
                 if (c2 == '"' || c2 == '\'' || c2 == '`') {
                     s2 = perl_string(str, c2, ++s1, n);
@@ -358,11 +357,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
             }
         keyword:
             if (i - start == 6 && ustristart(str + start, "format", NULL)) {
-                for (s1 = 0; s1 < start; s1++) {
-                    if (!qe_isblank(str[s1]))
-                        break;
-                }
-                if (s1 == start) {
+                if (start == indent) {
                     /* keyword is first on line */
                     colstate |= IN_PERL_FORMAT;
                 }

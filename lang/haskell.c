@@ -77,8 +77,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
     if (state & IN_HASKELL_STRING) {
         sep = '\"';
         state = 0;
-        while (qe_isblank(str[i]))
-            i++;
+        i = cp_skip_blanks(str, i, n);
         if (str[i] == '\\')
             i++;
         goto parse_string;
