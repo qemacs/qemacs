@@ -1296,6 +1296,19 @@ int umemcmp(const char32_t *s1, const char32_t *s2, size_t count) {
     return 0;
 }
 
+int cp_skip_blanks(const char32_t *str, int i, int n) {
+    /*@API utils
+       Skip blank codepoints.
+       @argument `str` a valid pointer to an array of codepoints
+       @argument `i` the index to the next codepoint
+       @argument `n` the length of the codepoint array
+       @return the index to the next non blank codepoint or `n` if none are found.
+     */
+    while (i < n && qe_isblank(str[i]))
+        i++;
+    return i;
+}
+
 int ustr_get_identifier(char *dest, int size, char32_t c,
                         const char32_t *str, int i, int n)
 {
@@ -1331,14 +1344,50 @@ int ustr_get_identifier(char *dest, int size, char32_t c,
     return j - i;
 }
 
-int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c,
+int ustr_get_identifier_x(char *dest, int size, char32_t c,
+                          const char32_t *str, int i, int n, char32_t c1)
+{
+    /*@API utils
+       Extract an ASCII identifier from a wide string into a char array.
+       @argument `dest` a valid pointer to a destination array.
+       @argument `size` the length of the destination array.
+       @argument `c` the first codepoint to copy.
+       @argument `str` a valid wide string pointer.
+       @argument `i` the offset of the first codepoint to copy.
+       @argument `n` the offset to the end of the wide string.
+       @argument `c1` a codepoint value to match in addition to `isalnum_`
+       @return the length of the identifier present in the source string.
+       @note: the return value can be larger than the destination array length.
+       In this case, the destination array contains a truncated string, null
+       terminated unless `size <= 0`.
+     */
+    int pos = 0, j;
+
+    for (j = i;; j++) {
+        if (pos + 1 < size) {
+            /* c is assumed to be an ASCII character */
+            dest[pos++] = (char)c;
+        }
+        if (j >= n)
+            break;
+        c = str[j];
+        if (!qe_isalnum_(c) && c != c1)
+            break;
+    }
+    if (pos < size) {
+        dest[pos] = '\0';
+    }
+    return j - i;
+}
+
+int ustr_get_identifier_lc(char *dest, int size, char32_t c,
                            const char32_t *str, int i, int n)
 {
     /*@API utils
        Extract an ASCII identifier from a wide string into a char array and
        convert it to lowercase.
-       @argument `buf` a valid pointer to a destination array.
-       @argument `buf_size` the length of the destination array.
+       @argument `dest` a valid pointer to a destination array.
+       @argument `size` the length of the destination array.
        @argument `c` the first code point to copy.
        @argument `str` a valid wide string pointer.
        @argument `i` the offset of the first code point to copy.
@@ -1346,35 +1395,35 @@ int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c,
        @return the length of the identifier present in the source string.
        @note: the return value can be larger than the destination array length.
        In this case, the destination array contains a truncated string, null
-       terminated unless buf_size is <= 0.
+       terminated unless `size <= 0`.
      */
-    int len = 0, j;
+    int pos = 0, j;
 
-    if (len < buf_size) {
-        /* c is assumed to be an ASCII character */
-        buf[len++] = qe_tolower(c);
-    }
-    for (j = i; j < n; j++) {
+    for (j = i;; j++) {
+        if (pos + 1 < size) {
+            /* c is assumed to be an ASCII character */
+            dest[pos++] = (char)qe_tolower(c);
+        }
+        if (j >= n)
+            break;
         c = str[j];
         if (!qe_isalnum_(c))
             break;
-        if (len < buf_size - 1)
-            buf[len++] = qe_tolower(c);
     }
-    if (len < buf_size) {
-        buf[len] = '\0';
+    if (pos < size) {
+        dest[pos] = '\0';
     }
     return j - i;
 }
 
-int utf8_get_word(char *buf, int buf_size, char32_t c,
+int utf8_get_word(char *dest, int size, char32_t c,
                   const char32_t *str, int i, int n)
 {
     /*@API utils
        Extract a word from a wide string into a char array.
        Non ASCII code points are UTF-8 encoded.
-       @argument `buf` a valid pointer to a destination array.
-       @argument `buf_size` the length of the destination array.
+       @argument `dest` a valid pointer to a destination array.
+       @argument `size` the length of the destination array.
        @argument `c` the first code point to copy.
        @argument `str` a valid wide string pointer.
        @argument `i` the offset of the first code point to copy.
@@ -1382,12 +1431,12 @@ int utf8_get_word(char *buf, int buf_size, char32_t c,
        @return the length of the identifier present in the source string.
        @note: the return value can be larger than the destination array length.
        In this case, the destination array contains a truncated string, null
-       terminated unless buf_size is <= 0.
+       terminated unless `size <= 0`.
      */
     buf_t outbuf, *out;
     int j;
 
-    out = buf_init(&outbuf, buf, buf_size);
+    out = buf_init(&outbuf, dest, size);
 
     buf_putc_utf8(out, c);
     for (j = i; j < n; j++) {

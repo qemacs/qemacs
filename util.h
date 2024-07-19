@@ -102,107 +102,264 @@ void splitpath(char *dirname, int dirname_size,
 extern unsigned char const qe_digit_value__[128];
 
 static inline int qe_digit_value(char32_t c) {
+    /*@API char-classes
+       Get the numerical value associated with a codepoint
+       @argument `c` a codepoint value
+       @return the corresponding numerical value, or 255 for none
+       ie: `'0'` -> `0`, `'1'` -> `1`, `'a'` -> 10, `'Z'` -> 35
+     */
     return c < 128 ? qe_digit_value__[c] : 255;
 }
 
 static inline int qe_inrange(char32_t c, char32_t a, char32_t b) {
+    /*@API char-classes
+       Range test for codepoint values
+       @argument `c` a codepoint value
+       @argument `a` the minimum codepoint value for the range
+       @argument `b` the maximum codepoint value for the range
+       @return a boolean value indicating if the codepoint is inside the range
+     */
     //return c >= a && c <= b;
     //CG: assuming a <= b and wrap around semantics for (c - a) and (b - a)
     return (unsigned int)(c - a) <= (unsigned int)(b - a);
 }
 
 static inline int qe_isspace(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents white space
+       @argument `c` a codepoint value
+       @return a boolean value indicating if the codepoint is white space
+       @note: only ASCII whitespace and non-breaking-space are supported
+     */
     /* CG: what about \v and \f */
     return (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == 160);
 }
 
 static inline int qe_isblank(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents blank space
+       @argument `c` a codepoint value
+       @return a boolean value indicating if the codepoint is blank space
+       @note: only ASCII blanks and non-breaking-space are supported
+     */
     return (c == ' ' || c == '\t' || c == 160);
 }
 
 static inline int qe_isdigit(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a digit
+       @argument `c` a codepoint value
+       @return a boolean value indicating if the codepoint is an ASCII digit
+       @note: only ASCII digits are supported
+     */
     return qe_inrange(c, '0', '9');
 }
 
 static inline int qe_isdigit_(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a digit or an underscore
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII digits are supported
+     */
     return (qe_inrange(c, '0', '9') || c == '_');
 }
 
 static inline int qe_isupper(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents an uppercase letter
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII uppercase letters are supported
+     */
     return qe_inrange(c, 'A', 'Z');
 }
 
 static inline int qe_isupper_(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents an uppercase letter or an underscore
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII uppercase letters are supported
+     */
     return (qe_inrange(c, 'A', 'Z') || c == '_');
 }
 
 static inline int qe_islower(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a lowercase letter
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII lowercase letters are supported
+     */
     return qe_inrange(c, 'a', 'z');
 }
 
 static inline int qe_islower_(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a lowercase letter or an underscore
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII lowercase letters are supported
+     */
     return (qe_inrange(c, 'a', 'z') || (c == '_'));
 }
 
 static inline int qe_isalpha(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a letter
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII letters are supported
+     */
     return qe_inrange(c | ('a' - 'A'), 'a', 'z');
 }
 
 static inline int qe_isalpha_(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a letter or an underscore
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII letters are supported
+     */
     return (qe_inrange(c | ('a' - 'A'), 'a', 'z') || c == '_');
 }
 
 static inline int qe_isoctdigit(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents an octal digit
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII digits are supported
+     */
     return qe_inrange(c, '0', '7');
 }
 
 static inline int qe_isoctdigit_(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents an octal digit or an underscore
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII digits are supported
+     */
     return qe_inrange(c, '0', '7') || (c == '_');
 }
 
 static inline int qe_isbindigit(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a binary digit
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII digits are supported
+     */
     return qe_inrange(c, '0', '1');
 }
 
 static inline int qe_isbindigit_(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a binary digit or an underscore
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII digits are supported
+     */
     return qe_inrange(c, '0', '1') || (c == '_');
 }
 
 static inline int qe_isxdigit(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a hexadecimal digit
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII digits and letters are supported
+     */
     return qe_digit_value(c) < 16;
 }
 
 static inline int qe_isxdigit_(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a hexadecimal digit or an underscore
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII digits and letters are supported
+     */
     return (qe_digit_value(c) < 16) || (c == '_');
 }
 
 static inline int qe_isalnum(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a letter or a digit
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII letters and digits are supported
+     */
     return qe_digit_value(c) < 36;
 }
 
 static inline int qe_isalnum_(char32_t c) {
+    /*@API char-classes
+       Test if a codepoint represents a letter, a digit or an underscore
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: only ASCII letters and digits are supported
+     */
     return (qe_digit_value(c) < 36) || (c == '_');
 }
 
 static inline int qe_isword(char32_t c) {
-    /* XXX: any unicode char >= 128 is considered as word. */
-    // XXX: should use wc version with tables
+    /*@API char-classes
+       Test if a codepoint value is part of a _word_
+       @argument `c` a codepoint value
+       @return a boolean success value
+       @note: _word_ characters are letters, digits, underscore and any
+       non ASCII codepoints. This is oversimplistic, we should use tables for
+       better Unicode support.  The definition of _word_ characters should
+       depend on the current mode.
+     */
     return qe_isalnum_(c) || (c >= 128);
 }
 
 static inline char32_t qe_tolower(char32_t c) {
+    /*@API char-classes
+       Convert an uppercase letter to the corresponding lowercase letter
+       @argument `c` a codepoint value
+       @return the converted letter or `c` if it is not an uppercase letter
+       @note: only ASCII letters are supported
+     */
     return (qe_inrange(c, 'A', 'Z') ? c + 'a' - 'A' : c);
 }
 
 static inline char32_t qe_toupper(char32_t c) {
+    /*@API char-classes
+       Convert a lowercase letter to the corresponding uppercase letter
+       @argument `c` a codepoint value
+       @return the converted letter or `c` if it is not a lowercase letter
+       @note: only ASCII letters are supported
+     */
     return (qe_inrange(c, 'a', 'z') ? c + 'A' - 'a' : c);
 }
 
 static inline int qe_findchar(const char *str, char32_t c) {
+    /*@API char-classes
+       Test if a codepoint value is part of a set of ASCII characters
+       @argument `str` a valid pointer to a C string
+       @argument `c` a codepoint value
+       @return a boolean success value: `1` if the codepoint was found in
+       the string, `0` if `c` is `0` or non-ASCII or was not found in the set.
+       @note: only ASCII characters are supported
+     */
     return qe_inrange(c, 1, 127) && strchr(str, c) != NULL;
 }
 
 static inline int qe_indexof(const char *str, char32_t c) {
+    /*@API char-classes
+       Find the index of a codepoint value in a set of ASCII characters
+       @argument `str` a valid pointer to a C string
+       @argument `c` a codepoint value
+       @return the offset of `c` in `str` if found or `-1` if `c` is not
+       an ASCII character or was not found in the set.
+       @note: only non null ASCII characters are supported.
+       Contrary to `strchr`, `'\0'` is never found in the set.
+     */
     if (qe_inrange(c, 1, 127)) {
         const char *p = strchr(str, c);
         if (p) return (int)(p - str);
@@ -211,6 +368,13 @@ static inline int qe_indexof(const char *str, char32_t c) {
 }
 
 static inline int qe_match2(char32_t c, char32_t c1, char32_t c2) {
+    /*@API char-classes
+       Test if a codepoint value is one of 2 specified values
+       @argument `c` a codepoint value
+       @argument `c1` a codepoint value
+       @argument `c2` a codepoint value
+       @return a boolean success value
+     */
     return c == c1 || c == c2;
 }
 
@@ -256,16 +420,25 @@ static inline char32_t *umemmove(char32_t *dest, const char32_t *src, size_t cou
     return blockmove(dest, src, count);
 }
 
-int ustr_get_identifier(char *buf, int buf_size, char32_t c,
+int cp_skip_blanks(const char32_t *str, int i, int n);
+int ustr_get_identifier(char *dest, int size, char32_t c,
                         const char32_t *str, int i, int n);
-int ustr_get_identifier_lc(char *buf, int buf_size, char32_t c,
+int ustr_get_identifier_x(char *dest, int size, char32_t c,
+                          const char32_t *str, int i, int n, char32_t c1);
+int ustr_get_identifier_lc(char *dest, int size, char32_t c,
                            const char32_t *str, int i, int n);
-int ustr_match_keyword(const char32_t *buf, const char *str, int *lenp);
-int utf8_get_word(char *buf, int buf_size, char32_t c,
+int ustr_match_keyword(const char32_t *str, const char *keyword, int *lenp);
+int utf8_get_word(char *dest, int size, char32_t c,
                   const char32_t *str, int i, int n);
 int utf8_prefix_len(const char *str1, const char *str2);
 
 static inline int check_fcall(const char32_t *str, int i) {
+    /*@API utils
+       Test if a parenthesis follows optional white space
+       @argument `str` a valid pointer to an array of codepoints
+       @argument `i` the index of the current codepoint
+       @return a boolean success value
+     */
     while (str[i] == ' ')
         i++;
     return str[i] == '(';
