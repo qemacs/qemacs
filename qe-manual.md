@@ -748,13 +748,189 @@ ending offsets are stored to `start_offset` and `end_offset`.
 Return `0` if search failed or `len` is zero.
 Return `-1` if search was aborted.
 
-### `int append_slash(char *buf, int buf_size);`
+### `int __attribute__((format(printf, 2, 3))) dbuf_printf(DynBuf *s, const char *fmt, ...);`
 
-Append a trailing slash to a path if none there already.
+Produce formatted output at the end of a dynamic buffer
 
-Return the updated path length.
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
 
-Note: truncation cannot be detected reliably
+* argument `fmt` a valid pointer to a format string
+
+Return an error indicator: `0` if data could be written, `-1` if
+the buffer could not be reallocated or if there was a formatting error.
+
+### `void *dbuf_default_realloc(void *opaque, void *ptr, size_t size);`
+
+Default memory allocation routine for dynamic buffers.
+
+* argument `opaque` is the opaque argument passed to `dbuf_init2`.
+
+* argument `ptr` is the pointer to the object that must be reallocated.
+It is `NULL` if the buffer has not been allocated yet.
+
+* argument `size` is new size requested for the buffer in bytes.
+An argument value of `0` for `size` specifies that the block should be
+freed and `NULL` will be returned.
+
+Return a pointer to the reallocated block or `NULL` if allocation
+failed or the requested size was `0` and the pointer was freed.
+
+Note: the C Standard specifies that if the size is zero, the behavior
+of `realloc` is undefined. In FreeBSD systems, if `size` is zero and
+`ptr` is not `NULL`, a new, minimum sized object is allocated and the
+original object is freed.
+
+### `BOOL dbuf_error(DynBuf *s);`
+
+Get the dynamic buffer current error code
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+Return the boolean error code
+
+### `void dbuf_free(DynBuf *s);`
+
+Free the allocated data in a dynamic buffer
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+### `DynBuf *dbuf_init(DynBuf *s);`
+
+Initialize a dynamic buffer with the default reallocation function.
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+Return the value of `s`.
+
+### `DynBuf *dbuf_init2(DynBuf *s, void *opaque, DynBufReallocFunc *realloc_func);`
+
+Initialize a dynamic buffer with a specified reallocation function.
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+* argument `opaque` is the opaque argument that will be passed to
+the reallocation function.
+
+* argument `realloc_func` the reallocation function to use for this dynamic buffer.
+
+Return the value of `s`.
+
+### `int dbuf_put(DynBuf *s, const uint8_t *data, size_t len);`
+
+Write a block of data at the end of a dynamic buffer
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+* argument `data` a valid pointer to a memory block
+
+* argument `len` the number of bytes to write
+
+Return an error indicator: `0` if data could be written, `-1` if
+buffer could not be reallocated.
+
+### `int dbuf_put_self(DynBuf *s, size_t offset, size_t len);`
+
+Duplicate a block of data from the dynamic buffer at the end
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+* argument `offset` the offset of the block to copy
+
+* argument `len` the number of bytes to copy
+
+Return an error indicator: `0` if data could be written, `-1` if
+buffer could not be reallocated.
+
+### `int dbuf_put_u16(DynBuf *s, uint16_t val);`
+
+Store a 16-bit value into a dynamic buffer
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+* argument `val` a 16-bit integer value
+
+Return an error indicator: `0` if data could be written, `-1` if
+buffer could not be reallocated.
+
+### `int dbuf_put_u32(DynBuf *s, uint32_t val);`
+
+Store a 32-bit value into a dynamic buffer
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+* argument `val` a 32-bit integer value
+
+Return an error indicator: `0` if data could be written, `-1` if
+buffer could not be reallocated.
+
+### `int dbuf_put_u64(DynBuf *s, uint64_t val);`
+
+Store a 64-bit value into a dynamic buffer
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+* argument `val` a 64-bit integer value
+
+Return an error indicator: `0` if data could be written, `-1` if
+buffer could not be reallocated.
+
+### `int dbuf_putc(DynBuf *s, uint8_t c);`
+
+Write a byte at the end of a dynamic buffer
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+* argument `c` the byte value
+
+Return an error indicator: `0` if data could be written, `-1` if
+buffer could not be reallocated.
+
+### `int dbuf_putstr(DynBuf *s, const char *str);`
+
+Write a string at the end of a dynamic buffer
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+* argument `str` a valid pointer to a string
+
+Return an error indicator: `0` if data could be written, `-1` if
+buffer could not be reallocated.
+
+### `int dbuf_realloc(DynBuf *s, size_t new_size);`
+
+Reallocate the buffer to a larger size.
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+* argument `new_size` the new size for the buffer.  If `new_size` is
+smaller than the current buffer length, no reallocation is performed.
+
+Return an error indicator: `0` if buffer was successfully reallocated,
+`-1` otherwise and `error` member is set.
+
+Note: the new buffer length may be larger than `new_size` to minimize
+further reallocation requests.
+
+### `void dbuf_set_error(DynBuf *s);`
+
+Set the dynamic buffer current error code
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+### `int dbuf_write(DynBuf *s, size_t offset, const uint8_t *data, size_t len);`
+
+Write a block of data at a given offset in a dynamic buffer
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+* argument `offset` the position where to write the block
+
+* argument `data` a valid pointer to a memory block
+
+* argument `len` the number of bytes to write
+
+Return an error indicator: `0` if data could be written, `-1` if
+buffer could not be reallocated.
 
 ### `int byte_quote(char *dest, int size, unsigned char ch);`
 
@@ -769,109 +945,12 @@ Encode a byte as a source code escape sequence
 Return the number of bytes produced in the destination array,
 not counting the null terminator
 
-### `void canonicalize_path(char *buf, int buf_size, const char *path);`
-
-Normalize a path, removing redundant `.`, `..` and `/` parts.
-
-* argument `buf` a pointer to the destination array
-
-* argument `buf_size` the length of the destination array in bytes
-
-* argument `path` a valid pointer to a string.
-
-Note: this function accepts drive and protocol specifications.
-
-Note: removing `..` may have adverse side effects if the parent
-directory specified is a symbolic link.
-
-### `int check_fcall(const char32_t *str, int i);`
-
-Test if a parenthesis follows optional white space
-
-* argument `str` a valid pointer to an array of codepoints
-
-* argument `i` the index of the current codepoint
-
-Return a boolean success value
-
-### `int cp_match_keywords(const char32_t *str, int n, int start, const char *s, int *end);`
-
-Match a sequence of words from a | separated list of phrases.
-A space in the string matches a non empty white space sequence in the source array.
-Phrases are delimited by `|` characters.
-
-* argument `str` a valid pointer to an array of codepoints
-
-* argument `start` the index to the next codepoint
-
-* argument `n` the length of the codepoint array
-
-* argument `s` a valid pointer to a string containing phrases delimited by `|`.
-
-* argument `end` a valid pointer to store the index of the codepoint after the end of a match.
-
-Return a boolean success indicator.
-
-### `int cp_skip_blanks(const char32_t *str, int i, int n);`
-
-Skip blank codepoints.
-
-* argument `str` a valid pointer to an array of codepoints
-
-* argument `i` the index to the next codepoint
-
-* argument `n` the length of the codepoint array
-
-Return the index to the next non blank codepoint or `n` if none are found.
-
-### `char *file_load(const char *filename, int max_size, int *sizep);`
-
-Load a file in memory, return allocated block and size.
-
-* fail if file cannot be opened for reading,
-* fail if file size is greater or equal to `max_size` (`errno` = `ERANGE`),
-* fail if memory cannot be allocated,
-* otherwise load the file contents into a block of memory,
-  null terminate the block and return a pointer to allocated
-  memory along with the number of bytes read.
-Error codes are returned in `errno`.
-Memory should be freed with `qe_free()`.
-
-### `void find_file_close(FindFileState **sp);`
-
-Close a directory enumeration state `FindFileState`.
-
-* argument `sp` a valid pointer to a `FindFileState` pointer that
-will be closed.
-
-Note: `FindFileState` state structures must be freed to avoid memory
-and resource leakage.
-
-### `int find_file_next(FindFileState *s, char *filename, int filename_size_max);`
-
-Get the next match in a directory enumeration.
-
-* argument `filename` a valid pointer to an array for the file name.
-
-* argument `filename_size_max` the length if the `filename` destination
-array in bytes.
-
-Return `0` if there is a match, `-1` if no more files matche the pattern.
-
-### `FindFileState *find_file_open(const char *path, const char *pattern, int flags);`
-
-Start a directory enumeration.
-
-* argument `path` the initial directory for the enumeration.
-
-* argument `pattern` a file pattern using `?` and `*` with the classic
-semantics used by unix shells
-
-Return a pointer to an opaque FindFileState structure.
-
 ### `const char *get_basename(const char *filename);`
 
 Get the filename portion of a path.
+
+* argument `filename` a valid pointer to a C string
+
 Return a pointer to the first character of the filename part of
 the path pointed to by string argument `path`.
 
@@ -880,6 +959,9 @@ Note: call this function for a constant string.
 ### `char *get_basename_nc(char *filename);`
 
 Get the filename portion of a path.
+
+* argument `filename` a valid pointer to a C string
+
 Return a pointer to the first character of the filename part of
 the path pointed to by string argument `path`.
 
@@ -890,24 +972,6 @@ Note: call this function for a modifiable string.
 Get the offset of the filename component of a path.
 Return the offset to the first character of the filename part of
 the path pointed to by string argument `path`.
-
-### `int get_c_identifier(char *buf, int buf_size, const char32_t *p, int flavor);`
-
-Grab a C ASCII identifier from a char32_t buffer for a given flavor.
-
-* argument `buf` a pointer to the destination array
-
-* argument `buf_size` the length of the destination array in bytes
-
-* argument `p` a valid pointer to an array of codepoints
-
-* argument `flavor` the language variant for identifier syntax
-
-Return the number of codepoints used in the source array.
-
-Note: `dest` can be a null pointer if `size` is `0`.
-
-Note: non-ASCII codepoints are accepted for CLANG_RUST but are not UTF-8 encoded
 
 ### `char *get_dirname(char *dest, int size, const char *file);`
 
@@ -928,6 +992,9 @@ requiring more tests when reconstructing the full path.
 ### `const char *get_extension(const char *filename);`
 
 Get the filename extension portion of a path.
+
+* argument `filename` a valid pointer to a C string
+
 Return a pointer to the first character of the last extension of
 the filename part of the path pointed to by string argument `path`.
 If there is no extension, return a pointer to the null terminator
@@ -939,11 +1006,15 @@ Note: call this function for a constant string.
 ### `char *get_extension_nc(char *filename);`
 
 Get the filename extension portion of a path.
+
+* argument `filename` a valid pointer to a C string
+
 Return a pointer to the first character of the last extension of
 the filename part of the path pointed to by string argument `path`.
 If there is no extension, return a pointer to the null terminator
 and the end of path.
-Leading dots are skipped, they are not considered part of an extension.
+
+Note: Leading dots are skipped, they are not considered part of an extension.
 
 Note: call this function for a modifiable string.
 
@@ -955,27 +1026,6 @@ the filename part of the path pointed to by string argument `path`.
 If there is no extension, return a pointer to the null terminator
 and the end of path.
 Leading dots are skipped, they are not considered part of an extension.
-
-### `int get_js_identifier(char *dest, int size, char32_t c, const char32_t *str, int i, int n);`
-
-Grab an identifier from a char32_t buffer, accept non-ASCII identifiers
-and encode in UTF-8.
-
-* argument `dest` a pointer to the destination array
-
-* argument `size` the length of the destination array in bytes
-
-* argument `c` the initial code point or `0` if none
-
-* argument `str` a valid pointer to an array of codepoints
-
-* argument `i` the index to the next codepoint
-
-* argument `n` the length of the codepoint array
-
-Return the number of codepoints used in the source array.
-
-Note: `dest` can be a null pointer if `size` is `0`.
 
 ### `int get_str(const char **pp, char *buf, int buf_size, const char *stop);`
 
@@ -995,82 +1045,6 @@ in the source string
 Return the length of the token stored into buf.
 
 Note: token truncation cannot be easily detected.
-
-### `int is_directory(const char *path);`
-
-Check if the string pointed to by `path` is the name of a
-directory.
-
-* argument `path` a valid pointer to a string.
-
-Return `true` if `path` is the name of a directory, `false` otherwise.
-
-Note: this function uses `stat`, so it will return `true` for
-directories and symbolic links pointing to existing directories.
-
-### `int is_filepattern(const char *filespec);`
-
-Check if the string pointed to by `filespec` is a file pattern.
-
-* argument `filespec` a valid pointer to a string.
-
-Return `true` if `filespec` contains wildcard characters.
-
-Note: this function only recognises `?` and `*` wildcard characters
-
-### `char *make_user_path(char *buf, int buf_size, const char *path);`
-
-Reduce a path relative to the user's homedir, using the `~`
-shell syntax.
-
-* argument `buf` a pointer to the destination array
-
-* argument `buf_size` the length of the destination array in bytes
-
-* argument `path` a valid pointer to a string.
-
-Return a pointer to the destination array.
-
-Note: this function uses the `HOME` environment variable to
-determine the user's home directory
-
-### `char *makepath(char *buf, int buf_size, const char *path, const char *filename);`
-
-Construct a path from a directory name and a filename into the
-array pointed to by `buf` of length `buf_size` bytes.
-
-Return a pointer to the destination array.
-
-Note: truncation cannot be detected reliably
-
-### `int match_extension(const char *filename, const char *extlist);`
-
-Return `true` iff the filename extension appears in `|` separated
-list pointed to by `extlist`.
-* Initial and final `|` do not match an empty extension, but `||` does.
-* Multiple tacked extensions may appear un extlist eg. `|tar.gz|`
-* Initial dots do not account as extension delimiters.
-* `.` and `..` do not have an empty extension, nor do they match `||`
-
-### `int match_shell_handler(const char *p, const char *list);`
-
-Return `true` iff the command name invoked by the `#!` line pointed to by `p`
-matches one of the commands in `|` separated list pointed to by `list`.
-* both `#!/bin/perl` and `#!/bin/env perl` styles match list `"perl"`
-
-### `int match_strings(const char *s1, const char *s2, int len);`
-
-Find the length of the common prefix, only count complete UTF-8
-sequences.
-
-* argument `s1` a valid string pointer
-
-* argument `s2` a valid string pointer
-
-* argument `len` the maximum number of bytes to compare. This count
-is assumed to only include complete UTF-8 sequences.
-
-Return the length of the common prefix, between `0` and `len`.
 
 ### `int memfind(const char *list, const char *s, int len);`
 
@@ -1153,15 +1127,6 @@ Return a pointer to the destination array.
 
 Note: truncation cannot be detected reliably.
 
-### `int qe_haslower(const char *str);`
-
-Check if a C string contains has ASCII lowercase letters.
-
-* argument `str` a valid pointer to a C string
-
-Return a boolean value, non zero if and only if the string contains
-ASCII lowercase letters.
-
 ### `int qe_memicmp(const void *p1, const void *p2, size_t count);`
 
 Perform a case independent comparison of blocks of memory.
@@ -1180,47 +1145,6 @@ Return a positive value if the first block compares above the second.
 
 Note: this version only handles ASCII.
 
-### `void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk, int (*compare)(void *, const void *, const void *));`
-
-Sort an array using a comparison function with an extra opaque
-argument.
-
-* argument `base` a valid pointer to an array of objects,
-
-* argument `nmemb` the number of elements in the array,
-
-* argument `size` the object size in bytes,
-
-* argument `thunk` the generic argument to pass to the comparison
-function,
-
-* argument `compare` a function pointer for a comparison function
-taking 3 arguments: the `thunk` argument and pointers to 2
-objects from the array, returning an integer whose sign indicates
-their relative position according to the sort order.
-
-Note: this function behaves like OpenBSD's `qsort_r()`, the
-implementation is non recursive using a combination of quicksort
-and insertion sort for small chunks. The GNU lib C on linux also
-has a function `qsort_r()` with similar semantics but a different
-calling convention.
-
-### `int qe_skip_spaces(const char **pp);`
-
-Skip white space at the beginning of the string pointed to by `*pp`.
-
-* argument `pp` the address of a valid string pointer. The pointer will
-be updated to point after any initial white space.
-
-Return the character value after the white space as an `unsigned char`.
-
-### `int qe_strcollate(const char *s1, const char *s2);`
-
-Compare 2 strings using special rules:
-* use lexicographical order
-* collate sequences of digits in numerical order.
-* push `*` at the end.
-
 ### `const char *qe_stristr(const char *s1, const char *s2);`
 
 Find an ASCII string in another ASCII string, ignoring case.
@@ -1234,45 +1158,6 @@ Return a pointer to the first character of the match if found,
 `NULL` otherwise.
 
 Note: this version only handles ASCII.
-
-### `int qe_strtobool(const char *s, int def);`
-
-Determine the boolean value of a response string.
-
-* argument `s` a possibly null pointer to a string,
-
-* argument `def` the default value if `s` is null or an empty string,
-
-Return `true` for `y`, `yes`, `t`, `true` and `1`, case independenty,
-return `false` for other non empty contents and return the default
-value `def` otherwise.
-
-### `void qe_strtolower(char *buf, int size, const char *str);`
-
-Convert an ASCII string to lowercase using `qe_tolower7` for
-each byte.
-
-* argument `buf` a valid pointer to a destination char array.
-
-* argument `size` the length of the destination array in bytes,
-
-* argument `str` a valid pointer to a string to convert.
-
-Note: this version only handles ASCII.
-
-### `int remove_slash(char *buf);`
-
-Remove the trailing slash from path, except for / directory.
-
-Return the updated path length.
-
-### `void splitpath(char *dirname, int dirname_size, char *filename, int filename_size, const char *pathname);`
-
-Split the path pointed to by `pathname` into a directory part and a
-filename part.
-
-Note: `dirname` will receive an empty string if `pathname` contains
-just a filename.
 
 ### `int strend(const char *str, const char *val, const char **ptr);`
 
@@ -1291,6 +1176,16 @@ not a null pointer.
 
 Return `true` if there is a match, `false` otherwise.
 
+### `int strequal(const char *s1, const char *s2);`
+
+Compare two strings for equality
+
+* argument `s1` a valid pointer to a C string
+
+* argument `s2` a valid pointer to a C string
+
+Return a boolean success value
+
 ### `int strfind(const char *keytable, const char *str);`
 
 Find a string in a list of words separated by `|`.
@@ -1305,7 +1200,10 @@ Return 1 if there is a match, 0 otherwise.
 ### `void strip_extension(char *filename);`
 
 Strip the filename extension portion of a path.
-Leading dots are skipped, they are not considered part of an extension.
+
+* argument `filename` a valid pointer to a C string
+
+Note: Leading dots are skipped, they are not considered part of an extension.
 
 ### `int stristart(const char *str, const char *val, const char **ptr);`
 
@@ -1409,22 +1307,60 @@ Return `true` if there is a match, `false` otherwise.
 ### `double strtod_c(const char *str, const char **endptr);`
 
 Convert the number in the string pointed to by `str` as a `double`.
-Call this function with a constant string and the address of a `const char *`.
+
+* argument `str` a valid pointer to a C string
+
+* argument `endptr` a pointer to a constant string pointer. May be null.
+A pointer to the first character after the number will be stored into
+this pointer.
+
+Note: call this function with a constant string and the address of a
+`const char *`.
 
 ### `long strtol_c(const char *str, const char **endptr, int base);`
 
 Convert the number in the string pointed to by `str` as a `long`.
-Call this function with a constant string and the address of a `const char *`.
+
+* argument `str` a valid pointer to a C string
+
+* argument `endptr` a pointer to a constant string pointer. May be null.
+A pointer to the first character after the number will be stored into
+this pointer.
+
+* argument `base` the base to use for the conversion: `0` for
+automatic based on prefix, otherwise an integer between `2` and `36`
+
+Note: call this function with a constant string and the address of a
+`const char *`.
 
 ### `long double strtold_c(const char *str, const char **endptr);`
 
 Convert the number in the string pointed to by `str` as a `long double`.
-Call this function with a constant string and the address of a `const char *`.
+
+* argument `str` a valid pointer to a C string
+
+* argument `endptr` a pointer to a constant string pointer. May be null.
+A pointer to the first character after the number will be stored into
+this pointer.
+
+Note: call this function with a constant string and the address of a
+`const char *`.
 
 ### `long strtoll_c(const char *str, const char **endptr, int base);`
 
 Convert the number in the string pointed to by `str` as a `long long`.
-Call this function with a constant string and the address of a `const char *`.
+
+* argument `str` a valid pointer to a C string
+
+* argument `endptr` a pointer to a constant string pointer. May be null.
+A pointer to the first character after the number will be stored into
+this pointer.
+
+* argument `base` the base to use for the conversion: `0` for
+automatic based on prefix, otherwise an integer between `2` and `36`
+
+Note: call this function with a constant string and the address of a
+`const char *`.
 
 ### `int strxcmp(const char *str1, const char *str2);`
 
@@ -1468,6 +1404,672 @@ to point after the prefix in `str` in there is a match.
 
 Return `true` if there is a match, `false` otherwise.
 
+### `int utf8_strimatch_pat(const char *str, const char *pat, int start);`
+
+Check if the pattern `pat` matches `str` or a prefix of `str`,
+using a case insensitive comparison.  Patterns use only `*` as
+a wildcard, to match any sequence of characters.
+Accents are also ignored by this function.
+
+* argument `str` a valid string pointer.
+
+* argument `pat` a valid string pointer for the pattern to test.
+
+* argument `start` a non zero integer if the function should return
+`1` for a partial match at the start of `str.
+
+Return `1` if there is a match, `0` otherwise.
+
+### `int append_slash(char *buf, int buf_size);`
+
+Append a trailing slash to a path if none there already.
+
+Return the updated path length.
+
+Note: truncation cannot be detected reliably
+
+### `uint16_t bswap16(uint16_t v);`
+
+Transpose the bytes of a 16-bit word
+
+* argument `v` a 16-bit integer value
+
+Return: the value with transposed bytes
+
+### `uint32_t bswap32(uint32_t v);`
+
+Transpose the bytes of a 32-bit word
+
+* argument `v` a 32-bit integer value
+
+Return: the value with transposed bytes
+
+### `uint64_t bswap64(uint64_t v);`
+
+Transpose the bytes of a 64-bit word
+
+* argument `v` a 64-bit integer value
+
+Return: the value with transposed bytes
+
+### `void canonicalize_path(char *buf, int buf_size, const char *path);`
+
+Normalize a path, removing redundant `.`, `..` and `/` parts.
+
+* argument `buf` a pointer to the destination array
+
+* argument `buf_size` the length of the destination array in bytes
+
+* argument `path` a valid pointer to a string.
+
+Note: this function accepts drive and protocol specifications.
+
+Note: removing `..` may have adverse side effects if the parent
+directory specified is a symbolic link.
+
+### `int check_fcall(const char32_t *str, int i);`
+
+Test if a parenthesis follows optional white space
+
+* argument `str` a valid pointer to an array of codepoints
+
+* argument `i` the index of the current codepoint
+
+Return a boolean success value
+
+### `int clamp_int(int a, int b, int c);`
+
+Clamp an integer value within a given range.
+
+* argument `a` an `int` value
+
+* argument `b` the minimum value
+
+* argument `c` the maximum value
+
+Return the constrained value. Equivalent to `max(b, min(a, c))`
+
+### `int clz32(unsigned int a);`
+
+Compute the number of leading zeroes in an unsigned 32-bit integer
+
+* argument `a` an unsigned `int` value
+
+Return the number of leading zeroes between `0` and `31`
+
+Note: the behavior is undefined for `a == 0`.
+
+### `int clz64(uint64_t a);`
+
+Compute the number of leading zeroes in an unsigned 64-bit integer
+
+* argument `a` an unsigned 64-bit `int` value
+
+Return the number of leading zeroes between `0` and `63`
+
+Note: the behavior is undefined for `a == 0`.
+
+### `int cp_match_keywords(const char32_t *str, int n, int start, const char *s, int *end);`
+
+Match a sequence of words from a | separated list of phrases.
+A space in the string matches a non empty white space sequence in the source array.
+Phrases are delimited by `|` characters.
+
+* argument `str` a valid pointer to an array of codepoints
+
+* argument `start` the index to the next codepoint
+
+* argument `n` the length of the codepoint array
+
+* argument `s` a valid pointer to a string containing phrases delimited by `|`.
+
+* argument `end` a valid pointer to store the index of the codepoint after the end of a match.
+
+Return a boolean success indicator.
+
+### `int cp_skip_blanks(const char32_t *str, int i, int n);`
+
+Skip blank codepoints.
+
+* argument `str` a valid pointer to an array of codepoints
+
+* argument `i` the index to the next codepoint
+
+* argument `n` the length of the codepoint array
+
+Return the index to the next non blank codepoint or `n` if none are found.
+
+### `const char *cs8(const u8 *p);`
+
+Safe conversion from `const unsigned char *` to `const char *`
+
+* argument `p` a pointer to `const u8`
+
+Return the conversion of `p` to type `const char *`
+
+Note: this inline function generates no code but ensures const
+correctness: it is the `const` alternative to `s8()`
+
+### `int ctz32(unsigned int a);`
+
+Compute the number of trailing zeroes in an unsigned 32-bit integer
+
+* argument `a` an unsigned `int` value
+
+Return the number of trailing zeroes between `0` and `31`
+
+Note: the behavior is undefined for `a == 0`.
+
+### `int ctz64(uint64_t a);`
+
+Compute the number of trailing zeroes in an unsigned 64-bit integer
+
+* argument `a` an unsigned 64-bit `int` value
+
+Return the number of trailing zeroes between `0` and `63`
+
+Note: the behavior is undefined for `a == 0`.
+
+### `char *file_load(const char *filename, int max_size, int *sizep);`
+
+Load a file in memory, return allocated block and size.
+
+* fail if file cannot be opened for reading,
+* fail if file size is greater or equal to `max_size` (`errno` = `ERANGE`),
+* fail if memory cannot be allocated,
+* otherwise load the file contents into a block of memory,
+  null terminate the block and return a pointer to allocated
+  memory along with the number of bytes read.
+Error codes are returned in `errno`.
+Memory should be freed with `qe_free()`.
+
+### `void find_file_close(FindFileState **sp);`
+
+Close a directory enumeration state `FindFileState`.
+
+* argument `sp` a valid pointer to a `FindFileState` pointer that
+will be closed.
+
+Note: `FindFileState` state structures must be freed to avoid memory
+and resource leakage.
+
+### `int find_file_next(FindFileState *s, char *filename, int filename_size_max);`
+
+Get the next match in a directory enumeration.
+
+* argument `filename` a valid pointer to an array for the file name.
+
+* argument `filename_size_max` the length if the `filename` destination
+array in bytes.
+
+Return `0` if there is a match, `-1` if no more files matche the pattern.
+
+### `FindFileState *find_file_open(const char *path, const char *pattern, int flags);`
+
+Start a directory enumeration.
+
+* argument `path` the initial directory for the enumeration.
+
+* argument `pattern` a file pattern using `?` and `*` with the classic
+semantics used by unix shells
+
+Return a pointer to an opaque FindFileState structure.
+
+### `int from_hex(int c);`
+
+Convert a character to its numerical value as a hexadecimal digit
+
+* argument `c` a character value
+
+Return the numerical value, or `-1` if the character is not a hex digit
+
+### `int get_c_identifier(char *buf, int buf_size, const char32_t *p, int flavor);`
+
+Grab a C ASCII identifier from a char32_t buffer for a given flavor.
+
+* argument `buf` a pointer to the destination array
+
+* argument `buf_size` the length of the destination array in bytes
+
+* argument `p` a valid pointer to an array of codepoints
+
+* argument `flavor` the language variant for identifier syntax
+
+Return the number of codepoints used in the source array.
+
+Note: `dest` can be a null pointer if `size` is `0`.
+
+Note: non-ASCII codepoints are accepted for CLANG_RUST but are not UTF-8 encoded
+
+### `int32_t get_i8(const uint8_t *tab);`
+
+Get a signed 8-bit value from a memory area
+
+* argument `tab` a valid byte pointer
+
+Return the value read from memory
+
+Note: this function exists mostly for completeness
+
+### `int32_t get_i16(const uint8_t *tab);`
+
+Get a signed 16-bit value from a potentially unaligned memory area
+
+* argument `tab` a valid byte pointer
+
+Return the value read from memory
+
+Note: the value must be stored in memory in the native byte order
+
+### `int32_t get_i32(const uint8_t *tab);`
+
+Get a signed 32-bit value from a potentially unaligned memory area
+
+* argument `tab` a valid byte pointer
+
+Return the value read from memory
+
+Note: the value must be stored in memory in the native byte order
+
+### `int64_t get_i64(const uint8_t *tab);`
+
+Get a signed 64-bit value from a potentially unaligned memory area
+
+* argument `tab` a valid byte pointer
+
+Return the value read from memory
+
+Note: the value must be stored in memory in the native byte order
+
+### `int get_js_identifier(char *dest, int size, char32_t c, const char32_t *str, int i, int n);`
+
+Grab an identifier from a char32_t buffer, accept non-ASCII identifiers
+and encode in UTF-8.
+
+* argument `dest` a pointer to the destination array
+
+* argument `size` the length of the destination array in bytes
+
+* argument `c` the initial code point or `0` if none
+
+* argument `str` a valid pointer to an array of codepoints
+
+* argument `i` the index to the next codepoint
+
+* argument `n` the length of the codepoint array
+
+Return the number of codepoints used in the source array.
+
+Note: `dest` can be a null pointer if `size` is `0`.
+
+### `uint32_t get_u8(const uint8_t *tab);`
+
+Get an unsigned 8-bit value from a memory area
+
+* argument `tab` a valid byte pointer
+
+Return the value read from memory
+
+Note: this function exists mostly for completeness
+
+### `uint32_t get_u16(const uint8_t *tab);`
+
+Get an unsigned 16-bit value from a potentially unaligned memory area
+
+* argument `tab` a valid byte pointer
+
+Return the value read from memory
+
+Note: the value must be stored in memory in the native byte order
+
+### `uint32_t get_u32(const uint8_t *tab);`
+
+Get an unsigned 32-bit value from a potentially unaligned memory area
+
+* argument `tab` a valid byte pointer
+
+Return the value read from memory
+
+Note: the value must be stored in memory in the native byte order
+
+### `uint64_t get_u64(const uint8_t *tab);`
+
+Get an unsigned 64-bit value from a potentially unaligned memory area
+
+* argument `tab` a valid byte pointer
+
+Return the value read from memory
+
+Note: the value must be stored in memory in the native byte order
+
+### `int is_directory(const char *path);`
+
+Check if the string pointed to by `path` is the name of a
+directory.
+
+* argument `path` a valid pointer to a string.
+
+Return `true` if `path` is the name of a directory, `false` otherwise.
+
+Note: this function uses `stat`, so it will return `true` for
+directories and symbolic links pointing to existing directories.
+
+### `int is_filepattern(const char *filespec);`
+
+Check if the string pointed to by `filespec` is a file pattern.
+
+* argument `filespec` a valid pointer to a string.
+
+Return `true` if `filespec` contains wildcard characters.
+
+Note: this function only recognises `?` and `*` wildcard characters
+
+### `char *make_user_path(char *buf, int buf_size, const char *path);`
+
+Reduce a path relative to the user's homedir, using the `~`
+shell syntax.
+
+* argument `buf` a pointer to the destination array
+
+* argument `buf_size` the length of the destination array in bytes
+
+* argument `path` a valid pointer to a string.
+
+Return a pointer to the destination array.
+
+Note: this function uses the `HOME` environment variable to
+determine the user's home directory
+
+### `char *makepath(char *buf, int buf_size, const char *path, const char *filename);`
+
+Construct a path from a directory name and a filename into the
+array pointed to by `buf` of length `buf_size` bytes.
+
+Return a pointer to the destination array.
+
+Note: truncation cannot be detected reliably
+
+### `int match_extension(const char *filename, const char *extlist);`
+
+Return `true` iff the filename extension appears in `|` separated
+list pointed to by `extlist`.
+* Initial and final `|` do not match an empty extension, but `||` does.
+* Multiple tacked extensions may appear un extlist eg. `|tar.gz|`
+* Initial dots do not account as extension delimiters.
+* `.` and `..` do not have an empty extension, nor do they match `||`
+
+### `int match_shell_handler(const char *p, const char *list);`
+
+Return `true` iff the command name invoked by the `#!` line pointed to by `p`
+matches one of the commands in `|` separated list pointed to by `list`.
+* both `#!/bin/perl` and `#!/bin/env perl` styles match list `"perl"`
+
+### `int match_strings(const char *s1, const char *s2, int len);`
+
+Find the length of the common prefix, only count complete UTF-8
+sequences.
+
+* argument `s1` a valid string pointer
+
+* argument `s2` a valid string pointer
+
+* argument `len` the maximum number of bytes to compare. This count
+is assumed to only include complete UTF-8 sequences.
+
+Return the length of the common prefix, between `0` and `len`.
+
+### `int max3_int(int a, int b, int c);`
+
+Compute the maximum value of 3 integers
+
+* argument `a` an `int` value
+
+* argument `b` an `int` value
+
+* argument `c` an `int` value
+
+Return the maximum value
+
+### `int max_int(int a, int b);`
+
+Compute the maximum value of 2 integers
+
+* argument `a` an `int` value
+
+* argument `b` an `int` value
+
+Return the maximum value
+
+### `int64_t max_int64(int64_t a, int64_t b);`
+
+Compute the maximum value of 2 integers
+
+* argument `a` a 64-bit `int` value
+
+* argument `b` a 64-bit `int` value
+
+Return the maximum value
+
+### `int max_uint(unsigned int a, unsigned int b);`
+
+Compute the maximum value of 2 integers
+
+* argument `a` an `unsigned int` value
+
+* argument `b` an `unsigned int` value
+
+Return the maximum value
+
+### `uint32_t max_uint32(uint32_t a, uint32_t b);`
+
+Compute the maximum value of 2 integers
+
+* argument `a` an unsigned 32-bit `int` value
+
+* argument `b` an unsigned 32-bit `int` value
+
+Return the maximum value
+
+### `int min3_int(int a, int b, int c);`
+
+Compute the minimum value of 3 integers
+
+* argument `a` an `int` value
+
+* argument `b` an `int` value
+
+* argument `c` an `int` value
+
+Return the minimum value
+
+### `int min_int(int a, int b);`
+
+Compute the minimum value of 2 integers
+
+* argument `a` an `int` value
+
+* argument `b` an `int` value
+
+Return the minimum value
+
+### `int64_t min_int64(int64_t a, int64_t b);`
+
+Compute the minimum value of 2 integers
+
+* argument `a` a 64-bit `int` value
+
+* argument `b` a 64-bit `int` value
+
+Return the minimum value
+
+### `int min_uint(unsigned int a, unsigned int b);`
+
+Compute the minimum value of 2 integers
+
+* argument `a` an `unsigned int` value
+
+* argument `b` an `unsigned int` value
+
+Return the minimum value
+
+### `uint32_t min_uint32(uint32_t a, uint32_t b);`
+
+Compute the minimum value of 2 integers
+
+* argument `a` an unsigned 32-bit `int` value
+
+* argument `b` an unsigned 32-bit `int` value
+
+Return the minimum value
+
+### `void put_u8(uint8_t *tab, uint8_t val);`
+
+Store an unsigned 8-bit value to a memory area
+
+* argument `tab` a valid byte pointer
+
+* argument `val` an unsigned 8-bit value
+
+Note: this function exists mostly for completeness
+
+Note: this function can be used for both signed and unsigned 8-bit values
+
+### `void put_u16(uint8_t *tab, uint16_t val);`
+
+Store an unsigned 16-bit value to a potentially unaligned memory area
+
+* argument `tab` a valid byte pointer
+
+* argument `val` an unsigned 16-bit value
+
+Note: the value is stored in memory in the native byte order
+
+Note: this function can be used for both signed and unsigned 16-bit values
+
+### `void put_u32(uint8_t *tab, uint32_t val);`
+
+Store an unsigned 32-bit value to a potentially unaligned memory area
+
+* argument `tab` a valid byte pointer
+
+* argument `val` an unsigned 32-bit value
+
+Note: the value is stored in memory in the native byte order
+
+Note: this function can be used for both signed and unsigned 32-bit values
+
+### `void put_u64(uint8_t *tab, uint64_t val);`
+
+Store an unsigned 64-bit value to a potentially unaligned memory area
+
+* argument `tab` a valid byte pointer
+
+* argument `val` an unsigned 64-bit value
+
+Note: the value is stored in memory in the native byte order
+
+Note: this function can be used for both signed and unsigned 64-bit values
+
+### `int qe_haslower(const char *str);`
+
+Check if a C string contains has ASCII lowercase letters.
+
+* argument `str` a valid pointer to a C string
+
+Return a boolean value, non zero if and only if the string contains
+ASCII lowercase letters.
+
+### `void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk, int (*compare)(void *, const void *, const void *));`
+
+Sort an array using a comparison function with an extra opaque
+argument.
+
+* argument `base` a valid pointer to an array of objects,
+
+* argument `nmemb` the number of elements in the array,
+
+* argument `size` the object size in bytes,
+
+* argument `thunk` the generic argument to pass to the comparison
+function,
+
+* argument `compare` a function pointer for a comparison function
+taking 3 arguments: the `thunk` argument and pointers to 2
+objects from the array, returning an integer whose sign indicates
+their relative position according to the sort order.
+
+Note: this function behaves like OpenBSD's `qsort_r()`, the
+implementation is non recursive using a combination of quicksort
+and insertion sort for small chunks. The GNU lib C on linux also
+has a function `qsort_r()` with similar semantics but a different
+calling convention.
+
+### `int qe_skip_spaces(const char **pp);`
+
+Skip white space at the beginning of the string pointed to by `*pp`.
+
+* argument `pp` the address of a valid string pointer. The pointer will
+be updated to point after any initial white space.
+
+Return the character value after the white space as an `unsigned char`.
+
+### `int qe_strcollate(const char *s1, const char *s2);`
+
+Compare 2 strings using special rules:
+* use lexicographical order
+* collate sequences of digits in numerical order.
+* push `*` at the end.
+
+### `int qe_strtobool(const char *s, int def);`
+
+Determine the boolean value of a response string.
+
+* argument `s` a possibly null pointer to a string,
+
+* argument `def` the default value if `s` is null or an empty string,
+
+Return `true` for `y`, `yes`, `t`, `true` and `1`, case independenty,
+return `false` for other non empty contents and return the default
+value `def` otherwise.
+
+### `void qe_strtolower(char *buf, int size, const char *str);`
+
+Convert an ASCII string to lowercase using `qe_tolower7` for
+each byte.
+
+* argument `buf` a valid pointer to a destination char array.
+
+* argument `size` the length of the destination array in bytes,
+
+* argument `str` a valid pointer to a string to convert.
+
+Note: this version only handles ASCII.
+
+### `int remove_slash(char *buf);`
+
+Remove the trailing slash from path, except for / directory.
+
+Return the updated path length.
+
+### `char *s8(u8 *p);`
+
+Safe conversion from `unsigned char *` to `char *`
+
+* argument `p` a pointer to `u8`
+
+Return the conversion of `p` to type `char *`
+
+Note: this inline function generates no code but ensures const
+correctness: a cast `(char *)` would remove the `const` qualifier.
+
+### `void splitpath(char *dirname, int dirname_size, char *filename, int filename_size, const char *pathname);`
+
+Split the path pointed to by `pathname` into a directory part and a
+filename part.
+
+Note: `dirname` will receive an empty string if `pathname` contains
+just a filename.
+
 ### `int umemcmp(const char32_t *s1, const char32_t *s2, size_t count);`
 
 Compare two blocks of code points and return an integer indicative of
@@ -1481,6 +2083,36 @@ their relative order.
 
 Return `0` if the strings compare equal, a negative value if `s1` is
 lexicographically before `s2` and a positive number otherwise.
+
+### `int unicode_from_utf8(const uint8_t *p, int max_len, const uint8_t **pp);`
+
+Decode a codepoint from a UTF-8 encoded array
+
+* argument `p` a valid pointer to the source array of char
+
+* argument `max_len` the maximum number of bytes to consume,
+must be at least `1`.
+
+* argument `pp` a pointer to store the updated value of `p`
+
+Return the codepoint decoded from the array, or `-1` in case of
+error. `*pp` is not updated in this case.
+
+Note: the maximum length for a UTF-8 byte sequence is 6 bytes.
+
+### `int unicode_to_utf8(uint8_t *buf, unsigned int c);`
+
+Encode a codepoint as UTF-8
+
+* argument `buf` a valid pointer to an array of char at least 6 bytes long
+
+* argument `c` a codepoint
+
+Return the number of bytes produced in the array.
+
+Note: at most 31 bits are encoded, producing at most `UTF8_CHAR_LEN_MAX` bytes.
+
+Note: no null terminator byte is written to the destination array.
 
 ### `int ustr_get_identifier(char *dest, int size, char32_t c, const char32_t *str, int i, int n);`
 
@@ -1683,22 +2315,6 @@ Return the length in bytes of an intial common prefix of `str1` and `str2`.
 * argument `str1` must be a valid UTF-8 string pointer.
 
 * argument `str2` must be a valid UTF-8 string pointer.
-
-### `int utf8_strimatch_pat(const char *str, const char *pat, int start);`
-
-Check if the pattern `pat` matches `str` or a prefix of `str`,
-using a case insensitive comparison.  Patterns use only `*` as
-a wildcard, to match any sequence of characters.
-Accents are also ignored by this function.
-
-* argument `str` a valid string pointer.
-
-* argument `pat` a valid string pointer for the pattern to test.
-
-* argument `start` a non zero integer if the function should return
-`1` for a partial match at the start of `str.
-
-Return `1` if there is a match, `0` otherwise.
 
 ## Building QEmacs
 

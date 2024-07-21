@@ -692,7 +692,7 @@ void qe_strtolower(char *buf, int size, const char *str) {
 }
 
 int memfind(const char *list, const char *s, int len) {
-    /*@API utils
+    /*@API utils.string
        Find a string fragment in a list of words separated by `|`.
        An initial or trailing `|` do not match the empty string, but `||` does.
        @argument `list` a string of words separated by `|` characters.
@@ -727,7 +727,7 @@ int memfind(const char *list, const char *s, int len) {
 }
 
 int strfind(const char *keytable, const char *str) {
-    /*@API utils
+    /*@API utils.string
        Find a string in a list of words separated by `|`.
        An initial or trailing `|` do not match the empty string, but `||` does.
        @argument `list` a string of words separated by `|` characters.
@@ -738,7 +738,7 @@ int strfind(const char *keytable, const char *str) {
 }
 
 int strxfind(const char *list, const char *s) {
-    /*@API utils
+    /*@API utils.string
        Find a string in a list of words separated by `|`, ignoring case
        for ASCII and skipping `-` , `_` and spaces.
        An initial or trailing `|` do not match the empty string, but `||` does.
@@ -793,7 +793,7 @@ int strxfind(const char *list, const char *s) {
 }
 
 const char *strmem(const char *str, const void *mem, int size) {
-    /*@API utils
+    /*@API utils.string
        Find a chunk of characters inside a string.
        @argument `str` a valid string pointer in which to search for matches.
        @argument `mem` a pointer to a chunk of bytes to search.
@@ -829,7 +829,7 @@ const char *strmem(const char *str, const void *mem, int size) {
 }
 
 const void *memstr(const void *buf, int size, const char *str) {
-    /*@API utils
+    /*@API utils.string
        Find a string in a chunk of memory.
        @argument `buf` a valid pointer to the block of memory in which to
        search for matches.
@@ -862,7 +862,7 @@ const void *memstr(const void *buf, int size, const char *str) {
 }
 
 int qe_memicmp(const void *p1, const void *p2, size_t count) {
-    /*@API utils
+    /*@API utils.string
        Perform a case independent comparison of blocks of memory.
        @argument `p1` a valid pointer to the first block.
        @argument `p2` a valid pointer to the second block.
@@ -887,7 +887,7 @@ int qe_memicmp(const void *p1, const void *p2, size_t count) {
 }
 
 const char *qe_stristr(const char *s1, const char *s2) {
-    /*@API utils
+    /*@API utils.string
        Find an ASCII string in another ASCII string, ignoring case.
        @argument `s1` a valid pointer to the string in which to
        search for matches.
@@ -919,7 +919,7 @@ const char *qe_stristr(const char *s1, const char *s2) {
 }
 
 int stristart(const char *str, const char *val, const char **ptr) {
-    /*@API utils
+    /*@API utils.string
        Test if `val` is a prefix of `str` (case independent for ASCII).
        If there is a match, a pointer to the next character after the
        match in `str` is stored into `ptr` provided `ptr` is not null.
@@ -946,7 +946,7 @@ int stristart(const char *str, const char *val, const char **ptr) {
 }
 
 int strxstart(const char *str, const char *val, const char **ptr) {
-    /*@API utils
+    /*@API utils.string
        Test if `val` is a prefix of `str` (case independent for ASCII
        and ignoring `-`, `_` and spaces).  If there is a match, a pointer
        to the next character after the match in `str` is stored into `ptr`,
@@ -981,7 +981,7 @@ int strxstart(const char *str, const char *val, const char **ptr) {
 }
 
 int strxcmp(const char *str1, const char *str2) {
-    /*@API utils
+    /*@API utils.string
        Compare strings case independently (for ASCII), also ignoring
        spaces, dashes and underscores.
        @param `str1` a valid string pointer for the left operand.
@@ -1013,7 +1013,7 @@ int strxcmp(const char *str1, const char *str2) {
 }
 
 int strmatchword(const char *str, const char *val, const char **ptr) {
-    /*@API utils
+    /*@API utils.string
        Check if `val` is a word prefix of `str`. In this case, return
        `true` and store a pointer to the first character after the prefix
        in `str` into `ptr` provided `ptr` is not a null pointer.
@@ -1035,7 +1035,7 @@ int strmatchword(const char *str, const char *val, const char **ptr) {
 }
 
 int strmatch_pat(const char *str, const char *pat, int start) {
-    /*@API utils
+    /*@API utils.string
        Check if the pattern `pat` matches `str` or a prefix of `str`.
        Patterns use only `*` as a wildcard, to match any sequence of
        characters.
@@ -1067,7 +1067,7 @@ int strmatch_pat(const char *str, const char *pat, int start) {
 }
 
 int utf8_strimatch_pat(const char *str, const char *pat, int start) {
-    /*@API utils
+    /*@API utils.string
        Check if the pattern `pat` matches `str` or a prefix of `str`,
        using a case insensitive comparison.  Patterns use only `*` as
        a wildcard, to match any sequence of characters.
@@ -1130,7 +1130,7 @@ int utf8_strimatch_pat(const char *str, const char *pat, int start) {
 
 /* used in libqhtml */
 int get_str(const char **pp, char *buf, int buf_size, const char *stop) {
-    /*@API utils
+    /*@API utils.string
        Get a token from a string, stop on a set of characters and white-space.
        Skip spaces before and after the token. Return the token length.
 
@@ -1855,7 +1855,7 @@ int strsubst(char *buf, int buf_size, const char *from,
 }
 
 int byte_quote(char *dest, int size, unsigned char ch) {
-    /*@API utils
+    /*@API utils.string
        Encode a byte as a source code escape sequence
        @argument `dest` a valid pointer to an array of bytes
        @argument `size` the length of the destination array
@@ -1897,7 +1897,7 @@ int byte_quote(char *dest, int size, unsigned char ch) {
 }
 
 int strquote(char *dest, int size, const char *str, int len) {
-    /*@API utils
+    /*@API utils.string
        Encode a string using source code escape sequences
        @argument `dest` a valid pointer to an array of bytes
        @argument `size` the length of the destination array
