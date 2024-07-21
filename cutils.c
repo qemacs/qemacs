@@ -30,7 +30,7 @@
 #include "cutils.h"
 
 char *pstrcpy(char *buf, int size, const char *str) {
-    /*@API utils
+    /*@API utils.string
        Copy the string pointed by `str` to the destination array `buf`,
        of length `size` bytes, truncating excess bytes.
 
@@ -54,7 +54,7 @@ char *pstrcpy(char *buf, int size, const char *str) {
 }
 
 char *pstrcat(char *buf, int size, const char *s) {
-    /*@API utils
+    /*@API utils.string
        Copy the string pointed by `s` at the end of the string contained
        in the destination array `buf`, of length `size` bytes,
        truncating excess bytes.
@@ -70,7 +70,7 @@ char *pstrcat(char *buf, int size, const char *s) {
 }
 
 char *pstrncpy(char *buf, int size, const char *s, int len) {
-    /*@API utils
+    /*@API utils.string
        Copy at most `len` bytes from the string pointed by `s` to the
        destination array `buf`, of length `size` bytes, truncating
        excess bytes.
@@ -89,7 +89,7 @@ char *pstrncpy(char *buf, int size, const char *s, int len) {
 }
 
 char *pstrncat(char *buf, int size, const char *s, int slen) {
-    /*@API utils
+    /*@API utils.string
        Copy at most `len` bytes from the string pointed by `s` at the end
        of the string contained in the destination array `buf`, of length
        `size` bytes, truncating excess bytes.
@@ -107,7 +107,7 @@ char *pstrncat(char *buf, int size, const char *s, int slen) {
  */
 
 int strstart(const char *str, const char *val, const char **ptr) {
-    /*@API utils
+    /*@API utils.string
        Test if `val` is a prefix of `str`.
 
        If `val` is a prefix of `str`, a pointer to the first character
@@ -133,7 +133,7 @@ int strstart(const char *str, const char *val, const char **ptr) {
 }
 
 int strend(const char *str, const char *val, const char **ptr) {
-    /*@API utils
+    /*@API utils.string
        Test if `val` is a suffix of `str`.
 
        if `val` is a suffix of `str`, a pointer to the first character
@@ -158,7 +158,7 @@ int strend(const char *str, const char *val, const char **ptr) {
 }
 
 size_t get_basename_offset(const char *path) {
-    /*@API utils
+    /*@API utils.string
        Get the offset of the filename component of a path.
        Return the offset to the first character of the filename part of
        the path pointed to by string argument `path`.
@@ -182,7 +182,7 @@ size_t get_basename_offset(const char *path) {
 }
 
 size_t get_extension_offset(const char *path) {
-    /*@API utils
+    /*@API utils.string
        Get the filename extension portion of a path.
        Return the offset to the first character of the last extension of
        the filename part of the path pointed to by string argument `path`.
@@ -208,7 +208,7 @@ size_t get_extension_offset(const char *path) {
 }
 
 char *get_dirname(char *dest, int size, const char *file) {
-    /*@API utils
+    /*@API utils.string
        Extract the directory portion of a path.
        This leaves out the trailing slash if any.  The complete path is
        obtained by concatenating `dirname` + `"/"` + `basename`.
@@ -240,28 +240,67 @@ char *get_dirname(char *dest, int size, const char *file) {
 
 /* Dynamic buffer package */
 
-static void *dbuf_default_realloc(void *opaque, void *ptr, size_t size)
-{
+static void *dbuf_default_realloc(void *opaque, void *ptr, size_t size) {
+    /*@API utils.dbuf
+       Default memory allocation routine for dynamic buffers.
+       @argument `opaque` is the opaque argument passed to `dbuf_init2`.
+       @argument `ptr` is the pointer to the object that must be reallocated.
+       It is `NULL` if the buffer has not been allocated yet.
+       @argument `size` is new size requested for the buffer in bytes.
+       An argument value of `0` for `size` specifies that the block should be
+       freed and `NULL` will be returned.
+       @return a pointer to the reallocated block or `NULL` if allocation
+       failed or the requested size was `0` and the pointer was freed.
+       @note: the C Standard specifies that if the size is zero, the behavior
+       of `realloc` is undefined. In FreeBSD systems, if `size` is zero and
+       `ptr` is not `NULL`, a new, minimum sized object is allocated and the
+       original object is freed.
+     */
+    if (!size) {
+        free(ptr);
+        return NULL;
+    }
     return realloc(ptr, size);
 }
 
-void dbuf_init2(DynBuf *s, void *opaque, DynBufReallocFunc *realloc_func)
-{
+DynBuf *dbuf_init2(DynBuf *s, void *opaque, DynBufReallocFunc *realloc_func) {
+    /*@API utils.dbuf
+       Initialize a dynamic buffer with a specified reallocation function.
+       @argument `s` a valid pointer to an uninitialized dynamic buffer object.
+       @argument `opaque` is the opaque argument that will be passed to
+       the reallocation function.
+       @argument `realloc_func` the reallocation function to use for this dynamic buffer.
+       @return the value of `s`.
+     */
     memset(s, 0, sizeof(*s));
     if (!realloc_func)
         realloc_func = dbuf_default_realloc;
     s->opaque = opaque;
     s->realloc_func = realloc_func;
+    return s;
 }
 
-void dbuf_init(DynBuf *s)
-{
-    dbuf_init2(s, NULL, NULL);
+DynBuf *dbuf_init(DynBuf *s) {
+    /*@API utils.dbuf
+       Initialize a dynamic buffer with the default reallocation function.
+       @argument `s` a valid pointer to an uninitialized dynamic buffer object.
+       @return the value of `s`.
+     */
+    return dbuf_init2(s, NULL, NULL);
 }
 
 /* return < 0 if error */
-int dbuf_realloc(DynBuf *s, size_t new_size)
-{
+int dbuf_realloc(DynBuf *s, size_t new_size) {
+    /*@API utils.dbuf
+       Reallocate the buffer to a larger size.
+       @argument `s` a valid pointer to an uninitialized dynamic buffer object.
+       @argument `new_size` the new size for the buffer.  If `new_size` is
+       smaller than the current buffer length, no reallocation is performed.
+       @return an error indicator: `0` if buffer was successfully reallocated,
+       `-1` otherwise and `error` member is set.
+       @note: the new buffer length may be larger than `new_size` to minimize
+       further reallocation requests.
+     */
     size_t size = s->allocated_size;
     if (new_size > size) {
         uint8_t *new_buf;
@@ -281,8 +320,16 @@ int dbuf_realloc(DynBuf *s, size_t new_size)
     return 0;
 }
 
-int dbuf_write(DynBuf *s, size_t offset, const uint8_t *data, size_t len)
-{
+int dbuf_write(DynBuf *s, size_t offset, const uint8_t *data, size_t len) {
+    /*@API utils.dbuf
+       Write a block of data at a given offset in a dynamic buffer
+       @argument `s` a valid pointer to an uninitialized dynamic buffer object.
+       @argument `offset` the position where to write the block
+       @argument `data` a valid pointer to a memory block
+       @argument `len` the number of bytes to write
+       @return an error indicator: `0` if data could be written, `-1` if
+       buffer could not be reallocated.
+     */
     size_t end;
     end = offset + len;
     if (dbuf_realloc(s, end))
@@ -293,8 +340,15 @@ int dbuf_write(DynBuf *s, size_t offset, const uint8_t *data, size_t len)
     return 0;
 }
 
-int dbuf_put(DynBuf *s, const uint8_t *data, size_t len)
-{
+int dbuf_put(DynBuf *s, const uint8_t *data, size_t len) {
+    /*@API utils.dbuf
+       Write a block of data at the end of a dynamic buffer
+       @argument `s` a valid pointer to an uninitialized dynamic buffer object.
+       @argument `data` a valid pointer to a memory block
+       @argument `len` the number of bytes to write
+       @return an error indicator: `0` if data could be written, `-1` if
+       buffer could not be reallocated.
+     */
     if (unlikely((s->size + len) > s->allocated_size)) {
         if (dbuf_realloc(s, s->size + len))
             return -1;
@@ -304,8 +358,15 @@ int dbuf_put(DynBuf *s, const uint8_t *data, size_t len)
     return 0;
 }
 
-int dbuf_put_self(DynBuf *s, size_t offset, size_t len)
-{
+int dbuf_put_self(DynBuf *s, size_t offset, size_t len) {
+    /*@API utils.dbuf
+       Duplicate a block of data from the dynamic buffer at the end
+       @argument `s` a valid pointer to an uninitialized dynamic buffer object.
+       @argument `offset` the offset of the block to copy
+       @argument `len` the number of bytes to copy
+       @return an error indicator: `0` if data could be written, `-1` if
+       buffer could not be reallocated.
+     */
     if (unlikely((s->size + len) > s->allocated_size)) {
         if (dbuf_realloc(s, s->size + len))
             return -1;
@@ -315,19 +376,36 @@ int dbuf_put_self(DynBuf *s, size_t offset, size_t len)
     return 0;
 }
 
-int dbuf_putc(DynBuf *s, uint8_t c)
-{
+int dbuf_putc(DynBuf *s, uint8_t c) {
+    /*@API utils.dbuf
+       Write a byte at the end of a dynamic buffer
+       @argument `s` a valid pointer to an uninitialized dynamic buffer object.
+       @argument `c` the byte value
+       @return an error indicator: `0` if data could be written, `-1` if
+       buffer could not be reallocated.
+     */
     return dbuf_put(s, &c, 1);
 }
 
-int dbuf_putstr(DynBuf *s, const char *str)
-{
+int dbuf_putstr(DynBuf *s, const char *str) {
+    /*@API utils.dbuf
+       Write a string at the end of a dynamic buffer
+       @argument `s` a valid pointer to an uninitialized dynamic buffer object.
+       @argument `str` a valid pointer to a string
+       @return an error indicator: `0` if data could be written, `-1` if
+       buffer could not be reallocated.
+     */
     return dbuf_put(s, (const uint8_t *)str, strlen(str));
 }
 
-int __attribute__((format(printf, 2, 3))) dbuf_printf(DynBuf *s,
-                                                      const char *fmt, ...)
-{
+int __attribute__((format(printf, 2, 3))) dbuf_printf(DynBuf *s, const char *fmt, ...) {
+    /*@API utils.dbuf
+       Produce formatted output at the end of a dynamic buffer
+       @argument `s` a valid pointer to an uninitialized dynamic buffer object.
+       @argument `fmt` a valid pointer to a format string
+       @return an error indicator: `0` if data could be written, `-1` if
+       the buffer could not be reallocated or if there was a formatting error.
+     */
     va_list ap;
     char buf[128];
     int len;
@@ -352,20 +430,26 @@ int __attribute__((format(printf, 2, 3))) dbuf_printf(DynBuf *s,
     return 0;
 }
 
-void dbuf_free(DynBuf *s)
-{
-    /* we test s->buf as a fail safe to avoid crashing if dbuf_free()
-       is called twice */
-    if (s->buf) {
+void dbuf_free(DynBuf *s) {
+    /*@API utils.dbuf
+       Free the allocated data in a dynamic buffer
+       @argument `s` a valid pointer to an uninitialized dynamic buffer object.
+     */
+    if (s->buf && s->realloc_func) {
         s->realloc_func(s->opaque, s->buf, 0);
     }
     memset(s, 0, sizeof(*s));
 }
 
-/* Note: at most 31 bits are encoded. At most UTF8_CHAR_LEN_MAX bytes
-   are output. */
-int unicode_to_utf8(uint8_t *buf, unsigned int c)
-{
+int unicode_to_utf8(uint8_t *buf, unsigned int c) {
+    /*@API utils
+       Encode a codepoint as UTF-8
+       @argument `buf` a valid pointer to an array of char at least 6 bytes long
+       @argument `c` a codepoint
+       @return the number of bytes produced in the array.
+       @note: at most 31 bits are encoded, producing at most `UTF8_CHAR_LEN_MAX` bytes.
+       @note: no null terminator byte is written to the destination array.
+     */
     uint8_t *q = buf;
 
     if (c < 0x80) {
@@ -409,12 +493,19 @@ static const int utf8_min_code[5] = {
 };
 #endif
 
-/* return -1 if error. *pp is not updated in this case. max_len must
-   be >= 1. The maximum length for a UTF-8 byte sequence is 6 bytes. */
-// XXX: should return synthetic byte code for invalid UTF-8 encoding
-//      emacs uses 0x3fff80-0x3fffff for invalud bytes 0x80 to 0xff.
-int unicode_from_utf8(const uint8_t *p, int max_len, const uint8_t **pp)
-{
+int unicode_from_utf8(const uint8_t *p, int max_len, const uint8_t **pp) {
+    /*@API utils
+       Decode a codepoint from a UTF-8 encoded array
+       @argument `p` a valid pointer to the source array of char
+       @argument `max_len` the maximum number of bytes to consume,
+       must be at least `1`.
+       @argument `pp` a pointer to store the updated value of `p`
+       @return the codepoint decoded from the array, or `-1` in case of
+       error. `*pp` is not updated in this case.
+       @note: the maximum length for a UTF-8 byte sequence is 6 bytes.
+     */
+    // XXX: should return synthetic byte code for invalid UTF-8 encoding
+    //      emacs uses 0x3fff80-0x3fffff for invalid bytes 0x80 to 0xff.
     int c, n, b;
 
     c = *p++;
