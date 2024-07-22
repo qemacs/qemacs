@@ -5518,22 +5518,40 @@ void edit_display(QEmacsState *qs)
 
 void do_start_kbd_macro(EditState *s)
 {
+    /*@CMD start-kbd-macro
+       ### `start-kbd-macro()`
+
+       Start recording a keyboard macro. Every key typed is stored into
+       a list for later replay using `call-last-kbd-macro`
+     */
     QEmacsState *qs = s->qe_state;
 
     if (qs->defining_macro) {
-        qs->defining_macro = 0;
-        put_status(s, "Already defining kbd macro");
-        return;
+        put_status(s, "Already defining kbd macro: restarting");
+    } else {
+        put_status(s, "Defining kbd macro...");
     }
     qs->defining_macro = 1;
     qe_free(&qs->macro_keys);
     qs->nb_macro_keys = 0;
     qs->macro_keys_size = 0;
-    put_status(s, "Defining kbd macro...");
+}
+
+static void save_last_kbd_macro(EditState *s) {
+#ifndef CONFIG_TINY
+    // XXX: should save the keyboard macro with `name-kbd-macro`
+    // XXX: should save macro keys to add_string(qe_get_history("macrokeys"), buf, 0)
+#endif
 }
 
 void do_end_kbd_macro(EditState *s)
 {
+    /*@CMD end-kbd-macro
+       ### `end-kbd-macro()`
+
+       Stop recording the keyboard macro. The last keyboard macro can
+       be run using `call-last-kbd-macro`.
+     */
     QEmacsState *qs = s->qe_state;
 
     /* if called inside a macro, it is last recorded keys, so ignore
@@ -5546,15 +5564,22 @@ void do_end_kbd_macro(EditState *s)
         return;
     }
     qs->defining_macro = 0;
+    save_last_kbd_macro(s);
     put_status(s, "Keyboard macro defined");
 }
 
 void do_call_last_kbd_macro(EditState *s)
 {
+    /*@CMD call-last-kbd-macro
+       ### `call-last-kbd-macro()`
+
+       Run the last keyboard macro recorded by `start-kbd-macro`.
+     */
     QEmacsState *qs = s->qe_state;
     int set_repeat = (qs->last_key == 'e');
 
     if (qs->defining_macro) {
+        // XXX: should allow recursive definition
         qs->defining_macro = 0;
         put_status(s, "Cannot execute macro while defining one");
         return;
