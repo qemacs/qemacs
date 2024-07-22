@@ -62,6 +62,15 @@ package for image parsing.
 
 # Commands
 
+### `call-last-kbd-macro()`
+
+Run the last keyboard macro recorded by `start-kbd-macro`.
+
+### `end-kbd-macro()`
+
+Stop recording the keyboard macro. The last keyboard macro can
+be run using `call-last-kbd-macro`.
+
 ### `isearch-repeat-backward()`
 Search for the next match backward.
 Retrieve the last search string if search string is empty.
@@ -163,6 +172,11 @@ visiting any file.
 If the RENAMEFILE argument is not null and starts with 'y', an
 attempt is made to rename the old visited file to the new name
 FILENAME.
+
+### `start-kbd-macro()`
+
+Start recording a keyboard macro. Every key typed is stored into
+a list for later replay using `call-last-kbd-macro`
 
 # Implementation
 
