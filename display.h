@@ -121,6 +121,7 @@ struct QEDisplay {
                             int flags);
     void (*dpy_full_screen)(QEditScreen *s, int full_screen);
     void (*dpy_describe)(QEditScreen *s, struct EditBuffer *b);
+    void (*dpy_sound_bell)(QEditScreen *s);
     QEDisplay *next;
 };
 
@@ -233,6 +234,12 @@ static inline void dpy_describe(QEditScreen *s, struct EditBuffer *b)
 {
     if (s->dpy.dpy_describe)
         s->dpy.dpy_describe(s, b);
+}
+
+static inline void dpy_sound_bell(QEditScreen *s)
+{
+    if (s->dpy.dpy_sound_bell)
+        s->dpy.dpy_sound_bell(s);
 }
 
 /* XXX: only needed for backward compatibility */

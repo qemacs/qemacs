@@ -509,7 +509,7 @@ static void isearch_run(ISearchState *is) {
     /* display search string */
     out = buf_init(&outbuf, ubuf, sizeof(ubuf));
     if (is->found_offset < 0 && len > 0)
-        buf_puts(out, "Failing ");
+        buf_puts(out, "\007Failing ");
     else
     if (is->search_flags & SEARCH_FLAG_WRAPPED) {
         buf_puts(out, "Wrapped ");
@@ -527,7 +527,7 @@ static void isearch_run(ISearchState *is) {
     /* display text */
     do_center_cursor(s, 0);
     edit_display(s->qe_state);
-    put_status(NULL, "%s", out->buf);   /* XXX: why NULL? */
+    put_status(s, "%s", out->buf);   /* XXX: why NULL? */
     elapsed_time = get_clock_ms() - start_time;
     if (elapsed_time >= 100)
         put_status(s, "|isearch_run: %dms", elapsed_time);
