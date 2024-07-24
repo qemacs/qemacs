@@ -2025,7 +2025,7 @@ void do_keyboard_quit(EditState *s)
     /* well, currently nothing needs to be aborted in global context */
     /* CG: Should remove sidepanes, helppanes... */
     put_status(s, "|");
-    put_status(s, "Quit");
+    put_status(s, "\007Quit");
 }
 
 /* block functions */
@@ -5929,15 +5929,12 @@ static void qe_key_process(int key)
                     goto exec_cmd;
             }
         }
-        if (!c->describe_key) {
-            /* CG: should beep */
-        }
         out = buf_init(&outbuf, buf1, sizeof(buf1));
         buf_puts(out, "No command on ");
         buf_put_keys(out, c->keys, c->nb_keys);
         if (qs->trace_buffer)
             eb_trace_bytes(buf1, -1, EB_TRACE_COMMAND);
-        put_status(s, "%s", buf1);
+        put_status(s, "%s%s", buf1, c->describe_key ? "" : "\007");
         c->describe_key = 0;
         qe_key_init(c);
         if (qs->trace_buffer)
@@ -6087,7 +6084,7 @@ void put_error(EditState *s, const char *fmt, ...)
     va_end(ap);
 
     eb_format_message(qs, "*errors*", buf);
-    put_status(s, "!%s", buf);
+    put_status(s, "!\007%s", buf);
 }
 
 void put_status(EditState *s, const char *fmt, ...)
@@ -6100,6 +6097,7 @@ void put_status(EditState *s, const char *fmt, ...)
     int silent = 0;
     int diag = 0;
     int force = 0;
+    int beep = 0;
 
     va_start(ap, fmt);
     vsnprintf(buf, sizeof(buf), fmt, ap);
@@ -6111,6 +6109,9 @@ void put_status(EditState *s, const char *fmt, ...)
     }
 
     for (p = buf;; p++) {
+        if (*p == '\007') {
+            beep = 1;
+        } else
         if (*p == '|') {
             diag = 1;
         } else
@@ -6150,6 +6151,10 @@ void put_status(EditState *s, const char *fmt, ...)
     }
     if (!silent && qe_skip_spaces(&p))
         eb_format_message(qs, "*messages*", p);
+    if (beep) {
+        if (s)
+            dpy_sound_bell(s->screen);
+    }
 }
 
 #if 0
@@ -7050,7 +7055,7 @@ void do_minibuffer_exit(EditState *s, int do_abort)
 
     /* Force status update and call the callback */
     if (do_abort) {
-        put_status(target, "!Canceled.");
+        put_status(target, "\007!Canceled.");
         (*cb)(opaque, NULL, NULL);
     } else {
         put_status(target, "!");
@@ -8384,7 +8389,7 @@ static void quit_key(void *opaque, int ch)
         break;
     case KEY_CTRL('g'):
         /* abort */
-        put_status(NULL, "Quit");
+        put_status(NULL, "\007Quit");
         dpy_flush(&global_screen);
         qe_ungrab_keys();
         return;

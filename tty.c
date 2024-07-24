@@ -1687,6 +1687,12 @@ static void tty_dpy_describe(QEditScreen *s, EditBuffer *b)
     comb_cache_describe(s, b);
 }
 
+static void tty_dpy_sound_bell(QEditScreen *s)
+{
+    fputc('\007', s->STDOUT);
+    fflush(s->STDOUT);
+}
+
 static QEDisplay tty_dpy = {
     "vt100", 1, 2,
     tty_dpy_probe,
@@ -1713,6 +1719,7 @@ static QEDisplay tty_dpy = {
     tty_dpy_draw_picture,
     NULL, /* dpy_full_screen */
     tty_dpy_describe,
+    tty_dpy_sound_bell,
     NULL, /* next */
 };
 

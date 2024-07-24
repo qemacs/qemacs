@@ -127,6 +127,7 @@ static QEDisplay const dummy_dpy = {
     NULL, /* dpy_draw_picture */
     NULL, /* dpy_full_screen */
     NULL, /* dpy_describe */
+    NULL, /* dpy_sound_bell */
     NULL, /* next */
 };
 
