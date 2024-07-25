@@ -665,6 +665,7 @@ void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
 
 /*---- key definitions and functions ----*/
 
+int find_key_suffix(const char *str, char c);
 int compose_keys(unsigned int *keys, int *nb_keys);
 int strtokey(const char **pp);
 int strtokeys(const char *keystr, unsigned int *keys, int max_keys, const char **endp);
@@ -684,17 +685,17 @@ int buf_quote_byte(buf_t *out, unsigned char ch);
    - E200: M- modifier
    - E400: S- modifier (S- modified non function keys unavailable from terminal)
    - E800: C- modifier (C- modified non function keys unavailable from terminal)
-   - F000..1FFFF: Unicode code points
+   - F000..1FFFFF: Unicode code points
    If using 32-bit key codes, could use higher modifier bits:
    Make these bits consistent X11 modifier keys.
-   - 010000: Shift (S-)     - ShiftMask      (1<<0)
-   - 020000: Lock (L-)      - LockMask       (1<<1)
-   - 040000: Ctrl (C-)      - ControlMask    (1<<2)
-   - 080000: Meta (M-)      - Mod1Mask       (1<<3)
-   - 100000: Alt (A-)       - Mod2Mask       (1<<4)
-   - 200000: Super (s-)     - Mod3Mask       (1<<5)
-   - 400000: Hyper (H-)     - Mod4Mask       (1<<6)
-   - 800000: Extra (E-)     - Mod5Mask       (1<<7)
+-   - 00200000: Shift (S-)     - ShiftMask      (1<<0)
+-   - 00400000: Lock (L-)      - LockMask       (1<<1)
+-   - 00800000: Ctrl (C-)      - ControlMask    (1<<2)
+-   - 01000000: Meta (M-)      - Mod1Mask       (1<<3)
+-   - 02000000: Alt (A-)       - Mod2Mask       (1<<4)
+-   - 04000000: Super (s-)     - Mod3Mask       (1<<5)
+-   - 08000000: Hyper (H-)     - Mod4Mask       (1<<6)
+-   - 10000000: Extra (E-)     - Mod5Mask       (1<<7)
 
    X11 function keys are mapped in the range FF00..FFFF, including prefix keys
 

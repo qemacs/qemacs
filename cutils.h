@@ -773,6 +773,19 @@ static inline void dbuf_set_error(DynBuf *s) {
     s->error = TRUE;
 }
 
+static inline const char *dbuf_str(DynBuf *s) {
+    /*@API utils.dbuf
+       Get a pointer to a C string for the contents of a dynamic buffer
+       @argument `s` a valid pointer to an uninitialized dynamic buffer object.
+       @note: a null terminator is set at the end of the buffer and an empty
+       string is returned if the buffer has not been allocated.
+     */
+    if (s->size == 0)
+        return "";
+    s->buf[s->size] = '\0';
+    return cs8(s->buf);
+}
+
 #define UTF8_CHAR_LEN_MAX 6
 
 int unicode_to_utf8(uint8_t *buf, unsigned int c);

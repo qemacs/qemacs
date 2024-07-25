@@ -1513,6 +1513,28 @@ static const char * const keystr[countof(keycodes)] = {
     "LB", "RB", "VB",
 };
 
+int find_key_suffix(const char *str, char c)
+{
+    size_t len = strlen(str);
+    int i;
+
+    if (len >= 2 && str[len - 1] == '-') {
+        if (str[len - 2] == 'M')
+            return KEY_META((u8)c);
+        if (str[len - 2] == 'C')
+            return KEY_CTRL((u8)c);
+        if (qe_isalpha((u8)str[len - 2]))
+            return 1;
+    }
+    for (i = 0; i < countof(keycodes); i++) {
+        const char *key = keystr[i];
+        size_t klen = strlen(key) - 1;
+        if (*key && klen <= len && key[klen] == c && !memcmp(key, str + len - klen, klen))
+            return keycodes[i];
+    }
+    return -1;
+}
+
 int compose_keys(unsigned int *keys, int *nb_keys)
 {
     unsigned int *keyp;
@@ -2008,7 +2030,6 @@ char *qe_strdup(const char *str) {
      */
     size_t size = strlen(str) + 1;
     char *p = (malloc)(size);
-
     if (p)
         memcpy(p, str, size);
     return p;

@@ -62,9 +62,10 @@ package for image parsing.
 
 # Commands
 
-### `call-last-kbd-macro()`
+### `call-last-kbd-macro(argval)`
 
 Run the last keyboard macro recorded by `start-kbd-macro`.
+Repeat `argval` times.
 
 ### `end-kbd-macro()`
 
@@ -175,8 +176,13 @@ FILENAME.
 
 ### `start-kbd-macro()`
 
-Start recording a keyboard macro. Every key typed is stored into
-a list for later replay using `call-last-kbd-macro`
+Record subsequent keyboard input, defining a keyboard macro.
+The commands are recorded even as they are executed.
+Use `end-kbd-macro` (bound to `C-x )`) to finish recording and
+make the macro available.
+Use `name-last-kbd-macro` to give it a permanent name.
+Use `call-last-kbd-macro` (bound to `C-x e` or `C-\`) to replay
+the keystrokes.
 
 # Implementation
 
@@ -931,6 +937,15 @@ Set the dynamic buffer current error code
 
 * argument `s` a valid pointer to an uninitialized dynamic buffer object.
 
+### `const char *dbuf_str(DynBuf *s);`
+
+Get a pointer to a C string for the contents of a dynamic buffer
+
+* argument `s` a valid pointer to an uninitialized dynamic buffer object.
+
+Note: a null terminator is set at the end of the buffer and an empty
+string is returned if the buffer has not been allocated.
+
 ### `int dbuf_write(DynBuf *s, size_t offset, const uint8_t *data, size_t len);`
 
 Write a block of data at a given offset in a dynamic buffer
@@ -1490,6 +1505,18 @@ Test if a parenthesis follows optional white space
 * argument `i` the index of the current codepoint
 
 Return a boolean success value
+
+### `int check_format_string(const char *fmt1, const char *fmt2, int max_width);`
+
+Check that a format string is compatible with a set of parameters.
+
+* argument `fmt1` a valid pointer to a C format string.
+
+* argument `fmt2` a valid pointer to a C format string with a minimal
+set of conversion specifiers without flags, width, precision.
+
+Return the number of conversions matched or `-1` if there is a
+type mismatch or too many conversions in the `fmt` string.
 
 ### `int clamp_int(int a, int b, int c);`
 

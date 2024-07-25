@@ -973,8 +973,11 @@ struct QEmacsState {
     int executing_macro;
     unsigned short *macro_keys;
     int nb_macro_keys;
+    int nb_macro_keys_run;
     int macro_keys_size;
     int macro_key_index; /* -1 means no macro is being executed */
+    int macro_counter;
+    char *macro_format;
     int ungot_key;
     int last_key;
     int last_argval;
@@ -1595,7 +1598,7 @@ void window_display(EditState *s);
 void do_prefix_argument(EditState *s, int key);
 void do_start_kbd_macro(EditState *s);
 void do_end_kbd_macro(EditState *s);
-void do_call_last_kbd_macro(EditState *s);
+void do_call_last_kbd_macro(EditState *s, int argval);
 void do_execute_macro_keys(EditState *s, const char *keys);
 void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
                          const char *key_bind);

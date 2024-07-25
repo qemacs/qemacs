@@ -2341,11 +2341,7 @@ int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) {
     va_end(ap2);
     if (len >= size) {
         size = len + 1;
-#ifdef CONFIG_WIN32
         buf = qe_malloc_bytes(size);
-#else
-        buf = alloca(size);
-#endif
         vsnprintf(buf, size, fmt, ap);
     }
     /* CG: insert buf encoding according to b->charset and b->eol_type.
@@ -2353,10 +2349,8 @@ int eb_vprintf(EditBuffer *b, const char *fmt, va_list ap) {
      * XXX: %c does not encode non ASCII characters as utf8.
      */
     written = eb_insert_utf8_buf(b, b->offset, buf, len);
-#ifdef CONFIG_WIN32
     if (buf != buf0)
         qe_free(&buf);
-#endif
     return written;
 }
 
