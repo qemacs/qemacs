@@ -283,7 +283,6 @@ insert_window_left()  deletes some left-most windows
 
 ## Macros
 
-* `start-keyboard-macro` should clear current macro if called recursively
 * allow redefining the keyboard macro embedding itself
 * `show-macro`, `dump-macro` to ease macro debugging and timing
 * fix macro slowliness in 6000 line buffer **junk/dirs/x**
@@ -293,7 +292,6 @@ insert_window_left()  deletes some left-most windows
 * improve `dump-macro` to convert macro to string
 * fix `dump-macro` to save/restore `last-kbd-macro` to/from session
 * do not store messages during repeated macro execution or limit buffer size
-* `name-last-kbd-macro`
 * fix source syntax issues
 ```lisp
    (define-macro "last-kbd-macro" "A-fA-fC-FC-FC-@C-EA-wC-AC-NC-XnC-YC-MC-Xp")

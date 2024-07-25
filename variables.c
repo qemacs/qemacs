@@ -84,6 +84,8 @@ static VarDef var_table[] = {
            "Set to prevent automatic backups of modified files" )
     S_VAR( "c-label-indent", c_label_indent, VAR_NUMBER, VAR_RW_SAVE,
            "Number of columns to adjust indentation of C labels." )
+    S_VAR( "macro-counter", macro_counter, VAR_NUMBER, VAR_RW_SAVE,
+           "Macro counter: insert with C-x C-k TAB, set with C-x C-k C-c." )
 
     //B_VAR( "screen-charset", charset, VAR_NUMBER, VAR_RW, NULL )
 

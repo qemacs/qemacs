@@ -5264,7 +5264,7 @@ static void parse_arguments(ExecCmdState *es)
         /* if no argument specified, try to ask it to the user */
         if (get_arg && cas.prompt[0] != '\0') {
             char def_input[1024];
-
+            StringArray *hist = qe_get_history(cas.history);
             /* XXX: currently, default input is handled non generically */
             /* XXX: should use completion function for default input? */
             def_input[0] = '\0';
@@ -5279,14 +5279,17 @@ static void parse_arguments(ExecCmdState *es)
                 else
                     b = s->b;
                 pstrcpy(es->default_input, sizeof(es->default_input), b->name);
+            } else
+            if (strequal(cas.history, "macrokeys")) {
+                if (hist && hist->nb_items)
+                    pstrcpy(def_input, sizeof(def_input), hist->items[hist->nb_items - 1]->str);
             }
             if (es->default_input[0] != '\0') {
                 pstrcat(cas.prompt, sizeof(cas.prompt), "(default ");
                 pstrcat(cas.prompt, sizeof(cas.prompt), es->default_input);
                 pstrcat(cas.prompt, sizeof(cas.prompt), ") ");
             }
-            minibuffer_edit(s, def_input, cas.prompt, qe_get_history(cas.history),
-                            cas.completion, arg_edit_cb, es);
+            minibuffer_edit(s, def_input, cas.prompt, hist, cas.completion, arg_edit_cb, es);
             return;
         }
     }
@@ -5514,15 +5517,45 @@ void edit_display(QEmacsState *qs)
     qs->complete_refresh = 0;
 }
 
-/* macros */
+/*---------------- Keyboard macros ----------------*/
+
+/* XXX: missing macro commands:
+   `macro-edit-lossage`           C-x C-k l
+   Edit most recent 300 keystrokes as a keyboard macro.
+   `kbd-macro-query`              C-x q
+   Query user during kbd macro execution.
+   `show-macro`, `dump-macro` to ease macro debugging and timing
+ */
+
+static void clear_macro(QEmacsState *qs) {
+    qe_free(&qs->macro_keys);
+    qs->macro_keys_size = 0;
+    qs->nb_macro_keys = 0;
+    qs->nb_macro_keys_run = 0;
+}
+
+static void stop_macro(QEmacsState *qs) {
+    // XXX: should output a message
+    if (qs->defining_macro) {
+        qs->defining_macro = 0;
+        clear_macro(qs);
+    }
+    qs->executing_macro = 0;
+    qs->macro_key_index = -1;
+}
 
 void do_start_kbd_macro(EditState *s)
 {
     /*@CMD start-kbd-macro
        ### `start-kbd-macro()`
 
-       Start recording a keyboard macro. Every key typed is stored into
-       a list for later replay using `call-last-kbd-macro`
+       Record subsequent keyboard input, defining a keyboard macro.
+       The commands are recorded even as they are executed.
+       Use `end-kbd-macro` (bound to `C-x )`) to finish recording and
+       make the macro available.
+       Use `name-last-kbd-macro` to give it a permanent name.
+       Use `call-last-kbd-macro` (bound to `C-x e` or `C-\`) to replay
+       the keystrokes.
      */
     QEmacsState *qs = s->qe_state;
 
@@ -5531,18 +5564,219 @@ void do_start_kbd_macro(EditState *s)
     } else {
         put_status(s, "Defining kbd macro...");
     }
+    clear_macro(qs);
     qs->defining_macro = 1;
-    qe_free(&qs->macro_keys);
-    qs->nb_macro_keys = 0;
-    qs->macro_keys_size = 0;
+    qs->macro_counter = 0;
 }
 
+#ifdef CONFIG_TINY
+#define save_last_kbd_macro(s)
+#else
 static void save_last_kbd_macro(EditState *s) {
-#ifndef CONFIG_TINY
-    // XXX: should save the keyboard macro with `name-kbd-macro`
-    // XXX: should save macro keys to add_string(qe_get_history("macrokeys"), buf, 0)
-#endif
+    QEmacsState *qs = s->qe_state;
+    char buf[32];
+    buf_t out[1];
+    DynBuf db[1];
+    int i, len, haskey = 1;
+    const char *p;
+    StringArray *hist;
+
+    if (qs->defining_macro || !qs->nb_macro_keys)
+        return;
+
+    dbuf_init(db);
+    for (i = 0; i < qs->nb_macro_keys; i++) {
+        buf_init(out, buf, sizeof(buf));
+        len = buf_put_key(out, qs->macro_keys[i]);
+        if (len != 1
+        ||  haskey
+        ||  find_key_suffix(dbuf_str(db), out->buf[0]) != -1) {
+            if (i > 0)
+                dbuf_putc(db, ' ');
+        }
+        dbuf_putstr(db, out->buf);
+        haskey = (len != 1);
+    }
+    p = dbuf_str(db);
+    hist = qe_get_history("macrokeys");
+    remove_string(hist, p);
+    add_string(hist, p, 0);
+    dbuf_free(db);
 }
+
+static void macro_add_key(int key);
+
+static void do_edit_last_kbd_macro(EditState *s, const char *keys) {
+    QEmacsState *qs = s->qe_state;
+    const char *p;
+
+    if (!keys || !*keys)
+        return;
+
+    clear_macro(qs);
+    qs->macro_counter = 0;
+
+    p = keys;
+    while (qe_skip_spaces(&p)) {
+        int key = strtokey(&p);
+        macro_add_key(key);
+    }
+    save_last_kbd_macro(s);
+    put_status(s, "Keyboard macro redefined");
+}
+
+static void do_name_last_kbd_macro(EditState *s, const char *name)
+{
+    StringArray *hist = qe_get_history("macrokeys");
+    if (hist && hist->nb_items) {
+        do_define_kbd_macro(s, name, hist->items[hist->nb_items - 1]->str, NULL);
+    }
+}
+
+static void do_insert_kbd_macro(EditState *s, const char *name)
+{
+    EditBuffer *b = s->b;
+    if (name && *name) {
+        const CmdDef *d = qe_find_cmd(name);
+        if (d && d->action.ESs == do_execute_macro_keys) {
+            const char *keys = d->spec + 2;   /* skip @{ */
+            b->offset = s->offset;
+            eb_printf(b, "define_kbd_macro(\"%s\", \"", name);
+            while (keys[1]) {                   /* stop at } */
+                char32_t c = utf8_decode(&keys);
+                if (c == '\\' || c == '"')
+                    eb_putc(b, '\\');
+                eb_putc(b, c);
+            }
+            eb_puts(b, "\", \"\");\n");
+            s->offset = b->offset;
+        }
+    } else {
+        StringArray *hist = qe_get_history("macrokeys");
+        if (hist && hist->nb_items) {
+            const char *keys = hist->items[hist->nb_items - 1]->str;
+            b->offset = s->offset;
+            eb_printf(b, "edit_last_kbd_macro(\"");
+            while (keys[0]) {
+                char32_t c = utf8_decode(&keys);
+                if (c == '\\' || c == '"')
+                    eb_putc(b, '\\');
+                eb_putc(b, c);
+            }
+            eb_puts(b, "\");\n");
+            s->offset = b->offset;
+        }
+    }
+}
+
+static void do_read_kbd_macro(EditState *s, int mark, int offset) {
+    char buf[1024];
+    int start = min_offset(mark, offset);
+    int stop = max_offset(mark, offset);
+    eb_get_region_contents(s->b, start, stop, buf, sizeof buf, 0);
+    do_edit_last_kbd_macro(s, buf);
+}
+
+static void show_macro_counter(EditState *s) {
+    QEmacsState *qs = s->qe_state;
+    put_status(s, "new macro counter: %d", qs->macro_counter);
+}
+
+static void do_macro_add_counter(EditState *s, int arg) {
+    QEmacsState *qs = s->qe_state;
+    qs->macro_counter += arg;
+    show_macro_counter(s);
+}
+
+static void do_macro_set_counter(EditState *s, int arg) {
+    QEmacsState *qs = s->qe_state;
+    qs->macro_counter = arg;
+    show_macro_counter(s);
+}
+
+static int check_format_string(const char *fmt1, const char *fmt2, int max_width) {
+    /*@API utils
+       Check that a format string is compatible with a set of parameters.
+       @argument `fmt1` a valid pointer to a C format string.
+       @argument `fmt2` a valid pointer to a C format string with a minimal
+       set of conversion specifiers without flags, width, precision.
+       @return the number of conversions matched or `-1` if there is a
+       type mismatch or too many conversions in the `fmt` string.
+     */
+    const char *p;
+    const char *q;
+    int found = 0;
+    for (p = fmt1, q = fmt2; (p = strchr(p, '%')) != NULL; p++, q++) {
+        p++;
+        if (*p == '%')
+            continue;
+        if (*q++ != '%')
+            return -1;
+        p += strspn(p, "+- #0123456789");
+        if (*p == '.')
+            p += 1 + strspn(p + 1, "0123456789");
+        switch (*p) {
+        case 'h':
+            p += 1 + (p[1] == 'h');
+            break;
+        case 'l':
+            if (*q++ != 'l')
+                return -1;
+            p++;
+            if (*p == 'l') {
+                p++;
+                if (*q++ != 'l')
+                    return -1;
+            } else
+            if (*p == 'c' && *q != *p)
+                return -1;
+            break;
+        case 'L':
+        case 'j':
+        case 't':
+        case 'z':
+            if (*p++ != *q++)
+                return -1;
+            break;
+        }
+        if (*p == '\0' || *q == '\0')
+            return -1;
+        if (*p != *q) {
+            if ((memchr("bBcdiouxX", *p, 9) && memchr("bBcdiouxX", *q, 9))
+            ||  (memchr("aAeEfFgG", *p, 8) && memchr("aAeEfFgG", *q, 8)))
+                continue;
+            return -1;
+        }
+        found++;
+    }
+    return found;
+}
+
+static void do_macro_insert_counter(EditState *s, int arg) {
+    QEmacsState *qs = s->qe_state;
+    int (*eb_printf_fun)(EditBuffer *b, const char *fmt, ...) = eb_printf;
+    const char *fmt = qs->macro_format;
+    int n = qs->macro_counter;
+    if (!fmt || !*fmt)
+        fmt = "%d";
+    if (check_format_string(fmt, "%d%d%d%d", 1024) < 0) {
+        put_status(s, "Invalid macro format: %s", fmt);
+        return;
+    }
+    s->b->offset = s->offset;
+    eb_printf_fun(s->b, fmt, n, n, n, n);
+    s->offset = s->b->offset;
+    qs->macro_counter += arg;
+    show_macro_counter(s);
+}
+
+static void do_macro_set_format(EditState *s, const char *fmt) {
+    QEmacsState *qs = &qe_state;
+    qe_free(&qs->macro_format);
+    if (fmt)
+        qs->macro_format = qe_strdup(fmt);
+}
+#endif
 
 void do_end_kbd_macro(EditState *s)
 {
@@ -5564,16 +5798,19 @@ void do_end_kbd_macro(EditState *s)
         return;
     }
     qs->defining_macro = 0;
+    /* remove the last key(s) that invoked this function */
+    qs->nb_macro_keys = qs->nb_macro_keys_run;
     save_last_kbd_macro(s);
     put_status(s, "Keyboard macro defined");
 }
 
-void do_call_last_kbd_macro(EditState *s)
+void do_call_last_kbd_macro(EditState *s, int argval)
 {
     /*@CMD call-last-kbd-macro
-       ### `call-last-kbd-macro()`
+       ### `call-last-kbd-macro(argval)`
 
        Run the last keyboard macro recorded by `start-kbd-macro`.
+       Repeat `argval` times.
      */
     QEmacsState *qs = s->qe_state;
     int set_repeat = (qs->last_key == 'e');
@@ -5586,16 +5823,22 @@ void do_call_last_kbd_macro(EditState *s)
     }
 
     if (qs->nb_macro_keys > 0) {
-        /* CG: should share code with do_execute_macro */
-        for (qs->macro_key_index = 0;
-             qs->macro_key_index < qs->nb_macro_keys;
-             qs->macro_key_index++)
-        {
-            int key = qs->macro_keys[qs->macro_key_index];
-            qe_key_process(key);
+        while (argval-- > 0) {
+            /* CG: should share code with do_execute_macro */
+            for (qs->macro_key_index = 0;
+                 qs->macro_key_index < qs->nb_macro_keys;
+                 qs->macro_key_index++)
+            {
+                int key = qs->macro_keys[qs->macro_key_index];
+                qe_key_process(key);
+                if (qs->macro_key_index < 0) {
+                    // After 0 kbd macro iterations: Keyboard macro terminated by a command ringing the bell
+                    argval = 0;
+                    break;
+                }
+            }
         }
         qs->macro_key_index = -1;
-
         qe_free_bindings(&qs->first_transient_key);
         if (set_repeat)
             qe_register_transient_binding(qs, "call-last-kbd-macro", "e");
@@ -5618,8 +5861,12 @@ void do_execute_macro_keys(EditState *s, const char *keys)
     while (qe_skip_spaces(&p)) {
         key = strtokey(&p);
         qe_key_process(key);
+        if (!qs->executing_macro) {
+            // After 0 kbd macro iterations: Keyboard macro terminated by a command ringing the bell
+        }
     }
-    qs->executing_macro--;
+    if (qs->executing_macro)
+        qs->executing_macro--;
 }
 
 void do_define_kbd_macro(EditState *s, const char *name, const char *keys,
@@ -5805,11 +6052,15 @@ void qe_grab_keys(void (*cb)(void *opaque, int key), void *opaque)
  */
 void qe_ungrab_keys(void)
 {
+    QEmacsState *qs = &qe_state;
     QEKeyContext *c = &key_ctx;
 
     /* CG: Should have an indicator to free previous grab */
     c->grab_key_cb = NULL;
     c->grab_key_opaque = NULL;
+    if (qs->defining_macro) {
+        qs->nb_macro_keys_run = qs->nb_macro_keys;
+    }
 }
 
 /* init qe key handling context */
@@ -5991,6 +6242,9 @@ static void qe_key_process(int key)
             }
             exec_command(s, d, argval, key);
         }
+        if (qs->defining_macro) {
+            qs->nb_macro_keys_run = qs->nb_macro_keys;
+        }
         qe_key_init(c);
         // XXX: should delay until after macro execution
         edit_display(qs);
@@ -6152,6 +6406,7 @@ void put_status(EditState *s, const char *fmt, ...)
     if (!silent && qe_skip_spaces(&p))
         eb_format_message(qs, "*messages*", p);
     if (beep) {
+        stop_macro(qs);
         if (s)
             dpy_sound_bell(s->screen);
     }
@@ -7556,6 +7811,7 @@ static void kill_buffer_confirm_cb(void *opaque, char *reply, CompletionDef *com
 
 void do_kill_buffer(EditState *s, const char *bufname, int force)
 {
+    QEmacsState *qs = s->qe_state;
     char buf[1024];
     EditBuffer *b;
 
@@ -7565,6 +7821,7 @@ void do_kill_buffer(EditState *s, const char *bufname, int force)
     } else {
         /* if modified and associated to a filename, then ask */
         if (!force && b->modified && b->filename[0] != '\0') {
+            stop_macro(qs);
             snprintf(buf, sizeof(buf),
                      "Buffer %s modified; kill anyway? (yes or no) ", bufname);
             minibuffer_edit(s, NULL, buf, NULL, NULL,
@@ -8306,6 +8563,7 @@ void do_exit_qemacs(EditState *s, int argval)
     is->state = QS_ASK;
     is->b = qs->first_buffer;
 
+    stop_macro(qs);
     qe_grab_keys(quit_key, is);
     quit_examine_buffers(is);
 }
@@ -8341,6 +8599,7 @@ static void quit_examine_buffers(QuitState *is)
 
     /* now asks for confirmation or exit directly */
     if (is->modified) {
+        stop_macro(qs);
         minibuffer_edit(qs->active_window,
                         NULL, "Modified buffers exist; exit anyway? (yes or no) ",
                         NULL, NULL, quit_confirm_cb, NULL);
@@ -8389,9 +8648,9 @@ static void quit_key(void *opaque, int ch)
         break;
     case KEY_CTRL('g'):
         /* abort */
+        qe_ungrab_keys();
         put_status(NULL, "\007Quit");
         dpy_flush(&global_screen);
-        qe_ungrab_keys();
         return;
     default:
         /* get another key */
@@ -10236,6 +10495,8 @@ int main(int argc, char **argv)
         free_font_cache(&global_screen);  // before dpy_close()?
         qe_free(&qs->buffer_cache);
         qs->buffer_cache_size = qs->buffer_cache_len = 0;
+        clear_macro(qs);
+        qe_free(&qs->macro_format);
     }
 #endif
     return 0;

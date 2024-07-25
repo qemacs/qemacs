@@ -2,7 +2,7 @@
  * QEmacs, tiny but powerful multimode editor
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -291,21 +291,54 @@ static const CmdDef basic_commands[] = {
           "none",
           "An unknown key was pressed",
           do_unknown_key)
+
     CMD0( "start-kbd-macro", "C-x (",
           "Start recording a keyboard macro",
           do_start_kbd_macro)
     CMD0( "end-kbd-macro", "C-x )",
           "End recording a keyboard macro",
           do_end_kbd_macro)
-    CMD0( "call-last-kbd-macro", "C-x e, C-\\",
+    CMD2( "call-last-kbd-macro", "C-x e, C-\\",
           "Run the last recorded keyboard macro",
-          do_call_last_kbd_macro)
+          do_call_last_kbd_macro, ESi, "p")
     CMD2( "define-kbd-macro", "",
           "Define a named keyboard macro",
           do_define_kbd_macro, ESsss,
           "s{Macro name: }[command]"
           "s{Macro keys: }|macrokeys|"
           "s{Bind to key: }[key]")
+#ifndef CONFIG_TINY
+    CMD2( "edit-last-kbd-macro", "C-x *, C-x C-k C-e, C-x C-k e",
+          "Edit the last keyboard macro",
+          do_edit_last_kbd_macro, ESs,
+          "s{Macro keys: }|macrokeys|")
+    CMD2( "name-last-kbd-macro", "C-x C-k C-n, C-x C-k n",
+          "Define a named command from the last keyboard macro",
+          do_name_last_kbd_macro, ESs,
+          "s{Macro name: }[command]")
+    CMD2( "insert-kbd-macro", "C-x C-k i",
+          "Insert in buffer the definition of kbd macro MACRONAME, as qescript code",
+          do_insert_kbd_macro, ESs,
+          "*s{Macro name: }[command]")
+    CMD2( "read-kbd-macro", "C-x C-k r",
+          "Read the region as a keyboard macro definition",
+          do_read_kbd_macro, ESii, "m" "d")
+    CMD2( "macro-add-counter", "C-x C-k C-a, C-x C-k a",
+          "Add the value of numeric prefix arg (prompt if missing) to `macro-counter`",
+          do_macro_add_counter, ESi,
+          "N{Macro increment: }")
+    CMD2( "macro-set-counter", "C-x C-k C-c, C-x C-k c",
+          "Set the value of `macro-counter' to ARG, or prompt for value if no argument",
+          do_macro_set_counter, ESi,
+          "N{Macro counter: }")
+    CMD2( "macro-insert-counter", "C-x C-k TAB, C-x C-k =",
+          "Insert current value of `macro-counter`, then increment it by ARG",
+          do_macro_insert_counter, ESi, "*p")
+    CMD2( "macro-set-format", "C-x C-k C-f, C-x C-k f",
+          "Set the printf-like format for `macro-insert-counter`",
+          do_macro_set_format, ESs,
+          "s{Format: }|macroformat|")
+#endif
     /* set/unset key? */
     CMD3( "global-set-key", "f4",
           "Register a global key binding",

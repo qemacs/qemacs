@@ -311,6 +311,8 @@ static int eb_search(EditBuffer *b, int dir, int flags,
     }
 }
 
+static void isearch_exit(EditState *s, int key);
+
 static int search_abort_func(qe__unused__ void *opaque)
 {
     return is_user_input_pending();
@@ -508,9 +510,15 @@ static void isearch_run(ISearchState *is) {
 
     /* display search string */
     out = buf_init(&outbuf, ubuf, sizeof(ubuf));
-    if (is->found_offset < 0 && len > 0)
+    if (is->found_offset < 0 && len > 0) {
+        if (is->s->qe_state->macro_key_index >= 0) {
+            /* if macro is running, abort search and macro */
+            isearch_exit(is->s, KEY_RET);
+            put_status(s, "\007");
+            return;
+        }
         buf_puts(out, "\007Failing ");
-    else
+    } else
     if (is->search_flags & SEARCH_FLAG_WRAPPED) {
         buf_puts(out, "Wrapped ");
         is->search_flags &= ~SEARCH_FLAG_WRAPPED;
@@ -825,7 +833,8 @@ static void isearch_key(void *opaque, int key) {
     }
     if (is->search_flags & SEARCH_FLAG_ACTIVE) {
         isearch_run(is);
-    } else {
+    }
+    if (!(is->search_flags & SEARCH_FLAG_ACTIVE)) {
         /* This should free the ISearchState grab data if allocated */
         qe_ungrab_keys();
     }
