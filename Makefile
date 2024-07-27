@@ -70,7 +70,9 @@ ifdef TARGET_ARCH_X86
   endif
 endif
 
-HOST_CFLAGS:=$(CFLAGS)
+ifeq ($(CC),$(HOST_CC))
+  HOST_CFLAGS:=$(CFLAGS)
+endif
 
 DEFINES=-DHAVE_QE_CONFIG_H
 
@@ -530,7 +532,7 @@ test:
 
 # documentation
 qe-manual.md: $(BINDIR)/scandoc$(EXE) qe-manual.c $(SRCS) $(DEPENDS) Makefile
-	$(BINDIR)/scandoc qe-manual.c $(SRCS) $(DEPENDS) > $@
+	$(BINDIR)/scandoc$(EXE) qe-manual.c $(SRCS) $(DEPENDS) > $@
 
 qe-doc.html: qe-doc.texi Makefile
 	LANGUAGE=en_US LC_ALL=en_US.UTF-8 texi2html -monolithic $<
