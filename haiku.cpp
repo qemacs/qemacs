@@ -2,7 +2,7 @@
  * Haiku driver for QEmacs
  *
  * Copyright (c) 2013 Francois Revol.
- * Copyright (c) 2015-2023 Charlie Gordon.
+ * Copyright (c) 2015-2024 Charlie Gordon.
  * Copyright (c) 2002 Fabrice Bellard.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
