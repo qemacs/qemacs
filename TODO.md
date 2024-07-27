@@ -1,4 +1,4 @@
-<!-- TODO list for qemacs -- Author: Charles Gordon -- Updated: 2023-02-21 -->
+<!-- TODO list for qemacs -- Author: Charlie Gordon -- Updated: 2024-07-27 -->
 
 # QEmacs TODO list
 
