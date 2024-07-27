@@ -62,7 +62,8 @@ enum {
 };
 
 static void scad_colorize_line(QEColorizeContext *cp,
-                               char32_t *str, int n, ModeDef *syn)
+                               const char32_t *str, int n,
+                               QETermStyle *sbuf, ModeDef *syn)
 {
     char keyword[16];
     int i = 0, start = i, style = 0, k, len, laststyle = 0, isnum;
@@ -178,7 +179,7 @@ static void scad_colorize_line(QEColorizeContext *cp,
         }
         if (style) {
             laststyle = style;
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }

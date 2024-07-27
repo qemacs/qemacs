@@ -2,7 +2,7 @@
  * XML text mode for QEmacs.
  *
  * Copyright (c) 2002 Fabrice Bellard.
- * Copyright (c) 2014-2023 Charlie Gordon.
+ * Copyright (c) 2014-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,7 +57,8 @@ static int xml_tag_match(const char32_t *buf, int i, const char *str,
 }
 
 static void xml_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start = i;
     char32_t c;
@@ -103,7 +104,7 @@ static void xml_colorize_line(QEColorizeContext *cp,
                         break;
                     }
                 }
-                SET_COLOR(str, start, i, XML_STYLE_COMMENT);
+                SET_STYLE(sbuf, start, i, XML_STYLE_COMMENT);
             } else {
                 /* we are in a tag */
                 if (xml_tag_match(str, i, "script", &i)) {
@@ -131,7 +132,7 @@ static void xml_colorize_line(QEColorizeContext *cp,
                         break;
                     }
                 }
-                SET_COLOR(str, start, i, XML_STYLE_TAG);
+                SET_STYLE(sbuf, start, i, XML_STYLE_TAG);
                 start = i;
                 if (state & IN_XML_SCRIPT) {
                     /* javascript coloring */
@@ -143,15 +144,11 @@ static void xml_colorize_line(QEColorizeContext *cp,
                             break;
                         }
                     }
-                    c = str[i];     /* save char to set '\0' delimiter */
-                    str[i] = '\0';
-                    state &= ~IN_XML_SCRIPT;
-                    cp->colorize_state = state;
-                    js_mode.colorize_func(cp, str + start, i - start, &js_mode);
-                    state = cp->colorize_state;
-                    state |= IN_XML_SCRIPT;
-                    str[i] = c;
-                    if (c) {
+                    cp->colorize_state = state & ~IN_XML_SCRIPT;
+                    cp_colorize_line(cp, str, start, i, sbuf, &js_mode);
+                    state = cp->colorize_state | IN_XML_SCRIPT;
+                    if (str[i]) {
+                        /* found </script> tag */
                         state = 0;
                     }
                     continue;
@@ -165,15 +162,11 @@ static void xml_colorize_line(QEColorizeContext *cp,
                             break;
                         }
                     }
-                    c = str[i];
-                    str[i] = '\0';
-                    state &= ~IN_XML_STYLE;
-                    cp->colorize_state = state;
-                    css_mode.colorize_func(cp, str + start, i - start, &css_mode);
-                    state = cp->colorize_state;
-                    state |= IN_XML_STYLE;
-                    str[i] = c;
-                    if (c) {
+                    cp->colorize_state = state & ~IN_XML_STYLE;
+                    cp_colorize_line(cp, str, start, i, sbuf, &css_mode);
+                    state = cp->colorize_state | IN_XML_STYLE;
+                    if (str[i]) {
+                        /* found </style> tag */
                         state = 0;
                     }
                 }

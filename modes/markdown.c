@@ -126,7 +126,8 @@ static int mkd_add_lang(const char *lang_name, char c) {
 }
 
 static void mkd_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     int colstate = cp->colorize_state;
     int level, indent, i = 0, j, start = i, base_style = 0;
@@ -158,7 +159,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
                 break;
             }
         }
-        SET_COLOR(str, start, i, MKD_STYLE_COMMENT);
+        SET_STYLE(sbuf, start, i, MKD_STYLE_COMMENT);
         cp->colorize_state = colstate;
         return;
     }
@@ -166,7 +167,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     if (str[i] == '>') {
         if (str[++i] == ' ')
             i++;
-        SET_COLOR(str, start, i, MKD_STYLE_BLOCK_QUOTE);
+        SET_STYLE(sbuf, start, i, MKD_STYLE_BLOCK_QUOTE);
         start = i;
     }
 
@@ -180,15 +181,15 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         ||  (indent < 4 && mkd_lang_char[lang] == ':')) {
             colstate &= ~IN_MKD_BLOCK;
             i = n;
-            SET_COLOR(str, start, i, MKD_STYLE_TILDE);
+            SET_STYLE(sbuf, start, i, MKD_STYLE_TILDE);
         } else {
             if (mkd_lang_def[lang]) {
                 cp->colorize_state = colstate & IN_MKD_LANG_STATE;
-                mkd_lang_def[lang]->colorize_func(cp, str + i, n - i, mkd_lang_def[lang]);
+                cp_colorize_line(cp, str, i, n, sbuf, mkd_lang_def[lang]);
                 colstate &= ~IN_MKD_LANG_STATE;
                 colstate |= cp->colorize_state & IN_MKD_LANG_STATE;
             } else {
-                SET_COLOR(str, start, n, MKD_STYLE_CODE);
+                SET_STYLE(sbuf, start, n, MKD_STYLE_CODE);
             }
             i = n;
         }
@@ -206,12 +207,10 @@ static void mkd_colorize_line(QEColorizeContext *cp,
     if ((colstate & IN_MKD_HTML_BLOCK)
     ||  (str[i] == '<' && (str[i + 1] == '!' || str[i + 1] == '?' || qe_isalpha(str[i + 1])))) {
         /* block level HTML markup */
-        colstate &= ~IN_MKD_HTML_BLOCK;
-        cp->colorize_state = colstate;
-        htmlsrc_mode.colorize_func(cp, str, n, &htmlsrc_mode);
-        colstate = cp->colorize_state;
-        colstate |= IN_MKD_HTML_BLOCK;
-        if ((str[i] & CHAR_MASK) == '<' && (str[i + 1] & CHAR_MASK) == '/')
+        cp->colorize_state = colstate & ~IN_MKD_HTML_BLOCK;
+        cp_colorize_line(cp, str, 0, n, sbuf, &htmlsrc_mode);
+        colstate = cp->colorize_state | IN_MKD_HTML_BLOCK;
+        if (str[i] == '<' && str[i + 1] == '/')
             colstate = 0;
         cp->colorize_state = colstate;
         return;
@@ -225,20 +224,20 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         if (qe_isblank(str[i])) {
             base_style = MkdBulletStyles[(i - start - 1) % MKD_BULLET_STYLES];
             i++;
-            SET_COLOR(str, start, i, base_style);
+            SET_STYLE(sbuf, start, i, base_style);
         }
     } else
     if (str[i] == '%') {
         /* pandoc extension: line comment */
         i = n;
-        SET_COLOR(str, start, i, MKD_STYLE_COMMENT);
+        SET_STYLE(sbuf, start, i, MKD_STYLE_COMMENT);
     } else
     if (str[i] == '-') {
         /* dashes underline a heading */
         for (i++; str[i] == '-'; i++)
             continue;
         if (i == n) {
-            SET_COLOR(str, start, i, MKD_STYLE_HEADING2);
+            SET_STYLE(sbuf, start, i, MKD_STYLE_HEADING2);
         }
     } else
     if (str[i] == '=') {
@@ -246,7 +245,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         for (i++; str[i] == '='; i++)
             continue;
         if (i == n) {
-            SET_COLOR(str, start, i, MKD_STYLE_HEADING1);
+            SET_STYLE(sbuf, start, i, MKD_STYLE_HEADING1);
         }
     } else
     if (str[i] == '|') {
@@ -281,7 +280,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         }
         colstate |= IN_MKD_BLOCK | (lang << MKD_LANG_SHIFT);
         i = n;
-        SET_COLOR(str, start, i, MKD_STYLE_TILDE);
+        SET_STYLE(sbuf, start, i, MKD_STYLE_TILDE);
     }
 
     /* [X] unordered lists: /[-*+] / */
@@ -317,11 +316,11 @@ static void mkd_colorize_line(QEColorizeContext *cp,
             /* Should detect sequel lines in ordered/unordered lists */
             if (mkd_lang_def[lang]) {
                 cp->colorize_state = colstate & IN_MKD_LANG_STATE;
-                mkd_lang_def[lang]->colorize_func(cp, str + 4, n - 4, mkd_lang_def[lang]);
+                cp_colorize_line(cp, str, 4, n, sbuf, mkd_lang_def[lang]);
                 colstate &= ~IN_MKD_LANG_STATE;
                 colstate |= cp->colorize_state & IN_MKD_LANG_STATE;
             } else {
-                SET_COLOR(str, i, n, MKD_STYLE_CODE);
+                SET_STYLE(sbuf, i, n, MKD_STYLE_CODE);
             }
             i = n;
         }
@@ -341,7 +340,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
             /* Horizontal rule */
             start = i;
             i = n;
-            SET_COLOR(str, start, i, MKD_STYLE_HBAR);
+            SET_STYLE(sbuf, start, i, MKD_STYLE_HBAR);
         }
     }
 
@@ -357,7 +356,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
             base_style = MKD_STYLE_DLIST;
             start = i;
             i = j;
-            SET_COLOR(str, start, i, base_style);
+            SET_STYLE(sbuf, start, i, base_style);
         }
     } else
     if ((str[i] == '-' || str[i] == '*' || str[i] == '+')
@@ -365,7 +364,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         start = i;
         level++;
         base_style = MKD_STYLE_LIST;
-        SET_COLOR(str, start, i, base_style);
+        SET_STYLE(sbuf, start, i, base_style);
     }
 
     for (;;) {
@@ -422,7 +421,7 @@ static void mkd_colorize_line(QEColorizeContext *cp,
             chunk = mkd_scan_chunk(str, i, "[", "]", 1);
             if (chunk && str[i + chunk] == '(') {
                 i += chunk;
-                SET_COLOR(str, start, i, chunk_style);
+                SET_STYLE(sbuf, start, i, chunk_style);
                 chunk_style = MKD_STYLE_REF_HREF;
                 chunk = mkd_scan_chunk(str, i, "(", ")", 1);
             }
@@ -454,10 +453,10 @@ static void mkd_colorize_line(QEColorizeContext *cp,
         }
         if (chunk) {
             i += chunk;
-            SET_COLOR(str, start, i, chunk_style);
+            SET_STYLE(sbuf, start, i, chunk_style);
         } else {
             i++;
-            SET_COLOR1(str, start, base_style);
+            SET_STYLE1(sbuf, start, base_style);
         }
     }
 

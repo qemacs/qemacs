@@ -142,7 +142,8 @@ static int perl_string(const char32_t *str, char32_t delim, int j, int n) {
 }
 
 static void perl_colorize_line(QEColorizeContext *cp,
-                               char32_t *str, int n, ModeDef *syn)
+                               const char32_t *str, int n,
+                               QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start = i, j, s1, s2, delim = 0, indent;
     char32_t c, c1, c2;
@@ -156,21 +157,21 @@ static void perl_colorize_line(QEColorizeContext *cp,
             i++;
             colstate &= ~(IN_PERL_STRING1 | IN_PERL_STRING2);
         }
-        SET_COLOR(str, start, i, PERL_STYLE_STRING);
+        SET_STYLE(sbuf, start, i, PERL_STYLE_STRING);
     } else
     if (colstate & IN_PERL_FORMAT) {
         i = n;
         if (n == 1 && str[0] == '.')
             colstate &= ~IN_PERL_FORMAT;
-        SET_COLOR(str, start, i, PERL_STYLE_STRING);
+        SET_STYLE(sbuf, start, i, PERL_STYLE_STRING);
     }
     if (colstate & IN_PERL_HEREDOC) {
         i = n;
         if (n == perl_eos_len && !umemcmp(perl_eos, str, n)) {
             colstate &= ~IN_PERL_HEREDOC;
-            SET_COLOR(str, start, i, PERL_STYLE_KEYWORD);
+            SET_STYLE(sbuf, start, i, PERL_STYLE_KEYWORD);
         } else {
-            SET_COLOR(str, start, i, PERL_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, PERL_STYLE_STRING);
         }
     }
     if (str[i] == '=' && qe_isalpha(str[i + 1])) {
@@ -182,10 +183,10 @@ static void perl_colorize_line(QEColorizeContext *cp,
         }
         if (str[i] == '=' && qe_isalpha(str[i + 1])) {
             i = n;
-            SET_COLOR(str, start, i, PERL_STYLE_KEYWORD);
+            SET_STYLE(sbuf, start, i, PERL_STYLE_KEYWORD);
         } else {
             i = n;
-            SET_COLOR(str, start, i, PERL_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, PERL_STYLE_COMMENT);
         }
     }
 
@@ -217,7 +218,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
             s1 = perl_var(str, i, n);
             if (s1 > i) {
                 i = s1;
-                SET_COLOR(str, start, i, PERL_STYLE_VAR);
+                SET_STYLE(sbuf, start, i, PERL_STYLE_VAR);
                 continue;
             }
             break;
@@ -233,7 +234,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
             break;
         case '#':
             i = n;
-            SET_COLOR(str, start, i, PERL_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, PERL_STYLE_COMMENT);
             continue;
         case '<':
             if (c1 == '<') {
@@ -263,13 +264,13 @@ static void perl_colorize_line(QEColorizeContext *cp,
             s1 = perl_string(str, c, i, n);
             if (s1 >= n)
                 break;
-            SET_COLOR1(str, start, PERL_STYLE_DELIM);
+            SET_STYLE1(sbuf, start, PERL_STYLE_DELIM);
             i = s1;
-            SET_COLOR(str, start + 1, i, PERL_STYLE_REGEX);
+            SET_STYLE(sbuf, start + 1, i, PERL_STYLE_REGEX);
             start = i;
             while (++i < n && qe_isalpha(str[i]))
                 continue;
-            SET_COLOR(str, start, i, PERL_STYLE_DELIM);
+            SET_STYLE(sbuf, start, i, PERL_STYLE_DELIM);
             continue;
         case '\'':
         case '`':
@@ -282,13 +283,13 @@ static void perl_colorize_line(QEColorizeContext *cp,
                 if (c == '\'') {
                     colstate |= IN_PERL_STRING1;
                     i = n;
-                    SET_COLOR(str, start, i, PERL_STYLE_STRING);
+                    SET_STYLE(sbuf, start, i, PERL_STYLE_STRING);
                     continue;
                 }
                 if (c == '\"') {
                     colstate |= IN_PERL_STRING2;
                     i = n;
-                    SET_COLOR(str, start, i, PERL_STYLE_STRING);
+                    SET_STYLE(sbuf, start, i, PERL_STYLE_STRING);
                     continue;
                 }
                 /* ` string spanning more than one line treated as
@@ -298,7 +299,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
             }
             s1++;
             i = s1;
-            SET_COLOR(str, start, i, PERL_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, PERL_STYLE_STRING);
             continue;
         case '.':
             if (qe_isdigit(c1))
@@ -309,7 +310,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
             if (qe_isdigit(c)) {
             number:
                 i = perl_number(str, start, n);
-                SET_COLOR(str, start, i, PERL_STYLE_NUMBER);
+                SET_STYLE(sbuf, start, i, PERL_STYLE_NUMBER);
                 continue;
             }
             if (!qe_isalpha_(c))
@@ -328,12 +329,12 @@ static void perl_colorize_line(QEColorizeContext *cp,
                 s1 = perl_string(str, str[j], j + 1, n);
                 if (s1 >= n)
                     goto keyword;
-                SET_COLOR(str, start, j + 1, PERL_STYLE_DELIM);
+                SET_STYLE(sbuf, start, j + 1, PERL_STYLE_DELIM);
                 i = s1;
-                SET_COLOR(str, j + 1, i, PERL_STYLE_REGEX);
+                SET_STYLE(sbuf, j + 1, i, PERL_STYLE_REGEX);
                 while (++i < n && qe_isalpha(str[i]))
                     continue;
-                SET_COLOR(str, s1, i, PERL_STYLE_DELIM);
+                SET_STYLE(sbuf, s1, i, PERL_STYLE_DELIM);
                 continue;
             }
             /* Should check for context */
@@ -345,14 +346,14 @@ static void perl_colorize_line(QEColorizeContext *cp,
                 s2 = perl_string(str, str[j], s1 + 1, n);
                 if (s2 >= n)
                     goto keyword;
-                SET_COLOR(str, start, j + 1, PERL_STYLE_DELIM);
-                SET_COLOR(str, j + 1, s1, PERL_STYLE_REGEX);
-                SET_COLOR1(str, s1, PERL_STYLE_DELIM);
-                SET_COLOR(str, s1 + 1, s2, PERL_STYLE_REGEX);
+                SET_STYLE(sbuf, start, j + 1, PERL_STYLE_DELIM);
+                SET_STYLE(sbuf, j + 1, s1, PERL_STYLE_REGEX);
+                SET_STYLE1(sbuf, s1, PERL_STYLE_DELIM);
+                SET_STYLE(sbuf, s1 + 1, s2, PERL_STYLE_REGEX);
                 i = s2;
                 while (++i < n && qe_isalpha(str[i]))
                     continue;
-                SET_COLOR(str, s2, i, PERL_STYLE_DELIM);
+                SET_STYLE(sbuf, s2, i, PERL_STYLE_DELIM);
                 continue;
             }
         keyword:
@@ -362,7 +363,7 @@ static void perl_colorize_line(QEColorizeContext *cp,
                     colstate |= IN_PERL_FORMAT;
                 }
             }
-            SET_COLOR(str, start, i, PERL_STYLE_KEYWORD);
+            SET_STYLE(sbuf, start, i, PERL_STYLE_KEYWORD);
             continue;
         }
     }

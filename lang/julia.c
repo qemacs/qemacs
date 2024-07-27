@@ -1,7 +1,7 @@
 /*
  * Julia language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -156,7 +156,8 @@ static int julia_get_number(const char32_t *p)
 }
 
 static void julia_colorize_line(QEColorizeContext *cp,
-                                char32_t *str, int n, ModeDef *syn)
+                                const char32_t *str, int n,
+                                QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start = i, klen;
     char32_t c, sep = 0;
@@ -182,7 +183,7 @@ static void julia_colorize_line(QEColorizeContext *cp,
         switch (c) {
         case '#':
             i = n;
-            SET_COLOR(str, start, i, JULIA_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, JULIA_STYLE_COMMENT);
             continue;
 
         case '\'':
@@ -238,7 +239,7 @@ static void julia_colorize_line(QEColorizeContext *cp,
                 /* regex suffix */
                 i++;
             }
-            SET_COLOR(str, start, i, JULIA_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, JULIA_STYLE_STRING);
             continue;
 
         default:
@@ -246,7 +247,7 @@ static void julia_colorize_line(QEColorizeContext *cp,
                 /* numbers can be directly adjacent to identifiers */
                 klen = julia_get_number(str + i - 1);
                 i += klen - 1;
-                SET_COLOR(str, start, i, JULIA_STYLE_NUMBER);
+                SET_STYLE(sbuf, start, i, JULIA_STYLE_NUMBER);
                 continue;
             }
             if (julia_is_name(c)) {
@@ -258,15 +259,15 @@ static void julia_colorize_line(QEColorizeContext *cp,
                 }
                 if (strfind(syn->keywords, kbuf)
                 ||  strfind(julia_constants, kbuf)) {
-                    SET_COLOR(str, start, i, JULIA_STYLE_KEYWORD);
+                    SET_STYLE(sbuf, start, i, JULIA_STYLE_KEYWORD);
                     continue;
                 }
                 if (strfind(syn->types, kbuf)) {
-                    SET_COLOR(str, start, i, JULIA_STYLE_TYPE);
+                    SET_STYLE(sbuf, start, i, JULIA_STYLE_TYPE);
                     continue;
                 }
                 if (check_fcall(str, i)) {
-                    SET_COLOR(str, start, i, JULIA_STYLE_FUNCTION);
+                    SET_STYLE(sbuf, start, i, JULIA_STYLE_FUNCTION);
                     continue;
                 }
                 continue;

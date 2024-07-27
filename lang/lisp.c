@@ -234,7 +234,8 @@ static int lisp_is_number(const char *str)
 }
 
 static void lisp_colorize_line(QEColorizeContext *cp,
-                               char32_t *str, int n, ModeDef *syn)
+                               const char32_t *str, int n,
+                               QETermStyle *sbuf, ModeDef *syn)
 {
     int colstate = cp->colorize_state;
     int i = 0, start = i, len, level, style, style1, has_expr;
@@ -274,7 +275,7 @@ static void lisp_colorize_line(QEColorizeContext *cp,
         case ')':
             if (colstate & IN_LISP_SCOMMENT) {
                 if (level-- <= 1) {
-                    SET_COLOR(str, start, i - (level < 0), style1);
+                    SET_STYLE(sbuf, start, i - (level < 0), style1);
                     colstate &= ~IN_LISP_SCOMMENT;
                     level = 0;
                     style1 = 0;
@@ -443,7 +444,7 @@ static void lisp_colorize_line(QEColorizeContext *cp,
             }
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }

@@ -107,7 +107,8 @@ static int is_vim_keyword(const char32_t *str, int from, int to,
 }
 
 static void vim_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, j, start, state, comm, level, style;
     char32_t c;
@@ -135,7 +136,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
                 if (str[i++] == c)
                     break;
             }
-            SET_COLOR(str, start, i, VIM_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, VIM_STYLE_STRING);
             continue;
         case '/':
             if (state == VIM_STATE_SYN
@@ -148,7 +149,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
                     if (str[i++] == c)
                         break;
                 }
-                SET_COLOR(str, start, i, VIM_STYLE_REGEX);
+                SET_STYLE(sbuf, start, i, VIM_STYLE_REGEX);
                 continue;
             }
             break;
@@ -159,7 +160,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
                 for (j = i; j < n;) {
                     if (str[j++] == c) {
                         i = j;
-                        SET_COLOR(str, start, i, VIM_STYLE_STRING);
+                        SET_STYLE(sbuf, start, i, VIM_STYLE_STRING);
                         break;
                     }
                 }
@@ -169,7 +170,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
         case '\"':
             if (comm) {
                 i = n;
-                SET_COLOR(str, start, i, VIM_STYLE_COMMENT);
+                SET_STYLE(sbuf, start, i, VIM_STYLE_COMMENT);
                 continue;
             }
             /* parse string const */
@@ -183,7 +184,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         case '|':
             if (str[i] == '|') {
@@ -217,7 +218,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
                 if (!qe_isalnum(str[i]) && str[i] != '.')
                     break;
             }
-            SET_COLOR(str, start, i, VIM_STYLE_NUMBER);
+            SET_STYLE(sbuf, start, i, VIM_STYLE_NUMBER);
             continue;
         }
         /* parse identifiers and keywords */
@@ -252,7 +253,7 @@ static void vim_colorize_line(QEColorizeContext *cp,
                 if (check_fcall(str, i))
                     style = VIM_STYLE_FUNCTION;
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         }
     }

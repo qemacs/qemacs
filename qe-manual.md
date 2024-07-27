@@ -329,6 +329,116 @@ Return the number of bytes actually written.
 Note: content is truncated if it does not fit in the available
 space in the destination buffer.
 
+### `int eb_delete_char32(EditBuffer *b, int offset);`
+
+Delete one character at offset `offset`, return number of bytes removed
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+Return the number of bytes removed
+
+### `int eb_fgets(EditBuffer *b, char *buf, int size, int offset, int *offset_ptr);`
+
+Get the contents of the line starting at offset `offset` encoded
+in UTF-8. `offset` is bumped to point to the first unread character.
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `buf` a valid pointer to the destination array
+
+* argument `size` the length of the destination array
+
+* argument `offset` the offset in bytes of the beginning of the line in
+the buffer
+
+* argument `offset_ptr` a pointer to a variable to receive the offset
+of the first unread character in the buffer.
+
+Return the number of bytes stored into the destination array before
+the newline if any. No partial encoding is stored into the array.
+
+Note: the return value `len` verifies `len >= 0` and `len < buf_size`.
+If a complete line was read, `buf[len] == '\n'` and `buf[len + 1] == '\0'`.
+Truncation can be detected by checking `buf[len] != '\n'` or `len < buf_size - 1`.
+
+### `int eb_get_line(EditBuffer *b, char32_t *buf, int size, int offset, int *offset_ptr);`
+
+Get contents of the line starting at offset `offset` as an array of
+code points. `offset` is bumped to point to the first unread character.
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `buf` a valid pointer to the destination array
+
+* argument `size` the length of the destination array
+
+* argument `offset` the offset in bytes of the beginning of the line in
+the buffer
+
+* argument `offset_ptr` a pointer to a variable to receive the offset
+of the first unread character in the buffer.
+
+Return the number of codepoints stored into the destination array
+before the newline if any.
+
+Note: the return value `len` verifies `len >= 0` and `len < buf_size`.
+If a complete line was read, `buf[len] == '\n'` and `buf[len + 1] == '\0'`.
+Truncation can be detected by checking `buf[len] != '\n'` or `len < buf_size - 1`.
+
+### `char32_t eb_next_glyph(EditBuffer *b, int offset, int *next_ptr);`
+
+Read the main character for the next glyph,
+update offset to next_ptr
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+* argument `next_ptr` a pointer to a variable for the updated
+buffer position after the codepoint and any combining glyphs
+
+Return the main codepoint value
+
+### `char32_t eb_prev_glyph(EditBuffer *b, int offset, int *next_ptr);`
+
+Return the main character for the previous glyph,
+update offset to next_ptr
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+* argument `next_ptr` a pointer to a variable for the updated
+buffer position of the codepoint before any combining glyphs
+
+Return the main codepoint value
+
+### `int eb_skip_accents(EditBuffer *b, int offset);`
+
+Skip over combining glyphs
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+Return the new buffer position past any combining glyphs
+
+### `int eb_skip_chars(EditBuffer *b, int offset, int n);`
+
+Compute offset after moving `n` codepoints from `offset`.
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+* argument `n` the number of codepoints to skip forward or backward
+
+Return the new buffer position
+
+Note: 'n' can be negative
+
 ### `int qe_digit_value(char32_t c);`
 
 Get the numerical value associated with a codepoint

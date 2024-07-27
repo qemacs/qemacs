@@ -3482,7 +3482,7 @@ static void do_next_error(EditState *s, int arg, int dir)
     put_status(s, "=> %s", error_message);
 }
 
-static int match_digits(char32_t *buf, int n, char32_t sep) {
+static int match_digits(const char32_t *buf, int n, char32_t sep) {
     if (n >= 2 && qe_isdigit(buf[0])) {
         int i = 1;
         while (i < n && qe_isdigit(buf[i]))
@@ -3494,7 +3494,7 @@ static int match_digits(char32_t *buf, int n, char32_t sep) {
     return 0;
 }
 
-static int match_string(char32_t *buf, int n, const char *str) {
+static int match_string(const char32_t *buf, int n, const char *str) {
     int i;
     for (i = 0; i < n && str[i] && buf[i] == (u8)str[i]; i++)
         continue;
@@ -3549,7 +3549,8 @@ static int shell_find_mode(const char *filename) {
 }
 
 void shell_colorize_line(QEColorizeContext *cp,
-                         char32_t *str, int n, ModeDef *syn)
+                         const char32_t *str, int n,
+                         QETermStyle *sbuf, ModeDef *syn)
 {
     /* detect match lines for known languages and colorize accordingly */
     char filename[MAX_FILENAME_SIZE];
@@ -3671,7 +3672,7 @@ void shell_colorize_line(QEColorizeContext *cp,
     &&  (m = mode_cache[cp->colorize_state & STATE_SHELL_MODE]) != NULL) {
         int save_state = cp->colorize_state;
         cp->colorize_state >>= STATE_SHELL_SHIFT;
-        m->colorize_func(cp, str + start, n - start, m);
+        cp_colorize_line(cp, str, start, n, sbuf, m);
         if (save_state & STATE_SHELL_KEEP) {
             cp->colorize_state <<= STATE_SHELL_SHIFT;
             cp->colorize_state |= save_state & STATE_SHELL_MASK;
@@ -3680,9 +3681,8 @@ void shell_colorize_line(QEColorizeContext *cp,
         }
         cp->combine_stop = start;
         /* Colorize trailing blanks if colorizing shell output */
-        for (i = n; i > start && qe_isblank(str[i - 1] & CHAR_MASK); i--) {
-            str[i - 1] &= CHAR_MASK;
-            SET_COLOR1(str, i - 1, QE_STYLE_BLANK_HILITE);
+        for (i = n; i > start && qe_isblank(str[i - 1]); i--) {
+            SET_STYLE1(sbuf, i - 1, QE_STYLE_BLANK_HILITE);
         }
     } else {
         cp->colorize_state = 0;

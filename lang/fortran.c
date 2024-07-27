@@ -59,7 +59,8 @@ enum {
 };
 
 static void fortran_colorize_line(QEColorizeContext *cp,
-                                 char32_t *str, int n, ModeDef *syn)
+                                  const char32_t *str, int n,
+                                  QETermStyle *sbuf, ModeDef *syn)
 {
     char keyword[16];
     int i = 0, start = i, style, len, w;
@@ -89,11 +90,11 @@ static void fortran_colorize_line(QEColorizeContext *cp,
             if (str[i] == '{') {
             preprocess:
                 i = n;
-                SET_COLOR(str, start, i, FORTRAN_STYLE_PREPROCESS);
+                SET_STYLE(sbuf, start, i, FORTRAN_STYLE_PREPROCESS);
                 continue;
             }
             i = n;
-            SET_COLOR(str, start, i, FORTRAN_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, FORTRAN_STYLE_COMMENT);
             continue;
         case '\'':
         case '\"':
@@ -103,7 +104,7 @@ static void fortran_colorize_line(QEColorizeContext *cp,
                 if (str[i++] == c)
                     break;
             }
-            SET_COLOR(str, start, i, FORTRAN_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, FORTRAN_STYLE_STRING);
             continue;
         default:
             break;
@@ -126,7 +127,7 @@ static void fortran_colorize_line(QEColorizeContext *cp,
                         continue;
                 }
             }
-            SET_COLOR(str, start, i, FORTRAN_STYLE_NUMBER);
+            SET_STYLE(sbuf, start, i, FORTRAN_STYLE_NUMBER);
             continue;
         }
         /* parse identifiers and keywords */
@@ -153,7 +154,7 @@ static void fortran_colorize_line(QEColorizeContext *cp,
             else
                 style = FORTRAN_STYLE_IDENTIFIER;
 
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         }
     }

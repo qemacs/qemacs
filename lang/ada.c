@@ -1,7 +1,7 @@
 /*
  * Ada language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,8 @@ enum {
 };
 
 static void ada_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     char kbuf[16];
     int i = 0, start = i, k, style;
@@ -84,7 +85,7 @@ static void ada_colorize_line(QEColorizeContext *cp,
         case '/':
             if (str[i] == c) {  /* // or -- comments */
                 i = n;
-                SET_COLOR(str, start, i, ADA_STYLE_COMMENT);
+                SET_STYLE(sbuf, start, i, ADA_STYLE_COMMENT);
                 continue;
             }
             break;
@@ -98,7 +99,7 @@ static void ada_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, ADA_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, ADA_STYLE_COMMENT);
             continue;
         case '(':
             if (str[i] != '*')
@@ -115,12 +116,12 @@ static void ada_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, ADA_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, ADA_STYLE_COMMENT);
             continue;
         case '\'':
             if (i + 2 < n && str[i + 2] == '\'') {
                 i += 2;
-                SET_COLOR(str, start, i, ADA_STYLE_STRING);
+                SET_STYLE(sbuf, start, i, ADA_STYLE_STRING);
                 continue;
             }
             break;
@@ -131,7 +132,7 @@ static void ada_colorize_line(QEColorizeContext *cp,
                 if (str[i++] == c)
                     break;
             }
-            SET_COLOR(str, start, i, ADA_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, ADA_STYLE_STRING);
             continue;
         default:
             break;
@@ -165,7 +166,7 @@ static void ada_colorize_line(QEColorizeContext *cp,
                     }
                 }
             }
-            SET_COLOR(str, start, i, ADA_STYLE_NUMBER);
+            SET_STYLE(sbuf, start, i, ADA_STYLE_NUMBER);
             continue;
         }
         /* parse identifiers and keywords */
@@ -182,7 +183,7 @@ static void ada_colorize_line(QEColorizeContext *cp,
             else
                 style = ADA_STYLE_IDENTIFIER;
 
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         }
     }

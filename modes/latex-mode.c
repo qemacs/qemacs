@@ -44,7 +44,8 @@ enum {
  * than one line (eg, multi-line functions and strings)
  */
 static void latex_colorize_line(QEColorizeContext *cp,
-                                char32_t *str, int n, ModeDef *syn)
+                                const char32_t *str, int n,
+                                QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start;
     char32_t c;
@@ -73,7 +74,7 @@ static void latex_colorize_line(QEColorizeContext *cp,
                         break;
                     }
                 }
-                SET_COLOR(str, start, i, LATEX_STYLE_STRING);
+                SET_STYLE(sbuf, start, i, LATEX_STYLE_STRING);
             }
             break;
         case '@':
@@ -81,7 +82,7 @@ static void latex_colorize_line(QEColorizeContext *cp,
                 break;
             if (str[i] == 'c' && !qe_isalnum_(str[i + 1])) {
                 i = n;
-                SET_COLOR(str, start, i, LATEX_STYLE_COMMENT);
+                SET_STYLE(sbuf, start, i, LATEX_STYLE_COMMENT);
                 break;
             }
             fallthrough;
@@ -97,7 +98,7 @@ static void latex_colorize_line(QEColorizeContext *cp,
                     i++;
                 }
             }
-            SET_COLOR(str, start, i, LATEX_STYLE_FUNCTION);
+            SET_STYLE(sbuf, start, i, LATEX_STYLE_FUNCTION);
             i = cp_skip_blanks(str, i, n);
             while (str[i] == '{' || str[i] == '[') {
                 if (str[i++] == '[') {
@@ -105,7 +106,7 @@ static void latex_colorize_line(QEColorizeContext *cp,
                     start = i;
                     while (str[i] != '\0' && str[i] != ']')
                         i++;
-                    SET_COLOR(str, start, i, LATEX_STYLE_KEYWORD);
+                    SET_STYLE(sbuf, start, i, LATEX_STYLE_KEYWORD);
                     if (str[i] == ']')
                         i++;
                 } else {
@@ -122,7 +123,7 @@ static void latex_colorize_line(QEColorizeContext *cp,
                         }
                         i++;
                     }
-                    SET_COLOR(str, start, i, LATEX_STYLE_VARIABLE);
+                    SET_STYLE(sbuf, start, i, LATEX_STYLE_VARIABLE);
                     if (str[i] == '}')
                         i++;
                 }
@@ -134,7 +135,7 @@ static void latex_colorize_line(QEColorizeContext *cp,
                 break;
             /* line comment */
             i = n;
-            SET_COLOR(str, start, i, LATEX_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, LATEX_STYLE_COMMENT);
             break;
         default:
             break;

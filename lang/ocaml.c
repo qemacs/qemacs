@@ -63,7 +63,8 @@ enum {
 };
 
 static void ocaml_colorize_line(QEColorizeContext *cp,
-                                char32_t *str, int n, ModeDef *syn)
+                                const char32_t *str, int n,
+                                QETermStyle *sbuf, ModeDef *syn)
 {
     char keyword[16];
     int i = 0, start = i, k, style, len;
@@ -81,7 +82,7 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
          * and preprocessor # line directives
          */
         i = n;
-        SET_COLOR(str, start, i, OCAML_STYLE_PREPROCESS);
+        SET_STYLE(sbuf, start, i, OCAML_STYLE_PREPROCESS);
     }
 
     while (i < n) {
@@ -111,7 +112,7 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
                         break;
                 }
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         case '\"':
             colstate = IN_OCAML_STRING;
@@ -128,7 +129,7 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         case '\'':
             /* parse type atom or char const */
@@ -149,7 +150,7 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
                     i++;
                 style = OCAML_STYLE_TYPE;
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         default:
             break;
@@ -204,7 +205,7 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
                     }
                 }
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         }
         /* parse identifiers and keywords */
@@ -227,7 +228,7 @@ static void ocaml_colorize_line(QEColorizeContext *cp,
                 if (str[k] == '(' && str[k + 1] != '*')
                     style = OCAML_STYLE_FUNCTION;
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         }
     }

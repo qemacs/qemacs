@@ -61,7 +61,8 @@ enum {
 };
 
 static void fractint_colorize_line(QEColorizeContext *cp,
-                                   char32_t *str, int n, ModeDef *syn)
+                                   const char32_t *str, int n,
+                                   QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start, indent, state, state1, style, klen;
     char32_t c, delim;
@@ -167,7 +168,7 @@ static void fractint_colorize_line(QEColorizeContext *cp,
                     break;
                 }
                 if (strequal(kbuf, "comment")) {
-                    SET_COLOR(str, start, i, FRACTINT_STYLE_PREPROCESS);
+                    SET_STYLE(sbuf, start, i, FRACTINT_STYLE_PREPROCESS);
                     start = i + 1;
                 parse_comment:
                     state |= IN_FRACTINT_COMMENT;
@@ -268,13 +269,13 @@ static void fractint_colorize_line(QEColorizeContext *cp,
             continue;
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }
  the_end:
     /* set style on eol char */
-    SET_COLOR1(str, n, style);
+    SET_STYLE1(sbuf, n, style);
 
     cp->colorize_state = state;
 }

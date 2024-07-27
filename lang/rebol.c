@@ -96,7 +96,8 @@ enum {
 };
 
 static void rebol_colorize_line(QEColorizeContext *cp,
-                                char32_t *str, int n, ModeDef *syn)
+                                const char32_t *str, int n,
+                                QETermStyle *sbuf, ModeDef *syn)
 {
     char keyword[64];
     int i = 0, start = 0, style, style0 = 0, k, klen, level;
@@ -279,7 +280,7 @@ static void rebol_colorize_line(QEColorizeContext *cp,
             break;
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = style0;
         }
     }

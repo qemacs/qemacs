@@ -162,7 +162,8 @@ enum {
 };
 
 static void c_colorize_line(QEColorizeContext *cp,
-                            char32_t *str, int n, ModeDef *syn)
+                            const char32_t *str, int n,
+                            QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start, i1, i2, indent, level;
     int style, style0, style1, type_decl, tag;
@@ -239,7 +240,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 }
                 state = (state & ~IN_C_COMMENT_LEVEL) |
                         (min_int(level, 7) << IN_C_COMMENT_SHIFT);
-                SET_COLOR(str, start, i, C_STYLE_COMMENT);
+                SET_STYLE(sbuf, start, i, C_STYLE_COMMENT);
                 continue;
             } else
             if (str[i] == '/') {
@@ -250,7 +251,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 if (str[n - 1] != '\\')
                     state &= ~IN_C_COMMENT1;
                 i = n;
-                SET_COLOR(str, start, i, C_STYLE_COMMENT);
+                SET_STYLE(sbuf, start, i, C_STYLE_COMMENT);
                 continue;
             }
             if (flavor == CLANG_D && (str[i] == '+')) {
@@ -279,20 +280,20 @@ static void c_colorize_line(QEColorizeContext *cp,
                 }
                 state = (state & ~IN_C_COMMENT_LEVEL) |
                         (min_int(level, 7) << IN_C_COMMENT_SHIFT);
-                SET_COLOR(str, start, i, C_STYLE_COMMENT);
+                SET_STYLE(sbuf, start, i, C_STYLE_COMMENT);
                 continue;
             }
             /* XXX: should use more context to tell regex from divide */
             prev = ' ';
             for (i1 = start; i1 > indent; ) {
-                prev = str[--i1] & CHAR_MASK;
+                prev = str[--i1];
                 if (!qe_isblank(prev))
                     break;
             }
             if ((mode_flags & CLANG_REGEX)
             &&  !qe_findchar("])", prev)
             &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
-            ||   (str[i1] >> STYLE_SHIFT) == C_STYLE_KEYWORD
+            ||   sbuf[i1] == C_STYLE_KEYWORD
             ||   (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
             &&    !(qe_isalnum(prev) || prev == ')')))) {
                 /* parse regex */
@@ -326,7 +327,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                         }
                     }
                 }
-                SET_COLOR(str, start, i, C_STYLE_REGEX);
+                SET_STYLE(sbuf, start, i, C_STYLE_REGEX);
                 continue;
             }
             break;
@@ -340,7 +341,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 /* recognize a shebang comment line */
                 style = style0 = C_STYLE_PREPROCESS;
                 i = n;
-                SET_COLOR(str, start, i, C_STYLE_PREPROCESS);
+                SET_STYLE(sbuf, start, i, C_STYLE_PREPROCESS);
                 break;
             }
             if (mode_flags & CLANG_PREPROC) {
@@ -363,7 +364,7 @@ static void c_colorize_line(QEColorizeContext *cp,
             if (flavor == CLANG_HAXE || flavor == CLANG_CBANG) {
                 i += get_c_identifier(kbuf, countof(kbuf), str + i, flavor);
                 // XXX: check for proper preprocessor directive?
-                SET_COLOR(str, start, i, C_STYLE_PREPROCESS);
+                SET_STYLE(sbuf, start, i, C_STYLE_PREPROCESS);
                 continue;
             }
             if (flavor == CLANG_PIKE) {
@@ -410,7 +411,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                     if (c == '`')
                         break;
                 }
-                SET_COLOR(str, start, i, C_STYLE_VARIABLE);
+                SET_STYLE(sbuf, start, i, C_STYLE_VARIABLE);
                 continue;
             }
             if (flavor == CLANG_GO || flavor == CLANG_D) {
@@ -428,7 +429,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 }
                 if (state & IN_C_PREPROCESS)
                     style1 = C_STYLE_PREPROCESS;
-                SET_COLOR(str, start, i, style1);
+                SET_STYLE(sbuf, start, i, style1);
                 continue;
             }
             break;
@@ -457,7 +458,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                             break;
                         }
                     }
-                    SET_COLOR(str, start, i, style1);
+                    SET_STYLE(sbuf, start, i, style1);
                     continue;
                 }
             }
@@ -466,7 +467,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 while (qe_isalnum_(str[i]) || str[i] == '.')
                     i++;
                 if (start == 0 || str[start - 1] != '.')
-                    SET_COLOR(str, start, i, C_STYLE_PREPROCESS);
+                    SET_STYLE(sbuf, start, i, C_STYLE_PREPROCESS);
                 continue;
             }
             goto normal;
@@ -493,7 +494,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                         break;
                     }
                 }
-                SET_COLOR(str, start, i, style1);
+                SET_STYLE(sbuf, start, i, style1);
                 continue;
             }
         parse_string:
@@ -526,7 +527,7 @@ static void c_colorize_line(QEColorizeContext *cp,
             }
             if (state & IN_C_PREPROCESS)
                 style1 = C_STYLE_PREPROCESS;
-            SET_COLOR(str, start, i, style1);
+            SET_STYLE(sbuf, start, i, style1);
             continue;
         case '=':
             /* exit type declaration */
@@ -564,7 +565,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 ||     (str[i] == '.' && str[i + 1] != '.')) {
                     i++;
                 }
-                SET_COLOR(str, start, i, C_STYLE_NUMBER);
+                SET_STYLE(sbuf, start, i, C_STYLE_NUMBER);
                 continue;
             }
             if (qe_isalpha_(c) || c == '$' || (c == '@' && flavor != CLANG_PIKE)) {
@@ -573,7 +574,7 @@ static void c_colorize_line(QEColorizeContext *cp,
                 if (strfind(syn->keywords, kbuf)
                 ||  ((mode_flags & CLANG_CC) && strfind(c_keywords, kbuf))
                 ||  ((flavor == CLANG_CSS) && str[i] == ':')) {
-                    SET_COLOR(str, start, i, C_STYLE_KEYWORD);
+                    SET_STYLE(sbuf, start, i, C_STYLE_KEYWORD);
                     continue;
                 }
 
@@ -605,13 +606,13 @@ static void c_colorize_line(QEColorizeContext *cp,
                         /* function style cast */
                         style1 = C_STYLE_FUNCTION; //C_STYLE_KEYWORD;
                     }
-                    SET_COLOR(str, start, i, style1);
+                    SET_STYLE(sbuf, start, i, style1);
                     continue;
                 }
                 if (str[i1] == '(') {
                     /* function call */
                     /* XXX: different styles for call and definition */
-                    SET_COLOR(str, start, i, C_STYLE_FUNCTION);
+                    SET_STYLE(sbuf, start, i, C_STYLE_FUNCTION);
                     continue;
                 }
                 if ((mode_flags & CLANG_CC) || flavor == CLANG_JAVA) {
@@ -622,9 +623,9 @@ static void c_colorize_line(QEColorizeContext *cp,
                     if (type_decl) {
                         if (start == 0) {
                             /* assume type if first column */
-                            SET_COLOR(str, start, i, C_STYLE_TYPE);
+                            SET_STYLE(sbuf, start, i, C_STYLE_TYPE);
                         } else {
-                            SET_COLOR(str, start, i, C_STYLE_VARIABLE);
+                            SET_STYLE(sbuf, start, i, C_STYLE_VARIABLE);
                         }
                     }
                 }
@@ -632,17 +633,17 @@ static void c_colorize_line(QEColorizeContext *cp,
             }
             break;
         }
-        SET_COLOR1(str, start, style);
+        SET_STYLE1(sbuf, start, style);
     }
  the_end:
     if (state & (IN_C_COMMENT | IN_C_PREPROCESS | IN_C_STRING)) {
         /* set style on eol char */
-        SET_COLOR1(str, n, style);
+        SET_STYLE1(sbuf, n, style);
     }
 
     /* strip state if not overflowing from a comment */
     if (!(state & IN_C_COMMENT) &&
-        (!(mode_flags & CLANG_LINECONT) || n <= 0 || (str[n - 1] & CHAR_MASK) != '\\')) {
+        (!(mode_flags & CLANG_LINECONT) || n <= 0 || str[n - 1] != '\\')) {
         state &= ~IN_C_PREPROCESS;
     }
     cp->colorize_state = state;
@@ -1712,7 +1713,8 @@ static int get_js_identifier(char *dest, int size, char32_t c,
 }
 
 static void js_colorize_line(QEColorizeContext *cp,
-                             char32_t *str, int n, ModeDef *syn)
+                             const char32_t *str, int n,
+                             QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start, i1, indent;
     int style, tag, level;
@@ -1796,14 +1798,14 @@ static void js_colorize_line(QEColorizeContext *cp,
             /* XXX: should use more context to tell regex from divide */
             prev = ' ';
             for (i1 = start; i1 > indent; ) {
-                prev = str[--i1] & CHAR_MASK;
+                prev = str[--i1];
                 if (!qe_isblank(prev))
                     break;
             }
             if ((mode_flags & CLANG_REGEX)
             &&  !qe_findchar("])", prev)
             &&  (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
-            ||   (str[i1] >> STYLE_SHIFT) == C_STYLE_KEYWORD
+            ||   sbuf[i1] == C_STYLE_KEYWORD
             ||   (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
             &&    !(qe_isalnum(prev) || prev == ')')))) {
                 /* parse regex */
@@ -2010,7 +2012,7 @@ static void js_colorize_line(QEColorizeContext *cp,
         }
         if (style) {
             if (!cp->state_only) {
-                SET_COLOR(str, start, i, style);
+                SET_STYLE(sbuf, start, i, style);
             }
             style = 0;
         }
@@ -2018,7 +2020,7 @@ static void js_colorize_line(QEColorizeContext *cp,
  the_end:
     if (state & (IN_C_COMMENT | IN_C_STRING)) {
         /* set style on eol char */
-        SET_COLOR1(str, n, style);
+        SET_STYLE1(sbuf, n, style);
         if ((state & IN_C_COMMENT) == IN_C_COMMENT1)
             state &= ~IN_C_COMMENT1;
     }
@@ -3576,7 +3578,8 @@ static const char salmon_types[] = {
 };
 
 static void salmon_colorize_line(QEColorizeContext *cp,
-                                 char32_t *str, int n, ModeDef *syn)
+                                 const char32_t *str, int n,
+                                 QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start, i1;
     int style, tag, level;
@@ -3803,7 +3806,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
         }
         if (style) {
             if (!cp->state_only) {
-                SET_COLOR(str, start, i, style);
+                SET_STYLE(sbuf, start, i, style);
             }
             style = 0;
         }
@@ -3811,7 +3814,7 @@ static void salmon_colorize_line(QEColorizeContext *cp,
  the_end:
     if (state & (IN_C_COMMENT | IN_C_STRING)) {
         /* set style on eol char */
-        SET_COLOR1(str, n, style);
+        SET_STYLE1(sbuf, n, style);
         if ((state & IN_C_COMMENT) == IN_C_COMMENT1)
             state &= ~IN_C_COMMENT1;
     }
@@ -3938,7 +3941,8 @@ static int cp_match_keywords(const char32_t *str, int n, int start, const char *
 }
 
 static void ppl_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start, i1;
     int indent = 0, style, level, type_decl;
@@ -3961,11 +3965,9 @@ static void ppl_colorize_line(QEColorizeContext *cp,
             ||  cp_match_keywords(str, n, 0, " end java_header", &i1)) {
                 state = 0;
             } else {
-                state &= ~IN_PPL_JAVA;
-                cp->colorize_state = state;
-                java_mode.colorize_func(cp, str, n, &java_mode);
-                state = cp->colorize_state;
-                state |= IN_PPL_JAVA;
+                cp->colorize_state = state & ~IN_PPL_JAVA;
+                cp_colorize_line(cp, str, 0, n, sbuf, &java_mode);
+                state = cp->colorize_state | IN_PPL_JAVA;
                 i = n;
                 goto done;
             }
@@ -4215,7 +4217,7 @@ static void ppl_colorize_line(QEColorizeContext *cp,
         }
         if (style) {
             if (!cp->state_only) {
-                SET_COLOR(str, start, i, style);
+                SET_STYLE(sbuf, start, i, style);
             }
             style = 0;
         }
@@ -4223,7 +4225,7 @@ static void ppl_colorize_line(QEColorizeContext *cp,
 
     if (state & (IN_PPL_COMMENT | IN_PPL_STRING)) {
         /* set style on eol char */
-        SET_COLOR1(str, n, style);
+        SET_STYLE1(sbuf, n, style);
         if ((state & IN_PPL_COMMENT) == IN_PPL_COMMENT1)
             state &= ~IN_PPL_COMMENT1;
     } else {
