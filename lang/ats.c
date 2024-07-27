@@ -67,7 +67,8 @@ enum {
 };
 
 static void ats_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     char keyword[32];
     int i = 0, start = i, k, style = 0, len, level;
@@ -77,12 +78,12 @@ static void ats_colorize_line(QEColorizeContext *cp,
     if (colstate & IN_ATS_CBLOCK) {
         if (str[i] == '%' && str[i + 1] == '}') {
             colstate = 0;
-            SET_COLOR(str, i, n, ATS_STYLE_PREPROCESS);
+            SET_STYLE(sbuf, i, n, ATS_STYLE_PREPROCESS);
             i = n;
         } else {
             ModeDef *md = &c_mode;
             cp->colorize_state = colstate & ~IN_ATS_CBLOCK;
-            md->colorize_func(cp, str + i, n - i, md);
+            cp_colorize_line(cp, str, i, n, sbuf, md);
             colstate = cp->colorize_state | IN_ATS_CBLOCK;
             i = n;
         }
@@ -210,7 +211,7 @@ static void ats_colorize_line(QEColorizeContext *cp,
             continue;
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }

@@ -2,7 +2,7 @@
  * Org mode for QEmacs.
  *
  * Copyright (c) 2001-2002 Fabrice Bellard.
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  * Copyright (c) 2014 Francois Revol.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -103,7 +103,8 @@ static int org_scan_chunk(const char32_t *str,
 }
 
 static void org_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     int colstate = cp->colorize_state;
     int i = 0, j = 0, kw, base_style = 0, has_space;
@@ -117,7 +118,7 @@ static void org_colorize_line(QEColorizeContext *cp,
             if (colstate & IN_ORG_LISP) {
                 colstate &= ~(IN_ORG_LISP | IN_ORG_BLOCK);
                 cp->colorize_state = colstate;
-                lisp_mode.colorize_func(cp, str, n, &lisp_mode);
+                cp_colorize_line(cp, str, 0, n, sbuf, &lisp_mode);
                 colstate = cp->colorize_state;
                 colstate |= IN_ORG_LISP | IN_ORG_BLOCK;
             }
@@ -133,13 +134,13 @@ static void org_colorize_line(QEColorizeContext *cp,
 
         if (str[j] == ' ') {
             base_style = OrgBulletStyles[(j - i - 1) % BULLET_STYLES];
-            SET_COLOR(str, i, j + 1, base_style);
+            SET_STYLE(sbuf, i, j + 1, base_style);
             i = j + 1;
 
             kw = org_todo_keyword(str + i);
             if (kw > -1) {
                 j = i + strlen(OrgTodoKeywords[kw].keyword) + 1;
-                SET_COLOR(str, i, j, OrgTodoKeywords[kw].style);
+                SET_STYLE(sbuf, i, j, OrgTodoKeywords[kw].style);
                 i = j;
             }
         }
@@ -149,7 +150,7 @@ static void org_colorize_line(QEColorizeContext *cp,
 
         if (str[i] == '#') {
             if (str[i + 1] == ' ') {  /* [ \t]*[#][ ] -> comment */
-                SET_COLOR(str, i, n, ORG_STYLE_COMMENT);
+                SET_STYLE(sbuf, i, n, ORG_STYLE_COMMENT);
                 i = n;
             } else
             if (str[i + 1] == '+') {  /* [ \t]*[#][+] -> metadata */
@@ -164,18 +165,18 @@ static void org_colorize_line(QEColorizeContext *cp,
                         colstate |= IN_ORG_LISP;
                     }
                 }
-                SET_COLOR(str, i, n, ORG_STYLE_PREPROCESS);
+                SET_STYLE(sbuf, i, n, ORG_STYLE_PREPROCESS);
                 i = n;
             }
         } else
         if (str[i] == ':') {
             if (str[i + 1] == ' ') {
                 /* code snipplet, should use code colorizer */
-                SET_COLOR(str, i, n, ORG_STYLE_CODE);
+                SET_STYLE(sbuf, i, n, ORG_STYLE_CODE);
                 i = n;
             } else {
                 /* property */
-                SET_COLOR(str, i, n, ORG_STYLE_PROPERTY);
+                SET_STYLE(sbuf, i, n, ORG_STYLE_PROPERTY);
                 i = n;
             }
         } else
@@ -233,7 +234,7 @@ static void org_colorize_line(QEColorizeContext *cp,
                 break;
             case '\\':  /* TeX syntax: \keyword \- \[ \] \( \) */
                 if (str[i + 1] == '\\') {  /* \\ escape */
-                    SET_COLOR(str, i, i + 2, base_style);
+                    SET_STYLE(sbuf, i, i + 2, base_style);
                     i += 2;
                     continue;
                 }
@@ -278,10 +279,10 @@ static void org_colorize_line(QEColorizeContext *cp,
             has_space = (str[i] == ' ');
         }
         if (chunk) {
-            SET_COLOR(str, i, i + chunk, ORG_STYLE_EMPHASIS);
+            SET_STYLE(sbuf, i, i + chunk, ORG_STYLE_EMPHASIS);
             i += chunk;
         } else {
-            SET_COLOR1(str, i, base_style);
+            SET_STYLE1(sbuf, i, base_style);
             i++;
         }
     }

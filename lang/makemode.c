@@ -38,7 +38,8 @@ enum {
 };
 
 static void makefile_colorize_line(QEColorizeContext *cp,
-                                   char32_t *str, int n, ModeDef *syn)
+                                   const char32_t *str, int n,
+                                   QETermStyle *sbuf, ModeDef *syn)
 {
     char buf[32];
     int i = 0, start = i, bol = 1, from = 0, level, style;
@@ -70,7 +71,7 @@ static void makefile_colorize_line(QEColorizeContext *cp,
                     }
                 }
                 from = i + 1;
-                SET_COLOR(str, start + 2, i, style);
+                SET_STYLE(sbuf, start + 2, i, style);
                 continue;
             }
             /* Should colorize non parenthesized macro */
@@ -90,21 +91,21 @@ static void makefile_colorize_line(QEColorizeContext *cp,
                 break;
             if (str[i] == '=')
                 goto variable;
-            SET_COLOR(str, from, i - 1, MAKEFILE_STYLE_TARGET);
+            SET_STYLE(sbuf, from, i - 1, MAKEFILE_STYLE_TARGET);
             bol = 0;
             break;
         case '=':
             if (!bol)
                 break;
         variable:
-            SET_COLOR(str, from, i - 1, MAKEFILE_STYLE_VARIABLE);
+            SET_STYLE(sbuf, from, i - 1, MAKEFILE_STYLE_VARIABLE);
             bol = 0;
             break;
         case '#':
             if (i > 1 && str[i - 2] == '\\')
                 break;
             i = n;
-            SET_COLOR(str, start, i, MAKEFILE_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, MAKEFILE_STYLE_COMMENT);
             continue;
         case '!':
             /*          case '.':*/
@@ -116,7 +117,7 @@ static void makefile_colorize_line(QEColorizeContext *cp,
                 if (str[i] == '#')
                     break;
             }
-            SET_COLOR(str, start, i, MAKEFILE_STYLE_PREPROCESS);
+            SET_STYLE(sbuf, start, i, MAKEFILE_STYLE_PREPROCESS);
             continue;
         case '\'':
         case '`':
@@ -127,7 +128,7 @@ static void makefile_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, MAKEFILE_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, MAKEFILE_STYLE_STRING);
             continue;
         default:
             break;
@@ -177,7 +178,8 @@ enum {
 };
 
 static void cmake_colorize_line(QEColorizeContext *cp,
-                                char32_t *str, int n, ModeDef *syn)
+                                const char32_t *str, int n,
+                                QETermStyle *sbuf, ModeDef *syn)
 {
     char buf[32];
     int i = 0, start = i, style;
@@ -194,7 +196,7 @@ static void cmake_colorize_line(QEColorizeContext *cp,
                     if (str[i] == '}')
                         break;
                 }
-                SET_COLOR(str, start + 2, i, style);
+                SET_STYLE(sbuf, start + 2, i, style);
                 if (str[i] == '}')
                     i++;
                 continue;
@@ -204,7 +206,7 @@ static void cmake_colorize_line(QEColorizeContext *cp,
             if (i > 1 && str[i - 2] == '\\')
                 break;
             i = n;
-            SET_COLOR(str, start, i, CMAKE_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, CMAKE_STYLE_COMMENT);
             continue;
         case '"':
             /* parse string const */
@@ -215,25 +217,25 @@ static void cmake_colorize_line(QEColorizeContext *cp,
                     break;
 
                 if (cc == '$' && str[i] == '{') {
-                    SET_COLOR(str, start, i + 1, CMAKE_STYLE_STRING);
+                    SET_STYLE(sbuf, start, i + 1, CMAKE_STYLE_STRING);
                     for (start = i += 1; i < n && str[i] != c; i++) {
                         if (str[i] == '}')
                             break;
                     }
-                    SET_COLOR(str, start, i, CMAKE_STYLE_MACRO);
+                    SET_STYLE(sbuf, start, i, CMAKE_STYLE_MACRO);
                     start = i;
                 }
             }
-            SET_COLOR(str, start, i, CMAKE_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, CMAKE_STYLE_STRING);
             continue;
         default:
             if (qe_isalpha_(c)) {
                 i += ustr_get_identifier_lc(buf, countof(buf), c, str, i, n);
                 if (strfind("if|else|endif|set|true|false|include", buf)) {
-                    SET_COLOR(str, start, i, CMAKE_STYLE_KEYWORD);
+                    SET_STYLE(sbuf, start, i, CMAKE_STYLE_KEYWORD);
                 } else
                 if (check_fcall(str, i)) {
-                    SET_COLOR(str, start, i, CMAKE_STYLE_FUNCTION);
+                    SET_STYLE(sbuf, start, i, CMAKE_STYLE_FUNCTION);
                 }
             }
             break;

@@ -61,7 +61,8 @@ enum {
 };
 
 static void asm_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     char keyword[16];
     int i = 0, start = 0, style = 0, len, wn = 0; /* word number on line */
@@ -120,7 +121,7 @@ static void asm_colorize_line(QEColorizeContext *cp,
                 keyword[len] = '\0';
                 if (++wn == 1) {
                     if (strequal(keyword, "comment") && n > i) {
-                        SET_COLOR(str, start, i, ASM_STYLE_PREPROCESS);
+                        SET_STYLE(sbuf, start, i, ASM_STYLE_PREPROCESS);
                         i = cp_skip_blanks(str, i, n);
                         start = i;
                         colstate = str[i++];  /* end of comment character */
@@ -144,13 +145,13 @@ static void asm_colorize_line(QEColorizeContext *cp,
                         break;
                     }
                 }
-                //SET_COLOR(str, start, i, ASM_STYLE_IDENTIFIER);
+                //SET_STYLE(sbuf, start, i, ASM_STYLE_IDENTIFIER);
                 continue;
             }
             continue;
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }

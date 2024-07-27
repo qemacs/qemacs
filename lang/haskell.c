@@ -64,7 +64,8 @@ static inline int haskell_is_symbol(char32_t c)
 }
 
 static void haskell_colorize_line(QEColorizeContext *cp,
-                                  char32_t *str, int n, ModeDef *syn)
+                                  const char32_t *str, int n,
+                                  QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start = i, style = 0, level = 0, klen;
     char32_t c, sep = 0;
@@ -235,7 +236,7 @@ static void haskell_colorize_line(QEColorizeContext *cp,
             continue;
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }

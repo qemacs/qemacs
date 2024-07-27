@@ -1,7 +1,7 @@
 /*
  * SQL language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -98,7 +98,8 @@ static char const sql_types[] = {
 };
 
 static void sql_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     char kbuf[16];
     int i = 0, start = i, style;
@@ -138,7 +139,7 @@ static void sql_colorize_line(QEColorizeContext *cp,
         line_comment:
             i = n;
         comment:
-            SET_COLOR(str, start, i, SQL_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, SQL_STYLE_COMMENT);
             continue;
         case '\'':
         case '\"':
@@ -158,7 +159,7 @@ static void sql_colorize_line(QEColorizeContext *cp,
             style = SQL_STYLE_STRING;
             if (c == '`')
                 style = SQL_STYLE_IDENTIFIER;
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         default:
             break;
@@ -167,14 +168,14 @@ static void sql_colorize_line(QEColorizeContext *cp,
         if (qe_isalpha_(c)) {
             i += ustr_get_identifier_lc(kbuf, countof(kbuf), c, str, i, n);
             if (strfind(syn->keywords, kbuf)) {
-                SET_COLOR(str, start, i, SQL_STYLE_KEYWORD);
+                SET_STYLE(sbuf, start, i, SQL_STYLE_KEYWORD);
                 continue;
             }
             if (strfind(syn->types, kbuf)) {
-                SET_COLOR(str, start, i, SQL_STYLE_TYPE);
+                SET_STYLE(sbuf, start, i, SQL_STYLE_TYPE);
                 continue;
             }
-            SET_COLOR(str, start, i, SQL_STYLE_IDENTIFIER);
+            SET_STYLE(sbuf, start, i, SQL_STYLE_IDENTIFIER);
             continue;
         }
     }

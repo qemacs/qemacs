@@ -209,9 +209,6 @@ static void build_bufed_list(BufedState *bs, EditState *s)
             } else
             if (b1->default_mode) {
                 mode_name = b1->default_mode->name;
-            } else
-            if (b1->syntax_mode) {
-                mode_name = b1->syntax_mode->name;
             } else {
                 mode_name = "none";
             }

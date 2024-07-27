@@ -1,7 +1,7 @@
 /*
  * CSV file mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -144,7 +144,8 @@ static int match_date_time(const char32_t *str, int start, int n) {
 }
 
 static void csv_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, j, start = 0, style = 0;
     char32_t sep = ',', dot = '.';
@@ -238,7 +239,7 @@ static void csv_colorize_line(QEColorizeContext *cp,
                 style = CSV_STYLE_TEXT;
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }

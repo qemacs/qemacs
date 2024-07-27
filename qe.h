@@ -262,7 +262,12 @@ struct QEColorizeContext {
  * styles. 'buf' is guaranted to have one more '\0' char after its len.
  */
 typedef void (*ColorizeFunc)(QEColorizeContext *cp,
-                             char32_t *buf, int n, ModeDef *syn);
+                             const char32_t *buf, int n,
+                             QETermStyle *sbuf, ModeDef *syn);
+
+void cp_colorize_line(QEColorizeContext *cp,
+                      const char32_t *buf, int i, int n,
+                      QETermStyle *sbuf, ModeDef *syn);
 
 /* buffer.c */
 
@@ -369,14 +374,14 @@ struct EditBuffer {
     void *data_data;    /* associated buffer data, used if data_type != raw_data */
 
     /* buffer syntax or major mode */
-    ModeDef *syntax_mode;
-    ColorizeFunc colorize_func; /* line colorization function */
-    unsigned short *colorize_states; /* state before line n, one per line */
-    int colorize_nb_lines;
-    int colorize_nb_valid_lines;
+    // Should share the mode data across all active windows with the same colorize_mode
+    //ModeDef *syntax_mode;
+    //unsigned short *colorize_states; /* state before line n, one per line */
+    //int colorize_nb_lines;
+    //int colorize_nb_valid_lines;
     /* maximum valid offset, INT_MAX if not modified. Needed to
      * invalidate 'colorize_states' */
-    int colorize_max_valid_offset;
+    //int colorize_max_valid_offset;
 
     /* charset handling */
     CharsetDecodeState charset_state;
@@ -562,9 +567,9 @@ static inline int eb_get_contents(EditBuffer *b, char *buf, int buf_size, int en
 int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
                              EditBuffer *src, int src_offset,
                              int size);
-int eb_get_line(EditBuffer *b, char32_t *buf, int buf_size,
+int eb_get_line(EditBuffer *b, char32_t *buf, int size,
                 int offset, int *offset_ptr);
-int eb_fgets(EditBuffer *b, char *buf, int buf_size,
+int eb_fgets(EditBuffer *b, char *buf, int size,
              int offset, int *offset_ptr);
 int eb_prev_line(EditBuffer *b, int offset);
 int eb_goto_bol(EditBuffer *b, int offset);
@@ -678,7 +683,6 @@ struct EditState {
     int up_down_last_x; /* last x offset for vertical movement */
 
     /* low level colorization function */
-    ColorizeFunc colorize_func; /* colorization function and mode */
     ModeDef *colorize_mode;
 
     QETermStyle default_style;  /* default text style */
@@ -1173,10 +1177,6 @@ typedef struct TextFragment {
 #define MAX_WORD_SIZE  128
 #define NO_CURSOR      0x7fffffff
 
-#define STYLE_BITS     8
-#define STYLE_SHIFT    (32 - STYLE_BITS)
-#define CHAR_MASK      ((1 << STYLE_SHIFT) - 1)
-
 struct DisplayState {
     int do_disp;        /* true if real display */
     int width;          /* display window width */
@@ -1266,18 +1266,17 @@ static inline int display_char(DisplayState *s, int offset1, int offset2,
     return display_char_bidir(s, offset1, offset2, 0, ch);
 }
 
-#define SET_COLOR(str,a,b,style)  set_color((str) + (a), (str) + (b), style)
+#define SET_STYLE(sbuf,a,b,style)  cp_set_style((sbuf) + (a), (sbuf) + (b), style)
 
-static inline void set_color(unsigned int *p, unsigned int *to, int style) {
-    unsigned int bits = (unsigned int)style << STYLE_SHIFT;
+static inline void cp_set_style(QETermStyle *p, QETermStyle *to, int style) {
     while (p < to)
-        *p++ |= bits;
+        *p++ = style;
 }
 
-#define SET_COLOR1(str,a,style)  set_color1((str) + (a), style)
+#define SET_STYLE1(sbuf,a,style)  cp_set_style1((sbuf) + (a), style)
 
-static inline void set_color1(unsigned int *p, int style) {
-    *p |= (unsigned int)style << STYLE_SHIFT;
+static inline void cp_set_style1(QETermStyle *p, int style) {
+    *p = style;
 }
 
 /* input.c */
@@ -1469,7 +1468,7 @@ extern ModeDef text_mode;
 int text_backward_offset(EditState *s, int offset);
 int text_display_line(EditState *s, DisplayState *ds, int offset);
 
-void set_colorize_func(EditState *s, ColorizeFunc colorize_func, ModeDef *mode);
+void set_colorize_mode(EditState *s, ModeDef *mode);
 int get_colorized_line(EditState *s, char32_t *buf, int buf_size,
                        QETermStyle *sbuf,
                        int offset, int *offsetp, int line_num);
@@ -1809,7 +1808,8 @@ int qe_bitmap_format_to_pix_fmt(int format);
 
 const char *get_shell(void);
 void shell_colorize_line(QEColorizeContext *cp,
-                         char32_t *str, int n, ModeDef *syn);
+                         const char32_t *str, int n,
+                         QETermStyle *sbuf, ModeDef *syn);
 
 #define SF_INTERACTIVE   0x01
 #define SF_COLOR         0x02

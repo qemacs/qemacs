@@ -1,7 +1,7 @@
 /*
  * Erlang language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -109,7 +109,8 @@ int erlang_match_char(const char32_t *str, int i) {
 }
 
 static void erlang_colorize_line(QEColorizeContext *cp,
-                                char32_t *str, int n, ModeDef *syn)
+                                 const char32_t *str, int n,
+                                 QETermStyle *sbuf, ModeDef *syn)
 {
     char keyword[16];
     int i = 0, start = i, style, len, base;
@@ -124,7 +125,7 @@ static void erlang_colorize_line(QEColorizeContext *cp,
          * and preprocessor # line directives
          */
         i = n;
-        SET_COLOR(str, start, i, ERLANG_STYLE_PREPROCESS);
+        SET_STYLE(sbuf, start, i, ERLANG_STYLE_PREPROCESS);
     }
 
     while (i < n) {
@@ -135,12 +136,12 @@ static void erlang_colorize_line(QEColorizeContext *cp,
         case '%':
             i = n;
             style = ERLANG_STYLE_COMMENT;
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         case '$':
             i = erlang_match_char(str, i);
             style = ERLANG_STYLE_CHARCONST;
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
 
         case '\"':
@@ -158,7 +159,7 @@ static void erlang_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         case '\'':
             /* parse an Erlang atom */
@@ -172,7 +173,7 @@ static void erlang_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         default:
             break;
@@ -207,7 +208,7 @@ static void erlang_colorize_line(QEColorizeContext *cp,
                     }
                 }
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         }
         if (qe_isalpha_(c) || c == '@') {
@@ -237,7 +238,7 @@ static void erlang_colorize_line(QEColorizeContext *cp,
             } else {
                 style = ERLANG_STYLE_IDENTIFIER;
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         }
     }

@@ -87,14 +87,15 @@ static int shell_script_string(const char32_t *str, int i, int n,
 }
 
 static void shell_script_colorize_line(QEColorizeContext *cp,
-                                       char32_t *str, int n, ModeDef *syn)
+                                       const char32_t *str, int n,
+                                       QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, j, start, style, bits = 0;
     char32_t c;
 
     /* special case sh-bang line */
     if (n >= 2 && str[0] == '#' && str[1] == '!') {
-        SET_COLOR(str, 0, n, SHELL_SCRIPT_STYLE_PREPROCESS);
+        SET_STYLE(sbuf, 0, n, SHELL_SCRIPT_STYLE_PREPROCESS);
         return;
     }
 
@@ -111,22 +112,22 @@ start_cmd:
             break;
         case '`':
             /* XXX: should be a state */
-            SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+            SET_STYLE1(sbuf, start, SHELL_SCRIPT_STYLE_OP);
             goto start_cmd;
         case '\'':
             i = shell_script_string(str, i, n, c, 0, 0);
-            SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, SHELL_SCRIPT_STYLE_STRING);
             /* XXX: should support multi-line strings? */
             continue;
         case '"':
             i = shell_script_string(str, i, n, c, 1, 1);
-            SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, SHELL_SCRIPT_STYLE_STRING);
             /* XXX: should support multi-line strings? */
             continue;
         case '\\':
             if (i >= n) {
                 /* Should keep state for next line */
-                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                SET_STYLE1(sbuf, start, SHELL_SCRIPT_STYLE_OP);
                 continue;
             }
             /* Do not interpret the next character */
@@ -135,40 +136,40 @@ start_cmd:
         case '$':
             if (i == n || qe_findchar(" \t\"", str[i]))
                 break;
-            SET_COLOR1(str, start++, SHELL_SCRIPT_STYLE_OP);
+            SET_STYLE1(sbuf, start++, SHELL_SCRIPT_STYLE_OP);
 			switch (c = str[i++]) {
             case '\'':
                 i = shell_script_string(str, i, n, c, 1, 0);
-                SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_STRING);
+                SET_STYLE(sbuf, start, i, SHELL_SCRIPT_STYLE_STRING);
                 continue;
             case '(':  /* expand command output */
                 bits = (bits << 2) | 1;
-                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                SET_STYLE1(sbuf, start, SHELL_SCRIPT_STYLE_OP);
                 goto start_cmd;
             case '[':  /* expression */
-                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                SET_STYLE1(sbuf, start, SHELL_SCRIPT_STYLE_OP);
                 for (j = i; i < n; i++) {
                     if (str[i] == ']')
                         break;
                 }
-                SET_COLOR(str, j, i, SHELL_SCRIPT_STYLE_TEXT);
+                SET_STYLE(sbuf, j, i, SHELL_SCRIPT_STYLE_TEXT);
                 if (i < n) {
                     i++;
-                    SET_COLOR(str, i - 1, i, SHELL_SCRIPT_STYLE_OP);
+                    SET_STYLE(sbuf, i - 1, i, SHELL_SCRIPT_STYLE_OP);
                 }
                 continue;
             case '{':  /* variable substitution with options */
-                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                SET_STYLE1(sbuf, start, SHELL_SCRIPT_STYLE_OP);
                 /* XXX: should parse variable name or single char */
                 /* XXX: should support % syntax with regex */
                 for (j = i; i < n; i++) {
                     if (str[i] == '}')
                         break;
                 }
-                SET_COLOR(str, j, i, SHELL_SCRIPT_STYLE_VARIABLE);
+                SET_STYLE(sbuf, j, i, SHELL_SCRIPT_STYLE_VARIABLE);
                 if (i < n) {
                     i++;
-                    SET_COLOR(str, i - 1, i, SHELL_SCRIPT_STYLE_OP);
+                    SET_STYLE(sbuf, i - 1, i, SHELL_SCRIPT_STYLE_OP);
                 }
                 continue;
             case '$':
@@ -177,9 +178,9 @@ start_cmd:
             default:
                 if (qe_isalpha_(c)) {
                     i = shell_script_get_var(NULL, 0, str, i, n);
-                    SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_VARIABLE);
+                    SET_STYLE(sbuf, start, i, SHELL_SCRIPT_STYLE_VARIABLE);
                 } else {
-                    SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                    SET_STYLE1(sbuf, start, SHELL_SCRIPT_STYLE_OP);
                 }
                 break;
             }
@@ -192,7 +193,7 @@ start_cmd:
         case '}':
             /* XXX: should support numeric enumerations */
             if (i == n || qe_isblank(str[i])) {
-                SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_OP);
+                SET_STYLE(sbuf, start, i, SHELL_SCRIPT_STYLE_OP);
                 goto start_cmd;
             }
 			style = SHELL_SCRIPT_STYLE_TEXT;
@@ -203,7 +204,7 @@ start_cmd:
             if (str[i] == c) {  /* handle >> and << */
                 i++;
             }
-            SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_OP);
+            SET_STYLE(sbuf, start, i, SHELL_SCRIPT_STYLE_OP);
             // XXX: Should support << syntax
 			style = SHELL_SCRIPT_STYLE_TEXT;
             continue;
@@ -212,23 +213,23 @@ start_cmd:
             if (str[i] == c) {  /* handle || and && */
                 i++;
             }
-            SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_OP);
+            SET_STYLE(sbuf, start, i, SHELL_SCRIPT_STYLE_OP);
             goto start_cmd;
         case ';':
-            SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+            SET_STYLE1(sbuf, start, SHELL_SCRIPT_STYLE_OP);
             goto start_cmd;
         case '(':
             bits = (bits << 2) | 2;
-            SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+            SET_STYLE1(sbuf, start, SHELL_SCRIPT_STYLE_OP);
             goto start_cmd;
         case ')':
             bits = (bits >> 2);
-            SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+            SET_STYLE1(sbuf, start, SHELL_SCRIPT_STYLE_OP);
             goto start_cmd;
         case '[':
             if (style == SHELL_SCRIPT_STYLE_COMMAND) {
                 bits = (bits << 2) | 3;
-                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                SET_STYLE1(sbuf, start, SHELL_SCRIPT_STYLE_OP);
                 style = SHELL_SCRIPT_STYLE_TEXT;
                 continue;
             }
@@ -236,7 +237,7 @@ start_cmd:
         case ']':
             if ((bits & 3) == 3) {
                 bits = (bits >> 2);
-                SET_COLOR1(str, start, SHELL_SCRIPT_STYLE_OP);
+                SET_STYLE1(sbuf, start, SHELL_SCRIPT_STYLE_OP);
                 style = SHELL_SCRIPT_STYLE_TEXT;
                 continue;
             }
@@ -248,15 +249,15 @@ start_cmd:
 
                 i = shell_script_get_var(kbuf, sizeof kbuf, str, i - 1, n);
                 if (shell_script_has_sep(str, i, n) && strfind(syn->keywords, kbuf)) {
-                    SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_KEYWORD);
+                    SET_STYLE(sbuf, start, i, SHELL_SCRIPT_STYLE_KEYWORD);
                     if (!strfind("for|case|export|in", kbuf))
                         goto start_cmd;
                     else
                         continue;
                 }
                 if (str[i] == '=') {
-                    SET_COLOR(str, start, i, SHELL_SCRIPT_STYLE_VARIABLE);
-                    SET_COLOR1(str, i, SHELL_SCRIPT_STYLE_OP);
+                    SET_STYLE(sbuf, start, i, SHELL_SCRIPT_STYLE_VARIABLE);
+                    SET_STYLE1(sbuf, i, SHELL_SCRIPT_STYLE_OP);
                     i++;
                     style = SHELL_SCRIPT_STYLE_TEXT;
                     continue;
@@ -264,7 +265,7 @@ start_cmd:
             }
             break;
         }
-        SET_COLOR(str, start, i, style);
+        SET_STYLE(sbuf, start, i, style);
     }
 }
 

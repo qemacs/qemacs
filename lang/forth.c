@@ -1,7 +1,7 @@
 /*
  * Miscellaneous QEmacs modes for Forth variants
  *
- * Copyright (c) 2014-2023 Charlie Gordon.
+ * Copyright (c) 2014-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -200,7 +200,8 @@ static int ff_match_number(const char *str, int *pnum)
 }
 
 static void ff_colorize_line(QEColorizeContext *cp,
-                             char32_t *str, int n, ModeDef *syn)
+                             const char32_t *str, int n,
+                             QETermStyle *sbuf, ModeDef *syn)
 {
     char word[64];
     int i = 0, start = 0, num = 0, len, numlen, colstate = cp->colorize_state;
@@ -221,7 +222,7 @@ static void ff_colorize_line(QEColorizeContext *cp,
         if (colstate & IN_FF_COMMENT) {
             if (c == ')')
                 colstate &= ~IN_FF_COMMENT;
-            SET_COLOR1(str, start, FF_STYLE_COMMENT);
+            SET_STYLE1(sbuf, start, FF_STYLE_COMMENT);
             continue;
         }
         if (qe_isblank(c))
@@ -229,7 +230,7 @@ static void ff_colorize_line(QEColorizeContext *cp,
         if (c == '\\' && str[i] == ' ') {
         comment:
             i = n;
-            SET_COLOR(str, start, i, FF_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, FF_STYLE_COMMENT);
             continue;
         }
         switch (c) {
@@ -254,7 +255,7 @@ static void ff_colorize_line(QEColorizeContext *cp,
                 }
             }
         has_string:
-            SET_COLOR(str, start, i, FF_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, FF_STYLE_STRING);
             continue;
         default:
             break;
@@ -268,7 +269,7 @@ static void ff_colorize_line(QEColorizeContext *cp,
         }
         word[len] = '\0';
         if (strequal("EOF", word) || strequal("EOF`", word)) {
-            SET_COLOR(str, start, i, FF_STYLE_KEYWORD);
+            SET_STYLE(sbuf, start, i, FF_STYLE_KEYWORD);
             colstate |= IN_FF_TRAIL;
             start = i;
             goto comment;
@@ -277,14 +278,14 @@ static void ff_colorize_line(QEColorizeContext *cp,
             goto has_string;
 
         if (strequal("|`", word) || strfind(syn->keywords, word)) {
-            SET_COLOR(str, start, i, FF_STYLE_KEYWORD);
+            SET_STYLE(sbuf, start, i, FF_STYLE_KEYWORD);
             continue;
         }
         if (len < countof(word) - 1 && word[len - 1] != '`') {
             word[len] = '`';
             word[len + 1] = '\0';
             if (strequal("|`", word) || strfind(syn->keywords, word)) {
-                SET_COLOR(str, start, i, FF_STYLE_KEYWORD);
+                SET_STYLE(sbuf, start, i, FF_STYLE_KEYWORD);
                 continue;
             }
         }
@@ -292,9 +293,9 @@ static void ff_colorize_line(QEColorizeContext *cp,
         if (numlen > 1 && qe_findchar("|&^+-*/%~,", word[numlen - 1]))
             word[--numlen] = '\0';
         if (ff_match_number(word, &num) == numlen) {
-            SET_COLOR(str, start, start + numlen, FF_STYLE_NUMBER);
+            SET_STYLE(sbuf, start, start + numlen, FF_STYLE_NUMBER);
             if (numlen < len)
-                SET_COLOR1(str, start + numlen, FF_STYLE_KEYWORD);
+                SET_STYLE1(sbuf, start + numlen, FF_STYLE_KEYWORD);
             continue;
         }
     }

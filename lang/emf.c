@@ -1,7 +1,7 @@
 /*
  * EMF colorizer mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,7 +51,8 @@ enum {
 };
 
 static void emf_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     char keyword[MAX_KEYWORD_SIZE];
     int i = 0, start, nw = 1, len, style;
@@ -67,7 +68,7 @@ static void emf_colorize_line(QEColorizeContext *cp,
             break;
         case ';':
             i = n;
-            SET_COLOR(str, start, i, EMF_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, EMF_STYLE_COMMENT);
             continue;
         case '\"':
             /* parse string const */
@@ -79,7 +80,7 @@ static void emf_colorize_line(QEColorizeContext *cp,
                 if (str[i++] == '\"')
                     break;
             }
-            SET_COLOR(str, start, i, EMF_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, EMF_STYLE_STRING);
             continue;
         default:
             break;
@@ -91,7 +92,7 @@ static void emf_colorize_line(QEColorizeContext *cp,
                 if (!qe_isalnum(str[i]))
                     break;
             }
-            SET_COLOR(str, start, i, EMF_STYLE_NUMBER);
+            SET_STYLE(sbuf, start, i, EMF_STYLE_NUMBER);
             continue;
         }
         /* parse identifiers and keywords */
@@ -117,7 +118,7 @@ static void emf_colorize_line(QEColorizeContext *cp,
             } else {
                 style = EMF_STYLE_IDENTIFIER;
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         }
     }

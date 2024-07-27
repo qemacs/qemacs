@@ -1,7 +1,7 @@
 /*
  * Basic language modes for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +61,8 @@ enum {
 };
 
 static void basic_colorize_line(QEColorizeContext *cp,
-                                char32_t *str, int n, ModeDef *syn)
+                                const char32_t *str, int n,
+                                QETermStyle *sbuf, ModeDef *syn)
 {
     char kbuf[16];
     int i = 0, start, style;
@@ -76,7 +77,7 @@ static void basic_colorize_line(QEColorizeContext *cp,
             if (str[i] == '$')
                 style = BASIC_STYLE_PREPROCESS;
             i = n;
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         case '\"':
             /* parse string const */
@@ -84,7 +85,7 @@ static void basic_colorize_line(QEColorizeContext *cp,
                 if (str[i++] == c)
                     break;
             }
-            SET_COLOR(str, start, i, BASIC_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, BASIC_STYLE_STRING);
             continue;
         default:
             break;
@@ -95,7 +96,7 @@ static void basic_colorize_line(QEColorizeContext *cp,
                 if (!qe_isalnum(str[i]) && str[i] != '.')
                     break;
             }
-            SET_COLOR(str, start, i, BASIC_STYLE_IDENTIFIER);
+            SET_STYLE(sbuf, start, i, BASIC_STYLE_IDENTIFIER);
             continue;
         }
         /* parse identifiers and keywords */
@@ -105,14 +106,14 @@ static void basic_colorize_line(QEColorizeContext *cp,
                 i++;
 
             if (strfind(syn->keywords, kbuf)) {
-                SET_COLOR(str, start, i, BASIC_STYLE_KEYWORD);
+                SET_STYLE(sbuf, start, i, BASIC_STYLE_KEYWORD);
                 continue;
             }
             if (strfind(syn->types, kbuf)) {
-                SET_COLOR(str, start, i, BASIC_STYLE_TYPE);
+                SET_STYLE(sbuf, start, i, BASIC_STYLE_TYPE);
                 continue;
             }
-            SET_COLOR(str, start, i, BASIC_STYLE_IDENTIFIER);
+            SET_STYLE(sbuf, start, i, BASIC_STYLE_IDENTIFIER);
             continue;
         }
     }

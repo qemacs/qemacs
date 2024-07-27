@@ -66,7 +66,8 @@ enum {  // Python flavors
 };
 
 static void python_colorize_line(QEColorizeContext *cp,
-                                 char32_t *str, int n, ModeDef *syn)
+                                 const char32_t *str, int n,
+                                 QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start = i, style = 0, i1, tag = 0;
     char32_t c, sep;
@@ -157,12 +158,12 @@ static void python_colorize_line(QEColorizeContext *cp,
                 /* XXX: should use more context to tell regex from divide */
                 int prev = ' ';
                 for (i1 = start; i1 > 0; ) {
-                    prev = str[--i1] & CHAR_MASK;
+                    prev = str[--i1];
                     if (!qe_isblank(prev))
                         break;
                 }
                 if (qe_findchar(" [({},;=<>!~^&|*/%?:", prev)
-                 || (str[i1] >> STYLE_SHIFT) == PYTHON_STYLE_KEYWORD
+                 || sbuf[i1] == PYTHON_STYLE_KEYWORD
                  || (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ') && !(qe_isalnum(prev) || prev == ')'))) {
                      /* parse regex */
                      int in_charclass = 0;
@@ -300,7 +301,7 @@ static void python_colorize_line(QEColorizeContext *cp,
             continue;
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }

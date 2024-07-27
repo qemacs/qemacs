@@ -203,7 +203,8 @@ static int swift_parse_number(const char32_t *p)
 }
 
 static void swift_colorize_line(QEColorizeContext *cp,
-                                char32_t *str, int n, ModeDef *syn)
+                                const char32_t *str, int n,
+                                QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start = 0, style, level;
     char32_t c;
@@ -314,7 +315,7 @@ static void swift_colorize_line(QEColorizeContext *cp,
             continue;
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }

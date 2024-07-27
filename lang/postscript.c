@@ -1,7 +1,7 @@
 /*
  * Postscript language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,8 @@ enum {
 #define wrap 0
 
 static void ps_colorize_line(QEColorizeContext *cp,
-                             char32_t *str, int n, ModeDef *syn)
+                             const char32_t *str, int n,
+                             QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start = i;
     char32_t c;
@@ -68,7 +69,7 @@ static void ps_colorize_line(QEColorizeContext *cp,
             else
                 colstate &= ~IN_PS_COMMENT;
             i = n;
-            SET_COLOR(str, start, i, PS_STYLE_COMMENT);
+            SET_STYLE(sbuf, start, i, PS_STYLE_COMMENT);
             continue;
         case '(':
             colstate++;
@@ -94,7 +95,7 @@ static void ps_colorize_line(QEColorizeContext *cp,
                 }
                 break;
             }
-            SET_COLOR(str, start, i, PS_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, PS_STYLE_STRING);
             continue;
         default:
             break;
@@ -105,7 +106,7 @@ static void ps_colorize_line(QEColorizeContext *cp,
                 if (!qe_isalnum(str[i]) && str[i] != '.')
                     break;
             }
-            SET_COLOR(str, start, i, PS_STYLE_NUMBER);
+            SET_STYLE(sbuf, start, i, PS_STYLE_NUMBER);
             continue;
         }
         /* parse identifiers and keywords */
@@ -114,7 +115,7 @@ static void ps_colorize_line(QEColorizeContext *cp,
                 if (qe_findchar(" \t\r\n,()<>[]{}/", str[i]))
                     break;
             }
-            SET_COLOR(str, start, i, PS_STYLE_IDENTIFIER);
+            SET_STYLE(sbuf, start, i, PS_STYLE_IDENTIFIER);
             continue;
         }
     }

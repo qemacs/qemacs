@@ -78,7 +78,8 @@ static int wolfram_get_identifier(char *dest, int size, char32_t c,
 }
 
 static void wolfram_colorize_line(QEColorizeContext *cp,
-                                  char32_t *str, int n, ModeDef *syn)
+                                  const char32_t *str, int n,
+                                  QETermStyle *sbuf, ModeDef *syn)
 {
     char kbuf[16];
     int i = 0, start = i, k, style = 0, comment_level, base;
@@ -224,7 +225,7 @@ static void wolfram_colorize_line(QEColorizeContext *cp,
             continue;
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }

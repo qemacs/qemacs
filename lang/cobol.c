@@ -86,7 +86,8 @@ enum {
 };
 
 static void cobol_colorize_line(QEColorizeContext *cp,
-                                char32_t *str, int n, ModeDef *syn)
+                                const char32_t *str, int n,
+                                QETermStyle *sbuf, ModeDef *syn)
 {
     char keyword[COBOL_KEYWORD_SIZE];
     int i = 0, start = i, j, style, len, indent, heading = 0, preproc = 0, comment = -1;
@@ -118,7 +119,7 @@ static void cobol_colorize_line(QEColorizeContext *cp,
                 }
                 if (preproc) {
                     i = n;
-                    SET_COLOR(str, start, i, COBOL_STYLE_PREPROCESS);
+                    SET_STYLE(sbuf, start, i, COBOL_STYLE_PREPROCESS);
                 }
             } else {
                 if (comment >= 0 && comment < 6) {
@@ -138,7 +139,7 @@ static void cobol_colorize_line(QEColorizeContext *cp,
         }
         if ((state & IN_COBOL_FIXED_FORMAT) || heading || i == 6) {
             i = heading = 6;
-            SET_COLOR(str, start, i, COBOL_STYLE_HEADING);
+            SET_STYLE(sbuf, start, i, COBOL_STYLE_HEADING);
         }
     }
 
@@ -215,7 +216,7 @@ static void cobol_colorize_line(QEColorizeContext *cp,
             continue;
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }

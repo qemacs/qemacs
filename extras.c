@@ -140,7 +140,7 @@ static int qe_skip_style(EditState *s, int offset, int *offsetp, QETermStyle sty
     int line_num, col_num, len, pos;
     int offset0, offset1;
 
-    if (!s->colorize_func && !s->b->b_styles)
+    if (!s->colorize_mode && !s->b->b_styles)
         return 0;
 
     eb_get_pos(s->b, &line_num, &col_num, offset);
@@ -772,7 +772,7 @@ static void forward_block(EditState *s, int dir)
     offset = s->offset;
     eb_get_pos(s->b, &line_num, &col_num, offset);
     offset1 = offset0 = eb_goto_bol2(s->b, offset, &pos);
-    use_colors = s->colorize_func || s->b->b_styles;
+    use_colors = s->colorize_mode || s->b->b_styles;
     style0 = 0;
     len = 0;
     if (use_colors) {
@@ -1554,8 +1554,6 @@ static void do_describe_buffer(EditState *s, int argval)
 
     if (b->data_mode)
         eb_printf(b1, "   data_mode: %s\n", b->data_mode->name);
-    if (b->syntax_mode)
-        eb_printf(b1, " syntax_mode: %s\n", b->syntax_mode->name);
     if (s->mode)
         eb_printf(b1, "     s->mode: %s\n", s->mode->name);
     if (b->default_mode)
@@ -1712,7 +1710,7 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d\n", w, "interactive", s->interactive);
     eb_printf(b1, "%*s: %d\n", w, "force_highlight", s->force_highlight);
     eb_printf(b1, "%*s: %d\n", w, "mouse_force_highlight", s->mouse_force_highlight);
-    eb_printf(b1, "%*s: %p\n", w, "colorize_func", (void*)s->colorize_func);
+    eb_printf(b1, "%*s: %s\n", w, "colorize_mode", s->colorize_mode ? s->colorize_mode->name : "none");
     eb_printf(b1, "%*s: %lld\n", w, "default_style", (long long)s->default_style);
     eb_printf(b1, "%*s: %s\n", w, "buffer", s->b->name);
     if (s->last_buffer)
@@ -2044,7 +2042,7 @@ static void tag_buffer(EditState *s) {
     QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     int offset, line_num, col_num;
 
-    if (s->colorize_func || s->b->b_styles) {
+    if (s->colorize_mode || s->b->b_styles) {
         /* force complete buffer colorization */
         eb_get_pos(s->b, &line_num, &col_num, s->b->total_size);
         get_colorized_line(s, buf, countof(buf), sbuf,
@@ -2071,8 +2069,8 @@ static int tag_print_entry(CompleteState *cp, EditState *s, const char *name) {
     if (cp->target) {
         EditBuffer *b = cp->target->b;
         QEProperty *p;
-        if (!s->colorize_func && cp->target->colorize_func) {
-            set_colorize_func(s, cp->target->colorize_func, cp->target->colorize_mode);
+        if (!s->colorize_mode && cp->target->colorize_mode) {
+            set_colorize_mode(s, cp->target->colorize_mode);
         }
         for (p = b->property_list; p; p = p->next) {
             if (p->type == QE_PROP_TAG && strequal(p->data, name)) {
@@ -2172,8 +2170,8 @@ static void do_list_tags(EditState *s, int argval) {
     }
 
     e1 = show_popup(s, b, buf);
-    if (s->colorize_func) {
-        set_colorize_func(e1, s->colorize_func, s->colorize_mode);
+    if (s->colorize_mode) {
+        set_colorize_mode(e1, s->colorize_mode);
     }
 }
 

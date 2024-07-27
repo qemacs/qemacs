@@ -1,7 +1,7 @@
 /*
  * Lua language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -71,7 +71,8 @@ static int lua_long_bracket(const char32_t *str, int *level) {
 }
 
 static void lua_colorize_line(QEColorizeContext *cp,
-                              char32_t *str, int n, ModeDef *syn)
+                              const char32_t *str, int n,
+                              QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, j, start = i, level = 0, level1, style;
     char32_t c, sep = 0;
@@ -108,7 +109,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
                     goto parse_longlit;
                 }
                 i = n;
-                SET_COLOR(str, start, i, LUA_STYLE_COMMENT);
+                SET_STYLE(sbuf, start, i, LUA_STYLE_COMMENT);
                 continue;
             }
             break;
@@ -135,7 +136,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, LUA_STYLE_STRING);
+            SET_STYLE(sbuf, start, i, LUA_STYLE_STRING);
             continue;
         case '[':
             if (lua_long_bracket(str + i - 1, &level)) {
@@ -155,7 +156,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
                     break;
                 }
             }
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             continue;
         default:
             if (qe_isdigit(c)) {
@@ -164,13 +165,13 @@ static void lua_colorize_line(QEColorizeContext *cp,
                     if (!qe_isalnum(str[i]) && str[i] != '.')
                         break;
                 }
-                SET_COLOR(str, start, i, LUA_STYLE_NUMBER);
+                SET_STYLE(sbuf, start, i, LUA_STYLE_NUMBER);
                 continue;
             }
             if (qe_isalpha_(c)) {
                 i += ustr_get_identifier(kbuf, countof(kbuf), c, str, i, n);
                 if (strfind(syn->keywords, kbuf)) {
-                    SET_COLOR(str, start, i, LUA_STYLE_KEYWORD);
+                    SET_STYLE(sbuf, start, i, LUA_STYLE_KEYWORD);
                     continue;
                 }
                 for (j = i; j < n && qe_isspace(str[j]); j++)
@@ -178,7 +179,7 @@ static void lua_colorize_line(QEColorizeContext *cp,
                 /* function calls use parenthesized argument list or
                    single string or table literal */
                 if (qe_findchar("('\"{", str[j])) {
-                    SET_COLOR(str, start, i, LUA_STYLE_FUNCTION);
+                    SET_STYLE(sbuf, start, i, LUA_STYLE_FUNCTION);
                     continue;
                 }
                 continue;

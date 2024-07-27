@@ -1,7 +1,7 @@
 /*
  * Coffee script language mode for QEmacs.
  *
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -67,7 +67,8 @@ enum {
 };
 
 static void coffee_colorize_line(QEColorizeContext *cp,
-                                 char32_t *str, int n, ModeDef *syn)
+                                 const char32_t *str, int n,
+                                 QETermStyle *sbuf, ModeDef *syn)
 {
     int i = 0, start = i, style = 0, i1;
     char32_t c, sep, prev;
@@ -220,7 +221,7 @@ static void coffee_colorize_line(QEColorizeContext *cp,
             }
             prev = ' ';
             for (i1 = start; i1 > 0; ) {
-                prev = str[--i1] & CHAR_MASK;
+                prev = str[--i1];
                 if (!qe_isblank(prev))
                     break;
             }
@@ -228,7 +229,7 @@ static void coffee_colorize_line(QEColorizeContext *cp,
             ||  qe_findchar("^\\?.[{},;<>!~&|*%:", str[i])
             ||  (str[i] == '=' && str[i + 1] == '/')
             ||  (str[i] == '(' && str[i + 1] == '?')
-            ||  (str[i1] >> STYLE_SHIFT) == COFFEE_STYLE_KEYWORD
+            ||  sbuf[i1] == COFFEE_STYLE_KEYWORD
             ||  (str[i] != ' ' && (str[i] != '=' || str[i + 1] != ' ')
             &&   !(qe_isalnum(prev) || qe_findchar(")]}\"\'?:", prev)))) {
                 state = IN_COFFEE_REGEX;
@@ -263,7 +264,7 @@ static void coffee_colorize_line(QEColorizeContext *cp,
                                 break;
                             } else
                             if (qe_isblank(c) && str[i] == '#' && str[i+1] != '{') {
-                                SET_COLOR(str, start, i, style);
+                                SET_STYLE(sbuf, start, i, style);
                                 start = i;
                                 i = n;
                                 style = COFFEE_STYLE_COMMENT;
@@ -347,7 +348,7 @@ static void coffee_colorize_line(QEColorizeContext *cp,
             continue;
         }
         if (style) {
-            SET_COLOR(str, start, i, style);
+            SET_STYLE(sbuf, start, i, style);
             style = 0;
         }
     }
