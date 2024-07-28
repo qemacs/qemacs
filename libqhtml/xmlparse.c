@@ -191,7 +191,7 @@ static void strbuf_addch1(StringBuffer *b, char32_t ch)
     ptr = b->buf;
     if (b->buf == b->buf1)
         ptr = NULL;
-    if (qe_realloc(&ptr, size1)) {
+    if (qe_realloc_bytes(&ptr, size1)) {
         if (b->buf == b->buf1)
             memcpy(ptr, b->buf1, STRING_BUF_SIZE);
         b->buf = ptr;
@@ -251,7 +251,7 @@ static void offsetbuf_add(OffsetBuffer *b, unsigned int offset)
             if (!n)
                 n = 1;
             n = n * 2;
-            if (!qe_realloc(&b->offsets, n * sizeof(unsigned int)))
+            if (!qe_realloc_array(&b->offsets, n))
                 return;
             b->nb_allocated_offsets = n;
         }

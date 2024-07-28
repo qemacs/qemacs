@@ -199,8 +199,8 @@ void qe_register_mode(ModeDef *m, int flags)
                             mode_name, 0, mode_name);
         def = qe_mallocz(CmdDef);
         /* allocate space for name and spec with embedded null bytes */
-        def->name = qe_malloc_dup(name, name_len + 2);
-        def->spec = qe_malloc_dup(spec, spec_len + 1);
+        def->name = qe_malloc_dup_bytes(name, name_len + 2);
+        def->spec = qe_malloc_dup_bytes(spec, spec_len + 1);
         def->sig = CMD_ESs;
         def->val = 0;
         def->action.ESs = do_set_mode;
@@ -423,7 +423,7 @@ int qe_register_commands(ModeDef *m, const CmdDef *cmds, int len)
     if (i >= qs->cmd_array_count) {
         if (i >= qs->cmd_array_size) {
             int n = max_int(i + 16, 32);
-            if (!qe_realloc(&qs->cmd_array, n * sizeof(*qs->cmd_array))) {
+            if (!qe_realloc_array(&qs->cmd_array, n)) {
                 put_status(NULL, "Out of memory");
                 return -1;
             }
@@ -3690,7 +3690,7 @@ static void flush_line(DisplayState *ds,
             if (ds->line_num >= e->shadow_nb_lines) {
                 /* reallocate shadow */
                 int n = ds->line_num + LINE_SHADOW_INCR;
-                if (qe_realloc(&e->line_shadow, n * sizeof(QELineShadow))) {
+                if (qe_realloc_array(&e->line_shadow, n)) {
                     /* put an impossible value so that we redraw */
                     memset(&e->line_shadow[e->shadow_nb_lines], 0xff,
                            (n - e->shadow_nb_lines) * sizeof(QELineShadow));
@@ -4365,7 +4365,7 @@ void cp_colorize_line(QEColorizeContext *cp,
     if (syn && syn->colorize_func) {
         if (buf[n] != '\0') {
             /* ensure buf is null terminated, clone if needed */
-            char32_t *buf1 = qe_malloc_dup(buf + i, (n - i + 1) * sizeof(*buf));
+            char32_t *buf1 = qe_malloc_dup_array(buf + i, n - i + 1);
             if (buf1) {
                 buf1[n - i] = '\0';
                 syn->colorize_func(cp, buf1, n - i, sbuf + i, syn);
@@ -4414,10 +4414,8 @@ static int syntax_get_colorized_line(EditState *s,
         n = max_int(s->colorize_nb_lines, COLORIZED_LINE_PREALLOC_SIZE);
         while (n < (line_num + 2))
             n += (n >> 1) + (n >> 3);
-        if (!qe_realloc(&s->colorize_states,
-                        n * sizeof(*s->colorize_states))) {
+        if (!qe_realloc_array(&s->colorize_states, n))
             return 0;
-        }
         s->colorize_nb_lines = n;
     }
 
@@ -5993,7 +5991,7 @@ static void macro_add_key(int key)
 
     if (qs->nb_macro_keys >= qs->macro_keys_size) {
         new_size = qs->macro_keys_size + MACRO_KEY_INCR;
-        if (!qe_realloc(&qs->macro_keys, new_size * sizeof(unsigned short)))
+        if (!qe_realloc_array(&qs->macro_keys, new_size))
             return;
         qs->macro_keys_size = new_size;
     }

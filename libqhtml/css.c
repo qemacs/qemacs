@@ -339,7 +339,7 @@ CSSIdent css_new_ident(const char *str)
     if (table_ident_nb == table_ident_allocated) {
         /* realloc ident table if needed */
         n = table_ident_allocated + CSS_IDENT_INCR;
-        if (!qe_realloc(&table_ident, n * sizeof(CSSIdentEntry *))) {
+        if (!qe_realloc_array(&table_ident, n)) {
             return CSS_ID_NIL;
         }
         table_ident_allocated = n;
@@ -888,7 +888,7 @@ static CSSState *allocate_props(CSSContext *s, CSSState *props)
         pp = &p->hash_next;
     }
     /* add new props */
-    p = qe_malloc_dup(props, sizeof(CSSState));
+    p = qe_malloc_dup_array(props, 1);
     if (!p)
         return NULL;
     s->nb_props++;
@@ -1956,7 +1956,7 @@ static void css_flush_line(InlineLayout *s,
 
     if (level_max > 0) {
         /* needed to do bidir reordering */
-        box_table = qe_malloc_dup(line_boxes, sizeof(InlineBox) * nb_boxes);
+        box_table = qe_malloc_dup_array(line_boxes, nb_boxes);
         if (box_table) {
             /* record the logical order of the boxes */
             /* rearrange them to match visual order */
@@ -2543,7 +2543,7 @@ static void allocate_column(TableLayout *s)
     s->nb_cols++;
     if (s->nb_cols > s->nb_cols_allocated) {
         s->nb_cols_allocated = s->nb_cols_allocated + COL_INCR;
-        qe_realloc(&s->cols, s->nb_cols_allocated * sizeof(ColStruct));
+        qe_realloc_array(&s->cols, s->nb_cols_allocated);
         memset(s->cols + s->nb_cols_allocated - COL_INCR, 0,
                COL_INCR * sizeof(ColStruct));
     }
