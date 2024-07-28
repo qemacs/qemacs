@@ -641,15 +641,16 @@ int css_define_color(const char *name, const char *value)
 
     /* First color definition: allocate modifiable array */
     if (qe_colors == default_colors) {
-        qe_colors = qe_malloc_dup(default_colors, sizeof(default_colors));
+        def = qe_malloc_dup_array(default_colors, nb_default_colors);
+        if (!def)
+            return -1;
+        qe_colors = def;
     }
 
     /* Make room: reallocate table in chunks of 8 entries */
     if (((nb_qe_colors - nb_default_colors) & 7) == 0) {
-        if (!qe_realloc(&qe_colors,
-                        (nb_qe_colors + 8) * sizeof(ColorDef))) {
+        if (!qe_realloc_array(&qe_colors, nb_qe_colors + 8))
             return -1;
-        }
     }
     /* Check for redefinition */
     index = css_lookup_color(qe_colors, nb_qe_colors, name);

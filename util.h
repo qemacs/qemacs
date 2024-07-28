@@ -448,9 +448,10 @@ static inline int check_fcall(const char32_t *str, int i) {
 
 void *qe_malloc_bytes(size_t size);
 void *qe_mallocz_bytes(size_t size);
-void *qe_malloc_dup(const void *src, size_t size);
+void *qe_malloc_dup_bytes(const void *src, size_t size);
 char *qe_strdup(const char *str);
-void *qe_realloc(void *pp, size_t size);
+char *qe_strndup(const char *str, size_t len);
+void *qe_realloc_bytes(void *pp, size_t new_size);
 
 #if 0  /* Documentation prototypes */
 
@@ -503,6 +504,27 @@ T *qe_mallocz_array(type T, size_t n);
    @note this function is implemented as a macro.
  */
 
+T *qe_malloc_dup_array(const T *p, size_t n);
+/*@API memory
+   Allocate memory for an array of objects of type `T`. Initialize the elements
+   from the array pointed to by `p`.
+   @argument `T` the type of the object to allocate.
+   @argument `p` a pointer to the array used for initialization.
+   @argument `n` the number of elements to duplicate.
+   @note this function is implemented as a macro.
+   The uninitialized elements are set to all bits zero.
+ */
+
+T *qe_realloc_array(T **pp, size_t new_len);
+/*@API memory
+   Reallocate a block of memory to a different size.
+   @argument `pp` the address of a pointer to the array to reallocate
+   @argument `new_len` the new number of elements for the array.
+   @return a pointer to allocated memory, aligned on the maximum
+   alignment size.
+   @note this function is implemented as a macro.
+ */
+
 void qe_free(T **pp);
 /*@API memory
    Free the allocated memory pointed to by a pointer whose address is passed.
@@ -520,6 +542,9 @@ void qe_free(T **pp);
 #define qe_mallocz_array(t, n)  ((t *)qe_mallocz_bytes((n) * sizeof(t)))
 #define qe_malloc_hack(t, n)    ((t *)qe_malloc_bytes(sizeof(t) + (n)))
 #define qe_mallocz_hack(t, n)   ((t *)qe_mallocz_bytes(sizeof(t) + (n)))
+// XXX: Should use (typeof(**(p)) *) if available
+#define qe_malloc_dup_array(p, n)  (qe_malloc_dup_bytes(p, (n) * sizeof(*(p))))
+#define qe_realloc_array(pp, n)  (qe_realloc_bytes(pp, (n) * sizeof(**(pp))))
 
 #if 1  // to test clang -Weverything
 #define qe_free(pp)    do { void *_1 = (pp), **_2 = _1; (free)(*_2); *_2 = NULL; } while (0)

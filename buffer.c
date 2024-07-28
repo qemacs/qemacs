@@ -65,7 +65,7 @@ static void update_page(Page *p)
 
     /* if the page is read only, copy it */
     if (p->flags & PG_READ_ONLY) {
-        buf = qe_malloc_dup(p->data, p->size);
+        buf = qe_malloc_dup_bytes(p->data, p->size);
         /* XXX: should return an error */
         if (!buf)
             return;
@@ -180,7 +180,8 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
         if (len > 0) {
             update_page(p);
             /* CG: probably faster with qe_malloc + qe_free */
-            qe_realloc(&p->data, p->size + len);
+            // XXX: test for failure
+            qe_realloc_bytes(&p->data, p->size + len);
             memmove(p->data + len, p->data, p->size);
             memcpy(p->data, buf + size - len, len);
             size -= len;
@@ -192,7 +193,8 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
     n = (size + MAX_PAGE_SIZE - 1) / MAX_PAGE_SIZE;
     if (n > 0) {
         b->nb_pages += n;
-        qe_realloc(&b->page_table, b->nb_pages * sizeof(Page));
+        // XXX: test for failure
+        qe_realloc_array(&b->page_table, b->nb_pages);
         p = &b->page_table[page_index];
         blockmove(p + n, p, b->nb_pages - n - page_index);
         while (size > 0) {
@@ -200,7 +202,7 @@ static void eb_insert1(EditBuffer *b, int page_index, const u8 *buf, int size)
             if (len > MAX_PAGE_SIZE)
                 len = MAX_PAGE_SIZE;
             p->size = len;
-            p->data = qe_malloc_dup(buf, len);
+            p->data = qe_malloc_dup_bytes(buf, len);
             p->flags = 0;
             buf += len;
             size -= len;
@@ -240,7 +242,8 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
                 update_page(p - 1);
                 update_page(p);
                 chunk = min_offset(MAX_PAGE_SIZE - p[-1].size, offset);
-                qe_realloc(&p[-1].data, p[-1].size + chunk);
+                // XXX: test for failure
+                qe_realloc_bytes(&p[-1].data, p[-1].size + chunk);
                 memcpy(p[-1].data + p[-1].size, p->data, chunk);
                 p[-1].size += chunk;
                 p->size -= chunk;
@@ -249,13 +252,15 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
                     b->nb_pages -= 1;
                     qe_free(&p->data);
                     blockmove(p, p + 1, b->nb_pages - page_index);
-                    qe_realloc(&b->page_table, b->nb_pages * sizeof(Page));
+                    // XXX: test for failure
+                    qe_realloc_array(&b->page_table, b->nb_pages);
                     p = b->page_table + page_index - 1;
                     offset = p->size;
                     goto retry;
                 }
                 memmove(p->data, p->data + chunk, p->size);
-                qe_realloc(&p->data, p->size);
+                // XXX: test for failure
+                qe_realloc_bytes(&p->data, p->size);
                 offset -= chunk;
                 if (offset == 0 && p[-1].size < MAX_PAGE_SIZE) {
                     /* restart from previous page */
@@ -276,7 +281,8 @@ static void eb_insert_lowlevel(EditBuffer *b, int offset,
             p = b->page_table + page_index;
             update_page(p);
             p->size += len - len_out;
-            qe_realloc(&p->data, p->size);
+            // XXX: test for failure
+            qe_realloc_bytes(&p->data, p->size);
             memmove(p->data + offset + len,
                     p->data + offset, p->size - (offset + len));
             memcpy(p->data + offset, buf, len);
@@ -382,7 +388,8 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
                realloced */
             q = dest->page_table + page_index - 1;
             update_page(q);
-            qe_realloc(&q->data, dest_offset);
+            // XXX: test for failure
+            qe_realloc_bytes(&q->data, dest_offset);
             q->size = dest_offset;
         }
     } else {
@@ -403,7 +410,8 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
     if (n > 0) {
         /* add the pages */
         dest->nb_pages += n;
-        qe_realloc(&dest->page_table, dest->nb_pages * sizeof(Page));
+        // XXX: test for failure
+        qe_realloc_array(&dest->page_table, dest->nb_pages);
         q = dest->page_table + page_index;
         blockmove(q + n, q, dest->nb_pages - n - page_index);
         p = p_start;
@@ -417,7 +425,7 @@ int eb_insert_buffer(EditBuffer *dest, int dest_offset,
             } else {
                 /* allocate a new page */
                 q->flags = 0;
-                q->data = qe_malloc_dup(p->data, len);
+                q->data = qe_malloc_dup_bytes(p->data, len);
             }
             n--;
             p++;
@@ -506,7 +514,8 @@ int eb_delete(EditBuffer *b, int offset, int size)
             memmove(p->data + offset, p->data + offset + len,
                     p->size - offset - len);
             p->size -= len;
-            qe_realloc(&p->data, p->size);
+            // XXX: test for failure
+            qe_realloc_bytes(&p->data, p->size);
             offset += len;
             /* XXX: should merge with adjacent pages if size becomes small? */
             if (offset >= p->size) {
@@ -522,7 +531,8 @@ int eb_delete(EditBuffer *b, int offset, int size)
         b->nb_pages -= n;
         blockmove(del_start, del_start + n,
                   b->page_table + b->nb_pages - del_start);
-        qe_realloc(&b->page_table, b->nb_pages * sizeof(Page));
+        // XXX: test for failure
+        qe_realloc_array(&b->page_table, b->nb_pages);
     }
 
     /* the page cache is no longer valid */
@@ -616,7 +626,7 @@ static int eb_cache_insert(EditBuffer *b)
 
     if (len >= qs->buffer_cache_size) {
         int size = max_int(32, len + (len >> 1) + (len >> 3));
-        cache = qe_realloc(&qs->buffer_cache, size * sizeof(*cache));
+        cache = qe_realloc_array(&qs->buffer_cache, size);
         if (!cache)
             return -1;
         qs->buffer_cache_size = size;

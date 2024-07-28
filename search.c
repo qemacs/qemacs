@@ -34,7 +34,7 @@ BOOL lre_check_stack_overflow(void *opaque, size_t alloca_size) {
 }
 
 void *lre_realloc(void *opaque, void *ptr, size_t size) {
-    return qe_realloc(&ptr, size);
+    return qe_realloc_bytes(&ptr, size);
 }
 #endif
 

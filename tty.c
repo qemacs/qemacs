@@ -518,8 +518,9 @@ static void tty_dpy_invalidate(QEditScreen *s)
     count = s->width * s->height;
     size = count * sizeof(TTYChar);
     /* screen buffer + shadow buffer + extra slot for loop guard */
-    qe_realloc(&ts->screen, size * 2 + sizeof(TTYChar));
-    qe_realloc(&ts->line_updated, s->height);
+    // XXX: test for failure
+    qe_realloc_array(&ts->screen, count * 2 + 1);
+    qe_realloc_array(&ts->line_updated, s->height);
     ts->screen_size = count;
 
     /* Erase shadow buffer to impossible value */

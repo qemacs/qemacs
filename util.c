@@ -1740,7 +1740,7 @@ StringItem *add_string(StringArray *cs, const char *str, int group) {
         return NULL;
     if (cs->nb_items >= cs->nb_allocated) {
         int n = cs->nb_allocated + 32;
-        if (!qe_realloc(&cs->items, n * sizeof(StringItem *)))
+        if (!qe_realloc_array(&cs->items, n))
             return NULL;
         cs->nb_allocated = n;
     }
@@ -2015,7 +2015,7 @@ void *qe_mallocz_bytes(size_t size) {
     return p;
 }
 
-void *qe_malloc_dup(const void *src, size_t size) {
+void *qe_malloc_dup_bytes(const void *src, size_t size) {
     /*@API memory
        Allocate a block of memory of a given size in bytes initialized
        as a copy of an existing object.
@@ -2044,7 +2044,24 @@ char *qe_strdup(const char *str) {
     return p;
 }
 
-void *qe_realloc(void *pp, size_t size) {
+char *qe_strndup(const char *str, size_t n) {
+    /*@API memory
+       Allocate a copy of a portion of a string.
+       @argument `src` a valid pointer to a string to duplicate.
+       @argument `n` the number of characters to duplicate.
+       @return a pointer to allocated memory, aligned on the maximum
+       alignment size.
+     */
+    size_t len = strnlen(str, n);
+    char *p = (malloc)(len + 1);
+    if (p) {
+        memcpy(p, str, len);
+        p[len] = '\0';
+    }
+    return p;
+}
+
+void *qe_realloc_bytes(void *pp, size_t size) {
     /*@API memory
        reallocate a block of memory to a different size.
        @argument `pp` the address of a possibly null pointer to a

@@ -1077,7 +1077,7 @@ void css_parse_style_sheet(CSSStyleSheet *s, CSSParseState *b)
                 if (qe_isalpha(ch)) {
                     tree_op = CSS_TREE_OP_DESCENDANT;
                 add_tree:
-                    ss1 = qe_malloc_dup(ss, sizeof(CSSSimpleSelector));
+                    ss1 = qe_malloc_dup_array(ss, 1);
                     if (ss1) {
                         last_ss = ss1;
                     }

@@ -141,7 +141,8 @@ static int ppm_resize(QEditScreen *s, int w, int h)
     CFBContext *cfb = s->priv_data;
 
     /* alloc bitmap */
-    if (!qe_realloc(&cfb->base, w * h * sizeof(int))) {
+    // XXX: Achtung: cfb->base is an `unsigned char *`
+    if (!qe_realloc_bytes(&cfb->base, w * h * sizeof(int))) {
         return -1;
     }
     cfb->wrap = w * sizeof(int);

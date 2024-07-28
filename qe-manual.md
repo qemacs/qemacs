@@ -752,7 +752,21 @@ bytes.
 Return a pointer to allocated memory, aligned on the maximum
 alignment size.
 
-### `void *qe_malloc_dup(const void *src, size_t size);`
+### `T *qe_malloc_dup_array(const T *p, size_t n);`
+
+Allocate memory for an array of objects of type `T`. Initialize the elements
+from the array pointed to by `p`.
+
+* argument `T` the type of the object to allocate.
+
+* argument `p` a pointer to the array used for initialization.
+
+* argument `n` the number of elements to duplicate.
+
+Note: this function is implemented as a macro.
+The uninitialized elements are set to all bits zero.
+
+### `void *qe_malloc_dup_bytes(const void *src, size_t size);`
 
 Allocate a block of memory of a given size in bytes initialized
 as a copy of an existing object.
@@ -815,7 +829,20 @@ to all bits zero.
 Return a pointer to allocated memory, aligned on the maximum
 alignment size.
 
-### `void *qe_realloc(void *pp, size_t size);`
+### `T *qe_realloc_array(T **pp, size_t new_len);`
+
+Reallocate a block of memory to a different size.
+
+* argument `pp` the address of a pointer to the array to reallocate
+
+* argument `new_len` the new number of elements for the array.
+
+Return a pointer to allocated memory, aligned on the maximum
+alignment size.
+
+Note: this function is implemented as a macro.
+
+### `void *qe_realloc_bytes(void *pp, size_t size);`
 
 reallocate a block of memory to a different size.
 
@@ -841,6 +868,17 @@ syntax `*(void **)pp = p;` that violates the strict aliasing rule.
 Allocate a copy of a string.
 
 * argument `src` a valid pointer to a string to duplicate.
+
+Return a pointer to allocated memory, aligned on the maximum
+alignment size.
+
+### `char *qe_strndup(const char *str, size_t n);`
+
+Allocate a copy of a portion of a string.
+
+* argument `src` a valid pointer to a string to duplicate.
+
+* argument `n` the number of characters to duplicate.
 
 Return a pointer to allocated memory, aligned on the maximum
 alignment size.
