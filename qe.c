@@ -4325,32 +4325,35 @@ static int bidir_compute_attributes(BidirTypeLink *list_tab, int max_size,
 /* NOTE: only one colorization mode can be selected at a time for a
    buffer */
 
-static int get_staticly_colorized_line(EditState *s, char32_t *buf, int size,
-                                       QETermStyle *sbuf,
+static int get_staticly_colorized_line(QEColorizeContext *cp,
                                        int offset, int *offset_ptr, int line_num)
 {
-    EditBuffer *b = s->b;
+    EditBuffer *b = cp->b;
+    int start_offset = offset, end_offset;
     int len = 0;
 
-    if (size > 0) {
-        for (;;) {
-            int next;
-            QETermStyle style = eb_get_style(b, offset);
-            char32_t c = eb_nextc(b, offset, &next);
-            if (len + 1 >= size) {
-                sbuf[len] = style;
-                buf[len] = '\0';
+    for (;;) {
+        int next;
+        QETermStyle style = eb_get_style(b, offset);
+        char32_t c = eb_nextc(b, offset, &next);
+        if (len + 1 >= cp->buf_size) {
+            int new_size = min_int(eb_get_line_length(b, start_offset, &end_offset) + 1,
+                                   MAX_COLORED_LINE_SIZE);
+            if (cp->buf_size == new_size || !cp_reallocate(cp, new_size)) {
+                offset = end_offset;
+                cp->sbuf[len] = style;
+                cp->buf[len] = '\0';
                 break;
             }
-            sbuf[len] = style;
-            buf[len++] = c;
-            offset = next;
-            if (c == '\n') {
-                /* end of line: offset points to the beginning of the next line */
-                /* adjust return value for easy stripping and truncation test */
-                buf[len--] = '\0';
-                break;
-            }
+        }
+        cp->sbuf[len] = style;
+        cp->buf[len++] = c;
+        offset = next;
+        if (c == '\n') {
+            /* end of line: offset points to the beginning of the next line */
+            /* adjust return value for easy stripping and truncation test */
+            cp->buf[len--] = '\0';
+            break;
         }
     }
     if (offset_ptr)
@@ -4363,19 +4366,64 @@ void cp_colorize_line(QEColorizeContext *cp,
                       QETermStyle *sbuf, ModeDef *syn)
 {
     if (syn && syn->colorize_func) {
+        buf += i;
+        n -= i;
         if (buf[n] != '\0') {
             /* ensure buf is null terminated, clone if needed */
-            char32_t *buf1 = qe_malloc_dup_array(buf + i, n - i + 1);
+            char32_t *buf1 = qe_malloc_dup_array(buf + i, n + 1);
             if (buf1) {
-                buf1[n - i] = '\0';
-                syn->colorize_func(cp, buf1, n - i, sbuf + i, syn);
-                sbuf[n - i] = 0;  /* reset the end of line style */
+                buf1[n] = '\0';
+                syn->colorize_func(cp, buf1, n, sbuf, syn);
+                sbuf[n] = 0;  /* reset the end of line style */
                 qe_free(&buf1);
                 return;
             }
         }
-        syn->colorize_func(cp, buf + i, n - i, sbuf + i, syn);
+        syn->colorize_func(cp, buf, n, sbuf, syn);
     }
+}
+
+QEColorizeContext *cp_initialize(QEColorizeContext *cp, EditState *s) {
+    memset(cp, 0, sizeof(*cp));
+    cp->s = s;
+    cp->b = s->b;
+    cp->buf_size = countof(cp->buf0);
+    cp->buf = cp->buf0;
+    cp->sbuf = cp->sbuf0;
+    return cp;
+}
+
+void cp_destroy(QEColorizeContext *cp) {
+    if (cp->buf != cp->buf0)
+        qe_free(&cp->buf);
+    if (cp->sbuf != cp->sbuf0)
+        qe_free(&cp->sbuf);
+    memset(cp, 0, sizeof(*cp));
+}
+
+int cp_reallocate(QEColorizeContext *cp, int new_size) {
+    if (cp->buf == cp->buf0) {
+        char32_t *new_buf = qe_malloc_array(char32_t, new_size);
+        if (!new_buf)
+            return 0;
+        blockcpy(new_buf, cp->buf, cp->buf_size);
+        cp->buf = new_buf;
+    } else {
+        if (!qe_realloc_array(&cp->buf, new_size))
+            return 0;
+    }
+    if (cp->sbuf == cp->sbuf0) {
+        QETermStyle *new_sbuf = qe_malloc_array(QETermStyle, new_size);
+        if (!new_sbuf)
+            return 0;
+        blockcpy(new_sbuf, cp->sbuf, cp->buf_size);
+        cp->sbuf = new_sbuf;
+    } else {
+        if (!qe_realloc_array(&cp->sbuf, new_size))
+            return 0;
+    }
+    cp->buf_size = new_size;
+    return 1;
 }
 
 #ifndef CONFIG_TINY
@@ -4387,13 +4435,11 @@ void cp_colorize_line(QEColorizeContext *cp,
 
 // XXX: s->colorize_xxx fields should be mode data, potentially shared by
 //      multiple EditState upon splitting windows
-static int syntax_get_colorized_line(EditState *s,
-                                     char32_t *buf, int buf_size,
-                                     QETermStyle *sbuf,
+static int syntax_get_colorized_line(QEColorizeContext *cp,
                                      int offset, int *offsetp, int line_num)
 {
-    QEColorizeContext cctx;
-    EditBuffer *b = s->b;
+    EditState *s = cp->s;
+    EditBuffer *b = cp->b;
     int i, len, line, n, col, bom;
 
     /* invalidate cache if needed */
@@ -4419,10 +4465,6 @@ static int syntax_get_colorized_line(EditState *s,
         s->colorize_nb_lines = n;
     }
 
-    memset(&cctx, 0, sizeof(cctx));
-    cctx.s = s;
-    cctx.b = b;
-
     /* propagate state if needed */
     if (line_num >= s->colorize_nb_valid_lines) {
         if (s->colorize_nb_valid_lines == 0) {
@@ -4430,62 +4472,68 @@ static int syntax_get_colorized_line(EditState *s,
             s->colorize_nb_valid_lines = 1;
         }
         offset = eb_goto_pos(b, s->colorize_nb_valid_lines - 1, 0);
-        cctx.colorize_state = s->colorize_states[s->colorize_nb_valid_lines - 1];
-        cctx.state_only = 1;
+        cp->colorize_state = s->colorize_states[s->colorize_nb_valid_lines - 1];
+        cp->state_only = 1;
 
         for (line = s->colorize_nb_valid_lines; line <= line_num; line++) {
-            cctx.offset = offset;
-            len = eb_get_line(b, buf, buf_size, offset, &offset);
-            if (buf[len] != '\n') {
+            cp->offset = offset;
+            len = eb_get_line(b, cp->buf, cp->buf_size, cp->offset, &offset);
+            if (cp->buf[len] != '\n') {
                 /* line was truncated */
-                /* XXX: should use reallocatable buffer */
-                offset = eb_goto_pos(b, line, 0);
+                int new_size = min_int(eb_get_line_length(b, cp->offset, &offset) + 1,
+                                       MAX_COLORED_LINE_SIZE);
+                if (cp_reallocate(cp, new_size)) {
+                    len = eb_get_line(s->b, cp->buf, cp->buf_size, cp->offset, NULL);
+                }
             }
-            buf[len] = '\0';
+            cp->buf[len] = '\0';
 
             /* skip byte order mark if present */
-            bom = (buf[0] == 0xFEFF);
+            bom = (cp->buf[0] == 0xFEFF);
             if (bom) {
-                cctx.offset = eb_next(b, cctx.offset);
+                cp->offset = eb_next(b, cp->offset);
             }
-            cp_colorize_line(&cctx, buf, bom, len, sbuf, s->colorize_mode);
-            s->colorize_states[line] = cctx.colorize_state;
+            cp_colorize_line(cp, cp->buf, bom, len, cp->sbuf, s->colorize_mode);
+            s->colorize_states[line] = cp->colorize_state;
         }
     }
 
     /* compute line color */
-    cctx.colorize_state = s->colorize_states[line_num];
-    cctx.state_only = 0;
-    cctx.offset = offset;
-    len = eb_get_line(b, buf, buf_size, offset, offsetp);
-    if (buf[len] != '\n') {
+    cp->colorize_state = s->colorize_states[line_num];
+    cp->state_only = 0;
+    cp->offset = offset;
+    len = eb_get_line(b, cp->buf, cp->buf_size, offset, offsetp);
+    if (cp->buf[len] != '\n') {
         /* line was truncated */
-        /* XXX: should use reallocatable buffer */
-        *offsetp = eb_next_line(b, offset);
+        int new_size = min_int(eb_get_line_length(b, offset, offsetp) + 1,
+                               MAX_COLORED_LINE_SIZE);
+        if (cp_reallocate(cp, new_size)) {
+            len = eb_get_line(s->b, cp->buf, cp->buf_size, offset, NULL);
+        }
     }
-    buf[len] = '\0';
+    cp->buf[len] = '\0';
     if (s->offset >= offset && s->offset < *offsetp + (s->offset == s->b->total_size)) {
         /* compute position of first codepoint before the cursor */
         int offset1 = offset;
-        for (cctx.cur_pos = 0; offset1 < s->offset; cctx.cur_pos++)
+        for (cp->cur_pos = 0; offset1 < s->offset; cp->cur_pos++)
             offset1 = eb_next(b, offset1);
     }
 
-    memset(sbuf, 0, (len + 1) * sizeof(*sbuf));
-    bom = (buf[0] == 0xFEFF);
+    memset(cp->sbuf, 0, (len + 1) * sizeof(*cp->sbuf));
+    bom = (cp->buf[0] == 0xFEFF);
     if (bom) {
-        SET_STYLE1(sbuf, 0, QE_STYLE_PREPROCESS);
-        cctx.offset = eb_next(b, cctx.offset);
+        SET_STYLE1(cp->sbuf, 0, QE_STYLE_PREPROCESS);
+        cp->offset = eb_next(b, cp->offset);
     }
-    cctx.combine_stop = len - bom;
-    cctx.cur_pos -= bom;
-    cp_colorize_line(&cctx, buf, bom, len, sbuf, s->colorize_mode);
-    cctx.cur_pos += bom;
+    cp->combine_stop = len - bom;
+    cp->cur_pos -= bom;
+    cp_colorize_line(cp, cp->buf, bom, len, cp->sbuf, s->colorize_mode);
+    cp->cur_pos += bom;
     /* buf[len] has char '\0' but may hold style, force buf ending */
-    buf[len + 1] = 0;
+    //cp->buf[len + 1] = 0;
 
     /* XXX: if state is same as previous, minimize invalid region? */
-    s->colorize_states[line_num + 1] = cctx.colorize_state;
+    s->colorize_states[line_num + 1] = cp->colorize_state;
 
     /* Extend valid area */
     if (s->colorize_nb_valid_lines < line_num + 2)
@@ -4493,20 +4541,20 @@ static int syntax_get_colorized_line(EditState *s,
 
     /* Combine with buffer styles on restricted range */
     if (s->b->b_styles) {
-        int start = bom + cctx.combine_start, stop = bom + cctx.combine_stop;
-        offset = cctx.offset;
+        int start = bom + cp->combine_start, stop = bom + cp->combine_stop;
+        offset = cp->offset;
         for (i = bom; i < stop; i++) {
             QETermStyle style = eb_get_style(b, offset);
             if (style && i >= start) {
-                sbuf[i] = style;
+                cp->sbuf[i] = style;
             }
             offset = eb_next(b, offset);
         }
     }
     if (!(s->colorize_mode->flags & MODEF_NO_TRAILING_BLANKS)) {
         /* Mark trailing blanks as errors if cursor is not at end of line */
-        for (i = len; i > 0 && qe_isblank(buf[i - 1]) && i != cctx.cur_pos; i--) {
-            sbuf[i - 1] = QE_STYLE_BLANK_HILITE;
+        for (i = len; i > 0 && qe_isblank(cp->buf[i - 1]) && i != cp->cur_pos; i--) {
+            cp->sbuf[i - 1] = QE_STYLE_BLANK_HILITE;
         }
     }
     return len;
@@ -4544,30 +4592,32 @@ void set_colorize_mode(EditState *s, ModeDef *colorize_mode)
 #endif
 }
 
-int get_colorized_line(EditState *s, char32_t *buf, int buf_size,
-                       QETermStyle *sbuf,
+int get_colorized_line(QEColorizeContext *cp,
                        int offset, int *offsetp, int line_num)
 {
+    EditState *s = cp->s;
     int len;
+
 #ifndef CONFIG_TINY
     if (s->colorize_mode) {
-        len = syntax_get_colorized_line(s, buf, buf_size, sbuf,
-                                        offset, offsetp, line_num);
+        len = syntax_get_colorized_line(cp, offset, offsetp, line_num);
     } else
 #endif
     if (s->b->b_styles) {
-        len = get_staticly_colorized_line(s, buf, buf_size, sbuf,
-                                          offset, offsetp, line_num);
+        len = get_staticly_colorized_line(cp, offset, offsetp, line_num);
     } else {
-        len = eb_get_line(s->b, buf, buf_size, offset, offsetp);
-        if (buf[len] != '\n') {
+        len = eb_get_line(s->b, cp->buf, cp->buf_size, offset, offsetp);
+        if (cp->buf[len] != '\n') {
             /* line was truncated */
-            /* XXX: should use reallocatable buffer */
-            *offsetp = eb_goto_pos(s->b, line_num + 1, 0);
+            int new_size = min_int(eb_get_line_length(s->b, offset, offsetp) + 1,
+                                   MAX_COLORED_LINE_SIZE);
+            if (cp_reallocate(cp, new_size)) {
+                len = eb_get_line(s->b, cp->buf, cp->buf_size, offset, NULL);
+            }
         }
-        buf[len] = '\0';
-        if (sbuf) {
-            memset(sbuf, 0, (len + 1) * sizeof(*sbuf));
+        cp->buf[len] = '\0';
+        if (cp->sbuf) {
+            memset(cp->sbuf, 0, (len + 1) * sizeof(*cp->sbuf));
         }
     }
     // XXX: should test if TABs should be colorized too
@@ -4585,9 +4635,10 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     BidirTypeLink embeds[RLE_EMBEDDINGS_SIZE], *bd;
     int embedding_level, embedding_max_level;
     BidirCharType base;
-    char32_t buf[COLORED_MAX_LINE_SIZE];
-    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
+    QEColorizeContext cp[1];
     int char_index, colored_nb_chars;
+
+    cp_initialize(cp, s);
 
     line_num = 0;
     /* XXX: should test a flag, to avoid this call in hex/binary */
@@ -4644,8 +4695,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
     ||  s->curline_style || s->region_style
     ||  s->isearch_state) {
         /* XXX: deal with truncation */
-        colored_nb_chars = get_colorized_line(s, buf, countof(buf), sbuf,
-                                              offset, &offset0, line_num);
+        colored_nb_chars = get_colorized_line(cp, offset, &offset0, line_num);
         if (s->mode == &list_mode) {
             QEmacsState *qs = s->qe_state;
             int i;
@@ -4655,18 +4705,18 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             {
                 /* highlight the current line */
                 for (i = 0; i <= colored_nb_chars; i++) {
-                    sbuf[i] = QE_STYLE_HIGHLIGHT;
+                    cp->sbuf[i] = QE_STYLE_HIGHLIGHT;
                 }
             } else
-            if (buf[0] == '*') {
+            if (cp->buf[0] == '*') {
                 /* selection */
                 for (i = 0; i <= colored_nb_chars; i++) {
-                    sbuf[i] |= QE_STYLE_SEL;
+                    cp->sbuf[i] |= QE_STYLE_SEL;
                 }
             }
         }
         if (s->isearch_state) {
-            isearch_colorize_matches(s, buf, colored_nb_chars, sbuf, offset);
+            isearch_colorize_matches(s, cp->buf, colored_nb_chars, cp->sbuf, offset);
         }
     }
 
@@ -4694,7 +4744,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
                     eb_get_pos(s->b, &line, &end_char, end_offset);
 
                 for (i = start_char; i < end_char; i++) {
-                    sbuf[i] = s->region_style;
+                    cp->sbuf[i] = s->region_style;
                 }
             }
         } else
@@ -4702,7 +4752,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             /* XXX: only if qs->active_window == s ? */
             int i;
             for (i = 0; i < colored_nb_chars; i++)
-                sbuf[i] = s->curline_style;
+                cp->sbuf[i] = s->curline_style;
         }
     }
 #endif
@@ -4721,7 +4771,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
         } else {
             ds->style = 0;
             if (char_index < colored_nb_chars) {
-                ds->style = sbuf[char_index];
+                ds->style = cp->sbuf[char_index];
             }
             c = eb_nextc(s->b, offset, &offset);
             if (c == '\n' && !(s->flags & WF_MINIBUF)) {
@@ -4765,6 +4815,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             //    break;
         }
     }
+    cp_destroy(cp);
     return offset;
 }
 

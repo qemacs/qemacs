@@ -387,6 +387,22 @@ Note: the return value `len` verifies `len >= 0` and `len < buf_size`.
 If a complete line was read, `buf[len] == '\n'` and `buf[len + 1] == '\0'`.
 Truncation can be detected by checking `buf[len] != '\n'` or `len < buf_size - 1`.
 
+### `int eb_get_line_length(EditBuffer *b, int offset, int *offset_ptr);`
+
+Get the length in codepoints of the line starting at offset `offset`
+as an number of code points. `offset` is bumped to point to the first
+character after the newline.
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the offset in bytes of the beginning of the line in
+the buffer
+
+* argument `offset_ptr` a pointer to a variable to receive the offset
+of the first unread character in the buffer.
+
+Return the number of codepoints in the line including the newline if any.
+
 ### `char32_t eb_next_glyph(EditBuffer *b, int offset, int *next_ptr);`
 
 Read the main character for the next glyph,

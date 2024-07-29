@@ -135,28 +135,28 @@ static int qe_skip_equivalent(EditState *s,
 
 static int qe_skip_style(EditState *s, int offset, int *offsetp, QETermStyle style)
 {
-    char32_t buf[COLORED_MAX_LINE_SIZE];
-    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
+    QEColorizeContext cp[1];
     int line_num, col_num, len, pos;
     int offset0, offset1;
 
     if (!s->colorize_mode && !s->b->b_styles)
         return 0;
 
+    cp_initialize(cp, s);
     eb_get_pos(s->b, &line_num, &col_num, offset);
     offset0 = eb_goto_bol2(s->b, offset, &pos);
-    len = get_colorized_line(s, buf, countof(buf), sbuf,
-                             offset0, &offset1, line_num);
-    if (len > countof(buf))
-        len = countof(buf);
-    if (pos >= len)
+    len = get_colorized_line(cp, offset0, &offset1, line_num);
+    if (len > cp->buf_size)
+        len = cp->buf_size;
+    if (pos >= len ||cp->sbuf[pos] != style) {
+        cp_destroy(cp);
         return 0;
-    if (sbuf[pos] != style)
-        return 0;
-    while (pos < len && sbuf[pos] == style) {
+    }
+    while (pos < len && cp->sbuf[pos] == style) {
         offset = eb_next(s->b, offset);
         pos++;
     }
+    cp_destroy(cp);
     *offsetp = offset;
     return 1;
 }
@@ -757,8 +757,7 @@ static char32_t matching_delimiter(char32_t c) {
 
 static void forward_block(EditState *s, int dir)
 {
-    char32_t buf[COLORED_MAX_LINE_SIZE];
-    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
+    QEColorizeContext cp[1];
     char32_t balance[MAX_LEVEL];
     int use_colors;
     int line_num, col_num, style, style0, level;
@@ -769,6 +768,8 @@ static void forward_block(EditState *s, int dir)
     int offset1;  /* offset of the beginning of the next line */
     char32_t c;
 
+    cp_initialize(cp, s);
+
     offset = s->offset;
     eb_get_pos(s->b, &line_num, &col_num, offset);
     offset1 = offset0 = eb_goto_bol2(s->b, offset, &pos);
@@ -776,15 +777,14 @@ static void forward_block(EditState *s, int dir)
     style0 = 0;
     len = 0;
     if (use_colors) {
-        len = get_colorized_line(s, buf, countof(buf), sbuf,
-                                 offset1, &offset1, line_num);
-        if (len < countof(buf) - 2) {
+        len = get_colorized_line(cp, offset1, &offset1, line_num);
+        if (len < cp->buf_size - 2) {
             if (pos > 0
-            &&  ((c = buf[pos - 1]) == ']' || c == '}' || c == ')')) {
-                style0 = sbuf[pos - 1];
+            &&  ((c = cp->buf[pos - 1]) == ']' || c == '}' || c == ')')) {
+                style0 = cp->sbuf[pos - 1];
             } else
             if (pos < len) {
-                style0 = sbuf[pos];
+                style0 = cp->sbuf[pos];
             }
         } else {
             /* very long line detected, use fallback version */
@@ -804,9 +804,8 @@ static void forward_block(EditState *s, int dir)
                 offset1 = offset0 = eb_goto_bol2(s->b, offset, &pos);
                 len = 0;
                 if (use_colors) {
-                    len = get_colorized_line(s, buf, countof(buf), sbuf,
-                                             offset1, &offset1, line_num);
-                    if (len >= countof(buf) - 2) {
+                    len = get_colorized_line(cp, offset1, &offset1, line_num);
+                    if (len >= cp->buf_size - 2) {
                         /* very long line detected, use fallback version */
                         use_colors = 0;
                         len = 0;
@@ -818,7 +817,7 @@ static void forward_block(EditState *s, int dir)
             style = 0;
             --pos;
             if (pos >= 0 && pos < len) {
-                style = sbuf[pos];
+                style = cp->sbuf[pos];
             }
             if (style != style0 && style != QE_STYLE_KEYWORD && style != QE_STYLE_FUNCTION) {
                 if (style0 == 0)
@@ -859,11 +858,11 @@ static void forward_block(EditState *s, int dir)
                         /* XXX: should set mark and offset */
                         put_status(s, "Unmatched delimiter %c <> %c",
                                    c, balance[level]);
-                        return;
+                        goto done;
                     }
                     if (level == 0) {
                         s->offset = offset;
-                        return;
+                        goto done;
                     }
                 } else {
                     /* silently move up one level */
@@ -881,9 +880,8 @@ static void forward_block(EditState *s, int dir)
                 offset1 = offset0 = offset;
                 len = 0;
                 if (use_colors) {
-                    len = get_colorized_line(s, buf, countof(buf), sbuf,
-                                             offset1, &offset1, line_num);
-                    if (len >= countof(buf) - 2) {
+                    len = get_colorized_line(cp, offset1, &offset1, line_num);
+                    if (len >= cp->buf_size - 2) {
                         /* very long line detected, use fallback version */
                         use_colors = 0;
                         len = 0;
@@ -895,7 +893,7 @@ static void forward_block(EditState *s, int dir)
             }
             style = 0;
             if (pos < len) {
-                style = sbuf[pos];
+                style = cp->sbuf[pos];
             }
             pos++;
             if (style0 != style && style != QE_STYLE_KEYWORD && style != QE_STYLE_FUNCTION) {
@@ -944,11 +942,11 @@ static void forward_block(EditState *s, int dir)
                         /* XXX: should set mark and offset */
                         put_status(s, "Unmatched delimiter %c <> %c",
                                    c, balance[level]);
-                        return;
+                        goto done;
                     }
                     if (level == 0) {
                         s->offset = offset;
-                        return;
+                        goto done;
                     }
                 } else {
                     /* silently move up one level */
@@ -963,6 +961,8 @@ static void forward_block(EditState *s, int dir)
     } else {
         s->offset = offset;
     }
+done:
+    cp_destroy(cp);
 }
 
 static void do_forward_block(EditState *s, int n)
@@ -2038,15 +2038,15 @@ static void do_sort_buffer(EditState *s, int argval, int flags) {
 /*---------------- tag handling ----------------*/
 
 static void tag_buffer(EditState *s) {
-    char32_t buf[COLORED_MAX_LINE_SIZE];
-    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
+    QEColorizeContext cp[1];
     int offset, line_num, col_num;
 
     if (s->colorize_mode || s->b->b_styles) {
+        cp_initialize(cp, s);
         /* force complete buffer colorization */
         eb_get_pos(s->b, &line_num, &col_num, s->b->total_size);
-        get_colorized_line(s, buf, countof(buf), sbuf,
-                           s->b->total_size, &offset, line_num);
+        get_colorized_line(cp, s->b->total_size, &offset, line_num);
+        cp_destroy(cp);
     }
 }
 
