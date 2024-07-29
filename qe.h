@@ -235,18 +235,19 @@ void qe_ungrab_keys(void);
 KeyDef *qe_find_binding(unsigned int *keys, int nb_keys, KeyDef *kd, int exact);
 KeyDef *qe_find_current_binding(unsigned int *keys, int nb_keys, ModeDef *m, int exact);
 
-#define COLORED_MAX_LINE_SIZE  16384
-
 /* colorize & transform a line, lower level then ColorizeFunc */
 /* XXX: should return `len`, the number of valid codepoints copied to
  * destination excluding the null terminator and newline if present.
  * Truncation can be detected by testing if a newline is present
  * at this offset.
  */
-typedef int (*GetColorizedLineFunc)(EditState *s,
-                                    char32_t *buf, int buf_size,
-                                    QETermStyle *sbuf,
-                                    int offset, int *offsetp, int line_num);
+//typedef int (*GetColorizedLineFunc)(EditState *s,
+//                                    char32_t *buf, int buf_size,
+//                                    QETermStyle *sbuf,
+//                                    int offset, int *offsetp, int line_num);
+
+#define COLORED_LINE_SIZE      1024
+#define MAX_COLORED_LINE_SIZE  (16L*1024*1024)
 
 struct QEColorizeContext {
     EditState *s;
@@ -256,10 +257,19 @@ struct QEColorizeContext {
     int state_only;
     int combine_start, combine_stop; /* region for combine_static_colorized_line() */
     int cur_pos;   /* position of cursor in line or -1 if outside line */
+    int buf_size;
+    char32_t  *buf;
+    QETermStyle *sbuf;
+    char32_t buf0[COLORED_LINE_SIZE];
+    QETermStyle sbuf0[COLORED_LINE_SIZE];
 };
 
-/* colorize a line: this function modifies buf to set the char
- * styles. 'buf' is guaranted to have one more '\0' char after its len.
+QEColorizeContext *cp_initialize(QEColorizeContext *cp, EditState *s);
+int cp_reallocate(QEColorizeContext *cp, int new_size);
+void cp_destroy(QEColorizeContext *cp);
+
+/* Colorize a line: this function modifies `sbuf` to set the character
+ * styles. 'buf' is guaranted to have a '\0' at buf[n].
  */
 typedef void (*ColorizeFunc)(QEColorizeContext *cp,
                              const char32_t *buf, int n,
@@ -569,6 +579,7 @@ int eb_insert_buffer_convert(EditBuffer *dest, int dest_offset,
                              int size);
 int eb_get_line(EditBuffer *b, char32_t *buf, int size,
                 int offset, int *offset_ptr);
+int eb_get_line_length(EditBuffer *b, int offset, int *offset_ptr);
 int eb_fgets(EditBuffer *b, char *buf, int size,
              int offset, int *offset_ptr);
 int eb_prev_line(EditBuffer *b, int offset);
@@ -1469,8 +1480,7 @@ int text_backward_offset(EditState *s, int offset);
 int text_display_line(EditState *s, DisplayState *ds, int offset);
 
 void set_colorize_mode(EditState *s, ModeDef *mode);
-int get_colorized_line(EditState *s, char32_t *buf, int buf_size,
-                       QETermStyle *sbuf,
+int get_colorized_line(QEColorizeContext *cp,
                        int offset, int *offsetp, int line_num);
 
 int do_delete_selection(EditState *s);

@@ -2566,6 +2566,29 @@ int eb_get_line(EditBuffer *b, char32_t *buf, int size,
     return len;
 }
 
+int eb_get_line_length(EditBuffer *b, int offset, int *offset_ptr)
+{
+    /*@API buffer
+       Get the length in codepoints of the line starting at offset `offset`
+       as an number of code points. `offset` is bumped to point to the first
+       character after the newline.
+       @argument `b` a valid pointer to an `EditBuffer`
+       @argument `offset` the offset in bytes of the beginning of the line in
+       the buffer
+       @argument `offset_ptr` a pointer to a variable to receive the offset
+       of the first unread character in the buffer.
+       @returns the number of codepoints in the line including the newline if any.
+     */
+    int len = 0;
+
+    while (eb_nextc(b, offset, &offset) != '\n') {
+        len++;
+    }
+    if (offset_ptr)
+        *offset_ptr = offset;
+    return len;
+}
+
 int eb_fgets(EditBuffer *b, char *buf, int size,
              int offset, int *offset_ptr)
 {

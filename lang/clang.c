@@ -786,16 +786,17 @@ static int c_line_has_label(EditState *s, const char32_t *buf, int len,
 */
 void c_indent_line(EditState *s, int offset0)
 {
+    QEColorizeContext cp[1];
     int offset, offset1, offsetl, pos, line_num, col_num;
     int i, eoi_found, len, pos1, lpos, style, line_num1, state;
     int off, found_comma, has_else;
     char32_t c;
     //int found_semi = 0;
-    char32_t buf[COLORED_MAX_LINE_SIZE];
-    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
     char32_t stack[MAX_STACK_SIZE];
     char kbuf[64], *q;
     int stack_ptr;
+
+    cp_initialize(cp, s);
 
     /* find start of line */
     eb_get_pos(s->b, &line_num, &col_num, offset0);
@@ -815,20 +816,19 @@ void c_indent_line(EditState *s, int offset0)
         line_num--;
         offsetl = eb_prev_line(s->b, offsetl);
         /* XXX: deal with truncation */
-        len = get_colorized_line(s, buf, countof(buf), sbuf,
-                                 offsetl, &offset1, line_num);
+        len = get_colorized_line(cp, offsetl, &offset1, line_num);
         /* get current indentation of this line, adjust if it has a label */
-        pos1 = find_indent1(s, buf);
+        pos1 = find_indent1(s, cp->buf);
         /* ignore empty and preprocessor lines */
-        if (pos1 == len || sbuf[0] == C_STYLE_PREPROCESS)
+        if (pos1 == len || cp->sbuf[0] == C_STYLE_PREPROCESS)
             continue;
-        if (c_line_has_label(s, buf, len, sbuf)) {
+        if (c_line_has_label(s, cp->buf, len, cp->sbuf)) {
             pos1 = pos1 - s->qe_state->c_label_indent + s->indent_size;
         }
         /* scan the line from end to start */
         for (off = len; off-- > 0;) {
-            c = buf[off];
-            style = sbuf[off];
+            c = cp->buf[off];
+            style = cp->sbuf[off];
             /* skip strings or comments */
             if (style == C_STYLE_COMMENT
             ||  style == C_STYLE_STRING
@@ -855,13 +855,13 @@ void c_indent_line(EditState *s, int offset0)
                 int off0, off1;
                 /* special case for if/for/while */
                 off1 = off;
-                while (off > 0 && sbuf[off - 1] == C_STYLE_KEYWORD)
+                while (off > 0 && cp->sbuf[off - 1] == C_STYLE_KEYWORD)
                     off--;
                 off0 = off;
                 if (stack_ptr == 0) {
                     q = kbuf;
                     while (q < kbuf + countof(kbuf) - 1 && off0 <= off1) {
-                        *q++ = buf[off0++];
+                        *q++ = cp->buf[off0++];
                     }
                     *q = '\0';
 
@@ -916,7 +916,7 @@ void c_indent_line(EditState *s, int offset0)
                 case '(':
                 case '[':
                     if (stack_ptr == 0) {
-                        pos = find_pos(s, buf, off) + 1;
+                        pos = find_pos(s, cp->buf, off) + 1;
                         goto end_parse;
                     } else {
                         char32_t matchc = (c == '(') ? ')' : ']';
@@ -968,7 +968,7 @@ void c_indent_line(EditState *s, int offset0)
                     /* XXX: should handle labels differently:
                        measure the indent and adjust by label_indent */
                     if (style == C_STYLE_DEFAULT
-                    &&  (off == 0 || !qe_isspace(buf[off - 1]))) {
+                    &&  (off == 0 || !qe_isspace(cp->buf[off - 1]))) {
                         off = 0;
                     }
                     break;
@@ -980,7 +980,7 @@ void c_indent_line(EditState *s, int offset0)
             }
         }
         if (pos1 == 0 && len > 0) {
-            style = sbuf[0];
+            style = cp->sbuf[0];
             if (style != C_STYLE_COMMENT
             &&  style != C_STYLE_STRING
             &&  style != C_STYLE_STRING_Q
@@ -993,10 +993,9 @@ void c_indent_line(EditState *s, int offset0)
   end_parse:
     /* compute special cases which depend on the chars on the current line */
     /* XXX: deal with truncation */
-    len = get_colorized_line(s, buf, countof(buf), sbuf,
-                             offset, &offset1, line_num1);
-    if (sbuf[0] == C_STYLE_PREPROCESS)
-        return;
+    len = get_colorized_line(cp, offset, &offset1, line_num1);
+    if (cp->sbuf[0] == C_STYLE_PREPROCESS)
+        goto done;
 
     if (stack_ptr == 0) {
         if (!pos && lpos >= 0) {
@@ -1008,11 +1007,11 @@ void c_indent_line(EditState *s, int offset0)
     }
 
     for (i = 0; i < len; i++) {
-        c = buf[i];
+        c = cp->buf[i];
         if (qe_isblank(c))
             continue;
         /* no looping from here down */
-        style = sbuf[i];
+        style = cp->sbuf[i];
         if (style == C_STYLE_STRING || style == C_STYLE_STRING_Q)
             break;
         /* if preprocess, no indent */
@@ -1034,12 +1033,12 @@ void c_indent_line(EditState *s, int offset0)
             break;
         }
         if (qe_isalpha_(c)) {
-            if (has_else == 1 && buf[i] == 'i' && buf[i + 1] == 'f' && !qe_isalnum_(buf[i + 2])) {
+            if (has_else == 1 && cp->buf[i] == 'i' && cp->buf[i + 1] == 'f' && !qe_isalnum_(cp->buf[i + 2])) {
                 /* unindent if after naked else */
                 pos -= s->indent_size;
                 break;
             }
-            if (c_line_has_label(s, buf + i, len - i, sbuf + i)) {
+            if (c_line_has_label(s, cp->buf + i, len - i, cp->sbuf + i)) {
                 pos -= s->indent_size + s->qe_state->c_label_indent;
                 break;
             }
@@ -1050,11 +1049,11 @@ void c_indent_line(EditState *s, int offset0)
             pos -= s->indent_size;
             break;
         }
-        if ((c == '&' || c == '|') && buf[i + 1] == c) {
+        if ((c == '&' || c == '|') && cp->buf[i + 1] == c) {
 #if 0
             int j;
             // XXX: should try and indent according to boolean expression depth
-            for (j = i + 2; buf[j] == ' '; j++)
+            for (j = i + 2; cp->buf[j] == ' '; j++)
                 continue;
             if (j == len) {
                 pos -= s->indent_size;
@@ -1095,10 +1094,9 @@ void c_indent_line(EditState *s, int offset0)
 #if 0
     if (s->mode->auto_indent > 1) {  /* auto format */
         /* recompute colorization of the current line (after re-indentation) */
-        len = get_colorized_line(s, buf, countof(buf), sbuf,
-                                 offset, &offset1, line_num1);
+        len = get_colorized_line(cp, offset, &offset1, line_num1);
         /* skip indentation */
-        for (pos = 0; qe_isblank(buf[pos]); pos++)
+        for (pos = 0; qe_isblank(cp->buf[pos]); pos++)
             continue;
         /* XXX: keywords "if|for|while|switch -> one space before `(` */
         /* XXX: keyword "return" -> one space before expression */
@@ -1117,6 +1115,8 @@ void c_indent_line(EditState *s, int offset0)
     if (s->offset >= offset && s->offset < offset1) {
         s->offset = offset1;
     }
+done:
+    cp_destroy(cp);
 }
 
 static void do_c_indent(EditState *s)
@@ -1170,21 +1170,21 @@ static void do_c_newline(EditState *s)
 /* forward / backward preprocessor */
 static void c_forward_conditional(EditState *s, int dir)
 {
-    char32_t buf[COLORED_MAX_LINE_SIZE], *p;
-    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
+    QEColorizeContext cp[1];
+    char32_t *p;
     int line_num, col_num, sharp, level;
     int offset, offset0, offset1;
 
+    cp_initialize(cp, s);
     offset = offset0 = eb_goto_bol(s->b, s->offset);
     eb_get_pos(s->b, &line_num, &col_num, offset);
     level = 0;
     for (;;) {
-        get_colorized_line(s, buf, countof(buf), sbuf,
-                           offset, &offset1, line_num);
+        get_colorized_line(cp, offset, &offset1, line_num);
         sharp = 0;
-        for (p = buf; *p; p++) {
+        for (p = cp->buf; *p; p++) {
             char32_t c = *p;
-            int style = sbuf[p - buf];
+            int style = cp->sbuf[p - cp->buf];
             if (qe_isblank(c))
                 continue;
             if (c == '#' && style == C_STYLE_PREPROCESS)
@@ -1226,6 +1226,7 @@ static void c_forward_conditional(EditState *s, int dir)
         }
     }
     s->offset = offset;
+    cp_destroy(cp);
 }
 
 static void do_c_forward_conditional(EditState *s, int n)
@@ -1238,8 +1239,8 @@ static void do_c_forward_conditional(EditState *s, int n)
 
 static void do_c_list_conditionals(EditState *s)
 {
-    char32_t buf[COLORED_MAX_LINE_SIZE], *p;
-    QETermStyle sbuf[COLORED_MAX_LINE_SIZE];
+    QEColorizeContext cp[1];
+    char32_t *p;
     int line_num, col_num, sharp, level;
     int offset, offset1;
     EditBuffer *b;
@@ -1248,18 +1249,18 @@ static void do_c_list_conditionals(EditState *s)
     if (!b)
         return;
 
+    cp_initialize(cp, s);
     offset = eb_goto_bol(s->b, s->offset);
     eb_get_pos(s->b, &line_num, &col_num, offset);
     level = 0;
     while (offset > 0) {
         line_num--;
         offset = eb_prev_line(s->b, offset);
-        get_colorized_line(s, buf, countof(buf), sbuf,
-                           offset, &offset1, line_num);
+        get_colorized_line(cp, offset, &offset1, line_num);
         sharp = 0;
-        for (p = buf; *p; p++) {
+        for (p = cp->buf; *p; p++) {
             char32_t c = *p;
-            int style = sbuf[p - buf];
+            int style = cp->sbuf[p - cp->buf];
             if (qe_isblank(c))
                 continue;
             if (c == '#' && style == C_STYLE_PREPROCESS)
@@ -1291,6 +1292,7 @@ static void do_c_list_conditionals(EditState *s)
         eb_free(&b);
         put_status(s, "Not in a #if conditional");
     }
+    cp_destroy(cp);
 }
 
 /* C mode specific commands */
