@@ -4367,6 +4367,7 @@ void cp_colorize_line(QEColorizeContext *cp,
 {
     if (syn && syn->colorize_func) {
         buf += i;
+        sbuf += i;
         n -= i;
         if (buf[n] != '\0') {
             /* ensure buf is null terminated, clone if needed */

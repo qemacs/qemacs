@@ -3641,9 +3641,9 @@ void shell_colorize_line(QEColorizeContext *cp,
                     if (!mc)
                         continue;
                     c = str[i];
-                    if (c == "()"[0]) {
+                    if (c == '(') {
                         /* this is an old style filename position */
-                        i += match_digits(str + i, n - i, "()"[1]);
+                        i += match_digits(str + i, n - i, ')');
                         i += (str[i] == ':');
                         cp->colorize_state = mc;
                         start = i;
