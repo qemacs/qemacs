@@ -1627,7 +1627,7 @@ Transpose the bytes of a 16-bit word
 
 * argument `v` a 16-bit integer value
 
-Return: the value with transposed bytes
+Return the value with transposed bytes
 
 ### `uint32_t bswap32(uint32_t v);`
 
@@ -1635,7 +1635,7 @@ Transpose the bytes of a 32-bit word
 
 * argument `v` a 32-bit integer value
 
-Return: the value with transposed bytes
+Return the value with transposed bytes
 
 ### `uint64_t bswap64(uint64_t v);`
 
@@ -1643,7 +1643,7 @@ Transpose the bytes of a 64-bit word
 
 * argument `v` a 64-bit integer value
 
-Return: the value with transposed bytes
+Return the value with transposed bytes
 
 ### `void canonicalize_path(char *buf, int buf_size, const char *path);`
 
@@ -1889,6 +1889,27 @@ Note: the value must be stored in memory in the native byte order
 ### `int get_js_identifier(char *dest, int size, char32_t c, const char32_t *str, int i, int n);`
 
 Grab an identifier from a char32_t buffer, accept non-ASCII identifiers
+and encode in UTF-8.
+
+* argument `dest` a pointer to the destination array
+
+* argument `size` the length of the destination array in bytes
+
+* argument `c` the initial code point or `0` if none
+
+* argument `str` a valid pointer to an array of codepoints
+
+* argument `i` the index to the next codepoint
+
+* argument `n` the length of the codepoint array
+
+Return the number of codepoints used in the source array.
+
+Note: `dest` can be a null pointer if `size` is `0`.
+
+### `int get_rye_identifier(char *dest, int size, char32_t c, const char32_t *str, int i, int n);`
+
+Grab a rye identifier from a char32_t buffer, accept non-ASCII identifiers
 and encode in UTF-8.
 
 * argument `dest` a pointer to the destination array
