@@ -669,7 +669,7 @@ static inline uint16_t bswap16(uint16_t v) {
     /*@API utils
        Transpose the bytes of a 16-bit word
        @argument `v` a 16-bit integer value
-       @return: the value with transposed bytes
+       @return the value with transposed bytes
      */
     return (v >> 8) | (v << 8);
 }
@@ -680,7 +680,7 @@ static inline uint32_t bswap32(uint32_t v) {
     /*@API utils
        Transpose the bytes of a 32-bit word
        @argument `v` a 32-bit integer value
-       @return: the value with transposed bytes
+       @return the value with transposed bytes
      */
     return (((v & 0xff000000) >> 24) | ((v & 0x00ff0000) >>  8) |
             ((v & 0x0000ff00) <<  8) | ((v & 0x000000ff) << 24));
@@ -692,7 +692,7 @@ static inline uint64_t bswap64(uint64_t v) {
     /*@API utils
        Transpose the bytes of a 64-bit word
        @argument `v` a 64-bit integer value
-       @return: the value with transposed bytes
+       @return the value with transposed bytes
      */
     return (((v & ((uint64_t)0xff << (7 * 8))) >> (7 * 8)) |
             ((v & ((uint64_t)0xff << (6 * 8))) >> (5 * 8)) |
