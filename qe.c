@@ -722,24 +722,32 @@ static CompletionDef color_completion = {
 
 void do_bof(EditState *s)
 {
+    maybe_set_mark(s);
+
     if (s->mode->move_bof)
         s->mode->move_bof(s);
 }
 
 void do_eof(EditState *s)
 {
+    maybe_set_mark(s);
+
     if (s->mode->move_eof)
         s->mode->move_eof(s);
 }
 
 void do_bol(EditState *s)
 {
+    maybe_set_mark(s);
+
     if (s->mode->move_bol)
         s->mode->move_bol(s);
 }
 
 void do_eol(EditState *s)
 {
+    maybe_set_mark(s);
+
     if (s->mode->move_eol)
         s->mode->move_eol(s);
 }
@@ -747,6 +755,8 @@ void do_eol(EditState *s)
 void do_word_left_right(EditState *s, int n)
 {
     int dir = n < 0 ? -1 : 1;
+
+    maybe_set_mark(s);
 
     for (; n != 0; n -= dir) {
         if (s->mode->move_word_left_right)
@@ -1155,6 +1165,8 @@ void do_up_down(EditState *s, int n)
 {
     int dir = n < 0 ? -1 : 1;
 
+    maybe_set_mark(s);
+
     for (; n != 0; n -= dir) {
 #ifndef CONFIG_TINY
         if (s->b->flags & BF_PREVIEW) {
@@ -1174,6 +1186,8 @@ void do_up_down(EditState *s, int n)
 void do_left_right(EditState *s, int n)
 {
     int dir = n < 0 ? -1 : 1;
+
+    maybe_set_mark(s);
 
     for (; n != 0; n -= dir) {
 #ifndef CONFIG_TINY
@@ -1322,6 +1336,8 @@ void do_scroll_left_right(EditState *s, int n)
 
 void do_scroll_up_down(EditState *s, int dir)
 {
+    maybe_set_mark(s);
+
     if (s->mode->scroll_up_down)
         s->mode->scroll_up_down(s, dir);
 }
@@ -2033,6 +2049,13 @@ void do_set_mark(EditState *s)
 {
     do_mark_region(s, s->offset, s->offset);
     put_status(s, "Mark set");
+}
+
+void maybe_set_mark(EditState *s)
+{
+    if (!s->region_style && is_shift_key(s->qe_state->last_key)) {
+        do_set_mark(s);
+    }
 }
 
 void do_mark_whole_buffer(EditState *s)

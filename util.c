@@ -1709,6 +1709,32 @@ int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys)
     return out->len - start;
 }
 
+int is_shift_key(int key) {
+    if (qe_isupper(key))
+        return 1;
+    switch (key) {
+    case KEY_SHIFT_TAB:
+    case KEY_SHIFT_LEFT:
+    case KEY_SHIFT_RIGHT:
+    case KEY_SHIFT_UP:
+    case KEY_SHIFT_DOWN:
+    case KEY_SHIFT_HOME:
+    case KEY_SHIFT_END:
+    case KEY_SHIFT_PAGEUP:
+    case KEY_SHIFT_PAGEDOWN:
+    case KEY_CTRL_SHIFT_LEFT:
+    case KEY_CTRL_SHIFT_RIGHT:
+    case KEY_CTRL_SHIFT_UP:
+    case KEY_CTRL_SHIFT_DOWN:
+    case KEY_CTRL_SHIFT_HOME:
+    case KEY_CTRL_SHIFT_END:
+    case KEY_CTRL_SHIFT_PAGEUP:
+    case KEY_CTRL_SHIFT_PAGEDOWN:
+        return 1;
+    }
+    return 0;
+}
+
 /*---- StringArray functions ----*/
 
 /* set one string. */

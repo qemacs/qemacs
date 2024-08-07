@@ -4,7 +4,7 @@
 
 ## Current work
 
-* pass `indent` and `style` array to `ColorizeFunc`.
+* pass `indent` to `ColorizeFunc`.
 * `S-TAB` -> untabify
 * `TAB` and `S-TAB` with selected block -> indent, unindent block
 * should implement a maximum macro length and abort macro learning mode if reached
@@ -16,6 +16,8 @@
   - if not modified since save, read in separate buffer and compare.
      - if difference before window start, mark and/or point, try and resync
   - if modified, modified version should be kept in a separate buffer.
+* kill eval result so it can be yanked where appropriate
+* integrate qscript
 
 ## Documentation / Support
 
@@ -39,7 +41,9 @@
 
 ## Core / Buffer / Input
 
-* `describe-key-briefly`, `local-set-key`, etc should use a special input mode to read a string of keys via the minibuffer to remove the `qe_key_process` hack and use the same input behavior as emacs.
+* `describe-key-briefly`, `local-set-key`, etc should use a special input mode
+  to read a string of keys via the minibuffer to remove the `qe_key_process` hack
+  and use the same input behavior as emacs.
 * in command specs, distinguish between interactive commands and non interactive functions
 * use tabulation context for `text_screen_width`
 * add method pointers in windows initialized from fallback chain
@@ -52,7 +56,7 @@
 * `qe_realloc`: typed and clear reallocated area
 * use failsafe memory allocator and `longjmp` recover.
 * move `ungot_key` to `key_context`
-* splitting pages should fall on 32 bit boundaries (difficult)
+* splitting pages should fall on 32-bit boundaries (difficult)
 * handle broken charset sequences across page boundaries
 * allow recursive main loop, and remove input callbacks
 * synced virtual buffers with restricted range
@@ -77,29 +81,21 @@
   an EditBuffer could also have an embedded QECursor with no EditState
 * use hash tables for command and variable names
 * sort key binding tables?
-* `save-some-buffers` command on C-x s
-* standardize key prefixes: C-, M-, S- and possibly others
-* use C-M- prefix instead of M-C- in source and documentation but support
+* `save-some-buffers` command on `C-x s`
+* standardize key prefixes: `C-`, `M-`, `S-` and possibly others
+* use `C-M-` prefix instead of `M-C-` in source and documentation but support
 both in `strtokey`
 * redefine `KEY_Fx` to make them sequential
-* rationalize KEY_xxx definitions and modifier bits to support all combinations
-* add registrable escape sequences and key names
-  ex: S-f5 = ^[[15;2~
-* add registrable key translations for NON ASCII input
-  ex: C-x 8 3 / 4	¾
+* rationalize `KEY_xxx` definitions and modifier bits to support all combinations
+* add registrable escape sequences and key names (eg: `S-f5 = ^[[15;2~`)
+* add registrable key translations for NON ASCII input (eg: `C-x 8 3 / 4	¾`)
 
 ## Charsets / Unicode / Bidir
 
+### UTF-8 / Unicode
+
 * add default charset for new buffer creation, set that to utf8
 * better display of invalid UTF-8 encodings
-* change character detection API to handle cross page spanning
-* fix `eb_prev_char` to handle non self-synchronizing charsets
-* handle chinese encodings
-* handle euc-kr
-* add JIS missing encoding functions
-* add JIS charset probing functions
-* autodetect sjis, euc-jp...
-* fix kana input method
 * update cp directory from more recent unicode tables
 * UTF-8 variants: CESU-8, Modified UTF-8, UTF-16
 * UTF-1 obsolete standard encoding for Unicode
@@ -107,6 +103,25 @@ both in `strtokey`
 * limit number of combining marks to 20
 * use `unichar`, `rune` and/or `u8` types (using `char32_t` at the moment)
 * detect bad encoding and use `errno` to tell caller
+
+### East-asian
+
+* handle chinese encodings
+* handle euc-kr
+* add JIS missing encoding functions
+* add JIS charset probing functions
+* autodetect sjis, euc-jp...
+* fix kana input method
+
+### Bidir
+
+* test Hebrew keymap support.
+* rewrite bidirectional algorithm and support
+
+### Other
+
+* change character detection API to handle cross page spanning
+* fix `eb_prev_char` to handle non self-synchronizing charsets
 * auto/mixed eol mode
 * `set-eol-type` should take a string: auto/binary/dos/unix/mac/0/1/2...
 * display `^L` as horizontal line and consider as linebreak character
@@ -117,8 +132,6 @@ both in `strtokey`
   cp="200E" na="LEFT-TO-RIGHT MARK" alias="LRM"
   cp="200F" na="RIGHT-TO-LEFT MARK" alias="RLM"
 * `set_input_method()` and `set_buffer_file_coding_system()` in config file.
-* test Hebrew keymap support.
-* rewrite bidirectional algorithm and support
 * use Unicode file hierarchy for code page files
 * handle or remove extra code page files:
   CP1006.TXT CP1253.TXT CP1254.TXT CP1255.TXT CP1258.TXT
@@ -129,7 +142,7 @@ both in `strtokey`
   MAC-CYRILLIC.TXT MAC-GREEK.TXT MAC-ICELAND.TXT MAC-TURKISH.TXT
   koi8_ru.cp APL-ISO-IR-68.TXT GSM0338.TXT SGML.TXT
 * deal with accents in filenames (macOS uses combining accents encoded as UTF-8)
-* rename `eb_putc` as it handles the full char32_t range
+* rename `eb_putc` as it handles the full `char32_t` range
 
 ## Windowing / Display
 
@@ -217,7 +230,7 @@ insert_window_left()  deletes some left-most windows
 * handle filenames with embedded spaces
 * use trick for entering spaces in filename prompts without completion
 * fix `s->offset` reset to 0 upon `C-x C-f newfile ENT C-x 2 C-x b ENT`
-* insert-file: load via separate buffer with charset conversion
+* `insert-file`: load via separate buffer with charset conversion
 * `qe_load_file` should split screen evenly for `LF_SPLIT_SCREEN` flag
 * [Idea] save file to non existent path -> create path.
 * [Idea] find-file: gist:snippet
@@ -239,7 +252,7 @@ insert_window_left()  deletes some left-most windows
 * improve speed: `C-x C-f ~/x2m RET C-u 1000 C-n` -> 4s
 * use a prefix to explore file in a popup window
 
-## Moving / Editing / Navigation
+# Moving / Editing / Navigation
 
 * pass argval and pagewise to `do_scroll_up_down()` or split command
 * files: fix `SPC` / `TAB` distinct behaviors on **~/comp/project/gnachman/**
@@ -275,11 +288,12 @@ insert_window_left()  deletes some left-most windows
 * move by paragraph on `M-[` and `M-]`
 * `fill-paragraph` should default indentation for the second and subsequent
     lines to that of the first line
-* scroll horizontally on `M-{` and `M-}`
+* scroll horizontally on `M-{` and `M-}`: should move point if scrolling
+    moves it past the window borders
 * scroll up/down with argument should scroll by screen row.
 * simplify `C-z` and `A-z` accordingly
 * rectangular regions, cut/paste
-* multi-line editing
+* multi-line editing with `C-x <`, `C-x SPC`, `C-x >`
 
 ## Macros
 
@@ -384,7 +398,6 @@ insert_window_left()  deletes some left-most windows
 * fix colors, default schemes...
 * add style recent changes (`highlight-recent-changes`)
 * make styles and log buffers read-only and display as binary
-* fix overlong line coloring
 * make `style-buffer-mode` and `log-buffer-mode`
 
 ## Modes
@@ -427,18 +440,19 @@ insert_window_left()  deletes some left-most windows
   * `list-definitions` with hot load function
   * `show-definition` in popup
   * handle standard libraries with tag system
-  * generate #include lines automatically
+  * generate `#include` lines automatically
 * autocomplete keyword, function, variable, member names
 * `c-mode` descendants:
+  * TAB in whitespace should remove forward white space and indent under
   * TAB at end of line or in space before \ should align on \ from previous line
-  * preserve macro \ alignment when editing
+  * preserve macro \ alignment when editing (auto overwrite)
   * see if java/javascript/c++ is OK.
   * `as-mode`: ActionStript files
   * `awk-mode`
-  * C++ mode
+  * `cpp-mode`: C++
   * `objc-mode`: Objective C
   * `csharp-mode`: C#
-  * `d-mode`
+  * `d-mode`: D
   * `java-mode`
   * `javascript-mode`, `js-mode` -> javascript files
     * support for v8 natives syntax %ddd()
@@ -738,9 +752,9 @@ insert_window_left()  deletes some left-most windows
   * `yaml-mode`
   * qmake, scons, ant, maven, bitC
 
-### New modes
+## New modes
 
-## `csv-mode`
+### `csv-mode`
 
 * CSV database functions
   - `csv_find(string where)`
@@ -755,18 +769,18 @@ insert_window_left()  deletes some left-most windows
   - `csv_insert_lines(string field_list)`
   - `csv_sort(string field_list)`
 
-## `json-mode`
+### `json-mode`
 
 * auto-wrap and indent
 * JSON database functions
 * pretty view with auto indent hierarchival view
 
-## `xml-mode`
+### `xml-mode`
 
 * auto-wrap and indent
 * XML database functions
 
-## Other modes
+### Other modes
 
 * `rst-mode`: support ReStructuredText (RST)
 * `auto-compression-mode`
@@ -783,8 +797,3 @@ insert_window_left()  deletes some left-most windows
 * abbreviation mode
 * ispell / spell checker
 * printing support
-
-## Fly zone
-
-* kill eval result so it can be yanked where appropriate
-* integrate qscript

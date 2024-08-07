@@ -83,28 +83,28 @@ static const CmdDef basic_commands[] = {
 
     /* Moving around */
 
-    CMD2( "previous-line", "C-p, up",
+    CMD2( "previous-line", "C-p, up, S-up",
           "Move to previous line",
           do_up_down, ESi, "q")
-    CMD2( "next-line", "C-n, down",
+    CMD2( "next-line", "C-n, down, S-down",
           "Move to next line",
           do_up_down, ESi, "p")
-    CMD2( "backward-char", "C-b, left",
+    CMD2( "backward-char", "C-b, left, S-left",
           "Move to the previous character",
           do_left_right, ESi, "q")
-    CMD2( "forward-char", "C-f, right",
+    CMD2( "forward-char", "C-f, right, S-right",
           "Move to the next character",
           do_left_right, ESi, "p")
-    CMD2( "backward-word", "M-b, C-left, M-left",
+    CMD2( "backward-word", "M-b, C-left, M-left, C-S-left, M-S-left",
           "Move to the beginning of the word on or before point",
           do_word_left_right, ESi, "q")
-    CMD2( "forward-word", "M-f, C-right, M-right",
+    CMD2( "forward-word", "M-f, C-right, M-right, C-S-right, M-S-right",
           "Move to the end of the word on or after point",
           do_word_left_right, ESi, "p")
-    CMD1( "scroll-down", "M-v, pageup",
+    CMD1( "scroll-down", "M-v, pageup, S-pageup",
           "Display the previous page",
           do_scroll_up_down, -2) /* u? */
-    CMD1( "scroll-up", "C-v, pagedown",
+    CMD1( "scroll-up", "C-v, pagedown, S-pagedown",
           "Display the next page",
           do_scroll_up_down, 2) /* u? */
     CMD1( "scroll-down-one", "M-z",
@@ -113,16 +113,16 @@ static const CmdDef basic_commands[] = {
     CMD1( "scroll-up-one", "C-z",
           "Move the window contents up one line",
           do_scroll_up_down, 1) /* u? */
-    CMD0( "beginning-of-line", "C-a, home",
+    CMD0( "beginning-of-line", "C-a, home, S-home",
           "Move point to the beginning of the line",
           do_bol)
-    CMD0( "end-of-line", "C-e, end",
+    CMD0( "end-of-line", "C-e, end, S-end",
           "Move point to the end of the line",
           do_eol)
-    CMD0( "beginning-of-buffer", "M-<, C-home",
+    CMD0( "beginning-of-buffer", "M-<, C-home, C-S-home",
           "Move point to the beginning of the buffer",
           do_bof)
-    CMD0( "end-of-buffer", "M->, C-end",
+    CMD0( "end-of-buffer", "M->, C-end, C-S-end",
           "Move point to the end of the buffer",
           do_eof)
 
