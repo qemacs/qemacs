@@ -1561,6 +1561,7 @@ void do_center_cursor(EditState *s, int force);
 void do_quoted_insert(EditState *s, int argval);
 void do_overwrite_mode(EditState *s, int argval);
 // should take argval
+void maybe_set_mark(EditState *s);
 void do_set_mark(EditState *s);
 void do_mark_whole_buffer(EditState *s);
 void do_yank(EditState *s);

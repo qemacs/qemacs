@@ -697,6 +697,7 @@ int strtokeys(const char *keystr, unsigned int *keys, int max_keys, const char *
 int buf_put_key(buf_t *out, int key);
 int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys);
 int buf_quote_byte(buf_t *out, unsigned char ch);
+int is_shift_key(int key);
 
 /* XXX: should use a more regular key mapping scheme:
    - 0000..001F: standard control keys: KEY_CTRL('@') to KEY_CTRL('@') to KEY_CTRL('_')

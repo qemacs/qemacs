@@ -2390,7 +2390,10 @@ int eb_prev_paragraph(EditBuffer *b, int offset) {
     return offset;
 }
 
-void do_forward_paragraph(EditState *s, int n) {
+void do_forward_paragraph(EditState *s, int n)
+{
+    maybe_set_mark(s);
+
     for (; n < 0 && s->offset > 0; n++) {
         s->offset = eb_prev_paragraph(s->b, s->offset);
     }
@@ -2736,10 +2739,10 @@ static const CmdDef extra_commands[] = {
     CMD2( "mark-paragraph", "M-h",
           "Mark the paragraph at or after point",
           do_mark_paragraph, ESi, "p")
-    CMD2( "backward-paragraph", "M-{, C-up",
+    CMD2( "backward-paragraph", "M-{, C-up, C-S-up",
           "Move point to the beginning of the paragraph at or before point",
           do_forward_paragraph, ESi, "q")
-    CMD2( "forward-paragraph", "M-}, C-down",
+    CMD2( "forward-paragraph", "M-}, C-down, C-S-down",
           "Move point to the end of the paragraph at or before point",
           do_forward_paragraph, ESi, "p")
     CMD2( "fill-paragraph", "M-q",
