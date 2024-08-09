@@ -766,6 +766,11 @@ struct EditState {
     int compose_start_offset;
     char32_t compose_buf[20];
     OWNED EditState *next_window;
+
+    int *multi_cursor;
+    int multi_cursor_len;
+    int multi_cursor_cur;
+    int multi_cursor_active;
 };
 
 /* Ugly patch for saving/restoring window data upon switching buffer */

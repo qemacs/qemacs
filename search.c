@@ -484,6 +484,7 @@ static void isearch_run(ISearchState *is) {
         s->b->mark = is->saved_mark;
         s->offset = is->start_offset;
         s->region_style = 0;
+        s->multi_cursor_active = 0;
         is->found_offset = -1;
     } else {
         if (search_offset == is->found_offset

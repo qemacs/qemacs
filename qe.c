@@ -1043,7 +1043,7 @@ void do_backspace(EditState *s, int argval)
         // XXX: this does not work for c-mode
         // XXX: should implement backward-delete-char-untabify instead
         if (s->qe_state->last_cmd_func == (CmdFunc)do_tab
-        &&  !s->indent_tabs_mode) {
+        &&  !s->indent_tabs_mode && !s->multi_cursor_active) {
             /* Delete tab or indentation? */
             do_undo(s);
             return;
@@ -2037,6 +2037,7 @@ void do_keyboard_quit(EditState *s)
     s->region_style = 0;
     /* deactivate search hilite */
     s->isearch_state = NULL;
+    s->multi_cursor_active = 0;
 
     /* well, currently nothing needs to be aborted in global context */
     /* CG: Should remove sidepanes, helppanes... */
@@ -6073,6 +6074,81 @@ static void macro_add_key(int key)
     qs->macro_keys[qs->nb_macro_keys++] = key;
 }
 
+/*---------------- multi-cursor handling ----------------*/
+
+#ifdef CONFIG_TINY
+#define qe_free_multi_cursor(s)
+#else
+static void qe_add_multi_cursor_position(EditState *s, int offset) {
+    /* First unregister the callbacks because the array may be reallocated */
+    int i;
+    for (i = 0; i < s->multi_cursor_len; i++) {
+        eb_free_callback(s->b, eb_offset_callback, &s->multi_cursor[i]);
+    }
+    if (qe_realloc_array(&s->multi_cursor, s->multi_cursor_len + 1)) {
+        s->multi_cursor[s->multi_cursor_len++] = offset;
+    }
+    for (i = 0; i < s->multi_cursor_len; i++) {
+        eb_add_callback(s->b, eb_offset_callback, &s->multi_cursor[i], 0);
+    }
+}
+
+static void qe_free_multi_cursor(EditState *s) {
+    while (s->multi_cursor_len > 0) {
+        eb_free_callback(s->b, eb_offset_callback, &s->multi_cursor[--s->multi_cursor_len]);
+    }
+    qe_free(&s->multi_cursor);
+    s->multi_cursor_len = 0;
+    s->multi_cursor_cur = 0;
+    s->multi_cursor_active = 0;
+}
+
+static void do_activate_multi_cursor(EditState *s) {
+    if (s->multi_cursor_active)
+        return;
+    if (s->region_style) {
+        int start_line, start_col, end_line, end_col, line;
+        int start = min_int(s->b->mark, s->offset);
+        int end = max_int(s->b->mark, s->offset);
+        eb_get_pos(s->b, &start_line, &start_col, start);
+        eb_get_pos(s->b, &end_line, &end_col, end);
+        qe_free_multi_cursor(s);
+        for (line = start_line; line < end_line; line++) {
+            // TODO: should we pad line if too short?
+            int pos = eb_goto_pos(s->b, line, start_col);
+            qe_add_multi_cursor_position(s, pos);
+        }
+        // TODO: need some way of rendering multi-line cursor
+        s->region_style = 0;
+        s->offset = start;
+    }
+    if (s->multi_cursor_len) {
+        swap_int(&s->offset, &s->multi_cursor[0]);
+        s->multi_cursor_cur = 0;
+        s->multi_cursor_active = 1;
+    } else {
+        put_status(s, "No multi-cursor defined");
+    }
+}
+
+static void do_start_multi_cursor(EditState *s) {
+    qe_free_multi_cursor(s);
+    // TODO: need some way of rendering multi-line cursor
+    do_set_mark(s);
+}
+
+static void do_end_multi_cursor(EditState *s) {
+    // XXX: not sure what UX to use
+    do_activate_multi_cursor(s);
+}
+
+static void do_add_multi_cursor(EditState *s) {
+    qe_add_multi_cursor_position(s, s->offset);
+}
+#endif
+
+/*---------------- key dispatcher ----------------*/
+
 typedef struct QEKeyContext {
     int has_arg;
     int argval;
@@ -6318,6 +6394,7 @@ static void qe_key_process(int key)
             goto next;
         } else {
             int argval = c->argval;
+            int multi_cursor_active = s->multi_cursor_active;
             if (c->has_arg & HAS_ARG_NEGATIVE)
                 argval = -argval;
             else
@@ -6336,6 +6413,28 @@ static void qe_key_process(int key)
                 qs->last_key = key;
             }
             exec_command(s, d, argval, key);
+            if (multi_cursor_active && check_window(&s)) {
+                if (s != qs->active_window) {
+                    /* end multi-cursor session upto window change */
+                    s->multi_cursor_active = 0;
+                }
+                s->multi_cursor[0] = s->offset;
+                for (int i = 1; s->multi_cursor_active && i < s->multi_cursor_len; i++) {
+                    swap_int(&s->offset, &s->multi_cursor[i]);
+                    s->multi_cursor_cur = i;
+                    /* prevent append-next-kill */
+                    if (s->qe_state->last_cmd_func == (CmdFunc)do_append_next_kill)
+                        qs->last_cmd_func = NULL;
+                    exec_command(s, d, argval, key);
+                    if (!check_window(&s))
+                        break;
+                    s->multi_cursor_cur = 0;
+                    swap_int(&s->offset, &s->multi_cursor[i]);
+                    if (s != qs->active_window) {
+                        s->multi_cursor_active = 0;
+                    }
+                }
+            }
         }
         if (qs->defining_macro) {
             qs->nb_macro_keys_run = qs->nb_macro_keys;
@@ -6536,6 +6635,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
     if (b0) {
         /* Save generic mode data to the buffer */
         generic_save_window_data(s);
+        qe_free_multi_cursor(s);
 
         /* Close the mode */
         edit_set_mode(s, NULL);

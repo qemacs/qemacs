@@ -1255,8 +1255,9 @@ void do_undo(EditState *s)
         return;
     }
 
-    /* deactivate region hilite */
+    /* deactivate region hilite and multi-cursor */
     s->region_style = 0;
+    s->multi_cursor_active = 0;
 
     /* Should actually keep undo state current until new logs are added */
     if (s->qe_state->last_cmd_func != (CmdFunc)do_undo
