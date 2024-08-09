@@ -338,6 +338,19 @@ static const CmdDef basic_commands[] = {
           "Set the printf-like format for `macro-insert-counter`",
           do_macro_set_format, ESs,
           "s{Format: }|macroformat|")
+
+    CMD0( "start-multi-cursor", "C-x <",
+          "Start recording a multi-line cursor",
+          do_start_multi_cursor)
+    CMD0( "end-multi-cursor", "C-x >",
+          "End recording a multi-line cursor",
+          do_end_multi_cursor)
+    CMD0( "add-multi-cursor", "C-x #",
+          "Add point to the current multi-line cursor",
+          do_add_multi_cursor)
+    CMD0( "activate-multi-cursor", "C-x \\",
+          "Activate multi-line cursor editing (stop with C-g)",
+          do_activate_multi_cursor)
 #endif
     /* set/unset key? */
     CMD3( "global-set-key", "f4",

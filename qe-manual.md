@@ -2296,6 +2296,14 @@ filename part.
 Note: `dirname` will receive an empty string if `pathname` contains
 just a filename.
 
+### `void swap_int(int *a, int *b);`
+
+Swap the values of 2 integer variables
+
+* argument `a` a valid pointer to an `int` value
+
+* argument `b` a valid pointer to an `int` value
+
 ### `int umemcmp(const char32_t *s1, const char32_t *s2, size_t count);`
 
 Compare two blocks of code points and return an integer indicative of

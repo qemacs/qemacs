@@ -429,6 +429,17 @@ static inline int64_t min_int64(int64_t a, int64_t b) {
         return b;
 }
 
+static inline void swap_int(int *a, int *b) {
+    /*@API utils
+       Swap the values of 2 integer variables
+       @argument `a` a valid pointer to an `int` value
+       @argument `b` a valid pointer to an `int` value
+     */
+    int tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
 static inline int clz32(unsigned int a) {
     /*@API utils
        Compute the number of leading zeroes in an unsigned 32-bit integer
