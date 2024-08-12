@@ -7,6 +7,8 @@
 * pass `indent` to `ColorizeFunc`.
 * `S-TAB` -> untabify
 * `TAB` and `S-TAB` with selected block -> indent, unindent block
+* `TAB` -> complete function name etc.
+* add parametric syntax definitions (nanorc files).
 * should implement a maximum macro length and abort macro learning mode if reached
 * should keep modified status when undoing past a buffer save command
 * should swap buffer names in `compare-files`
@@ -38,6 +40,8 @@
 * show memory stats in `describe-buffer` and `about-qemacs`
 * add function to add entry in **TODO.md**
 * move mailing list to github or private server
+* range restricted search and replace
+* different range display styles
 
 ## Core / Buffer / Input
 
@@ -293,7 +297,6 @@ insert_window_left()  deletes some left-most windows
 * scroll up/down with argument should scroll by screen row.
 * simplify `C-z` and `A-z` accordingly
 * rectangular regions, cut/paste
-* multi-line editing with `C-x <`, `C-x SPC`, `C-x >`
 
 ## Macros
 
