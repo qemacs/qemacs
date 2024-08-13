@@ -5,8 +5,6 @@
 ## Current work
 
 * pass `indent` to `ColorizeFunc`.
-* `S-TAB` -> untabify
-* `TAB` and `S-TAB` with selected block -> indent, unindent block
 * `TAB` -> complete function name etc.
 * add parametric syntax definitions (nanorc files).
 * should implement a maximum macro length and abort macro learning mode if reached
@@ -128,7 +126,6 @@ both in `strtokey`
 * fix `eb_prev_char` to handle non self-synchronizing charsets
 * auto/mixed eol mode
 * `set-eol-type` should take a string: auto/binary/dos/unix/mac/0/1/2...
-* display `^L` as horizontal line and consider as linebreak character
 * handle zero width codepoints:
   cp="200B" na="ZERO WIDTH SPACE" alias="ZWSP"
   cp="200C" na="ZERO WIDTH NON-JOINER" alias="ZWNJ"
@@ -156,6 +153,7 @@ both in `strtokey`
 * fix current position when changing buffer attached to window
 * fix default wrap setting mess
 * display: add screen dump command and format
+* display `^L` as horizontal line and consider as linebreak character
 * colorize extra `^M` and `^Z` as preproc at end of line prior to calling the syntax highlighter (same as BOM)
 * colorizer bug on **/comp/projects/fractal/fractint/ORGFORM/NOEL-2.FRM** (triple `^M`)
 * display bug on **~/comp/projects/fractal/fractint/ORGFORM/BAILOUT.FRM** (double `^M`)
@@ -210,6 +208,9 @@ insert_window_left()  deletes some left-most windows
 * wrap long lines past line numbers column
 * fix column computation based on display properties:
   (variable pitch, tabs, ^x and \uxxxx stuff -- emacs behaviour) ?
+
+* tag left-view with electric navigation
+* expand / collapse region
 
 ## X11 display / graphics
 
@@ -278,7 +279,6 @@ insert_window_left()  deletes some left-most windows
   * `what-cursor-position` with universal prefix: show popup with long description
   * `compare-windows` should resync from the end of line.
   * `elastic-tabs`
-  * `indent-rigidly`
   * `show-matching-delimiters`
   * blink-and-insert on `) } ] >`
   * `set-gosmacs-bindings` -> `set_emulation("gosmacs")`
