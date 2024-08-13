@@ -3157,6 +3157,7 @@ static void do_shell_tabulate(EditState *e)
     if (e->interactive) {
         shell_write_char(e, 9);
     } else {
+        //do_tabulate(s, 1);
         text_write_char(e, 9);
     }
 }

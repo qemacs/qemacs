@@ -1502,7 +1502,7 @@ void do_newline(EditState *s);
 void do_open_line(EditState *s);
 void do_backspace(EditState *s, int argval);
 void do_delete_char(EditState *s, int argval);
-void do_tab(EditState *s, int argval);
+void do_tabulate(EditState *s, int argval);
 EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base);
 void do_append_next_kill(EditState *s);
 void do_kill(EditState *s, int p1, int p2, int dir, int keep);
@@ -1585,6 +1585,8 @@ void do_toggle_truncate_lines(EditState *s);
 void do_word_wrap(EditState *s);
 void do_count_lines(EditState *s);
 void do_what_cursor_position(EditState *s);
+int find_indent(EditState *s, int offset, int pos, int *offsetp);
+int make_indent(EditState *s, int offset, int end, int pos, int target);
 void do_set_tab_width(EditState *s, int tab_width);
 void do_set_indent_width(EditState *s, int indent_width);
 void do_set_indent_tabs_mode(EditState *s, int val);
@@ -1762,6 +1764,7 @@ void do_compare_windows(EditState *s, int argval);
 void do_compare_files(EditState *s, const char *filename, int bflags);
 void do_delete_horizontal_space(EditState *s);
 void do_show_date_and_time(EditState *s, int argval);
+void do_indent_rigidly(EditState *s, int start, int end, int argval);
 
 enum {
     CMD_TRANSPOSE_CHARS = 1,

@@ -1121,11 +1121,12 @@ done:
 
 static void do_c_indent(EditState *s)
 {
-    if (eb_is_in_indentation(s->b, s->offset)
+    if (!s->region_style
+    &&  eb_is_in_indentation(s->b, s->offset)
     &&  s->qe_state->last_cmd_func != (CmdFunc)do_c_indent) {
         c_indent_line(s, s->offset);
     } else {
-        do_tab(s, 1);
+        do_tabulate(s, 1);
     }
 }
 
