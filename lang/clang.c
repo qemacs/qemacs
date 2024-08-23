@@ -657,16 +657,12 @@ static void c_colorize_line(QEColorizeContext *cp,
 
 /* gives the position of the first non white space character in
    buf. TABs are counted correctly */
-static int find_indent1(EditState *s, const char32_t *buf) {
-    const char32_t *p;
-    char32_t c;
-    int pos, tw;
+static int find_indent1(EditState *s, const char32_t *p) {
+    int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
+    int pos = 0;
 
-    tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
-    p = buf;
-    pos = 0;
     for (;;) {
-        c = *p++;
+        char32_t c = *p++;
         if (c == '\t')
             pos += tw - (pos % tw);
         else if (c == ' ')
@@ -705,7 +701,7 @@ enum {
 /* Normalize indentation at <offset>, return offset past indentation */
 static int normalize_indent(EditState *s, int offset, int indent)
 {
-    int ntabs, nspaces, update, offset0, offset1;
+    int ntabs, nspaces, offset1, offset2;
 
     if (indent < 0)
         indent = 0;
@@ -716,37 +712,30 @@ static int normalize_indent(EditState *s, int offset, int indent)
         ntabs = nspaces / tw;
         nspaces = nspaces % tw;
     }
-    offset0 = offset;
-    for (update = 0;;) {
-        char32_t c = eb_nextc(s->b, offset1 = offset, &offset);
+    for (offset1 = offset;;) {
+        char32_t c = eb_nextc(s->b, offset2 = offset1, &offset1);
         if (c == '\t') {
-            if (!update && ntabs > 0) {
+            if (offset == offset2 && ntabs) {
                 ntabs--;
-                offset0 = offset;
-            } else {
-                update = 1;
+                offset = offset1;
             }
-            continue;
-        }
+        } else
         if (c == ' ') {
-            if (!update && ntabs == 0 && nspaces > 0) {
+            if (offset == offset2 && !ntabs && nspaces) {
                 nspaces--;
-                offset0 = offset;
-            } else {
-                update = 1;
+                offset = offset1;
             }
-            continue;
+        } else {
+            break;
         }
-        break;
     }
-    if (offset1 > offset0)
-        eb_delete_range(s->b, offset0, offset1);
+    if (offset2 > offset)
+        eb_delete_range(s->b, offset, offset2);
     if (ntabs)
-        offset0 += eb_insert_char32_n(s->b, offset0, '\t', ntabs);
+        offset += eb_insert_char32_n(s->b, offset, '\t', ntabs);
     if (nspaces)
-        offset0 += eb_insert_spaces(s->b, offset0, nspaces);
-
-    return offset0;
+        offset += eb_insert_spaces(s->b, offset, nspaces);
+    return offset;
 }
 
 /* Check if line starts with a label or a switch case */
