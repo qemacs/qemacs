@@ -1943,49 +1943,49 @@ int find_indent(EditState *s, int offset, int pos, int *offsetp) {
     return pos;
 }
 
-static void get_indent_chars(EditState *s, int pos, int target,
-                             int *ptabs, int *pspaces)
-{
-    int tabs = 0, spaces = 0;
-    if (target > pos) {
-        if (s->indent_tabs_mode) {
-            int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
-            while (target >= pos + tw - pos % tw) {
-                tabs++;
-                pos += tw - pos % tw;
-            }
-        }
-        spaces = target - pos;
-    }
-    *ptabs = tabs;
-    *pspaces = spaces;
-}
-
 /* replace characters in region with specified TABs and spaces */
-static int replace_indent(EditState *s, int offset, int end, int tabs, int spaces) {
+static int replace_indent(EditState *s, int offset, int offset2,
+                          int ntabs, int nspaces)
+{
     int offset1;
-    while (offset < end) {
+
+    while (offset < offset2) {
         char32_t c = eb_nextc(s->b, offset, &offset1);
-        if (tabs && c == '\t') {
-            tabs--;
+        if (c == '\t' && ntabs) {
+            ntabs--;
         } else
-        if (spaces && c == ' ') {
-            spaces--;
+        if (c == ' ' && !ntabs && nspaces) {
+            nspaces--;
         } else {
             break;
         }
         offset = offset1;
     }
-    eb_delete_range(s->b, offset, end);
-    offset += eb_insert_char32_n(s->b, offset, '\t', tabs);
-    offset += eb_insert_char32_n(s->b, offset, ' ', spaces);
+    if (offset2 > offset)
+        eb_delete_range(s->b, offset, offset2);
+    if (ntabs)
+        offset += eb_insert_char32_n(s->b, offset, '\t', ntabs);
+    if (nspaces)
+        offset += eb_insert_spaces(s->b, offset, nspaces);
     return offset;
 }
 
-int make_indent(EditState *s, int offset, int end, int pos, int target) {
-    int tabs, spaces;
-    get_indent_chars(s, pos, target, &tabs, &spaces);
-    return replace_indent(s, offset, end, tabs, spaces);
+int make_indent(EditState *s, int offset, int offset2, int pos, int target) {
+    int tabs = 0, spaces = 0;
+    if (target > pos) {
+        spaces = target - pos;
+        if (s->indent_tabs_mode) {
+            int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
+            int incr = tw - pos % tw;
+            if (spaces >= incr) {
+                tabs++;
+                spaces -= incr;
+                tabs += spaces / tw;
+                spaces = spaces % tw;
+            }
+        }
+    }
+    return replace_indent(s, offset, offset2, tabs, spaces);
 }
 
 void do_tabulate(EditState *s, int argval)
