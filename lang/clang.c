@@ -213,12 +213,16 @@ static void c_colorize_line(QEColorizeContext *cp,
         c = str[i++];
 
         switch (c) {
+        case '*':
+            if (start == indent && cp->partial_file)
+                goto parse_comment2;
+            goto normal;
         case '/':
             if (str[i] == '*') {
                 /* C style multi-line comment */
                 i++;
-                state |= IN_C_COMMENT2;
             parse_comment2:
+                state |= IN_C_COMMENT2;
                 style = C_STYLE_COMMENT;
                 level = (state & IN_C_COMMENT_LEVEL) >> IN_C_COMMENT_SHIFT;
                 while (i < n) {
@@ -1762,12 +1766,16 @@ static void js_colorize_line(QEColorizeContext *cp,
         c = str[i++];
 
         switch (c) {
+        case '*':
+            if (start == indent && cp->partial_file)
+                goto parse_comment2;
+            goto normal;
         case '/':
             if (str[i] == '*') {
                 /* C style multi-line comment */
                 i++;
-                state |= IN_C_COMMENT2;
             parse_comment2:
+                state |= IN_C_COMMENT2;
                 style = C_STYLE_COMMENT;
                 level = (state & IN_C_COMMENT_LEVEL) >> IN_C_COMMENT_SHIFT;
                 while (i < n) {
@@ -1951,6 +1959,7 @@ static void js_colorize_line(QEColorizeContext *cp,
             tag = 0;
             continue;
         default:
+        normal:
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
                 /* decimal, binary, octal and hexadecimal literals:
@@ -3993,13 +4002,17 @@ static void ppl_colorize_line(QEColorizeContext *cp,
         case ' ':
         case '\t':
             continue;
+        case '*':
+            if (start == indent && cp->partial_file)
+                goto parse_comment2;
+            goto normal;
         case '/':
             if (str[i] == '/') {
                 if (str[i + 1] == '/') {
                     /* PPL multi-line comment */
                     i += 2;
-                    state |= IN_PPL_COMMENT2;
                 parse_comment2:
+                    state |= IN_PPL_COMMENT2;
                     style = PPL_STYLE_COMMENT;
                     level = (state & IN_PPL_COMMENT_LEVEL) >> IN_PPL_COMMENT_SHIFT;
                     while (i < n) {
@@ -4144,6 +4157,7 @@ static void ppl_colorize_line(QEColorizeContext *cp,
             }
             continue;
         default:
+        normal:
             if (qe_isdigit(c)) {
                 /* XXX: should parse actual number syntax */
                 while (qe_isalnum(str[i]) ||
