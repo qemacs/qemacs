@@ -4,6 +4,26 @@
 
 ## Current work
 
+* `scroll-at-end`: down keys scrolls up when at end of buffer
+* fix multicursor kill/yank by restricting the number of kill buffers:
+  increase the number of kill buffers to `multi_cursor_cur`
+  kill uses the nth-buffer corresponding to the `multi_cursor_cur` variable
+  `yank-pop` is disabled in this mode
+  if no kill command occurred on a line, use the first buffer for yank
+  else it uses the one selected by the kill command
+* implement `narrow_start̀` and `narrow_end`
+* select a block and type a separator: surround the block with matching separators
+    this makes many keys electric:
+  * '"`<>()[]{} for insert matching markers
+  * ;/# comment the block
+  * \ adds and or aligns \ line continuation characters
+* add bindings for other editors: `nano`, `vscode`, `emacs`, `qe`, (`vim` ???)
+* load bindings corresponding to invokation command or cmdline option
+* fix scroll window behavior (for Mg)
+* fix cursor positioning beyond end of screen
+* `C-g` in incremental search should reset the last search flags
+* column number in status bar should account for TABs
+* sh-mode: handle heredoc strings `cat << EOF\n ... \nEOF\n`
 * pass `indent` to `ColorizeFunc`.
 * `TAB` -> complete function name etc.
 * add parametric syntax definitions (nanorc files).
@@ -18,6 +38,64 @@
   - if modified, modified version should be kept in a separate buffer.
 * kill eval result so it can be yanked where appropriate
 * integrate qscript
+* Many commands change their behavior when Transient Mark mode is
+    in effect and the mark is active, by acting on the region instead
+    of their usual default part of the buffer's text.  Examples of
+    such commands include M-;, `flush-lines`, `keep-lines`,
+    `query-replace`, `query-replace-regexp`, `replace-string`, `replace-regexp`,
+    `ispell`, `ispell-word` -> `ispell-region`.
+    `undo` -> undo changes restricted to the current region
+    `eval-region-or-buffer`
+    `isearch-forward`
+* `flush-lines` -> `delete-matching-lines`. see also `kill-matching-lines`,
+* `keep-lines` -> `keep-matching-lines`, see also `copy-matching-lines`
+* `how-many` (aka `count-matches`)
+* `goto-line` should not set mark if mark is already active
+* `fill-paragraph`
+* `mark-paragraph` extends the selection if already active
+* `whitespace-cleanup`
+    Command: Cleanup some blank problems in all buffer or at region.
+    It usually applies to the whole buffer, but in transient mark
+    mode when the mark is active, it applies to the region.  It also
+    applies to the region when it is not in transient mark mode, the
+    mark is active and C-u was pressed just before
+    calling `whitespace-cleanup' interactively.
+* `comment-dwim`
+    Command: Call the comment command you want (Do What I Mean).
+    If the region is active and `transient-mark-mode` is on, call
+    `comment-region` (unless it only consists of comments, in which
+    case it calls `uncomment-region`); in this case, prefix numeric
+    argument ARG specifies how many characters to remove from each
+    comment delimiter (so don't specify a prefix argument whose value
+    is greater than the total length of the comment delimiters).
+    Else, if the current line is empty, call `comment-insert-comment-function`
+    if it is defined, otherwise insert a comment and indent it.
+    Else, if a prefix ARG is specified, call `comment-kill`; in this
+    case, prefix numeric argument ARG specifies on how many lines to kill
+    the comments.
+    Else, call `comment-indent`.
+    You can configure `comment-style` to change the way regions are commented.
+
+* `indent-for-tab-command(int ARG)`
+    Indent the current line or region, or insert a tab, as appropriate.
+    This function either inserts a tab, or indents the current line,
+    or performs symbol completion, depending on `tab-always-indent`.
+    The function called to actually indent the line or insert a tab
+    is given by the variable `indent-line-function`.
+
+    If a prefix argument is given (ARG), after this function indents the
+    current line or inserts a tab, it also rigidly indents the entire
+    balanced expression which starts at the beginning of the current
+    line, to reflect the current line's indentation.
+
+    In most major modes, if point was in the current line's
+    indentation, it is moved to the first non-whitespace character
+    after indenting; otherwise it stays at the same position relative
+    to the text.
+
+    If `transient-mark-mode` is turned on and the region is active,
+    this function instead calls `indent-region`.  In this case, any
+    prefix argument is ignored.
 
 ## Documentation / Support
 
@@ -540,7 +618,12 @@ insert_window_left()  deletes some left-most windows
 
 ### Dired
 
-* dired view with outline and expand/collapse
+* dired view with outline and expand/collapse:
+  - left on open dir closes it
+  - left on closed dir or file moves to parent dir
+  - right on closed dir opens the directory
+  - right on open dir goes down
+  - right on file skips to the right window in preview mode
 * dired view with generalized file matcher
 * dired: use window/buffer caption for directory and sizes description
 * dired: display directory links as directories and links, group with directories
