@@ -254,7 +254,8 @@ struct QEColorizeContext {
     EditBuffer *b;
     int offset;
     int colorize_state;
-    int state_only;
+    short state_only;
+    short partial_file;
     int combine_start, combine_stop; /* region for combine_static_colorized_line() */
     int cur_pos;   /* position of cursor in line or -1 if outside line */
     int buf_size;
@@ -1586,7 +1587,7 @@ void do_word_wrap(EditState *s);
 void do_count_lines(EditState *s);
 void do_what_cursor_position(EditState *s);
 int find_indent(EditState *s, int offset, int pos, int *offsetp);
-int make_indent(EditState *s, int offset, int end, int pos, int target);
+int make_indent(EditState *s, int offset, int offset2, int pos, int target);
 void do_set_tab_width(EditState *s, int tab_width);
 void do_set_indent_width(EditState *s, int indent_width);
 void do_set_indent_tabs_mode(EditState *s, int val);

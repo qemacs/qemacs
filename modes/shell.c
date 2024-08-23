@@ -3673,7 +3673,9 @@ void shell_colorize_line(QEColorizeContext *cp,
     &&  (m = mode_cache[cp->colorize_state & STATE_SHELL_MODE]) != NULL) {
         int save_state = cp->colorize_state;
         cp->colorize_state >>= STATE_SHELL_SHIFT;
+        cp->partial_file++;
         cp_colorize_line(cp, str, start, n, sbuf, m);
+        cp->partial_file--;
         if (save_state & STATE_SHELL_KEEP) {
             cp->colorize_state <<= STATE_SHELL_SHIFT;
             cp->colorize_state |= save_state & STATE_SHELL_MASK;
