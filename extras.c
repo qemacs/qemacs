@@ -768,6 +768,9 @@ void do_indent_rigidly(EditState *s, int start, int end, int argval)
         int off1, off2;
         int indent = find_indent(s, offset, 0, &off1);
         int new_indent = max_int(0, indent + argval);
+        /* if line is empty, remove indentation,
+         * otherwise increase it by argval columns.
+         */
         if (eb_nextc(s->b, off1, &off2) == '\n')
             new_indent = 0;
         make_indent(s, offset, off1, 0, new_indent);
