@@ -4,6 +4,9 @@
 
 ## Current work
 
+* automatic remote config fetch based on email at qemacs.org:
+  - .qemacs, .bashrc...
+* shell buffer remote filesystem using commands `get` and `put`
 * `scroll-at-end`: down keys scrolls up when at end of buffer
 * fix multicursor kill/yank by restricting the number of kill buffers:
   increase the number of kill buffers to `multi_cursor_cur`
