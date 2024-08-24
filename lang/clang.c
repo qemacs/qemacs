@@ -593,7 +593,7 @@ static void c_colorize_line(QEColorizeContext *cp,
 
                 if ((start == 0 || str[start - 1] != '.')
                 &&  (!qe_findchar(".(:", str[i]) || flavor == CLANG_PIKE)
-                &&  (strfind(syn->types, kbuf)
+                &&  (sreg_match(syn->types, kbuf, 1)
                 ||   ((mode_flags & CLANG_CC) && strfind(c_types, kbuf))
                 ||   (((mode_flags & CLANG_CC) || (flavor == CLANG_D)) &&
                      strend(kbuf, "_t", NULL))
@@ -4258,6 +4258,35 @@ static ModeDef ppl_mode = {
 };
 #endif  /* CONFIG_TINY */
 
+/*---------------- SerenityOS yakt programming language ----------------*/
+
+static const char jakt_keywords[] = {
+    "and|anon|boxed|break|catch|class|continue|cpp|defer|else|enum|"
+    "extern|false|for|fn|comptime|if|import|in|is|let|loop|match|"
+    "must|mut|namespace|not|or|private|public|raw|return|restricted|"
+    "struct|this|throw|throws|true|try|unsafe|weak|while|yield|guard|"
+    "as|never|null|forall|type|trait|requires|implements"
+};
+
+static const char jakt_types[] = {
+    "bool|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|usize|c_int|c_char|void|"
+    /* could use CLANG_CAP_TYPE but would not match TT */
+    "[A-Z][A-Za-z0-9]+"
+};
+
+// FIXME: Should support Attributes: start="#!\[" end="\]"
+
+static ModeDef jakt_mode = {
+    .name = "Jakt",
+    .extensions = "jakt",
+    .colorize_func = c_colorize_line,
+    .colorize_flags = CLANG_JAKT,
+    .keywords = jakt_keywords,
+    .types = jakt_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
+};
+
 /*---------------- Common initialization code ----------------*/
 
 static int c_init(QEmacsState *qs)
@@ -4323,6 +4352,7 @@ static int c_init(QEmacsState *qs)
     qe_register_mode(&odin_mode, MODEF_SYNTAX);
     qe_register_mode(&salmon_mode, MODEF_SYNTAX);
     qe_register_mode(&ppl_mode, MODEF_SYNTAX);
+    qe_register_mode(&jakt_mode, MODEF_SYNTAX);
 #endif
     return 0;
 }
