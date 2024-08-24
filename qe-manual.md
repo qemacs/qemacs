@@ -1352,6 +1352,20 @@ Return a pointer to the first character of the match if found,
 
 Note: this version only handles ASCII.
 
+### `const char *sreg_match(const char *re, const char *str, int exact);`
+
+Check if the simple regexp pattern `pat` matches `str` or a prefix of `str`.
+Simple regexp patterns use a subset of POSIX regexp:
+- only simple character classes, no escape sequences
+- no assertions (except $), no backreferences
+- recursive groups always generate maximal matches
+
+* argument `re` a valid string pointer for the regexp source.
+
+* argument `str` a valid string pointer.
+
+Return a pointer to the end of the match or NULL on mismatch.
+
 ### `int strend(const char *str, const char *val, const char **ptr);`
 
 Test if `val` is a suffix of `str`.

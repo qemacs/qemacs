@@ -395,6 +395,7 @@ int strxstart(const char *str, const char *val, const char **ptr);
 int strxcmp(const char *str1, const char *str2);
 int strmatchword(const char *str, const char *val, const char **ptr);
 int strmatch_pat(const char *str, const char *pat, int start);
+const char *sreg_match(const char *re, const char *str, int exact);
 int utf8_strimatch_pat(const char *str, const char *pat, int start);
 int get_str(const char **pp, char *buf, int buf_size, const char *stop);
 

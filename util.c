@@ -1172,6 +1172,230 @@ int get_str(const char **pp, char *buf, int buf_size, const char *stop) {
     return i;
 }
 
+/*---------------- Simple regexp matching ----------------*/
+
+static int sreg_quant(const char *re, int *min, int *max, const char **rep) {
+    switch (*re) {
+    case '?':
+        *min = 0;
+        *max = 1;
+        *rep = re + 1;
+        return TRUE;
+    case '*':
+        *min = 0;
+        /* FALLTHROUGH */
+    case '+':
+        *max = INT_MAX;
+        *rep = re + 1;
+        return TRUE;
+    case '{':
+        *min = 0;
+        re++;
+        while (*re >= '0' && *re <= '9')
+            *min = *min * 10 + (*re++ - '0');
+        *max = *min;
+        if (*re == ',') {
+            *max = INT_MAX;
+            re++;
+            if (*re != '}') {
+                *max = 0;
+                while (*re >= '0' && *re <= '9')
+                    *max = *max * 10 + (*re++ - '0');
+            }
+        }
+        re += (*re == '}');
+        *rep = re;
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
+
+static const char *sreg_skip_class(const char *p) {
+    /* skip past a character class */
+    p += *p == '^';
+    p += *p == ']';
+    while (*p != '\0' && *p++ != ']')
+        continue;
+    return p;
+}
+
+static const char *sreg_skip(const char *p, int iter) {
+    /* skip past en enumeration */
+    int level = 0;
+    while (*p != '\0') {
+        u8 c = *p++;
+        if (c == '(') {
+            level++;
+        } else
+        if (c == '|') {
+            if (level == 0 && iter)
+                return p;
+        } else
+        if (c == ')') {
+            if (level-- == 0) {
+                /* Return null pointer at end of enumeration if iterating
+                 * otherwise return pointer past the ')'
+                 */
+                break;
+            }
+        } else
+        if (c == '[') {
+            p = sreg_skip_class(p);
+        }
+    }
+    return iter ? NULL : p;
+}
+
+static const char *sreg_match_class(const char *p, const char *re, const char *end) {
+    // FIXME: support \d... and named character classes
+    int not = *re == '^';
+    u8 c, c1, c2;
+    re += not;
+    c = *p++;
+    while (re < end) {
+        c2 = c1 = *re++;
+        if (*re == '-' && re + 1 < end) {
+            re++;
+            c2 = *re++;
+        }
+        if (c >= c1 && c <= c2)
+            return p;
+    }
+    return NULL;
+}
+
+static const char *sreg_part(const char *re, const char *p);
+
+static const char *sreg_alt(const char *start, int i, int min, int max,
+                                   const char *next, const char *p)
+{
+    const char *q;
+    const char *re = start;
+    const char *pmax = NULL;
+
+    if (i >= min && i <= max) {
+        if ((q = sreg_part(next, p)) != NULL) {
+            if (!pmax || q > pmax)
+                pmax = q;
+        }
+    }
+    if (i <= max) {
+        while (re != NULL) {
+            if ((q = sreg_part(re, p)) != NULL
+            &&  (q = sreg_alt(start, i + 1, min, max, next, q)) != NULL) {
+                if (!pmax || q > pmax)
+                    pmax = q;
+            }
+            re = sreg_skip(re, 1);
+        }
+    }
+    return pmax;
+}
+
+static const char *sreg_part(const char *re, const char *p) {
+    char c1;
+    const char *q;
+    const char *pmax;
+    const char *start;
+    const char *end;
+    int i, min, max;
+
+    for (;;) {
+        switch (c1 = *re++) {
+        case '\0':
+        case '|':
+        case ')':
+            return p;
+        case '$':
+            return *p == '\0' ? p : NULL;
+        case '(':
+            min = max = 1;
+            start = re;
+            re = sreg_skip(re, 0);
+            sreg_quant(re, &min, &max, &re);
+            return sreg_alt(start, 0, min, max, re, p);
+        case '.':
+            if (!sreg_quant(re, &min, &max, &re)) {
+                if (*p++ == '\0')
+                    return NULL;
+                break;
+            }
+            for (i = 0; i < min; i++) {
+                if (*p++ == '\0')
+                    return NULL;
+            }
+            pmax = NULL;
+            for (; i <= max; i++) {
+                if ((q = sreg_part(re, p)) != NULL) {
+                    if (!pmax || q > pmax)
+                        pmax = q;
+                }
+                if (*p++ != c1)
+                    break;
+            }
+            return pmax;
+        case '[':
+            start = re;
+            end = re = sreg_skip_class(re);
+            if (!sreg_quant(re, &min, &max, &re)) {
+                if ((p = sreg_match_class(p, start, end)) == NULL)
+                    return NULL;
+                break;
+            }
+            for (i = 0; i < min; i++) {
+                if ((p = sreg_match_class(p, start, end)) == NULL)
+                    return NULL;
+            }
+            pmax = NULL;
+            for (; i <= max; i++) {
+                if ((q = sreg_part(re, p)) != NULL) {
+                    if (!pmax || q > pmax)
+                        pmax = q;
+                }
+                if ((p = sreg_match_class(p, start, end)) == NULL)
+                    break;
+            }
+            return pmax;
+        default:
+            if (!sreg_quant(re, &min, &max, &re)) {
+                if (*p++ != c1)
+                    return NULL;
+                break;
+            }
+            for (i = 0; i < min; i++) {
+                if (*p++ != c1)
+                    return NULL;
+            }
+            pmax = NULL;
+            for (; i <= max; i++) {
+                if ((q = sreg_part(re, p)) != NULL) {
+                    if (!pmax || q > pmax)
+                        pmax = q;
+                }
+                if (*p++ != c1)
+                    break;
+            }
+            return pmax;
+        }
+    }
+}
+
+const char *sreg_match(const char *re, const char *str, int exact) {
+    /*@API utils.string
+       Check if the simple regexp pattern `pat` matches `str` or a prefix of `str`.
+       Simple regexp patterns use a subset of POSIX regexp:
+       - only simple character classes, no escape sequences
+       - no assertions (except $), no backreferences
+       - recursive groups always generate maximal matches
+       @param `re` a valid string pointer for the regexp source.
+       @param `str` a valid string pointer.
+       @return a pointer to the end of the match or NULL on mismatch.
+     */
+    const char *p = sreg_alt(re, 0, 1, 1, "", str);
+    return (p && exact && *p != '\0') ? NULL : p;
+}
+
 /*---- Unicode string functions: null terminated arrays of code points ----*/
 
 int utf8_prefix_len(const char *str1, const char *str2) {
