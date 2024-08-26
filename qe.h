@@ -1797,6 +1797,7 @@ int list_get_offset(EditState *s);
 /* dired.c */
 
 void do_dired(EditState *s, int argval);
+void do_dired_path(EditState *s, const char *path);
 void do_filelist(EditState *s, int argval);
 
 /* syntax colorizers */
