@@ -4,22 +4,26 @@
 
 ## Current work
 
+* keep a count of windows in `EditBuffer`
+* keep the last active window when detaching a buffer, just make it invisible.
+  - easy if deleting the last window that shows the buffer
+  - if changing the buffer for a window, if the new buffer has a pending window, use that
+  - otherwise, create a new `EditWindow` with the same screen position for the new buffer.
+  - alternative: keep previous window if changing the buffer so swapping back restores the position and mode
+  - add a previous window for `predict_switch_to_buffer`
+* add mouse support in capabable terminals
+* `-color_code` command line option to display available colors
 * automatic remote config fetch based on email at qemacs.org:
   - .qemacs, .bashrc...
 * shell buffer remote filesystem using commands `get` and `put`
 * `scroll-at-end`: down keys scrolls up when at end of buffer
 * fix multicursor kill/yank by restricting the number of kill buffers:
-  increase the number of kill buffers to `multi_cursor_cur`
-  kill uses the nth-buffer corresponding to the `multi_cursor_cur` variable
-  `yank-pop` is disabled in this mode
-  if no kill command occurred on a line, use the first buffer for yank
-  else it uses the one selected by the kill command
+    increase the number of kill buffers to `multi_cursor_cur`
+    kill uses the nth-buffer corresponding to the `multi_cursor_cur` variable
+    `yank-pop` is disabled in this mode
+    if no kill command occurred on a line, use the first buffer for yank
+    else it uses the one selected by the kill command
 * implement `narrow_start̀` and `narrow_end`
-* select a block and type a separator: surround the block with matching separators
-    this makes many keys electric:
-  * '"`<>()[]{} for insert matching markers
-  * ;/# comment the block
-  * \ adds and or aligns \ line continuation characters
 * add bindings for other editors: `nano`, `vscode`, `emacs`, `qe`, (`vim` ???)
 * load bindings corresponding to invokation command or cmdline option
 * fix scroll window behavior (for Mg)
@@ -28,7 +32,8 @@
 * column number in status bar should account for TABs
 * sh-mode: handle heredoc strings `cat << EOF\n ... \nEOF\n`
 * pass `indent` to `ColorizeFunc`.
-* `TAB` -> complete function name etc.
+* `TAB` -> complete function name from tags etc.
+* automatic multifile tags in project directory (where source management or tags file is found)
 * add parametric syntax definitions (nanorc files).
 * should implement a maximum macro length and abort macro learning mode if reached
 * should keep modified status when undoing past a buffer save command
@@ -49,7 +54,13 @@
     `ispell`, `ispell-word` -> `ispell-region`.
     `undo` -> undo changes restricted to the current region
     `eval-region-or-buffer`
-    `isearch-forward`
+    `isearch-forward`.
+
+    select a block and type a separator: surround the block with matching separators
+    this makes many keys electric:
+      * '"`<>()[]{} for insert matching markers
+      * ;/# comment the block
+      * \ adds and or aligns \ line continuation characters
 * `flush-lines` -> `delete-matching-lines`. see also `kill-matching-lines`,
 * `keep-lines` -> `keep-matching-lines`, see also `copy-matching-lines`
 * `how-many` (aka `count-matches`)
@@ -621,15 +632,8 @@ insert_window_left()  deletes some left-most windows
 
 ### Dired
 
-* dired view with outline and expand/collapse:
-  - left on open dir closes it
-  - left on closed dir or file moves to parent dir
-  - right on closed dir opens the directory
-  - right on open dir goes down
-  - right on file skips to the right window in preview mode
 * dired view with generalized file matcher
 * dired: use window/buffer caption for directory and sizes description
-* dired: display directory links as directories and links, group with directories
 * dired: fork process and use asynchronous function to:
    - list directory contents
    - track directory contents file stats
@@ -637,18 +641,17 @@ insert_window_left()  deletes some left-most windows
 * keep dired current file upon: `RET C-x C-k RET`
 * use buffer specific load functions
 * separate buffer for each directory
-* adjust dired gutter width for max name length
 * snap dired left window horiz scroll
 * make dired left window temporary popleft window
 * improve dired (file commands, nicer display)
   * t -> `dired-touch`
   * | -> `dired-shell-command`
-  * D -> `dired-mkdir`
+  * + -> `dired-mkdir`
 
 ### Bufed
 
 * show current directory for shell buffers in buffer list view
-* dired: use window/buffer caption for headings and sizes description
+* bufed: use window/buffer caption for headings and sizes description
 
 ### XML / HTML
 

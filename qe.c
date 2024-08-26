@@ -6908,8 +6908,7 @@ void edit_close(EditState **sp)
 
 static const char *file_completion_ignore_extensions = {
     "|bak"
-    "|pdf|jpg|gif|png|swf" /* binary formats */
-    "|bmp|xls|xlsx|ppt|pptx"
+    "|xls|xlsx|ppt|pptx|swf" /* binary formats */
     "|apk"
     "|bin|obj|dll|exe" /* DOS binaries */
     "|o|so|a" /* Unix binaries */
@@ -8469,13 +8468,26 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
     EOLType eol_type = EOL_UNIX;
     QECharset *charset = &charset_utf8;
 
+    if ((lflags & LF_LOAD_RESOURCE) && !strchr(filename1, '/')) {
+        if (find_resource_file(filename, sizeof(filename), filename1)) {
+            put_status(s, "Cannot find resource file '%s'", filename1);
+            return -1;
+        }
+    } else {
+        /* compute full name */
+        canonicalize_absolute_path((lflags & LF_CWD_RELATIVE) ? NULL :
+                                   (s->b->flags & BF_DIRED) ? s :
+                                   qe_find_target_window(s, 0),
+                                   filename, sizeof(filename), filename1);
+    }
+
 #ifndef CONFIG_TINY
     /* when exploring from a popleft dired buffer, load a directory or
      * file pattern into the same pane, but load a regular file into the view pane
      */
     if ((s->flags & WF_POPUP)
-    ||  (!is_directory(filename1) &&
-         ((lflags & LF_NOWILDCARD) || !is_filepattern(filename1)))) {
+    ||  (!is_directory(filename) &&
+         ((lflags & LF_NOWILDCARD) || !is_filepattern(filename)))) {
         s = qe_find_target_window(s, 1);
     }
 #endif
@@ -8494,17 +8506,12 @@ int qe_load_file(EditState *s, const char *filename1, int lflags, int bflags)
         }
     }
 
-    if ((lflags & LF_LOAD_RESOURCE) && !strchr(filename1, '/')) {
-        if (find_resource_file(filename, sizeof(filename), filename1)) {
-            put_status(s, "Cannot find resource file '%s'", filename1);
-            return -1;
-        }
-    } else {
-        /* compute full name */
-        canonicalize_absolute_path((lflags & LF_CWD_RELATIVE) ? NULL : s,
-                                   filename, sizeof(filename), filename1);
+#ifndef CONFIG_TINY
+    if ((s->flags & WF_POPLEFT) && (s->b->flags & BF_DIRED) && is_directory(filename)) {
+        do_dired_path(s, filename);
+        return 0;
     }
-
+#endif
     /* If file already loaded in existing buffer, switch to that */
     b = eb_find_file(filename);
     if (b != NULL) {
