@@ -1220,6 +1220,17 @@ If there is no extension, return a pointer to the null terminator
 and the end of path.
 Leading dots are skipped, they are not considered part of an extension.
 
+### `const char *get_relativename(const char *filename, const char *dirname);`
+
+Get the offset to the filename porting that is relative to the
+directory name `dirname`
+
+* argument `dirname` the name of the directory.
+
+* argument `filename` the name of the file that is a descendent of directory.
+
+Return a pointer inside filename.
+
 ### `int get_str(const char **pp, char *buf, int buf_size, const char *stop);`
 
 Get a token from a string, stop on a set of characters and white-space.
@@ -1659,7 +1670,7 @@ Transpose the bytes of a 64-bit word
 
 Return the value with transposed bytes
 
-### `void canonicalize_path(char *buf, int buf_size, const char *path);`
+### `char *canonicalize_path(char *buf, int buf_size, const char *path);`
 
 Normalize a path, removing redundant `.`, `..` and `/` parts.
 
@@ -1673,6 +1684,8 @@ Note: this function accepts drive and protocol specifications.
 
 Note: removing `..` may have adverse side effects if the parent
 directory specified is a symbolic link.
+
+Note: source can start inside the destination array.
 
 ### `int check_fcall(const char32_t *str, int i);`
 
@@ -2259,6 +2272,7 @@ Compare 2 strings using special rules:
 * use lexicographical order
 * collate sequences of digits in numerical order.
 * push `*` at the end.
+* '/' compares lower than `\0`.
 
 ### `int qe_strtobool(const char *s, int def);`
 

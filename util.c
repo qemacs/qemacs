@@ -287,7 +287,7 @@ static void canonicalize_path1(char *buf, int buf_size, const char *path) {
     }
 }
 
-void canonicalize_path(char *buf, int buf_size, const char *path) {
+char *canonicalize_path(char *buf, int buf_size, const char *path) {
     /*@API utils
        Normalize a path, removing redundant `.`, `..` and `/` parts.
        @argument `buf` a pointer to the destination array
@@ -296,28 +296,37 @@ void canonicalize_path(char *buf, int buf_size, const char *path) {
        @note this function accepts drive and protocol specifications.
        @note removing `..` may have adverse side effects if the parent
        directory specified is a symbolic link.
+       @note: source can start inside the destination array.
      */
-    const char *p;
+    char tmp[MAX_FILENAME_SIZE];
+    char *res = buf;
+    size_t prefix;
 
-    /* check for URL protocol or windows drive */
-    /* CG: should not skip '/' */
-    /* XXX: bogus if filename contains ':' */
-    p = strchr(path, ':');
-    if (p) {
-        if ((p - path) == 1) {
+    if (path >= buf && path < buf + buf_size) {
+        /* brute force partial overlapping case */
+        pstrcpy(tmp, sizeof tmp, path);
+        path = tmp;
+    }
+
+    /* check for URL protocol or MSDOS/windows drive */
+    prefix = strcspn(path, "/:");
+    if (path[prefix] == ':') {
+        if (prefix == 2) {
             /* windows drive: we canonicalize only the following path */
-            buf[0] = p[0];
-            buf[1] = p[1];
-            /* CG: this will not work for non current drives */
-            canonicalize_path1(buf + 2, buf_size - 2, p);
+            /* XXX: this will not work for non current drives */
+            *buf++ = *path++;
+            *buf++ = *path++;
+            buf_size -= 2;
         } else {
             /* URL: it is already canonical */
-            pstrcpy(buf, buf_size, path);
+            /* XXX: bogus if filename contains ':' before the first `/` */
+            /* XXX: bogus for ftp: and file: specifications */
+            return pstrcpy(buf, buf_size, path);
         }
-    } else {
-        /* simple unix path */
-        canonicalize_path1(buf, buf_size, path);
     }
+    canonicalize_path1(buf, buf_size, path);
+    /* return original destination array */
+    return res;
 }
 
 char *make_user_path(char *buf, int buf_size, const char *path) {
@@ -622,6 +631,7 @@ int qe_strcollate(const char *s1, const char *s2) {
      * use lexicographical order
      * collate sequences of digits in numerical order.
      * push `*` at the end.
+     * '/' compares lower than `\0`.
      */
     int last, c1, c2, res, flags;
 
@@ -637,6 +647,12 @@ int qe_strcollate(const char *s1, const char *s2) {
             break;
         }
     }
+    if (c1 == '/')
+        res = (c2 == '\0') ? 1 : -1;
+    else
+    if (c2 == '/')
+        res = (c1 == '\0') ? -1 : 1;
+    else
     if (c1 == '*')
         res = 1;
     else

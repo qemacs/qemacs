@@ -75,7 +75,7 @@ int find_file_next(FindFileState *s, char *filename, int filename_size_max);
 void find_file_close(FindFileState **sp);
 int is_directory(const char *path);
 int is_filepattern(const char *filespec);
-void canonicalize_path(char *buf, int buf_size, const char *path);
+char *canonicalize_path(char *buf, int buf_size, const char *path);
 char *make_user_path(char *buf, int buf_size, const char *path);
 char *reduce_filename(char *dest, int size, const char *filename);
 char *file_load(const char *filename, int max_size, int *sizep);

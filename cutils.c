@@ -238,6 +238,20 @@ char *get_dirname(char *dest, int size, const char *file) {
     return dest;
 }
 
+const char *get_relativename(const char *filename, const char *dirname) {
+    /*@API utils.string
+       Get the offset to the filename porting that is relative to the
+       directory name `dirname`
+       @argument `dirname` the name of the directory.
+       @argument `filename` the name of the file that is a descendent of directory.
+       @return a pointer inside filename.
+     */
+    const char *ptr;
+    if (strstart(filename, dirname, &ptr) && *ptr == '/')
+        return ptr + 1;
+    return filename;
+}
+
 /* Dynamic buffer package */
 
 static void *dbuf_default_realloc(void *opaque, void *ptr, size_t size) {

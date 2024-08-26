@@ -216,6 +216,7 @@ static inline void strip_extension(char *filename) {
 }
 
 char *get_dirname(char *dest, int size, const char *file);
+const char *get_relativename(const char *filename, const char *dirname);
 
 static inline long strtol_c(const char *str, const char **endptr, int base) {
     /*@API utils.string
