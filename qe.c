@@ -6702,6 +6702,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
         return;
 
     if (b0) {
+        b0->ref_count--;
         /* Save generic mode data to the buffer */
         generic_save_window_data(s);
         qe_free_multi_cursor(s);
@@ -6724,6 +6725,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
     }
 
     if (b) {
+        b->ref_count++;
         if (b->saved_data) {
             /* Restore window mode and data from buffer saved data */
             memcpy(s, b->saved_data, SAVED_DATA_SIZE);
@@ -6757,24 +6759,31 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
     }
 }
 
-/* detach the window from the window tree. */
-static void edit_detach(EditState *s)
-{
-    QEmacsState *qs = s->qe_state;
-    EditState **ep;
-
-    /* unlink the window from the frame */
-    for (ep = &qs->first_window; *ep;) {
+static int edit_detach_list(EditState **ep, EditState *s) {
+    int found = FALSE;
+    while (*ep) {
         if ((*ep)->target_window == s) {
             (*ep)->target_window = NULL;
         }
         if (*ep == s) {
+            found = TRUE;
             *ep = s->next_window;
             s->next_window = NULL;
         } else {
             ep = &(*ep)->next_window;
         }
     }
+    return found;
+}
+
+/* detach the window from the window tree. */
+static void edit_detach(EditState *s)
+{
+    QEmacsState *qs = s->qe_state;
+
+    /* unlink the window from the frame */
+    edit_detach_list(&qs->first_window, s);
+    edit_detach_list(&qs->first_hidden_window, s);
     /* if window was active, activate target window or default window */
     if (qs->active_window == s) {
         if (s->target_window)
@@ -9259,9 +9268,11 @@ void do_delete_other_windows(EditState *s, int all)
     if (s->flags & (WF_POPUP | WF_MINIBUF))
         return;
 
+    s->flags &= ~WF_POPLEFT;
+
     for (;;) {
         for (e = qs->first_window; e != NULL; e = e->next_window) {
-            if (!(e->flags & WF_MINIBUF) && e != s)
+            if (e != s && !(e->flags & WF_MINIBUF))
                 break;
         }
         if (e == NULL)
@@ -9279,7 +9290,7 @@ void do_delete_other_windows(EditState *s, int all)
         s->x1 = 0;
         s->x2 = qs->width;
         s->y2 = qs->height - qs->status_height;
-        s->flags &= ~(WF_RSEPARATOR | WF_POPLEFT);
+        s->flags &= ~(WF_RSEPARATOR);
         compute_client_area(s);
         do_refresh(s);
     }

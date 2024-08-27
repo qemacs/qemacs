@@ -1568,6 +1568,7 @@ static void do_describe_buffer(EditState *s, int argval)
     eb_printf(b1, "    modified: %d\n", b->modified);
     eb_printf(b1, "  total_size: %d\n", b->total_size);
     eb_printf(b1, "        mark: %d\n", b->mark);
+    eb_printf(b1, "    refcount: %d\n", b->ref_count);
     eb_printf(b1, "   s->offset: %d\n", s->offset);
     eb_printf(b1, "   b->offset: %d\n", b->offset);
 
