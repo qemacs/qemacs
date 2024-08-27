@@ -378,6 +378,9 @@ struct EditBuffer {
     int map_length;
     int map_handle;
 
+    QEmacsState *qs;
+    int ref_count;
+
     /* buffer data type (default is raw) */
     ModeDef *data_mode;
     const char *data_type_name;
@@ -943,6 +946,7 @@ struct QEmacsState {
     struct VarDef *first_variable;
     InputMethod *input_methods;
     EditState *first_window;
+    EditState *first_hidden_window;
     EditState *active_window; /* window in which we edit */
     EditBuffer *first_buffer;
     EditBufferDataType *first_buffer_data_type;

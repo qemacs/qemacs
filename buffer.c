@@ -710,6 +710,7 @@ EditBuffer *eb_new(const char *name, int flags)
         return NULL;
     }
 
+    b->qs = qs;
     b->flags = flags & ~BF_STYLES;
 
     /* set default data type */
