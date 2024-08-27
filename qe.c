@@ -1669,6 +1669,21 @@ void do_char(EditState *s, int key, int argval) {
     if (s->b->flags & BF_READONLY)
         return;
 
+    if (s->region_style && s->b->mark != s->offset) {
+        const char *pairs = "<>[](){}''``\"\"";
+        const char *p;
+        if (key < 255 && (p = strchr(pairs, key)) != NULL) {
+            while (repeat --> 0) {
+                int index = (p - pairs) & ~1;
+                const char *p1 = &pairs[index + (s->b->mark > s->offset)];
+                const char *p2 = &pairs[index + (s->b->mark < s->offset)];
+                eb_insert(s->b, s->b->mark, p1, 1);
+                s->offset += eb_insert(s->b, s->offset, p2, 1);
+            }
+            return;
+        }
+    }
+
     /* Delete hilighted region */
     do_delete_selection(s);
 
