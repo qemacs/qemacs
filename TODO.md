@@ -55,14 +55,10 @@
     `undo` -> undo changes restricted to the current region
     `eval-region-or-buffer`
     `isearch-forward`.
-
-    select a block and type a separator: surround the block with matching separators
-    this makes many keys electric:
-      * '"`<>()[]{} for insert matching markers
-      * ;/# comment the block
-      * \ adds and or aligns \ line continuation characters
-* `flush-lines` -> `delete-matching-lines`. see also `kill-matching-lines`,
-* `keep-lines` -> `keep-matching-lines`, see also `copy-matching-lines`
+     * ;/# comment the block
+     * \ adds and or aligns \ line continuation characters
+* `flush-lines` -> `delete-matching-lines`.
+* `keep-lines` -> `keep-matching-lines`, `delete-non-matching-lines`.
 * `how-many` (aka `count-matches`)
 * `goto-line` should not set mark if mark is already active
 * `fill-paragraph`
