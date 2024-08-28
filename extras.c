@@ -504,21 +504,64 @@ static void do_resize_window(EditState *s) {
     do_adjust_window(s, 0, 0);
 }
 
-void do_delete_horizontal_space(EditState *s)
+enum {
+    DH_POINT = 0,   /* delete blanks around point */
+    DH_BOL = 1,     /* delete blanks at beginning of line */
+    DH_EOL = 2,     /* delete blanks at end of line */
+    DH_FULL = 3,    /* delete blanks at end of line on the full buffer */
+};
+
+void do_delete_horizontal_space(EditState *s, int mode)
 {
-    int from, to, offset;
+    int from, to, stop, offset;
+    EditBuffer *b = s->b;
 
-    /* boundary check unnecessary because eb_prevc returns '\n'
-     * at bof and eof and qe_isblank return true only on SPC and TAB.
-     */
-    from = to = s->offset;
-    while (qe_isblank(eb_prevc(s->b, from, &offset)))
-        from = offset;
+    stop = from = s->offset;
+    if (s->region_style) {
+        if (mode == DH_FULL)
+            mode = DH_EOL;
+        from = min_int(b->mark, s->offset);
+        stop = max_int(b->mark, s->offset);
+        s->region_style = 0;
+    } else
+    if (mode == DH_FULL) {
+        from = 0;
+        stop = b->total_size;
+    }
 
-    while (qe_isblank(eb_nextc(s->b, to, &offset)))
-        to = offset;
+    if (mode == DH_BOL)
+        from = eb_goto_bol(b, from);
 
-    eb_delete_range(s->b, from, to);
+    for (;;) {
+        if (mode & DH_EOL)
+            from = eb_goto_eol(b, from);
+
+        to = from;
+        while (qe_isblank(eb_prevc(b, from, &offset)))
+            from = offset;
+
+        while (qe_isblank(eb_nextc(b, to, &offset)))
+            to = offset;
+
+        if (stop < to)
+            stop = to;
+        stop -= eb_delete_range(b, from, to);
+        from = eb_next_line(b, from);
+        if (from >= stop)
+            break;
+    }
+    if (mode == DH_FULL) {
+        /* delete trailing newlines */
+        // XXX: make this a separate function
+        to = b->total_size;
+        if (to > 0 && eb_prevc(b, to, &to) == '\n') {
+            from = to;
+            while (from > 0 && eb_prevc(b, from, &offset) == '\n')
+                from = offset;
+            if (from < to)
+                eb_delete_range(b, from, to);
+        }
+    }
 }
 
 static void do_delete_blank_lines(EditState *s) {
@@ -2651,12 +2694,18 @@ static const CmdDef extra_commands[] = {
           "Resize window interactively using the cursor keys",
           do_resize_window)
 
-    // XXX: delete-leading-space (mg) Delete any leading whitespace on the current line
-    // XXX: delete-trailing-space (mg) Delete any trailing whitespace on the current line
-    // XXX: delete-trailing-whitespace (emacs) Delete all the trailing whitespace across the current buffer.
-    CMD2( "delete-horizontal-space", "M-\\",
+    CMD3( "delete-leading-space", "",   // (mg)
+          "Delete any leading whitespace on the current line",
+          do_delete_horizontal_space, ESi, "*" "v", DH_BOL)
+    CMD3( "delete-trailing-space", "",   // (mg)
+          "Delete any trailing whitespace on the current line",
+          do_delete_horizontal_space, ESi, "*" "v", DH_EOL)
+    CMD3( "delete-trailing-whitespace", "", // (emacs)
+          "Delete all the trailing whitespace across the current buffer",
+          do_delete_horizontal_space, ESi, "*" "v", DH_FULL)
+    CMD3( "delete-horizontal-space", "M-\\",
           "Delete blanks around point",
-          do_delete_horizontal_space, ES, "*")
+          do_delete_horizontal_space, ESi, "*", DH_POINT)
     CMD2( "delete-blank-lines", "C-x C-o",
           "Delete blank lines on and/or around point",
           do_delete_blank_lines, ES, "*")
