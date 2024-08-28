@@ -1767,7 +1767,7 @@ void do_save_session(EditState *s, int popup);
 
 void do_compare_windows(EditState *s, int argval);
 void do_compare_files(EditState *s, const char *filename, int bflags);
-void do_delete_horizontal_space(EditState *s);
+void do_delete_horizontal_space(EditState *s, int mode);
 void do_show_date_and_time(EditState *s, int argval);
 void do_indent_rigidly(EditState *s, int start, int end, int argval);
 

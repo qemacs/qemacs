@@ -50,13 +50,14 @@
     in effect and the mark is active, by acting on the region instead
     of their usual default part of the buffer's text.  Examples of
     such commands include M-;, `flush-lines`, `keep-lines`,
-    `query-replace`, `query-replace-regexp`, `replace-string`, `replace-regexp`,
-    `ispell`, `ispell-word` -> `ispell-region`.
-    `undo` -> undo changes restricted to the current region
-    `eval-region-or-buffer`
-    `isearch-forward`.
-     * ;/# comment the block
-     * \ adds and or aligns \ line continuation characters
+    - `delete-blank-lines`
+    - `query-replace`, `query-replace-regexp`, `replace-string`, `replace-regexp`,
+    - `ispell`, `ispell-word` -> `ispell-region`.
+    - `undo` -> undo changes restricted to the current region
+    - `eval-region-or-buffer`
+    - `isearch-forward`.
+    - `;` or `#` or `/`: comment the block
+    - `\` adds and or aligns `\` line continuation characters (c like modes)
 * `flush-lines` -> `delete-matching-lines`.
 * `keep-lines` -> `keep-matching-lines`, `delete-non-matching-lines`.
 * `how-many` (aka `count-matches`)
@@ -69,7 +70,7 @@
     mode when the mark is active, it applies to the region.  It also
     applies to the region when it is not in transient mark mode, the
     mark is active and C-u was pressed just before
-    calling `whitespace-cleanup' interactively.
+    calling `whitespace-cleanup` interactively.
 * `comment-dwim`
     Command: Call the comment command you want (Do What I Mean).
     If the region is active and `transient-mark-mode` is on, call
