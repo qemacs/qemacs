@@ -1142,26 +1142,26 @@ typedef struct CmdDef {
 
 #ifdef CONFIG_TINY
 /* omit command descriptions in Tiny build */
-#define CMD(name, bindings, desc, func, sig, val, spec) \
+#define CMD(name, bindings, desc, func, sig, spec, val) \
     { name "\0" bindings, spec "\0", CMD_ ## sig, val, { .sig = func } },
 #else
-#define CMD(name, bindings, desc, func, sig, val, spec) \
+#define CMD(name, bindings, desc, func, sig, spec, val) \
     { name "\0" bindings, spec "\0" desc, CMD_ ## sig, val, { .sig = func } },
 #endif
 /* command without arguments, no buffer modification */
 #define CMD0(name, bindings, desc, func) \
-    CMD(name, bindings, desc, func, ES, 0, "")
+    CMD(name, bindings, desc, func, ES, "", 0)
 /* command with a single implicit int argument */
 #define CMD1(name, bindings, desc, func, val) \
-    CMD(name, bindings, desc, func, ESi, val, "v")
+    CMD(name, bindings, desc, func, ESi, "v", val)
 /* command with a signature and an argument description string */
 #define CMD2(name, bindings, desc, func, sig, spec) \
-    CMD(name, bindings, desc, func, sig, 0, spec)
+    CMD(name, bindings, desc, func, sig, spec, 0)
 /* command with a an argument description string and an int argument */
 #define CMD3(name, bindings, desc, func, sig, spec, val) \
-    CMD(name, bindings, desc, func, sig, val, spec)
+    CMD(name, bindings, desc, func, sig, spec, val)
 /* command not implemented yet */
-#define CMDx(name, bindings, desc, func, ...)
+#define CMDx(name, bindings, desc, ...)
 
 ModeDef *qe_find_mode(const char *name, int flags);
 ModeDef *qe_find_mode_filename(const char *filename, int flags);
