@@ -272,8 +272,8 @@ int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s) {
 #ifndef CONFIG_TINY
         if (qe_list_bindings(d, s->mode, 1, buf, sizeof buf)) {
             b->cur_style = QE_STYLE_COMMENT;
-            if (2 + len < 40) {
-                b->tab_width = max_int(2 + len, b->tab_width);
+            if (len < 40) {
+                b->tab_width = max_int(len, b->tab_width);
                 len += eb_putc(b, '\t');
             } else {
                 b->tab_width = 40;
@@ -7704,7 +7704,7 @@ static const CmdDef minibuffer_commands[] = {
     CMD1( "minibuffer-exit", "RET, LF",
           "End the minibuffer input",
           do_minibuffer_exit, 0)
-    CMD1( "minibuffer-abort", "C-g, C-x C-g",
+    CMD1( "minibuffer-abort", "C-g, C-x C-g, M-C-g",
           "Abort the minibuffer input",
           do_minibuffer_exit, 1)
     CMD3( "minibuffer-complete", "TAB",
@@ -10676,7 +10676,7 @@ static const CmdDef basic_commands[] = {
           "Set the numeric prefix argument",
           do_prefix_argument, ESi, "k")
     CMD0( "keyboard-quit",
-          "C-g, C-x C-g, C-c C-g, C-h C-g, ESC ESC ESC",
+          "C-g, C-x C-g, C-c C-g, C-h C-g, M-C-g, ESC ESC ESC",
           "Abort the current command",
           do_keyboard_quit)
     CMD0( "unknown-key",
