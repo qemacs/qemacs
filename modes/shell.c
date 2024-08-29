@@ -3503,13 +3503,20 @@ static int match_string(const char32_t *buf, int n, const char *str) {
 }
 
 static int shell_grab_filename(const char32_t *buf, int n, char *dest, int size) {
-    int i, len = 0;
+    int i, j, len = 0;
     for (i = 0; i < n; i++) {
         char32_t c = buf[i];
         if (c == '(')
             break;
         if (c == ':' && i > 1)
             break;
+        if (c == '-' && i > 1) {
+            /* match -[0-9]+- for grep -[ABC] output */
+            for (j = i + 1; qe_isdigit(buf[j]); j++)
+                continue;
+            if (j > i + 1 && buf[j] == '-')
+                break;
+        }
         if (qe_isspace(c)) {
             if (len)
                 break;
@@ -3650,10 +3657,11 @@ void shell_colorize_line(QEColorizeContext *cp,
                         start = i;
                         break;
                     }
-                    if (c == ':') {
+                    /* colorize compiler and grep -[ABC] output */
+                    if (c == ':' || (c == '-' && qe_isdigit(str[i + 1]))) {
                         /* this is a compiler message */
-                        i += match_digits(str + i, n - i, ':'); /* line number */
-                        i += match_digits(str + i, n - i, ':'); /* optional col number */
+                        i += match_digits(str + i, n - i, c); /* line number */
+                        i += match_digits(str + i, n - i, c); /* optional col number */
                         start = i;
                         cp->colorize_state = mc;
                         if (match_string(str + i, n - i, " error:")
