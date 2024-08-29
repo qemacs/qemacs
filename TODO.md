@@ -4,6 +4,8 @@
 
 ## Current work
 
+* fix markdown command bindings
+* toggle long listing and column listing in dired buffers
 * keep a count of windows in `EditBuffer`
 * keep the last active window when detaching a buffer, just make it invisible.
   - easy if deleting the last window that shows the buffer
@@ -11,11 +13,11 @@
   - otherwise, create a new `EditWindow` with the same screen position for the new buffer.
   - alternative: keep previous window if changing the buffer so swapping back restores the position and mode
   - add a previous window for `predict_switch_to_buffer`
-* add mouse support in capabable terminals
+* add mouse support in capable terminals
 * `-color_code` command line option to display available colors
 * automatic remote config fetch based on email at qemacs.org:
   - .qemacs, .bashrc...
-* shell buffer remote filesystem using commands `get` and `put`
+* shell buffer remote filesystem using commands `get` and `put` (for ssh sessions)
 * `scroll-at-end`: down keys scrolls up when at end of buffer
 * fix multicursor kill/yank by restricting the number of kill buffers:
     increase the number of kill buffers to `multi_cursor_cur`
@@ -29,15 +31,16 @@
 * fix scroll window behavior (for Mg)
 * fix cursor positioning beyond end of screen
 * `C-g` in incremental search should reset the last search flags
+* support multiple modes in window using array of mode pointers
 * column number in status bar should account for TABs
 * sh-mode: handle heredoc strings `cat << EOF\n ... \nEOF\n`
 * pass `indent` to `ColorizeFunc`.
 * `TAB` -> complete function name from tags etc.
 * automatic multifile tags in project directory (where source management or tags file is found)
 * add parametric syntax definitions (nanorc files).
-* should implement a maximum macro length and abort macro learning mode if reached
-* should keep modified status when undoing past a buffer save command
-* should swap buffer names in `compare-files`
+* implement a maximum macro length and abort macro learning mode if reached
+* keep modified status when undoing past a buffer save command
+* swap buffer names in `compare-files`
 * check file time and length when selecting a different buffer or running any command on the current buffer:
   - if a macro is running, stop it
   - prompt the user for (r) read, (i) ignore, (k) keep, (c) compare
@@ -46,10 +49,13 @@
   - if modified, modified version should be kept in a separate buffer.
 * kill eval result so it can be yanked where appropriate
 * integrate qscript
+* pass argval and argflags for most commands
+* add buffer commands and point update commands
+* add `active_mark` and `active_region` flags in window/buffer states
 * Many commands change their behavior when Transient Mark mode is
     in effect and the mark is active, by acting on the region instead
     of their usual default part of the buffer's text.  Examples of
-    such commands include M-;, `flush-lines`, `keep-lines`,
+    such commands include `M-;`, `flush-lines`, `keep-lines`,
     - `delete-blank-lines`
     - `query-replace`, `query-replace-regexp`, `replace-string`, `replace-regexp`,
     - `ispell`, `ispell-word` -> `ispell-region`.
@@ -57,13 +63,14 @@
     - `eval-region-or-buffer`
     - `isearch-forward`.
     - `;` or `#` or `/`: comment the block
-    - `\` adds and or aligns `\` line continuation characters (c like modes)
-* `flush-lines` -> `delete-matching-lines`.
-* `keep-lines` -> `keep-matching-lines`, `delete-non-matching-lines`.
-* `how-many` (aka `count-matches`)
+    - `\` add and or align `\` line continuation characters (c like modes)
+    - `fill-paragraph`
+    - `mark-paragraph` extends the selection if already active
+* command aliases:
+    - `flush-lines` -> `delete-matching-lines`.
+    - `keep-lines` -> `keep-matching-lines`, `delete-non-matching-lines`.
+    - `how-many` (aka `count-matches`)
 * `goto-line` should not set mark if mark is already active
-* `fill-paragraph`
-* `mark-paragraph` extends the selection if already active
 * `whitespace-cleanup`
     Command: Cleanup some blank problems in all buffer or at region.
     It usually applies to the whole buffer, but in transient mark
@@ -584,6 +591,9 @@ insert_window_left()  deletes some left-most windows
 
 ### Shell mode
 
+* fix `man` command on linux: the man process should be given the expected input
+* parse the list of errors and register line/column positions so buffer can be modified
+    using this array, implement skip to the errors in the next file with `C-u C-x C-n`
 * [BUG] ^C does not work on OpenBSD
 * `C-x RET RET` should switch to last process buffer selected and move to the end of buffer
 * `C-x RET RET` should find another shell buffer if `*shell*` has been killed. Should enumerate all buffers.
@@ -644,6 +654,78 @@ insert_window_left()  deletes some left-most windows
   * t -> `dired-touch`
   * | -> `dired-shell-command`
   * + -> `dired-mkdir`
+* look into missing commands (emacs)
+  - `dired-find-file` on `e .. f`
+  - `dired-do-shell-command` on `!`
+  - `dired-hide-subdir` on `$`
+  - `dired-create-directory` on `+`
+  - `negative-argument` on `-`
+  - `digit-argument` on `0 .. 9`
+  - `dired-prev-dirline` on `<`
+  - `dired-diff` on `=`
+  - `dired-next-dirline` on `>`
+  - `dired-summary` on `?`
+  - `dired-do-search` on `A`
+  - `dired-do-byte-compile` on `B`
+  - `dired-do-copy` on `C`
+  - `dired-do-delete` on `D`
+  - `dired-do-chgrp` on `G`
+  - `dired-do-hardlink` on `H`
+  - `dired-do-load` on `L`
+  - `dired-do-chmod` on `M`
+  - `dired-do-chown` on `O`
+  - `dired-do-print` on `P`
+  - `dired-do-query-replace-regexp` on `Q`
+  - `dired-do-rename` on `R`
+    rename a file or move selection to another directory
+  - `dired-do-symlink` on `S`
+  - `dired-do-touch` on `T`
+  - `dired-unmark-all-marks` on `U`
+  - `dired-do-shell-command` on `X`
+  - `dired-do-compress` on `Z`
+  - `dired-up-directory` on `^`
+  - `dired-find-alternate-file` on `a`
+  - `describe-mode` on `h`
+  - `dired-maybe-insert-subdir` on `i, +`
+  - `dired-goto-file` on `j`
+  - `revert-buffer` on `g`
+    read all currently expanded directories aGain.
+  - `dired-do-kill-lines` on `k`
+  - `dired-do-redisplay` on `l`
+    relist single directory or marked files?
+  - `dired-find-file-other-window` on `o`
+  - `quit-window` on `q`
+  - `dired-sort-toggle-or-edit` on `s`
+    toggle sorting by name and by date
+    with prefix: set the ls command line options
+  - `dired-toggle-marks` on `t`
+  - `dired-view-file` on `v`
+  - `dired-copy-filename-as-kill` on `w`
+  - `dired-do-flagged-delete` on `x`
+  - `dired-show-file-type` on `y`
+  - `dired-flag-backup-files` on `~`
+  - `dired-tree-down` on `C-M-d`
+  - `dired-next-subdir` on `C-M-n`
+  - `dired-prev-subdir` on `C-M-p`
+  - `dired-tree-up` on `C-M-u`
+  - `dired-hide-all` on `M-$`
+  - `dired-prev-marked-file` on `M-{`
+  - `dired-next-marked-file` on `M-}`
+  - `dired-unmark-all-files` on `M-DEL`
+  - `dired-next-marked-file` on `* C-n`
+  - `dired-prev-marked-file` on `* C-p`
+  - `dired-unmark-all-marks` on `* !`
+  - `dired-mark-files-regexp` on `* %`
+  - `dired-mark-executables` on `* *`
+  - `dired-mark-directories` on `* /`
+  - `dired-unmark-all-files` on `* ?`
+  - `dired-mark-symlinks` on `* @`
+  - `dired-change-marks` on `* c`
+  - `dired-mark` on `* m`
+  - `dired-mark-subdir-files` on `* s`
+  - `dired-toggle-marks` on `* t`
+  - `dired-unmark` on `* u`
+    need commands for splitting, unsplitting, zooming, marking files globally.
 
 ### Bufed
 
