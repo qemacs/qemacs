@@ -1096,12 +1096,15 @@ static void do_kill_block(EditState *s, int n)
 void do_transpose(EditState *s, int cmd)
 {
     QEmacsState *qs = s->qe_state;
-    int offset0, offset1, offset2, offset3, end_offset;
+    int offset0, offset1, offset2, offset3;
+    int start_offset, end_offset;
     int size0, size1, size2;
     EditBuffer *b = s->b;
 
     if (check_read_only(s))
         return;
+
+    // FIXME: handle repeat count
 
     /* compute positions of ranges to swap:
        offset0..offset1 and offset2..offset3
@@ -1157,6 +1160,35 @@ void do_transpose(EditState *s, int cmd)
             end_offset = offset0 + offset3 - offset1;
         } else {
             /* set position past second line (emacs behaviour) */
+            end_offset = offset3;
+        }
+        break;
+    case CMD_TRANSPOSE_PARAGRAPHS:
+        start_offset = s->offset;
+        if (!eb_is_blank_line(b, start_offset, NULL))
+            start_offset = eb_next_paragraph(b, start_offset);
+        offset2 = eb_skip_blank_lines(b, start_offset, 1);
+        offset3 = eb_next_paragraph(b, offset2);
+        offset1 = eb_skip_blank_lines(b, start_offset, -1);
+        offset0 = eb_prev_paragraph(b, offset1);
+        if (qs->emulation_flags == 1) {
+            /* set position to end of first paragraph */
+            end_offset = offset0 + offset3 - offset2;
+        } else {
+            /* set position past last paragraph (emacs behaviour) */
+            end_offset = offset3;
+        }
+        break;
+    case CMD_TRANSPOSE_SENTENCES:
+        offset0 = eb_prev_sentence(b, s->offset);
+        offset1 = eb_next_sentence(b, offset0);
+        offset3 = eb_next_sentence(b, offset1);
+        offset2 = eb_prev_sentence(b, offset3);
+        if (qs->emulation_flags == 1) {
+            /* set position to end of first paragraph */
+            end_offset = offset0 + offset3 - offset2;
+        } else {
+            /* set position past last paragraph (emacs behaviour) */
             end_offset = offset3;
         }
         break;
@@ -2423,23 +2455,108 @@ static CompletionDef charname_completion = {
 
 /*---------------- paragraph handling ----------------*/
 
-int eb_next_paragraph(EditBuffer *b, int offset) {
-    /* find end of paragraph around or after point:
-       skip blank lines, if any, then skip non blank lines
-       and return start of blank line before text.
+int eb_skip_whitespace(EditBuffer *b, int offset, int dir) {
+    /*@API buffer
+       Skip whitespace in a given direction.
+       @argument `b` a valid pointer to an `EditBuffer`
+       @argument `offset` the position in bytes in the buffer
+       @argument `dir` the skip direction (-1, 0, 1)
+       @return the new buffer position
      */
-    int text_found = 0;
-    offset = eb_goto_bol(b, offset);
-    while (offset < b->total_size) {
-        if (eb_is_blank_line(b, offset, NULL)) {
-            if (text_found)
-                break;
-        } else {
-            text_found = 1;
-        }
-        offset = eb_next_line(b, offset);
+    int p1;
+    if (dir > 0) {
+        while (offset < b->total_size && qe_isspace(eb_nextc(b, offset, &p1)))
+            offset = p1;
+    } else
+    if (dir < 0) {
+        while (offset > 0 && qe_isspace(eb_prevc(b, offset, &p1)))
+            offset = p1;
     }
     return offset;
+}
+
+int eb_skip_blank_lines(EditBuffer *b, int offset, int dir) {
+    /*@API buffer
+       Skip blank lines in a given direction
+       @argument `b` a valid pointer to an `EditBuffer`
+       @argument `offset` the position in bytes in the buffer
+       @argument `dir` the skip direction (-1, 0, 1)
+       @return the new buffer position:
+       - the value of `offset` if not on a blank line
+       - the beginning of the first blank line if skipping backward
+       - the beginning of the next non-blank line if skipping forward
+     */
+    if (dir > 0) {
+        while (offset < b->total_size && eb_is_blank_line(b, offset, &offset))
+            continue;
+    } else {
+        int pos = eb_goto_bol(b, offset);
+        while (eb_is_blank_line(b, pos, NULL) && (offset = pos) > 0)
+            pos = eb_prev_line(b, pos);
+    }
+    return offset;
+}
+
+int eb_next_paragraph(EditBuffer *b, int offset) {
+    /*@API buffer
+       Find end of paragraph around or after point.
+       @argument `b` a valid pointer to an `EditBuffer`
+       @argument `offset` the position in bytes in the buffer
+       @return the new buffer position: skip any blank lines, then skip
+       non blank lines and return start of the blank line after text.
+     */
+    offset = eb_skip_blank_lines(b, offset, 1);
+    while (offset < b->total_size && !eb_is_blank_line(b, offset, NULL))
+        offset = eb_next_line(b, offset);
+    return offset;
+}
+
+int eb_prev_paragraph(EditBuffer *b, int offset) {
+    /*@API buffer
+       Find start of paragraph around or before point.
+       @argument `b` a valid pointer to an `EditBuffer`
+       @argument `offset` the position in bytes in the buffer
+       @return the new buffer position: skip any blank lines before
+       `offset`, then skip non blank lines and return start of the blank
+       line before text. */
+    offset = eb_skip_blank_lines(b, offset, -1);
+    while (offset > 0) {
+        offset = eb_prev_line(b, offset);
+        if (eb_is_blank_line(b, offset, NULL))
+            break;
+    }
+    return offset;
+}
+
+int eb_skip_paragraphs(EditBuffer *b, int offset, int n) {
+    /*@API buffer
+       Skip one or more paragraphs in a given direction.
+       @argument `b` a valid pointer to an `EditBuffer`
+       @argument `offset` the position in bytes in the buffer
+       @argument `n` the number of paragraphs to skip, `n` can be negative.
+       @return the new buffer position:
+       - the value of `offset` if `n` is `0`
+       - the beginning of the n-th previous paragraph if skipping backward:
+         the beginning of the paragraph text or the previous blank line
+         if any.
+       - the end of the n-th next paragraph if skipping forward:
+         the end of the paragraph text or the beginning of the next blank
+         line if any.
+     */
+    if (n < 0) {
+        while (n++ < 0 && offset > 0)
+            offset = eb_prev_paragraph(b, offset);
+    } else
+    if (n > 0) {
+        while (n-- > 0 && offset < b->total_size)
+            offset = eb_next_paragraph(b, offset);
+    }
+    return offset;
+}
+
+void do_forward_paragraph(EditState *s, int n) {
+    maybe_set_mark(s);
+    s->offset = eb_skip_paragraphs(s->b, s->offset, n);
 }
 
 void do_mark_paragraph(EditState *s, int n) {
@@ -2461,55 +2578,21 @@ void do_mark_paragraph(EditState *s, int n) {
        the next ARG paragraphs after the ones already marked.
      */
     int start = s->offset;
-    int end = s->region_style ? s->b->mark : s->offset;
-    if (n < 0) {
-        end = eb_prev_paragraph(s->b, end);
-        if (!s->region_style)
+    int end = s->b->mark;
+    if (!s->region_style) {
+        if (n < 0) {
+            end = eb_prev_paragraph(s->b, start);
             start = eb_next_paragraph(s->b, end);
-        while (++n < 0 && end > 0) {
-            end = eb_prev_paragraph(s->b, end);
-        }
-    } else
-    if (n > 0) {
-        end = eb_next_paragraph(s->b, end);
-        if (!s->region_style)
+            n++;
+        } else
+        if (n > 0) {
+            end = eb_next_paragraph(s->b, start);
             start = eb_prev_paragraph(s->b, end);
-        while (--n > 0 && end < s->b->total_size) {
-            end = eb_next_paragraph(s->b, end);
+            n--;
         }
     }
+    end = eb_skip_paragraphs(s->b, end, n);
     do_mark_region(s, end, start);
-}
-
-int eb_prev_paragraph(EditBuffer *b, int offset) {
-    /* find start of paragraph around or before point:
-       skip blank lines, if any, then skip non blank lines
-       and return start of blank line after end of text.
-     */
-    int text_found = 0;
-    offset = eb_goto_bol(b, offset);
-    while (offset > 0) {
-        if (eb_is_blank_line(b, offset, NULL)) {
-            if (text_found)
-                break;
-        } else {
-            text_found = 1;
-        }
-        offset = eb_prev_line(b, offset);
-    }
-    return offset;
-}
-
-void do_forward_paragraph(EditState *s, int n)
-{
-    maybe_set_mark(s);
-
-    for (; n < 0 && s->offset > 0; n++) {
-        s->offset = eb_prev_paragraph(s->b, s->offset);
-    }
-    for (; n > 0 && s->offset < s->b->total_size; n--) {
-        s->offset = eb_next_paragraph(s->b, s->offset);
-    }
 }
 
 void do_kill_paragraph(EditState *s, int n) {
@@ -2521,9 +2604,8 @@ void do_kill_paragraph(EditState *s, int n) {
        negative arg -N means kill backward to Nth start of paragraph.
      */
     if (n != 0) {
-        int start = s->offset;
-        do_forward_paragraph(s, n);
-        do_kill(s, start, s->offset, n, 0);
+        int end = eb_skip_paragraphs(s->b, s->offset, n);
+        do_kill(s, s->offset, end, n, 0);
     }
 }
 
@@ -2586,71 +2668,243 @@ static int get_indent_size(EditState *s, int p1, int p2) {
     return indent_size;
 }
 
-void do_fill_paragraph(EditState *s)
+/* mode=0: fill the current paragraph
+ * mode=1: fill all paragraphs in the current region
+ * mode=2: fill all paragraphs in the buffer
+ * mode=3: fill region as paragraph
+ */
+void do_fill_paragraph(EditState *s, int mode, int argval)
 {
+    EditBuffer *b = s->b;
     /* buffer offsets, byte counts */
-    int par_start, par_end, offset, offset1, chunk_start, word_start;
+    int par_start, par_end, offset, offset1, chunk_start, word_start, end;
     /* number of characters / screen positions */
-    int col, indent0_size, indent_size, word_size;
+    int col, indent0_size, indent_size, word_size, nb;
+
+    par_start = end = s->offset;
+    if (mode == 1 || mode == 3 || s->region_style) {
+        par_start = min_offset(b->mark, s->offset);
+        end = max_offset(b->mark, s->offset);
+    }
+    if (mode == 2) {
+        par_start = 0;
+        end = b->total_size;
+    }
 
     /* find start & end of paragraph */
-    par_end = eb_next_paragraph(s->b, s->offset);
-    par_start = eb_prev_paragraph(s->b, par_end);
-    /* skip the blank line if any */
-    eb_is_blank_line(s->b, par_start, &par_start);
+    if (!eb_is_blank_line(b, end, NULL))
+        end = eb_next_paragraph(b, end);
+    par_start = eb_goto_bol(b, par_start);
+    if (!eb_is_blank_line(b, par_start, NULL))
+        par_start = eb_prev_paragraph(b, par_start);
 
-    /* compute indent sizes for first and second lines */
-    indent0_size = get_indent_size(s, par_start, par_end);
-    offset = eb_next_line(s->b, par_start);
-    indent_size = get_indent_size(s, offset, par_end);
+    for (;;) {
+        par_start = eb_skip_blank_lines(b, par_start, 1);
 
-    /* reflow words to fill lines */
-    col = 0;
-    offset = par_start;
-    while (offset < par_end) {
-        /* skip spaces */
-        chunk_start = offset;
+        /* did we reach the end of the region? */
+        if (par_start >= end)
+            return;
+
+        /* compute indent sizes for first and second lines */
+        par_end = end;
+        if (mode != 3)
+            par_end = eb_next_paragraph(b, par_start);
+        indent0_size = get_indent_size(s, par_start, par_end);
+        offset = eb_next_line(b, par_start);
+        indent_size = get_indent_size(s, offset, par_end);
+
+        /* reflow words to fill lines */
+        col = 0;
+        offset = par_start;
+        // XXX: should justify with spaces if C-u prefix
         while (offset < par_end) {
-            char32_t c = eb_nextc(s->b, offset, &offset1);
-            if (!qe_isspace(c))
-                break;
-            offset = offset1;
-        }
-        /* skip word */
-        word_start = offset;
-        word_size = 0;
-        while (offset < par_end) {
-            char32_t c = eb_nextc(s->b, offset, &offset1);
-            if (qe_isspace(c))
-                break;
-            offset = offset1;
-            /* handle variable width and combining glyphs */
-            word_size += qe_wcwidth(c);
-        }
-
-        if (chunk_start == par_start) {
-            /* preserve spaces at paragraph start */
-            col += indent0_size + word_size;
-        } else {
-            if (word_start == offset) {
-                /* space at end of paragraph: append a newline */
-                eb_respace(s->b, chunk_start, word_start, 1, 0);
-                break;
+            /* skip spaces */
+            chunk_start = offset;
+            while (offset < par_end) {
+                char32_t c = eb_nextc(b, offset, &offset1);
+                if (!qe_isspace(c))
+                    break;
+                offset = offset1;
             }
-            if (col + 1 + word_size > s->b->fill_column) {
-                /* insert newline and indentation */
-                int nb = eb_respace(s->b, chunk_start, word_start, 1, indent_size);
-                offset += nb;
-                par_end += nb;
-                col = indent_size + word_size;
+            /* skip word */
+            word_start = offset;
+            word_size = 0;
+            while (offset < par_end) {
+                char32_t c = eb_nextc(b, offset, &offset1);
+                if (qe_isspace(c))
+                    break;
+                offset = offset1;
+                /* handle variable width and combining glyphs */
+                word_size += qe_wcwidth(c);
+            }
+
+            if (chunk_start == par_start) {
+                /* preserve spaces at paragraph start */
+                col += indent0_size + word_size;
             } else {
-                /* single space the word */
-                int nb = eb_respace(s->b, chunk_start, word_start, 0, 1);
+                if (word_start == offset) {
+                    /* space at end of paragraph: append a newline */
+                    nb = eb_respace(b, chunk_start, word_start, 1, 0);
+                    if (end >= word_start)
+                        end += nb;
+                    break;
+                }
+                if (col + 1 + word_size > b->fill_column) {
+                    /* insert newline and indentation */
+                    col = indent_size + word_size;
+                    nb = eb_respace(b, chunk_start, word_start, 1, indent_size);
+                } else {
+                    /* single space the word */
+                    col += 1 + word_size;
+                    nb = eb_respace(b, chunk_start, word_start, 0, 1);
+                }
                 offset += nb;
                 par_end += nb;
-                col += 1 + word_size;
+                end += nb;
             }
         }
+    }
+}
+
+/*---------------- sentence handling ----------------*/
+
+/* Sentence end: "[.?!\u2026\u203d][]\"'\u201d\u2019)}\u00bb\u203a]*" */
+
+int eb_next_sentence(EditBuffer *b, int offset) {
+    /*@API buffer
+       Find end of sentence after point.
+       @argument `b` a valid pointer to an `EditBuffer`
+       @argument `offset` the position in bytes in the buffer
+       @return the new buffer position: search for the sentence-end
+       pattern and skip it.
+     */
+    int p1, p2;
+    char32_t c, c2;
+    int start = offset;
+    int end = eb_next_paragraph(b, offset);
+    while (offset < end) {
+        c = eb_nextc(b, offset, &offset);
+        if (!(c == '.' || c == '?' || c == '!'))
+            continue;
+        for (;;) {
+            c = eb_nextc(b, offset, &p1);
+            if (c == ']' || c == '"' || c == '\'' || c == ')' || c == '}')
+                offset = p1;
+            else
+                break;
+        }
+        c2 = eb_nextc(b, p1, &p2);
+        if (c == ' ' && qe_isspace(c2))
+            return offset;
+        if (c == '\n' && p2 >= end)
+            return offset;
+    }
+    return max_int(start, eb_skip_whitespace(b, offset, -1));
+}
+
+int eb_prev_sentence(EditBuffer *b, int offset) {
+    /*@API buffer
+       Find start of sentence before point.
+       @argument `b` a valid pointer to an `EditBuffer`
+       @argument `offset` the position in bytes in the buffer
+       @return the new buffer position: first non blank character after end
+       of previous sentence.
+     */
+    int p1, p2, p3, end;
+    char32_t c, c2;
+
+    while (offset > 0) {
+        c = eb_prevc(b, offset, &offset);
+        if (!qe_findchar(".?! \t\n", c))
+            break;
+    }
+    end = eb_prev_paragraph(b, offset);
+    end = eb_skip_blank_lines(b, end, 1);
+
+    while ((p1 = offset) > end) {
+        c = eb_prevc(b, offset, &offset);
+        if (!(c == '.' || c == '?' || c == '!'))
+            continue;
+        for (;;) {
+            c = eb_nextc(b, p1, &p2);
+            if (c == ']' || c == '"' || c == '\'' || c == ')' || c == '}')
+                p1 = p2;
+            else
+                break;
+        }
+        c2 = eb_nextc(b, p2, &p3);
+        if (c == ' ' && qe_isspace(c2))
+            break;
+    }
+    return eb_skip_whitespace(b, p1, 1);
+}
+
+int eb_skip_sentences(EditBuffer *b, int offset, int n) {
+    /*@API buffer
+       Skip one or more sentences in a given direction.
+       @argument `b` a valid pointer to an `EditBuffer`
+       @argument `offset` the position in bytes in the buffer
+       @argument `n` the number of sentences to skip, `n` can be negative.
+       @return the new buffer position:
+       - the value of `offset` if `n` is `0`
+       - the beginning of the n-th previous sentence if skipping backward:
+         the beginning of the sentence text or the previous blank line
+         if any.
+       - the end of the n-th next sentence if skipping forward:
+         the end of the sentence text or the beginning of the next blank
+         line if any.
+     */
+    if (n < 0) {
+        while (n++ < 0 && offset > 0)
+            offset = eb_prev_sentence(b, offset);
+    } else
+    if (n > 0) {
+        while (n-- > 0 && offset < b->total_size)
+            offset = eb_next_sentence(b, offset);
+    }
+    return offset;
+}
+
+void do_forward_sentence(EditState *s, int n) {
+    maybe_set_mark(s);
+    s->offset = eb_skip_sentences(s->b, s->offset, n);
+}
+
+void do_mark_sentence(EditState *s, int n) {
+    /* mark-sentence:
+
+       mark_sentence(n = arg_val)
+
+       Put point at point, mark at end of sentence.
+       The sentence marked is the one that contains point or follows point.
+
+       With argument ARG, puts mark at end of a following sentence, so that
+       the number of sentences marked equals ARG.
+
+       If ARG is negative, point is put at point, mark is put
+       at beginning of this or a previous sentence.
+       The sentence marked is the one that contains point or precedes point.
+
+       If the current region is highlighted, it marks
+       the next ARG sentences after the ones already marked.
+     */
+    int start = s->offset;
+    int end = s->region_style ? s->b->mark : s->offset;
+    end = eb_skip_sentences(s->b, end, n);
+    do_mark_region(s, end, start);
+}
+
+void do_kill_sentence(EditState *s, int n) {
+    /*
+       kill_sentence(n = ARG)
+
+       Kill forward to end of sentence.
+       With arg N, kill forward to Nth end of sentence;
+       negative arg -N means kill backward to Nth start of sentence.
+     */
+    if (n != 0) {
+        int end = eb_skip_sentences(s->b, s->offset, n);
+        do_kill(s, s->offset, end, n, 0);
     }
 }
 
@@ -2790,10 +3044,17 @@ static const CmdDef extra_commands[] = {
           "s{Unset key locally: }[key]"
           "v", 1)
 
-    // XXX: should have `qemacs-hello` on `C-h h` testing charsets
-    // XXX: should have `qemacs-manual` on `C-h m`
-    // XXX: should have `qemacs-faq` on `C-h C-f`
-    //      use do_load_file_from_path() to load the above
+    // XXX: the commands below should use do_load_file_from_path()
+    CMDx( "qemacs-hello", "C-h h",
+          "Create a test buffer with various charsets",
+          do_qemacs_hello)
+    CMDx( "qemacs-manual", "C-h m",
+          "Show the Quick Emacs manual",
+          do_qemacs_manual)
+    CMDx( "qemacs-faq", "C-h C-f",
+          "Show the Quick Emacs FAQ",
+          do_qemacs_faq)
+
     CMD0( "about-qemacs", "C-h ?, f1",
           "Display information about Quick Emacs",
           do_about_qemacs)
@@ -2854,7 +3115,7 @@ static const CmdDef extra_commands[] = {
           "Sort the lines in the region as numbers",
           do_sort_region, ESii, "*" "p" "v", SF_NUMBER)
     CMD3( "sort-paragraphs", "",
-          "Sort the paragraphs in the region as numbers",
+          "Sort the paragraphs in the region alphabetically",
           do_sort_region, ESii, "*" "p" "v", SF_PARAGRAPH)
 
     CMD2( "list-tags", "",
@@ -2877,15 +3138,54 @@ static const CmdDef extra_commands[] = {
           "Move point to the beginning of the paragraph at or before point",
           do_forward_paragraph, ESi, "q")
     CMD2( "forward-paragraph", "M-}, C-down, C-S-down",
-          "Move point to the end of the paragraph at or before point",
+          "Move point to the end of the paragraph at or after point",
           do_forward_paragraph, ESi, "p")
-    CMD2( "fill-paragraph", "M-q",
+    CMD3( "fill-paragraph", "M-q",
           "Fill the current paragraph, preserving indentation of the first 2 lines",
-          do_fill_paragraph, ES, "*")
-    /* should have fill-region, fill-buffer */
+          do_fill_paragraph, ESii, "*" "v" "p", 0)
+    CMD3( "fill-region", "",
+          "Fill all paragraphs in the current region",
+          do_fill_paragraph, ESii, "*" "v" "p", 1)
+    CMD3( "fill-buffer", "",
+          "Fill all paragraphs in the buffer",
+          do_fill_paragraph, ESii, "*" "v" "p", 2)
+    CMD3( "fill-region-as-paragraph", "",
+          "Fill all paragraphs in the current region as a single paragraph",
+          do_fill_paragraph, ESii, "*" "v" "p", 3)
+    CMD2( "backward-kill-paragraph", "",
+          "Kill back to start of paragraph",
+          do_kill_paragraph, ESi, "*" "q")
     CMD2( "kill-paragraph", "",
-          "Kill the paragraph at or after point",
-          do_kill_paragraph, ESi, "p")
+          "Kill forward to end of paragraph",
+          do_kill_paragraph, ESi, "*" "p")
+    CMD3( "transpose-paragraphs", "",
+          "Interchange the current paragraph with the next one",
+          do_transpose, ESi, "*" "v", CMD_TRANSPOSE_PARAGRAPHS)
+    CMDx( "center-paragraph", "",
+          "Center each nonblank line in the paragraph at or after point",
+          do_center_paragraph, ES, "*")
+
+    CMD2( "backward-kill-sentence", "C-x DEL",
+          "Kill back from point to start of sentence",
+          do_kill_sentence, ESi, "*" "q")
+    CMD2( "backward-sentence", "M-a",
+          "Move backward to start of sentence",
+          do_forward_sentence, ESi, "q")
+    CMD2( "forward-sentence", "M-e",
+          "Move forward to next end of sentence.  With argument, repeat",
+          do_forward_sentence, ESi, "p")
+    CMD2( "kill-sentence", "M-k",
+          "Kill from point to end of sentence",
+          do_kill_sentence, ESi, "*" "p")
+    CMD2( "mark-end-of-sentence", "",
+          "Put mark at end of sentence",
+          do_mark_sentence, ESi, "q")
+    CMDx( "repunctuate-sentences", "",
+          "Put two spaces at the end of sentences from point to the end of buffer",
+          do_repunctuate_sentences, ES, "*")
+    CMD3( "transpose-sentences", "",
+          "Interchange the current sentence with the next one",
+          do_transpose, ESi, "*" "v", CMD_TRANSPOSE_SENTENCES)
 };
 
 static int extras_init(QEmacsState *qs) {

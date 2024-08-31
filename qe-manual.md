@@ -417,6 +417,28 @@ buffer position after the codepoint and any combining glyphs
 
 Return the main codepoint value
 
+### `int eb_next_paragraph(EditBuffer *b, int offset);`
+
+Find end of paragraph around or after point.
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+Return the new buffer position: skip any blank lines, then skip
+non blank lines and return start of the blank line after text.
+
+### `int eb_next_sentence(EditBuffer *b, int offset);`
+
+Find end of sentence after point.
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+Return the new buffer position: search for the sentence-end
+pattern and skip it.
+
 ### `char32_t eb_prev_glyph(EditBuffer *b, int offset, int *next_ptr);`
 
 Return the main character for the previous glyph,
@@ -431,6 +453,29 @@ buffer position of the codepoint before any combining glyphs
 
 Return the main codepoint value
 
+### `int eb_prev_paragraph(EditBuffer *b, int offset);`
+
+Find start of paragraph around or before point.
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+Return the new buffer position: skip any blank lines before
+`offset`, then skip non blank lines and return start of the blank
+line before text.
+
+### `int eb_prev_sentence(EditBuffer *b, int offset);`
+
+Find start of sentence before point.
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+Return the new buffer position: first non blank character after end
+of previous sentence.
+
 ### `int eb_skip_accents(EditBuffer *b, int offset);`
 
 Skip over combining glyphs
@@ -440,6 +485,21 @@ Skip over combining glyphs
 * argument `offset` the position in bytes in the buffer
 
 Return the new buffer position past any combining glyphs
+
+### `int eb_skip_blank_lines(EditBuffer *b, int offset, int dir);`
+
+Skip blank lines in a given direction
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+* argument `dir` the skip direction (-1, 0, 1)
+
+Return the new buffer position:
+- the value of `offset` if not on a blank line
+- the beginning of the first blank line if skipping backward
+- the beginning of the next non-blank line if skipping forward
 
 ### `int eb_skip_chars(EditBuffer *b, int offset, int n);`
 
@@ -454,6 +514,56 @@ Compute offset after moving `n` codepoints from `offset`.
 Return the new buffer position
 
 Note: 'n' can be negative
+
+### `int eb_skip_paragraphs(EditBuffer *b, int offset, int n);`
+
+Skip one or more paragraphs in a given direction.
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+* argument `n` the number of paragraphs to skip, `n` can be negative.
+
+Return the new buffer position:
+- the value of `offset` if `n` is `0`
+- the beginning of the n-th previous paragraph if skipping backward:
+  the beginning of the paragraph text or the previous blank line
+  if any.
+- the end of the n-th next paragraph if skipping forward:
+  the end of the paragraph text or the beginning of the next blank
+  line if any.
+
+### `int eb_skip_sentences(EditBuffer *b, int offset, int n);`
+
+Skip one or more sentences in a given direction.
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+* argument `n` the number of sentences to skip, `n` can be negative.
+
+Return the new buffer position:
+- the value of `offset` if `n` is `0`
+- the beginning of the n-th previous sentence if skipping backward:
+  the beginning of the sentence text or the previous blank line
+  if any.
+- the end of the n-th next sentence if skipping forward:
+  the end of the sentence text or the beginning of the next blank
+  line if any.
+
+### `int eb_skip_whitespace(EditBuffer *b, int offset, int dir);`
+
+Skip whitespace in a given direction.
+
+* argument `b` a valid pointer to an `EditBuffer`
+
+* argument `offset` the position in bytes in the buffer
+
+* argument `dir` the skip direction (-1, 0, 1)
+
+Return the new buffer position
 
 ### `int qe_digit_value(char32_t c);`
 

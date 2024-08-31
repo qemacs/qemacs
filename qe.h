@@ -1551,12 +1551,21 @@ void do_bol(EditState *s);
 void do_eol(EditState *s);
 void do_word_left_right(EditState *s, int n);
 void do_mark_region(EditState *s, int mark, int offset);
+int eb_skip_whitespace(EditBuffer *b, int offset, int dir);
+int eb_skip_blank_lines(EditBuffer *b, int offset, int dir);
 int eb_next_paragraph(EditBuffer *b, int offset);
 int eb_prev_paragraph(EditBuffer *b, int offset);
-void do_mark_paragraph(EditState *s, int n);
+int eb_skip_paragraphs(EditBuffer *b, int offset, int n);
 void do_forward_paragraph(EditState *s, int n);
+void do_mark_paragraph(EditState *s, int n);
 void do_kill_paragraph(EditState *s, int n);
-void do_fill_paragraph(EditState *s);
+void do_fill_paragraph(EditState *s, int mode, int argval);
+int eb_next_sentence(EditBuffer *b, int offset);
+int eb_prev_sentence(EditBuffer *b, int offset);
+int eb_skip_sentences(EditBuffer *b, int offset, int n);
+void do_forward_sentence(EditState *s, int n);
+void do_mark_sentence(EditState *s, int n);
+void do_kill_sentence(EditState *s, int n);
 void do_changecase_word(EditState *s, int up);
 void do_changecase_region(EditState *s, int up);
 void do_delete_word(EditState *s, int dir);
@@ -1775,6 +1784,8 @@ enum {
     CMD_TRANSPOSE_CHARS = 1,
     CMD_TRANSPOSE_WORDS,
     CMD_TRANSPOSE_LINES,
+    CMD_TRANSPOSE_PARAGRAPHS,
+    CMD_TRANSPOSE_SENTENCES,
 };
 void do_transpose(EditState *s, int cmd);
 
