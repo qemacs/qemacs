@@ -272,8 +272,8 @@ int eb_command_print_entry(EditBuffer *b, const CmdDef *d, EditState *s) {
 #ifndef CONFIG_TINY
         if (qe_list_bindings(d, s->mode, 1, buf, sizeof buf)) {
             b->cur_style = QE_STYLE_COMMENT;
-            if (len < 40) {
-                b->tab_width = max_int(len, b->tab_width);
+            if (len + 1 < 40) {
+                b->tab_width = max_int(len + 1, b->tab_width);
                 len += eb_putc(b, '\t');
             } else {
                 b->tab_width = 40;

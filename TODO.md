@@ -4,6 +4,9 @@
 
 ## Current work
 
+* change accent input method: type accents before the character:
+  when inserting an accent, insert a space before and do not move point
+  when inserting a character before an accented space, replace
 * fix markdown command bindings
 * toggle long listing and column listing in dired buffers
 * keep a count of windows in `EditBuffer`
@@ -14,7 +17,8 @@
   - alternative: keep previous window if changing the buffer so swapping back restores the position and mode
   - add a previous window for `predict_switch_to_buffer`
 * add mouse support in capable terminals
-* `-color_code` command line option to display available colors
+* `-color_code` command line option to display available colors on terminal
+* `show-colors` display colors in a popup buffer with samples
 * automatic remote config fetch based on email at qemacs.org:
   - .qemacs, .bashrc...
 * shell buffer remote filesystem using commands `get` and `put` (for ssh sessions)
@@ -131,6 +135,7 @@
 * help: `data-directory`, `data-path` ?
 * add command documentation in `describe-function`
 * add command documentation in `describe-variable`
+* cross link help pages
 * show memory stats in `describe-buffer` and `about-qemacs`
 * add function to add entry in **TODO.md**
 * move mailing list to github or private server
@@ -624,6 +629,7 @@ insert_window_left()  deletes some left-most windows
 * fix infinite scroll for man command
 * man output bug on linux
 * man pager -> more bindings, such as `RET` -> `push-button` (jump to map page)
+* cross link man pages
 * accented letter input in shell mode
 * transcode between tty charset and shell buffer charset
 * track unsupported escapes in shell buffer
