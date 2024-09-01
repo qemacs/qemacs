@@ -527,8 +527,7 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
     if (!vp)
         return 0;
 
-    len = eb_puts(b, vp->name);
-
+    *typebuf = '\0';
     switch (vp->type) {
     case VAR_NUMBER:
         type = "int";
@@ -537,13 +536,21 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
         type = "string";
         break;
     case VAR_CHARS:
-        snprintf(typebuf, sizeof(typebuf), "char[%d]", vp->size);
+        type = "char";
+        snprintf(typebuf, sizeof(typebuf), "[%d]", vp->size);
         break;
     default:
         type = "var";
         break;
     }
-    len += eb_printf(b, " = ");
+    b->cur_style = QE_STYLE_TYPE;
+    len = eb_printf(b, "%s ", type);
+    b->cur_style = QE_STYLE_VARIABLE;
+    len += eb_puts(b, vp->name);
+    b->cur_style = QE_STYLE_DEFAULT;
+
+    len += eb_printf(b, "%s = ", typebuf);
+
     qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
     if (*buf == '\"')
         b->cur_style = QE_STYLE_STRING;
@@ -551,8 +558,8 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
         b->cur_style = QE_STYLE_NUMBER;
     len += eb_puts(b, buf);
     b->cur_style = QE_STYLE_COMMENT;
-    if (2 + len < 40) {
-        b->tab_width = max_int(2 + len, b->tab_width);
+    if (len + 1 < 40) {
+        b->tab_width = max_int(len + 1, b->tab_width);
         len += eb_putc(b, '\t');
     } else {
         b->tab_width = 40;

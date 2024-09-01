@@ -1357,7 +1357,7 @@ void do_apropos(EditState *s, const char *str)
     EditBuffer *b;
     const CmdDef *d;
     VarDef *vp;
-    int found_command, found_variable, start, stop, i, j;
+    int start, stop, i, j, extra;
 
     b = new_help_buffer();
     if (!b)
@@ -1365,48 +1365,49 @@ void do_apropos(EditState *s, const char *str)
 
     eb_putc(b, '\n');
 
-    start = b->offset;
-    found_command = 0;
-    for (i = 0; i < qs->cmd_array_count; i++) {
-        for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
-            const char *desc = d->spec + strlen(d->spec) + 1;
-            if (strstr(d->name, str) || strstr(desc, str)) {
-                /* print name, prototype, bindings */
-                eb_command_print_entry(b, d, s);
+    stop = 1;
+    for (extra = 0; extra < 2; extra++) {
+        start = b->offset;
+        for (i = 0; i < qs->cmd_array_count; i++) {
+            for (j = qs->cmd_array[i].count, d = qs->cmd_array[i].array; j-- > 0; d++) {
+                const char *desc = d->spec + strlen(d->spec) + 1;
+                if ((!strstr(d->name, str)) == extra && (!extra || strstr(desc, str))) {
+                    /* print name, prototype, bindings */
+                    eb_command_print_entry(b, d, s);
+                    eb_putc(b, '\n');
+                    if (*desc) {
+                        /* print short description */
+                        eb_printf(b, "  %s\n", desc);
+                    }
+                }
+            }
+        }
+        stop = b->offset;
+        if (start < stop) {
+            eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH | SF_SILENT);
+            eb_putc(b, '\n');
+        }
+
+        start = b->offset;
+        for (vp = qs->first_variable; vp; vp = vp->next) {
+            const char *desc = vp->desc ? vp->desc : "";
+            if ((!strstr(vp->name, str)) == extra && (!extra || strstr(desc, str))) {
+                /* print class, name and current value */
+                eb_variable_print_entry(b, vp, s);
                 eb_putc(b, '\n');
                 if (*desc) {
                     /* print short description */
                     eb_printf(b, "  %s\n", desc);
                 }
-                found_command = 1;
             }
         }
-    }
-    if (found_command) {
         stop = b->offset;
-        eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH | SF_SILENT);
-    }
-
-    start = b->offset;
-    found_variable = 0;
-    for (vp = qs->first_variable; vp; vp = vp->next) {
-        if (strstr(vp->name, str)) {
-            /* print class, name and current value */
-            eb_variable_print_entry(b, vp, s);
+        if (start < stop) {
+            eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH | SF_SILENT);
             eb_putc(b, '\n');
-            if (vp->desc && *vp->desc) {
-                /* print short description */
-                eb_printf(b, "  %s\n", vp->desc);
-            }
-            found_variable = 1;
         }
     }
-    if (found_variable) {
-        stop = b->offset;
-        eb_sort_span(b, &start, &stop, stop, SF_DICT | SF_PARAGRAPH | SF_SILENT);
-    }
-
-    if (found_command + found_variable) {
+    if (stop > 1) {
         snprintf(buf, sizeof buf, "Apropos '%s'", str);
         show_popup(s, b, buf);
     } else {
