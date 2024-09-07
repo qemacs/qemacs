@@ -79,7 +79,7 @@ paletteRamp() {
     for i in `seq $1 $end`; do
         output "\033[48;5;${i}m$3"
     done
-    resetColor $'\n';
+    resetColor "$4";
 }
 
 paletteEmulate() {
@@ -188,101 +188,126 @@ colorCube4x4x4() {
 }
 
 xtermPalette() {
-    paletteRamp 0 16 $'  '
-    if [ "$check" == "xxx" ] ; then
-        setBackgroundColor 0x00 0x00 0x00 $'  '
-        setBackgroundColor 0xbb 0x00 0x00 $'  '
-        setBackgroundColor 0x00 0xbb 0x00 $'  '
-        setBackgroundColor 0xbb 0xbb 0x00 $'  '
-        setBackgroundColor 0x00 0x00 0xbb $'  '
-        setBackgroundColor 0xbb 0x00 0xbb $'  '
-        setBackgroundColor 0x00 0xbb 0xbb $'  '
-        setBackgroundColor 0xbb 0xbb 0xbb $'  '
-        setBackgroundColor 0x55 0x55 0x55 $'  '
-        setBackgroundColor 0xff 0x55 0x55 $'  '
-        setBackgroundColor 0x55 0xff 0x55 $'  '
-        setBackgroundColor 0xff 0xff 0x55 $'  '
-        setBackgroundColor 0x55 0x55 0xff $'  '
-        setBackgroundColor 0xff 0x55 0xff $'  '
-        setBackgroundColor 0x55 0xff 0xff $'  '
-        setBackgroundColor 0xff 0xff 0xff $'  '
-        resetColor $'\n'
+    output $'System colors:\n'
+    if [ "$check" == "" ] ; then
+        setBackgroundColor 0x00 0x00 0x00 "$1"
+        setBackgroundColor 0xBB 0x00 0x00 "$1"
+        setBackgroundColor 0x00 0xBB 0x00 "$1"
+        setBackgroundColor 0xBB 0xBB 0x00 "$1"
+        setBackgroundColor 0x00 0x00 0xBB "$1"
+        setBackgroundColor 0xBB 0x00 0xBB "$1"
+        setBackgroundColor 0x00 0xBB 0xBB "$1"
+        setBackgroundColor 0xBB 0xBB 0xBB "$1"
+        setBackgroundColor 0x55 0x55 0x55 "$1"
+        setBackgroundColor 0xFF 0x55 0x55 "$1"
+        setBackgroundColor 0x55 0xFF 0x55 "$1"
+        setBackgroundColor 0xFF 0xFF 0x55 "$1"
+        setBackgroundColor 0x55 0x55 0xFF "$1"
+        setBackgroundColor 0xFF 0x55 0xFF "$1"
+        setBackgroundColor 0x55 0xFF 0xFF "$1"
+        setBackgroundColor 0xFF 0xFF 0xFF "$1"
+        resetColor $'  iTerm2 Default (00 55 BB FF)\n'
     fi
-    if [ "$check" == "check" ] ; then
-        setBackgroundColor 0x00 0x00 0x00 $'  ' Black
-        setBackgroundColor 0x80 0x00 0x00 $'  ' Maroon
-        setBackgroundColor 0x00 0x80 0x00 $'  ' Green
-        setBackgroundColor 0x80 0x80 0x00 $'  ' Olive
-        setBackgroundColor 0x00 0x00 0x80 $'  ' Navy
-        setBackgroundColor 0x80 0x00 0x80 $'  ' Purple
-        setBackgroundColor 0x00 0x80 0x80 $'  ' Teal
-        setBackgroundColor 0xc0 0xc0 0xc0 $'  ' Silver
-        setBackgroundColor 0x80 0x80 0x80 $'  ' Grey
-        setBackgroundColor 0xff 0x00 0x00 $'  ' Red
-        setBackgroundColor 0x00 0xff 0x00 $'  ' Lime
-        setBackgroundColor 0xff 0xff 0x00 $'  ' Yellow
-        setBackgroundColor 0x00 0x00 0xff $'  ' Blue
-        setBackgroundColor 0xff 0x00 0xff $'  ' Fuchsia
-        setBackgroundColor 0x00 0xff 0xff $'  ' Aqua
-        setBackgroundColor 0xff 0xff 0xff $'  ' White
-        resetColor $'\n'
+    paletteRamp 0 16 "$1" $'  0..15 terminal colors\n'
+    if [ "$check" == "" ] ; then
+        setBackgroundColor 0x00 0x00 0x00 "$1"
+        setBackgroundColor 0xc9 0x1b 0x00 "$1"
+        setBackgroundColor 0x00 0xc2 0x00 "$1"
+        setBackgroundColor 0xc7 0xc4 0x00 "$1"
+        setBackgroundColor 0x02 0x25 0xc7 "$1"
+        setBackgroundColor 0xc9 0x30 0xc7 "$1"
+        setBackgroundColor 0x00 0xc5 0xc7 "$1"
+        setBackgroundColor 0xc7 0xc7 0xc7 "$1"
+        setBackgroundColor 0x67 0x67 0x67 "$1"
+        setBackgroundColor 0xff 0x6d 0x67 "$1"
+        setBackgroundColor 0x5f 0xf9 0x67 "$1"
+        setBackgroundColor 0xfe 0xfb 0x67 "$1"
+        setBackgroundColor 0x68 0x71 0xff "$1"
+        setBackgroundColor 0xff 0x76 0xff "$1"
+        setBackgroundColor 0x5f 0xfd 0xff "$1"
+        setBackgroundColor 0xff 0xfe 0xff "$1"
+        resetColor $'  iTerm2 Default colors (measured)\n'
     fi
-    for i in `seq 0 5`; do
-        let start=16+$i*36
-        let startE=$i*36
-        paletteRamp $start 36 $'  '
-        if [ "$check" == "check" ] ; then
-            paletteEmulate $startE 36 $'  '
+    paletteRamp 0 16 "$1" $'  0..15 terminal colors\n'
+    if [ "$check" == "" ] ; then
+        setBackgroundColor 0x00 0x00 0x00 "$1" Black
+        setBackgroundColor 0x80 0x00 0x00 "$1" Maroon
+        setBackgroundColor 0x00 0x80 0x00 "$1" Green
+        setBackgroundColor 0x80 0x80 0x00 "$1" Olive
+        setBackgroundColor 0x00 0x00 0x80 "$1" Navy
+        setBackgroundColor 0x80 0x00 0x80 "$1" Purple
+        setBackgroundColor 0x00 0x80 0x80 "$1" Teal
+        setBackgroundColor 0xc0 0xc0 0xc0 "$1" Silver
+        setBackgroundColor 0x80 0x80 0x80 "$1" Grey
+        setBackgroundColor 0xff 0x00 0x00 "$1" Red
+        setBackgroundColor 0x00 0xff 0x00 "$1" Lime
+        setBackgroundColor 0xff 0xff 0x00 "$1" Yellow
+        setBackgroundColor 0x00 0x00 0xff "$1" Blue
+        setBackgroundColor 0xff 0x00 0xff "$1" Fuchsia
+        setBackgroundColor 0x00 0xff 0xff "$1" Aqua
+        setBackgroundColor 0xff 0xff 0xff "$1" White
+        resetColor $'  CGA palette\n'
+    fi
+    output $'Color cube, 6x6x6:\n'
+    for jj in 0 18; do
+      for ii in 0 1 2 3 4 5; do
+        let start=16+$ii*36+$jj
+        let startE=$ii*36+$jj
+        paletteRamp $start 18 "$1" $'\n'
+        if [ "$check" == "" ] ; then
+            paletteEmulate $startE 18 "$1"
         fi
+      done
     done
-    paletteRamp 232 24 $'  '
-    if [ "$check" == "check" ] ; then
+    output $'Grayscale ramp:\n'
+    paletteRamp 232 24 "$1" $'  232..256\n'
+    if [ "$check" == "" ] ; then
         for i in 0x08 0x12 0x1c 0x26 0x30 0x3a 0x44 0x4e \
                  0x58 0x62 0x6c 0x76 0x80 0x8a 0x94 0x9e \
                  0xa8 0xb2 0xbc 0xc6 0xd0 0xda 0xe4 0xee ; do
-            setBackgroundColor $i $i $i $'  '
+            setBackgroundColor $i $i $i "$1"
         done
-        resetColor $'\n'
+        resetColor $'  8 18...228 238\n'
     fi
 }
 
-output $'\n'
-output $'Color cube 4x4x4:\n';
-colorCube4x4x4 $'  '
-
-output $'\n'
-output $'Color ramps: fade to black\n';
-colorRamp1 1 0 0 $' '
-colorRamp1 0 1 0 $' '
-colorRamp1 0 0 1 $' '
-colorRamp1 0 1 1 $' '
-colorRamp1 1 0 1 $' '
-colorRamp1 1 1 0 $' '
-
-# output $'Color edges\n';
-# colorRamp3 255   0   0   255   0 255 $' '
-# colorRamp3   0 255   0   255 255   0 $' '
-# colorRamp3   0   0 255     0 255 255 $' '
-
-output $'\n'
-output $'Color ramps: fade to white\n';
-colorRamp3 255   0   0  255 255 255 $' '
-colorRamp3   0 255   0  255 255 255 $' '
-colorRamp3   0   0 255  255 255 255 $' '
-colorRamp3   0 255 255  255 255 255 $' '
-colorRamp3 255   0 255  255 255 255 $' '
-colorRamp3 255 255   0  255 255 255 $' '
-
-output $'\n'
-output $'Grayscale ramp:\n';
-colorRamp3   0   0   0  255 255 255 $' '
-
-output $'\n'
-output $'Rainbow ramp:\n';
-rainbowRamp $' '
+#output $'\n'
+#output $'Color cube 4x4x4:\n';
+#colorCube4x4x4 $'  '
+#
+#output $'\n'
+#output $'Color ramps: fade to black\n';
+#colorRamp1 1 0 0 $' '
+#colorRamp1 0 1 0 $' '
+#colorRamp1 0 0 1 $' '
+#colorRamp1 0 1 1 $' '
+#colorRamp1 1 0 1 $' '
+#colorRamp1 1 1 0 $' '
+#
+## output $'Color edges\n';
+## colorRamp3 255   0   0   255   0 255 $' '
+## colorRamp3   0 255   0   255 255   0 $' '
+## colorRamp3   0   0 255     0 255 255 $' '
+#
+#output $'\n'
+#output $'Color ramps: fade to white\n';
+#colorRamp3 255   0   0  255 255 255 $' '
+#colorRamp3   0 255   0  255 255 255 $' '
+#colorRamp3   0   0 255  255 255 255 $' '
+#colorRamp3   0 255 255  255 255 255 $' '
+#colorRamp3 255   0 255  255 255 255 $' '
+#colorRamp3 255 255   0  255 255 255 $' '
+#
+#output $'\n'
+#output $'Grayscale ramp:\n';
+#colorRamp3   0   0   0  255 255 255 $' '
+#
+#output $'\n'
+#output $'Rainbow ramp:\n';
+#rainbowRamp $' '
 
 output $'\n'
 output $'xterm palette:\n';
-xtermPalette
+xtermPalette $'   '
 
 flush;

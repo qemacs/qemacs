@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 """
 XTerm Colour Chart 2.0
@@ -269,28 +269,28 @@ def error(e):
 
 def cube_vals(n):
     """Return the cube coordinates for colour-number n."""
-    assert n>=cube_start and n<gray_start
-    val = n-cube_start
+    assert n >= cube_start and n < gray_start
+    val = n - cube_start
     c = val % cube_size
-    val = val / cube_size
+    val = val // cube_size
     b = val % cube_size
-    a = val / cube_size
+    a = val // cube_size
     return a, b, c
 
 def n_to_rgb(n):
     """Return the red, green and blue components of colour-number n.
     Components are between 0 and 255."""
-    if n<cube_start:
-        return basic_colours[n-basic_start]
-    if n<gray_start:
+    if n < cube_start:
+        return basic_colours[n - basic_start]
+    if n < gray_start:
         return [cube_steps[v] for v in cube_vals(n)]
-    return (gray_steps[n-gray_start],) * 3
+    return (gray_steps[n - gray_start],) * 3
 
 def n_to_gray(n):
     """Return an approximate desaturated value for colour-number n.
     Value is between 0.0 and 255.0."""
     r, g, b = n_to_rgb(n)
-    return 0.3*r + 0.59*g + 0.11*b
+    return 0.30*r + 0.59*g + 0.11*b
 
 def n_to_prt(n):
     """Convert a colour number to the format used in the colour charts."""
@@ -428,7 +428,7 @@ def draw_chart(chart, origin, angle, numbers, cell_cols, cell_rows):
                     out.append(transform_block(n, row))
                 else:
                     out.append(block(n, row))
-            print "".join(out) + "\x1b[0m"
+            print("".join(out) + "\x1b[0m")
 
 def reset_palette():
     """Reset the terminal palette."""
@@ -469,10 +469,10 @@ def main():
         "modes in xterm")
 
     options, args = parser.parse_args()
-    if options.origin<0 or options.origin>7:
+    if options.origin < 0 or options.origin > 7:
         error("Invalid origin value specified!")
         sys.exit(2)
-    if options.angle<0 or options.angle>5:
+    if options.angle < 0 or options.angle > 5:
         error("Invalid angle value specified!")
         sys.exit(2)
     if options.columns < 1:
@@ -482,9 +482,9 @@ def main():
     if options.colours_88:
         set_88_colour_mode()
     if options.list_charts:
-        print "Charts available in %d-colour mode:" % colours
+        print("Charts available in %d-colour mode:" % colours)
         for cname in charts[colours].keys():
-            print "  "+cname
+            print("  " + cname)
         sys.exit(0)
     if options.reset_palette:
         reset_palette()
@@ -494,7 +494,7 @@ def main():
     first = True
     for cname in args:
         if not first:
-            print
+            print()
         first = False
         if cname not in charts[colours]:
             error("Chart %r not found!" % cname)

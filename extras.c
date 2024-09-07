@@ -2521,7 +2521,7 @@ int color_print_entry(CompleteState *cp, EditState *s, const char *name) {
     s->b->cur_style = style2;
     len += eb_puts(s->b, "[  Sample  ]");
     s->b->cur_style = QE_STYLE_DEFAULT;
-    len2 = eb_printf(s->b, "  %-4d", bg);
+    len2 = eb_printf(s->b, "  p%-4d", bg);
     if (dist != 0)
         len2 += eb_printf(s->b, "  dist=%-4d", dist);
     if (color != rgb)

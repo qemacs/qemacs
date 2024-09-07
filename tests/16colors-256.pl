@@ -6,7 +6,7 @@
 # reproduction of the standard ANSI colors, but possibly more
 # pleasing shades
 
-# display the colors
+# display the colors using CSI 48;5;palette number m
 
 # first the system ones:
 print "Background colors:\n";
