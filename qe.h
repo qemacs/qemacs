@@ -1172,7 +1172,6 @@ int qe_register_bindings(KeyDef **lp, const char *cmd_name, const char *keys);
 int qe_register_transient_binding(QEmacsState *qs, const char *cmd_name, const char *keys);
 const CmdDef *qe_find_cmd(const char *cmd_name);
 int qe_get_prototype(const CmdDef *d, char *buf, int size);
-int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size);
 
 /* text display system */
 
@@ -1479,9 +1478,6 @@ void do_kill_buffer(EditState *s, const char *bufname, int force);
 void switch_to_buffer(EditState *s, EditBuffer *b);
 void qe_kill_buffer(EditBuffer *b);
 
-struct Equivalent *create_equivalent(const char *str1, const char *str2);
-void delete_equivalent(struct Equivalent *ep);
-
 /* text mode */
 
 extern ModeDef text_mode;
@@ -1551,21 +1547,6 @@ void do_bol(EditState *s);
 void do_eol(EditState *s);
 void do_word_left_right(EditState *s, int n);
 void do_mark_region(EditState *s, int mark, int offset);
-int eb_skip_whitespace(EditBuffer *b, int offset, int dir);
-int eb_skip_blank_lines(EditBuffer *b, int offset, int dir);
-int eb_next_paragraph(EditBuffer *b, int offset);
-int eb_prev_paragraph(EditBuffer *b, int offset);
-int eb_skip_paragraphs(EditBuffer *b, int offset, int n);
-void do_forward_paragraph(EditState *s, int n);
-void do_mark_paragraph(EditState *s, int n);
-void do_kill_paragraph(EditState *s, int n);
-void do_fill_paragraph(EditState *s, int mode, int argval);
-int eb_next_sentence(EditBuffer *b, int offset);
-int eb_prev_sentence(EditBuffer *b, int offset);
-int eb_skip_sentences(EditBuffer *b, int offset, int n);
-void do_forward_sentence(EditState *s, int n);
-void do_mark_sentence(EditState *s, int n);
-void do_kill_sentence(EditState *s, int n);
 void do_changecase_word(EditState *s, int up);
 void do_changecase_region(EditState *s, int up);
 void do_delete_word(EditState *s, int dir);
@@ -1659,10 +1640,7 @@ void do_delete_other_windows(EditState *s, int all);
 void do_hide_window(EditState *s, int set);
 void do_delete_hidden_windows(EditState *s);
 void do_describe_key_briefly(EditState *s, const char *keystr, int argval);
-void do_show_bindings(EditState *s, const char *cmd_name);
-void do_apropos(EditState *s, const char *str);
 EditBuffer *new_help_buffer(void);
-void do_describe_bindings(EditState *s, int argval);
 void do_help_for_help(EditState *s);
 void qe_event_init(QEmacsState *qs);
 void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr);
@@ -1774,11 +1752,15 @@ void do_save_session(EditState *s, int popup);
 
 /* extras.c */
 
+#ifndef CONFIG_TINY
+struct Equivalent *create_equivalent(const char *str1, const char *str2);
+void delete_equivalent(struct Equivalent *ep);
+
 void do_compare_windows(EditState *s, int argval);
 void do_compare_files(EditState *s, const char *filename, int bflags);
 void do_delete_horizontal_space(EditState *s, int mode);
-void do_show_date_and_time(EditState *s, int argval);
 void do_indent_rigidly(EditState *s, int start, int end, int argval);
+void do_show_date_and_time(EditState *s, int argval);
 
 enum {
     CMD_TRANSPOSE_CHARS = 1,
@@ -1788,6 +1770,31 @@ enum {
     CMD_TRANSPOSE_SENTENCES,
 };
 void do_transpose(EditState *s, int cmd);
+
+int qe_list_bindings(const CmdDef *d, ModeDef *mode, int inherit, char *buf, int size);
+void do_show_bindings(EditState *s, const char *cmd_name);
+void do_describe_bindings(EditState *s, int argval);
+void do_apropos(EditState *s, const char *str);
+
+int color_print_entry(CompleteState *cp, EditState *s, const char *name);
+int style_print_entry(CompleteState *cp, EditState *s, const char *name);
+
+int eb_skip_whitespace(EditBuffer *b, int offset, int dir);
+int eb_skip_blank_lines(EditBuffer *b, int offset, int dir);
+int eb_next_paragraph(EditBuffer *b, int offset);
+int eb_prev_paragraph(EditBuffer *b, int offset);
+int eb_skip_paragraphs(EditBuffer *b, int offset, int n);
+void do_forward_paragraph(EditState *s, int n);
+void do_mark_paragraph(EditState *s, int n);
+void do_kill_paragraph(EditState *s, int n);
+void do_fill_paragraph(EditState *s, int mode, int argval);
+int eb_next_sentence(EditBuffer *b, int offset);
+int eb_prev_sentence(EditBuffer *b, int offset);
+int eb_skip_sentences(EditBuffer *b, int offset, int n);
+void do_forward_sentence(EditState *s, int n);
+void do_mark_sentence(EditState *s, int n);
+void do_kill_sentence(EditState *s, int n);
+#endif
 
 /* hex.c */
 
