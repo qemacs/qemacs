@@ -1560,6 +1560,45 @@ static int qe_term_get_style(const char *str, QETermStyle *style)
     return 0;
 }
 
+/* Note: we use the same syntax as CSS styles to ease merging */
+static void do_set_style_color(EditState *e, const char *stylestr, const char *value)
+{
+    QEStyleDef *stp;
+    char buf[32];
+    const char *p;
+
+    stp = find_style(stylestr);
+    if (!stp) {
+        put_status(e, "Unknown style '%s'", stylestr);
+        return;
+    }
+
+    /* accept "fgcolor", "[fgcolor]/bgcolor", "fgcolor on bgcolor" */
+    p = value + strcspn(value, " /");
+    if (p > value) {
+        pstrncpy(buf, sizeof buf, value, p - value);
+        if (css_get_color(&stp->fg_color, buf)) {
+            put_status(e, "Unknown fgcolor '%s'", buf);
+            return;
+        }
+    }
+    qe_skip_spaces(&p);
+    if (*p == '/') {
+        p++;
+    } else {
+        strstart(p, "on ", &p);
+    }
+    qe_skip_spaces(&p);
+    if (*p) {
+        if (css_get_color(&stp->bg_color, p)) {
+            put_status(e, "Unknown bgcolor '%s'", p);
+            return;
+        }
+    }
+    e->qe_state->complete_refresh = 1;
+}
+
+
 static void do_set_region_color(EditState *s, const char *str)
 {
     int offset, size;
@@ -1580,8 +1619,7 @@ static void do_set_region_color(EditState *s, const char *str)
         size = -size;
     }
     if (size > 0) {
-        eb_create_style_buffer(s->b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 :
-                               QE_TERM_STYLE_BITS <= 32 ? BF_STYLE4 : BF_STYLE8);
+        eb_create_style_buffer(s->b, BF_STYLE_COMP);
         eb_set_style(s->b, style, LOGOP_WRITE, offset, size);
     }
 }
@@ -1609,8 +1647,7 @@ static void do_set_region_style(EditState *s, const char *str)
         size = -size;
     }
     if (size > 0) {
-        eb_create_style_buffer(s->b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 :
-                               QE_TERM_STYLE_BITS <= 32 ? BF_STYLE4 : BF_STYLE8);
+        eb_create_style_buffer(s->b, BF_STYLE_COMP);
         eb_set_style(s->b, style, LOGOP_WRITE, offset, size);
     }
 }
@@ -2454,6 +2491,64 @@ static CompletionDef charname_completion = {
     charname_convert_entry
 };
 
+/*---------------- style and color ----------------*/
+
+int color_print_entry(CompleteState *cp, EditState *s, const char *name) {
+    QETermStyle style = QE_STYLE_DEFAULT;
+    QETermStyle style2 = QE_STYLE_DEFAULT;
+    QEColor color = 0, rgb = 0;
+    char alt_name[16];
+    int len, len2, fg, bg = -1, dist = 0;
+
+    *alt_name = '\0';
+    if (!css_get_color(&color, name) && color != COLOR_TRANSPARENT) {
+        if (*name != '#') {
+            snprintf(alt_name, sizeof alt_name, "#%06x", color & 0xFFFFFF);
+        }
+        bg = qe_map_color(color, xterm_colors, QE_TERM_BG_COLORS, &dist);
+        fg = (color_y(color) >= 12800) ? 16 : 231;
+        style = QE_TERM_COMPOSITE | QE_TERM_MAKE_COLOR(fg, bg);
+        style2 = QE_TERM_COMPOSITE | QE_TERM_MAKE_COLOR(bg, 16);
+        rgb = qe_unmap_color(bg, 8192);
+    }
+    s->b->cur_style = QE_STYLE_FUNCTION;
+    len = eb_printf(s->b, "%s\t", name);
+    s->b->tab_width = max_int(s->b->tab_width, len + 1);
+    s->b->cur_style = QE_STYLE_DEFAULT;
+    len += eb_printf(s->b, " %-10s ", alt_name);
+    s->b->cur_style = style;
+    len += eb_puts(s->b, "[   ]");
+    s->b->cur_style = style2;
+    len += eb_puts(s->b, "[  Sample  ]");
+    s->b->cur_style = QE_STYLE_DEFAULT;
+    len2 = eb_printf(s->b, "  %-4d", bg);
+    if (dist != 0)
+        len2 += eb_printf(s->b, "  dist=%-4d", dist);
+    if (color != rgb)
+        len2 += eb_printf(s->b, "  #%06x", rgb & 0xFFFFFF);
+    if (len2 < 32)
+        len += eb_printf(s->b, "%*s", 32 - len2, "");
+    return len + len2;
+}
+
+int style_print_entry(CompleteState *cp, EditState *s, const char *name) {
+    QETermStyle style = QE_STYLE_DEFAULT;
+    int i, len;
+
+    for (i = 0; i < QE_STYLE_NB; i++) {
+        if (!strcmp(name, qe_styles[i].name)) {
+            style = i;
+            break;
+        }
+    }
+    len = eb_printf(s->b, "%s\t", name);
+    s->b->tab_width = max_int(s->b->tab_width, len + 1);
+    s->b->cur_style = style;
+    len += eb_puts(s->b, "[  Sample  ]");
+    s->b->cur_style = QE_STYLE_DEFAULT;
+    return len;
+}
+
 /*---------------- paragraph handling ----------------*/
 
 int eb_skip_whitespace(EditBuffer *b, int offset, int dir) {
@@ -3084,7 +3179,7 @@ static const CmdDef extra_commands[] = {
     CMD2( "set-region-color", "C-c c",
           "Set the color for the current region",
           do_set_region_color, ESs,
-          "s{Select color: }[color]|color|")
+          "s{Select color: }[.color]|color|")
     CMD2( "set-region-style", "C-c s",
           "Set the style for the current region",
           do_set_region_style, ESs,
@@ -3092,6 +3187,11 @@ static const CmdDef extra_commands[] = {
     CMD0( "drop-styles", "",
           "Remove all styles for the current buffer",
           do_drop_styles)
+    CMD2( "set-style-color", "C-c x",
+          "Set the color(s) for a named style",
+          do_set_style_color, ESss,
+          "s{Style: }[style]|style|"
+          "s{Style color: }[.color]|color|")
 
     CMD2( "set-eol-type", "",
           "Set the end of line style: [0=Unix, 1=Dos, 2=Mac]",
