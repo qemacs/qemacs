@@ -905,6 +905,7 @@ enum QEStyle {
 typedef struct QEStyleDef {
     const char *name;
     /* if any style is 0, then default edit style applies */
+    // FIXME: should also have attributes */
     QEColor fg_color, bg_color;
     short font_style;
     short font_size;

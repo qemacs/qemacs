@@ -189,6 +189,7 @@ QEColor qe_unmap_color(int color, int count);
 
 int css_define_color(const char *name, const char *value);
 int css_get_color(QEColor *color_ptr, const char *p);
+const char *css_get_color_name(char *dest, size_t size, QEColor color, int lookup);
 void css_free_colors(void);
 int css_get_font_family(const char *str);
 int css_get_enum(const char *str, const char *enum_str);

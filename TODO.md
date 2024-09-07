@@ -4,6 +4,10 @@
 
 ## Current work
 
+* add `show-styles` and `show-colors`
+* evaluate colors in expressions: `rgb(r,g,b)`, `hsl(h,s,l)`, `hsv(h,s,v)`
+* do not abort macro on incremental search failure, just on final failure upon RET
+* `show-date-and-time` should distinguish between `C-u` and explicit number prefix
 * change accent input method: type accents before the character:
   when inserting an accent, insert a space before and do not move point
   when inserting a character before an accented space, replace

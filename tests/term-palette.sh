@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 #   This file tests support for the 7936 color system
 #   a full 4x4x4 4096-color cube is drawn using 24-bit

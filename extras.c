@@ -1560,6 +1560,45 @@ static int qe_term_get_style(const char *str, QETermStyle *style)
     return 0;
 }
 
+static int qe_term_get_style_string(char *dest, size_t size, QEStyleDef *stp)
+{
+    buf_t out[1];
+    char buf[16];
+    const char *p;
+
+    buf_init(out, dest, size);
+#if 0
+    if (stp->attr & QE_TERM_BOLD)
+        buf_printf(out, " %s", "bold");
+    if (stp->attr & QE_TERM_ITALIC)
+        buf_printf(out, " %s", "italic");
+    if (stp->attr & QE_TERM_UNDERLINE)
+        buf_printf(out, " %s", "underlined");
+    if (stp->attr & QE_TERM_BLINK)
+        buf_printf(out, " %s", "blinking");
+#endif
+    p = css_get_color_name(buf, sizeof buf, stp->fg_color, TRUE);
+    buf_printf(out, " %s", p);
+    if (stp->bg_color != COLOR_TRANSPARENT) {
+        p = css_get_color_name(buf, sizeof buf, stp->bg_color, TRUE);
+        buf_printf(out, " on %s", p);
+    }
+    switch (stp->font_style) {
+    case QE_FONT_FAMILY_SERIF:
+        buf_printf(out, " %s", "times");
+        break;
+    case QE_FONT_FAMILY_SANS:
+        buf_printf(out, " %s", "arial");
+        break;
+    case QE_FONT_FAMILY_FIXED:
+        buf_printf(out, " %s", "fixed");
+        break;
+    }
+    if (stp->font_size)
+        buf_printf(out, " %dpt", stp->font_size);
+    return out->len;
+}
+
 /* Note: we use the same syntax as CSS styles to ease merging */
 static void do_set_style_color(EditState *e, const char *stylestr, const char *value)
 {
@@ -1598,7 +1637,6 @@ static void do_set_style_color(EditState *e, const char *stylestr, const char *v
     e->qe_state->complete_refresh = 1;
 }
 
-
 static void do_set_region_color(EditState *s, const char *str)
 {
     int offset, size;
@@ -1621,6 +1659,18 @@ static void do_set_region_color(EditState *s, const char *str)
     if (size > 0) {
         eb_create_style_buffer(s->b, BF_STYLE_COMP);
         eb_set_style(s->b, style, LOGOP_WRITE, offset, size);
+    }
+}
+
+static void do_insert_color(EditState *s, const char *str)
+{
+    char buf[32];
+    int len;
+    QEColor color;
+
+    if (css_get_color(&color, str) && color != COLOR_TRANSPARENT) {
+        len = snprintf(buf, sizeof buf, "#%06x", color & 0xFFFFFF);
+        s->offset += eb_insert(s->b, s->offset, buf, len);
     }
 }
 
@@ -2533,19 +2583,29 @@ int color_print_entry(CompleteState *cp, EditState *s, const char *name) {
 
 int style_print_entry(CompleteState *cp, EditState *s, const char *name) {
     QETermStyle style = QE_STYLE_DEFAULT;
+    QEStyleDef *stp = NULL;
+    char buf[80];
     int i, len;
 
     for (i = 0; i < QE_STYLE_NB; i++) {
         if (!strcmp(name, qe_styles[i].name)) {
             style = i;
+            stp = &qe_styles[i];
             break;
         }
     }
+    s->b->cur_style = QE_STYLE_FUNCTION;
     len = eb_printf(s->b, "%s\t", name);
     s->b->tab_width = max_int(s->b->tab_width, len + 1);
     s->b->cur_style = style;
     len += eb_puts(s->b, "[  Sample  ]");
     s->b->cur_style = QE_STYLE_DEFAULT;
+
+    *buf = '\0';
+    if (stp) {
+        qe_term_get_style_string(buf, sizeof buf, stp);
+    }
+    len += eb_printf(s->b, " %-40s", buf);
     return len;
 }
 
@@ -3192,6 +3252,10 @@ static const CmdDef extra_commands[] = {
           do_set_style_color, ESss,
           "s{Style: }[style]|style|"
           "s{Style color: }[.color]|color|")
+    CMD2( "insert-color", "C-c #",
+          "Insert the hex RGB value for a color",
+          do_insert_color, ESs, "*"
+          "s{Color: }[color]|color|")
 
     CMD2( "set-eol-type", "",
           "Set the end of line style: [0=Unix, 1=Dos, 2=Mac]",

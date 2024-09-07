@@ -703,20 +703,30 @@ void do_cd(EditState *s, const char *path)
 
 static void color_complete(CompleteState *cp, CompleteFunc enumerate) {
     const char *name = cp->current;
-    int i;
+    char buf[32];
+    int i, len;
 
     if (*name == '#') {
-        for (i = 0; i < 8192; i++) {
-            char buf[32];
-            QEColor rgb = qe_unmap_color(i, 8192);
-            snprintf(buf, sizeof buf, "#%02hhx%02hhx%02hhx",
-                     rgb >> 16, rgb >> 8, rgb);
-            enumerate(cp, buf, CT_GLOB);
+        for (len = 0; qe_isxdigit(name[1 + len]); len++)
+            continue;
+        if (len > 2 && len <= 6) {
+            QEColor rgb = strtol_c(name + 1, NULL, 16);
+            int shift = (6 - len) * 4;
+            rgb <<= shift;
+            for (i = 0; i < (0x1 << shift); i++) {
+                snprintf(buf, sizeof buf, "#%06x", rgb + i);
+                enumerate(cp, buf, CT_GLOB);
+            }
+        } else {
+            for (i = 0; i < 8192; i++) {
+                QEColor rgb = qe_unmap_color(i, 8192);
+                snprintf(buf, sizeof buf, "#%06x", rgb & 0xFFFFFF);
+                enumerate(cp, buf, CT_GLOB);
+            }
         }
     } else
 #if 0
     if (name[0] == 'g' && name[1] == 'r' && (name[2] == 'a' || name[2] == 'e') && name[3] == 'y') {
-        char buf[32];
         snprintf(buf, sizeof buf, "%.4s", name);
         enumerate(cp, buf, CT_GLOB);
         for (i = 0; i < 100; i++) {
@@ -735,7 +745,6 @@ static void color_complete(CompleteState *cp, CompleteFunc enumerate) {
         }
         if (name[0] == 'p' && !qe_isalpha(name[1])) {
             for (i = 0; i < 8192; i++) {
-                char buf[32];
                 snprintf(buf, sizeof buf, "p%d", i);
                 enumerate(cp, buf, CT_GLOB);
             }
