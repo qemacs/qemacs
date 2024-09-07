@@ -1130,6 +1130,7 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
         /* set foreground color */
         /* 0:black 1:red 2:green 3:yellow 4:blue 5:magenta 6:cyan 7:white */
         /* XXX: should distinguish system colors and palette colors */
+        // FIXME: should map the color if it has been redefined only?
         s->fgcolor = MAP_FG_COLOR(c - 30);
         break;
     case 38:    /* set extended foreground color (ISO-8613-3) */
@@ -1163,12 +1164,14 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
             int color = clamp_int(params[2], 0, 255);
 
             /* map color to qe-term palette */
+            // FIXME: should map the color if it has been redefined only?
             s->fgcolor = MAP_FG_COLOR(color);
             return 3;
         }
         if (count >= 5 && params[1] == 2) {
             /* set foreground color to 24-bit color */
             /* complete syntax is \033[38;2;r;g;bm where r,g,b are in 0..255 */
+            /* ??? alternate syntax: ESC [ 3 8 : 2 : Pi : Pr : Pg : Pb m */
             QEColor rgb = QERGB25(clamp_int(params[2], 0, 255),
                                   clamp_int(params[3], 0, 255),
                                   clamp_int(params[4], 0, 255));
@@ -1185,6 +1188,7 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
     case 44: case 45: case 46: case 47:
         /* set background color */
         /* XXX: should distinguish system colors and palette colors */
+        // FIXME: should map the color if it has been redefined only?
         s->bgcolor = MAP_BG_COLOR(c - 40);
         break;
     case 48:    /* set extended background color (ISO-8613-3) */
@@ -1194,6 +1198,7 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
             int color = clamp_int(params[2], 0, 255);
 
             /* map color to qe-term palette */
+            // FIXME: should map the color if it has been redefined only?
             s->bgcolor = MAP_BG_COLOR(color);
             return 3;
         }
@@ -1236,12 +1241,14 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
     case 94: case 95: case 96: case 97:
         /* Set foreground text color, high intensity, aixterm (not in standard) */
         /* XXX: should distinguish system colors and palette colors */
+        // FIXME: should map the color if it has been redefined only?
         s->fgcolor = MAP_FG_COLOR(c - 90 + 8);
         break;
     case 100: case 101: case 102: case 103:
     case 104: case 105: case 106: case 107:
         /* Set background color, high intensity, aixterm (not in standard) */
         /* XXX: should distinguish system colors and palette colors */
+        // FIXME: should map the color if it has been redefined only?
         s->bgcolor = MAP_BG_COLOR(c - 100 + 8);
         break;
     default:
@@ -2539,8 +2546,7 @@ EditBuffer *new_shell_buffer(EditBuffer *b0, EditState *e,
 
     eb_set_buffer_name(b, bufname); /* ensure that the name is unique */
     if (shell_flags & SF_COLOR) {
-        eb_create_style_buffer(b, QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 :
-                               QE_TERM_STYLE_BITS <= 32 ? BF_STYLE4 : BF_STYLE8);
+        eb_create_style_buffer(b, BF_STYLE_COMP);
     }
     /* Select shell output buffer encoding from LANG setting */
     if (((lang = getenv("LANG")) != NULL && strstr(lang, "UTF-8")) ||

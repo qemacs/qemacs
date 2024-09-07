@@ -702,20 +702,62 @@ void do_cd(EditState *s, const char *path)
 }
 
 static void color_complete(CompleteState *cp, CompleteFunc enumerate) {
-    ColorDef const *def;
-    int count;
+    const char *name = cp->current;
 
-    def = qe_colors;
-    count = nb_qe_colors;
-    while (count > 0) {
-        enumerate(cp, def->name, CT_STRX);
-        def++;
-        count--;
+    if (*name == '#') {
+        int i;
+
+        for (i = 0; i < 8192; i++) {
+            char buf[32];
+            QEColor rgb = qe_unmap_color(i, 8192);
+            snprintf(buf, sizeof buf, "#%02hhx%02hhx%02hhx",
+                     rgb >> 16, rgb >> 8, rgb);
+            enumerate(cp, buf, CT_GLOB);
+        }
+    } else
+#if 0
+    if (name[0] == 'g' && name[1] == 'r' && (name[2] == 'a' || name[2] == 'e') && name[3] == 'y') {
+        char buf[32];
+        int i;
+        snprintf(buf, sizeof buf, "%.4s", name);
+        enumerate(cp, buf, CT_GLOB);
+        for (i = 0; i < 100; i++) {
+            snprintf(buf + 4, sizeof(buf) - 4, "%d", i);
+            enumerate(cp, buf, CT_GLOB);
+        }
+    } else
+#endif
+    {
+        ColorDef const *def = qe_colors;
+        int count = nb_qe_colors;
+        while (count > 0) {
+            enumerate(cp, def->name, CT_STRX);
+            def++;
+            count--;
+        }
     }
 }
 
+static int color_sort_func(const void *p1, const void *p2)
+{
+    const StringItem * const *pp1 = (const StringItem * const *)p1;
+    const StringItem * const *pp2 = (const StringItem * const *)p2;
+    const StringItem *item1 = *pp1;
+    const StringItem *item2 = *pp2;
+
+    /* Group items by group order */
+    if (item1->group != item2->group)
+        return item1->group - item2->group;
+    /* Use natural sort */
+    return qe_strcollate(item1->str, item2->str);
+}
+
 static CompletionDef color_completion = {
-    "color", color_complete
+    "color", color_complete,
+#ifndef CONFIG_TINY
+    color_print_entry,
+#endif
+    .sort_func = color_sort_func,
 };
 
 /* basic editing functions */
@@ -3080,8 +3122,27 @@ void do_what_cursor_position(EditState *s)
         if (v)
             buf_printf(out, " v=%d", v);
         if (s->b->style_bytes) {
-            buf_printf(out, " {%0*llX}", s->b->style_bytes * 2,
-                       (unsigned long long)eb_get_style(s->b, s->offset));
+            int bits = s->b->style_bytes * 8;
+            unsigned long long style = eb_get_style(s->b, s->offset);
+            buf_printf(out, " style={%0*llX", bits / 8, style);
+            if (bits == 8 || bits == QE_TERM_STYLE_BITS) {
+                buf_put_byte(out, ':');
+                if (style & QE_TERM_UNDERLINE)
+                    buf_puts(out, " underline");
+                if (style & QE_TERM_BOLD)
+                    buf_puts(out, " bold");
+                if (style & QE_TERM_ITALIC)
+                    buf_puts(out, " italic");
+                if (style & QE_TERM_BLINK)
+                    buf_puts(out, " blink");
+                if (style & QE_TERM_COMPOSITE) {
+                    buf_printf(out, " %d/%d", QE_TERM_GET_FG(style),
+                               QE_TERM_GET_BG(style));
+                } else {
+                    buf_printf(out, " %s", qe_styles[style].name);
+                }
+            }
+            buf_put_byte(out, '}');
         }
     }
     eb_get_pos(s->b, &line_num, &col_num, s->offset);
@@ -3321,8 +3382,10 @@ static void apply_style(QEStyleDef *stp, QETermStyle style)
         int bg = QE_TERM_GET_BG(style);
         if (style & QE_TERM_BOLD) {
             stp->font_style |= QE_FONT_STYLE_BOLD;
-            if (fg < 8)
+            if (fg < 8) {
+                // FIXME: this is a hack for 16 color mode
                 fg |= 8;
+            }
         }
         if (style & QE_TERM_UNDERLINE)
             stp->font_style |= QE_FONT_STYLE_UNDERLINE;
@@ -3330,6 +3393,7 @@ static void apply_style(QEStyleDef *stp, QETermStyle style)
             stp->font_style |= QE_FONT_STYLE_ITALIC;
         if (style & QE_TERM_BLINK)
             stp->font_style |= QE_FONT_STYLE_BLINK;
+        // FIXME: should support transparent background
         stp->fg_color = qe_unmap_color(fg, QE_TERM_FG_COLORS);
         stp->bg_color = qe_unmap_color(bg, QE_TERM_BG_COLORS);
     } else {
@@ -3405,7 +3469,10 @@ QEStyleDef *find_style(const char *name)
 }
 
 static CompletionDef style_completion = {
-    "style", style_complete
+    "style", style_complete,
+#ifndef CONFIG_TINY
+    style_print_entry
+#endif
 };
 
 static const char * const qe_style_properties[] = {
@@ -3523,7 +3590,7 @@ void do_set_style(EditState *e, const char *stylestr,
         }
         break;
     }
-    //s->qe_state->complete_refresh = 1;
+    e->qe_state->complete_refresh = 1;
 }
 
 void do_define_color(EditState *e, const char *name, const char *value)
@@ -4812,9 +4879,18 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
             if ((qs->active_window == s || s->force_highlight) &&
                 s->offset >= offset && s->offset < offset0)
             {
-                /* highlight the current line */
+                int level = 0;
+                /* highlight the current line (except bracketed areas) */
                 for (i = 0; i <= colored_nb_chars; i++) {
-                    cp->sbuf[i] = QE_STYLE_HIGHLIGHT;
+                    if (cp->buf[i] == '[') {
+                        level++;
+                    } else
+                    if (cp->buf[i] == ']') {
+                        level--;
+                    } else
+                    if (level == 0 || !(cp->sbuf[i] & ~QE_STYLE_NUM)) {
+                        cp->sbuf[i] = QE_STYLE_HIGHLIGHT;
+                    }
                 }
             } else
             if (cp->buf[0] == '*') {
@@ -7076,6 +7152,20 @@ static int default_completion_window_get_entry(EditState *s, char *dest, int siz
     return len;
 }
 
+static int completion_sort_func(const void *p1, const void *p2)
+{
+    const StringItem * const *pp1 = (const StringItem * const *)p1;
+    const StringItem * const *pp2 = (const StringItem * const *)p2;
+    const StringItem *item1 = *pp1;
+    const StringItem *item2 = *pp2;
+
+    /* Group items by group order */
+    if (item1->group != item2->group)
+        return item1->group - item2->group;
+    /* Use natural sort: keep numbers in order */
+    return qe_strcollate(item1->str, item2->str);
+}
+
 /* register a new completion method */
 void qe_register_completion(CompletionDef *cp)
 {
@@ -7097,6 +7187,8 @@ void qe_register_completion(CompletionDef *cp)
         cp->print_entry = default_completion_window_print_entry;
     if (!cp->get_entry)
         cp->get_entry = default_completion_window_get_entry;
+    if (!cp->sort_func)
+        cp->sort_func = completion_sort_func;
 }
 
 static CompletionDef *find_completion(const char *name)
@@ -7153,20 +7245,6 @@ static void complete_test(CompleteState *cp, const char *str, int mode) {
         break;
     }
     add_string(&cp->cs, str, fuzzy);
-}
-
-static int completion_sort_func(const void *p1, const void *p2)
-{
-    const StringItem * const *pp1 = (const StringItem * const *)p1;
-    const StringItem * const *pp2 = (const StringItem * const *)p2;
-    const StringItem *item1 = *pp1;
-    const StringItem *item2 = *pp2;
-
-    /* Group items by group order */
-    if (item1->group != item2->group)
-        return item1->group - item2->group;
-    /* Use natural sort: keep numbers in order */
-    return qe_strcollate(item1->str, item2->str);
 }
 
 static void complete_end(CompleteState *cp)
@@ -7278,7 +7356,7 @@ void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
         int offset = end;
         while ((start = offset) > 0) {
             char32_t c = eb_prevc(s->b, offset, &offset);
-            if (!qe_isalnum_(c) && c != '-')
+            if (!qe_isalnum_(c) && c != '-' && c != '#')
                 break;
         }
     }
@@ -7289,6 +7367,8 @@ void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
     if (!(mb->completion->flags & CF_NO_FUZZY))
         cs.fuzzy = mb->completion_stage;
     (*mb->completion->enumerate)(&cs, complete_test);
+    sort_strings(&cs.cs, mb->completion->sort_func);
+    remove_duplicate_strings(&cs.cs);
     count = cs.cs.nb_items;
     outputs = cs.cs.items;
     mb->completion_count = count;
@@ -7333,7 +7413,7 @@ void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
                 char buf[60];
 
                 b = eb_new("*completion*",
-                           BF_SYSTEM | BF_UTF8 | BF_TRANSIENT | BF_STYLE1);
+                           BF_SYSTEM | BF_UTF8 | BF_TRANSIENT | BF_STYLE_COMP);
                 b->default_mode = &list_mode;
                 w1 = qs->screen->width;
                 h1 = qs->screen->height - qs->status_height;
@@ -7357,7 +7437,6 @@ void do_minibuffer_complete(EditState *s, int type, int key, int argval) {
         /* modify the list with the current matches */
         e = mb->completion_popup_window;
         b = e->b;
-        qsort(outputs, count, sizeof(StringItem *), completion_sort_func);
         b->flags &= ~BF_READONLY;
         eb_delete(b, 0, b->total_size);
         b->tab_width = 4;

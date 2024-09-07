@@ -355,6 +355,7 @@ typedef struct EditBufferDataType {
 #define BF_STYLE2    0x2000  /* buffer has 2 byte styles */
 #define BF_STYLE4    0x3000  /* buffer has 4 byte styles */
 #define BF_STYLE8    0x4000  /* buffer has 8 byte styles */
+#define BF_STYLE_COMP  (QE_TERM_STYLE_BITS <= 16 ? BF_STYLE2 : QE_TERM_STYLE_BITS <= 32 ? BF_STYLE4 : BF_STYLE8)
 #define BF_IS_STYLE  0x8000  /* buffer is a styles buffer */
 #define BF_IS_LOG    0x10000  /* buffer is a log buffer */
 #define BF_SHELL     0x20000  /* buffer is a shell buffer */
@@ -1355,6 +1356,7 @@ typedef struct CompletionDef {
     /* custom handlers to start and end minibuffer edit session */
     void (*start_edit)(EditState *s);
     void (*end_edit)(EditState *s, char *dest, int size);
+    int (*sort_func)(const void *p1, const void *p2);
     struct CompletionDef *next;
 } CompletionDef;
 
