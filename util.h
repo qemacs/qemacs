@@ -573,6 +573,8 @@ void qe_free(T **pp);
 StringItem *set_string(StringArray *cs, int index, const char *str, int group);
 StringItem *add_string(StringArray *cs, const char *str, int group);
 int remove_string(StringArray *cs, const char *str);
+void sort_strings(StringArray *cs, int (*sort_func)(const void *p1, const void *p2));
+int remove_duplicate_strings(StringArray *cs);
 void free_strings(StringArray *cs);
 
 /*---- Dynamic buffers with static allocation ----*/
