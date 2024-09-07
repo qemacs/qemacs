@@ -7511,12 +7511,34 @@ static void do_minibuffer_char(EditState *s, int key, int argval)
 }
 
 /* scroll in completion popup */
-void do_minibuffer_scroll_up_down(EditState *s, int dir)
+static void do_minibuffer_move_bof(EditState *s) {
+    MinibufState *mb = minibuffer_get_state(s, 0);
+
+    if (mb && check_window(&mb->completion_popup_window)) {
+        //mb->completion_popup_window->force_highlight = 1;
+        do_bof(mb->completion_popup_window);
+        return;
+    }
+    s->offset = 0;
+}
+
+static void do_minibuffer_move_eof(EditState *s) {
+    MinibufState *mb = minibuffer_get_state(s, 0);
+
+    if (mb && check_window(&mb->completion_popup_window)) {
+        //mb->completion_popup_window->force_highlight = 1;
+        do_eof(mb->completion_popup_window);
+        return;
+    }
+    s->offset = s->b->total_size;
+}
+
+static void do_minibuffer_scroll_up_down(EditState *s, int dir)
 {
     MinibufState *mb = minibuffer_get_state(s, 0);
 
     if (mb && check_window(&mb->completion_popup_window)) {
-        mb->completion_popup_window->force_highlight = 1;
+        //mb->completion_popup_window->force_highlight = 1;
         do_scroll_up_down(mb->completion_popup_window, dir);
     }
 }
@@ -7592,7 +7614,7 @@ void do_minibuffer_history(EditState *s, int n)
     }
 }
 
-void do_minibuffer_get_binary(EditState *s)
+static void do_minibuffer_get_binary(EditState *s)
 {
     unsigned long offset;
 
@@ -7834,6 +7856,8 @@ void minibuffer_init(QEmacsState *qs)
     minibuffer_mode.mode_probe = NULL;
     minibuffer_mode.buffer_instance_size = sizeof(MinibufState);
     minibuffer_mode.mode_free = minibuffer_mode_free;
+    minibuffer_mode.move_bof = do_minibuffer_move_bof;
+    minibuffer_mode.move_eof = do_minibuffer_move_eof;
     minibuffer_mode.scroll_up_down = do_minibuffer_scroll_up_down;
     qe_register_mode(&minibuffer_mode, MODEF_NOCMD | MODEF_VIEW);
     qe_register_commands(&minibuffer_mode, minibuffer_commands, countof(minibuffer_commands));
@@ -11233,6 +11257,7 @@ static void qe_init(void *opaque)
     eb_init(qs);
     charset_init(qs);
     input_methods_init(qs);
+    colors_init();
 
 #ifdef CONFIG_ALL_KMAPS
     if (find_resource_file(filename, sizeof(filename), "kmaps") >= 0)
