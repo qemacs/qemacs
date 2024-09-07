@@ -1478,9 +1478,9 @@ static void minibuffer_search_end_edit(EditState *s, char *dest, int size) {
 }
 
 static CompletionDef search_completion = {
-    "search", NULL, NULL, NULL, NULL, 0,
-    minibuffer_search_start_edit,
-    minibuffer_search_end_edit,
+    .name = "search",
+    .start_edit = minibuffer_search_start_edit,
+    .end_edit = minibuffer_search_end_edit,
 };
 
 static const CmdDef isearch_commands[] = {

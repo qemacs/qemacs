@@ -1668,7 +1668,7 @@ static void do_insert_color(EditState *s, const char *str)
     int len;
     QEColor color;
 
-    if (css_get_color(&color, str) && color != COLOR_TRANSPARENT) {
+    if (!css_get_color(&color, str) && color != COLOR_TRANSPARENT) {
         len = snprintf(buf, sizeof buf, "#%06x", color & 0xFFFFFF);
         s->offset += eb_insert(s->b, s->offset, buf, len);
     }
@@ -2406,7 +2406,10 @@ static void do_list_tags(EditState *s, int argval) {
 }
 
 static CompletionDef tag_completion = {
-    "tag", tag_complete, tag_print_entry, tag_get_entry
+    .name = "tag",
+    .enumerate = tag_complete,
+    .print_entry = tag_print_entry,
+    .get_entry = tag_get_entry,
 };
 
 /*---------------- Unicode character name completion ----------------*/
@@ -2537,8 +2540,11 @@ static int charname_get_entry(EditState *s, char *dest, int size, int offset) {
 }
 
 static CompletionDef charname_completion = {
-    "charname", charname_complete, charname_print_entry, charname_get_entry,
-    charname_convert_entry
+    .name = "charname",
+    .enumerate = charname_complete,
+    .print_entry = charname_print_entry,
+    .get_entry = charname_get_entry,
+    .convert_entry = charname_convert_entry,
 };
 
 /*---------------- style and color ----------------*/

@@ -227,7 +227,8 @@ void mode_complete(CompleteState *cp, CompleteFunc enumerate) {
 }
 
 static CompletionDef mode_completion = {
-    "mode", mode_complete
+    .name = "mode",
+    .enumerate = mode_complete,
 };
 
 /* commands handling */
@@ -306,7 +307,10 @@ int command_get_entry(EditState *s, char *dest, int size, int offset)
 }
 
 static CompletionDef command_completion = {
-    "command", command_complete, command_print_entry, command_get_entry
+    .name = "command",
+    .enumerate = command_complete,
+    .print_entry = command_print_entry,
+    .get_entry = command_get_entry,
 };
 
 /* key binding handling */
@@ -3483,9 +3487,10 @@ QEStyleDef *find_style(const char *name)
 }
 
 static CompletionDef style_completion = {
-    "style", style_complete,
+    .name = "style",
+    .enumerate = style_complete,
 #ifndef CONFIG_TINY
-    style_print_entry
+    .print_entry = style_print_entry,
 #endif
 };
 
@@ -3516,7 +3521,8 @@ void style_property_complete(CompleteState *cp, CompleteFunc enumerate) {
 }
 
 static CompletionDef style_property_completion = {
-    "style-property", style_property_complete
+    .name = "style-property",
+    .enumerate = style_property_complete,
 };
 
 int find_style_property(const char *name)
@@ -7094,26 +7100,27 @@ void file_complete(CompleteState *cp, CompleteFunc enumerate)
 }
 
 static CompletionDef file_completion = {
-    "file", file_complete,
+    .name = "file",
+    .enumerate = file_complete,
 #ifndef CONFIG_TINY
-    file_print_entry,
-#else
-    NULL,
+    .print_entry = file_print_entry,
 #endif
-    NULL, NULL, CF_FILENAME
+    .flags = CF_FILENAME,
 };
 
 #ifndef CONFIG_TINY
 static CompletionDef dir_completion = {
-    "dir", file_complete,
-    file_print_entry,
-    NULL, NULL, CF_DIRNAME | CF_NO_FUZZY
+    .name = "dir",
+    .enumerate = file_complete,
+    .print_entry = file_print_entry,
+    .flags = CF_DIRNAME | CF_NO_FUZZY,
 };
 
 static CompletionDef resource_completion = {
-    "resource", file_complete,
-    file_print_entry,
-    NULL, NULL, CF_RESOURCE | CF_NO_FUZZY
+    .name = "resource",
+    .enumerate = file_complete,
+    .print_entry = file_print_entry,
+    .flags = CF_RESOURCE | CF_NO_FUZZY,
 };
 #endif
 
@@ -7150,7 +7157,9 @@ static int buffer_print_entry(CompleteState *cp, EditState *s, const char *name)
 }
 
 static CompletionDef buffer_completion = {
-    "buffer", buffer_complete, buffer_print_entry
+    .name = "buffer",
+    .enumerate = buffer_complete,
+    .print_entry = buffer_print_entry,
 };
 
 static int default_completion_window_print_entry(CompleteState *cp, EditState *s, const char *name) {
@@ -11228,7 +11237,8 @@ typedef struct QEArgs {
 } QEArgs;
 
 static CompletionDef charset_completion = {
-    "charset", charset_complete
+    .name = "charset",
+    .enumerate = charset_complete,
 };
 
 /* init function */

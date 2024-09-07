@@ -1070,7 +1070,9 @@ static int sortkey_print_entry(CompleteState *cp, EditState *s, const char *name
 }
 
 static CompletionDef dired_sort_completion = {
-    "sortkey", sortkey_complete, sortkey_print_entry,
+    .name = "sortkey",
+    .enumerate = sortkey_complete,
+    .print_entry = sortkey_print_entry,
 };
 
 static QVarType dired_sort_mode_set_value(EditState *s, VarDef *vp,
