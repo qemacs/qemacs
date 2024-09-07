@@ -1623,9 +1623,7 @@ void qe_save_macros(EditState *s, EditBuffer *b);
 #define COMPLETION_OTHER  2
 void do_minibuffer_complete(EditState *s, int type, int key, int argval);
 void do_minibuffer_complete_space(EditState *s, int key, int argval);
-void do_minibuffer_scroll_up_down(EditState *s, int dir);
 void do_minibuffer_history(EditState *s, int n);
-void do_minibuffer_get_binary(EditState *s);
 void do_minibuffer_exit(EditState *s, int fabort);
 
 void do_popup_exit(EditState *s);
