@@ -2030,6 +2030,27 @@ int remove_string(StringArray *cs, const char *str) {
     return count;
 }
 
+void sort_strings(StringArray *cs, int (*sort_func)(const void *p1, const void *p2))
+{
+    qsort(cs->items, cs->nb_items, sizeof(StringItem *), sort_func);
+}
+
+int remove_duplicate_strings(StringArray *cs) {
+    int i, j, count = 0;
+    if (cs && cs->nb_items > 1) {
+        for (i = j = 1; i < cs->nb_items; i++) {
+            if (cs->items[i] && strcmp(cs->items[i]->str, cs->items[j - 1]->str)) {
+                cs->items[j++] = cs->items[i];
+            } else {
+                qe_free(&cs->items[i]);
+                count++;
+            }
+        }
+        cs->nb_items = j;
+    }
+    return count;
+}
+
 void free_strings(StringArray *cs) {
     int i;
     for (i = 0; i < cs->nb_items; i++)
