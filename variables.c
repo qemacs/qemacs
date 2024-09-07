@@ -543,14 +543,10 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
         type = "var";
         break;
     }
-    b->cur_style = QE_STYLE_TYPE;
-    len = eb_printf(b, "%s ", type);
     b->cur_style = QE_STYLE_VARIABLE;
-    len += eb_puts(b, vp->name);
+    len = eb_puts(b, vp->name);
     b->cur_style = QE_STYLE_DEFAULT;
-
-    len += eb_printf(b, "%s = ", typebuf);
-
+    len += eb_puts(b, " = ");
     qe_get_variable(s, vp->name, buf, sizeof(buf), NULL, 1);
     if (*buf == '\"')
         b->cur_style = QE_STYLE_STRING;
@@ -564,9 +560,10 @@ int eb_variable_print_entry(EditBuffer *b, VarDef *vp, EditState *s) {
     } else {
         b->tab_width = 40;
     }
-    len += eb_printf(b, "  %s%s %s",
-                     vp->rw ? "" : "read-only ",
-                     var_domain[vp->domain], type);
+    len += eb_printf(b, "  %s%s", vp->rw ? "" : "read-only ",
+                     var_domain[vp->domain]);
+    b->cur_style = QE_STYLE_TYPE;
+    len += eb_printf(b, " %s%s", type, typebuf);
     b->cur_style = QE_STYLE_DEFAULT;
     return len;
 }
@@ -582,7 +579,7 @@ int variable_print_entry(CompleteState *cp, EditState *s, const char *name) {
 }
 
 static CompletionDef variable_completion = {
-    "variable", variable_complete, variable_print_entry, command_get_entry
+    "variable", variable_complete, variable_print_entry
 };
 
 /*---------------- commands ----------------*/
