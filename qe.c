@@ -7461,7 +7461,7 @@ static void do_minibuffer_electric_key(EditState *s, int key, int argval) {
     /* erase beginning of line if typing / or ~ in certain places */
     // XXX: behavior on yank should be customized too
     if (mb && mb->completion && (mb->completion->flags & CF_FILENAME)
-    &&  eb_nextc(s->b, 0, &offset) == '/') {
+    &&  ((c = eb_nextc(s->b, 0, &offset)) == '/' || c == '~')) {
         stop = s->offset;
         c = eb_prevc(s->b, s->offset, &offset);
         if (c == '/') {
