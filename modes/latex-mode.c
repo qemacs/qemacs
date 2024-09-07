@@ -350,7 +350,8 @@ static ModeDef texinfo_mode = {
 };
 
 static CompletionDef latex_completion = {
-    "latex", latex_complete,
+    .name = "latex",
+    .enumerate = latex_complete,
 };
 
 static int latex_init(QEmacsState *qs)

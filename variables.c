@@ -579,7 +579,9 @@ int variable_print_entry(CompleteState *cp, EditState *s, const char *name) {
 }
 
 static CompletionDef variable_completion = {
-    "variable", variable_complete, variable_print_entry
+    .name = "variable",
+    .enumerate = variable_complete,
+    .print_entry = variable_print_entry,
 };
 
 /*---------------- commands ----------------*/

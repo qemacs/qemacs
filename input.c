@@ -2,7 +2,7 @@
  * Input method handling for QEmacs.
  *
  * Copyright (c) 2000 Fabrice Bellard.
- * Copyright (c) 2002-2023 Charlie Gordon.
+ * Copyright (c) 2002-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -126,7 +126,8 @@ void do_switch_input_method(EditState *s)
 }
 
 static CompletionDef input_completion = {
-    "input", input_complete,
+    .name = "input",
+    .enumerate = input_complete,
 };
 
 void input_methods_init(QEmacsState *qs)
