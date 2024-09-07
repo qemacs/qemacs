@@ -214,7 +214,8 @@ static void c_colorize_line(QEColorizeContext *cp,
 
         switch (c) {
         case '*':
-            if (start == indent && cp->partial_file)
+            if (start == indent && cp->partial_file
+            &&  (i == n || str[i] == ' ' || str[i] == '/'))
                 goto parse_comment2;
             goto normal;
         case '/':
