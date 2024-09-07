@@ -23,6 +23,7 @@
  */
 
 #include "qe.h"
+#include "clang.h"
 
 /*---------------- Perl colors ----------------*/
 
@@ -377,6 +378,8 @@ static ModeDef perl_mode = {
     .colorize_func = perl_colorize_line,
     .keywords = perl_keywords,
     .types = perl_types,
+    .indent_func = c_indent_line,
+    .auto_indent = 1,
 };
 
 static int perl_init(QEmacsState *qs)
