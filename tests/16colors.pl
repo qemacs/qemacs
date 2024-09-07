@@ -6,7 +6,7 @@
 # reproduction of the standard ANSI colors, but possibly more
 # pleasing shades
 
-# display the colors
+# display the colors using CSI 3x/4x/9x/10x m sequences
 
 # first the system ones:
 print "Background colors:\n";

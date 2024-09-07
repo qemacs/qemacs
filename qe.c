@@ -703,10 +703,9 @@ void do_cd(EditState *s, const char *path)
 
 static void color_complete(CompleteState *cp, CompleteFunc enumerate) {
     const char *name = cp->current;
+    int i;
 
     if (*name == '#') {
-        int i;
-
         for (i = 0; i < 8192; i++) {
             char buf[32];
             QEColor rgb = qe_unmap_color(i, 8192);
@@ -718,7 +717,6 @@ static void color_complete(CompleteState *cp, CompleteFunc enumerate) {
 #if 0
     if (name[0] == 'g' && name[1] == 'r' && (name[2] == 'a' || name[2] == 'e') && name[3] == 'y') {
         char buf[32];
-        int i;
         snprintf(buf, sizeof buf, "%.4s", name);
         enumerate(cp, buf, CT_GLOB);
         for (i = 0; i < 100; i++) {
@@ -734,6 +732,13 @@ static void color_complete(CompleteState *cp, CompleteFunc enumerate) {
             enumerate(cp, def->name, CT_STRX);
             def++;
             count--;
+        }
+        if (name[0] == 'p' && !qe_isalpha(name[1])) {
+            for (i = 0; i < 8192; i++) {
+                char buf[32];
+                snprintf(buf, sizeof buf, "p%d", i);
+                enumerate(cp, buf, CT_GLOB);
+            }
         }
     }
 }

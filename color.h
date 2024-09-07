@@ -2,7 +2,7 @@
  * Color / CSS Utilities for qemacs.
  *
  * Copyright (c) 2000-2001 Fabrice Bellard.
- * Copyright (c) 2000-2023 Charlie Gordon.
+ * Copyright (c) 2000-2024 Charlie Gordon.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@ typedef int (CSSAbortFunc)(void *);
 
 #define CSS_MEDIA_ALL     0xffff
 
-typedef unsigned int QEColor;
+typedef uint32_t QEColor;
 #define QEARGB(a,r,g,b)    (((unsigned int)(a) << 24) | ((r) << 16) | ((g) << 8) | (b))
 #define QERGB(r,g,b)       QEARGB(0xff, r, g, b)
 #define QERGB25(r,g,b)     QEARGB(1, r, g, b)
@@ -55,16 +55,14 @@ typedef unsigned int QEColor;
  * - font style size
  *
  * Styles are applied to text in successive phases:
- * - the current syntax mode computes style numbers for each character
- *   on the line. These nubers are stored into the high bits of the
- *   32-bit code point.
- * - these style numbers are then extracted into an array of 32-bit composite
+ * - the current syntax mode computes the composite style for each
+ *   character displayed on the line. These styles are stored into the
+ *   array `sbuf` passed to the `ColorizeFunc` of the mode structure.
+ * - the styles from the optional style buffer are combined into these
  *   style values.
- * - the styles from the optional style buffer are combined into these style
- *   values.
  * - search matches and selection styles are applied if relevant.
  * - the bidirectional algorithm is applied to compute the display order
- * - sequences of code-point with the same compsite style are formed into
+ * - sequences of codepoints with the same composite style are formed into
  *   display units, ligatures are applied.
  * - the composite style is expanded and converted into display attributes
  *   to trace the display unit on the device surface
@@ -78,12 +76,17 @@ typedef unsigned int QEColor;
  */
 
 #if 0   /* 25-bit color for FG and BG */
-
+/* 64-bit style layout:
+ * x: unused, b: background color, f: foreground color,
+ * K: blink, I: italics, B: bold, U: underline, C: composite,
+ * S: selection, N: no-selection
+ * xxxxxxxb bbbbbbbb bbbbbbbb bbbbbbbb NKIBUCSf ffffffff ffffffff ffffffff
+ */
 #define QE_TERM_STYLE_BITS  64
 typedef uint64_t QETermStyle;
 #define QE_STYLE_NUM        0x00FF
 #define QE_STYLE_SEL        0x02000000  /* special selection style (cumulative with another style) */
-#define QE_TERM_COMPOSITE   0x04000000  /* special bit to indicate qe-term composite style */
+#define QE_TERM_COMPOSITE   0x04000000  /* style is composite, not just a style number */
 /* XXX: reversed as attribute? */
 /* XXX: faint? */
 #define QE_TERM_UNDERLINE   0x08000000
@@ -96,12 +99,16 @@ typedef uint64_t QETermStyle;
 #define QE_TERM_FG_SHIFT    0
 
 #elif 1   /* 8K colors for FG and BG */
-
+/* 32-bit style layout:
+ * x: unused, b: background color, f: foreground color,
+ * K: blink, I: italics, B: bold, U: underline, C: composite, S: selection
+ * bbbbbbbb bbbbbKIB UCSfffff ffffffff
+ */
 #define QE_TERM_STYLE_BITS  32
 typedef uint32_t QETermStyle;
 #define QE_STYLE_NUM        0x00FF
 #define QE_STYLE_SEL        0x02000  /* special selection style (cumulative with another style) */
-#define QE_TERM_COMPOSITE   0x04000  /* special bit to indicate qe-term composite style */
+#define QE_TERM_COMPOSITE   0x04000  /* style is composite, not just a style number */
 #define QE_TERM_UNDERLINE   0x08000
 #define QE_TERM_BOLD        0x10000
 #define QE_TERM_ITALIC      0x20000
@@ -112,12 +119,16 @@ typedef uint32_t QETermStyle;
 #define QE_TERM_FG_SHIFT    0
 
 #elif 1   /* 256 colors for FG and BG */
-
+/* 32-bit style layout for 256-color terminals:
+ * x: unused, b: background color, f: foreground color,
+ * K: blink, I: italics, B: bold, U: underline, C: composite, S: selection
+ * xxxxxxxx bbbbbbbb xxKIBUCS ffffffff
+ */
 #define QE_TERM_STYLE_BITS  32
 typedef uint32_t QETermStyle;
 #define QE_STYLE_NUM        0x00FF
 #define QE_STYLE_SEL        0x0100  /* special selection style (cumulative with another style) */
-#define QE_TERM_COMPOSITE   0x0200  /* special bit to indicate qe-term composite style */
+#define QE_TERM_COMPOSITE   0x0200  /* style is composite, not just a style number */
 #define QE_TERM_UNDERLINE   0x0400
 #define QE_TERM_BOLD        0x0800
 #define QE_TERM_ITALIC      0x1000
@@ -128,12 +139,16 @@ typedef uint32_t QETermStyle;
 #define QE_TERM_FG_SHIFT    0
 
 #else   /* 16 colors for FG and 16 color BG */
-
+/* 16-bit style layout:
+ * x: unused, b: background color, f: foreground color,
+ * K: blink, I: italics, B: bold, U: underline, C: composite, S: selection
+ * xxKIBUCS bbbbffff
+ */
 #define QE_TERM_STYLE_BITS  16
 typedef uint16_t QETermStyle;
 #define QE_STYLE_NUM        0x00FF
 #define QE_STYLE_SEL        0x0100  /* special selection style (cumulative with another style) */
-#define QE_TERM_COMPOSITE   0x0200  /* special bit to indicate qe-term composite style */
+#define QE_TERM_COMPOSITE   0x0200  /* style is composite, not just a style number */
 #define QE_TERM_UNDERLINE   0x0400
 #define QE_TERM_BOLD        0x0800
 #define QE_TERM_ITALIC      0x1000
@@ -154,12 +169,12 @@ typedef uint16_t QETermStyle;
 #define QE_TERM_MAKE_COLOR(fg, bg)  (((QETermStyle)(fg) << QE_TERM_FG_SHIFT) | ((QETermStyle)(bg) << QE_TERM_BG_SHIFT))
 #define QE_TERM_SET_FG(col, fg)  ((col) = ((col) & ~QE_TERM_FG_MASK) | ((QETermStyle)(fg) << QE_TERM_FG_SHIFT))
 #define QE_TERM_SET_BG(col, bg)  ((col) = ((col) & ~QE_TERM_BG_MASK) | ((QETermStyle)(bg) << QE_TERM_BG_SHIFT))
-#define QE_TERM_GET_FG(color)  (((color) & QE_TERM_FG_MASK) >> QE_TERM_FG_SHIFT)
-#define QE_TERM_GET_BG(color)  (((color) & QE_TERM_BG_MASK) >> QE_TERM_BG_SHIFT)
+#define QE_TERM_GET_FG(color)  (int)(((color) & QE_TERM_FG_MASK) >> QE_TERM_FG_SHIFT)
+#define QE_TERM_GET_BG(color)  (int)(((color) & QE_TERM_BG_MASK) >> QE_TERM_BG_SHIFT)
 
 typedef struct ColorDef {
-    const char *name;
-    unsigned int color;
+    const char *name;   /* color name */
+    QEColor color;      /* 32-bit ARGB color */
 } ColorDef;
 
 extern QEColor const xterm_colors[];
@@ -169,7 +184,7 @@ extern int nb_qe_colors;
 /* XXX: should have a more generic API with precomputed mapping scales */
 /* Convert RGB triplet to a composite color */
 unsigned int qe_map_color(QEColor color, QEColor const *colors, int count, int *dist);
-/* Convert a composite color to an RGB triplet */
+/* Convert a composite color to an RGBA triplet with alpha channel */
 QEColor qe_unmap_color(int color, int count);
 
 int css_define_color(const char *name, const char *value);
@@ -177,6 +192,10 @@ int css_get_color(QEColor *color_ptr, const char *p);
 void css_free_colors(void);
 int css_get_font_family(const char *str);
 int css_get_enum(const char *str, const char *enum_str);
+int color_dist(QEColor c1, QEColor c2);
+static inline int color_y(QEColor c) {
+    return 30 * ((c >> 16) & 0xff) + 59 * ((c >> 8) & 0xff) + 11 * (c & 0xff);
+}
 
 typedef struct CSSRect {
     int x1, y1, x2, y2;
@@ -194,11 +213,11 @@ static inline void css_set_rect(CSSRect *a, int x1, int y1, int x2, int y2) {
 }
 /* return true if a and b intersect */
 static inline int css_is_inter_rect(const CSSRect *a, const CSSRect *b) {
-    return (!(a->x2 <= b->x1 ||
-              a->x1 >= b->x2 ||
-              a->y2 <= b->y1 ||
-              a->y1 >= b->y2));
+    return (!(a->x2 <= b->x1 || a->x1 >= b->x2 ||
+              a->y2 <= b->y1 || a->y1 >= b->y2));
 }
+
+int colors_init(void);
 
 /*---- Font definitions ----*/
 
