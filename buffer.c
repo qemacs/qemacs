@@ -1050,14 +1050,14 @@ void eb_offset_callback(qe__unused__ EditBuffer *b, void *opaque, int edge,
 int eb_create_style_buffer(EditBuffer *b, int flags)
 {
     if (b->b_styles) {
-        /* XXX: should extend style width if needed */
+        /* FIXME: should extend style width if needed */
         return 0;
     } else {
         char name[MAX_BUFFERNAME_SIZE];
         snprintf(name, sizeof(name), "*S<%.*s>", MAX_BUFFERNAME_SIZE - 5, b->name);
         b->b_styles = eb_new(name, BF_SYSTEM | BF_IS_STYLE | BF_RAW);
         b->flags |= flags & BF_STYLES;
-        b->style_shift = ((unsigned)(flags & BF_STYLES) / BF_STYLE1) - 1;
+        b->style_shift = (((unsigned)flags & BF_STYLES) / BF_STYLE1) - 1;
         b->style_bytes = 1 << b->style_shift;
         eb_set_style(b, 0, LOGOP_INSERT, 0, b->total_size);
         eb_add_callback(b, eb_style_callback, NULL, 0);
