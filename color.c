@@ -33,7 +33,7 @@
  *   - 16 standard colors
  *   - 240 standard palette colors
  *   - 4096 colors in a 16x16x16 cube
- *   - a 256 level gray ramp
+ *   - a 256 level grey ramp
  *   - 6 256-level fade to black ramps
  *   - 6 256-level fade to white ramps
  *   - a 512 palette of custom colors for named colors not found hereabove
@@ -46,7 +46,7 @@
  *   - 6859 colors in a 19x19x19 cube
  *     with ramp 0,15,31,47,63,79,95,108,121,135,
  *               148,161,175,188,201,215,228,241,255 values
- *   - 256 level gray ramp
+ *   - 256 level grey ramp
  *   - extra space for 3 256 level ramps or 12 64 level ramps
  *   - 15 unused slots
  */
@@ -73,19 +73,20 @@ static ColorDef const default_colors[] = {
     { "cyan",                 rgb(0,255,255)   }, // #00FFFF aqua
     { "fuchsia",              rgb(255,0,255)   }, // #FF00FF
     { "gray",                 rgb(190,190,190) }, // #BEBEBE
-    { "green",                rgb(0,128,0)     }, // #008000 *
-    { "grey",                 rgb(190,190,190) }, // #BEBEBE gray
+    { "green",                rgb(0,128,0)     }, // #008000
+    { "grey",                 rgb(190,190,190) }, // #BEBEBE grey
     { "lime",                 rgb(0,255,0)     }, // #00FF00
     { "magenta",              rgb(255,0,255)   }, // #FF00FF fuchsia
-    { "maroon",               rgb(128,0,0)     }, // #800000 *
+    { "maroon",               rgb(128,0,0)     }, // #800000
     { "navy",                 rgb(0,0,128)     }, // #000080
     { "olive",                rgb(128,128,0)   }, // #808000
-    { "purple",               rgb(128,0,128)   }, // #800080 *
+    { "purple",               rgb(128,0,128)   }, // #800080
     { "red",                  rgb(255,0,0)     }, // #FF0000
     { "silver",               rgb(192,192,192) }, // #C0C0C0
     { "teal",                 rgb(0,128,128)   }, // #008080
     { "white",                rgb(255,255,255) }, // #FFFFFF
     { "yellow",               rgb(255,255,0)   }, // #FFFF00
+    { "transparent",          COLOR_TRANSPARENT },
 #else
     /* CSS Basic color names */
     { "aqua",                 rgb(0,255,255)   }, // #00FFFF  hsl(180,100%,50%)
@@ -93,9 +94,11 @@ static ColorDef const default_colors[] = {
     { "blue",                 rgb(0,0,255)     }, // #0000FF  hsl(240,100%,50%)
     { "cyan",                 rgb(0,255,255)   }, // #00FFFF  hsl(180,100%,50%)
     { "fuchsia",              rgb(255,0,255)   }, // #FF00FF  hsl(300,100%,50%)
-    { "gray",                 rgb(128,128,128) }, // * #808080  hsl(0,0%,50%)
+    { "gray",                 rgb(190,190,190) }, // #BEBEBE  (hack: not the css value)
+    //{ "gray",                 rgb(128,128,128) }, // * #808080  hsl(0,0%,50%) (changed)
     { "green",                rgb(0,128,0)     }, // * #008000  hsl(120,100%,25%)
-    { "grey",                 rgb(128,128,128) }, // #808080  hsl(0,0%,50%)
+    { "grey",                 rgb(190,190,190) }, // #BEBEBE gray
+    //{ "grey",                 rgb(128,128,128) }, // * #808080  hsl(0,0%,50%) (changed)
     { "lime",                 rgb(0,255,0)     }, // #00FF00  hsl(120,100%,50%)
     { "magenta",              rgb(255,0,255)   }, // #FF00FF  hsl(300,100%,50%)
     { "maroon",               rgb(128,0,0)     }, // * #800000  hsl(0,100%,25%)
@@ -107,6 +110,7 @@ static ColorDef const default_colors[] = {
     { "teal",                 rgb(0,128,128)   }, // #008080  hsl(180,100%,25%)
     { "white",                rgb(255,255,255) }, // #FFFFFF  hsl(0,0%,100%)
     { "yellow",               rgb(255,255,0)   }, // #FFFF00  hsl(60,100%,50%)
+    { "transparent",          COLOR_TRANSPARENT },
 
     /* CSS Extended color names */
     { "alice-blue",           rgb(240,248,255) }, // #F0F8FF  hsl(208,100%,97.06%)
@@ -229,7 +233,6 @@ static ColorDef const default_colors[] = {
     { "tan",                  rgb(210,180,140) }, // #D2B48C  hsl(34.29,43.75%,68.63%)
     { "thistle",              rgb(216,191,216) }, // #D8BFD8  hsl(300,24.27%,79.8%)
     { "tomato",               rgb(255,99,71)   }, // #FF6347  hsl(9.13,100%,63.92%)
-    { "transparent",          COLOR_TRANSPARENT },
     { "turquoise",            rgb(64,224,208)  }, // #40E0D0  hsl(174,72.07%,56.47%)
     { "violet",               rgb(238,130,238) }, // #EE82EE  hsl(300,76.06%,72.16%)
     { "wheat",                rgb(245,222,179) }, // #F5DEB3  hsl(39.09,76.74%,83.14%)
@@ -691,6 +694,9 @@ static QEColor const tty_full_colors[8] = {
 
 QEColor const xterm_colors[256] = {
 #if 1
+    // XXX: we cannot not use these palette entries in qe_map_color
+    //      unless the actual values have been queried from the terminal
+    /* original SYSTEM palette */
     QERGB(0x00, 0x00, 0x00), /*	black */
     QERGB(0xbb, 0x00, 0x00),
     QERGB(0x00, 0xbb, 0x00),
@@ -736,6 +742,7 @@ QEColor const xterm_colors[256] = {
 
     /* 216 entry RGB cube with axes 0,95,135,175,215,255 */
     /* followed by 24 entry grey scale 8,18..238 */
+    // XXX: the default iTerm2 color cube uses slightly different tones
     rgb(0,0,0),       /*  16: #000000 hsl(0,0%,0%)      Grey0 */
     rgb(0,0,95),      /*  17: #00005f hsl(240,100%,18%) NavyBlue */
     rgb(0,0,135),     /*  18: #000087 hsl(240,100%,26%) DarkBlue */
@@ -991,6 +998,7 @@ QEColor const xterm_colors[256] = {
 #define REP16(x)  REP8(x), REP8(x)
 #define REP17(x)  REP16(x), (x)
 #define REP20(x)  REP10(x), REP10(x)
+#define REP22(x)  REP20(x), (x), (x)
 #define REP25(x)  REP20(x), REP5(x)
 #define REP40(x)  REP20(x), REP20(x)
 #define REP47(x)  REP40(x), REP7(x)
@@ -1005,7 +1013,7 @@ static unsigned char const scale_cube6[256] = {
     REP40(2),   // 114-153 -> 135
     REP40(3),   // 154-193 -> 175
     REP40(4),   // 194-233 -> 215
-    REP12(5),   // 234-255 -> 255
+    REP22(5),   // 234-255 -> 255
 };
 
 static unsigned char const scale_cube16[256] = {
@@ -1013,21 +1021,21 @@ static unsigned char const scale_cube16[256] = {
      * 4096 entry RGB cube with axes i*17
      */
     REP9(0),    // 0-8 -> 0
-    REP17(1),   //
-    REP17(2),   //
-    REP17(3),   //
-    REP17(4),   //
-    REP17(5),   //
-    REP17(6),   //
-    REP17(7),   //
-    REP17(8),   //
-    REP17(9),   //
-    REP17(10),  //
-    REP17(11),  //
-    REP17(12),  //
-    REP17(13),  //
-    REP17(14),  //
-    REP9(15),   //
+    REP17(1),   // 9-25 -> 1
+    REP17(2),   // 26-42 -> 2
+    REP17(3),   // 43-59 -> 3
+    REP17(4),   // 60-76 -> 4
+    REP17(5),   // 77-93 -> 5
+    REP17(6),   // 94-110 -> 6
+    REP17(7),   // 111-127 -> 7
+    REP17(8),   // 128-144 -> 8
+    REP17(9),   // 145-161 -> 9
+    REP17(10),  // 162-178 -> 10
+    REP17(11),  // 179-195 -> 11
+    REP17(12),  // 196-212 -> 12
+    REP17(13),  // 213-229 -> 13
+    REP17(14),  // 230-246 -> 14
+    REP9(15),   // 247-255 -> 15
 };
 
 static unsigned char const scale_grey[256] = {
@@ -1283,12 +1291,29 @@ int colors_init(void) {
 static int css_lookup_color(ColorDef const *def, int count,
                             const char *name)
 {
+    char buf[32];
+    const char *grey;
     int i;
 
-    // FIXME: should sort the table and use binary search
-    for (i = 0; i < count; i++) {
-        if (!strxcmp(def[i].name, name))
-            return i;
+    for (;;) {
+        // FIXME: should sort the table and use binary search
+        for (i = 0; i < count; i++) {
+            if (!strxcmp(def[i].name, name))
+                return i;
+        }
+        if (name == buf)
+            break;
+        if ((grey = strstr(name, "grey")) != NULL) {
+            pstrcpy(buf, sizeof buf, name);
+            buf[grey - name + 2] = 'a';
+        } else
+        if ((grey = strstr(name, "gray")) != NULL) {
+            pstrcpy(buf, sizeof buf, name);
+            buf[grey - name + 2] = 'e';
+        } else {
+            break;
+        }
+        name = buf;
     }
     return -1;
 }
@@ -1327,6 +1352,20 @@ int css_define_color(const char *name, const char *value)
     return 0;
 }
 
+const char *css_get_color_name(char *dest, size_t size, QEColor color, int lookup) {
+    if (lookup) {
+        int i;
+        for (i = 0; i < nb_qe_colors; i++) {
+            if (qe_colors[i].color == color)
+                return qe_colors[i].name;
+        }
+    }
+    if (color == COLOR_TRANSPARENT)
+        return "transparent";
+    snprintf(dest, size, "#%06x", color & 0xFFFFFF);
+    return dest;
+}
+
 void css_free_colors(void)
 {
     if (qe_colors != default_colors) {
@@ -1345,6 +1384,7 @@ int css_get_color(QEColor *color_ptr, const char *p)
     ColorDef const *def;
     int count, index, len, v, i, n;
     unsigned char rgba[4];
+    const char *q;
 
     rgba[3] = 0xff;
     if (*p == '#') {
@@ -1381,6 +1421,20 @@ int css_get_color(QEColor *color_ptr, const char *p)
         rgba[2] = (rgb >> 0) & 255;
         rgba[3] = (rgb >> 24) & 255;
     } else
+    if (strstart(p, "rgb:", &p)) {
+        /* parse XParseColor syntax */
+        for (i = 0; i < 3; i++) {
+            v = strtol_c(q = p, &p, 16);
+            len = p - q;
+            if (len < 2)
+                v |= (v << 4);
+            while (len --> 2)
+                v >>= 4;
+            rgba[i] = v | (v << 4);
+            if (*p == '/')
+                p++;
+        }
+    } else
     if (strstart(p, "rgb(", &p)) {
         n = 3;
         goto parse_rgba;
@@ -1402,19 +1456,10 @@ int css_get_color(QEColor *color_ptr, const char *p)
                 p++;
         }
     } else {
-        char buf[32];
-        const char *grey;
-
         /* search in tables */
         def = qe_colors;
         count = nb_qe_colors;
-        // FIXME: substitute grey/gray
-        if ((grey = strstr(p, "grey")) != NULL) {
-            pstrcpy(buf, sizeof buf, p);
-            buf[grey - p + 2] = 'a';
-            p = buf;
-        }
-        // FIXME: parse gray[1-9][0-9]+
+
         index = css_lookup_color(def, count, p);
         if (index >= 0) {
             *color_ptr = def[index].color;
