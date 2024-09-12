@@ -1070,7 +1070,7 @@ static int qe_term_csi_m(ShellState *s, const int *params, int count)
      * The 39 and 49 attributes are likely to be unimplemented.
      */
     switch (c) {
-    case -1:
+    case CSI_PARAM_OMITTED:
     case 0:     /* Normal (default). [exit_attribute_mode] */
         s->fgcolor = QE_TERM_DEF_FG;
         s->bgcolor = QE_TERM_DEF_BG;
@@ -1578,8 +1578,8 @@ static void qe_term_emulate(ShellState *s, int c)
         switch (c) {
         case '[':   // Control Sequence Introducer (CSI is 0x9b).
             s->nb_params = 0;
-            s->params[0] = -1;
-            s->params[1] = -1;
+            s->params[0] = CSI_PARAM_OMITTED;
+            s->params[1] = CSI_PARAM_OMITTED;
             s->esc1 = 0;   /* used for both leader and intermediary bytes */
             s->state = QE_TERM_STATE_CSI;
             break;
@@ -1837,7 +1837,7 @@ static void qe_term_emulate(ShellState *s, int c)
         if (s->nb_params == 0
         ||  (s->nb_params < MAX_CSI_PARAMS && s->params[s->nb_params] >= 0)) {
             s->nb_params++;
-            s->params[s->nb_params] = -1;
+            s->params[s->nb_params] = CSI_PARAM_OMITTED;
         }
         if (c == ';' || c == ':')
             break;
