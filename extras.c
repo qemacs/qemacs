@@ -1662,7 +1662,7 @@ static void do_set_region_color(EditState *s, const char *str)
     }
 }
 
-static void do_insert_color(EditState *s, const char *str)
+static void do_read_color(EditState *s, const char *str, int argval)
 {
     char buf[32];
     int len;
@@ -1670,7 +1670,13 @@ static void do_insert_color(EditState *s, const char *str)
 
     if (!css_get_color(&color, str) && color != COLOR_TRANSPARENT) {
         len = snprintf(buf, sizeof buf, "#%06x", color & 0xFFFFFF);
-        s->offset += eb_insert(s->b, s->offset, buf, len);
+        if (argval > 1) {
+            if (check_read_only(s))
+                return;
+            s->offset += eb_insert(s->b, s->offset, buf, len);
+        } else {
+            put_status(s, "-> %s", buf);
+        }
     }
 }
 
@@ -3258,10 +3264,10 @@ static const CmdDef extra_commands[] = {
           do_set_style_color, ESss,
           "s{Style: }[style]|style|"
           "s{Style color: }[.color]|color|")
-    CMD2( "insert-color", "C-c #",
-          "Insert the hex RGB value for a color",
-          do_insert_color, ESs, "*"
-          "s{Color: }[color]|color|")
+    CMD2( "read-color", "C-c #",
+          "Read a color and produce its hex RGB value",
+          do_read_color, ESsi,
+          "s{Color: }[color]|color|" "p")
 
     CMD2( "set-eol-type", "",
           "Set the end of line style: [0=Unix, 1=Dos, 2=Mac]",

@@ -1323,7 +1323,7 @@ static void x11_handle_event(void *opaque)
     char buf[16];
     XEvent xev;
     KeySym keysym;
-    int shift, ctrl, meta, len, key;
+    int len, key, key_state;
     QEEvent ev1, *ev = &ev1;
     QExposeRegion rgn1, *rgn = &rgn1;
 
@@ -1435,127 +1435,83 @@ static void x11_handle_event(void *opaque)
                                     &keysym, &status);
             }
 #endif
-            shift = (xev.xkey.state & ShiftMask);
-            ctrl = (xev.xkey.state & ControlMask);
-            meta = (xev.xkey.state & Mod1Mask);
+            key_state = 0;
+            if (xev.xkey.state & ShiftMask)
+                key_state = KEY_STATE_SHIFT;
+            if (xev.xkey.state & ControlMask)
+                key_state = KEY_STATE_CONTROL;
+            if (xev.xkey.state & Mod1Mask)
+                key_state = KEY_STATE_META;
 #ifdef CONFIG_DARWIN
             /* Also interpret Darwin's Command key as Meta */
-            meta |= (xev.xkey.state & Mod2Mask);
+            if (xev.xkey.state & Mod2Mask)
+                key_state = KEY_STATE_COMMAND;
 #endif
 #if 0
+            // XXX: should use eb_trace_bytes(buf, out->len, EB_TRACE_KEY);
             fprintf(stderr, "keysym=%lx  state=%lx%s%s%s  len=%d  buf[0]='\\x%02x'\n",
-                      (long)keysym, (long)xev.xkey.state,
-                      shift ? " shft" : "",
-                      ctrl ? " ctrl" : "",
-                      meta ? " meta" : "",
-                      len, buf[0]);
+                    (long)keysym, (long)xev.xkey.state,
+                    (key_state & KEY_STATE_SHIFT) ? " shft" : "",
+                    (key_state & KEY_STATE_CONTROL) ? " ctrl" : "",
+                    (key_state & (KEY_STATE_META|KEY_STATE_COMMAND)) ? " meta" : "",
+                    len, buf[0]);
 #endif
-            if (meta) {
-                switch (keysym) {
-                case XK_BackSpace:
-                    key = KEY_META(KEY_DEL);
-                    goto got_key;
-                default:
-                    if (len > 0) {
-                        key = KEY_META(buf[0] & 0xff);
-                        goto got_key;
-                    }
-                    // XXX: should support CTRL/SHIFT/META modifiers
-                    //      on cursor and function keys
-                    if (keysym >= ' ' && keysym <= '~') {
-                        key = KEY_META(' ') + keysym - ' ';
-                        goto got_key;
-                    }
-                    break;
-                }
-            } else
-            if (shift) {
-                switch (keysym) {
-                case XK_ISO_Left_Tab:
-                    key = KEY_SHIFT_TAB;
-                    goto got_key;
-                default:
-                    if (len > 0) {
-                        key = buf[0] & 0xff;
-                        goto got_key;
-                    }
-                    break;
-                }
-            } else
-            if (ctrl) {
-                switch (keysym) {
-                case XK_Right:
-                    key = KEY_CTRL_RIGHT;
-                    goto got_key;
-                case XK_Left:
-                    key = KEY_CTRL_LEFT;
-                    goto got_key;
-                case XK_Home:
-                    key = KEY_CTRL_HOME;
-                    goto got_key;
-                case XK_End:
-                    key = KEY_CTRL_END;
-                    goto got_key;
-                default:
-                    if (len > 0) {
-                        key = buf[0] & 0xff;
-                        goto got_key;
-                    }
-                    break;
-                }
-            } else {
-                switch (keysym) {
-                case XK_F1:     key = KEY_F1;     goto got_key;
-                case XK_F2:     key = KEY_F2;     goto got_key;
-                case XK_F3:     key = KEY_F3;     goto got_key;
-                case XK_F4:     key = KEY_F4;     goto got_key;
-                case XK_F5:     key = KEY_F5;     goto got_key;
-                case XK_F6:     key = KEY_F6;     goto got_key;
-                case XK_F7:     key = KEY_F7;     goto got_key;
-                case XK_F8:     key = KEY_F8;     goto got_key;
-                case XK_F9:     key = KEY_F9;     goto got_key;
-                case XK_F10:    key = KEY_F10;    goto got_key;
-                case XK_F11:    key = KEY_F11;    goto got_key;
-                case XK_F13:    key = KEY_F13;    goto got_key;
-                case XK_F14:    key = KEY_F14;    goto got_key;
-                case XK_F15:    key = KEY_F15;    goto got_key;
-                case XK_F16:    key = KEY_F16;    goto got_key;
-                case XK_F17:    key = KEY_F17;    goto got_key;
-                case XK_F18:    key = KEY_F18;    goto got_key;
-                case XK_F19:    key = KEY_F19;    goto got_key;
-                case XK_F20:    key = KEY_F20;    goto got_key;
-                case XK_Up:     key = KEY_UP;     goto got_key;
-                case XK_Down:   key = KEY_DOWN;   goto got_key;
-                case XK_Right:  key = KEY_RIGHT;  goto got_key;
-                case XK_Left:   key = KEY_LEFT;   goto got_key;
-                case XK_BackSpace: key = KEY_DEL; goto got_key;
-                case XK_Insert: key = KEY_INSERT; goto got_key;
-                case XK_Delete: key = KEY_DELETE; goto got_key;
-                case XK_Home:   key = KEY_HOME;   goto got_key;
-                case XK_End:    key = KEY_END;    goto got_key;
-                case XK_Prior:  key = KEY_PAGEUP; goto got_key;
-                case XK_Next:   key = KEY_PAGEDOWN; goto got_key;
-                case XK_ISO_Left_Tab: key = KEY_SHIFT_TAB; goto got_key;
-                default:
-                    if (len > 0) {
+            key = -1;
+            switch (keysym) {
+            case XK_F1:     key = KEY_F1;     goto got_key;
+            case XK_F2:     key = KEY_F2;     goto got_key;
+            case XK_F3:     key = KEY_F3;     goto got_key;
+            case XK_F4:     key = KEY_F4;     goto got_key;
+            case XK_F5:     key = KEY_F5;     goto got_key;
+            case XK_F6:     key = KEY_F6;     goto got_key;
+            case XK_F7:     key = KEY_F7;     goto got_key;
+            case XK_F8:     key = KEY_F8;     goto got_key;
+            case XK_F9:     key = KEY_F9;     goto got_key;
+            case XK_F10:    key = KEY_F10;    goto got_key;
+            case XK_F11:    key = KEY_F11;    goto got_key;
+            case XK_F13:    key = KEY_F13;    goto got_key;
+            case XK_F14:    key = KEY_F14;    goto got_key;
+            case XK_F15:    key = KEY_F15;    goto got_key;
+            case XK_F16:    key = KEY_F16;    goto got_key;
+            case XK_F17:    key = KEY_F17;    goto got_key;
+            case XK_F18:    key = KEY_F18;    goto got_key;
+            case XK_F19:    key = KEY_F19;    goto got_key;
+            case XK_F20:    key = KEY_F20;    goto got_key;
+            case XK_Up:     key = KEY_UP;     goto got_key;
+            case XK_Down:   key = KEY_DOWN;   goto got_key;
+            case XK_Right:  key = KEY_RIGHT;  goto got_key;
+            case XK_Left:   key = KEY_LEFT;   goto got_key;
+            case XK_BackSpace: key = KEY_DEL; goto got_key;
+            case XK_Insert: key = KEY_INSERT; goto got_key;
+            case XK_Delete: key = KEY_DELETE; goto got_key;
+            case XK_Home:   key = KEY_HOME;   goto got_key;
+            case XK_End:    key = KEY_END;    goto got_key;
+            case XK_Prior:  key = KEY_PAGEUP; goto got_key;
+            case XK_Next:   key = KEY_PAGEDOWN; goto got_key;
+            case XK_ISO_Left_Tab: key = KEY_TAB; goto got_key;
+            default:
+                key_state &= ~KEY_STATE_SHIFT;
+                if (len > 0) {
 #ifdef X_HAVE_UTF8_STRING
-                        {
-                            const char *p = buf;
-                            buf[len] = '\0';
-                            key = utf8_decode(&p);
-                        }
+                    const char *p = buf;
+                    buf[len] = '\0';
+                    key = utf8_decode(&p);
 #else
-                        key = buf[0] & 0xff;
+                    key = buf[0] & 0xff;
 #endif
-                    got_key:
-                        ev->key_event.type = QE_KEY_EVENT;
-                        ev->key_event.key = key;
-                        qe_expose_flush(s, rgn);
-                        qe_handle_event(ev);
-                    }
-                    break;
+                    if (key < 32 || key == 127)
+                        key_state &= ~KEY_STATE_CONTROL;
                 }
+                break;
             }
+            if (key < 0)
+                break;
+        got_key:
+            ev->key_event.type = QE_KEY_EVENT;
+            ev->key_event.key = get_modified_key(key, key_state);
+            qe_expose_flush(s, rgn);
+            qe_handle_event(ev);
+            break;
         }
     }
     qe_expose_flush(s, rgn);

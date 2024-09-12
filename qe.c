@@ -9742,6 +9742,7 @@ void do_help_for_help(EditState *s)
     if (!b)
         return;
 
+    // FIXME: use minor mode for `q` to quit
     eb_puts(b,
             "QEmacs help for help - Press q to quit:\n"
             "\n"
@@ -10093,12 +10094,13 @@ void qe_handle_event(QEEvent *ev)
     switch (ev->type) {
     case QE_KEY_EVENT:
         if (qs->trace_buffer) {
-            char buf[16];
+            char buf[32];
             buf_t out[1];
             buf_init(out, buf, sizeof buf);
+            buf_printf(out, "0x%04X ", ev->key_event.key);
             buf_put_key(out, ev->key_event.key);
             buf_put_byte(out, ' ');
-            eb_trace_bytes(buf, -1, EB_TRACE_KEY);
+            eb_trace_bytes(buf, out->len, EB_TRACE_KEY);
         }
         qe_key_process(ev->key_event.key);
         break;
@@ -11041,10 +11043,10 @@ static const CmdDef basic_commands[] = {
     CMD2( "repeat", "C-x z",
           "Repeat last command with same prefix argument",
           do_repeat, ESi, "p")
-    CMD0( "undo", "C-x u, C-_, f9",
+    CMD0( "undo", "C-x u, C-_, C-/, f9",
           "Undo the last change",
           do_undo)
-    CMD0( "redo", "C-x r, C-x C-_, f10",
+    CMD0( "redo", "C-x r, C-x C-_, C-x C-/, f10",
           "Redo the last change undone",
           do_redo)
 

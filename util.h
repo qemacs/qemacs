@@ -695,6 +695,7 @@ void qe_qsort_r(void *base, size_t nmemb, size_t size, void *thunk,
 
 int find_key_suffix(const char *str, char c);
 int compose_keys(unsigned int *keys, int *nb_keys);
+int get_modified_key(int key, int state);
 int strtokey(const char **pp);
 int strtokeys(const char *keystr, unsigned int *keys, int max_keys, const char **endp);
 int buf_put_key(buf_t *out, int key);
@@ -703,7 +704,7 @@ int buf_quote_byte(buf_t *out, unsigned char ch);
 int is_shift_key(int key);
 
 /* XXX: should use a more regular key mapping scheme:
-   - 0000..001F: standard control keys: KEY_CTRL('@') to KEY_CTRL('@') to KEY_CTRL('_')
+   - 0000..001F: standard control keys: KEY_CTRL('@') to KEY_CTRL('_')
    - 0020: SPC
    - 0021..007E: ASCII characters (self insert)
    - 007F: DEL
@@ -745,81 +746,66 @@ int is_shift_key(int key);
    - XK_Hyper_R     0xffee  // Right hyper
  */
 
-#define KEY_CTRL(c)     ((c) & 0x001f)
-/* allow combinations such as KEY_META(KEY_LEFT) */
-#define KEY_META(c)     ((c) | 0xe100)
-#define KEY_ESC1(c)     ((c) | 0xe200)
+#define KEY_CTRL(c)     ((c) & 0x001F)
+#define KEY_ESC1(c)     ((c) | 0xE100)
+#define KEY_META(c)     ((c) | 0xE200)
+#define KEY_SHIFT(c)    ((c) | 0xE400)
+#define KEY_CONTROL(c)  ((c) | 0xE800)
 #define KEY_IS_ESC1(c)     ((c) >= KEY_ESC1(0) && (c) <= KEY_ESC1(0xff))
-#define KEY_IS_SPECIAL(c)  ((c) >= 0xe000 && (c) < 0xf000)
+#define KEY_IS_SPECIAL(c)  ((c) >= 0xE000 && (c) < 0xF000)
 #define KEY_IS_CONTROL(c)  ((unsigned int)(c) < 32 || (c) == 127)
+#define KEY_IS_META(c)  (((c) & 0x1FF200) == 0xE200)
+#define KEY_IS_SHIFT(c) (((c) & 0x1FF400) == 0xE400)
+
+#define KEY_STATE_SHIFT    1
+#define KEY_STATE_META     2
+#define KEY_STATE_CONTROL  4
+#define KEY_STATE_COMMAND  8
 
 #define KEY_NONE        0xE000
 #define KEY_DEFAULT     0xE001 /* to handle all non special keys */
 #define KEY_UNKNOWN     0xE002
 
+#define KEY_BS          KEY_CTRL('h')   // kbs
 #define KEY_TAB         KEY_CTRL('i')
 #define KEY_LF          KEY_CTRL('j')
 #define KEY_RET         KEY_CTRL('m')
 #define KEY_ESC         KEY_CTRL('[')
 #define KEY_SPC         0x0020
 #define KEY_DEL         127             // kbs
-#define KEY_BS          KEY_CTRL('h')   // kbs
 
-#define KEY_UP          KEY_ESC1('A')   // kcuu1
-#define KEY_DOWN        KEY_ESC1('B')   // kcud1
-#define KEY_RIGHT       KEY_ESC1('C')   // kcuf1
-#define KEY_LEFT        KEY_ESC1('D')   // kcub1
-#define KEY_CTRL_UP     KEY_ESC1('a')
-#define KEY_CTRL_DOWN   KEY_ESC1('b')
-#define KEY_CTRL_RIGHT  KEY_ESC1('c')
-#define KEY_CTRL_LEFT   KEY_ESC1('d')
-#define KEY_CTRL_END    KEY_ESC1('f')
-#define KEY_CTRL_HOME   KEY_ESC1('h')
-#define KEY_CTRL_PAGEUP KEY_ESC1('i')
-#define KEY_CTRL_PAGEDOWN KEY_ESC1('j')
-#define KEY_SHIFT_UP     KEY_ESC1('a'+128)
-#define KEY_SHIFT_DOWN   KEY_ESC1('b'+128)
-#define KEY_SHIFT_RIGHT  KEY_ESC1('c'+128)
-#define KEY_SHIFT_LEFT   KEY_ESC1('d'+128)
-#define KEY_SHIFT_END    KEY_ESC1('f'+128)
-#define KEY_SHIFT_HOME   KEY_ESC1('h'+128)
-#define KEY_SHIFT_PAGEUP KEY_ESC1('i'+128)
-#define KEY_SHIFT_PAGEDOWN KEY_ESC1('j'+128)
-#define KEY_CTRL_SHIFT_UP     KEY_ESC1('a'+64)
-#define KEY_CTRL_SHIFT_DOWN   KEY_ESC1('b'+64)
-#define KEY_CTRL_SHIFT_RIGHT  KEY_ESC1('c'+64)
-#define KEY_CTRL_SHIFT_LEFT   KEY_ESC1('d'+64)
-#define KEY_CTRL_SHIFT_END    KEY_ESC1('f'+64)
-#define KEY_CTRL_SHIFT_HOME   KEY_ESC1('h'+64)
-#define KEY_CTRL_SHIFT_PAGEUP KEY_ESC1('i'+64)
-#define KEY_CTRL_SHIFT_PAGEDOWN KEY_ESC1('j'+64)
-#define KEY_SHIFT_TAB   KEY_ESC1('Z')   // kcbt
 #define KEY_HOME        KEY_ESC1(1)     // khome
 #define KEY_INSERT      KEY_ESC1(2)     // kich1
 #define KEY_DELETE      KEY_ESC1(3)     // kdch1
 #define KEY_END         KEY_ESC1(4)     // kend
 #define KEY_PAGEUP      KEY_ESC1(5)     // kpp
 #define KEY_PAGEDOWN    KEY_ESC1(6)     // knp
+#define KEY_UP          KEY_ESC1(7)     // kcuu1
+#define KEY_DOWN        KEY_ESC1(8)     // kcud1
+#define KEY_RIGHT       KEY_ESC1(9)     // kcuf1
+#define KEY_LEFT        KEY_ESC1(10)    // kcub1
 #define KEY_F1          KEY_ESC1(11)
 #define KEY_F2          KEY_ESC1(12)
 #define KEY_F3          KEY_ESC1(13)
 #define KEY_F4          KEY_ESC1(14)
 #define KEY_F5          KEY_ESC1(15)
-#define KEY_F6          KEY_ESC1(17)
-#define KEY_F7          KEY_ESC1(18)
-#define KEY_F8          KEY_ESC1(19)
-#define KEY_F9          KEY_ESC1(20)
-#define KEY_F10         KEY_ESC1(21)
-#define KEY_F11         KEY_ESC1(23)
-#define KEY_F12         KEY_ESC1(24)
-#define KEY_F13         KEY_ESC1(25)
-#define KEY_F14         KEY_ESC1(26)
-#define KEY_F15         KEY_ESC1(28)
-#define KEY_F16         KEY_ESC1(29)
-#define KEY_F17         KEY_ESC1(31)
-#define KEY_F18         KEY_ESC1(32)
-#define KEY_F19         KEY_ESC1(33)
-#define KEY_F20         KEY_ESC1(34)
+#define KEY_F6          KEY_ESC1(16)
+#define KEY_F7          KEY_ESC1(17)
+#define KEY_F8          KEY_ESC1(18)
+#define KEY_F9          KEY_ESC1(19)
+#define KEY_F10         KEY_ESC1(20)
+#define KEY_F11         KEY_ESC1(21)
+#define KEY_F12         KEY_ESC1(22)
+#define KEY_F13         KEY_ESC1(23)
+#define KEY_F14         KEY_ESC1(24)
+#define KEY_F15         KEY_ESC1(25)
+#define KEY_F16         KEY_ESC1(26)
+#define KEY_F17         KEY_ESC1(27)
+#define KEY_F18         KEY_ESC1(28)
+#define KEY_F19         KEY_ESC1(29)
+#define KEY_F20         KEY_ESC1(30)
+
+#define KEY_SHIFT_TAB   KEY_SHIFT(KEY_TAB)
 
 /*---- Unicode and UTF-8 support ----*/
 
