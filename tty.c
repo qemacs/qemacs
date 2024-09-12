@@ -108,7 +108,8 @@ enum InputState {
     IS_ESC,
     IS_CSI,
     IS_CSI2,
-    IS_ESC2,
+    IS_SS3,
+    IS_OSC,
 };
 
 enum TermCode {
@@ -130,7 +131,11 @@ typedef struct TTYState {
     /* input handling */
     enum InputState input_state;
     int has_meta;
-    int input_param, input_param2;
+    int nb_params;
+#define CSI_PARAM_OMITTED  0x80000000
+    int params[3];
+    int leader;
+    int interm;
     int utf8_index;
     unsigned char buf[8];
     char *term_name;
@@ -298,6 +303,8 @@ static int tty_dpy_init(QEditScreen *s,
      * We want read to return every single byte, without timeout. */
     tty.c_cc[VMIN] = 1;   /* 1 byte */
     tty.c_cc[VTIME] = 0;  /* no timer */
+    if (tty.c_cc[VERASE] == 8)
+        ts->term_flags |= KBS_CONTROL_H;
 
     tcsetattr(fileno(s->STDIN), TCSANOW, &tty);
 
@@ -421,10 +428,11 @@ static int tty_dpy_init(QEditScreen *s,
 
     tty_dpy_invalidate(s);
 
+#if 0
     if (ts->term_flags & KBS_CONTROL_H) {
         do_toggle_control_h(NULL, 1);
     }
-
+#endif
     return 0;
 }
 
@@ -607,7 +615,7 @@ static void tty_read_handler(void *opaque)
     TTYState *ts = s->priv_data;
     QEEvent ev1, *ev = &ev1;
     u8 buf[1];
-    int ch, len, n1;
+    int ch, len, n1, n2, pending;
 
     if (read(fileno(s->STDIN), buf, 1) != 1)
         return;
@@ -646,19 +654,25 @@ static void tty_read_handler(void *opaque)
         if (ch == '\033') {
             if (!tty_dpy_is_user_input_pending(s)) {
                 /* Trick to distinguish the ESC key from function and meta
-                 * keys  transmitting escape sequences starting with \033
+                 * keys transmitting escape sequences starting with \033
                  * but followed immediately by more characters.
                  */
                 goto the_end;
             }
             ts->input_state = IS_ESC;
-        } else {
-            goto the_end;
+            break;
         }
-        break;
+        if (ch == '\010') {
+            /* backspace */
+            if (ts->term_flags & KBS_CONTROL_H)
+                ch = KEY_DEL;
+        }
+        goto the_end_meta;
+
     case IS_ESC:
+        pending = tty_dpy_is_user_input_pending(s);
         if (ch == '\033') {
-            if (!tty_dpy_is_user_input_pending(s)) {
+            if (!pending) {
                 /* Distinguish alt-ESC from ESC prefix applied to other keys */
                 ch = KEY_META(KEY_ESC);
                 ts->input_state = IS_NORM;
@@ -668,136 +682,156 @@ static void tty_read_handler(void *opaque)
             ts->has_meta = 8;
             break;
         }
-        if (ch == '[') {
-            if (!tty_dpy_is_user_input_pending(s)) {
-                ch = KEY_META('[');
-                ts->input_state = IS_NORM;
-                goto the_end;
-            }
+        if (ch == '[' && pending) { // CSI
             ts->input_state = IS_CSI;
-            ts->input_param = 0;
-            ts->input_param2 = 0;
-        } else if (ch == 'O') {
-            ts->input_state = IS_ESC2;
-            ts->input_param = 0;
-            ts->input_param2 = 0;
-        } else {
-            ch = KEY_META(ch);
-            ts->input_state = IS_NORM;
-            goto the_end;
-        }
-        break;
-    case IS_CSI:
-        if (ch >= '0' && ch <= '9') {
-            ts->input_param = ts->input_param * 10 + ch - '0';
+            ts->nb_params = 0;
+            ts->params[0] = CSI_PARAM_OMITTED;
+            ts->params[1] = CSI_PARAM_OMITTED;
+            ts->leader = 0;
+            ts->interm = 0;
             break;
         }
-        ts->input_state = IS_NORM;
-        switch (ch) {
-        case ';': /* multi ignore but the last 2 */
-            /* iterm2 uses this for some keys:
-             * C-up, C-down, C-left, C-right, S-left, S-right,
+        if (ch == 'O' && pending) {
+            ts->input_state = IS_SS3;
+            ts->nb_params = 0;
+            ts->params[0] = 0;
+            ts->interm = 0;
+            break;
+        }
+        if (ch == ']' && pending) {
+            /* OSC terminal responses
+               eg: get palette entry: \033]4;0;rgb:0000/0000/0000\007
              */
-            ts->input_param2 = ts->input_param;
-            ts->input_param = 0;
-            ts->input_state = IS_CSI;
+            ts->input_state = IS_OSC;
+            ts->has_meta = 0;
             break;
+        }
+        /* FIXME: handle terminal answers */
+        ch = KEY_META(ch);
+        ts->input_state = IS_NORM;
+        goto the_end;
+
+    case IS_CSI:
+        /* CSI syntax is: CSI P ... P I ... I F
+         * P are parameter bytes (range 30 to 3F)
+         *   '<', '=', '>' and '?' parameter bytes usually only appear
+         *   first and are referred to as leader bytes. Note however that
+         *   requests may be issued for multiple arguments, each using a
+         *   '?' before the argument value.
+         * I are intermediary bytes (range 20 to 2F)
+         * F is the final byte (range 40..7E)
+         * we only support a single leader and intermediary byte.
+         */
+        if (ch >= 0x20 && ch <= 0x2F) {
+            /* intermediary byte: only keep the last one */
+            ts->interm = ch;
+            break;
+        }
+        if (ch >= '0' && ch <= '9') {
+            if (ts->interm) {
+                /* syntax error: ignore CSI sequence */
+                ts->input_state = IS_NORM;
+                break;
+            }
+            if (ts->nb_params < countof(ts->params)) {
+                ts->params[ts->nb_params] &= ~CSI_PARAM_OMITTED;
+                ts->params[ts->nb_params] *= 10;
+                ts->params[ts->nb_params] += ch - '0';
+            }
+            break;
+        }
+        ts->nb_params++;
+        if (ts->nb_params < countof(ts->params)) {
+            ts->params[ts->nb_params] = CSI_PARAM_OMITTED;
+        }
+        if (ch == ':' || ch == ';')
+            break;
+        if (ch >= 0x3C && ch <= 0x3F) {
+            /* leader byte: only keep the last one */
+            ts->leader = ch;
+            break;
+        }
+        /* FIXME: Should only accept final bytes in range 40..7E,
+         * and ignore other bytes.
+         */
+        ts->input_state = IS_NORM;
+        n1 = ts->params[0] >= 0 ? ts->params[0] : 0;
+        n2 = ts->params[1] >= 0 ? ts->params[1] : 1;
+        switch ((ts->leader << 16) | (ts->interm << 8) | ch) {
         case '[':
+            /* cygwin/linux terminal: non standard sequence */
             ts->input_state = IS_CSI2;
             break;
         case '~':
-            /* If there is a second param, it tells the shift state,
-             * ex: S-f5 = ^[[15;2~ */
-            // XXX: should use extensible lookup table
-            n1 = ts->input_param;
-            if (ts->input_param2) {
-                // XXX: should handle shift function keys
-                ch = KEY_UNKNOWN;
-                ts->has_meta = 0;
+            /* extended key:
+             * first argument is the key number
+             * second argument if present is the shift state + 1
+             * 1:shift, 2:alt, 4:control, 8:command/hyper
+             */
+            if (n2) n2 -= 1;
+            if (n1 == 27 && ts->nb_params >= 3 && ts->params[2] >= 0) {
+                /* xterm modifyOtherKeys extension */
+                ch = ts->params[2];
+                if (ch == 8 && (ts->term_flags |= KBS_CONTROL_H))
+                    ch = KEY_DEL;
+                ch = get_modified_key(ch, n2);
                 goto the_end;
             }
             if (n1 < countof(csi_lookup)) {
                 ch = csi_lookup[n1];
-                goto the_end;
+                goto the_end_modified;
             }
-            break;
+            ch = KEY_UNKNOWN;
+            goto the_end;
+        case 'u':
+            /* Paul "LeoNerd" Evans' CSI u protocol:
+             * see https://www.leonerd.org.uk/hacks/fixterms/
+             * supported by xterm if formatOtherKeys resource is selected
+             */
+            ch = get_modified_key(n1, n2 - 1);
+            goto the_end;
             /* All these for ansi|cygwin */
         default:
-            /* input_param contains the shift status:
-             * bit 2 is SHIFT
+            /* n2 contains the shift status + 1:
+             * bit 1 is SHIFT
+             * bit 2 is ALT
              * bit 4 is CTRL
-             * bit 8 is ALT
              */
-            if (ts->input_param & 8) {
-                ts->has_meta = 8;
-            }
-            if ((ts->input_param & 6) == 6) {
-                /* iterm2 CTRL-SHIFT-arrows */
-                switch (ch) {
-                case 'A': ch = KEY_CTRL_SHIFT_UP;        goto the_end;
-                case 'B': ch = KEY_CTRL_SHIFT_DOWN;      goto the_end;
-                case 'C': ch = KEY_CTRL_SHIFT_RIGHT;     goto the_end;
-                case 'D': ch = KEY_CTRL_SHIFT_LEFT;      goto the_end;
-                case 'F': ch = KEY_CTRL_SHIFT_END;       goto the_end;
-                case 'H': ch = KEY_CTRL_SHIFT_HOME;      goto the_end;
-                }
-            } else
-            if ((ts->input_param & 6) == 4) {
-                /* xterm CTRL-arrows */
-                /* iterm2 CTRL-arrows:
-                 * C-up    = ^[[1;5A
-                 * C-down  = ^[[1;5B
-                 * C-right = ^[[1;5C
-                 * C-left  = ^[[1;5D
-                 * C-end   = ^[[1;5F
-                 * C-home  = ^[[1;5H
-                 */
-                switch (ch) {
-                case 'A': ch = KEY_CTRL_UP;    goto the_end;
-                case 'B': ch = KEY_CTRL_DOWN;  goto the_end;
-                case 'C': ch = KEY_CTRL_RIGHT; goto the_end;
-                case 'D': ch = KEY_CTRL_LEFT;  goto the_end;
-                case 'F': ch = KEY_CTRL_END;   goto the_end;
-                case 'H': ch = KEY_CTRL_HOME;  goto the_end;
-                }
-            } else
-            if ((ts->input_param & 6) == 2) {
-                /* iterm2 SHIFT-arrows:
-                 * S-up    = ^[[1;2A
-                 * S-down  = ^[[1;2B
-                 * S-right = ^[[1;2C
-                 * S-left  = ^[[1;2D
-                 * S-f1 = ^[[1;2P
-                 * S-f2 = ^[[1;2Q
-                 * S-f3 = ^[[1;2R
-                 * S-f4 = ^[[1;2S
-                 * should set-mark if region not visible
-                 */
-                switch (ch) {
-                case 'A': ch = KEY_SHIFT_UP;    goto the_end;
-                case 'B': ch = KEY_SHIFT_DOWN;  goto the_end;
-                case 'C': ch = KEY_SHIFT_RIGHT; goto the_end;
-                case 'D': ch = KEY_SHIFT_LEFT;  goto the_end;
-                case 'F': ch = KEY_SHIFT_END;   goto the_end;
-                case 'H': ch = KEY_SHIFT_HOME;  goto the_end;
-                //case 'P': ch = KEY_SHIFT_F1;    goto the_end;
-                //case 'Q': ch = KEY_SHIFT_F2;    goto the_end;
-                //case 'R': ch = KEY_SHIFT_F3;    goto the_end;
-                //case 'S': ch = KEY_SHIFT_F4;    goto the_end;
-                }
-            } else {
-                switch (ch) {
-                case 'A': ch = KEY_UP;        goto the_end; // kcuu1
-                case 'B': ch = KEY_DOWN;      goto the_end; // kcud1
-                case 'C': ch = KEY_RIGHT;     goto the_end; // kcuf1
-                case 'D': ch = KEY_LEFT;      goto the_end; // kcub1
-                case 'F': ch = KEY_END;       goto the_end; // kend
-                //case 'G': ch = KEY_CENTER;  goto the_end; // kb2
-                case 'H': ch = KEY_HOME;      goto the_end; // khome
-                case 'L': ch = KEY_INSERT;    goto the_end; // kich1
-                //case 'M': ch = KEY_MOUSE;   goto the_end; // kmous
-                case 'Z': ch = KEY_SHIFT_TAB; goto the_end; // kcbt
-                }
+            /* xterm CTRL-arrows
+             * iterm2 CTRL-arrows:
+             * C-up    = ^[[1;5A
+             * C-down  = ^[[1;5B
+             * C-right = ^[[1;5C
+             * C-left  = ^[[1;5D
+             * C-end   = ^[[1;5F
+             * C-home  = ^[[1;5H
+             */
+            /* iterm2 SHIFT-arrows:
+             * S-up    = ^[[1;2A
+             * S-down  = ^[[1;2B
+             * S-right = ^[[1;2C
+             * S-left  = ^[[1;2D
+             * S-f1 = ^[[1;2P
+             * S-f2 = ^[[1;2Q
+             * S-f3 = ^[[1;2R
+             * S-f4 = ^[[1;2S
+             */
+            if (n2) n2 -= 1;
+            switch (ch) {
+            case 'A': ch = KEY_UP;        goto the_end_modified; // kcuu1
+            case 'B': ch = KEY_DOWN;      goto the_end_modified; // kcud1
+            case 'C': ch = KEY_RIGHT;     goto the_end_modified; // kcuf1
+            case 'D': ch = KEY_LEFT;      goto the_end_modified; // kcub1
+            case 'F': ch = KEY_END;       goto the_end_modified; // kend
+            //case 'G': ch = KEY_CENTER;  goto the_end_modified; // kb2
+            case 'H': ch = KEY_HOME;      goto the_end_modified; // khome
+            case 'L': ch = KEY_INSERT;    goto the_end_modified; // kich1
+            //case 'M': ch = KEY_MOUSE;   goto the_end_modified; // kmous
+            case 'P': ch = KEY_F1;        goto the_end_modified;
+            case 'Q': ch = KEY_F2;        goto the_end_modified;
+            case 'R': ch = KEY_F3;        goto the_end_modified;
+            case 'S': ch = KEY_F4;        goto the_end_modified;
+            case 'Z': ch = KEY_SHIFT_TAB; goto the_end_modified; // kcbt
             }
             ch = KEY_UNKNOWN;
             ts->has_meta = 0;
@@ -817,39 +851,70 @@ static void tty_read_handler(void *opaque)
         ch = KEY_UNKNOWN;
         goto the_end;
 
-    case IS_ESC2:       // "\EO"
+    case IS_SS3:       // "\EO"
         /* xterm/vt100 fn */
+        if (ch >= '0' && ch <= '9') {
+            ts->params[0] *= 10;
+            ts->params[0] += ch - '0';
+            break;
+        }
+        n2 = ts->params[0] > 0 ? ts->params[0] - 1 : 0;
         ts->input_state = IS_NORM;
         switch (ch) {
-        case 'A': ch = KEY_UP;         goto the_end;
-        case 'B': ch = KEY_DOWN;       goto the_end;
-        case 'C': ch = KEY_RIGHT;      goto the_end;
-        case 'D': ch = KEY_LEFT;       goto the_end;
-        case 'F': ch = KEY_END;        goto the_end; /* iterm2 F-right */
-        case 'H': ch = KEY_HOME;       goto the_end; /* iterm2 F-left */
-        case 'P': ch = KEY_F1;         goto the_end;
-        case 'Q': ch = KEY_F2;         goto the_end;
-        case 'R': ch = KEY_F3;         goto the_end;
-        case 'S': ch = KEY_F4;         goto the_end;
-        case 't': ch = KEY_F5;         goto the_end;
-        case 'u': ch = KEY_F6;         goto the_end;
-        case 'v': ch = KEY_F7;         goto the_end;
-        case 'l': ch = KEY_F8;         goto the_end;
-        case 'w': ch = KEY_F9;         goto the_end;
-        case 'x': ch = KEY_F10;        goto the_end;
+        case 'A': ch = KEY_UP;         goto the_end_modified;
+        case 'B': ch = KEY_DOWN;       goto the_end_modified;
+        case 'C': ch = KEY_RIGHT;      goto the_end_modified;
+        case 'D': ch = KEY_LEFT;       goto the_end_modified;
+        case 'F': ch = KEY_END;        goto the_end_modified; /* iterm2 F-right */
+        case 'H': ch = KEY_HOME;       goto the_end_modified; /* iterm2 F-left */
+        case 'M': ch = KEY_RET;        goto the_end_modified; /* Enter on keypad */
+        case 'P': ch = KEY_F1;         goto the_end_modified;
+        case 'Q': ch = KEY_F2;         goto the_end_modified;
+        case 'R': ch = KEY_F3;         goto the_end_modified;
+        case 'S': ch = KEY_F4;         goto the_end_modified;
+        case 't': ch = KEY_F5;         goto the_end_modified;
+        case 'u': ch = KEY_F6;         goto the_end_modified;
+        case 'v': ch = KEY_F7;         goto the_end_modified;
+        case 'l': ch = KEY_F8;         goto the_end_modified;
+        case 'w': ch = KEY_F9;         goto the_end_modified;
+        case 'x': ch = KEY_F10;        goto the_end_modified;
+        default:  ch = KEY_UNKNOWN;    goto the_end;
         }
-        ch = KEY_UNKNOWN;
+    the_end_modified:
+        /* modify the special key */
+        if (n2 & 1)
+            ch = KEY_SHIFT(ch);
+        if (n2 & (2 | 8))
+            ch = KEY_META(ch);
+        if (n2 & 4)
+            ch = KEY_CONTROL(ch);
         goto the_end;
 
-    the_end:
+    the_end_meta:
         if (ts->has_meta) {
             ts->has_meta = 0;
             ch = KEY_META(ch);
         }
-        // XXX: should add custom key conversions, especially for KEY_UNKNOWN
+    the_end:
+        // XXX: should add custom key sequences, especially for KEY_UNKNOWN
         ev->key_event.type = QE_KEY_EVENT;
         ev->key_event.key = ch;
         qe_handle_event(ev);
+        break;
+
+    case IS_OSC:
+        /* OSC syntax is: OSC string 07 or OSC string ST (ESC \) */
+        if (ch == 27) {
+            ts->has_meta = 1;
+            break;
+        }
+        if (ts->has_meta && ch == '\\') {
+            /* ST: should strip last byte from message */
+        } else
+        if (ch != 7)
+            break;
+        // FIXME: handle terminal response
+        ts->input_state = IS_NORM;
         break;
     }
 }

@@ -366,7 +366,7 @@ static void haiku_handle_event(void *opaque)
     bigtime_t timestamp_ms;
     BMessage *event;
     //fprintf(stderr, "%s()\n", __FUNCTION__);
-    int shift, ctrl, meta, key = 0;
+    int key_state, key = -1;
     QEEvent ev1, *ev = &ev1;
 
     if (read(ctx->events_rd, &event, sizeof(event)) < (signed)sizeof(event))
@@ -525,23 +525,26 @@ static void haiku_handle_event(void *opaque)
             if (!numbytes)
                 numbytes = strlen(bytes);
 
-            shift = (state & B_SHIFT_KEY);
-            ctrl = (state & B_CONTROL_KEY);
-            meta = (state & (B_LEFT_OPTION_KEY | B_COMMAND_KEY));
+            key_state = 0;
+            if (state & B_SHIFT_KEY)
+                key_state = KEY_STATE_SHIFT;
+            if (state & B_CONTROL_KEY)
+                key_state = KEY_STATE_CONTROL;
+            if (state & B_LEFT_OPTION_KEY)
+                key_state = KEY_STATE_META;
+            if (state & B_COMMAND_KEY)
+                key_state = KEY_STATE_COMMAND;
 
-            //fprintf(stderr, "%cshift %cctrl %cmeta numbytes %d \n",
-            //        shift ? ' ' : '!', ctrl ? ' ' : '!', meta ? ' ' : '!', numbytes);
+            //fprintf(stderr, "state=%d numbytes %d \n", state, numbytes);
 
             char byte = 0;
             if (numbytes == 1) {
                 byte = bytes[0];
-                if (state & B_CONTROL_KEY)
-                    byte = (char)raw_char;
+                //if (state & B_CONTROL_KEY)
+                //    byte = (char)raw_char;
                 switch (byte) {
                 case B_BACKSPACE:
                     key = KEY_DEL;
-                    if (meta)
-                        key = KEY_META(KEY_DEL);
                     break;
                 case B_TAB:
                     key = KEY_TAB;
@@ -562,10 +565,10 @@ static void haiku_handle_event(void *opaque)
                     key = KEY_INSERT;
                     break;
                 case B_HOME:
-                    key = ctrl ? KEY_CTRL_HOME : KEY_HOME;
+                    key = KEY_HOME;
                     break;
                 case B_END:
-                    key = ctrl ? KEY_CTRL_END : KEY_END;
+                    key = KEY_END;
                     break;
                 case B_PAGE_UP:
                     key = KEY_PAGEUP;
@@ -574,10 +577,10 @@ static void haiku_handle_event(void *opaque)
                     key = KEY_PAGEDOWN;
                     break;
                 case B_LEFT_ARROW:
-                    key = ctrl ? KEY_CTRL_LEFT : KEY_LEFT;
+                    key = KEY_LEFT;
                     break;
                 case B_RIGHT_ARROW:
-                    key = ctrl ? KEY_CTRL_RIGHT : KEY_RIGHT;
+                    key = KEY_RIGHT;
                     break;
                 case B_UP_ARROW:
                     key = KEY_UP;
@@ -599,7 +602,7 @@ static void haiku_handle_event(void *opaque)
                     case B_F10_KEY:
                     case B_F11_KEY:
                     case B_F12_KEY:
-                        key = KEY_F1 + scancode - B_F1_KEY;
+                        key = KEY_F1 + (scancode - B_F1_KEY);
                         break;
                     case B_PRINT_KEY:
                     case B_SCROLL_KEY:
@@ -611,26 +614,21 @@ static void haiku_handle_event(void *opaque)
                 case 0:
                     break;
                 default:
-                    if (byte >= ' ' && byte <= '~') {
-                        if (meta)
-                            key = KEY_META(' ') + byte - ' ';
-                        else if (ctrl)
-                            key = KEY_CTRL(byte);
-                        else
-                            key = byte;
-                    }
+                    if (byte >= ' ' && byte <= '~')
+                        key = byte;
+                    break;
                 }
+                if (key < 0)
+                    break;
+                key = get_modified_key(key, key_state);
             } else {
                 const char *p = bytes;
                 key = utf8_decode(&p);
             }
 
-        //got_key:
-            if (key) {
-                ev->key_event.type = QE_KEY_EVENT;
-                ev->key_event.key = key;
-                qe_handle_event(ev);
-            }
+            ev->key_event.type = QE_KEY_EVENT;
+            ev->key_event.key = key;
+            qe_handle_event(ev);
         }
         break;
     }

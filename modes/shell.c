@@ -52,6 +52,7 @@ enum QETermState {
     QE_TERM_STATE_ESC,
     QE_TERM_STATE_ESC2,
     QE_TERM_STATE_CSI,
+    QE_TERM_STATE_OSC1,
     QE_TERM_STATE_STRING,
 };
 
@@ -70,6 +71,7 @@ typedef struct ShellState {
     int cur_prompt; /* offset of end of prompt on current line */
     int save_x, save_y;
     int nb_params;
+#define CSI_PARAM_OMITTED  0x80000000
     int params[MAX_CSI_PARAMS + 1];
     int state;
     int esc1, esc2;
@@ -1319,14 +1321,6 @@ static void shell_key(void *opaque, int key)
     case KEY_DOWN:      p = s->kcud1; break;
     case KEY_RIGHT:     p = s->kcuf1; break;
     case KEY_LEFT:      p = s->kcub1; break;
-    //case KEY_CTRL_UP:
-    //case KEY_CTRL_DOWN:
-    //case KEY_CTRL_RIGHT:
-    //case KEY_CTRL_LEFT:
-    //case KEY_CTRL_END:
-    //case KEY_CTRL_HOME:
-    //case KEY_CTRL_PAGEUP:
-    //case KEY_CTRL_PAGEDOWN:
     case KEY_SHIFT_TAB: p = s->kcbt;  break;
     case KEY_HOME:      p = s->khome; break;
     case KEY_INSERT:    p = s->kich1; break;
@@ -1582,11 +1576,11 @@ static void qe_term_emulate(ShellState *s, int c)
         s->esc1 = c;
         s->state = QE_TERM_STATE_NORM;
         switch (c) {
-        case '[':   // Control Sequence Introducer (CSI  is 0x9b).
+        case '[':   // Control Sequence Introducer (CSI is 0x9b).
             s->nb_params = 0;
             s->params[0] = -1;
             s->params[1] = -1;
-            s->esc1 = 0;
+            s->esc1 = 0;   /* used for both leader and intermediary bytes */
             s->state = QE_TERM_STATE_CSI;
             break;
         case ' ':
@@ -1599,16 +1593,22 @@ static void qe_term_emulate(ShellState *s, int c)
         case '-':
         case '.':
         case '/':
-        case ']':   // Operating System Command (OSC  is 0x9d).
             s->state = QE_TERM_STATE_ESC2;
             break;
+        case ']':   // Operating System Command (OSC is 0x9d).
+            s->params[0] = 0;
+            s->esc2 = 0;
+            s->state = QE_TERM_STATE_OSC1;
+            break;
         case '^':   // Privacy Message (PM  is 0x9e).
-        case '_':   // Application Program Command (APC  is 0x9f).
-        case 'P':   // Device Control String (DCS  is 0x90).
+        case '_':   // Application Program Command (APC is 0x9f).
+        case 'P':   // Device Control String (DCS is 0x90).
+            s->params[0] = 0;
+            s->esc2 = 0;
             s->state = QE_TERM_STATE_STRING;
             break;
         case '\\':  // String Terminator (ST  is 0x9c).
-            TRACE_MSG(s, "unhandled string");
+            TRACE_MSG(s, "stray ST");
             break;
         case '6':   // Back Index (DECBI), VT420 and up.
             break;
@@ -1715,15 +1715,73 @@ static void qe_term_emulate(ShellState *s, int c)
         case ESC2('/','B'):
             TRACE_MSG(s, "set charset");
             break;
-            /* XXX: OSC sequences should parse as OSC Ps;Pt ST */
-        case ESC2(']','0'):  /* Change Icon Name and Window Title to Pt. */
-        case ESC2(']','1'):  /* Change Icon Name to Pt. */
-        case ESC2(']','2'):  /* Change Window Title to Pt. */
-        case ESC2(']','3'):  /* Set X property on top-level window */
-            /* Pt should be in the form "prop=value", or just "prop" to delete the property */
-        case ESC2(']','4'):  /* xterm's define-extended color "\033]4;c;name\007" */
-            /* Change Color #c to cname. Any number of c name pairs may be given. */
-            /* iTerm2 has a specific behavior for colors 16 to 22:
+        default:
+            TRACE_MSG(s, "unhandled");
+            break;
+        }
+        s->shifted = s->charset[s->cset];
+        break;
+    case QE_TERM_STATE_OSC1:
+            /* XXX: OSC sequences should use QE_TERM_STATE_STRING
+               (eg: OSC Ps;Pt ST) but linux tty uses non standard
+               sequences ESC ] R and `ESC ] P prrggbb, so we need
+               these extra states to avoid hanging the terminal
+             */
+        if (s->term_pos == 3) {
+            s->esc2 = c;
+            if (c == 'R') {      /* linux reset palette */
+                s->state = QE_TERM_STATE_NORM;
+                break;
+            }
+        }
+        if (s->esc2 == 'P') {
+            if (s->term_pos < 10)
+                break;
+            /* linux set palette syntax is OSC P nrrggbb:
+               n: letter 0-f for standard palette entries
+                         g-m for extended attributes:
+               rr, gg, bb 2 hex digit values
+             */
+            TRACE_MSG(s, "linux palette");
+            s->state = QE_TERM_STATE_NORM;
+            break;
+        }
+        if (c >= '0' && c <= '9') {
+            s->params[0] *= 10;
+            s->params[0] += c - '0';
+            break;
+        }
+        s->state = QE_TERM_STATE_STRING;
+        /* fall thru */
+    case QE_TERM_STATE_STRING:
+        /* CG: should store the string */
+        /* Stop string on CR or LF, for protection */
+        if ((c == '\012' || c == '\015') && s->params[0] != 1337) {
+            s->state = QE_TERM_STATE_NORM;
+            TRACE_MSG(s, "broken string");
+            break;
+        }
+        /* Stop string on \a (^G) or ST (ESC \) */
+        if (!(c == '\007' || c == 0234 || (s->lastc == 27 && c == '\\'))) {
+            /* XXX: should store the string for specific cases */
+            s->lastc = c;
+            break;
+        }
+        s->state = QE_TERM_STATE_NORM;
+        /* OSC / PM / APC / DCS string has been received. Should handle these cases:
+           - OSC 0; Pt ST  Change Icon Name and Window Title to Pt.
+           - OSC 1; Pt ST  Change Icon Name to Pt.
+           - OSC 2; Pt ST  Change Window Title to Pt.
+           - OSC 3; Pt ST  Set X property on top-level window: Pt should
+           be in the form "prop=value", or just "prop" to delete the property
+           - OSC 4; c; name... ST  xterm's define extended color (executeXtermSetRgb)
+           Change Color #c to name. Any number of c / name pairs may be given.
+           example: "\033]4;16;rgb:0000/00000/0000\033\134"
+
+           iTerm2 reports the current rgb value with "<index>;?",
+           e.g. "\033]4;105;?" -> report as \033]4;105;rgb:0000/cccc/ffff\007"
+
+           iTerm2 has a specific behavior for colors 16 to 22:
                 16: terminalSetForegroundColor
                 17: terminalSetBackgroundColor
                 18: terminalSetBoldColor
@@ -1731,78 +1789,51 @@ static void qe_term_emulate(ShellState *s, int c)
                 20: terminalSetSelectedTextColor
                 21: terminalSetCursorColor
                 22: terminalSetCursorTextColor
-            */
-            /* xterm has the following set extended attribute: */
-            /* 10    Change color names starting with text foreground to Pt
-                     (a list of one or more color names or RGB specifications,
-                     separated by semicolon, up to eight, as per XParseColor).
-            */
-            /* 11    Change colors starting with text background to Pt */
-            /* 12    Change colors starting with text cursor to Pt */
-            /* 13    Change colors starting with mouse foreground to Pt */
-            /* 14    Change colors starting with mouse background to Pt */
-            /* 15    Change colors starting with Tek foreground to Pt */
-            /* 16    Change colors starting with Tek background to Pt */
-            /* 17    Change colors starting with highlight to Pt */
-            /* 46    Change Log File to Pt (normally disabled by a compile-time option) */
-            /* 50    Set Font to Pt If Pt begins with a "#", index in the font
-                     menu, relative (if the next character is a plus or minus
-                     sign) or absolute. A number is expected but not required
-                     after the sign (the default is the current entry for
-                     relative, zero for absolute indexing).
-            */
-        case ESC2(']','W'):     /* word-set (define char wordness) */
-            s->state = QE_TERM_STATE_STRING;
-            break;
-        case ESC2(']','P'):     /* linux set palette */
-        case ESC2(']','R'):     /* linux reset palette */
-            /* XXX: Todo */
-            TRACE_MSG(s, "linux palette");
-            /* followed by 7 digit palette entry nrrggbb with
-               n: letter 0-f for standard palette entries
-                         g-m for extended attributes:
-               rr, gg, bb 2 hex digit values
-            */
-            break;
-        default:
-            TRACE_MSG(s, "unhandled");
-            break;
-        }
-        s->shifted = s->charset[s->cset];
-        break;
-    case QE_TERM_STATE_STRING:
-        /* CG: should store the string */
-        /* Stop string on CR or LF, for protection */
-        if (c == '\012' || c == '\015') {
-            s->state = QE_TERM_STATE_NORM;
-            TRACE_MSG(s, "broken string");
-            break;
-        }
-        /* Stop string on \a (^G) or M-\ -- need better test for ESC \ */
-        if (c == '\007' || c == 0234 || c == '\\') {
-            /* CG: ESC2(']','0') should set shell caption */
-            /* CG: ESC2(']','4') should parse color definition string */
-            /* (example: "\033]4;16;rgb:00/00/00\033\134" ) */
-            // executeXtermSetRgb
-            // iTerm2 reports the current rgb value with "<index>;?",
-            //   e.g. "105;?" -> report as \033]4;P;rgb:00/cc/ff\007",
-            s->state = QE_TERM_STATE_NORM;
-            TRACE_MSG(s, "unhandled string");
-        }
+
+           xterm has the following set extended attribute:
+           - OSC 10; c; name... ST    Change color names starting with
+           text foreground (a list of one or more color names or RGB
+           specifications, separated by semicolon, up to eight, name as
+           as per XParseColor.
+
+           - OSC 11; c; name... ST  Change colors starting with text background
+           - OSC 12; c; name... ST  Change colors starting with text cursor
+           - OSC 13; c; name... ST  Change colors starting with mouse foreground
+           - OSC 14; c; name... ST  Change colors starting with mouse background
+           - OSC 15; c; name... ST  Change colors starting with Tek foreground
+           - OSC 16; c; name... ST  Change colors starting with Tek background
+           - OSC 17; c; name... ST  Change colors starting with highlight
+           - OSC 46; Pt ST  Change Log File to Pt (normally disabled by a
+           compile-time option)
+           - OSC 50; Pt ST  Set Font to Pt. If Pt begins with a "#", index in
+           the font menu, relative (if the next character is a plus or minus
+           sign) or absolute. A number is expected but not required after the
+           sign (the default is the current entry for relative, zero for
+           absolute indexing).
+           - OSC W; Pt ST   word-set (define char wordness)
+           xterm has a file download and image display protocol:
+           - OSC 1337; Pt ST
+         */
+        TRACE_PRINTF(s, "unhandled string: %.*s", min_int(s->term_pos, 20), s->term_buf);
         break;
     case QE_TERM_STATE_CSI:
-        if (c == '?' || c == '=' || c == '"' || c == ' ' || c == '\'' || c == '&') {
+        if (c >= '<' && c <= '?') {
+            /* leader bytes */
             s->esc1 = c;
             break;
         }
+        if (c >= 0x20 && c <= 0x2F) {
+            /* intermediary bytes */
+            s->esc1 = c;    /* no need to distinguish leader and interm bytes */
+            break;
+        }
         if (qe_isdigit(c)) {
-            if (s->params[s->nb_params] < 0) {
-                s->params[s->nb_params] = 0;
-            }
+            s->params[s->nb_params] &= ~CSI_PARAM_OMITTED;
             s->params[s->nb_params] *= 10;
             s->params[s->nb_params] += c - '0';
             break;
         }
+        /* XXX: should clarify */
         if (s->nb_params == 0
         ||  (s->nb_params < MAX_CSI_PARAMS && s->params[s->nb_params] >= 0)) {
             s->nb_params++;
@@ -1814,6 +1845,7 @@ static void qe_term_emulate(ShellState *s, int c)
         /* default param is 1 for most commands */
         param1 = s->params[0] >= 0 ? s->params[0] : 1;
         param2 = s->params[1] >= 0 ? s->params[1] : 1;
+        // FIXME: should handle c < 0x20 and c >= 0x7F according to ECMA-48 */
         switch (ESC2(s->esc1,c)) {
         case '@':  /* ICH: Insert Ps (Blank) Character(s) (default = 1) */
             {

@@ -1724,17 +1724,9 @@ int ustr_match_keyword(const char32_t *str, const char *keyword, int *lenp) {
 
 /* should move to a separate module */
 static unsigned short const keycodes[] = {
-    KEY_SPC, KEY_DEL, KEY_RET, KEY_LF, KEY_ESC, KEY_TAB, KEY_SHIFT_TAB,
-    KEY_CTRL(' '), KEY_CTRL('@'), KEY_DEL, KEY_CTRL('\\'),
-    KEY_CTRL(']'), KEY_CTRL('^'), KEY_CTRL('_'), KEY_CTRL('_'),
+    KEY_SPC, KEY_DEL, KEY_RET, KEY_LF, KEY_ESC, KEY_TAB,
     KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN,
     KEY_HOME, KEY_END, KEY_PAGEUP, KEY_PAGEDOWN,
-    KEY_CTRL_LEFT, KEY_CTRL_RIGHT, KEY_CTRL_UP, KEY_CTRL_DOWN,
-    KEY_CTRL_HOME, KEY_CTRL_END, KEY_CTRL_PAGEUP, KEY_CTRL_PAGEDOWN,
-    KEY_SHIFT_LEFT, KEY_SHIFT_RIGHT, KEY_SHIFT_UP, KEY_SHIFT_DOWN,
-    KEY_SHIFT_HOME, KEY_SHIFT_END, KEY_SHIFT_PAGEUP, KEY_SHIFT_PAGEDOWN,
-    KEY_CTRL_SHIFT_LEFT, KEY_CTRL_SHIFT_RIGHT, KEY_CTRL_SHIFT_UP, KEY_CTRL_SHIFT_DOWN,
-    KEY_CTRL_SHIFT_HOME, KEY_CTRL_SHIFT_END, KEY_CTRL_SHIFT_PAGEUP, KEY_CTRL_SHIFT_PAGEDOWN,
     KEY_PAGEUP, KEY_PAGEDOWN, KEY_INSERT, KEY_DELETE,
     KEY_DEFAULT, KEY_NONE, KEY_UNKNOWN,
     KEY_F1, KEY_F2, KEY_F3, KEY_F4, KEY_F5,
@@ -1745,16 +1737,9 @@ static unsigned short const keycodes[] = {
 };
 
 static const char * const keystr[countof(keycodes)] = {
-    "SPC", "DEL", "RET", "LF", "ESC", "TAB", "S-TAB",
-    "C-SPC", "C-@", "C-?", "C-\\", "C-]", "C-^", "C-_", "C-/",
+    "SPC", "DEL", "RET", "LF", "ESC", "TAB",
     "left", "right", "up", "down",
     "home", "end", "pageup", "pagedown",
-    "C-left", "C-right", "C-up", "C-down",
-    "C-home", "C-end", "C-pageup", "C-pagedown",
-    "S-left", "S-right", "S-up", "S-down",
-    "S-home", "S-end", "S-pageup", "S-pagedown",
-    "C-S-left", "C-S-right", "C-S-up", "C-S-down",
-    "C-S-home", "C-S-end", "C-S-pageup", "C-S-pagedown",
     "prior", "next", "insert", "delete",
     "default", "none", "unknown",
     "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10",
@@ -1824,7 +1809,6 @@ static int strtokey1(const char **pp)
         }
     }
 #if 0
-    /* Cannot do this because KEY_F1..KEY_F20 are not consecutive */
     if (p[0] == 'f' && p[1] >= '1' && p[1] <= '9') {
         i = p[1] - '0';
         p += 2;
@@ -1837,15 +1821,40 @@ static int strtokey1(const char **pp)
 #endif
     /* Should also support backslash escapes: \000 \x00 \u0000 */
     /* Should also support ^x and syntax and Ctrl- prefix for control keys */
-    /* Should test for p[2] in range 'a'..'z', '@'..'_', '?' */
-    if (p[0] == 'C' && p[1] == '-' && p1 == p + 3) {
-        /* control */
-        key = KEY_CTRL(p[2]);
-        *pp = p1;
-    } else {
-        key = utf8_decode(&p);
-        // XXX: Should assume unknown function key if p != p1 */
-        *pp = p;
+    key = utf8_decode(&p);
+    // XXX: Should assume unknown function key if p != p1 */
+    // FIXME: this breaks string macros: "Hello SPC world! RET" @@@
+    if (p != p1)
+        return -1;
+    *pp = p;
+    return key;
+}
+
+int get_modified_key(int key, int state) {
+    if (state & KEY_STATE_CONTROL) {
+        /* Control: generate KEY_CONTROL except for
+         * standard keys.
+         */
+        //if (key == 'h' || key == 'i' || key == 'j' || key == 'm' || key == '[')
+        //    key = KEY_CONTROL(key);
+        //else
+        if (key == ' '
+        ||  (key >= '@' && key <= 0x5F)
+        ||  (key >= 'a' && key <= 'z'))
+            key = KEY_CTRL(key);
+        else
+        if (key == '?')
+            key = 127;
+        else
+            key = KEY_CONTROL(key);
+    } else
+    if (state & KEY_STATE_SHIFT) {
+        if (key < 32 || key == 127 || KEY_IS_SPECIAL(key))
+            key = KEY_SHIFT(key);
+    }
+    if (state & (KEY_STATE_META | KEY_STATE_COMMAND)) {
+        /* Alt and Command/Hyper map to META */
+        key = KEY_META(key);
     }
     return key;
 }
@@ -1853,24 +1862,34 @@ static int strtokey1(const char **pp)
 int strtokey(const char **pp)
 {
     const char *p;
-    int key;
+    int key, state = 0;
 
     p = *pp;
-    /* Should also support A- and Alt- prefix for meta keys */
-    if (p[0] == 'M' && p[1] == '-') {
-        p += 2;
-        key = KEY_META(strtokey1(&p));
-    } else
-    if (p[0] == 'C' && p[1] == '-' && p[2] == 'M' && p[3] == '-') {
-        // XXX: this only works for ASCII control keys, not for function keys
-        /* Should pass buffer with C-xxx to strtokey1 */
-        p += 4;
-        key = KEY_META(KEY_CTRL(strtokey1(&p)));
-    } else {
-        key = strtokey1(&p);
+    while ((key = strtokey1(&p)) < 0) {
+        if (p[0] == 'M' && p[1] == '-') {
+            state |= KEY_STATE_META;
+            p += 2;
+        } else
+        if (p[0] == 'C' && p[1] == '-') {
+            state |= KEY_STATE_CONTROL;
+            p += 2;
+        } else
+        if (p[0] == 'S' && p[1] == '-') {
+            state |= KEY_STATE_SHIFT;
+            p += 2;
+        } else
+        if (state) {
+            while (*p && *p != ' ' && !(*p == ',' && p[1] == ' '))
+                p++;
+            *pp = p;
+            return KEY_UNKNOWN;
+        } else {
+            key = utf8_decode(&p);
+            break;
+        }
     }
     *pp = p;
-    return key;
+    return get_modified_key(key, state);
 }
 
 int strtokeys(const char *str, unsigned int *keys,
@@ -1913,14 +1932,20 @@ int buf_put_key(buf_t *out, int key) {
             return buf_puts(out, keystr[i]);
         }
     }
-    if (key >= KEY_META(0) && key <= KEY_META(0xff)) {
-        buf_puts(out, "M-");
-        buf_put_key(out, key & 0xff);
+    if (key >= 0xE200 && key < 0xF000) {
+        if ((key & KEY_META(0)) == KEY_META(0))
+            buf_puts(out, "M-");
+        if ((key & KEY_CONTROL(0)) == KEY_CONTROL(0))
+            buf_puts(out, "C-");
+        if ((key & KEY_SHIFT(0)) == KEY_SHIFT(0))
+            buf_puts(out, "S-");
+        // Should handle special cases: C-i... @@@
+        if (key & 0x100)
+            buf_put_key(out, key & ~0xE00);
+        else
+            buf_put_key(out, key & 0xff);
     } else
-    if (key >= KEY_META(KEY_ESC1(0)) && key <= KEY_META(KEY_ESC1(0xff))) {
-        buf_puts(out, "M-");
-        buf_put_key(out, KEY_ESC1(key & 0xff));
-    } else
+        // FIXME: handle @-_  @@@
     if (key >= KEY_CTRL('a') && key <= KEY_CTRL('z')) {
         buf_printf(out, "C-%c", key + 'a' - 1);
     } else {
@@ -1950,29 +1975,7 @@ int buf_put_keys(buf_t *out, unsigned int *keys, int nb_keys)
 }
 
 int is_shift_key(int key) {
-    if (qe_isupper(key))
-        return 1;
-    switch (key) {
-    case KEY_SHIFT_TAB:
-    case KEY_SHIFT_LEFT:
-    case KEY_SHIFT_RIGHT:
-    case KEY_SHIFT_UP:
-    case KEY_SHIFT_DOWN:
-    case KEY_SHIFT_HOME:
-    case KEY_SHIFT_END:
-    case KEY_SHIFT_PAGEUP:
-    case KEY_SHIFT_PAGEDOWN:
-    case KEY_CTRL_SHIFT_LEFT:
-    case KEY_CTRL_SHIFT_RIGHT:
-    case KEY_CTRL_SHIFT_UP:
-    case KEY_CTRL_SHIFT_DOWN:
-    case KEY_CTRL_SHIFT_HOME:
-    case KEY_CTRL_SHIFT_END:
-    case KEY_CTRL_SHIFT_PAGEUP:
-    case KEY_CTRL_SHIFT_PAGEDOWN:
-        return 1;
-    }
-    return 0;
+    return qe_isupper(key) || KEY_IS_SHIFT(key);
 }
 
 /*---- StringArray functions ----*/
