@@ -892,6 +892,7 @@ static QEDisplay haiku_dpy = {
     haiku_full_screen,
     NULL, /* dpy_describe */
     NULL, /* dpy_sound_bell */
+    NULL, /* dpy_suspend */
     NULL, /* next */
 };
 

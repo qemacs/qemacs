@@ -1945,6 +1945,7 @@ static QEDisplay x11_dpy = {
     x11_dpy_full_screen,
     NULL, /* dpy_describe */
     NULL, /* dpy_sound_bell */
+    NULL, /* dpy_suspend */
     NULL, /* next */
 };
 

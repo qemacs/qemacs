@@ -126,6 +126,7 @@ typedef struct TTYState {
     TTYChar *screen;
     int screen_size;
     unsigned char *line_updated;
+    struct termios newtty;
     struct termios oldtty;
     int cursor_x, cursor_y;
     /* input handling */
@@ -165,8 +166,71 @@ static QEditScreen *tty_screen;   /* for tty_term_exit and tty_term_resize */
 static void tty_dpy_invalidate(QEditScreen *s);
 
 static void tty_term_resize(int sig);
+static void tty_term_suspend(int sig);
+static void tty_term_resume(int sig);
 static void tty_term_exit(void);
 static void tty_read_handler(void *opaque);
+
+static void tty_term_set_raw(QEditScreen *s) {
+    TTYState *ts;
+
+    if (!s)
+        return;
+
+    ts = s->priv_data;
+
+    /* First switch to full screen mode */
+#if 0
+    printf("\033[?1048h\033[?1047h"     /* enable cup */
+           "\033)0\033(B"       /* select character sets in block 0 and 1 */
+           "\017");             /* shift out */
+#else
+    TTY_FPRINTF(s->STDOUT,
+                "\033[?1049h"       /* enter_ca_mode */
+                "\033[m\033(B"      /* exit_attribute_mode */
+                "\033[4l"           /* exit_insert_mode */
+                "\033[?7h"          /* enter_am_mode (autowrap on) */
+                "\033[39;49m"       /* orig_pair */
+                "\033[?1h\033="     /* keypad_xmit */
+               );
+    if (tty_mk) {
+        /* modifyOtherKeys: report shift states */
+        TTY_FPRINTF(s->STDOUT, "\033[>4;%dm", tty_mk);
+    }
+#endif
+    fflush(s->STDOUT);
+    tcsetattr(fileno(s->STDIN), TCSANOW, &ts->newtty);
+}
+
+static void tty_term_set_cooked(QEditScreen *s) {
+    TTYState *ts;
+
+    if (!s)
+        return;
+
+    ts = s->priv_data;
+#if 0
+    /* go to the last line */
+    printf("\033[%d;%dH\033[m\033[K"
+           "\033[?1047l\033[?1048l",    /* disable cup */
+           s->height, 1);
+#else
+    /* go to last line and clear it */
+    TTY_FPRINTF(s->STDOUT, "\033[%d;%dH" "\033[m\033[K", s->height, 1);
+    TTY_FPRINTF(s->STDOUT,
+                "\033[?1049l"       /* exit_ca_mode */
+                "\033[?1l\033>"     /* keypad_local */
+                "\033[?25h"         /* show cursor */
+                "\r\033[m\033[K"    /* return erase eol */
+                );
+    if (tty_mk) {
+        /* modifyOtherKeys: report shift states */
+        TTY_FPRINTF(s->STDOUT, "\033[>4m");
+    }
+#endif
+    fflush(s->STDOUT);
+    tcsetattr(fileno(s->STDIN), TCSANOW, &ts->oldtty);
+}
 
 static int tty_dpy_probe(void)
 {
@@ -306,27 +370,8 @@ static int tty_dpy_init(QEditScreen *s,
     if (tty.c_cc[VERASE] == 8)
         ts->term_flags |= KBS_CONTROL_H;
 
-    tcsetattr(fileno(s->STDIN), TCSANOW, &tty);
-
-    /* First switch to full screen mode */
-#if 0
-    printf("\033[?1048h\033[?1047h"     /* enable cup */
-           "\033)0\033(B"       /* select character sets in block 0 and 1 */
-           "\017");             /* shift out */
-#else
-    TTY_FPRINTF(s->STDOUT,
-                "\033[?1049h"       /* enter_ca_mode */
-                "\033[m\033(B"      /* exit_attribute_mode */
-                "\033[4l"           /* exit_insert_mode */
-                "\033[?7h"          /* enter_am_mode (autowrap on) */
-                "\033[39;49m"       /* orig_pair */
-                "\033[?1h\033="     /* keypad_xmit */
-               );
-    if (tty_mk) {
-        /* modifyOtherKeys: report shift states */
-        TTY_FPRINTF(s->STDOUT, "\033[>4;%dm", tty_mk);
-    }
-#endif
+    ts->newtty = tty;
+    tty_term_set_raw(s);
 
     /* Get charset from command line option */
     s->charset = find_charset(qe_state.tty_charset);
@@ -421,6 +466,10 @@ static int tty_dpy_init(QEditScreen *s,
     sigemptyset(&sig.sa_mask);
     sig.sa_flags = 0;
     sigaction(SIGWINCH, &sig, NULL);
+    sig.sa_handler = tty_term_suspend;
+    sigaction(SIGTSTP, &sig, NULL);
+    sig.sa_handler = tty_term_resume;
+    sigaction(SIGCONT, &sig, NULL);
 
     fcntl(fileno(s->STDIN), F_SETFL, O_NONBLOCK);
     /* If stdout is to a pty, make sure we aren't in nonblocking mode.
@@ -446,31 +495,17 @@ static void tty_dpy_close(QEditScreen *s)
     TTYState *ts = s->priv_data;
 
     fcntl(fileno(s->STDIN), F_SETFL, 0);
-#if 0
-    /* go to the last line */
-    printf("\033[%d;%dH\033[m\033[K"
-           "\033[?1047l\033[?1048l",    /* disable cup */
-           s->height, 1);
-#else
-    /* go to last line and clear it */
-    TTY_FPRINTF(s->STDOUT, "\033[%d;%dH" "\033[m\033[K", s->height, 1);
-    TTY_FPRINTF(s->STDOUT,
-                "\033[?1049l"       /* exit_ca_mode */
-                "\033[?1l\033>"     /* keypad_local */
-                "\033[?25h"         /* show cursor */
-                "\r\033[m\033[K"    /* return erase eol */
-                );
-    if (tty_mk) {
-        /* modifyOtherKeys: report shift states */
-        TTY_FPRINTF(s->STDOUT, "\033[>4m");
-    }
-#endif
-    fflush(s->STDOUT);
-    tcsetattr(fileno(s->STDIN), TCSANOW, &ts->oldtty);
+
+    tty_term_set_cooked(s);
 
     qe_free(&ts->screen);
     qe_free(&ts->line_updated);
     qe_free(&s->priv_data);
+}
+
+static void tty_dpy_suspend(QEditScreen *s)
+{
+    kill(getpid(), SIGTSTP);
 }
 
 static void tty_term_exit(void)
@@ -483,6 +518,19 @@ static void tty_term_exit(void)
             tcsetattr(fileno(s->STDIN), TCSANOW, &ts->oldtty);
         }
     }
+}
+
+static void tty_term_suspend(qe__unused__ int sig)
+{
+    tty_term_set_cooked(tty_screen);
+
+    kill(getpid(), SIGSTOP);
+}
+
+static void tty_term_resume(qe__unused__ int sig)
+{
+    tty_term_set_raw(tty_screen);
+    tty_term_resize(0);
 }
 
 static void tty_term_resize(qe__unused__ int sig)
@@ -1796,6 +1844,7 @@ static QEDisplay tty_dpy = {
     NULL, /* dpy_full_screen */
     tty_dpy_describe,
     tty_dpy_sound_bell,
+    tty_dpy_suspend,
     NULL, /* next */
 };
 

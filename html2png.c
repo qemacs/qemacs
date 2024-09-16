@@ -132,6 +132,7 @@ static QEDisplay ppm_dpy = {
     NULL, /* dpy_full_screen */
     NULL, /* dpy_describe */
     NULL, /* dpy_sound_bell */
+    NULL, /* dpy_suspend */
     NULL, /* next */
 };
 

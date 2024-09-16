@@ -570,6 +570,10 @@ static void register_emulation_bindings(QEmacsState *qs, const char * const *pp)
     }
 }
 
+static void do_qemacs_version(EditState *s) {
+    put_status(s, "%s", str_version);
+}
+
 void do_set_emulation(EditState *s, const char *name) {
     QEmacsState *qs = s->qe_state;
 
@@ -8966,6 +8970,13 @@ static void quit_examine_buffers(QuitState *is);
 static void quit_key(void *opaque, int ch);
 static void quit_confirm_cb(void *opaque, char *reply, CompletionDef *completion);
 
+static void do_suspend_qemacs(EditState *s, int argval)
+{
+    QEditScreen *sp = &global_screen;
+    if (sp->dpy.dpy_suspend)
+        sp->dpy.dpy_suspend(sp);
+}
+
 void do_exit_qemacs(EditState *s, int argval)
 {
     QEmacsState *qs = s->qe_state;
@@ -11037,6 +11048,9 @@ static const CmdDef basic_commands[] = {
 
     /*---------------- Miscellaneous ----------------*/
 
+    CMD2( "suspend-qemacs", "", //"C-z",
+          "Suspend Quick Emacs",
+          do_suspend_qemacs, ESi, "P")
     CMD2( "exit-qemacs", "C-x C-c",
           "Exit Quick Emacs",
           do_exit_qemacs, ESi, "P")
@@ -11095,6 +11109,10 @@ static const CmdDef basic_commands[] = {
     CMD1( "toggle-control-h", "",
           "Toggle backspace / DEL handling",
           do_toggle_control_h, 0)
+    CMD0( "qemacs-version", "",
+          "Show the current version of qemacs",
+          do_qemacs_version)
+
     CMD2( "set-emulation", "",
           "Select emacs flavor emulation",
           do_set_emulation, ESs,
