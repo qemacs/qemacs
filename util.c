@@ -1946,8 +1946,8 @@ int buf_put_key(buf_t *out, int key) {
             buf_put_key(out, key & 0xff);
     } else
         // FIXME: handle @-_  @@@
-    if (key >= KEY_CTRL('a') && key <= KEY_CTRL('z')) {
-        buf_printf(out, "C-%c", key + 'a' - 1);
+    if (key >= KEY_CTRL('@') && key <= KEY_CTRL('_')) {
+        buf_printf(out, "C-%c", qe_tolower(key + 'A' - 1));
     } else {
         buf_putc_utf8(out, key);
     }
@@ -2410,9 +2410,9 @@ bstr_t bstr_token(const char *s, int sep, const char **pp) {
             continue;
 
         bs.len = s - bs.s;
-        if (pp) {
-            *pp = *s ? s + 1 : NULL;
-        }
+    }
+    if (pp) {
+        *pp = (s && *s) ? s + 1 : NULL;
     }
     return bs;
 }

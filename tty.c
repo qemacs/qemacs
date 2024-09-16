@@ -322,6 +322,10 @@ static int tty_dpy_init(QEditScreen *s,
                 "\033[39;49m"       /* orig_pair */
                 "\033[?1h\033="     /* keypad_xmit */
                );
+    if (tty_mk) {
+        /* modifyOtherKeys: report shift states */
+        TTY_FPRINTF(s->STDOUT, "\033[>4;%dm", tty_mk);
+    }
 #endif
 
     /* Get charset from command line option */
@@ -417,6 +421,7 @@ static int tty_dpy_init(QEditScreen *s,
     sigemptyset(&sig.sa_mask);
     sig.sa_flags = 0;
     sigaction(SIGWINCH, &sig, NULL);
+
     fcntl(fileno(s->STDIN), F_SETFL, O_NONBLOCK);
     /* If stdout is to a pty, make sure we aren't in nonblocking mode.
      * Otherwise, the printf()s in term_flush() can fail with EAGAIN,
@@ -454,7 +459,11 @@ static void tty_dpy_close(QEditScreen *s)
                 "\033[?1l\033>"     /* keypad_local */
                 "\033[?25h"         /* show cursor */
                 "\r\033[m\033[K"    /* return erase eol */
-               );
+                );
+    if (tty_mk) {
+        /* modifyOtherKeys: report shift states */
+        TTY_FPRINTF(s->STDOUT, "\033[>4m");
+    }
 #endif
     fflush(s->STDOUT);
     tcsetattr(fileno(s->STDIN), TCSANOW, &ts->oldtty);
@@ -657,7 +666,7 @@ static void tty_read_handler(void *opaque)
                  * keys transmitting escape sequences starting with \033
                  * but followed immediately by more characters.
                  */
-                goto the_end;
+                goto the_end_meta;
             }
             ts->input_state = IS_ESC;
             break;
@@ -675,11 +684,10 @@ static void tty_read_handler(void *opaque)
             if (!pending) {
                 /* Distinguish alt-ESC from ESC prefix applied to other keys */
                 ch = KEY_META(KEY_ESC);
-                ts->input_state = IS_NORM;
                 goto the_end;
             }
             /* cygwin A-right transmit ESC ESC[C ... */
-            ts->has_meta = 8;
+            ts->has_meta = KEY_STATE_META;
             break;
         }
         if (ch == '[' && pending) { // CSI
@@ -708,7 +716,6 @@ static void tty_read_handler(void *opaque)
         }
         /* FIXME: handle terminal answers */
         ch = KEY_META(ch);
-        ts->input_state = IS_NORM;
         goto the_end;
 
     case IS_CSI:
@@ -731,6 +738,7 @@ static void tty_read_handler(void *opaque)
             if (ts->interm) {
                 /* syntax error: ignore CSI sequence */
                 ts->input_state = IS_NORM;
+                ts->has_meta = 0;
                 break;
             }
             if (ts->nb_params < countof(ts->params)) {
@@ -754,7 +762,6 @@ static void tty_read_handler(void *opaque)
         /* FIXME: Should only accept final bytes in range 40..7E,
          * and ignore other bytes.
          */
-        ts->input_state = IS_NORM;
         n1 = ts->params[0] >= 0 ? ts->params[0] : 0;
         n2 = ts->params[1] >= 0 ? ts->params[1] : 1;
         switch ((ts->leader << 16) | (ts->interm << 8) | ch) {
@@ -774,8 +781,13 @@ static void tty_read_handler(void *opaque)
                 ch = ts->params[2];
                 if (ch == 8 && (ts->term_flags |= KBS_CONTROL_H))
                     ch = KEY_DEL;
+                // XXX: iTerm2 3.14.19 encoding bug for M-C-a to M-C-z
+                if (n2 == 4 && ch >= 'A' && ch <= 'Z') {
+                    n2 |= 2;
+                    ch += 'a' - 'A';
+                }
                 ch = get_modified_key(ch, n2);
-                goto the_end;
+                goto the_end_meta;
             }
             if (n1 < countof(csi_lookup)) {
                 ch = csi_lookup[n1];
@@ -789,7 +801,7 @@ static void tty_read_handler(void *opaque)
              * supported by xterm if formatOtherKeys resource is selected
              */
             ch = get_modified_key(n1, n2 - 1);
-            goto the_end;
+            goto the_end_meta;
             /* All these for ansi|cygwin */
         default:
             /* n2 contains the shift status + 1:
@@ -834,19 +846,17 @@ static void tty_read_handler(void *opaque)
             case 'Z': ch = KEY_SHIFT_TAB; goto the_end_modified; // kcbt
             }
             ch = KEY_UNKNOWN;
-            ts->has_meta = 0;
             goto the_end;
         }
         break;
     case IS_CSI2:
         /* cygwin/linux terminal */
-        ts->input_state = IS_NORM;
         switch (ch) {
-        case 'A': ch = KEY_F1; goto the_end;
-        case 'B': ch = KEY_F2; goto the_end;
-        case 'C': ch = KEY_F3; goto the_end;
-        case 'D': ch = KEY_F4; goto the_end;
-        case 'E': ch = KEY_F5; goto the_end;
+        case 'A': ch = KEY_F1; goto the_end_meta;
+        case 'B': ch = KEY_F2; goto the_end_meta;
+        case 'C': ch = KEY_F3; goto the_end_meta;
+        case 'D': ch = KEY_F4; goto the_end_meta;
+        case 'E': ch = KEY_F5; goto the_end_meta;
         }
         ch = KEY_UNKNOWN;
         goto the_end;
@@ -859,7 +869,6 @@ static void tty_read_handler(void *opaque)
             break;
         }
         n2 = ts->params[0] > 0 ? ts->params[0] - 1 : 0;
-        ts->input_state = IS_NORM;
         switch (ch) {
         case 'A': ch = KEY_UP;         goto the_end_modified;
         case 'B': ch = KEY_DOWN;       goto the_end_modified;
@@ -888,14 +897,14 @@ static void tty_read_handler(void *opaque)
             ch = KEY_META(ch);
         if (n2 & 4)
             ch = KEY_CONTROL(ch);
-        goto the_end;
 
     the_end_meta:
-        if (ts->has_meta) {
-            ts->has_meta = 0;
+        if (ts->has_meta)
             ch = KEY_META(ch);
-        }
+
     the_end:
+        ts->input_state = IS_NORM;
+        ts->has_meta = 0;
         // XXX: should add custom key sequences, especially for KEY_UNKNOWN
         ev->key_event.type = QE_KEY_EVENT;
         ev->key_event.key = ch;
@@ -905,7 +914,7 @@ static void tty_read_handler(void *opaque)
     case IS_OSC:
         /* OSC syntax is: OSC string 07 or OSC string ST (ESC \) */
         if (ch == 27) {
-            ts->has_meta = 1;
+            ts->has_meta = KEY_STATE_META;
             break;
         }
         if (ts->has_meta && ch == '\\') {
@@ -915,6 +924,7 @@ static void tty_read_handler(void *opaque)
             break;
         // FIXME: handle terminal response
         ts->input_state = IS_NORM;
+        ts->has_meta = 0;
         break;
     }
 }

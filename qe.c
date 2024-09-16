@@ -61,6 +61,7 @@ static int screen_height = 0;
 static int no_init_file;
 static int single_window;
 int force_tty;
+int tty_mk = 2;
 int disable_crc;
 #ifdef CONFIG_SESSION
 int use_session_file;
@@ -10374,19 +10375,19 @@ static void show_usage(void)
 
 static int parse_command_line(int argc, char **argv)
 {
-    int _optind;
+    int optind_;
 
-    for (_optind = 1; _optind < argc;) {
-        const char *arg, *r, *_optarg;
+    for (optind_ = 1; optind_ < argc;) {
+        const char *arg, *r, *optarg_;
         CmdLineOptionDef *p;
         bstr_t opt1;
         bstr_t opt2;
 
-        r = arg = argv[_optind];
+        r = arg = argv[optind_];
         /* stop before first non option */
         if (r[0] != '-')
             break;
-        _optind++;
+        optind_++;
 
         opt1.s = opt2.s = r + 1;
         if (r[1] == '-') {
@@ -10396,10 +10397,10 @@ static int parse_command_line(int argc, char **argv)
                 break;
         }
         /* parse optional argument specified with opt=arg or opt:arg syntax */
-        _optarg = NULL;
+        optarg_ = NULL;
         while (*r) {
             if (*r == ':' || *r == '=') {
-                _optarg = r + 1;
+                optarg_ = r + 1;
                 break;
             }
             r++;
@@ -10414,30 +10415,30 @@ static int parse_command_line(int argc, char **argv)
                 bstr_t name = bstr_token(s, '|', &s);
                 bstr_t argname = bstr_token(s, '|', &s);
                 if (bstr_equal(opt1, shortname) || bstr_equal(opt2, name)) {
-                    if (argname.len && _optarg == NULL) {
-                        if (_optind >= argc) {
-                            put_status(NULL,
-                                       "cmdline argument %.*s expected for --%.*s",
-                                       argname.len, argname.s, name.len, name.s);
+                    if (p->need_arg && optarg_ == NULL) {
+                        if (optind_ >= argc) {
+                            put_error(NULL,
+                                      "cmdline argument %.*s expected for --%.*s",
+                                      argname.len, argname.s, name.len, name.s);
                             goto next_cmd;
                         }
-                        _optarg = argv[_optind++];
+                        optarg_ = argv[optind_++];
                     }
                     switch (p->type) {
                     case CMD_LINE_TYPE_BOOL:
-                        *p->u.int_ptr = qe_strtobool(_optarg, 1);
+                        *p->u.int_ptr = qe_strtobool(optarg_, 1);
                         break;
                     case CMD_LINE_TYPE_INT:
-                        *p->u.int_ptr = strtol(_optarg, NULL, 0);
+                        *p->u.int_ptr = strtol(optarg_, NULL, 0);
                         break;
                     case CMD_LINE_TYPE_STRING:
-                        *p->u.string_ptr = _optarg;
+                        *p->u.string_ptr = optarg_;
                         break;
                     case CMD_LINE_TYPE_FVOID:
                         p->u.func_noarg();
                         break;
                     case CMD_LINE_TYPE_FARG:
-                        p->u.func_arg(_optarg);
+                        p->u.func_arg(optarg_);
                         break;
                     case CMD_LINE_TYPE_NONE:
                     case CMD_LINE_TYPE_NEXT:
@@ -10448,11 +10449,11 @@ static int parse_command_line(int argc, char **argv)
                 p++;
             }
         }
-        put_status(NULL, "unknown cmdline option '%s'", arg);
+        put_error(NULL, "unknown cmdline option '%s'", arg);
     next_cmd: ;
     }
 
-    return _optind;
+    return optind_;
 }
 
 void do_add_resource_path(EditState *s, const char *path)
@@ -10541,6 +10542,8 @@ static CmdLineOptionDef cmd_options[] = {
     CMD_LINE_BOOL("", "free-all", &free_everything,
                   "free all structures upon exit"),
 #endif
+    CMD_LINE_INT("mk", "modify-other-keys", "VAL", &tty_mk,
+                 "set the modifyOtherKeys tty configuration (0,1,2)"),
     CMD_LINE_LINK()
 };
 

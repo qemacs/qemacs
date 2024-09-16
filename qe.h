@@ -152,6 +152,7 @@ enum CmdLineOptionType {
 typedef struct CmdLineOptionDef {
     const char *desc;
     enum CmdLineOptionType type;
+    BOOL need_arg;
     union {
         int *int_ptr;
         const char **string_ptr;
@@ -161,13 +162,13 @@ typedef struct CmdLineOptionDef {
     } u;
 } CmdLineOptionDef;
 
-#define CMD_LINE_NONE()          { NULL, CMD_LINE_TYPE_NONE, { NULL }}
-#define CMD_LINE_BOOL(s,n,p,h)   { s "|" n "||" h, CMD_LINE_TYPE_BOOL, { .int_ptr = p }}
-#define CMD_LINE_INT(s,n,a,p,h)  { s "|" n "|" a "|" h, CMD_LINE_TYPE_INT, { .int_ptr = p }}
-#define CMD_LINE_STRING(s,n,a,p,h) { s "|" n "|" a "|" h, CMD_LINE_TYPE_STRING, { .string_ptr = p }}
-#define CMD_LINE_FVOID(s,n,p,h)  { s "|" n "||" h, CMD_LINE_TYPE_FVOID, { .func_noarg = p }}
-#define CMD_LINE_FARG(s,n,a,p,h) { s "|" n "|" a "|" h, CMD_LINE_TYPE_FARG, { .func_arg = p }}
-#define CMD_LINE_LINK()          { NULL, CMD_LINE_TYPE_NEXT, { NULL }}
+#define CMD_LINE_NONE()          { NULL, CMD_LINE_TYPE_NONE, FALSE, { NULL }}
+#define CMD_LINE_BOOL(s,n,p,h)   { s "|" n "||" h, CMD_LINE_TYPE_BOOL, TRUE, { .int_ptr = p }}
+#define CMD_LINE_INT(s,n,a,p,h)  { s "|" n "|" a "|" h, CMD_LINE_TYPE_INT, TRUE, { .int_ptr = p }}
+#define CMD_LINE_STRING(s,n,a,p,h) { s "|" n "|" a "|" h, CMD_LINE_TYPE_STRING, TRUE, { .string_ptr = p }}
+#define CMD_LINE_FVOID(s,n,p,h)  { s "|" n "||" h, CMD_LINE_TYPE_FVOID, FALSE, { .func_noarg = p }}
+#define CMD_LINE_FARG(s,n,a,p,h) { s "|" n "|" a "|" h, CMD_LINE_TYPE_FARG, TRUE, { .func_arg = p }}
+#define CMD_LINE_LINK()          { NULL, CMD_LINE_TYPE_NEXT, FALSE, { NULL }}
 
 void qe_register_cmd_line_options(CmdLineOptionDef *table);
 
@@ -890,6 +891,7 @@ int qe_free_mode_data(QEModeData *md);
 /* from tty.c */
 /* set from command line option to prevent GUI such as X11 */
 extern int force_tty;
+extern int tty_mk;
 
 enum QEStyle {
 #define STYLE_DEF(constant, name, fg_color, bg_color, \
