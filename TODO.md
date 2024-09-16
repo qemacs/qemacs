@@ -4,6 +4,31 @@
 
 ## Current work
 
+* add command line options for terminal features: backspace
+* add command line options for tracing
+* add command line options for color support
+* from emacs:
+  - `set-background-color`
+    Set the background color of the selected frame to COLOR-NAME.
+  - `set-border-color`
+    Set the color of the border of the selected frame to COLOR-NAME.
+  - `set-cursor-color`
+    Set the text cursor color of the selected frame to COLOR-NAME.
+  - `set-foreground-color`
+    Set the foreground color of the selected frame to COLOR-NAME.
+  These commands provide a multi-column completion window
+
+* test other terminals: Terminal.app, wezTerm, Visor, Guake, or Yakuake
+* check out Eternal Terminal: https://mistertea.github.io/EternalTerminal/
+* DEC SET 1036 ESC or Alt keys
+* stb: add magic number detection
+* shell integration: easily navigate to previous shell prompts with `M-S-up` and `M-S-down`.
+* timestamp shell commands
+* remanent annotations on files and buffers
+* autoblame source code
+* auto-complete previously used commands when no other context is available
+* handle paste bracketting in xterm: `ESC [ 2 0 0 ~ xxx ESC [ 2 0 1 ~`
+* display images using iTerm's image transfert protocol
 * add `show-styles` and `show-colors`
 * evaluate colors in expressions: `rgb(r,g,b)`, `hsl(h,s,l)`, `hsv(h,s,v)`
 * do not abort macro on incremental search failure, just on final failure upon RET
@@ -26,6 +51,7 @@
 * automatic remote config fetch based on email at qemacs.org:
   - .qemacs, .bashrc...
 * shell buffer remote filesystem using commands `get` and `put` (for ssh sessions)
+* Use `OSC 1337` file transfert protocol for file and image download
 * `scroll-at-end`: down keys scrolls up when at end of buffer
 * fix multicursor kill/yank by restricting the number of kill buffers:
     increase the number of kill buffers to `multi_cursor_cur`

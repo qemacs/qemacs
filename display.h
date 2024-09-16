@@ -122,6 +122,7 @@ struct QEDisplay {
     void (*dpy_full_screen)(QEditScreen *s, int full_screen);
     void (*dpy_describe)(QEditScreen *s, struct EditBuffer *b);
     void (*dpy_sound_bell)(QEditScreen *s);
+    void (*dpy_suspend)(QEditScreen *s);
     QEDisplay *next;
 };
 
