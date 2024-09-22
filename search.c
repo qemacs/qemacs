@@ -1036,7 +1036,7 @@ static void query_replace_help(QueryReplaceState *is) {
     eb_printf(b, "Type Space or `y' to replace one match, Delete or `n' to skip to next,\n"
               "RET or `q' to exit, Period to replace one match and exit,\n"
               //"Comma to replace but not move point immediately,\n"
-              //"C-r to enter recursive edit (C-M-c to get out again),\n"
+              //"C-r to enter recursive edit (M-C-c to get out again),\n"
               //"C-w to delete match and recursive edit,\n"
               "C-w to toggle word match,\n"
               "C-b to cycle hex and unihex searching,\n"
@@ -1496,7 +1496,7 @@ static const CmdDef isearch_commands[] = {
     CMD1( "isearch-center", "C-l",
           "center the window around point",
           do_center_cursor, 1)
-    CMDx( "isearch-del-char", "C-M-w",
+    CMDx( "isearch-del-char", "M-C-w",
           "Delete character from end of search string",
            isearch_del_char, ES, "")
     CMD2( "isearch-delete-char", "DEL",
@@ -1518,7 +1518,7 @@ static const CmdDef isearch_commands[] = {
           "start 'query-replace' with current string to replace",
           isearch_query_replace, ES, "")
 #ifdef CONFIG_REGEX
-    CMDx( "isearch-query-replace-regexp", "",  // C-M-% invalid tty binding?
+    CMDx( "isearch-query-replace-regexp", "",  // M-C-% invalid tty binding?
           "start 'query-replace-regexp' with current string to replace"
            isearch_query_replace, ES, "")
 #endif

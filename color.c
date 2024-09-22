@@ -241,7 +241,6 @@ static ColorDef const default_colors[] = {
     // X11 extended color names
     { "light-slate-blue",     rgb(132,112,255) },
     { "navy-blue",            rgb(0,0,128)     },
-    { "powder-blue",          rgb(176,224,230) },
     { "web-gray",             rgb(128,128,128) },
     { "web-green",            rgb(0,128,0)     },
     { "web-maroon",           rgb(128,0,0)     },
@@ -669,6 +668,18 @@ static ColorDef const default_colors[] = {
     { "gray99",               rgb(252,252,252) }, // 252 252 252 252 252
     { "gray100",              rgb(255,255,255) }, // 255 255 255 255 255
 #endif
+#endif
+#if 1
+    /* Missing emacs colors */
+    { "bright-black",         rgb(127,127,127) }, // #7F7F7F
+    { "bright-blue",          rgb(92,92,255)   }, // #5C5CFF
+    { "bright-cyan",          rgb(0,255,255)   }, // #00FFFF
+    { "bright-green",         rgb(0,255,0)     }, // #00FF00
+    { "bright-magenta",       rgb(255,0,255)   }, // #FF00FF
+    { "bright-red",           rgb(255,0,0)     }, // #FF0000
+    { "bright-white",         rgb(255,255,255) }, // #FFFFFF
+    { "bright-yellow",        rgb(255,255,0)   }, // #FFFF00
+    { "violet-red",           rgb(208,32,144)  }, // #D02090
 #endif
 };
 #define nb_default_colors  countof(default_colors)
