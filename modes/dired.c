@@ -1766,10 +1766,10 @@ static const CmdDef dired_commands[] = {
        x           dired-do-flagged-delete
        y           dired-show-file-type
        ~           dired-flag-backup-files
-       C-M-d       dired-tree-down
-       C-M-n       dired-next-subdir
-       C-M-p       dired-prev-subdir
-       C-M-u       dired-tree-up
+       M-C-d       dired-tree-down
+       M-C-n       dired-next-subdir
+       M-C-p       dired-prev-subdir
+       M-C-u       dired-tree-up
        M-$         dired-hide-all
        M-{         dired-prev-marked-file
        M-}         dired-next-marked-file

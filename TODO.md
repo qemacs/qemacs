@@ -215,11 +215,6 @@
 * use hash tables for command and variable names
 * sort key binding tables?
 * `save-some-buffers` command on `C-x s`
-* standardize key prefixes: `C-`, `M-`, `S-` and possibly others
-* use `C-M-` prefix instead of `M-C-` in source and documentation but support
-both in `strtokey`
-* redefine `KEY_Fx` to make them sequential
-* rationalize `KEY_xxx` definitions and modifier bits to support all combinations
 * add registrable escape sequences and key names (eg: `S-f5 = ^[[15;2~`)
 * add registrable key translations for NON ASCII input (eg: `C-x 8 3 / 4	¾`)
 
@@ -740,10 +735,10 @@ insert_window_left()  deletes some left-most windows
   - `dired-do-flagged-delete` on `x`
   - `dired-show-file-type` on `y`
   - `dired-flag-backup-files` on `~`
-  - `dired-tree-down` on `C-M-d`
-  - `dired-next-subdir` on `C-M-n`
-  - `dired-prev-subdir` on `C-M-p`
-  - `dired-tree-up` on `C-M-u`
+  - `dired-tree-down` on `M-C-d`
+  - `dired-next-subdir` on `M-C-n`
+  - `dired-prev-subdir` on `M-C-p`
+  - `dired-tree-up` on `M-C-u`
   - `dired-hide-all` on `M-$`
   - `dired-prev-marked-file` on `M-{`
   - `dired-next-marked-file` on `M-}`

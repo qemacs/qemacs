@@ -3185,7 +3185,7 @@ static const CmdDef extra_commands[] = {
     CMD2( "kill-block", "M-C-k",
           "Kill from point to the end of the next block",
           do_kill_block, ESi, "p")
-          /* Should also have mark-block on C-M-@ */
+          /* Should also have mark-block on M-C-@ */
 
     CMD3( "transpose-chars", "C-t",
           "Swap character at point and before it",
