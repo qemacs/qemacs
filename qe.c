@@ -62,6 +62,7 @@ static int no_init_file;
 static int single_window;
 int force_tty;
 int tty_mk = 2;
+int tty_mouse = 1;
 int disable_crc;
 #ifdef CONFIG_SESSION
 int use_session_file;
@@ -621,6 +622,12 @@ void do_set_trace_flags(EditState *s, int flags) {
         if (qs->trace_flags & EB_TRACE_KEY) {
             strcat(buf, ", key");
         }
+        if (qs->trace_flags & EB_TRACE_MOUSE) {
+            strcat(buf, ", mouse");
+        }
+        if (qs->trace_flags & EB_TRACE_COMMAND) {
+            strcat(buf, ", command");
+        }
         if (qs->trace_flags & EB_TRACE_SHELL) {
             strcat(buf, ", shell");
         }
@@ -629,9 +636,6 @@ void do_set_trace_flags(EditState *s, int flags) {
         }
         if (qs->trace_flags & EB_TRACE_EMULATE) {
             strcat(buf, ", emulate");
-        }
-        if (qs->trace_flags & EB_TRACE_COMMAND) {
-            strcat(buf, ", command");
         }
         if (qs->trace_flags & EB_TRACE_DEBUG) {
             strcat(buf, ", debug");
@@ -673,6 +677,12 @@ void do_set_trace_options(EditState *s, const char *options) {
         if (strmatchword(p, "key", &p)) {
             flags |= EB_TRACE_KEY;
         } else
+        if (strmatchword(p, "mouse", &p)) {
+            flags |= EB_TRACE_MOUSE;
+        } else
+        if (strmatchword(p, "command", &p)) {
+            flags |= EB_TRACE_COMMAND;
+        } else
         if (strmatchword(p, "shell", &p)) {
             flags |= EB_TRACE_SHELL;
         } else
@@ -681,9 +691,6 @@ void do_set_trace_options(EditState *s, const char *options) {
         } else
         if (strmatchword(p, "emulate", &p)) {
             flags |= EB_TRACE_EMULATE;
-        } else
-        if (strmatchword(p, "command", &p)) {
-            flags |= EB_TRACE_COMMAND;
         } else
         if (strmatchword(p, "debug", &p)) {
             flags |= EB_TRACE_DEBUG;
@@ -9954,12 +9961,12 @@ void qe_mouse_event(QEEvent *ev)
 {
     QEmacsState *qs = &qe_state;
     EditState *e;
-    int mouse_x, mouse_y;
-    mouse_x = ev->button_event.x;
-    mouse_y = ev->button_event.y;
+    int mouse_x = ev->button_event.x;
+    int mouse_y = ev->button_event.y;
 
     switch (ev->type) {
     case QE_BUTTON_RELEASE_EVENT:
+        // XXX: should handle buffer buttons
         save_selection();
         motion_type = MOTION_NONE;
         break;
@@ -9973,16 +9980,14 @@ void qe_mouse_event(QEEvent *ev)
                     switch (ev->button_event.button) {
                     case QE_BUTTON_LEFT:
                         save_selection();
-                        e->mode->mouse_goto(e, mouse_x - e->xleft,
-                                            mouse_y - e->ytop);
+                        e->mode->mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
                         motion_type = MOTION_TEXT;
                         motion_x = 0; /* indicate first move */
                         motion_target = e;
                         break;
                     case QE_BUTTON_MIDDLE:
                         save_selection();
-                        e->mode->mouse_goto(e, mouse_x - e->xleft,
-                                            mouse_y - e->ytop);
+                        e->mode->mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
                         do_yank(e);
                         break;
                     case QE_WHEEL_UP:
@@ -10128,6 +10133,14 @@ void qe_handle_event(QEEvent *ev)
     case QE_BUTTON_PRESS_EVENT:
     case QE_BUTTON_RELEASE_EVENT:
     case QE_MOTION_EVENT:
+        if (qs->trace_buffer) {
+            char buf[32];
+            buf_t out[1];
+            buf_init(out, buf, sizeof buf);
+            buf_printf(out, "%d %d %d %d ", ev->button_event.type,
+                       ev->button_event.x, ev->button_event.y, ev->button_event.button);
+            eb_trace_bytes(buf, out->len, EB_TRACE_MOUSE);
+        }
         qe_mouse_event(ev);
         break;
     case QE_SELECTION_CLEAR_EVENT:
@@ -10555,6 +10568,8 @@ static CmdLineOptionDef cmd_options[] = {
 #endif
     CMD_LINE_INT("mk", "modify-other-keys", "VAL", &tty_mk,
                  "set the modifyOtherKeys tty configuration (0,1,2)"),
+    CMD_LINE_INT("m", "mouse", "VAL", &tty_mouse,
+                 "set the mouse emulation mode (0,1,2)"),
     CMD_LINE_LINK()
 };
 

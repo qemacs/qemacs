@@ -197,6 +197,10 @@ static void tty_term_set_raw(QEditScreen *s) {
         /* modifyOtherKeys: report shift states */
         TTY_FPRINTF(s->STDOUT, "\033[>4;%dm", tty_mk);
     }
+    if (tty_mouse) {
+        /* enable mouse reporting using SGR */
+        TTY_FPRINTF(s->STDOUT, "\033[?1002;1004;1006h");
+    }
 #endif
     fflush(s->STDOUT);
     tcsetattr(fileno(s->STDIN), TCSANOW, &ts->newtty);
@@ -226,6 +230,10 @@ static void tty_term_set_cooked(QEditScreen *s) {
     if (tty_mk) {
         /* modifyOtherKeys: report shift states */
         TTY_FPRINTF(s->STDOUT, "\033[>4m");
+    }
+    if (tty_mouse) {
+        /* disable mouse reporting using SGR */
+        TTY_FPRINTF(s->STDOUT, "\033[?1002;1004;1006l");
     }
 #endif
     fflush(s->STDOUT);
@@ -743,6 +751,7 @@ static void tty_read_handler(void *opaque)
             ts->nb_params = 0;
             ts->params[0] = CSI_PARAM_OMITTED;
             ts->params[1] = CSI_PARAM_OMITTED;
+            ts->params[2] = CSI_PARAM_OMITTED;
             ts->leader = 0;
             ts->interm = 0;
             break;
@@ -782,6 +791,11 @@ static void tty_read_handler(void *opaque)
             ts->interm = ch;
             break;
         }
+        if (ch >= 0x3C && ch <= 0x3F) {
+            /* leader byte: only keep the last one */
+            ts->leader = ch;
+            break;
+        }
         if (ch >= '0' && ch <= '9') {
             if (ts->interm) {
                 /* syntax error: ignore CSI sequence */
@@ -802,11 +816,6 @@ static void tty_read_handler(void *opaque)
         }
         if (ch == ':' || ch == ';')
             break;
-        if (ch >= 0x3C && ch <= 0x3F) {
-            /* leader byte: only keep the last one */
-            ts->leader = ch;
-            break;
-        }
         /* FIXME: Should only accept final bytes in range 40..7E,
          * and ignore other bytes.
          */
@@ -851,6 +860,44 @@ static void tty_read_handler(void *opaque)
             ch = get_modified_key(n1, n2 - 1);
             goto the_end_meta;
             /* All these for ansi|cygwin */
+        case ('<'<<16)|'M':
+        case ('<'<<16)|'m':
+            /* Mouse events */
+            ts->input_state = IS_NORM;
+            ts->has_meta = 0;
+            if (ch == 'M')
+                ev->button_event.type = QE_BUTTON_PRESS_EVENT;
+            else
+                ev->button_event.type = QE_BUTTON_RELEASE_EVENT;
+            if (n1 & 32)
+                ev->button_event.type = QE_MOTION_EVENT;
+
+            ev->button_event.x = ts->params[1] - 1;
+            ev->button_event.y = ts->params[2] - 1;
+            ev->button_event.button = 0;
+            n2 = n1 & (4+8+16);
+            n1 ^= n2;
+            switch (n1) {
+            case 0:
+                ev->button_event.button = QE_BUTTON_LEFT;
+                break;
+            case 1:
+                ev->button_event.button = QE_BUTTON_MIDDLE;
+                break;
+            case 2:
+                ev->button_event.button = QE_BUTTON_RIGHT;
+                break;
+            case 64:
+                ev->button_event.button = QE_WHEEL_UP;
+                break;
+            case 65:
+                ev->button_event.button = QE_WHEEL_DOWN;
+                break;
+            default:
+                break;
+            }
+            qe_handle_event(ev);
+            break;
         default:
             /* n2 contains the shift status + 1:
              * bit 1 is SHIFT
@@ -886,7 +933,6 @@ static void tty_read_handler(void *opaque)
             //case 'G': ch = KEY_CENTER;  goto the_end_modified; // kb2
             case 'H': ch = KEY_HOME;      goto the_end_modified; // khome
             case 'L': ch = KEY_INSERT;    goto the_end_modified; // kich1
-            //case 'M': ch = KEY_MOUSE;   goto the_end_modified; // kmous
             case 'P': ch = KEY_F1;        goto the_end_modified;
             case 'Q': ch = KEY_F2;        goto the_end_modified;
             case 'R': ch = KEY_F3;        goto the_end_modified;
