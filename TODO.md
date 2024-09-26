@@ -4,9 +4,13 @@
 
 ## Current work
 
+* handle double/triple click to select word and line
 * add command line options for terminal features: backspace
 * add command line options for tracing
 * add command line options for color support
+* add script variable for terminal features: backspace
+* add script variable for tracing
+* add script variable for color support
 * from emacs:
   - `set-background-color`
     Set the background color of the selected frame to COLOR-NAME.
@@ -45,7 +49,6 @@
   - otherwise, create a new `EditWindow` with the same screen position for the new buffer.
   - alternative: keep previous window if changing the buffer so swapping back restores the position and mode
   - add a previous window for `predict_switch_to_buffer`
-* add mouse support in capable terminals
 * `-color_code` command line option to display available colors on terminal
 * `show-colors` display colors in a popup buffer with samples
 * automatic remote config fetch based on email at qemacs.org:

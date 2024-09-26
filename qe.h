@@ -205,7 +205,7 @@ typedef struct QEExposeEvent {
 
 /* should probably go somewhere else, or in the config file */
 /* how many text lines to scroll when mouse wheel is used */
-#define WHEEL_SCROLL_STEP 4
+#define WHEEL_SCROLL_STEP 1
 
 typedef struct QEButtonEvent {
     enum QEEventType type;
@@ -892,6 +892,7 @@ int qe_free_mode_data(QEModeData *md);
 /* set from command line option to prevent GUI such as X11 */
 extern int force_tty;
 extern int tty_mk;
+extern int tty_mouse;
 
 enum QEStyle {
 #define STYLE_DEF(constant, name, fg_color, bg_color, \
@@ -965,11 +966,12 @@ struct QEmacsState {
     int trace_buffer_state;
 #define EB_TRACE_TTY      0x01
 #define EB_TRACE_KEY      0x02
-#define EB_TRACE_COMMAND  0x04
-#define EB_TRACE_SHELL    0x08
-#define EB_TRACE_PTY      0x10
-#define EB_TRACE_EMULATE  0x20
-#define EB_TRACE_DEBUG    0x30
+#define EB_TRACE_MOUSE    0x04
+#define EB_TRACE_COMMAND  0x08
+#define EB_TRACE_SHELL    0x10
+#define EB_TRACE_PTY      0x20
+#define EB_TRACE_EMULATE  0x40
+#define EB_TRACE_DEBUG    0x60
 #define EB_TRACE_ALL      0x7F
 #define EB_TRACE_FLUSH    0x100
 

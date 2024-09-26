@@ -926,20 +926,23 @@ void eb_trace_bytes(const void *buf, int size, int state)
         case EB_TRACE_KEY:
             str = "key";
             break;
-        case EB_TRACE_PTY:
-            str = "pty";
+        case EB_TRACE_MOUSE:
+            str = "mouse";
+            break;
+        case EB_TRACE_COMMAND:
+            str = "command";
             break;
         case EB_TRACE_SHELL:
             str = "shell";
+            break;
+        case EB_TRACE_PTY:
+            str = "pty";
             break;
         case EB_TRACE_EMULATE:
             str = "emulate";
             break;
         case EB_TRACE_DEBUG:
             str = "debug";
-            break;
-        case EB_TRACE_COMMAND:
-            str = "command";
             break;
         }
         if (str) {
