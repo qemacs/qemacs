@@ -38,7 +38,8 @@ static int bufed_sort_order;  // XXX: should be a variable
 
 enum {
     BUFED_HIDE_SYSTEM = 0,
-    BUFED_ALL_VISIBLE = 1,
+    BUFED_SYSTEM_VISIBLE = 1,
+    BUFED_ALL_VISIBLE = 2,
 };
 
 enum {
@@ -80,6 +81,12 @@ static int bufed_sort_func(void *opaque, const void *p1, const void *p2)
     int sort_mode = bs->sort_mode, res;
 
     if ((res = (b1->flags & BF_SYSTEM) - (b2->flags & BF_SYSTEM)) != 0)
+        return res;
+
+    if ((res = (b1->flags & BF_IS_LOG) - (b2->flags & BF_IS_LOG)) != 0)
+        return res;
+
+    if ((res = (b1->flags & BF_IS_STYLE) - (b2->flags & BF_IS_STYLE)) != 0)
         return res;
 
     if (sort_mode & BUFED_SORT_MODIFIED) {
@@ -129,7 +136,11 @@ static void build_bufed_list(BufedState *bs, EditState *s)
 
     free_strings(&bs->items);
     for (b1 = qs->first_buffer; b1 != NULL; b1 = b1->next) {
-        if (!(b1->flags & BF_SYSTEM) || (bs->flags & BUFED_ALL_VISIBLE)) {
+        if (!(b1->flags & BF_SYSTEM)
+        ||  (bs->flags & BUFED_ALL_VISIBLE)
+        ||  (!(b1->flags & (BF_IS_LOG | BF_IS_STYLE)) &&
+             (bs->flags & BUFED_SYSTEM_VISIBLE)))
+        {
             item = add_string(&bs->items, b1->name, 0);
             item->opaque = b1;
         }
@@ -404,11 +415,10 @@ static void do_buffer_list(EditState *s, int argval)
     bs->cur_window = s;
     bs->cur_buffer = s->b;
     bs->last_buffer = s->last_buffer;
-
-    if (argval == NO_ARG) {
-        bs->flags &= ~BUFED_ALL_VISIBLE;
-    } else {
-        bs->flags |= BUFED_ALL_VISIBLE;
+    if (argval > 0) {
+        bs->flags |= BUFED_SYSTEM_VISIBLE;
+        if (argval > 4)
+            bs->flags |= BUFED_ALL_VISIBLE;
     }
     build_bufed_list(bs, e);
 
@@ -460,8 +470,15 @@ static void bufed_refresh(EditState *s, int toggle)
     if (!(bs = bufed_get_state(s, 1)))
         return;
 
-    if (toggle)
-        bs->flags ^= BUFED_ALL_VISIBLE;
+    if (toggle) {
+        if (bs->flags & BUFED_ALL_VISIBLE)
+            bs->flags &= ~(BUFED_SYSTEM_VISIBLE | BUFED_ALL_VISIBLE);
+        else
+        if (bs->flags & BUFED_SYSTEM_VISIBLE)
+            bs->flags |= BUFED_ALL_VISIBLE;
+        else
+            bs->flags |= BUFED_SYSTEM_VISIBLE;
+    }
 
     build_bufed_list(bs, s);
 }
@@ -560,6 +577,9 @@ static const CmdDef bufed_commands[] = {
     CMD1( "bufed-sort-modified", "m, M",
           "Sort the buffer list with modified buffers first",
           bufed_set_sort, BUFED_SORT_MODIFIED)
+    CMD2( "bufed-summary", "?",
+          "Display a summary of bufed commands",
+          do_apropos, ESs, "@{bufed}")
 };
 
 static const CmdDef bufed_global_commands[] = {
