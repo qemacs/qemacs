@@ -893,6 +893,7 @@ int qe_free_mode_data(QEModeData *md);
 extern int force_tty;
 extern int tty_mk;
 extern int tty_mouse;
+extern int tty_clipboard;
 
 enum QEStyle {
 #define STYLE_DEF(constant, name, fg_color, bg_color, \
@@ -972,7 +973,8 @@ struct QEmacsState {
 #define EB_TRACE_PTY      0x20
 #define EB_TRACE_EMULATE  0x40
 #define EB_TRACE_DEBUG    0x60
-#define EB_TRACE_ALL      0x7F
+#define EB_TRACE_CLIPBOARD  0x80
+#define EB_TRACE_ALL      0xFF
 #define EB_TRACE_FLUSH    0x100
 
     /* global layout info : DO NOT modify these directly. do_refresh
@@ -1052,7 +1054,9 @@ struct QEmacsState {
     int c_label_indent;
     const char *user_option;
     int input_len;
-    u8 input_buf[32];
+    int input_size;
+    u8 *input_buf;
+    u8 input_buf_def[32];
     struct Equivalent *first_equivalent;
 };
 

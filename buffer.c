@@ -944,6 +944,9 @@ void eb_trace_bytes(const void *buf, int size, int state)
         case EB_TRACE_DEBUG:
             str = "debug";
             break;
+        case EB_TRACE_CLIPBOARD:
+            str = "clipboard";
+            break;
         }
         if (str) {
             int len1 = (int)strlen(str);
