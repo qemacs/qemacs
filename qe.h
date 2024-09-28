@@ -1062,6 +1062,14 @@ struct QEmacsState {
 
 extern QEmacsState qe_state;
 
+struct QETraceDef {
+    int flags;
+    char name[12];
+};
+
+extern struct QETraceDef const qe_trace_defs[];
+extern size_t const qe_trace_defs_count;
+
 /* key bindings definitions */
 
 /* dynamic key binding storage */

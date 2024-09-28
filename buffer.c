@@ -918,35 +918,13 @@ void eb_trace_bytes(const void *buf, int size, int state)
         col = 0;
     }
     if (col == 0 || prev_state != state) {
+        size_t i;
         qs->trace_buffer_state = state;
-        switch (state) {
-        case EB_TRACE_TTY:
-            str = "tty";
-            break;
-        case EB_TRACE_KEY:
-            str = "key";
-            break;
-        case EB_TRACE_MOUSE:
-            str = "mouse";
-            break;
-        case EB_TRACE_COMMAND:
-            str = "command";
-            break;
-        case EB_TRACE_SHELL:
-            str = "shell";
-            break;
-        case EB_TRACE_PTY:
-            str = "pty";
-            break;
-        case EB_TRACE_EMULATE:
-            str = "emulate";
-            break;
-        case EB_TRACE_DEBUG:
-            str = "debug";
-            break;
-        case EB_TRACE_CLIPBOARD:
-            str = "clipboard";
-            break;
+        for (i = 0; i < qe_trace_defs_count; i++) {
+            if (state == qe_trace_defs[i].flags) {
+                str = qe_trace_defs[i].name;
+                break;
+            }
         }
         if (str) {
             int len1 = (int)strlen(str);

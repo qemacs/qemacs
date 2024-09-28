@@ -1005,19 +1005,21 @@ static void tty_read_handler(void *opaque)
             qe_handle_event(ev);
             break;
         case 'I': // FocusIn  enabled by CSI ? 1004 h
-            // XXX: retrieve clipboard contents into kill buffer if changed
             ts->input_state = IS_NORM;
             ts->has_meta = 0;
+            eb_trace_bytes("tty-focus-in", -1, EB_TRACE_COMMAND);
             if (tty_clipboard) {
+                /* request clipboard contents into kill buffer if changed */
                 TTY_FPUTS("\033]52;;?\007", s->STDOUT);
                 fflush(s->STDOUT);
             }
             break;
         case 'O': // FocusOut
-            // TODO: push last kill to clipboard if new
             ts->input_state = IS_NORM;
             ts->has_meta = 0;
+            eb_trace_bytes("tty-focus-out", -1, EB_TRACE_COMMAND);
             if (tty_clipboard) {
+                /* push last kill to clipboard if new */
                 tty_set_clipboard(s);
             }
             break;
@@ -1133,15 +1135,13 @@ static void tty_read_handler(void *opaque)
         /* stop reading messge on BEL, ST and ESC \ */
         if (!(ch == 7 || ch == 0x9C || (ch == '\\' && ts->last_ch == 27)))
             break;
-        if (qs->trace_buffer)
-            eb_trace_bytes("", 0, EB_TRACE_TTY | EB_TRACE_FLUSH);
         ts->input_state = IS_NORM;
         ts->has_meta = 0;
         n1 = strtol(cs8(qs->input_buf) + 2, NULL, 10);
         if (qs->trace_buffer) {
             char buf1[32];
-            snprintf(buf1, sizeof buf1, "OSC %d;", n1);
-            eb_trace_bytes(buf1, -1, EB_TRACE_TTY | EB_TRACE_FLUSH);
+            snprintf(buf1, sizeof buf1, "tty-osc-%d", n1);
+            eb_trace_bytes(buf1, -1, EB_TRACE_COMMAND);
         }
         if (n1 == 52) {
             if (tty_clipboard) {

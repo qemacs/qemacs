@@ -600,14 +600,34 @@ void do_set_emulation(EditState *s, const char *name) {
     }
 }
 
+struct QETraceDef const qe_trace_defs[] = {
+    { EB_TRACE_TTY, "tty" },
+    { EB_TRACE_KEY, "key" },
+    { EB_TRACE_MOUSE, "mouse" },
+    { EB_TRACE_COMMAND, "command" },
+    { EB_TRACE_SHELL, "shell" },
+    { EB_TRACE_PTY, "pty" },
+    { EB_TRACE_EMULATE, "emulate" },
+    { EB_TRACE_DEBUG, "debug" },
+    { EB_TRACE_CLIPBOARD, "clipboard" },
+    { EB_TRACE_ALL, "all" },
+    { EB_TRACE_ALL, "on" },
+    { 0, "off" },
+    { 0, "none" },
+};
+size_t const qe_trace_defs_count = sizeof(qe_trace_defs) / sizeof (qe_trace_defs[0]);
+
 void do_set_trace_flags(EditState *s, int flags) {
     QEmacsState *qs = s->qe_state;
 
     qs->trace_flags = flags;
     if (qs->trace_flags) {
         char buf[80];
+        buf_t out[1];
+        size_t i;
+
         if (!qs->trace_buffer) {
-            qs->trace_buffer = eb_new("*trace*", BF_SYSTEM);
+            qs->trace_buffer = eb_new("*trace*", BF_SYSTEM | BF_UTF8);
         }
         if (!eb_find_window(qs->trace_buffer, NULL)) {
             EditState *e = qe_split_window(s, SW_STACKED, 75);
@@ -616,33 +636,13 @@ void do_set_trace_flags(EditState *s, int flags) {
                 e->offset = e->b->total_size;
             }
         }
-        *buf = '\0';
-        if (qs->trace_flags & EB_TRACE_TTY) {
-            strcat(buf, ", tty");
-        }
-        if (qs->trace_flags & EB_TRACE_KEY) {
-            strcat(buf, ", key");
-        }
-        if (qs->trace_flags & EB_TRACE_MOUSE) {
-            strcat(buf, ", mouse");
-        }
-        if (qs->trace_flags & EB_TRACE_COMMAND) {
-            strcat(buf, ", command");
-        }
-        if (qs->trace_flags & EB_TRACE_SHELL) {
-            strcat(buf, ", shell");
-        }
-        if (qs->trace_flags & EB_TRACE_PTY) {
-            strcat(buf, ", pty");
-        }
-        if (qs->trace_flags & EB_TRACE_EMULATE) {
-            strcat(buf, ", emulate");
-        }
-        if (qs->trace_flags & EB_TRACE_DEBUG) {
-            strcat(buf, ", debug");
-        }
-        if (qs->trace_flags & EB_TRACE_CLIPBOARD) {
-            strcat(buf, ", clipboard");
+        buf_init(out, buf, sizeof buf);
+        for (i = 0; flags && i < qe_trace_defs_count; i++) {
+            int bits = qe_trace_defs[i].flags;
+            if (bits && (flags & bits) == bits) {
+                buf_printf(out, ", %s", qe_trace_defs[i].name);
+                flags ^= bits;
+            }
         }
         put_status(s, "Tracing enabled for %s", buf + 2);
     } else {
@@ -666,43 +666,25 @@ void do_set_trace_options(EditState *s, const char *options) {
     int flags = qs->trace_flags;
 
     for (;;) {
+        int found = 0;
+        size_t i;
+
         p += strspn(p, " \t,");
         if (!*p)
             break;
-        if (strmatchword(p, "none", &p) || strmatchword(p, "off", &p))
-            flags = 0;
-        else
-        if (strmatchword(p, "all", &p) || strmatchword(p, "on", &p))
-            flags = EB_TRACE_ALL;
-        else
-        if (strmatchword(p, "tty", &p)) {
-            flags |= EB_TRACE_TTY;
-        } else
-        if (strmatchword(p, "key", &p)) {
-            flags |= EB_TRACE_KEY;
-        } else
-        if (strmatchword(p, "mouse", &p)) {
-            flags |= EB_TRACE_MOUSE;
-        } else
-        if (strmatchword(p, "command", &p)) {
-            flags |= EB_TRACE_COMMAND;
-        } else
-        if (strmatchword(p, "shell", &p)) {
-            flags |= EB_TRACE_SHELL;
-        } else
-        if (strmatchword(p, "pty", &p)) {
-            flags |= EB_TRACE_PTY;
-        } else
-        if (strmatchword(p, "emulate", &p)) {
-            flags |= EB_TRACE_EMULATE;
-        } else
-        if (strmatchword(p, "debug", &p)) {
-            flags |= EB_TRACE_DEBUG;
-        } else
-        if (strmatchword(p, "clipboard", &p)) {
-            flags |= EB_TRACE_CLIPBOARD;
-        } else {
-            break;
+        for (i = 0; i < qe_trace_defs_count; i++) {
+            if (strmatchword(p, qe_trace_defs[i].name, &p)) {
+                if (!qe_trace_defs[i].flags)
+                    flags = 0;
+                else
+                    flags |= qe_trace_defs[i].flags;
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            put_status(s, "Unsupported flag: %s", p);
+            return;
         }
     }
     do_set_trace_flags(s, flags);
@@ -9946,6 +9928,7 @@ static void save_selection(void)
         e = motion_target;
         if (!check_motion_target(e))
             return;
+        eb_trace_bytes("copy-region", -1, EB_TRACE_COMMAND);
         do_copy_region(e);
     }
 }
@@ -9954,7 +9937,13 @@ static void save_selection(void)
 /* CG: remove this */
 void wheel_scroll_up_down(EditState *s, int dir)
 {
+    QEmacsState *qs = &qe_state;
     int line_height;
+
+    if (qs->trace_buffer && s->b != qs->trace_buffer) {
+        eb_trace_bytes(dir < 0 ? "wheel-scroll-up" : "wheel-scroll-down",
+                       -1, EB_TRACE_COMMAND);
+    }
 
     /* only apply to text modes */
     if (!s->mode->display_line)
@@ -9962,6 +9951,12 @@ void wheel_scroll_up_down(EditState *s, int dir)
 
     line_height = get_line_height(s->screen, s, QE_STYLE_DEFAULT);
     perform_scroll_up_down(s, dir * WHEEL_SCROLL_STEP * line_height);
+}
+
+static void call_mouse_goto(EditState *e, int x, int y) {
+    eb_trace_bytes("mouse-goto", -1, EB_TRACE_COMMAND);
+    if (e->mode->mouse_goto)
+        e->mode->mouse_goto(e, x, y);
 }
 
 void qe_mouse_event(QEEvent *ev)
@@ -9988,14 +9983,14 @@ void qe_mouse_event(QEEvent *ev)
                     switch (ev->button_event.button) {
                     case QE_BUTTON_LEFT:
                         save_selection();
-                        e->mode->mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
+                        call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
                         motion_type = MOTION_TEXT;
                         motion_x = 0; /* indicate first move */
                         motion_target = e;
                         break;
                     case QE_BUTTON_MIDDLE:
                         save_selection();
-                        e->mode->mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
+                        call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
                         do_yank(e);
                         break;
                     case QE_WHEEL_UP:
@@ -10055,14 +10050,13 @@ void qe_mouse_event(QEEvent *ev)
                     /* highlight selection */
                     e->show_selection = 1;
                     if (mouse_x >= e->xleft && mouse_x < e->xleft + e->width &&
-                        mouse_y >= e->ytop && mouse_y < e->ytop + e->height) {
-                            /* if inside the buffer, then update cursor
-                            position */
-                            e->mode->mouse_goto(e, mouse_x - e->xleft,
-                                                mouse_y - e->ytop);
-                            edit_display(qs);
-                            dpy_flush(qs->screen);
-                     }
+                        mouse_y >= e->ytop && mouse_y < e->ytop + e->height)
+                    {
+                        /* if inside the buffer, then update cursor position */
+                        call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
+                        edit_display(qs);
+                        dpy_flush(qs->screen);
+                    }
                 }
             }
             break;
