@@ -445,6 +445,9 @@ static inline int check_fcall(const char32_t *str, int i) {
     return str[i] == '(';
 }
 
+char *qe_encode64(const void *src, size_t len, size_t *sizep);
+void *qe_decode64(const char *src, size_t len, size_t *sizep);
+
 /*---- Allocation wrappers and utilities ----*/
 
 void *qe_malloc_bytes(size_t size);

@@ -63,6 +63,7 @@ static int single_window;
 int force_tty;
 int tty_mk = 2;
 int tty_mouse = 1;
+int tty_clipboard = 0;
 int disable_crc;
 #ifdef CONFIG_SESSION
 int use_session_file;
@@ -640,6 +641,9 @@ void do_set_trace_flags(EditState *s, int flags) {
         if (qs->trace_flags & EB_TRACE_DEBUG) {
             strcat(buf, ", debug");
         }
+        if (qs->trace_flags & EB_TRACE_CLIPBOARD) {
+            strcat(buf, ", clipboard");
+        }
         put_status(s, "Tracing enabled for %s", buf + 2);
     } else {
         put_status(s, "Tracing disabled");
@@ -694,6 +698,9 @@ void do_set_trace_options(EditState *s, const char *options) {
         } else
         if (strmatchword(p, "debug", &p)) {
             flags |= EB_TRACE_DEBUG;
+        } else
+        if (strmatchword(p, "clipboard", &p)) {
+            flags |= EB_TRACE_CLIPBOARD;
         } else {
             break;
         }
@@ -9963,6 +9970,7 @@ void qe_mouse_event(QEEvent *ev)
     EditState *e;
     int mouse_x = ev->button_event.x;
     int mouse_y = ev->button_event.y;
+    int scale = (qs->screen->media & CSS_MEDIA_TTY) ? 1 : 8;
 
     switch (ev->type) {
     case QE_BUTTON_RELEASE_EVENT:
@@ -10059,7 +10067,7 @@ void qe_mouse_event(QEEvent *ev)
             }
             break;
         case MOTION_MODELINE:
-            if ((mouse_y / 8) != (motion_y / 8)) {
+            if ((mouse_y / scale) != (motion_y / scale)) {
                 if (!check_motion_target(motion_target)) {
                     motion_type = MOTION_NONE;
                 } else {
@@ -10074,7 +10082,7 @@ void qe_mouse_event(QEEvent *ev)
             }
             break;
         case MOTION_RSEPARATOR:
-            if ((mouse_x / 8) != (motion_x / 8)) {
+            if ((mouse_x / scale) != (motion_x / scale)) {
                 if (!check_motion_target(motion_target)) {
                     motion_type = MOTION_NONE;
                 } else {
@@ -10568,6 +10576,8 @@ static CmdLineOptionDef cmd_options[] = {
 #endif
     CMD_LINE_INT("mk", "modify-other-keys", "VAL", &tty_mk,
                  "set the modifyOtherKeys tty configuration (0,1,2)"),
+    CMD_LINE_INT("", "clipboard", "VAL", &tty_clipboard,
+                 "set the tty clipboard support level (0,1,2)"),
     CMD_LINE_INT("m", "mouse", "VAL", &tty_mouse,
                  "set the mouse emulation mode (0,1,2)"),
     CMD_LINE_LINK()
@@ -11312,6 +11322,8 @@ static void qe_init(void *opaque)
     qs->default_fill_column = DEFAULT_FILL_COLUMN;
     qs->mmap_threshold = MIN_MMAP_SIZE;
     qs->max_load_size = MAX_LOAD_SIZE;
+    qs->input_buf = qs->input_buf_def;
+    qs->input_size = countof(qs->input_buf_def);
 
     /* setup resource path */
     set_user_option(NULL);

@@ -2278,6 +2278,107 @@ int buf_quote_byte(buf_t *bp, unsigned char ch) {
     return written;
 }
 
+/*---------------- base 64 encoding ----------------*/
+
+char *qe_encode64(const void *src, size_t len, size_t *sizep)
+{
+    const u8 *p = src;
+    size_t size = len * 4 / 3 + 3;
+    char *buf = qe_malloc_bytes(size);
+    *sizep = 0;
+    if (buf != NULL) {
+        static const char dict[64] =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        size_t j = 0;
+        size_t i;
+        uint32_t val;
+        for (i = 0; i + 2 < len; i += 3) {
+            val = (p[i] << 16) | (p[i + 1] << 8) | p[i + 2];
+            buf[j++] = dict[val >> 18];
+            buf[j++] = dict[(val >> 12) & 0x3f];
+            buf[j++] = dict[(val >> 6) & 0x3f];
+            buf[j++] = dict[val & 0x3f];
+        }
+        switch (len - i) {
+        case 2:
+            val = (p[i] << 16) | (p[i + 1] << 8);
+            buf[j++] = dict[val >> 18];
+            buf[j++] = dict[(val >> 12) & 0x3f];
+            buf[j++] = dict[(val >> 6) & 0x3f];
+            buf[j++] = '=';
+            break;
+        case 1:
+            val = p[i] << 16;
+            buf[j++] = dict[val >> 18];
+            buf[j++] = dict[(val >> 12) & 0x3f];
+            buf[j++] = '=';
+            buf[j++] = '=';
+            break;
+        default:
+        case 0:
+            break;
+        }
+        buf[j] = '\0';
+        *sizep = j;
+    }
+    return buf;
+}
+
+void *qe_decode64(const char *src, size_t len, size_t *sizep)
+{
+    size_t size = len * 3 / 4 + 2;
+    u8 *buf = qe_malloc_bytes(size);
+    *sizep = 0;
+    if (buf != NULL) {
+        int shift = 0;
+        size_t j = 0;
+        size_t i;
+        for (i = 0; i < len; i++) {
+            //static const char Base64[] =
+            //	"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+            char ch = src[i];
+            int val = ch & 0xff;
+            if (ch == '=')
+                break;
+            if (ch >= 'A' && ch <= 'Z')
+                val -= 'A';
+            else
+            if (ch >= 'a' && ch <= 'z')
+                val -= 'a' - 26;
+            else
+            if (ch >= '0' && ch <= '9')
+                val -= '0' - 52;
+            else
+            if (ch == '+')
+                val = 62;
+            else
+            if (ch == '/')
+                val = 63;
+            else
+                continue;
+            switch (shift++ & 3) {
+            case 0:
+                buf[j] = val << 2;
+                break;
+            case 1:
+                buf[j++] |= val >> 4;
+                buf[j] = (val << 4) & 0xff;
+                break;
+            case 2:
+                buf[j++] |= val >> 2;
+                buf[j] = (val << 6) & 0xff;
+                break;
+            case 3:
+                buf[j++] |= val;
+                break;
+            }
+        }
+        buf[j] = '\0';
+        *sizep = j;
+    }
+    return buf;
+}
+
 /*---------------- allocation routines ----------------*/
 
 void *qe_malloc_bytes(size_t size) {

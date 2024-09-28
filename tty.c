@@ -131,6 +131,7 @@ typedef struct TTYState {
     int cursor_x, cursor_y;
     /* input handling */
     enum InputState input_state;
+    u8 last_ch, this_ch;
     int has_meta;
     int nb_params;
 #define CSI_PARAM_OMITTED  0x80000000
@@ -159,6 +160,8 @@ typedef struct TTYState {
     /* cache for glyph combinations */
     // XXX: should keep track of max_comb and max_max_comb
     char32_t comb_cache[COMB_CACHE_SIZE];
+    char *clipboard;
+    size_t clipboard_size;
 } TTYState;
 
 static QEditScreen *tty_screen;   /* for tty_term_exit and tty_term_resize */
@@ -199,7 +202,11 @@ static void tty_term_set_raw(QEditScreen *s) {
     }
     if (tty_mouse) {
         /* enable mouse reporting using SGR */
-        TTY_FPRINTF(s->STDOUT, "\033[?1002;1004;1006h");
+        TTY_FPRINTF(s->STDOUT, "\033[?1002;1006h");
+    }
+    if (tty_clipboard) {
+        /* enable focus reporting */
+        TTY_FPRINTF(s->STDOUT, "\033[?1004h");
     }
 #endif
     fflush(s->STDOUT);
@@ -233,7 +240,11 @@ static void tty_term_set_cooked(QEditScreen *s) {
     }
     if (tty_mouse) {
         /* disable mouse reporting using SGR */
-        TTY_FPRINTF(s->STDOUT, "\033[?1002;1004;1006l");
+        TTY_FPRINTF(s->STDOUT, "\033[?1002;1006l");
+    }
+    if (tty_clipboard) {
+        /* disable focus reporting */
+        TTY_FPRINTF(s->STDOUT, "\033[?1004l");
     }
 #endif
     fflush(s->STDOUT);
@@ -635,6 +646,85 @@ static int tty_dpy_is_user_input_pending(QEditScreen *s)
         return 0;
 }
 
+static int tty_get_clipboard(QEditScreen *s, int ch)
+{
+    QEmacsState *qs = &qe_state;
+    TTYState *ts = s->priv_data;
+    EditBuffer *b;
+    size_t size;
+    char *contents;
+
+    // OSC 52;Ps;string ST  report clipboard contents
+    const char *p1 = cs8(qs->input_buf) + 2;
+    const char *p4 = cs8(qs->input_buf) + qs->input_len - 1 - (ch != 7);
+    const char *p2 = strchr(p1, ';');
+    const char *p3 = NULL;
+    if (p2 == NULL)
+        return -1;
+    p2++;
+    p3 = strchr(p2, ';');
+    if (p3 == NULL)
+        return -1;
+    p3++;
+    if (p3 >= p4)
+        return -1;
+
+    contents = qe_decode64(p3, p4 - p3, &size);
+    if (!contents)
+        return -1;
+    if (qs->trace_buffer)
+        eb_trace_bytes(contents, size, EB_TRACE_CLIPBOARD);
+    if (size == ts->clipboard_size && !memcmp(ts->clipboard, contents, size)) {
+        qe_free(&contents);
+        return 0;
+    } else {
+        qe_free(&ts->clipboard);
+        ts->clipboard = contents;
+        ts->clipboard_size = size;
+        /* copy terminal selection a new yank buffer */
+        b = new_yank_buffer(qs, NULL);
+        eb_set_charset(b, &charset_utf8, EOL_UNIX);
+        eb_write(b, 0, contents, size);
+        return 1;
+    }
+}
+
+static int tty_set_clipboard(QEditScreen *s)
+{
+    // TODO: make this selectable
+    QEmacsState *qs = &qe_state;
+    TTYState *ts = s->priv_data;
+    EditBuffer *b = qs->yank_buffers[qs->yank_current];
+    size_t size;
+    char *contents;
+
+    if (!b)
+        return 0;
+    size = eb_get_region_content_size(b, 0, b->total_size);
+    contents = qe_malloc_bytes(size + 1);
+    if (!contents)
+        return -1;
+    eb_get_region_contents(b, 0, b->total_size, contents, size + 1, FALSE);
+    if (size == ts->clipboard_size && !memcmp(ts->clipboard, contents, size)) {
+        qe_free(&contents);
+        return 0;
+    } else {
+        size_t encoded_size;
+        char *encoded_contents = qe_encode64(contents, size, &encoded_size);
+        if (!encoded_contents) {
+            qe_free(&contents);
+            return -1;
+        }
+        qe_free(&ts->clipboard);
+        ts->clipboard = contents;
+        ts->clipboard_size = size;
+        TTY_FPRINTF(s->STDOUT, "\033]52;;%s\033\\", encoded_contents);
+        fflush(s->STDOUT);
+        qe_free(&encoded_contents);
+        return 0;
+    }
+}
+
 static int const csi_lookup[] = {
     KEY_UNKNOWN,  /* 0 */
     KEY_HOME,     /* 1 */
@@ -689,9 +779,17 @@ static void tty_read_handler(void *opaque)
         eb_trace_bytes(buf, 1, EB_TRACE_TTY);
 
     ch = buf[0];
+    ts->last_ch = ts->this_ch;
+    ts->this_ch = ch;
     /* keep TTY bytes for error messages */
-    if (qs->input_len < countof(qs->input_buf))
-        qs->input_buf[qs->input_len++] = ch;
+    if (qs->input_len >= qs->input_size) {
+        qs->input_size += qs->input_size / 2 + 64;
+        if (qs->input_buf == qs->input_buf_def)
+            qs->input_buf = qe_malloc_bytes(qs->input_size);
+        else
+            qe_realloc_bytes(&qs->input_buf, qs->input_size);
+    }
+    qs->input_buf[qs->input_len++] = ch;
 
     switch (ts->input_state) {
     case IS_NORM:
@@ -725,6 +823,13 @@ static void tty_read_handler(void *opaque)
                 goto the_end_meta;
             }
             ts->input_state = IS_ESC;
+            if (qs->input_buf != qs->input_buf_def) {
+                qe_free(&qs->input_buf);
+                qs->input_buf = qs->input_buf_def;
+                qs->input_size = countof(qs->input_buf_def);
+                qs->input_buf[0] = ch;
+                qs->input_len = 1;
+            }
             break;
         }
         if (ch == '\010') {
@@ -765,7 +870,8 @@ static void tty_read_handler(void *opaque)
         }
         if (ch == ']' && pending) {
             /* OSC terminal responses
-               eg: get palette entry: \033]4;0;rgb:0000/0000/0000\007
+               eg: set palette entry: \033]4;0;rgb:0000/0000/0000\007
+                   set clipboard: \033]52;0;base64contents\033\\
              */
             ts->input_state = IS_OSC;
             ts->has_meta = 0;
@@ -898,6 +1004,23 @@ static void tty_read_handler(void *opaque)
             }
             qe_handle_event(ev);
             break;
+        case 'I': // FocusIn  enabled by CSI ? 1004 h
+            // XXX: retrieve clipboard contents into kill buffer if changed
+            ts->input_state = IS_NORM;
+            ts->has_meta = 0;
+            if (tty_clipboard) {
+                TTY_FPUTS("\033]52;;?\007", s->STDOUT);
+                fflush(s->STDOUT);
+            }
+            break;
+        case 'O': // FocusOut
+            // TODO: push last kill to clipboard if new
+            ts->input_state = IS_NORM;
+            ts->has_meta = 0;
+            if (tty_clipboard) {
+                tty_set_clipboard(s);
+            }
+            break;
         default:
             /* n2 contains the shift status + 1:
              * bit 1 is SHIFT
@@ -1007,18 +1130,24 @@ static void tty_read_handler(void *opaque)
 
     case IS_OSC:
         /* OSC syntax is: OSC string 07 or OSC string ST (ESC \) */
-        if (ch == 27) {
-            ts->has_meta = KEY_STATE_META;
+        /* stop reading messge on BEL, ST and ESC \ */
+        if (!(ch == 7 || ch == 0x9C || (ch == '\\' && ts->last_ch == 27)))
             break;
-        }
-        if (ts->has_meta && ch == '\\') {
-            /* ST: should strip last byte from message */
-        } else
-        if (ch != 7)
-            break;
-        // FIXME: handle terminal response
+        if (qs->trace_buffer)
+            eb_trace_bytes("", 0, EB_TRACE_TTY | EB_TRACE_FLUSH);
         ts->input_state = IS_NORM;
         ts->has_meta = 0;
+        n1 = strtol(cs8(qs->input_buf) + 2, NULL, 10);
+        if (qs->trace_buffer) {
+            char buf1[32];
+            snprintf(buf1, sizeof buf1, "OSC %d;", n1);
+            eb_trace_bytes(buf1, -1, EB_TRACE_TTY | EB_TRACE_FLUSH);
+        }
+        if (n1 == 52) {
+            if (tty_clipboard) {
+                tty_get_clipboard(s, ch);
+            }
+        }
         break;
     }
 }

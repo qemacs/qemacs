@@ -4,6 +4,11 @@
 
 ## Current work
 
+* get clipboard contents at startup or only at yank time?
+* only get tty clipboard contents on yank
+* only set tty clipboard contents if kill buffer changed during focus time
+* add command line options for clipboard support
+* add script variable for clipboard support
 * handle double/triple click to select word and line
 * add command line options for terminal features: backspace
 * add command line options for tracing
