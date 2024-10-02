@@ -1311,6 +1311,8 @@ static void dired_build_list(DiredState *ds, const char *path)
     } else {
         get_dirname(dirname, sizeof dirname, ds->path);
         pstrcpy(ds->pattern, sizeof(ds->pattern), get_basename(ds->path));
+        if (!is_filepattern(ds->pattern))
+            strcpy(ds->pattern, "*");
     }
 
     if (ds->header_lines == 1) {
