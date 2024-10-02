@@ -1955,17 +1955,30 @@ static void do_describe_window(EditState *s, int argval)
     eb_printf(b1, "%*s: %d\n", w, "colorize_nb_lines", s->colorize_nb_lines);
     eb_printf(b1, "%*s: %d\n", w, "colorize_nb_valid_lines", s->colorize_nb_valid_lines);
     eb_printf(b1, "%*s: %d\n", w, "colorize_max_valid_offset", s->colorize_max_valid_offset);
-    if (s->colorize_nb_lines) {
-        int pos = eb_printf(b1, "%*s: {", w, "colorize_states");
-        int i;
-        for (i = 0; i < s->colorize_nb_lines; i++) {
-            if (s->colorize_states[i]) {
-                if (pos > 60)
-                    pos = eb_printf(b1, "\n%*s   ", w, "");
-                pos += eb_printf(b1, " %d: %x,", i, s->colorize_states[i]);
-            }
+    if (s->colorize_nb_valid_lines) {
+        int pos = eb_printf(b1, "%*s: [%d] {", w, "colorize_states", s->colorize_nb_valid_lines);
+        int i, from, len;
+        int bits = 0;
+        int w1;
+        char buf[32];
+        for (i = 0; i < s->colorize_nb_valid_lines; i++) {
+            bits |= s->colorize_states[i];
         }
-        eb_printf(b1, "\n");
+        w1 = snprintf(buf, sizeof buf, "%x", bits);
+        for (i = 0; i < s->colorize_nb_valid_lines;) {
+            bits = s->colorize_states[i];
+            for (from = i++; i < s->colorize_nb_valid_lines; i++) {
+                if (s->colorize_states[i] != bits)
+                    break;
+            }
+            if (pos > 60)
+                pos = eb_printf(b1, "\n%*s   ", w, "");
+            len = snprintf(buf, sizeof buf, "%d", from);
+            if (i > from + 1)
+                len += snprintf(buf + len, sizeof(buf) - len, "..%d", i - 1);
+            pos += eb_printf(b1, " %s: 0x%*x,", buf, w1, bits);
+        }
+        eb_printf(b1, " }\n");
     }
     eb_printf(b1, "%*s: %d\n", w, "busy", s->busy);
     eb_printf(b1, "%*s: %d\n", w, "display_invalid", s->display_invalid);
