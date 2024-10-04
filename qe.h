@@ -1058,6 +1058,9 @@ struct QEmacsState {
     u8 *input_buf;
     u8 input_buf_def[32];
     struct Equivalent *first_equivalent;
+    /* mouse handling */
+    EditState *motion_target;
+    int motion_type, motion_border, motion_x, motion_y;
 };
 
 extern QEmacsState qe_state;
@@ -1661,7 +1664,7 @@ EditBuffer *new_help_buffer(void);
 void do_help_for_help(EditState *s);
 void qe_event_init(QEmacsState *qs);
 void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr);
-void window_resize(EditState *s, int target_w, int target_h);
+int window_resize(EditState *s, int target_w, int target_h);
 void wheel_scroll_up_down(EditState *s, int dir);
 void qe_mouse_event(QEEvent *ev);
 void set_user_option(const char *user);
