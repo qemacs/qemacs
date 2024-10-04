@@ -6993,10 +6993,21 @@ EditState *edit_new(EditBuffer *b,
     s->flags = flags;
     compute_client_area(s);
 
-    /* link window in window list */
-    for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e->y1 > s->y1 || (e->y1 == s->y1 && e->x1 > s->x1))
-            break;
+    if (flags & WF_POPUP) {
+        /* attach popups at the end of list */
+        e = NULL;
+    } else {
+        /* link window in window list */
+        for (e = qs->first_window; e != NULL; e = e->next_window) {
+            if (e->flags & WF_POPUP) {
+                /* keep popups at the end of list */
+                break;
+            }
+            if (e->y1 > s->y1 || (e->y1 == s->y1 && e->x1 > s->x1)) {
+                /* keep window list sorted by increasing y */
+                break;
+            }
+        }
     }
     edit_attach(s, e);
 
@@ -9164,10 +9175,11 @@ void do_refresh(EditState *s1)
     /* recompute various dimensions */
     if (qs->screen->media & CSS_MEDIA_TTY) {
         qs->separator_width = 1;
+        qs->border_width = 1;
     } else {
         qs->separator_width = 4;
+        qs->border_width = 3; /* XXX: adapt to display type */
     }
-    qs->border_width = 1; /* XXX: adapt to display type */
 
     width = qs->screen->width;
     height = qs->screen->height;
@@ -9816,100 +9828,96 @@ void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr)
     QEmacsState *qs = s->qe_state;
     int w, h;
 
-    /* XXX: currently, fixed height */
-    w = 8;
-    h = 8;
+    /* XXX: currently, a small square */
+    w = 5;
+    h = 5;
     if (s->flags & WF_MODELINE)
-        h += qs->mode_line_height;
-    *w_ptr = w;
-    *h_ptr = h;
+        h += 1;
+    *w_ptr = w * qs->mode_line_height;
+    *h_ptr = h * qs->mode_line_height;
 }
 
 /* resize a window on bottom right edge */
-void window_resize(EditState *s, int target_w, int target_h)
+int window_resize(EditState *s, int target_w, int target_h)
 {
     QEmacsState *qs = s->qe_state;
     EditState *e;
-    int delta_y, delta_x, min_w, min_h, new_h, new_w;
+    int delta_y, delta_x, min_w, min_h;
+
+    if (s->flags & WF_MINIBUF)
+        return 0;
 
     delta_x = target_w - (s->x2 - s->x1);
     delta_y = target_h - (s->y2 - s->y1);
 
     /* then see if we can resize without having too small windows */
     window_get_min_size(s, &min_w, &min_h);
-    if (target_w < min_w ||
-        target_h < min_h)
-        return;
-    /* check if moving would uncover empty regions */
-    if ((s->x2 >= qs->screen->width && delta_x != 0) ||
-        (s->y2 >= qs->screen->height - qs->status_height && delta_y != 0))
-        return;
+    if (target_w < min_w || target_h < min_h)
+        return 0;
 
-    for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if ((e->flags & WF_MINIBUF) || e == s)
-            continue;
-        window_get_min_size(e, &min_w, &min_h);
-        if (e->y1 == s->y2) {
-            new_h = e->y2 - e->y1 - delta_y;
-            goto test_h;
-        } else if (e->y2 == s->y2) {
-            new_h = e->y2 - e->y1 + delta_y;
-        test_h:
-            if (new_h < min_h)
-                return;
+    if (!(s->flags & WF_POPUP)) {
+        /* check if moving would uncover empty regions */
+        if ((s->x2 >= qs->screen->width && delta_x != 0) ||
+            (s->y2 >= qs->screen->height - qs->status_height && delta_y != 0))
+            return 0;
+
+        /* check if retiling would make other windows too small */
+        for (e = qs->first_window; e != NULL; e = e->next_window) {
+            if ((e->flags & (WF_MINIBUF | WF_POPUP)) || e == s)
+                continue;
+            window_get_min_size(e, &min_w, &min_h);
+            if (e->y1 == s->y2 && e->y2 - e->y1 - delta_y < min_h)
+                return 0;
+            else
+            if (e->y2 == s->y2 && e->y2 - e->y1 + delta_y < min_h)
+                return 0;
+
+            if (e->x1 == s->x2 && e->x2 - e->x1 - delta_x < min_w)
+                return 0;
+            else
+            if (e->x2 == s->x2 && e->x2 - e->x1 + delta_x < min_w)
+                return 0;
         }
-        if (e->x1 == s->x2) {
-            new_w = e->x2 - e->x1 - delta_x;
-            goto test_w;
-        } else if (e->x2 == s->x2) {
-            new_w = e->x2 - e->x1 + delta_x;
-        test_w:
-            if (new_w < min_w)
-                return;
+
+        /* now everything is OK, we can resize all windows */
+        for (e = qs->first_window; e != NULL; e = e->next_window) {
+            if ((e->flags & (WF_MINIBUF | WF_POPUP)) || e == s)
+                continue;
+            if (e->y1 == s->y2)
+                e->y1 += delta_y;
+            else if (e->y2 == s->y2)
+                e->y2 += delta_y;
+            if (e->x1 == s->x2)
+                e->x1 += delta_x;
+            else if (e->x2 == s->x2)
+                e->x2 += delta_x;
+            compute_client_area(e);
         }
     }
-
-    /* now everything is OK, we can resize all windows */
-    for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if ((e->flags & WF_MINIBUF) || e == s)
-            continue;
-        if (e->y1 == s->y2)
-            e->y1 += delta_y;
-        else if (e->y2 == s->y2)
-            e->y2 += delta_y;
-        if (e->x1 == s->x2)
-            e->x1 += delta_x;
-        else if (e->x2 == s->x2)
-            e->x2 += delta_x;
-        compute_client_area(e);
-    }
-    s->x2 = s->x1 + target_w;
-    s->y2 = s->y1 + target_h;
+    s->x2 += delta_x;
+    s->y2 += delta_y;
     compute_client_area(s);
+    return 1;
 }
 
 /* mouse handling */
 
-#define MOTION_NONE       0
-#define MOTION_MODELINE   1
-#define MOTION_RSEPARATOR 2
-#define MOTION_TEXT       3
+enum {
+    MOTION_NONE,
+    MOTION_MODELINE,
+    MOTION_RSEPARATOR,
+    MOTION_CAPTION,
+    MOTION_BORDER,
+    MOTION_TEXT,
+};
 
-static int motion_type = MOTION_NONE;
-static EditState *motion_target;
-static int motion_x, motion_y;
-
-static int check_motion_target(qe__unused__ EditState *s)
-{
-    QEmacsState *qs = &qe_state;
-    EditState *e;
-    /* first verify that window is always valid */
-    for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e == motion_target)
-            break;
-    }
-    return e != NULL;
-}
+enum {
+    MOTION_BORDER_LEFT   = 1 << 0,
+    MOTION_BORDER_RIGHT  = 1 << 1,
+    MOTION_BORDER_TOP    = 1 << 2,
+    MOTION_BORDER_BOTTOM = 1 << 3,
+    MOTION_BORDER_ALL    = 15 << 0,
+};
 
 /* remove temporary selection colorization and selection area */
 static void save_selection(void)
@@ -9923,18 +9931,17 @@ static void save_selection(void)
         selection_showed |= e->show_selection;
         e->show_selection = 0;
     }
-    if (selection_showed && motion_type == MOTION_TEXT) {
-        motion_type = MOTION_NONE;
-        e = motion_target;
-        if (!check_motion_target(e))
-            return;
-        eb_trace_bytes("copy-region", -1, EB_TRACE_COMMAND);
-        do_copy_region(e);
+    if (selection_showed && qs->motion_type == MOTION_TEXT) {
+        qs->motion_type = MOTION_NONE;
+        e = check_window(&qs->motion_target);
+        if (e != NULL) {
+            eb_trace_bytes("copy-region", -1, EB_TRACE_COMMAND);
+            do_copy_region(e);
+        }
     }
 }
 
 /* XXX: need a more general scheme for other modes such as HTML/image */
-/* CG: remove this */
 void wheel_scroll_up_down(EditState *s, int dir)
 {
     QEmacsState *qs = &qe_state;
@@ -9959,137 +9966,261 @@ static void call_mouse_goto(EditState *e, int x, int y) {
         e->mode->mouse_goto(e, x, y);
 }
 
-void qe_mouse_event(QEEvent *ev)
-{
+static void reverse_window_list(QEmacsState *qs) {
+    EditState *e = qs->first_window;
+    EditState *last = NULL;
+    while (e != NULL) {
+        EditState *enext = e->next_window;
+        e->next_window = last;
+        last = e;
+        e = enext;
+    }
+    qs->first_window = last;
+}
+
+static int check_mouse_event(EditState *e, QEEvent *ev) {
+    QEmacsState *qs = e->qe_state;
+    int mouse_x = ev->button_event.x;
+    int mouse_y = ev->button_event.y;
+
+    /* first check if mouse is inside window area */
+    if (mouse_x < e->x1 || mouse_x >= e->x2 || mouse_y < e->y1 || mouse_y >= e->y2)
+        return 0;
+
+    /* test if mouse is inside the text area */
+    if (mouse_x >= e->xleft && mouse_x < e->xleft + e->width &&
+        mouse_y >= e->ytop && mouse_y < e->ytop + e->height)
+    {
+        switch (ev->button_event.button) {
+        case QE_BUTTON_LEFT:
+            // TODO: should cancel popup, minibuf and isearch_mode
+            /* make popup windows modal for now */
+            if (qs->active_window && e != qs->active_window && (qs->active_window->flags & WF_POPUP))
+                return 0;
+            if (!e->mode->mouse_goto)
+                goto no_handler;
+            save_selection();
+            call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
+            qs->motion_type = MOTION_TEXT;
+            qs->motion_x = 0; /* indicate first move */
+            qs->motion_target = e;
+            break;
+        case QE_BUTTON_MIDDLE:
+            // TODO: should cancel popup, minibuf and isearch_mode
+            /* make popup windows modal for now */
+            if (qs->active_window && e != qs->active_window && (qs->active_window->flags & WF_POPUP))
+                return 0;
+            if (!e->mode->mouse_goto) {
+            no_handler:
+                put_status(e, "no mouse handler for mode %s", e->mode->name);
+                return 0;
+            }
+            save_selection();
+            call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
+            do_yank(e);
+            break;
+        case QE_WHEEL_UP:
+            wheel_scroll_up_down(e, -1);
+            break;
+        case QE_WHEEL_DOWN:
+            wheel_scroll_up_down(e, 1);
+            break;
+        default:
+            return 0;
+        }
+        edit_display(qs);
+        dpy_flush(qs->screen);
+        return 1;
+    }
+    /* test for popup window caption and borders */
+    if (e->flags & WF_POPUP) {
+        int top_h = e->caption ? qs->mode_line_height : qs->border_width;
+        int type, border;
+        // TODO: check for top left close button
+        if (mouse_y < e->y1 + top_h && mouse_x >= e->xleft && mouse_x < e->xleft + e->width) {
+            type = MOTION_CAPTION;
+            border = MOTION_BORDER_ALL;
+        } else {
+            type = MOTION_BORDER;
+            border = 0;
+            if (mouse_x < e->xleft)
+                border |= MOTION_BORDER_LEFT;
+            if (mouse_x >= e->xleft + e->width)
+                border |= MOTION_BORDER_RIGHT;
+            if (mouse_y < e->ytop)
+                border |= MOTION_BORDER_TOP;
+            if (mouse_y >= e->ytop + e->height)
+                border |= MOTION_BORDER_BOTTOM;
+        }
+        if (border) {
+            /* mark that motion can occur */
+            qs->motion_type = type;
+            qs->motion_target = e;
+            qs->motion_border = border;
+            qs->motion_x = mouse_x;
+            qs->motion_y = mouse_y;
+            return 1;
+        }
+    }
+    if (qs->active_window && e != qs->active_window && (qs->active_window->flags & WF_POPUP))
+        return 0;
+
+    // TODO: check for top left close button and window split marks
+    /* test if inside modeline */
+    if ((e->flags & WF_MODELINE) &&
+        mouse_x >= e->xleft && mouse_x < e->xleft + e->width &&
+        mouse_y >= e->ytop + e->height &&
+        mouse_y < e->ytop + e->height + qs->mode_line_height)
+    {
+        /* mark that motion can occur */
+        qs->motion_type = MOTION_MODELINE;
+        qs->motion_target = e;
+        qs->motion_border = 0;
+        qs->motion_x = mouse_x;
+        qs->motion_y = mouse_y;
+        return 1;
+    }
+    /* test if inside right window separator */
+    if ((e->flags & WF_RSEPARATOR) &&
+        mouse_x >= e->x2 - qs->separator_width && mouse_x < e->x2 &&
+        mouse_y >= e->ytop && mouse_y < e->ytop + e->height)
+    {
+        /* mark that motion can occur */
+        qs->motion_type = MOTION_RSEPARATOR;
+        qs->motion_target = e;
+        qs->motion_border = 0;
+        qs->motion_x = mouse_x;
+        qs->motion_y = mouse_y;
+        return 1;
+    }
+    return 0;
+}
+
+static void handle_mouse_motion(EditState *e, QEEvent *ev) {
     QEmacsState *qs = &qe_state;
-    EditState *e;
     int mouse_x = ev->button_event.x;
     int mouse_y = ev->button_event.y;
     int scale = (qs->screen->media & CSS_MEDIA_TTY) ? 1 : 8;
 
-    switch (ev->type) {
-    case QE_BUTTON_RELEASE_EVENT:
-        // XXX: should handle buffer buttons
-        save_selection();
-        motion_type = MOTION_NONE;
+    switch (qs->motion_type) {
+    case MOTION_NONE:
+    default:
         break;
+    case MOTION_TEXT:
+        /* put a mark if first move */
+        if (!qs->motion_x) {
+            /* test needed for list mode */
+            if (e->b)
+                e->b->mark = e->offset;
+            qs->motion_x = 1;
+        }
+        /* highlight selection */
+        e->show_selection = 1;
+        if (mouse_x >= e->xleft && mouse_x < e->xleft + e->width &&
+            mouse_y >= e->ytop && mouse_y < e->ytop + e->height)
+        {
+            /* if inside the buffer, then update cursor position */
+            call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
+            edit_display(qs);
+            dpy_flush(qs->screen);
+        }
+        break;
+    case MOTION_CAPTION:
+    case MOTION_BORDER:
+        if ((mouse_x / scale) != (qs->motion_x / scale)
+        ||  (mouse_y / scale) != (qs->motion_y / scale)) {
+            int dx = mouse_x - qs->motion_x;
+            int dy = mouse_y - qs->motion_y;
+            int x1 = e->x1;
+            int x2 = e->x2;
+            int y1 = e->y1;
+            int y2 = e->y2;
+            int min_w, min_h;
+            int changed = 0;
+            window_get_min_size(e, &min_w, &min_h);
+            /* move window borders, keep window inside screen with minimum size */
+            if (qs->motion_border & MOTION_BORDER_LEFT)
+                x1 += dx;
+            if (qs->motion_border & MOTION_BORDER_RIGHT)
+                x2 += dx;
+            if (qs->motion_border & MOTION_BORDER_TOP)
+                y1 += dy;
+            if (qs->motion_border & MOTION_BORDER_BOTTOM)
+                y2 += dy;
 
-    case QE_BUTTON_PRESS_EVENT:
-        for (e = qs->first_window; e != NULL; e = e->next_window) {
-            /* test if mouse is inside the text area */
-            if (mouse_x >= e->xleft && mouse_x < e->xleft + e->width &&
-                mouse_y >= e->ytop && mouse_y < e->ytop + e->height) {
-                if (e->mode->mouse_goto) {
-                    switch (ev->button_event.button) {
-                    case QE_BUTTON_LEFT:
-                        save_selection();
-                        call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
-                        motion_type = MOTION_TEXT;
-                        motion_x = 0; /* indicate first move */
-                        motion_target = e;
-                        break;
-                    case QE_BUTTON_MIDDLE:
-                        save_selection();
-                        call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
-                        do_yank(e);
-                        break;
-                    case QE_WHEEL_UP:
-                        wheel_scroll_up_down(e, -1);
-                        break;
-                    case QE_WHEEL_DOWN:
-                        wheel_scroll_up_down(e, 1);
-                        break;
-                    }
-                    edit_display(qs);
-                    dpy_flush(qs->screen);
-                }
-                break;
+            if (x1 >= 0 && x2 <= qs->width && (x2 - x1) >= min_w) {
+                changed |= (e->x1 - x1) | (e->x2 - x2);
+                e->x1 = x1;
+                e->x2 = x2;
+                qs->motion_x = mouse_x;
             }
-            /* test if inside modeline */
-            if ((e->flags & WF_MODELINE) &&
-                mouse_x >= e->xleft && mouse_x < e->xleft + e->width &&
-                mouse_y >= e->ytop + e->height &&
-                mouse_y < e->ytop + e->height + qs->mode_line_height) {
-                /* mark that motion can occur */
-                motion_type = MOTION_MODELINE;
-                motion_target = e;
-                motion_y = e->ytop + e->height;
-                break;
+            if (y1 >= 0 && y2 <= qs->height - qs->status_height && (y2 - y1) >= min_h) {
+                changed |= (e->y1 - y1) | (e->y2 - y2);
+                e->y1 = y1;
+                e->y2 = y2;
+                qs->motion_y = mouse_y;
             }
-            /* test if inside right window separator */
-            if ((e->flags & WF_RSEPARATOR) &&
-                mouse_x >= e->x2 - qs->separator_width && mouse_x < e->x2 &&
-                mouse_y >= e->ytop && mouse_y < e->ytop + e->height) {
-                /* mark that motion can occur */
-                motion_type = MOTION_RSEPARATOR;
-                motion_target = e;
-                motion_x = e->x2 - qs->separator_width;
-                break;
+            if (changed) {
+                compute_client_area(e);
+                //do_refresh(qs->first_window);
+                qs->complete_refresh = 1;
+                edit_display(qs);
+                dpy_flush(qs->screen);
             }
         }
         break;
+    case MOTION_MODELINE:
+        /* adjust window heighy and retile other windows */
+        if ((mouse_y / scale) != (qs->motion_y / scale)) {
+            qs->motion_y = mouse_y;
+            window_resize(e, e->x2 - e->x1, qs->motion_y - e->y1);
+            do_refresh(qs->first_window);
+            edit_display(qs);
+            dpy_flush(qs->screen);
+        }
+        break;
+    case MOTION_RSEPARATOR:
+        /* adjust window width and retile other windows */
+        if ((mouse_x / scale) != (qs->motion_x / scale)) {
+            qs->motion_x = mouse_x;
+            window_resize(e, qs->motion_x - e->x1, e->y2 - e->y1);
+            do_refresh(qs->first_window);
+            edit_display(qs);
+            dpy_flush(qs->screen);
+        }
+        break;
+    }
+}
+
+void qe_mouse_event(QEEvent *ev)
+{
+    QEmacsState *qs = &qe_state;
+    EditState *e;
+
+    switch (ev->type) {
+    case QE_BUTTON_RELEASE_EVENT:
+        // TODO: should handle frame and buffer buttons
+        // TODO: should handle double/triple click
+        save_selection();
+        qs->motion_type = MOTION_NONE;
+        qs->motion_target = NULL;
+        break;
+
+    case QE_BUTTON_PRESS_EVENT:
+        // TODO: should use doubly linked list
+        reverse_window_list(qs);
+        for (e = qs->first_window; e != NULL; e = e->next_window) {
+            if (check_mouse_event(e, ev))
+                break;
+        }
+        reverse_window_list(qs);
+        break;
     case QE_MOTION_EVENT:
-        switch (motion_type) {
-        case MOTION_NONE:
-        default:
-            break;
-        case MOTION_TEXT:
-            {
-                e = motion_target;
-                if (!check_motion_target(e)) {
-                    e->show_selection = 0;
-                    motion_type = MOTION_NONE;
-                } else {
-                    /* put a mark if first move */
-                    if (!motion_x) {
-                        /* test needed for list mode */
-                        if (e->b)
-                            e->b->mark = e->offset;
-                        motion_x = 1;
-                    }
-                    /* highlight selection */
-                    e->show_selection = 1;
-                    if (mouse_x >= e->xleft && mouse_x < e->xleft + e->width &&
-                        mouse_y >= e->ytop && mouse_y < e->ytop + e->height)
-                    {
-                        /* if inside the buffer, then update cursor position */
-                        call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
-                        edit_display(qs);
-                        dpy_flush(qs->screen);
-                    }
-                }
-            }
-            break;
-        case MOTION_MODELINE:
-            if ((mouse_y / scale) != (motion_y / scale)) {
-                if (!check_motion_target(motion_target)) {
-                    motion_type = MOTION_NONE;
-                } else {
-                    motion_y = mouse_y;
-                    window_resize(motion_target,
-                                  motion_target->x2 - motion_target->x1,
-                                  motion_y - motion_target->y1);
-                    do_refresh(qs->first_window);
-                    edit_display(qs);
-                    dpy_flush(qs->screen);
-                }
-            }
-            break;
-        case MOTION_RSEPARATOR:
-            if ((mouse_x / scale) != (motion_x / scale)) {
-                if (!check_motion_target(motion_target)) {
-                    motion_type = MOTION_NONE;
-                } else {
-                    motion_x = mouse_x;
-                    window_resize(motion_target,
-                                  motion_x - motion_target->x1,
-                                  motion_target->y2 - motion_target->y1);
-                    do_refresh(qs->first_window);
-                    edit_display(qs);
-                    dpy_flush(qs->screen);
-                }
-            }
-            break;
+        e = check_window(&qs->motion_target);
+        if (e != NULL) {
+            handle_mouse_motion(e, ev);
+        } else {
+            qs->motion_type = MOTION_NONE;
         }
         break;
     default:
