@@ -89,6 +89,19 @@
   - if not modified since save, read in separate buffer and compare.
      - if difference before window start, mark and/or point, try and resync
   - if modified, modified version should be kept in a separate buffer.
+    emacs behavior:
+        You want to modify a buffer whose disk file has changed
+        since you last read it in or saved it with this buffer.
+
+        If you say y to go ahead and modify this buffer,
+        you risk ruining the work of whoever rewrote the file.
+        If you say r to revert, the contents of the buffer are refreshed
+        from the file on disk.
+        If you say n, the change you started to make will be aborted.
+
+        Usually, you should type r to get the latest version of the
+        file, then make the change again.
+
 * kill eval result so it can be yanked where appropriate
 * integrate qscript
 * pass argval and argflags for most commands
@@ -156,6 +169,7 @@
     If `transient-mark-mode` is turned on and the region is active,
     this function instead calls `indent-region`.  In this case, any
     prefix argument is ignored.
+* add menubar
 
 ## Documentation / Support
 
