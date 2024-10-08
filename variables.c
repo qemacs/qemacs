@@ -104,7 +104,7 @@ static VarDef var_table[] = {
 
     W_VAR_F( "point", offset, VAR_NUMBER, VAR_RW, qe_variable_set_value_offset,    /* should be window-point */
            "Current value of point in this window." )
-    W_VAR( "indent-width", indent_size, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
+    W_VAR( "indent-width", indent_width, VAR_NUMBER, VAR_RW,   // XXX: need set_value function
            "Number of columns to indent by for a syntactic level." )
     W_VAR( "indent-tabs-mode", indent_tabs_mode, VAR_NUMBER, VAR_RW,
            "Set if indentation can insert tabs." )

@@ -1033,7 +1033,7 @@ static int qe_cfg_assign(QEmacsDataSource *ds, QEValue *sp, int op) {
         ds->s->indent_tabs_mode = sp[1].u.value;
     } else
     if (strequal(sp->u.str, "indent-width")) {
-        ds->s->indent_size = sp[1].u.value;
+        ds->s->indent_width = sp[1].u.value;
     } else {
         /* ignore other variables without a warning */
         put_error(ds->s, "unsupported variable %s", sp->u.str);

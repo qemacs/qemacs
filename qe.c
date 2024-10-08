@@ -1027,6 +1027,30 @@ void do_delete_char(EditState *s, int argval)
     do_kill(s, s->offset, endpos, argval, 0);
 }
 
+static void do_backward_delete_tab(EditState *s, int backspace) {
+    /* Delete white space backward after TAB:
+     * attempt to delete whitespace up to the previous tab stop.
+     * If no whitespace is present, delete a character if `backspace` is non zero.
+     */
+    int offset = s->offset;
+    int tw = s->b->tab_width > 0 ? s->b->tab_width : DEFAULT_TAB_WIDTH;
+    int indent = s->indent_width > 0 ? s->indent_width : tw;
+    int col = text_screen_width(s->b, eb_goto_bol(s->b, offset), offset, tw);
+    if (col > 0) {
+        int delta = 1 + (col - 1) % indent;
+        int offset1;
+        while (delta --> 0 && eb_prevc(s->b, offset, &offset1) == ' ') {
+            offset = offset1;
+        }
+    }
+    if (offset == s->offset) {
+        if (!backspace)
+            return;
+        eb_prevc(s->b, offset, &offset);
+    }
+    eb_delete_range(s->b, offset, s->offset);
+}
+
 void do_backspace(EditState *s, int argval)
 {
     int endpos;
@@ -1101,12 +1125,11 @@ void do_backspace(EditState *s, int argval)
         return;
     }
     if (argval == NO_ARG) {
-        // XXX: this does not work for c-mode
-        // XXX: should implement backward-delete-char-untabify instead
-        if (s->qe_state->last_cmd_func == (CmdFunc)do_tabulate
+        if ((s->qe_state->last_cmd_func == (CmdFunc)do_tabulate ||
+             s->qe_state->last_cmd_func == (CmdFunc)do_backward_delete_tab)
         &&  !s->indent_tabs_mode && !s->multi_cursor_active) {
-            /* Delete tab or indentation? */
-            do_undo(s);
+            do_backward_delete_tab(s, 1);
+            s->qe_state->this_cmd_func = (CmdFunc)do_backward_delete_tab;
             return;
         }
         if (s->qe_state->last_cmd_func != (CmdFunc)do_append_next_kill) {
@@ -2002,6 +2025,8 @@ void do_overwrite_mode(EditState *s, int argval) {
     put_status(s, "Overwrite mode is %s", s->overwrite ? "on" : "off");
 }
 
+/*---------------- indentation ----------------*/
+
 /* get the indentation width at a given offset */
 int find_indent(EditState *s, int offset, int pos, int *offsetp) {
     int tw = s->b->tab_width > 0 ? s->b->tab_width : 8;
@@ -2064,39 +2089,94 @@ int make_indent(EditState *s, int offset, int offset2, int pos, int target) {
     return replace_indent(s, offset, offset2, tabs, spaces);
 }
 
+void do_indent_rigidly_by(EditState *s, int start, int end, int argval)
+{
+    int col_num, line, line1, line2;
+
+    /* Swap point and mark so mark <= point */
+    if (end < start) {
+        int tmp = start;
+        start = end;
+        end = tmp;
+    }
+    /* We do it with lines to avoid offset variations during indenting */
+    eb_get_pos(s->b, &line1, &col_num, start);
+    if (start == end) {
+        line2 = line1;
+    } else {
+        if (col_num > 0)
+            line1++;
+        eb_get_pos(s->b, &line2, &col_num, end);
+        if (col_num == 0)
+            line2--;
+    }
+    /* Iterate over all lines inside block */
+    for (line = line1; line <= line2; line++) {
+        int offset = eb_goto_pos(s->b, line, 0);
+        int off1, off2;
+        int indent = find_indent(s, offset, 0, &off1);
+        int new_indent = max_int(0, indent + argval);
+        /* if line is empty, remove indentation,
+         * otherwise adjust it by argval columns.
+         */
+        if (eb_nextc(s->b, off1, &off2) == '\n')
+            new_indent = 0;
+        make_indent(s, offset, off1, 0, new_indent);
+    }
+}
+
+void do_indent_rigidly_to_tab_stop(EditState *s, int start, int end, int dir) {
+    int tw = s->b->tab_width > 0 ? s->b->tab_width : DEFAULT_TAB_WIDTH;
+    int indent = s->indent_width > 0 ? s->indent_width : tw;
+
+    do_indent_rigidly_by(s, start, end, indent * dir);
+}
+
 void do_tabulate(EditState *s, int argval)
 {
     int tw = s->b->tab_width > 0 ? s->b->tab_width : DEFAULT_TAB_WIDTH;
-    int indent = s->indent_size > 0 ? s->indent_size : tw;
+    int indent = s->indent_width > 0 ? s->indent_width : tw;
+    int offset = s->offset;
 
-    /* CG: should do smart complete, smart indent, insert tab */
 #ifndef CONFIG_TINY
-    if (s->region_style) {
-        do_indent_rigidly(s, s->b->mark, s->offset, indent);
-        return;
+    if (s->b->flags & BF_PREVIEW) {
+        EditState *e = find_window(s, KEY_LEFT, NULL);
+        if (e && (e->flags & WF_FILELIST)
+        &&  s->qe_state->active_window == s) {
+            s->qe_state->active_window = e;
+            return;
+        }
     }
 #endif
-    if (s->indent_tabs_mode) {
-        do_char(s, '\t', argval);
-    } else {
-        int offset = s->offset;
-        int offset0 = eb_goto_bol(s->b, offset);
-        int col = 0;
+    if (s->b->flags & BF_READONLY)
+        return;
 
-        while (offset0 < offset) {
-            char32_t c = eb_nextc(s->b, offset0, &offset0);
-            if (c == '\t') {
-                col += tw - col % tw;
-            } else {
-                col += qe_wcwidth(c);
-            }
-        }
-        if (argval < 1)
-            argval = 1;
-
-        s->offset += eb_insert_spaces(s->b, s->offset,
-                                      indent * argval - (col % indent));
+    if (s->region_style) {
+        do_indent_rigidly_by(s, s->b->mark, offset, indent * argval);
+        return;
     }
+    if (argval < 0) {
+        do_indent_rigidly_by(s, offset, offset, indent * argval);
+        return;
+    }
+
+    // TODO: should do smart complete, smart indent, insert tab
+    if (s->indent_tabs_mode) {
+        s->offset += eb_insert_char32_n(s->b, offset, '\t', argval);
+    } else {
+        int col = text_screen_width(s->b, eb_goto_bol(s->b, offset), offset, tw);
+        s->offset += eb_insert_spaces(s->b, offset, indent * argval - (col % indent));
+    }
+}
+
+static void do_untabulate(EditState *s) {
+    if (s->region_style) {
+        /* unindent the whole highlighted region */
+        do_indent_rigidly_to_tab_stop(s, s->b->mark, s->offset, -1);
+        return;
+    }
+    /* decrease indentation at s->offset */
+    do_backward_delete_tab(s, 0);
 }
 
 #ifndef CONFIG_TINY
@@ -3179,7 +3259,7 @@ void do_set_tab_width(EditState *s, int tab_width)
 void do_set_indent_width(EditState *s, int indent_width)
 {
     if (indent_width > 1)
-        s->indent_size = indent_width;
+        s->indent_width = indent_width;
 }
 
 void do_set_indent_tabs_mode(EditState *s, int val)
@@ -6854,7 +6934,7 @@ void switch_to_buffer(EditState *s, EditBuffer *b)
                 memset(s, 0, SAVED_DATA_SIZE);
                 mode = b->default_mode;
                 /* <default> default values */
-                s->indent_size = s->qe_state->default_tab_width;
+                s->indent_width = s->qe_state->default_tab_width;
                 s->default_style = QE_STYLE_DEFAULT;
                 s->wrap = mode ? mode->default_wrap : WRAP_AUTO;
             }
@@ -8088,16 +8168,16 @@ EditState *find_window(EditState *s, int key, EditState *def)
      * non regular window layouts
      */
     for (e = qs->first_window; e != NULL; e = e->next_window) {
-        if (e->flags & WF_MINIBUF)
+        if (e->flags & (WF_MINIBUF | WF_POPUP))
             continue;
-        if (e->y1 < s->y2 && e->y2 > s->y1) {
+        if (e->y1 <= s->y1 && e->y2 > s->y1) {
             /* horizontal overlap */
             if (key == KEY_RIGHT && e->x1 == s->x2)
                 return e;
             if (key == KEY_LEFT && e->x2 == s->x1)
                 return e;
         }
-        if (e->x1 < s->x2 && e->x2 > s->x1) {
+        if (e->x1 <= s->x1 && e->x2 > s->x1) {
             /* vertical overlap */
             if (key == KEY_UP && e->y2 == s->y1)
                 return e;
@@ -10728,11 +10808,14 @@ static const CmdDef basic_commands[] = {
     CMD2( "tabulate", "TAB",
           "Insert a TAB or spaces according to indent-tabs-mode",
           do_tabulate, ESi, "p")
+    CMD2( "untabulate", "S-TAB",
+          "Decrease indentation by one tab width",
+          do_untabulate, ES, "*")
     //CMD2( "space", "SPC", "Insert a space", do_space, ESi, "*" "P")
     CMD2( "quoted-insert", "C-q",
           "Read next input character and insert it",
           do_quoted_insert, ESi, "*" "p")
-    CMD2( "newline", "C-j, RET",
+    CMD2( "newline", "C-j, RET, S-RET",
           "Insert a newline, and move to left margin of the new line",
           do_newline, ES, "*")
     CMD2( "open-line", "C-o",
@@ -10817,7 +10900,7 @@ static const CmdDef basic_commands[] = {
     CMD2( "delete-char", "C-d, delete",
           "Delete the character at point",
           do_delete_char, ESi, "*" "P")
-    CMD2( "backward-delete-char", "DEL",
+    CMD2( "backward-delete-char", "DEL, S-DEL",
           "Delete the character before point",
           do_backspace, ESi, "*" "P")
     CMD0( "set-mark-command", "C-@",
