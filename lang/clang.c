@@ -817,7 +817,7 @@ void c_indent_line(EditState *s, int offset0)
         if (pos1 == len || cp->sbuf[0] == C_STYLE_PREPROCESS)
             continue;
         if (c_line_has_label(s, cp->buf, len, cp->sbuf)) {
-            pos1 = pos1 - s->qe_state->c_label_indent + s->indent_size;
+            pos1 = pos1 - s->qe_state->c_label_indent + s->indent_width;
         }
         /* scan the line from end to start */
         for (off = len; off-- > 0;) {
@@ -860,7 +860,7 @@ void c_indent_line(EditState *s, int offset0)
                     *q = '\0';
 
                     if (!eoi_found && strfind("if|for|while|do|switch|foreach", kbuf)) {
-                        pos = pos1 + s->indent_size;
+                        pos = pos1 + s->indent_width;
                         goto end_parse;
                     }
                     if (has_else == 0)
@@ -885,7 +885,7 @@ void c_indent_line(EditState *s, int offset0)
                             goto end_parse;
                         }
                         if (lpos == -1) {
-                            pos = pos1 + s->indent_size;
+                            pos = pos1 + s->indent_width;
                             eoi_found = 1;
                             goto end_parse;
                         } else {
@@ -949,7 +949,7 @@ void c_indent_line(EditState *s, int offset0)
                             /* start of instruction already found */
                             pos = lpos;
                             if (!eoi_found)
-                                pos += s->indent_size;
+                                pos += s->indent_width;
                             goto end_parse;
                         }
                         eoi_found = 1;
@@ -996,7 +996,7 @@ void c_indent_line(EditState *s, int offset0)
             /* start of instruction already found */
             pos = lpos;
             if (!eoi_found)
-                pos += s->indent_size;
+                pos += s->indent_width;
         }
     }
 
@@ -1029,18 +1029,18 @@ void c_indent_line(EditState *s, int offset0)
         if (qe_isalpha_(c)) {
             if (has_else == 1 && cp->buf[i] == 'i' && cp->buf[i + 1] == 'f' && !qe_isalnum_(cp->buf[i + 2])) {
                 /* unindent if after naked else */
-                pos -= s->indent_size;
+                pos -= s->indent_width;
                 break;
             }
             if (c_line_has_label(s, cp->buf + i, len - i, cp->sbuf + i)) {
-                pos -= s->indent_size + s->qe_state->c_label_indent;
+                pos -= s->indent_width + s->qe_state->c_label_indent;
                 break;
             }
             break;
         }
         /* NOTE: strings & comments are correctly ignored there */
         if (c == '}') {
-            pos -= s->indent_size;
+            pos -= s->indent_width;
             break;
         }
         if ((c == '&' || c == '|') && cp->buf[i + 1] == c) {
@@ -1050,22 +1050,22 @@ void c_indent_line(EditState *s, int offset0)
             for (j = i + 2; cp->buf[j] == ' '; j++)
                 continue;
             if (j == len) {
-                pos -= s->indent_size;
+                pos -= s->indent_width;
             } else {
                 pos -= j - i + 2;
             }
 #else
-            pos -= s->indent_size;
+            pos -= s->indent_width;
 #endif
             break;
         }
         if (c == '{') {
-            if (pos == s->indent_size && !eoi_found) {
+            if (pos == s->indent_width && !eoi_found) {
                 pos = 0;
                 break;
             }
             // XXX: need fix for GNU style
-            pos -= s->indent_size;
+            pos -= s->indent_width;
         }
         break;
     }
@@ -1115,13 +1115,16 @@ done:
 
 static void do_c_indent(EditState *s)
 {
+    QEmacsState *qs = s->qe_state;
+
     if (!s->region_style
     &&  eb_is_in_indentation(s->b, s->offset)
-    &&  s->qe_state->last_cmd_func != (CmdFunc)do_c_indent) {
+    &&  qs->last_cmd_func != (CmdFunc)do_tabulate) {
         c_indent_line(s, s->offset);
     } else {
         do_tabulate(s, 1);
     }
+    qs->this_cmd_func = (CmdFunc)do_tabulate;
 }
 
 static void do_c_electric_key(EditState *s, int key)
@@ -1292,8 +1295,8 @@ static void do_c_list_conditionals(EditState *s)
 
 /* C mode specific commands */
 static const CmdDef c_commands[] = {
-    CMD2( "c-indent-command", "TAB",
-          "Indent the current line",
+    CMD2( "c-indent-line-or-region", "TAB",
+          "Indent the current line or highlighted region",
           do_c_indent, ES, "*")
     CMD2( "c-backward-conditional", "M-[",
           "Move to the beginning of the previous #if preprocessing directive",

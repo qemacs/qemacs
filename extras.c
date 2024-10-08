@@ -22,8 +22,6 @@
  * THE SOFTWARE.
  */
 
-#include <time.h>
-
 #include "qe.h"
 #include "variables.h"
 
@@ -740,45 +738,13 @@ static void do_untabify_region(EditState *s)
     eb_untabify(s->b, s->b->mark, s->offset);
 }
 #endif
-static void do_indent_region(EditState *s, int start, int end)
+
+/*---------------- indentation ----------------*/
+
+static void do_indent_rigidly(EditState *s, int start, int end, int argval)
 {
-    int col_num, line1, line2;
-
-    /* deactivate region hilite */
-    s->region_style = 0;
-
-    /* Swap point and mark so mark <= point */
-    if (end < start) {
-        int tmp = start;
-        end = start;
-        start = tmp;
-    }
-    /* We do it with lines to avoid offset variations during indenting */
-    eb_get_pos(s->b, &line1, &col_num, start);
-    eb_get_pos(s->b, &line2, &col_num, end);
-
-    if (col_num == 0)
-        line2--;
-
-    /* Iterate over all lines inside block */
-    s->b->mark = eb_goto_bol(s->b, start);
-    for (; line1 <= line2; line1++) {
-        if (s->mode->indent_func) {
-            (s->mode->indent_func)(s, eb_goto_pos(s->b, line1, 0));
-        } else {
-            s->offset = eb_goto_pos(s->b, line1, 0);
-            do_tabulate(s, 1);
-        }
-    }
-    s->offset = eb_goto_eol(s->b, s->offset);
-}
-
-void do_indent_rigidly(EditState *s, int start, int end, int argval)
-{
-    int col_num, line1, line2;
-
     if (argval == NO_ARG) {
-        // enter interactive mode
+        /* enter interactive mode */
         QEmacsState *qs = s->qe_state;
         if (!qs->first_transient_key) {
             s->region_style = QE_STYLE_REGION_HILITE;
@@ -788,54 +754,47 @@ void do_indent_rigidly(EditState *s, int start, int end, int argval)
             qe_register_transient_binding(qs, "indent-rigidly-left-to-tab-stop", "S-left, S-TAB");
             qe_register_transient_binding(qs, "indent-rigidly-right-to-tab-stop", "S-right, TAB");
         }
+    } else {
+        do_indent_rigidly_by(s, start, end, argval);
+    }
+}
+
+static void do_indent_region(EditState *s, int start, int end, int argval)
+{
+    int col_num, line, line1, line2;
+
+    /* deactivate region hilite */
+    s->region_style = 0;
+
+    if (argval < 0 || !s->mode->indent_func
+    ||  s->qe_state->last_cmd_func == (CmdFunc)do_indent_region) {
+        do_indent_rigidly_to_tab_stop(s, start, end, argval);
         return;
     }
 
     /* Swap point and mark so mark <= point */
     if (end < start) {
         int tmp = start;
-        end = start;
-        start = tmp;
+        start = end;
+        end = tmp;
     }
     /* We do it with lines to avoid offset variations during indenting */
     eb_get_pos(s->b, &line1, &col_num, start);
-    eb_get_pos(s->b, &line2, &col_num, end);
-
-    if (col_num == 0)
-        line2--;
-
-    /* Iterate over all lines inside block */
-    //s->b->mark = eb_goto_bol(s->b, start);
-    for (; line1 <= line2; line1++) {
-        int offset = eb_goto_pos(s->b, line1, 0);
-        int off1, off2;
-        int indent = find_indent(s, offset, 0, &off1);
-        int new_indent = max_int(0, indent + argval);
-        /* if line is empty, remove indentation,
-         * otherwise increase it by argval columns.
-         */
-        if (eb_nextc(s->b, off1, &off2) == '\n')
-            new_indent = 0;
-        make_indent(s, offset, off1, 0, new_indent);
-    }
-    //s->offset = eb_goto_eol(s->b, s->offset);
-}
-
-static void do_indent_rigidly_to_tab_stop(EditState *s, int start, int end, int dir) {
-    int tw = s->b->tab_width > 0 ? s->b->tab_width : DEFAULT_TAB_WIDTH;
-    int indent = s->indent_size > 0 ? s->indent_size : tw;
-
-    do_indent_rigidly(s, start, end, indent * dir);
-}
-
-static void do_untabulate(EditState *s) {
-    if (s->region_style) {
-        do_indent_rigidly_to_tab_stop(s, s->b->mark, s->offset, -1);
+    if (start == end) {
+        line2 = line1;
     } else {
-        // FIXME: should decrease indentation at s->offset
-        int start = eb_goto_bol(s->b, s->offset);
-        int end = eb_goto_eol(s->b, s->offset);
-        do_indent_rigidly_to_tab_stop(s, start, end, -1);
+        if (col_num > 0)
+            line1++;
+        eb_get_pos(s->b, &line2, &col_num, end);
+        if (col_num == 0)
+            line2--;
+    }
+    /* Iterate over all lines inside block */
+    for (line = line1; line <= line2; line++) {
+        int offset = eb_goto_pos(s->b, line, 0);
+        int off1;
+        if (eb_nextc(s->b, offset, &off1) != '\n')
+            (s->mode->indent_func)(s, offset);
     }
 }
 
@@ -1941,7 +1900,7 @@ static void do_describe_window(EditState *s, int argval)
               s->wrap == WRAP_LINE ? "LINE" :
               s->wrap == WRAP_TERM ? "TERM" :
               s->wrap == WRAP_WORD ? "WORD" : "???");
-    eb_printf(b1, "%*s: %d\n", w, "indent_size", s->indent_size);
+    eb_printf(b1, "%*s: %d\n", w, "indent_width", s->indent_width);
     eb_printf(b1, "%*s: %d\n", w, "indent_tabs_mode", s->indent_tabs_mode);
     eb_printf(b1, "%*s: %d\n", w, "interactive", s->interactive);
     eb_printf(b1, "%*s: %d\n", w, "force_highlight", s->force_highlight);
@@ -3158,29 +3117,32 @@ static const CmdDef extra_commands[] = {
           do_untabify, ESii, "*" "ze")
 
     CMD2( "indent-region", "M-C-\\",
-          "Indent each nonblank line in the region",
-          do_indent_region, ESii, "*" "md")
+          "Indent each nonblank line that starts inside the region",
+          do_indent_region, ESiii, "*" "mdp")
+    CMD2( "unindent-region", "M-C-|",
+          "Unindent each nonblank line that starts inside the region",
+          do_indent_region, ESiii, "*" "mdq")
     CMD2( "indent-buffer", "",
           "Indent each nonblank line in the buffer",
-          do_indent_region, ESii, "*" "ze")
+          do_indent_region, ESiii, "*" "zep")
+    CMD2( "unindent-buffer", "",
+          "Unindent each nonblank line in the buffer",
+          do_indent_region, ESiii, "*" "zeq")
     CMD2( "indent-rigidly", "C-x TAB",
           "Indent the region interactively",
           do_indent_rigidly, ESiii, "*" "md" "P")
     CMD3( "indent-rigidly-left", "",
           "Decrease the region indentation",
-          do_indent_rigidly, ESiii, "*" "md" "v", -1)
+          do_indent_rigidly_by, ESiii, "*" "md" "v", -1)
     CMD3( "indent-rigidly-right", "",
           "Increase the region indentation",
-          do_indent_rigidly, ESiii, "*" "md" "v", +1)
+          do_indent_rigidly_by, ESiii, "*" "md" "v", +1)
     CMD3( "indent-rigidly-left-to-tab-stop", "",
-          "Decrease the region indentation by one tab",
+          "Decrease the region indentation by one tab width",
           do_indent_rigidly_to_tab_stop, ESiii, "*" "md" "v", -1)
     CMD3( "indent-rigidly-right-to-tab-stop", "",
-          "Increase the region indentation by one tab",
+          "Increase the region indentation by one tab width",
           do_indent_rigidly_to_tab_stop, ESiii, "*" "md" "v", +1)
-    CMD2( "untabulate", "S-TAB",
-          "Decrease indentation",
-          do_untabulate, ES, "*")
 
     CMD2( "show-date-and-time", "C-x t",
           "Show current date and time",

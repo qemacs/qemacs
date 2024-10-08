@@ -689,6 +689,14 @@ static int tty_get_clipboard(QEditScreen *s, int ch)
     }
 }
 
+static int tty_request_clipboard(QEditScreen *s)
+{
+    eb_trace_bytes("tty-request-clipboard", -1, EB_TRACE_COMMAND);
+    TTY_FPUTS("\033]52;;?\007", s->STDOUT);
+    fflush(s->STDOUT);
+    return 1;
+}
+
 static int tty_set_clipboard(QEditScreen *s)
 {
     // TODO: make this selectable
@@ -715,6 +723,7 @@ static int tty_set_clipboard(QEditScreen *s)
             qe_free(&contents);
             return -1;
         }
+        eb_trace_bytes("tty-set-clipboard", -1, EB_TRACE_COMMAND);
         qe_free(&ts->clipboard);
         ts->clipboard = contents;
         ts->clipboard_size = size;
@@ -1010,8 +1019,7 @@ static void tty_read_handler(void *opaque)
             eb_trace_bytes("tty-focus-in", -1, EB_TRACE_COMMAND);
             if (tty_clipboard) {
                 /* request clipboard contents into kill buffer if changed */
-                TTY_FPUTS("\033]52;;?\007", s->STDOUT);
-                fflush(s->STDOUT);
+                tty_request_clipboard(s);
             }
             break;
         case 'O': // FocusOut

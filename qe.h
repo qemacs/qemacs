@@ -687,17 +687,17 @@ struct EditState {
     int cur_rtl;     /* TRUE if the cursor on over RTL chars */
     enum WrapType wrap;
     /* XXX: these should be buffer specific rather than window specific */
-    int wrap_cols;   /* number of columns in terminal emulator */
-    int overwrite;   /* insert/overtype mode */
-    int indent_size;    /* amount of whitespace for block indentation */
-    int indent_tabs_mode; /* if true, use tabs to indent */
-    int interactive; /* true if interaction is done instead of editing
-                        (e.g. for shell mode or HTML) */
-    int force_highlight;  /* if true, force showing of cursor even if
-                             window not focused (list mode only) */
+    int wrap_cols;          /* number of columns in terminal emulator */
+    int overwrite;          /* insert/overtype mode */
+    int indent_width;       /* amount of whitespace for block indentation */
+    int indent_tabs_mode;   /* if true, use tabs to indent */
+    int interactive;        /* true if interaction is done instead of editing
+                               (e.g. for shell mode or HTML) */
+    int force_highlight;    /* if true, force showing of cursor even if
+                               window not focused (list mode only) */
     int mouse_force_highlight; /* if true, mouse can force highlight
                                   (list mode only) */
-    int up_down_last_x; /* last x offset for vertical movement */
+    int up_down_last_x;     /* last x offset for vertical movement */
 
     /* low level colorization function */
     ModeDef *colorize_mode;
@@ -1525,6 +1525,8 @@ void do_newline(EditState *s);
 void do_open_line(EditState *s);
 void do_backspace(EditState *s, int argval);
 void do_delete_char(EditState *s, int argval);
+void do_indent_rigidly_by(EditState *s, int start, int end, int argval);
+void do_indent_rigidly_to_tab_stop(EditState *s, int start, int end, int dir);
 void do_tabulate(EditState *s, int argval);
 EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base);
 void do_append_next_kill(EditState *s);
@@ -1779,7 +1781,6 @@ void delete_equivalent(struct Equivalent *ep);
 void do_compare_windows(EditState *s, int argval);
 void do_compare_files(EditState *s, const char *filename, int bflags);
 void do_delete_horizontal_space(EditState *s, int mode);
-void do_indent_rigidly(EditState *s, int start, int end, int argval);
 void do_show_date_and_time(EditState *s, int argval);
 
 enum {
