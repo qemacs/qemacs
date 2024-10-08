@@ -63,7 +63,7 @@ static int single_window;
 int force_tty;
 int tty_mk = 2;
 int tty_mouse = 1;
-int tty_clipboard = 0;
+int tty_clipboard = 1;
 int disable_crc;
 #ifdef CONFIG_SESSION
 int use_session_file;
