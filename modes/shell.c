@@ -281,6 +281,8 @@ static int run_process(const char *cmd, int *fd_ptr, int *pid_ptr,
         setenv("LINES", lines_string, 1);
         setenv("COLUMNS", columns_string, 1);
         setenv("TERM", "xterm-256color", 1);
+        setenv("TERM_PROGRAM", "qemacs", 1);
+        setenv("TERM_PROGRAM_VERSION", str_version, 1);
         unsetenv("PAGER");
         vp = getenv("QELEVEL");
         snprintf(qelevel, sizeof qelevel, "%d", 1 + (vp ? atoi(vp) : 0));

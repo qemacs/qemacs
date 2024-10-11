@@ -120,6 +120,28 @@ enum TermCode {
     TERM_LINUX,
     TERM_CYGWIN,
     TERM_TW100,
+    TERM_SCREEN,
+    TERM_QEMACS,
+    TERM_ITERM,
+    TERM_ITERM2,
+    TERM_WEZTERM,
+    TERM_APPLE_TERMINAL,
+};
+
+static const char * const term_code_name[] = {
+    "UNKNOWN",
+    "ANSI",
+    "VT100",
+    "XTERM",
+    "LINUX",
+    "CYGWIN",
+    "TW100",
+    "SCREEN",
+    "QEMACS",
+    "ITERM",
+    "ITERM2",
+    "WEZTERM",
+    "APPLE_TERMINAL",
 };
 
 typedef struct TTYState {
@@ -140,7 +162,8 @@ typedef struct TTYState {
     int interm;
     int utf8_index;
     unsigned char buf[8];
-    char *term_name;
+    const char *term_name;
+    const char *term_program;
     enum TermCode term_code;
     int term_flags;
 #define KBS_CONTROL_H           0x01
@@ -196,15 +219,15 @@ static void tty_term_set_raw(QEditScreen *s) {
                 "\033[39;49m"       /* orig_pair */
                 "\033[?1h\033="     /* keypad_xmit */
                );
-    if (tty_mk) {
+    if (tty_mk > 0) {
         /* modifyOtherKeys: report shift states */
         TTY_FPRINTF(s->STDOUT, "\033[>4;%dm", tty_mk);
     }
-    if (tty_mouse) {
+    if (tty_mouse > 0) {
         /* enable mouse reporting using SGR */
         TTY_FPRINTF(s->STDOUT, "\033[?1002;1006h");
     }
-    if (tty_clipboard) {
+    if (tty_clipboard > 0) {
         /* enable focus reporting */
         TTY_FPRINTF(s->STDOUT, "\033[?1004h");
     }
@@ -234,15 +257,15 @@ static void tty_term_set_cooked(QEditScreen *s) {
                 "\033[?25h"         /* show cursor */
                 "\r\033[m\033[K"    /* return erase eol */
                 );
-    if (tty_mk) {
+    if (tty_mk > 0) {
         /* modifyOtherKeys: report shift states */
         TTY_FPRINTF(s->STDOUT, "\033[>4m");
     }
-    if (tty_mouse) {
+    if (tty_mouse > 0) {
         /* disable mouse reporting using SGR */
         TTY_FPRINTF(s->STDOUT, "\033[?1002;1006l");
     }
-    if (tty_clipboard) {
+    if (tty_clipboard > 0) {
         /* disable focus reporting */
         TTY_FPRINTF(s->STDOUT, "\033[?1004l");
     }
@@ -254,6 +277,11 @@ static void tty_term_set_cooked(QEditScreen *s) {
 static int tty_dpy_probe(void)
 {
     return 1;
+}
+
+static const char *getenv1(const char *name) {
+    const char *p = getenv(name);
+    return p ? p : "";
 }
 
 static int tty_dpy_init(QEditScreen *s,
@@ -282,6 +310,7 @@ static int tty_dpy_init(QEditScreen *s,
     ts->term_fg_colors_count = 16;
     ts->term_bg_colors_count = 16;
 
+    ts->term_program = getenv("TERM_PROGRAM");
     ts->term_name = getenv("TERM");
     if (ts->term_name) {
         /* linux and xterm -> kbs=\177
@@ -295,7 +324,7 @@ static int tty_dpy_init(QEditScreen *s,
             ts->term_code = TERM_VT100;
             ts->term_flags |= KBS_CONTROL_H;
         } else
-        if (strstart(ts->term_name, "xterm", NULL)) {
+        if (strstart(ts->term_name, "xterm", NULL) || getenv("XTERM_VERSION")) {
             ts->term_code = TERM_XTERM;
         } else
         if (strstart(ts->term_name, "linux", NULL)) {
@@ -310,15 +339,79 @@ static int tty_dpy_init(QEditScreen *s,
             ts->term_code = TERM_TW100;
             ts->term_flags |= KBS_CONTROL_H |
                               USE_BOLD_AS_BRIGHT_FG | USE_BLINK_AS_BRIGHT_BG;
+        } else
+        if (strstart(ts->term_name, "screen", NULL)) {
+            ts->term_code = TERM_SCREEN;
         }
     }
-    if (strstr(ts->term_name, "true") || strstr(ts->term_name, "24")) {
-        ts->term_flags |= USE_TRUE_COLORS | USE_256_COLORS;
+
+    /* Use alternate environment variables */
+    // OSTYPE=darwin23
+    // TERM_PROGRAM=Apple_Terminal / TERM_PROGRAM_VERSION=453
+    // TERM_PROGRAM=iTerm.app / TERM_PROGRAM_VERSION=3.5.5
+    //    LC_TERMINAL=iTerm2 / LC_TERMINAL_VERSION=3.5.5
+    // XTERM_LOCALE=C / XTERM_VERSION='XTerm(378)'
+    // TERM_PROGRAM=WezTerm / TERM_PROGRAM_VERSION=20240203-110809-5046fc22
+    // TERM_PROGRAM=qemacs / TERM_PROGRAM_VERSION=6.3.2
+
+    if (ts->term_program) {
+        /* This mostly works for local use, remote connections typically
+         * do not set the TERM_PROGRAM variable.
+         */
+        // TODO: should query terminal capabilities
+        if (strequal(ts->term_program, "iTerm.app")) {
+            ts->term_code = TERM_ITERM;
+            if (strequal(getenv1("LC_TERMINAL"), "iTerm2"))
+                ts->term_code = TERM_ITERM2;
+        } else
+        if (strequal(ts->term_program, "WezTerm")) {
+            ts->term_code = TERM_WEZTERM;
+        } else
+        if (strequal(ts->term_program, "qemacs")) {
+            ts->term_code = TERM_QEMACS;
+        } else
+        if (strequal(ts->term_program, "Apple_Terminal")) {
+            ts->term_code = TERM_APPLE_TERMINAL;
+        }
     }
-    if (strstr(ts->term_name, "256")) {
-        ts->term_flags |= USE_256_COLORS;
+    switch (ts->term_code) {
+    case TERM_XTERM:
+    case TERM_ITERM:
+    case TERM_ITERM2:
+    case TERM_WEZTERM:
+        if (tty_mk < 0)
+            tty_mk = 2;
+        if (tty_mouse < 0)
+            tty_mouse = 1;
+        if (tty_clipboard < 0)
+            tty_clipboard = 1;
+        break;
+    case TERM_APPLE_TERMINAL:
+        if (tty_mouse < 0)
+            tty_mouse = 1;
+        break;
+    case TERM_QEMACS:
+    case TERM_SCREEN:
+        if (tty_mk < 0)
+            tty_mk = 0;
+        if (tty_mouse < 0)
+            tty_mouse = 0;
+        if (tty_clipboard < 0)
+            tty_clipboard = 0;
+        break;
+    default:
+        break;
     }
-    if ((p = getenv("TERM_PROGRAM")) && strequal(p, "iTerm.app")) {
+
+    if (ts->term_name) {
+        if (strstr(ts->term_name, "true") || strstr(ts->term_name, "24")) {
+            ts->term_flags |= USE_TRUE_COLORS | USE_256_COLORS;
+        }
+        if (strstr(ts->term_name, "256")) {
+            ts->term_flags |= USE_256_COLORS;
+        }
+    }
+    if (ts->term_code == TERM_ITERM || ts->term_code == TERM_ITERM2) {
         /* iTerm and iTerm2 support true colors */
         ts->term_flags |= USE_TRUE_COLORS | USE_256_COLORS;
     }
@@ -1017,7 +1110,7 @@ static void tty_read_handler(void *opaque)
             ts->input_state = IS_NORM;
             ts->has_meta = 0;
             eb_trace_bytes("tty-focus-in", -1, EB_TRACE_COMMAND);
-            if (tty_clipboard) {
+            if (tty_clipboard > 0) {
                 /* request clipboard contents into kill buffer if changed */
                 tty_request_clipboard(s);
             }
@@ -1026,7 +1119,7 @@ static void tty_read_handler(void *opaque)
             ts->input_state = IS_NORM;
             ts->has_meta = 0;
             eb_trace_bytes("tty-focus-out", -1, EB_TRACE_COMMAND);
-            if (tty_clipboard) {
+            if (tty_clipboard > 0) {
                 /* push last kill to clipboard if new */
                 tty_set_clipboard(s);
             }
@@ -1152,7 +1245,7 @@ static void tty_read_handler(void *opaque)
             eb_trace_bytes(buf1, -1, EB_TRACE_COMMAND);
         }
         if (n1 == 52) {
-            if (tty_clipboard) {
+            if (tty_clipboard > 0) {
                 tty_get_clipboard(s, ch);
             }
         }
@@ -1317,35 +1410,9 @@ static void comb_cache_clean(TTYState *ts, const TTYChar *screen, int len) {
     }
 }
 
-static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
-    TTYState *ts = s->priv_data;
+static void comb_cache_describe(QEditScreen *s, EditBuffer *b, TTYState *ts) {
     char32_t *ip;
     unsigned int i;
-    int w = 16;
-
-    eb_printf(b, "Device Description\n\n");
-
-    eb_printf(b, "%*s: %s\n", w, "term_name", ts->term_name);
-    eb_printf(b, "%*s: %d  %s\n", w, "term_code", ts->term_code,
-              ts->term_code == TERM_UNKNOWN ? "UNKNOWN" :
-              ts->term_code == TERM_ANSI ? "ANSI" :
-              ts->term_code == TERM_VT100 ? "VT100" :
-              ts->term_code == TERM_XTERM ? "XTERM" :
-              ts->term_code == TERM_LINUX ? "LINUX" :
-              ts->term_code == TERM_CYGWIN ? "CYGWIN" :
-              ts->term_code == TERM_TW100 ? "TW100" :
-              "");
-    eb_printf(b, "%*s: %#x %s%s%s%s%s%s\n", w, "term_flags", ts->term_flags,
-              ts->term_flags & KBS_CONTROL_H ? " KBS_CONTROL_H" : "",
-              ts->term_flags & USE_ERASE_END_OF_LINE ? " USE_ERASE_END_OF_LINE" : "",
-              ts->term_flags & USE_BOLD_AS_BRIGHT_FG ? " USE_BOLD_AS_BRIGHT_FG" : "",
-              ts->term_flags & USE_BLINK_AS_BRIGHT_BG ? " USE_BLINK_AS_BRIGHT_BG" : "",
-              ts->term_flags & USE_256_COLORS ? " USE_256_COLORS" : "",
-              ts->term_flags & USE_TRUE_COLORS ? " USE_TRUE_COLORS" : "");
-    eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "terminal colors",
-              ts->term_fg_colors_count, ts->term_bg_colors_count);
-    eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "virtual tty colors",
-              ts->tty_fg_colors_count, ts->tty_bg_colors_count);
 
     eb_printf(b, "\nUnicode combination cache:\n\n");
 
@@ -1366,7 +1433,7 @@ static void comb_cache_describe(QEditScreen *s, EditBuffer *b) {
 #else
 #define comb_cache_add(s, p, n)  TTY_CHAR_BAD
 #define comb_cache_clean(s, p, n)
-#define comb_cache_describe(s, b)
+#define comb_cache_describe(s, b, ts)
 #endif
 
 static void tty_dpy_draw_text(QEditScreen *s, QEFont *font,
@@ -1991,7 +2058,31 @@ static int tty_dpy_draw_picture(QEditScreen *s,
 
 static void tty_dpy_describe(QEditScreen *s, EditBuffer *b)
 {
-    comb_cache_describe(s, b);
+    TTYState *ts = s->priv_data;
+    int w = 16;
+
+    eb_printf(b, "Device Description\n\n");
+
+    if (ts->term_name)
+        eb_printf(b, "%*s: %s\n", w, "term_name", ts->term_name);
+    eb_printf(b, "%*s: %d  %s\n", w, "term_code", ts->term_code,
+              term_code_name[ts->term_code]);
+    eb_printf(b, "%*s: %d\n", w, "tty_mk", tty_mk);
+    eb_printf(b, "%*s: %d\n", w, "tty_mouse", tty_mouse);
+    eb_printf(b, "%*s: %d\n", w, "tty_clipboard", tty_clipboard);
+    eb_printf(b, "%*s: %#x %s%s%s%s%s%s\n", w, "term_flags", ts->term_flags,
+              ts->term_flags & KBS_CONTROL_H ? " KBS_CONTROL_H" : "",
+              ts->term_flags & USE_ERASE_END_OF_LINE ? " USE_ERASE_END_OF_LINE" : "",
+              ts->term_flags & USE_BOLD_AS_BRIGHT_FG ? " USE_BOLD_AS_BRIGHT_FG" : "",
+              ts->term_flags & USE_BLINK_AS_BRIGHT_BG ? " USE_BLINK_AS_BRIGHT_BG" : "",
+              ts->term_flags & USE_256_COLORS ? " USE_256_COLORS" : "",
+              ts->term_flags & USE_TRUE_COLORS ? " USE_TRUE_COLORS" : "");
+    eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "terminal colors",
+              ts->term_fg_colors_count, ts->term_bg_colors_count);
+    eb_printf(b, "%*s: fg:%d, bg:%d\n", w, "virtual tty colors",
+              ts->tty_fg_colors_count, ts->tty_bg_colors_count);
+
+    comb_cache_describe(s, b, ts);
 }
 
 static void tty_dpy_sound_bell(QEditScreen *s)

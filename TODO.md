@@ -4,6 +4,8 @@
 
 ## Current work
 
+* prevent mouse focus to window if searching
+* prevent mouse focus to window if minibuf active
 * get clipboard contents at startup or only at yank time?
 * only get tty clipboard contents on yank
 * only set tty clipboard contents if kill buffer changed during focus time
