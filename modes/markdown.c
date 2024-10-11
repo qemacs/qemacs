@@ -852,7 +852,7 @@ static const CmdDef mkd_commands[] = {
     CMD3( "mkd-insert-heading", "", /* indirect through M-RET */
           "",
           do_mkd_insert_heading, ESi, "*" "v", 0)
-    CMD3( "mkd-insert-heading-respect-content", "C-j", /* actually C-RET */
+    CMD3( "mkd-insert-heading-respect-content", "C-j, C-RET", /* actually C-RET */
           "",
           do_mkd_insert_heading, ESi, "*" "v", 2)
     CMD3( "mkd-do-demote", "",

@@ -6547,6 +6547,7 @@ static void qe_key_process(int key)
     char buf1[128];
     buf_t outbuf, *out;
     int len;
+    unsigned int key_redirect = KEY_NONE;
 
     if (qs->defining_macro && !qs->executing_macro) {
         macro_add_key(key);
@@ -6611,6 +6612,16 @@ static void qe_key_process(int key)
                 if (kd)
                     goto exec_cmd;
             }
+            if (key == KEY_SHIFT(KEY_DEL)
+            ||  key == KEY_SHIFT(KEY_RET)
+            ||  key == KEY_CONTROL(KEY_RET)) {
+                /* redirect to unmodified version */
+                // TODO: need more redirections
+                key_redirect = key & 0xff;
+                kd = qe_find_current_binding(&key_redirect, 1, s->mode, 1);
+                if (kd)
+                    goto exec_cmd;
+            }
         }
         out = buf_init(&outbuf, buf1, sizeof(buf1));
         buf_puts(out, "No command on ");
@@ -6631,6 +6642,10 @@ static void qe_key_process(int key)
         if (c->describe_key) {
             out = buf_init(&outbuf, buf1, sizeof(buf1));
             buf_put_keys(out, c->keys, c->nb_keys);
+            if (key_redirect != KEY_NONE) {
+                buf_puts(out, " redirected to ");
+                buf_put_key(out, key_redirect);
+            }
             if (c->describe_key > 1) {
                 int save_offset = s->b->offset;
                 s->b->offset = s->offset;
@@ -10815,7 +10830,7 @@ static const CmdDef basic_commands[] = {
     CMD2( "quoted-insert", "C-q",
           "Read next input character and insert it",
           do_quoted_insert, ESi, "*" "p")
-    CMD2( "newline", "C-j, RET, S-RET",
+    CMD2( "newline", "RET, LF",
           "Insert a newline, and move to left margin of the new line",
           do_newline, ES, "*")
     CMD2( "open-line", "C-o",
@@ -10900,7 +10915,7 @@ static const CmdDef basic_commands[] = {
     CMD2( "delete-char", "C-d, delete",
           "Delete the character at point",
           do_delete_char, ESi, "*" "P")
-    CMD2( "backward-delete-char", "DEL, S-DEL",
+    CMD2( "backward-delete-char", "DEL",
           "Delete the character before point",
           do_backspace, ESi, "*" "P")
     CMD0( "set-mark-command", "C-@",
