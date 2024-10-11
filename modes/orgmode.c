@@ -718,7 +718,7 @@ static const CmdDef org_commands[] = {
     CMD3( "org-insert-todo-heading", "", /* actually M-S-RET and C-c C-x M */
           "",
           do_org_insert_heading, ESi, "*" "v", 1)
-    CMD3( "org-insert-heading-respect-content", "C-j", /* actually C-RET */
+    CMD3( "org-insert-heading-respect-content", "C-j, C-RET", /* actually C-RET */
           "",
           do_org_insert_heading, ESi, "*" "v", 2)
     CMD3( "org-insert-todo-heading-respect-content", "", /* actually C-S-RET */
