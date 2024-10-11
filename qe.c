@@ -61,9 +61,9 @@ static int screen_height = 0;
 static int no_init_file;
 static int single_window;
 int force_tty;
-int tty_mk = 2;
-int tty_mouse = 1;
-int tty_clipboard = 1;
+int tty_mk = -1;
+int tty_mouse = -1;
+int tty_clipboard = -1;
 int disable_crc;
 #ifdef CONFIG_SESSION
 int use_session_file;
@@ -10782,9 +10782,9 @@ static CmdLineOptionDef cmd_options[] = {
     CMD_LINE_INT("mk", "modify-other-keys", "VAL", &tty_mk,
                  "set the modifyOtherKeys tty configuration (0,1,2)"),
     CMD_LINE_INT("", "clipboard", "VAL", &tty_clipboard,
-                 "set the tty clipboard support level (0,1,2)"),
+                 "set the tty clipboard support level (0,1)"),
     CMD_LINE_INT("m", "mouse", "VAL", &tty_mouse,
-                 "set the mouse emulation mode (0,1,2)"),
+                 "set the mouse emulation mode (0,1)"),
     CMD_LINE_LINK()
 };
 
