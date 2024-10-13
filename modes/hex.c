@@ -32,10 +32,12 @@ enum {
 
 static ModeDef hex_mode;
 
-static int to_disp(int c)
+static int bin_to_disp(int c)
 {
-#if 1
+#if 0
     /* Allow characters in range 160-255 to show as graphics */
+    // XXX: This causes alignment issues on screen remove sessions
+    //      eg: C-x C-d C-s ligatures
     if ((c & 127) < ' ' || c == 127)
         c = '.';
 #else
@@ -110,7 +112,7 @@ static int hex_display_line(EditState *s, DisplayState *ds, int offset)
                 offset1 = offset2 = -1;
             }
         }
-        display_char(ds, offset1, offset2, to_disp(b));
+        display_char(ds, offset1, offset2, bin_to_disp(b));
     }
     display_eol(ds, -1, -1);
 
