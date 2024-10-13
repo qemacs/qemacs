@@ -1118,8 +1118,9 @@ static void do_c_indent(EditState *s)
     QEmacsState *qs = s->qe_state;
 
     if (!s->region_style
-    &&  eb_is_in_indentation(s->b, s->offset)
-    &&  qs->last_cmd_func != (CmdFunc)do_tabulate) {
+    &&  !(s->b->flags & BF_PREVIEW)
+    &&  qs->last_cmd_func != (CmdFunc)do_tabulate
+    &&  eb_is_in_indentation(s->b, s->offset)) {
         c_indent_line(s, s->offset);
     } else {
         do_tabulate(s, 1);
