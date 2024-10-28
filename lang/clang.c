@@ -43,12 +43,21 @@ static const char c_keywords[] = {
     "if|inline|register|restrict|return|sizeof|static|struct|switch|"
     "typedef|union|volatile|while|"
     /* C99 and C11 keywords */
-    "_Alignas|_Alignof|_Atomic|_Generic|_Noreturn|_Static_assert|_Thread_local|"
+    "_Alignas|_Alignof|_Atomic|_Generic|_Noreturn|_Pragma|"
+    "_Static_assert|_Thread_local|"
+    /* C2x keywords */
+    "alignas|alignof|static_assert|thread_local|"
+    "constexpr|false|nullptr|true|typeof|typeof_unqual"
 };
 
 static const char c_types[] = {
-    "char|double|float|int|long|unsigned|short|signed|void|va_list|"
-    "_Bool|_Complex|_Imaginary|FILE|"
+    "char|double|float|int|long|unsigned|short|signed|void|"
+    /* common types */
+    "FILE|va_list|jmp_buf|"
+    /* C99 and C11 types */
+    "_Bool|_Complex|_Imaginary|bool|complex|imaginary|"
+    /* C2x types */
+    "_BitInt|_Decimal128|_Decimal32|_Decimal64|"
 };
 
 static const char c_extensions[] = {
