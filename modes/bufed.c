@@ -562,19 +562,19 @@ static const CmdDef bufed_commands[] = {
     CMD1( "bufed-unsorted", "u",
           "Sort the buffer list by creation time",
           bufed_set_sort, 0)
-    CMD1( "bufed-sort-name", "b, B",
+    CMD1( "bufed-sort-name", "b",
           "Sort the buffer list by buffer name",
           bufed_set_sort, BUFED_SORT_NAME)
-    CMD1( "bufed-sort-filename", "f, F",
+    CMD1( "bufed-sort-filename", "f",
           "Sort the buffer list by buffer file name",
           bufed_set_sort, BUFED_SORT_FILENAME)
-    CMD1( "bufed-sort-size", "z, Z",
+    CMD1( "bufed-sort-size", "z",
           "Sort the buffer list by buffer size",
           bufed_set_sort, BUFED_SORT_SIZE)
-    CMD1( "bufed-sort-time", "t, T",
+    CMD1( "bufed-sort-time", "t",
           "Sort the buffer list by buffer modification time",
           bufed_set_sort, BUFED_SORT_TIME)
-    CMD1( "bufed-sort-modified", "m, M",
+    CMD1( "bufed-sort-modified", "m",
           "Sort the buffer list with modified buffers first",
           bufed_set_sort, BUFED_SORT_MODIFIED)
     CMD2( "bufed-summary", "?",
