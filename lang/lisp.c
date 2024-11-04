@@ -506,7 +506,7 @@ static ModeDef racket_mode = {
 
 static ModeDef clojure_mode = {
     .name = "Clojure",
-    .extensions = "clj",
+    .extensions = "clj|cljc",
     .keywords = clojure_keywords,
     .types = lisp_types,
     .colorize_func = lisp_colorize_line,
