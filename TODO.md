@@ -4,6 +4,10 @@
 
 ## Current work
 
+* extra modes for drujensen/fib repo:
+    es(escript), janet, k(K), p6, pony, ps1, pyx(cython), raku(rakudo), tcl, vb, zig
+    detect flavors: ldc2?, bash, powershell, pypy, qb64, guile, sbcl
+* drag out of window should generate **autorepeat** scrolling requests
 * prevent mouse focus to window if searching
 * prevent mouse focus to window if minibuf active
 * get clipboard contents at startup or only at yank time?
@@ -429,7 +433,7 @@ insert_window_left()  deletes some left-most windows
   * `compare-windows` should resync from the end of line.
   * `elastic-tabs`
   * `show-matching-delimiters`
-  * blink-and-insert on `) } ] >`
+  * blink-and-insert on `) } ] >` or use different matching colors
   * `set-gosmacs-bindings` -> `set_emulation("gosmacs")`
   * `auto-fill-mode`
   * `auto-revert-mode`, `global-auto-revert-mode`, `auto-revert-tail-mode`
