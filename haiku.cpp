@@ -362,12 +362,13 @@ extern int32 atomic_get_and_set(int32 *p, int32 v);
 static void haiku_handle_event(void *opaque)
 {
     QEditScreen *s = (QEditScreen *)opaque;
+    QEmacsState *qs = &qe_state;
     WindowState *ctx = (WindowState *)s->priv_data;
     bigtime_t timestamp_ms;
     BMessage *event;
     //fprintf(stderr, "%s()\n", __FUNCTION__);
     int key_state, key = -1;
-    QEEvent ev1, *ev = &ev1;
+    QEEvent ev1, *ev = qe_event_clear(&ev1);
 
     if (read(ctx->events_rd, &event, sizeof(event)) < (signed)sizeof(event))
         return;
@@ -376,23 +377,20 @@ static void haiku_handle_event(void *opaque)
     case B_QUIT_REQUESTED:
         // cancel pending operation
         ev->key_event.type = QE_KEY_EVENT;
-        ev->key_event.key = KEY_CTRL('g');
-        qe_handle_event(ev);
+        ev->key_event.key = KEY_QUIT;       // C-g
+        qe_handle_event(qs, ev);
 
-        // simulate C-x C-c
+        // exit qemacs
         ev->key_event.type = QE_KEY_EVENT;
-        ev->key_event.key = KEY_CTRL('x');
-        qe_handle_event(ev);
-        ev->key_event.type = QE_KEY_EVENT;
-        ev->key_event.key = KEY_CTRL('c');
-        qe_handle_event(ev);
+        ev->key_event.key = KEY_EXIT;       // C-x C-c
+        qe_handle_event(qs, ev);
         break;
 
     case _UPDATE_:
         // flush queued repaints
         if (atomic_get_and_set(&repaints, 0)) {
             ev->expose_event.type = QE_EXPOSE_EVENT;
-            qe_handle_event(ev);
+            qe_handle_event(qs, ev);
         }
         break;
 
@@ -414,7 +412,7 @@ static void haiku_handle_event(void *opaque)
             ctx->v->UnlockLooper();
 
             //ev->expose_event.type = QE_EXPOSE_EVENT;
-            //qe_handle_event(ev);
+            //qe_handle_event(qs, ev);
         }
         break;
 
@@ -423,9 +421,10 @@ static void haiku_handle_event(void *opaque)
             BPoint pt;
 
             ev->button_event.type = QE_MOTION_EVENT;
+            // TODO: set shift state
             ev->button_event.x = (int)pt.x;
             ev->button_event.y = (int)pt.y;
-            qe_handle_event(ev);
+            qe_handle_event(qs, ev);
         }
         break;
 
@@ -442,6 +441,7 @@ static void haiku_handle_event(void *opaque)
 
             if (event->FindPoint("where", &pt) < B_OK)
                 pt = BPoint(0,0);
+            // TODO: set shift state
             ev->button_event.x = (int)pt.x;
             ev->button_event.y = (int)pt.y;
 
@@ -456,7 +456,7 @@ static void haiku_handle_event(void *opaque)
             else if (buttons & B_TERTIARY_MOUSE_BUTTON)
                 ev->button_event.button = QE_BUTTON_RIGHT;
 
-            qe_handle_event(ev);
+            qe_handle_event(qs, ev);
         }
         break;
 
@@ -465,6 +465,7 @@ static void haiku_handle_event(void *opaque)
             float delta;
 
             ev->button_event.type = QE_BUTTON_PRESS_EVENT;
+            // TODO: set shift state
             ev->button_event.x = 0;
             ev->button_event.y = 0;
 
@@ -478,7 +479,7 @@ static void haiku_handle_event(void *opaque)
             else
                 break;
 
-            qe_handle_event(ev);
+            qe_handle_event(qs, ev);
         }
         break;
 
@@ -627,8 +628,9 @@ static void haiku_handle_event(void *opaque)
             }
 
             ev->key_event.type = QE_KEY_EVENT;
+            ev->key_event.shift = key_state;
             ev->key_event.key = key;
-            qe_handle_event(ev);
+            qe_handle_event(qs, ev);
         }
         break;
     }

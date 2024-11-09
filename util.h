@@ -807,6 +807,10 @@ int is_shift_key(int key);
 #define KEY_F18         KEY_ESC1(28)
 #define KEY_F19         KEY_ESC1(29)
 #define KEY_F20         KEY_ESC1(30)
+/* synthetic event keys */
+#define KEY_QUIT        KEY_ESC1(31)
+#define KEY_CLOSE       KEY_ESC1(32)
+#define KEY_EXIT        KEY_ESC1(33)
 
 #define KEY_SHIFT_TAB   KEY_SHIFT(KEY_TAB)
 

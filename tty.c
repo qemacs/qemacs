@@ -225,7 +225,7 @@ static void tty_term_set_raw(QEditScreen *s) {
     }
     if (tty_mouse > 0) {
         /* enable mouse reporting using SGR */
-        TTY_FPRINTF(s->STDOUT, "\033[?1002;1006h");
+        TTY_FPRINTF(s->STDOUT, "\033[?%d;1006h", tty_mouse == 1 ? 1002 : 1003);
     }
     if (tty_clipboard > 0) {
         /* enable focus reporting */
@@ -263,7 +263,7 @@ static void tty_term_set_cooked(QEditScreen *s) {
     }
     if (tty_mouse > 0) {
         /* disable mouse reporting using SGR */
-        TTY_FPRINTF(s->STDOUT, "\033[?1002;1006l");
+        TTY_FPRINTF(s->STDOUT, "\033[?%d;1006l", tty_mouse == 1 ? 1002 : 1003);
     }
     if (tty_clipboard > 0) {
         /* disable focus reporting */
@@ -612,6 +612,7 @@ static void tty_dpy_close(QEditScreen *s)
 
     qe_free(&ts->screen);
     qe_free(&ts->line_updated);
+    qe_free(&ts->clipboard);
     qe_free(&s->priv_data);
 }
 
@@ -870,9 +871,9 @@ static void tty_read_handler(void *opaque)
     QEditScreen *s = opaque;
     QEmacsState *qs = &qe_state;
     TTYState *ts = s->priv_data;
-    QEEvent ev1, *ev = &ev1;
+    QEEvent ev1, *ev = qe_event_clear(&ev1);
     u8 buf[1];
-    int ch, len, n1, n2, pending;
+    int ch, len, n1, n2, pending, shift;
 
     if (read(fileno(s->STDIN), buf, 1) != 1)
         return;
@@ -880,16 +881,19 @@ static void tty_read_handler(void *opaque)
     if (qs->trace_buffer)
         eb_trace_bytes(buf, 1, EB_TRACE_TTY);
 
+    shift = 0;
     ch = buf[0];
     ts->last_ch = ts->this_ch;
     ts->this_ch = ch;
     /* keep TTY bytes for error messages */
     if (qs->input_len >= qs->input_size) {
         qs->input_size += qs->input_size / 2 + 64;
-        if (qs->input_buf == qs->input_buf_def)
+        if (qs->input_buf == qs->input_buf_def) {
             qs->input_buf = qe_malloc_bytes(qs->input_size);
-        else
+            memcpy(qs->input_buf, qs->input_buf_def, qs->input_len);
+        } else {
             qe_realloc_bytes(&qs->input_buf, qs->input_size);
+        }
     }
     qs->input_buf[qs->input_len++] = ch;
 
@@ -1077,15 +1081,23 @@ static void tty_read_handler(void *opaque)
                 ev->button_event.type = QE_BUTTON_PRESS_EVENT;
             else
                 ev->button_event.type = QE_BUTTON_RELEASE_EVENT;
-            if (n1 & 32)
+            if (n1 & 32) {
+                /* button drag events (enabled by 1002) */
+                /* any motion events (enabled by 1003) */
                 ev->button_event.type = QE_MOTION_EVENT;
-
+                /* if n1 & 3 == 3 -> non button move */
+            }
             ev->button_event.x = ts->params[1] - 1;
             ev->button_event.y = ts->params[2] - 1;
             ev->button_event.button = 0;
-            n2 = n1 & (4+8+16);
-            n1 ^= n2;
-            switch (n1) {
+            if (n1 & 4)
+                shift |= KEY_STATE_SHIFT;
+            if (n1 & 8)
+                shift |= KEY_STATE_META;
+            if (n1 & 16)
+                shift |= KEY_STATE_CONTROL;
+            ev->button_event.shift = shift;
+            switch (n1 & ~(4|8|16|32)) {
             case 0:
                 ev->button_event.button = QE_BUTTON_LEFT;
                 break;
@@ -1094,6 +1106,9 @@ static void tty_read_handler(void *opaque)
                 break;
             case 2:
                 ev->button_event.button = QE_BUTTON_RIGHT;
+                break;
+            case 3:
+                ev->button_event.button = QE_BUTTON_NONE;
                 break;
             case 64:
                 ev->button_event.button = QE_WHEEL_UP;
@@ -1104,7 +1119,7 @@ static void tty_read_handler(void *opaque)
             default:
                 break;
             }
-            qe_handle_event(ev);
+            qe_handle_event(qs, ev);
             break;
         case 'I': // FocusIn  enabled by CSI ? 1004 h
             ts->input_state = IS_NORM;
@@ -1211,12 +1226,18 @@ static void tty_read_handler(void *opaque)
         }
     the_end_modified:
         /* modify the special key */
-        if (n2 & 1)
+        if (n2 & 1) {
+            shift |= KEY_STATE_SHIFT;
             ch = KEY_SHIFT(ch);
-        if (n2 & (2 | 8))
+        }
+        if (n2 & (2 | 8)) {
+            shift |= KEY_STATE_META;
             ch = KEY_META(ch);
-        if (n2 & 4)
+        }
+        if (n2 & 4) {
+            shift |= KEY_STATE_CONTROL;
             ch = KEY_CONTROL(ch);
+        }
 
     the_end_meta:
         if (ts->has_meta)
@@ -1227,8 +1248,9 @@ static void tty_read_handler(void *opaque)
         ts->has_meta = 0;
         // XXX: should add custom key sequences, especially for KEY_UNKNOWN
         ev->key_event.type = QE_KEY_EVENT;
+        ev->key_event.shift = shift;
         ev->key_event.key = ch;
-        qe_handle_event(ev);
+        qe_handle_event(qs, ev);
         break;
 
     case IS_OSC:

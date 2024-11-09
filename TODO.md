@@ -4,6 +4,8 @@
 
 ## Current work
 
+* should `mark` be a window variable instead of a buffer variable?
+* should `tab-width` be a window variable instead of or in addition to a buffer variable?
 * extra modes for drujensen/fib repo:
     es(escript), janet, k(K), p6, pony, ps1, pyx(cython), raku(rakudo), tcl, vb, zig
     detect flavors: ldc2?, bash, powershell, pypy, qb64, guile, sbcl

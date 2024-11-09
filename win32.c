@@ -216,6 +216,7 @@ static void push_event(QEEvent *ev)
 static void push_key(int key)
 {
     QEEvent ev;
+    qe_event_clear(&ev);
     ev.type = QE_KEY_EVENT;
     ev.key_event.key = key;
     push_event(&ev);
@@ -364,6 +365,7 @@ LRESULT CALLBACK qe_wnd_proc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             QEmacsState *qs = &qe_state;
             QEEvent ev;
 
+            qe_event_clear(&ev);
             qs->screen->width = LOWORD(lParam);
             qs->screen->height = HIWORD(lParam);
             ev.expose_event.type = QE_EXPOSE_EVENT;

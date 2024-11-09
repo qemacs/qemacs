@@ -50,7 +50,7 @@ static void generic_mode_close(EditState *s);
 static void generic_text_display(EditState *s);
 static void display1(DisplayState *ds);
 #ifndef CONFIG_TINY
-static void save_selection(void);
+static void save_selection(QEmacsState *qs, int copy);
 #endif
 
 QEmacsState qe_state;
@@ -1688,12 +1688,23 @@ static int mouse_goto_func(DisplayState *ds,
 
 /* go to left or right in visual order. In hex mode, a side effect is
    to select the right column. */
-void text_mouse_goto(EditState *s, int x, int y)
+void text_mouse_goto(EditState *s, int x, int y, QEEvent *ev)
 {
     QEmacsState *qs = s->qe_state;
+    EditState *curw = qs->active_window;
     MouseGotoContext m1, *m = &m1;
     DisplayState ds1, *ds = &ds1;
+    int found, start, stop;
 
+    // TODO: check process buffer active state
+    // TODO: dispatch event to window mode to handle graphics, html, shell, dired...
+    // TODO: handle drag and drop
+
+    /* disable mouse goto in incremental search */
+    if (curw && curw->isearch_state) {
+        // TODO: should actually end search at current spot
+        return;
+    }
     m->dx_min = 0x3fffffff;
     m->dy_min = 0x3fffffff;
     m->xd = x;
@@ -1706,17 +1717,60 @@ void text_mouse_goto(EditState *s, int x, int y)
     display1(ds);
     display_close(ds);
 
-    s->offset = m->offset_found;
-    s->hex_mode = m->hex_mode;
+    found = m->offset_found;
+    if ((ev->type == QE_BUTTON_PRESS_EVENT)
+    &&  !(ev->button_event.shift & KEY_STATE_SHIFT)) {
+        s->mouse_down_offset = found;
+    }
+    start = min_offset(s->mouse_down_offset, found);
+    stop = max_offset(s->mouse_down_offset, found);
 
-    /* activate window (need more ideas for popups) */
-    if (!(s->flags & WF_POPUP))
+    if (qs->mouse_clicks > 1) {
+        if (qs->mouse_clicks == 2) {
+            /* always include the character under the mouse pointer,
+             * extend to the end of the word it is a word character
+             */
+            if (qe_isword(eb_peekc(s->b, start)))
+                start = eb_word_left(s->b, 0, start);
+            if (qe_isword(eb_peekc(s->b, stop)))
+                stop = eb_word_right(s->b, 0, stop);
+            else
+                stop = eb_next(s->b, stop);
+        } else
+        if (qs->mouse_clicks == 3) {
+            /* by line or paragraph? */
+            start = eb_goto_bol(s->b, start);
+            stop = eb_next_line(s->b, stop);
+        } else {
+            /* whole buffer */
+            start = 0;
+            stop = s->b->total_size;
+        }
+    }
+
+    if (start == stop) {
+        s->offset = found;
+        s->hex_mode = m->hex_mode;
+    } else {
+        if (found >= s->mouse_down_offset) {
+            s->b->mark = start;
+            s->offset = stop;
+        } else {
+            s->b->mark = stop;
+            s->offset = start;
+        }
+        s->show_selection = 1;
+    }
+
+    /* activate window unless curw is modal */
+    if (!(curw && (curw->flags & (WF_POPUP | WF_MINIBUF)))) {
         qs->active_window = s;
+    }
     if (s->mouse_force_highlight)
         s->force_highlight = 1;
 }
 #else
-void text_mouse_goto(EditState *s, int x, int y)
+void text_mouse_goto(EditState *s, int x, int y, QEEvent *ev)
 {
 }
 #endif
@@ -2307,7 +2361,7 @@ EditBuffer *new_yank_buffer(QEmacsState *qs, EditBuffer *base)
         b = eb_new(bufname, BF_SYSTEM | (base->flags & BF_STYLES));
         eb_set_charset(b, base->charset, base->eol_type);
     } else {
-        b = eb_new(bufname, 0);
+        b = eb_new(bufname, BF_SYSTEM);
     }
     qs->yank_buffers[cur] = b;
     return b;
@@ -4958,6 +5012,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
 
     /* prompt display, only on first line */
     if (s->prompt && offset1 == 0) {
+        /* used for the minibuffer prompt */
         const char *p = s->prompt;
 
         while (*p) {
@@ -4974,6 +5029,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
         /* XXX: deal with truncation */
         colored_nb_chars = get_colorized_line(cp, offset, &offset0, line_num);
         if (s->mode == &list_mode) {
+            // TODO: should use a `colorize_line_hook` for this
             QEmacsState *qs = s->qe_state;
             int i;
 
@@ -5004,6 +5060,7 @@ int text_display_line(EditState *s, DisplayState *ds, int offset)
         if (s->isearch_state) {
             isearch_colorize_matches(s, cp->buf, colored_nb_chars, cp->sbuf, offset);
         }
+        // TODO: should handle multi_cursor position and selection
     }
 
 #if 1
@@ -5674,7 +5731,7 @@ static void parse_arguments(ExecCmdState *es)
                 s->compose_len = 0;
         }
 #ifndef CONFIG_TINY
-        save_selection();
+        save_selection(qs, FALSE);
 #endif
         /* Save and restore ec context */
         ec = qs->ec;
@@ -6340,25 +6397,52 @@ static void macro_add_key(int key)
 #ifdef CONFIG_TINY
 #define qe_free_multi_cursor(s)
 #else
-static void qe_add_multi_cursor_position(EditState *s, int offset) {
+static int qe_add_multi_cursor_position(EditState *s, int offset) {
     /* First unregister the callbacks because the array may be reallocated */
-    int i;
-    for (i = 0; i < s->multi_cursor_len; i++) {
-        eb_free_callback(s->b, eb_offset_callback, &s->multi_cursor[i]);
+    struct QECursor *cp;
+    if (s->multi_cursor_len >= s->multi_cursor_size) {
+        /* reallocate array of QECursor */
+        int new_size = s->multi_cursor_len + s->multi_cursor_len / 2 + 16;
+        int reallocated = FALSE;
+        int i;
+        /* unregister callbacks because array may move */
+        for (i = 0; i < s->multi_cursor_len; i++) {
+            eb_free_callback(s->b, eb_offset_callback, &s->multi_cursor[i].mark);
+            eb_free_callback(s->b, eb_offset_callback, &s->multi_cursor[i].offset);
+        }
+        if (qe_realloc_array(&s->multi_cursor, new_size)) {
+            reallocated = TRUE;
+            s->multi_cursor_size = new_size;
+        }
+        for (i = 0; i < s->multi_cursor_len; i++) {
+            eb_add_callback(s->b, eb_offset_callback, &s->multi_cursor[i].mark, 0);
+            eb_add_callback(s->b, eb_offset_callback, &s->multi_cursor[i].offset, 0);
+        }
+        if (!reallocated)
+            return -1;
     }
-    if (qe_realloc_array(&s->multi_cursor, s->multi_cursor_len + 1)) {
-        s->multi_cursor[s->multi_cursor_len++] = offset;
-    }
-    for (i = 0; i < s->multi_cursor_len; i++) {
-        eb_add_callback(s->b, eb_offset_callback, &s->multi_cursor[i], 0);
-    }
+    cp = &s->multi_cursor[s->multi_cursor_len++];
+    cp->kill_buf = NULL;
+    cp->kill_len = 0;
+    cp->kill_size = 0;
+    cp->mark = offset;
+    cp->offset = offset;
+    eb_add_callback(s->b, eb_offset_callback, &cp->mark, 0);
+    eb_add_callback(s->b, eb_offset_callback, &cp->offset, 0);
+    return 0;
 }
 
 static void qe_free_multi_cursor(EditState *s) {
     while (s->multi_cursor_len > 0) {
-        eb_free_callback(s->b, eb_offset_callback, &s->multi_cursor[--s->multi_cursor_len]);
+        struct QECursor *cp = &s->multi_cursor[--s->multi_cursor_len];
+        eb_free_callback(s->b, eb_offset_callback, &cp->mark);
+        eb_free_callback(s->b, eb_offset_callback, &cp->offset);
+        qe_free(&cp->kill_buf);
+        cp->kill_len = 0;
+        cp->kill_size = 0;
     }
     qe_free(&s->multi_cursor);
+    s->multi_cursor_size = 0;
     s->multi_cursor_len = 0;
     s->multi_cursor_cur = 0;
     s->multi_cursor_active = 0;
@@ -6384,7 +6468,8 @@ static void do_activate_multi_cursor(EditState *s) {
         s->offset = start;
     }
     if (s->multi_cursor_len) {
-        swap_int(&s->offset, &s->multi_cursor[0]);
+        swap_int(&s->b->mark, &s->multi_cursor[0].mark);
+        swap_int(&s->offset, &s->multi_cursor[0].offset);
         s->multi_cursor_cur = 0;
         s->multi_cursor_active = 1;
     } else {
@@ -6694,9 +6779,10 @@ static void qe_key_process(int key)
                     /* end multi-cursor session upto window change */
                     s->multi_cursor_active = 0;
                 }
-                s->multi_cursor[0] = s->offset;
+                s->multi_cursor[0].offset = s->offset;
                 for (int i = 1; s->multi_cursor_active && i < s->multi_cursor_len; i++) {
-                    swap_int(&s->offset, &s->multi_cursor[i]);
+                    swap_int(&s->b->mark, &s->multi_cursor[i].mark);
+                    swap_int(&s->offset, &s->multi_cursor[i].offset);
                     s->multi_cursor_cur = i;
                     /* prevent append-next-kill */
                     if (s->qe_state->last_cmd_func == (CmdFunc)do_append_next_kill)
@@ -6705,8 +6791,10 @@ static void qe_key_process(int key)
                     if (!check_window(&s))
                         break;
                     s->multi_cursor_cur = 0;
-                    swap_int(&s->offset, &s->multi_cursor[i]);
+                    swap_int(&s->b->mark, &s->multi_cursor[i].mark);
+                    swap_int(&s->offset, &s->multi_cursor[i].offset);
                     if (s != qs->active_window) {
+                        // TODO: notify user?
                         s->multi_cursor_active = 0;
                     }
                 }
@@ -7128,6 +7216,9 @@ void edit_close(EditState **sp)
         qe_free(&s->prompt);
         qe_free(&s->caption);
         qe_free(&s->line_shadow);
+#ifndef CONFIG_TINY
+        qe_free_multi_cursor(s);
+#endif
         s->shadow_nb_lines = 0;
         qe_free(sp);
     }
@@ -10015,9 +10106,9 @@ enum {
 };
 
 /* remove temporary selection colorization and selection area */
-static void save_selection(void)
+// TODO: clean this mess
+static void save_selection(QEmacsState *qs, int copy)
 {
-    QEmacsState *qs = &qe_state;
     EditState *e;
     int selection_showed;
 
@@ -10029,9 +10120,12 @@ static void save_selection(void)
     if (selection_showed && qs->motion_type == MOTION_TEXT) {
         qs->motion_type = MOTION_NONE;
         e = check_window(&qs->motion_target);
-        if (e != NULL) {
+        if (e != NULL && copy) {
             eb_trace_bytes("copy-region", -1, EB_TRACE_COMMAND);
             do_copy_region(e);
+            /* activate region hilite */
+            if (qs->hilite_region)
+                e->region_style = QE_STYLE_REGION_HILITE;
         }
     }
 }
@@ -10055,10 +10149,10 @@ void wheel_scroll_up_down(EditState *s, int dir)
     perform_scroll_up_down(s, dir * WHEEL_SCROLL_STEP * line_height);
 }
 
-static void call_mouse_goto(EditState *e, int x, int y) {
+static void call_mouse_goto(EditState *e, int x, int y, QEEvent *ev) {
     eb_trace_bytes("mouse-goto", -1, EB_TRACE_COMMAND);
     if (e->mode->mouse_goto)
-        e->mode->mouse_goto(e, x, y);
+        e->mode->mouse_goto(e, x, y, ev);
 }
 
 static void reverse_window_list(QEmacsState *qs) {
@@ -10075,6 +10169,7 @@ static void reverse_window_list(QEmacsState *qs) {
 
 static int check_mouse_event(EditState *e, QEEvent *ev) {
     QEmacsState *qs = e->qe_state;
+    EditState *curw = qs->active_window;
     int mouse_x = ev->button_event.x;
     int mouse_y = ev->button_event.y;
 
@@ -10082,36 +10177,44 @@ static int check_mouse_event(EditState *e, QEEvent *ev) {
     if (mouse_x < e->x1 || mouse_x >= e->x2 || mouse_y < e->y1 || mouse_y >= e->y2)
         return 0;
 
-    /* test if mouse is inside the text area */
+    /* test if mouse is inside the client area */
     if (mouse_x >= e->xleft && mouse_x < e->xleft + e->width &&
         mouse_y >= e->ytop && mouse_y < e->ytop + e->height)
     {
         switch (ev->button_event.button) {
         case QE_BUTTON_LEFT:
-            // TODO: should cancel popup, minibuf and isearch_mode
+            // TODO: should cancel popup, minibuf?
+            if (curw && curw->isearch_state) {
+                /* Cancel pending search */
+                QEEvent ev1, *evp = qe_event_clear(&ev1);
+                evp->key_event.type = QE_KEY_EVENT;
+                evp->key_event.key = KEY_QUIT;
+                qe_handle_event(qs, evp);
+            }
             /* make popup windows modal for now */
-            if (qs->active_window && e != qs->active_window && (qs->active_window->flags & WF_POPUP))
+            if (curw && e != curw && (curw->flags & WF_POPUP))
                 return 0;
             if (!e->mode->mouse_goto)
                 goto no_handler;
-            save_selection();
-            call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
+            save_selection(qs, FALSE);
+            e->show_selection = 0;
+            e->region_style = 0;
+            call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop, ev);
             qs->motion_type = MOTION_TEXT;
-            qs->motion_x = 0; /* indicate first move */
             qs->motion_target = e;
             break;
         case QE_BUTTON_MIDDLE:
             // TODO: should cancel popup, minibuf and isearch_mode
             /* make popup windows modal for now */
-            if (qs->active_window && e != qs->active_window && (qs->active_window->flags & WF_POPUP))
+            if (curw && e != curw && (curw->flags & WF_POPUP))
                 return 0;
             if (!e->mode->mouse_goto) {
             no_handler:
                 put_status(e, "no mouse handler for mode %s", e->mode->name);
                 return 0;
             }
-            save_selection();
-            call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
+            save_selection(qs, FALSE);
+            call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop, ev);
             do_yank(e);
             break;
         case QE_WHEEL_UP:
@@ -10157,7 +10260,7 @@ static int check_mouse_event(EditState *e, QEEvent *ev) {
             return 1;
         }
     }
-    if (qs->active_window && e != qs->active_window && (qs->active_window->flags & WF_POPUP))
+    if (curw && e != curw && (curw->flags & WF_POPUP))
         return 0;
 
     // TODO: check for top left close button and window split marks
@@ -10196,6 +10299,7 @@ static void handle_mouse_motion(EditState *e, QEEvent *ev) {
     int mouse_x = ev->button_event.x;
     int mouse_y = ev->button_event.y;
     int scale = (qs->screen->media & CSS_MEDIA_TTY) ? 1 : 8;
+    int new_y;
 
     switch (qs->motion_type) {
     case MOTION_NONE:
@@ -10203,19 +10307,32 @@ static void handle_mouse_motion(EditState *e, QEEvent *ev) {
         break;
     case MOTION_TEXT:
         /* put a mark if first move */
-        if (!qs->motion_x) {
-            /* test needed for list mode */
-            if (e->b)
-                e->b->mark = e->offset;
-            qs->motion_x = 1;
+        if (!e->show_selection) {
+            // XXX: test on e->b seems unnecessary, even for list mode
+            e->b->mark = e->offset;
+        }
+        /* if dragging mouse outside the window active area,
+         * scroll the window contents in the opposite direction
+         * before updating cursor position.
+         */
+        // TODO: drag window contents horizontally too.
+        new_y = mouse_y;
+        if (mouse_y < e->ytop)
+            new_y = e->ytop;
+        else
+        if (mouse_y >= e->ytop + e->height)
+            new_y = e->ytop + e->height - 1;
+
+        if (mouse_y != new_y) {
+            perform_scroll_up_down(e, mouse_y - new_y);
+            mouse_y = new_y;
+            // TODO: should register auto-repeat action if mouse does not move
         }
         /* highlight selection */
         e->show_selection = 1;
-        if (mouse_x >= e->xleft && mouse_x < e->xleft + e->width &&
-            mouse_y >= e->ytop && mouse_y < e->ytop + e->height)
-        {
+        if (mouse_x >= e->xleft && mouse_x < e->xleft + e->width) {
             /* if inside the buffer, then update cursor position */
-            call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop);
+            call_mouse_goto(e, mouse_x - e->xleft, mouse_y - e->ytop, ev);
             edit_display(qs);
             dpy_flush(qs->screen);
         }
@@ -10287,16 +10404,15 @@ static void handle_mouse_motion(EditState *e, QEEvent *ev) {
     }
 }
 
-void qe_mouse_event(QEEvent *ev)
+void qe_mouse_event(QEmacsState *qs, QEEvent *ev)
 {
-    QEmacsState *qs = &qe_state;
     EditState *e;
 
     switch (ev->type) {
     case QE_BUTTON_RELEASE_EVENT:
         // TODO: should handle frame and buffer buttons
         // TODO: should handle double/triple click
-        save_selection();
+        save_selection(qs, TRUE);
         qs->motion_type = MOTION_NONE;
         qs->motion_target = NULL;
         break;
@@ -10311,10 +10427,13 @@ void qe_mouse_event(QEEvent *ev)
         reverse_window_list(qs);
         break;
     case QE_MOTION_EVENT:
+        //eb_trace_bytes("mouse-move", -1, EB_TRACE_COMMAND);
         e = check_window(&qs->motion_target);
         if (e != NULL) {
+            /* dispatch move drag event if mouse was captured */
             handle_mouse_motion(e, ev);
         } else {
+            // TODO: dispatch move hover event */
             qs->motion_type = MOTION_NONE;
         }
         break;
@@ -10332,10 +10451,8 @@ void unget_key(int key)
 }
 
 /* handle an event sent by the GUI */
-void qe_handle_event(QEEvent *ev)
+void qe_handle_event(QEmacsState *qs, QEEvent *ev)
 {
-    QEmacsState *qs = &qe_state;
-
     switch (ev->type) {
     case QE_KEY_EVENT:
         if (qs->trace_buffer) {
@@ -10359,20 +10476,28 @@ void qe_handle_event(QEEvent *ev)
         break;
 #ifndef CONFIG_TINY
     case QE_BUTTON_PRESS_EVENT:
+        qs->mouse_down_time[1] = qs->mouse_down_time[0];
+        qs->mouse_down_time[0] = get_clock_ms();
+        if (qs->mouse_down_time[0] - qs->mouse_down_time[1] < qs->double_click_threshold)
+            qs->mouse_clicks++;
+        else
+            qs->mouse_clicks = 1;
+        /* fallthrough */
     case QE_BUTTON_RELEASE_EVENT:
     case QE_MOTION_EVENT:
         if (qs->trace_buffer) {
             char buf[32];
             buf_t out[1];
             buf_init(out, buf, sizeof buf);
-            buf_printf(out, "%d %d %d %d ", ev->button_event.type,
-                       ev->button_event.x, ev->button_event.y, ev->button_event.button);
+            buf_printf(out, "%d %d %d %d %d ", ev->button_event.type,
+                       ev->button_event.shift, ev->button_event.button,
+                       ev->button_event.x, ev->button_event.y);
             eb_trace_bytes(buf, out->len, EB_TRACE_MOUSE);
         }
-        qe_mouse_event(ev);
+        qe_mouse_event(qs, ev);
         break;
     case QE_SELECTION_CLEAR_EVENT:
-        save_selection();
+        save_selection(qs, FALSE);
         goto redraw;
 #endif
     default:
@@ -10678,10 +10803,10 @@ static int parse_command_line(int argc, char **argv)
                     }
                     switch (p->type) {
                     case CMD_LINE_TYPE_BOOL:
-                        *p->u.int_ptr = qe_strtobool(optarg_, 1);
+                        *p->u.int_ptr = optarg_ ? qe_strtobool(optarg_, 1) : TRUE;
                         break;
                     case CMD_LINE_TYPE_INT:
-                        *p->u.int_ptr = strtol(optarg_, NULL, 0);
+                        *p->u.int_ptr = optarg_ ? strtol(optarg_, NULL, 0) : *p->u.int_ptr + 1;
                         break;
                     case CMD_LINE_TYPE_STRING:
                         *p->u.string_ptr = optarg_;
@@ -10799,7 +10924,7 @@ static CmdLineOptionDef cmd_options[] = {
     CMD_LINE_INT("", "clipboard", "VAL", &tty_clipboard,
                  "set the tty clipboard support level (0,1)"),
     CMD_LINE_INT("m", "mouse", "VAL", &tty_mouse,
-                 "set the mouse emulation mode (0,1)"),
+                 "set the mouse emulation mode (0,1,2)"),
     CMD_LINE_LINK()
 };
 
@@ -11066,7 +11191,7 @@ static const CmdDef basic_commands[] = {
           "Set the numeric prefix argument",
           do_prefix_argument, ESi, "k")
     CMD0( "keyboard-quit",
-          "C-g, C-x C-g, C-c C-g, C-h C-g, M-C-g, ESC ESC ESC",
+          "C-g, C-x C-g, C-c C-g, C-h C-g, M-C-g, ESC ESC ESC, QUIT",
           "Abort the current command",
           do_keyboard_quit)
     CMD0( "unknown-key",
@@ -11189,7 +11314,7 @@ static const CmdDef basic_commands[] = {
           "Enter preview mode: cursor movement keys cause window scrolling",
           do_preview_mode, 1)
 #endif
-    CMD1( "delete-window", "C-x 0",
+    CMD1( "delete-window", "C-x 0, CLOSE",
           "Delete the current window",
           do_delete_window, 0)
     CMD1( "delete-other-windows", "C-x 1",
@@ -11299,7 +11424,7 @@ static const CmdDef basic_commands[] = {
     CMD2( "suspend-qemacs", "", //"C-z",
           "Suspend Quick Emacs",
           do_suspend_qemacs, ESi, "P")
-    CMD2( "exit-qemacs", "C-x C-c",
+    CMD2( "exit-qemacs", "C-x C-c, EXIT",
           "Exit Quick Emacs",
           do_exit_qemacs, ESi, "P")
     CMD0( "refresh", "C-l",
@@ -11547,6 +11672,7 @@ static void qe_init(void *opaque)
     qs->max_load_size = MAX_LOAD_SIZE;
     qs->input_buf = qs->input_buf_def;
     qs->input_size = countof(qs->input_buf_def);
+    qs->double_click_threshold = DEFAULT_DOUBLE_CLICK_THRESHOLD;
 
     /* setup resource path */
     set_user_option(NULL);
