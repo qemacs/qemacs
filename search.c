@@ -804,7 +804,7 @@ static void isearch_exit(EditState *s, int key) {
         /* repost key */
         /* do not keep search matches lingering */
         s->isearch_state = NULL;
-        if (key != KEY_RET) {
+        if (key != KEY_RET && key != KEY_QUIT) {
             unget_key(key);
         }
         isearch_end(is);
@@ -1505,7 +1505,7 @@ static const CmdDef isearch_commands[] = {
     CMDx( "isearch-edit-string", "M-e",
           "show the help page for isearch",
            isearch_edit_string, ES, "")
-    CMD2( "isearch-exit", "RET",
+    CMD2( "isearch-exit", "RET, QUIT",
           "Exit isearch, leave point at location found",
            isearch_exit, ESi, "k")
     CMDx( "isearch-mode-help", "f1, C-h",

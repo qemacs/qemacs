@@ -1347,6 +1347,7 @@ int css_define_color(const char *name, const char *value)
         qe_colors = def;
     }
     /* Make room: reallocate table in chunks of 8 entries */
+    // FIXME: this will reallocate the table even if the color exists
     if (((nb_qe_colors - nb_default_colors) & 7) == 0) {
         if (!qe_realloc_array(&qe_colors, nb_qe_colors + 8))
             return -1;

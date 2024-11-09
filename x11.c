@@ -1306,11 +1306,12 @@ static void qe_expose_add(QEditScreen *s, QExposeRegion *rgn,
 static void qe_expose_flush(QEditScreen *s, QExposeRegion *rgn)
 {
     if (rgn->pending) {
-        QEEvent ev1, *ev = &ev1;
+        QEmacsState *qs = &qe_state;
+        QEEvent ev1, *ev = qe_event_clear(&ev1);
 
         /* Ignore expose region */
         ev->expose_event.type = QE_EXPOSE_EVENT;
-        qe_handle_event(ev);
+        qe_handle_event(qs, ev);
         qe_expose_reset(s, rgn);
     }
 }
@@ -1319,12 +1320,13 @@ static void qe_expose_flush(QEditScreen *s, QExposeRegion *rgn)
 static void x11_handle_event(void *opaque)
 {
     QEditScreen *s = opaque;
+    QEmacsState *qs = &qe_state;
     X11State *xs = s->priv_data;
     char buf[16];
     XEvent xev;
     KeySym keysym;
     int len, key, key_state;
-    QEEvent ev1, *ev = &ev1;
+    QEEvent ev1, *ev = qe_event_clear(&ev1);
     QExposeRegion rgn1, *rgn = &rgn1;
 
     qe_expose_reset(s, rgn);
@@ -1336,16 +1338,13 @@ static void x11_handle_event(void *opaque)
             if ((Atom)xev.xclient.data.l[0] == xs->wm_delete_window) {
                 // cancel pending operation
                 ev->key_event.type = QE_KEY_EVENT;
-                ev->key_event.key = KEY_CTRL('g');
-                qe_handle_event(ev);
+                ev->key_event.key = KEY_QUIT;       // C-g
+                qe_handle_event(qs, ev);
 
-                // simulate C-x C-c
+                // exit qemacs
                 ev->key_event.type = QE_KEY_EVENT;
-                ev->key_event.key = KEY_CTRL('x');
-                qe_handle_event(ev);
-                ev->key_event.type = QE_KEY_EVENT;
-                ev->key_event.key = KEY_CTRL('c');
-                qe_handle_event(ev);
+                ev->key_event.key = KEY_EXIT;       // C-x C-c
+                qe_handle_event(qs, ev);
             }
             break;
         case ConfigureNotify:
@@ -1372,6 +1371,7 @@ static void x11_handle_event(void *opaque)
                 else
                     ev->button_event.type = QE_BUTTON_RELEASE_EVENT;
 
+                // TODO: set shift state
                 ev->button_event.x = xe->x;
                 ev->button_event.y = xe->y;
                 switch (xe->button) {
@@ -1394,17 +1394,18 @@ static void x11_handle_event(void *opaque)
                     continue;
                 }
                 qe_expose_flush(s, rgn);
-                qe_handle_event(ev);
+                qe_handle_event(qs, ev);
             }
             break;
         case MotionNotify:
             {
                 XMotionEvent *xe = &xev.xmotion;
                 ev->button_event.type = QE_MOTION_EVENT;
+                // TODO: set shift state
                 ev->button_event.x = xe->x;
                 ev->button_event.y = xe->y;
                 qe_expose_flush(s, rgn);
-                qe_handle_event(ev);
+                qe_handle_event(qs, ev);
             }
             break;
             /* selection handling */
@@ -1413,7 +1414,7 @@ static void x11_handle_event(void *opaque)
                 /* ask qemacs to stop visual notification of selection */
                 ev->type = QE_SELECTION_CLEAR_EVENT;
                 qe_expose_flush(s, rgn);
-                qe_handle_event(ev);
+                qe_handle_event(qs, ev);
             }
             break;
         case SelectionRequest:
@@ -1508,9 +1509,10 @@ static void x11_handle_event(void *opaque)
                 break;
         got_key:
             ev->key_event.type = QE_KEY_EVENT;
+            ev->key_event.shift = key_state;
             ev->key_event.key = get_modified_key(key, key_state);
             qe_expose_flush(s, rgn);
-            qe_handle_event(ev);
+            qe_handle_event(qs, ev);
             break;
         }
     }
@@ -1991,8 +1993,8 @@ static CmdLineOptionDef cmd_options[] = {
                     "set X11 display"),
     CMD_LINE_STRING("g", "geometry", "WxH", &geometry_str,
                     "set X11 display size"),
-    CMD_LINE_INT("fs", "font-size", "ptsize", &font_ptsize,
-                 "set default font size"),
+    CMD_LINE_INT_ARG("fs", "font-size", "ptsize", &font_ptsize,
+                     "set default font size"),
     CMD_LINE_LINK()
 };
 

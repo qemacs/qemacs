@@ -755,7 +755,7 @@ static int mouse_goto_func(void *opaque, CSSBox *box, int x, int y)
     return 0;
 }
 
-static void html_mouse_goto(EditState *s, int x, int y)
+static void html_mouse_goto(EditState *s, int x, int y, QEEvent *ev)
 {
     HTMLState *hs;
     MouseGotoContext m1, *m = &m1;

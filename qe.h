@@ -163,8 +163,9 @@ typedef struct CmdLineOptionDef {
 } CmdLineOptionDef;
 
 #define CMD_LINE_NONE()          { NULL, CMD_LINE_TYPE_NONE, FALSE, { NULL }}
-#define CMD_LINE_BOOL(s,n,p,h)   { s "|" n "||" h, CMD_LINE_TYPE_BOOL, TRUE, { .int_ptr = p }}
-#define CMD_LINE_INT(s,n,a,p,h)  { s "|" n "|" a "|" h, CMD_LINE_TYPE_INT, TRUE, { .int_ptr = p }}
+#define CMD_LINE_BOOL(s,n,p,h)   { s "|" n "||" h, CMD_LINE_TYPE_BOOL, FALSE, { .int_ptr = p }}
+#define CMD_LINE_INT_ARG(s,n,a,p,h)  { s "|" n "|" a "|" h, CMD_LINE_TYPE_INT, TRUE, { .int_ptr = p }}
+#define CMD_LINE_INT(s,n,a,p,h)  { s "|" n "|" a "|" h, CMD_LINE_TYPE_INT, FALSE, { .int_ptr = p }}
 #define CMD_LINE_STRING(s,n,a,p,h) { s "|" n "|" a "|" h, CMD_LINE_TYPE_STRING, TRUE, { .string_ptr = p }}
 #define CMD_LINE_FVOID(s,n,p,h)  { s "|" n "||" h, CMD_LINE_TYPE_FVOID, FALSE, { .func_noarg = p }}
 #define CMD_LINE_FARG(s,n,a,p,h) { s "|" n "|" a "|" h, CMD_LINE_TYPE_FARG, TRUE, { .func_arg = p }}
@@ -189,6 +190,7 @@ enum QEEventType {
 
 typedef struct QEKeyEvent {
     enum QEEventType type;
+    int shift;      /* KEY_STATE_xxx combination */
     int key;
 } QEKeyEvent;
 
@@ -197,6 +199,7 @@ typedef struct QEExposeEvent {
     /* currently, no more info */
 } QEExposeEvent;
 
+#define QE_BUTTON_NONE   0x0000
 #define QE_BUTTON_LEFT   0x0001
 #define QE_BUTTON_MIDDLE 0x0002
 #define QE_BUTTON_RIGHT  0x0004
@@ -209,6 +212,7 @@ typedef struct QEExposeEvent {
 
 typedef struct QEButtonEvent {
     enum QEEventType type;
+    int shift;      /* KEY_STATE_xxx combination */
     int x;
     int y;
     int button;
@@ -216,6 +220,7 @@ typedef struct QEButtonEvent {
 
 typedef struct QEMotionEvent {
     enum QEEventType type;
+    int shift;      /* KEY_STATE_xxx combination */
     int x;
     int y;
 } QEMotionEvent;
@@ -228,7 +233,11 @@ typedef union QEEvent {
     QEMotionEvent motion_event;
 } QEEvent;
 
-void qe_handle_event(QEEvent *ev);
+static inline QEEvent *qe_event_clear(QEEvent *ev) {
+    return memset(ev, 0, sizeof(*ev));
+};
+
+void qe_handle_event(QEmacsState *qs, QEEvent *ev);
 /* CG: Should optionally attach grab to a window */
 /* CG: Should deal with opaque object life cycle */
 void qe_grab_keys(void (*cb)(void *opaque, int key), void *opaque);
@@ -522,6 +531,9 @@ static inline int eb_prev(EditBuffer *b, int offset) {
     eb_prevc(b, offset, &offset);
     return offset;
 }
+static inline int eb_peekc(EditBuffer *b, int offset) {
+    return eb_nextc(b, offset, &offset);
+}
 
 //int eb_clip_offset(EditBuffer *b, int offset);
 void do_repeat(EditState *s, int argval);
@@ -671,6 +683,14 @@ enum WrapType {
 #define DIR_LTR 0
 #define DIR_RTL 1
 
+struct QECursor {
+    int mark;
+    int offset;
+    u8 *kill_buf;
+    int kill_size;
+    int kill_len;
+};
+
 struct EditState {
     int offset;     /* offset of the cursor */
     /* text display state */
@@ -698,6 +718,7 @@ struct EditState {
     int mouse_force_highlight; /* if true, mouse can force highlight
                                   (list mode only) */
     int up_down_last_x;     /* last x offset for vertical movement */
+    int mouse_down_offset;
 
     /* low level colorization function */
     ModeDef *colorize_mode;
@@ -773,7 +794,8 @@ struct EditState {
     char32_t compose_buf[20];
     OWNED EditState *next_window;
 
-    int *multi_cursor;
+    struct QECursor *multi_cursor;
+    int multi_cursor_size;
     int multi_cursor_len;
     int multi_cursor_cur;
     int multi_cursor_active;
@@ -857,7 +879,7 @@ struct ModeDef {
     void (*move_word_left_right)(EditState *s, int dir);
     void (*scroll_up_down)(EditState *s, int dir);
     void (*scroll_line_up_down)(EditState *s, int dir);
-    void (*mouse_goto)(EditState *s, int x, int y);
+    void (*mouse_goto)(EditState *s, int x, int y, QEEvent *ev);
 
     /* Functions to insert and delete contents: */
     void (*write_char)(EditState *s, int c);
@@ -1061,6 +1083,10 @@ struct QEmacsState {
     /* mouse handling */
     EditState *motion_target;
     int motion_type, motion_border, motion_x, motion_y;
+    int mouse_down_time[2]; /* last 2 mouse down times */
+    int double_click_threshold; /* double/triple click threshold */
+#define DEFAULT_DOUBLE_CLICK_THRESHOLD  500  /* half a second */
+    int mouse_clicks; /* 1..3 */
 };
 
 extern QEmacsState qe_state;
@@ -1549,7 +1575,7 @@ void do_goto(EditState *s, const char *str, int unit);
 void do_goto_line(EditState *s, int line, int column);
 void do_up_down(EditState *s, int n);
 void do_left_right(EditState *s, int n);
-void text_mouse_goto(EditState *s, int x, int y);
+void text_mouse_goto(EditState *s, int x, int y, QEEvent *ev);
 void basic_mode_line(EditState *s, buf_t *out, int c1);
 void text_mode_line(EditState *s, buf_t *out);
 void do_toggle_full_screen(EditState *s);
@@ -1668,7 +1694,7 @@ void qe_event_init(QEmacsState *qs);
 void window_get_min_size(EditState *s, int *w_ptr, int *h_ptr);
 int window_resize(EditState *s, int target_w, int target_h);
 void wheel_scroll_up_down(EditState *s, int dir);
-void qe_mouse_event(QEEvent *ev);
+void qe_mouse_event(QEmacsState *qs, QEEvent *ev);
 void set_user_option(const char *user);
 void set_tty_charset(const char *name);
 
